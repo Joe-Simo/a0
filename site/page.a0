@@ -1,0 +1,158 @@
+# a0lang.com page, authored in A0. The page is an io program speaking the A0 UI protocol:
+#   input : event id (0 = initial render), persisted state word
+#   output: commands  1 OPEN tag | 2 TEXT (puts bytes) | 3 CLOSE | 4 ATTR key (puts bytes)
+#           5 ONCLICK event | 6 STATE word | 7 COMPONENT id
+#   tags: 1 h1, 2 p, 3 button, 4 code, 5 div, 6 span, 7 ul, 8 li, 9 a, 10 pre, 11 h2
+#   attr keys: 1 id, 2 class, 3 href
+# The browser adapter (site/app.ts) only builds DOM from this stream and reports clicks back.
+
+fn open io u32 -> io
+a write p0 1
+b write a p1
+ret b
+end
+
+fn close io -> io
+a write p0 3
+ret a
+end
+
+fn onclick io u32 -> io
+a write p0 5
+b write a p1
+ret b
+end
+
+fn component io u32 -> io
+a write p0 7
+b write a p1
+ret b
+end
+
+
+fn mulstep u32 u32 -> u32
+m mul p0 10
+ret m
+end
+
+# 10^p1 (p1 <= 9)
+fn tenpow u32 -> u32
+r fold mulstep p0 1
+ret r
+end
+
+# number of decimal digits of n (>= 1)
+fn digitstep u32 u32 u32 -> u32
+s add p0 1
+ret s
+end
+
+fn morecheck u32 u32 u32 -> bool
+p call tenpow p0
+c lt p2 p0
+fits lt p2 p
+more select fits false true
+ret more
+end
+
+fn ndigits u32 -> u32
+n loop morecheck digitstep 10 1 p0
+ret n
+end
+
+
+fn putdigit io u32 u32 u32 -> io
+rest sub p3 p1
+pos sub rest 1
+p call tenpow pos
+q div p2 p
+d rem q 10
+ch add d 48
+t write p0 2
+u write t 1
+v write u ch
+ret v
+end
+
+# TEXT command with the decimal rendering of p1 (each digit as its own TEXT chunk)
+fn putnum io u32 -> io
+nd call ndigits p1
+t fold putdigit nd p0 p1 nd
+ret t
+end
+
+
+fn session io -> u32
+r0 read p0
+event at r0 0
+t0 at r0 1
+r1 read t0
+state at r1 0
+t1 at r1 1
+isclick eq event 1
+inc add state 1
+next select isclick inc state
+
+h call open t1 1
+h1 write h 2
+title text "A0"
+h2 puts h1 title
+h3 call close h2
+
+q1 call open h3 2
+p1t write q1 2
+tag text "An AI-native universal language and compiler. One program, compiled to the browser, native code, the JVM, .NET, the GPU, and clocked hardware."
+p1u puts p1t tag
+p1c call close p1u
+
+s1 call open p1c 11
+s1t write s1 2
+s1x text "This page is an A0 program"
+s1u puts s1t s1x
+s1c call close s1u
+
+q2 call open s1c 2
+p2t write q2 2
+p2x text "Every element, string, and click handler below comes from a word stream written by site/page.a0 (compiled to WebAssembly). The browser adapter only builds DOM from that stream."
+p2u puts p2t p2x
+p2c call close p2u
+
+b call open p2c 3
+b1 write b 4
+b2 write b1 1
+bid text "counter"
+b3 puts b2 bid
+b4 call onclick b3 1
+b5 write b4 2
+lbl text "Clicked "
+b6 puts b5 lbl
+b7 call putnum b6 next
+b8 write b7 2
+tail text " times (state kept by the A0 program)"
+b9 puts b8 tail
+b10 call close b9
+
+s2 call open b10 11
+s2t write s2 2
+s2x text "Life, also in A0"
+s2u puts s2t s2x
+s2c call close s2u
+
+q3 call open s2c 2
+p3t write q3 2
+p3x text "Conway's Life on a 32x32 torus: rules, grid, and session protocol are examples/life.a0. Click cells to toggle them."
+p3u puts p3t p3x
+p3c call close p3u
+
+cmp call component p3c 1
+
+f call open cmp 2
+ft write f 2
+fx text "Status, evidence ledger, and source: github.com/Joe-Simo/a0 (private during research)."
+fu puts ft fx
+fc call close fu
+
+st write fc 6
+st2 write st next
+ret next
+end

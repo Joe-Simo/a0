@@ -13,11 +13,21 @@ import { compileWasm, runTool } from '../src/toolchain.js';
 async function main(): Promise<void> {
   const out = join('site', 'dist');
   await mkdir(out, { recursive: true });
-  const program = parseAndValidate(await readFile(join('examples', 'life.a0'), 'utf8'));
-  const c = compile(program, 'c').text;
-  const wasm = await compileWasm(c);
-  await writeFile(join(out, 'life.wasm'), wasm.bytes);
-  await writeFile(join(out, 'life.c'), c, 'utf8');
+  // Both A0 programs of the site: the page itself and the Life component.
+  const sizes: string[] = [];
+  let compiler = '';
+  for (const [name, source] of [
+    ['life', join('examples', 'life.a0')],
+    ['page', join('site', 'page.a0')],
+  ] as const) {
+    const program = parseAndValidate(await readFile(source, 'utf8'));
+    const c = compile(program, 'c').text;
+    const wasm = await compileWasm(c);
+    await writeFile(join(out, `${name}.wasm`), wasm.bytes);
+    await writeFile(join(out, `${name}.c`), c, 'utf8');
+    sizes.push(`${name}.wasm ${wasm.bytes.length} bytes`);
+    compiler = wasm.compiler;
+  }
   const tsc = join('node_modules', '.bin', 'tsc');
   const r = runTool(tsc, [
     '--strict',
@@ -37,9 +47,7 @@ async function main(): Promise<void> {
   ]);
   if (!r.ok) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
   await copyFile(join('site', 'index.html'), join(out, 'index.html'));
-  process.stdout.write(
-    `site/dist: life.wasm ${wasm.bytes.length} bytes (${wasm.compiler}), app.js, index.html\n`,
-  );
+  process.stdout.write(`site/dist: ${sizes.join(', ')} (${compiler}), app.js, index.html\n`);
 }
 
 main().catch((err: unknown) => {

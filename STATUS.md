@@ -70,9 +70,16 @@ turns up, reconcile against this tree rather than overwrite either.
   independent TypeScript Life implementation, through interpreter, optimizer, JS, C (clang
   + UBSan), C++, Wasm, and JVM. Browser: `bun run site` builds `site/dist` (life.wasm, a
   DOM adapter `site/app.ts` that only draws and forwards clicks, index.html); verified in
-  the in-app browser: a glider advances by (1,1) after four generations. The page shell
-  is HTML/TS because A0 has no strings or DOM capability yet; that is the remaining gap
-  for "the whole site in A0". Not deployed.
+  the in-app browser: a glider advances by (1,1) after four generations. Not deployed.
+- **The page itself in A0** (`site/page.a0`, v0.8.0): the a0lang.com page is an A0 io
+  program speaking a small UI protocol over the word stream (OPEN tag, TEXT bytes,
+  CLOSE, ATTR, ONCLICK event, STATE word, COMPONENT id); every heading, paragraph,
+  button label, click handler, and the counter's decimal rendering (div/rem) come from
+  A0. The browser adapter (`site/app.ts`) only interprets the stream, builds DOM, feeds
+  clicks back with the persisted state word, and mounts Life as component 1. Verified in
+  the in-app browser: three clicks show "Clicked 3 times" with state 3 kept by the A0
+  program; Life glider still correct. The remaining non-A0 parts are the adapter and
+  the CSS shell (a runtime, like a browser), and the wasm loader.
 - **Resource bounds** (user requirement 2026-09-29, compute-bomb protection): the reference
   interpreter takes a fuel budget (default 10^8 node evaluations, shared across nested
   calls) and aborts with a diagnostic; compile-time evaluation in the optimizer is
@@ -253,7 +260,9 @@ listed by `git log`; the push is verified against `origin/main` after each commi
    (residual ≈1.3–1.6× on the array kernel is allocation of the initial array plus the
    body call; next step would be inlining owned bodies); (b) done: wrapper indirection is
    within noise; (c) run Gate 6 when authorized and add the whole-task numbers here;
-   (d) bytes/strings and a DOM capability tier so a0lang.com can be authored in A0.
+   (d) done: text literals, div/rem, puts, and the UI protocol; the page is authored in
+   A0. Next: deploy to a0lang.com only with explicit approval; richer UI protocol
+   (inputs, lists) as the site needs them; Gate 6 live runs when authorized.
 2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
    cross-target application, authored in A0 with a browser DOM adapter; no deployment
    without explicit approval in that session.

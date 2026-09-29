@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>A0 Life</title>
+  <title>A0</title>
   <style>
     :root { --bg: #0b0f14; --fg: #e6edf3; --muted: #8b949e; --cell: #58a6ff; --accent: #2ea043; }
     @media (prefers-color-scheme: light) { :root { --bg: #f6f8fa; --fg: #1f2328; --muted: #57606a; --cell: #0969da; --accent: #1a7f37; } }
     body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
-    main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
-    h1 { font-size: 1.4rem; margin: 0 0 4px; }
-    p { color: var(--muted); margin: 0 0 16px; }
+    #app { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+    h1 { font-size: 2rem; margin: 0 0 4px; }
+    h2 { font-size: 1.2rem; margin: 24px 0 4px; }
+    p { color: var(--muted); margin: 0 0 12px; }
     canvas { width: 100%; max-width: 512px; aspect-ratio: 1; display: block; border: 1px solid var(--muted); border-radius: 8px; touch-action: manipulation; }
     .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
     button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--muted); background: transparent; color: var(--fg); cursor: pointer; }
@@ -21,20 +22,7 @@
   </style>
 </head>
 <body>
-  <main>
-    <h1>A0 Life</h1>
-    <p>Conway's Life on a 32×32 torus. The rules, the grid, and the session protocol are one A0 program (<code>examples/life.a0</code>) compiled to C and then to WebAssembly; this page only draws and forwards clicks. The same program runs natively and on the JVM.</p>
-    <canvas id="grid" width="512" height="512" aria-label="Life grid; click a cell to toggle it"></canvas>
-    <div class="bar">
-      <button id="step" type="button">Step</button>
-      <button id="run" type="button">Run</button>
-      <button id="clear" type="button">Clear</button>
-      <button id="glider" type="button">Glider</button>
-      <span class="stat">generation <b id="generation">0</b></span>
-      <span class="stat">population <b id="population">0</b></span>
-    </div>
-    <p id="status"></p>
-  </main>
+  <main id="app" aria-live="polite">loading…</main>
   <script type="module" src="app.js"></script>
 </body>
 </html>
