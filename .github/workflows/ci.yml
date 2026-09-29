@@ -1,0 +1,45 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Toolchains (clang, lld, gcc, Icarus, Yosys)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld gcc g++ iverilog yosys
+          clang --version | head -1; gcc --version | head -1; iverilog -V | head -1; yosys -V
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+      - name: Corpus verification (8 software paths)
+        run: bun run verify
+      - name: Hardware simulation + synthesis
+        run: bun run hw
+      - name: .NET
+        env:
+          A0_DOTNET: dotnet
+        run: bun run dotnet
+      - name: Life application acceptance
+        run: bun run app
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results
+          path: results/

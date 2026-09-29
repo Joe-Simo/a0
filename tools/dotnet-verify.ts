@@ -22,12 +22,16 @@ import {
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
 
 function findDotnet(): string | undefined {
+  // A0_DOTNET may be a path or a command name resolved through PATH.
+  const explicit = process.env.A0_DOTNET;
+  if (explicit !== undefined && explicit.length > 0) return explicit;
   const candidates = [
-    process.env.A0_DOTNET,
     `${process.env.HOME ?? ''}/.dotnet/dotnet`,
     '/usr/local/share/dotnet/dotnet',
+    '/usr/share/dotnet/dotnet',
+    '/usr/bin/dotnet',
   ];
-  return candidates.find((c) => c !== undefined && c.length > 0 && existsSync(c));
+  return candidates.find((c) => existsSync(c));
 }
 
 function driver(program: TypedProgram): string {
