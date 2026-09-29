@@ -437,32 +437,40 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Blockers / not done
 
-- GitHub Actions CI (`.github/workflows/ci.yml`: lint, typecheck, tests, corpus, hardware,
-  .NET, Life on Ubuntu) is committed but the first run did not start: GitHub reports
-  "recent account payments have failed or your spending limit needs to be increased" on
-  the Joe-Simo account. This is an account-billing setting only the owner can change; no
-  minutes were spent. Until then, regressions are gated by the local suite recorded above.
-
+- GitHub Actions CI (`.github/workflows/ci.yml`) is committed but does not start: GitHub
+  reports a billing/spending-limit problem on the Joe-Simo account (user chose to ignore
+  for now). Regressions are gated by the local suite: `lint`, `typecheck`, `test`,
+  `verify`, `hw`, `app`, `equiv`, `bench`, `tokens`, `exec-bench`.
+- a0lang.com deployment (approved by the user 2026-09-29) is blocked: the Vercel token in
+  this session cannot create a project in team `simo-js` (403 on `create_project` and on
+  `create_deployment`). The user must create a project named `a0lang` in that team (or
+  grant project-creation rights); then the deployment is `site/dist` (index.html, app.js,
+  life.wasm, page.wasm) as a static production deployment plus domain `a0lang.com`.
 - `A0-Research-Starter.zip` absent (see Provenance).
-- Paid model runs not authorized; Gate A live runs unrun (scripted in-session run recorded above).
-- No Claude-tokenizer counts (needs `count_tokens` with credentials; free but blocked).
-- Not implemented: loops/regions, memory/arrays, effects, .NET, GPU, mobile packaging,
-  library import/FFI, persistent artifact cache, network edit service, fuzzing.
+- Paid model runs not authorized; Gate 6 live runs unrun (scripted in-session run recorded).
+- No Claude-tokenizer counts (needs `count_tokens` with credentials).
+- Not implemented: memory/regions beyond fixed arrays, library import/FFI, network edit
+  service, hardware pipelining/scheduling beyond the multi-cycle divider, timing/area on a
+  real cell library, mobile packaging.
+- This machine: shell `node` now resolves to an x64 Node 22 under nvm; the project needs
+  the arm64 Node 24 (`~/.nvm/versions/node/v24.14.0/bin`) first on PATH or `biome` fails
+  to load its native binary. Benchmarks taken this session were under load averages of
+  50–160 from other applications and are unreliable for sub-2× comparisons.
 
 ## Next concrete action
 
-1. All eight gates have reproduced evidence except Gate 6's live model runs, which stay
-   **unrun** until spend is explicitly authorized (harness, tasks, and self-check are
-   complete); MLIR/LLVM is recorded as not justified by measurement. Next engineering
-   targets, in order: (a) done: aliasing-safe in-place updates and typed arrays in JS
-   (residual ≈1.3–1.6× on the array kernel is allocation of the initial array plus the
-   body call; next step would be inlining owned bodies); (b) done: wrapper indirection is
-   within noise; (c) run Gate 6 when authorized and add the whole-task numbers here;
-   (d) done: text literals, div/rem, puts, and the UI protocol; the page is authored in
-   A0. Next: deploy to a0lang.com only with explicit approval; richer UI protocol
-   (inputs, lists) as the site needs them; Gate 6 live runs when authorized.
-2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
-   cross-target application, authored in A0 with a browser DOM adapter; no deployment
-   without explicit approval in that session.
-2. Expand the Gate A task set (≥10 held-out tasks incl. multi-function edits) and run it
-   when authorized; report per-cell accepted-change cost with uncertainty.
+1. **Gate 6 live run when spend is authorized**: `A0_ALLOW_PAID_MODEL_CALLS=1 bun run
+   experiment` (claude-opus-5-5, 3 trials per cell, 78 cells). Report acceptance,
+   one-shot vs after-repair, whole-task buckets (primer counted per call, cache-adjusted
+   with provider usage), and failure taxonomy; record wins, ties, losses separately.
+2. **Cut the primer**: the language primer is 72–83 % of A0's uncached whole-task spend.
+   Measure acceptance against a shorter guide (target ≤ 300 tokens) on the scripted run
+   before spending; keep the guide only as long as acceptance holds.
+3. **View size**: A0's structured view (function handle + program handle) is the largest of
+   the six cells; measure a single-handle view that still allows signature changes.
+4. **Deploy a0lang.com** once the Vercel project exists (approved).
+5. Hardware: clocked predicate/body handshakes cost cycles; measure per-module cycle counts
+   and decide whether a single-cycle `div` by a literal (constant divisor) should stay
+   combinational. Optionally run the full ABC synth in `bun run hw` behind a flag.
+6. Keep MLIR/LLVM, GPU, and .NET scope unchanged unless a measured need appears
+   (`results/exec-benchmark.json` ties vs C and Rust on all kernels).
