@@ -257,14 +257,81 @@ export interface TypedProgram {
   readonly byName: ReadonlyMap<string, TypedFunc>;
 }
 
+/**
+ * Stable diagnostic classes. A model repairing a rejected edit keys on `code` and `fix`,
+ * never on message text: `parse` (source line does not follow the grammar), `type`
+ * (operand or result type mismatch), `structure` (identifiers, arity, io token use),
+ * `limit` (a hostile-input bound), `edit` (a session edit body), `patch` (a standalone
+ * patch header), `revision` (the target changed since the view was opened), `handle`
+ * (unknown, consumed, or exhausted view handle), `runtime` (evaluation), `cli`.
+ */
+export type DiagnosticCode =
+  | 'parse'
+  | 'type'
+  | 'structure'
+  | 'limit'
+  | 'edit'
+  | 'patch'
+  | 'revision'
+  | 'handle'
+  | 'runtime'
+  | 'cli';
+
+export interface DiagnosticDetail {
+  readonly code?: DiagnosticCode;
+  /** What the checker required, when it is a single thing (a type, a count, a token). */
+  readonly expected?: string;
+  /** What it found instead. */
+  readonly actual?: string;
+  /** The one action that resolves this diagnostic, stated for the editor, not a human. */
+  readonly fix?: string;
+}
+
+export interface Diagnostic {
+  readonly code: DiagnosticCode;
+  readonly message: string;
+  readonly line: number | null;
+  readonly expected: string | null;
+  readonly actual: string | null;
+  readonly fix: string | null;
+}
+
 export class A0Error extends Error {
   override readonly name = 'A0Error';
+  readonly code: DiagnosticCode;
+  readonly expected: string | undefined;
+  readonly actual: string | undefined;
+  readonly fix: string | undefined;
   constructor(
     message: string,
     readonly line?: number,
+    detail: DiagnosticDetail = {},
   ) {
     super(line === undefined ? message : `line ${line}: ${message}`);
+    this.code = detail.code ?? 'structure';
+    this.expected = detail.expected;
+    this.actual = detail.actual;
+    this.fix = detail.fix;
   }
+
+  /** Machine-readable form; every field is present (null when absent). */
+  toJSON(): Diagnostic {
+    return {
+      code: this.code,
+      message: this.message,
+      line: this.line ?? null,
+      expected: this.expected ?? null,
+      actual: this.actual ?? null,
+      fix: this.fix ?? null,
+    };
+  }
+}
+
+/** One-line diagnostic for a model: `code: message` plus the fix when there is one. */
+export function formatDiagnostic(e: unknown): string {
+  if (e instanceof A0Error)
+    return `${e.code}: ${e.message}${e.fix === undefined ? '' : ` fix: ${e.fix}`}`;
+  return e instanceof Error ? e.message : String(e);
 }
 
 // ---------------------------------------------------------------------------
@@ -304,7 +371,7 @@ export function isValidFunctionName(name: string): boolean {
 export function parseType(text: string, line?: number): Type {
   let pos = 0;
   const fail = (msg: string): never => {
-    throw new A0Error(`type '${text}': ${msg}`, line);
+    throw new A0Error(`type '${text}': ${msg}`, line, { code: 'parse' });
   };
   const parseOne = (): Type => {
     let base: Type;
@@ -354,11 +421,11 @@ export function parseOperand(text: string, line?: number): Operand {
   if (PARAM.test(text)) return { kind: 'param', index: Number(text.slice(1)) };
   if (U32_LITERAL.test(text)) {
     const value = Number(text);
-    if (value > U32_MAX) throw new A0Error(`literal ${text} exceeds u32`, line);
+    if (value > U32_MAX) throw new A0Error(`literal ${text} exceeds u32`, line, { code: 'limit' });
     return { kind: 'u32', value };
   }
   if (isValidIdentifier(text)) return { kind: 'node', id: text };
-  throw new A0Error(`invalid operand '${text}'`, line);
+  throw new A0Error(`invalid operand '${text}'`, line, { code: 'parse' });
 }
 
 function isOp(text: string): text is Op {
@@ -372,21 +439,30 @@ export function parseNode(lineText: string, line?: number): Node {
     // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
     const [, id, raw] = textMatch;
     if (id === undefined || !isValidIdentifier(id)) {
-      throw new A0Error(`invalid node identifier '${id ?? ''}'`, line);
+      throw new A0Error(`invalid node identifier '${id ?? ''}'`, line, { code: 'parse' });
     }
     const text = decodeText(raw ?? '', line);
     const bytes = Buffer.from(text, 'utf8');
-    if (bytes.length === 0) throw new A0Error('text literal must not be empty', line);
+    if (bytes.length === 0)
+      throw new A0Error('text literal must not be empty', line, { code: 'parse' });
     if (bytes.length > LIMITS.maxArrayLength) {
-      throw new A0Error(`text literal exceeds ${LIMITS.maxArrayLength} bytes`, line);
+      throw new A0Error(`text literal exceeds ${LIMITS.maxArrayLength} bytes`, line, {
+        code: 'limit',
+      });
     }
     return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
   }
   const parts = lineText.trim().split(/\s+/);
   const [id, op, ...rest] = parts;
-  if (id === undefined || op === undefined) throw new A0Error('expected `id op operands`', line);
-  if (!isValidIdentifier(id)) throw new A0Error(`invalid node identifier '${id}'`, line);
-  if (!isOp(op)) throw new A0Error(`unknown operation '${op}'`, line);
+  if (id === undefined || op === undefined)
+    throw new A0Error('expected `id op operands`', line, { code: 'parse' });
+  if (!isValidIdentifier(id))
+    throw new A0Error(`invalid node identifier '${id}'`, line, { code: 'parse' });
+  if (!isOp(op))
+    throw new A0Error(`unknown operation '${op}'`, line, {
+      code: 'parse',
+      fix: `use one of ${OPS.join(' ')}`,
+    });
   if (op === 'loop') {
     const [pred, callee, ...args] = rest;
     if (
@@ -395,22 +471,31 @@ export function parseNode(lineText: string, line?: number): Node {
       callee === undefined ||
       !isValidFunctionName(callee)
     ) {
-      throw new A0Error('loop expects a predicate and a body function name', line);
+      throw new A0Error('loop expects a predicate and a body function name', line, {
+        code: 'parse',
+      });
     }
     return { id, op, pred, callee, args: args.map((r) => parseOperand(r, line)) };
   }
   if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
     if (callee === undefined || !isValidFunctionName(callee)) {
-      throw new A0Error(`${op} expects a function name, got '${callee ?? ''}'`, line);
+      throw new A0Error(`${op} expects a function name, got '${callee ?? ''}'`, line, {
+        code: 'parse',
+      });
     }
     return { id, op, callee, args: args.map((r) => parseOperand(r, line)) };
   }
   if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
-    throw new A0Error(`${op} expects ${OP_ARITY[op]} operands, got ${rest.length}`, line);
+    throw new A0Error(`${op} expects ${OP_ARITY[op]} operands, got ${rest.length}`, line, {
+      code: 'parse',
+      expected: String(OP_ARITY[op]),
+      actual: String(rest.length),
+      fix: `write exactly ${OP_ARITY[op]} operands after ${op}`,
+    });
   }
   if (OP_ARITY[op] < 0 && rest.length === 0)
-    throw new A0Error(`${op} expects at least one operand`, line);
+    throw new A0Error(`${op} expects at least one operand`, line, { code: 'parse' });
   return { id, op, args: rest.map((r) => parseOperand(r, line)) };
 }
 
@@ -424,7 +509,9 @@ export function parseNode(lineText: string, line?: number): Node {
  */
 export function parse(source: string): Program {
   if (Buffer.byteLength(source, 'utf8') > LIMITS.maxSourceBytes) {
-    throw new A0Error(`source exceeds ${LIMITS.maxSourceBytes} bytes`);
+    throw new A0Error(`source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
+      code: 'limit',
+    });
   }
   const lines = source.split(/\r?\n/);
   const functions: Func[] = [];
@@ -442,18 +529,21 @@ export function parse(source: string): Program {
 
   for (let cur = next(); cur !== undefined; cur = next()) {
     const head = cur.text.split(/\s+/);
-    if (head[0] !== 'fn') throw new A0Error(`expected 'fn', got '${head[0]}'`, cur.line);
+    if (head[0] !== 'fn')
+      throw new A0Error(`expected 'fn', got '${head[0]}'`, cur.line, { code: 'parse' });
     const name = head[1];
     if (name === undefined || !isValidFunctionName(name)) {
-      throw new A0Error(`invalid function name '${name ?? ''}'`, cur.line);
+      throw new A0Error(`invalid function name '${name ?? ''}'`, cur.line, { code: 'parse' });
     }
-    if (names.has(name)) throw new A0Error(`duplicate function '${name}'`, cur.line);
+    if (names.has(name))
+      throw new A0Error(`duplicate function '${name}'`, cur.line, { code: 'parse' });
     const arrow = head.indexOf('->');
     if (arrow < 2 || arrow !== head.length - 2) {
-      throw new A0Error("expected 'fn name types... -> type'", cur.line);
+      throw new A0Error("expected 'fn name types... -> type'", cur.line, { code: 'parse' });
     }
     const params = head.slice(2, arrow).map((t) => parseType(t, cur.line));
-    if (params.length > LIMITS.maxParams) throw new A0Error('too many parameters', cur.line);
+    if (params.length > LIMITS.maxParams)
+      throw new A0Error('too many parameters', cur.line, { code: 'limit' });
     const result = parseType(head[arrow + 1] ?? '', cur.line);
 
     const nodes: Node[] = [];
@@ -463,25 +553,30 @@ export function parse(source: string): Program {
       const first = body.text.split(/\s+/)[0];
       if (first === 'ret') {
         const parts = body.text.split(/\s+/);
-        if (parts.length !== 2) throw new A0Error('ret expects one operand', body.line);
+        if (parts.length !== 2)
+          throw new A0Error('ret expects one operand', body.line, { code: 'parse' });
         ret = parseOperand(parts[1] ?? '', body.line);
         const endLine = next();
         if (endLine === undefined || endLine.text !== 'end') {
-          throw new A0Error("expected 'end' after ret", endLine?.line ?? body.line);
+          throw new A0Error("expected 'end' after ret", endLine?.line ?? body.line, {
+            code: 'parse',
+          });
         }
         closed = true;
         break;
       }
       if (first === 'end' || first === 'fn') {
-        throw new A0Error(`unexpected '${first}' before ret`, body.line);
+        throw new A0Error(`unexpected '${first}' before ret`, body.line, { code: 'parse' });
       }
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
-        throw new A0Error('too many nodes in function', body.line);
+        throw new A0Error('too many nodes in function', body.line, { code: 'limit' });
       }
       nodes.push(parseNode(body.text, body.line));
     }
-    if (!closed || ret === undefined) throw new A0Error(`function '${name}' not terminated`);
-    if (functions.length >= LIMITS.maxFunctions) throw new A0Error('too many functions');
+    if (!closed || ret === undefined)
+      throw new A0Error(`function '${name}' not terminated`, undefined, { code: 'parse' });
+    if (functions.length >= LIMITS.maxFunctions)
+      throw new A0Error('too many functions', undefined, { code: 'limit' });
     names.add(name);
     functions.push({ name, params, result, nodes, ret });
   }
@@ -506,15 +601,26 @@ function operandType(
       return 'bool';
     case 'param': {
       const t = fn.params[operand.index];
-      if (t === undefined) throw new A0Error(`${where}: parameter p${operand.index} out of range`);
+      if (t === undefined)
+        throw new A0Error(`${where}: parameter p${operand.index} out of range`, undefined, {
+          code: 'type',
+        });
       return t;
     }
     case 'node': {
       if (!defined.has(operand.id)) {
-        throw new A0Error(`${where}: reference to undefined or later node '${operand.id}'`);
+        throw new A0Error(
+          `${where}: reference to undefined or later node '${operand.id}'`,
+          undefined,
+          {
+            code: 'structure',
+            fix: `define '${operand.id}' on an earlier line of this function, or reference a node defined above ${where}`,
+          },
+        );
       }
       const t = types.get(operand.id);
-      if (t === undefined) throw new A0Error(`${where}: untyped node '${operand.id}'`);
+      if (t === undefined)
+        throw new A0Error(`${where}: untyped node '${operand.id}'`, undefined, { code: 'type' });
       return t;
     }
   }
@@ -522,7 +628,16 @@ function operandType(
 
 function expect(actual: Type, wanted: Type, where: string): void {
   if (!typeEquals(actual, wanted)) {
-    throw new A0Error(`${where}: expected ${formatType(wanted)}, got ${formatType(actual)}`);
+    throw new A0Error(
+      `${where}: expected ${formatType(wanted)}, got ${formatType(actual)}`,
+      undefined,
+      {
+        code: 'type',
+        expected: formatType(wanted),
+        actual: formatType(actual),
+        fix: `replace the operand at ${where} with a value of type ${formatType(wanted)}`,
+      },
+    );
   }
 }
 
@@ -531,7 +646,7 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
   const a = argTypes[0];
   const b = argTypes[1];
   const c = argTypes[2];
-  if (a === undefined) throw new A0Error(`${where}: missing operand`);
+  if (a === undefined) throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
   switch (op) {
     case 'mov':
       return a;
@@ -545,76 +660,100 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'shr':
     case 'div':
     case 'rem':
-      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       expect(a, 'u32', where);
       expect(b, 'u32', where);
       return 'u32';
     case 'eq':
     case 'lt':
-      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       expect(a, 'u32', where);
       expect(b, 'u32', where);
       return 'bool';
     case 'select':
-      if (b === undefined || c === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined || c === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       expect(a, 'bool', where);
       if (!typeEquals(b, c)) {
         throw new A0Error(
           `${where}: select branches differ (${formatType(b)} vs ${formatType(c)})`,
+          undefined,
+          { code: 'type' },
         );
       }
-      if (containsIo(b)) throw new A0Error(`${where}: select cannot choose between io tokens`);
+      if (containsIo(b))
+        throw new A0Error(`${where}: select cannot choose between io tokens`, undefined, {
+          code: 'type',
+        });
       return b;
     case 'arr': {
       for (const [i, t] of argTypes.entries()) expect(t, a, `${where} element ${i}`);
-      if (containsIo(a)) throw new A0Error(`${where}: arrays cannot hold io tokens`);
+      if (containsIo(a))
+        throw new A0Error(`${where}: arrays cannot hold io tokens`, undefined, { code: 'type' });
       const t: Type = { kind: 'arr', length: argTypes.length, elem: a };
-      if (bitWidth(t) > LIMITS.maxAggregateBits) throw new A0Error(`${where}: aggregate too large`);
+      if (bitWidth(t) > LIMITS.maxAggregateBits)
+        throw new A0Error(`${where}: aggregate too large`, undefined, { code: 'limit' });
       return t;
     }
     case 'rec': {
       const t: Type = { kind: 'rec', fields: [...argTypes] };
       if (argTypes.filter(containsIo).length > 1)
-        throw new A0Error(`${where}: a record holds at most one io token`);
+        throw new A0Error(`${where}: a record holds at most one io token`, undefined, {
+          code: 'type',
+        });
       if (!containsIo(t) && bitWidth(t) > LIMITS.maxAggregateBits)
-        throw new A0Error(`${where}: aggregate too large`);
+        throw new A0Error(`${where}: aggregate too large`, undefined, { code: 'limit' });
       return t;
     }
     case 'read':
       expect(a, 'io', `${where} token`);
       return { kind: 'rec', fields: ['u32', 'io'] };
     case 'write':
-      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       expect(a, 'io', `${where} token`);
       expect(b, 'u32', `${where} value`);
       return 'io';
     case 'puts':
-      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       expect(a, 'io', `${where} token`);
       if (isPrimitive(b) || b.kind !== 'arr' || b.elem !== 'u32') {
-        throw new A0Error(`${where}: puts expects a u32 array, got ${formatType(b)}`);
+        throw new A0Error(`${where}: puts expects a u32 array, got ${formatType(b)}`, undefined, {
+          code: 'type',
+        });
       }
       return 'io';
     case 'get':
-      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       if (isPrimitive(a) || a.kind !== 'arr')
-        throw new A0Error(`${where}: get expects an array, got ${formatType(a)}`);
+        throw new A0Error(`${where}: get expects an array, got ${formatType(a)}`, undefined, {
+          code: 'type',
+        });
       expect(b, 'u32', `${where} index`);
       return a.elem;
     case 'set':
-      if (b === undefined || c === undefined) throw new A0Error(`${where}: missing operand`);
+      if (b === undefined || c === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       if (isPrimitive(a) || a.kind !== 'arr')
-        throw new A0Error(`${where}: set expects an array, got ${formatType(a)}`);
+        throw new A0Error(`${where}: set expects an array, got ${formatType(a)}`, undefined, {
+          code: 'type',
+        });
       expect(b, 'u32', `${where} index`);
       expect(c, a.elem, `${where} element`);
       return a;
     case 'at':
     case 'put':
-      throw new A0Error(`${where}: ${op} is typed with its literal field index`);
+      throw new A0Error(`${where}: ${op} is typed with its literal field index`, undefined, {
+        code: 'type',
+      });
     case 'call':
     case 'fold':
     case 'loop':
-      throw new A0Error(`${where}: ${op} is typed against its callee`);
+      throw new A0Error(`${where}: ${op} is typed against its callee`, undefined, { code: 'type' });
   }
 }
 
@@ -626,9 +765,12 @@ export function validateFunction(
   fn: Func,
   scope: ReadonlyMap<string, TypedFunc> = new Map(),
 ): TypedFunc {
-  if (!isValidFunctionName(fn.name)) throw new A0Error(`invalid function name '${fn.name}'`);
-  if (fn.params.length > LIMITS.maxParams) throw new A0Error(`${fn.name}: too many parameters`);
-  if (fn.nodes.length > LIMITS.maxNodesPerFunction) throw new A0Error(`${fn.name}: too many nodes`);
+  if (!isValidFunctionName(fn.name))
+    throw new A0Error(`invalid function name '${fn.name}'`, undefined, { code: 'structure' });
+  if (fn.params.length > LIMITS.maxParams)
+    throw new A0Error(`${fn.name}: too many parameters`, undefined, { code: 'limit' });
+  if (fn.nodes.length > LIMITS.maxNodesPerFunction)
+    throw new A0Error(`${fn.name}: too many nodes`, undefined, { code: 'limit' });
   const types = new Map<string, Type>();
   const defined = new Set<string>();
   const calls = new Map<string, TypedFunc>();
@@ -636,24 +778,34 @@ export function validateFunction(
   let staticIterations = 1;
   let literalIterations = 1;
   if (fn.params.filter(containsIo).length > 1) {
-    throw new A0Error(`${fn.name}: at most one parameter may carry an io token`);
+    throw new A0Error(`${fn.name}: at most one parameter may carry an io token`, undefined, {
+      code: 'structure',
+    });
   }
   for (const node of fn.nodes) {
     const where = `${fn.name}.${node.id}`;
-    if (!isValidIdentifier(node.id)) throw new A0Error(`${where}: invalid identifier`);
-    if (defined.has(node.id)) throw new A0Error(`${where}: duplicate definition`);
+    if (!isValidIdentifier(node.id))
+      throw new A0Error(`${where}: invalid identifier`, undefined, { code: 'structure' });
+    if (defined.has(node.id))
+      throw new A0Error(`${where}: duplicate definition`, undefined, { code: 'structure' });
     const hasCallee = node.op === 'call' || node.op === 'fold' || node.op === 'loop';
     if (hasCallee !== (node.callee !== undefined)) {
-      throw new A0Error(`${where}: callee present iff op is call, fold, or loop`);
+      throw new A0Error(`${where}: callee present iff op is call, fold, or loop`, undefined, {
+        code: 'structure',
+      });
     }
     if ((node.op === 'loop') !== (node.pred !== undefined)) {
-      throw new A0Error(`${where}: predicate present iff op is loop`);
+      throw new A0Error(`${where}: predicate present iff op is loop`, undefined, {
+        code: 'structure',
+      });
     }
     if (!hasCallee && OP_ARITY[node.op] >= 0 && node.args.length !== OP_ARITY[node.op]) {
-      throw new A0Error(`${where}: wrong arity`);
+      throw new A0Error(`${where}: wrong arity`, undefined, { code: 'structure' });
     }
     if (OP_ARITY[node.op] < 0 && !hasCallee && node.args.length === 0) {
-      throw new A0Error(`${where}: ${node.op} expects at least one operand`);
+      throw new A0Error(`${where}: ${node.op} expects at least one operand`, undefined, {
+        code: 'structure',
+      });
     }
     const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
     for (const arg of node.args) {
@@ -661,7 +813,7 @@ export function validateFunction(
         arg.kind === 'u32' &&
         (!Number.isInteger(arg.value) || arg.value < 0 || arg.value > U32_MAX)
       ) {
-        throw new A0Error(`${where}: literal out of u32 range`);
+        throw new A0Error(`${where}: literal out of u32 range`, undefined, { code: 'structure' });
       }
     }
     // Linearity: an io-carrying value is consumed at most once; `at` reads do not consume.
@@ -670,7 +822,10 @@ export function validateFunction(
       if (!containsIo(t)) continue;
       if (node.op === 'at' && k === 0) continue;
       const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
-      if (consumed.has(key)) throw new A0Error(`${where}: io token '${key}' was already consumed`);
+      if (consumed.has(key))
+        throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
+          code: 'structure',
+        });
       consumed.add(key);
     }
     if (node.op === 'at' || node.op === 'put') {
@@ -679,14 +834,24 @@ export function validateFunction(
       if (recT === undefined || isPrimitive(recT) || recT.kind !== 'rec') {
         throw new A0Error(
           `${where}: ${node.op} expects a record, got ${recT === undefined ? 'nothing' : formatType(recT)}`,
+          undefined,
+          { code: 'structure' },
         );
       }
       if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
-        throw new A0Error(`${where}: ${node.op} field index must be a u32 literal`);
+        throw new A0Error(`${where}: ${node.op} field index must be a u32 literal`, undefined, {
+          code: 'structure',
+        });
       }
       const field = recT.fields[index.value];
       if (field === undefined)
-        throw new A0Error(`${where}: field ${index.value} out of range for ${formatType(recT)}`);
+        throw new A0Error(
+          `${where}: field ${index.value} out of range for ${formatType(recT)}`,
+          undefined,
+          {
+            code: 'structure',
+          },
+        );
       if (node.op === 'put') expect(argTypes[2] as Type, field, `${where} field value`);
       types.set(node.id, node.op === 'at' ? field : recT);
     } else if (node.op === 'call') {
@@ -694,11 +859,15 @@ export function validateFunction(
       if (callee === undefined) {
         throw new A0Error(
           `${where}: unknown callee '${node.callee ?? ''}' (callees must be defined earlier; recursion is unsupported)`,
+          undefined,
+          { code: 'structure' },
         );
       }
       if (argTypes.length !== callee.params.length) {
         throw new A0Error(
           `${where}: ${callee.name} expects ${callee.params.length} arguments, got ${argTypes.length}`,
+          undefined,
+          { code: 'structure' },
         );
       }
       for (const [i, t] of callee.params.entries()) {
@@ -713,19 +882,25 @@ export function validateFunction(
       if (callee === undefined) {
         throw new A0Error(
           `${where}: unknown ${node.op} body '${node.callee ?? ''}' (must be defined earlier)`,
+          undefined,
+          { code: 'structure' },
         );
       }
       // fold f n s a...  with f : (T, u32, A...) -> T
       // loop p f n s a... additionally p : (T, u32, A...) -> bool with identical parameters
       const [count, init, ...extra] = argTypes;
       if (count === undefined || init === undefined) {
-        throw new A0Error(`${where}: fold expects a trip count and an initial state`);
+        throw new A0Error(`${where}: fold expects a trip count and an initial state`, undefined, {
+          code: 'structure',
+        });
       }
       expect(count, 'u32', `${where} trip count`);
       const [stateT, indexT, ...extraT] = callee.params;
       if (stateT === undefined || indexT === undefined) {
         throw new A0Error(
           `${where}: fold body ${callee.name} needs (state, index, ...) parameters`,
+          undefined,
+          { code: 'structure' },
         );
       }
       expect(indexT, 'u32', `${where} body index parameter`);
@@ -734,6 +909,8 @@ export function validateFunction(
       if (extra.length !== extraT.length) {
         throw new A0Error(
           `${where}: ${callee.name} expects ${extraT.length} extra arguments, got ${extra.length}`,
+          undefined,
+          { code: 'structure' },
         );
       }
       for (const [i, t] of extraT.entries())
@@ -744,6 +921,8 @@ export function validateFunction(
         if (pred === undefined) {
           throw new A0Error(
             `${where}: unknown loop predicate '${node.pred ?? ''}' (must be defined earlier)`,
+            undefined,
+            { code: 'structure' },
           );
         }
         expect(pred.result, 'bool', `${where} predicate result`);
@@ -753,6 +932,8 @@ export function validateFunction(
         ) {
           throw new A0Error(
             `${where}: predicate ${pred.name} must take the same parameters as body ${callee.name}`,
+            undefined,
+            { code: 'structure' },
           );
         }
         calls.set(pred.name, pred);
@@ -765,6 +946,8 @@ export function validateFunction(
         if (literalIterations > LIMITS.maxStaticIterations) {
           throw new A0Error(
             `${where}: literal iteration count ${literalIterations} exceeds the compute bound ${LIMITS.maxStaticIterations}`,
+            undefined,
+            { code: 'structure' },
           );
         }
       }
@@ -780,17 +963,21 @@ export function validateFunction(
     const key =
       fn.ret.kind === 'param' ? `p${fn.ret.index}` : fn.ret.kind === 'node' ? fn.ret.id : '';
     if (consumed.has(key))
-      throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`);
+      throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`, undefined, {
+        code: 'structure',
+      });
   }
   return { ...fn, types, calls, staticIterations };
 }
 
 export function validate(program: Program): TypedProgram {
-  if (program.functions.length > LIMITS.maxFunctions) throw new A0Error('too many functions');
+  if (program.functions.length > LIMITS.maxFunctions)
+    throw new A0Error('too many functions', undefined, { code: 'limit' });
   const byName = new Map<string, TypedFunc>();
   const functions: TypedFunc[] = [];
   for (const fn of program.functions) {
-    if (byName.has(fn.name)) throw new A0Error(`duplicate function '${fn.name}'`);
+    if (byName.has(fn.name))
+      throw new A0Error(`duplicate function '${fn.name}'`, undefined, { code: 'structure' });
     const typed = validateFunction(fn, byName);
     byName.set(fn.name, typed);
     functions.push(typed);
@@ -852,7 +1039,9 @@ export function makeIo(input: readonly number[] = []): IoState {
 /** Append one output word, bounded so a runaway program cannot exhaust memory. */
 function emit(state: IoState, word: number): void {
   if (state.output.length >= LIMITS.maxIoOutput) {
-    throw new A0Error(`io output exceeds ${LIMITS.maxIoOutput} words`);
+    throw new A0Error(`io output exceeds ${LIMITS.maxIoOutput} words`, undefined, {
+      code: 'limit',
+    });
   }
   state.output.push(word);
 }
@@ -881,12 +1070,14 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
   const b = args[1];
   const c = args[2];
   const num = (v: Value | undefined): number => {
-    if (typeof v !== 'number') throw new A0Error(`${op}: expected u32 value`);
+    if (typeof v !== 'number')
+      throw new A0Error(`${op}: expected u32 value`, undefined, { code: 'structure' });
     return v;
   };
   switch (op) {
     case 'mov':
-      if (a === undefined) throw new A0Error('mov: missing operand');
+      if (a === undefined)
+        throw new A0Error('mov: missing operand', undefined, { code: 'structure' });
       return a;
     case 'add':
       return (num(a) + num(b)) >>> 0;
@@ -915,52 +1106,57 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       return num(a) < num(b);
     case 'select':
       if (typeof a !== 'boolean' || b === undefined || c === undefined) {
-        throw new A0Error('select: expected bool and two values');
+        throw new A0Error('select: expected bool and two values', undefined, { code: 'structure' });
       }
       return a ? b : c;
     case 'arr':
     case 'rec':
       return [...args];
     case 'get': {
-      if (!Array.isArray(a) || a.length === 0) throw new A0Error('get: expected array');
+      if (!Array.isArray(a) || a.length === 0)
+        throw new A0Error('get: expected array', undefined, { code: 'structure' });
       return a[num(b) % a.length] as Value;
     }
     case 'set': {
       if (!Array.isArray(a) || a.length === 0 || c === undefined)
-        throw new A0Error('set: expected array');
+        throw new A0Error('set: expected array', undefined, { code: 'structure' });
       const copy = [...a];
       copy[num(b) % a.length] = c;
       return copy;
     }
     case 'at': {
-      if (!Array.isArray(a)) throw new A0Error('at: expected record');
+      if (!Array.isArray(a))
+        throw new A0Error('at: expected record', undefined, { code: 'structure' });
       const v = a[num(b)];
-      if (v === undefined) throw new A0Error('at: field out of range');
+      if (v === undefined)
+        throw new A0Error('at: field out of range', undefined, { code: 'structure' });
       return v;
     }
     case 'put': {
       if (!Array.isArray(a) || c === undefined || num(b) >= a.length)
-        throw new A0Error('put: bad field');
+        throw new A0Error('put: bad field', undefined, { code: 'structure' });
       const copy = [...a];
       copy[num(b)] = c;
       return copy;
     }
     case 'read': {
       // Exhausted input reads as 0; the token identity is the state itself.
-      if (a === undefined || !isIoState(a)) throw new A0Error('read: expected io token');
+      if (a === undefined || !isIoState(a))
+        throw new A0Error('read: expected io token', undefined, { code: 'structure' });
       const v = a.input[a.position] ?? 0;
       if (a.position < a.input.length) a.position += 1;
       return [v, a];
     }
     case 'write': {
-      if (a === undefined || !isIoState(a)) throw new A0Error('write: expected io token');
+      if (a === undefined || !isIoState(a))
+        throw new A0Error('write: expected io token', undefined, { code: 'structure' });
       emit(a, num(b));
       return a;
     }
     case 'puts': {
       // Length word, then every element, in order.
       if (a === undefined || !isIoState(a) || !Array.isArray(b))
-        throw new A0Error('puts: expected io token and array');
+        throw new A0Error('puts: expected io token and array', undefined, { code: 'structure' });
       emit(a, b.length);
       for (const v of b) emit(a, num(v));
       return a;
@@ -968,34 +1164,41 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'call':
     case 'fold':
     case 'loop':
-      throw new A0Error(`${op} is evaluated by run, not evalOp`);
+      throw new A0Error(`${op} is evaluated by run, not evalOp`, undefined, { code: 'structure' });
   }
 }
 
 export function checkArgument(type: Type, value: Value, where: string): void {
   if (type === 'bool') {
-    if (typeof value !== 'boolean') throw new A0Error(`${where}: expected bool`);
+    if (typeof value !== 'boolean')
+      throw new A0Error(`${where}: expected bool`, undefined, { code: 'structure' });
     return;
   }
   if (type === 'u32') {
     if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > U32_MAX) {
-      throw new A0Error(`${where}: expected u32`);
+      throw new A0Error(`${where}: expected u32`, undefined, { code: 'structure' });
     }
     return;
   }
   if (type === 'io') {
-    if (!isIoState(value)) throw new A0Error(`${where}: expected io token`);
+    if (!isIoState(value))
+      throw new A0Error(`${where}: expected io token`, undefined, { code: 'structure' });
     return;
   }
-  if (!Array.isArray(value)) throw new A0Error(`${where}: expected ${formatType(type)}`);
+  if (!Array.isArray(value))
+    throw new A0Error(`${where}: expected ${formatType(type)}`, undefined, { code: 'structure' });
   if (type.kind === 'arr') {
     if (value.length !== type.length)
-      throw new A0Error(`${where}: expected ${type.length} elements`);
+      throw new A0Error(`${where}: expected ${type.length} elements`, undefined, {
+        code: 'structure',
+      });
     for (const [i, v] of value.entries()) checkArgument(type.elem, v, `${where}[${i}]`);
     return;
   }
   if (value.length !== type.fields.length)
-    throw new A0Error(`${where}: expected ${type.fields.length} fields`);
+    throw new A0Error(`${where}: expected ${type.fields.length} fields`, undefined, {
+      code: 'structure',
+    });
   for (const [i, f] of type.fields.entries()) checkArgument(f, value[i] as Value, `${where}.${i}`);
 }
 
@@ -1015,7 +1218,13 @@ export function run(
   options: RunOptions = { fuel: LIMITS.defaultFuel },
 ): Value {
   if (args.length !== fn.params.length) {
-    throw new A0Error(`${fn.name}: expected ${fn.params.length} arguments, got ${args.length}`);
+    throw new A0Error(
+      `${fn.name}: expected ${fn.params.length} arguments, got ${args.length}`,
+      undefined,
+      {
+        code: 'runtime',
+      },
+    );
   }
   for (const [index, type] of fn.params.entries()) {
     checkArgument(type, args[index] as Value, `${fn.name} p${index}`);
@@ -1030,7 +1239,10 @@ export function run(
         return args[operand.index] as Value;
       case 'node': {
         const v = env.get(operand.id);
-        if (v === undefined) throw new A0Error(`${fn.name}: unbound node '${operand.id}'`);
+        if (v === undefined)
+          throw new A0Error(`${fn.name}: unbound node '${operand.id}'`, undefined, {
+            code: 'runtime',
+          });
         return v;
       }
     }
@@ -1038,16 +1250,22 @@ export function run(
   for (const node of fn.nodes) {
     options.fuel -= 1;
     if (options.fuel < 0)
-      throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`);
+      throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`, undefined, {
+        code: 'limit',
+      });
     if (node.op === 'call') {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined)
-        throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`);
+        throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`, undefined, {
+          code: 'runtime',
+        });
       env.set(node.id, run(callee, node.args.map(read), options));
     } else if (node.op === 'fold') {
       const body = fn.calls.get(node.callee ?? '');
       if (body === undefined)
-        throw new A0Error(`${fn.name}: unresolved fold body '${node.callee ?? ''}'`);
+        throw new A0Error(`${fn.name}: unresolved fold body '${node.callee ?? ''}'`, undefined, {
+          code: 'runtime',
+        });
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
@@ -1057,7 +1275,7 @@ export function run(
       const body = fn.calls.get(node.callee ?? '');
       const pred = fn.calls.get(node.pred ?? '');
       if (body === undefined || pred === undefined)
-        throw new A0Error(`${fn.name}: unresolved loop functions`);
+        throw new A0Error(`${fn.name}: unresolved loop functions`, undefined, { code: 'runtime' });
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;

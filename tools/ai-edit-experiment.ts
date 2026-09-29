@@ -19,12 +19,20 @@
  *     Never runs implicitly.
  */
 
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import Anthropic from '@anthropic-ai/sdk';
 import { getEncoding } from 'js-tiktoken';
-import { formatProgram, parseAndValidate, run, type TypedFunc, type Value } from '../src/core.js';
+import {
+  formatDiagnostic,
+  formatProgram,
+  parseAndValidate,
+  run,
+  type TypedFunc,
+  type Value,
+} from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 
@@ -387,7 +395,7 @@ function applyA0(
       parseAndValidate(body);
       return { source: body };
     } catch (e) {
-      return { source, error: e instanceof Error ? e.message : String(e) };
+      return { source, error: formatDiagnostic(e) };
     }
   }
   if (session === undefined) return { source, error: 'no session' };
@@ -395,7 +403,7 @@ function applyA0(
     const next = session.apply(body);
     return { source: formatProgram(next) };
   } catch (e) {
-    return { source, error: e instanceof Error ? e.message : String(e) };
+    return { source, error: formatDiagnostic(e) };
   }
 }
 
@@ -443,7 +451,7 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
   try {
     program = parseAndValidate(source);
   } catch (e) {
-    return [`invalid A0: ${e instanceof Error ? e.message : String(e)}`];
+    return [`invalid A0: ${formatDiagnostic(e)}`];
   }
   for (const t of tests) {
     const fn = program.byName.get(t.fn) as TypedFunc | undefined;
@@ -971,6 +979,15 @@ async function main(): Promise<void> {
         'A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks.',
       unknowns: 'Hidden reasoning tokens are not reported by the API and are recorded as null.',
     },
+    // Task-set manifest: SHA-256 over every task's sources, instruction, and tests, so a
+    // run attests exactly which held-out set it used (a sealed set must reproduce this hash).
+    taskSetSha256: createHash('sha256')
+      .update(
+        JSON.stringify(
+          TASKS.map((t) => [t.id, t.instruction, t.a0Source, t.tsSource, t.rustSource, t.tests]),
+        ),
+      )
+      .digest('hex'),
     tasks: TASKS.map((t) => ({ id: t.id, kind: t.kind, tests: t.tests.length })),
     harnessSelfCheck: { ok: selfCheckOk, details: selfCheck },
     trials,

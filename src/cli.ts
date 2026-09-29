@@ -16,6 +16,7 @@ import { compileCached, DiskCache } from './cache.js';
 import {
   A0Error,
   checkArgument,
+  formatDiagnostic,
   formatProgram,
   formatType,
   LIMITS,
@@ -149,6 +150,6 @@ async function main(argv: readonly string[]): Promise<void> {
 }
 
 main(process.argv.slice(2)).catch((err: unknown) => {
-  process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.stderr.write(`error: ${formatDiagnostic(err)}\n`);
   process.exit(1);
 });

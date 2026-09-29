@@ -338,19 +338,44 @@ edits). A0's distinguishing claims must therefore be evidence-based on total out
 accepted edits per token including setup, repair count, cache hit cost, and cross-target
 execution, against Python/TypeScript/Rust baselines with sealed held-out tasks.
 
-Adopted into the next-actions list (each bounded, with a measurement that decides it):
-1. Separate token buckets (language primer, workflow primer, tool context, output) in
-   `results/ai-edit-experiment.json`, plus failure status taxonomy and one-shot vs
-   after-repair acceptance.
-2. Structured diagnostics: stable error codes, expected/actual/fix, node-path location,
-   JSON output, so a repair prompt needs no program re-read.
-3. Sealed held-out task manifest (hash-committed, answers not in repo) for Gate 6.
-4. Profile the 39 ms cached compile floor; cache validation verdicts per semantic revision
-   if validation dominates.
-5. Yosys per-op logic depth on the 48 hardware modules before any scheduling work.
-6. Bounded equivalence check (32-bit bitvector solver via a known package) for pure
-   functions, replacing sampling with proof where the scope allows; scope stated as
-   Alive2 does (intra-procedural, effect nodes excluded).
+Adopted into the next-actions list (each bounded, with a measurement that decides it),
+with status as of 2026-09-29:
+
+1. **Done.** Separate token buckets (language primer, workflow primer, tool context,
+   output), per-attempt failure status, one-shot vs after-repair acceptance in
+   `results/ai-edit-experiment.json` (see the Gate 6 table above).
+2. **Done (unmeasured effect).** Structured diagnostics: every `A0Error` now carries a
+   stable `code` (parse / type / structure / limit / edit / patch / revision / handle /
+   runtime / cli), `expected`, `actual`, `fix`, and `toJSON()`; the highest-value sites
+   (type mismatch, undefined reference, unknown op, arity, stale or consumed handle,
+   revision mismatch) state the one action that resolves them. The harness and CLI
+   report `code: message fix: …`. Whether this removes repair rounds needs live runs;
+   the scripted run had zero repairs, so there is no before/after number yet.
+3. **Done.** `taskSetSha256` in the experiment report attests the exact held-out task set
+   (sources, instructions, tests). Sealing against the in-session subject is impossible
+   (the subject wrote the tasks); the hash protects future runs against silent task edits.
+4. **Measured and fixed.** Warm `compileCached` on Life (14 functions, all hits): cache
+   lookup was 90 % of the time (js 15.7 of 17.4 ms; c 28.7 of 32.2 ms), parse+validate
+   ~1 ms, hashing <1 ms. The cost was per-file latency of serial `await readFile`, not
+   bytes (10 KB total) and not validation, so validation-verdict caching was rejected.
+   Fix: all lookups issued concurrently (`Promise.all`). Interleaved A/B in one process
+   (Life, target c, all hits, 40 runs × 3): sequential 5.7–12.1 ms vs concurrent
+   1.8–3.8 ms, a 3–4× faster warm path. `results/benchmark.json` wall-clock numbers
+   from this session are unreliable: the machine's load average was 50–160 from other
+   applications, and back-to-back runs of identical code varied up to 25×.
+5. **Measured.** Yosys `synth -noabc; ltp -noff` over the 48 corpus modules: depth is
+   bimodal. Every module without a surviving `div`/`rem` has longest path ≤ 56 gates
+   (median 22.5 among combinational modules); every module with one is ≥ 347, up to
+   1751 (two dependent divides ≈ 1100, three ≈ 1750), because Yosys lowers `/` and `%`
+   to a single-cycle restoring 32-bit divider (~500–600 gates deep each). Multipliers
+   are cheap in depth (two 32-bit `mul`, no div: depth 47). ABC re-test with a 60 s
+   timeout: modules with only multipliers finish in ~18 s; the module with 2 mul + 3
+   div/rem is killed at 60 s. The earlier note blaming multipliers for the ABC stall was
+   wrong and has been corrected in `tools/hw-verify.ts`. Measured need for scheduling is
+   therefore narrow: not a general operator scheduler, but multi-cycle `div`/`rem`
+   (iterative divider behind the existing sequential handshake). 20 of 48 modules would
+   change; 28 would not benefit. Not implemented yet.
+6. **Not started.** Bounded solver equivalence for pure functions.
 
 ## Reference
 

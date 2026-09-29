@@ -70,29 +70,31 @@ export type EditOp =
   | { readonly kind: 'ret'; readonly operand: Operand };
 
 export function parseEditOps(lines: readonly string[], firstLine: number): EditOp[] {
-  if (lines.length === 0) throw new A0Error('edit contains no lines');
-  if (lines.length > LIMITS.maxNodesPerFunction) throw new A0Error('edit too large');
+  if (lines.length === 0) throw new A0Error('edit contains no lines', undefined, { code: 'edit' });
+  if (lines.length > LIMITS.maxNodesPerFunction)
+    throw new A0Error('edit too large', undefined, { code: 'limit' });
   const seen = new Set<string>();
   const ops: EditOp[] = [];
   let sawRet = false;
   lines.forEach((text, i) => {
     const line = firstLine + i;
     const claim = (id: string): void => {
-      if (seen.has(id)) throw new A0Error(`duplicate edit for '${id}'`, line);
+      if (seen.has(id)) throw new A0Error(`duplicate edit for '${id}'`, line, { code: 'edit' });
       seen.add(id);
     };
     if (text.startsWith('-')) {
       const id = text.slice(1).trim();
-      if (!isValidIdentifier(id)) throw new A0Error(`invalid delete target '${id}'`, line);
+      if (!isValidIdentifier(id))
+        throw new A0Error(`invalid delete target '${id}'`, line, { code: 'edit' });
       claim(id);
       ops.push({ kind: 'delete', id });
       return;
     }
     if (/^ret\s/.test(text)) {
-      if (sawRet) throw new A0Error('duplicate ret in edit', line);
+      if (sawRet) throw new A0Error('duplicate ret in edit', line, { code: 'edit' });
       sawRet = true;
       const parts = text.split(/\s+/);
-      if (parts.length !== 2) throw new A0Error('ret expects one operand', line);
+      if (parts.length !== 2) throw new A0Error('ret expects one operand', line, { code: 'edit' });
       ops.push({ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) });
       return;
     }
@@ -128,7 +130,9 @@ export function replaceNodes(
     const before = nodes.length;
     nodes = nodes.filter((n) => n.id !== op.id);
     if (nodes.length === before)
-      throw new A0Error(`${fn.name}: cannot delete unknown node '${op.id}'`);
+      throw new A0Error(`${fn.name}: cannot delete unknown node '${op.id}'`, undefined, {
+        code: 'edit',
+      });
   }
   // 2. replacements and insertions
   for (const op of edits) {
@@ -138,7 +142,9 @@ export function replaceNodes(
       if (at >= 0) nodes.splice(at, 1);
       const anchor = nodes.findIndex((n) => n.id === op.after);
       if (anchor < 0)
-        throw new A0Error(`${fn.name}: cannot insert after unknown node '${op.after}'`);
+        throw new A0Error(`${fn.name}: cannot insert after unknown node '${op.after}'`, undefined, {
+          code: 'edit',
+        });
       nodes.splice(anchor + 1, 0, op.node);
     } else if (at >= 0) {
       nodes[at] = op.node;
@@ -148,7 +154,8 @@ export function replaceNodes(
   }
   // 3. result
   for (const op of edits) if (op.kind === 'ret') ret = op.operand;
-  if (nodes.length > LIMITS.maxNodesPerFunction) throw new A0Error(`${fn.name}: too many nodes`);
+  if (nodes.length > LIMITS.maxNodesPerFunction)
+    throw new A0Error(`${fn.name}: too many nodes`, undefined, { code: 'limit' });
   const replaced: Func = { ...fn, nodes, ret };
   // Legal call targets are exactly the functions defined before this one.
   const scope = new Map<string, TypedFunc>();
@@ -195,30 +202,39 @@ export function formatPatch(fn: Func, nodes: readonly Node[]): string {
 }
 
 export function parsePatch(text: string): Patch {
-  if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes) throw new A0Error('patch too large');
+  if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
+    throw new A0Error('patch too large', undefined, { code: 'limit' });
   const lines = text
     .split(/\r?\n/)
     .map((l) => stripComment(l).trim())
     .filter((l) => l.length > 0);
   const head = lines[0]?.split(/\s+/) ?? [];
   if (head[0] !== 'patch' || head.length !== 3) {
-    throw new A0Error("expected 'patch <function> <revision>'", 1);
+    throw new A0Error("expected 'patch <function> <revision>'", 1, { code: 'patch' });
   }
   const functionName = head[1] ?? '';
   const rev = head[2] ?? '';
-  if (!SHA256_HEX.test(rev)) throw new A0Error('revision must be 64 lowercase hex characters', 1);
-  if (lines[lines.length - 1] !== 'end') throw new A0Error("patch must end with 'end'");
+  if (!SHA256_HEX.test(rev))
+    throw new A0Error('revision must be 64 lowercase hex characters', 1, { code: 'patch' });
+  if (lines[lines.length - 1] !== 'end')
+    throw new A0Error("patch must end with 'end'", undefined, { code: 'patch' });
   const nodes = parseReplacementNodes(lines.slice(1, -1), 2);
   return { functionName, revision: rev, nodes };
 }
 
 export function applyPatch(program: TypedProgram, patch: Patch): TypedProgram {
   const fn = program.byName.get(patch.functionName);
-  if (fn === undefined) throw new A0Error(`unknown function '${patch.functionName}'`);
+  if (fn === undefined)
+    throw new A0Error(`unknown function '${patch.functionName}'`, undefined, { code: 'patch' });
   const current = revision(fn);
   if (current !== patch.revision) {
     throw new A0Error(
       `revision mismatch for '${fn.name}': patch targets ${patch.revision.slice(0, 12)}…, current is ${current.slice(0, 12)}…`,
+      undefined,
+      {
+        code: 'revision',
+        fix: `re-read '${fn.name}' to obtain its current revision and re-issue the patch`,
+      },
     );
   }
   return commit(program, replaceNodes(program, fn, patch.nodes));
@@ -286,8 +302,12 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const incoming = parse(kept.join('\n')).functions;
   const byName = new Map(incoming.map((f) => [f.name, f] as const));
   for (const name of removals) {
-    if (!program.byName.has(name)) throw new A0Error(`cannot remove unknown function '${name}'`);
-    if (byName.has(name)) throw new A0Error(`function '${name}' is both removed and defined`);
+    if (!program.byName.has(name))
+      throw new A0Error(`cannot remove unknown function '${name}'`, undefined, { code: 'edit' });
+    if (byName.has(name))
+      throw new A0Error(`function '${name}' is both removed and defined`, undefined, {
+        code: 'edit',
+      });
   }
   const functions: Func[] = [];
   for (const f of program.functions) {
@@ -330,7 +350,13 @@ export class EditSession {
   /** Open a program-level view (all signatures) bound to the whole program's revision. */
   openProgram(): View {
     if (this.#handles.size >= this.#maxOpen) {
-      throw new A0Error(`session handle limit (${this.#maxOpen}) reached; close handles first`);
+      throw new A0Error(
+        `session handle limit (${this.#maxOpen}) reached; close handles first`,
+        undefined,
+        {
+          code: 'limit',
+        },
+      );
     }
     const handle = `g${this.#next}`;
     this.#next += 1;
@@ -347,9 +373,16 @@ export class EditSession {
   /** Open a view of one function and return a short handle bound to its current revision. */
   open(functionName: string, options: ViewOptions = {}): View {
     const fn = this.#program.byName.get(functionName);
-    if (fn === undefined) throw new A0Error(`unknown function '${functionName}'`);
+    if (fn === undefined)
+      throw new A0Error(`unknown function '${functionName}'`, undefined, { code: 'handle' });
     if (this.#handles.size >= this.#maxOpen) {
-      throw new A0Error(`session handle limit (${this.#maxOpen}) reached; close handles first`);
+      throw new A0Error(
+        `session handle limit (${this.#maxOpen}) reached; close handles first`,
+        undefined,
+        {
+          code: 'limit',
+        },
+      );
     }
     const handle = `e${this.#next}`;
     this.#next += 1;
@@ -370,21 +403,27 @@ export class EditSession {
    */
   apply(text: string): TypedProgram {
     if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
-      throw new A0Error('edit too large');
+      throw new A0Error('edit too large', undefined, { code: 'limit' });
     const lines = text
       .split(/\r?\n/)
       .map((l) => stripComment(l).trim())
       .filter((l) => l.length > 0);
     const handle = lines[0] ?? '';
     if (!HANDLE.test(handle) && !PROGRAM_HANDLE.test(handle)) {
-      throw new A0Error(`invalid handle '${handle}'`, 1);
+      throw new A0Error(`invalid handle '${handle}'`, 1, { code: 'handle' });
     }
     const bound = this.#handles.get(handle);
-    if (bound === undefined) throw new A0Error(`unknown or consumed handle '${handle}'`, 1);
+    if (bound === undefined)
+      throw new A0Error(`unknown or consumed handle '${handle}'`, 1, {
+        code: 'handle',
+        fix: 'a handle is consumed by a successful edit; open a new view and use the handle it returns',
+      });
     if (bound.functionName === '*') {
       if (programRevision(this.#program) !== bound.revision) {
         throw new A0Error(
           `handle '${handle}' is stale: the program changed since the view was opened`,
+          undefined,
+          { code: 'handle' },
         );
       }
       const rawBody = text
@@ -395,10 +434,15 @@ export class EditSession {
       return this.#program;
     }
     const fn = this.#program.byName.get(bound.functionName);
-    if (fn === undefined) throw new A0Error(`handle '${handle}' refers to a removed function`);
+    if (fn === undefined)
+      throw new A0Error(`handle '${handle}' refers to a removed function`, undefined, {
+        code: 'handle',
+      });
     if (revision(fn) !== bound.revision) {
       throw new A0Error(
         `handle '${handle}' is stale: '${fn.name}' changed since the view was opened`,
+        undefined,
+        { code: 'handle' },
       );
     }
     const nodes = parseReplacementNodes(lines.slice(1), 2);

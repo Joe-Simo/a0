@@ -4,6 +4,7 @@ import { compile, FunctionCache } from '../src/backends.js';
 import { compileCached, DiskCache } from '../src/cache.js';
 import {
   A0Error,
+  formatDiagnostic,
   formatFunction,
   formatType,
   makeIo,
@@ -911,4 +912,44 @@ test('power-of-two div/rem strength-reduce to shifts and masks; io output is bou
     () => run(spam.byName.get('go') as TypedFunc, [0xffff_ffff, makeIo([])], { fuel: 10_000_000 }),
     /io output exceeds/,
   );
+});
+
+test('diagnostics carry a stable code, expected/actual, and a fix the editor can act on', () => {
+  const typeErr = (() => {
+    try {
+      parseAndValidate('fn f u32 bool -> u32\na add p0 p1\nret a\nend\n');
+    } catch (e) {
+      return e;
+    }
+    return undefined;
+  })();
+  assert.ok(typeErr instanceof A0Error);
+  assert.equal(typeErr.code, 'type');
+  assert.equal(typeErr.expected, 'u32');
+  assert.equal(typeErr.actual, 'bool');
+  assert.match(typeErr.fix ?? '', /u32/);
+  assert.deepEqual(Object.keys(typeErr.toJSON()).sort(), [
+    'actual',
+    'code',
+    'expected',
+    'fix',
+    'line',
+    'message',
+  ]);
+
+  const session = new EditSession(parseAndValidate('fn f u32 -> u32\na add p0 1\nret a\nend\n'));
+  const h = session.open('f').handle;
+  session.apply(`${h}\na add p0 2\nret a`);
+  const stale = (() => {
+    try {
+      session.apply(`${h}\na add p0 3\nret a`);
+    } catch (e) {
+      return e;
+    }
+    return undefined;
+  })();
+  assert.ok(stale instanceof A0Error);
+  assert.equal(stale.code, 'handle');
+  assert.match(stale.fix ?? '', /open a new view/);
+  assert.match(formatDiagnostic(stale), /^handle: .* fix: /);
 });

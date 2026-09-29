@@ -240,7 +240,7 @@ async function main(): Promise<void> {
     } else {
       const start = performance.now();
       const script =
-        'read_verilog -sv module.sv; hierarchy -check; proc; opt; synth -noabc; tee -q -o stat.json stat -json; check -assert'; // -noabc: ABC stalls for minutes on 32-bit multipliers in this corpus (observed 2026-09-29)
+        'read_verilog -sv module.sv; hierarchy -check; proc; opt; synth -noabc; tee -q -o stat.json stat -json; check -assert'; // -noabc: ABC stalls (>60 s) on modules whose combinational div/rem cones reach ~500-1750 gate depth; modules with only 32-bit multipliers finish under ABC in ~18 s (measured 2026-09-29, results/hardware.json notes)
       await writeFile(join(dir, 'synth.ys'), `${script.replace(/; /g, '\n')}\n`, 'utf8');
       const r = runTool(yosys.path, ['-q', '-s', 'synth.ys'], { cwd: dir, timeoutMs: 600_000 });
       if (!r.ok) {
@@ -263,7 +263,7 @@ async function main(): Promise<void> {
         report.synthesis = {
           status: 'passed',
           detail:
-            'Yosys generic `synth -noabc` to internal gate-level cells (no ABC logic optimization: ABC stalled on 32-bit multipliers); `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.',
+            'Yosys generic `synth -noabc` to internal gate-level cells (no ABC logic optimization: ABC stalls on the deep combinational div/rem cones, not on multipliers); `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.',
           elapsedMs: performance.now() - start,
           modules,
         };
