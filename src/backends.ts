@@ -824,7 +824,7 @@ export function usesIo(program: TypedProgram): boolean {
   );
 }
 
-function assemble(target: Target, bodies: readonly string[], program: TypedProgram): string {
+export function assemble(target: Target, bodies: readonly string[], program: TypedProgram): string {
   const types = aggregateTypes(program);
   const io = usesIo(program);
   if (io && !types.some((t) => formatType(t) === '(u32,io)')) {

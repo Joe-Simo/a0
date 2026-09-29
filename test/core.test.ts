@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { compile, FunctionCache } from '../src/backends.js';
+import { compileCached, DiskCache } from '../src/cache.js';
 import {
   A0Error,
   formatFunction,
@@ -864,4 +865,34 @@ test('program-level edits: add, replace, and remove whole functions through a pr
   const f = session.open('sq');
   session.apply(`${f.handle}\na mul p0 3`);
   assert.throws(() => session.apply(`${g.handle}\nfn z -> u32\nret 1\nend`), /stale/);
+});
+
+test('persistent cache: per-function emission keyed by semantic revision; wasm artifact by module text', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(`${tmpdir()}/a0cache-`);
+  try {
+    const cache = new DiskCache(dir);
+    const src =
+      'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn twice u32 -> u32\nx call sq p0\ny add x x\nret y\nend';
+    const p = parseAndValidate(src);
+    const first = await compileCached(p, 'c', cache);
+    assert.equal(first.misses, 2);
+    assert.equal(first.text, compile(p, 'c').text);
+    const again = await compileCached(p, 'c', new DiskCache(dir));
+    assert.equal(again.hits, 2);
+    assert.equal(again.text, first.text);
+    // Editing the callee invalidates the caller's entry too (semantic revision).
+    const session = new EditSession(p);
+    const v = session.open('sq');
+    const edited = session.apply(`${v.handle}\na add p0 p0`);
+    const third = await compileCached(edited, 'c', new DiskCache(dir));
+    assert.equal(third.misses, 2);
+    assert.equal(third.text, compile(edited, 'c').text);
+    // Other target and optimization level are distinct keys.
+    assert.equal((await compileCached(p, 'js', new DiskCache(dir))).misses, 2);
+    assert.equal((await compileCached(p, 'c', new DiskCache(dir), { optimize: false })).misses, 2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

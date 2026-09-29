@@ -12,6 +12,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { compile, isTarget, TARGETS } from './backends.js';
+import { compileCached, DiskCache } from './cache.js';
 import {
   A0Error,
   checkArgument,
@@ -86,18 +87,31 @@ async function main(argv: readonly string[]): Promise<void> {
       const [target, file, out] = rest;
       if (target === undefined || file === undefined || !isTarget(target)) usage();
       const program = parseAndValidate(await readSource(file));
-      const { text } = compile(program, target);
+      const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
+      const { text, hits, misses } =
+        cache === undefined
+          ? { ...compile(program, target), hits: 0, misses: 0 }
+          : await compileCached(program, target, cache);
       if (out === undefined) process.stdout.write(text);
       else await writeFile(out, text, 'utf8');
+      if (process.env.A0_CACHE_STATS === '1')
+        process.stderr.write(`cache: ${hits} hits, ${misses} misses\n`);
       return;
     }
     case 'wasm': {
       const [file, out] = rest;
       if (file === undefined || out === undefined) usage();
       const program = parseAndValidate(await readSource(file));
-      const build = await compileWasm(compile(program, 'c').text);
+      const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
+      const cText =
+        cache === undefined
+          ? compile(program, 'c').text
+          : (await compileCached(program, 'c', cache)).text;
+      const build = await compileWasm(cText, cache);
       await writeFile(out, build.bytes);
-      process.stdout.write(`${build.bytes.length} bytes via ${build.compiler} + ${build.linker}\n`);
+      process.stdout.write(
+        `${build.bytes.length} bytes via ${build.compiler} + ${build.linker}${build.cached ? ' (cached artifact)' : ''}\n`,
+      );
       return;
     }
     case 'patch': {

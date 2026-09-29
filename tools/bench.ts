@@ -99,7 +99,53 @@ async function main(): Promise<void> {
       'UTF-8 bytes of the model-facing payloads. Not tokens, not total task cost; excludes language instructions and tool envelopes. See results/tokens.json for tokenizer counts.',
   };
 
+  // Incremental build latency on the Life program with the persistent cache: cold, warm,
+  // and after editing one function (only that function and its callers re-emit; the wasm
+  // artifact is rebuilt only when the module text changed).
+  const { readFile: readF } = await import('node:fs/promises');
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { compileCached, DiskCache } = await import('../src/cache.js');
+  const { compileWasm } = await import('../src/toolchain.js');
+  const life = parseAndValidate(await readF('examples/life.a0', 'utf8'));
+  const cacheDir = mkdtempSync(`${tmpdir()}/a0bench-`);
+  const timeAsync = async (f: () => Promise<unknown>): Promise<number> => {
+    const s = performance.now();
+    await f();
+    return performance.now() - s;
+  };
+  let incremental: Record<string, number | string> = {};
+  try {
+    const cold = await timeAsync(async () => {
+      const c = await compileCached(life, 'c', new DiskCache(cacheDir));
+      await compileWasm(c.text, new DiskCache(cacheDir));
+    });
+    const warm = await timeAsync(async () => {
+      const c = await compileCached(life, 'c', new DiskCache(cacheDir));
+      await compileWasm(c.text, new DiskCache(cacheDir));
+    });
+    const s = new EditSession(life);
+    const v = s.open('nb');
+    const edited = s.apply(`${v.handle}\none and bit 3`);
+    const cacheAfterEdit = new DiskCache(cacheDir);
+    const afterEdit = await timeAsync(async () => {
+      const c = await compileCached(edited, 'c', cacheAfterEdit);
+      await compileWasm(c.text, cacheAfterEdit);
+    });
+    incremental = {
+      coldEmitPlusWasmMs: cold,
+      warmAllCachedMs: warm,
+      afterEditingOneLeafFunctionMs: afterEdit,
+      reemittedFunctionsAfterEdit: cacheAfterEdit.misses,
+      meaning:
+        'Life (17 functions) C emission + wasm32 build via clang/wasm-ld. Editing nb invalidates nb and every transitive caller (semantic revision), and the changed module text forces one native rebuild; unchanged programs skip both.',
+    };
+  } finally {
+    rmSync(cacheDir, { recursive: true, force: true });
+  }
+
   const report = {
+    incremental,
     generatedAt: new Date().toISOString(),
     node: process.version,
     platform: `${process.platform}-${process.arch}`,

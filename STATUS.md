@@ -106,6 +106,15 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Persistent artifact cache** (v0.8.4, `src/cache.ts`): on-disk, content-addressed;
+  per-function emission keyed by compiler version, target, optimization level, and
+  semantic revision (own text + transitive callees); wasm artifacts keyed by toolchain
+  identity, flags, and the exact module text. Used by `a0 emit` and `a0 wasm`
+  (`A0_NO_CACHE=1` disables, `A0_CACHE_STATS=1` reports). Measured on Life (17 functions):
+  cold C emission + wasm build 491 ms, fully cached 39 ms, after editing one leaf function
+  161 ms with 6 functions re-emitted (the leaf and its transitive callers) and one native
+  rebuild. Correctness: a callee edit invalidates callers (tested); cache-served output is
+  byte-identical to uncached output (tested).
 - **Model guide compacted** (v0.8.3): every rule retained, 1010 → 610 o200k tokens; the
   A0 experiment setup cost is now 627 (conventional) / 750 (structured) versus 48/127 for
   TypeScript and 63/142 for Rust. Whether the compact wording is as effective for models
@@ -158,7 +167,7 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 22/22 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured and program-level edits) |
+| Focused tests | `bun run test` | 23/23 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured and program-level edits, persistent cache) |
 | Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
 | Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
 | GPU (Metal, Apple M3) | `bun run gpu` | 4995 io-free cases across 31 kernels pass |

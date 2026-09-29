@@ -7,6 +7,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -164,41 +165,77 @@ export interface WasmBuild {
   readonly bytes: Uint8Array;
   readonly compiler: string;
   readonly linker: string;
+  /** True when served from the persistent artifact cache. */
+  readonly cached: boolean;
 }
 
 /**
  * Compile emitted C to a freestanding wasm32 module exporting every a0_* function.
  * Requires a Clang with the wasm32 target and a wasm-ld; both are reported.
  */
-export async function compileWasm(cSource: string): Promise<WasmBuild> {
+export interface ArtifactStore {
+  get(key: string): Promise<Buffer | undefined>;
+  put(key: string, data: Buffer | string): Promise<void>;
+}
+
+export const WASM_FLAGS = [
+  '--target=wasm32',
+  '-O2',
+  '-nostdlib',
+  '-fuse-ld=lld',
+  '-Wl,--no-entry',
+  '-Wl,--export-all',
+] as const;
+
+export async function compileWasm(cSource: string, cache?: ArtifactStore): Promise<WasmBuild> {
   const clang = findWasmClang();
   if (clang.path === undefined) throw new A0Error('wasm: no clang found (set A0_WASM_CLANG)');
   if (clang.wasmLd === undefined)
     throw new A0Error('wasm: no wasm-ld found (install lld, or set A0_WASM_LD)');
   const ldDir = dirname(clang.wasmLd);
+  // Persistent artifact: keyed by toolchain identity, flags, and the exact module text.
+  const key =
+    cache === undefined
+      ? undefined
+      : createHash('sha256')
+          .update(
+            `wasm|${clang.version ?? clang.path}|${clang.wasmLd}|${WASM_FLAGS.join(' ')}|${createHash('sha256').update(cSource, 'utf8').digest('hex')}`,
+          )
+          .digest('hex');
+  if (cache !== undefined && key !== undefined) {
+    const hit = await cache.get(key);
+    if (hit !== undefined)
+      return {
+        bytes: new Uint8Array(hit),
+        compiler: clang.path,
+        linker: clang.wasmLd,
+        cached: true,
+      };
+  }
+  const built = await buildWasm(cSource, clang.path, clang.wasmLd, ldDir);
+  if (cache !== undefined && key !== undefined) await cache.put(key, Buffer.from(built.bytes));
+  return built;
+}
+
+async function buildWasm(
+  cSource: string,
+  clangPath: string,
+  wasmLd: string,
+  ldDir: string,
+): Promise<WasmBuild> {
   return withTempDir(async (dir) => {
     const src = join(dir, 'module.c');
     const out = join(dir, 'module.wasm');
     await writeFile(src, cSource, 'utf8');
-    const args = [
-      '--target=wasm32',
-      '-O2',
-      '-nostdlib',
-      '-fuse-ld=lld',
-      `-B${ldDir}`,
-      '-Wl,--no-entry',
-      '-Wl,--export-all',
-      '-o',
-      out,
-      src,
-    ];
+    const args = [...WASM_FLAGS, `-B${ldDir}`, '-o', out, src];
     const env = { ...process.env, PATH: `${ldDir}${delimiter}${process.env.PATH ?? ''}` };
-    const r = runTool(clang.path as string, args, { env });
+    const r = runTool(clangPath, args, { env });
     if (!r.ok) throw new A0Error(`wasm compilation failed:\n${r.stderr}`);
     return {
       bytes: new Uint8Array(await readFile(out)),
-      compiler: clang.path as string,
-      linker: clang.wasmLd as string,
+      compiler: clangPath,
+      linker: wasmLd,
+      cached: false,
     };
   });
 }
