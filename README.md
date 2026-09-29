@@ -20,6 +20,8 @@ bun run tokens      # tokenizer probe (js-tiktoken)         -> results/tokens.js
 bun run exec-bench  # emitted vs hand-written C/JS kernels  -> results/exec-benchmark.json
 bun run app         # Life application acceptance, 7 targets -> results/app.json
 bun run site        # browser demo (wasm + DOM adapter)     -> site/dist/
+bun run gpu         # Metal GPU execution of the corpus     -> results/gpu.json
+bun run dotnet      # C# / .NET execution of the corpus     -> results/dotnet.json
 ```
 
 CLI (after `bun run build`):

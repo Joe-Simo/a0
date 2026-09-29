@@ -28,7 +28,7 @@ import { formatProgram, parseAndValidate, run, type TypedFunc, type Value } from
 import { EditSession } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 
-type Representation = 'a0' | 'ts';
+type Representation = 'a0' | 'ts' | 'rust';
 type Protocol = 'conventional' | 'structured';
 
 interface AcceptanceCase {
@@ -43,9 +43,10 @@ interface Task {
   readonly instruction: string;
   readonly a0Source: string;
   readonly tsSource: string;
+  readonly rustSource: string;
   readonly tests: readonly AcceptanceCase[];
   /** Reference solutions, used only to validate the harness itself. */
-  readonly reference: { readonly a0: string; readonly ts: string };
+  readonly reference: { readonly a0: string; readonly ts: string; readonly rust: string };
 }
 
 // --- Held-out style tasks (small; the harness, not the task set, is the deliverable) ---
@@ -58,6 +59,8 @@ const TASKS: readonly Task[] = [
     a0Source: 'fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend\n',
     tsSource:
       'export function affine(x: number, scale: number, offset: number): number {\n  return (Math.imul(x, scale) + offset) >>> 0;\n}\n',
+    rustSource:
+      'pub fn affine(x: u32, scale: u32, offset: u32) -> u32 {\n    x.wrapping_mul(scale).wrapping_add(offset)\n}\n',
     tests: [
       { fn: 'affine', args: [10, 3, 7], expected: 23 },
       { fn: 'affine', args: [0, 0, 1], expected: 0xffff_ffff },
@@ -66,6 +69,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn affine u32 u32 u32 -> u32\na mul p0 p1\nb sub a p2\nret b\nend\n',
       ts: 'export function affine(x: number, scale: number, offset: number): number {\n  return (Math.imul(x, scale) - offset) >>> 0;\n}\n',
+      rust: 'pub fn affine(x: u32, scale: u32, offset: u32) -> u32 {\n    x.wrapping_mul(scale).wrapping_sub(offset)\n}\n',
     },
   },
   {
@@ -76,6 +80,7 @@ const TASKS: readonly Task[] = [
     a0Source: 'fn clamp u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nret r\nend\n',
     tsSource:
       'export function clamp(x: number, hi: number): number {\n  return hi < x ? hi : x;\n}\n',
+    rustSource: 'pub fn clamp(x: u32, hi: u32) -> u32 {\n    if hi < x { hi } else { x }\n}\n',
     tests: [
       { fn: 'clamp', args: [5, 1, 10], expected: 5 },
       { fn: 'clamp', args: [0, 1, 10], expected: 1 },
@@ -85,6 +90,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn clamp u32 u32 u32 -> u32\nc lt p2 p0\nr select c p2 p0\nd lt r p1\ns select d p1 r\nret s\nend\n',
       ts: 'export function clamp(x: number, lo: number, hi: number): number {\n  const t = hi < x ? hi : x;\n  return t < lo ? lo : t;\n}\n',
+      rust: 'pub fn clamp(x: u32, lo: u32, hi: u32) -> u32 {\n    let t = if hi < x { hi } else { x };\n    if t < lo { lo } else { t }\n}\n',
     },
   },
   {
@@ -96,6 +102,8 @@ const TASKS: readonly Task[] = [
       'fn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shl p0 n\no or l r\nret o\nend\n',
     tsSource:
       'export function rotl(x: number, n: number): number {\n  return ((x << n) | (x << (32 - n))) >>> 0;\n}\n',
+    rustSource:
+      'pub fn rotl(x: u32, n: u32) -> u32 {\n    (x << (n & 31)) | (x << ((32u32.wrapping_sub(n)) & 31))\n}\n',
     tests: [
       { fn: 'rotl', args: [0x8000_0000, 1], expected: 1 },
       { fn: 'rotl', args: [1, 31], expected: 0x8000_0000 },
@@ -105,6 +113,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend\n',
       ts: 'export function rotl(x: number, n: number): number {\n  return ((x << n) | (x >>> ((32 - n) & 31))) >>> 0;\n}\n',
+      rust: 'pub fn rotl(x: u32, n: u32) -> u32 {\n    (x << (n & 31)) | (x >> ((32u32.wrapping_sub(n)) & 31))\n}\n',
     },
   },
   {
@@ -115,6 +124,7 @@ const TASKS: readonly Task[] = [
     a0Source: 'fn absdiff u32 u32 -> u32\nd sub p0 p1\nret d\nend\n',
     tsSource:
       'export function absdiff(a: number, b: number): number {\n  return (a - b) >>> 0;\n}\n',
+    rustSource: 'pub fn absdiff(a: u32, b: u32) -> u32 {\n    a.wrapping_sub(b)\n}\n',
     tests: [
       { fn: 'absdiff', args: [7, 3], expected: 4 },
       { fn: 'absdiff', args: [3, 7], expected: 4 },
@@ -124,6 +134,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn absdiff u32 u32 -> u32\nd sub p0 p1\ne sub p1 p0\nc lt p0 p1\nr select c e d\nret r\nend\n',
       ts: 'export function absdiff(a: number, b: number): number {\n  return a < b ? (b - a) >>> 0 : (a - b) >>> 0;\n}\n',
+      rust: 'pub fn absdiff(a: u32, b: u32) -> u32 {\n    if a < b { b.wrapping_sub(a) } else { a.wrapping_sub(b) }\n}\n',
     },
   },
   {
@@ -135,6 +146,8 @@ const TASKS: readonly Task[] = [
       'fn combine4 u32 u32 u32 u32 -> u32\na add p0 p1\nb add a p2\nc add b p3\nret c\nend\n',
     tsSource:
       'export function combine4(a: number, b: number, c: number, d: number): number {\n  return (((a + b) >>> 0) + c + d) >>> 0;\n}\n',
+    rustSource:
+      'pub fn combine4(a: u32, b: u32, c: u32, d: u32) -> u32 {\n    a.wrapping_add(b).wrapping_add(c).wrapping_add(d)\n}\n',
     tests: [
       { fn: 'combine4', args: [1, 2, 4, 8], expected: 15 },
       { fn: 'combine4', args: [5, 5, 5, 5], expected: 0 },
@@ -143,6 +156,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn combine4 u32 u32 u32 u32 -> u32\na xor p0 p1\nb xor a p2\nc xor b p3\nret c\nend\n',
       ts: 'export function combine4(a: number, b: number, c: number, d: number): number {\n  return (a ^ b ^ c ^ d) >>> 0;\n}\n',
+      rust: 'pub fn combine4(a: u32, b: u32, c: u32, d: u32) -> u32 {\n    a ^ b ^ c ^ d\n}\n',
     },
   },
   {
@@ -152,6 +166,7 @@ const TASKS: readonly Task[] = [
       'min2 returns the smaller of two unsigned values. Rename it to min3 and make it return the smallest of three (add a third parameter).',
     a0Source: 'fn min2 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nret r\nend\n',
     tsSource: 'export function min2(a: number, b: number): number {\n  return b < a ? b : a;\n}\n',
+    rustSource: 'pub fn min2(a: u32, b: u32) -> u32 {\n    if b < a { b } else { a }\n}\n',
     tests: [
       { fn: 'min3', args: [3, 2, 1], expected: 1 },
       { fn: 'min3', args: [1, 2, 3], expected: 1 },
@@ -161,6 +176,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn min3 u32 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nd lt p2 r\ns select d p2 r\nret s\nend\n',
       ts: 'export function min3(a: number, b: number, c: number): number {\n  const m = b < a ? b : a;\n  return c < m ? c : m;\n}\n',
+      rust: 'pub fn min3(a: u32, b: u32, c: u32) -> u32 {\n    let m = if b < a { b } else { a };\n    if c < m { c } else { m }\n}\n',
     },
   },
   {
@@ -172,6 +188,8 @@ const TASKS: readonly Task[] = [
       'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn quad u32 -> u32\nx call sq p0\nret x\nend\n',
     tsSource:
       'export function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\nexport function quad(x: number): number {\n  return sq(x);\n}\n',
+    rustSource:
+      'pub fn sq(x: u32) -> u32 {\n    x.wrapping_mul(x)\n}\npub fn quad(x: u32) -> u32 {\n    sq(x)\n}\n',
     tests: [
       { fn: 'quad', args: [3], expected: 81 },
       { fn: 'quad', args: [0x1_0000], expected: 0 },
@@ -181,6 +199,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn quad u32 -> u32\nx call sq p0\ny call sq x\nret y\nend\n',
       ts: 'export function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\nexport function quad(x: number): number {\n  return sq(sq(x));\n}\n',
+      rust: 'pub fn sq(x: u32) -> u32 {\n    x.wrapping_mul(x)\n}\npub fn quad(x: u32) -> u32 {\n    sq(sq(x))\n}\n',
     },
   },
   {
@@ -192,6 +211,8 @@ const TASKS: readonly Task[] = [
       'fn addi u32 u32 -> u32\ns add p0 p1\nret s\nend\n\nfn sumto u32 -> u32\nr fold addi p0 0\nret r\nend\n',
     tsSource:
       'export function sumto(n: number): number {\n  let s = 0;\n  for (let i = 0; i < n; i++) s = (s + i) >>> 0;\n  return s;\n}\n',
+    rustSource:
+      'pub fn sumto(n: u32) -> u32 {\n    let mut s: u32 = 0;\n    for i in 0..n { s = s.wrapping_add(i); }\n    s\n}\n',
     tests: [
       { fn: 'sumto', args: [0], expected: 0 },
       { fn: 'sumto', args: [4], expected: 14 },
@@ -208,6 +229,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn addi u32 u32 -> u32\nq mul p1 p1\ns add p0 q\nret s\nend\n\nfn sumto u32 -> u32\nr fold addi p0 0\nret r\nend\n',
       ts: 'export function sumto(n: number): number {\n  let s = 0;\n  for (let i = 0; i < n; i++) s = (s + Math.imul(i, i)) >>> 0;\n  return s;\n}\n',
+      rust: 'pub fn sumto(n: u32) -> u32 {\n    let mut s: u32 = 0;\n    for i in 0..n { s = s.wrapping_add(i.wrapping_mul(i)); }\n    s\n}\n',
     },
   },
   {
@@ -219,6 +241,8 @@ const TASKS: readonly Task[] = [
       'fn inc u32 u32 u32 -> u32\ns add p0 1\nret s\nend\n\nfn below u32 u32 u32 -> bool\nc lt p0 p2\nret c\nend\n\nfn countup u32 u32 -> u32\nr loop below inc p1 0 p0\nret r\nend\n',
     tsSource:
       'export function countup(limit: number, cap: number): number {\n  let s = 0;\n  for (let i = 0; i < cap; i++) {\n    if (!(s < limit)) break;\n    s = (s + 1) >>> 0;\n  }\n  return s;\n}\n',
+    rustSource:
+      'pub fn countup(limit: u32, cap: u32) -> u32 {\n    let mut s: u32 = 0;\n    for _ in 0..cap {\n        if !(s < limit) { break; }\n        s = s.wrapping_add(1);\n    }\n    s\n}\n',
     tests: [
       { fn: 'countup', args: [3, 100], expected: 4 },
       { fn: 'countup', args: [0, 100], expected: 1 },
@@ -228,6 +252,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn inc u32 u32 u32 -> u32\ns add p0 1\nret s\nend\n\nfn below u32 u32 u32 -> bool\nc lt p2 p0\nn select c false true\nret n\nend\n\nfn countup u32 u32 -> u32\nr loop below inc p1 0 p0\nret r\nend\n',
       ts: 'export function countup(limit: number, cap: number): number {\n  let s = 0;\n  for (let i = 0; i < cap; i++) {\n    if (!(s <= limit)) break;\n    s = (s + 1) >>> 0;\n  }\n  return s;\n}\n',
+      rust: 'pub fn countup(limit: u32, cap: u32) -> u32 {\n    let mut s: u32 = 0;\n    for _ in 0..cap {\n        if !(s <= limit) { break; }\n        s = s.wrapping_add(1);\n    }\n    s\n}\n',
     },
   },
   {
@@ -237,6 +262,7 @@ const TASKS: readonly Task[] = [
       'pick takes a (u32,bool) record and returns its number. Change it so that when the flag is true it returns the number plus one (mod 2^32).',
     a0Source: 'fn pick (u32,bool) -> u32\nv at p0 0\nret v\nend\n',
     tsSource: 'export function pick(r: readonly [number, boolean]): number {\n  return r[0];\n}\n',
+    rustSource: 'pub fn pick(r: (u32, bool)) -> u32 {\n    r.0\n}\n',
     tests: [
       { fn: 'pick', args: [[5, false]], expected: 5 },
       { fn: 'pick', args: [[5, true]], expected: 6 },
@@ -245,6 +271,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn pick (u32,bool) -> u32\nv at p0 0\nf at p0 1\nw add v 1\nr select f w v\nret r\nend\n',
       ts: 'export function pick(r: readonly [number, boolean]): number {\n  return r[1] ? (r[0] + 1) >>> 0 : r[0];\n}\n',
+      rust: 'pub fn pick(r: (u32, bool)) -> u32 {\n    if r.1 { r.0.wrapping_add(1) } else { r.0 }\n}\n',
     },
   },
   {
@@ -254,6 +281,7 @@ const TASKS: readonly Task[] = [
       'byte1 extracts bits 8..15 of its input. Change it to extract bits 16..23 instead.',
     a0Source: 'fn byte1 u32 -> u32\ns shr p0 8\nm and s 255\nret m\nend\n',
     tsSource: 'export function byte1(x: number): number {\n  return (x >>> 8) & 0xff;\n}\n',
+    rustSource: 'pub fn byte1(x: u32) -> u32 {\n    (x >> 8) & 0xff\n}\n',
     tests: [
       { fn: 'byte1', args: [0x1234_5678], expected: 0x34 },
       { fn: 'byte1', args: [0xff00_0000], expected: 0 },
@@ -262,6 +290,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn byte1 u32 -> u32\ns shr p0 16\nm and s 255\nret m\nend\n',
       ts: 'export function byte1(x: number): number {\n  return (x >>> 16) & 0xff;\n}\n',
+      rust: 'pub fn byte1(x: u32) -> u32 {\n    (x >> 16) & 0xff\n}\n',
     },
   },
   {
@@ -271,6 +300,7 @@ const TASKS: readonly Task[] = [
       'sadd adds two unsigned 32-bit values with wraparound. Make it saturate at 4294967295 instead of wrapping.',
     a0Source: 'fn sadd u32 u32 -> u32\ns add p0 p1\nret s\nend\n',
     tsSource: 'export function sadd(a: number, b: number): number {\n  return (a + b) >>> 0;\n}\n',
+    rustSource: 'pub fn sadd(a: u32, b: u32) -> u32 {\n    a.wrapping_add(b)\n}\n',
     tests: [
       { fn: 'sadd', args: [1, 2], expected: 3 },
       { fn: 'sadd', args: [0xffff_ffff, 1], expected: 0xffff_ffff },
@@ -280,6 +310,7 @@ const TASKS: readonly Task[] = [
     reference: {
       a0: 'fn sadd u32 u32 -> u32\ns add p0 p1\nc lt s p0\nr select c 4294967295 s\nret r\nend\n',
       ts: 'export function sadd(a: number, b: number): number {\n  const s = (a + b) >>> 0;\n  return s < a ? 0xffffffff : s;\n}\n',
+      rust: 'pub fn sadd(a: u32, b: u32) -> u32 {\n    a.saturating_add(b)\n}\n',
     },
   },
 ];
@@ -291,6 +322,10 @@ const PROTOCOL_CONVENTIONAL =
 const PROTOCOL_STRUCTURED_A0 =
   'You are shown a view whose first line is an edit handle (e.g. e0). Reply with that handle line followed only by the instruction lines you replace (same ids, keep positions). Nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_TS =
+  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by replacement lines as `<number> <new text>` (one per line; a number may be given once). Nothing else, inside one ```code block.';
+const RUST_SEMANTICS =
+  'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. The file must compile with rustc, edition 2021.';
+const PROTOCOL_STRUCTURED_RUST =
   'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by replacement lines as `<number> <new text>` (one per line; a number may be given once). Nothing else, inside one ```code block.';
 const TS_SEMANTICS =
   'Numbers are unsigned 32-bit integers: every arithmetic result must be normalized with >>> 0, use Math.imul for multiplication, and comparisons are unsigned.';
@@ -394,6 +429,47 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
   return failures;
 }
 
+function rustLiteral(v: Value): string {
+  if (typeof v === 'number') return `${v}u32`;
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (Array.isArray(v)) return `(${v.map(rustLiteral).join(', ')})`;
+  return '0u32';
+}
+
+async function acceptRust(source: string, tests: readonly AcceptanceCase[]): Promise<string[]> {
+  // Single file: the candidate source plus a generated main that checks every case.
+  const checks = tests.map(
+    (t, i) =>
+      `    { let got = ${t.fn}(${t.args.map(rustLiteral).join(', ')}); if got != ${rustLiteral(t.expected)} { println!("FAIL ${i} {}", got); } }`,
+  );
+  const main = `\n#[allow(dead_code)]\nfn main() {\n${checks.join('\n')}\n    println!("DONE");\n}\n`;
+  return withTempDir(async (dir) => {
+    const file = join(dir, 'candidate.rs');
+    await writeFile(file, `${source}${main}`, 'utf8');
+    const rustc = `${process.env.HOME ?? ''}/.cargo/bin/rustc`;
+    const build = runTool(
+      rustc,
+      ['--edition', '2021', '-O', '-A', 'warnings', '-o', join(dir, 'candidate'), file],
+      { cwd: dir, timeoutMs: 300_000 },
+    );
+    if (!build.ok) return [`rustc: ${build.stderr.slice(0, 500)}`];
+    const run = runTool(join(dir, 'candidate'), [], { cwd: dir, timeoutMs: 60_000 });
+    if (!run.ok) return [`run: ${run.stderr.slice(0, 300)}`];
+    const failures = run.stdout
+      .split('\n')
+      .filter((l) => l.startsWith('FAIL'))
+      .map((l) => {
+        const [, idx, got] = l.split(' ');
+        const t = tests[Number(idx)];
+        return t === undefined
+          ? l
+          : `${t.fn}(${t.args.map(fmt).join(',')}) = ${got}, expected ${fmt(t.expected)}`;
+      });
+    if (!run.stdout.includes('DONE')) failures.push('program did not finish');
+    return failures;
+  });
+}
+
 async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promise<string[]> {
   // Type-check with tsc, then execute the checked JS in a separate Node process.
   return withTempDir(async (dir) => {
@@ -473,10 +549,12 @@ async function buildCell(
     }
     return { cell: { representation, protocol, system, view: task.a0Source }, handle };
   }
-  const protocolText = protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : PROTOCOL_STRUCTURED_TS;
-  const system = `${TS_SEMANTICS}\n\n${protocolText}`;
-  const view =
-    protocol === 'conventional' ? task.tsSource : `${handle}\n${numbered(task.tsSource)}`;
+  const src = representation === 'rust' ? task.rustSource : task.tsSource;
+  const semantics = representation === 'rust' ? RUST_SEMANTICS : TS_SEMANTICS;
+  const structured = representation === 'rust' ? PROTOCOL_STRUCTURED_RUST : PROTOCOL_STRUCTURED_TS;
+  const protocolText = protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : structured;
+  const system = `${semantics}\n\n${protocolText}`;
+  const view = protocol === 'conventional' ? src : `${handle}\n${numbered(src)}`;
   return { cell: { representation, protocol, system, view }, handle };
 }
 
@@ -525,13 +603,16 @@ async function main(): Promise<void> {
       (await acceptA0(task.a0Source, task.tests)).length > 0 ? [] : ['original already passes'];
     selfCheck[`${task.id}/ts-original-must-fail`] =
       (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
+    selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests);
+    selfCheck[`${task.id}/rust-original-must-fail`] =
+      (await acceptRust(task.rustSource, task.tests)).length > 0 ? [] : ['original already passes'];
   }
   const selfCheckOk = Object.values(selfCheck).every((f) => f.length === 0);
 
   const client = live ? new Anthropic() : undefined;
   const trials: Trial[] = [];
   for (const task of TASKS) {
-    for (const representation of ['a0', 'ts'] as const) {
+    for (const representation of ['a0', 'ts', 'rust'] as const) {
       for (const protocol of ['conventional', 'structured'] as const) {
         for (let t = 0; t < (live ? trialsPerCell : 1); t += 1) {
           const { cell, session, handle } = await buildCell(task, representation, protocol, guide);
@@ -571,7 +652,12 @@ async function main(): Promise<void> {
           const messages: Anthropic.MessageParam[] = [
             { role: 'user', content: `${task.instruction}\n\n${cell.view}` },
           ];
-          let source = representation === 'a0' ? task.a0Source : task.tsSource;
+          let source =
+            representation === 'a0'
+              ? task.a0Source
+              : representation === 'rust'
+                ? task.rustSource
+                : task.tsSource;
           const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
           let calls = 0;
           let validationFailures = 0;
@@ -604,7 +690,9 @@ async function main(): Promise<void> {
                 ? [applied.error]
                 : representation === 'a0'
                   ? await acceptA0(applied.source, task.tests)
-                  : await acceptTs(applied.source, task.tests);
+                  : representation === 'rust'
+                    ? await acceptRust(applied.source, task.tests)
+                    : await acceptTs(applied.source, task.tests);
             if (failures.length === 0) {
               accepted = true;
               source = applied.source;
@@ -648,7 +736,14 @@ async function main(): Promise<void> {
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
     design: {
-      cells: ['a0/conventional', 'a0/structured', 'ts/conventional', 'ts/structured'],
+      cells: [
+        'a0/conventional',
+        'a0/structured',
+        'ts/conventional',
+        'ts/structured',
+        'rust/conventional',
+        'rust/structured',
+      ],
       heldConstant: [
         'model',
         'task text',
@@ -658,7 +753,7 @@ async function main(): Promise<void> {
         'system prompt caching',
       ],
       setupCounted:
-        'A0 cells carry MODEL_GUIDE.txt as language instructions; TS cells carry the u32 semantics note; both carry their protocol instructions.',
+        'A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks.',
       unknowns: 'Hidden reasoning tokens are not reported by the API and are recorded as null.',
     },
     tasks: TASKS.map((t) => ({ id: t.id, kind: t.kind, tests: t.tests.length })),

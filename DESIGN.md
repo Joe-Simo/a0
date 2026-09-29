@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.6.0 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.7.0 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -142,8 +142,8 @@ AI-assisted discovery is a separate future workflow: propose a transformation, v
 | Native server / desktop / mobile / embedded | MLIR/LLVM/native artifacts and platform ABIs | C-compatible output compiled and run on Linux. No phone deployment or platform SDK adapters. |
 | C++ ecosystems | Typed ABI boundary or explicit bindings | Generated C-compatible kernels compile as C++; existing C++ source is not imported. |
 | JVM | Defined managed-runtime representation and bindings | Generated Java compiled and executed on a JVM. No Android packaging or Java library importer. |
-| .NET | Managed backend and runtime bindings | Not implemented. |
-| GPU | Domain operations, memory spaces, schedules, GPU backends | Not implemented. |
+| .NET | Managed backend and runtime bindings | C# emitted (native `uint`, records, clone-on-write arrays, io runtime); built and executed on .NET 10 against the oracle incl. io streams. No .NET library bindings. |
+| GPU | Domain operations, memory spaces, schedules, GPU backends | Metal Shading Language emitted via a typed layer over the C output; elementwise kernels executed on Apple M3 against the oracle. No memory-space, scheduling, or performance model yet. |
 | FPGA / ASIC | Bit-accurate graph, state/scheduling, RTL, synthesis/physical tools | Combinational and clocked SystemVerilog emitted; simulated with Icarus against the oracle (incl. io streams) and synthesized generically with Yosys; no FPGA/ASIC place-and-route, timing, area, or power. |
 
 Hardware compilation requires attention to cycle boundaries, finite resources, throughput, latency, timing, and physical implementation. XLS demonstrates software-style descriptions that can target host software and hardware, and its flow includes hardware synthesis and physical measurement. Generating RTL alone is not equivalent to delivering a working chip. [S3]

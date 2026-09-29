@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.6.0)
+## Implemented scope (v0.7.0)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -84,6 +84,21 @@ turns up, reconcile against this tree rather than overwrite either.
   construction. A 3000-mutation fuzz test asserts every malformed input fails with a clean
   A0Error. Not done: a runtime fuel counter in compiled targets (costs speed; measure
   before adding), memory/time limits per compiled process, sandboxing of toolchains.
+- **GPU** (Gate 8, `src/metal.ts`, `bun run gpu`): the io-free corpus mapped to Metal
+  Shading Language through an explicit type layer over the C output, elementwise kernels
+  per function, executed on the local GPU via a generated Swift host: 4995 oracle cases
+  across 31 kernels pass on Apple M3. Exact semantics only; no GPU performance claim,
+  no memory-space or scheduling model beyond elementwise dispatch.
+- **.NET** (Gate 8, `src/dotnet.ts`, `bun run dotnet`): C# emission (native `uint`,
+  clone-on-write arrays, `readonly record struct`s, `A0Io` stream runtime), built Release
+  with warnings as errors on .NET SDK 10.0.401 (installed user-locally under ~/.dotnet
+  from the official pkg; the Homebrew cask needs an interactive sudo), executed through
+  the stdin driver: 5603 cases incl. io streams pass.
+- **MLIR/LLVM decision** (Gate 8): not integrated. Evidence: every kernel of the execution
+  ledger ties hand-written C and Rust at clang/rustc -O2 (both LLVM); the native path
+  already reaches LLVM through C. Integration would add build complexity without a
+  measured win; revisit when a workload needs vectorization or fusion the C path cannot
+  express.
 - **JS emission**: input guards now run only at the public boundary; internal calls,
   folds, and loops target unguarded `a0i_` functions (the 64-step loop went from 4× slower
   than hand-written to a tie).
@@ -107,6 +122,8 @@ turns up, reconcile against this tree rather than overwrite either.
 | Focused tests | `bun run test` | 17/17 pass (incl. fuel, static cap, 3000-mutation fuzz) |
 | Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
 | Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
+| GPU (Metal, Apple M3) | `bun run gpu` | 4995 io-free cases across 31 kernels pass |
+| .NET (C#, SDK 10.0.401 Release) | `bun run dotnet` | 5603 cases incl. io streams pass |
 | Interpreter vs oracle | `bun run verify` | 5603 cases pass |
 | Optimizer vs oracle | `bun run verify` | 5603 pass |
 | JS in Node | `bun run verify` | 5603 pass |
@@ -146,17 +163,24 @@ largely a protocol effect; the 2×2 harness exists to separate it from the langu
 
 ### Execution ledger, Gate 7 (`bun run exec-bench`, clang -O2 no sanitizer; Node JIT warm; idle machine)
 
-| Kernel | C emitted vs hand-written | JS emitted vs hand-written |
-|---|---|---|
-| affine, rotl, clamp, mix (scalar) | tie | tie |
-| ident (tiny call) | tie (1.61 vs 1.62 ns) | tie |
-| noop (add 0, mul 1, xor 0; optimizer must remove) | tie | tie |
-| chain3 (three nested tiny calls) | tie | tie |
-| branchy (select chains) | tie | tie |
-| arrfill (8 value-semantics `set`s then reads) | tie (struct copies elided) | **loss** 2.6× (802 vs 309 ns): copy-on-write arrays |
-| loop64 (64 dependent body calls) | tie (82 vs 89 ns) | tie after boundary-only guards (was 4× loss) |
-| startup (spawn + one iteration) | 2.2–2.5 ms both sides | n/a |
-| binary size | 33.6 kB both sides (runtime dominated) | n/a |
+| Kernel | C emitted vs hand-written C | vs hand-written Rust (rustc 1.96 -O) | JS emitted vs hand-written |
+|---|---|---|---|
+| affine, rotl, clamp, mix (scalar) | tie | tie | tie |
+| ident (tiny call) | tie (1.61 ns) | tie | **loss** 11 % (12.5 vs 11.2 ns): wrapper indirection |
+| noop (add 0, mul 1, xor 0) | tie | tie | **loss** 11 %: same cause |
+| chain3 (three nested tiny calls) | tie | tie | tie |
+| branchy (select chains) | tie | tie | tie |
+| arrfill (8 value-semantics `set`s) | tie | tie | **loss** 1.7× (160 vs 95 ns): copy-on-write arrays |
+| loop64 (64 dependent body calls) | tie (80 vs 82 ns) | tie (80 ns) | tie (was 4× loss before boundary-only guards) |
+| build time A0 source → native binary (clang) vs rustc -O | 52–67 ms vs 104–116 ms (rustc first run 4.3 s cold) | | |
+| startup (spawn + one iteration) | 2.2–2.5 ms both sides | | |
+| binary size | 33.6 kB both sides (runtime dominated) | | |
+
+Rust ties on every kernel because A0's native path and rustc both end in LLVM; a CPU
+runtime advantage over Rust for the same computation is not available to any language.
+Where A0 differs measurably: build latency (~2× faster than rustc here), reach (the same
+source runs on GPU, .NET, JVM, Wasm, and as clocked hardware), and, unmeasured until
+Gate 6 runs, AI cost per accepted change (Rust is now a baseline representation there).
 
 Verdict band: 8 % or observed sample spread, capped at 25 %. Level: micro-kernels; not
 energy, memory at scale, or applications. The JS array loss is a real cost of value
@@ -165,7 +189,8 @@ semantics without escape analysis and stays on the ledger.
 ### Cost target stated by the user (2026-09-29): 200–400× cheaper and faster for AI
 
 Measured baseline: whole-function payloads ≈1× hand-written C (30 vs 29 tokens), session
-edits ≈2× smaller than the best conventional edit, A0 setup ≈877 tokens of overhead.
+edits ≈2× smaller than the best conventional edit, A0 setup ≈877 tokens of overhead
+(Rust setup 63, TypeScript 48). Runtime vs Rust: tie on every kernel (see ledger).
 Syntax cannot reach the target; the candidate mechanisms are structural and unmeasured:
 (1) a library of verified named operations so a model writes one line instead of an
 implementation, (2) dependency-scoped views so it reads only what an edit touches,
@@ -180,8 +205,9 @@ provider usage, calls, validation failures, repairs, wall time; reasoning tokens
 as null. **Status: unrun.** Requires `A0_ALLOW_PAID_MODEL_CALLS=1` plus Anthropic
 credentials (none configured on this machine); default model `claude-opus-5-5`, 3 trials
 per cell. Twelve held-out tasks (targeted, multi-node, multi-function, comprehension,
-iteration, records) with independent acceptance tests; the self-check passes (references
-accepted, originals rejected in all four cells). Measured setup cost per cell (o200k):
+iteration, records) with independent acceptance tests across three representations
+(A0, TypeScript, Rust; Rust acceptance compiles with rustc -O) and two protocols, six
+cells; the self-check passes (references accepted, originals rejected in every cell). Measured setup cost per cell (o200k):
 A0 conventional 877 tokens (MODEL_GUIDE.txt), TypeScript 48; view sizes 24–45.
 
 ## Reference
@@ -205,11 +231,13 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Gates 1–5 done; Gate 6 harness complete with 12 tasks but **unrun** (needs explicit
-   spend authorization and credentials); Gate 7 ledger populated. Next: Gate 8 only when a
-   measured requirement justifies MLIR/LLVM, GPU, or .NET; until then, the measured JS
-   array loss (copy-on-write) is the next concrete engineering target: in-place update when
-   the source value is provably dead (single use), keeping value semantics.
+1. All eight gates have reproduced evidence except Gate 6's live model runs, which stay
+   **unrun** until spend is explicitly authorized (harness, tasks, and self-check are
+   complete); MLIR/LLVM is recorded as not justified by measurement. Next engineering
+   targets, in order: (a) JS array copy-on-write loss: in-place update when the source is
+   provably dead (single use), keeping value semantics; (b) JS wrapper indirection on
+   trivial functions; (c) run Gate 6 when authorized and add the whole-task numbers here;
+   (d) strings/DOM capabilities so a0lang.com can be authored in A0 end to end.
 2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
    cross-target application, authored in A0 with a browser DOM adapter; no deployment
    without explicit approval in that session.
