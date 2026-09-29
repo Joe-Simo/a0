@@ -46,7 +46,7 @@ turns up, reconcile against this tree rather than overwrite either.
 | C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 6593 pass |
 | C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 6593 pass |
 | Java via Homebrew OpenJDK 27 | `bun run verify` | 6593 pass |
-| WebAssembly (clang + wasm-ld) | `bun run verify` | **blocked**: `brew install lld` failed downloading its LLVM dependency bottle (curl HTTP/2 PROTOCOL_ERROR); a retry was started in the background. Rerun `bun run verify` once `/opt/homebrew/opt/lld/bin/wasm-ld` exists |
+| WebAssembly (clang + wasm-ld) | `bun run verify` | **blocked**: `brew install lld` failed downloading its LLVM dependency bottle (curl HTTP/2 PROTOCOL_ERROR); the retry then failed with **No space left on device** while unpacking LLVM (~2 GB). Free disk space, `brew install lld`, then `bun run verify` |
 | SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 6593 cases pass, 48 modules incl. call instances |
 | SystemVerilog generic synthesis (Yosys 0.69 `synth` + `check -assert`) | `bun run hw` | pass; cell counts per module in `results/hardware.json` |
 | Not run for hardware | — | FPGA place-and-route, real cell library, timing, area, power, sequential logic |
@@ -98,8 +98,8 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 ## Blockers / not done
 
 - `A0-Research-Starter.zip` absent (see Provenance).
-- Wasm path blocked: the `lld` install failed on a network error fetching the LLVM bottle;
-  retry `brew install lld`, then `bun run verify`.
+- Wasm path blocked: `brew install lld` needs the LLVM bottle (~2 GB) and the disk is full.
+  Free space (e.g. `brew cleanup`, large Downloads), then `brew install lld` and `bun run verify`.
 - Paid model runs not authorized; Gate A unrun.
 - No Claude-tokenizer counts (needs `count_tokens` with credentials; free but blocked).
 - Not implemented: loops/regions, memory/arrays, effects, .NET, GPU, mobile packaging,
