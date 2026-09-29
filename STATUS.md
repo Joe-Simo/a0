@@ -307,8 +307,32 @@ TypeScript or Rust model needs only a 31–46 token semantics note. At 13 small 
 primer is 72–83 % of A0's whole-task spend. The 200–400× ambition is contradicted by
 these numbers; the only measured A0 advantage is the 10–14 % output reduction on
 structured edits. Levers, in order of measured size: (1) primer amortisation through
-prompt caching (provider cache-read pricing, not available in local counts), (2) a
-shorter primer or a primer the model already knows, (3) the output reduction.
+prompt caching, (2) a shorter primer or a primer the model already knows, (3) the output
+reduction.
+
+Prompt caching (read 2026-09-29 from the Anthropic and OpenAI docs the user supplied):
+Anthropic caches an exact system-prompt prefix for a minimum of 512 tokens on Claude
+Fable 5.1 / Opus 5.5 / Sonnet 5.5 (1024–4096 on older models); cache reads cost 0.025×
+(Fable 5.1), 0.05× (Opus 5.5) or 0.1× base input, writes 1.25× (5 min) or 2× (1 h).
+OpenAI caches automatically from 1024 tokens with reads at 0.1× (GPT-5.6+). The A0 primer
+plus protocol (627–750 tokens) is above Anthropic's 512-token floor and below OpenAI's
+1024, so it is cacheable on the Claude models the harness targets and not on OpenAI's
+without padding. The harness already marks the system prompt with `cache_control`.
+Cache-adjusted whole-task cost, primer buckets weighted at the Opus 5.5 read rate 0.05
+after one write per cell (tool context and output at 1×), 13 tasks:
+
+| cell | uncached total | cache-adjusted | vs TypeScript same protocol |
+|---|---|---|---|
+| A0 conventional | 9587 | ≈1843 | 1.26× |
+| A0 structured | 11090 | ≈1828 | 1.30× |
+| TypeScript conventional | 2012 | ≈1419 | — |
+| TypeScript structured | 2945 | ≈1377 | — |
+
+Caching narrows A0's whole-task loss from 3.8–4.8× to about 1.3×; it does not turn it
+into a win, because tool context (the view plus task text) and output are charged in
+full and A0's structured view is the largest of the six. The language-independent part
+of this (caching is a provider feature) is recorded here only because the primer is A0's
+dominant cost; the A0-side levers remain the view size and the primer size.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
@@ -375,7 +399,15 @@ with status as of 2026-09-29:
    therefore narrow: not a general operator scheduler, but multi-cycle `div`/`rem`
    (iterative divider behind the existing sequential handshake). 20 of 48 modules would
    change; 28 would not benefit. Not implemented yet.
-6. **Not started.** Bounded solver equivalence for pure functions.
+6. **Done.** `bun run equiv` (`tools/equiv-verify.ts`, Z3 via the `z3-solver` package,
+   QF_BV 32-bit): for every corpus function whose values carry no io, the optimized
+   function is proved equal to the source function on all inputs (arrays and records
+   element-wise, `get`/`set` as `index mod N`, calls inlined, `fold`/`loop` with literal
+   counts ≤ 64 unrolled with the loop predicate gating each step). Result
+   (`results/equivalence.json`): 38 of 48 proved, 0 counterexamples, 0 unknown, 10 out of
+   scope (io in signature). Self-check: swapping one arithmetic op in a proved function
+   yields a counterexample. Scope statement as Alive2's: intra-procedural, io-free,
+   literal-bounded iteration; io functions remain covered only by the sampled corpus.
 
 ## Reference
 
