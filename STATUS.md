@@ -278,6 +278,12 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Blockers / not done
 
+- GitHub Actions CI (`.github/workflows/ci.yml`: lint, typecheck, tests, corpus, hardware,
+  .NET, Life on Ubuntu) is committed but the first run did not start: GitHub reports
+  "recent account payments have failed or your spending limit needs to be increased" on
+  the Joe-Simo account. This is an account-billing setting only the owner can change; no
+  minutes were spent. Until then, regressions are gated by the local suite recorded above.
+
 - `A0-Research-Starter.zip` absent (see Provenance).
 - Paid model runs not authorized; Gate A unrun.
 - No Claude-tokenizer counts (needs `count_tokens` with credentials; free but blocked).
