@@ -1,54 +1,25 @@
-A0 v0.1 model guide (language instructions an AI needs before reading or writing A0).
-
-FUNCTION
-  fn NAME TYPE... -> TYPE      types: u32 bool, arrays TYPExN (u32x4), records (TYPE,TYPE) e.g. (u32,bool);
-                               nestable, no spaces: (u32,bool)x2. Parameters are positional: p0 p1 ...
-  ID OP OPERAND...             one instruction per line; ID is lowercase [a-z][a-z0-9_]*
-  ret OPERAND
-  end
-Operands: an earlier ID in the same function, a parameter pN, a decimal u32 literal, true, false.
-No forward references, general loops, recursion, memory, strings, or I/O. Comments start with #.
-
-OPERATIONS (exact semantics)
-  mov x            identity (u32 or bool)
-  add a b          (a + b) mod 2^32          sub a b   (a - b) mod 2^32       mul a b  (a * b) mod 2^32
-  and a b | or a b | xor a b                 bitwise on u32
-  shl a n          a << (n & 31)             shr a n   a >>> (n & 31)  (logical)
-  div a b          unsigned a / b; b = 0 gives 4294967295     rem a b   a mod b; b = 0 gives a
-  eq a b -> bool   lt a b -> bool (unsigned)
-  select c x y     c ? x : y; x and y already computed and of the same type; not lazy
-  call F a...      apply function F, which must be defined EARLIER in the program, to arguments
-                   matching its parameter types; result has F's result type. No recursion.
-  fold F n s a...  bounded loop: state = s; for i in 0..n-1: state = F(state, i, a...); result is the
-                   final state. F must be defined earlier with parameters (state, u32 index, a...) and
-                   return the state type. n is u32, so every fold terminates.
-  arr e0 e1 ...    array of same-typed values      rec e0 e1 ...   record (positional fields)
-  text "..."       u32xN of the UTF-8 bytes of the string (escapes \n \t \" \\); same as arr
-  get a i          element i mod N of array a       set a i v       copy of a with element i mod N = v
-  at r k           field k (u32 literal) of record  put r k v       copy of r with field k = v
-  Aggregates are values: every op returns a new value; nothing aliases or mutates.
-EFFECTS (type io: a token passed as a parameter; each token value is used at most once)
-  read t           -> (u32,io): next input word (0 when exhausted) and the next token
-  write t v        -> io: emit word v, next token.   Order of effects = order of token uses.
-  puts t a         -> io: emit the length of u32 array a, then its elements (text output).
-  A function has at most one io parameter; return the token inside a record, e.g. (u32,io),
-  when the caller must continue the stream. Arrays cannot hold io; select cannot pick a token.
-  loop P F n s a... fold with early exit: before iteration i, if P(state, i, a...) is false the loop
-                   stops with the current state. P takes exactly F's parameters and returns bool.
-
-EDITING
-  Session edit: reply with the handle line you were shown, then only the replaced instructions:
-    e0
-    b sub a p2
-  Edit lines: `id op ...` replaces an existing instruction or inserts a new one before ret;
-  `id op ... @ other` inserts after instruction `other`; `-id` deletes; `ret x` changes the result.
-  A view may end with `fn name types -> type end` lines: signatures of callees you may call.
-  Self-contained patch: "patch NAME REVISION" + replaced instructions + "end", where REVISION is the
-  64-hex SHA-256 shown by `a0 revision`. A handle or revision that no longer matches is rejected.
-
-EXAMPLE  (p0 * p1 + p2) mod 2^32
-  fn affine u32 u32 u32 -> u32
-  a mul p0 p1
-  b add a p2
-  ret b
-  end
+A0 guide. Program = functions; each: `fn NAME T... -> T`, lines `ID OP OPERAND...`, `ret OPERAND`, `end`.
+Types: u32 bool io, arrays Tx4, records (u32,bool); nest without spaces. Params are p0 p1 ...
+Operands: earlier ID in this function, pN, decimal u32, true, false. IDs [a-z][a-z0-9_]*. # comment.
+No forward refs, no recursion, no memory. All ops are exact and total.
+OPS
+ mov x | add sub mul (mod 2^32) | and or xor | shl a n = a<<(n&31) | shr a n = a>>>(n&31) logical
+ div a b (b=0 -> 4294967295) | rem a b (b=0 -> a) | eq lt (unsigned) -> bool | select c x y (both computed)
+ call F a...   F defined EARLIER; args match F's params; result = F's result type
+ fold F n s a...   state=s; for i in 0..n-1: state=F(state,i,a...); F: (state,u32,a...) -> state
+ loop P F n s a... fold that stops before iteration i when P(state,i,a...) is false; P: F's params -> bool
+ arr e... | rec e... | text "utf8" (=arr of bytes; escapes \n \t \" \\) | get a i (i mod N) | set a i v (copy)
+ at r k (k literal) | put r k v (copy). Aggregates are values; nothing aliases or mutates.
+IO: token type io, passed as at most one parameter, each token value used once, order of use = order of effects.
+ read t -> (u32,io) (0 when input exhausted) | write t v -> io | puts t a -> io (length word then elements)
+ Return the token inside a record like (u32,io) when the caller continues the stream. No io in arrays or select.
+EDITS: reply with the shown handle line, then edit lines. Function handle e0: `id op ...` replaces or inserts
+ before ret; `id op ... @ other` inserts after other; `-id` deletes; `ret x` sets the result; trailing
+ `fn name T... -> T end` lines in a view are callable signatures. Program handle g0: whole `fn ... end`
+ blocks add or replace functions; `-fn name` removes. Patch form: `patch NAME SHA256` + edit lines + `end`.
+EXAMPLE (p0*p1+p2 mod 2^32):
+fn affine u32 u32 u32 -> u32
+a mul p0 p1
+b add a p2
+ret b
+end

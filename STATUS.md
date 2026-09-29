@@ -106,6 +106,10 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Model guide compacted** (v0.8.3): every rule retained, 1010 → 610 o200k tokens; the
+  A0 experiment setup cost is now 627 (conventional) / 750 (structured) versus 48/127 for
+  TypeScript and 63/142 for Rust. Whether the compact wording is as effective for models
+  is exactly what Gate 6 measures; both wordings are in git history.
 - **Program-level edits** (v0.8.2): a program handle (`g0`) views every function
   signature and accepts whole `fn … end` blocks (replace in place or append) and
   `-fn name` removals, validated as one program and committed atomically; stale after any
@@ -225,7 +229,7 @@ semantics without escape analysis and stays on the ledger.
 
 Measured baseline: whole-function payloads ≈1× hand-written C (30 vs 29 tokens), session
 edits ≈2× smaller than the best conventional edit, A0 setup ≈877 tokens of overhead
-(Rust setup 63, TypeScript 48). Runtime vs Rust: tie on every kernel (see ledger).
+(now 610 after compaction; Rust setup 63, TypeScript 48). Runtime vs Rust: tie on every kernel (see ledger).
 Syntax cannot reach the target; the candidate mechanisms are structural and unmeasured:
 (1) a library of verified named operations so a model writes one line instead of an
 implementation, (2) dependency-scoped views so it reads only what an edit touches,
@@ -243,8 +247,8 @@ per cell. Twelve held-out tasks (targeted, multi-node, multi-function, comprehen
 iteration, records) with independent acceptance tests across three representations
 (A0, TypeScript, Rust; Rust acceptance compiles with rustc -O) and two protocols, six
 cells; the self-check passes (references accepted, originals rejected in every cell).
-Setup cost per cell (o200k): A0 conventional 1027 (guide grew with edits/text/effects),
-A0 structured 1150, TypeScript 48/127, Rust 63/142; views 11–45 tokens. Measured setup cost per cell (o200k):
+Setup cost per cell (o200k): A0 conventional 627 / structured 750 after compacting the
+guide, TypeScript 48/127, Rust 63/142; views 11–45 tokens. Measured setup cost per cell (o200k):
 A0 conventional 877 tokens (MODEL_GUIDE.txt), TypeScript 48; view sizes 24–45.
 
 ## Reference
