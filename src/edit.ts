@@ -69,7 +69,11 @@ function parseReplacementNodes(lines: readonly string[], firstLine: number): Nod
  * node; the node keeps its position, so dependency order is preserved and forward
  * references remain impossible. The whole result is re-validated before returning.
  */
-export function replaceNodes(fn: TypedFunc, nodes: readonly Node[]): TypedFunc {
+export function replaceNodes(
+  program: TypedProgram,
+  fn: TypedFunc,
+  nodes: readonly Node[],
+): TypedFunc {
   const byId = new Map(nodes.map((n) => [n.id, n] as const));
   const existing = new Set(fn.nodes.map((n) => n.id));
   for (const id of byId.keys()) {
@@ -83,7 +87,28 @@ export function replaceNodes(fn: TypedFunc, nodes: readonly Node[]): TypedFunc {
     ...fn,
     nodes: fn.nodes.map((n) => byId.get(n.id) ?? n),
   };
-  return validateFunction(replaced);
+  // Legal call targets are exactly the functions defined before this one.
+  const scope = new Map<string, TypedFunc>();
+  for (const f of program.functions) {
+    if (f.name === fn.name) break;
+    scope.set(f.name, f);
+  }
+  return validateFunction(replaced, scope);
+}
+
+/**
+ * Semantic revision: the function's own content revision folded with the semantic
+ * revisions of every callee, transitively. Any change in a dependency changes it,
+ * so it is the correct cache key for derived artifacts (unlike `revision`, which
+ * is the editing identity of one function's text).
+ */
+export function semanticRevision(fn: TypedFunc): string {
+  const h = createHash('sha256').update(revision(fn), 'utf8');
+  for (const name of [...fn.calls.keys()].sort()) {
+    const callee = fn.calls.get(name);
+    if (callee !== undefined) h.update(`|${name}=${semanticRevision(callee)}`, 'utf8');
+  }
+  return h.digest('hex');
 }
 
 function commit(program: TypedProgram, updated: TypedFunc): TypedProgram {
@@ -133,7 +158,7 @@ export function applyPatch(program: TypedProgram, patch: Patch): TypedProgram {
       `revision mismatch for '${fn.name}': patch targets ${patch.revision.slice(0, 12)}…, current is ${current.slice(0, 12)}…`,
     );
   }
-  return commit(program, replaceNodes(fn, patch.nodes));
+  return commit(program, replaceNodes(program, fn, patch.nodes));
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +247,7 @@ export class EditSession {
       );
     }
     const nodes = parseReplacementNodes(lines.slice(1), 2);
-    const updated = replaceNodes(fn, nodes);
+    const updated = replaceNodes(this.#program, fn, nodes);
     // Validation succeeded: commit and consume the handle atomically.
     this.#program = commit(this.#program, updated);
     this.#handles.delete(handle);

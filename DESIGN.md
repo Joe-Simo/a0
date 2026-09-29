@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.1 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.1.1 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -66,12 +66,13 @@ program     = function+
 function    = "fn" name type* "->" type NEWLINE
               instruction* "ret" operand NEWLINE "end"
 instruction = id operation operand{operation_arity} NEWLINE
+            | id "call" function_name operand* NEWLINE
 operand     = earlier_id | parameter | u32_literal | "true" | "false"
 parameter   = "p" decimal_index
 type        = "u32" | "bool"
 ```
 
-Each function has one result. Node identifiers are lowercase letters followed by lowercase letters, digits, or underscores, at most 64 characters. `p<number>`, `fn`, `ret`, `end`, `patch`, `true`, and `false` are reserved node identifiers. Node IDs are unique within a function; function names are unique within a program. Parameters are indexed from zero. No forward references, calls, loops, recursion, heap, strings, arrays, or I/O are currently accepted. Unsupported constructs are errors.
+Each function has one result. Node identifiers are lowercase letters followed by lowercase letters, digits, or underscores, at most 64 characters. `p<number>`, `fn`, `ret`, `end`, `patch`, `true`, and `false` are reserved node identifiers. Node IDs are unique within a function; function names are unique within a program. Parameters are indexed from zero. `call` may only name a function defined earlier in the same program, so the call graph is acyclic; recursion, loops, heap, strings, arrays, and I/O are not accepted. Unsupported constructs are errors.
 
 ### Exact operations
 
@@ -83,6 +84,7 @@ Each function has one result. Node identifiers are lowercase letters followed by
 | `shl`, `shr` | u32, u32 | u32 | Shift by low five bits of distance; right shift is logical |
 | `eq`, `lt` | u32, u32 | bool | Equality / unsigned less-than |
 | `select` | bool, T, T | T | Select between already defined, same-typed values |
+| `call f` | f's parameter types | f's result type | Apply an earlier-defined function; pure, total, no recursion (v0.1.1) |
 
 Integer literals are decimal 0 through 4,294,967,295. A Boolean is not implicitly a number. Invalid values, missing references, duplicate definitions, wrong arity, and inconsistent types are rejected. Every current operation is pure and total on valid input. Both `select` inputs are ordinary values; this is not lazy branching with effects.
 
@@ -115,7 +117,7 @@ Current edits replace existing nodes only. Adding/removing functions or nodes, r
 
 Ordinary compilation is deterministic and makes no model calls. The compiler does not guess what an operation means. v0.1 has exact constant propagation, safe algebraic identities, common-subexpression elimination, and dead-code removal. Optimizations change a derived graph, not the editable source.
 
-A bounded in-memory cache retains function-emission results. Keys include the function content revision, target, optimization setting, and prototype compiler version. It reuses unchanged emitted functions, but still validates/hashes the program and assembles module text. It is **not** a persistent native artifact cache or a complete incremental compiler.
+A bounded in-memory cache retains function-emission results. Keys include the function's *semantic revision* (its content revision folded with the semantic revisions of every transitive callee), target, optimization setting, and prototype compiler version, so editing a callee invalidates its callers. It reuses unchanged emitted functions, but still validates/hashes the program and assembles module text. It is **not** a persistent native artifact cache or a complete incremental compiler.
 
 Future artifact-cache keys must include all semantic dependencies, compiler/backend versions, target ABI/features, layout/precision settings, SDK/runtime versions, flags, and any profiles affecting output. Dependency changes cannot be hidden behind a convenient cache hit. Shared caches must be isolated or integrity-checked appropriately.
 
@@ -143,7 +145,7 @@ Integration is part of the language product. Node packages, browser APIs, native
 
 The initial core must grow without silently changing existing meanings.
 
-- **General computation:** functions/calls, structured control-flow regions, bounded iteration first, then broader recursion/control flow for suitable software profiles.
+- **General computation:** calls are implemented (v0.1.1, acyclic only); next are structured control-flow regions, bounded iteration first, then broader recursion/control flow for suitable software profiles.
 - **Data and memory:** fixed/arbitrary-width integers, strict floating-point profiles, buffers/records/arrays, explicit layout where needed, ownership/borrowing or region inference, managed adapters where appropriate. No universal boxing requirement.
 - **Effects and concurrency:** typed capabilities for files/network/clock/device access, structured tasks, declared synchronization and memory-order semantics. External nondeterminism is explicit; reproducibility is not assumed across arbitrary concurrent schedules.
 - **Domain operations:** high-level collection, query, numeric, graphics, UI, and hardware operations with defined semantics and optional certified lowerings. Preserve high-level information until the backend can use it.

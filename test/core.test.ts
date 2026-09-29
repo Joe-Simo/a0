@@ -202,3 +202,78 @@ test('emission cache reuses unchanged functions and rebuilds only the edited one
   compile(program, 'js', {}, tiny);
   assert.equal(tiny.size, 2);
 });
+
+test('call: earlier-defined callee, exact evaluation, recursion and forward calls rejected', () => {
+  const src = `fn sq u32 -> u32
+a mul p0 p0
+ret a
+end
+
+fn hyp u32 u32 -> u32
+x call sq p0
+y call sq p1
+s add x y
+ret s
+end`;
+  const p = parseAndValidate(src);
+  const hyp = p.byName.get('hyp') as TypedFunc;
+  assert.equal(run(hyp, [3, 4]), 25);
+  assert.equal(run(hyp, [0x1_0000, 1]), 1); // 2^32 wraps to 0 inside sq
+  assert.equal(formatFunction(hyp).split('\n')[1], 'x call sq p0');
+  // Self-call, forward call, arity and type mismatches are rejected.
+  assert.throws(
+    () => parseAndValidate('fn r u32 -> u32\na call r p0\nret a\nend'),
+    /unknown callee/,
+  );
+  assert.throws(
+    () =>
+      parseAndValidate(
+        `fn f u32 -> u32\na call g p0\nret a\nend\n${src.split('\n\n')[0]}`.replace('sq', 'g'),
+      ),
+    /unknown callee/,
+  );
+  assert.throws(
+    () => parseAndValidate(`${src.split('\n\n')[0]}\nfn f u32 -> u32\na call sq p0 p0\nret a\nend`),
+    /expects 1 arguments/,
+  );
+  assert.throws(
+    () => parseAndValidate(`${src.split('\n\n')[0]}\nfn f bool -> u32\na call sq p0\nret a\nend`),
+    /expected u32, got bool/,
+  );
+  // Constant calls fold exactly; non-constant calls are kept and deduplicated.
+  const folded = optimizeFunction(
+    fn(
+      `${src.split('\n\n')[0]}\nfn k u32 -> u32\na call sq 7\nb call sq p0\nc call sq p0\nd add b c\ne add d a\nret e\nend`,
+      'k',
+    ),
+  );
+  assert.equal(
+    formatFunction(folded.fn),
+    'fn k u32 -> u32\nb call sq p0\nd add b b\ne add d 49\nret e\nend',
+  );
+  // Every backend emits the call; JS executes it.
+  for (const target of ['js', 'c', 'java', 'sv'] as const)
+    assert.ok(compile(p, target).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('), target);
+});
+
+test('emission cache key follows callee changes (semantic revision)', async () => {
+  const src =
+    'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn twice u32 -> u32\nx call sq p0\ny add x x\nret y\nend';
+  const cache = new FunctionCache();
+  const session = new EditSession(parseAndValidate(src));
+  compile(session.program, 'js', {}, cache);
+  const v = session.open('sq');
+  const next = session.apply(`${v.handle}\na add p0 p0`);
+  const r = compile(next, 'js', {}, cache);
+  // Callee text changed; caller text is identical but depends on the callee, so both rebuild.
+  assert.equal(r.cacheMisses, 2);
+  assert.equal(r.cacheHits, 0);
+  assert.equal(
+    revision(next.byName.get('twice') as TypedFunc),
+    revision(session.program.byName.get('twice') as TypedFunc),
+  );
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(r.text).toString('base64')}`
+  )) as { twice: (a: number) => number };
+  assert.equal(mod.twice(5), 20);
+});

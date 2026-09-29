@@ -15,8 +15,10 @@ import {
   formatOperand,
   type Node,
   type Operand,
+  run,
   type TypedFunc,
   type TypedProgram,
+  type Value,
   validate,
   validateFunction,
 } from './core.js';
@@ -41,17 +43,26 @@ const isU32 = (o: Operand, v: number): boolean => o.kind === 'u32' && o.value ==
 const isBool = (o: Operand, v: boolean): boolean => o.kind === 'bool' && o.value === v;
 
 /** Return a replacement operand if the node folds/simplifies to an existing value. */
-function simplify(node: Node): Operand | undefined {
+function simplify(node: Node, fn: TypedFunc): Operand | undefined {
   const [a, b, c] = node.args;
-  if (a === undefined) return undefined;
   if (node.args.every(isConst)) {
-    const value = evalOp(
-      node.op,
-      node.args.map((arg) => (arg as Extract<Operand, { kind: 'u32' | 'bool' }>).value),
+    const values = node.args.map(
+      (arg) => (arg as Extract<Operand, { kind: 'u32' | 'bool' }>).value,
     );
+    let value: Value;
+    if (node.op === 'call') {
+      const callee = fn.calls.get(node.callee ?? '');
+      if (callee === undefined) return undefined;
+      value = run(callee, values); // pure and total: folding a constant call is exact
+    } else {
+      value = evalOp(node.op, values);
+    }
     return typeof value === 'boolean' ? { kind: 'bool', value } : { kind: 'u32', value };
   }
+  if (a === undefined) return undefined;
   switch (node.op) {
+    case 'call':
+      return undefined;
     case 'mov':
       return a;
     case 'add':
@@ -111,7 +122,7 @@ function commutative(op: Node['op']): boolean {
 function cseKey(node: Node): string {
   const args = node.args.map(formatOperand);
   if (commutative(node.op)) args.sort();
-  return `${node.op} ${args.join(' ')}`;
+  return `${node.op}${node.op === 'call' ? ` ${node.callee ?? ''}` : ''} ${args.join(' ')}`;
 }
 
 export interface OptimizeStats {
@@ -135,7 +146,7 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
   const kept: Node[] = [];
   for (const node of fn.nodes) {
     const rewritten: Node = { ...node, args: node.args.map(resolve) };
-    const simple = simplify(rewritten);
+    const simple = simplify(rewritten, fn);
     if (simple !== undefined) {
       subst.set(node.id, simple);
       continue;
@@ -161,7 +172,7 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
     if (node !== undefined && live.has(node.id)) node.args.forEach(mark);
   }
   const nodes = kept.filter((n) => live.has(n.id));
-  const optimized = validateFunction({ ...fn, nodes, ret });
+  const optimized = validateFunction({ ...fn, nodes, ret }, fn.calls);
   return { fn: optimized, stats: { before: fn.nodes.length, after: nodes.length } };
 }
 

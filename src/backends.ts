@@ -16,8 +16,8 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
-import { revision } from './edit.js';
-import { optimize } from './optimize.js';
+import { semanticRevision } from './edit.js';
+import { optimizeFunction } from './optimize.js';
 
 export const COMPILER_VERSION = 'a0c-0.1.0';
 
@@ -88,6 +88,8 @@ function jsExpr(node: Node): string {
       return `${a} < ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
+    case 'call':
+      return `${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
   }
 }
 
@@ -155,6 +157,8 @@ function cExpr(node: Node): string {
       return `(${a} < ${b})`;
     case 'select':
       return `(${a} ? ${b} : ${c})`;
+    case 'call':
+      return `a0_${node.callee ?? ''}(${node.args.map(cOperand).join(', ')})`;
   }
 }
 
@@ -219,6 +223,8 @@ function javaExpr(node: Node): string {
       return `Integer.compareUnsigned(${a}, ${b}) < 0`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
+    case 'call':
+      return `${node.callee ?? ''}(${node.args.map(javaOperand).join(', ')})`;
   }
 }
 
@@ -281,6 +287,8 @@ function svExpr(node: Node): string {
       return `${a} < ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
+    case 'call':
+      throw new A0Error('call is emitted as a module instance in SystemVerilog');
   }
 }
 
@@ -290,7 +298,12 @@ const emitSvFunction: Emitter = (fn) => {
     `  output ${svType(fn.result)} result`,
   ].join(',\n');
   const decls = fn.nodes.map((n) => `  ${svType(fn.types.get(n.id) ?? 'u32')} n_${n.id};`);
-  const assigns = fn.nodes.map((n) => `  assign n_${n.id} = ${svExpr(n)};`);
+  const assigns = fn.nodes.map((n) => {
+    if (n.op !== 'call') return `  assign n_${n.id} = ${svExpr(n)};`;
+    // A call is a combinational instance of the callee module, connected by port name.
+    const conns = [...n.args.map((arg, i) => `.p${i}(${svOperand(arg)})`), `.result(n_${n.id})`];
+    return `  a0_${n.callee ?? ''} u_${n.id} (${conns.join(', ')});`;
+  });
   return [
     `module a0_${fn.name} (`,
     ports,
@@ -356,8 +369,9 @@ export class FunctionCache {
     return this.#entries.size;
   }
 
+  /** Key: compiler version, target, optimization level, and semantic revision (own content + all transitive callees). */
   static key(target: Target, optimized: boolean, fn: TypedFunc): string {
-    return `${COMPILER_VERSION}|${target}|${optimized ? 'O1' : 'O0'}|${revision(fn)}`;
+    return `${COMPILER_VERSION}|${target}|${optimized ? 'O1' : 'O0'}|${semanticRevision(fn)}`;
   }
 
   get(key: string): string | undefined {
@@ -380,11 +394,7 @@ export class FunctionCache {
 }
 
 export function emitFunction(target: Target, fn: TypedFunc, options: CompileOptions = {}): string {
-  const source =
-    options.optimize === false
-      ? fn
-      : optimize({ functions: [fn], byName: new Map([[fn.name, fn]]) }).program.functions[0];
-  if (source === undefined) throw new A0Error('optimizer returned no function');
+  const source = options.optimize === false ? fn : optimizeFunction(fn).fn;
   return EMITTERS[target](source);
 }
 

@@ -54,6 +54,7 @@ function pick<T>(rng: () => number, items: readonly T[]): T {
 export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): TypedProgram {
   const rng = makeRng(seed);
   const functions: string[] = [];
+  const signatures: { name: string; params: Type[]; result: Type }[] = [];
   for (let f = 0; f < count; f += 1) {
     const paramCount = 1 + (rng() % 4);
     const params: Type[] = Array.from({ length: paramCount }, (_, i) =>
@@ -108,6 +109,22 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
           args = [cond, pick(rng, boolSlots()).operand, pick(rng, boolSlots()).operand];
           type = 'bool';
         }
+      } else if (roll === 9 && signatures.length > 0 && rng() % 2 === 0) {
+        // Call an earlier function whose parameter types can all be satisfied.
+        const callee = pick(rng, signatures);
+        const usable = callee.params.every((t) => slots.some((s) => s.type === t));
+        if (usable) {
+          const callArgs = callee.params.map((t) =>
+            t === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand,
+          );
+          nodes.push({ id, op: 'call', callee: callee.name, args: callArgs });
+          slots.push({ operand: { kind: 'node', id }, type: callee.result });
+          continue;
+        }
+        op = 'mov';
+        const s = pick(rng, slots);
+        args = [s.operand];
+        type = s.type;
       } else {
         op = 'mov';
         const s = pick(rng, slots);
@@ -127,6 +144,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
         : (slots.find((s) => s.type === result) as Slot).operand;
     const text = formatProgram({ functions: [{ name: `g${f}`, params, result, nodes, ret }] });
     functions.push(text.trimEnd());
+    signatures.push({ name: `g${f}`, params, result });
   }
   return parseAndValidate(`${functions.join('\n\n')}\n`);
 }
@@ -174,6 +192,8 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
       if (typeof a !== 'boolean' || b === undefined || c === undefined)
         throw new Error('oracle select');
       return a ? b : c;
+    case 'call':
+      throw new Error('oracle: call is handled by oracleRun');
   }
 }
 
@@ -199,7 +219,16 @@ export function oracleRun(
       }
     }
   };
-  for (const node of fn.nodes) env.set(node.id, oracleOp(node.op, node.args.map(read)));
+  for (const node of fn.nodes) {
+    if (node.op === 'call') {
+      const callee = fn.calls.get(node.callee ?? '');
+      if (callee === undefined) throw new Error(`oracle: unknown callee ${node.callee ?? ''}`);
+      // The oracle evaluates callees with itself, never with the interpreter.
+      env.set(node.id, oracleRun(callee, node.args.map(read).map(oracleToValue)));
+    } else {
+      env.set(node.id, oracleOp(node.op, node.args.map(read)));
+    }
+  }
   return read(fn.ret);
 }
 

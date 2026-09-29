@@ -6,7 +6,7 @@ FUNCTION
   ret OPERAND
   end
 Operands: an earlier ID in the same function, a parameter pN, a decimal u32 literal, true, false.
-No forward references, calls, loops, memory, strings, or I/O. Comments start with #.
+No forward references, loops, recursion, memory, strings, or I/O. Comments start with #.
 
 OPERATIONS (exact semantics)
   mov x            identity (u32 or bool)
@@ -15,6 +15,8 @@ OPERATIONS (exact semantics)
   shl a n          a << (n & 31)             shr a n   a >>> (n & 31)  (logical)
   eq a b -> bool   lt a b -> bool (unsigned)
   select c x y     c ? x : y; x and y already computed and of the same type; not lazy
+  call F a...      apply function F, which must be defined EARLIER in the program, to arguments
+                   matching its parameter types; result has F's result type. No recursion.
 
 EDITING
   Session edit: reply with the handle line you were shown, then only the replaced instructions:

@@ -9,6 +9,9 @@
  * - select(c, a, b) chooses a when c is true, else b; a and b share a type
  *   and are both already computed (no laziness, no effects).
  * - mov is the identity on either type.
+ * - call f a... applies an earlier-defined function of this program to arguments
+ *   whose types match its parameters; the result has the callee's result type.
+ *   Callees must precede callers, so the call graph is acyclic (no recursion).
  * All operations are pure and total on validated input.
  */
 
@@ -28,7 +31,8 @@ export type Op =
   | 'shr'
   | 'eq'
   | 'lt'
-  | 'select';
+  | 'select'
+  | 'call';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -43,8 +47,10 @@ export const OPS: readonly Op[] = [
   'eq',
   'lt',
   'select',
+  'call',
 ];
 
+/** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
 export const OP_ARITY: Readonly<Record<Op, number>> = {
   mov: 1,
   add: 2,
@@ -58,6 +64,7 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   eq: 2,
   lt: 2,
   select: 3,
+  call: -1,
 };
 
 export type Operand =
@@ -70,6 +77,8 @@ export interface Node {
   readonly id: string;
   readonly op: Op;
   readonly args: readonly Operand[];
+  /** Present exactly when op is 'call'. */
+  readonly callee?: string;
 }
 
 export interface Func {
@@ -87,6 +96,8 @@ export interface Program {
 /** A function whose every node has an inferred result type. */
 export interface TypedFunc extends Func {
   readonly types: ReadonlyMap<string, Type>;
+  /** Resolved callees (each defined earlier in the same program). */
+  readonly calls: ReadonlyMap<string, TypedFunc>;
 }
 
 export interface TypedProgram {
@@ -159,6 +170,13 @@ export function parseNode(lineText: string, line?: number): Node {
   if (id === undefined || op === undefined) throw new A0Error('expected `id op operands`', line);
   if (!isValidIdentifier(id)) throw new A0Error(`invalid node identifier '${id}'`, line);
   if (!isOp(op)) throw new A0Error(`unknown operation '${op}'`, line);
+  if (op === 'call') {
+    const [callee, ...args] = rest;
+    if (callee === undefined || !isValidFunctionName(callee)) {
+      throw new A0Error(`call expects a function name, got '${callee ?? ''}'`, line);
+    }
+    return { id, op, callee, args: args.map((r) => parseOperand(r, line)) };
+  }
   if (rest.length !== OP_ARITY[op]) {
     throw new A0Error(`${op} expects ${OP_ARITY[op]} operands, got ${rest.length}`, line);
   }
@@ -307,20 +325,35 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       expect(a, 'bool', where);
       if (b !== c) throw new A0Error(`${where}: select branches differ (${b} vs ${c})`);
       return b;
+    case 'call':
+      throw new A0Error(`${where}: call is typed against its callee`);
   }
 }
 
-export function validateFunction(fn: Func): TypedFunc {
+/**
+ * Validate one function. `scope` holds the functions defined earlier in the program
+ * (the only legal call targets); a function cannot call itself or a later function.
+ */
+export function validateFunction(
+  fn: Func,
+  scope: ReadonlyMap<string, TypedFunc> = new Map(),
+): TypedFunc {
   if (!isValidFunctionName(fn.name)) throw new A0Error(`invalid function name '${fn.name}'`);
   if (fn.params.length > LIMITS.maxParams) throw new A0Error(`${fn.name}: too many parameters`);
   if (fn.nodes.length > LIMITS.maxNodesPerFunction) throw new A0Error(`${fn.name}: too many nodes`);
   const types = new Map<string, Type>();
   const defined = new Set<string>();
+  const calls = new Map<string, TypedFunc>();
   for (const node of fn.nodes) {
     const where = `${fn.name}.${node.id}`;
     if (!isValidIdentifier(node.id)) throw new A0Error(`${where}: invalid identifier`);
     if (defined.has(node.id)) throw new A0Error(`${where}: duplicate definition`);
-    if (node.args.length !== OP_ARITY[node.op]) throw new A0Error(`${where}: wrong arity`);
+    if ((node.op === 'call') !== (node.callee !== undefined)) {
+      throw new A0Error(`${where}: callee present iff op is call`);
+    }
+    if (node.op !== 'call' && node.args.length !== OP_ARITY[node.op]) {
+      throw new A0Error(`${where}: wrong arity`);
+    }
     const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
     for (const arg of node.args) {
       if (
@@ -330,12 +363,31 @@ export function validateFunction(fn: Func): TypedFunc {
         throw new A0Error(`${where}: literal out of u32 range`);
       }
     }
-    types.set(node.id, resultType(node.op, argTypes, where));
+    if (node.op === 'call') {
+      const callee = scope.get(node.callee ?? '');
+      if (callee === undefined) {
+        throw new A0Error(
+          `${where}: unknown callee '${node.callee ?? ''}' (callees must be defined earlier; recursion is unsupported)`,
+        );
+      }
+      if (argTypes.length !== callee.params.length) {
+        throw new A0Error(
+          `${where}: ${callee.name} expects ${callee.params.length} arguments, got ${argTypes.length}`,
+        );
+      }
+      for (const [i, t] of callee.params.entries()) {
+        expect(argTypes[i] as Type, t, `${where} argument ${i}`);
+      }
+      calls.set(callee.name, callee);
+      types.set(node.id, callee.result);
+    } else {
+      types.set(node.id, resultType(node.op, argTypes, where));
+    }
     defined.add(node.id);
   }
   const retType = operandType(fn.ret, fn, types, defined, `${fn.name}.ret`);
   expect(retType, fn.result, `${fn.name}.ret`);
-  return { ...fn, types };
+  return { ...fn, types, calls };
 }
 
 export function validate(program: Program): TypedProgram {
@@ -344,7 +396,7 @@ export function validate(program: Program): TypedProgram {
   const functions: TypedFunc[] = [];
   for (const fn of program.functions) {
     if (byName.has(fn.name)) throw new A0Error(`duplicate function '${fn.name}'`);
-    const typed = validateFunction(fn);
+    const typed = validateFunction(fn, byName);
     byName.set(fn.name, typed);
     functions.push(typed);
   }
@@ -369,7 +421,9 @@ export function formatOperand(operand: Operand): string {
 }
 
 export function formatNode(node: Node): string {
-  return `${node.id} ${node.op} ${node.args.map(formatOperand).join(' ')}`;
+  const callee = node.op === 'call' ? ` ${node.callee ?? ''}` : '';
+  const args = node.args.length > 0 ? ` ${node.args.map(formatOperand).join(' ')}` : '';
+  return `${node.id} ${node.op}${callee}${args}`;
 }
 
 export function formatFunction(fn: Func): string {
@@ -425,6 +479,8 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
         throw new A0Error('select: expected bool and two values');
       }
       return a ? b : c;
+    case 'call':
+      throw new A0Error('call is evaluated by run, not evalOp');
   }
 }
 
@@ -461,7 +517,16 @@ export function run(fn: TypedFunc, args: readonly Value[]): Value {
       }
     }
   };
-  for (const node of fn.nodes) env.set(node.id, evalOp(node.op, node.args.map(read)));
+  for (const node of fn.nodes) {
+    if (node.op === 'call') {
+      const callee = fn.calls.get(node.callee ?? '');
+      if (callee === undefined)
+        throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`);
+      env.set(node.id, run(callee, node.args.map(read)));
+    } else {
+      env.set(node.id, evalOp(node.op, node.args.map(read)));
+    }
+  }
   return read(fn.ret);
 }
 
