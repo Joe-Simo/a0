@@ -10,7 +10,7 @@
  * Input words:  event x y ntext text[ntext] nstate state[nstate]
  * Output words: 1 OPEN tag | 2 TEXT n bytes | 3 CLOSE | 4 ATTR key n bytes | 5 ONCLICK event
  *               6 STATE n words | 8 ONSUBMIT event | 9 STYLE n bytes | 10 GRID event rows row...
- *               11 TIMER ms event
+ *               11 TIMER ms event | 12 SIZE prop percent (1 width, 2 height; a computed bar length)
  * Tags and attribute keys are small integer tables shared with the program (see page.a0).
  */
 
@@ -206,6 +206,12 @@ function render(
         const ms = words[i++] as number;
         const event = words[i++] as number;
         timer = { ms, event };
+        break;
+      }
+      case 12: {
+        const prop = words[i++] as number;
+        const pct = Math.min(100, words[i++] as number);
+        top.style.setProperty(prop === 2 ? 'height' : 'width', `${pct}%`);
         break;
       }
       default:

@@ -433,8 +433,11 @@ with status as of 2026-09-29:
   the Life grid (GRID, drawn on a canvas by the runtime), the run timer (TIMER), and its
   own 35-word persisted state (counter, generation, running, 32 grid rows). The browser
   runtime `site/app.ts` is generic: it feeds events in, builds DOM from the stream, and has
-  no page-specific markup, style, or logic. Verified live in the browser: hero, evidence
-  table, Life glider stepping under the A0 timer, counter and echo. The io buffers for the
+  no page-specific markup, style, or logic. Verified live in the browser: hero, benchmark
+  tiles and bar charts (percentages, ratios, and bar widths computed by the A0 program from
+  the numbers in results/*.json via a SIZE command; wins and losses both shown, JS emitted
+  code and whole-task tokens as losses), Life glider stepping under the A0 timer, counter
+  and echo. The io buffers for the
   page are widened through the new `ioInputCapacity`/`ioOutputCapacity` compile options
   (C prelude only). Life's entry function was renamed `life` (acceptance tool updated).
   Redeploy: `bun run site`, then `vercel deploy --prod` from a directory holding

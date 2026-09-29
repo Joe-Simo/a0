@@ -783,7 +783,9 @@ test('site page program: A0 UI protocol with stylesheet, grid, timer, and 35-wor
       } else if (c === 11) {
         d.timer = [words[i] as number, words[i + 1] as number];
         i += 2;
-      } else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
+      } else if (c === 12)
+        i += 2; // SIZE prop percent (chart bars computed by the program)
+      else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
     }
     return d;
   };
