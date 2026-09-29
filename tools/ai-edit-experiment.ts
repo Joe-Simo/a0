@@ -544,7 +544,7 @@ async function buildCell(
     if (protocol === 'structured') {
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = parseAndValidate(task.a0Source).functions[0]?.name ?? '';
-      const view = session.open(fnName).text;
+      const view = session.open(fnName, { scope: 'deps' }).text;
       return { cell: { representation, protocol, system, view }, session, handle };
     }
     return { cell: { representation, protocol, system, view: task.a0Source }, handle };

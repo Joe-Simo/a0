@@ -106,6 +106,13 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Structured edits and scoped views** (v0.8.1): edit lines now insert (`id op …`, or
+  `… @ other` to place after a node), delete (`-id`), and change the result (`ret x`),
+  in patches and sessions alike, validated as one function and committed atomically;
+  the `deps` view scope shows a function plus one signature line per direct callee, which
+  is everything a type-correct edit can depend on. Measured on Life: editing `session`
+  needs 239 tokens of view instead of 1746 for the whole program (o200k; 7.3× less to
+  read), on top of the 877-token language guide paid once per session.
 - **Text, division, streaming** (v0.8.0): `text "…"` desugars to `arr` of UTF-8 byte words
   with the source form retained (quote-aware comments in parser, patches, and sessions);
   `div`/`rem` are total unsigned (zero divisor → all ones / dividend, RISC-V convention;
@@ -141,7 +148,7 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 17/17 pass (incl. fuel, static cap, 3000-mutation fuzz) |
+| Focused tests | `bun run test` | 21/21 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured edits) |
 | Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
 | Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
 | GPU (Metal, Apple M3) | `bun run gpu` | 4995 io-free cases across 31 kernels pass |

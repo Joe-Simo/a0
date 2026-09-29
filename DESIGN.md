@@ -123,7 +123,7 @@ The handle is not a secret or an authorization credential. A future network serv
 
 **Observed lesson:** the full-revision envelope can be larger than the complete tiny function. The session reduces the model payload but does not erase the input used to open the view, language instructions, tool envelopes, or session-management work. Existing-language editors must receive the same protocol advantage in a fair experiment.
 
-Current edits replace existing nodes only. Adding/removing functions or nodes, region edits, migrations, and multi-function transactions are planned, not implemented. Current revisions are content hashes; they do not encode a global chronological transaction number.
+Edits replace, insert (at the end or after a named node), delete, and change the result within one function, validated as a whole and committed atomically (v0.8.1). Views can be dependency-scoped: the function plus one signature line per direct callee. Adding/removing whole functions, region edits, migrations, and multi-function transactions remain future work. Current revisions are content hashes; they do not encode a global chronological transaction number.
 
 ## 6. Compiler policy
 

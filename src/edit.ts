@@ -20,10 +20,14 @@ import {
   formatFunction,
   formatOperand,
   formatProgram,
+  formatType,
+  isValidIdentifier,
   LIMITS,
   type Node,
+  type Operand,
   type Program,
   parseNode,
+  parseOperand,
   stripComment,
   type TypedFunc,
   type TypedProgram,
@@ -50,19 +54,57 @@ export interface Replacement {
   readonly nodes: readonly Node[];
 }
 
-function parseReplacementNodes(lines: readonly string[], firstLine: number): Node[] {
-  if (lines.length === 0) throw new A0Error('edit contains no replacement nodes');
+/**
+ * One line of an edit:
+ *   `id op operands…`            replace node `id` if it exists, otherwise insert it before `ret`
+ *   `id op operands… @ other`    insert (or move) `id` immediately after node `other`
+ *   `-id`                        delete node `id`
+ *   `ret operand`                change the function result
+ * The whole edit is validated as one function and committed atomically.
+ */
+export type EditOp =
+  | { readonly kind: 'node'; readonly node: Node; readonly after?: string }
+  | { readonly kind: 'delete'; readonly id: string }
+  | { readonly kind: 'ret'; readonly operand: Operand };
+
+export function parseEditOps(lines: readonly string[], firstLine: number): EditOp[] {
+  if (lines.length === 0) throw new A0Error('edit contains no lines');
   if (lines.length > LIMITS.maxNodesPerFunction) throw new A0Error('edit too large');
   const seen = new Set<string>();
-  const nodes: Node[] = [];
+  const ops: EditOp[] = [];
+  let sawRet = false;
   lines.forEach((text, i) => {
-    const node = parseNode(text, firstLine + i);
-    if (seen.has(node.id))
-      throw new A0Error(`duplicate replacement for '${node.id}'`, firstLine + i);
-    seen.add(node.id);
-    nodes.push(node);
+    const line = firstLine + i;
+    const claim = (id: string): void => {
+      if (seen.has(id)) throw new A0Error(`duplicate edit for '${id}'`, line);
+      seen.add(id);
+    };
+    if (text.startsWith('-')) {
+      const id = text.slice(1).trim();
+      if (!isValidIdentifier(id)) throw new A0Error(`invalid delete target '${id}'`, line);
+      claim(id);
+      ops.push({ kind: 'delete', id });
+      return;
+    }
+    if (/^ret\s/.test(text)) {
+      if (sawRet) throw new A0Error('duplicate ret in edit', line);
+      sawRet = true;
+      const parts = text.split(/\s+/);
+      if (parts.length !== 2) throw new A0Error('ret expects one operand', line);
+      ops.push({ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) });
+      return;
+    }
+    const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
+    const node = parseNode(m ? (m[1] ?? '') : text, line);
+    claim(node.id);
+    ops.push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
   });
-  return nodes;
+  return ops;
+}
+
+/** Backwards-compatible helper: replacement-only edits as EditOps. */
+function parseReplacementNodes(lines: readonly string[], firstLine: number): EditOp[] {
+  return parseEditOps(lines, firstLine);
 }
 
 /**
@@ -73,21 +115,39 @@ function parseReplacementNodes(lines: readonly string[], firstLine: number): Nod
 export function replaceNodes(
   program: TypedProgram,
   fn: TypedFunc,
-  nodes: readonly Node[],
+  ops: readonly (EditOp | Node)[],
 ): TypedFunc {
-  const byId = new Map(nodes.map((n) => [n.id, n] as const));
-  const existing = new Set(fn.nodes.map((n) => n.id));
-  for (const id of byId.keys()) {
-    if (!existing.has(id)) {
-      throw new A0Error(
-        `${fn.name}: cannot replace unknown node '${id}' (insertion is unsupported)`,
-      );
+  const edits: EditOp[] = ops.map((o) => ('kind' in o ? o : { kind: 'node', node: o }));
+  let nodes: Node[] = [...fn.nodes];
+  let ret = fn.ret;
+  // 1. deletions
+  for (const op of edits) {
+    if (op.kind !== 'delete') continue;
+    const before = nodes.length;
+    nodes = nodes.filter((n) => n.id !== op.id);
+    if (nodes.length === before)
+      throw new A0Error(`${fn.name}: cannot delete unknown node '${op.id}'`);
+  }
+  // 2. replacements and insertions
+  for (const op of edits) {
+    if (op.kind !== 'node') continue;
+    const at = nodes.findIndex((n) => n.id === op.node.id);
+    if (op.after !== undefined) {
+      if (at >= 0) nodes.splice(at, 1);
+      const anchor = nodes.findIndex((n) => n.id === op.after);
+      if (anchor < 0)
+        throw new A0Error(`${fn.name}: cannot insert after unknown node '${op.after}'`);
+      nodes.splice(anchor + 1, 0, op.node);
+    } else if (at >= 0) {
+      nodes[at] = op.node;
+    } else {
+      nodes.push(op.node);
     }
   }
-  const replaced: Func = {
-    ...fn,
-    nodes: fn.nodes.map((n) => byId.get(n.id) ?? n),
-  };
+  // 3. result
+  for (const op of edits) if (op.kind === 'ret') ret = op.operand;
+  if (nodes.length > LIMITS.maxNodesPerFunction) throw new A0Error(`${fn.name}: too many nodes`);
+  const replaced: Func = { ...fn, nodes, ret };
   // Legal call targets are exactly the functions defined before this one.
   const scope = new Map<string, TypedFunc>();
   for (const f of program.functions) {
@@ -124,7 +184,7 @@ function commit(program: TypedProgram, updated: TypedFunc): TypedProgram {
 export interface Patch {
   readonly functionName: string;
   readonly revision: string;
-  readonly nodes: readonly Node[];
+  readonly nodes: readonly EditOp[];
 }
 
 export function formatPatch(fn: Func, nodes: readonly Node[]): string {
@@ -170,8 +230,28 @@ export interface View {
   readonly handle: string;
   readonly functionName: string;
   readonly revision: string;
-  /** Text shown to the model: handle line followed by the function source. */
+  /** Text shown to the model: handle line, the function source, then (scoped views) callee signatures. */
   readonly text: string;
+}
+
+export interface ViewOptions {
+  /**
+   * 'function' (default): the function only. 'deps': the function plus one signature line
+   * (`fn name types -> type`) per direct callee, which is everything a type-correct edit of
+   * this function can depend on; bodies of callees are not shown.
+   */
+  readonly scope?: 'function' | 'deps';
+}
+
+export function formatSignature(fn: Func): string {
+  const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
+  return `fn ${fn.name}${sig} -> ${formatType(fn.result)}`;
+}
+
+/** The dependency-scoped view text of a function (without a handle line). */
+export function scopedView(fn: TypedFunc): string {
+  const sigs = [...fn.calls.values()].map((c) => `${formatSignature(c)} end`);
+  return sigs.length > 0 ? `${formatFunction(fn)}\n${sigs.join('\n')}` : formatFunction(fn);
 }
 
 interface OpenHandle {
@@ -207,7 +287,7 @@ export class EditSession {
   }
 
   /** Open a view of one function and return a short handle bound to its current revision. */
-  open(functionName: string): View {
+  open(functionName: string, options: ViewOptions = {}): View {
     const fn = this.#program.byName.get(functionName);
     if (fn === undefined) throw new A0Error(`unknown function '${functionName}'`);
     if (this.#handles.size >= this.#maxOpen) {
@@ -217,7 +297,8 @@ export class EditSession {
     this.#next += 1;
     const rev = revision(fn);
     this.#handles.set(handle, { functionName, revision: rev });
-    return { handle, functionName, revision: rev, text: `${handle}\n${formatFunction(fn)}` };
+    const body = options.scope === 'deps' ? scopedView(fn) : formatFunction(fn);
+    return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
   }
 
   close(handle: string): boolean {

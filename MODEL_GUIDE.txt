@@ -40,7 +40,9 @@ EDITING
   Session edit: reply with the handle line you were shown, then only the replaced instructions:
     e0
     b sub a p2
-  Replaced instructions keep their position; you cannot insert or delete instructions.
+  Edit lines: `id op ...` replaces an existing instruction or inserts a new one before ret;
+  `id op ... @ other` inserts after instruction `other`; `-id` deletes; `ret x` changes the result.
+  A view may end with `fn name types -> type end` lines: signatures of callees you may call.
   Self-contained patch: "patch NAME REVISION" + replaced instructions + "end", where REVISION is the
   64-hex SHA-256 shown by `a0 revision`. A handle or revision that no longer matches is rejected.
 

@@ -112,7 +112,7 @@ end`);
   assert.equal(whole.stats.after, 2);
 });
 
-test('self-contained patch requires the exact current revision and replaces existing nodes only', () => {
+test('self-contained patch requires the exact current revision; edits are validated as a whole', () => {
   const program = parseAndValidate(AFFINE);
   const affine = program.byName.get('affine') as TypedFunc;
   const patchText = formatPatch(affine, [
@@ -131,9 +131,12 @@ test('self-contained patch requires the exact current revision and replaces exis
   assert.equal(run(affine, [10, 3, 7]), 37);
   // Stale revision is rejected.
   assert.throws(() => applyPatch(next, parsePatch(patchText)), /revision mismatch/);
-  // Unknown node cannot be inserted.
-  const insert = `patch affine ${revision(affine)}\nq add a a\nend`;
-  assert.throws(() => applyPatch(program, parsePatch(insert)), /unknown node/);
+  // An unknown node is inserted before ret (and may then be returned by a ret line).
+  const insert = `patch affine ${revision(affine)}\nq add a a\nret q\nend`;
+  assert.equal(
+    run(applyPatch(program, parsePatch(insert)).byName.get('affine') as TypedFunc, [10, 3, 7]),
+    60,
+  );
   // Replacement introducing a forward reference is rejected as a whole.
   const forward = `patch affine ${revision(affine)}\na add b p0\nend`;
   assert.throws(() => applyPatch(program, parsePatch(forward)), /undefined or later/);
@@ -781,4 +784,43 @@ test('site page program renders the A0 UI protocol with persisted state and deci
   const st = mod.a0_make_io([1, 41]);
   assert.equal(mod.session(st), 42);
   assert.deepEqual(st.output, [...clicked.output]);
+});
+
+test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
+  const src = 'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend';
+  const session = new EditSession(parseAndValidate(src));
+  const v1 = session.open('f');
+  // Insert a node and return it.
+  const n1 = session.apply(`${v1.handle}\nc xor b p0\nret c`);
+  assert.equal(
+    formatFunction(n1.byName.get('f') as TypedFunc),
+    'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nc xor b p0\nret c\nend',
+  );
+  // Insert after a specific node and delete another; validation is whole-function.
+  const v2 = session.open('f');
+  const n2 = session.apply(`${v2.handle}\nd sub a 1 @ a\nb mul d 2`);
+  assert.equal(
+    formatFunction(n2.byName.get('f') as TypedFunc),
+    'fn f u32 u32 -> u32\na add p0 p1\nd sub a 1\nb mul d 2\nc xor b p0\nret c\nend',
+  );
+  const v3 = session.open('f');
+  const n3 = session.apply(`${v3.handle}\n-c\nret b`);
+  assert.equal(
+    formatFunction(n3.byName.get('f') as TypedFunc),
+    'fn f u32 u32 -> u32\na add p0 p1\nd sub a 1\nb mul d 2\nret b\nend',
+  );
+  assert.equal(run(n3.byName.get('f') as TypedFunc, [3, 4]), 12);
+  // Deleting a node that is still used fails and leaves the program untouched.
+  const v4 = session.open('f');
+  assert.throws(() => session.apply(`${v4.handle}\n-a`), /undefined or later node 'a'/);
+  assert.equal(
+    formatFunction(session.program.byName.get('f') as TypedFunc),
+    formatFunction(n3.byName.get('f') as TypedFunc),
+  );
+  assert.throws(() => session.apply(`${v4.handle}\nz add p0 1 @ nope`), /unknown node 'nope'/);
+  assert.throws(() => session.apply(`${v4.handle}\n-b\n-b`), /duplicate edit/);
+  // Self-contained patches accept the same edit lines.
+  const f = n3.byName.get('f') as TypedFunc;
+  const patched = applyPatch(n3, parsePatch(`patch f ${revision(f)}\ne add b 1\nret e\nend`));
+  assert.equal(run(patched.byName.get('f') as TypedFunc, [3, 4]), 13);
 });

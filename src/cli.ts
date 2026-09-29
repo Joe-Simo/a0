@@ -22,7 +22,7 @@ import {
   run,
   type Value,
 } from './core.js';
-import { applyPatch, parsePatch, revision } from './edit.js';
+import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
 import { compileWasm } from './toolchain.js';
 
 function usage(): never {
@@ -35,6 +35,7 @@ function usage(): never {
       '  a0 wasm <file.a0> <out.wasm>',
       '  a0 patch <file.a0> <patch-file> [out.a0]',
       '  a0 revision <file.a0> <function>',
+      '  a0 view <file.a0> <function>          # function plus callee signatures',
       '',
     ].join('\n'),
   );
@@ -108,6 +109,15 @@ async function main(argv: readonly string[]): Promise<void> {
       const text = formatProgram(next);
       if (out === undefined) process.stdout.write(text);
       else await writeFile(out, text, 'utf8');
+      return;
+    }
+    case 'view': {
+      const [file, name] = rest;
+      if (file === undefined || name === undefined) usage();
+      const program = parseAndValidate(await readSource(file));
+      const fn = program.byName.get(name);
+      if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
+      process.stdout.write(`${scopedView(fn)}\n`);
       return;
     }
     case 'revision': {

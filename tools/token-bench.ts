@@ -6,12 +6,12 @@
  * encodings, which are NOT the tokenizer of Claude or any other vendor's model.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getEncoding, type TiktokenEncoding } from 'js-tiktoken';
 import { compile } from '../src/backends.js';
-import { formatProgram, parseAndValidate, type TypedFunc } from '../src/core.js';
-import { EditSession, formatPatch } from '../src/edit.js';
+import { formatFunction, formatProgram, parseAndValidate, type TypedFunc } from '../src/core.js';
+import { EditSession, formatPatch, scopedView } from '../src/edit.js';
 import { generateCorpus } from './corpus.js';
 
 const ENCODINGS: readonly TiktokenEncoding[] = ['o200k_base', 'cl100k_base'];
@@ -101,6 +101,16 @@ async function main(): Promise<void> {
     'ts session edit (line replace)': TS_SESSION_EDIT,
     'c unified diff': C_UNIFIED_DIFF,
   };
+  // Dependency-scoped retrieval on the Life program: editing `session` needs its callees'
+  // signatures, not their bodies, nor the rest of the program.
+  const life = parseAndValidate(await readFile('examples/life.a0', 'utf8'));
+  const lifeSession = life.byName.get('session');
+  if (lifeSession === undefined) throw new Error('life.a0 has no session');
+  const views: Record<string, string> = {
+    'life.a0 whole program (what a conventional edit must read)': formatProgram(life),
+    'life.a0 session function only': formatFunction(lifeSession),
+    'life.a0 session + callee signatures (scoped view)': scopedView(lifeSession),
+  };
   const corpora: Record<string, string> = {
     'corpus.a0 (48 generated functions)': corpusA0,
     'corpus emitted JS, unoptimized (machine-generated baseline, not hand-written)': corpusJs,
@@ -111,10 +121,11 @@ async function main(): Promise<void> {
   const results: Record<
     string,
     Record<string, { bytes: number; tokens: Record<string, number> }>
-  > = { fixtures: {}, corpora: {} };
+  > = { fixtures: {}, views: {}, corpora: {} };
   const encoders = ENCODINGS.map((name) => [name, getEncoding(name)] as const);
   for (const [group, set] of [
     ['fixtures', fixtures],
+    ['views', views],
     ['corpora', corpora],
   ] as const) {
     for (const [name, text] of Object.entries(set)) {
@@ -139,7 +150,7 @@ async function main(): Promise<void> {
   };
   await mkdir('results', { recursive: true });
   await writeFile(join('results', 'tokens.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-  for (const group of ['fixtures', 'corpora'] as const) {
+  for (const group of ['fixtures', 'views', 'corpora'] as const) {
     process.stdout.write(`\n${group}\n`);
     for (const [name, r] of Object.entries(results[group] ?? {})) {
       process.stdout.write(
