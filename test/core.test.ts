@@ -605,3 +605,55 @@ end`;
   );
   assert.throws(() => compile(badPred, 'sv'), /predicate must be combinational/);
 });
+
+test('resource bounds: fuel stops runaway evaluation, literal iteration is capped, fuzzed input fails cleanly', () => {
+  const src =
+    'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn spin u32 -> u32\nr fold step p0 0\nret r\nend';
+  const spin = parseAndValidate(src).byName.get('spin') as TypedFunc;
+  assert.equal(run(spin, [1000], { fuel: 10_000 }), 1000);
+  assert.throws(() => run(spin, [0xffff_ffff], { fuel: 100_000 }), /fuel exhausted/);
+  // Nested literal counts multiply; the validator rejects products beyond the compute bound.
+  const nested = `${src}\nfn inner u32 u32 -> u32\nr fold step 4096 p0\nret r\nend\nfn outer u32 -> u32\nr fold inner 8192 p0\nret r\nend`;
+  assert.throws(() => parseAndValidate(nested), /compute bound/);
+  assert.equal(parseAndValidate(src).byName.get('spin')?.staticIterations, 2 ** 32);
+  // Fuzz: random mutations of a valid program must only ever raise A0Error, never crash or hang.
+  const rng = (() => {
+    let s = 0xc0ffee;
+    return () => {
+      s ^= s << 13;
+      s >>>= 0;
+      s ^= s >>> 17;
+      s ^= s << 5;
+      s >>>= 0;
+      return s;
+    };
+  })();
+  const alphabet =
+    'abcdefghijklmnopqrstuvwxyz0123456789 \n()x,->#pfnretendcallfoldloopsetgetatputrecarrreadwrite';
+  let rejected = 0;
+  for (let k = 0; k < 3000; k += 1) {
+    const chars = src.split('');
+    const edits = 1 + (rng() % 6);
+    for (let e = 0; e < edits; e += 1) {
+      const pos = rng() % chars.length;
+      const ch = alphabet[rng() % alphabet.length] as string;
+      if (rng() % 3 === 0) chars.splice(pos, 1);
+      else if (rng() % 2 === 0) chars.splice(pos, 0, ch);
+      else chars[pos] = ch;
+    }
+    try {
+      const p = parseAndValidate(chars.join(''));
+      for (const f of p.functions)
+        if (f.params.every((t) => t === 'u32'))
+          run(
+            f,
+            f.params.map(() => 3),
+            { fuel: 100_000 },
+          );
+    } catch (err) {
+      assert.ok(err instanceof A0Error, `non-A0Error thrown: ${String(err)}`);
+      rejected += 1;
+    }
+  }
+  assert.ok(rejected > 2000, `expected most mutations rejected, got ${rejected}`);
+});

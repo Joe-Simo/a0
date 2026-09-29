@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T15:35:19.154Z",
+  "generatedAt": "2026-09-29T19:40:23.651Z",
   "status": "unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)",
   "model": null,
   "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
@@ -36,6 +36,51 @@
       "id": "rotl-fix",
       "kind": "comprehension-edit",
       "tests": 4
+    },
+    {
+      "id": "absdiff",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "xor4",
+      "kind": "multi-node-edit",
+      "tests": 3
+    },
+    {
+      "id": "min3",
+      "kind": "multi-node-edit",
+      "tests": 4
+    },
+    {
+      "id": "sq-twice",
+      "kind": "multi-node-edit",
+      "tests": 4
+    },
+    {
+      "id": "sum-squares",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "loop-inclusive",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "record-flag",
+      "kind": "comprehension-edit",
+      "tests": 3
+    },
+    {
+      "id": "byte-select",
+      "kind": "targeted-edit",
+      "tests": 3
+    },
+    {
+      "id": "saturating-add",
+      "kind": "comprehension-edit",
+      "tests": 4
     }
   ],
   "harnessSelfCheck": {
@@ -52,7 +97,43 @@
       "rotl-fix/a0": [],
       "rotl-fix/ts": [],
       "rotl-fix/a0-original-must-fail": [],
-      "rotl-fix/ts-original-must-fail": []
+      "rotl-fix/ts-original-must-fail": [],
+      "absdiff/a0": [],
+      "absdiff/ts": [],
+      "absdiff/a0-original-must-fail": [],
+      "absdiff/ts-original-must-fail": [],
+      "xor4/a0": [],
+      "xor4/ts": [],
+      "xor4/a0-original-must-fail": [],
+      "xor4/ts-original-must-fail": [],
+      "min3/a0": [],
+      "min3/ts": [],
+      "min3/a0-original-must-fail": [],
+      "min3/ts-original-must-fail": [],
+      "sq-twice/a0": [],
+      "sq-twice/ts": [],
+      "sq-twice/a0-original-must-fail": [],
+      "sq-twice/ts-original-must-fail": [],
+      "sum-squares/a0": [],
+      "sum-squares/ts": [],
+      "sum-squares/a0-original-must-fail": [],
+      "sum-squares/ts-original-must-fail": [],
+      "loop-inclusive/a0": [],
+      "loop-inclusive/ts": [],
+      "loop-inclusive/a0-original-must-fail": [],
+      "loop-inclusive/ts-original-must-fail": [],
+      "record-flag/a0": [],
+      "record-flag/ts": [],
+      "record-flag/a0-original-must-fail": [],
+      "record-flag/ts-original-must-fail": [],
+      "byte-select/a0": [],
+      "byte-select/ts": [],
+      "byte-select/a0-original-must-fail": [],
+      "byte-select/ts-original-must-fail": [],
+      "saturating-add/a0": [],
+      "saturating-add/ts": [],
+      "saturating-add/a0-original-must-fail": [],
+      "saturating-add/ts-original-must-fail": []
     }
   },
   "trials": [
@@ -63,8 +144,8 @@
       "protocol": "conventional",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 489,
-        "cl100k_base": 487
+        "o200k_base": 877,
+        "cl100k_base": 875
       },
       "viewTokensLocal": {
         "o200k_base": 30,
@@ -86,8 +167,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 520,
-        "cl100k_base": 518
+        "o200k_base": 908,
+        "cl100k_base": 906
       },
       "viewTokensLocal": {
         "o200k_base": 32,
@@ -155,8 +236,8 @@
       "protocol": "conventional",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 489,
-        "cl100k_base": 487
+        "o200k_base": 877,
+        "cl100k_base": 875
       },
       "viewTokensLocal": {
         "o200k_base": 30,
@@ -178,8 +259,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 520,
-        "cl100k_base": 518
+        "o200k_base": 908,
+        "cl100k_base": 906
       },
       "viewTokensLocal": {
         "o200k_base": 32,
@@ -247,8 +328,8 @@
       "protocol": "conventional",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 489,
-        "cl100k_base": 487
+        "o200k_base": 877,
+        "cl100k_base": 875
       },
       "viewTokensLocal": {
         "o200k_base": 43,
@@ -270,8 +351,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 520,
-        "cl100k_base": 518
+        "o200k_base": 908,
+        "cl100k_base": 906
       },
       "viewTokensLocal": {
         "o200k_base": 45,
@@ -322,6 +403,834 @@
       "viewTokensLocal": {
         "o200k_base": 41,
         "cl100k_base": 41
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "absdiff",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "absdiff",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "absdiff",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "absdiff",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "xor4",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 39,
+        "cl100k_base": 39
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "xor4",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 41,
+        "cl100k_base": 41
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "xor4",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "xor4",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 49,
+        "cl100k_base": 49
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "min3",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "min3",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "min3",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "min3",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sq-twice",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 39,
+        "cl100k_base": 39
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sq-twice",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 22
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sq-twice",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sq-twice",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 47,
+        "cl100k_base": 47
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sum-squares",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sum-squares",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sum-squares",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "sum-squares",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 56
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "loop-inclusive",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 74,
+        "cl100k_base": 74
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "loop-inclusive",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "loop-inclusive",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 66,
+        "cl100k_base": 66
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "loop-inclusive",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 77,
+        "cl100k_base": 77
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "record-flag",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "record-flag",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "record-flag",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "record-flag",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "byte-select",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "byte-select",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "byte-select",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "byte-select",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 30,
+        "cl100k_base": 30
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "saturating-add",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 877,
+        "cl100k_base": 875
+      },
+      "viewTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 22
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "saturating-add",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 908,
+        "cl100k_base": 906
+      },
+      "viewTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "saturating-add",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "accepted": null,
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "saturating-add",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 96,
+        "cl100k_base": 96
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
       },
       "reasoningTokens": null,
       "outputTokensLocal": null,

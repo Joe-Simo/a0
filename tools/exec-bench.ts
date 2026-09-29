@@ -53,6 +53,48 @@ const KERNELS: readonly Kernel[] = [
     c: 'static inline uint32_t hw_mix(uint32_t x, uint32_t y) { uint32_t a = x ^ y; uint32_t d = (a << 13) | (a >> 19); uint32_t f = d * 2654435761u + x; return f ^ (f >> 16); }',
     js: 'export function mix(x, y) { const a = (x ^ y) >>> 0; const d = ((a << 13) | (a >>> 19)) >>> 0; const f = (Math.imul(d, 2654435761) + x) >>> 0; return (f ^ (f >>> 16)) >>> 0; }',
   },
+  {
+    name: 'ident', // tiny function: call overhead only
+    arity: 1,
+    a0: 'fn ident u32 -> u32\nret p0\nend',
+    c: 'static inline uint32_t hw_ident(uint32_t x) { return x; }',
+    js: 'export function ident(x) { return x; }',
+  },
+  {
+    name: 'noop', // already-optimal computation: the optimizer must not add work
+    arity: 1,
+    a0: 'fn noop u32 -> u32\na add p0 0\nb mul a 1\nc xor b 0\nret c\nend',
+    c: 'static inline uint32_t hw_noop(uint32_t x) { return x; }',
+    js: 'export function noop(x) { return x; }',
+  },
+  {
+    name: 'chain3', // boundary-dominated: three nested calls of tiny functions
+    arity: 2,
+    a0: 'fn inc1 u32 -> u32\na add p0 1\nret a\nend\nfn dbl u32 -> u32\na add p0 p0\nret a\nend\nfn chain3 u32 u32 -> u32\na call inc1 p0\nb call dbl a\nc call inc1 b\nd add c p1\nret d\nend',
+    c: 'static inline uint32_t hw_inc1(uint32_t x) { return x + 1; }\nstatic inline uint32_t hw_dbl(uint32_t x) { return x + x; }\nstatic inline uint32_t hw_chain3(uint32_t x, uint32_t y) { return hw_inc1(hw_dbl(hw_inc1(x))) + y; }',
+    js: 'function inc1(x) { return (x + 1) >>> 0; }\nfunction dbl(x) { return (x + x) >>> 0; }\nexport function chain3(x, y) { return (inc1(dbl(inc1(x))) + y) >>> 0; }',
+  },
+  {
+    name: 'branchy', // data-dependent selects
+    arity: 2,
+    a0: 'fn branchy u32 u32 -> u32\nc1 lt p0 p1\nc2 eq p0 p1\nd sub p0 p1\ne sub p1 p0\nm select c1 e d\nz select c2 0 m\nb and z 1\nc3 eq b 1\nr select c3 z p0\nret r\nend',
+    c: 'static inline uint32_t hw_branchy(uint32_t x, uint32_t y) { uint32_t m = x < y ? y - x : x - y; uint32_t z = x == y ? 0u : m; return (z & 1u) == 1u ? z : x; }',
+    js: 'export function branchy(x, y) { const m = x < y ? (y - x) >>> 0 : (x - y) >>> 0; const z = x === y ? 0 : m; return (z & 1) === 1 ? z : x; }',
+  },
+  {
+    name: 'arrfill', // memory: build an 8-element array by successive value-semantics updates
+    arity: 2,
+    a0: 'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nx get a p1\ny get a 3\ns add x y\nret s\nend',
+    c: 'static inline uint32_t hw_arrfill(uint32_t x, uint32_t y) { uint32_t a[8]; for (uint32_t i = 0; i < 8; i++) a[i] = i + x; return a[y % 8u] + a[3]; }',
+    js: 'export function arrfill(x, y) { const a = new Uint32Array(8); for (let i = 0; i < 8; i++) a[i] = (i + x) >>> 0; return (a[y % 8] + a[3]) >>> 0; }',
+  },
+  {
+    name: 'loop64', // iteration: 64 dependent steps through a body call
+    arity: 2,
+    a0: 'fn mixstep u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc shr b 15\nd xor b c\ne add d p1\nret e\nend\nfn loop64 u32 u32 -> u32\nr fold mixstep 64 p0 p1\nret r\nend',
+    c: 'static inline uint32_t hw_loop64(uint32_t s, uint32_t k) { for (uint32_t i = 0; i < 64; i++) { uint32_t b = (s ^ k) * 2654435761u; s = (b ^ (b >> 15)) + i; } return s; }',
+    js: 'export function loop64(s, k) { for (let i = 0; i < 64; i++) { const b = Math.imul((s ^ k) >>> 0, 2654435761) >>> 0; s = ((b ^ (b >>> 15)) + i) >>> 0; } return s; }',
+  },
 ];
 
 const ITER = 20_000_000;
@@ -105,12 +147,14 @@ async function benchC(
   kernel: Kernel,
   clang: string,
 ): Promise<{
+  startupMs: { emitted: number; handwritten: number };
   emitted: Sample;
   handwritten: Sample;
   binaryBytes: { emitted: number; handwritten: number };
 }> {
   const program = parseAndValidate(kernel.a0);
   const emittedSrc = compile(program, 'c').text;
+  let startupMs = { emitted: 0, handwritten: 0 };
   return withTempDir(async (dir) => {
     const build = async (
       name: string,
@@ -141,6 +185,22 @@ async function benchC(
     const hs: number[] = [];
     let ec = '';
     let hc = '';
+    // Startup: wall time of a process that runs a single iteration (spawn + exit dominated).
+    const startup = (exe: string): number => {
+      const t = performance.now();
+      runTool(exe, ['1']);
+      return performance.now() - t;
+    };
+    const su: number[] = [];
+    const sh: number[] = [];
+    for (let i = 0; i < SAMPLES; i += 1) {
+      su.push(startup(e.exe));
+      sh.push(startup(h.exe));
+    }
+    startupMs = {
+      emitted: [...su].sort((p, q) => p - q)[su.length >> 1] ?? 0,
+      handwritten: [...sh].sort((p, q) => p - q)[sh.length >> 1] ?? 0,
+    };
     for (let i = 0; i < SAMPLES; i += 1) {
       // Interleave to share thermal/scheduling conditions.
       const a = runOne(e.exe);
@@ -156,6 +216,7 @@ async function benchC(
       emitted: summarize(es, ec),
       handwritten: summarize(hs, hc),
       binaryBytes: { emitted: e.bytes, handwritten: h.bytes },
+      startupMs,
     };
   });
 }
@@ -187,12 +248,13 @@ async function benchJs(kernel: Kernel): Promise<{ emitted: Sample; handwritten: 
         s >>>= 0;
         a[k] = s;
       }
-      acc =
-        (acc ^
-          (kernel.arity === 2
+      const r =
+        kernel.arity === 1
+          ? f(a[0] as number)
+          : kernel.arity === 2
             ? f(a[0] as number, a[1] as number)
-            : f(a[0] as number, a[1] as number, a[2] as number))) >>>
-        0;
+            : f(a[0] as number, a[1] as number, a[2] as number);
+      acc = (acc ^ r) >>> 0;
     }
     return { ns: ((performance.now() - start) * 1e6) / iters, checksum: String(acc) };
   };
@@ -220,9 +282,11 @@ function verdict(emitted: Sample, handwritten: Sample): 'win' | 'tie' | 'loss' {
     emitted.maxNsPerCall / emitted.minNsPerCall,
     handwritten.maxNsPerCall / handwritten.minNsPerCall,
   );
-  // Within measurement noise (sample spread) counts as a tie.
-  if (ratio < 1 / spread && ratio < 0.95) return 'win';
-  if (ratio > spread && ratio > 1.05) return 'loss';
+  // Tie band: 8 % or the observed sample spread, whichever is larger, but never more than 25 %
+  // so a jittery sample set cannot hide a real difference.
+  const band = Math.min(Math.max(1.08, spread), 1.25);
+  if (ratio < 1 / band) return 'win';
+  if (ratio > band) return 'loss';
   return 'tie';
 }
 
@@ -256,7 +320,7 @@ async function main(): Promise<void> {
     iterationsPerSample: { c: ITER, js: ITER / 4 },
     samplesPerSide: SAMPLES,
     meaning:
-      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Scalar micro-kernels only: not startup, memory, energy, code size at scale, or application evidence. A tie here is the expected result, not a failure or a win.',
+      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
     kernels: results,
   };
   await mkdir('results', { recursive: true });

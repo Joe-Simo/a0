@@ -200,6 +200,12 @@ export interface Program {
 /** A function whose every node has an inferred result type. */
 export interface TypedFunc extends Func {
   readonly types: ReadonlyMap<string, Type>;
+  /**
+   * Static upper bound on body evaluations per call: products of trip counts (a variable
+   * count is 2^32) through callees. Used to reject programs whose literal iteration alone
+   * exceeds LIMITS.maxStaticIterations; variable counts are reported, not rejected.
+   */
+  readonly staticIterations: number;
   /** Resolved callees (each defined earlier in the same program). */
   readonly calls: ReadonlyMap<string, TypedFunc>;
 }
@@ -231,6 +237,10 @@ export const LIMITS = {
   maxIdentifierLength: 64,
   maxArrayLength: 1024,
   maxAggregateBits: 1 << 16,
+  /** Product of literal trip counts along any nesting path a validator will accept (compute bound). */
+  maxStaticIterations: 1 << 24,
+  /** Default interpreter fuel: node evaluations before `run` aborts with A0Error. */
+  defaultFuel: 100_000_000,
 } as const;
 
 const IDENT = /^[a-z][a-z0-9_]{0,63}$/;
@@ -555,6 +565,8 @@ export function validateFunction(
   const defined = new Set<string>();
   const calls = new Map<string, TypedFunc>();
   const consumed = new Set<string>();
+  let staticIterations = 1;
+  let literalIterations = 1;
   if (fn.params.filter(containsIo).length > 1) {
     throw new A0Error(`${fn.name}: at most one parameter may carry an io token`);
   }
@@ -626,6 +638,8 @@ export function validateFunction(
       }
       calls.set(callee.name, callee);
       types.set(node.id, callee.result);
+      staticIterations = Math.max(staticIterations, callee.staticIterations);
+      literalIterations = Math.max(literalIterations, callee.staticIterations);
     } else if (node.op === 'fold' || node.op === 'loop') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
@@ -675,6 +689,17 @@ export function validateFunction(
         }
         calls.set(pred.name, pred);
       }
+      const countOp = node.args[0];
+      const trips = countOp?.kind === 'u32' ? countOp.value : 2 ** 32;
+      staticIterations = Math.max(staticIterations, trips * callee.staticIterations);
+      if (countOp?.kind === 'u32') {
+        literalIterations = Math.max(literalIterations, trips * callee.staticIterations);
+        if (literalIterations > LIMITS.maxStaticIterations) {
+          throw new A0Error(
+            `${where}: literal iteration count ${literalIterations} exceeds the compute bound ${LIMITS.maxStaticIterations}`,
+          );
+        }
+      }
       types.set(node.id, stateT);
     } else {
       types.set(node.id, resultType(node.op, argTypes, where));
@@ -689,7 +714,7 @@ export function validateFunction(
     if (consumed.has(key))
       throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`);
   }
-  return { ...fn, types, calls };
+  return { ...fn, types, calls, staticIterations };
 }
 
 export function validate(program: Program): TypedProgram {
@@ -883,8 +908,21 @@ export function checkArgument(type: Type, value: Value, where: string): void {
   for (const [i, f] of type.fields.entries()) checkArgument(f, value[i] as Value, `${where}.${i}`);
 }
 
-/** Evaluate a validated function on concrete arguments with the reference semantics. */
-export function run(fn: TypedFunc, args: readonly Value[]): Value {
+export interface RunOptions {
+  /** Remaining node evaluations; shared across nested calls. Exhaustion throws A0Error. */
+  fuel: number;
+}
+
+/**
+ * Evaluate a validated function on concrete arguments with the reference semantics.
+ * `options.fuel` bounds total node evaluations (default LIMITS.defaultFuel) so a hostile
+ * or runaway program cannot consume unbounded compute in the reference evaluator.
+ */
+export function run(
+  fn: TypedFunc,
+  args: readonly Value[],
+  options: RunOptions = { fuel: LIMITS.defaultFuel },
+): Value {
   if (args.length !== fn.params.length) {
     throw new A0Error(`${fn.name}: expected ${fn.params.length} arguments, got ${args.length}`);
   }
@@ -907,11 +945,14 @@ export function run(fn: TypedFunc, args: readonly Value[]): Value {
     }
   };
   for (const node of fn.nodes) {
+    options.fuel -= 1;
+    if (options.fuel < 0)
+      throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`);
     if (node.op === 'call') {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined)
         throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`);
-      env.set(node.id, run(callee, node.args.map(read)));
+      env.set(node.id, run(callee, node.args.map(read), options));
     } else if (node.op === 'fold') {
       const body = fn.calls.get(node.callee ?? '');
       if (body === undefined)
@@ -919,7 +960,7 @@ export function run(fn: TypedFunc, args: readonly Value[]): Value {
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
-      for (let i = 0; i < n; i += 1) state = run(body, [state, i, ...extra]);
+      for (let i = 0; i < n; i += 1) state = run(body, [state, i, ...extra], options);
       env.set(node.id, state);
     } else if (node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
@@ -930,8 +971,8 @@ export function run(fn: TypedFunc, args: readonly Value[]): Value {
       let state = init as Value;
       const n = count as number;
       for (let i = 0; i < n; i += 1) {
-        if (run(pred, [state, i, ...extra]) !== true) break;
-        state = run(body, [state, i, ...extra]);
+        if (run(pred, [state, i, ...extra], options) !== true) break;
+        state = run(body, [state, i, ...extra], options);
       }
       env.set(node.id, state);
     } else {

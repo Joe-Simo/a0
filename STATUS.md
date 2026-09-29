@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.5.0)
+## Implemented scope (v0.6.0)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -73,6 +73,20 @@ turns up, reconcile against this tree rather than overwrite either.
   the in-app browser: a glider advances by (1,1) after four generations. The page shell
   is HTML/TS because A0 has no strings or DOM capability yet; that is the remaining gap
   for "the whole site in A0". Not deployed.
+- **Resource bounds** (user requirement 2026-09-29, compute-bomb protection): the reference
+  interpreter takes a fuel budget (default 10^8 node evaluations, shared across nested
+  calls) and aborts with a diagnostic; compile-time evaluation in the optimizer is
+  fuel-bounded and gives up instead of stalling; the validator computes a static iteration
+  bound per function (variable counts count as 2^32, reported in `staticIterations`) and
+  rejects programs whose *literal* nested trip counts exceed 2^24; parser input, function
+  and node counts, aggregate bit width, array length, edit sessions, emission cache, and
+  toolchain process time (120 s) were already bounded; recursion is impossible by
+  construction. A 3000-mutation fuzz test asserts every malformed input fails with a clean
+  A0Error. Not done: a runtime fuel counter in compiled targets (costs speed; measure
+  before adding), memory/time limits per compiled process, sandboxing of toolchains.
+- **JS emission**: input guards now run only at the public boundary; internal calls,
+  folds, and loops target unguarded `a0i_` functions (the 64-step loop went from 4× slower
+  than hand-written to a tie).
 - Edits: self-contained patch (`patch name sha256 … end`) and session handle edits
   (`e0` + replaced lines). Replace-existing-nodes only. Handles are one-use and
   revision-bound. No insertion/deletion, no multi-function transactions, no network service.
@@ -90,7 +104,7 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 16/16 pass |
+| Focused tests | `bun run test` | 17/17 pass (incl. fuel, static cap, 3000-mutation fuzz) |
 | Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
 | Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
 | Interpreter vs oracle | `bun run verify` | 5603 cases pass |
@@ -130,21 +144,45 @@ word twice. Each was caught only by simulation against the oracle.
 Level: local payload token counts. Not an AI-task experiment. The session-edit win is
 largely a protocol effect; the 2×2 harness exists to separate it from the language effect.
 
-### Execution micro-benchmark (`bun run exec-bench`, clang -O2 no sanitizer; Node JIT warm)
+### Execution ledger, Gate 7 (`bun run exec-bench`, clang -O2 no sanitizer; Node JIT warm; idle machine)
 
-affine, rotl, clamp, mix: **tie** in C (identical within noise, e.g. 4.478 vs 4.479 ns/call
-including generator) and **tie** in JS, with emitted JS consistently 2–4 % slower because
-public functions keep input guards. Level: scalar micro-kernels; not startup, memory,
-energy, or applications. No performance superiority is demonstrated or expected here.
+| Kernel | C emitted vs hand-written | JS emitted vs hand-written |
+|---|---|---|
+| affine, rotl, clamp, mix (scalar) | tie | tie |
+| ident (tiny call) | tie (1.61 vs 1.62 ns) | tie |
+| noop (add 0, mul 1, xor 0; optimizer must remove) | tie | tie |
+| chain3 (three nested tiny calls) | tie | tie |
+| branchy (select chains) | tie | tie |
+| arrfill (8 value-semantics `set`s then reads) | tie (struct copies elided) | **loss** 2.6× (802 vs 309 ns): copy-on-write arrays |
+| loop64 (64 dependent body calls) | tie (82 vs 89 ns) | tie after boundary-only guards (was 4× loss) |
+| startup (spawn + one iteration) | 2.2–2.5 ms both sides | n/a |
+| binary size | 33.6 kB both sides (runtime dominated) | n/a |
 
-### Gate A: 2×2 AI-edit experiment (`bun run experiment`)
+Verdict band: 8 % or observed sample spread, capped at 25 %. Level: micro-kernels; not
+energy, memory at scale, or applications. The JS array loss is a real cost of value
+semantics without escape analysis and stays on the ledger.
+
+### Cost target stated by the user (2026-09-29): 200–400× cheaper and faster for AI
+
+Measured baseline: whole-function payloads ≈1× hand-written C (30 vs 29 tokens), session
+edits ≈2× smaller than the best conventional edit, A0 setup ≈877 tokens of overhead.
+Syntax cannot reach the target; the candidate mechanisms are structural and unmeasured:
+(1) a library of verified named operations so a model writes one line instead of an
+implementation, (2) dependency-scoped views so it reads only what an edit touches,
+(3) delta-only edits, (4) validation that removes retries. Gate 6 measures whole-task
+cost; the target is recorded as an ambition, not a result.
+
+### Gate A / Gate 6: 2×2 AI-edit experiment (`bun run experiment`)
 
 Harness implemented and self-checked (reference solutions pass, originals fail, in all
 four cells: A0/TS × conventional/structured). Whole-task accounting: setup, view, output,
 provider usage, calls, validation failures, repairs, wall time; reasoning tokens recorded
 as null. **Status: unrun.** Requires `A0_ALLOW_PAID_MODEL_CALLS=1` plus Anthropic
 credentials (none configured on this machine); default model `claude-opus-5-5`, 3 trials
-per cell. Only three tasks exist; expand before drawing conclusions.
+per cell. Twelve held-out tasks (targeted, multi-node, multi-function, comprehension,
+iteration, records) with independent acceptance tests; the self-check passes (references
+accepted, originals rejected in all four cells). Measured setup cost per cell (o200k):
+A0 conventional 877 tokens (MODEL_GUIDE.txt), TypeScript 48; view sizes 24–45.
 
 ## Reference
 
@@ -167,8 +205,11 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Gates 1–5 are done. Next: Gate 6, expand the AI-edit experiment to ≥10 held-out tasks
-   (run only with explicit spend authorization), then Gate 7 adversarial execution ledger.
+1. Gates 1–5 done; Gate 6 harness complete with 12 tasks but **unrun** (needs explicit
+   spend authorization and credentials); Gate 7 ledger populated. Next: Gate 8 only when a
+   measured requirement justifies MLIR/LLVM, GPU, or .NET; until then, the measured JS
+   array loss (copy-on-write) is the next concrete engineering target: in-place update when
+   the source value is provably dead (single use), keeping value semantics.
 2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
    cross-target application, authored in A0 with a browser DOM adapter; no deployment
    without explicit approval in that session.

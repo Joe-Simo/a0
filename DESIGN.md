@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.5.0 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.6.0 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -165,7 +165,7 @@ The AI view can use inferred types and compact argument positions, while richer 
 
 ## 9. Security and correctness boundaries
 
-No API keys are embedded; no hosted model is required. Source cannot inject destination identifiers because identifiers and operations are validated and generated names are prefixed. Toolchain invocation uses argument arrays and a temporary directory, not generated shell commands. Input source and patch sizes and session/cache capacity are bounded.
+Execution is resource-bounded: the reference interpreter runs on a fuel budget, compile-time evaluation is fuel-bounded, and the validator rejects literal nested iteration above 2^24 while reporting a static iteration bound for variable counts. No API keys are embedded; no hosted model is required. Source cannot inject destination identifiers because identifiers and operations are validated and generated names are prefixed. Toolchain invocation uses argument arrays and a temporary directory, not generated shell commands. Input source and patch sizes and session/cache capacity are bounded.
 
 These are initial controls, not a security audit. Production needs resource budgets, hostile-input fuzzing, process isolation for toolchains, dependency provenance, supply-chain locking, authenticated session isolation, and rigorously specified FFI boundaries. The program's type checker does not prove that human intent is satisfied. Differential tests are not a formal verification of the compiler.
 

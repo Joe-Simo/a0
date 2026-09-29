@@ -107,6 +107,181 @@ const TASKS: readonly Task[] = [
       ts: 'export function rotl(x: number, n: number): number {\n  return ((x << n) | (x >>> ((32 - n) & 31))) >>> 0;\n}\n',
     },
   },
+  {
+    id: 'absdiff',
+    kind: 'comprehension-edit',
+    instruction:
+      'absdiff should return the absolute difference |a - b| for unsigned inputs; it currently returns a - b.',
+    a0Source: 'fn absdiff u32 u32 -> u32\nd sub p0 p1\nret d\nend\n',
+    tsSource:
+      'export function absdiff(a: number, b: number): number {\n  return (a - b) >>> 0;\n}\n',
+    tests: [
+      { fn: 'absdiff', args: [7, 3], expected: 4 },
+      { fn: 'absdiff', args: [3, 7], expected: 4 },
+      { fn: 'absdiff', args: [0, 0xffff_ffff], expected: 0xffff_ffff },
+      { fn: 'absdiff', args: [5, 5], expected: 0 },
+    ],
+    reference: {
+      a0: 'fn absdiff u32 u32 -> u32\nd sub p0 p1\ne sub p1 p0\nc lt p0 p1\nr select c e d\nret r\nend\n',
+      ts: 'export function absdiff(a: number, b: number): number {\n  return a < b ? (b - a) >>> 0 : (a - b) >>> 0;\n}\n',
+    },
+  },
+  {
+    id: 'xor4',
+    kind: 'multi-node-edit',
+    instruction:
+      'combine4 currently adds its four inputs. Change it to xor them instead (all four).',
+    a0Source:
+      'fn combine4 u32 u32 u32 u32 -> u32\na add p0 p1\nb add a p2\nc add b p3\nret c\nend\n',
+    tsSource:
+      'export function combine4(a: number, b: number, c: number, d: number): number {\n  return (((a + b) >>> 0) + c + d) >>> 0;\n}\n',
+    tests: [
+      { fn: 'combine4', args: [1, 2, 4, 8], expected: 15 },
+      { fn: 'combine4', args: [5, 5, 5, 5], expected: 0 },
+      { fn: 'combine4', args: [0xffff_ffff, 1, 0, 0], expected: 0xffff_fffe },
+    ],
+    reference: {
+      a0: 'fn combine4 u32 u32 u32 u32 -> u32\na xor p0 p1\nb xor a p2\nc xor b p3\nret c\nend\n',
+      ts: 'export function combine4(a: number, b: number, c: number, d: number): number {\n  return (a ^ b ^ c ^ d) >>> 0;\n}\n',
+    },
+  },
+  {
+    id: 'min3',
+    kind: 'multi-node-edit',
+    instruction:
+      'min2 returns the smaller of two unsigned values. Rename it to min3 and make it return the smallest of three (add a third parameter).',
+    a0Source: 'fn min2 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nret r\nend\n',
+    tsSource: 'export function min2(a: number, b: number): number {\n  return b < a ? b : a;\n}\n',
+    tests: [
+      { fn: 'min3', args: [3, 2, 1], expected: 1 },
+      { fn: 'min3', args: [1, 2, 3], expected: 1 },
+      { fn: 'min3', args: [0x8000_0000, 0x7fff_ffff, 0xffff_ffff], expected: 0x7fff_ffff },
+      { fn: 'min3', args: [4, 4, 4], expected: 4 },
+    ],
+    reference: {
+      a0: 'fn min3 u32 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nd lt p2 r\ns select d p2 r\nret s\nend\n',
+      ts: 'export function min3(a: number, b: number, c: number): number {\n  const m = b < a ? b : a;\n  return c < m ? c : m;\n}\n',
+    },
+  },
+  {
+    id: 'sq-twice',
+    kind: 'multi-node-edit',
+    instruction:
+      'quad should apply sq twice (x^4 mod 2^32); it currently applies it once. Only change quad.',
+    a0Source:
+      'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn quad u32 -> u32\nx call sq p0\nret x\nend\n',
+    tsSource:
+      'export function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\nexport function quad(x: number): number {\n  return sq(x);\n}\n',
+    tests: [
+      { fn: 'quad', args: [3], expected: 81 },
+      { fn: 'quad', args: [0x1_0000], expected: 0 },
+      { fn: 'quad', args: [0xffff_ffff], expected: 1 },
+      { fn: 'sq', args: [7], expected: 49 },
+    ],
+    reference: {
+      a0: 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn quad u32 -> u32\nx call sq p0\ny call sq x\nret y\nend\n',
+      ts: 'export function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\nexport function quad(x: number): number {\n  return sq(sq(x));\n}\n',
+    },
+  },
+  {
+    id: 'sum-squares',
+    kind: 'targeted-edit',
+    instruction:
+      'sumto(n) currently returns 0+1+...+(n-1). Make it return the sum of squares 0^2+1^2+...+(n-1)^2 (mod 2^32).',
+    a0Source:
+      'fn addi u32 u32 -> u32\ns add p0 p1\nret s\nend\n\nfn sumto u32 -> u32\nr fold addi p0 0\nret r\nend\n',
+    tsSource:
+      'export function sumto(n: number): number {\n  let s = 0;\n  for (let i = 0; i < n; i++) s = (s + i) >>> 0;\n  return s;\n}\n',
+    tests: [
+      { fn: 'sumto', args: [0], expected: 0 },
+      { fn: 'sumto', args: [4], expected: 14 },
+      { fn: 'sumto', args: [10], expected: 285 },
+      {
+        fn: 'sumto',
+        args: [70000],
+        expected: Array.from({ length: 70000 }, (_, i) => Math.imul(i, i) >>> 0).reduce(
+          (a, b) => (a + b) >>> 0,
+          0,
+        ),
+      },
+    ],
+    reference: {
+      a0: 'fn addi u32 u32 -> u32\nq mul p1 p1\ns add p0 q\nret s\nend\n\nfn sumto u32 -> u32\nr fold addi p0 0\nret r\nend\n',
+      ts: 'export function sumto(n: number): number {\n  let s = 0;\n  for (let i = 0; i < n; i++) s = (s + Math.imul(i, i)) >>> 0;\n  return s;\n}\n',
+    },
+  },
+  {
+    id: 'loop-inclusive',
+    kind: 'targeted-edit',
+    instruction:
+      'countup(limit, cap) increments a counter while it is strictly below limit, at most cap times. Change it to continue while the counter is less than or equal to limit.',
+    a0Source:
+      'fn inc u32 u32 u32 -> u32\ns add p0 1\nret s\nend\n\nfn below u32 u32 u32 -> bool\nc lt p0 p2\nret c\nend\n\nfn countup u32 u32 -> u32\nr loop below inc p1 0 p0\nret r\nend\n',
+    tsSource:
+      'export function countup(limit: number, cap: number): number {\n  let s = 0;\n  for (let i = 0; i < cap; i++) {\n    if (!(s < limit)) break;\n    s = (s + 1) >>> 0;\n  }\n  return s;\n}\n',
+    tests: [
+      { fn: 'countup', args: [3, 100], expected: 4 },
+      { fn: 'countup', args: [0, 100], expected: 1 },
+      { fn: 'countup', args: [10, 5], expected: 5 },
+      { fn: 'countup', args: [0xffff_ffff, 3], expected: 3 },
+    ],
+    reference: {
+      a0: 'fn inc u32 u32 u32 -> u32\ns add p0 1\nret s\nend\n\nfn below u32 u32 u32 -> bool\nc lt p2 p0\nn select c false true\nret n\nend\n\nfn countup u32 u32 -> u32\nr loop below inc p1 0 p0\nret r\nend\n',
+      ts: 'export function countup(limit: number, cap: number): number {\n  let s = 0;\n  for (let i = 0; i < cap; i++) {\n    if (!(s <= limit)) break;\n    s = (s + 1) >>> 0;\n  }\n  return s;\n}\n',
+    },
+  },
+  {
+    id: 'record-flag',
+    kind: 'comprehension-edit',
+    instruction:
+      'pick takes a (u32,bool) record and returns its number. Change it so that when the flag is true it returns the number plus one (mod 2^32).',
+    a0Source: 'fn pick (u32,bool) -> u32\nv at p0 0\nret v\nend\n',
+    tsSource: 'export function pick(r: readonly [number, boolean]): number {\n  return r[0];\n}\n',
+    tests: [
+      { fn: 'pick', args: [[5, false]], expected: 5 },
+      { fn: 'pick', args: [[5, true]], expected: 6 },
+      { fn: 'pick', args: [[0xffff_ffff, true]], expected: 0 },
+    ],
+    reference: {
+      a0: 'fn pick (u32,bool) -> u32\nv at p0 0\nf at p0 1\nw add v 1\nr select f w v\nret r\nend\n',
+      ts: 'export function pick(r: readonly [number, boolean]): number {\n  return r[1] ? (r[0] + 1) >>> 0 : r[0];\n}\n',
+    },
+  },
+  {
+    id: 'byte-select',
+    kind: 'targeted-edit',
+    instruction:
+      'byte1 extracts bits 8..15 of its input. Change it to extract bits 16..23 instead.',
+    a0Source: 'fn byte1 u32 -> u32\ns shr p0 8\nm and s 255\nret m\nend\n',
+    tsSource: 'export function byte1(x: number): number {\n  return (x >>> 8) & 0xff;\n}\n',
+    tests: [
+      { fn: 'byte1', args: [0x1234_5678], expected: 0x34 },
+      { fn: 'byte1', args: [0xff00_0000], expected: 0 },
+      { fn: 'byte1', args: [0x00ab_0000], expected: 0xab },
+    ],
+    reference: {
+      a0: 'fn byte1 u32 -> u32\ns shr p0 16\nm and s 255\nret m\nend\n',
+      ts: 'export function byte1(x: number): number {\n  return (x >>> 16) & 0xff;\n}\n',
+    },
+  },
+  {
+    id: 'saturating-add',
+    kind: 'comprehension-edit',
+    instruction:
+      'sadd adds two unsigned 32-bit values with wraparound. Make it saturate at 4294967295 instead of wrapping.',
+    a0Source: 'fn sadd u32 u32 -> u32\ns add p0 p1\nret s\nend\n',
+    tsSource: 'export function sadd(a: number, b: number): number {\n  return (a + b) >>> 0;\n}\n',
+    tests: [
+      { fn: 'sadd', args: [1, 2], expected: 3 },
+      { fn: 'sadd', args: [0xffff_ffff, 1], expected: 0xffff_ffff },
+      { fn: 'sadd', args: [0x8000_0000, 0x8000_0000], expected: 0xffff_ffff },
+      { fn: 'sadd', args: [0xffff_fffe, 1], expected: 0xffff_ffff },
+    ],
+    reference: {
+      a0: 'fn sadd u32 u32 -> u32\ns add p0 p1\nc lt s p0\nr select c 4294967295 s\nret r\nend\n',
+      ts: 'export function sadd(a: number, b: number): number {\n  const s = (a + b) >>> 0;\n  return s < a ? 0xffffffff : s;\n}\n',
+    },
+  },
 ];
 
 // --- Instructions (counted as setup cost; identical across trials) ------------

@@ -177,7 +177,7 @@ function jsExpr(node: Node, fn: TypedFunc): string {
     case 'select':
       return `${a} ? ${b} : ${c}`;
     case 'call':
-      return `${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
+      return `a0i_${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
     case 'arr':
     case 'rec':
       return `[${node.args.map(jsOperand).join(', ')}]`;
@@ -201,6 +201,8 @@ function jsExpr(node: Node, fn: TypedFunc): string {
 
 const emitJsFunction: Emitter = (fn) => {
   const params = fn.params.map((_, i) => `p${i}`).join(', ');
+  // Public entry: validate inputs once, then run the unguarded internal function.
+  // Internal calls, folds, and loops target the a0i_ variant, so guards are paid only at the boundary.
   const guards = fn.params.map((t, i) =>
     isPrimitive(t) ? `  a0_${t}(p${i}, 'p${i}');` : `  a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
   );
@@ -208,14 +210,17 @@ const emitJsFunction: Emitter = (fn) => {
     if (n.op !== 'fold' && n.op !== 'loop') return `  const n_${n.id} = ${jsExpr(n, fn)};`;
     const [count, init, ...extra] = n.args.map(jsOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
-    const guard = n.op === 'loop' ? ` if (!${n.pred ?? ''}(${call})) break;` : '';
-    return `  let n_${n.id} = ${init};\n  for (let i = 0; i < ${count}; i++) {${guard} n_${n.id} = ${n.callee ?? ''}(${call}); }`;
+    const guard = n.op === 'loop' ? ` if (!a0i_${n.pred ?? ''}(${call})) break;` : '';
+    return `  let n_${n.id} = ${init};\n  for (let i = 0; i < ${count}; i++) {${guard} n_${n.id} = a0i_${n.callee ?? ''}(${call}); }`;
   });
   return [
-    `export function ${fn.name}(${params}) {`,
-    ...guards,
+    `function a0i_${fn.name}(${params}) {`,
     ...body,
     `  return ${jsOperand(fn.ret)};`,
+    '}',
+    `export function ${fn.name}(${params}) {`,
+    ...guards,
+    `  return a0i_${fn.name}(${params});`,
     '}',
   ].join('\n');
 };

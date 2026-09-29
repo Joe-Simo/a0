@@ -58,7 +58,7 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
     if (node.op === 'call') {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined) return undefined;
-      value = run(callee, values); // pure and total: folding a constant call is exact
+      value = run(callee, values, { fuel: FOLD_EVAL_LIMIT }); // pure, total, and fuel-bounded
     } else if (node.op === 'fold' || node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
       const pred = node.op === 'loop' ? fn.calls.get(node.pred ?? '') : undefined;
@@ -74,9 +74,14 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
         return undefined;
       if (Array.isArray(init) || extra.some((v) => Array.isArray(v))) return undefined;
       let state: Value = init;
-      for (let i = 0; i < count; i += 1) {
-        if (pred !== undefined && run(pred, [state, i, ...extra]) !== true) break;
-        state = run(body, [state, i, ...extra]);
+      const fuel = { fuel: FOLD_EVAL_LIMIT * 64 };
+      try {
+        for (let i = 0; i < count; i += 1) {
+          if (pred !== undefined && run(pred, [state, i, ...extra], fuel) !== true) break;
+          state = run(body, [state, i, ...extra], fuel);
+        }
+      } catch {
+        return undefined; // too expensive to evaluate at compile time; keep the loop
       }
       value = state;
     } else {
