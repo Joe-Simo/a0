@@ -608,7 +608,7 @@ end`;
   const badPred = parseAndValidate(
     'fn body u32 u32 io -> u32\nret p0\nend\nfn pr u32 u32 io -> bool\nc lt p0 5\nret c\nend\nfn f u32 io -> u32\nr loop pr body 4 p0 p1\nret r\nend',
   );
-  assert.throws(() => compile(badPred, 'sv'), /predicate must be combinational/);
+  assert.throws(() => compile(badPred, 'sv'), /clocked loop predicate must not carry an io token/);
 });
 
 test('resource bounds: fuel stops runaway evaluation, literal iteration is capped, fuzzed input fails cleanly', () => {

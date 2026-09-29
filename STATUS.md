@@ -387,18 +387,33 @@ with status as of 2026-09-29:
    1.8–3.8 ms, a 3–4× faster warm path. `results/benchmark.json` wall-clock numbers
    from this session are unreliable: the machine's load average was 50–160 from other
    applications, and back-to-back runs of identical code varied up to 25×.
-5. **Measured.** Yosys `synth -noabc; ltp -noff` over the 48 corpus modules: depth is
-   bimodal. Every module without a surviving `div`/`rem` has longest path ≤ 56 gates
-   (median 22.5 among combinational modules); every module with one is ≥ 347, up to
-   1751 (two dependent divides ≈ 1100, three ≈ 1750), because Yosys lowers `/` and `%`
-   to a single-cycle restoring 32-bit divider (~500–600 gates deep each). Multipliers
-   are cheap in depth (two 32-bit `mul`, no div: depth 47). ABC re-test with a 60 s
-   timeout: modules with only multipliers finish in ~18 s; the module with 2 mul + 3
-   div/rem is killed at 60 s. The earlier note blaming multipliers for the ABC stall was
-   wrong and has been corrected in `tools/hw-verify.ts`. Measured need for scheduling is
-   therefore narrow: not a general operator scheduler, but multi-cycle `div`/`rem`
-   (iterative divider behind the existing sequential handshake). 20 of 48 modules would
-   change; 28 would not benefit. Not implemented yet.
+5. **Measured, then implemented.** Yosys `synth -noabc; ltp -noff` over the 48 corpus
+   modules showed bimodal depth: every module without a surviving `div`/`rem` had longest
+   path ≤ 56 gates (median 22.5 among combinational modules); every module with one was
+   ≥ 347, up to 1751, because Yosys lowered `/` and `%` to a single-cycle restoring 32-bit
+   divider (~500–600 gate levels each, stacked when dependent). Multipliers were cheap in
+   depth (two 32-bit `mul`, no div: 47). The earlier note blaming multipliers for the ABC
+   stall was wrong. Change (v0.8.7, `src/hw.ts`, compiler version a0c-0.1.1 so cached SV bodies are invalidated): `div`/`rem` are now stages that call a
+   shared 32-cycle iterative divider (`a0_udiv`, start/done handshake, division by zero
+   per the language in one cycle); any function containing one, or calling one, becomes
+   clocked, and loop predicates may now be clocked (predicate handshake before each body
+   step; io-carrying clocked predicates are rejected). Measured on the corpus
+   (`results/hardware.json`):
+
+   | | before | after |
+   |---|---|---|
+   | clocked modules | 10 of 48 | 48 of 48 |
+   | Icarus cases | 5946 pass | 5946 pass |
+   | simulation time | 10.7 s | 54 s (32 cycles per divide) |
+   | Yosys `synth -noabc` time | 168 s | 7.6 s |
+   | total generic cells | 260 146 | 78 835 (−70 %) |
+   | largest module (g44) | 104 460 cells | 1 175 cells |
+   | full `synth` with ABC | stalled > 5 min | 44.5 s, whole corpus |
+
+   Losses recorded: every module with division now needs a clock and 32+ cycles per
+   divide, and 38 previously combinational modules became clocked; no pipelining or
+   scheduling beyond this, and no timing/area on a real library.
+
 6. **Done.** `bun run equiv` (`tools/equiv-verify.ts`, Z3 via the `z3-solver` package,
    QF_BV 32-bit): for every corpus function whose values carry no io, the optimized
    function is proved equal to the source function on all inputs (arrays and records

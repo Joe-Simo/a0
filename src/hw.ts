@@ -51,10 +51,53 @@ const hwType = (t: Type): string =>
   t === 'bool' ? 'logic' : `logic [${Math.max(hwWidth(t), 1) - 1}:0]`;
 
 /** Does this function (transitively) need a clocked module? */
+/**
+ * Iterative unsigned divider shared by every clocked module: 32 restoring steps, one per
+ * cycle, `start`/`done` handshake like a sequential callee. Division by zero follows the
+ * language (quotient all ones, remainder the dividend) and finishes in one cycle. This
+ * replaces the single-cycle `/` and `%` whose combinational cone was measured at
+ * 500–1750 gate levels (results/hardware.json); every module containing div/rem is clocked.
+ */
+export const SV_UDIV_MODULE = `module a0_udiv (
+  input logic clk,
+  input logic rst,
+  input logic start,
+  input logic [31:0] a,
+  input logic [31:0] b,
+  output logic done,
+  output logic [31:0] q,
+  output logic [31:0] r
+);
+  logic busy;
+  logic [5:0] i;
+  logic [31:0] rem, quo, dvd, dvs;
+  logic [32:0] sh, diff;
+  assign sh = {rem, dvd[31]};
+  assign diff = sh - {1'b0, dvs};
+  always_ff @(posedge clk) begin
+    if (rst) begin busy <= 1'b0; done <= 1'b0; q <= 32'd0; r <= 32'd0; end
+    else if (start && !busy) begin
+      if (b == 32'd0) begin q <= 32'hffffffff; r <= a; done <= 1'b1; end
+      else begin busy <= 1'b1; done <= 1'b0; i <= 6'd0; rem <= 32'd0; quo <= 32'd0; dvd <= a; dvs <= b; end
+    end else if (busy) begin
+      if (!diff[32]) begin rem <= diff[31:0]; quo <= {quo[30:0], 1'b1}; end
+      else begin rem <= sh[31:0]; quo <= {quo[30:0], 1'b0}; end
+      dvd <= dvd << 1;
+      i <= i + 6'd1;
+      if (i == 6'd31) begin
+        busy <= 1'b0; done <= 1'b1;
+        q <= diff[32] ? {quo[30:0], 1'b0} : {quo[30:0], 1'b1};
+        r <= diff[32] ? sh[31:0] : diff[31:0];
+      end
+    end
+  end
+endmodule`;
+
 export function needsSequential(fn: TypedFunc): boolean {
   if (fn.params.some(containsIo) || containsIo(fn.result)) return true;
   for (const n of fn.nodes) {
     if (n.op === 'read' || n.op === 'write' || n.op === 'puts') return true;
+    if (n.op === 'div' || n.op === 'rem') return true;
     if (n.op === 'fold' || n.op === 'loop') {
       // Literal counts within the unroll limit stay combinational; anything else is clocked.
       const count = n.args[0];
@@ -77,7 +120,7 @@ const hasIo = (fn: TypedFunc): boolean => fn.params.some(containsIo);
 interface Stage {
   readonly node: Node;
   readonly index: number;
-  readonly kind: 'read' | 'write' | 'puts' | 'iterate' | 'call';
+  readonly kind: 'read' | 'write' | 'puts' | 'iterate' | 'call' | 'divide';
   readonly callee: TypedFunc | undefined;
   readonly pred: TypedFunc | undefined;
   readonly calleeSeq: boolean;
@@ -85,6 +128,7 @@ interface Stage {
 
 function isStage(n: Node, fn: TypedFunc): Stage['kind'] | undefined {
   if (n.op === 'read' || n.op === 'write' || n.op === 'puts') return n.op;
+  if (n.op === 'div' || n.op === 'rem') return 'divide';
   if (n.op === 'fold' || n.op === 'loop') return 'iterate';
   if (n.op === 'call') {
     const callee = fn.calls.get(n.callee ?? '');
@@ -143,8 +187,10 @@ export function emitSequential(fn: TypedFunc): string {
     if (kind === undefined) continue;
     const callee = fn.calls.get(n.callee ?? '');
     const pred = n.op === 'loop' ? fn.calls.get(n.pred ?? '') : undefined;
-    if (pred !== undefined && needsSequential(pred)) {
-      throw new A0Error(`${fn.name}.${n.id}: a loop predicate must be combinational in hardware`);
+    if (pred !== undefined && needsSequential(pred) && hasIo(pred)) {
+      throw new A0Error(
+        `${fn.name}.${n.id}: a clocked loop predicate must not carry an io token in hardware`,
+      );
     }
     stages.push({
       node: n,
@@ -221,11 +267,12 @@ export function emitSequential(fn: TypedFunc): string {
     if (s.kind === 'iterate') {
       const [, initOp] = n.args;
       const lines = [`it_${n.id} <= 32'd0;`, `ph_${n.id} <= 1'b0;`];
+      if (s.pred !== undefined && needsSequential(s.pred)) lines.push(`pp_${n.id} <= 2'd0;`);
       if (hwWidth(fn.types.get(n.id) ?? 'u32') > 0)
         lines.push(`acc_${n.id} <= ${svOperand(initOp as Operand)};`);
       return lines;
     }
-    if (s.kind === 'call') return [`ph_${n.id} <= 1'b0;`];
+    if (s.kind === 'call' || s.kind === 'divide') return [`ph_${n.id} <= 1'b0;`];
     if (s.kind === 'puts') return [`it_${n.id} <= 32'd0;`];
     return [];
   };
@@ -269,6 +316,23 @@ export function emitSequential(fn: TypedFunc): string {
       outData.push(`${pc(s.index)}: out_data = ${svOperand(n.args[1] as Operand)};`);
       seqBlocks.push(
         `        ${pc(s.index)}: ${guard(`if (out_ready) begin ${advance.join(' ')} end`)}`,
+      );
+    } else if (s.kind === 'divide') {
+      const [da, db] = n.args.map(svOperand);
+      L.push(
+        `  logic ph_${n.id};`,
+        `  logic st_${n.id};`,
+        `  logic dn_${n.id};`,
+        `  logic [31:0] dq_${n.id};`,
+        `  logic [31:0] dr_${n.id};`,
+      );
+      resets.push(`st_${n.id} <= 1'b0;`, `ph_${n.id} <= 1'b0;`);
+      L.push(
+        `  a0_udiv u_${n.id} (.clk(clk), .rst(rst), .start(st_${n.id}), .a(${da}), .b(${db}), .done(dn_${n.id}), .q(dq_${n.id}), .r(dr_${n.id}));`,
+      );
+      const latch = `r_${n.id} <= ${n.op === 'div' ? `dq_${n.id}` : `dr_${n.id}`}; `;
+      seqBlocks.push(
+        `        ${pc(s.index)}: ${guard(`if (!ph_${n.id}) begin st_${n.id} <= 1'b1; ph_${n.id} <= 1'b1; end else begin st_${n.id} <= 1'b0; if (dn_${n.id} && !st_${n.id}) begin ${latch}${advance.join(' ')} end end`)}`,
       );
     } else if (s.kind === 'call') {
       const callee = s.callee as TypedFunc;
@@ -347,28 +411,44 @@ export function emitSequential(fn: TypedFunc): string {
       }
       L.push(`  a0_${callee.name} u_${n.id} (${bodyPorts(`bw_${n.id}`, s.calleeSeq).join(', ')});`);
       let cont = `it_${n.id} < ${svOperand(countOp as Operand)}`;
+      const predSeq = s.pred !== undefined && needsSequential(s.pred);
       if (s.pred !== undefined) {
         L.push(`  logic pr_${n.id};`);
+        if (predSeq) {
+          L.push(`  logic [1:0] pp_${n.id};`, `  logic pst_${n.id};`, `  logic pdn_${n.id};`);
+          resets.push(`pp_${n.id} <= 2'd0;`, `pst_${n.id} <= 1'b0;`);
+        }
         const predPorts = [
+          ...(predSeq ? ['.clk(clk)', '.rst(rst)', `.start(pst_${n.id})`] : []),
           ...(w > 0 ? [`.p0(acc_${n.id})`] : []),
           `.p1(it_${n.id})`,
           ...extra.flatMap((arg, k) =>
             hwWidth(operandTypeOf(fn, arg)) === 0 ? [] : [`.p${k + 2}(${svOperand(arg)})`],
           ),
+          ...(predSeq ? [`.done(pdn_${n.id})`] : []),
           `.result(pr_${n.id})`,
         ];
         L.push(`  a0_${s.pred.name} u_${n.id}_p (${predPorts.join(', ')});`);
-        cont = `(${cont}) && pr_${n.id}`;
+        if (!predSeq) cont = `(${cont}) && pr_${n.id}`;
       }
       const finish = `${w > 0 ? `r_${n.id} <= acc_${n.id}; ` : ''}${advance.join(' ')}`;
       const step = `${w > 0 ? `acc_${n.id} <= bw_${n.id}; ` : ''}it_${n.id} <= it_${n.id} + 32'd1;`;
-      if (s.calleeSeq) {
+      // One iteration of the body: combinational bodies step in one cycle; clocked bodies
+      // run a start/done handshake. `after` runs when the iteration completes.
+      const bodyStep = (after: string): string =>
+        s.calleeSeq
+          ? `if (!ph_${n.id}) begin st_${n.id} <= 1'b1; ph_${n.id} <= 1'b1; end else begin st_${n.id} <= 1'b0; if (dn_${n.id} && !st_${n.id}) begin ${step} ph_${n.id} <= 1'b0; ${after}end end`
+          : `${step} ${after}`;
+      if (predSeq) {
+        // Phase 0: start the predicate; 1: wait for it and branch; 2: run the body.
         seqBlocks.push(
-          `        ${pc(s.index)}: ${guard(`if (${cont}) begin if (!ph_${n.id}) begin st_${n.id} <= 1'b1; ph_${n.id} <= 1'b1; end else begin st_${n.id} <= 1'b0; if (dn_${n.id} && !st_${n.id}) begin ${step} ph_${n.id} <= 1'b0; end end end else begin ${finish} end`)}`,
+          `        ${pc(s.index)}: ${guard(
+            `if (${cont}) begin case (pp_${n.id}) 2'd0: begin pst_${n.id} <= 1'b1; pp_${n.id} <= 2'd1; end 2'd1: begin pst_${n.id} <= 1'b0; if (pdn_${n.id} && !pst_${n.id}) begin if (pr_${n.id}) pp_${n.id} <= 2'd2; else begin ${finish} end end end default: begin ${bodyStep(`pp_${n.id} <= 2'd0; `)} end endcase end else begin ${finish} end`,
+          )}`,
         );
       } else {
         seqBlocks.push(
-          `        ${pc(s.index)}: ${guard(`if (${cont}) begin ${step} end else begin ${finish} end`)}`,
+          `        ${pc(s.index)}: ${guard(`if (${cont}) begin ${bodyStep('')} end else begin ${finish} end`)}`,
         );
       }
     }
