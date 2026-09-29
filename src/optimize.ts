@@ -192,6 +192,18 @@ function isEffectful(node: Node, fn: TypedFunc): boolean {
   });
 }
 
+/** Unsigned division/remainder by a literal power of two becomes a shift/mask (exact). */
+function strengthReduce(node: Node): Node {
+  const b = node.args[1];
+  if ((node.op !== 'div' && node.op !== 'rem') || b === undefined || b.kind !== 'u32') return node;
+  const v = b.value;
+  if (v === 0 || (v & (v - 1)) !== 0) return node;
+  const k = 31 - Math.clz32(v);
+  return node.op === 'div'
+    ? { ...node, op: 'shr', args: [node.args[0] as Operand, { kind: 'u32', value: k }] }
+    : { ...node, op: 'and', args: [node.args[0] as Operand, { kind: 'u32', value: v - 1 }] };
+}
+
 /** Maximum trip count the optimizer evaluates at compile time. */
 const FOLD_EVAL_LIMIT = 4096;
 
@@ -241,15 +253,16 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
       subst.set(node.id, simple);
       continue;
     }
-    const key = cseKey(rewritten);
+    const reduced = strengthReduce(rewritten);
+    const key = cseKey(reduced);
     const prior = cse.get(key);
     if (prior !== undefined) {
       subst.set(node.id, { kind: 'node', id: prior });
       continue;
     }
     cse.set(key, node.id);
-    kept.push(rewritten);
-    defs.set(node.id, rewritten);
+    kept.push(reduced);
+    defs.set(node.id, reduced);
   }
   const ret = resolve(fn.ret);
   // Dead-code elimination: keep only nodes reachable from the result.

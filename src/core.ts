@@ -283,6 +283,8 @@ export const LIMITS = {
   maxStaticIterations: 1 << 24,
   /** Default interpreter fuel: node evaluations before `run` aborts with A0Error. */
   defaultFuel: 100_000_000,
+  /** Maximum words an io state may accumulate on its output in the reference evaluator. */
+  maxIoOutput: 1 << 20,
 } as const;
 
 const IDENT = /^[a-z][a-z0-9_]{0,63}$/;
@@ -847,6 +849,14 @@ export function makeIo(input: readonly number[] = []): IoState {
   return { input, position: 0, output: [] };
 }
 
+/** Append one output word, bounded so a runaway program cannot exhaust memory. */
+function emit(state: IoState, word: number): void {
+  if (state.output.length >= LIMITS.maxIoOutput) {
+    throw new A0Error(`io output exceeds ${LIMITS.maxIoOutput} words`);
+  }
+  state.output.push(word);
+}
+
 export function isIoState(v: Value): v is IoState {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && 'output' in v;
 }
@@ -944,15 +954,15 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     }
     case 'write': {
       if (a === undefined || !isIoState(a)) throw new A0Error('write: expected io token');
-      a.output.push(num(b));
+      emit(a, num(b));
       return a;
     }
     case 'puts': {
       // Length word, then every element, in order.
       if (a === undefined || !isIoState(a) || !Array.isArray(b))
         throw new A0Error('puts: expected io token and array');
-      a.output.push(b.length);
-      for (const v of b) a.output.push(num(v));
+      emit(a, b.length);
+      for (const v of b) emit(a, num(v));
       return a;
     }
     case 'call':

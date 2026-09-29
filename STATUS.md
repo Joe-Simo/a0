@@ -106,6 +106,11 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Strength reduction and io memory bound** (v0.8.5): `div`/`rem` by a literal power of
+  two become `shr`/`and` in the optimizer (exact for unsigned); hardware synthesis of the
+  corpus fell from 30 s to 23 s (remaining dividers have non-power-of-two literal or
+  variable divisors). The reference evaluator caps io output at 2^20 words so a runaway
+  writer cannot exhaust memory (test).
 - **Persistent artifact cache** (v0.8.4, `src/cache.ts`): on-disk, content-addressed;
   per-function emission keyed by compiler version, target, optimization level, and
   semantic revision (own text + transitive callees); wasm artifacts keyed by toolchain
@@ -167,7 +172,7 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 23/23 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured and program-level edits, persistent cache) |
+| Focused tests | `bun run test` | 24/24 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured and program-level edits, persistent cache) |
 | Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
 | Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
 | GPU (Metal, Apple M3) | `bun run gpu` | 4995 io-free cases across 31 kernels pass |

@@ -896,3 +896,19 @@ test('persistent cache: per-function emission keyed by semantic revision; wasm a
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('power-of-two div/rem strength-reduce to shifts and masks; io output is bounded', () => {
+  const o = optimizeFunction(fn('fn f u32 -> u32\nq div p0 8\nr rem p0 16\ns add q r\nret s\nend'));
+  assert.equal(
+    formatFunction(o.fn),
+    'fn f u32 -> u32\nq shr p0 3\nr and p0 15\ns add q r\nret s\nend',
+  );
+  assert.equal(run(o.fn, [1000]), Math.floor(1000 / 8) + (1000 % 16));
+  const spam = parseAndValidate(
+    'fn s io u32 -> io\nw write p0 p1\nret w\nend\nfn go u32 io -> u32\nt fold s p0 p1\nret 0\nend',
+  );
+  assert.throws(
+    () => run(spam.byName.get('go') as TypedFunc, [0xffff_ffff, makeIo([])], { fuel: 10_000_000 }),
+    /io output exceeds/,
+  );
+});
