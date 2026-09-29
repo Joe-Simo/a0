@@ -1,6 +1,6 @@
 /**
- * Build the browser demo: examples/life.a0 -> C -> wasm32 (clang + wasm-ld), the DOM
- * adapter (site/app.ts -> site/dist/app.js via tsc), and the page. Output: site/dist/.
+ * Build a0lang.com: site/page.a0 + examples/life.a0 -> C -> wasm32 (clang + wasm-ld), and the
+ * generic runtime (site/app.ts -> site/dist/app.js via tsc). Output: site/dist/.
  * Nothing is deployed by this script.
  */
 
@@ -13,21 +13,17 @@ import { compileWasm, runTool } from '../src/toolchain.js';
 async function main(): Promise<void> {
   const out = join('site', 'dist');
   await mkdir(out, { recursive: true });
-  // Both A0 programs of the site: the page itself and the Life component.
-  const sizes: string[] = [];
-  let compiler = '';
-  for (const [name, source] of [
-    ['life', join('examples', 'life.a0')],
-    ['page', join('site', 'page.a0')],
-  ] as const) {
-    const program = parseAndValidate(await readFile(source, 'utf8'));
-    const c = compile(program, 'c').text;
-    const wasm = await compileWasm(c);
-    await writeFile(join(out, `${name}.wasm`), wasm.bytes);
-    await writeFile(join(out, `${name}.c`), c, 'utf8');
-    sizes.push(`${name}.wasm ${wasm.bytes.length} bytes`);
-    compiler = wasm.compiler;
-  }
+  // The site is one A0 program: site/page.a0 linked with examples/life.a0 by whole-program
+  // concatenation (A0 has no module system yet; both files share one namespace). The io
+  // buffers are widened because the page writes its stylesheet and every string as words.
+  const source = `${await readFile(join('examples', 'life.a0'), 'utf8')}\n${await readFile(join('site', 'page.a0'), 'utf8')}`;
+  const program = parseAndValidate(source);
+  const c = compile(program, 'c', { ioInputCapacity: 512, ioOutputCapacity: 65536 }).text;
+  const wasm = await compileWasm(c);
+  await writeFile(join(out, 'page.wasm'), wasm.bytes);
+  await writeFile(join(out, 'page.c'), c, 'utf8');
+  const sizes = [`page.wasm ${wasm.bytes.length} bytes`];
+  const compiler = wasm.compiler;
   const tsc = join('node_modules', '.bin', 'tsc');
   const r = runTool(tsc, [
     '--strict',

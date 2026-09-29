@@ -98,7 +98,7 @@ export async function compileCached(
     }),
   );
   return {
-    text: assemble(target, bodies, program),
+    text: assemble(target, bodies, program, options),
     hits: cache.hits - before.hits,
     misses: cache.misses - before.misses,
   };

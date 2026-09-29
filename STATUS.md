@@ -427,10 +427,18 @@ with status as of 2026-09-29:
 ## Reference
 
 - a0lang.com is deployed (2026-09-29, approved by the user): Vercel project `a0lang` in team
-  `simo-js`, static production deployment of `site/dist` (the page program compiled from
-  `site/page.a0` plus the Life component from `examples/life.a0`, both wasm32), domain
-  a0lang.com verified on Vercel DNS, HTTP 200 with the A0 page. Deployed with the user's
-  Vercel CLI login; the MCP token in this session cannot create or update projects.
+  `simo-js`, domain verified on Vercel DNS. **The whole site is one A0 program** (v0.8.8):
+  `site/page.a0` linked with `examples/life.a0` by whole-program concatenation, compiled to
+  wasm32. The program emits the stylesheet (STYLE), every element and string, the buttons,
+  the Life grid (GRID, drawn on a canvas by the runtime), the run timer (TIMER), and its
+  own 35-word persisted state (counter, generation, running, 32 grid rows). The browser
+  runtime `site/app.ts` is generic: it feeds events in, builds DOM from the stream, and has
+  no page-specific markup, style, or logic. Verified live in the browser: hero, evidence
+  table, Life glider stepping under the A0 timer, counter and echo. The io buffers for the
+  page are widened through the new `ioInputCapacity`/`ioOutputCapacity` compile options
+  (C prelude only). Life's entry function was renamed `life` (acceptance tool updated).
+  Redeploy: `bun run site`, then `vercel deploy --prod` from a directory holding
+  `site/dist/{index.html,app.js,page.wasm}` (CLI login).
 
 ## Repository
 
@@ -468,9 +476,8 @@ listed by `git log`; the push is verified against `origin/main` after each commi
    before spending; keep the guide only as long as acceptance holds.
 3. **View size**: A0's structured view (function handle + program handle) is the largest of
    the six cells; measure a single-handle view that still allows signature changes.
-4. Redeploy a0lang.com after site changes: `bun run site`, then `vercel deploy --prod` from a
-   directory holding `site/dist/{index.html,app.js,life.wasm,page.wasm}` (project `a0lang`,
-   team `simo-js`, CLI login).
+4. Site: add docs/guide pages as further A0 programs or routes once the language guide is
+   stable; keep the runtime generic.
 5. Hardware: clocked predicate/body handshakes cost cycles; measure per-module cycle counts
    and decide whether a single-cycle `div` by a literal (constant divisor) should stay
    combinational. Optionally run the full ABC synth in `bun run hw` behind a flag.

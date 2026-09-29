@@ -336,9 +336,10 @@ typedef struct a0_io a0_io;
 /** Fixed-capacity io runtime for C targets (freestanding-safe: no allocation). */
 export const C_IO_INPUT_CAPACITY = 256;
 export const C_IO_OUTPUT_CAPACITY = 1024;
-const C_IO_RUNTIME = `struct a0_io { uint32_t input[${C_IO_INPUT_CAPACITY}]; uint32_t ninput; uint32_t position; uint32_t output[${C_IO_OUTPUT_CAPACITY}]; uint32_t noutput; };
+const cIoRuntime = (inCap: number, outCap: number): string =>
+  `struct a0_io { uint32_t input[${inCap}]; uint32_t ninput; uint32_t position; uint32_t output[${outCap}]; uint32_t noutput; };
 static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput ? t->input[t->position++] : 0u; r.f1 = t; return r; }
-static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${C_IO_OUTPUT_CAPACITY}u) t->output[t->noutput++] = v; return t; }
+static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${outCap}u) t->output[t->noutput++] = v; return t; }
 static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
 
 const cType = (t: Type): string =>
@@ -824,7 +825,12 @@ export function usesIo(program: TypedProgram): boolean {
   );
 }
 
-export function assemble(target: Target, bodies: readonly string[], program: TypedProgram): string {
+export function assemble(
+  target: Target,
+  bodies: readonly string[],
+  program: TypedProgram,
+  options: CompileOptions = {},
+): string {
   const types = aggregateTypes(program);
   const io = usesIo(program);
   if (io && !types.some((t) => formatType(t) === '(u32,io)')) {
@@ -835,7 +841,13 @@ export function assemble(target: Target, bodies: readonly string[], program: Typ
       return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
     case 'c': {
       const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
-      if (io) decls.push(C_IO_RUNTIME);
+      if (io)
+        decls.push(
+          cIoRuntime(
+            options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+            options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+          ),
+        );
       return `${C_PRELUDE}\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n`;
     }
     case 'java': {
@@ -850,6 +862,9 @@ export function assemble(target: Target, bodies: readonly string[], program: Typ
 
 export interface CompileOptions {
   readonly optimize?: boolean;
+  /** C/wasm io struct capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
+  readonly ioInputCapacity?: number;
+  readonly ioOutputCapacity?: number;
 }
 
 export interface CompileResult {
@@ -932,5 +947,5 @@ export function compile(
     cache.set(key, text);
     return text;
   });
-  return { text: assemble(target, bodies, program), cacheHits, cacheMisses };
+  return { text: assemble(target, bodies, program, options), cacheHits, cacheMisses };
 }

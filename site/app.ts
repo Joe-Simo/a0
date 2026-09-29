@@ -1,16 +1,22 @@
 /**
- * Browser adapter for A0 programs on a0lang.com.
+ * Generic browser runtime for an A0 page program (a0lang.com).
  *
- * Two A0 programs, both compiled to freestanding wasm32 through C, drive this page:
- *  - site/page.a0 renders the page itself as a UI command stream (the A0 UI protocol)
- *    and keeps its own state word; clicks are fed back as event ids.
- *  - examples/life.a0 is mounted as component 1 (canvas), speaking its session protocol.
- * This file only interprets word streams, builds DOM, and forwards events; no A0
- * semantics live here.
+ * The page is one A0 io program (site/page.a0 linked with examples/life.a0), compiled to
+ * freestanding wasm32 through C. Everything on the page, including its stylesheet, its
+ * layout, its buttons, the Life grid logic, the timer, and the persisted state, comes from
+ * the word stream that program writes. This file knows nothing about the page: it feeds
+ * events in, interprets the A0 UI protocol out, and builds DOM.
+ *
+ * Input words:  event x y ntext text[ntext] nstate state[nstate]
+ * Output words: 1 OPEN tag | 2 TEXT n bytes | 3 CLOSE | 4 ATTR key n bytes | 5 ONCLICK event
+ *               6 STATE n words | 8 ONSUBMIT event | 9 STYLE n bytes | 10 GRID event rows row...
+ *               11 TIMER ms event
+ * Tags and attribute keys are small integer tables shared with the program (see page.a0).
  */
 
-const IN_CAP = 256;
-const OUT_CAP = 1024;
+const IN_CAP = 512;
+const OUT_CAP = 65536;
+const TEXT_CAP = 64;
 
 interface IoExports {
   readonly memory: WebAssembly.Memory;
@@ -23,11 +29,16 @@ async function load(url: string): Promise<WebAssembly.Exports> {
 }
 
 /** Run one io session: input words in, output words + result out (C io struct layout). */
-function runSession(exp: WebAssembly.Exports, entry: string, input: readonly number[]): { output: Uint32Array; result: number } {
+function runSession(
+  exp: WebAssembly.Exports,
+  entry: string,
+  input: readonly number[],
+): { output: Uint32Array; result: number } {
   const e = exp as unknown as IoExports;
   const base = e.__heap_base.value as number;
   const needed = base + (IN_CAP + 2 + OUT_CAP + 1) * 4;
-  if (e.memory.buffer.byteLength < needed) e.memory.grow(Math.ceil((needed - e.memory.buffer.byteLength) / 65536));
+  if (e.memory.buffer.byteLength < needed)
+    e.memory.grow(Math.ceil((needed - e.memory.buffer.byteLength) / 65536));
   const words = new Uint32Array(e.memory.buffer, base, IN_CAP + 2 + OUT_CAP + 1);
   words.fill(0);
   words.set(input.slice(0, IN_CAP), 0);
@@ -35,27 +46,86 @@ function runSession(exp: WebAssembly.Exports, entry: string, input: readonly num
   const fn = exp[entry] as (io: number) => number;
   const result = fn(base) >>> 0;
   const nout = words[IN_CAP + 2 + OUT_CAP] as number;
-  return { output: Uint32Array.from(words.subarray(IN_CAP + 2, IN_CAP + 2 + Math.min(nout, OUT_CAP))), result };
+  return {
+    output: Uint32Array.from(words.subarray(IN_CAP + 2, IN_CAP + 2 + Math.min(nout, OUT_CAP))),
+    result,
+  };
 }
 
 // --- A0 UI protocol -------------------------------------------------------------
 
-const TAGS: Record<number, string> = { 1: 'h1', 2: 'p', 3: 'button', 4: 'code', 5: 'div', 6: 'span', 7: 'ul', 8: 'li', 9: 'a', 10: 'pre', 11: 'h2', 12: 'input' };
-const ATTRS: Record<number, string> = { 1: 'id', 2: 'class', 3: 'href' };
+const TAGS: Record<number, string> = {
+  1: 'h1',
+  2: 'p',
+  3: 'button',
+  4: 'code',
+  5: 'div',
+  6: 'span',
+  7: 'ul',
+  8: 'li',
+  9: 'a',
+  10: 'pre',
+  11: 'h2',
+  12: 'input',
+  13: 'section',
+  14: 'nav',
+  15: 'h3',
+  16: 'strong',
+  17: 'footer',
+  18: 'header',
+  19: 'table',
+  20: 'tr',
+  21: 'td',
+  22: 'th',
+  23: 'small',
+};
+const ATTRS: Record<number, string> = {
+  1: 'id',
+  2: 'class',
+  3: 'href',
+  4: 'type',
+  5: 'placeholder',
+  6: 'aria-label',
+};
 const decoder = new TextDecoder();
-
 const encoder = new TextEncoder();
+
+interface Rendered {
+  readonly state: number[];
+  readonly timer: { ms: number; event: number } | undefined;
+}
+
+interface EventSink {
+  (event: number, x?: number, y?: number): void;
+}
+
+function drawGrid(canvas: HTMLCanvasElement, rows: readonly number[]): void {
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  const style = getComputedStyle(canvas);
+  const n = rows.length;
+  const cell = canvas.width / 32;
+  ctx.fillStyle = style.backgroundColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = style.color;
+  for (let r = 0; r < n; r += 1) {
+    const row = rows[r] as number;
+    for (let c = 0; c < 32; c += 1)
+      if ((row >>> c) & 1) ctx.fillRect(c * cell + 1, r * cell + 1, cell - 2, cell - 2);
+  }
+}
 
 function render(
   root: HTMLElement,
+  styleEl: HTMLStyleElement,
   words: Uint32Array,
-  onEvent: (event: number) => void,
-  mount: (id: number, host: HTMLElement) => void,
+  onEvent: EventSink,
   inputText: string,
-): number | undefined {
+): Rendered {
   root.replaceChildren();
   const stack: HTMLElement[] = [root];
-  let state: number | undefined;
+  let state: number[] = [];
+  let timer: Rendered['timer'];
+  let css = '';
   let i = 0;
   const bytes = (): Uint8Array => {
     const n = words[i++] as number;
@@ -90,17 +160,14 @@ function render(
         top.addEventListener('click', () => onEvent(event));
         break;
       }
-      case 6:
-        state = words[i++] as number;
-        break;
-      case 7: {
-        const host = document.createElement('div');
-        top.appendChild(host);
-        mount(words[i++] as number, host);
+      case 6: {
+        const n = words[i++] as number;
+        state = Array.from(words.subarray(i, i + n));
+        i += n;
         break;
       }
       case 8: {
-        // ONSUBMIT: Enter in this text input sends the event with the field's bytes.
+        // ONSUBMIT: Enter in this text input sends the event; the field's bytes travel as input.
         const event = words[i++] as number;
         const input = top as HTMLInputElement;
         input.type = 'text';
@@ -110,89 +177,81 @@ function render(
         });
         break;
       }
+      case 9:
+        css += decoder.decode(bytes());
+        break;
+      case 10: {
+        // GRID: a bitmap of 32-bit rows drawn on a canvas; clicking a cell sends event (x, y).
+        const event = words[i++] as number;
+        const n = words[i++] as number;
+        const rows = Array.from(words.subarray(i, i + n));
+        i += n;
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 16 * n;
+        top.appendChild(canvas);
+        canvas.addEventListener('click', (ev) => {
+          const rect = canvas.getBoundingClientRect();
+          onEvent(
+            event,
+            Math.floor(((ev.clientX - rect.left) / rect.width) * 32),
+            Math.floor(((ev.clientY - rect.top) / rect.height) * n),
+          );
+        });
+        // Draw after the stylesheet is applied so colors come from the program's CSS.
+        queueMicrotask(() => drawGrid(canvas, rows));
+        break;
+      }
+      case 11: {
+        const ms = words[i++] as number;
+        const event = words[i++] as number;
+        timer = { ms, event };
+        break;
+      }
       default:
-        return state;
+        i = words.length;
     }
   }
-  return state;
-}
-
-// --- Life component (examples/life.a0) ----------------------------------------------
-
-function mountLife(exp: WebAssembly.Exports, host: HTMLElement): void {
-  const N = 32;
-  host.innerHTML =
-    '<canvas id="grid" width="512" height="512" aria-label="Life grid; click a cell to toggle it"></canvas><div class="bar"><button id="step" type="button">Step</button><button id="run" type="button">Run</button><button id="clear" type="button">Clear</button><button id="glider" type="button">Glider</button><span class="stat">generation <b id="generation">0</b></span><span class="stat">population <b id="population">0</b></span></div>';
-  const canvas = host.querySelector('#grid') as HTMLCanvasElement;
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  const popEl = host.querySelector('#population') as HTMLElement;
-  const genEl = host.querySelector('#generation') as HTMLElement;
-  let grid: Uint32Array = new Uint32Array(N);
-  let generation = 0;
-  let timer: number | undefined;
-  const cell = canvas.width / N;
-  const style = getComputedStyle(document.documentElement);
-  const draw = (population: number): void => {
-    ctx.fillStyle = style.getPropertyValue('--bg').trim() || '#111';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = style.getPropertyValue('--cell').trim() || '#6cf';
-    for (let r = 0; r < N; r += 1) {
-      const row = grid[r] as number;
-      for (let c = 0; c < N; c += 1) if ((row >>> c) & 1) ctx.fillRect(c * cell + 1, r * cell + 1, cell - 2, cell - 2);
-    }
-    popEl.textContent = String(population);
-    genEl.textContent = String(generation);
-  };
-  const apply = (cmd: number, x = 0, y = 0): void => {
-    const r = runSession(exp, 'a0_session', [...grid, cmd, x, y]);
-    grid = Uint32Array.from(r.output.subarray(0, N));
-    if (cmd === 0) generation += 1;
-    if (cmd === 2) generation = 0;
-    draw(r.result);
-  };
-  canvas.addEventListener('click', (ev) => {
-    const rect = canvas.getBoundingClientRect();
-    apply(1, Math.floor(((ev.clientX - rect.left) / rect.width) * N), Math.floor(((ev.clientY - rect.top) / rect.height) * N));
-  });
-  (host.querySelector('#step') as HTMLButtonElement).addEventListener('click', () => apply(0));
-  (host.querySelector('#clear') as HTMLButtonElement).addEventListener('click', () => apply(2));
-  (host.querySelector('#glider') as HTMLButtonElement).addEventListener('click', () => {
-    for (const [r, c] of [[1, 2], [2, 3], [3, 1], [3, 2], [3, 3]] as const) apply(1, c, r);
-  });
-  const runBtn = host.querySelector('#run') as HTMLButtonElement;
-  runBtn.addEventListener('click', () => {
-    if (timer !== undefined) {
-      window.clearInterval(timer);
-      timer = undefined;
-      runBtn.textContent = 'Run';
-      return;
-    }
-    timer = window.setInterval(() => apply(0), 120);
-    runBtn.textContent = 'Pause';
-  });
-  apply(2);
-  (window as unknown as { a0life: { apply: typeof apply; grid: () => Uint32Array } }).a0life = { apply, grid: () => grid };
+  if (styleEl.textContent !== css) styleEl.textContent = css;
+  return { state, timer };
 }
 
 // --- Page -------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const [page, life] = await Promise.all([load('page.wasm'), load('life.wasm')]);
+  const page = await load('page.wasm');
   const root = document.getElementById('app') as HTMLElement;
-  let state = 0;
-  const show = (event: number): void => {
-    // The current text of the page's input travels as bytes on the io stream (up to 64).
+  const styleEl = document.createElement('style');
+  document.head.appendChild(styleEl);
+  let state: number[] = [];
+  let pending: number | undefined;
+  const show: EventSink = (event, x = 0, y = 0) => {
+    if (pending !== undefined) window.clearTimeout(pending);
+    pending = undefined;
     const field = root.querySelector('input') as HTMLInputElement | null;
     const text = field?.value ?? '';
-    const bytes = Array.from(encoder.encode(text)).slice(0, 64);
-    const r = runSession(page, 'a0_session', [event, state, bytes.length, ...bytes]);
-    const next = render(root, r.output, show, (id, host) => {
-      if (id === 1) mountLife(life, host);
-    }, text);
-    state = next ?? r.result;
+    const textBytes = Array.from(encoder.encode(text)).slice(0, TEXT_CAP);
+    const r = runSession(page, 'a0_session', [
+      event,
+      x,
+      y,
+      textBytes.length,
+      ...textBytes,
+      state.length,
+      ...state,
+    ]);
+    const next = render(root, styleEl, r.output, show, text);
+    state = next.state;
+    if (next.timer !== undefined) {
+      const { ms, event: ev } = next.timer;
+      pending = window.setTimeout(() => show(ev), ms);
+    }
   };
   show(0);
-  (window as unknown as { a0page: { show: typeof show; state: () => number } }).a0page = { show, state: () => state };
+  (window as unknown as { a0page: { show: EventSink; state: () => number[] } }).a0page = {
+    show,
+    state: () => state,
+  };
 }
 
 main().catch((err: unknown) => {

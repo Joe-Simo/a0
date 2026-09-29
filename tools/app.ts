@@ -110,7 +110,7 @@ function sessionCase(
   const { rows, pop } = refSession(g, cmd, x, y);
   return {
     label: name,
-    functionName: 'session',
+    functionName: 'life',
     args: [],
     expected: pop,
     input: [...g, cmd, x, y],

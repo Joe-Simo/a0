@@ -736,45 +736,92 @@ test('div/rem are total unsigned (zero divisor: all ones / dividend); puts strea
   assert.ok(compile(p, 'sv').text.includes("32'hffffffff"));
 });
 
-test('site page program renders the A0 UI protocol with persisted state and decimal text', async () => {
+test('site page program: A0 UI protocol with stylesheet, grid, timer, and 35-word state', async () => {
   const { readFileSync } = await import('node:fs');
-  const p = parseAndValidate(readFileSync('site/page.a0', 'utf8'));
+  // The site is page.a0 linked with life.a0 by concatenation (as tools/site-build.ts does).
+  const p = parseAndValidate(
+    `${readFileSync('examples/life.a0', 'utf8')}\n${readFileSync('site/page.a0', 'utf8')}`,
+  );
   const session = p.byName.get('session') as TypedFunc;
-  const decode = (
-    words: readonly number[],
-  ): { texts: string[]; state: number | undefined; events: number[] } => {
-    const texts: string[] = [];
-    const events: number[] = [];
-    let state: number | undefined;
+  interface Decoded {
+    texts: string[];
+    css: string;
+    state: number[];
+    events: number[];
+    grid: number[] | undefined;
+    timer: number[] | undefined;
+  }
+  const decode = (words: readonly number[]): Decoded => {
+    const d: Decoded = {
+      texts: [],
+      css: '',
+      state: [],
+      events: [],
+      grid: undefined,
+      timer: undefined,
+    };
+    const str = (i: number, n: number): string =>
+      Buffer.from(words.slice(i, i + n)).toString('utf8');
     for (let i = 0; i < words.length; ) {
       const c = words[i++];
-      if (c === 1 || c === 5 || c === 7 || c === 8) {
-        if (c === 5 || c === 8) events.push(words[i] as number);
-        i += 1;
-      } else if (c === 2 || c === 4) {
+      if (c === 1) i += 1;
+      else if (c === 5 || c === 8) d.events.push(words[i++] as number);
+      else if (c === 2 || c === 4 || c === 9) {
         if (c === 4) i += 1;
         const n = words[i++] as number;
-        texts.push(Buffer.from(words.slice(i, i + n)).toString('utf8'));
+        if (c === 9) d.css += str(i, n);
+        else d.texts.push(str(i, n));
         i += n;
-      } else if (c === 6) state = words[i++];
-      else if (c !== 3) throw new Error(`bad command ${c}`);
+      } else if (c === 6) {
+        const n = words[i++] as number;
+        d.state = words.slice(i, i + n) as number[];
+        i += n;
+      } else if (c === 10) {
+        const n = words[i + 1] as number;
+        d.grid = words.slice(i + 2, i + 2 + n) as number[];
+        i += 2 + n;
+      } else if (c === 11) {
+        d.timer = [words[i] as number, words[i + 1] as number];
+        i += 2;
+      } else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
     }
-    return { texts, state, events };
+    return d;
   };
-  const first = makeIo([0, 0, 0]);
+  // Initial render: event 0, no text, no state (reads past the input yield 0).
+  const first = makeIo([0, 0, 0, 0, 0]);
   assert.equal(run(session, [first]), 0);
   const d0 = decode(first.output);
-  assert.equal(d0.state, 0);
-  assert.deepEqual(d0.events, [1, 2]);
-  assert.ok(d0.texts.includes('A0') && d0.texts.includes('Clicked '));
-  const clicked = makeIo([1, 41]);
-  assert.equal(run(session, [clicked]), 42);
-  const d1 = decode(clicked.output);
-  assert.equal(d1.state, 42);
+  assert.equal(d0.state.length, 35);
+  assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
   assert.deepEqual(
-    d1.texts.filter((t) => /^\d$/.test(t)),
-    ['4', '2', '0'],
+    [...new Set(d0.events)].sort((a, b) => a - b),
+    [1, 2, 3, 4, 5, 6], // GRID carries cell-click event 7 with (x, y)
   );
+  assert.equal(d0.grid?.length, 32);
+  assert.equal(d0.timer, undefined);
+  assert.ok(d0.texts.includes('Clicked ') && d0.texts.includes('Run'));
+  // Glider, then one step: generation 1, population 5, timer only while running.
+  const glider = makeIo([6, 0, 0, 0, 35, ...d0.state]);
+  run(session, [glider]);
+  const d1 = decode(glider.output);
+  assert.deepEqual(d1.state.slice(4, 7), [4, 8, 14]);
+  const step = makeIo([3, 0, 0, 0, 35, ...d1.state]);
+  run(session, [step]);
+  const d2 = decode(step.output);
+  assert.equal(d2.state[1], 1);
+  assert.deepEqual(d2.state.slice(3, 8), [0, 0, 10, 12, 4]);
+  const running = makeIo([4, 0, 0, 0, 35, ...d2.state]);
+  run(session, [running]);
+  const d3 = decode(running.output);
+  assert.equal(d3.state[2], 1);
+  assert.deepEqual(d3.timer, [120, 8]);
+  assert.ok(d3.texts.includes('Pause') && !d3.texts.includes('Run'));
+  // Counter click renders its decimal value; the echo input travels as bytes.
+  const click = makeIo([1, 0, 0, 2, 104, 105, 35, ...d3.state]);
+  assert.equal(run(session, [click]), 1);
+  const d4 = decode(click.output);
+  assert.equal(d4.state[0], 1);
+  assert.ok(d4.texts.includes('1') && d4.texts.includes('hi'));
   // Emitted JS produces the identical stream.
   const js = compile(p, 'js').text;
   const mod = (await import(
@@ -783,9 +830,9 @@ test('site page program renders the A0 UI protocol with persisted state and deci
     session: (t: unknown) => number;
     a0_make_io: (i: number[]) => { output: number[] };
   };
-  const st = mod.a0_make_io([1, 41, 0]);
-  assert.equal(mod.session(st), 42);
-  assert.deepEqual(st.output, [...clicked.output]);
+  const st = mod.a0_make_io([1, 0, 0, 2, 104, 105, 35, ...d3.state]);
+  assert.equal(mod.session(st), 1);
+  assert.deepEqual(st.output, [...click.output]);
 });
 
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
