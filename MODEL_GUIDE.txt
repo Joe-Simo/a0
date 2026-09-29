@@ -14,6 +14,7 @@ OPERATIONS (exact semantics)
   add a b          (a + b) mod 2^32          sub a b   (a - b) mod 2^32       mul a b  (a * b) mod 2^32
   and a b | or a b | xor a b                 bitwise on u32
   shl a n          a << (n & 31)             shr a n   a >>> (n & 31)  (logical)
+  div a b          unsigned a / b; b = 0 gives 4294967295     rem a b   a mod b; b = 0 gives a
   eq a b -> bool   lt a b -> bool (unsigned)
   select c x y     c ? x : y; x and y already computed and of the same type; not lazy
   call F a...      apply function F, which must be defined EARLIER in the program, to arguments
@@ -22,12 +23,14 @@ OPERATIONS (exact semantics)
                    final state. F must be defined earlier with parameters (state, u32 index, a...) and
                    return the state type. n is u32, so every fold terminates.
   arr e0 e1 ...    array of same-typed values      rec e0 e1 ...   record (positional fields)
+  text "..."       u32xN of the UTF-8 bytes of the string (escapes \n \t \" \\); same as arr
   get a i          element i mod N of array a       set a i v       copy of a with element i mod N = v
   at r k           field k (u32 literal) of record  put r k v       copy of r with field k = v
   Aggregates are values: every op returns a new value; nothing aliases or mutates.
 EFFECTS (type io: a token passed as a parameter; each token value is used at most once)
   read t           -> (u32,io): next input word (0 when exhausted) and the next token
   write t v        -> io: emit word v, next token.   Order of effects = order of token uses.
+  puts t a         -> io: emit the length of u32 array a, then its elements (text output).
   A function has at most one io parameter; return the token inside a record, e.g. (u32,io),
   when the caller must continue the stream. Arrays cannot hold io; select cannot pick a token.
   loop P F n s a... fold with early exit: before iteration i, if P(state, i, a...) is false the loop

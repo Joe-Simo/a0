@@ -657,3 +657,76 @@ test('resource bounds: fuel stops runaway evaluation, literal iteration is cappe
   }
   assert.ok(rejected > 2000, `expected most mutations rejected, got ${rejected}`);
 });
+
+test('text literal desugars to a u32 byte array, round-trips, and survives comments and edits', () => {
+  const src = 'fn hello -> u32x7\ns text "hi # \\"x"\nret s\nend';
+  const p = parseAndValidate(src);
+  const hello = p.byName.get('hello') as TypedFunc;
+  assert.equal(formatType(hello.result), 'u32x7');
+  assert.deepEqual(run(hello, []), [104, 105, 32, 35, 32, 34, 120]);
+  assert.equal(formatFunction(hello), src);
+  // UTF-8 multibyte and escapes.
+  const u = parseAndValidate('fn u -> u32x4\ns text "\u00e9\\n\\t"\nret s\nend').byName.get(
+    'u',
+  ) as TypedFunc;
+  assert.deepEqual(run(u, []), [0xc3, 0xa9, 10, 9]);
+  assert.throws(
+    () => parseAndValidate('fn e -> u32x1\ns text ""\nret s\nend'),
+    /must not be empty/,
+  );
+  assert.throws(
+    () => parseAndValidate('fn e -> u32x1\ns text "\\q"\nret s\nend'),
+    /unknown escape/,
+  );
+  // Session edit with a text literal containing '#'.
+  const session = new EditSession(
+    parseAndValidate('fn hello -> u32x5\ns text "hello"\nret s\nend'),
+  );
+  const v = session.open('hello');
+  const next = session.apply(`${v.handle}\ns text "ab#cd"`);
+  assert.deepEqual(run(next.byName.get('hello') as TypedFunc, []), [97, 98, 35, 99, 100]);
+  // Backends see an ordinary array.
+  assert.ok(compile(p, 'c').text.includes('a0mk_a7_u(104u, 105u, 32u, 35u, 32u, 34u, 120u)'));
+});
+
+test('div/rem are total unsigned (zero divisor: all ones / dividend); puts streams length then elements', async () => {
+  const p = parseAndValidate(
+    'fn d u32 u32 -> u32\nq div p0 p1\nret q\nend\nfn r u32 u32 -> u32\nq rem p0 p1\nret q\nend\nfn emit io -> u32\nt text "AB"\nw puts p0 t\nret 7\nend',
+  );
+  const d = p.byName.get('d') as TypedFunc;
+  const r = p.byName.get('r') as TypedFunc;
+  assert.equal(run(d, [100, 7]), 14);
+  assert.equal(run(d, [0xffff_ffff, 2]), 0x7fff_ffff);
+  assert.equal(run(d, [5, 0]), 0xffff_ffff);
+  assert.equal(run(r, [100, 7]), 2);
+  assert.equal(run(r, [5, 0]), 5);
+  const io = makeIo([]);
+  assert.equal(run(p.byName.get('emit') as TypedFunc, [io]), 7);
+  assert.deepEqual(io.output, [2, 65, 66]);
+  assert.throws(
+    () => parseAndValidate('fn e io bool -> io\na arr p1 p1\nw puts p0 a\nret w\nend'),
+    /expects a u32 array/,
+  );
+  // Optimizer identities and backends.
+  assert.equal(
+    formatFunction(
+      optimizeFunction(fn('fn f u32 -> u32\nq div p0 1\nm rem q 1\ns add q m\nret s\nend')).fn,
+    ),
+    'fn f u32 -> u32\nret p0\nend',
+  );
+  const js = compile(p, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as {
+    d: (a: number, b: number) => number;
+    emit: (t: unknown) => number;
+    a0_make_io: (i: number[]) => { output: number[] };
+  };
+  assert.equal(mod.d(5, 0), 0xffff_ffff);
+  const st = mod.a0_make_io([]);
+  mod.emit(st);
+  assert.deepEqual(st.output, [2, 65, 66]);
+  assert.ok(compile(p, 'c').text.includes('a0_puts(p0, n_t.e, 2u)'));
+  assert.ok(compile(p, 'java').text.includes('Integer.divideUnsigned'));
+  assert.ok(compile(p, 'sv').text.includes("32'hffffffff"));
+});

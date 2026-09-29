@@ -24,6 +24,7 @@ import {
   type Node,
   type Program,
   parseNode,
+  stripComment,
   type TypedFunc,
   type TypedProgram,
   validate,
@@ -135,7 +136,7 @@ export function parsePatch(text: string): Patch {
   if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes) throw new A0Error('patch too large');
   const lines = text
     .split(/\r?\n/)
-    .map((l) => l.replace(/#.*$/, '').trim())
+    .map((l) => stripComment(l).trim())
     .filter((l) => l.length > 0);
   const head = lines[0]?.split(/\s+/) ?? [];
   if (head[0] !== 'patch' || head.length !== 3) {
@@ -233,7 +234,7 @@ export class EditSession {
       throw new A0Error('edit too large');
     const lines = text
       .split(/\r?\n/)
-      .map((l) => l.replace(/#.*$/, '').trim())
+      .map((l) => stripComment(l).trim())
       .filter((l) => l.length > 0);
     const handle = lines[0] ?? '';
     if (!HANDLE.test(handle)) throw new A0Error(`invalid handle '${handle}'`, 1);

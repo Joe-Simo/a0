@@ -54,7 +54,18 @@ const AGGREGATE_TYPES: readonly Type[] = [
   { kind: 'arr', length: 2, elem: { kind: 'rec', fields: ['u32', 'bool'] } },
 ];
 
-const U32_OPS: readonly Op[] = ['add', 'sub', 'mul', 'and', 'or', 'xor', 'shl', 'shr'];
+const U32_OPS: readonly Op[] = [
+  'add',
+  'sub',
+  'mul',
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+  'div',
+  'rem',
+];
 const CMP_OPS: readonly Op[] = ['eq', 'lt'];
 
 interface Slot {
@@ -148,7 +159,15 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
         const helpers = signatures.filter(
           (f) => f.helper && f.params.every((t) => t === 'io' || slotsOf(slots, t).length > 0),
         );
-        const kind = rng() % 3;
+        const u32Arrays = slots.filter(
+          (s) => !isPrimitive(s.type) && s.type.kind === 'arr' && s.type.elem === 'u32',
+        );
+        const kind = rng() % 4;
+        if (kind === 3 && u32Arrays.length > 0) {
+          nodes.push({ id, op: 'puts', args: [token, pick(rng, u32Arrays).operand] });
+          token = { kind: 'node', id };
+          continue;
+        }
         if (kind === 0) {
           nodes.push({ id, op: 'read', args: [token] });
           nodes.push({
@@ -427,6 +446,10 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
       return (big(a, op) << (big(b, op) & 31n)) & MASK;
     case 'shr':
       return big(a, op) >> (big(b, op) & 31n);
+    case 'div':
+      return big(b, op) === 0n ? MASK : big(a, op) / big(b, op);
+    case 'rem':
+      return big(b, op) === 0n ? big(a, op) : big(a, op) % big(b, op);
     case 'eq':
       return big(a, op) === big(b, op);
     case 'lt':
@@ -469,6 +492,12 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
     case 'write': {
       if (!isOracleIo(a)) throw new Error('oracle write');
       a.io.output.push(Number(big(b, op) & MASK));
+      return a;
+    }
+    case 'puts': {
+      if (!isOracleIo(a) || !Array.isArray(b)) throw new Error('oracle puts');
+      a.io.output.push(b.length);
+      for (const v of b) a.io.output.push(Number(big(v, op) & MASK));
       return a;
     }
     case 'call':

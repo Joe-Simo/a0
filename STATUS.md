@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.7.0)
+## Implemented scope (v0.8.0)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -99,6 +99,13 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Text, division, streaming** (v0.8.0): `text "…"` desugars to `arr` of UTF-8 byte words
+  with the source form retained (quote-aware comments in parser, patches, and sessions);
+  `div`/`rem` are total unsigned (zero divisor → all ones / dividend, RISC-V convention;
+  a 32-bit divider in hardware, synthesis time rose from 1.6 s to 30 s); `puts t a` emits
+  the length word then the elements of a u32 array. Coverage: corpus 5946 cases (94 div,
+  111 rem, 8 puts) on all 8 software paths, .NET, GPU (5418 io-free cases, 33 kernels),
+  and clocked hardware (puts is a streaming stage). 19 tests.
 - **JS emission, aliasing-safe in-place updates**: `set`/`put` mutate in place when the
   value is provably unshared (a fresh `arr`/`rec`/`set`/`put` result whose only other uses
   are earlier `get`/`at` reads and which is not returned), iteration bodies get an

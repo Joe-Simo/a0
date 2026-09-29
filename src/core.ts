@@ -114,7 +114,10 @@ export type Op =
   | 'at'
   | 'put'
   | 'read'
-  | 'write';
+  | 'write'
+  | 'div'
+  | 'rem'
+  | 'puts';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -140,6 +143,9 @@ export const OPS: readonly Op[] = [
   'put',
   'read',
   'write',
+  'div',
+  'rem',
+  'puts',
 ];
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
@@ -167,6 +173,9 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   put: 3,
   read: 1,
   write: 2,
+  div: 2,
+  rem: 2,
+  puts: 2,
 };
 
 export type Operand =
@@ -183,6 +192,39 @@ export interface Node {
   readonly callee?: string;
   /** Present exactly when op is 'loop': the continue-predicate function. */
   readonly pred?: string;
+  /** Source form of an `arr` node written as `text "..."`: UTF-8 bytes as u32 elements. */
+  readonly text?: string;
+}
+
+/** Remove a `#` comment unless the `#` sits inside a double-quoted text literal. */
+export function stripComment(line: string): string {
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '\\' && quoted) {
+      i += 1;
+    } else if (ch === '"') {
+      quoted = !quoted;
+    } else if (ch === '#' && !quoted) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
+const TEXT_LINE = /^(\S+)\s+text\s+"((?:[^"\\]|\\.)*)"\s*$/;
+
+function decodeText(raw: string, line?: number): string {
+  return raw.replace(/\\(.)/g, (_, c: string) => {
+    if (c === 'n') return '\n';
+    if (c === 't') return '\t';
+    if (c === '"' || c === '\\') return c;
+    throw new A0Error(`unknown escape \\${c} in text literal`, line);
+  });
+}
+
+export function formatTextLiteral(text: string): string {
+  return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\t/g, '\\t')}"`;
 }
 
 export interface Func {
@@ -323,6 +365,21 @@ function isOp(text: string): text is Op {
 
 /** Parse one instruction line `id op operand...` (no validation of references). */
 export function parseNode(lineText: string, line?: number): Node {
+  const textMatch = TEXT_LINE.exec(lineText.trim());
+  if (textMatch !== null) {
+    // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
+    const [, id, raw] = textMatch;
+    if (id === undefined || !isValidIdentifier(id)) {
+      throw new A0Error(`invalid node identifier '${id ?? ''}'`, line);
+    }
+    const text = decodeText(raw ?? '', line);
+    const bytes = Buffer.from(text, 'utf8');
+    if (bytes.length === 0) throw new A0Error('text literal must not be empty', line);
+    if (bytes.length > LIMITS.maxArrayLength) {
+      throw new A0Error(`text literal exceeds ${LIMITS.maxArrayLength} bytes`, line);
+    }
+    return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
+  }
   const parts = lineText.trim().split(/\s+/);
   const [id, op, ...rest] = parts;
   if (id === undefined || op === undefined) throw new A0Error('expected `id op operands`', line);
@@ -375,7 +432,7 @@ export function parse(source: string): Program {
     while (i < lines.length) {
       const raw = lines[i] ?? '';
       i += 1;
-      const text = raw.replace(/#.*$/, '').trim();
+      const text = stripComment(raw).trim();
       if (text.length > 0) return { text, line: i };
     }
     return undefined;
@@ -484,6 +541,8 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'xor':
     case 'shl':
     case 'shr':
+    case 'div':
+    case 'rem':
       if (b === undefined) throw new A0Error(`${where}: missing operand`);
       expect(a, 'u32', where);
       expect(b, 'u32', where);
@@ -526,6 +585,13 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       if (b === undefined) throw new A0Error(`${where}: missing operand`);
       expect(a, 'io', `${where} token`);
       expect(b, 'u32', `${where} value`);
+      return 'io';
+    case 'puts':
+      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      expect(a, 'io', `${where} token`);
+      if (isPrimitive(b) || b.kind !== 'arr' || b.elem !== 'u32') {
+        throw new A0Error(`${where}: puts expects a u32 array, got ${formatType(b)}`);
+      }
       return 'io';
     case 'get':
       if (b === undefined) throw new A0Error(`${where}: missing operand`);
@@ -748,6 +814,8 @@ export function formatOperand(operand: Operand): string {
 }
 
 export function formatNode(node: Node): string {
+  if (node.op === 'arr' && node.text !== undefined)
+    return `${node.id} text ${formatTextLiteral(node.text)}`;
   const pred = node.op === 'loop' ? ` ${node.pred ?? ''}` : '';
   const callee = node.callee !== undefined ? ` ${node.callee}` : '';
   const args = node.args.length > 0 ? ` ${node.args.map(formatOperand).join(' ')}` : '';
@@ -826,6 +894,11 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       return (num(a) << (num(b) & 31)) >>> 0;
     case 'shr':
       return num(a) >>> (num(b) & 31);
+    case 'div':
+      // Unsigned division; division by zero yields all ones (total, as on RISC-V).
+      return num(b) === 0 ? 0xffff_ffff : Math.floor(num(a) / num(b));
+    case 'rem':
+      return num(b) === 0 ? num(a) : num(a) % num(b);
     case 'eq':
       return num(a) === num(b);
     case 'lt':
@@ -872,6 +945,14 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'write': {
       if (a === undefined || !isIoState(a)) throw new A0Error('write: expected io token');
       a.output.push(num(b));
+      return a;
+    }
+    case 'puts': {
+      // Length word, then every element, in order.
+      if (a === undefined || !isIoState(a) || !Array.isArray(b))
+        throw new A0Error('puts: expected io token and array');
+      a.output.push(b.length);
+      for (const v of b) a.output.push(num(v));
       return a;
     }
     case 'call':

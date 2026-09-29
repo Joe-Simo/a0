@@ -80,7 +80,8 @@ const CS_IO_RUNTIME = `  public sealed class A0Io {
     public A0Io(uint[] input) { Input = (uint[])input.Clone(); }
   }
   static R_r2_u_io read(A0Io t) { uint v = t.Position < t.Input.Length ? t.Input[t.Position++] : 0u; return new R_r2_u_io(v, t); }
-  static A0Io write(A0Io t, uint v) { if (t.NOutput < t.Output.Length) t.Output[t.NOutput++] = v; return t; }`;
+  static A0Io write(A0Io t, uint v) { if (t.NOutput < t.Output.Length) t.Output[t.NOutput++] = v; return t; }
+  static A0Io puts(A0Io t, uint[] a) { write(t, (uint)a.Length); foreach (uint v in a) write(t, v); return t; }`;
 
 function csExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(csOperand);
@@ -108,6 +109,10 @@ function csExpr(node: Node, fn: TypedFunc): string {
       return `${a} << (int)(${b} & 31u)`;
     case 'shr':
       return `${a} >> (int)(${b} & 31u)`;
+    case 'div':
+      return `(${b} == 0u ? uint.MaxValue : ${a} / ${b})`;
+    case 'rem':
+      return `(${b} == 0u ? ${a} : ${a} % ${b})`;
     case 'eq':
       return `${a} == ${b}`;
     case 'lt':
@@ -136,6 +141,8 @@ function csExpr(node: Node, fn: TypedFunc): string {
       return `read(${a})`;
     case 'write':
       return `write(${a}, ${b})`;
+    case 'puts':
+      return `puts(${a}, ${b})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);

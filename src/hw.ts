@@ -54,7 +54,7 @@ const hwType = (t: Type): string =>
 export function needsSequential(fn: TypedFunc): boolean {
   if (fn.params.some(containsIo) || containsIo(fn.result)) return true;
   for (const n of fn.nodes) {
-    if (n.op === 'read' || n.op === 'write') return true;
+    if (n.op === 'read' || n.op === 'write' || n.op === 'puts') return true;
     if (n.op === 'fold' || n.op === 'loop') {
       // Literal counts within the unroll limit stay combinational; anything else is clocked.
       const count = n.args[0];
@@ -77,14 +77,14 @@ const hasIo = (fn: TypedFunc): boolean => fn.params.some(containsIo);
 interface Stage {
   readonly node: Node;
   readonly index: number;
-  readonly kind: 'read' | 'write' | 'iterate' | 'call';
+  readonly kind: 'read' | 'write' | 'puts' | 'iterate' | 'call';
   readonly callee: TypedFunc | undefined;
   readonly pred: TypedFunc | undefined;
   readonly calleeSeq: boolean;
 }
 
 function isStage(n: Node, fn: TypedFunc): Stage['kind'] | undefined {
-  if (n.op === 'read' || n.op === 'write') return n.op;
+  if (n.op === 'read' || n.op === 'write' || n.op === 'puts') return n.op;
   if (n.op === 'fold' || n.op === 'loop') return 'iterate';
   if (n.op === 'call') {
     const callee = fn.calls.get(n.callee ?? '');
@@ -226,6 +226,7 @@ export function emitSequential(fn: TypedFunc): string {
       return lines;
     }
     if (s.kind === 'call') return [`ph_${n.id} <= 1'b0;`];
+    if (s.kind === 'puts') return [`it_${n.id} <= 32'd0;`];
     return [];
   };
   for (const s of stages) {
@@ -249,6 +250,19 @@ export function emitSequential(fn: TypedFunc): string {
       inReady.push(`(pc == ${pc(s.index)} && en_${n.id})`);
       seqBlocks.push(
         `        ${pc(s.index)}: ${guard(`if (in_valid) begin r_${n.id} <= in_data; ${advance.join(' ')} end`)}`,
+      );
+    } else if (s.kind === 'puts') {
+      // Stream the length word, then each element, one per accepted transfer.
+      const arrT = operandTypeOf(fn, n.args[1] as Operand);
+      const len = isPrimitive(arrT) || arrT.kind !== 'arr' ? 0 : arrT.length;
+      const arr = svOperand(n.args[1] as Operand);
+      L.push(`  logic [31:0] it_${n.id};`);
+      outValid.push(`(pc == ${pc(s.index)} && en_${n.id})`);
+      outData.push(
+        `${pc(s.index)}: out_data = (it_${n.id} == 32'd0) ? 32'd${len} : ${arr}[(it_${n.id} - 32'd1) * 32 +: 32];`,
+      );
+      seqBlocks.push(
+        `        ${pc(s.index)}: ${guard(`if (out_ready) begin if (it_${n.id} == 32'd${len}) begin ${advance.join(' ')} end else begin it_${n.id} <= it_${n.id} + 32'd1; end end`)}`,
       );
     } else if (s.kind === 'write') {
       outValid.push(`(pc == ${pc(s.index)} && en_${n.id})`);

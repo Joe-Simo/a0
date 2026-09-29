@@ -128,6 +128,14 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
       if (node.op === 'xor' && sameOperand(a, b)) return { kind: 'u32', value: 0 };
       if (node.op === 'or' && sameOperand(a, b)) return a;
       return undefined;
+    case 'div':
+      if (b !== undefined && isU32(b, 1)) return a;
+      return undefined;
+    case 'rem':
+      if (b !== undefined && isU32(b, 1)) return { kind: 'u32', value: 0 };
+      return undefined;
+    case 'puts':
+      return undefined;
     case 'sub':
       if (b === undefined) return undefined;
       if (isU32(b, 0)) return a;
@@ -171,7 +179,7 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
 
 /** Effectful: read/write, or any operand or the result carries an io token. */
 function isEffectful(node: Node, fn: TypedFunc): boolean {
-  if (node.op === 'read' || node.op === 'write') return true;
+  if (node.op === 'read' || node.op === 'write' || node.op === 'puts') return true;
   // Only calls/iterations can perform effects; token extraction (`at`), `rec`, `put`, `mov`
   // are pure and may be dropped when unused (the effects already happened upstream).
   if (node.op !== 'call' && node.op !== 'fold' && node.op !== 'loop') return false;

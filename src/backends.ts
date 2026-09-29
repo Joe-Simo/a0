@@ -144,6 +144,7 @@ function a0_io(v, name) {
 export function a0_make_io(input) { return { input: input.slice(), position: 0, output: [] }; }
 function a0_read(t) { const v = t.position < t.input.length ? t.input[t.position++] : 0; return [v, t]; }
 function a0_write(t, v) { t.output.push(v); return t; }
+function a0_puts(t, a) { t.output.push(a.length); for (let i = 0; i < a.length; i++) t.output.push(a[i]); return t; }
 `;
 
 function jsOperand(o: Operand): string {
@@ -215,6 +216,10 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return `(${a} << (${b} & 31)) >>> 0`;
     case 'shr':
       return `${a} >>> (${b} & 31)`;
+    case 'div':
+      return `(${b} === 0 ? 0xffffffff : Math.floor(${a} / ${b}))`;
+    case 'rem':
+      return `(${b} === 0 ? ${a} : ${a} % ${b})`;
     case 'eq':
       return `${a} === ${b}`;
     case 'lt':
@@ -258,6 +263,8 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return `a0_read(${a})`;
     case 'write':
       return `a0_write(${a}, ${b})`;
+    case 'puts':
+      return `a0_puts(${a}, ${b})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -331,7 +338,8 @@ export const C_IO_INPUT_CAPACITY = 256;
 export const C_IO_OUTPUT_CAPACITY = 1024;
 const C_IO_RUNTIME = `struct a0_io { uint32_t input[${C_IO_INPUT_CAPACITY}]; uint32_t ninput; uint32_t position; uint32_t output[${C_IO_OUTPUT_CAPACITY}]; uint32_t noutput; };
 static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput ? t->input[t->position++] : 0u; r.f1 = t; return r; }
-static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${C_IO_OUTPUT_CAPACITY}u) t->output[t->noutput++] = v; return t; }`;
+static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${C_IO_OUTPUT_CAPACITY}u) t->output[t->noutput++] = v; return t; }
+static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
 
 const cType = (t: Type): string =>
   t === 'u32'
@@ -405,6 +413,10 @@ function cExpr(node: Node, fn: TypedFunc): string {
       return `(uint32_t)(${a} << (${b} & 31u))`;
     case 'shr':
       return `(${a} >> (${b} & 31u))`;
+    case 'div':
+      return `(${b} == 0u ? 0xffffffffu : ${a} / ${b})`;
+    case 'rem':
+      return `(${b} == 0u ? ${a} : ${a} % ${b})`;
     case 'eq':
       return `(${a} == ${b})`;
     case 'lt':
@@ -428,6 +440,8 @@ function cExpr(node: Node, fn: TypedFunc): string {
       return `a0_read(${a})`;
     case 'write':
       return `a0_write(${a}, ${b})`;
+    case 'puts':
+      return `a0_puts(${a}, ${b}.e, ${arrayLength(fn, node.args[1])}u)`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -479,7 +493,8 @@ const JAVA_IO_RUNTIME = `  public static final class A0Io {
     public A0Io(int[] input) { this.input = input.clone(); }
   }
   static R_r2_u_io read(A0Io t) { int v = t.position < t.input.length ? t.input[t.position++] : 0; return new R_r2_u_io(v, t); }
-  static A0Io write(A0Io t, int v) { if (t.noutput < t.output.length) t.output[t.noutput++] = v; return t; }`;
+  static A0Io write(A0Io t, int v) { if (t.noutput < t.output.length) t.output[t.noutput++] = v; return t; }
+  static A0Io puts(A0Io t, int[] a) { write(t, a.length); for (int v : a) write(t, v); return t; }`;
 
 /** Nested record declarations and copy-on-write helpers for one aggregate type. */
 function javaTypeDecl(t: Type): string {
@@ -540,6 +555,10 @@ function javaExpr(node: Node, fn: TypedFunc): string {
       return `${a} << (${b} & 31)`;
     case 'shr':
       return `${a} >>> (${b} & 31)`;
+    case 'div':
+      return `(${b} == 0 ? 0xffffffff : Integer.divideUnsigned(${a}, ${b}))`;
+    case 'rem':
+      return `(${b} == 0 ? ${a} : Integer.remainderUnsigned(${a}, ${b}))`;
     case 'eq':
       return `${a} == ${b}`;
     case 'lt':
@@ -563,6 +582,8 @@ function javaExpr(node: Node, fn: TypedFunc): string {
       return `read(${a})`;
     case 'write':
       return `write(${a}, ${b})`;
+    case 'puts':
+      return `puts(${a}, ${b})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -641,6 +662,10 @@ export function svExpr(node: Node, fn: TypedFunc): string {
       return `32'(${a} << ${svShiftAmount(node.args[1])})`;
     case 'shr':
       return `${a} >> ${svShiftAmount(node.args[1])}`;
+    case 'div':
+      return `(${b} == 32'd0) ? 32'hffffffff : ${a} / ${b}`;
+    case 'rem':
+      return `(${b} == 32'd0) ? ${a} : ${a} % ${b}`;
     case 'eq':
       return `${a} == ${b}`;
     case 'lt':
@@ -671,6 +696,7 @@ export function svExpr(node: Node, fn: TypedFunc): string {
       throw new A0Error(`${node.op} is emitted as an always_comb block`);
     case 'read':
     case 'write':
+    case 'puts':
       throw new A0Error(
         `${node.op}: io effects need sequential state, which the combinational SystemVerilog backend does not implement`,
       );

@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.7.0 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.8.0 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -92,6 +92,9 @@ Each function has one result. Node identifiers are lowercase letters followed by
 | `arr`, `rec` | T×N / T0…Tk | TxN / (T0,…,Tk) | Build an array or positional record from values (v0.2.0) |
 | `get`, `set` | TxN, u32 [, T] | T / TxN | Element read / copy-with-element; the index is reduced modulo N, so both are total (v0.2.0) |
 | `at`, `put` | (…), literal u32 [, Tk] | Tk / (…) | Field read / copy-with-field with a literal field index (v0.2.0) |
+| `div`, `rem` | u32, u32 | u32 | Unsigned quotient / remainder; a zero divisor yields all ones / the dividend (total, as on RISC-V) (v0.8.0) |
+| `text "…"` | — | u32xN | Source sugar for `arr` of the UTF-8 bytes (escapes `\n \t \" \\`); the source form is kept for views and edits (v0.8.0) |
+| `puts` | io, u32xN | io | Consume the token, emit the length word then every element (v0.8.0) |
 | `read` | io | (u32,io) | Consume the token, yield the next input word (0 when exhausted) and the next token (v0.3.0) |
 | `write` | io, u32 | io | Consume the token, emit one word, yield the next token (v0.3.0) |
 
