@@ -26,6 +26,7 @@ import {
   type Node,
   type Operand,
   type Program,
+  parse,
   parseNode,
   parseOperand,
   stripComment,
@@ -38,6 +39,7 @@ import {
 export const REVISION_LENGTH = 64;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const HANDLE = /^e(0|[1-9][0-9]*)$/;
+const PROGRAM_HANDLE = /^g(0|[1-9][0-9]*)$/;
 
 /** Content revision of a function: SHA-256 of its canonical source form. */
 export function revision(fn: Func): string {
@@ -255,8 +257,47 @@ export function scopedView(fn: TypedFunc): string {
 }
 
 interface OpenHandle {
+  /** Function name, or '*' for a program-level handle. */
   readonly functionName: string;
   readonly revision: string;
+}
+
+/** Program-level view: one signature line per function, in definition order. */
+export function programView(program: TypedProgram): string {
+  return program.functions.map((f) => `${formatSignature(f)} end`).join('\n');
+}
+
+/**
+ * Apply a program-level edit: `fn … end` blocks replace a function of the same name in
+ * place or append a new function at the end (where it may call every existing function);
+ * `-fn name` removes a function. The whole program is re-validated; callers of a removed or
+ * re-typed function fail the edit atomically.
+ */
+export function editProgram(program: TypedProgram, text: string): TypedProgram {
+  const lines = text.split(/\r?\n/);
+  const removals = new Set<string>();
+  const kept: string[] = [];
+  for (const raw of lines) {
+    const line = stripComment(raw).trim();
+    const m = /^-fn\s+([a-z][a-z0-9_]*)$/.exec(line);
+    if (m) removals.add(m[1] ?? '');
+    else kept.push(raw);
+  }
+  const incoming = parse(kept.join('\n')).functions;
+  const byName = new Map(incoming.map((f) => [f.name, f] as const));
+  for (const name of removals) {
+    if (!program.byName.has(name)) throw new A0Error(`cannot remove unknown function '${name}'`);
+    if (byName.has(name)) throw new A0Error(`function '${name}' is both removed and defined`);
+  }
+  const functions: Func[] = [];
+  for (const f of program.functions) {
+    if (removals.has(f.name)) continue;
+    const replacement = byName.get(f.name);
+    functions.push(replacement ?? f);
+    byName.delete(f.name);
+  }
+  for (const f of incoming) if (byName.has(f.name)) functions.push(f);
+  return validate({ functions });
 }
 
 export interface SessionOptions {
@@ -284,6 +325,23 @@ export class EditSession {
 
   get openHandles(): number {
     return this.#handles.size;
+  }
+
+  /** Open a program-level view (all signatures) bound to the whole program's revision. */
+  openProgram(): View {
+    if (this.#handles.size >= this.#maxOpen) {
+      throw new A0Error(`session handle limit (${this.#maxOpen}) reached; close handles first`);
+    }
+    const handle = `g${this.#next}`;
+    this.#next += 1;
+    const rev = programRevision(this.#program);
+    this.#handles.set(handle, { functionName: '*', revision: rev });
+    return {
+      handle,
+      functionName: '*',
+      revision: rev,
+      text: `${handle}\n${programView(this.#program)}`,
+    };
   }
 
   /** Open a view of one function and return a short handle bound to its current revision. */
@@ -318,9 +376,24 @@ export class EditSession {
       .map((l) => stripComment(l).trim())
       .filter((l) => l.length > 0);
     const handle = lines[0] ?? '';
-    if (!HANDLE.test(handle)) throw new A0Error(`invalid handle '${handle}'`, 1);
+    if (!HANDLE.test(handle) && !PROGRAM_HANDLE.test(handle)) {
+      throw new A0Error(`invalid handle '${handle}'`, 1);
+    }
     const bound = this.#handles.get(handle);
     if (bound === undefined) throw new A0Error(`unknown or consumed handle '${handle}'`, 1);
+    if (bound.functionName === '*') {
+      if (programRevision(this.#program) !== bound.revision) {
+        throw new A0Error(
+          `handle '${handle}' is stale: the program changed since the view was opened`,
+        );
+      }
+      const rawBody = text
+        .split(/\r?\n/)
+        .slice(text.split(/\r?\n/).findIndex((l) => stripComment(l).trim() === handle) + 1);
+      this.#program = editProgram(this.#program, rawBody.join('\n'));
+      this.#handles.delete(handle);
+      return this.#program;
+    }
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined) throw new A0Error(`handle '${handle}' refers to a removed function`);
     if (revision(fn) !== bound.revision) {

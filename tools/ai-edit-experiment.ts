@@ -39,7 +39,7 @@ interface AcceptanceCase {
 
 interface Task {
   readonly id: string;
-  readonly kind: 'targeted-edit' | 'multi-node-edit' | 'comprehension-edit';
+  readonly kind: 'targeted-edit' | 'multi-node-edit' | 'comprehension-edit' | 'create';
   readonly instruction: string;
   readonly a0Source: string;
   readonly tsSource: string;
@@ -114,6 +114,26 @@ const TASKS: readonly Task[] = [
       a0: 'fn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend\n',
       ts: 'export function rotl(x: number, n: number): number {\n  return ((x << n) | (x >>> ((32 - n) & 31))) >>> 0;\n}\n',
       rust: 'pub fn rotl(x: u32, n: u32) -> u32 {\n    (x << (n & 31)) | (x >> ((32u32.wrapping_sub(n)) & 31))\n}\n',
+    },
+  },
+  {
+    id: 'add-cube',
+    kind: 'create',
+    instruction:
+      'Add a new function cube(x) that returns x*x*x mod 2^32, reusing sq. Keep sq unchanged.',
+    a0Source: 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n',
+    tsSource: 'export function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\n',
+    rustSource: 'pub fn sq(x: u32) -> u32 {\n    x.wrapping_mul(x)\n}\n',
+    tests: [
+      { fn: 'cube', args: [3], expected: 27 },
+      { fn: 'cube', args: [0x1_0000], expected: 0 },
+      { fn: 'cube', args: [0xffff_ffff], expected: 0xffff_ffff },
+      { fn: 'sq', args: [5], expected: 25 },
+    ],
+    reference: {
+      a0: 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn cube u32 -> u32\ns call sq p0\nc mul s p0\nret c\nend\n',
+      ts: 'export function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\nexport function cube(x: number): number {\n  return Math.imul(sq(x), x) >>> 0;\n}\n',
+      rust: 'pub fn sq(x: u32) -> u32 {\n    x.wrapping_mul(x)\n}\npub fn cube(x: u32) -> u32 {\n    sq(x).wrapping_mul(x)\n}\n',
     },
   },
   {
@@ -320,13 +340,12 @@ const TASKS: readonly Task[] = [
 const PROTOCOL_CONVENTIONAL =
   'Reply with the complete updated source file and nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_A0 =
-  'You are shown a view whose first line is an edit handle (e.g. e0). Reply with that handle line followed only by the instruction lines you replace (same ids, keep positions). Nothing else, inside one ```code block.';
+  'You are shown a view whose first line is an edit handle. With a function handle (e0), reply with that line followed only by edit lines: `id op ...` replaces an instruction or inserts a new one before ret, `id op ... @ other` inserts after instruction other, `-id` deletes, `ret x` changes the result; the view may end with `fn ... end` signature lines of callable functions. With a program handle (g0) whose view lists function signatures, reply with that line followed by whole `fn ... end` blocks to add or replace functions and `-fn name` to remove one. Nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_TS =
-  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by replacement lines as `<number> <new text>` (one per line; a number may be given once). Nothing else, inside one ```code block.';
+  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, inside one ```code block.';
 const RUST_SEMANTICS =
   'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. The file must compile with rustc, edition 2021.';
-const PROTOCOL_STRUCTURED_RUST =
-  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by replacement lines as `<number> <new text>` (one per line; a number may be given once). Nothing else, inside one ```code block.';
+const PROTOCOL_STRUCTURED_RUST = PROTOCOL_STRUCTURED_TS;
 const TS_SEMANTICS =
   'Numbers are unsigned 32-bit integers: every arithmetic result must be normalized with >>> 0, use Math.imul for multiplication, and comparisons are unsigned.';
 
@@ -382,18 +401,30 @@ function applyTs(protocol: Protocol, source: string, reply: string, handle: stri
   const lines = body.trimEnd().split('\n');
   if (lines[0] !== handle)
     return { source, error: `expected handle ${handle}, got '${lines[0] ?? ''}'` };
-  const out = source.trimEnd().split('\n');
+  const out: (string | null)[] = source.trimEnd().split('\n');
+  const inserts = new Map<number, string[]>();
   const seen = new Set<number>();
   for (const l of lines.slice(1)) {
-    const m = /^(\d+) ?(.*)$/.exec(l);
-    if (!m) return { source, error: `bad replacement line: ${l}` };
-    const n = Number(m[1]);
+    const m = /^([+-]?)(\d+) ?(.*)$/.exec(l);
+    if (!m) return { source, error: `bad edit line: ${l}` };
+    const n = Number(m[2]);
+    const mode = m[1] ?? '';
+    if (mode === '+') {
+      if (n < 0 || n > out.length) return { source, error: `bad insert position ${n}` };
+      inserts.set(n, [...(inserts.get(n) ?? []), m[3] ?? '']);
+      continue;
+    }
     if (seen.has(n) || n < 1 || n > out.length)
       return { source, error: `bad or duplicate line number ${n}` };
     seen.add(n);
-    out[n - 1] = m[2] ?? '';
+    out[n - 1] = mode === '-' ? null : (m[3] ?? '');
   }
-  return { source: `${out.join('\n')}\n` };
+  const result: string[] = [...(inserts.get(0) ?? [])];
+  out.forEach((line, i) => {
+    if (line !== null) result.push(line);
+    result.push(...(inserts.get(i + 1) ?? []));
+  });
+  return { source: `${result.join('\n')}\n` };
 }
 
 // --- Acceptance -----------------------------------------------------------------
@@ -543,6 +574,10 @@ async function buildCell(
     const system = `${guide}\n\n${protocolText}`;
     if (protocol === 'structured') {
       const session = new EditSession(parseAndValidate(task.a0Source));
+      if (task.kind === 'create') {
+        const view = session.openProgram().text;
+        return { cell: { representation, protocol, system, view }, session, handle: 'g0' };
+      }
       const fnName = parseAndValidate(task.a0Source).functions[0]?.name ?? '';
       const view = session.open(fnName, { scope: 'deps' }).text;
       return { cell: { representation, protocol, system, view }, session, handle };

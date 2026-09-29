@@ -824,3 +824,44 @@ test('structured edits: insert (at end or after a node), delete, and change the 
   const patched = applyPatch(n3, parsePatch(`patch f ${revision(f)}\ne add b 1\nret e\nend`));
   assert.equal(run(patched.byName.get('f') as TypedFunc, [3, 4]), 13);
 });
+
+test('program-level edits: add, replace, and remove whole functions through a program handle', () => {
+  const session = new EditSession(
+    parseAndValidate(
+      'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn twice u32 -> u32\nx call sq p0\ny add x x\nret y\nend',
+    ),
+  );
+  const v = session.openProgram();
+  assert.equal(v.handle, 'g0');
+  assert.equal(v.text, 'g0\nfn sq u32 -> u32 end\nfn twice u32 -> u32 end');
+  const next = session.apply(
+    `${v.handle}\nfn cube u32 -> u32\ns call sq p0\nc mul s p0\nret c\nend`,
+  );
+  assert.equal(run(next.byName.get('cube') as TypedFunc, [3]), 27);
+  assert.deepEqual(
+    next.functions.map((f) => f.name),
+    ['sq', 'twice', 'cube'],
+  );
+  // Replace in place keeps order; removing a function still in use fails atomically.
+  const v2 = session.openProgram();
+  const n2 = session.apply(`${v2.handle}\nfn sq u32 -> u32\na add p0 p0\nret a\nend`);
+  assert.equal(run(n2.byName.get('cube') as TypedFunc, [3]), 18);
+  assert.deepEqual(
+    n2.functions.map((f) => f.name),
+    ['sq', 'twice', 'cube'],
+  );
+  const v3 = session.openProgram();
+  assert.throws(() => session.apply(`${v3.handle}\n-fn sq`), /unknown callee 'sq'/);
+  assert.equal(session.program.functions.length, 3);
+  const n4 = session.apply(`${v3.handle}\n-fn twice\n-fn cube`);
+  assert.deepEqual(
+    n4.functions.map((f) => f.name),
+    ['sq'],
+  );
+  assert.throws(() => session.apply(`${v3.handle}\n-fn sq`), /unknown or consumed/);
+  // Stale program handle after a function-level edit.
+  const g = session.openProgram();
+  const f = session.open('sq');
+  session.apply(`${f.handle}\na mul p0 3`);
+  assert.throws(() => session.apply(`${g.handle}\nfn z -> u32\nret 1\nend`), /stale/);
+});

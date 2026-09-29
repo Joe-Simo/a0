@@ -106,6 +106,12 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Program-level edits** (v0.8.2): a program handle (`g0`) views every function
+  signature and accepts whole `fn … end` blocks (replace in place or append) and
+  `-fn name` removals, validated as one program and committed atomically; stale after any
+  other edit. The experiment gained a `create` task (add `cube` reusing `sq`) and the
+  TypeScript/Rust line protocols gained insert (`+n`) and delete (`-n`) so all
+  representations can create; 13 tasks, self-check passes.
 - **Structured edits and scoped views** (v0.8.1): edit lines now insert (`id op …`, or
   `… @ other` to place after a node), delete (`-id`), and change the result (`ret x`),
   in patches and sessions alike, validated as one function and committed atomically;
@@ -148,7 +154,7 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 21/21 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured edits) |
+| Focused tests | `bun run test` | 22/22 pass (incl. fuel, static cap, 3000-mutation fuzz, page protocol, structured and program-level edits) |
 | Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
 | Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
 | GPU (Metal, Apple M3) | `bun run gpu` | 4995 io-free cases across 31 kernels pass |
@@ -236,7 +242,9 @@ credentials (none configured on this machine); default model `claude-opus-5-5`, 
 per cell. Twelve held-out tasks (targeted, multi-node, multi-function, comprehension,
 iteration, records) with independent acceptance tests across three representations
 (A0, TypeScript, Rust; Rust acceptance compiles with rustc -O) and two protocols, six
-cells; the self-check passes (references accepted, originals rejected in every cell). Measured setup cost per cell (o200k):
+cells; the self-check passes (references accepted, originals rejected in every cell).
+Setup cost per cell (o200k): A0 conventional 1027 (guide grew with edits/text/effects),
+A0 structured 1150, TypeScript 48/127, Rust 63/142; views 11–45 tokens. Measured setup cost per cell (o200k):
 A0 conventional 877 tokens (MODEL_GUIDE.txt), TypeScript 48; view sizes 24–45.
 
 ## Reference
