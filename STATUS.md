@@ -426,8 +426,11 @@ with status as of 2026-09-29:
 
 ## Reference
 
-- Domain a0lang.com is registered on the user's Vercel account (2026-09-29) for the future
-  landing/docs site; it is the Gate 5 application target.
+- a0lang.com is deployed (2026-09-29, approved by the user): Vercel project `a0lang` in team
+  `simo-js`, static production deployment of `site/dist` (the page program compiled from
+  `site/page.a0` plus the Life component from `examples/life.a0`, both wasm32), domain
+  a0lang.com verified on Vercel DNS, HTTP 200 with the A0 page. Deployed with the user's
+  Vercel CLI login; the MCP token in this session cannot create or update projects.
 
 ## Repository
 
@@ -441,11 +444,6 @@ listed by `git log`; the push is verified against `origin/main` after each commi
   reports a billing/spending-limit problem on the Joe-Simo account (user chose to ignore
   for now). Regressions are gated by the local suite: `lint`, `typecheck`, `test`,
   `verify`, `hw`, `app`, `equiv`, `bench`, `tokens`, `exec-bench`.
-- a0lang.com deployment (approved by the user 2026-09-29) is blocked: the Vercel token in
-  this session cannot create a project in team `simo-js` (403 on `create_project` and on
-  `create_deployment`). The user must create a project named `a0lang` in that team (or
-  grant project-creation rights); then the deployment is `site/dist` (index.html, app.js,
-  life.wasm, page.wasm) as a static production deployment plus domain `a0lang.com`.
 - `A0-Research-Starter.zip` absent (see Provenance).
 - Paid model runs not authorized; Gate 6 live runs unrun (scripted in-session run recorded).
 - No Claude-tokenizer counts (needs `count_tokens` with credentials).
@@ -468,7 +466,9 @@ listed by `git log`; the push is verified against `origin/main` after each commi
    before spending; keep the guide only as long as acceptance holds.
 3. **View size**: A0's structured view (function handle + program handle) is the largest of
    the six cells; measure a single-handle view that still allows signature changes.
-4. **Deploy a0lang.com** once the Vercel project exists (approved).
+4. Redeploy a0lang.com after site changes: `bun run site`, then `vercel deploy --prod` from a
+   directory holding `site/dist/{index.html,app.js,life.wasm,page.wasm}` (project `a0lang`,
+   team `simo-js`, CLI login).
 5. Hardware: clocked predicate/body handshakes cost cycles; measure per-module cycle counts
    and decide whether a single-cycle `div` by a literal (constant divisor) should stay
    combinational. Optionally run the full ABC synth in `bun run hw` behind a flag.
