@@ -29,7 +29,20 @@ export const LANGUAGE_VERSION = 'a0-0.1';
  * u32x4), and positional records (`(u32,bool)`). Aggregates are values: every operation
  * yields a fresh value, so no aliasing exists in the language.
  */
-export type Type = 'u32' | 'bool' | ArrayType | RecordType;
+export type Type = 'u32' | 'bool' | 'io' | ArrayType | RecordType;
+
+/**
+ * `io` is the effect capability: a linear token whose data dependencies define effect
+ * order. `read t` consumes t and yields `(u32,io)`; `write t v` consumes t and yields
+ * `io`. A token is consumed at most once, a function takes at most one `io` parameter,
+ * arrays cannot hold tokens, and `select` cannot choose between tokens.
+ */
+export function containsIo(t: Type): boolean {
+  if (t === 'io') return true;
+  if (typeof t === 'string') return false;
+  if (t.kind === 'arr') return containsIo(t.elem);
+  return t.fields.some(containsIo);
+}
 export interface ArrayType {
   readonly kind: 'arr';
   readonly length: number;
@@ -44,8 +57,13 @@ export function isScalar(t: Type): t is 'u32' | 'bool' {
   return t === 'u32' || t === 'bool';
 }
 
+/** Scalars and the io token: every type that is not an array or record. */
+export function isPrimitive(t: Type): t is 'u32' | 'bool' | 'io' {
+  return typeof t === 'string';
+}
+
 export function typeEquals(a: Type, b: Type): boolean {
-  if (isScalar(a) || isScalar(b)) return a === b;
+  if (isScalar(a) || isScalar(b) || a === 'io' || b === 'io') return a === b;
   if (a.kind === 'arr')
     return b.kind === 'arr' && a.length === b.length && typeEquals(a.elem, b.elem);
   return (
@@ -56,7 +74,7 @@ export function typeEquals(a: Type, b: Type): boolean {
 }
 
 export function formatType(t: Type): string {
-  if (isScalar(t)) return t;
+  if (isScalar(t) || t === 'io') return t;
   if (t.kind === 'arr') return `${formatType(t.elem)}x${t.length}`;
   return `(${t.fields.map(formatType).join(',')})`;
 }
@@ -65,6 +83,10 @@ export function formatType(t: Type): string {
 export function bitWidth(t: Type): number {
   if (t === 'u32') return 32;
   if (t === 'bool') return 1;
+  if (t === 'io')
+    throw new A0Error(
+      'io has no bit-level representation (sequential hardware state is not implemented)',
+    );
   if (t.kind === 'arr') return t.length * bitWidth(t.elem);
   return t.fields.reduce((n, f) => n + bitWidth(f), 0);
 }
@@ -90,7 +112,9 @@ export type Op =
   | 'get'
   | 'set'
   | 'at'
-  | 'put';
+  | 'put'
+  | 'read'
+  | 'write';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -114,6 +138,8 @@ export const OPS: readonly Op[] = [
   'set',
   'at',
   'put',
+  'read',
+  'write',
 ];
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
@@ -139,6 +165,8 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   set: 3,
   at: 2,
   put: 3,
+  read: 1,
+  write: 2,
 };
 
 export type Operand =
@@ -232,6 +260,9 @@ export function parseType(text: string, line?: number): Type {
     } else if (text.startsWith('bool', pos)) {
       base = 'bool';
       pos += 4;
+    } else if (text.startsWith('io', pos)) {
+      base = 'io';
+      pos += 2;
     } else if (text[pos] === '(') {
       pos += 1;
       const fields: Type[] = [parseOne()];
@@ -251,9 +282,10 @@ export function parseType(text: string, line?: number): Type {
       const length = Number(m?.[1]);
       if (length > LIMITS.maxArrayLength) fail(`array length exceeds ${LIMITS.maxArrayLength}`);
       pos += (m?.[0] ?? '').length;
+      if (containsIo(base)) fail('arrays cannot hold io tokens');
       base = { kind: 'arr', length, elem: base };
     }
-    if (bitWidth(base) > LIMITS.maxAggregateBits)
+    if (!containsIo(base) && bitWidth(base) > LIMITS.maxAggregateBits)
       fail(`type exceeds ${LIMITS.maxAggregateBits} bits`);
     return base;
   };
@@ -460,27 +492,40 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
           `${where}: select branches differ (${formatType(b)} vs ${formatType(c)})`,
         );
       }
+      if (containsIo(b)) throw new A0Error(`${where}: select cannot choose between io tokens`);
       return b;
     case 'arr': {
       for (const [i, t] of argTypes.entries()) expect(t, a, `${where} element ${i}`);
+      if (containsIo(a)) throw new A0Error(`${where}: arrays cannot hold io tokens`);
       const t: Type = { kind: 'arr', length: argTypes.length, elem: a };
       if (bitWidth(t) > LIMITS.maxAggregateBits) throw new A0Error(`${where}: aggregate too large`);
       return t;
     }
     case 'rec': {
       const t: Type = { kind: 'rec', fields: [...argTypes] };
-      if (bitWidth(t) > LIMITS.maxAggregateBits) throw new A0Error(`${where}: aggregate too large`);
+      if (argTypes.filter(containsIo).length > 1)
+        throw new A0Error(`${where}: a record holds at most one io token`);
+      if (!containsIo(t) && bitWidth(t) > LIMITS.maxAggregateBits)
+        throw new A0Error(`${where}: aggregate too large`);
       return t;
     }
+    case 'read':
+      expect(a, 'io', `${where} token`);
+      return { kind: 'rec', fields: ['u32', 'io'] };
+    case 'write':
+      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      expect(a, 'io', `${where} token`);
+      expect(b, 'u32', `${where} value`);
+      return 'io';
     case 'get':
       if (b === undefined) throw new A0Error(`${where}: missing operand`);
-      if (isScalar(a) || a.kind !== 'arr')
+      if (isPrimitive(a) || a.kind !== 'arr')
         throw new A0Error(`${where}: get expects an array, got ${formatType(a)}`);
       expect(b, 'u32', `${where} index`);
       return a.elem;
     case 'set':
       if (b === undefined || c === undefined) throw new A0Error(`${where}: missing operand`);
-      if (isScalar(a) || a.kind !== 'arr')
+      if (isPrimitive(a) || a.kind !== 'arr')
         throw new A0Error(`${where}: set expects an array, got ${formatType(a)}`);
       expect(b, 'u32', `${where} index`);
       expect(c, a.elem, `${where} element`);
@@ -509,6 +554,10 @@ export function validateFunction(
   const types = new Map<string, Type>();
   const defined = new Set<string>();
   const calls = new Map<string, TypedFunc>();
+  const consumed = new Set<string>();
+  if (fn.params.filter(containsIo).length > 1) {
+    throw new A0Error(`${fn.name}: at most one parameter may carry an io token`);
+  }
   for (const node of fn.nodes) {
     const where = `${fn.name}.${node.id}`;
     if (!isValidIdentifier(node.id)) throw new A0Error(`${where}: invalid identifier`);
@@ -535,10 +584,19 @@ export function validateFunction(
         throw new A0Error(`${where}: literal out of u32 range`);
       }
     }
+    // Linearity: an io-carrying value is consumed at most once; `at` reads do not consume.
+    for (const [k, arg] of node.args.entries()) {
+      const t = argTypes[k] as Type;
+      if (!containsIo(t)) continue;
+      if (node.op === 'at' && k === 0) continue;
+      const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
+      if (consumed.has(key)) throw new A0Error(`${where}: io token '${key}' was already consumed`);
+      consumed.add(key);
+    }
     if (node.op === 'at' || node.op === 'put') {
       const [recT, idx] = argTypes;
       const index = node.args[1];
-      if (recT === undefined || isScalar(recT) || recT.kind !== 'rec') {
+      if (recT === undefined || isPrimitive(recT) || recT.kind !== 'rec') {
         throw new A0Error(
           `${where}: ${node.op} expects a record, got ${recT === undefined ? 'nothing' : formatType(recT)}`,
         );
@@ -625,6 +683,12 @@ export function validateFunction(
   }
   const retType = operandType(fn.ret, fn, types, defined, `${fn.name}.ret`);
   expect(retType, fn.result, `${fn.name}.ret`);
+  if (containsIo(retType)) {
+    const key =
+      fn.ret.kind === 'param' ? `p${fn.ret.index}` : fn.ret.kind === 'node' ? fn.ret.id : '';
+    if (consumed.has(key))
+      throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`);
+  }
   return { ...fn, types, calls };
 }
 
@@ -679,9 +743,25 @@ export function formatProgram(program: Program): string {
 // Reference interpreter
 // ---------------------------------------------------------------------------
 
-export type Value = number | boolean | readonly Value[];
+/** Runtime state behind an io token: an input word stream and an output sink. */
+export interface IoState {
+  readonly input: readonly number[];
+  position: number;
+  readonly output: number[];
+}
+
+export function makeIo(input: readonly number[] = []): IoState {
+  return { input, position: 0, output: [] };
+}
+
+export function isIoState(v: Value): v is IoState {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'output' in v;
+}
+
+export type Value = number | boolean | IoState | readonly Value[];
 
 export function valueEquals(a: Value, b: Value): boolean {
+  if (isIoState(a) || isIoState(b)) return a === b;
   if (Array.isArray(a) || Array.isArray(b)) {
     return (
       Array.isArray(a) &&
@@ -757,6 +837,18 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       copy[num(b)] = c;
       return copy;
     }
+    case 'read': {
+      // Exhausted input reads as 0; the token identity is the state itself.
+      if (a === undefined || !isIoState(a)) throw new A0Error('read: expected io token');
+      const v = a.input[a.position] ?? 0;
+      if (a.position < a.input.length) a.position += 1;
+      return [v, a];
+    }
+    case 'write': {
+      if (a === undefined || !isIoState(a)) throw new A0Error('write: expected io token');
+      a.output.push(num(b));
+      return a;
+    }
     case 'call':
     case 'fold':
     case 'loop':
@@ -773,6 +865,10 @@ export function checkArgument(type: Type, value: Value, where: string): void {
     if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > U32_MAX) {
       throw new A0Error(`${where}: expected u32`);
     }
+    return;
+  }
+  if (type === 'io') {
+    if (!isIoState(value)) throw new A0Error(`${where}: expected io token`);
     return;
   }
   if (!Array.isArray(value)) throw new A0Error(`${where}: expected ${formatType(type)}`);

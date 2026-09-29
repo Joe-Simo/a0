@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.2.0)
+## Implemented scope (v0.3.0)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -47,7 +47,15 @@ turns up, reconcile against this tree rather than overwrite either.
   (packed vectors, part-selects, `always_comb` for updates). Public functions with
   aggregate signatures are emitted with the documented ABI but the differential drivers
   only call scalar-signature functions; aggregate functions are covered through `call`.
-  Not implemented: general regions, mutable state, effects, I/O, sequential hardware state.
+- **Effects** (new, Gate 3): type `io` is a linear capability token; `read t -> (u32,io)`,
+  `write t v -> io`. Consumed at most once, one io parameter per function, no tokens in
+  arrays or `select`; token dependencies define effect order, so no separate sequencing
+  exists. Optimizer anchors effectful nodes (read/write/calls/iterations carrying tokens)
+  and still drops pure extractions. Runtimes: JS stream object, C `a0_io` fixed-capacity
+  struct (freestanding, also used in Wasm through linear memory at `__heap_base`), Java
+  `A0Io`; SystemVerilog rejects io with a diagnostic (sequential state is Gate 4).
+  Not implemented: platform-specific capabilities (camera, files, DOM: Gate 5 adapters),
+  general regions, sequential hardware state.
 - Edits: self-contained patch (`patch name sha256 … end`) and session handle edits
   (`e0` + replaced lines). Replace-existing-nodes only. Handles are one-use and
   revision-bound. No insertion/deletion, no multi-function transactions, no network service.
@@ -65,20 +73,20 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 15/15 pass |
-| Interpreter vs oracle | `bun run verify` | 6902 cases pass |
-| Optimizer vs oracle | `bun run verify` | 6902 pass |
-| JS in Node | `bun run verify` | 6902 pass |
-| C via Apple clang 21, UBSan | `bun run verify` | 6902 pass |
-| C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 6902 pass |
-| C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 6902 pass |
-| Java via Homebrew OpenJDK 27 | `bun run verify` | 6902 pass |
-| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 6902 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
-| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 6902 cases pass, 48 modules incl. call instances |
-| SystemVerilog generic synthesis (Yosys 0.69 `synth` + `check -assert`) | `bun run hw` | pass; cell counts per module in `results/hardware.json` |
+| Focused tests | `bun run test` | 16/16 pass |
+| Interpreter vs oracle | `bun run verify` | 5603 cases pass |
+| Optimizer vs oracle | `bun run verify` | 5603 pass |
+| JS in Node | `bun run verify` | 5603 pass |
+| C via Apple clang 21, UBSan | `bun run verify` | 5603 pass |
+| C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 5603 pass |
+| C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 5603 pass |
+| Java via Homebrew OpenJDK 27 | `bun run verify` | 5603 pass |
+| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 5603 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
+| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 4995 cases pass on the 37 io-free functions (11 io functions excluded with a diagnostic) |
+| SystemVerilog generic synthesis (Yosys 0.69 `synth -noabc` + `check -assert`) | `bun run hw` | pass in 0.7 s; ABC optimization stalled >5 min on 32-bit multipliers, so it is off and cell counts are unoptimized |
 | Not run for hardware | — | FPGA place-and-route, real cell library, timing, area, power, sequential logic |
 
-Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, 64 call, 38 fold, 25 loop, 69 arr, 44 rec, 67 get, 133 set, 30 at, 77 put sites (iteration bodies never iterate),
+Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, 56 call, 28 fold, 19 loop, 79 arr, 69 rec, 59 get, 126 set, 24 read, 22 write sites; 11 io functions with 608 stream cases,
 sha in `results/verification.json`. Deterministic generated inputs, not application evidence.
 
 Bug found and fixed by hardware simulation: SV emitted `literal[4:0]` for shifts by a
@@ -116,6 +124,11 @@ as null. **Status: unrun.** Requires `A0_ALLOW_PAID_MODEL_CALLS=1` plus Anthropi
 credentials (none configured on this machine); default model `claude-opus-5-5`, 3 trials
 per cell. Only three tasks exist; expand before drawing conclusions.
 
+## Reference
+
+- Domain a0lang.com is registered on the user's Vercel account (2026-09-29) for the future
+  landing/docs site; it is the Gate 5 application target.
+
 ## Repository
 
 Private GitHub repo `Joe-Simo/a0` (verified `isPrivate: true`), branch `main`, project
@@ -132,9 +145,10 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Gates 1 and 2 are done. Next: Gate 3, explicit mutable state and typed effects
-   (clock, I/O capability) with defined ordering; pure optimizer rules must not apply to
-   effectful nodes. Platform integration follows the handoff's two tiers: portable
-   capability operations and platform-specific operations with explicit, tested adapters.
+1. Gates 1–3 are done. Next: Gate 4, sequential hardware state (registers, FSM) so
+   variable-count fold/loop and io streams synthesize; keep Icarus and Yosys passing.
+2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
+   cross-target application, authored in A0 with a browser DOM adapter; no deployment
+   without explicit approval in that session.
 2. Expand the Gate A task set (≥10 held-out tasks incl. multi-function edits) and run it
    when authorized; report per-cell accepted-change cost with uncertainty.

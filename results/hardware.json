@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-09-29T18:37:44.269Z",
-  "functions": 48,
-  "inputCases": 6902,
+  "generatedAt": "2026-09-29T19:16:53.635Z",
+  "functions": 37,
+  "excludedIoFunctions": 11,
+  "inputCases": 4995,
   "tools": {
     "iverilog": "Icarus Verilog version 13.0 (stable) (v13_0)",
     "vvp": "Icarus Verilog runtime version 13.0 (stable) (v13_0)",
@@ -9,7 +10,7 @@
   },
   "stagesRun": [
     "RTL simulation (Icarus Verilog)",
-    "generic logic synthesis (Yosys synth + check)"
+    "generic logic synthesis (Yosys synth -noabc + check)"
   ],
   "stagesNotRun": [
     "FPGA place-and-route",
@@ -20,207 +21,163 @@
   ],
   "simulation": {
     "status": "passed",
-    "cases": 6902,
+    "cases": 4995,
     "failures": 0,
     "detail": "Icarus Verilog -g2012 RTL simulation of every emitted module against BigInt-oracle cases (combinational, zero-delay).",
-    "elapsedMs": 99.931959
+    "elapsedMs": 79.77583299999998
   },
   "synthesis": {
     "status": "passed",
-    "detail": "Yosys generic `synth` to internal gate-level cells; `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.",
-    "elapsedMs": 8527.353667000001,
+    "detail": "Yosys generic `synth -noabc` to internal gate-level cells (no ABC logic optimization: ABC stalled on 32-bit multipliers); `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.",
+    "elapsedMs": 681.2558339999999,
     "modules": {
-      "a0_g47": {
-        "cells": 62,
-        "wires": 7
-      },
       "a0_g46": {
-        "cells": 1737,
-        "wires": 1743
+        "cells": 285,
+        "wires": 82
       },
       "a0_g45": {
-        "cells": 207,
-        "wires": 214
+        "cells": 1010,
+        "wires": 229
       },
       "a0_g44": {
-        "cells": 62,
-        "wires": 44
-      },
-      "a0_g43": {
-        "cells": 202,
-        "wires": 207
+        "cells": 0,
+        "wires": 3
       },
       "a0_g42": {
         "cells": 0,
         "wires": 3
       },
       "a0_g41": {
-        "cells": 0,
-        "wires": 11
-      },
-      "a0_g40": {
-        "cells": 161,
-        "wires": 135
+        "cells": 3,
+        "wires": 9
       },
       "a0_g39": {
-        "cells": 136,
-        "wires": 115
+        "cells": 32,
+        "wires": 9
       },
       "a0_g38": {
-        "cells": 3121,
-        "wires": 3097
+        "cells": 627,
+        "wires": 95
       },
       "a0_g37": {
-        "cells": 36,
-        "wires": 44
-      },
-      "a0_g36": {
         "cells": 0,
-        "wires": 5
+        "wires": 3
       },
       "a0_g35": {
-        "cells": 647,
-        "wires": 622
-      },
-      "a0_g34": {
-        "cells": 426,
-        "wires": 434
+        "cells": 128,
+        "wires": 96
       },
       "a0_g33": {
-        "cells": 143,
-        "wires": 151
+        "cells": 416,
+        "wires": 107
       },
       "a0_g32": {
-        "cells": 224,
-        "wires": 199
+        "cells": 0,
+        "wires": 9
       },
       "a0_g31": {
-        "cells": 3019,
-        "wires": 3022
-      },
-      "a0_g30": {
-        "cells": 378,
-        "wires": 383
-      },
-      "a0_g29": {
-        "cells": 693,
-        "wires": 703
-      },
-      "a0_g28": {
         "cells": 0,
         "wires": 4
       },
+      "a0_g30": {
+        "cells": 110,
+        "wires": 84
+      },
       "a0_g27": {
-        "cells": 2843,
-        "wires": 2850
+        "cells": 156,
+        "wires": 80
       },
       "a0_g26": {
-        "cells": 3132,
-        "wires": 3138
+        "cells": 252,
+        "wires": 104
       },
       "a0_g25": {
-        "cells": 802,
-        "wires": 785
+        "cells": 794,
+        "wires": 217
       },
       "a0_g24": {
-        "cells": 61,
-        "wires": 64
+        "cells": 0,
+        "wires": 5
       },
       "a0_g23": {
-        "cells": 738,
-        "wires": 628
+        "cells": 0,
+        "wires": 5
       },
       "a0_g22": {
         "cells": 0,
         "wires": 3
       },
       "a0_g21": {
-        "cells": 266,
-        "wires": 243
+        "cells": 257,
+        "wires": 30
       },
       "a0_g20": {
-        "cells": 1,
-        "wires": 6
+        "cells": 186,
+        "wires": 92
       },
       "a0_g19": {
-        "cells": 0,
-        "wires": 10
+        "cells": 192,
+        "wires": 17
       },
       "a0_g18": {
-        "cells": 0,
-        "wires": 4
+        "cells": 464,
+        "wires": 126
       },
       "a0_g17": {
-        "cells": 733,
-        "wires": 736
+        "cells": 3408,
+        "wires": 320
       },
       "a0_g16": {
+        "cells": 374,
+        "wires": 195
+      },
+      "a0_g13": {
+        "cells": 82,
+        "wires": 29
+      },
+      "a0_g12": {
         "cells": 0,
         "wires": 4
       },
-      "a0_g15": {
+      "a0_g11": {
         "cells": 0,
         "wires": 3
       },
-      "a0_g14": {
-        "cells": 14,
-        "wires": 14
-      },
-      "a0_g13": {
-        "cells": 436,
-        "wires": 410
-      },
-      "a0_g12": {
-        "cells": 38,
-        "wires": 41
-      },
-      "a0_g11": {
-        "cells": 84,
-        "wires": 63
-      },
       "a0_g10": {
-        "cells": 0,
-        "wires": 6
+        "cells": 386,
+        "wires": 123
       },
       "a0_g9": {
-        "cells": 0,
-        "wires": 6
+        "cells": 4182,
+        "wires": 422
       },
       "a0_g8": {
         "cells": 0,
-        "wires": 5
+        "wires": 4
       },
       "a0_g7": {
-        "cells": 401,
-        "wires": 412
+        "cells": 561,
+        "wires": 206
       },
       "a0_g6": {
-        "cells": 78,
-        "wires": 82
-      },
-      "a0_g5": {
-        "cells": 1672,
-        "wires": 1627
+        "cells": 230,
+        "wires": 92
       },
       "a0_g4": {
-        "cells": 0,
-        "wires": 6
+        "cells": 381,
+        "wires": 117
       },
       "a0_g3": {
-        "cells": 0,
-        "wires": 5
+        "cells": 402,
+        "wires": 97
       },
       "a0_g2": {
-        "cells": 31,
-        "wires": 35
-      },
-      "a0_g1": {
-        "cells": 159,
-        "wires": 135
+        "cells": 1661,
+        "wires": 244
       },
       "a0_g0": {
-        "cells": 326,
-        "wires": 299
+        "cells": 160,
+        "wires": 9
       }
     }
   }

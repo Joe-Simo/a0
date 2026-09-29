@@ -5,6 +5,7 @@ import {
   A0Error,
   formatFunction,
   formatType,
+  makeIo,
   parse,
   parseAndValidate,
   parseType,
@@ -511,4 +512,86 @@ end`;
   assert.ok(sv.includes('always_comb begin n_c = p0; n_c[0 +: 32] = n_b; end'));
   // Dynamic-index part-select survives only without the optimizer (it folds literal gets).
   assert.ok(compile(p, 'sv', { optimize: false }).text.includes('assign n_z = n_v[64 +: 32];'));
+});
+
+test('io: linear tokens order effects; read/write across interpreter, optimizer, and backends', async () => {
+  const src = `fn echo2 io -> u32
+r read p0
+v at r 0
+t at r 1
+w write t v
+r2 read w
+v2 at r2 0
+t2 at r2 1
+w2 write t2 v2
+s add v v2
+ret s
+end
+
+fn tap u32 io -> (u32,io)
+w write p1 p0
+r rec p0 w
+ret r
+end
+
+fn twice u32 io -> u32
+a call tap p0 p1
+t at a 1
+b call tap p0 t
+v at b 0
+ret v
+end`;
+  const p = parseAndValidate(src);
+  const io = makeIo([5, 7, 9]);
+  assert.equal(run(p.byName.get('echo2') as TypedFunc, [io]), 12);
+  assert.deepEqual(io.output, [5, 7]);
+  assert.equal(io.position, 2);
+  const io2 = makeIo([]);
+  assert.equal(run(p.byName.get('echo2') as TypedFunc, [io2]), 0); // exhausted input reads 0
+  const io3 = makeIo([]);
+  assert.equal(run(p.byName.get('twice') as TypedFunc, [3, io3]), 3);
+  assert.deepEqual(io3.output, [3, 3]);
+  // Linearity and shape rules.
+  assert.throws(
+    () => parseAndValidate('fn f io -> io\na write p0 1\nb write p0 2\nret b\nend'),
+    /already consumed/,
+  );
+  assert.throws(
+    () => parseAndValidate('fn f io -> io\na write p0 1\nret p0\nend'),
+    /already consumed/,
+  );
+  assert.throws(() => parseAndValidate('fn f io io -> io\nret p0\nend'), /at most one parameter/);
+  assert.throws(
+    () => parseAndValidate('fn f bool io io -> io\nret p1\nend'),
+    /at most one parameter/,
+  );
+  assert.throws(() => parseType('iox2'), /arrays cannot hold io/);
+  assert.throws(
+    () => parseAndValidate('fn f bool io -> io\na write p1 1\ns select p0 a p1\nret s\nend'),
+    /already consumed|select cannot/,
+  );
+  assert.throws(() => parseAndValidate('fn f u32 -> u32\nr read p0\nret p0\nend'), /expected io/);
+  // Optimizer keeps every effect, in order, even when results are unused; pure extraction is dropped.
+  const o = optimizeFunction(
+    fn('fn f io -> u32\nr read p0\nv at r 0\nt at r 1\nw write t 9\nq add v 0\nret v\nend'),
+  );
+  assert.equal(
+    formatFunction(o.fn),
+    'fn f io -> u32\nr read p0\nv at r 0\nt at r 1\nw write t 9\nret v\nend',
+  );
+  // Backends: JS executes the stream; C/Java emit runtimes; SV rejects with a precise diagnostic.
+  const js = compile(p, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as {
+    echo2: (t: unknown) => number;
+    a0_make_io: (i: number[]) => { output: number[] };
+  };
+  const state = mod.a0_make_io([5, 7]);
+  assert.equal(mod.echo2(state), 12);
+  assert.deepEqual(state.output, [5, 7]);
+  assert.throws(() => mod.echo2({}), TypeError);
+  assert.ok(compile(p, 'c').text.includes('static inline a0t_r2_u_io a0_read(a0_io *t)'));
+  assert.ok(compile(p, 'java').text.includes('static R_r2_u_io read(A0Io t)'));
+  assert.throws(() => compile(p, 'sv'), /sequential state|io has no bit-level/);
 });

@@ -11,6 +11,7 @@
  */
 
 import {
+  containsIo,
   evalOp,
   formatOperand,
   isScalar,
@@ -163,6 +164,21 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
   }
 }
 
+/** Effectful: read/write, or any operand or the result carries an io token. */
+function isEffectful(node: Node, fn: TypedFunc): boolean {
+  if (node.op === 'read' || node.op === 'write') return true;
+  // Only calls/iterations can perform effects; token extraction (`at`), `rec`, `put`, `mov`
+  // are pure and may be dropped when unused (the effects already happened upstream).
+  if (node.op !== 'call' && node.op !== 'fold' && node.op !== 'loop') return false;
+  const t = fn.types.get(node.id);
+  if (t !== undefined && containsIo(t)) return true;
+  return node.args.some((a) => {
+    if (a.kind === 'param') return containsIo(fn.params[a.index] ?? 'u32');
+    if (a.kind === 'node') return containsIo(fn.types.get(a.id) ?? 'u32');
+    return false;
+  });
+}
+
 /** Maximum trip count the optimizer evaluates at compile time. */
 const FOLD_EVAL_LIMIT = 4096;
 
@@ -196,8 +212,17 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
   const cse = new Map<string, string>();
   const kept: Node[] = [];
   const defs = new Map<string, Node>();
+  const anchored = new Set<string>();
   for (const node of fn.nodes) {
     const rewritten: Node = { ...node, args: node.args.map(resolve) };
+    // Effectful nodes are anchored: never folded, merged, or removed; their order is
+    // fixed by token data dependencies (each token is consumed once).
+    if (isEffectful(node, fn)) {
+      kept.push(rewritten);
+      defs.set(node.id, rewritten);
+      anchored.add(node.id);
+      continue;
+    }
     const simple = simplify(rewritten, fn, defs);
     if (simple !== undefined) {
       subst.set(node.id, simple);
@@ -220,6 +245,7 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
     if (o.kind === 'node') live.add(o.id);
   };
   mark(ret);
+  for (const id of anchored) live.add(id);
   for (let i = kept.length - 1; i >= 0; i -= 1) {
     const node = kept[i];
     if (node !== undefined && live.has(node.id)) node.args.forEach(mark);

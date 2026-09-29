@@ -7,8 +7,21 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { compile, JAVA_CLASS } from '../src/backends.js';
-import { formatProgram, run, type TypedFunc, type TypedProgram, type Value } from '../src/core.js';
+import {
+  C_IO_INPUT_CAPACITY,
+  C_IO_OUTPUT_CAPACITY,
+  compile,
+  JAVA_CLASS,
+  usesIo,
+} from '../src/backends.js';
+import {
+  formatProgram,
+  makeIo,
+  run,
+  type TypedFunc,
+  type TypedProgram,
+  type Value,
+} from '../src/core.js';
 import { optimize } from '../src/optimize.js';
 import {
   compileWasm,
@@ -28,8 +41,9 @@ import {
   corpusSha256,
   generateCases,
   generateCorpus,
-  hasScalarSignature,
+  hasIoParam,
   INPUT_SEED,
+  isDriverCallable,
 } from './corpus.js';
 
 interface TargetReport {
@@ -43,6 +57,21 @@ interface TargetReport {
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
 
+/** Expected line: result, then the output words for io functions. */
+function expectedLine(c: Case): string {
+  return c.expectedOutput === undefined
+    ? fmt(c.expected)
+    : [fmt(c.expected), ...c.expectedOutput.map(String)].join(' ');
+}
+
+/** Run one case in-process (interpreter or optimized graph), threading an io state when needed. */
+function runCase(fn: TypedFunc, c: Case): string {
+  if (c.input === undefined) return fmt(run(fn, c.args));
+  const state = makeIo(c.input);
+  const result = fmt(run(fn, [...c.args, state]));
+  return [result, ...state.output.map(String)].join(' ');
+}
+
 function compareAll(
   cases: readonly Case[],
   actual: readonly string[],
@@ -50,10 +79,10 @@ function compareAll(
 ): TargetReport {
   const failures: string[] = [];
   cases.forEach((c, i) => {
-    const got = actual[i];
-    if (got !== fmt(c.expected)) {
+    const got = actual[i]?.trim();
+    if (got !== expectedLine(c)) {
       failures.push(
-        `${c.functionName}(${c.args.map(fmt).join(',')}) expected ${fmt(c.expected)} got ${got ?? '<missing>'}`,
+        `${c.functionName}(${c.args.map(fmt).join(',')}${c.input ? ` | in ${c.input.join(',')}` : ''}) expected ${expectedLine(c)} got ${got ?? '<missing>'}`,
       );
     }
   });
@@ -74,9 +103,7 @@ function blocked(tool: ToolInfo, detail: string): TargetReport {
 
 function checkInterpreter(program: TypedProgram, cases: readonly Case[]): TargetReport {
   const start = performance.now();
-  const actual = cases.map((c) =>
-    fmt(run(program.byName.get(c.functionName) as TypedFunc, c.args)),
-  );
+  const actual = cases.map((c) => runCase(program.byName.get(c.functionName) as TypedFunc, c));
   return timed(compareAll(cases, actual, 'Reference interpreter vs BigInt oracle'), start);
 }
 
@@ -86,7 +113,7 @@ function checkOptimizer(
 ): TargetReport & { before: number; after: number } {
   const start = performance.now();
   const { program: opt, stats } = optimize(program);
-  const actual = cases.map((c) => fmt(run(opt.byName.get(c.functionName) as TypedFunc, c.args)));
+  const actual = cases.map((c) => runCase(opt.byName.get(c.functionName) as TypedFunc, c));
   return {
     ...timed(compareAll(cases, actual, 'Optimized graph vs BigInt oracle'), start),
     before: stats.before,
@@ -101,10 +128,16 @@ async function checkJs(program: TypedProgram, cases: readonly Case[]): Promise<T
   const js = compile(program, 'js').text;
   const mod = (await import(
     `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
-  )) as Record<string, (...a: Value[]) => Value>;
+  )) as Record<string, (...a: Value[]) => Value> & {
+    a0_make_io: (input: number[]) => { output: number[] };
+  };
   const actual = cases.map((c) => {
     const f = mod[c.functionName];
-    return f === undefined ? '<missing>' : fmt(f(...c.args));
+    if (typeof f !== 'function') return '<missing>';
+    if (c.input === undefined) return fmt(f(...c.args));
+    const state = mod.a0_make_io([...c.input]);
+    const result = fmt(f(...c.args, state as unknown as Value));
+    return [result, ...state.output.map(String)].join(' ');
   });
   return timed(
     compareAll(cases, actual, 'Executed emitted ES module in Node; public input guards retained.'),
@@ -116,15 +149,23 @@ async function checkJs(program: TypedProgram, cases: readonly Case[]): Promise<T
 
 function cDriver(program: TypedProgram): string {
   const dispatch = program.functions.map((fn, i) => {
-    if (!hasScalarSignature(fn)) return `    case ${i}: printf("skip\\n"); break;`;
-    const args = fn.params
+    if (!isDriverCallable(fn)) return `    case ${i}: printf("skip\\n"); break;`;
+    const io = hasIoParam(fn);
+    const scalars = io ? fn.params.slice(0, -1) : fn.params;
+    const args = scalars
       .map((t, p) =>
         t === 'u32' ? `(uint32_t)strtoul(tok[${p}], NULL, 10)` : `(bool)(tok[${p}][0] == '1')`,
       )
+      .concat(io ? ['&io'] : [])
       .join(', ');
-    const print =
-      fn.result === 'u32' ? 'printf("%u\\n", (unsigned)r);' : 'printf("%d\\n", r ? 1 : 0);';
-    return `    case ${i}: { ${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print} break; }`;
+    const print = fn.result === 'u32' ? 'printf("%u", (unsigned)r);' : 'printf("%d", r ? 1 : 0);';
+    const setup = io
+      ? `memset(&io, 0, sizeof io); io.ninput = (uint32_t)strtoul(tok[${scalars.length}], NULL, 10); for (uint32_t k = 0; k < io.ninput; k++) io.input[k] = (uint32_t)strtoul(tok[${scalars.length + 1}u + k], NULL, 10); `
+      : '';
+    const flush = io
+      ? ' for (uint32_t k = 0; k < io.noutput; k++) printf(" %u", (unsigned)io.output[k]);'
+      : '';
+    return `    case ${i}: { ${setup}${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n"); break; }`;
   });
   return `#include <stdio.h>
 #include <stdlib.h>
@@ -132,9 +173,9 @@ function cDriver(program: TypedProgram): string {
 #include "module.c"
 int main(void) {
   char line[4096];
-  while (fgets(line, sizeof line, stdin)) {
-    char *tok[70]; int n = 0;
-    for (char *p = strtok(line, " \\n"); p && n < 70; p = strtok(NULL, " \\n")) tok[n++] = p;
+${usesIo(program) ? '  static a0_io io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {
+    char *tok[80]; int n = 0;
+    for (char *p = strtok(line, " \\n"); p && n < 80; p = strtok(NULL, " \\n")) tok[n++] = p;
     if (n < 1) continue;
     int idx = atoi(tok[0]);
     memmove(tok, tok + 1, sizeof(char*) * (size_t)(n - 1));
@@ -150,7 +191,12 @@ ${dispatch.join('\n')}
 
 function caseInput(program: TypedProgram, cases: readonly Case[]): string {
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
-  return `${cases.map((c) => `${index.get(c.functionName)} ${c.args.map(fmt).join(' ')}`).join('\n')}\n`;
+  return `${cases
+    .map((c) => {
+      const base = `${index.get(c.functionName)} ${c.args.map(fmt).join(' ')}`;
+      return c.input === undefined ? base : `${base} ${c.input.length} ${c.input.join(' ')}`;
+    })
+    .join('\n')}\n`;
 }
 
 async function checkNative(
@@ -240,14 +286,38 @@ async function checkWasm(program: TypedProgram, cases: readonly Case[]): Promise
     const build = await compileWasm(compile(program, 'c').text);
     const { instance } = await WebAssembly.instantiate(build.bytes as BufferSource, {});
     const exports = instance.exports as Record<string, unknown>;
+    // io state lives in linear memory at __heap_base with the C struct layout:
+    // input[256], ninput, position, output[1024], noutput (all u32).
+    const memory = exports.memory as WebAssembly.Memory | undefined;
+    const heapBase = (exports.__heap_base as WebAssembly.Global | undefined)?.value as
+      | number
+      | undefined;
+    const IN = C_IO_INPUT_CAPACITY;
+    const OUT = C_IO_OUTPUT_CAPACITY;
     const actual = cases.map((c) => {
       const fn = exports[`a0_${c.functionName}`];
       if (typeof fn !== 'function') return '<missing>';
-      const raw = (fn as (...a: number[]) => number)(
-        ...c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : (a as number) | 0)),
-      );
+      const scalars = c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : (a as number) | 0));
       const type = (program.byName.get(c.functionName) as TypedFunc).result;
-      return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+      if (c.input === undefined) {
+        const raw = (fn as (...a: number[]) => number)(...scalars);
+        return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+      }
+      if (memory === undefined || heapBase === undefined) return '<no memory>';
+      const needed = heapBase + (IN + 2 + OUT + 1) * 4;
+      if (memory.buffer.byteLength < needed)
+        memory.grow(Math.ceil((needed - memory.buffer.byteLength) / 65536));
+      const words = new Uint32Array(memory.buffer, heapBase, IN + 2 + OUT + 1);
+      words.fill(0);
+      c.input.forEach((w, k) => {
+        words[k] = w;
+      });
+      words[IN] = c.input.length;
+      const raw = (fn as (...a: number[]) => number)(...scalars, heapBase);
+      const result = type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+      const nout = words[IN + 2 + OUT] as number;
+      const out = Array.from(words.subarray(IN + 2, IN + 2 + nout), String);
+      return [result, ...out].join(' ');
     });
     return {
       ...timed(
@@ -274,17 +344,26 @@ async function checkWasm(program: TypedProgram, cases: readonly Case[]): Promise
 
 function javaDriver(program: TypedProgram): string {
   const dispatch = program.functions.map((fn, i) => {
-    if (!hasScalarSignature(fn)) return `        case ${i}: out.append("skip\\n"); break;`;
-    const args = fn.params
+    if (!isDriverCallable(fn)) return `        case ${i}: out.append("skip\\n"); break;`;
+    const io = hasIoParam(fn);
+    const scalars = io ? fn.params.slice(0, -1) : fn.params;
+    const args = scalars
       .map((t, p) =>
         t === 'u32' ? `Integer.parseUnsignedInt(tok[${p + 1}])` : `tok[${p + 1}].equals("1")`,
       )
+      .concat(io ? ['io'] : [])
       .join(', ');
     const print =
       fn.result === 'u32'
         ? `Integer.toUnsignedString(${JAVA_CLASS}.${fn.name}(${args}))`
         : `(${JAVA_CLASS}.${fn.name}(${args}) ? "1" : "0")`;
-    return `        case ${i}: out.append(${print}).append('\\n'); break;`;
+    const setup = io
+      ? `int nin = Integer.parseInt(tok[${scalars.length + 1}]); int[] inw = new int[nin]; for (int k = 0; k < nin; k++) inw[k] = Integer.parseUnsignedInt(tok[${scalars.length + 2} + k]); ${JAVA_CLASS}.A0Io io = new ${JAVA_CLASS}.A0Io(inw); `
+      : '';
+    const flush = io
+      ? ` for (int k = 0; k < io.noutput; k++) out.append(' ').append(Integer.toUnsignedString(io.output[k]));`
+      : '';
+    return `        case ${i}: { ${setup}out.append(${print});${flush} out.append('\\n'); break; }`;
   });
   return `import java.io.*;
 public final class Driver {

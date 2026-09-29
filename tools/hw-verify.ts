@@ -12,7 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
-import type { TypedProgram, Value } from '../src/core.js';
+import { containsIo, type TypedProgram, type Value, validate } from '../src/core.js';
 import { findIverilog, findVvp, findYosys, runTool, withTempDir } from '../src/toolchain.js';
 import { type Case, generateCases, generateCorpus, hasScalarSignature } from './corpus.js';
 
@@ -74,7 +74,18 @@ function caseFile(program: TypedProgram, cases: readonly Case[]): string {
 }
 
 async function main(): Promise<void> {
-  const program = generateCorpus();
+  // io effects have no combinational hardware form: keep only functions (and callees) without io.
+  const full = generateCorpus();
+  const keep = new Set<string>();
+  for (const fn of full.functions) {
+    const io =
+      containsIo(fn.result) ||
+      fn.params.some(containsIo) ||
+      [...fn.types.values()].some(containsIo);
+    if (!io && [...fn.calls.keys()].every((k) => keep.has(k))) keep.add(fn.name);
+  }
+  const program = validate({ functions: full.functions.filter((f) => keep.has(f.name)) });
+  const excluded = full.functions.length - program.functions.length;
   const cases = generateCases(program);
   const sv = compile(program, 'sv').text;
   const iverilog = findIverilog();
@@ -83,6 +94,7 @@ async function main(): Promise<void> {
   const report: Record<string, unknown> = {
     generatedAt: new Date().toISOString(),
     functions: program.functions.length,
+    excludedIoFunctions: excluded,
     inputCases: cases.length,
     tools: {
       iverilog: iverilog.version ?? null,
@@ -149,7 +161,7 @@ async function main(): Promise<void> {
     } else {
       const start = performance.now();
       const script =
-        'read_verilog -sv module.sv; hierarchy -check; proc; opt; synth; tee -q -o stat.json stat -json; check -assert';
+        'read_verilog -sv module.sv; hierarchy -check; proc; opt; synth -noabc; tee -q -o stat.json stat -json; check -assert'; // -noabc: ABC stalls for minutes on 32-bit multipliers in this corpus (observed 2026-09-29)
       await writeFile(join(dir, 'synth.ys'), `${script.replace(/; /g, '\n')}\n`, 'utf8');
       const r = runTool(yosys.path, ['-q', '-s', 'synth.ys'], { cwd: dir, timeoutMs: 600_000 });
       if (!r.ok) {
@@ -172,11 +184,11 @@ async function main(): Promise<void> {
         report.synthesis = {
           status: 'passed',
           detail:
-            'Yosys generic `synth` to internal gate-level cells; `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.',
+            'Yosys generic `synth -noabc` to internal gate-level cells (no ABC logic optimization: ABC stalled on 32-bit multipliers); `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.',
           elapsedMs: performance.now() - start,
           modules,
         };
-        stagesRun.push('generic logic synthesis (Yosys synth + check)');
+        stagesRun.push('generic logic synthesis (Yosys synth -noabc + check)');
       }
     }
   });

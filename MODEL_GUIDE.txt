@@ -25,6 +25,11 @@ OPERATIONS (exact semantics)
   get a i          element i mod N of array a       set a i v       copy of a with element i mod N = v
   at r k           field k (u32 literal) of record  put r k v       copy of r with field k = v
   Aggregates are values: every op returns a new value; nothing aliases or mutates.
+EFFECTS (type io: a token passed as a parameter; each token value is used at most once)
+  read t           -> (u32,io): next input word (0 when exhausted) and the next token
+  write t v        -> io: emit word v, next token.   Order of effects = order of token uses.
+  A function has at most one io parameter; return the token inside a record, e.g. (u32,io),
+  when the caller must continue the stream. Arrays cannot hold io; select cannot pick a token.
   loop P F n s a... fold with early exit: before iteration i, if P(state, i, a...) is false the loop
                    stops with the current state. P takes exactly F's parameters and returns bool.
 
