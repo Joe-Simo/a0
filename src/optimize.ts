@@ -54,6 +54,20 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined) return undefined;
       value = run(callee, values); // pure and total: folding a constant call is exact
+    } else if (node.op === 'fold') {
+      const body = fn.calls.get(node.callee ?? '');
+      const [count, init, ...extra] = values;
+      // Bounded compile-time evaluation only; large trip counts stay as loops.
+      if (
+        body === undefined ||
+        typeof count !== 'number' ||
+        count > FOLD_EVAL_LIMIT ||
+        init === undefined
+      )
+        return undefined;
+      let state: Value = init;
+      for (let i = 0; i < count; i += 1) state = run(body, [state, i, ...extra]);
+      value = state;
     } else {
       value = evalOp(node.op, values);
     }
@@ -63,6 +77,11 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
   switch (node.op) {
     case 'call':
       return undefined;
+    case 'fold': {
+      // Zero iterations yield the initial state exactly.
+      if (b !== undefined && isU32(a, 0)) return b;
+      return undefined;
+    }
     case 'mov':
       return a;
     case 'add':
@@ -115,6 +134,9 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
   }
 }
 
+/** Maximum trip count the optimizer evaluates at compile time. */
+const FOLD_EVAL_LIMIT = 4096;
+
 function commutative(op: Node['op']): boolean {
   return op === 'add' || op === 'mul' || op === 'and' || op === 'or' || op === 'xor' || op === 'eq';
 }
@@ -122,7 +144,7 @@ function commutative(op: Node['op']): boolean {
 function cseKey(node: Node): string {
   const args = node.args.map(formatOperand);
   if (commutative(node.op)) args.sort();
-  return `${node.op}${node.op === 'call' ? ` ${node.callee ?? ''}` : ''} ${args.join(' ')}`;
+  return `${node.op}${node.callee !== undefined ? ` ${node.callee}` : ''} ${args.join(' ')}`;
 }
 
 export interface OptimizeStats {

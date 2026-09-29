@@ -90,13 +90,20 @@ function jsExpr(node: Node): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
+    case 'fold':
+      throw new A0Error('fold is emitted as a statement');
   }
 }
 
 const emitJsFunction: Emitter = (fn) => {
   const params = fn.params.map((_, i) => `p${i}`).join(', ');
   const guards = fn.params.map((t, i) => `  a0_${t}(p${i}, 'p${i}');`);
-  const body = fn.nodes.map((n) => `  const n_${n.id} = ${jsExpr(n)};`);
+  const body = fn.nodes.map((n) => {
+    if (n.op !== 'fold') return `  const n_${n.id} = ${jsExpr(n)};`;
+    const [count, init, ...extra] = n.args.map(jsOperand);
+    const call = [`n_${n.id}`, 'i', ...extra].join(', ');
+    return `  let n_${n.id} = ${init};\n  for (let i = 0; i < ${count}; i++) n_${n.id} = ${n.callee ?? ''}(${call});`;
+  });
   return [
     `export function ${fn.name}(${params}) {`,
     ...guards,
@@ -159,6 +166,8 @@ function cExpr(node: Node): string {
       return `(${a} ? ${b} : ${c})`;
     case 'call':
       return `a0_${node.callee ?? ''}(${node.args.map(cOperand).join(', ')})`;
+    case 'fold':
+      throw new A0Error('fold is emitted as a statement');
   }
 }
 
@@ -169,9 +178,13 @@ export function cSignature(fn: TypedFunc): string {
 }
 
 const emitCFunction: Emitter = (fn) => {
-  const body = fn.nodes.map(
-    (n) => `  const ${cType(fn.types.get(n.id) ?? 'u32')} n_${n.id} = ${cExpr(n)};`,
-  );
+  const body = fn.nodes.map((n) => {
+    const t = cType(fn.types.get(n.id) ?? 'u32');
+    if (n.op !== 'fold') return `  const ${t} n_${n.id} = ${cExpr(n)};`;
+    const [count, init, ...extra] = n.args.map(cOperand);
+    const call = [`n_${n.id}`, 'i', ...extra].join(', ');
+    return `  ${t} n_${n.id} = ${init};\n  for (uint32_t i = 0; i < ${count}; i++) n_${n.id} = a0_${n.callee ?? ''}(${call});`;
+  });
   return [`${cSignature(fn)} {`, ...body, `  return ${cOperand(fn.ret)};`, '}'].join('\n');
 };
 
@@ -225,14 +238,20 @@ function javaExpr(node: Node): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(javaOperand).join(', ')})`;
+    case 'fold':
+      throw new A0Error('fold is emitted as a statement');
   }
 }
 
 const emitJavaFunction: Emitter = (fn) => {
   const params = fn.params.map((t, i) => `${javaType(t)} p${i}`).join(', ');
-  const body = fn.nodes.map(
-    (n) => `    final ${javaType(fn.types.get(n.id) ?? 'u32')} n_${n.id} = ${javaExpr(n)};`,
-  );
+  const body = fn.nodes.map((n) => {
+    const t = javaType(fn.types.get(n.id) ?? 'u32');
+    if (n.op !== 'fold') return `    final ${t} n_${n.id} = ${javaExpr(n)};`;
+    const [count, init, ...extra] = n.args.map(javaOperand);
+    const call = [`n_${n.id}`, 'i', ...extra].join(', ');
+    return `    ${t} n_${n.id} = ${init};\n    for (int i = 0; Integer.compareUnsigned(i, ${count}) < 0; i++) n_${n.id} = ${n.callee ?? ''}(${call});`;
+  });
   return [
     `  public static ${javaType(fn.result)} ${fn.name}(${params}) {`,
     ...body,
@@ -295,9 +314,13 @@ function svExpr(node: Node): string {
     case 'select':
       return `${a} ? ${b} : ${c}`;
     case 'call':
-      throw new A0Error('call is emitted as a module instance in SystemVerilog');
+    case 'fold':
+      throw new A0Error(`${node.op} is emitted as module instances in SystemVerilog`);
   }
 }
+
+/** Largest literal fold trip count the combinational SystemVerilog backend will unroll. */
+export const SV_MAX_UNROLL = 256;
 
 const emitSvFunction: Emitter = (fn) => {
   const ports = [
@@ -306,6 +329,37 @@ const emitSvFunction: Emitter = (fn) => {
   ].join(',\n');
   const decls = fn.nodes.map((n) => `  ${svType(fn.types.get(n.id) ?? 'u32')} n_${n.id};`);
   const assigns = fn.nodes.map((n) => {
+    if (n.op === 'fold') {
+      // Combinational backend: only a literal trip count can be unrolled into a chain of instances.
+      const [count, init, ...extra] = n.args;
+      if (count === undefined || count.kind !== 'u32') {
+        throw new A0Error(
+          `${fn.name}.${n.id}: fold with a non-literal trip count needs sequential state, which the combinational SystemVerilog backend does not implement`,
+        );
+      }
+      if (count.value > SV_MAX_UNROLL) {
+        throw new A0Error(
+          `${fn.name}.${n.id}: fold trip count ${count.value} exceeds the SystemVerilog unroll limit ${SV_MAX_UNROLL}`,
+        );
+      }
+      const width = svType(fn.types.get(n.id) ?? 'u32');
+      const lines: string[] = [];
+      let prev = init === undefined ? "32'd0" : svOperand(init);
+      for (let i = 0; i < count.value; i += 1) {
+        const wire = `n_${n.id}_s${i + 1}`;
+        lines.push(`  ${width} ${wire};`);
+        const conns = [
+          `.p0(${prev})`,
+          `.p1(32'd${i})`,
+          ...extra.map((arg, k) => `.p${k + 2}(${svOperand(arg)})`),
+          `.result(${wire})`,
+        ];
+        lines.push(`  a0_${n.callee ?? ''} u_${n.id}_${i} (${conns.join(', ')});`);
+        prev = wire;
+      }
+      lines.push(`  assign n_${n.id} = ${prev};`);
+      return lines.join('\n');
+    }
     if (n.op !== 'call') return `  assign n_${n.id} = ${svExpr(n)};`;
     // A call is a combinational instance of the callee module, connected by port name.
     const conns = [...n.args.map((arg, i) => `.p${i}(${svOperand(arg)})`), `.result(n_${n.id})`];

@@ -54,7 +54,9 @@ function pick<T>(rng: () => number, items: readonly T[]): T {
 export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): TypedProgram {
   const rng = makeRng(seed);
   const functions: string[] = [];
-  const signatures: { name: string; params: Type[]; result: Type }[] = [];
+  // `iterates` marks functions that fold (transitively); they are never used as fold bodies,
+  // which keeps generated iteration depth at one and evaluation cost bounded.
+  const signatures: { name: string; params: Type[]; result: Type; iterates: boolean }[] = [];
   for (let f = 0; f < count; f += 1) {
     const paramCount = 1 + (rng() % 4);
     const params: Type[] = Array.from({ length: paramCount }, (_, i) =>
@@ -109,6 +111,32 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
           args = [cond, pick(rng, boolSlots()).operand, pick(rng, boolSlots()).operand];
           type = 'bool';
         }
+      } else if (roll === 9 && signatures.length > 0 && rng() % 3 === 0) {
+        // Fold over an earlier function shaped (state, u32, extra...) -> state, literal trip count.
+        const bodies = signatures.filter(
+          (f) =>
+            !f.iterates &&
+            f.params.length >= 2 &&
+            f.params[1] === 'u32' &&
+            f.result === f.params[0],
+        );
+        const body = bodies.length > 0 ? pick(rng, bodies) : undefined;
+        const extraT = body === undefined ? [] : body.params.slice(2);
+        if (body !== undefined && extraT.every((t) => slots.some((s) => s.type === t))) {
+          const stateT = body.params[0] as Type;
+          const init = stateT === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand;
+          const count: Operand = { kind: 'u32', value: rng() % 9 };
+          const extra = extraT.map((t) =>
+            t === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand,
+          );
+          nodes.push({ id, op: 'fold', callee: body.name, args: [count, init, ...extra] });
+          slots.push({ operand: { kind: 'node', id }, type: stateT });
+          continue;
+        }
+        op = 'mov';
+        const s = pick(rng, slots);
+        args = [s.operand];
+        type = s.type;
       } else if (roll === 9 && signatures.length > 0 && rng() % 2 === 0) {
         // Call an earlier function whose parameter types can all be satisfied.
         const callee = pick(rng, signatures);
@@ -144,7 +172,12 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
         : (slots.find((s) => s.type === result) as Slot).operand;
     const text = formatProgram({ functions: [{ name: `g${f}`, params, result, nodes, ret }] });
     functions.push(text.trimEnd());
-    signatures.push({ name: `g${f}`, params, result });
+    const iterates = nodes.some(
+      (n) =>
+        n.op === 'fold' ||
+        (n.op === 'call' && (signatures.find((s) => s.name === n.callee)?.iterates ?? false)),
+    );
+    signatures.push({ name: `g${f}`, params, result, iterates });
   }
   return parseAndValidate(`${functions.join('\n\n')}\n`);
 }
@@ -193,7 +226,8 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
         throw new Error('oracle select');
       return a ? b : c;
     case 'call':
-      throw new Error('oracle: call is handled by oracleRun');
+    case 'fold':
+      throw new Error(`oracle: ${op} is handled by oracleRun`);
   }
 }
 
@@ -225,6 +259,16 @@ export function oracleRun(
       if (callee === undefined) throw new Error(`oracle: unknown callee ${node.callee ?? ''}`);
       // The oracle evaluates callees with itself, never with the interpreter.
       env.set(node.id, oracleRun(callee, node.args.map(read).map(oracleToValue)));
+    } else if (node.op === 'fold') {
+      const body = fn.calls.get(node.callee ?? '');
+      if (body === undefined) throw new Error(`oracle: unknown fold body ${node.callee ?? ''}`);
+      const [count, init, ...extra] = node.args.map(read);
+      if (typeof count !== 'bigint' || init === undefined) throw new Error('oracle: bad fold');
+      let state: OracleValue = init;
+      for (let i = 0n; i < count; i += 1n) {
+        state = oracleRun(body, [state, i, ...extra].map(oracleToValue));
+      }
+      env.set(node.id, state);
     } else {
       env.set(node.id, oracleOp(node.op, node.args.map(read)));
     }

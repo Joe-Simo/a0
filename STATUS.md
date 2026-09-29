@@ -22,14 +22,20 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.1.1)
+## Implemented scope (v0.1.2)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
 - **`call f a...`** (new): applies a function defined *earlier* in the program (acyclic,
   no recursion); typed against the callee; evaluated by interpreter and BigInt oracle;
   constant-folded and CSE'd; emitted as a call in JS/C/Java and as a module instance
-  in SystemVerilog. Not implemented: loops, control-flow regions, memory, effects, I/O.
+  in SystemVerilog.
+- **`fold f n s a...`** (new): bounded iteration `state = f(state, i, a...)` for `i` in
+  `0..n-1`; u32 trip count guarantees termination. Interpreter, oracle, compile-time
+  evaluation up to 4096 trips, zero-trip identity, counted loops in JS/C/Java (Java uses an
+  unsigned bound), literal-count unrolling (≤256) in SystemVerilog with a precise
+  diagnostic for variable counts. Not implemented: early exit, general regions, memory,
+  effects, I/O, sequential hardware state.
 - Edits: self-contained patch (`patch name sha256 … end`) and session handle edits
   (`e0` + replaced lines). Replace-existing-nodes only. Handles are one-use and
   revision-bound. No insertion/deletion, no multi-function transactions, no network service.
@@ -47,20 +53,20 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 12/12 pass |
-| Interpreter vs oracle | `bun run verify` | 6593 cases pass |
-| Optimizer vs oracle | `bun run verify` | 6593 pass |
-| JS in Node | `bun run verify` | 6593 pass |
-| C via Apple clang 21, UBSan | `bun run verify` | 6593 pass |
-| C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 6593 pass |
-| C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 6593 pass |
-| Java via Homebrew OpenJDK 27 | `bun run verify` | 6593 pass |
-| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 6593 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
-| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 6593 cases pass, 48 modules incl. call instances |
+| Focused tests | `bun run test` | 13/13 pass |
+| Interpreter vs oracle | `bun run verify` | 6607 cases pass |
+| Optimizer vs oracle | `bun run verify` | 6607 pass |
+| JS in Node | `bun run verify` | 6607 pass |
+| C via Apple clang 21, UBSan | `bun run verify` | 6607 pass |
+| C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 6607 pass |
+| C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 6607 pass |
+| Java via Homebrew OpenJDK 27 | `bun run verify` | 6607 pass |
+| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 6607 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
+| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 6607 cases pass, 48 modules incl. call instances |
 | SystemVerilog generic synthesis (Yosys 0.69 `synth` + `check -assert`) | `bun run hw` | pass; cell counts per module in `results/hardware.json` |
 | Not run for hardware | — | FPGA place-and-route, real cell library, timing, area, power, sequential logic |
 
-Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, 115 call sites,
+Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, ~115 call sites and 88 fold sites (fold bodies never fold, keeping generated depth at one),
 sha in `results/verification.json`. Deterministic generated inputs, not application evidence.
 
 Bug found and fixed by hardware simulation: SV emitted `literal[4:0]` for shifts by a
@@ -114,9 +120,8 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Add structured control flow: a bounded `loop` region with an explicit trip count and
-   loop-carried values (software) that lowers to a counted loop in JS/C/Java and to an
-   unrolled or FSM form in SV, with evaluator, oracle, optimizer safeguards
-   (no hoisting across iterations without proof), backends, and tests together.
+1. Bounded iteration is done (`fold`). Next semantic step: early exit / conditional
+   termination with an explicit iteration cap, then records and fixed-size arrays with an
+   ownership-free value semantics first, so the optimizer never needs aliasing assumptions.
 2. Expand the Gate A task set (≥10 held-out tasks incl. multi-function edits) and run it
    when authorized; report per-cell accepted-change cost with uncertainty.

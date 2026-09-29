@@ -285,3 +285,67 @@ test('SystemVerilog: shift by a literal distance is masked, never bit-selected',
   assert.ok(sv.includes('<< p0[4:0]'), sv);
   assert.ok(!/'d[0-9]+\[4:0\]/.test(sv));
 });
+
+test('fold: bounded iteration with exact semantics, typing, zero-trip identity, backends', async () => {
+  const src = `fn step u32 u32 u32 -> u32
+m mul p0 p2
+a add m p1
+ret a
+end
+
+fn horner u32 u32 -> u32
+r fold step p1 0 p0
+ret r
+end`;
+  const p = parseAndValidate(src);
+  const horner = p.byName.get('horner') as TypedFunc;
+  // state = state*x + i for i in 0..n-1
+  assert.equal(run(horner, [10, 0]), 0);
+  assert.equal(run(horner, [10, 4]), 123); // ((0*10+0)*10+1)*10+2)*10+3
+  assert.equal(run(horner, [0xffff_ffff, 3]), (((0 + 0) * -1 + 1) * -1 + 2) >>> 0);
+  // Typing: trip count must be u32, init must match state type, body shape is checked.
+  assert.throws(
+    () => parseAndValidate(`${src}\nfn bad bool -> u32\nr fold step p0 0 1\nret r\nend`),
+    /trip count/,
+  );
+  assert.throws(
+    () => parseAndValidate(`${src}\nfn bad u32 -> u32\nr fold step p0 true 1\nret r\nend`),
+    /initial state/,
+  );
+  assert.throws(
+    () => parseAndValidate(`${src}\nfn bad u32 -> u32\nr fold step p0 0\nret r\nend`),
+    /extra arguments/,
+  );
+  assert.throws(
+    () =>
+      parseAndValidate(
+        'fn one u32 -> u32\nret p0\nend\nfn bad u32 -> u32\nr fold one p0 0\nret r\nend',
+      ),
+    /needs \(state, index/,
+  );
+  assert.throws(
+    () => parseAndValidate(`fn bad u32 -> u32\nr fold bad p0 0\nret r\nend`),
+    /unknown fold body/,
+  );
+  // Optimizer: zero trips is the init; constant folds evaluate exactly; large counts stay loops.
+  const opt = optimizeFunction(fn(`${src}\nfn z u32 -> u32\nr fold step 0 p0 7\nret r\nend`, 'z'));
+  assert.equal(formatFunction(opt.fn), 'fn z u32 -> u32\nret p0\nend');
+  const konst = optimizeFunction(fn(`${src}\nfn k -> u32\nr fold step 4 0 10\nret r\nend`, 'k'));
+  assert.equal(formatFunction(konst.fn), 'fn k -> u32\nret 123\nend');
+  const big = optimizeFunction(fn(`${src}\nfn b -> u32\nr fold step 100000 0 10\nret r\nend`, 'b'));
+  assert.ok(formatFunction(big.fn).includes('fold step 100000'));
+  // Backends: JS executes; C/Java contain loops; SV unrolls literals and rejects variable counts.
+  const js = compile(p, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as { horner: (x: number, n: number) => number };
+  assert.equal(mod.horner(10, 4), 123);
+  assert.ok(compile(p, 'c').text.includes('for (uint32_t i = 0; i < p1; i++)'));
+  assert.ok(compile(p, 'java').text.includes('Integer.compareUnsigned(i, p1) < 0'));
+  assert.throws(() => compile(p, 'sv'), /sequential state/);
+  const lit = parseAndValidate(
+    `${src.split('\n\n')[0]}\nfn h3 u32 -> u32\nr fold step 3 0 p0\nret r\nend`,
+  );
+  const sv = compile(lit, 'sv').text;
+  assert.equal((sv.match(/a0_step u_r_/g) ?? []).length, 3);
+});

@@ -12,6 +12,9 @@
  * - call f a... applies an earlier-defined function of this program to arguments
  *   whose types match its parameters; the result has the callee's result type.
  *   Callees must precede callers, so the call graph is acyclic (no recursion).
+ * - fold f n s a... runs state = f(state, i, a...) for i = 0..n-1 starting from s and
+ *   yields the final state; f is an earlier function of type (T, u32, A...) -> T.
+ *   The u32 trip count guarantees termination; iterations are sequential and exact.
  * All operations are pure and total on validated input.
  */
 
@@ -32,7 +35,8 @@ export type Op =
   | 'eq'
   | 'lt'
   | 'select'
-  | 'call';
+  | 'call'
+  | 'fold';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -48,6 +52,7 @@ export const OPS: readonly Op[] = [
   'lt',
   'select',
   'call',
+  'fold',
 ];
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
@@ -65,6 +70,7 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   lt: 2,
   select: 3,
   call: -1,
+  fold: -1,
 };
 
 export type Operand =
@@ -77,7 +83,7 @@ export interface Node {
   readonly id: string;
   readonly op: Op;
   readonly args: readonly Operand[];
-  /** Present exactly when op is 'call'. */
+  /** Present exactly when op is 'call' or 'fold'. */
   readonly callee?: string;
 }
 
@@ -170,10 +176,10 @@ export function parseNode(lineText: string, line?: number): Node {
   if (id === undefined || op === undefined) throw new A0Error('expected `id op operands`', line);
   if (!isValidIdentifier(id)) throw new A0Error(`invalid node identifier '${id}'`, line);
   if (!isOp(op)) throw new A0Error(`unknown operation '${op}'`, line);
-  if (op === 'call') {
+  if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
     if (callee === undefined || !isValidFunctionName(callee)) {
-      throw new A0Error(`call expects a function name, got '${callee ?? ''}'`, line);
+      throw new A0Error(`${op} expects a function name, got '${callee ?? ''}'`, line);
     }
     return { id, op, callee, args: args.map((r) => parseOperand(r, line)) };
   }
@@ -326,7 +332,8 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       if (b !== c) throw new A0Error(`${where}: select branches differ (${b} vs ${c})`);
       return b;
     case 'call':
-      throw new A0Error(`${where}: call is typed against its callee`);
+    case 'fold':
+      throw new A0Error(`${where}: ${op} is typed against its callee`);
   }
 }
 
@@ -348,10 +355,11 @@ export function validateFunction(
     const where = `${fn.name}.${node.id}`;
     if (!isValidIdentifier(node.id)) throw new A0Error(`${where}: invalid identifier`);
     if (defined.has(node.id)) throw new A0Error(`${where}: duplicate definition`);
-    if ((node.op === 'call') !== (node.callee !== undefined)) {
-      throw new A0Error(`${where}: callee present iff op is call`);
+    const hasCallee = node.op === 'call' || node.op === 'fold';
+    if (hasCallee !== (node.callee !== undefined)) {
+      throw new A0Error(`${where}: callee present iff op is call or fold`);
     }
-    if (node.op !== 'call' && node.args.length !== OP_ARITY[node.op]) {
+    if (!hasCallee && node.args.length !== OP_ARITY[node.op]) {
       throw new A0Error(`${where}: wrong arity`);
     }
     const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
@@ -380,6 +388,37 @@ export function validateFunction(
       }
       calls.set(callee.name, callee);
       types.set(node.id, callee.result);
+    } else if (node.op === 'fold') {
+      const callee = scope.get(node.callee ?? '');
+      if (callee === undefined) {
+        throw new A0Error(
+          `${where}: unknown fold body '${node.callee ?? ''}' (must be defined earlier)`,
+        );
+      }
+      // fold f n s a...  with f : (T, u32, A...) -> T
+      const [count, init, ...extra] = argTypes;
+      if (count === undefined || init === undefined) {
+        throw new A0Error(`${where}: fold expects a trip count and an initial state`);
+      }
+      expect(count, 'u32', `${where} trip count`);
+      const [stateT, indexT, ...extraT] = callee.params;
+      if (stateT === undefined || indexT === undefined) {
+        throw new A0Error(
+          `${where}: fold body ${callee.name} needs (state, index, ...) parameters`,
+        );
+      }
+      expect(indexT, 'u32', `${where} body index parameter`);
+      expect(init, stateT, `${where} initial state`);
+      expect(callee.result, stateT, `${where} body result`);
+      if (extra.length !== extraT.length) {
+        throw new A0Error(
+          `${where}: ${callee.name} expects ${extraT.length} extra arguments, got ${extra.length}`,
+        );
+      }
+      for (const [i, t] of extraT.entries())
+        expect(extra[i] as Type, t, `${where} extra argument ${i}`);
+      calls.set(callee.name, callee);
+      types.set(node.id, stateT);
     } else {
       types.set(node.id, resultType(node.op, argTypes, where));
     }
@@ -421,7 +460,7 @@ export function formatOperand(operand: Operand): string {
 }
 
 export function formatNode(node: Node): string {
-  const callee = node.op === 'call' ? ` ${node.callee ?? ''}` : '';
+  const callee = node.op === 'call' || node.op === 'fold' ? ` ${node.callee ?? ''}` : '';
   const args = node.args.length > 0 ? ` ${node.args.map(formatOperand).join(' ')}` : '';
   return `${node.id} ${node.op}${callee}${args}`;
 }
@@ -480,7 +519,8 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       }
       return a ? b : c;
     case 'call':
-      throw new A0Error('call is evaluated by run, not evalOp');
+    case 'fold':
+      throw new A0Error(`${op} is evaluated by run, not evalOp`);
   }
 }
 
@@ -523,6 +563,15 @@ export function run(fn: TypedFunc, args: readonly Value[]): Value {
       if (callee === undefined)
         throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`);
       env.set(node.id, run(callee, node.args.map(read)));
+    } else if (node.op === 'fold') {
+      const body = fn.calls.get(node.callee ?? '');
+      if (body === undefined)
+        throw new A0Error(`${fn.name}: unresolved fold body '${node.callee ?? ''}'`);
+      const [count, init, ...extra] = node.args.map(read);
+      let state = init as Value;
+      const n = count as number;
+      for (let i = 0; i < n; i += 1) state = run(body, [state, i, ...extra]);
+      env.set(node.id, state);
     } else {
       env.set(node.id, evalOp(node.op, node.args.map(read)));
     }
