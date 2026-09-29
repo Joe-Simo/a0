@@ -1,0 +1,32 @@
+A0 v0.1 model guide (language instructions an AI needs before reading or writing A0).
+
+FUNCTION
+  fn NAME TYPE... -> TYPE      types: u32 bool. Parameters are positional: p0 p1 ...
+  ID OP OPERAND...             one instruction per line; ID is lowercase [a-z][a-z0-9_]*
+  ret OPERAND
+  end
+Operands: an earlier ID in the same function, a parameter pN, a decimal u32 literal, true, false.
+No forward references, calls, loops, memory, strings, or I/O. Comments start with #.
+
+OPERATIONS (exact semantics)
+  mov x            identity (u32 or bool)
+  add a b          (a + b) mod 2^32          sub a b   (a - b) mod 2^32       mul a b  (a * b) mod 2^32
+  and a b | or a b | xor a b                 bitwise on u32
+  shl a n          a << (n & 31)             shr a n   a >>> (n & 31)  (logical)
+  eq a b -> bool   lt a b -> bool (unsigned)
+  select c x y     c ? x : y; x and y already computed and of the same type; not lazy
+
+EDITING
+  Session edit: reply with the handle line you were shown, then only the replaced instructions:
+    e0
+    b sub a p2
+  Replaced instructions keep their position; you cannot insert or delete instructions.
+  Self-contained patch: "patch NAME REVISION" + replaced instructions + "end", where REVISION is the
+  64-hex SHA-256 shown by `a0 revision`. A handle or revision that no longer matches is rejected.
+
+EXAMPLE  (p0 * p1 + p2) mod 2^32
+  fn affine u32 u32 u32 -> u32
+  a mul p0 p1
+  b add a p2
+  ret b
+  end

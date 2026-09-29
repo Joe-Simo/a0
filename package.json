@@ -1,0 +1,27 @@
+{
+  "name": "a0",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A0: AI-native universal language and compiler research prototype (provisional codename)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun run build && node --test dist/test/*.test.js",
+    "verify": "bun run build && node dist/tools/verify.js",
+    "bench": "bun run build && node dist/tools/bench.js",
+    "tokens": "bun run build && node dist/tools/token-bench.js",
+    "hw": "bun run build && node dist/tools/hw-verify.js"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@types/node": "^24.5.2",
+    "js-tiktoken": "^1.0.20",
+    "typescript": "^5.9.2"
+  }
+}
