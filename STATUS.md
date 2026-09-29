@@ -445,7 +445,9 @@ listed by `git log`; the push is verified against `origin/main` after each commi
   for now). Regressions are gated by the local suite: `lint`, `typecheck`, `test`,
   `verify`, `hw`, `app`, `equiv`, `bench`, `tokens`, `exec-bench`.
 - `A0-Research-Starter.zip` absent (see Provenance).
-- Paid model runs not authorized; Gate 6 live runs unrun (scripted in-session run recorded).
+- Gate 6 live runs: spend was authorized by the user on 2026-09-29, but no Anthropic API
+  key exists on this machine (only `ANTHROPIC_BASE_URL` is set), so the run is unrun.
+  With a key: `ANTHROPIC_API_KEY=… A0_ALLOW_PAID_MODEL_CALLS=1 bun run experiment`.
 - No Claude-tokenizer counts (needs `count_tokens` with credentials).
 - Not implemented: memory/regions beyond fixed arrays, library import/FFI, network edit
   service, hardware pipelining/scheduling beyond the multi-cycle divider, timing/area on a
