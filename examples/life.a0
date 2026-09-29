@@ -1,0 +1,240 @@
+# Conway's Life on a 32x32 torus. Grid = u32x32: row r is a 32-bit word, bit c is column c.
+# Indices wrap for free: get reduces the row index modulo 32 and shr uses the low five bits.
+
+fn nb u32x32 u32 u32 -> u32
+row get p0 p1
+bit shr row p2
+one and bit 1
+ret one
+end
+
+# Count the eight neighbours of cell (r, c).
+fn count u32x32 u32 u32 -> u32
+ru sub p1 1
+rd add p1 1
+cl sub p2 1
+cr add p2 1
+a call nb p0 ru cl
+b call nb p0 ru p2
+c call nb p0 ru cr
+d call nb p0 p1 cl
+e call nb p0 p1 cr
+f call nb p0 rd cl
+g call nb p0 rd p2
+h call nb p0 rd cr
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+s4 add s3 e
+s5 add s4 f
+s6 add s5 g
+s7 add s6 h
+ret s7
+end
+
+# Fold body: state is the next grid being built, i is the cell index 0..1023, p2 is the current grid.
+fn cell u32x32 u32 u32x32 -> u32x32
+r shr p1 5
+c and p1 31
+n call count p2 r c
+me call nb p2 r c
+is3 eq n 3
+is2 eq n 2
+me1 eq me 1
+alive2 select me1 is2 false
+alive select is3 true alive2
+bit select alive 1 0
+mask shl bit c
+old get p0 r
+new or old mask
+next set p0 r new
+ret next
+end
+
+fn zero -> u32x32
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+
+fn step u32x32 -> u32x32
+z call zero
+g fold cell 1024 z p0
+ret g
+end
+
+# popcount of one word, bit-serial fold.
+fn bitstep u32 u32 u32 -> u32
+b shr p2 p1
+one and b 1
+s add p0 one
+ret s
+end
+
+fn popcount u32 -> u32
+n fold bitstep 32 0 p0
+ret n
+end
+
+fn rowpop u32 u32 u32x32 -> u32
+row get p2 p1
+n call popcount row
+s add p0 n
+ret s
+end
+
+fn population u32x32 -> u32
+n fold rowpop 32 0 p0
+ret n
+end
+
+# Read 32 rows from the stream into the grid (fold over row index).
+fn readrow u32x32 u32 io -> (u32x32,io)
+r read p2
+v at r 0
+t at r 1
+g set p0 p1 v
+out rec g t
+ret out
+end
+
+fn readgrid u32x32 io -> (u32x32,io)
+r read p1
+v at r 0
+t at r 1
+g set p0 0 v
+s call readrow g 1 t
+g1 at s 0
+t1 at s 1
+s2 call readrow g1 2 t1
+g2 at s2 0
+t2 at s2 1
+s3 call readrow g2 3 t2
+g3 at s3 0
+t3 at s3 1
+s4 call readrow g3 4 t3
+g4 at s4 0
+t4 at s4 1
+s5 call readrow g4 5 t4
+g5 at s5 0
+t5 at s5 1
+s6 call readrow g5 6 t5
+g6 at s6 0
+t6 at s6 1
+s7 call readrow g6 7 t6
+g7 at s7 0
+t7 at s7 1
+s8 call readrow g7 8 t7
+g8 at s8 0
+t8 at s8 1
+s9 call readrow g8 9 t8
+g9 at s9 0
+t9 at s9 1
+s10 call readrow g9 10 t9
+g10 at s10 0
+t10 at s10 1
+s11 call readrow g10 11 t10
+g11 at s11 0
+t11 at s11 1
+s12 call readrow g11 12 t11
+g12 at s12 0
+t12 at s12 1
+s13 call readrow g12 13 t12
+g13 at s13 0
+t13 at s13 1
+s14 call readrow g13 14 t13
+g14 at s14 0
+t14 at s14 1
+s15 call readrow g14 15 t14
+g15 at s15 0
+t15 at s15 1
+s16 call readrow g15 16 t15
+g16 at s16 0
+t16 at s16 1
+s17 call readrow g16 17 t16
+g17 at s17 0
+t17 at s17 1
+s18 call readrow g17 18 t17
+g18 at s18 0
+t18 at s18 1
+s19 call readrow g18 19 t18
+g19 at s19 0
+t19 at s19 1
+s20 call readrow g19 20 t19
+g20 at s20 0
+t20 at s20 1
+s21 call readrow g20 21 t20
+g21 at s21 0
+t21 at s21 1
+s22 call readrow g21 22 t21
+g22 at s22 0
+t22 at s22 1
+s23 call readrow g22 23 t22
+g23 at s23 0
+t23 at s23 1
+s24 call readrow g23 24 t23
+g24 at s24 0
+t24 at s24 1
+s25 call readrow g24 25 t24
+g25 at s25 0
+t25 at s25 1
+s26 call readrow g25 26 t25
+g26 at s26 0
+t26 at s26 1
+s27 call readrow g26 27 t26
+g27 at s27 0
+t27 at s27 1
+s28 call readrow g27 28 t27
+g28 at s28 0
+t28 at s28 1
+s29 call readrow g28 29 t28
+g29 at s29 0
+t29 at s29 1
+s30 call readrow g29 30 t29
+g30 at s30 0
+t30 at s30 1
+s31 call readrow g30 31 t30
+ret s31
+end
+
+fn writerow io u32 u32x32 -> io
+row get p2 p1
+t write p0 row
+ret t
+end
+
+fn writegrid u32x32 io -> io
+t fold writerow 32 p1 p0
+ret t
+end
+
+# Session protocol on the io stream:
+#   input : 32 grid rows, command, x, y      command 0 = step, 1 = toggle (x,y), 2 = clear
+#   output: 32 new grid rows                 result: population after the command
+fn session io -> u32
+z call zero
+rg call readgrid z p0
+grid at rg 0
+t0 at rg 1
+rc read t0
+cmd at rc 0
+t1 at rc 1
+rx read t1
+x at rx 0
+t2 at rx 1
+ry read t2
+y at ry 0
+t3 at ry 1
+stepped call step grid
+is0 eq cmd 0
+is1 eq cmd 1
+bit shl 1 x
+row get grid y
+flipped xor row bit
+toggled set grid y flipped
+zero2 call zero
+g1 select is1 toggled zero2
+g2 select is0 stepped g1
+t4 call writegrid g2 t3
+pop call population g2
+ret pop
+end

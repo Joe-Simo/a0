@@ -17,6 +17,9 @@ bun run verify      # cross-toolchain differential execution -> results/verifica
 bun run hw          # Icarus simulation + Yosys synthesis  -> results/hardware.json
 bun run bench       # in-process timings + byte fixture     -> results/benchmark.json
 bun run tokens      # tokenizer probe (js-tiktoken)         -> results/tokens.json
+bun run exec-bench  # emitted vs hand-written C/JS kernels  -> results/exec-benchmark.json
+bun run app         # Life application acceptance, 7 targets -> results/app.json
+bun run site        # browser demo (wasm + DOM adapter)     -> site/dist/
 ```
 
 CLI (after `bun run build`):

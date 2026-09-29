@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.4.0 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.5.0 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -138,7 +138,7 @@ AI-assisted discovery is a separate future workflow: propose a transformation, v
 
 | Family | Intended implementation strategy | v0.1 status |
 |---|---|---|
-| Browser / Node | ES modules, Wasm, typed host adapters | ES modules run in Node; Wasm compiled and run in Node. Browser API/DOM integration not tested. |
+| Browser / Node | ES modules, Wasm, typed host adapters | ES modules run in Node; Wasm compiled and run in Node and in a browser page through the io-stream adapter (`site/`). No general DOM/browser API bindings yet. |
 | Native server / desktop / mobile / embedded | MLIR/LLVM/native artifacts and platform ABIs | C-compatible output compiled and run on Linux. No phone deployment or platform SDK adapters. |
 | C++ ecosystems | Typed ABI boundary or explicit bindings | Generated C-compatible kernels compile as C++; existing C++ source is not imported. |
 | JVM | Defined managed-runtime representation and bindings | Generated Java compiled and executed on a JVM. No Android packaging or Java library importer. |

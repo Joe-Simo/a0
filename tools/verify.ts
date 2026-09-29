@@ -7,6 +7,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { pathToFileURL } from 'node:url';
 import {
   C_IO_INPUT_CAPACITY,
   C_IO_OUTPUT_CAPACITY,
@@ -46,7 +47,7 @@ import {
   isDriverCallable,
 } from './corpus.js';
 
-interface TargetReport {
+export interface TargetReport {
   status: 'passed' | 'failed' | 'blocked' | 'unverified';
   cases: number;
   detail: string;
@@ -101,13 +102,13 @@ function blocked(tool: ToolInfo, detail: string): TargetReport {
 
 // --- interpreter / optimizer ------------------------------------------------
 
-function checkInterpreter(program: TypedProgram, cases: readonly Case[]): TargetReport {
+export function checkInterpreter(program: TypedProgram, cases: readonly Case[]): TargetReport {
   const start = performance.now();
   const actual = cases.map((c) => runCase(program.byName.get(c.functionName) as TypedFunc, c));
   return timed(compareAll(cases, actual, 'Reference interpreter vs BigInt oracle'), start);
 }
 
-function checkOptimizer(
+export function checkOptimizer(
   program: TypedProgram,
   cases: readonly Case[],
 ): TargetReport & { before: number; after: number } {
@@ -123,7 +124,10 @@ function checkOptimizer(
 
 // --- JavaScript --------------------------------------------------------------
 
-async function checkJs(program: TypedProgram, cases: readonly Case[]): Promise<TargetReport> {
+export async function checkJs(
+  program: TypedProgram,
+  cases: readonly Case[],
+): Promise<TargetReport> {
   const start = performance.now();
   const js = compile(program, 'js').text;
   const mod = (await import(
@@ -193,13 +197,14 @@ function caseInput(program: TypedProgram, cases: readonly Case[]): string {
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
   return `${cases
     .map((c) => {
-      const base = `${index.get(c.functionName)} ${c.args.map(fmt).join(' ')}`;
-      return c.input === undefined ? base : `${base} ${c.input.length} ${c.input.join(' ')}`;
+      const tokens = [String(index.get(c.functionName)), ...c.args.map(fmt)];
+      if (c.input !== undefined) tokens.push(String(c.input.length), ...c.input.map(String));
+      return tokens.join(' ');
     })
     .join('\n')}\n`;
 }
 
-async function checkNative(
+export async function checkNative(
   program: TypedProgram,
   cases: readonly Case[],
   tool: ToolInfo,
@@ -272,7 +277,10 @@ async function checkNative(
 
 // --- WebAssembly -------------------------------------------------------------
 
-async function checkWasm(program: TypedProgram, cases: readonly Case[]): Promise<TargetReport> {
+export async function checkWasm(
+  program: TypedProgram,
+  cases: readonly Case[],
+): Promise<TargetReport> {
   const clang = findWasmClang();
   if (clang.path === undefined || clang.wasmLd === undefined) {
     return {
@@ -385,7 +393,10 @@ ${dispatch.join('\n')}
 `;
 }
 
-async function checkJvm(program: TypedProgram, cases: readonly Case[]): Promise<TargetReport> {
+export async function checkJvm(
+  program: TypedProgram,
+  cases: readonly Case[],
+): Promise<TargetReport> {
   const javac = findJavac();
   const java = findJava();
   if (javac.path === undefined) return blocked(javac, 'jvm');
@@ -508,7 +519,10 @@ async function main(): Promise<void> {
   process.exit(bad ? 1 : 0);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly)
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });

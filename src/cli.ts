@@ -16,6 +16,7 @@ import {
   A0Error,
   checkArgument,
   formatProgram,
+  formatType,
   LIMITS,
   parseAndValidate,
   run,
@@ -63,7 +64,7 @@ async function main(argv: readonly string[]): Promise<void> {
       const program = parseAndValidate(await readSource(file));
       for (const fn of program.functions) {
         process.stdout.write(
-          `${fn.name} (${fn.params.join(', ')}) -> ${fn.result}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
+          `${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
         );
       }
       return;

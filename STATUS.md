@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.4.0)
+## Implemented scope (v0.5.0)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -60,8 +60,19 @@ turns up, reconcile against this tree rather than overwrite either.
   stage results are registers; bodies instantiated once and stepped per clock; sequential
   callees via nested handshakes; loop predicates must be combinational (diagnosed).
   Pure functions stay combinational; literal-count folds in pure functions stay unrolled.
-  Not implemented: platform-specific capabilities (camera, files, DOM: Gate 5 adapters),
-  general regions, pipelining/scheduling beyond one stage per clock, timing closure.
+  Not implemented: general regions, pipelining/scheduling beyond one stage per clock,
+  timing closure.
+- **Application** (Gate 5): `examples/life.a0`, Conway's Life on a 32×32 torus written
+  entirely in A0 (17 functions: arrays, folds over 1024 cells, calls, popcount, and an io
+  session protocol: 32 rows + command + x + y in, 32 rows out, population as result).
+  Acceptance: `bun run app` runs 134 cases (named patterns over 6 generations, toggles with
+  wrapping coordinates, clears, 40 seeded random grids) whose expected values come from an
+  independent TypeScript Life implementation, through interpreter, optimizer, JS, C (clang
+  + UBSan), C++, Wasm, and JVM. Browser: `bun run site` builds `site/dist` (life.wasm, a
+  DOM adapter `site/app.ts` that only draws and forwards clicks, index.html); verified in
+  the in-app browser: a glider advances by (1,1) after four generations. The page shell
+  is HTML/TS because A0 has no strings or DOM capability yet; that is the remaining gap
+  for "the whole site in A0". Not deployed.
 - Edits: self-contained patch (`patch name sha256 … end`) and session handle edits
   (`e0` + replaced lines). Replace-existing-nodes only. Handles are one-use and
   revision-bound. No insertion/deletion, no multi-function transactions, no network service.
@@ -80,6 +91,8 @@ turns up, reconcile against this tree rather than overwrite either.
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
 | Focused tests | `bun run test` | 16/16 pass |
+| Life acceptance (134 cases, independent reference) | `bun run app` | pass on interpreter, optimizer, JS, C, C++, Wasm, JVM |
+| Life in the browser (Wasm + DOM adapter) | `bun run site`, in-app browser | glider moves (1,1) in 4 steps, population 5 |
 | Interpreter vs oracle | `bun run verify` | 5603 cases pass |
 | Optimizer vs oracle | `bun run verify` | 5603 pass |
 | JS in Node | `bun run verify` | 5603 pass |
@@ -154,7 +167,8 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Gates 1–4 are done. Next: Gate 5, the cross-target application.
+1. Gates 1–5 are done. Next: Gate 6, expand the AI-edit experiment to ≥10 held-out tasks
+   (run only with explicit spend authorization), then Gate 7 adversarial execution ledger.
 2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
    cross-target application, authored in A0 with a browser DOM adapter; no deployment
    without explicit approval in that session.
