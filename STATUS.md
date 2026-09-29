@@ -256,20 +256,84 @@ implementation, (2) dependency-scoped views so it reads only what an edit touche
 (3) delta-only edits, (4) validation that removes retries. Gate 6 measures whole-task
 cost; the target is recorded as an ambition, not a result.
 
-### Gate A / Gate 6: 2×2 AI-edit experiment (`bun run experiment`)
+### Gate A / Gate 6: AI-edit experiment (`bun run experiment`)
 
-Harness implemented and self-checked (reference solutions pass, originals fail, in all
-four cells: A0/TS × conventional/structured). Whole-task accounting: setup, view, output,
-provider usage, calls, validation failures, repairs, wall time; reasoning tokens recorded
-as null. **Status: unrun.** Requires `A0_ALLOW_PAID_MODEL_CALLS=1` plus Anthropic
-credentials (none configured on this machine); default model `claude-opus-5-5`, 3 trials
-per cell. Twelve held-out tasks (targeted, multi-node, multi-function, comprehension,
-iteration, records) with independent acceptance tests across three representations
-(A0, TypeScript, Rust; Rust acceptance compiles with rustc -O) and two protocols, six
-cells; the self-check passes (references accepted, originals rejected in every cell).
-Setup cost per cell (o200k): A0 conventional 627 / structured 750 after compacting the
-guide, TypeScript 48/127, Rust 63/142; views 11–45 tokens. Measured setup cost per cell (o200k):
-A0 conventional 877 tokens (MODEL_GUIDE.txt), TypeScript 48; view sizes 24–45.
+Harness implemented and self-checked (reference solutions pass, originals fail in all six
+cells: A0/TypeScript/Rust × conventional/structured). Whole-task accounting: setup, view,
+output, provider usage, calls, validation failures, repairs, wall time. Thirteen held-out
+tasks (targeted, multi-node, multi-function, comprehension, iteration, records, bit ops,
+saturation) with independent acceptance tests (Rust acceptance compiles with rustc -O).
+
+**Live model runs (claude-opus-5-5 via SDK): unrun**, they need `A0_ALLOW_PAID_MODEL_CALLS=1`
+and Anthropic credentials, which the user declined to provision.
+
+**Scripted run, 2026-09-29, subject: Claude Fable 5.1 in-session.** The harness has a
+replies mode (`A0_EXPERIMENT_REPLIES`, `A0_EXPERIMENT_DUMP`, `A0_EXPERIMENT_SUBJECT`): all
+78 cell prompts were dumped, answered once each from the prompt alone, and fed back as
+model replies. Caveats, so this is evidence about the harness and the protocols, not an
+unbiased model measurement: (1) the subject authored the tasks and reference solutions
+(contamination); (2) tokens are local o200k counts, not provider usage; (3) one trial per
+cell; (4) no reasoning-token accounting. Result file: `results/ai-edit-experiment.json`.
+
+| cell | accepted | model calls | setup tokens | view tokens (13 tasks) | output tokens (13 tasks) |
+|---|---|---|---|---|---|
+| A0 conventional | 13/13 | 13 | 627 | 447 | 612 |
+| A0 structured | 13/13 | 13 | 750 | 622 | 341 |
+| TypeScript conventional | 13/13 | 13 | 48 | 432 | 579 |
+| TypeScript structured | 13/13 | 13 | 127 | 520 | 397 |
+| Rust conventional | 13/13 | 13 | 63 | 463 | 596 |
+| Rust structured | 13/13 | 13 | 142 | 551 | 381 |
+
+Wins / ties / losses for A0 on this run: acceptance is a six-way tie (every cell 13/13,
+zero repairs). Output tokens: A0 structured wins (341 vs 397 TypeScript, 381 Rust,
+−14 % / −10 %); A0 conventional loses to TypeScript and Rust (612 vs 579 / 596). View
+tokens: A0 structured loses (622 vs 520 / 551) because the structured A0 view carries both
+a scoped function handle and a program handle; on whole-task input the A0 setup guide
+(627–750 tokens) dominates and A0 loses every input comparison at this task size. The
+200–400× ambition is not supported by these numbers; the measured structured-edit
+advantage is a 10–14 % output reduction on 13 small tasks, with no acceptance advantage.
+
+## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
+
+The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
+ADRs, specs and evaluation files. Summary of what each measured, and what A0 takes from it:
+
+| Project | What it is | Measured evidence it publishes | Relevance to A0 |
+|---|---|---|---|
+| Tacit (weetster/tacit) | AST-authoritative language for models; BLAKE3 content-addressed nodes, De Bruijn variables, names as sidecar metadata; authoring vs inspection views; LLVM native | One-shot 29/47 tasks (61.7 %), repair loop 40/47 (85.1 %), 1.53 calls/task; primer 15.5k tokens per call, 755k tokens for the Tacit run vs 4.6k for Python; every recorded run fails its own token gate | Closest architecture. Confirms A0's measured problem: primer/setup cost dominates whole-task tokens. Its four separate token buckets, hole nodes for malformed edits, structured diagnostics (expected/actual/fix/related), and sealed held-out task manifests are worth adopting |
+| AILANG (sunholo-data/ailang) | Effect-typed functional language with agent tools (prompt/check/run/eval); tree-walking interpreter | 528–980 run evals: AILANG 53–72 % vs Python 58–76 % on its own suite, repair success 24–30 %; more tokens than Python | Error-code taxonomy with repair hints, per-release baselines, language-neutral prompts with exact-output oracles. Its own numbers show a new language losing to Python on cost and pass rate |
+| SLOP (slop-lang/slop) | S-expression language with mandatory intent/pre/post, range types, Z3-checked postconditions, typed holes filled by tiered models; C target | None published | Typed holes as the unit of model work; range-typed integers. Contract overhead is unmeasured |
+| Isu / Sui (TakatoHonda/sui-lang) | Structured pseudocode → canonical JSON IR; hierarchical stable step ids; single-verb `REPLACE <StepID>` patch protocol; interpreter only | Proposed metrics only (byte-level determinism, patches-to-pass) | Step ids shared by edits, diagnostics and runtime traces; canonical round-trip. Directly comparable to A0's handle protocol |
+| Vera (aallan/vera) | No variable names (typed De Bruijn slots), effect rows, requires/ensures with Z3 tier vs runtime tier vs disclosed-unsupported; Wasm | VeraBench 60 problems, 9 models, six reach 100 %; beat a name-based twin on all five compared models (confounded by compiler changes) | Proved / runtime-checked / unsupported disclosure per contract; stable numbered error codes with JSON and fix snippet; controlled name-based twin comparison |
+| Almide (almide/almide) | Statically typed, one syntax per concept, diagnostics emit the exact missing code; native via Rust and direct Wasm | 38-task dojo at temp 0: Llama 3.3 70B 65 % pass / 39 % one-shot; language rule: reject a feature if median retry-success drops ≥3 points | Governance of language design by benchmark regression; one-shot vs after-retry split |
+| Unison | Hash-identified definitions, names as metadata, per-hash compile and test cache | Production language | A0 already keys emission by semantic revision; extend the key to validation verdicts and per-function test outcomes once the 39 ms cached floor is profiled |
+| XLS (google/xls) | DSLX → IR → scheduled pipelines → Verilog; interpreter / JIT / RTL cross-checked by fuzzer; delay models | Google-scale HLS toolchain | A0 already differential-tests SV against the oracle. Next bounded step: Yosys logic-depth per op before any scheduler; multipliers as library cells |
+| egg, Alive2, MultiPL-E, XGrammar | Equality saturation; translation validation; benchmark translation; grammar-constrained decoding | Established tools | No measured need yet for egg or XGrammar (5946/5946 oracle agreement, zero repairs in the scripted run). Alive2-style bounded equivalence over 32-bit bitvectors is feasible for pure A0 functions; MultiPL-E's status taxonomy (OK/Timeout/SyntaxError/Exception) should replace A0's failure count |
+
+Aether (GoogleCloudPlatform) is archived (2026-05-07); Souper is archived (2025-10-30);
+Marsha compiles with an LLM in the loop, the opposite of A0's deterministic compiler.
+
+Assessment. "A language designed for AI" is explored prior art; none of the projects that
+publish numbers shows a token or pass-rate win over Python on whole-task accounting, and
+the two with the closest architecture (Tacit, AILANG) report losses on tokens. A0's own
+scripted run shows the same shape (setup cost dominates, small output win on structured
+edits). A0's distinguishing claims must therefore be evidence-based on total outcome:
+accepted edits per token including setup, repair count, cache hit cost, and cross-target
+execution, against Python/TypeScript/Rust baselines with sealed held-out tasks.
+
+Adopted into the next-actions list (each bounded, with a measurement that decides it):
+1. Separate token buckets (language primer, workflow primer, tool context, output) in
+   `results/ai-edit-experiment.json`, plus failure status taxonomy and one-shot vs
+   after-repair acceptance.
+2. Structured diagnostics: stable error codes, expected/actual/fix, node-path location,
+   JSON output, so a repair prompt needs no program re-read.
+3. Sealed held-out task manifest (hash-committed, answers not in repo) for Gate 6.
+4. Profile the 39 ms cached compile floor; cache validation verdicts per semantic revision
+   if validation dominates.
+5. Yosys per-op logic depth on the 48 hardware modules before any scheduling work.
+6. Bounded equivalence check (32-bit bitvector solver via a known package) for pure
+   functions, replacing sampling with proof where the scope allows; scope stated as
+   Alive2 does (intra-procedural, effect nodes excluded).
 
 ## Reference
 
@@ -291,7 +355,7 @@ listed by `git log`; the push is verified against `origin/main` after each commi
   minutes were spent. Until then, regressions are gated by the local suite recorded above.
 
 - `A0-Research-Starter.zip` absent (see Provenance).
-- Paid model runs not authorized; Gate A unrun.
+- Paid model runs not authorized; Gate A live runs unrun (scripted in-session run recorded above).
 - No Claude-tokenizer counts (needs `count_tokens` with credentials; free but blocked).
 - Not implemented: loops/regions, memory/arrays, effects, .NET, GPU, mobile packaging,
   library import/FFI, persistent artifact cache, network edit service, fuzzing.

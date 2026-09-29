@@ -40,6 +40,8 @@ interface AcceptanceCase {
 interface Task {
   readonly id: string;
   readonly kind: 'targeted-edit' | 'multi-node-edit' | 'comprehension-edit' | 'create';
+  /** Function the structured A0 view opens (default: the first function). */
+  readonly target?: string;
   readonly instruction: string;
   readonly a0Source: string;
   readonly tsSource: string;
@@ -202,6 +204,7 @@ const TASKS: readonly Task[] = [
   {
     id: 'sq-twice',
     kind: 'multi-node-edit',
+    target: 'quad',
     instruction:
       'quad should apply sq twice (x^4 mod 2^32); it currently applies it once. Only change quad.',
     a0Source:
@@ -255,6 +258,7 @@ const TASKS: readonly Task[] = [
   {
     id: 'loop-inclusive',
     kind: 'targeted-edit',
+    target: 'below',
     instruction:
       'countup(limit, cap) increments a counter while it is strictly below limit, at most cap times. Change it to continue while the counter is less than or equal to limit.',
     a0Source:
@@ -573,13 +577,14 @@ async function buildCell(
       protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : PROTOCOL_STRUCTURED_A0;
     const system = `${guide}\n\n${protocolText}`;
     if (protocol === 'structured') {
+      // Two handles per view: e0 edits the target function, g1 edits the program (add,
+      // replace, or remove whole functions, e.g. for signature changes). The reply's first
+      // line selects which one is used.
       const session = new EditSession(parseAndValidate(task.a0Source));
-      if (task.kind === 'create') {
-        const view = session.openProgram().text;
-        return { cell: { representation, protocol, system, view }, session, handle: 'g0' };
-      }
-      const fnName = parseAndValidate(task.a0Source).functions[0]?.name ?? '';
-      const view = session.open(fnName, { scope: 'deps' }).text;
+      const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
+      const fnView = session.open(fnName, { scope: 'deps' }).text;
+      const progView = session.openProgram().text;
+      const view = `${fnView}\n${progView}`;
       return { cell: { representation, protocol, system, view }, session, handle };
     }
     return { cell: { representation, protocol, system, view: task.a0Source }, handle };
@@ -645,6 +650,16 @@ async function main(): Promise<void> {
   const selfCheckOk = Object.values(selfCheck).every((f) => f.length === 0);
 
   const client = live ? new Anthropic() : undefined;
+  // Scripted replies (e.g. an in-session model answering from a prompt dump): a JSON map
+  // "task/representation/protocol" -> reply[] consumed one per attempt. Token counts of
+  // replies are local (js-tiktoken); provider usage is null.
+  const repliesPath = process.env.A0_EXPERIMENT_REPLIES;
+  const scripted: Record<string, string[]> | undefined =
+    repliesPath === undefined
+      ? undefined
+      : (JSON.parse(await readFile(repliesPath, 'utf8')) as Record<string, string[]>);
+  const dumpPath = process.env.A0_EXPERIMENT_DUMP;
+  const dump: Record<string, { system: string; user: string }> = {};
   const trials: Trial[] = [];
   for (const task of TASKS) {
     for (const representation of ['a0', 'ts', 'rust'] as const) {
@@ -670,6 +685,56 @@ async function main(): Promise<void> {
             viewTokensLocal: count(cell.view),
             reasoningTokens: null,
           };
+          const cellKey = `${task.id}/${representation}/${protocol}`;
+          dump[cellKey] = { system: cell.system, user: `${task.instruction}\n\n${cell.view}` };
+          if (scripted !== undefined) {
+            const answers = scripted[cellKey] ?? [];
+            const start = performance.now();
+            let source =
+              representation === 'a0'
+                ? task.a0Source
+                : representation === 'rust'
+                  ? task.rustSource
+                  : task.tsSource;
+            let calls = 0;
+            let validationFailures = 0;
+            let failures: string[] = ['no reply'];
+            let accepted = false;
+            let outputText = '';
+            for (const reply of answers.slice(0, maxRepairs + 1)) {
+              calls += 1;
+              outputText += reply;
+              const applied =
+                representation === 'a0'
+                  ? applyA0(representation, protocol, source, reply, session)
+                  : applyTs(protocol, source, reply, handle);
+              failures =
+                applied.error !== undefined
+                  ? [applied.error]
+                  : representation === 'a0'
+                    ? await acceptA0(applied.source, task.tests)
+                    : representation === 'rust'
+                      ? await acceptRust(applied.source, task.tests)
+                      : await acceptTs(applied.source, task.tests);
+              if (failures.length === 0) {
+                accepted = true;
+                source = applied.source;
+                break;
+              }
+              validationFailures += 1;
+            }
+            trials.push({
+              ...base,
+              outputTokensLocal: count(outputText),
+              providerUsage: null,
+              modelCalls: calls,
+              validationFailures,
+              accepted,
+              failures,
+              wallMs: performance.now() - start,
+            });
+            continue;
+          }
           if (client === undefined) {
             trials.push({
               ...base,
@@ -762,11 +827,15 @@ async function main(): Promise<void> {
     }
   }
 
+  if (dumpPath !== undefined)
+    await writeFile(dumpPath, `${JSON.stringify(dump, null, 2)}\n`, 'utf8');
   const report = {
     generatedAt: new Date().toISOString(),
     status: live
       ? 'run'
-      : 'unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)',
+      : scripted !== undefined
+        ? `run with scripted replies from ${repliesPath} (subject: ${process.env.A0_EXPERIMENT_SUBJECT ?? 'unspecified'})`
+        : 'unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)',
     model: live ? model : null,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
