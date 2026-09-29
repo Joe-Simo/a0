@@ -91,7 +91,8 @@ function jsExpr(node: Node): string {
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
     case 'fold':
-      throw new A0Error('fold is emitted as a statement');
+    case 'loop':
+      throw new A0Error(`${node.op} is emitted as a statement`);
   }
 }
 
@@ -99,10 +100,11 @@ const emitJsFunction: Emitter = (fn) => {
   const params = fn.params.map((_, i) => `p${i}`).join(', ');
   const guards = fn.params.map((t, i) => `  a0_${t}(p${i}, 'p${i}');`);
   const body = fn.nodes.map((n) => {
-    if (n.op !== 'fold') return `  const n_${n.id} = ${jsExpr(n)};`;
+    if (n.op !== 'fold' && n.op !== 'loop') return `  const n_${n.id} = ${jsExpr(n)};`;
     const [count, init, ...extra] = n.args.map(jsOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
-    return `  let n_${n.id} = ${init};\n  for (let i = 0; i < ${count}; i++) n_${n.id} = ${n.callee ?? ''}(${call});`;
+    const guard = n.op === 'loop' ? ` if (!${n.pred ?? ''}(${call})) break;` : '';
+    return `  let n_${n.id} = ${init};\n  for (let i = 0; i < ${count}; i++) {${guard} n_${n.id} = ${n.callee ?? ''}(${call}); }`;
   });
   return [
     `export function ${fn.name}(${params}) {`,
@@ -167,7 +169,8 @@ function cExpr(node: Node): string {
     case 'call':
       return `a0_${node.callee ?? ''}(${node.args.map(cOperand).join(', ')})`;
     case 'fold':
-      throw new A0Error('fold is emitted as a statement');
+    case 'loop':
+      throw new A0Error(`${node.op} is emitted as a statement`);
   }
 }
 
@@ -180,10 +183,11 @@ export function cSignature(fn: TypedFunc): string {
 const emitCFunction: Emitter = (fn) => {
   const body = fn.nodes.map((n) => {
     const t = cType(fn.types.get(n.id) ?? 'u32');
-    if (n.op !== 'fold') return `  const ${t} n_${n.id} = ${cExpr(n)};`;
+    if (n.op !== 'fold' && n.op !== 'loop') return `  const ${t} n_${n.id} = ${cExpr(n)};`;
     const [count, init, ...extra] = n.args.map(cOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
-    return `  ${t} n_${n.id} = ${init};\n  for (uint32_t i = 0; i < ${count}; i++) n_${n.id} = a0_${n.callee ?? ''}(${call});`;
+    const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
+    return `  ${t} n_${n.id} = ${init};\n  for (uint32_t i = 0; i < ${count}; i++) {${guard} n_${n.id} = a0_${n.callee ?? ''}(${call}); }`;
   });
   return [`${cSignature(fn)} {`, ...body, `  return ${cOperand(fn.ret)};`, '}'].join('\n');
 };
@@ -239,7 +243,8 @@ function javaExpr(node: Node): string {
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(javaOperand).join(', ')})`;
     case 'fold':
-      throw new A0Error('fold is emitted as a statement');
+    case 'loop':
+      throw new A0Error(`${node.op} is emitted as a statement`);
   }
 }
 
@@ -247,10 +252,11 @@ const emitJavaFunction: Emitter = (fn) => {
   const params = fn.params.map((t, i) => `${javaType(t)} p${i}`).join(', ');
   const body = fn.nodes.map((n) => {
     const t = javaType(fn.types.get(n.id) ?? 'u32');
-    if (n.op !== 'fold') return `    final ${t} n_${n.id} = ${javaExpr(n)};`;
+    if (n.op !== 'fold' && n.op !== 'loop') return `    final ${t} n_${n.id} = ${javaExpr(n)};`;
     const [count, init, ...extra] = n.args.map(javaOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
-    return `    ${t} n_${n.id} = ${init};\n    for (int i = 0; Integer.compareUnsigned(i, ${count}) < 0; i++) n_${n.id} = ${n.callee ?? ''}(${call});`;
+    const guard = n.op === 'loop' ? ` if (!${n.pred ?? ''}(${call})) break;` : '';
+    return `    ${t} n_${n.id} = ${init};\n    for (int i = 0; Integer.compareUnsigned(i, ${count}) < 0; i++) {${guard} n_${n.id} = ${n.callee ?? ''}(${call}); }`;
   });
   return [
     `  public static ${javaType(fn.result)} ${fn.name}(${params}) {`,
@@ -315,6 +321,7 @@ function svExpr(node: Node): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
     case 'fold':
+    case 'loop':
       throw new A0Error(`${node.op} is emitted as module instances in SystemVerilog`);
   }
 }
@@ -329,32 +336,51 @@ const emitSvFunction: Emitter = (fn) => {
   ].join(',\n');
   const decls = fn.nodes.map((n) => `  ${svType(fn.types.get(n.id) ?? 'u32')} n_${n.id};`);
   const assigns = fn.nodes.map((n) => {
-    if (n.op === 'fold') {
+    if (n.op === 'fold' || n.op === 'loop') {
       // Combinational backend: only a literal trip count can be unrolled into a chain of instances.
       const [count, init, ...extra] = n.args;
       if (count === undefined || count.kind !== 'u32') {
         throw new A0Error(
-          `${fn.name}.${n.id}: fold with a non-literal trip count needs sequential state, which the combinational SystemVerilog backend does not implement`,
+          `${fn.name}.${n.id}: ${n.op} with a non-literal trip count needs sequential state, which the combinational SystemVerilog backend does not implement`,
         );
       }
       if (count.value > SV_MAX_UNROLL) {
         throw new A0Error(
-          `${fn.name}.${n.id}: fold trip count ${count.value} exceeds the SystemVerilog unroll limit ${SV_MAX_UNROLL}`,
+          `${fn.name}.${n.id}: ${n.op} trip count ${count.value} exceeds the SystemVerilog unroll limit ${SV_MAX_UNROLL}`,
         );
       }
       const width = svType(fn.types.get(n.id) ?? 'u32');
       const lines: string[] = [];
       let prev = init === undefined ? "32'd0" : svOperand(init);
+      // For loop: done_i latches once the predicate is false; later stages pass the state through.
+      let done = "1'b0";
       for (let i = 0; i < count.value; i += 1) {
         const wire = `n_${n.id}_s${i + 1}`;
-        lines.push(`  ${width} ${wire};`);
-        const conns = [
+        const ports = (result: string) => [
           `.p0(${prev})`,
           `.p1(32'd${i})`,
           ...extra.map((arg, k) => `.p${k + 2}(${svOperand(arg)})`),
-          `.result(${wire})`,
+          `.result(${result})`,
         ];
-        lines.push(`  a0_${n.callee ?? ''} u_${n.id}_${i} (${conns.join(', ')});`);
+        if (n.op === 'loop') {
+          const cont = `n_${n.id}_c${i}`;
+          const next = `n_${n.id}_d${i + 1}`;
+          const body = `n_${n.id}_b${i + 1}`;
+          lines.push(
+            `  logic ${cont};`,
+            `  logic ${next};`,
+            `  ${width} ${body};`,
+            `  ${width} ${wire};`,
+          );
+          lines.push(`  a0_${n.pred ?? ''} u_${n.id}_p${i} (${ports(cont).join(', ')});`);
+          lines.push(`  a0_${n.callee ?? ''} u_${n.id}_${i} (${ports(body).join(', ')});`);
+          lines.push(`  assign ${next} = ${done} | ~${cont};`);
+          lines.push(`  assign ${wire} = ${next} ? ${prev} : ${body};`);
+          done = next;
+        } else {
+          lines.push(`  ${width} ${wire};`);
+          lines.push(`  a0_${n.callee ?? ''} u_${n.id}_${i} (${ports(wire).join(', ')});`);
+        }
         prev = wire;
       }
       lines.push(`  assign n_${n.id} = ${prev};`);

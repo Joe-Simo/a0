@@ -54,8 +54,10 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined) return undefined;
       value = run(callee, values); // pure and total: folding a constant call is exact
-    } else if (node.op === 'fold') {
+    } else if (node.op === 'fold' || node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
+      const pred = node.op === 'loop' ? fn.calls.get(node.pred ?? '') : undefined;
+      if (node.op === 'loop' && pred === undefined) return undefined;
       const [count, init, ...extra] = values;
       // Bounded compile-time evaluation only; large trip counts stay as loops.
       if (
@@ -66,7 +68,10 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
       )
         return undefined;
       let state: Value = init;
-      for (let i = 0; i < count; i += 1) state = run(body, [state, i, ...extra]);
+      for (let i = 0; i < count; i += 1) {
+        if (pred !== undefined && run(pred, [state, i, ...extra]) !== true) break;
+        state = run(body, [state, i, ...extra]);
+      }
       value = state;
     } else {
       value = evalOp(node.op, values);
@@ -77,7 +82,8 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
   switch (node.op) {
     case 'call':
       return undefined;
-    case 'fold': {
+    case 'fold':
+    case 'loop': {
       // Zero iterations yield the initial state exactly.
       if (b !== undefined && isU32(a, 0)) return b;
       return undefined;
@@ -144,7 +150,7 @@ function commutative(op: Node['op']): boolean {
 function cseKey(node: Node): string {
   const args = node.args.map(formatOperand);
   if (commutative(node.op)) args.sort();
-  return `${node.op}${node.callee !== undefined ? ` ${node.callee}` : ''} ${args.join(' ')}`;
+  return `${node.op}${node.pred !== undefined ? ` ${node.pred}` : ''}${node.callee !== undefined ? ` ${node.callee}` : ''} ${args.join(' ')}`;
 }
 
 export interface OptimizeStats {

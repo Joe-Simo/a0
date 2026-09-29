@@ -20,6 +20,8 @@ OPERATIONS (exact semantics)
   fold F n s a...  bounded loop: state = s; for i in 0..n-1: state = F(state, i, a...); result is the
                    final state. F must be defined earlier with parameters (state, u32 index, a...) and
                    return the state type. n is u32, so every fold terminates.
+  loop P F n s a... fold with early exit: before iteration i, if P(state, i, a...) is false the loop
+                   stops with the current state. P takes exactly F's parameters and returns bool.
 
 EDITING
   Session edit: reply with the handle line you were shown, then only the replaced instructions:

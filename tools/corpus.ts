@@ -58,10 +58,21 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
   // which keeps generated iteration depth at one and evaluation cost bounded.
   const signatures: { name: string; params: Type[]; result: Type; iterates: boolean }[] = [];
   for (let f = 0; f < count; f += 1) {
-    const paramCount = 1 + (rng() % 4);
-    const params: Type[] = Array.from({ length: paramCount }, (_, i) =>
-      i === 0 || rng() % 5 !== 0 ? 'u32' : 'bool',
+    // Occasionally shape this function as a predicate twin of an earlier body-shaped function
+    // (same parameters, bool result) so the generator can pair them in a `loop`.
+    const twinCandidates = signatures.filter(
+      (f) =>
+        !f.iterates && f.params.length >= 2 && f.params[1] === 'u32' && f.result === f.params[0],
     );
+    const twin =
+      twinCandidates.length > 0 && rng() % 3 === 0 ? pick(rng, twinCandidates) : undefined;
+    const paramCount = twin === undefined ? 1 + (rng() % 4) : twin.params.length;
+    const params: Type[] =
+      twin === undefined
+        ? Array.from({ length: paramCount }, (_, i) =>
+            i === 0 || rng() % 5 !== 0 ? 'u32' : 'bool',
+          )
+        : [...twin.params];
     const slots: Slot[] = params.map((type, index) => ({
       operand: { kind: 'param', index },
       type,
@@ -129,7 +140,25 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
           const extra = extraT.map((t) =>
             t === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand,
           );
-          nodes.push({ id, op: 'fold', callee: body.name, args: [count, init, ...extra] });
+          const preds = signatures.filter(
+            (f) =>
+              !f.iterates &&
+              f.result === 'bool' &&
+              f.params.length === body.params.length &&
+              f.params.every((t, k) => t === body.params[k]),
+          );
+          if (preds.length > 0 && rng() % 2 === 0) {
+            const pred = pick(rng, preds);
+            nodes.push({
+              id,
+              op: 'loop',
+              pred: pred.name,
+              callee: body.name,
+              args: [count, init, ...extra],
+            });
+          } else {
+            nodes.push({ id, op: 'fold', callee: body.name, args: [count, init, ...extra] });
+          }
           slots.push({ operand: { kind: 'node', id }, type: stateT });
           continue;
         }
@@ -164,7 +193,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
       slots.push({ operand: { kind: 'node', id }, type });
     }
     // Result: last u32 node combined with everything, so nothing is trivially dead.
-    const result: Type = rng() % 4 === 0 ? 'bool' : 'u32';
+    const result: Type = twin !== undefined ? 'bool' : rng() % 4 === 0 ? 'bool' : 'u32';
     const candidates = slots.filter((s) => s.type === result && s.operand.kind === 'node');
     const ret =
       candidates.length > 0
@@ -175,6 +204,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     const iterates = nodes.some(
       (n) =>
         n.op === 'fold' ||
+        n.op === 'loop' ||
         (n.op === 'call' && (signatures.find((s) => s.name === n.callee)?.iterates ?? false)),
     );
     signatures.push({ name: `g${f}`, params, result, iterates });
@@ -227,6 +257,7 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
       return a ? b : c;
     case 'call':
     case 'fold':
+    case 'loop':
       throw new Error(`oracle: ${op} is handled by oracleRun`);
   }
 }
@@ -259,14 +290,21 @@ export function oracleRun(
       if (callee === undefined) throw new Error(`oracle: unknown callee ${node.callee ?? ''}`);
       // The oracle evaluates callees with itself, never with the interpreter.
       env.set(node.id, oracleRun(callee, node.args.map(read).map(oracleToValue)));
-    } else if (node.op === 'fold') {
+    } else if (node.op === 'fold' || node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
-      if (body === undefined) throw new Error(`oracle: unknown fold body ${node.callee ?? ''}`);
+      const pred = node.op === 'loop' ? fn.calls.get(node.pred ?? '') : undefined;
+      if (body === undefined)
+        throw new Error(`oracle: unknown ${node.op} body ${node.callee ?? ''}`);
+      if (node.op === 'loop' && pred === undefined)
+        throw new Error('oracle: unknown loop predicate');
       const [count, init, ...extra] = node.args.map(read);
-      if (typeof count !== 'bigint' || init === undefined) throw new Error('oracle: bad fold');
+      if (typeof count !== 'bigint' || init === undefined)
+        throw new Error(`oracle: bad ${node.op}`);
       let state: OracleValue = init;
       for (let i = 0n; i < count; i += 1n) {
-        state = oracleRun(body, [state, i, ...extra].map(oracleToValue));
+        const callArgs = [state, i, ...extra].map(oracleToValue);
+        if (pred !== undefined && oracleRun(pred, callArgs) !== true) break;
+        state = oracleRun(body, callArgs);
       }
       env.set(node.id, state);
     } else {

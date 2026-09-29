@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.1.2)
+## Implemented scope (v0.1.3)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -34,8 +34,12 @@ turns up, reconcile against this tree rather than overwrite either.
   `0..n-1`; u32 trip count guarantees termination. Interpreter, oracle, compile-time
   evaluation up to 4096 trips, zero-trip identity, counted loops in JS/C/Java (Java uses an
   unsigned bound), literal-count unrolling (≤256) in SystemVerilog with a precise
-  diagnostic for variable counts. Not implemented: early exit, general regions, memory,
-  effects, I/O, sequential hardware state.
+  diagnostic for variable counts.
+- **`loop p f n s a...`** (new, Gate 1): `fold` with early exit; predicate `p` shares the
+  body's parameters and returns bool; the u32 cap guarantees termination. Same coverage as
+  fold (interpreter, oracle, compile-time evaluation, loops with `break` in JS/C/Java,
+  literal-cap unrolling with a done-latch chain in SystemVerilog, generator coverage).
+  Not implemented: general regions, memory, effects, I/O, sequential hardware state.
 - Edits: self-contained patch (`patch name sha256 … end`) and session handle edits
   (`e0` + replaced lines). Replace-existing-nodes only. Handles are one-use and
   revision-bound. No insertion/deletion, no multi-function transactions, no network service.
@@ -53,20 +57,20 @@ turns up, reconcile against this tree rather than overwrite either.
 |---|---|---|
 | Lint (Biome 2.2.4) | `bun run lint` | pass (previously blocked) |
 | Typecheck (tsc 5.9.3, strict) | `bun run typecheck` | pass |
-| Focused tests | `bun run test` | 13/13 pass |
-| Interpreter vs oracle | `bun run verify` | 6607 cases pass |
-| Optimizer vs oracle | `bun run verify` | 6607 pass |
-| JS in Node | `bun run verify` | 6607 pass |
-| C via Apple clang 21, UBSan | `bun run verify` | 6607 pass |
-| C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 6607 pass |
-| C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 6607 pass |
-| Java via Homebrew OpenJDK 27 | `bun run verify` | 6607 pass |
-| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 6607 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
-| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 6607 cases pass, 48 modules incl. call instances |
+| Focused tests | `bun run test` | 14/14 pass |
+| Interpreter vs oracle | `bun run verify` | 7393 cases pass |
+| Optimizer vs oracle | `bun run verify` | 7393 pass |
+| JS in Node | `bun run verify` | 7393 pass |
+| C via Apple clang 21, UBSan | `bun run verify` | 7393 pass |
+| C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 7393 pass |
+| C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 7393 pass |
+| Java via Homebrew OpenJDK 27 | `bun run verify` | 7393 pass |
+| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 7393 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
+| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 7393 cases pass, 48 modules incl. call instances |
 | SystemVerilog generic synthesis (Yosys 0.69 `synth` + `check -assert`) | `bun run hw` | pass; cell counts per module in `results/hardware.json` |
 | Not run for hardware | — | FPGA place-and-route, real cell library, timing, area, power, sequential logic |
 
-Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, ~115 call sites and 88 fold sites (fold bodies never fold, keeping generated depth at one),
+Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, 75 call, 65 fold and 23 loop sites (iteration bodies never iterate, keeping generated depth at one),
 sha in `results/verification.json`. Deterministic generated inputs, not application evidence.
 
 Bug found and fixed by hardware simulation: SV emitted `literal[4:0]` for shifts by a
@@ -120,8 +124,8 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Bounded iteration is done (`fold`). Next semantic step: early exit / conditional
-   termination with an explicit iteration cap, then records and fixed-size arrays with an
-   ownership-free value semantics first, so the optimizer never needs aliasing assumptions.
+1. Gate 1 (early exit, `loop`) is done. Next: Gate 2, records and fixed-size arrays with
+   value semantics (no aliasing), across validator, interpreter, oracle, optimizer,
+   all backends (SV or diagnostic), generator, tests, docs.
 2. Expand the Gate A task set (≥10 held-out tasks incl. multi-function edits) and run it
    when authorized; report per-cell accepted-change cost with uncertainty.

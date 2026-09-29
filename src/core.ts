@@ -15,6 +15,10 @@
  * - fold f n s a... runs state = f(state, i, a...) for i = 0..n-1 starting from s and
  *   yields the final state; f is an earlier function of type (T, u32, A...) -> T.
  *   The u32 trip count guarantees termination; iterations are sequential and exact.
+ * - loop p f n s a... is fold with early exit: before each iteration i < n the
+ *   predicate p(state, i, a...) : bool is evaluated; when false the loop stops and
+ *   the current state is the result; otherwise state = f(state, i, a...). n caps
+ *   the iteration count so termination is still guaranteed.
  * All operations are pure and total on validated input.
  */
 
@@ -36,7 +40,8 @@ export type Op =
   | 'lt'
   | 'select'
   | 'call'
-  | 'fold';
+  | 'fold'
+  | 'loop';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -53,6 +58,7 @@ export const OPS: readonly Op[] = [
   'select',
   'call',
   'fold',
+  'loop',
 ];
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
@@ -71,6 +77,7 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   select: 3,
   call: -1,
   fold: -1,
+  loop: -1,
 };
 
 export type Operand =
@@ -83,8 +90,10 @@ export interface Node {
   readonly id: string;
   readonly op: Op;
   readonly args: readonly Operand[];
-  /** Present exactly when op is 'call' or 'fold'. */
+  /** Present exactly when op is 'call', 'fold', or 'loop' (the body). */
   readonly callee?: string;
+  /** Present exactly when op is 'loop': the continue-predicate function. */
+  readonly pred?: string;
 }
 
 export interface Func {
@@ -176,6 +185,18 @@ export function parseNode(lineText: string, line?: number): Node {
   if (id === undefined || op === undefined) throw new A0Error('expected `id op operands`', line);
   if (!isValidIdentifier(id)) throw new A0Error(`invalid node identifier '${id}'`, line);
   if (!isOp(op)) throw new A0Error(`unknown operation '${op}'`, line);
+  if (op === 'loop') {
+    const [pred, callee, ...args] = rest;
+    if (
+      pred === undefined ||
+      !isValidFunctionName(pred) ||
+      callee === undefined ||
+      !isValidFunctionName(callee)
+    ) {
+      throw new A0Error('loop expects a predicate and a body function name', line);
+    }
+    return { id, op, pred, callee, args: args.map((r) => parseOperand(r, line)) };
+  }
   if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
     if (callee === undefined || !isValidFunctionName(callee)) {
@@ -333,6 +354,7 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       return b;
     case 'call':
     case 'fold':
+    case 'loop':
       throw new A0Error(`${where}: ${op} is typed against its callee`);
   }
 }
@@ -355,9 +377,12 @@ export function validateFunction(
     const where = `${fn.name}.${node.id}`;
     if (!isValidIdentifier(node.id)) throw new A0Error(`${where}: invalid identifier`);
     if (defined.has(node.id)) throw new A0Error(`${where}: duplicate definition`);
-    const hasCallee = node.op === 'call' || node.op === 'fold';
+    const hasCallee = node.op === 'call' || node.op === 'fold' || node.op === 'loop';
     if (hasCallee !== (node.callee !== undefined)) {
-      throw new A0Error(`${where}: callee present iff op is call or fold`);
+      throw new A0Error(`${where}: callee present iff op is call, fold, or loop`);
+    }
+    if ((node.op === 'loop') !== (node.pred !== undefined)) {
+      throw new A0Error(`${where}: predicate present iff op is loop`);
     }
     if (!hasCallee && node.args.length !== OP_ARITY[node.op]) {
       throw new A0Error(`${where}: wrong arity`);
@@ -388,14 +413,15 @@ export function validateFunction(
       }
       calls.set(callee.name, callee);
       types.set(node.id, callee.result);
-    } else if (node.op === 'fold') {
+    } else if (node.op === 'fold' || node.op === 'loop') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
         throw new A0Error(
-          `${where}: unknown fold body '${node.callee ?? ''}' (must be defined earlier)`,
+          `${where}: unknown ${node.op} body '${node.callee ?? ''}' (must be defined earlier)`,
         );
       }
       // fold f n s a...  with f : (T, u32, A...) -> T
+      // loop p f n s a... additionally p : (T, u32, A...) -> bool with identical parameters
       const [count, init, ...extra] = argTypes;
       if (count === undefined || init === undefined) {
         throw new A0Error(`${where}: fold expects a trip count and an initial state`);
@@ -418,6 +444,24 @@ export function validateFunction(
       for (const [i, t] of extraT.entries())
         expect(extra[i] as Type, t, `${where} extra argument ${i}`);
       calls.set(callee.name, callee);
+      if (node.op === 'loop') {
+        const pred = scope.get(node.pred ?? '');
+        if (pred === undefined) {
+          throw new A0Error(
+            `${where}: unknown loop predicate '${node.pred ?? ''}' (must be defined earlier)`,
+          );
+        }
+        expect(pred.result, 'bool', `${where} predicate result`);
+        if (
+          pred.params.length !== callee.params.length ||
+          pred.params.some((t, i) => t !== callee.params[i])
+        ) {
+          throw new A0Error(
+            `${where}: predicate ${pred.name} must take the same parameters as body ${callee.name}`,
+          );
+        }
+        calls.set(pred.name, pred);
+      }
       types.set(node.id, stateT);
     } else {
       types.set(node.id, resultType(node.op, argTypes, where));
@@ -460,9 +504,10 @@ export function formatOperand(operand: Operand): string {
 }
 
 export function formatNode(node: Node): string {
-  const callee = node.op === 'call' || node.op === 'fold' ? ` ${node.callee ?? ''}` : '';
+  const pred = node.op === 'loop' ? ` ${node.pred ?? ''}` : '';
+  const callee = node.callee !== undefined ? ` ${node.callee}` : '';
   const args = node.args.length > 0 ? ` ${node.args.map(formatOperand).join(' ')}` : '';
-  return `${node.id} ${node.op}${callee}${args}`;
+  return `${node.id} ${node.op}${pred}${callee}${args}`;
 }
 
 export function formatFunction(fn: Func): string {
@@ -520,6 +565,7 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       return a ? b : c;
     case 'call':
     case 'fold':
+    case 'loop':
       throw new A0Error(`${op} is evaluated by run, not evalOp`);
   }
 }
@@ -571,6 +617,19 @@ export function run(fn: TypedFunc, args: readonly Value[]): Value {
       let state = init as Value;
       const n = count as number;
       for (let i = 0; i < n; i += 1) state = run(body, [state, i, ...extra]);
+      env.set(node.id, state);
+    } else if (node.op === 'loop') {
+      const body = fn.calls.get(node.callee ?? '');
+      const pred = fn.calls.get(node.pred ?? '');
+      if (body === undefined || pred === undefined)
+        throw new A0Error(`${fn.name}: unresolved loop functions`);
+      const [count, init, ...extra] = node.args.map(read);
+      let state = init as Value;
+      const n = count as number;
+      for (let i = 0; i < n; i += 1) {
+        if (run(pred, [state, i, ...extra]) !== true) break;
+        state = run(body, [state, i, ...extra]);
+      }
       env.set(node.id, state);
     } else {
       env.set(node.id, evalOp(node.op, node.args.map(read)));

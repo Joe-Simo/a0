@@ -349,3 +349,64 @@ end`;
   const sv = compile(lit, 'sv').text;
   assert.equal((sv.match(/a0_step u_r_/g) ?? []).length, 3);
 });
+
+test('loop: early exit under an iteration cap, exact across interpreter, optimizer, and backends', async () => {
+  const src = `fn step u32 u32 u32 -> u32
+a add p0 p2
+ret a
+end
+
+fn below u32 u32 u32 -> bool
+c lt p0 p2
+ret c
+end
+
+fn accum u32 u32 -> u32
+r loop below step p1 0 p0
+ret r
+end`;
+  const p = parseAndValidate(src);
+  const accum = p.byName.get('accum') as TypedFunc;
+  // state += x while state < x, capped at n: stops after one iteration when x > 0.
+  assert.equal(run(accum, [5, 100]), 5);
+  assert.equal(run(accum, [0, 100]), 0); // predicate false immediately
+  assert.equal(run(accum, [5, 0]), 0); // cap zero
+  // Typing: predicate must return bool and share the body's parameter list.
+  assert.throws(
+    () => parseAndValidate(`${src}\nfn bad u32 -> u32\nr loop step step 3 0 p0\nret r\nend`),
+    /predicate result/,
+  );
+  assert.throws(
+    () =>
+      parseAndValidate(
+        'fn f u32 u32 -> u32\nret p0\nend\nfn q u32 -> bool\nc eq p0 0\nret c\nend\nfn bad u32 -> u32\nr loop q f 3 0\nret r\nend',
+      ),
+    /same parameters/,
+  );
+  assert.throws(
+    () => parseAndValidate(`${src}\nfn bad u32 -> u32\nr loop nope step 3 0 p0\nret r\nend`),
+    /unknown loop predicate/,
+  );
+  // Optimizer: constant loops evaluate exactly; zero cap is the init.
+  const k = optimizeFunction(fn(`${src}\nfn k -> u32\nr loop below step 10 0 7\nret r\nend`, 'k'));
+  assert.equal(formatFunction(k.fn), 'fn k -> u32\nret 7\nend');
+  const z = optimizeFunction(
+    fn(`${src}\nfn z u32 -> u32\nr loop below step 0 p0 7\nret r\nend`, 'z'),
+  );
+  assert.equal(formatFunction(z.fn), 'fn z u32 -> u32\nret p0\nend');
+  // Backends.
+  const js = compile(p, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as { accum: (x: number, n: number) => number };
+  assert.equal(mod.accum(5, 100), 5);
+  assert.ok(compile(p, 'c').text.includes('if (!a0_below('));
+  assert.ok(compile(p, 'java').text.includes('if (!below('));
+  assert.throws(() => compile(p, 'sv'), /sequential state/);
+  const lit = parseAndValidate(
+    `${src.split('\n\n').slice(0, 2).join('\n\n')}\nfn a3 u32 -> u32\nr loop below step 3 0 p0\nret r\nend`,
+  );
+  const sv = compile(lit, 'sv').text;
+  assert.equal((sv.match(/a0_below u_r_p/g) ?? []).length, 3);
+  assert.ok(sv.includes("assign n_r_d1 = 1'b0 | ~n_r_c0;"));
+});

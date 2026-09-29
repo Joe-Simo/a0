@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.1.2 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.1.3 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -68,6 +68,7 @@ function    = "fn" name type* "->" type NEWLINE
 instruction = id operation operand{operation_arity} NEWLINE
             | id "call" function_name operand* NEWLINE
             | id "fold" function_name count init operand* NEWLINE
+            | id "loop" predicate_name function_name count init operand* NEWLINE
 operand     = earlier_id | parameter | u32_literal | "true" | "false"
 parameter   = "p" decimal_index
 type        = "u32" | "bool"
@@ -87,6 +88,7 @@ Each function has one result. Node identifiers are lowercase letters followed by
 | `select` | bool, T, T | T | Select between already defined, same-typed values |
 | `call f` | f's parameter types | f's result type | Apply an earlier-defined function; pure, total, no recursion (v0.1.1) |
 | `fold f` | u32 count, T init, extra… | T | Bounded iteration: `state = f(state, i, extra…)` for `i` in `0..count-1`; `f : (T, u32, extra…) -> T` defined earlier (v0.1.2). Software backends emit a counted loop; the combinational SystemVerilog backend unrolls literal counts up to 256 and rejects variable counts with a diagnostic (sequential state is future work). |
+| `loop p f` | u32 cap, T init, extra… | T | `fold` with early exit: stops before iteration `i` when `p(state, i, extra…)` is false; `p` has `f`'s parameters and returns bool (v0.1.3). Hardware unrolls literal caps with a done-latch chain. |
 
 Integer literals are decimal 0 through 4,294,967,295. A Boolean is not implicitly a number. Invalid values, missing references, duplicate definitions, wrong arity, and inconsistent types are rejected. Every current operation is pure and total on valid input. Both `select` inputs are ordinary values; this is not lazy branching with effects.
 
@@ -147,7 +149,7 @@ Integration is part of the language product. Node packages, browser APIs, native
 
 The initial core must grow without silently changing existing meanings.
 
-- **General computation:** calls (v0.1.1) and bounded `fold` iteration (v0.1.2) are implemented; next are early exit, general structured regions, and sequential hardware state, bounded iteration first, then broader recursion/control flow for suitable software profiles.
+- **General computation:** calls (v0.1.1), bounded `fold` (v0.1.2) and capped early-exit `loop` (v0.1.3) are implemented; next are records/arrays, general structured regions, and sequential hardware state, bounded iteration first, then broader recursion/control flow for suitable software profiles.
 - **Data and memory:** fixed/arbitrary-width integers, strict floating-point profiles, buffers/records/arrays, explicit layout where needed, ownership/borrowing or region inference, managed adapters where appropriate. No universal boxing requirement.
 - **Effects and concurrency:** typed capabilities for files/network/clock/device access, structured tasks, declared synchronization and memory-order semantics. External nondeterminism is explicit; reproducibility is not assumed across arbitrary concurrent schedules.
 - **Domain operations:** high-level collection, query, numeric, graphics, UI, and hardware operations with defined semantics and optional certified lowerings. Preserve high-level information until the backend can use it.
