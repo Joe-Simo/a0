@@ -500,7 +500,7 @@ end`;
     swap: (a: number[]) => number[];
     sum3: (a: number, b: number, c: number) => number;
   };
-  assert.deepEqual(mod.swap([1, 2]), [2, 1]);
+  assert.deepEqual(Array.from(mod.swap([1, 2])), [2, 1]);
   assert.equal(mod.sum3(1, 2, 3), 8);
   assert.throws(() => mod.swap([1]), RangeError);
   const c = compile(p, 'c').text;

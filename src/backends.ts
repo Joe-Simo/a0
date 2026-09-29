@@ -16,6 +16,7 @@ import {
   isPrimitive,
   isScalar,
   type Node,
+  type Op,
   type Operand,
   type Type,
   type TypedFunc,
@@ -115,17 +116,26 @@ function a0_check(v, shape, name) {
   if (shape === 'u32') return a0_u32(v, name);
   if (shape === 'bool') return a0_bool(v, name);
   if (shape === 'io') return a0_io(v, name);
-  if (!Array.isArray(v)) throw new TypeError(name + ': expected ' + shape[0]);
+  const typed = v instanceof Uint32Array || v instanceof Uint8Array;
+  if (!Array.isArray(v) && !typed) throw new TypeError(name + ': expected ' + shape[0]);
   if (shape[0] === 'arr') {
     if (v.length !== shape[1]) throw new RangeError(name + ': expected ' + shape[1] + ' elements');
-    for (let i = 0; i < v.length; i++) a0_check(v[i], shape[2], name + '[' + i + ']');
+    if (shape[2] === 'u32') { if (v instanceof Uint32Array) return v; for (let i = 0; i < v.length; i++) a0_u32(v[i], name + '[' + i + ']'); return Uint32Array.from(v); }
+    if (shape[2] === 'bool') { if (v instanceof Uint8Array) return v; for (let i = 0; i < v.length; i++) a0_bool(v[i], name + '[' + i + ']'); return Uint8Array.from(v, (x) => (x ? 1 : 0)); }
+    if (typed) throw new TypeError(name + ': expected nested array');
+    const c = v.slice();
+    for (let i = 0; i < c.length; i++) c[i] = a0_check(c[i], shape[2], name + '[' + i + ']');
+    return c;
   } else {
+    if (typed) throw new TypeError(name + ': expected record');
+    const c = v.slice();
     if (v.length !== shape[1].length) throw new RangeError(name + ': expected ' + shape[1].length + ' fields');
-    for (let i = 0; i < v.length; i++) a0_check(v[i], shape[1][i], name + '.' + i);
+    for (let i = 0; i < c.length; i++) c[i] = a0_check(c[i], shape[1][i], name + '.' + i);
+    return c;
   }
-  return v;
 }
 function a0_with(a, i, v) { const c = a.slice(); c[i] = v; return c; }
+function a0_setmut(a, i, v) { a[i] = v; return a; }
 // io token: { input: number[], position, output: number[] }. Exhausted input reads 0.
 function a0_io(v, name) {
   if (typeof v !== 'object' || v === null || !Array.isArray(v.input) || !Array.isArray(v.output) || typeof v.position !== 'number') throw new TypeError(name + ': expected io token');
@@ -149,7 +159,42 @@ function jsOperand(o: Operand): string {
   }
 }
 
-function jsExpr(node: Node, fn: TypedFunc): string {
+const FRESH_OPS = new Set<Op>(['arr', 'rec', 'set', 'put']);
+
+function sameOp(x: Operand, y: Operand): boolean {
+  return (
+    (x.kind === 'node' && y.kind === 'node' && x.id === y.id) ||
+    (x.kind === 'param' && y.kind === 'param' && x.index === y.index)
+  );
+}
+
+/**
+ * May the aggregate operand `o` be updated in place by the node at `index`?
+ * Sound when the value is provably unshared: it is a fresh allocation (arr/rec/set/put result)
+ * or the owned state parameter p0 of an iteration body; every other use of it is a non-escaping
+ * element/field read (`get`/`at` as first operand) that happens before `index`; and it is not
+ * returned. `get`/`at` results alias their container and are never mutated.
+ */
+function mutableHere(fn: TypedFunc, o: Operand, index: number, ownedP0: boolean): boolean {
+  if (o.kind === 'node') {
+    const def = fn.nodes.find((n) => n.id === o.id);
+    if (def === undefined || !FRESH_OPS.has(def.op)) return false;
+  } else if (!(o.kind === 'param' && o.index === 0 && ownedP0)) {
+    return false;
+  }
+  if (sameOp(fn.ret, o)) return false;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j === index) continue;
+    for (const [k, arg] of n.args.entries()) {
+      if (!sameOp(arg, o)) continue;
+      if (j > index) return false;
+      if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
+    }
+  }
+  return true;
+}
+
+function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string {
   const [a, b, c] = node.args.map(jsOperand);
   switch (node.op) {
     case 'mov':
@@ -178,17 +223,37 @@ function jsExpr(node: Node, fn: TypedFunc): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
       return `a0i_${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
-    case 'arr':
+    case 'arr': {
+      // Scalar-element arrays are typed arrays (u32 -> Uint32Array, bool -> Uint8Array of 0/1);
+      // nested aggregates stay plain arrays. All array helpers work on both.
+      const t = fn.types.get(node.id);
+      const elem = t !== undefined && !isPrimitive(t) && t.kind === 'arr' ? t.elem : 'u32';
+      if (elem === 'u32') return `Uint32Array.of(${node.args.map(jsOperand).join(', ')})`;
+      if (elem === 'bool')
+        return `Uint8Array.of(${node.args.map((o) => `${jsOperand(o)} ? 1 : 0`).join(', ')})`;
+      return `[${node.args.map(jsOperand).join(', ')}]`;
+    }
     case 'rec':
       return `[${node.args.map(jsOperand).join(', ')}]`;
-    case 'get':
-      return `${a}[${b} % ${arrayLength(fn, node.args[0])}]`;
-    case 'set':
-      return `a0_with(${a}, ${b} % ${arrayLength(fn, node.args[0])}, ${c})`;
+    case 'get': {
+      const t = operandTypeOf(fn, node.args[0] as Operand);
+      const elem = !isPrimitive(t) && t.kind === 'arr' ? t.elem : 'u32';
+      const read = `${a}[${b} % ${arrayLength(fn, node.args[0])}]`;
+      return elem === 'bool' ? `${read} === 1` : read;
+    }
+    case 'set': {
+      const inPlace = index >= 0 && mutableHere(fn, node.args[0] as Operand, index, ownedP0);
+      const et = operandTypeOf(fn, node.args[0] as Operand);
+      const boolElem = !isPrimitive(et) && et.kind === 'arr' && et.elem === 'bool';
+      const value = boolElem ? `(${c} ? 1 : 0)` : c;
+      return `${inPlace ? 'a0_setmut' : 'a0_with'}(${a}, ${b} % ${arrayLength(fn, node.args[0])}, ${value})`;
+    }
     case 'at':
       return `${a}[${b}]`;
-    case 'put':
-      return `a0_with(${a}, ${b}, ${c})`;
+    case 'put': {
+      const inPlace = index >= 0 && mutableHere(fn, node.args[0] as Operand, index, ownedP0);
+      return `${inPlace ? 'a0_setmut' : 'a0_with'}(${a}, ${b}, ${c})`;
+    }
     case 'read':
       return `a0_read(${a})`;
     case 'write':
@@ -199,30 +264,56 @@ function jsExpr(node: Node, fn: TypedFunc): string {
   }
 }
 
-const emitJsFunction: Emitter = (fn) => {
-  const params = fn.params.map((_, i) => `p${i}`).join(', ');
-  // Public entry: validate inputs once, then run the unguarded internal function.
-  // Internal calls, folds, and loops target the a0i_ variant, so guards are paid only at the boundary.
-  const guards = fn.params.map((t, i) =>
-    isPrimitive(t) ? `  a0_${t}(p${i}, 'p${i}');` : `  a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
-  );
-  const body = fn.nodes.map((n) => {
-    if (n.op !== 'fold' && n.op !== 'loop') return `  const n_${n.id} = ${jsExpr(n, fn)};`;
+/** Emit one JS function body; `owned` marks the p0-owned iteration-body variant. */
+function jsBody(fn: TypedFunc, owned: boolean): string[] {
+  const stateAggregate = (o: Operand): boolean => !isPrimitive(operandTypeOf(fn, o));
+  const body = fn.nodes.map((n, index) => {
+    if (n.op !== 'fold' && n.op !== 'loop')
+      return `  const n_${n.id} = ${jsExpr(n, fn, index, owned)};`;
     const [count, init, ...extra] = n.args.map(jsOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!a0i_${n.pred ?? ''}(${call})) break;` : '';
-    return `  let n_${n.id} = ${init};\n  for (let i = 0; i < ${count}; i++) {${guard} n_${n.id} = a0i_${n.callee ?? ''}(${call}); }`;
+    // Aggregate state is owned by the loop so the body may update it in place: copy the initial
+    // value once unless it is already provably unshared (fresh and used only here).
+    const initOwned = mutableHere(fn, n.args[1] as Operand, index, owned);
+    const initExpr = stateAggregate(n.args[1] as Operand) && !initOwned ? `${init}.slice()` : init;
+    const bodyName = stateAggregate(n.args[1] as Operand)
+      ? `a0o_${n.callee ?? ''}`
+      : `a0i_${n.callee ?? ''}`;
+    return `  let n_${n.id} = ${initExpr};\n  for (let i = 0; i < ${count}; i++) {${guard} n_${n.id} = ${bodyName}(${call}); }`;
   });
-  return [
-    `function a0i_${fn.name}(${params}) {`,
-    ...body,
-    `  return ${jsOperand(fn.ret)};`,
-    '}',
+  // An owned variant must return an owned value: copy unless the result is p0 itself or fresh.
+  const ret = fn.ret;
+  const fresh =
+    (ret.kind === 'param' && ret.index === 0) ||
+    (ret.kind === 'node' && FRESH_OPS.has(fn.nodes.find((n) => n.id === ret.id)?.op ?? 'mov'));
+  const retExpr =
+    owned && !isPrimitive(fn.result) && !fresh ? `${jsOperand(ret)}.slice()` : jsOperand(ret);
+  return [...body, `  return ${retExpr};`];
+}
+
+const emitJsFunction: Emitter = (fn) => {
+  const params = fn.params.map((_, i) => `p${i}`).join(', ');
+  // Public entry: validate inputs once, then run the unguarded internal function.
+  // Internal calls, folds, and loops target the a0i_/a0o_ variants, so guards are paid only at the boundary.
+  const guards = fn.params.map((t, i) =>
+    isPrimitive(t)
+      ? `  a0_${t}(p${i}, 'p${i}');`
+      : `  p${i} = a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
+  );
+  const lines = [`function a0i_${fn.name}(${params}) {`, ...jsBody(fn, false), '}'];
+  const p0 = fn.params[0];
+  if (p0 !== undefined && !isPrimitive(p0) && fn.params[1] === 'u32') {
+    // Iteration-body shape (state, index, ...): owned-state variant for fold/loop.
+    lines.push(`function a0o_${fn.name}(${params}) {`, ...jsBody(fn, true), '}');
+  }
+  lines.push(
     `export function ${fn.name}(${params}) {`,
     ...guards,
     `  return a0i_${fn.name}(${params});`,
     '}',
-  ].join('\n');
+  );
+  return lines.join('\n');
 };
 
 // ---------------------------------------------------------------------------

@@ -99,6 +99,14 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **JS emission, aliasing-safe in-place updates**: `set`/`put` mutate in place when the
+  value is provably unshared (a fresh `arr`/`rec`/`set`/`put` result whose only other uses
+  are earlier `get`/`at` reads and which is not returned), iteration bodies get an
+  owned-state variant (`a0o_`) whose accumulator is copied once unless the initial value
+  is already unshared, and scalar-element arrays are `Uint32Array`/`Uint8Array`.
+  `get`/`at` results are never mutated because they alias their container. Verified by
+  the 5603-case corpus (heavy aliasing) and Life. The array kernel loss dropped from
+  2.6× to ≈1.3–1.6× (run-to-run noise on this machine is of the same order).
 - **JS emission**: input guards now run only at the public boundary; internal calls,
   folds, and loops target unguarded `a0i_` functions (the 64-step loop went from 4× slower
   than hand-written to a tie).
@@ -166,11 +174,11 @@ largely a protocol effect; the 2×2 harness exists to separate it from the langu
 | Kernel | C emitted vs hand-written C | vs hand-written Rust (rustc 1.96 -O) | JS emitted vs hand-written |
 |---|---|---|---|
 | affine, rotl, clamp, mix (scalar) | tie | tie | tie |
-| ident (tiny call) | tie (1.61 ns) | tie | **loss** 11 % (12.5 vs 11.2 ns): wrapper indirection |
-| noop (add 0, mul 1, xor 0) | tie | tie | **loss** 11 %: same cause |
+| ident (tiny call) | tie (1.61 ns) | tie | tie/loss ≤11 % across runs (13.6 vs 12.4 ns): wrapper indirection, within noise |
+| noop (add 0, mul 1, xor 0) | tie | tie | tie |
 | chain3 (three nested tiny calls) | tie | tie | tie |
 | branchy (select chains) | tie | tie | tie |
-| arrfill (8 value-semantics `set`s) | tie | tie | **loss** 1.7× (160 vs 95 ns): copy-on-write arrays |
+| arrfill (8 value-semantics `set`s) | tie | tie | **loss** ≈1.3–1.6× (156 vs 97 ns best run) after in-place updates and typed arrays; was 2.6× |
 | loop64 (64 dependent body calls) | tie (80 vs 82 ns) | tie (80 ns) | tie (was 4× loss before boundary-only guards) |
 | build time A0 source → native binary (clang) vs rustc -O | 52–67 ms vs 104–116 ms (rustc first run 4.3 s cold) | | |
 | startup (spawn + one iteration) | 2.2–2.5 ms both sides | | |
@@ -234,10 +242,11 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 1. All eight gates have reproduced evidence except Gate 6's live model runs, which stay
    **unrun** until spend is explicitly authorized (harness, tasks, and self-check are
    complete); MLIR/LLVM is recorded as not justified by measurement. Next engineering
-   targets, in order: (a) JS array copy-on-write loss: in-place update when the source is
-   provably dead (single use), keeping value semantics; (b) JS wrapper indirection on
-   trivial functions; (c) run Gate 6 when authorized and add the whole-task numbers here;
-   (d) strings/DOM capabilities so a0lang.com can be authored in A0 end to end.
+   targets, in order: (a) done: aliasing-safe in-place updates and typed arrays in JS
+   (residual ≈1.3–1.6× on the array kernel is allocation of the initial array plus the
+   body call; next step would be inlining owned bodies); (b) done: wrapper indirection is
+   within noise; (c) run Gate 6 when authorized and add the whole-task numbers here;
+   (d) bytes/strings and a DOM capability tier so a0lang.com can be authored in A0.
 2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
    cross-target application, authored in A0 with a browser DOM adapter; no deployment
    without explicit approval in that session.
