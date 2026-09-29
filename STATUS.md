@@ -106,6 +106,12 @@ turns up, reconcile against this tree rather than overwrite either.
   already reaches LLVM through C. Integration would add build complexity without a
   measured win; revisit when a workload needs vectorization or fusion the C path cannot
   express.
+- **Text input in the UI protocol** (v0.8.6): tag 12 `input` and command 8 ONSUBMIT; the
+  adapter sends the field's UTF-8 bytes (count + bytes, up to 64) on every run, and the
+  page program reads them into a `u32x64` buffer with a fold over `read`, echoes exactly
+  those bytes back through TEXT, and counts submits in its state word. Verified in the
+  in-app browser ("héllo A0" → 9 bytes echoed, state advanced) and by the page test
+  (interpreter and emitted JS produce identical streams).
 - **Strength reduction and io memory bound** (v0.8.5): `div`/`rem` by a literal power of
   two become `shr`/`and` in the optimizer (exact for unsigned); hardware synthesis of the
   corpus fell from 30 s to 23 s (remaining dividers have non-power-of-two literal or

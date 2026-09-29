@@ -747,8 +747,8 @@ test('site page program renders the A0 UI protocol with persisted state and deci
     let state: number | undefined;
     for (let i = 0; i < words.length; ) {
       const c = words[i++];
-      if (c === 1 || c === 5 || c === 7) {
-        if (c === 5) events.push(words[i] as number);
+      if (c === 1 || c === 5 || c === 7 || c === 8) {
+        if (c === 5 || c === 8) events.push(words[i] as number);
         i += 1;
       } else if (c === 2 || c === 4) {
         if (c === 4) i += 1;
@@ -760,11 +760,11 @@ test('site page program renders the A0 UI protocol with persisted state and deci
     }
     return { texts, state, events };
   };
-  const first = makeIo([0, 0]);
+  const first = makeIo([0, 0, 0]);
   assert.equal(run(session, [first]), 0);
   const d0 = decode(first.output);
   assert.equal(d0.state, 0);
-  assert.deepEqual(d0.events, [1]);
+  assert.deepEqual(d0.events, [1, 2]);
   assert.ok(d0.texts.includes('A0') && d0.texts.includes('Clicked '));
   const clicked = makeIo([1, 41]);
   assert.equal(run(session, [clicked]), 42);
@@ -772,7 +772,7 @@ test('site page program renders the A0 UI protocol with persisted state and deci
   assert.equal(d1.state, 42);
   assert.deepEqual(
     d1.texts.filter((t) => /^\d$/.test(t)),
-    ['4', '2'],
+    ['4', '2', '0'],
   );
   // Emitted JS produces the identical stream.
   const js = compile(p, 'js').text;
@@ -782,7 +782,7 @@ test('site page program renders the A0 UI protocol with persisted state and deci
     session: (t: unknown) => number;
     a0_make_io: (i: number[]) => { output: number[] };
   };
-  const st = mod.a0_make_io([1, 41]);
+  const st = mod.a0_make_io([1, 41, 0]);
   assert.equal(mod.session(st), 42);
   assert.deepEqual(st.output, [...clicked.output]);
 });

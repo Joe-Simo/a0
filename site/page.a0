@@ -1,8 +1,10 @@
 # a0lang.com page, authored in A0. The page is an io program speaking the A0 UI protocol:
 #   input : event id (0 = initial render), persisted state word
+#   input : event id (0 = initial render), persisted state word, then the current text of the
+#           page's input field as a byte count and bytes (0 when there is none)
 #   output: commands  1 OPEN tag | 2 TEXT (puts bytes) | 3 CLOSE | 4 ATTR key (puts bytes)
-#           5 ONCLICK event | 6 STATE word | 7 COMPONENT id
-#   tags: 1 h1, 2 p, 3 button, 4 code, 5 div, 6 span, 7 ul, 8 li, 9 a, 10 pre, 11 h2
+#           5 ONCLICK event | 6 STATE word | 7 COMPONENT id | 8 ONSUBMIT event
+#   tags: 1 h1, 2 p, 3 button, 4 code, 5 div, 6 span, 7 ul, 8 li, 9 a, 10 pre, 11 h2, 12 input
 #   attr keys: 1 id, 2 class, 3 href
 # The browser adapter (site/app.ts) only builds DOM from this stream and reports clicks back.
 
@@ -82,16 +84,65 @@ ret t
 end
 
 
+fn onsubmit io u32 -> io
+a write p0 8
+b write a p1
+ret b
+end
+
+# read one byte of the input text into the buffer (state = (buffer, token))
+fn readbyte (u32x64,io) u32 -> (u32x64,io)
+buf at p0 0
+tok at p0 1
+r read tok
+v at r 0
+t at r 1
+nb set buf p1 v
+out rec nb t
+ret out
+end
+
+fn zeros -> u32x64
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+
+# TEXT command with the first p2 bytes of the buffer
+fn bytestep io u32 u32x64 -> io
+b get p2 p1
+w write p0 b
+ret w
+end
+
+fn puttext io u32x64 u32 -> io
+a write p0 2
+b write a p2
+c fold bytestep p2 b p1
+ret c
+end
+
 fn session io -> u32
 r0 read p0
 event at r0 0
 t0 at r0 1
 r1 read t0
 state at r1 0
-t1 at r1 1
+ta at r1 1
+rn read ta
+nraw at rn 0
+tb at rn 1
+big lt 64 nraw
+n select big 64 nraw
+z call zeros
+init0 rec z tb
+rd fold readbyte n init0
+buf at rd 0
+t1 at rd 1
 isclick eq event 1
+issubmit eq event 2
 inc add state 1
-next select isclick inc state
+next0 select isclick inc state
+next select issubmit inc next0
 
 h call open t1 1
 h1 write h 2
@@ -146,7 +197,32 @@ p3c call close p3u
 
 cmp call component p3c 1
 
-f call open cmp 2
+s3 call open cmp 11
+s3t write s3 2
+s3x text "Text input, handled in A0"
+s3u puts s3t s3x
+s3c call close s3u
+
+i1 call open s3c 12
+i1a write i1 4
+i1b write i1a 1
+iid text "echo"
+i1c puts i1b iid
+i1d call onsubmit i1c 2
+i1e call close i1d
+
+e1 call open i1e 2
+e1t write e1 2
+e1x text "Type and press Enter. The bytes travel through the io stream; A0 counts and echoes them: "
+e1u puts e1t e1x
+e1n call putnum e1u n
+e1s write e1n 2
+e1y text " bytes: "
+e1z puts e1s e1y
+e1w call puttext e1z buf n
+e1c call close e1w
+
+f call open e1c 2
 ft write f 2
 fx text "Status, evidence ledger, and source: github.com/Joe-Simo/a0 (private during research)."
 fu puts ft fx

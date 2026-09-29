@@ -40,11 +40,19 @@ function runSession(exp: WebAssembly.Exports, entry: string, input: readonly num
 
 // --- A0 UI protocol -------------------------------------------------------------
 
-const TAGS: Record<number, string> = { 1: 'h1', 2: 'p', 3: 'button', 4: 'code', 5: 'div', 6: 'span', 7: 'ul', 8: 'li', 9: 'a', 10: 'pre', 11: 'h2' };
+const TAGS: Record<number, string> = { 1: 'h1', 2: 'p', 3: 'button', 4: 'code', 5: 'div', 6: 'span', 7: 'ul', 8: 'li', 9: 'a', 10: 'pre', 11: 'h2', 12: 'input' };
 const ATTRS: Record<number, string> = { 1: 'id', 2: 'class', 3: 'href' };
 const decoder = new TextDecoder();
 
-function render(root: HTMLElement, words: Uint32Array, onEvent: (event: number) => void, mount: (id: number, host: HTMLElement) => void): number | undefined {
+const encoder = new TextEncoder();
+
+function render(
+  root: HTMLElement,
+  words: Uint32Array,
+  onEvent: (event: number) => void,
+  mount: (id: number, host: HTMLElement) => void,
+  inputText: string,
+): number | undefined {
   root.replaceChildren();
   const stack: HTMLElement[] = [root];
   let state: number | undefined;
@@ -89,6 +97,17 @@ function render(root: HTMLElement, words: Uint32Array, onEvent: (event: number) 
         const host = document.createElement('div');
         top.appendChild(host);
         mount(words[i++] as number, host);
+        break;
+      }
+      case 8: {
+        // ONSUBMIT: Enter in this text input sends the event with the field's bytes.
+        const event = words[i++] as number;
+        const input = top as HTMLInputElement;
+        input.type = 'text';
+        input.value = inputText;
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') onEvent(event);
+        });
         break;
       }
       default:
@@ -162,10 +181,14 @@ async function main(): Promise<void> {
   const root = document.getElementById('app') as HTMLElement;
   let state = 0;
   const show = (event: number): void => {
-    const r = runSession(page, 'a0_session', [event, state]);
+    // The current text of the page's input travels as bytes on the io stream (up to 64).
+    const field = root.querySelector('input') as HTMLInputElement | null;
+    const text = field?.value ?? '';
+    const bytes = Array.from(encoder.encode(text)).slice(0, 64);
+    const r = runSession(page, 'a0_session', [event, state, bytes.length, ...bytes]);
     const next = render(root, r.output, show, (id, host) => {
       if (id === 1) mountLife(life, host);
-    });
+    }, text);
     state = next ?? r.result;
   };
   show(0);
