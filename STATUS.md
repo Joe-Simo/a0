@@ -284,14 +284,31 @@ cell; (4) no reasoning-token accounting. Result file: `results/ai-edit-experimen
 | Rust conventional | 13/13 | 13 | 63 | 463 | 596 |
 | Rust structured | 13/13 | 13 | 142 | 551 | 381 |
 
-Wins / ties / losses for A0 on this run: acceptance is a six-way tie (every cell 13/13,
-zero repairs). Output tokens: A0 structured wins (341 vs 397 TypeScript, 381 Rust,
-−14 % / −10 %); A0 conventional loses to TypeScript and Rust (612 vs 579 / 596). View
-tokens: A0 structured loses (622 vs 520 / 551) because the structured A0 view carries both
-a scoped function handle and a program handle; on whole-task input the A0 setup guide
-(627–750 tokens) dominates and A0 loses every input comparison at this task size. The
-200–400× ambition is not supported by these numbers; the measured structured-edit
-advantage is a 10–14 % output reduction on 13 small tasks, with no acceptance advantage.
+Whole-task token buckets (o200k, summed over 13 tasks, primers charged once per call;
+harness now records these separately plus a per-attempt failure status of
+protocol / compile / missing / runtime / wrong-output / no-reply and one-shot vs
+after-repair acceptance):
+
+| cell | language primer | workflow primer | tool context | output | total |
+|---|---|---|---|---|---|
+| A0 conventional | 7930 | 221 | 824 | 612 | 9587 |
+| A0 structured | 7930 | 1820 | 999 | 341 | 11090 |
+| TypeScript conventional | 403 | 221 | 809 | 579 | 2012 |
+| TypeScript structured | 403 | 1248 | 897 | 397 | 2945 |
+| Rust conventional | 598 | 221 | 840 | 596 | 2255 |
+| Rust structured | 598 | 1248 | 928 | 381 | 3155 |
+
+Wins / ties / losses for A0 on this run: acceptance is a six-way tie (every cell 13/13
+one-shot, zero repairs). Output tokens: A0 structured wins (341 vs 397 TypeScript, 381
+Rust, −14 % / −10 %); A0 conventional loses (612 vs 579 / 596). **Whole-task cost: A0
+loses by 4.8× (conventional) and 3.8× (structured) against TypeScript**, because the
+language primer (MODEL_GUIDE.txt, 610 tokens per call) is charged on every call while a
+TypeScript or Rust model needs only a 31–46 token semantics note. At 13 small tasks the
+primer is 72–83 % of A0's whole-task spend. The 200–400× ambition is contradicted by
+these numbers; the only measured A0 advantage is the 10–14 % output reduction on
+structured edits. Levers, in order of measured size: (1) primer amortisation through
+prompt caching (provider cache-read pricing, not available in local counts), (2) a
+shorter primer or a primer the model already knows, (3) the output reduction.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 

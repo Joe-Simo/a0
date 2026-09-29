@@ -561,6 +561,10 @@ async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promi
 interface Cell {
   readonly representation: Representation;
   readonly protocol: Protocol;
+  /** Language primer: what the model must know about the language (bucket 1). */
+  readonly languagePrimer: string;
+  /** Workflow primer: the edit protocol instructions (bucket 2). */
+  readonly workflowPrimer: string;
   readonly system: string;
   readonly view: string;
 }
@@ -576,6 +580,7 @@ async function buildCell(
     const protocolText =
       protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : PROTOCOL_STRUCTURED_A0;
     const system = `${guide}\n\n${protocolText}`;
+    const primers = { languagePrimer: guide, workflowPrimer: protocolText };
     if (protocol === 'structured') {
       // Two handles per view: e0 edits the target function, g1 edits the program (add,
       // replace, or remove whole functions, e.g. for signature changes). The reply's first
@@ -585,9 +590,9 @@ async function buildCell(
       const fnView = session.open(fnName, { scope: 'deps' }).text;
       const progView = session.openProgram().text;
       const view = `${fnView}\n${progView}`;
-      return { cell: { representation, protocol, system, view }, session, handle };
+      return { cell: { representation, protocol, ...primers, system, view }, session, handle };
     }
-    return { cell: { representation, protocol, system, view: task.a0Source }, handle };
+    return { cell: { representation, protocol, ...primers, system, view: task.a0Source }, handle };
   }
   const src = representation === 'rust' ? task.rustSource : task.tsSource;
   const semantics = representation === 'rust' ? RUST_SEMANTICS : TS_SEMANTICS;
@@ -595,7 +600,54 @@ async function buildCell(
   const protocolText = protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : structured;
   const system = `${semantics}\n\n${protocolText}`;
   const view = protocol === 'conventional' ? src : `${handle}\n${numbered(src)}`;
-  return { cell: { representation, protocol, system, view }, handle };
+  return {
+    cell: {
+      representation,
+      protocol,
+      languagePrimer: semantics,
+      workflowPrimer: protocolText,
+      system,
+      view,
+    },
+    handle,
+  };
+}
+
+/**
+ * Failure taxonomy per attempt (after MultiPL-E's status classes, extended for edit
+ * protocols): `protocol` = the reply did not follow the edit protocol (bad handle, bad
+ * line reference, stale revision); `compile` = the resulting program does not parse or
+ * type-check (A0 validator, tsc, rustc); `missing` = a function the tests need is absent;
+ * `runtime` = a test raised or the program did not finish; `wrong-output` = a test
+ * returned a different value; `no-reply` = no model output for this attempt.
+ */
+type AttemptStatus =
+  | 'ok'
+  | 'protocol'
+  | 'compile'
+  | 'missing'
+  | 'runtime'
+  | 'wrong-output'
+  | 'no-reply';
+
+interface Attempt {
+  readonly status: AttemptStatus;
+  readonly failures: readonly string[];
+  readonly outputTokensLocal: Record<string, number>;
+}
+
+function classify(
+  applied: AppliedEdit,
+  protocol: Protocol,
+  failures: readonly string[],
+): AttemptStatus {
+  if (applied.error !== undefined) return protocol === 'structured' ? 'protocol' : 'compile';
+  if (failures.length === 0) return 'ok';
+  const f = failures[0] ?? '';
+  if (/^(invalid A0:|tsc:|rustc:)/.test(f)) return 'compile';
+  if (failures.some((x) => x.startsWith('missing '))) return 'missing';
+  if (failures.some((x) => /=.*, expected /.test(x))) return 'wrong-output';
+  return 'runtime';
 }
 
 interface Trial {
@@ -606,6 +658,19 @@ interface Trial {
   readonly trial: number;
   readonly setupTokensLocal: Record<string, number>;
   readonly viewTokensLocal: Record<string, number>;
+  /**
+   * Whole-task token buckets (o200k, local counts), never merged: language primer and
+   * workflow primer are charged once per model call (they travel in the system prompt);
+   * tool context is the task text, the view, and every repair message; output is every
+   * model reply.
+   */
+  readonly tokenBucketsLocal: {
+    readonly languagePrimer: number;
+    readonly workflowPrimer: number;
+    readonly toolContext: number;
+    readonly output: number;
+    readonly total: number;
+  } | null;
   readonly outputTokensLocal: Record<string, number> | null;
   readonly providerUsage: {
     input: number;
@@ -616,9 +681,133 @@ interface Trial {
   readonly reasoningTokens: null;
   readonly modelCalls: number;
   readonly validationFailures: number;
+  /** Accepted on the first reply, before any repair message. */
+  readonly acceptedOneShot: boolean | null;
+  /** Accepted within maxRepairs repair rounds. */
   readonly accepted: boolean | null;
+  readonly attempts: readonly Attempt[];
   readonly failures: readonly string[];
   readonly wallMs: number | null;
+}
+
+interface ReplyResult {
+  readonly reply: string;
+  readonly usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
+}
+
+/** Runs one trial: up to 1 + maxRepairs replies from `ask`, each applied and accepted. */
+async function runTrial(
+  task: Task,
+  representation: Representation,
+  protocol: Protocol,
+  cell: Cell,
+  session: EditSession | undefined,
+  handle: string,
+  maxRepairs: number,
+  count: (text: string) => Record<string, number>,
+  ask: (messages: Anthropic.MessageParam[]) => Promise<ReplyResult | undefined>,
+): Promise<
+  Omit<
+    Trial,
+    | 'task'
+    | 'kind'
+    | 'representation'
+    | 'protocol'
+    | 'trial'
+    | 'setupTokensLocal'
+    | 'viewTokensLocal'
+    | 'reasoningTokens'
+  >
+> {
+  const start = performance.now();
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: `${task.instruction}\n\n${cell.view}` },
+  ];
+  let source =
+    representation === 'a0'
+      ? task.a0Source
+      : representation === 'rust'
+        ? task.rustSource
+        : task.tsSource;
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  let sawUsage = false;
+  let calls = 0;
+  let toolContext = count(`${task.instruction}\n\n${cell.view}`).o200k_base ?? 0;
+  const attempts: Attempt[] = [];
+  let failures: string[] = [];
+  let accepted = false;
+  let outputText = '';
+  for (let attempt = 0; attempt <= maxRepairs; attempt += 1) {
+    const res = await ask(messages);
+    if (res === undefined) {
+      attempts.push({ status: 'no-reply', failures: ['no reply'], outputTokensLocal: count('') });
+      failures = ['no reply'];
+      break;
+    }
+    calls += 1;
+    if (res.usage !== undefined) {
+      sawUsage = true;
+      usage.input += res.usage.input;
+      usage.output += res.usage.output;
+      usage.cacheRead += res.usage.cacheRead;
+      usage.cacheWrite += res.usage.cacheWrite;
+    }
+    outputText += res.reply;
+    const applied =
+      representation === 'a0'
+        ? applyA0(representation, protocol, source, res.reply, session)
+        : applyTs(protocol, source, res.reply, handle);
+    failures =
+      applied.error !== undefined
+        ? [applied.error]
+        : representation === 'a0'
+          ? await acceptA0(applied.source, task.tests)
+          : representation === 'rust'
+            ? await acceptRust(applied.source, task.tests)
+            : await acceptTs(applied.source, task.tests);
+    attempts.push({
+      status: classify(applied, protocol, failures),
+      failures,
+      outputTokensLocal: count(res.reply),
+    });
+    if (failures.length === 0) {
+      accepted = true;
+      source = applied.source;
+      break;
+    }
+    messages.push({ role: 'assistant', content: res.reply });
+    const nextView =
+      protocol === 'structured' &&
+      representation === 'a0' &&
+      session !== undefined &&
+      applied.error === undefined
+        ? session.open(parseAndValidate(applied.source).functions[0]?.name ?? '').text
+        : undefined;
+    const repair = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
+    toolContext += count(repair).o200k_base ?? 0;
+    messages.push({ role: 'user', content: repair });
+  }
+  const languagePrimer = (count(cell.languagePrimer).o200k_base ?? 0) * calls;
+  const workflowPrimer = (count(cell.workflowPrimer).o200k_base ?? 0) * calls;
+  const output = count(outputText).o200k_base ?? 0;
+  return {
+    tokenBucketsLocal: {
+      languagePrimer,
+      workflowPrimer,
+      toolContext,
+      output,
+      total: languagePrimer + workflowPrimer + toolContext + output,
+    },
+    outputTokensLocal: count(outputText),
+    providerUsage: sawUsage ? usage : null,
+    modelCalls: calls,
+    validationFailures: attempts.filter((a) => a.status !== 'ok').length,
+    acceptedOneShot: attempts[0]?.status === 'ok',
+    accepted,
+    attempts,
+    failures,
+    wallMs: performance.now() - start,
+  };
 }
 
 async function main(): Promise<void> {
@@ -666,16 +855,7 @@ async function main(): Promise<void> {
       for (const protocol of ['conventional', 'structured'] as const) {
         for (let t = 0; t < (live ? trialsPerCell : 1); t += 1) {
           const { cell, session, handle } = await buildCell(task, representation, protocol, guide);
-          const base: Omit<
-            Trial,
-            | 'outputTokensLocal'
-            | 'providerUsage'
-            | 'modelCalls'
-            | 'validationFailures'
-            | 'accepted'
-            | 'failures'
-            | 'wallMs'
-          > = {
+          const base = {
             task: task.id,
             kind: task.kind,
             representation,
@@ -684,144 +864,75 @@ async function main(): Promise<void> {
             setupTokensLocal: count(cell.system),
             viewTokensLocal: count(cell.view),
             reasoningTokens: null,
-          };
+          } as const;
           const cellKey = `${task.id}/${representation}/${protocol}`;
           dump[cellKey] = { system: cell.system, user: `${task.instruction}\n\n${cell.view}` };
           if (scripted !== undefined) {
-            const answers = scripted[cellKey] ?? [];
-            const start = performance.now();
-            let source =
-              representation === 'a0'
-                ? task.a0Source
-                : representation === 'rust'
-                  ? task.rustSource
-                  : task.tsSource;
-            let calls = 0;
-            let validationFailures = 0;
-            let failures: string[] = ['no reply'];
-            let accepted = false;
-            let outputText = '';
-            for (const reply of answers.slice(0, maxRepairs + 1)) {
-              calls += 1;
-              outputText += reply;
-              const applied =
-                representation === 'a0'
-                  ? applyA0(representation, protocol, source, reply, session)
-                  : applyTs(protocol, source, reply, handle);
-              failures =
-                applied.error !== undefined
-                  ? [applied.error]
-                  : representation === 'a0'
-                    ? await acceptA0(applied.source, task.tests)
-                    : representation === 'rust'
-                      ? await acceptRust(applied.source, task.tests)
-                      : await acceptTs(applied.source, task.tests);
-              if (failures.length === 0) {
-                accepted = true;
-                source = applied.source;
-                break;
-              }
-              validationFailures += 1;
-            }
-            trials.push({
-              ...base,
-              outputTokensLocal: count(outputText),
-              providerUsage: null,
-              modelCalls: calls,
-              validationFailures,
-              accepted,
-              failures,
-              wallMs: performance.now() - start,
-            });
+            const answers = [...(scripted[cellKey] ?? [])];
+            const result = await runTrial(
+              task,
+              representation,
+              protocol,
+              cell,
+              session,
+              handle,
+              maxRepairs,
+              count,
+              async () => {
+                const reply = answers.shift();
+                return reply === undefined ? undefined : { reply };
+              },
+            );
+            trials.push({ ...base, ...result });
             continue;
           }
           if (client === undefined) {
             trials.push({
               ...base,
+              tokenBucketsLocal: null,
               outputTokensLocal: null,
               providerUsage: null,
               modelCalls: 0,
               validationFailures: 0,
+              acceptedOneShot: null,
               accepted: null,
+              attempts: [],
               failures: [],
               wallMs: null,
             });
             continue;
           }
-          const start = performance.now();
-          const messages: Anthropic.MessageParam[] = [
-            { role: 'user', content: `${task.instruction}\n\n${cell.view}` },
-          ];
-          let source =
-            representation === 'a0'
-              ? task.a0Source
-              : representation === 'rust'
-                ? task.rustSource
-                : task.tsSource;
-          const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-          let calls = 0;
-          let validationFailures = 0;
-          let failures: string[] = [];
-          let accepted = false;
-          let outputText = '';
-          for (let attempt = 0; attempt <= maxRepairs; attempt += 1) {
-            const res = await client.messages.create({
-              model,
-              max_tokens: 4096,
-              system: [{ type: 'text', text: cell.system, cache_control: { type: 'ephemeral' } }],
-              messages,
-            });
-            calls += 1;
-            usage.input += res.usage.input_tokens;
-            usage.output += res.usage.output_tokens;
-            usage.cacheRead += res.usage.cache_read_input_tokens ?? 0;
-            usage.cacheWrite += res.usage.cache_creation_input_tokens ?? 0;
-            const reply = res.content
-              .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-              .map((b) => b.text)
-              .join('\n');
-            outputText += reply;
-            const applied =
-              representation === 'a0'
-                ? applyA0(representation, protocol, source, reply, session)
-                : applyTs(protocol, source, reply, handle);
-            failures =
-              applied.error !== undefined
-                ? [applied.error]
-                : representation === 'a0'
-                  ? await acceptA0(applied.source, task.tests)
-                  : representation === 'rust'
-                    ? await acceptRust(applied.source, task.tests)
-                    : await acceptTs(applied.source, task.tests);
-            if (failures.length === 0) {
-              accepted = true;
-              source = applied.source;
-              break;
-            }
-            validationFailures += 1;
-            messages.push({ role: 'assistant', content: reply });
-            const nextView =
-              protocol === 'structured' &&
-              representation === 'a0' &&
-              session !== undefined &&
-              applied.error === undefined
-                ? session.open(parseAndValidate(applied.source).functions[0]?.name ?? '').text
-                : undefined;
-            messages.push({
-              role: 'user',
-              content: `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`,
-            });
-          }
-          trials.push({
-            ...base,
-            outputTokensLocal: count(outputText),
-            providerUsage: usage,
-            modelCalls: calls,
-            validationFailures,
-            accepted,
-            failures,
-            wallMs: performance.now() - start,
-          });
+          const result = await runTrial(
+            task,
+            representation,
+            protocol,
+            cell,
+            session,
+            handle,
+            maxRepairs,
+            count,
+            async (messages) => {
+              const res = await client.messages.create({
+                model,
+                max_tokens: 4096,
+                system: [{ type: 'text', text: cell.system, cache_control: { type: 'ephemeral' } }],
+                messages,
+              });
+              return {
+                reply: res.content
+                  .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+                  .map((b) => b.text)
+                  .join('\n'),
+                usage: {
+                  input: res.usage.input_tokens,
+                  output: res.usage.output_tokens,
+                  cacheRead: res.usage.cache_read_input_tokens ?? 0,
+                  cacheWrite: res.usage.cache_creation_input_tokens ?? 0,
+                },
+              };
+            },
+          );
+          trials.push({ ...base, ...result });
         }
       }
     }
@@ -873,7 +984,7 @@ async function main(): Promise<void> {
   process.stdout.write(`status: ${report.status}\nself-check: ${selfCheckOk ? 'ok' : 'FAILED'}\n`);
   for (const tr of trials) {
     process.stdout.write(
-      `${tr.task.padEnd(12)} ${tr.representation}/${tr.protocol.padEnd(12)} setup o200k=${tr.setupTokensLocal.o200k_base} view o200k=${tr.viewTokensLocal.o200k_base}${tr.accepted === null ? '' : ` accepted=${tr.accepted} calls=${tr.modelCalls}`}\n`,
+      `${tr.task.padEnd(12)} ${tr.representation}/${tr.protocol.padEnd(12)} setup o200k=${tr.setupTokensLocal.o200k_base} view o200k=${tr.viewTokensLocal.o200k_base}${tr.accepted === null ? '' : ` one-shot=${tr.acceptedOneShot} accepted=${tr.accepted} calls=${tr.modelCalls} total=${tr.tokenBucketsLocal?.total} status=${tr.attempts.map((a) => a.status).join(',')}`}\n`,
     );
   }
   if (!selfCheckOk) process.exit(1);
