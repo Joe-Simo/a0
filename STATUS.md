@@ -22,7 +22,7 @@ turns up, reconcile against this tree rather than overwrite either.
 - Execution performance across targets is a goal with a ledger, not a claim; ties and
   losses stay visible.
 
-## Implemented scope (v0.3.0)
+## Implemented scope (v0.4.0)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
   wrapping/logical/unsigned semantics; positional params; one result; straight-line.
@@ -53,9 +53,15 @@ turns up, reconcile against this tree rather than overwrite either.
   exists. Optimizer anchors effectful nodes (read/write/calls/iterations carrying tokens)
   and still drops pure extractions. Runtimes: JS stream object, C `a0_io` fixed-capacity
   struct (freestanding, also used in Wasm through linear memory at `__heap_base`), Java
-  `A0Io`; SystemVerilog rejects io with a diagnostic (sequential state is Gate 4).
+  `A0Io`.
+- **Sequential hardware** (new, Gate 4, `src/hw.ts`): functions that iterate with variable
+  counts, perform io, or call such functions become clocked SystemVerilog modules
+  (clk/rst/start/done, in/out word handshakes). Stages of a linear FSM in program order;
+  stage results are registers; bodies instantiated once and stepped per clock; sequential
+  callees via nested handshakes; loop predicates must be combinational (diagnosed).
+  Pure functions stay combinational; literal-count folds in pure functions stay unrolled.
   Not implemented: platform-specific capabilities (camera, files, DOM: Gate 5 adapters),
-  general regions, sequential hardware state.
+  general regions, pipelining/scheduling beyond one stage per clock, timing closure.
 - Edits: self-contained patch (`patch name sha256 … end`) and session handle edits
   (`e0` + replaced lines). Replace-existing-nodes only. Handles are one-use and
   revision-bound. No insertion/deletion, no multi-function transactions, no network service.
@@ -82,16 +88,19 @@ turns up, reconcile against this tree rather than overwrite either.
 | C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 5603 pass |
 | Java via Homebrew OpenJDK 27 | `bun run verify` | 5603 pass |
 | WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 5603 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
-| SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 4995 cases pass on the 37 io-free functions (11 io functions excluded with a diagnostic) |
-| SystemVerilog generic synthesis (Yosys 0.69 `synth -noabc` + `check -assert`) | `bun run hw` | pass in 0.7 s; ABC optimization stalled >5 min on 32-bit multipliers, so it is off and cell counts are unoptimized |
+| SystemVerilog RTL simulation (Icarus 12, `-g2012`, clocked testbench) | `bun run hw` | 5603 cases pass on all 48 functions (11 clocked modules: every io function; literal-count iteration stays combinational); 0.8 s |
+| SystemVerilog generic synthesis (Yosys 0.69 `synth -noabc` + `check -assert`) | `bun run hw` | pass in 1.6 s for all 48 modules incl. clocked ones; ABC optimization stalled >5 min on 32-bit multipliers, so it is off and cell counts are unoptimized |
 | Not run for hardware | — | FPGA place-and-route, real cell library, timing, area, power, sequential logic |
 
 Corpus: 48 seeded functions, seed 0xa0beef / input seed 0x12345678, 56 call, 28 fold, 19 loop, 79 arr, 69 rec, 59 get, 126 set, 24 read, 22 write sites; 11 io functions with 608 stream cases,
 sha in `results/verification.json`. Deterministic generated inputs, not application evidence.
 
-Bug found and fixed by hardware simulation: SV emitted `literal[4:0]` for shifts by a
-constant (illegal). Regression test added. This is the first counterexample the hardware
-gate produced and the reason the gate exists.
+Bugs found and fixed by hardware simulation: (1) SV emitted `literal[4:0]` for shifts by a
+constant (illegal); (2) the first clocked emitter initialized a stage's registers on the
+same clock edge that latched the previous stage's result, so the first run of every module
+used a stale register (only the first case of a function failed; later runs reused the
+previous value); (3) handshakes asserted during a stage's entry cycle transferred every
+word twice. Each was caught only by simulation against the oracle.
 
 ## Measurements (evidence level stated per row)
 
@@ -145,8 +154,7 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Gates 1–3 are done. Next: Gate 4, sequential hardware state (registers, FSM) so
-   variable-count fold/loop and io streams synthesize; keep Icarus and Yosys passing.
+1. Gates 1–4 are done. Next: Gate 5, the cross-target application.
 2. Gate 5 target decided: the a0lang.com site (domain owned by the user on Vercel) is the
    cross-target application, authored in A0 with a browser DOM adapter; no deployment
    without explicit approval in that session.

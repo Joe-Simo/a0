@@ -22,6 +22,7 @@ import {
   type TypedProgram,
 } from './core.js';
 import { semanticRevision } from './edit.js';
+import { emitSequential, needsSequential } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
 export const COMPILER_VERSION = 'a0c-0.1.0';
@@ -38,7 +39,7 @@ const hex = (v: number): string => `0x${v.toString(16).padStart(8, '0')}`;
 type Emitter = (fn: TypedFunc) => string;
 
 /** Type of an operand inside a function (params, nodes, literals). */
-function operandTypeOf(fn: TypedFunc, o: Operand): Type {
+export function operandTypeOf(fn: TypedFunc, o: Operand): Type {
   switch (o.kind) {
     case 'u32':
       return 'u32';
@@ -494,15 +495,16 @@ const emitJavaFunction: Emitter = (fn) => {
 // SystemVerilog (combinational; emitted only, see results for validation status)
 // ---------------------------------------------------------------------------
 
-const svType = (t: Type): string => (t === 'bool' ? 'logic' : `logic [${bitWidth(t) - 1}:0]`);
+export const svType = (t: Type): string =>
+  t === 'bool' ? 'logic' : `logic [${bitWidth(t) - 1}:0]`;
 
 /** Bit offset of field k inside a record (field 0 at the LSB). */
-function svFieldOffset(t: Type, k: number): number {
+export function svFieldOffset(t: Type, k: number): number {
   if (isPrimitive(t) || t.kind !== 'rec') throw new A0Error('field offset on non-record');
   return t.fields.slice(0, k).reduce((n, f) => n + bitWidth(f), 0);
 }
 
-function svOperand(o: Operand): string {
+export function svOperand(o: Operand): string {
   switch (o.kind) {
     case 'node':
       return `n_${o.id}`;
@@ -522,7 +524,7 @@ function svShiftAmount(o: Operand | undefined): string {
   return `${svOperand(o)}[4:0]`;
 }
 
-function svExpr(node: Node, fn: TypedFunc): string {
+export function svExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(svOperand);
   switch (node.op) {
     case 'mov':
@@ -587,6 +589,7 @@ function svExpr(node: Node, fn: TypedFunc): string {
 export const SV_MAX_UNROLL = 256;
 
 const emitSvFunction: Emitter = (fn) => {
+  if (needsSequential(fn)) return emitSequential(fn);
   const ports = [
     ...fn.params.map((t, i) => `  input ${svType(t)} p${i}`),
     `  output ${svType(fn.result)} result`,
@@ -779,6 +782,9 @@ export class FunctionCache {
 
 export function emitFunction(target: Target, fn: TypedFunc, options: CompileOptions = {}): string {
   const source = options.optimize === false ? fn : optimizeFunction(fn).fn;
+  // Hardware form is decided on the source function so callers and testbenches agree even
+  // when optimization removes every iteration or effect.
+  if (target === 'sv' && needsSequential(fn)) return emitSequential(source);
   return EMITTERS[target](source);
 }
 

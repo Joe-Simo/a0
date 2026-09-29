@@ -346,7 +346,9 @@ end`;
   assert.equal(mod.horner(10, 4), 123);
   assert.ok(compile(p, 'c').text.includes('for (uint32_t i = 0; i < p1; i++)'));
   assert.ok(compile(p, 'java').text.includes('Integer.compareUnsigned(i, p1) < 0'));
-  assert.throws(() => compile(p, 'sv'), /sequential state/);
+  // A variable trip count becomes a clocked module with a start/done handshake.
+  assert.ok(compile(p, 'sv').text.includes('module a0_horner (\n  input logic clk'));
+  assert.ok(compile(p, 'sv').text.includes('output logic done'));
   const lit = parseAndValidate(
     `${src.split('\n\n')[0]}\nfn h3 u32 -> u32\nr fold step 3 0 p0\nret r\nend`,
   );
@@ -406,7 +408,7 @@ end`;
   assert.equal(mod.accum(5, 100), 5);
   assert.ok(compile(p, 'c').text.includes('if (!a0_below('));
   assert.ok(compile(p, 'java').text.includes('if (!below('));
-  assert.throws(() => compile(p, 'sv'), /sequential state/);
+  assert.ok(compile(p, 'sv').text.includes('module a0_accum (\n  input logic clk'));
   const lit = parseAndValidate(
     `${src.split('\n\n').slice(0, 2).join('\n\n')}\nfn a3 u32 -> u32\nr loop below step 3 0 p0\nret r\nend`,
   );
@@ -593,5 +595,13 @@ end`;
   assert.throws(() => mod.echo2({}), TypeError);
   assert.ok(compile(p, 'c').text.includes('static inline a0t_r2_u_io a0_read(a0_io *t)'));
   assert.ok(compile(p, 'java').text.includes('static R_r2_u_io read(A0Io t)'));
-  assert.throws(() => compile(p, 'sv'), /sequential state|io has no bit-level/);
+  // io functions become clocked modules with word handshakes; a sequential loop predicate is rejected.
+  const sv = compile(p, 'sv').text;
+  assert.ok(sv.includes('module a0_echo2 (\n  input logic clk'));
+  assert.ok(sv.includes('input logic [31:0] in_data') && sv.includes('output logic out_valid'));
+  assert.ok(sv.includes('a0_tap u_a (.clk(clk), .rst(rst), .start(st_a)'));
+  const badPred = parseAndValidate(
+    'fn body u32 u32 io -> u32\nret p0\nend\nfn pr u32 u32 io -> bool\nc lt p0 5\nret c\nend\nfn f u32 io -> u32\nr loop pr body 4 p0 p1\nret r\nend',
+  );
+  assert.throws(() => compile(badPred, 'sv'), /predicate must be combinational/);
 });

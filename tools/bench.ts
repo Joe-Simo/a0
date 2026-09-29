@@ -11,7 +11,7 @@ import { compile, FunctionCache, TARGETS, type Target } from '../src/backends.js
 import { formatProgram, parseAndValidate, type TypedFunc } from '../src/core.js';
 import { EditSession, formatPatch } from '../src/edit.js';
 import { optimize } from '../src/optimize.js';
-import { generateCorpus, ioFreeSubset } from './corpus.js';
+import { generateCorpus } from './corpus.js';
 
 interface Sample {
   readonly medianMs: number;
@@ -47,9 +47,8 @@ async function main(): Promise<void> {
   const parse = measure(runs, () => parseAndValidate(source));
   const opt = measure(runs, () => optimize(corpus));
   const emission: Record<string, { cold: Sample; cached: Sample }> = {};
-  const hwCorpus = ioFreeSubset(corpus);
   for (const target of TARGETS as readonly Target[]) {
-    const input = target === 'sv' ? hwCorpus : corpus;
+    const input = corpus;
     const cold = measure(runs, () => compile(input, target));
     const cache = new FunctionCache();
     compile(input, target, {}, cache);
