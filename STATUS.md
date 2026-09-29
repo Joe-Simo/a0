@@ -13,6 +13,15 @@ original report is kept as `results/verification-handoff-2026-09-29.json` and is
 reproduced evidence (different corpus generator, different case count). If the archive
 turns up, reconcile against this tree rather than overwrite either.
 
+## Design decisions recorded from the user (2026-09-29)
+
+- Human readability is not a constraint. The representation is optimized for AI read/write
+  cost and correctness; audit views may be derived, never the primary form.
+- Any change must be rejected before commit if it fails parsing, typing, or revision
+  matching; well-typed wrong behavior is caught by acceptance tests, not by syntax.
+- Execution performance across targets is a goal with a ledger, not a claim; ties and
+  losses stay visible.
+
 ## Implemented scope (v0.1.1)
 
 - Types `u32`, `bool`; ops `mov add sub mul and or xor shl shr eq lt select` with exact
@@ -46,7 +55,7 @@ turns up, reconcile against this tree rather than overwrite either.
 | C via GNU gcc-15, **no sanitizer** (macOS gcc has no libubsan) | `bun run verify` | 6593 pass |
 | C-compatible source as C++17 via clang++, UBSan | `bun run verify` | 6593 pass |
 | Java via Homebrew OpenJDK 27 | `bun run verify` | 6593 pass |
-| WebAssembly (clang + wasm-ld) | `bun run verify` | **blocked**: `brew install lld` failed downloading its LLVM dependency bottle (curl HTTP/2 PROTOCOL_ERROR); the retry then failed with **No space left on device** while unpacking LLVM (~2 GB). Free disk space, `brew install lld`, then `bun run verify` |
+| WebAssembly (Homebrew clang 23 + wasm-ld, wasm32 freestanding) | `bun run verify` | 6593 pass, executed in Node's WebAssembly runtime; no browser/DOM test |
 | SystemVerilog RTL simulation (Icarus 12, `-g2012`) | `bun run hw` | 6593 cases pass, 48 modules incl. call instances |
 | SystemVerilog generic synthesis (Yosys 0.69 `synth` + `check -assert`) | `bun run hw` | pass; cell counts per module in `results/hardware.json` |
 | Not run for hardware | — | FPGA place-and-route, real cell library, timing, area, power, sequential logic |
@@ -98,8 +107,6 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 ## Blockers / not done
 
 - `A0-Research-Starter.zip` absent (see Provenance).
-- Wasm path blocked: `brew install lld` needs the LLVM bottle (~2 GB) and the disk is full.
-  Free space (e.g. `brew cleanup`, large Downloads), then `brew install lld` and `bun run verify`.
 - Paid model runs not authorized; Gate A unrun.
 - No Claude-tokenizer counts (needs `count_tokens` with credentials; free but blocked).
 - Not implemented: loops/regions, memory/arrays, effects, .NET, GPU, mobile packaging,
@@ -107,10 +114,9 @@ listed by `git log`; the push is verified against `origin/main` after each commi
 
 ## Next concrete action
 
-1. Rerun `bun run verify` once `wasm-ld` exists; record the Wasm row.
-2. Add structured control flow: a bounded `loop` region with an explicit trip count and
+1. Add structured control flow: a bounded `loop` region with an explicit trip count and
    loop-carried values (software) that lowers to a counted loop in JS/C/Java and to an
    unrolled or FSM form in SV, with evaluator, oracle, optimizer safeguards
    (no hoisting across iterations without proof), backends, and tests together.
-3. Expand the Gate A task set (≥10 held-out tasks incl. multi-function edits) and run it
+2. Expand the Gate A task set (≥10 held-out tasks incl. multi-function edits) and run it
    when authorized; report per-cell accepted-change cost with uncertainty.
