@@ -277,3 +277,11 @@ test('emission cache key follows callee changes (semantic revision)', async () =
   )) as { twice: (a: number) => number };
   assert.equal(mod.twice(5), 20);
 });
+
+test('SystemVerilog: shift by a literal distance is masked, never bit-selected', () => {
+  const p = parseAndValidate('fn s u32 -> u32\na shr p0 33\nb shl a p0\nret b\nend');
+  const sv = compile(p, 'sv').text;
+  assert.ok(sv.includes("p0 >> 5'd1"), sv);
+  assert.ok(sv.includes('<< p0[4:0]'), sv);
+  assert.ok(!/'d[0-9]+\[4:0\]/.test(sv));
+});

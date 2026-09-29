@@ -146,7 +146,7 @@ async function main(): Promise<void> {
     } else {
       const start = performance.now();
       const script =
-        'read_verilog -sv module.sv; hierarchy -check; proc; opt; synth; stat -json stat.json; check -assert';
+        'read_verilog -sv module.sv; hierarchy -check; proc; opt; synth; tee -q -o stat.json stat -json; check -assert';
       await writeFile(join(dir, 'synth.ys'), `${script.replace(/; /g, '\n')}\n`, 'utf8');
       const r = runTool(yosys.path, ['-q', '-s', 'synth.ys'], { cwd: dir, timeoutMs: 600_000 });
       if (!r.ok) {
