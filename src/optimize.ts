@@ -13,6 +13,7 @@
 import {
   evalOp,
   formatOperand,
+  isScalar,
   type Node,
   type Operand,
   run,
@@ -43,9 +44,12 @@ const isU32 = (o: Operand, v: number): boolean => o.kind === 'u32' && o.value ==
 const isBool = (o: Operand, v: boolean): boolean => o.kind === 'bool' && o.value === v;
 
 /** Return a replacement operand if the node folds/simplifies to an existing value. */
-function simplify(node: Node, fn: TypedFunc): Operand | undefined {
+function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): Operand | undefined {
   const [a, b, c] = node.args;
   if (node.args.every(isConst)) {
+    // Aggregate results have no literal form; only scalar-valued constant nodes fold.
+    const resultT = fn.types.get(node.id);
+    if (resultT !== undefined && !isScalar(resultT)) return undefined;
     const values = node.args.map(
       (arg) => (arg as Extract<Operand, { kind: 'u32' | 'bool' }>).value,
     );
@@ -67,6 +71,7 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
         init === undefined
       )
         return undefined;
+      if (Array.isArray(init) || extra.some((v) => Array.isArray(v))) return undefined;
       let state: Value = init;
       for (let i = 0; i < count; i += 1) {
         if (pred !== undefined && run(pred, [state, i, ...extra]) !== true) break;
@@ -76,11 +81,29 @@ function simplify(node: Node, fn: TypedFunc): Operand | undefined {
     } else {
       value = evalOp(node.op, values);
     }
-    return typeof value === 'boolean' ? { kind: 'bool', value } : { kind: 'u32', value };
+    if (typeof value === 'boolean') return { kind: 'bool', value };
+    if (typeof value === 'number') return { kind: 'u32', value };
+    return undefined;
   }
   if (a === undefined) return undefined;
   switch (node.op) {
     case 'call':
+    case 'arr':
+    case 'rec':
+      return undefined;
+    case 'get': {
+      // get of a directly built array with a literal index is that element.
+      const def = a.kind === 'node' ? defs.get(a.id) : undefined;
+      if (def?.op === 'arr' && b?.kind === 'u32') return def.args[b.value % def.args.length];
+      return undefined;
+    }
+    case 'at': {
+      const def = a.kind === 'node' ? defs.get(a.id) : undefined;
+      if (def?.op === 'rec' && b?.kind === 'u32') return def.args[b.value];
+      return undefined;
+    }
+    case 'set':
+    case 'put':
       return undefined;
     case 'fold':
     case 'loop': {
@@ -172,9 +195,10 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
   };
   const cse = new Map<string, string>();
   const kept: Node[] = [];
+  const defs = new Map<string, Node>();
   for (const node of fn.nodes) {
     const rewritten: Node = { ...node, args: node.args.map(resolve) };
-    const simple = simplify(rewritten, fn);
+    const simple = simplify(rewritten, fn, defs);
     if (simple !== undefined) {
       subst.set(node.id, simple);
       continue;
@@ -187,6 +211,7 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
     }
     cse.set(key, node.id);
     kept.push(rewritten);
+    defs.set(node.id, rewritten);
   }
   const ret = resolve(fn.ret);
   // Dead-code elimination: keep only nodes reachable from the result.

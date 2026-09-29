@@ -28,6 +28,7 @@ import {
   corpusSha256,
   generateCases,
   generateCorpus,
+  hasScalarSignature,
   INPUT_SEED,
 } from './corpus.js';
 
@@ -115,6 +116,7 @@ async function checkJs(program: TypedProgram, cases: readonly Case[]): Promise<T
 
 function cDriver(program: TypedProgram): string {
   const dispatch = program.functions.map((fn, i) => {
+    if (!hasScalarSignature(fn)) return `    case ${i}: printf("skip\\n"); break;`;
     const args = fn.params
       .map((t, p) =>
         t === 'u32' ? `(uint32_t)strtoul(tok[${p}], NULL, 10)` : `(bool)(tok[${p}][0] == '1')`,
@@ -242,7 +244,7 @@ async function checkWasm(program: TypedProgram, cases: readonly Case[]): Promise
       const fn = exports[`a0_${c.functionName}`];
       if (typeof fn !== 'function') return '<missing>';
       const raw = (fn as (...a: number[]) => number)(
-        ...c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : a | 0)),
+        ...c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : (a as number) | 0)),
       );
       const type = (program.byName.get(c.functionName) as TypedFunc).result;
       return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
@@ -272,6 +274,7 @@ async function checkWasm(program: TypedProgram, cases: readonly Case[]): Promise
 
 function javaDriver(program: TypedProgram): string {
   const dispatch = program.functions.map((fn, i) => {
+    if (!hasScalarSignature(fn)) return `        case ${i}: out.append("skip\\n"); break;`;
     const args = fn.params
       .map((t, p) =>
         t === 'u32' ? `Integer.parseUnsignedInt(tok[${p + 1}])` : `tok[${p + 1}].equals("1")`,

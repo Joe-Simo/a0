@@ -14,12 +14,14 @@ import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
 import type { TypedProgram, Value } from '../src/core.js';
 import { findIverilog, findVvp, findYosys, runTool, withTempDir } from '../src/toolchain.js';
-import { type Case, generateCases, generateCorpus } from './corpus.js';
+import { type Case, generateCases, generateCorpus, hasScalarSignature } from './corpus.js';
 
 const hex = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : v.toString(16));
 
 function testbench(program: TypedProgram): string {
   const insts = program.functions.map((fn, i) => {
+    if (!hasScalarSignature(fn))
+      return `  // ${fn.name}: aggregate signature, exercised through instantiating modules`;
     const decls = fn.params.map((t, p) => `  logic ${t === 'u32' ? '[31:0] ' : ''}in_${i}_${p};`);
     const out = `  logic ${fn.result === 'u32' ? '[31:0] ' : ''}out_${i};`;
     const ports = [...fn.params.map((_, p) => `.p${p}(in_${i}_${p})`), `.result(out_${i})`].join(
@@ -28,6 +30,7 @@ function testbench(program: TypedProgram): string {
     return [...decls, out, `  a0_${fn.name} u_${i} (${ports});`].join('\n');
   });
   const drive = program.functions.map((fn, i) => {
+    if (!hasScalarSignature(fn)) return `        ${i}: begin $display("skip"); end`;
     const sets = fn.params.map((_, p) => `in_${i}_${p} = args[${p}];`).join(' ');
     return `        ${i}: begin ${sets} #1; got = out_${i}; end`;
   });

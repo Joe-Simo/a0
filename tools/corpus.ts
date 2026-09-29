@@ -10,6 +10,7 @@
 import { createHash } from 'node:crypto';
 import {
   formatProgram,
+  isScalar,
   type Node,
   OP_ARITY,
   type Op,
@@ -17,6 +18,7 @@ import {
   parseAndValidate,
   type Type,
   type TypedProgram,
+  typeEquals,
   type Value,
 } from '../src/core.js';
 
@@ -37,6 +39,15 @@ export function makeRng(seed: number): () => number {
   };
 }
 
+const AGGREGATE_TYPES: readonly Type[] = [
+  { kind: 'arr', length: 2, elem: 'u32' },
+  { kind: 'arr', length: 3, elem: 'u32' },
+  { kind: 'arr', length: 4, elem: 'bool' },
+  { kind: 'rec', fields: ['u32', 'bool'] },
+  { kind: 'rec', fields: ['u32', 'u32', 'u32'] },
+  { kind: 'arr', length: 2, elem: { kind: 'rec', fields: ['u32', 'bool'] } },
+];
+
 const U32_OPS: readonly Op[] = ['add', 'sub', 'mul', 'and', 'or', 'xor', 'shl', 'shr'];
 const CMP_OPS: readonly Op[] = ['eq', 'lt'];
 
@@ -44,6 +55,9 @@ interface Slot {
   readonly operand: Operand;
   readonly type: Type;
 }
+
+const slotsOf = (slots: readonly Slot[], t: Type): Slot[] =>
+  slots.filter((s) => typeEquals(s.type, t));
 
 function pick<T>(rng: () => number, items: readonly T[]): T {
   const v = items[rng() % items.length];
@@ -62,17 +76,24 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     // (same parameters, bool result) so the generator can pair them in a `loop`.
     const twinCandidates = signatures.filter(
       (f) =>
-        !f.iterates && f.params.length >= 2 && f.params[1] === 'u32' && f.result === f.params[0],
+        !f.iterates &&
+        f.params.length >= 2 &&
+        f.params[1] === 'u32' &&
+        typeEquals(f.result, f.params[0] as Type),
     );
     const twin =
       twinCandidates.length > 0 && rng() % 3 === 0 ? pick(rng, twinCandidates) : undefined;
     const paramCount = twin === undefined ? 1 + (rng() % 4) : twin.params.length;
+    // Every fourth non-twin function takes one aggregate parameter (a helper reachable only via call).
+    const aggregateParam: Type | undefined =
+      twin === undefined && rng() % 4 === 0 ? pick(rng, AGGREGATE_TYPES) : undefined;
     const params: Type[] =
       twin === undefined
         ? Array.from({ length: paramCount }, (_, i) =>
             i === 0 || rng() % 5 !== 0 ? 'u32' : 'bool',
           )
         : [...twin.params];
+    if (aggregateParam !== undefined) params.push(aggregateParam);
     const slots: Slot[] = params.map((type, index) => ({
       operand: { kind: 'param', index },
       type,
@@ -100,7 +121,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     const u32Arg = (): Operand => (rng() % 4 === 0 ? literal() : pick(rng, u32Slots()).operand);
     for (let n = 0; n < nodeCount; n += 1) {
       const id = `n${n}`;
-      const roll = rng() % 10;
+      const roll = rng() % 12;
       let op: Op;
       let args: Operand[];
       let type: Type;
@@ -112,6 +133,63 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
         op = pick(rng, CMP_OPS);
         args = [u32Arg(), u32Arg()];
         type = 'bool';
+      } else if (roll >= 10) {
+        // Aggregate operations: build, read, or update an array/record from existing slots.
+        const aggSlots = slots.filter((s) => !isScalar(s.type));
+        const choice = rng() % 4;
+        if (choice === 0 || aggSlots.length === 0) {
+          const t = pick(rng, AGGREGATE_TYPES);
+          const elems: Type[] = isScalar(t)
+            ? []
+            : t.kind === 'arr'
+              ? Array.from({ length: t.length }, () => t.elem)
+              : [...t.fields];
+          if (elems.every((e) => slotsOf(slots, e).length > 0)) {
+            const buildArgs = elems.map((e) => pick(rng, slotsOf(slots, e)).operand);
+            nodes.push({
+              id,
+              op: isScalar(t) || t.kind === 'arr' ? 'arr' : 'rec',
+              args: buildArgs,
+            });
+            slots.push({ operand: { kind: 'node', id }, type: t });
+            continue;
+          }
+        } else {
+          const s = pick(rng, aggSlots);
+          const st = s.type as Exclude<Type, 'u32' | 'bool'>;
+          if (st.kind === 'arr') {
+            if (choice === 1 || slotsOf(slots, st.elem).length === 0) {
+              nodes.push({ id, op: 'get', args: [s.operand, u32Arg()] });
+              slots.push({ operand: { kind: 'node', id }, type: st.elem });
+            } else {
+              nodes.push({
+                id,
+                op: 'set',
+                args: [s.operand, u32Arg(), pick(rng, slotsOf(slots, st.elem)).operand],
+              });
+              slots.push({ operand: { kind: 'node', id }, type: st });
+            }
+            continue;
+          }
+          const k = rng() % st.fields.length;
+          const ft = st.fields[k] as Type;
+          if (choice === 1 || slotsOf(slots, ft).length === 0) {
+            nodes.push({ id, op: 'at', args: [s.operand, { kind: 'u32', value: k }] });
+            slots.push({ operand: { kind: 'node', id }, type: ft });
+          } else {
+            nodes.push({
+              id,
+              op: 'put',
+              args: [s.operand, { kind: 'u32', value: k }, pick(rng, slotsOf(slots, ft)).operand],
+            });
+            slots.push({ operand: { kind: 'node', id }, type: st });
+          }
+          continue;
+        }
+        op = 'mov';
+        const s = pick(rng, slots);
+        args = [s.operand];
+        type = s.type;
       } else if (roll === 8 && boolSlots().length > 0) {
         op = 'select';
         const cond = pick(rng, boolSlots()).operand;
@@ -129,23 +207,27 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
             !f.iterates &&
             f.params.length >= 2 &&
             f.params[1] === 'u32' &&
-            f.result === f.params[0],
+            typeEquals(f.result, f.params[0] as Type),
         );
         const body = bodies.length > 0 ? pick(rng, bodies) : undefined;
         const extraT = body === undefined ? [] : body.params.slice(2);
-        if (body !== undefined && extraT.every((t) => slots.some((s) => s.type === t))) {
+        if (
+          body !== undefined &&
+          extraT.every((t) => slotsOf(slots, t).length > 0) &&
+          slotsOf(slots, body.params[0] as Type).length > 0
+        ) {
           const stateT = body.params[0] as Type;
-          const init = stateT === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand;
+          const init = stateT === 'u32' ? u32Arg() : pick(rng, slotsOf(slots, stateT)).operand;
           const count: Operand = { kind: 'u32', value: rng() % 9 };
           const extra = extraT.map((t) =>
-            t === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand,
+            t === 'u32' ? u32Arg() : pick(rng, slotsOf(slots, t)).operand,
           );
           const preds = signatures.filter(
             (f) =>
               !f.iterates &&
               f.result === 'bool' &&
               f.params.length === body.params.length &&
-              f.params.every((t, k) => t === body.params[k]),
+              f.params.every((t, k) => typeEquals(t, body.params[k] as Type)),
           );
           if (preds.length > 0 && rng() % 2 === 0) {
             const pred = pick(rng, preds);
@@ -169,10 +251,10 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
       } else if (roll === 9 && signatures.length > 0 && rng() % 2 === 0) {
         // Call an earlier function whose parameter types can all be satisfied.
         const callee = pick(rng, signatures);
-        const usable = callee.params.every((t) => slots.some((s) => s.type === t));
+        const usable = callee.params.every((t) => slotsOf(slots, t).length > 0);
         if (usable) {
           const callArgs = callee.params.map((t) =>
-            t === 'u32' ? u32Arg() : pick(rng, boolSlots()).operand,
+            t === 'u32' ? u32Arg() : pick(rng, slotsOf(slots, t)).operand,
           );
           nodes.push({ id, op: 'call', callee: callee.name, args: callArgs });
           slots.push({ operand: { kind: 'node', id }, type: callee.result });
@@ -194,11 +276,11 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     }
     // Result: last u32 node combined with everything, so nothing is trivially dead.
     const result: Type = twin !== undefined ? 'bool' : rng() % 4 === 0 ? 'bool' : 'u32';
-    const candidates = slots.filter((s) => s.type === result && s.operand.kind === 'node');
+    const candidates = slots.filter((s) => typeEquals(s.type, result) && s.operand.kind === 'node');
     const ret =
       candidates.length > 0
         ? (candidates[candidates.length - 1] as Slot).operand
-        : (slots.find((s) => s.type === result) as Slot).operand;
+        : (slots.find((s) => typeEquals(s.type, result)) as Slot).operand;
     const text = formatProgram({ functions: [{ name: `g${f}`, params, result, nodes, ret }] });
     functions.push(text.trimEnd());
     const iterates = nodes.some(
@@ -218,7 +300,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
 
 const MASK = (1n << 32n) - 1n;
 
-export type OracleValue = bigint | boolean;
+export type OracleValue = bigint | boolean | readonly OracleValue[];
 
 function big(v: OracleValue | undefined, where: string): bigint {
   if (typeof v !== 'bigint') throw new Error(`oracle ${where}: expected u32`);
@@ -255,6 +337,31 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
       if (typeof a !== 'boolean' || b === undefined || c === undefined)
         throw new Error('oracle select');
       return a ? b : c;
+    case 'arr':
+    case 'rec':
+      return [...args];
+    case 'get': {
+      if (!Array.isArray(a) || a.length === 0) throw new Error('oracle get');
+      return a[Number(big(b, op) % BigInt(a.length))] as OracleValue;
+    }
+    case 'set': {
+      if (!Array.isArray(a) || a.length === 0 || c === undefined) throw new Error('oracle set');
+      const copy = [...a];
+      copy[Number(big(b, op) % BigInt(a.length))] = c;
+      return copy;
+    }
+    case 'at': {
+      if (!Array.isArray(a)) throw new Error('oracle at');
+      const v = a[Number(big(b, op))];
+      if (v === undefined) throw new Error('oracle at range');
+      return v;
+    }
+    case 'put': {
+      if (!Array.isArray(a) || c === undefined) throw new Error('oracle put');
+      const copy = [...a];
+      copy[Number(big(b, op))] = c;
+      return copy;
+    }
     case 'call':
     case 'fold':
     case 'loop':
@@ -273,10 +380,8 @@ export function oracleRun(
         return BigInt(o.value);
       case 'bool':
         return o.value;
-      case 'param': {
-        const v = args[o.index];
-        return typeof v === 'boolean' ? v : BigInt(v ?? 0);
-      }
+      case 'param':
+        return valueToOracle(args[o.index] ?? 0);
       case 'node': {
         const v = env.get(o.id);
         if (v === undefined) throw new Error(`oracle unbound ${o.id}`);
@@ -315,7 +420,14 @@ export function oracleRun(
 }
 
 export function oracleToValue(v: OracleValue): Value {
+  if (Array.isArray(v)) return v.map(oracleToValue);
   return typeof v === 'boolean' ? v : Number(v);
+}
+
+export function valueToOracle(v: Value): OracleValue {
+  if (typeof v === 'number') return BigInt(v);
+  if (typeof v === 'boolean') return v;
+  return v.map(valueToOracle);
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +442,11 @@ export interface Case {
   readonly expected: Value;
 }
 
+/** Functions with only u32/bool parameters and result: the ones the drivers can call directly. */
+export function hasScalarSignature(fn: TypedProgram['functions'][number]): boolean {
+  return fn.params.every(isScalar) && isScalar(fn.result);
+}
+
 export function generateCases(
   program: TypedProgram,
   seed = INPUT_SEED,
@@ -338,6 +455,7 @@ export function generateCases(
   const rng = makeRng(seed);
   const cases: Case[] = [];
   for (const fn of program.functions) {
+    if (!hasScalarSignature(fn)) continue;
     const argSets: Value[][] = [];
     // Boundary sweep: each u32 parameter takes each boundary value while the rest are 0/false.
     for (const [index, type] of fn.params.entries()) {

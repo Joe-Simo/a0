@@ -24,7 +24,50 @@
 
 export const LANGUAGE_VERSION = 'a0-0.1';
 
-export type Type = 'u32' | 'bool';
+/**
+ * Types: scalars, fixed-length arrays (`u32x4`, left-associative so `u32x4x2` is two
+ * u32x4), and positional records (`(u32,bool)`). Aggregates are values: every operation
+ * yields a fresh value, so no aliasing exists in the language.
+ */
+export type Type = 'u32' | 'bool' | ArrayType | RecordType;
+export interface ArrayType {
+  readonly kind: 'arr';
+  readonly length: number;
+  readonly elem: Type;
+}
+export interface RecordType {
+  readonly kind: 'rec';
+  readonly fields: readonly Type[];
+}
+
+export function isScalar(t: Type): t is 'u32' | 'bool' {
+  return t === 'u32' || t === 'bool';
+}
+
+export function typeEquals(a: Type, b: Type): boolean {
+  if (isScalar(a) || isScalar(b)) return a === b;
+  if (a.kind === 'arr')
+    return b.kind === 'arr' && a.length === b.length && typeEquals(a.elem, b.elem);
+  return (
+    b.kind === 'rec' &&
+    a.fields.length === b.fields.length &&
+    a.fields.every((f, i) => typeEquals(f, b.fields[i] as Type))
+  );
+}
+
+export function formatType(t: Type): string {
+  if (isScalar(t)) return t;
+  if (t.kind === 'arr') return `${formatType(t.elem)}x${t.length}`;
+  return `(${t.fields.map(formatType).join(',')})`;
+}
+
+/** Bit width of a value of this type (u32 = 32, bool = 1, aggregates packed). */
+export function bitWidth(t: Type): number {
+  if (t === 'u32') return 32;
+  if (t === 'bool') return 1;
+  if (t.kind === 'arr') return t.length * bitWidth(t.elem);
+  return t.fields.reduce((n, f) => n + bitWidth(f), 0);
+}
 
 export type Op =
   | 'mov'
@@ -41,7 +84,13 @@ export type Op =
   | 'select'
   | 'call'
   | 'fold'
-  | 'loop';
+  | 'loop'
+  | 'arr'
+  | 'rec'
+  | 'get'
+  | 'set'
+  | 'at'
+  | 'put';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -59,6 +108,12 @@ export const OPS: readonly Op[] = [
   'call',
   'fold',
   'loop',
+  'arr',
+  'rec',
+  'get',
+  'set',
+  'at',
+  'put',
 ];
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
@@ -78,6 +133,12 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   call: -1,
   fold: -1,
   loop: -1,
+  arr: -1,
+  rec: -1,
+  get: 2,
+  set: 3,
+  at: 2,
+  put: 3,
 };
 
 export type Operand =
@@ -140,6 +201,8 @@ export const LIMITS = {
   maxNodesPerFunction: 4096,
   maxParams: 64,
   maxIdentifierLength: 64,
+  maxArrayLength: 1024,
+  maxAggregateBits: 1 << 16,
 } as const;
 
 const IDENT = /^[a-z][a-z0-9_]{0,63}$/;
@@ -156,9 +219,47 @@ export function isValidFunctionName(name: string): boolean {
   return IDENT.test(name) && !RESERVED.has(name);
 }
 
-function parseType(text: string, line: number): Type {
-  if (text === 'u32' || text === 'bool') return text;
-  throw new A0Error(`unknown type '${text}'`, line);
+export function parseType(text: string, line?: number): Type {
+  let pos = 0;
+  const fail = (msg: string): never => {
+    throw new A0Error(`type '${text}': ${msg}`, line);
+  };
+  const parseOne = (): Type => {
+    let base: Type;
+    if (text.startsWith('u32', pos)) {
+      base = 'u32';
+      pos += 3;
+    } else if (text.startsWith('bool', pos)) {
+      base = 'bool';
+      pos += 4;
+    } else if (text[pos] === '(') {
+      pos += 1;
+      const fields: Type[] = [parseOne()];
+      while (text[pos] === ',') {
+        pos += 1;
+        fields.push(parseOne());
+      }
+      if (text[pos] !== ')') fail("expected ')'");
+      pos += 1;
+      base = { kind: 'rec', fields };
+    } else {
+      return fail(`unexpected '${text[pos] ?? 'end'}'`);
+    }
+    while (text[pos] === 'x') {
+      const m = /^x([1-9][0-9]*)/.exec(text.slice(pos));
+      if (!m) fail('expected array length after x');
+      const length = Number(m?.[1]);
+      if (length > LIMITS.maxArrayLength) fail(`array length exceeds ${LIMITS.maxArrayLength}`);
+      pos += (m?.[0] ?? '').length;
+      base = { kind: 'arr', length, elem: base };
+    }
+    if (bitWidth(base) > LIMITS.maxAggregateBits)
+      fail(`type exceeds ${LIMITS.maxAggregateBits} bits`);
+    return base;
+  };
+  const t = parseOne();
+  if (pos !== text.length) fail(`trailing '${text.slice(pos)}'`);
+  return t;
 }
 
 export function parseOperand(text: string, line?: number): Operand {
@@ -204,9 +305,11 @@ export function parseNode(lineText: string, line?: number): Node {
     }
     return { id, op, callee, args: args.map((r) => parseOperand(r, line)) };
   }
-  if (rest.length !== OP_ARITY[op]) {
+  if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
     throw new A0Error(`${op} expects ${OP_ARITY[op]} operands, got ${rest.length}`, line);
   }
+  if (OP_ARITY[op] < 0 && rest.length === 0)
+    throw new A0Error(`${op} expects at least one operand`, line);
   return { id, op, args: rest.map((r) => parseOperand(r, line)) };
 }
 
@@ -317,7 +420,9 @@ function operandType(
 }
 
 function expect(actual: Type, wanted: Type, where: string): void {
-  if (actual !== wanted) throw new A0Error(`${where}: expected ${wanted}, got ${actual}`);
+  if (!typeEquals(actual, wanted)) {
+    throw new A0Error(`${where}: expected ${formatType(wanted)}, got ${formatType(actual)}`);
+  }
 }
 
 /** Infer the result type of an operation given operand types; throws on mismatch. */
@@ -350,8 +455,39 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'select':
       if (b === undefined || c === undefined) throw new A0Error(`${where}: missing operand`);
       expect(a, 'bool', where);
-      if (b !== c) throw new A0Error(`${where}: select branches differ (${b} vs ${c})`);
+      if (!typeEquals(b, c)) {
+        throw new A0Error(
+          `${where}: select branches differ (${formatType(b)} vs ${formatType(c)})`,
+        );
+      }
       return b;
+    case 'arr': {
+      for (const [i, t] of argTypes.entries()) expect(t, a, `${where} element ${i}`);
+      const t: Type = { kind: 'arr', length: argTypes.length, elem: a };
+      if (bitWidth(t) > LIMITS.maxAggregateBits) throw new A0Error(`${where}: aggregate too large`);
+      return t;
+    }
+    case 'rec': {
+      const t: Type = { kind: 'rec', fields: [...argTypes] };
+      if (bitWidth(t) > LIMITS.maxAggregateBits) throw new A0Error(`${where}: aggregate too large`);
+      return t;
+    }
+    case 'get':
+      if (b === undefined) throw new A0Error(`${where}: missing operand`);
+      if (isScalar(a) || a.kind !== 'arr')
+        throw new A0Error(`${where}: get expects an array, got ${formatType(a)}`);
+      expect(b, 'u32', `${where} index`);
+      return a.elem;
+    case 'set':
+      if (b === undefined || c === undefined) throw new A0Error(`${where}: missing operand`);
+      if (isScalar(a) || a.kind !== 'arr')
+        throw new A0Error(`${where}: set expects an array, got ${formatType(a)}`);
+      expect(b, 'u32', `${where} index`);
+      expect(c, a.elem, `${where} element`);
+      return a;
+    case 'at':
+    case 'put':
+      throw new A0Error(`${where}: ${op} is typed with its literal field index`);
     case 'call':
     case 'fold':
     case 'loop':
@@ -384,8 +520,11 @@ export function validateFunction(
     if ((node.op === 'loop') !== (node.pred !== undefined)) {
       throw new A0Error(`${where}: predicate present iff op is loop`);
     }
-    if (!hasCallee && node.args.length !== OP_ARITY[node.op]) {
+    if (!hasCallee && OP_ARITY[node.op] >= 0 && node.args.length !== OP_ARITY[node.op]) {
       throw new A0Error(`${where}: wrong arity`);
+    }
+    if (OP_ARITY[node.op] < 0 && !hasCallee && node.args.length === 0) {
+      throw new A0Error(`${where}: ${node.op} expects at least one operand`);
     }
     const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
     for (const arg of node.args) {
@@ -396,7 +535,23 @@ export function validateFunction(
         throw new A0Error(`${where}: literal out of u32 range`);
       }
     }
-    if (node.op === 'call') {
+    if (node.op === 'at' || node.op === 'put') {
+      const [recT, idx] = argTypes;
+      const index = node.args[1];
+      if (recT === undefined || isScalar(recT) || recT.kind !== 'rec') {
+        throw new A0Error(
+          `${where}: ${node.op} expects a record, got ${recT === undefined ? 'nothing' : formatType(recT)}`,
+        );
+      }
+      if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
+        throw new A0Error(`${where}: ${node.op} field index must be a u32 literal`);
+      }
+      const field = recT.fields[index.value];
+      if (field === undefined)
+        throw new A0Error(`${where}: field ${index.value} out of range for ${formatType(recT)}`);
+      if (node.op === 'put') expect(argTypes[2] as Type, field, `${where} field value`);
+      types.set(node.id, node.op === 'at' ? field : recT);
+    } else if (node.op === 'call') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
         throw new A0Error(
@@ -511,9 +666,9 @@ export function formatNode(node: Node): string {
 }
 
 export function formatFunction(fn: Func): string {
-  const sig = fn.params.length > 0 ? ` ${fn.params.join(' ')}` : '';
+  const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
   const body = fn.nodes.map(formatNode).join('\n');
-  return `fn ${fn.name}${sig} -> ${fn.result}\n${body}${body ? '\n' : ''}ret ${formatOperand(fn.ret)}\nend`;
+  return `fn ${fn.name}${sig} -> ${formatType(fn.result)}\n${body}${body ? '\n' : ''}ret ${formatOperand(fn.ret)}\nend`;
 }
 
 export function formatProgram(program: Program): string {
@@ -524,7 +679,19 @@ export function formatProgram(program: Program): string {
 // Reference interpreter
 // ---------------------------------------------------------------------------
 
-export type Value = number | boolean;
+export type Value = number | boolean | readonly Value[];
+
+export function valueEquals(a: Value, b: Value): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((x, i) => valueEquals(x, b[i] as Value))
+    );
+  }
+  return a === b;
+}
 
 export function evalOp(op: Op, args: readonly Value[]): Value {
   const a = args[0];
@@ -563,6 +730,33 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
         throw new A0Error('select: expected bool and two values');
       }
       return a ? b : c;
+    case 'arr':
+    case 'rec':
+      return [...args];
+    case 'get': {
+      if (!Array.isArray(a) || a.length === 0) throw new A0Error('get: expected array');
+      return a[num(b) % a.length] as Value;
+    }
+    case 'set': {
+      if (!Array.isArray(a) || a.length === 0 || c === undefined)
+        throw new A0Error('set: expected array');
+      const copy = [...a];
+      copy[num(b) % a.length] = c;
+      return copy;
+    }
+    case 'at': {
+      if (!Array.isArray(a)) throw new A0Error('at: expected record');
+      const v = a[num(b)];
+      if (v === undefined) throw new A0Error('at: field out of range');
+      return v;
+    }
+    case 'put': {
+      if (!Array.isArray(a) || c === undefined || num(b) >= a.length)
+        throw new A0Error('put: bad field');
+      const copy = [...a];
+      copy[num(b)] = c;
+      return copy;
+    }
     case 'call':
     case 'fold':
     case 'loop':
@@ -575,9 +769,22 @@ export function checkArgument(type: Type, value: Value, where: string): void {
     if (typeof value !== 'boolean') throw new A0Error(`${where}: expected bool`);
     return;
   }
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > U32_MAX) {
-    throw new A0Error(`${where}: expected u32`);
+  if (type === 'u32') {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > U32_MAX) {
+      throw new A0Error(`${where}: expected u32`);
+    }
+    return;
   }
+  if (!Array.isArray(value)) throw new A0Error(`${where}: expected ${formatType(type)}`);
+  if (type.kind === 'arr') {
+    if (value.length !== type.length)
+      throw new A0Error(`${where}: expected ${type.length} elements`);
+    for (const [i, v] of value.entries()) checkArgument(type.elem, v, `${where}[${i}]`);
+    return;
+  }
+  if (value.length !== type.fields.length)
+    throw new A0Error(`${where}: expected ${type.fields.length} fields`);
+  for (const [i, f] of type.fields.entries()) checkArgument(f, value[i] as Value, `${where}.${i}`);
 }
 
 /** Evaluate a validated function on concrete arguments with the reference semantics. */

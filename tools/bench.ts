@@ -58,10 +58,14 @@ async function main(): Promise<void> {
   const target = corpus.functions[0] as TypedFunc;
   const editValidate = measure(runs, () => {
     const view = session.open(target.name);
-    const first = target.nodes[0];
-    if (first === undefined) throw new Error('empty function');
-    // Replace the first node with an equivalent mov of itself is invalid (self-reference); use a param mov.
-    session.apply(`${view.handle}\n${first.id} mov p0`);
+    // Replace the first scalar-typed node with a literal of its type (timing only, not semantics).
+    const first = target.nodes.find((n) => {
+      const t = target.types.get(n.id);
+      return t === 'u32' || t === 'bool';
+    });
+    if (first === undefined) throw new Error('no scalar node');
+    const literal = target.types.get(first.id) === 'u32' ? '0' : 'false';
+    session.apply(`${view.handle}\n${first.id} mov ${literal}`);
   });
 
   // Byte-only edit fixture on the affine example.

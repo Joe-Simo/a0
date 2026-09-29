@@ -1,7 +1,8 @@
 A0 v0.1 model guide (language instructions an AI needs before reading or writing A0).
 
 FUNCTION
-  fn NAME TYPE... -> TYPE      types: u32 bool. Parameters are positional: p0 p1 ...
+  fn NAME TYPE... -> TYPE      types: u32 bool, arrays TYPExN (u32x4), records (TYPE,TYPE) e.g. (u32,bool);
+                               nestable, no spaces: (u32,bool)x2. Parameters are positional: p0 p1 ...
   ID OP OPERAND...             one instruction per line; ID is lowercase [a-z][a-z0-9_]*
   ret OPERAND
   end
@@ -20,6 +21,10 @@ OPERATIONS (exact semantics)
   fold F n s a...  bounded loop: state = s; for i in 0..n-1: state = F(state, i, a...); result is the
                    final state. F must be defined earlier with parameters (state, u32 index, a...) and
                    return the state type. n is u32, so every fold terminates.
+  arr e0 e1 ...    array of same-typed values      rec e0 e1 ...   record (positional fields)
+  get a i          element i mod N of array a       set a i v       copy of a with element i mod N = v
+  at r k           field k (u32 literal) of record  put r k v       copy of r with field k = v
+  Aggregates are values: every op returns a new value; nothing aliases or mutates.
   loop P F n s a... fold with early exit: before iteration i, if P(state, i, a...) is false the loop
                    stops with the current state. P takes exactly F's parameters and returns bool.
 

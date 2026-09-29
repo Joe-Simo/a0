@@ -4,9 +4,12 @@ import { compile, FunctionCache } from '../src/backends.js';
 import {
   A0Error,
   formatFunction,
+  formatType,
   parse,
   parseAndValidate,
+  parseType,
   run,
+  type Type,
   type TypedFunc,
 } from '../src/core.js';
 import { applyPatch, EditSession, formatPatch, parsePatch, revision } from '../src/edit.js';
@@ -409,4 +412,103 @@ end`;
   const sv = compile(lit, 'sv').text;
   assert.equal((sv.match(/a0_below u_r_p/g) ?? []).length, 3);
   assert.ok(sv.includes("assign n_r_d1 = 1'b0 | ~n_r_c0;"));
+});
+
+test('aggregates: arrays and records are values; get/set index modulo length; at/put literal fields', async () => {
+  const src = `fn swap u32x2 -> u32x2
+a get p0 0
+b get p0 1
+c set p0 0 b
+d set c 1 a
+ret d
+end
+
+fn pair u32 bool -> (u32,bool)
+r rec p0 p1
+ret r
+end
+
+fn sum3 u32 u32 u32 -> u32
+v arr p0 p1 p2
+x get v 0
+y get v 1
+z get v 5
+s add x y
+t add s z
+v2 arr p0 p1
+w call swap v2
+q get w 0
+u add t q
+ret u
+end
+
+fn flag u32 -> bool
+r call pair p0 true
+f at r 1
+g put r 0 7
+h at g 0
+e eq h 7
+b select f e false
+ret b
+end`;
+  const p = parseAndValidate(src);
+  assert.equal(formatType(p.byName.get('pair')?.result as Type), '(u32,bool)');
+  assert.deepEqual(run(p.byName.get('swap') as TypedFunc, [[1, 2]]), [2, 1]);
+  // z = v[5 mod 3] = v[2]; q = swap(v)[0] = v[1]
+  assert.equal(run(p.byName.get('sum3') as TypedFunc, [1, 2, 3]), 8);
+  assert.equal(run(p.byName.get('flag') as TypedFunc, [3]), true);
+  // Value semantics: set never mutates its input.
+  const swap = p.byName.get('swap') as TypedFunc;
+  const input: number[] = [5, 6];
+  run(swap, [input]);
+  assert.deepEqual(input, [5, 6]);
+  // Typing.
+  assert.throws(
+    () => parseAndValidate('fn f u32 bool -> u32x2\na arr p0 p1\nret a\nend'),
+    /element 1/,
+  );
+  assert.throws(
+    () => parseAndValidate('fn f u32x2 u32 -> u32\na at p0 0\nret a\nend'),
+    /expects a record/,
+  );
+  assert.throws(
+    () => parseAndValidate('fn f (u32,bool) u32 -> u32\na at p0 p1\nret a\nend'),
+    /u32 literal/,
+  );
+  assert.throws(
+    () => parseAndValidate('fn f (u32,bool) -> u32\na at p0 2\nret a\nend'),
+    /out of range/,
+  );
+  assert.throws(
+    () => parseAndValidate('fn f u32x2 -> u32x2\na set p0 0 true\nret a\nend'),
+    /element/,
+  );
+  assert.throws(() => parseType('u32x0'), /expected array length/);
+  assert.throws(() => parseType('u32x99999'), /exceeds/);
+  assert.equal(formatType(parseType('(u32,bool)x2x3')), '(u32,bool)x2x3');
+  // Optimizer: get of a built array with a literal index is the element.
+  const o = optimizeFunction(fn('fn f u32 u32 -> u32\nv arr p0 p1\nx get v 3\nret x\nend'));
+  assert.equal(formatFunction(o.fn), 'fn f u32 u32 -> u32\nret p1\nend');
+  // Backends: JS executes with guards; C/Java/SV emit.
+  const js = compile(p, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as {
+    swap: (a: number[]) => number[];
+    sum3: (a: number, b: number, c: number) => number;
+  };
+  assert.deepEqual(mod.swap([1, 2]), [2, 1]);
+  assert.equal(mod.sum3(1, 2, 3), 8);
+  assert.throws(() => mod.swap([1]), RangeError);
+  const c = compile(p, 'c').text;
+  assert.ok(c.includes('typedef struct { uint32_t e[2]; } a0t_a2_u;'));
+  assert.ok(c.includes('a0t_r2_u_b a0_pair('));
+  const java = compile(p, 'java').text;
+  assert.ok(java.includes('record R_r2_u_b(int f0, boolean f1)'));
+  assert.ok(java.includes('a.clone()'));
+  const sv = compile(p, 'sv').text;
+  assert.ok(sv.includes('input logic [63:0] p0'));
+  assert.ok(sv.includes('always_comb begin n_c = p0; n_c[0 +: 32] = n_b; end'));
+  // Dynamic-index part-select survives only without the optimizer (it folds literal gets).
+  assert.ok(compile(p, 'sv', { optimize: false }).text.includes('assign n_z = n_v[64 +: 32];'));
 });

@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.1.3 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.2.0 · September 29, 2026 · Working codename, not a cleared brand
 
 ## 1. Product definition
 
@@ -71,7 +71,7 @@ instruction = id operation operand{operation_arity} NEWLINE
             | id "loop" predicate_name function_name count init operand* NEWLINE
 operand     = earlier_id | parameter | u32_literal | "true" | "false"
 parameter   = "p" decimal_index
-type        = "u32" | "bool"
+type        = "u32" | "bool" | type "x" length | "(" type ("," type)* ")"
 ```
 
 Each function has one result. Node identifiers are lowercase letters followed by lowercase letters, digits, or underscores, at most 64 characters. `p<number>`, `fn`, `ret`, `end`, `patch`, `true`, and `false` are reserved node identifiers. Node IDs are unique within a function; function names are unique within a program. Parameters are indexed from zero. `call` may only name a function defined earlier in the same program, so the call graph is acyclic; recursion, loops, heap, strings, arrays, and I/O are not accepted. Unsupported constructs are errors.
@@ -89,8 +89,11 @@ Each function has one result. Node identifiers are lowercase letters followed by
 | `call f` | f's parameter types | f's result type | Apply an earlier-defined function; pure, total, no recursion (v0.1.1) |
 | `fold f` | u32 count, T init, extra… | T | Bounded iteration: `state = f(state, i, extra…)` for `i` in `0..count-1`; `f : (T, u32, extra…) -> T` defined earlier (v0.1.2). Software backends emit a counted loop; the combinational SystemVerilog backend unrolls literal counts up to 256 and rejects variable counts with a diagnostic (sequential state is future work). |
 | `loop p f` | u32 cap, T init, extra… | T | `fold` with early exit: stops before iteration `i` when `p(state, i, extra…)` is false; `p` has `f`'s parameters and returns bool (v0.1.3). Hardware unrolls literal caps with a done-latch chain. |
+| `arr`, `rec` | T×N / T0…Tk | TxN / (T0,…,Tk) | Build an array or positional record from values (v0.2.0) |
+| `get`, `set` | TxN, u32 [, T] | T / TxN | Element read / copy-with-element; the index is reduced modulo N, so both are total (v0.2.0) |
+| `at`, `put` | (…), literal u32 [, Tk] | Tk / (…) | Field read / copy-with-field with a literal field index (v0.2.0) |
 
-Integer literals are decimal 0 through 4,294,967,295. A Boolean is not implicitly a number. Invalid values, missing references, duplicate definitions, wrong arity, and inconsistent types are rejected. Every current operation is pure and total on valid input. Both `select` inputs are ordinary values; this is not lazy branching with effects.
+Aggregates have value semantics: no operation mutates or aliases; `set`/`put` return copies. Backends: JS arrays with copy-on-write, C structs by value, Java arrays/records with clone-on-write, SystemVerilog packed bit vectors (element 0 at the LSB) with part-selects. Integer literals are decimal 0 through 4,294,967,295. A Boolean is not implicitly a number. Invalid values, missing references, duplicate definitions, wrong arity, and inconsistent types are rejected. Every current operation is pure and total on valid input. Both `select` inputs are ordinary values; this is not lazy branching with effects.
 
 JavaScript uses exact 32-bit multiplication and explicit unsigned normalization, and validates public inputs. C uses fixed-width unsigned types; multiplication is widened to unsigned 64-bit before truncating, avoiding signed-promotion hazards. Java uses the signed `int` bit pattern with unsigned comparison and appropriately interpreted external results. SystemVerilog maps the two-state meaning into explicit logic widths, but simulation/synthesis has not been performed.
 
@@ -149,7 +152,7 @@ Integration is part of the language product. Node packages, browser APIs, native
 
 The initial core must grow without silently changing existing meanings.
 
-- **General computation:** calls (v0.1.1), bounded `fold` (v0.1.2) and capped early-exit `loop` (v0.1.3) are implemented; next are records/arrays, general structured regions, and sequential hardware state, bounded iteration first, then broader recursion/control flow for suitable software profiles.
+- **General computation:** calls (v0.1.1), bounded `fold` (v0.1.2), capped early-exit `loop` (v0.1.3), and value-semantics arrays/records (v0.2.0) are implemented; next are explicit state and typed effects, then general structured regions, and sequential hardware state, bounded iteration first, then broader recursion/control flow for suitable software profiles.
 - **Data and memory:** fixed/arbitrary-width integers, strict floating-point profiles, buffers/records/arrays, explicit layout where needed, ownership/borrowing or region inference, managed adapters where appropriate. No universal boxing requirement.
 - **Effects and concurrency:** typed capabilities for files/network/clock/device access, structured tasks, declared synchronization and memory-order semantics. External nondeterminism is explicit; reproducibility is not assumed across arbitrary concurrent schedules.
 - **Domain operations:** high-level collection, query, numeric, graphics, UI, and hardware operations with defined semantics and optional certified lowerings. Preserve high-level information until the backend can use it.

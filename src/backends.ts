@@ -10,6 +10,9 @@
 
 import {
   A0Error,
+  bitWidth,
+  formatType,
+  isScalar,
   type Node,
   type Operand,
   type Type,
@@ -32,6 +35,64 @@ const hex = (v: number): string => `0x${v.toString(16).padStart(8, '0')}`;
 
 type Emitter = (fn: TypedFunc) => string;
 
+/** Type of an operand inside a function (params, nodes, literals). */
+function operandTypeOf(fn: TypedFunc, o: Operand): Type {
+  switch (o.kind) {
+    case 'u32':
+      return 'u32';
+    case 'bool':
+      return 'bool';
+    case 'param':
+      return fn.params[o.index] ?? 'u32';
+    case 'node':
+      return fn.types.get(o.id) ?? 'u32';
+  }
+}
+
+function arrayLength(fn: TypedFunc, o: Operand | undefined): number {
+  if (o === undefined) throw new A0Error('missing array operand');
+  const t = operandTypeOf(fn, o);
+  if (isScalar(t) || t.kind !== 'arr') throw new A0Error('expected array operand');
+  return t.length;
+}
+
+/** Injective, identifier-safe name for a type: u, b, a<N>_<elem>, r<N>_<f>..._<f>. */
+export function mangleType(t: Type): string {
+  if (t === 'u32') return 'u';
+  if (t === 'bool') return 'b';
+  if (t.kind === 'arr') return `a${t.length}_${mangleType(t.elem)}`;
+  return `r${t.fields.length}_${t.fields.map(mangleType).join('_')}`;
+}
+
+/** All aggregate types used by a program, nested types first, deduplicated. */
+export function aggregateTypes(program: TypedProgram): Type[] {
+  const seen = new Set<string>();
+  const out: Type[] = [];
+  const visit = (t: Type): void => {
+    if (isScalar(t)) return;
+    if (t.kind === 'arr') visit(t.elem);
+    else t.fields.forEach(visit);
+    const key = formatType(t);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(t);
+    }
+  };
+  for (const fn of program.functions) {
+    fn.params.forEach(visit);
+    visit(fn.result);
+    for (const t of fn.types.values()) visit(t);
+  }
+  return out;
+}
+
+/** JSON shape used by the JS runtime guard. */
+function jsShape(t: Type): string {
+  if (isScalar(t)) return JSON.stringify(t);
+  if (t.kind === 'arr') return `["arr",${t.length},${jsShape(t.elem)}]`;
+  return `["rec",[${t.fields.map(jsShape).join(',')}]]`;
+}
+
 // ---------------------------------------------------------------------------
 // JavaScript
 // ---------------------------------------------------------------------------
@@ -46,6 +107,20 @@ function a0_bool(v, name) {
   if (typeof v !== 'boolean') throw new TypeError(name + ': expected bool');
   return v;
 }
+function a0_check(v, shape, name) {
+  if (shape === 'u32') return a0_u32(v, name);
+  if (shape === 'bool') return a0_bool(v, name);
+  if (!Array.isArray(v)) throw new TypeError(name + ': expected ' + shape[0]);
+  if (shape[0] === 'arr') {
+    if (v.length !== shape[1]) throw new RangeError(name + ': expected ' + shape[1] + ' elements');
+    for (let i = 0; i < v.length; i++) a0_check(v[i], shape[2], name + '[' + i + ']');
+  } else {
+    if (v.length !== shape[1].length) throw new RangeError(name + ': expected ' + shape[1].length + ' fields');
+    for (let i = 0; i < v.length; i++) a0_check(v[i], shape[1][i], name + '.' + i);
+  }
+  return v;
+}
+function a0_with(a, i, v) { const c = a.slice(); c[i] = v; return c; }
 `;
 
 function jsOperand(o: Operand): string {
@@ -61,7 +136,7 @@ function jsOperand(o: Operand): string {
   }
 }
 
-function jsExpr(node: Node): string {
+function jsExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(jsOperand);
   switch (node.op) {
     case 'mov':
@@ -90,6 +165,17 @@ function jsExpr(node: Node): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(jsOperand).join(', ')})`;
+    case 'arr':
+    case 'rec':
+      return `[${node.args.map(jsOperand).join(', ')}]`;
+    case 'get':
+      return `${a}[${b} % ${arrayLength(fn, node.args[0])}]`;
+    case 'set':
+      return `a0_with(${a}, ${b} % ${arrayLength(fn, node.args[0])}, ${c})`;
+    case 'at':
+      return `${a}[${b}]`;
+    case 'put':
+      return `a0_with(${a}, ${b}, ${c})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -98,9 +184,11 @@ function jsExpr(node: Node): string {
 
 const emitJsFunction: Emitter = (fn) => {
   const params = fn.params.map((_, i) => `p${i}`).join(', ');
-  const guards = fn.params.map((t, i) => `  a0_${t}(p${i}, 'p${i}');`);
+  const guards = fn.params.map((t, i) =>
+    isScalar(t) ? `  a0_${t}(p${i}, 'p${i}');` : `  a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
+  );
   const body = fn.nodes.map((n) => {
-    if (n.op !== 'fold' && n.op !== 'loop') return `  const n_${n.id} = ${jsExpr(n)};`;
+    if (n.op !== 'fold' && n.op !== 'loop') return `  const n_${n.id} = ${jsExpr(n, fn)};`;
     const [count, init, ...extra] = n.args.map(jsOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!${n.pred ?? ''}(${call})) break;` : '';
@@ -124,7 +212,37 @@ const C_PRELUDE = `/* Generated by A0 ${COMPILER_VERSION}. Exact u32/bool semant
 #include <stdbool.h>
 `;
 
-const cType = (t: Type): string => (t === 'u32' ? 'uint32_t' : 'bool');
+const cType = (t: Type): string =>
+  t === 'u32' ? 'uint32_t' : t === 'bool' ? 'bool' : `a0t_${mangleType(t)}`;
+
+/** Typedefs plus constructor/update helpers for one aggregate type (C, also valid C++). */
+function cTypeDecl(t: Type): string {
+  if (isScalar(t)) return '';
+  const name = cType(t);
+  const m = mangleType(t);
+  if (t.kind === 'arr') {
+    const e = cType(t.elem);
+    const params = Array.from({ length: t.length }, (_, i) => `${e} e${i}`).join(', ');
+    const inits = Array.from({ length: t.length }, (_, i) => `r.e[${i}] = e${i};`).join(' ');
+    return [
+      `typedef struct { ${e} e[${t.length}]; } ${name};`,
+      `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
+      `static inline ${name} a0set_${m}(${name} a, uint32_t i, ${e} v) { a.e[i % ${t.length}u] = v; return a; }`,
+    ].join('\n');
+  }
+  const fields = t.fields.map((f, i) => `${cType(f)} f${i};`).join(' ');
+  const params = t.fields.map((f, i) => `${cType(f)} f${i}`).join(', ');
+  const inits = t.fields.map((_, i) => `r.f${i} = f${i};`).join(' ');
+  const puts = t.fields.map(
+    (f, i) =>
+      `static inline ${name} a0put_${m}_${i}(${name} r, ${cType(f)} v) { r.f${i} = v; return r; }`,
+  );
+  return [
+    `typedef struct { ${fields} } ${name};`,
+    `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
+    ...puts,
+  ].join('\n');
+}
 
 function cOperand(o: Operand): string {
   switch (o.kind) {
@@ -139,7 +257,7 @@ function cOperand(o: Operand): string {
   }
 }
 
-function cExpr(node: Node): string {
+function cExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(cOperand);
   switch (node.op) {
     case 'mov':
@@ -168,6 +286,17 @@ function cExpr(node: Node): string {
       return `(${a} ? ${b} : ${c})`;
     case 'call':
       return `a0_${node.callee ?? ''}(${node.args.map(cOperand).join(', ')})`;
+    case 'arr':
+    case 'rec':
+      return `a0mk_${mangleType(fn.types.get(node.id) ?? 'u32')}(${node.args.map(cOperand).join(', ')})`;
+    case 'get':
+      return `${a}.e[${b} % ${arrayLength(fn, node.args[0])}u]`;
+    case 'set':
+      return `a0set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${b}, ${c})`;
+    case 'at':
+      return `${a}.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}`;
+    case 'put':
+      return `a0put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}(${a}, ${c})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -183,7 +312,7 @@ export function cSignature(fn: TypedFunc): string {
 const emitCFunction: Emitter = (fn) => {
   const body = fn.nodes.map((n) => {
     const t = cType(fn.types.get(n.id) ?? 'u32');
-    if (n.op !== 'fold' && n.op !== 'loop') return `  const ${t} n_${n.id} = ${cExpr(n)};`;
+    if (n.op !== 'fold' && n.op !== 'loop') return `  const ${t} n_${n.id} = ${cExpr(n, fn)};`;
     const [count, init, ...extra] = n.args.map(cOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
@@ -198,7 +327,39 @@ const emitCFunction: Emitter = (fn) => {
 
 export const JAVA_CLASS = 'A0Module';
 
-const javaType = (t: Type): string => (t === 'u32' ? 'int' : 'boolean');
+const javaType = (t: Type): string =>
+  t === 'u32'
+    ? 'int'
+    : t === 'bool'
+      ? 'boolean'
+      : t.kind === 'arr'
+        ? `${javaType(t.elem)}[]`
+        : `R_${mangleType(t)}`;
+
+/** Nested record declarations and copy-on-write helpers for one aggregate type. */
+function javaTypeDecl(t: Type): string {
+  if (isScalar(t)) return '';
+  const m = mangleType(t);
+  if (t.kind === 'arr') {
+    const jt = javaType(t);
+    const e = javaType(t.elem);
+    return `  static ${jt} set_${m}(${jt} a, int i, ${e} v) { ${jt} c = a.clone(); c[Integer.remainderUnsigned(i, ${t.length})] = v; return c; }`;
+  }
+  const name = javaType(t);
+  const comps = t.fields.map((f, i) => `${javaType(f)} f${i}`).join(', ');
+  const puts = t.fields.map((f, i) => {
+    const args = t.fields.map((_, k) => (k === i ? 'v' : `r.f${k}()`)).join(', ');
+    return `  static ${name} put_${m}_${i}(${name} r, ${javaType(f)} v) { return new ${name}(${args}); }`;
+  });
+  return [`  record ${name}(${comps}) {}`, ...puts].join('\n');
+}
+
+/** Java aggregate literal (arrays need the full nested element type in `new`). */
+function javaNew(t: Type, args: readonly string[]): string {
+  if (isScalar(t)) throw new A0Error('javaNew on scalar');
+  if (t.kind === 'arr') return `new ${javaType(t)}{${args.join(', ')}}`;
+  return `new ${javaType(t)}(${args.join(', ')})`;
+}
 
 function javaOperand(o: Operand): string {
   switch (o.kind) {
@@ -213,7 +374,7 @@ function javaOperand(o: Operand): string {
   }
 }
 
-function javaExpr(node: Node): string {
+function javaExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(javaOperand);
   switch (node.op) {
     case 'mov':
@@ -242,6 +403,17 @@ function javaExpr(node: Node): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(javaOperand).join(', ')})`;
+    case 'arr':
+    case 'rec':
+      return javaNew(fn.types.get(node.id) ?? 'u32', node.args.map(javaOperand));
+    case 'get':
+      return `${a}[Integer.remainderUnsigned(${b}, ${arrayLength(fn, node.args[0])})]`;
+    case 'set':
+      return `set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${b}, ${c})`;
+    case 'at':
+      return `${a}.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}()`;
+    case 'put':
+      return `put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}(${a}, ${c})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -252,7 +424,7 @@ const emitJavaFunction: Emitter = (fn) => {
   const params = fn.params.map((t, i) => `${javaType(t)} p${i}`).join(', ');
   const body = fn.nodes.map((n) => {
     const t = javaType(fn.types.get(n.id) ?? 'u32');
-    if (n.op !== 'fold' && n.op !== 'loop') return `    final ${t} n_${n.id} = ${javaExpr(n)};`;
+    if (n.op !== 'fold' && n.op !== 'loop') return `    final ${t} n_${n.id} = ${javaExpr(n, fn)};`;
     const [count, init, ...extra] = n.args.map(javaOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!${n.pred ?? ''}(${call})) break;` : '';
@@ -270,7 +442,13 @@ const emitJavaFunction: Emitter = (fn) => {
 // SystemVerilog (combinational; emitted only, see results for validation status)
 // ---------------------------------------------------------------------------
 
-const svType = (t: Type): string => (t === 'u32' ? 'logic [31:0]' : 'logic');
+const svType = (t: Type): string => (t === 'bool' ? 'logic' : `logic [${bitWidth(t) - 1}:0]`);
+
+/** Bit offset of field k inside a record (field 0 at the LSB). */
+function svFieldOffset(t: Type, k: number): number {
+  if (isScalar(t) || t.kind !== 'rec') throw new A0Error('field offset on non-record');
+  return t.fields.slice(0, k).reduce((n, f) => n + bitWidth(f), 0);
+}
 
 function svOperand(o: Operand): string {
   switch (o.kind) {
@@ -292,7 +470,7 @@ function svShiftAmount(o: Operand | undefined): string {
   return `${svOperand(o)}[4:0]`;
 }
 
-function svExpr(node: Node): string {
+function svExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(svOperand);
   switch (node.op) {
     case 'mov':
@@ -319,6 +497,28 @@ function svExpr(node: Node): string {
       return `${a} < ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
+    case 'arr':
+    case 'rec':
+      // Element/field 0 occupies the least significant bits.
+      return `{${[...node.args].reverse().map(svOperand).join(', ')}}`;
+    case 'get': {
+      const t = operandTypeOf(fn, node.args[0] as Operand);
+      if (isScalar(t) || t.kind !== 'arr') throw new A0Error('get on non-array');
+      const w = bitWidth(t.elem);
+      const idx = node.args[1];
+      const base =
+        idx?.kind === 'u32' ? `${(idx.value % t.length) * w}` : `((${b} % ${t.length}) * ${w})`;
+      return `${a}[${base} +: ${w}]`;
+    }
+    case 'at': {
+      const t = operandTypeOf(fn, node.args[0] as Operand);
+      const k = node.args[1]?.kind === 'u32' ? node.args[1].value : 0;
+      if (isScalar(t) || t.kind !== 'rec') throw new A0Error('at on non-record');
+      return `${a}[${svFieldOffset(t, k)} +: ${bitWidth(t.fields[k] as Type)}]`;
+    }
+    case 'set':
+    case 'put':
+      throw new A0Error(`${node.op} is emitted as an always_comb block`);
     case 'call':
     case 'fold':
     case 'loop':
@@ -386,7 +586,26 @@ const emitSvFunction: Emitter = (fn) => {
       lines.push(`  assign n_${n.id} = ${prev};`);
       return lines.join('\n');
     }
-    if (n.op !== 'call') return `  assign n_${n.id} = ${svExpr(n)};`;
+    if (n.op === 'set' || n.op === 'put') {
+      const [a, b, c] = n.args.map(svOperand);
+      const t = operandTypeOf(fn, n.args[0] as Operand);
+      if (isScalar(t)) throw new A0Error(`${n.op} on scalar`);
+      let slice: string;
+      if (n.op === 'set') {
+        if (t.kind !== 'arr') throw new A0Error('set on non-array');
+        const w = bitWidth(t.elem);
+        const idx = n.args[1];
+        const base =
+          idx?.kind === 'u32' ? `${(idx.value % t.length) * w}` : `((${b} % ${t.length}) * ${w})`;
+        slice = `[${base} +: ${w}]`;
+      } else {
+        if (t.kind !== 'rec') throw new A0Error('put on non-record');
+        const k = n.args[1]?.kind === 'u32' ? n.args[1].value : 0;
+        slice = `[${svFieldOffset(t, k)} +: ${bitWidth(t.fields[k] as Type)}]`;
+      }
+      return `  always_comb begin n_${n.id} = ${a}; n_${n.id}${slice} = ${c}; end`;
+    }
+    if (n.op !== 'call') return `  assign n_${n.id} = ${svExpr(n, fn)};`;
     // A call is a combinational instance of the callee module, connected by port name.
     const conns = [...n.args.map((arg, i) => `.p${i}(${svOperand(arg)})`), `.result(n_${n.id})`];
     return `  a0_${n.callee ?? ''} u_${n.id} (${conns.join(', ')});`;
@@ -413,14 +632,19 @@ const EMITTERS: Readonly<Record<Target, Emitter>> = {
   sv: emitSvFunction,
 };
 
-function assemble(target: Target, bodies: readonly string[]): string {
+function assemble(target: Target, bodies: readonly string[], program: TypedProgram): string {
+  const types = aggregateTypes(program);
   switch (target) {
     case 'js':
       return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
-    case 'c':
-      return `${C_PRELUDE}\n${bodies.join('\n\n')}\n`;
-    case 'java':
-      return `// Generated by A0 ${COMPILER_VERSION}. int carries the u32 bit pattern.\npublic final class ${JAVA_CLASS} {\n  private ${JAVA_CLASS}() {}\n\n${bodies.join('\n\n')}\n}\n`;
+    case 'c': {
+      const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
+      return `${C_PRELUDE}\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n`;
+    }
+    case 'java': {
+      const decls = types.map(javaTypeDecl).filter((d) => d.length > 0);
+      return `// Generated by A0 ${COMPILER_VERSION}. int carries the u32 bit pattern.\npublic final class ${JAVA_CLASS} {\n  private ${JAVA_CLASS}() {}\n\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n}\n`;
+    }
     case 'sv':
       return `// Generated by A0 ${COMPILER_VERSION}. Combinational, two-state semantics intended.\n\`timescale 1ns/1ps\n${bodies.join('\n\n')}\n`;
   }
@@ -507,5 +731,5 @@ export function compile(
     cache.set(key, text);
     return text;
   });
-  return { text: assemble(target, bodies), cacheHits, cacheMisses };
+  return { text: assemble(target, bodies, program), cacheHits, cacheMisses };
 }
