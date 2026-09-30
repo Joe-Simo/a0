@@ -5,6 +5,7 @@
  *   a0 check <file.a0>
  *   a0 run <file.a0> <function> <args...>
  *   a0 emit <js|c|java|sv|arm64|x86_64|riscv64|avr|wasm|arm32> <file.a0> [out]
+ *   a0 emit c --parallel[=auto|gpu] <file.a0> [out]   (automatic parallel folds, src/parallel.ts)
  *   a0 wasm <file.a0> <out.wasm>
  *   a0 patch <file.a0> <patch-file> [out.a0]
  *   a0 revision <file.a0> <function>
@@ -30,6 +31,7 @@ import {
 } from './core.js';
 import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
 import { link } from './link.js';
+import { parallelC } from './parallel.js';
 import { compileWasm } from './toolchain.js';
 import { wasmModuleBytes } from './wasm.js';
 
@@ -40,6 +42,7 @@ function usage(): never {
       '  a0 check <file.a0>',
       '  a0 run <file.a0> <function> <args...>',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
+      '  a0 emit c --parallel[=auto|gpu] <file.a0> [out]   # threads (+ Metal when built as ObjC)',
       '  a0 wasm <file.a0> <out.wasm>             # C backend + Clang + wasm-ld (emit wasm: direct)',
       '  a0 patch <file.a0> <patch-file> [out.a0]',
       '  a0 revision <file.a0> <function>',
@@ -96,9 +99,19 @@ async function main(argv: readonly string[]): Promise<void> {
       return;
     }
     case 'emit': {
-      const [target, file, out] = rest;
+      const flag = rest.find((a) => a.startsWith('--parallel'));
+      const [target, file, out] = rest.filter((a) => a !== flag);
       if (target === undefined || file === undefined || !isTarget(target)) usage();
       const program = await loadProgram(file);
+      if (flag !== undefined) {
+        const mode = flag === '--parallel' ? 'auto' : flag.slice('--parallel='.length);
+        if (target !== 'c' || (mode !== 'auto' && mode !== 'gpu' && mode !== 'off')) usage();
+        const cParallel = parallelC({ mode });
+        const text = compile(program, 'c', cParallel === undefined ? {} : { cParallel }).text;
+        if (out === undefined) process.stdout.write(text);
+        else await writeFile(out, text, 'utf8');
+        return;
+      }
       const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
       const { text, hits, misses } =
         cache === undefined

@@ -1205,6 +1205,96 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Next: re-measure on an idle machine; the harness always runs emitted first in each sample
   on a shared polymorphic call site, so alternating the order would remove one bias.
 
+## Session 2026-09-30 (automatic parallel folds)
+
+- **`src/parallel.ts` (a0c-0.1.13, C target, opt-in `a0 emit c --parallel[=auto|gpu]`,
+  `compile(p, 'c', { cParallel: parallelC({ mode }) })`; off by default, so every existing
+  output is unchanged).** Two fold shapes are proven syntactically on the optimized body, no
+  heuristics: a reduction `fold B n s x...` where B returns `state OP g(i, x...)`, g independent
+  of the state and the state read nowhere else, OP one of wrapping add/mul, and/or/xor, or
+  min/max written as `select (lt|le|gt|ge state g) ...` (all associative and commutative on u32,
+  so any grouping is exact); and an element-wise map `set state i h(i, x...)` with h independent
+  of the state and n <= array length (distinct indices; the owned C variant writes element i in
+  place by the emitter's own `mutableHere` rule, exported as `ownedUpdateInPlace`). Purity (no
+  io anywhere in the body or callees) and no aliasing are what make this legal without the
+  alias/effect analysis a C compiler would need. Each chunk calls B(identity, ...) accumulation
+  itself, since B(acc, i) is exactly acc OP g(i), so no code is synthesized for g.
+- **Strategies and cost model** (work = n x static body cost in simple operations; literal
+  counts decided at compile time, variable counts by the same test at run time): serial below
+  2^20 (the unchanged loop, which Clang vectorizes: the SIMD path on C), pthreads at or above
+  2^20 (8 dynamic chunks per thread over an atomic counter, so P and E cores balance; partials
+  combined in chunk order; calls nested inside a chunk run sequentially through a thread-local
+  depth; `A0_THREADS` overrides the worker count), and in `gpu` mode Metal at or above 2^25
+  for reductions whose body signature is all scalars: the site embeds MSL from `emitMetal` of
+  the body's subprogram plus a strided-partials kernel `a0gr` (65536 threads), and a small
+  Objective-C runtime in the same file (active only when built with `-x objective-c
+  -fobjc-arc`, otherwise a stub) dispatches it and combines partials on the CPU; no device or a
+  failed compile falls back to threads.
+- **C backend fixes found by the benchmark** (both shared-file changes, both value-semantics
+  preserving): (1) scalar-state fold bodies that read aggregate extras get a `view` variant
+  `a0v_f(p0, p1, const T *p2...)` and the fold calls it, instead of copying every array extra
+  into every trip (dot64k serial went from ~66 ms to ~70 us per call); (2) arrays longer than
+  4096 elements get a pointer constructor (a 65536-parameter constructor exceeded Clang's
+  parameter limit). A0 arrays stay capped at 65536 elements (`LIMITS.maxArrayLength`), so the
+  "1M-element array" kernels are generated streams, and the two array kernels use 64K.
+- **Verification**: small sizes (4099 trips; 67 for the array kernels, not a multiple of the
+  chunking) of every benchmark kernel, off / threads forced / GPU forced, equal the reference
+  interpreter on 5 seeds (`results/parallel.json` `verification`); unit tests (all seven ops,
+  gt/le/ge min/max forms, variable counts, a map with variable count, nested parallel folds,
+  a reduction over an array extra) against the interpreter at `A0_THREADS` 1, 3, 8; negative
+  shapes (sub, state used twice, state feeding g, non-commuting select, map over the wrong
+  index or reading the state); a new `native_c_parallel` leg in `bun run verify` (threads
+  forced, UBSan, 5262/5262; note the corpus has 4 folds and none has a reduction shape, so that
+  leg exercises the emitter unchanged, not the parallel path). At full size every baseline's
+  checksum equals the A0 serial checksum before timing.
+- **Benchmark `bun run par-bench`** (`tools/par-bench.ts`, table-driven, interleaved, median
+  of 7, one warm-up call per process; A0 C and C at `clang -O3 -mcpu=native`, Rust
+  opt-level=3 target-cpu=native, Zig ReleaseFast, Go 1.27, Java 27, Python 3.14, Node 24;
+  hand-parallel C = OpenMP `parallel for simd reduction` with libomp). **Load: the machine
+  never got quiet: 1-minute load 23 at start, 30 (5-min 54) when timing began after the full
+  15-minute wait, 16 at the end, on 8 cores (4P+4E); every multicore number below is
+  depressed and noisy** (in a smoke run at load ~10-30, sum24 was a0_serial 5.5 ms, threads
+  1.4-1.6 ms, GPU 1.4 ms, OpenMP 1.7-1.9 ms). ns per call (us):
+
+  | kernel | A0 serial | A0 auto (strategy) | A0 threads forced | A0 GPU | C | C OpenMP | Rust | Zig | Go | Java | Python | JS |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | sum24 (2^24) | 17530 | 6194 (threads) | 3587 | 5556 | 20262 | 7519 | 16890 | 52450 | 62823 | 35302 | 25.0 s | 340279 |
+  | xor24 (2^24) | 9640 | 3054 (threads) | 3251 | 2240 | 10226 | 4083 | 10949 | 29740 | 37441 | 20277 | 15.3 s | 32426 |
+  | count20 (2^20) | 650 | 470 (threads) | 308 | - | 591 | 366 | 1470 | 2054 | 2599 | 2812 | 0.86 s | 5086 |
+  | mr22 (2^22, two gens) | 4768 | 3681 (threads) | 3294 | 2984 | 4326 | 1796 | 4257 | 11850 | 15819 | 12680 | 6.9 s | 15683 |
+  | dot64k (3 folds) | 81.6 | 81.5 (serial) | 650 | - | 69.3 | 335 | 72.3 | 229 | 360 | 231 | 109 ms | 231 |
+  | max64k (2 folds) | 47.3 | 48.8 (serial) | 718 | - | 40.8 | 314 | 40.7 | 208 | 262 | 135 | 54 ms | 181 |
+
+  "A0 auto" is `--parallel` (threads or serial by the cost model); "A0 GPU" is `--parallel=gpu`,
+  where the cost model picks Metal for sum24, xor24, mr22 (count20 is below 2^25).
+- **Wins, ties, losses (ratios = baseline / A0 best of auto and GPU, this loaded run)**:
+  vs idiomatic single-threaded C: wins sum24 3.6x, xor24 4.6x, mr22 1.4x, count20 1.3x; ties
+  on the arrays (dot64k 0.85x, max64k 0.84x are 15% losses, within this run's noise; serial
+  A0 output is the same vectorized loop). vs Rust: same picture (3.0x, 4.9x, 1.4x, 3.1x; 0.89x,
+  0.83x). vs Zig ReleaseFast 2.8-13x (Zig 0.16's LLVM did not vectorize these loops in either
+  `while` or `for` form), Go 4.4-17x, Java 2.8-9x, JS 2.8-61x, Python 1100-6800x. **vs
+  hand-parallel C (OpenMP): wins sum24 1.35x (GPU and threads), xor24 1.8x (GPU); ties/loss
+  count20 0.78x (threads-forced 308 us beats OpenMP 366, auto 470 is noise between two identical
+  thread builds); loss mr22 0.60x (OpenMP 1.8 ms vs GPU 3.0 ms; threads here were not faster
+  than serial under this load); on the 64K arrays OpenMP pays its fork/join (314-335 us) where
+  A0's cost model stays serial, so A0 is 4-6x faster than the hand-parallel C there, while
+  A0 threads forced (650-718 us: thread creation per fold, no pool) would lose to OpenMP.**
+- Not done: no persistent thread pool (pthread create/join per parallel fold, roughly
+  50-100 us per region here; OpenMP's pool is cheaper, which is why forced threads lose on
+  small folds and why the threshold is 2^20); no GPU path for maps or array extras (Metal
+  targets hold arrays in thread storage; buffers would be needed); the direct arm64 backend
+  does not call the runtime (the arm64 code-quality work is concurrent, so the hook stayed on
+  the C path) and no explicit NEON beyond Clang's vectorizer; thresholds were chosen from the
+  smoke run's spawn overhead, not tuned on a quiet machine; the numbers must be re-measured at
+  load < 6 before any page claim. `loop` (early exit) and bool-state reductions are not
+  parallelized; Linux needs `-pthread`.
+- Gate (this worktree, after merging main): lint pass; typecheck pass; test 59/59; verify all
+  paths pass (interpreter, optimizer, JS, C clang, C gcc, C++, C parallel, Wasm, Wasm direct,
+  JVM 5262 each; arm64, x86_64, riscv64, avr, arm32 4297 each); app pass (jvm row blocked as on
+  main: the Java io buffer); equiv 48/48 proved; hw RTL simulation and Yosys synthesis passed;
+  dotnet 5262; gpu 4297 on Apple M3. `results/{verification,app,equivalence,hardware,dotnet,gpu,parallel}.json`
+  regenerated under a0c-0.1.13.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

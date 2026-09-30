@@ -12,6 +12,7 @@ import { AVR_FLASH_BYTES, AVR_SRAM_BYTES, avrStackBytes } from '../src/avr.js';
 import {
   C_IO_INPUT_CAPACITY,
   C_IO_OUTPUT_CAPACITY,
+  type CParallel,
   compile,
   cSignature,
   JAVA_CLASS,
@@ -27,6 +28,7 @@ import {
   type Value,
 } from '../src/core.js';
 import { optimize } from '../src/optimize.js';
+import { parallelC, planProgram } from '../src/parallel.js';
 import {
   compileWasm,
   findArmGcc,
@@ -1462,6 +1464,17 @@ async function main(): Promise<void> {
         findClangPlusPlus(),
         true,
         'C-compatible output compiled as C++17 via clang++',
+      ),
+      native_c_parallel: await checkNative(
+        program,
+        cases,
+        findClang(),
+        false,
+        `native C via clang with automatic parallel folds forced on every recognized fold (src/parallel.ts; ${planProgram(program, 'auto').filter((r) => r.plan !== 'none').length} of ${planProgram(program, 'auto').length} corpus folds recognized)`,
+        compile(program, 'c', {
+          ...ioCaps(cases),
+          cParallel: parallelC({ mode: 'auto', force: true }) as CParallel,
+        }).text,
       ),
       native_arm64: await checkArm64(program, cases, findClang()),
       native_x86_64: await checkX86_64(program, cases, findClang()),
