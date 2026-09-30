@@ -254,6 +254,8 @@ async function main(): Promise<void> {
     }
   };
   show(0);
+  // The page exists only after the first render, so honor a fragment in the URL now.
+  if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   (window as unknown as { a0page: { show: EventSink; state: () => number[] } }).a0page = {
     show,
     state: () => state,
