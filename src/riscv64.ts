@@ -34,7 +34,13 @@
  * when a register is free across the loop; copies (`mov`, inlined results, fold state
  * initialization) prefer the source's register; an inlined fold/loop body whose result is
  * computed after its last read of the state writes the state register directly; select
- * emits one conditional move sequence with no redundant copy. With `zbb`
+ * emits one conditional move sequence with no redundant copy, and a compare whose only use
+ * is a select's condition becomes that select's branch (`bltu`/`bgeu`/`beq`/`bne`, a 0/1
+ * value against 1 tested against zero). Loops are rotated (one `bltu` back per trip; an
+ * entry test only for a trip count that is not a positive literal), and a counter with a
+ * literal trip count indexes an array at least that long without reduction. `sub 32k x`
+ * read only as shift distances is `subw d, zero, x`. A literal array of more than 16 equal
+ * words is a store loop (doublewords for zero). Functions are 2-byte aligned (RVC). With `zbb`
  * (RV64GC+Zbb targets only; the default is plain RV64GC) `or(shl x k, shr x (32-k))`
  * becomes `roriw`, and the variable forms `rolw`/`rorw`.
  */
@@ -155,6 +161,69 @@ function sameOp(x: Operand, y: Operand): boolean {
   );
 }
 
+/** Uses of each node id in `fn` (node arguments and the returned operand). */
+function useCounts(fn: TypedFunc): Map<string, number> {
+  const uses = new Map<string, number>();
+  const count = (o: Operand): void => {
+    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
+  };
+  for (const n of fn.nodes) for (const o of n.args) count(o);
+  count(fn.ret);
+  return uses;
+}
+
+const COMPARES = new Set<Op>(['eq', 'ne', 'lt', 'le', 'gt', 'ge']);
+
+/** Static facts about one function's nodes that let the emitter fuse instructions. */
+interface Fusion {
+  /** Compare nodes whose only use is the condition of a scalar select: its branch. */
+  readonly branch: Set<string>;
+  /** `sub L x` (L = 0 mod 32) read only as shift distances: the distance is -x. */
+  readonly negate: Set<string>;
+}
+
+const FUSIONS = new WeakMap<TypedFunc, Fusion>();
+
+function fusionOf(fn: TypedFunc): Fusion {
+  const cached = FUSIONS.get(fn);
+  if (cached !== undefined) return cached;
+  const uses = useCounts(fn);
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  const branch = new Set<string>();
+  for (const n of fn.nodes) {
+    const c = n.args[0];
+    if (n.op !== 'select' || c?.kind !== 'node' || uses.get(c.id) !== 1) continue;
+    const t = fn.types.get(n.id);
+    const d = byId.get(c.id);
+    if (t !== undefined && isPrimitive(t) && d !== undefined && COMPARES.has(d.op))
+      branch.add(c.id);
+  }
+  const negate = new Set<string>();
+  for (const n of fn.nodes) {
+    const k = n.args[0];
+    if (n.op !== 'sub' || k?.kind !== 'u32' || k.value % 32 !== 0) continue;
+    let shifts = 0;
+    for (const m of fn.nodes)
+      for (const [j, o] of m.args.entries())
+        if (o.kind === 'node' && o.id === n.id && j === 1 && (m.op === 'shl' || m.op === 'shr'))
+          shifts += 1;
+    if (shifts > 0 && shifts === uses.get(n.id)) negate.add(n.id);
+  }
+  const result = { branch, negate };
+  FUSIONS.set(fn, result);
+  return result;
+}
+
+/** A fused compare branch: `insn x, y` (operands swapped when `swap`); `not` is the negation. */
+const BRANCH: Readonly<Record<string, { insn: string; swap: boolean; not: string }>> = {
+  eq: { insn: 'beq', swap: false, not: 'ne' },
+  ne: { insn: 'bne', swap: false, not: 'eq' },
+  lt: { insn: 'bltu', swap: false, not: 'ge' },
+  ge: { insn: 'bgeu', swap: false, not: 'lt' },
+  gt: { insn: 'bltu', swap: true, not: 'le' },
+  le: { insn: 'bgeu', swap: true, not: 'gt' },
+};
+
 /**
  * May the aggregate operand `o` be updated in place by the node at `index`? The same
  * analysis as the JavaScript and AArch64 backends: sound when the value is provably
@@ -259,6 +328,12 @@ class FunctionEmitter {
   readonly #rotates = new Map<TypedFunc, ReturnType<typeof findRotates>>();
   #zbbUsed = false;
   readonly #alias = new Map<string, string>();
+  /** Fold/loop counters with a literal trip count: key -> exclusive upper bound. */
+  readonly #bound = new Map<string, number>();
+  /** u32 keys known to hold 0 or 1 (`and x 1`). */
+  readonly #bits = new Set<string>();
+  /** Compares fused into their select: key -> the compare op and its operands. */
+  readonly #fusedCmp = new Map<string, { op: string; x: Val; y: Val }>();
   readonly #regs = new Map<string, string>();
   readonly #slots = new Map<string, number>();
   #slotBytes = 0;
@@ -310,7 +385,7 @@ class FunctionEmitter {
   #def(key: string, type: Type): void {
     if (!this.#dry) return;
     this.#defs.set(key, { pos: this.#pos, type });
-    if (!isPrimitive(type)) this.#alloc(key, 4 * words(type));
+    if (!isPrimitive(type)) this.#alloc(key, 4 * words(type), words(type) > 1 ? 8 : 4);
   }
 
   #defAlias(key: string, target: string, type: Type): void {
@@ -455,8 +530,18 @@ class FunctionEmitter {
   }
 
   /** t1 = (index operand mod n) * elementBytes. Uses t1-t3. */
-  #scaledIndex(idx: Val, n: number, elemBytes: number): void {
+  #scaledIndex(idx: Val, n: number, elemBytes: number): string {
     const r = this.#read(idx, 't1');
+    const bound = idx.kind === 'key' ? this.#bound.get(idx.key) : undefined;
+    if (bound !== undefined && bound <= n) {
+      // A counter already below the length needs no reduction (its register is non-negative).
+      if ((elemBytes & (elemBytes - 1)) === 0) {
+        const sh = Math.log2(elemBytes);
+        if (sh === 0) return r;
+        this.#emit(`slli t1, ${r}, ${sh}`);
+      } else this.#emit(`li t2, ${elemBytes}`, `mul t1, ${r}, t2`);
+      return 't1';
+    }
     if (n === 1) this.#emit('li t1, 0');
     else if ((n & (n - 1)) === 0) {
       const m = imm12(n - 1);
@@ -468,6 +553,41 @@ class FunctionEmitter {
       const sh = Math.log2(elemBytes);
       if (sh > 0) this.#emit(`slli t1, t1, ${sh}`);
     } else this.#emit(`li t2, ${elemBytes}`, 'mul t1, t1, t2');
+    return 't1';
+  }
+
+  /** t1 = sp + base + the scaled index. Uses t1-t3. */
+  #element(idx: Val, n: number, elemBytes: number, base: number): void {
+    const off = this.#scaledIndex(idx, n, elemBytes);
+    if (base === 0) this.#emit(`add t1, ${off}, sp`);
+    else {
+      this.#addr('t2', 'sp', base);
+      this.#emit(`add t1, ${off}, t2`);
+    }
+  }
+
+  /**
+   * Fill `n` words at sp + off with literal `value`: unrolled up to 16 words, else a loop of
+   * four stores per trip (doublewords of zero when the slot is 8-aligned). Uses t0, t3, t4.
+   */
+  #fill(off: number, n: number, value: number): void {
+    const v = value | 0;
+    const src = v === 0 ? 'zero' : 't0';
+    if (v !== 0) this.#emit(`li t0, ${v}`);
+    if (n <= 16) {
+      for (let k = 0; k < n; k += 1) this.#mem('sw', src, 'sp', off + 4 * k);
+      return;
+    }
+    const wide = v === 0 && off % 8 === 0;
+    const step = wide ? 8 : 4;
+    const trips = Math.floor((4 * n) / (4 * step));
+    const top = this.#label();
+    this.#addr('t4', 'sp', off);
+    this.#emit(`li t3, ${trips}`, `${top}:`);
+    for (let k = 0; k < 4; k += 1) this.#emit(`${wide ? 'sd' : 'sw'} ${src}, ${k * step}(t4)`);
+    this.#emit(`addi t4, t4, ${4 * step}`, 'addi t3, t3, -1', `bnez t3, ${top}`);
+    for (let b = trips * 4 * step; b < 4 * n; b += 4)
+      this.#emit(`sw ${src}, ${b - trips * 4 * step}(t4)`);
   }
 
   // --- calls and inlining ------------------------------------------------------------------
@@ -578,6 +698,56 @@ class FunctionEmitter {
     this.#copy('sp', this.#slot(result), 'sp', this.#slot(ret.key), words(type));
   }
 
+  /**
+   * `select (cmp x y) b c` as one compare-and-branch around a move. The compare operands
+   * stay live to here (their scratch is t4/t5, apart from the arms' t1/t2); when the result
+   * register is also a compare operand it is written only after the branch.
+   */
+  #fusedSelect(given: { op: string; x: Val; y: Val }, b: Val, c: Val, key: string, t: Type): void {
+    let cmp = given;
+    this.#use(cmp.x);
+    this.#use(cmp.y);
+    // A 0/1 value compared with 1 is tested against zero instead.
+    const bit = (v: Val): boolean =>
+      v.kind === 'key' && (v.type === 'bool' || this.#bits.has(v.key));
+    const one = (v: Val): boolean => v.kind === 'lit' && v.value === 1;
+    if ((cmp.op === 'eq' || cmp.op === 'ne') && one(cmp.y) && bit(cmp.x))
+      cmp = {
+        op: cmp.op === 'eq' ? 'ne' : 'eq',
+        x: cmp.x,
+        y: { kind: 'lit', value: 0, type: 'u32' },
+      };
+    const rx = this.#read(cmp.x, 't4');
+    const ry = this.#read(cmp.y, 't5');
+    /** `b<cond> ...` taken when `op` holds. */
+    const branch = (op: string, to: string): string => {
+      const br = BRANCH[op] ?? refuse(`internal: fused ${op}`);
+      return br.swap ? `${br.insn} ${ry}, ${rx}, ${to}` : `${br.insn} ${rx}, ${ry}, ${to}`;
+    };
+    const not = BRANCH[cmp.op]?.not ?? refuse(`internal: fused ${cmp.op}`);
+    const other = this.#label();
+    const end = this.#label();
+    const rb = this.#read(b, 't1');
+    const rc = this.#read(c, 't2');
+    this.#def(key, t);
+    this.#set(
+      key,
+      (d) => {
+        if (rb === rc) {
+          if (d !== rb) this.#emit(`mv ${d}, ${rb}`);
+        } else if (d === rb) this.#emit(branch(cmp.op, end), `mv ${d}, ${rc}`, `${end}:`);
+        else if (d === rc) this.#emit(branch(not, end), `mv ${d}, ${rb}`, `${end}:`);
+        else if (d !== rx && d !== ry)
+          this.#emit(`mv ${d}, ${rc}`, branch(not, end), `mv ${d}, ${rb}`, `${end}:`);
+        else {
+          this.#emit(branch(not, other), `mv ${d}, ${rb}`, `j ${end}`, `${other}:`);
+          this.#emit(`mv ${d}, ${rc}`, `${end}:`);
+        }
+      },
+      true,
+    );
+  }
+
   // --- nodes -------------------------------------------------------------------------------
 
   #body(env: Env): void {
@@ -662,6 +832,11 @@ class FunctionEmitter {
       if (v.kind !== 'key' || isPrimitive(v.type)) refuse(`${n.op} needs ${what}`);
       return { key: v.key, type: v.type };
     };
+    if (fusionOf(env.fn).branch.has(n.id)) {
+      // Emitted by the select that consumes it, as one compare-and-branch.
+      this.#fusedCmp.set(key, { op: n.op, x: a as Val, y: b as Val });
+      return;
+    }
     switch (n.op) {
       case 'mov': {
         const v = a as Val;
@@ -676,12 +851,20 @@ class FunctionEmitter {
         bin('addw', 'addiw', imm12);
         return;
       case 'sub':
+        if (fusionOf(env.fn).negate.has(n.id)) {
+          // Read only as a shift distance (low five bits): L - x with L = 0 mod 32 is -x.
+          const rb = this.#read(b as Val, 't2');
+          scalar((d) => this.#emit(`subw ${d}, zero, ${rb}`), true);
+          return;
+        }
         bin('subw', 'addiw', negated);
         return;
       case 'mul':
         bin('mulw');
         return;
       case 'and':
+        if ((a?.kind === 'lit' && a.value === 1) || (b?.kind === 'lit' && b.value === 1))
+          this.#bits.add(key);
         bin('and', 'andi', imm12);
         return;
       case 'or':
@@ -723,6 +906,11 @@ class FunctionEmitter {
         cmp(false, true);
         return;
       case 'select': {
+        const fused = a?.kind === 'key' ? this.#fusedCmp.get(a.key) : undefined;
+        if (fused !== undefined) {
+          this.#fusedSelect(fused, b as Val, c as Val, key, t);
+          return;
+        }
         // Both operands are already computed values; select picks one.
         const rc = this.#read(a as Val, 't0');
         const other = this.#label();
@@ -757,6 +945,15 @@ class FunctionEmitter {
       case 'rec': {
         this.#def(key, t);
         let off = this.#slot(key);
+        const first = vals[0];
+        if (
+          vals.length > 16 &&
+          first?.kind === 'lit' &&
+          vals.every((v) => v.kind === 'lit' && v.value === first.value)
+        ) {
+          this.#fill(off, vals.length, first.value);
+          return;
+        }
         for (const v of vals) {
           this.#place(v, 'sp', off);
           off += 4 * words(v.type);
@@ -778,9 +975,7 @@ class FunctionEmitter {
           }
           return;
         }
-        this.#scaledIndex(b as Val, at.length, ew * 4);
-        this.#addr('t2', 'sp', base);
-        this.#emit('add t1, t1, t2');
+        this.#element(b as Val, at.length, ew * 4, base);
         if (isPrimitive(t)) scalar((d) => this.#emit(`lw ${d}, 0(t1)`), true);
         else {
           this.#def(key, t);
@@ -804,9 +999,7 @@ class FunctionEmitter {
           this.#place(c as Val, 'sp', dst + (b.value % at.length) * ew * 4);
           return;
         }
-        this.#scaledIndex(b as Val, at.length, ew * 4);
-        this.#addr('t2', 'sp', dst);
-        this.#emit('add t1, t1, t2');
+        this.#element(b as Val, at.length, ew * 4, dst);
         this.#place(c as Val, 't1', 0);
         return;
       }
@@ -892,12 +1085,14 @@ class FunctionEmitter {
         this.#pos += 1;
         const top = this.#label();
         const done = this.#label();
-        this.#emit(`${top}:`);
+        if (count.kind === 'lit' && count.value > 0) this.#bound.set(counter, count.value);
+        // Rotated: the counter starts at 0, so only a trip count of 0 skips the body; the
+        // test is at the bottom. A positive literal count needs no entry test.
         this.#use(count);
         this.#use(cval);
-        const ci = this.#read(cval, 't0');
-        const limit = this.#read(count, 't1');
-        this.#emit(`bgeu ${ci}, ${limit}, ${done}`);
+        if (!(count.kind === 'lit' && count.value > 0))
+          this.#emit(`beqz ${this.#read(count, 't1')}, ${done}`);
+        this.#emit(`${top}:`);
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
@@ -917,7 +1112,11 @@ class FunctionEmitter {
         this.#use(cval);
         const cr = this.#read(cval, 't0');
         this.#set(counter, (d) => this.#emit(`addiw ${d}, ${cr}, 1`), true);
-        this.#emit(`j ${top}`, `${done}:`);
+        this.#use(cval);
+        this.#use(count);
+        const ci = this.#read(cval, 't0');
+        const limit = this.#read(count, 't1');
+        this.#emit(`bltu ${ci}, ${limit}, ${top}`, `${done}:`);
         // Loop end: values from outside that the body reads stay live to here; so do the state and counter.
         this.#pos += 1;
         this.#use(state);
@@ -1043,7 +1242,7 @@ class FunctionEmitter {
     this.#pos = 0;
     this.#loops = [];
     const sym = `a0_${fn.name}`;
-    this.out.push(`\t.globl ${sym}`, `\t.type ${sym}, @function`, '\t.p2align 2', `${sym}:`);
+    this.out.push(`\t.globl ${sym}`, `\t.type ${sym}, @function`, '\t.p2align 1', `${sym}:`);
     if (frame > 4096) {
       // Probe one page at a time so a guard page is never skipped.
       const pages = Math.floor(frame / 4096);

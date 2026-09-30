@@ -2516,3 +2516,110 @@ Decision: A0 does not win or tie on acceptance and cost at all three lengths poo
 - **Encoder checked against clang instruction by instruction:** 224 assembly texts (the 248 sources of tools/bootstrap.ts emitted by stage 2, which gives stage 1's code and text on all 248; the compiler's whole assembly; the runtime; the src/arm64.ts output of the corpus and examples): 293,545 instructions, words and relocation offsets/kinds equal to `clang -c -x assembler`, 0 mismatches.
 - **Still outside A0:** the encoder and Mach-O writer are TypeScript; the A0 version (compiler/asm_arm64.a0, compiler/macho.a0 with SHA-256 in A0, byte-identical to src/macho.ts) is not written yet. Stage 1 is still the C seed.
 - Gate (this worktree): lint pass; typecheck pass; test 85/85 (new test/macho.test.ts); bootstrap C, arm64 and macho all fixed points, 0 failures; selfhost 50 passed / 3 skipped; verify exit 0.
+
+## Session 2026-09-30 (RISC-V and ARM32 against gcc/clang)
+
+- **Method.** The eleven `tools/exec-bench.ts` kernels (A0 source and the C equivalents from
+  that file, C helpers `static inline`, one extern `a0_<kernel>` wrapper), each built five ways
+  per target: A0 (`compile(..., 'riscv64' | 'arm32')`, default options), gcc `-O2`/`-Os`, clang
+  `-O2`/`-Os`. Toolchains: riscv64-elf-gcc 16.2.0, Arm GNU Toolchain arm-none-eabi-gcc 15.3.1,
+  Homebrew clang 23.1.2; targets `-march=rv64gc -mabi=lp64` (RVC on for all, including A0's
+  module) and `-march=armv7-a -marm` hard-float (ARM mode for all; A0 emits no Thumb).
+  **Size** = `.text` bytes of the kernel's object, so A0's count includes the callees it also
+  exports (inc1/dbl, put8, put4k, mixstep; the C helpers are static and vanish).
+  **Dynamic instructions**: no qemu-user on macOS, so a bare-metal driver (16 calls on
+  xorshift inputs, results XOR-ed and printed) runs under `qemu-system-riscv64 -M virt` /
+  `qemu-system-arm -M virt -cpu cortex-a7` with `-accel tcg,one-insn-per-tb=on -d exec,nochain`;
+  every executed PC inside the kernel object's linked section is counted, divided by 16.
+  Instruction counts, not cycles (no hardware). All five builds print the same result on both
+  targets. The harness was a scratch script, not in the repository.
+- **riscv64** (bytes / instructions per call):
+
+  | kernel | A0 0.1.23 | A0 now | gcc -O2 | gcc -Os | clang -O2 | clang -Os |
+  |---|---|---|---|---|---|---|
+  | affine | 12 / 3 | 8 / 3 | 8 / 3 | 8 / 3 | 8 / 3 | 8 / 3 |
+  | rotl | 24 / 6 | 16 / 5 | 18 / 6 | 18 / 6 | 16 / 5 | 16 / 5 |
+  | clamp | 20 / 6.3 | 14 / 4.3 | 22 / 7.3 | 22 / 7.3 | 22 / 4.4 | 16 / 5 |
+  | mix | 36 / 11 | 34 / 11 | 34 / 11 | 34 / 11 | 32 / 11 | 32 / 11 |
+  | ident | 4 / 1 | 2 / 1 | 2 / 1 | 2 / 1 | 2 / 1 | 2 / 1 |
+  | noop | 4 / 1 | 2 / 1 | 2 / 1 | 2 / 1 | 2 / 1 | 2 / 1 |
+  | chain3 | 24 / 5 | 18 / 5 | 10 / 4 | 10 / 4 | 8 / 4 | 8 / 4 |
+  | branchy | 48 / 13 | 36 / 9.1 | 26 / 6.4 | 26 / 6.4 | 42 / 15.6 | 42 / 15.6 |
+  | arrfill | 200 / 93 | 184 / 67 | 34 / 50 | 42 / 53 | 60 / 24 | 34 / 44 |
+  | arrfill4k | 45016 / 59940 | 220 / 28199 | 56 / 24592 | 58 / 20498 | 52 / 16403 | 52 / 16403 |
+  | loop64 | 72 / 518 | 64 / 453 | 38 / 453 | 38 / 453 | 48 / 583 | 46 / 583 |
+
+  Totals without arrfill4k: A0 559 instructions (0.1.23: 657), gcc -O2 543, -Os 546, clang
+  -O2 652, -Os 673; bytes 378 (444) vs 194 / 202 / 240 / 206. Wins or ties on every scalar
+  leaf (rotl and clamp beat gcc; clamp beats clang -Os); loses on chain3 (gcc/clang
+  reassociate `2(x+1)+1+y` to three instructions), branchy (A0 computes both `sub`s before
+  the selects; gcc computes each on its path, clang loses to A0), arrfill (the zero stores
+  plus a 6-instruction trip vs clang's full unroll) and arrfill4k (zeroing 16 KiB that the
+  fold then overwrites: +3.6k instructions vs gcc -O2). Size loses on every kernel with an
+  exported callee (kernel symbol alone: chain3 10 B, arrfill 62, arrfill4k 108, loop64 40).
+- **arm32** (bytes / instructions per call):
+
+  | kernel | A0 0.1.23 | A0 now | gcc -O2 | gcc -Os | clang -O2 | clang -Os |
+  |---|---|---|---|---|---|---|
+  | affine | 20 / 5 | 8 / 2 | 8 / 2 | 8 / 2 | 8 / 2 | 8 / 2 |
+  | rotl | 12 / 3 | 12 / 3 | 16 / 4 | 16 / 4 | 12 / 3 | 12 / 3 |
+  | clamp | 52 / 13 | 20 / 5 | 20 / 5 | 20 / 5 | 20 / 5 | 20 / 5 |
+  | mix | 36 / 9 | 28 / 7 | 28 / 7 | 28 / 6 | 28 / 7 | 28 / 7 |
+  | ident | 4 / 1 | 4 / 1 | 4 / 1 | 4 / 1 | 4 / 1 | 4 / 1 |
+  | noop | 4 / 1 | 4 / 1 | 4 / 1 | 4 / 1 | 4 / 1 | 4 / 1 |
+  | chain3 | 36 / 5 | 36 / 5 | 12 / 3 | 12 / 3 | 12 / 3 | 12 / 3 |
+  | branchy | 84 / 21 | 44 / 11 | 48 / 8.3 | 36 / 7.9 | 28 / 7 | 28 / 7 |
+  | arrfill | 288 / 69 | 284 / 61 | 56 / 42 | 64 / 51 | 84 / 21 | 56 / 49 |
+  | arrfill4k | 16640 / 28705 | 272 / 26656 | 68 / 16397 | 84 / 20496 | 68 / 20492 | 68 / 20492 |
+  | loop64 | 92 / 517 | 76 / 453 | 44 / 452 | 44 / 451 | 60 / 519 | 60 / 519 |
+
+  Totals without arrfill4k: A0 549 instructions (0.1.23: 644), gcc -O2 525, -Os 532, clang
+  -O2 569, -Os 597; bytes 516 (632) vs 240 / 236 / 260 / 232. Ties on affine, clamp, ident,
+  noop; rotl beats gcc; mix ties -O2 (gcc -Os 6); loop64 one instruction per call over gcc
+  (a push/pop pair), 66 under clang. Losses: chain3 (5 vs 3, same reassociation), branchy (11
+  vs 7-8.3: two compares of the same operands, both `sub`s computed), arrfill and arrfill4k
+  (zero fill, then a 5-instruction trip `add; str; add; cmp; blo` vs gcc's pointer-increment
+  4; arrfill4k 26656 vs gcc -O2 16397), and size wherever a callee is exported (kernel symbol
+  alone: chain3 20 B, arrfill 104, arrfill4k 124, loop64 48).
+- **What changed (a0c-0.1.24)**, general code generation only, no kernel-specific rules:
+  - riscv64: compare-and-branch fusion (a compare whose only use is a scalar select's
+    condition is emitted as that select's `bltu`/`bgeu`/`beq`/`bne`; `eq/ne v 1` of a 0/1
+    value branches against zero); rotated loops (bottom `bltu`, an entry `beqz` only for a
+    non-literal count; was top `bgeu` + `j`); fold counters with a literal trip count index
+    arrays at least that long without `andi`/`remuw`; `add t1, off, sp` for slot 0 (no `addi
+    t2, sp, 0`); `sub 32k x` used only as shift distances is `subw d, zero, x`; literal arrays
+    of more than 16 equal words are a four-store loop (`sd zero` when 8-aligned; aggregate
+    slots of two or more words are now 8-aligned); `.p2align 1` (the `.p2align 2` padding cost
+    2 bytes per function in RVC objects).
+  - arm32: a first register plan for scalar leaves with all of r0-r3 as homes, whose scratch
+    roles are the leftover registers of r12/r3-r0 (a plan whose code would need a missing role
+    throws internally and the next plan is emitted; `#read` resolves its scratch lazily so
+    register operands need none); compare fused into the select's predicated moves (with
+    immediate arms); `mla` for `add` of a single-use `mul`; shifter operands for single-use
+    literal shifts feeding add/sub/and/orr/eor (`rsb` for a shifted minuend); bounded fold
+    counters index without `ubfx`; the constant-fill loop (four post-indexed `str` per trip).
+  - From the AVR work: inlining already existed in both backends (every kernel's callee is
+    inlined); the allocator ideas that carried over are parameter-in-place homes (ARM r0-r3)
+    and operand/result sharing through fusion. AVR's in-place aggregate parameters were not
+    ported (see Not done).
+- **Verification**: `native_riscv64` and `native_arm32` 4297/4297 at both optimization levels
+  in `bun run verify` (all other paths passed too: interpreter, optimizer, JS, C clang, C
+  gcc, C++, C parallel, Wasm, Wasm direct, JVM 5262; arm64, x86_64, avr 4297). Beyond the
+  gate, 29 further generated corpora (seeds 1-5 and 7-30, 110,304 cases each backend, both
+  levels) passed on both backends through the same verify paths; seed 6 crashes the corpus
+  generator itself (`tools/corpus.ts` line ~357, `slots.find(...)` undefined), not a backend.
+  Unit tests: riscv64 sequence test updated (fused `bltu`, rotated loop without `j`/`bgeu`,
+  entry `beqz` for a variable count, unmasked counter index, negw distance, zero-fill loop,
+  `.p2align 1`, materialized compare when reused, swapped gt, 0/1-vs-1 against zero); arm32
+  sequence test updated (`mla` affine with three parameters in place, shifter operands and
+  `rsb`, fused `movhs`/`movhi #7`, reused compare still materialized, rotated `mla` loop with
+  no push, bounded index without `ubfx`, fill loop, six-parameter leaf keeping r2/r3); the
+  Cortex-A7 execution test gained three functions covering every fusion, the fill loop, the
+  bounded index, and a four-parameter leaf, run at both levels in both ARMv7-A and VE modes.
+- Gate (this worktree): lint pass; typecheck pass; test 79/79; verify all paths passed.
+  results/verification.json not committed.
+- Not done: aggregate parameters are still copied into the frame on entry (AVR reads them in
+  place); no dead-store elimination of an array literal the fold overwrites; no
+  reassociation (chain3); both select arms are computed before the select (branchy); ARM
+  loops still count with `cmp` rather than a pointer; the RISC-V `.p2align 1` assumes RVC
+  (RV64GC), as the target already states.
