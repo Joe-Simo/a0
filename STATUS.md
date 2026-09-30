@@ -296,6 +296,48 @@ o200k counts; nothing was billed beyond this session.
 Cache-adjusted = primer and protocol charged once at 1.25× and at 0.05× per further call
 (Opus 5.5 cache-read rate), context and output at 1×.
 
+**Run 2, 2026-09-30, after boolean logic (v0.8.11), one shot, no repair round**
+(same design, fresh subjects; `results/ai-edit-experiment.{haiku,sonnet}-{full,min}.json`
+now hold this run; run 1 is in git history at c440aae):
+
+| subject | cell | one-shot | output tokens | whole-task uncached | cache-adjusted |
+|---|---|---|---|---|---|
+| sonnet-min | a0/conventional | 13/13 | 634 | 6515 | 2178 |
+| sonnet-min | a0/structured | 13/13 | 376 | 8031 | 2322 |
+| sonnet-min | ts/conventional | 13/13 | 586 | 2019 | 1484 |
+| sonnet-min | ts/structured | 13/13 | 371 | 2919 | 1503 |
+| sonnet-min | rust/conventional | 13/13 | 630 | 2289 | 1587 |
+| sonnet-min | rust/structured | 13/13 | 369 | 3143 | 1560 |
+| sonnet-full | a0/conventional | 13/13 | 635 | 10078 | 2686 |
+| sonnet-full | a0/structured | 13/13 | 342 | 11559 | 2795 |
+| sonnet-full | ts/conventional | 13/13 | 586 | 2019 | 1484 |
+| sonnet-full | ts/structured | 13/13 | 371 | 2919 | 1503 |
+| sonnet-full | rust/conventional | 13/13 | 630 | 2289 | 1587 |
+| sonnet-full | rust/structured | 13/13 | 369 | 3143 | 1560 |
+| haiku-min | a0/conventional | 13/13 | 652 | 6533 | 2196 |
+| haiku-min | a0/structured | 12/13 | 446 | 8183 | 2474 |
+| haiku-min | ts/conventional | 13/13 | 587 | 2020 | 1485 |
+| haiku-min | ts/structured | 13/13 | 382 | 2930 | 1514 |
+| haiku-min | rust/conventional | 13/13 | 620 | 2279 | 1577 |
+| haiku-min | rust/structured | 13/13 | 336 | 3110 | 1527 |
+| haiku-full | a0/conventional | 13/13 | 643 | 10086 | 2694 |
+| haiku-full | a0/structured | 8/13 | 479 | 11921 | 3157 |
+| haiku-full | ts/conventional | 13/13 | 587 | 2020 | 1485 |
+| haiku-full | ts/structured | 13/13 | 382 | 2930 | 1514 |
+| haiku-full | rust/conventional | 13/13 | 620 | 2279 | 1577 |
+| haiku-full | rust/structured | 13/13 | 336 | 3110 | 1527 |
+
+Sonnet: 78/78 one-shot with either primer (run 1 had 76/78; the two `loop-inclusive`
+failures were the missing boolean logic). Haiku with the compact primer: 76/78 one-shot;
+with the full primer 71/78. The Haiku failures are model errors, not protocol gaps: a
+forward reference, an invented `le` op, a wrong algorithm for cube, and one reply that
+appended the program view under the function handle. No repair round was run and no
+further change is aimed at them: the language is not tuned to one model. The protocol
+fixes listed above are general (they also raised Sonnet from 76 to 78) and a weaker model
+was only the faster way to expose them. Tokens: the A0 structured output tie with
+TypeScript and Rust holds (342–376 vs 371 and 369); the whole-task loss holds
+(1.5× cache-adjusted, 2.8× uncached with the compact primer).
+
 Wins, ties, losses, stated separately:
 - **Acceptance**: tie for Sonnet (every A0 cell reaches 13/13 with one repair, like
   TypeScript and Rust); for Haiku a tie with the compact primer and a **loss with the
@@ -346,7 +388,7 @@ Wins, ties, losses, stated separately:
   generator (the corpus now holds 89 boolean and/or/xor nodes and 46 boolean `eq` nodes
   across 40 of 48 functions; the corpus hash changed and every result file was
   regenerated), and the Z3 tool. Both primers document it (min 372 tokens, full 646).
-  The Gate 6 results above were collected before this change and are not rescored.
+  Gate 6 run 2 above was collected on this language.
 
 - **Optimizer proofs now cover io (48/48)**: `tools/equiv-verify.ts` models an io token as
   a bounded symbolic input of 8 words (reads past the end yield 0 as in the language), an

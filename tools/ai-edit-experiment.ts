@@ -427,9 +427,13 @@ function applyTs(protocol: Protocol, source: string, reply: string, handle: stri
       inserts.set(at, [...(inserts.get(at) ?? []), m[3] ?? '']);
       continue;
     }
-    if (seen.has(n) || n < 1 || n > out.length)
-      return { source, error: `bad or duplicate line number ${n}` };
+    if (seen.has(n) || n < 1) return { source, error: `bad or duplicate line number ${n}` };
     seen.add(n);
+    if (n > out.length) {
+      // A replacement past the end appends, like an insert past the end.
+      if (mode !== '-') inserts.set(out.length, [...(inserts.get(out.length) ?? []), m[3] ?? '']);
+      continue;
+    }
     out[n - 1] = mode === '-' ? null : (m[3] ?? '');
   }
   const result: string[] = [...(inserts.get(0) ?? [])];
