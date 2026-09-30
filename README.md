@@ -9,11 +9,12 @@ Measured on the repository's benchmarks (Apple M3, quiet machine, `results/*.jso
 | | |
 |---|---|
 | Native A0 vs hand-written C | 1.00x time per call (parity) |
-| Native A0 vs Python / JavaScript | 289x / 10x faster (geometric mean, 10 kernels) |
+| Native A0 vs Python / JavaScript | 174x / 8.0x faster (geometric mean, 10 kernels) |
 | Tokens a model reads per edit | 7.3x fewer than reading the whole file |
+| Languages benchmarked, checksum-verified | 48 (9 tie A0 within 5%, the rest slower) |
 | Oracle cases passing on every target | 5262 / 5262 |
 | Optimizer proved equivalent (Z3) | 48 / 48 corpus functions |
-| Whole-task tokens vs TypeScript | 1.46x (a loss, published) |
+| Whole-task tokens vs TypeScript | 3.0x cheaper in a 40-function program; 1.46x more on single-function tasks (both published) |
 
 The site a0lang.com is itself two A0 programs (`site/page.a0`, `site/docs.a0`).
 
