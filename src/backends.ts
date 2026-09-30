@@ -1443,6 +1443,7 @@ export function assemble(
           {
             ioInputCapacity: options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
             ioOutputCapacity: options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+            ...(options.wasmExports === undefined ? {} : { exports: options.wasmExports }),
           },
           COMPILER_VERSION,
         ),
@@ -1488,6 +1489,24 @@ export interface CompileOptions {
   readonly ioOutputCapacity?: number;
   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
   readonly cParallel?: CParallel;
+  /**
+   * wasm target only: the functions to export. Absent, every function is exported as
+   * `a0_<name>`; given, only these are, and functions none of them reaches (for example
+   * callees every call site inlined) are left out of the module.
+   */
+  readonly wasmExports?: readonly string[];
+  /**
+   * wasm target only: simd128 for fill runs (default true; fixed-width SIMD is in every
+   * current engine: Chrome/Edge 91+, Firefox 89+, Safari 16.4+, Node 16.4+). false emits
+   * scalar code only, for older engines.
+   */
+  readonly wasmSimd?: boolean;
+  /**
+   * wasm target only: copies of a small inlined fold body per loop back edge (default 1). V8
+   * unrolls such loops itself, so 2 or 4 measured no faster there (STATUS, a0c-0.1.26) and
+   * only grows the module; engines without their own unrolling may gain.
+   */
+  readonly wasmUnroll?: 1 | 2 | 4;
 }
 
 export interface CompileResult {
@@ -1550,6 +1569,11 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
   }
   if (target === 'c' && options.cParallel !== undefined)
     return emitCFunction(source, options.cParallel);
+  if (target === 'wasm')
+    return emitWasmFunction(source, {
+      simd: options.wasmSimd !== false,
+      unroll: options.wasmUnroll ?? 1,
+    });
   return EMITTERS[target](source);
 }
 
@@ -1568,7 +1592,11 @@ export function compile(
       target,
       optimized,
       fn,
-      target === 'c' && options.cParallel !== undefined ? `|${options.cParallel.key}` : '',
+      target === 'c' && options.cParallel !== undefined
+        ? `|${options.cParallel.key}`
+        : target === 'wasm'
+          ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
+          : '',
     );
     const hit = cache.get(key);
     if (hit !== undefined) {
