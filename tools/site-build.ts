@@ -112,6 +112,34 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
     await copyFile(join('results', f), join(out, 'results', f));
 }
 
+/**
+ * Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers.
+ * The CSP allows only same-origin scripts (app.js; the ld+json block is data and never runs),
+ * wasm compilation, the runtime's generated <style>, self-hosted fonts, and same-origin fetches.
+ */
+const VERCEL = {
+  cleanUrls: true,
+  headers: [
+    {
+      source: '/(.*)',
+      headers: [
+        {
+          key: 'Content-Security-Policy',
+          value:
+            "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      ],
+    },
+    {
+      source: '/fonts/(.*)',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+    },
+  ],
+} as const;
+
 /** Copy the variable Geist faces out of the `geist` package into site/dist/fonts. */
 async function copyFonts(): Promise<void> {
   // `geist/package.json` is not exported by the package, so resolve an exported entry and walk
@@ -169,6 +197,7 @@ async function main(): Promise<void> {
   );
   await writeAgentFiles(page, docs);
   await copyFonts();
+  await writeFile(join(out, 'vercel.json'), `${JSON.stringify(VERCEL, null, 2)}\n`, 'utf8');
   process.stdout.write(
     `site/dist: ${sizes.join(', ')}, app.js, index.html, docs/index.html, play/index.html (prerendered), llms.txt, fonts/\n`,
   );

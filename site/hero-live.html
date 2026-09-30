@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A0 — live hero</title>
+<link rel="preload" href="https://a0lang.com/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="https://a0lang.com/fonts/GeistPixel-Square.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:"Geist";src:url("https://a0lang.com/fonts/Geist-Variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("https://a0lang.com/fonts/GeistMono-Variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Pixel";src:url("https://a0lang.com/fonts/GeistPixel-Square.woff2") format("woff2");font-weight:400;font-display:swap}
+:root{color-scheme:light dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--win:#5ad19a;--c:#7aa2ff;--markbg:rgba(90,209,154,.14);--glow:rgba(120,140,255,.09)}
+@media (prefers-color-scheme:light){:root{--bg:#fff;--fg:#0a0a0a;--fg2:#222;--muted:#6b7079;--dim:#9aa0a6;--line:#e6e8eb;--win:#1f9d63;--c:#3b6cf0;--markbg:rgba(31,157,99,.14);--glow:rgba(120,140,255,.07)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 "Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.pixel{font-family:"Geist Pixel","Geist Mono",monospace;font-weight:400}
+.mono{font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.top{position:fixed;inset:0 0 auto 0;z-index:20;height:64px;display:flex;align-items:center;padding:0 28px;background:linear-gradient(var(--bg),transparent)}
+.brand{color:inherit;font-size:1.25rem;letter-spacing:.02em;text-decoration:none}
+.hero{position:relative;min-height:100vh;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 96px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 30% 20%,var(--glow),transparent 65%);pointer-events:none}
+.hero .name,.hero .tag{font-size:clamp(3.4rem,11vw,9.5rem);line-height:.95;letter-spacing:-.01em;margin:0;position:relative;z-index:1}
+.hero .tag{color:var(--fg2);text-align:right}
+/* the live scene: three columns in the upper two thirds */
+.live{position:absolute;left:28px;right:28px;top:96px;height:calc(66vh - 96px);display:grid;grid-template-columns:29ch 25ch 22ch;gap:0 5ch;align-content:start;font-size:clamp(13px,1.2vw,16px);line-height:1.75;pointer-events:none}
+.col{opacity:0;will-change:opacity,transform}
+.col h6{margin:0 0 .6em;font:inherit;font-size:.8em;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:1em;white-space:nowrap}
+.col h6 b{font-weight:400;color:var(--muted)}
+.ln{position:relative;height:1.75em;white-space:nowrap;color:var(--fg2)}
+.ln .ty{display:inline-block;overflow:hidden;vertical-align:bottom;width:auto}
+.ln::after{content:"";display:inline-block;width:.55ch;height:1.05em;margin-left:.1ch;background:var(--fg);vertical-align:-.15em;opacity:0}
+.ln.mark{margin:0 -.6ch;padding:0 .6ch;border-radius:4px}
+.ln .alt{position:absolute;left:.6ch;top:0}
+.stamp{margin-top:1.2em;display:flex;align-items:center;gap:.7ch;color:var(--win);white-space:nowrap}
+.stamp i{position:relative;width:.6em;height:.6em;border-radius:50%;background:var(--win);flex:none}
+.stamp i::after{content:"";position:absolute;inset:0;border-radius:50%;border:1px solid var(--win);opacity:0}
+.stamp b{font-weight:500}
+.stamp span{color:var(--muted)}
+.asm .ln{color:var(--fg2);opacity:0}
+.ns{margin-top:1.2em;color:var(--muted);white-space:nowrap}
+.ns b{font-weight:500;color:var(--fg)}
+.ns b::before{content:"5.0"}
+@media (max-width:960px){.live{grid-template-columns:29ch 25ch;gap:1.2em 3ch;top:84px}.col.asm{grid-column:1}.col.model{grid-column:2;grid-row:1}}
+@media (max-width:720px){.hero{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:0 20px 72px}.hero .tag{text-align:left}.live{left:20px;right:20px;grid-template-columns:29ch 1fr;gap:.6em 2ch;font-size:12px;top:78px}.col.model{grid-column:2;grid-row:1}.col.asm{grid-column:2;grid-row:2}.col.view{grid-row:1/3}}
+@media (max-width:400px){.live{grid-template-columns:1fr 1fr;gap:.8em 1ch}.col.view{grid-column:1/3;grid-row:1}.col.model{grid-column:1;grid-row:2}.col.asm{grid-column:2;grid-row:2}}
+/* the loop: every animation is the same 9.6s cycle; the runtime only adds "in" to .reveal */
+.reveal.in .col.view{animation:c1 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in .col.model{animation:c2 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in .col.asm{animation:c3 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #v0 .ty{animation:v0 9600ms linear infinite}.reveal.in #v0::after{animation:v0c 9600ms steps(1,end) infinite}
+.reveal.in #v1 .ty{animation:v1 9600ms linear infinite}.reveal.in #v1::after{animation:v1c 9600ms steps(1,end) infinite}
+.reveal.in #v2 .ty{animation:v2 9600ms linear infinite}.reveal.in #v2::after{animation:v2c 9600ms steps(1,end) infinite}
+.reveal.in #v3 .ty{animation:v3 9600ms linear infinite}.reveal.in #v3::after{animation:v3c 9600ms steps(1,end) infinite}
+.reveal.in #v4 .ty{animation:v4 9600ms linear infinite}.reveal.in #v4::after{animation:v4c 9600ms steps(1,end) infinite}
+.reveal.in #v5 .ty{animation:v5 9600ms linear infinite}.reveal.in #v5::after{animation:v5c 9600ms steps(1,end) infinite}
+.reveal.in #v6 .ty{animation:v6 9600ms linear infinite}.reveal.in #v6::after{animation:v6c 9600ms steps(1,end) infinite}
+.reveal.in #v7 .ty{animation:v7 9600ms linear infinite}.reveal.in #v7::after{animation:v7c 9600ms steps(1,end) infinite}
+.reveal.in #r0 .ty{animation:r0 9600ms linear infinite}.reveal.in #r0::after{animation:r0c 9600ms steps(1,end) infinite}
+.reveal.in #r1 .ty{animation:r1 9600ms linear infinite}.reveal.in #r1::after{animation:r1c 9600ms steps(1,end) infinite}
+.reveal.in .stamp{animation:stamp 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in .stamp i::after{animation:ring 9600ms cubic-bezier(.1,.6,.3,1) infinite}
+.reveal.in #v3 #v3t{animation:v3 9600ms linear infinite,oldl 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #v4 #v4t{animation:v4 9600ms linear infinite,oldl 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #v3n,.reveal.in #v4n{animation:newl 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #v3{animation:mark 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #v4{animation:mark2 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #a0{animation:a0 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #a1{animation:a1 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #a2{animation:a2 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #a3{animation:a3 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in #a4{animation:a4 9600ms cubic-bezier(.2,.7,.2,1) infinite}
+.reveal.in .ns b::before{animation:ns 9600ms steps(1,end) infinite}
+/* final state without motion */
+.reveal:not(.in) .col,.reveal:not(.in) .asm .ln{opacity:1}
+.reveal:not(.in) #v3t,.reveal:not(.in) #v4t{opacity:0}
+.reveal:not(.in) .ln .ty{width:auto}
+@media (prefers-reduced-motion:reduce){.reveal.in *,.reveal.in *::before,.reveal.in *::after{animation:none!important}.reveal .col,.reveal .asm .ln{opacity:1}.reveal #v3t,.reveal #v4t{opacity:0}.reveal #v4{background:var(--markbg)}}
+@keyframes v0{0%,5.208%{width:0;animation-timing-function:steps(2,end)}6.667%,100%{width:2ch}}
+@keyframes v0c{0%,5.198%{opacity:0}5.208%,8.750%{opacity:1}8.760%,100%{opacity:0}}
+@keyframes v1{0%,7.604%{width:0;animation-timing-function:steps(27,end)}13.792%,100%{width:27ch}}
+@keyframes v1c{0%,7.594%{opacity:0}7.604%,15.875%{opacity:1}15.885%,100%{opacity:0}}
+@keyframes v2{0%,14.729%{width:0;animation-timing-function:steps(11,end)}17.250%,100%{width:11ch}}
+@keyframes v2c{0%,14.719%{opacity:0}14.729%,19.333%{opacity:1}19.344%,100%{opacity:0}}
+@keyframes v3{0%,18.188%{width:0;animation-timing-function:steps(11,end)}20.708%,100%{width:11ch}}
+@keyframes v3c{0%,18.177%{opacity:0}18.188%,22.792%{opacity:1}22.802%,100%{opacity:0}}
+@keyframes v4{0%,21.646%{width:0;animation-timing-function:steps(17,end)}25.542%,100%{width:17ch}}
+@keyframes v4c{0%,21.635%{opacity:0}21.646%,27.625%{opacity:1}27.635%,100%{opacity:0}}
+@keyframes v5{0%,26.479%{width:0;animation-timing-function:steps(16,end)}30.146%,100%{width:16ch}}
+@keyframes v5c{0%,26.469%{opacity:0}26.479%,32.229%{opacity:1}32.240%,100%{opacity:0}}
+@keyframes v6{0%,31.083%{width:0;animation-timing-function:steps(5,end)}32.542%,100%{width:5ch}}
+@keyframes v6c{0%,31.073%{opacity:0}31.083%,34.625%{opacity:1}34.635%,100%{opacity:0}}
+@keyframes v7{0%,33.479%{width:0;animation-timing-function:steps(3,end)}34.938%,100%{width:3ch}}
+@keyframes v7c{0%,33.469%{opacity:0}33.479%,37.021%{opacity:1}37.031%,100%{opacity:0}}
+@keyframes r0{0%,40.625%{width:0;animation-timing-function:steps(2,end)}42.083%,100%{width:2ch}}
+@keyframes r0c{0%,40.615%{opacity:0}40.625%,44.167%{opacity:1}44.177%,100%{opacity:0}}
+@keyframes r1{0%,43.021%{width:0;animation-timing-function:steps(10,end)}45.313%,100%{width:10ch}}
+@keyframes r1c{0%,43.010%{opacity:0}43.021%,47.396%{opacity:1}47.406%,100%{opacity:0}}
+@keyframes c1{0%,2.083%{opacity:0;transform:translateY(6px)}7.292%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}
+@keyframes c2{0%,37.500%{opacity:0;transform:translateY(6px)}42.708%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}
+@keyframes c3{0%,58.333%{opacity:0;transform:translateY(6px)}63.542%,90.625%{opacity:1;transform:none}96.875%,100%{opacity:0;transform:translateY(-4px)}}
+@keyframes stamp{0%,50.000%{opacity:0;transform:translateY(4px)}53.750%,100%{opacity:1;transform:none}}
+@keyframes ring{0%,50.000%{transform:scale(1);opacity:.9}59.375%,100%{transform:scale(3.2);opacity:0}}
+@keyframes oldl{0%,52.083%{opacity:1;transform:none}56.458%,100%{opacity:0;transform:translateY(-55%)}}
+@keyframes newl{0%,52.083%{opacity:0;transform:translateY(55%)}56.458%,100%{opacity:1;transform:none}}
+@keyframes mark{0%,51.042%{background:transparent}54.688%{background:var(--markbg)}68.750%,100%{background:transparent}}
+@keyframes mark2{0%,51.042%{background:transparent}54.688%{background:var(--markbg)}79.167%,100%{background:transparent}}
+@keyframes a0{0%,60.417%{opacity:0;transform:translateY(5px)}64.792%,100%{opacity:1;transform:none}}
+@keyframes a1{0%,61.354%{opacity:0;transform:translateY(5px)}65.729%,100%{opacity:1;transform:none}}
+@keyframes a2{0%,62.292%{opacity:0;transform:translateY(5px)}66.667%,100%{opacity:1;transform:none}}
+@keyframes a3{0%,63.229%{opacity:0;transform:translateY(5px)}67.604%,100%{opacity:1;transform:none}}
+@keyframes a4{0%,64.167%{opacity:0;transform:translateY(5px)}68.542%,100%{opacity:1;transform:none}}
+@keyframes ns{0%,65.615%{opacity:0}65.625%{opacity:1;content:"0.0"}66.667%{opacity:1;content:"1.2"}67.708%{opacity:1;content:"2.4"}68.750%{opacity:1;content:"3.4"}69.792%{opacity:1;content:"4.2"}70.833%{opacity:1;content:"4.7"}71.875%{opacity:1;content:"4.9"}72.917%{opacity:1;content:"5.0"}100%{opacity:1;content:"5.0"}}
+</style>
+</head>
+<body>
+<header class="top"><a class="brand pixel" href="/">A0</a></header>
+<section class="hero">
+  <div class="live mono reveal" id="live">
+    <div class="col view">
+      <h6>view <b>clamp</b></h6>
+      <div class="ln" id="v0"><span class="ty" id="v0t">e0</span></div>
+      <div class="ln" id="v1"><span class="ty" id="v1t">fn clamp u32 u32 u32 -> u32</span></div>
+      <div class="ln" id="v2"><span class="ty" id="v2t">lo lt p0 p1</span></div>
+      <div class="ln mark" id="v3"><span class="ty" id="v3t">hi lt p2 p0</span><span class="alt" id="v3n">a select lo p1 p0</span></div>
+      <div class="ln mark" id="v4"><span class="ty" id="v4t">a select lo p1 p0</span><span class="alt" id="v4n">hi lt p2 a</span></div>
+      <div class="ln" id="v5"><span class="ty" id="v5t">r select hi p2 a</span></div>
+      <div class="ln" id="v6"><span class="ty" id="v6t">ret r</span></div>
+      <div class="ln" id="v7"><span class="ty" id="v7t">end</span></div>
+    </div>
+    <div class="col model">
+      <h6>model <b>reply</b></h6>
+      <div class="ln" id="r0"><span class="ty" id="r0t">e0</span></div>
+      <div class="ln" id="r1"><span class="ty" id="r1t">hi lt p2 a</span></div>
+      <div class="stamp"><i></i><b>accepted</b><span>· rev fe014071</span></div>
+    </div>
+    <div class="col asm">
+      <h6>aarch64 <b>native</b></h6>
+      <div class="ln" id="a0">cmp w10, w11</div>
+      <div class="ln" id="a1">cset w12, lo</div>
+      <div class="ln" id="a2">cmp w9, #0</div>
+      <div class="ln" id="a3">csel w12, w10, w11, ne</div>
+      <div class="ln" id="a4">ret</div>
+      <div class="ns"><b></b> ns per call</div>
+    </div>
+  </div>
+  <h1 class="name pixel">A0</h1>
+  <p class="tag pixel">for AI</p>
+</section>
+<script>
+// Stand-in for the page runtime's generic hook: elements with class "reveal" get "in".
+document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in')});
+</script>
+</body>
+</html>
