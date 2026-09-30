@@ -1,6 +1,7 @@
 /**
  * Gate 5 application acceptance across targets: Conway's Life (examples/life.a0) and the
- * self-hosted A0 lexer (compiler/lex.a0), each checked against an independent reference.
+ * self-hosted A0 lexer (compiler/lex.a0) and parser (compiler/parse.a0), each checked
+ * against an independent reference.
  *
  * Expected results come from an independent TypeScript reference implementation of Life
  * on a 32x32 torus (no A0 code involved). Cases exercise the session protocol
@@ -13,8 +14,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseAndValidate } from '../src/core.js';
+import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
+import { irWords, refLex, refParse, wellFormedPrefix } from './ref-parse.js';
 import {
   checkInterpreter,
   checkJs,
@@ -141,43 +144,6 @@ export function buildCases(): (Case & { readonly label: string })[] {
   return cases;
 }
 
-// --- Self-hosted lexer reference ---------------------------------------------------
-
-/** The token grammar of compiler/lex.a0, written directly: (kind start length) triples. */
-export function refLex(src: string): number[] {
-  const out: number[] = [];
-  const b = Buffer.from(src);
-  let i = 0;
-  const word = (c: number): boolean => (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95;
-  while (i < b.length) {
-    const c = b[i] as number;
-    if (c === 32 || c === 9 || c === 13) i += 1;
-    else if (c === 10) {
-      out.push(5, i, 1);
-      i += 1;
-    } else if (c === 35) {
-      while (i < b.length && b[i] !== 10) i += 1;
-    } else if (word(c)) {
-      const s = i;
-      while (i < b.length && word(b[i] as number)) i += 1;
-      out.push(c >= 48 && c <= 57 ? 2 : 1, s, i - s);
-    } else if (c === 34) {
-      const s = i + 1;
-      i += 1;
-      while (i < b.length && b[i] !== 34) i += b[i] === 92 ? 2 : 1;
-      if (i < b.length) out.push(3, s, i - s);
-      i += 1;
-    } else if (c === 45 && b[i + 1] === 62) {
-      out.push(4, i, 2);
-      i += 2;
-    } else {
-      out.push(c === 45 ? 6 : c === 64 ? 7 : 9, i, 1);
-      i += 1;
-    }
-  }
-  return out;
-}
-
 export async function buildLexCases(): Promise<(Case & { readonly label: string })[]> {
   const sources: [string, string][] = [
     ['sq', 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n'],
@@ -201,6 +167,50 @@ export async function buildLexCases(): Promise<(Case & { readonly label: string 
       expected: words.length,
       input: [bytes.length, ...bytes],
       expectedOutput: [words.length, ...words],
+    };
+  });
+}
+
+export async function buildParseCases(): Promise<(Case & { readonly label: string })[]> {
+  const sources: [string, string][] = [
+    ['sq', 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n'],
+    ['retop', 'fn f u32 u32 -> u32\nret add p0 p1\nend\n'],
+    ['text', 'fn f -> u32x3\nt text "a\\"b\\\\c"\nret t\nend\n'],
+    [
+      'types',
+      'use "lex.a0"\n# comment\nfn f u32x4 (u32,bool) io -> (u32,io)  # trailing\n\tx  mov 4294967295\r\nr read p2\nret r\nend\nfn g ((u32,bool),u32x4) -> (u32,bool)\nv at p0 0\nret v\nend\n',
+    ],
+    [
+      'calls',
+      'fn step u32 u32 -> u32\nret add p0 p1\nend\nfn go u32 -> bool\nc lt p0 10\nret c\nend\nfn body u32 u32 u32 -> u32\nret call step p0 p2\nend\nfn pred u32 u32 u32 -> bool\nret call go p0\nend\nfn top u32 -> u32\na fold step 4 0\nb loop pred body 100 a p0\nz select true a b\nret z\nend\n',
+    ],
+    ['unknown-callee', 'fn f u32 -> u32\na call g p0\nret a\nend\n'],
+    ['later-node', 'fn f u32 -> u32\na add b 1\nb mov p0\nret a\nend\n'],
+    ['bad-op', 'fn f u32 -> u32\na plus p0 1\nret a\nend\n'],
+    ['unterminated', 'fn f u32 -> u32\na add p0 1\n'],
+  ];
+  const { readdir } = await import('node:fs/promises');
+  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort()) {
+    const text = (await readFile(`examples/${f}`, 'utf8')).slice(0, 500);
+    sources.push([f, text.slice(0, text.lastIndexOf('\n') + 1)]);
+    sources.push([`${f}/fns`, wellFormedPrefix(text, 500)]);
+  }
+  // The lexer's own source from its first function (the leading comment alone is over 500 bytes).
+  const lexFull = await readFile('compiler/lex.a0', 'utf8');
+  const lex = lexFull.slice(lexFull.indexOf('\nfn ') + 1, lexFull.indexOf('\nfn ') + 501);
+  sources.push(['lex.a0', lex.slice(0, lex.lastIndexOf('\n') + 1)]);
+  sources.push(['lex.a0/fns', wellFormedPrefix(lex, 500)]);
+  return sources.map(([label, src]) => {
+    const bytes = [...Buffer.from(src)];
+    const ir = refParse(src);
+    const words = irWords(ir);
+    return {
+      label: `parse/${label}`,
+      functionName: 'parseio',
+      args: [],
+      expected: ir.code,
+      input: [bytes.length, ...bytes],
+      expectedOutput: words,
     };
   });
 }
@@ -250,6 +260,22 @@ async function main(): Promise<void> {
     webassembly: await checkWasm(lexProgram, lexCases),
     jvm: await checkJvm(lexProgram, lexCases),
   };
+  const parseProgram = (await link('compiler/parse.a0', (p) => readFile(p, 'utf8'))).program;
+  const parseCases = await buildParseCases();
+  const parseTargets: Record<string, TargetReport> = {
+    interpreter: checkInterpreter(parseProgram, parseCases),
+    optimizer: checkOptimizer(parseProgram, parseCases),
+    javascript: await checkJs(parseProgram, parseCases),
+    native_c_clang: await checkNative(
+      parseProgram,
+      parseCases,
+      findClang(),
+      false,
+      'native C via clang',
+    ),
+    webassembly: await checkWasm(parseProgram, parseCases),
+    jvm: await checkJvm(parseProgram, parseCases),
+  };
   const report = {
     generatedAt: new Date().toISOString(),
     application: 'Conway’s Life 32x32 torus session protocol (examples/life.a0)',
@@ -259,6 +285,13 @@ async function main(): Promise<void> {
       cases: lexCases.length,
       caseLabels: lexCases.map((c) => c.label),
       targets: lexTargets,
+    },
+    parser: {
+      application: 'Self-hosted A0 parser (compiler/parse.a0 linked with lex.a0), io front parseio',
+      reference: 'Independent TypeScript token-driven parser refParse in tools/app.ts (word IR)',
+      cases: parseCases.length,
+      caseLabels: parseCases.map((c) => c.label),
+      targets: parseTargets,
     },
     reference:
       'Independent TypeScript implementation in tools/app.ts (refStep/refSession); no A0 code involved',
@@ -288,10 +321,19 @@ async function main(): Promise<void> {
     if (t.failures)
       for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
   }
+  process.stdout.write('parser (compiler/parse.a0):\n');
+  for (const [name, t] of Object.entries(parseTargets)) {
+    process.stdout.write(
+      `${name.padEnd(18)} ${t.status.padEnd(10)} ${String(t.cases).padStart(5)} cases  ${t.detail.slice(0, 80)}\n`,
+    );
+    if (t.failures)
+      for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
+  }
   const bad =
     !referenceSelfCheck ||
     Object.values(targets).some((t) => t.status === 'failed') ||
-    Object.values(lexTargets).some((t) => t.status === 'failed');
+    Object.values(lexTargets).some((t) => t.status === 'failed') ||
+    Object.values(parseTargets).some((t) => t.status === 'failed');
   process.exit(bad ? 1 : 0);
 }
 
