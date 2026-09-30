@@ -26,7 +26,13 @@ interface Kernel {
   readonly py: string;
   /** Hand-written Rust with identical wrapping semantics (compiled with rustc -O). */
   readonly rust: string;
+  /** Divides the iteration counts for kernels whose single call does much more work. */
+  readonly iterScale?: number;
+  /** Reason the direct arm64 backend is not timed on this kernel (reported as blocked). */
+  readonly noArm64?: string;
 }
+
+const ZEROS_4096 = Array.from({ length: 4096 }, () => '0').join(' ');
 
 const KERNELS: readonly Kernel[] = [
   {
@@ -111,6 +117,18 @@ const KERNELS: readonly Kernel[] = [
     rust: '#[inline] fn hw_arrfill(x: u32, y: u32) -> u32 { let mut a = [0u32; 8]; for i in 0..8u32 { a[i as usize] = i.wrapping_add(x); } a[(y % 8) as usize].wrapping_add(a[3]) }',
   },
   {
+    name: 'arrfill4k', // memory: 4096 value-semantics updates of a 16 KiB array (in-place C/JS path)
+    arity: 2,
+    iterScale: 128,
+    noArm64:
+      'src/arm64.ts copies the 16 KiB state into and out of every trip (no in-place path yet)',
+    a0: `fn put4k u32x4096 u32 u32 -> u32x4096\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill4k u32 u32 -> u32\nz arr ${ZEROS_4096}\na fold put4k 4096 z p0\nx get a p1\ny get a 4095\ns add x y\nret s\nend`,
+    c: 'static inline uint32_t hw_arrfill4k(uint32_t x, uint32_t y) { uint32_t a[4096]; for (uint32_t i = 0; i < 4096; i++) a[i] = i + x; return a[y % 4096u] + a[4095]; }',
+    js: 'export function arrfill4k(x, y) { const a = new Uint32Array(4096); for (let i = 0; i < 4096; i++) a[i] = (i + x) >>> 0; return (a[y & 4095] + a[4095]) >>> 0; }',
+    py: 'def arrfill4k(x, y):\n    a = [0] * 4096\n    for i in range(4096):\n        a[i] = (i + x) & 0xFFFFFFFF\n    return (a[y % 4096] + a[4095]) & 0xFFFFFFFF',
+    rust: '#[inline] fn hw_arrfill4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; for i in 0..4096u32 { a[i as usize] = i.wrapping_add(x); } a[(y % 4096) as usize].wrapping_add(a[4095]) }',
+  },
+  {
     name: 'loop64', // iteration: 64 dependent steps through a body call
     arity: 2,
     a0: 'fn mixstep u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc shr b 15\nd xor b c\ne add d p1\nret e\nend\nfn loop64 u32 u32 -> u32\nr fold mixstep 64 p0 p1\nret r\nend',
@@ -123,6 +141,9 @@ const KERNELS: readonly Kernel[] = [
 
 const ITER = 20_000_000;
 const SAMPLES = 7;
+
+/** Native iterations per sample for a kernel (JS runs a quarter, Python 1/200 of this). */
+const iterations = (kernel: Kernel): number => Math.floor(ITER / (kernel.iterScale ?? 1));
 
 function cDriver(callExpr: (i: number) => string, arity: number): string {
   const args = (base: string) => Array.from({ length: arity }, (_, i) => `${base}${i}`).join(', ');
@@ -225,7 +246,7 @@ async function benchC(
     // `clang -x assembler`, linked with the same driver. The call is out of line (no inlining
     // across the object boundary), unlike the C paths where the kernel inlines into the loop.
     let arm64Exe: string | null = null;
-    if (process.platform === 'darwin' && process.arch === 'arm64') {
+    if (process.platform === 'darwin' && process.arch === 'arm64' && kernel.noArm64 === undefined) {
       await writeFile(join(dir, 'kernel.s'), compile(program, 'arm64').text, 'utf8');
       const as = runTool(clang, [
         '-c',
@@ -267,7 +288,7 @@ async function benchC(
     const rs: number[] = [];
     let rc = '';
     const runOne = (exe: string): { ns: number; checksum: string } => {
-      const r = runTool(exe, [String(ITER)], { timeoutMs: 600_000 });
+      const r = runTool(exe, [String(iterations(kernel))], { timeoutMs: 600_000 });
       if (!r.ok) throw new Error(r.stderr);
       const [ns, sum] = r.stdout.trim().split(' ');
       return { ns: Number(ns), checksum: sum ?? '' };
@@ -345,7 +366,7 @@ async function benchJs(
   };
   const emitted = await load(compile(program, 'js').text);
   const handwritten = await load(kernel.js);
-  const iters = ITER / 4;
+  const iters = iterations(kernel) / 4;
   const run = (
     f: (...a: number[]) => number,
     iterations = iters,
@@ -400,7 +421,7 @@ async function benchPy(
   kernel: Kernel,
   expected: (iters: number) => string,
 ): Promise<{ python: Sample; pyIters: number; startupMs: { python: number; node: number } }> {
-  const iters = ITER / 200;
+  const iters = Math.floor(iterations(kernel) / 200);
   const driver = `${kernel.py}
 import sys, time
 M = 0xFFFFFFFF
@@ -483,11 +504,16 @@ async function main(): Promise<void> {
   const clang = findClang();
   const rustc = `${process.env.HOME ?? ''}/.cargo/bin/rustc`;
   const results: Record<string, unknown> = {};
-  for (const k of KERNELS) {
+  // An optional kernel name runs one kernel A/B and prints it without touching the ledger.
+  const only = process.argv[2];
+  const kernels = only === undefined ? KERNELS : KERNELS.filter((k) => k.name === only);
+  if (kernels.length === 0) throw new Error(`unknown kernel '${only}'`);
+  for (const k of kernels) {
     const js = await benchJs(k);
     const py = await benchPy(k, js.checksumAt);
     const c = clang.path === undefined ? null : await benchC(k, clang.path, rustc);
     results[k.name] = {
+      iterationsPerSample: iterations(k),
       python: py.python,
       pythonIterations: py.pyIters,
       startupInterpretersMs: py.startupMs,
@@ -500,7 +526,7 @@ async function main(): Promise<void> {
               verdictVsRust: c.rust === null ? 'blocked' : verdict(c.emitted, c.rust),
               arm64VsEmittedC:
                 c.arm64 === null
-                  ? 'blocked'
+                  ? (k.noArm64 ?? 'blocked')
                   : {
                       ratio: c.arm64.medianNsPerCall / c.emitted.medianNsPerCall,
                       verdict: verdict(c.arm64, c.emitted),
@@ -520,6 +546,7 @@ async function main(): Promise<void> {
       `${k.name.padEnd(8)} C: ${cv}   JS: ${verdict(js.emitted, js.handwritten)} (${js.emitted.medianNsPerCall.toFixed(3)} vs ${js.handwritten.medianNsPerCall.toFixed(3)} ns)\n`,
     );
   }
+  if (only !== undefined) return;
   const report = {
     generatedAt: new Date().toISOString(),
     node: process.version,
@@ -530,11 +557,16 @@ async function main(): Promise<void> {
       return r.ok ? r.stdout.trim() : null;
     })(),
     flags: { c: '-std=c11 -O2 (no sanitizer)', js: 'Node default JIT, in-process, warm' },
-    iterationsPerSample: { c: ITER, js: ITER / 4, python: ITER / 200 },
+    iterationsPerSample: {
+      c: ITER,
+      js: ITER / 4,
+      python: ITER / 200,
+      note: 'divided by a kernel iterScale where the kernel result reports iterationsPerSample',
+    },
     samplesPerSide: SAMPLES,
     loadAverage: (await import('node:os')).loadavg(),
     meaning:
-      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
+      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill (8 and 4096 elements), 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
     kernels: results,
   };
   await mkdir('results', { recursive: true });

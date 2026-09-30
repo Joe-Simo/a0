@@ -11,6 +11,7 @@
 import { assembleArm64, emitArm64Function } from './arm64.js';
 import {
   A0Error,
+  assertVectorSized,
   bitWidth,
   containsIo,
   formatType,
@@ -180,15 +181,21 @@ function sameOp(x: Operand, y: Operand): boolean {
 /**
  * May the aggregate operand `o` be updated in place by the node at `index`?
  * Sound when the value is provably unshared: it is a fresh allocation (arr/rec/set/put result)
- * or the owned state parameter p0 of an iteration body; every other use of it is a non-escaping
- * element/field read (`get`/`at` as first operand) that happens before `index`; and it is not
- * returned. `get`/`at` results alias their container and are never mutated.
+ * or a parameter the target owns privately (`ownedParam`: in JS only the p0 state of an
+ * iteration body, in C every by-value parameter and the owned loop state); every other use of
+ * it is a non-escaping element/field read (`get`/`at` as first operand) that happens before
+ * `index`; and it is not returned. `get`/`at` results alias their container and are never mutated.
  */
-function mutableHere(fn: TypedFunc, o: Operand, index: number, ownedP0: boolean): boolean {
+function mutableHere(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  ownedParam: (paramIndex: number) => boolean,
+): boolean {
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
     if (def === undefined || !FRESH_OPS.has(def.op)) return false;
-  } else if (!(o.kind === 'param' && o.index === 0 && ownedP0)) {
+  } else if (!(o.kind === 'param' && ownedParam(o.index))) {
     return false;
   }
   if (sameOp(fn.ret, o)) return false;
@@ -202,6 +209,12 @@ function mutableHere(fn: TypedFunc, o: Operand, index: number, ownedP0: boolean)
   }
   return true;
 }
+
+/** JS ownership: only the p0 state of the owned iteration-body variant is private. */
+const jsOwned =
+  (ownedP0: boolean) =>
+  (i: number): boolean =>
+    i === 0 && ownedP0;
 
 /** A node whose result (and therefore whose and/or/xor operands) is bool. */
 const isBoolNode = (fn: TypedFunc, node: Node): boolean => fn.types.get(node.id) === 'bool';
@@ -275,7 +288,8 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return elem === 'bool' ? `${read} === 1` : read;
     }
     case 'set': {
-      const inPlace = index >= 0 && mutableHere(fn, node.args[0] as Operand, index, ownedP0);
+      const inPlace =
+        index >= 0 && mutableHere(fn, node.args[0] as Operand, index, jsOwned(ownedP0));
       const et = operandTypeOf(fn, node.args[0] as Operand);
       const boolElem = !isPrimitive(et) && et.kind === 'arr' && et.elem === 'bool';
       const value = boolElem ? `(${c} ? 1 : 0)` : c;
@@ -285,7 +299,8 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     case 'at':
       return `${a}[${b}]`;
     case 'put': {
-      const inPlace = index >= 0 && mutableHere(fn, node.args[0] as Operand, index, ownedP0);
+      const inPlace =
+        index >= 0 && mutableHere(fn, node.args[0] as Operand, index, jsOwned(ownedP0));
       return inPlace ? `(${a}[${b}] = ${c}, ${a})` : `a0_with(${a}, ${b}, ${c})`;
     }
     case 'read':
@@ -311,7 +326,7 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
     const guard = n.op === 'loop' ? ` if (!a0i_${n.pred ?? ''}(${call})) break;` : '';
     // Aggregate state is owned by the loop so the body may update it in place: copy the initial
     // value once unless it is already provably unshared (fresh and used only here).
-    const initOwned = mutableHere(fn, n.args[1] as Operand, index, owned);
+    const initOwned = mutableHere(fn, n.args[1] as Operand, index, jsOwned(owned));
     const initExpr = stateAggregate(n.args[1] as Operand) && !initOwned ? `${init}.slice()` : init;
     const bodyName = stateAggregate(n.args[1] as Operand)
       ? `a0o_${n.callee ?? ''}`
@@ -396,6 +411,11 @@ function cTypeDecl(t: Type): string {
     const inits = Array.from({ length: t.length }, (_, i) => `r.e[${i}] = e${i};`).join(' ');
     return [
       `typedef struct { ${e} e[${t.length}]; } ${name};`,
+      // An all-zero literal of a scalar array is a zero initializer (`{0}` is warning-free in C
+      // and C++ only for a flat struct); every other literal uses the element-wise constructor.
+      ...(isPrimitive(t.elem)
+        ? [`static inline ${name} a0zero_${m}(void) { ${name} r = {0}; return r; }`]
+        : []),
       `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
       `static inline ${name} a0set_${m}(${name} a, uint32_t i, ${e} v) { a.e[i % ${t.length}u] = v; return a; }`,
     ].join('\n');
@@ -414,6 +434,33 @@ function cTypeDecl(t: Type): string {
   ].join('\n');
 }
 
+/**
+ * C function variants. `value` is the public ABI (aggregates by value, result by value).
+ * Iteration bodies (`p0` aggregate state, `p1` u32 index, result of the state type) also get an
+ * `owned` variant `void a0o_f(T *p0, ...)` that updates the loop state through the pointer;
+ * predicates of that shape returning bool get a `ref` variant `bool a0r_f(const T *p0, ...)`.
+ * Every by-value aggregate parameter and the owned state are private to the callee, so a
+ * `set`/`put` whose old value is provably dead (`mutableHere`) writes in place; the node is then
+ * an alias of the updated storage (no local of its own) instead of a copy. Value semantics are
+ * unchanged: any value that is still observable is copied as before.
+ */
+type CVariant = 'value' | 'owned' | 'ref';
+
+const isIterationShape = (fn: TypedFunc): boolean =>
+  fn.params[0] !== undefined && !isPrimitive(fn.params[0]) && fn.params[1] === 'u32';
+
+const hasOwnedVariant = (fn: TypedFunc): boolean =>
+  isIterationShape(fn) && formatType(fn.result) === formatType(fn.params[0] as Type);
+
+const hasRefVariant = (fn: TypedFunc): boolean => isIterationShape(fn) && fn.result === 'bool';
+
+interface CContext {
+  readonly fn: TypedFunc;
+  readonly variant: CVariant;
+  /** Nodes updated in place, mapped to the storage they alias (a value node or a parameter). */
+  readonly aliases: Map<string, Operand>;
+}
+
 function cOperand(o: Operand): string {
   switch (o.kind) {
     case 'node':
@@ -427,8 +474,36 @@ function cOperand(o: Operand): string {
   }
 }
 
-function cExpr(node: Node, fn: TypedFunc): string {
-  const [a, b, c] = node.args.map(cOperand);
+/** The storage an operand denotes: an alias node resolves to the value it updated in place. */
+function cRoot(ctx: CContext, o: Operand): Operand {
+  return o.kind === 'node' ? (ctx.aliases.get(o.id) ?? o) : o;
+}
+
+/** Value (lvalue) expression of an operand; p0 is a pointer outside the value variant. */
+function cVal(ctx: CContext, o: Operand): string {
+  const root = cRoot(ctx, o);
+  if (root.kind === 'param' && root.index === 0 && ctx.variant !== 'value') return '(*p0)';
+  return cOperand(root);
+}
+
+/** In C every by-value aggregate parameter is the callee's own copy; a `ref` p0 is read-only. */
+const cOwned =
+  (variant: CVariant) =>
+  (i: number): boolean =>
+    !(variant === 'ref' && i === 0);
+
+/** Does the node at `index` update its first operand in place? Records the alias. */
+function cInPlace(ctx: CContext, node: Node, index: number): boolean {
+  const target = node.args[0] as Operand;
+  if (!mutableHere(ctx.fn, target, index, cOwned(ctx.variant))) return false;
+  ctx.aliases.set(node.id, cRoot(ctx, target));
+  return true;
+}
+
+function cExpr(ctx: CContext, node: Node, index: number): string {
+  const fn = ctx.fn;
+  const vals = node.args.map((o) => cVal(ctx, o));
+  const [a, b, c] = vals;
   switch (node.op) {
     case 'mov':
       return `${a}`;
@@ -467,18 +542,35 @@ function cExpr(node: Node, fn: TypedFunc): string {
     case 'select':
       return `(${a} ? ${b} : ${c})`;
     case 'call':
-      return `a0_${node.callee ?? ''}(${node.args.map(cOperand).join(', ')})`;
-    case 'arr':
+      return `a0_${node.callee ?? ''}(${vals.join(', ')})`;
+    case 'arr': {
+      const t = fn.types.get(node.id) ?? 'u32';
+      const zeros =
+        !isPrimitive(t) &&
+        t.kind === 'arr' &&
+        isPrimitive(t.elem) &&
+        node.args.every(
+          (o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value),
+        );
+      return zeros ? `a0zero_${mangleType(t)}()` : `a0mk_${mangleType(t)}(${vals.join(', ')})`;
+    }
     case 'rec':
-      return `a0mk_${mangleType(fn.types.get(node.id) ?? 'u32')}(${node.args.map(cOperand).join(', ')})`;
+      return `a0mk_${mangleType(fn.types.get(node.id) ?? 'u32')}(${vals.join(', ')})`;
     case 'get':
       return `${a}.e[${b} % ${arrayLength(fn, node.args[0])}u]`;
-    case 'set':
+    case 'set': {
+      const idx = `${b} % ${arrayLength(fn, node.args[0])}u`;
+      // In place: an assignment statement; the node aliases its operand's storage.
+      if (cInPlace(ctx, node, index)) return `${a}.e[${idx}] = ${c};`;
       return `a0set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${b}, ${c})`;
+    }
     case 'at':
       return `${a}.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}`;
-    case 'put':
-      return `a0put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}(${a}, ${c})`;
+    case 'put': {
+      const k = node.args[1]?.kind === 'u32' ? node.args[1].value : 0;
+      if (cInPlace(ctx, node, index)) return `${a}.f${k} = ${c};`;
+      return `a0put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${k}(${a}, ${c})`;
+    }
     case 'read':
       return `a0_read(${a})`;
     case 'write':
@@ -497,21 +589,71 @@ export function cSignature(fn: TypedFunc): string {
   return `${cType(fn.result)} a0_${fn.name}(${params})`;
 }
 
-const emitCFunction: Emitter = (fn) => {
-  const body = fn.nodes.map((n) => {
+function cVariantSignature(fn: TypedFunc, variant: CVariant): string {
+  if (variant === 'value') return cSignature(fn);
+  const p0 = cType(fn.params[0] as Type);
+  const rest = fn.params.slice(1).map((t, i) => `${cType(t)} p${i + 1}`);
+  const params = [variant === 'owned' ? `${p0} *p0` : `const ${p0} *p0`, ...rest].join(', ');
+  return variant === 'owned'
+    ? `static inline void a0o_${fn.name}(${params})`
+    : `static inline ${cType(fn.result)} a0r_${fn.name}(${params})`;
+}
+
+function cBody(fn: TypedFunc, variant: CVariant): string {
+  const ctx: CContext = { fn, variant, aliases: new Map() };
+  const lines = fn.nodes.map((n, index) => {
     const t = cType(fn.types.get(n.id) ?? 'u32');
+    if (n.op === 'fold' || n.op === 'loop') {
+      const [count, init, ...extra] = n.args.map((o) => cVal(ctx, o));
+      if (isPrimitive(fn.types.get(n.id) ?? 'u32')) {
+        const call = [`n_${n.id}`, 'i', ...extra].join(', ');
+        const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
+        return `  ${t} n_${n.id} = ${init};\n  for (uint32_t i = 0; i < ${count}; i++) {${guard} n_${n.id} = a0_${n.callee ?? ''}(${call}); }`;
+      }
+      // Aggregate state: the body updates it through a pointer and the predicate reads it
+      // through a const pointer, so no trip copies the state. The state is the initial value's
+      // own storage when that value is provably unshared (as in JS); otherwise one copy.
+      const initOperand = n.args[1] as Operand;
+      const owned = mutableHere(fn, initOperand, index, cOwned(variant));
+      if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
+      const state = owned ? init : `n_${n.id}`;
+      const call = [`&${state}`, 'i', ...extra].join(', ');
+      const guard = n.op === 'loop' ? ` if (!a0r_${n.pred ?? ''}(${call})) break;` : '';
+      const loop = `for (uint32_t i = 0; i < ${count}; i++) {${guard} a0o_${n.callee ?? ''}(${call}); }`;
+      return owned ? `  ${loop}` : `  ${t} n_${n.id} = ${init};\n  ${loop}`;
+    }
+    const expr = cExpr(ctx, n, index);
+    if (ctx.aliases.has(n.id)) return `  ${expr}`;
     // `const T x` for values; `T *const x` for the io pointer (the pointee is mutable state).
     const decl = t.endsWith('*') ? `${t}const` : `const ${t}`;
     // Effect results may be legitimately unused (the effect is the point); keep -Wall clean.
     const effect = n.op === 'read' || n.op === 'write' || containsIo(fn.types.get(n.id) ?? 'u32');
-    if (n.op !== 'fold' && n.op !== 'loop')
-      return `  ${decl} n_${n.id} = ${cExpr(n, fn)};${effect ? ` (void)n_${n.id};` : ''}`;
-    const [count, init, ...extra] = n.args.map(cOperand);
-    const call = [`n_${n.id}`, 'i', ...extra].join(', ');
-    const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
-    return `  ${t} n_${n.id} = ${init};\n  for (uint32_t i = 0; i < ${count}; i++) {${guard} n_${n.id} = a0_${n.callee ?? ''}(${call}); }`;
+    return `  ${decl} n_${n.id} = ${expr};${effect ? ` (void)n_${n.id};` : ''}`;
   });
-  return [`${cSignature(fn)} {`, ...body, `  return ${cOperand(fn.ret)};`, '}'].join('\n');
+  // A local updated in place cannot be const: drop the qualifier on every aliased node.
+  const roots = new Set(
+    [...ctx.aliases.values()].filter((o) => o.kind === 'node').map((o) => cOperand(o)),
+  );
+  const body = lines.map((line) => {
+    const m = /^ {2}const \S+ (n_[a-z0-9_]+) =/.exec(line);
+    return m !== null && roots.has(m[1] as string) ? line.replace('  const ', '  ') : line;
+  });
+  let ret = `  return ${cVal(ctx, fn.ret)};`;
+  if (variant === 'owned') {
+    // The state is already updated in place when the result aliases p0; otherwise store it.
+    const root = cRoot(ctx, fn.ret);
+    ret = root.kind === 'param' && root.index === 0 ? '' : `  *p0 = ${cVal(ctx, fn.ret)};`;
+  }
+  return [`${cVariantSignature(fn, variant)} {`, ...body, ...(ret === '' ? [] : [ret]), '}'].join(
+    '\n',
+  );
+}
+
+const emitCFunction: Emitter = (fn) => {
+  const variants: CVariant[] = ['value'];
+  if (hasOwnedVariant(fn)) variants.push('owned');
+  if (hasRefVariant(fn)) variants.push('ref');
+  return variants.map((v) => cBody(fn, v)).join('\n\n');
 };
 
 // ---------------------------------------------------------------------------
@@ -618,7 +760,20 @@ function javaExpr(node: Node, fn: TypedFunc): string {
       return `${a} ? ${b} : ${c}`;
     case 'call':
       return `${node.callee ?? ''}(${node.args.map(javaOperand).join(', ')})`;
-    case 'arr':
+    case 'arr': {
+      // An all-zero scalar array is a plain allocation (Java zero-initializes); a literal of
+      // 65536 elements would otherwise exceed the 64 KiB method bytecode limit.
+      const t = fn.types.get(node.id) ?? 'u32';
+      const zeros =
+        !isPrimitive(t) &&
+        t.kind === 'arr' &&
+        isPrimitive(t.elem) &&
+        node.args.every(
+          (o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value),
+        );
+      if (zeros) return `new ${javaType(t)}`.replace('[]', `[${node.args.length}]`);
+      return javaNew(t, node.args.map(javaOperand));
+    }
     case 'rec':
       return javaNew(fn.types.get(node.id) ?? 'u32', node.args.map(javaOperand));
     case 'get':
@@ -770,6 +925,7 @@ export function svExpr(node: Node, fn: TypedFunc): string {
 export const SV_MAX_UNROLL = 256;
 
 const emitSvFunction: Emitter = (fn) => {
+  assertVectorSized(fn, 'SystemVerilog');
   if (needsSequential(fn)) return emitSequential(fn);
   const ports = [
     ...fn.params.map((t, i) => `  input ${svType(t)} p${i}`),
@@ -982,7 +1138,10 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
   const source = options.optimize === false ? fn : optimizeFunction(fn).fn;
   // Hardware form is decided on the source function so callers and testbenches agree even
   // when optimization removes every iteration or effect.
-  if (target === 'sv' && needsSequential(fn)) return emitSequential(source);
+  if (target === 'sv' && needsSequential(fn)) {
+    assertVectorSized(fn, 'SystemVerilog');
+    return emitSequential(source);
+  }
   return EMITTERS[target](source);
 }
 

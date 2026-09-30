@@ -91,6 +91,32 @@ export function bitWidth(t: Type): number {
   return t.fields.reduce((n, f) => n + bitWidth(f), 0);
 }
 
+/** Longest array dimension anywhere inside a type (0 for a type without arrays). */
+export function longestArray(t: Type): number {
+  if (isPrimitive(t)) return 0;
+  if (t.kind === 'arr') return Math.max(t.length, longestArray(t.elem));
+  return t.fields.reduce((n, f) => Math.max(n, longestArray(f)), 0);
+}
+
+/**
+ * Refuse a function whose parameters, result, or nodes use an array longer than
+ * LIMITS.maxVectorArrayLength on a target that keeps aggregates in registers or bit vectors.
+ */
+export function assertVectorSized(fn: TypedFunc, target: string): void {
+  const types = [...fn.params, fn.result, ...fn.types.values()];
+  const longest = types.reduce((n, t) => Math.max(n, longestArray(t)), 0);
+  if (longest > LIMITS.maxVectorArrayLength) {
+    throw new A0Error(
+      `${fn.name}: array length ${longest} exceeds the ${target} limit ${LIMITS.maxVectorArrayLength}`,
+      undefined,
+      {
+        code: 'limit',
+        fix: `keep arrays at most ${LIMITS.maxVectorArrayLength} long for ${target}, or compile to a native target`,
+      },
+    );
+  }
+}
+
 export type Op =
   | 'mov'
   | 'add'
@@ -362,8 +388,16 @@ export const LIMITS = {
   maxNodesPerFunction: 4096,
   maxParams: 64,
   maxIdentifierLength: 64,
-  maxArrayLength: 1024,
-  maxAggregateBits: 1 << 16,
+  /** Elements per array dimension; the native paths (C, JS, JVM, .NET, arm64) hold these in memory. */
+  maxArrayLength: 65536,
+  /** Total bits of one aggregate value (bounds nested arrays): 65536 u32 words. */
+  maxAggregateBits: 1 << 21,
+  /**
+   * Longest array the hardware (SystemVerilog) and GPU (Metal) backends accept: these targets
+   * hold aggregates as bit vectors or thread-local registers, so larger values are refused
+   * with a `limit` diagnostic instead of being emitted as multi-megabit vectors.
+   */
+  maxVectorArrayLength: 1024,
   /** Product of literal trip counts along any nesting path a validator will accept (compute bound). */
   maxStaticIterations: 1 << 24,
   /** Default interpreter fuel: node evaluations before `run` aborts with A0Error. */

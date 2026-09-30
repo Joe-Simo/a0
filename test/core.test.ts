@@ -1083,6 +1083,56 @@ test('JS emission: zero arrays allocate, power-of-two indices mask, owned sets a
   assert.ok(js3.includes('[p1 % 3]'));
 });
 
+test('C emission: owned iteration bodies update the loop state in place; large arrays are native-only', async () => {
+  const { emitMetal } = await import('../src/metal.js');
+  const { LIMITS } = await import('../src/core.js');
+  const src =
+    'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn below u32x8 u32 u32 -> bool\na get p0 0\nc lt a p2\nret c\nend\nfn keepold u32x8 u32 u32 -> u32x8\nn set p0 p1 p2\na get p0 p1\nm set n 0 a\nret m\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nl loop below keepold 8 a p1\nx get l p1\ny get a 3\ns add x y\nret s\nend';
+  const p = parseAndValidate(src);
+  const c = compile(p, 'c').text;
+  // The owned variant writes through the state pointer and returns nothing; the value ABI
+  // updates its private by-value copy in place and returns it.
+  assert.ok(
+    /static inline void a0o_put8\(a0t_a8_u \*p0, uint32_t p1, uint32_t p2\) \{\n[^}]*\(\*p0\)\.e\[p1 % 8u\] = n_v;\n\}/.test(
+      c,
+    ),
+  );
+  assert.ok(
+    /a0t_a8_u a0_put8\(a0t_a8_u p0, uint32_t p1, uint32_t p2\) \{\n[^}]*p0\.e\[p1 % 8u\] = n_v;\n {2}return p0;\n\}/.test(
+      c,
+    ),
+  );
+  // A value still read later is copied (a0set_), and the copy is then updated in place.
+  assert.ok(
+    /a0o_keepold[^}]*a0t_a8_u n_n = a0set_a8_u\(\(\*p0\), p1, p2\);[^}]*n_n\.e\[0u % 8u\] = n_a;\n {2}\*p0 = n_n;/.test(
+      c,
+    ),
+  );
+  // Predicates read the state through a const pointer; folds and loops call the variants.
+  assert.ok(c.includes('static inline bool a0r_below(const a0t_a8_u *p0,'));
+  assert.ok(c.includes('a0o_put8(&n_z, i, p0); }'));
+  assert.ok(!c.includes('n_a = n_z'));
+  assert.ok(c.includes('if (!a0r_below(&n_l, i, p1)) break; a0o_keepold(&n_l, i, p1); }'));
+  assert.ok(c.includes('a0zero_a8_u()'));
+  assert.ok(emitMetal(p).includes('thread a0t_a8_u *p0'));
+  assert.ok(compile(p, 'java').text.includes('new int[8]'));
+  // Native paths accept 65536-element arrays; hardware and GPU refuse them with a limit code.
+  assert.equal(LIMITS.maxArrayLength, 65536);
+  const big = parseAndValidate(
+    'fn poke u32x65536 u32 u32 -> u32x65536\nn set p0 p2 p1\nret n\nend',
+  );
+  assert.ok(compile(big, 'c').text.includes('uint32_t e[65536];'));
+  assert.ok(compile(big, 'java').text.includes('int[] poke(int[] p0'));
+  for (const emit of [() => compile(big, 'sv'), () => emitMetal(big)])
+    assert.throws(
+      emit,
+      (e: unknown) =>
+        e instanceof A0Error && e.code === 'limit' && /array length 65536 exceeds/.test(e.message),
+    );
+  assert.throws(() => parseType('u32x65537'), /array length exceeds 65536/);
+  assert.throws(() => parseType('u32x65536x2'), /exceeds 2097152 bits/);
+});
+
 test('edit tolerance: trailing end, whole-function block under its handle, echoed signatures, callee order', () => {
   const src =
     'fn sq u32 -> u32\na mul p0 p0\nret a\nend\nfn main u32 -> u32\nb call sq p0\nret b\nend';
