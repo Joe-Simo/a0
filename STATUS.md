@@ -1335,6 +1335,7 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - What blocks the full fixed point (stage 1 compiling emit_c.a0 itself), exact limits hit by the linked emitter (formatted, comments stripped: 93,053 bytes; files emit_c 30,049 + check 48,907 + parse 25,581 + lex 5,718 bytes): source 93,053 bytes against the lexer's 512 (u32x512 source array, and a u32x512 token array); nodes 2,378 = 14,268 words against the 4,096-word node table; operands 45,962 words against 8,192; distinct names 6,307 bytes against the 512-word pool, and 1,530 names = 3,060 sym words against 512; functions 119 = 833 of 1,024 fns words (fits). `emitcio` has no `use` resolution, so the input must be pre-linked. Beyond the front end, stage 1's own C would need `emitc` run in chunks (as tools/selfhost-c.ts does) and in-place array updates in the A0 C emitter (it copies the 8,192-word tables on every `set`). The other agent's raise of the front end limit is the next unblock; the script measures the limits from the linked program, so the numbers update with it.
 - Gate (this worktree): lint pass; typecheck pass; test 55/55; bootstrap 0 failures.
 
+
 ## Session 2026-09-30 (4000-function programs)
 
 - **Function cap raised (a0c-0.1.14)**: `LIMITS.maxFunctions` 1024 -> 65536 in `src/core.ts`, enforced by the parser and by `validate` (so also for linked programs, `src/link.ts` validates the merged program). Every other bound is unchanged (1 MiB source, 4096 nodes and 64 params per function, 65536-element arrays, 2^21-bit aggregates, 1024-element vectors on hardware/GPU); the 1 MiB source bound is the binding one for tiny functions (about 45k one-line functions). Hardware and GPU needed no per-module function limit. COMPILER_VERSION a0c-0.1.13 -> a0c-0.1.14 (semantics-visible: programs of 1025..65536 functions were rejected before). DESIGN.md security bounds sentence updated. Test: a 4000-function call chain validates and emits JS; 65537 functions are rejected by `validate` with `too many functions`.
@@ -1398,6 +1399,7 @@ Nine findings from a security review, each fixed minimally with a regression tes
 - Gate: lint, typecheck, test 67/67, verify (all paths passed; 5262 cases each), app passed,
   equiv 48/48 proved, hw passed, dotnet passed, gpu passed, selfhost 50 passed / 3 skipped
   (6898 cases), selfhost:c 6371/6371.
+
 
 ## Session 2026-09-30 (AI edits: seven languages)
 
@@ -2011,6 +2013,7 @@ Landed:
   Static counts, not timings.
 - Gate: lint, typecheck, test 44/44, verify (native_arm64 4297, native_x86_64 4297, all
   paths passed), equiv 48/48, app, hw, dotnet, gpu passed.
+
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 

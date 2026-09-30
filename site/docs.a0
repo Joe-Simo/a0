@@ -264,7 +264,7 @@ x348 puts x346 x347
 x349 call close x348 
 x350 call open x349 2
 x351 write x350 2
-x352 text "u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put copy, they never alias. io is a linear token: every io value is used exactly once, which is what makes output order and bounds checkable. Literal iteration counts are static, so every loop has a known bound."
+x352 text "u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put copy, they never alias. io is a linear token: every io value is used exactly once, which is what makes output order and bounds checkable. Literal iteration counts are bounded statically; variable counts are bounded by fuel in the reference interpreter, and compiled targets have no execution budget."
 x353 puts x351 x352
 x354 call close x353 
 x355 call close x354 
@@ -585,7 +585,7 @@ x666 puts x664 x665
 x667 call close x666 
 x668 call open x667 2
 x669 write x668 2
-x670 text "There are no loops in the body of a function. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. Because n is a literal, every iteration count is known before the program runs."
+x670 text "There are no loops in the body of a function. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. n may be a literal or a value. A literal count is bounded statically, against the per-function budget. A variable count is bounded by fuel in the reference interpreter; compiled targets have no execution budget, so it runs as many iterations as the value says."
 x671 puts x669 x670
 x672 call close x671 
 x673 call open x672 10
@@ -648,7 +648,7 @@ x729 puts x727 x728
 x730 call close x729 
 x731 call open x730 2
 x732 write x731 2
-x733 text "A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0) and, when the whole program matters, a program handle (g0) with one signature line per function. A reply is the handle line followed by edits, one per line: `id op ...` replaces the instruction id or inserts it before ret; `id op ... @ other` inserts after other; `-id` deletes; `ret x` changes the result. Under g0, a whole `fn ... end` block adds or replaces a function and `-fn name` removes one. The edit is applied only if it parses, type-checks, validates, and was written against the current revision; otherwise it is rejected and the handle stays valid."
+x733 text "A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped: a comment line with the function count, then the signatures of the target, its transitive callees, and its direct callers, so it stays the same size as the program grows to thousands of functions. A reply is the handle line followed by edits, one per line: `id op ...` replaces the instruction id or inserts it before ret; `id op ... @ other` inserts after other; `-id` deletes; `ret x` changes the result. Under g0, a whole `fn ... end` block adds or replaces a function and `-fn name` removes one. The edit is applied only if it parses, type-checks, validates, and was written against the current revision; otherwise it is rejected and the handle stays valid."
 x734 puts x732 x733
 x735 call close x734 
 x736 call open x735 10
@@ -716,7 +716,7 @@ x794 puts x792 x793
 x795 call close x794 
 x796 call open x795 2
 x797 write x796 2
-x798 text "Static caps: 1024 functions, 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. The reference interpreter has fuel. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length."
+x798 text "Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. Variable iteration counts are bounded by fuel in the reference interpreter; compiled targets have no execution budget. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length."
 x799 puts x797 x798
 x800 call close x799 
 x801 call close x800 
@@ -743,45 +743,53 @@ x821 write x820 2
 x822 text "a0 run <file.a0> <fn> <args...>        # reference interpreter\n"
 x823 puts x821 x822
 x824 write x823 2
-x825 text "a0 emit <target> <file.a0>            # arm64, x86_64 (A0's own backends), c, js, java, sv\n"
+x825 text "a0 emit <target> <file.a0> [out]      # arm64 x86_64 riscv64 arm32 avr wasm c js java sv\n"
 x826 puts x824 x825
 x827 write x826 2
-x828 text "a0 wasm <file.a0> <out.wasm>           # wasm32 for the browser\n"
+x828 text "a0 emit c --parallel[=auto|gpu] <file.a0>  # automatic parallel folds: threads, or Metal\n"
 x829 puts x827 x828
 x830 write x829 2
-x831 text "a0 view <file.a0> <fn>                 # dependency-scoped view with an edit handle\n"
+x831 text "a0 wasm <file.a0> <out.wasm>           # wasm32 through the C backend, Clang, and wasm-ld\n"
 x832 puts x830 x831
 x833 write x832 2
-x834 text "a0 patch <file.a0> <patch>             # apply a revision-checked patch"
+x834 text "a0 view <file.a0> <fn>                 # dependency-scoped view with an edit handle\n"
 x835 puts x833 x834
-x836 call close x835 
-x837 call close x836 
-x838 call open x837 2
-x839 write x838 2
-x840 text "Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module. Java output is an ordinary class. C#, Metal, and wasm32 are produced by the verification tools (bun run dotnet, gpu, verify). Every target is verified against the same oracle."
-x841 puts x839 x840
-x842 call close x841 
-x843 call close x842 
-x844 call open x843 13
-x845 write x844 4
-x846 write x845 1
-x847 text "ui"
-x848 puts x846 x847
-x849 call open x848 11
-x850 write x849 2
-x851 text "The UI protocol"
-x852 puts x850 x851
-x853 call close x852 
-x854 call open x853 2
-x855 write x854 2
-x856 text "This site is two A0 io programs. Each reads an event and writes a word stream that a small generic runtime turns into DOM: 1 OPEN tag, 2 TEXT bytes, 3 CLOSE, 4 ATTR key bytes, 5 ONCLICK event, 6 STATE words, 9 STYLE bytes, 12 SIZE property percent. The stylesheet, the layout, every number, and every chart bar on these pages are computed by the program; the runtime knows nothing about the page."
-x857 puts x855 x856
-x858 call close x857 
-x859 call close x858 
-x860 call close x859 
+x836 write x835 2
+x837 text "a0 patch <file.a0> <patch>             # apply a revision-checked patch"
+x838 puts x836 x837
+x839 call close x838 
+x840 call close x839 
+x841 call open x840 2
+x842 write x841 2
+x843 text "Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM, and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal are produced by the verification tools (bun run dotnet, bun run gpu). Every target is verified against the same oracle."
+x844 puts x842 x843
+x845 call close x844 
+x846 call open x845 2
+x847 write x846 2
+x848 text "--parallel makes the C backend split two fold shapes across threads, reductions (add, mul, and, or, xor, min, max) and element-wise array maps, when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are exact: the same bits as the serial program."
+x849 puts x847 x848
+x850 call close x849 
+x851 call close x850 
+x852 call open x851 13
+x853 write x852 4
+x854 write x853 1
+x855 text "ui"
+x856 puts x854 x855
+x857 call open x856 11
+x858 write x857 2
+x859 text "The UI protocol"
+x860 puts x858 x859
 x861 call close x860 
-x862 call close x861 
-ret x862
+x862 call open x861 2
+x863 write x862 2
+x864 text "This site is two A0 io programs. Each reads an event and writes a word stream that a small generic runtime turns into DOM: 1 OPEN tag, 2 TEXT bytes, 3 CLOSE, 4 ATTR key bytes, 5 ONCLICK event, 6 STATE words, 9 STYLE bytes, 12 SIZE property percent. The stylesheet, the layout, every number, and every chart bar on these pages are computed by the program; the runtime knows nothing about the page."
+x865 puts x863 x864
+x866 call close x865 
+x867 call close x866 
+x868 call close x867 
+x869 call close x868 
+x870 call close x869 
+ret x870
 end
 
 fn session io -> u32
@@ -876,15 +884,15 @@ x85 write x84 9
 x86 text "@media (max-width:640px){.live{grid-template-columns:1fr!important;max-width:calc(100vw - 40px)}.live .col.model,.live .col.asm{display:none}.links{gap:10px}.links a{font-size:.78rem}.pill{padding:6px 9px;font-size:.68rem;letter-spacing:.05em}.nav{gap:12px}}\n.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}\n.tblwrap table.rank{min-width:540px}\n@media (max-width:720px){.tblwrap table.rank tr{display:table-row}.tblwrap table.rank td,.tblwrap table.rank th{display:table-cell;padding:7px 8px}.tblwrap table.rank th:last-child{display:table-cell}}\n.lrow{grid-template-columns:132px 1fr}\n.lrow .track{display:grid;grid-template-columns:1fr 78px;align-items:center;height:18px}\n.track .val{text-align:right;font-variant-numeric:tabular-nums;line-height:1}\n.lrow .lbl,.row .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n@media (max-width:600px){.lrow{grid-template-columns:108px 1fr}}\n:root{--muted:#8f8f8f;--dim:#6f6f6f}\n"
 x87 puts x85 x86
 x88 write x87 9
-x89 text "@media (prefers-color-scheme:light){:root{--a0:#007a21;--muted:#5f5f5f;--dim:#666}}\n.col h6{font-size:11px}\n@media (max-width:720px){pre.code.wrap{white-space:pre-wrap;overflow-wrap:anywhere}}\nbutton:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n.theme-toggle{min-width:36px;min-height:34px}\n@media (max-width:640px){textarea{font-size:16px!important}}\n\n"
+x89 text "@media (prefers-color-scheme:light){:root{--a0:#007a21;--muted:#5f5f5f;--dim:#666}}\n.col h6{font-size:11px}\n@media (max-width:720px){pre.code.wrap{white-space:pre-wrap;overflow-wrap:anywhere}}\nbutton:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n.theme-toggle{min-width:36px;min-height:34px}\n@media (max-width:640px){textarea{font-size:16px!important}}\n.lrow.wide .track{grid-template-columns:1fr 104px}\n.row .track{grid-template-columns:1fr 88px}\n.track .val.loss,.rank td.loss{color:var(--loss)}\n.chart .kh{font-size:.78rem;color:var(--fg2);margin:16px 0 4px;padding-top:10px;border-top:1px solid var(--line)}\n.chart .kh:first-of-type{border-top:0;padding-top:0}\n.chart .tblwrap{margin-top:18px}\n@media (max-width:600px){.lrow.wide{grid-template-columns:118px 1fr}.lrow.wide .track{grid-template-columns:1fr 84px}}\n\n"
 x90 puts x88 x89
 x91 call nav x90 
 x303 call sec_head x91
 x657 call sec_lang x303
 x785 call sec_iter x657
-x863 call sec_run x785
-x864 call foot x863 
-x865 write x864 6
-x866 write x865 0
+x871 call sec_run x785
+x872 call foot x871 
+x873 write x872 6
+x874 write x873 0
 ret event
 end
