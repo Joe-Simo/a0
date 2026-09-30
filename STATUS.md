@@ -1555,6 +1555,97 @@ Set c400 (one 400-function program, structured):
   (a spilled value stays spilled for its whole interval); X and Z are never allocated; io; a
   real board (simavr only).
 
+## Session 2026-09-30 (AVR inlining, a0c-0.1.17)
+
+- Started from the AVR rewrite branch (merged; STATUS conflict resolved by keeping both
+  sections). COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17.
+- **Call inlining** (`inlineCalls` in `src/avr.ts`): before planning, a `call` whose callee
+  (its own calls inlined first) costs at most `AVR_INLINE_CALL_WORDS` = 24 estimated words is
+  spliced into the caller, or at most `AVR_INLINE_ONCE_WORDS` = 48 when the caller calls it
+  once. Nodes are renamed, parameters substituted, `mov` folded away, and the result is
+  revalidated (`validateFunction`); on any failure the function is emitted as before. The
+  estimate (`costWords`) is per op: u32 bytewise 4, compare 5, literal shift 4, variable
+  shift 12, mul/div/rem 10 (marshalling plus helper call), call 12, and so on. The callee's
+  own `a0_<name>` is still emitted (C may call it); `--gc-sections` drops it when nothing
+  else references it.
+- **fold/loop body inlining**: a fold/loop with scalar state whose body plus predicate cost
+  at most `AVR_INLINE_BODY_WORDS` = 64 words and contain no fold/loop is planned in place:
+  the predicate's nodes and a branch on its result (a compare as the predicate's last node is
+  fused into that branch), then the body's nodes, then the state update, counter step and
+  bottom test. State, counter, count and extras are live across the whole loop (the back
+  edge); body values live within one iteration, so the linear scan reuses their registers.
+  The body result takes the state's registers exactly when the state is not read after the
+  result is defined (crc/popcount/sum update in place; no latch move). If an inlined loop
+  meets spills past Y+63 the function is emitted again without loop inlining (the far-slot
+  staging is per node).
+- **Counters**: a literal trip count below 2^8 (2^16) keeps the counter in one (two) bytes
+  (known-zero high bytes: `inc`, `cpi`); a literal count of at least one skips the first
+  test. The loop's branch reach now counts real words (`wordsOf`) instead of 2 per line, so
+  more loops close with a single `brlo`.
+- `emitAvrFunction(fn, { inline: false })` gives the out-of-line emission (unit tests keep
+  the stack-argument and fold-call sequences covered through it). `avrStackBytes` walks only
+  the callees an emission still calls.
+- **X/Z as homes: not done.** A u32 home is four consecutive registers (the byte sequences
+  address r+k); X (r26:r27) and Z (r30:r31) are not adjacent (Y sits between) and are the
+  byte temporaries, literal scratch and pointers of nearly every emitted sequence, so they
+  can only host 1-2 byte values, and only after auditing every sequence. In the 13 kernels
+  below the values that could move there are the one-byte loop counters of popcount, crc32
+  and digits (in r16: one push/pop, 4 cycles and 4 bytes each; digits' counter lives across
+  `__a0_udivmod32`, which writes X and Z, so it could not move at all). The remaining pushes
+  are u32 values beyond the two caller-saved groups r18-r21/r22-r25, which X/Z cannot hold.
+  Judged not worth the risk for at most about 8 cycles and 8 bytes over the kernel set.
+- **Measured** with the previous session's harness, unchanged (copied to this session's
+  scratchpad; same 13 kernels and inputs, same driver, flash = `.text` growth over an empty
+  `ret` stub with `--gc-sections`, cycles = simavr cycles between two `GPIOR0` writes minus
+  the stub's; avr-gcc 9.5.0 on the same C). Every result equal to the interpreter.
+
+  | kernel | bytes A0 | bytes 0.1.16 | bytes -Os | bytes -O2 | cycles A0 | cycles 0.1.16 | cycles -Os | cycles -O2 |
+  |---|---|---|---|---|---|---|---|---|
+  | affine | 78 | 78 | 178 | 178 | 53 | 53 | 139 | 139 |
+  | clamp_max | 16 | 16 | 82 | 82 | 6 | 6 | 65 | 65 |
+  | rotl | 82 | 82 | 108 | 108 | 258 | 258 | 291 | 291 |
+  | is_even | 12 | 12 | 40 | 40 | 5 | 5 | 31 | 31 |
+  | parity_select | 14 | 14 | 30 | 30 | 5 | 5 | 16 | 16 |
+  | xorshift32 | 106 | 106 | 136 | 162 | 52 | 52 | 315 | 300 |
+  | sum_squares (fold, mul) | 180 | 214 | 238 | 236 | 6867 | 9867 | 11082 | 9286 |
+  | popcount (fold) | 76 | 168 | 132 | 88 | 3948 | 4742 | 4718 | 4176 |
+  | crc32_byte (fold, bit test) | 90 | 136 | 110 | 110 | 232 | 400 | 249 | 249 |
+  | digits (loop, div) | 124 | 192 | 200 | 200 | 6284 | 6648 | 6386 | 6386 |
+  | dot8 (fold over two arrays) | 362 | 460 | 498 | 514 | 905 | 1313 | 1370 | 1361 |
+  | fnv4 (calls, mul) | 174 | 148 | 278 | 278 | 250 | 290 | 410 | 410 |
+  | mix6_call (stack arguments) | 126 | 276 | 158 | 158 | 78 | 304 | 102 | 102 |
+  | total | 1440 | 1902 | 2188 | 2184 | 18943 | 23943 | 25174 | 22812 |
+
+  Flash is 34% under `-Os` in total (was 13%) and under `-Os` on every kernel; cycles are 17%
+  under `-O2` in total (were 4% over) and at or under `-O2` on every kernel. The three losses
+  of the previous session are now wins: crc32_byte 232 vs 249 cycles, 90 vs 110 bytes;
+  popcount 3948 vs 4176 cycles, 76 vs 88 bytes; mix6_call 78 vs 102 cycles, 126 vs 158 bytes.
+  The six leaf kernels are unchanged (no calls or loops). Losses and caveats: fnv4 grew 26
+  bytes (148 -> 174, four inlined multiplies each marshalling into r18-r25; still 104 under
+  `-Os`) for 40 fewer cycles; the budgets were chosen with these kernels in view, so the
+  kernel set is also the tuning set; the earlier caveat stands (avr-gcc 9.5 keeps 32-bit
+  values in a stack frame in some small functions even at `-Os`); the "unoptimized" emission
+  also inlines (inlining is a code generation choice, the IR optimizer is not rerun on the
+  inlined body, so no cross-call constant folding or CSE happens yet).
+- **Verification**: `native_avr` 4297/4297 at both levels in the gate. The generated corpora
+  exercise no inlining (their callees and bodies exceed the budgets; checked: 0 of 432
+  functions over 10 seeds change), so they were rerun only for regressions (seeds 1-70, both
+  levels, all passed) and a scratch fuzzer was written for the new paths: random small
+  helpers, fold/loop bodies and predicates (bit tests, selects, compares, mul/div/rem,
+  literal and masked variable counts, extras) under entries that call and loop over them,
+  12 entries x 8 inputs per seed, both levels, run under simavr against the interpreter;
+  3014 of 3564 entries (85%) inline a call or a loop body. Seeds 1-300: 28,800 cases, all passed. The unit sequence test adds an inlined
+  fold updating its state in place, a one-byte counter with `inc`/`cpi`/`brlo` and no first
+  test, and a small callee spliced while a larger twice-called one stays a call; the simavr
+  test adds a function with an inlined bit-test body, a compare predicate fused into the
+  branch, a masked variable-count fold with an extra, and inlined calls. The harnesses are
+  scratch scripts, not in the repository.
+- Gate (this worktree): lint pass; typecheck pass; test 70/70; verify all paths passed
+  (interpreter, optimizer, JS, C clang, C gcc, C++ clang, C parallel, Wasm, Wasm direct, JVM
+  5262 each; arm64, x86_64, riscv64, avr, arm32 4297 each).
+- Not done: rerunning the IR optimizer after inlining; inlining loops nested in inlined
+  bodies or with aggregate state; X/Z homes (above); live-range splitting.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

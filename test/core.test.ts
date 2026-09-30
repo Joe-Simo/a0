@@ -1837,6 +1837,7 @@ test('avr backend: register allocation and peepholes keep the exact semantics', 
           'fn w u32 u32 u32 u32 u32 bool -> u32\na add p4 p0\ns select p5 a p1\nret s\nend\nfn c u32 -> u32\nr call w p0 p0 p0 p0 p0 true\nret r\nend',
           'c',
         ),
+        { inline: false },
       ),
     ],
     'test',
@@ -1844,15 +1845,35 @@ test('avr backend: register allocation and peepholes keep the exact semantics', 
   assert.match(stack, /in r28, 0x3d\n\tin r29, 0x3e\n\tldd r2, Y\+10\n/);
   assert.match(stack, /ldi r26, 1\n\tpush r26\n\tpush r25\n\tpush r24\n\tpush r23\n\tpush r22\n/);
   assert.match(stack, /call a0_w\n\tpop r0\n\tpop r0\n\tpop r0\n\tpop r0\n\tpop r0\n/);
-  // Fold state and counter stay in callee-saved registers across the body calls.
-  const fold = emitAvrFunction(
-    fn(
-      'fn st u32 u32 -> u32\na add p0 p1\nret a\nend\nfn f u32 -> u32\nr fold st p0 0\nret r\nend',
-      'f',
-    ),
-  );
+  // Out of line, fold state and counter stay in callee-saved registers across the body calls.
+  const foldSrc =
+    'fn st u32 u32 -> u32\na add p0 p1\nret a\nend\nfn f u32 -> u32\nr fold st p0 0\nret r\nend';
+  const fold = emitAvrFunction(fn(foldSrc, 'f'), { inline: false });
   assert.doesNotMatch(fold, /ldd|std/);
   assert.match(fold, /call a0_st\n\tmovw r6, r22\n\tmovw r8, r24\n\tsec\n\tadc r10, r1/);
+  // Inlined, the body adds the counter into the state in place (the body result takes the
+  // state's registers).
+  const foldIn = emitAvrFunction(fn(foldSrc, 'f'));
+  assert.doesNotMatch(foldIn, /call/);
+  assert.match(foldIn, /:\n\tadd r18, r2\n\tadc r19, r3\n\tadc r20, r4\n\tadc r21, r5\n\tsec\n/);
+  // A literal trip count below 256 keeps the counter in one byte, the first test skipped.
+  const byteCount = emitAvrFunction(
+    fn(
+      'fn ps u32 u32 u32 -> u32\ns shr p2 p1\nb and s 1\nr add p0 b\nret r\nend\nfn pc u32 -> u32\nr fold ps 32 0 p0\nret r\nend',
+      'pc',
+    ),
+  );
+  assert.doesNotMatch(byteCount, /call|rjmp/);
+  assert.match(byteCount, /inc (r\d+)\n\S+:\n\tcpi \1, 32\n\tbrlo/);
+  // A small callee is spliced into its caller; a larger one called twice stays a call.
+  const calls = emitAvrFunction(
+    fn(
+      'fn sm u32 u32 -> u32\na xor p0 p1\nret a\nend\nfn big u32 u32 -> u32\na mul p0 p1\nb div a p0\nc rem b p1\nd add c p0\nret d\nend\nfn k u32 -> u32\na call sm p0 7\nb call big a p0\nc call big b a\nret c\nend',
+      'k',
+    ),
+  );
+  assert.doesNotMatch(calls, /call a0_sm/);
+  assert.equal(calls.match(/call a0_big/g)?.length, 2);
   // Spills past Y+63 are staged through a reload area near Y.
   const many = Array.from({ length: 24 }, (_, k) => `v${k} mul p0 ${k + 3}`).join('\n');
   const sum = Array.from(
@@ -1894,6 +1915,15 @@ test('avr backend: assembled, linked with an avr-gcc driver, and run under simav
     // Fold state with stack-argument extras; bit tests; high bytes known zero.
     'fn wstep u32 u32 u32 u32 u32 u32 -> u32\na add p0 p1\nb xor a p2\nc add b p3\nd sub c p4\ne add d p5\nret e\nend',
     'fn bits u32 u32 -> u32\nf fold wstep 9 p0 p1 p0 p1 p0\na and f 128\nz eq a 0\ns select z p1 f\nb and p1 65536\ny ne b 0\nt select y s 77\nu shr t 24\nv shl u 3\nw or v p1\nret w\nend',
+    // Inlined bodies: a bit-tested select as the state update, a compare predicate fused into
+    // the loop's branch, a variable-count fold with an extra, and inlined call sites.
+    'fn crcs u32 u32 -> u32\nb and p0 1\ns shr p0 1\nx xor s 3988292384\nz eq b 0\nr select z s x\nret r\nend',
+    'fn dkeep u32 u32 u32 -> bool\nk lt p1 p2\nn ne p0 0\na and k n\nret a\nend',
+    'fn dstep u32 u32 u32 -> u32\nd div p0 10\ne add d p1\nret e\nend',
+    'fn ps u32 u32 u32 -> u32\ns shr p2 p1\nb and s 1\nr add p0 b\nret r\nend',
+    'fn mix u32 u32 u32 -> u32\na add p0 p1\nb xor a p2\nret b\nend',
+    'fn dz u32 u32 u32 -> bool\nk ne p0 0\nret k\nend',
+    'fn inl u32 u32 -> u32\nx xor p0 p1\nc fold crcs 8 x\nd0 loop dkeep dstep 12 p0 p1\nd loop dz dstep 10 d0 p0\nk and p1 31\ne fold ps k c p0\nm call mix e d c\nn call mix m p0 d\nr add m n\nret r\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
   const fnOf = (name: string): TypedFunc => p.byName.get(name) as TypedFunc;
@@ -1914,6 +1944,7 @@ test('avr backend: assembled, linked with an avr-gcc driver, and run under simav
         ['wide_call', [a, b, c]],
         ['agg_call', [a, b, c]],
         ['bits', [a, b]],
+        ['inl', [a, b]],
       ] as [string, (number | boolean)[]][]
     ).map(([name, args]) => ({ functionName: name, args, expected: run(fnOf(name), args) })),
   );

@@ -32,8 +32,14 @@
  * restoring divider whose zero-divisor behaviour is A0's (quotient all ones, remainder the
  * dividend); mul/div/rem by a power-of-two literal become shifts and masks. Aggregates live
  * in the frame; `mov`, `at`, and a literal-index `get` of an aggregate alias the source
- * slot; copies are inline (unrolled or a counted loop). `call`, `fold`, and `loop` call the
- * callee out of line.
+ * slot; copies are inline (unrolled or a counted loop).
+ *
+ * Inlining, under word budgets that keep flash small: a `call` of a small callee (or of one
+ * called once by the caller) is spliced into the caller before planning; a fold/loop whose
+ * scalar-state body (plus predicate) is small is planned in place between the loop head and
+ * the latch, its state, counter, count and extras live across the whole loop, and the body
+ * result may take the state's registers once the state is last read. A literal trip count
+ * below 2^8 (2^16) keeps the counter in one (two) bytes. Everything else calls out of line.
  *
  * Calling convention (avr-gcc): each parameter takes the next registers downward from r25,
  * its size rounded up to even: a u32 in four registers (lowest byte in the lowest), a bool in
@@ -54,10 +60,12 @@ import {
   A0Error,
   containsIo,
   isPrimitive,
+  type Node,
   type Op,
   type Operand,
   type Type,
   type TypedFunc,
+  validateFunction,
 } from './core.js';
 import { optimizeFunction } from './optimize.js';
 
@@ -86,6 +94,169 @@ function bytesOf(t: Type): number {
   if (t === 'io') return refuse('io values are not supported by this backend');
   if (t.kind === 'arr') return t.length * bytesOf(t.elem);
   return t.fields.reduce((n, f) => n + bytesOf(f), 0);
+}
+
+// --- inlining ---------------------------------------------------------------------------
+
+/** A callee is inlined at every call site when its estimated code is at most this many words. */
+export const AVR_INLINE_CALL_WORDS = 24;
+/** A callee called once by a caller is inlined there up to this many words. */
+export const AVR_INLINE_ONCE_WORDS = 48;
+/** A fold/loop body (plus its predicate) is emitted inside the loop up to this many words. */
+export const AVR_INLINE_BODY_WORDS = 64;
+
+function usesIo(f: TypedFunc): boolean {
+  return (
+    containsIo(f.result) || f.params.some(containsIo) || [...f.types.values()].some(containsIo)
+  );
+}
+
+/** Rough code size of `f`'s body in instruction words (the unit of the inlining budgets). */
+function costWords(f: TypedFunc): number {
+  let words = 0;
+  for (const n of f.nodes) {
+    const t = f.types.get(n.id) ?? 'u32';
+    const size = bytesOf(t);
+    const lit = n.args[1]?.kind === 'u32';
+    switch (n.op) {
+      case 'mov':
+        break;
+      case 'add':
+      case 'sub':
+      case 'and':
+      case 'or':
+      case 'xor':
+        words += size;
+        break;
+      case 'eq':
+      case 'ne':
+      case 'lt':
+      case 'le':
+      case 'gt':
+      case 'ge':
+        words += 5;
+        break;
+      case 'shl':
+      case 'shr':
+        words += lit ? 4 : 12;
+        break;
+      case 'mul':
+      case 'div':
+      case 'rem':
+        words += 10;
+        break;
+      case 'select':
+        words += isPrimitive(t) ? 2 + size : 12;
+        break;
+      case 'get':
+      case 'at':
+        words += lit ? size : 8 + size;
+        break;
+      case 'set':
+      case 'put':
+      case 'arr':
+      case 'rec':
+        words += 8 + size;
+        break;
+      case 'call':
+        words += 12;
+        break;
+      case 'fold':
+      case 'loop':
+        words += 30;
+        break;
+      case 'read':
+      case 'write':
+      case 'puts':
+        words += 12;
+    }
+  }
+  return words;
+}
+
+const inlined = new WeakMap<TypedFunc, TypedFunc>();
+
+/**
+ * `fn` with small callees (and callees it calls once, up to a larger budget) spliced in
+ * place of their `call` nodes, each callee's own calls inlined first. The result is the same
+ * function, validated again; a callee not inlined keeps its out-of-line call.
+ */
+export function inlineCalls(fn: TypedFunc): TypedFunc {
+  const known = inlined.get(fn);
+  if (known !== undefined) return known;
+  let result = fn;
+  if (!usesIo(fn)) {
+    const sites = new Map<string, number>();
+    for (const n of fn.nodes)
+      if (n.op === 'call' && n.callee !== undefined)
+        sites.set(n.callee, (sites.get(n.callee) ?? 0) + 1);
+    const calls = new Map(fn.calls);
+    const nodes: Node[] = [];
+    let changed = false;
+    const worth = (callee: TypedFunc): boolean => {
+      if (usesIo(callee)) return false;
+      const w = costWords(inlineCalls(callee));
+      return (
+        w <= AVR_INLINE_CALL_WORDS || (sites.get(callee.name) === 1 && w <= AVR_INLINE_ONCE_WORDS)
+      );
+    };
+    const splice = (f: TypedFunc, params: readonly Operand[], top: boolean): Operand => {
+      const ids = new Map<string, Operand>();
+      const map = (o: Operand): Operand => {
+        if (o.kind === 'param') return params[o.index] ?? refuse(`unknown parameter p${o.index}`);
+        if (o.kind === 'node') return ids.get(o.id) ?? refuse(`unknown node ${o.id}`);
+        return o;
+      };
+      for (const n of f.nodes) {
+        const args = n.args.map(map);
+        const callee =
+          n.op === 'call' && n.callee !== undefined ? f.calls.get(n.callee) : undefined;
+        if (top && callee !== undefined && worth(callee)) {
+          ids.set(n.id, splice(inlineCalls(callee), args, false));
+          changed = true;
+          continue;
+        }
+        if (n.op === 'mov') {
+          ids.set(n.id, args[0] ?? refuse('mov needs an operand'));
+          continue;
+        }
+        for (const name of [n.callee, n.pred]) {
+          const g = name === undefined ? undefined : f.calls.get(name);
+          if (name !== undefined && g !== undefined) calls.set(name, g);
+        }
+        const id = `v${nodes.length}`;
+        nodes.push({ ...n, id, args });
+        ids.set(n.id, { kind: 'node', id });
+      }
+      return map(f.ret);
+    };
+    const ret = splice(
+      fn,
+      fn.params.map((_, index): Operand => ({ kind: 'param', index })),
+      true,
+    );
+    if (changed)
+      try {
+        result = validateFunction(
+          { name: fn.name, params: fn.params, result: fn.result, nodes, ret },
+          calls,
+        );
+      } catch {
+        result = fn;
+      }
+  }
+  inlined.set(fn, result);
+  return result;
+}
+
+/** Whether a fold/loop over `body` (and `pred`) is emitted inside the loop instead of called. */
+function inlineBody(body: TypedFunc, pred: TypedFunc | undefined): boolean {
+  const fs = pred === undefined ? [body] : [body, pred];
+  return (
+    isPrimitive(body.result) &&
+    fs.every((f) => !usesIo(f) && f.nodes.every((n) => n.op !== 'fold' && n.op !== 'loop')) &&
+    fs.reduce((s, f) => s + costWords(f), 0) <= AVR_INLINE_BODY_WORDS
+  );
 }
 
 /** Where one argument travels: its lowest register, or its byte offset among the stack arguments. */
@@ -167,6 +338,8 @@ interface VReg {
   arrival?: number;
   /** Bytes known to be zero (bit k for byte k): never read from the home, never necessarily written. */
   zero: number;
+  /** A loop state this body result may share exactly (the state is not read after it is defined). */
+  coalesce?: VReg;
 }
 
 type Scalar = 'u32' | 'bool';
@@ -211,7 +384,20 @@ interface Planned {
   readonly fused: boolean;
   /** An `and` with a power of two whose only use is a fused test: `bst` of that bit. */
   readonly bit?: { readonly x: Val; readonly bit: number };
+  /** Part of an inlined fold/loop body or predicate: emitted by its loop, not in sequence. */
+  readonly inner?: boolean;
+  /** A fold/loop whose predicate and body are inlined: their planned ranges and results. */
+  readonly inl?: {
+    readonly predFrom: number;
+    readonly bodyFrom: number;
+    readonly bodyTo: number;
+    readonly predRet: Val | undefined;
+    readonly bodyRet: Val;
+  };
 }
+
+/** Signals that an inlined loop met spills past Y+63; the function is emitted again without. */
+class FarSpill extends Error {}
 
 const COMPARES = new Set<Op>(['eq', 'ne', 'lt', 'le', 'gt', 'ge']);
 const INVERSE: Readonly<Record<string, string>> = {
@@ -230,8 +416,18 @@ class AvrEmitter {
   readonly #planned: Planned[] = [];
   readonly #state = new Map<string, VReg>();
   readonly #counters = new Map<string, VReg>();
-  readonly #bitCandidates = new Map<VReg, { id: string; index: number; x: Val; bit: number }>();
+  readonly #bitCandidates = new Map<
+    VReg,
+    { id: string; prefix: string; index: number; x: Val; bit: number }
+  >();
   readonly #saved = new Set<number>();
+  readonly #clobbers: { pos: number; set: readonly number[]; through: VReg[] }[] = [];
+  readonly #calls: Map<string, TypedFunc>;
+  /** Functions this emission calls out of line. */
+  readonly called = new Map<string, TypedFunc>();
+  #pos = 0;
+  #inlinedLoops = 0;
+  readonly fn: TypedFunc;
   #aggSize = 0;
   #spillSize = 0;
   #labels = 0;
@@ -241,7 +437,20 @@ class AvrEmitter {
   pushes = 0;
   outgoing = 0;
 
-  constructor(readonly fn: TypedFunc) {}
+  constructor(
+    source: TypedFunc,
+    readonly inlineLoops = true,
+    inlineCallSites = true,
+  ) {
+    this.fn = inlineCallSites ? inlineCalls(source) : source;
+    this.#calls = new Map(this.fn.calls);
+  }
+
+  #callee(name: string | undefined): TypedFunc {
+    return (
+      (name === undefined ? undefined : this.#calls.get(name)) ?? refuse(`unknown callee ${name}`)
+    );
+  }
 
   #emit(...lines: string[]): void {
     for (const l of lines) this.out.push(l.endsWith(':') ? l : `\t${l}`);
@@ -280,22 +489,31 @@ class AvrEmitter {
     return v;
   }
 
+  /** Bytes of a loop counter known zero: it runs from 0 to at most a literal count. */
+  #counterZero(count: Val): number {
+    if (count.kind !== 'lit') return 0;
+    let m = 0;
+    for (let k = 0; k < 4; k += 1) if (count.value >>> (8 * k) === 0) m |= 1 << k;
+    return m;
+  }
+
   #aggAlloc(bytes: number): number {
     const rel = this.#aggSize;
     this.#aggSize += bytes;
     return rel;
   }
 
-  #resolve(o: Operand): Val {
+  /** Operand `o` of a node in scope `prefix` (the function, or an inlined body) with `params`. */
+  #resolve(o: Operand, params: readonly Val[], prefix: string): Val {
     switch (o.kind) {
       case 'u32':
         return { kind: 'lit', value: o.value >>> 0, type: 'u32' };
       case 'bool':
         return { kind: 'lit', value: o.value ? 1 : 0, type: 'bool' };
       case 'param':
-        return this.#vals.get(`p${o.index}`) ?? refuse(`unknown parameter p${o.index}`);
+        return params[o.index] ?? refuse(`unknown parameter p${o.index}`);
       case 'node':
-        return this.#vals.get(`n_${o.id}`) ?? refuse(`unknown node ${o.id}`);
+        return this.#vals.get(`n_${prefix}${o.id}`) ?? refuse(`unknown node ${o.id}`);
     }
   }
 
@@ -325,9 +543,6 @@ class AvrEmitter {
 
   #plan(): void {
     const fn = this.fn;
-    const nodes = fn.nodes;
-    const at = (i: number): number => 2 * i + 2;
-    const RET = 2 * nodes.length + 2;
     const sret = !isPrimitive(fn.result);
     const layout = argLayout(fn.params, sret);
     if (sret) {
@@ -344,25 +559,53 @@ class AvrEmitter {
       if (isPrimitive(t)) this.#vals.set(`p${i}`, { kind: 'v', v, type: t as Scalar });
       else this.#vals.set(`p${i}`, { kind: 'agg', rel: 0, type: t, base: v });
     });
+    const params = fn.params.map((_, i) => this.#vals.get(`p${i}`) as Val);
+    const ret = this.#planScope(fn, params, '', false);
+    const RET = this.#pos + 2;
+    this.#retVal = ret;
+    this.#use(ret, RET);
+    if (ret.kind === 'v') ret.v.hints.unshift(fn.result === 'bool' ? 24 : 22);
+    if (this.#sretV !== undefined) {
+      this.#sretV.end = RET;
+      this.#sretV.used = true;
+    }
+    for (const v of this.#vregs) v.end = Math.max(v.end, v.def + 1);
+    for (const c of this.#clobbers) {
+      for (const v of this.#vregs)
+        if (v.def < c.pos && c.pos < v.end) for (const r of c.set) v.forbid.add(r);
+      for (const v of c.through) for (const r of c.set) v.forbid.add(r);
+    }
+  }
+
+  /**
+   * Plan the nodes of `f` (the function itself, or a body inlined into a loop under node-id
+   * prefix `prefix`) with its parameters bound to `params`; returns its result. With
+   * `branchRet`, a compare that is the last node and the result is fused into the branch
+   * that consumes it.
+   */
+  #planScope(f: TypedFunc, params: readonly Val[], prefix: string, branchRet: boolean): Val {
+    const nodes = f.nodes;
     // A compare whose only consumer is the next node's select condition is fused into it.
     const refs = new Map<string, number>();
     const count = (o: Operand): void => {
       if (o.kind === 'node') refs.set(o.id, (refs.get(o.id) ?? 0) + 1);
     };
     for (const n of nodes) for (const o of n.args) count(o);
-    count(fn.ret);
-    const clobbers: { pos: number; set: readonly number[]; through: VReg[] }[] = [];
+    count(f.ret);
+    const clobbers = this.#clobbers;
     nodes.forEach((n, i) => {
-      const t = fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
+      const t = f.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
       if (!isPrimitive(t) && bytesOf(t) > AVR_AGGREGATE_MAX_BYTES)
         refuse(
           `node ${n.id} is a ${bytesOf(t)}-byte aggregate; the limit is ${AVR_AGGREGATE_MAX_BYTES} bytes of the ATmega328P's 2 KiB SRAM`,
           'limit',
         );
-      const key = `n_${n.id}`;
-      const pos = at(i);
+      const id = `${prefix}${n.id}`;
+      const key = `n_${id}`;
+      this.#pos += 2;
+      const pos = this.#pos;
       let op = n.op;
-      let vals = n.args.map((o) => this.#resolve(o));
+      let vals = n.args.map((o) => this.#resolve(o, params, prefix));
       // Power-of-two literals: mul becomes shl, div shr, rem and.
       const [x, y] = vals as [Val, Val];
       if (op === 'mul' && x.kind === 'lit' && isPow2(x.value)) vals = [y, x];
@@ -379,13 +622,24 @@ class AvrEmitter {
       const fused =
         COMPARES.has(op) &&
         refs.get(n.id) === 1 &&
-        next !== undefined &&
-        next.op === 'select' &&
-        next.args[0]?.kind === 'node' &&
-        next.args[0].id === n.id &&
-        isPrimitive(fn.types.get(next.id) ?? 'io') &&
-        fn.types.get(next.id) !== 'io';
-      this.#planned.push({ id: n.id, op, vals, type: t, callee: n.callee, pred: n.pred, fused });
+        ((next !== undefined &&
+          next.op === 'select' &&
+          next.args[0]?.kind === 'node' &&
+          next.args[0].id === n.id &&
+          isPrimitive(f.types.get(next.id) ?? 'io') &&
+          f.types.get(next.id) !== 'io') ||
+          (branchRet && next === undefined && f.ret.kind === 'node' && f.ret.id === n.id));
+      const inner = prefix === '' ? {} : { inner: true };
+      this.#planned.push({
+        id,
+        op,
+        vals,
+        type: t,
+        callee: n.callee,
+        pred: n.pred,
+        fused,
+        ...inner,
+      });
       const scalar = (hints: (number | VReg)[] = [], def = pos): VReg => {
         const v = this.#newV(key, bytesOf(t) as 1 | 4, def, hints);
         this.#vals.set(key, { kind: 'v', v, type: t as Scalar });
@@ -418,6 +672,7 @@ class AvrEmitter {
               q.kind === 'lit' &&
               q.value === 0 &&
               cand !== undefined &&
+              cand.prefix === prefix &&
               refs.get(cand.id) === 1 &&
               n.args.some((o) => o.kind === 'node' && o.id === cand.id) &&
               this.#planned.slice(cand.index + 1).every((m) => m.bit === undefined)
@@ -428,8 +683,8 @@ class AvrEmitter {
               return;
             }
             this.#vals.set(key, { kind: 'cmp', op, a, b });
-            this.#use(a, at(i + 1));
-            this.#use(b, at(i + 1));
+            this.#use(a, pos + 2);
+            this.#use(b, pos + 2);
             return;
           }
           scalar();
@@ -447,6 +702,7 @@ class AvrEmitter {
           if (op === 'and' && m.kind === 'lit' && isPow2(m.value) && x.kind === 'v')
             this.#bitCandidates.set(v, {
               id: n.id,
+              prefix,
               index: this.#planned.length - 1,
               x,
               bit: log2(m.value),
@@ -521,7 +777,7 @@ class AvrEmitter {
           return;
         }
         case 'call': {
-          const callee = fn.calls.get(n.callee as string) ?? refuse(`unknown callee ${n.callee}`);
+          const callee = this.#callee(n.callee);
           if (isPrimitive(t)) scalar([t === 'bool' ? 24 : 22]);
           else fresh();
           const cl = argLayout(callee.params, !isPrimitive(callee.result));
@@ -537,21 +793,71 @@ class AvrEmitter {
         }
         case 'fold':
         case 'loop': {
-          const body = fn.calls.get(n.callee as string) ?? refuse(`unknown callee ${n.callee}`);
-          const pred = n.pred === undefined ? undefined : fn.calls.get(n.pred);
+          const body = this.#callee(n.callee);
+          const pred = n.pred === undefined ? undefined : this.#callee(n.pred);
+          const [count, init, ...extras] = vals as [Val, Val, ...Val[]];
+          const bodyI = inlineCalls(body);
+          const predI = pred === undefined ? undefined : inlineCalls(pred);
+          if (this.inlineLoops && prefix === '' && isPrimitive(t) && inlineBody(bodyI, predI)) {
+            // The predicate and body are planned in place between the loop head and the latch;
+            // state, counter, count and extras stay live across the whole loop (the back edge).
+            this.#inlinedLoops += 1;
+            for (const g of [bodyI, ...(predI === undefined ? [] : [predI])])
+              for (const [name, h] of g.calls) this.#calls.set(name, h);
+            const s = scalar([], pos - 1);
+            this.#state.set(id, s);
+            const counter = this.#newV(`i_${id}`, 4, pos - 1);
+            counter.zero = this.#counterZero(count);
+            counter.used = true;
+            this.#counters.set(id, counter);
+            this.#use(init, pos);
+            const index = this.#planned.length - 1;
+            const bound: Val[] = [
+              { kind: 'v', v: s, type: t as Scalar },
+              { kind: 'v', v: counter, type: 'u32' },
+              ...extras,
+            ];
+            const predFrom = this.#planned.length;
+            const predRet =
+              predI === undefined ? undefined : this.#planScope(predI, bound, `${id}.p.`, true);
+            if (predRet !== undefined && predRet.kind !== 'cmp') this.#use(predRet, this.#pos + 1);
+            const bodyFrom = this.#planned.length;
+            const bodyRet = this.#planScope(bodyI, bound, `${id}.b.`, false);
+            const bodyTo = this.#planned.length;
+            this.#pos += 2;
+            const latch = this.#pos;
+            // The body's result may take the state's registers once the state is last read.
+            if (
+              bodyRet.kind === 'v' &&
+              bodyRet.v !== s &&
+              bodyRet.v.def > pos &&
+              bodyRet.v.def >= s.end
+            )
+              bodyRet.v.coalesce = s;
+            this.#use(bodyRet, latch);
+            for (const v of [count, ...extras]) this.#use(v, latch + 1);
+            s.end = Math.max(s.end, latch + 1);
+            counter.end = latch + 1;
+            const head = this.#planned[index] as Planned;
+            this.#planned[index] = {
+              ...head,
+              inl: { predFrom, bodyFrom, bodyTo, predRet, bodyRet },
+            };
+            return;
+          }
           const through: VReg[] = [];
           if (isPrimitive(t)) {
             const s = scalar([], pos - 1);
-            this.#state.set(n.id, s);
+            this.#state.set(id, s);
             through.push(s);
           } else fresh();
-          const counter = this.#newV(`i_${n.id}`, 4, pos - 1);
+          const counter = this.#newV(`i_${id}`, 4, pos - 1);
+          counter.zero = this.#counterZero(vals[0] as Val);
           counter.end = pos;
           counter.used = true;
-          this.#counters.set(n.id, counter);
+          this.#counters.set(id, counter);
           through.push(counter);
           useAll();
-          const [, , ...extras] = vals;
           through.push(...this.#regOf(vals[0]), ...extras.flatMap((e) => this.#regOf(e)));
           const regs = [...argRegisters(body), ...(pred === undefined ? [] : argRegisters(pred))];
           for (const r of regs) if (r < 18) this.#saved.add(r);
@@ -564,20 +870,7 @@ class AvrEmitter {
           refuse(`${op} is an io operation`);
       }
     });
-    const ret = this.#resolve(fn.ret);
-    this.#retVal = ret;
-    this.#use(ret, RET);
-    if (ret.kind === 'v') ret.v.hints.unshift(fn.result === 'bool' ? 24 : 22);
-    if (this.#sretV !== undefined) {
-      this.#sretV.end = RET;
-      this.#sretV.used = true;
-    }
-    for (const v of this.#vregs) v.end = Math.max(v.end, v.def + 1);
-    for (const c of clobbers) {
-      for (const v of this.#vregs)
-        if (v.def < c.pos && c.pos < v.end) for (const r of c.set) v.forbid.add(r);
-      for (const v of c.through) for (const r of c.set) v.forbid.add(r);
-    }
+    return this.#resolve(f.ret, params, prefix);
   }
 
   /** Linear scan in definition order: a hinted, then a free register group, else a spill slot. */
@@ -593,10 +886,15 @@ class AvrEmitter {
     const done: VReg[] = [];
     for (const v of order) {
       const busy = new Set<number>();
+      const others = new Set<number>();
       const slots: { off: number; size: number; exact?: boolean }[] = [];
       for (const u of done) {
         if (!(u.def < v.end && v.def < u.end) || u.home === undefined) continue;
-        if (u.home.kind === 'reg') for (let k = 0; k < u.size; k += 1) busy.add(u.home.r + k);
+        if (u.home.kind === 'reg')
+          for (let k = 0; k < u.size; k += 1) {
+            busy.add(u.home.r + k);
+            if (u !== v.coalesce) others.add(u.home.r + k);
+          }
         else slots.push({ off: u.home.off, size: u.size });
       }
       const starts = STARTS[v.size];
@@ -622,7 +920,19 @@ class AvrEmitter {
       const cheap = (r: number): boolean =>
         r === v.arrival ||
         Array.from({ length: v.size }, (_, k) => r + k).every((q) => q >= 18 || this.#saved.has(q));
-      const r = [...hinted.filter(cheap), ...starts.filter(cheap), ...hinted, ...starts].find(fits);
+      // A loop body result takes its state's registers when nothing else holds them.
+      const co = v.coalesce?.home;
+      const merged =
+        co?.kind === 'reg' &&
+        v.size <= (v.coalesce as VReg).size &&
+        Array.from({ length: v.size }, (_, k) => co.r + k).every(
+          (q) => !others.has(q) && !v.forbid.has(q),
+        )
+          ? co.r
+          : undefined;
+      const r =
+        merged ??
+        [...hinted.filter(cheap), ...starts.filter(cheap), ...hinted, ...starts].find(fits);
       if (r !== undefined) v.home = { kind: 'reg', r };
       else {
         // Slots of operands dying here are shared only exactly, as registers are.
@@ -648,6 +958,7 @@ class AvrEmitter {
     // Spills past Y+63: a reload area at Y+1 stages a node's far operands and result, so
     // every operation addresses its scalars from Y.
     if (this.#spillSize > 63) {
+      if (this.#inlinedLoops > 0) throw new FarSpill();
       let area = 0;
       for (const n of this.#planned)
         area = Math.max(
@@ -1329,6 +1640,7 @@ class AvrEmitter {
       this.#pointer(30, agg ?? refuse('aggregate call result needs a slot'));
       this.#emit('movw r24, r30');
     }
+    this.called.set(name, callee);
     this.#emit(`call a0_${name}`);
     if (stackBytes > 0 && stackBytes <= 6)
       for (let k = 0; k < stackBytes; k += 1) this.#emit('pop r0');
@@ -1484,7 +1796,7 @@ class AvrEmitter {
       }
       case 'call': {
         const name = n.callee as string;
-        const callee = this.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
+        const callee = this.#callee(name);
         if (isPrimitive(t)) this.#call(name, callee, n.vals, d());
         else this.#call(name, callee, n.vals, undefined, aggOff());
         return;
@@ -1504,8 +1816,8 @@ class AvrEmitter {
   #loop(n: Planned): void {
     const [count, init, ...extras] = n.vals as [Val, Val, ...Val[]];
     const name = n.callee as string;
-    const body = this.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
-    const pred = n.pred === undefined ? undefined : this.fn.calls.get(n.pred);
+    const body = this.#callee(name);
+    const pred = n.pred === undefined ? undefined : this.#callee(n.pred);
     const counterV = this.#counters.get(n.id) ?? refuse('loop counter');
     const counterH = this.#home(counterV);
     const counter: Val = { kind: 'v', v: counterV, type: 'u32' };
@@ -1521,12 +1833,29 @@ class AvrEmitter {
       this.#place(init, this.#abs(self.rel));
       state = self;
     }
-    this.#move(counterH, 4, { kind: 'lit', value: 0, type: 'u32' });
+    this.#move(counterH, counterV.size, { kind: 'lit', value: 0, type: 'u32' });
     const args = [state, counter, ...extras];
     const top = this.#label();
     const test = this.#label();
     const done = this.#label();
+    const inl = n.inl;
     const lines = this.#capture(() => {
+      if (inl !== undefined) {
+        // Inlined: the predicate's nodes and its branch, the body's nodes, the state update.
+        if (inl.predRet !== undefined) {
+          for (let k = inl.predFrom; k < inl.bodyFrom; k += 1)
+            this.#nodeStaged(this.#planned[k] as Planned);
+          const cond = this.#test(inl.predRet);
+          const go = this.#label();
+          this.#emit(`br${cond} ${go}`, `rjmp ${done}`, `${go}:`);
+        }
+        for (let k = inl.bodyFrom; k < inl.bodyTo; k += 1)
+          this.#nodeStaged(this.#planned[k] as Planned);
+        const sv = stateV ?? refuse('inlined loop state');
+        this.#move(this.#home(sv), sv.size, inl.bodyRet);
+        this.#increment(counterH, counterV.size);
+        return;
+      }
       if (pred !== undefined) {
         this.#call(n.pred as string, pred, args);
         const go = this.#label();
@@ -1534,21 +1863,24 @@ class AvrEmitter {
       }
       if (stateV !== undefined) this.#call(name, body, args, this.#home(stateV));
       else this.#call(name, body, args, undefined, this.#abs((self as { rel: number }).rel));
-      this.#increment(counterH);
+      this.#increment(counterH, counterV.size);
     });
-    this.#emit(`rjmp ${test}`, `${top}:`);
+    // A literal count of at least one runs the first iteration without testing.
+    if (!(count.kind === 'lit' && count.value > 0)) this.#emit(`rjmp ${test}`);
+    this.#emit(`${top}:`);
     this.out.push(...lines);
     this.#emit(`${test}:`);
     this.#cmp('lt', counter, count);
-    const words = lines.filter((l) => !l.endsWith(':')).length * 2 + 16;
+    const words = wordsOf(lines) + 8;
     if (words <= 60) this.#emit(`brlo ${top}`);
     else this.#emit(`brsh ${done}`, `rjmp ${top}`);
     this.#emit(`${done}:`);
   }
 
-  #increment(h: Home): void {
+  /** Counter `h` (its low `size` bytes; the rest are known zero) plus one. */
+  #increment(h: Home, size: number): void {
     if (h.kind === 'slot') {
-      for (let k = 0; k < 4; k += 1)
+      for (let k = 0; k < size; k += 1)
         this.#emit(
           `ldd r26, Y+${h.off + k}`,
           `${k === 0 ? 'subi' : 'sbci'} r26, 255`,
@@ -1556,12 +1888,16 @@ class AvrEmitter {
         );
       return;
     }
+    if (size === 1) {
+      this.#emit(`inc r${h.r}`);
+      return;
+    }
     if (h.r >= 16) {
-      for (let k = 0; k < 4; k += 1) this.#emit(`${k === 0 ? 'subi' : 'sbci'} r${h.r + k}, 255`);
+      for (let k = 0; k < size; k += 1) this.#emit(`${k === 0 ? 'subi' : 'sbci'} r${h.r + k}, 255`);
       return;
     }
     this.#emit('sec');
-    for (let k = 0; k < 4; k += 1) this.#emit(`adc r${h.r + k}, r1`);
+    for (let k = 0; k < size; k += 1) this.#emit(`adc r${h.r + k}, r1`);
   }
 
   // --- function -------------------------------------------------------------------------
@@ -1620,7 +1956,7 @@ class AvrEmitter {
         })),
       );
     });
-    for (const n of this.#planned) this.#nodeStaged(n);
+    for (const n of this.#planned) if (n.inner !== true) this.#nodeStaged(n);
     const ret = this.#retVal ?? refuse('no return value');
     if (!sret) this.#fromValue(fn.result === 'bool' ? [24] : A, ret);
     else {
@@ -1690,6 +2026,16 @@ class AvrEmitter {
   }
 }
 
+/** Program words of emitted lines (labels take none; call, jmp, lds, sts take two). */
+function wordsOf(lines: readonly string[]): number {
+  let words = 0;
+  for (const l of lines) {
+    if (l.endsWith(':') || l.startsWith('\t.')) continue;
+    words += /^\t(call|jmp|lds|sts) /.test(l) ? 2 : 1;
+  }
+  return words;
+}
+
 /** Drop self-moves and jumps to the next line. */
 function peephole(lines: readonly string[]): string[] {
   const out: string[] = [];
@@ -1703,9 +2049,24 @@ function peephole(lines: readonly string[]): string[] {
   return out;
 }
 
-/** Emit one function as AVR assembly (a `.globl a0_<name>` block in `.text.a0_<name>`). */
-export function emitAvrFunction(fn: TypedFunc): string {
-  return new AvrEmitter(fn).emit();
+/**
+ * Emit one function as AVR assembly (a `.globl a0_<name>` block in `.text.a0_<name>`). With
+ * `inline: false`, every call, fold and loop calls its callee out of line.
+ */
+export function emitAvrFunction(fn: TypedFunc, options: { inline?: boolean } = {}): string {
+  return emitted(fn, options.inline ?? true).text;
+}
+
+/** An emission of `fn`: inlined loops first, again without them when those meet far spills. */
+function emitted(fn: TypedFunc, inline = true): { e: AvrEmitter; text: string } {
+  const e = new AvrEmitter(fn, inline, inline);
+  try {
+    return { e, text: e.emit() };
+  } catch (err) {
+    if (!(err instanceof FarSpill)) throw err;
+    const plain = new AvrEmitter(fn, false, inline);
+    return { e: plain, text: plain.emit() };
+  }
 }
 
 /**
@@ -1719,10 +2080,9 @@ export function avrStackBytes(fn: TypedFunc, optimize = true): number {
     const known = memo.get(f.name);
     if (known !== undefined) return known;
     const source = optimize ? optimizeFunction(f).fn : f;
-    const e = new AvrEmitter(source);
-    e.emit();
+    const { e } = emitted(source);
     let deepest = 2; // a helper's return address
-    for (const callee of source.calls.values()) deepest = Math.max(deepest, walk(callee));
+    for (const callee of e.called.values()) deepest = Math.max(deepest, walk(callee));
     const total = 2 + e.pushes + e.frameBytes + e.outgoing + deepest;
     memo.set(f.name, total);
     return total;
