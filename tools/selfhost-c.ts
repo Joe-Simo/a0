@@ -42,6 +42,25 @@ const SIZES = {
 };
 const FUEL = { fuel: 1e12 };
 
+/** Page counts of the emitter's tables (the 16384-byte front end's: 128 words a page, types 384). */
+const EMIT_PAGES = {
+  types: 65,
+  tlist: 65,
+  fns: 45,
+  nodes: 128,
+  args: 256,
+  ntys: 24,
+  pool: 129,
+  fnm: 16,
+};
+
+/** A table as `count` pages of `size` words (element i at page i / size). */
+const paged = (t: readonly number[], count: number, size = 128): number[][] => {
+  if (t.length > count * size)
+    throw new Error(`table of ${t.length} words exceeds ${count * size}`);
+  return Array.from({ length: count }, (_, p) => pad(t.slice(p * size, p * size + size), size));
+};
+
 const pad = (t: readonly number[], n: number): number[] => {
   if (t.length > n) throw new Error(`table of ${t.length} words exceeds ${n}`);
   return [...t, ...new Array(n - t.length).fill(0)];
@@ -174,6 +193,11 @@ export function selfHostedC(
   let fstat: number[] = [];
   const bytes: number[] = [];
   const parts = chunks(fns);
+  // The emitter's name table: the pool start and length of each function's name.
+  const fnm = h.heads.flatMap(([name]) => [
+    h.sym[name * 2] as number,
+    h.sym[name * 2 + 1] as number,
+  ]);
   // Types below tfrom already have typedefs; the first chunk also emits the header types.
   let tfrom = 3;
   for (const [from, to] of parts) {
@@ -204,14 +228,14 @@ export function selfHostedC(
       emitc,
       [
         io,
-        pad(types, SIZES.types),
-        pad(tlist, SIZES.tlist),
-        pad(body.fns, SIZES.fns),
-        pad(body.nodes, SIZES.nodes),
-        pad(body.args, SIZES.args),
-        s[6],
-        pad(h.pool, SIZES.pool),
-        pad(h.sym, SIZES.sym),
+        paged(types, EMIT_PAGES.types, 384),
+        paged(tlist, EMIT_PAGES.tlist),
+        paged(body.fns, EMIT_PAGES.fns),
+        paged(body.nodes, EMIT_PAGES.nodes),
+        paged(body.args, EMIT_PAGES.args),
+        paged(s[6], EMIT_PAGES.ntys),
+        paged(h.pool, EMIT_PAGES.pool),
+        paged(fnm, EMIT_PAGES.fnm),
         ntypes,
         tfrom,
         from,
