@@ -38,7 +38,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.31';
+export const COMPILER_VERSION = 'a0c-0.1.32';
 
 export type Target =
   | 'js'
@@ -241,6 +241,42 @@ function mutableHere(
   }
   return true;
 }
+
+/**
+ * C only: `mutableHere` with two more facts of the C emitter. A `fold`/`loop`/`call` result is
+ * storage of this function (a fresh local, or the loop state aliasing an unshared initial value),
+ * so it is fresh like `arr`/`set`. And an earlier use that only reads the value is harmless: a
+ * callee or a loop body receives aggregates by const pointer and keeps nothing, so a `call`
+ * argument or a `fold`/`loop` extra before `index` does not share it. Uses that could mutate or
+ * alias it (a `set`/`put` target, a `fold`/`loop` initial state, a `select` operand) still do.
+ */
+function mutableHereC(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  ownedParam: (paramIndex: number) => boolean,
+): boolean {
+  if (o.kind === 'node') {
+    const def = fn.nodes.find((n) => n.id === o.id);
+    if (def === undefined || !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op))) return false;
+  } else if (!(o.kind === 'param' && ownedParam(o.index))) {
+    return false;
+  }
+  if (sameOp(fn.ret, o)) return false;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j === index) continue;
+    for (const [k, arg] of n.args.entries()) {
+      if (!sameOp(arg, o)) continue;
+      if (j > index) return false;
+      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
+      if (n.op === 'call') continue;
+      if ((n.op === 'fold' || n.op === 'loop') && k >= 2) continue;
+      return false;
+    }
+  }
+  return true;
+}
+const C_FRESH_OPS = new Set<Op>(['fold', 'loop', 'call']);
 
 /** JS ownership: only the p0 state of the owned iteration-body variant is private. */
 const jsOwned =
@@ -702,7 +738,7 @@ const cOwned =
     !(fn !== undefined && isLargeC(fn.params[i] as Type) && !(variant === 'owned' && i === 0));
 
 /**
- * The C in-place rule: `mutableHere`, and no borrowed read of the target (an aggregate
+ * The C in-place rule: `mutableHereC`, and no borrowed read of the target (an aggregate
  * `get`/`at`, which C holds as a pointer into the target) is read after this update.
  */
 function cMutableHere(
@@ -712,7 +748,7 @@ function cMutableHere(
   owned: (i: number) => boolean,
   selfRead: boolean,
 ): boolean {
-  return mutableHere(fn, o, index, owned) && !borrowLive(fn, o, index, selfRead);
+  return mutableHereC(fn, o, index, owned) && !borrowLive(fn, o, index, selfRead);
 }
 
 /** Does the node at `index` update its first operand in place? Records the alias. */

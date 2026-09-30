@@ -1,0 +1,155 @@
+# Site generator, module 3: the store (u32x128x512, bytes packed four to a word) and reading
+# the input into it. Page 0 is the header:
+#   0 template bytes (the template is at byte 1024, page 2)   1 start byte of the words
+#   2 number of words   3 word offset of the word table (4 words per word: start, length, hash)
+#   4 start byte of the scoped stylesheet   5 its length   6 number of text files   7 next free page
+#   8 + 4r: text file r: role hash, start byte, length
+#   100.. scratch counters of the fold that is writing the store
+use "sgwords.a0"
+use "sgio.a0"
+
+fn hd u32x128x512 u32 -> u32
+pg get p0 0
+r get pg p1
+ret r
+end
+# header word p2 := p3 (fold body)
+fn whd u32x128x512 u32 u32 u32 -> u32x128x512
+pg get p0 0
+pg2 set pg p2 p3
+r set p0 0 pg2
+ret r
+end
+# word p1 of the word table: start byte, length, hash
+fn wstart u32x128x512 u32 -> u32
+b call hd p0 3
+i shl p1 2
+j add b i
+r call rd512 p0 j
+ret r
+end
+fn wlen u32x128x512 u32 -> u32
+b call hd p0 3
+i shl p1 2
+j add b i
+k add j 1
+r call rd512 p0 k
+ret r
+end
+fn whash u32x128x512 u32 -> u32
+b call hd p0 3
+i shl p1 2
+j add b i
+k add j 2
+r call rd512 p0 k
+ret r
+end
+# is the store range [p1, p1 + p2) word p3
+fn isword u32x128x512 u32 u32 u32 -> bool
+l call wlen p0 p3
+s call wstart p0 p3
+le0 eq l p2
+e call seq p0 p1 l s
+r and le0 e
+ret r
+end
+
+# ---- the words: the literal packed at byte p3, then one table entry per word
+fn seedb u32x128x512 u32 u32x1725 u32 -> u32x128x512
+b get p2 p1
+pos add p3 p1
+w0 shr pos 2
+pi shr w0 7
+wi and w0 127
+pg get p0 pi
+w get pg wi
+b0 and pos 3
+sh shl b0 3
+v shl b sh
+w2 or w v
+pg2 set pg wi w2
+r set p0 pi pg2
+ret r
+end
+fn wtb u32x128x512 u32 u32x1725 u32 u32 -> u32x128x512
+b get p2 p1
+h call hd p0 100
+ws call hd p0 101
+wn call hd p0 102
+e eq b 124
+c select e 1 0
+x xor h b
+h2 mul x 16777619
+en shl wn 2
+e0 add p4 en
+e1 add e0 1
+e2 add e0 2
+len sub p1 ws
+st add p3 ws
+s1 fold wr512 c p0 e0 st
+s2 fold wr512 c s1 e1 len
+s3 fold wr512 c s2 e2 h
+hn select e 2166136261 h2
+i1 add p1 1
+wsn select e i1 ws
+wn1 add wn 1
+wnn select e wn1 wn
+s4 fold whd 1 s3 100 hn
+s5 fold whd 1 s4 101 wsn
+s6 fold whd 1 s5 102 wnn
+ret s6
+end
+# the words at page p1: literal, then the table on the next page boundary; header 7 := the next free page
+fn seedw u32x128x512 u32 -> u32x128x512
+lit call wlit
+base shl p1 9
+s1 fold seedb 1725 p0 lit base
+wtp add p1 4
+wt shl wtp 7
+s2 fold whd 1 s1 100 2166136261
+s3 fold whd 1 s2 101 0
+s4 fold whd 1 s3 102 0
+s5 fold wtb 1725 s4 lit base wt
+n call hd s5 102
+s6 fold whd 1 s5 1 base
+s7 fold whd 1 s6 2 n
+s8 fold whd 1 s7 3 wt
+nxt add wtp 8
+r fold whd 1 s8 7 nxt
+ret r
+end
+
+# ---- files: a byte count, then the bytes packed four to a word, onto whole pages
+fn rdpg (u32x128x512,io,u32,u32) u32 -> (u32x128x512,io,u32,u32)
+s at p0 0
+t at p0 1
+fp at p0 2
+nw at p0 3
+b shl p1 7
+rest sub nw b
+big gt rest 128
+cnt select big 128 rest
+r call rdpage t cnt
+pg at r 0
+t2 at r 1
+pi add fp p1
+s2 set s pi pg
+o rec s2 t2 fp nw
+ret o
+end
+# the next file of the input onto the pages from p2: (store, io, byte count, pages used)
+fn rdfile u32x128x512 io u32 -> (u32x128x512,io,u32,u32)
+r0 read p1
+n at r0 0
+t at r0 1
+n3 add n 3
+nw shr n3 2
+nw127 add nw 127
+np shr nw127 7
+s0 rec p0 t p2 nw
+s fold rdpg np s0
+st at s 0
+t2 at s 1
+o rec st t2 n np
+ret o
+end

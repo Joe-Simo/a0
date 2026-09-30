@@ -1451,8 +1451,9 @@ t select isn nt t1
 ret t
 end
 # the operands: the first parameter out of range (a type error) and io linearity
-# state (ncons pcons first token consumed twice, first operand out of range)
-fn v1linstep (u32x1024,u32x1024,u32,u32) u32 u32x8192 u32x1024 u32x1024 u32x256 u32 u32 u32 u32 u32 -> (u32x1024,u32x1024,u32,u32)
+# state (ncons pcons first token consumed twice, first operand out of range); ncons/pcons 1
+# consumed, 2 + k the io field k taken by `at` (then only a put of field k may consume it)
+fn v1linstep (u32x1024,u32x1024,u32,u32) u32 u32x8192 u32x1024 u32x1024 u32x256 u32 u32 u32 u32 u32 u32x768 -> (u32x1024,u32x1024,u32,u32)
 ncons at p0 0
 pcons at p0 1
 bad at p0 2
@@ -1478,8 +1479,45 @@ nc get ncons gi
 pc get pcons pi
 c0 select isn nc 0
 c select isp pc c0
-already eq c 1
-err and consider already
+fo add p6 1
+fo2 mul fo 2
+fk get p2 fo2
+fo21 add fo2 1
+fv get p2 fo21
+xok ne t 4294967295
+t3 mul t 3
+ttag get p11 t3
+t31 add t3 1
+tfirst get p11 t31
+t32 add t3 2
+tcnt get p11 t32
+xrec eq ttag 5
+xlit eq fk 3
+xin lt fv tcnt
+xf add tfirst fv
+xft get p3 xf
+xfi get p5 xft
+xfio eq xfi 1
+x0 and skip isio
+x1 and x0 xok
+x2 and x1 xrec
+x3 and x2 xlit
+x4 and x3 xin
+takes and x4 xfio
+used ne c 0
+tbad and takes used
+cons eq c 1
+tk ge c 2
+fld sub c 2
+isput eq p10 28
+pk and isput k0
+feq eq fld fv
+pok0 and pk xlit
+pok and pok0 feq
+tkbad select pok false tk
+already or cons tkbad
+err0 and consider already
+err or err0 tbad
 none eq bad 4294967295
 newbad and none err
 bad2 select newbad p1 bad
@@ -1489,10 +1527,16 @@ newbada and nonea isbad
 bada2 select newbada p1 bada
 markn and consider isn
 markp and consider isp
-ncons1 set ncons gi 1
-ncons2 select markn ncons1 ncons
-pcons1 set pcons pi 1
-pcons2 select markp pcons1 pcons
+tv add fv 2
+tn and takes isn
+tp and takes isp
+mn or markn tn
+mp or markp tp
+nvv select takes tv 1
+ncons1 set ncons gi nvv
+ncons2 select mn ncons1 ncons
+pcons1 set pcons pi nvv
+pcons2 select mp pcons1 pcons
 r rec ncons2 pcons2 bad2 bada2
 ret r
 end
@@ -1654,7 +1698,7 @@ t0 call v1opndty k0 v0 tlist ntys fp np first
 t1 call v1opndty k1 v1 tlist ntys fp np first
 t2 call v1opndty k2 v2 tlist ntys fp np first
 ls0 rec ncons pcons 4294967295 4294967295
-ls fold v1linstep nargs ls0 p3 tlist ntys tio fa fp np first op
+ls fold v1linstep nargs ls0 p3 tlist ntys tio fa fp np first op types
 ncons2 at ls 0
 pcons2 at ls 1
 badb at ls 2
@@ -1977,7 +2021,7 @@ isp eq rk 2
 c0 select isn nc 0
 c select isp pc c0
 rio1 eq rio 1
-c1 eq c 1
+c1 ne c 0
 rcons and rio1 c1
 rc0 select rcons 2 0
 rc1 select rne 3 rc0

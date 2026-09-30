@@ -167,7 +167,7 @@ end
 # and the first parameter out of range, the first operand not of type p12 (arr and text),
 # the first from p16 on not of the callee's parameter type (call fold loop), and the fields of
 # a rec, written to the two-page tlist window at offset p17 (copied back for a rec only)
-fn argb (u32x128x2,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32) u32 u32x128 u32x128 u32 u32x128x24 u32x64 u32x128x65 u32 u32 u32 bool u32 u32x128 u32x128 u32 u32 u32 u32 bool bool bool -> (u32x128x2,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32)
+fn argb (u32x128x2,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32) u32 u32x128 u32x128 u32 u32x128x24 u32x64 u32x128x65 u32 u32 u32 bool u32 u32x128 u32x128 u32 u32 u32 u32 bool bool bool bool u32 -> (u32x128x2,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32)
 tw at p0 0
 ncons at p0 1
 pcons at p0 2
@@ -226,7 +226,26 @@ nc1 eq nc 1
 pcs eq pc p10
 a0 select isp pcs false
 already select isn nc1 a0
-lerr and consider already
+# a record whose io field was taken by `at` (ncons 2 + field, pcons stamp + 2^20 (field + 1))
+# may only get that field back by a put (p22, field p23) as operand 0
+nmv ge nc 2
+mvn and isn nmv
+fldn sub nc 2
+plo and pc 1048575
+phi shr pc 20
+pst eq plo p10
+phz ne phi 0
+mvp0 and pst phz
+mvp and isp mvp0
+fldp sub phi 1
+moved or mvn mvp
+fld select mvn fldn fldp
+okput0 and p22 kz
+feq eq fld p23
+okput and okput0 feq
+mvbad select okput false moved
+already2 or already mvbad
+lerr and consider already2
 nobad eq badlin 4294967295
 newbad and nobad lerr
 badlin2 select newbad k badlin
@@ -273,8 +292,8 @@ rh2 mul hx 16777619
 r rec tw2 ncons2 pcons2 badlin2 bada2 eqk2 sigk2 nio2 rbits2 rh2
 ret r
 end
-# segment p1 + p19 (64 operands) of a node: state (tlist ncons pcons badlin bada eqk sigk nio
-# rbits rhash); p2 args p3 ntys p4 params p5 tinfo p6 firstarg p7 nargs p8 first node
+# segment p1 + p19 (64 operands) of a node (never operand 0, so no put target): state (tlist
+# ncons pcons badlin bada eqk sigk nio rbits rhash); p2 args p3 ntys p4 params p5 tinfo p6 firstarg p7 nargs p8 first node
 # p9 nparams p10 the function (+1) p11 at p12 t0 p13 callee first param p14 sig offset
 # p15 ntlist p16 rec p17 sig p18 arr
 fn argseg (u32x128x65,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x256 u32x128x24 u32x64 u32x128x65 u32 u32 u32 u32 u32 bool u32 u32 u32 u32 bool bool bool u32 -> (u32x128x65,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32)
@@ -314,7 +333,7 @@ x7 at p0 7
 x8 at p0 8
 x9 at p0 9
 s0 rec tw x1 x2 x3 x4 x5 x6 x7 x8 x9
-s fold argb cnt s0 apg0 apg1 ao p3 p4 p5 p8 p9 p10 p11 p12 sg0 sg1 qo p14 ro k0 p16 p17 p18
+s fold argb cnt s0 apg0 apg1 ao p3 p4 p5 p8 p9 p10 p11 p12 sg0 sg1 qo p14 ro k0 p16 p17 p18 false 0
 w at s 0
 w0 get w 0
 w1 get w 1
@@ -562,7 +581,7 @@ sg1 get tlist sqh1
 big0 gt nargs 64
 cnt0 select big0 64 nargs
 sa0 rec tw ncons pcons 4294967295 4294967295 4294967295 4294967295 0 0 2166136261
-sa fold argb cnt0 sa0 apg0 apg1 aao ntys p6 tinfo p8 p7 stamp isat t0 sg0 sg1 sqo sigoff rro 0 isrec dosig arrlike
+sa fold argb cnt0 sa0 apg0 apg1 aao ntys p6 tinfo p8 p7 stamp isat t0 sg0 sg1 sqo sigoff rro 0 isrec dosig arrlike isput v1
 tww at sa 0
 tww0 get tww 0
 tww1 get tww 1
@@ -592,9 +611,66 @@ nrest select big0 nrest0 0
 as0 rec tlb y1 y2 y3 y4 y5 y6 y7 y8 y9
 as fold argseg nrest as0 p3 ntys p6 tinfo fa nargs p8 p7 stamp isat t0 cfirst sigoff ntlist isrec dosig arrlike 1
 tlistr at as 0
-ncons2 at as 1
-pcons2 at as 2
-badb at as 3
+ncons1 at as 1
+pcons1 at as 2
+badb0 at as 3
+# `at` of the io-carrying field of a record takes the token out: operand 0 must be neither
+# consumed nor already taken; it is then marked taken (ncons 2 + field, pcons stamp +
+# 2^20 (field + 1))
+xh shr t0 7
+xl and t0 127
+x3 mul xl 3
+xg get types xh
+xtag get xg x3
+x31 add x3 1
+xfirst get xg x31
+x32 add x3 2
+xcnt get xg x32
+xrec eq xtag 5
+xlit eq k1 3
+xin lt v1 xcnt
+xf add xfirst v1
+xfh shr xf 7
+xfl and xf 127
+xfg get tlist xfh
+xft get xfg xfl
+xth shr xft 7
+xtl and xft 127
+xtg get tinfo xth
+xti get xtg xtl
+xio shr xti 31
+xfio eq xio 1
+xok ne t0 4294967295
+xa00 and isat xok
+xa0 and xa00 xrec
+xa1 and xa0 xlit
+xa2 and xa1 xin
+takes and xa2 xfio
+xgi add p8 v0
+xgh shr xgi 7
+xgl and xgi 127
+xng get ncons1 xgh
+xnc get xng xgl
+xpc get pcons1 v0
+xnused ne xnc 0
+xplo and xpc 1048575
+xpused eq xplo stamp
+xpu select p0k xpused false
+xused select n0 xnused xpu
+atbad and takes xused
+xmark select atbad false takes
+xmn and xmark n0
+xmp and xmark p0k
+xnv add v1 2
+xnw select xmn xnv xnc
+xng2 set xng xgl xnw
+ncons2 set ncons1 xgh xng2
+xv1 add v1 1
+xpw0 shl xv1 20
+xpw add xpw0 stamp
+xpv select xmp xpw xpc
+pcons2 set pcons1 v0 xpv
+badb select atbad 0 badb0
 bada at as 4
 eqk at as 5
 sigk at as 6
@@ -1017,7 +1093,17 @@ stamp add f 1
 nc1 eq nc 1
 pcs eq pc stamp
 ca select isp pcs false
-c select isn nc1 ca
+c0r select isn nc1 ca
+# or its io field was taken by `at`
+ncm ge nc 2
+pclo and pc 1048575
+pchi shr pc 20
+pcst eq pclo stamp
+pchz ne pchi 0
+pcm and pcst pchz
+cmp select isp pcm false
+cm select isn ncm cmp
+c or c0r cm
 rio1 eq rio 1
 rcons and rio1 c
 rc0 select rcons 2 0

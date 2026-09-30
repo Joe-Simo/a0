@@ -1,0 +1,235 @@
+# Site generator, module 4: theme scoping of the stylesheet, written into the store after it.
+# Every `@media (prefers-color-scheme:X){R}` block (R a run of `selectors{declarations}` rules)
+# becomes the same block with each selector limited to `:root` without a forced opposite theme,
+# followed by R limited to `:root[data-theme=X]`, so the viewer's choice (site/theme.ts sets
+# `data-theme` on <html>) and the system setting both apply. A selector (stripped of white
+# space) starting with `:root` becomes `:root:where(COND)` and the rest; any other selector
+# becomes `:where(:root COND) ` and the selector, so specificity is unchanged.
+# COND is `:not([data-theme=Y])` (Y the other theme) in the block, `[data-theme=X]` after it.
+# Counters live in store header words: 110 read position, 111 write position, 112 rule start,
+# 113 selector start.
+use "sgstore.a0"
+
+# append byte p2 at the write position
+fn apb u32x128x512 u32 u32 -> u32x128x512
+o call hd p0 111
+w0 shr o 2
+pi shr w0 7
+wi and w0 127
+pg get p0 pi
+w get pg wi
+b0 and o 3
+sh shl b0 3
+v shl p2 sh
+w2 or w v
+pg2 set pg wi w2
+s1 set p0 pi pg2
+o1 add o 1
+r fold whd 1 s1 111 o1
+ret r
+end
+# append the store byte p2 + p1 (a fold over a range appends the range)
+fn apr u32x128x512 u32 u32 -> u32x128x512
+pos add p2 p1
+b call sb p0 pos
+r fold apb 1 p0 b
+ret r
+end
+# append word p2
+fn apw u32x128x512 u32 u32 -> u32x128x512
+s call wstart p0 p2
+l call wlen p0 p2
+r fold apr l p0 s
+ret r
+end
+fn isws u32 -> bool
+lo ge p0 9
+hi le p0 13
+c and lo hi
+sp eq p0 32
+r or c sp
+ret r
+end
+fn wsmore u32 u32 u32x128x512 u32 -> bool
+lt0 lt p0 p3
+b call sb p2 p0
+w call isws b
+r and lt0 w
+ret r
+end
+fn wsstep u32 u32 u32x128x512 u32 -> u32
+r add p0 1
+ret r
+end
+fn tlmore u32 u32 u32x128x512 u32 -> bool
+gt0 gt p0 p3
+a sub p0 1
+b call sb p2 a
+w call isws b
+r and gt0 w
+ret r
+end
+fn tlstep u32 u32 u32x128x512 u32 -> u32
+r sub p0 1
+ret r
+end
+# COND for theme word p2 (199 light, 200 dark): p3 = 1 inside the block, 2 after it
+fn apcond u32x128x512 u32 u32 u32 -> u32x128x512
+one eq p3 1
+c1 select one 1 0
+c2 select one 0 1
+oth sub 399 p2
+s1 fold apw c1 p0 204
+s2 fold apw c1 s1 oth
+s3 fold apw c1 s2 206
+s4 fold apw c2 s3 205
+s5 fold apw c2 s4 p2
+s6 fold apw c2 s5 207
+ret s6
+end
+# the selector [p2, p3), stripped and scoped
+fn apsel u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+n0 sub p3 p2
+s0 loop wsmore wsstep n0 p2 p0 p3
+n1 sub p3 s0
+s1 loop tlmore tlstep n1 p3 p0 s0
+ln sub s1 s0
+long ge ln 5
+rw call wstart p0 201
+isr0 call seq p0 s0 5 rw
+isr and long isr0
+cr select isr 1 0
+cn select isr 0 1
+a1 fold apw cr p0 202
+a2 fold apcond cr a1 p4 p5
+a3 fold apw cr a2 208
+r5 add s0 5
+l5 sub s1 r5
+lr select isr l5 0
+a4 fold apr lr a3 r5
+b1 fold apw cn a4 203
+b2 fold apcond cn b1 p4 p5
+b3 fold apw cn b2 209
+lo select isr 0 ln
+b4 fold apr lo b3 s0
+ret b4
+end
+# selectors of the rule starting at p2 whose declarations open at p3, split at commas
+fn segmore u32x128x512 u32 u32 u32 u32 u32 -> bool
+a call hd p0 113
+r le a p3
+ret r
+end
+fn segstep u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a call hd p0 113
+c call sfind p0 a p3 44
+nf gt a p2
+cc select nf 1 0
+s1 fold apb cc p0 44
+s2 fold apsel 1 s1 a c p4 p5
+c1 add c 1
+s3 fold whd 1 s2 113 c1
+ret s3
+end
+fn rlmore u32x128x512 u32 u32 u32 u32 -> bool
+r0 call hd p0 112
+r lt r0 p2
+ret r
+end
+fn rlstep u32x128x512 u32 u32 u32 u32 -> u32x128x512
+r call hd p0 112
+lb call sfind p0 r p2 123
+rb call sfind p0 lb p2 125
+s1 fold whd 1 p0 113 r
+ns sub lb r
+ns1 add ns 1
+s2 loop segmore segstep ns1 s1 r lb p3 p4
+s3 fold apb 1 s2 123
+d1 add lb 1
+dl sub rb d1
+s4 fold apr dl s3 d1
+s5 fold apb 1 s4 125
+rb1 add rb 1
+s6 fold whd 1 s5 112 rb1
+ret s6
+end
+# the rules [p2, p3) scoped for theme word p4, COND p5
+fn scope u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+s1 fold whd 1 p0 112 p2
+n sub p3 p2
+r loop rlmore rlstep n s1 p3 p4 p5
+ret r
+end
+# the block at p2 (theme word p3, rules [p4, p5))
+fn block u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+s1 fold apw 1 p0 198
+s2 fold apw 1 s1 p3
+s3 fold apb 1 s2 41
+s4 fold apb 1 s3 123
+s5 fold scope 1 s4 p4 p5 p3 1
+s6 fold apb 1 s5 125
+s7 fold scope 1 s6 p4 p5 p3 2
+ret s7
+end
+fn bemore u32 u32 u32x128x512 u32 -> bool
+lt0 lt p0 p3
+b call sb p2 p0
+ne0 ne b 125
+r and lt0 ne0
+ret r
+end
+fn bestep u32 u32 u32x128x512 u32 -> u32
+c call sfind p2 p0 p3 125
+r add c 1
+ret r
+end
+fn csmore u32x128x512 u32 u32 -> bool
+p call hd p0 110
+r lt p p2
+ret r
+end
+fn csstep u32x128x512 u32 u32 -> u32x128x512
+pos call hd p0 110
+mw0 call wstart p0 198
+ism call seq p0 pos 29 mw0
+m0 add pos 29
+lw call wstart p0 199
+dw call wstart p0 200
+isl call seq p0 m0 5 lw
+isd call seq p0 m0 4 dw
+ml select isl 5 4
+mw select isl 199 200
+q add m0 ml
+q1 add q 1
+b0 call sbis p0 q 41
+b1 call sbis p0 q1 123
+paren and b0 b1
+ld or isl isd
+k0 and ism ld
+blk and k0 paren
+bs add q 2
+n0 sub p2 bs
+nb select blk n0 0
+be loop bemore bestep nb bs p0 p2
+cb select blk 1 0
+cc select blk 0 1
+s1 fold apr cc p0 pos
+s2 fold block cb s1 pos mw bs be
+be1 add be 1
+pos1 add pos 1
+np select blk be1 pos1
+s3 fold whd 1 s2 110 np
+ret s3
+end
+# scope the stylesheet [p2, p2 + p3) into the store from byte p4; header 4, 5 := its range (fold body)
+fn cssscope u32x128x512 u32 u32 u32 u32 -> u32x128x512
+s1 fold whd 1 p0 110 p2
+s2 fold whd 1 s1 111 p4
+e add p2 p3
+s3 loop csmore csstep p3 s2 e
+o call hd s3 111
+n sub o p4
+s4 fold whd 1 s3 4 p4
+s5 fold whd 1 s4 5 n
+ret s5
+end

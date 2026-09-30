@@ -688,6 +688,46 @@ test('iteration bound: a call to a variable-count loop does not count against a 
   assert.deepEqual(io.output.slice(0, 4), [1, 0, 0, 0]);
 });
 
+test('optimizer: a variable loop count stays a value when a literal would exceed the compute bound', () => {
+  const src =
+    'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn inner u32 u32 -> u32\na fold step 4096 p0\nret a\nend\nfn more u32 u32 -> bool\nb lt p0 10000\nret b\nend\nfn top u32 -> u32\nn mov 4294967295\ns loop more inner n p0\nret s\nend';
+  const p = parseAndValidate(src);
+  const top = optimizeFunction(p.byName.get('top') as TypedFunc).fn;
+  assert.equal(top.nodes[0]?.op, 'mov');
+  assert.equal(run(top, [5]), run(p.byName.get('top') as TypedFunc, [5]));
+  assert.ok(compile(p, 'c').text.includes('a0_top'));
+  // A count whose literal stays within the bound is still propagated.
+  const small = optimizeFunction(
+    parseAndValidate(
+      'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn top u32 -> u32\nn mov 3\ns fold step n p0\nret s\nend',
+    ).byName.get('top') as TypedFunc,
+  ).fn;
+  assert.ok(small.nodes.every((x) => x.op !== 'mov'));
+});
+
+test('io linearity: `at` of the io field takes the token; only a put of that field gives it back', () => {
+  const ok = parseAndValidate(
+    'fn f (io,u32) -> (io,u32)\nx at p0 1\nt at p0 0\nw write t x\nr put p0 0 w\nret r\nend',
+  ).byName.get('f') as TypedFunc;
+  const io = makeIo([]);
+  const out = run(ok, [[io, 7]]) as [typeof io, number];
+  assert.deepEqual(out[0].output, [7]);
+  const rejects = (body: string, re: RegExp): void => {
+    assert.throws(
+      () =>
+        parseAndValidate(
+          `fn g (io,u32) -> (io,u32)\nret p0\nend\nfn f (io,u32) -> (io,u32)\nt at p0 0\nw write t 1\n${body}\nend`,
+        ),
+      (e: unknown) =>
+        e instanceof A0Error && e.code === 'structure' && re.test(e.message) && e.fix !== undefined,
+    );
+  };
+  rejects('r call g p0\nret r', /used after `at` took its io field 0/);
+  rejects('ret p0', /returned after `at` took its io field 0/);
+  rejects('r put p0 1 5\nret r', /used after `at` took its io field 0/);
+  rejects('u at p0 0\nr put p0 0 u\nret r', /already taken/);
+});
+
 test('resource bounds: fuel stops runaway evaluation, literal iteration is capped, fuzzed input fails cleanly', () => {
   const src =
     'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn spin u32 -> u32\nr fold step p0 0\nret r\nend';
@@ -1002,7 +1042,7 @@ test('site play program: the A0 lexer, parser and checker render tokens, typed I
   // Types built by bodies (arrays, records, the (u32,io) of read) render like the source.
   const tySrc = [
     ...Buffer.from(
-      'fn k io u32x4 -> (u32,io)\nr read p0\nt at r 1\nv arr 1 2\nx rec v p1\ns at x 0\nret r\nend\n',
+      'fn k io u32x4 -> (u32,io)\nr read p0\nt at r 0\nv arr 1 2\nx rec v p1\ns at x 0\nret r\nend\n',
     ),
   ];
   const ty = makeIo([1, 0, 0, tySrc.length, ...tySrc, 0]);
@@ -1011,11 +1051,21 @@ test('site play program: the A0 lexer, parser and checker render tokens, typed I
   assert.ok(tyText.includes('params 2 · result (u32,io)'), tyText);
   assert.ok(
     tyText.includes(
-      'r read p0  (u32,io)\nt at r 1  io\nv arr 1 2  u32x2\nx rec v p1  (u32x2,u32x4)\ns at x 0  u32x2\nret r',
+      'r read p0  (u32,io)\nt at r 0  u32\nv arr 1 2  u32x2\nx rec v p1  (u32x2,u32x4)\ns at x 0  u32x2\nret r',
     ),
     tyText,
   );
   assert.ok(tyText.includes('valid: parsed and type-checked'), tyText);
+  // `at` of the io field takes the token: the record may get it back by `put`, nothing else.
+  const takeSrc = (tail: string): number[] => [
+    ...Buffer.from(`fn g (io,u32) -> (io,u32)\nt at p0 0\nx at p0 1\nw write t x\n${tail}\nend\n`),
+  ];
+  const back = makeIo([1, 0, 0, ...((b) => [b.length, ...b])(takeSrc('r put p0 0 w\nret r')), 0]);
+  assert.equal(run(session, [back]), 0);
+  assert.ok(decode(back.output).text.includes('valid: parsed and type-checked'));
+  const twice = makeIo([1, 0, 0, ...((b) => [b.length, ...b])(takeSrc('ret p0')), 0]);
+  assert.equal(run(session, [twice]), 0);
+  assert.ok(decode(twice.output).text.includes('structure error in fn g at ret'));
 });
 
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {

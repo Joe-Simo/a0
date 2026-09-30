@@ -1041,6 +1041,8 @@ export function validateFunction(
   const defined = new Set<string>();
   const calls = new Map<string, TypedFunc>();
   const consumed = new Set<string>();
+  /** Records whose io-carrying field (the value) was taken out by `at`. */
+  const taken = new Map<string, number>();
   let staticIterations = 1;
   let literalIterations = 1;
   if (fn.params.filter(containsIo).length > 1) {
@@ -1082,16 +1084,48 @@ export function validateFunction(
         throw new A0Error(`${where}: literal out of u32 range`, undefined, { code: 'structure' });
       }
     }
-    // Linearity: an io-carrying value is consumed at most once; `at` reads do not consume.
+    // Linearity: an io-carrying value is consumed at most once. `at` of a field without io
+    // only reads; `at` of the io-carrying field takes the token out of the record, which may
+    // then only read its other fields or get that field back with `put` (anything else would
+    // use the token twice).
     for (const [k, arg] of node.args.entries()) {
       const t = argTypes[k] as Type;
       if (!containsIo(t)) continue;
-      if (node.op === 'at' && k === 0) continue;
       const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
+      const field = node.args[1]?.kind === 'u32' ? node.args[1].value : -1;
+      if (node.op === 'at' && k === 0) {
+        const ft = !isPrimitive(t) && t.kind === 'rec' ? t.fields[field] : undefined;
+        if (ft === undefined || !containsIo(ft)) continue;
+        if (consumed.has(key))
+          throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
+            code: 'structure',
+          });
+        if (taken.has(key))
+          throw new A0Error(
+            `${where}: the io field ${taken.get(key)} of '${key}' was already taken by \`at\``,
+            undefined,
+            {
+              code: 'structure',
+              fix: `use the value that \`at\` returned, or put a token back first with \`put ${key} ${taken.get(key)} <io>\``,
+            },
+          );
+        taken.set(key, field);
+        continue;
+      }
       if (consumed.has(key))
         throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
           code: 'structure',
         });
+      const out = taken.get(key);
+      if (out !== undefined && !(node.op === 'put' && k === 0 && field === out))
+        throw new A0Error(
+          `${where}: '${key}' is used after \`at\` took its io field ${out}; its token would be used twice`,
+          undefined,
+          {
+            code: 'structure',
+            fix: `read the other fields first, or put the token back with \`put ${key} ${out} <io>\` and use that record`,
+          },
+        );
       consumed.add(key);
     }
     if (node.op === 'at' || node.op === 'put') {
@@ -1252,6 +1286,15 @@ export function validateFunction(
       throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`, undefined, {
         code: 'structure',
       });
+    if (taken.has(key))
+      throw new A0Error(
+        `${fn.name}.ret: '${key}' is returned after \`at\` took its io field ${taken.get(key)}`,
+        undefined,
+        {
+          code: 'structure',
+          fix: `return the record with the token put back: \`put ${key} ${taken.get(key)} <io>\``,
+        },
+      );
   }
   return { ...fn, types, calls, staticIterations, literalIterations };
 }

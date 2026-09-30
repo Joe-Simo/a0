@@ -15,6 +15,7 @@ import {
   evalOp,
   formatOperand,
   isScalar,
+  LIMITS,
   type Node,
   type Operand,
   run,
@@ -318,8 +319,33 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
   const kept: Node[] = [];
   const defs = new Map<string, Node>();
   const anchored = new Set<string>();
+  // Count nodes kept as values: see `keepCount`.
+  const counts = new Set<string>();
+  /**
+   * A variable trip count that constant propagation would turn into a literal stays a value
+   * (a `mov` of that literal) when the literal would put the loop over the static compute bound
+   * (LIMITS.maxStaticIterations): the source program was valid because its count is bounded by
+   * fuel at run time, and optimization must not make it invalid.
+   */
+  const keepCount = (node: Node, args: Operand[]): Operand[] => {
+    const src = node.args[0];
+    const lit = args[0];
+    if ((node.op !== 'fold' && node.op !== 'loop') || src?.kind !== 'node' || lit?.kind !== 'u32')
+      return args;
+    const body = fn.calls.get(node.callee ?? '');
+    if (body === undefined) return args;
+    if (lit.value * optimizedCallee(body).literalIterations <= LIMITS.maxStaticIterations)
+      return args;
+    if (!counts.has(src.id)) {
+      counts.add(src.id);
+      const mov: Node = { id: src.id, op: 'mov', args: [lit] };
+      kept.push(mov);
+      defs.set(src.id, mov);
+    }
+    return [src, ...args.slice(1)];
+  };
   for (const node of fn.nodes) {
-    const rewritten: Node = { ...node, args: node.args.map(resolve) };
+    const rewritten: Node = { ...node, args: keepCount(node, node.args.map(resolve)) };
     // Effectful nodes are anchored: never folded, merged, or removed; their order is
     // fixed by token data dependencies (each token is consumed once).
     if (isEffectful(node, fn)) {
