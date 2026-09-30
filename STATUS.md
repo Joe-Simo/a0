@@ -1324,6 +1324,21 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
   134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
 
+## Session 2026-09-30 (MCP server)
+
+- `src/mcp.ts`: MCP server on the official `@modelcontextprotocol/sdk` (stdio transport, zod
+  input schemas), launched by `a0 mcp <file-or-dir>`. Tools over `EditSession`: `a0_open`,
+  `a0_program`, `a0_apply`, `a0_check`, `a0_run`, `a0_emit`, `a0_save`. Failures return
+  `isError` with the A0Error JSON (code/message/line/expected/actual/fix).
+- Security: no shell; every path (and every `use` dependency) resolved inside the launch root
+  with realpath, symlink and dangling-symlink escapes rejected, `.a0` only; `a0_run` fuel capped
+  at `LIMITS.defaultFuel`; tool output capped at 1 MiB; edits capped at `maxSourceBytes`;
+  `a0_save` refuses without an applied edit and refuses to flatten a multi-file program over
+  its entry file (save to a new path instead).
+- `test/mcp.test.ts`: in-memory client/server transport covering every tool, diagnostics,
+  fuel exhaustion, and confinement (`..`, absolute, symlink, dangling symlink, `use` escape).
+- Gate: lint, typecheck, test.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
