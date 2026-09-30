@@ -555,9 +555,9 @@ async function main(): Promise<void> {
   // Task set: 'a' (the original 13, written by the harness author), 'b' (12 written by an
   // agent that had not seen set a or the corpus), 'c' (the 12 set-B tasks, each embedded in
   // the same deterministic 40-function program; see ai-edit-tasks-c.ts), or 'all' (a + b).
-  // 'c400' / 'c1000': the same twelve tasks in a deterministic program of 400 / 1000
-  // functions (generated filler, see generateFiller). A0 caps a program at 1024 functions
-  // (LIMITS.maxFunctions), so 1000 is the largest scaled size that is one legal A0 program.
+  // 'c400' / 'c1000' / 'c4000': the same twelve tasks in a deterministic program of 400 /
+  // 1000 / 4000 functions (generated filler, see generateFiller); any 'cN' with N >= 40 up to
+  // LIMITS.maxFunctions (65536 since a0c-0.1.14) is accepted.
   const setName = process.env.A0_EXPERIMENT_TASKSET ?? 'a';
   const scaledMatch = /^c([0-9]*)$/.exec(setName);
   const scaled =

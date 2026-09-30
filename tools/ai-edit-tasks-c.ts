@@ -317,7 +317,7 @@ function assemble(
   return parts.join('');
 }
 
-// --- Generated filler for the scaled sets (c400, c1000) ----------------------------------
+// --- Generated filler for the scaled sets (c400, c1000, c4000) ----------------------------------
 
 /** One generated helper in all three representations. */
 export interface FillerFunction {
