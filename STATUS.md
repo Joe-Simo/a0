@@ -1921,6 +1921,84 @@ COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17. Follow-up to the C/JS fix of the same
 
 
 
+## Session 2026-09-30 (arm64 backend vs clang -O3)
+
+- **Goal**: close the 1.10-1.15x gap between the direct AArch64 backend (`src/arm64.ts`) and
+  clang -O3 on the exec-bench kernels by fixing general code-generation causes, found by
+  diffing A0's assembly against clang's kernel by kernel.
+- **Causes found and fixed** (all general, not kernel-specific):
+  - Frame record in every function: a leaf with a frame up to 4080 bytes now keeps no
+    x29/x30 record (ident and noop are a bare `ret`; affine is `madd; ret`).
+  - Compares materialized as bools: a compare used only by selects sets the flags for `csel`
+    directly (clamp is cmp/csel/cmp/csel, as clang); a repeated identical `cmp` with nothing
+    in between is dropped; a zero literal reads as `wzr`; literal-first compares are swapped.
+  - Instruction selection: single-use `mul` into `add`/`sub` becomes `madd`/`msub`;
+    single-use literal shifts become shifted-register operands (`eor w0, w0, w0, lsr #16`);
+    `shl`/`shr` pairs with distances summing to 0 mod 32 become `ror` (literal, or variable
+    via `neg`+`ror`, so rotl is `neg; ror; ret` like clang).
+  - Loop shape: loops are rotated (bottom test, entry test only for a possibly-zero count),
+    literals needing movz/movk are materialized once in the outermost loop's preheader, and
+    the body's result is computed straight into the state register when the state is not read
+    after it (loop64's loop is now instruction-for-instruction clang's). A `mov` and an
+    inlined callee's scalar result are aliases rather than copies.
+  - Arrays: scaled register-offset addressing (`[sp, w3, uxtw #2]`), no mask for a counter
+    whose literal bound proves it in range, `ldp`/`stp` pairing, zero runs cleared 16 bytes per
+    store. A fold with a literal count of at most 16 trips (64 body nodes) is unrolled with
+    literal counters (arrfill: constant-offset stores, no loop).
+  - Vectorization where A0's semantics allow it: a fold that only fills its array state
+    (`ret` is `set p0 p1 v`, nothing else reads p0) whose body uses lane-wise ops (add, sub,
+    mul, and, or, xor, shl/shr by literal or variable with the five-bit mask) runs four
+    elements per NEON register, up to four registers per trip (`stp q, q`), with whole
+    leftover groups and the count mod 4 trips as straight-line code. When such a fold writes
+    every element (literal count >= length) its initial array is never stored. This removed
+    the arrfill4k `noArm64` exclusion: the direct backend now runs every kernel.
+- **Not fixed**: chain3 is still four dependent adds where clang reassociates to two (no
+  linear-form folding in the backend); branchy is 8 instructions to clang's 6 (no `tst`
+  selection, no `subs` reuse). Compares/selects inside a fill body are not vectorized.
+- **Measurement** (scratch harness, interleaved: per sample, A0-before, A0-after, clang -O3 on
+  the emitted C in its own object behind the identical driver (same call boundary), and
+  clang -O3 inlined, in rotating order; median ns/call, 15 samples of 20 M calls; arrfill4k
+  20M/128). **The machine was heavily loaded: 1-minute load 29 at start, 24 at end, 5-minute
+  33-42, on 8 cores (earlier runs saw 150).** Ratios only; absolute times drift up to 2x
+  between runs.
+
+  | kernel | before / clang -O3 | after / clang -O3 | after / clang inlined |
+  |---|---|---|---|
+  | affine | 1.06 | 0.96 | 1.00 |
+  | rotl | 1.09 | 1.02 | 1.06 |
+  | clamp | 1.09 | 0.99 | 1.02 |
+  | mix | 1.09 | 0.99 | 0.99 |
+  | ident | 0.95 | 0.98 | 1.00 |
+  | noop | 1.16 | 1.04 | 0.87 |
+  | chain3 | 1.06 | 1.07 (0.94 in a 21-sample rerun) | 1.00 |
+  | branchy | 1.01 | 0.97 | 0.99 |
+  | arrfill | 2.76 | 1.28 (0.95 in a 21-sample rerun) | 0.92 |
+  | loop64 | 1.54 | 1.38 (1.18 rerun; see below) | 1.25 |
+  | arrfill4k | 5.88 | **0.50** | 0.52 |
+  | geomean | 1.40 | 0.99 | 0.95 |
+
+  loop64 is the one kernel that stays measurably behind, but not because of code: its loop and
+  layout are identical to clang's (checked with `otool -tv`: same addresses, same seven loop
+  instructions; only `b.lo` vs `b.ne`, which measured equal). clang's own `-S` output for
+  the kernel, assembled and linked through the same path as A0's, measured 240.8 ns vs A0
+  242.2 ns vs clang's object 232.2 ns in one interleaved run, so the residual ~4% (and the
+  larger swings under load) belongs to the harness/load, not to A0's instructions. arrfill4k
+  beats clang because A0 proves the zero-initialization dead (clang calls `bzero` on its
+  16 KiB arena first). Differences under about 5% on the 4-12 ns kernels are within the
+  spread of these loaded runs and are ties, not wins or losses.
+- **exec-bench**: `tools/exec-bench.ts` now also builds `clangO3OutOfLine` (emitted C at
+  clang -O3 -mcpu=native in its own object, identical driver), runs it interleaved with the
+  arm64 binary in alternating order, and reports `arm64VsClangO3OutOfLine` per kernel and
+  `geomeans.arm64VsClangO3`. `results/exec-benchmark.json` was not regenerated (the full
+  45-language run needs a quiet machine).
+- **Correctness**: new unit test (rotates, madd/msub, shifted operands, fused and swapped
+  compares, aggregate select, unrolled folds including zero trips, rotated loops with a
+  possibly-zero count, state coalescing and a body that reads the state late, vector fills
+  with 1 and 4 registers per trip, tails, partial fills with a live init, zero runs,
+  non-power-of-two lengths) against the interpreter, optimized and unoptimized. Gate: lint,
+  typecheck, test 80/80, verify (native_arm64 4297/4297, all other paths unchanged), app,
+  equiv 48/48 proved, hw, dotnet, gpu all pass. COMPILER_VERSION a0c-0.1.24.
+
 ## Session 2026-09-30 (output tokens per edit)
 
 Loss addressed: A0 structured replies cost ~34 o200k output tokens per edit vs ~28 TypeScript and ~26 Rust (sets b, c400 scoped, d; Haiku and Sonnet subagents, min primer).
