@@ -13,11 +13,13 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import { compile } from '../src/backends.js';
-import { containsIo, type TypedProgram, type Value, validate } from '../src/core.js';
+import type { TypedProgram, Value } from '../src/core.js';
 import { needsSequential } from '../src/hw.js';
+import { optimize } from '../src/optimize.js';
 import { findIverilog, findVvp, findYosys, runTool, withTempDir } from '../src/toolchain.js';
 import {
   type Case,
+  CORPUS_SEED,
   generateCases,
   generateCorpus,
   hasIoParam,
@@ -68,8 +70,14 @@ export function testbench(program: TypedProgram): string {
     const scalars = io ? fn.params.slice(0, -1) : fn.params;
     const sets = scalars.map((_, p) => `in_${i}_${p} = args[${p}];`).join(' ');
     if (!needsSequential(fn)) return `        ${i}: begin ${sets} #1; got = out_${i}; end`;
-    return `        ${i}: begin ${sets} @(posedge clk); #1 start_${i} = 1'b1; @(posedge clk); #1 start_${i} = 1'b0; cycles = 0; while (!done_${i} && cycles < 200000) begin @(posedge clk); #1 cycles = cycles + 1; end if (!done_${i}) timeouts = timeouts + 1; got = out_${i}; end`;
+    return `        ${i}: begin ${sets} @(posedge clk); #1 start_${i} = 1'b1; @(posedge clk); #1 start_${i} = 1'b0; cycles = 0; while (!done_${i} && cycles < 200000) begin @(posedge clk); #1 cycles = cycles + 1; end if (!done_${i}) timeouts = timeouts + 1; cyc_total[${i}] = cyc_total[${i}] + cycles; cyc_cases[${i}] = cyc_cases[${i}] + 1; got = out_${i}; end`;
   });
+  const n = program.functions.length;
+  const cycReport = program.functions.map((fn, i) =>
+    isDriverCallable(fn) && needsSequential(fn)
+      ? `    $display("A0CYC fn=%0d cases=%0d cycles=%0d", ${i}, cyc_cases[${i}], cyc_total[${i}]);`
+      : undefined,
+  );
   return `\`timescale 1ns/1ps
 module tb;
   logic clk = 1'b0;
@@ -89,6 +97,8 @@ ${sel.filter((s) => s !== undefined).join('\n')}
       default: ;
     endcase
   end
+  integer cyc_total [0:${n - 1}];
+  integer cyc_cases [0:${n - 1}];
   logic [31:0] args [0:63];
   logic [31:0] inwords [0:63];
   logic [31:0] outwords [0:255];
@@ -106,6 +116,7 @@ ${sel.filter((s) => s !== undefined).join('\n')}
   end
   initial begin
     total = 0; failures = 0; timeouts = 0; running = 0; rpos = 0; nout = 0;
+    for (k = 0; k < ${n}; k = k + 1) begin cyc_total[k] = 0; cyc_cases[k] = 0; end
     repeat (2) @(posedge clk);
     #1 rst = 1'b0;
     fd = $fopen("cases.txt", "r");
@@ -136,6 +147,7 @@ ${drive.join('\n')}
         end
       end
     end
+${cycReport.filter((s) => s !== undefined).join('\n')}
     $display("A0SIM total=%0d failures=%0d timeouts=%0d", total, failures, timeouts);
     $finish;
   end
@@ -158,8 +170,19 @@ export function caseFile(program: TypedProgram, cases: readonly Case[]): string 
 }
 
 async function main(): Promise<void> {
-  const program = generateCorpus();
+  const program = generateCorpus(CORPUS_SEED);
   const excluded = 0;
+  const countDivisors = (p: TypedProgram): { literal: number; variable: number } => {
+    let literal = 0;
+    let variable = 0;
+    for (const fn of p.functions)
+      for (const node of fn.nodes) {
+        if (node.op !== 'div' && node.op !== 'rem') continue;
+        if (node.args[1]?.kind === 'u32') literal += 1;
+        else variable += 1;
+      }
+    return { literal, variable };
+  };
   const cases = generateCases(program);
   const sv = compile(program, 'sv').text;
   const iverilog = findIverilog();
@@ -175,6 +198,12 @@ async function main(): Promise<void> {
       iverilog: iverilog.version ?? null,
       vvp: vvp.version ?? null,
       yosys: yosys.version ?? null,
+    },
+    divisors: {
+      beforeOptimize: countDivisors(program),
+      afterOptimize: countDivisors(optimize(program).program),
+      meaning:
+        'div/rem nodes over the 48-function corpus split by divisor kind: literal (u32 constant operand) versus variable (param or node operand). Counted before and after optimize (which folds /1, %1 and strength-reduces literal powers of two to shr/and). Every remaining div/rem, either kind, is emitted as the shared 32-cycle a0_udiv unit.',
     },
     stagesRun: [] as string[],
     stagesNotRun: [
@@ -217,11 +246,27 @@ async function main(): Promise<void> {
           sim.ok && m && failures === 0 && timeouts === 0 && total === cases.length
             ? 'passed'
             : 'failed';
+        const cyclesPerModule: Record<
+          string,
+          { cases: number; totalCycles: number; meanCycles: number }
+        > = {};
+        for (const c of sim.stdout.matchAll(/A0CYC fn=(\d+) cases=(\d+) cycles=(\d+)/g)) {
+          const fn = program.functions[Number(c[1])];
+          const n = Number(c[2]);
+          const totalCycles = Number(c[3]);
+          if (fn !== undefined)
+            cyclesPerModule[`a0_${fn.name}`] = {
+              cases: n,
+              totalCycles,
+              meanCycles: n === 0 ? 0 : totalCycles / n,
+            };
+        }
         report.simulation = {
           status,
           cases: total,
           failures,
           timeouts,
+          cyclesPerModule,
           detail:
             'Icarus Verilog -g2012 RTL simulation of every emitted module against BigInt-oracle cases (pure modules zero-delay; clocked modules driven by start/done, io by valid/ready handshakes).',
           elapsedMs: performance.now() - start,
