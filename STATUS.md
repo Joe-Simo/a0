@@ -1542,6 +1542,20 @@ in src/backends.ts (plus one comment in src/toolchain.ts); the design is documen
 - Not done: mr22 still loses to OpenMP (the two-generator body is not vectorized per chunk as `omp simd` does, and the static split does not balance P and E cores); no GPU form for bool arrays, records or reads at other indices; the arm64 direct backend still does not call the runtime; thresholds not re-tuned on a quiet machine (load never fell below 77 during this session); page claims need a run at load < 6.
 - Gate (this worktree): lint pass; typecheck pass; test 60/60; verify all paths pass (incl. native_c_parallel 5262); gpu pass (4297 on Apple M3); par-bench exit 0. `results/{verification,gpu,parallel}.json` regenerated under a0c-0.1.16.
 
+## Session 2026-09-30 (fold state passed again as an extra: A0's own backends)
+
+COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17. Follow-up to the C/JS fix of the same bug (commit
+1916986 on worktree-agent-ac1281cf5c7e55f6b; not merged here).
+
+- Affected: arm64, x86_64, riscv64, arm32. Their `mutableHere` skipped the updating node's own
+  operands, so a fold whose initial value was also an extra argument ran in that value's storage
+  and later trips read the mutated state (chain(5,1): 7 instead of 1). Fixed as in src/wasm.ts:
+  `mutableHere` takes the operand position and the updating node may name `o` only there.
+- Not affected: wasm (already had the position check), avr (the fold state is always a fresh copy).
+- Regression test (test/core.test.ts): the step/chain program at u32x8 and u32x1024 through
+  checkWasmDirect, checkArm64, checkX86_64, checkRiscv64, checkArm32 and (u32x8) checkAvr; fails
+  before the fix on the four affected backends at both sizes.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

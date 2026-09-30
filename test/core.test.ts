@@ -1542,6 +1542,56 @@ test('ret expression sugar: `ret OP ARGS` in source and in edits', () => {
 
 const ARM64_HOST = process.platform === 'darwin' && process.arch === 'arm64';
 
+test('fold state passed again as an extra: the A0 backends copy it (arm64, x86_64, riscv64, arm32, avr, wasm)', async () => {
+  const verify = await import('../tools/verify.js');
+  const tc = await import('../src/toolchain.js');
+  // Trip i writes state[i] = extra[(i + n - 1) % n] + 1 with extra = the initial value; reusing
+  // the initial value's storage for the state makes trip i read what trip i - 1 wrote.
+  const program = (n: number): string =>
+    `fn step u32x${n} u32 u32x${n} -> u32x${n}\nj add p1 ${n - 1}\nx get p2 j\nv add x 1\ns set p0 p1 v\nret s\nend\nfn chain u32 u32 -> u32\nz arr ${Array.from({ length: n }, (_, k) => (k === n - 1 ? 'p0' : '0')).join(' ')}\na fold step ${n} z z\nr get a p1\nret r\nend`;
+  const inputs = [
+    [5, 0],
+    [5, 1],
+    [5, 3],
+    [0xffffffff, 2],
+  ] as const;
+  const clang = tc.findClang();
+  for (const n of [8, 1024]) {
+    const p = parseAndValidate(program(n));
+    const chain = p.byName.get('chain') as TypedFunc;
+    const cases = inputs.map(([x, i]) => ({
+      functionName: 'chain',
+      args: [x, i],
+      expected: run(chain, [x, i]),
+    }));
+    for (const [x, i] of inputs) assert.equal(run(chain, [x, i]), i === 0 ? (x + 1) >>> 0 : 1);
+    const reports: [string, { status: string; failures?: unknown; detail?: unknown }][] = [
+      ['wasm', await verify.checkWasmDirect(p, cases)],
+    ];
+    if (ARM64_HOST) reports.push(['arm64', await verify.checkArm64(p, cases, clang)]);
+    if (X86_64_HOST !== undefined)
+      reports.push(['x86_64', await verify.checkX86_64(p, cases, clang)]);
+    const rvGcc = tc.findRiscv64Gcc();
+    const rvQemu = tc.findQemuRiscv64();
+    if (rvGcc.path !== undefined && rvQemu.path !== undefined)
+      reports.push(['riscv64', await verify.checkRiscv64(p, cases, rvGcc, rvQemu)]);
+    const armGcc = tc.findArmGcc();
+    const armQemu = tc.findQemuSystemArm();
+    if (armGcc.path !== undefined && armQemu.path !== undefined)
+      reports.push(['arm32', await verify.checkArm32(p, cases, armGcc, armQemu)]);
+    // The ATmega328P's 2 KiB of RAM holds only the small case.
+    const avrGcc = tc.findAvrGcc();
+    if (n === 8 && avrGcc.path !== undefined && tc.findSimavr().prefix !== undefined)
+      reports.push(['avr', await verify.checkAvr(p, cases, avrGcc, clang)]);
+    for (const [name, report] of reports)
+      assert.equal(
+        report.status,
+        'passed',
+        `${name} n=${n}: ${JSON.stringify(report.failures ?? report.detail)}`,
+      );
+  }
+});
+
 test('arm64 backend refuses io functions with a diagnostic', () => {
   const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
   assert.throws(

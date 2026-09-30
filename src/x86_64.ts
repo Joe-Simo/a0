@@ -110,7 +110,13 @@ function sameOp(x: Operand, y: Operand): boolean {
  * value is provably unshared (a fresh allocation or the owned state parameter p0), every
  * other use is a `get`/`at` read before `index`, and it is not returned.
  */
-function mutableHere(fn: TypedFunc, o: Operand, index: number, ownedP0: boolean): boolean {
+function mutableHere(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  position: number,
+  ownedP0: boolean,
+): boolean {
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
     if (def === undefined || !FRESH_OPS.has(def.op)) return false;
@@ -119,9 +125,14 @@ function mutableHere(fn: TypedFunc, o: Operand, index: number, ownedP0: boolean)
   }
   if (sameOp(fn.ret, o)) return false;
   for (const [j, n] of fn.nodes.entries()) {
-    if (j === index) continue;
     for (const [k, arg] of n.args.entries()) {
       if (!sameOp(arg, o)) continue;
+      // The updating node itself may name `o` only as its target: a fold whose initial value is
+      // also an extra argument reads that value on every trip, so the state needs its own copy.
+      if (j === index) {
+        if (k !== position) return false;
+        continue;
+      }
       if (j > index) return false;
       if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
@@ -615,7 +626,7 @@ class FunctionEmitter {
         const at = src.type;
         if (isPrimitive(at) || at.kind !== 'arr') refuse('set needs an array');
         const ew = words(at.elem);
-        if (mutableHere(env.fn, n.args[0] as Operand, index, env.ownedP0))
+        if (mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0))
           this.#defAlias(key, src.key, t);
         else {
           this.#def(key, t);
@@ -648,7 +659,7 @@ class FunctionEmitter {
           }
           return;
         }
-        if (mutableHere(env.fn, n.args[0] as Operand, index, env.ownedP0))
+        if (mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0))
           this.#defAlias(key, src.key, t);
         else {
           this.#def(key, t);
@@ -665,7 +676,7 @@ class FunctionEmitter {
             a !== undefined &&
             a.kind === 'key' &&
             !isPrimitive(a.type) &&
-            mutableHere(env.fn, n.args[0] as Operand, index, env.ownedP0);
+            mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0);
           this.#inline(env, callee, vals, owned, key, t, n.id, 'bind');
           return;
         }
@@ -687,7 +698,7 @@ class FunctionEmitter {
         if (isPrimitive(t)) scalar((d) => this.#into(d, init));
         else if (
           init.kind === 'key' &&
-          mutableHere(env.fn, n.args[1] as Operand, index, env.ownedP0)
+          mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0)
         )
           this.#defAlias(key, init.key, t);
         else {
