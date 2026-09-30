@@ -1980,6 +1980,54 @@ Fresh subjects, same method as the -bare runs (Agent subagents, haiku / sonnet, 
 (accepted one shot, mean o200k output tokens per edit over all replies.) Output per edit went up, not down (26.2 -> 27.2 / 27.9), acceptance dropped (73/74 -> 51/74 / 64/74), and the primer grew by 38 tokens per call; A0 is further from TS (21.9) and Rust (19.8) than before. Why, from the replies: the models did switch small edits to line form (0 -> 29-30 of 74 replies are line edits only), but those replaced id-addressed lines of the same size; replies with `fn` blocks did not drop (44 -> 42 / 43 of 74), because most of them add a function, change a signature, or rewrite a callee whose body the view does not show, none of which a line number can address; and the numbers leaked into the blocks (models number the lines of new functions, `0+` inside blocks, lines numbered past the end), so number prefixes are 8% (round 1) and 14% (round 2) of A0 output. Failures: round 1 d (Haiku 6, Sonnet 7), 12 of them numbered `fn` blocks rejected by the strict build (re-scored with the round-2 rule round 1 is 63/74), Haiku c400 9 replies written on one line with ` / ` separators (as in the primer's example; not a line-edit effect), Haiku b 1; round 2 Haiku b 8 (`0+` inside new `fn` blocks, numbers past the end of a function), Sonnet d 2 (`-fn f` plus a new `fn f` block in one reply, rejected as before). The round-2 rule was chosen after seeing round 1, and round 2 then showed new failure shapes; tightening further would be fitting the protocol to these replies. Decision: the default harness view and MODEL_GUIDE.min.txt are unchanged (the -bare protocol stays the measured best: 73/74, 26.2); line-addressed edits stay in EditSession as an opt-in (numbered views only) and in the harness behind the flag. The remaining gap is not addressable by line numbers under these views: it is new-function and signature headers, and callee rewrites without a visible body.
 
 
+## Session 2026-09-30 (held-out sets E and F: full protocol)
+
+Seals: `tools/ai-edit-tasks-e.ts` hashes to `a71fdb69…5708` and `tools/ai-edit-tasks-f.ts` to `0e648bc5…be30`, matching `tools/ai-edit-tasks-{e,f}.sha256`. Both seals were redone after delivery (see `tools/ai-edit-tasks-{e,f}.errata.md`: E lost two tasks that could not be measured, F probably had a formatter-only change), so they attest the current files, not the files as first delivered. Set E has 11 tasks and set F has 13, 24 in total. Harness self-check ok on both. Run `taskSetSha256`: e `7b387c6f…`, f `2c02b500…`.
+
+Method (scratchpad gEF): the prompts were dumped with empty replies (`A0_EXPERIMENT_DUMP`). There were 8 group files, one per cell and primer: A0 {min, full} x {structured, conventional}, and TS and Rust x {structured, conventional}. Each group file holds the e+f tasks (24) with the system text printed once. TS/Rust prompts do not depend on the primer, so one TS/Rust collection serves both primers. Each group file got one fresh Haiku and one fresh Sonnet Agent-tool subagent that read only that file and wrote its replies as JSON. That makes 16 first-round subjects. Every first-attempt failure then went into repair group files: system, request, first reply, and the harness's exact rejection message. Each repair group file got a fresh subagent of the same model (9 subjects). There is exactly one repair round: the full primer allows 2 repairs, but no third reply was supplied. There are no author-written replies. The reply texts are committed as `results/ai-edit-experiment.{e,f}.{haiku,sonnet}-{min,full}.replies.json` and the scored reports as `results/ai-edit-experiment.{e,f}.{haiku,sonnet}-{min,full}.json`.
+
+Cost is mean o200k tokens per task. The primer is the system text, charged 1.25x on the first call and 0.05x on a repair call. Code read is the task text plus the view, re-sent on repair along with the first reply and the rejection. Write is every reply. The cache-adjusted total is primer + read + write. TS/Rust rows are identical under both primers.
+
+| model / primer | cell | one-shot | after 1 repair | primer | code read | write | cache-adj total |
+|---|---|---|---|---|---|---|---|
+| Haiku / min | A0 structured | 19/24 | 24/24 | 558 | 125 | 35 | 719 |
+| | A0 conventional | 23/24 | 24/24 | 516 | 82 | 45 | 643 |
+| Haiku / full | A0 structured | 17/24 | 18/24 | 895 | 149 | 32 | 1076 |
+| | A0 conventional | 24/24 | 24/24 | 846 | 76 | 42 | 965 |
+| Haiku | TS structured | 17/24 | 20/24 | 159 | 167 | 33 | 359 |
+| | TS conventional | 21/24 | 24/24 | 60 | 98 | 58 | 216 |
+| | Rust structured | 20/24 | 23/24 | 177 | 144 | 25 | 347 |
+| | Rust conventional | 23/24 | 24/24 | 79 | 84 | 50 | 212 |
+| Sonnet / min | A0 structured | 21/24 | 21/24 | 557 | 116 | 25 | 698 |
+| | A0 conventional | 24/24 | 24/24 | 515 | 76 | 46 | 637 |
+| Sonnet / full | A0 structured | 21/24 | 24/24 | 889 | 112 | 30 | 1031 |
+| | A0 conventional | 24/24 | 24/24 | 846 | 76 | 46 | 969 |
+| Sonnet | TS structured | 24/24 | 24/24 | 158 | 86 | 21 | 264 |
+| | TS conventional | 24/24 | 24/24 | 60 | 78 | 48 | 186 |
+| | Rust structured | 24/24 | 24/24 | 176 | 85 | 19 | 280 |
+| | Rust conventional | 24/24 | 24/24 | 79 | 77 | 47 | 203 |
+
+Per-task A0 against TS/Rust, same protocol, recorded separately. Acceptance is after the repair and is shown as W/T/L. Cost W/T/L covers only tasks both sides accepted, and a tie means within 5%:
+- Acceptance, structured: Haiku min, A0 wins 4 / ties 20 / loses 0 vs TS, and 1/23/0 vs Rust. Sonnet min, 0/21/3 vs both. Haiku full, 0/22/2 vs TS and 0/19/5 vs Rust. Sonnet full, 0/24/0 vs both.
+- Acceptance, conventional: all ties (24/24 everywhere).
+- **Cost: A0 loses every task on which both sides were accepted, in every model, primer and protocol (0 wins, 0 ties).** The primer alone (516–895 cache-adjusted) exceeds the whole TS/Rust task (186–359). A0 reads the least code (76–82 conventional vs 77–98) and writes the least in the conventional cell, and that does not offset the primer on a single cold task. A0 structured replies are not smaller than TS/Rust structured ones (25–35 vs 19–33).
+
+Failure taxonomy: 48 failed attempts, first and repair attempts together (A0 28, TS 14, Rust 6).
+- Protocol ambiguity (23):
+  - A0 structured, 19. First, instruction lines for the shown function mixed with a new `fn` block in one reply (`expected 'fn', got 'x'`): 10. The guide does not say whether the two can be combined or in what order. Second, on repair, the callee `fn` block placed after the instruction lines that call it (`unknown callee 'sq' (callees must be defined earlier)`): 6. The guide does not say where an added function lands or in what order a reply's lines apply. Third, `-fn f` followed by `fn f` in one reply (`function is both removed and defined`): 3 (Sonnet, full primer). The guide says a `fn` block replaces, but does not say the pair is rejected. All three come from the add-a-helper tasks (sq-twice, sumsq-helper, popcount-fold, thread-param, avg4).
+  - TS/Rust `f-divrem-pair`, 4: the expected `divrem(7,0)` remainder is 7 (the A0 rule), but the TS/Rust semantics notes only fix the quotient by zero (visible in the source) and never state the remainder by zero.
+- Genuine model errors (25):
+  - A0, 9: a bool left where u32 is declared (countabove x2, addover x2 with a bad `-fn` signature form), a pair returned without changing the signature (divrem x2), a malformed function body (popcount, thread-param repair), and fold step arity (popcount, conventional).
+  - TS, 12: line-edit syntax that broke the file (TS1128/TS1005, 4), an edit line with no number (2), the return type not updated (2), a return lost (TS2355, 2), and `sq` added without `export` (2, conventional).
+  - Rust, 4: line edits that broke the syntax (3) and a type mismatch (1).
+- Still unaccepted after the repair: Haiku TS structured 4, Haiku Rust structured 1, Sonnet-min A0 structured 3 (all definition-order repairs), Haiku-full A0 structured 6.
+
+Findings:
+- On held-out sets written without the harness author, A0's conventional cell matches TS/Rust acceptance (24/24 with both models and both primers). It loses on cost on every task, by about 3x (min primer) and 4.5x (full primer), because the primer dominates a cold single task.
+- The A0 structured cell's weak spot is protocol, not language. 19 of its 28 failures are ambiguities in how function-handle lines, `fn` blocks and `-fn` combine in one reply, and on how definition order interacts with them. Two fixes would remove these failures: stating the rule in the guide, or accepting the combination (apply `fn` blocks first, then the function-handle lines). This session did neither.
+- The full primer did not help. Haiku full did worse than min on A0 structured (18/24 vs 24/24 after repair). Sonnet full did better (24 vs 21).
+- The TS/Rust semantics notes should state the division and remainder rule for a zero divisor (the `f-divrem-pair` ambiguity). Not changed here, since the sealed task file and the notes' bytes stay fixed for this run.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
