@@ -83,7 +83,21 @@ function pick<T>(rng: () => number, items: readonly T[]): T {
   return v;
 }
 
-export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): TypedProgram {
+export interface CorpusOptions {
+  /**
+   * Scalar-only corpus: no aggregate or io parameters and no aggregate nodes, so every
+   * function is u32/bool in and out (what the self-hosted arm64 emitter accepts), with
+   * small bodies so a function and its callees fit the front end's 512-byte source limit.
+   */
+  readonly scalar?: boolean;
+}
+
+export function generateCorpus(
+  seed = CORPUS_SEED,
+  count = CORPUS_FUNCTIONS,
+  options: CorpusOptions = {},
+): TypedProgram {
+  const scalar = options.scalar === true;
   const rng = makeRng(seed);
   const functions: string[] = [];
   // `iterates` marks functions that fold (transitively); they are never used as fold bodies,
@@ -112,7 +126,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     const paramCount = twin === undefined ? 1 + (rng() % 4) : twin.params.length;
     // Every fourth non-twin function takes one aggregate parameter (a helper reachable only via call).
     const aggregateParam: Type | undefined =
-      twin === undefined && rng() % 4 === 0 ? pick(rng, AGGREGATE_TYPES) : undefined;
+      !scalar && twin === undefined && rng() % 4 === 0 ? pick(rng, AGGREGATE_TYPES) : undefined;
     const params: Type[] =
       twin === undefined
         ? Array.from({ length: paramCount }, (_, i) =>
@@ -122,7 +136,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     if (aggregateParam !== undefined) params.push(aggregateParam);
     // Every third plain function threads an io token as its last parameter. Half of those
     // return the token in a (u32,io) record (helpers); the rest return u32 (driver-callable).
-    const withIo = twin === undefined && aggregateParam === undefined && rng() % 3 === 0;
+    const withIo = !scalar && twin === undefined && aggregateParam === undefined && rng() % 3 === 0;
     if (withIo) params.push('io');
     const ioHelper = withIo && rng() % 2 === 0;
     let token: Operand | undefined = withIo
@@ -133,7 +147,7 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
       .filter((s) => s.type !== 'io'); // tokens are threaded, never ordinary operands
     const u32Slots = (): Slot[] => slots.filter((s) => s.type === 'u32');
     const boolSlots = (): Slot[] => slots.filter((s) => s.type === 'bool');
-    const nodeCount = 20 + (rng() % 60);
+    const nodeCount = scalar ? 3 + (rng() % 10) : 20 + (rng() % 60);
     const nodes: Node[] = [];
     const literal = (): Operand => {
       const choices = [
@@ -235,6 +249,11 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
         op = pick(rng, CMP_OPS);
         args = [u32Arg(), u32Arg()];
         type = 'bool';
+      } else if (roll >= 10 && scalar) {
+        // Scalar corpus: an arithmetic step where the aggregate operations would go.
+        op = pick(rng, U32_OPS);
+        args = [u32Arg(), u32Arg()];
+        type = 'u32';
       } else if (roll >= 10) {
         // Aggregate operations: build, read, or update an array/record from existing slots.
         const aggSlots = slots.filter((s) => !isPrimitive(s.type));
@@ -385,6 +404,12 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
     }
     // Result: last u32 node combined with everything, so nothing is trivially dead.
     const scalarResult: Type = twin !== undefined ? 'bool' : rng() % 4 === 0 ? 'bool' : 'u32';
+    if (scalar && scalarResult === 'bool' && boolSlots().length === 0) {
+      // A small scalar body may hold no bool at all; end it with a comparison (p0 is u32).
+      const id = `n${nodes.length}`;
+      nodes.push({ id, op: 'ne', args: [{ kind: 'param', index: 0 }, literal()] });
+      slots.push({ operand: { kind: 'node', id }, type: 'bool' });
+    }
     const result: Type = ioHelper ? { kind: 'rec', fields: ['u32', 'io'] } : scalarResult;
     const candidates = slots.filter(
       (s) => typeEquals(s.type, scalarResult) && s.operand.kind === 'node',

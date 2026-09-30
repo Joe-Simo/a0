@@ -1,0 +1,3235 @@
+# A0 AArch64 emitter, written in A0. Fourth module of the self-hosted compiler (DESIGN.md 7a,
+# stage 4a). Input: the checked word IR of compiler/check.a0 (pool sym fns nodes args tlist and
+# the node types). Output: Darwin arm64 assembly text as bytes in a u32x4096 array plus its
+# length, the module shape of src/arm64.ts: one `.globl _a0_<name>` block per function and the
+# C-compatible calling convention for scalar signatures (parameter i in w0-w7, then the stack
+# at Darwin's packing, u32 4 bytes and bool 1 byte; the result in w0), so the C test driver of
+# tools/verify.ts links against it unchanged.
+# Scope: functions whose parameters, result and every node are u32 or bool. Arrays, records
+# and io are refused with diagnostic code 5 (fn node; node 4294967295 for a parameter or the
+# result type); code 4 when a node's text exceeds the line buffer or the module the output.
+# Scheme (first version, the shape of the first TypeScript backend; correctness over speed):
+# every value lives in a stack slot and every call, fold and loop is a real `bl`. The frame:
+#     x29 + 16 + ...        incoming stack parameters
+#     x29                   saved x29, x30
+#     sp + O + 4k           slot k: the parameters, then two slots per node (value, counter)
+#     sp .. sp + O          outgoing stack arguments (O rounded to 16)
+# A node loads its operands into w9-w11, computes into w12 and stores to its slot; a literal
+# is movz/movk. The register allocator (a linear scan over w19-w28 as in src/arm64.ts), the
+# inlining of small callees and in-place aggregates are stage 4b; they replace `lload`, the
+# stores of `enodestep` and the `bl` of `argstep` without changing the text builders.
+# Text: each node's lines are built in a line buffer (u32x512 bytes, length) by writers that
+# take a flag and write nothing when it is false (how a node selects its instruction sequence
+# without control flow), then appended once to the module buffer by `flush`. `lb` writes one
+# byte, `lp` up to 16 bytes packed little-endian in four words (each constant is the ASCII of
+# the string in its comment), `ldec` a decimal, `lname` a symbol's bytes. The writers are
+# unrolled and the line buffer is small because the reference interpreter validates every
+# array element of every call argument.
+
+use "check.a0"
+
+# up to 16 bytes packed little-endian in four words; zero bytes are skipped (unrolled)
+fn lp (u32x512,u32) u32 u32 u32 u32 bool -> (u32x512,u32)
+l0 at p0 0
+n0 at p0 1
+x0 shr p1 0
+v0 and x0 255
+z0 ne v0 0
+o0 and p5 z0
+c0 get l0 n0
+u0 select o0 v0 c0
+l1 set l0 n0 u0
+a0 add n0 1
+n1 select o0 a0 n0
+x1 shr p1 8
+v1 and x1 255
+z1 ne v1 0
+o1 and p5 z1
+c1 get l1 n1
+u1 select o1 v1 c1
+l2 set l1 n1 u1
+a1 add n1 1
+n2 select o1 a1 n1
+x2 shr p1 16
+v2 and x2 255
+z2 ne v2 0
+o2 and p5 z2
+c2 get l2 n2
+u2 select o2 v2 c2
+l3 set l2 n2 u2
+a2 add n2 1
+n3 select o2 a2 n2
+x3 shr p1 24
+v3 and x3 255
+z3 ne v3 0
+o3 and p5 z3
+c3 get l3 n3
+u3 select o3 v3 c3
+l4 set l3 n3 u3
+a3 add n3 1
+n4 select o3 a3 n3
+x4 shr p2 0
+v4 and x4 255
+z4 ne v4 0
+o4 and p5 z4
+c4 get l4 n4
+u4 select o4 v4 c4
+l5 set l4 n4 u4
+a4 add n4 1
+n5 select o4 a4 n4
+x5 shr p2 8
+v5 and x5 255
+z5 ne v5 0
+o5 and p5 z5
+c5 get l5 n5
+u5 select o5 v5 c5
+l6 set l5 n5 u5
+a5 add n5 1
+n6 select o5 a5 n5
+x6 shr p2 16
+v6 and x6 255
+z6 ne v6 0
+o6 and p5 z6
+c6 get l6 n6
+u6 select o6 v6 c6
+l7 set l6 n6 u6
+a6 add n6 1
+n7 select o6 a6 n6
+x7 shr p2 24
+v7 and x7 255
+z7 ne v7 0
+o7 and p5 z7
+c7 get l7 n7
+u7 select o7 v7 c7
+l8 set l7 n7 u7
+a7 add n7 1
+n8 select o7 a7 n7
+x8 shr p3 0
+v8 and x8 255
+z8 ne v8 0
+o8 and p5 z8
+c8 get l8 n8
+u8 select o8 v8 c8
+l9 set l8 n8 u8
+a8 add n8 1
+n9 select o8 a8 n8
+x9 shr p3 8
+v9 and x9 255
+z9 ne v9 0
+o9 and p5 z9
+c9 get l9 n9
+u9 select o9 v9 c9
+l10 set l9 n9 u9
+a9 add n9 1
+n10 select o9 a9 n9
+x10 shr p3 16
+v10 and x10 255
+z10 ne v10 0
+o10 and p5 z10
+c10 get l10 n10
+u10 select o10 v10 c10
+l11 set l10 n10 u10
+a10 add n10 1
+n11 select o10 a10 n10
+x11 shr p3 24
+v11 and x11 255
+z11 ne v11 0
+o11 and p5 z11
+c11 get l11 n11
+u11 select o11 v11 c11
+l12 set l11 n11 u11
+a11 add n11 1
+n12 select o11 a11 n11
+x12 shr p4 0
+v12 and x12 255
+z12 ne v12 0
+o12 and p5 z12
+c12 get l12 n12
+u12 select o12 v12 c12
+l13 set l12 n12 u12
+a12 add n12 1
+n13 select o12 a12 n12
+x13 shr p4 8
+v13 and x13 255
+z13 ne v13 0
+o13 and p5 z13
+c13 get l13 n13
+u13 select o13 v13 c13
+l14 set l13 n13 u13
+a13 add n13 1
+n14 select o13 a13 n13
+x14 shr p4 16
+v14 and x14 255
+z14 ne v14 0
+o14 and p5 z14
+c14 get l14 n14
+u14 select o14 v14 c14
+l15 set l14 n14 u14
+a14 add n14 1
+n15 select o14 a14 n14
+x15 shr p4 24
+v15 and x15 255
+z15 ne v15 0
+o15 and p5 z15
+c15 get l15 n15
+u15 select o15 v15 c15
+l16 set l15 n15 u15
+a15 add n15 1
+n16 select o15 a15 n15
+r rec l16 n16
+ret r
+end
+# the decimal digits of p1 (unrolled over the ten powers of ten)
+fn ldec (u32x512,u32) u32 bool -> (u32x512,u32)
+l0 at p0 0
+n0 at p0 1
+q0 div p1 1000000000
+d0 rem q0 10
+z0 ne d0 0
+s0 mov z0
+o0 and p2 s0
+v0 add d0 48
+c0 get l0 n0
+u0 select o0 v0 c0
+l1 set l0 n0 u0
+a0 add n0 1
+n1 select o0 a0 n0
+q1 div p1 100000000
+d1 rem q1 10
+z1 ne d1 0
+s1 or s0 z1
+o1 and p2 s1
+v1 add d1 48
+c1 get l1 n1
+u1 select o1 v1 c1
+l2 set l1 n1 u1
+a1 add n1 1
+n2 select o1 a1 n1
+q2 div p1 10000000
+d2 rem q2 10
+z2 ne d2 0
+s2 or s1 z2
+o2 and p2 s2
+v2 add d2 48
+c2 get l2 n2
+u2 select o2 v2 c2
+l3 set l2 n2 u2
+a2 add n2 1
+n3 select o2 a2 n2
+q3 div p1 1000000
+d3 rem q3 10
+z3 ne d3 0
+s3 or s2 z3
+o3 and p2 s3
+v3 add d3 48
+c3 get l3 n3
+u3 select o3 v3 c3
+l4 set l3 n3 u3
+a3 add n3 1
+n4 select o3 a3 n3
+q4 div p1 100000
+d4 rem q4 10
+z4 ne d4 0
+s4 or s3 z4
+o4 and p2 s4
+v4 add d4 48
+c4 get l4 n4
+u4 select o4 v4 c4
+l5 set l4 n4 u4
+a4 add n4 1
+n5 select o4 a4 n4
+q5 div p1 10000
+d5 rem q5 10
+z5 ne d5 0
+s5 or s4 z5
+o5 and p2 s5
+v5 add d5 48
+c5 get l5 n5
+u5 select o5 v5 c5
+l6 set l5 n5 u5
+a5 add n5 1
+n6 select o5 a5 n5
+q6 div p1 1000
+d6 rem q6 10
+z6 ne d6 0
+s6 or s5 z6
+o6 and p2 s6
+v6 add d6 48
+c6 get l6 n6
+u6 select o6 v6 c6
+l7 set l6 n6 u6
+a6 add n6 1
+n7 select o6 a6 n6
+q7 div p1 100
+d7 rem q7 10
+z7 ne d7 0
+s7 or s6 z7
+o7 and p2 s7
+v7 add d7 48
+c7 get l7 n7
+u7 select o7 v7 c7
+l8 set l7 n7 u7
+a7 add n7 1
+n8 select o7 a7 n7
+q8 div p1 10
+d8 rem q8 10
+z8 ne d8 0
+s8 or s7 z8
+o8 and p2 s8
+v8 add d8 48
+c8 get l8 n8
+u8 select o8 v8 c8
+l9 set l8 n8 u8
+a8 add n8 1
+n9 select o8 a8 n8
+q9 div p1 1
+d9 rem q9 10
+o9 mov p2
+v9 add d9 48
+c9 get l9 n9
+u9 select o9 v9 c9
+l10 set l9 n9 u9
+a9 add n9 1
+n10 select o9 a9 n9
+r rec l10 n10
+ret r
+end
+# append line bytes [p2, p2+256) of p1 (length p3) to the module text
+fn flush256 (u32x4096,u32) u32x512 u32 u32 bool -> (u32x4096,u32)
+m0 at p0 0
+n0 at p0 1
+i0 add p2 0
+h0 lt i0 p3
+o0 and p4 h0
+b0 get p1 i0
+c0 get m0 n0
+u0 select o0 b0 c0
+m1 set m0 n0 u0
+a0 add n0 1
+n1 select o0 a0 n0
+i1 add p2 1
+h1 lt i1 p3
+o1 and p4 h1
+b1 get p1 i1
+c1 get m1 n1
+u1 select o1 b1 c1
+m2 set m1 n1 u1
+a1 add n1 1
+n2 select o1 a1 n1
+i2 add p2 2
+h2 lt i2 p3
+o2 and p4 h2
+b2 get p1 i2
+c2 get m2 n2
+u2 select o2 b2 c2
+m3 set m2 n2 u2
+a2 add n2 1
+n3 select o2 a2 n2
+i3 add p2 3
+h3 lt i3 p3
+o3 and p4 h3
+b3 get p1 i3
+c3 get m3 n3
+u3 select o3 b3 c3
+m4 set m3 n3 u3
+a3 add n3 1
+n4 select o3 a3 n3
+i4 add p2 4
+h4 lt i4 p3
+o4 and p4 h4
+b4 get p1 i4
+c4 get m4 n4
+u4 select o4 b4 c4
+m5 set m4 n4 u4
+a4 add n4 1
+n5 select o4 a4 n4
+i5 add p2 5
+h5 lt i5 p3
+o5 and p4 h5
+b5 get p1 i5
+c5 get m5 n5
+u5 select o5 b5 c5
+m6 set m5 n5 u5
+a5 add n5 1
+n6 select o5 a5 n5
+i6 add p2 6
+h6 lt i6 p3
+o6 and p4 h6
+b6 get p1 i6
+c6 get m6 n6
+u6 select o6 b6 c6
+m7 set m6 n6 u6
+a6 add n6 1
+n7 select o6 a6 n6
+i7 add p2 7
+h7 lt i7 p3
+o7 and p4 h7
+b7 get p1 i7
+c7 get m7 n7
+u7 select o7 b7 c7
+m8 set m7 n7 u7
+a7 add n7 1
+n8 select o7 a7 n7
+i8 add p2 8
+h8 lt i8 p3
+o8 and p4 h8
+b8 get p1 i8
+c8 get m8 n8
+u8 select o8 b8 c8
+m9 set m8 n8 u8
+a8 add n8 1
+n9 select o8 a8 n8
+i9 add p2 9
+h9 lt i9 p3
+o9 and p4 h9
+b9 get p1 i9
+c9 get m9 n9
+u9 select o9 b9 c9
+m10 set m9 n9 u9
+a9 add n9 1
+n10 select o9 a9 n9
+i10 add p2 10
+h10 lt i10 p3
+o10 and p4 h10
+b10 get p1 i10
+c10 get m10 n10
+u10 select o10 b10 c10
+m11 set m10 n10 u10
+a10 add n10 1
+n11 select o10 a10 n10
+i11 add p2 11
+h11 lt i11 p3
+o11 and p4 h11
+b11 get p1 i11
+c11 get m11 n11
+u11 select o11 b11 c11
+m12 set m11 n11 u11
+a11 add n11 1
+n12 select o11 a11 n11
+i12 add p2 12
+h12 lt i12 p3
+o12 and p4 h12
+b12 get p1 i12
+c12 get m12 n12
+u12 select o12 b12 c12
+m13 set m12 n12 u12
+a12 add n12 1
+n13 select o12 a12 n12
+i13 add p2 13
+h13 lt i13 p3
+o13 and p4 h13
+b13 get p1 i13
+c13 get m13 n13
+u13 select o13 b13 c13
+m14 set m13 n13 u13
+a13 add n13 1
+n14 select o13 a13 n13
+i14 add p2 14
+h14 lt i14 p3
+o14 and p4 h14
+b14 get p1 i14
+c14 get m14 n14
+u14 select o14 b14 c14
+m15 set m14 n14 u14
+a14 add n14 1
+n15 select o14 a14 n14
+i15 add p2 15
+h15 lt i15 p3
+o15 and p4 h15
+b15 get p1 i15
+c15 get m15 n15
+u15 select o15 b15 c15
+m16 set m15 n15 u15
+a15 add n15 1
+n16 select o15 a15 n15
+i16 add p2 16
+h16 lt i16 p3
+o16 and p4 h16
+b16 get p1 i16
+c16 get m16 n16
+u16 select o16 b16 c16
+m17 set m16 n16 u16
+a16 add n16 1
+n17 select o16 a16 n16
+i17 add p2 17
+h17 lt i17 p3
+o17 and p4 h17
+b17 get p1 i17
+c17 get m17 n17
+u17 select o17 b17 c17
+m18 set m17 n17 u17
+a17 add n17 1
+n18 select o17 a17 n17
+i18 add p2 18
+h18 lt i18 p3
+o18 and p4 h18
+b18 get p1 i18
+c18 get m18 n18
+u18 select o18 b18 c18
+m19 set m18 n18 u18
+a18 add n18 1
+n19 select o18 a18 n18
+i19 add p2 19
+h19 lt i19 p3
+o19 and p4 h19
+b19 get p1 i19
+c19 get m19 n19
+u19 select o19 b19 c19
+m20 set m19 n19 u19
+a19 add n19 1
+n20 select o19 a19 n19
+i20 add p2 20
+h20 lt i20 p3
+o20 and p4 h20
+b20 get p1 i20
+c20 get m20 n20
+u20 select o20 b20 c20
+m21 set m20 n20 u20
+a20 add n20 1
+n21 select o20 a20 n20
+i21 add p2 21
+h21 lt i21 p3
+o21 and p4 h21
+b21 get p1 i21
+c21 get m21 n21
+u21 select o21 b21 c21
+m22 set m21 n21 u21
+a21 add n21 1
+n22 select o21 a21 n21
+i22 add p2 22
+h22 lt i22 p3
+o22 and p4 h22
+b22 get p1 i22
+c22 get m22 n22
+u22 select o22 b22 c22
+m23 set m22 n22 u22
+a22 add n22 1
+n23 select o22 a22 n22
+i23 add p2 23
+h23 lt i23 p3
+o23 and p4 h23
+b23 get p1 i23
+c23 get m23 n23
+u23 select o23 b23 c23
+m24 set m23 n23 u23
+a23 add n23 1
+n24 select o23 a23 n23
+i24 add p2 24
+h24 lt i24 p3
+o24 and p4 h24
+b24 get p1 i24
+c24 get m24 n24
+u24 select o24 b24 c24
+m25 set m24 n24 u24
+a24 add n24 1
+n25 select o24 a24 n24
+i25 add p2 25
+h25 lt i25 p3
+o25 and p4 h25
+b25 get p1 i25
+c25 get m25 n25
+u25 select o25 b25 c25
+m26 set m25 n25 u25
+a25 add n25 1
+n26 select o25 a25 n25
+i26 add p2 26
+h26 lt i26 p3
+o26 and p4 h26
+b26 get p1 i26
+c26 get m26 n26
+u26 select o26 b26 c26
+m27 set m26 n26 u26
+a26 add n26 1
+n27 select o26 a26 n26
+i27 add p2 27
+h27 lt i27 p3
+o27 and p4 h27
+b27 get p1 i27
+c27 get m27 n27
+u27 select o27 b27 c27
+m28 set m27 n27 u27
+a27 add n27 1
+n28 select o27 a27 n27
+i28 add p2 28
+h28 lt i28 p3
+o28 and p4 h28
+b28 get p1 i28
+c28 get m28 n28
+u28 select o28 b28 c28
+m29 set m28 n28 u28
+a28 add n28 1
+n29 select o28 a28 n28
+i29 add p2 29
+h29 lt i29 p3
+o29 and p4 h29
+b29 get p1 i29
+c29 get m29 n29
+u29 select o29 b29 c29
+m30 set m29 n29 u29
+a29 add n29 1
+n30 select o29 a29 n29
+i30 add p2 30
+h30 lt i30 p3
+o30 and p4 h30
+b30 get p1 i30
+c30 get m30 n30
+u30 select o30 b30 c30
+m31 set m30 n30 u30
+a30 add n30 1
+n31 select o30 a30 n30
+i31 add p2 31
+h31 lt i31 p3
+o31 and p4 h31
+b31 get p1 i31
+c31 get m31 n31
+u31 select o31 b31 c31
+m32 set m31 n31 u31
+a31 add n31 1
+n32 select o31 a31 n31
+i32 add p2 32
+h32 lt i32 p3
+o32 and p4 h32
+b32 get p1 i32
+c32 get m32 n32
+u32 select o32 b32 c32
+m33 set m32 n32 u32
+a32 add n32 1
+n33 select o32 a32 n32
+i33 add p2 33
+h33 lt i33 p3
+o33 and p4 h33
+b33 get p1 i33
+c33 get m33 n33
+u33 select o33 b33 c33
+m34 set m33 n33 u33
+a33 add n33 1
+n34 select o33 a33 n33
+i34 add p2 34
+h34 lt i34 p3
+o34 and p4 h34
+b34 get p1 i34
+c34 get m34 n34
+u34 select o34 b34 c34
+m35 set m34 n34 u34
+a34 add n34 1
+n35 select o34 a34 n34
+i35 add p2 35
+h35 lt i35 p3
+o35 and p4 h35
+b35 get p1 i35
+c35 get m35 n35
+u35 select o35 b35 c35
+m36 set m35 n35 u35
+a35 add n35 1
+n36 select o35 a35 n35
+i36 add p2 36
+h36 lt i36 p3
+o36 and p4 h36
+b36 get p1 i36
+c36 get m36 n36
+u36 select o36 b36 c36
+m37 set m36 n36 u36
+a36 add n36 1
+n37 select o36 a36 n36
+i37 add p2 37
+h37 lt i37 p3
+o37 and p4 h37
+b37 get p1 i37
+c37 get m37 n37
+u37 select o37 b37 c37
+m38 set m37 n37 u37
+a37 add n37 1
+n38 select o37 a37 n37
+i38 add p2 38
+h38 lt i38 p3
+o38 and p4 h38
+b38 get p1 i38
+c38 get m38 n38
+u38 select o38 b38 c38
+m39 set m38 n38 u38
+a38 add n38 1
+n39 select o38 a38 n38
+i39 add p2 39
+h39 lt i39 p3
+o39 and p4 h39
+b39 get p1 i39
+c39 get m39 n39
+u39 select o39 b39 c39
+m40 set m39 n39 u39
+a39 add n39 1
+n40 select o39 a39 n39
+i40 add p2 40
+h40 lt i40 p3
+o40 and p4 h40
+b40 get p1 i40
+c40 get m40 n40
+u40 select o40 b40 c40
+m41 set m40 n40 u40
+a40 add n40 1
+n41 select o40 a40 n40
+i41 add p2 41
+h41 lt i41 p3
+o41 and p4 h41
+b41 get p1 i41
+c41 get m41 n41
+u41 select o41 b41 c41
+m42 set m41 n41 u41
+a41 add n41 1
+n42 select o41 a41 n41
+i42 add p2 42
+h42 lt i42 p3
+o42 and p4 h42
+b42 get p1 i42
+c42 get m42 n42
+u42 select o42 b42 c42
+m43 set m42 n42 u42
+a42 add n42 1
+n43 select o42 a42 n42
+i43 add p2 43
+h43 lt i43 p3
+o43 and p4 h43
+b43 get p1 i43
+c43 get m43 n43
+u43 select o43 b43 c43
+m44 set m43 n43 u43
+a43 add n43 1
+n44 select o43 a43 n43
+i44 add p2 44
+h44 lt i44 p3
+o44 and p4 h44
+b44 get p1 i44
+c44 get m44 n44
+u44 select o44 b44 c44
+m45 set m44 n44 u44
+a44 add n44 1
+n45 select o44 a44 n44
+i45 add p2 45
+h45 lt i45 p3
+o45 and p4 h45
+b45 get p1 i45
+c45 get m45 n45
+u45 select o45 b45 c45
+m46 set m45 n45 u45
+a45 add n45 1
+n46 select o45 a45 n45
+i46 add p2 46
+h46 lt i46 p3
+o46 and p4 h46
+b46 get p1 i46
+c46 get m46 n46
+u46 select o46 b46 c46
+m47 set m46 n46 u46
+a46 add n46 1
+n47 select o46 a46 n46
+i47 add p2 47
+h47 lt i47 p3
+o47 and p4 h47
+b47 get p1 i47
+c47 get m47 n47
+u47 select o47 b47 c47
+m48 set m47 n47 u47
+a47 add n47 1
+n48 select o47 a47 n47
+i48 add p2 48
+h48 lt i48 p3
+o48 and p4 h48
+b48 get p1 i48
+c48 get m48 n48
+u48 select o48 b48 c48
+m49 set m48 n48 u48
+a48 add n48 1
+n49 select o48 a48 n48
+i49 add p2 49
+h49 lt i49 p3
+o49 and p4 h49
+b49 get p1 i49
+c49 get m49 n49
+u49 select o49 b49 c49
+m50 set m49 n49 u49
+a49 add n49 1
+n50 select o49 a49 n49
+i50 add p2 50
+h50 lt i50 p3
+o50 and p4 h50
+b50 get p1 i50
+c50 get m50 n50
+u50 select o50 b50 c50
+m51 set m50 n50 u50
+a50 add n50 1
+n51 select o50 a50 n50
+i51 add p2 51
+h51 lt i51 p3
+o51 and p4 h51
+b51 get p1 i51
+c51 get m51 n51
+u51 select o51 b51 c51
+m52 set m51 n51 u51
+a51 add n51 1
+n52 select o51 a51 n51
+i52 add p2 52
+h52 lt i52 p3
+o52 and p4 h52
+b52 get p1 i52
+c52 get m52 n52
+u52 select o52 b52 c52
+m53 set m52 n52 u52
+a52 add n52 1
+n53 select o52 a52 n52
+i53 add p2 53
+h53 lt i53 p3
+o53 and p4 h53
+b53 get p1 i53
+c53 get m53 n53
+u53 select o53 b53 c53
+m54 set m53 n53 u53
+a53 add n53 1
+n54 select o53 a53 n53
+i54 add p2 54
+h54 lt i54 p3
+o54 and p4 h54
+b54 get p1 i54
+c54 get m54 n54
+u54 select o54 b54 c54
+m55 set m54 n54 u54
+a54 add n54 1
+n55 select o54 a54 n54
+i55 add p2 55
+h55 lt i55 p3
+o55 and p4 h55
+b55 get p1 i55
+c55 get m55 n55
+u55 select o55 b55 c55
+m56 set m55 n55 u55
+a55 add n55 1
+n56 select o55 a55 n55
+i56 add p2 56
+h56 lt i56 p3
+o56 and p4 h56
+b56 get p1 i56
+c56 get m56 n56
+u56 select o56 b56 c56
+m57 set m56 n56 u56
+a56 add n56 1
+n57 select o56 a56 n56
+i57 add p2 57
+h57 lt i57 p3
+o57 and p4 h57
+b57 get p1 i57
+c57 get m57 n57
+u57 select o57 b57 c57
+m58 set m57 n57 u57
+a57 add n57 1
+n58 select o57 a57 n57
+i58 add p2 58
+h58 lt i58 p3
+o58 and p4 h58
+b58 get p1 i58
+c58 get m58 n58
+u58 select o58 b58 c58
+m59 set m58 n58 u58
+a58 add n58 1
+n59 select o58 a58 n58
+i59 add p2 59
+h59 lt i59 p3
+o59 and p4 h59
+b59 get p1 i59
+c59 get m59 n59
+u59 select o59 b59 c59
+m60 set m59 n59 u59
+a59 add n59 1
+n60 select o59 a59 n59
+i60 add p2 60
+h60 lt i60 p3
+o60 and p4 h60
+b60 get p1 i60
+c60 get m60 n60
+u60 select o60 b60 c60
+m61 set m60 n60 u60
+a60 add n60 1
+n61 select o60 a60 n60
+i61 add p2 61
+h61 lt i61 p3
+o61 and p4 h61
+b61 get p1 i61
+c61 get m61 n61
+u61 select o61 b61 c61
+m62 set m61 n61 u61
+a61 add n61 1
+n62 select o61 a61 n61
+i62 add p2 62
+h62 lt i62 p3
+o62 and p4 h62
+b62 get p1 i62
+c62 get m62 n62
+u62 select o62 b62 c62
+m63 set m62 n62 u62
+a62 add n62 1
+n63 select o62 a62 n62
+i63 add p2 63
+h63 lt i63 p3
+o63 and p4 h63
+b63 get p1 i63
+c63 get m63 n63
+u63 select o63 b63 c63
+m64 set m63 n63 u63
+a63 add n63 1
+n64 select o63 a63 n63
+i64 add p2 64
+h64 lt i64 p3
+o64 and p4 h64
+b64 get p1 i64
+c64 get m64 n64
+u64 select o64 b64 c64
+m65 set m64 n64 u64
+a64 add n64 1
+n65 select o64 a64 n64
+i65 add p2 65
+h65 lt i65 p3
+o65 and p4 h65
+b65 get p1 i65
+c65 get m65 n65
+u65 select o65 b65 c65
+m66 set m65 n65 u65
+a65 add n65 1
+n66 select o65 a65 n65
+i66 add p2 66
+h66 lt i66 p3
+o66 and p4 h66
+b66 get p1 i66
+c66 get m66 n66
+u66 select o66 b66 c66
+m67 set m66 n66 u66
+a66 add n66 1
+n67 select o66 a66 n66
+i67 add p2 67
+h67 lt i67 p3
+o67 and p4 h67
+b67 get p1 i67
+c67 get m67 n67
+u67 select o67 b67 c67
+m68 set m67 n67 u67
+a67 add n67 1
+n68 select o67 a67 n67
+i68 add p2 68
+h68 lt i68 p3
+o68 and p4 h68
+b68 get p1 i68
+c68 get m68 n68
+u68 select o68 b68 c68
+m69 set m68 n68 u68
+a68 add n68 1
+n69 select o68 a68 n68
+i69 add p2 69
+h69 lt i69 p3
+o69 and p4 h69
+b69 get p1 i69
+c69 get m69 n69
+u69 select o69 b69 c69
+m70 set m69 n69 u69
+a69 add n69 1
+n70 select o69 a69 n69
+i70 add p2 70
+h70 lt i70 p3
+o70 and p4 h70
+b70 get p1 i70
+c70 get m70 n70
+u70 select o70 b70 c70
+m71 set m70 n70 u70
+a70 add n70 1
+n71 select o70 a70 n70
+i71 add p2 71
+h71 lt i71 p3
+o71 and p4 h71
+b71 get p1 i71
+c71 get m71 n71
+u71 select o71 b71 c71
+m72 set m71 n71 u71
+a71 add n71 1
+n72 select o71 a71 n71
+i72 add p2 72
+h72 lt i72 p3
+o72 and p4 h72
+b72 get p1 i72
+c72 get m72 n72
+u72 select o72 b72 c72
+m73 set m72 n72 u72
+a72 add n72 1
+n73 select o72 a72 n72
+i73 add p2 73
+h73 lt i73 p3
+o73 and p4 h73
+b73 get p1 i73
+c73 get m73 n73
+u73 select o73 b73 c73
+m74 set m73 n73 u73
+a73 add n73 1
+n74 select o73 a73 n73
+i74 add p2 74
+h74 lt i74 p3
+o74 and p4 h74
+b74 get p1 i74
+c74 get m74 n74
+u74 select o74 b74 c74
+m75 set m74 n74 u74
+a74 add n74 1
+n75 select o74 a74 n74
+i75 add p2 75
+h75 lt i75 p3
+o75 and p4 h75
+b75 get p1 i75
+c75 get m75 n75
+u75 select o75 b75 c75
+m76 set m75 n75 u75
+a75 add n75 1
+n76 select o75 a75 n75
+i76 add p2 76
+h76 lt i76 p3
+o76 and p4 h76
+b76 get p1 i76
+c76 get m76 n76
+u76 select o76 b76 c76
+m77 set m76 n76 u76
+a76 add n76 1
+n77 select o76 a76 n76
+i77 add p2 77
+h77 lt i77 p3
+o77 and p4 h77
+b77 get p1 i77
+c77 get m77 n77
+u77 select o77 b77 c77
+m78 set m77 n77 u77
+a77 add n77 1
+n78 select o77 a77 n77
+i78 add p2 78
+h78 lt i78 p3
+o78 and p4 h78
+b78 get p1 i78
+c78 get m78 n78
+u78 select o78 b78 c78
+m79 set m78 n78 u78
+a78 add n78 1
+n79 select o78 a78 n78
+i79 add p2 79
+h79 lt i79 p3
+o79 and p4 h79
+b79 get p1 i79
+c79 get m79 n79
+u79 select o79 b79 c79
+m80 set m79 n79 u79
+a79 add n79 1
+n80 select o79 a79 n79
+i80 add p2 80
+h80 lt i80 p3
+o80 and p4 h80
+b80 get p1 i80
+c80 get m80 n80
+u80 select o80 b80 c80
+m81 set m80 n80 u80
+a80 add n80 1
+n81 select o80 a80 n80
+i81 add p2 81
+h81 lt i81 p3
+o81 and p4 h81
+b81 get p1 i81
+c81 get m81 n81
+u81 select o81 b81 c81
+m82 set m81 n81 u81
+a81 add n81 1
+n82 select o81 a81 n81
+i82 add p2 82
+h82 lt i82 p3
+o82 and p4 h82
+b82 get p1 i82
+c82 get m82 n82
+u82 select o82 b82 c82
+m83 set m82 n82 u82
+a82 add n82 1
+n83 select o82 a82 n82
+i83 add p2 83
+h83 lt i83 p3
+o83 and p4 h83
+b83 get p1 i83
+c83 get m83 n83
+u83 select o83 b83 c83
+m84 set m83 n83 u83
+a83 add n83 1
+n84 select o83 a83 n83
+i84 add p2 84
+h84 lt i84 p3
+o84 and p4 h84
+b84 get p1 i84
+c84 get m84 n84
+u84 select o84 b84 c84
+m85 set m84 n84 u84
+a84 add n84 1
+n85 select o84 a84 n84
+i85 add p2 85
+h85 lt i85 p3
+o85 and p4 h85
+b85 get p1 i85
+c85 get m85 n85
+u85 select o85 b85 c85
+m86 set m85 n85 u85
+a85 add n85 1
+n86 select o85 a85 n85
+i86 add p2 86
+h86 lt i86 p3
+o86 and p4 h86
+b86 get p1 i86
+c86 get m86 n86
+u86 select o86 b86 c86
+m87 set m86 n86 u86
+a86 add n86 1
+n87 select o86 a86 n86
+i87 add p2 87
+h87 lt i87 p3
+o87 and p4 h87
+b87 get p1 i87
+c87 get m87 n87
+u87 select o87 b87 c87
+m88 set m87 n87 u87
+a87 add n87 1
+n88 select o87 a87 n87
+i88 add p2 88
+h88 lt i88 p3
+o88 and p4 h88
+b88 get p1 i88
+c88 get m88 n88
+u88 select o88 b88 c88
+m89 set m88 n88 u88
+a88 add n88 1
+n89 select o88 a88 n88
+i89 add p2 89
+h89 lt i89 p3
+o89 and p4 h89
+b89 get p1 i89
+c89 get m89 n89
+u89 select o89 b89 c89
+m90 set m89 n89 u89
+a89 add n89 1
+n90 select o89 a89 n89
+i90 add p2 90
+h90 lt i90 p3
+o90 and p4 h90
+b90 get p1 i90
+c90 get m90 n90
+u90 select o90 b90 c90
+m91 set m90 n90 u90
+a90 add n90 1
+n91 select o90 a90 n90
+i91 add p2 91
+h91 lt i91 p3
+o91 and p4 h91
+b91 get p1 i91
+c91 get m91 n91
+u91 select o91 b91 c91
+m92 set m91 n91 u91
+a91 add n91 1
+n92 select o91 a91 n91
+i92 add p2 92
+h92 lt i92 p3
+o92 and p4 h92
+b92 get p1 i92
+c92 get m92 n92
+u92 select o92 b92 c92
+m93 set m92 n92 u92
+a92 add n92 1
+n93 select o92 a92 n92
+i93 add p2 93
+h93 lt i93 p3
+o93 and p4 h93
+b93 get p1 i93
+c93 get m93 n93
+u93 select o93 b93 c93
+m94 set m93 n93 u93
+a93 add n93 1
+n94 select o93 a93 n93
+i94 add p2 94
+h94 lt i94 p3
+o94 and p4 h94
+b94 get p1 i94
+c94 get m94 n94
+u94 select o94 b94 c94
+m95 set m94 n94 u94
+a94 add n94 1
+n95 select o94 a94 n94
+i95 add p2 95
+h95 lt i95 p3
+o95 and p4 h95
+b95 get p1 i95
+c95 get m95 n95
+u95 select o95 b95 c95
+m96 set m95 n95 u95
+a95 add n95 1
+n96 select o95 a95 n95
+i96 add p2 96
+h96 lt i96 p3
+o96 and p4 h96
+b96 get p1 i96
+c96 get m96 n96
+u96 select o96 b96 c96
+m97 set m96 n96 u96
+a96 add n96 1
+n97 select o96 a96 n96
+i97 add p2 97
+h97 lt i97 p3
+o97 and p4 h97
+b97 get p1 i97
+c97 get m97 n97
+u97 select o97 b97 c97
+m98 set m97 n97 u97
+a97 add n97 1
+n98 select o97 a97 n97
+i98 add p2 98
+h98 lt i98 p3
+o98 and p4 h98
+b98 get p1 i98
+c98 get m98 n98
+u98 select o98 b98 c98
+m99 set m98 n98 u98
+a98 add n98 1
+n99 select o98 a98 n98
+i99 add p2 99
+h99 lt i99 p3
+o99 and p4 h99
+b99 get p1 i99
+c99 get m99 n99
+u99 select o99 b99 c99
+m100 set m99 n99 u99
+a99 add n99 1
+n100 select o99 a99 n99
+i100 add p2 100
+h100 lt i100 p3
+o100 and p4 h100
+b100 get p1 i100
+c100 get m100 n100
+u100 select o100 b100 c100
+m101 set m100 n100 u100
+a100 add n100 1
+n101 select o100 a100 n100
+i101 add p2 101
+h101 lt i101 p3
+o101 and p4 h101
+b101 get p1 i101
+c101 get m101 n101
+u101 select o101 b101 c101
+m102 set m101 n101 u101
+a101 add n101 1
+n102 select o101 a101 n101
+i102 add p2 102
+h102 lt i102 p3
+o102 and p4 h102
+b102 get p1 i102
+c102 get m102 n102
+u102 select o102 b102 c102
+m103 set m102 n102 u102
+a102 add n102 1
+n103 select o102 a102 n102
+i103 add p2 103
+h103 lt i103 p3
+o103 and p4 h103
+b103 get p1 i103
+c103 get m103 n103
+u103 select o103 b103 c103
+m104 set m103 n103 u103
+a103 add n103 1
+n104 select o103 a103 n103
+i104 add p2 104
+h104 lt i104 p3
+o104 and p4 h104
+b104 get p1 i104
+c104 get m104 n104
+u104 select o104 b104 c104
+m105 set m104 n104 u104
+a104 add n104 1
+n105 select o104 a104 n104
+i105 add p2 105
+h105 lt i105 p3
+o105 and p4 h105
+b105 get p1 i105
+c105 get m105 n105
+u105 select o105 b105 c105
+m106 set m105 n105 u105
+a105 add n105 1
+n106 select o105 a105 n105
+i106 add p2 106
+h106 lt i106 p3
+o106 and p4 h106
+b106 get p1 i106
+c106 get m106 n106
+u106 select o106 b106 c106
+m107 set m106 n106 u106
+a106 add n106 1
+n107 select o106 a106 n106
+i107 add p2 107
+h107 lt i107 p3
+o107 and p4 h107
+b107 get p1 i107
+c107 get m107 n107
+u107 select o107 b107 c107
+m108 set m107 n107 u107
+a107 add n107 1
+n108 select o107 a107 n107
+i108 add p2 108
+h108 lt i108 p3
+o108 and p4 h108
+b108 get p1 i108
+c108 get m108 n108
+u108 select o108 b108 c108
+m109 set m108 n108 u108
+a108 add n108 1
+n109 select o108 a108 n108
+i109 add p2 109
+h109 lt i109 p3
+o109 and p4 h109
+b109 get p1 i109
+c109 get m109 n109
+u109 select o109 b109 c109
+m110 set m109 n109 u109
+a109 add n109 1
+n110 select o109 a109 n109
+i110 add p2 110
+h110 lt i110 p3
+o110 and p4 h110
+b110 get p1 i110
+c110 get m110 n110
+u110 select o110 b110 c110
+m111 set m110 n110 u110
+a110 add n110 1
+n111 select o110 a110 n110
+i111 add p2 111
+h111 lt i111 p3
+o111 and p4 h111
+b111 get p1 i111
+c111 get m111 n111
+u111 select o111 b111 c111
+m112 set m111 n111 u111
+a111 add n111 1
+n112 select o111 a111 n111
+i112 add p2 112
+h112 lt i112 p3
+o112 and p4 h112
+b112 get p1 i112
+c112 get m112 n112
+u112 select o112 b112 c112
+m113 set m112 n112 u112
+a112 add n112 1
+n113 select o112 a112 n112
+i113 add p2 113
+h113 lt i113 p3
+o113 and p4 h113
+b113 get p1 i113
+c113 get m113 n113
+u113 select o113 b113 c113
+m114 set m113 n113 u113
+a113 add n113 1
+n114 select o113 a113 n113
+i114 add p2 114
+h114 lt i114 p3
+o114 and p4 h114
+b114 get p1 i114
+c114 get m114 n114
+u114 select o114 b114 c114
+m115 set m114 n114 u114
+a114 add n114 1
+n115 select o114 a114 n114
+i115 add p2 115
+h115 lt i115 p3
+o115 and p4 h115
+b115 get p1 i115
+c115 get m115 n115
+u115 select o115 b115 c115
+m116 set m115 n115 u115
+a115 add n115 1
+n116 select o115 a115 n115
+i116 add p2 116
+h116 lt i116 p3
+o116 and p4 h116
+b116 get p1 i116
+c116 get m116 n116
+u116 select o116 b116 c116
+m117 set m116 n116 u116
+a116 add n116 1
+n117 select o116 a116 n116
+i117 add p2 117
+h117 lt i117 p3
+o117 and p4 h117
+b117 get p1 i117
+c117 get m117 n117
+u117 select o117 b117 c117
+m118 set m117 n117 u117
+a117 add n117 1
+n118 select o117 a117 n117
+i118 add p2 118
+h118 lt i118 p3
+o118 and p4 h118
+b118 get p1 i118
+c118 get m118 n118
+u118 select o118 b118 c118
+m119 set m118 n118 u118
+a118 add n118 1
+n119 select o118 a118 n118
+i119 add p2 119
+h119 lt i119 p3
+o119 and p4 h119
+b119 get p1 i119
+c119 get m119 n119
+u119 select o119 b119 c119
+m120 set m119 n119 u119
+a119 add n119 1
+n120 select o119 a119 n119
+i120 add p2 120
+h120 lt i120 p3
+o120 and p4 h120
+b120 get p1 i120
+c120 get m120 n120
+u120 select o120 b120 c120
+m121 set m120 n120 u120
+a120 add n120 1
+n121 select o120 a120 n120
+i121 add p2 121
+h121 lt i121 p3
+o121 and p4 h121
+b121 get p1 i121
+c121 get m121 n121
+u121 select o121 b121 c121
+m122 set m121 n121 u121
+a121 add n121 1
+n122 select o121 a121 n121
+i122 add p2 122
+h122 lt i122 p3
+o122 and p4 h122
+b122 get p1 i122
+c122 get m122 n122
+u122 select o122 b122 c122
+m123 set m122 n122 u122
+a122 add n122 1
+n123 select o122 a122 n122
+i123 add p2 123
+h123 lt i123 p3
+o123 and p4 h123
+b123 get p1 i123
+c123 get m123 n123
+u123 select o123 b123 c123
+m124 set m123 n123 u123
+a123 add n123 1
+n124 select o123 a123 n123
+i124 add p2 124
+h124 lt i124 p3
+o124 and p4 h124
+b124 get p1 i124
+c124 get m124 n124
+u124 select o124 b124 c124
+m125 set m124 n124 u124
+a124 add n124 1
+n125 select o124 a124 n124
+i125 add p2 125
+h125 lt i125 p3
+o125 and p4 h125
+b125 get p1 i125
+c125 get m125 n125
+u125 select o125 b125 c125
+m126 set m125 n125 u125
+a125 add n125 1
+n126 select o125 a125 n125
+i126 add p2 126
+h126 lt i126 p3
+o126 and p4 h126
+b126 get p1 i126
+c126 get m126 n126
+u126 select o126 b126 c126
+m127 set m126 n126 u126
+a126 add n126 1
+n127 select o126 a126 n126
+i127 add p2 127
+h127 lt i127 p3
+o127 and p4 h127
+b127 get p1 i127
+c127 get m127 n127
+u127 select o127 b127 c127
+m128 set m127 n127 u127
+a127 add n127 1
+n128 select o127 a127 n127
+i128 add p2 128
+h128 lt i128 p3
+o128 and p4 h128
+b128 get p1 i128
+c128 get m128 n128
+u128 select o128 b128 c128
+m129 set m128 n128 u128
+a128 add n128 1
+n129 select o128 a128 n128
+i129 add p2 129
+h129 lt i129 p3
+o129 and p4 h129
+b129 get p1 i129
+c129 get m129 n129
+u129 select o129 b129 c129
+m130 set m129 n129 u129
+a129 add n129 1
+n130 select o129 a129 n129
+i130 add p2 130
+h130 lt i130 p3
+o130 and p4 h130
+b130 get p1 i130
+c130 get m130 n130
+u130 select o130 b130 c130
+m131 set m130 n130 u130
+a130 add n130 1
+n131 select o130 a130 n130
+i131 add p2 131
+h131 lt i131 p3
+o131 and p4 h131
+b131 get p1 i131
+c131 get m131 n131
+u131 select o131 b131 c131
+m132 set m131 n131 u131
+a131 add n131 1
+n132 select o131 a131 n131
+i132 add p2 132
+h132 lt i132 p3
+o132 and p4 h132
+b132 get p1 i132
+c132 get m132 n132
+u132 select o132 b132 c132
+m133 set m132 n132 u132
+a132 add n132 1
+n133 select o132 a132 n132
+i133 add p2 133
+h133 lt i133 p3
+o133 and p4 h133
+b133 get p1 i133
+c133 get m133 n133
+u133 select o133 b133 c133
+m134 set m133 n133 u133
+a133 add n133 1
+n134 select o133 a133 n133
+i134 add p2 134
+h134 lt i134 p3
+o134 and p4 h134
+b134 get p1 i134
+c134 get m134 n134
+u134 select o134 b134 c134
+m135 set m134 n134 u134
+a134 add n134 1
+n135 select o134 a134 n134
+i135 add p2 135
+h135 lt i135 p3
+o135 and p4 h135
+b135 get p1 i135
+c135 get m135 n135
+u135 select o135 b135 c135
+m136 set m135 n135 u135
+a135 add n135 1
+n136 select o135 a135 n135
+i136 add p2 136
+h136 lt i136 p3
+o136 and p4 h136
+b136 get p1 i136
+c136 get m136 n136
+u136 select o136 b136 c136
+m137 set m136 n136 u136
+a136 add n136 1
+n137 select o136 a136 n136
+i137 add p2 137
+h137 lt i137 p3
+o137 and p4 h137
+b137 get p1 i137
+c137 get m137 n137
+u137 select o137 b137 c137
+m138 set m137 n137 u137
+a137 add n137 1
+n138 select o137 a137 n137
+i138 add p2 138
+h138 lt i138 p3
+o138 and p4 h138
+b138 get p1 i138
+c138 get m138 n138
+u138 select o138 b138 c138
+m139 set m138 n138 u138
+a138 add n138 1
+n139 select o138 a138 n138
+i139 add p2 139
+h139 lt i139 p3
+o139 and p4 h139
+b139 get p1 i139
+c139 get m139 n139
+u139 select o139 b139 c139
+m140 set m139 n139 u139
+a139 add n139 1
+n140 select o139 a139 n139
+i140 add p2 140
+h140 lt i140 p3
+o140 and p4 h140
+b140 get p1 i140
+c140 get m140 n140
+u140 select o140 b140 c140
+m141 set m140 n140 u140
+a140 add n140 1
+n141 select o140 a140 n140
+i141 add p2 141
+h141 lt i141 p3
+o141 and p4 h141
+b141 get p1 i141
+c141 get m141 n141
+u141 select o141 b141 c141
+m142 set m141 n141 u141
+a141 add n141 1
+n142 select o141 a141 n141
+i142 add p2 142
+h142 lt i142 p3
+o142 and p4 h142
+b142 get p1 i142
+c142 get m142 n142
+u142 select o142 b142 c142
+m143 set m142 n142 u142
+a142 add n142 1
+n143 select o142 a142 n142
+i143 add p2 143
+h143 lt i143 p3
+o143 and p4 h143
+b143 get p1 i143
+c143 get m143 n143
+u143 select o143 b143 c143
+m144 set m143 n143 u143
+a143 add n143 1
+n144 select o143 a143 n143
+i144 add p2 144
+h144 lt i144 p3
+o144 and p4 h144
+b144 get p1 i144
+c144 get m144 n144
+u144 select o144 b144 c144
+m145 set m144 n144 u144
+a144 add n144 1
+n145 select o144 a144 n144
+i145 add p2 145
+h145 lt i145 p3
+o145 and p4 h145
+b145 get p1 i145
+c145 get m145 n145
+u145 select o145 b145 c145
+m146 set m145 n145 u145
+a145 add n145 1
+n146 select o145 a145 n145
+i146 add p2 146
+h146 lt i146 p3
+o146 and p4 h146
+b146 get p1 i146
+c146 get m146 n146
+u146 select o146 b146 c146
+m147 set m146 n146 u146
+a146 add n146 1
+n147 select o146 a146 n146
+i147 add p2 147
+h147 lt i147 p3
+o147 and p4 h147
+b147 get p1 i147
+c147 get m147 n147
+u147 select o147 b147 c147
+m148 set m147 n147 u147
+a147 add n147 1
+n148 select o147 a147 n147
+i148 add p2 148
+h148 lt i148 p3
+o148 and p4 h148
+b148 get p1 i148
+c148 get m148 n148
+u148 select o148 b148 c148
+m149 set m148 n148 u148
+a148 add n148 1
+n149 select o148 a148 n148
+i149 add p2 149
+h149 lt i149 p3
+o149 and p4 h149
+b149 get p1 i149
+c149 get m149 n149
+u149 select o149 b149 c149
+m150 set m149 n149 u149
+a149 add n149 1
+n150 select o149 a149 n149
+i150 add p2 150
+h150 lt i150 p3
+o150 and p4 h150
+b150 get p1 i150
+c150 get m150 n150
+u150 select o150 b150 c150
+m151 set m150 n150 u150
+a150 add n150 1
+n151 select o150 a150 n150
+i151 add p2 151
+h151 lt i151 p3
+o151 and p4 h151
+b151 get p1 i151
+c151 get m151 n151
+u151 select o151 b151 c151
+m152 set m151 n151 u151
+a151 add n151 1
+n152 select o151 a151 n151
+i152 add p2 152
+h152 lt i152 p3
+o152 and p4 h152
+b152 get p1 i152
+c152 get m152 n152
+u152 select o152 b152 c152
+m153 set m152 n152 u152
+a152 add n152 1
+n153 select o152 a152 n152
+i153 add p2 153
+h153 lt i153 p3
+o153 and p4 h153
+b153 get p1 i153
+c153 get m153 n153
+u153 select o153 b153 c153
+m154 set m153 n153 u153
+a153 add n153 1
+n154 select o153 a153 n153
+i154 add p2 154
+h154 lt i154 p3
+o154 and p4 h154
+b154 get p1 i154
+c154 get m154 n154
+u154 select o154 b154 c154
+m155 set m154 n154 u154
+a154 add n154 1
+n155 select o154 a154 n154
+i155 add p2 155
+h155 lt i155 p3
+o155 and p4 h155
+b155 get p1 i155
+c155 get m155 n155
+u155 select o155 b155 c155
+m156 set m155 n155 u155
+a155 add n155 1
+n156 select o155 a155 n155
+i156 add p2 156
+h156 lt i156 p3
+o156 and p4 h156
+b156 get p1 i156
+c156 get m156 n156
+u156 select o156 b156 c156
+m157 set m156 n156 u156
+a156 add n156 1
+n157 select o156 a156 n156
+i157 add p2 157
+h157 lt i157 p3
+o157 and p4 h157
+b157 get p1 i157
+c157 get m157 n157
+u157 select o157 b157 c157
+m158 set m157 n157 u157
+a157 add n157 1
+n158 select o157 a157 n157
+i158 add p2 158
+h158 lt i158 p3
+o158 and p4 h158
+b158 get p1 i158
+c158 get m158 n158
+u158 select o158 b158 c158
+m159 set m158 n158 u158
+a158 add n158 1
+n159 select o158 a158 n158
+i159 add p2 159
+h159 lt i159 p3
+o159 and p4 h159
+b159 get p1 i159
+c159 get m159 n159
+u159 select o159 b159 c159
+m160 set m159 n159 u159
+a159 add n159 1
+n160 select o159 a159 n159
+i160 add p2 160
+h160 lt i160 p3
+o160 and p4 h160
+b160 get p1 i160
+c160 get m160 n160
+u160 select o160 b160 c160
+m161 set m160 n160 u160
+a160 add n160 1
+n161 select o160 a160 n160
+i161 add p2 161
+h161 lt i161 p3
+o161 and p4 h161
+b161 get p1 i161
+c161 get m161 n161
+u161 select o161 b161 c161
+m162 set m161 n161 u161
+a161 add n161 1
+n162 select o161 a161 n161
+i162 add p2 162
+h162 lt i162 p3
+o162 and p4 h162
+b162 get p1 i162
+c162 get m162 n162
+u162 select o162 b162 c162
+m163 set m162 n162 u162
+a162 add n162 1
+n163 select o162 a162 n162
+i163 add p2 163
+h163 lt i163 p3
+o163 and p4 h163
+b163 get p1 i163
+c163 get m163 n163
+u163 select o163 b163 c163
+m164 set m163 n163 u163
+a163 add n163 1
+n164 select o163 a163 n163
+i164 add p2 164
+h164 lt i164 p3
+o164 and p4 h164
+b164 get p1 i164
+c164 get m164 n164
+u164 select o164 b164 c164
+m165 set m164 n164 u164
+a164 add n164 1
+n165 select o164 a164 n164
+i165 add p2 165
+h165 lt i165 p3
+o165 and p4 h165
+b165 get p1 i165
+c165 get m165 n165
+u165 select o165 b165 c165
+m166 set m165 n165 u165
+a165 add n165 1
+n166 select o165 a165 n165
+i166 add p2 166
+h166 lt i166 p3
+o166 and p4 h166
+b166 get p1 i166
+c166 get m166 n166
+u166 select o166 b166 c166
+m167 set m166 n166 u166
+a166 add n166 1
+n167 select o166 a166 n166
+i167 add p2 167
+h167 lt i167 p3
+o167 and p4 h167
+b167 get p1 i167
+c167 get m167 n167
+u167 select o167 b167 c167
+m168 set m167 n167 u167
+a167 add n167 1
+n168 select o167 a167 n167
+i168 add p2 168
+h168 lt i168 p3
+o168 and p4 h168
+b168 get p1 i168
+c168 get m168 n168
+u168 select o168 b168 c168
+m169 set m168 n168 u168
+a168 add n168 1
+n169 select o168 a168 n168
+i169 add p2 169
+h169 lt i169 p3
+o169 and p4 h169
+b169 get p1 i169
+c169 get m169 n169
+u169 select o169 b169 c169
+m170 set m169 n169 u169
+a169 add n169 1
+n170 select o169 a169 n169
+i170 add p2 170
+h170 lt i170 p3
+o170 and p4 h170
+b170 get p1 i170
+c170 get m170 n170
+u170 select o170 b170 c170
+m171 set m170 n170 u170
+a170 add n170 1
+n171 select o170 a170 n170
+i171 add p2 171
+h171 lt i171 p3
+o171 and p4 h171
+b171 get p1 i171
+c171 get m171 n171
+u171 select o171 b171 c171
+m172 set m171 n171 u171
+a171 add n171 1
+n172 select o171 a171 n171
+i172 add p2 172
+h172 lt i172 p3
+o172 and p4 h172
+b172 get p1 i172
+c172 get m172 n172
+u172 select o172 b172 c172
+m173 set m172 n172 u172
+a172 add n172 1
+n173 select o172 a172 n172
+i173 add p2 173
+h173 lt i173 p3
+o173 and p4 h173
+b173 get p1 i173
+c173 get m173 n173
+u173 select o173 b173 c173
+m174 set m173 n173 u173
+a173 add n173 1
+n174 select o173 a173 n173
+i174 add p2 174
+h174 lt i174 p3
+o174 and p4 h174
+b174 get p1 i174
+c174 get m174 n174
+u174 select o174 b174 c174
+m175 set m174 n174 u174
+a174 add n174 1
+n175 select o174 a174 n174
+i175 add p2 175
+h175 lt i175 p3
+o175 and p4 h175
+b175 get p1 i175
+c175 get m175 n175
+u175 select o175 b175 c175
+m176 set m175 n175 u175
+a175 add n175 1
+n176 select o175 a175 n175
+i176 add p2 176
+h176 lt i176 p3
+o176 and p4 h176
+b176 get p1 i176
+c176 get m176 n176
+u176 select o176 b176 c176
+m177 set m176 n176 u176
+a176 add n176 1
+n177 select o176 a176 n176
+i177 add p2 177
+h177 lt i177 p3
+o177 and p4 h177
+b177 get p1 i177
+c177 get m177 n177
+u177 select o177 b177 c177
+m178 set m177 n177 u177
+a177 add n177 1
+n178 select o177 a177 n177
+i178 add p2 178
+h178 lt i178 p3
+o178 and p4 h178
+b178 get p1 i178
+c178 get m178 n178
+u178 select o178 b178 c178
+m179 set m178 n178 u178
+a178 add n178 1
+n179 select o178 a178 n178
+i179 add p2 179
+h179 lt i179 p3
+o179 and p4 h179
+b179 get p1 i179
+c179 get m179 n179
+u179 select o179 b179 c179
+m180 set m179 n179 u179
+a179 add n179 1
+n180 select o179 a179 n179
+i180 add p2 180
+h180 lt i180 p3
+o180 and p4 h180
+b180 get p1 i180
+c180 get m180 n180
+u180 select o180 b180 c180
+m181 set m180 n180 u180
+a180 add n180 1
+n181 select o180 a180 n180
+i181 add p2 181
+h181 lt i181 p3
+o181 and p4 h181
+b181 get p1 i181
+c181 get m181 n181
+u181 select o181 b181 c181
+m182 set m181 n181 u181
+a181 add n181 1
+n182 select o181 a181 n181
+i182 add p2 182
+h182 lt i182 p3
+o182 and p4 h182
+b182 get p1 i182
+c182 get m182 n182
+u182 select o182 b182 c182
+m183 set m182 n182 u182
+a182 add n182 1
+n183 select o182 a182 n182
+i183 add p2 183
+h183 lt i183 p3
+o183 and p4 h183
+b183 get p1 i183
+c183 get m183 n183
+u183 select o183 b183 c183
+m184 set m183 n183 u183
+a183 add n183 1
+n184 select o183 a183 n183
+i184 add p2 184
+h184 lt i184 p3
+o184 and p4 h184
+b184 get p1 i184
+c184 get m184 n184
+u184 select o184 b184 c184
+m185 set m184 n184 u184
+a184 add n184 1
+n185 select o184 a184 n184
+i185 add p2 185
+h185 lt i185 p3
+o185 and p4 h185
+b185 get p1 i185
+c185 get m185 n185
+u185 select o185 b185 c185
+m186 set m185 n185 u185
+a185 add n185 1
+n186 select o185 a185 n185
+i186 add p2 186
+h186 lt i186 p3
+o186 and p4 h186
+b186 get p1 i186
+c186 get m186 n186
+u186 select o186 b186 c186
+m187 set m186 n186 u186
+a186 add n186 1
+n187 select o186 a186 n186
+i187 add p2 187
+h187 lt i187 p3
+o187 and p4 h187
+b187 get p1 i187
+c187 get m187 n187
+u187 select o187 b187 c187
+m188 set m187 n187 u187
+a187 add n187 1
+n188 select o187 a187 n187
+i188 add p2 188
+h188 lt i188 p3
+o188 and p4 h188
+b188 get p1 i188
+c188 get m188 n188
+u188 select o188 b188 c188
+m189 set m188 n188 u188
+a188 add n188 1
+n189 select o188 a188 n188
+i189 add p2 189
+h189 lt i189 p3
+o189 and p4 h189
+b189 get p1 i189
+c189 get m189 n189
+u189 select o189 b189 c189
+m190 set m189 n189 u189
+a189 add n189 1
+n190 select o189 a189 n189
+i190 add p2 190
+h190 lt i190 p3
+o190 and p4 h190
+b190 get p1 i190
+c190 get m190 n190
+u190 select o190 b190 c190
+m191 set m190 n190 u190
+a190 add n190 1
+n191 select o190 a190 n190
+i191 add p2 191
+h191 lt i191 p3
+o191 and p4 h191
+b191 get p1 i191
+c191 get m191 n191
+u191 select o191 b191 c191
+m192 set m191 n191 u191
+a191 add n191 1
+n192 select o191 a191 n191
+i192 add p2 192
+h192 lt i192 p3
+o192 and p4 h192
+b192 get p1 i192
+c192 get m192 n192
+u192 select o192 b192 c192
+m193 set m192 n192 u192
+a192 add n192 1
+n193 select o192 a192 n192
+i193 add p2 193
+h193 lt i193 p3
+o193 and p4 h193
+b193 get p1 i193
+c193 get m193 n193
+u193 select o193 b193 c193
+m194 set m193 n193 u193
+a193 add n193 1
+n194 select o193 a193 n193
+i194 add p2 194
+h194 lt i194 p3
+o194 and p4 h194
+b194 get p1 i194
+c194 get m194 n194
+u194 select o194 b194 c194
+m195 set m194 n194 u194
+a194 add n194 1
+n195 select o194 a194 n194
+i195 add p2 195
+h195 lt i195 p3
+o195 and p4 h195
+b195 get p1 i195
+c195 get m195 n195
+u195 select o195 b195 c195
+m196 set m195 n195 u195
+a195 add n195 1
+n196 select o195 a195 n195
+i196 add p2 196
+h196 lt i196 p3
+o196 and p4 h196
+b196 get p1 i196
+c196 get m196 n196
+u196 select o196 b196 c196
+m197 set m196 n196 u196
+a196 add n196 1
+n197 select o196 a196 n196
+i197 add p2 197
+h197 lt i197 p3
+o197 and p4 h197
+b197 get p1 i197
+c197 get m197 n197
+u197 select o197 b197 c197
+m198 set m197 n197 u197
+a197 add n197 1
+n198 select o197 a197 n197
+i198 add p2 198
+h198 lt i198 p3
+o198 and p4 h198
+b198 get p1 i198
+c198 get m198 n198
+u198 select o198 b198 c198
+m199 set m198 n198 u198
+a198 add n198 1
+n199 select o198 a198 n198
+i199 add p2 199
+h199 lt i199 p3
+o199 and p4 h199
+b199 get p1 i199
+c199 get m199 n199
+u199 select o199 b199 c199
+m200 set m199 n199 u199
+a199 add n199 1
+n200 select o199 a199 n199
+i200 add p2 200
+h200 lt i200 p3
+o200 and p4 h200
+b200 get p1 i200
+c200 get m200 n200
+u200 select o200 b200 c200
+m201 set m200 n200 u200
+a200 add n200 1
+n201 select o200 a200 n200
+i201 add p2 201
+h201 lt i201 p3
+o201 and p4 h201
+b201 get p1 i201
+c201 get m201 n201
+u201 select o201 b201 c201
+m202 set m201 n201 u201
+a201 add n201 1
+n202 select o201 a201 n201
+i202 add p2 202
+h202 lt i202 p3
+o202 and p4 h202
+b202 get p1 i202
+c202 get m202 n202
+u202 select o202 b202 c202
+m203 set m202 n202 u202
+a202 add n202 1
+n203 select o202 a202 n202
+i203 add p2 203
+h203 lt i203 p3
+o203 and p4 h203
+b203 get p1 i203
+c203 get m203 n203
+u203 select o203 b203 c203
+m204 set m203 n203 u203
+a203 add n203 1
+n204 select o203 a203 n203
+i204 add p2 204
+h204 lt i204 p3
+o204 and p4 h204
+b204 get p1 i204
+c204 get m204 n204
+u204 select o204 b204 c204
+m205 set m204 n204 u204
+a204 add n204 1
+n205 select o204 a204 n204
+i205 add p2 205
+h205 lt i205 p3
+o205 and p4 h205
+b205 get p1 i205
+c205 get m205 n205
+u205 select o205 b205 c205
+m206 set m205 n205 u205
+a205 add n205 1
+n206 select o205 a205 n205
+i206 add p2 206
+h206 lt i206 p3
+o206 and p4 h206
+b206 get p1 i206
+c206 get m206 n206
+u206 select o206 b206 c206
+m207 set m206 n206 u206
+a206 add n206 1
+n207 select o206 a206 n206
+i207 add p2 207
+h207 lt i207 p3
+o207 and p4 h207
+b207 get p1 i207
+c207 get m207 n207
+u207 select o207 b207 c207
+m208 set m207 n207 u207
+a207 add n207 1
+n208 select o207 a207 n207
+i208 add p2 208
+h208 lt i208 p3
+o208 and p4 h208
+b208 get p1 i208
+c208 get m208 n208
+u208 select o208 b208 c208
+m209 set m208 n208 u208
+a208 add n208 1
+n209 select o208 a208 n208
+i209 add p2 209
+h209 lt i209 p3
+o209 and p4 h209
+b209 get p1 i209
+c209 get m209 n209
+u209 select o209 b209 c209
+m210 set m209 n209 u209
+a209 add n209 1
+n210 select o209 a209 n209
+i210 add p2 210
+h210 lt i210 p3
+o210 and p4 h210
+b210 get p1 i210
+c210 get m210 n210
+u210 select o210 b210 c210
+m211 set m210 n210 u210
+a210 add n210 1
+n211 select o210 a210 n210
+i211 add p2 211
+h211 lt i211 p3
+o211 and p4 h211
+b211 get p1 i211
+c211 get m211 n211
+u211 select o211 b211 c211
+m212 set m211 n211 u211
+a211 add n211 1
+n212 select o211 a211 n211
+i212 add p2 212
+h212 lt i212 p3
+o212 and p4 h212
+b212 get p1 i212
+c212 get m212 n212
+u212 select o212 b212 c212
+m213 set m212 n212 u212
+a212 add n212 1
+n213 select o212 a212 n212
+i213 add p2 213
+h213 lt i213 p3
+o213 and p4 h213
+b213 get p1 i213
+c213 get m213 n213
+u213 select o213 b213 c213
+m214 set m213 n213 u213
+a213 add n213 1
+n214 select o213 a213 n213
+i214 add p2 214
+h214 lt i214 p3
+o214 and p4 h214
+b214 get p1 i214
+c214 get m214 n214
+u214 select o214 b214 c214
+m215 set m214 n214 u214
+a214 add n214 1
+n215 select o214 a214 n214
+i215 add p2 215
+h215 lt i215 p3
+o215 and p4 h215
+b215 get p1 i215
+c215 get m215 n215
+u215 select o215 b215 c215
+m216 set m215 n215 u215
+a215 add n215 1
+n216 select o215 a215 n215
+i216 add p2 216
+h216 lt i216 p3
+o216 and p4 h216
+b216 get p1 i216
+c216 get m216 n216
+u216 select o216 b216 c216
+m217 set m216 n216 u216
+a216 add n216 1
+n217 select o216 a216 n216
+i217 add p2 217
+h217 lt i217 p3
+o217 and p4 h217
+b217 get p1 i217
+c217 get m217 n217
+u217 select o217 b217 c217
+m218 set m217 n217 u217
+a217 add n217 1
+n218 select o217 a217 n217
+i218 add p2 218
+h218 lt i218 p3
+o218 and p4 h218
+b218 get p1 i218
+c218 get m218 n218
+u218 select o218 b218 c218
+m219 set m218 n218 u218
+a218 add n218 1
+n219 select o218 a218 n218
+i219 add p2 219
+h219 lt i219 p3
+o219 and p4 h219
+b219 get p1 i219
+c219 get m219 n219
+u219 select o219 b219 c219
+m220 set m219 n219 u219
+a219 add n219 1
+n220 select o219 a219 n219
+i220 add p2 220
+h220 lt i220 p3
+o220 and p4 h220
+b220 get p1 i220
+c220 get m220 n220
+u220 select o220 b220 c220
+m221 set m220 n220 u220
+a220 add n220 1
+n221 select o220 a220 n220
+i221 add p2 221
+h221 lt i221 p3
+o221 and p4 h221
+b221 get p1 i221
+c221 get m221 n221
+u221 select o221 b221 c221
+m222 set m221 n221 u221
+a221 add n221 1
+n222 select o221 a221 n221
+i222 add p2 222
+h222 lt i222 p3
+o222 and p4 h222
+b222 get p1 i222
+c222 get m222 n222
+u222 select o222 b222 c222
+m223 set m222 n222 u222
+a222 add n222 1
+n223 select o222 a222 n222
+i223 add p2 223
+h223 lt i223 p3
+o223 and p4 h223
+b223 get p1 i223
+c223 get m223 n223
+u223 select o223 b223 c223
+m224 set m223 n223 u223
+a223 add n223 1
+n224 select o223 a223 n223
+i224 add p2 224
+h224 lt i224 p3
+o224 and p4 h224
+b224 get p1 i224
+c224 get m224 n224
+u224 select o224 b224 c224
+m225 set m224 n224 u224
+a224 add n224 1
+n225 select o224 a224 n224
+i225 add p2 225
+h225 lt i225 p3
+o225 and p4 h225
+b225 get p1 i225
+c225 get m225 n225
+u225 select o225 b225 c225
+m226 set m225 n225 u225
+a225 add n225 1
+n226 select o225 a225 n225
+i226 add p2 226
+h226 lt i226 p3
+o226 and p4 h226
+b226 get p1 i226
+c226 get m226 n226
+u226 select o226 b226 c226
+m227 set m226 n226 u226
+a226 add n226 1
+n227 select o226 a226 n226
+i227 add p2 227
+h227 lt i227 p3
+o227 and p4 h227
+b227 get p1 i227
+c227 get m227 n227
+u227 select o227 b227 c227
+m228 set m227 n227 u227
+a227 add n227 1
+n228 select o227 a227 n227
+i228 add p2 228
+h228 lt i228 p3
+o228 and p4 h228
+b228 get p1 i228
+c228 get m228 n228
+u228 select o228 b228 c228
+m229 set m228 n228 u228
+a228 add n228 1
+n229 select o228 a228 n228
+i229 add p2 229
+h229 lt i229 p3
+o229 and p4 h229
+b229 get p1 i229
+c229 get m229 n229
+u229 select o229 b229 c229
+m230 set m229 n229 u229
+a229 add n229 1
+n230 select o229 a229 n229
+i230 add p2 230
+h230 lt i230 p3
+o230 and p4 h230
+b230 get p1 i230
+c230 get m230 n230
+u230 select o230 b230 c230
+m231 set m230 n230 u230
+a230 add n230 1
+n231 select o230 a230 n230
+i231 add p2 231
+h231 lt i231 p3
+o231 and p4 h231
+b231 get p1 i231
+c231 get m231 n231
+u231 select o231 b231 c231
+m232 set m231 n231 u231
+a231 add n231 1
+n232 select o231 a231 n231
+i232 add p2 232
+h232 lt i232 p3
+o232 and p4 h232
+b232 get p1 i232
+c232 get m232 n232
+u232 select o232 b232 c232
+m233 set m232 n232 u232
+a232 add n232 1
+n233 select o232 a232 n232
+i233 add p2 233
+h233 lt i233 p3
+o233 and p4 h233
+b233 get p1 i233
+c233 get m233 n233
+u233 select o233 b233 c233
+m234 set m233 n233 u233
+a233 add n233 1
+n234 select o233 a233 n233
+i234 add p2 234
+h234 lt i234 p3
+o234 and p4 h234
+b234 get p1 i234
+c234 get m234 n234
+u234 select o234 b234 c234
+m235 set m234 n234 u234
+a234 add n234 1
+n235 select o234 a234 n234
+i235 add p2 235
+h235 lt i235 p3
+o235 and p4 h235
+b235 get p1 i235
+c235 get m235 n235
+u235 select o235 b235 c235
+m236 set m235 n235 u235
+a235 add n235 1
+n236 select o235 a235 n235
+i236 add p2 236
+h236 lt i236 p3
+o236 and p4 h236
+b236 get p1 i236
+c236 get m236 n236
+u236 select o236 b236 c236
+m237 set m236 n236 u236
+a236 add n236 1
+n237 select o236 a236 n236
+i237 add p2 237
+h237 lt i237 p3
+o237 and p4 h237
+b237 get p1 i237
+c237 get m237 n237
+u237 select o237 b237 c237
+m238 set m237 n237 u237
+a237 add n237 1
+n238 select o237 a237 n237
+i238 add p2 238
+h238 lt i238 p3
+o238 and p4 h238
+b238 get p1 i238
+c238 get m238 n238
+u238 select o238 b238 c238
+m239 set m238 n238 u238
+a238 add n238 1
+n239 select o238 a238 n238
+i239 add p2 239
+h239 lt i239 p3
+o239 and p4 h239
+b239 get p1 i239
+c239 get m239 n239
+u239 select o239 b239 c239
+m240 set m239 n239 u239
+a239 add n239 1
+n240 select o239 a239 n239
+i240 add p2 240
+h240 lt i240 p3
+o240 and p4 h240
+b240 get p1 i240
+c240 get m240 n240
+u240 select o240 b240 c240
+m241 set m240 n240 u240
+a240 add n240 1
+n241 select o240 a240 n240
+i241 add p2 241
+h241 lt i241 p3
+o241 and p4 h241
+b241 get p1 i241
+c241 get m241 n241
+u241 select o241 b241 c241
+m242 set m241 n241 u241
+a241 add n241 1
+n242 select o241 a241 n241
+i242 add p2 242
+h242 lt i242 p3
+o242 and p4 h242
+b242 get p1 i242
+c242 get m242 n242
+u242 select o242 b242 c242
+m243 set m242 n242 u242
+a242 add n242 1
+n243 select o242 a242 n242
+i243 add p2 243
+h243 lt i243 p3
+o243 and p4 h243
+b243 get p1 i243
+c243 get m243 n243
+u243 select o243 b243 c243
+m244 set m243 n243 u243
+a243 add n243 1
+n244 select o243 a243 n243
+i244 add p2 244
+h244 lt i244 p3
+o244 and p4 h244
+b244 get p1 i244
+c244 get m244 n244
+u244 select o244 b244 c244
+m245 set m244 n244 u244
+a244 add n244 1
+n245 select o244 a244 n244
+i245 add p2 245
+h245 lt i245 p3
+o245 and p4 h245
+b245 get p1 i245
+c245 get m245 n245
+u245 select o245 b245 c245
+m246 set m245 n245 u245
+a245 add n245 1
+n246 select o245 a245 n245
+i246 add p2 246
+h246 lt i246 p3
+o246 and p4 h246
+b246 get p1 i246
+c246 get m246 n246
+u246 select o246 b246 c246
+m247 set m246 n246 u246
+a246 add n246 1
+n247 select o246 a246 n246
+i247 add p2 247
+h247 lt i247 p3
+o247 and p4 h247
+b247 get p1 i247
+c247 get m247 n247
+u247 select o247 b247 c247
+m248 set m247 n247 u247
+a247 add n247 1
+n248 select o247 a247 n247
+i248 add p2 248
+h248 lt i248 p3
+o248 and p4 h248
+b248 get p1 i248
+c248 get m248 n248
+u248 select o248 b248 c248
+m249 set m248 n248 u248
+a248 add n248 1
+n249 select o248 a248 n248
+i249 add p2 249
+h249 lt i249 p3
+o249 and p4 h249
+b249 get p1 i249
+c249 get m249 n249
+u249 select o249 b249 c249
+m250 set m249 n249 u249
+a249 add n249 1
+n250 select o249 a249 n249
+i250 add p2 250
+h250 lt i250 p3
+o250 and p4 h250
+b250 get p1 i250
+c250 get m250 n250
+u250 select o250 b250 c250
+m251 set m250 n250 u250
+a250 add n250 1
+n251 select o250 a250 n250
+i251 add p2 251
+h251 lt i251 p3
+o251 and p4 h251
+b251 get p1 i251
+c251 get m251 n251
+u251 select o251 b251 c251
+m252 set m251 n251 u251
+a251 add n251 1
+n252 select o251 a251 n251
+i252 add p2 252
+h252 lt i252 p3
+o252 and p4 h252
+b252 get p1 i252
+c252 get m252 n252
+u252 select o252 b252 c252
+m253 set m252 n252 u252
+a252 add n252 1
+n253 select o252 a252 n252
+i253 add p2 253
+h253 lt i253 p3
+o253 and p4 h253
+b253 get p1 i253
+c253 get m253 n253
+u253 select o253 b253 c253
+m254 set m253 n253 u253
+a253 add n253 1
+n254 select o253 a253 n253
+i254 add p2 254
+h254 lt i254 p3
+o254 and p4 h254
+b254 get p1 i254
+c254 get m254 n254
+u254 select o254 b254 c254
+m255 set m254 n254 u254
+a254 add n254 1
+n255 select o254 a254 n254
+i255 add p2 255
+h255 lt i255 p3
+o255 and p4 h255
+b255 get p1 i255
+c255 get m255 n255
+u255 select o255 b255 c255
+m256 set m255 n255 u255
+a255 add n255 1
+n256 select o255 a255 n255
+r rec m256 n256
+ret r
+end
+# --- the line buffer (bytes, length): one byte, a short packed string, a symbol's bytes
+fn lb (u32x512,u32) u32 bool -> (u32x512,u32)
+l at p0 0
+n at p0 1
+c get l n
+u select p2 p1 c
+l2 set l n u
+n1 add n 1
+n2 select p2 n1 n
+r rec l2 n2
+ret r
+end
+fn lp1 (u32x512,u32) u32 bool -> (u32x512,u32)
+r call lp p0 p1 0 0 0 p2
+ret r
+end
+fn lnstep (u32x512,u32) u32 u32x512 u32 bool -> (u32x512,u32)
+a add p3 p1
+c get p2 a
+r call lb p0 c p4
+ret r
+end
+fn lname (u32x512,u32) u32x512 u32x512 u32 bool -> (u32x512,u32)
+s2 mul p3 2
+start get p2 s2
+s21 add s2 1
+len get p2 s21
+r fold lnstep len p0 p1 start p4
+ret r
+end
+fn line -> (u32x512,u32)
+z call zeros512
+r rec z 0
+ret r
+end
+# --- the module buffer: a line is appended in two chunks; a line over 512 bytes marks the
+# module full, which emitio reports as code 4
+fn flushstep (u32x4096,u32) u32 u32x512 u32 bool -> (u32x4096,u32)
+base mul p1 256
+r call flush256 p0 p2 base p3 p4
+ret r
+end
+fn flush (u32x4096,u32) (u32x512,u32) bool -> (u32x4096,u32)
+l at p1 0
+n at p1 1
+over gt n 512
+s fold flushstep 2 p0 l n p2
+m at s 0
+nout at s 1
+full and p2 over
+nout2 select full 4096 nout
+r rec m nout2
+ret r
+end
+# --- instruction writers. Packed operands: 3158391 w10, 3223927 w11, 3289463 w12, 14711 w9,
+# 12407 w0, 28787 sp, 3748472 x29, 12323 #0, 12579 #1, 8236 ", ".
+# "\t" mnem " " a [", " b [", " c [", " d]]] "\n" with p2 operands
+fn lins (u32x512,u32) u32 u32 u32 u32 u32 u32 bool -> (u32x512,u32)
+on2a ge p2 2
+on2 and p7 on2a
+on3a ge p2 3
+on3 and p7 on3a
+on4a ge p2 4
+on4 and p7 on4a
+s1 call lb p0 9 p7
+s2 call lp1 s1 p1 p7
+s3 call lb s2 32 p7
+s4 call lp1 s3 p3 p7
+s5 call lp1 s4 8236 on2
+s6 call lp1 s5 p4 on2
+s7 call lp1 s6 8236 on3
+s8 call lp1 s7 p5 on3
+s9 call lp1 s8 8236 on4
+s10 call lp1 s9 p6 on4
+s11 call lb s10 10 p7
+ret s11
+end
+# "\t" mnem " " reg ", [" base ", #" off "]\n"
+fn lmem (u32x512,u32) u32 u32 u32 u32 bool -> (u32x512,u32)
+s1 call lb p0 9 p5
+s2 call lp1 s1 p1 p5
+s3 call lb s2 32 p5
+s4 call lp1 s3 p2 p5
+s5 call lp1 s4 5972012 p5
+s6 call lp1 s5 p3 p5
+s7 call lp1 s6 2301996 p5
+s8 call ldec s7 p4 p5
+s9 call lp1 s8 2653 p5
+ret s9
+end
+# reg = imm: "movz reg, #lo" then "movk reg, #hi, lsl #16" when the high half is not zero
+fn lmovi (u32x512,u32) u32 u32 bool -> (u32x512,u32)
+lo and p2 65535
+hi shr p2 16
+hnz ne hi 0
+onk and p3 hnz
+s1 call lb p0 9 p3
+s2 call lp1 s1 2054582125 p3
+s3 call lb s2 32 p3
+s4 call lp1 s3 p1 p3
+s5 call lp1 s4 2301996 p3
+s6 call ldec s5 lo p3
+s7 call lb s6 10 p3
+s8 call lb s7 9 onk
+s9 call lp1 s8 1802923885 onk
+s10 call lb s9 32 onk
+s11 call lp1 s10 p1 onk
+s12 call lp1 s11 2301996 onk
+s13 call ldec s12 hi onk
+s14 call lp s13 1936465964 824385644 2614 0 onk
+ret s14
+end
+# "La0_" f "_" i suffix   (suffix 116 't' top, 100 'd' done)
+fn llabel (u32x512,u32) u32 u32 u32 bool -> (u32x512,u32)
+s1 call lp1 p0 1597006156 p4
+s2 call ldec s1 p1 p4
+s3 call lb s2 95 p4
+s4 call ldec s3 p2 p4
+s5 call lb s4 p3 p4
+ret s5
+end
+# "\t" mnem " " pre label "\n"  (pre: a packed operand or 0)
+fn lbr (u32x512,u32) u32 u32 u32 u32 u32 bool -> (u32x512,u32)
+s1 call lb p0 9 p6
+s2 call lp1 s1 p1 p6
+s3 call lb s2 32 p6
+s4 call lp1 s3 p2 p6
+s5 call llabel s4 p3 p4 p5 p6
+s6 call lb s5 10 p6
+ret s6
+end
+fn lldef (u32x512,u32) u32 u32 u32 bool -> (u32x512,u32)
+s1 call llabel p0 p1 p2 p3 p4
+s2 call lp1 s1 2618 p4
+ret s2
+end
+# "\tbl _a0_" name "\n"
+fn lcall (u32x512,u32) u32x512 u32x512 u32 bool -> (u32x512,u32)
+s1 call lp p0 543973897 1597006175 0 0 p4
+s2 call lname s1 p1 p2 p3 p4
+s3 call lb s2 10 p4
+ret s3
+end
+# --- the stack argument area (Darwin: parameters after the eighth, u32 4 bytes aligned 4,
+# bool 1 byte). state: (the offset after the parameters before j, the start of parameter k)
+fn stkstep (u32,u32) u32 u32x1024 u32 u32 -> (u32,u32)
+off at p0 0
+sk at p0 1
+lt8 lt p1 8
+a add p3 p1
+t get p2 a
+isb eq t 1
+size select isb 1 4
+al0 add off 3
+al1 shr al0 2
+al shl al1 2
+start select isb off al
+end0 add start size
+off2 select lt8 off end0
+isk eq p1 p4
+sk2 select isk start sk
+r rec off2 sk2
+ret r
+end
+# byte offset of parameter p2 of the list tlist[p1..) in the area
+fn stkoff u32x1024 u32 u32 -> u32
+k1 add p2 1
+s0 rec 0 0
+s fold stkstep k1 s0 p0 p1 p2
+r at s 1
+ret r
+end
+# bytes of the area for a function with p2 parameters
+fn stkbytes u32x1024 u32 u32 -> u32
+s0 rec 0 0
+s fold stkstep p2 s0 p0 p1 p2
+r at s 0
+ret r
+end
+# --- values. An operand (kind p1, value p2) into register p3: 1 node 2 param 3 u32 4 bool
+# 5 a slot offset; p4 the outgoing bytes, p5 the parameter count
+fn lload (u32x512,u32) u32 u32 u32 u32 u32 bool -> (u32x512,u32)
+k1 eq p1 1
+k2 eq p1 2
+k3 eq p1 3
+k4 eq p1 4
+k5 eq p1 5
+n2 mul p2 2
+ni add p5 n2
+b4 mul ni 4
+offn add p4 b4
+b4p mul p2 4
+offp add p4 b4p
+off0 select k1 offn p2
+off select k2 offp off0
+ism0 or k1 k2
+ism or ism0 k5
+onm and p6 ism
+s1 call lmem p0 7496812 p3 28787 off onm
+isi or k3 k4
+oni and p6 isi
+s2 call lmovi s1 p3 p2 oni
+ret s2
+end
+# argument k of a call, or of an iteration body when p10 (k 0 is the state slot p8, k 1 the
+# counter slot p9): w0-w7, then through w9 to the stack area. p2 args p3 first arg p4 tlist
+# p5 the callee's first parameter p6 outgoing bytes p7 parameter count p11 flag
+fn argstep (u32x512,u32) u32 u32x8192 u32 u32x1024 u32 u32 u32 u32 u32 bool bool -> (u32x512,u32)
+a add p3 p1
+a2 mul a 2
+ak get p2 a2
+a21 add a2 1
+av get p2 a21
+k0 eq p1 0
+k1 eq p1 1
+sl0 and p10 k0
+sl1 and p10 k1
+kind0 select sl0 5 ak
+kind select sl1 5 kind0
+val0 select sl0 p8 av
+val select sl1 p9 val0
+lt8 lt p1 8
+ge8 ge p1 8
+onr and p11 lt8
+ons and p11 ge8
+r256 mul p1 256
+reg add 12407 r256
+s1 call lload p0 kind val reg p6 p7 onr
+s2 call lload s1 kind val 14711 p6 p7 ons
+t0 add p5 p1
+t get p4 t0
+isb eq t 1
+mn select isb 1651668083 7500915
+off call stkoff p4 p5 p1
+s3 call lmem s2 mn 14711 28787 off ons
+ret s3
+end
+# parameter i to its slot: from w0-w7 (a bool masked to its low bit) or from the caller's
+# stack area above the saved frame. p2 tlist p3 first parameter p4 outgoing bytes
+fn paramstep (u32x4096,u32) u32 u32x1024 u32 u32 -> (u32x4096,u32)
+a add p3 p1
+t get p2 a
+isb eq t 1
+lt8 lt p1 8
+ge8 ge p1 8
+onb and lt8 isb
+r256 mul p1 256
+reg add 12407 r256
+b4 mul p1 4
+slot add p4 b4
+l0 call line
+s1 call lins l0 6581857 3 reg reg 12579 0 onb
+s2 call lmem s1 7500915 reg 28787 slot lt8
+off0 call stkoff p2 p3 p1
+off add off0 16
+mn select isb 1651663980 7496812
+s3 call lmem s2 mn 14711 3748472 off ge8
+onsb and ge8 isb
+s4 call lins s3 6581857 3 14711 14711 12579 0 onsb
+s5 call lmem s4 7500915 14711 28787 slot ge8
+r call flush p0 s5 true
+ret r
+end
+# the largest stack argument area of the callees of a function (p2 nodes p3 fns p4 tlist p5 first node)
+fn outstep u32 u32 u32x4096 u32x1024 u32x1024 u32 -> u32
+g add p5 p1
+g6 mul g 6
+g61 add g6 1
+op get p2 g61
+g64 add g6 4
+callee get p2 g64
+ge19 ge op 19
+le21 le op 21
+isc and ge19 le21
+c7 mul callee 7
+c71 add c7 1
+cn get p3 c71
+c72 add c7 2
+cfp get p3 c72
+b call stkbytes p4 cfp cn
+b2 select isc b 0
+r call umax p0 b2
+ret r
+end
+# --- one node. Operands to w9-w11, the operation to w12, the store to the node's slot; a
+# call places its arguments and stores w0; a fold or loop is a counted loop around calls.
+# p2 nodes p3 args p4 fns p5 tlist p6 pool p7 sym p8 first node p9 outgoing bytes
+# p10 parameter count p11 function index
+fn enodestep (u32x4096,u32) u32 u32x4096 u32x8192 u32x1024 u32x1024 u32x512 u32x512 u32 u32 u32 u32 -> (u32x4096,u32)
+g add p8 p1
+g6 mul g 6
+g61 add g6 1
+op get p2 g61
+g63 add g6 3
+fa get p2 g63
+g64 add g6 4
+callee get p2 g64
+g65 add g6 5
+pred get p2 g65
+fa2 mul fa 2
+a0k get p3 fa2
+fa21 add fa2 1
+a0v get p3 fa21
+fa22 add fa2 2
+a1k get p3 fa22
+fa23 add fa2 3
+a1v get p3 fa23
+fa24 add fa2 4
+a2k get p3 fa24
+fa25 add fa2 5
+a2v get p3 fa25
+i2 mul p1 2
+ni add p10 i2
+b4 mul ni 4
+dst add p9 b4
+ctr add dst 4
+ismov eq op 1
+ge2 ge op 2
+le9 le op 9
+isar and ge2 le9
+isdiv eq op 10
+isrem eq op 11
+isdr or isdiv isrem
+ge12 ge op 12
+le17 le op 17
+iscmp and ge12 le17
+isbin and ge2 le17
+issel eq op 18
+iscall eq op 19
+isfold eq op 20
+isloop eq op 21
+isfl or isfold isloop
+issc0 or ismov isbin
+issc or issc0 issel
+l10 or ismov isbin
+# mnemonics by code: 2 add 3 sub 4 mul 5 and 6 orr 7 eor 8 lsl 9 lsr; conditions 12 eq 13 ne
+# 14 lo 15 ls 16 hi 17 hs
+o3 eq op 3
+o4 eq op 4
+o5 eq op 5
+o6 eq op 6
+o7 eq op 7
+o8 eq op 8
+o9 eq op 9
+mn0 select o3 6452595 6579297
+mn1 select o4 7107949 mn0
+mn2 select o5 6581857 mn1
+mn3 select o6 7500399 mn2
+mn4 select o7 7499621 mn3
+mn5 select o8 7107436 mn4
+mn select o9 7500652 mn5
+o13 eq op 13
+o14 eq op 14
+o15 eq op 15
+o16 eq op 16
+o17 eq op 17
+cc0 select o13 25966 29029
+cc1 select o14 28524 cc0
+cc2 select o15 29548 cc1
+cc3 select o16 26984 cc2
+cc select o17 29544 cc3
+# scalar operations
+l0 call line
+s1 call lload l0 a0k a0v 3158391 p9 p10 l10
+s2 call lload s1 a0k a0v 14711 p9 p10 issel
+s3 call lload s2 a1k a1v 3223927 p9 p10 isbin
+s4 call lload s3 a1k a1v 3158391 p9 p10 issel
+s5 call lload s4 a2k a2v 3223927 p9 p10 issel
+s6 call lins s5 7761773 2 3289463 3158391 0 0 ismov
+s7 call lins s6 mn 3 3289463 3158391 3223927 0 isar
+s8 call lins s7 1986618485 3 3289463 3158391 3223927 0 isdr
+s9 call lins s8 7368035 2 3223927 12323 0 0 isdiv
+s10 call lins s9 1986947427 3 3289463 3289463 29029 0 isdiv
+s11 call lins s10 1651864429 4 3289463 3289463 3223927 3158391 isrem
+s12 call lins s11 7368035 2 3158391 3223927 0 0 iscmp
+s13 call lins s12 1952805731 2 3289463 cc 0 0 iscmp
+s14 call lins s13 7368035 2 14711 12323 0 0 issel
+s15 call lins s14 1818588003 4 3289463 3158391 3223927 25966 issel
+s16 call lmem s15 7500915 3289463 28787 dst issc
+# call
+c7 mul callee 7
+cname get p4 c7
+c71 add c7 1
+cn get p4 c71
+c72 add c7 2
+cfp get p4 c72
+pr7 mul pred 7
+pname get p4 pr7
+s17 fold argstep cn s16 p3 fa p5 cfp p9 p10 dst ctr false iscall
+s18 call lcall s17 p6 p7 cname iscall
+s19 call lmem s18 7500915 12407 28787 dst iscall
+# fold and loop: the state and the counter, the top label and the bound, the predicate,
+# the body, the step
+s20 call lload s19 a1k a1v 14711 p9 p10 isfl
+s21 call lmem s20 7500915 14711 28787 dst isfl
+s22 call lins s21 2054582125 2 14711 12323 0 0 isfl
+s23 call lmem s22 7500915 14711 28787 ctr isfl
+s24 call lldef s23 p11 p1 116 isfl
+s25 call lmem s24 7496812 14711 28787 ctr isfl
+s26 call lload s25 a0k a0v 3158391 p9 p10 isfl
+s27 call lins s26 7368035 2 14711 3158391 0 0 isfl
+s28 call lbr s27 1936207458 0 p11 p1 100 isfl
+s29 fold argstep cn s28 p3 fa p5 cfp p9 p10 dst ctr true isloop
+s30 call lcall s29 p6 p7 pname isloop
+s31 call lbr s30 8020579 539766903 p11 p1 100 isloop
+s32 fold argstep cn s31 p3 fa p5 cfp p9 p10 dst ctr true isfl
+s33 call lcall s32 p6 p7 cname isfl
+s34 call lmem s33 7500915 12407 28787 dst isfl
+s35 call lmem s34 7496812 14711 28787 ctr isfl
+s36 call lins s35 6579297 3 14711 14711 12579 0 isfl
+s37 call lmem s36 7500915 14711 28787 ctr isfl
+s38 call lbr s37 98 0 p11 p1 116 isfl
+s39 call lldef s38 p11 p1 100 isfl
+r call flush p0 s39 true
+ret r
+end
+# --- one function: symbol, prologue, frame, parameters, nodes, result, epilogue
+# p2 pool p3 sym p4 fns p5 nodes p6 args p7 tlist
+fn efnstep (u32x4096,u32) u32 u32x512 u32x512 u32x1024 u32x4096 u32x8192 u32x1024 -> (u32x4096,u32)
+f7 mul p1 7
+name get p4 f7
+f71 add f7 1
+np get p4 f71
+f72 add f7 2
+fp get p4 f72
+f74 add f7 4
+first get p4 f74
+f75 add f7 5
+cnt get p4 f75
+f76 add f7 6
+retw get p4 f76
+ob fold outstep cnt 0 p5 p4 p7 first
+ob15 add ob 15
+ob16 shr ob15 4
+o shl ob16 4
+n2 mul cnt 2
+pn add np n2
+b4 mul pn 4
+fr0 add o b4
+fr15 add fr0 15
+fr16 shr fr15 4
+fr shl fr16 4
+small le fr 4095
+big gt fr 4095
+# "\t.globl _a0_" name "\n\t.p2align 2\n_a0_" name ":\n\tstp x29, x30, [sp, #-16]!\n\tmov x29, sp\n"
+# then "\tsub sp, sp, #" fr "\n" or, above 4095, w9 = fr and "\tsub sp, sp, x9\n"
+l0 call line
+h1 call lp l0 1818701321 543973999 1597006175 0 true
+h2 call lname h1 p2 p3 name true
+h3 call lp h2 1882065162 1768710450 840986215 811687690 true
+h4 call lb h3 95 true
+h5 call lname h4 p2 p3 name true
+h6 call lp h5 1929972282 2015391860 539769138 741356408 true
+h7 call lp h6 1886608160 757276716 559756849 1869416714 true
+h8 call lp h7 846733430 1931488313 2672 0 true
+h9 call lp h8 1651864329 745567008 745567008 8992 small
+h10 call ldec h9 fr small
+h11 call lb h10 10 small
+h12 call lmovi h11 14711 fr big
+h13 call lp h12 1651864329 745567008 745567008 171538464 big
+s1 call flush p0 h13 true
+s2 fold paramstep np s1 p7 fp o
+s3 fold enodestep cnt s2 p5 p6 p4 p7 p2 p3 first o np p1
+# the result to w0, then "\tmov sp, x29\n\tldp x29, x30, [sp], #16\n\tret\n\n"
+rk shr retw 28
+rv and retw 268435455
+e1 call lload l0 rk rv 12407 o np true
+e2 call lp e1 1987013897 745567008 959608864 1684801802 true
+e3 call lp e2 846733424 2015374393 539766835 1567650651 true
+e4 call lp e3 824385580 1913195062 168457317 0 true
+s4 call flush s3 e4 true
+ret s4
+end
+# the module: p0 pool p1 sym p2 fns p3 nodes p4 args p5 tlist p6 function count
+# "\t.section __TEXT,__text,regular,pure_instructions\n\n" first, "\n.subsections_via_symbols\n" last
+fn emitmod u32x512 u32x512 u32x1024 u32x4096 u32x8192 u32x1024 u32 -> (u32x4096,u32)
+z call zeros4096
+s0 rec z 0
+l0 call line
+h1 call lp l0 1702047241 1869182051 1600069742 1415071060 true
+h2 call lp h1 1952407340 745830501 1969710450 745693548 true
+h3 call lp h2 1701999984 1936615775 1668641396 1852795252 true
+h4 call lp h3 658035 0 0 0 true
+s1 call flush s0 h4 true
+s2 fold efnstep p6 s1 p0 p1 p2 p3 p4 p5
+f1 call lp l0 1970482698 1667593058 1852795252 1769365363 true
+f2 call lp f1 2037604193 1819239021 2675 0 true
+s3 call flush s2 f2 true
+ret s3
+end
+# --- the scope check: the first function with a parameter, result or node that is not u32
+# or bool, as (fn node); node 4294967295 for a header type
+fn scanp u32 u32 u32x1024 u32 -> u32
+a add p3 p1
+t get p2 a
+bad gt t 1
+b select bad 1 0
+r add p0 b
+ret r
+end
+fn scann u32 u32 u32x1024 u32 -> u32
+a add p3 p1
+t get p2 a
+bad gt t 1
+none eq p0 4294967295
+new and none bad
+r select new p1 p0
+ret r
+end
+fn scanfn (u32,u32) u32 u32x1024 u32x1024 u32x1024 -> (u32,u32)
+bfn at p0 0
+bnode at p0 1
+f7 mul p1 7
+f71 add f7 1
+np get p2 f71
+f72 add f7 2
+fp get p2 f72
+f73 add f7 3
+res get p2 f73
+f74 add f7 4
+first get p2 f74
+f75 add f7 5
+cnt get p2 f75
+nbp fold scanp np 0 p3 fp
+badp gt nbp 0
+badr gt res 1
+hdr or badp badr
+bn fold scann cnt 4294967295 p4 first
+badn ne bn 4294967295
+bad or hdr badn
+node select hdr 4294967295 bn
+none eq bfn 4294967295
+new and none bad
+bfn2 select new p1 bfn
+bnode2 select new node bnode
+r rec bfn2 bnode2
+ret r
+end
+fn wstep4096 io u32 u32x4096 -> io
+v get p2 p1
+w write p0 v
+ret w
+end
+# io front: read n then n source bytes; lex, parse, check, emit; write ok, code, fn, node
+# (as checkio; 5 for a function outside the scalar scope), then the byte count and the
+# assembly bytes (0 on an error). The result is the code.
+fn emitio io -> u32
+r0 read p0
+n0 at r0 0
+t0 at r0 1
+big lt 512 n0
+n select big 512 n0
+z call zeros512
+s0 rec z t0
+rd fold readbyte n s0
+src at rd 0
+t1 at rd 1
+pr call parse src n
+pcode at pr 0
+petok at pr 1
+pool at pr 2
+sym at pr 3
+types at pr 4
+tlist at pr 5
+fns at pr 6
+nodes at pr 7
+args at pr 8
+ntypes at pr 12
+ntlist at pr 13
+nfns at pr 14
+nnodes at pr 15
+nargs at pr 16
+ntypes3 mul ntypes 3
+nfns7 mul nfns 7
+nnodes6 mul nnodes 6
+nargs2 mul nargs 2
+z768 call zeros768
+z1024 call zeros1024
+z4096 call zeros4096
+z8192 call zeros8192
+z256 call zeros256
+types1 fold cp768 ntypes3 z768 types
+tlist1 fold cp1024 ntlist z1024 tlist
+fns1 fold cp1024 nfns7 z1024 fns
+nodes1 fold cp4096 nnodes6 z4096 nodes
+args1 fold cp8192 nargs2 z8192 args
+ck call check types1 tlist1 fns1 nodes1 args1 z256 ntypes ntlist nfns 0
+ntys at ck 6
+cerr at ck 10
+cfn at ck 11
+cnode at ck 12
+pok eq pcode 0
+code0 select pok cerr pcode
+fn0 select pok cfn 4294967295
+node0 select pok cnode petok
+ok0 eq code0 0
+sc0 rec 4294967295 4294967295
+sc fold scanfn nfns sc0 fns1 tlist1 ntys
+scfn at sc 0
+scnode at sc 1
+scbad ne scfn 4294967295
+refuse and ok0 scbad
+code1 select refuse 5 code0
+fn1 select refuse scfn fn0
+node1 select refuse scnode node0
+ok1 eq code1 0
+nemit select ok1 nfns 0
+em call emitmod pool sym fns1 nodes1 args1 tlist1 nemit
+out at em 0
+nout at em 1
+full ge nout 4096
+over and ok1 full
+code select over 4 code1
+fnw0 select over 4294967295 fn1
+nodew0 select over 4294967295 node1
+ok eq code 0
+fnw select ok 0 fnw0
+nodew select ok 0 nodew0
+okw select ok 1 0
+w0 write t1 okw
+w1 write w0 code
+w2 write w1 fnw
+w3 write w2 nodew
+nbytes select ok nout 0
+w4 write w3 nbytes
+w5 fold wstep4096 nbytes w4 out
+ret code
+end

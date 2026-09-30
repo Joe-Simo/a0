@@ -304,6 +304,56 @@ export async function checkNative(
 
 // --- native arm64 (direct assembly, no C for the program) ----------------------
 
+/**
+ * Assemble `asm` (Darwin arm64, `_a0_<name>` symbols with the C-compatible scalar
+ * convention) with `clang -x assembler`, link it with the C test driver of `program`, and
+ * execute `cases` against the oracle. Shared by the TypeScript backend's check and the
+ * self-hosted emitter's (tools/selfhost-verify.ts).
+ */
+export async function checkArm64Assembly(
+  program: TypedProgram,
+  asm: string,
+  cases: readonly Case[],
+  tool: ToolInfo,
+  label: string,
+): Promise<TargetReport> {
+  if (tool.path === undefined) return blocked(tool, 'arm64');
+  const protos = [
+    '#include <stdint.h>',
+    '#include <stdbool.h>',
+    ...program.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
+  ].join('\n');
+  const fail = (what: string, stderr: string): TargetReport => ({
+    status: 'failed',
+    cases: 0,
+    detail: `arm64: ${what}`,
+    tool: tool.version,
+    failures: [stderr.slice(0, 2000)],
+  });
+  const report = await withTempDir(async (dir): Promise<TargetReport> => {
+    await writeFile(join(dir, 'module.s'), asm, 'utf8');
+    await writeFile(join(dir, 'driver.c'), cDriver(program, protos), 'utf8');
+    const as = runTool(
+      tool.path as string,
+      ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
+      {
+        cwd: dir,
+      },
+    );
+    if (!as.ok) return fail(`${label}: assembly failed`, as.stderr);
+    const link = runTool(
+      tool.path as string,
+      ['-std=c11', '-O1', '-Wall', '-Wextra', '-Werror', '-o', 'driver', 'driver.c', 'module.o'],
+      { cwd: dir },
+    );
+    if (!link.ok) return fail(`${label}: driver build/link failed`, link.stderr);
+    const exec = runTool(join(dir, 'driver'), [], { input: caseInput(program, cases), cwd: dir });
+    if (!exec.ok) return fail(`${label}: execution failed`, exec.stderr);
+    return compareAll(cases, exec.stdout.trim().split('\n'), label);
+  });
+  return { ...report, tool: tool.version };
+}
+
 export async function checkArm64(
   program: TypedProgram,
   cases: readonly Case[],
@@ -326,44 +376,13 @@ export async function checkArm64(
     };
   if (tool.path === undefined) return { ...blocked(tool, 'arm64'), ...skipped };
   const start = performance.now();
-  const protos = [
-    '#include <stdint.h>',
-    '#include <stdbool.h>',
-    ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
-  ].join('\n');
-  const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
-    status: 'failed',
-    cases: 0,
-    detail: `arm64: ${what}`,
-    tool: tool.version,
-    failures: [stderr.slice(0, 2000)],
-    ...skipped,
-  });
   // Both the optimized emission and the unoptimized one (every source op reaches the backend).
   let report: TargetReport | undefined;
   for (const optimize of [true, false]) {
     const asm = compile(subset, 'arm64', { optimize }).text;
     const level = optimize ? 'optimized' : 'unoptimized';
-    const r = await withTempDir(async (dir): Promise<TargetReport> => {
-      await writeFile(join(dir, 'module.s'), asm, 'utf8');
-      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
-      const as = runTool(
-        tool.path as string,
-        ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
-        { cwd: dir },
-      );
-      if (!as.ok) return fail(`${level}: assembly failed`, as.stderr);
-      const link = runTool(
-        tool.path as string,
-        ['-std=c11', '-O1', '-Wall', '-Wextra', '-Werror', '-o', 'driver', 'driver.c', 'module.o'],
-        { cwd: dir },
-      );
-      if (!link.ok) return fail(`${level}: driver build/link failed`, link.stderr);
-      const exec = runTool(join(dir, 'driver'), [], { input: caseInput(subset, own), cwd: dir });
-      if (!exec.ok) return fail(`${level}: execution failed`, exec.stderr);
-      return compareAll(own, exec.stdout.trim().split('\n'), `${level}: ${label}`);
-    });
-    if (r.status !== 'passed') return { ...r, tool: tool.version, ...skipped };
+    const r = await checkArm64Assembly(subset, asm, own, tool, `${level}: ${label}`);
+    if (r.status !== 'passed') return { ...r, ...skipped };
     report = r;
   }
   return {

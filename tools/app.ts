@@ -1,7 +1,9 @@
 /**
  * Gate 5 application acceptance across targets: Conway's Life (examples/life.a0) and the
  * self-hosted A0 lexer (compiler/lex.a0), parser (compiler/parse.a0) and checker
- * (compiler/check.a0), each checked against an independent reference.
+ * (compiler/check.a0), each checked against an independent reference, and the AArch64
+ * emitter (compiler/emit_arm64.a0), whose assembly bytes must be identical across targets
+ * (its correctness is checked by execution in tools/selfhost-verify.ts).
  *
  * Expected results come from an independent TypeScript reference implementation of Life
  * on a 32x32 torus (no A0 code involved). Cases exercise the session protocol
@@ -13,7 +15,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAndValidate } from '../src/core.js';
+import { formatProgram, makeIo, parseAndValidate, run, type TypedFunc } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
@@ -238,6 +240,57 @@ export async function buildCheckCases(): Promise<(Case & { readonly label: strin
   });
 }
 
+/**
+ * `emitio` cases: the scalar examples, one module each for call, fold and loop, and
+ * refusals (an array parameter, io, a record, an ill-typed module). The expected output words are the reference interpreter's run of the
+ * emitter; every other target must produce the same assembly bytes. That the bytes are
+ * correct assembly is checked by execution in `bun run selfhost`.
+ */
+/** Output words of the JVM backend's io state (src/backends.ts, `A0Io.output`). */
+const JVM_IO_OUTPUT_WORDS = 1024;
+
+export async function buildEmitCases(
+  emitter: Awaited<ReturnType<typeof link>>['program'],
+): Promise<(Case & { readonly label: string })[]> {
+  const kernels = parseAndValidate(await readFile('examples/kernels.a0', 'utf8'));
+  const sources: [string, string][] = ['affine', 'clamp_max', 'rotl', 'is_even', 'parity_select']
+    .filter((n) => kernels.byName.has(n))
+    .map((n) => [n, formatProgram({ functions: [kernels.byName.get(n) as TypedFunc] })]);
+  sources.push(
+    [
+      'call',
+      'fn step u32 u32 -> u32\nret add p0 p1\nend\nfn top u32 -> u32\na call step p0 7\nret a\nend\n',
+    ],
+    [
+      'fold',
+      'fn step u32 u32 -> u32\nret add p0 p1\nend\nfn top u32 -> u32\na fold step 4 p0\nret a\nend\n',
+    ],
+    [
+      'loop',
+      'fn pred u32 u32 u32 -> bool\nret lt p1 10\nend\nfn body u32 u32 u32 -> u32\nret add p1 p2\nend\nfn top u32 -> u32\nb loop pred body 100 p0 3\nret b\nend\n',
+    ],
+    ['refuse-array', 'fn f u32x4 -> u32\nv get p0 1\nret v\nend\n'],
+    ['refuse-io', 'fn f io -> u32\nr read p0\nv at r 0\nret v\nend\n'],
+    ['refuse-record', 'fn f u32 -> (u32,bool)\nr rec p0 true\nret r\nend\n'],
+    ['ill-typed', 'fn f u32 -> u32\na add p0 true\nret a\nend\n'],
+  );
+  const emitio = emitter.byName.get('emitio') as TypedFunc;
+  return sources.map(([label, src]) => {
+    const bytes = [...Buffer.from(src)];
+    const input = [bytes.length, ...bytes];
+    const state = makeIo(input);
+    const expected = run(emitio, [state]) as number;
+    return {
+      label: `emit/${label}`,
+      functionName: 'emitio',
+      args: [],
+      expected,
+      input,
+      expectedOutput: [...state.output],
+    };
+  });
+}
+
 async function main(): Promise<void> {
   const source = await readFile('examples/life.a0', 'utf8');
   const program = parseAndValidate(source);
@@ -315,6 +368,31 @@ async function main(): Promise<void> {
     webassembly: await checkWasm(checkProgram, checkCases),
     jvm: await checkJvm(checkProgram, checkCases),
   };
+  const emitProgram = (await link('compiler/emit_arm64.a0', (p) => readFile(p, 'utf8'))).program;
+  const emitCases = await buildEmitCases(emitProgram);
+  const emitTargets: Record<string, TargetReport> = {
+    interpreter: checkInterpreter(emitProgram, emitCases),
+    optimizer: checkOptimizer(emitProgram, emitCases),
+    javascript: await checkJs(emitProgram, emitCases),
+    native_c_clang: await checkNative(
+      emitProgram,
+      emitCases,
+      findClang(),
+      false,
+      'native C via clang',
+    ),
+    webassembly: await checkWasm(emitProgram, emitCases),
+    // The JVM backend's io state holds 1024 output words (src/backends.ts A0Io); a module
+    // whose assembly is longer is out of that target's io capacity and is counted, not run.
+    jvm: await (async () => {
+      const fits = emitCases.filter((c) => (c.expectedOutput?.length ?? 0) <= JVM_IO_OUTPUT_WORDS);
+      const r = await checkJvm(emitProgram, fits);
+      return {
+        ...r,
+        detail: `${r.detail} ${emitCases.length - fits.length} cases over the JVM io output capacity (${JVM_IO_OUTPUT_WORDS} words) not run.`,
+      };
+    })(),
+  };
   const report = {
     generatedAt: new Date().toISOString(),
     application: 'Conway’s Life 32x32 torus session protocol (examples/life.a0)',
@@ -340,6 +418,15 @@ async function main(): Promise<void> {
       cases: checkCases.length,
       caseLabels: checkCases.map((c) => c.label),
       targets: checkTargets,
+    },
+    emitter: {
+      application:
+        'Self-hosted A0 AArch64 emitter (compiler/emit_arm64.a0 linked with check.a0, parse.a0, lex.a0), io front emitio',
+      reference:
+        'Byte-identical assembly across targets (expected from the reference interpreter); correctness by execution in results/selfhost.json',
+      cases: emitCases.length,
+      caseLabels: emitCases.map((c) => c.label),
+      targets: emitTargets,
     },
     reference:
       'Independent TypeScript implementation in tools/app.ts (refStep/refSession); no A0 code involved',
@@ -385,12 +472,21 @@ async function main(): Promise<void> {
     if (t.failures)
       for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
   }
+  process.stdout.write('emitter (compiler/emit_arm64.a0):\n');
+  for (const [name, t] of Object.entries(emitTargets)) {
+    process.stdout.write(
+      `${name.padEnd(18)} ${t.status.padEnd(10)} ${String(t.cases).padStart(5)} cases  ${t.detail.slice(0, 80)}\n`,
+    );
+    if (t.failures)
+      for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
+  }
   const bad =
     !referenceSelfCheck ||
     Object.values(targets).some((t) => t.status === 'failed') ||
     Object.values(lexTargets).some((t) => t.status === 'failed') ||
     Object.values(parseTargets).some((t) => t.status === 'failed') ||
-    Object.values(checkTargets).some((t) => t.status === 'failed');
+    Object.values(checkTargets).some((t) => t.status === 'failed') ||
+    Object.values(emitTargets).some((t) => t.status === 'failed');
   process.exit(bad ? 1 : 0);
 }
 
