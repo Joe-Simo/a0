@@ -41,11 +41,21 @@ import {
 } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
+import {
+  acceptLang,
+  isLang,
+  LANG_B,
+  LANG_COMPILE_PREFIX,
+  LANG_SEMANTICS,
+  LANGS,
+  type Lang,
+  langFile,
+} from './ai-edit-langs.js';
 import { TASKS_B } from './ai-edit-tasks-b.js';
 import { buildTasksC } from './ai-edit-tasks-c.js';
 import { TASKS_D } from './ai-edit-tasks-d.js';
 
-type Representation = 'a0' | 'ts' | 'rust';
+type Representation = 'a0' | 'ts' | 'rust' | Lang;
 type Protocol = 'conventional' | 'structured';
 
 interface AcceptanceCase {
@@ -66,6 +76,18 @@ interface Task {
   readonly tests: readonly AcceptanceCase[];
   /** Reference solutions, used only to validate the harness itself. */
   readonly reference: { readonly a0: string; readonly ts: string; readonly rust: string };
+  /** Whole files in the five further languages (sets B and C only). */
+  readonly langs?: Readonly<Record<Lang, { readonly source: string; readonly reference: string }>>;
+}
+
+/** The original file of `task` in `rep` (throws when the task has no such translation). */
+function sourceOf(task: Task, rep: Representation): string {
+  if (rep === 'a0') return task.a0Source;
+  if (rep === 'ts') return task.tsSource;
+  if (rep === 'rust') return task.rustSource;
+  const l = task.langs?.[rep];
+  if (l === undefined) throw new Error(`${task.id}: no ${rep} translation`);
+  return l.source;
 }
 
 // --- Held-out style tasks (small; the harness, not the task set, is the deliverable) ---
@@ -643,8 +665,14 @@ async function buildCell(
     }
     return { cell: { representation, protocol, ...primers, system, view: task.a0Source }, handle };
   }
-  const src = representation === 'rust' ? task.rustSource : task.tsSource;
-  const semantics = representation === 'rust' ? RUST_SEMANTICS : TS_SEMANTICS;
+  const src = sourceOf(task, representation);
+  const semantics =
+    representation === 'rust'
+      ? RUST_SEMANTICS
+      : representation === 'ts'
+        ? TS_SEMANTICS
+        : LANG_SEMANTICS[representation];
+  // Every non-A0 language uses the same numbered line-edit protocol as TypeScript.
   const structured = representation === 'rust' ? PROTOCOL_STRUCTURED_RUST : PROTOCOL_STRUCTURED_TS;
   const protocolText = protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : structured;
   const system = `${semantics}\n\n${protocolText}`;
@@ -695,7 +723,7 @@ function classify(
   if (applied.error !== undefined) return protocol === 'structured' ? 'protocol' : 'compile';
   if (failures.length === 0) return 'ok';
   const f = failures[0] ?? '';
-  if (/^(invalid A0:|tsc:|rustc:)/.test(f)) return 'compile';
+  if (/^(invalid A0:|tsc:|rustc:)/.test(f) || LANG_COMPILE_PREFIX.test(f)) return 'compile';
   if (failures.some((x) => x.startsWith('missing '))) return 'missing';
   if (failures.some((x) => /=.*, expected /.test(x))) return 'wrong-output';
   return 'runtime';
@@ -774,12 +802,7 @@ async function runTrial(
   const messages: Anthropic.MessageParam[] = [
     { role: 'user', content: `${task.instruction}\n\n${cell.view}` },
   ];
-  let source =
-    representation === 'a0'
-      ? task.a0Source
-      : representation === 'rust'
-        ? task.rustSource
-        : task.tsSource;
+  let source = sourceOf(task, representation);
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   let sawUsage = false;
   let calls = 0;
@@ -818,7 +841,14 @@ async function runTrial(
           ? await acceptA0(applied.source, task.tests)
           : representation === 'rust'
             ? await acceptRust(applied.source, task.tests, parseAndValidate(task.reference.a0))
-            : await acceptTs(applied.source, task.tests);
+            : representation === 'ts'
+              ? await acceptTs(applied.source, task.tests)
+              : await acceptLang(
+                  representation,
+                  applied.source,
+                  task.tests,
+                  parseAndValidate(task.reference.a0),
+                );
     attempts.push({
       status: classify(applied, protocol, failures),
       failures,
@@ -870,15 +900,11 @@ async function runTrial(
   };
 }
 
-function cellNames(): readonly string[] {
-  return [
-    'a0/conventional',
-    'a0/structured',
-    'ts/conventional',
-    'ts/structured',
-    'rust/conventional',
-    'rust/structured',
-  ];
+function cellNames(
+  reps: readonly Representation[],
+  protocols: readonly Protocol[],
+): readonly string[] {
+  return reps.flatMap((r) => protocols.map((p) => `${r}/${p}`));
 }
 
 async function main(): Promise<void> {
@@ -901,9 +927,33 @@ async function main(): Promise<void> {
   // Program handle of the structured A0 cell: 'all' lists every signature; 'deps' lists the
   // target, its transitive callees, and its direct callers (EditSession.openProgram scope).
   const programScope = process.env.A0_EXPERIMENT_PROGRAM_VIEW === 'deps' ? 'deps' : 'all';
+  // Representations to run (A0_EXPERIMENT_REPS, comma-separated; default a0,ts,rust). The
+  // five further languages (python, go, java, csharp, cpp) exist for sets b and c*.
+  const reps = (process.env.A0_EXPERIMENT_REPS ?? 'a0,ts,rust').split(',').map((r) => {
+    if (r === 'a0' || r === 'ts' || r === 'rust' || isLang(r)) return r as Representation;
+    throw new Error(`unknown representation ${r}`);
+  });
+  // Protocols to run (A0_EXPERIMENT_PROTOCOLS, comma-separated; default both).
+  const protocols = (process.env.A0_EXPERIMENT_PROTOCOLS ?? 'conventional,structured')
+    .split(',')
+    .map((p) => {
+      if (p === 'conventional' || p === 'structured') return p as Protocol;
+      throw new Error(`unknown protocol ${p}`);
+    });
+  const withLangs = (t: Task): Task => {
+    const perTask = LANG_B[t.id];
+    if (perTask === undefined) return t;
+    const langs = Object.fromEntries(
+      LANGS.map((l) => [
+        l,
+        { source: langFile(l, perTask[l].source), reference: langFile(l, perTask[l].reference) },
+      ]),
+    ) as NonNullable<Task['langs']>;
+    return { ...t, langs };
+  };
   const TASKS: readonly Task[] =
     setName === 'b'
-      ? (TASKS_B as readonly Task[])
+      ? (TASKS_B as readonly Task[]).map(withLangs)
       : setName === 'd'
         ? (TASKS_D as unknown as readonly Task[])
         : scaled !== undefined
@@ -922,8 +972,12 @@ async function main(): Promise<void> {
         programScope === 'deps'
           ? 'dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the dependency-scoped program handle g0 (a comment line with the function count, then the signatures of the target, its transitive callees, and its direct callers); g0 edits the whole program; reply is handle + edit lines'
           : 'dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines',
-      ts: 'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
-      rust: 'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
+      ...Object.fromEntries(
+        (['ts', 'rust', ...LANGS] as const).map((r) => [
+          r,
+          'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
+        ]),
+      ),
     },
     note:
       scaled !== undefined
@@ -942,13 +996,23 @@ async function main(): Promise<void> {
   // Harness self-check: reference solutions must pass acceptance in every cell.
   const selfCheck: Record<string, string[]> = {};
   for (const task of TASKS) {
+    const typedRef = parseAndValidate(task.reference.a0);
+    for (const lang of reps.filter(isLang)) {
+      const l = task.langs?.[lang];
+      if (l === undefined) throw new Error(`${task.id}: no ${lang} translation`);
+      selfCheck[`${task.id}/${lang}`] = await acceptLang(lang, l.reference, task.tests, typedRef);
+      selfCheck[`${task.id}/${lang}-original-must-fail`] =
+        (await acceptLang(lang, l.source, task.tests, typedRef)).length > 0
+          ? []
+          : ['original already passes'];
+    }
+    if (!reps.includes('a0') && !reps.includes('ts') && !reps.includes('rust')) continue;
     selfCheck[`${task.id}/a0`] = await acceptA0(task.reference.a0, task.tests);
     selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
     selfCheck[`${task.id}/a0-original-must-fail`] =
       (await acceptA0(task.a0Source, task.tests)).length > 0 ? [] : ['original already passes'];
     selfCheck[`${task.id}/ts-original-must-fail`] =
       (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
-    const typedRef = parseAndValidate(task.reference.a0);
     selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);
     selfCheck[`${task.id}/rust-original-must-fail`] =
       (await acceptRust(task.rustSource, task.tests, typedRef)).length > 0
@@ -970,8 +1034,8 @@ async function main(): Promise<void> {
   const dump: Record<string, { system: string; user: string }> = {};
   const trials: Trial[] = [];
   for (const task of TASKS) {
-    for (const representation of ['a0', 'ts', 'rust'] as const) {
-      for (const protocol of ['conventional', 'structured'] as const) {
+    for (const representation of reps) {
+      for (const protocol of protocols) {
         for (let t = 0; t < (live ? trialsPerCell : 1); t += 1) {
           const { cell, session, handle } = await buildCell(
             task,
@@ -1068,7 +1132,7 @@ async function main(): Promise<void> {
   // Mean context per cell (o200k): the view alone (always available) and the whole tool
   // context of the first attempt (task text + view + repairs; scripted or live runs only).
   const contextTokensByCell = Object.fromEntries(
-    cellNames().map((cellName) => {
+    cellNames(reps, protocols).map((cellName) => {
       const [representation, protocol] = cellName.split('/');
       const rows = trials.filter(
         (t) => t.representation === representation && t.protocol === protocol,
@@ -1104,7 +1168,7 @@ async function main(): Promise<void> {
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
     design: {
-      cells: cellNames(),
+      cells: cellNames(reps, protocols),
       heldConstant: [
         'model',
         'task text',
@@ -1114,7 +1178,7 @@ async function main(): Promise<void> {
         'system prompt caching',
       ],
       setupCounted:
-        'A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks.',
+        'A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; Python, Go, Java, C# and C++ cells carry their own u32 semantics note and are accepted by python3, go build, javac, dotnet build and clang++ with a generated driver (tools/ai-edit-langs.ts).',
       unknowns: 'Hidden reasoning tokens are not reported by the API and are recorded as null.',
     },
     // Task-set manifest: SHA-256 over every task's sources, instruction, and tests, so a
@@ -1126,6 +1190,20 @@ async function main(): Promise<void> {
         ),
       )
       .digest('hex'),
+    // The same over the five further languages' original files, when they are run.
+    ...(reps.some(isLang)
+      ? {
+          langTaskSetSha256: createHash('sha256')
+            .update(
+              JSON.stringify(
+                TASKS.map((t) => [t.id, reps.filter(isLang).map((l) => t.langs?.[l]?.source)]),
+              ),
+            )
+            .digest('hex'),
+        }
+      : {}),
+    representations: reps,
+    protocols,
     tasks: TASKS.map((t) => ({ id: t.id, kind: t.kind, tests: t.tests.length })),
     harnessSelfCheck: { ok: selfCheckOk, details: selfCheck },
     contextTokensByCell,
