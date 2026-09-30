@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T18:37:17.247Z",
+  "generatedAt": "2026-09-30T18:23:41.289Z",
   "application": "Conway’s Life 32x32 torus session protocol (examples/life.a0)",
   "lexer": {
     "application": "Self-hosted A0 lexer (compiler/lex.a0), io front lexio",
@@ -20,13 +20,13 @@
         "status": "passed",
         "cases": 8,
         "detail": "Reference interpreter vs BigInt oracle",
-        "elapsedMs": 418.90566599999875
+        "elapsedMs": 2988.026833
       },
       "optimizer": {
         "status": "passed",
         "cases": 8,
         "detail": "Optimized graph vs BigInt oracle",
-        "elapsedMs": 640.5310830000017,
+        "elapsedMs": 2822.4603749999987,
         "before": 259,
         "after": 256
       },
@@ -34,27 +34,28 @@
         "status": "passed",
         "cases": 8,
         "detail": "Executed emitted ES module in Node; public input guards retained.",
-        "elapsedMs": 121.24112500000047
+        "elapsedMs": 56.00191700000141
       },
       "native_c_clang": {
         "status": "passed",
         "cases": 8,
         "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 1991.9685000000009,
+        "elapsedMs": 1485.8085830000018,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "webassembly": {
-        "status": "passed",
-        "cases": 8,
-        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-        "elapsedMs": 350.2363749999995,
-        "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
+        "status": "blocked",
+        "cases": 0,
+        "detail": "wasm32 size wall: the 1 MiB stack is exceeded (memory access out of bounds); aggregates are C structs held by value on the wasm stack, and at the 16384-byte capacities this module needs 2 MiB",
+        "failures": [
+          "memory access out of bounds"
+        ]
       },
       "jvm": {
         "status": "passed",
         "cases": 8,
         "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-        "elapsedMs": 983.426875000001,
+        "elapsedMs": 1051.4727080000011,
         "tool": "javac 27; openjdk version \"27\" 2026-09-15"
       }
     }
@@ -62,7 +63,7 @@
   "parser": {
     "application": "Self-hosted A0 parser (compiler/parse.a0 linked with lex.a0), io front parseio",
     "reference": "Independent TypeScript token-driven parser refParse in tools/app.ts (word IR)",
-    "cases": 14,
+    "cases": 13,
     "caseLabels": [
       "parse/sq",
       "parse/retop",
@@ -73,7 +74,6 @@
       "parse/later-node",
       "parse/bad-op",
       "parse/unterminated",
-      "parse/fns713",
       "parse/kernels.a0",
       "parse/life.a0",
       "parse/lex.a0",
@@ -82,43 +82,44 @@
     "targets": {
       "interpreter": {
         "status": "passed",
-        "cases": 14,
+        "cases": 13,
         "detail": "Reference interpreter vs BigInt oracle",
-        "elapsedMs": 2785.6275840000017
+        "elapsedMs": 28369.417749999997
       },
       "optimizer": {
         "status": "passed",
-        "cases": 14,
+        "cases": 13,
         "detail": "Optimized graph vs BigInt oracle",
-        "elapsedMs": 2695.3731249999983,
+        "elapsedMs": 23973.151499999993,
         "before": 2380,
         "after": 2375
       },
       "javascript": {
         "status": "passed",
-        "cases": 14,
+        "cases": 13,
         "detail": "Executed emitted ES module in Node; public input guards retained.",
-        "elapsedMs": 212.3424580000028
+        "elapsedMs": 125.59004200001073
       },
       "native_c_clang": {
         "status": "passed",
-        "cases": 14,
+        "cases": 13,
         "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 2274.5601669999996,
+        "elapsedMs": 2781.5425419999956,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "webassembly": {
-        "status": "passed",
-        "cases": 14,
-        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-        "elapsedMs": 1394.11125,
-        "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
+        "status": "blocked",
+        "cases": 0,
+        "detail": "wasm32 size wall: the 1 MiB stack is exceeded (memory access out of bounds); aggregates are C structs held by value on the wasm stack, and at the 16384-byte capacities this module needs 8 MiB",
+        "failures": [
+          "memory access out of bounds"
+        ]
       },
       "jvm": {
         "status": "passed",
-        "cases": 14,
+        "cases": 13,
         "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-        "elapsedMs": 1021.4857499999998,
+        "elapsedMs": 1360.5081250000076,
         "tool": "javac 27; openjdk version \"27\" 2026-09-15"
       }
     }
@@ -126,7 +127,7 @@
   "checker": {
     "application": "Self-hosted A0 checker (compiler/check.a0 linked with parse.a0 and lex.a0), io front checkio",
     "reference": "Independent TypeScript checker refCheck in tools/ref-check.ts over the word IR of refParse",
-    "cases": 38,
+    "cases": 37,
     "caseLabels": [
       "check/sq",
       "check/retop",
@@ -137,7 +138,6 @@
       "check/later-node",
       "check/bad-op",
       "check/unterminated",
-      "check/fns713",
       "check/kernels.a0",
       "check/life.a0",
       "check/lex.a0",
@@ -170,43 +170,44 @@
     "targets": {
       "interpreter": {
         "status": "passed",
-        "cases": 38,
+        "cases": 37,
         "detail": "Reference interpreter vs BigInt oracle",
-        "elapsedMs": 1784.8539999999994
+        "elapsedMs": 31252.404209
       },
       "optimizer": {
         "status": "passed",
-        "cases": 38,
+        "cases": 37,
         "detail": "Optimized graph vs BigInt oracle",
-        "elapsedMs": 1803.6267910000024,
+        "elapsedMs": 35859.181207999995,
         "before": 5093,
         "after": 5068
       },
       "javascript": {
         "status": "passed",
-        "cases": 38,
+        "cases": 37,
         "detail": "Executed emitted ES module in Node; public input guards retained.",
-        "elapsedMs": 152.83491700000013
+        "elapsedMs": 262.7274159999797
       },
       "native_c_clang": {
         "status": "passed",
-        "cases": 38,
+        "cases": 37,
         "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 2958.847249999999,
+        "elapsedMs": 7382.480917000008,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "webassembly": {
-        "status": "passed",
-        "cases": 38,
-        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-        "elapsedMs": 1236.0012499999975,
-        "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
+        "status": "blocked",
+        "cases": 0,
+        "detail": "wasm32 size wall: the 1 MiB stack is exceeded (memory access out of bounds); aggregates are C structs held by value on the wasm stack, and at the 16384-byte capacities this module needs 8 MiB",
+        "failures": [
+          "memory access out of bounds"
+        ]
       },
       "jvm": {
         "status": "passed",
-        "cases": 38,
+        "cases": 37,
         "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-        "elapsedMs": 1400.5210000000006,
+        "elapsedMs": 2930.109792000003,
         "tool": "javac 27; openjdk version \"27\" 2026-09-15"
       }
     }
@@ -234,13 +235,13 @@
         "status": "passed",
         "cases": 12,
         "detail": "Reference interpreter vs BigInt oracle",
-        "elapsedMs": 600.7677919999987
+        "elapsedMs": 5125.454249999981
       },
       "optimizer": {
         "status": "passed",
         "cases": 12,
         "detail": "Optimized graph vs BigInt oracle",
-        "elapsedMs": 601.666541999999,
+        "elapsedMs": 6063.927083999995,
         "before": 8154,
         "after": 8120
       },
@@ -248,27 +249,27 @@
         "status": "passed",
         "cases": 12,
         "detail": "Executed emitted ES module in Node; public input guards retained.",
-        "elapsedMs": 81.23154200000135
+        "elapsedMs": 365.2512080000015
       },
       "native_c_clang": {
         "status": "passed",
         "cases": 12,
         "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 3141.4316250000047,
+        "elapsedMs": 12916.481042,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "webassembly": {
         "status": "passed",
         "cases": 12,
         "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-        "elapsedMs": 1752.762459000005,
+        "elapsedMs": 6261.799834000005,
         "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
       },
       "jvm": {
         "status": "passed",
         "cases": 12,
         "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-        "elapsedMs": 1547.7568749999991,
+        "elapsedMs": 2149.3522499999963,
         "tool": "javac 27; openjdk version \"27\" 2026-09-15"
       }
     }
@@ -295,17 +296,17 @@
       "emitc/arity"
     ],
     "cBytes": {
-      "emitc/clamp": 1965,
-      "emitc/sq": 1820,
-      "emitc/retop": 1832,
+      "emitc/clamp": 2158,
+      "emitc/sq": 2013,
+      "emitc/retop": 2025,
       "emitc/text": 0,
-      "emitc/types": 2176,
-      "emitc/calls": 2460,
+      "emitc/types": 2369,
+      "emitc/calls": 2653,
       "emitc/unknown-callee": 0,
       "emitc/later-node": 0,
       "emitc/bad-op": 0,
       "emitc/unterminated": 0,
-      "emitc/kernels.a0": 2513,
+      "emitc/kernels.a0": 2706,
       "emitc/operand-type": 0,
       "emitc/mixed-bool-u32": 0,
       "emitc/eq-mixed": 0,
@@ -316,41 +317,42 @@
         "status": "passed",
         "cases": 15,
         "detail": "Reference interpreter vs BigInt oracle",
-        "elapsedMs": 128.98249999999825
+        "elapsedMs": 3443.3393749999814
       },
       "optimizer": {
         "status": "passed",
         "cases": 15,
         "detail": "Optimized graph vs BigInt oracle",
-        "elapsedMs": 144.6793749999997,
-        "before": 5890,
-        "after": 5865
+        "elapsedMs": 5316.358666999993,
+        "before": 5845,
+        "after": 5820
       },
       "javascript": {
         "status": "passed",
         "cases": 15,
         "detail": "Executed emitted ES module in Node; public input guards retained.",
-        "elapsedMs": 48.467499999998836
+        "elapsedMs": 79.60700000001816
       },
       "native_c_clang": {
         "status": "passed",
         "cases": 15,
         "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 2661.3962500000052,
+        "elapsedMs": 4617.907666999992,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "webassembly": {
-        "status": "passed",
-        "cases": 15,
-        "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-        "elapsedMs": 903.890333000003,
-        "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
+        "status": "blocked",
+        "cases": 0,
+        "detail": "wasm32 size wall: the 1 MiB stack is exceeded (memory access out of bounds); aggregates are C structs held by value on the wasm stack, and at the 16384-byte capacities this module needs 8 MiB",
+        "failures": [
+          "memory access out of bounds"
+        ]
       },
       "jvm": {
         "status": "passed",
         "cases": 15,
         "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-        "elapsedMs": 1179.8258330000026,
+        "elapsedMs": 1991.4388749999925,
         "tool": "javac 27; openjdk version \"27\" 2026-09-15"
       }
     }
@@ -500,13 +502,13 @@
       "status": "passed",
       "cases": 134,
       "detail": "Reference interpreter vs BigInt oracle",
-      "elapsedMs": 2581.4115
+      "elapsedMs": 6062.819875
     },
     "optimizer": {
       "status": "passed",
       "cases": 134,
       "detail": "Optimized graph vs BigInt oracle",
-      "elapsedMs": 1408.9891670000002,
+      "elapsedMs": 5176.248874999999,
       "before": 175,
       "after": 174
     },
@@ -514,34 +516,34 @@
       "status": "passed",
       "cases": 134,
       "detail": "Executed emitted ES module in Node; public input guards retained.",
-      "elapsedMs": 11.407334000000446
+      "elapsedMs": 14.040542000000642
     },
     "native_c_clang": {
       "status": "passed",
       "cases": 134,
       "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-      "elapsedMs": 465.32087500000034,
+      "elapsedMs": 267.53329099999974,
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
     },
     "native_cpp_clang": {
       "status": "passed",
       "cases": 134,
       "detail": "C-compatible output as C++17 via clang++; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-      "elapsedMs": 416.75587499999983,
+      "elapsedMs": 285.8557089999995,
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
     },
     "webassembly": {
       "status": "passed",
       "cases": 134,
       "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-      "elapsedMs": 588.1107499999998,
+      "elapsedMs": 485.6587920000002,
       "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
     },
     "jvm": {
       "status": "passed",
       "cases": 134,
       "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-      "elapsedMs": 952.4780419999997,
+      "elapsedMs": 961.2327920000007,
       "tool": "javac 27; openjdk version \"27\" 2026-09-15"
     }
   },
