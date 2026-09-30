@@ -983,6 +983,58 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   15, checker 39, emitter 12, Life 134); selfhost 50 passed, 0 failed, 3 skipped.
 - Not done: stage 4b (registers, inlining, aggregates, io); sources over 512 bytes; the
   JVM io capacity.
+## Session 2026-09-30 (direct wasm32 backend)
+
+- **Direct wasm32 backend (a0c-0.1.10, `src/wasm.ts`, target `wasm`, `a0 emit wasm <file> out.wasm`)**:
+  A0 to a binary WebAssembly module with no C, Clang, or wasm-ld. The compiled text is the
+  module in base64 (`wasmModuleBytes` decodes it); `a0 emit wasm` writes the bytes. `a0 wasm`
+  is unchanged: it still builds the C-derived module (C backend, Clang, wasm-ld), which is
+  what the site ships.
+  - Scope: every scalar op with the exact semantics (wrapping i32 arithmetic, shifts masked by
+    wasm itself, unsigned comparisons, 0/1 booleans, `div`/`rem` made total by substituting a
+    divisor of 1 and selecting all ones / the dividend when the divisor is zero), arrays and
+    records in linear memory with value semantics, `call`, `fold`, `loop`, and io
+    (`read`, `write`, `puts`). Unlike arm64 and x86_64, io functions are in scope.
+  - Host-visible shape equal to the C-derived module: exports `a0_<fn>`, `memory`, and the
+    immutable global `__heap_base`; an io token is the address of
+    `{ input[IN]; ninput; position; output[OUT]; noutput }` with the `ioInputCapacity` /
+    `ioOutputCapacity` options (defaults 256/1024), placed at `__heap_base` by the host, so
+    `site/app.ts` and the `webassembly` harness of `tools/verify.ts` drive it unchanged.
+  - Representation: scalars and tokens are i32 locals; aggregates live on a shadow stack
+    (`__stack_pointer`) with static per-function frames; the stack region is the longest
+    frame chain of the acyclic call graph, so it cannot overflow. Aggregate parameters are
+    addresses of caller-owned storage the callee never writes; aggregate results go through
+    an sret parameter. Iteration bodies get an owned variant `a0o_<fn>` that updates the fold
+    state in place; `set`/`put` on a provably unshared value (`mutableHere`) store one
+    element; aggregate `get`/`at`/`mov`/`select` alias instead of copying. Literal scalar
+    arrays of four or more elements are copied from a deduplicated data segment (all-zero
+    ones filled). One refinement over the C analysis: an iteration whose extra argument names
+    its own initial value does not run in that value's storage (unit test).
+  - Per-function emission is a JSON record (code bytes plus symbolic call and constant
+    references), so the function cache and the disk cache hold one function's work;
+    `assembleWasm` resolves indices, the data segment, and the memory layout.
+- **Verification**: new `webassembly_direct` path in `bun run verify`: **5262/5262** cases at
+  both optimization levels through the same harness as `webassembly` (now shared as
+  `runWasmCases`). All other paths unchanged: interpreter, optimizer, JS, C clang, C gcc,
+  C++ clang, Wasm (via C), JVM 5262 each; arm64 and x86_64 4297.
+- Unit tests: `site/page.a0`, `site/docs.a0`, `site/play.a0` (first render; play also with a
+  submitted valid and an ill-typed source) run through the direct module with the site's
+  1024/65536 capacities at both optimization levels; result and every output word equal the
+  interpreter's. A value-semantics test (fold state named by its own extra argument, a chain
+  of in-place `set`s next to a later read of the original) at both levels.
+- Module sizes, direct vs C-derived (Clang -O2 + wasm-ld), bytes: affine 119 vs 725, rotl
+  130 vs 717, clamp 136 vs 735, mix 161 vs 736, ident 100 vs 715, noop 99 vs 713, chain3 183
+  vs 787, branchy 174 vs 752, arrfill 294 vs 915, arrfill4k 312 vs 945, loop64 212 vs 906;
+  site/page.a0 192,857 vs 694,396 (0.28x), docs 132,551 vs 279,894, play 90,333 vs 174,585. The direct
+  module has no name or producers section; the reasons for the rest of the gap were not
+  broken down.
+- Gate (this worktree): lint pass; typecheck pass; test 45/45; verify all paths pass (counts above); app pass; equiv 48/48 proved; hw RTL simulation and Yosys synthesis passed; dotnet 5262; gpu 4297 (30 kernels, Apple M3).
+  `results/{verification,app,equivalence,hardware,dotnet,gpu}.json` regenerated under
+  a0c-0.1.10.
+- Not done: no execution-time comparison against the C-derived module (the direct code has no
+  register allocation beyond wasm locals, no inlining, and calls the body per trip; the
+  engine's tiers do the rest); the site still ships the C-derived build; no name section or
+  source map; `bun run app` does not yet run the direct module.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
