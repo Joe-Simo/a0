@@ -404,8 +404,9 @@ export function generateCorpus(
     }
     // Result: last u32 node combined with everything, so nothing is trivially dead.
     const scalarResult: Type = twin !== undefined ? 'bool' : rng() % 4 === 0 ? 'bool' : 'u32';
-    if (scalar && scalarResult === 'bool' && boolSlots().length === 0) {
-      // A small scalar body may hold no bool at all; end it with a comparison (p0 is u32).
+    if (scalarResult === 'bool' && boolSlots().length === 0) {
+      // A body (scalar or not, including a predicate twin) may hold no bool at all; end it
+      // with a comparison so a bool result always exists (p0 is always u32, twins included).
       const id = `n${nodes.length}`;
       nodes.push({ id, op: 'ne', args: [{ kind: 'param', index: 0 }, literal()] });
       slots.push({ operand: { kind: 'node', id }, type: 'bool' });

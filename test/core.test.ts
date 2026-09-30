@@ -31,6 +31,7 @@ import {
 import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
 import { generateFiller } from '../tools/ai-edit-tasks-c.js';
+import { generateCorpus } from '../tools/corpus.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
 import { FRONT_END_SOURCE_LIMIT, IR_OPS, irOp, refParse, type WordIr } from '../tools/ref-parse.js';
 
@@ -3074,4 +3075,16 @@ test('function cap: 4000-function programs are legal; the cap is LIMITS.maxFunct
     })),
   };
   assert.throws(() => validate(over), /too many functions/);
+});
+
+test('corpus generator: seeds 1-200 generate (a bool-result body with no bool slot gets a comparison)', () => {
+  // Seed 6 once crashed: a non-scalar bool-result function had no bool slot to return.
+  for (let seed = 1; seed <= 200; seed += 1) {
+    for (const scalar of [false, true]) {
+      assert.doesNotThrow(
+        () => generateCorpus(seed, undefined, { scalar }),
+        `seed ${seed} scalar=${scalar}`,
+      );
+    }
+  }
 });
