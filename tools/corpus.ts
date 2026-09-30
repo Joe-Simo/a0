@@ -10,6 +10,7 @@
 import { createHash } from 'node:crypto';
 import {
   containsIo,
+  type Func,
   formatProgram,
   type IoState,
   isIoState,
@@ -714,4 +715,30 @@ export function ioFreeSubset(program: TypedProgram): TypedProgram {
     if (!io && [...fn.calls.keys()].every((k) => keep.has(k))) keep.add(fn.name);
   }
   return validate({ functions: program.functions.filter((f) => keep.has(f.name)) });
+}
+
+/** Function `name` with every function it reaches (calls, fold/loop bodies and predicates). */
+export function closure(fns: readonly Func[], root: string): string {
+  const byName = new Map(fns.map((f) => [f.name, f] as const));
+  const seen = new Set<string>();
+  const visit = (name: string): void => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    for (const n of byName.get(name)?.nodes ?? []) {
+      if (n.callee !== undefined) visit(n.callee);
+      if (n.pred !== undefined) visit(n.pred);
+    }
+  };
+  visit(root);
+  return formatProgram({ functions: fns.filter((f) => seen.has(f.name)) });
+}
+
+/** Distinct callee closures of every function of `program`, labelled `prefix/name`. */
+export function closures(prefix: string, program: TypedProgram): [string, string][] {
+  const out = new Map<string, string>();
+  for (const f of program.functions) {
+    const src = closure(program.functions, f.name);
+    if (![...out.values()].includes(src)) out.set(`${prefix}/${f.name}`, src);
+  }
+  return [...out];
 }
