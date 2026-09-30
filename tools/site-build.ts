@@ -27,7 +27,8 @@ async function buildProgram(entry: string, outName: string): Promise<Built> {
   // The io buffers are widened because a page writes its stylesheet and every string as words;
   // the input holds the play page's source text (480 bytes) and the state that echoes it.
   // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
-  const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'))).program;
+  const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'), { root: '.' }))
+    .program;
   // A0's own wasm32 backend (src/wasm.ts): the module is emitted directly, no C, no clang.
   const wasm = wasmModuleBytes(
     compile(program, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 65536 }).text,

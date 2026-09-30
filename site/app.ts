@@ -18,6 +18,8 @@
  * Tags and attribute keys are small integer tables shared with the program (see page.a0).
  */
 
+import { readBytes, safeHref } from './wire.js';
+
 // The same capacities as tools/site-build.ts gives the C io struct (ioInputCapacity/ioOutputCapacity).
 const IN_CAP = 1024;
 const OUT_CAP = 65536;
@@ -270,10 +272,9 @@ function render(
   let css = '';
   let i = 0;
   const bytes = (): Uint8Array => {
-    const n = words[i++] as number;
-    const out = new Uint8Array(n);
-    for (let k = 0; k < n; k += 1) out[k] = (words[i++] as number) & 0xff;
-    return out;
+    const r = readBytes(words, i);
+    i = r.next;
+    return r.bytes;
   };
   while (i < words.length) {
     const cmd = words[i++];
@@ -294,7 +295,7 @@ function render(
       case 4: {
         const key = ATTRS[words[i++] as number];
         const value = decoder.decode(bytes());
-        if (key !== undefined) top.setAttribute(key, value);
+        if (key !== undefined && (key !== 'href' || safeHref(value))) top.setAttribute(key, value);
         break;
       }
       case 5: {

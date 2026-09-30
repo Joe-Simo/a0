@@ -1350,6 +1350,27 @@ export function run(
   for (const [index, type] of fn.params.entries()) {
     checkArgument(type, args[index] as Value, `${fn.name} p${index}`);
   }
+  return exec(fn, args, options);
+}
+
+/** Charge `units` of fuel; exhaustion throws a `limit` A0Error. */
+function charge(fn: TypedFunc, options: RunOptions, units: number): void {
+  options.fuel -= units;
+  if (options.fuel < 0)
+    throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`, undefined, {
+      code: 'limit',
+    });
+}
+
+const AGGREGATE_OPS: ReadonlySet<Op> = new Set<Op>(['arr', 'rec', 'set', 'put']);
+
+/**
+ * Internal evaluation: arguments come from validator-typed values (the entry check or
+ * well-typed nodes), so they are not re-walked. Each entry costs one fuel unit, each node
+ * one, and each aggregate-producing node max(1, length) for the copy it makes.
+ */
+function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value {
+  charge(fn, options, 1);
   const env = new Map<string, Value>();
   const read = (operand: Operand): Value => {
     switch (operand.kind) {
@@ -1369,18 +1390,14 @@ export function run(
     }
   };
   for (const node of fn.nodes) {
-    options.fuel -= 1;
-    if (options.fuel < 0)
-      throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`, undefined, {
-        code: 'limit',
-      });
+    charge(fn, options, 1);
     if (node.op === 'call') {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined)
         throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`, undefined, {
           code: 'runtime',
         });
-      env.set(node.id, run(callee, node.args.map(read), options));
+      env.set(node.id, exec(callee, node.args.map(read), options));
     } else if (node.op === 'fold') {
       const body = fn.calls.get(node.callee ?? '');
       if (body === undefined)
@@ -1390,7 +1407,10 @@ export function run(
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
-      for (let i = 0; i < n; i += 1) state = run(body, [state, i, ...extra], options);
+      for (let i = 0; i < n; i += 1) {
+        charge(fn, options, 1);
+        state = exec(body, [state, i, ...extra], options);
+      }
       env.set(node.id, state);
     } else if (node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
@@ -1401,12 +1421,18 @@ export function run(
       let state = init as Value;
       const n = count as number;
       for (let i = 0; i < n; i += 1) {
-        if (run(pred, [state, i, ...extra], options) !== true) break;
-        state = run(body, [state, i, ...extra], options);
+        charge(fn, options, 1);
+        if (exec(pred, [state, i, ...extra], options) !== true) break;
+        state = exec(body, [state, i, ...extra], options);
       }
       env.set(node.id, state);
     } else {
-      env.set(node.id, evalOp(node.op, node.args.map(read)));
+      const operands = node.args.map(read);
+      if (AGGREGATE_OPS.has(node.op)) {
+        const source = node.op === 'set' || node.op === 'put' ? operands[0] : operands;
+        charge(fn, options, Math.max(1, Array.isArray(source) ? source.length : 1));
+      }
+      env.set(node.id, evalOp(node.op, operands));
     }
   }
   return read(fn.ret);

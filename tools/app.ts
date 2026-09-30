@@ -425,15 +425,20 @@ async function main(): Promise<void> {
   const lexProgram = parseAndValidate(await readFile('compiler/lex.a0', 'utf8'));
   const lexCases = await buildLexCases();
   const lexTargets = await frontEndTargets(lexProgram, lexCases, 2);
-  const parseProgram = (await link('compiler/parse.a0', (p) => readFile(p, 'utf8'))).program;
+  const parseProgram = (await link('compiler/parse.a0', (p) => readFile(p, 'utf8'), { root: '.' }))
+    .program;
   const parseCases = await buildParseCases();
   const parseTargets = await frontEndTargets(parseProgram, parseCases, 8);
-  const checkProgram = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
+  const checkProgram = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'), { root: '.' }))
+    .program;
   const checkCases = await buildCheckCases();
   const checkTargets = await frontEndTargets(checkProgram, checkCases, 8);
-  const emitProgram = (await link('compiler/emit_arm64.a0', (p) => readFile(p, 'utf8'))).program;
+  const emitProgram = (
+    await link('compiler/emit_arm64.a0', (p) => readFile(p, 'utf8'), { root: '.' })
+  ).program;
   const emitCases = await buildEmitCases(emitProgram);
-  const cEmitProgram = (await link('compiler/emit_c.a0', (p) => readFile(p, 'utf8'))).program;
+  const cEmitProgram = (await link('compiler/emit_c.a0', (p) => readFile(p, 'utf8'), { root: '.' }))
+    .program;
   const cEmitCases = await buildEmitCCases(cEmitProgram.byName.get('emitc') as TypedFunc);
   const emitTargets: Record<string, TargetReport> = {
     interpreter: checkInterpreter(emitProgram, emitCases),

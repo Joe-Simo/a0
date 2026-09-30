@@ -89,8 +89,10 @@ turns up, reconcile against this tree rather than overwrite either.
   and node counts, aggregate bit width, array length, edit sessions, emission cache, and
   toolchain process time (120 s) were already bounded; recursion is impossible by
   construction. A 3000-mutation fuzz test asserts every malformed input fails with a clean
-  A0Error. Not done: a runtime fuel counter in compiled targets (costs speed; measure
-  before adding), memory/time limits per compiled process, sandboxing of toolchains.
+  A0Error. Literal iteration counts are bounded statically; variable counts are bounded
+  by fuel in the interpreter and are not bounded on compiled targets (compiled code has no
+  execution budget). Not done: a runtime fuel counter in compiled targets (costs speed;
+  measure before adding), memory/time limits per compiled process, sandboxing of toolchains.
 - **GPU** (Gate 8, `src/metal.ts`, `bun run gpu`): the io-free corpus mapped to Metal
   Shading Language through an explicit type layer over the C output, elementwise kernels
   per function, executed on the local GPU via a generated Swift host: 4995 oracle cases
@@ -1323,6 +1325,50 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
   removed: JVM now runs 12/12 emitio and 20/20 emitcio cases. COMPILER_VERSION a0c-0.1.14.
 - Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
   134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
+
+## Session 2026-09-30 (security fixes)
+
+Nine findings from a security review, each fixed minimally with a regression test in
+`test/security.test.ts`. COMPILER_VERSION a0c-0.1.15 -> a0c-0.1.16 (fuel and io semantics).
+
+1. HIGH, fuel bypass (`src/core.ts` `run`): a zero-node body (`ret p0`) folded 2^32 times
+   charged no fuel. Now every function entry costs one unit and every fold/loop iteration
+   one more before the body runs. Test: that body folded 30,000,000 times under fuel 1000
+   throws a `limit` fuel error in milliseconds (fold and loop).
+2. Aggregate cost: `arr`/`rec`/`text` and `set`/`put` now charge max(1, length) for the copy
+   they make; argument checking runs once at the `run` entry and internal calls (`exec`) no
+   longer re-walk validator-typed arguments. Test: a `u32x65536` `set` folded 100 times
+   exhausts fuel 10^6; 4 iterations finish.
+3. C `a0_read` (`src/backends.ts`): the read also compares the position with the input
+   capacity, so a host that sets `ninput` above it reads 0, not the words after `input[]`.
+   Test: capacity 2, ninput 3, three reads sum to 12.
+4. Direct wasm `a0_read` (`src/wasm.ts` `ioRead`): the same capacity comparison. Same test
+   on the wasm module.
+5. Linker (`src/link.ts`): `link(entry, read, { root })`; root defaults to the nearest
+   ancestor of the entry directory containing package.json, else the entry directory.
+   Every `use` target is realpath'd and rejected with a `structure` error unless it is an
+   `.a0` file inside the root. `tools/site-build.ts` and `tools/app.ts` pass the repository
+   root. Tests: `/etc/passwd`, `../../x.a0`, a non-.a0 file, a symlink escaping the root,
+   and a narrower explicit root are refused; an in-root use links.
+6. Parallel worker stack (`src/parallel.ts`): threads are created with a pthread attribute
+   whose stack is max(8 MiB, the soft RLIMIT_STACK). Test: a forced-threads fold whose body
+   holds two `u32x65536` arrays matches the interpreter (it crashed with the 512 KiB default
+   secondary-thread stack).
+7. `site/app.ts`: byte strings are read by `readBytes` (`site/wire.ts`), which clamps the
+   length to the words that remain; ATTR drops an `href` not matching
+   `/^(https?:|\/|#|mailto:)/i` (`safeHref`). Test: unit tests of both helpers.
+8. `tools/verify.ts` C driver: `ninput` is clamped to the io capacity and to the tokens on
+   the line, and a line with too few tokens prints `?`. Test: the driver under
+   AddressSanitizer with ninput 1000000 and a truncated line.
+9. Docs: STATUS/DESIGN now say literal iteration counts are bounded statically and variable
+   counts by fuel in the interpreter only; compiled code has no execution budget.
+
+- `tools/selfhost-verify.ts` runs `emitio` on the explicit 10^12 budget `tools/selfhost-c.ts`
+  already uses: with aggregate copies charged by length the emitter exceeds the 10^8 default.
+  `site/wire.ts` is emitted next to app.js by the site build (the page imports it).
+- Gate: lint, typecheck, test 67/67, verify (all paths passed; 5262 cases each), app passed,
+  equiv 48/48 proved, hw passed, dotnet passed, gpu passed, selfhost 50 passed / 3 skipped
+  (6898 cases), selfhost:c 6371/6371.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 

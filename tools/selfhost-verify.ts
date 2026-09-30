@@ -67,7 +67,9 @@ export interface EmitResult {
 export function emitWithA0(emitter: TypedProgram, source: string): EmitResult {
   const bytes = [...Buffer.from(source)];
   const state = makeIo([bytes.length, ...bytes]);
-  run(emitter.byName.get('emitio') as TypedFunc, [state]);
+  // The emitter copies its tables per update and aggregates cost their length in fuel, so it
+  // runs on the same explicit budget as tools/selfhost-c.ts.
+  run(emitter.byName.get('emitio') as TypedFunc, [state], { fuel: 1e12 });
   const [ok, code, fn, node, n] = state.output as [number, number, number, number, number];
   return {
     ok: ok === 1,

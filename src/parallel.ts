@@ -277,6 +277,7 @@ const C_THREADS_RUNTIME = `/* A0 parallel folds (src/parallel.ts): pthreads, dyn
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #define A0PAR_MAX_CHUNKS 512u
 #define A0PAR_MAX_THREADS 64u
@@ -308,6 +309,15 @@ static uint32_t a0par_threads(void) {
   }
   return t;
 }
+/* Worker stack: at least 8 MiB and no smaller than the main thread's soft RLIMIT_STACK,
+   so a body whose frame fits on the main thread also fits on a worker. */
+static size_t a0par_stack(void) {
+  size_t s = (size_t)8u << 20;
+  struct rlimit r;
+  if (getrlimit(RLIMIT_STACK, &r) == 0 && r.rlim_cur != RLIM_INFINITY && (size_t)r.rlim_cur > s)
+    s = (size_t)r.rlim_cur;
+  return s;
+}
 /* Runs fn over [0, n) and returns the number of chunks written to out (at least 1). */
 static inline uint32_t a0par_run(a0par_fn fn, const void *ctx, uint32_t n, uint32_t *out) {
   const uint32_t t = a0par_threads();
@@ -319,8 +329,12 @@ static inline uint32_t a0par_run(a0par_fn fn, const void *ctx, uint32_t n, uint3
   a0par_job job = { fn, ctx, n, chunk, chunks, 0u, out };
   pthread_t tid[A0PAR_MAX_THREADS];
   uint32_t started = 0u;
+  pthread_attr_t attr;
+  const int attr_ok = pthread_attr_init(&attr) == 0;
+  if (attr_ok) (void)pthread_attr_setstacksize(&attr, a0par_stack());
   for (uint32_t w = 1u; w < t && w < chunks; w++)
-    if (pthread_create(&tid[started], NULL, a0par_work, &job) == 0) started++;
+    if (pthread_create(&tid[started], attr_ok ? &attr : NULL, a0par_work, &job) == 0) started++;
+  if (attr_ok) pthread_attr_destroy(&attr);
   a0par_work(&job); /* the caller works too; a failed pthread_create only loses a helper */
   for (uint32_t w = 0u; w < started; w++) pthread_join(tid[w], NULL);
   return chunks;
