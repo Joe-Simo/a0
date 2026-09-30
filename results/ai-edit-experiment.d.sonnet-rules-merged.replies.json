@@ -1,0 +1,121 @@
+{
+ "d-scale-constant/a0/structured": [
+  "b add a 1"
+ ],
+ "d-offset-param/a0/structured": [
+  "fn offset u32 u32 -> u32\na add p0 p1\nret a\nend"
+ ],
+ "d-cube-sq/a0/structured": [
+  "fn cube u32 -> u32\na call sq p0\nb mul a p0\nret b\nend"
+ ],
+ "d-total-six/a0/structured": [
+  "fn total u32 -> u32\nr fold addtwice 6 p0\nret r\nend"
+ ],
+ "d-stats-second-field/a0/structured": [
+  "d sub p0 p1"
+ ],
+ "d-maxof-comparison/a0/structured": [
+  "c gt p0 p1"
+ ],
+ "d-isdiv-bool/a0/structured": [
+  "fn isdiv u32 u32 -> bool\nr rem p0 p1\nz eq r 0\nret z\nend"
+ ],
+ "d-rename-twice/a0/structured": [
+  "fn dbl u32 -> u32\na add p0 p0\nret a\nend\n-fn twice\nfn quad u32 -> u32\na call dbl p0\nb call dbl a\nret b\nend"
+ ],
+ "d-lowflip-xor/a0/structured": [
+  "a xor p0 255"
+ ],
+ "d-absdiff-wrap/a0/structured": [
+  "c lt p0 p1\nb sub p1 p0\nr select c b a\nret r"
+ ],
+ "d-setmid-index/a0/structured": [
+  "r set p0 2 p1"
+ ],
+ "d-calc-inc-first/a0/structured": [
+  "fn inc u32 -> u32\na add p0 1\nret a\nend\nfn calc u32 -> u32\na call inc p0\nr call shl1 a\nret r\nend"
+ ],
+ "d-prod4-seed/a0/structured": [
+  "r fold mulel 4 1 p0"
+ ],
+ "d-scale-constant/ts/structured": [
+  "2   return (Math.imul(x, 3) + 1) >>> 0;"
+ ],
+ "d-offset-param/ts/structured": [
+  "1 export function offset(x: number, k: number): number {\n2   return (x + k) >>> 0;"
+ ],
+ "d-cube-sq/ts/structured": [
+  "+3 export function cube(x: number): number {\n+3   return Math.imul(sq(x), x) >>> 0;\n+3 }"
+ ],
+ "d-total-six/ts/structured": [
+  "3   for (let i = 0; i < 6; i++) {"
+ ],
+ "d-stats-second-field/ts/structured": [
+  "3   const d = (a - b) >>> 0;"
+ ],
+ "d-maxof-comparison/ts/structured": [
+  "2   return a > b ? a : b;"
+ ],
+ "d-isdiv-bool/ts/structured": [
+  "1 export function isdiv(a: number, b: number): boolean {\n2   return (b === 0 ? a : a % b) === 0;"
+ ],
+ "d-rename-twice/ts/structured": [
+  "1 export function dbl(x: number): number {\n5   return dbl(dbl(x));"
+ ],
+ "d-lowflip-xor/ts/structured": [
+  "2   return (x ^ 255) >>> 0;"
+ ],
+ "d-absdiff-wrap/ts/structured": [
+  "2   return (a > b ? a - b : b - a) >>> 0;"
+ ],
+ "d-setmid-index/ts/structured": [
+  "3   r[2] = v;"
+ ],
+ "d-calc-inc-first/ts/structured": [
+  "+0 export function inc(x: number): number {\n+0   return (x + 1) >>> 0;\n+0 }\n5   return shl1(inc(x));"
+ ],
+ "d-prod4-seed/ts/structured": [
+  "2   let s = 1;"
+ ],
+ "d-scale-constant/rust/structured": [
+  "2     x.wrapping_mul(3).wrapping_add(1)"
+ ],
+ "d-offset-param/rust/structured": [
+  "1 pub fn offset(x: u32, k: u32) -> u32 {\n2     x.wrapping_add(k)"
+ ],
+ "d-cube-sq/rust/structured": [
+  "+3 pub fn cube(x: u32) -> u32 {\n    sq(x).wrapping_mul(x)\n}",
+  "+3 pub fn cube(x: u32) -> u32 { sq(x).wrapping_mul(x) }"
+ ],
+ "d-total-six/rust/structured": [
+  "3     for i in 0..6u32 {"
+ ],
+ "d-stats-second-field/rust/structured": [
+  "3     let d = a.wrapping_sub(b);"
+ ],
+ "d-maxof-comparison/rust/structured": [
+  "2     if a > b { a } else { b }"
+ ],
+ "d-isdiv-bool/rust/structured": [
+  "1 pub fn isdiv(a: u32, b: u32) -> bool {\n2     (if b == 0 { a } else { a % b }) == 0"
+ ],
+ "d-rename-twice/rust/structured": [
+  "1 pub fn dbl(x: u32) -> u32 {\n5     dbl(dbl(x))"
+ ],
+ "d-lowflip-xor/rust/structured": [
+  "2     x ^ 255"
+ ],
+ "d-absdiff-wrap/rust/structured": [
+  "2     if a > b { a.wrapping_sub(b) } else { b.wrapping_sub(a) }"
+ ],
+ "d-setmid-index/rust/structured": [
+  "3     r[2] = v;"
+ ],
+ "d-calc-inc-first/rust/structured": [
+  "+3 pub fn inc(x: u32) -> u32 {\n    x.wrapping_add(1)\n}\n5     shl1(inc(x))",
+  "+3 pub fn inc(x: u32) -> u32 { x.wrapping_add(1) }\n5     shl1(inc(x))"
+ ],
+ "d-prod4-seed/rust/structured": [
+  "2     let mut s: u32 = 1;"
+ ]
+}

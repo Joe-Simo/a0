@@ -2326,3 +2326,94 @@ Plan for the model-subject axes, not run: each language needs a hand translation
 2. Collect set b with Haiku only: 24 trials per language, 192 subject calls.
 3. Then Sonnet on the same set, and c400 for the 3 cheapest to accept.
 4. Show the deterministic token and validation axes for all 48 languages next to it, labelled as proxies and not acceptance.
+### Rules-only primer (the rules models break without one)
+
+Question: what is the smallest primer that keeps A0 acceptance at or above TS, given the guessable spellings above?
+
+Ranking. The two no-primer first-attempt samples (the earlier replies re-scored with the guessable parser, plus the fresh guessable collection; 152 trials, 19 failures) were matched against the MODEL_GUIDE.min.txt rules. Violations per rule, counting replies:
+- fold step contract: 4. The step is called as `F(state, i, extras...)`, and models passed extras it does not take, used `loop` as `fold`, or read `i` as the element.
+- record vs array access (`get`/`set` on a record, `at` on an array): 4.
+- no nested operands: 2.
+- exact op names (`lte`/`gte`): 2.
+- comparison result is bool (d-isdiv-bool kept `-> u32`): 2.
+- lowercase ids, tuple return via `rec`, no labels or goto: 1 each.
+- wrong output, not tied to any rule: 4.
+
+Never violated: io and linear tokens, `use`, div/rem by zero, shift masking, `text`/`puts`, `loop`, parameter names, and the header syntax (the view shows it).
+
+Primers. The harness gets a new option, `A0_EXPERIMENT_PRIMER=rules`: the guide (`A0_EXPERIMENT_GUIDE`, trailing newline trimmed), then the self-contained edit protocol of `none`, with one repair. The guide carries no EDIT line, so the protocol appears once.
+- `MODEL_GUIDE.rules.txt`, 71 o200k tokens, system text 136:
+  `A0: one `id op args` per line, no nesting, lowercase ids. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n`
+  The op list is space-separated with no separators or groups; every op is 1 o200k token except `shl` (2). `mov`, `loop`, io and all semantics notes are left out.
+- `MODEL_GUIDE.rules2.txt`, system text 129: the same without `lowercase ids` and `(->bool)`, the two rules ranked lowest that cost tokens. The bool rule had not prevented d-isdiv-bool under `rules`.
+
+Method: the same as the two subsections above. Fresh Haiku and Sonnet subagents, one shot, one group file each (sets a, b, d), then one retry per failed trial by a fresh subagent per model, given the reply and the checker's message. TS/Rust are the relaxed replies of "No primer and lazy primer". Results: `results/ai-edit-experiment.{,b.,d.}{haiku,sonnet}-primer-{rules,rules2}.json`. Self-check ok in all 12. Costs are computed as above.
+
+Pooled over a+b+d, 76 trials per cell:
+
+| cell | system | one-shot | after 1 retry | calls/task | 1 task | 10-task session | unbounded |
+|---|---|---|---|---|---|---|---|
+| A0 rules primer | 136 | **73/76** | **76/76** | 1.04 | 291 | **145** | **128** |
+| A0 rules2 primer | 129 | 69/76 | 76/76 | 1.09 | 294 | 154 | 139 |
+| A0 no primer, guessable | 64 | 64/76 | 74/76 | 1.16 | 237 | 168 | 160 |
+| TS relaxed | 126 | 67/76 | 76/76 | 1.12 | 284 | 148 | 133 |
+| Rust relaxed | 141 | 68/76 | 74/76 | 1.11 | 312 | 160 | 143 |
+
+By model (rules primer):
+- Haiku: 35/38 -> 38/38, costing 301 / 154 / 138, against TS 34 -> 38 at 282 / 146 / 131 and Rust 32 -> 36 at 337 / 184 / 168.
+- Sonnet: 38/38 one shot, costing 282 / 135 / 118, against TS 33 -> 38 at 286 / 150 / 135 and Rust 36 -> 38 at 288 / 136 / 119.
+
+On b+d only, the sets where the default min primer was measured (one shot, 50 trials: 50/50 at 674 / 195 / 142):
+- rules: 47/50 -> 50/50 at 301 / 154 / 138.
+- TS: 45/50 -> 50/50 at 290 / 154 / 139.
+- Rust: 45/50 -> 48/50 at 321 / 169 / 152.
+
+Findings:
+- **Acceptance: the rules primer is above TS and Rust.** One shot it gets 73/76, against 67 and 68. After one retry it gets 76/76, against 76 and 74. Its three first-attempt failures, all Haiku, were repaired by the retry:
+  - b-sumfrom-eight: an extra fold argument, although the fold rule is in the primer.
+  - d-isdiv-bool: kept `-> u32`, although the bool rule is in the primer.
+  - d-rename-twice: used the new name before defining it.
+- **Cost against TS: a loss for one task, a win in sessions.**
+  - 1 task: 291 vs 284 (+7, +2%). The system text is 10 tokens longer than TS's (136 vs 126), and the 1.25x cache write outweighs the retries saved.
+  - 10-task session: 145 vs 148 (-2%).
+  - Unbounded: 128 vs 133 (-4%).
+  - The pooled figures hide the models. Haiku alone loses to TS at every length (301 / 154 / 138 vs 282 / 146 / 131). Sonnet alone wins at every length.
+- **Cost against Rust: a win at all three lengths** (291 / 145 / 128 vs 312 / 160 / 143).
+- **Against no primer**, the extra 72 tokens of system text pay for themselves once a session has more than one task (145 vs 168). For a single cold task, no primer stays cheapest (237), at 64/76 one shot.
+- **rules2 (7 fewer tokens) is worse.** Haiku one shot fell from 35/38 to 31/38. It had 7 failures, none of them tied to the two dropped rules: a parameter out of range, a duplicate edit, `-fn` under a function handle, a nested operand, a fold extra argument, a wrong output, and isdiv again. This is within subject variance (about ±3 of 76), so the two dropped rules are not shown to matter. What rules2 shows is that 7 tokens of system text are cheaper than the retries that one-shot swings cause. The smallest primer measured to hold TS-level acceptance is `rules` at 136 tokens.
+- **Decision: the default is unchanged** (`always`, MODEL_GUIDE.min.txt). The rules primer is far cheaper than the default (b+d: 301 / 154 / 138 vs 674 / 195 / 142), but it does not win on acceptance: it scores 47/50 one shot where min scored 50/50. It also loses to TS for a single task, and on every length for Haiku. `A0_EXPERIMENT_PRIMER=rules` with MODEL_GUIDE.rules.txt is the measured best for sessions.
+- Single subjects per cell. Remaining gap to TS on single tasks: 10 tokens of system text. The one rule that still fails despite being stated is the fold step contract; a checker fix that names the step's parameters may do more than primer text.
+
+### Merged rules primer, fold diagnostic, protocol fixes (a0c-0.1.26)
+
+Changes:
+- Checker: every fold/loop body mismatch (extra-argument count, missing index parameter, index/state/result/extra types) carries a `fix` naming the header the operands require, the body's actual header, and the operand shape that header accepts, e.g. `... need \`fn addi u32 u32 u32 -> u32\`; addi is \`fn addi u32 u32 -> u32\`; as declared, write \`fold addi N S\` with S a u32 and no extras`. Messages unchanged; mismatched types now report `code: type` with expected/actual. Test: `fold/loop body mismatch` in test/core.test.ts.
+- Edit protocol (src/edit.ts, test/edit.test.ts): `-fn f` with a `fn f` block in one reply replaces f in place (was: `both removed and defined`); `-fn f` may repeat f's current signature (a different one is rejected with a fix); an `end` after the handled function's edit lines, before a new block, is dropped. Mixed edit lines + new `fn` block already applied the block first since 810bfab. Rescoring the E/F replies (diagnosis only, not reported as results) removed every protocol-ambiguity rejection; the rest are model errors.
+- TS/Rust and the five other language notes state `Division by zero gives 4294967295; remainder by zero gives the dividend.` TS system text 126 -> 143, Rust 141 -> 158.
+- `A0_EXPERIMENT_PRIMER=rules-merged` (structured only): the guide is the whole system text. `MODEL_GUIDE.rules-merged.txt`, 118 o200k tokens (rules primer was 136): protocol and rules in one line; the handle sentence and the duplicate `id op args` clause dropped. Every rule violated in the earlier ranking is kept (fold contract, get/set vs at/put, no nesting, op names, ->bool, lowercase ids).
+
+Method: fresh subjects for all three cells (no old replies rescored), structured protocol, sets a, b, d, e, f. One group file per representation for each of a, b, d, and e+f together (12 files), one fresh Haiku and one fresh Sonnet subagent per file (24), one shot; then one retry per failed trial, one fresh subagent per model and representation (4), given system, request, reply and the exact rejection. Cost as in "No primer and lazy primer". Results: `results/ai-edit-experiment.{a,b,d,e,f}.{haiku,sonnet}-rules-merged.json` (+ `.replies.json`). Self-check ok in all 10.
+
+| cell | system | one-shot | after 1 retry | calls/task | 1 task | 10-task session | unbounded |
+|---|---|---|---|---|---|---|---|
+| a+b+d+e+f pooled (124) A0 | 118 | 113 | 120 | 1.09 | **287** | 160 | 145 |
+| TS | 143 | 115 | **123** | 1.07 | 305 | **150** | 133 |
+| Rust | 158 | **118** | 121 | 1.05 | 322 | 151 | **132** |
+| a+b+d (76) A0 | 118 | 72 | 75 | 1.05 | **274** | **147** | 133 |
+| TS | 143 | 68 | 75 | 1.11 | 311 | 157 | 140 |
+| Rust | 158 | 72 | 75 | 1.05 | 319 | 149 | **130** |
+| e+f (48) A0 | 118 | 41 | 45 | 1.15 | 307 | 180 | 166 |
+| TS | 143 | 47 | 48 | 1.02 | **294** | **140** | **123** |
+| Rust | 158 | 46 | 46 | 1.04 | 326 | 155 | 136 |
+
+By model (all five sets, 62 each):
+- Haiku: A0 51 -> 58, 314 / 186 / 172; TS 53 -> 61, 326 / 171 / 154; Rust 58 -> 59, 337 / 167 / 148.
+- Sonnet: A0 62/62 one shot, 260 / 133 / 119; TS 62/62, 283 / 129 / 112; Rust 60 -> 62, 306 / 135 / 116.
+
+Findings:
+- A0 wins the single cold task pooled (287 vs 305 / 322) and on a+b+d leads or ties everywhere except unbounded vs Rust (133 vs 130). Pooled over all five sets it loses acceptance (113/124 one shot vs 115 TS / 118 Rust; 120 vs 123 / 121 after retry) and sessions (160 vs 150 / 151; 145 vs 133 / 132).
+- The loss is Haiku on the held-out sets E and F: 17/24 one shot, 21/24 after retry (TS 23 -> 24). Haiku failures: wrong output 4 (sum-squares, e-sum-range, f-sumlow-bound, twice each for the last two), fold step given an extra (e-popcount-fold, not repaired even with the new fix text), bool returned for u32 (f-addover-bool, f-countabove-gt path), pair returned without the signature change (f-divrem-pair), nested operand, undefined parameter. None are protocol ambiguities. Sonnet is level with TS on acceptance and cheaper for one task, within 4 tokens in sessions.
+- Sonnet unbounded: A0 119 vs TS 112. With equal acceptance, A0's replies plus views are slightly larger than TS's; the 25-token system saving is worth only ~1 token per cached call.
+- One subject per cell: Haiku swings of 2-4 tasks per set are within subject variance.
+
+Decision: A0 does not win or tie on acceptance and cost at all three lengths pooled, so the rules-merged primer is not proposed as the default. Defaults unchanged (`always`, MODEL_GUIDE.min.txt).
