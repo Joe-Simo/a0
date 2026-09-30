@@ -2657,3 +2657,20 @@ Plan for the model-subject axes, not run: each language needs a hand translation
 2. Collect set b with Haiku only: 24 trials per language, 192 subject calls.
 3. Then Sonnet on the same set, and c400 for the 3 cheapest to accept.
 4. Show the deterministic token and validation axes for all 48 languages next to it, labelled as proxies and not acceptance.
+
+## Session 2026-09-30 (native `a0 check`: the self-hosted checker as an arm64 executable)
+
+`bun run native-check` (tools/native-check.ts) builds `dist/native/a0`. It is compiler/check.a0 (linked with parse.a0 and lex.a0, entry `checkio`) compiled by A0's C backend and clang -O2, the same path as bootstrap stage 1. The result is an arm64 Mach-O executable with no Node at run time. `dist/native/a0 check FILE` prints `ok` or the diagnostic, and its exit code is the diagnostic code (1 parse, 2 structure, 3 type, 4 limit). It has limits: one file up to 16384 bytes, and `use` lines are parsed but not linked. The TypeScript `a0 check` (dist/src/cli.js) stays the linking path.
+
+- **Diagnostics:** 105/105 sources give the same (code, function, node) as the TypeScript reference checker (tools/ref-check.ts refCheckWords), and 33 of them are rejections. One `a0 check` process runs per file. The sources are the front-end set (now shared in tools/front-end-sources.ts), the ill-typed set, every generated-corpus function with its callees (48 files) and the exec-bench kernels. The whole corpus as one file is 30 KB, over the source limit, so it is checked per closure (closure/closures moved from bootstrap.ts to corpus.ts). Results: results/native-check.json.
+- **Cost by file size (under load):** 4 ms for small files, about 100 ms at 8-9 KB, and 367 ms for the 16 KB 713-function file. This is value-semantic table copies in the paged front end. Large files are slower than the TypeScript checker's in-process time.
+
+lang-axes re-run (5 rounds, interleaved across all 49 subjects + `a0node`, the old Node CLI path kept as a control). The 1-minute load average per round was 47.9, 16.2, 195.0, 219.7, 298.4, then 288.6 after the last round, on 8 CPUs. That is heavily loaded, so absolute milliseconds are comparable only within this run.
+
+- **Static check per edit:** A0 native takes 14.5 ms (affine 17.8, branchy 14.5, arrfill 14.4). It is fastest of the 33 languages with a static check. Next are Perl `-c` at 32.8, JS `--check` at 73.0, C at 221.8 and Python at 238.5. The same A0 check through Node took 898 ms in this run (353 ms in the previous, less loaded run).
+- **Check + run per edit: not a win.** A0 takes 1443 ms, because running still needs `emit c` through the Node CLI plus clang. 20 of 48 languages are faster, including lua 16.6, forth 17.4, smalltalk 31.8, tcl 43.3, perl 60.7, commonlisp 60.0 and C 337.6. Moving `emit` to a native binary is the next step for this axis: the C emitter would have to take 16 KB sources, and stage 1's is limited to 512 bytes.
+- Coverage: tokens 48/48, check+run 48/48, static check 33/48, none failed or missing.
+
+Gate: lint, typecheck, test 86/86, verify, app, equiv, hw, dotnet, gpu, selfhost, selfhost:c, bootstrap and native-check all exit 0 (lint re-run after a formatter fix to lang-axes.ts).
+
+Tcl exec-bench re-run (`--langs=tcl`, load 18.6/35.8/46.1). All 10 checksums equal the stored ones, so the signed-checksum bug was only in lang-axes' 1-iteration driver, and results/exec-benchmark.json was not changed. The re-run's times are 1.0-2.8x slower (tclsh 9.0.4 now vs 8.5.9 recorded, plus load), geomean 532 vs 475 stored.
