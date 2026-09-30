@@ -893,111 +893,6 @@ test('site docs program: A0 UI protocol, stylesheet, and reference sections', as
     assert.ok(all.includes(needle), `missing ${needle}`);
 });
 
-test('site play program: the A0 lexer, parser and checker render tokens, typed IR, and the diagnostic of a submitted source', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const p = (await link('site/play.a0', (f) => readFile(f, 'utf8'))).program;
-  const session = p.byName.get('session') as TypedFunc;
-  const lex = p.byName.get('lex') as TypedFunc;
-  const decode = (words: readonly number[]): { text: string; state: number[]; css: string } => {
-    const str = (i: number, n: number): string =>
-      Buffer.from(words.slice(i, i + n)).toString('utf8');
-    const d = { text: '', state: [] as number[], css: '' };
-    for (let i = 0; i < words.length; ) {
-      const c = words[i++];
-      if (c === 1 || c === 5 || c === 8) i += 1;
-      else if (c === 2 || c === 4 || c === 9 || c === 13) {
-        if (c === 4) i += 1;
-        const n = words[i++] as number;
-        if (c === 9) d.css += str(i, n);
-        else if (c === 2) d.text += str(i, n);
-        i += n;
-      } else if (c === 6) {
-        const n = words[i++] as number;
-        d.state = words.slice(i, i + n) as number[];
-        i += n;
-      } else if (c === 10) i += 2 + (words[i + 1] as number);
-      else if (c === 11 || c === 12) i += 2;
-      else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
-    }
-    return d;
-  };
-  // Event 1 (Run) with a submitted source: the token count, every node as `id op args`, the ret.
-  const src = 'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend\n';
-  const bytes = [...Buffer.from(src)];
-  const io = makeIo([1, 0, 0, bytes.length, ...bytes, 0]);
-  assert.equal(run(session, [io]), 0);
-  const d = decode(io.output);
-  const arr = new Array(512).fill(0);
-  bytes.forEach((v, i) => {
-    arr[i] = v;
-  });
-  const ntok = (run(lex, [arr, bytes.length]) as [number[], number])[1] / 3;
-  assert.ok(d.css.includes('textarea.src{'));
-  assert.ok(d.text.includes(`${ntok} tokens`), d.text);
-  assert.ok(d.text.includes('1 functions'), d.text);
-  assert.ok(d.text.includes('params 2 · result u32 · nodes 2'), d.text);
-  // Every node line carries the checker's type of the node.
-  assert.ok(d.text.includes('a add p0 p1  u32\nb mul a 2  u32\nret b'), d.text);
-  assert.ok(d.text.includes('valid: parsed and type-checked'), d.text);
-  // The guessable spellings (direct call, ret F ARGS, udiv) render as their canonical ops.
-  const guessed = [
-    ...Buffer.from(
-      'fn dot u32 u32 -> u32\na mul p0 p1\nret a\nend\nfn f u32 -> u32\nb dot p0 p0\nc udiv b 3\nret dot c 2\nend\n',
-    ),
-  ];
-  const gio = makeIo([1, 0, 0, guessed.length, ...guessed, 0]);
-  assert.equal(run(session, [gio]), 0);
-  const gText = decode(gio.output).text;
-  assert.ok(gText.includes('valid: parsed and type-checked'), gText);
-  assert.ok(gText.includes('b call ') && gText.includes('c div b 3'), gText);
-  // The state is the source, so the text survives a re-render (event 0 with that state).
-  assert.deepEqual(d.state, [bytes.length, ...bytes]);
-  const again = makeIo([0, 0, 0, 0, d.state.length, ...d.state]);
-  assert.equal(run(session, [again]), 0);
-  assert.ok(decode(again.output).text.includes('a add p0 p1'));
-  // The default (no text, no state) is the clamp function; an invalid source names the token.
-  const first = makeIo([0, 0, 0, 0, 0]);
-  assert.equal(run(session, [first]), 0);
-  assert.ok(decode(first.output).text.includes('fn clamp u32 u32 u32 -> u32'));
-  const badSrc = [...Buffer.from('fn f u32 -> u32\na call g p0\nret a\nend\n')];
-  const bad = makeIo([1, 0, 0, badSrc.length, ...badSrc, 0]);
-  assert.equal(run(session, [bad]), 0);
-  assert.ok(decode(bad.output).text.includes('structure error at token 8: g'));
-  // An ill-typed program parses, so the checker's diagnostic names the code, function and node
-  // id; the nodes before it are typed, the ones after are not.
-  const illSrc = [
-    ...Buffer.from('fn g u32 bool -> u32\na lt p0 1\nb add a p1\nc mul p0 2\nret c\nend\n'),
-  ];
-  const ill = makeIo([1, 0, 0, illSrc.length, ...illSrc, 0]);
-  assert.equal(run(session, [ill]), 0);
-  const illText = decode(ill.output).text;
-  assert.ok(illText.includes('type error in fn g at node b: an operand has a type'), illText);
-  assert.ok(illText.includes('a lt p0 1  bool\nb add a p1\nc mul p0 2\nret c'), illText);
-  assert.ok(!illText.includes('valid:'), illText);
-  // A consumed io token returned twice is a structure error at the ret operand.
-  const retSrc = [...Buffer.from('fn h io -> io\na write p0 1\nret p0\nend\n')];
-  const rt = makeIo([1, 0, 0, retSrc.length, ...retSrc, 0]);
-  assert.equal(run(session, [rt]), 0);
-  assert.ok(decode(rt.output).text.includes('structure error in fn h at ret: the operand count'));
-  // Types built by bodies (arrays, records, the (u32,io) of read) render like the source.
-  const tySrc = [
-    ...Buffer.from(
-      'fn k io u32x4 -> (u32,io)\nr read p0\nt at r 1\nv arr 1 2\nx rec v p1\ns at x 0\nret r\nend\n',
-    ),
-  ];
-  const ty = makeIo([1, 0, 0, tySrc.length, ...tySrc, 0]);
-  assert.equal(run(session, [ty]), 0);
-  const tyText = decode(ty.output).text;
-  assert.ok(tyText.includes('params 2 · result (u32,io)'), tyText);
-  assert.ok(
-    tyText.includes(
-      'r read p0  (u32,io)\nt at r 1  io\nv arr 1 2  u32x2\nx rec v p1  (u32x2,u32x4)\ns at x 0  u32x2\nret r',
-    ),
-    tyText,
-  );
-  assert.ok(tyText.includes('valid: parsed and type-checked'), tyText);
-});
-
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
   const src = 'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend';
   const session = new EditSession(parseAndValidate(src));
@@ -3055,22 +2950,12 @@ async function wasmSession(
   return { result, output: [...words.subarray(IN + 2, IN + 2 + nout)] };
 }
 
-test('direct wasm backend: site page, docs, and play programs write the interpreter words', async () => {
+test('direct wasm backend: site page and docs programs write the interpreter words', async () => {
   const { readFile } = await import('node:fs/promises');
   const { wasmModuleBytes } = await import('../src/wasm.js');
-  const src = [...Buffer.from('fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend\n')];
-  const ill = [...Buffer.from('fn g u32 bool -> u32\na lt p0 1\nb add a p1\nret b\nend\n')];
   const runs: [string, number[][]][] = [
     ['site/page.a0', [[0, 0, 0, 0, 0]]],
     ['site/docs.a0', [[0, 0, 0, 0, 0]]],
-    [
-      'site/play.a0',
-      [
-        [0, 0, 0, 0, 0],
-        [1, 0, 0, src.length, ...src, 0],
-        [1, 0, 0, ill.length, ...ill, 0],
-      ],
-    ],
   ];
   for (const [file, inputs] of runs) {
     const p = (await link(file, (f) => readFile(f, 'utf8'))).program;

@@ -1,7 +1,7 @@
 /**
  * Generic browser runtime for an A0 page program (a0lang.com).
  *
- * The page is one A0 io program (site/page.a0, site/docs.a0, or site/play.a0 with what it
+ * The page is one A0 io program (site/page.a0 or site/docs.a0 with what it
  * uses), compiled to freestanding wasm32 through C. Everything on the page, including its
  * stylesheet, its layout, its buttons, the text it computes, the timer, and the persisted
  * state, comes from the word stream that program writes. This file knows nothing about the
