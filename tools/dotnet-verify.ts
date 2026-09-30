@@ -18,6 +18,7 @@ import {
   hasIoParam,
   isDriverCallable,
 } from './corpus.js';
+import { ioCaps } from './verify.js';
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
 
@@ -98,7 +99,7 @@ async function main(): Promise<void> {
   } else {
     const start = performance.now();
     await withTempDir(async (dir) => {
-      await writeFile(join(dir, `${CS_CLASS}.cs`), emitCSharp(program), 'utf8');
+      await writeFile(join(dir, `${CS_CLASS}.cs`), emitCSharp(program, ioCaps(cases)), 'utf8');
       await writeFile(join(dir, 'Driver.cs'), driver(program), 'utf8');
       await writeFile(
         join(dir, 'a0.csproj'),

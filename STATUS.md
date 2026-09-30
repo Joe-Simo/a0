@@ -1205,6 +1205,18 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Next: re-measure on an idle machine; the harness always runs emitted first in each sample
   on a shared polymorphic call site, so alternating the order would remove one bias.
 
+## Session 2026-09-30 (JVM io capacity)
+
+- The Java and C# io runtimes (src/backends.ts `javaIoRuntime`, src/dotnet.ts `csIoRuntime`)
+  now take the C backend's `ioInputCapacity`/`ioOutputCapacity` options with the same defaults
+  (256/1024) and the same bounds: input is held in a fixed array of that many words (longer
+  input is truncated; reads past `ninput` return 0) and writes past the output capacity are
+  dropped, as in `a0_write`. `checkJvm` and `bun run dotnet` size both from the cases via
+  `ioCaps(cases)`. The `tools/app.ts` JVM filter (emit_arm64) and blocked row (emit_c) are
+  removed: JVM now runs 12/12 emitio and 20/20 emitcio cases. COMPILER_VERSION a0c-0.1.14.
+- Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
+  134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

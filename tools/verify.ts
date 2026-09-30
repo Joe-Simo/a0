@@ -1376,7 +1376,11 @@ export async function checkJvm(
   if (java.path === undefined) return blocked(java, 'jvm');
   const start = performance.now();
   return withTempDir(async (dir) => {
-    await writeFile(join(dir, `${JAVA_CLASS}.java`), compile(program, 'java').text, 'utf8');
+    await writeFile(
+      join(dir, `${JAVA_CLASS}.java`),
+      compile(program, 'java', ioCaps(cases)).text,
+      'utf8',
+    );
     await writeFile(join(dir, 'Driver.java'), javaDriver(program), 'utf8');
     const build = runTool(
       javac.path as string,

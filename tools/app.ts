@@ -248,9 +248,6 @@ export async function buildCheckCases(): Promise<(Case & { readonly label: strin
  * emitter; every other target must produce the same assembly bytes. That the bytes are
  * correct assembly is checked by execution in `bun run selfhost`.
  */
-/** Output words of the JVM backend's io state (src/backends.ts, `A0Io.output`). */
-const JVM_IO_OUTPUT_WORDS = 1024;
-
 export async function buildEmitCases(
   emitter: Awaited<ReturnType<typeof link>>['program'],
 ): Promise<(Case & { readonly label: string })[]> {
@@ -442,16 +439,7 @@ async function main(): Promise<void> {
       'native C via clang',
     ),
     webassembly: await checkWasm(emitProgram, emitCases),
-    // The JVM backend's io state holds 1024 output words (src/backends.ts A0Io); a module
-    // whose assembly is longer is out of that target's io capacity and is counted, not run.
-    jvm: await (async () => {
-      const fits = emitCases.filter((c) => (c.expectedOutput?.length ?? 0) <= JVM_IO_OUTPUT_WORDS);
-      const r = await checkJvm(emitProgram, fits);
-      return {
-        ...r,
-        detail: `${r.detail} ${emitCases.length - fits.length} cases over the JVM io output capacity (${JVM_IO_OUTPUT_WORDS} words) not run.`,
-      };
-    })(),
+    jvm: await checkJvm(emitProgram, emitCases),
   };
   const cEmitTargets: Record<string, TargetReport> = {
     interpreter: checkInterpreter(cEmitProgram, cEmitCases),
@@ -465,13 +453,7 @@ async function main(): Promise<void> {
       'native C via clang',
     ),
     webassembly: await checkWasm(cEmitProgram, cEmitCases),
-    // The Java runtime's A0Io keeps a fixed 1024-word output array (src/backends.ts), and every
-    // emitcio output (one C byte per word, the prelude alone is over 1700) is longer.
-    jvm: {
-      status: 'blocked',
-      cases: 0,
-      detail: `jvm: the Java A0Io output buffer is fixed at 1024 words; emitcio writes ${Math.min(...cEmitCases.filter((c) => (c.expectedOutput?.length ?? 0) > 0).map((c) => c.expectedOutput?.length ?? 0))} to ${Math.max(...cEmitCases.map((c) => c.expectedOutput?.length ?? 0))} words`,
-    },
+    jvm: await checkJvm(cEmitProgram, cEmitCases),
   };
   const report = {
     generatedAt: new Date().toISOString(),

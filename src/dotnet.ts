@@ -6,7 +6,14 @@
  * the C and Java runtimes. Semantics are unchanged.
  */
 
-import { aggregateTypes, mangleType, usesIo } from './backends.js';
+import {
+  aggregateTypes,
+  C_IO_INPUT_CAPACITY,
+  C_IO_OUTPUT_CAPACITY,
+  type CompileOptions,
+  mangleType,
+  usesIo,
+} from './backends.js';
 import {
   A0Error,
   containsIo,
@@ -75,12 +82,13 @@ function csTypeDecl(t: Type): string {
   return [`  public readonly record struct ${name}(${comps});`, ...puts].join('\n');
 }
 
-const CS_IO_RUNTIME = `  public sealed class A0Io {
-    public readonly uint[] Input; public int Position; public readonly uint[] Output = new uint[1024]; public int NOutput;
-    public A0Io(uint[] input) { Input = (uint[])input.Clone(); }
+/** C# io runtime with the C runtime's fixed capacities: input truncated to inCap words, writes past outCap dropped. */
+const csIoRuntime = (inCap: number, outCap: number): string => `  public sealed class A0Io {
+    public readonly uint[] Input = new uint[${inCap}]; public readonly int NInput; public int Position; public readonly uint[] Output = new uint[${outCap}]; public int NOutput;
+    public A0Io(uint[] input) { NInput = System.Math.Min(input.Length, ${inCap}); System.Array.Copy(input, Input, NInput); }
   }
-  static R_r2_u_io read(A0Io t) { uint v = t.Position < t.Input.Length ? t.Input[t.Position++] : 0u; return new R_r2_u_io(v, t); }
-  static A0Io write(A0Io t, uint v) { if (t.NOutput < t.Output.Length) t.Output[t.NOutput++] = v; return t; }
+  static R_r2_u_io read(A0Io t) { uint v = t.Position < t.NInput ? t.Input[t.Position++] : 0u; return new R_r2_u_io(v, t); }
+  static A0Io write(A0Io t, uint v) { if (t.NOutput < ${outCap}) t.Output[t.NOutput++] = v; return t; }
   static A0Io puts(A0Io t, uint[] a) { write(t, (uint)a.Length); foreach (uint v in a) write(t, v); return t; }`;
 
 function csExpr(node: Node, fn: TypedFunc): string {
@@ -176,7 +184,10 @@ function emitFunction(fn: TypedFunc): string {
 }
 
 /** Emit a C# source file defining `A0Module` with one static method per function. */
-export function emitCSharp(program: TypedProgram, options: { optimize?: boolean } = {}): string {
+export function emitCSharp(
+  program: TypedProgram,
+  options: Pick<CompileOptions, 'optimize' | 'ioInputCapacity' | 'ioOutputCapacity'> = {},
+): string {
   const types = aggregateTypes(program);
   const io = usesIo(program);
   if (
@@ -193,7 +204,13 @@ export function emitCSharp(program: TypedProgram, options: { optimize?: boolean 
     types.unshift({ kind: 'rec', fields: ['u32', 'io'] });
   }
   const decls = types.map(csTypeDecl).filter((d) => d.length > 0);
-  if (io) decls.push(CS_IO_RUNTIME);
+  if (io)
+    decls.push(
+      csIoRuntime(
+        options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+        options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+      ),
+    );
   const bodies = program.functions.map((fn) =>
     emitFunction(options.optimize === false ? fn : optimizeFunction(fn).fn),
   );
