@@ -1336,6 +1336,7 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Gate (this worktree): lint pass; typecheck pass; test 55/55; bootstrap 0 failures.
 
 
+
 ## Session 2026-09-30 (4000-function programs)
 
 - **Function cap raised (a0c-0.1.14)**: `LIMITS.maxFunctions` 1024 -> 65536 in `src/core.ts`, enforced by the parser and by `validate` (so also for linked programs, `src/link.ts` validates the merged program). Every other bound is unchanged (1 MiB source, 4096 nodes and 64 params per function, 65536-element arrays, 2^21-bit aggregates, 1024-element vectors on hardware/GPU); the 1 MiB source bound is the binding one for tiny functions (about 45k one-line functions). Hardware and GPU needed no per-module function limit. COMPILER_VERSION a0c-0.1.13 -> a0c-0.1.14 (semantics-visible: programs of 1025..65536 functions were rejected before). DESIGN.md security bounds sentence updated. Test: a 4000-function call chain validates and emits JS; 65537 functions are rejected by `validate` with `too many functions`.
@@ -1399,6 +1400,7 @@ Nine findings from a security review, each fixed minimally with a regression tes
 - Gate: lint, typecheck, test 67/67, verify (all paths passed; 5262 cases each), app passed,
   equiv 48/48 proved, hw passed, dotnet passed, gpu passed, selfhost 50 passed / 3 skipped
   (6898 cases), selfhost:c 6371/6371.
+
 
 
 ## Session 2026-09-30 (AI edits: seven languages)
@@ -2069,6 +2071,7 @@ Findings:
 - The A0 structured cell's weak spot is protocol, not language. 19 of its 28 failures are ambiguities in how function-handle lines, `fn` blocks and `-fn` combine in one reply, and on how definition order interacts with them. Two fixes would remove these failures: stating the rule in the guide, or accepting the combination (apply `fn` blocks first, then the function-handle lines). This session did neither.
 - The full primer did not help. Haiku full did worse than min on A0 structured (18/24 vs 24/24 after repair). Sonnet full did better (24 vs 21).
 - The TS/Rust semantics notes should state the division and remainder rule for a zero divisor (the `f-divrem-pair` ambiguity). Not changed here, since the sealed task file and the notes' bytes stay fixed for this run.
+
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 

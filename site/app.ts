@@ -22,7 +22,7 @@ import { readBytes, safeHref } from './wire.js';
 
 // The same capacities as tools/site-build.ts gives the C io struct (ioInputCapacity/ioOutputCapacity).
 const IN_CAP = 1024;
-const OUT_CAP = 65536;
+const OUT_CAP = 131072;
 /** Bytes of the input field sent with an event: 3 + 1 + TEXT_CAP + 1 + state words <= IN_CAP. */
 const TEXT_CAP = 480;
 
@@ -128,7 +128,6 @@ function drawGrid(canvas: HTMLCanvasElement, rows: readonly number[]): void {
 
 /** Running shader scenes; each is stopped before the page re-renders. */
 const scenes: (() => void)[] = [];
-let lastCss = '';
 
 const QUAD_VS = `#version 300 es
 in vec2 a;
@@ -230,9 +229,9 @@ function mountShader(el: HTMLElement, fragment: string): void {
 }
 
 /**
- * Theme override: the program's stylesheet follows prefers-color-scheme; a `.theme-toggle`
- * element lets the viewer force light or dark. The choice is kept in localStorage and applied
- * by rewriting the media conditions of the program's stylesheet (always-true or never-true).
+ * Theme override: the program's stylesheet keys every color-scheme rule to both the system
+ * setting and `data-theme` on <html>; a `.theme-toggle` element lets the viewer force light or
+ * dark. The choice is kept in localStorage; site/theme.ts applies it before first paint.
  */
 type Theme = 'light' | 'dark' | null;
 function storedTheme(): Theme {
@@ -246,14 +245,6 @@ function storedTheme(): Theme {
 let theme: Theme = storedTheme();
 function effectiveDark(): boolean {
   return theme === null ? matchMedia('(prefers-color-scheme: dark)').matches : theme === 'dark';
-}
-function themed(css: string): string {
-  if (theme === null) return css;
-  const on = 'min-width:0px';
-  const off = 'max-width:-1px';
-  return css
-    .replace(/prefers-color-scheme:\s*light/g, theme === 'light' ? on : off)
-    .replace(/prefers-color-scheme:\s*dark/g, theme === 'dark' ? on : off);
 }
 
 function render(
@@ -380,9 +371,7 @@ function render(
         i = words.length;
     }
   }
-  const sheet = themed(css);
-  if (styleEl.textContent !== sheet) styleEl.textContent = sheet;
-  lastCss = css;
+  if (styleEl.textContent !== css) styleEl.textContent = css;
   for (const [el, src] of shaders) mountShader(el, src);
   return { state, timer };
 }
@@ -419,6 +408,7 @@ async function main(): Promise<void> {
     const next = render(root, styleEl, r.output, show, text);
     state = next.state;
     if (typeof animate === 'function') animate();
+    syncToggle();
     if (next.timer !== undefined) {
       const { ms, event: ev } = next.timer;
       pending = window.setTimeout(() => show(ev), ms);
@@ -432,7 +422,13 @@ async function main(): Promise<void> {
     },
     { threshold: 0.15 },
   );
-  const styleOf = styleEl;
+  const syncToggle = (): void => {
+    const dark = effectiveDark();
+    for (const t of Array.from(root.querySelectorAll('.theme-toggle'))) {
+      t.setAttribute('aria-pressed', String(dark));
+      t.setAttribute('title', dark ? 'Switch to light' : 'Switch to dark');
+    }
+  };
   root.addEventListener('click', (ev) => {
     const t = (ev.target as HTMLElement | null)?.closest('.theme-toggle');
     if (t === null || t === undefined) return;
@@ -443,8 +439,9 @@ async function main(): Promise<void> {
       // storage unavailable: the choice lasts for this page view
     }
     document.documentElement.dataset.theme = theme;
-    styleOf.textContent = themed(lastCss);
+    syncToggle();
   });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncToggle);
   if (theme !== null) document.documentElement.dataset.theme = theme;
   const animate = (): void => {
     // Anything already on screen is shown at once; only what scrolls into view later fades in.
