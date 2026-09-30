@@ -25,14 +25,28 @@ ledger, blockers, and next action, and `results/` for machine-readable evidence.
 
 ## Install
 
-A0 needs no package manager, no Node, and no Bun. Download the `a0` binary for your platform from the [latest release](https://github.com/Joe-Simo/a0/releases/latest) and run it:
+A0 is a single self-contained binary: no Node, no Bun.
 
 ```bash
-curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0
+# macOS / Linux: Homebrew
+brew install joe-simo/a0/a0
+
+# macOS / Linux: script (detects OS/arch, verifies SHA-256, installs to ~/.local/bin)
+curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
+```
+
+```powershell
+# Windows (installs to %LOCALAPPDATA%\Programs\a0 and adds it to your user PATH)
+irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
+```
+
+Both scripts accept `A0_VERSION=v0.8.15` to pin a release and `A0_INSTALL_DIR` to change the destination. Or download a binary from the [latest release](https://github.com/Joe-Simo/a0/releases/latest) by hand and check it against `checksums.txt`. Then:
+
+```bash
 printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
-./a0 run sq.a0 sq 12            # 144
-./a0 emit arm64 sq.a0           # A0's own machine code; or c, js, java, sv
-./a0 check sq.a0                # diagnostics with codes
+a0 run sq.a0 sq 12            # 144
+a0 emit arm64 sq.a0           # A0's own machine code; or c, js, java, sv
+a0 check sq.a0                # diagnostics with codes
 ```
 
 Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, `a0-windows-x64.exe`. A C compiler (clang or gcc) is needed only to link native output on your machine.
