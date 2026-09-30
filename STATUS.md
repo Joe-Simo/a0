@@ -327,6 +327,45 @@ now hold this run; run 1 is in git history at c440aae):
 | haiku-full | rust/conventional | 13/13 | 620 | 2279 | 1577 |
 | haiku-full | rust/structured | 13/13 | 336 | 3110 | 1527 |
 
+**Run 4, 2026-09-30, structured-protocol text cut from 140 to 52 tokens per call
+(TypeScript's is 96); only the four A0 structured cells were re-collected, the rest are
+run 3's replies; one shot, no repairs:**
+
+| subject | cell | one-shot | output tokens | whole-task uncached | cache-adjusted |
+|---|---|---|---|---|---|
+| sonnet-min | a0/conventional | 13/13 | 629 | 6718 | 2202 |
+| sonnet-min | a0/structured | 13/13 | 368 | 7087 | 2181 |
+| sonnet-min | ts/conventional | 13/13 | 590 | 2023 | 1488 |
+| sonnet-min | ts/structured | 13/13 | 362 | 2910 | 1494 |
+| sonnet-min | rust/conventional | 13/13 | 630 | 2289 | 1587 |
+| sonnet-min | rust/structured | 13/13 | 364 | 3138 | 1555 |
+| sonnet-full | a0/conventional | 13/13 | 629 | 10254 | 2705 |
+| sonnet-full | a0/structured | 13/13 | 368 | 10623 | 2684 |
+| sonnet-full | ts/conventional | 13/13 | 590 | 2023 | 1488 |
+| sonnet-full | ts/structured | 13/13 | 362 | 2910 | 1494 |
+| sonnet-full | rust/conventional | 13/13 | 630 | 2289 | 1587 |
+| sonnet-full | rust/structured | 13/13 | 364 | 3138 | 1555 |
+| haiku-min | a0/conventional | 13/13 | 620 | 6709 | 2193 |
+| haiku-min | a0/structured | 13/13 | 468 | 7187 | 2281 |
+| haiku-min | ts/conventional | 13/13 | 599 | 2032 | 1497 |
+| haiku-min | ts/structured | 13/13 | 341 | 2889 | 1473 |
+| haiku-min | rust/conventional | 13/13 | 606 | 2265 | 1563 |
+| haiku-min | rust/structured | 12/13 | 369 | 3267 | 1684 |
+| haiku-full | a0/conventional | 13/13 | 632 | 10257 | 2708 |
+| haiku-full | a0/structured | 11/13 | 445 | 10924 | 2985 |
+| haiku-full | ts/conventional | 13/13 | 599 | 2032 | 1497 |
+| haiku-full | ts/structured | 13/13 | 341 | 2889 | 1473 |
+| haiku-full | rust/conventional | 13/13 | 606 | 2265 | 1563 |
+| haiku-full | rust/structured | 12/13 | 369 | 3267 | 1684 |
+
+Sonnet 78/78 with either primer; Haiku 78/78 with the compact primer and 76/78 with the
+full one (two wrong algorithms). Whole-task cost, A0 structured vs TypeScript structured,
+compact primer, cache-adjusted: 2181 vs 1494 = 1.46× (was 1.55×); uncached 7087 vs 2910
+= 2.4×. Measured and rejected: dropping the signature list from the program-handle view
+saves 15 tokens per task (999 → 804 over 13) but removes the names and types a program
+edit needs, so the two-handle view stays. The remaining gap is the language primer
+itself (372 tokens per call), which is the structural cost of a new language.
+
 **Run 3, 2026-09-30, on v0.8.12 + `ret OP …` sugar (v0.8.13), one shot, no repairs:**
 
 | subject | cell | one-shot | output tokens | whole-task uncached | cache-adjusted |

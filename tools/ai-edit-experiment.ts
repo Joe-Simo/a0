@@ -352,7 +352,7 @@ const TASKS: readonly Task[] = [
 const PROTOCOL_CONVENTIONAL =
   'Reply with the complete updated source file and nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_A0 =
-  'You are shown a view whose first line is an edit handle. With a function handle (e0), reply with that line followed only by edit lines: `id op ...` replaces an instruction or inserts a new one before ret, `id op ... @ other` inserts after instruction other, `-id` deletes, `ret x` changes the result; the view may end with `fn ... end` signature lines of callable functions. With a program handle (g0) whose view lists function signatures, reply with that line followed by whole `fn ... end` blocks to add or replace functions and `-fn name` to remove one. Nothing else, inside one ```code block.';
+  'The view starts with edit handles. Reply with one handle line followed by edit lines as the guide describes (function handle: instruction lines; program handle: whole `fn ... end` blocks or `-fn name`). Nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_TS =
   'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, inside one ```code block.';
 const RUST_SEMANTICS =

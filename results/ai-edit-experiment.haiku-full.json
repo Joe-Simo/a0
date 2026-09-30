@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T02:02:40.621Z",
+  "generatedAt": "2026-09-30T02:11:05.465Z",
   "status": "run with scripted replies from <tmp> (subject: claude-haiku subagent (fresh context, primer only, one shot))",
   "model": null,
   "languagePrimer": "MODEL_GUIDE.txt",
@@ -218,7 +218,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 4.585541999997076
+      "wallMs": 6.934209000000919
     },
     {
       "task": "affine-sign",
@@ -227,8 +227,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 48,
@@ -237,14 +237,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 61,
-        "output": 13,
-        "total": 874
+        "output": 16,
+        "total": 789
       },
       "outputTokensLocal": {
-        "o200k_base": 13,
-        "cl100k_base": 13
+        "o200k_base": 16,
+        "cl100k_base": 16
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -256,13 +256,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 13,
-            "cl100k_base": 13
+            "o200k_base": 16,
+            "cl100k_base": 16
           }
         }
       ],
       "failures": [],
-      "wallMs": 6.25249999999869
+      "wallMs": 10.992165999999997
     },
     {
       "task": "affine-sign",
@@ -306,7 +306,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 669.8147079999981
+      "wallMs": 1219.9878329999992
     },
     {
       "task": "affine-sign",
@@ -350,7 +350,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 614.7968330000003
+      "wallMs": 654.055042
     },
     {
       "task": "affine-sign",
@@ -394,7 +394,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 315.1565420000006
+      "wallMs": 264.85499999999956
     },
     {
       "task": "affine-sign",
@@ -438,7 +438,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 297.91958299999897
+      "wallMs": 279.43245800000113
     },
     {
       "task": "clamp-both",
@@ -482,7 +482,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.8271659999991243
+      "wallMs": 2.4701659999991534
     },
     {
       "task": "clamp-both",
@@ -491,8 +491,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 46,
@@ -501,32 +501,43 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
-        "toolContext": 88,
-        "output": 61,
-        "total": 949
+        "workflowPrimer": 52,
+        "toolContext": 248,
+        "output": 54,
+        "total": 1014
       },
       "outputTokensLocal": {
-        "o200k_base": 61,
-        "cl100k_base": 61
+        "o200k_base": 54,
+        "cl100k_base": 54
       },
       "providerUsage": null,
       "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
-      "accepted": true,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
       "attempts": [
         {
-          "status": "ok",
-          "failures": [],
+          "status": "wrong-output",
+          "failures": [
+            "clamp(5,1,10) = 1, expected 5",
+            "clamp(0,1,10) = 0, expected 1",
+            "clamp(4294967295,1,10) = 1, expected 10",
+            "clamp(2147483648,2147483647,2147483649) = 2147483647, expected 2147483648"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 61,
-            "cl100k_base": 61
-          }
+            "o200k_base": 54,
+            "cl100k_base": 54
+          },
+          "repair": "Rejected:\nclamp(5,1,10) = 1, expected 5\nclamp(0,1,10) = 0, expected 1\nclamp(4294967295,1,10) = 1, expected 10\nclamp(2147483648,2147483647,2147483649) = 2147483647, expected 2147483648\n\nCurrent view:\ne0\nfn clamp u32 u32 u32 -> u32\nc lt p2 p0\nt select c p2 p0\nc2 lt p1 t\nr select c2 p1 t\nret r\nend\ng0\nfn clamp u32 u32 u32 -> u32 end\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 3.713458999998693
+      "failures": [
+        "clamp(5,1,10) = 1, expected 5",
+        "clamp(0,1,10) = 0, expected 1",
+        "clamp(4294967295,1,10) = 1, expected 10",
+        "clamp(2147483648,2147483647,2147483649) = 2147483647, expected 2147483648"
+      ],
+      "wallMs": 4.8255410000001575
     },
     {
       "task": "clamp-both",
@@ -570,7 +581,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 574.9427499999983
+      "wallMs": 497.5448750000014
     },
     {
       "task": "clamp-both",
@@ -614,7 +625,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 640.1422079999975
+      "wallMs": 431.9421249999996
     },
     {
       "task": "clamp-both",
@@ -658,7 +669,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 322.5288340000043
+      "wallMs": 238.39945799999987
     },
     {
       "task": "clamp-both",
@@ -702,7 +713,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 340.961083999995
+      "wallMs": 276.6992500000015
     },
     {
       "task": "rotl-fix",
@@ -746,7 +757,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.503540999998222
+      "wallMs": 2.4202910000003612
     },
     {
       "task": "rotl-fix",
@@ -755,8 +766,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 60,
@@ -765,10 +776,10 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 92,
         "output": 13,
-        "total": 905
+        "total": 817
       },
       "outputTokensLocal": {
         "o200k_base": 13,
@@ -790,7 +801,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.7222919999985606
+      "wallMs": 2.3414579999989655
     },
     {
       "task": "rotl-fix",
@@ -834,7 +845,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 2201.341333000004
+      "wallMs": 432.6891250000008
     },
     {
       "task": "rotl-fix",
@@ -878,7 +889,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 2764.8899999999994
+      "wallMs": 435.97358299999905
     },
     {
       "task": "rotl-fix",
@@ -922,7 +933,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 767.8516670000026
+      "wallMs": 333.3568749999995
     },
     {
       "task": "rotl-fix",
@@ -966,7 +977,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1008.8776660000003
+      "wallMs": 243.9534169999988
     },
     {
       "task": "add-cube",
@@ -1010,7 +1021,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 5.02258399999846
+      "wallMs": 2.383957999998529
     },
     {
       "task": "add-cube",
@@ -1019,8 +1030,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 34,
@@ -1029,32 +1040,37 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
-        "toolContext": 60,
-        "output": 34,
-        "total": 894
+        "workflowPrimer": 52,
+        "toolContext": 124,
+        "output": 41,
+        "total": 877
       },
       "outputTokensLocal": {
-        "o200k_base": 34,
-        "cl100k_base": 34
+        "o200k_base": 41,
+        "cl100k_base": 41
       },
       "providerUsage": null,
       "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
-      "accepted": true,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
       "attempts": [
         {
-          "status": "ok",
-          "failures": [],
+          "status": "wrong-output",
+          "failures": [
+            "cube(3) = 243, expected 27"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 34,
-            "cl100k_base": 34
-          }
+            "o200k_base": 41,
+            "cl100k_base": 41
+          },
+          "repair": "Rejected:\ncube(3) = 243, expected 27\n\nCurrent view:\ne0\nfn sq u32 -> u32\na mul p0 p0\nret a\nend\ng0\nfn sq u32 -> u32 end\nfn cube u32 -> u32 end\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 7.951041999993322
+      "failures": [
+        "cube(3) = 243, expected 27"
+      ],
+      "wallMs": 2.3575419999997393
     },
     {
       "task": "add-cube",
@@ -1098,7 +1114,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1464.0556670000005
+      "wallMs": 495.4710840000007
     },
     {
       "task": "add-cube",
@@ -1142,7 +1158,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 714.124625000004
+      "wallMs": 521.4177089999994
     },
     {
       "task": "add-cube",
@@ -1186,7 +1202,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 347.3417909999989
+      "wallMs": 275.1508750000012
     },
     {
       "task": "add-cube",
@@ -1230,7 +1246,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 393.1037079999951
+      "wallMs": 252.6917910000011
     },
     {
       "task": "absdiff",
@@ -1274,7 +1290,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 4.135375000005297
+      "wallMs": 3.1415410000008706
     },
     {
       "task": "absdiff",
@@ -1283,8 +1299,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 40,
@@ -1293,37 +1309,32 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
-        "toolContext": 93,
-        "output": 34,
-        "total": 927
+        "workflowPrimer": 52,
+        "toolContext": 63,
+        "output": 42,
+        "total": 817
       },
       "outputTokensLocal": {
-        "o200k_base": 34,
-        "cl100k_base": 34
+        "o200k_base": 42,
+        "cl100k_base": 42
       },
       "providerUsage": null,
       "modelCalls": 1,
-      "validationFailures": 1,
-      "acceptedOneShot": false,
-      "accepted": false,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
       "attempts": [
         {
-          "status": "protocol",
-          "failures": [
-            "parse: line 3: select expects 3 operands, got 7 fix: write exactly 3 operands after select"
-          ],
+          "status": "ok",
+          "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 34,
-            "cl100k_base": 34
-          },
-          "repair": "Rejected:\nparse: line 3: select expects 3 operands, got 7 fix: write exactly 3 operands after select\n\nTry again."
+            "o200k_base": 42,
+            "cl100k_base": 42
+          }
         }
       ],
-      "failures": [
-        "parse: line 3: select expects 3 operands, got 7 fix: write exactly 3 operands after select"
-      ],
-      "wallMs": 3.934625000001688
+      "failures": [],
+      "wallMs": 2.8616669999992155
     },
     {
       "task": "absdiff",
@@ -1367,7 +1378,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 929.627250000005
+      "wallMs": 549.5323750000007
     },
     {
       "task": "absdiff",
@@ -1411,7 +1422,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1936.1670000000013
+      "wallMs": 564.6877090000016
     },
     {
       "task": "absdiff",
@@ -1455,7 +1466,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 721.9054170000018
+      "wallMs": 291.46387499999764
     },
     {
       "task": "absdiff",
@@ -1499,7 +1510,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 484.63508300000103
+      "wallMs": 301.4756249999991
     },
     {
       "task": "xor4",
@@ -1543,7 +1554,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 4.07854199999565
+      "wallMs": 3.1705000000001746
     },
     {
       "task": "xor4",
@@ -1552,8 +1563,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 60,
@@ -1562,14 +1573,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 78,
-        "output": 29,
-        "total": 907
+        "output": 26,
+        "total": 816
       },
       "outputTokensLocal": {
-        "o200k_base": 29,
-        "cl100k_base": 29
+        "o200k_base": 26,
+        "cl100k_base": 26
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -1581,13 +1592,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 29,
-            "cl100k_base": 29
+            "o200k_base": 26,
+            "cl100k_base": 26
           }
         }
       ],
       "failures": [],
-      "wallMs": 8.143208000001323
+      "wallMs": 2.650667000001704
     },
     {
       "task": "xor4",
@@ -1631,7 +1642,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1380.3635409999988
+      "wallMs": 597.5531670000018
     },
     {
       "task": "xor4",
@@ -1675,7 +1686,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1611.5921250000029
+      "wallMs": 596.7329580000005
     },
     {
       "task": "xor4",
@@ -1719,7 +1730,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 466.35079199999745
+      "wallMs": 301.39258300000074
     },
     {
       "task": "xor4",
@@ -1763,7 +1774,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 365.1583329999994
+      "wallMs": 286.0804169999974
     },
     {
       "task": "min3",
@@ -1807,7 +1818,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 4.15400000000227
+      "wallMs": 4.191666999999143
     },
     {
       "task": "min3",
@@ -1816,8 +1827,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 48,
@@ -1826,14 +1837,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 77,
-        "output": 67,
-        "total": 944
+        "output": 60,
+        "total": 849
       },
       "outputTokensLocal": {
-        "o200k_base": 67,
-        "cl100k_base": 67
+        "o200k_base": 60,
+        "cl100k_base": 60
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -1845,13 +1856,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 67,
-            "cl100k_base": 67
+            "o200k_base": 60,
+            "cl100k_base": 60
           }
         }
       ],
       "failures": [],
-      "wallMs": 6.554124999995111
+      "wallMs": 3.1274589999993623
     },
     {
       "task": "min3",
@@ -1895,7 +1906,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 879.7909579999978
+      "wallMs": 611.7461670000012
     },
     {
       "task": "min3",
@@ -1939,7 +1950,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 786.0804169999974
+      "wallMs": 536.6997499999998
     },
     {
       "task": "min3",
@@ -1983,7 +1994,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 350.64283299999806
+      "wallMs": 289.0127500000017
     },
     {
       "task": "min3",
@@ -2032,7 +2043,7 @@
       "failures": [
         "rustc: error: expected item, found keyword `if`\n --> <tmp>:4:5\n  |\n4 |     if c < ab { c } else { ab }\n  |     ^^ expected item\n  |\n  = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>\n\nerror: aborting due to 1 previous error\n\n"
       ],
-      "wallMs": 79.83016700000007
+      "wallMs": 73.37287500000093
     },
     {
       "task": "sq-twice",
@@ -2076,7 +2087,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.3679169999959413
+      "wallMs": 2.658332999999402
     },
     {
       "task": "sq-twice",
@@ -2085,8 +2096,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 51,
@@ -2095,14 +2106,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 76,
-        "output": 31,
-        "total": 907
+        "output": 21,
+        "total": 809
       },
       "outputTokensLocal": {
-        "o200k_base": 31,
-        "cl100k_base": 31
+        "o200k_base": 21,
+        "cl100k_base": 21
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -2114,13 +2125,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 31,
-            "cl100k_base": 31
+            "o200k_base": 21,
+            "cl100k_base": 21
           }
         }
       ],
       "failures": [],
-      "wallMs": 4.782500000001164
+      "wallMs": 2.722750000000815
     },
     {
       "task": "sq-twice",
@@ -2164,7 +2175,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 629.3122079999957
+      "wallMs": 722.6420419999995
     },
     {
       "task": "sq-twice",
@@ -2208,7 +2219,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 675.8368330000012
+      "wallMs": 609.4363750000011
     },
     {
       "task": "sq-twice",
@@ -2252,7 +2263,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 357.57512499999575
+      "wallMs": 314.72179099999994
     },
     {
       "task": "sq-twice",
@@ -2296,7 +2307,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 330.3288329999996
+      "wallMs": 284.69745899999907
     },
     {
       "task": "sum-squares",
@@ -2340,7 +2351,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 95.51800000000367
+      "wallMs": 80.1553750000021
     },
     {
       "task": "sum-squares",
@@ -2349,8 +2360,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 50,
@@ -2359,10 +2370,10 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 97,
         "output": 61,
-        "total": 958
+        "total": 870
       },
       "outputTokensLocal": {
         "o200k_base": 61,
@@ -2384,7 +2395,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 95.52345900000364
+      "wallMs": 51.70341699999699
     },
     {
       "task": "sum-squares",
@@ -2428,7 +2439,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 534.333749999998
+      "wallMs": 589.8440840000003
     },
     {
       "task": "sum-squares",
@@ -2472,7 +2483,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 632.8663339999985
+      "wallMs": 564.2189169999983
     },
     {
       "task": "sum-squares",
@@ -2516,7 +2527,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 304.1289590000015
+      "wallMs": 301.0301670000008
     },
     {
       "task": "sum-squares",
@@ -2560,7 +2571,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 318.96433300000353
+      "wallMs": 284.0414579999997
     },
     {
       "task": "loop-inclusive",
@@ -2604,7 +2615,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.805040999999619
+      "wallMs": 2.8927499999990687
     },
     {
       "task": "loop-inclusive",
@@ -2613,8 +2624,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 65,
@@ -2623,14 +2634,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 101,
-        "output": 14,
-        "total": 915
+        "output": 17,
+        "total": 830
       },
       "outputTokensLocal": {
-        "o200k_base": 14,
-        "cl100k_base": 14
+        "o200k_base": 17,
+        "cl100k_base": 17
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -2642,13 +2653,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 14,
-            "cl100k_base": 14
+            "o200k_base": 17,
+            "cl100k_base": 17
           }
         }
       ],
       "failures": [],
-      "wallMs": 4.348375000001397
+      "wallMs": 3.5603749999972933
     },
     {
       "task": "loop-inclusive",
@@ -2692,7 +2703,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 799.7849999999962
+      "wallMs": 533.5980419999978
     },
     {
       "task": "loop-inclusive",
@@ -2736,7 +2747,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 721.6112500000017
+      "wallMs": 651.0539170000011
     },
     {
       "task": "loop-inclusive",
@@ -2780,7 +2791,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 349.0641250000044
+      "wallMs": 312.32358300000124
     },
     {
       "task": "loop-inclusive",
@@ -2824,7 +2835,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 335.3180830000056
+      "wallMs": 298.68716700000004
     },
     {
       "task": "record-flag",
@@ -2868,7 +2879,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.878499999998894
+      "wallMs": 2.2754580000000715
     },
     {
       "task": "record-flag",
@@ -2877,8 +2888,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 40,
@@ -2887,14 +2898,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 76,
         "output": 38,
-        "total": 914
+        "total": 826
       },
       "outputTokensLocal": {
         "o200k_base": 38,
-        "cl100k_base": 37
+        "cl100k_base": 38
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -2907,12 +2918,12 @@
           "failures": [],
           "outputTokensLocal": {
             "o200k_base": 38,
-            "cl100k_base": 37
+            "cl100k_base": 38
           }
         }
       ],
       "failures": [],
-      "wallMs": 3.917290999997931
+      "wallMs": 2.5979999999981374
     },
     {
       "task": "record-flag",
@@ -2956,7 +2967,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 667.6639170000053
+      "wallMs": 578.1207500000019
     },
     {
       "task": "record-flag",
@@ -3000,7 +3011,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 751.0568330000024
+      "wallMs": 534.9210840000014
     },
     {
       "task": "record-flag",
@@ -3044,7 +3055,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 367.4342919999981
+      "wallMs": 295.01695800000016
     },
     {
       "task": "record-flag",
@@ -3088,7 +3099,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 356.5017910000024
+      "wallMs": 316.815208
     },
     {
       "task": "byte-select",
@@ -3132,7 +3143,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.89824999999837
+      "wallMs": 3.106000000003405
     },
     {
       "task": "byte-select",
@@ -3141,8 +3152,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 42,
@@ -3151,14 +3162,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 65,
-        "output": 14,
-        "total": 879
+        "output": 23,
+        "total": 800
       },
       "outputTokensLocal": {
-        "o200k_base": 14,
-        "cl100k_base": 14
+        "o200k_base": 23,
+        "cl100k_base": 23
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -3170,13 +3181,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 14,
-            "cl100k_base": 14
+            "o200k_base": 23,
+            "cl100k_base": 23
           }
         }
       ],
       "failures": [],
-      "wallMs": 7.282791999998153
+      "wallMs": 4.076457999999548
     },
     {
       "task": "byte-select",
@@ -3220,7 +3231,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 750.9996669999964
+      "wallMs": 651.9266250000001
     },
     {
       "task": "byte-select",
@@ -3264,7 +3275,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 762.9960829999982
+      "wallMs": 630.578458
     },
     {
       "task": "byte-select",
@@ -3308,7 +3319,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 349.6443749999962
+      "wallMs": 295.53291700000045
     },
     {
       "task": "byte-select",
@@ -3352,7 +3363,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 344.5279999999984
+      "wallMs": 290.73362500000076
     },
     {
       "task": "saturating-add",
@@ -3396,7 +3407,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.504416999996465
+      "wallMs": 3.2254159999974945
     },
     {
       "task": "saturating-add",
@@ -3405,8 +3416,8 @@
       "protocol": "structured",
       "trial": 0,
       "setupTokensLocal": {
-        "o200k_base": 800,
-        "cl100k_base": 793
+        "o200k_base": 712,
+        "cl100k_base": 706
       },
       "viewTokensLocal": {
         "o200k_base": 38,
@@ -3415,14 +3426,14 @@
       "reasoningTokens": null,
       "tokenBucketsLocal": {
         "languagePrimer": 660,
-        "workflowPrimer": 140,
+        "workflowPrimer": 52,
         "toolContext": 65,
-        "output": 50,
-        "total": 915
+        "output": 33,
+        "total": 810
       },
       "outputTokensLocal": {
-        "o200k_base": 50,
-        "cl100k_base": 48
+        "o200k_base": 33,
+        "cl100k_base": 33
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -3434,13 +3445,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 50,
-            "cl100k_base": 48
+            "o200k_base": 33,
+            "cl100k_base": 33
           }
         }
       ],
       "failures": [],
-      "wallMs": 4.1799580000006245
+      "wallMs": 2.3715830000001006
     },
     {
       "task": "saturating-add",
@@ -3484,7 +3495,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 639.7425829999993
+      "wallMs": 590.1416669999999
     },
     {
       "task": "saturating-add",
@@ -3528,7 +3539,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 676.4588749999966
+      "wallMs": 669.1381669999973
     },
     {
       "task": "saturating-add",
@@ -3572,7 +3583,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 349.7867910000059
+      "wallMs": 338.8309580000023
     },
     {
       "task": "saturating-add",
@@ -3616,7 +3627,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 346.55287499999395
+      "wallMs": 293.44187500000044
     }
   ]
 }
