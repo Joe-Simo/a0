@@ -11,7 +11,7 @@ import { performance } from 'node:perf_hooks';
 import type { TypedProgram, Value } from '../src/core.js';
 import { emitMetal, isKernelCallable, kernelName } from '../src/metal.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
-import { type Case, generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
+import { generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
 
