@@ -157,6 +157,20 @@ Hardware compilation requires attention to cycle boundaries, finite resources, t
 
 Integration is part of the language product. Node packages, browser APIs, native SDKs, managed libraries, database drivers, and device interfaces need exact bindings, compatible ownership, error handling, and capability contracts. Generating the destination language alone does not supply these. WIT provides a useful existing interface-description precedent; it defines component interfaces, not implementation behavior. [S4]
 
+## 7a. Self-hosting: the compiler in A0
+
+Decision (2026-09-30): the compiler is to be written in A0 and compiled by A0's own AArch64 backend, so the shipped `a0` binary is A0 machine code with no runtime. The TypeScript compiler remains as the bootstrap and the verification oracle: every stage of the A0 compiler is checked differentially against it on the corpus, and the bootstrap fixed point (stage 2 output equals stage 3 output, byte for byte) is part of the gate.
+
+Stages: (1) lexer `compiler/lex.a0` (done; tokens as `kind start length` word triples), (2) parser and validator producing the word IR below, (3) optimizer and AArch64 emitter, (4) C emitter for the other platforms, (5) bootstrap. Prerequisites in the language: arrays beyond 1024 elements with in-place updates on the C and arm64 paths, and a record cap above 65536 bits.
+
+Word IR (all tables are u32 arrays; indices are 0-based; a table's length travels beside it):
+- `pool`: byte pool for identifiers and string literals. `sym`: (start len) pairs into `pool`; the same bytes intern to one entry.
+- `types`: triples (tag a b). tag 1 u32, 2 bool, 3 io, 4 array of u32 with length a, 5 record whose field types are `tlist[a .. a+b)`. `tlist`: type indices.
+- `fns`: 7 words per function (name-sym, nparams, first param index in `tlist`, result type, first node, node count, ret operand as two words folded: kind*2^28 | value).
+- `nodes`: 6 words per instruction (id-sym, op, nargs, first arg in `args`, callee fn index or 0, pred fn index or 0). `args`: operand pairs (kind value): kind 1 node index within the function, 2 param index, 3 u32 literal, 4 bool literal.
+- ops: 1 mov 2 add 3 sub 4 mul 5 and 6 or 7 xor 8 shl 9 shr 10 div 11 rem 12 eq 13 ne 14 lt 15 le 16 gt 17 ge 18 select 19 call 20 fold 21 loop 22 arr 23 rec 24 text 25 get 26 set 27 at 28 put 29 read 30 write 31 puts.
+- diagnostics: the A0 front end reports the same codes as the TypeScript one (parse, type, structure, limit) with the token index; the differential test maps both to (code, line) and requires equality.
+
 ## 8. Planned semantic extensions
 
 The initial core must grow without silently changing existing meanings.
