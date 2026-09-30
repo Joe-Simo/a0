@@ -1343,6 +1343,40 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
   Cost ratio TS / A0: 711x (Sonnet), 701x (Haiku); Rust / A0: 709x (Sonnet), 699x (Haiku). A0 cost per task is flat from 400 to 4000 functions (Sonnet 202 both) while TS/Rust grow linearly with the file. Caveat as at c400: the scoped A0 view is protocol-supplied; TS/Rust get the whole numbered file.
 - Gate (this worktree, all exit 0): lint, typecheck, test 56/56, verify, app (JVM emitter row still blocked as before), equiv 48/48 proved, hw, dotnet, gpu.
 
+## Session 2026-09-30 (AI edits: seven languages)
+
+- Five more representations in the AI-edit harness: Python, Go, Java, C#, C++ (`tools/ai-edit-langs.ts`). Hand translations of every function in set B (originals and references) and in the set-C / c400 program (set-A originals, the fold-helper and examples/ extras, and the six generated filler templates, emitted from a `spec` now recorded on each `generateFiller` entry), same names and u32 semantics: Python `& 0xFFFFFFFF`, Go `uint32`, Java `int` with `Integer.compareUnsigned` / `divideUnsigned` / `remainderUnsigned`, C# `uint`, C++ `uint32_t`; shift counts masked to 5 bits; `pctof` divides with the A0 rule (b = 0 gives 4294967295). Records: tuples (Python, C# value tuples), `U32U32` / `U32Bool` (Go structs, Java records), `std::pair` (C++).
+- Acceptance follows acceptTs/acceptRust: write the file, build (`python3 -m py_compile`, `go build`, `javac`, `dotnet build -c Release`, `clang++ -std=c++20`), run a generated driver that prints each result in one canonical form, compare. Protocols: conventional (whole file) and structured (numbered whole file + line edits, the TS/Rust protocol) for each language. Harness: `A0_EXPERIMENT_REPS=python,go,java,csharp,cpp` (default `a0,ts,rust`), `A0_EXPERIMENT_PROTOCOLS`; reports carry `representations`, `protocols`, and `langTaskSetSha256` (b `bc76a963…`, c400 `58a27fdf…`); `taskSetSha256` unchanged (b `21de5a34…`, c400 `ad0f14cd…`).
+- Self-check ok on b and c400 in all five languages: every reference passes, every original fails.
+- Collected with fresh subjects (one Haiku and one Sonnet subagent per group file, one shot, scratchpad g16): set b, 10 group files (5 languages x 2 protocols, 12 tasks each); c400, 5 group files (structured only), each printing the shared numbered 400-function file once, as the earlier c400 collection did. c400 conventional not collected (each reply is the whole ~11.5k-token file, 12 per subject; same reason as before). Results `results/ai-edit-experiment.{b,c400}.{haiku,sonnet}-langs.json`. A0 rows are the earlier collections on the same prompts (`b.*-min`, `c400.*-min`, scoped g0); A0 was not re-collected. Cost per task cache-adjusted as before (primer 1.25x per call, context and output 1x); ratio = language cost / A0 cost, same protocol.
+
+Set b (single-function files):
+
+| subject | cell | Python | Go | Java | C# | C++ | A0 |
+|---|---|---|---|---|---|---|---|
+| Sonnet | conventional accepted | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 |
+| Sonnet | conventional cost/task | 140 (0.71x) | 152 (0.77x) | 171 (0.86x) | 166 (0.84x) | 185 (0.93x) | 198 |
+| Sonnet | structured accepted | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 |
+| Sonnet | structured cost/task | 126 (0.68x) | 142 (0.77x) | 148 (0.80x) | 144 (0.78x) | 159 (0.86x) | 184 |
+| Haiku | conventional accepted | 11/12 | 11/12 | 10/12 | 12/12 | 12/12 | 12/12 |
+| Haiku | conventional cost/task | 144 (0.73x) | 160 (0.81x) | 175 (0.88x) | 165 (0.83x) | 186 (0.94x) | 198 |
+| Haiku | structured accepted | 3/12 | 12/12 | 8/12 | 9/12 | 11/12 | 12/12 |
+| Haiku | structured cost/task | 150 (0.77x) | 143 (0.73x) | 202 (1.03x) | 199 (1.02x) | 163 (0.83x) | 196 |
+
+  On single functions A0 is the most expensive representation (its primer dominates), as it was against TS and Rust (TS/Rust 139–162). Every language ties or beats A0's acceptance with Sonnet; with Haiku, A0 structured (12/12) beats Python (3/12: 9 replies dropped the indentation of the replaced line, so the line-edit protocol breaks significant whitespace), Java (8/12: 3 compile, 1 wrong output) and C# (9/12: 3 compile, two of them edits placed outside the class).
+
+Set c400 (one 400-function program, structured):
+
+| subject | Python | Go | Java | C# | C++ | A0 (scoped g0) |
+|---|---|---|---|---|---|---|
+| Sonnet accepted | 12/12 | 11/12 | 12/12 | 12/12 | 12/12 | 12/12 |
+| Sonnet cost/task | 12502 (62x) | 13203 (65x) | 13114 (65x) | 13761 (68x) | 13011 (64x) | 202 |
+| Haiku accepted | 1/12 | 5/12 | 8/12 | 7/12 | 9/12 | 10/12 |
+| Haiku cost/task | 12534 (58x) | 13266 (61x) | 13151 (61x) | 13788 (64x) | 13042 (60x) | 217 |
+
+  With TS (14143 / 14202) and Rust (14210 / 14294) from the earlier collection, A0 structured is 58x–70x cheaper per task than every one of the seven languages at 400 functions; the whole numbered file is 12.4k–13.7k tokens in each of them (Python smallest, C# largest). Haiku's misses: Python indentation again (11), Go (6 compile, e.g. a line number taken from the file position rather than the view number; 1 divide-by-zero panic in `pctof`), C# replies without the handle line (3). Sonnet's one miss: a Go insert inside `popcnt`.
+- Caveat as before: the scoped A0 view is protocol-supplied; the other languages get no per-function tool.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
