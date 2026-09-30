@@ -107,8 +107,11 @@ function sourceOf(task: Task, rep: Representation): string {
 
 const PROTOCOL_CONVENTIONAL =
   'Reply with the complete updated source file and nothing else, inside one ```code block.';
-const PROTOCOL_STRUCTURED_A0 =
-  'The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.';
+// A0_EXPERIMENT_A0_VIEW=numbered numbers the body lines of the e0 view so replies can address
+// them (`N line`, `N-`, `N+ line`); measured 2026-09-30 with MODEL_GUIDE.lines.txt, it raised
+// output per edit and lowered acceptance, so the default view stays unnumbered.
+const A0_NUMBERED_VIEW = process.env.A0_EXPERIMENT_A0_VIEW === 'numbered';
+const PROTOCOL_STRUCTURED_A0 = `The view starts with edit handles. Reply with only the edit lines the guide describes (${A0_NUMBERED_VIEW ? 'numbered or ' : ''}instruction lines edit the shown function; \`fn\` blocks or \`-fn name\` edit the program), bare: no code fence, no handle line.`;
 const PROTOCOL_STRUCTURED_TS =
   'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, bare: no code fence, no handle line.';
 const RUST_SEMANTICS =
@@ -367,7 +370,7 @@ async function buildCell(
       // line selects which one is used.
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
-      const fnView = session.open(fnName, { scope: 'deps' }).text; // e0
+      const fnView = session.open(fnName, { scope: 'deps', numbered: A0_NUMBERED_VIEW }).text; // e0
       const progView = session.openProgram({ scope: programScope, target: fnName }).text; // g0
       const view = `${fnView}\n${progView}`;
       return { cell: { representation, protocol, ...primers, system, view }, session, handle };
@@ -884,6 +887,7 @@ async function main(): Promise<void> {
     taskSet: setName,
     programView: programScope,
     systemLayout,
+    a0View: A0_NUMBERED_VIEW ? 'numbered' : 'plain',
     method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
