@@ -15,6 +15,7 @@ import {
   LIMITS,
   parse,
   type TypedProgram,
+  utf8Length,
   validate,
 } from './core.js';
 
@@ -54,7 +55,7 @@ export async function link(entry: string, read: ReadSource): Promise<Linked> {
     }
     visiting.add(abs);
     const text = await read(abs);
-    if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
+    if (utf8Length(text) > LIMITS.maxSourceBytes)
       throw new A0Error(`${abs}: source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
         code: 'limit',
       });
@@ -97,7 +98,7 @@ export async function link(entry: string, read: ReadSource): Promise<Linked> {
     line += lineCount;
   }
   const combined = parts.join('\n');
-  if (Buffer.byteLength(combined, 'utf8') > LIMITS.maxSourceBytes)
+  if (utf8Length(combined) > LIMITS.maxSourceBytes)
     throw new A0Error(`linked program exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
       code: 'limit',
     });

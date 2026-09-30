@@ -13,7 +13,8 @@
  * A handle is a reference, not an authorization credential.
  */
 
-import { createHash } from 'node:crypto';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 import {
   A0Error,
   type Func,
@@ -35,6 +36,7 @@ import {
   stripComment,
   type TypedFunc,
   type TypedProgram,
+  utf8Length,
   validate,
   validateFunction,
 } from './core.js';
@@ -46,12 +48,12 @@ const PROGRAM_HANDLE = /^g(0|[1-9][0-9]*)$/;
 
 /** Content revision of a function: SHA-256 of its canonical source form. */
 export function revision(fn: Func): string {
-  return createHash('sha256').update(formatFunction(fn), 'utf8').digest('hex');
+  return bytesToHex(sha256(new TextEncoder().encode(formatFunction(fn))));
 }
 
 /** Content revision of a whole program. */
 export function programRevision(program: Program): string {
-  return createHash('sha256').update(formatProgram(program), 'utf8').digest('hex');
+  return bytesToHex(sha256(new TextEncoder().encode(formatProgram(program))));
 }
 
 export interface Replacement {
@@ -231,12 +233,12 @@ export function replaceNodes(
  * is the editing identity of one function's text).
  */
 export function semanticRevision(fn: TypedFunc): string {
-  const h = createHash('sha256').update(revision(fn), 'utf8');
+  let text = revision(fn);
   for (const name of [...fn.calls.keys()].sort()) {
     const callee = fn.calls.get(name);
-    if (callee !== undefined) h.update(`|${name}=${semanticRevision(callee)}`, 'utf8');
+    if (callee !== undefined) text += `|${name}=${semanticRevision(callee)}`;
   }
-  return h.digest('hex');
+  return bytesToHex(sha256(new TextEncoder().encode(text)));
 }
 
 function commit(program: TypedProgram, updated: TypedFunc): TypedProgram {
@@ -260,7 +262,7 @@ export function formatPatch(fn: Func, nodes: readonly Node[]): string {
 }
 
 export function parsePatch(text: string): Patch {
-  if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
+  if (utf8Length(text) > LIMITS.maxSourceBytes)
     throw new A0Error('patch too large', undefined, { code: 'limit' });
   const lines = text
     .split(/\r?\n/)
@@ -538,7 +540,7 @@ export class EditSession {
    * to the new revision (handles are stable names for the session).
    */
   apply(text: string): TypedProgram {
-    if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
+    if (utf8Length(text) > LIMITS.maxSourceBytes)
       throw new A0Error('edit too large', undefined, { code: 'limit' });
     const rawLines = text.split(/\r?\n/);
     // A reply may carry several sections, each headed by an open handle; they apply in

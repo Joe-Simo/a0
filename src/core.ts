@@ -378,6 +378,11 @@ const U32_LITERAL = /^(0|[1-9][0-9]*)$/;
 const RESERVED = new Set(['fn', 'ret', 'end', 'patch', 'true', 'false']);
 const U32_MAX = 0xffff_ffff;
 
+/** UTF-8 byte length without Node's Buffer (the compiler core also runs in the browser). */
+export function utf8Length(text: string): number {
+  return new TextEncoder().encode(text).length;
+}
+
 export function isValidIdentifier(id: string): boolean {
   return IDENT.test(id) && !RESERVED.has(id) && !PARAM.test(id);
 }
@@ -460,7 +465,7 @@ export function parseNode(lineText: string, line?: number): Node {
       throw new A0Error(`invalid node identifier '${id ?? ''}'`, line, { code: 'parse' });
     }
     const text = decodeText(raw ?? '', line);
-    const bytes = Buffer.from(text, 'utf8');
+    const bytes = new TextEncoder().encode(text);
     if (bytes.length === 0)
       throw new A0Error('text literal must not be empty', line, { code: 'parse' });
     if (bytes.length > LIMITS.maxArrayLength) {
@@ -533,7 +538,7 @@ export function freshRetId(nodes: readonly { readonly id: string }[]): string {
 }
 
 export function parse(source: string): Program {
-  if (Buffer.byteLength(source, 'utf8') > LIMITS.maxSourceBytes) {
+  if (utf8Length(source) > LIMITS.maxSourceBytes) {
     throw new A0Error(`source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
       code: 'limit',
     });
