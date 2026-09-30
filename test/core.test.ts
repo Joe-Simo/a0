@@ -1296,6 +1296,77 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   assert.throws(() => parseType('u32x65536x2'), /exceeds 2097152 bits/);
 });
 
+test('fold state passed again as an extra: the loop copies it, so every trip reads the initial value (JS, C)', async () => {
+  const { compileWasm, findWasmClang } = await import('../src/toolchain.js');
+  // Trip i writes state[i] = extra[(i + 7) % n] + 1; reusing the initial value's storage for the
+  // state would make trip i read the value trip i - 1 wrote.
+  const program = (n: number): string =>
+    `fn step u32x${n} u32 u32x${n} -> u32x${n}\nj add p1 ${n - 1}\nx get p2 j\nv add x 1\ns set p0 p1 v\nret s\nend\nfn chain u32 u32 -> u32\nz arr ${Array.from({ length: n }, (_, k) => (k === n - 1 ? 'p0' : '0')).join(' ')}\na fold step ${n} z z\nr get a p1\nret r\nend`;
+  for (const n of [8, 2048]) {
+    const p = parseAndValidate(program(n));
+    const chain = p.byName.get('chain') as TypedFunc;
+    const cases = [
+      [5, 0],
+      [5, 1],
+      [5, 3],
+      [0xffffffff, 2],
+    ] as const;
+    for (const [x, i] of cases) assert.equal(run(chain, [x, i]), i === 0 ? (x + 1) >>> 0 : 1);
+    const js = compile(p, 'js').text;
+    const mod = (await import(
+      `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+    )) as { chain: (x: number, i: number) => number };
+    for (const [x, i] of cases) assert.equal(mod.chain(x, i), run(chain, [x, i]));
+    const clang = findWasmClang();
+    if (clang.path !== undefined && clang.wasmLd !== undefined) {
+      const { instance } = await WebAssembly.instantiate(
+        (await compileWasm(compile(p, 'c').text)).bytes as BufferSource,
+        {},
+      );
+      const wchain = instance.exports.a0_chain as (x: number, i: number) => number;
+      for (const [x, i] of cases) assert.equal(wchain(x, i) >>> 0, run(chain, [x, i]));
+    }
+  }
+});
+
+test('C emission: aggregates over 4 KiB are borrowed by pointer, returned through out, and held in a static arena', async () => {
+  const { compileWasm, findWasmClang } = await import('../src/toolchain.js');
+  const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
+  const src = [
+    'fn fill u32x2048 u32 u32 -> u32x2048\nv mul p1 p2\nn set p0 p1 v\nret n\nend',
+    'fn bump u32x2048 u32 -> u32x2048\nn set p0 p1 7\nret n\nend',
+    'fn sum u32 u32 u32x2048 -> u32\nx get p2 p1\ns add p0 x\nret s\nend',
+    `fn top u32 -> u32\nz arr ${zeros}\na fold fill 2048 z p0\nb call bump a 5\nk lt p0 10\nc select k a b\nm mov c\nr rec m p0\nq at r 0\nw arr a b\ng get w p0\nt fold sum 2048 0 g\ny get q 5\nu get b 5\nh get a 5\nf add t y\nd add f u\ne add d h\nret e\nend`,
+  ].join('\n');
+  const p = parseAndValidate(src);
+  const c = compile(p, 'c').text;
+  // Public ABI of large values: const-pointer parameters, caller-owned result storage.
+  assert.ok(c.includes('void a0_bump(a0t_a2048_u *out, const a0t_a2048_u *p0, uint32_t p1)'));
+  // The first set of a borrowed parameter copies it, directly into `out`; no arena use.
+  assert.ok(/a0_bump\([^)]*\) \{\n {2}a0t_a2048_u \*const n_n = out; \*n_n = \(\*p0\);/.test(c));
+  assert.ok(/a0_top\(uint32_t p0\) \{\n {2}const uint32_t a0arena_mark = a0arena_top;/.test(c));
+  assert.ok(c.includes('a0arena_top = a0arena_mark;\n  return n_e;'));
+  assert.ok(/#define A0_ARENA_BYTES \d+u/.test(c));
+  // Small functions keep the by-value ABI and no arena.
+  const small = compile(
+    parseAndValidate('fn f u32x8 u32 -> u32x8\nn set p0 p1 1\nret n\nend'),
+    'c',
+  );
+  assert.ok(small.text.includes('a0t_a8_u a0_f(a0t_a8_u p0, uint32_t p1)'));
+  assert.ok(!small.text.includes('a0arena'));
+  const top = p.byName.get('top') as TypedFunc;
+  const inputs = [0, 3, 9, 10, 2047, 4096 + 7];
+  const clang = findWasmClang();
+  if (clang.path !== undefined && clang.wasmLd !== undefined) {
+    const { instance } = await WebAssembly.instantiate(
+      (await compileWasm(c)).bytes as BufferSource,
+      {},
+    );
+    const wtop = instance.exports.a0_top as (x: number) => number;
+    for (const x of inputs) assert.equal(wtop(x) >>> 0, run(top, [x]));
+  }
+});
+
 test('edit tolerance: trailing end, whole-function block under its handle, echoed signatures, callee order', () => {
   const src =
     'fn sq u32 -> u32\na mul p0 p0\nret a\nend\nfn main u32 -> u32\nb call sq p0\nret b\nend';

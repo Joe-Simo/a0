@@ -1455,6 +1455,63 @@ Set c400 (one 400-function program, structured):
   fuel exhaustion, and confinement (`..`, absolute, symlink, dangling symlink, `use` escape).
 - Gate: lint, typecheck, test.
 
+## Session 2026-09-30 (C backend: large aggregates off the stack)
+
+COMPILER_VERSION a0c-0.1.15 -> a0c-0.1.16. Change confined to the C emitter's aggregate handling
+in src/backends.ts (plus one comment in src/toolchain.ts); the design is documented at
+`C_LARGE_BYTES` there.
+
+- **Large aggregates** (C struct over 4096 bytes, `isLargeC`) no longer live on the C stack.
+  ABI: a large parameter is `const T *pK` (read-only borrow); a large result goes to
+  caller-owned storage passed first, `void a0_f(T *out, ...)`; the same in the `a0o_`/`a0r_`/`a0v_`
+  variants. Functions with no large parameter or result keep the by-value ABI unchanged (all
+  driver-callable functions are scalar/io, so no driver changed). Large locals are pointers into a
+  per-module arena: a bump allocator in static memory (`a0arena`, `#define A0_ARENA_BYTES`); a
+  function that allocates saves the top on entry and restores it before returning. The node that
+  is the result's root is built in `out` directly; `mov`/`select` alias; `get`/`at` of a large
+  element copy. Large types get only a typedef and a pointer zero-fill (no by-value
+  `a0mk_`/`a0set_`/`a0put_`); the old >4096-element compound-literal constructor is gone (every
+  such array is large).
+- **Bound, not malloc**: the call graph is acyclic, so `cArenaBytes(fn)` = the function's large
+  nodes (8-byte slots, pointers counted as 8 bytes) + the largest callee need is a static upper
+  bound (the optimizer only removes nodes). The arena is exactly the largest need of any
+  function, so no run can overflow it; a need over `C_ARENA_LIMIT` (256 MiB) is an `A0Error` with
+  code `limit` at compile time. Arena sizes: lexer 3,276,880 bytes, parser 6,818,064, checker
+  7,010,856 (bss; the wasm file does not grow).
+- **Value semantics**: a borrowed large parameter is not owned, so its first `set`/`put` copies
+  once (the copy the by-value ABI made at the call); fresh locals and the owned loop state still
+  update in place under `mutableHere`. The arena is single-threaded: an automatic parallel fold
+  whose state or body (transitively) touches a large value keeps the sequential loop.
+- **Fold state passed again as an extra** (bug reported by two other agents; the direct wasm
+  backend already copied): C and JS ran an owned fold in the initial value's storage even when
+  that value was also an extra argument of the same fold, so later trips read the mutated state.
+  Both now copy in that case. Regression test (fails before: JS 7 vs 1): a fold writing
+  `state[i] = extra[i-1] + 1` with `extra` = the initial value, at u32x8 (by value) and u32x2048
+  (arena), on the interpreter, JS and C/wasm32. The hand-written assembly backends
+  (src/arm64.ts, x86_64.ts, riscv64.ts, arm32.ts) have their own `mutableHere` for fold init and
+  were not checked here.
+- **Stack use, measured** (wasm32, same emitted-C build with `-z stack-size` at powers of two,
+  smallest size whose run on compiler/lex.a0 (8380 bytes, whole file) equals the 16 MiB run;
+  ioInput 16500 / ioOutput 60000 words):
+
+  | module | a0c-0.1.15 | a0c-0.1.16 |
+  |---|---|---|
+  | lexer (`lexio`) | 2 MiB | 16 KiB |
+  | parser (`parseio`) | 8 MiB | 64 KiB |
+  | checker (`checkio`) | 8 MiB | 128 KiB |
+
+  The remainder is aggregates at or under 4 KiB (pages, records) held by value.
+- **app**: the self-hosted lexer, parser and checker rows now pass on webassembly (8, 13 and 37
+  cases; were blocked by the stack wall) and on native C. The blocked-row fallback in
+  tools/app.ts (`frontEndTargets`, `needMiB`) no longer triggers and its detail text is stale.
+- Gate (this worktree, machine load average 200+ from other sessions; all exit 0): lint;
+  typecheck; test 61/61 (site page, docs and play programs included); verify all paths passed
+  (C clang/gcc/C++/parallel/wasm/JVM 5262 each; asm backends 4297); app all rows passed (Life 134
+  on 7 targets; lexer 8, parser 13, checker 37, emitter 12, C emitter 15 on every target including
+  webassembly); equiv 48/48 proved; hw passed; dotnet passed (5262); gpu passed (4297, Apple
+  M3); selfhost 50 programs / 6898 cases; selfhost:c 6371/6371. results/*.json regenerated
+  under a0c-0.1.16.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
