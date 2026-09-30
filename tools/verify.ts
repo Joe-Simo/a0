@@ -12,6 +12,7 @@ import {
   C_IO_INPUT_CAPACITY,
   C_IO_OUTPUT_CAPACITY,
   compile,
+  cSignature,
   JAVA_CLASS,
   usesIo,
 } from '../src/backends.js';
@@ -44,6 +45,7 @@ import {
   generateCorpus,
   hasIoParam,
   INPUT_SEED,
+  ioFreeSubset,
   isDriverCallable,
 } from './corpus.js';
 
@@ -151,7 +153,12 @@ export async function checkJs(
 
 // --- native C / C++ ----------------------------------------------------------
 
-function cDriver(program: TypedProgram): string {
+/**
+ * The C test harness. `header` supplies the functions: by default the generated C module is
+ * included; the arm64 path passes extern prototypes of the `_a0_*` symbols in the linked
+ * object instead (scalar signatures, so the Darwin C ABI and the backend's ABI coincide).
+ */
+function cDriver(program: TypedProgram, header = '#include "module.c"'): string {
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `    case ${i}: printf("skip\\n"); break;`;
     const io = hasIoParam(fn);
@@ -174,7 +181,7 @@ function cDriver(program: TypedProgram): string {
   return `#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "module.c"
+${header}
 int main(void) {
   char line[4096];
 ${usesIo(program) ? '  static a0_io io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {
@@ -273,6 +280,83 @@ export async function checkNative(
       tool: tool.version,
     };
   });
+}
+
+// --- native arm64 (direct assembly, no C for the program) ----------------------
+
+export async function checkArm64(
+  program: TypedProgram,
+  cases: readonly Case[],
+  tool: ToolInfo,
+): Promise<TargetReport & { skippedIoFunctions: number; skippedIoCases: number }> {
+  const subset = ioFreeSubset(program);
+  const keep = new Set(subset.functions.map((f) => f.name));
+  const own = cases.filter((c) => keep.has(c.functionName));
+  const skipped = {
+    skippedIoFunctions: program.functions.length - subset.functions.length,
+    skippedIoCases: cases.length - own.length,
+  };
+  const label = `native arm64 assembly (src/arm64.ts) via ${'`clang -x assembler`'}, linked with the C test driver; ${skipped.skippedIoFunctions} io functions (${skipped.skippedIoCases} cases) skipped: io is out of scope for this backend`;
+  if (process.platform !== 'darwin' || process.arch !== 'arm64')
+    return {
+      status: 'blocked',
+      cases: 0,
+      detail: `arm64: needs macOS on Apple silicon, found ${process.platform}-${process.arch}`,
+      ...skipped,
+    };
+  if (tool.path === undefined) return { ...blocked(tool, 'arm64'), ...skipped };
+  const start = performance.now();
+  const protos = [
+    '#include <stdint.h>',
+    '#include <stdbool.h>',
+    ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
+  ].join('\n');
+  const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
+    status: 'failed',
+    cases: 0,
+    detail: `arm64: ${what}`,
+    tool: tool.version,
+    failures: [stderr.slice(0, 2000)],
+    ...skipped,
+  });
+  // Both the optimized emission and the unoptimized one (every source op reaches the backend).
+  let report: TargetReport | undefined;
+  for (const optimize of [true, false]) {
+    const asm = compile(subset, 'arm64', { optimize }).text;
+    const level = optimize ? 'optimized' : 'unoptimized';
+    const r = await withTempDir(async (dir): Promise<TargetReport> => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
+      const as = runTool(
+        tool.path as string,
+        ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
+        { cwd: dir },
+      );
+      if (!as.ok) return fail(`${level}: assembly failed`, as.stderr);
+      const link = runTool(
+        tool.path as string,
+        ['-std=c11', '-O1', '-Wall', '-Wextra', '-Werror', '-o', 'driver', 'driver.c', 'module.o'],
+        { cwd: dir },
+      );
+      if (!link.ok) return fail(`${level}: driver build/link failed`, link.stderr);
+      const exec = runTool(join(dir, 'driver'), [], { input: caseInput(subset, own), cwd: dir });
+      if (!exec.ok) return fail(`${level}: execution failed`, exec.stderr);
+      return compareAll(own, exec.stdout.trim().split('\n'), `${level}: ${label}`);
+    });
+    if (r.status !== 'passed') return { ...r, tool: tool.version, ...skipped };
+    report = r;
+  }
+  return {
+    ...timed(
+      {
+        ...(report as TargetReport),
+        detail: `${label}; optimized and unoptimized emissions each executed on every case`,
+      },
+      start,
+    ),
+    tool: tool.version,
+    ...skipped,
+  };
 }
 
 // --- WebAssembly -------------------------------------------------------------
@@ -490,6 +574,7 @@ async function main(): Promise<void> {
         true,
         'C-compatible output compiled as C++17 via clang++',
       ),
+      native_arm64: await checkArm64(program, cases, findClang()),
       webassembly: await checkWasm(program, cases),
       jvm: await checkJvm(program, cases),
       systemverilog: {
