@@ -1440,6 +1440,21 @@ Set c400 (one 400-function program, structured):
 - One shot, control vs option: Haiku B conv 12/12 vs 12/12, B struct 10/12 vs 11/12, D conv 13/13 vs 12/13, D struct 12/13 vs 12/13 (47/50 both); Sonnet 50/50 both. Nested replies: Haiku 1/50 control (bounds task, the parse diagnostic) and 2/50 with the line (bounds, which then failed with a type error; isdiv, accepted); Sonnet 0/100. Primer 405/440 -> 436/471 tokens per call; one-task cache-adjusted tokens up in all 8 cells (Haiku 198->201, 195->196, 152->159, 168->176; Sonnet 198->201, 184->192, 152->155, 154->157).
 - Decision: refused (no acceptance gain on either model, cost up). Prototype removed; DESIGN.md records the numbers. COMPILER_VERSION unchanged.
 
+## Session 2026-09-30 (MCP server)
+
+- `src/mcp.ts`: MCP server on the official `@modelcontextprotocol/sdk` (stdio transport, zod
+  input schemas), launched by `a0 mcp <file-or-dir>`. Tools over `EditSession`: `a0_open`,
+  `a0_program`, `a0_apply`, `a0_check`, `a0_run`, `a0_emit`, `a0_save`. Failures return
+  `isError` with the A0Error JSON (code/message/line/expected/actual/fix).
+- Security: no shell; every path (and every `use` dependency) resolved inside the launch root
+  with realpath, symlink and dangling-symlink escapes rejected, `.a0` only; `a0_run` fuel capped
+  at `LIMITS.defaultFuel`; tool output capped at 1 MiB; edits capped at `maxSourceBytes`;
+  `a0_save` refuses without an applied edit and refuses to flatten a multi-file program over
+  its entry file (save to a new path instead).
+- `test/mcp.test.ts`: in-memory client/server transport covering every tool, diagnostics,
+  fuel exhaustion, and confinement (`..`, absolute, symlink, dangling symlink, `use` escape).
+- Gate: lint, typecheck, test.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

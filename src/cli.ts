@@ -9,6 +9,7 @@
  *   a0 wasm <file.a0> <out.wasm>
  *   a0 patch <file.a0> <patch-file> [out.a0]
  *   a0 revision <file.a0> <function>
+ *   a0 mcp <file-or-dir>   (MCP server over stdio, src/mcp.ts)
  *
  * `emit wasm` writes the binary module of A0's own wasm32 backend (src/wasm.ts; no C, Clang,
  * or wasm-ld). `a0 wasm` builds the C-derived module instead: the C backend compiled by Clang
@@ -31,6 +32,7 @@ import {
 } from './core.js';
 import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
 import { link } from './link.js';
+import { serveStdio } from './mcp.js';
 import { parallelC } from './parallel.js';
 import { compileWasm } from './toolchain.js';
 import { wasmModuleBytes } from './wasm.js';
@@ -47,6 +49,8 @@ function usage(): never {
       '  a0 patch <file.a0> <patch-file> [out.a0]',
       '  a0 revision <file.a0> <function>',
       '  a0 view <file.a0> <function>          # function plus callee signatures',
+      '  a0 mcp <file-or-dir>                  # MCP server (stdio), paths confined to the root;',
+      '      tools: a0_open a0_program a0_apply a0_check a0_run a0_emit a0_save',
       '',
     ].join('\n'),
   );
@@ -168,6 +172,12 @@ async function main(argv: readonly string[]): Promise<void> {
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       process.stdout.write(`${revision(fn)}\n`);
+      return;
+    }
+    case 'mcp': {
+      const [root] = rest;
+      if (root === undefined) usage();
+      await serveStdio(root);
       return;
     }
     default:
