@@ -1,0 +1,3659 @@
+{
+  "generatedAt": "2026-09-30T12:19:02.118Z",
+  "status": "run with scripted replies from <tmp> (subject: claude-sonnet subagent (fresh context, primer only, one shot))",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.min.txt",
+  "taskSet": "d",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "a0/conventional",
+      "a0/structured",
+      "ts/conventional",
+      "ts/structured",
+      "rust/conventional",
+      "rust/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks.",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "524fe5c67676f9970027d27750dda5e477ee20d5a9897d0abdbcc2f285b161b1",
+  "tasks": [
+    {
+      "id": "d-scale-constant",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-offset-param",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-cube-sq",
+      "kind": "create",
+      "tests": 6
+    },
+    {
+      "id": "d-total-six",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-setmid-index",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "tests": 6
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "d-scale-constant/a0": [],
+      "d-scale-constant/ts": [],
+      "d-scale-constant/a0-original-must-fail": [],
+      "d-scale-constant/ts-original-must-fail": [],
+      "d-scale-constant/rust": [],
+      "d-scale-constant/rust-original-must-fail": [],
+      "d-offset-param/a0": [],
+      "d-offset-param/ts": [],
+      "d-offset-param/a0-original-must-fail": [],
+      "d-offset-param/ts-original-must-fail": [],
+      "d-offset-param/rust": [],
+      "d-offset-param/rust-original-must-fail": [],
+      "d-cube-sq/a0": [],
+      "d-cube-sq/ts": [],
+      "d-cube-sq/a0-original-must-fail": [],
+      "d-cube-sq/ts-original-must-fail": [],
+      "d-cube-sq/rust": [],
+      "d-cube-sq/rust-original-must-fail": [],
+      "d-total-six/a0": [],
+      "d-total-six/ts": [],
+      "d-total-six/a0-original-must-fail": [],
+      "d-total-six/ts-original-must-fail": [],
+      "d-total-six/rust": [],
+      "d-total-six/rust-original-must-fail": [],
+      "d-stats-second-field/a0": [],
+      "d-stats-second-field/ts": [],
+      "d-stats-second-field/a0-original-must-fail": [],
+      "d-stats-second-field/ts-original-must-fail": [],
+      "d-stats-second-field/rust": [],
+      "d-stats-second-field/rust-original-must-fail": [],
+      "d-maxof-comparison/a0": [],
+      "d-maxof-comparison/ts": [],
+      "d-maxof-comparison/a0-original-must-fail": [],
+      "d-maxof-comparison/ts-original-must-fail": [],
+      "d-maxof-comparison/rust": [],
+      "d-maxof-comparison/rust-original-must-fail": [],
+      "d-isdiv-bool/a0": [],
+      "d-isdiv-bool/ts": [],
+      "d-isdiv-bool/a0-original-must-fail": [],
+      "d-isdiv-bool/ts-original-must-fail": [],
+      "d-isdiv-bool/rust": [],
+      "d-isdiv-bool/rust-original-must-fail": [],
+      "d-rename-twice/a0": [],
+      "d-rename-twice/ts": [],
+      "d-rename-twice/a0-original-must-fail": [],
+      "d-rename-twice/ts-original-must-fail": [],
+      "d-rename-twice/rust": [],
+      "d-rename-twice/rust-original-must-fail": [],
+      "d-lowflip-xor/a0": [],
+      "d-lowflip-xor/ts": [],
+      "d-lowflip-xor/a0-original-must-fail": [],
+      "d-lowflip-xor/ts-original-must-fail": [],
+      "d-lowflip-xor/rust": [],
+      "d-lowflip-xor/rust-original-must-fail": [],
+      "d-absdiff-wrap/a0": [],
+      "d-absdiff-wrap/ts": [],
+      "d-absdiff-wrap/a0-original-must-fail": [],
+      "d-absdiff-wrap/ts-original-must-fail": [],
+      "d-absdiff-wrap/rust": [],
+      "d-absdiff-wrap/rust-original-must-fail": [],
+      "d-setmid-index/a0": [],
+      "d-setmid-index/ts": [],
+      "d-setmid-index/a0-original-must-fail": [],
+      "d-setmid-index/ts-original-must-fail": [],
+      "d-setmid-index/rust": [],
+      "d-setmid-index/rust-original-must-fail": [],
+      "d-calc-inc-first/a0": [],
+      "d-calc-inc-first/ts": [],
+      "d-calc-inc-first/a0-original-must-fail": [],
+      "d-calc-inc-first/ts-original-must-fail": [],
+      "d-calc-inc-first/rust": [],
+      "d-calc-inc-first/rust-original-must-fail": [],
+      "d-prod4-seed/a0": [],
+      "d-prod4-seed/ts": [],
+      "d-prod4-seed/a0-original-must-fail": [],
+      "d-prod4-seed/ts-original-must-fail": [],
+      "d-prod4-seed/rust": [],
+      "d-prod4-seed/rust-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "a0/conventional": {
+      "trials": 13,
+      "meanView": 33,
+      "meanToolContext": 71
+    },
+    "a0/structured": {
+      "trials": 13,
+      "meanView": 47,
+      "meanToolContext": 85
+    },
+    "ts/conventional": {
+      "trials": 13,
+      "meanView": 35,
+      "meanToolContext": 73
+    },
+    "ts/structured": {
+      "trials": 13,
+      "meanView": 43,
+      "meanToolContext": 81
+    },
+    "rust/conventional": {
+      "trials": 13,
+      "meanView": 36,
+      "meanToolContext": 74
+    },
+    "rust/structured": {
+      "trials": 13,
+      "meanView": 43,
+      "meanToolContext": 96
+    }
+  },
+  "trials": [
+    {
+      "task": "d-scale-constant",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 62,
+        "output": 29,
+        "total": 496
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.8107090000003154
+    },
+    {
+      "task": "d-scale-constant",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 76,
+        "output": 12,
+        "total": 528
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1.1752500000002328
+    },
+    {
+      "task": "d-scale-constant",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 65,
+        "output": 33,
+        "total": 146
+      },
+      "outputTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 33,
+            "cl100k_base": 33
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 165.297458
+    },
+    {
+      "task": "d-scale-constant",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 71,
+        "output": 26,
+        "total": 224
+      },
+      "outputTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 26,
+            "cl100k_base": 26
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 154.61620800000037
+    },
+    {
+      "task": "d-scale-constant",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 27
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 64,
+        "output": 32,
+        "total": 159
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 31
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 31
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 127.33045800000036
+    },
+    {
+      "task": "d-scale-constant",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 33
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 70,
+        "output": 22,
+        "total": 234
+      },
+      "outputTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 127.25320799999918
+    },
+    {
+      "task": "d-offset-param",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 55,
+        "output": 25,
+        "total": 485
+      },
+      "outputTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 25,
+            "cl100k_base": 25
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.5608330000004571
+    },
+    {
+      "task": "d-offset-param",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 69,
+        "output": 28,
+        "total": 537
+      },
+      "outputTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 28
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 28,
+            "cl100k_base": 28
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.9656249999998181
+    },
+    {
+      "task": "d-offset-param",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 22
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 57,
+        "output": 29,
+        "total": 134
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 162.37666600000102
+    },
+    {
+      "task": "d-offset-param",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 28
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 63,
+        "output": 32,
+        "total": 222
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 32
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 157.66283300000032
+    },
+    {
+      "task": "d-offset-param",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 21
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 57,
+        "output": 30,
+        "total": 150
+      },
+      "outputTokensLocal": {
+        "o200k_base": 30,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 30,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 128.09362499999952
+    },
+    {
+      "task": "d-offset-param",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 27
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 63,
+        "output": 33,
+        "total": 238
+      },
+      "outputTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 32
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 33,
+            "cl100k_base": 32
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 129.40420799999993
+    },
+    {
+      "task": "d-cube-sq",
+      "kind": "create",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 50,
+        "output": 48,
+        "total": 503
+      },
+      "outputTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 48,
+            "cl100k_base": 48
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6073340000002645
+    },
+    {
+      "task": "d-cube-sq",
+      "kind": "create",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 64,
+        "output": 31,
+        "total": 535
+      },
+      "outputTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 31,
+            "cl100k_base": 31
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6975410000013653
+    },
+    {
+      "task": "d-cube-sq",
+      "kind": "create",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 53,
+        "output": 52,
+        "total": 153
+      },
+      "outputTokensLocal": {
+        "o200k_base": 52,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 52,
+            "cl100k_base": 51
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 157.2630420000005
+    },
+    {
+      "task": "d-cube-sq",
+      "kind": "create",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 59,
+        "output": 32,
+        "total": 218
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 31
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 31
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 158.15570800000023
+    },
+    {
+      "task": "d-cube-sq",
+      "kind": "create",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 20
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 51,
+        "output": 47,
+        "total": 161
+      },
+      "outputTokensLocal": {
+        "o200k_base": 47,
+        "cl100k_base": 46
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 47,
+            "cl100k_base": 46
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 127.70945799999936
+    },
+    {
+      "task": "d-cube-sq",
+      "kind": "create",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 57,
+        "output": 34,
+        "total": 233
+      },
+      "outputTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 34,
+            "cl100k_base": 34
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 142.6128750000007
+    },
+    {
+      "task": "d-total-six",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 53
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 95,
+        "output": 57,
+        "total": 557
+      },
+      "outputTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 56
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 57,
+            "cl100k_base": 56
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7914999999993597
+    },
+    {
+      "task": "d-total-six",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 57
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 99,
+        "output": 29,
+        "total": 568
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7733330000010028
+    },
+    {
+      "task": "d-total-six",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 99,
+        "output": 62,
+        "total": 209
+      },
+      "outputTokensLocal": {
+        "o200k_base": 62,
+        "cl100k_base": 62
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 62,
+            "cl100k_base": 62
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 163.28345900000022
+    },
+    {
+      "task": "d-total-six",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 68
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 109,
+        "output": 24,
+        "total": 260
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 159.79420800000116
+    },
+    {
+      "task": "d-total-six",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 49,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 90,
+        "output": 53,
+        "total": 206
+      },
+      "outputTokensLocal": {
+        "o200k_base": 53,
+        "cl100k_base": 52
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 53,
+            "cl100k_base": 52
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 132.08750000000146
+    },
+    {
+      "task": "d-total-six",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 100,
+        "output": 18,
+        "total": 260
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 134.35695900000064
+    },
+    {
+      "task": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 37
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 84,
+        "output": 40,
+        "total": 529
+      },
+      "outputTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 40,
+            "cl100k_base": 40
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6229169999987789
+    },
+    {
+      "task": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 57
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 104,
+        "output": 13,
+        "total": 557
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7571250000000873
+    },
+    {
+      "task": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 98,
+        "output": 55,
+        "total": 201
+      },
+      "outputTokensLocal": {
+        "o200k_base": 55,
+        "cl100k_base": 55
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 55,
+            "cl100k_base": 55
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 171.0624169999992
+    },
+    {
+      "task": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 59
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 106,
+        "output": 20,
+        "total": 253
+      },
+      "outputTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 20
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 159.38329200000044
+    },
+    {
+      "task": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 49
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 98,
+        "output": 55,
+        "total": 216
+      },
+      "outputTokensLocal": {
+        "o200k_base": 55,
+        "cl100k_base": 53
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 55,
+            "cl100k_base": 53
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 126.03454099999908
+    },
+    {
+      "task": "d-stats-second-field",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 57
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 106,
+        "output": 18,
+        "total": 266
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 17
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 135.2953749999997
+    },
+    {
+      "task": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 60,
+        "output": 34,
+        "total": 499
+      },
+      "outputTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 34,
+            "cl100k_base": 34
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6690830000006827
+    },
+    {
+      "task": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 77,
+        "output": 13,
+        "total": 530
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6567500000001019
+    },
+    {
+      "task": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 54,
+        "output": 29,
+        "total": 131
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 162.14429199999904
+    },
+    {
+      "task": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 60,
+        "output": 17,
+        "total": 204
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 158.57424999999967
+    },
+    {
+      "task": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 60,
+        "output": 35,
+        "total": 158
+      },
+      "outputTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 35,
+            "cl100k_base": 35
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 126.52716599999985
+    },
+    {
+      "task": "d-maxof-comparison",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 37
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 66,
+        "output": 19,
+        "total": 227
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 134.68937499999993
+    },
+    {
+      "task": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 77,
+        "output": 31,
+        "total": 513
+      },
+      "outputTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 31,
+            "cl100k_base": 31
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6428329999998823
+    },
+    {
+      "task": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 94,
+        "output": 34,
+        "total": 568
+      },
+      "outputTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 34,
+            "cl100k_base": 34
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.8384999999998399
+    },
+    {
+      "task": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 28
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 82,
+        "output": 37,
+        "total": 167
+      },
+      "outputTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 37
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 37,
+            "cl100k_base": 37
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 185.5700420000012
+    },
+    {
+      "task": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 88,
+        "output": 40,
+        "total": 255
+      },
+      "outputTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 40,
+            "cl100k_base": 40
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 166.2837499999987
+    },
+    {
+      "task": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 88,
+        "output": 43,
+        "total": 194
+      },
+      "outputTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 43,
+            "cl100k_base": 43
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 127.81679199999962
+    },
+    {
+      "task": "d-isdiv-bool",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 94,
+        "output": 46,
+        "total": 282
+      },
+      "outputTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 46,
+            "cl100k_base": 46
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 136.99337500000001
+    },
+    {
+      "task": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 44,
+        "cl100k_base": 44
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 64,
+        "output": 47,
+        "total": 516
+      },
+      "outputTokensLocal": {
+        "o200k_base": 47,
+        "cl100k_base": 47
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 47,
+            "cl100k_base": 47
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7486670000016602
+    },
+    {
+      "task": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 63,
+        "output": 54,
+        "total": 557
+      },
+      "outputTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 54
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 54,
+            "cl100k_base": 54
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.8569159999988187
+    },
+    {
+      "task": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 39,
+        "cl100k_base": 39
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 59,
+        "output": 42,
+        "total": 149
+      },
+      "outputTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 42,
+            "cl100k_base": 42
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 189.17729099999997
+    },
+    {
+      "task": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 68,
+        "output": 24,
+        "total": 219
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 179.36116700000093
+    },
+    {
+      "task": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 41,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 61,
+        "output": 44,
+        "total": 168
+      },
+      "outputTokensLocal": {
+        "o200k_base": 44,
+        "cl100k_base": 43
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 44,
+            "cl100k_base": 43
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 127.45683300000019
+    },
+    {
+      "task": "d-rename-twice",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 50,
+        "cl100k_base": 49
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 70,
+        "output": 26,
+        "total": 238
+      },
+      "outputTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 26,
+            "cl100k_base": 26
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 126.29574999999932
+    },
+    {
+      "task": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 21
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 61,
+        "output": 24,
+        "total": 490
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6871250000003783
+    },
+    {
+      "task": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 36,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 76,
+        "output": 13,
+        "total": 529
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7227079999993293
+    },
+    {
+      "task": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 63,
+        "output": 27,
+        "total": 138
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 178.9989999999998
+    },
+    {
+      "task": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 69,
+        "output": 19,
+        "total": 215
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 176.10725000000093
+    },
+    {
+      "task": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 60,
+        "output": 24,
+        "total": 147
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 122.89674999999988
+    },
+    {
+      "task": "d-lowflip-xor",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 66,
+        "output": 13,
+        "total": 221
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 149.50241599999936
+    },
+    {
+      "task": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 59,
+        "output": 46,
+        "total": 510
+      },
+      "outputTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 46,
+            "cl100k_base": 46
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6509170000008453
+    },
+    {
+      "task": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 76,
+        "output": 29,
+        "total": 545
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7593749999996362
+    },
+    {
+      "task": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 62,
+        "output": 43,
+        "total": 153
+      },
+      "outputTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 43,
+            "cl100k_base": 43
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 181.91891600000054
+    },
+    {
+      "task": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 68,
+        "output": 26,
+        "total": 221
+      },
+      "outputTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 26,
+            "cl100k_base": 26
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 196.8305419999997
+    },
+    {
+      "task": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 63,
+        "output": 47,
+        "total": 173
+      },
+      "outputTokensLocal": {
+        "o200k_base": 47,
+        "cl100k_base": 45
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 47,
+            "cl100k_base": 45
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 136.21995799999968
+    },
+    {
+      "task": "d-absdiff-wrap",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 69,
+        "output": 31,
+        "total": 242
+      },
+      "outputTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 31,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 132.4177920000002
+    },
+    {
+      "task": "d-setmid-index",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 66,
+        "output": 32,
+        "total": 503
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 32
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7101669999992737
+    },
+    {
+      "task": "d-setmid-index",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 50,
+        "cl100k_base": 50
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 87,
+        "output": 15,
+        "total": 542
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6462499999997817
+    },
+    {
+      "task": "d-setmid-index",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 72,
+        "output": 39,
+        "total": 159
+      },
+      "outputTokensLocal": {
+        "o200k_base": 39,
+        "cl100k_base": 39
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 39,
+            "cl100k_base": 39
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 183.97866600000089
+    },
+    {
+      "task": "d-setmid-index",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 80,
+        "output": 15,
+        "total": 222
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 163.9420829999999
+    },
+    {
+      "task": "d-setmid-index",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 83,
+        "output": 50,
+        "total": 196
+      },
+      "outputTokensLocal": {
+        "o200k_base": 50,
+        "cl100k_base": 50
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 50,
+            "cl100k_base": 50
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 129.83216699999866
+    },
+    {
+      "task": "d-setmid-index",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 54
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 91,
+        "output": 15,
+        "total": 248
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 129.20812500000102
+    },
+    {
+      "task": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 44,
+        "cl100k_base": 41
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 94,
+        "output": 72,
+        "total": 571
+      },
+      "outputTokensLocal": {
+        "o200k_base": 72,
+        "cl100k_base": 69
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 72,
+            "cl100k_base": 69
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7107500000001892
+    },
+    {
+      "task": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 54
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 107,
+        "output": 52,
+        "total": 599
+      },
+      "outputTokensLocal": {
+        "o200k_base": 52,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 52,
+            "cl100k_base": 51
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6466249999994034
+    },
+    {
+      "task": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 41,
+        "cl100k_base": 39
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 91,
+        "output": 69,
+        "total": 208
+      },
+      "outputTokensLocal": {
+        "o200k_base": 69,
+        "cl100k_base": 67
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 69,
+            "cl100k_base": 67
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 168.5420840000006
+    },
+    {
+      "task": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 50,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 100,
+        "output": 39,
+        "total": 266
+      },
+      "outputTokensLocal": {
+        "o200k_base": 39,
+        "cl100k_base": 38
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 39,
+            "cl100k_base": 38
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 216.33800000000156
+    },
+    {
+      "task": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 90,
+        "output": 68,
+        "total": 221
+      },
+      "outputTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 65
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 68,
+            "cl100k_base": 65
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 172.81270799999947
+    },
+    {
+      "task": "d-calc-inc-first",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 49,
+        "cl100k_base": 47
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 297,
+        "output": 43,
+        "total": 482
+      },
+      "outputTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 41
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "rustc: error: expected `;`, found `shl1`\n --> <tmp>:6:22\n  |\n6 |     x.wrapping_add(1)\n  |                      ^ help: add `;` here\n7 |     shl1(inc(x))\n  |     ---- unexpected token\n\nerror[E0308]: mismatched types\n --> <tmp>:4:23\n  |\n4 | pub fn inc(x: u32) -> u32 {\n  |        ---            ^^^ expected `u32`, found `()`\n  |        |\n  |        implicitly returns `()` as"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 43,
+            "cl100k_base": 41
+          },
+          "repair": "Rejected:\nrustc: error: expected `;`, found `shl1`\n --> <tmp>:6:22\n  |\n6 |     x.wrapping_add(1)\n  |                      ^ help: add `;` here\n7 |     shl1(inc(x))\n  |     ---- unexpected token\n\nerror[E0308]: mismatched types\n --> <tmp>:4:23\n  |\n4 | pub fn inc(x: u32) -> u32 {\n  |        ---            ^^^ expected `u32`, found `()`\n  |        |\n  |        implicitly returns `()` as\n\nTry again."
+        }
+      ],
+      "failures": [
+        "rustc: error: expected `;`, found `shl1`\n --> <tmp>:6:22\n  |\n6 |     x.wrapping_add(1)\n  |                      ^ help: add `;` here\n7 |     shl1(inc(x))\n  |     ---- unexpected token\n\nerror[E0308]: mismatched types\n --> <tmp>:4:23\n  |\n4 | pub fn inc(x: u32) -> u32 {\n  |        ---            ^^^ expected `u32`, found `()`\n  |        |\n  |        implicitly returns `()` as"
+      ],
+      "wallMs": 52.533416999998735
+    },
+    {
+      "task": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 405,
+        "cl100k_base": 399
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 62
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 17,
+        "toolContext": 99,
+        "output": 63,
+        "total": 567
+      },
+      "outputTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 65
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 63,
+            "cl100k_base": 65
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.823500000000422
+    },
+    {
+      "task": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 440,
+        "cl100k_base": 433
+      },
+      "viewTokensLocal": {
+        "o200k_base": 76,
+        "cl100k_base": 79
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 388,
+        "workflowPrimer": 52,
+        "toolContext": 115,
+        "output": 17,
+        "total": 572
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.781291000001147
+    },
+    {
+      "task": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 60
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 17,
+        "toolContext": 99,
+        "output": 64,
+        "total": 211
+      },
+      "outputTokensLocal": {
+        "o200k_base": 64,
+        "cl100k_base": 64
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 64,
+            "cl100k_base": 64
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 199.20958299999984
+    },
+    {
+      "task": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 127,
+        "cl100k_base": 126
+      },
+      "viewTokensLocal": {
+        "o200k_base": 70,
+        "cl100k_base": 70
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 31,
+        "workflowPrimer": 96,
+        "toolContext": 109,
+        "output": 14,
+        "total": 250
+      },
+      "outputTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 14,
+            "cl100k_base": 14
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 170.90391699999964
+    },
+    {
+      "task": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "representation": "rust",
+      "protocol": "conventional",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 53
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 17,
+        "toolContext": 93,
+        "output": 58,
+        "total": 214
+      },
+      "outputTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 57
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 58,
+            "cl100k_base": 57
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 151.1791659999999
+    },
+    {
+      "task": "d-prod4-seed",
+      "kind": "comprehension-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 142,
+        "cl100k_base": 141
+      },
+      "viewTokensLocal": {
+        "o200k_base": 64,
+        "cl100k_base": 63
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 46,
+        "workflowPrimer": 96,
+        "toolContext": 103,
+        "output": 18,
+        "total": 263
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 138.84949999999844
+    }
+  ]
+}

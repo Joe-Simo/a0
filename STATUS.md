@@ -790,6 +790,13 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
 - Site: 48-language chart (log scale) on the home page; native paragraph and limits computed from the ledger; README table from the ledger.
 - Open: quiet-machine exec-bench; stage 4 of self-hosting (optimizer and AArch64 emitter in A0); bootstrap fixed point; x86-64 and other targets; release note when the ledger reads parity or better on every axis except the single-function primer cost.
 
+## Session 2026-09-30 (set D: independent author, primer only)
+
+- `tools/ai-edit-tasks-d.ts`: 13 tasks written by an agent that saw only MODEL_GUIDE.min.txt and the task-file shape, sealed in `tools/ai-edit-tasks-d.sha256` (a0bafeeb…3651); the harness self-check verified every original and reference in all three representations. Harness set `d`.
+- Fresh subjects, one shot, min primer (scratchpad g14). Results `results/ai-edit-experiment.d.{haiku,sonnet}-min.json`.
+  - Acceptance: A0 13/13 on both protocols for both models. TypeScript: Haiku 13/13 conventional, 12/13 structured; Sonnet 13/13 both. Rust: 13/13 conventional, 12/13 structured for both models.
+  - Cost (cache-adjusted, one task): Sonnet A0 structured 154 vs TypeScript 118 vs Rust 136; single-function tasks, so the primer is the gap again (loss, published).
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
