@@ -1,0 +1,1380 @@
+{
+  "generatedAt": "2026-09-30T19:57:24.214Z",
+  "compilerVersion": "a0c-0.1.26",
+  "stage": "arm64 bootstrap to a signed Mach-O executable without the system assembler and linker",
+  "toolchain": "Stage 1 is the C seed (TypeScript C backend + clang). Stages 2 and 3: A0-emitted assembly plus the runtime of tools/arm64-runtime.ts, encoded by src/arm64enc.ts and linked and ad-hoc signed by src/macho.ts (SHA-256 code directory written in TypeScript); dyld binds libSystem _mmap/_read/_write. clang, ld and codesign produce no byte of stages 2 and 3; clang is the reference of the encoder check and codesign -v checks the signature.",
+  "stage1": {
+    "cBytes": 487230,
+    "buildMs": 3338
+  },
+  "stage2": {
+    "asmBytes": 786048,
+    "executableBytes": 198400,
+    "linkMs": 169
+  },
+  "stage3": {
+    "asmBytes": 786048,
+    "executableBytes": 198400,
+    "emitMs": 2620,
+    "reproduces": true
+  },
+  "fixedPoint": {
+    "assembly": true,
+    "executablesIdentical": true,
+    "codesignValid": true
+  },
+  "encoder": {
+    "method": "arm64enc words equal clang -c -x assembler __text words one by one, and the relocation offsets and kinds are equal",
+    "texts": 224,
+    "sources": 248,
+    "stage2DiffersFromStage1": 0,
+    "instructions": 293545,
+    "failed": 0,
+    "checks": [
+      {
+        "label": "clamp",
+        "instructions": 67,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "sq",
+        "instructions": 45,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "retop",
+        "instructions": 47,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "calls",
+        "instructions": 173,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g0",
+        "instructions": 288,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g1",
+        "instructions": 521,
+        "relocations": 9,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g2",
+        "instructions": 524,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g3",
+        "instructions": 1325,
+        "relocations": 13,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g4",
+        "instructions": 229,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g5",
+        "instructions": 348,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g6",
+        "instructions": 475,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g7",
+        "instructions": 820,
+        "relocations": 11,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g8",
+        "instructions": 633,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g9",
+        "instructions": 400,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g10",
+        "instructions": 991,
+        "relocations": 17,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g11",
+        "instructions": 918,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g12",
+        "instructions": 872,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g13",
+        "instructions": 880,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g14",
+        "instructions": 359,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g15",
+        "instructions": 415,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g16",
+        "instructions": 833,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g17",
+        "instructions": 839,
+        "relocations": 11,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g18",
+        "instructions": 827,
+        "relocations": 14,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g19",
+        "instructions": 273,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g20",
+        "instructions": 236,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g21",
+        "instructions": 507,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g22",
+        "instructions": 393,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g24",
+        "instructions": 396,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g25",
+        "instructions": 252,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g26",
+        "instructions": 329,
+        "relocations": 4,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g28",
+        "instructions": 532,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g29",
+        "instructions": 391,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g30",
+        "instructions": 1502,
+        "relocations": 21,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g31",
+        "instructions": 369,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g32",
+        "instructions": 238,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g33",
+        "instructions": 802,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g34",
+        "instructions": 993,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g35",
+        "instructions": 173,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g36",
+        "instructions": 464,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g37",
+        "instructions": 618,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g38",
+        "instructions": 306,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g39",
+        "instructions": 1334,
+        "relocations": 18,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g41",
+        "instructions": 438,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g42",
+        "instructions": 795,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g43",
+        "instructions": 3084,
+        "relocations": 23,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g44",
+        "instructions": 565,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g45",
+        "instructions": 362,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g46",
+        "instructions": 913,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "kernels.a0",
+        "instructions": 167,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "kernels.a0/affine",
+        "instructions": 53,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "kernels.a0/clamp_max",
+        "instructions": 54,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "kernels.a0/rotl",
+        "instructions": 59,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "kernels.a0/is_even",
+        "instructions": 50,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "kernels.a0/parity_select",
+        "instructions": 51,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0",
+        "instructions": 1336,
+        "relocations": 6,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/nb",
+        "instructions": 62,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/count",
+        "instructions": 174,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/cell",
+        "instructions": 284,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/zero",
+        "instructions": 49,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/step",
+        "instructions": 353,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/bitstep",
+        "instructions": 57,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/popcount",
+        "instructions": 88,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/rowpop",
+        "instructions": 125,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/population",
+        "instructions": 156,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/readrow",
+        "instructions": 91,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/readgrid",
+        "instructions": 661,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/writerow",
+        "instructions": 53,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/writegrid",
+        "instructions": 82,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "life.a0/life",
+        "instructions": 1336,
+        "relocations": 6,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/isalpha",
+        "instructions": 64,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/isdigit",
+        "instructions": 55,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/isword",
+        "instructions": 122,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/isspace",
+        "instructions": 64,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/lexstep",
+        "instructions": 543,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/lexbyte",
+        "instructions": 855,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/lexpage",
+        "instructions": 1311,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/tokput",
+        "instructions": 121,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/zpage",
+        "instructions": 49,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/zsrc",
+        "instructions": 846,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/ztok",
+        "instructions": 2638,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/lexsrc",
+        "instructions": 4263,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rbyte",
+        "instructions": 100,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/readpage",
+        "instructions": 231,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/readsrc",
+        "instructions": 1186,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z16",
+        "instructions": 172,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z32",
+        "instructions": 268,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z33",
+        "instructions": 274,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z45",
+        "instructions": 346,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z64",
+        "instructions": 460,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z65",
+        "instructions": 466,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z129",
+        "instructions": 853,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z256",
+        "instructions": 1742,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z384",
+        "instructions": 49,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/zty",
+        "instructions": 490,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/kwcode",
+        "instructions": 121,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/opcode",
+        "instructions": 414,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/scanb",
+        "instructions": 485,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/scanseg",
+        "instructions": 597,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cmpb",
+        "instructions": 146,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cmpseg",
+        "instructions": 285,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/prstep",
+        "instructions": 491,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/prok",
+        "instructions": 64,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p1tok",
+        "instructions": 3497,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p1page",
+        "instructions": 4527,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/pass1",
+        "instructions": 6323,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/pcopyb",
+        "instructions": 152,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/poolseg",
+        "instructions": 420,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/poolsym",
+        "instructions": 738,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/poolpage",
+        "instructions": 837,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/pass2",
+        "instructions": 1874,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/farst",
+        "instructions": 133,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/farpage",
+        "instructions": 205,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/internarr",
+        "instructions": 457,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/grpb",
+        "instructions": 287,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/gstep",
+        "instructions": 534,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/arrseg",
+        "instructions": 1090,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/arrword",
+        "instructions": 1361,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/arrone",
+        "instructions": 1412,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/frst",
+        "instructions": 142,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/frpage",
+        "instructions": 229,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/fleq",
+        "instructions": 118,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rsstep",
+        "instructions": 495,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rsok",
+        "instructions": 68,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/recone",
+        "instructions": 643,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/frcopy",
+        "instructions": 172,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p3tok",
+        "instructions": 4009,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p3chunk",
+        "instructions": 4207,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/pass3",
+        "instructions": 6501,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p4hdr",
+        "instructions": 661,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/pass4",
+        "instructions": 1473,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/txtb",
+        "instructions": 302,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/txtseg",
+        "instructions": 619,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p5tok",
+        "instructions": 2418,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/strfind",
+        "instructions": 85,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p5seg",
+        "instructions": 4411,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p5more",
+        "instructions": 65,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/pass5",
+        "instructions": 7273,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z8",
+        "instructions": 124,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/z24",
+        "instructions": 220,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/zl64",
+        "instructions": 49,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/satmul",
+        "instructions": 81,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/satadd",
+        "instructions": 64,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/umax",
+        "instructions": 54,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/arity",
+        "instructions": 147,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/recinfo",
+        "instructions": 207,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/infostep",
+        "instructions": 661,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/argb",
+        "instructions": 799,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/argseg",
+        "instructions": 1362,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/nodestep",
+        "instructions": 5898,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/plstep",
+        "instructions": 97,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/ioparam",
+        "instructions": 90,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/fnstep",
+        "instructions": 6999,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/checkir",
+        "instructions": 8403,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cwsb",
+        "instructions": 56,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cws",
+        "instructions": 143,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cws6",
+        "instructions": 180,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cws6st",
+        "instructions": 214,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cws6c",
+        "instructions": 266,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cpow10",
+        "instructions": 91,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cdecst",
+        "instructions": 80,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cwdec",
+        "instructions": 323,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cdecst2",
+        "instructions": 342,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cwdecc",
+        "instructions": 379,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cnmst",
+        "instructions": 76,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cwnm",
+        "instructions": 118,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cumin",
+        "instructions": 54,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cotype",
+        "instructions": 144,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/czst",
+        "instructions": 108,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/czpg",
+        "instructions": 243,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cfw",
+        "instructions": 75,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cstw",
+        "instructions": 106,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cstpg",
+        "instructions": 255,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/cfnm",
+        "instructions": 238,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qw65",
+        "instructions": 69,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qw24",
+        "instructions": 69,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qw128",
+        "instructions": 69,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qw16",
+        "instructions": 69,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qw256",
+        "instructions": 69,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qtw",
+        "instructions": 79,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qfsz",
+        "instructions": 111,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qszst",
+        "instructions": 326,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qszt",
+        "instructions": 817,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qcls",
+        "instructions": 136,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qcsz",
+        "instructions": 74,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qplst",
+        "instructions": 356,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qplace",
+        "instructions": 503,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qstk",
+        "instructions": 426,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qld",
+        "instructions": 829,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qmovx",
+        "instructions": 715,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qmovw",
+        "instructions": 715,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qalloc",
+        "instructions": 766,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qmod",
+        "instructions": 886,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qarg",
+        "instructions": 1633,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qinvoke",
+        "instructions": 2164,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgmov",
+        "instructions": 1041,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgalu",
+        "instructions": 1256,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgcall",
+        "instructions": 2380,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgfold",
+        "instructions": 2755,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qael",
+        "instructions": 1145,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgarr",
+        "instructions": 1739,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qrfl",
+        "instructions": 1296,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgrec",
+        "instructions": 1472,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgget",
+        "instructions": 1482,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgset",
+        "instructions": 1536,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgat",
+        "instructions": 1366,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgput",
+        "instructions": 1426,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qgio",
+        "instructions": 1490,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qnode",
+        "instructions": 6922,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qprm",
+        "instructions": 1340,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qfn",
+        "instructions": 7618,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qpre",
+        "instructions": 466,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qemit",
+        "instructions": 8649,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qemst",
+        "instructions": 8709,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/qunit",
+        "instructions": 41621,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rdword",
+        "instructions": 49,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rdfst",
+        "instructions": 159,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/wfst",
+        "instructions": 76,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/wtrail",
+        "instructions": 118,
+        "relocations": 2,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rdchunk",
+        "instructions": 1579,
+        "relocations": 3,
+        "mismatches": []
+      },
+      {
+        "label": "compiler (whole)",
+        "instructions": 42566,
+        "relocations": 8,
+        "mismatches": []
+      },
+      {
+        "label": "runtime",
+        "instructions": 145,
+        "relocations": 22,
+        "mismatches": []
+      },
+      {
+        "label": "src/arm64.ts corpus",
+        "instructions": 723,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "src/arm64.ts kernels.a0",
+        "instructions": 42,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "src/arm64.ts life.a0",
+        "instructions": 408,
+        "relocations": 0,
+        "mismatches": []
+      }
+    ]
+  }
+}
