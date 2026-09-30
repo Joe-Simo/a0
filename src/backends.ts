@@ -746,7 +746,9 @@ function cInPlace(ctx: CContext, node: Node, index: number): boolean {
  */
 export function ownedUpdateInPlace(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index];
-  return node !== undefined && mutableHereC(fn, node.args[0] as Operand, index, cOwned('owned', fn));
+  return (
+    node !== undefined && mutableHereC(fn, node.args[0] as Operand, index, cOwned('owned', fn))
+  );
 }
 
 /**

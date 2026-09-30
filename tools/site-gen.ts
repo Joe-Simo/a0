@@ -66,7 +66,8 @@ int main(void) {
 /** Link the generator, emit C, and build the native binary; returns its path. */
 export async function buildGenerator(entry = 'sitegen'): Promise<string> {
   const clang = findClang();
-  if (clang.path === undefined) throw new Error('clang not found (the site generator runs natively)');
+  if (clang.path === undefined)
+    throw new Error('clang not found (the site generator runs natively)');
   const program = (await link(GENERATOR, (p) => readFile(p, 'utf8'), { root: '.' })).program;
   const c = compile(program, 'c', {
     ioInputCapacity: INPUT_WORDS,
@@ -91,7 +92,10 @@ function words(bytes: Buffer): number[] {
   const out = [bytes.length];
   for (let i = 0; i < bytes.length; i += 4)
     out.push(
-      (bytes[i] ?? 0) | ((bytes[i + 1] ?? 0) << 8) | ((bytes[i + 2] ?? 0) << 16) | ((bytes[i + 3] ?? 0) << 24),
+      (bytes[i] ?? 0) |
+        ((bytes[i + 1] ?? 0) << 8) |
+        ((bytes[i + 2] ?? 0) << 16) |
+        ((bytes[i + 3] ?? 0) << 24),
     );
   return out;
 }
