@@ -31,7 +31,7 @@ import {
   type TextEdit,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { A0Error, formatProgram, OP_ALIASES, OPS, type Op, parse, stripComment } from './core.js';
+import { A0Error, formatSource, OP_ALIASES, OPS, type Op, parse, stripComment } from './core.js';
 import { link } from './link.js';
 import { confine } from './mcp.js';
 
@@ -323,9 +323,7 @@ export async function startServer(connection: Connection, launch: string): Promi
     const text = doc.getText();
     let formatted: string;
     try {
-      const program = parse(text);
-      const uses = (program.uses ?? []).map((u) => `use "${u}"\n`).join('');
-      formatted = `${uses}${uses && program.functions.length > 0 ? '\n' : ''}${formatProgram(program)}`;
+      formatted = formatSource(parse(text));
     } catch {
       return null;
     }

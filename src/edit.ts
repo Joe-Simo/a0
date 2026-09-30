@@ -201,7 +201,12 @@ export function replaceNodes(
         });
       nodes.splice(anchor + 1, 0, op.node);
     } else if (at >= 0) {
-      nodes[at] = op.node;
+      // A replaced line keeps its comments unless the edit line brings its own.
+      const kept = (nodes[at] as Node).comments;
+      nodes[at] =
+        op.node.comments === undefined && kept !== undefined
+          ? { ...op.node, comments: kept }
+          : op.node;
     } else {
       nodes.push(op.node);
     }

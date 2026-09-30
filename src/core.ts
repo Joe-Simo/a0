@@ -232,10 +232,23 @@ export interface Node {
   readonly pred?: string;
   /** Source form of an `arr` node written as `text "..."`: UTF-8 bytes as u32 elements. */
   readonly text?: string;
+  /** Source comments on this line; kept by `formatSource`, never part of the canonical form. */
+  readonly comments?: Comments;
 }
 
-/** Remove a `#` comment unless the `#` sits inside a double-quoted text literal. */
-export function stripComment(line: string): string {
+/**
+ * `#` comments attached to one source line: whole-line comments directly above it
+ * (`leading`, in order) and the comment after its code (`trailing`). Comments carry no
+ * meaning: the canonical form (`formatFunction`, `formatProgram`), and so every revision
+ * and hash, excludes them; only `formatSource` prints them, so formatting keeps them.
+ */
+export interface Comments {
+  readonly leading?: readonly string[];
+  readonly trailing?: string;
+}
+
+/** Index of the `#` starting a comment (outside a double-quoted text literal), or -1. */
+function commentStart(line: string): number {
   let quoted = false;
   for (let i = 0; i < line.length; i += 1) {
     const ch = line[i];
@@ -244,10 +257,22 @@ export function stripComment(line: string): string {
     } else if (ch === '"') {
       quoted = !quoted;
     } else if (ch === '#' && !quoted) {
-      return line.slice(0, i);
+      return i;
     }
   }
-  return line;
+  return -1;
+}
+
+/** Remove a `#` comment unless the `#` sits inside a double-quoted text literal. */
+export function stripComment(line: string): string {
+  const at = commentStart(line);
+  return at < 0 ? line : line.slice(0, at);
+}
+
+/** The `#` comment of a line (from `#`, trailing whitespace removed), if any. */
+export function lineComment(line: string): string | undefined {
+  const at = commentStart(line);
+  return at < 0 ? undefined : line.slice(at).trimEnd();
 }
 
 const TEXT_LINE = /^(\S+)\s+text\s+"((?:[^"\\]|\\.)*)"\s*$/;
@@ -271,6 +296,12 @@ export interface Func {
   readonly result: Type;
   readonly nodes: readonly Node[];
   readonly ret: Operand;
+  /** Comments on the `fn` header line (and above it), the `ret` line, and the `end` line. */
+  readonly comments?: Comments;
+  readonly retComments?: Comments;
+  readonly endComments?: Comments;
+  /** Whole-line comments after `end` at the end of the file, printed after a blank line. */
+  readonly afterComments?: readonly string[];
 }
 
 export interface Program {
@@ -281,6 +312,10 @@ export interface Program {
    * unlinked program with uses fails on the first unresolved callee.
    */
   readonly uses?: readonly string[];
+  /** Comments on each `use` line, parallel to `uses`. */
+  readonly useComments?: readonly (Comments | undefined)[];
+  /** Whole-line comments of a file without functions (otherwise the last one's `afterComments`). */
+  readonly tailComments?: readonly string[];
 }
 
 /** A function whose every node has an inferred result type. */
@@ -620,8 +655,8 @@ export function parseNode(lineText: string, line?: number): Node {
 // ---------------------------------------------------------------------------
 
 /**
- * Parse A0 source text. Comments (`#` to end of line) and blank lines are
- * discarded; there is no separate intent store in v0.1.
+ * Parse A0 source text. Blank lines are discarded; comments (`#` to end of line) are kept
+ * on the line they belong to (see `Comments`) for `formatSource` and never affect meaning.
  */
 /** Node id for a `ret OP …` line: `retval`, or `retval2`, `retval3`… if taken. */
 export function freshRetId(nodes: readonly { readonly id: string }[]): string {
@@ -664,17 +699,27 @@ export function parse(source: string): Program {
   const functions: Func[] = [];
   const names = new Set<string>();
   let i = 0;
-  const next = (): { text: string; line: number } | undefined => {
+  let pending: string[] = [];
+  const next = (): { text: string; line: number; comments?: Comments } | undefined => {
     while (i < lines.length) {
       const raw = lines[i] ?? '';
       i += 1;
       const text = stripComment(raw).trim();
-      if (text.length > 0) return { text, line: i };
+      const comment = lineComment(raw);
+      if (text.length === 0) {
+        if (comment !== undefined) pending.push(comment);
+        continue;
+      }
+      const leading = pending;
+      pending = [];
+      const comments = commentsOf(leading, comment);
+      return comments === undefined ? { text, line: i } : { text, line: i, comments };
     }
     return undefined;
   };
 
   const uses: string[] = [];
+  const useComments: (Comments | undefined)[] = [];
   for (let cur = next(); cur !== undefined; cur = next()) {
     const head = cur.text.split(/\s+/);
     if (head[0] === 'use') {
@@ -685,6 +730,7 @@ export function parse(source: string): Program {
           fix: 'write use "relative/path.a0" as its own line at the top of the file',
         });
       uses.push(m[1] as string);
+      useComments.push(cur.comments);
       continue;
     }
     if (head[0] !== 'fn')
@@ -707,12 +753,16 @@ export function parse(source: string): Program {
       throw new A0Error('too many parameters', cur.line, { code: 'limit' });
     const result = parseType(head[arrow + 1] ?? '', cur.line);
 
+    const header = cur.comments;
     const nodes: Node[] = [];
     let ret: Operand | undefined;
+    let retComments: Comments | undefined;
+    let endComments: Comments | undefined;
     let closed = false;
     for (let body = next(); body !== undefined; body = next()) {
       const first = body.text.split(/\s+/)[0];
       if (first === 'ret') {
+        retComments = body.comments;
         const parts = body.text.split(/\s+/);
         if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
@@ -729,6 +779,7 @@ export function parse(source: string): Program {
             code: 'parse',
           });
         }
+        endComments = endLine.comments;
         closed = true;
         break;
       }
@@ -738,16 +789,47 @@ export function parse(source: string): Program {
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
         throw new A0Error('too many nodes in function', body.line, { code: 'limit' });
       }
-      nodes.push(parseNode(body.text, body.line));
+      const node = parseNode(body.text, body.line);
+      nodes.push(body.comments === undefined ? node : { ...node, comments: body.comments });
     }
     if (!closed || ret === undefined)
       throw new A0Error(`function '${name}' not terminated`, undefined, { code: 'parse' });
     if (functions.length >= LIMITS.maxFunctions)
       throw new A0Error('too many functions', undefined, { code: 'limit' });
     names.add(name);
-    functions.push({ name, params, result, nodes, ret });
+    functions.push({
+      name,
+      params,
+      result,
+      nodes,
+      ret,
+      ...(header === undefined ? {} : { comments: header }),
+      ...(retComments === undefined ? {} : { retComments }),
+      ...(endComments === undefined ? {} : { endComments }),
+    });
   }
-  return { functions, uses };
+  // Comments after the last `end` travel with the last function, so edits that rebuild the
+  // program keep them.
+  const last = functions[functions.length - 1];
+  if (last !== undefined && pending.length > 0)
+    functions[functions.length - 1] = { ...last, afterComments: pending };
+  return {
+    functions,
+    uses,
+    ...(useComments.some((c) => c !== undefined) ? { useComments } : {}),
+    ...(last === undefined && pending.length > 0 ? { tailComments: pending } : {}),
+  };
+}
+
+function commentsOf(
+  leading: readonly string[],
+  trailing: string | undefined,
+): Comments | undefined {
+  if (leading.length === 0 && trailing === undefined) return undefined;
+  return {
+    ...(leading.length > 0 ? { leading } : {}),
+    ...(trailing === undefined ? {} : { trailing }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1261,6 +1343,40 @@ export function formatFunction(fn: Func): string {
 
 export function formatProgram(program: Program): string {
   return `${program.functions.map(formatFunction).join('\n\n')}\n`;
+}
+
+/** One source line with its comments: leading lines above it, trailing after one space. */
+function withComments(line: string, comments: Comments | undefined): string {
+  if (comments === undefined) return line;
+  const above = (comments.leading ?? []).map((c) => `${c}\n`).join('');
+  return `${above}${line}${comments.trailing === undefined ? '' : ` ${comments.trailing}`}`;
+}
+
+/** A function in canonical form with its source comments in place. */
+export function formatFunctionSource(fn: Func): string {
+  const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
+  return [
+    withComments(`fn ${fn.name}${sig} -> ${formatType(fn.result)}`, fn.comments),
+    ...fn.nodes.map((n) => withComments(formatNode(n), n.comments)),
+    withComments(`ret ${formatOperand(fn.ret)}`, fn.retComments),
+    withComments('end', fn.endComments),
+    ...(fn.afterComments === undefined ? [] : ['', ...fn.afterComments]),
+  ].join('\n');
+}
+
+/**
+ * The file a formatter writes: `use` lines, then the canonical form of every function,
+ * with every source comment kept on the line it was attached to. Unlike `formatProgram`,
+ * this is not a revision input; comments never change a hash.
+ */
+export function formatSource(program: Program): string {
+  const uses = (program.uses ?? [])
+    .map((u, k) => `${withComments(`use "${u}"`, program.useComments?.[k])}\n`)
+    .join('');
+  const fns = program.functions.map(formatFunctionSource).join('\n\n');
+  const body = fns.length > 0 ? `${fns}\n` : '';
+  const tail = (program.tailComments ?? []).map((c) => `${c}\n`).join('');
+  return `${uses}${uses && (body || tail) ? '\n' : ''}${body}${tail}`;
 }
 
 // ---------------------------------------------------------------------------

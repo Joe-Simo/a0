@@ -155,7 +155,8 @@ test('lsp: diagnostics, hover, definition, symbols, completion, formatting over 
       const labels = items.map((i) => i.label);
       for (const l of ['add', 'fold', 'udiv', 'sq', 'f']) assert.ok(labels.includes(l), l);
 
-      const messy = 'use "lib.a0"\nfn f   u32 -> u32   # comment\n  b sq p0\nret b\nend';
+      const messy =
+        '# lib first\nuse "lib.a0"\n# square it\nfn f   u32 -> u32   # comment\n  b sq p0 # via lib\nret b\nend\n# tail';
       await s.conn.sendNotification('textDocument/didChange', {
         textDocument: { uri: main, version: 4 },
         contentChanges: [{ text: messy }],
@@ -166,7 +167,19 @@ test('lsp: diagnostics, hover, definition, symbols, completion, formatting over 
       });
       assert.equal(
         edits[0]?.newText,
-        'use "lib.a0"\n\nfn f u32 -> u32\nb call sq p0\nret b\nend\n',
+        '# lib first\nuse "lib.a0"\n\n# square it\nfn f u32 -> u32 # comment\nb call sq p0 # via lib\nret b\nend\n\n# tail\n',
+      );
+      // Formatting is idempotent: the formatted text needs no further edit.
+      await s.conn.sendNotification('textDocument/didChange', {
+        textDocument: { uri: main, version: 5 },
+        contentChanges: [{ text: edits[0]?.newText ?? '' }],
+      });
+      assert.deepEqual(
+        await s.conn.sendRequest('textDocument/formatting', {
+          ...doc,
+          options: { tabSize: 2, insertSpaces: true },
+        }),
+        [],
       );
 
       // Outside the root: one limit diagnostic, no other service.

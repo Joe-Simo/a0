@@ -20,6 +20,7 @@ import {
   A0Error,
   checkArgument,
   formatProgram,
+  formatSource,
   formatType,
   LIMITS,
   run,
@@ -290,7 +291,7 @@ export async function createServer(launch: string): Promise<McpServer> {
           code: 'edit',
           fix: 'pass path: a new .a0 file inside the root',
         });
-      await writeFile(out, formatProgram(entry.session.program), 'utf8');
+      await writeFile(out, formatSource(entry.session.program), 'utf8');
       entry.dirty = false;
       return relative(root, out);
     }),

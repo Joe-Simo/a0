@@ -24,7 +24,7 @@ import {
   A0Error,
   checkArgument,
   formatDiagnostic,
-  formatProgram,
+  formatSource,
   formatType,
   LIMITS,
   run,
@@ -154,7 +154,7 @@ async function main(argv: readonly string[]): Promise<void> {
       const program = await loadProgram(file);
       const patch = parsePatch(await readSource(patchFile));
       const next = applyPatch(program, patch);
-      const text = formatProgram(next);
+      const text = formatSource(next);
       if (out === undefined) process.stdout.write(text);
       else await writeFile(out, text, 'utf8');
       return;
