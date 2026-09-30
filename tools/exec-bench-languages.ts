@@ -25,6 +25,7 @@ export const KERNEL_NAMES = [
   'branchy',
   'arrfill',
   'loop64',
+  'arrfill4k',
 ] as const;
 export type KernelName = (typeof KERNEL_NAMES)[number];
 
@@ -63,7 +64,8 @@ export interface Language {
   /** Source file name written into the per-kernel build directory. */
   readonly file: string;
   readonly find: () => Toolchain | undefined;
-  readonly kernels: Readonly<Record<KernelName, string>>;
+  /** A kernel with no source in this language is reported as skipped-no-source. */
+  readonly kernels: Readonly<Partial<Record<KernelName, string>>>;
   /** Full program: the kernel source wrapped in this language's driver. */
   readonly program: (k: KernelSpec, src: string) => string;
   /** Extra files written next to the source (project files). */
@@ -688,6 +690,8 @@ pub fn main(init: std.process.Init.Minimal) void {
         'def arrfill(x, y):\n    a = [0] * 8\n    for i in range(8):\n        a[i] = (i + x) & 0xFFFFFFFF\n    return (a[y % 8] + a[3]) & 0xFFFFFFFF',
       loop64:
         'def loop64(s, k):\n    for i in range(64):\n        b = ((s ^ k) * 2654435761) & 0xFFFFFFFF\n        s = ((b ^ (b >> 15)) + i) & 0xFFFFFFFF\n    return s',
+      arrfill4k:
+        'def arrfill4k(x, y):\n    a = [0] * 4096\n    for i in range(4096):\n        a[i] = (i + x) & 0xFFFFFFFF\n    return (a[y % 4096] + a[4095]) & 0xFFFFFFFF',
     },
     program: (k, src) => `${src}
 import sys, time

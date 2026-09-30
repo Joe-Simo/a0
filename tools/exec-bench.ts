@@ -152,7 +152,6 @@ const KERNELS: readonly Kernel[] = [
     a0: `fn put4k u32x4096 u32 u32 -> u32x4096\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill4k u32 u32 -> u32\nz arr ${ZEROS_4096}\na fold put4k 4096 z p0\nx get a p1\ny get a 4095\ns add x y\nret s\nend`,
     c: 'static inline uint32_t hw_arrfill4k(uint32_t x, uint32_t y) { uint32_t a[4096]; for (uint32_t i = 0; i < 4096; i++) a[i] = i + x; return a[y % 4096u] + a[4095]; }',
     js: 'export function arrfill4k(x, y) { const a = new Uint32Array(4096); for (let i = 0; i < 4096; i++) a[i] = (i + x) >>> 0; return (a[y & 4095] + a[4095]) >>> 0; }',
-    py: 'def arrfill4k(x, y):\n    a = [0] * 4096\n    for i in range(4096):\n        a[i] = (i + x) & 0xFFFFFFFF\n    return (a[y % 4096] + a[4095]) & 0xFFFFFFFF',
     rust: '#[inline] fn hw_arrfill4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; for i in 0..4096u32 { a[i as usize] = i.wrapping_add(x); } a[(y % 4096) as usize].wrapping_add(a[4095]) }',
   },
   {
@@ -349,11 +348,7 @@ async function benchC(
     const rs: number[] = [];
     let rc = '';
     const runOne = (exe: string): { ns: number; checksum: string } => {
-<<<<<<< HEAD
-      const r = runTool(exe, [String(iterations(kernel))], { timeoutMs: 600_000 });
-=======
-      const r = runTool(exe, [String(scaled(ITER))], { timeoutMs: 600_000 });
->>>>>>> worktree-agent-a2c1c0026fd15634a
+      const r = runTool(exe, [String(scaled(iterations(kernel)))], { timeoutMs: 600_000 });
       if (!r.ok) throw new Error(r.stderr);
       const [ns, sum] = r.stdout.trim().split(' ');
       return { ns: Number(ns), checksum: sum ?? '' };
@@ -431,11 +426,7 @@ async function benchJs(
   };
   const emitted = await load(compile(program, 'js').text);
   const handwritten = await load(kernel.js);
-<<<<<<< HEAD
-  const iters = iterations(kernel) / 4;
-=======
-  const iters = scaled(ITER / 4);
->>>>>>> worktree-agent-a2c1c0026fd15634a
+  const iters = scaled(iterations(kernel) / 4);
   const run = (
     f: (...a: number[]) => number,
     iterations = iters,
@@ -490,7 +481,8 @@ type LangStatus =
   | 'skipped-no-toolchain'
   | 'skipped-build-failed'
   | 'skipped-run-failed'
-  | 'skipped-checksum-mismatch';
+  | 'skipped-checksum-mismatch'
+  | 'skipped-no-source';
 
 interface LangRow {
   readonly status: LangStatus;
@@ -547,51 +539,6 @@ interface Prepared {
  */
 async function benchLanguages(
   kernel: Kernel,
-<<<<<<< HEAD
-  expected: (iters: number) => string,
-): Promise<{ python: Sample; pyIters: number; startupMs: { python: number; node: number } }> {
-  const iters = Math.floor(iterations(kernel) / 200);
-  const driver = `${kernel.py}
-import sys, time
-M = 0xFFFFFFFF
-def main():
-    iters = int(sys.argv[1])
-    s = 0x9e3779b9
-    acc = 0
-    f = ${kernel.name}
-    t0 = time.perf_counter()
-    for _ in range(iters):
-        a = [0, 0, 0]
-        for k in range(${kernel.arity}):
-            s ^= (s << 13) & M
-            s ^= s >> 17
-            s ^= (s << 5) & M
-            a[k] = s
-        r = f(a[0]) if ${kernel.arity} == 1 else (f(a[0], a[1]) if ${kernel.arity} == 2 else f(a[0], a[1], a[2]))
-        acc = (acc ^ r) & M
-    dt = time.perf_counter() - t0
-    print(f"{dt * 1e9 / iters:.3f} {acc}")
-main()
-`;
-  return withTempDir(async (dir) => {
-    const file = join(dir, `${kernel.name}.py`);
-    await writeFile(file, driver, 'utf8');
-    const ns: number[] = [];
-    let checksum = '';
-    for (let i = 0; i < SAMPLES; i += 1) {
-      const r = runTool('python3', [file, String(iters)], { timeoutMs: 600_000 });
-      if (!r.ok) throw new Error(`${kernel.name}: python failed: ${r.stderr.slice(0, 200)}`);
-      const [t, c] = r.stdout.trim().split(' ');
-      ns.push(Number(t));
-      checksum = c ?? '';
-    }
-    if (checksum !== expected(iters)) throw new Error(`${kernel.name}: python checksum mismatch`);
-    // Startup latency: one process launch running a single iteration.
-    const su = (cmd: string, args: string[]): number => {
-      const t = performance.now();
-      runTool(cmd, args, { timeoutMs: 60_000 });
-      return performance.now() - t;
-=======
   langs: readonly { readonly lang: Language; readonly tool: Toolchain | undefined }[],
   expectedAt: (iters: number) => string,
 ): Promise<Record<string, LangRow>> {
@@ -608,7 +555,6 @@ main()
       toolchain: tool?.version ?? null,
       iterations: scaled(lang.iterations),
       detail,
->>>>>>> worktree-agent-a2c1c0026fd15634a
     };
     process.stderr.write(
       `  ${lang.id}/${kernel.name}: ${status}: ${detail.split('\n')[0]?.slice(0, 200)}\n`,
@@ -621,13 +567,14 @@ main()
         skip(lang, tool, 'skipped-no-toolchain', `${lang.label} toolchain not found`);
         continue;
       }
+      const src = lang.kernels[kernel.name];
+      if (src === undefined) {
+        skip(lang, tool, 'skipped-no-source', `${lang.label}: no ${kernel.name} kernel written`);
+        continue;
+      }
       const dir = join(root, lang.id);
       await mkdir(dirname(join(dir, lang.file)), { recursive: true });
-      await writeFile(
-        join(dir, lang.file),
-        lang.program(kernel, lang.kernels[kernel.name]),
-        'utf8',
-      );
+      await writeFile(join(dir, lang.file), lang.program(kernel, src), 'utf8');
       for (const [name, text] of Object.entries(lang.extraFiles?.(dir, tool) ?? {}))
         await writeFile(join(dir, name), text, 'utf8');
       const env = { ...process.env, ...(lang.env?.(tool) ?? {}) };
@@ -745,13 +692,6 @@ async function main(): Promise<void> {
       `${lang.id.padEnd(11)} ${tool === undefined ? 'not found' : tool.version}\n`,
     );
   const results: Record<string, unknown> = {};
-<<<<<<< HEAD
-  // An optional kernel name runs one kernel A/B and prints it without touching the ledger.
-  const only = process.argv[2];
-  const kernels = only === undefined ? KERNELS : KERNELS.filter((k) => k.name === only);
-  if (kernels.length === 0) throw new Error(`unknown kernel '${only}'`);
-  for (const k of kernels) {
-=======
   const perLang: Record<string, LangRow[]> = {};
   const ratios: Record<string, number[]> = {};
   const push = (id: string, ratio: number): void => {
@@ -761,12 +701,11 @@ async function main(): Promise<void> {
   };
   for (const k of KERNELS) {
     if (CLI.kernels !== null && !CLI.kernels.has(k.name)) continue;
->>>>>>> worktree-agent-a2c1c0026fd15634a
     const js = await benchJs(k);
     const c = clang.path === undefined ? null : await benchC(k, clang.path, rustc);
     const memo = new Map<number, string>();
     const expectedAt = (n: number): string => {
-      if (c !== null && n === scaled(ITER)) return c.emitted.checksum;
+      if (c !== null && n === scaled(iterations(k))) return c.emitted.checksum;
       let v = memo.get(n);
       if (v === undefined) {
         v = js.checksumAt(n);
@@ -798,16 +737,9 @@ async function main(): Promise<void> {
     }
     const python = rows.python;
     results[k.name] = {
-<<<<<<< HEAD
-      iterationsPerSample: iterations(k),
-      python: py.python,
-      pythonIterations: py.pyIters,
-      startupInterpretersMs: py.startupMs,
-=======
       ...(python === undefined ? {} : { python, pythonIterations: python.iterations }),
       startupInterpretersMs,
       startupCompiledMs,
->>>>>>> worktree-agent-a2c1c0026fd15634a
       c:
         c === null
           ? { status: 'blocked', detail: 'clang not found' }
@@ -846,9 +778,6 @@ async function main(): Promise<void> {
       `${k.name.padEnd(8)} C: ${cv}   JS: ${verdict(js.emitted, js.handwritten)} (${js.emitted.medianNsPerCall.toFixed(3)} vs ${js.handwritten.medianNsPerCall.toFixed(3)} ns)\n         ns/call: ${others}\n`,
     );
   }
-<<<<<<< HEAD
-  if (only !== undefined) return;
-=======
   const geomean = (a: readonly number[] | undefined): number | null =>
     a === undefined || a.length === 0
       ? null
@@ -876,7 +805,6 @@ async function main(): Promise<void> {
     };
     if (bad !== undefined) skipped[lang.id] = `${bad.status}: ${bad.detail ?? ''}`.slice(0, 300);
   }
->>>>>>> worktree-agent-a2c1c0026fd15634a
   const report = {
     generatedAt: new Date().toISOString(),
     node: process.version,
@@ -886,14 +814,6 @@ async function main(): Promise<void> {
       const r = runTool(rustc, ['--version'], { timeoutMs: 10_000 });
       return r.ok ? r.stdout.trim() : null;
     })(),
-<<<<<<< HEAD
-    flags: { c: '-std=c11 -O2 (no sanitizer)', js: 'Node default JIT, in-process, warm' },
-    iterationsPerSample: {
-      c: ITER,
-      js: ITER / 4,
-      python: ITER / 200,
-      note: 'divided by a kernel iterScale where the kernel result reports iterationsPerSample',
-=======
     flags: {
       c: '-std=c11 -O2 (no sanitizer)',
       js: 'Node default JIT, in-process, warm',
@@ -906,20 +826,15 @@ async function main(): Promise<void> {
       js: scaled(ITER / 4),
       python: scaled(TIER.interpreted),
       ...Object.fromEntries(table.map(({ lang }) => [lang.id, scaled(lang.iterations)])),
->>>>>>> worktree-agent-a2c1c0026fd15634a
     },
     samplesPerSide: SAMPLES,
     scale: SCALE,
     loadAverage: (await import('node:os')).loadavg(),
     meaning:
-<<<<<<< HEAD
-      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill (8 and 4096 elements), 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
-=======
       'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
     geomeans,
     languages,
     skipped,
->>>>>>> worktree-agent-a2c1c0026fd15634a
     kernels: results,
   };
   await mkdir(join(CLI.out, '..'), { recursive: true });
