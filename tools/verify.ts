@@ -29,6 +29,7 @@ import {
 import { optimize } from '../src/optimize.js';
 import {
   compileWasm,
+  findArmGcc,
   findAvrGcc,
   findClang,
   findClangPlusPlus,
@@ -36,11 +37,13 @@ import {
   findJava,
   findJavac,
   findQemuRiscv64,
+  findQemuSystemArm,
   findRiscv64Gcc,
   findSimavr,
   findWasmClang,
   runTool,
   type ToolInfo,
+  type ToolResult,
   withTempDir,
 } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
@@ -995,6 +998,198 @@ export async function checkRiscv64(
   };
 }
 
+// --- native 32-bit ARM (direct assembly; ARMv7-A under qemu-system-arm) ----------------
+
+/**
+ * Boot shim for the bare-metal run: an identity-mapped MMU (1 MiB sections; RAM from
+ * 0x40000000 normal write-back memory, below it strongly-ordered device memory), because
+ * with the MMU off every access is strongly ordered and newlib's unaligned word loads fault;
+ * then CP10/CP11 access and FPEXC.EN for the hard-float newlib; then newlib's `_start`.
+ */
+const ARM32_BOOT = `\t.syntax unified
+\t.arch armv7-a
+\t.fpu vfpv3-d16
+\t.eabi_attribute Tag_ABI_VFP_args, 1
+\t.arm
+\t.text
+\t.globl a0_boot
+\t.type a0_boot, %function
+a0_boot:
+\tldr r0, =a0_ttb
+\tmov r1, #0
+1:\tlsl r2, r1, #20
+\tcmp r1, #0x400
+\tldrlo r3, =0xc02
+\tldrhs r3, =0x1c0e
+\torr r2, r2, r3
+\tstr r2, [r0, r1, lsl #2]
+\tadd r1, r1, #1
+\tcmp r1, #0x1000
+\tbne 1b
+\tmcr p15, 0, r0, c2, c0, 0
+\tmov r1, #0
+\tmcr p15, 0, r1, c2, c0, 2
+\tldr r1, =0x55555555
+\tmcr p15, 0, r1, c3, c0, 0
+\tmov r1, #0
+\tmcr p15, 0, r1, c8, c7, 0
+\tdsb
+\tisb
+\tmrc p15, 0, r1, c1, c0, 0
+\tbic r1, r1, #2
+\torr r1, r1, #0x5
+\torr r1, r1, #0x1000
+\tmcr p15, 0, r1, c1, c0, 0
+\tisb
+\tmrc p15, 0, r0, c1, c0, 2
+\torr r0, r0, #0xf00000
+\tmcr p15, 0, r0, c1, c0, 2
+\tisb
+\tmov r0, #0x40000000
+\tvmsr fpexc, r0
+\tb _start
+\t.ltorg
+\t.data
+\t.balign 16384
+a0_ttb:
+\t.space 16384
+\t.section .note.GNU-stack,"",%progbits
+`;
+
+/** The driver's cases arrive in a host file over semihosting (the console gives no stdin EOF). */
+const ARM32_CASES = `static void a0_cases(void) __attribute__((constructor));
+static void a0_cases(void) { if (freopen("cases.txt", "r", stdin) == NULL) exit(2); }`;
+
+/** Arm GNU Toolchain flags: ARMv7-A, hard float, newlib with semihosting (librdimon). */
+const ARM32_CFLAGS = ['-march=armv7-a+fp', '-mfloat-abi=hard', '-mfpu=vfpv3-d16'];
+
+/**
+ * Build `module.s` + `driver.c` in `dir` with the boot shim into a bare-metal ARMv7-A image and
+ * run it on an emulated Cortex-A7; the driver's stdout comes back over semihosting.
+ */
+export async function runArm32(
+  gcc: string,
+  qemu: string,
+  dir: string,
+): Promise<{ stage: 'build' | 'run'; result: ToolResult }> {
+  await writeFile(join(dir, 'boot.s'), ARM32_BOOT, 'utf8');
+  const build = runTool(
+    gcc,
+    [
+      ...ARM32_CFLAGS,
+      '-std=c11',
+      '-O1',
+      '-Wall',
+      '-Wextra',
+      '-Werror',
+      '--specs=rdimon.specs',
+      '-Wl,-Ttext-segment=0x40010000',
+      '-Wl,-e,a0_boot',
+      '-o',
+      'driver.elf',
+      'boot.s',
+      'module.s',
+      'driver.c',
+    ],
+    { cwd: dir },
+  );
+  if (!build.ok) return { stage: 'build', result: build };
+  const result = runTool(
+    qemu,
+    [
+      '-M',
+      'virt',
+      '-cpu',
+      'cortex-a7',
+      '-m',
+      '256',
+      '-display',
+      'none',
+      '-monitor',
+      'none',
+      '-serial',
+      'none',
+      '-semihosting-config',
+      'enable=on,target=native',
+      '-kernel',
+      'driver.elf',
+    ],
+    { cwd: dir, input: '', timeoutMs: 600_000 },
+  );
+  return { stage: 'run', result };
+}
+
+export async function checkArm32(
+  program: TypedProgram,
+  cases: readonly Case[],
+  gcc: ToolInfo,
+  qemu: ToolInfo,
+): Promise<TargetReport & { skippedIoFunctions: number; skippedIoCases: number }> {
+  const subset = ioFreeSubset(program);
+  const keep = new Set(subset.functions.map((f) => f.name));
+  const own = cases.filter((c) => keep.has(c.functionName));
+  const skipped = {
+    skippedIoFunctions: program.functions.length - subset.functions.length,
+    skippedIoCases: cases.length - own.length,
+  };
+  const label = `native 32-bit ARM assembly (src/arm32.ts, ARMv7-A ARM mode, AAPCS hard-float) assembled and linked with the C test driver by ${'`arm-none-eabi-gcc`'} (newlib, semihosting), executed on an emulated Cortex-A7 (${'`qemu-system-arm -M virt`'}); ${skipped.skippedIoFunctions} io functions (${skipped.skippedIoCases} cases) skipped: io is out of scope for this backend`;
+  if (gcc.path === undefined)
+    return {
+      ...blocked(
+        gcc,
+        'arm32 (install the Arm GNU Toolchain: brew install --cask gcc-arm-embedded, or set A0_ARM_GCC)',
+      ),
+      ...skipped,
+    };
+  if (qemu.path === undefined)
+    return { ...blocked(qemu, 'arm32 (brew install qemu, or set A0_QEMU_SYSTEM_ARM)'), ...skipped };
+  const start = performance.now();
+  const protos = [
+    '#include <stdint.h>',
+    '#include <stdbool.h>',
+    ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
+    ARM32_CASES,
+  ].join('\n');
+  const tools = `${gcc.version}; ${qemu.version}`;
+  const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
+    status: 'failed',
+    cases: 0,
+    detail: `arm32: ${what}`,
+    tool: tools,
+    failures: [stderr.slice(0, 2000)],
+    ...skipped,
+  });
+  let report: TargetReport | undefined;
+  for (const optimize of [true, false]) {
+    const asm = compile(subset, 'arm32', { optimize }).text;
+    const level = optimize ? 'optimized' : 'unoptimized';
+    const r = await withTempDir(async (dir): Promise<TargetReport> => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
+      await writeFile(join(dir, 'cases.txt'), caseInput(subset, own), 'utf8');
+      const run = await runArm32(gcc.path as string, qemu.path as string, dir);
+      if (run.stage === 'build')
+        return fail(`${level}: assembly/driver build/link failed`, run.result.stderr);
+      const exec = run.result;
+      if (!exec.ok) return fail(`${level}: execution failed (status ${exec.status})`, exec.stderr);
+      return compareAll(own, exec.stdout.trim().split('\n'), `${level}: ${label}`);
+    });
+    if (r.status !== 'passed') return { ...r, tool: tools, ...skipped };
+    report = r;
+  }
+  return {
+    ...timed(
+      {
+        ...(report as TargetReport),
+        detail: `${label}; optimized and unoptimized emissions each executed on every case`,
+      },
+      start,
+    ),
+    tool: tools,
+    ...skipped,
+  };
+}
+
 // --- WebAssembly -------------------------------------------------------------
 
 /**
@@ -1272,6 +1467,7 @@ async function main(): Promise<void> {
       native_x86_64: await checkX86_64(program, cases, findClang()),
       native_riscv64: await checkRiscv64(program, cases, findRiscv64Gcc(), findQemuRiscv64()),
       native_avr: await checkAvr(program, cases, findAvrGcc(), findClang()),
+      native_arm32: await checkArm32(program, cases, findArmGcc(), findQemuSystemArm()),
       webassembly: await checkWasm(program, cases),
       webassembly_direct: await checkWasmDirect(program, cases),
       jvm: await checkJvm(program, cases),

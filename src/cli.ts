@@ -4,7 +4,7 @@
  *
  *   a0 check <file.a0>
  *   a0 run <file.a0> <function> <args...>
- *   a0 emit <js|c|java|sv|arm64|x86_64|riscv64|avr|wasm> <file.a0> [out]
+ *   a0 emit <js|c|java|sv|arm64|x86_64|riscv64|avr|wasm|arm32> <file.a0> [out]
  *   a0 wasm <file.a0> <out.wasm>
  *   a0 patch <file.a0> <patch-file> [out.a0]
  *   a0 revision <file.a0> <function>

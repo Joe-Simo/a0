@@ -1078,6 +1078,66 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   Decision by measurement: the scoped handle loses no acceptance against the full one (Sonnet 12/12 both; Haiku 10/12 vs 8/12) at 1/40 of the context, so it is the handle to use for large programs. At 400 functions A0 structured costs 70x less per task than TypeScript (Sonnet, 202 vs 14143) with the scoped handle, 2.9x with the full one.
 - Not collected: the conventional cells at 400 (each reply is the whole 12.6k-token file; 12 per subject). Caveat: the scoped A0 view is protocol-supplied, while TS/Rust get no comparable per-function tool; that asymmetry is what this measures.
 
+## Session 2026-09-30 (ARM32 backend)
+
+- **Direct 32-bit ARM backend (a0c-0.1.12, `src/arm32.ts`, target `arm32`, `a0 emit arm32`)**:
+  the AArch64 backend's design for ARMv7-A, A32 (ARM mode) instructions, AAPCS hard-float
+  GNU/Linux ELF (arm-linux-gnueabihf: Raspberry Pi 2/3 32-bit userland). Same scope: u32/bool
+  scalars, fixed-size arrays and records by the same in-place scheme (`mutableHere`),
+  `call`/`fold`/`loop` with callees of at most 48 nodes inlined, larger ones called out of
+  line; io functions refused with the same `structure` diagnostic. u32 maps directly onto a
+  32-bit register, so arithmetic needs no masking; shifts are masked to five bits (literal at
+  compile time, variable by `and #31`, since a register shift uses the whole low byte);
+  unsigned `movlo`/`movls`/`movhi`/`movhs` compares; predicated `movne`/`moveq` select.
+  - Division, the ISA choice: UDIV is optional on ARMv7-A (Cortex-A7/A15 have it as ARMv7VE,
+    Cortex-A8/A9 do not), so the baseline is ARMv7-A and `div`, `rem`, and index modulo a
+    non-power-of-two length call `.La0_udivmod`, a 32-step shift-subtract routine emitted once
+    per module only when used; a zero divisor returns all ones and the dividend (A0's rule).
+    Power-of-two lengths use `ubfx`. ARM mode rather than Thumb-2 avoids IT blocks; the module
+    interworks with Thumb C code through `.type %function` symbols, `bx lr`, and `pop {pc}`.
+  - Registers: linear scan into the callee-saved r4-r10; r0-r3, r12, lr are scratch in every
+    function (calls and the divide routine clobber r0-r3), r11 is the frame pointer. Register
+    arguments leave r0-r3 before anything else runs.
+  - Calling convention: AAPCS for scalar signatures (the C driver calls `a0_<name>`); an
+    aggregate result through a hidden pointer in r0 (parameters then start at r1), aggregate
+    parameters as pointers to caller-owned slots copied on entry, stack parameters one word
+    each; sp 8-byte aligned at every call; frames above 4 KiB probed page by page. Immediates
+    as A32 modified immediates, `mvn`, or `movw`/`movt`. No VFP/NEON instruction is emitted;
+    the module carries `Tag_ABI_VFP_args` so it links with gnueabihf objects.
+- **Toolchain and verification on this Apple Silicon machine**: Homebrew's qemu on macOS has
+  no user-mode `qemu-arm` (system emulators only) and Apple silicon has no AArch32, so the
+  run is bare metal: the Arm GNU Toolchain 15.3.Rel1 (`arm-none-eabi-gcc` with newlib and
+  librdimon; the cask's .pkg needs sudo, so its payload was extracted with `pkgutil
+  --expand-full` to `~/.local/share/arm-gnu-toolchain`, which `findArmGcc` searches along
+  with `A0_ARM_GCC`, PATH, and `/Applications/ArmGNUToolchain`) builds the module, the same C
+  test driver (hard float, `-march=armv7-a+fp`), and a boot shim into one image;
+  `qemu-system-arm -M virt -cpu cortex-a7` (qemu 11.1.2) runs it with semihosting. The shim
+  identity-maps memory with the MMU (with the MMU off every access is strongly ordered and
+  newlib's unaligned loads fault) and enables VFP for the hard-float newlib; the driver reads
+  its cases from a host file over semihosting (a constructor `freopen`s stdin; the
+  semihosting console gives no stdin EOF). `native_arm32` in `bun run verify`: **4297/4297**
+  cases at both optimization levels, the same 10 io functions (965 cases) skipped as arm64
+  and x86_64; blocked with the reason when the toolchain or qemu is missing. All other paths
+  unchanged: interpreter, optimizer, JS, C clang, C gcc, C++ clang, Wasm, JVM 5262 each;
+  arm64 and x86_64 4297.
+- Unit tests (`test/core.test.ts`): io refusal; emitted sequences (A32 immediate encoding,
+  register homes and the push/pop frame, the divide routine and its zero-divisor entry, the
+  routine emitted only when used, literal and masked register shifts, `movlo` compare and
+  predicated select, `ubfx` and routine index modulo, sret in r0, movw/movt constants, page
+  probing); and the x86_64 execution test's program plus a division function at and above
+  2^31, built and run on the emulated Cortex-A7 at both optimization levels against the
+  interpreter (skipped with the reason when the toolchain is absent).
+- Gate (this worktree): lint pass; typecheck pass; test 46/46; verify all paths pass (counts
+  above); app pass on every path; equiv 48/48 proved; hw RTL simulation and Yosys
+  synthesis passed; dotnet 5262; gpu 4297. `results/{verification,app,equivalence,hardware,dotnet,gpu}.json`
+  regenerated under a0c-0.1.12. `bun run bench` skips `arm32` as it skips arm64/x86_64.
+- Not done: no run on real ARM Linux (a Raspberry Pi) or under Linux user-mode qemu; the
+  emission targets arm-linux-gnueabihf, but here it is linked with newlib bare metal, whose
+  integer AAPCS is the same. No ARMv7VE `udiv` option and no Thumb-2 emission; no
+  performance numbers (emulated time says nothing; `tools/exec-bench` has no arm32 row); the
+  same leaves as arm64 (loop-invariant literals rematerialized, aggregates never in
+  registers); with seven homes, register pressure spills sooner than on arm64/x86_64.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
