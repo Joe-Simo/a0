@@ -790,6 +790,60 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
 - Site: 48-language chart (log scale) on the home page; native paragraph and limits computed from the ledger; README table from the ledger.
 - Open: quiet-machine exec-bench; stage 4 of self-hosting (optimizer and AArch64 emitter in A0); bootstrap fixed point; x86-64 and other targets; release note when the ledger reads parity or better on every axis except the single-function primer cost.
 
+## Session 2026-09-30 (x86-64 backend)
+
+- **Direct x86-64 backend (a0c-0.1.9, `src/x86_64.ts`, target `x86_64`, `a0 emit x86_64`)**: the
+  AArch64 backend's design on the System V AMD64 ABI, AT&T syntax as clang and GNU as accept it.
+  Same scope: u32/bool scalars, fixed-size arrays and records by the same in-place scheme
+  (`mutableHere`: fresh or owned, read only by `get`/`at` before the update, not returned),
+  `call`/`fold`/`loop` with callees of at most 48 nodes inlined, larger ones called out of
+  line; io functions refused with the same `structure` diagnostic. Same exact semantics:
+  wrapping `addl`/`subl`/`imull`, shifts masked to five bits (literal at compile time,
+  variable through `cl`), `div`/`rem` branch around the trapping `divl` so a zero divisor
+  gives all ones and the dividend, unsigned `setb`/`setbe`/`seta`/`setae`, branch-free
+  `cmov` select, index modulo N by mask or `divl`.
+  - Register allocation: linear scan over definition order into the callee-saved ebx,
+    r12d-r15d; a leaf (no residual call) also uses edi, esi, r8d, r9d and keeps a parameter
+    in its arrival register when it arrives in one of those. edx and ecx are never homes
+    (division and shift counts). Parameters arriving in edx/ecx and any displaced ones move to
+    their homes by a parallel move sequentialized through eax; a parameter nobody reads is
+    left where it arrived.
+  - Calling convention: System V for scalar signatures, so the C driver calls `a0_<name>`
+    directly; aggregate parameters as pointers to caller-owned slots, copied on entry; an
+    aggregate result through the sret pointer in rdi (returned in rax), written after all
+    parameters are copied so it may alias an argument slot. Stack parameters one eightbyte
+    each. Frames are 16-byte aligned at every call; frames above 4 KiB are probed one page at
+    a time.
+  - Platform switch (`X86Platform`, host default): macOS `_a0_` symbols, `L` labels,
+    `__TEXT,__text` and `.subsections_via_symbols`; Linux `a0_` symbols, `.L` labels,
+    `.type`/`.size`, and a `.note.GNU-stack` section. Only the macOS emission is executed
+    here; the Linux emission is exercised by the unit test as text only.
+- **Verification on this Apple Silicon machine**: `native_x86_64` in `bun run verify`
+  assembles with `clang -arch x86_64 -x assembler`, links with the C driver built
+  `-arch x86_64`, and runs under Rosetta 2 (`arch -x86_64`); blocked with the reason when
+  the host is neither x86-64 nor Apple silicon with Rosetta and a working x86_64 SDK slice.
+  Result: **4297/4297** cases at both optimization levels, the same 10 io functions
+  (965 cases) skipped as arm64. All other paths unchanged: interpreter, optimizer, JS,
+  C clang, C gcc, C++ clang, Wasm, JVM 5262 each; arm64 4297.
+- Unit tests (`test/core.test.ts`): io refusal; emitted sequences (leaf parameter homes and
+  `imull $3, %edi, %edi`, macOS/Linux symbol forms, the `divl` zero-divisor branch for
+  `div` and `rem`, literal and `cl` shifts, `setb` plus `cmov` select, mask and `divl`
+  index modulo, sret through rdi/rax, the parked rcx parameter, page probing); and the
+  arm64 execution test's program (12-parameter call with stack scalars, aggregate result,
+  fold over an array state, loop with a predicate, 4 KiB array) assembled, linked, and run
+  under Rosetta at both optimization levels against the interpreter.
+- Gate (this worktree): lint pass; typecheck pass; test 43/43; verify all paths pass
+  (counts above); app pass (134 cases on interpreter, optimizer, JS, C, C++, Wasm, JVM); equiv 48/48 proved; hw RTL simulation and Yosys synthesis
+  passed; dotnet 5262; gpu 4297 (30 kernels, Apple M3).
+  `results/{verification,app,equivalence,hardware,dotnet,gpu}.json` regenerated under
+  a0c-0.1.9. `bun run bench` skips `x86_64` as it skips `arm64` (io in the corpus).
+- Not done: no x86-64 performance numbers (Rosetta would measure the translator, not the
+  code; `tools/exec-bench` has no x86_64 row); no native Linux run of the Linux emission;
+  the same leaves as arm64 (rbp save in leaves, loop-invariant literals rematerialized per
+  trip, aggregates never in registers, callees above 48 nodes copy aggregate arguments on
+  entry); the `.a0-cache` key does not carry the platform, so a cache shared between a
+  macOS and a Linux checkout would need clearing (the cache is per checkout).
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

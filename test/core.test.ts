@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { compile, FunctionCache } from '../src/backends.js';
 import { compileCached, DiskCache } from '../src/cache.js';
@@ -1435,6 +1436,155 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
       const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
       assert.ok(ld.ok, ld.stderr);
       const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected);
+    });
+  }
+});
+
+test('x86_64 backend refuses io functions with a diagnostic', () => {
+  const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
+  assert.throws(
+    () => compile(p, 'x86_64'),
+    (e: unknown) => e instanceof A0Error && /io functions are out of scope/.test(e.message),
+  );
+});
+
+test('x86_64 backend: emitted sequences carry the exact semantics', async () => {
+  const { emitX86_64Function } = await import('../src/x86_64.js');
+  const fn = (src: string, name: string): TypedFunc =>
+    parseAndValidate(src).byName.get(name) as TypedFunc;
+  // A leaf keeps its parameters in edi/esi and returns in eax; the platform switch names symbols.
+  const affine = fn('fn affine u32 u32 -> u32\na mul p0 3\nb add a p1\nret b\nend', 'affine');
+  const darwin = emitX86_64Function(affine, 'darwin');
+  assert.match(darwin, /^\t\.globl _a0_affine$/m);
+  assert.match(darwin, /imull \$3, %edi, %edi/);
+  assert.match(darwin, /addl %esi, %edi/);
+  assert.match(darwin, /movl %edi, %eax\n\tmovq %rbp, %rsp\n\tpopq %rbp\n\tret$/);
+  const linux = emitX86_64Function(affine, 'linux');
+  assert.match(linux, /^\t\.globl a0_affine$/m);
+  assert.match(linux, /^\t\.type a0_affine,@function$/m);
+  assert.doesNotMatch(linux, /_a0_/);
+  // Division: DIV would trap on zero, so the zero divisor is branched around; A0 says all ones
+  // for the quotient and the dividend for the remainder.
+  const div = emitX86_64Function(fn('fn d u32 u32 -> u32\nq div p0 p1\nret q\nend', 'd'));
+  assert.match(
+    div,
+    /testl %esi, %esi\n\tje (La0_d_\d+)\n\txorl %edx, %edx\n\tdivl %esi\n\tjmp La0_d_\d+\n\1:\n\tmovl \$-1, %eax/,
+  );
+  const rem = emitX86_64Function(fn('fn r u32 u32 -> u32\nq rem p0 p1\nret q\nend', 'r'));
+  assert.match(rem, /divl %esi\n\tmovl %edx, %eax\n\tjmp/);
+  // Shifts: a literal distance is masked to five bits at compile time, a variable one runs
+  // through cl (the hardware masks to five bits as well).
+  const shl = emitX86_64Function(
+    fn('fn s u32 u32 -> u32\na shl p0 33\nb shl a p1\nret b\nend', 's'),
+  );
+  assert.match(shl, /shll \$1, %edi/);
+  assert.match(shl, /movl %esi, %ecx\n\tshll %cl, %edi/);
+  // Unsigned comparison and select without a branch.
+  const sel = emitX86_64Function(
+    fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
+  );
+  assert.match(
+    sel,
+    /cmpl %esi, %edi\n\tsetb %al\n\tmovzbl %al, (%\w+)\n\ttestl \1, \1\n\tcmovel %esi, %edi/,
+  );
+  // Index modulo the length: a power of two is a mask, another length divides.
+  const get8 = emitX86_64Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
+  assert.match(get8, /andl \$7, %r10d\n\tshlq \$2, %r10\n\tmovl 0\(%rsp,%r10\), %\w+/);
+  const get5 = emitX86_64Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
+  assert.match(get5, /movl \$5, %r10d\n\tdivl %r10d\n\tmovl %edx, %r10d/);
+  // An aggregate result comes back through the sret pointer in rdi, also returned in rax.
+  const pair = emitX86_64Function(
+    fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'),
+  );
+  assert.match(
+    pair,
+    /movq %rdi, (\d+\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
+  );
+  // A parameter arriving in rcx is parked in a slot only when an incoming aggregate is copied
+  // by the counted loop, which uses ecx.
+  const big = emitX86_64Function(
+    fn('fn b u32x32 u32 u32 u32 -> u32\nv get p0 p3\nw add v p2\nret w\nend', 'b'),
+  );
+  assert.match(big, /movq %rcx, (\d+\(%rsp\))[\s\S]*movl \$32, %ecx[\s\S]*movl \1, %\w+/);
+  // Frames above a page are probed page by page.
+  const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
+  const probe = emitX86_64Function(
+    fn(`fn z u32 -> u32\na arr ${zeros}\nv get a p0\nret v\nend`, 'z'),
+  );
+  assert.match(probe, /subq \$4096, %rsp\n\tmovq \$0, \(%rsp\)\n\tdecl %eax\n\tjne/);
+});
+
+const X86_64_HOST = (() => {
+  if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
+    return { arch: [] as string[], runner: [] as string[] };
+  if (process.platform !== 'darwin' || process.arch !== 'arm64') return undefined;
+  if (spawnSync('/usr/bin/arch', ['-x86_64', '/usr/bin/true']).status !== 0) return undefined;
+  return { arch: ['-arch', 'x86_64'], runner: ['/usr/bin/arch', '-x86_64'] };
+})();
+
+test('x86_64 backend: assembled, linked with a C driver, and executed equal to the interpreter', {
+  skip: X86_64_HOST === undefined ? 'needs an x86-64 host or Rosetta 2 on Apple silicon' : false,
+}, async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const host = X86_64_HOST as { arch: string[]; runner: string[] };
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const zeros = Array.from({ length: 1024 }, () => '0').join(' ');
+  const src = [
+    'fn step u32x8 u32 u32 -> u32x8\na get p0 p1\nb add a p2\nc mul b 3\nn set p0 p1 c\nret n\nend',
+    // twelve parameters: scalars past r9 travel on the stack, one eightbyte each
+    'fn many u32 u32 u32 u32 u32 u32 u32 u32 bool u32 bool u32 -> u32\na add p0 p1\nb sub a p2\nc mul b p3\nd xor c p4\ne shl d p5\nf shr e p6\ng div f p7\nh rem g p9\ni select p8 h p11\nj select p10 i p9\nk add j p11\nret k\nend',
+    'fn pair u32 u32 -> (u32,bool)\nc lt p0 p1\nr rec p0 c\nret r\nend',
+    'fn keep u32 u32 -> bool\nb lt p0 1000\nret b\nend',
+    'fn grow u32 u32 -> u32\nb mul p0 3\nc add b p1\nret c\nend',
+    'fn top u32 u32 bool -> u32\nk and p1 15\nz arr p0 p1 1 2 3 4 5 6\nf fold step k z p0\ng get f p1\nr call pair p0 p1\nh at r 0\ns loop keep grow p1 h\nt put r 0 s\nu at t 1\nt0 at t 0\nm call many p0 p1 g t0 p0 p1 g s u p0 p2 t0\nq ge m g\nw select q m g\nx div w p1\ny rem p0 p1\nv add x y\nret v\nend',
+    // a 4 KiB array: word-copy loops, a parked rcx parameter, and a page-probed frame
+    'fn poke u32x1024 u32 u32 -> u32x1024\nn set p0 p2 p1\nret n\nend',
+    `fn bigtop u32 u32 -> u32\nz arr ${zeros}\nk and p1 7\nf fold poke k z p0\na get f p1\nb get f 3\nc add a b\nret c\nend`,
+  ].join('\n\n');
+  const p = parseAndValidate(src);
+  const inputs: [number, number, boolean][] = [
+    [0, 0, false],
+    [1, 2, true],
+    [7, 13, false],
+    [0xffffffff, 5, true],
+    [123456, 0xfffffff0, true],
+    [999, 3, false],
+  ];
+  const top = p.byName.get('top') as TypedFunc;
+  const bigtop = p.byName.get('bigtop') as TypedFunc;
+  const expected = inputs
+    .flatMap(([a, b, c]) => [String(run(top, [a, b, c])), String(run(bigtop, [a, b]))])
+    .join('\n');
+  const calls = inputs
+    .map(
+      ([a, b, c]) => `  printf("%u\\n%u\\n", a0_top(${a}u, ${b}u, ${c}), a0_bigtop(${a}u, ${b}u));`,
+    )
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  for (const optimize of [true, false]) {
+    const asm = compile(p, 'x86_64', { optimize }).text;
+    assert.doesNotMatch(asm, /#include|int main/);
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(
+        clang,
+        [...host.arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
+        { cwd: dir },
+      );
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, [...host.arch, '-O1', '-o', 'driver', 'driver.c', 'module.o'], {
+        cwd: dir,
+      });
+      assert.ok(ld.ok, ld.stderr);
+      const [cmd, ...pre] =
+        host.runner.length === 0 ? [join(dir, 'driver')] : [...host.runner, join(dir, 'driver')];
+      const exec = runTool(cmd as string, pre, { cwd: dir });
       assert.ok(exec.ok, exec.stderr);
       assert.equal(exec.stdout.trim(), expected);
     });
