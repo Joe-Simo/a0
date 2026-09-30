@@ -8,6 +8,12 @@
 
 // --- Self-hosted lexer reference ---------------------------------------------------
 
+/**
+ * Source bytes the self-hosted front end reads (lexio, parseio, checkio clamp to it); its tables
+ * are sized so that no source within the limit overflows them (DESIGN.md 7a).
+ */
+export const FRONT_END_SOURCE_LIMIT = 16384;
+
 /** The token grammar of compiler/lex.a0, written directly: (kind start length) triples. */
 export function refLex(src: string): number[] {
   const out: number[] = [];
@@ -225,11 +231,25 @@ export function refParse(src: string): WordIr {
     let haveRes = false;
     let first = 0;
     let nparams = 0;
-    const arrayType = (n: number): number => {
+    const arrayType = (n: number, elem: number): number => {
       for (let j = 0; j < types.length / 3; j += 1)
-        if (types[j * 3] === 4 && types[j * 3 + 1] === n) return j;
-      types.push(4, n, 0);
+        if (types[j * 3] === 4 && types[j * 3 + 1] === n && types[j * 3 + 2] === elem) return j;
+      types.push(4, n, elem);
       return types.length / 3 - 1;
+    };
+    /** u32xAxB...: the array of B of (the array of A of u32); undefined for a bad length */
+    const arrayWord = (i: number): number | undefined => {
+      let t = 0;
+      let s = start(i) + 4;
+      const end = start(i) + len(i);
+      for (let k = s; k <= end; k += 1) {
+        if (k < end && b[k] !== 120) continue;
+        const n = digits(s, k - s);
+        if (n === undefined || n === 0) return undefined;
+        t = arrayType(n, t);
+        s = k + 1;
+      }
+      return t;
     };
     const recordType = (fields: number[]): number => {
       for (let j = 0; j < types.length / 3; j += 1) {
@@ -271,9 +291,9 @@ export function refParse(src: string): WordIr {
         else if (kk === KW.bool) produce(1, i);
         else if (kk === KW.io) produce(2, i);
         else if (w[0] === 117 && w[1] === 51 && w[2] === 50 && w[3] === 120) {
-          const n = digits(start(i) + 4, len(i) - 4);
-          if (n === undefined || n === 0) fail(1, i);
-          else produce(arrayType(n), i);
+          const t = arrayWord(i);
+          if (t === undefined) fail(1, i);
+          else produce(t, i);
         } else fail(1, i);
       } else if (k === 9 && byte === 40) {
         stk.push(SENTINEL);
@@ -335,11 +355,14 @@ export function refParse(src: string): WordIr {
     const setRet = (k: number, v: number): void => {
       fns[(fi - 1) * 7 + 6] = k * 2 ** 28 + v;
     };
-    /** operand of an identifier or number token: [kind, value], or undefined for an unknown id */
-    const operand = (i: number, n: number): [number, number] | undefined => {
+    /** operand of an identifier or number token: [kind, value], undefined for an unknown id, 'bad' for a number with a non-digit byte */
+    const operand = (i: number, n: number): [number, number] | undefined | 'bad' => {
       const kk = key(i);
       const p = paramOf(i);
-      if (kind(i) === 2) return [3, digits(start(i), len(i)) as number];
+      if (kind(i) === 2) {
+        const v = digits(start(i), len(i));
+        return v === undefined ? 'bad' : [3, v];
+      }
       if (kk === KW.true || kk === KW.false) return [4, kk === KW.true ? 1 : 0];
       if (p !== undefined) return [2, p];
       const j = findNode(symAt(i), n);
@@ -403,7 +426,8 @@ export function refParse(src: string): WordIr {
           }
         } else if (k === 1 || k === 2) {
           const o = operand(i, nin() - 1);
-          if (o === undefined) fail(2, i);
+          if (o === 'bad') fail(1, i);
+          else if (o === undefined) fail(2, i);
           else pushArg(o[0], o[1]);
         } else fail(1, i);
       } else if (mode === 5) {
@@ -412,7 +436,8 @@ export function refParse(src: string): WordIr {
           setRet(1, cur() - firstNode);
         } else if (k === 1 || k === 2) {
           const o = operand(i, nin());
-          if (o === undefined) fail(2, i);
+          if (o === 'bad') fail(1, i);
+          else if (o === undefined) fail(2, i);
           else {
             setRet(o[0], o[1]);
             mode = 7;

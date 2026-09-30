@@ -1,69 +1,81 @@
 # A0 parser, written in A0. Second module of the self-hosted compiler (DESIGN.md 7a).
-# Input: the source bytes and the token triples (kind start length) of compiler/lex.a0.
+# Input: the source bytes (u32x128x128, at most 16384) and the token triples of compiler/lex.a0.
 # Output: the word IR. pool/sym intern identifiers and strings (sym 0 is "retval", the id of
 # a `ret OP ARGS` node); types are triples (tag a b) with u32 bool io seeded at 0 1 2 and every
-# array or record type interned once, so a type index is a type identity; tlist holds record
-# fields and parameter lists; fns are 7 words (name nparams firstparam result firstnode
-# nodecount ret); nodes are 6 words (id op nargs firstarg callee pred); args are pairs
-# (kind value): 1 node index in the function, 2 param, 3 u32, 4 bool; uses lists the syms of
-# `use "..."` lines. Errors are the first (code, token index): 1 parse, 2 structure; the token
-# index is the token count when the input ends inside a function.
-# Four passes over the tokens, each a loop that stops at the first error, each with a state
-# record of at most four tables (a record is capped at 65536 bits today; the sizes are textual):
-# intern (pool sym tsym), uses, headers (types tlist fns stack), bodies (fns nodes args).
-# Words of at most six bytes [a-z0-9_] are recognized by an exact packing (base 37, code
-# 1..37 per byte), so a keyword is one comparison and no byte strings are needed.
+# array or record type interned once, so a type index is a type identity (a type word
+# u32xAxB... is the array of B of (the array of A of u32)); tlist holds record fields and
+# parameter lists; fns are 7 words (name nparams firstparam result firstnode nodecount ret);
+# nodes are 6 words (id op nargs firstarg callee pred); args are pairs (kind value): 1 node
+# index in the function, 2 param, 3 u32, 4 bool; uses lists the syms of `use "..."` lines.
+# Errors are the first (code, token index): 1 parse, 2 structure; the token index is the token
+# count when the input ends inside a function.
+#
+# Tables are paged (u32x128xN: element i at page i>>7, word i&127; types are u32x384xN, 128
+# triples a page) and sized so that no source of 16384 bytes can overflow them. Every value
+# passed to a call is copied or validated by some target, so the per-token steps receive pages
+# and scalars, and table reads and writes in them are written out inline. Passes:
+#   1 tokens: classify each token (its bytes scanned once), intern identifiers and strings in a
+#     hash table (exact: short words by their packed key, others by a byte comparison), the
+#     `use` lines, and the header lines (a line starting with `fn`), as chunks within one page
+#   2 pool: the bytes of each symbol, in symbol order
+#   3 headers: types, tlist and one entry per header (name token, name, nparams, first, result)
+#   4 functions: fns and the name map, duplicate names
+#   5 bodies: nodes and args, operands and callees resolved through the name map
+# Per token: ta = kind | kw<<4 | op<<7 | isparam<<12 | digits<<13 | tyword<<14 | arrword<<16 |
+# punct<<17 | sym<<19 and tv = the value of a number (all bytes) or parameter (after the p), or
+# the decoded length of a string. Words of at most six bytes [a-z0-9_] are recognized by an
+# exact packing (base 37, code 1..37 per byte), so a keyword is one comparison.
 
 use "lex.a0"
 
-fn zeros256 -> u32x256
-z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+fn z16 -> u32x128x16
+z call zpage
+t arr z z z z z z z z z z z z z z z z
+ret t
+end
+fn z32 -> u32x128x32
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z33 -> u32x128x33
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z45 -> u32x128x45
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z64 -> u32x128x64
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z65 -> u32x128x65
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z129 -> u32x128x129
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z256 -> u32x128x256
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z384 -> u32x384
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ret z
 end
-# token i of the triple table: (kind start len)
-fn tokat u32x512 u32 -> (u32,u32,u32)
-i3 mul p1 3
-k get p0 i3
-i31 add i3 1
-s get p0 i31
-i32 add i3 2
-l get p0 i32
-r rec k s l
-ret r
-end
-# kind of token i, or newline (5) outside 0..ntok; i-1 at i=0 wraps and reads as a newline
-fn kindat u32x512 u32 u32 -> u32
-i3 mul p1 3
-k get p0 i3
-out ge p1 p2
-r select out 5 k
-ret r
-end
-# exact key of a word of at most six bytes: sum of code(byte)*37^j; 0 for longer words
-fn keystep (u32,u32) u32 u32x512 u32 -> (u32,u32)
-key at p0 0
-pow at p0 1
-a add p3 p1
-c get p2 a
-isl ge c 97
-isu eq c 95
-cl sub c 96
-cd sub c 21
-code0 select isl cl cd
-code select isu 37 code0
-t mul code pow
-key2 add key t
-pow2 mul pow 37
-r rec key2 pow2
-ret r
-end
-fn wordkey u32x512 u32 u32 -> u32
-big gt p2 6
-n select big 0 p2
-s0 rec 0 1
-s fold keystep n s0 p0 p1
-key at s 0
-ret key
+fn zty -> u32x384x65
+z call z384
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
 end
 # keywords: 1 fn 2 ret 3 end 4 use 5 true 6 false 7 patch
 fn kwcode u32 -> u32
@@ -149,309 +161,1035 @@ k31 eq p0 990580
 r31 select k31 31 r30
 ret r31
 end
-# decimal digits src[start..start+len): (all digits and nonempty, value mod 2^32)
-fn digstep (bool,u32) u32 u32x512 u32 -> (bool,u32)
-ok at p0 0
-v at p0 1
-a add p3 p1
-c get p2 a
-lo ge c 48
-hi le c 57
-d and lo hi
-ok2 and ok d
+# --- pass 1: tokens ------------------------------------------------------------------
+# one byte of a token: (key pow hash value digits wordlike esc decoded arrprefix); p1 byte
+# index in the segment, p2 p3 the two source pages from the segment start, p4 its offset in
+# p2, p5 skip the first byte for value and digits (a parameter), p6 the segment's first index
+fn scanb (u32,u32,u32,u32,bool,bool,u32,u32,bool) u32 u32x128 u32x128 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool)
+key at p0 0
+pow at p0 1
+h at p0 2
+v at p0 3
+dig at p0 4
+wl at p0 5
+esc at p0 6
+dc at p0 7
+arr at p0 8
+q add p4 p1
+qh shr q 7
+ql and q 127
+isl eq qh 0
+cl get p2 ql
+ch get p3 ql
+c select isl cl ch
+gk add p6 p1
+isa ge c 97
+isu eq c 95
+ca sub c 96
+cd sub c 21
+code0 select isa ca cd
+code select isu 37 code0
+f6 lt gk 6
+t mul code pow
+key1 add key t
+key2 select f6 key1 key
+pow1 mul pow 37
+pow2 select f6 pow1 pow
+hx xor h c
+h2 mul hx 16777619
+first eq gk 0
+skip and p5 first
+isd call isdigit c
 v10 mul v 10
-cd sub c 48
-v2 add v10 cd
-r rec ok2 v2
+vd add v10 c
+vd2 sub vd 48
+v2 select skip v vd2
+dig1 and dig isd
+dig2 select skip dig dig1
+isw call isword c
+wl2 and wl isw
+isbs eq c 92
+e1 eq esc 1
+dc1 add dc 1
+dc2 select e1 dc dc1
+esc1 select isbs 1 0
+esc2 select e1 0 esc1
+g1 eq gk 1
+g2 eq gk 2
+g3 eq gk 3
+w1 select g1 51 117
+w2 select g2 50 w1
+want select g3 120 w2
+f4 lt gk 4
+okc eq c want
+arr1 and arr okc
+arr2 select f4 arr1 arr
+r rec key2 pow2 h2 v2 dig2 wl2 esc2 dc2 arr2
 ret r
 end
-fn digits u32x512 u32 u32 -> (bool,u32)
-s0 rec true 0
-s fold digstep p2 s0 p0 p1
-ok at s 0
-ne gt p2 0
-ok2 and ok ne
-v at s 1
-r rec ok2 v
+# segment p1 + p6 (128 bytes each) of the token at p3 of length p4
+fn scanseg (u32,u32,u32,u32,bool,bool,u32,u32,bool) u32 u32x128x128 u32 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool)
+s add p1 p6
+kb mul s 128
+pos add p3 kb
+ph shr pos 7
+off and pos 127
+lo get p2 ph
+ph1 add ph 1
+hi get p2 ph1
+rest sub p4 kb
+big gt rest 128
+cnt select big 128 rest
+r fold scanb cnt p0 lo hi off p5 kb
 ret r
 end
-# pN: (is a parameter, index)
-fn paramof u32x512 u32 u32 -> (bool,u32)
-c get p0 p1
-isp eq c 112
-s1 add p1 1
-gt1 gt p2 1
-l0 sub p2 1
-l1 select gt1 l0 0
-d call digits p0 s1 l1
-ok at d 0
-v at d 1
-ok2 and isp ok
-r rec ok2 v
-ret r
-end
-# u32xN: (is an array type, N)
-fn arrlen u32x512 u32 u32 -> (bool,u32)
-c0 get p0 p1
-s1 add p1 1
-c1 get p0 s1
-s2 add p1 2
-c2 get p0 s2
-s3 add p1 3
-c3 get p0 s3
-u eq c0 117
-t eq c1 51
-w eq c2 50
-x eq c3 120
-a and u t
-b and w x
-pre and a b
-gt4 gt p2 4
-l4 sub p2 4
-l select gt4 l4 0
-s4 add p1 4
-d call digits p0 s4 l
-dok at d 0
-v at d 1
-pos gt v 0
-ok0 and pre dok
-ok and ok0 pos
-r rec ok v
-ret r
-end
-# pass 1: intern identifiers and strings. tsym[i] is the sym of token i.
-fn beqstep bool u32 u32x512 u32x512 u32 u32 -> bool
-ia add p4 p1
-a get p2 ia
-ib add p5 p1
-b get p3 ib
+# byte equality of two ranges: p2 p3 p4 pages and offset of one, p5 p6 p7 of the other
+fn cmpb bool u32 u32x128 u32x128 u32 u32x128 u32x128 u32 -> bool
+qa add p4 p1
+ha shr qa 7
+la and qa 127
+ia eq ha 0
+a0 get p2 la
+a1 get p3 la
+a select ia a0 a1
+qb add p7 p1
+hb shr qb 7
+lb and qb 127
+ib eq hb 0
+b0 get p5 lb
+b1 get p6 lb
+b select ib b0 b1
 e eq a b
 r and p0 e
 ret r
 end
-fn byteseq u32x512 u32x512 u32 u32 u32 -> bool
-r fold beqstep p4 true p0 p1 p2 p3
+# segment p1 + p6 of the ranges at p3 and p4 of length p5
+fn cmpseg bool u32 u32x128x128 u32 u32 u32 u32 -> bool
+s add p1 p6
+kb mul s 128
+pa add p3 kb
+ha shr pa 7
+oa and pa 127
+alo get p2 ha
+ha1 add ha 1
+ahi get p2 ha1
+pb add p4 kb
+hb shr pb 7
+ob and pb 127
+blo get p2 hb
+hb1 add hb 1
+bhi get p2 hb1
+rest sub p5 kb
+big gt rest 128
+cnt select big 128 rest
+r fold cmpb cnt p0 alo ahi oa blo bhi ob
 ret r
 end
-fn fsymstep u32 u32 u32x512 u32x512 u32x512 u32 u32 -> u32
-j2 mul p1 2
-s get p3 j2
-j21 add j2 1
-l get p3 j21
-leq eq l p6
-be call byteseq p2 p4 s p5 p6
-m and leq be
-r select m p1 p0
+# The symbol hash table has 8192 slots of two words: (the top 18 bits of the hash, the source
+# start of the symbol's first token) and (len*8192 + sym+1), 0 when empty. A candidate with
+# the same hash bits and length is compared byte by byte, so interning is exact.
+# probes after the first: state (slot done sym); stops at an empty slot (sym 4294967295) or at
+# the match
+fn prstep (u32,bool,u32) u32 u32x128x128 u32x128x128 u32 u32 u32 -> (u32,bool,u32)
+slot at p0 0
+s1 add slot 1
+s and s1 8191
+a mul s 2
+ah shr a 7
+al and a 127
+pg get p2 ah
+x get pg al
+al1 add al 1
+y get pg al1
+e eq y 0
+ne select e false true
+ry and y 8191
+rs sub ry 1
+rlen shr y 13
+rst and x 16383
+hx and x 4294950912
+hy and p4 4294950912
+hm eq hx hy
+lm eq rlen p6
+c0 and ne hm
+cand and c0 lm
+n127 add p6 127
+nseg shr n127 7
+cn select cand nseg 0
+eq fold cmpseg cn true p3 p5 rst p6 0
+m and cand eq
+done or e m
+sym select m rs 4294967295
+r rec s done sym
 ret r
 end
-# index of the sym with the bytes src[start..start+len), or nsym
-fn findsym u32x512 u32x512 u32 u32x512 u32 u32 -> u32
-r fold fsymstep p2 p2 p0 p1 p3 p4 p5
+fn prok (u32,bool,u32) u32 u32x128x128 u32x128x128 u32 u32 u32 -> bool
+d at p0 1
+r select d false true
 ret r
 end
-fn cpstep u32x512 u32 u32x512 u32 u32 -> u32x512
-a add p3 p1
-v get p2 a
-d add p4 p1
-r set p0 d v
-ret r
-end
-fn internstep (u32x512,u32x512,u32x512,u32,u32) u32 u32x512 u32x512 -> (u32x512,u32x512,u32x512,u32,u32)
-pool at p0 0
-sym at p0 1
-tsym at p0 2
-npool at p0 3
-nsym at p0 4
-t call tokat p3 p1
-kind at t 0
-start at t 1
-len at t 2
+# token p1 of the page (index p4 + p1): state
+# (hash swin tapg tvpg uwin hwin npool nsym nuses seenfn umode err errtok prevk inhdr nhdr
+#  sbase ubase hbase); swin uwin hwin are windows over sinfo (srcstart*32768 + len per
+# symbol), uses and hdrs (first token, count) from words sbase ubase hbase
+fn p1tok (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x3 u32 -> (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+hash at p0 0
+swin at p0 1
+tapg at p0 2
+tvpg at p0 3
+uwin at p0 4
+hwin at p0 5
+npool at p0 6
+nsym at p0 7
+nuses at p0 8
+seenfn at p0 9
+umode at p0 10
+err at p0 11
+errtok at p0 12
+prevk at p0 13
+inhdr at p0 14
+nhdr at p0 15
+sbase at p0 16
+ubase at p0 17
+hbase at p0 18
+i add p4 p1
+w0 mul p1 3
+wh0 shr w0 7
+wl0 and w0 127
+wg0 get p3 wh0
+kind get wg0 wl0
+w1 add w0 1
+wh1 shr w1 7
+wl1 and w1 127
+wg1 get p3 wh1
+start get wg1 wl1
+w2 add w0 2
+wh2 shr w2 7
+wl2 and w2 127
+wg2 get p3 wh2
+len get wg2 wl2
 k1 eq kind 1
-k3 eq kind 3
-isw or k1 k3
-f call findsym pool sym nsym p2 start len
-new eq f nsym
-add1 and isw new
-pool2 fold cpstep len pool p2 start npool
-poolr select add1 pool2 pool
-npool2 add npool len
-npoolr select add1 npool2 npool
-n2 mul nsym 2
-syma set sym n2 npool
-n21 add n2 1
-symb set syma n21 len
-symr select add1 symb sym
-nsym1 add nsym 1
-nsymr select add1 nsym1 nsym
-fs select isw f 0
-tsymr set tsym p1 fs
-r rec poolr symr tsymr npoolr nsymr
-ret r
-end
-# pass 2: `use "path"` lines before the first fn. state: (uses nuses seenfn mode err errtok)
-fn usesstep (u32x512,u32,u32,u32,u32,u32) u32 u32x512 u32x512 u32x512 u32 -> (u32x512,u32,u32,u32,u32,u32)
-uses at p0 0
-nuses at p0 1
-seenfn at p0 2
-mode at p0 3
-err at p0 4
-errtok at p0 5
-t call tokat p3 p1
-kind at t 0
-start at t 1
-len at t 2
-im1 sub p1 1
-pk call kindat p3 im1 p5
-atline eq pk 5
-key call wordkey p2 start len
-kw call kwcode key
-sym get p4 p1
-k1 eq kind 1
+k2 eq kind 2
 k3 eq kind 3
 k5 eq kind 5
-m0 eq mode 0
-m1 eq mode 1
-m2 eq mode 2
+k9 eq kind 9
+k12 or k1 k2
+k39 or k3 k9
+scan or k12 k39
+# the bytes: the first 128 from two pages, the rest by segments
+sh shr start 7
+so and start 127
+slo get p2 sh
+sh1 add sh 1
+shi get p2 sh1
+c0 get slo so
+isd0 call isdigit c0
+tail select isd0 false true
+big gt len 128
+n1 select big 128 len
+n1s select scan n1 0
+sc0 rec 0 1 2166136261 0 true true 0 0 true
+sc1 fold scanb n1s sc0 slo shi so tail 0
+n127 add len 127
+nseg shr n127 7
+nrest0 sub nseg 1
+nrest1 select big nrest0 0
+nrest select scan nrest1 0
+sc fold scanseg nrest sc1 p2 start len tail 1
+key at sc 0
+h at sc 2
+val at sc 3
+dig at sc 4
+wl at sc 5
+dc at sc 7
+arrp at sc 8
+# classification (identifiers only)
+le6 le len 6
+key6 select le6 key 0
+kw0 call kwcode key6
+kw select k1 kw0 0
+op0 call opcode key6
+op select k1 op0 0
+isu32 eq key6 40832
+isbool eq key6 628928
+isio eq key6 564
+ty0 select isu32 1 0
+ty1 select isbool 2 ty0
+ty2 select isio 3 ty1
+ty select k1 ty2 0
+ge4 ge len 4
+arrw0 and arrp ge4
+arrw and arrw0 k1
+isp eq c0 112
+ge2 ge len 2
+par0 and isp ge2
+par1 and par0 dig
+par and par1 k1
+isop eq c0 40
+iscm eq c0 44
+iscl eq c0 41
+pu0 select isop 1 0
+pu1 select iscm 2 pu0
+pu2 select iscl 3 pu1
+pu select k9 pu2 0
+# interning (identifiers and strings); "retval" is sym 0 and has no source range
+isw or k1 k3
+rv0 eq key6 835143594
+rv1 and rv0 wl
+isrv and rv1 isw
+hm0 mul h 2654435769
+s0 shr hm0 19
+a0 mul s0 2
+ah shr a0 7
+al and a0 127
+pg get hash ah
+x get pg al
+al1 add al 1
+y get pg al1
+e eq y 0
+ne select e false true
+ry and y 8191
+rs sub ry 1
+rlen shr y 13
+rst and x 16383
+hx and x 4294950912
+hy and h 4294950912
+hmt eq hx hy
+lmt eq rlen len
+cd0 and ne hmt
+cand and cd0 lmt
+rp shr rst 7
+ro and rst 127
+rlo get p2 rp
+rp1 add rp 1
+rhi get p2 rp1
+cn1 select cand n1 0
+eqa fold cmpb cn1 true slo shi so rlo rhi ro
+cn2 select cand nrest1 0
+eqb fold cmpseg cn2 eqa p2 start rst len 1
+mt0 and cand eqb
+res0 or e mt0
+res1 or res0 isrv
+more0 select res1 false true
+more and more0 isw
+pc select more 8191 0
+pr0 rec s0 false 4294967295
+pr loop prok prstep pc pr0 hash p2 h start len
+pslot at pr 0
+psym at pr 2
+fslot select res0 s0 pslot
+f0 select mt0 rs psym
+f1 select isrv 0 f0
+found ne f1 4294967295
+notf select found false true
+new and isw notf
+fsym select found f1 nsym
+# a new symbol: its hash slot, its source range, the pool grows
+b0 mul fslot 2
+bh shr b0 7
+bl and b0 127
+bg get hash bh
+bo0 get bg bl
+bl1 add bl 1
+bo1 get bg bl1
+xv or hy start
+ns1 add nsym 1
+lk mul len 8192
+yv add lk ns1
+bv0 select new xv bo0
+bv1 select new yv bo1
+bg1 set bg bl bv0
+bg2 set bg1 bl1 bv1
+hash2 set hash bh bg2
+st15 mul start 32768
+siv add st15 len
+sw sub nsym sbase
+nh shr sw 7
+nl and sw 127
+ng get swin nh
+no get ng nl
+nv select new siv no
+ng2 set ng nl nv
+swin2 set swin nh ng2
+np2 add npool len
+npool2 select new np2 npool
+nsym2 select new ns1 nsym
+tsym select isw fsym 0
+# ta and tv
+t4 shl kw 4
+t7 shl op 7
+pb select par 4096 0
+db select dig 8192 0
+t14 shl ty 14
+ab select arrw 65536 0
+t17 shl pu 17
+t19 shl tsym 19
+ta0 or kind t4
+ta1 or ta0 t7
+ta2 or ta1 pb
+ta3 or ta2 db
+ta4 or ta3 t14
+ta5 or ta4 ab
+ta6 or ta5 t17
+ta or ta6 t19
+tv select k3 dc val
+tapg2 set tapg p1 ta
+tvpg2 set tvpg p1 tv
+# `use "path"` lines before the first fn: mode 0 line start, 1 after use, 2 after the path
+atline eq prevk 5
+um0 eq umode 0
+um1 eq umode 1
+um2 eq umode 2
 isuse eq kw 4
 isfn eq kw 1
-al1 and atline k1
-euse0 and m0 al1
-euse and euse0 isuse
-efn and euse0 isfn
-sf eq seenfn 1
-ebad0 and euse sf
-estr and m1 k3
+al1b and atline k1
+eu0 and um0 al1b
+euse and eu0 isuse
+efn and eu0 isfn
+sfn eq seenfn 1
+ebad0 and euse sfn
+estr and um1 k3
 notk3 select k3 false true
-ebad1 and m1 notk3
-enl and m2 k5
+ebad1 and um1 notk3
+enl and um2 k5
 notk5 select k5 false true
-ebad2 and m2 notk5
-u2 set uses nuses sym
-uses2 select estr u2 uses
+ebad2 and um2 notk5
+uw0 sub nuses ubase
+uh shr uw0 7
+ul and uw0 127
+ug get uwin uh
+uo get ug ul
+noerr eq err 0
+uw and estr noerr
+uv select uw tsym uo
+ug2 set ug ul uv
+uwin2 set uwin uh ug2
 nu1 add nuses 1
-nuses2 select estr nu1 nuses
+nuses2 select uw nu1 nuses
 seen2 select efn 1 seenfn
-mo1 select euse 1 mode
+mo1 select euse 1 umode
 mo2 select estr 2 mo1
 mo3 select enl 0 mo2
 bad0 or ebad0 ebad1
-bad or bad0 ebad2
+bad1 or bad0 ebad2
+bad and bad1 noerr
 err2 select bad 1 err
-et2 select bad p1 errtok
-r rec uses2 nuses2 seen2 mo3 err2 et2
+et2 select bad i errtok
+# header chunks: a line starting with fn, to its newline, split at page starts; a page's
+# chunks all begin in it, so the window holds every chunk written here
+hst and atline k1
+hstart and hst isfn
+inh eq inhdr 1
+inh2 or hstart inh
+j0 eq p1 0
+cont0 and inh j0
+newc or hstart cont0
+d2a mul nhdr 2
+d2 sub d2a hbase
+dh shr d2 7
+dl and d2 127
+dg get hwin dh
+do0 get dg dl
+dl1 add dl 1
+do1 get dg dl1
+dv0 select newc i do0
+lastc sub d2 2
+lh shr lastc 7
+ll and lastc 127
+lg get hwin lh
+ll1 add ll 1
+lc get lg ll1
+lc1 add lc 1
+dg1 set dg dl dv0
+dv1 select newc 1 do1
+dg2 set dg1 dl1 dv1
+hwin1 set hwin dh dg2
+cntc select newc false inh2
+lg0 get hwin1 lh
+lco get lg0 ll1
+lcv select cntc lc1 lco
+lg2 set lg0 ll1 lcv
+hwin2 set hwin1 lh lg2
+nhdr1 add nhdr 1
+nhdr2 select newc nhdr1 nhdr
+notnl select k5 false true
+inh3 and inh2 notnl
+inhdr2 select inh3 1 0
+r rec hash2 swin2 tapg2 tvpg2 uwin2 hwin2 npool2 nsym2 nuses2 seen2 mo3 err2 et2 kind inhdr2 nhdr2 sbase ubase hbase
 ret r
 end
-fn usesok (u32x512,u32,u32,u32,u32,u32) u32 u32x512 u32x512 u32x512 u32 -> bool
-err at p0 4
-r eq err 0
+# one page of tokens: state (hash sinfo ta tv uses hdrs npool nsym nuses seenfn umode err
+# errtok prevk inhdr nhdr)
+fn p1page (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+hash at p0 0
+sinfo at p0 1
+ta at p0 2
+tv at p0 3
+uses at p0 4
+hdrs at p0 5
+npool at p0 6
+nsym at p0 7
+nuses at p0 8
+seenfn at p0 9
+umode at p0 10
+err at p0 11
+errtok at p0 12
+prevk at p0 13
+inhdr at p0 14
+nhdr at p0 15
+base mul p1 128
+rest sub p4 base
+big gt rest 128
+cnt select big 128 rest
+g3 mul p1 3
+ga get p3 g3
+g31 add g3 1
+gb get p3 g31
+g32 add g3 2
+gc get p3 g32
+grp arr ga gb gc
+tapg get ta p1
+tvpg get tv p1
+sp shr nsym 7
+sp1 add sp 1
+sbase mul sp 128
+sw0 get sinfo sp
+sw1 get sinfo sp1
+swin arr sw0 sw1
+up shr nuses 7
+up1 add up 1
+ubase mul up 128
+uw0 get uses up
+uw1 get uses up1
+uwin arr uw0 uw1
+h2 mul nhdr 2
+hp shr h2 7
+hp1 add hp 1
+hp2 add hp 2
+hbase mul hp 128
+hw0 get hdrs hp
+hw1 get hdrs hp1
+hw2 get hdrs hp2
+hwin arr hw0 hw1 hw2
+s0 rec hash swin tapg tvpg uwin hwin npool nsym nuses seenfn umode err errtok prevk inhdr nhdr sbase ubase hbase
+s fold p1tok cnt s0 p2 grp base
+swin2 at s 1
+v0 get swin2 0
+v1 get swin2 1
+sinfo1 set sinfo sp v0
+si1 lt sp1 64
+so1 get sinfo1 sp1
+sx1 select si1 v1 so1
+sinfo2 set sinfo1 sp1 sx1
+uwin2 at s 4
+u0 get uwin2 0
+u1 get uwin2 1
+uses1 set uses up u0
+ui1 lt up1 32
+uo1 get uses1 up1
+ux1 select ui1 u1 uo1
+uses2 set uses1 up1 ux1
+hwin2 at s 5
+q0 get hwin2 0
+q1 get hwin2 1
+q2 get hwin2 2
+hdrs1 set hdrs hp q0
+hi1 lt hp1 16
+ho1 get hdrs1 hp1
+hx1 select hi1 q1 ho1
+hdrs2 set hdrs1 hp1 hx1
+hi2 lt hp2 16
+ho2 get hdrs2 hp2
+hx2 select hi2 q2 ho2
+hdrs3 set hdrs2 hp2 hx2
+tapg2 at s 2
+tvpg2 at s 3
+ta2 set ta p1 tapg2
+tv2 set tv p1 tvpg2
+x0 at s 0
+x6 at s 6
+x7 at s 7
+x8 at s 8
+x9 at s 9
+x10 at s 10
+x11 at s 11
+x12 at s 12
+x13 at s 13
+x14 at s 14
+x15 at s 15
+r rec x0 sinfo2 ta2 tv2 uses2 hdrs3 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
 ret r
 end
-# function index with name sym among the first n functions, or n
-fn ffnstep u32 u32 u32x512 u32 -> u32
-j7 mul p1 7
-s get p2 j7
-m eq s p3
-r select m p1 p0
+fn pass1 u32x128x128 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+z128 call zsrc
+z64 call z64
+z32 call z32
+z16 call z16
+zp call zpage
+# sym 0 is "retval" (6 bytes, no source range)
+sp set zp 0 6
+sinfo set z64 0 sp
+n127 add p2 127
+np shr n127 7
+s0 rec z128 sinfo z128 z128 z32 z16 6 1 0 0 0 0 0 5 0 0
+s fold p1page np s0 p0 p1 p2
+ret s
+end
+# --- pass 2: the pool ------------------------------------------------------------------
+# byte p1 of a copy: p2 p3 source pages, p4 offset, p5 offset in the two-page window
+fn pcopyb u32x128x2 u32 u32x128 u32x128 u32 u32 -> u32x128x2
+qa add p4 p1
+ha shr qa 7
+la and qa 127
+ia eq ha 0
+a0 get p2 la
+a1 get p3 la
+v select ia a0 a1
+qb add p5 p1
+hb shr qb 7
+lb and qb 127
+g get p0 hb
+g2 set g lb v
+w set p0 hb g2
+ret w
+end
+# 128-byte segment p1 + p5 of the symbol at p3 of length p4: state (pool npool)
+fn poolseg (u32x128x129,u32) u32 u32x128x128 u32 u32 u32 -> (u32x128x129,u32)
+pool at p0 0
+np at p0 1
+sg add p1 p5
+kb mul sg 128
+rest sub p4 kb
+big gt rest 128
+cnt select big 128 rest
+sp add p3 kb
+sh shr sp 7
+so and sp 127
+slo get p2 sh
+sh1 add sh 1
+shi get p2 sh1
+dh shr np 7
+dl and np 127
+dh1 add dh 1
+w0 get pool dh
+w1 get pool dh1
+win arr w0 w1
+w fold pcopyb cnt win slo shi so dl
+v0 get w 0
+v1 get w 1
+pool1 set pool dh v0
+in1 lt dh1 129
+o1 get pool1 dh1
+x1 select in1 v1 o1
+pool2 set pool1 dh1 x1
+np2 add np cnt
+r rec pool2 np2
 ret r
 end
-fn findfn u32x512 u32 u32 -> u32
-r fold ffnstep p1 p1 p0 p2
+# symbol p3 + p1 (p2 the source, p4 the page of symbol ranges it is on)
+fn poolsym (u32x128x129,u32) u32 u32x128x128 u32 u32x128 -> (u32x128x129,u32)
+pool at p0 0
+np at p0 1
+k add p3 p1
+kl and k 127
+ri get p4 kl
+rst shr ri 15
+rlen and ri 32767
+big gt rlen 128
+cnt select big 128 rlen
+sh shr rst 7
+so and rst 127
+slo get p2 sh
+sh1 add sh 1
+shi get p2 sh1
+dh shr np 7
+dl and np 127
+dh1 add dh 1
+w0 get pool dh
+w1 get pool dh1
+win arr w0 w1
+w fold pcopyb cnt win slo shi so dl
+v0 get w 0
+v1 get w 1
+pool1 set pool dh v0
+in1 lt dh1 129
+o1 get pool1 dh1
+x1 select in1 v1 o1
+pool2 set pool1 dh1 x1
+np2 add np cnt
+s1 rec pool2 np2
+n127 add rlen 127
+nseg shr n127 7
+more0 sub nseg 1
+more select big more0 0
+r fold poolseg more s1 p2 rst rlen 1
 ret r
 end
-# pass 3: headers and types. The stack holds the fields of the record being parsed (and the
-# parameter list) above a sentinel; ')' and '->' copy the frame to tlist.
-# state: (types tlist fns stk ntypes ntlist nfns nstk depth mode err errtok name res haveres first nparams)
-# mode: 0 outside a header 1 parameters 2 result 3 expecting the name
-fn lsstep u32 u32 u32x256 -> u32
-v get p2 p1
-m eq v 4294967295
-r select m p1 p0
+# the symbols of range page p1 (from symbol 1, p4 symbols in all)
+fn poolpage (u32x128x129,u32) u32 u32x128x128 u32x128x64 u32 -> (u32x128x129,u32)
+pg get p3 p1
+base mul p1 128
+lo0 eq p1 0
+from select lo0 1 base
+rest sub p4 from
+top add base 128
+fits lt p4 top
+cnt0 sub top from
+cnt select fits rest cnt0
+r fold poolsym cnt p0 p2 from pg
 ret r
 end
-fn lastsent u32x256 u32 -> u32
-r fold lsstep p1 0 p0
-ret r
+# the pool of p2 symbols: "retval" then each symbol's bytes in symbol order
+fn pass2 u32x128x128 u32x128x64 u32 -> (u32x128x129,u32)
+z call z129
+zp call zpage
+a set zp 0 114
+b set a 1 101
+c set b 2 116
+d set c 3 118
+e set d 4 97
+f set e 5 108
+pool set z 0 f
+s0 rec pool 6
+n127 add p2 127
+np shr n127 7
+s fold poolpage np s0 p0 p1 p2
+ret s
 end
-fn cpstk u32x512 u32 u32x256 u32 u32 -> u32x512
-a add p3 p1
-v get p2 a
-d add p4 p1
-r set p0 d v
-ret r
-end
-fn farstep u32 u32 u32x512 u32 -> u32
-j3 mul p1 3
-tag get p2 j3
-j31 add j3 1
-a get p2 j31
+# --- pass 3: headers -------------------------------------------------------------------
+# types are u32x384 pages of 128 triples; tsig holds a record's field hash
+# the first array type (4 p4 p5) among the page's types (p3 the page's first type)
+fn farst u32 u32 u32x384 u32 u32 u32 -> u32
+t add p3 p1
+o mul p1 3
+tag get p2 o
+o1 add o 1
+a get p2 o1
+o2 add o 2
+b get p2 o2
 t4 eq tag 4
-an eq a p3
-m and t4 an
-r select m p1 p0
+an eq a p4
+bn eq b p5
+m0 and t4 an
+m1 and m0 bn
+none eq p0 4294967295
+m and m1 none
+r select m t p0
 ret r
 end
-fn findarr u32x512 u32 u32 -> u32
-r fold farstep p1 p1 p0 p2
+fn farpage u32 u32 u32x384x65 u32 u32 u32 -> u32
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+r fold farst cnt p0 pg base p4 p5
 ret r
 end
-fn fleqstep bool u32 u32x512 u32 u32 -> bool
+# the array type (4 p1 p2): (types ntypes index), appended when new
+fn internarr (u32x384x65,u32) u32 u32 -> (u32x384x65,u32,u32)
+types at p0 0
+nt at p0 1
+n127 add nt 127
+np shr n127 7
+f fold farpage np 4294967295 types nt p1 p2
+new eq f 4294967295
+th shr nt 7
+tl and nt 127
+t3 mul tl 3
+tg get types th
+o0 get tg t3
+t31 add t3 1
+o1 get tg t31
+t32 add t3 2
+o2 get tg t32
+v0 select new 4 o0
+v1 select new p1 o1
+v2 select new p2 o2
+tg0 set tg t3 v0
+tg1 set tg0 t31 v1
+tg2 set tg1 t32 v2
+types2 set types th tg2
+nt1 add nt 1
+nt2 select new nt1 nt
+idx select new nt f
+r rec types2 nt2 idx
+ret r
+end
+# the digit groups of a type word after "u32x": byte p1 of the segment; state
+# (groups ngroups value have ok); a group ends at 'x' and must be a nonzero number
+fn grpb (u32x64,u32,u32,bool,bool) u32 u32x128 u32x128 u32 -> (u32x64,u32,u32,bool,bool)
+gs at p0 0
+ng at p0 1
+v at p0 2
+have at p0 3
+ok at p0 4
+q add p4 p1
+qh shr q 7
+ql and q 127
+isl eq qh 0
+cl get p2 ql
+ch get p3 ql
+c select isl cl ch
+isd call isdigit c
+isx eq c 120
+v10 mul v 10
+vd add v10 c
+vd2 sub vd 48
+v2 select isd vd2 v
+pos gt v 0
+gok and have pos
+okx and ok gok
+other0 or isd isx
+other select other0 false true
+ok1 select isx okx ok
+ok2 select other false ok1
+gs2 set gs ng v
+gsr select isx gs2 gs
+ng1 add ng 1
+ngr select isx ng1 ng
+v3 select isx 0 v2
+h1 select isd true have
+h2 select isx false h1
+r rec gsr ngr v3 h2 ok2
+ret r
+end
+# intern group p1 of p2 as the array of that length of the previous type
+fn gstep (u32x384x65,u32,u32) u32 u32x64 -> (u32x384x65,u32,u32)
+types at p0 0
+nt at p0 1
+cur at p0 2
+n get p2 p1
+s0 rec types nt
+s call internarr s0 n cur
+ret s
+end
+# segment p1 (128 bytes) of the type word's digits at p3 of length p4:
+# state (types ntypes cur value have ok)
+fn arrseg (u32x384x65,u32,u32,u32,bool,bool) u32 u32x128x128 u32 u32 -> (u32x384x65,u32,u32,u32,bool,bool)
+types at p0 0
+nt at p0 1
+cur at p0 2
+v at p0 3
+have at p0 4
+ok at p0 5
+kb mul p1 128
+rest sub p4 kb
+big gt rest 128
+cnt select big 128 rest
+sp add p3 kb
+sh shr sp 7
+so and sp 127
+slo get p2 sh
+sh1 add sh 1
+shi get p2 sh1
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+g0 rec z 0 v have ok
+g fold grpb cnt g0 slo shi so
+gs at g 0
+ng at g 1
+s0 rec types nt cur
+s fold gstep ng s0 gs
+types2 at s 0
+nt2 at s 1
+cur2 at s 2
+v2 at g 2
+have2 at g 3
+ok2 at g 4
+r rec types2 nt2 cur2 v2 have2 ok2
+ret r
+end
+# a type word u32xAxB... at p3 of length p4 (p4 >= 4): (types ntypes ok index)
+fn arrword u32x384x65 u32 u32x128x128 u32 u32 -> (u32x384x65,u32,bool,u32)
+dstart add p3 4
+dlen sub p4 4
+n127 add dlen 127
+nseg shr n127 7
+s0 rec p0 p1 0 0 false true
+s fold arrseg nseg s0 p2 dstart dlen
+types at s 0
+nt at s 1
+cur at s 2
+v at s 3
+have at s 4
+ok at s 5
+pos gt v 0
+gok and have pos
+okf and ok gok
+cnt select okf 1 0
+g0 rec types nt cur
+zl arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+g1 set zl 0 v
+g fold gstep cnt g0 g1
+types2 at g 0
+nt2 at g 1
+cur2 at g 2
+r rec types2 nt2 okf cur2
+ret r
+end
+# arrword as a fold body, so that a count of 0 skips it
+fn arrone (u32x384x65,u32,bool,u32) u32 u32x128x128 u32 u32 -> (u32x384x65,u32,bool,u32)
+types at p0 0
+nt at p0 1
+r call arrword types nt p2 p3 p4
+ret r
+end
+# a record: the first type at or after p7 of the page with tag 5, count p5 and hash p6
+fn frst u32 u32 u32x384 u32x128 u32 u32 u32 u32 -> u32
+t add p4 p1
+o mul p1 3
+tag get p2 o
+o2 add o 2
+b get p2 o2
+sg get p3 p1
+t5 eq tag 5
+bn eq b p5
+sn eq sg p6
+fr ge t p7
+m0 and t5 bn
+m1 and m0 sn
+m2 and m1 fr
+none eq p0 4294967295
+m and m2 none
+r select m t p0
+ret r
+end
+fn frpage u32 u32 u32x384x65 u32x128x65 u32 u32 u32 u32 -> u32
+pg get p2 p1
+sg get p3 p1
+base mul p1 128
+rest sub p4 base
+big gt rest 128
+cnt select big 128 rest
+r fold frst cnt p0 pg sg base p5 p6 p7
+ret r
+end
+fn fleq bool u32 u32x128x65 u32 u32 -> bool
 x add p3 p1
-vx get p2 x
+xh shr x 7
+xl and x 127
+xg get p2 xh
+vx get xg xl
 y add p4 p1
-vy get p2 y
+yh shr y 7
+yl and y 127
+yg get p2 yh
+vy get yg yl
 e eq vx vy
 r and p0 e
 ret r
 end
-fn frcstep u32 u32 u32x512 u32x512 u32 u32 -> u32
-j3 mul p1 3
-tag get p2 j3
-j31 add j3 1
-ta get p2 j31
-j32 add j3 2
-tb get p2 j32
-t5 eq tag 5
-bb eq tb p5
-feq fold fleqstep p5 true p3 ta p4
-m1 and t5 bb
-m and m1 feq
-r select m p1 p0
+# search state (from found done): the next candidate among p5 types, then its fields against
+# tlist[p6..p6+p7) (hash p8)
+fn rsstep (u32,u32,bool) u32 u32x384x65 u32x128x65 u32x128x65 u32 u32 u32 u32 -> (u32,u32,bool)
+from at p0 0
+n127 add p5 127
+np shr n127 7
+c fold frpage np 4294967295 p2 p3 p5 p7 p8 from
+none eq c 4294967295
+ch shr c 7
+cl and c 127
+c3 mul cl 3
+cg get p2 ch
+c31 add c3 1
+ca get cg c31
+n select none 0 p7
+eq fold fleq n true p4 ca p6
+nn select none false true
+m and nn eq
+done or none m
+f select m c 4294967295
+c1 add c 1
+r rec c1 f done
 ret r
 end
-# index of the record type whose fields equal tlist[a..a+b), or ntypes
-fn findrec u32x512 u32 u32x512 u32 u32 -> u32
-r fold frcstep p1 p1 p0 p2 p3 p4
+fn rsok (u32,u32,bool) u32 u32x384x65 u32x128x65 u32x128x65 u32 u32 u32 u32 -> bool
+d at p0 2
+r select d false true
 ret r
 end
-fn hdrstep (u32x512,u32x512,u32x512,u32x256,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512 u32x512 u32x512 u32 -> (u32x512,u32x512,u32x512,u32x256,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+# the record type among p3 types whose fields equal tlist[p4..p4+p5) (hash p6), as a fold body
+fn recone u32 u32 u32x384x65 u32x128x65 u32x128x65 u32 u32 u32 u32 -> u32
+s0 rec 0 4294967295 false
+cap add p5 1
+s loop rsok rsstep cap s0 p2 p3 p4 p5 p6 p7 p8
+r at s 1
+ret r
+end
+# copy stack entries p3.. to tlist from p4, hashing them: state (tlist hash)
+fn frcopy (u32x128x65,u32) u32 u32x128x128 u32 u32 -> (u32x128x65,u32)
+tl at p0 0
+h at p0 1
+a add p3 p1
+ah shr a 7
+al and a 127
+ag get p2 ah
+v get ag al
+d add p4 p1
+dh shr d 7
+dl and d 127
+dg get tl dh
+dg2 set dg dl v
+tl2 set tl dh dg2
+hx xor h v
+h2 mul hx 16777619
+r rec tl2 h2
+ret r
+end
+# header token p1 of a chunk (page offset p5 + p1, page base p6): state
+# (types tsig tlist stk hout ntypes ntlist nstk ls depth mode err errtok name res haveres first
+#  nparams nhc nhn); mode: 0 outside a header 1 parameters 2 result 3 expecting the name.
+# stk holds the fields of the record being parsed above a sentinel 2^31 + the previous
+# sentinel's position (ls); ')' and '->' copy the frame to tlist. hout: 5 words per header.
+fn p3tok (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x3 u32x128 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 types at p0 0
-tlist at p0 1
-fns at p0 2
+tsig at p0 1
+tlist at p0 2
 stk at p0 3
-ntypes at p0 4
-ntlist at p0 5
-nfns at p0 6
+hout at p0 4
+ntypes at p0 5
+ntlist at p0 6
 nstk at p0 7
-depth at p0 8
-mode at p0 9
-err at p0 10
-errtok at p0 11
-name at p0 12
-res at p0 13
-haveres at p0 14
-first at p0 15
-nparams at p0 16
-t call tokat p3 p1
-kind at t 0
-start at t 1
-len at t 2
-im1 sub p1 1
-pk call kindat p3 im1 p5
-atline eq pk 5
-c get p2 start
-key call wordkey p2 start len
-kw call kwcode key
-sym get p4 p1
+ls at p0 8
+depth at p0 9
+mode at p0 10
+err at p0 11
+errtok at p0 12
+name at p0 13
+res at p0 14
+haveres at p0 15
+first at p0 16
+nparams at p0 17
+nhc at p0 18
+nhn at p0 19
+j add p5 p1
+i add p6 j
+w0 mul j 3
+wh0 shr w0 7
+wl0 and w0 127
+wg0 get p3 wh0
+kind get wg0 wl0
+w1 add w0 1
+wh1 shr w1 7
+wl1 and w1 127
+wg1 get p3 wh1
+start get wg1 wl1
+w2 add w0 2
+wh2 shr w2 7
+wl2 and w2 127
+wg2 get p3 wh2
+len get wg2 wl2
+ta get p4 j
+sym shr ta 19
+kw0 shr ta 4
+kw and kw0 7
+ty0 shr ta 14
+ty and ty0 3
+aw0 shr ta 16
+aw1 and aw0 1
+aw eq aw1 1
+pu0 shr ta 17
+pu and pu0 3
 k1 eq kind 1
 k4 eq kind 4
 k5 eq kind 5
@@ -462,48 +1200,45 @@ m2 eq mode 2
 m3 eq mode 3
 inty or m1 m2
 d0 eq depth 0
-# `fn` at the start of a line opens a header
+noerr eq err 0
+# `fn` opens a header (a chunk in mode 0 starts at one)
 isfn eq kw 1
-efn0 and m0 atline
-efn1 and efn0 k1
-efn and efn1 isfn
-# the name: an identifier that is not reserved and not already defined
+efn and m0 isfn
+# the name: an identifier that is not reserved (a duplicate is found by pass 4)
 isuse eq kw 4
-kw0 eq kw 0
-notres or kw0 isuse
-dup call findfn fns nfns sym
-isdup lt dup nfns
-notdup select isdup false true
-nok0 and k1 notres
-nameok and nok0 notdup
+kwz eq kw 0
+notres or kwz isuse
+nameok and k1 notres
 ename and m3 nameok
 enbad0 select nameok false true
 enbad and m3 enbad0
-# type words: u32 bool io u32xN
-isu32 eq key 40832
-isbool eq key 628928
-isio eq key 564
-ar call arrlen p2 start len
-arok at ar 0
-arn at ar 1
-aridx call findarr types ntypes arn
-arnew eq aridx ntypes
+# type words: u32 bool io u32xAxB...
+isu32 eq ty 1
+isbool eq ty 2
+isio eq ty 3
+eid0 and inty k1
+doarr and eid0 aw
+an select doarr 1 0
+aws0 rec types ntypes false 0
+aws fold arrone an aws0 p2 start len
+typesa at aws 0
+ntypesa at aws 1
+arok0 at aws 2
+arok and doarr arok0
+arid at aws 3
 tyok0 or isu32 isbool
 tyok1 or tyok0 isio
 tyok or tyok1 arok
-ty0 select isbool 1 0
-ty1 select isio 2 ty0
-tyid select arok aridx ty1
-eid0 and inty k1
+tyb0 select isbool 1 0
+tyb1 select isio 2 tyb0
+tyid select arok arid tyb1
 eid and eid0 tyok
 eidbad0 select tyok false true
 eidbad and eid0 eidbad0
-addarr0 and eid arok
-addarr and addarr0 arnew
 # punctuation of record types
-isopen eq c 40
-iscomma eq c 44
-isclose eq c 41
+isopen eq pu 1
+iscomma eq pu 2
+isclose eq pu 3
 ep0 and inty k9
 eopen and ep0 isopen
 ecomma and ep0 iscomma
@@ -536,14 +1271,23 @@ hnd or hnd1 k5
 nothnd select hnd false true
 eoth and inty nothnd
 # the frame above the last sentinel, copied to tlist (used by ')' and '->')
-pos call lastsent stk nstk
-pos1 add pos 1
-hasf gt nstk pos
+pos1 add ls 1
+hasf gt nstk ls
 cnt0 sub nstk pos1
-cnt select hasf cnt0 0
-tl2 fold cpstk cnt tlist stk pos1 ntlist
-ridx call findrec types ntypes tl2 ntlist cnt
-rnew eq ridx ntypes
+cnt1 select hasf cnt0 0
+usefr or eclose earrow
+cnt select usefr cnt1 0
+fc0 rec tlist 0
+fc fold frcopy cnt fc0 stk pos1 ntlist
+tl2 at fc 0
+hraw at fc 1
+hs xor hraw cnt
+sig mul hs 16777619
+rn select eclose 1 0
+ridx0 fold recone rn 4294967295 typesa tsig tl2 ntypesa ntlist cnt sig
+rfound ne ridx0 4294967295
+rnew select rfound false true
+ridx select rfound ridx0 ntypesa
 addrec and eclose rnew
 # the produced type goes to the result or onto the stack
 pt select eclose ridx tyid
@@ -556,65 +1300,115 @@ tores and eprod tores0
 dres and tores hr
 topush0 select tores0 false true
 topush and eprod topush0
-nstkc select eclose pos nstk
-stkc set stk nstkc pt
-nstkc1 add nstkc 1
-stka select topush stkc stk
-nstka select topush nstkc1 nstkc
-stkb set stka nstka 4294967295
-nstkb add nstka 1
-stk2 select eopen stkb stka
+lsg0 shr ls 7
+lsg1 and ls 127
+lsg get stk lsg0
+lsv get lsg lsg1
+lsprev sub lsv 2147483648
+nstkc select eclose ls nstk
+sentl add 2147483648 ls
+sidx0 select topush nstkc 0
+sidx select eopen nstk sidx0
+sval0 select topush pt 2147483648
+sval select eopen sentl sval0
+sw0 or topush eopen
+sw1 or sw0 ename
+sw and sw1 noerr
+sh shr sidx 7
+sl and sidx 127
+sg get stk sh
+so get sg sl
+sx select sw sval so
+sg2 set sg sl sx
+stk2 set stk sh sg2
+nstka1 add nstkc 1
+nstka select topush nstka1 nstkc
+nstkb add nstk 1
 nstk2 select eopen nstkb nstka
 nstk3 select earrow 0 nstk2
-stkn set stk2 0 4294967295
-stk3 select ename stkn stk2
 nstk4 select ename 1 nstk3
+ls1 select eclose lsprev ls
+ls2 select eopen nstk ls1
+ls3 select earrow 0 ls2
+ls4 select ename 0 ls3
 dplus add depth 1
 dep1 select eopen dplus dafter
 dep2 select ename 0 dep1
 # tlist grows by the frame for a new record type or a parameter list
 usetl or addrec earrow
-tlist2 select usetl tl2 tlist
 ntl2 add ntlist cnt
 ntlist2 select usetl ntl2 ntlist
-# a new array or record type
-n3 mul ntypes 3
-n31 add n3 1
-n32 add n3 2
-tag select addrec 5 4
-ta select addrec ntlist arn
-tb select addrec cnt 0
-tya set types n3 tag
-tyb set tya n31 ta
-tyc set tyb n32 tb
-addty or addarr addrec
-types2 select addty tyc types
-nty1 add ntypes 1
-ntypes2 select addty nty1 ntypes
+tlist2 select usetl tl2 tlist
+# a new record type (5 first count) and its hash
+th shr ntypesa 7
+tl and ntypesa 127
+t3 mul tl 3
+tg get typesa th
+o0 get tg t3
+t31 add t3 1
+o1 get tg t31
+t32 add t3 2
+o2 get tg t32
+v0 select addrec 5 o0
+v1 select addrec ntlist o1
+v2 select addrec cnt o2
+tg0 set tg t3 v0
+tg1 set tg0 t31 v1
+tg2 set tg1 t32 v2
+types2 set typesa th tg2
+qg get tsig th
+qo get qg tl
+qv select addrec sig qo
+qg2 set qg tl qv
+tsig2 set tsig th qg2
+nty1 add ntypesa 1
+ntypes2 select addrec nty1 ntypesa
 res2 select tores pt res
 hr2 select tores 1 haveres
 hr3 select ename 0 hr2
 first2 select earrow ntlist first
 np2 select earrow cnt nparams
 name2 select ename sym name
-# the function entry at the newline (first node, node count and ret are filled by pass 4)
-f7 mul nfns 7
-f71 add f7 1
-f72 add f7 2
-f73 add f7 3
-f74 add f7 4
-f75 add f7 5
-f76 add f7 6
-fa set fns f7 name
-fb set fa f71 nparams
-fc set fb f72 first
-fd set fc f73 res
-fe set fd f74 0
-ff set fe f75 0
-fg set ff f76 0
-fns2 select enl fg fns
-nf1 add nfns 1
-nfns2 select enl nf1 nfns
+# the header entry: (name token, name) at the name, (nparams first result) at the newline
+e5 mul nhn 5
+e51 add e5 1
+hn0 and ename noerr
+hc0 and enl noerr
+cur sub nhn 1
+c5 mul cur 5
+c52 add c5 2
+c53 add c5 3
+c54 add c5 4
+ia select hn0 e5 c52
+va select hn0 i nparams
+ca or hn0 hc0
+ah shr ia 7
+al and ia 127
+ag get hout ah
+ao get ag al
+ax select ca va ao
+ag2 set ag al ax
+hout1 set hout ah ag2
+ib select hn0 e51 c53
+vb select hn0 sym first
+bh shr ib 7
+bl and ib 127
+bg get hout1 bh
+bo get bg bl
+bx select ca vb bo
+bg2 set bg bl bx
+hout2 set hout1 bh bg2
+ch shr c54 7
+cl and c54 127
+cg get hout2 ch
+co get cg cl
+cx select hc0 res co
+cg2 set cg cl cx
+hout3 set hout2 ch cg2
+nhn1 add nhn 1
+nhn2 select hn0 nhn1 nhn
+nhc1 add nhc 1
+nhc2 select hc0 nhc1 nhc
 mo1 select efn 3 mode
 mo2 select ename 1 mo1
 mo3 select earrow 2 mo2
@@ -625,41 +1419,179 @@ bad2 or bad1 ecbad1
 bad3 or bad2 eabad
 bad4 or bad3 enlbad
 bad5 or bad4 eoth
-bad or bad5 dres
+bad6 or bad5 dres
+bad and bad6 noerr
 err2 select bad 1 err
-et2 select bad p1 errtok
-r rec types2 tlist2 fns2 stk3 ntypes2 ntlist2 nfns2 nstk4 dep2 mo4 err2 et2 name2 res2 hr3 first2 np2
+et2 select bad i errtok
+r rec types2 tsig2 tlist2 stk2 hout3 ntypes2 ntlist2 nstk4 ls4 dep2 mo4 err2 et2 name2 res2 hr3 first2 np2 nhc2 nhn2
 ret r
 end
-fn hdrok (u32x512,u32x512,u32x512,u32x256,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512 u32x512 u32x512 u32 -> bool
-err at p0 10
-r eq err 0
+# chunk p1 (first token, count) of the header lines
+fn p3chunk (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x384 u32x128x128 u32x128x16 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+c2 mul p1 2
+ch shr c2 7
+cl and c2 127
+cg get p5 ch
+start get cg cl
+cl1 add cl 1
+count get cg cl1
+tp shr start 7
+j0 and start 127
+base mul tp 128
+g3 mul tp 3
+ga get p3 g3
+g31 add g3 1
+gb get p3 g31
+g32 add g3 2
+gc get p3 g32
+grp arr ga gb gc
+tapg get p4 tp
+err at p0 11
+ok eq err 0
+cnt select ok count 0
+r fold p3tok cnt p0 p2 grp tapg j0 base
 ret r
 end
-# pass 4: bodies. state: (fns nodes args nnodes nargs nfn mode err errtok inret pendid first)
-# mode: 0 outside 1 skipping a header 10 skipping a use line 2 start of a body line 3 after the id
-# 41 expecting a callee 42 expecting a loop predicate 4 operands 5 after ret 7 after the ret
-# operand 8 expecting end 9 after end
-fn fndstep u32 u32 u32x512 u32 u32 -> u32
-a add p3 p1
-a6 mul a 6
-s get p2 a6
-m eq s p4
-r select m p1 p0
+# the header chunks of pass 1 (p4 of them), given its error p5 p6; p7 the token count
+fn pass3 u32x128x128 u32x128x384 u32x128x128 u32x128x16 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+ty0 call zty
+zp call z384
+a set zp 0 1
+b set a 3 2
+c set b 6 3
+types set ty0 0 c
+z65 call z65
+z128 call zsrc
+z33 call z33
+s0 rec types z65 z65 z128 z33 3 0 0 0 0 0 p5 p6 0 0 0 0 0 0 0
+ok eq p5 0
+n select ok p4 0
+s fold p3chunk n s0 p0 p1 p2 p3
+mode at s 10
+err at s 11
+open ne mode 0
+e0 eq err 0
+eof and e0 open
+err2 select eof 1 err
+et at s 12
+et2 select eof p7 et
+s1 put s 11 err2
+s2 put s1 12 et2
+ret s2
+end
+# --- pass 4: functions -----------------------------------------------------------------
+# header p1: its fns entry and its name in the name map ((fn+1)<<12 | node+1); a name
+# already defined is an error at its token. state (fns names err errtok)
+fn p4hdr (u32x128x45,u32x128x64,u32,u32) u32 u32x128x33 u32 -> (u32x128x45,u32x128x64,u32,u32)
+fns at p0 0
+names at p0 1
+err at p0 2
+errtok at p0 3
+e5 mul p1 5
+eh0 shr e5 7
+el0 and e5 127
+eg0 get p2 eh0
+tok get eg0 el0
+e51 add e5 1
+eh1 shr e51 7
+el1 and e51 127
+eg1 get p2 eh1
+sym get eg1 el1
+e52 add e5 2
+eh2 shr e52 7
+el2 and e52 127
+eg2 get p2 eh2
+np get eg2 el2
+e53 add e5 3
+eh3 shr e53 7
+el3 and e53 127
+eg3 get p2 eh3
+fp get eg3 el3
+e54 add e5 4
+eh4 shr e54 7
+el4 and e54 127
+eg4 get p2 eh4
+res get eg4 el4
+sh shr sym 7
+sl and sym 127
+sg get names sh
+sv get sg sl
+prev shr sv 12
+dup ne prev 0
+noerr eq err 0
+bad and dup noerr
+err2 select bad 1 err
+et2 select bad tok errtok
+done lt p1 p3
+ok0 select dup false true
+ok1 and ok0 done
+ok and ok1 noerr
+f1 add p1 1
+f12 shl f1 12
+nv or sv f12
+sx select ok nv sv
+sg2 set sg sl sx
+names2 set names sh sg2
+f7 mul p1 7
+fh shr f7 7
+fl and f7 127
+fg get fns fh
+fo0 get fg fl
+fx0 select ok sym fo0
+fg0 set fg fl fx0
+fns0 set fns fh fg0
+f71 add f7 1
+fh1 shr f71 7
+fl1 and f71 127
+fg1 get fns0 fh1
+fo1 get fg1 fl1
+fx1 select ok np fo1
+fg1b set fg1 fl1 fx1
+fns1 set fns0 fh1 fg1b
+f72 add f7 2
+fh2 shr f72 7
+fl2 and f72 127
+fg2 get fns1 fh2
+fo2 get fg2 fl2
+fx2 select ok fp fo2
+fg2b set fg2 fl2 fx2
+fns2 set fns1 fh2 fg2b
+f73 add f7 3
+fh3 shr f73 7
+fl3 and f73 127
+fg3 get fns2 fh3
+fo3 get fg3 fl3
+fx3 select ok res fo3
+fg3b set fg3 fl3 fx3
+fns3 set fns2 fh3 fg3b
+r rec fns3 names2 err2 et2
 ret r
 end
-# index within the function of the node with id sym among the first n nodes, or n
-fn findnode u32x512 u32 u32 u32 -> u32
-r fold fndstep p2 p2 p0 p1 p3
-ret r
+# p0 hout, p1 named headers, p2 complete ones: (fns names duperr duptok)
+fn pass4 u32x128x33 u32 u32 -> (u32x128x45,u32x128x64,u32,u32)
+z45 call z45
+z64 call z64
+s0 rec z45 z64 0 0
+s fold p4hdr p1 s0 p0 p2
+ret s
 end
-# decode the bytes of a text literal into u32 operands (escapes \n \t \" \\)
-fn txtstep (u32x512,u32,u32) u32 u32x512 u32 -> (u32x512,u32,u32)
-args at p0 0
-n at p0 1
+# --- pass 5: bodies --------------------------------------------------------------------
+# The tokens are taken in segments that end at a page end or at a string: the nodes and args
+# of a segment go to small windows over the tables (5 and 3 pages) that are copied back after
+# it, and a text literal's bytes, which have no bound, are decoded into args between segments.
+# byte p1 of a text literal segment: state (two-page args window, fill, esc); the pair (3 v)
+# is written at the fill (words past it are unused) and kept unless the byte is a backslash
+fn txtb (u32x128x2,u32,u32) u32 u32x128 u32x128 u32 -> (u32x128x2,u32,u32)
+w at p0 0
+f at p0 1
 esc at p0 2
-a add p3 p1
-c get p2 a
+q add p4 p1
+qh shr q 7
+ql and q 127
+isl eq qh 0
+cl get p2 ql
+ch get p3 ql
+c select isl cl ch
 isbs eq c 92
 e1 eq esc 1
 isn eq c 110
@@ -668,48 +1600,139 @@ m0 select isn 10 c
 m1 select ist 9 m0
 v select e1 m1 c
 skip select e1 false isbs
-emit select skip false true
-n2 mul n 2
-a1 set args n2 3
-n21 add n2 1
-a2 set a1 n21 v
-argsr select emit a2 args
-n1 add n 1
-nr select emit n1 n
+h0 shr f 7
+l0 and f 127
+g0 get w h0
+g0b set g0 l0 3
+w1 set w h0 g0b
+f1 add f 1
+h1 shr f1 7
+l1 and f1 127
+g1 get w1 h1
+g1b set g1 l1 v
+w2 set w1 h1 g1b
+f2 add f 2
+fn1 select skip f f2
 esc1 select isbs 1 0
-escr select e1 0 esc1
-r rec argsr nr escr
+esc2 select e1 0 esc1
+r rec w2 fn1 esc2
 ret r
 end
-fn bodystep (u32x512,u32x512,u32x512,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512 u32x512 u32x512 u32 -> (u32x512,u32x512,u32x512,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+# 64-byte segment p1 of the text literal at p3 of length p4: state (args nargs esc)
+fn txtseg (u32x128x256,u32,u32) u32 u32x128x128 u32 u32 -> (u32x128x256,u32,u32)
+args at p0 0
+na at p0 1
+esc at p0 2
+kb mul p1 64
+rest sub p4 kb
+big gt rest 64
+cnt select big 64 rest
+sp add p3 kb
+sh shr sp 7
+so and sp 127
+slo get p2 sh
+sh1 add sh 1
+shi get p2 sh1
+a2 mul na 2
+wh shr a2 7
+wl and a2 127
+wh1 add wh 1
+w0 get args wh
+w1 get args wh1
+win arr w0 w1
+s0 rec win wl esc
+s fold txtb cnt s0 slo shi so
+w at s 0
+f at s 1
+esc2 at s 2
+v0 get w 0
+v1 get w 1
+args1 set args wh v0
+in1 lt wh1 256
+o1 get args1 wh1
+x1 select in1 v1 o1
+args2 set args1 wh1 x1
+added sub f wl
+pairs shr added 1
+na2 add na pairs
+r rec args2 na2 esc2
+ret r
+end
+# body token p1 of a segment (page offset p7 + p1, page base p4): state
+# (fns nw aw names nnodes nargs nfn mode err errtok inret pendid first
+#  cid cop cna cfa ccal cprd nbase abase ptext pstart plen); nw and aw are the node and arg
+# windows from words nbase and abase; the current node is kept in cid..cprd and written when
+# its line ends; a text operand ends the segment with ptext set. mode: 0 outside 1 skipping a
+# header 10 skipping a use line 2 start of a body line 3 after the id 41 expecting a callee
+# 42 expecting a loop predicate 4 operands 5 after ret 7 after the ret operand 8 expecting end
+# 9 after end
+fn p5tok (u32x128x45,u32x128x5,u32x128x3,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x3 u32x128 u32x128 u32 u32 u32 u32 -> (u32x128x45,u32x128x5,u32x128x3,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 fns at p0 0
-nodes at p0 1
-args at p0 2
-nnodes at p0 3
-nargs at p0 4
-nfn at p0 5
-mode at p0 6
-err at p0 7
-errtok at p0 8
-inret at p0 9
-pendid at p0 10
-first at p0 11
-t call tokat p3 p1
-kind at t 0
-start at t 1
-len at t 2
-ip1 add p1 1
-nk call kindat p3 ip1 p5
+nw at p0 1
+aw at p0 2
+names at p0 3
+nnodes at p0 4
+nargs at p0 5
+nfn at p0 6
+mode at p0 7
+err at p0 8
+errtok at p0 9
+inret at p0 10
+pendid at p0 11
+first at p0 12
+cid at p0 13
+cop at p0 14
+cna at p0 15
+cfa at p0 16
+ccal at p0 17
+cprd at p0 18
+nbase at p0 19
+abase at p0 20
+j add p8 p1
+i add p5 j
+w0 mul j 3
+wh0 shr w0 7
+wl0 and w0 127
+wg0 get p2 wh0
+kind get wg0 wl0
+w1 add w0 1
+wh1 shr w1 7
+wl1 and w1 127
+wg1 get p2 wh1
+start get wg1 wl1
+w2 add w0 2
+wh2 shr w2 7
+wl2 and w2 127
+wg2 get p2 wh2
+len get wg2 wl2
+ta get p3 j
+tv get p4 j
+# the next token's kind (a newline past the end)
+j1 add j 1
+jl and j1 127
+ta1 get p3 jl
+nk0 and ta1 15
+last eq j 127
+nk1 select last p6 nk0
+i1 add i 1
+inr lt i1 p7
+nk select inr nk1 5
 nextnl eq nk 5
-key call wordkey p2 start len
-kw call kwcode key
-op0 call opcode key
-sym get p4 p1
+kw0 shr ta 4
+kw and kw0 7
+op0 shr ta 7
+op and op0 31
+sym shr ta 19
+pr0 shr ta 12
+pr1 and pr0 1
+isparam eq pr1 1
+dg0 shr ta 13
+dg1 and dg0 1
+dig eq dg1 1
 k1 eq kind 1
 k2 eq kind 2
 k3 eq kind 3
 k5 eq kind 5
-op select k1 op0 0
 isop gt op 0
 m0 eq mode 0
 m1 eq mode 1
@@ -731,25 +1754,26 @@ istrue eq kw 5
 isfalse eq kw 6
 istf or istrue isfalse
 tfv select istrue 1 0
-kw0 eq kw 0
-notres or kw0 isuse
-pr call paramof p2 start len
-isparam at pr 0
-pval at pr 1
-dg call digits p2 start len
-dval at dg 1
+kwz eq kw 0
+notres or kwz isuse
 notk1 select k1 false true
 notk5 select k5 false true
-# nodes of this function so far; the current node is the last one
+noerr eq err 0
+# nodes of this function so far; the current node is the last one. names[sym] holds the
+# function (+1) of that name above bit 12 and the global index (+1) of the node below
 nin sub nnodes first
 cur sub nnodes 1
-hasn gt nin 0
-ncur0 sub nin 1
-ncur select hasn ncur0 0
-jall call findnode nodes first nin sym
-jprev call findnode nodes first ncur sym
-foundall lt jall nin
-foundprev lt jprev ncur
+nh shr sym 7
+nl and sym 127
+ng get names nh
+nm get ng nl
+nd and nm 4095
+fpart shr nm 12
+foundall gt nd first
+nd1 sub nd 1
+jall sub nd1 first
+ltc lt nd nnodes
+foundprev and foundall ltc
 # mode 0: fn or use at the start of a line
 e0fn0 and m0 k1
 e0fn and e0fn0 isfn
@@ -768,8 +1792,8 @@ idok0 and k1 notres
 idok and idok0 notpar
 e2id0 and m2 idok
 e2id1 select isret false e2id0
-notdup select foundall false true
-e2id and e2id1 notdup
+notfa select foundall false true
+e2id and e2id1 notfa
 e2dup and e2id1 foundall
 e2ok0 or k5 e2ret
 e2ok or e2ok0 e2id1
@@ -784,6 +1808,8 @@ e5op0 and m5 isop
 notnl select nextnl false true
 e5op and e5op0 notnl
 e5num and m5 k2
+notdig select dig false true
+e5numbad and e5num notdig
 e5id0 and m5 k1
 e5id1 select e5op false e5id0
 e5tf and e5id1 istf
@@ -792,7 +1818,6 @@ e5par select istf false e5par0
 e5nd0 select istf false e5id1
 e5nd1 select isparam false e5nd0
 e5nd and e5nd1 foundall
-notfa select foundall false true
 e5ndbad and e5nd1 notfa
 e5ok0 or e5op e5num
 e5ok or e5ok0 e5id0
@@ -801,35 +1826,39 @@ e5bad and m5 e5bad0
 e5set0 or e5num e5tf
 e5set1 or e5set0 e5par
 e5set or e5set1 e5nd
-# emit a node: (id op 0 firstarg 0 0)
+# a new current node: (id op 0 firstarg 0 0)
 doemit or e3op e5op
 emitid select e3op pendid 0
-n6 mul nnodes 6
-n61 add n6 1
-n62 add n6 2
-n63 add n6 3
-n64 add n6 4
-n65 add n6 5
-ea set nodes n6 emitid
-eb set ea n61 op
-ec set eb n62 0
-ed set ec n63 nargs
-ee set ed n64 0
-ef set ee n65 0
-nodes2 select doemit ef nodes
-nn1 add nnodes 1
-nnodes2 select doemit nn1 nnodes
 iscall eq op 19
 isfold eq op 20
 isloop eq op 21
 cf or iscall isfold
 me0 select cf 41 4
 me select isloop 42 me0
+nn1 add nnodes 1
+nnodes2 select doemit nn1 nnodes
+cid2 select doemit emitid cid
+cop2 select doemit op cop
+cna2 select doemit 0 cna
+cfa2 select doemit nargs cfa
+ccal2 select doemit 0 ccal
+cprd2 select doemit 0 cprd
+# the id of a new node goes to the name map
+ph shr pendid 7
+pl and pendid 127
+pg get names ph
+po get pg pl
+pf and po 4294963200
+pn or pf nn1
+reg and e3op noerr
+px select reg pn po
+pg2 set pg pl px
+names2 set names ph pg2
 # the ret operand, packed kind*2^28 | value
 rv5op add 268435456 nin
-rv5num add 805306368 dval
+rv5num add 805306368 tv
 rv5tf add 1073741824 tfv
-rv5par add 536870912 pval
+rv5par add 536870912 tv
 rv5nd add 268435456 jall
 rva select e5num rv5num rv5op
 rvb select e5tf rv5tf rva
@@ -841,30 +1870,28 @@ m4x or m41 m42
 haspf gt nfn 0
 nprev0 sub nfn 1
 nprev select haspf nprev0 0
-fidx call findfn fns nprev sym
-ffound lt fidx nprev
+fidx sub fpart 1
+fnz ne fpart 0
+fbefore lt fidx nprev
+ffound and fnz fbefore
 e4xid and m4x k1
 e4xok and e4xid ffound
 notff select ffound false true
 e4xnf and e4xid notff
 e4xbad and m4x notk1
-c6 mul cur 6
-c61 add c6 1
-c62 add c6 2
-c64 add c6 4
-c65 add c6 5
-slot select m41 c64 c65
-nodesf set nodes2 slot fidx
-nodes3 select e4xok nodesf nodes2
+setc and e4xok m41
+setp and e4xok m42
+ccal3 select setc fidx ccal2
+cprd3 select setp fidx cprd2
 m4xn select m41 4 41
 # mode 4: operands until the newline
 e4nl and m4 k5
-inr eq inret 1
-m4n select inr 8 2
+inr1 eq inret 1
+m4n select inr1 8 2
 e4num and m4 k2
+e4numbad and e4num notdig
 e4str and m4 k3
-curop get nodes c61
-istext eq curop 24
+istext eq cop2 24
 e4txt and e4str istext
 nottext select istext false true
 e4strbad and e4str nottext
@@ -885,28 +1912,84 @@ e4bad and m4 e4bad0
 ak0 select e4num 3 1
 ak1 select e4tf 4 ak0
 ak select e4par 2 ak1
-av0 select e4num dval jprev
+av0 select e4num tv jall
 av1 select e4tf tfv av0
-av select e4par pval av1
+av select e4par tv av1
 doarg0 or e4num e4tf
 doarg1 or doarg0 e4par
-doarg or doarg1 e4nd
-na2 mul nargs 2
-na21 add na2 1
-arga set args na2 ak
-argb set arga na21 av
-args2 select doarg argb args
+doarg2 or doarg1 e4nd
+doarg and doarg2 noerr
+a2 mul nargs 2
+aa sub a2 abase
+ah shr aa 7
+al and aa 127
+ag get aw ah
+ao0 get ag al
+al1 add al 1
+ao1 get ag al1
+ax0 select doarg ak ao0
+ax1 select doarg av ao1
+ag0 set ag al ax0
+ag1 set ag0 al1 ax1
+aw2 set aw ah ag1
 na1 add nargs 1
 nargs2 select doarg na1 nargs
-tcnt select e4txt len 0
-ts0 rec args2 nargs2 0
-ts fold txtstep tcnt ts0 p2 start
-args3 at ts 0
-nargs3 at ts 1
-added sub nargs3 nargs
-cnt0 get nodes3 c62
-cnt1 add cnt0 added
-nodes4 set nodes3 c62 cnt1
+cna3a add cna2 1
+cna3 select doarg cna3a cna2
+# a text literal ends the segment; its bytes are decoded after it
+dotx and e4txt noerr
+ptext select dotx 1 0
+# the current node is written when its line ends
+wn and e4nl noerr
+c6a mul cur 6
+c6 sub c6a nbase
+xh0 shr c6 7
+xl0 and c6 127
+xg0 get nw xh0
+xo0 get xg0 xl0
+xv0 select wn cid2 xo0
+xg0b set xg0 xl0 xv0
+nw0 set nw xh0 xg0b
+c61 add c6 1
+xh1 shr c61 7
+xl1 and c61 127
+xg1 get nw0 xh1
+xo1 get xg1 xl1
+xv1 select wn cop2 xo1
+xg1b set xg1 xl1 xv1
+nw1 set nw0 xh1 xg1b
+c62 add c6 2
+xh2 shr c62 7
+xl2 and c62 127
+xg2 get nw1 xh2
+xo2 get xg2 xl2
+xv2 select wn cna3 xo2
+xg2b set xg2 xl2 xv2
+nw2 set nw1 xh2 xg2b
+c63 add c6 3
+xh3 shr c63 7
+xl3 and c63 127
+xg3 get nw2 xh3
+xo3 get xg3 xl3
+xv3 select wn cfa2 xo3
+xg3b set xg3 xl3 xv3
+nw3 set nw2 xh3 xg3b
+c64 add c6 4
+xh4 shr c64 7
+xl4 and c64 127
+xg4 get nw3 xh4
+xo4 get xg4 xl4
+xv4 select wn ccal3 xo4
+xg4b set xg4 xl4 xv4
+nw4 set nw3 xh4 xg4b
+c65 add c6 5
+xh5 shr c65 7
+xl5 and c65 127
+xg5 get nw4 xh5
+xo5 get xg5 xl5
+xv5 select wn cprd3 xo5
+xg5b set xg5 xl5 xv5
+nw5 set nw4 xh5 xg5b
 # modes 7 8 9
 e7nl and m7 k5
 e7bad and m7 notk5
@@ -920,15 +2003,23 @@ e9bad and m9 notk5
 # the function entry: first node at fn, node count at end, ret when set
 f7 mul nfn 7
 f74 add f7 4
-fnsa set fns f74 nnodes
-fns2 select e0fn fnsa fns
 np7 mul nprev 7
 np75 add np7 5
-fnsb set fns2 np75 nin
-fns3 select e8end fnsb fns2
 np76 add np7 6
-fnsc set fns3 np76 rvd
-fns4 select doret fnsc fns3
+fi0 select e8end np75 np76
+fi select e0fn f74 fi0
+fv0 select e8end nin rvd
+fv select e0fn nnodes fv0
+fw0 or e0fn e8end
+fw1 or fw0 doret
+fw and fw1 noerr
+fh shr fi 7
+fl and fi 127
+fg get fns fh
+fo get fg fl
+fx select fw fv fo
+fg2 set fg fl fx
+fns2 set fns fh fg2
 first2 select e0fn nnodes first
 nfn1 add nfn 1
 nfn2 select e0fn nfn1 nfn
@@ -956,154 +2047,375 @@ pb4 or pb3 e4bad
 pb5 or pb4 e5bad
 pb6 or pb5 e7bad
 pb7 or pb6 e8bad
-pbad or pb7 e9bad
+pb8 or pb7 e9bad
+pb9 or pb8 e4numbad
+pbad or pb9 e5numbad
 sb0 or e2dup e4xnf
 sb1 or sb0 e4ndbad
 sbad or sb1 e5ndbad
-bad or pbad sbad
+bad0 or pbad sbad
+bad and bad0 noerr
 code select sbad 2 1
 err2 select bad code err
-et2 select bad p1 errtok
-r rec fns4 nodes4 args3 nnodes2 nargs3 nfn2 mm err2 et2 inret3 pend2 first2
+et2 select bad i errtok
+r rec fns2 nw5 aw2 names2 nnodes2 nargs2 nfn2 mm err2 et2 inret3 pend2 first2 cid2 cop2 cna3 cfa2 ccal3 cprd3 nbase abase ptext start len
 ret r
 end
-fn bodyok (u32x512,u32x512,u32x512,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512 u32x512 u32x512 u32 -> bool
-err at p0 7
-r eq err 0
+# the first string among the page's tokens p3 + p1: an offset from p3, or 4294967295
+fn strfind u32 u32 u32x128 u32 -> u32
+j add p3 p1
+ta get p2 j
+k and ta 15
+is3 eq k 3
+none eq p0 4294967295
+m and is3 none
+r select m p1 p0
 ret r
 end
-# the pool starts with "retval" (sym 0)
-fn retvalpool -> u32x512
-z call zeros512
-a set z 0 114
-b set a 1 101
-c set b 2 116
-d set c 3 118
-e set d 4 97
-f set e 5 108
-ret f
+# one segment from token pos (state as p5tok with the whole tables, then pos and done)
+fn p5seg (u32x128x45,u32x128x128,u32x128x256,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,bool) u32 u32x128x128 u32x128x384 u32x128x128 u32x128x128 u32 -> (u32x128x45,u32x128x128,u32x128x256,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,bool)
+fns at p0 0
+nodes at p0 1
+args at p0 2
+names at p0 3
+nnodes at p0 4
+nargs at p0 5
+pos at p0 19
+tp shr pos 7
+j0 and pos 127
+base mul tp 128
+rest sub p6 base
+big gt rest 128
+pcnt select big 128 rest
+avail sub pcnt j0
+g3 mul tp 3
+ga get p3 g3
+g31 add g3 1
+gb get p3 g31
+g32 add g3 2
+gc get p3 g32
+grp arr ga gb gc
+tapg get p4 tp
+tvpg get p5 tp
+tp1 add tp 1
+tan get p4 tp1
+tn0 get tan 0
+nkl and tn0 15
+fs fold strfind avail 4294967295 tapg j0
+hs ne fs 4294967295
+cnt0 add fs 1
+cnt select hs cnt0 avail
+# windows: from the current node's page, and from the next arg's page
+hasn gt nnodes 0
+cur sub nnodes 1
+c6 mul cur 6
+nb0 shr c6 7
+nbp select hasn nb0 0
+nbase mul nbp 128
+n1 add nbp 1
+n2 add nbp 2
+n3 add nbp 3
+n4 add nbp 4
+nv0 get nodes nbp
+nv1 get nodes n1
+nv2 get nodes n2
+nv3 get nodes n3
+nv4 get nodes n4
+nw arr nv0 nv1 nv2 nv3 nv4
+a2 mul nargs 2
+abp shr a2 7
+abase mul abp 128
+b1 add abp 1
+b2 add abp 2
+av0 get args abp
+av1 get args b1
+av2 get args b2
+aw arr av0 av1 av2
+x6 at p0 6
+x7 at p0 7
+x8 at p0 8
+x9 at p0 9
+x10 at p0 10
+x11 at p0 11
+x12 at p0 12
+x13 at p0 13
+x14 at p0 14
+x15 at p0 15
+x16 at p0 16
+x17 at p0 17
+x18 at p0 18
+s0 rec fns nw aw names nnodes nargs x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 nbase abase 0 0 0
+s fold p5tok cnt s0 grp tapg tvpg base nkl p6 j0
+nw2 at s 1
+aw2 at s 2
+w0 get nw2 0
+w1 get nw2 1
+w2 get nw2 2
+w3 get nw2 3
+w4 get nw2 4
+nodes0 set nodes nbp w0
+i1 lt n1 128
+o1 get nodes0 n1
+y1 select i1 w1 o1
+nodes1 set nodes0 n1 y1
+i2 lt n2 128
+o2 get nodes1 n2
+y2 select i2 w2 o2
+nodes2 set nodes1 n2 y2
+i3 lt n3 128
+o3 get nodes2 n3
+y3 select i3 w3 o3
+nodes3 set nodes2 n3 y3
+i4 lt n4 128
+o4 get nodes3 n4
+y4 select i4 w4 o4
+nodes4 set nodes3 n4 y4
+u0 get aw2 0
+u1 get aw2 1
+u2 get aw2 2
+args0 set args abp u0
+j1 lt b1 256
+q1 get args0 b1
+z1 select j1 u1 q1
+args1 set args0 b1 z1
+j2 lt b2 256
+q2 get args1 b2
+z2 select j2 u2 q2
+args2 set args1 b2 z2
+# a text operand: its bytes, 64 source bytes at a time
+nargs2 at s 5
+ptext at s 21
+pstart at s 22
+plen at s 23
+dotx eq ptext 1
+l63 add plen 63
+tsegs shr l63 6
+tcnt select dotx tsegs 0
+ts0 rec args2 nargs2 0
+ts fold txtseg tcnt ts0 p2 pstart plen
+args3 at ts 0
+nargs3 at ts 1
+added sub nargs3 nargs2
+cna at s 15
+cna2 add cna added
+pos2 add pos cnt
+end0 ge pos2 p6
+err at s 8
+e1 ne err 0
+done or end0 e1
+y0 at s 0
+y3a at s 3
+y4a at s 4
+y6 at s 6
+y7 at s 7
+y9 at s 9
+y10 at s 10
+y11 at s 11
+y12 at s 12
+y13 at s 13
+y14 at s 14
+y16 at s 16
+y17 at s 17
+y18 at s 18
+r rec y0 nodes4 args3 y3a y4a nargs3 y6 y7 err y9 y10 y11 y12 y13 y14 cna2 y16 y17 y18 pos2 done
+ret r
 end
-# types 0 1 2 are u32 bool io
-fn basetypes -> u32x512
-z call zeros512
-a set z 0 1
-b set a 3 2
-c set b 6 3
-ret c
+fn p5more (u32x128x45,u32x128x128,u32x128x256,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,bool) u32 u32x128x128 u32x128x384 u32x128x128 u32x128x128 u32 -> bool
+d at p0 20
+r select d false true
+ret r
 end
-# the parser: source bytes src[0..n) to the word IR
-# (code etok pool sym types tlist fns nodes args uses npool nsym ntypes ntlist nfns nnodes nargs nuses)
-fn parse u32x512 u32 -> (u32,u32,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32,u32,u32,u32,u32,u32,u32,u32)
-src mov p0
-n mov p1
-z call zeros512
-lx call lex src n
-tok at lx 0
-nw at lx 1
-ntok div nw 3
-pool0 call retvalpool
-sym0a set z 0 0
-sym0 set sym0a 1 6
-is0 rec pool0 sym0 z 6 1
-is fold internstep ntok is0 src tok
-pool at is 0
-sym at is 1
-tsym at is 2
-npool at is 3
-nsym at is 4
-us0 rec z 0 0 0 0 0
-us loop usesok usesstep ntok us0 src tok tsym ntok
-uses at us 0
-nuses at us 1
-umode at us 3
-uerr at us 4
-uetok at us 5
-uopen ne umode 0
-uerr0 eq uerr 0
-ueof and uerr0 uopen
-uerr2 select ueof 1 uerr
-uetok2 select ueof ntok uetok
-ty0 call basetypes
-z256 call zeros256
-hs0 rec ty0 z z z256 3 0 0 0 0 0 uerr2 uetok2 0 0 0 0 0
-hs loop hdrok hdrstep ntok hs0 src tok tsym ntok
-types at hs 0
-tlist at hs 1
-fns0 at hs 2
-ntypes at hs 4
-ntlist at hs 5
-nfns at hs 6
-hmode at hs 9
-herr at hs 10
-hetok at hs 11
-hopen ne hmode 0
-herr0 eq herr 0
-heof and herr0 hopen
-herr2 select heof 1 herr
-hetok2 select heof ntok hetok
-bs0 rec fns0 z z 0 0 0 0 herr2 hetok2 0 0 0
-bs loop bodyok bodystep ntok bs0 src tok tsym ntok
-fns at bs 0
-nodes at bs 1
-args at bs 2
-nnodes at bs 3
-nargs at bs 4
-bmode at bs 6
-berr at bs 7
-betok at bs 8
-b0 eq bmode 0
-b9 eq bmode 9
-bclosed or b0 b9
-bopen select bclosed false true
-berr0 eq berr 0
-beof and berr0 bopen
-code select beof 1 berr
-etok select beof ntok betok
-r rec code etok pool sym types tlist fns nodes args uses npool nsym ntypes ntlist nfns nnodes nargs nuses
+# the bodies, given the functions (p0), the name map (p1) and the error so far (p7 p8)
+fn pass5 u32x128x45 u32x128x64 u32x128x128 u32x128x384 u32x128x128 u32x128x128 u32 u32 u32 -> (u32x128x45,u32x128x128,u32x128x256,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,bool)
+z128 call zsrc
+z256 call z256
+e0 ne p7 0
+t0 eq p6 0
+d0 or e0 t0
+s0 rec p0 z128 z256 p1 0 0 0 0 p7 p8 0 0 0 0 0 0 0 0 0 0 d0
+s loop p5more p5seg p6 s0 p2 p3 p4 p5 p6
+mode at s 7
+err at s 8
+b0 eq mode 0
+b9 eq mode 9
+closed or b0 b9
+open select closed false true
+ok eq err 0
+eof and ok open
+err2 select eof 1 err
+et at s 9
+et2 select eof p6 et
+s1 put s 8 err2
+s2 put s1 9 et2
+ret s2
+end
+# --- writers: page p1 of a table holding p3 words ------------------------------------------
+fn wstep384 io u32 u32x384 -> io
+v get p2 p1
+w write p0 v
+ret w
+end
+fn wty io u32 u32x384x65 u32 -> io
+pg get p2 p1
+base mul p1 384
+rest sub p3 base
+big gt rest 384
+cnt select big 384 rest
+w fold wstep384 cnt p0 pg
+ret w
+end
+fn w16 io u32 u32x128x16 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+fn w32 io u32 u32x128x32 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+fn w45 io u32 u32x128x45 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+fn w65 io u32 u32x128x65 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+fn w128 io u32 u32x128x128 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+fn w129 io u32 u32x128x129 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+fn w256 io u32 u32x128x256 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+w fold wword cnt p0 pg
+ret w
+end
+# the sym table from the symbol ranges: (pool start, len) with the starts summed in order
+fn wsymst (io,u32) u32 u32x128 -> (io,u32)
+tk at p0 0
+ps at p0 1
+v get p2 p1
+len and v 32767
+w1 write tk ps
+w2 write w1 len
+ps2 add ps len
+r rec w2 ps2
+ret r
+end
+fn wsympg (io,u32) u32 u32x128x64 u32 -> (io,u32)
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+r fold wsymst cnt p0 pg
 ret r
 end
 # io front: read n then n source bytes; write code, token index, then each table preceded by
 # its word count (all zero on an error). The result is the error code.
 fn parseio io -> u32
-r0 read p0
-n0 at r0 0
-t0 at r0 1
-big lt 512 n0
-n select big 512 n0
-z call zeros512
-s0 rec z t0
-rd fold readbyte n s0
-src at rd 0
-t1 at rd 1
-pr call parse src n
-code at pr 0
-etok at pr 1
-pool at pr 2
-sym at pr 3
-types at pr 4
-tlist at pr 5
-fns at pr 6
-nodes at pr 7
-args at pr 8
-uses at pr 9
-npool at pr 10
-nsym at pr 11
-ntypes at pr 12
-ntlist at pr 13
-nfns at pr 14
-nnodes at pr 15
-nargs at pr 16
-nuses at pr 17
+rs call readsrc p0
+src at rs 0
+n at rs 1
+t1 at rs 2
+lx call lexsrc src n
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 src toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+uses at s1 4
+hdrs at s1 5
+nsym at s1 7
+nuses at s1 8
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s2 call pass2 src sinfo nsym
+pool at s2 0
+npool at s2 1
+s3 call pass3 src toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names src toks ta tv ntok e4 et4
+fns at s5 0
+nodes at s5 1
+args at s5 2
+nnodes at s5 4
+nargs at s5 5
+code at s5 8
+etok at s5 9
 ok eq code 0
 w0 write t1 code
 w1 write w0 etok
 npoolw select ok npool 0
 nsymw0 mul nsym 2
 nsymw select ok nsymw0 0
+nsymc select ok nsym 0
 ntypesw0 mul ntypes 3
 ntypesw select ok ntypesw0 0
 ntlistw select ok ntlist 0
-nfnsw0 mul nfns 7
+nfnsw0 mul nhc 7
 nfnsw select ok nfnsw0 0
 nnodesw0 mul nnodes 6
 nnodesw select ok nnodesw0 0
@@ -1111,20 +2423,38 @@ nargsw0 mul nargs 2
 nargsw select ok nargsw0 0
 nusesw select ok nuses 0
 w2 write w1 npoolw
-w3 fold wstep npoolw w2 pool
+pp127 add npoolw 127
+ppn shr pp127 7
+w3 fold w129 ppn w2 pool npoolw
 w4 write w3 nsymw
-w5 fold wstep nsymw w4 sym
+sy127 add nsymc 127
+syn shr sy127 7
+ws0 rec w4 0
+ws fold wsympg syn ws0 sinfo nsymc
+w5 at ws 0
 w6 write w5 ntypesw
-w7 fold wstep ntypesw w6 types
+ty383 add ntypesw 383
+tyn div ty383 384
+w7 fold wty tyn w6 types ntypesw
 w8 write w7 ntlistw
-w9 fold wstep ntlistw w8 tlist
+tl127 add ntlistw 127
+tln shr tl127 7
+w9 fold w65 tln w8 tlist ntlistw
 w10 write w9 nfnsw
-w11 fold wstep nfnsw w10 fns
+fn127 add nfnsw 127
+fnn shr fn127 7
+w11 fold w45 fnn w10 fns nfnsw
 w12 write w11 nnodesw
-w13 fold wstep nnodesw w12 nodes
+nd127 add nnodesw 127
+ndn shr nd127 7
+w13 fold w128 ndn w12 nodes nnodesw
 w14 write w13 nargsw
-w15 fold wstep nargsw w14 args
+ar127 add nargsw 127
+arn shr ar127 7
+w15 fold w256 arn w14 args nargsw
 w16 write w15 nusesw
-w17 fold wstep nusesw w16 uses
+us127 add nusesw 127
+usn shr us127 7
+w17 fold w32 usn w16 uses nusesw
 ret code
 end

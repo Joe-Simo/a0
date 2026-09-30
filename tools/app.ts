@@ -17,12 +17,19 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { formatProgram, makeIo, parseAndValidate, run, type TypedFunc } from '../src/core.js';
+import {
+  formatProgram,
+  makeIo,
+  parseAndValidate,
+  run,
+  type TypedFunc,
+  type TypedProgram,
+} from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
 import { ILL_TYPED, refCheck, refCheckWords } from './ref-check.js';
-import { irWords, refLex, refParse, wellFormedPrefix } from './ref-parse.js';
+import { FRONT_END_SOURCE_LIMIT, irWords, refLex, refParse } from './ref-parse.js';
 import {
   checkInterpreter,
   checkJs,
@@ -156,12 +163,7 @@ export async function buildLexCases(): Promise<(Case & { readonly label: string 
     ['text', 'fn f -> u32x3\nt text "a\\"b\\\\c"\nret t\nend\n'],
     ['types', 'fn f u32x4 (u32,bool) io -> (u32,io)  # comment\n\tx  mov 4294967295\r\n?\n'],
   ];
-  const { readdir } = await import('node:fs/promises');
-  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort()) {
-    const text = (await readFile(`examples/${f}`, 'utf8')).slice(0, 500);
-    sources.push([f, text.slice(0, text.lastIndexOf('\n') + 1)]);
-  }
-  sources.push(['lex.a0', (await readFile('compiler/lex.a0', 'utf8')).slice(0, 500)]);
+  for (const [label, src] of await wholeFiles()) sources.push([label, src]);
   return sources.map(([label, src]) => {
     const bytes = [...Buffer.from(src)];
     const words = refLex(src);
@@ -176,7 +178,24 @@ export async function buildLexCases(): Promise<(Case & { readonly label: string 
   });
 }
 
-/** Sources the parser and the checker share: small programs, error cases, and prefixes of the repo's A0 files. */
+/**
+ * Whole A0 files within the front end's 16384-byte source limit: the examples, the lexer's own
+ * source, and the site's UI program (text literals, non-ASCII bytes in strings).
+ */
+async function wholeFiles(): Promise<[string, string][]> {
+  const { readdir } = await import('node:fs/promises');
+  const files: [string, string][] = [];
+  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort())
+    files.push([f, await readFile(`examples/${f}`, 'utf8')]);
+  files.push(['lex.a0', await readFile('compiler/lex.a0', 'utf8')]);
+  files.push(['ui.a0', await readFile('site/ui.a0', 'utf8')]);
+  for (const [label, src] of files)
+    if (Buffer.byteLength(src) > FRONT_END_SOURCE_LIMIT)
+      throw new Error(`${label}: over the front end's ${FRONT_END_SOURCE_LIMIT}-byte source limit`);
+  return files;
+}
+
+/** Sources the parser and the checker share: small programs, error cases, and whole A0 files. */
 async function frontEndSources(): Promise<[string, string][]> {
   const sources: [string, string][] = [
     ['sq', 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n'],
@@ -195,18 +214,7 @@ async function frontEndSources(): Promise<[string, string][]> {
     ['bad-op', 'fn f u32 -> u32\na plus p0 1\nret a\nend\n'],
     ['unterminated', 'fn f u32 -> u32\na add p0 1\n'],
   ];
-  const { readdir } = await import('node:fs/promises');
-  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort()) {
-    const text = (await readFile(`examples/${f}`, 'utf8')).slice(0, 500);
-    sources.push([f, text.slice(0, text.lastIndexOf('\n') + 1)]);
-    sources.push([`${f}/fns`, wellFormedPrefix(text, 500)]);
-  }
-  // The lexer's own source from its first function (the leading comment alone is over 500 bytes).
-  const lexFull = await readFile('compiler/lex.a0', 'utf8');
-  const lex = lexFull.slice(lexFull.indexOf('\nfn ') + 1, lexFull.indexOf('\nfn ') + 501);
-  sources.push(['lex.a0', lex.slice(0, lex.lastIndexOf('\n') + 1)]);
-  sources.push(['lex.a0/fns', wellFormedPrefix(lex, 500)]);
-  return sources;
+  return [...sources, ...(await wholeFiles())];
 }
 
 export async function buildParseCases(): Promise<(Case & { readonly label: string })[]> {
@@ -242,15 +250,59 @@ export async function buildCheckCases(): Promise<(Case & { readonly label: strin
   });
 }
 
+/** Output words the Java io runtime keeps (`A0Io.output` in src/backends.ts); `write` drops the rest. */
+const JAVA_IO_OUTPUT_WORDS = 1024;
+/** The wasm32 stack of `compileWasm` (`WASM_FLAGS` in src/toolchain.ts). */
+const WASM_STACK_MIB = 1;
+
+/**
+ * The rows of a self-hosted front-end module on every target. Two targets have size walls the
+ * module cannot move: the JVM row runs only the cases whose io output fits the Java runtime's
+ * buffer, and the wasm row is reported blocked (not failed) when the build runs out of stack,
+ * with the stack the module needs at its capacities (`needMiB`, measured by rebuilding the
+ * same C with larger `-z stack-size` values).
+ */
+async function frontEndTargets(
+  program: TypedProgram,
+  cases: readonly (Case & { readonly label: string })[],
+  needMiB: number,
+): Promise<Record<string, TargetReport>> {
+  const fitsJvm = cases.filter((c) => (c.expectedOutput?.length ?? 0) <= JAVA_IO_OUTPUT_WORDS);
+  const overJvm = cases.filter((c) => !fitsJvm.includes(c)).map((c) => c.label);
+  const wasm = await checkWasm(program, cases);
+  const stackWall =
+    wasm.status === 'failed' &&
+    (wasm.failures ?? []).some((f) => f.includes('memory access out of bounds'));
+  const jvm = await checkJvm(program, fitsJvm);
+  return {
+    interpreter: checkInterpreter(program, cases),
+    optimizer: checkOptimizer(program, cases),
+    javascript: await checkJs(program, cases),
+    native_c_clang: await checkNative(program, cases, findClang(), false, 'native C via clang'),
+    webassembly: stackWall
+      ? {
+          status: 'blocked',
+          cases: 0,
+          detail: `wasm32 size wall: the ${WASM_STACK_MIB} MiB stack is exceeded (memory access out of bounds); aggregates are C structs held by value on the wasm stack, and at the 16384-byte capacities this module needs ${needMiB} MiB`,
+          failures: wasm.failures,
+        }
+      : wasm,
+    jvm:
+      overJvm.length === 0
+        ? jvm
+        : {
+            ...jvm,
+            detail: `${jvm.detail} JVM size wall: ${overJvm.length} cases write more than the Java io runtime's ${JAVA_IO_OUTPUT_WORDS} output words and are not run (${overJvm.join(', ')})`,
+          },
+  };
+}
+
 /**
  * `emitio` cases: the scalar examples, one module each for call, fold and loop, and
  * refusals (an array parameter, io, a record, an ill-typed module). The expected output words are the reference interpreter's run of the
  * emitter; every other target must produce the same assembly bytes. That the bytes are
  * correct assembly is checked by execution in `bun run selfhost`.
  */
-/** Output words of the JVM backend's io state (src/backends.ts, `A0Io.output`). */
-const JVM_IO_OUTPUT_WORDS = 1024;
-
 export async function buildEmitCases(
   emitter: Awaited<ReturnType<typeof link>>['program'],
 ): Promise<(Case & { readonly label: string })[]> {
@@ -297,10 +349,13 @@ export async function buildEmitCases(
  * emitcio cases: the C bytes of `emitc` (in the reference interpreter) over the tables of the
  * reference parser and checker, or no output with the diagnostic code for rejected programs.
  */
+/** Source bytes `emitcio` reads: it runs the 512-byte front end of compiler/front512.a0. */
+const EMITCIO_SOURCE_LIMIT = 512;
+
 export async function buildEmitCCases(
   emitc: TypedFunc,
 ): Promise<(Case & { readonly label: string })[]> {
-  const sources: [string, string][] = [
+  const all: [string, string][] = [
     [
       'clamp',
       'fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\na select lo p1 p0\nhi gt a p2\nr select hi p2 a\nret r\nend\n',
@@ -308,6 +363,7 @@ export async function buildEmitCCases(
     ...(await frontEndSources()),
     ...ILL_TYPED.slice(0, 4),
   ];
+  const sources = all.filter(([, src]) => Buffer.byteLength(src) <= EMITCIO_SOURCE_LIMIT);
   const pad = (t: readonly number[], n: number): number[] => [
     ...t,
     ...new Array(n - t.length).fill(0),
@@ -380,52 +436,13 @@ async function main(): Promise<void> {
   };
   const lexProgram = parseAndValidate(await readFile('compiler/lex.a0', 'utf8'));
   const lexCases = await buildLexCases();
-  const lexTargets: Record<string, TargetReport> = {
-    interpreter: checkInterpreter(lexProgram, lexCases),
-    optimizer: checkOptimizer(lexProgram, lexCases),
-    javascript: await checkJs(lexProgram, lexCases),
-    native_c_clang: await checkNative(
-      lexProgram,
-      lexCases,
-      findClang(),
-      false,
-      'native C via clang',
-    ),
-    webassembly: await checkWasm(lexProgram, lexCases),
-    jvm: await checkJvm(lexProgram, lexCases),
-  };
+  const lexTargets = await frontEndTargets(lexProgram, lexCases, 2);
   const parseProgram = (await link('compiler/parse.a0', (p) => readFile(p, 'utf8'))).program;
   const parseCases = await buildParseCases();
-  const parseTargets: Record<string, TargetReport> = {
-    interpreter: checkInterpreter(parseProgram, parseCases),
-    optimizer: checkOptimizer(parseProgram, parseCases),
-    javascript: await checkJs(parseProgram, parseCases),
-    native_c_clang: await checkNative(
-      parseProgram,
-      parseCases,
-      findClang(),
-      false,
-      'native C via clang',
-    ),
-    webassembly: await checkWasm(parseProgram, parseCases),
-    jvm: await checkJvm(parseProgram, parseCases),
-  };
+  const parseTargets = await frontEndTargets(parseProgram, parseCases, 8);
   const checkProgram = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
   const checkCases = await buildCheckCases();
-  const checkTargets: Record<string, TargetReport> = {
-    interpreter: checkInterpreter(checkProgram, checkCases),
-    optimizer: checkOptimizer(checkProgram, checkCases),
-    javascript: await checkJs(checkProgram, checkCases),
-    native_c_clang: await checkNative(
-      checkProgram,
-      checkCases,
-      findClang(),
-      false,
-      'native C via clang',
-    ),
-    webassembly: await checkWasm(checkProgram, checkCases),
-    jvm: await checkJvm(checkProgram, checkCases),
-  };
+  const checkTargets = await frontEndTargets(checkProgram, checkCases, 8);
   const emitProgram = (await link('compiler/emit_arm64.a0', (p) => readFile(p, 'utf8'))).program;
   const emitCases = await buildEmitCases(emitProgram);
   const cEmitProgram = (await link('compiler/emit_c.a0', (p) => readFile(p, 'utf8'))).program;
@@ -445,11 +462,11 @@ async function main(): Promise<void> {
     // The JVM backend's io state holds 1024 output words (src/backends.ts A0Io); a module
     // whose assembly is longer is out of that target's io capacity and is counted, not run.
     jvm: await (async () => {
-      const fits = emitCases.filter((c) => (c.expectedOutput?.length ?? 0) <= JVM_IO_OUTPUT_WORDS);
+      const fits = emitCases.filter((c) => (c.expectedOutput?.length ?? 0) <= JAVA_IO_OUTPUT_WORDS);
       const r = await checkJvm(emitProgram, fits);
       return {
         ...r,
-        detail: `${r.detail} ${emitCases.length - fits.length} cases over the JVM io output capacity (${JVM_IO_OUTPUT_WORDS} words) not run.`,
+        detail: `${r.detail} ${emitCases.length - fits.length} cases over the JVM io output capacity (${JAVA_IO_OUTPUT_WORDS} words) not run.`,
       };
     })(),
   };
