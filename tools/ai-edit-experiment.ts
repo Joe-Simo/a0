@@ -104,9 +104,9 @@ function sourceOf(task: Task, rep: Representation): string {
 const PROTOCOL_CONVENTIONAL =
   'Reply with the complete updated source file and nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_A0 =
-  'The view starts with edit handles. Reply with one handle line followed by edit lines as the guide describes (function handle: instruction lines; program handle: whole `fn ... end` blocks or `-fn name`). Nothing else, inside one ```code block.';
+  'The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.';
 const PROTOCOL_STRUCTURED_TS =
-  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with that handle line followed only by edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, inside one ```code block.';
+  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, bare: no code fence, no handle line.';
 const RUST_SEMANTICS =
   'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. The file must compile with rustc, edition 2021.';
 const PROTOCOL_STRUCTURED_RUST = PROTOCOL_STRUCTURED_TS;

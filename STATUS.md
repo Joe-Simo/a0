@@ -1511,6 +1511,48 @@ in src/backends.ts (plus one comment in src/toolchain.ts); the design is documen
   webassembly); equiv 48/48 proved; hw passed; dotnet passed (5262); gpu passed (4297, Apple
   M3); selfhost 50 programs / 6898 cases; selfhost:c 6371/6371. results/*.json regenerated
   under a0c-0.1.16.
+## Session 2026-09-30 (output tokens per edit)
+
+Loss addressed: A0 structured replies cost ~34 o200k output tokens per edit vs ~28 TypeScript and ~26 Rust (sets b, c400 scoped, d; Haiku and Sonnet subagents, min primer).
+
+Attribution of the accepted A0 replies (72 replies, o200k, token assigned by its first non-space character): operands 8.3 (25%), whole-function headers in `fn` blocks 7.3 (22%), newlines 5.8 (17%), code fence 3.0 (9%), ids 2.4, ops 2.1, handle line 2.0 (6%, plus its newline), `ret` lines 1.8, `end` 0.7. TS/Rust replies spend the same 3 fence + 2 handle tokens; the rest is the replaced line text.
+
+Protocol changes (src/edit.ts, test/edit.test.ts; protocol only, COMPILER_VERSION unchanged, noted in DESIGN section 5):
+- handle line optional when implied: exactly one function handle open (or, with none, exactly one program handle); an explicit handle, several handles, or an unknown handle behave as before;
+- a function handle also takes `-fn name` lines (it already took whole `fn` blocks);
+- `end` of a `fn` block is optional: the block closes at the next `fn`/`-fn` line or the end of the reply (`fn`/`end` are reserved, so no instruction line is mistaken for a boundary);
+- no code fence required (the harness already accepted bare lines; the protocol text now asks for bare lines). MODEL_GUIDE.min.txt EDIT line and PROTOCOL_STRUCTURED_A0 updated; the view is unchanged.
+Old fenced, handle-first replies (sets b and d, both models) re-score identically.
+
+Fresh subjects (Agent tool subagents, model haiku / sonnet, each reading only its group file; results/ai-edit-experiment.{b,c400,d}.{haiku,sonnet}-bare.json, A0 structured cell only; TS/Rust from the existing -min files):
+
+| set / model | A0 accepted before -> after | A0 output/edit before -> after | TS output | Rust output | A0 whole-task total before -> after |
+|---|---|---|---|---|---|
+| b haiku | 12/12 -> 12/12 | 45.3 -> 31.6 | 30.2 | 26.4 | 590 -> 579 |
+| b sonnet | 12/12 -> 12/12 | 34.2 -> 27.5 | 27.9 | 25.3 | 579 -> 575 |
+| c400 haiku | 10/12 -> 11/12 | 30.7 -> 29.8 | 30.7 | 26.5 | 611 -> 597 |
+| c400 sonnet | 12/12 -> 12/12 | 34.0 -> 25.6 | 28.0 | 26.0 | 596 -> 590 |
+| d haiku | 13/13 -> 13/13 | 35.0 -> 24.5 | 25.3 | 25.8 | 560 -> 553 |
+| d sonnet | 13/13 -> 13/13 | 26.2 -> 19.2 | 25.2 | 25.8 | 551 -> 547 |
+| mean | | 34.2 -> 26.4 | 27.9 | 26.0 | |
+
+Against the old fenced TS/Rust protocol A0 output per edit is below TypeScript and level with Rust; on equal (relaxed) protocols it is not, see the next subsection. Whole-task totals barely move because the primer dominates (TS/Rust totals: ~230-265 on b/d, ~14.3k on c400). Remaining A0 output: operands 33%, `fn` headers 27% (models resend whole functions under a function handle for small edits), newlines 13%. The one failure (c400-bounds-largest, Haiku) is a language error (nested `select (lt ...)`), as before.
+
+### All three on the relaxed protocol
+
+TS and Rust structured cells got the same relaxations where they apply (tools/ai-edit-apply.ts, PROTOCOL_STRUCTURED_TS/RUST): no code fence, handle line optional (edit lines start with a digit, `+`, or `-`, so a handle-shaped first line is unambiguous; a wrong handle is still rejected). tools/ai-edit-langs.ts is not in this base, so the five other languages were not changed. Fresh TS and Rust subjects (Agent tool subagents, haiku / sonnet, one group file each) on sets b, c400 (scoped A0 view; whole numbered file for TS/Rust), d; the A0 replies are the ones above. results/ai-edit-experiment.{b,c400,d}.{haiku,sonnet}-bare.json now hold all three structured cells.
+
+| set / model | A0 acc, out/edit | TS acc, out/edit (old -> relaxed) | Rust acc, out/edit (old -> relaxed) |
+|---|---|---|---|
+| b haiku | 12/12, 31.6 | 11/12 30.2 -> 11/12 23.5 | 12/12 26.4 -> 8/12 19.3 |
+| b sonnet | 12/12, 27.5 | 12/12 27.9 -> 9/12 22.8 | 12/12 25.3 -> 12/12 19.6 |
+| c400 haiku | 11/12, 29.8 | 8/12 30.7 -> 8/12 24.5 | 7/12 26.5 -> 12/12 20.8 |
+| c400 sonnet | 12/12, 25.6 | 12/12 28.0 -> 12/12 22.2 | 12/12 26.0 -> 12/12 19.5 |
+| d haiku | 13/13, 24.5 | 12/13 25.3 -> 12/13 19.4 | 12/13 25.8 -> 12/13 20.6 |
+| d sonnet | 13/13, 19.2 | 13/13 25.2 -> 13/13 19.6 | 12/13 25.8 -> 13/13 19.0 |
+| all | 73/74, 26.2 | 68/74 27.8 -> 65/74 21.9 | 67/74 26.0 -> 69/74 19.8 |
+
+On equal protocols A0 structured output per edit is higher than TS (+4.3) and Rust (+6.4): the relaxations saved TS/Rust about 6 tokens, as much as A0. A0 keeps the acceptance lead (73/74 vs 65/74 and 69/74) and, on c400, the whole-task lead (~590 vs ~14.3k, the view). TS/Rust failures: Sonnet TS b (3, protocol: multi-line replacement text without line numbers), Haiku Rust b (4: unbalanced braces from line edits, one wrong output), Haiku TS c400 (4: compile errors, one wrong output); one-shot subjects swing between runs (Haiku Rust c400 went 7/12 -> 12/12). The remaining A0 gap is the `fn` headers of whole-function resends (27% of A0 output) and one newline per instruction.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
