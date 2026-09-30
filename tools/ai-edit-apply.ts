@@ -28,9 +28,13 @@ export function applyTs(
 ): AppliedEdit {
   const body = extractBlock(reply);
   if (protocol === 'conventional') return { source: body };
-  const lines = body.trimEnd().split('\n');
-  if (lines[0] !== handle)
-    return { source, error: `expected handle ${handle}, got '${lines[0] ?? ''}'` };
+  const all = body.trimEnd().split('\n');
+  // The handle line is optional (one handle is open): edit lines start with a digit, `+`, or
+  // `-`, so a first line that looks like a handle is unambiguous.
+  const first = all[0] ?? '';
+  if (/^[a-z]+[0-9]+$/.test(first) && first !== handle)
+    return { source, error: `expected handle ${handle}, got '${first}'` };
+  const lines = first === handle ? all : [handle, ...all];
   const out: (string | null)[] = source.trimEnd().split('\n');
   const inserts = new Map<number, string[]>();
   const seen = new Set<number>();
