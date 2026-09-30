@@ -9,7 +9,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
-import { compileWasm, runTool } from '../src/toolchain.js';
+import { runTool } from '../src/toolchain.js';
+import { wasmModuleBytes } from '../src/wasm.js';
 import { prerender } from './site-render.js';
 
 const out = join('site', 'dist');
@@ -27,14 +28,15 @@ async function buildProgram(entry: string, outName: string): Promise<Built> {
   // the input holds the play page's source text (480 bytes) and the state that echoes it.
   // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
   const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'))).program;
-  const c = compile(program, 'c', { ioInputCapacity: 1024, ioOutputCapacity: 65536 }).text;
-  const wasm = await compileWasm(c);
-  await writeFile(join(out, `${outName}.wasm`), wasm.bytes);
-  await writeFile(join(out, `${outName}.c`), c, 'utf8');
+  // A0's own wasm32 backend (src/wasm.ts): the module is emitted directly, no C, no clang.
+  const wasm = wasmModuleBytes(
+    compile(program, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 65536 }).text,
+  );
+  await writeFile(join(out, `${outName}.wasm`), wasm);
   // The same program, run once here through the reference interpreter: static HTML for
   // agents and crawlers that do not run JavaScript. The browser re-renders the same tree.
   const pre = prerender(program);
-  return { size: `${outName}.wasm ${wasm.bytes.length} bytes (${wasm.compiler})`, ...pre };
+  return { size: `${outName}.wasm ${wasm.length} bytes (A0 wasm32 backend)`, ...pre };
 }
 
 /** Put the prerendered tree and stylesheet into a page shell. */

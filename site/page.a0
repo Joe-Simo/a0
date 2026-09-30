@@ -577,7 +577,7 @@ x638 write x637 2
 x639 text "big pixel"
 x640 puts x638 x639
 x641 write x640 2
-x642 text "174x"
+x642 text "152x"
 x643 puts x641 x642
 x644 call close x643 
 x645 call open x644 2
@@ -586,7 +586,7 @@ x647 write x646 2
 x648 text "d"
 x649 puts x647 x648
 x650 write x649 2
-x651 text "faster than Python, 8x faster than JavaScript. Ties C, Rust, and Zig; measured against 48 languages."
+x651 text "faster than Python, 7x faster than JavaScript, measured against 48 languages. Machine code from A0's own code generator."
 x652 puts x650 x651
 x653 call close x652 
 x654 call close x653 
@@ -818,11 +818,11 @@ x873 text "No runtime, no garbage collector. "
 x874 puts x872 x873
 x875 call open x874 16
 x876 write x875 2
-x877 text "1.00x"
+x877 text "1.15x"
 x878 puts x876 x877
 x879 call close x878 
 x880 write x879 2
-x881 text " the time of hand-written C across ten kernels. A0's own AArch64 code generator ties clang on 6 of 10 kernels and is behind on loop64 (1.36x), arrfill (1.30x), mix (1.12x), rotl (1.11x)."
+x881 text " the time of hand-written C across 10 kernels, from A0's own AArch64 code generator; no C compiler is involved."
 x882 puts x880 x881
 x883 call close x882 
 ret x883
@@ -863,7 +863,7 @@ x915 write x914 2
 x916 text "la0"
 x917 puts x915 x916
 x918 write x917 2
-x919 text "A0 (via C)"
+x919 text "A0"
 x920 puts x918 x919
 x921 call close x920 
 x922 call open x921 6
@@ -904,7 +904,7 @@ x956 write x955 4
 x957 write x956 2
 x958 text "bars"
 x959 puts x957 x958
-x960 mov 477
+x960 mov 475
 x961 mov 477
 x962 mov 477
 x963 call max3 x960 x961 x962
@@ -992,7 +992,7 @@ x1044 write x1043 4
 x1045 write x1044 2
 x1046 text "bars"
 x1047 puts x1045 x1046
-x1048 mov 318
+x1048 mov 500
 x1049 mov 318
 x1050 mov 318
 x1051 call max3 x1048 x1049 x1050
@@ -1080,7 +1080,7 @@ x1132 write x1131 4
 x1133 write x1132 2
 x1134 text "bars"
 x1135 puts x1133 x1134
-x1136 mov 477
+x1136 mov 545
 x1137 mov 477
 x1138 mov 477
 x1139 call max3 x1136 x1137 x1138
@@ -1256,7 +1256,7 @@ x1308 write x1307 4
 x1309 write x1308 2
 x1310 text "bars"
 x1311 puts x1309 x1310
-x1312 mov 160
+x1312 mov 161
 x1313 mov 160
 x1314 mov 159
 x1315 call max3 x1312 x1313 x1314
@@ -1344,7 +1344,7 @@ x1396 write x1395 4
 x1397 write x1396 2
 x1398 text "bars"
 x1399 puts x1397 x1398
-x1400 mov 160
+x1400 mov 161
 x1401 mov 159
 x1402 mov 159
 x1403 call max3 x1400 x1401 x1402
@@ -1432,7 +1432,7 @@ x1484 write x1483 4
 x1485 write x1484 2
 x1486 text "bars"
 x1487 puts x1485 x1486
-x1488 mov 318
+x1488 mov 336
 x1489 mov 318
 x1490 mov 319
 x1491 call max3 x1488 x1489 x1490
@@ -1520,7 +1520,7 @@ x1572 write x1571 4
 x1573 write x1572 2
 x1574 text "bars"
 x1575 puts x1573 x1574
-x1576 mov 319
+x1576 mov 343
 x1577 mov 319
 x1578 mov 319
 x1579 call max3 x1576 x1577 x1578
@@ -1608,7 +1608,7 @@ x1660 write x1659 4
 x1661 write x1660 2
 x1662 text "bars"
 x1663 puts x1661 x1662
-x1664 mov 318
+x1664 mov 427
 x1665 mov 318
 x1666 mov 318
 x1667 call max3 x1664 x1665 x1666
@@ -1696,7 +1696,7 @@ x1748 write x1747 4
 x1749 write x1748 2
 x1750 text "bars"
 x1751 puts x1749 x1750
-x1752 mov 7950
+x1752 mov 11245
 x1753 mov 8103
 x1754 mov 7905
 x1755 call max3 x1752 x1753 x1754
@@ -1771,7 +1771,7 @@ x1823 write x1822 2
 x1824 text "cap"
 x1825 puts x1823 x1824
 x1826 write x1825 2
-x1827 text "Hand-written C and Rust, same kernels, same checksum."
+x1827 text "A0 is machine code from A0's own AArch64 code generator. Hand-written C and Rust, same kernels, same checksum."
 x1828 puts x1826 x1827
 x1829 call close x1828 
 x1830 call close x1829 
@@ -1800,11 +1800,11 @@ x1846 text "The same ten kernels, hand-written in 48 languages, every result che
 x1847 puts x1845 x1846
 x1848 call open x1847 16
 x1849 write x1848 2
-x1850 text "9 languages tie A0 within 5%"
+x1850 text "4 tie A0 within 5%"
 x1851 puts x1849 x1850
 x1852 call close x1851 
 x1853 write x1852 2
-x1854 text "; everything else is slower."
+x1854 text ", 9 are faster today (Zig, C, Rust, Odin, C++, D, Crystal, V, Nim; closing that gap is the current compiler work), and the rest are slower."
 x1855 puts x1853 x1854
 x1856 call close x1855 
 ret x1856
@@ -1900,7 +1900,7 @@ x1943 write x1942 4
 x1944 write x1943 2
 x1945 text "val"
 x1946 puts x1944 x1945
-x1947 mov 100
+x1947 mov 87
 x1948 call putratio x1946 x1947
 x1949 write x1948 2
 x1950 text "x"
@@ -1941,7 +1941,7 @@ x1984 write x1983 4
 x1985 write x1984 2
 x1986 text "val"
 x1987 puts x1985 x1986
-x1988 mov 100
+x1988 mov 87
 x1989 call putratio x1987 x1988
 x1990 write x1989 2
 x1991 text "x"
@@ -1982,7 +1982,7 @@ x2025 write x2024 4
 x2026 write x2025 2
 x2027 text "val"
 x2028 puts x2026 x2027
-x2029 mov 100
+x2029 mov 87
 x2030 call putratio x2028 x2029
 x2031 write x2030 2
 x2032 text "x"
@@ -2023,7 +2023,7 @@ x2066 write x2065 4
 x2067 write x2066 2
 x2068 text "val"
 x2069 puts x2067 x2068
-x2070 mov 100
+x2070 mov 88
 x2071 call putratio x2069 x2070
 x2072 write x2071 2
 x2073 text "x"
@@ -2064,7 +2064,7 @@ x2107 write x2106 4
 x2108 write x2107 2
 x2109 text "val"
 x2110 puts x2108 x2109
-x2111 mov 101
+x2111 mov 88
 x2112 call putratio x2110 x2111
 x2113 write x2112 2
 x2114 text "x"
@@ -2105,7 +2105,7 @@ x2148 write x2147 4
 x2149 write x2148 2
 x2150 text "val"
 x2151 puts x2149 x2150
-x2152 mov 101
+x2152 mov 88
 x2153 call putratio x2151 x2152
 x2154 write x2153 2
 x2155 text "x"
@@ -2146,7 +2146,7 @@ x2189 write x2188 4
 x2190 write x2189 2
 x2191 text "val"
 x2192 puts x2190 x2191
-x2193 mov 102
+x2193 mov 89
 x2194 call putratio x2192 x2193
 x2195 write x2194 2
 x2196 text "x"
@@ -2187,7 +2187,7 @@ x2230 write x2229 4
 x2231 write x2230 2
 x2232 text "val"
 x2233 puts x2231 x2232
-x2234 mov 103
+x2234 mov 90
 x2235 call putratio x2233 x2234
 x2236 write x2235 2
 x2237 text "x"
@@ -2221,14 +2221,14 @@ x2264 text "fill"
 x2265 puts x2263 x2264
 x2266 write x2265 12
 x2267 write x2266 1
-x2268 write x2267 4
+x2268 write x2267 3
 x2269 call close x2268 
 x2270 call open x2269 6
 x2271 write x2270 4
 x2272 write x2271 2
 x2273 text "val"
 x2274 puts x2272 x2273
-x2275 mov 104
+x2275 mov 91
 x2276 call putratio x2274 x2275
 x2277 write x2276 2
 x2278 text "x"
@@ -2262,14 +2262,14 @@ x2305 text "fill"
 x2306 puts x2304 x2305
 x2307 write x2306 12
 x2308 write x2307 1
-x2309 write x2308 4
+x2309 write x2308 3
 x2310 call close x2309 
 x2311 call open x2310 6
 x2312 write x2311 4
 x2313 write x2312 2
 x2314 text "val"
 x2315 puts x2313 x2314
-x2316 mov 112
+x2316 mov 98
 x2317 call putratio x2315 x2316
 x2318 write x2317 2
 x2319 text "x"
@@ -2303,14 +2303,14 @@ x2346 text "fill"
 x2347 puts x2345 x2346
 x2348 write x2347 12
 x2349 write x2348 1
-x2350 write x2349 4
+x2350 write x2349 3
 x2351 call close x2350 
 x2352 call open x2351 6
 x2353 write x2352 4
 x2354 write x2353 2
 x2355 text "val"
 x2356 puts x2354 x2355
-x2357 mov 112
+x2357 mov 98
 x2358 call putratio x2356 x2357
 x2359 write x2358 2
 x2360 text "x"
@@ -2344,14 +2344,14 @@ x2387 text "fill"
 x2388 puts x2386 x2387
 x2389 write x2388 12
 x2390 write x2389 1
-x2391 write x2390 5
+x2391 write x2390 3
 x2392 call close x2391 
 x2393 call open x2392 6
 x2394 write x2393 4
 x2395 write x2394 2
 x2396 text "val"
 x2397 puts x2395 x2396
-x2398 mov 114
+x2398 mov 99
 x2399 call putratio x2397 x2398
 x2400 write x2399 2
 x2401 text "x"
@@ -2385,14 +2385,14 @@ x2428 text "fill"
 x2429 puts x2427 x2428
 x2430 write x2429 12
 x2431 write x2430 1
-x2432 write x2431 5
+x2432 write x2431 3
 x2433 call close x2432 
 x2434 call open x2433 6
 x2435 write x2434 4
 x2436 write x2435 2
 x2437 text "val"
 x2438 puts x2436 x2437
-x2439 mov 118
+x2439 mov 103
 x2440 call putratio x2438 x2439
 x2441 write x2440 2
 x2442 text "x"
@@ -2426,14 +2426,14 @@ x2469 text "fill"
 x2470 puts x2468 x2469
 x2471 write x2470 12
 x2472 write x2471 1
-x2473 write x2472 6
+x2473 write x2472 5
 x2474 call close x2473 
 x2475 call open x2474 6
 x2476 write x2475 4
 x2477 write x2476 2
 x2478 text "val"
 x2479 puts x2477 x2478
-x2480 mov 134
+x2480 mov 117
 x2481 call putratio x2479 x2480
 x2482 write x2481 2
 x2483 text "x"
@@ -2467,14 +2467,14 @@ x2510 text "fill"
 x2511 puts x2509 x2510
 x2512 write x2511 12
 x2513 write x2512 1
-x2514 write x2513 7
+x2514 write x2513 5
 x2515 call close x2514 
 x2516 call open x2515 6
 x2517 write x2516 4
 x2518 write x2517 2
 x2519 text "val"
 x2520 puts x2518 x2519
-x2521 mov 141
+x2521 mov 123
 x2522 call putratio x2520 x2521
 x2523 write x2522 2
 x2524 text "x"
@@ -2508,14 +2508,14 @@ x2551 text "fill"
 x2552 puts x2550 x2551
 x2553 write x2552 12
 x2554 write x2553 1
-x2555 write x2554 7
+x2555 write x2554 6
 x2556 call close x2555 
 x2557 call open x2556 6
 x2558 write x2557 4
 x2559 write x2558 2
 x2560 text "val"
 x2561 puts x2559 x2560
-x2562 mov 145
+x2562 mov 127
 x2563 call putratio x2561 x2562
 x2564 write x2563 2
 x2565 text "x"
@@ -2549,14 +2549,14 @@ x2592 text "fill"
 x2593 puts x2591 x2592
 x2594 write x2593 12
 x2595 write x2594 1
-x2596 write x2595 7
+x2596 write x2595 6
 x2597 call close x2596 
 x2598 call open x2597 6
 x2599 write x2598 4
 x2600 write x2599 2
 x2601 text "val"
 x2602 puts x2600 x2601
-x2603 mov 145
+x2603 mov 127
 x2604 call putratio x2602 x2603
 x2605 write x2604 2
 x2606 text "x"
@@ -2590,14 +2590,14 @@ x2633 text "fill"
 x2634 puts x2632 x2633
 x2635 write x2634 12
 x2636 write x2635 1
-x2637 write x2636 8
+x2637 write x2636 6
 x2638 call close x2637 
 x2639 call open x2638 6
 x2640 write x2639 4
 x2641 write x2640 2
 x2642 text "val"
 x2643 puts x2641 x2642
-x2644 mov 147
+x2644 mov 128
 x2645 call putratio x2643 x2644
 x2646 write x2645 2
 x2647 text "x"
@@ -2631,14 +2631,14 @@ x2674 text "fill"
 x2675 puts x2673 x2674
 x2676 write x2675 12
 x2677 write x2676 1
-x2678 write x2677 8
+x2678 write x2677 6
 x2679 call close x2678 
 x2680 call open x2679 6
 x2681 write x2680 4
 x2682 write x2681 2
 x2683 text "val"
 x2684 puts x2682 x2683
-x2685 mov 152
+x2685 mov 132
 x2686 call putratio x2684 x2685
 x2687 write x2686 2
 x2688 text "x"
@@ -2672,14 +2672,14 @@ x2715 text "fill"
 x2716 puts x2714 x2715
 x2717 write x2716 12
 x2718 write x2717 1
-x2719 write x2718 9
+x2719 write x2718 7
 x2720 call close x2719 
 x2721 call open x2720 6
 x2722 write x2721 4
 x2723 write x2722 2
 x2724 text "val"
 x2725 puts x2723 x2724
-x2726 mov 166
+x2726 mov 144
 x2727 call putratio x2725 x2726
 x2728 write x2727 2
 x2729 text "x"
@@ -2713,14 +2713,14 @@ x2756 text "fill"
 x2757 puts x2755 x2756
 x2758 write x2757 12
 x2759 write x2758 1
-x2760 write x2759 9
+x2760 write x2759 8
 x2761 call close x2760 
 x2762 call open x2761 6
 x2763 write x2762 4
 x2764 write x2763 2
 x2765 text "val"
 x2766 puts x2764 x2765
-x2767 mov 171
+x2767 mov 149
 x2768 call putratio x2766 x2767
 x2769 write x2768 2
 x2770 text "x"
@@ -2754,14 +2754,14 @@ x2797 text "fill"
 x2798 puts x2796 x2797
 x2799 write x2798 12
 x2800 write x2799 1
-x2801 write x2800 10
+x2801 write x2800 8
 x2802 call close x2801 
 x2803 call open x2802 6
 x2804 write x2803 4
 x2805 write x2804 2
 x2806 text "val"
 x2807 puts x2805 x2806
-x2808 mov 175
+x2808 mov 153
 x2809 call putratio x2807 x2808
 x2810 write x2809 2
 x2811 text "x"
@@ -2795,14 +2795,14 @@ x2838 text "fill"
 x2839 puts x2837 x2838
 x2840 write x2839 12
 x2841 write x2840 1
-x2842 write x2841 10
+x2842 write x2841 8
 x2843 call close x2842 
 x2844 call open x2843 6
 x2845 write x2844 4
 x2846 write x2845 2
 x2847 text "val"
 x2848 puts x2846 x2847
-x2849 mov 177
+x2849 mov 155
 x2850 call putratio x2848 x2849
 x2851 write x2850 2
 x2852 text "x"
@@ -2836,14 +2836,14 @@ x2879 text "fill"
 x2880 puts x2878 x2879
 x2881 write x2880 12
 x2882 write x2881 1
-x2883 write x2882 11
+x2883 write x2882 10
 x2884 call close x2883 
 x2885 call open x2884 6
 x2886 write x2885 4
 x2887 write x2886 2
 x2888 text "val"
 x2889 puts x2887 x2888
-x2890 mov 197
+x2890 mov 172
 x2891 call putratio x2889 x2890
 x2892 write x2891 2
 x2893 text "x"
@@ -2877,14 +2877,14 @@ x2920 text "fill"
 x2921 puts x2919 x2920
 x2922 write x2921 12
 x2923 write x2922 1
-x2924 write x2923 14
+x2924 write x2923 13
 x2925 call close x2924 
 x2926 call open x2925 6
 x2927 write x2926 4
 x2928 write x2927 2
 x2929 text "val"
 x2930 puts x2928 x2929
-x2931 mov 255
+x2931 mov 222
 x2932 call putratio x2930 x2931
 x2933 write x2932 2
 x2934 text "x"
@@ -2918,14 +2918,14 @@ x2961 text "fill"
 x2962 puts x2960 x2961
 x2963 write x2962 12
 x2964 write x2963 1
-x2965 write x2964 14
+x2965 write x2964 13
 x2966 call close x2965 
 x2967 call open x2966 6
 x2968 write x2967 4
 x2969 write x2968 2
 x2970 text "val"
 x2971 puts x2969 x2970
-x2972 mov 261
+x2972 mov 227
 x2973 call putratio x2971 x2972
 x2974 write x2973 2
 x2975 text "x"
@@ -2959,14 +2959,14 @@ x3002 text "fill"
 x3003 puts x3001 x3002
 x3004 write x3003 12
 x3005 write x3004 1
-x3006 write x3005 16
+x3006 write x3005 14
 x3007 call close x3006 
 x3008 call open x3007 6
 x3009 write x3008 4
 x3010 write x3009 2
 x3011 text "val"
 x3012 puts x3010 x3011
-x3013 mov 292
+x3013 mov 254
 x3014 call putratio x3012 x3013
 x3015 write x3014 2
 x3016 text "x"
@@ -3000,14 +3000,14 @@ x3043 text "fill"
 x3044 puts x3042 x3043
 x3045 write x3044 12
 x3046 write x3045 1
-x3047 write x3046 16
+x3047 write x3046 15
 x3048 call close x3047 
 x3049 call open x3048 6
 x3050 write x3049 4
 x3051 write x3050 2
 x3052 text "val"
 x3053 puts x3051 x3052
-x3054 mov 307
+x3054 mov 268
 x3055 call putratio x3053 x3054
 x3056 write x3055 2
 x3057 text "x"
@@ -3041,14 +3041,14 @@ x3084 text "fill"
 x3085 puts x3083 x3084
 x3086 write x3085 12
 x3087 write x3086 1
-x3088 write x3087 18
+x3088 write x3087 16
 x3089 call close x3088 
 x3090 call open x3089 6
 x3091 write x3090 4
 x3092 write x3091 2
 x3093 text "val"
 x3094 puts x3092 x3093
-x3095 mov 346
+x3095 mov 302
 x3096 call putratio x3094 x3095
 x3097 write x3096 2
 x3098 text "x"
@@ -3082,14 +3082,14 @@ x3125 text "fill"
 x3126 puts x3124 x3125
 x3127 write x3126 12
 x3128 write x3127 1
-x3129 write x3128 21
+x3129 write x3128 20
 x3130 call close x3129 
 x3131 call open x3130 6
 x3132 write x3131 4
 x3133 write x3132 2
 x3134 text "val"
 x3135 puts x3133 x3134
-x3136 mov 462
+x3136 mov 403
 x3137 call putratio x3135 x3136
 x3138 write x3137 2
 x3139 text "x"
@@ -3123,14 +3123,14 @@ x3166 text "fill"
 x3167 puts x3165 x3166
 x3168 write x3167 12
 x3169 write x3168 1
-x3170 write x3169 23
+x3170 write x3169 21
 x3171 call close x3170 
 x3172 call open x3171 6
 x3173 write x3172 4
 x3174 write x3173 2
 x3175 text "val"
 x3176 puts x3174 x3175
-x3177 mov 524
+x3177 mov 457
 x3178 call putratio x3176 x3177
 x3179 write x3178 2
 x3180 text "x"
@@ -3164,14 +3164,14 @@ x3207 text "fill"
 x3208 puts x3206 x3207
 x3209 write x3208 12
 x3210 write x3209 1
-x3211 write x3210 26
+x3211 write x3210 25
 x3212 call close x3211 
 x3213 call open x3212 6
 x3214 write x3213 4
 x3215 write x3214 2
 x3216 text "val"
 x3217 puts x3215 x3216
-x3218 mov 704
+x3218 mov 614
 x3219 call putratio x3217 x3218
 x3220 write x3219 2
 x3221 text "x"
@@ -3205,14 +3205,14 @@ x3248 text "fill"
 x3249 puts x3247 x3248
 x3250 write x3249 12
 x3251 write x3250 1
-x3252 write x3251 28
+x3252 write x3251 26
 x3253 call close x3252 
 x3254 call open x3253 6
 x3255 write x3254 4
 x3256 write x3255 2
 x3257 text "val"
 x3258 puts x3256 x3257
-x3259 mov 795
+x3259 mov 694
 x3260 call putratio x3258 x3259
 x3261 write x3260 2
 x3262 text "x"
@@ -3246,14 +3246,14 @@ x3289 text "fill"
 x3290 puts x3288 x3289
 x3291 write x3290 12
 x3292 write x3291 1
-x3293 write x3292 28
+x3293 write x3292 27
 x3294 call close x3293 
 x3295 call open x3294 6
 x3296 write x3295 4
 x3297 write x3296 2
 x3298 text "val"
 x3299 puts x3297 x3298
-x3300 mov 848
+x3300 mov 740
 x3301 call putratio x3299 x3300
 x3302 write x3301 2
 x3303 text "x"
@@ -3287,14 +3287,14 @@ x3330 text "fill"
 x3331 puts x3329 x3330
 x3332 write x3331 12
 x3333 write x3332 1
-x3334 write x3333 36
+x3334 write x3333 35
 x3335 call close x3334 
 x3336 call open x3335 6
 x3337 write x3336 4
 x3338 write x3337 2
 x3339 text "val"
 x3340 puts x3338 x3339
-x3341 mov 1671
+x3341 mov 1458
 x3342 call putratio x3340 x3341
 x3343 write x3342 2
 x3344 text "x"
@@ -3328,14 +3328,14 @@ x3371 text "fill"
 x3372 puts x3370 x3371
 x3373 write x3372 12
 x3374 write x3373 1
-x3375 write x3374 39
+x3375 write x3374 38
 x3376 call close x3375 
 x3377 call open x3376 6
 x3378 write x3377 4
 x3379 write x3378 2
 x3380 text "val"
 x3381 puts x3379 x3380
-x3382 mov 2081
+x3382 mov 1816
 x3383 call putratio x3381 x3382
 x3384 write x3383 2
 x3385 text "x"
@@ -3369,14 +3369,14 @@ x3412 text "fill"
 x3413 puts x3411 x3412
 x3414 write x3413 12
 x3415 write x3414 1
-x3416 write x3415 39
+x3416 write x3415 38
 x3417 call close x3416 
 x3418 call open x3417 6
 x3419 write x3418 4
 x3420 write x3419 2
 x3421 text "val"
 x3422 puts x3420 x3421
-x3423 mov 2086
+x3423 mov 1820
 x3424 call putratio x3422 x3423
 x3425 write x3424 2
 x3426 text "x"
@@ -3410,14 +3410,14 @@ x3453 text "fill"
 x3454 puts x3452 x3453
 x3455 write x3454 12
 x3456 write x3455 1
-x3457 write x3456 43
+x3457 write x3456 42
 x3458 call close x3457 
 x3459 call open x3458 6
 x3460 write x3459 4
 x3461 write x3460 2
 x3462 text "val"
 x3463 puts x3461 x3462
-x3464 mov 2900
+x3464 mov 2531
 x3465 call putratio x3463 x3464
 x3466 write x3465 2
 x3467 text "x"
@@ -3458,7 +3458,7 @@ x3501 write x3500 4
 x3502 write x3501 2
 x3503 text "val"
 x3504 puts x3502 x3503
-x3505 mov 7547
+x3505 mov 6586
 x3506 call putratio x3504 x3505
 x3507 write x3506 2
 x3508 text "x"
@@ -3492,14 +3492,14 @@ x3535 text "fill"
 x3536 puts x3534 x3535
 x3537 write x3536 12
 x3538 write x3537 1
-x3539 write x3538 55
+x3539 write x3538 54
 x3540 call close x3539 
 x3541 call open x3540 6
 x3542 write x3541 4
 x3543 write x3542 2
 x3544 text "val"
 x3545 puts x3543 x3544
-x3546 mov 7808
+x3546 mov 6814
 x3547 call putratio x3545 x3546
 x3548 write x3547 2
 x3549 text "x"
@@ -3533,14 +3533,14 @@ x3576 text "fill"
 x3577 puts x3575 x3576
 x3578 write x3577 12
 x3579 write x3578 1
-x3580 write x3579 57
+x3580 write x3579 56
 x3581 call close x3580 
 x3582 call open x3581 6
 x3583 write x3582 4
 x3584 write x3583 2
 x3585 text "val"
 x3586 puts x3584 x3585
-x3587 mov 9560
+x3587 mov 8343
 x3588 call putratio x3586 x3587
 x3589 write x3588 2
 x3590 text "x"
@@ -3574,14 +3574,14 @@ x3617 text "fill"
 x3618 puts x3616 x3617
 x3619 write x3618 12
 x3620 write x3619 1
-x3621 write x3620 62
+x3621 write x3620 61
 x3622 call close x3621 
 x3623 call open x3622 6
 x3624 write x3623 4
 x3625 write x3624 2
 x3626 text "val"
 x3627 puts x3625 x3626
-x3628 mov 14464
+x3628 mov 12622
 x3629 call putratio x3627 x3628
 x3630 write x3629 2
 x3631 text "x"
@@ -3622,7 +3622,7 @@ x3665 write x3664 4
 x3666 write x3665 2
 x3667 text "val"
 x3668 puts x3666 x3667
-x3669 mov 17362
+x3669 mov 15151
 x3670 call putratio x3668 x3669
 x3671 write x3670 2
 x3672 text "x"
@@ -3656,14 +3656,14 @@ x3699 text "fill"
 x3700 puts x3698 x3699
 x3701 write x3700 12
 x3702 write x3701 1
-x3703 write x3702 70
+x3703 write x3702 69
 x3704 call close x3703 
 x3705 call open x3704 6
 x3706 write x3705 4
 x3707 write x3706 2
 x3708 text "val"
 x3709 puts x3707 x3708
-x3710 mov 27816
+x3710 mov 24275
 x3711 call putratio x3709 x3710
 x3712 write x3711 2
 x3713 text "x"
@@ -3697,14 +3697,14 @@ x3740 text "fill"
 x3741 puts x3739 x3740
 x3742 write x3741 12
 x3743 write x3742 1
-x3744 write x3743 71
+x3744 write x3743 70
 x3745 call close x3744 
 x3746 call open x3745 6
 x3747 write x3746 4
 x3748 write x3747 2
 x3749 text "val"
 x3750 puts x3748 x3749
-x3751 mov 30376
+x3751 mov 26508
 x3752 call putratio x3750 x3751
 x3753 write x3752 2
 x3754 text "x"
@@ -3745,7 +3745,7 @@ x3788 write x3787 4
 x3789 write x3788 2
 x3790 text "val"
 x3791 puts x3789 x3790
-x3792 mov 47540
+x3792 mov 41487
 x3793 call putratio x3791 x3792
 x3794 write x3793 2
 x3795 text "x"
@@ -3786,7 +3786,7 @@ x3829 write x3828 4
 x3830 write x3829 2
 x3831 text "val"
 x3832 puts x3830 x3831
-x3833 mov 86893
+x3833 mov 75829
 x3834 call putratio x3832 x3833
 x3835 write x3834 2
 x3836 text "x"
@@ -3827,7 +3827,7 @@ x3870 write x3869 4
 x3871 write x3870 2
 x3872 text "val"
 x3873 puts x3871 x3872
-x3874 mov 352449
+x3874 mov 307574
 x3875 call putratio x3873 x3874
 x3876 write x3875 2
 x3877 text "x"
@@ -3841,7 +3841,7 @@ x3884 write x3883 2
 x3885 text "cap"
 x3886 puts x3884 x3885
 x3887 write x3886 2
-x3888 text "Zig, C, Rust, Odin, C++, D, Crystal, V, and Nim compile to the same class of machine code A0 does; the rest pay a runtime, a JIT, or an interpreter. Numbers, toolchains, and iteration tiers are in results/exec-benchmark.json."
+x3888 text "A0 here is machine code from A0's own AArch64 code generator, no C compiler in between. Numbers, toolchains, and iteration tiers are in results/exec-benchmark.json."
 x3889 puts x3887 x3888
 x3890 call close x3889 
 x3891 call close x3890 
@@ -3867,7 +3867,7 @@ x3904 call close x3903
 x3905 call open x3904 2
 x3906 call open x3905 16
 x3907 write x3906 2
-x3908 text "174x faster than Python"
+x3908 text "152x faster than Python"
 x3909 puts x3907 x3908
 x3910 call close x3909 
 x3911 write x3910 2
@@ -3875,7 +3875,7 @@ x3912 text ", "
 x3913 puts x3911 x3912
 x3914 call open x3913 16
 x3915 write x3914 2
-x3916 text "8x faster than JavaScript"
+x3916 text "7x faster than JavaScript"
 x3917 puts x3915 x3916
 x3918 call close x3917 
 x3919 write x3918 2
@@ -3961,7 +3961,7 @@ x3995 write x3994 4
 x3996 write x3995 2
 x3997 text "bars"
 x3998 puts x3996 x3997
-x3999 mov 477
+x3999 mov 475
 x4000 mov 3529
 x4001 mov 66255
 x4002 call max3 x3999 x4000 x4001
@@ -4049,7 +4049,7 @@ x4083 write x4082 4
 x4084 write x4083 2
 x4085 text "bars"
 x4086 puts x4084 x4085
-x4087 mov 318
+x4087 mov 500
 x4088 mov 2576
 x4089 mov 56227
 x4090 call max3 x4087 x4088 x4089
@@ -4137,7 +4137,7 @@ x4171 write x4170 4
 x4172 write x4171 2
 x4173 text "bars"
 x4174 puts x4172 x4173
-x4175 mov 477
+x4175 mov 545
 x4176 mov 3385
 x4177 mov 67120
 x4178 call max3 x4175 x4176 x4177
@@ -4313,7 +4313,7 @@ x4347 write x4346 4
 x4348 write x4347 2
 x4349 text "bars"
 x4350 puts x4348 x4349
-x4351 mov 160
+x4351 mov 161
 x4352 mov 1225
 x4353 mov 26388
 x4354 call max3 x4351 x4352 x4353
@@ -4401,7 +4401,7 @@ x4435 write x4434 4
 x4436 write x4435 2
 x4437 text "bars"
 x4438 puts x4436 x4437
-x4439 mov 160
+x4439 mov 161
 x4440 mov 1205
 x4441 mov 26508
 x4442 call max3 x4439 x4440 x4441
@@ -4489,7 +4489,7 @@ x4523 write x4522 4
 x4524 write x4523 2
 x4525 text "bars"
 x4526 puts x4524 x4525
-x4527 mov 318
+x4527 mov 336
 x4528 mov 3078
 x4529 mov 66222
 x4530 call max3 x4527 x4528 x4529
@@ -4577,7 +4577,7 @@ x4611 write x4610 4
 x4612 write x4611 2
 x4613 text "bars"
 x4614 puts x4612 x4613
-x4615 mov 319
+x4615 mov 343
 x4616 mov 3055
 x4617 mov 53415
 x4618 call max3 x4615 x4616 x4617
@@ -4665,7 +4665,7 @@ x4699 write x4698 4
 x4700 write x4699 2
 x4701 text "bars"
 x4702 puts x4700 x4701
-x4703 mov 318
+x4703 mov 427
 x4704 mov 10119
 x4705 mov 107006
 x4706 call max3 x4703 x4704 x4705
@@ -4753,7 +4753,7 @@ x4787 write x4786 4
 x4788 write x4787 2
 x4789 text "bars"
 x4790 puts x4788 x4789
-x4791 mov 7950
+x4791 mov 11245
 x4792 mov 12046
 x4793 mov 988888
 x4794 call max3 x4791 x4792 x4793
@@ -5807,7 +5807,7 @@ x5832 write x5831 2
 x5833 text "cap"
 x5834 puts x5832 x5833
 x5835 write x5834 2
-x5836 text "One process launch, one iteration."
+x5836 text "One process launch, one iteration. The A0 binary here is the C-path build; the direct AArch64 binary's startup is not yet measured."
 x5837 puts x5835 x5836
 x5838 call close x5837 
 x5839 call close x5838 
