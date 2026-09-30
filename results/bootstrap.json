@@ -1,0 +1,3836 @@
+{
+  "generatedAt": "2026-09-30T16:20:07.377Z",
+  "stage": "Self-hosting stage 6 (bootstrap), step 1: the A0 C emitter pipeline as a native binary (a0c-stage1)",
+  "stage1": {
+    "entry": "emitcio (compiler/emit_c.a0 linked with check.a0, parse.a0, lex.a0)",
+    "method": "TypeScript C backend (compile(program, 'c', { ioInputCapacity: 520, ioOutputCapacity: 1048576 })) plus a stdin/stdout main, clang -std=c11 -O2",
+    "functions": 215,
+    "cBytes": 920279,
+    "buildMs": 7113,
+    "clang": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+  },
+  "stage2": {
+    "method": "Each source (at most 512 bytes) goes to a0c-stage1; the small programs, kernels.a0 and four ill-typed programs also go to emitcio in the reference interpreter, and the outputs must be byte-identical. Accepted sources: the stage 1 C and the TypeScript C module are each compiled by clang (-std=c11 -O1 -Wall -Wextra -Werror, UBSan) with the standard driver of tools/verify.ts and must give the independent oracle result on every case of tools/corpus.ts generateCases. Rejected sources must write no C; ill-typed ones must give the reference checker code. Programs without a driver-callable function are compiled with -Werror only.",
+    "sources": 312,
+    "fed": 161,
+    "passedSources": 36,
+    "compileOnly": 68,
+    "comparedWithInterpreter": 14,
+    "rejectedAsExpected": 57,
+    "tooLarge": 151,
+    "failed": 0,
+    "cases": 6816,
+    "emission": {
+      "sources": 14,
+      "stage1Ms": 187,
+      "interpreterMs": 4279,
+      "speedup": 22.9,
+      "note": "stage 1 time includes one process spawn per source"
+    }
+  },
+  "fixedPoint": {
+    "emitterFiles": {
+      "emit_c.a0": 30049,
+      "check.a0": 26104,
+      "parse.a0": 56304,
+      "lex.a0": 8380
+    },
+    "linkedFormattedBytes": 164216,
+    "sourceLimitBytes": 512,
+    "functions": 215,
+    "fnsWords": 1505,
+    "fnsCapacity": 1024,
+    "nodes": 5657,
+    "nodesWords": 33942,
+    "nodesCapacity": 4096,
+    "argWords": 65468,
+    "argsCapacity": 8192,
+    "distinctNameBytes": 10007,
+    "poolCapacity": 512,
+    "symWords": 5120,
+    "symCapacity": 512,
+    "largestFunctionNodes": 533,
+    "ownClosuresWithinLimit": 113,
+    "ownClosuresPassed": 81,
+    "ownClosuresWithCases": 19,
+    "ownClosures": 215,
+    "use": "emitcio has no `use` resolution: the input is one self-contained source, so emit_c.a0 must be fed pre-linked"
+  },
+  "sources": [
+    {
+      "label": "clamp",
+      "group": "small",
+      "bytes": 96,
+      "code": 0,
+      "stage1Ms": 100.6,
+      "interpreterMs": 447,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 1965,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 314.66449999999986,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 266.594916,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "sq",
+      "group": "small",
+      "bytes": 39,
+      "code": 0,
+      "stage1Ms": 5.8,
+      "interpreterMs": 118,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1820,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 266.9129159999993,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 282.1587500000005,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "retop",
+      "group": "small",
+      "bytes": 38,
+      "code": 0,
+      "stage1Ms": 8.2,
+      "interpreterMs": 111,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 199,
+      "cBytes": 1832,
+      "stage1C": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 294.86675000000105,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 275.5025420000002,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "calls",
+      "group": "small",
+      "bytes": 266,
+      "code": 0,
+      "stage1Ms": 5.8,
+      "interpreterMs": 923,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 5,
+      "cases": 689,
+      "cBytes": 2460,
+      "stage1C": {
+        "status": "passed",
+        "cases": 689,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 282.8823330000014,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 689,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 248.55291600000055,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "operand-type",
+      "group": "ill-typed",
+      "bytes": 38,
+      "code": 3,
+      "stage1Ms": 4.4,
+      "interpreterMs": 95,
+      "sameAsInterpreter": true,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "mixed-bool-u32",
+      "group": "ill-typed",
+      "bytes": 44,
+      "code": 3,
+      "stage1Ms": 5.1,
+      "interpreterMs": 131,
+      "sameAsInterpreter": true,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "eq-mixed",
+      "group": "ill-typed",
+      "bytes": 43,
+      "code": 3,
+      "stage1Ms": 7.7,
+      "interpreterMs": 98,
+      "sameAsInterpreter": true,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "arity",
+      "group": "ill-typed",
+      "bytes": 35,
+      "code": 2,
+      "stage1Ms": 7.1,
+      "interpreterMs": 82,
+      "sameAsInterpreter": true,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "param-range",
+      "group": "ill-typed",
+      "bytes": 38,
+      "code": 3,
+      "stage1Ms": 5.1,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "fold-state",
+      "group": "ill-typed",
+      "bytes": 84,
+      "code": 3,
+      "stage1Ms": 5.2,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "fold-count",
+      "group": "ill-typed",
+      "bytes": 84,
+      "code": 3,
+      "stage1Ms": 4.7,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "loop-predicate",
+      "group": "ill-typed",
+      "bytes": 120,
+      "code": 3,
+      "stage1Ms": 5,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "iterations",
+      "group": "ill-typed",
+      "bytes": 141,
+      "code": 2,
+      "stage1Ms": 4.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "call-arity",
+      "group": "ill-typed",
+      "bytes": 68,
+      "code": 2,
+      "stage1Ms": 5.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "io-twice",
+      "group": "ill-typed",
+      "bytes": 50,
+      "code": 2,
+      "stage1Ms": 4.6,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "io-consumed-ret",
+      "group": "ill-typed",
+      "bytes": 38,
+      "code": 2,
+      "stage1Ms": 4.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "io-two-params",
+      "group": "ill-typed",
+      "bytes": 28,
+      "code": 2,
+      "stage1Ms": 8,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "io-in-array",
+      "group": "ill-typed",
+      "bytes": 34,
+      "code": 3,
+      "stage1Ms": 4.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "select-tokens",
+      "group": "ill-typed",
+      "bytes": 73,
+      "code": 3,
+      "stage1Ms": 4.6,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "rec-two-tokens",
+      "group": "ill-typed",
+      "bytes": 67,
+      "code": 3,
+      "stage1Ms": 6,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "ret-type",
+      "group": "ill-typed",
+      "bytes": 28,
+      "code": 3,
+      "stage1Ms": 4.9,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "unknown-node",
+      "group": "ill-typed",
+      "bytes": 36,
+      "code": 2,
+      "stage1Ms": 4.3,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "array-index",
+      "group": "ill-typed",
+      "bytes": 45,
+      "code": 3,
+      "stage1Ms": 4.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "get-scalar",
+      "group": "ill-typed",
+      "bytes": 37,
+      "code": 3,
+      "stage1Ms": 5.3,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "field-range",
+      "group": "ill-typed",
+      "bytes": 43,
+      "code": 2,
+      "stage1Ms": 3.6,
+      "outcome": "rejected",
+      "detail": "diagnostic 2 (reference checker 2)"
+    },
+    {
+      "label": "put-field-type",
+      "group": "ill-typed",
+      "bytes": 53,
+      "code": 3,
+      "stage1Ms": 3.7,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "puts-scalar",
+      "group": "ill-typed",
+      "bytes": 41,
+      "code": 3,
+      "stage1Ms": 6.1,
+      "outcome": "rejected",
+      "detail": "diagnostic 3 (reference checker 3)"
+    },
+    {
+      "label": "aggregate-limit",
+      "group": "ill-typed",
+      "bytes": 44,
+      "code": 4,
+      "stage1Ms": 4.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 4 (reference checker 4)"
+    },
+    {
+      "label": "corpus/g0",
+      "group": "corpus",
+      "bytes": 649,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g1",
+      "group": "corpus",
+      "bytes": 1315,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g2",
+      "group": "corpus",
+      "bytes": 1165,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g3",
+      "group": "corpus",
+      "bytes": 3372,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g4",
+      "group": "corpus",
+      "bytes": 563,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g5",
+      "group": "corpus",
+      "bytes": 795,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g6",
+      "group": "corpus",
+      "bytes": 1128,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g7",
+      "group": "corpus",
+      "bytes": 2073,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g8",
+      "group": "corpus",
+      "bytes": 1335,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g9",
+      "group": "corpus",
+      "bytes": 951,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g10",
+      "group": "corpus",
+      "bytes": 2803,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g11",
+      "group": "corpus",
+      "bytes": 2055,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g12",
+      "group": "corpus",
+      "bytes": 1997,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g13",
+      "group": "corpus",
+      "bytes": 1938,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g14",
+      "group": "corpus",
+      "bytes": 816,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g15",
+      "group": "corpus",
+      "bytes": 860,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g16",
+      "group": "corpus",
+      "bytes": 1886,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g17",
+      "group": "corpus",
+      "bytes": 2227,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g18",
+      "group": "corpus",
+      "bytes": 2100,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g19",
+      "group": "corpus",
+      "bytes": 569,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g20",
+      "group": "corpus",
+      "bytes": 398,
+      "code": 0,
+      "stage1Ms": 6.3,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 2972,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 286.1361249999991,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 315.77499999999964,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "corpus/g21",
+      "group": "corpus",
+      "bytes": 1166,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g22",
+      "group": "corpus",
+      "bytes": 917,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g23",
+      "group": "corpus",
+      "bytes": 418,
+      "code": 1,
+      "stage1Ms": 7.1,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 1)"
+    },
+    {
+      "label": "corpus/g24",
+      "group": "corpus",
+      "bytes": 763,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g25",
+      "group": "corpus",
+      "bytes": 486,
+      "code": 0,
+      "stage1Ms": 7.7,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 3083,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 362.0603339999998,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 272.55954100000054,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "corpus/g26",
+      "group": "corpus",
+      "bytes": 904,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g27",
+      "group": "corpus",
+      "bytes": 949,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g28",
+      "group": "corpus",
+      "bytes": 1146,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g29",
+      "group": "corpus",
+      "bytes": 1013,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g30",
+      "group": "corpus",
+      "bytes": 4065,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g31",
+      "group": "corpus",
+      "bytes": 714,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g32",
+      "group": "corpus",
+      "bytes": 537,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g33",
+      "group": "corpus",
+      "bytes": 1730,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g34",
+      "group": "corpus",
+      "bytes": 2209,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g35",
+      "group": "corpus",
+      "bytes": 421,
+      "code": 0,
+      "stage1Ms": 10.9,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 129,
+      "cBytes": 2944,
+      "stage1C": {
+        "status": "passed",
+        "cases": 129,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 295.23241600000074,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 129,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 423.37724999999955,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "corpus/g36",
+      "group": "corpus",
+      "bytes": 899,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g37",
+      "group": "corpus",
+      "bytes": 1333,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g38",
+      "group": "corpus",
+      "bytes": 716,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g39",
+      "group": "corpus",
+      "bytes": 3684,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g40",
+      "group": "corpus",
+      "bytes": 3742,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g41",
+      "group": "corpus",
+      "bytes": 871,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g42",
+      "group": "corpus",
+      "bytes": 1784,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g43",
+      "group": "corpus",
+      "bytes": 7961,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g44",
+      "group": "corpus",
+      "bytes": 1289,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g45",
+      "group": "corpus",
+      "bytes": 800,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g46",
+      "group": "corpus",
+      "bytes": 1907,
+      "outcome": "too-large"
+    },
+    {
+      "label": "corpus/g47",
+      "group": "corpus",
+      "bytes": 884,
+      "outcome": "too-large"
+    },
+    {
+      "label": "kernels.a0",
+      "group": "kernels.a0",
+      "bytes": 386,
+      "code": 0,
+      "stage1Ms": 7.6,
+      "interpreterMs": 1363,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 5,
+      "cases": 763,
+      "cBytes": 2513,
+      "stage1C": {
+        "status": "passed",
+        "cases": 763,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 279.0388750000002,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 763,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 252.45079199999964,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "kernels.a0/affine",
+      "group": "kernels.a0",
+      "bytes": 62,
+      "code": 0,
+      "stage1Ms": 4.3,
+      "interpreterMs": 148,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 1892,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 251.61854200000016,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 259.0942500000001,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "kernels.a0/clamp_max",
+      "group": "kernels.a0",
+      "bytes": 66,
+      "code": 0,
+      "stage1Ms": 8.7,
+      "interpreterMs": 173,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 199,
+      "cBytes": 1877,
+      "stage1C": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 197.57854099999895,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 224.55204199999935,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "kernels.a0/rotl",
+      "group": "kernels.a0",
+      "bytes": 77,
+      "code": 0,
+      "stage1Ms": 6.1,
+      "interpreterMs": 235,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 199,
+      "cBytes": 1961,
+      "stage1C": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 258.14879199999996,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 262.5727079999997,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "kernels.a0/is_even",
+      "group": "kernels.a0",
+      "bytes": 53,
+      "code": 0,
+      "stage1Ms": 9.8,
+      "interpreterMs": 203,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1858,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 258.3461669999997,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 260.588749999999,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "kernels.a0/parity_select",
+      "group": "kernels.a0",
+      "bytes": 65,
+      "code": 0,
+      "stage1Ms": 5.9,
+      "interpreterMs": 152,
+      "sameAsInterpreter": true,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 120,
+      "cBytes": 1853,
+      "stage1C": {
+        "status": "passed",
+        "cases": 120,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 279.74912499999846,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 120,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 274.52541700000074,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "life.a0",
+      "group": "life.a0",
+      "bytes": 4129,
+      "outcome": "too-large"
+    },
+    {
+      "label": "life.a0/nb",
+      "group": "life.a0",
+      "bytes": 83,
+      "code": 0,
+      "stage1Ms": 5.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1967,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "life.a0/count",
+      "group": "life.a0",
+      "bytes": 409,
+      "code": 0,
+      "stage1Ms": 9.6,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2887,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "life.a0/cell",
+      "group": "life.a0",
+      "bytes": 694,
+      "outcome": "too-large"
+    },
+    {
+      "label": "life.a0/zero",
+      "group": "life.a0",
+      "bytes": 98,
+      "code": 0,
+      "stage1Ms": 12.2,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1887,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "life.a0/step",
+      "group": "life.a0",
+      "bytes": 863,
+      "outcome": "too-large"
+    },
+    {
+      "label": "life.a0/bitstep",
+      "group": "life.a0",
+      "bytes": 77,
+      "code": 0,
+      "stage1Ms": 7.6,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 1935,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 242.22033299999748,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 316.35825000000114,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "life.a0/popcount",
+      "group": "life.a0",
+      "bytes": 134,
+      "code": 0,
+      "stage1Ms": 8,
+      "outcome": "passed",
+      "functions": 2,
+      "cases": 245,
+      "cBytes": 2092,
+      "stage1C": {
+        "status": "passed",
+        "cases": 245,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 270.09012500000244,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 245,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 319.437791999997,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "life.a0/rowpop",
+      "group": "life.a0",
+      "bytes": 222,
+      "code": 0,
+      "stage1Ms": 8.9,
+      "outcome": "passed",
+      "functions": 3,
+      "cases": 245,
+      "cBytes": 2332,
+      "stage1C": {
+        "status": "passed",
+        "cases": 245,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 344.6352909999987,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 245,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 313.8218749999978,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "life.a0/population",
+      "group": "life.a0",
+      "bytes": 283,
+      "code": 0,
+      "stage1Ms": 23.6,
+      "outcome": "passed",
+      "functions": 4,
+      "cases": 245,
+      "cBytes": 2486,
+      "stage1C": {
+        "status": "passed",
+        "cases": 245,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 383.50716699999975,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 245,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 319.05804100000023,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "life.a0/readrow",
+      "group": "life.a0",
+      "bytes": 106,
+      "code": 0,
+      "stage1Ms": 20.1,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2195,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "life.a0/readgrid",
+      "group": "life.a0",
+      "bytes": 1766,
+      "outcome": "too-large"
+    },
+    {
+      "label": "life.a0/writerow",
+      "group": "life.a0",
+      "bytes": 71,
+      "code": 0,
+      "stage1Ms": 8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1930,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "life.a0/writegrid",
+      "group": "life.a0",
+      "bytes": 136,
+      "code": 0,
+      "stage1Ms": 8.1,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2095,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "life.a0/life",
+      "group": "life.a0",
+      "bytes": 3477,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/isalpha",
+      "group": "compiler",
+      "bytes": 92,
+      "code": 0,
+      "stage1Ms": 6.8,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1962,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 258.34208299999955,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 376.2220410000009,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/isdigit",
+      "group": "compiler",
+      "bytes": 69,
+      "code": 0,
+      "stage1Ms": 8.6,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1889,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 331.86737500000163,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 220.88295800000196,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/isword",
+      "group": "compiler",
+      "bytes": 240,
+      "code": 0,
+      "stage1Ms": 7.9,
+      "outcome": "passed",
+      "functions": 3,
+      "cases": 354,
+      "cBytes": 2275,
+      "stage1C": {
+        "status": "passed",
+        "cases": 354,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 397.28258300000016,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 354,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 302.0643330000021,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/isspace",
+      "group": "compiler",
+      "bytes": 89,
+      "code": 0,
+      "stage1Ms": 11.5,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1960,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 325.6882080000032,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 385.7625420000004,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/lexstep",
+      "group": "compiler",
+      "bytes": 1577,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/lexbyte",
+      "group": "compiler",
+      "bytes": 2144,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/lexpage",
+      "group": "compiler",
+      "bytes": 2976,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/tokput",
+      "group": "compiler",
+      "bytes": 149,
+      "code": 1,
+      "stage1Ms": 6.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/zpage",
+      "group": "compiler",
+      "bytes": 292,
+      "code": 0,
+      "stage1Ms": 7.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1890,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/zsrc",
+      "group": "compiler",
+      "bytes": 601,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/ztok",
+      "group": "compiler",
+      "bytes": 1113,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/lexsrc",
+      "group": "compiler",
+      "bytes": 4758,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/rbyte",
+      "group": "compiler",
+      "bytes": 134,
+      "code": 0,
+      "stage1Ms": 6.7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2244,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/readpage",
+      "group": "compiler",
+      "bytes": 390,
+      "code": 1,
+      "stage1Ms": 10.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/readsrc",
+      "group": "compiler",
+      "bytes": 1242,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/wword",
+      "group": "compiler",
+      "bytes": 65,
+      "code": 0,
+      "stage1Ms": 5.3,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1929,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/wtok",
+      "group": "compiler",
+      "bytes": 222,
+      "code": 1,
+      "stage1Ms": 9.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/lexio",
+      "group": "compiler",
+      "bytes": 6139,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/z16",
+      "group": "compiler",
+      "bytes": 375,
+      "code": 1,
+      "stage1Ms": 9.7,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z32",
+      "group": "compiler",
+      "bytes": 407,
+      "code": 1,
+      "stage1Ms": 8.1,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z33",
+      "group": "compiler",
+      "bytes": 409,
+      "code": 1,
+      "stage1Ms": 8.7,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z45",
+      "group": "compiler",
+      "bytes": 433,
+      "code": 1,
+      "stage1Ms": 9.8,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z64",
+      "group": "compiler",
+      "bytes": 471,
+      "code": 1,
+      "stage1Ms": 11.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z65",
+      "group": "compiler",
+      "bytes": 473,
+      "code": 1,
+      "stage1Ms": 11.9,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z129",
+      "group": "compiler",
+      "bytes": 603,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/z256",
+      "group": "compiler",
+      "bytes": 857,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/z384",
+      "group": "compiler",
+      "bytes": 803,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/zty",
+      "group": "compiler",
+      "bytes": 983,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/kwcode",
+      "group": "compiler",
+      "bytes": 265,
+      "code": 0,
+      "stage1Ms": 8.4,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 2378,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 293.28641699999935,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 265.0695830000004,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/opcode",
+      "group": "compiler",
+      "bytes": 1159,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/scanb",
+      "group": "compiler",
+      "bytes": 1312,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/scanseg",
+      "group": "compiler",
+      "bytes": 1651,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cmpb",
+      "group": "compiler",
+      "bytes": 283,
+      "code": 0,
+      "stage1Ms": 8.9,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2564,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cmpseg",
+      "group": "compiler",
+      "bytes": 632,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/prstep",
+      "group": "compiler",
+      "bytes": 1197,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/prok",
+      "group": "compiler",
+      "bytes": 113,
+      "code": 1,
+      "stage1Ms": 6.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/p1tok",
+      "group": "compiler",
+      "bytes": 9635,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/p1page",
+      "group": "compiler",
+      "bytes": 11591,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/pass1",
+      "group": "compiler",
+      "bytes": 12948,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/pcopyb",
+      "group": "compiler",
+      "bytes": 245,
+      "code": 1,
+      "stage1Ms": 6,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/poolseg",
+      "group": "compiler",
+      "bytes": 790,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/poolsym",
+      "group": "compiler",
+      "bytes": 1465,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/poolpage",
+      "group": "compiler",
+      "bytes": 1748,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/pass2",
+      "group": "compiler",
+      "bytes": 2620,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/farst",
+      "group": "compiler",
+      "bytes": 248,
+      "code": 0,
+      "stage1Ms": 7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2497,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/farpage",
+      "group": "compiler",
+      "bytes": 428,
+      "code": 1,
+      "stage1Ms": 7.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/internarr",
+      "group": "compiler",
+      "bytes": 955,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/grpb",
+      "group": "compiler",
+      "bytes": 714,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/gstep",
+      "group": "compiler",
+      "bytes": 1122,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/arrseg",
+      "group": "compiler",
+      "bytes": 2529,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/arrword",
+      "group": "compiler",
+      "bytes": 3126,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/arrone",
+      "group": "compiler",
+      "bytes": 3284,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/frst",
+      "group": "compiler",
+      "bytes": 274,
+      "code": 0,
+      "stage1Ms": 9,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2592,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/frpage",
+      "group": "compiler",
+      "bytes": 486,
+      "code": 1,
+      "stage1Ms": 9.3,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/fleq",
+      "group": "compiler",
+      "bytes": 200,
+      "code": 1,
+      "stage1Ms": 8.6,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/rsstep",
+      "group": "compiler",
+      "bytes": 1134,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/rsok",
+      "group": "compiler",
+      "bytes": 126,
+      "code": 1,
+      "stage1Ms": 11.9,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/recone",
+      "group": "compiler",
+      "bytes": 1441,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/frcopy",
+      "group": "compiler",
+      "bytes": 289,
+      "code": 1,
+      "stage1Ms": 12.2,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/p3tok",
+      "group": "compiler",
+      "bytes": 10603,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/p3chunk",
+      "group": "compiler",
+      "bytes": 11258,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/pass3",
+      "group": "compiler",
+      "bytes": 13747,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/p4hdr",
+      "group": "compiler",
+      "bytes": 1440,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/pass4",
+      "group": "compiler",
+      "bytes": 2197,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/txtb",
+      "group": "compiler",
+      "bytes": 586,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/txtseg",
+      "group": "compiler",
+      "bytes": 1224,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/p5tok",
+      "group": "compiler",
+      "bytes": 7579,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/strfind",
+      "group": "compiler",
+      "bytes": 149,
+      "code": 0,
+      "stage1Ms": 20.4,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2147,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/p5seg",
+      "group": "compiler",
+      "bytes": 11688,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/p5more",
+      "group": "compiler",
+      "bytes": 234,
+      "code": 1,
+      "stage1Ms": 7.3,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/pass5",
+      "group": "compiler",
+      "bytes": 13686,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/wstep384",
+      "group": "compiler",
+      "bytes": 68,
+      "code": 0,
+      "stage1Ms": 7.3,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1932,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/wty",
+      "group": "compiler",
+      "bytes": 226,
+      "code": 1,
+      "stage1Ms": 12.3,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w16",
+      "group": "compiler",
+      "bytes": 220,
+      "code": 1,
+      "stage1Ms": 6.7,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w32",
+      "group": "compiler",
+      "bytes": 220,
+      "code": 1,
+      "stage1Ms": 7.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w45",
+      "group": "compiler",
+      "bytes": 220,
+      "code": 1,
+      "stage1Ms": 5.1,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w65",
+      "group": "compiler",
+      "bytes": 220,
+      "code": 1,
+      "stage1Ms": 5.9,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w128",
+      "group": "compiler",
+      "bytes": 222,
+      "code": 1,
+      "stage1Ms": 5,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w129",
+      "group": "compiler",
+      "bytes": 222,
+      "code": 1,
+      "stage1Ms": 5.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/w256",
+      "group": "compiler",
+      "bytes": 222,
+      "code": 1,
+      "stage1Ms": 8.1,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/wsymst",
+      "group": "compiler",
+      "bytes": 162,
+      "code": 0,
+      "stage1Ms": 6.7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2215,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/wsympg",
+      "group": "compiler",
+      "bytes": 333,
+      "code": 1,
+      "stage1Ms": 5.5,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/parseio",
+      "group": "compiler",
+      "bytes": 51659,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1isalpha",
+      "group": "compiler",
+      "bytes": 94,
+      "code": 0,
+      "stage1Ms": 5.5,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1964,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 231.67212500000096,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 449.8107909999999,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1isdigit",
+      "group": "compiler",
+      "bytes": 71,
+      "code": 0,
+      "stage1Ms": 10.2,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1891,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 433.0714169999992,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 287.43354199999885,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1isword",
+      "group": "compiler",
+      "bytes": 250,
+      "code": 0,
+      "stage1Ms": 8.5,
+      "outcome": "passed",
+      "functions": 3,
+      "cases": 354,
+      "cBytes": 2285,
+      "stage1C": {
+        "status": "passed",
+        "cases": 354,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 236.14537499999642,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 354,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 254.6756250000035,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1isspace",
+      "group": "compiler",
+      "bytes": 91,
+      "code": 0,
+      "stage1Ms": 10.4,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 1962,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 231.281332999999,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 290.33650000000125,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1emit",
+      "group": "compiler",
+      "bytes": 122,
+      "code": 0,
+      "stage1Ms": 24.4,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2096,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1lexstep",
+      "group": "compiler",
+      "bytes": 2627,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/zeros512",
+      "group": "compiler",
+      "bytes": 1063,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/lex",
+      "group": "compiler",
+      "bytes": 4040,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/readbyte",
+      "group": "compiler",
+      "bytes": 137,
+      "code": 0,
+      "stage1Ms": 17.2,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2247,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/wstep",
+      "group": "compiler",
+      "bytes": 65,
+      "code": 0,
+      "stage1Ms": 6.3,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1929,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/zeros256",
+      "group": "compiler",
+      "bytes": 551,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/tokat",
+      "group": "compiler",
+      "bytes": 136,
+      "code": 0,
+      "stage1Ms": 7.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2204,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1kindat",
+      "group": "compiler",
+      "bytes": 99,
+      "code": 0,
+      "stage1Ms": 7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2012,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1keystep",
+      "group": "compiler",
+      "bytes": 267,
+      "code": 0,
+      "stage1Ms": 8.1,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2489,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1wordkey",
+      "group": "compiler",
+      "bytes": 396,
+      "code": 0,
+      "stage1Ms": 9.1,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2827,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1kwcode",
+      "group": "compiler",
+      "bytes": 267,
+      "code": 0,
+      "stage1Ms": 7.4,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 2380,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 262.179791999999,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 223.42887500000143,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1opcode",
+      "group": "compiler",
+      "bytes": 1161,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1digstep",
+      "group": "compiler",
+      "bytes": 207,
+      "code": 0,
+      "stage1Ms": 8.2,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2373,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1digits",
+      "group": "compiler",
+      "bytes": 359,
+      "code": 0,
+      "stage1Ms": 10.3,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2774,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1paramof",
+      "group": "compiler",
+      "bytes": 564,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1arrlen",
+      "group": "compiler",
+      "bytes": 729,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1beqstep",
+      "group": "compiler",
+      "bytes": 134,
+      "code": 0,
+      "stage1Ms": 22,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2117,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1byteseq",
+      "group": "compiler",
+      "bytes": 231,
+      "code": 0,
+      "stage1Ms": 8,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2326,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1fsymstep",
+      "group": "compiler",
+      "bytes": 427,
+      "code": 0,
+      "stage1Ms": 7.1,
+      "outcome": "compiled",
+      "functions": 3,
+      "cases": 0,
+      "cBytes": 2785,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1findsym",
+      "group": "compiler",
+      "bytes": 533,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1cpstep",
+      "group": "compiler",
+      "bytes": 109,
+      "code": 0,
+      "stage1Ms": 7.9,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2041,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1internstep",
+      "group": "compiler",
+      "bytes": 1476,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1usesstep",
+      "group": "compiler",
+      "bytes": 1922,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1usesok",
+      "group": "compiler",
+      "bytes": 115,
+      "code": 0,
+      "stage1Ms": 7.4,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2040,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1ffnstep",
+      "group": "compiler",
+      "bytes": 101,
+      "code": 0,
+      "stage1Ms": 7.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2026,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1findfn",
+      "group": "compiler",
+      "bytes": 176,
+      "code": 0,
+      "stage1Ms": 6.1,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2210,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1lsstep",
+      "group": "compiler",
+      "bytes": 92,
+      "code": 0,
+      "stage1Ms": 7.7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1979,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1lastsent",
+      "group": "compiler",
+      "bytes": 160,
+      "code": 0,
+      "stage1Ms": 6.3,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2147,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1cpstk",
+      "group": "compiler",
+      "bytes": 108,
+      "code": 0,
+      "stage1Ms": 5.1,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2082,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1farstep",
+      "group": "compiler",
+      "bytes": 154,
+      "code": 0,
+      "stage1Ms": 6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2182,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1findarr",
+      "group": "compiler",
+      "bytes": 230,
+      "code": 0,
+      "stage1Ms": 8.4,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2367,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1fleqstep",
+      "group": "compiler",
+      "bytes": 127,
+      "code": 0,
+      "stage1Ms": 7.2,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2109,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1frcstep",
+      "group": "compiler",
+      "bytes": 374,
+      "code": 0,
+      "stage1Ms": 7.8,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2777,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1findrec",
+      "group": "compiler",
+      "bytes": 468,
+      "code": 0,
+      "stage1Ms": 9,
+      "outcome": "compiled",
+      "functions": 3,
+      "cases": 0,
+      "cBytes": 2992,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1hdrstep",
+      "group": "compiler",
+      "bytes": 7067,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1hdrok",
+      "group": "compiler",
+      "bytes": 171,
+      "code": 0,
+      "stage1Ms": 6.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2220,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1fndstep",
+      "group": "compiler",
+      "bytes": 116,
+      "code": 0,
+      "stage1Ms": 7.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2081,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1findnode",
+      "group": "compiler",
+      "bytes": 200,
+      "code": 0,
+      "stage1Ms": 7.5,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2284,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1txtstep",
+      "group": "compiler",
+      "bytes": 479,
+      "code": 0,
+      "stage1Ms": 12.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2950,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1bodystep",
+      "group": "compiler",
+      "bytes": 9316,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1bodyok",
+      "group": "compiler",
+      "bytes": 147,
+      "code": 0,
+      "stage1Ms": 6.2,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2112,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1retvalpool",
+      "group": "compiler",
+      "bytes": 1200,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1basetypes",
+      "group": "compiler",
+      "bytes": 1152,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/parse",
+      "group": "compiler",
+      "bytes": 24097,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/zeros768",
+      "group": "compiler",
+      "bytes": 1575,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/zeros1024",
+      "group": "compiler",
+      "bytes": 2089,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/zeros4096",
+      "group": "compiler",
+      "bytes": 8233,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/zeros8192",
+      "group": "compiler",
+      "bytes": 16425,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1satmul",
+      "group": "compiler",
+      "bytes": 144,
+      "code": 0,
+      "stage1Ms": 7.4,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 2094,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 257.5457500000048,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 279.0279999999984,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1satadd",
+      "group": "compiler",
+      "bytes": 99,
+      "code": 0,
+      "stage1Ms": 10.8,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 1973,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 396.37416700000176,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 221.9187499999971,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1umax",
+      "group": "compiler",
+      "bytes": 63,
+      "code": 0,
+      "stage1Ms": 6,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 199,
+      "cBytes": 1874,
+      "stage1C": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 250.88558299999568,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 235.15325000000303,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1arity",
+      "group": "compiler",
+      "bytes": 372,
+      "code": 0,
+      "stage1Ms": 5.6,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 2642,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 245.40987500000483,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 263.3225420000017,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1recinfo",
+      "group": "compiler",
+      "bytes": 317,
+      "code": 0,
+      "stage1Ms": 7.5,
+      "outcome": "passed",
+      "functions": 2,
+      "cases": 127,
+      "cBytes": 2588,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 208.01695800000016,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 254.59091699999408,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1typeinfo",
+      "group": "compiler",
+      "bytes": 1007,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1infostep",
+      "group": "compiler",
+      "bytes": 1239,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1cfarstep",
+      "group": "compiler",
+      "bytes": 209,
+      "code": 0,
+      "stage1Ms": 4.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2358,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1cfindarr",
+      "group": "compiler",
+      "bytes": 294,
+      "code": 0,
+      "stage1Ms": 5,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2562,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1cfleqstep",
+      "group": "compiler",
+      "bytes": 129,
+      "code": 0,
+      "stage1Ms": 6.9,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2113,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1cfrcstep",
+      "group": "compiler",
+      "bytes": 379,
+      "code": 0,
+      "stage1Ms": 9.3,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2825,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1cfindrec",
+      "group": "compiler",
+      "bytes": 476,
+      "code": 0,
+      "stage1Ms": 9.5,
+      "outcome": "compiled",
+      "functions": 3,
+      "cases": 0,
+      "cBytes": 3042,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1opndty",
+      "group": "compiler",
+      "bytes": 255,
+      "code": 0,
+      "stage1Ms": 18.4,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2400,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1linstep",
+      "group": "compiler",
+      "bytes": 1183,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1eqargstep",
+      "group": "compiler",
+      "bytes": 509,
+      "code": 0,
+      "stage1Ms": 11.5,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 3043,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1sigstep",
+      "group": "compiler",
+      "bytes": 549,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1recstep",
+      "group": "compiler",
+      "bytes": 748,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1ioparamstep",
+      "group": "compiler",
+      "bytes": 110,
+      "code": 0,
+      "stage1Ms": 5.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2089,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1nodestep",
+      "group": "compiler",
+      "bytes": 11498,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1nodeok",
+      "group": "compiler",
+      "bytes": 187,
+      "code": 0,
+      "stage1Ms": 6.7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2306,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/v1fnstep",
+      "group": "compiler",
+      "bytes": 13268,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/v1fnok",
+      "group": "compiler",
+      "bytes": 185,
+      "code": 0,
+      "stage1Ms": 14.9,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2304,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/check",
+      "group": "compiler",
+      "bytes": 17579,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cp768",
+      "group": "compiler",
+      "bytes": 76,
+      "code": 0,
+      "stage1Ms": 6.9,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1970,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cp1024",
+      "group": "compiler",
+      "bytes": 79,
+      "code": 0,
+      "stage1Ms": 7.4,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1973,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cp4096",
+      "group": "compiler",
+      "bytes": 79,
+      "code": 0,
+      "stage1Ms": 6.4,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1973,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cp8192",
+      "group": "compiler",
+      "bytes": 79,
+      "code": 0,
+      "stage1Ms": 6.2,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1973,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/z8",
+      "group": "compiler",
+      "bytes": 357,
+      "code": 1,
+      "stage1Ms": 6.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/z24",
+      "group": "compiler",
+      "bytes": 391,
+      "code": 1,
+      "stage1Ms": 6.8,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/zl64",
+      "group": "compiler",
+      "bytes": 162,
+      "code": 0,
+      "stage1Ms": 6.5,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1887,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/satmul",
+      "group": "compiler",
+      "bytes": 142,
+      "code": 0,
+      "stage1Ms": 8.4,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 2092,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 296.68604100000084,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 247.92391599999974,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/satadd",
+      "group": "compiler",
+      "bytes": 97,
+      "code": 0,
+      "stage1Ms": 6,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 127,
+      "cBytes": 1971,
+      "stage1C": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 271.9890830000004,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 127,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 263.10833300000377,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/umax",
+      "group": "compiler",
+      "bytes": 61,
+      "code": 0,
+      "stage1Ms": 6.6,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 199,
+      "cBytes": 1872,
+      "stage1C": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 260.8409580000007,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 199,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 340.7597500000047,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/arity",
+      "group": "compiler",
+      "bytes": 370,
+      "code": 0,
+      "stage1Ms": 13.3,
+      "outcome": "passed",
+      "functions": 1,
+      "cases": 118,
+      "cBytes": 2640,
+      "stage1C": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 323.11175000000367,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 118,
+        "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 315.6411250000019,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "emit_c.a0/recinfo",
+      "group": "compiler",
+      "bytes": 457,
+      "code": 1,
+      "stage1Ms": 24.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/infostep",
+      "group": "compiler",
+      "bytes": 1523,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/argb",
+      "group": "compiler",
+      "bytes": 2121,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/argseg",
+      "group": "compiler",
+      "bytes": 3298,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/nodestep",
+      "group": "compiler",
+      "bytes": 16841,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/plstep",
+      "group": "compiler",
+      "bytes": 131,
+      "code": 1,
+      "stage1Ms": 33.7,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/ioparam",
+      "group": "compiler",
+      "bytes": 141,
+      "code": 1,
+      "stage1Ms": 6,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/fnstep",
+      "group": "compiler",
+      "bytes": 19809,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/checkir",
+      "group": "compiler",
+      "bytes": 22189,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/w24",
+      "group": "compiler",
+      "bytes": 220,
+      "code": 1,
+      "stage1Ms": 4.4,
+      "outcome": "rejected",
+      "detail": "diagnostic 1 (reference checker 0)"
+    },
+    {
+      "label": "emit_c.a0/checkio",
+      "group": "compiler",
+      "bytes": 67852,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwsb",
+      "group": "compiler",
+      "bytes": 82,
+      "code": 0,
+      "stage1Ms": 7.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1975,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cws",
+      "group": "compiler",
+      "bytes": 288,
+      "code": 0,
+      "stage1Ms": 19.9,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2596,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cws6",
+      "group": "compiler",
+      "bytes": 437,
+      "code": 0,
+      "stage1Ms": 8,
+      "outcome": "compiled",
+      "functions": 3,
+      "cases": 0,
+      "cBytes": 2966,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cws6st",
+      "group": "compiler",
+      "bytes": 528,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cws6c",
+      "group": "compiler",
+      "bytes": 639,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cpow10",
+      "group": "compiler",
+      "bytes": 101,
+      "code": 0,
+      "stage1Ms": 6.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2018,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cdecst",
+      "group": "compiler",
+      "bytes": 127,
+      "code": 0,
+      "stage1Ms": 8.1,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2166,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cwdec",
+      "group": "compiler",
+      "bytes": 716,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cdecst2",
+      "group": "compiler",
+      "bytes": 774,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwdecc",
+      "group": "compiler",
+      "bytes": 852,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwop",
+      "group": "compiler",
+      "bytes": 1841,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwopst",
+      "group": "compiler",
+      "bytes": 1904,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwopc",
+      "group": "compiler",
+      "bytes": 1987,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwty",
+      "group": "compiler",
+      "bytes": 1763,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwsel",
+      "group": "compiler",
+      "bytes": 2498,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwtst",
+      "group": "compiler",
+      "bytes": 3093,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwt",
+      "group": "compiler",
+      "bytes": 3549,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cnmst",
+      "group": "compiler",
+      "bytes": 80,
+      "code": 0,
+      "stage1Ms": 7,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 1984,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cwnm",
+      "group": "compiler",
+      "bytes": 170,
+      "code": 0,
+      "stage1Ms": 6.9,
+      "outcome": "compiled",
+      "functions": 2,
+      "cases": 0,
+      "cBytes": 2221,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/clst",
+      "group": "compiler",
+      "bytes": 2533,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwlist",
+      "group": "compiler",
+      "bytes": 2720,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cotype",
+      "group": "compiler",
+      "bytes": 192,
+      "code": 0,
+      "stage1Ms": 9.5,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2291,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/czst",
+      "group": "compiler",
+      "bytes": 169,
+      "code": 0,
+      "stage1Ms": 5.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2280,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cnode",
+      "group": "compiler",
+      "bytes": 12880,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cprm",
+      "group": "compiler",
+      "bytes": 1979,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cfn",
+      "group": "compiler",
+      "bytes": 13862,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cfld",
+      "group": "compiler",
+      "bytes": 1987,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/ctarr",
+      "group": "compiler",
+      "bytes": 2118,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/ctrec",
+      "group": "compiler",
+      "bytes": 2285,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/ctd",
+      "group": "compiler",
+      "bytes": 2837,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cpre",
+      "group": "compiler",
+      "bytes": 6515,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/emitc",
+      "group": "compiler",
+      "bytes": 21250,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cemit",
+      "group": "compiler",
+      "bytes": 21414,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/emitcio",
+      "group": "compiler",
+      "bytes": 90267,
+      "outcome": "too-large"
+    }
+  ]
+}
