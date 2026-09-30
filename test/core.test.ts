@@ -2502,3 +2502,27 @@ end`);
     }
   }
 });
+
+test('function cap: 4000-function programs are legal; the cap is LIMITS.maxFunctions', async () => {
+  const { LIMITS, parse, validate } = await import('../src/core.js');
+  assert.equal(LIMITS.maxFunctions, 65536);
+  const src = Array.from({ length: 4000 }, (_, i) =>
+    i === 0
+      ? 'fn f0 u32 -> u32\nr add p0 1\nret r\nend\n'
+      : `fn f${i} u32 -> u32\nr call f${i - 1} p0\nret r\nend\n`,
+  ).join('');
+  const p = parseAndValidate(src);
+  assert.equal(p.functions.length, 4000);
+  assert.ok(compile(p, 'js').text.includes('f3999'));
+  const one = parse('fn g u32 -> u32\nret p0\nend\n');
+  const fn = one.functions[0];
+  assert.ok(fn !== undefined);
+  const over = {
+    ...one,
+    functions: Array.from({ length: LIMITS.maxFunctions + 1 }, (_, i) => ({
+      ...fn,
+      name: `g${i}`,
+    })),
+  };
+  assert.throws(() => validate(over), /too many functions/);
+});
