@@ -1672,6 +1672,120 @@ test('x86_64 backend: assembled, linked with a C driver, and executed equal to t
   }
 });
 
+test('avr backend refuses io and what the ATmega328P cannot hold, with diagnostics', () => {
+  const refused = (src: string, code: string, pattern: RegExp): void => {
+    assert.throws(
+      () => compile(parseAndValidate(src), 'avr', { optimize: false }),
+      (e: unknown) => e instanceof A0Error && e.code === code && pattern.test(e.message),
+    );
+  };
+  refused(
+    'fn w io u32 -> io\nt write p0 p1\nret t\nend',
+    'structure',
+    /io functions are out of scope/,
+  );
+  refused('fn g u32x64 u32 -> u32\nv get p0 p1\nret v\nend', 'limit', /256-byte aggregate/);
+  const zeros = Array.from({ length: 60 }, () => '0').join(' ');
+  const nodes = Array.from({ length: 5 }, (_, k) => `a${k} arr ${zeros}`).join('\n');
+  refused(`fn f u32 -> u32\n${nodes}\nret p0\nend`, 'limit', /-byte frame; the limit is 1024/);
+  refused(
+    'fn m u32 u32 u32 u32 u32 -> u32\nret p0\nend',
+    'limit',
+    /more than the 18 argument registers/,
+  );
+});
+
+test('avr backend: emitted sequences carry the exact semantics', async () => {
+  const { assembleAvr, emitAvrFunction } = await import('../src/avr.js');
+  const fn = (src: string, name: string): TypedFunc =>
+    parseAndValidate(src).byName.get(name) as TypedFunc;
+  // avr-gcc convention: p0 arrives in r22-r25, p1 in r18-r21; the u32 result leaves in r22-r25.
+  const add = emitAvrFunction(fn('fn a u32 u32 -> u32\nb add p0 p1\nret b\nend', 'a'));
+  assert.match(add, /^\t\.globl a0_a$/m);
+  assert.match(
+    add,
+    /std Y\+1, r22\n\tstd Y\+2, r23\n\tstd Y\+3, r24\n\tstd Y\+4, r25\n\tstd Y\+5, r18/,
+  );
+  assert.match(add, /add r22, r18\n\tadc r23, r19\n\tadc r24, r20\n\tadc r25, r21/);
+  assert.match(add, /pop r29\n\tpop r28\n\tret$/m);
+  // Unsigned compare over the carry chain; gt swaps the operands.
+  const gt = emitAvrFunction(fn('fn g u32 u32 -> bool\nc gt p0 p1\nret c\nend', 'g'));
+  assert.match(
+    gt,
+    /cp r18, r22\n\tcpc r19, r23\n\tcpc r20, r24\n\tcpc r21, r25\n\tldi r26, 1\n\tbrlo/,
+  );
+  assert.match(gt, /ldd r24, Y\+9\n\tclr r25/);
+  // A literal shift distance is masked to five bits: 33 is one bit; 9 is a byte move and a bit.
+  const shl = emitAvrFunction(fn('fn s u32 -> u32\na shl p0 33\nb shr a 9\nret b\nend', 's'));
+  assert.match(shl, /lsl r22\n\trol r23\n\trol r24\n\trol r25\n\tstd/);
+  assert.match(shl, /mov r22, r23\n\tmov r23, r24\n\tmov r24, r25\n\tclr r25\n\tlsr r25/);
+  // mul, div, rem and variable shifts are helpers, emitted once and only when referenced.
+  const helpers = emitAvrFunction(
+    fn('fn h u32 u32 -> u32\na div p0 p1\nb rem a p1\nc mul b p0\nd shl c p1\nret d\nend', 'h'),
+  );
+  const module = assembleAvr([helpers], 'test');
+  for (const h of ['__a0_udivmod32', '__a0_mul32', '__a0_shl32'])
+    assert.equal(module.match(new RegExp(`^${h}:$`, 'gm'))?.length, 1, h);
+  assert.doesNotMatch(module, /^__a0_shr32:$/m);
+  assert.match(module, /call __a0_udivmod32\n\tmovw r22, r26\n\tmovw r24, r30/);
+  // An aggregate result goes through the hidden pointer in r24:r25; mov/at are aliases.
+  const pair = emitAvrFunction(
+    fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nm mov r\nret m\nend', 'p'),
+  );
+  assert.match(pair, /^\tstd Y\+1, r24\n\tstd Y\+2, r25$/m);
+  assert.match(pair, /ldd r24, Y\+1\n\tldd r25, Y\+2\n\tmovw r30, r24/);
+  // Slots past Y+63 are reached through Z.
+  const far = emitAvrFunction(
+    fn(
+      `fn f u32 -> u32\na arr ${Array.from({ length: 20 }, () => 'p0').join(' ')}\nv get a p0\nret v\nend`,
+      'f',
+    ),
+  );
+  assert.match(far, /movw r30, r28\n\tsubi r30, \d+\n\tsbci r31, \d+\n\tld r22, Z/);
+});
+
+test('avr backend: assembled, linked with an avr-gcc driver, and run under simavr equal to the interpreter', async (t) => {
+  const { checkAvr } = await import('../tools/verify.js');
+  const { findAvrGcc, findClang, findSimavr } = await import('../src/toolchain.js');
+  const avrGcc = findAvrGcc();
+  if (avrGcc.path === undefined || findSimavr().prefix === undefined) {
+    t.skip('needs avr-gcc and libsimavr (brew install avr-gcc avr-binutils simavr)');
+    return;
+  }
+  const src = [
+    'fn step u32x8 u32 u32 -> u32x8\na get p0 p1\nb add a p2\nc mul b 3\nn set p0 p1 c\nret n\nend',
+    // 18 argument bytes: the last reaches r8, so a caller saves r8-r17 around its calls
+    'fn many u32 u32 u32 u32 bool -> u32\na add p0 p1\nb sub a p2\nc mul b p3\nd div c p1\ne rem p3 p2\nf select p4 d e\ng shr f p1\nh shl g p2\nret h\nend',
+    'fn pair u32 u32 -> (u32,bool)\nc lt p0 p1\nr rec p0 c\nret r\nend',
+    'fn keep u32 u32 -> bool\nb lt p0 1000\nret b\nend',
+    'fn grow u32 u32 -> u32\nb mul p0 3\nc add b p1\nret c\nend',
+    'fn five u32x5 u32 u32 -> u32x5\nv get p0 p1\nw xor v p2\nn set p0 p2 w\nret n\nend',
+    `fn top u32 u32 bool -> u32\nk and p1 15\nz arr p0 p1 1 2 3 4 5 6\nf fold step k z p0\ng get f p1\nr call pair p0 p1\nh at r 0\ns loop keep grow p1 h\nt put r 0 s\nu at t 1\nt0 at t 0\nm call many p0 p1 g t0 u\nq ge m g\nw select q m g\nx div w p1\ny rem p0 p1\nv add x y\nb arr ${Array.from({ length: 20 }, () => 'v').join(' ')}\nb2 set b p0 x\nb3 get b2 p1\nfv arr p0 p1 3 4 5\nff fold five 7 fv p1\nf5 get ff p0\nbb arr p2 q p2 q\nbi get bb p0\no select bi b3 f5\nret o\nend`,
+  ].join('\n\n');
+  const p = parseAndValidate(src);
+  const top = p.byName.get('top') as TypedFunc;
+  const many = p.byName.get('many') as TypedFunc;
+  const inputs: [number, number, boolean][] = [
+    [0, 0, false],
+    [1, 2, true],
+    [7, 13, false],
+    [0xffffffff, 5, true],
+    [123456, 0xfffffff0, true],
+    [999, 3, false],
+  ];
+  const cases = inputs.flatMap(([a, b, c]) => [
+    { functionName: 'top', args: [a, b, c], expected: run(top, [a, b, c]) },
+    {
+      functionName: 'many',
+      args: [a, b, (a ^ b) >>> 0, b, c],
+      expected: run(many, [a, b, (a ^ b) >>> 0, b, c]),
+    },
+  ]);
+  const report = await checkAvr(p, cases, avrGcc, findClang());
+  assert.equal(report.status, 'passed', JSON.stringify(report.failures ?? report.detail));
+  assert.equal(report.cases, cases.length);
+});
+
 test('loop predicates with aggregate state are compared structurally, not by reference', () => {
   const p = parseAndValidate(
     'fn body u32x4 u32 -> u32x4\nv get p0 p1\nw add v 1\nn set p0 p1 w\nret n\nend\nfn pred u32x4 u32 -> bool\nv get p0 p1\nc lt v 10\nret c\nend\nfn go u32x4 -> u32x4\nr loop pred body 4 p0\nret r\nend',

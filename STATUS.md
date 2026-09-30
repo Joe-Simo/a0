@@ -882,6 +882,67 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   `test/core.test.ts` (the verify path covers execution); no performance numbers; select
   still emits a redundant `mv` when the chosen value is already in the destination; the same
   leaves as arm64/x86_64 (aggregates never in registers, literals rematerialized per trip).
+## Session 2026-09-30 (AVR backend)
+
+- **Direct AVR backend (a0c-0.1.10, `src/avr.ts`, target `avr`, `a0 emit avr`)**: GNU as
+  assembly for the ATmega328P (Arduino Uno) on the avr-gcc calling convention, so an
+  avr-gcc C program calls `a0_<name>` directly. Scope: u32/bool scalars, small fixed-size
+  arrays and records, `call`/`fold`/`loop` (callees always out of line); io refused
+  (`structure`); one aggregate above 255 bytes, a frame above 1,024 bytes, or parameters
+  needing more than the 18 argument registers r8-r25 refused (`limit`, stack arguments not
+  implemented).
+  - Exact u32 from 8-bit operations: add/sub/and/or/xor/compare as inline byte sequences on
+    the carry chain (gt/le swap operands; unsigned `brlo`/`brsh`), constant shifts masked to
+    five bits at compile time as byte moves plus bit steps; helper routines emitted once
+    per module and only when referenced: `__a0_mul32` (shift and add, low 32 bits),
+    `__a0_udivmod32` (restoring division with the 33rd bit handled; a zero divisor gives
+    quotient all ones and remainder the dividend with no special case), `__a0_shl32` and
+    `__a0_shr32` (count masked to five bits), `__a0_copy`.
+  - Code shape: every value in a frame slot off Y (`ldd`/`std` to Y+63, Z beyond), operands
+    loaded into r22-r25 and r18-r21 per node. Values are immutable, so `mov`, `at`, and a
+    literal-index `get` are slot aliases with no code; `set`/`put` copy. No register
+    allocation and no inlining yet: this is the simple, correct first version.
+  - Calling convention: parameters downward from r25 by even-rounded size (u32 four
+    registers, bool the low register of a pair, aggregates as 16-bit pointers to
+    caller-owned copies, copied on entry); u32 result in r22-r25, bool in r24; an aggregate
+    result through a hidden first pointer in r24:r25, written last so it may alias an
+    argument (fold state). r1 zero at every call and return; argument registers below r18
+    that a function loads for its own calls are pushed in its prologue. One
+    `.text.a0_<name>` section per function and helper, so `--gc-sections` keeps only what a
+    firmware reaches.
+  - Size: `clamp_max` (examples/kernels.a0) is 144 bytes of flash; avr-gcc 9.5 `-Os` on the
+    equivalent C is 82 bytes.
+- **Verification**: `native_avr` in `bun run verify` assembles the io-free subset once per
+  optimization level with `avr-gcc -mmcu=atmega328p -x assembler`, then per driver-callable
+  function links an avr-gcc C driver (its cases as a PROGMEM table, each result printed
+  as a decimal line on UART0 at UBRR 0 with U2X) with `--gc-sections`, and runs it in a small
+  libsimavr host built with clang (`AVR_HOST` in tools/verify.ts: loads the ELF, captures
+  UART0 output bytes through the UART output IRQ into a file, runs until the firmware
+  sleeps with interrupts off). Before linking, `avrStackBytes` gives a static stack bound
+  (frames, pushes, return addresses, helper calls, through every callee) that must fit the
+  SRAM left beside a 128-byte driver reserve; a function over it, or one whose link
+  overflows flash, is skipped with the reason. Result: **4297/4297** cases at both
+  optimization levels; the same 10 io functions (965 cases) skipped as arm64/x86_64; no
+  function skipped for SRAM or flash. Blocked with the install command when avr-gcc or
+  libsimavr is missing. Toolchain: Homebrew avr-gcc 9.5.0, avr-binutils 2.46.0, simavr
+  1.7_1.
+- Unit tests (`test/core.test.ts`): refusals (io, 256-byte aggregate, 1,200-byte frame,
+  five u32 parameters); emitted sequences (register arrival, carry chains, swapped compare,
+  literal shift masking, helpers emitted once and only when used, sret through r24:r25,
+  Z-addressed far slots); and an execution test (fold over an array state, loop with a
+  predicate, aggregate result, a call using r8-r17 arguments, non-power-of-two index
+  modulo, bool array, frame past Y+63) run under simavr at both optimization levels
+  against the interpreter (skipped when the toolchain is absent).
+- Gate (this worktree): lint pass; typecheck pass; test 46/46; verify all paths pass
+  (interpreter, optimizer, JS, C clang, C gcc, C++ clang, Wasm, JVM 5262 each; arm64,
+  x86_64, avr 4297 each); app pass; equiv 48/48 proved; hw RTL simulation and Yosys
+  synthesis passed; dotnet 5262; gpu 4297.
+  `results/{verification,app,equivalence,hardware,dotnet,gpu}.json` regenerated under
+  a0c-0.1.10. `bun run bench` skips `avr` as it skips `arm64` and `x86_64`.
+- Not done: no register allocation or inlining (every node is load, compute, store, so code
+  is about twice avr-gcc's size and slower); no stack arguments; io (a UART-backed io
+  runtime would be the natural adapter); no cycle counts or real-board run (simavr only);
+  mul does not use the hardware `mul` instruction.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 

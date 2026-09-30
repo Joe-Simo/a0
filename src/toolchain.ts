@@ -1,6 +1,7 @@
 /**
  * Installed-toolchain integration: Clang/GCC native builds, Clang + wasm-ld for
- * WebAssembly, javac/java for the JVM, and Icarus Verilog / Yosys for hardware.
+ * WebAssembly, javac/java for the JVM, Icarus Verilog / Yosys for hardware, and avr-gcc +
+ * libsimavr for the ATmega328P.
  *
  * All invocations use argument arrays (never a shell) and a temporary directory.
  * Tool discovery is explicit and reported; absence is a recorded blocker, not a pass.
@@ -8,10 +9,10 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { basename, delimiter, dirname, join } from 'node:path';
 import { A0Error } from './core.js';
 
 export interface ToolResult {
@@ -166,6 +167,29 @@ export function findVvp(): ToolInfo {
 export function findYosys(): ToolInfo {
   const path = firstExisting([process.env.A0_YOSYS, onPath('yosys')]);
   return { name: 'yosys', path, version: versionOf(path, ['-V']) };
+}
+
+export function findAvrGcc(): ToolInfo {
+  const path = firstExisting([process.env.A0_AVR_GCC, onPath('avr-gcc')]);
+  return { name: 'avr-gcc', path, version: versionOf(path) };
+}
+
+/** A libsimavr install (headers and static library) for an in-process AVR simulator host. */
+export function findSimavr(): {
+  readonly prefix: string | undefined;
+  readonly version: string | undefined;
+} {
+  const prefix = [process.env.A0_SIMAVR_PREFIX, '/opt/homebrew', '/usr/local', '/usr'].find(
+    (p) =>
+      p !== undefined &&
+      existsSync(join(p, 'include', 'simavr', 'sim_avr.h')) &&
+      existsSync(join(p, 'lib', 'libsimavr.a')),
+  );
+  // simavr has no --version; a Homebrew keg's directory name carries it.
+  const keg = prefix === undefined ? undefined : join(prefix, 'opt', 'simavr');
+  const version =
+    keg !== undefined && existsSync(keg) ? `simavr ${basename(realpathSync(keg))}` : undefined;
+  return { prefix, version };
 }
 
 export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {

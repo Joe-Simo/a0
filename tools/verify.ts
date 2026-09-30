@@ -4,10 +4,11 @@
  * are recorded as "blocked", never as passes. Writes results/verification.json.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
+import { AVR_FLASH_BYTES, AVR_SRAM_BYTES, avrStackBytes } from '../src/avr.js';
 import {
   C_IO_INPUT_CAPACITY,
   C_IO_OUTPUT_CAPACITY,
@@ -16,6 +17,7 @@ import {
   JAVA_CLASS,
   usesIo,
 } from '../src/backends.js';
+
 import {
   formatProgram,
   makeIo,
@@ -27,6 +29,7 @@ import {
 import { optimize } from '../src/optimize.js';
 import {
   compileWasm,
+  findAvrGcc,
   findClang,
   findClangPlusPlus,
   findGcc,
@@ -34,6 +37,7 @@ import {
   findJavac,
   findQemuRiscv64,
   findRiscv64Gcc,
+  findSimavr,
   findWasmClang,
   runTool,
   type ToolInfo,
@@ -476,6 +480,254 @@ export async function checkX86_64(
     tool: tool.version,
     ...skipped,
   };
+}
+
+// --- native AVR (direct assembly for the ATmega328P, run under libsimavr) --------------
+
+/**
+ * The simulator host: loads an ATmega328P ELF into libsimavr, captures every byte the
+ * firmware sends on UART0 into the output file, and runs until the firmware sleeps with
+ * interrupts off (simavr's graceful stop). Exit 5 means the simulated part crashed.
+ */
+const AVR_HOST = `#include <stdio.h>
+#include <simavr/sim_avr.h>
+#include <simavr/sim_elf.h>
+#include <simavr/avr_uart.h>
+static void uart_out(struct avr_irq_t *irq, uint32_t v, void *p) { (void)irq; fputc((int)(v & 0xff), (FILE *)p); }
+int main(int argc, char **argv) {
+  if (argc != 3) return 2;
+  elf_firmware_t f = {0};
+  if (elf_read_firmware(argv[1], &f) != 0) return 3;
+  avr_t *avr = avr_make_mcu_by_name("atmega328p");
+  if (avr == NULL) return 4;
+  avr_init(avr);
+  avr->frequency = 16000000;
+  avr_load_firmware(avr, &f);
+  FILE *out = fopen(argv[2], "w");
+  if (out == NULL) return 6;
+  uint32_t flags = 0;
+  avr_ioctl(avr, AVR_IOCTL_UART_GET_FLAGS('0'), &flags);
+  flags &= ~(uint32_t)AVR_UART_FLAG_STDIO;
+  avr_ioctl(avr, AVR_IOCTL_UART_SET_FLAGS('0'), &flags);
+  avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT), uart_out, out);
+  int state;
+  do state = avr_run(avr); while (state != cpu_Done && state != cpu_Crashed);
+  fclose(out);
+  return state == cpu_Done ? 0 : 5;
+}
+`;
+
+/** Firmware for one function: its cases in program memory, one decimal result line each on UART0. */
+function avrDriver(fn: TypedFunc, cases: readonly Case[]): string {
+  const width = Math.max(1, fn.params.length);
+  const rows = cases.map((c) => {
+    const words =
+      c.args.length === 0 ? [0] : c.args.map((v) => (v === true ? 1 : v === false ? 0 : v));
+    return `  {${words.map((v) => `${String(v)}UL`).join(', ')}},`;
+  });
+  const args = fn.params
+    .map((t, p) => `${t === 'bool' ? '(bool)' : ''}pgm_read_dword(&cases[i][${p}])`)
+    .join(', ');
+  const print =
+    fn.result === 'bool'
+      ? "tx(r ? '1' : '0');"
+      : 'char buf[11]; ultoa(r, buf, 10); for (char *s = buf; *s; s++) tx(*s);';
+  return `#include <avr/interrupt.h>
+#include <avr/io.h>
+#include <avr/pgmspace.h>
+#include <avr/sleep.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+extern ${cSignature(fn)};
+static const uint32_t cases[${cases.length}][${width}] PROGMEM = {
+${rows.join('\n')}
+};
+static void tx(char c) {
+  loop_until_bit_is_set(UCSR0A, UDRE0);
+  UDR0 = (uint8_t)c;
+}
+int main(void) {
+  UCSR0A = _BV(U2X0);
+  UBRR0 = 0;
+  UCSR0B = _BV(TXEN0);
+  for (uint16_t i = 0; i < ${cases.length}u; i++) {
+    ${fn.result === 'bool' ? 'bool' : 'uint32_t'} r = a0_${fn.name}(${args});
+    ${print}
+    tx('\\n');
+  }
+  cli();
+  sleep_enable();
+  sleep_cpu();
+  for (;;) {
+  }
+}
+`;
+}
+
+/** SRAM kept for the driver's own data, bss, and frame; the rest is the stack budget. */
+const AVR_DRIVER_RESERVE = 128;
+
+export async function checkAvr(
+  program: TypedProgram,
+  cases: readonly Case[],
+  avrGcc: ToolInfo,
+  clang: ToolInfo,
+): Promise<
+  TargetReport & {
+    skippedIoFunctions: number;
+    skippedIoCases: number;
+    skippedLimitFunctions: number;
+    skippedLimitCases: number;
+    skips: string[];
+  }
+> {
+  const subset = ioFreeSubset(program);
+  const keep = new Set(subset.functions.map((f) => f.name));
+  const own = cases.filter((c) => keep.has(c.functionName));
+  const skipped = {
+    skippedIoFunctions: program.functions.length - subset.functions.length,
+    skippedIoCases: cases.length - own.length,
+    skippedLimitFunctions: 0,
+    skippedLimitCases: 0,
+    skips: [] as string[],
+  };
+  const label = `native AVR assembly for the ATmega328P (src/avr.ts) via avr-as, linked with an avr-gcc C driver per function (cases in program memory, results on UART0), executed under libsimavr; ${skipped.skippedIoFunctions} io functions (${skipped.skippedIoCases} cases) skipped: io is out of scope for this backend`;
+  if (avrGcc.path === undefined)
+    return {
+      status: 'blocked',
+      cases: 0,
+      detail: 'avr: avr-gcc not found (brew install avr-gcc avr-binutils simavr)',
+      ...skipped,
+    };
+  const simavr = findSimavr();
+  if (simavr.prefix === undefined)
+    return {
+      status: 'blocked',
+      cases: 0,
+      detail: 'avr: libsimavr not found (brew install simavr, or set A0_SIMAVR_PREFIX)',
+      ...skipped,
+    };
+  if (clang.path === undefined) return { ...blocked(clang, 'avr simulator host'), ...skipped };
+  const tool = `${avrGcc.version}; ${simavr.version ?? 'simavr'}`;
+  const start = performance.now();
+  const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
+    status: 'failed',
+    cases: 0,
+    detail: `avr: ${what}`,
+    tool,
+    failures: [stderr.slice(0, 2000)],
+    ...skipped,
+  });
+  const budget = AVR_SRAM_BYTES - AVR_DRIVER_RESERVE;
+  const prefix = simavr.prefix;
+  return withTempDir(async (dir) => {
+    await writeFile(join(dir, 'host.c'), AVR_HOST, 'utf8');
+    const host = runTool(
+      clang.path as string,
+      [
+        '-O1',
+        `-I${join(prefix, 'include')}`,
+        '-o',
+        'host',
+        'host.c',
+        `-L${join(prefix, 'lib')}`,
+        '-lsimavr',
+        '-lelf',
+      ],
+      { cwd: dir },
+    );
+    if (!host.ok) return fail('simulator host build failed', host.stderr);
+    let ran = 0;
+    for (const optimize of [true, false]) {
+      const level = optimize ? 'optimized' : 'unoptimized';
+      const asm = compile(subset, 'avr', { optimize }).text;
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      const as = runTool(
+        avrGcc.path as string,
+        ['-mmcu=atmega328p', '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
+        { cwd: dir },
+      );
+      if (!as.ok) return fail(`${level}: assembly failed`, as.stderr);
+      const levelSkips: string[] = [];
+      let levelSkipCases = 0;
+      let levelRan = 0;
+      for (const fn of subset.functions) {
+        const mine = own.filter((c) => c.functionName === fn.name);
+        if (mine.length === 0 || !isDriverCallable(fn)) continue;
+        const stack = avrStackBytes(fn, optimize);
+        if (stack > budget) {
+          levelSkips.push(
+            `${fn.name}: static stack bound ${stack} bytes exceeds the ${budget} bytes of SRAM left beside the driver`,
+          );
+          levelSkipCases += mine.length;
+          continue;
+        }
+        await writeFile(join(dir, 'driver.c'), avrDriver(fn, mine), 'utf8');
+        const link = runTool(
+          avrGcc.path as string,
+          [
+            '-mmcu=atmega328p',
+            '-std=c11',
+            '-Os',
+            '-Wall',
+            '-Wextra',
+            '-Werror',
+            '-Wl,--gc-sections',
+            '-o',
+            'fw.elf',
+            'driver.c',
+            'module.o',
+          ],
+          { cwd: dir },
+        );
+        if (!link.ok) {
+          if (/overflow|will not fit/.test(link.stderr)) {
+            levelSkips.push(`${fn.name}: does not fit the ${AVR_FLASH_BYTES}-byte flash`);
+            levelSkipCases += mine.length;
+            continue;
+          }
+          return fail(`${level}: driver build/link failed for ${fn.name}`, link.stderr);
+        }
+        const exec = runTool(join(dir, 'host'), ['fw.elf', 'out.txt'], { cwd: dir });
+        if (!exec.ok)
+          return fail(
+            `${level}: simulation of ${fn.name} failed (status ${String(exec.status)})`,
+            exec.stderr,
+          );
+        const lines = (await readFile(join(dir, 'out.txt'), 'utf8')).trim().split('\n');
+        const r = compareAll(mine, lines, `${level}: ${label}`);
+        if (r.status !== 'passed') return { ...r, tool, ...skipped };
+        levelRan += mine.length;
+      }
+      if (optimize) {
+        ran = levelRan;
+        skipped.skips = levelSkips;
+        skipped.skippedLimitFunctions = levelSkips.length;
+        skipped.skippedLimitCases = levelSkipCases;
+      } else if (levelRan !== ran)
+        return fail(
+          'optimized and unoptimized emissions ran different case counts',
+          `${ran} vs ${levelRan}; unoptimized skips: ${levelSkips.join('; ')}`,
+        );
+    }
+    const limits =
+      skipped.skippedLimitFunctions === 0
+        ? 'every io-free function fits the part'
+        : `${skipped.skippedLimitFunctions} functions (${skipped.skippedLimitCases} cases) skipped for ATmega328P limits`;
+    return {
+      ...timed(
+        {
+          status: 'passed',
+          cases: ran,
+          detail: `${label}; ${limits}; optimized and unoptimized emissions each executed on every case run`,
+        },
+        start,
+      ),
+      tool,
+      ...skipped,
+    };
+  });
 }
 
 // --- native RISC-V RV64 (direct assembly; bare-metal under qemu-system-riscv64) ---
@@ -940,6 +1192,7 @@ async function main(): Promise<void> {
       native_arm64: await checkArm64(program, cases, findClang()),
       native_x86_64: await checkX86_64(program, cases, findClang()),
       native_riscv64: await checkRiscv64(program, cases, findRiscv64Gcc(), findQemuRiscv64()),
+      native_avr: await checkAvr(program, cases, findAvrGcc(), findClang()),
       webassembly: await checkWasm(program, cases),
       jvm: await checkJvm(program, cases),
       systemverilog: {
