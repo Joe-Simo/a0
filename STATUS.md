@@ -1556,6 +1556,49 @@ COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17. Follow-up to the C/JS fix of the same
   checkWasmDirect, checkArm64, checkX86_64, checkRiscv64, checkArm32 and (u32x8) checkAvr; fails
   before the fix on the four affected backends at both sizes.
 
+## Session 2026-09-30 (RISC-V code quality)
+
+- **`src/riscv64.ts` code quality (a0c-0.1.16)**, plain RV64GC by default:
+  - Frameless functions: no frame pointer (s0 never used; all slots from sp). A function with
+    no residual call saves no ra; a leaf with no slots and no callee-saved homes emits only its
+    body and `ret`. A non-leaf keeps ra in the top 8 bytes of its frame.
+  - Select: one conditional-move sequence; when the chosen value already sits in the
+    destination it is `bnez/beqz` + one `mv` (the redundant `mv` from the earlier session is gone).
+  - Loop-invariant literals read in a fold/loop trip (trip counts, multipliers, compare
+    operands) are hoisted into registers at loop entry when a register is free across the
+    loop (allocated after all real values, so they never displace them); literal 0 reads `zero`.
+  - Values stay in registers across trips: an inlined body whose result is computed after its
+    last read of the state writes the state register directly (no per-trip copy).
+    Copies (`mov`, inlined results, fold state init) prefer the source's register, a call
+    result and the returned value prefer a0; values live across no residual call may live in
+    a0-a7 in non-leaf functions too (register arguments set up as one parallel move, cycles
+    broken through t0). The allocator is now interval-based.
+  - Zbb option: `emitRiscv64Function(fn, { zbb: true })` (`Riscv64Options`) turns
+    `or(shl x k, shr x (32-k))` into `roriw` and the variable forms (`sub 32 n`) into
+    `rolw`/`rorw`; such a block is wrapped in `.option push` / `.option arch, +zbb` /
+    `.option pop`, so it assembles in an rv64gc module (checked with riscv64-elf-gcc 16.2.0
+    and objdump). Default output contains no Zbb instruction. Not plumbed into
+    `CompileOptions`/CLI (outside this session's files); Zbb code not executed (the corpus has
+    no rotates and verify builds rv64gc).
+- **Static instruction counts** (no RISC-V hardware for timing; counts exclude directives
+  and labels). Exec-bench kernels, optimized, before -> after (Zbb in brackets where
+  different): affine 11 -> 3, rotl 14 -> 6 [2], clamp 19 -> 7, mix 18 -> 10 [8], ident 9 -> 1,
+  noop 9 -> 1 (O0 13 -> 5), chain3 13 -> 5, branchy 30 -> 15, arrfill 36 -> 29,
+  loop64 21 -> 12 (trip 11 -> 7 instructions), arrfill4k 11301 -> 11295. Corpus (38 io-free
+  functions): optimized total 1135 -> 830, unoptimized 6888 -> 6025; no function grew at
+  either level (per function, optimized: g0 9->1, g2 21->14, g4 14->6, g5 36->28, g6 26->16,
+  g8 24->17, g9 10->2, g11 47->42, g12 27->20, g13 38->34, g14 13->5, g15 15->7, g16 10->2,
+  g19 16->9, g20 14->6, g21 21->11, g22 23->16, g23 33->24, g24 12->4, g25 18->9, g27 42->35,
+  g28 12->4, g29 98->88, g31 34->27, g32 22->15, g33 10->2, g34 291->270, g35 18->10,
+  g36 11->3, g37 10->2, g38 19->12, g40 25->18, g41 23->15, g42 22->15, g44 17->10,
+  g45 10->2, g46 10->2, g47 34->27).
+- `native_riscv64` **4297/4297** at both optimization levels (same 10 io functions skipped).
+- Unit tests updated/added: frameless leaf, select without redundant move, hoisted fold
+  literals and direct state write, ra-only frame for a caller, parallel-move argument swap
+  through t0, rotates absent by default and `rolw`/`roriw` with Zbb.
+- Not done: aggregates still never in registers; loops still test at the top (`bgeu` + `j`
+  per trip, no rotation); no Zbb execution run; no CLI flag for Zbb.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
