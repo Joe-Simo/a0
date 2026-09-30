@@ -250,15 +250,12 @@ export async function buildCheckCases(): Promise<(Case & { readonly label: strin
   });
 }
 
-/** Output words the Java io runtime keeps (`A0Io.output` in src/backends.ts); `write` drops the rest. */
-const JAVA_IO_OUTPUT_WORDS = 1024;
 /** The wasm32 stack of `compileWasm` (`WASM_FLAGS` in src/toolchain.ts). */
 const WASM_STACK_MIB = 1;
 
 /**
- * The rows of a self-hosted front-end module on every target. Two targets have size walls the
- * module cannot move: the JVM row runs only the cases whose io output fits the Java runtime's
- * buffer, and the wasm row is reported blocked (not failed) when the build runs out of stack,
+ * The rows of a self-hosted front-end module on every target. One target has a size wall the
+ * module cannot move: the wasm row is reported blocked (not failed) when the build runs out of stack,
  * with the stack the module needs at its capacities (`needMiB`, measured by rebuilding the
  * same C with larger `-z stack-size` values).
  */
@@ -267,13 +264,10 @@ async function frontEndTargets(
   cases: readonly (Case & { readonly label: string })[],
   needMiB: number,
 ): Promise<Record<string, TargetReport>> {
-  const fitsJvm = cases.filter((c) => (c.expectedOutput?.length ?? 0) <= JAVA_IO_OUTPUT_WORDS);
-  const overJvm = cases.filter((c) => !fitsJvm.includes(c)).map((c) => c.label);
   const wasm = await checkWasm(program, cases);
   const stackWall =
     wasm.status === 'failed' &&
     (wasm.failures ?? []).some((f) => f.includes('memory access out of bounds'));
-  const jvm = await checkJvm(program, fitsJvm);
   return {
     interpreter: checkInterpreter(program, cases),
     optimizer: checkOptimizer(program, cases),
@@ -287,13 +281,7 @@ async function frontEndTargets(
           failures: wasm.failures,
         }
       : wasm,
-    jvm:
-      overJvm.length === 0
-        ? jvm
-        : {
-            ...jvm,
-            detail: `${jvm.detail} JVM size wall: ${overJvm.length} cases write more than the Java io runtime's ${JAVA_IO_OUTPUT_WORDS} output words and are not run (${overJvm.join(', ')})`,
-          },
+    jvm: await checkJvm(program, cases),
   };
 }
 
@@ -459,16 +447,7 @@ async function main(): Promise<void> {
       'native C via clang',
     ),
     webassembly: await checkWasm(emitProgram, emitCases),
-    // The JVM backend's io state holds 1024 output words (src/backends.ts A0Io); a module
-    // whose assembly is longer is out of that target's io capacity and is counted, not run.
-    jvm: await (async () => {
-      const fits = emitCases.filter((c) => (c.expectedOutput?.length ?? 0) <= JAVA_IO_OUTPUT_WORDS);
-      const r = await checkJvm(emitProgram, fits);
-      return {
-        ...r,
-        detail: `${r.detail} ${emitCases.length - fits.length} cases over the JVM io output capacity (${JAVA_IO_OUTPUT_WORDS} words) not run.`,
-      };
-    })(),
+    jvm: await checkJvm(emitProgram, emitCases),
   };
   const cEmitTargets: Record<string, TargetReport> = {
     interpreter: checkInterpreter(cEmitProgram, cEmitCases),
@@ -482,13 +461,7 @@ async function main(): Promise<void> {
       'native C via clang',
     ),
     webassembly: await checkWasm(cEmitProgram, cEmitCases),
-    // The Java runtime's A0Io keeps a fixed 1024-word output array (src/backends.ts), and every
-    // emitcio output (one C byte per word, the prelude alone is over 1700) is longer.
-    jvm: {
-      status: 'blocked',
-      cases: 0,
-      detail: `jvm: the Java A0Io output buffer is fixed at 1024 words; emitcio writes ${Math.min(...cEmitCases.filter((c) => (c.expectedOutput?.length ?? 0) > 0).map((c) => c.expectedOutput?.length ?? 0))} to ${Math.max(...cEmitCases.map((c) => c.expectedOutput?.length ?? 0))} words`,
-    },
+    jvm: await checkJvm(cEmitProgram, cEmitCases),
   };
   const report = {
     generatedAt: new Date().toISOString(),

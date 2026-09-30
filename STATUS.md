@@ -1312,6 +1312,18 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Timings (machine load average 12-40 from other sessions, so several times an idle run; the element counts above are exact): app rows (interpreter / optimizer / JS / C / JVM): lexer 3.3 / 3.4 / 0.1 / 3.1 / 1.4 s, parser 42.7 / 38.3 / 0.2 / 6.7 / 5.7 s, checker 77.0 / 56.4 / 0.4 / 8.0 / 3.5 s (before, on the 500-byte cuts: lexer 3.0 / 1.6 / 0.1 / 0.9 / 5.2, parser 25.3 / 14.0 / 0.1 / 1.4 / 2.8, checker 16.0 / 21.5 / 0.2 / 2.1 / 1.6). Self-hosted tests: lexer 8.7 s, parser 75.5 s, checker 241 s (before: 0.4 s, 2.9 s, 46 s with 500-byte cuts and chunked tables).
 - Not done: header types with bases other than u32 (`boolx4`, `(u32,bool)x2`) are parse errors, as before; a source over 16384 bytes is clamped (the rest of the input is not read), not diagnosed; the linked compiler is larger than the limit, so compiling the compiler whole needs a larger limit (the 2^21-bit cap on one pass's state bounds the tables now, not the array length) or per-file compilation with `use` resolution; the interpreter pays ~37K validated elements per token in pass 1 (hash table and source), the next thing to cut.
 
+## Session 2026-09-30 (JVM io capacity)
+
+- The Java and C# io runtimes (src/backends.ts `javaIoRuntime`, src/dotnet.ts `csIoRuntime`)
+  now take the C backend's `ioInputCapacity`/`ioOutputCapacity` options with the same defaults
+  (256/1024) and the same bounds: input is held in a fixed array of that many words (longer
+  input is truncated; reads past `ninput` return 0) and writes past the output capacity are
+  dropped, as in `a0_write`. `checkJvm` and `bun run dotnet` size both from the cases via
+  `ioCaps(cases)`. The `tools/app.ts` JVM filter (emit_arm64) and blocked row (emit_c) are
+  removed: JVM now runs 12/12 emitio and 20/20 emitcio cases. COMPILER_VERSION a0c-0.1.14.
+- Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
+  134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
