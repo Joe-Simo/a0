@@ -5,6 +5,7 @@ import { compile, FunctionCache } from '../src/backends.js';
 import { compileCached, DiskCache } from '../src/cache.js';
 import {
   A0Error,
+  type Diagnostic,
   type Func,
   formatDiagnostic,
   formatFunction,
@@ -315,6 +316,39 @@ test('SystemVerilog: shift by a literal distance is masked, never bit-selected',
   assert.ok(sv.includes("p0 >> 5'd1"), sv);
   assert.ok(sv.includes('<< p0[4:0]'), sv);
   assert.ok(!/'d[0-9]+\[4:0\]/.test(sv));
+});
+
+test('fold/loop body mismatch: the fix names the expected step header and the usable call', () => {
+  const diag = (src: string): Diagnostic => {
+    try {
+      parseAndValidate(src);
+    } catch (e) {
+      if (e instanceof A0Error) return e.toJSON();
+    }
+    throw new Error('expected a diagnostic');
+  };
+  const addi = 'fn addi u32 u32 -> u32\na add p0 p1\nret a\nend\n';
+  // Arity: an extra passed to a step that takes none.
+  const arity = diag(`${addi}fn f u32 -> u32\nr fold addi 8 0 p0\nret r\nend`);
+  assert.equal(arity.code, 'structure');
+  assert.match(arity.message, /addi expects 0 extra arguments, got 1/);
+  assert.match(arity.fix ?? '', /need `fn addi u32 u32 u32 -> u32`/);
+  assert.match(arity.fix ?? '', /addi is `fn addi u32 u32 -> u32`/);
+  assert.match(arity.fix ?? '', /write `fold addi N S` with S a u32 and no extras/);
+  // Type: an array state given to a u32 step; the header wanted follows the operands.
+  const type = diag(`${addi}fn f u32x4 -> u32\nr fold addi 4 p0\nret r\nend`);
+  assert.equal(type.code, 'type');
+  assert.equal(type.expected, 'u32');
+  assert.equal(type.actual, 'u32x4');
+  assert.match(type.fix ?? '', /need `fn addi u32x4 u32 -> u32x4`/);
+  // Missing index parameter: no usable call shape is offered.
+  const shape = diag('fn one u32 -> u32\nret p0\nend\nfn f u32 -> u32\nr fold one 4 0\nret r\nend');
+  assert.match(shape.fix ?? '', /need `fn one u32 u32 -> u32`; one is `fn one u32 -> u32`$/);
+  // loop gets the same fix, with its predicate in the shape.
+  const loop = diag(
+    `${addi}fn p u32 u32 -> bool\nc lt p0 9\nret c\nend\nfn f u32 -> u32\nr loop p addi 8 0 p0\nret r\nend`,
+  );
+  assert.match(loop.fix ?? '', /write `loop P addi N S`/);
 });
 
 test('fold: bounded iteration with exact semantics, typing, zero-trip identity, backends', async () => {

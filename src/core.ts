@@ -793,6 +793,34 @@ function operandType(
   }
 }
 
+/**
+ * Fix text for a fold/loop whose body does not fit its operands. The body is called as
+ * `F(state, i, extras...)` once per step, so the operands fix one header,
+ * `fn F S u32 X... -> S` (S the initial state's type, X the extras'). The text names that
+ * header, the body's actual header, and the operand shape the actual header accepts.
+ */
+function foldBodyFix(
+  op: 'fold' | 'loop',
+  callee: { readonly name: string; readonly params: readonly Type[]; readonly result: Type },
+  init: Type,
+  extra: readonly Type[],
+): string {
+  const header = (params: readonly Type[], result: Type): string =>
+    `\`fn ${[callee.name, ...params.map(formatType)].join(' ')} -> ${formatType(result)}\``;
+  const head = op === 'loop' ? `loop P ${callee.name}` : `fold ${callee.name}`;
+  const wanted = header([init, 'u32', ...extra], init);
+  const actual = header(callee.params, callee.result);
+  const [stateT, indexT, ...extraT] = callee.params;
+  const shape =
+    stateT !== undefined &&
+    indexT !== undefined &&
+    typeEquals(indexT, 'u32') &&
+    typeEquals(callee.result, stateT)
+      ? `; as declared, write \`${[head, 'N', 'S', ...extraT.map((_, i) => `X${i}`)].join(' ')}\` with S a ${formatType(stateT)}${extraT.length === 0 ? ' and no extras' : ` and extras ${extraT.map(formatType).join(' ')}`}`
+      : '';
+  return `each step runs state = ${callee.name}(state, i, extras...) where i is the u32 step index, not an element, so these operands need ${wanted}; ${callee.name} is ${actual}${shape}`;
+}
+
 function expect(actual: Type, wanted: Type, where: string): void {
   if (!typeEquals(actual, wanted)) {
     throw new A0Error(
@@ -1101,26 +1129,34 @@ export function validateFunction(
         });
       }
       expect(count, 'u32', `${where} trip count`);
+      // Every body mismatch names the step's expected header and the call shape it implies.
+      const bodyFix = foldBodyFix(node.op, callee, init, extra);
+      const bodyError = (message: string, types?: { expected: Type; actual: Type }): A0Error =>
+        new A0Error(`${where}: ${message}`, undefined, {
+          code: types === undefined ? 'structure' : 'type',
+          ...(types === undefined
+            ? {}
+            : { expected: formatType(types.expected), actual: formatType(types.actual) }),
+          fix: bodyFix,
+        });
+      const expectBody = (actual: Type, wanted: Type, what: string): void => {
+        if (!typeEquals(actual, wanted))
+          throw bodyError(`${what}: expected ${formatType(wanted)}, got ${formatType(actual)}`, {
+            expected: wanted,
+            actual,
+          });
+      };
       const [stateT, indexT, ...extraT] = callee.params;
-      if (stateT === undefined || indexT === undefined) {
-        throw new A0Error(
-          `${where}: fold body ${callee.name} needs (state, index, ...) parameters`,
-          undefined,
-          { code: 'structure' },
+      if (stateT === undefined || indexT === undefined)
+        throw bodyError(`fold body ${callee.name} needs (state, index, ...) parameters`);
+      expectBody(indexT, 'u32', 'body index parameter');
+      expectBody(init, stateT, 'initial state');
+      expectBody(callee.result, stateT, 'body result');
+      if (extra.length !== extraT.length)
+        throw bodyError(
+          `${callee.name} expects ${extraT.length} extra arguments, got ${extra.length}`,
         );
-      }
-      expect(indexT, 'u32', `${where} body index parameter`);
-      expect(init, stateT, `${where} initial state`);
-      expect(callee.result, stateT, `${where} body result`);
-      if (extra.length !== extraT.length) {
-        throw new A0Error(
-          `${where}: ${callee.name} expects ${extraT.length} extra arguments, got ${extra.length}`,
-          undefined,
-          { code: 'structure' },
-        );
-      }
-      for (const [i, t] of extraT.entries())
-        expect(extra[i] as Type, t, `${where} extra argument ${i}`);
+      for (const [i, t] of extraT.entries()) expectBody(extra[i] as Type, t, `extra argument ${i}`);
       calls.set(callee.name, callee);
       if (node.op === 'loop') {
         const pred = scope.get(node.pred ?? '');
