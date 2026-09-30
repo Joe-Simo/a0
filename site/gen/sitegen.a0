@@ -1,7 +1,7 @@
 use "sgcalc.a0"
 fn dumpv io u32 u32x128x128 -> io
 e0 shl p1 2
-e add e0 272
+e add e0 288
 h call rd128 p2 e
 e1 add e 1
 k call rd128 p2 e1
@@ -27,13 +27,15 @@ b call phaseb st t k
 pa at b 0
 t2 at b 1
 z call z128
-v0 fold wr128 one z 0 33856
+v0 fold wr128 one z 0 33920
 v1 fold strings one v0 st pa
 v2 fold cexec one v1 st pa
 v3 fold cranks one v2 st pa
 v4 fold cstart one v3 st pa
 v5 fold ccost one v4 st pa
-n call rd128 v5 1
-o fold dumpv n t2 v5
+v6 fold cedit one v5 st pa
+v7 fold cpar one v6 st pa
+n call rd128 v7 1
+o fold dumpv n t2 v7
 ret 0
 end

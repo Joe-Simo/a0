@@ -1278,3 +1278,347 @@ s9 fold vnum one s8 p2 147 0 ns
 s10 fold cszrow ns s9 p2 p3 sl alh na
 ret s10
 end
+
+# ---- validation latency: rows 7771 + 11i (kind hash, median ms x 1000, ...), kinds at 240 + i
+fn elmed u32x128x64 u32 -> u32
+a mul p1 11
+b add a 7772
+r call rd64 p0 b
+ret r
+end
+fn elkstep u32 u32 u32x128x64 u32 -> u32
+a mul p1 11
+b add a 7771
+h call rd64 p2 b
+e eq h p3
+r select e p1 p0
+ret r
+end
+fn elfind u32x128x64 u32 -> u32
+n call rd64 p0 7768
+r fold elkstep n 0 p0 p1
+ret r
+end
+fn elvals u32x64 u32 u32x128x64 -> u32x64
+v call elmed p2 p1
+r set p0 p1 v
+ret r
+end
+# FNV-1a of a pool string up to its first "." (fold body: (hash, stopped))
+fn pfxb (u32,bool) u32 u32x128x128 u32 -> (u32,bool)
+h at p0 0
+d at p0 1
+a add p3 p1
+b call vb p2 a
+dot eq b 46
+st or d dot
+x xor h b
+h2 mul x 16777619
+hn select st h h2
+r rec hn st
+ret r
+end
+fn pfxhash u32x128x128 u32 -> u32
+s shr p1 16
+l and p1 65535
+s0 rec 2166136261 false
+r0 fold pfxb l s0 p0 s
+r at r0 0
+ret r
+end
+fn elrow u32x128x128 u32 u32x128x512 u32x128x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p4 p1
+k call key1 p1
+a mul i 11
+b add a 7771
+h call rd64 p3 b
+kr add i 240
+s1 fold vmapv one p0 p2 68 h 31 kr
+lr call rd128 s1 31
+s2 fold vref one s1 p2 172 k lr
+kref call rd128 s2 kr
+ph call pfxhash s2 kref
+a0h call whash p2 47
+isa eq ph a0h
+s3 fold vflag one s2 p2 173 k isa
+m call elmed p3 i
+lm call lg m
+pc call pct lm p5 p6
+s4 fold vnum one s3 p2 174 k pc
+m10 call rdiv m 10
+s5 fold vnum one s4 p2 175 k m10
+ret s5
+end
+# the label hash of row p1's language (the `m ellang` value), for the coverage line
+fn elcov u32x64 u32 u32x128x128 u32x128x512 -> u32x64
+kr add p1 240
+kref call rd128 p2 kr
+ph call pfxhash p2 kref
+pos call mfind p3 69 ph
+mv call mval p3 pos
+a at mv 0
+n at mv 1
+h call shash p3 a n
+r set p0 p1 h
+ret r
+end
+fn cedit u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+a0h call whash p2 52
+tsh call whash p2 53
+ia call elfind p3 a0h
+it call elfind p3 tsh
+ma call elmed p3 ia
+mt call elmed p3 it
+a10 call rdiv ma 10
+s1 fold vfix2 one p0 p2 170 0 a10
+t100 call rdiv mt 100
+s2 fold vfix1 one s1 p2 171 0 t100
+n call rd64 p3 7768
+z call z64l
+vl fold elvals n z p3
+pm call sortperm vl n
+mn call lmin vl n
+mx call lmax vl n
+l9 call lg 9
+l10 call lg 10
+lm call lg mn
+lo0 add lm l9
+lo sub lo0 l10
+hi call lg mx
+s3 fold vnum one s2 p2 68 0 n
+s4 fold elrow n s3 p2 p3 pm lo hi
+q call rd64 p3 7770
+quiet eq q 1
+s5 fold vflag one s4 p2 176 0 quiet
+nq select quiet false true
+s6 fold vflag one s5 p2 177 0 nq
+ld call rd64 p3 7769
+l100 call rdiv ld 100
+s7 fold vnum one s6 p2 178 0 l100
+hs fold elcov n z s7 p2
+al call alllangs p3 s7
+alh at al 0
+na at al 1
+cv call cover alh na hs n
+s8 fold vcov one s7 p2 179 180 cv na
+ret s8
+end
+
+# ---- parallel folds: kernel k at 7953 + 20k, ratio of implementation j + 1 at 7964 + 20k + j
+fn prat u32x128x64 u32 u32 -> u32
+a mul p1 20
+b add a 7964
+c add b p2
+r call rd64 p0 c
+ret r
+end
+# the rows of kernel p2: (implementation, ratio x 10^5)
+fn prstep (u32x64,u32x64,u32) u32 u32x128x64 u32 -> (u32x64,u32x64,u32)
+jl at p0 0
+rl at p0 1
+n at p0 2
+r1 call prat p2 p3 p1
+has gt r1 0
+r sub r1 1
+jl2 set jl n p1
+rl2 set rl n r
+n1 add n 1
+nn select has n1 n
+o rec jl2 rl2 nn
+ret o
+end
+fn prows u32x128x64 u32 -> (u32x64,u32x64,u32)
+z call z64l
+s0 rec z z 0
+nj call rd64 p0 8119
+r fold prstep nj s0 p0 p1
+ret r
+end
+fn pminstep (u32,u32) u32 u32x128x64 -> (u32,u32)
+lo at p0 0
+hi at p0 1
+rs call prows p2 p1
+rl at rs 1
+n at rs 2
+a call lmin rl n
+b call lmax rl n
+c lt a lo
+d gt b hi
+lo2 select c a lo
+hi2 select d b hi
+r rec lo2 hi2
+ret r
+end
+# the labels of the parallel map into variables words 272 + j (fold body)
+fn plab u32x128x128 u32 u32x128x512 -> u32x128x128
+one mov 1
+pos call mnth p2 p1 65
+mv call mval p2 pos
+a at mv 0
+n at mv 1
+st call rd128 p0 0
+s1 fold vapst n p0 p2 a
+r0 call since s1 st
+d add p1 272
+r fold wr128 one s1 d r0
+ret r
+end
+fn prrow u32x128x128 u32 u32x128x512 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p6 p1
+k call key2 p3 p1
+j get p4 i
+r get p5 i
+lr0 add j 272
+lr call rd128 p0 lr0
+s1 fold vref one p0 p2 186 k lr
+pos call mnth p2 j 65
+kh call fhash p2 pos 3
+au call whash p2 40
+isa eq kh au
+s2 fold vflag one s1 p2 187 k isa
+lg0 call lg r
+pc call pct lg0 p7 p8
+s3 fold vnum one s2 p2 188 k pc
+loss lt r 100000
+s4 fold vflag one s3 p2 189 k loss
+r100 call rdiv r 1000
+z eq r100 0
+rr select z 1 r100
+s5 fold vnum one s4 p2 190 k rr
+ret s5
+end
+fn pkrow u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+one mov 1
+k call key1 p1
+nr0 add p1 256
+nm call rd128 p0 nr0
+s1 fold vref one p0 p2 182 k nm
+a mul p1 20
+b add a 7953
+tb add b 9
+tr call rd64 p3 tb
+s2 fold vnum one s1 p2 183 k tr
+nb add b 10
+ns call rd64 p3 nb
+ms call rdiv ns 100000
+s3 fold vfix2 one s2 p2 184 k ms
+rs call prows p3 p1
+jl at rs 0
+rl at rs 1
+n at rs 2
+s4 fold vnum one s3 p2 185 k n
+pm call sortperm rl n
+s5 fold prrow n s4 p2 p1 jl rl pm p4 p5
+ret s5
+end
+# the losses of kernel p1 appended: "k (label r.rrx)", separated by "; " (fold body over kernels)
+fn plossr u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p5 p1
+j get p3 i
+r get p4 i
+pos call mnth p2 j 65
+kh call fhash p2 pos 3
+au call whash p2 40
+na ne kh au
+lo lt r 100000
+c0 and na lo
+c select c0 1 0
+o call rd128 p0 0
+first eq o p7
+nf select first false true
+c1 and c0 nf
+cs select c1 1 0
+sp call cref p0 15
+s1 fold vapref cs p0 sp
+nr0 add p6 256
+nm call rd128 s1 nr0
+s2 fold vapref c s1 nm
+op call cref s2 16
+s3 fold vapref c s2 op
+lr0 add j 272
+lr call rd128 s3 lr0
+s4 fold vapref c s3 lr
+bl call cref s4 19
+s5 fold vapref c s4 bl
+r100 call rdiv r 1000
+s6 fold vapf2 c s5 r100
+xr call cref s6 17
+s7 fold vapref c s6 xr
+ret s7
+end
+fn ploss u32x128x128 u32 u32x128x512 u32x128x64 u32 -> u32x128x128
+rs call prows p3 p1
+jl at rs 0
+rl at rs 1
+n at rs 2
+pm call sortperm rl n
+r fold plossr n p0 p2 jl rl pm p1 p4
+ret r
+end
+fn pcovh (u32x64,u32) u32 u32x128x512 u32x128x128 -> (u32x64,u32)
+l at p0 0
+n at p0 1
+pos call mnth p2 p1 65
+kh call fhash p2 pos 3
+cp call mfind p2 70 kh
+has ne cp 0
+mv call mval p2 cp
+a at mv 0
+k at mv 1
+hc call shash p2 a k
+lr0 add p1 272
+lr call rd128 p3 lr0
+hl call vhash p3 lr
+h select has hc hl
+l2 set l n h
+n1 add n 1
+r rec l2 n1
+ret r
+end
+fn cpar u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+nj call rd64 p3 8119
+s0 fold plab nj p0 p2
+nk call rd64 p3 7952
+m0 rec 4294967295 0
+m fold pminstep nk m0 p3
+mn at m 0
+mx at m 1
+l9 call lg 9
+l10 call lg 10
+lm call lg mn
+lo0 add lm l9
+lo sub lo0 l10
+hi call lg mx
+s1 fold vnum one s0 p2 181 0 nk
+s2 fold pkrow nk s1 p2 p3 lo hi
+st call rd128 s2 0
+s3 fold ploss nk s2 p2 p3 st
+lr call since s3 st
+s4 fold vref one s3 p2 191 0 lr
+cp call rd64 p3 7948
+s5 fold vnum one s4 p2 192 0 cp
+sa call rd64 p3 7949
+s6 fold vnum one s5 p2 193 0 sa
+q call rd64 p3 7950
+quiet eq q 1
+nq select quiet false true
+s7 fold vflag one s6 p2 194 0 nq
+ld call rd64 p3 7951
+l100 call rdiv ld 100
+s8 fold vnum one s7 p2 195 0 l100
+z call z64l
+h0 rec z 0
+hs fold pcovh nj h0 p2 s8
+hl at hs 0
+al call alllangs p3 s8
+alh at al 0
+na at al 1
+cv call cover alh na hl nj
+s9 fold vcov one s8 p2 196 197 cv na
+ret s9
+end
