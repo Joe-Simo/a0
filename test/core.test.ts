@@ -8,6 +8,7 @@ import {
   formatFunction,
   formatType,
   makeIo,
+  type Operand,
   parse,
   parseAndValidate,
   parseType,
@@ -16,7 +17,9 @@ import {
   type TypedFunc,
 } from '../src/core.js';
 import { applyPatch, EditSession, formatPatch, parsePatch, revision } from '../src/edit.js';
+import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
+import { IR_OPS, refParse, type WordIr, wellFormedPrefix } from '../tools/ref-parse.js';
 
 const AFFINE = `fn affine u32 u32 u32 -> u32
 a mul p0 p1
@@ -744,7 +747,6 @@ test('div/rem are total unsigned (zero divisor: all ones / dividend); puts strea
 
 test('site page program: A0 UI protocol, stylesheet, and sized bars', async () => {
   // The site is page.a0 plus what it uses, through the linker.
-  const { link } = await import('../src/link.js');
   const { readFile } = await import('node:fs/promises');
   const p = (await link('site/page.a0', (f) => readFile(f, 'utf8'))).program;
   const session = p.byName.get('session') as TypedFunc;
@@ -813,7 +815,6 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
 });
 
 test('site docs program: A0 UI protocol, stylesheet, and reference sections', async () => {
-  const { link } = await import('../src/link.js');
   const { readFile } = await import('node:fs/promises');
   const p = (await link('site/docs.a0', (f) => readFile(f, 'utf8'))).program;
   const session = p.byName.get('session') as TypedFunc;
@@ -1019,7 +1020,6 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
 });
 
 test('linker: use lines resolve relative paths once, reject cycles and duplicate names, map lines', async () => {
-  const { link } = await import('../src/link.js');
   const files: Record<string, string> = {
     '/p/lib.a0': 'fn twice u32 -> u32\na add p0 p0\nret a\nend\n',
     '/p/mid.a0': 'use "lib.a0"\nfn quad u32 -> u32\na call twice p0\nb call twice a\nret b\nend\n',
@@ -1441,5 +1441,99 @@ test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A
     const got: number[][] = [];
     for (let i = 0; i < r[1]; i += 3) got.push([r[0][i], r[0][i + 1], r[0][i + 2]] as number[]);
     assert.deepEqual(got, reference(cut), cut.slice(0, 40));
+  }
+});
+
+test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on every example function', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const parser = (await link('compiler/parse.a0', (p) => readFile(p, 'utf8'))).program;
+  const parseio = parser.byName.get('parseio') as TypedFunc;
+  /** The io words of `parseio` back into tables. */
+  const decode = (w: readonly number[]): WordIr => {
+    let i = 2;
+    const table = (): number[] => {
+      const n = w[i] as number;
+      i += 1 + n;
+      return w.slice(i - n, i);
+    };
+    const [pool, sym, types, tlist, fns, nodes, args, uses] = [0, 1, 2, 3, 4, 5, 6, 7].map(table);
+    return {
+      code: w[0] as number,
+      tok: w[1] as number,
+      pool: pool as number[],
+      sym: sym as number[],
+      types: types as number[],
+      tlist: tlist as number[],
+      fns: fns as number[],
+      nodes: nodes as number[],
+      args: args as number[],
+      uses: uses as number[],
+    };
+  };
+  const a0Parse = (src: string): WordIr => {
+    const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
+    assert.equal(run(parseio, [io]), 0, src.slice(0, 40));
+    return decode(io.output);
+  };
+  /** Compare the word IR with the TypeScript parser's view of the same source. */
+  const check = (ir: WordIr, src: string, label: string): void => {
+    assert.equal(ir.code, 0, label);
+    const program = parse(src);
+    const symText = (s: number): string =>
+      String.fromCharCode(
+        ...ir.pool.slice(ir.sym[s * 2], (ir.sym[s * 2] as number) + (ir.sym[s * 2 + 1] as number)),
+      );
+    assert.equal(ir.fns.length / 7, program.functions.length, label);
+    program.functions.forEach((fn, fi) => {
+      const f = ir.fns.slice(fi * 7, fi * 7 + 7) as number[];
+      const where = `${label} ${fn.name}`;
+      assert.equal(symText(f[0] as number), fn.name, where);
+      assert.equal(f[1], fn.params.length, where);
+      assert.equal(f[5], fn.nodes.length, where);
+      const operand = (o: Operand): [number, number] =>
+        o.kind === 'node'
+          ? [1, fn.nodes.findIndex((n) => n.id === o.id)]
+          : o.kind === 'param'
+            ? [2, o.index]
+            : o.kind === 'u32'
+              ? [3, o.value]
+              : [4, o.value ? 1 : 0];
+      fn.nodes.forEach((node, ni) => {
+        const n = ir.nodes.slice(((f[4] as number) + ni) * 6, ((f[4] as number) + ni) * 6 + 6);
+        const w = `${where}.${node.id}`;
+        assert.equal(IR_OPS[(n[1] as number) - 1], node.text === undefined ? node.op : 'text', w);
+        const got: number[][] = [];
+        for (let k = 0; k < (n[2] as number); k += 1)
+          got.push(ir.args.slice(((n[3] as number) + k) * 2, ((n[3] as number) + k) * 2 + 2));
+        assert.deepEqual(got, node.args.map(operand), w);
+        if (node.callee !== undefined)
+          assert.equal(symText(ir.fns[(n[4] as number) * 7] as number), node.callee, w);
+        if (node.pred !== undefined)
+          assert.equal(symText(ir.fns[(n[5] as number) * 7] as number), node.pred, w);
+      });
+      const [rk, rv] = operand(fn.ret);
+      assert.equal(f[6], rk * 2 ** 28 + rv, `${where} ret`);
+    });
+  };
+  const files = (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort();
+  for (const f of files) {
+    const text = await readFile(`examples/${f}`, 'utf8');
+    // the TypeScript reference on the whole file, the A0 parser on a well-formed prefix
+    check(refParse(text), text, `ref ${f}`);
+    const prefix = wellFormedPrefix(text, 500);
+    assert.ok(prefix.length > 0, f);
+    const ir = a0Parse(prefix);
+    assert.deepEqual(ir, refParse(prefix), `a0 ${f}`);
+    check(ir, prefix, `a0 ${f}`);
+  }
+  const lexFull = await readFile('compiler/lex.a0', 'utf8');
+  const lexPrefix = wellFormedPrefix(lexFull.slice(lexFull.indexOf('\nfn ') + 1), 500);
+  check(a0Parse(lexPrefix), lexPrefix, 'a0 lex.a0');
+  // an unknown callee is a structure error at its token
+  assert.deepEqual(a0ParseCode('fn f u32 -> u32\na call g p0\nret a\nend\n'), [2, 8]);
+  function a0ParseCode(src: string): [number, number] {
+    const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
+    const code = run(parseio, [io]) as number;
+    return [code, io.output[1] as number];
   }
 });
