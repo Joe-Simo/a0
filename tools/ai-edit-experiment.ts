@@ -43,6 +43,7 @@ import { EditSession } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import { TASKS_B } from './ai-edit-tasks-b.js';
 import { buildTasksC } from './ai-edit-tasks-c.js';
+import { TASKS_D } from './ai-edit-tasks-d.js';
 
 type Representation = 'a0' | 'ts' | 'rust';
 type Protocol = 'conventional' | 'structured';
@@ -893,11 +894,13 @@ async function main(): Promise<void> {
   const TASKS: readonly Task[] =
     setName === 'b'
       ? (TASKS_B as readonly Task[])
-      : setName === 'c'
-        ? buildTasksC(TASKS_A, TASKS_B)
-        : setName === 'all'
-          ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
-          : TASKS_A;
+      : setName === 'd'
+        ? (TASKS_D as unknown as readonly Task[])
+        : setName === 'c'
+          ? buildTasksC(TASKS_A, TASKS_B)
+          : setName === 'all'
+            ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
+            : TASKS_A;
   // What each protocol sends. Set C makes the asymmetry visible: the structured A0 cell
   // sends the scoped view of the target function plus the program's signature lines, while
   // the structured TypeScript and Rust cells send the whole numbered file, since locating
