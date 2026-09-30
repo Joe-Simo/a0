@@ -2026,20 +2026,22 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
   // A32 modified immediates: an 8-bit value rotated right by an even amount.
   assert.ok(isArmImm(255) && isArmImm(0xff000000) && isArmImm(0xf000000f) && isArmImm(1020));
   assert.ok(!isArmImm(257) && !isArmImm(0x1fe00001) && !isArmImm(4095));
-  // Parameters arrive in r0/r1 and move to callee-saved homes; the result returns in r0.
+  // A scalar leaf keeps its first two parameters in r0/r1 (r12, r3, r2 are its scratch) and
+  // has no frame at all.
   const affine = fn('fn affine u32 u32 -> u32\na mul p0 3\nb add a p1\nret b\nend', 'affine');
   const s = emitArm32Function(affine);
   assert.match(s, /^\t\.globl a0_affine\n\t\.type a0_affine, %function$/m);
-  assert.match(s, /push \{r4, r5, r11, lr\}\n\tmov r11, sp\n\tmov r4, r0\n\tmov r5, r1/);
-  assert.match(s, /mov r1, #3\n\tmul r\d+, r4, r1/);
-  assert.match(s, /mov r0, r\d+\n\tmov sp, r11\n\tpop \{r4, r5, r11, pc\}$/m);
+  assert.match(s, /a0_affine:\n\tmov r3, #3\n\tmul r0, r0, r3\n\tadd r0, r0, r1\n\tbx lr\n/);
   // Division: no UDIV on baseline ARMv7-A, so the module's own routine runs; it gives all ones
-  // for a zero divisor and the dividend as the remainder.
+  // for a zero divisor and the dividend as the remainder. A caller moves its parameters to
+  // callee-saved homes (r4-r11, no frame pointer) and pushes lr with them.
   const div = parseAndValidate(
     'fn d u32 u32 -> u32\nq div p0 p1\nr rem p0 p1\nx xor q r\nret x\nend',
   );
   const mod = compile(div, 'arm32').text;
-  assert.doesNotMatch(mod, /\budiv\b/);
+  assert.match(mod, /a0_d:\n\tpush \{r4, r5, r6, lr\}\n\tmov r4, r0\n\tmov r5, r1/);
+  assert.match(mod, /mov r0, r\d+\n\tpop \{r4, r5, r6, pc\}$/m);
+  assert.doesNotMatch(mod, /\budiv\b|r11/);
   assert.match(mod, /mov r0, r4\n\tmov r1, r5\n\tbl \.La0_udivmod\n\tmov r\d+, r0/);
   assert.match(mod, /bl \.La0_udivmod\n\tmov r\d+, r1/);
   assert.match(mod, /\.La0_udivmod:\n\tcmp r1, #0\n\tmoveq r1, r0\n\tmvneq r0, #0\n\tbxeq lr/);
@@ -2058,22 +2060,63 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
   const shl = emitArm32Function(
     fn('fn s u32 u32 -> u32\na shl p0 33\nb shr a p1\nret b\nend', 's'),
   );
-  assert.match(shl, /lsl r\d+, r4, #1/);
-  assert.match(shl, /and r3, r5, #31\n\tlsr r\d+, r\d+, r3/);
-  // Unsigned comparison and a predicated select, no branch.
+  assert.match(shl, /lsl r0, r0, #1\n\tand r2, r1, #31\n\tlsr r0, r0, r2\n\tbx lr/);
+  // Unsigned comparison and a predicated select, no branch; the arm already in the result
+  // register needs no move.
   const sel = emitArm32Function(
     fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
   );
-  assert.match(sel, /cmp r4, r5\n\tmov (r\d+), #0\n\tmovlo \1, #1/);
-  assert.match(sel, /cmp r\d+, #0\n\tmovne (r\d+), r4\n\tmoveq \1, r5/);
-  // Index modulo the length: a power of two is a bit-field extract, another length divides.
+  assert.match(sel, /cmp r0, r1\n\tmov (r\d+), #0\n\tmovlo \1, #1\n\tcmp \1, #0\n\tmoveq r0, r1\n/);
+  // Index modulo the length: a power of two is a bit-field extract, another length divides;
+  // the element is addressed with a scaled register offset.
   const get8 = emitArm32Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
-  assert.match(
-    get8,
-    /ubfx r0, r0, #0, #3\n\tlsl r0, r0, #2\n\tadd r12, sp, #\d+\n\tldr r\d+, \[r12, r0\]/,
-  );
+  assert.match(get8, /ubfx r0, r4, #0, #3\n\tldr r\d+, \[sp, r0, lsl #2\]/);
   const get5 = emitArm32Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get5, /mov r1, #5\n\tbl \.La0_udivmod\n\tmov r0, r1/);
+  // ARMv7VE (opt-in): udiv/mls; a zero divisor gives quotient 0 and so remainder = dividend
+  // through mls, and the quotient is set to all ones under a comparison made before udiv.
+  const veDiv = emitArm32Function(div.byName.get('d') as TypedFunc, { udiv: true });
+  assert.match(veDiv, /cmp r1, #0\n\tudiv (r\d+), r0, r1\n\tmvneq \1, #0/);
+  assert.match(veDiv, /udiv (r\d+), r0, r1\n\tmls r0, \1, r1, r0/);
+  assert.doesNotMatch(veDiv, /udivmod/);
+  const veGet5 = emitArm32Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'), {
+    udiv: true,
+  });
+  assert.match(veGet5, /mov r1, #5\n\tudiv r3, r4, r1\n\tmls r0, r3, r1, r4/);
+  const { assembleArm32 } = await import('../src/arm32.js');
+  assert.match(assembleArm32([veDiv], 'v', { udiv: true }), /\.arch armv7ve\n/);
+  assert.match(compile(div, 'arm32').text, /\.arch armv7-a\n/);
+  // Rotates: complementary literal shifts, or a distance and `sub 32 distance`, are one ror.
+  const rotk = emitArm32Function(
+    fn('fn r u32 -> u32\na shl p0 5\nb shr p0 27\no or a b\nret o\nend', 'r'),
+  );
+  assert.match(rotk, /a0_r:\n\tror r0, r0, #27\n\tbx lr\n/);
+  const rotv = emitArm32Function(
+    fn('fn r u32 u32 -> u32\na shl p0 p1\nn sub 32 p1\nb shr p0 n\no or b a\nret o\nend', 'r'),
+  );
+  assert.match(rotv, /a0_r:\n\trsb r1, r1, #32\n\tror r0, r0, r1\n\tbx lr\n/);
+  // A loop: rotated (test at the bottom), a movw/movt constant hoisted before it, and the
+  // body's result written straight into the state register.
+  const hoist = emitArm32Function(
+    parseAndValidate(
+      'fn st u32 u32 -> u32\na mul p0 305419896\nb add a p1\nret b\nend\nfn h u32 u32 -> u32\nr fold st p1 p0\nret r\nend',
+    ).byName.get('h') as TypedFunc,
+  );
+  assert.match(
+    hoist,
+    /movw (r\d+), #22136\n\tmovt \1, #4660\n\tb (\.La0_h_\d+)\n(\.La0_h_\d+):\n\tmul (r\d+), r0, \1\n\tadd r0, \4, (r\d+)\n\tadd \5, \5, #1\n\2:\n\tcmp \5, r1\n\tblo \3\n/,
+  );
+  // Stack parameters of a leaf load straight into their homes, above the pushed registers.
+  const six = emitArm32Function(
+    fn(
+      'fn w u32 u32 u32 u32 u32 u32 -> u32\na add p0 p5\nb xor a p4\nc sub b p3\nd add c p2\ne add d p1\nret e\nend',
+      'w',
+    ),
+  );
+  assert.match(
+    six,
+    /push \{r4, r5, r6, r7, r12, lr\}\n\tmov r4, r2\n\tmov r5, r3\n\tldr r6, \[sp, #24\]\n\tldr r7, \[sp, #28\]\n\tadd r0, r0, r7\n/,
+  );
   // An aggregate result comes back through the hidden pointer in r0, kept in a slot.
   const pair = emitArm32Function(
     fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'),
@@ -2083,8 +2126,8 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
   const k = emitArm32Function(
     fn('fn k u32 -> u32\na add p0 305419896\nb xor a 4294967040\nret b\nend', 'k'),
   );
-  assert.match(k, /movw r1, #22136\n\tmovt r1, #4660/);
-  assert.match(k, /eor r\d+, r\d+, #4294967040|mvn r1, #255/);
+  assert.match(k, /movw r3, #22136\n\tmovt r3, #4660/);
+  assert.match(k, /mvn r3, #255\n\teor r0, r0, r3/);
   // Frames above a page are probed page by page, without touching the argument registers.
   const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
   const probe = emitArm32Function(
@@ -2125,6 +2168,11 @@ test('arm32 backend: assembled, linked with a C driver, and executed on an emula
     `fn bigtop u32 u32 -> u32\nz arr ${zeros}\nk and p1 7\nf fold poke k z p0\na get f p1\nb get f 3\nc add a b\nx arr a b c\ny get x p0\nret y\nend`,
     // divisors and dividends at and above 2^31
     'fn dv u32 u32 -> u32\nq div p0 p1\nr rem p0 p1\ns mul q 65599\nt xor s r\nret t\nend',
+    // rotates, a hoisted loop constant, a scalar leaf with stack parameters
+    'fn rotv u32 u32 -> u32\na shl p0 p1\nn sub 32 p1\nb shr p0 n\no or b a\nret o\nend',
+    'fn st u32 u32 -> u32\na mul p0 305419896\nb add a p1\nret b\nend',
+    'fn six u32 u32 u32 u32 u32 u32 -> u32\na add p0 p5\nb xor a p4\nc sub b p3\nd add c p2\ne add d p1\nret e\nend',
+    'fn ext u32 u32 -> u32\nr call rotv p0 p1\nk shl p0 5\nl shr p0 27\nm or k l\nj and p1 31\nf fold st j r\nx rem f p1\ns call six r m f x p0 p1\nret s\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
   const inputs: [number, number, boolean][] = [
@@ -2141,18 +2189,39 @@ test('arm32 backend: assembled, linked with a C driver, and executed on an emula
   const top = p.byName.get('top') as TypedFunc;
   const bigtop = p.byName.get('bigtop') as TypedFunc;
   const dv = p.byName.get('dv') as TypedFunc;
+  const ext = p.byName.get('ext') as TypedFunc;
+  const six = p.byName.get('six') as TypedFunc;
   const expected = inputs
-    .flatMap(([a, b, c]) => [run(top, [a, b, c]), run(bigtop, [a, b]), run(dv, [a, b])].map(String))
+    .flatMap(([a, b, c]) =>
+      [
+        run(top, [a, b, c]),
+        run(bigtop, [a, b]),
+        run(dv, [a, b]),
+        run(ext, [a, b]),
+        run(six, [a, b, (a ^ b) >>> 0, 7, b, a]),
+      ].map(String),
+    )
     .join('\n');
   const calls = inputs
     .map(
       ([a, b, c]) =>
-        `  printf("%u\\n%u\\n%u\\n", (unsigned)a0_top(${a}u, ${b}u, ${c}), (unsigned)a0_bigtop(${a}u, ${b}u), (unsigned)a0_dv(${a}u, ${b}u));`,
+        `  printf("%u\\n%u\\n%u\\n%u\\n%u\\n", (unsigned)a0_top(${a}u, ${b}u, ${c}), (unsigned)a0_bigtop(${a}u, ${b}u), (unsigned)a0_dv(${a}u, ${b}u), (unsigned)a0_ext(${a}u, ${b}u), (unsigned)a0_six(${a}u, ${b}u, ${(a ^ b) >>> 0}u, 7u, ${b}u, ${a}u));`,
     )
     .join('\n');
-  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nextern uint32_t a0_dv(uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
-  for (const optimize of [true, false]) {
-    const asm = compile(p, 'arm32', { optimize }).text;
+  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nextern uint32_t a0_dv(uint32_t, uint32_t);\nextern uint32_t a0_ext(uint32_t, uint32_t);\nextern uint32_t a0_six(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const { assembleArm32, emitArm32Function } = await import('../src/arm32.js');
+  // The default ARMv7-A emission, and the ARMv7VE (udiv) one: Cortex-A7 implements both.
+  const builds = [true, false].flatMap((optimize) => [
+    compile(p, 'arm32', { optimize }).text,
+    assembleArm32(
+      p.functions.map((f) =>
+        emitArm32Function(optimize ? optimizeFunction(f).fn : f, { udiv: true }),
+      ),
+      'test',
+      { udiv: true },
+    ),
+  ]);
+  for (const asm of builds) {
     assert.doesNotMatch(asm, /#include|int main/);
     await withTempDir(async (dir) => {
       await writeFile(join(dir, 'module.s'), asm, 'utf8');

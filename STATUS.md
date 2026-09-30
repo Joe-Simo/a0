@@ -1599,6 +1599,65 @@ COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17. Follow-up to the C/JS fix of the same
 - Not done: aggregates still never in registers; loops still test at the top (`bgeu` + `j`
   per trip, no rotation); no Zbb execution run; no CLI flag for Zbb.
 
+## Session 2026-09-30 (ARM32 code quality)
+
+- **`src/arm32.ts` code generation (a0c-0.1.16)**, same scope and calling convention:
+  - No frame pointer: slots are addressed from sp, the epilogue is `add sp` + `pop {..., pc}`,
+    and r11 is an eighth callee-saved home (r4-r11). Leaves (no out-of-line call, no divide
+    routine) also use lr as a home once anything is pushed; leaves without aggregates also use
+    r0/r1 (the first two parameters stay where they arrive; scratch is then r12, r3, r2, with
+    parameters placed by one parallel move) and have no prologue at all when nothing else is
+    needed (`bx lr`). lr and the r0/r1 pool are used only when every sp offset fits the 12-bit
+    immediate (lr is the large-offset scratch); otherwise the old pool is used.
+  - Spilling: when all homes are taken, the live value with the smallest use weight (uses x 8
+    per loop level) goes to a slot, not simply the newest one.
+  - Rotates: `or (shl x a) (shr x b)` with literal distances summing to 0 mod 32 is `ror #b`,
+    with `b = sub 32k a` (either side) `ror x, b` by register (ROR by register uses the low
+    byte mod 32, which equals b mod 32; a = 0 gives x on both sides); single-use shift nodes
+    are not emitted. `sub lit x` is `rsb`; literal-first commutative ops and compares swap.
+  - Loops: rotated (test at the bottom; no entry branch for a positive literal trip count);
+    literals read inside a loop (movw/movt constants, register operands, literal trip
+    counts) are materialized once before the outermost loop when a register is free over it
+    (never forcing a new push in a leaf); the inlined body's scalar result takes the fold
+    state's register when the state is not read after the result is defined, so no `mov`
+    ends the iteration.
+  - Memory: `get`/`set` with a variable index use scaled register offsets (`[sp, r0, lsl
+    #2]`, `ubfx` straight from the index's home); an `arr`/`rec` literal reuses a constant
+    already in r3 and stores past 4 KiB through r12 advanced a page at a time instead of
+    `movw lr` per element.
+  - Opt-in ARMv7VE (`emitArm32Function(fn, { udiv: true })`, `assembleArm32(bodies, v, {
+    udiv: true })`, module `.arch armv7ve`): `div` is `cmp b, #0; udiv; mvneq #0`, `rem` is
+    `udiv; mls` (ARMv7-A defines a zero divisor to give quotient 0 without a trap, so `mls`
+    already gives the dividend), index modulo a non-power-of-two length the same; no
+    routine, so dividing functions become leaves. Predicated instead of a branch (the
+    comparison is made before the divide, so a divisor register reused as the result is
+    safe). Not reachable from `compile()`/the CLI (the option lives in src/arm32.ts only; no
+    CompileOptions field was added in this session).
+- **Static instruction counts** (instructions per function, directives excluded; `before` =
+  a0c-0.1.15; no ARM32 hardware, so no timing; qemu time is not a performance claim):
+  - exec-bench kernels (optimized; VE equal, no kernel divides): affine 10 -> 5, rotl 14 -> 3
+    (`rsb; ror; bx lr`), clamp 20 -> 13, mix 17 -> 9, ident 6 -> 1, noop 6 -> 1, chain3 11
+    -> 5, branchy 29 -> 21, arrfill 43 -> 27, loop64 20 -> 13 (12 -> 8 instructions per
+    iteration: constant hoisted, state kept in r0, one branch), arrfill4k 11296 -> 4123;
+    total 11472 -> 4221.
+  - corpus (the 38 io-free functions of results/corpus.a0): optimized 1381 -> 1097 (VE 1040),
+    unoptimized 8784 -> 7859 (VE 7568); fewer instructions in 38/38 functions at both levels,
+    more in none. Largest: g34 480 -> 385 (VE 362), g29 135 -> 120 (VE 110), g0 7 -> 1.
+- **Verification**: `native_arm32` 4297/4297 at both optimization levels (default ARMv7-A,
+  Cortex-A7). VE: the same 4297 cases at both levels, emitted with `{ udiv: true }`, built
+  with `-march=armv7ve+fp` and run on `qemu-system-arm -M virt -cpu cortex-a15`: 4297/4297
+  (a one-off harness outside the repo; verify itself runs only the default mode). Unit tests
+  (`test/core.test.ts`): frameless scalar leaf, callee-saved push without r11, shift mask via
+  r2, select without redundant move, scaled index, VE div/rem/index sequences and `.arch
+  armv7ve`, literal and variable ror, the rotated loop with its hoisted constant and state in
+  r0, leaf stack parameters; the execution test gained rotates, a hoisted-constant fold and a
+  six-parameter leaf, and now also builds and runs the VE emission (Cortex-A7 has UDIV) at
+  both levels.
+- Gate (this worktree): lint pass; typecheck pass; test 59/59; verify all paths passed (native_arm32 4297/4297 both levels; arm64, x86_64, riscv64, avr 4297; interpreter, optimizer, JS, C, C++, wasm, JVM 5262). results/verification.json not committed (only arm32.ts, tests, STATUS, COMPILER_VERSION edited).
+- Not done: no Thumb-2; aggregates still never in registers; r12 is never a home (it is the
+  address scratch, and calls may clobber it); compare+select is still a materialized bool
+  (`cmp; mov; movcc; cmp; movne`); the VE option is not exposed through `compile`/CLI/verify.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
