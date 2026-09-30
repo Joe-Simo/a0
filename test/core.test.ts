@@ -2903,6 +2903,26 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
   // nested array types: u32x4x2 is the array of 2 of u32x4
   const nested = a0Parse('fn f u32x4x2 u32x4 -> u32x4x2\nret p0\nend\n');
   assert.deepEqual(nested.types.slice(9), [4, 4, 0, 4, 2, 3]);
+  // header arrays over bool and over records (the corpus's g23 g27 g40 g47 headers), nested
+  // in records and as results; an array of a record holding io and a suffix not written right
+  // after its ')' are parse errors at the suffix, as parse() rejects them
+  const arrays =
+    'fn g23 u32 (u32,bool)x2 -> bool\nret true\nend\nfn g27 u32 boolx4 -> u32\nret p0\nend\nfn h (u32,bool)x2x3 ((u32,bool)x2,u32) -> (bool,u32)x5\nret 0\nend\n';
+  check(refParse(arrays), arrays, 'ref arrays');
+  assert.deepEqual(a0Parse(arrays), refParse(arrays));
+  check(a0Parse(arrays), arrays, 'a0 arrays');
+  assert.deepEqual(a0Parse(arrays).types.slice(9), [5, 0, 2, 4, 2, 3, 4, 4, 1, 4, 3, 4, 5, 6, 2, 5, 10, 2, 4, 5, 8]);
+  for (const [src, tok] of [
+    ['fn g (u32,io)x2 -> u32\nret 0\nend\n', 7],
+    ['fn g (u32,(io,u32))x2 -> u32\nret 0\nend\n', 11],
+    ['fn g (u32,bool) x2 -> u32\nret 0\nend\n', 7],
+    ['fn g u32 x2 -> u32\nret 0\nend\n', 3],
+    ['fn g boolx -> u32\nret 0\nend\n', 2],
+  ] as const) {
+    assert.deepEqual(a0ParseCode(src), [1, tok], src);
+    assert.deepEqual([refParse(src).code, refParse(src).tok], [1, tok], src);
+    assert.throws(() => parse(src), src);
+  }
   // an unknown callee is a structure error at its token
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\na call g p0\nret a\nend\n'), [2, 8]);
   // direct calls `id F ARGS`, `ret F ARGS`, and the udiv/urem spellings give call, div and rem

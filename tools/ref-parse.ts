@@ -240,10 +240,14 @@ export function refParse(src: string): WordIr {
       types.push(4, n, elem);
       return types.length / 3 - 1;
     };
-    /** u32xAxB...: the array of B of (the array of A of u32); undefined for a bad length */
-    const arrayWord = (i: number): number | undefined => {
-      let t = 0;
-      let s = start(i) + 4;
+    /**
+     * The digit groups AxB... after the first `skip` bytes of word i over the element type
+     * `elem` (u32xAxB... is the array of B of (the array of A of u32)); undefined for a bad
+     * length.
+     */
+    const arrayWord = (i: number, skip: number, elem: number): number | undefined => {
+      let t = elem;
+      let s = start(i) + skip;
       const end = start(i) + len(i);
       for (let k = s; k <= end; k += 1) {
         if (k < end && b[k] !== 120) continue;
@@ -264,16 +268,33 @@ export function refParse(src: string): WordIr {
       tlist.push(...fields);
       return types.length / 3 - 1;
     };
-    const produce = (ty: number, i: number): void => {
+    /** A record type contains io: a field that is io or such a record (arrays cannot). */
+    const containsIo = (ty: number): boolean =>
+      ty === 2 ||
+      (types[ty * 3] === 5 &&
+        tlist
+          .slice(
+            types[ty * 3 + 1] as number,
+            (types[ty * 3 + 1] as number) + (types[ty * 3 + 2] as number),
+          )
+          .some(containsIo));
+    /** The last record type closed by ')': the byte after it and where it went. */
+    let closed: { end: number; toResult: boolean } | undefined;
+    const produce = (ty: number, i: number): boolean => {
       if (mode === 2 && depth === 0) {
         if (haveRes) fail(1, i);
         res = ty;
         haveRes = true;
-      } else stk.push(ty);
+        return true;
+      }
+      stk.push(ty);
+      return false;
     };
     for (let i = 0; i < ntok && err === undefined; i += 1) {
       const k = kind(i);
       const byte = b[start(i)] as number;
+      const after = closed;
+      closed = undefined;
       if (mode === 0) {
         if (kind(i - 1) === 5 && key(i) === KW.fn) mode = 3;
       } else if (mode === 3) {
@@ -294,9 +315,20 @@ export function refParse(src: string): WordIr {
         else if (kk === KW.bool) produce(1, i);
         else if (kk === KW.io) produce(2, i);
         else if (w[0] === 117 && w[1] === 51 && w[2] === 50 && w[3] === 120) {
-          const t = arrayWord(i);
+          const t = arrayWord(i, 4, 0);
           if (t === undefined) fail(1, i);
           else produce(t, i);
+        } else if (w.length >= 5 && String.fromCharCode(...w.slice(0, 5)) === 'boolx') {
+          const t = arrayWord(i, 5, 1);
+          if (t === undefined) fail(1, i);
+          else produce(t, i);
+        } else if (w[0] === 120 && w.length >= 2 && after?.end === start(i)) {
+          // (T,...)xA...: the array suffix of the record type its ')' just produced
+          const rec = after.toResult ? res : (stk[stk.length - 1] as number);
+          const t = containsIo(rec) ? undefined : arrayWord(i, 1, rec);
+          if (t === undefined) fail(1, i);
+          else if (after.toResult) res = t;
+          else stk[stk.length - 1] = t;
         } else fail(1, i);
       } else if (k === 9 && byte === 40) {
         stk.push(SENTINEL);
@@ -310,7 +342,7 @@ export function refParse(src: string): WordIr {
           const fields = stk.splice(pos + 1);
           stk.pop();
           depth -= 1;
-          produce(recordType(fields), i);
+          closed = { end: start(i) + 1, toResult: produce(recordType(fields), i) };
         }
       } else if (k === 4) {
         if (mode !== 1 || depth !== 0) fail(1, i);

@@ -167,10 +167,11 @@ r33 select k33 11 r32
 ret r33
 end
 # --- pass 1: tokens ------------------------------------------------------------------
-# one byte of a token: (key pow hash value digits wordlike esc decoded arrprefix); p1 byte
+# one byte of a token: (key pow hash value digits wordlike esc decoded arrprefix boolprefix)
+# (arrprefix: the word starts with "u32x", boolprefix: with "boolx"); p1 byte
 # index in the segment, p2 p3 the two source pages from the segment start, p4 its offset in
 # p2, p5 skip the first byte for value and digits (a parameter), p6 the segment's first index
-fn scanb (u32,u32,u32,u32,bool,bool,u32,u32,bool) u32 u32x128 u32x128 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool)
+fn scanb (u32,u32,u32,u32,bool,bool,u32,u32,bool,bool) u32 u32x128 u32x128 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool,bool)
 key at p0 0
 pow at p0 1
 h at p0 2
@@ -180,6 +181,7 @@ wl at p0 5
 esc at p0 6
 dc at p0 7
 arr at p0 8
+bw at p0 9
 q add p4 p1
 qh shr q 7
 ql and q 127
@@ -229,11 +231,20 @@ f4 lt gk 4
 okc eq c want
 arr1 and arr okc
 arr2 select f4 arr1 arr
-r rec key2 pow2 h2 v2 dig2 wl2 esc2 dc2 arr2
+g4 eq gk 4
+b1 select g1 111 98
+b2 select g2 111 b1
+b3 select g3 108 b2
+bwant select g4 120 b3
+f5 lt gk 5
+okb eq c bwant
+bw1 and bw okb
+bw2 select f5 bw1 bw
+r rec key2 pow2 h2 v2 dig2 wl2 esc2 dc2 arr2 bw2
 ret r
 end
 # segment p1 + p6 (128 bytes each) of the token at p3 of length p4
-fn scanseg (u32,u32,u32,u32,bool,bool,u32,u32,bool) u32 u32x128x128 u32 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool)
+fn scanseg (u32,u32,u32,u32,bool,bool,u32,u32,bool,bool) u32 u32x128x128 u32 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool,bool)
 s add p1 p6
 kb mul s 128
 pos add p3 kb
@@ -393,7 +404,7 @@ tail select isd0 false true
 big gt len 128
 n1 select big 128 len
 n1s select scan n1 0
-sc0 rec 0 1 2166136261 0 true true 0 0 true
+sc0 rec 0 1 2166136261 0 true true 0 0 true true
 sc1 fold scanb n1s sc0 slo shi so tail 0
 n127 add len 127
 nseg shr n127 7
@@ -408,6 +419,7 @@ dig at sc 4
 wl at sc 5
 dc at sc 7
 arrp at sc 8
+bwp at sc 9
 # classification (identifiers only)
 le6 le len 6
 key6 select le6 key 0
@@ -421,10 +433,22 @@ isio eq key6 564
 ty0 select isu32 1 0
 ty1 select isbool 2 ty0
 ty2 select isio 3 ty1
-ty select k1 ty2 0
 ge4 ge len 4
 arrw0 and arrp ge4
-arrw and arrw0 k1
+# array type words: u32xA... (tyword 0), boolxA... (tyword 2), and xA... (tyword 3), the
+# array suffix of a record type written right after its ')'
+ge5 ge len 5
+bxw and bwp ge5
+isx0 eq c0 120
+ge2x ge len 2
+xw and isx0 ge2x
+arrw1 or arrw0 bxw
+arrw2 or arrw1 xw
+arrw and arrw2 k1
+awk0 select bxw 2 0
+awk select xw 3 awk0
+tya select arrw awk ty2
+ty select k1 tya 0
 isp eq c0 112
 ge2 ge len 2
 par0 and isp ge2
@@ -1004,13 +1028,15 @@ ok2 at g 4
 r rec types2 nt2 cur2 v2 have2 ok2
 ret r
 end
-# a type word u32xAxB... at p3 of length p4 (p4 >= 4): (types ntypes ok index)
-fn arrword u32x384x65 u32 u32x128x128 u32 u32 -> (u32x384x65,u32,bool,u32)
-dstart add p3 4
-dlen sub p4 4
+# a type word at p3 of length p4 whose digit groups follow its first p5 bytes, over the
+# element type p6 (u32xAxB... 4 over u32, boolxA... 5 over bool, the record suffix xA... 1 over
+# the record): (types ntypes ok index)
+fn arrword u32x384x65 u32 u32x128x128 u32 u32 u32 u32 -> (u32x384x65,u32,bool,u32)
+dstart add p3 p5
+dlen sub p4 p5
 n127 add dlen 127
 nseg shr n127 7
-s0 rec p0 p1 0 0 false true
+s0 rec p0 p1 p6 0 false true
 s fold arrseg nseg s0 p2 dstart dlen
 types at s 0
 nt at s 1
@@ -1033,10 +1059,10 @@ r rec types2 nt2 okf cur2
 ret r
 end
 # arrword as a fold body, so that a count of 0 skips it
-fn arrone (u32x384x65,u32,bool,u32) u32 u32x128x128 u32 u32 -> (u32x384x65,u32,bool,u32)
+fn arrone (u32x384x65,u32,bool,u32) u32 u32x128x128 u32 u32 u32 u32 -> (u32x384x65,u32,bool,u32)
 types at p0 0
 nt at p0 1
-r call arrword types nt p2 p3 p4
+r call arrword types nt p2 p3 p4 p5 p6
 ret r
 end
 # a record: the first type at or after p7 of the page with tag 5, count p5 and hash p6
@@ -1121,10 +1147,12 @@ s loop rsok rsstep cap s0 p2 p3 p4 p5 p6 p7 p8
 r at s 1
 ret r
 end
-# copy stack entries p3.. to tlist from p4, hashing them: state (tlist hash)
-fn frcopy (u32x128x65,u32) u32 u32x128x128 u32 u32 -> (u32x128x65,u32)
+# copy stack entries p3.. to tlist from p4, hashing them and noting whether one contains io
+# (io itself, or a record whose tsig p5 has bit 31): state (tlist hash io)
+fn frcopy (u32x128x65,u32,u32) u32 u32x128x128 u32 u32 u32x128x65 -> (u32x128x65,u32,u32)
 tl at p0 0
 h at p0 1
+io at p0 2
 a add p3 p1
 ah shr a 7
 al and a 127
@@ -1138,15 +1166,26 @@ dg2 set dg dl v
 tl2 set tl dh dg2
 hx xor h v
 h2 mul hx 16777619
-r rec tl2 h2
+vh shr v 7
+vl and v 127
+vg get p5 vh
+vs get vg vl
+vio shr vs 31
+isio eq v 2
+vi select isio 1 vio
+io2 or io vi
+r rec tl2 h2 io2
 ret r
 end
 # header token p1 of a chunk (page offset p5 + p1, page base p6): state
 # (types tsig tlist stk hout ntypes ntlist nstk ls depth mode err errtok name res haveres first
-#  nparams nhc nhn); mode: 0 outside a header 1 parameters 2 result 3 expecting the name.
-# stk holds the fields of the record being parsed above a sentinel 2^31 + the previous
+#  nparams nhc nhn cend cwhere); mode: 0 outside a header 1 parameters 2 result 3 expecting the
+# name. stk holds the fields of the record being parsed above a sentinel 2^31 + the previous
 # sentinel's position (ls); ')' and '->' copy the frame to tlist. hout: 5 words per header.
-fn p3tok (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x3 u32x128 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+# cend is the byte after the last token when it was a ')' (4294967295 otherwise) and cwhere
+# where that record type went (1 the stack top, 2 the result). tsig: a record's field hash in
+# bits 0-30, bit 31 when a field contains io.
+fn p3tok (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x3 u32x128 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 types at p0 0
 tsig at p0 1
 tlist at p0 2
@@ -1167,6 +1206,8 @@ first at p0 16
 nparams at p0 17
 nhc at p0 18
 nhn at p0 19
+cend at p0 20
+cwhere at p0 21
 j add p5 p1
 i add p6 j
 w0 mul j 3
@@ -1217,29 +1258,67 @@ nameok and k1 notres
 ename and m3 nameok
 enbad0 select nameok false true
 enbad and m3 enbad0
-# type words: u32 bool io u32xAxB...
-isu32 eq ty 1
-isbool eq ty 2
-isio eq ty 3
+# type words: u32 bool io, the array words u32xAxB... and boolxA..., and the suffix xA... of
+# the record type whose ')' ends right before it, which replaces that type where it went; an
+# array cannot hold io (a record whose tsig has bit 31)
+naw select aw false true
+tw1 eq ty 1
+tw2 eq ty 2
+tw3 eq ty 3
+isu32 and tw1 naw
+isbool and tw2 naw
+isio and tw3 naw
+isxw and tw3 aw
+isbw and tw2 aw
 eid0 and inty k1
-doarr and eid0 aw
-an select doarr 1 0
+nxw select isxw false true
+doarr0 and eid0 aw
+doarr and doarr0 nxw
+adj eq start cend
+dox0 and eid0 isxw
+dox and dox0 adj
+cwst eq cwhere 1
+stop sub nstk 1
+sth shr stop 7
+stl and stop 127
+stg get stk sth
+stv get stg stl
+xbase select cwst stv res
+xbh shr xbase 7
+xbl and xbase 127
+xbg get tsig xbh
+xbs get xbg xbl
+xbio shr xbs 31
+xnoio eq xbio 0
+anyarr or doarr dox
+an select anyarr 1 0
+askip0 select isbw 5 4
+askip select dox 1 askip0
+abase0 select isbw 1 0
+abase select dox xbase abase0
 aws0 rec types ntypes false 0
-aws fold arrone an aws0 p2 start len
+aws fold arrone an aws0 p2 start len askip abase
 typesa at aws 0
 ntypesa at aws 1
 arok0 at aws 2
 arok and doarr arok0
+xok0 and dox arok0
+xok and xok0 xnoio
 arid at aws 3
 tyok0 or isu32 isbool
 tyok1 or tyok0 isio
-tyok or tyok1 arok
+tyok2 or tyok1 arok
+tyok or tyok2 xok
 tyb0 select isbool 1 0
 tyb1 select isio 2 tyb0
 tyid select arok arid tyb1
-eid and eid0 tyok
+eid1 and eid0 tyok
+eid and eid1 nxw
 eidbad0 select tyok false true
 eidbad and eid0 eidbad0
+dxs and xok cwst
+cwre eq cwhere 2
+dxr and xok cwre
 # punctuation of record types
 isopen eq pu 1
 iscomma eq pu 2
@@ -1282,12 +1361,16 @@ cnt0 sub nstk pos1
 cnt1 select hasf cnt0 0
 usefr or eclose earrow
 cnt select usefr cnt1 0
-fc0 rec tlist 0
-fc fold frcopy cnt fc0 stk pos1 ntlist
+fc0 rec tlist 0 0
+fc fold frcopy cnt fc0 stk pos1 ntlist tsig
 tl2 at fc 0
 hraw at fc 1
+fio at fc 2
 hs xor hraw cnt
-sig mul hs 16777619
+sig0 mul hs 16777619
+sigm and sig0 2147483647
+fiob mul fio 2147483648
+sig or sigm fiob
 rn select eclose 1 0
 ridx0 fold recone rn 4294967295 typesa tsig tl2 ntypesa ntlist cnt sig
 rfound ne ridx0 4294967295
@@ -1313,11 +1396,14 @@ lsprev sub lsv 2147483648
 nstkc select eclose ls nstk
 sentl add 2147483648 ls
 sidx0 select topush nstkc 0
-sidx select eopen nstk sidx0
+sidx1 select eopen nstk sidx0
+sidx select dxs stop sidx1
 sval0 select topush pt 2147483648
-sval select eopen sentl sval0
+sval1 select eopen sentl sval0
+sval select dxs arid sval1
 sw0 or topush eopen
-sw1 or sw0 ename
+sw01 or sw0 dxs
+sw1 or sw01 ename
 sw and sw1 noerr
 sh shr sidx 7
 sl and sidx 127
@@ -1368,7 +1454,12 @@ qg2 set qg tl qv
 tsig2 set tsig th qg2
 nty1 add ntypesa 1
 ntypes2 select addrec nty1 ntypesa
-res2 select tores pt res
+res1 select tores pt res
+res2 select dxr arid res1
+cst add start 1
+cend2 select eclose cst 4294967295
+cwt select tores 2 1
+cwhere2 select eclose cwt 0
 hr2 select tores 1 haveres
 hr3 select ename 0 hr2
 first2 select earrow ntlist first
@@ -1428,11 +1519,11 @@ bad6 or bad5 dres
 bad and bad6 noerr
 err2 select bad 1 err
 et2 select bad i errtok
-r rec types2 tsig2 tlist2 stk2 hout3 ntypes2 ntlist2 nstk4 ls4 dep2 mo4 err2 et2 name2 res2 hr3 first2 np2 nhc2 nhn2
+r rec types2 tsig2 tlist2 stk2 hout3 ntypes2 ntlist2 nstk4 ls4 dep2 mo4 err2 et2 name2 res2 hr3 first2 np2 nhc2 nhn2 cend2 cwhere2
 ret r
 end
 # chunk p1 (first token, count) of the header lines
-fn p3chunk (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x384 u32x128x128 u32x128x16 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+fn p3chunk (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x384 u32x128x128 u32x128x16 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 c2 mul p1 2
 ch shr c2 7
 cl and c2 127
@@ -1458,7 +1549,7 @@ r fold p3tok cnt p0 p2 grp tapg j0 base
 ret r
 end
 # the header chunks of pass 1 (p4 of them), given its error p5 p6; p7 the token count
-fn pass3 u32x128x128 u32x128x384 u32x128x128 u32x128x16 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+fn pass3 u32x128x128 u32x128x384 u32x128x128 u32x128x16 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 ty0 call zty
 zp call z384
 a set zp 0 1
@@ -1468,7 +1559,7 @@ types set ty0 0 c
 z65 call z65
 z128 call zsrc
 z33 call z33
-s0 rec types z65 z65 z128 z33 3 0 0 0 0 0 p5 p6 0 0 0 0 0 0 0
+s0 rec types z65 z65 z128 z33 3 0 0 0 0 0 p5 p6 0 0 0 0 0 0 0 4294967295 0
 ok eq p5 0
 n select ok p4 0
 s fold p3chunk n s0 p0 p1 p2 p3
