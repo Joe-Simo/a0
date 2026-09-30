@@ -36,11 +36,9 @@ printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
 
 Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, `a0-windows-x64.exe`. A C compiler (clang or gcc) is needed only to link native output on your machine.
 
-## Building the compiler from source
+## Contributing to the compiler
 
-The compiler itself is written in TypeScript (A0 is not self-hosted yet), so building it from source needs Bun or Node 22+. Users of A0 do not need this.
-
-Requires Node 22+ and Bun (npm equivalents work: `npm install`, `npm run <script>`).
+The compiler is being rewritten in A0 (see `compiler/` and DESIGN.md section 7a). Until that lands, the compiler itself is TypeScript, and working on it needs Bun or Node 22+. Users of A0 never need this: the released `a0` binary is self-contained.
 
 ```bash
 bun install
