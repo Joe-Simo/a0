@@ -1455,6 +1455,106 @@ Set c400 (one 400-function program, structured):
   fuel exhaustion, and confinement (`..`, absolute, symlink, dangling symlink, `use` escape).
 - Gate: lint, typecheck, test.
 
+## Session 2026-09-30 (AVR code quality)
+
+- **`src/avr.ts` code generation rewritten (a0c-0.1.16)**; the target, calling convention and
+  helper-per-section module shape are unchanged, so avr-gcc C still calls `a0_<name>` directly.
+  - Register allocation: every scalar (u32, bool, hidden result pointer, aggregate-parameter
+    pointer, fold/loop counter) is a virtual register with a live interval over the node order;
+    a linear scan gives it a home in r2-r25 (a u32 an even group of four, a pointer an even
+    pair, a bool one register) or a spill slot. Values live across a call or helper avoid
+    r18-r27, r30, r31 and the callee's argument registers, so they land in the callee-saved
+    r2-r17, which the prologue saves only when written (a parameter left where it arrived is
+    not saved). Hints put a result in its dying operand's registers (only when that costs no
+    push), parameters where they arrive, call results in r22/r24. An operand dying at a u32
+    result shares its registers or slot exactly or not at all (the byte sequences read byte k
+    after writing byte j < k). r0, r26, r27, r30, r31 are never homes: they are the byte
+    temporaries and the X/Z pointers. A leaf with no spill has no frame and no Y setup.
+  - Spills past Y+63 (the corpus's unoptimized functions reach 152-byte frames): a reload area
+    at Y+1 stages a node's far operands and result through Z, so every operation addresses its
+    scalars from Y and carry chains are never broken by pointer arithmetic.
+  - Hardware multiply: `__a0_mul32` is the ten 8x8 `mul`s whose weight is below 2^32,
+    accumulated by column (32 instructions, about 40 cycles; was a 32-step shift-and-add).
+    mul/div/rem by a power-of-two literal become shl/shr/and.
+  - 8-bit peepholes: immediate forms on r16-r31 (`subi/sbci` for add and sub, `andi/ori`,
+    `cpi`), the zero register r1 for zero bytes, identity bytes skipped (and 0xff, or/xor 0),
+    `com` for xor 0xff, `c - x` as `com` plus an add, `movw` for aligned pairs in every
+    (parallel) move, constant shifts as one parallel byte move plus bit steps over the live
+    bytes only (`swap`/`andi` for a nibble), variable shifts as an inline counted loop (no
+    helper), branch-free booleans from the carry (`mov/rol`, `sbc/inc`), a compare fused into
+    the select that consumes it, and `and x 2^k` tested against zero as `bst` plus `brts/brtc`.
+    Known-zero bytes are tracked per value (and with a mask, shifts by whole bytes, or/xor/
+    select of such values): they are read as r1, never written, compares skip bytes zero on
+    both sides, and a u32 whose high bytes are zero keeps only its low bytes in registers.
+  - fold/loop: state and counter stay in their homes (callee-saved registers) for the whole
+    loop, the test is at the bottom (`brlo` back when the body is short), the counter steps
+    with `subi/sbci 255` or `sec`/`adc r1`; the predicate result is tested in r24 directly.
+  - Stack arguments (avr-gcc's rule): the first parameter that does not fit above r8, and
+    every one after it, is passed on the stack in order at unpadded sizes; the caller pushes
+    the last byte first and pops after the call (`pop r0` up to 6 bytes, else SP arithmetic);
+    the callee reads them at Y + frame + saved + 3. `avrStackBytes` counts the outgoing
+    bytes. The "more than the 18 argument registers" refusal is gone.
+  - Aggregate parameters are read in place through their pointer (values are immutable and
+    the result is written last, so `out` may still alias an argument); nothing is copied on
+    entry. Frame aggregates are copied inline (unrolled up to 8 bytes, else a counted loop on
+    r1); `__a0_copy`, `__a0_shl32` and `__a0_shr32` are gone.
+- **Measured per kernel** (ATmega328P; flash = growth of the firmware `.text` over the same
+  driver linked with an empty `ret` stub, so the function, its A0 callees and every helper or
+  libgcc routine it pulls in; cycles = simavr cycles between two `GPIOR0` writes around one
+  call, minus the stub's; simavr counts are deterministic). A0 now vs A0 a0c-0.1.15 vs
+  avr-gcc 9.5.0 `-Os` / `-O2` on the equivalent C (natural C: static helpers such as fnv's step
+  may be inlined by gcc; A0 calls its callees out of line). Inputs fixed per kernel; the A0
+  source was 13 kernels in one module (5 from examples/kernels.a0 plus xorshift, sum of
+  squares to 100, popcount, one bitwise CRC-32 byte, ten-step decimal digit strip, 8-element
+  dot product over two `u32x8`, FNV-1a over four words, two calls of a six-argument mixer).
+
+  | kernel | bytes A0 | bytes 0.1.15 | bytes -Os | bytes -O2 | cycles A0 | cycles 0.1.15 | cycles -Os | cycles -O2 |
+  |---|---|---|---|---|---|---|---|---|
+  | affine (mul, add) | 78 | 184 | 178 | 178 | 53 | 586 | 139 | 139 |
+  | clamp_max | 16 | 144 | 82 | 82 | 6 | 96 | 65 | 65 |
+  | rotl (variable shifts) | 82 | 210 | 108 | 108 | 258 | 378 | 291 | 291 |
+  | is_even | 12 | 118 | 40 | 40 | 5 | 80 | 31 | 31 |
+  | parity_select | 14 | 114 | 30 | 30 | 5 | 74 | 16 | 16 |
+  | xorshift32 | 106 | 306 | 136 | 162 | 52 | 224 | 315 | 300 |
+  | sum_squares (fold, mul) | 214 | 344 | 238 | 236 | 9867 | 65032 | 11082 | 9286 |
+  | popcount (fold) | 168 | 370 | 132 | 88 | 4742 | 10482 | 4718 | 4176 |
+  | crc32_byte (fold, bit test) | 136 | 440 | 110 | 110 | 400 | 1988 | 249 | 249 |
+  | digits (loop, div) | 192 | 444 | 200 | 200 | 6648 | 8534 | 6386 | 6386 |
+  | dot8 (fold over two arrays) | 460 | 894 | 498 | 514 | 1313 | 10768 | 1370 | 1361 |
+  | fnv4 (calls, mul) | 148 | 370 | 278 | 278 | 290 | 2496 | 410 | 410 |
+  | mix6_call (stack arguments) | 276 | refused | 158 | 158 | 304 | refused | 102 | 102 |
+
+  Totals without mix6_call (which 0.1.15 refused): A0 1626 bytes / 23639 cycles, 0.1.15 3938
+  / 100738, `-Os` 2030 / 25072, `-O2` 2026 / 22710. With it: A0 1902 / 23943, `-Os`
+  2188 / 25174, `-O2` 2184 / 22812. So flash is 2.4x smaller than before and 20% under
+  avr-gcc `-Os` (13% with mix6_call); cycles are 4.3x fewer than before, 6% under `-Os` and 4%
+  over `-O2`. Where A0 loses it is the out-of-line body or callee (crc32_byte, popcount,
+  mix6_call: gcc inlines the loop body or the static helper; A0 pays a call, argument
+  marshalling into r18-r25 and the callee's saves per iteration). Caveat: avr-gcc 9.5 keeps 32-bit values in a stack frame
+  in several of these small functions even at `-Os` (clamp_max: 4-byte frame, 82 bytes), so
+  the leaf-kernel wins partly reflect that compiler version.
+- **Verification**: `native_avr` 4297/4297 at both optimization levels, no function skipped
+  for SRAM or flash. Beyond the gate, 68 further generated corpora (other seeds, 30 inputs
+  per function, 133,432 cases, both levels) and the 13 kernels above (40 inputs each) plus a
+  stress module (stack arguments both ways, in-place aggregates at offsets and on the stack,
+  loops with predicates, 20 live values) ran equal to the interpreter under simavr; these
+  runs found and fixed two bugs before the gate (a known-zero mask computed from the operands
+  before power-of-two lowering; a spill slot partially shared with a dying operand). The
+  measurement and fuzz harnesses were scratch scripts and are not in the repository.
+- Unit tests (`test/core.test.ts`): the refusal test now expects five u32 parameters to
+  compile; the sequence test pins the leaf `add` to five instructions, the carry-derived bool,
+  the fused compare with `cpi`/r1, shift masking with known-zero bytes, `bst`/`brts`, the
+  hardware multiplier, inline variable shift, in-place aggregate parameter, sret copy, stack
+  argument pushes/pops/reads, fold state in registers, and reload staging past Y+63; the
+  simavr execution test adds stack arguments both ways, in-place aggregates (on the stack and
+  at an offset inside a record), a fold with stack-argument extras, and bit tests.
+- Gate (this worktree): lint pass; typecheck pass; test 59/59; verify all paths passed
+  (interpreter, optimizer, JS, C clang, C gcc, C++ clang, C parallel, Wasm, Wasm direct, JVM
+  5262 each; arm64, x86_64, riscv64, avr, arm32 4297 each).
+- Not done: inlining (the remaining gap to gcc on call-heavy kernels); live-range splitting
+  (a spilled value stays spilled for its whole interval); X and Z are never allocated; io; a
+  real board (simavr only).
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
