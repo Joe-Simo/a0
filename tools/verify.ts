@@ -184,7 +184,7 @@ export function ioCaps(cases: readonly Case[]): {
   return { ioInputCapacity: inCap, ioOutputCapacity: outCap };
 }
 
-function cDriver(program: TypedProgram, header = '#include "module.c"'): string {
+export function cDriver(program: TypedProgram, header = '#include "module.c"'): string {
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `    case ${i}: printf("skip\\n"); break;`;
     const io = hasIoParam(fn);
@@ -197,12 +197,13 @@ function cDriver(program: TypedProgram, header = '#include "module.c"'): string 
       .join(', ');
     const print = fn.result === 'u32' ? 'printf("%u", (unsigned)r);' : 'printf("%d", r ? 1 : 0);';
     const setup = io
-      ? `memset(&io, 0, sizeof io); io.ninput = (uint32_t)strtoul(tok[${scalars.length}], NULL, 10); for (uint32_t k = 0; k < io.ninput; k++) io.input[k] = (uint32_t)strtoul(tok[${scalars.length + 1}u + k], NULL, 10); `
+      ? `memset(&io, 0, sizeof io); { const uint32_t cap = (uint32_t)(sizeof io.input / sizeof io.input[0]), avail = (uint32_t)(m - ${scalars.length + 1}), want = (uint32_t)strtoul(tok[${scalars.length}], NULL, 10); io.ninput = want < cap ? want : cap; if (io.ninput > avail) io.ninput = avail; } for (uint32_t k = 0; k < io.ninput; k++) io.input[k] = (uint32_t)strtoul(tok[${scalars.length + 1}u + k], NULL, 10); `
       : '';
     const flush = io
       ? ' for (uint32_t k = 0; k < io.noutput; k++) printf(" %u", (unsigned)io.output[k]);'
       : '';
-    return `    case ${i}: { ${setup}${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n"); break; }`;
+    const need = scalars.length + (io ? 1 : 0);
+    return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n"); break; }`;
   });
   return `#include <stdio.h>
 #include <stdlib.h>
@@ -216,6 +217,7 @@ ${usesIo(program) ? '  static a0_io io;\n' : ''}  while (fgets(line, sizeof line
     if (n < 1) continue;
     int idx = atoi(tok[0]);
     memmove(tok, tok + 1, sizeof(char*) * (size_t)(n - 1));
+    const int m = n - 1; (void)m;
     switch (idx) {
 ${dispatch.join('\n')}
     default: printf("?\\n");

@@ -8,7 +8,9 @@
  * Diagnostics raised on the combined text are mapped back to `file:line`.
  */
 
-import { dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { realpath } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
   type DiagnosticDetail,
@@ -35,8 +37,44 @@ export interface Linked {
 
 export type ReadSource = (path: string) => Promise<string>;
 
+export interface LinkOptions {
+  /**
+   * Directory every `use` target must resolve inside (after symlinks are followed).
+   * Defaults to the nearest ancestor of the entry's directory containing package.json,
+   * else the entry's directory.
+   */
+  readonly root?: string;
+}
+
+function projectRoot(entry: string): string {
+  const start = dirname(resolve(entry));
+  for (let dir = start; ; dir = dirname(dir)) {
+    if (existsSync(join(dir, 'package.json'))) return dir;
+    if (dirname(dir) === dir) return start;
+  }
+}
+
+/** Follow symlinks; a path that does not exist yet cannot be a link and stays as resolved. */
+async function canonical(path: string): Promise<string> {
+  try {
+    return await realpath(path);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return resolve(path);
+    throw e;
+  }
+}
+
 /** Load `entry` and everything it uses; `read` is injected so tests need no filesystem. */
-export async function link(entry: string, read: ReadSource): Promise<Linked> {
+export async function link(
+  entry: string,
+  read: ReadSource,
+  options: LinkOptions = {},
+): Promise<Linked> {
+  const root = await canonical(options.root ?? projectRoot(entry));
+  const inside = (abs: string): boolean => {
+    const rel = relative(root, abs);
+    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  };
   const order: { path: string; text: string }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
@@ -60,7 +98,19 @@ export async function link(entry: string, read: ReadSource): Promise<Linked> {
         code: 'limit',
       });
     const parsed = parse(text);
-    for (const use of parsed.uses ?? []) await visit(resolve(dirname(abs), use), abs);
+    for (const use of parsed.uses ?? []) {
+      const target = await canonical(resolve(dirname(abs), use));
+      if (!target.endsWith('.a0') || !inside(target))
+        throw new A0Error(
+          `use "${use}" in ${abs}: target ${target} is not an .a0 file inside ${root}`,
+          undefined,
+          {
+            code: 'structure',
+            fix: 'use only .a0 files inside the project root',
+          },
+        );
+      await visit(target, abs);
+    }
     visiting.delete(abs);
     done.add(abs);
     order.push({ path: abs, text });

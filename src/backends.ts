@@ -37,7 +37,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.15';
+export const COMPILER_VERSION = 'a0c-0.1.16';
 
 export type Target =
   | 'js'
@@ -421,7 +421,7 @@ export const C_IO_INPUT_CAPACITY = 256;
 export const C_IO_OUTPUT_CAPACITY = 1024;
 const cIoRuntime = (inCap: number, outCap: number): string =>
   `struct a0_io { uint32_t input[${inCap}]; uint32_t ninput; uint32_t position; uint32_t output[${outCap}]; uint32_t noutput; };
-static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput ? t->input[t->position++] : 0u; r.f1 = t; return r; }
+static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position < t->ninput && t->position < ${inCap}u ? t->input[t->position++] : 0u; r.f1 = t; return r; }
 static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${outCap}u) t->output[t->noutput++] = v; return t; }
 static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
 

@@ -875,7 +875,7 @@ interface Fn {
   readonly code: readonly Part[];
 }
 
-/** u32 a0_read(io t): input[position++] while position < ninput, else 0. */
+/** u32 a0_read(io t): input[position++] while position < min(ninput, IN), else 0. */
 function ioRead(inCap: number): Fn {
   const c = new Code();
   const ninput = inCap * 4;
@@ -885,6 +885,12 @@ function ioRead(inCap: number): Fn {
   c.local(OP.localGet, 0);
   c.mem(OP.load, ninput);
   c.op(OP.lt_u);
+  // Also bound by the capacity: a host may set ninput above it.
+  c.local(OP.localGet, 0);
+  c.mem(OP.load, position);
+  c.i32(inCap);
+  c.op(OP.lt_u);
+  c.op(OP.and);
   c.op(OP.if, I32);
   c.local(OP.localGet, 0);
   c.local(OP.localGet, 0);
