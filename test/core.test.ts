@@ -20,9 +20,17 @@ import {
   typeEquals,
   validate,
 } from '../src/core.js';
-import { applyPatch, EditSession, formatPatch, parsePatch, revision } from '../src/edit.js';
+import {
+  applyPatch,
+  EditSession,
+  formatPatch,
+  parsePatch,
+  programView,
+  revision,
+} from '../src/edit.js';
 import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
+import { generateFiller } from '../tools/ai-edit-tasks-c.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck } from '../tools/ref-check.js';
 import { IR_OPS, irOp, refParse, type WordIr, wellFormedPrefix } from '../tools/ref-parse.js';
 
@@ -981,6 +989,62 @@ test('structured edits: insert (at end or after a node), delete, and change the 
   const f = n3.byName.get('f') as TypedFunc;
   const patched = applyPatch(n3, parsePatch(`patch f ${revision(f)}\ne add b 1\nret e\nend`));
   assert.equal(run(patched.byName.get('f') as TypedFunc, [3, 4]), 13);
+});
+
+test('set C scaled filler: A0 and TypeScript translations agree, callees precede callers', () => {
+  const filler = generateFiller(960);
+  const program = parseAndValidate(filler.map((f) => f.a0).join(''));
+  assert.equal(program.functions.length, 960);
+  const js = filler.map((f) => f.ts.replace(/^export /, '').replace(/: number/g, '')).join('');
+  const names = filler.map((f) => f.name);
+  const table = new Function(`${js}\nreturn { ${names.join(', ')} };`)() as Record<
+    string,
+    (...a: number[]) => number
+  >;
+  const inputs = [0, 1, 7, 65535, 99999, 100000, 2147483648, 4294967295];
+  for (const f of filler) {
+    const fn = program.byName.get(f.name) as TypedFunc;
+    for (const x of inputs) {
+      const args = f.arity === 1 ? [x] : [x, (x * 2654435761) >>> 0];
+      assert.equal(run(fn, args), table[f.name]?.(...args), `${f.name}(${args.join(', ')})`);
+    }
+  }
+  assert.deepEqual(
+    generateFiller(40).map((f) => f.a0),
+    filler.slice(0, 40).map((f) => f.a0),
+  );
+});
+
+test('dependency-scoped program handle: target, transitive callees, direct callers', () => {
+  const src = [
+    'fn a u32 -> u32\nx add p0 1\nret x\nend',
+    'fn b u32 -> u32\nx call a p0\nret x\nend',
+    'fn other u32 -> u32\nx mul p0 2\nret x\nend',
+    'fn step u32 u32 -> u32\nx call b p0\nret x\nend',
+    'fn t u32 -> u32\nx fold step 3 p0\nret x\nend',
+    'fn caller u32 -> u32\nx call t p0\nret x\nend',
+    'fn grand u32 -> u32\nx call caller p0\nret x\nend',
+  ].join('\n');
+  const session = new EditSession(parseAndValidate(src));
+  const g = session.openProgram({ scope: 'deps', target: 't' });
+  assert.equal(
+    g.text,
+    'g0\n# 7 functions; shown: t, its callees, its callers\nfn a u32 -> u32 end\nfn b u32 -> u32 end\nfn step u32 u32 -> u32 end\nfn t u32 -> u32 end\nfn caller u32 -> u32 end',
+  );
+  // The full handle is unchanged and still available alongside.
+  assert.equal(session.openProgram().text.split('\n').length, 8);
+  assert.throws(() => session.openProgram({ scope: 'deps', target: 'nope' }), /unknown function/);
+  assert.throws(() => session.openProgram({ scope: 'deps' }), /unknown function/);
+  // The scoped handle edits the whole program, including functions it does not list.
+  const next = session.apply(`${g.handle}\nfn other u32 -> u32\nx mul p0 5\nret x\nend`);
+  assert.equal(run(next.byName.get('other') as TypedFunc, [2]), 10);
+  // After an edit the view follows the program; a new caller of the target appears.
+  session.apply(`${g.handle}\nfn c2 u32 -> u32\nx call t p0\nret x\nend`);
+  assert.match(session.view(g.handle), /# 8 functions;[\s\S]*fn c2 u32 -> u32 end$/);
+  assert.doesNotMatch(session.view(g.handle), /fn other|fn grand/);
+  // Removing the target makes the view fall back to the full listing.
+  session.apply(`${g.handle}\n-fn grand\n-fn caller\n-fn c2\n-fn t`);
+  assert.equal(session.view(g.handle), `g0\n${programView(session.program)}`);
 });
 
 test('program-level edits: add, replace, and remove whole functions through a program handle', () => {

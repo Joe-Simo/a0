@@ -1036,6 +1036,40 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   engine's tiers do the rest); the site still ships the C-derived build; no name section or
   source map; `bun run app` does not yet run the direct module.
 
+## Session 2026-09-30 (token scaling: 400 and 4000 functions)
+
+- Task sets `c400` and `c1000` (`A0_EXPERIMENT_TASKSET`): the twelve set-C tasks in one deterministic program of 400 / 1000 functions, identical names, semantics and order in A0, TypeScript and Rust. Filler: `generateFiller` in `tools/ai-edit-tasks-c.ts`, six fixed templates (affine, xor-shift, cap, pair, sum of two earlier unary helpers, mix of one), constants from a fixed LCG, names with a four-digit index; interleaved in 40 runs before the 40 project functions (`scaledOrder`), callees before callers; the tests never call filler. Test: all 960 generated helpers agree between the A0 interpreter and the TypeScript text (8 inputs each) and form a valid program. Self-check ok for c400 and c1000 (all originals fail, all references pass, tsc and rustc). Set C is unchanged (`taskSetSha256` still `8c1254…`); c400 `ad0f14cd…`, c1000 `88aadc11…`.
+- **4000 is not a legal A0 program**: `LIMITS.maxFunctions` is 1024 (also for linked programs, the documented static cap, and the size of the self-hosted checker's `fns` table). I did not raise the cap (a language decision; site/ and compiler/ depend on it); c1000 is the largest scaled set. At 4000 the generated filler alone is 118,762 o200k tokens in TypeScript and 118,256 in Rust (124,702 in A0), so the TS/Rust whole-file cells would be about 120k (conventional) and 141k (numbered) tokens per task.
+- `src/edit.ts`: `openProgram({ scope: 'deps', target })` — a program handle whose view is a comment line (`# N functions; shown: T, its callees, its callers`) and the signatures of the target, its transitive callees (calls, folds, loops), and its direct callers (`programNeighbourhood`, `scopedProgramView`); it still edits the whole program, `view()` follows edits, and a removed target falls back to the full listing. The full handle remains the default. Tested. Harness: `A0_EXPERIMENT_PROGRAM_VIEW=deps|all` (recorded as `programView` and in `method`); TS/Rust structured and conventional cells get the whole file (in `method`).
+- Context tokens per cell (`contextTokensByCell`, mean toolContext o200k, task text + view; A0 structured shown with full / scoped handle):
+
+| cell | 40 fns (c) | 400 fns | 1000 fns |
+|---|---|---|---|
+| A0 conventional | 1411 | 12749 | 31644 |
+| A0 structured, full g0 | 590 | 4850 | 11950 |
+| A0 structured, scoped g0 | 122 | 122 | 123 |
+| TS conventional | 1786 | 12584 | 30579 |
+| TS structured | 1966 | 14102 | 35697 |
+| Rust conventional | 1888 | 12637 | 30551 |
+| Rust structured | 2075 | 14169 | 35683 |
+
+  TS structured / A0 structured: full handle 3.3x / 2.9x / 3.0x (the handle grows linearly with the program); scoped handle 16x / 116x / 290x (constant A0 context). Conventional A0 / TS: 0.79 / 1.01 / 1.03 (the generated A0 filler is slightly more token-dense than its TS translation).
+- Collected on c400, structured cells only, fresh subjects, min primer, one shot (scratchpad g15; group files per representation x protocol, 12 tasks each; the TS and Rust group files print the whole numbered file once as a shared view, since it is identical for all 12 tasks and 12 copies would be 170k tokens). Results `results/ai-edit-experiment.c400.{haiku,sonnet}-min.json` (scoped handle, with TS and Rust) and `…c400.{haiku,sonnet}-min-fullhandle.json` (A0 full handle). Cost per task cache-adjusted as before (primer once at 1.25x over the 12 tasks, context and output 1x):
+
+| subject | cell | accepted | cost/task |
+|---|---|---|---|
+| Sonnet | A0 structured, scoped g0 | 12/12 | 202 |
+| Sonnet | A0 structured, full g0 | 12/12 | 4930 |
+| Sonnet | TS structured | 12/12 | 14143 |
+| Sonnet | Rust structured | 12/12 | 14210 |
+| Haiku | A0 structured, scoped g0 | 10/12 (1 protocol, 1 wrong output) | 217 |
+| Haiku | A0 structured, full g0 | 8/12 (1 protocol, 1 wrong output, 2 tasks skipped by the subject) | 5347 |
+| Haiku | TS structured | 8/12 (4 compile) | 14202 |
+| Haiku | Rust structured | 7/12 (5 compile) | 14294 |
+
+  Decision by measurement: the scoped handle loses no acceptance against the full one (Sonnet 12/12 both; Haiku 10/12 vs 8/12) at 1/40 of the context, so it is the handle to use for large programs. At 400 functions A0 structured costs 70x less per task than TypeScript (Sonnet, 202 vs 14143) with the scoped handle, 2.9x with the full one.
+- Not collected: the conventional cells at 400 (each reply is the whole 12.6k-token file; 12 per subject). Caveat: the scoped A0 view is protocol-supplied, while TS/Rust get no comparable per-function tool; that asymmetry is what this measures.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

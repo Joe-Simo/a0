@@ -622,6 +622,7 @@ async function buildCell(
   representation: Representation,
   protocol: Protocol,
   guide: string,
+  programScope: 'all' | 'deps' = 'all',
 ): Promise<{ cell: Cell; session?: EditSession; handle: string }> {
   const handle = 'e0';
   if (representation === 'a0') {
@@ -636,7 +637,7 @@ async function buildCell(
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
       const fnView = session.open(fnName, { scope: 'deps' }).text; // e0
-      const progView = session.openProgram().text; // g0
+      const progView = session.openProgram({ scope: programScope, target: fnName }).text; // g0
       const view = `${fnView}\n${progView}`;
       return { cell: { representation, protocol, ...primers, system, view }, session, handle };
     }
@@ -890,14 +891,23 @@ async function main(): Promise<void> {
   // Task set: 'a' (the original 13, written by the harness author), 'b' (12 written by an
   // agent that had not seen set a or the corpus), 'c' (the 12 set-B tasks, each embedded in
   // the same deterministic 40-function program; see ai-edit-tasks-c.ts), or 'all' (a + b).
+  // 'c400' / 'c1000': the same twelve tasks in a deterministic program of 400 / 1000
+  // functions (generated filler, see generateFiller). A0 caps a program at 1024 functions
+  // (LIMITS.maxFunctions), so 1000 is the largest scaled size that is one legal A0 program.
   const setName = process.env.A0_EXPERIMENT_TASKSET ?? 'a';
+  const scaledMatch = /^c([0-9]*)$/.exec(setName);
+  const scaled =
+    scaledMatch === null ? undefined : scaledMatch[1] === '' ? 40 : Number(scaledMatch[1]);
+  // Program handle of the structured A0 cell: 'all' lists every signature; 'deps' lists the
+  // target, its transitive callees, and its direct callers (EditSession.openProgram scope).
+  const programScope = process.env.A0_EXPERIMENT_PROGRAM_VIEW === 'deps' ? 'deps' : 'all';
   const TASKS: readonly Task[] =
     setName === 'b'
       ? (TASKS_B as readonly Task[])
       : setName === 'd'
         ? (TASKS_D as unknown as readonly Task[])
-        : setName === 'c'
-          ? buildTasksC(TASKS_A, TASKS_B)
+        : scaled !== undefined
+          ? buildTasksC(TASKS_A, TASKS_B, scaled)
           : setName === 'all'
             ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
             : TASKS_A;
@@ -908,13 +918,16 @@ async function main(): Promise<void> {
   const method = {
     conventional: 'whole file in every representation; reply is the whole updated file',
     structured: {
-      a0: 'dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines',
+      a0:
+        programScope === 'deps'
+          ? 'dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the dependency-scoped program handle g0 (a comment line with the function count, then the signatures of the target, its transitive callees, and its direct callers); g0 edits the whole program; reply is handle + edit lines'
+          : 'dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines',
       ts: 'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
       rust: 'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
     },
     note:
-      setName === 'c'
-        ? 'set C: every task shares one 40-function program per representation; the structured A0 view is per-function while the structured TS/Rust view is the whole numbered file'
+      scaled !== undefined
+        ? `set ${setName}: every task shares one ${scaled}-function program per representation (same names, semantics, and order); the structured A0 view is per-function while the structured and conventional TS/Rust views are the whole file, which is what an agent editing a real file reads`
         : 'sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size',
   };
   const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.min.txt';
@@ -960,7 +973,13 @@ async function main(): Promise<void> {
     for (const representation of ['a0', 'ts', 'rust'] as const) {
       for (const protocol of ['conventional', 'structured'] as const) {
         for (let t = 0; t < (live ? trialsPerCell : 1); t += 1) {
-          const { cell, session, handle } = await buildCell(task, representation, protocol, guide);
+          const { cell, session, handle } = await buildCell(
+            task,
+            representation,
+            protocol,
+            guide,
+            programScope,
+          );
           const base = {
             task: task.id,
             kind: task.kind,
@@ -1080,6 +1099,7 @@ async function main(): Promise<void> {
     model: live ? model : null,
     languagePrimer: guidePath,
     taskSet: setName,
+    programView: programScope,
     method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',

@@ -355,11 +355,54 @@ interface OpenHandle {
   readonly functionName: string;
   readonly revision: string;
   readonly scope: ViewOptions['scope'];
+  /** Program handles opened with `scope: 'deps'`: the function the view is centred on. */
+  readonly target?: string;
+}
+
+export interface ProgramViewOptions {
+  /**
+   * 'all' (default): one signature line per function. 'deps': only the signatures of
+   * `target`, its transitive callees, and its direct callers, after a comment line giving
+   * the program's size. The handle still edits the whole program; only the listing shrinks.
+   */
+  readonly scope?: 'all' | 'deps';
+  /** Required with `scope: 'deps'`. */
+  readonly target?: string;
 }
 
 /** Program-level view: one signature line per function, in definition order. */
 export function programView(program: TypedProgram): string {
   return program.functions.map((f) => `${formatSignature(f)} end`).join('\n');
+}
+
+/**
+ * The functions a dependency-scoped program view lists for `target`: the target, every
+ * function it reaches through calls, folds, and loops (transitively), and every function
+ * that calls it directly; in definition order.
+ */
+export function programNeighbourhood(program: TypedProgram, target: string): TypedFunc[] {
+  const fn = program.byName.get(target);
+  if (fn === undefined)
+    throw new A0Error(`unknown function '${target}'`, undefined, { code: 'handle' });
+  const keep = new Set<string>([target]);
+  const stack: TypedFunc[] = [fn];
+  while (stack.length > 0) {
+    const f = stack.pop() as TypedFunc;
+    for (const c of f.calls.values())
+      if (!keep.has(c.name)) {
+        keep.add(c.name);
+        stack.push(c);
+      }
+  }
+  for (const f of program.functions) if (f.calls.has(target)) keep.add(f.name);
+  return program.functions.filter((f) => keep.has(f.name));
+}
+
+/** Dependency-scoped program view (without a handle line); see `ProgramViewOptions`. */
+export function scopedProgramView(program: TypedProgram, target: string): string {
+  const shown = programNeighbourhood(program, target);
+  const head = `# ${program.functions.length} functions; shown: ${target}, its callees, its callers`;
+  return [head, ...shown.map((f) => `${formatSignature(f)} end`)].join('\n');
 }
 
 /**
@@ -472,8 +515,17 @@ export class EditSession {
     return this.#handles.size;
   }
 
-  /** Open a program-level view (all signatures) bound to the whole program's revision. */
-  openProgram(): View {
+  /**
+   * Open a program-level view bound to the whole program's revision: all signatures, or
+   * with `scope: 'deps'` only those around `target` (the handle still edits any function).
+   */
+  openProgram(options: ProgramViewOptions = {}): View {
+    const target = options.scope === 'deps' ? options.target : undefined;
+    if (options.scope === 'deps' && (target === undefined || !this.#program.byName.has(target)))
+      throw new A0Error(`unknown function '${target ?? ''}'`, undefined, {
+        code: 'handle',
+        fix: "openProgram({ scope: 'deps', target }) needs the name of an existing function",
+      });
     if (this.#handles.size >= this.#maxOpen) {
       throw new A0Error(
         `session handle limit (${this.#maxOpen}) reached; close handles first`,
@@ -486,13 +538,25 @@ export class EditSession {
     const handle = `g${this.#nextProgram}`;
     this.#nextProgram += 1;
     const rev = programRevision(this.#program);
-    this.#handles.set(handle, { functionName: '*', revision: rev, scope: undefined });
+    this.#handles.set(handle, {
+      functionName: '*',
+      revision: rev,
+      scope: undefined,
+      ...(target === undefined ? {} : { target }),
+    });
     return {
       handle,
       functionName: '*',
       revision: rev,
-      text: `${handle}\n${programView(this.#program)}`,
+      text: `${handle}\n${this.#programText(target)}`,
     };
+  }
+
+  /** A scoped program view whose target was removed falls back to the full listing. */
+  #programText(target: string | undefined): string {
+    return target !== undefined && this.#program.byName.has(target)
+      ? scopedProgramView(this.#program, target)
+      : programView(this.#program);
   }
 
   /** Open a view of one function and return a short handle bound to its current revision. */
@@ -521,7 +585,7 @@ export class EditSession {
   view(handle: string): string {
     const bound = this.#handles.get(handle);
     if (bound === undefined) throw new A0Error(`unknown handle '${handle}'`, 1, { code: 'handle' });
-    if (bound.functionName === '*') return `${handle}\n${programView(this.#program)}`;
+    if (bound.functionName === '*') return `${handle}\n${this.#programText(bound.target)}`;
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined)
       throw new A0Error(`handle '${handle}' refers to a removed function`, 1, { code: 'handle' });

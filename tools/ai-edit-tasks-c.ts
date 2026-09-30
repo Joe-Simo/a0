@@ -302,14 +302,135 @@ export function splitFunctions(rep: Representation, source: string): Map<string,
  * The project file: PROJECT_ORDER with `overrides` replacing same-name functions and any
  * new functions appended at the end (where they may call every existing function).
  */
-function assemble(filler: Map<string, string>, overrides: Map<string, string>): string {
-  const parts = PROJECT_ORDER.map((name) => {
+function assemble(
+  order: readonly string[],
+  filler: Map<string, string>,
+  overrides: Map<string, string>,
+): string {
+  const parts = order.map((name) => {
     const text = overrides.get(name) ?? filler.get(name);
     if (text === undefined) throw new Error(`set C: no definition of ${name}`);
     return text;
   });
-  for (const [name, text] of overrides) if (!PROJECT_ORDER.includes(name)) parts.push(text);
+  const known = new Set(order);
+  for (const [name, text] of overrides) if (!known.has(name)) parts.push(text);
   return parts.join('');
+}
+
+// --- Generated filler for the scaled sets (c400, c1000) ----------------------------------
+
+/** One generated helper in all three representations. */
+export interface FillerFunction {
+  readonly name: string;
+  readonly arity: 1 | 2;
+  readonly a0: string;
+  readonly ts: string;
+  readonly rust: string;
+}
+
+/**
+ * `count` small helpers from six fixed templates, each a direct translation in A0,
+ * TypeScript, and Rust (u32 wrapping semantics). Constants come from a fixed LCG, so the
+ * output depends only on `count`. Templates 4 and 5 call earlier unary helpers only, so
+ * every callee precedes its callers. Names carry a four-digit index and cannot collide
+ * with the 40 project functions.
+ */
+export function generateFiller(count: number): FillerFunction[] {
+  let seed = 0x2545f491;
+  const next = (mod: number): number => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return (seed >>> 8) % mod;
+  };
+  const out: FillerFunction[] = [];
+  const unary: string[] = [];
+  const u = (p: string): string => `(${p}: number): number {`;
+  for (let k = 0; k < count; k += 1) {
+    const template = unary.length < 2 ? k % 4 : k % 6;
+    const id = String(k).padStart(4, '0');
+    let f: FillerFunction;
+    if (template === 0) {
+      const name = `lin${id}`;
+      const m = 2 * next(50000) + 3;
+      const c = next(100000);
+      f = {
+        name,
+        arity: 1,
+        a0: `fn ${name} u32 -> u32\na mul p0 ${m}\nb add a ${c}\nret b\nend\n`,
+        ts: `export function ${name}${u('x')}\n  return (Math.imul(x, ${m}) + ${c}) >>> 0;\n}\n`,
+        rust: `pub fn ${name}(x: u32) -> u32 {\n    x.wrapping_mul(${m}).wrapping_add(${c})\n}\n`,
+      };
+    } else if (template === 1) {
+      const name = `xs${id}`;
+      const s = 1 + next(31);
+      f = {
+        name,
+        arity: 1,
+        a0: `fn ${name} u32 -> u32\na shr p0 ${s}\nb xor p0 a\nret b\nend\n`,
+        ts: `export function ${name}${u('x')}\n  return (x ^ (x >>> ${s})) >>> 0;\n}\n`,
+        rust: `pub fn ${name}(x: u32) -> u32 {\n    x ^ (x >> ${s})\n}\n`,
+      };
+    } else if (template === 2) {
+      const name = `cap${id}`;
+      const c = 1 + next(100000);
+      f = {
+        name,
+        arity: 1,
+        a0: `fn ${name} u32 -> u32\nc lt p0 ${c}\nr select c p0 ${c}\nret r\nend\n`,
+        ts: `export function ${name}${u('x')}\n  return x < ${c} ? x : ${c};\n}\n`,
+        rust: `pub fn ${name}(x: u32) -> u32 {\n    if x < ${c} { x } else { ${c} }\n}\n`,
+      };
+    } else if (template === 3) {
+      const name = `pair${id}`;
+      const c = next(100000);
+      f = {
+        name,
+        arity: 2,
+        a0: `fn ${name} u32 u32 -> u32\ns add p0 p1\nr xor s ${c}\nret r\nend\n`,
+        ts: `export function ${name}(a: number, b: number): number {\n  return ((a + b) ^ ${c}) >>> 0;\n}\n`,
+        rust: `pub fn ${name}(a: u32, b: u32) -> u32 {\n    a.wrapping_add(b) ^ ${c}\n}\n`,
+      };
+    } else if (template === 4) {
+      const name = `sum${id}`;
+      const g = unary[next(unary.length)] as string;
+      const h = unary[next(unary.length)] as string;
+      f = {
+        name,
+        arity: 1,
+        a0: `fn ${name} u32 -> u32\na call ${g} p0\nb call ${h} p0\nc add a b\nret c\nend\n`,
+        ts: `export function ${name}${u('x')}\n  return (${g}(x) + ${h}(x)) >>> 0;\n}\n`,
+        rust: `pub fn ${name}(x: u32) -> u32 {\n    ${g}(x).wrapping_add(${h}(x))\n}\n`,
+      };
+    } else {
+      const name = `mixin${id}`;
+      const g = unary[next(unary.length)] as string;
+      f = {
+        name,
+        arity: 2,
+        a0: `fn ${name} u32 u32 -> u32\na call ${g} p0\nb xor a p1\nret b\nend\n`,
+        ts: `export function ${name}(a: number, b: number): number {\n  return (${g}(a) ^ b) >>> 0;\n}\n`,
+        rust: `pub fn ${name}(a: u32, b: u32) -> u32 {\n    ${g}(a) ^ b\n}\n`,
+      };
+    }
+    out.push(f);
+    if (f.arity === 1) unary.push(f.name);
+  }
+  return out;
+}
+
+/**
+ * Definition order of a scaled program of `size` functions: the generated filler split
+ * into 40 near-equal runs, one run before each project function, so the targets sit
+ * throughout the file rather than at one end.
+ */
+export function scaledOrder(fillerNames: readonly string[]): string[] {
+  const order: string[] = [];
+  const n = PROJECT_ORDER.length;
+  PROJECT_ORDER.forEach((name, i) => {
+    const from = Math.floor((fillerNames.length * i) / n);
+    const to = Math.floor((fillerNames.length * (i + 1)) / n);
+    order.push(...fillerNames.slice(from, to), name);
+  });
+  return order;
 }
 
 function source(rep: Representation, task: Task): string {
@@ -328,7 +449,17 @@ function firstFunction(task: Task): string {
  * representations. Because the filler for a set-B name is that task's own original
  * function, the original file is the same for all twelve tasks.
  */
-export function buildTasksC(tasksA: readonly Task[], tasksB: readonly Task[]): Task[] {
+export function buildTasksC(
+  tasksA: readonly Task[],
+  tasksB: readonly Task[],
+  size: number = PROJECT_ORDER.length,
+): Task[] {
+  if (size < PROJECT_ORDER.length)
+    throw new Error(`set C: size ${size} is below the ${PROJECT_ORDER.length} project functions`);
+  const generated = generateFiller(size - PROJECT_ORDER.length);
+  const order =
+    size === PROJECT_ORDER.length ? [...PROJECT_ORDER] : scaledOrder(generated.map((f) => f.name));
+  const prefix = size === PROJECT_ORDER.length ? 'c-' : `c${size}-`;
   const filler: Record<Representation, Map<string, string>> = {
     a0: new Map(),
     ts: new Map(),
@@ -344,18 +475,21 @@ export function buildTasksC(tasksA: readonly Task[], tasksB: readonly Task[]): T
     for (const src of sources)
       for (const [name, text] of splitFunctions(rep, src))
         if (!filler[rep].has(name)) filler[rep].set(name, text);
+    for (const f of generated) filler[rep].set(f.name, f[rep]);
   }
+  const build = (rep: Representation, src: string): string =>
+    assemble(order, filler[rep], splitFunctions(rep, src));
   return tasksB.map((task) => ({
     ...task,
-    id: task.id.replace(/^b-/, 'c-'),
+    id: task.id.replace(/^b-/, prefix),
     target: task.target ?? firstFunction(task),
-    a0Source: assemble(filler.a0, splitFunctions('a0', task.a0Source)),
-    tsSource: assemble(filler.ts, splitFunctions('ts', task.tsSource)),
-    rustSource: assemble(filler.rust, splitFunctions('rust', task.rustSource)),
+    a0Source: build('a0', task.a0Source),
+    tsSource: build('ts', task.tsSource),
+    rustSource: build('rust', task.rustSource),
     reference: {
-      a0: assemble(filler.a0, splitFunctions('a0', task.reference.a0)),
-      ts: assemble(filler.ts, splitFunctions('ts', task.reference.ts)),
-      rust: assemble(filler.rust, splitFunctions('rust', task.reference.rust)),
+      a0: build('a0', task.reference.a0),
+      ts: build('ts', task.reference.ts),
+      rust: build('rust', task.reference.rust),
     },
   }));
 }
