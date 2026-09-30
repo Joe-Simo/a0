@@ -1324,6 +1324,13 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
   134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
 
+## Session 2026-09-30 (grammar item B: nested expressions)
+
+- Prototype (not kept): `ParseOptions.nested` in `src/core.ts` `parse`/`parseAndValidate` and `SessionOptions.nested` in `src/edit.ts` (edit lines, `ret OP …`, and `fn` blocks), desugaring one level of `ID OP (OP ARGS) ARGS` into fresh nodes `ID_1, ID_2…` left to right just before the line (ids renamed if taken in the function or the edit), typing unchanged; off by default; 1 test with 8 cases (equivalence to the explicit program, collisions, `ret` form, `@` placement, depth/unmatched/empty errors, the option off rejects). Harness switch `A0_EXPERIMENT_NESTED=1`.
+- Collection (no rescore of old replies): fresh Agent-tool subjects (Haiku, Sonnet), each reading only its group file, sets B and D, A0 conventional and structured, current `MODEL_GUIDE.min.txt` (control) versus the same primer plus one line, "Nested: one level of parentheses is accepted, e.g. `r select (lt a b) a b` (each group becomes a fresh line)." (option on for scoring). 16 groups, scratchpad gB-nested. Results `results/ai-edit-experiment.{b,d}.{haiku,sonnet}-min-itemb-{control,nested}.json`.
+- One shot, control vs option: Haiku B conv 12/12 vs 12/12, B struct 10/12 vs 11/12, D conv 13/13 vs 12/13, D struct 12/13 vs 12/13 (47/50 both); Sonnet 50/50 both. Nested replies: Haiku 1/50 control (bounds task, the parse diagnostic) and 2/50 with the line (bounds, which then failed with a type error; isdiv, accepted); Sonnet 0/100. Primer 405/440 -> 436/471 tokens per call; one-task cache-adjusted tokens up in all 8 cells (Haiku 198->201, 195->196, 152->159, 168->176; Sonnet 198->201, 184->192, 152->155, 154->157).
+- Decision: refused (no acceptance gain on either model, cost up). Prototype removed; DESIGN.md records the numbers. COMPILER_VERSION unchanged.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
