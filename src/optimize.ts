@@ -188,6 +188,24 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
       if (b !== undefined && isU32(b, 0)) return { kind: 'bool', value: false };
       if (isU32(a, 0xffff_ffff)) return { kind: 'bool', value: false };
       return undefined;
+    case 'gt':
+      if (b !== undefined && sameOperand(a, b)) return { kind: 'bool', value: false };
+      if (isU32(a, 0)) return { kind: 'bool', value: false };
+      if (b !== undefined && isU32(b, 0xffff_ffff)) return { kind: 'bool', value: false };
+      return undefined;
+    case 'le':
+      if (b !== undefined && sameOperand(a, b)) return { kind: 'bool', value: true };
+      if (isU32(a, 0)) return { kind: 'bool', value: true };
+      if (b !== undefined && isU32(b, 0xffff_ffff)) return { kind: 'bool', value: true };
+      return undefined;
+    case 'ge':
+      if (b !== undefined && sameOperand(a, b)) return { kind: 'bool', value: true };
+      if (b !== undefined && isU32(b, 0)) return { kind: 'bool', value: true };
+      if (isU32(a, 0xffff_ffff)) return { kind: 'bool', value: true };
+      return undefined;
+    case 'ne':
+      if (b !== undefined && sameOperand(a, b)) return { kind: 'bool', value: false };
+      return undefined;
     case 'select':
       if (b === undefined || c === undefined) return undefined;
       if (isBool(a, true)) return b;

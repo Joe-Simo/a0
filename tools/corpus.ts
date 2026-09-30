@@ -66,8 +66,8 @@ const U32_OPS: readonly Op[] = [
   'div',
   'rem',
 ];
-const CMP_OPS: readonly Op[] = ['eq', 'lt'];
-const BOOL_OPS: readonly Op[] = ['and', 'or', 'xor', 'eq'];
+const CMP_OPS: readonly Op[] = ['eq', 'ne', 'lt', 'le', 'gt', 'ge'];
+const BOOL_OPS: readonly Op[] = ['and', 'or', 'xor', 'eq', 'ne'];
 
 interface Slot {
   readonly operand: Operand;
@@ -464,6 +464,15 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
       return big(a, op) === big(b, op);
     case 'lt':
       return big(a, op) < big(b, op);
+    case 'le':
+      return big(a, op) <= big(b, op);
+    case 'gt':
+      return big(a, op) > big(b, op);
+    case 'ge':
+      return big(a, op) >= big(b, op);
+    case 'ne':
+      if (typeof a === 'boolean') return a !== b;
+      return big(a, op) !== big(b, op);
     case 'select':
       if (typeof a !== 'boolean' || b === undefined || c === undefined)
         throw new Error('oracle select');

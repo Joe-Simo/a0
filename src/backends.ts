@@ -25,7 +25,7 @@ import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.4';
+export const COMPILER_VERSION = 'a0c-0.1.5';
 
 export type Target = 'js' | 'c' | 'java' | 'sv';
 export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv'];
@@ -234,6 +234,14 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return `${a} === ${b}`;
     case 'lt':
       return `${a} < ${b}`;
+    case 'le':
+      return `${a} <= ${b}`;
+    case 'gt':
+      return `${a} > ${b}`;
+    case 'ge':
+      return `${a} >= ${b}`;
+    case 'ne':
+      return `${a} !== ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
     case 'call':
@@ -447,6 +455,14 @@ function cExpr(node: Node, fn: TypedFunc): string {
       return `(${a} == ${b})`;
     case 'lt':
       return `(${a} < ${b})`;
+    case 'le':
+      return `(${a} <= ${b})`;
+    case 'gt':
+      return `(${a} > ${b})`;
+    case 'ge':
+      return `(${a} >= ${b})`;
+    case 'ne':
+      return `(${a} != ${b})`;
     case 'select':
       return `(${a} ? ${b} : ${c})`;
     case 'call':
@@ -589,6 +605,14 @@ function javaExpr(node: Node, fn: TypedFunc): string {
       return `${a} == ${b}`;
     case 'lt':
       return `Integer.compareUnsigned(${a}, ${b}) < 0`;
+    case 'le':
+      return `Integer.compareUnsigned(${a}, ${b}) <= 0`;
+    case 'gt':
+      return `Integer.compareUnsigned(${a}, ${b}) > 0`;
+    case 'ge':
+      return `Integer.compareUnsigned(${a}, ${b}) >= 0`;
+    case 'ne':
+      return `${a} != ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
     case 'call':
@@ -696,6 +720,14 @@ export function svExpr(node: Node, fn: TypedFunc): string {
       return `${a} == ${b}`;
     case 'lt':
       return `${a} < ${b}`;
+    case 'le':
+      return `${a} <= ${b}`;
+    case 'gt':
+      return `${a} > ${b}`;
+    case 'ge':
+      return `${a} >= ${b}`;
+    case 'ne':
+      return `${a} != ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
     case 'arr':

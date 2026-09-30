@@ -102,7 +102,11 @@ export type Op =
   | 'shl'
   | 'shr'
   | 'eq'
+  | 'ne'
   | 'lt'
+  | 'le'
+  | 'gt'
+  | 'ge'
   | 'select'
   | 'call'
   | 'fold'
@@ -130,7 +134,11 @@ export const OPS: readonly Op[] = [
   'shl',
   'shr',
   'eq',
+  'ne',
   'lt',
+  'le',
+  'gt',
+  'ge',
   'select',
   'call',
   'fold',
@@ -160,7 +168,11 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   shl: 2,
   shr: 2,
   eq: 2,
+  ne: 2,
   lt: 2,
+  le: 2,
+  gt: 2,
+  ge: 2,
   select: 3,
   call: -1,
   fold: -1,
@@ -693,6 +705,7 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       expect(b, 'u32', where);
       return 'u32';
     case 'eq':
+    case 'ne':
       if (b === undefined)
         throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       if (a === 'bool') {
@@ -703,6 +716,9 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       expect(b, 'u32', where);
       return 'bool';
     case 'lt':
+    case 'le':
+    case 'gt':
+    case 'ge':
       if (b === undefined)
         throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
       expect(a, 'u32', where);
@@ -1142,8 +1158,17 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'eq':
       if (typeof a === 'boolean') return a === b;
       return num(a) === num(b);
+    case 'ne':
+      if (typeof a === 'boolean') return a !== b;
+      return num(a) !== num(b);
     case 'lt':
       return num(a) < num(b);
+    case 'le':
+      return num(a) <= num(b);
+    case 'gt':
+      return num(a) > num(b);
+    case 'ge':
+      return num(a) >= num(b);
     case 'select':
       if (typeof a !== 'boolean' || b === undefined || c === undefined) {
         throw new A0Error('select: expected bool and two values', undefined, { code: 'structure' });

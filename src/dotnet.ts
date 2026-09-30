@@ -117,6 +117,14 @@ function csExpr(node: Node, fn: TypedFunc): string {
       return `${a} == ${b}`;
     case 'lt':
       return `${a} < ${b}`;
+    case 'le':
+      return `${a} <= ${b}`;
+    case 'gt':
+      return `${a} > ${b}`;
+    case 'ge':
+      return `${a} >= ${b}`;
+    case 'ne':
+      return `${a} != ${b}`;
     case 'select':
       return `${a} ? ${b} : ${c}`;
     case 'call':

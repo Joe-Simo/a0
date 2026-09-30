@@ -1158,3 +1158,56 @@ test('boolean and/or/xor/eq: typed, exact, optimized, and identical on the JS ba
   assert.equal(run(folded, [true]), true);
   assert.equal(run(folded, [false]), false);
 });
+
+test('edit generality: any dependency order, new callees in any order, multi-section replies, le/gt/ge/ne', async () => {
+  // Nodes listed out of order inside an edit are placed in dependency order.
+  let s = new EditSession(parseAndValidate('fn f u32 u32 -> u32\na add p0 p1\nret a\nend'));
+  let h = s.open('f').handle;
+  let p = s.apply(`${h}\nd mul c 2\nc sub a p1\nret d`);
+  assert.equal(run(p.byName.get('f') as TypedFunc, [5, 3]), 10);
+  // A program edit may define a caller before its new callee.
+  s = new EditSession(parseAndValidate('fn f u32 -> u32\nret p0\nend'));
+  let g = s.openProgram().handle;
+  p = s.apply(
+    `${g}\nfn quad u32 -> u32\na call twice p0\nb call twice a\nret b\nend\nfn twice u32 -> u32\na add p0 p0\nret a\nend`,
+  );
+  assert.deepEqual(
+    p.functions.map((x) => x.name),
+    ['f', 'twice', 'quad'],
+  );
+  assert.equal(run(p.byName.get('quad') as TypedFunc, [3]), 12);
+  // A reply with a function section and a program section applies atomically.
+  s = new EditSession(
+    parseAndValidate('fn min2 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nret r\nend'),
+  );
+  h = s.open('min2').handle;
+  g = s.openProgram().handle;
+  p = s.apply(
+    `${h}\nc le p1 p0\nret r\n${g}\nfn min2 u32 u32 -> u32 end\nfn min3 u32 u32 u32 -> u32\nm call min2 p0 p1\nn call min2 m p2\nret n\nend`,
+  );
+  assert.equal(run(p.byName.get('min3') as TypedFunc, [7, 2, 5]), 2);
+  assert.throws(
+    () => s.apply(`${h}\nc gt p1 p0\n${g}\nfn bad u32 -> u32\nx add p0 true\nret x\nend`),
+    /expected/,
+  );
+  assert.equal(s.program.functions.length, 2); // nothing from the failed reply landed
+  // New comparisons are exact and unsigned everywhere the JS backend runs.
+  const cmp = parseAndValidate(
+    'fn c u32 u32 -> u32\na le p0 p1\nb gt p0 p1\nd ge p0 p1\ne ne p0 p1\nx select a 1 0\ny select b 2 0\nz select d 4 0\nw select e 8 0\nxy or x y\nzw or z w\nr or xy zw\nret r\nend',
+  );
+  const js = compile(cmp, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as {
+    c: (a: number, b: number) => number;
+  };
+  for (const [a, b, want] of [
+    [1, 2, 1 | 8],
+    [2, 1, 2 | 4 | 8],
+    [5, 5, 1 | 4],
+    [0xffffffff, 0, 2 | 4 | 8],
+  ] as const) {
+    assert.equal(run(cmp.byName.get('c') as TypedFunc, [a, b]), want);
+    assert.equal(mod.c(a, b), want);
+  }
+});

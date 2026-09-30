@@ -116,6 +116,31 @@ function parseReplacementNodes(lines: readonly string[], firstLine: number): Edi
  * node; the node keeps its position, so dependency order is preserved and forward
  * references remain impossible. The whole result is re-validated before returning.
  */
+function orderByDependencies(nodes: readonly Node[]): Node[] {
+  const out = [...nodes];
+  for (let round = 0; round < out.length * out.length + 1; round += 1) {
+    const index = new Map(out.map((n, i) => [n.id, i] as const));
+    let moved = false;
+    for (let i = 0; i < out.length; i += 1) {
+      const n = out[i] as Node;
+      let last = -1;
+      for (const a of n.args) {
+        if (a.kind !== 'node') continue;
+        const j = index.get(a.id);
+        if (j !== undefined && j > last) last = j;
+      }
+      if (last > i) {
+        out.splice(i, 1);
+        out.splice(last, 0, n);
+        moved = true;
+        break;
+      }
+    }
+    if (!moved) return out;
+  }
+  return [...nodes];
+}
+
 export function replaceNodes(
   program: TypedProgram,
   fn: TypedFunc,
@@ -154,6 +179,10 @@ export function replaceNodes(
   }
   // 3. result
   for (const op of edits) if (op.kind === 'ret') ret = op.operand;
+  // Edits may list nodes in any order that has a valid dependency order: move each node
+  // that references a later node to just after its last reference. A true cycle is left
+  // for the validator to report.
+  nodes = orderByDependencies(nodes);
   if (nodes.length > LIMITS.maxNodesPerFunction)
     throw new A0Error(`${fn.name}: too many nodes`, undefined, { code: 'limit' });
   const replaced: Func = { ...fn, nodes, ret };
@@ -296,6 +325,29 @@ function isSignatureEcho(line: string, program: TypedProgram): boolean {
   return m !== null && program.byName.has(m[1] ?? '');
 }
 
+/** Stable topological order of functions by the calls among them (a cycle keeps the given order). */
+function orderFunctionsByCalls(fns: readonly Func[]): Func[] {
+  const names = new Set(fns.map((f) => f.name));
+  const callees = (f: Func): string[] =>
+    f.nodes.flatMap((n) => {
+      const c: string[] = [];
+      if (n.callee !== undefined && names.has(n.callee)) c.push(n.callee);
+      if (n.pred !== undefined && names.has(n.pred)) c.push(n.pred);
+      return c;
+    });
+  const out: Func[] = [];
+  const done = new Set<string>();
+  const pending = [...fns];
+  while (pending.length > 0) {
+    const i = pending.findIndex((f) => callees(f).every((c) => done.has(c) || c === f.name));
+    if (i < 0) return [...out, ...pending];
+    const [f] = pending.splice(i, 1);
+    out.push(f as Func);
+    done.add((f as Func).name);
+  }
+  return out;
+}
+
 export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const lines = text.split(/\r?\n/);
   const removals = new Set<string>();
@@ -307,7 +359,7 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
     else if (isSignatureEcho(line, program)) continue;
     else kept.push(raw);
   }
-  const incoming = parse(kept.join('\n')).functions;
+  const incoming = orderFunctionsByCalls(parse(kept.join('\n')).functions);
   const byName = new Map(incoming.map((f) => [f.name, f] as const));
   for (const name of removals) {
     if (!program.byName.has(name))
@@ -459,10 +511,37 @@ export class EditSession {
   apply(text: string): TypedProgram {
     if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
       throw new A0Error('edit too large', undefined, { code: 'limit' });
-    const lines = text
-      .split(/\r?\n/)
-      .map((l) => stripComment(l).trim())
-      .filter((l) => l.length > 0);
+    const rawLines = text.split(/\r?\n/);
+    // A reply may carry several sections, each headed by an open handle; they apply in
+    // order as one atomic edit (all or nothing).
+    const heads = rawLines
+      .map((l, i) => [stripComment(l).trim(), i] as const)
+      .filter(([l]) => /^[eg][0-9]+$/.test(l) && this.#handles.has(l));
+    if (heads.length > 1) {
+      const savedProgram = this.#program;
+      const savedHandles = new Map(this.#handles);
+      try {
+        for (let k = 0; k < heads.length; k += 1) {
+          const start = heads[k]?.[1] as number;
+          const end = k + 1 < heads.length ? (heads[k + 1]?.[1] as number) : rawLines.length;
+          const section = rawLines.slice(start, end);
+          // A section that only echoes signatures (or is empty) carries no change.
+          const body = section
+            .slice(1)
+            .map((l) => stripComment(l).trim())
+            .filter((l) => l.length > 0);
+          if (body.every((l) => l === 'end' || isSignatureEcho(l, this.#program))) continue;
+          this.apply(section.join('\n'));
+        }
+      } catch (e) {
+        this.#program = savedProgram;
+        this.#handles.clear();
+        for (const [h, b] of savedHandles) this.#handles.set(h, b);
+        throw e;
+      }
+      return this.#program;
+    }
+    const lines = rawLines.map((l) => stripComment(l).trim()).filter((l) => l.length > 0);
     const handle = lines[0] ?? '';
     if (!HANDLE.test(handle) && !PROGRAM_HANDLE.test(handle)) {
       throw new A0Error(`invalid handle '${handle}'`, 1, { code: 'handle' });

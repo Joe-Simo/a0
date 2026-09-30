@@ -374,6 +374,18 @@ Wins, ties, losses, stated separately:
 
 ## Session 2026-09-29 (late): primer size, JS guards
 
+- **General fixes from the failure classes (v0.8.12)**, none tied to a model:
+  (1) edit lines may come in any order that has a valid dependency order; the edit
+  layer places each node after its last reference (a true cycle is still rejected);
+  (2) a program edit may define a caller above its new callee; new functions are ordered
+  by their calls; (3) a reply may carry several handle sections (`e0` … then `g0` …),
+  applied in order as one atomic edit, with echo-only sections ignored;
+  (4) comparisons `ne le gt ge` join `eq lt` (unsigned on u32; `ne` also on bool), in the
+  validator, interpreter, optimizer identities, JavaScript, C, Java, C#, SystemVerilog,
+  Metal via C, the corpus oracle and generator, and the Z3 tool. Gate on the regenerated
+  corpus: 5262 cases on 8 software paths, .NET, Metal, hardware sim+synth, 48/48 proofs.
+  Baseline protocol: a TypeScript/Rust line replace past the end appends.
+
 - **Corpus regenerated (v0.8.11)**: the seeded generator now emits boolean logic, so the
   corpus hash and case count changed (5946 → 5262 cases; the generator draws a different
   sequence). Every result file was regenerated on this corpus: 8 software paths, .NET,

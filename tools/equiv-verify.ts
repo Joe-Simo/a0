@@ -55,6 +55,10 @@ const SCALAR_OPS = new Set([
   'rem',
   'eq',
   'lt',
+  'le',
+  'gt',
+  'ge',
+  'ne',
   'select',
   'arr',
   'rec',
@@ -283,6 +287,18 @@ async function main(): Promise<void> {
           break;
         case 'lt':
           v = X().ult(Y());
+          break;
+        case 'le':
+          v = X().ule(Y());
+          break;
+        case 'gt':
+          v = X().ugt(Y());
+          break;
+        case 'ge':
+          v = X().uge(Y());
+          break;
+        case 'ne':
+          v = isBV(scalar(x)) ? X().neq(Y()) : (scalar(x) as Bool).neq(scalar(y) as Bool);
           break;
         case 'select':
           v = ite(scalar(x) as Bool, y, a[2] as SVal);
