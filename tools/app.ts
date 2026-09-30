@@ -336,8 +336,9 @@ export async function buildEmitCases(
 /**
  * emitcio cases: the C bytes of `emitc` (in the reference interpreter) over the tables of the
  * reference parser and checker, or no output with the diagnostic code for rejected programs.
+ * `emitcio` runs the 16384-byte front end; the cases keep to sources of at most 512 bytes so
+ * that the reference emission in the interpreter stays short.
  */
-/** Source bytes `emitcio` reads: it runs the 512-byte front end of compiler/front512.a0. */
 const EMITCIO_SOURCE_LIMIT = 512;
 
 export async function buildEmitCCases(
@@ -352,10 +353,12 @@ export async function buildEmitCCases(
     ...ILL_TYPED.slice(0, 4),
   ];
   const sources = all.filter(([, src]) => Buffer.byteLength(src) <= EMITCIO_SOURCE_LIMIT);
-  const pad = (t: readonly number[], n: number): number[] => [
-    ...t,
-    ...new Array(n - t.length).fill(0),
-  ];
+  // The emitter's tables are the 16384-byte front end's: `count` pages of 128 words (types 384).
+  const paged = (t: readonly number[], count: number, size = 128): number[][] =>
+    Array.from({ length: count }, (_, p) => {
+      const page = t.slice(p * size, p * size + size);
+      return [...page, ...new Array(size - page.length).fill(0)];
+    });
   return sources.map(([label, src]) => {
     const bytes = [...Buffer.from(src)];
     const code = refCheckWords(src)[1] as number;
@@ -363,21 +366,26 @@ export async function buildEmitCCases(
     if (code === 0) {
       const ir = refParse(src);
       const r = refCheck(ir);
+      const nfns = ir.fns.length / 7;
+      const fnm = Array.from({ length: nfns }, (_, i) => {
+        const name = ir.fns[i * 7] as number;
+        return [ir.sym[name * 2] as number, ir.sym[name * 2 + 1] as number];
+      }).flat();
       const io = makeIo([]);
       run(emitc, [
         io,
-        pad(r.types, 768),
-        pad(r.tlist, 1024),
-        pad(ir.fns, 1024),
-        pad(ir.nodes, 4096),
-        pad(ir.args, 8192),
-        pad(r.nodeTypes, 1024),
-        pad(ir.pool, 512),
-        pad(ir.sym, 512),
+        paged(r.types, 65, 384),
+        paged(r.tlist, 65),
+        paged(ir.fns, 45),
+        paged(ir.nodes, 128),
+        paged(ir.args, 256),
+        paged(r.nodeTypes, 24),
+        paged(ir.pool, 129),
+        paged(fnm, 16),
         r.types.length / 3,
         3,
         0,
-        ir.fns.length / 7,
+        nfns,
         1,
       ]);
       output = [...io.output];
@@ -449,20 +457,8 @@ async function main(): Promise<void> {
     webassembly: await checkWasm(emitProgram, emitCases),
     jvm: await checkJvm(emitProgram, emitCases),
   };
-  const cEmitTargets: Record<string, TargetReport> = {
-    interpreter: checkInterpreter(cEmitProgram, cEmitCases),
-    optimizer: checkOptimizer(cEmitProgram, cEmitCases),
-    javascript: await checkJs(cEmitProgram, cEmitCases),
-    native_c_clang: await checkNative(
-      cEmitProgram,
-      cEmitCases,
-      findClang(),
-      false,
-      'native C via clang',
-    ),
-    webassembly: await checkWasm(cEmitProgram, cEmitCases),
-    jvm: await checkJvm(cEmitProgram, cEmitCases),
-  };
+  // emitcio runs the 16384-byte front end, so it meets the checker's wasm stack wall.
+  const cEmitTargets = await frontEndTargets(cEmitProgram, cEmitCases, 8);
   const report = {
     generatedAt: new Date().toISOString(),
     application: 'Conway’s Life 32x32 torus session protocol (examples/life.a0)',
