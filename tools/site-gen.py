@@ -425,8 +425,8 @@ def coverage(chart_name, labels):
 STARTS = [('A0', 'a0', statistics.median(_e[k]['c']['startupMs']['emitted'] for k in _K)),
           ('C', 'compiled-native', statistics.median(_e[k]['c']['startupMs']['handwritten'] for k in _K))]
 for grp in ('startupInterpretersMs', 'startupCompiledMs'):
-    ids = set()
-    for k in _K: ids |= set((_e[k].get(grp) or {}).keys())
+    ids = {}  # first-appearance order (a set made ties between equal medians hash-seed dependent)
+    for k in _K: ids.update(dict.fromkeys((_e[k].get(grp) or {}).keys()))
     for lid in ids:
         vals = [_e[k][grp][lid] for k in _K if lid in (_e[k].get(grp) or {})]
         lab = 'JavaScript' if lid == 'node' else _labels.get(lid, lid)
