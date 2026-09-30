@@ -7,6 +7,10 @@
  * in one 40-function program per representation, tools/ai-edit-tasks-c.ts); select with
  * A0_EXPERIMENT_TASKSET=a|b|c|all.
  *
+ * A0 cell options: A0_EXPERIMENT_GUIDE (primer file), A0_EXPERIMENT_PROGRAM_VIEW=all|deps
+ * (program handle scope), A0_EXPERIMENT_SYSTEM=separate|merged (protocol paragraph after the
+ * primer, or folded into the primer's EDIT line). A0_EXPERIMENT_OUT sets the report path.
+ *
  * Each cell gives the model the same task, the same acceptance tests, and an
  * equally capable edit protocol; whole-task accounting records setup (language
  * instructions + protocol instructions), view, output, tool calls, validation
@@ -25,7 +29,7 @@
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import Anthropic from '@anthropic-ai/sdk';
 import { getEncoding } from 'js-tiktoken';
@@ -112,6 +116,38 @@ const RUST_SEMANTICS =
 const PROTOCOL_STRUCTURED_RUST = PROTOCOL_STRUCTURED_TS;
 const TS_SEMANTICS =
   'Numbers are unsigned 32-bit integers: every arithmetic result must be normalized with >>> 0, use Math.imul for multiplication, and comparisons are unsigned.';
+
+/**
+ * System-text layout of the A0 cells. 'separate': the primer followed by the protocol
+ * paragraph (the recorded design). 'merged': one text; the primer's `EDIT:` line carries the
+ * reply format, so no protocol paragraph is appended. Structured: the `EDIT:` line gains the
+ * code-block rule. Conventional: the `EDIT:` line (edit syntax the cell never uses) is
+ * replaced by the whole-file rule. Works for any primer with one `EDIT:` line.
+ */
+type SystemLayout = 'separate' | 'merged';
+
+const MERGED_STRUCTURED_SUFFIX = ' Nothing else, inside one ```code block.';
+
+function mergedA0System(
+  guide: string,
+  protocol: Protocol,
+): { system: string; languagePrimer: string; workflowPrimer: string } {
+  const lines = guide.replace(/\n+$/, '').split('\n');
+  const edits = lines.flatMap((l, i) => (l.startsWith('EDIT:') ? [i] : []));
+  const idx = edits[0];
+  if (idx === undefined || edits.length !== 1)
+    throw new Error('merged system layout needs exactly one primer line starting with "EDIT:"');
+  const workflowPrimer =
+    protocol === 'conventional'
+      ? PROTOCOL_CONVENTIONAL
+      : `${lines[idx] ?? ''}${MERGED_STRUCTURED_SUFFIX}`;
+  // The protocol line keeps its place in the one text; the buckets split it out for accounting.
+  return {
+    system: lines.map((l, i) => (i === idx ? workflowPrimer : l)).join('\n'),
+    languagePrimer: lines.filter((_, i) => i !== idx).join('\n'),
+    workflowPrimer,
+  };
+}
 
 // --- Views and edit application -----------------------------------------------
 
@@ -311,13 +347,20 @@ async function buildCell(
   protocol: Protocol,
   guide: string,
   programScope: 'all' | 'deps' = 'all',
+  layout: SystemLayout = 'separate',
 ): Promise<{ cell: Cell; session?: EditSession; handle: string }> {
   const handle = 'e0';
   if (representation === 'a0') {
     const protocolText =
       protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : PROTOCOL_STRUCTURED_A0;
-    const system = `${guide}\n\n${protocolText}`;
-    const primers = { languagePrimer: guide, workflowPrimer: protocolText };
+    const { system, ...primers } =
+      layout === 'merged'
+        ? mergedA0System(guide, protocol)
+        : {
+            system: `${guide}\n\n${protocolText}`,
+            languagePrimer: guide,
+            workflowPrimer: protocolText,
+          };
     if (protocol === 'structured') {
       // Two handles per view: e0 edits the target function, g1 edits the program (add,
       // replace, or remove whole functions, e.g. for signature changes). The reply's first
@@ -617,6 +660,11 @@ async function main(): Promise<void> {
     ) as NonNullable<Task['langs']>;
     return { ...t, langs };
   };
+
+  // A0 system text: 'separate' (primer + protocol paragraph) or 'merged' (the protocol lives in
+  // the primer's EDIT line; see mergedA0System). TS and Rust cells are unaffected.
+  const systemLayout: SystemLayout =
+    process.env.A0_EXPERIMENT_SYSTEM === 'merged' ? 'merged' : 'separate';
   const TASKS: readonly Task[] =
     setName === 'b'
       ? (TASKS_B as readonly Task[]).map(withLangs)
@@ -713,6 +761,7 @@ async function main(): Promise<void> {
             protocol,
             guide,
             programScope,
+            systemLayout,
           );
           const base = {
             task: task.id,
@@ -834,6 +883,7 @@ async function main(): Promise<void> {
     languagePrimer: guidePath,
     taskSet: setName,
     programView: programScope,
+    systemLayout,
     method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
@@ -879,12 +929,10 @@ async function main(): Promise<void> {
     contextTokensByCell,
     trials,
   };
-  await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'ai-edit-experiment.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  // A0_EXPERIMENT_OUT names the report file (default results/ai-edit-experiment.json).
+  const outPath = process.env.A0_EXPERIMENT_OUT ?? join('results', 'ai-edit-experiment.json');
+  await mkdir(dirname(outPath), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   process.stdout.write(`status: ${report.status}\nself-check: ${selfCheckOk ? 'ok' : 'FAILED'}\n`);
   for (const tr of trials) {
     process.stdout.write(

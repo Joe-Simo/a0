@@ -1876,6 +1876,45 @@ COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17. Follow-up to the C/JS fix of the same
 - Stage-1 bootstrap speed: tools/bootstrap.ts is not in this base, not measured.
 - Gate (this worktree): lint pass; typecheck pass; app exit 0 (C emitter rows: interpreter, optimizer, JavaScript, native C, wasm32, JVM all 15/15); test 59/59; selfhost 50 programs passed, 3 skipped, 6898 cases; selfhost:c 6371/6371 (corpus 5262, kernels 763, life 346; -Werror, UBSan).
 
+## Session 2026-09-30 (single-function cost)
+
+- Question: can the 6–32% single-function loss against TypeScript/Rust be closed without special-casing any model? Two general levers, measured on sets A, B and D (38 tasks) with all three primers: (1) the scoped program handle (`A0_EXPERIMENT_PROGRAM_VIEW=deps`) on the structured cell; (2) a new harness option `A0_EXPERIMENT_SYSTEM=merged` (`mergedA0System` in `tools/ai-edit-experiment.ts`): one system text, no protocol paragraph. The primer's single `EDIT:` line carries the protocol: for structured cells it gets the code-block rule appended; for conventional cells it is swapped for the whole-file rule, since those cells never use edit syntax. Works for any primer with exactly one `EDIT:` line, otherwise it refuses. Both variants also use the scoped handle. Also new: `A0_EXPERIMENT_OUT` (report path). Default behaviour is unchanged (`separate`, `all`).
+- Collection (scratchpad g17): 12 group files (primer x {separate, merged} x {structured, conventional}, the 38 A0 tasks each). One fresh Haiku and one fresh Sonnet subagent per file, each reading only its group file. One shot. **A0 cells only**: the TS and Rust cells are the earlier replies (g9 set A, gb set B, g14 set D), rescored unchanged. Their prompts are identical because they depend on neither primer, program view nor system layout. Results `results/ai-edit-experiment.{a,b,d}.{haiku,sonnet}-{min,short,tiny}-variant-{deps,merged}.json` (`-variant-deps` = separate text + scoped handle; `-variant-merged` = merged text + scoped handle); self-check ok in all 36.
+- Cost per task, cache-adjusted (o200k): system text S written once at 1.25x and read at 0.05x on every further call, context and output at 1x. For a session of N tasks: cost(N) = 1.2·S/N + 0.05·S·k + x, where k = calls per task and x = context + output per task. Figures are N = 1 / 10 / unbounded, over the 38 tasks.
+
+| cell (Sonnet) | S | accepted | A0 | TS | Rust |
+|---|---|---|---|---|---|
+| structured, min, deps | 440 | 38/38 | 684 / 209 / 156 | 268 / 131 / 115 | 292 / 139 / 122 |
+| structured, min, merged | 397 | 38/38 | 629 / 200 / 153 | same | same |
+| structured, short, deps | 356 | 38/38 | 580 / 196 / 153 | same | same |
+| structured, short, merged | 313 | 38/38 | 528 / 190 / 152 | same | same |
+| structured, tiny, deps | 286 | 38/38 | 491 / 183 / 148 | same | same |
+| structured, tiny, merged | 243 | 38/38 | 438 / 176 / 146 | same | same |
+| conventional, min, separate | 405 | 38/38 | 632 / 195 / 146 | 185 / 133 / 128 | 205 / 137 / 130 |
+| conventional, min, merged | 343 | 38/38 | 555 / 185 / 143 | same | same |
+| conventional, short, merged | 257 | 38/38 | 447 / 170 / 139 | same | same |
+| conventional, tiny, separate | 251 | 38/38 | 440 / 169 / 139 | same | same |
+| conventional, tiny, merged | 199 | 38/38 | 375 / 160 / 136 | same | same |
+
+  Haiku costs match within a few tokens where acceptance matches. Haiku acceptance (A0; per set a/b/d):
+
+| Haiku | structured | conventional |
+|---|---|---|
+| min, deps / separate | 31/38 (9, 10, 12) | 37/38 |
+| min, merged | 36/38 (12, 12, 12) | **38/38** |
+| short, deps / separate | 31/38 | 38/38 |
+| short, merged | 0/38 (the subject left out the opening fence in all 38 replies) | 37/38 |
+| tiny, deps / separate | 35/38 | 36/38 |
+| tiny, merged | 32/38 | **38/38** |
+
+  TS/Rust (reused): Haiku TS 36/38 structured, 38/38 conventional; Rust 36/38, 37/38. Sonnet TS 38/38 both; Rust 37/38, 38/38.
+- **Break-even session length: none, in every variant, for both models, against both TS and Rust.** Even with an unbounded session the A0 cell costs more per task. The cached primer read (0.05·S = 10–22 tokens per call) is larger than any saving in context or output. Context + output is level with TS (conventional 126 vs about 126; structured 134 vs about 110, where the two-handle A0 view is the larger one). Best case, tiny primer + merged text, conventional: 375 / 160 / 136 vs TypeScript 185 / 133 / 128, which is +103% / +20% / +6%. The earlier loss narrows but is not closed: the primer is all of the gap, and the gap cannot fall below 0.05·S per call.
+- Decisions, keeping a variant only if acceptance holds on both models:
+  - **Kept (as the `A0_EXPERIMENT_SYSTEM=merged` option): merged system text for conventional cells** with the min and tiny primers: 38/38 on both models, S down 62 and 52 tokens.
+  - Not kept: the scoped handle on structured single-function tasks. Sonnet holds (38/38), but Haiku fell to 31/38 (min) and 35/38 (tiny), against 38/38 for min with the full handle in the earlier collections. The misses are protocol shapes: the `g0` signature lines echoed as blocks, or new helpers placed after their caller. The earlier c400 result (scoped handle better for Haiku on large programs) is unchanged. This set measures small programs only.
+  - Not kept: merged text for structured cells. Sonnet holds everywhere; Haiku gets 36/38 (min), 32/38 (tiny) and 0/38 (short, all missing the opening fence).
+  - Single subjects per cell, so a difference of 1–3 tasks on Haiku is within subject variance. The recorded defaults (MODEL_GUIDE.min.txt, separate text, full handle) are unchanged.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
