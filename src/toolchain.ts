@@ -1,6 +1,7 @@
 /**
  * Installed-toolchain integration: Clang/GCC native builds, Clang + wasm-ld for
- * WebAssembly, javac/java for the JVM, and Icarus Verilog / Yosys for hardware.
+ * WebAssembly, javac/java for the JVM, Icarus Verilog / Yosys for hardware, and the Arm GNU
+ * bare-metal toolchain plus qemu-system-arm for the 32-bit ARM backend.
  *
  * All invocations use argument arrays (never a shell) and a temporary directory.
  * Tool discovery is explicit and reported; absence is a recorded blocker, not a pass.
@@ -8,9 +9,9 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { A0Error } from './core.js';
 
@@ -150,6 +151,28 @@ export function findVvp(): ToolInfo {
 export function findYosys(): ToolInfo {
   const path = firstExisting([process.env.A0_YOSYS, onPath('yosys')]);
   return { name: 'yosys', path, version: versionOf(path, ['-V']) };
+}
+
+/**
+ * arm-none-eabi-gcc with newlib and librdimon (semihosting), as the Arm GNU Toolchain ships
+ * it: installed from its .pkg under /Applications/ArmGNUToolchain/<version>, or its payload
+ * extracted to ~/.local/share/arm-gnu-toolchain (Homebrew cask gcc-arm-embedded).
+ */
+export function findArmGcc(): ToolInfo {
+  const apps = '/Applications/ArmGNUToolchain';
+  const versions = existsSync(apps) ? readdirSync(apps).sort().reverse() : [];
+  const path = firstExisting([
+    process.env.A0_ARM_GCC,
+    onPath('arm-none-eabi-gcc'),
+    join(homedir(), '.local/share/arm-gnu-toolchain/bin/arm-none-eabi-gcc'),
+    ...versions.map((v) => `${apps}/${v}/arm-none-eabi/bin/arm-none-eabi-gcc`),
+  ]);
+  return { name: 'arm-none-eabi-gcc', path, version: versionOf(path) };
+}
+
+export function findQemuSystemArm(): ToolInfo {
+  const path = firstExisting([process.env.A0_QEMU_SYSTEM_ARM, onPath('qemu-system-arm')]);
+  return { name: 'qemu-system-arm', path, version: versionOf(path) };
 }
 
 export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
