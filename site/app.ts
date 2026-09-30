@@ -126,6 +126,7 @@ function drawGrid(canvas: HTMLCanvasElement, rows: readonly number[]): void {
 
 /** Running shader scenes; each is stopped before the page re-renders. */
 const scenes: (() => void)[] = [];
+let lastCss = '';
 
 const QUAD_VS = `#version 300 es
 in vec2 a;
@@ -195,7 +196,7 @@ function mountShader(el: HTMLElement, fragment: string): void {
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uTime, still ? 0 : (performance.now() - t0) / 1000);
     gl.uniform2f(uMouse, mouse[0], mouse[1]);
-    gl.uniform1f(uDark, dark.matches ? 1 : 0);
+    gl.uniform1f(uDark, effectiveDark() ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
   let last = 0;
@@ -224,6 +225,33 @@ function mountShader(el: HTMLElement, fragment: string): void {
     dark.removeEventListener('change', draw);
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   });
+}
+
+/**
+ * Theme override: the program's stylesheet follows prefers-color-scheme; a `.theme-toggle`
+ * element lets the viewer force light or dark. The choice is kept in localStorage and applied
+ * by rewriting the media conditions of the program's stylesheet (always-true or never-true).
+ */
+type Theme = 'light' | 'dark' | null;
+function storedTheme(): Theme {
+  try {
+    const t = localStorage.getItem('a0-theme');
+    return t === 'light' || t === 'dark' ? t : null;
+  } catch {
+    return null;
+  }
+}
+let theme: Theme = storedTheme();
+function effectiveDark(): boolean {
+  return theme === null ? matchMedia('(prefers-color-scheme: dark)').matches : theme === 'dark';
+}
+function themed(css: string): string {
+  if (theme === null) return css;
+  const on = 'min-width:0px';
+  const off = 'max-width:-1px';
+  return css
+    .replace(/prefers-color-scheme:\s*light/g, theme === 'light' ? on : off)
+    .replace(/prefers-color-scheme:\s*dark/g, theme === 'dark' ? on : off);
 }
 
 function render(
@@ -351,7 +379,9 @@ function render(
         i = words.length;
     }
   }
-  if (styleEl.textContent !== css) styleEl.textContent = css;
+  const sheet = themed(css);
+  if (styleEl.textContent !== sheet) styleEl.textContent = sheet;
+  lastCss = css;
   for (const [el, src] of shaders) mountShader(el, src);
   return { state, timer };
 }
@@ -361,6 +391,8 @@ function render(
 async function main(): Promise<void> {
   const root = document.getElementById('app') as HTMLElement;
   const page = await load(root.dataset.program ?? '/page.wasm');
+  // The prerendered page ships the stylesheet inline; the program's own copy replaces it.
+  for (const old of Array.from(document.head.querySelectorAll('style'))) old.remove();
   const styleEl = document.createElement('style');
   document.head.appendChild(styleEl);
   let state: number[] = [];
@@ -399,6 +431,20 @@ async function main(): Promise<void> {
     },
     { threshold: 0.15 },
   );
+  const styleOf = styleEl;
+  root.addEventListener('click', (ev) => {
+    const t = (ev.target as HTMLElement | null)?.closest('.theme-toggle');
+    if (t === null || t === undefined) return;
+    theme = effectiveDark() ? 'light' : 'dark';
+    try {
+      localStorage.setItem('a0-theme', theme);
+    } catch {
+      // storage unavailable: the choice lasts for this page view
+    }
+    document.documentElement.dataset.theme = theme;
+    styleOf.textContent = themed(lastCss);
+  });
+  if (theme !== null) document.documentElement.dataset.theme = theme;
   const animate = (): void => {
     // Anything already on screen is shown at once; only what scrolls into view later fades in.
     root.querySelectorAll('.reveal').forEach((el) => {

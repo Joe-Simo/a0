@@ -3,8 +3,9 @@
  * SystemVerilog, direct Darwin AArch64 assembly (src/arm64.ts), and direct x86-64 assembly
  * (src/x86_64.ts, System V, macOS and Linux), direct RISC-V RV64 assembly (src/riscv64.ts,
  * LP64, Linux), direct AVR assembly for the ATmega328P (src/avr.ts, avr-gcc calling
- * convention), a direct wasm32 binary module (src/wasm.ts; the compiled text is the
- * module's base64, see `wasmModuleBytes`), plus a bounded in-memory function-emission cache.
+ * convention), direct 32-bit ARM assembly (src/arm32.ts, ARMv7-A), a direct wasm32 binary
+ * module (src/wasm.ts; the compiled text is the module's base64, see `wasmModuleBytes`),
+ * plus a bounded in-memory function-emission cache.
  *
  * Every backend preserves the exact v0.1 semantics: wrapping u32 arithmetic,
  * logical right shift, shift distance masked to five bits, unsigned comparison,
@@ -12,6 +13,7 @@
  * a prefix so source names cannot collide with target keywords or runtime symbols.
  */
 
+import { assembleArm32, emitArm32Function } from './arm32.js';
 import { assembleArm64, emitArm64Function } from './arm64.js';
 import { assembleAvr, emitAvrFunction } from './avr.js';
 import {
@@ -35,9 +37,19 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.12';
+export const COMPILER_VERSION = 'a0c-0.1.13';
 
-export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64' | 'riscv64' | 'avr' | 'wasm';
+export type Target =
+  | 'js'
+  | 'c'
+  | 'java'
+  | 'sv'
+  | 'arm64'
+  | 'x86_64'
+  | 'riscv64'
+  | 'avr'
+  | 'wasm'
+  | 'arm32';
 export const TARGETS: readonly Target[] = [
   'js',
   'c',
@@ -48,6 +60,7 @@ export const TARGETS: readonly Target[] = [
   'riscv64',
   'avr',
   'wasm',
+  'arm32',
 ];
 
 export function isTarget(text: string): text is Target {
@@ -1154,6 +1167,7 @@ const EMITTERS: Readonly<Record<Target, Emitter>> = {
   riscv64: emitRiscv64Function,
   avr: emitAvrFunction,
   wasm: emitWasmFunction,
+  arm32: emitArm32Function,
 };
 
 /** True when any function of the program carries an io token anywhere in its types. */
@@ -1198,6 +1212,8 @@ export function assemble(
           COMPILER_VERSION,
         ),
       ).toString('base64');
+    case 'arm32':
+      return assembleArm32(bodies, COMPILER_VERSION);
     case 'js':
       return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
     case 'c': {
