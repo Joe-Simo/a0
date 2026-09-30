@@ -1211,3 +1211,18 @@ test('edit generality: any dependency order, new callees in any order, multi-sec
     assert.equal(mod.c(a, b), want);
   }
 });
+
+test('ret expression sugar: `ret OP ARGS` in source and in edits', () => {
+  const p = parseAndValidate(
+    'fn sat u32 u32 -> u32\ns add p0 p1\nc lt s p0\nret select c 4294967295 s\nend',
+  );
+  const f = p.byName.get('sat') as TypedFunc;
+  assert.equal(f.nodes.at(-1)?.id, 'retval');
+  assert.equal(run(f, [0xfffffff0, 0x20]), 0xffffffff);
+  assert.equal(run(f, [1, 2]), 3);
+  const s = new EditSession(parseAndValidate('fn f u32 -> u32\nretval add p0 1\nret retval\nend'));
+  const h = s.open('f').handle;
+  const n = s.apply(`${h}\nret mul retval 2`);
+  assert.equal(n.byName.get('f')?.nodes.at(-1)?.id, 'retval2');
+  assert.equal(run(n.byName.get('f') as TypedFunc, [4]), 10);
+});

@@ -525,6 +525,13 @@ export function parseNode(lineText: string, line?: number): Node {
  * Parse A0 source text. Comments (`#` to end of line) and blank lines are
  * discarded; there is no separate intent store in v0.1.
  */
+/** Node id for a `ret OP …` line: `retval`, or `retval2`, `retval3`… if taken. */
+export function freshRetId(nodes: readonly { readonly id: string }[]): string {
+  const taken = new Set(nodes.map((n) => n.id));
+  if (!taken.has('retval')) return 'retval';
+  for (let k = 2; ; k += 1) if (!taken.has(`retval${k}`)) return `retval${k}`;
+}
+
 export function parse(source: string): Program {
   if (Buffer.byteLength(source, 'utf8') > LIMITS.maxSourceBytes) {
     throw new A0Error(`source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
@@ -582,9 +589,19 @@ export function parse(source: string): Program {
       const first = body.text.split(/\s+/)[0];
       if (first === 'ret') {
         const parts = body.text.split(/\s+/);
-        if (parts.length !== 2)
-          throw new A0Error('ret expects one operand', body.line, { code: 'parse' });
-        ret = parseOperand(parts[1] ?? '', body.line);
+        if (parts.length > 2 && isOp(parts[1] ?? '')) {
+          // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
+          const id = freshRetId(nodes);
+          nodes.push(parseNode(`${id} ${parts.slice(1).join(' ')}`, body.line));
+          ret = { kind: 'node', id };
+        } else {
+          if (parts.length !== 2)
+            throw new A0Error('ret expects one operand', body.line, {
+              code: 'parse',
+              fix: 'write `ret ID` or `ret OP ARGS…`',
+            });
+          ret = parseOperand(parts[1] ?? '', body.line);
+        }
         const endLine = next();
         if (endLine === undefined || endLine.text !== 'end') {
           throw new A0Error("expected 'end' after ret", endLine?.line ?? body.line, {

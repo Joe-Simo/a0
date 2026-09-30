@@ -21,9 +21,12 @@ import {
   formatOperand,
   formatProgram,
   formatType,
+  freshRetId,
   isValidIdentifier,
   LIMITS,
   type Node,
+  OPS,
+  type Op,
   type Operand,
   type Program,
   parse,
@@ -65,7 +68,7 @@ export interface Replacement {
  * The whole edit is validated as one function and committed atomically.
  */
 export type EditOp =
-  | { readonly kind: 'node'; readonly node: Node; readonly after?: string }
+  | { readonly kind: 'node'; readonly node: Node; readonly after?: string; readonly fresh?: true }
   | { readonly kind: 'delete'; readonly id: string }
   | { readonly kind: 'ret'; readonly operand: Operand };
 
@@ -94,7 +97,19 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
       if (sawRet) throw new A0Error('duplicate ret in edit', line, { code: 'edit' });
       sawRet = true;
       const parts = text.split(/\s+/);
-      if (parts.length !== 2) throw new A0Error('ret expects one operand', line, { code: 'edit' });
+      if (parts.length > 2 && OPS.includes(parts[1] as Op)) {
+        // `ret OP ARGS…`: a fresh node plus `ret` of it (same sugar as in source).
+        // The id is provisional: replaceNodes picks one that is free in the function.
+        const node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
+        ops.push({ kind: 'node', node, fresh: true });
+        ops.push({ kind: 'ret', operand: { kind: 'node', id: 'retval' } });
+        return;
+      }
+      if (parts.length !== 2)
+        throw new A0Error('ret expects one operand', line, {
+          code: 'edit',
+          fix: 'write `ret ID` or `ret OP ARGS…`',
+        });
       ops.push({ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) });
       return;
     }
@@ -146,7 +161,21 @@ export function replaceNodes(
   fn: TypedFunc,
   ops: readonly (EditOp | Node)[],
 ): TypedFunc {
-  const edits: EditOp[] = ops.map((o) => ('kind' in o ? o : { kind: 'node', node: o }));
+  let edits: EditOp[] = ops.map((o) => ('kind' in o ? o : { kind: 'node', node: o }));
+  // A `ret OP …` node gets an id that is free in the function and in the edit.
+  const freshOp = edits.find((o) => o.kind === 'node' && o.fresh === true);
+  if (freshOp !== undefined && freshOp.kind === 'node') {
+    const id = freshRetId([
+      ...fn.nodes,
+      ...edits.flatMap((o) => (o.kind === 'node' && o.fresh !== true ? [o.node] : [])),
+    ]);
+    edits = edits.map((o) => {
+      if (o.kind === 'node' && o.fresh === true) return { kind: 'node', node: { ...o.node, id } };
+      if (o.kind === 'ret' && o.operand.kind === 'node' && o.operand.id === 'retval')
+        return { kind: 'ret', operand: { kind: 'node', id } };
+      return o;
+    });
+  }
   let nodes: Node[] = [...fn.nodes];
   let ret = fn.ret;
   // 1. deletions

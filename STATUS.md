@@ -327,6 +327,42 @@ now hold this run; run 1 is in git history at c440aae):
 | haiku-full | rust/conventional | 13/13 | 620 | 2279 | 1577 |
 | haiku-full | rust/structured | 13/13 | 336 | 3110 | 1527 |
 
+**Run 3, 2026-09-30, on v0.8.12 + `ret OP …` sugar (v0.8.13), one shot, no repairs:**
+
+| subject | cell | one-shot | output tokens | whole-task uncached | cache-adjusted |
+|---|---|---|---|---|---|
+| sonnet-min | a0/conventional | 13/13 | 629 | 6718 | 2202 |
+| sonnet-min | a0/structured | 13/13 | 368 | 8231 | 2344 |
+| sonnet-min | ts/conventional | 13/13 | 590 | 2023 | 1488 |
+| sonnet-min | ts/structured | 13/13 | 362 | 2910 | 1494 |
+| sonnet-min | rust/conventional | 13/13 | 630 | 2289 | 1587 |
+| sonnet-min | rust/structured | 13/13 | 364 | 3138 | 1555 |
+| sonnet-full | a0/conventional | 13/13 | 629 | 10254 | 2705 |
+| sonnet-full | a0/structured | 13/13 | 380 | 11779 | 2859 |
+| sonnet-full | ts/conventional | 13/13 | 590 | 2023 | 1488 |
+| sonnet-full | ts/structured | 13/13 | 362 | 2910 | 1494 |
+| sonnet-full | rust/conventional | 13/13 | 630 | 2289 | 1587 |
+| sonnet-full | rust/structured | 13/13 | 364 | 3138 | 1555 |
+| haiku-min | a0/conventional | 13/13 | 620 | 6709 | 2193 |
+| haiku-min | a0/structured | 12/13 | 445 | 8390 | 2503 |
+| haiku-min | ts/conventional | 13/13 | 599 | 2032 | 1497 |
+| haiku-min | ts/structured | 13/13 | 341 | 2889 | 1473 |
+| haiku-min | rust/conventional | 13/13 | 606 | 2265 | 1563 |
+| haiku-min | rust/structured | 12/13 | 369 | 3267 | 1684 |
+| haiku-full | a0/conventional | 13/13 | 632 | 10257 | 2708 |
+| haiku-full | a0/structured | 12/13 | 459 | 11888 | 2968 |
+| haiku-full | ts/conventional | 13/13 | 599 | 2032 | 1497 |
+| haiku-full | ts/structured | 13/13 | 341 | 2889 | 1473 |
+| haiku-full | rust/conventional | 13/13 | 606 | 2265 | 1563 |
+| haiku-full | rust/structured | 12/13 | 369 | 3267 | 1684 |
+
+Sonnet 78/78 with either primer; Haiku 77/78 with either primer (run 2: 76 and 71). The
+new general fixes that this run exercised: any dependency order inside an edit, callers
+before new callees, multi-section replies, `ne le gt ge`, and `ret OP ARGS` as sugar for a
+fresh result node (v0.8.13, both in source and in edits), after four Haiku replies used
+that form. The last Haiku misses are a wrong cube algorithm and a parenthesized nested
+expression, which the grammar does not have and is not being added for now.
+
 Sonnet: 78/78 one-shot with either primer (run 1 had 76/78; the two `loop-inclusive`
 failures were the missing boolean logic). Haiku with the compact primer: 76/78 one-shot;
 with the full primer 71/78. The Haiku failures are model errors, not protocol gaps: a
