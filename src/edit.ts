@@ -223,7 +223,25 @@ export function replaceNodes(
     if (f.name === fn.name) break;
     scope.set(f.name, f);
   }
-  return validateFunction(replaced, scope);
+  const typed = validateFunction(replaced, scope);
+  // A node this edit adds that nothing reads is almost always a result the reply forgot to
+  // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
+  const existing = new Set(fn.nodes.map((n) => n.id));
+  const used = new Set<string>();
+  for (const n of nodes) for (const a of n.args) if (a.kind === 'node') used.add(a.id);
+  if (ret.kind === 'node') used.add(ret.id);
+  for (const op of edits) {
+    if (op.kind !== 'node' || existing.has(op.node.id) || used.has(op.node.id)) continue;
+    throw new A0Error(
+      `${fn.name}: new node '${op.node.id}' is not used by any node or by ret`,
+      undefined,
+      {
+        code: 'edit',
+        fix: `add 'ret ${op.node.id}' if it is the new result, or use it in another node`,
+      },
+    );
+  }
+  return typed;
 }
 
 /**
@@ -623,33 +641,36 @@ export class EditSession {
     )
       body = body.slice(0, echoAt);
     // A trailing `end` mirrors the view and carries no information: accept it.
-    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end')
+    let strippedEnd = false;
+    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end') {
       body = body.slice(0, -1);
+      strippedEnd = true;
+    }
     while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
       body = body.slice(0, -1);
-    const first = stripComment(body[0] ?? '').trim();
-    let updated: TypedFunc;
-    if (/^fn\s/.test(first)) {
-      // The whole function was sent back under its own handle: an unambiguous replacement.
-      const parsed = parse(`${body.join('\n')}\nend`);
-      const [only] = parsed.functions;
-      if (only === undefined || parsed.functions.length !== 1 || only.name !== fn.name) {
-        throw new A0Error(
-          `handle '${handle}' edits '${fn.name}': send edit lines, or exactly that function as a whole 'fn ${fn.name} ... end' block; use a program handle to add or replace other functions`,
-          1,
-          {
-            code: 'edit',
-            fix: `reply with '${handle}' followed by edit lines for '${fn.name}' only`,
-          },
-        );
-      }
-      updated = editProgram(this.#program, formatFunction(only)).byName.get(fn.name) as TypedFunc;
-    } else {
-      const nodes = parseReplacementNodes(body, 2);
-      updated = replaceNodes(this.#program, fn, nodes);
+    // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
+    // function sent back whole replaces itself, and any other function is added or replaced
+    // exactly as under a program handle. Edit lines before the first block apply to the
+    // handled function after the blocks, so a callee changed in the same reply type-checks.
+    const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
+    const editLines = blockAt < 0 ? body : body.slice(0, blockAt);
+    let program = this.#program;
+    if (blockAt >= 0) {
+      const blocks = body.slice(blockAt).join('\n');
+      program = editProgram(program, strippedEnd ? `${blocks}\nend` : blocks);
     }
-    // Validation succeeded: commit atomically; handles follow the new revision.
-    this.#program = commit(this.#program, updated);
+    if (editLines.length > 0) {
+      const target = program.byName.get(fn.name);
+      if (target === undefined)
+        throw new A0Error(
+          `handle '${handle}' edits '${fn.name}', which this reply removes`,
+          undefined,
+          { code: 'edit', fix: `keep '${fn.name}' or send only whole function blocks` },
+        );
+      const nodes = parseReplacementNodes(editLines, 2);
+      program = commit(program, replaceNodes(program, target, nodes));
+    }
+    this.#program = program;
     this.#rebind();
     return this.#program;
   }

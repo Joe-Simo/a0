@@ -616,6 +616,15 @@ Wins, ties, losses, stated separately:
 - Tests: page test now asserts an empty state (the demo and its Life grid are gone from the page); new docs program test. Gate: lint, typecheck, test 35/35, verify (all paths incl. arm64 4297), app, equiv 48/48, hw pass.
 - Not done: X handle in the footer (not provided); playground page; arm64 register allocation.
 
+## Session 2026-09-29 (short primer, edit checks)
+
+- `MODEL_GUIDE.short.txt`: 304 o200k tokens (min primer 388). Collected with fresh subjects, one shot, sets A and B, Haiku and Sonnet (scratchpad g10; TS/Rust cells reused from the earlier collections since they do not depend on the primer). Results `results/ai-edit-experiment.{,b.}{haiku,sonnet}-short.json`.
+  - Sonnet: 13/13 and 12/12 on both A0 cells (unchanged from the min primer). Whole-task tokens per task fell 6718 to 5626 (conventional) and 7087 to 5995 (structured) on set A.
+  - Haiku structured, first collection: 11/13 and 10/12. Classified: 2 protocol shapes (a whole `fn` block for another function under a function handle, with or without edit lines), 1 nested expression `select (lt a b) ...` (grammar item B, recorded, still refused), 1 model error (sq(sq(x)) for cube).
+  - General fix (v0.8.15, tests added): whole `fn ... end` blocks are program-level edits under any handle; edit lines apply to the handled function after the blocks. Re-collected structured cells with fresh subjects: Haiku 11/13 (A) and 12/12 (B), Sonnet 13/13 and 12/12. The two remaining Haiku misses inserted the new result but left `ret` on the old node.
+  - Second general fix: an edit's new node that nothing reads is rejected with the fix (`add 'ret ID'`), so that shape is a diagnosed rejection instead of a silently wrong program. Regression check: every earlier collection has identical accepted counts under the new checks.
+  - Loss still published: Haiku one shot on the 304-token primer is 2 tasks below the 388-token primer on set A. The default primer stays MODEL_GUIDE.min.txt until a repair-round collection shows the short one recovers.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

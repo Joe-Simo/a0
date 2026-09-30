@@ -1082,14 +1082,41 @@ test('edit tolerance: trailing end, whole-function block under its handle, echoe
   let h = s.open('sq').handle;
   let p = s.apply(`${h}\na add p0 p0\nret a\nend`);
   assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 6);
+  // A new node nothing reads is rejected with the fix (the usual cause: ret was not updated).
+  s = new EditSession(parseAndValidate(src));
+  h = s.open('sq').handle;
+  assert.throws(() => s.apply(`${h}\nb mul a p0`), /not used by any node or by ret/);
+  p = s.apply(`${h}\nb mul a p0\nret b`);
+  assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 27);
   // The whole function sent back under its own handle replaces it; another function is refused.
   s = new EditSession(parseAndValidate(src));
   h = s.open('sq').handle;
   p = s.apply(`${h}\nfn sq u32 -> u32\na sub p0 1\nret a\nend`);
   assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 2);
+  // A whole block for another function under a function handle is a program-level edit
+  // (added or replaced), exactly as under a program handle; the handled function is kept.
   s = new EditSession(parseAndValidate(src));
   h = s.open('sq').handle;
-  assert.throws(() => s.apply(`${h}\nfn other u32 -> u32\nret p0\nend`), /edit lines/);
+  p = s.apply(`${h}\nfn other u32 -> u32\nret p0\nend`);
+  assert.equal(run(p.byName.get('other') as TypedFunc, [7]), 7);
+  assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 9);
+  // Edit lines for the handled function followed by a whole block replacing its callee:
+  // the block lands first, so the new call type-checks against the new callee.
+  const src2 =
+    'fn mixel u32 u32 u32x4 -> u32\nret p0\nend\nfn checksum u32x4 -> u32\nr fold mixel 4 0 p0\nret r\nend';
+  s = new EditSession(parseAndValidate(src2));
+  h = s.open('checksum').handle;
+  p = s.apply(
+    `${h}\nr fold mixel 4 7 p0\nfn mixel u32 u32 u32x4 -> u32\nval get p2 p1\nprod mul p0 31\nres add prod val\nret res\nend`,
+  );
+  assert.equal(
+    run(p.byName.get('checksum') as TypedFunc, [[1, 2, 3, 4]]),
+    ((((7 * 31 + 1) * 31 + 2) * 31 + 3) * 31 + 4) >>> 0,
+  );
+  // Removal is a program-level edit, not a node edit: refused under a function handle.
+  s = new EditSession(parseAndValidate(src2));
+  h = s.open('checksum').handle;
+  assert.throws(() => s.apply(`${h}\nr fold mixel 4 7 p0\n-fn checksum`), /invalid delete target/);
   // An echo of the rest of the view (program handle line plus signature lines) is ignored.
   s = new EditSession(parseAndValidate(src));
   const e = s.open('sq').handle;
