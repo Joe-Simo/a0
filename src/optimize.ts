@@ -242,6 +242,48 @@ function strengthReduce(node: Node): Node {
     : { ...node, op: 'and', args: [node.args[0] as Operand, { kind: 'u32', value: v - 1 }] };
 }
 
+/**
+ * Demand-driven order for a pure body: each node is placed just before its first consumer
+ * (a post-order walk from the result, operands left to right), so a value's live range
+ * starts where it is needed instead of where the source happened to write it. Functions
+ * with an in-place update candidate (`set`/`put`) keep their order: moving a read of the
+ * container past the update would force a copy. Pure nodes only, so any topological order
+ * has the same meaning.
+ */
+function schedule(nodes: readonly Node[], ret: Operand): readonly Node[] {
+  if (nodes.some((n) => n.op === 'set' || n.op === 'put')) return nodes;
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const placed = new Set<string>();
+  const out: Node[] = [];
+  // Iterative post-order (bodies can be long chains).
+  const visit = (root: Operand): void => {
+    if (root.kind !== 'node' || placed.has(root.id)) return;
+    const stack: { n: Node; k: number }[] = [];
+    const first = byId.get(root.id);
+    if (first === undefined) return;
+    stack.push({ n: first, k: 0 });
+    placed.add(first.id);
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1] as { n: Node; k: number };
+      const arg = top.n.args[top.k];
+      if (arg === undefined) {
+        out.push(top.n);
+        stack.pop();
+        continue;
+      }
+      top.k += 1;
+      if (arg.kind !== 'node' || placed.has(arg.id)) continue;
+      const d = byId.get(arg.id);
+      if (d === undefined) continue;
+      placed.add(d.id);
+      stack.push({ n: d, k: 0 });
+    }
+  };
+  visit(ret);
+  for (const n of nodes) visit({ kind: 'node', id: n.id });
+  return out;
+}
+
 /** Maximum trip count the optimizer evaluates at compile time. */
 const FOLD_EVAL_LIMIT = 4096;
 
@@ -292,13 +334,18 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
       continue;
     }
     const reduced = strengthReduce(rewritten);
-    const key = cseKey(reduced);
-    const prior = cse.get(key);
-    if (prior !== undefined) {
-      subst.set(node.id, { kind: 'node', id: prior });
-      continue;
+    // Aggregate literals are fresh allocations: merging two of them would make one value
+    // shared, and every backend then copies it on update instead of writing in place.
+    // Keeping them separate costs nothing (the literal is built once either way).
+    if (reduced.op !== 'arr' && reduced.op !== 'rec') {
+      const key = cseKey(reduced);
+      const prior = cse.get(key);
+      if (prior !== undefined) {
+        subst.set(node.id, { kind: 'node', id: prior });
+        continue;
+      }
+      cse.set(key, node.id);
     }
-    cse.set(key, node.id);
     kept.push(reduced);
     defs.set(node.id, reduced);
   }
@@ -314,9 +361,23 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
     const node = kept[i];
     if (node !== undefined && live.has(node.id)) node.args.forEach(mark);
   }
-  const nodes = kept.filter((n) => live.has(n.id));
-  const optimized = validateFunction({ ...fn, nodes, ret }, fn.calls);
+  const reachable = kept.filter((n) => live.has(n.id));
+  const nodes = anchored.size === 0 ? schedule(reachable, ret) : reachable;
+  // Whole program: callees are optimized too, so a backend that inlines them (arm64,
+  // x86-64) sees the optimized bodies, not the source ones.
+  const calls = new Map([...fn.calls].map(([name, callee]) => [name, optimizedCallee(callee)]));
+  const optimized = validateFunction({ ...fn, nodes, ret }, calls);
   return { fn: optimized, stats: { before: fn.nodes.length, after: nodes.length } };
+}
+
+const OPTIMIZED = new WeakMap<TypedFunc, TypedFunc>();
+
+function optimizedCallee(fn: TypedFunc): TypedFunc {
+  const have = OPTIMIZED.get(fn);
+  if (have !== undefined) return have;
+  const done = optimizeFunction(fn).fn;
+  OPTIMIZED.set(fn, done);
+  return done;
 }
 
 export function optimize(program: TypedProgram): { program: TypedProgram; stats: OptimizeStats } {

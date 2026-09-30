@@ -29,7 +29,7 @@ import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.9';
+export const COMPILER_VERSION = 'a0c-0.1.10';
 
 export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64';
 export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64', 'x86_64'];

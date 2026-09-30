@@ -5,7 +5,8 @@
  * memory, energy, and real applications are NOT measured here. Sanitizers are off
  * (production-style flags), unlike the correctness runs in verify.
  *
- * Baselines: hand-written C (clang -O2, same driver, inlined) and Rust (rustc -O), the
+ * Baselines: hand-written C (clang -O2, and -O3 -march=native as the best-flag row, same
+ * driver, inlined) and Rust (rustc -C opt-level=3 -C target-cpu=native), the
  * A0 direct AArch64 backend, hand-written JavaScript (Node, in process, warm), and every
  * language in the table (tools/exec-bench-languages.ts and exec-bench-languages-more.ts,
  * 45 entries: TypeScript, C++, Objective-C, Java, Kotlin, Scala, Clojure, Groovy, C#, F#,
@@ -68,9 +69,81 @@ interface Kernel {
   readonly noArm64?: string;
 }
 
-const ZEROS_4096 = Array.from({ length: 4096 }, () => '0').join(' ');
+const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
+const ZEROS_4096 = zeros(4096);
+/** a[i] = i * x + y */
+const FILLA =
+  'fn filla u32x1024 u32 u32 u32 -> u32x1024\nv mul p1 p2\nw add v p3\nn set p0 p1 w\nret n\nend';
+/** b[i] = (i ^ y) * x */
+const FILLB =
+  'fn fillb u32x1024 u32 u32 u32 -> u32x1024\nv xor p1 p3\nw mul v p2\nn set p0 p1 w\nret n\nend';
+/** a[i] = ((i * x + y) ^ ((i * x + y) >> 15)) * 2654435761 */
+const hashFill = (name: string, len: number): string =>
+  `fn ${name} u32x${len} u32 u32 u32 -> u32x${len}\nv mul p1 p2\nw add v p3\nx shr w 15\ny xor w x\nm mul y 2654435761\nn set p0 p1 m\nret n\nend`;
 
-const KERNELS: readonly Kernel[] = [
+/** 4x4 u32 matrix product repeated 8 times: A = A * B, fully unrolled per step. */
+function mat4Source(): string {
+  const lines = ['fn mulstep u32x16 u32 u32x16 -> u32x16'];
+  for (let k = 0; k < 16; k += 1) lines.push(`a${k} get p0 ${k}`, `b${k} get p2 ${k}`);
+  const cs: string[] = [];
+  for (let r = 0; r < 4; r += 1)
+    for (let c = 0; c < 4; c += 1) {
+      const terms: string[] = [];
+      for (let k = 0; k < 4; k += 1) {
+        lines.push(`m${r}${c}${k} mul a${r * 4 + k} b${k * 4 + c}`);
+        terms.push(`m${r}${c}${k}`);
+      }
+      lines.push(
+        `s${r}${c}a add ${terms[0]} ${terms[1]}`,
+        `s${r}${c}b add s${r}${c}a ${terms[2]}`,
+        `c${r}${c} add s${r}${c}b ${terms[3]}`,
+      );
+      cs.push(`c${r}${c}`);
+    }
+  lines.push(`n arr ${cs.join(' ')}`, 'ret n', 'end');
+  const top = ['fn mat4 u32 u32 -> u32'];
+  const as: string[] = [];
+  const bs: string[] = [];
+  for (let k = 0; k < 16; k += 1) {
+    top.push(
+      `ea${k} mul p0 ${k + 1}`,
+      `fa${k} shr p1 ${k}`,
+      `ga${k} xor ea${k} fa${k}`,
+      `eb${k} mul p1 ${k + 3}`,
+      `fb${k} shr p0 ${k}`,
+      `gb${k} add eb${k} fb${k}`,
+    );
+    as.push(`ga${k}`);
+    bs.push(`gb${k}`);
+  }
+  top.push(
+    `a arr ${as.join(' ')}`,
+    `b arr ${bs.join(' ')}`,
+    'r fold mulstep 8 a b',
+    'q and p0 15',
+    'x get r q',
+    't0 get r 0',
+    't5 get r 5',
+    't10 get r 10',
+    't15 get r 15',
+    'u add t0 t5',
+    'v add u t10',
+    'w add v t15',
+    'y add w x',
+    'ret y',
+    'end',
+  );
+  return `${lines.join('\n')}\n${top.join('\n')}`;
+}
+
+const C_HASH_FILL = (n: number): string =>
+  `for (uint32_t i = 0; i < ${n}; i++) { uint32_t w = i * x + y; a[i] = (w ^ (w >> 15)) * 2654435761u; }`;
+const JS_HASH_FILL = (n: number): string =>
+  `for (let i = 0; i < ${n}; i++) { const w = (Math.imul(i, x) + y) >>> 0; a[i] = Math.imul(w ^ (w >>> 15), 2654435761) >>> 0; }`;
+const RUST_HASH_FILL = (n: number): string =>
+  `for i in 0..${n}u32 { let w = i.wrapping_mul(x).wrapping_add(y); a[i as usize] = (w ^ (w >> 15)).wrapping_mul(2654435761); }`;
+
+export const KERNELS: readonly Kernel[] = [
   {
     name: 'affine',
     arity: 3,
@@ -161,6 +234,78 @@ const KERNELS: readonly Kernel[] = [
     c: 'static inline uint32_t hw_loop64(uint32_t s, uint32_t k) { for (uint32_t i = 0; i < 64; i++) { uint32_t b = (s ^ k) * 2654435761u; s = (b ^ (b >> 15)) + i; } return s; }',
     js: 'export function loop64(s, k) { for (let i = 0; i < 64; i++) { const b = Math.imul((s ^ k) >>> 0, 2654435761) >>> 0; s = ((b ^ (b >>> 15)) + i) >>> 0; } return s; }',
     rust: '#[inline] fn hw_loop64(s0: u32, k: u32) -> u32 { let mut s = s0; for i in 0..64u32 { let b = (s ^ k).wrapping_mul(2654435761); s = (b ^ (b >> 15)).wrapping_add(i); } s }',
+  },
+  {
+    name: 'dot1k', // two 1024-element fills, then a multiply-accumulate reduce
+    arity: 2,
+    iterScale: 64,
+    a0: `${FILLA}\n${FILLB}\nfn dotstep u32 u32 u32x1024 u32x1024 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend\nfn dot1k u32 u32 -> u32\nz arr ${zeros(1024)}\na fold filla 1024 z p0 p1\nz2 arr ${zeros(1024)}\nb fold fillb 1024 z2 p0 p1\nd fold dotstep 1024 0 a b\nret d\nend`,
+    c: 'static inline uint32_t hw_dot1k(uint32_t x, uint32_t y) { uint32_t a[1024], b[1024]; for (uint32_t i = 0; i < 1024; i++) { a[i] = i * x + y; b[i] = (i ^ y) * x; } uint32_t s = 0; for (uint32_t i = 0; i < 1024; i++) s += a[i] * b[i]; return s; }',
+    js: 'export function dot1k(x, y) { const a = new Uint32Array(1024), b = new Uint32Array(1024); for (let i = 0; i < 1024; i++) { a[i] = (Math.imul(i, x) + y) >>> 0; b[i] = Math.imul(i ^ y, x) >>> 0; } let s = 0; for (let i = 0; i < 1024; i++) s = (s + Math.imul(a[i], b[i])) >>> 0; return s; }',
+    rust: '#[inline] fn hw_dot1k(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; let mut b = [0u32; 1024]; for i in 0..1024u32 { a[i as usize] = i.wrapping_mul(x).wrapping_add(y); b[i as usize] = (i ^ y).wrapping_mul(x); } let mut s = 0u32; for i in 0..1024 { s = s.wrapping_add(a[i].wrapping_mul(b[i])); } s }',
+  },
+  {
+    name: 'prefix1k', // in-place prefix sum: each step reads the element written by the previous one
+    arity: 2,
+    iterScale: 64,
+    a0: `${FILLA}\nfn pfx u32x1024 u32 -> u32x1024\nc eq p1 0\nj sub p1 1\nt get p0 j\nu select c 0 t\ns get p0 p1\nv add u s\nn set p0 p1 v\nret n\nend\nfn prefix1k u32 u32 -> u32\nz arr ${zeros(1024)}\na fold filla 1024 z p0 p1\nb fold pfx 1024 a\nq and p1 1023\nr get b q\nw get b 1023\ns add r w\nret s\nend`,
+    c: 'static inline uint32_t hw_prefix1k(uint32_t x, uint32_t y) { uint32_t a[1024]; for (uint32_t i = 0; i < 1024; i++) a[i] = i * x + y; for (uint32_t i = 1; i < 1024; i++) a[i] += a[i - 1]; return a[y & 1023u] + a[1023]; }',
+    js: 'export function prefix1k(x, y) { const a = new Uint32Array(1024); for (let i = 0; i < 1024; i++) a[i] = (Math.imul(i, x) + y) >>> 0; for (let i = 1; i < 1024; i++) a[i] = (a[i] + a[i - 1]) >>> 0; return (a[y & 1023] + a[1023]) >>> 0; }',
+    rust: '#[inline] fn hw_prefix1k(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; for i in 0..1024u32 { a[i as usize] = i.wrapping_mul(x).wrapping_add(y); } for i in 1..1024 { a[i] = a[i].wrapping_add(a[i - 1]); } a[(y & 1023) as usize].wrapping_add(a[1023]) }',
+  },
+  {
+    name: 'hist256', // data-dependent indexing: 4096 hashed words into 256 buckets
+    arity: 2,
+    iterScale: 256,
+    a0: `${hashFill('fillh4k', 4096)}\nfn hstep u32x256 u32 u32x4096 -> u32x256\nv get p2 p1\nk shr v 24\nh get p0 k\nh1 add h 1\nn set p0 k h1\nret n\nend\nfn hist256 u32 u32 -> u32\nz arr ${ZEROS_4096}\na fold fillh4k 4096 z p0 p1\nhz arr ${zeros(256)}\nh fold hstep 4096 hz a\nq and p1 255\nr get h q\nw and p0 255\nr2 get h w\ns mul r 65599\nt add s r2\nret t\nend`,
+    c: `static inline uint32_t hw_hist256(uint32_t x, uint32_t y) { uint32_t a[4096]; ${C_HASH_FILL(4096)} uint32_t h[256] = {0}; for (uint32_t i = 0; i < 4096; i++) h[a[i] >> 24]++; return h[y & 255u] * 65599u + h[x & 255u]; }`,
+    js: `export function hist256(x, y) { const a = new Uint32Array(4096); ${JS_HASH_FILL(4096)} const h = new Uint32Array(256); for (let i = 0; i < 4096; i++) h[a[i] >>> 24]++; return (Math.imul(h[y & 255], 65599) + h[x & 255]) >>> 0; }`,
+    rust: `#[inline] fn hw_hist256(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; ${RUST_HASH_FILL(4096)} let mut h = [0u32; 256]; for i in 0..4096 { h[(a[i] >> 24) as usize] += 1; } h[(y & 255) as usize].wrapping_mul(65599).wrapping_add(h[(x & 255) as usize]) }`,
+  },
+  {
+    name: 'mat4', // 4x4 matrix product repeated 8 times: 16-element arrays, many independent multiplies
+    arity: 2,
+    iterScale: 16,
+    a0: mat4Source(),
+    c: 'static inline uint32_t hw_mat4(uint32_t x, uint32_t y) { uint32_t a[16], b[16]; for (uint32_t k = 0; k < 16; k++) { a[k] = (x * (k + 1)) ^ (y >> k); b[k] = (y * (k + 3)) + (x >> k); } for (int n = 0; n < 8; n++) { uint32_t c[16]; for (int r = 0; r < 4; r++) for (int j = 0; j < 4; j++) { uint32_t s = 0; for (int k = 0; k < 4; k++) s += a[r * 4 + k] * b[k * 4 + j]; c[r * 4 + j] = s; } for (int i = 0; i < 16; i++) a[i] = c[i]; } return a[0] + a[5] + a[10] + a[15] + a[x & 15u]; }',
+    js: 'export function mat4(x, y) { const a = new Uint32Array(16), b = new Uint32Array(16), c = new Uint32Array(16); for (let k = 0; k < 16; k++) { a[k] = (Math.imul(x, k + 1) ^ (y >>> k)) >>> 0; b[k] = (Math.imul(y, k + 3) + (x >>> k)) >>> 0; } for (let n = 0; n < 8; n++) { for (let r = 0; r < 4; r++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s = (s + Math.imul(a[r * 4 + k], b[k * 4 + j])) >>> 0; c[r * 4 + j] = s; } a.set(c); } return (a[0] + a[5] + a[10] + a[15] + a[x & 15]) >>> 0; }',
+    rust: '#[inline] fn hw_mat4(x: u32, y: u32) -> u32 { let mut a = [0u32; 16]; let mut b = [0u32; 16]; for k in 0..16u32 { a[k as usize] = x.wrapping_mul(k + 1) ^ (y >> k); b[k as usize] = y.wrapping_mul(k + 3).wrapping_add(x >> k); } for _ in 0..8 { let mut c = [0u32; 16]; for r in 0..4 { for j in 0..4 { let mut s = 0u32; for k in 0..4 { s = s.wrapping_add(a[r * 4 + k].wrapping_mul(b[k * 4 + j])); } c[r * 4 + j] = s; } } a = c; } a[0].wrapping_add(a[5]).wrapping_add(a[10]).wrapping_add(a[15]).wrapping_add(a[(x & 15) as usize]) }',
+  },
+  {
+    name: 'fnv4k', // FNV-1a over the bytes of 4096 hashed words: a long serial dependency chain
+    arity: 2,
+    iterScale: 1024,
+    a0: `${hashFill('fillh4k', 4096)}\nfn fnvstep u32 u32 u32x4096 -> u32\nv get p2 p1\nb0 and v 255\ns0 xor p0 b0\nm0 mul s0 16777619\nb1 shr v 8\nc1 and b1 255\ns1 xor m0 c1\nm1 mul s1 16777619\nb2 shr v 16\nc2 and b2 255\ns2 xor m1 c2\nm2 mul s2 16777619\nb3 shr v 24\ns3 xor m2 b3\nm3 mul s3 16777619\nret m3\nend\nfn fnv4k u32 u32 -> u32\nz arr ${ZEROS_4096}\na fold fillh4k 4096 z p0 p1\nh fold fnvstep 4096 2166136261 a\nret h\nend`,
+    c: `static inline uint32_t hw_fnv4k(uint32_t x, uint32_t y) { uint32_t a[4096]; ${C_HASH_FILL(4096)} uint32_t s = 2166136261u; for (uint32_t i = 0; i < 4096; i++) { uint32_t v = a[i]; s = (s ^ (v & 255u)) * 16777619u; s = (s ^ ((v >> 8) & 255u)) * 16777619u; s = (s ^ ((v >> 16) & 255u)) * 16777619u; s = (s ^ (v >> 24)) * 16777619u; } return s; }`,
+    js: `export function fnv4k(x, y) { const a = new Uint32Array(4096); ${JS_HASH_FILL(4096)} let s = 2166136261; for (let i = 0; i < 4096; i++) { const v = a[i]; s = Math.imul(s ^ (v & 255), 16777619) >>> 0; s = Math.imul(s ^ ((v >>> 8) & 255), 16777619) >>> 0; s = Math.imul(s ^ ((v >>> 16) & 255), 16777619) >>> 0; s = Math.imul(s ^ (v >>> 24), 16777619) >>> 0; } return s; }`,
+    rust: `#[inline] fn hw_fnv4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; ${RUST_HASH_FILL(4096)} let mut s = 2166136261u32; for i in 0..4096 { let v = a[i]; s = (s ^ (v & 255)).wrapping_mul(16777619); s = (s ^ ((v >> 8) & 255)).wrapping_mul(16777619); s = (s ^ ((v >> 16) & 255)).wrapping_mul(16777619); s = (s ^ (v >> 24)).wrapping_mul(16777619); } s }`,
+  },
+  {
+    name: 'xs4k', // xorshift32 stream of 4096 words (each element depends on the previous), xor-reduced
+    arity: 2,
+    iterScale: 512,
+    a0: `fn xsfill u32x4096 u32 u32 -> u32x4096\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nc2 shr b 17\nd xor b c2\ne shl d 5\nf xor d e\nn set p0 p1 f\nret n\nend\nfn xorstep u32 u32 u32x4096 -> u32\nv get p2 p1\nw xor p0 v\nret w\nend\nfn xs4k u32 u32 -> u32\nz arr ${ZEROS_4096}\na fold xsfill 4096 z p0\nr fold xorstep 4096 p1 a\nret r\nend`,
+    c: 'static inline uint32_t hw_xs4k(uint32_t x, uint32_t y) { uint32_t a[4096]; uint32_t s = x; for (uint32_t i = 0; i < 4096; i++) { s ^= s << 13; s ^= s >> 17; s ^= s << 5; a[i] = s; } uint32_t r = y; for (uint32_t i = 0; i < 4096; i++) r ^= a[i]; return r; }',
+    js: 'export function xs4k(x, y) { const a = new Uint32Array(4096); let s = x; for (let i = 0; i < 4096; i++) { s = (s ^ (s << 13)) >>> 0; s = (s ^ (s >>> 17)) >>> 0; s = (s ^ (s << 5)) >>> 0; a[i] = s; } let r = y; for (let i = 0; i < 4096; i++) r = (r ^ a[i]) >>> 0; return r; }',
+    rust: '#[inline] fn hw_xs4k(x: u32, y: u32) -> u32 { let mut a = [0u32; 4096]; let mut s = x; for i in 0..4096 { s ^= s << 13; s ^= s >> 17; s ^= s << 5; a[i] = s; } let mut r = y; for i in 0..4096 { r ^= a[i]; } r }',
+  },
+  {
+    name: 'minmax1k', // record state: running (lo, hi) pair over 1024 hashed words
+    arity: 2,
+    iterScale: 64,
+    a0: `${hashFill('fillh1k', 1024)}\nfn mmstep (u32,u32) u32 u32x1024 -> (u32,u32)\nv get p2 p1\nlo at p0 0\nhi at p0 1\nc lt v lo\nnlo select c v lo\nd gt v hi\nnhi select d v hi\nr put p0 0 nlo\nr2 put r 1 nhi\nret r2\nend\nfn minmax1k u32 u32 -> u32\nz arr ${zeros(1024)}\na fold fillh1k 1024 z p0 p1\ni rec 4294967295 0\nm fold mmstep 1024 i a\nlo at m 0\nhi at m 1\ns sub hi lo\nret s\nend`,
+    c: `static inline uint32_t hw_minmax1k(uint32_t x, uint32_t y) { uint32_t a[1024]; ${C_HASH_FILL(1024)} uint32_t lo = 0xffffffffu, hi = 0; for (uint32_t i = 0; i < 1024; i++) { uint32_t v = a[i]; lo = v < lo ? v : lo; hi = v > hi ? v : hi; } return hi - lo; }`,
+    js: `export function minmax1k(x, y) { const a = new Uint32Array(1024); ${JS_HASH_FILL(1024)} let lo = 0xffffffff, hi = 0; for (let i = 0; i < 1024; i++) { const v = a[i]; lo = v < lo ? v : lo; hi = v > hi ? v : hi; } return (hi - lo) >>> 0; }`,
+    rust: `#[inline] fn hw_minmax1k(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; ${RUST_HASH_FILL(1024)} let mut lo = u32::MAX; let mut hi = 0u32; for i in 0..1024 { let v = a[i]; lo = if v < lo { v } else { lo }; hi = if v > hi { v } else { hi }; } hi.wrapping_sub(lo) }`,
+  },
+  {
+    name: 'filter2', // two passes of a 2-tap averaging filter (wrapping neighbour reads) over 1024 hashed words
+    arity: 2,
+    iterScale: 64,
+    a0: `${hashFill('fillh1k', 1024)}\nfn smooth u32x1024 u32 u32x1024 -> u32x1024\nj add p1 1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend\nfn filter2 u32 u32 -> u32\nz arr ${zeros(1024)}\na fold fillh1k 1024 z p0 p1\nz2 arr ${zeros(1024)}\nb fold smooth 1024 z2 a\nz3 arr ${zeros(1024)}\nc fold smooth 1024 z3 b\nq and p1 1023\nr get c q\nw get c 1023\ns add r w\nret s\nend`,
+    c: `static inline uint32_t hw_filter2(uint32_t x, uint32_t y) { uint32_t a[1024], b[1024], c[1024]; ${C_HASH_FILL(1024)} for (uint32_t i = 0; i < 1024; i++) b[i] = (a[i] + a[(i + 1) & 1023u]) >> 1; for (uint32_t i = 0; i < 1024; i++) c[i] = (b[i] + b[(i + 1) & 1023u]) >> 1; return c[y & 1023u] + c[1023]; }`,
+    js: `export function filter2(x, y) { const a = new Uint32Array(1024), b = new Uint32Array(1024), c = new Uint32Array(1024); ${JS_HASH_FILL(1024)} for (let i = 0; i < 1024; i++) b[i] = (a[i] + a[(i + 1) & 1023]) >>> 1; for (let i = 0; i < 1024; i++) c[i] = (b[i] + b[(i + 1) & 1023]) >>> 1; return (c[y & 1023] + c[1023]) >>> 0; }`,
+    rust: `#[inline] fn hw_filter2(x: u32, y: u32) -> u32 { let mut a = [0u32; 1024]; let mut b = [0u32; 1024]; let mut c = [0u32; 1024]; ${RUST_HASH_FILL(1024)} for i in 0..1024 { b[i] = a[i].wrapping_add(a[(i + 1) & 1023]) >> 1; } for i in 0..1024 { c[i] = b[i].wrapping_add(b[(i + 1) & 1023]) >> 1; } c[(y & 1023) as usize].wrapping_add(c[1023]) }`,
   },
 ];
 
@@ -276,6 +421,8 @@ async function benchC(
   buildMs: { a0ToNative: number; rustc: number | null };
   emitted: Sample;
   handwritten: Sample;
+  /** The same hand-written C at the best flags (-O3 -march=native). */
+  handwrittenBest: Sample;
   /** Direct AArch64 backend (src/arm64.ts) as an out-of-line call from the same driver; null off Apple silicon. */
   arm64: Sample | null;
   binaryBytes: { emitted: number; handwritten: number };
@@ -290,11 +437,12 @@ async function benchC(
       name: string,
       header: string,
       call: string,
+      flags: readonly string[] = ['-O2'],
     ): Promise<{ exe: string; bytes: number }> => {
       const src = join(dir, `${name}.c`);
       const exe = join(dir, name);
       await writeFile(src, `${header}\n${cDriver(() => call, kernel.arity)}`, 'utf8');
-      const r = runTool(clang, ['-std=c11', '-O2', '-o', exe, src]);
+      const r = runTool(clang, ['-std=c11', ...flags, '-o', exe, src]);
       if (!r.ok) throw new Error(`${name}: ${r.stderr}`);
       const { stat } = await import('node:fs/promises');
       return { exe, bytes: (await stat(exe)).size };
@@ -333,12 +481,18 @@ async function benchC(
       `#include <stdint.h>\n${kernel.c}`,
       `hw_${kernel.name}(ARGS)`,
     );
+    const hb = await build(
+      'handwritten-best',
+      `#include <stdint.h>\n${kernel.c}`,
+      `hw_${kernel.name}(ARGS)`,
+      C_BEST_FLAGS,
+    );
     // Rust baseline: same driver loop, rustc -O (LLVM), measured in the same interleaved loop.
     const rustSrc = join(dir, 'rust.rs');
     const rustExe = join(dir, 'rustbin');
     await writeFile(rustSrc, rustDriver(kernel), 'utf8');
     const tRust = performance.now();
-    const rb = runTool(rustc, ['-O', '-C', 'target-cpu=native', '-o', rustExe, rustSrc], {
+    const rb = runTool(rustc, [...RUST_FLAGS, '-o', rustExe, rustSrc], {
       timeoutMs: 300_000,
     });
     const rustBuildMs = performance.now() - tRust;
@@ -355,6 +509,8 @@ async function benchC(
     };
     const es: number[] = [];
     const hs: number[] = [];
+    const hbs: number[] = [];
+    let hbc = '';
     const as64: number[] = [];
     let ac = '';
     let ec = '';
@@ -383,6 +539,9 @@ async function benchC(
       hs.push(b.ns);
       ec = a.checksum;
       hc = b.checksum;
+      const best = runOne(hb.exe);
+      hbs.push(best.ns);
+      hbc = best.checksum;
       if (arm64Exe !== null) {
         const r = runOne(arm64Exe);
         as64.push(r.ns);
@@ -396,6 +555,8 @@ async function benchC(
     }
     if (ec !== hc)
       throw new Error(`${kernel.name}: checksum mismatch emitted=${ec} handwritten=${hc}`);
+    if (hbc !== ec)
+      throw new Error(`${kernel.name}: checksum mismatch emitted=${ec} best-flags C=${hbc}`);
     if (arm64Exe !== null && ac !== ec)
       throw new Error(`${kernel.name}: arm64 checksum mismatch ${ac} vs ${ec}`);
     if (rustOk && rc !== ec)
@@ -403,6 +564,7 @@ async function benchC(
     return {
       emitted: summarize(es, ec),
       handwritten: summarize(hs, hc),
+      handwrittenBest: summarize(hbs, hbc),
       arm64: arm64Exe === null ? null : summarize(as64, ac),
       binaryBytes: { emitted: e.bytes, handwritten: h.bytes },
       startupMs,
@@ -666,6 +828,38 @@ async function benchLanguages(
   });
 }
 
+const C_BEST_FLAGS = ['-O3', '-march=native'];
+const RUST_FLAGS = ['-C', 'opt-level=3', '-C', 'target-cpu=native'];
+/** A win against the best-flag baselines is claimed only at this speedup or more. */
+const WIN_RATIO = 1.2;
+
+/**
+ * A0's direct arm64 path against the fastest of the best-flag baselines (C -O3
+ * -march=native, Rust opt-level=3 target-cpu=native, Zig ReleaseFast): win only when the
+ * baseline is at least WIN_RATIO slower, loss when A0 is slower beyond the tie band.
+ */
+function bestFlagVerdict(
+  arm64: Sample,
+  baselines: Readonly<Record<string, Sample | undefined>>,
+): { best: string; bestNsPerCall: number; speedup: number; verdict: 'win' | 'tie' | 'loss' } {
+  let best = '';
+  let sample: Sample | undefined;
+  for (const [id, s] of Object.entries(baselines))
+    if (s !== undefined && (sample === undefined || s.medianNsPerCall < sample.medianNsPerCall)) {
+      best = id;
+      sample = s;
+    }
+  if (sample === undefined) throw new Error('no best-flag baseline ran');
+  const speedup = sample.medianNsPerCall / arm64.medianNsPerCall;
+  const v = verdict(arm64, sample);
+  return {
+    best,
+    bestNsPerCall: sample.medianNsPerCall,
+    speedup,
+    verdict: speedup >= WIN_RATIO ? 'win' : v === 'loss' ? 'loss' : 'tie',
+  };
+}
+
 function verdict(emitted: Sample, handwritten: Sample): 'win' | 'tie' | 'loss' {
   const ratio = emitted.medianNsPerCall / handwritten.medianNsPerCall;
   const spread = Math.max(
@@ -692,6 +886,7 @@ async function main(): Promise<void> {
       `${lang.id.padEnd(11)} ${tool === undefined ? 'not found' : tool.version}\n`,
     );
   const results: Record<string, unknown> = {};
+  const bestFlag = { win: 0, tie: 0, loss: 0 };
   const perLang: Record<string, LangRow[]> = {};
   const ratios: Record<string, number[]> = {};
   const push = (id: string, ratio: number): void => {
@@ -730,13 +925,35 @@ async function main(): Promise<void> {
     }
     if (c !== null) {
       push('c', c.handwritten.medianNsPerCall / c.emitted.medianNsPerCall);
+      push('cBest', c.handwrittenBest.medianNsPerCall / c.emitted.medianNsPerCall);
       if (c.rust !== null) push('rust', c.rust.medianNsPerCall / c.emitted.medianNsPerCall);
       if (c.arm64 !== null) push('arm64', c.arm64.medianNsPerCall / c.emitted.medianNsPerCall);
       push('js', js.handwritten.medianNsPerCall / c.emitted.medianNsPerCall);
       push('jsEmitted', js.emitted.medianNsPerCall / c.emitted.medianNsPerCall);
     }
     const python = rows.python;
+    const zig = rows.zig;
+    const zigSample: Sample | undefined =
+      zig?.status === 'ran' && zig.medianNsPerCall !== undefined
+        ? {
+            medianNsPerCall: zig.medianNsPerCall,
+            minNsPerCall: zig.minNsPerCall ?? zig.medianNsPerCall,
+            maxNsPerCall: zig.maxNsPerCall ?? zig.medianNsPerCall,
+            checksum: zig.checksum ?? '',
+            samples: zig.samples ?? 0,
+          }
+        : undefined;
+    const vsBest =
+      c === null || c.arm64 === null
+        ? null
+        : bestFlagVerdict(c.arm64, {
+            cO3Native: c.handwrittenBest,
+            rustO3Native: c.rust ?? undefined,
+            zigReleaseFast: zigSample,
+          });
+    if (vsBest !== null) bestFlag[vsBest.verdict] += 1;
     results[k.name] = {
+      ...(vsBest === null ? {} : { arm64VsBestFlags: vsBest }),
       ...(python === undefined ? {} : { python, pythonIterations: python.iterations }),
       startupInterpretersMs,
       startupCompiledMs,
@@ -765,7 +982,7 @@ async function main(): Promise<void> {
     const cv =
       c === null
         ? 'blocked'
-        : `${verdict(c.emitted, c.handwritten)} (${c.emitted.medianNsPerCall.toFixed(3)} vs ${c.handwritten.medianNsPerCall.toFixed(3)} ns)${c.rust === null ? '' : `; vs Rust ${verdict(c.emitted, c.rust)} (${c.rust.medianNsPerCall.toFixed(3)} ns)`}${c.arm64 === null ? '' : `; arm64 ${c.arm64.medianNsPerCall.toFixed(3)} ns (${(c.arm64.medianNsPerCall / c.emitted.medianNsPerCall).toFixed(2)}x C)`}`;
+        : `${verdict(c.emitted, c.handwritten)} (${c.emitted.medianNsPerCall.toFixed(3)} vs ${c.handwritten.medianNsPerCall.toFixed(3)} ns)${c.rust === null ? '' : `; vs Rust ${verdict(c.emitted, c.rust)} (${c.rust.medianNsPerCall.toFixed(3)} ns)`}${c.arm64 === null ? '' : `; arm64 ${c.arm64.medianNsPerCall.toFixed(3)} ns (${(c.arm64.medianNsPerCall / c.emitted.medianNsPerCall).toFixed(2)}x C)`}; C-O3-native ${c.handwrittenBest.medianNsPerCall.toFixed(3)} ns${vsBest === null ? '' : `; arm64 vs best-flag ${vsBest.best} ${vsBest.speedup.toFixed(2)}x ${vsBest.verdict}`}`;
     const others = table
       .map(({ lang }) => {
         const row = rows[lang.id];
@@ -783,7 +1000,15 @@ async function main(): Promise<void> {
       ? null
       : Math.exp(a.reduce((s, v) => s + Math.log(v), 0) / a.length);
   const geomeans: Record<string, number | null> = {};
-  for (const id of ['c', 'rust', 'arm64', 'js', 'jsEmitted', ...table.map((t) => t.lang.id)])
+  for (const id of [
+    'c',
+    'cBest',
+    'rust',
+    'arm64',
+    'js',
+    'jsEmitted',
+    ...table.map((t) => t.lang.id),
+  ])
     geomeans[id] = geomean(ratios[id]);
   const languages: Record<string, unknown> = {};
   const skipped: Record<string, string> = {};
@@ -815,9 +1040,9 @@ async function main(): Promise<void> {
       return r.ok ? r.stdout.trim() : null;
     })(),
     flags: {
-      c: '-std=c11 -O2 (no sanitizer)',
+      c: '-std=c11 -O2 (no sanitizer); handwrittenBest: -std=c11 -O3 -march=native',
       js: 'Node default JIT, in-process, warm',
-      rust: '-O -C target-cpu=native',
+      rust: '-C opt-level=3 -C target-cpu=native',
       table:
         'see tools/exec-bench-languages*.ts: clang++ -std=c++17 -O2, javac/java and the other JVM and .NET languages with a warm-up pass then a timed pass in one process, kotlinc -include-runtime, scala-cli assembly, dotnet -c Release, go build, swiftc -O, zig -O ReleaseFast, dart compile exe, nim -d:release, crystal --release, ldc2 -O3, fpc -O2, gfortran -O2, ghc -O2, ocamlopt -O3, csc -O3, cobc -O2, v -prod, odin -o:speed, valac -X -O2; interpreters and VMs at their defaults',
     },
@@ -833,6 +1058,10 @@ async function main(): Promise<void> {
     meaning:
       'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
     geomeans,
+    arm64VsBestFlags: {
+      ...bestFlag,
+      rule: `A0 arm64 against the fastest of C -O3 -march=native, Rust opt-level=3 target-cpu=native and Zig ReleaseFast; win only at >= ${WIN_RATIO}x, loss when slower beyond the tie band`,
+    },
     languages,
     skipped,
     kernels: results,
