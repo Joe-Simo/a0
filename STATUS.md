@@ -851,6 +851,47 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   entry); the `.a0-cache` key does not carry the platform, so a cache shared between a
   macOS and a Linux checkout would need clearing (the cache is per checkout).
 
+## Session 2026-09-30 (self-hosting: AArch64 emitter)
+
+- **Stage 4a, `compiler/emit_arm64.a0`** (3235 lines, 32 functions, `use "check.a0"`): the
+  AArch64 emitter in A0 over the checked word IR of parse.a0 + check.a0. `emitio`: source
+  bytes in; ok, code, fn, node, byte count and the Darwin arm64 assembly bytes out (the
+  module shape of `src/arm64.ts`: `_a0_<name>` symbols, the C-compatible scalar convention,
+  w0-w7 then Darwin-packed stack parameters, result in w0).
+  - Covered: u32/bool parameters and results; `mov`, `add sub mul and or xor shl shr`,
+    `div` (`udiv`, then `cmp`/`csinv` for all ones on a zero divisor), `rem` (`msub`, the
+    dividend on a zero divisor),
+    `eq ne lt le gt ge` (`cmp`/`cset`), `select` (`csel`), literals (`movz`/`movk`),
+    `call` (real `bl`, stack arguments placed), `fold` and `loop` with scalar state (a
+    counted loop around `bl`, the loop's predicate by `cbz`), frames above 4095 bytes.
+  - Refused: any function whose parameter, result or node is an array, record or io:
+    diagnostic code 5 (fn, node; node 4294967295 for a header type). Parse/check errors pass
+    through with their codes; code 4 when a line exceeds the 512-byte line buffer or the
+    module the 4096-byte output buffer.
+  - Scheme: every value in a stack slot, operands through w9-w11, result w12. The header
+    comment marks where stage 4b goes (linear-scan allocation over w19-w28 replacing
+    `lload` and the node stores, callee inlining, in-place aggregates).
+  - Buffers are 4096 output bytes and a 512-byte line: at 8192/1024 the wasm32 build of
+    the emitter overflowed wasm-ld's 1 MiB stack (by-value aggregates in C frames).
+- **Verification by execution** (`tools/selfhost-verify.ts`, `bun run selfhost`,
+  `results/selfhost.json`): per scalar-only function, the function plus its callees as one
+  source; `emitio` through the reference interpreter; `clang -x assembler`, linked with the
+  C test driver of `native_arm64` (`checkArm64Assembly`, factored out of `checkArm64` in
+  tools/verify.ts); every oracle case compared with the BigInt oracle. Scalar corpus
+  (`generateCorpus(0xa05ca1a, 48, { scalar: true })`: no aggregate/io, 3-12 nodes, a
+  comparison appended when a bool result has no bool): 45 passed, 3 skipped over the
+  front end's 512-byte source limit, 0 failed, 6135 cases; examples/kernels.a0 scalar
+  functions 5/5, 763 cases. Total **50 programs, 6898 cases, 0 failures**. clamp_max:
+  66 source bytes to 479 assembly bytes.
+- **`bun run app` emitter rows** (12 cases: 5 kernels, call, fold, loop, array/io/record
+  refusals, ill-typed): assembly bytes identical on interpreter, optimizer, JS, C clang,
+  Wasm (12/12); JVM 11/11, the loop module's 1214 output words are over the JVM backend's
+  1024-word io output (src/backends.ts) and are counted as not run.
+- Gate (this worktree): lint pass; typecheck pass; test 43/43; app pass (lexer 7, parser
+  15, checker 39, emitter 12, Life 134); selfhost 50 passed, 0 failed, 3 skipped.
+- Not done: stage 4b (registers, inlining, aggregates, io); sources over 512 bytes; the
+  JVM io capacity.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
