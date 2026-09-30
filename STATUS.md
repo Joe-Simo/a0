@@ -1324,6 +1324,23 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
   134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
 
+## Session 2026-09-30 (self-hosted checker: function cap)
+
+- src/core.ts `LIMITS.maxFunctions` is now 65536; the A0 checker (`checkir` in
+  compiler/check.a0) compared the function count with the old 1024 and tools/ref-check.ts
+  `MAX_FUNCTIONS` was 1024. Both now use 65536, so the `limit` (code 4) diagnostic fires exactly
+  when `validate` would. No table changes were needed: the fns table already holds 820 functions,
+  and a 16384-byte source holds at most 713 (the shortest function, `fn a -> u32` / `ret 0` /
+  `end`, is 22 bytes with a one-letter name and 23 with two letters), so the diagnostic cannot fire
+  within the front end's source limit. The parser has no function cap beyond its tables.
+  compiler/front512.a0 (512-byte sources, at most ~23 functions) still has 1024 and cannot reach it.
+- New case `fns713` (tools/app.ts `manyFunctions`): 713 one-line functions filling 16373 bytes,
+  used in the parse and check rows on every target. test/core.test.ts checks that `validate`
+  accepts it, `checkio` reports ok, and the output equals `refCheckWords`.
+- Gate: lint, typecheck, test 59/59, app (every row that passed before still passes; wasm is
+  still blocked on the front-end size wall, as before), selfhost 50 passed / 3 skipped, selfhost:c
+  6371/6371.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

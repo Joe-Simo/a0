@@ -214,7 +214,26 @@ async function frontEndSources(): Promise<[string, string][]> {
     ['bad-op', 'fn f u32 -> u32\na plus p0 1\nret a\nend\n'],
     ['unterminated', 'fn f u32 -> u32\na add p0 1\n'],
   ];
-  return [...sources, ...(await wholeFiles())];
+  return [...sources, manyFunctions(), ...(await wholeFiles())];
+}
+
+/**
+ * The most one-line functions a source within the front end's limit holds (713, under the old
+ * 1024 function cap; src/core.ts allows 65536): names a..z, then two characters, skipping `fn`.
+ */
+function manyFunctions(): [string, string] {
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const names = [...letters];
+  for (const x of letters) for (const y of `${letters}0123456789`) names.push(x + y);
+  let src = '';
+  let n = 0;
+  for (const name of names.filter((m) => m !== 'fn')) {
+    const f = `fn ${name} -> u32\nret 0\nend\n`;
+    if (Buffer.byteLength(src + f) > FRONT_END_SOURCE_LIMIT) break;
+    src += f;
+    n += 1;
+  }
+  return [`fns${n}`, src];
 }
 
 export async function buildParseCases(): Promise<(Case & { readonly label: string })[]> {
