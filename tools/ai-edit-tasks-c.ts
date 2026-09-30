@@ -20,6 +20,15 @@
  */
 
 import { formatFunction, parseAndValidate } from '../src/core.js';
+import {
+  fillerText,
+  LANG_B,
+  LANG_PROJECT_FILLER,
+  LANGS,
+  type Lang,
+  langFile,
+  splitLang,
+} from './ai-edit-langs.js';
 import type { Task } from './ai-edit-tasks-b.js';
 
 type Representation = 'a0' | 'ts' | 'rust';
@@ -326,6 +335,13 @@ export interface FillerFunction {
   readonly a0: string;
   readonly ts: string;
   readonly rust: string;
+  /** Template and constants, from which the other languages' texts are emitted. */
+  readonly spec:
+    | { readonly template: 'lin'; readonly m: number; readonly c: number }
+    | { readonly template: 'xs'; readonly s: number }
+    | { readonly template: 'cap' | 'pair'; readonly c: number }
+    | { readonly template: 'sum'; readonly g: string; readonly h: string }
+    | { readonly template: 'mixin'; readonly g: string };
 }
 
 /**
@@ -358,6 +374,7 @@ export function generateFiller(count: number): FillerFunction[] {
         a0: `fn ${name} u32 -> u32\na mul p0 ${m}\nb add a ${c}\nret b\nend\n`,
         ts: `export function ${name}${u('x')}\n  return (Math.imul(x, ${m}) + ${c}) >>> 0;\n}\n`,
         rust: `pub fn ${name}(x: u32) -> u32 {\n    x.wrapping_mul(${m}).wrapping_add(${c})\n}\n`,
+        spec: { template: 'lin', m, c },
       };
     } else if (template === 1) {
       const name = `xs${id}`;
@@ -368,6 +385,7 @@ export function generateFiller(count: number): FillerFunction[] {
         a0: `fn ${name} u32 -> u32\na shr p0 ${s}\nb xor p0 a\nret b\nend\n`,
         ts: `export function ${name}${u('x')}\n  return (x ^ (x >>> ${s})) >>> 0;\n}\n`,
         rust: `pub fn ${name}(x: u32) -> u32 {\n    x ^ (x >> ${s})\n}\n`,
+        spec: { template: 'xs', s },
       };
     } else if (template === 2) {
       const name = `cap${id}`;
@@ -378,6 +396,7 @@ export function generateFiller(count: number): FillerFunction[] {
         a0: `fn ${name} u32 -> u32\nc lt p0 ${c}\nr select c p0 ${c}\nret r\nend\n`,
         ts: `export function ${name}${u('x')}\n  return x < ${c} ? x : ${c};\n}\n`,
         rust: `pub fn ${name}(x: u32) -> u32 {\n    if x < ${c} { x } else { ${c} }\n}\n`,
+        spec: { template: 'cap', c },
       };
     } else if (template === 3) {
       const name = `pair${id}`;
@@ -388,6 +407,7 @@ export function generateFiller(count: number): FillerFunction[] {
         a0: `fn ${name} u32 u32 -> u32\ns add p0 p1\nr xor s ${c}\nret r\nend\n`,
         ts: `export function ${name}(a: number, b: number): number {\n  return ((a + b) ^ ${c}) >>> 0;\n}\n`,
         rust: `pub fn ${name}(a: u32, b: u32) -> u32 {\n    a.wrapping_add(b) ^ ${c}\n}\n`,
+        spec: { template: 'pair', c },
       };
     } else if (template === 4) {
       const name = `sum${id}`;
@@ -399,6 +419,7 @@ export function generateFiller(count: number): FillerFunction[] {
         a0: `fn ${name} u32 -> u32\na call ${g} p0\nb call ${h} p0\nc add a b\nret c\nend\n`,
         ts: `export function ${name}${u('x')}\n  return (${g}(x) + ${h}(x)) >>> 0;\n}\n`,
         rust: `pub fn ${name}(x: u32) -> u32 {\n    ${g}(x).wrapping_add(${h}(x))\n}\n`,
+        spec: { template: 'sum', g, h },
       };
     } else {
       const name = `mixin${id}`;
@@ -409,6 +430,7 @@ export function generateFiller(count: number): FillerFunction[] {
         a0: `fn ${name} u32 u32 -> u32\na call ${g} p0\nb xor a p1\nret b\nend\n`,
         ts: `export function ${name}(a: number, b: number): number {\n  return (${g}(a) ^ b) >>> 0;\n}\n`,
         rust: `pub fn ${name}(a: u32, b: u32) -> u32 {\n    ${g}(a) ^ b\n}\n`,
+        spec: { template: 'mixin', g },
       };
     }
     out.push(f);
@@ -479,8 +501,38 @@ export function buildTasksC(
   }
   const build = (rep: Representation, src: string): string =>
     assemble(order, filler[rep], splitFunctions(rep, src));
+  // The five further languages: set-B originals, then the set-A originals and extras.
+  const langFiller = new Map<Lang, Map<string, string>>();
+  for (const lang of LANGS) {
+    const m = new Map<string, string>();
+    const sources = [
+      ...tasksB.map((t) => LANG_B[t.id]?.[lang].source ?? ''),
+      LANG_PROJECT_FILLER[lang],
+    ];
+    for (const src of sources)
+      for (const [name, text] of splitLang(lang, src)) if (!m.has(name)) m.set(name, text);
+    for (const f of generated) m.set(f.name, fillerText(lang, f));
+    langFiller.set(lang, m);
+  }
+  const buildLang = (lang: Lang, body: string): string =>
+    langFile(lang, assemble(order, langFiller.get(lang) ?? new Map(), splitLang(lang, body)));
+  const langs = (task: Task): Pick<Task, 'langs'> => {
+    const perTask = LANG_B[task.id];
+    if (perTask === undefined) return {};
+    const files = Object.fromEntries(
+      LANGS.map((lang) => [
+        lang,
+        {
+          source: buildLang(lang, perTask[lang].source),
+          reference: buildLang(lang, perTask[lang].reference),
+        },
+      ]),
+    ) as NonNullable<Task['langs']>;
+    return { langs: files };
+  };
   return tasksB.map((task) => ({
     ...task,
+    ...langs(task),
     id: task.id.replace(/^b-/, prefix),
     target: task.target ?? firstFunction(task),
     a0Source: build('a0', task.a0Source),

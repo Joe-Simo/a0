@@ -1,0 +1,3064 @@
+{
+  "generatedAt": "2026-09-30T15:41:34.030Z",
+  "status": "run with scripted replies from <tmp> (subject: haiku subagent, fresh, one shot)",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.min.txt",
+  "taskSet": "c400",
+  "programView": "all",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "set c400: every task shares one 400-function program per representation (same names, semantics, and order); the structured A0 view is per-function while the structured and conventional TS/Rust views are the whole file, which is what an agent editing a real file reads"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "python/structured",
+      "go/structured",
+      "java/structured",
+      "csharp/structured",
+      "cpp/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; Python, Go, Java, C# and C++ cells carry their own u32 semantics note and are accepted by python3, go build, javac, dotnet build and clang++ with a generated driver (tools/ai-edit-langs.ts).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "ad0f14cda644bb7369646c46d4c799fe43d81fbcdcf39670af35b940ce8d0464",
+  "langTaskSetSha256": "58a27fdf1208232a7fa091cebf67789ef237c1d1951185e440dccbbb330654e6",
+  "representations": [
+    "python",
+    "go",
+    "java",
+    "csharp",
+    "cpp"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "c400-fits-inclusive",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "c400-sumfrom-eight",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "c400-rot8-constant",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "c400-onlyone-xor",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "c400-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "c400-sumsq-array",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "c400-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "c400-bounds-largest",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "c400-checksum-poly",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "c400-norm2-dot",
+      "kind": "create",
+      "tests": 5
+    },
+    {
+      "id": "c400-pctof-limit",
+      "kind": "create",
+      "tests": 6
+    },
+    {
+      "id": "c400-hamming-popcnt",
+      "kind": "create",
+      "tests": 5
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "c400-fits-inclusive/python": [],
+      "c400-fits-inclusive/python-original-must-fail": [],
+      "c400-fits-inclusive/go": [],
+      "c400-fits-inclusive/go-original-must-fail": [],
+      "c400-fits-inclusive/java": [],
+      "c400-fits-inclusive/java-original-must-fail": [],
+      "c400-fits-inclusive/csharp": [],
+      "c400-fits-inclusive/csharp-original-must-fail": [],
+      "c400-fits-inclusive/cpp": [],
+      "c400-fits-inclusive/cpp-original-must-fail": [],
+      "c400-sumfrom-eight/python": [],
+      "c400-sumfrom-eight/python-original-must-fail": [],
+      "c400-sumfrom-eight/go": [],
+      "c400-sumfrom-eight/go-original-must-fail": [],
+      "c400-sumfrom-eight/java": [],
+      "c400-sumfrom-eight/java-original-must-fail": [],
+      "c400-sumfrom-eight/csharp": [],
+      "c400-sumfrom-eight/csharp-original-must-fail": [],
+      "c400-sumfrom-eight/cpp": [],
+      "c400-sumfrom-eight/cpp-original-must-fail": [],
+      "c400-rot8-constant/python": [],
+      "c400-rot8-constant/python-original-must-fail": [],
+      "c400-rot8-constant/go": [],
+      "c400-rot8-constant/go-original-must-fail": [],
+      "c400-rot8-constant/java": [],
+      "c400-rot8-constant/java-original-must-fail": [],
+      "c400-rot8-constant/csharp": [],
+      "c400-rot8-constant/csharp-original-must-fail": [],
+      "c400-rot8-constant/cpp": [],
+      "c400-rot8-constant/cpp-original-must-fail": [],
+      "c400-onlyone-xor/python": [],
+      "c400-onlyone-xor/python-original-must-fail": [],
+      "c400-onlyone-xor/go": [],
+      "c400-onlyone-xor/go-original-must-fail": [],
+      "c400-onlyone-xor/java": [],
+      "c400-onlyone-xor/java-original-must-fail": [],
+      "c400-onlyone-xor/csharp": [],
+      "c400-onlyone-xor/csharp-original-must-fail": [],
+      "c400-onlyone-xor/cpp": [],
+      "c400-onlyone-xor/cpp-original-must-fail": [],
+      "c400-avgfloor-nowrap/python": [],
+      "c400-avgfloor-nowrap/python-original-must-fail": [],
+      "c400-avgfloor-nowrap/go": [],
+      "c400-avgfloor-nowrap/go-original-must-fail": [],
+      "c400-avgfloor-nowrap/java": [],
+      "c400-avgfloor-nowrap/java-original-must-fail": [],
+      "c400-avgfloor-nowrap/csharp": [],
+      "c400-avgfloor-nowrap/csharp-original-must-fail": [],
+      "c400-avgfloor-nowrap/cpp": [],
+      "c400-avgfloor-nowrap/cpp-original-must-fail": [],
+      "c400-sumsq-array/python": [],
+      "c400-sumsq-array/python-original-must-fail": [],
+      "c400-sumsq-array/go": [],
+      "c400-sumsq-array/go-original-must-fail": [],
+      "c400-sumsq-array/java": [],
+      "c400-sumsq-array/java-original-must-fail": [],
+      "c400-sumsq-array/csharp": [],
+      "c400-sumsq-array/csharp-original-must-fail": [],
+      "c400-sumsq-array/cpp": [],
+      "c400-sumsq-array/cpp-original-must-fail": [],
+      "c400-inrange-inclusive/python": [],
+      "c400-inrange-inclusive/python-original-must-fail": [],
+      "c400-inrange-inclusive/go": [],
+      "c400-inrange-inclusive/go-original-must-fail": [],
+      "c400-inrange-inclusive/java": [],
+      "c400-inrange-inclusive/java-original-must-fail": [],
+      "c400-inrange-inclusive/csharp": [],
+      "c400-inrange-inclusive/csharp-original-must-fail": [],
+      "c400-inrange-inclusive/cpp": [],
+      "c400-inrange-inclusive/cpp-original-must-fail": [],
+      "c400-bounds-largest/python": [],
+      "c400-bounds-largest/python-original-must-fail": [],
+      "c400-bounds-largest/go": [],
+      "c400-bounds-largest/go-original-must-fail": [],
+      "c400-bounds-largest/java": [],
+      "c400-bounds-largest/java-original-must-fail": [],
+      "c400-bounds-largest/csharp": [],
+      "c400-bounds-largest/csharp-original-must-fail": [],
+      "c400-bounds-largest/cpp": [],
+      "c400-bounds-largest/cpp-original-must-fail": [],
+      "c400-checksum-poly/python": [],
+      "c400-checksum-poly/python-original-must-fail": [],
+      "c400-checksum-poly/go": [],
+      "c400-checksum-poly/go-original-must-fail": [],
+      "c400-checksum-poly/java": [],
+      "c400-checksum-poly/java-original-must-fail": [],
+      "c400-checksum-poly/csharp": [],
+      "c400-checksum-poly/csharp-original-must-fail": [],
+      "c400-checksum-poly/cpp": [],
+      "c400-checksum-poly/cpp-original-must-fail": [],
+      "c400-norm2-dot/python": [],
+      "c400-norm2-dot/python-original-must-fail": [],
+      "c400-norm2-dot/go": [],
+      "c400-norm2-dot/go-original-must-fail": [],
+      "c400-norm2-dot/java": [],
+      "c400-norm2-dot/java-original-must-fail": [],
+      "c400-norm2-dot/csharp": [],
+      "c400-norm2-dot/csharp-original-must-fail": [],
+      "c400-norm2-dot/cpp": [],
+      "c400-norm2-dot/cpp-original-must-fail": [],
+      "c400-pctof-limit/python": [],
+      "c400-pctof-limit/python-original-must-fail": [],
+      "c400-pctof-limit/go": [],
+      "c400-pctof-limit/go-original-must-fail": [],
+      "c400-pctof-limit/java": [],
+      "c400-pctof-limit/java-original-must-fail": [],
+      "c400-pctof-limit/csharp": [],
+      "c400-pctof-limit/csharp-original-must-fail": [],
+      "c400-pctof-limit/cpp": [],
+      "c400-pctof-limit/cpp-original-must-fail": [],
+      "c400-hamming-popcnt/python": [],
+      "c400-hamming-popcnt/python-original-must-fail": [],
+      "c400-hamming-popcnt/go": [],
+      "c400-hamming-popcnt/go-original-must-fail": [],
+      "c400-hamming-popcnt/java": [],
+      "c400-hamming-popcnt/java-original-must-fail": [],
+      "c400-hamming-popcnt/csharp": [],
+      "c400-hamming-popcnt/csharp-original-must-fail": [],
+      "c400-hamming-popcnt/cpp": [],
+      "c400-hamming-popcnt/cpp-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "python/structured": {
+      "trials": 12,
+      "meanView": 12420,
+      "meanToolContext": 12494
+    },
+    "go/structured": {
+      "trials": 12,
+      "meanView": 13118,
+      "meanToolContext": 13228
+    },
+    "java/structured": {
+      "trials": 12,
+      "meanView": 13030,
+      "meanToolContext": 13111
+    },
+    "csharp/structured": {
+      "trials": 12,
+      "meanView": 13681,
+      "meanToolContext": 13753
+    },
+    "cpp/structured": {
+      "trials": 12,
+      "meanView": 12929,
+      "meanToolContext": 13002
+    }
+  },
+  "trials": [
+    {
+      "task": "c400-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12486,
+        "output": 12,
+        "total": 12636
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 59 (mod.py, line 60)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 59 (mod.py, line 60)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 59 (mod.py, line 60)"
+      ],
+      "wallMs": 111.39304200001061
+    },
+    {
+      "task": "c400-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13304,
+        "output": 9,
+        "total": 13456
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "go: # command-line-arguments\n./lib.go:241:6: syntax error: unexpected name sum0058, expected (\n./lib.go:244:6: syntax error: unexpected name mixin0059, expected (\n./lib.go:247:6: syntax error: unexpected name lin0060, expected (\n./lib.go:250:6: syntax error: unexpected name xs0061, expected (\n./lib.go:253:6: syntax error: unexpected name cap0062, expected (\n./lib.go:259:6: syntax error: unexpected name rotl, expected (\n./lib.go:262:6: syntax error: unexpected name pair0063, expected (\n./lib.go:265:6"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          },
+          "repair": "Rejected:\ngo: # command-line-arguments\n./lib.go:241:6: syntax error: unexpected name sum0058, expected (\n./lib.go:244:6: syntax error: unexpected name mixin0059, expected (\n./lib.go:247:6: syntax error: unexpected name lin0060, expected (\n./lib.go:250:6: syntax error: unexpected name xs0061, expected (\n./lib.go:253:6: syntax error: unexpected name cap0062, expected (\n./lib.go:259:6: syntax error: unexpected name rotl, expected (\n./lib.go:262:6: syntax error: unexpected name pair0063, expected (\n./lib.go:265:6\n\nTry again."
+        }
+      ],
+      "failures": [
+        "go: # command-line-arguments\n./lib.go:241:6: syntax error: unexpected name sum0058, expected (\n./lib.go:244:6: syntax error: unexpected name mixin0059, expected (\n./lib.go:247:6: syntax error: unexpected name lin0060, expected (\n./lib.go:250:6: syntax error: unexpected name xs0061, expected (\n./lib.go:253:6: syntax error: unexpected name cap0062, expected (\n./lib.go:259:6: syntax error: unexpected name rotl, expected (\n./lib.go:262:6: syntax error: unexpected name pair0063, expected (\n./lib.go:265:6"
+      ],
+      "wallMs": 207.8609170000127
+    },
+    {
+      "task": "c400-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13062,
+        "output": 16,
+        "total": 13223
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1259.3961659999914
+    },
+    {
+      "task": "c400-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13713,
+        "output": 9,
+        "total": 13857
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1642.5320420000062
+    },
+    {
+      "task": "c400-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12961,
+        "output": 9,
+        "total": 13110
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1251.9975410000188
+    },
+    {
+      "task": "c400-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12490,
+        "output": 14,
+        "total": 12642
+      },
+      "outputTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 123)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 14,
+            "cl100k_base": 14
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 123)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 123)"
+      ],
+      "wallMs": 134.25945900002262
+    },
+    {
+      "task": "c400-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13311,
+        "output": 21,
+        "total": 13475
+      },
+      "outputTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "go: # command-line-arguments\n./lib.go:247:6: syntax error: unexpected name lin0060, expected (\n./lib.go:250:6: syntax error: unexpected name xs0061, expected (\n./lib.go:253:6: syntax error: unexpected name cap0062, expected (\n./lib.go:259:6: syntax error: unexpected name rotl, expected (\n./lib.go:262:6: syntax error: unexpected name pair0063, expected (\n./lib.go:265:6: syntax error: unexpected name sum0064, expected (\n./lib.go:268:6: syntax error: unexpected name mixin0065, expected (\n./lib.go:271:6"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          },
+          "repair": "Rejected:\ngo: # command-line-arguments\n./lib.go:247:6: syntax error: unexpected name lin0060, expected (\n./lib.go:250:6: syntax error: unexpected name xs0061, expected (\n./lib.go:253:6: syntax error: unexpected name cap0062, expected (\n./lib.go:259:6: syntax error: unexpected name rotl, expected (\n./lib.go:262:6: syntax error: unexpected name pair0063, expected (\n./lib.go:265:6: syntax error: unexpected name sum0064, expected (\n./lib.go:268:6: syntax error: unexpected name mixin0065, expected (\n./lib.go:271:6\n\nTry again."
+        }
+      ],
+      "failures": [
+        "go: # command-line-arguments\n./lib.go:247:6: syntax error: unexpected name lin0060, expected (\n./lib.go:250:6: syntax error: unexpected name xs0061, expected (\n./lib.go:253:6: syntax error: unexpected name cap0062, expected (\n./lib.go:259:6: syntax error: unexpected name rotl, expected (\n./lib.go:262:6: syntax error: unexpected name pair0063, expected (\n./lib.go:265:6: syntax error: unexpected name sum0064, expected (\n./lib.go:268:6: syntax error: unexpected name mixin0065, expected (\n./lib.go:271:6"
+      ],
+      "wallMs": 252.9359580000164
+    },
+    {
+      "task": "c400-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13069,
+        "output": 20,
+        "total": 13234
+      },
+      "outputTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 20
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1536.5587919999962
+    },
+    {
+      "task": "c400-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13720,
+        "output": 19,
+        "total": 13874
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1747.8466659999976
+    },
+    {
+      "task": "c400-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12968,
+        "output": 23,
+        "total": 13131
+      },
+      "outputTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 23,
+            "cl100k_base": 23
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1255.2750419999938
+    },
+    {
+      "task": "c400-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12483,
+        "output": 27,
+        "total": 12648
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 26
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 162 (mod.py, line 163)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 26
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 162 (mod.py, line 163)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 162 (mod.py, line 163)"
+      ],
+      "wallMs": 122.99566699998104
+    },
+    {
+      "task": "c400-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13147,
+        "output": 19,
+        "total": 13309
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 489.37287500000093
+    },
+    {
+      "task": "c400-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13059,
+        "output": 18,
+        "total": 13222
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1661.807832999999
+    },
+    {
+      "task": "c400-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13766,
+        "output": 18,
+        "total": 13919
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "rot8(305419896) = 878082084, expected 878082066",
+            "rot8(2147483648) = 256, expected 128",
+            "rot8(4278190080) = 510, expected 255"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          },
+          "repair": "Rejected:\nrot8(305419896) = 878082084, expected 878082066\nrot8(2147483648) = 256, expected 128\nrot8(4278190080) = 510, expected 255\n\nTry again."
+        }
+      ],
+      "failures": [
+        "rot8(305419896) = 878082084, expected 878082066",
+        "rot8(2147483648) = 256, expected 128",
+        "rot8(4278190080) = 510, expected 255"
+      ],
+      "wallMs": 2086.6111669999955
+    },
+    {
+      "task": "c400-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12958,
+        "output": 19,
+        "total": 13117
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1345.6962919999787
+    },
+    {
+      "task": "c400-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12493,
+        "output": 12,
+        "total": 12643
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 222 (mod.py, line 223)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 222 (mod.py, line 223)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 222 (mod.py, line 223)"
+      ],
+      "wallMs": 121.97816600001534
+    },
+    {
+      "task": "c400-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13193,
+        "output": 9,
+        "total": 13345
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "go: # command-line-arguments\n./lib.go:398:9: invalid operation: operator ^ not defined on a (variable of type bool)\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          },
+          "repair": "Rejected:\ngo: # command-line-arguments\n./lib.go:398:9: invalid operation: operator ^ not defined on a (variable of type bool)\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "go: # command-line-arguments\n./lib.go:398:9: invalid operation: operator ^ not defined on a (variable of type bool)\n"
+      ],
+      "wallMs": 213.55320799999754
+    },
+    {
+      "task": "c400-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13069,
+        "output": 9,
+        "total": 13223
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1473.5970420000085
+    },
+    {
+      "task": "c400-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13720,
+        "output": 9,
+        "total": 13864
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1773.2033330000122
+    },
+    {
+      "task": "c400-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12968,
+        "output": 10,
+        "total": 13118
+      },
+      "outputTokensLocal": {
+        "o200k_base": 10,
+        "cl100k_base": 10
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10,
+            "cl100k_base": 10
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1426.0672079999931
+    },
+    {
+      "task": "c400-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12518,
+        "output": 23,
+        "total": 12679
+      },
+      "outputTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 315 (mod.py, line 316)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 23,
+            "cl100k_base": 23
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 315 (mod.py, line 316)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 315 (mod.py, line 316)"
+      ],
+      "wallMs": 133.64133400001447
+    },
+    {
+      "task": "c400-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13182,
+        "output": 21,
+        "total": 13346
+      },
+      "outputTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 526.0251660000067
+    },
+    {
+      "task": "c400-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13094,
+        "output": 20,
+        "total": 13259
+      },
+      "outputTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 20
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1436.2963330000057
+    },
+    {
+      "task": "c400-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13962,
+        "output": 20,
+        "total": 14117
+      },
+      "outputTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "dotnet: <tmp>(719,9): error CS0103: The name 'a' does not exist in the current context [<tmp>]\n<tmp>(719,13): error CS0103: The name 'b' does not exist in the current context [<tmp>]\n<tmp>"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 20
+          },
+          "repair": "Rejected:\ndotnet: <tmp>(719,9): error CS0103: The name 'a' does not exist in the current context [<tmp>]\n<tmp>(719,13): error CS0103: The name 'b' does not exist in the current context [<tmp>]\n<tmp>\n\nTry again."
+        }
+      ],
+      "failures": [
+        "dotnet: <tmp>(719,9): error CS0103: The name 'a' does not exist in the current context [<tmp>]\n<tmp>(719,13): error CS0103: The name 'b' does not exist in the current context [<tmp>]\n<tmp>"
+      ],
+      "wallMs": 1483.5154999999795
+    },
+    {
+      "task": "c400-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12993,
+        "output": 21,
+        "total": 13154
+      },
+      "outputTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1443.044041999994
+    },
+    {
+      "task": "c400-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12497,
+        "output": 22,
+        "total": 12657
+      },
+      "outputTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after 'for' statement on line 377 (mod.py, line 378)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 21
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after 'for' statement on line 377 (mod.py, line 378)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after 'for' statement on line 377 (mod.py, line 378)"
+      ],
+      "wallMs": 125.6672499999986
+    },
+    {
+      "task": "c400-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13159,
+        "output": 11,
+        "total": 13313
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 480.5407089999935
+    },
+    {
+      "task": "c400-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13071,
+        "output": 13,
+        "total": 13229
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1252.4684169999964
+    },
+    {
+      "task": "c400-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13722,
+        "output": 10,
+        "total": 13867
+      },
+      "outputTokensLocal": {
+        "o200k_base": 10,
+        "cl100k_base": 10
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10,
+            "cl100k_base": 10
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1839.490208000003
+    },
+    {
+      "task": "c400-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12970,
+        "output": 14,
+        "total": 13124
+      },
+      "outputTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 14,
+            "cl100k_base": 14
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1633.400250000006
+    },
+    {
+      "task": "c400-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12488,
+        "output": 16,
+        "total": 12642
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 441 (mod.py, line 442)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 441 (mod.py, line 442)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 441 (mod.py, line 442)"
+      ],
+      "wallMs": 176.5903330000001
+    },
+    {
+      "task": "c400-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13152,
+        "output": 13,
+        "total": 13308
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 617.0546670000185
+    },
+    {
+      "task": "c400-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13064,
+        "output": 27,
+        "total": 13236
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1741.200416000007
+    },
+    {
+      "task": "c400-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13715,
+        "output": 13,
+        "total": 13863
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 2187.2514170000213
+    },
+    {
+      "task": "c400-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12963,
+        "output": 14,
+        "total": 13117
+      },
+      "outputTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 14,
+            "cl100k_base": 14
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1746.3526669999992
+    },
+    {
+      "task": "c400-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12493,
+        "output": 12,
+        "total": 12643
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 559)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 559)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 559)"
+      ],
+      "wallMs": 166.7218340000254
+    },
+    {
+      "task": "c400-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13316,
+        "output": 11,
+        "total": 13470
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "go: # command-line-arguments\n./lib.go:1088:6: syntax error: unexpected name xs0265, expected (\n./lib.go:1091:6: syntax error: unexpected name cap0266, expected (\n./lib.go:1097:6: syntax error: unexpected name pair0267, expected (\n./lib.go:1100:6: syntax error: unexpected name sum0268, expected (\n./lib.go:1103:6: syntax error: unexpected name mixin0269, expected (\n./lib.go:1106:6: syntax error: unexpected name mixel, expected (\n./lib.go:1109:6: syntax error: unexpected name lin0270, expected (\n./lib."
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          },
+          "repair": "Rejected:\ngo: # command-line-arguments\n./lib.go:1088:6: syntax error: unexpected name xs0265, expected (\n./lib.go:1091:6: syntax error: unexpected name cap0266, expected (\n./lib.go:1097:6: syntax error: unexpected name pair0267, expected (\n./lib.go:1100:6: syntax error: unexpected name sum0268, expected (\n./lib.go:1103:6: syntax error: unexpected name mixin0269, expected (\n./lib.go:1106:6: syntax error: unexpected name mixel, expected (\n./lib.go:1109:6: syntax error: unexpected name lin0270, expected (\n./lib.\n\nTry again."
+        }
+      ],
+      "failures": [
+        "go: # command-line-arguments\n./lib.go:1088:6: syntax error: unexpected name xs0265, expected (\n./lib.go:1091:6: syntax error: unexpected name cap0266, expected (\n./lib.go:1097:6: syntax error: unexpected name pair0267, expected (\n./lib.go:1100:6: syntax error: unexpected name sum0268, expected (\n./lib.go:1103:6: syntax error: unexpected name mixin0269, expected (\n./lib.go:1106:6: syntax error: unexpected name mixel, expected (\n./lib.go:1109:6: syntax error: unexpected name lin0270, expected (\n./lib."
+      ],
+      "wallMs": 284.9942500000179
+    },
+    {
+      "task": "c400-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13140,
+        "output": 18,
+        "total": 13303
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "javac: <tmp>:853: error: illegal start of expression\n    public static int xs0241(int x) {\n    ^\n1 error\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          },
+          "repair": "Rejected:\njavac: <tmp>:853: error: illegal start of expression\n    public static int xs0241(int x) {\n    ^\n1 error\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "javac: <tmp>:853: error: illegal start of expression\n    public static int xs0241(int x) {\n    ^\n1 error\n"
+      ],
+      "wallMs": 1313.8322500000068
+    },
+    {
+      "task": "c400-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13723,
+        "output": 11,
+        "total": 13869
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 2497.3220410000067
+    },
+    {
+      "task": "c400-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12971,
+        "output": 12,
+        "total": 13123
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1918.163292000012
+    },
+    {
+      "task": "c400-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12520,
+        "output": 30,
+        "total": 12688
+      },
+      "outputTokensLocal": {
+        "o200k_base": 30,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 661 (mod.py, line 662)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 30,
+            "cl100k_base": 29
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 661 (mod.py, line 662)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 661 (mod.py, line 662)"
+      ],
+      "wallMs": 191.17691700000432
+    },
+    {
+      "task": "c400-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13340,
+        "output": 52,
+        "total": 13535
+      },
+      "outputTokensLocal": {
+        "o200k_base": 52,
+        "cl100k_base": 52
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "go: # command-line-arguments\n./lib.go:1273:6: syntax error: unexpected name mixin0311, expected (\n./lib.go:1276:6: syntax error: unexpected name lin0312, expected (\n./lib.go:1279:6: syntax error: unexpected name xs0313, expected (\n./lib.go:1282:6: syntax error: unexpected name cap0314, expected (\n./lib.go:1288:6: syntax error: unexpected name sadd, expected (\n./lib.go:1291:6: syntax error: unexpected name pair0315, expected (\n./lib.go:1294:6: syntax error: unexpected name sum0316, expected (\n./lib.g"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 52,
+            "cl100k_base": 52
+          },
+          "repair": "Rejected:\ngo: # command-line-arguments\n./lib.go:1273:6: syntax error: unexpected name mixin0311, expected (\n./lib.go:1276:6: syntax error: unexpected name lin0312, expected (\n./lib.go:1279:6: syntax error: unexpected name xs0313, expected (\n./lib.go:1282:6: syntax error: unexpected name cap0314, expected (\n./lib.go:1288:6: syntax error: unexpected name sadd, expected (\n./lib.go:1291:6: syntax error: unexpected name pair0315, expected (\n./lib.go:1294:6: syntax error: unexpected name sum0316, expected (\n./lib.g\n\nTry again."
+        }
+      ],
+      "failures": [
+        "go: # command-line-arguments\n./lib.go:1273:6: syntax error: unexpected name mixin0311, expected (\n./lib.go:1276:6: syntax error: unexpected name lin0312, expected (\n./lib.go:1279:6: syntax error: unexpected name xs0313, expected (\n./lib.go:1282:6: syntax error: unexpected name cap0314, expected (\n./lib.go:1288:6: syntax error: unexpected name sadd, expected (\n./lib.go:1291:6: syntax error: unexpected name pair0315, expected (\n./lib.go:1294:6: syntax error: unexpected name sum0316, expected (\n./lib.g"
+      ],
+      "wallMs": 327.4510410000221
+    },
+    {
+      "task": "c400-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13096,
+        "output": 44,
+        "total": 13285
+      },
+      "outputTokensLocal": {
+        "o200k_base": 44,
+        "cl100k_base": 44
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 44,
+            "cl100k_base": 44
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1846.6060409999918
+    },
+    {
+      "task": "c400-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13747,
+        "output": 51,
+        "total": 13933
+      },
+      "outputTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 51,
+            "cl100k_base": 51
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 2163.3332079999964
+    },
+    {
+      "task": "c400-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 12995,
+        "output": 51,
+        "total": 13186
+      },
+      "outputTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 51,
+            "cl100k_base": 51
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1319.5875410000153
+    },
+    {
+      "task": "c400-norm2-dot",
+      "kind": "create",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12489,
+        "output": 28,
+        "total": 12655
+      },
+      "outputTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 28
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 729 (mod.py, line 730)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 28,
+            "cl100k_base": 28
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 729 (mod.py, line 730)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 729 (mod.py, line 730)"
+      ],
+      "wallMs": 134.95520900000702
+    },
+    {
+      "task": "c400-norm2-dot",
+      "kind": "create",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13186,
+        "output": 33,
+        "total": 13362
+      },
+      "outputTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "go: # command-line-arguments\n./lib.go:1381:6: syntax error: unexpected name norm2, expected (\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 33,
+            "cl100k_base": 33
+          },
+          "repair": "Rejected:\ngo: # command-line-arguments\n./lib.go:1381:6: syntax error: unexpected name norm2, expected (\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "go: # command-line-arguments\n./lib.go:1381:6: syntax error: unexpected name norm2, expected (\n"
+      ],
+      "wallMs": 215.73958299998776
+    },
+    {
+      "task": "c400-norm2-dot",
+      "kind": "create",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13195,
+        "output": 29,
+        "total": 13369
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "javac: <tmp>:1085: error: illegal start of expression\n    public static int lin0306(int x) {\n    ^\n<tmp>:1276: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          },
+          "repair": "Rejected:\njavac: <tmp>:1085: error: illegal start of expression\n    public static int lin0306(int x) {\n    ^\n<tmp>:1276: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "javac: <tmp>:1085: error: illegal start of expression\n    public static int lin0306(int x) {\n    ^\n<tmp>:1276: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n"
+      ],
+      "wallMs": 929.3472500000207
+    },
+    {
+      "task": "c400-norm2-dot",
+      "kind": "create",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13741,
+        "output": 24,
+        "total": 13900
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "expected handle e0, got '+1432     public static uint norm2(uint[] a)'"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          },
+          "repair": "Rejected:\nexpected handle e0, got '+1432     public static uint norm2(uint[] a)'\n\nTry again."
+        }
+      ],
+      "failures": [
+        "expected handle e0, got '+1432     public static uint norm2(uint[] a)'"
+      ],
+      "wallMs": 24.414790999988327
+    },
+    {
+      "task": "c400-norm2-dot",
+      "kind": "create",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 13161,
+        "output": 38,
+        "total": 13339
+      },
+      "outputTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "clang++: <tmp>:1210:43: error: function definition is not allowed here\n 1210 | uint32_t norm2(std::array<uint32_t, 4> a) {\n      |                                           ^\n<tmp>:1280:16: error: use of undeclared identifier 'norm2'\n 1280 |     { auto v = norm2(std::array<uint32_t, 4>{1u, 2u, 3u, 4u}); std::cout << \"R0 \" << std::to_string(v) << \"\\n\"; }\n      |            "
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 38,
+            "cl100k_base": 38
+          },
+          "repair": "Rejected:\nclang++: <tmp>:1210:43: error: function definition is not allowed here\n 1210 | uint32_t norm2(std::array<uint32_t, 4> a) {\n      |                                           ^\n<tmp>:1280:16: error: use of undeclared identifier 'norm2'\n 1280 |     { auto v = norm2(std::array<uint32_t, 4>{1u, 2u, 3u, 4u}); std::cout << \"R0 \" << std::to_string(v) << \"\\n\"; }\n      |            \n\nTry again."
+        }
+      ],
+      "failures": [
+        "clang++: <tmp>:1210:43: error: function definition is not allowed here\n 1210 | uint32_t norm2(std::array<uint32_t, 4> a) {\n      |                                           ^\n<tmp>:1280:16: error: use of undeclared identifier 'norm2'\n 1280 |     { auto v = norm2(std::array<uint32_t, 4>{1u, 2u, 3u, 4u}); std::cout << \"R0 \" << std::to_string(v) << \"\\n\"; }\n      |            "
+      ],
+      "wallMs": 1148.7518339999951
+    },
+    {
+      "task": "c400-pctof-limit",
+      "kind": "create",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12512,
+        "output": 85,
+        "total": 12735
+      },
+      "outputTokensLocal": {
+        "o200k_base": 85,
+        "cl100k_base": 83
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 813 (mod.py, line 814)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 85,
+            "cl100k_base": 83
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 813 (mod.py, line 814)\n\nTry again."
+        }
+      ],
+      "failures": [
+        "python3: Sorry: IndentationError: expected an indented block after function definition on line 813 (mod.py, line 814)"
+      ],
+      "wallMs": 143.87320800000452
+    },
+    {
+      "task": "c400-pctof-limit",
+      "kind": "create",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13290,
+        "output": 42,
+        "total": 13475
+      },
+      "outputTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "runtime",
+          "failures": [
+            "run: panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.pctof(...)\n\t<tmp>:1478\nmain.main()\n\t<tmp>:11 +0x98\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 42,
+            "cl100k_base": 42
+          },
+          "repair": "Rejected:\nrun: panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.pctof(...)\n\t<tmp>:1478\nmain.main()\n\t<tmp>:11 +0x98\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "run: panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.pctof(...)\n\t<tmp>:1478\nmain.main()\n\t<tmp>:11 +0x98\n"
+      ],
+      "wallMs": 747.945624999993
+    },
+    {
+      "task": "c400-pctof-limit",
+      "kind": "create",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13218,
+        "output": 51,
+        "total": 13414
+      },
+      "outputTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "javac: <tmp>:1088: error: illegal start of expression\n    public static int xs0307(int x) {\n    ^\n<tmp>:1277: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 51,
+            "cl100k_base": 51
+          },
+          "repair": "Rejected:\njavac: <tmp>:1088: error: illegal start of expression\n    public static int xs0307(int x) {\n    ^\n<tmp>:1277: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "javac: <tmp>:1088: error: illegal start of expression\n    public static int xs0307(int x) {\n    ^\n<tmp>:1277: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n"
+      ],
+      "wallMs": 987.5972910000128
+    },
+    {
+      "task": "c400-pctof-limit",
+      "kind": "create",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13766,
+        "output": 43,
+        "total": 13944
+      },
+      "outputTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "expected handle e0, got '+1432     public static uint pctof(uint part, uint whole)'"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 43,
+            "cl100k_base": 43
+          },
+          "repair": "Rejected:\nexpected handle e0, got '+1432     public static uint pctof(uint part, uint whole)'\n\nTry again."
+        }
+      ],
+      "failures": [
+        "expected handle e0, got '+1432     public static uint pctof(uint part, uint whole)'"
+      ],
+      "wallMs": 27.69900000002235
+    },
+    {
+      "task": "c400-pctof-limit",
+      "kind": "create",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 13070,
+        "output": 58,
+        "total": 13268
+      },
+      "outputTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 58
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "clang++: <tmp>:1213:29: error: function definition is not allowed here\n 1213 | uint32_t xs0343(uint32_t x) {\n      |                             ^\n1 error generated.\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 58,
+            "cl100k_base": 58
+          },
+          "repair": "Rejected:\nclang++: <tmp>:1213:29: error: function definition is not allowed here\n 1213 | uint32_t xs0343(uint32_t x) {\n      |                             ^\n1 error generated.\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "clang++: <tmp>:1213:29: error: function definition is not allowed here\n 1213 | uint32_t xs0343(uint32_t x) {\n      |                             ^\n1 error generated.\n"
+      ],
+      "wallMs": 1042.2239579999878
+    },
+    {
+      "task": "c400-hamming-popcnt",
+      "kind": "create",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 138,
+        "cl100k_base": 136
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12420,
+        "cl100k_base": 12148
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 42,
+        "workflowPrimer": 96,
+        "toolContext": 12455,
+        "output": 32,
+        "total": 12625
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 32
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 181.2869580000115
+    },
+    {
+      "task": "c400-hamming-popcnt",
+      "kind": "create",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 143,
+        "cl100k_base": 142
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13118,
+        "cl100k_base": 13055
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 47,
+        "workflowPrimer": 96,
+        "toolContext": 13153,
+        "output": 35,
+        "total": 13331
+      },
+      "outputTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 35,
+            "cl100k_base": 35
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 534.1884589999972
+    },
+    {
+      "task": "c400-hamming-popcnt",
+      "kind": "create",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 145,
+        "cl100k_base": 144
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13030,
+        "cl100k_base": 12977
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 49,
+        "workflowPrimer": 96,
+        "toolContext": 13198,
+        "output": 32,
+        "total": 13375
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "javac: <tmp>:1091: error: illegal start of expression\npublic static int hamming(int a, int b) {\n^\n<tmp>:1276: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 32
+          },
+          "repair": "Rejected:\njavac: <tmp>:1091: error: illegal start of expression\npublic static int hamming(int a, int b) {\n^\n<tmp>:1276: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "javac: <tmp>:1091: error: illegal start of expression\npublic static int hamming(int a, int b) {\n^\n<tmp>:1276: error: class, interface, annotation type, enum, record, method or field expected\n}\n^\n2 errors\n"
+      ],
+      "wallMs": 971.5679170000076
+    },
+    {
+      "task": "c400-hamming-popcnt",
+      "kind": "create",
+      "representation": "csharp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 135,
+        "cl100k_base": 134
+      },
+      "viewTokensLocal": {
+        "o200k_base": 13681,
+        "cl100k_base": 13621
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 39,
+        "workflowPrimer": 96,
+        "toolContext": 13743,
+        "output": 27,
+        "total": 13905
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "expected handle e0, got '+1432     public static uint hamming(uint a, uint b)'"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          },
+          "repair": "Rejected:\nexpected handle e0, got '+1432     public static uint hamming(uint a, uint b)'\n\nTry again."
+        }
+      ],
+      "failures": [
+        "expected handle e0, got '+1432     public static uint hamming(uint a, uint b)'"
+      ],
+      "wallMs": 39.39654200000223
+    },
+    {
+      "task": "c400-hamming-popcnt",
+      "kind": "create",
+      "representation": "cpp",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 140,
+        "cl100k_base": 139
+      },
+      "viewTokensLocal": {
+        "o200k_base": 12929,
+        "cl100k_base": 12869
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 44,
+        "workflowPrimer": 96,
+        "toolContext": 13046,
+        "output": 37,
+        "total": 13223
+      },
+      "outputTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 37
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "clang++: <tmp>:1216:30: error: function definition is not allowed here\n 1216 | uint32_t cap0344(uint32_t x) {\n      |                              ^\n1 error generated.\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 37,
+            "cl100k_base": 37
+          },
+          "repair": "Rejected:\nclang++: <tmp>:1216:30: error: function definition is not allowed here\n 1216 | uint32_t cap0344(uint32_t x) {\n      |                              ^\n1 error generated.\n\n\nTry again."
+        }
+      ],
+      "failures": [
+        "clang++: <tmp>:1216:30: error: function definition is not allowed here\n 1216 | uint32_t cap0344(uint32_t x) {\n      |                              ^\n1 error generated.\n"
+      ],
+      "wallMs": 1362.2458750000224
+    }
+  ]
+}
