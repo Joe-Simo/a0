@@ -37,7 +37,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.15';
+export const COMPILER_VERSION = 'a0c-0.1.16';
 
 export type Target =
   | 'js'
@@ -356,8 +356,11 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!a0i_${n.pred ?? ''}(${call})) break;` : '';
     // Aggregate state is owned by the loop so the body may update it in place: copy the initial
-    // value once unless it is already provably unshared (fresh and used only here).
-    const initOwned = mutableHere(fn, n.args[1] as Operand, index, jsOwned(owned));
+    // value once unless it is already provably unshared (fresh and used only here; an initial
+    // value passed again as an extra is read by every trip).
+    const initOwned =
+      mutableHere(fn, n.args[1] as Operand, index, jsOwned(owned)) &&
+      !n.args.slice(2).some((o) => sameOp(o, n.args[1] as Operand));
     const initExpr = stateAggregate(n.args[1] as Operand) && !initOwned ? `${init}.slice()` : init;
     const bodyName = stateAggregate(n.args[1] as Operand)
       ? `a0o_${n.callee ?? ''}`
@@ -435,17 +438,125 @@ export const cType = (t: Type): string =>
         : `a0t_${mangleType(t)}`;
 
 /**
- * Longest array whose literal constructor takes one parameter per element; longer arrays (native
- * C only: every vector target caps arrays far below this) take a pointer to a compound literal,
- * since compilers limit the parameter count of one function.
+ * Large aggregates (C targets): a value whose C struct is over `C_LARGE_BYTES` never lives on the
+ * C stack, so modules with big tables run with small stacks (wasm32's 1 MiB, embedded targets).
+ *  - ABI: a large parameter is `const T *pK` (a read-only borrow of the caller's value); a large
+ *    result is written to caller-owned storage passed first: `void a0_f(T *out, ...)`. The same
+ *    holds in the `owned`/`ref`/`view` variants (their p0 pointer is unchanged). A function with
+ *    no large parameter or result keeps the by-value ABI.
+ *  - Storage: a large local is a pointer into the module's arena, a bump allocator in static
+ *    memory (`a0arena`, `A0_ARENA_BYTES`); a function that allocates records the top on entry
+ *    and restores it before returning, so a call's locals are released with it. The node that is
+ *    the function's result is built in `out` directly; `mov`/`select` alias their operand.
+ *  - Bound: the call graph is acyclic, so the need is static: a function's large nodes plus the
+ *    largest need of its callees (`cArenaBytes`). The arena is exactly the largest need of any
+ *    function, so no run can overflow it; a need over `C_ARENA_LIMIT` is an A0 `limit` error at
+ *    compile time. The arena is single-threaded: automatic parallel folds keep the sequential
+ *    loop when the body touches a large value.
+ *  - Values: a borrowed parameter is not owned, so its first `set`/`put` copies (the copy the
+ *    by-value ABI made at the call); fresh locals and the owned loop state update in place under
+ *    the same `mutableHere` rule as small values.
  */
-const C_MAX_CTOR_PARAMS = 4096;
+export const C_LARGE_BYTES = 4096;
+export const C_ARENA_LIMIT = 1 << 28;
 
-/** Typedefs plus constructor/update helpers for one aggregate type (C, also valid C++). */
+/** C size and alignment of a type (pointers counted as 8 bytes: an upper bound on 32-bit). */
+function cLayout(t: Type): { readonly size: number; readonly align: number } {
+  if (t === 'u32') return { size: 4, align: 4 };
+  if (t === 'bool') return { size: 1, align: 1 };
+  if (t === 'io') return { size: 8, align: 8 };
+  if (t.kind === 'arr') {
+    const e = cLayout(t.elem);
+    return { size: e.size * t.length, align: e.align };
+  }
+  let size = 0;
+  let align = 1;
+  for (const f of t.fields) {
+    const l = cLayout(f);
+    size = Math.ceil(size / l.align) * l.align + l.size;
+    align = Math.max(align, l.align);
+  }
+  return { size: Math.ceil(size / align) * align, align };
+}
+
+export const isLargeC = (t: Type): boolean => !isPrimitive(t) && cLayout(t).size > C_LARGE_BYTES;
+
+/** Arena bytes one allocation of `t` takes (8-byte aligned). */
+const arenaSlot = (t: Type): number => Math.ceil(cLayout(t).size / 8) * 8;
+
+/**
+ * Upper bound of the arena bytes a call of `fn` (any variant) holds at once: every large node
+ * (the emitted function allocates a subset of them; the optimizer only removes nodes) plus the
+ * largest bound among its callees.
+ */
+export function cArenaBytes(fn: TypedFunc, memo = new Map<string, number>()): number {
+  const known = memo.get(fn.name);
+  if (known !== undefined) return known;
+  let local = 0;
+  let callees = 0;
+  for (const n of fn.nodes) {
+    const t = fn.types.get(n.id);
+    if (t !== undefined && isLargeC(t)) local += arenaSlot(t);
+    for (const name of [n.callee, n.pred]) {
+      const g = name === undefined ? undefined : fn.calls.get(name);
+      if (g !== undefined) callees = Math.max(callees, cArenaBytes(g, memo));
+    }
+  }
+  memo.set(fn.name, local + callees);
+  return local + callees;
+}
+
+/** Does `fn` or any function it calls have a large parameter, result, or node? */
+function touchesLarge(fn: TypedFunc): boolean {
+  if ([...fn.params, fn.result, ...fn.types.values()].some(isLargeC)) return true;
+  return [...fn.calls.values()].some(touchesLarge);
+}
+
+/** The module's arena, sized to the largest need of any function; absent when none needs one. */
+function cArenaRuntime(program: TypedProgram): string | undefined {
+  const memo = new Map<string, number>();
+  let bytes = 0;
+  let worst = '';
+  for (const fn of program.functions) {
+    const need = cArenaBytes(fn, memo);
+    if (need > bytes) [bytes, worst] = [need, fn.name];
+  }
+  if (bytes === 0) return undefined;
+  if (bytes > C_ARENA_LIMIT)
+    throw new A0Error(
+      `${worst}: large aggregates need ${bytes} arena bytes, over the C limit ${C_ARENA_LIMIT}`,
+      undefined,
+      {
+        code: 'limit',
+        fix: 'hold fewer large values live at once (smaller tables, or pages passed separately)',
+      },
+    );
+  return [
+    `/* Arena for aggregates over ${C_LARGE_BYTES} bytes: static, sized to the deepest call chain. */`,
+    `#define A0_ARENA_BYTES ${bytes}u`,
+    'static uint64_t a0arena[A0_ARENA_BYTES / 8u];',
+    'static uint32_t a0arena_top;',
+    'static inline void *a0arena_alloc(uint32_t n) { void *p = (unsigned char *)a0arena + a0arena_top; a0arena_top += (n + 7u) & ~7u; return p; }',
+  ].join('\n');
+}
+
+/**
+ * Typedefs plus constructor/update helpers for one aggregate type (C, also valid C++). A large
+ * type gets its typedef and a pointer zero-fill only: its values are built and updated in place.
+ */
 function cTypeDecl(t: Type): string {
   if (isPrimitive(t)) return '';
   const name = cType(t);
   const m = mangleType(t);
+  if (isLargeC(t)) {
+    const decl =
+      t.kind === 'arr'
+        ? `typedef struct { ${cType(t.elem)} e[${t.length}]; } ${name};`
+        : `typedef struct { ${t.fields.map((f, i) => `${cType(f)} f${i};`).join(' ')} } ${name};`;
+    return t.kind === 'arr' && isPrimitive(t.elem)
+      ? `${decl}\nstatic inline void a0zero_${m}(${name} *r) { for (uint32_t i = 0; i < ${t.length}u; i++) r->e[i] = 0; }`
+      : decl;
+  }
   if (t.kind === 'arr') {
     const e = cType(t.elem);
     const params = Array.from({ length: t.length }, (_, i) => `${e} e${i}`).join(', ');
@@ -457,9 +568,7 @@ function cTypeDecl(t: Type): string {
       ...(isPrimitive(t.elem)
         ? [`static inline ${name} a0zero_${m}(void) { ${name} r = {0}; return r; }`]
         : []),
-      t.length > C_MAX_CTOR_PARAMS
-        ? `static inline ${name} a0mk_${m}(const ${e} *v) { ${name} r; for (uint32_t i = 0; i < ${t.length}u; i++) r.e[i] = v[i]; return r; }`
-        : `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
+      `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
       `static inline ${name} a0set_${m}(${name} a, uint32_t i, ${e} v) { a.e[i % ${t.length}u] = v; return a; }`,
     ].join('\n');
   }
@@ -518,6 +627,10 @@ interface CContext {
   readonly variant: CVariant;
   /** Nodes updated in place, mapped to the storage they alias (a value node or a parameter). */
   readonly aliases: Map<string, Operand>;
+  /** The large node built directly in the caller's `out` storage (the result's root). */
+  readonly retOut?: string | undefined;
+  /** Arena allocations emitted so far (the body then saves and restores the arena top). */
+  arena: number;
 }
 
 function cOperand(o: Operand): string {
@@ -550,17 +663,30 @@ function cVal(ctx: CContext, o: Operand): string {
     return '(*p0)';
   if (root.kind === 'param' && isViewParam(ctx.fn, ctx.variant, root.index))
     return `(*p${root.index})`;
+  // Large values are pointers: to a borrowed parameter, arena storage, or `out`.
+  if ((root.kind === 'param' || root.kind === 'node') && isLargeC(operandTypeOf(ctx.fn, root)))
+    return `(*${cOperand(root)})`;
   return cOperand(root);
 }
 
+/** An argument as passed: large values by pointer, everything else as its value. */
+function cArg(ctx: CContext, o: Operand): string {
+  const v = cVal(ctx, o);
+  if (!(o.kind === 'param' || o.kind === 'node') || !isLargeC(operandTypeOf(ctx.fn, o))) return v;
+  return v.startsWith('(*') && v.endsWith(')') ? v.slice(2, -1) : `&${v}`;
+}
+
 /**
- * In C every by-value aggregate parameter is the callee's own copy; a `ref` p0 and the `view`
- * extras are read-only.
+ * In C every by-value aggregate parameter is the callee's own copy; a `ref` p0, the `view`
+ * extras, and large parameters (borrowed by `const` pointer) are read-only. The `owned` p0 is
+ * the caller's loop state, owned whatever its size.
  */
 const cOwned =
   (variant: CVariant, fn?: TypedFunc) =>
   (i: number): boolean =>
-    !(variant === 'ref' && i === 0) && !(fn !== undefined && isViewParam(fn, variant, i));
+    !(variant === 'ref' && i === 0) &&
+    !(fn !== undefined && isViewParam(fn, variant, i)) &&
+    !(fn !== undefined && isLargeC(fn.params[i] as Type) && !(variant === 'owned' && i === 0));
 
 /** Does the node at `index` update its first operand in place? Records the alias. */
 function cInPlace(ctx: CContext, node: Node, index: number): boolean {
@@ -576,7 +702,7 @@ function cInPlace(ctx: CContext, node: Node, index: number): boolean {
  */
 export function ownedUpdateInPlace(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index];
-  return node !== undefined && mutableHere(fn, node.args[0] as Operand, index, cOwned('owned'));
+  return node !== undefined && mutableHere(fn, node.args[0] as Operand, index, cOwned('owned', fn));
 }
 
 /**
@@ -648,7 +774,7 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
     case 'select':
       return `(${a} ? ${b} : ${c})`;
     case 'call':
-      return `a0_${node.callee ?? ''}(${vals.join(', ')})`;
+      return `a0_${node.callee ?? ''}(${node.args.map((o) => cArg(ctx, o)).join(', ')})`;
     case 'arr': {
       const t = fn.types.get(node.id) ?? 'u32';
       const zeros =
@@ -659,8 +785,6 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
           (o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value),
         );
       if (zeros) return `a0zero_${mangleType(t)}()`;
-      if (!isPrimitive(t) && t.kind === 'arr' && t.length > C_MAX_CTOR_PARAMS)
-        return `a0mk_${mangleType(t)}((const ${cType(t.elem)}[${t.length}]){ ${vals.join(', ')} })`;
       return `a0mk_${mangleType(t)}(${vals.join(', ')})`;
     }
     case 'rec':
@@ -692,26 +816,86 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
   }
 }
 
+/** A parameter declaration: large aggregates are borrowed by `const` pointer. */
+const cParam = (t: Type, i: number): string =>
+  isLargeC(t) ? `const ${cType(t)} *p${i}` : `${cType(t)} p${i}`;
+
+/** The public ABI; a large result goes to caller-owned storage (`T *out` first). */
 export function cSignature(fn: TypedFunc): string {
-  const params =
-    fn.params.length === 0 ? 'void' : fn.params.map((t, i) => `${cType(t)} p${i}`).join(', ');
-  return `${cType(fn.result)} a0_${fn.name}(${params})`;
+  const params = fn.params.map(cParam);
+  if (isLargeC(fn.result))
+    return `void a0_${fn.name}(${[`${cType(fn.result)} *out`, ...params].join(', ')})`;
+  return `${cType(fn.result)} a0_${fn.name}(${params.length === 0 ? 'void' : params.join(', ')})`;
 }
 
 function cVariantSignature(fn: TypedFunc, variant: CVariant): string {
   if (variant === 'value') return cSignature(fn);
   if (variant === 'view') {
     const ps = fn.params.map((t, i) =>
-      isViewParam(fn, variant, i) ? `const ${cType(t)} *p${i}` : `${cType(t)} p${i}`,
+      isViewParam(fn, variant, i) ? `const ${cType(t)} *p${i}` : cParam(t, i),
     );
     return `static inline ${cType(fn.result)} a0v_${fn.name}(${ps.join(', ')})`;
   }
   const p0 = cType(fn.params[0] as Type);
-  const rest = fn.params.slice(1).map((t, i) => `${cType(t)} p${i + 1}`);
+  const rest = fn.params.slice(1).map((t, i) => cParam(t, i + 1));
   const params = [variant === 'owned' ? `${p0} *p0` : `const ${p0} *p0`, ...rest].join(', ');
   return variant === 'owned'
     ? `static inline void a0o_${fn.name}(${params})`
     : `static inline ${cType(fn.result)} a0r_${fn.name}(${params})`;
+}
+
+/** Storage for a large node: the caller's `out` when it is the result's root, else the arena. */
+function cLargeStorage(ctx: CContext, n: Node): string {
+  const t = cType(ctx.fn.types.get(n.id) ?? 'u32');
+  if (ctx.retOut === n.id) return `${t} *const n_${n.id} = out;`;
+  ctx.arena += 1;
+  return `${t} *const n_${n.id} = (${t} *)a0arena_alloc(sizeof(${t}));`;
+}
+
+/** Statements computing a large-typed (non-iteration) node through its pointer. */
+function cLargeNode(ctx: CContext, n: Node, index: number): string {
+  const fn = ctx.fn;
+  const t = fn.types.get(n.id) ?? 'u32';
+  const name = `n_${n.id}`;
+  const [a, b, c] = n.args.map((o) => cVal(ctx, o));
+  const [oa, ob, oc] = n.args as [Operand, Operand, Operand];
+  switch (n.op) {
+    case 'mov':
+      return `  const ${cType(t)} *const ${name} = ${cArg(ctx, oa)};`;
+    case 'select':
+      return `  const ${cType(t)} *const ${name} = ${a} ? ${cArg(ctx, ob)} : ${cArg(ctx, oc)};`;
+    case 'set': {
+      const at = `.e[${b} % ${arrayLength(fn, oa)}u]`;
+      if (cInPlace(ctx, n, index)) return `  ${a}${at} = ${c};`;
+      return `  ${cLargeStorage(ctx, n)} *${name} = ${a}; (*${name})${at} = ${c};`;
+    }
+    case 'put': {
+      const at = `.f${ob.kind === 'u32' ? ob.value : 0}`;
+      if (cInPlace(ctx, n, index)) return `  ${a}${at} = ${c};`;
+      return `  ${cLargeStorage(ctx, n)} *${name} = ${a}; (*${name})${at} = ${c};`;
+    }
+    case 'arr': {
+      const zeros =
+        !isPrimitive(t) &&
+        t.kind === 'arr' &&
+        isPrimitive(t.elem) &&
+        n.args.every((o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value));
+      const fill = zeros
+        ? `a0zero_${mangleType(t)}(${name});`
+        : n.args.map((o, k) => `${name}->e[${k}] = ${cVal(ctx, o)};`).join(' ');
+      return `  ${cLargeStorage(ctx, n)} ${fill}`;
+    }
+    case 'rec':
+      return `  ${cLargeStorage(ctx, n)} ${n.args.map((o, k) => `${name}->f${k} = ${cVal(ctx, o)};`).join(' ')}`;
+    case 'get':
+      return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.e[${b} % ${arrayLength(fn, oa)}u];`;
+    case 'at':
+      return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.f${ob.kind === 'u32' ? ob.value : 0};`;
+    case 'call':
+      return `  ${cLargeStorage(ctx, n)} a0_${n.callee ?? ''}(${[name, ...n.args.map((o) => cArg(ctx, o))].join(', ')});`;
+    default:
+      throw new A0Error(`${n.op} has no large-aggregate form`);
+  }
 }
 
 function cBody(
@@ -720,9 +904,30 @@ function cBody(
   parallel?: CParallel,
   helpers?: Map<string, string>,
 ): string {
-  const ctx: CContext = { fn, variant, aliases: new Map() };
+  const first = cBodyWith(fn, variant, undefined, parallel, helpers);
+  if (variant !== 'value' || !isLargeC(fn.result)) return first.text;
+  // A large result: build its root node in `out` (no final copy) unless the root only aliases.
+  const root = cRoot(first.ctx, fn.ret);
+  const def = root.kind === 'node' ? fn.nodes.find((n) => n.id === root.id) : undefined;
+  if (def === undefined || def.op === 'mov' || def.op === 'select') return first.text;
+  return cBodyWith(fn, variant, def.id, parallel, helpers).text;
+}
+
+function cBodyWith(
+  fn: TypedFunc,
+  variant: CVariant,
+  retOut: string | undefined,
+  parallel?: CParallel,
+  helpers?: Map<string, string>,
+): { readonly text: string; readonly ctx: CContext } {
+  const ctx: CContext = { fn, variant, aliases: new Map(), retOut, arena: 0 };
   const hooked = (site: CFoldSite): string => {
-    const out = parallel?.fold(site);
+    // The arena is single-threaded: a fold touching large values keeps its sequential loop.
+    const callees = [site.node.callee, site.node.pred].map((c) => fn.calls.get(c ?? ''));
+    const large =
+      isLargeC(fn.types.get(site.node.id) ?? 'u32') ||
+      callees.some((g) => g !== undefined && touchesLarge(g));
+    const out = large ? undefined : parallel?.fold(site);
     if (out === undefined) return `${site.decl.length > 0 ? `  ${site.decl}\n` : ''}  ${site.loop}`;
     for (const [name, text] of out.helpers) helpers?.set(name, text);
     return out.text;
@@ -731,8 +936,10 @@ function cBody(
     const t = cType(fn.types.get(n.id) ?? 'u32');
     if (n.op === 'fold' || n.op === 'loop') {
       const [count, init, ...extra] = n.args.map((o) => cVal(ctx, o));
+      // Extras as passed to a by-value or owned body: large ones by pointer.
+      const passed = n.args.slice(2).map((o) => cArg(ctx, o));
       if (isPrimitive(fn.types.get(n.id) ?? 'u32')) {
-        const call = [`n_${n.id}`, 'i', ...extra].join(', ');
+        const call = [`n_${n.id}`, 'i', ...passed].join(', ');
         const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
         const decl = `${t} n_${n.id} = ${init};`;
         const body = fn.calls.get(n.callee ?? '');
@@ -746,17 +953,26 @@ function cBody(
       }
       // Aggregate state: the body updates it through a pointer and the predicate reads it
       // through a const pointer, so no trip copies the state. The state is the initial value's
-      // own storage when that value is provably unshared (as in JS); otherwise one copy.
+      // own storage when that value is provably unshared (as in JS); otherwise one copy. The
+      // initial value passed again as an extra is read by every trip, so it is not unshared.
       const initOperand = n.args[1] as Operand;
-      const owned = mutableHere(fn, initOperand, index, cOwned(variant, fn));
+      const owned =
+        mutableHere(fn, initOperand, index, cOwned(variant, fn)) &&
+        !n.args.slice(2).some((o) => sameOp(o, initOperand));
       if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
-      const state = owned ? `${init}` : `n_${n.id}`;
-      const call = [`&${state}`, 'i', ...extra].join(', ');
+      const large = isLargeC(fn.types.get(n.id) ?? 'u32');
+      const state = owned ? `${init}` : large ? `(*n_${n.id})` : `n_${n.id}`;
+      const call = [`&${state}`, 'i', ...passed].join(', ');
       const guard = n.op === 'loop' ? ` if (!a0r_${n.pred ?? ''}(${call})) break;` : '';
       const loop = `for (uint32_t i = 0; i < ${count}; i++) {${guard} a0o_${n.callee ?? ''}(${call}); }`;
-      const decl = owned ? '' : `${t} n_${n.id} = ${init};`;
+      const decl = owned
+        ? ''
+        : large
+          ? `${cLargeStorage(ctx, n)} *n_${n.id} = ${init};`
+          : `${t} n_${n.id} = ${init};`;
       return hooked({ fn, node: n, count: `${count}`, extra, state, decl, loop });
     }
+    if (isLargeC(fn.types.get(n.id) ?? 'u32')) return cLargeNode(ctx, n, index);
     const expr = cExpr(ctx, n, index);
     if (ctx.aliases.has(n.id)) return `  ${expr}`;
     // `const T x` for values; `T *const x` for the io pointer (the pointee is mutable state).
@@ -773,15 +989,22 @@ function cBody(
     const m = /^ {2}const \S+ (n_[a-z0-9_]+) =/.exec(line);
     return m !== null && roots.has(m[1] as string) ? line.replace('  const ', '  ') : line;
   });
-  let ret = `  return ${cVal(ctx, fn.ret)};`;
+  const root = cRoot(ctx, fn.ret);
+  const tail: string[] = [];
   if (variant === 'owned') {
     // The state is already updated in place when the result aliases p0; otherwise store it.
-    const root = cRoot(ctx, fn.ret);
-    ret = root.kind === 'param' && root.index === 0 ? '' : `  *p0 = ${cVal(ctx, fn.ret)};`;
+    if (!(root.kind === 'param' && root.index === 0)) tail.push(`  *p0 = ${cVal(ctx, fn.ret)};`);
+  } else if (variant === 'value' && isLargeC(fn.result)) {
+    if (!(root.kind === 'node' && root.id === retOut)) tail.push(`  *out = ${cVal(ctx, fn.ret)};`);
   }
-  return [`${cVariantSignature(fn, variant)} {`, ...body, ...(ret === '' ? [] : [ret]), '}'].join(
-    '\n',
-  );
+  // Release this call's arena storage. Memory is not reused before the next allocation, so the
+  // result expression may still read it.
+  if (ctx.arena > 0) tail.push('  a0arena_top = a0arena_mark;');
+  if (variant !== 'owned' && !(variant === 'value' && isLargeC(fn.result)))
+    tail.push(`  return ${cVal(ctx, fn.ret)};`);
+  const mark = ctx.arena > 0 ? ['  const uint32_t a0arena_mark = a0arena_top;'] : [];
+  const text = [`${cVariantSignature(fn, variant)} {`, ...mark, ...body, ...tail, '}'].join('\n');
+  return { text, ctx };
 }
 
 const emitCFunction = (fn: TypedFunc, parallel?: CParallel): string => {
@@ -1229,6 +1452,8 @@ export function assemble(
             options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
           ),
         );
+      const arena = cArenaRuntime(program);
+      if (arena !== undefined) decls.push(arena);
       if (options.cParallel !== undefined) decls.push(options.cParallel.runtime);
       return `${C_PRELUDE}\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n`;
     }
