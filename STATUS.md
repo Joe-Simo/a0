@@ -745,6 +745,13 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
 - Context cost per cell before any model runs (o200k, mean over 12 tasks; toolContext = task text + view): a0/conventional 1411, a0/structured 590, ts/conventional 1786, ts/structured 1966, rust/conventional 1888, rust/structured 2075. The scoped A0 view is 2.4x smaller than the A0 file and 3.0-3.5x smaller than the TS/Rust files; of the 590, about 480 is the 40-line program handle, the scoped function itself is 50-120 tokens. Against that, the A0 language primer (min, 405 tokens per call) is now smaller than the context saving (about 1200 tokens versus TypeScript), so at this program size A0 structured should cost less per task than any other cell even with the primer travelling; the measurement is the next step.
 - Not done: no model has been run on set C. Prompts: `A0_EXPERIMENT_TASKSET=c A0_EXPERIMENT_REPLIES=<empty {} file> A0_EXPERIMENT_DUMP=<path>.json node dist/tools/ai-edit-experiment.js` (the harness rewrites `results/ai-edit-experiment.json`; run from a scratch copy or restore it). The Rust file needs rustc; the TypeScript acceptance needs `node_modules/.bin/tsc` under the working directory (a fresh worktree needs `bun install`).
 
+## Session 2026-09-30 (set C collected: project scale)
+
+- Fresh subjects (Haiku and Sonnet), all six cells, one shot, min primer (scratchpad g12). Results `results/ai-edit-experiment.c.{haiku,sonnet}-min.json`.
+- Sonnet, cache-adjusted tokens per task (one task): A0 structured 670 at 12/12 vs TypeScript 2007 at 12/12 vs Rust 2115 at 12/12: **A0 3.0x cheaper** (a win). Conventional: A0 2834 vs TS 3549 vs Rust 3754 (1.25x). Haiku: A0 structured 672 at 11/12 vs TS 2041 at 9/12 vs Rust 2135 at 11/12.
+- Haiku's two A0 misses: `select (lt a b) ...` (nested expression, third sighting, all from Haiku on the bounds task; Sonnet never; the diagnostic names the fix) and a callee defined after its caller in the whole-file cell (a model error against the stated rule). Item B decision: refusal documented, not added; 3 occurrences in ~150 Haiku structured replies, 0 in Sonnet.
+- Site: the Edits card and the Cost section now lead with set C and keep the single-function loss (0.68x/0.71x vs TypeScript) in the same chart.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
