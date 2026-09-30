@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-09-30T22:57:36.877Z",
+  "compilerVersion": "a0c-0.1.30",
+  "stage": "wasm32 emitter written in A0 (compiler/emit_wasm.a0; entry emitwasmio in compiler/boot.a0), the port of src/wasm.ts",
+  "method": "a0c-stage1 (the bootstrap C seed) compiles the closure of emitwasmio in chunks; clang builds that C into a0w. Each program is emitted a chunk of functions at a time, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2) and, where every function fits the A0 front end (16384 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1); a0w links the chunks into the module (mode 3). Both are compared byte for byte with src/wasm.ts on the unoptimized program.",
+  "tool": {
+    "exe": "dist/bootstrap/a0w/a0w",
+    "stage1": "dist/bootstrap/a0c-stage1/a0c-stage1",
+    "functions": 292,
+    "sourceBytes": 144010,
+    "cBytes": 608593,
+    "chunks": 13,
+    "emitMs": 7132,
+    "buildMs": 10674
+  },
+  "programs": [
+    {
+      "label": "corpus",
+      "functions": 48,
+      "moduleBytes": 31250,
+      "tables": {
+        "chunks": 1,
+        "ms": 1590,
+        "identical": true
+      },
+      "source": {
+        "chunks": 3,
+        "ms": 428,
+        "identical": false,
+        "code": 1,
+        "sameCodeAsEmitchunkio": true
+      }
+    },
+    {
+      "label": "kernels.a0",
+      "functions": 5,
+      "moduleBytes": 286,
+      "tables": {
+        "chunks": 1,
+        "ms": 29,
+        "identical": true
+      },
+      "source": {
+        "chunks": 1,
+        "ms": 44,
+        "identical": true,
+        "code": 0
+      }
+    },
+    {
+      "label": "life.a0",
+      "functions": 14,
+      "moduleBytes": 2719,
+      "tables": {
+        "chunks": 1,
+        "ms": 136,
+        "identical": true
+      },
+      "source": {
+        "chunks": 1,
+        "ms": 235,
+        "identical": true,
+        "code": 0
+      }
+    },
+    {
+      "label": "site/page.a0",
+      "functions": 54,
+      "moduleBytes": 350457,
+      "tables": {
+        "chunks": 8,
+        "ms": 10372,
+        "identical": true
+      },
+      "sourceSkipped": "chart_langs does not fit a chunk"
+    },
+    {
+      "label": "site/docs.a0",
+      "functions": 24,
+      "moduleBytes": 172067,
+      "tables": {
+        "chunks": 2,
+        "ms": 1181,
+        "identical": true
+      },
+      "sourceSkipped": "session does not fit a chunk"
+    }
+  ],
+  "failed": 0
+}
