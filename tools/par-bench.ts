@@ -8,6 +8,8 @@
  *   mr22    map-reduce: max over 2^22 of (gen(i) & 0xffff) * (gen'(i) >> 16), two generators
  *   dot64k  dot product of two 65536-element arrays built by map folds (A0's array cap)
  *   max64k  max over a 65536-element array built by a map fold
+ *   hash64k sum of a 65536-element array whose element i is 64 chained gen rounds from i (a
+ *           heavy map: the GPU map path at full size)
  * A0 is timed as serial C (parallel off: Clang's vectorizer is the SIMD path), the cost-model
  * choice (auto), threads forced on every recognized fold, and the GPU mode (Metal via the
  * Objective-C build of the same file, where eligible). Baselines: idiomatic single-threaded C
@@ -34,7 +36,7 @@ import { type ParallelMode, parallelC, planProgram } from '../src/parallel.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 import { jvm, single, type Toolchain } from './exec-bench-languages.js';
 
-const KERNELS = ['sum24', 'xor24', 'count20', 'mr22', 'dot64k', 'max64k'] as const;
+const KERNELS = ['sum24', 'xor24', 'count20', 'mr22', 'dot64k', 'max64k', 'hash64k'] as const;
 type K = (typeof KERNELS)[number];
 
 /** Calls per sample for native/JIT rows (Python always runs one call per sample). */
@@ -45,6 +47,7 @@ const CALLS: Readonly<Record<K, number>> = {
   mr22: 16,
   dot64k: 512,
   max64k: 1024,
+  hash64k: 16,
 };
 
 const GEN = `fn gen u32 u32 -> u32
@@ -75,6 +78,8 @@ function a0Source(k: K, n: number): string {
       return `${GEN}\nfn fill u32x${n} u32 u32 -> u32x${n}\nh call gen p1 p2\nv set p0 p1 h\nret v\nend\nfn dotb u32 u32 u32x${n} u32x${n} -> u32\na get p2 p1\nb get p3 p1\nm mul a b\ns add p0 m\nret s\nend\nfn dot64k u32 -> u32\nz arr ${zeros(n)}\nx fold fill ${n} z p0\nk xor p0 1540483477\ny fold fill ${n} z k\nr fold dotb ${n} 0 x y\nret r\nend\n`;
     case 'max64k':
       return `${GEN}\nfn fill u32x${n} u32 u32 -> u32x${n}\nh call gen p1 p2\nv set p0 p1 h\nret v\nend\nfn maxb u32 u32 u32x${n} -> u32\na get p2 p1\nc lt p0 a\ns select c a p0\nret s\nend\nfn max64k u32 -> u32\nz arr ${zeros(n)}\nx fold fill ${n} z p0\nr fold maxb ${n} 0 x\nret r\nend\n`;
+    case 'hash64k':
+      return `${GEN}\nfn mixb u32 u32 u32 -> u32\nk xor p2 p1\nh call gen p0 k\nret h\nend\nfn hfill u32x${n} u32 u32 -> u32x${n}\nr fold mixb 64 p1 p2\nv set p0 p1 r\nret v\nend\nfn hsumb u32 u32 u32x${n} -> u32\na get p2 p1\ns add p0 a\nret s\nend\nfn hash64k u32 -> u32\nz arr ${zeros(n)}\nx fold hfill ${n} z p0\nr fold hsumb ${n} 0 x\nret r\nend\n`;
   }
 }
 
@@ -85,6 +90,7 @@ const FULL: Readonly<Record<K, number>> = {
   mr22: 1 << 22,
   dot64k: 65536,
   max64k: 65536,
+  hash64k: 65536,
 };
 
 // ------------------------------------------------------------------ baselines (table-driven)
@@ -117,6 +123,8 @@ const C_KERNELS: Readonly<Record<K, string>> = {
     'static uint32_t x_[65536], y_[65536];\nstatic uint32_t kernel(uint32_t s) { for (uint32_t i = 0; i < 65536u; i++) { x_[i] = gen(i, s); y_[i] = gen(i, s ^ 0x5bd1e995u); } uint32_t acc = 0; for (uint32_t i = 0; i < 65536u; i++) acc += x_[i] * y_[i]; return acc; }',
   max64k:
     'static uint32_t x_[65536];\nstatic uint32_t kernel(uint32_t s) { for (uint32_t i = 0; i < 65536u; i++) x_[i] = gen(i, s); uint32_t m = 0; for (uint32_t i = 0; i < 65536u; i++) if (x_[i] > m) m = x_[i]; return m; }',
+  hash64k:
+    'static uint32_t x_[65536];\nstatic uint32_t kernel(uint32_t s) { for (uint32_t i = 0; i < 65536u; i++) { uint32_t v = i; for (uint32_t j = 0; j < 64u; j++) v = gen(v, s ^ j); x_[i] = v; } uint32_t acc = 0; for (uint32_t i = 0; i < 65536u; i++) acc += x_[i]; return acc; }',
 };
 
 /** Hand-parallel C: what a careful programmer writes with OpenMP (threads + SIMD). */
@@ -132,6 +140,8 @@ const OMP_KERNELS: Readonly<Record<K, string>> = {
     'static uint32_t x_[65536], y_[65536];\nstatic uint32_t kernel(uint32_t s) { uint32_t acc = 0;\n#pragma omp parallel\n {\n#pragma omp for simd\n for (uint32_t i = 0; i < 65536u; i++) { x_[i] = gen(i, s); y_[i] = gen(i, s ^ 0x5bd1e995u); }\n#pragma omp for simd reduction(+:acc)\n for (uint32_t i = 0; i < 65536u; i++) acc += x_[i] * y_[i];\n }\n return acc; }',
   max64k:
     'static uint32_t x_[65536];\nstatic uint32_t kernel(uint32_t s) { uint32_t m = 0;\n#pragma omp parallel\n {\n#pragma omp for simd\n for (uint32_t i = 0; i < 65536u; i++) x_[i] = gen(i, s);\n#pragma omp for simd reduction(max:m)\n for (uint32_t i = 0; i < 65536u; i++) m = x_[i] > m ? x_[i] : m;\n }\n return m; }',
+  hash64k:
+    'static uint32_t x_[65536];\nstatic uint32_t kernel(uint32_t s) { uint32_t acc = 0;\n#pragma omp parallel\n {\n#pragma omp for\n for (uint32_t i = 0; i < 65536u; i++) { uint32_t v = i; for (uint32_t j = 0; j < 64u; j++) v = gen(v, s ^ j); x_[i] = v; }\n#pragma omp for simd reduction(+:acc)\n for (uint32_t i = 0; i < 65536u; i++) acc += x_[i];\n }\n return acc; }',
 };
 
 /** Common C driver: `calls` kernel calls on xorshift seeds after one warm-up call. */
@@ -166,6 +176,8 @@ const RUST_KERNELS: Readonly<Record<K, string>> = {
     'fn kernel(s: u32) -> u32 { let x: Vec<u32> = (0..65536u32).map(|i| gen(i, s)).collect(); let y: Vec<u32> = (0..65536u32).map(|i| gen(i, s ^ 0x5bd1e995)).collect(); x.iter().zip(&y).fold(0u32, |a, (p, q)| a.wrapping_add(p.wrapping_mul(*q))) }',
   max64k:
     'fn kernel(s: u32) -> u32 { let x: Vec<u32> = (0..65536u32).map(|i| gen(i, s)).collect(); x.iter().copied().max().unwrap_or(0) }',
+  hash64k:
+    'fn kernel(s: u32) -> u32 { let x: Vec<u32> = (0..65536u32).map(|i| (0..64u32).fold(i, |v, j| gen(v, s ^ j))).collect(); x.iter().fold(0u32, |a, v| a.wrapping_add(*v)) }',
 };
 
 const ZIG_KERNELS: Readonly<Record<K, string>> = {
@@ -180,6 +192,8 @@ const ZIG_KERNELS: Readonly<Record<K, string>> = {
     'var gx: [65536]u32 = undefined;\nvar gy: [65536]u32 = undefined;\nfn kernel(s: u32) u32 { for (&gx, &gy, 0..) |*x, *y, i| { x.* = gen(@intCast(i), s); y.* = gen(@intCast(i), s ^ 0x5bd1e995); } var acc: u32 = 0; for (gx, gy) |x, y| acc +%= x *% y; return acc; }',
   max64k:
     'var gx: [65536]u32 = undefined;\nfn kernel(s: u32) u32 { for (&gx, 0..) |*x, i| x.* = gen(@intCast(i), s); var m: u32 = 0; for (gx) |x| m = @max(m, x); return m; }',
+  hash64k:
+    'var gx: [65536]u32 = undefined;\nfn kernel(s: u32) u32 { for (&gx, 0..) |*x, i| { var v: u32 = @intCast(i); var j: u32 = 0; while (j < 64) : (j += 1) v = gen(v, s ^ j); x.* = v; } var acc: u32 = 0; for (gx) |x| acc +%= x; return acc; }',
 };
 
 const GO_KERNELS: Readonly<Record<K, string>> = {
@@ -194,6 +208,8 @@ const GO_KERNELS: Readonly<Record<K, string>> = {
     'func kernel(s uint32) uint32 { x := make([]uint32, 65536); y := make([]uint32, 65536); for i := range x { x[i] = gen(uint32(i), s); y[i] = gen(uint32(i), s^0x5bd1e995) }; var acc uint32; for i := range x { acc += x[i] * y[i] }; return acc }',
   max64k:
     'func kernel(s uint32) uint32 { x := make([]uint32, 65536); for i := range x { x[i] = gen(uint32(i), s) }; var m uint32; for _, v := range x { m = max(m, v) }; return m }',
+  hash64k:
+    'func kernel(s uint32) uint32 { x := make([]uint32, 65536); for i := range x { v := uint32(i); for j := uint32(0); j < 64; j++ { v = gen(v, s^j) }; x[i] = v }; var acc uint32; for _, v := range x { acc += v }; return acc }',
 };
 
 const JAVA_KERNELS: Readonly<Record<K, string>> = {
@@ -208,6 +224,8 @@ const JAVA_KERNELS: Readonly<Record<K, string>> = {
     'static int kernel(int s) { int[] x = new int[65536], y = new int[65536]; for (int i = 0; i < 65536; i++) { x[i] = gen(i, s); y[i] = gen(i, s ^ 0x5bd1e995); } int acc = 0; for (int i = 0; i < 65536; i++) acc += x[i] * y[i]; return acc; }',
   max64k:
     'static int kernel(int s) { int[] x = new int[65536]; for (int i = 0; i < 65536; i++) x[i] = gen(i, s); int m = 0; for (int v : x) if (Integer.compareUnsigned(v, m) > 0) m = v; return m; }',
+  hash64k:
+    'static int kernel(int s) { int[] x = new int[65536]; for (int i = 0; i < 65536; i++) { int v = i; for (int j = 0; j < 64; j++) v = gen(v, s ^ j); x[i] = v; } int acc = 0; for (int v : x) acc += v; return acc; }',
 };
 
 const PY_KERNELS: Readonly<Record<K, string>> = {
@@ -220,6 +238,8 @@ const PY_KERNELS: Readonly<Record<K, string>> = {
   dot64k:
     'def kernel(s):\n    t = s ^ 0x5bd1e995\n    x = [gen(i, s) for i in range(65536)]\n    y = [gen(i, t) for i in range(65536)]\n    return sum(p * q for p, q in zip(x, y)) & M',
   max64k: 'def kernel(s):\n    x = [gen(i, s) for i in range(65536)]\n    return max(x)',
+  hash64k:
+    'def kernel(s):\n    x = []\n    for i in range(65536):\n        v = i\n        for j in range(64):\n            v = gen(v, s ^ j)\n        x.append(v)\n    return sum(x) & M',
 };
 
 const JS_KERNELS: Readonly<Record<K, string>> = {
@@ -234,6 +254,8 @@ const JS_KERNELS: Readonly<Record<K, string>> = {
     'const x_ = new Uint32Array(65536), y_ = new Uint32Array(65536);\nfunction kernel(s) { const t = (s ^ 0x5bd1e995) >>> 0; for (let i = 0; i < 65536; i++) { x_[i] = gen(i, s); y_[i] = gen(i, t); } let acc = 0; for (let i = 0; i < 65536; i++) acc = (acc + Math.imul(x_[i], y_[i])) >>> 0; return acc; }',
   max64k:
     'const x_ = new Uint32Array(65536);\nfunction kernel(s) { for (let i = 0; i < 65536; i++) x_[i] = gen(i, s); let m = 0; for (let i = 0; i < 65536; i++) if (x_[i] > m) m = x_[i]; return m; }',
+  hash64k:
+    'const x_ = new Uint32Array(65536);\nfunction kernel(s) { for (let i = 0; i < 65536; i++) { let v = i; for (let j = 0; j < 64; j++) v = gen(v, (s ^ j) >>> 0); x_[i] = v; } let acc = 0; for (let i = 0; i < 65536; i++) acc = (acc + x_[i]) >>> 0; return acc; }',
 };
 
 const LANGS: readonly Lang[] = [
@@ -536,7 +558,7 @@ async function verifySmall(clang: string, gpu: boolean): Promise<Record<string, 
   const out: Record<string, unknown> = {};
   await withTempDir(async (dir) => {
     for (const k of KERNELS) {
-      const n = k === 'dot64k' || k === 'max64k' ? 67 : 4099;
+      const n = k === 'dot64k' || k === 'max64k' || k === 'hash64k' ? 67 : 4099;
       const program = parseAndValidate(a0Source(k, n));
       const fn = program.byName.get(k);
       if (fn === undefined) throw new Error(k);
@@ -550,7 +572,13 @@ async function verifySmall(clang: string, gpu: boolean): Promise<Record<string, 
       const row: Record<string, string> = {};
       for (const [label, mode, force] of builds) {
         const exe = await buildA0(clang, dir, `${k}_${label}`, program, k, mode, force, driver);
-        const r = runOk(runTool(exe, [], { timeoutMs: 120_000 }), `${k}_${label}`);
+        const r = runOk(
+          runTool(exe, [], { timeoutMs: 120_000, env: { ...process.env, A0_GPU_LOG: '1' } }),
+          `${k}_${label}`,
+        );
+        // Forced GPU builds must really dispatch (no silent fallback to threads).
+        if (label === 'gpu' && (!r.stderr.includes('a0gpu ran') || r.stderr.includes('fallback')))
+          throw new Error(`${k} gpu: dispatch did not run: ${r.stderr.slice(0, 300)}`);
         const got = r.stdout.trim().split('\n');
         const ok = got.length === want.length && got.every((g, i) => g === want[i]);
         if (!ok)
@@ -694,6 +722,22 @@ async function main(): Promise<void> {
         r.checksum = got;
         verified.push(r);
       }
+      // Evidence that the GPU row really dispatches at full size (1 call + the warm-up call).
+      const gpuRow = verified.find((r) => r.id === 'a0_gpu');
+      const gpuLog =
+        gpuRow === undefined
+          ? undefined
+          : runTool(gpuRow.cmd[0], ['1'], {
+              timeoutMs: 900_000,
+              env: { ...process.env, A0_GPU_LOG: '1' },
+            }).stderr;
+      const gpuDispatches =
+        gpuLog === undefined
+          ? undefined
+          : {
+              ran: gpuLog.split('a0gpu ran').length - 1,
+              fallback: gpuLog.split('a0gpu fallback').length - 1,
+            };
       for (let i = 0; i < cli.samples; i += 1) {
         for (const r of verified) {
           const out = runTool(r.cmd[0], r.cmd[1], { timeoutMs: 900_000 });
@@ -721,6 +765,7 @@ async function main(): Promise<void> {
           Object.entries(med).map(([id, ns]) => [id, ns / a0Best]),
         ),
         skipped,
+        ...(gpuDispatches === undefined ? {} : { gpuDispatches }),
       };
       process.stdout.write(
         `${k.padEnd(8)} ${Object.entries(med)
@@ -747,7 +792,7 @@ async function main(): Promise<void> {
     verification,
     plans,
     meaning:
-      'ns per kernel call (median of interleaved samples; each sample runs callsPerSample calls after one warm-up call; Python one call). a0_serial: A0 C with parallel folds off (Clang vectorizes the loop: the SIMD path). a0_auto: the cost model (src/parallel.ts). a0_threads: threads forced on every recognized fold. a0_gpu: GPU mode (Metal, Objective-C build) where the cost model picks the GPU. c: idiomatic single-threaded C; c_openmp: hand-parallel C (OpenMP parallel for simd reduction). baselineOverA0Auto = row / a0_auto (above 1: A0 faster). Every row checksum-verified against A0 serial; small sizes verified against the reference interpreter.',
+      'ns per kernel call (median of interleaved samples; each sample runs callsPerSample calls after one warm-up call; Python one call). a0_serial: A0 C with parallel folds off (Clang vectorizes the loop: the SIMD path). a0_auto: the cost model (src/parallel.ts; persistent pool, static line-aligned chunks). a0_threads: threads forced on every recognized fold. gpuDispatches: A0_GPU_LOG count for one a0_gpu run (warm-up + 1 call). a0_gpu: GPU mode (Metal, Objective-C build) where the cost model picks the GPU. c: idiomatic single-threaded C; c_openmp: hand-parallel C (OpenMP parallel for simd reduction). baselineOverA0Auto = row / a0_auto (above 1: A0 faster). Every row checksum-verified against A0 serial; small sizes verified against the reference interpreter.',
     kernels: report,
   };
   await mkdir(join(cli.out, '..'), { recursive: true });
