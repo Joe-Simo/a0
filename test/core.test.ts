@@ -2956,7 +2956,7 @@ async function wasmSession(
   input: readonly number[],
 ): Promise<{ result: number; output: number[] }> {
   const IN = 1024;
-  const OUT = 65536;
+  const OUT = 131072;
   const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
   const e = instance.exports as {
     memory: WebAssembly.Memory;
@@ -2996,7 +2996,11 @@ test('direct wasm backend: site page, docs, and play programs write the interpre
     const p = (await link(file, (f) => readFile(f, 'utf8'))).program;
     const session = p.byName.get('session') as TypedFunc;
     for (const optimize of [true, false]) {
-      const text = compile(p, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 65536, optimize });
+      const text = compile(p, 'wasm', {
+        ioInputCapacity: 1024,
+        ioOutputCapacity: 131072,
+        optimize,
+      });
       const bytes = wasmModuleBytes(text.text);
       for (const input of inputs) {
         const io = makeIo(input);

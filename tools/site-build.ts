@@ -31,7 +31,7 @@ async function buildProgram(entry: string, outName: string): Promise<Built> {
     .program;
   // A0's own wasm32 backend (src/wasm.ts): the module is emitted directly, no C, no clang.
   const wasm = wasmModuleBytes(
-    compile(program, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 65536 }).text,
+    compile(program, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 131072 }).text,
   );
   await writeFile(join(out, `${outName}.wasm`), wasm);
   // The same program, run once here through the reference interpreter: static HTML for
@@ -113,21 +113,31 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
 }
 
 /**
- * Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers.
- * The CSP allows only same-origin scripts (app.js; the ld+json block is data and never runs),
- * wasm compilation, the runtime's generated <style>, self-hosted fonts, and same-origin fetches.
+ * The site's Content-Security-Policy. It allows only same-origin scripts (theme.js and app.js;
+ * the ld+json block is data and never runs), wasm compilation, the runtime's generated <style>
+ * and computed bar widths, self-hosted fonts, and same-origin fetches. No framing.
  */
-const VERCEL = {
+export const SITE_CSP = [
+  "default-src 'none'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+/** Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers. */
+export const VERCEL = {
   cleanUrls: true,
   headers: [
     {
       source: '/(.*)',
       headers: [
-        {
-          key: 'Content-Security-Policy',
-          value:
-            "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-        },
+        { key: 'Content-Security-Policy', value: SITE_CSP },
+        { key: 'X-Frame-Options', value: 'DENY' },
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
@@ -177,6 +187,7 @@ async function main(): Promise<void> {
     '--outDir',
     out,
     join('site', 'app.ts'),
+    join('site', 'theme.ts'),
   ]);
   if (!r.ok) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
   await writeFile(

@@ -262,10 +262,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;bac
 @media (prefers-reduced-motion:reduce){.stage{display:none}}
 /* QA fixes */
 header.top{background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.live{grid-template-columns:minmax(290px,max-content) minmax(230px,max-content) minmax(250px,max-content)!important}
 .col{min-width:0}
 .col .ln,.col .ty{font-size:13px}
-@media (max-width:640px){.live{grid-template-columns:1fr!important;max-width:calc(100vw - 40px)}.live .col.model,.live .col.asm{display:none}.links{gap:10px}.links a{font-size:.78rem}.pill{padding:6px 9px;font-size:.68rem;letter-spacing:.05em}.nav{gap:12px}}
+@media (max-width:640px){.live .col.model,.live .col.asm{display:none}.links{gap:10px}.links a{font-size:.78rem}.pill{padding:6px 9px;font-size:.68rem;letter-spacing:.05em}.nav{gap:12px}}
 .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tblwrap table.rank{min-width:540px}
 @media (max-width:720px){.tblwrap table.rank tr{display:table-row}.tblwrap table.rank td,.tblwrap table.rank th{display:table-cell;padding:7px 8px}.tblwrap table.rank th:last-child{display:table-cell}}
@@ -288,7 +287,53 @@ button:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
 .chart .kh:first-of-type{border-top:0;padding-top:0}
 .chart .tblwrap{margin-top:18px}
 @media (max-width:600px){.lrow.wide{grid-template-columns:118px 1fr}.lrow.wide .track{grid-template-columns:1fr 84px}}
+/* Layout QA: hero scene columns per breakpoint (the prototype's own rules place the columns) */
+/* column widths fit the longest final line (27, 25 and 23 characters at 13px plus padding), so a line being typed never resizes or clips its column */
+.hero .live{grid-template-columns:calc(32ch + 26px) calc(29ch + 26px) calc(27ch + 26px)}
+.live .col .ln,.live .col .ty{font-size:13px}
+.hero .live{font-size:13px;letter-spacing:0}
+@media (max-width:960px){.hero .live{grid-template-columns:calc(32ch + 26px) calc(29ch + 26px)}}
+@media (max-width:640px){.hero .live{grid-template-columns:minmax(0,1fr);max-width:calc(100vw - 40px)}}
+.trio{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.col h6,pre.code .cm{color:var(--muted)}
+.chart .cov{display:inline-block;margin:0 0 14px;padding:2px 8px;border:1px solid var(--line2);border-radius:2px;font-size:.72rem;color:var(--fg2);letter-spacing:.02em}
+.chart .cov.part{border-color:var(--muted)}
+.tblwrap{background:linear-gradient(90deg,var(--card) 30%,transparent) left/40px 100% no-repeat local,linear-gradient(270deg,var(--card) 30%,transparent) right/40px 100% no-repeat local,linear-gradient(90deg,color-mix(in srgb,var(--fg) 14%,transparent),transparent) left/14px 100% no-repeat scroll,linear-gradient(270deg,color-mix(in srgb,var(--fg) 14%,transparent),transparent) right/14px 100% no-repeat scroll}
+.tblwrap th,.tblwrap td{white-space:nowrap}
+.tblwrap td:first-child,.tblwrap th:first-child{position:sticky;left:0;background:var(--card);z-index:1}
+@media (max-width:600px){.layout{padding-left:16px;padding-right:16px}.trio{padding:0 16px}.center{padding-left:16px;padding-right:16px}.chart{padding:16px 14px 14px}.legend{gap:6px 14px}.lrow,.lrow.wide{grid-template-columns:112px 1fr;align-items:start}.lrow .lbl,.lrow.wide .lbl{white-space:normal;overflow:visible;line-height:1.25;padding-top:2px}.foot{padding-left:16px;padding-right:16px}}
+@media (max-width:640px){.theme-toggle{margin-right:6px}}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
 '''
+
+
+def theme_scope(css):
+    """Key every prefers-color-scheme block to the viewer's choice as well as the system setting.
+
+    `@media (prefers-color-scheme:X){R}` becomes the same block with each selector limited to
+    `:root` without a forced opposite theme, followed by R limited to `:root[data-theme=X]`.
+    `:where()` keeps each selector's specificity, so the cascade order is unchanged; the runtime
+    and site/theme.ts only set `data-theme` on <html>.
+    """
+    other = {'light': 'dark', 'dark': 'light'}
+
+    def scope(body, cond):
+        def sel(s):
+            s = s.strip()
+            return f':root:where({cond}){s[5:]}' if s.startswith(':root') else f':where(:root{cond}) {s}'
+        return re.sub(r'([^{}]+)\{([^{}]*)\}', lambda m: ','.join(sel(s) for s in m.group(1).split(',')) + '{' + m.group(2) + '}', body)
+
+    def block(m):
+        mode, body = m.group(1), m.group(2)
+        return (f'@media (prefers-color-scheme:{mode}){{{scope(body, f":not([data-theme={other[mode]}])")}}}'
+                + scope(body, f'[data-theme={mode}]'))
+    out = re.sub(r'@media \(prefers-color-scheme:(light|dark)\)\{((?:[^{}]*\{[^{}]*\})*)\}', block, css)
+    assert not re.search(r'prefers-color-scheme:(?:light|dark)\)\{(?!:root:where|:where)', out), 'unscoped theme block'
+    return out
+
+
+CSS = theme_scope(CSS)
 
 # ---------------------------------------------------------------- data
 _e = json.load(open('results/exec-benchmark.json'))['kernels']
@@ -366,15 +411,28 @@ for k in _K:
     best = e[0] if e[0][0] != 'A0' else e[1]
     a0 = dict(e)['A0']
     RANKS.append((k, rank, len(e), best[0], best[1], a0))
-STARTS = [('A0', 'a0', statistics.median(_e[k]['c']['startupMs']['emitted'] for k in _K))]
+# The full language set of exec-bench: A0, C, Rust, JavaScript, and every language that ran.
+# Every comparison chart is drawn against it; one that lacks measurements says how many it has.
+ALL_LANGS = ['A0', 'C', 'Rust', 'JavaScript'] + [m['label'] for m in _bench['languages'].values() if m.get('status') == 'ran']
+N_ALL = len(ALL_LANGS)
+COVERAGE = []
+def coverage(chart_name, labels):
+    have = [l for l in ALL_LANGS if l in set(labels)]
+    extra = sorted(set(labels) - set(ALL_LANGS))
+    assert not extra, f'{chart_name}: labels outside the exec-bench set: {extra}'
+    COVERAGE.append((chart_name, len(have), [l for l in ALL_LANGS if l not in have]))
+    el('p', f'measured: {len(have)} of {N_ALL} languages', cls='cov mono' + ('' if len(have) == N_ALL else ' part'))
+STARTS = [('A0', 'a0', statistics.median(_e[k]['c']['startupMs']['emitted'] for k in _K)),
+          ('C', 'compiled-native', statistics.median(_e[k]['c']['startupMs']['handwritten'] for k in _K))]
 for grp in ('startupInterpretersMs', 'startupCompiledMs'):
     ids = set()
     for k in _K: ids |= set((_e[k].get(grp) or {}).keys())
     for lid in ids:
         vals = [_e[k][grp][lid] for k in _K if lid in (_e[k].get(grp) or {})]
-        lab = 'Node' if lid == 'node' else _labels.get(lid, lid)
+        lab = 'JavaScript' if lid == 'node' else _labels.get(lid, lid)
         fam = 'a0' if False else (_bench['languages'].get(lid, {}).get('family') or ('jit' if lid == 'node' else 'interpreted'))
         STARTS.append((lab, fam, statistics.median(vals)))
+START_NODE = next(v for l, _, v in STARTS if l == 'JavaScript'); START_PY = next(v for l, _, v in STARTS if l == 'Python')
 STARTS.sort(key=lambda t: t[2])
 _smax = math.log10(max(v for _, _, v in STARTS) / min(v for _, _, v in STARTS))
 _smin = min(v for _, _, v in STARTS)
@@ -530,11 +588,12 @@ def ratio_label(num, den, suffix, cls_by=None):
     open_('span', cls='ratio' + (f' {cls_by}' if cls_by else ''))
     call('putratio', q); text(suffix); close()
 _chart_n = [0]
-def chart(title, sub, legend, rows, unit, ratio_fn, cap, single=False, fixed=True):
+def chart(title, sub, legend, rows, unit, ratio_fn, cap, single=False, fixed=True, langs=None):
     _chart_n[0] += 1
     begin(f'chart{_chart_n[0]}')
     open_('div', cls='chart' + (' single' if single else '') + ' reveal')
     el('p', title, cls='ct'); el('p', sub, cls='sub')
+    if langs is not None: coverage(title, langs)
     if legend:
         open_('div', cls='legend')
         for lc, lt in legend: el('span', lt, cls=lc)
@@ -769,6 +828,7 @@ def gen_page():
     open_('div', cls='chart reveal')
     el('p', f'A0\'s rank on each kernel, among all {N_LANGS + 1} languages', cls='ct')
     el('p', 'Time per call, lower is better. Median of 7 interleaved runs; every result checksum-verified.', cls='sub')
+    coverage('A0 rank per kernel', [n for n, _, _ in LANGS])
     open_('div', cls='tblwrap')
     open_('table', cls='ops rank')
     open_('tr'); el('th', 'kernel'); el('th', 'A0 rank'); el('th', 'fastest other'); el('th', 'A0 vs fastest other'); close()
@@ -794,6 +854,7 @@ def gen_page():
     open_('div', cls='chart langs reveal')
     el('p', 'Time per call relative to native A0, lower is better', cls='ct')
     el('p', 'Bar length is logarithmic in the ratio; 1.00x is parity with A0. Interleaved runs, medians; JIT rows warm; interpreters at their own iteration tier.', cls='sub')
+    coverage('Time per call relative to A0', [n for n, _, _ in LANGS])
     open_('div', cls='legend'); el('span', 'A0', cls='la0'); el('span', 'compiled', cls='lnat'); el('span', 'JIT or VM', cls='ljit'); el('span', 'interpreted', cls='lint'); close()
     for label, fam, g in LANGS:
         cls = 'a0' if fam == 'a0' else 'nat' if fam == 'compiled-native' else 'int' if fam == 'interpreted' else 'jit'
@@ -811,12 +872,13 @@ def gen_page():
     begin('sec_start')
     open_('section', id_='startup')
     el('h2', 'Startup')
-    open_('p'); el('strong', f'{START_A0:.2f} ms'); text(f' from launch to first result. Node and Python spend 25 to 50 ms booting. Build: {A0_BUILD} ms for ten kernels, {RS_BUILD} ms with rustc.'); close()
+    open_('p'); el('strong', f'{START_A0:.2f} ms'); text(f' from launch to first result. Node takes {START_NODE:.0f} ms and Python {START_PY:.0f} ms. Build: {A0_BUILD} ms for ten kernels, {RS_BUILD} ms with rustc.'); close()
     end()
     begin('chart_start')
     open_('div', cls='chart langs reveal')
     el('p', f'Milliseconds from launch to first result, {len(STARTS)} languages', cls='ct')
     el('p', f'Lower is better; bar length is logarithmic. A0 is number {START_RANK}. One process launch running one iteration; JVM and .NET rows include their runtime start.', cls='sub')
+    coverage('Startup', [n for n, _, _ in STARTS])
     open_('div', cls='legend'); el('span', 'A0', cls='la0'); el('span', 'compiled', cls='lnat'); el('span', 'JIT or VM', cls='ljit'); el('span', 'interpreted', cls='lint'); close()
     for label, fam, v in STARTS:
         cls = 'a0' if label == 'A0' else 'nat' if fam == 'compiled-native' else 'int' if fam == 'interpreted' else 'jit'
@@ -861,13 +923,15 @@ def gen_page():
         ratio_label(ids[1], ids[0], 'x vs TS', 'win' if tsv > a0v * 1.05 else 'loss')
     chart('Tokens per edit by program size, Sonnet', 'Cache-adjusted; lower is better. Ratio is TypeScript over A0: below 1 A0 costs more.',
           [('la0', 'A0'), ('lc', 'TypeScript'), ('lrust', 'Rust')], summary, ' tok', cost_ratio,
-          'Bars are linear within each row. The per-size charts below add every other measured language.', fixed=False)
+          'Bars are linear within each row. The per-size charts below add every other measured language.', fixed=False,
+          langs=['A0', 'TypeScript', 'Rust'])
     for size in (40, 400, 4000, 1):
         rows = COST[size]
         begin(f'cost_{size}')
         open_('div', cls='chart langs reveal')
         el('p', f'{size} function' + ('' if size == 1 else 's') + f': tokens per edit, {len(rows)} languages' + (' (the loss)' if size == 1 else ''), cls='ct')
         el('p', 'Sonnet, cache-adjusted, lower is better; bar length is logarithmic. Languages not listed were not measured at this size.', cls='sub')
+        coverage(f'Tokens per edit, {size} function' + ('' if size == 1 else 's'), [label for _, label, _, _ in rows])
         vals = [r[2]['total'] for r in rows]; lo = min(vals) * 0.9; span = math.log10(max(vals) / lo)
         for rep, label, s, _ in sorted(rows, key=lambda r: r[2]['total']):
             open_('div', cls='lrow wide' + (' me' if rep == 'a0' else ''))
@@ -911,6 +975,7 @@ def gen_page():
     open_('div', cls='chart langs reveal')
     el('p', 'Milliseconds from reply received to program type-checked, median per edit', cls='ct')
     el('p', f'The accepted set-C Sonnet edits on the 40-function program; lower is better; bar length is logarithmic. Go uses hand translations of the reference edits.', cls='sub')
+    coverage('Validation latency', sorted({ {'a0': 'A0', 'ts': 'TypeScript', 'rust': 'Rust', 'go': 'Go'}[lang] for _, lang, _, _ in EDIT_LOOP}))
     open_('div', cls='legend'); el('span', 'A0', cls='la0'); el('span', 'other toolchains', cls='lnat'); close()
     lo = min(r[2] for r in EDIT_LOOP) * 0.9; span = math.log10(max(r[2] for r in EDIT_LOOP) / lo)
     for label, lang, med, p90 in EDIT_LOOP:
@@ -937,6 +1002,7 @@ def gen_page():
     open_('div', cls='chart langs reveal')
     el('p', 'Time per call relative to A0 --parallel, per kernel', cls='ct')
     el('p', f'Lower is faster; below 1.00x (red) that implementation beats A0. Bar length is logarithmic. {_par["cpus"]} cores, median of {_par["samples"]} interleaved samples.', cls='sub')
+    coverage('Parallel folds', sorted({'C' if lab == 'C + OpenMP' else lab for _, _, _, rows in PAR for lab, _, _ in rows}))
     open_('div', cls='legend'); el('span', 'A0', cls='la0'); el('span', 'other languages', cls='lnat'); close()
     lo = min(r for _, _, _, rows in PAR for _, _, r in rows) * 0.9
     span = math.log10(max(r for _, _, _, rows in PAR for _, _, r in rows) / lo)
@@ -1192,3 +1258,5 @@ if __name__ == '__main__':
     open('site/page.a0', 'w').write(gen_page())
     open('site/docs.a0', 'w').write(gen_docs())
     print('wrote site/page.a0 site/docs.a0 (site/ui.a0 is maintained by hand)')
+    for name, n, missing in COVERAGE:
+        print(f'  {name}: {n} of {N_ALL}' + (f'; not measured: {", ".join(missing)}' if missing else ''))
