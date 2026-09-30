@@ -339,6 +339,12 @@ export interface ViewOptions {
    * this function can depend on; bodies of callees are not shown.
    */
   readonly scope?: 'function' | 'deps';
+  /**
+   * Number the function's body lines (`1 a add p0 p1` ... `N ret a`) so a reply can address
+   * them: `N line` replaces line N, `N-` deletes it, `N+ line` inserts after it (`0+` at the
+   * top), and `f:N...` addresses function f. The header and `end` are not numbered.
+   */
+  readonly numbered?: boolean;
 }
 
 export function formatSignature(fn: Func): string {
@@ -346,10 +352,114 @@ export function formatSignature(fn: Func): string {
   return `fn ${fn.name}${sig} -> ${formatType(fn.result)}`;
 }
 
+/** A function's source with its body lines (instructions and `ret`) numbered from 1. */
+export function numberedFunction(fn: Func): string {
+  const lines = formatFunction(fn).split('\n');
+  const body = lines.slice(1, -1).map((l, i) => `${i + 1} ${l}`);
+  return [lines[0] ?? '', ...body, 'end'].join('\n');
+}
+
 /** The dependency-scoped view text of a function (without a handle line). */
-export function scopedView(fn: TypedFunc): string {
+export function scopedView(fn: TypedFunc, numbered = false): string {
+  const text = numbered ? numberedFunction(fn) : formatFunction(fn);
   const sigs = [...fn.calls.values()].map((c) => `${formatSignature(c)} end`);
-  return sigs.length > 0 ? `${formatFunction(fn)}\n${sigs.join('\n')}` : formatFunction(fn);
+  return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
+}
+
+/** `N line`, `N-`, `N+ line`, each optionally prefixed with `f:` (a function name). */
+const LINE_EDIT = /^(?:([a-z][a-z0-9_]*):)?(0|[1-9][0-9]*)([+-]?)(?:\s+(.*))?$/;
+
+/**
+ * Separate line-addressed edits from the rest of a reply. Only lines outside `fn` blocks are
+ * line edits; inside a block (up to `end`, the next `fn`/`-fn` line, or the end of the reply) a
+ * leading view number (`1 a add p0 p1`) is the numbered view copied back and is dropped.
+ * Unambiguous: instruction ids start with a letter.
+ */
+function splitLineEdits(lines: readonly string[]): { edits: string[]; rest: string[] } {
+  const edits: string[] = [];
+  const rest: string[] = [];
+  let open = false;
+  for (const raw of lines) {
+    const t = stripComment(raw).trim();
+    if (/^-?fn\s/.test(t)) {
+      open = t.startsWith('fn') && !/\send$/.test(t);
+      rest.push(raw);
+    } else if (open) {
+      if (t === 'end') open = false;
+      rest.push(t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, ''));
+    } else if (LINE_EDIT.test(t)) edits.push(t);
+    else rest.push(raw);
+  }
+  return { edits, rest };
+}
+
+/**
+ * Turn line-addressed edits into whole `fn ... end` blocks. Line numbers refer to the numbered
+ * view of the function in `program` (body lines, `ret` last); a bare number addresses
+ * `defaultFn`. Several inserts after one line keep their order. Each number is replaced or
+ * deleted at most once. The blocks then go through the ordinary whole-function path, so the
+ * result is parsed and the whole program validated before anything is committed.
+ */
+export function lineEditBlocks(
+  program: TypedProgram,
+  lines: readonly string[],
+  defaultFn: string | undefined,
+): string[] {
+  const byFn = new Map<string, { at: Map<number, string | null>; after: Map<number, string[]> }>();
+  for (const raw of lines) {
+    const t = stripComment(raw).trim();
+    const m = LINE_EDIT.exec(t);
+    if (m === null) throw new A0Error(`bad line edit '${t}'`, undefined, { code: 'edit' });
+    const name = m[1] ?? defaultFn;
+    if (name === undefined)
+      throw new A0Error(`line edit '${t}' names no function`, undefined, {
+        code: 'edit',
+        fix: 'write `f:N line` with the function name',
+      });
+    const fn = program.byName.get(name);
+    if (fn === undefined)
+      throw new A0Error(`line edit '${t}': unknown function '${name}'`, undefined, {
+        code: 'edit',
+      });
+    const size = formatFunction(fn).split('\n').length - 2;
+    const n = Number(m[2]);
+    const mode = m[3] ?? '';
+    const text = (m[4] ?? '').trim();
+    const entry = byFn.get(name) ?? { at: new Map(), after: new Map() };
+    byFn.set(name, entry);
+    if (mode === '+') {
+      if (n > size || text === '')
+        throw new A0Error(`line edit '${t}': insert after line 0..${size} with text`, undefined, {
+          code: 'edit',
+        });
+      entry.after.set(n, [...(entry.after.get(n) ?? []), text]);
+      continue;
+    }
+    if (n < 1 || n > size)
+      throw new A0Error(`line edit '${t}': ${name} has lines 1..${size}`, undefined, {
+        code: 'edit',
+        fix: 'use the line numbers shown in the view',
+      });
+    if (entry.at.has(n))
+      throw new A0Error(`line edit '${t}': line ${n} edited twice`, undefined, { code: 'edit' });
+    if (mode === '' && text === '')
+      throw new A0Error(`line edit '${t}' has no text`, undefined, {
+        code: 'edit',
+        fix: `write '${n}-' to delete the line`,
+      });
+    entry.at.set(n, mode === '-' ? null : text);
+  }
+  return [...byFn].map(([name, { at, after }]) => {
+    const src = formatFunction(program.byName.get(name) as TypedFunc).split('\n');
+    const body = src.slice(1, -1);
+    const out: string[] = [...(after.get(0) ?? [])];
+    body.forEach((line, i) => {
+      const edited = at.has(i + 1) ? at.get(i + 1) : line;
+      if (edited !== null && edited !== undefined) out.push(edited);
+      out.push(...(after.get(i + 1) ?? []));
+    });
+    return [src[0] ?? '', ...out, 'end'].join('\n');
+  });
 }
 
 interface OpenHandle {
@@ -359,6 +469,7 @@ interface OpenHandle {
   readonly scope: ViewOptions['scope'];
   /** Program handles opened with `scope: 'deps'`: the function the view is centred on. */
   readonly target?: string;
+  readonly numbered?: boolean;
 }
 
 export interface ProgramViewOptions {
@@ -598,8 +709,14 @@ export class EditSession {
     const handle = `e${this.#nextFn}`;
     this.#nextFn += 1;
     const rev = revision(fn);
-    this.#handles.set(handle, { functionName, revision: rev, scope: options.scope });
-    const body = options.scope === 'deps' ? scopedView(fn) : formatFunction(fn);
+    const numbered = options.numbered === true;
+    this.#handles.set(handle, {
+      functionName,
+      revision: rev,
+      scope: options.scope,
+      ...(numbered ? { numbered } : {}),
+    });
+    const body = this.#functionText(fn, options.scope, numbered);
     return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
   }
 
@@ -611,7 +728,12 @@ export class EditSession {
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined)
       throw new A0Error(`handle '${handle}' refers to a removed function`, 1, { code: 'handle' });
-    return `${handle}\n${bound.scope === 'deps' ? scopedView(fn) : formatFunction(fn)}`;
+    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true)}`;
+  }
+
+  #functionText(fn: TypedFunc, scope: ViewOptions['scope'], numbered: boolean): string {
+    if (scope === 'deps') return scopedView(fn, numbered);
+    return numbered ? numberedFunction(fn) : formatFunction(fn);
   }
 
   /**
@@ -713,7 +835,9 @@ export class EditSession {
       const rawBody = text
         .split(/\r?\n/)
         .slice(text.split(/\r?\n/).findIndex((l) => stripComment(l).trim() === handle) + 1);
-      this.#program = editProgram(this.#program, rawBody.join('\n'));
+      const { edits, rest } = splitLineEdits(rawBody);
+      const blocks = lineEditBlocks(this.#program, edits, undefined);
+      this.#program = editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n'));
       this.#rebind();
       return this.#program;
     }
@@ -754,15 +878,22 @@ export class EditSession {
     // exactly as under a program handle. Edit lines before the first block apply to the
     // handled function after the blocks, so a callee changed in the same reply type-checks.
     // `-fn name` lines before the first block are program-level too.
+    // Line-addressed edits (`N line`, `N-`, `N+ line`, `f:N ...`) refer to the numbered view
+    // before this reply; each edited function becomes a whole block, validated with the rest.
+    const split = splitLineEdits(body);
+    const lineBlocks = lineEditBlocks(this.#program, split.edits, fn.name);
+    body = split.rest;
     const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
     const head = blockAt < 0 ? body : body.slice(0, blockAt);
     const isRemoval = (l: string): boolean => /^-fn\s/.test(stripComment(l).trim());
     const editLines = head.filter((l) => !isRemoval(l));
     const programLines = [...head.filter(isRemoval), ...(blockAt < 0 ? [] : body.slice(blockAt))];
     let program = this.#program;
-    if (programLines.length > 0) {
-      const blocks = programLines.join('\n');
-      program = editProgram(program, strippedEnd && blockAt >= 0 ? `${blocks}\nend` : blocks);
+    if (programLines.length > 0 || lineBlocks.length > 0) {
+      const blocks = closeBlocks(
+        strippedEnd && blockAt >= 0 ? [...programLines, 'end'] : programLines,
+      );
+      program = editProgram(program, [...blocks, ...lineBlocks].join('\n'));
     }
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);

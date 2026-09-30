@@ -58,3 +58,43 @@ test('optional end closes blocks at the next fn, -fn, or end of reply', () => {
   );
   assert.equal(call(session, 'quad', 3), 12);
 });
+
+test('numbered views take line-addressed edits', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  const view = session.open('twice', { scope: 'deps', numbered: true });
+  assert.equal(
+    view.text,
+    'e0\nfn twice u32 -> u32\n1 x call sq p0\n2 y add x x\n3 ret y\nend\nfn sq u32 -> u32 end',
+  );
+  // Replace line 2: no header resent.
+  session.apply('2 y add x 1');
+  assert.equal(call(session, 'twice', 3), 10);
+  // Insert after 2, replace 3 (numbers refer to the view before the reply).
+  session.apply('2+ z mul y 2\n3 ret z');
+  assert.equal(call(session, 'twice', 3), 20);
+  assert.equal(session.view('e0').split('\n')[4], '3 z mul y 2');
+  // Delete, insert at the top, and edit another function by name, in one atomic reply.
+  session.apply('0+ k mov 5\n2 y add x k\n3-\n4 ret y\nsq:1 a add p0 p0');
+  assert.equal(call(session, 'twice', 3), 11);
+  // A failing line edit commits nothing.
+  const before = session.view('e0');
+  assert.throws(() => session.apply('1 x call sq q9'));
+  assert.throws(() => session.apply('9 ret x'), /lines 1\.\.4/);
+  assert.throws(() => session.apply('2 y add x 1\n2-'), /edited twice/);
+  assert.throws(() => session.apply('sq:1 a add p0 true'));
+  assert.equal(session.view('e0'), before);
+  // Under a program handle, a line edit must name its function.
+  const program = new EditSession(parseAndValidate(SRC));
+  program.openProgram();
+  assert.throws(() => program.apply('1 a mul p0 3'), /names no function/);
+  program.apply('sq:1 a mul p0 3');
+  assert.equal(call(program, 'twice', 2), 12);
+});
+
+test('view numbers copied into a fn block are dropped; line edits follow the block', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice', { numbered: true });
+  // A whole block with the view's numbers (some lines unnumbered), then a line edit of twice.
+  session.apply('fn sq u32 -> u32\n1 a mul p0 3\nret a\nend\n2 y add x 1');
+  assert.equal(call(session, 'twice', 2), 7);
+});
