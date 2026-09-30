@@ -2211,6 +2211,103 @@ Findings:
 - Gate (this worktree): lint pass; typecheck pass; test 79/79; verify all paths pass (interpreter, optimizer, JS, C clang, C gcc, C++ clang, parallel C, Wasm via C, **webassembly_direct 5262/5262 at both optimization levels**, JVM 5262 each; arm64, x86_64, riscv64, avr, arm32 4297); app pass; equiv 48/48 proved; hw pass; dotnet pass; gpu pass. `results/{verification,app,equivalence,hardware,dotnet,gpu}.json` regenerated under a0c-0.1.24. src/arm64.ts and src/x86_64.ts untouched.
 - Not done: loop strength reduction and unrolling; scalar replacement of small arrays; dead zero-fill elimination before a covering fold; constant folding across an inlined call boundary; dropping inlined functions from the export list (the host-visible shape exports every function).
 
+## Session 2026-09-30 (x86-64 backend vs clang -O3, a0c-0.1.24)
+
+Method: the exec-bench kernels, A0's own `src/x86_64.ts` output (optimized) against
+`clang -O3 -target x86_64-apple-macos12` on the same C kernel, marked `noinline` so both are
+out-of-line functions with the same System V signature. Three measures. (1) Static instruction
+count per function, directives excluded. (2) llvm-mca (Homebrew LLVM, `-mcpu=skylake`, 100
+iterations) total uops per call, for the straight-line kernels only. The mca cycle figure
+carries registers from one iteration into the next, so it is not reported as latency. (3)
+Timing under Rosetta 2 (`arch -x86_64`) on Apple silicon. There is no x86 hardware here, so
+this measures Rosetta's translation of each binary, not an x86 core. Each run: a C driver
+calls the function 2e7 times (arrfill4k 1.6e5), A0 and clang binaries interleaved over 9
+samples, median ns/call, checksums equal. The host was shared with other agents. Repeat runs
+of the same binaries moved by up to about 10-25%, and the tiny kernels are dominated by the
+call and the driver's rng. Treat the timing column as "no visible difference" unless the gap
+is large. The scratch harness stayed outside the repo.
+
+| kernel | insns before | insns after | clang | uops after / clang | Rosetta ns A0 / clang (ratio) |
+|---|---|---|---|---|---|
+| affine | 9 | 6 | 6 | 8 / 8 | 15.6 / 16.0 (0.97) |
+| rotl | 16 | 7 | 7 | 11 / 11 | 12.3 / 12.0 (1.02) |
+| clamp | 17 | 9 | 9 | 11 / 12 | 17.2 / 15.9 (1.08) |
+| mix | 16 | 12 | 11 | 14 / 13 | 14.8 / 15.8 (0.94) |
+| ident | 6 | 5 | 5 | 7 / 7 | 8.9 / 8.8 (1.02) |
+| noop | 6 | 5 | 5 | 7 / 7 | 7.9 / 7.7 (1.03) |
+| chain3 | 10 | 8 | 6 | 10 / 8 | 13.5 / 16.1 (0.84, noise) |
+| branchy | 30 | 17 | 13 | 19 / 15 | 11.5 / 11.5 (1.00) |
+| arrfill | 33 | 20 | 29 | loop | 23.7 / 17.6 (1.35) |
+| arrfill4k | 4125 | 28 | 46 | loop | 3633 / 628 (5.79) |
+| loop64 | 22 | 16 | 38 | loop | 400 / 382 (1.05) |
+
+Before (a0c-0.1.23) on the same harness: branchy 1.09, arrfill 1.97, arrfill4k 9.70, loop64
+1.08. The straight-line kernels were within noise even then, because Rosetta and the call
+hide a few extra moves.
+
+Dynamic instructions for the loop kernels (counted from the listings). loop64: A0 12 per trip
+before, 10 now; clang about 7.25 (unrolled 4x). arrfill4k: A0 about 41k before (4096 single
+zero stores, then 9 per trip), about 28.7k now (1024 16-byte zero stores, then 6 per trip);
+clang about 4.1k (SSE, 16 elements per trip, and the zero fill removed as dead).
+
+Changes in `src/x86_64.ts`. All are general rules, none keyed to a kernel:
+- Register allocation: a leaf also uses edx (unless it divides) and ecx (unless it shifts or
+  rotates by a variable) as homes. The returned scalar, when the last node defines it, is
+  computed straight into eax. An inlined loop body's scalar result takes the loop state's
+  register when nothing reads the state after the result is defined, so no `mov` ends the
+  trip. loop64 no longer saves rbx.
+- lea: three-operand add (`leal (a,b)`, `leal k(a)`), sub of a literal, multipliers 2, 3, 5,
+  and 9. Other powers of two are `shl`. `sub lit x` into x's register is `neg; add`.
+- Rotates: `or (shl x n) (shr x (32 - n))` is `rol %cl`, the mirrored form is `ror %cl`, and
+  literal distances summing to 32 are `rol $k` for or/xor/add. The absorbed single-use shift
+  nodes are not emitted.
+- cmov: a comparison whose only uses are scalar selects is never materialized. Each select
+  emits `cmp` and then `cmov` with the comparison's own condition, taking a register or memory
+  source. A single-bit `and` compared with 0 or the bit is `test $bit`. A bool that is
+  materialized is `xor d,d; cmp; setcc d8`.
+- Addressing: a variable index uses SIB scaling (`(%rsp,%r10,4)`). A range fact (a fold counter
+  below a literal count; `and`, `rem`, `shr` by a literal) drops the mask when the index is
+  provably in range. A counter in a register the backend wrote itself is used as the index
+  directly (incoming parameters are excluded, since their upper halves are undefined).
+- Memory: copies and literal fills move 16 bytes at a time through xmm0, as a loop above 32
+  words. The copy no longer uses ecx, so the "parked rcx parameter" slot is gone.
+- Loop shape: rotated (test at the bottom). A positive literal count has no entry branch. A
+  variable count has one zero guard.
+- Epilogue: an empty frame skips `movq %rbp, %rsp`. The frame pointer is kept, as clang keeps
+  it on Darwin.
+
+Losses and remaining gaps:
+- **arrfill4k: a 5.8x loss.** clang vectorizes the fold's store loop and deletes the zero
+  fill, since every element is overwritten. The backend has no vectorizer and no dead-store
+  analysis for aggregates. The fold inlines `put4k`. The standalone `a0_put4k` symbol, which
+  copies 16 KiB in and out, is emitted but is not on the hot path.
+- **arrfill: about 1.35x under Rosetta** (it was 1.97x). A0 has 20 instructions to clang's 29,
+  but clang computes the 8 stores as two vector stores with no loop. A0 runs an 8-trip scalar
+  loop plus the zero fill.
+- chain3: 8 vs 6 instructions. `((x+1)*2+1)+y` needs constant reassociation, which clang
+  folds to `lea (y,x,2); add $3`. That belongs in the shared optimizer (`src/optimize.ts`),
+  which was not changed here.
+- branchy: 17 vs 13. Two comparisons of the same operands each emit their own `cmp` (no
+  flags CSE), and a literal-zero select arm is materialized in r11d.
+- mix: one extra `mov` (the final xor is computed into eax from a copy).
+- loop64: 10 vs about 7.25 instructions per trip. clang unrolls 4x; A0 does not unroll.
+- Aggregate parameters that are only read are still copied into the frame on entry.
+
+Verification: `native_x86_64` 4297/4297 at both optimization levels under Rosetta. Every
+other verify path also passed (interpreter, optimizer, JS, C, C++, parallel C, wasm,
+wasm_direct, JVM 5262; arm64, riscv64, avr, arm32 4297). Unit tests: the shape test now
+asserts lea forms, the eax result, the empty-frame epilogue, variable and literal rotates,
+fused cmp+cmov, the bit test, xor/setcc, SIB scaling, the rotated loop with its zero guard,
+the fill and the unmasked counter index, and the 16-byte copy and copy loop. The executed x86
+test gained a function covering rotl/rotr by register, an add-written literal rotate, bit tests
+and fused compares with literal arms, lea/shift multipliers, `sub 100 x`, a fold with a
+possibly-zero variable count, a non-zero fill and an inlined bool. Both levels match the
+interpreter.
+
+- Gate (this worktree): lint pass; typecheck pass; test 79/79; verify all paths passed;
+  app exit 0; equiv 48/48 proved. results/*.json were not committed (only x86_64.ts, tests,
+  STATUS and COMPILER_VERSION were edited). src/arm64.ts was not touched.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
