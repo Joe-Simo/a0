@@ -1333,6 +1333,26 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - What blocks the full fixed point (stage 1 compiling emit_c.a0 itself), exact limits hit by the linked emitter (formatted, comments stripped: 93,053 bytes; files emit_c 30,049 + check 48,907 + parse 25,581 + lex 5,718 bytes): source 93,053 bytes against the lexer's 512 (u32x512 source array, and a u32x512 token array); nodes 2,378 = 14,268 words against the 4,096-word node table; operands 45,962 words against 8,192; distinct names 6,307 bytes against the 512-word pool, and 1,530 names = 3,060 sym words against 512; functions 119 = 833 of 1,024 fns words (fits). `emitcio` has no `use` resolution, so the input must be pre-linked. Beyond the front end, stage 1's own C would need `emitc` run in chunks (as tools/selfhost-c.ts does) and in-place array updates in the A0 C emitter (it copies the 8,192-word tables on every `set`). The other agent's raise of the front end limit is the next unblock; the script measures the limits from the linked program, so the numbers update with it.
 - Gate (this worktree): lint pass; typecheck pass; test 55/55; bootstrap 0 failures.
 
+## Session 2026-09-30 (4000-function programs)
+
+- **Function cap raised (a0c-0.1.14)**: `LIMITS.maxFunctions` 1024 -> 65536 in `src/core.ts`, enforced by the parser and by `validate` (so also for linked programs, `src/link.ts` validates the merged program). Every other bound is unchanged (1 MiB source, 4096 nodes and 64 params per function, 65536-element arrays, 2^21-bit aggregates, 1024-element vectors on hardware/GPU); the 1 MiB source bound is the binding one for tiny functions (about 45k one-line functions). Hardware and GPU needed no per-module function limit. COMPILER_VERSION a0c-0.1.13 -> a0c-0.1.14 (semantics-visible: programs of 1025..65536 functions were rejected before). DESIGN.md security bounds sentence updated. Test: a 4000-function call chain validates and emits JS; 65537 functions are rejected by `validate` with `too many functions`.
+- **Not updated: `compiler/check.a0` still enforces 1024 functions** (its `fns` table is u32x1024) until the self-hosted checker is updated; the TypeScript front end and the self-hosted checker therefore disagree for 1025..65536 functions. The site docs generator (site/) is not touched; the new cap for the docs is 65,536 functions per program.
+- Task set `c4000` (`A0_EXPERIMENT_TASKSET=c4000`, same `generateFiller`/`scaledOrder`, 3960 filler functions): 12 tasks, harness self-check ok (all originals fail, all references pass, tsc and rustc); `taskSetSha256` `fc835b07…`.
+- Context tokens per cell at 4000 functions (mean toolContext o200k, task text + view, scoped A0 handle): A0 conventional 126,113; A0 structured (scoped g0) 123-125; TS conventional 120,548; TS structured 143,666-143,671; Rust conventional 120,144; Rust structured 143,276-143,307 (ranges: the two scored runs differ only in reply-dependent repairs). TS structured / A0 structured context 1168x, Rust 1165x (290x at 1000 functions, 116x at 400).
+- Collected on c4000, structured cells only, fresh Haiku and Sonnet subagents, min primer, one shot, scoped A0 handle (scratchpad g4k). One group file per representation, 12 tasks each; the TS and Rust group files print the whole numbered file once as a shared view (identical for all 12 tasks, as in the c400 collection), and since that view is about 143k tokens (420 KB for TS) it is split across two files (`group-{ts,rust}-structured.txt` with the tasks and the first half of the view, `…-part2.txt` with the rest, no line omitted); subjects read both in chunks. Results `results/ai-edit-experiment.c4000.{haiku,sonnet}-min.json`. Cost per task cache-adjusted as before (primer once at 1.25x over the 12 tasks, context and output 1x):
+
+| subject | cell | accepted | cost/task |
+|---|---|---|---|
+| Sonnet | A0 structured, scoped g0 | 12/12 | 202 |
+| Sonnet | TS structured | 12/12 | 143708 |
+| Sonnet | Rust structured | 12/12 | 143317 |
+| Haiku | A0 structured, scoped g0 | 11/12 (1 protocol: select with 5 operands) | 205 |
+| Haiku | TS structured | 11/12 (1 wrong output, avgfloor signed) | 143715 |
+| Haiku | Rust structured | 10/12 (2 compile) | 143348 |
+
+  Cost ratio TS / A0: 711x (Sonnet), 701x (Haiku); Rust / A0: 709x (Sonnet), 699x (Haiku). A0 cost per task is flat from 400 to 4000 functions (Sonnet 202 both) while TS/Rust grow linearly with the file. Caveat as at c400: the scoped A0 view is protocol-supplied; TS/Rust get the whole numbered file.
+- Gate (this worktree, all exit 0): lint, typecheck, test 56/56, verify, app (JVM emitter row still blocked as before), equiv 48/48 proved, hw, dotnet, gpu.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
