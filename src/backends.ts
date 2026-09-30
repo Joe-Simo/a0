@@ -38,6 +38,7 @@ import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
 export const COMPILER_VERSION = 'a0c-0.1.12';
+export const COMPILER_VERSION = 'a0c-0.1.10';
 
 export type Target =
   | 'js'
@@ -394,10 +395,13 @@ const emitJsFunction: Emitter = (fn) => {
     // Iteration-body shape (state, index, ...): owned-state variant for fold/loop.
     lines.push(`function a0o_${fn.name}(${params}) {`, ...jsBody(fn, true), '}');
   }
+  // Scalar-signature entries carry the body after the guards instead of calling a0i_: one frame
+  // fewer at the boundary (aggregate entries keep the call, their guards rebind the parameters).
+  const scalar = fn.params.every(isPrimitive);
   lines.push(
     `export function ${fn.name}(${params}) {`,
     ...guards,
-    `  return a0i_${fn.name}(${params});`,
+    ...(scalar ? jsBody(fn, false) : [`  return a0i_${fn.name}(${params});`]),
     '}',
   );
   return lines.join('\n');
