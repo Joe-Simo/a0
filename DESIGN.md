@@ -1,6 +1,6 @@
 # A0 — AI-native universal language research
 
-Version 0.8.0 · September 29, 2026 · Working codename, not a cleared brand
+Version 0.8.0 · September 29, 2026
 
 ## 1. Product definition
 

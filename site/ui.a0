@@ -85,6 +85,43 @@ g write f pct
 h call close g
 ret h
 end
+# ratio in hundredths, printed with the precision that reads well: 408x, 16.7x, 1.06x
+fn r_int io u32 u32 -> io
+q div p2 100
+r call putnum p0 q
+ret r
+end
+fn r_one io u32 u32 -> io
+q div p2 100
+a call putnum p0 q
+b write a 2
+dot text "."
+c puts b dot
+tn div p2 10
+td rem tn 10
+ch add td 48
+d write c 2
+e write d 1
+f write e ch
+ret f
+end
+fn r_two io u32 u32 -> io
+r call putfix p0 p2
+ret r
+end
+fn putratio io u32 -> io
+big ge p1 10000
+mid ge p1 1000
+nb select big 1 0
+nm0 select mid 1 0
+nm select big 0 nm0
+rest add nb nm
+ns sub 1 rest
+a fold r_int nb p0 p1
+b fold r_one nm a p1
+c fold r_two ns b p1
+ret c
+end
 fn max3 u32 u32 u32 -> u32
 ab lt p0 p1
 m1 select ab p1 p0

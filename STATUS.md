@@ -610,11 +610,13 @@ Wins, ties, losses, stated separately:
 
 ## Session 2026-09-29 (site redesign, docs page, Geist)
 
-- a0lang.com rebuilt as two A0 programs sharing `site/ui.a0` (protocol helpers): `site/page.a0` (home) and `site/docs.a0` (served at /docs/). One generic runtime `site/app.ts` reads the program URL from `data-program` on `#app`. `tools/site-build.ts` builds both wasm files and copies the Geist Sans, Geist Mono, and Geist Pixel variable fonts from the `geist` npm package into `site/dist/fonts/` (self-hosted, no font CDN).
-- Design follows the reference the user chose: full-height hero (Geist Pixel wordmark, orb, drifting glow), centered thesis, three summary cards (native, edits, hardware), sticky contents rail, one chart card per measurement with an italic caption, cost-versus-acceptance scatter with gridlines, target and FAQ grids. Light or dark follows the system (`prefers-color-scheme`, tokens on `:root`). All CSS, numbers, and bar sizes are still computed by the A0 programs from results/*.json at generation time.
-- Losses stay visible: whole-task tokens vs TypeScript (set A 1.46x, set B), emitted JS vs hand-written JS, direct AArch64 loop64 8.4x and arrfill 30x.
-- Tests: page test now asserts an empty state (the demo and its Life grid are gone from the page); new docs program test. Gate: lint, typecheck, test 35/35, verify (all paths incl. arm64 4297), app, equiv 48/48, hw pass.
-- Not done: X handle in the footer (not provided); playground page; arm64 register allocation.
+- a0lang.com rebuilt as two A0 programs sharing `site/ui.a0` (protocol helpers): `site/page.a0` (home) and `site/docs.a0` (served at /docs/). One generic runtime `site/app.ts` reads the program URL from `data-program` on `#app`. `tools/site-build.ts` builds both wasm files and copies the Geist Sans, Geist Mono, and Geist Pixel variable fonts from the `geist` npm package into `site/dist/fonts/` (self-hosted).
+- Hero: protocol command 13 SHADER (GLSL ES 3.0 fragment shader emitted by the program, in chunks like the stylesheet); the runtime supplies only a fullscreen triangle, clock, resolution, pointer, and color scheme, pauses off-screen, and honors reduced motion. The scene is a rotating neural constellation (72 nodes, three edges each, traveling pulses) computed per pixel.
+- Design: full-height hero (Geist Pixel wordmark), centered thesis, three summary cards, sticky contents rail, one chart card per measurement with a caption, cost-versus-acceptance scatter (50–100 % range, nice ticks), target and FAQ grids. Light or dark follows the system. Ratios print with `putratio` (408x, 16.7x, 1.06x). Favicon added. Footer: @joesimo on X, GitHub, MIT.
+- Losses stay visible: whole-task tokens vs TypeScript (set A 1.46x, set B 1.41x), emitted JS vs hand-written JS, direct AArch64 loop64 8.4x and arrfill 30x.
+- README rewritten for the public repo (measured numbers, loss included); "provisional codename" wording removed everywhere; `.gitattributes` marks `.a0` sources for GitHub's language bar (the compiler is TypeScript, so the bar still says TypeScript until A0 is self-hosted).
+- Tests: page test asserts an empty state and a shader; new docs program test. Gate: lint, typecheck, test 35/35, verify (all paths incl. arm64 4297), app, equiv 48/48, hw pass.
+- Not done: playground page; arm64 register allocation; self-hosted compiler (needs byte strings and larger memory first).
 
 ## Session 2026-09-29 (short primer, edit checks)
 

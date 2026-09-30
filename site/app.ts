@@ -11,6 +11,7 @@
  * Output words: 1 OPEN tag | 2 TEXT n bytes | 3 CLOSE | 4 ATTR key n bytes | 5 ONCLICK event
  *               6 STATE n words | 8 ONSUBMIT event | 9 STYLE n bytes | 10 GRID event rows row...
  *               11 TIMER ms event | 12 SIZE prop percent (1 width, 2 height, 3 left, 4 bottom)
+ *               13 SHADER n bytes (a GLSL fragment shader drawn on a canvas in the open element)
  * Tags and attribute keys are small integer tables shared with the program (see page.a0).
  */
 
@@ -114,6 +115,102 @@ function drawGrid(canvas: HTMLCanvasElement, rows: readonly number[]): void {
   }
 }
 
+/** Running shader scenes; each is stopped before the page re-renders. */
+const scenes: (() => void)[] = [];
+
+const QUAD_VS = `#version 300 es
+in vec2 a;
+void main(){gl_Position=vec4(a,0.,1.);}`;
+
+function mountShader(el: HTMLElement, fragment: string): void {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'scene';
+  el.appendChild(canvas);
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: true });
+  if (gl === null) return;
+  const shader = (type: number, src: string): WebGLShader | null => {
+    const sh = gl.createShader(type);
+    if (sh === null) return null;
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(sh));
+      return null;
+    }
+    return sh;
+  };
+  const vs = shader(gl.VERTEX_SHADER, QUAD_VS);
+  const fs = shader(gl.FRAGMENT_SHADER, fragment);
+  const prog = gl.createProgram();
+  if (vs === null || fs === null || prog === null) return;
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(prog));
+    return;
+  }
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'a');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uRes = gl.getUniformLocation(prog, 'u_res');
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+  const uDark = gl.getUniformLocation(prog, 'u_dark');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dark = matchMedia('(prefers-color-scheme: dark)');
+  let mouse: [number, number] = [0.5, 0.5];
+  let visible = true;
+  let frame = 0;
+  const onMove = (ev: PointerEvent): void => {
+    mouse = [ev.clientX / innerWidth, 1 - ev.clientY / innerHeight];
+  };
+  const size = (): void => {
+    const dpr = Math.min(devicePixelRatio, 2);
+    const w = Math.floor(el.clientWidth * dpr);
+    const h = Math.floor(el.clientHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  };
+  const t0 = performance.now();
+  const draw = (): void => {
+    size();
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform1f(uTime, still ? 0 : (performance.now() - t0) / 1000);
+    gl.uniform2f(uMouse, mouse[0], mouse[1]);
+    gl.uniform1f(uDark, dark.matches ? 1 : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  const loop = (): void => {
+    if (visible) draw();
+    frame = still ? 0 : requestAnimationFrame(loop);
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) visible = e.isIntersecting;
+  });
+  io.observe(el);
+  const ro = new ResizeObserver(() => draw());
+  ro.observe(el);
+  addEventListener('pointermove', onMove, { passive: true });
+  dark.addEventListener('change', draw);
+  loop();
+  scenes.push(() => {
+    cancelAnimationFrame(frame);
+    io.disconnect();
+    ro.disconnect();
+    removeEventListener('pointermove', onMove);
+    dark.removeEventListener('change', draw);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  });
+}
+
 function render(
   root: HTMLElement,
   styleEl: HTMLStyleElement,
@@ -121,7 +218,9 @@ function render(
   onEvent: EventSink,
   inputText: string,
 ): Rendered {
+  for (const stop of scenes.splice(0)) stop();
   root.replaceChildren();
+  const shaders = new Map<HTMLElement, string>();
   const stack: HTMLElement[] = [root];
   let state: number[] = [];
   let timer: Rendered['timer'];
@@ -216,11 +315,18 @@ function render(
         top.style.setProperty(name, `${pct}%`);
         break;
       }
+      case 13:
+        // SHADER: the program's fragment shader (GLSL ES 3.0), possibly in several chunks,
+        // becomes a canvas filling the open element. The runtime only supplies the quad,
+        // the clock, the resolution, the pointer, and the color scheme.
+        shaders.set(top, (shaders.get(top) ?? '') + decoder.decode(bytes()));
+        break;
       default:
         i = words.length;
     }
   }
   if (styleEl.textContent !== css) styleEl.textContent = css;
+  for (const [el, src] of shaders) mountShader(el, src);
   return { state, timer };
 }
 

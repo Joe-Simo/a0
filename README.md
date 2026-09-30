@@ -1,7 +1,23 @@
-# A0 (provisional codename)
+# A0
 
-Research prototype of an AI-native universal programming representation with a
-deterministic, model-free compiler. See [DESIGN.md](DESIGN.md) for intent and
+**The programming language built for AI, not for people.** [a0lang.com](https://a0lang.com) · [Docs](https://a0lang.com/docs/)
+
+A0 is a compact, exactly specified language that models write and edit through revision-checked structured edits. A model reads only what an edit touches, writes only the changed lines, and nothing invalid lands. One program compiles to native machine code (A0's own AArch64 code generator, or C), the browser (wasm32), JavaScript, the JVM, .NET, Metal GPU kernels, and clocked SystemVerilog, and every target is verified against one oracle.
+
+Measured on the repository's benchmarks (Apple M3, quiet machine, `results/*.json`):
+
+| | |
+|---|---|
+| Native A0 vs hand-written C | 1.00x time per call (parity) |
+| Native A0 vs Python / JavaScript | 289x / 10x faster (geometric mean, 10 kernels) |
+| Tokens a model reads per edit | 7.3x fewer than reading the whole file |
+| Oracle cases passing on every target | 5262 / 5262 |
+| Optimizer proved equivalent (Z3) | 48 / 48 corpus functions |
+| Whole-task tokens vs TypeScript | 1.46x (a loss, published) |
+
+The site a0lang.com is itself two A0 programs (`site/page.a0`, `site/docs.a0`).
+
+See [DESIGN.md](DESIGN.md) for intent and
 semantics, [MODEL_GUIDE.txt](MODEL_GUIDE.txt) for the AI-facing language
 instructions, [STATUS.md](STATUS.md) for the current implemented scope, evidence
 ledger, blockers, and next action, and `results/` for machine-readable evidence.

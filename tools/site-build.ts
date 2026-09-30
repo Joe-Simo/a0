@@ -60,6 +60,7 @@ async function main(): Promise<void> {
   ]);
   if (!r.ok) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
   await copyFile(join('site', 'index.html'), join(out, 'index.html'));
+  await copyFile(join('site', 'favicon.svg'), join(out, 'favicon.svg'));
   await copyFile(join('site', 'docs.html'), join(out, 'docs', 'index.html'));
   await copyFonts();
   process.stdout.write(

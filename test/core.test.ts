@@ -750,10 +750,18 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
   const session = p.byName.get('session') as TypedFunc;
   const decode = (
     words: readonly number[],
-  ): { texts: string[]; css: string; state: number[]; sized: number; events: number[] } => {
+  ): {
+    texts: string[];
+    css: string;
+    shader: string;
+    state: number[];
+    sized: number;
+    events: number[];
+  } => {
     const d = {
       texts: [] as string[],
       css: '',
+      shader: '',
       state: [] as number[],
       sized: 0,
       events: [] as number[],
@@ -764,10 +772,11 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
       const c = words[i++];
       if (c === 1) i += 1;
       else if (c === 5 || c === 8) d.events.push(words[i++] as number);
-      else if (c === 2 || c === 4 || c === 9) {
+      else if (c === 2 || c === 4 || c === 9 || c === 13) {
         if (c === 4) i += 1;
         const n = words[i++] as number;
         if (c === 9) d.css += str(i, n);
+        else if (c === 13) d.shader += str(i, n);
         else d.texts.push(str(i, n));
         i += n;
       } else if (c === 6) {
@@ -789,6 +798,7 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
   assert.equal(d0.state.length, 0); // the home page keeps no state
   assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
   assert.ok(d0.sized > 50); // chart bars and scatter points are sized by the program
+  assert.ok(d0.shader.includes('#version 300 es') && d0.shader.includes('gl_FragCoord'));
   const all = d0.texts.join(' ');
   for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'faster than Python'])
     assert.ok(all.includes(needle), `missing ${needle}`);
@@ -818,10 +828,10 @@ test('site docs program: A0 UI protocol, stylesheet, and reference sections', as
     const c = words[i++];
     if (c === 1) i += 1;
     else if (c === 5 || c === 8 || c === 11) i += c === 11 ? 2 : 1;
-    else if (c === 2 || c === 4 || c === 9) {
+    else if (c === 2 || c === 4 || c === 9 || c === 13) {
       if (c === 4) i += 1;
       const n = words[i++] as number;
-      if (c === 9) css += str(i, n);
+      if (c === 9 || c === 13) css += str(i, n);
       else texts.push(str(i, n));
       i += n;
     } else if (c === 6) i += 1 + (words[i] as number);
