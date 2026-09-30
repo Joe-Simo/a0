@@ -5,7 +5,7 @@ Operands: earlier ID in this function, pN, decimal u32, true, false. IDs [a-z][a
 OPS
  mov x | add sub mul (mod 2^32) | and or xor (u32 bitwise; on two bools: logical) | shl a n = a<<(n&31) | shr a n = a>>>(n&31) logical
  div a b (b=0 -> 4294967295) | rem a b (b=0 -> a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y (both computed)
- call F a...   F defined EARLIER; args match F's params; result = F's result type
+ call F a...   F defined EARLIER; args match F's params; result = F's result type (`ID F a...` is the same)
  fold F n s a...   state=s; for i in 0..n-1: state=F(state,i,a...); F: (state,u32,a...) -> state
  loop P F n s a... fold that stops before iteration i when P(state,i,a...) is false; P: F's params -> bool
  arr e... | rec e... | text "utf8" (=arr of bytes; escapes \n \t \" \\) | get a i (i mod N) | set a i v (copy)
