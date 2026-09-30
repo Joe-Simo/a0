@@ -10,7 +10,14 @@
  */
 
 import { compile } from './backends.js';
-import { A0Error, containsIo, isScalar, type TypedFunc, type TypedProgram } from './core.js';
+import {
+  A0Error,
+  assertVectorSized,
+  containsIo,
+  isScalar,
+  type TypedFunc,
+  type TypedProgram,
+} from './core.js';
 
 const MSL_PRELUDE = `#include <metal_stdlib>
 using namespace metal;
@@ -30,6 +37,7 @@ export function emitMetal(program: TypedProgram): string {
     if (fn.params.some(containsIo) || containsIo(fn.result)) {
       throw new A0Error(`${fn.name}: io functions have no GPU form; use ioFreeSubset first`);
     }
+    assertVectorSized(fn, 'Metal');
   }
   const c = compile(program, 'c').text;
   const body = c
@@ -37,7 +45,10 @@ export function emitMetal(program: TypedProgram): string {
     .replace('#include <stdint.h>\n#include <stdbool.h>\ntypedef struct a0_io a0_io;\n', '')
     .replace(/\buint32_t\b/g, 'uint')
     .replace(/\buint64_t\b/g, 'ulong')
-    .replace(/\bstatic inline\b/g, 'inline');
+    .replace(/\bstatic inline\b/g, 'inline')
+    // MSL pointers need an address space: the C backend's aggregate pointers (owned loop state,
+    // const predicate state, in-place update aliases) all point at thread-local storage.
+    .replace(/\b(a0t_\w+) \*/g, 'thread $1 *');
   const kernels = program.functions.filter(isKernelCallable).map((fn) => {
     const k = fn.params.length;
     const args = fn.params
