@@ -56,6 +56,7 @@ async function main(): Promise<void> {
       t !== 'avr' &&
       t !== 'wasm' &&
       t !== 'arm32',
+      t !== 'arm64' && t !== 'x86_64' && t !== 'riscv64' && t !== 'avr' && t !== 'wasm',
   )) {
     const input = corpus;
     const cold = measure(runs, () => compile(input, target));

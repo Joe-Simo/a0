@@ -1137,6 +1137,29 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   performance numbers (emulated time says nothing; `tools/exec-bench` has no arm32 row); the
   same leaves as arm64 (loop-invariant literals rematerialized, aggregates never in
   registers); with seven homes, register pressure spills sooner than on arm64/x86_64.
+## Session 2026-09-30 (edit-loop validation latency)
+
+`bun run edit-loop-bench` (tools/edit-loop-bench.ts, results/edit-loop.json): wall-clock time from "model reply received" to "edit applied and the whole 40-function program known to type-check", per accepted set-C edit, using the actual accepted replies of the set-C collections (reply texts committed as results/ai-edit-experiment.c.{sonnet,haiku}-min.replies.json; every accepted trial was one-shot, so the timed reply is the first one). TS/Rust samples use the structured line-edit replies applied to the 40-function file. Go has no collected replies: hand translations of the reference edits (tools/edit-loop-go.ts), checked against the same acceptance tests before timing. Python/mypy not measured: mypy is not installed on this machine. 7 reps after one discarded warm-up round, path order rotated per (rep, task); per-task median of the reps, then median / p90 / sum over the tasks. Warm paths are reset to the original program (untimed) before every sample. TASKS_A moved to tools/ai-edit-tasks-a.ts and the TS/Rust line-edit applier to tools/ai-edit-apply.ts so the benchmark can import them.
+
+Load: this 8-core machine was shared with other sessions; 1-minute load average 127.28 at the start, falling to 13.66 at the end (per-rep `uptime` in the JSON). Absolute numbers are inflated by that load; ratios come from interleaved runs and are less affected.
+
+Sonnet replies (12 edits per path; Haiku: 9 to 11 accepted edits per path, full rows in the JSON):
+
+| path | median ms | p90 ms | total ms | median vs A0 structured | Haiku median ms | derived end-to-end median ms (reply tokens) |
+|---|---:|---:|---:|---:|---:|---:|
+| a0.structured | 0.51 | 0.725 | 6.643 | x1 | 0.443 | 369.4 (29.5) |
+| a0.conventional | 0.533 | 0.603 | 6.4 | x1 | 0.475 | 17169.4 (1373.5) |
+| ts.cold | 637.454 | 719.447 | 7784.674 | x1249.9 | 594.71 | 1003 (25.5) |
+| ts.warm | 15.142 | 15.877 | 183.206 | x29.7 | 13.64 | 335 (25.5) |
+| rust.cold | 116.404 | 127.172 | 1401.5 | x228.2 | 106.285 | 396.7 (22.5) |
+| rust.warm | 163.567 | 172.745 | 1934.77 | x320.7 | 151.874 | 451.2 (22.5) |
+| go.build.cold | 161.728 | 164.851 | 1916.245 | x317.1 | n/a | n/a |
+| go.build.warm | 97.416 | 104.421 | 1155.1 | x191 | n/a | n/a |
+| go.vet.warm | 162.817 | 171.841 | 1955.912 | x319.2 | n/a | n/a |
+
+Paths: a0.structured = EditSession.apply in-process (parse edit, type-check, commit); a0.conventional = parseAndValidate of the whole replied file; ts.cold = `tsc --noEmit -p` in a new process; ts.warm = a TypeScript LanguageService kept alive in-process (new file version, syntactic + semantic diagnostics), the fair best case for TS; rust.cold = `rustc --emit=metadata --crate-type lib`; rust.warm = `cargo check` in a crate already checked once; go.build.cold = `go build` with an empty GOCACHE; go.build.warm / go.vet.warm = warm GOCACHE with a unique trailing comment per sample so the content cache never replays. No gopls or rust-analyzer daemon was measured.
+
+Findings: validating an A0 edit costs about half a millisecond, about 30x under the warm TypeScript language service and roughly 190x to 1250x under the process-based checkers. The end-to-end column is DERIVED, not measured: local o200k output tokens of the reply at an assumed 80 tokens/s plus the measured validation median. On that basis validation is small next to generation for every in-process or warm checker: warm TS (335 ms) is slightly ahead of A0 structured (369 ms) because the TS line-edit replies were shorter (25.5 vs 29.5 tokens median), and a whole-file conventional A0 reply costs about 17 s of generation. A0's validation advantage decides the inner loop only against cold, process-per-edit checking (tsc: about 1.0 s per edit end-to-end).
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
