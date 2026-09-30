@@ -62,6 +62,9 @@ async function confine(root: string, path: string, mustExist: boolean): Promise<
   try {
     const real = await realpath(abs);
     if (!within(root, real)) throw denied(path);
+    // The name alone is not enough: `x.a0 -> .env` would expose (and a save overwrite) it.
+    if (!real.endsWith('.a0'))
+      throw new A0Error(`'${path}' is not an .a0 file`, undefined, { code: 'limit' });
     return real;
   } catch (e) {
     if (e instanceof A0Error) throw e;
@@ -82,31 +85,33 @@ async function confine(root: string, path: string, mustExist: boolean): Promise<
   }
 }
 
-const text = (body: string): CallToolResult => {
+/**
+ * A tool result as a JSON diagnostic. Host paths never reach the client: the root prefix is
+ * removed (diagnostics name files relative to it), and a non-A0 error (file system, runtime)
+ * is reported by its code only, since its message may carry absolute paths.
+ */
+const failure = (root: string, e: unknown): CallToolResult => {
+  const code = (e as { code?: unknown } | undefined)?.code;
+  const err =
+    e instanceof A0Error
+      ? e
+      : new A0Error(
+          typeof code === 'string' ? `file system error ${code}` : 'internal error',
+          undefined,
+          { code: 'structure' },
+        );
+  const body = JSON.stringify(err.toJSON()).split(JSON.stringify(`${root}${sep}`).slice(1, -1));
+  return { isError: true, content: [{ type: 'text', text: body.join('') }] };
+};
+
+const text = (root: string, body: string): CallToolResult => {
   if (body.length > MAX_OUTPUT)
     return failure(
+      root,
       new A0Error(`output exceeds ${MAX_OUTPUT} characters`, undefined, { code: 'limit' }),
     );
   return { content: [{ type: 'text', text: body }] };
 };
-
-const failure = (e: unknown): CallToolResult => {
-  const err =
-    e instanceof A0Error
-      ? e
-      : new A0Error(e instanceof Error ? e.message : String(e), undefined, { code: 'structure' });
-  return { isError: true, content: [{ type: 'text', text: JSON.stringify(err.toJSON()) }] };
-};
-
-const tool =
-  <A>(fn: (args: A) => Promise<string>) =>
-  async (args: A): Promise<CallToolResult> => {
-    try {
-      return text(await fn(args));
-    } catch (e) {
-      return failure(e);
-    }
-  };
 
 const jsonValue: z.ZodType<Value> = z.lazy(() =>
   z.union([z.number().int().nonnegative(), z.boolean(), z.array(jsonValue)]),
@@ -119,6 +124,15 @@ export async function createServer(launch: string): Promise<McpServer> {
   const root = isDir ? launched : dirname(launched);
   const defaultFile = isDir ? undefined : launched;
   const opened = new Map<string, Opened>();
+  const tool =
+    <A>(fn: (args: A) => Promise<string>) =>
+    async (args: A): Promise<CallToolResult> => {
+      try {
+        return text(root, await fn(args));
+      } catch (e) {
+        return failure(root, e);
+      }
+    };
 
   const fileOf = async (file: string | undefined): Promise<string> => {
     if (file !== undefined) return confine(root, file, true);

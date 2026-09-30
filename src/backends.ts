@@ -37,7 +37,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.23';
+export const COMPILER_VERSION = 'a0c-0.1.24';
 
 export type Target =
   | 'js'
@@ -451,8 +451,9 @@ export const cType = (t: Type): string =>
  *  - Bound: the call graph is acyclic, so the need is static: a function's large nodes plus the
  *    largest need of its callees (`cArenaBytes`). The arena is exactly the largest need of any
  *    function, so no run can overflow it; a need over `C_ARENA_LIMIT` is an A0 `limit` error at
- *    compile time. The arena is single-threaded: automatic parallel folds keep the sequential
- *    loop when the body touches a large value.
+ *    compile time. The arena is thread-local (`_Thread_local`, C++ `thread_local`), so host
+ *    threads may call exported functions concurrently; automatic parallel folds keep the
+ *    sequential loop when the body touches a large value.
  *  - Values: a borrowed parameter is not owned, so its first `set`/`put` copies (the copy the
  *    by-value ABI made at the call); fresh locals and the owned loop state update in place under
  *    the same `mutableHere` rule as small values.
@@ -534,8 +535,15 @@ function cArenaRuntime(program: TypedProgram): string | undefined {
   return [
     `/* Arena for aggregates over ${C_LARGE_BYTES} bytes: static, sized to the deepest call chain. */`,
     `#define A0_ARENA_BYTES ${bytes}u`,
-    'static uint64_t a0arena[A0_ARENA_BYTES / 8u];',
-    'static uint32_t a0arena_top;',
+    // One arena per thread: exported functions stay reentrant across host threads (a shared
+    // top would let concurrent calls overlap and push allocations past the static bound).
+    '#ifdef __cplusplus',
+    '#define A0_ARENA_LOCAL thread_local',
+    '#else',
+    '#define A0_ARENA_LOCAL _Thread_local',
+    '#endif',
+    'static A0_ARENA_LOCAL uint64_t a0arena[A0_ARENA_BYTES / 8u];',
+    'static A0_ARENA_LOCAL uint32_t a0arena_top;',
     'static inline void *a0arena_alloc(uint32_t n) { void *p = (unsigned char *)a0arena + a0arena_top; a0arena_top += (n + 7u) & ~7u; return p; }',
   ].join('\n');
 }

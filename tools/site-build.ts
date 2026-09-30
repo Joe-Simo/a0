@@ -11,7 +11,7 @@ import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
 import { runTool } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
-import { prerender } from './site-render.js';
+import { fillShell, prerender } from './site-render.js';
 
 const out = join('site', 'dist');
 
@@ -38,13 +38,6 @@ async function buildProgram(entry: string, outName: string): Promise<Built> {
   // agents and crawlers that do not run JavaScript. The browser re-renders the same tree.
   const pre = prerender(program);
   return { size: `${outName}.wasm ${wasm.length} bytes (A0 wasm32 backend)`, ...pre };
-}
-
-/** Put the prerendered tree and stylesheet into a page shell. */
-function fill(shell: string, built: Built): string {
-  return shell
-    .replace('</head>', `  <style>${built.css}</style>\n</head>`)
-    .replace(/(<main id="app"[^>]*>)<\/main>/, `$1${built.html}</main>`);
 }
 
 /** Files for agents: llms.txt (the convention), the primer, the docs as text, robots, sitemap. */
@@ -153,18 +146,18 @@ async function main(): Promise<void> {
   if (!r.ok) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
   await writeFile(
     join(out, 'index.html'),
-    fill(await readFile(join('site', 'index.html'), 'utf8'), page),
+    fillShell(await readFile(join('site', 'index.html'), 'utf8'), page),
     'utf8',
   );
   await copyFile(join('site', 'favicon.svg'), join(out, 'favicon.svg'));
   await writeFile(
     join(out, 'docs', 'index.html'),
-    fill(await readFile(join('site', 'docs.html'), 'utf8'), docs),
+    fillShell(await readFile(join('site', 'docs.html'), 'utf8'), docs),
     'utf8',
   );
   await writeFile(
     join(out, 'play', 'index.html'),
-    fill(await readFile(join('site', 'play.html'), 'utf8'), play),
+    fillShell(await readFile(join('site', 'play.html'), 'utf8'), play),
     'utf8',
   );
   await writeAgentFiles(page, docs);

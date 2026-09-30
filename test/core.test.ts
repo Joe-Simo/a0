@@ -1378,6 +1378,51 @@ test('C emission: aggregates over 4 KiB are borrowed by pointer, returned throug
   }
 });
 
+test('C emission: the large-aggregate arena is per thread, so concurrent host calls do not race', async (t) => {
+  const { mkdtempSync, rmSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
+  const c = compile(
+    parseAndValidate(
+      `fn main u32 -> u32\nz arr ${zeros}\na set z 1 p0\nb set a 2 p0\nx get b 1\ny get a 2\ns add x y\nret s\nend`,
+    ),
+    'c',
+  ).text;
+  assert.ok(c.includes('static A0_ARENA_LOCAL uint32_t a0arena_top;'));
+  const driver = `${c}
+#include <pthread.h>
+static void *worker(void *arg) { uint32_t s = 0; for (uint32_t i = 0; i < 2000u; i++) s += a0_main(i); *(uint32_t *)arg = s; return 0; }
+int main(void) { pthread_t t[4]; uint32_t r[4]; for (int k = 0; k < 4; k++) pthread_create(&t[k], 0, worker, &r[k]); for (int k = 0; k < 4; k++) pthread_join(t[k], 0); return r[0] == 1999000u && r[1] == r[0] && r[2] == r[0] && r[3] == r[0] ? 0 : 3; }
+`;
+  const dir = mkdtempSync(`${tmpdir()}/a0race-`);
+  try {
+    writeFileSync(`${dir}/race.c`, driver);
+    for (const lang of ['c', 'c++']) {
+      const std = lang === 'c' ? '-std=c11' : '-std=c++17';
+      const exe = `${dir}/race-${lang}`;
+      const b = spawnSync('clang', [
+        '-x',
+        lang,
+        std,
+        '-O1',
+        '-fsanitize=thread',
+        '-w',
+        '-o',
+        exe,
+        `${dir}/race.c`,
+      ]);
+      if (b.error !== undefined || b.status !== 0) {
+        t.skip('clang with ThreadSanitizer unavailable');
+        return;
+      }
+      const r = spawnSync(exe, { env: { ...process.env, TSAN_OPTIONS: 'halt_on_error=1' } });
+      assert.equal(r.status, 0, `${lang}: ${r.stderr.toString().slice(0, 400)}`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('edit tolerance: trailing end, whole-function block under its handle, echoed signatures, callee order', () => {
   const src =
     'fn sq u32 -> u32\na mul p0 p0\nret a\nend\nfn main u32 -> u32\nb call sq p0\nret b\nend';

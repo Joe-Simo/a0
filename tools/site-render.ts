@@ -8,6 +8,7 @@
  * This module interprets the A0 UI protocol word stream exactly as site/app.ts does, into text.
  */
 
+import { readBytes, safeHref } from '../site/wire.js';
 import { type IoState, makeIo, run, type TypedFunc, type TypedProgram } from '../src/core.js';
 
 const TAGS: Record<number, string> = {
@@ -83,11 +84,11 @@ export function renderWords(words: readonly number[]): Prerendered {
     );
   let css = '';
   let i = 0;
+  // Lengths are clamped to the stream, as in site/app.ts.
   const bytes = (): Uint8Array => {
-    const n = words[i++] as number;
-    const b = new Uint8Array(n);
-    for (let k = 0; k < n; k += 1) b[k] = (words[i++] as number) & 0xff;
-    return b;
+    const r = readBytes(words, i);
+    i = r.next;
+    return r.bytes;
   };
   // Attributes may follow OPEN before any child, so the start tag is written lazily.
   const flush = (): void => {
@@ -132,6 +133,9 @@ export function renderWords(words: readonly number[]): Prerendered {
         const key = ATTRS[words[i++] as number];
         const value = decoder.decode(bytes());
         const top = open[open.length - 1];
+        // The same href rule as the browser runtime: no script or data URLs, no other hosts
+        // through `//`.
+        if (key === 'href' && !safeHref(value)) break;
         if (key !== undefined && top !== undefined && !top.started) {
           // Motion classes are for the browser runtime; static HTML shows everything at once.
           const v =
@@ -197,4 +201,40 @@ export function renderWords(words: readonly number[]): Prerendered {
       .replace(/\n{3,}/g, '\n\n')
       .trim(),
   };
+}
+
+/**
+ * Content-Security-Policy of every page, as a `<meta>` (the static host sets no headers): scripts
+ * only from the site (the module runtime) plus WebAssembly compilation, styles from the site and
+ * the page's own inlined stylesheet, no plugins, no `<base>` rewriting, no form posts, and
+ * Trusted Types enforced (the runtime writes no HTML strings). `frame-ancestors` is honoured
+ * only as a header, so it is not listed here.
+ */
+export const SITE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "require-trusted-types-for 'script'",
+].join('; ');
+
+/**
+ * Put the CSP, the prerendered tree and its stylesheet into a page shell. The stylesheet is raw
+ * text inside `<style>`, so a `</style` in it would end the element and open live markup: it is
+ * refused.
+ */
+export function fillShell(shell: string, page: Prerendered): string {
+  if (/<\/style/i.test(page.css)) throw new Error('page stylesheet contains </style');
+  if (!shell.includes('</head>') || !/<main id="app"[^>]*><\/main>/.test(shell))
+    throw new Error('page shell lacks </head> or an empty <main id="app">');
+  const csp = `  <meta http-equiv="Content-Security-Policy" content="${escapeAttr(SITE_CSP)}" />\n`;
+  return shell
+    .replace(/(<meta charset="utf-8" \/>\n)/, `$1${csp}`)
+    .replace('</head>', () => `  <style>${page.css}</style>\n</head>`)
+    .replace(/(<main id="app"[^>]*>)<\/main>/, (_, open: string) => `${open}${page.html}</main>`);
 }
