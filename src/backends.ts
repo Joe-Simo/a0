@@ -35,7 +35,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.11';
+export const COMPILER_VERSION = 'a0c-0.1.12';
 
 export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64' | 'riscv64' | 'avr' | 'wasm';
 export const TARGETS: readonly Target[] = [
@@ -409,7 +409,7 @@ static inline a0t_r2_u_io a0_read(a0_io *t) { a0t_r2_u_io r; r.f0 = t->position 
 static inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < ${outCap}u) t->output[t->noutput++] = v; return t; }
 static inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }`;
 
-const cType = (t: Type): string =>
+export const cType = (t: Type): string =>
   t === 'u32'
     ? 'uint32_t'
     : t === 'bool'
@@ -417,6 +417,13 @@ const cType = (t: Type): string =>
       : t === 'io'
         ? 'a0_io *'
         : `a0t_${mangleType(t)}`;
+
+/**
+ * Longest array whose literal constructor takes one parameter per element; longer arrays (native
+ * C only: every vector target caps arrays far below this) take a pointer to a compound literal,
+ * since compilers limit the parameter count of one function.
+ */
+const C_MAX_CTOR_PARAMS = 4096;
 
 /** Typedefs plus constructor/update helpers for one aggregate type (C, also valid C++). */
 function cTypeDecl(t: Type): string {
@@ -434,7 +441,9 @@ function cTypeDecl(t: Type): string {
       ...(isPrimitive(t.elem)
         ? [`static inline ${name} a0zero_${m}(void) { ${name} r = {0}; return r; }`]
         : []),
-      `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
+      t.length > C_MAX_CTOR_PARAMS
+        ? `static inline ${name} a0mk_${m}(const ${e} *v) { ${name} r; for (uint32_t i = 0; i < ${t.length}u; i++) r.e[i] = v[i]; return r; }`
+        : `static inline ${name} a0mk_${m}(${params}) { ${name} r; ${inits} return r; }`,
       `static inline ${name} a0set_${m}(${name} a, uint32_t i, ${e} v) { a.e[i % ${t.length}u] = v; return a; }`,
     ].join('\n');
   }
@@ -461,8 +470,12 @@ function cTypeDecl(t: Type): string {
  * `set`/`put` whose old value is provably dead (`mutableHere`) writes in place; the node is then
  * an alias of the updated storage (no local of its own) instead of a copy. Value semantics are
  * unchanged: any value that is still observable is copied as before.
+ * Scalar-state bodies that read aggregate extras (`(u32, u32, T...) -> u32` with some T an
+ * array or record, e.g. a dot product over two arrays) get a `view` variant
+ * `a0v_f(p0, p1, const T *p2, ...)`: the extras are read through const pointers instead of being
+ * copied into every trip (no aliasing exists, so reading the caller's value is the same value).
  */
-type CVariant = 'value' | 'owned' | 'ref';
+type CVariant = 'value' | 'owned' | 'ref' | 'view';
 
 const isIterationShape = (fn: TypedFunc): boolean =>
   fn.params[0] !== undefined && !isPrimitive(fn.params[0]) && fn.params[1] === 'u32';
@@ -471,6 +484,18 @@ const hasOwnedVariant = (fn: TypedFunc): boolean =>
   isIterationShape(fn) && formatType(fn.result) === formatType(fn.params[0] as Type);
 
 const hasRefVariant = (fn: TypedFunc): boolean => isIterationShape(fn) && fn.result === 'bool';
+
+/** Scalar state and result, u32 index, and at least one aggregate extra (read by pointer). */
+export const hasViewVariant = (fn: TypedFunc): boolean =>
+  fn.params[0] !== undefined &&
+  isPrimitive(fn.params[0]) &&
+  fn.params[0] !== 'io' &&
+  fn.params[1] === 'u32' &&
+  isPrimitive(fn.result) &&
+  fn.params.slice(2).some((t) => !isPrimitive(t));
+
+const isViewParam = (fn: TypedFunc, variant: CVariant, i: number): boolean =>
+  variant === 'view' && i >= 2 && !isPrimitive(fn.params[i] as Type);
 
 interface CContext {
   readonly fn: TypedFunc;
@@ -500,22 +525,69 @@ function cRoot(ctx: CContext, o: Operand): Operand {
 /** Value (lvalue) expression of an operand; p0 is a pointer outside the value variant. */
 function cVal(ctx: CContext, o: Operand): string {
   const root = cRoot(ctx, o);
-  if (root.kind === 'param' && root.index === 0 && ctx.variant !== 'value') return '(*p0)';
+  if (
+    root.kind === 'param' &&
+    root.index === 0 &&
+    ctx.variant !== 'value' &&
+    ctx.variant !== 'view'
+  )
+    return '(*p0)';
+  if (root.kind === 'param' && isViewParam(ctx.fn, ctx.variant, root.index))
+    return `(*p${root.index})`;
   return cOperand(root);
 }
 
-/** In C every by-value aggregate parameter is the callee's own copy; a `ref` p0 is read-only. */
+/**
+ * In C every by-value aggregate parameter is the callee's own copy; a `ref` p0 and the `view`
+ * extras are read-only.
+ */
 const cOwned =
-  (variant: CVariant) =>
+  (variant: CVariant, fn?: TypedFunc) =>
   (i: number): boolean =>
-    !(variant === 'ref' && i === 0);
+    !(variant === 'ref' && i === 0) && !(fn !== undefined && isViewParam(fn, variant, i));
 
 /** Does the node at `index` update its first operand in place? Records the alias. */
 function cInPlace(ctx: CContext, node: Node, index: number): boolean {
   const target = node.args[0] as Operand;
-  if (!mutableHere(ctx.fn, target, index, cOwned(ctx.variant))) return false;
+  if (!mutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn))) return false;
   ctx.aliases.set(node.id, cRoot(ctx, target));
   return true;
+}
+
+/**
+ * Would the owned (`a0o_`) variant of `fn` update the `set`/`put` at `index` in place? The same
+ * rule the emitter applies (src/parallel.ts relies on it for element-wise map folds).
+ */
+export function ownedUpdateInPlace(fn: TypedFunc, index: number): boolean {
+  const node = fn.nodes[index];
+  return node !== undefined && mutableHere(fn, node.args[0] as Operand, index, cOwned('owned'));
+}
+
+/**
+ * Optional C fold hook (src/parallel.ts): given one `fold` statement's pieces, return a
+ * replacement statement plus helper definitions emitted before the function, or undefined to
+ * keep the sequential loop. `decl` declares the state (may be empty when the state aliases its
+ * initial value), `loop` is the sequential loop, `state` the state lvalue.
+ */
+export interface CFoldSite {
+  readonly fn: TypedFunc;
+  readonly node: Node;
+  readonly count: string;
+  readonly extra: readonly string[];
+  readonly state: string;
+  readonly decl: string;
+  readonly loop: string;
+}
+export interface CParallel {
+  /** Distinguishes cached emissions (mode and thresholds). */
+  readonly key: string;
+  /** Runtime appended after the C type declarations. */
+  readonly runtime: string;
+  readonly fold: (
+    site: CFoldSite,
+  ) =>
+    | { readonly helpers: readonly (readonly [string, string])[]; readonly text: string }
+    | undefined;
 }
 
 function cExpr(ctx: CContext, node: Node, index: number): string {
@@ -570,7 +642,10 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
         node.args.every(
           (o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value),
         );
-      return zeros ? `a0zero_${mangleType(t)}()` : `a0mk_${mangleType(t)}(${vals.join(', ')})`;
+      if (zeros) return `a0zero_${mangleType(t)}()`;
+      if (!isPrimitive(t) && t.kind === 'arr' && t.length > C_MAX_CTOR_PARAMS)
+        return `a0mk_${mangleType(t)}((const ${cType(t.elem)}[${t.length}]){ ${vals.join(', ')} })`;
+      return `a0mk_${mangleType(t)}(${vals.join(', ')})`;
     }
     case 'rec':
       return `a0mk_${mangleType(fn.types.get(node.id) ?? 'u32')}(${vals.join(', ')})`;
@@ -609,6 +684,12 @@ export function cSignature(fn: TypedFunc): string {
 
 function cVariantSignature(fn: TypedFunc, variant: CVariant): string {
   if (variant === 'value') return cSignature(fn);
+  if (variant === 'view') {
+    const ps = fn.params.map((t, i) =>
+      isViewParam(fn, variant, i) ? `const ${cType(t)} *p${i}` : `${cType(t)} p${i}`,
+    );
+    return `static inline ${cType(fn.result)} a0v_${fn.name}(${ps.join(', ')})`;
+  }
   const p0 = cType(fn.params[0] as Type);
   const rest = fn.params.slice(1).map((t, i) => `${cType(t)} p${i + 1}`);
   const params = [variant === 'owned' ? `${p0} *p0` : `const ${p0} *p0`, ...rest].join(', ');
@@ -617,8 +698,19 @@ function cVariantSignature(fn: TypedFunc, variant: CVariant): string {
     : `static inline ${cType(fn.result)} a0r_${fn.name}(${params})`;
 }
 
-function cBody(fn: TypedFunc, variant: CVariant): string {
+function cBody(
+  fn: TypedFunc,
+  variant: CVariant,
+  parallel?: CParallel,
+  helpers?: Map<string, string>,
+): string {
   const ctx: CContext = { fn, variant, aliases: new Map() };
+  const hooked = (site: CFoldSite): string => {
+    const out = parallel?.fold(site);
+    if (out === undefined) return `${site.decl.length > 0 ? `  ${site.decl}\n` : ''}  ${site.loop}`;
+    for (const [name, text] of out.helpers) helpers?.set(name, text);
+    return out.text;
+  };
   const lines = fn.nodes.map((n, index) => {
     const t = cType(fn.types.get(n.id) ?? 'u32');
     if (n.op === 'fold' || n.op === 'loop') {
@@ -626,19 +718,28 @@ function cBody(fn: TypedFunc, variant: CVariant): string {
       if (isPrimitive(fn.types.get(n.id) ?? 'u32')) {
         const call = [`n_${n.id}`, 'i', ...extra].join(', ');
         const guard = n.op === 'loop' ? ` if (!a0_${n.pred ?? ''}(${call})) break;` : '';
-        return `  ${t} n_${n.id} = ${init};\n  for (uint32_t i = 0; i < ${count}; i++) {${guard} n_${n.id} = a0_${n.callee ?? ''}(${call}); }`;
+        const decl = `${t} n_${n.id} = ${init};`;
+        const body = fn.calls.get(n.callee ?? '');
+        // A fold body reading aggregate extras takes them by const pointer (no per-trip copy).
+        const view = n.op === 'fold' && body !== undefined && hasViewVariant(body);
+        const step = view
+          ? `a0v_${n.callee ?? ''}(${[`n_${n.id}`, 'i', ...extra.map((e, k) => (isPrimitive(body.params[k + 2] as Type) ? e : `&${e}`))].join(', ')})`
+          : `a0_${n.callee ?? ''}(${call})`;
+        const loop = `for (uint32_t i = 0; i < ${count}; i++) {${guard} n_${n.id} = ${step}; }`;
+        return hooked({ fn, node: n, count: `${count}`, extra, state: `n_${n.id}`, decl, loop });
       }
       // Aggregate state: the body updates it through a pointer and the predicate reads it
       // through a const pointer, so no trip copies the state. The state is the initial value's
       // own storage when that value is provably unshared (as in JS); otherwise one copy.
       const initOperand = n.args[1] as Operand;
-      const owned = mutableHere(fn, initOperand, index, cOwned(variant));
+      const owned = mutableHere(fn, initOperand, index, cOwned(variant, fn));
       if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
-      const state = owned ? init : `n_${n.id}`;
+      const state = owned ? `${init}` : `n_${n.id}`;
       const call = [`&${state}`, 'i', ...extra].join(', ');
       const guard = n.op === 'loop' ? ` if (!a0r_${n.pred ?? ''}(${call})) break;` : '';
       const loop = `for (uint32_t i = 0; i < ${count}; i++) {${guard} a0o_${n.callee ?? ''}(${call}); }`;
-      return owned ? `  ${loop}` : `  ${t} n_${n.id} = ${init};\n  ${loop}`;
+      const decl = owned ? '' : `${t} n_${n.id} = ${init};`;
+      return hooked({ fn, node: n, count: `${count}`, extra, state, decl, loop });
     }
     const expr = cExpr(ctx, n, index);
     if (ctx.aliases.has(n.id)) return `  ${expr}`;
@@ -667,11 +768,14 @@ function cBody(fn: TypedFunc, variant: CVariant): string {
   );
 }
 
-const emitCFunction: Emitter = (fn) => {
+const emitCFunction = (fn: TypedFunc, parallel?: CParallel): string => {
   const variants: CVariant[] = ['value'];
   if (hasOwnedVariant(fn)) variants.push('owned');
   if (hasRefVariant(fn)) variants.push('ref');
-  return variants.map((v) => cBody(fn, v)).join('\n\n');
+  if (hasViewVariant(fn)) variants.push('view');
+  const helpers = new Map<string, string>();
+  const bodies = variants.map((v) => cBody(fn, v, parallel, helpers));
+  return [...helpers.values(), ...bodies].join('\n\n');
 };
 
 // ---------------------------------------------------------------------------
@@ -1105,6 +1209,7 @@ export function assemble(
             options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
           ),
         );
+      if (options.cParallel !== undefined) decls.push(options.cParallel.runtime);
       return `${C_PRELUDE}\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n`;
     }
     case 'java': {
@@ -1122,6 +1227,8 @@ export interface CompileOptions {
   /** C/wasm io struct capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
   readonly ioInputCapacity?: number;
   readonly ioOutputCapacity?: number;
+  /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
+  readonly cParallel?: CParallel;
 }
 
 export interface CompileResult {
@@ -1151,8 +1258,8 @@ export class FunctionCache {
   }
 
   /** Key: compiler version, target, optimization level, and semantic revision (own content + all transitive callees). */
-  static key(target: Target, optimized: boolean, fn: TypedFunc): string {
-    return `${COMPILER_VERSION}|${target}|${optimized ? 'O1' : 'O0'}|${semanticRevision(fn)}`;
+  static key(target: Target, optimized: boolean, fn: TypedFunc, variant = ''): string {
+    return `${COMPILER_VERSION}|${target}|${optimized ? 'O1' : 'O0'}${variant}|${semanticRevision(fn)}`;
   }
 
   get(key: string): string | undefined {
@@ -1182,6 +1289,8 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
     assertVectorSized(fn, 'SystemVerilog');
     return emitSequential(source);
   }
+  if (target === 'c' && options.cParallel !== undefined)
+    return emitCFunction(source, options.cParallel);
   return EMITTERS[target](source);
 }
 
@@ -1196,7 +1305,12 @@ export function compile(
   let cacheMisses = 0;
   const bodies = program.functions.map((fn) => {
     if (cache === undefined) return emitFunction(target, fn, options);
-    const key = FunctionCache.key(target, optimized, fn);
+    const key = FunctionCache.key(
+      target,
+      optimized,
+      fn,
+      target === 'c' && options.cParallel !== undefined ? `|${options.cParallel.key}` : '',
+    );
     const hit = cache.get(key);
     if (hit !== undefined) {
       cacheHits += 1;
