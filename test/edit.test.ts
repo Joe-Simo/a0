@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseAndValidate, run, type TypedFunc } from '../src/core.js';
+import { A0Error, parseAndValidate, run, type TypedFunc } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 
 const SRC = [
@@ -97,4 +97,36 @@ test('view numbers copied into a fn block are dropped; line edits follow the blo
   // A whole block with the view's numbers (some lines unnumbered), then a line edit of twice.
   session.apply('fn sq u32 -> u32\n1 a mul p0 3\nret a\nend\n2 y add x 1');
   assert.equal(call(session, 'twice', 2), 7);
+});
+
+test('edit lines after a closed block edit the handled function; a new callee lands before it', () => {
+  const base =
+    'fn shl1 u32 -> u32\na shl p0 1\nret a\nend\nfn calc u32 -> u32\nr call shl1 p0\nret r\nend';
+  for (const reply of [
+    'fn inc u32 -> u32\na add p0 1\nret a\nend\na inc p0\nr shl1 a',
+    'a call inc p0\nr call shl1 a\nfn inc u32 -> u32\na add p0 1\nret a\nend',
+  ]) {
+    const session = new EditSession(parseAndValidate(base));
+    session.open('calc');
+    session.openProgram();
+    session.apply(reply);
+    assert.deepEqual(
+      session.program.functions.map((f) => f.name),
+      ['shl1', 'inc', 'calc'],
+    );
+    assert.equal(call(session, 'calc', 4), 10);
+  }
+  // Lines of a block left open (no `end`) still belong to that block.
+  const open = new EditSession(parseAndValidate(base));
+  open.open('calc');
+  open.apply('fn inc u32 -> u32\na add p0 1\nb add a 1\nret b');
+  assert.equal(call(open, 'inc', 1), 3);
+  // Under a program handle alone, instruction lines outside a block are rejected with the fix.
+  const program = new EditSession(parseAndValidate(base));
+  program.openProgram();
+  assert.throws(
+    () => program.apply('a add p0 1'),
+    (e: unknown) =>
+      e instanceof A0Error && /expected 'fn'/.test(e.message) && /fn NAME/.test(e.fix ?? ''),
+  );
 });

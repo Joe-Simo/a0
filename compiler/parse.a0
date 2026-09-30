@@ -159,7 +159,12 @@ k30 eq p0 10396875
 r30 select k30 30 r29
 k31 eq p0 990580
 r31 select k31 31 r30
-ret r31
+# accepted spellings: udiv is div, urem is rem (every integer op is unsigned)
+k32 eq p0 1126856
+r32 select k32 10 r31
+k33 eq p0 666021
+r33 select k33 11 r32
+ret r33
 end
 # --- pass 1: tokens ------------------------------------------------------------------
 # one byte of a token: (key pow hash value digits wordlike esc decoded arrprefix); p1 byte
@@ -1774,6 +1779,15 @@ nd1 sub nd 1
 jall sub nd1 first
 ltc lt nd nnodes
 foundprev and foundall ltc
+# the function a name token names, when it is defined before the current one
+haspf gt nfn 0
+nprev0 sub nfn 1
+nprev select haspf nprev0 0
+fidx sub fpart 1
+fnz ne fpart 0
+fbefore lt fidx nprev
+ffound and fnz fbefore
+notff select ffound false true
 # mode 0: fn or use at the start of a line
 e0fn0 and m0 k1
 e0fn and e0fn0 isfn
@@ -1799,19 +1813,33 @@ e2ok0 or k5 e2ret
 e2ok or e2ok0 e2id1
 e2bad0 select e2ok false true
 e2bad and m2 e2bad0
-# mode 3: the operation
+# mode 3: the operation, or `id F ARGS` (F a function name, not an op): `id call F ARGS`
 e3op and m3 isop
 notop select isop false true
-e3bad and m3 notop
-# mode 5: `ret OP ARGS` (an op followed by more on the line) or `ret OPERAND`
+e3nop and m3 notop
+e3id and e3nop k1
+e3fn0 and e3id notres
+e3fn and e3fn0 ffound
+e3nf and e3fn0 notff
+note3fn select e3fn0 false true
+e3bad and e3nop note3fn
+# mode 5: `ret OP ARGS` or `ret F ARGS` (an op or a function name followed by more on the
+# line) or `ret OPERAND`
 e5op0 and m5 isop
 notnl select nextnl false true
 e5op and e5op0 notnl
+e5fa and m5 k1
+e5fb and e5fa notres
+e5fc and e5fb notop
+e5fn0 and e5fc notnl
+e5fn and e5fn0 ffound
+e5fnnf and e5fn0 notff
+e5opfn or e5op e5fn0
 e5num and m5 k2
 notdig select dig false true
 e5numbad and e5num notdig
 e5id0 and m5 k1
-e5id1 select e5op false e5id0
+e5id1 select e5opfn false e5id0
 e5tf and e5id1 istf
 e5par0 and e5id1 isparam
 e5par select istf false e5par0
@@ -1827,8 +1855,12 @@ e5set0 or e5num e5tf
 e5set1 or e5set0 e5par
 e5set or e5set1 e5nd
 # a new current node: (id op 0 firstarg 0 0)
-doemit or e3op e5op
-emitid select e3op pendid 0
+dfn or e3fn e5fn
+e3any or e3op e3fn
+doemit0 or e3any e5op
+doemit or doemit0 e5fn
+emitid select e3any pendid 0
+opx select dfn 19 op
 iscall eq op 19
 isfold eq op 20
 isloop eq op 21
@@ -1838,10 +1870,11 @@ me select isloop 42 me0
 nn1 add nnodes 1
 nnodes2 select doemit nn1 nnodes
 cid2 select doemit emitid cid
-cop2 select doemit op cop
+cop2 select doemit opx cop
 cna2 select doemit 0 cna
 cfa2 select doemit nargs cfa
-ccal2 select doemit 0 ccal
+cc0 select dfn fidx 0
+ccal2 select doemit cc0 ccal
 cprd2 select doemit 0 cprd
 # the id of a new node goes to the name map
 ph shr pendid 7
@@ -1850,7 +1883,7 @@ pg get names ph
 po get pg pl
 pf and po 4294963200
 pn or pf nn1
-reg and e3op noerr
+reg and e3any noerr
 px select reg pn po
 pg2 set pg pl px
 names2 set names ph pg2
@@ -1864,19 +1897,12 @@ rva select e5num rv5num rv5op
 rvb select e5tf rv5tf rva
 rvc select e5par rv5par rvb
 rvd select e5nd rv5nd rvc
-doret or e5op e5set
+doret0 or e5op e5set
+doret or doret0 e5fn
 # modes 41 and 42: a function defined earlier
 m4x or m41 m42
-haspf gt nfn 0
-nprev0 sub nfn 1
-nprev select haspf nprev0 0
-fidx sub fpart 1
-fnz ne fpart 0
-fbefore lt fidx nprev
-ffound and fnz fbefore
 e4xid and m4x k1
 e4xok and e4xid ffound
-notff select ffound false true
 e4xnf and e4xid notff
 e4xbad and m4x notk1
 setc and e4xok m41
@@ -2052,7 +2078,9 @@ pb9 or pb8 e4numbad
 pbad or pb9 e5numbad
 sb0 or e2dup e4xnf
 sb1 or sb0 e4ndbad
-sbad or sb1 e5ndbad
+sb2 or sb1 e3nf
+sb3 or sb2 e5fnnf
+sbad or sb3 e5ndbad
 bad0 or pbad sbad
 bad and bad0 noerr
 code select sbad 2 1

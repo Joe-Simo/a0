@@ -490,6 +490,55 @@ function isOp(text: string): text is Op {
   return (OPS as readonly string[]).includes(text);
 }
 
+/**
+ * Accepted spellings of an op, parsed as the op itself (the canonical form prints the op). Every
+ * A0 integer op is unsigned, so `udiv`/`urem` name exactly `div`/`rem`.
+ */
+export const OP_ALIASES: Readonly<Record<string, Op>> = { udiv: 'div', urem: 'rem' };
+
+/** The op a word names (an op or an accepted alias), or undefined. */
+export function opOf(word: string): Op | undefined {
+  return isOp(word) ? word : Object.hasOwn(OP_ALIASES, word) ? OP_ALIASES[word] : undefined;
+}
+
+/**
+ * Whether `word` in op position is a direct call `id F args…` (short for `id call F args…`):
+ * any valid function name that is not an op, an alias, or the `text` form. Ops take precedence,
+ * so a function named like an op is called only with `call`.
+ */
+export function isDirectCallee(word: string): boolean {
+  return opOf(word) === undefined && word !== 'text' && isValidFunctionName(word);
+}
+
+/**
+ * Fix hint for a line with a parenthesised operand, which A0 does not have (one op per line):
+ * the inner op on its own line above, then the line using that node. `ret (a, b)` builds a
+ * record.
+ */
+function nestedFix(id: string, head: readonly string[], rest: readonly string[]): string {
+  const text = rest.join(' ');
+  const open = text.indexOf('(');
+  const close = text.indexOf(')', open);
+  const inner = (close < 0 ? text.slice(open + 1) : text.slice(open + 1, close))
+    .replaceAll(',', ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  const innerOp = inner[0] ?? '';
+  // `(a, b)` or `(a b)` is a record; `(OP …)` or `(F …)` an inner op or call.
+  const tuple =
+    text.slice(open, close < 0 ? undefined : close).includes(',') ||
+    (opOf(innerOp) === undefined && !(isDirectCallee(innerOp) && inner.length > 1));
+  if (tuple) inner.unshift('rec');
+  if (id === 'ret' && text.startsWith('(') && (close < 0 || close === text.length - 1))
+    return `write \`ret ${inner.join(' ')}\``;
+  const t = `${id === 'ret' ? 'r' : id}1`;
+  const outer = `${text.slice(0, open)}${t}${close < 0 ? '' : text.slice(close + 1)}`
+    .trim()
+    .replace(/\s+/g, ' ');
+  return `one op per line: write \`${t} ${inner.join(' ')}\` above, then \`${[...head, outer].join(' ')}\``;
+}
+
 /** Parse one instruction line `id op operand...` (no validation of references). */
 export function parseNode(lineText: string, line?: number): Node {
   const textMatch = TEXT_LINE.exec(lineText.trim());
@@ -511,15 +560,24 @@ export function parseNode(lineText: string, line?: number): Node {
     return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
   }
   const parts = lineText.trim().split(/\s+/);
-  const [id, op, ...rest] = parts;
-  if (id === undefined || op === undefined)
+  const [id, word, ...rest] = parts;
+  if (id === undefined || word === undefined)
     throw new A0Error('expected `id op operands`', line, { code: 'parse' });
   if (!isValidIdentifier(id))
     throw new A0Error(`invalid node identifier '${id}'`, line, { code: 'parse' });
-  if (!isOp(op))
-    throw new A0Error(`unknown operation '${op}'`, line, {
+  if (rest.some((r) => r.startsWith('(') || r.endsWith(')')))
+    throw new A0Error('nested operand: A0 has one op per line', line, {
       code: 'parse',
-      fix: `use one of ${OPS.join(' ')}`,
+      fix: nestedFix(id, [id, word], rest),
+    });
+  // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
+  if (isDirectCallee(word))
+    return { id, op: 'call', callee: word, args: rest.map((r) => parseOperand(r, line)) };
+  const op = opOf(word);
+  if (op === undefined)
+    throw new A0Error(`unknown operation '${word}'`, line, {
+      code: 'parse',
+      fix: `use one of ${OPS.join(' ')}, or call a function F defined above: \`${id} F args…\``,
     });
   if (op === 'loop') {
     const [pred, callee, ...args] = rest;
@@ -572,6 +630,30 @@ export function freshRetId(nodes: readonly { readonly id: string }[]): string {
   for (let k = 2; ; k += 1) if (!taken.has(`retval${k}`)) return `retval${k}`;
 }
 
+/**
+ * Whether a `ret` line (split on whitespace) is `ret OP ARGS…` or `ret F ARGS…`: sugar for a
+ * fresh node computing the value and `ret` of it. `ret NAME` alone is always the operand NAME.
+ */
+export function isRetNodeForm(parts: readonly string[]): boolean {
+  const word = parts[1] ?? '';
+  return parts.length > 2 && (opOf(word) !== undefined || isDirectCallee(word));
+}
+
+/** The error for a `ret` line with more than one word that is not `ret OP ARGS…`. */
+export function retOperandError(
+  parts: readonly string[],
+  line: number | undefined,
+  code: DiagnosticCode,
+): A0Error {
+  const rest = parts.slice(1);
+  const nested = rest.some((r) => r.includes('('));
+  return new A0Error(
+    nested ? 'nested operand: A0 has one op per line' : 'ret expects one operand',
+    line,
+    { code, fix: nested ? nestedFix('ret', ['ret'], rest) : 'write `ret ID` or `ret OP ARGS…`' },
+  );
+}
+
 export function parse(source: string): Program {
   if (utf8Length(source) > LIMITS.maxSourceBytes) {
     throw new A0Error(`source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
@@ -606,7 +688,10 @@ export function parse(source: string): Program {
       continue;
     }
     if (head[0] !== 'fn')
-      throw new A0Error(`expected 'fn', got '${head[0]}'`, cur.line, { code: 'parse' });
+      throw new A0Error(`expected 'fn', got '${head[0]}'`, cur.line, {
+        code: 'parse',
+        fix: 'instruction lines belong inside a function: start it with `fn NAME T... -> T` and close it with `ret X` and `end`',
+      });
     const name = head[1];
     if (name === undefined || !isValidFunctionName(name)) {
       throw new A0Error(`invalid function name '${name ?? ''}'`, cur.line, { code: 'parse' });
@@ -629,17 +714,13 @@ export function parse(source: string): Program {
       const first = body.text.split(/\s+/)[0];
       if (first === 'ret') {
         const parts = body.text.split(/\s+/);
-        if (parts.length > 2 && isOp(parts[1] ?? '')) {
+        if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
           nodes.push(parseNode(`${id} ${parts.slice(1).join(' ')}`, body.line));
           ret = { kind: 'node', id };
         } else {
-          if (parts.length !== 2)
-            throw new A0Error('ret expects one operand', body.line, {
-              code: 'parse',
-              fix: 'write `ret ID` or `ret OP ARGS…`',
-            });
+          if (parts.length !== 2) throw retOperandError(parts, body.line, 'parse');
           ret = parseOperand(parts[1] ?? '', body.line);
         }
         const endLine = next();
@@ -841,6 +922,9 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       if (isPrimitive(a) || a.kind !== 'arr')
         throw new A0Error(`${where}: get expects an array, got ${formatType(a)}`, undefined, {
           code: 'type',
+          ...(!isPrimitive(a) && a.kind === 'rec'
+            ? { fix: 'records use at with a literal field index: `at R K` (get is for arrays)' }
+            : {}),
         });
       expect(b, 'u32', `${where} index`);
       return a.elem;
@@ -850,6 +934,9 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       if (isPrimitive(a) || a.kind !== 'arr')
         throw new A0Error(`${where}: set expects an array, got ${formatType(a)}`, undefined, {
           code: 'type',
+          ...(!isPrimitive(a) && a.kind === 'rec'
+            ? { fix: 'records use put with a literal field index: `put R K V` (set is for arrays)' }
+            : {}),
         });
       expect(b, 'u32', `${where} index`);
       expect(c, a.elem, `${where} element`);
@@ -944,7 +1031,14 @@ export function validateFunction(
         throw new A0Error(
           `${where}: ${node.op} expects a record, got ${recT === undefined ? 'nothing' : formatType(recT)}`,
           undefined,
-          { code: 'structure' },
+          {
+            code: 'structure',
+            ...(recT !== undefined && !isPrimitive(recT) && recT.kind === 'arr'
+              ? {
+                  fix: `arrays use ${node.op === 'at' ? 'get: `get A I`' : 'set: `set A I V`'} (${node.op} is for records)`,
+                }
+              : {}),
+          },
         );
       }
       if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
@@ -969,7 +1063,10 @@ export function validateFunction(
         throw new A0Error(
           `${where}: unknown callee '${node.callee ?? ''}' (callees must be defined earlier; recursion is unsupported)`,
           undefined,
-          { code: 'structure' },
+          {
+            code: 'structure',
+            fix: `'${node.callee ?? ''}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}`,
+          },
         );
       }
       if (argTypes.length !== callee.params.length) {

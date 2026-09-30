@@ -1,6 +1,7 @@
 # The self-hosted front end as it was before the paged tables (2026-09-30): lexer, parser and
 # checker over 512-byte sources with flat u32x512 tables (checker tables u32x768 to u32x8192),
-# kept verbatim, internal names prefixed v1, as the interface site/play.a0 links through
+# kept verbatim apart from later grammar additions (direct calls, udiv/urem), internal names
+# prefixed v1, as the interface site/play.a0 links through
 # check.a0: lex parse check readbyte wstep tokat cp768 cp1024 cp4096 cp8192 zeros256 ... zeros8192.
 # The playground runs in the browser as wasm32 with a 1 MiB stack, which these tables fit and the
 # paged front end (lex.a0, parse.a0, check.a0: 16384-byte sources) does not; remove this module
@@ -320,7 +321,12 @@ k30 eq p0 10396875
 r30 select k30 30 r29
 k31 eq p0 990580
 r31 select k31 31 r30
-ret r31
+# accepted spellings: udiv is div, urem is rem (every integer op is unsigned)
+k32 eq p0 1126856
+r32 select k32 10 r31
+k33 eq p0 666021
+r33 select k33 11 r32
+ret r33
 end
 # decimal v1digits src[start..start+len): (all v1digits and nonempty, value mod 2^32)
 fn v1digstep (bool,u32) u32 u32x512 u32 -> (bool,u32)
@@ -923,6 +929,13 @@ jall call v1findnode nodes first nin sym
 jprev call v1findnode nodes first ncur sym
 foundall lt jall nin
 foundprev lt jprev ncur
+# the function a name token names, when it is defined before the current one
+haspf gt nfn 0
+nprev0 sub nfn 1
+nprev select haspf nprev0 0
+fidx call v1findfn fns nprev sym
+ffound lt fidx nprev
+notff select ffound false true
 # mode 0: fn or use at the start of a line
 e0fn0 and m0 k1
 e0fn and e0fn0 isfn
@@ -948,17 +961,31 @@ e2ok0 or k5 e2ret
 e2ok or e2ok0 e2id1
 e2bad0 select e2ok false true
 e2bad and m2 e2bad0
-# mode 3: the operation
+# mode 3: the operation, or `id F ARGS` (F a function name, not an op): `id call F ARGS`
 e3op and m3 isop
 notop select isop false true
-e3bad and m3 notop
-# mode 5: `ret OP ARGS` (an op followed by more on the line) or `ret OPERAND`
+e3nop and m3 notop
+e3id and e3nop k1
+e3fn0 and e3id notres
+e3fn and e3fn0 ffound
+e3nf and e3fn0 notff
+note3fn select e3fn0 false true
+e3bad and e3nop note3fn
+# mode 5: `ret OP ARGS` or `ret F ARGS` (an op or a function name followed by more on the
+# line) or `ret OPERAND`
 e5op0 and m5 isop
 notnl select nextnl false true
 e5op and e5op0 notnl
+e5fa and m5 k1
+e5fb and e5fa notres
+e5fc and e5fb notop
+e5fn0 and e5fc notnl
+e5fn and e5fn0 ffound
+e5fnnf and e5fn0 notff
+e5opfn or e5op e5fn0
 e5num and m5 k2
 e5id0 and m5 k1
-e5id1 select e5op false e5id0
+e5id1 select e5opfn false e5id0
 e5tf and e5id1 istf
 e5par0 and e5id1 isparam
 e5par select istf false e5par0
@@ -975,8 +1002,13 @@ e5set0 or e5num e5tf
 e5set1 or e5set0 e5par
 e5set or e5set1 e5nd
 # v1emit a node: (id op 0 firstarg 0 0)
-doemit or e3op e5op
-emitid select e3op pendid 0
+dfn or e3fn e5fn
+e3any or e3op e3fn
+doemit0 or e3any e5op
+doemit or doemit0 e5fn
+emitid select e3any pendid 0
+opx select dfn 19 op
+cc0 select dfn fidx 0
 n6 mul nnodes 6
 n61 add n6 1
 n62 add n6 2
@@ -984,10 +1016,10 @@ n63 add n6 3
 n64 add n6 4
 n65 add n6 5
 ea set nodes n6 emitid
-eb set ea n61 op
+eb set ea n61 opx
 ec set eb n62 0
 ed set ec n63 nargs
-ee set ed n64 0
+ee set ed n64 cc0
 ef set ee n65 0
 nodes2 select doemit ef nodes
 nn1 add nnodes 1
@@ -1008,17 +1040,12 @@ rva select e5num rv5num rv5op
 rvb select e5tf rv5tf rva
 rvc select e5par rv5par rvb
 rvd select e5nd rv5nd rvc
-doret or e5op e5set
+doret0 or e5op e5set
+doret or doret0 e5fn
 # modes 41 and 42: a function defined earlier
 m4x or m41 m42
-haspf gt nfn 0
-nprev0 sub nfn 1
-nprev select haspf nprev0 0
-fidx call v1findfn fns nprev sym
-ffound lt fidx nprev
 e4xid and m4x k1
 e4xok and e4xid ffound
-notff select ffound false true
 e4xnf and e4xid notff
 e4xbad and m4x notk1
 c6 mul cur 6
@@ -1132,7 +1159,9 @@ pb7 or pb6 e8bad
 pbad or pb7 e9bad
 sb0 or e2dup e4xnf
 sb1 or sb0 e4ndbad
-sbad or sb1 e5ndbad
+sb2 or sb1 e3nf
+sb3 or sb2 e5fnnf
+sbad or sb3 e5ndbad
 bad or pbad sbad
 code select sbad 2 1
 err2 select bad code err
