@@ -129,6 +129,37 @@ function drawGrid(canvas: HTMLCanvasElement, rows: readonly number[]): void {
 /** Running shader scenes; each is stopped before the page re-renders. */
 const scenes: (() => void)[] = [];
 
+/**
+ * The glyph atlas every scene may sample as `u_font`: 64 characters of Geist Mono, white on
+ * transparent, in a 16 x 4 grid of square cells. Built once, after the font has loaded.
+ */
+const ATLAS_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>=+-*/:;|$#@%&?!{}[]()~^_.,Z';
+let atlasPromise: Promise<HTMLCanvasElement | null> | undefined;
+function glyphAtlas(): Promise<HTMLCanvasElement | null> {
+  atlasPromise ??= (async () => {
+    const cell = 32;
+    const font = `500 ${cell - 6}px "Geist Mono", ui-monospace, monospace`;
+    try {
+      await document.fonts.load(font);
+    } catch {
+      // the fallback monospace face is drawn instead
+    }
+    const c = document.createElement('canvas');
+    c.width = 16 * cell;
+    c.height = 4 * cell;
+    const ctx = c.getContext('2d');
+    if (ctx === null) return null;
+    ctx.font = font;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 64; i += 1)
+      ctx.fillText(ATLAS_CHARS[i] ?? '0', (i % 16) * cell + cell / 2, Math.floor(i / 16) * cell + cell / 2);
+    return c;
+  })();
+  return atlasPromise;
+}
+
 const QUAD_VS = `#version 300 es
 in vec2 a;
 void main(){gl_Position=vec4(a,0.,1.);}`;
@@ -171,9 +202,14 @@ function mountShader(el: HTMLElement, fragment: string): void {
   const uRes = gl.getUniformLocation(prog, 'u_res');
   const uTime = gl.getUniformLocation(prog, 'u_time');
   const uMouse = gl.getUniformLocation(prog, 'u_mouse');
-  const uDark = gl.getUniformLocation(prog, 'u_dark');
+  gl.uniform1i(gl.getUniformLocation(prog, 'u_font'), 0);
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const dark = matchMedia('(prefers-color-scheme: dark)');
   let mouse: [number, number] = [0.5, 0.5];
   let visible = true;
   let frame = 0;
@@ -195,15 +231,15 @@ function mountShader(el: HTMLElement, fragment: string): void {
   const draw = (): void => {
     size();
     gl.uniform2f(uRes, canvas.width, canvas.height);
-    gl.uniform1f(uTime, still ? 0 : (performance.now() - t0) / 1000);
+    // Reduced motion shows one fixed moment of the scene instead of the start (often empty).
+    gl.uniform1f(uTime, still ? 12 : (performance.now() - t0) / 1000);
     gl.uniform2f(uMouse, mouse[0], mouse[1]);
-    gl.uniform1f(uDark, effectiveDark() ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
   let last = 0;
   const loop = (now: number): void => {
-    // 30 frames per second is enough for a slow scene and halves the GPU time.
-    if (visible && !document.hidden && now - last >= 32) {
+    // 30 frames per second is enough for the scene and halves the GPU time.
+    if (visible && !document.hidden && now - last >= 33) {
       last = now;
       draw();
     }
@@ -216,35 +252,21 @@ function mountShader(el: HTMLElement, fragment: string): void {
   const ro = new ResizeObserver(() => draw());
   ro.observe(el);
   addEventListener('pointermove', onMove, { passive: true });
-  dark.addEventListener('change', draw);
+  let live = true;
+  void glyphAtlas().then((atlas) => {
+    if (!live || atlas === null) return;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas);
+    draw();
+  });
   loop(performance.now());
   scenes.push(() => {
     cancelAnimationFrame(frame);
     io.disconnect();
     ro.disconnect();
+    live = false;
     removeEventListener('pointermove', onMove);
-    dark.removeEventListener('change', draw);
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   });
-}
-
-/**
- * Theme override: the program's stylesheet keys every color-scheme rule to both the system
- * setting and `data-theme` on <html>; a `.theme-toggle` element lets the viewer force light or
- * dark. The choice is kept in localStorage; site/theme.ts applies it before first paint.
- */
-type Theme = 'light' | 'dark' | null;
-function storedTheme(): Theme {
-  try {
-    const t = localStorage.getItem('a0-theme');
-    return t === 'light' || t === 'dark' ? t : null;
-  } catch {
-    return null;
-  }
-}
-let theme: Theme = storedTheme();
-function effectiveDark(): boolean {
-  return theme === null ? matchMedia('(prefers-color-scheme: dark)').matches : theme === 'dark';
 }
 
 function render(
@@ -364,7 +386,7 @@ function render(
       case 13:
         // SHADER: the program's fragment shader (GLSL ES 3.0), possibly in several chunks,
         // becomes a canvas filling the open element. The runtime only supplies the quad,
-        // the clock, the resolution, the pointer, and the color scheme.
+        // the clock, the resolution, the pointer, and a glyph atlas.
         shaders.set(top, (shaders.get(top) ?? '') + decoder.decode(bytes()));
         break;
       default:
@@ -408,7 +430,6 @@ async function main(): Promise<void> {
     const next = render(root, styleEl, r.output, show, text);
     state = next.state;
     if (typeof animate === 'function') animate();
-    syncToggle();
     if (next.timer !== undefined) {
       const { ms, event: ev } = next.timer;
       pending = window.setTimeout(() => show(ev), ms);
@@ -422,27 +443,6 @@ async function main(): Promise<void> {
     },
     { threshold: 0.15 },
   );
-  const syncToggle = (): void => {
-    const dark = effectiveDark();
-    for (const t of Array.from(root.querySelectorAll('.theme-toggle'))) {
-      t.setAttribute('aria-pressed', String(dark));
-      t.setAttribute('title', dark ? 'Switch to light' : 'Switch to dark');
-    }
-  };
-  root.addEventListener('click', (ev) => {
-    const t = (ev.target as HTMLElement | null)?.closest('.theme-toggle');
-    if (t === null || t === undefined) return;
-    theme = effectiveDark() ? 'light' : 'dark';
-    try {
-      localStorage.setItem('a0-theme', theme);
-    } catch {
-      // storage unavailable: the choice lasts for this page view
-    }
-    document.documentElement.dataset.theme = theme;
-    syncToggle();
-  });
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncToggle);
-  if (theme !== null) document.documentElement.dataset.theme = theme;
   const animate = (): void => {
     // Anything already on screen is shown at once; only what scrolls into view later fades in.
     root.querySelectorAll('.reveal').forEach((el) => {

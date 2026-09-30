@@ -106,7 +106,7 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
 }
 
 /**
- * The site's Content-Security-Policy. It allows only same-origin scripts (theme.js and app.js;
+ * The site's Content-Security-Policy. It allows only same-origin scripts (app.js;
  * the ld+json block is data and never runs), wasm compilation, the runtime's generated <style>
  * and computed bar widths, self-hosted fonts, and same-origin fetches. No framing.
  */
@@ -183,7 +183,6 @@ async function main(): Promise<void> {
     '--outDir',
     out,
     join('site', 'app.ts'),
-    join('site', 'theme.ts'),
   ]);
   if (!r.ok) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
   await writeFile(
