@@ -1,59 +1,59 @@
 {
-  "generatedAt": "2026-09-30T18:12:36.036Z",
+  "generatedAt": "2026-09-30T18:15:25.655Z",
   "stage": "Self-hosting stage 6 (bootstrap), step 1: the A0 C emitter pipeline as a native binary (a0c-stage1)",
   "stage1": {
     "entry": "emitcio (compiler/emit_c.a0 linked with check.a0, parse.a0, lex.a0)",
     "method": "TypeScript C backend (compile(program, 'c', { ioInputCapacity: 520, ioOutputCapacity: 1048576 })) plus a stdin/stdout main, clang -std=c11 -O2",
-    "functions": 215,
-    "cBytes": 718470,
-    "buildMs": 2329,
+    "functions": 223,
+    "cBytes": 738697,
+    "buildMs": 1401,
     "clang": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
   },
   "stage2": {
     "method": "Each source (at most 512 bytes) goes to a0c-stage1; the small programs, kernels.a0 and four ill-typed programs also go to emitcio in the reference interpreter, and the outputs must be byte-identical. Accepted sources: the stage 1 C and the TypeScript C module are each compiled by clang (-std=c11 -O1 -Wall -Wextra -Werror, UBSan) with the standard driver of tools/verify.ts and must give the independent oracle result on every case of tools/corpus.ts generateCases. Rejected sources must write no C; ill-typed ones must give the reference checker code. Programs without a driver-callable function are compiled with -Werror only.",
-    "sources": 312,
-    "fed": 161,
+    "sources": 320,
+    "fed": 163,
     "passedSources": 36,
-    "compileOnly": 68,
+    "compileOnly": 70,
     "comparedWithInterpreter": 14,
     "rejectedAsExpected": 57,
-    "tooLarge": 151,
+    "tooLarge": 157,
     "failed": 0,
     "cases": 6816,
     "emission": {
       "sources": 14,
-      "stage1Ms": 89,
-      "interpreterMs": 170,
+      "stage1Ms": 86,
+      "interpreterMs": 162,
       "speedup": 1.9,
       "note": "stage 1 time includes one process spawn per source"
     }
   },
   "fixedPoint": {
     "emitterFiles": {
-      "emit_c.a0": 30049,
+      "emit_c.a0": 38563,
       "check.a0": 26105,
       "parse.a0": 56304,
       "lex.a0": 8380
     },
-    "linkedFormattedBytes": 164217,
+    "linkedFormattedBytes": 169823,
     "sourceLimitBytes": 512,
-    "functions": 215,
-    "fnsWords": 1505,
+    "functions": 223,
+    "fnsWords": 1561,
     "fnsCapacity": 1024,
-    "nodes": 5657,
-    "nodesWords": 33942,
+    "nodes": 5890,
+    "nodesWords": 35340,
     "nodesCapacity": 4096,
-    "argWords": 65468,
+    "argWords": 67510,
     "argsCapacity": 8192,
-    "distinctNameBytes": 10007,
+    "distinctNameBytes": 10229,
     "poolCapacity": 512,
-    "symWords": 5120,
+    "symWords": 5266,
     "symCapacity": 512,
     "largestFunctionNodes": 533,
-    "ownClosuresWithinLimit": 113,
-    "ownClosuresPassed": 81,
+    "ownClosuresWithinLimit": 115,
+    "ownClosuresPassed": 83,
     "ownClosuresWithCases": 19,
-    "ownClosures": 215,
+    "ownClosures": 223,
     "use": "emitcio has no `use` resolution: the input is one self-contained source, so emit_c.a0 must be fed pre-linked"
   },
   "sources": [
@@ -62,8 +62,8 @@
       "group": "small",
       "bytes": 96,
       "code": 0,
-      "stage1Ms": 52.8,
-      "interpreterMs": 16,
+      "stage1Ms": 52.9,
+      "interpreterMs": 17,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 1,
@@ -73,14 +73,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 118.15299999999979,
+        "elapsedMs": 117.34012499999994,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 109.8129170000002,
+        "elapsedMs": 118.53854100000012,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -89,8 +89,8 @@
       "group": "small",
       "bytes": 39,
       "code": 0,
-      "stage1Ms": 2.2,
-      "interpreterMs": 6,
+      "stage1Ms": 2.4,
+      "interpreterMs": 7,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 1,
@@ -100,14 +100,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 178.4532079999999,
+        "elapsedMs": 119.99195800000007,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 156.087583,
+        "elapsedMs": 117.53850000000011,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -116,7 +116,7 @@
       "group": "small",
       "bytes": 38,
       "code": 0,
-      "stage1Ms": 4,
+      "stage1Ms": 2.1,
       "interpreterMs": 8,
       "sameAsInterpreter": true,
       "outcome": "passed",
@@ -127,14 +127,14 @@
         "status": "passed",
         "cases": 199,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 132.3430840000001,
+        "elapsedMs": 135.19354199999998,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 199,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 189.61816700000008,
+        "elapsedMs": 113.3936249999997,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -143,8 +143,8 @@
       "group": "small",
       "bytes": 266,
       "code": 0,
-      "stage1Ms": 3.8,
-      "interpreterMs": 39,
+      "stage1Ms": 2.7,
+      "interpreterMs": 31,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 5,
@@ -154,14 +154,14 @@
         "status": "passed",
         "cases": 689,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 139.29812500000025,
+        "elapsedMs": 117.96295899999996,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 689,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 120.31479200000012,
+        "elapsedMs": 120.79708300000038,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -170,8 +170,8 @@
       "group": "ill-typed",
       "bytes": 38,
       "code": 3,
-      "stage1Ms": 2,
-      "interpreterMs": 4,
+      "stage1Ms": 2.4,
+      "interpreterMs": 5,
       "sameAsInterpreter": true,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
@@ -181,8 +181,8 @@
       "group": "ill-typed",
       "bytes": 44,
       "code": 3,
-      "stage1Ms": 2.3,
-      "interpreterMs": 6,
+      "stage1Ms": 2.4,
+      "interpreterMs": 4,
       "sameAsInterpreter": true,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
@@ -192,7 +192,7 @@
       "group": "ill-typed",
       "bytes": 43,
       "code": 3,
-      "stage1Ms": 2.5,
+      "stage1Ms": 2.6,
       "interpreterMs": 4,
       "sameAsInterpreter": true,
       "outcome": "rejected",
@@ -203,8 +203,8 @@
       "group": "ill-typed",
       "bytes": 35,
       "code": 2,
-      "stage1Ms": 2.5,
-      "interpreterMs": 5,
+      "stage1Ms": 3,
+      "interpreterMs": 4,
       "sameAsInterpreter": true,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
@@ -214,7 +214,7 @@
       "group": "ill-typed",
       "bytes": 38,
       "code": 3,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.2,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -223,7 +223,7 @@
       "group": "ill-typed",
       "bytes": 84,
       "code": 3,
-      "stage1Ms": 2,
+      "stage1Ms": 1.9,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -232,7 +232,7 @@
       "group": "ill-typed",
       "bytes": 84,
       "code": 3,
-      "stage1Ms": 1.7,
+      "stage1Ms": 1.9,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -241,7 +241,7 @@
       "group": "ill-typed",
       "bytes": 120,
       "code": 3,
-      "stage1Ms": 1.8,
+      "stage1Ms": 1.7,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -250,7 +250,7 @@
       "group": "ill-typed",
       "bytes": 141,
       "code": 2,
-      "stage1Ms": 2,
+      "stage1Ms": 2.2,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -259,7 +259,7 @@
       "group": "ill-typed",
       "bytes": 68,
       "code": 2,
-      "stage1Ms": 1.7,
+      "stage1Ms": 2.4,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -268,7 +268,7 @@
       "group": "ill-typed",
       "bytes": 50,
       "code": 2,
-      "stage1Ms": 2,
+      "stage1Ms": 1.9,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -277,7 +277,7 @@
       "group": "ill-typed",
       "bytes": 38,
       "code": 2,
-      "stage1Ms": 2.5,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -286,7 +286,7 @@
       "group": "ill-typed",
       "bytes": 28,
       "code": 2,
-      "stage1Ms": 1.6,
+      "stage1Ms": 1.7,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -295,7 +295,7 @@
       "group": "ill-typed",
       "bytes": 34,
       "code": 3,
-      "stage1Ms": 1.5,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -304,7 +304,7 @@
       "group": "ill-typed",
       "bytes": 73,
       "code": 3,
-      "stage1Ms": 1.5,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -313,7 +313,7 @@
       "group": "ill-typed",
       "bytes": 67,
       "code": 3,
-      "stage1Ms": 1.5,
+      "stage1Ms": 1.7,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -331,7 +331,7 @@
       "group": "ill-typed",
       "bytes": 36,
       "code": 2,
-      "stage1Ms": 1.9,
+      "stage1Ms": 2.4,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -340,7 +340,7 @@
       "group": "ill-typed",
       "bytes": 45,
       "code": 3,
-      "stage1Ms": 1.7,
+      "stage1Ms": 1.9,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -349,7 +349,7 @@
       "group": "ill-typed",
       "bytes": 37,
       "code": 3,
-      "stage1Ms": 2.1,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -358,7 +358,7 @@
       "group": "ill-typed",
       "bytes": 43,
       "code": 2,
-      "stage1Ms": 1.9,
+      "stage1Ms": 1.5,
       "outcome": "rejected",
       "detail": "diagnostic 2 (reference checker 2)"
     },
@@ -367,7 +367,7 @@
       "group": "ill-typed",
       "bytes": 53,
       "code": 3,
-      "stage1Ms": 1.6,
+      "stage1Ms": 1.5,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -376,7 +376,7 @@
       "group": "ill-typed",
       "bytes": 41,
       "code": 3,
-      "stage1Ms": 1.7,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 3 (reference checker 3)"
     },
@@ -385,7 +385,7 @@
       "group": "ill-typed",
       "bytes": 44,
       "code": 4,
-      "stage1Ms": 1.4,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 4 (reference checker 4)"
     },
@@ -514,23 +514,23 @@
       "group": "corpus",
       "bytes": 398,
       "code": 0,
-      "stage1Ms": 2.1,
+      "stage1Ms": 2.2,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
-      "cBytes": 2972,
+      "cBytes": 2917,
       "stage1C": {
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 170.20791700000018,
+        "elapsedMs": 122.978208,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 133.098833,
+        "elapsedMs": 123.74083399999972,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -551,7 +551,7 @@
       "group": "corpus",
       "bytes": 418,
       "code": 1,
-      "stage1Ms": 3.5,
+      "stage1Ms": 3,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 1)"
     },
@@ -566,23 +566,23 @@
       "group": "corpus",
       "bytes": 486,
       "code": 0,
-      "stage1Ms": 2.9,
+      "stage1Ms": 3.4,
       "outcome": "passed",
       "functions": 1,
       "cases": 127,
-      "cBytes": 3083,
+      "cBytes": 3030,
       "stage1C": {
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 128.07779200000004,
+        "elapsedMs": 121.56570899999997,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 226.18179099999998,
+        "elapsedMs": 183.97454200000038,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -645,7 +645,7 @@
       "group": "corpus",
       "bytes": 421,
       "code": 0,
-      "stage1Ms": 3.9,
+      "stage1Ms": 3.5,
       "outcome": "passed",
       "functions": 1,
       "cases": 129,
@@ -654,14 +654,14 @@
         "status": "passed",
         "cases": 129,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 128.7825410000005,
+        "elapsedMs": 118.83829199999991,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 129,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 115.2675420000005,
+        "elapsedMs": 121.97879199999988,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -742,8 +742,8 @@
       "group": "kernels.a0",
       "bytes": 386,
       "code": 0,
-      "stage1Ms": 3.5,
-      "interpreterMs": 43,
+      "stage1Ms": 2.9,
+      "interpreterMs": 44,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 5,
@@ -753,14 +753,14 @@
         "status": "passed",
         "cases": 763,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 125.37508400000024,
+        "elapsedMs": 125.34770799999978,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 763,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 121.2182499999999,
+        "elapsedMs": 132.6222499999999,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -769,8 +769,8 @@
       "group": "kernels.a0",
       "bytes": 62,
       "code": 0,
-      "stage1Ms": 2.2,
-      "interpreterMs": 10,
+      "stage1Ms": 2.6,
+      "interpreterMs": 9,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 1,
@@ -780,14 +780,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 117.68475000000035,
+        "elapsedMs": 125.06049999999959,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 120.56912499999999,
+        "elapsedMs": 129.27737499999967,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -796,8 +796,8 @@
       "group": "kernels.a0",
       "bytes": 66,
       "code": 0,
-      "stage1Ms": 2.2,
-      "interpreterMs": 8,
+      "stage1Ms": 2.6,
+      "interpreterMs": 7,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 1,
@@ -807,14 +807,14 @@
         "status": "passed",
         "cases": 199,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 119.05566699999963,
+        "elapsedMs": 118.42841700000008,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 199,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 154.46870799999942,
+        "elapsedMs": 126.28458299999966,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -823,8 +823,8 @@
       "group": "kernels.a0",
       "bytes": 77,
       "code": 0,
-      "stage1Ms": 2.8,
-      "interpreterMs": 10,
+      "stage1Ms": 2.3,
+      "interpreterMs": 9,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 1,
@@ -834,14 +834,14 @@
         "status": "passed",
         "cases": 199,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 127.81887500000084,
+        "elapsedMs": 115.31766699999935,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 199,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 112.64520900000025,
+        "elapsedMs": 119.93166699999983,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -850,7 +850,7 @@
       "group": "kernels.a0",
       "bytes": 53,
       "code": 0,
-      "stage1Ms": 3.5,
+      "stage1Ms": 2.5,
       "interpreterMs": 6,
       "sameAsInterpreter": true,
       "outcome": "passed",
@@ -861,14 +861,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 222.88045899999997,
+        "elapsedMs": 115.18095799999992,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 137.74204199999986,
+        "elapsedMs": 146.98999999999978,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -878,7 +878,7 @@
       "bytes": 65,
       "code": 0,
       "stage1Ms": 2.7,
-      "interpreterMs": 5,
+      "interpreterMs": 7,
       "sameAsInterpreter": true,
       "outcome": "passed",
       "functions": 1,
@@ -888,14 +888,14 @@
         "status": "passed",
         "cases": 120,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 133.85975000000053,
+        "elapsedMs": 122.34929099999954,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 120,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 142.66441600000053,
+        "elapsedMs": 114.8456670000005,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -910,7 +910,7 @@
       "group": "life.a0",
       "bytes": 83,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.3,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -958,7 +958,7 @@
       "group": "life.a0",
       "bytes": 98,
       "code": 0,
-      "stage1Ms": 3.2,
+      "stage1Ms": 2.3,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -985,7 +985,7 @@
       "group": "life.a0",
       "bytes": 77,
       "code": 0,
-      "stage1Ms": 2.1,
+      "stage1Ms": 2.5,
       "outcome": "passed",
       "functions": 1,
       "cases": 127,
@@ -994,14 +994,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 139.16270900000018,
+        "elapsedMs": 118.62670799999978,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 192.22212500000023,
+        "elapsedMs": 133.13937500000065,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1010,7 +1010,7 @@
       "group": "life.a0",
       "bytes": 134,
       "code": 0,
-      "stage1Ms": 3,
+      "stage1Ms": 2.6,
       "outcome": "passed",
       "functions": 2,
       "cases": 245,
@@ -1019,14 +1019,14 @@
         "status": "passed",
         "cases": 245,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 129.05079100000057,
+        "elapsedMs": 127.05112499999996,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 245,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 124.92549999999937,
+        "elapsedMs": 206.44466699999975,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1035,7 +1035,7 @@
       "group": "life.a0",
       "bytes": 222,
       "code": 0,
-      "stage1Ms": 3.8,
+      "stage1Ms": 3.5,
       "outcome": "passed",
       "functions": 3,
       "cases": 245,
@@ -1044,14 +1044,14 @@
         "status": "passed",
         "cases": 245,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 117.56258400000024,
+        "elapsedMs": 126.94766699999946,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 245,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 118.28395799999998,
+        "elapsedMs": 124.59349999999995,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1060,7 +1060,7 @@
       "group": "life.a0",
       "bytes": 283,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.8,
       "outcome": "passed",
       "functions": 4,
       "cases": 245,
@@ -1069,14 +1069,14 @@
         "status": "passed",
         "cases": 245,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 218.31745800000044,
+        "elapsedMs": 121.37183300000015,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 245,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 125.1586669999997,
+        "elapsedMs": 162.60745900000074,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1085,11 +1085,11 @@
       "group": "life.a0",
       "bytes": 106,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.9,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2195,
+      "cBytes": 2171,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -1112,7 +1112,7 @@
       "group": "life.a0",
       "bytes": 71,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 3.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -1160,7 +1160,7 @@
       "group": "compiler",
       "bytes": 92,
       "code": 0,
-      "stage1Ms": 2.5,
+      "stage1Ms": 4.2,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -1169,14 +1169,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 143.923041,
+        "elapsedMs": 115.21808299999975,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 116.56308399999944,
+        "elapsedMs": 178.76537499999995,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1185,7 +1185,7 @@
       "group": "compiler",
       "bytes": 69,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 3.8,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -1194,14 +1194,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 118.45183400000133,
+        "elapsedMs": 119.22866700000031,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 123.02041699999972,
+        "elapsedMs": 118.9102499999999,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1210,7 +1210,7 @@
       "group": "compiler",
       "bytes": 240,
       "code": 0,
-      "stage1Ms": 3.3,
+      "stage1Ms": 2.7,
       "outcome": "passed",
       "functions": 3,
       "cases": 354,
@@ -1219,14 +1219,14 @@
         "status": "passed",
         "cases": 354,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 159.87008400000013,
+        "elapsedMs": 138.27400000000034,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 354,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 123.64329100000032,
+        "elapsedMs": 166.36058400000002,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1235,7 +1235,7 @@
       "group": "compiler",
       "bytes": 89,
       "code": 0,
-      "stage1Ms": 2.5,
+      "stage1Ms": 3.4,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -1244,14 +1244,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 116.82287499999984,
+        "elapsedMs": 121.07099999999991,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 115.61000000000058,
+        "elapsedMs": 116.7671250000003,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1278,7 +1278,7 @@
       "group": "compiler",
       "bytes": 149,
       "code": 1,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.5,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1287,7 +1287,7 @@
       "group": "compiler",
       "bytes": 292,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.3,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -1326,11 +1326,11 @@
       "group": "compiler",
       "bytes": 134,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2244,
+      "cBytes": 2639,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -1347,7 +1347,7 @@
       "group": "compiler",
       "bytes": 390,
       "code": 1,
-      "stage1Ms": 2.8,
+      "stage1Ms": 3.4,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1362,7 +1362,7 @@
       "group": "compiler",
       "bytes": 65,
       "code": 0,
-      "stage1Ms": 1.9,
+      "stage1Ms": 2.1,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -1383,7 +1383,7 @@
       "group": "compiler",
       "bytes": 222,
       "code": 1,
-      "stage1Ms": 2.7,
+      "stage1Ms": 2.5,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1398,7 +1398,7 @@
       "group": "compiler",
       "bytes": 375,
       "code": 1,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.2,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1407,7 +1407,7 @@
       "group": "compiler",
       "bytes": 407,
       "code": 1,
-      "stage1Ms": 2.7,
+      "stage1Ms": 2.8,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1416,7 +1416,7 @@
       "group": "compiler",
       "bytes": 409,
       "code": 1,
-      "stage1Ms": 2.8,
+      "stage1Ms": 3.5,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1425,7 +1425,7 @@
       "group": "compiler",
       "bytes": 433,
       "code": 1,
-      "stage1Ms": 3.2,
+      "stage1Ms": 3.1,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1434,7 +1434,7 @@
       "group": "compiler",
       "bytes": 471,
       "code": 1,
-      "stage1Ms": 5.2,
+      "stage1Ms": 3.6,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1443,7 +1443,7 @@
       "group": "compiler",
       "bytes": 473,
       "code": 1,
-      "stage1Ms": 4.4,
+      "stage1Ms": 3.8,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1476,7 +1476,7 @@
       "group": "compiler",
       "bytes": 265,
       "code": 0,
-      "stage1Ms": 2.1,
+      "stage1Ms": 2.6,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -1485,14 +1485,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 115.12191699999858,
+        "elapsedMs": 113.12033400000018,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 118.34779200000048,
+        "elapsedMs": 121.41279099999974,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1519,7 +1519,7 @@
       "group": "compiler",
       "bytes": 283,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.8,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -1552,7 +1552,7 @@
       "group": "compiler",
       "bytes": 113,
       "code": 1,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.5,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1579,7 +1579,7 @@
       "group": "compiler",
       "bytes": 245,
       "code": 1,
-      "stage1Ms": 2,
+      "stage1Ms": 3.6,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1678,7 +1678,7 @@
       "group": "compiler",
       "bytes": 274,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 3.4,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -1699,7 +1699,7 @@
       "group": "compiler",
       "bytes": 486,
       "code": 1,
-      "stage1Ms": 3.1,
+      "stage1Ms": 3.9,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1708,7 +1708,7 @@
       "group": "compiler",
       "bytes": 200,
       "code": 1,
-      "stage1Ms": 1.9,
+      "stage1Ms": 2.3,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1723,7 +1723,7 @@
       "group": "compiler",
       "bytes": 126,
       "code": 1,
-      "stage1Ms": 1.7,
+      "stage1Ms": 1.6,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1738,7 +1738,7 @@
       "group": "compiler",
       "bytes": 289,
       "code": 1,
-      "stage1Ms": 2,
+      "stage1Ms": 1.7,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1822,7 +1822,7 @@
       "group": "compiler",
       "bytes": 234,
       "code": 1,
-      "stage1Ms": 2.4,
+      "stage1Ms": 3.2,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1837,7 +1837,7 @@
       "group": "compiler",
       "bytes": 68,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 2.2,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -1858,7 +1858,7 @@
       "group": "compiler",
       "bytes": 226,
       "code": 1,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.5,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1867,7 +1867,7 @@
       "group": "compiler",
       "bytes": 220,
       "code": 1,
-      "stage1Ms": 1.9,
+      "stage1Ms": 3.9,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1876,7 +1876,7 @@
       "group": "compiler",
       "bytes": 220,
       "code": 1,
-      "stage1Ms": 1.7,
+      "stage1Ms": 2.3,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1885,7 +1885,7 @@
       "group": "compiler",
       "bytes": 220,
       "code": 1,
-      "stage1Ms": 1.6,
+      "stage1Ms": 3.2,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1894,7 +1894,7 @@
       "group": "compiler",
       "bytes": 220,
       "code": 1,
-      "stage1Ms": 1.7,
+      "stage1Ms": 2.3,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1903,7 +1903,7 @@
       "group": "compiler",
       "bytes": 222,
       "code": 1,
-      "stage1Ms": 1.7,
+      "stage1Ms": 2.4,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1912,7 +1912,7 @@
       "group": "compiler",
       "bytes": 222,
       "code": 1,
-      "stage1Ms": 3.5,
+      "stage1Ms": 2.1,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1921,7 +1921,7 @@
       "group": "compiler",
       "bytes": 222,
       "code": 1,
-      "stage1Ms": 2,
+      "stage1Ms": 3,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1930,11 +1930,11 @@
       "group": "compiler",
       "bytes": 162,
       "code": 0,
-      "stage1Ms": 1.8,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2215,
+      "cBytes": 2627,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -1951,7 +1951,7 @@
       "group": "compiler",
       "bytes": 333,
       "code": 1,
-      "stage1Ms": 2.5,
+      "stage1Ms": 2.6,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -1966,7 +1966,7 @@
       "group": "compiler",
       "bytes": 94,
       "code": 0,
-      "stage1Ms": 1.9,
+      "stage1Ms": 2,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -1975,14 +1975,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 124.77429200000006,
+        "elapsedMs": 115.65112500000032,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 112.10991699999977,
+        "elapsedMs": 156.74462500000118,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -1991,7 +1991,7 @@
       "group": "compiler",
       "bytes": 71,
       "code": 0,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.4,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -2000,14 +2000,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 135.4137499999997,
+        "elapsedMs": 201.72625000000153,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 120.30116699999962,
+        "elapsedMs": 112.24845800000003,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2016,7 +2016,7 @@
       "group": "compiler",
       "bytes": 250,
       "code": 0,
-      "stage1Ms": 2.5,
+      "stage1Ms": 2.7,
       "outcome": "passed",
       "functions": 3,
       "cases": 354,
@@ -2025,14 +2025,14 @@
         "status": "passed",
         "cases": 354,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 116.01137500000004,
+        "elapsedMs": 125.32970800000112,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 354,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 118.92683299999953,
+        "elapsedMs": 131.45187500000065,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2041,7 +2041,7 @@
       "group": "compiler",
       "bytes": 91,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.6,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -2050,14 +2050,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 159.38879199999974,
+        "elapsedMs": 147.87674999999945,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 127.85754199999974,
+        "elapsedMs": 118.38220900000124,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2066,11 +2066,11 @@
       "group": "compiler",
       "bytes": 122,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2096,
+      "cBytes": 2286,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2105,11 +2105,11 @@
       "group": "compiler",
       "bytes": 137,
       "code": 0,
-      "stage1Ms": 3.9,
+      "stage1Ms": 2.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2247,
+      "cBytes": 2645,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2126,7 +2126,7 @@
       "group": "compiler",
       "bytes": 65,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2153,7 +2153,7 @@
       "group": "compiler",
       "bytes": 136,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2174,7 +2174,7 @@
       "group": "compiler",
       "bytes": 99,
       "code": 0,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2195,11 +2195,11 @@
       "group": "compiler",
       "bytes": 267,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 3.1,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2489,
+      "cBytes": 3174,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2216,11 +2216,11 @@
       "group": "compiler",
       "bytes": 396,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 2.9,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
-      "cBytes": 2827,
+      "cBytes": 3485,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2237,7 +2237,7 @@
       "group": "compiler",
       "bytes": 267,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 3.6,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -2246,14 +2246,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 117.94629200000054,
+        "elapsedMs": 121.49641599999995,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 201.11050000000068,
+        "elapsedMs": 120.03645900000083,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2268,11 +2268,11 @@
       "group": "compiler",
       "bytes": 207,
       "code": 0,
-      "stage1Ms": 3.4,
+      "stage1Ms": 7.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2373,
+      "cBytes": 2946,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2289,11 +2289,11 @@
       "group": "compiler",
       "bytes": 359,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 3.1,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
-      "cBytes": 2774,
+      "cBytes": 3320,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2322,7 +2322,7 @@
       "group": "compiler",
       "bytes": 134,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2343,7 +2343,7 @@
       "group": "compiler",
       "bytes": 231,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.9,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -2364,7 +2364,7 @@
       "group": "compiler",
       "bytes": 427,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 3,
       "outcome": "compiled",
       "functions": 3,
       "cases": 0,
@@ -2391,11 +2391,11 @@
       "group": "compiler",
       "bytes": 109,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2041,
+      "cBytes": 2266,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2428,7 +2428,7 @@
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2040,
+      "cBytes": 2232,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2487,7 +2487,7 @@
       "group": "compiler",
       "bytes": 92,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.4,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2508,7 +2508,7 @@
       "group": "compiler",
       "bytes": 160,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.7,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -2529,11 +2529,11 @@
       "group": "compiler",
       "bytes": 108,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2082,
+      "cBytes": 2306,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2550,7 +2550,7 @@
       "group": "compiler",
       "bytes": 154,
       "code": 0,
-      "stage1Ms": 2.5,
+      "stage1Ms": 3.3,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2571,7 +2571,7 @@
       "group": "compiler",
       "bytes": 230,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.8,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -2592,7 +2592,7 @@
       "group": "compiler",
       "bytes": 127,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2613,7 +2613,7 @@
       "group": "compiler",
       "bytes": 374,
       "code": 0,
-      "stage1Ms": 2.9,
+      "stage1Ms": 3.2,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -2634,7 +2634,7 @@
       "group": "compiler",
       "bytes": 468,
       "code": 0,
-      "stage1Ms": 4,
+      "stage1Ms": 3.1,
       "outcome": "compiled",
       "functions": 3,
       "cases": 0,
@@ -2661,11 +2661,11 @@
       "group": "compiler",
       "bytes": 171,
       "code": 0,
-      "stage1Ms": 3.6,
+      "stage1Ms": 2.9,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2220,
+      "cBytes": 2412,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2703,7 +2703,7 @@
       "group": "compiler",
       "bytes": 200,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.7,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -2724,11 +2724,11 @@
       "group": "compiler",
       "bytes": 479,
       "code": 0,
-      "stage1Ms": 3.9,
+      "stage1Ms": 4.2,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2950,
+      "cBytes": 4036,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2751,11 +2751,11 @@
       "group": "compiler",
       "bytes": 147,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2112,
+      "cBytes": 2304,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -2823,14 +2823,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 228.94983300000058,
+        "elapsedMs": 143.37120800000048,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 122.99383399999897,
+        "elapsedMs": 185.17708400000083,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2839,7 +2839,7 @@
       "group": "compiler",
       "bytes": 99,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.3,
       "outcome": "passed",
       "functions": 1,
       "cases": 127,
@@ -2848,14 +2848,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 123.75587500000074,
+        "elapsedMs": 120.45700000000033,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 132.99933299999975,
+        "elapsedMs": 122.28058300000157,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2864,7 +2864,7 @@
       "group": "compiler",
       "bytes": 63,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 2,
       "outcome": "passed",
       "functions": 1,
       "cases": 199,
@@ -2873,14 +2873,14 @@
         "status": "passed",
         "cases": 199,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 175.78629100000035,
+        "elapsedMs": 114.82566700000098,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 199,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 125.51883300000009,
+        "elapsedMs": 186.3697090000005,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2889,7 +2889,7 @@
       "group": "compiler",
       "bytes": 372,
       "code": 0,
-      "stage1Ms": 3,
+      "stage1Ms": 3.6,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -2898,14 +2898,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 126.58941699999923,
+        "elapsedMs": 139.2260409999999,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 122.17620800000077,
+        "elapsedMs": 127.11533299999974,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2914,23 +2914,23 @@
       "group": "compiler",
       "bytes": 317,
       "code": 0,
-      "stage1Ms": 2.7,
+      "stage1Ms": 3.9,
       "outcome": "passed",
       "functions": 2,
       "cases": 127,
-      "cBytes": 2588,
+      "cBytes": 3088,
       "stage1C": {
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 140.95299999999952,
+        "elapsedMs": 125.39249999999993,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 231.62383299999965,
+        "elapsedMs": 140.11545900000056,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -2951,7 +2951,7 @@
       "group": "compiler",
       "bytes": 209,
       "code": 0,
-      "stage1Ms": 3.7,
+      "stage1Ms": 3.1,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -2972,7 +2972,7 @@
       "group": "compiler",
       "bytes": 294,
       "code": 0,
-      "stage1Ms": 3.3,
+      "stage1Ms": 3.5,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -2993,7 +2993,7 @@
       "group": "compiler",
       "bytes": 129,
       "code": 0,
-      "stage1Ms": 2.6,
+      "stage1Ms": 3.1,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3014,7 +3014,7 @@
       "group": "compiler",
       "bytes": 379,
       "code": 0,
-      "stage1Ms": 2.9,
+      "stage1Ms": 4.8,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -3035,7 +3035,7 @@
       "group": "compiler",
       "bytes": 476,
       "code": 0,
-      "stage1Ms": 4.5,
+      "stage1Ms": 3.8,
       "outcome": "compiled",
       "functions": 3,
       "cases": 0,
@@ -3056,7 +3056,7 @@
       "group": "compiler",
       "bytes": 255,
       "code": 0,
-      "stage1Ms": 2.5,
+      "stage1Ms": 4.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3083,7 +3083,7 @@
       "group": "compiler",
       "bytes": 509,
       "code": 0,
-      "stage1Ms": 3.3,
+      "stage1Ms": 3.6,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -3116,7 +3116,7 @@
       "group": "compiler",
       "bytes": 110,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.9,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3143,11 +3143,11 @@
       "group": "compiler",
       "bytes": 187,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.9,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2306,
+      "cBytes": 2499,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -3170,11 +3170,11 @@
       "group": "compiler",
       "bytes": 185,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.8,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 2304,
+      "cBytes": 2495,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -3197,11 +3197,11 @@
       "group": "compiler",
       "bytes": 76,
       "code": 0,
-      "stage1Ms": 2.3,
+      "stage1Ms": 3.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 1970,
+      "cBytes": 2082,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -3218,11 +3218,11 @@
       "group": "compiler",
       "bytes": 79,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 3.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 1973,
+      "cBytes": 2087,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -3239,11 +3239,11 @@
       "group": "compiler",
       "bytes": 79,
       "code": 0,
-      "stage1Ms": 2.9,
+      "stage1Ms": 3.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 1973,
+      "cBytes": 2087,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -3260,11 +3260,11 @@
       "group": "compiler",
       "bytes": 79,
       "code": 0,
-      "stage1Ms": 2.2,
+      "stage1Ms": 2.8,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
-      "cBytes": 1973,
+      "cBytes": 2087,
       "stage1C": {
         "status": "passed",
         "cases": 0,
@@ -3281,7 +3281,7 @@
       "group": "compiler",
       "bytes": 357,
       "code": 1,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.8,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -3290,7 +3290,7 @@
       "group": "compiler",
       "bytes": 391,
       "code": 1,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.6,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -3299,7 +3299,7 @@
       "group": "compiler",
       "bytes": 162,
       "code": 0,
-      "stage1Ms": 1.8,
+      "stage1Ms": 2,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3320,7 +3320,7 @@
       "group": "compiler",
       "bytes": 142,
       "code": 0,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.6,
       "outcome": "passed",
       "functions": 1,
       "cases": 127,
@@ -3329,14 +3329,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 110.09329099999923,
+        "elapsedMs": 123.41820799999914,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 111.43345799999952,
+        "elapsedMs": 114.78549999999996,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -3345,7 +3345,7 @@
       "group": "compiler",
       "bytes": 97,
       "code": 0,
-      "stage1Ms": 2.4,
+      "stage1Ms": 2.9,
       "outcome": "passed",
       "functions": 1,
       "cases": 127,
@@ -3354,14 +3354,14 @@
         "status": "passed",
         "cases": 127,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 195.66095900000073,
+        "elapsedMs": 190.0502919999999,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 127,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 141.31591700000172,
+        "elapsedMs": 126.68466699999954,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -3370,7 +3370,7 @@
       "group": "compiler",
       "bytes": 61,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 2.4,
       "outcome": "passed",
       "functions": 1,
       "cases": 199,
@@ -3379,14 +3379,14 @@
         "status": "passed",
         "cases": 199,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 126.64979099999982,
+        "elapsedMs": 136.72683300000062,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 199,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 245.78154200000063,
+        "elapsedMs": 111.82500000000073,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -3395,7 +3395,7 @@
       "group": "compiler",
       "bytes": 370,
       "code": 0,
-      "stage1Ms": 5.6,
+      "stage1Ms": 2.9,
       "outcome": "passed",
       "functions": 1,
       "cases": 118,
@@ -3404,14 +3404,14 @@
         "status": "passed",
         "cases": 118,
         "detail": "C from a0c-stage1 via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 195.41129100000035,
+        "elapsedMs": 172.49658400000044,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       },
       "typescriptC": {
         "status": "passed",
         "cases": 118,
         "detail": "C from the TypeScript emitter via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-        "elapsedMs": 160.16191699999763,
+        "elapsedMs": 127.34250000000065,
         "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
       }
     },
@@ -3420,7 +3420,7 @@
       "group": "compiler",
       "bytes": 457,
       "code": 1,
-      "stage1Ms": 3.1,
+      "stage1Ms": 2.8,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -3453,7 +3453,7 @@
       "group": "compiler",
       "bytes": 131,
       "code": 1,
-      "stage1Ms": 2.3,
+      "stage1Ms": 2.6,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -3462,7 +3462,7 @@
       "group": "compiler",
       "bytes": 141,
       "code": 1,
-      "stage1Ms": 2.5,
+      "stage1Ms": 2.9,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -3483,7 +3483,7 @@
       "group": "compiler",
       "bytes": 220,
       "code": 1,
-      "stage1Ms": 3.3,
+      "stage1Ms": 2.3,
       "outcome": "rejected",
       "detail": "diagnostic 1 (reference checker 0)"
     },
@@ -3498,7 +3498,7 @@
       "group": "compiler",
       "bytes": 82,
       "code": 0,
-      "stage1Ms": 4.4,
+      "stage1Ms": 1.9,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3519,7 +3519,7 @@
       "group": "compiler",
       "bytes": 288,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 3,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -3573,7 +3573,7 @@
       "group": "compiler",
       "bytes": 101,
       "code": 0,
-      "stage1Ms": 2.9,
+      "stage1Ms": 2.6,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3594,7 +3594,7 @@
       "group": "compiler",
       "bytes": 127,
       "code": 0,
-      "stage1Ms": 2.9,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3631,19 +3631,19 @@
     {
       "label": "emit_c.a0/cwop",
       "group": "compiler",
-      "bytes": 1841,
+      "bytes": 1893,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/cwopst",
       "group": "compiler",
-      "bytes": 1904,
+      "bytes": 1956,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/cwopc",
       "group": "compiler",
-      "bytes": 1987,
+      "bytes": 2039,
       "outcome": "too-large"
     },
     {
@@ -3653,21 +3653,33 @@
       "outcome": "too-large"
     },
     {
+      "label": "emit_c.a0/cwtyst",
+      "group": "compiler",
+      "bytes": 1826,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cwtyc",
+      "group": "compiler",
+      "bytes": 1909,
+      "outcome": "too-large"
+    },
+    {
       "label": "emit_c.a0/cwsel",
       "group": "compiler",
-      "bytes": 2498,
+      "bytes": 2543,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/cwtst",
       "group": "compiler",
-      "bytes": 3093,
+      "bytes": 3146,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/cwt",
       "group": "compiler",
-      "bytes": 3549,
+      "bytes": 3610,
       "outcome": "too-large"
     },
     {
@@ -3696,7 +3708,7 @@
       "group": "compiler",
       "bytes": 170,
       "code": 0,
-      "stage1Ms": 4,
+      "stage1Ms": 2.4,
       "outcome": "compiled",
       "functions": 2,
       "cases": 0,
@@ -3713,15 +3725,36 @@
       }
     },
     {
+      "label": "emit_c.a0/cres",
+      "group": "compiler",
+      "bytes": 254,
+      "code": 0,
+      "stage1Ms": 2.6,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 2485,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
       "label": "emit_c.a0/clst",
       "group": "compiler",
-      "bytes": 2533,
+      "bytes": 2912,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/cwlist",
       "group": "compiler",
-      "bytes": 2720,
+      "bytes": 3126,
       "outcome": "too-large"
     },
     {
@@ -3729,7 +3762,7 @@
       "group": "compiler",
       "bytes": 192,
       "code": 0,
-      "stage1Ms": 9.2,
+      "stage1Ms": 2.5,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3750,7 +3783,7 @@
       "group": "compiler",
       "bytes": 169,
       "code": 0,
-      "stage1Ms": 2.8,
+      "stage1Ms": 2.7,
       "outcome": "compiled",
       "functions": 1,
       "cases": 0,
@@ -3769,7 +3802,7 @@
     {
       "label": "emit_c.a0/cnode",
       "group": "compiler",
-      "bytes": 12880,
+      "bytes": 15162,
       "outcome": "too-large"
     },
     {
@@ -3779,9 +3812,54 @@
       "outcome": "too-large"
     },
     {
+      "label": "emit_c.a0/cprm1",
+      "group": "compiler",
+      "bytes": 2070,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cusa",
+      "group": "compiler",
+      "bytes": 363,
+      "code": 0,
+      "stage1Ms": 2.8,
+      "outcome": "compiled",
+      "functions": 1,
+      "cases": 0,
+      "cBytes": 3769,
+      "stage1C": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      },
+      "typescriptC": {
+        "status": "passed",
+        "cases": 0,
+        "detail": "compiled (-Werror); no driver-callable function"
+      }
+    },
+    {
+      "label": "emit_c.a0/cusn",
+      "group": "compiler",
+      "bytes": 597,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/crt",
+      "group": "compiler",
+      "bytes": 1154,
+      "outcome": "too-large"
+    },
+    {
+      "label": "emit_c.a0/cvar",
+      "group": "compiler",
+      "bytes": 20269,
+      "outcome": "too-large"
+    },
+    {
       "label": "emit_c.a0/cfn",
       "group": "compiler",
-      "bytes": 13862,
+      "bytes": 29792,
       "outcome": "too-large"
     },
     {
@@ -3817,19 +3895,19 @@
     {
       "label": "emit_c.a0/emitc",
       "group": "compiler",
-      "bytes": 21250,
+      "bytes": 37180,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/cemit",
       "group": "compiler",
-      "bytes": 21414,
+      "bytes": 37344,
       "outcome": "too-large"
     },
     {
       "label": "emit_c.a0/emitcio",
       "group": "compiler",
-      "bytes": 90267,
+      "bytes": 95873,
       "outcome": "too-large"
     }
   ]
