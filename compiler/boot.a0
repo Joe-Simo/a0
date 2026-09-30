@@ -20,7 +20,14 @@
 # Nothing is written otherwise. The result is the diagnostic code (1 parse, 2 structure,
 # 3 type, 4 limit, 5 above).
 
+# `emitwasmio` is the entry of the A0 wasm32 emitter (compiler/emit_wasm.a0; driven by
+# tools/selfhost-wasm.ts): its first input word is the mode, 1 a source chunk (the input of
+# `emitchunkio`, then the variant count before the chunk and the call table (index, depth) of
+# the chunk's first `from` functions), 2 a chunk as checked tables, 3 the module linker. The
+# result is the diagnostic code (6 for an unknown mode).
+
 use "emit_arm64.a0"
+use "emit_wasm.a0"
 
 # `read` as a function: its (u32,io) result is named by this header, so the prelude interns it
 fn rdword io -> (u32,io)
@@ -120,5 +127,51 @@ nfns at u 3
 ok eq code 0
 go select ok 1 0
 t7 fold wtrail go t6 fstat from nfns
+ret code
+end
+# wasm32, mode 1: a source chunk through the A0 front end
+fn wam1 (io,u32) u32 -> (io,u32)
+t at p0 0
+c call rdchunk t
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+t5 at c 6
+rb call rdword t5
+base at rb 0
+t6 at rb 1
+nd mul from 2
+rd call warn16 t6 nd
+dt at rd 0
+t7 at rd 1
+u call wasunit t7 src n fst from dt base
+ret u
+end
+fn wam2 (io,u32) u32 -> (io,u32)
+t at p0 0
+r call wairchunk t
+ret r
+end
+fn wam3 (io,u32) u32 -> (io,u32)
+t at p0 0
+r call walink t
+ret r
+end
+fn emitwasmio io -> u32
+r call rdword p0
+m at r 0
+t at r 1
+s0 rec t 6
+m1 eq m 1
+m2 eq m 2
+m3 eq m 3
+c1 select m1 1 0
+c2 select m2 1 0
+c3 select m3 1 0
+a fold wam1 c1 s0
+b fold wam2 c2 a
+c fold wam3 c3 b
+code at c 1
 ret code
 end

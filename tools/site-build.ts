@@ -1,16 +1,16 @@
 /**
- * Build a0lang.com: site/page.a0, site/docs.a0 and site/play.a0 (each with what it `use`s) -> C -> wasm32
- * (clang + wasm-ld), the generic runtime (site/app.ts -> site/dist/app.js via tsc), the HTML
+ * Build a0lang.com: site/page.a0, site/docs.a0 and site/play.a0 (each with what it `use`s) -> wasm32
+ * by the wasm emitter written in A0 (compiler/emit_wasm.a0, built by the bootstrap's C seed: see
+ * tools/selfhost-wasm.ts; src/wasm.ts is kept only as the byte-for-byte reference), the generic runtime (site/app.ts -> site/dist/app.js via tsc), the HTML
  * shells, and the self-hosted Geist fonts. Output: site/dist/. Nothing is deployed by this script.
  */
 
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
-import { runTool } from '../src/toolchain.js';
-import { wasmModuleBytes } from '../src/wasm.js';
+import { findClang, runTool } from '../src/toolchain.js';
+import { a0WasmFromTables, buildWasmTool, typescriptWasm } from './selfhost-wasm.js';
 import { fillShell, prerender } from './site-render.js';
 
 const out = join('site', 'dist');
@@ -23,21 +23,26 @@ interface Built {
   readonly text: string;
 }
 
-async function buildProgram(entry: string, outName: string): Promise<Built> {
+async function buildProgram(a0w: string, entry: string, outName: string): Promise<Built> {
   // The io buffers are widened because a page writes its stylesheet and every string as words;
   // the input holds the play page's source text (480 bytes) and the state that echoes it.
   // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
   const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'), { root: '.' }))
     .program;
-  // A0's own wasm32 backend (src/wasm.ts): the module is emitted directly, no C, no clang.
-  const wasm = wasmModuleBytes(
-    compile(program, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 131072 }).text,
-  );
+  // The wasm emitter written in A0 writes the module; src/wasm.ts (on the same unoptimized
+  // program) must give the same bytes.
+  const layout = { ioInputCapacity: 1024, ioOutputCapacity: 131072 };
+  const wasm = a0WasmFromTables(a0w, program, layout).bytes;
+  if (Buffer.compare(Buffer.from(wasm), Buffer.from(typescriptWasm(program, layout))) !== 0)
+    throw new Error(`${entry}: the A0 wasm emitter differs from src/wasm.ts`);
   await writeFile(join(out, `${outName}.wasm`), wasm);
   // The same program, run once here through the reference interpreter: static HTML for
   // agents and crawlers that do not run JavaScript. The browser re-renders the same tree.
   const pre = prerender(program);
-  return { size: `${outName}.wasm ${wasm.length} bytes (A0 wasm32 backend)`, ...pre };
+  return {
+    size: `${outName}.wasm ${wasm.length} bytes (compiler/emit_wasm.a0, equal to src/wasm.ts)`,
+    ...pre,
+  };
 }
 
 /** Files for agents: llms.txt (the convention), the primer, the docs as text, robots, sitemap. */
@@ -163,9 +168,12 @@ async function copyFonts(): Promise<void> {
 async function main(): Promise<void> {
   await mkdir(join(out, 'docs'), { recursive: true });
   await mkdir(join(out, 'play'), { recursive: true });
-  const page = await buildProgram('page.a0', 'page');
-  const docs = await buildProgram('docs.a0', 'docs');
-  const play = await buildProgram('play.a0', 'play');
+  const clang = findClang();
+  if (clang.path === undefined) throw new Error('clang not found (it builds the A0 wasm emitter)');
+  const a0w = (await buildWasmTool(clang)).exe;
+  const page = await buildProgram(a0w, 'page.a0', 'page');
+  const docs = await buildProgram(a0w, 'docs.a0', 'docs');
+  const play = await buildProgram(a0w, 'play.a0', 'play');
   const sizes = [page.size, docs.size, play.size];
   const tsc = join('node_modules', '.bin', 'tsc');
   const r = runTool(tsc, [
