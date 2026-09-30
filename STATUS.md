@@ -327,6 +327,46 @@ now hold this run; run 1 is in git history at c440aae):
 | haiku-full | rust/conventional | 13/13 | 620 | 2279 | 1577 |
 | haiku-full | rust/structured | 13/13 | 336 | 3110 | 1527 |
 
+**Run 5, 2026-09-30, task set B: 12 tasks written by an agent that had not seen set A
+or the corpus** (`tools/ai-edit-tasks-b.ts`, `A0_EXPERIMENT_TASKSET=b`; results in
+`results/ai-edit-experiment.b.*.json`), fresh subjects, one shot, no repairs:
+
+| subject | cell | one-shot | output tokens | whole-task uncached | cache-adjusted |
+|---|---|---|---|---|---|
+| sonnet-min | a0/conventional | 12/12 | 753 | 6730 | 2599 |
+| sonnet-min | a0/structured | 12/12 | 410 | 6942 | 2454 |
+| sonnet-min | ts/conventional | 12/12 | 748 | 2397 | 1907 |
+| sonnet-min | ts/structured | 12/12 | 335 | 3032 | 1737 |
+| sonnet-min | rust/conventional | 12/12 | 735 | 2556 | 1913 |
+| sonnet-min | rust/structured | 12/12 | 304 | 3177 | 1729 |
+| sonnet-full | a0/conventional | 12/12 | 753 | 9994 | 3089 |
+| sonnet-full | a0/structured | 12/12 | 458 | 10254 | 2992 |
+| sonnet-full | ts/conventional | 12/12 | 748 | 2397 | 1907 |
+| sonnet-full | ts/structured | 12/12 | 335 | 3032 | 1737 |
+| sonnet-full | rust/conventional | 12/12 | 735 | 2556 | 1913 |
+| sonnet-full | rust/structured | 12/12 | 304 | 3177 | 1729 |
+| haiku-min | a0/conventional | 12/12 | 753 | 6730 | 2599 |
+| haiku-min | a0/structured | 12/12 | 544 | 7076 | 2588 |
+| haiku-min | ts/conventional | 12/12 | 737 | 2386 | 1896 |
+| haiku-min | ts/structured | 11/12 | 362 | 3085 | 1790 |
+| haiku-min | rust/conventional | 11/12 | 717 | 2624 | 1981 |
+| haiku-min | rust/structured | 12/12 | 317 | 3190 | 1742 |
+| haiku-full | a0/conventional | 12/12 | 753 | 9994 | 3089 |
+| haiku-full | a0/structured | 9/12 | 459 | 10352 | 3090 |
+| haiku-full | ts/conventional | 12/12 | 737 | 2386 | 1896 |
+| haiku-full | ts/structured | 11/12 | 362 | 3085 | 1790 |
+| haiku-full | rust/conventional | 11/12 | 717 | 2623 | 1980 |
+| haiku-full | rust/structured | 12/12 | 317 | 3190 | 1742 |
+
+Sonnet 72/72 with either primer. Haiku, compact primer: 70/72, with both A0 cells 12/12
+and the two misses in TypeScript (a wrong average) and Rust (a panic); full primer 66/72.
+Output tokens on this set: A0 structured 410 vs TypeScript 335 and Rust 304 (Sonnet), a
+**loss** of 22–35 %; on set A it was a tie. Whole-task cache-adjusted, compact primer:
+2454 vs 1737 = 1.41× TypeScript (loss). The Haiku A0 misses with the full primer were a
+fold body defined after its use, an out-of-order reference the edit layer could not
+resolve (a true forward reference to a node the reply never defined), and a `select`
+with five operands. None is a new protocol class.
+
 **Run 4, 2026-09-30, structured-protocol text cut from 140 to 52 tokens per call
 (TypeScript's is 96); only the four A0 structured cells were re-collected, the rest are
 run 3's replies; one shot, no repairs:**
