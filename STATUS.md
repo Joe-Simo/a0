@@ -1511,6 +1511,48 @@ in src/backends.ts (plus one comment in src/toolchain.ts); the design is documen
   webassembly); equiv 48/48 proved; hw passed; dotnet passed (5262); gpu passed (4297, Apple
   M3); selfhost 50 programs / 6898 cases; selfhost:c 6371/6371. results/*.json regenerated
   under a0c-0.1.16.
+## Session 2026-09-30 (output tokens per edit)
+
+Loss addressed: A0 structured replies cost ~34 o200k output tokens per edit vs ~28 TypeScript and ~26 Rust (sets b, c400 scoped, d; Haiku and Sonnet subagents, min primer).
+
+Attribution of the accepted A0 replies (72 replies, o200k, token assigned by its first non-space character): operands 8.3 (25%), whole-function headers in `fn` blocks 7.3 (22%), newlines 5.8 (17%), code fence 3.0 (9%), ids 2.4, ops 2.1, handle line 2.0 (6%, plus its newline), `ret` lines 1.8, `end` 0.7. TS/Rust replies spend the same 3 fence + 2 handle tokens; the rest is the replaced line text.
+
+Protocol changes (src/edit.ts, test/edit.test.ts; protocol only, COMPILER_VERSION unchanged, noted in DESIGN section 5):
+- handle line optional when implied: exactly one function handle open (or, with none, exactly one program handle); an explicit handle, several handles, or an unknown handle behave as before;
+- a function handle also takes `-fn name` lines (it already took whole `fn` blocks);
+- `end` of a `fn` block is optional: the block closes at the next `fn`/`-fn` line or the end of the reply (`fn`/`end` are reserved, so no instruction line is mistaken for a boundary);
+- no code fence required (the harness already accepted bare lines; the protocol text now asks for bare lines). MODEL_GUIDE.min.txt EDIT line and PROTOCOL_STRUCTURED_A0 updated; the view is unchanged.
+Old fenced, handle-first replies (sets b and d, both models) re-score identically.
+
+Fresh subjects (Agent tool subagents, model haiku / sonnet, each reading only its group file; results/ai-edit-experiment.{b,c400,d}.{haiku,sonnet}-bare.json, A0 structured cell only; TS/Rust from the existing -min files):
+
+| set / model | A0 accepted before -> after | A0 output/edit before -> after | TS output | Rust output | A0 whole-task total before -> after |
+|---|---|---|---|---|---|
+| b haiku | 12/12 -> 12/12 | 45.3 -> 31.6 | 30.2 | 26.4 | 590 -> 579 |
+| b sonnet | 12/12 -> 12/12 | 34.2 -> 27.5 | 27.9 | 25.3 | 579 -> 575 |
+| c400 haiku | 10/12 -> 11/12 | 30.7 -> 29.8 | 30.7 | 26.5 | 611 -> 597 |
+| c400 sonnet | 12/12 -> 12/12 | 34.0 -> 25.6 | 28.0 | 26.0 | 596 -> 590 |
+| d haiku | 13/13 -> 13/13 | 35.0 -> 24.5 | 25.3 | 25.8 | 560 -> 553 |
+| d sonnet | 13/13 -> 13/13 | 26.2 -> 19.2 | 25.2 | 25.8 | 551 -> 547 |
+| mean | | 34.2 -> 26.4 | 27.9 | 26.0 | |
+
+Against the old fenced TS/Rust protocol A0 output per edit is below TypeScript and level with Rust; on equal (relaxed) protocols it is not, see the next subsection. Whole-task totals barely move because the primer dominates (TS/Rust totals: ~230-265 on b/d, ~14.3k on c400). Remaining A0 output: operands 33%, `fn` headers 27% (models resend whole functions under a function handle for small edits), newlines 13%. The one failure (c400-bounds-largest, Haiku) is a language error (nested `select (lt ...)`), as before.
+
+### All three on the relaxed protocol
+
+TS and Rust structured cells got the same relaxations where they apply (tools/ai-edit-apply.ts, PROTOCOL_STRUCTURED_TS/RUST): no code fence, handle line optional (edit lines start with a digit, `+`, or `-`, so a handle-shaped first line is unambiguous; a wrong handle is still rejected). tools/ai-edit-langs.ts is not in this base, so the five other languages were not changed. Fresh TS and Rust subjects (Agent tool subagents, haiku / sonnet, one group file each) on sets b, c400 (scoped A0 view; whole numbered file for TS/Rust), d; the A0 replies are the ones above. results/ai-edit-experiment.{b,c400,d}.{haiku,sonnet}-bare.json now hold all three structured cells.
+
+| set / model | A0 acc, out/edit | TS acc, out/edit (old -> relaxed) | Rust acc, out/edit (old -> relaxed) |
+|---|---|---|---|
+| b haiku | 12/12, 31.6 | 11/12 30.2 -> 11/12 23.5 | 12/12 26.4 -> 8/12 19.3 |
+| b sonnet | 12/12, 27.5 | 12/12 27.9 -> 9/12 22.8 | 12/12 25.3 -> 12/12 19.6 |
+| c400 haiku | 11/12, 29.8 | 8/12 30.7 -> 8/12 24.5 | 7/12 26.5 -> 12/12 20.8 |
+| c400 sonnet | 12/12, 25.6 | 12/12 28.0 -> 12/12 22.2 | 12/12 26.0 -> 12/12 19.5 |
+| d haiku | 13/13, 24.5 | 12/13 25.3 -> 12/13 19.4 | 12/13 25.8 -> 12/13 20.6 |
+| d sonnet | 13/13, 19.2 | 13/13 25.2 -> 13/13 19.6 | 12/13 25.8 -> 13/13 19.0 |
+| all | 73/74, 26.2 | 68/74 27.8 -> 65/74 21.9 | 67/74 26.0 -> 69/74 19.8 |
+
+On equal protocols A0 structured output per edit is higher than TS (+4.3) and Rust (+6.4): the relaxations saved TS/Rust about 6 tokens, as much as A0. A0 keeps the acceptance lead (73/74 vs 65/74 and 69/74) and, on c400, the whole-task lead (~590 vs ~14.3k, the view). TS/Rust failures: Sonnet TS b (3, protocol: multi-line replacement text without line numbers), Haiku Rust b (4: unbalanced braces from line edits, one wrong output), Haiku TS c400 (4: compile errors, one wrong output); one-shot subjects swing between runs (Haiku Rust c400 went 7/12 -> 12/12). The remaining A0 gap is the `fn` headers of whole-function resends (27% of A0 output) and one newline per instruction.
 
 ## Session 2026-09-30 (parallel folds: pool and GPU maps)
 
@@ -1816,3 +1858,39 @@ listed by `git log`; the push is verified against `origin/main` after each commi
    combinational. Optionally run the full ABC synth in `bun run hw` behind a flag.
 6. Keep MLIR/LLVM, GPU, and .NET scope unchanged unless a measured need appears
    (`results/exec-benchmark.json` ties vs C and Rust on all kernels).
+
+### No primer and lazy primer (single-function tasks)
+
+On single-function tasks A0 lost to TS/Rust only through the primer. Two harness options remove it (`A0_EXPERIMENT_PRIMER`, default unchanged `always`): `none` makes the A0 system text only the edit protocol (`PROTOCOL_STRUCTURED_A0_SELF`, 64 o200k tokens: the guide's EDIT rules on their own), so the model infers A0 from the view. `lazy` does the same on the first attempt and adds `MODEL_GUIDE.tiny.txt` (`A0_EXPERIMENT_LAZY_GUIDE`) to the repair message only after a protocol or compile rejection. The lazy primer is charged to the language-primer bucket. Both modes allow exactly one repair.
+
+Method: fresh Haiku and Sonnet subagents, one shot, each reading one group file (sets a, b, d; structured cells). The first-attempt prompt is identical under none and lazy, so one set of first replies serves both. Retries: fresh subagents per model and group (A0-none, A0-lazy, TS, Rust), given system, request, the earlier reply, and the exact repair message. TS/Rust got the same one retry. TS/Rust relaxed replies for b and d are the existing ones from the relaxed-protocol collection. Set a had no relaxed TS/Rust replies, so they were collected fresh. Results: `results/ai-edit-experiment.{,b.,d.}{haiku,sonnet}-primer-{none,lazy}.json`.
+
+How cost is counted, in o200k tokens per task: the system text is charged 1.25x on the first call of a session and 0.05x on each later call. Everything else is charged 1x each time it is sent. A retry re-sends task + view + first reply + repair (including the lazy primer). A 10-task session amortizes the cache write over 10 tasks. Unbounded means the system text costs 0.05x on every call.
+
+Pooled over a+b+d, 76 trials per cell (Haiku 38 + Sonnet 38):
+
+| cell | one-shot | after 1 retry | calls/task | system | 1 task | 10-task session | unbounded |
+|---|---|---|---|---|---|---|---|
+| A0 no primer | 65/76 | 72/76 | 1.14 | 64 | 235 | 166 | 158 |
+| A0 lazy primer | 65/76 | 75/76 | 1.14 | 64 | 262 | 193 | 185 |
+| TS relaxed | 67/76 | 76/76 | 1.12 | 126 | 284 | 148 | 133 |
+| Rust relaxed | 68/76 | 74/76 | 1.11 | 141 | 312 | 160 | 143 |
+| A0 min primer (existing, one shot, b+d only, 50 trials) | 50/50 | - | 1.00 | 443 | 674 | 195 | 142 |
+
+By model: Haiku A0 none 30/38 -> 35/38, lazy 30/38 -> 38/38, TS 34 -> 38, Rust 32 -> 36. Sonnet A0 none 35/38 -> 37/38, lazy 35 -> 37, TS 33 -> 38, Rust 36 -> 38. Haiku set b is the weak spot for A0: 7/12 one shot. With no primer, the retry brings it to 10/12, and 10-task-session cost is 275 vs TS 159.
+
+Findings:
+- **Single task (the cold case): A0 now wins.** No primer costs 235 vs TS 284 and Rust 312. Lazy costs 262. The primer was the whole gap, and TS/Rust still carry their semantics notes (126/141 tokens) against A0's 64-token protocol.
+- **10-task session and unbounded: loss.** Once cached, the system text is almost free for every language. What remains is A0's extra retries and larger replies: none 166 vs TS 148 vs Rust 160; unbounded 158 vs 133 vs 143. Lazy is worse still (193 / 185), because the tiny primer travels uncached inside the repair.
+- **Acceptance: loss for no primer, parity for lazy.** A0 one-shot acceptance without a primer is 65/76, against 50/50 with the min primer on b+d. No primer ends at 72/76 after one retry, below TS 76/76 and Rust 74/76. Lazy recovers to 75/76. The error message alone repaired 7 of 11 first-attempt failures. Error plus primer repaired 10 of 11.
+- The default stays `always` (MODEL_GUIDE.min.txt). `lazy` is the candidate for cold single-task use, and it pays about 45 tokens per task in a session.
+
+A0 syntax that models guessed wrong without a primer (first attempts, both models). These are candidates for making the syntax more guessable. The language was not changed in this task.
+1. Calling a function by its name as the op (`r dot p0 p0`, `popcnt`, `limit`, `extract`), not `call F ...`. 4 of Haiku's 5 set-b parse failures.
+2. Nested operands (`(sub ...)`), the same shape as grammar item B.
+3. Guessed op names: `udiv` for `div`.
+4. `get` used on a record (record vs array access, `at` vs `get`).
+5. fold callee arity: extra arguments passed to a fold step that takes none.
+6. Instruction lines sent under the program handle without a `fn` header (`expected 'fn', got 'a'`).
+7. Retries that attempted recursion, called a function defined later (definition order), or used an uppercase id (`A1`).
+One remaining failure is a type error (a bool returned where u32 was declared). A second is a wrong-output model error on b-checksum-poly (Haiku).
