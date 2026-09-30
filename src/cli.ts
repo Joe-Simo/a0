@@ -2,7 +2,9 @@
 /**
  * Local command-line interface.
  *
- *   a0 check <file.a0>
+ *   a0 check <file.a0>...
+ *   a0 init [dir]         (AGENTS.md + agent rule files, src/agents.ts)
+ *   a0 hook               (after-edit check for agent hooks: JSON on stdin)
  *   a0 run <file.a0> <function> <args...>
  *   a0 emit <js|c|java|sv|arm64|x86_64|riscv64|avr|wasm|arm32> <file.a0> [out]
  *   a0 emit c --parallel[=auto|gpu] <file.a0> [out]   (automatic parallel folds, src/parallel.ts)
@@ -17,6 +19,7 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { hookResponse, init } from './agents.js';
 import { compile, isTarget, TARGETS } from './backends.js';
 import { compileCached, DiskCache } from './cache.js';
 import {
@@ -41,7 +44,7 @@ function usage(): never {
   process.stderr.write(
     [
       'usage:',
-      '  a0 check <file.a0>',
+      '  a0 check <file.a0>...',
       '  a0 run <file.a0> <function> <args...>',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
       '  a0 emit c --parallel[=auto|gpu] <file.a0> [out]   # threads (+ Metal when built as ObjC)',
@@ -51,6 +54,8 @@ function usage(): never {
       '  a0 view <file.a0> <function>          # function plus callee signatures',
       '  a0 mcp <file-or-dir>                  # MCP server (stdio), paths confined to the root;',
       '      tools: a0_open a0_program a0_apply a0_check a0_run a0_emit a0_save',
+      '  a0 init [dir]                         # AGENTS.md, CLAUDE.md/GEMINI.md pointers, agent rules',
+      '  a0 hook                               # agent after-edit hook: tool-call JSON on stdin',
       '',
     ].join('\n'),
   );
@@ -80,14 +85,35 @@ async function main(argv: readonly string[]): Promise<void> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
     case 'check': {
-      const [file] = rest;
-      if (file === undefined) usage();
-      const program = await loadProgram(file);
-      for (const fn of program.functions) {
-        process.stdout.write(
-          `${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
-        );
+      if (rest.length === 0) usage();
+      let failed = 0;
+      for (const file of rest) {
+        try {
+          const program = await loadProgram(file);
+          for (const fn of program.functions) {
+            process.stdout.write(
+              `${rest.length > 1 ? `${file}: ` : ''}${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
+            );
+          }
+        } catch (err) {
+          failed++;
+          process.stderr.write(`${file}: error: ${formatDiagnostic(err)}\n`);
+        }
       }
+      if (failed > 0) process.exitCode = 1;
+      return;
+    }
+    case 'init': {
+      const report = await init(rest[0] ?? '.');
+      for (const p of report.written) process.stdout.write(`wrote ${p}\n`);
+      for (const p of report.skipped) process.stdout.write(`kept ${p} (exists)\n`);
+      return;
+    }
+    case 'hook': {
+      const chunks: Buffer[] = [];
+      for await (const c of process.stdin) chunks.push(c as Buffer);
+      const out = await hookResponse(Buffer.concat(chunks).toString('utf8'), loadProgram);
+      if (out !== undefined) process.stdout.write(`${out}\n`);
       return;
     }
     case 'run': {

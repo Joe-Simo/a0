@@ -41,6 +41,14 @@ Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, 
 
 `a0 mcp <file-or-dir>` serves A0 to AI agents over stdio (Model Context Protocol), so they edit through tools instead of text files: `a0_open` (function view with a handle), `a0_program` (program handle, optionally scoped to a target), `a0_apply` (edit under a handle; returns the new view or a diagnostic with code/expected/actual/fix), `a0_check`, `a0_run` (reference interpreter, fuel-bounded), `a0_emit` (any target), `a0_save` (only after a successful apply). Paths are confined to the launch root (symlink escapes and `use` escapes rejected); no shell is run; output is bounded.
 
+## Agent integration
+
+- `a0 init [dir]` writes `AGENTS.md` (read by Codex, Cursor, Copilot, Jules and others) with the MCP tool workflow, the edit protocol and the primer path (`.a0/MODEL_GUIDE.txt`, copied in when available, otherwise the GitHub URL), plus `@AGENTS.md` pointers in `CLAUDE.md` and `GEMINI.md`, glob rules for Cursor (`.cursor/rules/a0.mdc`), Windsurf (`.windsurf/rules/a0.md`) and Copilot (`.github/instructions/a0.instructions.md`), and a Gemini CLI `AfterTool` hook (`.gemini/settings.json`). Existing instruction files get the A0 section appended once; other existing files are kept.
+- `a0 hook` is the after-edit check: it reads a hook's tool-call JSON on stdin and, when an edited `*.a0` file fails `a0 check`, prints a blocking response whose reason is the exact diagnostic with its `fix:`.
+- Claude Code plugin (`plugin/`): a `PostToolUse` hook on `Edit|Write|MultiEdit` (`plugin/hooks/hooks.json`, runs `a0 hook`; set `A0_BIN` if `a0` is not on `PATH`) and the slash commands `/a0-check`, `/a0-emit`, `/a0-run` (`plugin/commands/`).
+- CI: `uses: Joe-Simo/a0@main` (root `action.yml`, input `version`, default `latest`) downloads the release binary for the runner and checks every tracked `.a0` file. pre-commit: `repo: https://github.com/Joe-Simo/a0`, hook id `a0-check` (needs `a0` on `PATH`).
+- `a0 check` accepts several files and exits 1 if any fails, printing `<file>: error: <code>: ... fix: ...` per failure.
+
 ## Contributing to the compiler
 
 The compiler is being rewritten in A0 (see `compiler/` and DESIGN.md section 7a). Until that lands, the compiler itself is TypeScript, and working on it needs Bun or Node 22+. Users of A0 never need this: the released `a0` binary is self-contained.
