@@ -195,6 +195,8 @@ async function benchC(
   buildMs: { a0ToNative: number; rustc: number | null };
   emitted: Sample;
   handwritten: Sample;
+  /** Direct AArch64 backend (src/arm64.ts) as an out-of-line call from the same driver; null off Apple silicon. */
+  arm64: Sample | null;
   binaryBytes: { emitted: number; handwritten: number };
 }> {
   const tEmit = performance.now();
@@ -219,6 +221,32 @@ async function benchC(
     const tA0 = performance.now();
     const e = await build('emitted', emittedSrc, `a0_${kernel.name}(ARGS)`);
     const a0BuildMs = performance.now() - tA0 + emitMs;
+    // arm64: the A0 kernel as assembly from src/arm64.ts (no C for the program), assembled by
+    // `clang -x assembler`, linked with the same driver. The call is out of line (no inlining
+    // across the object boundary), unlike the C paths where the kernel inlines into the loop.
+    let arm64Exe: string | null = null;
+    if (process.platform === 'darwin' && process.arch === 'arm64') {
+      await writeFile(join(dir, 'kernel.s'), compile(program, 'arm64').text, 'utf8');
+      const as = runTool(clang, [
+        '-c',
+        '-x',
+        'assembler',
+        '-o',
+        join(dir, 'kernel.o'),
+        join(dir, 'kernel.s'),
+      ]);
+      if (!as.ok) throw new Error(`arm64 assemble: ${as.stderr}`);
+      const proto = `#include <stdint.h>\nextern uint32_t a0_${kernel.name}(${Array.from({ length: kernel.arity }, () => 'uint32_t').join(', ')});`;
+      const src = join(dir, 'arm64.c');
+      arm64Exe = join(dir, 'arm64');
+      await writeFile(
+        src,
+        `${proto}\n${cDriver(() => `a0_${kernel.name}(ARGS)`, kernel.arity)}`,
+        'utf8',
+      );
+      const r = runTool(clang, ['-std=c11', '-O2', '-o', arm64Exe, src, join(dir, 'kernel.o')]);
+      if (!r.ok) throw new Error(`arm64 link: ${r.stderr}`);
+    }
     const h = await build(
       'handwritten',
       `#include <stdint.h>\n${kernel.c}`,
@@ -246,6 +274,8 @@ async function benchC(
     };
     const es: number[] = [];
     const hs: number[] = [];
+    const as64: number[] = [];
+    let ac = '';
     let ec = '';
     let hc = '';
     // Startup: wall time of a process that runs a single iteration (spawn + exit dominated).
@@ -272,6 +302,11 @@ async function benchC(
       hs.push(b.ns);
       ec = a.checksum;
       hc = b.checksum;
+      if (arm64Exe !== null) {
+        const r = runOne(arm64Exe);
+        as64.push(r.ns);
+        ac = r.checksum;
+      }
       if (rustOk) {
         const r = runOne(rustExe);
         rs.push(r.ns);
@@ -280,11 +315,14 @@ async function benchC(
     }
     if (ec !== hc)
       throw new Error(`${kernel.name}: checksum mismatch emitted=${ec} handwritten=${hc}`);
+    if (arm64Exe !== null && ac !== ec)
+      throw new Error(`${kernel.name}: arm64 checksum mismatch ${ac} vs ${ec}`);
     if (rustOk && rc !== ec)
       throw new Error(`${kernel.name}: rust checksum mismatch ${rc} vs ${ec}`);
     return {
       emitted: summarize(es, ec),
       handwritten: summarize(hs, hc),
+      arm64: arm64Exe === null ? null : summarize(as64, ac),
       binaryBytes: { emitted: e.bytes, handwritten: h.bytes },
       startupMs,
       rust: rustOk ? summarize(rs, rc) : null,
@@ -460,6 +498,13 @@ async function main(): Promise<void> {
               ...c,
               verdict: verdict(c.emitted, c.handwritten),
               verdictVsRust: c.rust === null ? 'blocked' : verdict(c.emitted, c.rust),
+              arm64VsEmittedC:
+                c.arm64 === null
+                  ? 'blocked'
+                  : {
+                      ratio: c.arm64.medianNsPerCall / c.emitted.medianNsPerCall,
+                      verdict: verdict(c.arm64, c.emitted),
+                    },
             },
       js: {
         emitted: js.emitted,
@@ -470,7 +515,7 @@ async function main(): Promise<void> {
     const cv =
       c === null
         ? 'blocked'
-        : `${verdict(c.emitted, c.handwritten)} (${c.emitted.medianNsPerCall.toFixed(3)} vs ${c.handwritten.medianNsPerCall.toFixed(3)} ns)${c.rust === null ? '' : `; vs Rust ${verdict(c.emitted, c.rust)} (${c.rust.medianNsPerCall.toFixed(3)} ns)`}`;
+        : `${verdict(c.emitted, c.handwritten)} (${c.emitted.medianNsPerCall.toFixed(3)} vs ${c.handwritten.medianNsPerCall.toFixed(3)} ns)${c.rust === null ? '' : `; vs Rust ${verdict(c.emitted, c.rust)} (${c.rust.medianNsPerCall.toFixed(3)} ns)`}${c.arm64 === null ? '' : `; arm64 ${c.arm64.medianNsPerCall.toFixed(3)} ns (${(c.arm64.medianNsPerCall / c.emitted.medianNsPerCall).toFixed(2)}x C)`}`;
     process.stdout.write(
       `${k.name.padEnd(8)} C: ${cv}   JS: ${verdict(js.emitted, js.handwritten)} (${js.emitted.medianNsPerCall.toFixed(3)} vs ${js.handwritten.medianNsPerCall.toFixed(3)} ns)\n`,
     );
@@ -487,8 +532,9 @@ async function main(): Promise<void> {
     flags: { c: '-std=c11 -O2 (no sanitizer)', js: 'Node default JIT, in-process, warm' },
     iterationsPerSample: { c: ITER, js: ITER / 4, python: ITER / 200 },
     samplesPerSide: SAMPLES,
+    loadAverage: (await import('node:os')).loadavg(),
     meaning:
-      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
+      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
     kernels: results,
   };
   await mkdir('results', { recursive: true });

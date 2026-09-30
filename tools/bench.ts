@@ -47,7 +47,8 @@ async function main(): Promise<void> {
   const parse = measure(runs, () => parseAndValidate(source));
   const opt = measure(runs, () => optimize(corpus));
   const emission: Record<string, { cold: Sample; cached: Sample }> = {};
-  for (const target of TARGETS as readonly Target[]) {
+  // arm64 refuses io functions, which the corpus contains; its emission is not timed here.
+  for (const target of TARGETS.filter((t): t is Target => t !== 'arm64')) {
     const input = corpus;
     const cold = measure(runs, () => compile(input, target));
     const cache = new FunctionCache();

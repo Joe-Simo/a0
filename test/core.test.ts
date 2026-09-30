@@ -1226,3 +1226,74 @@ test('ret expression sugar: `ret OP ARGS` in source and in edits', () => {
   assert.equal(n.byName.get('f')?.nodes.at(-1)?.id, 'retval2');
   assert.equal(run(n.byName.get('f') as TypedFunc, [4]), 10);
 });
+
+const ARM64_HOST = process.platform === 'darwin' && process.arch === 'arm64';
+
+test('arm64 backend refuses io functions with a diagnostic', () => {
+  const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
+  assert.throws(
+    () => compile(p, 'arm64'),
+    (e: unknown) => e instanceof A0Error && /io functions are out of scope/.test(e.message),
+  );
+});
+
+test('arm64 backend: assembled, linked with a C driver, and executed equal to the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const zeros = Array.from({ length: 1024 }, () => '0').join(' ');
+  const src = [
+    // fold body over an array state (aggregate parameter and sret result)
+    'fn step u32x8 u32 u32 -> u32x8\na get p0 p1\nb add a p2\nc mul b 3\nn set p0 p1 c\nret n\nend',
+    // twelve parameters: bools and u32s past x7 travel on the stack
+    'fn many u32 u32 u32 u32 u32 u32 u32 u32 bool u32 bool u32 -> u32\na add p0 p1\nb sub a p2\nc mul b p3\nd xor c p4\ne shl d p5\nf shr e p6\ng div f p7\nh rem g p9\ni select p8 h p11\nj select p10 i p9\nk add j p11\nret k\nend',
+    'fn pair u32 u32 -> (u32,bool)\nc lt p0 p1\nr rec p0 c\nret r\nend',
+    'fn keep u32 u32 -> bool\nb lt p0 1000\nret b\nend',
+    'fn grow u32 u32 -> u32\nb mul p0 3\nc add b p1\nret c\nend',
+    'fn top u32 u32 bool -> u32\nk and p1 15\nz arr p0 p1 1 2 3 4 5 6\nf fold step k z p0\ng get f p1\nr call pair p0 p1\nh at r 0\ns loop keep grow p1 h\nt put r 0 s\nu at t 1\nt0 at t 0\nm call many p0 p1 g t0 p0 p1 g s u p0 p2 t0\nq ge m g\nw select q m g\nx div w p1\ny rem p0 p1\nv add x y\nret v\nend',
+    // a 4 KiB array: word-copy loops and a probed (___chkstk_darwin) frame
+    'fn poke u32x1024 u32 u32 -> u32x1024\nn set p0 p2 p1\nret n\nend',
+    `fn bigtop u32 u32 -> u32\nz arr ${zeros}\nk and p1 7\nf fold poke k z p0\na get f p1\nb get f 3\nc add a b\nret c\nend`,
+  ].join('\n\n');
+  const p = parseAndValidate(src);
+  const inputs: [number, number, boolean][] = [
+    [0, 0, false],
+    [1, 2, true],
+    [7, 13, false],
+    [0xffffffff, 5, true],
+    [123456, 0xfffffff0, true],
+    [999, 3, false],
+  ];
+  const top = p.byName.get('top') as TypedFunc;
+  const bigtop = p.byName.get('bigtop') as TypedFunc;
+  const expected = inputs
+    .flatMap(([a, b, c]) => [String(run(top, [a, b, c])), String(run(bigtop, [a, b]))])
+    .join('\n');
+  const calls = inputs
+    .map(
+      ([a, b, c]) => `  printf("%u\\n%u\\n", a0_top(${a}u, ${b}u, ${c}), a0_bigtop(${a}u, ${b}u));`,
+    )
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  for (const optimize of [true, false]) {
+    const asm = compile(p, 'arm64', { optimize }).text;
+    assert.doesNotMatch(asm, /#include|int main/);
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+      assert.ok(ld.ok, ld.stderr);
+      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected);
+    });
+  }
+});

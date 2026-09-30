@@ -1,6 +1,6 @@
 /**
- * Source emission for JavaScript (ES module), C (C-compatible, also valid C++),
- * Java, and SystemVerilog, plus a bounded in-memory function-emission cache.
+ * Source emission for JavaScript (ES module), C (C-compatible, also valid C++), Java,
+ * SystemVerilog, and direct Darwin AArch64 assembly (src/arm64.ts), plus a bounded in-memory function-emission cache.
  *
  * Every backend preserves the exact v0.1 semantics: wrapping u32 arithmetic,
  * logical right shift, shift distance masked to five bits, unsigned comparison,
@@ -8,6 +8,7 @@
  * a prefix so source names cannot collide with target keywords or runtime symbols.
  */
 
+import { assembleArm64, emitArm64Function } from './arm64.js';
 import {
   A0Error,
   bitWidth,
@@ -25,10 +26,10 @@ import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.5';
+export const COMPILER_VERSION = 'a0c-0.1.6';
 
-export type Target = 'js' | 'c' | 'java' | 'sv';
-export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv'];
+export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64';
+export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64'];
 
 export function isTarget(text: string): text is Target {
   return (TARGETS as readonly string[]).includes(text);
@@ -870,6 +871,7 @@ const EMITTERS: Readonly<Record<Target, Emitter>> = {
   c: emitCFunction,
   java: emitJavaFunction,
   sv: emitSvFunction,
+  arm64: emitArm64Function,
 };
 
 /** True when any function of the program carries an io token anywhere in its types. */
@@ -894,6 +896,8 @@ export function assemble(
     types.unshift({ kind: 'rec', fields: ['u32', 'io'] });
   }
   switch (target) {
+    case 'arm64':
+      return assembleArm64(bodies, COMPILER_VERSION);
     case 'js':
       return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
     case 'c': {
