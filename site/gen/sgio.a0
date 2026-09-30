@@ -1,0 +1,292 @@
+# Site generator (site/gen/sitegen.a0), module 1: bytes, the text store, io output, numbers.
+# Tables are paged (u32x128xN, word i at page i>>7, slot i&127) and hold bytes packed four to
+# a word (byte i is bits 8*(i&3) of word i>>2). Large tables are only ever updated as the state
+# of a fold (`fold wr.. 1 t i v` writes one word), so the C backend updates them in place.
+
+fn zpage -> u32x128
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn z16 -> u32x128x16
+z call zpage
+t arr z z z z z z z z z z z z z z z z
+ret t
+end
+fn z64 -> u32x128x64
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z128 -> u32x128x128
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z512 -> u32x128x512
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+
+# ---- word i of a table, and one word written as the state of a fold (count 0 skips it)
+fn rd64 u32x128x64 u32 -> u32
+pi shr p1 7
+wi and p1 127
+pg get p0 pi
+r get pg wi
+ret r
+end
+fn rd128 u32x128x128 u32 -> u32
+pi shr p1 7
+wi and p1 127
+pg get p0 pi
+r get pg wi
+ret r
+end
+fn rd512 u32x128x512 u32 -> u32
+pi shr p1 7
+wi and p1 127
+pg get p0 pi
+r get pg wi
+ret r
+end
+fn wr64 u32x128x64 u32 u32 u32 -> u32x128x64
+pi shr p2 7
+wi and p2 127
+pg get p0 pi
+pg2 set pg wi p3
+r set p0 pi pg2
+ret r
+end
+fn wr128 u32x128x128 u32 u32 u32 -> u32x128x128
+pi shr p2 7
+wi and p2 127
+pg get p0 pi
+pg2 set pg wi p3
+r set p0 pi pg2
+ret r
+end
+fn wr512 u32x128x512 u32 u32 u32 -> u32x128x512
+pi shr p2 7
+wi and p2 127
+pg get p0 pi
+pg2 set pg wi p3
+r set p0 pi pg2
+ret r
+end
+# byte p1 of the packed words of a table
+fn sb u32x128x512 u32 -> u32
+w0 shr p1 2
+w call rd512 p0 w0
+b0 and p1 3
+sh shl b0 3
+v shr w sh
+r and v 255
+ret r
+end
+fn vb u32x128x128 u32 -> u32
+w0 shr p1 2
+w call rd128 p0 w0
+b0 and p1 3
+sh shl b0 3
+v shr w sh
+r and v 255
+ret r
+end
+fn pb u32x128x64 u32 -> u32
+w0 shr p1 2
+w call rd64 p0 w0
+b0 and p1 3
+sh shl b0 3
+v shr w sh
+r and v 255
+ret r
+end
+# byte p3 at byte position p2 of a packed table whose bytes there are still zero
+fn wb128 u32x128x128 u32 u32 u32 -> u32x128x128
+w0 shr p2 2
+pi shr w0 7
+wi and w0 127
+pg get p0 pi
+w get pg wi
+b0 and p2 3
+sh shl b0 3
+v shl p3 sh
+w2 or w v
+pg2 set pg wi w2
+r set p0 pi pg2
+ret r
+end
+
+# ---- the store: input text files; byte p1 of the store is `sb`
+# a byte test used by scans: is byte p1 of the store p0 the byte p2
+fn sbis u32x128x512 u32 u32 -> bool
+b call sb p0 p1
+r eq b p2
+ret r
+end
+fn fnvb u32 u32 u32x128x512 u32 -> u32
+pos add p3 p1
+b call sb p2 pos
+x xor p0 b
+r mul x 16777619
+ret r
+end
+# FNV-1a of the store bytes [p1, p1 + p2)
+fn shash u32x128x512 u32 u32 -> u32
+r fold fnvb p2 2166136261 p0 p1
+ret r
+end
+fn fmore u32 u32 u32x128x512 u32 u32 -> bool
+lt0 lt p0 p3
+b call sb p2 p0
+ne0 ne b p4
+r and lt0 ne0
+ret r
+end
+fn fstep u32 u32 u32x128x512 u32 u32 -> u32
+r add p0 1
+ret r
+end
+# first position in [p1, p2) of the store holding byte p3, else p2
+fn sfind u32x128x512 u32 u32 u32 -> u32
+n sub p2 p1
+r loop fmore fstep n p1 p0 p2 p3
+ret r
+end
+# do the store bytes at p1 and p3 agree for p2 bytes
+fn eqb bool u32 u32x128x512 u32 u32 -> bool
+a add p3 p1
+b add p4 p1
+x call sb p2 a
+y call sb p2 b
+e eq x y
+r and p0 e
+ret r
+end
+fn seq u32x128x512 u32 u32 u32 -> bool
+r fold eqb p2 true p0 p1 p3
+ret r
+end
+
+# ---- io output: every write is gated by an `on` flag (a fold of count 0 or 1)
+fn wbyte io u32 u32 -> io
+r write p0 p2
+ret r
+end
+fn putc io bool u32 -> io
+c select p1 1 0
+r fold wbyte c p0 p2
+ret r
+end
+# a byte inside an A0 text literal: backslash, quote and newline are escaped
+fn putesc io bool u32 -> io
+nl eq p2 10
+q eq p2 34
+bs eq p2 92
+e0 or nl q
+e1 or e0 bs
+e and p1 e1
+a call putc p0 e 92
+ch select nl 110 p2
+r call putc a p1 ch
+ret r
+end
+fn putx io bool bool u32 -> io
+ne select p2 false true
+raw and p1 ne
+e and p1 p2
+a call putesc p0 e p3
+r call putc a raw p3
+ret r
+end
+fn m10 u32 u32 -> u32
+r mul p0 10
+ret r
+end
+fn tenp u32 -> u32
+r fold m10 p0 1
+ret r
+end
+fn ndmore u32 u32 u32 -> bool
+lim lt p0 10
+p call tenp p0
+ge le p p2
+r and lim ge
+ret r
+end
+fn ndstep u32 u32 u32 -> u32
+r add p0 1
+ret r
+end
+# decimal digits of p0 (1 for 0)
+fn ndig u32 -> u32
+r loop ndmore ndstep 10 1 p0
+ret r
+end
+# decimal digit p1 (from the left) of p2 with p3 digits
+fn digit u32 u32 u32 -> u32
+a sub p2 1
+pos sub a p0
+t call tenp pos
+q div p1 t
+d rem q 10
+r add d 48
+ret r
+end
+fn pdig io u32 u32 u32 bool -> io
+ch call digit p1 p2 p3
+r call putc p0 p4 ch
+ret r
+end
+# the decimal rendering of p2
+fn putd io bool u32 -> io
+nd call ndig p2
+r fold pdig nd p0 p2 nd p1
+ret r
+end
+fn cpb io u32 u32x128x512 u32 bool bool -> io
+pos add p3 p1
+b call sb p2 pos
+r call putx p0 p4 p5 b
+ret r
+end
+# the store bytes [p4, p4 + p5), escaped when p2
+fn cpst io bool bool u32x128x512 u32 u32 -> io
+r fold cpb p5 p0 p3 p4 p1 p2
+ret r
+end
+fn cpv io u32 u32x128x128 u32 bool bool -> io
+pos add p3 p1
+b call vb p2 pos
+r call putx p0 p4 p5 b
+ret r
+end
+# the bytes [p4, p4 + p5) of a packed table of 128 pages, escaped when p2
+fn cpvt io bool bool u32x128x128 u32 u32 -> io
+r fold cpv p5 p0 p3 p4 p1 p2
+ret r
+end
+
+# ---- reading: a file is a byte count, then its bytes packed four to a word
+fn rdw (u32x128,io) u32 -> (u32x128,io)
+pg at p0 0
+t at p0 1
+r read t
+v at r 0
+t2 at r 1
+pg2 set pg p1 v
+o rec pg2 t2
+ret o
+end
+# p1 words (at most 128) of input into a zero page
+fn rdpage io u32 -> (u32x128,io)
+z call zpage
+s rec z p0
+r fold rdw p1 s
+ret r
+end
+fn rdword io -> (u32,io)
+r read p0
+ret r
+end
