@@ -26,7 +26,7 @@ import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.2';
+export const COMPILER_VERSION = 'a0c-0.1.3';
 
 export type Target = 'js' | 'c' | 'java' | 'sv';
 export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv'];
@@ -51,6 +51,14 @@ export function operandTypeOf(fn: TypedFunc, o: Operand): Type {
     case 'node':
       return fn.types.get(o.id) ?? 'u32';
   }
+}
+
+/** `index mod N` for a u32 index: a literal folds, a power-of-two N masks, else `%`. */
+function jsIndex(fn: TypedFunc, arr: Operand | undefined, idx: Operand | undefined): string {
+  const n = arrayLength(fn, arr);
+  if (idx?.kind === 'u32') return String(idx.value % n);
+  const i = jsOperand(idx as Operand);
+  return (n & (n - 1)) === 0 ? `(${i} & ${n - 1})` : `${i} % ${n}`;
 }
 
 function arrayLength(fn: TypedFunc, o: Operand | undefined): number {
@@ -136,7 +144,6 @@ function a0_check(v, shape, name) {
   }
 }
 function a0_with(a, i, v) { const c = a.slice(); c[i] = v; return c; }
-function a0_setmut(a, i, v) { a[i] = v; return a; }
 // io token: { input: number[], position, output: number[] }. Exhausted input reads 0.
 function a0_io(v, name) {
   if (typeof v !== 'object' || v === null || !Array.isArray(v.input) || !Array.isArray(v.output) || typeof v.position !== 'number') throw new TypeError(name + ': expected io token');
@@ -234,9 +241,18 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       // nested aggregates stay plain arrays. All array helpers work on both.
       const t = fn.types.get(node.id);
       const elem = t !== undefined && !isPrimitive(t) && t.kind === 'arr' ? t.elem : 'u32';
-      if (elem === 'u32') return `Uint32Array.of(${node.args.map(jsOperand).join(', ')})`;
+      // An all-zero literal is a plain allocation (measured: `of(0,...)` costs on small kernels).
+      const zeros = node.args.every(
+        (o) => (o.kind === 'u32' && o.value === 0) || (o.kind === 'bool' && !o.value),
+      );
+      if (elem === 'u32')
+        return zeros
+          ? `new Uint32Array(${node.args.length})`
+          : `Uint32Array.of(${node.args.map(jsOperand).join(', ')})`;
       if (elem === 'bool')
-        return `Uint8Array.of(${node.args.map((o) => `${jsOperand(o)} ? 1 : 0`).join(', ')})`;
+        return zeros
+          ? `new Uint8Array(${node.args.length})`
+          : `Uint8Array.of(${node.args.map((o) => `${jsOperand(o)} ? 1 : 0`).join(', ')})`;
       return `[${node.args.map(jsOperand).join(', ')}]`;
     }
     case 'rec':
@@ -244,7 +260,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     case 'get': {
       const t = operandTypeOf(fn, node.args[0] as Operand);
       const elem = !isPrimitive(t) && t.kind === 'arr' ? t.elem : 'u32';
-      const read = `${a}[${b} % ${arrayLength(fn, node.args[0])}]`;
+      const read = `${a}[${jsIndex(fn, node.args[0], node.args[1])}]`;
       return elem === 'bool' ? `${read} === 1` : read;
     }
     case 'set': {
@@ -252,13 +268,14 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       const et = operandTypeOf(fn, node.args[0] as Operand);
       const boolElem = !isPrimitive(et) && et.kind === 'arr' && et.elem === 'bool';
       const value = boolElem ? `(${c} ? 1 : 0)` : c;
-      return `${inPlace ? 'a0_setmut' : 'a0_with'}(${a}, ${b} % ${arrayLength(fn, node.args[0])}, ${value})`;
+      const idx = jsIndex(fn, node.args[0], node.args[1]);
+      return inPlace ? `(${a}[${idx}] = ${value}, ${a})` : `a0_with(${a}, ${idx}, ${value})`;
     }
     case 'at':
       return `${a}[${b}]`;
     case 'put': {
       const inPlace = index >= 0 && mutableHere(fn, node.args[0] as Operand, index, ownedP0);
-      return `${inPlace ? 'a0_setmut' : 'a0_with'}(${a}, ${b}, ${c})`;
+      return inPlace ? `(${a}[${b}] = ${c}, ${a})` : `a0_with(${a}, ${b}, ${c})`;
     }
     case 'read':
       return `a0_read(${a})`;

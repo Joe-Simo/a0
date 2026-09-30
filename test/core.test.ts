@@ -1039,3 +1039,31 @@ test('linker: use lines resolve relative paths once, reject cycles and duplicate
       e instanceof A0Error && e.code === 'type' && /^\/p\/bad\.a0:3: /.test(e.message),
   );
 });
+
+test('JS emission: zero arrays allocate, power-of-two indices mask, owned sets are inline', async () => {
+  const src =
+    'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nx get a p1\ny get a 3\ns add x y\nret s\nend';
+  const p = parseAndValidate(src);
+  const js = compile(p, 'js').text;
+  assert.ok(js.includes('new Uint32Array(8)'));
+  assert.ok(js.includes('[(p1 & 7)]'));
+  assert.ok(/a0o_put8[\s\S]*\(p0\[\(p1 & 7\)\] = n_v, p0\)/.test(js));
+  assert.ok(!js.includes('a0_setmut'));
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as { arrfill: (x: number, y: number) => number };
+  const f = p.byName.get('arrfill') as TypedFunc;
+  for (const [x, y] of [
+    [0, 0],
+    [5, 11],
+    [0xffffffff, 3],
+    [123456789, 4294967295],
+  ] as const)
+    assert.equal(mod.arrfill(x, y), run(f, [x, y]));
+  // A length that is not a power of two still uses the remainder.
+  const js3 = compile(
+    parseAndValidate('fn g u32x3 u32 -> u32\nx get p0 p1\nret x\nend'),
+    'js',
+  ).text;
+  assert.ok(js3.includes('[p1 % 3]'));
+});

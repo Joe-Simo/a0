@@ -336,6 +336,35 @@ dominant cost; the A0-side levers remain the view size and the primer size.
 
 ## Session 2026-09-29 (late): primer size, JS guards
 
+- **Optimizer proofs now cover io (48/48)**: `tools/equiv-verify.ts` models an io token as
+  a bounded symbolic input of 8 words (reads past the end yield 0 as in the language), an
+  output buffer with one slot per static emit site and a symbolic length, and a read
+  position; equivalence requires equal results, equal output length, equal words below
+  it, and equal final position. Result: 48 proved, 0 counterexamples, 0 unknown, solver
+  2.3 s; self-check mutates one pure and one io function and gets a counterexample for
+  each. Stable across three consecutive runs. Implementation note: `z3-solver`'s async
+  `check` races its finalizers on the wasm heap and crashed about half the runs; the tool
+  calls the synchronous export instead (documented in the file).
+- **Hardware cycles and divisors** (`results/hardware.json`): per-module mean cycles per
+  case now recorded; slowest a0_g44 1581 and a0_g36 1040 (multiple dependent 32-cycle
+  divides), then 137, 133, 71. Divisor census after optimization: 3 literal, 32 variable
+  `div`/`rem` nodes (57/148 before), so a combinational literal-divisor path has no
+  measured need; the variable ones are the cycle cost and would need a faster divider
+  (radix-4 or pipelined) if hardware latency ever becomes a target.
+- **JS fold-body inlining: tie, reverted.** Source-level inlining of small fold/loop bodies
+  measured 0.98–1.02× on arrfill and loop64 (V8 already inlines the `a0o_` callees), so
+  it was not kept. The same measurement pointed at the real costs, which were fixed
+  instead: all-zero array literals now allocate (`new Uint32Array(n)`), power-of-two
+  array indices mask (`i & (n-1)`, exact for u32), and owned in-place `set`/`put` emit
+  `(a[i] = v, a)` with no helper. Interleaved A/B: arrfill 0.37–0.38× the previous
+  emission and 0.50× the hand-written JavaScript; loop64 unchanged. Compiler version
+  a0c-0.1.3.
+- **Execution benchmark re-run on a quiet machine** (load average 10–16,
+  `results/exec-benchmark.json`): C-path A0 vs hand-written C 0.98–1.00× on all 10
+  kernels, vs Rust 0.97–1.01×; JavaScript 0.99–1.08× (ties) with arrfill 0.53× (win);
+  build time A0→native 0.14–0.57× of rustc per kernel, 2.8× faster summed over the ten (the 3.9× figure from
+  the loaded-machine run is withdrawn and the site tile now shows the quiet number).
+
 - **`use` imports (v0.8.9, `src/link.ts`)**: `use "relative.a0"` lines at the head of a file
   link another file into the program. The linker loads each file once by resolved path in
   dependency order, rejects cycles and cross-file duplicate names (naming both files), and
