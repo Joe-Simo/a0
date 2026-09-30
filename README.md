@@ -41,6 +41,56 @@ Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, 
 
 `a0 mcp <file-or-dir>` serves A0 to AI agents over stdio (Model Context Protocol), so they edit through tools instead of text files: `a0_open` (function view with a handle), `a0_program` (program handle, optionally scoped to a target), `a0_apply` (edit under a handle; returns the new view or a diagnostic with code/expected/actual/fix), `a0_check`, `a0_run` (reference interpreter, fuel-bounded), `a0_emit` (any target), `a0_save` (only after a successful apply). Paths are confined to the launch root (symlink escapes and `use` escapes rejected); no shell is run; output is bounded.
 
+## Use with AI agents
+
+Put `a0` on your PATH first (see Install). Every entry below runs the same local stdio server, `a0 mcp <dir>`, with no hosting and no account. Ready-to-copy configs are in [`integrations/`](integrations/). The Agent Skill in [`skills/a0/`](skills/a0/SKILL.md) teaches the language and loads the primer and the edit protocol only when they are needed.
+
+| Agent | Install | Local stdio |
+|---|---|---|
+| Claude Code | `claude mcp add a0 -- a0 mcp .` (MCP only), or `/plugin marketplace add Joe-Simo/a0` then `/plugin install a0@a0` (MCP plus skill) | yes |
+| Claude Desktop | Double-click `a0-mcp-<os>-<arch>.mcpb` from the [latest release](https://github.com/Joe-Simo/a0/releases/latest), or add [`integrations/mcp.json`](integrations/mcp.json) to `claude_desktop_config.json` | yes |
+| Claude.ai | Zip `skills/a0/` and upload it under Settings > Capabilities > Skills (skill only; claude.ai connectors are remote-only) | skill only |
+| Cursor | [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=a0&config=eyJjb21tYW5kIjoiYTAiLCJhcmdzIjpbIm1jcCIsIiR7d29ya3NwYWNlRm9sZGVyfSJdfQ==), or [`integrations/mcp.json`](integrations/mcp.json) in `.cursor/mcp.json` | yes |
+| VS Code / GitHub Copilot | `code --add-mcp '{"name":"a0","command":"a0","args":["mcp","${workspaceFolder}"]}'`, or [`integrations/vscode.mcp.json`](integrations/vscode.mcp.json) as `.vscode/mcp.json`; skill in `.github/skills/` or `~/.copilot/skills/` | yes |
+| GitHub Copilot CLI | `copilot mcp add` or `~/.copilot/mcp-config.json` ([`mcp.json`](integrations/mcp.json) shape) | yes |
+| OpenAI Codex CLI/IDE | `codex mcp add a0 -- a0 mcp .`, or [`integrations/codex.config.toml`](integrations/codex.config.toml); skill in `.agents/skills/`; plugin manifest in `.codex-plugin/` | yes |
+| Gemini CLI | `gemini extensions install https://github.com/Joe-Simo/a0` (MCP plus `GEMINI.md`) | yes |
+| Qwen Code | `qwen mcp add a0 a0 mcp .`, or `qwen extensions install https://github.com/Joe-Simo/a0` (reads Gemini extensions) | yes |
+| Windsurf / Devin Desktop | [`mcp.json`](integrations/mcp.json) in `~/.codeium/windsurf/mcp_config.json` | yes |
+| Devin CLI | `devin mcp add a0 -- a0 mcp .` | yes |
+| Zed | [`integrations/zed.settings.json`](integrations/zed.settings.json) in Zed settings | yes |
+| Cline | [`mcp.json`](integrations/mcp.json) in `cline_mcp_settings.json` | yes |
+| Roo Code | [`mcp.json`](integrations/mcp.json) in `.roo/mcp.json` | yes |
+| Kilo Code | [`integrations/kilo.jsonc`](integrations/kilo.jsonc) in `kilo.jsonc` | yes |
+| Continue | [`integrations/continue.a0.yaml`](integrations/continue.a0.yaml) as `.continue/mcpServers/a0.yaml` (Agent mode) | yes |
+| JetBrains AI Assistant / Junie | Settings > Tools > AI Assistant > MCP, paste [`mcp.json`](integrations/mcp.json); Junie: `.junie/mcp/mcp.json`, skill in `.junie/skills/` | yes |
+| Augment | `auggie mcp add`, or Import from JSON with [`mcp.json`](integrations/mcp.json); skill in `.augment/skills/` | yes |
+| opencode | [`integrations/opencode.json`](integrations/opencode.json) as `opencode.json`; skill in `.opencode/skills/` | yes |
+| Amp | `amp mcp add a0 -- a0 mcp .`; `amp skill add Joe-Simo/a0` | yes |
+| Goose | `goose session --with-extension "a0 mcp ."`, or [`integrations/goose.config.yaml`](integrations/goose.config.yaml) | yes |
+| Warp | [`mcp.json`](integrations/mcp.json) in `.warp/.mcp.json` | yes |
+| Crush | [`integrations/crush.json`](integrations/crush.json) in `crush.json` | yes |
+| Factory Droid | `droid mcp add a0 "a0 mcp ."` | yes |
+| Grok Build CLI (xAI) | `[mcp_servers.a0]` from [`integrations/codex.config.toml`](integrations/codex.config.toml) in `~/.grok/config.toml` | yes |
+| Mistral Vibe CLI | [`integrations/mistral-vibe.config.toml`](integrations/mistral-vibe.config.toml) | yes |
+| Kimi CLI | `kimi mcp add a0 --transport stdio -- a0 mcp .` | yes |
+| LM Studio | [`mcp.json`](integrations/mcp.json) in LM Studio's `mcp.json`, or `lmstudio://add_mcp?name=a0&config=eyJjb21tYW5kIjoiYTAiLCJhcmdzIjpbIm1jcCIsIi4iXX0=` | yes |
+| Perplexity (Mac app) | Connectors > Add > Simple: `a0 mcp /path/to/project` (needs the PerplexityXPC helper) | yes |
+| Hugging Face smolagents | `MCPClient(StdioServerParameters(command="a0", args=["mcp", "."]))` | yes |
+| Hugging Face tiny-agents | `"servers": [{"type": "stdio", "command": "a0", "args": ["mcp", "."]}]` in `agent.json` | yes |
+| Aider | No MCP. `aider --read skills/a0/references/primer.txt` and use the `a0` CLI | no MCP |
+| Open WebUI (Ollama) | Streamable HTTP only; A0 does not ship a hosted server | needs remote MCP |
+| ChatGPT (developer mode / Apps) | Remote HTTPS only | needs remote MCP |
+| Mistral Le Chat | Remote connectors only | needs remote MCP |
+| xAI Grok API | Remote MCP tool only (HTTP/SSE) | needs remote MCP |
+| Replit Agent, Bolt.new, Lovable, v0 | Remote HTTPS only | needs remote MCP |
+
+Replace `.` with the folder the server may read and write when your agent does not start servers in the project folder.
+
+### Privacy
+
+The a0 MCP server and the `.mcpb` bundles run entirely on your machine. They collect no data, make no network requests, and read or write only inside the folder you give them.
+
 ## Contributing to the compiler
 
 The compiler is being rewritten in A0 (see `compiler/` and DESIGN.md section 7a). Until that lands, the compiler itself is TypeScript, and working on it needs Bun or Node 22+. Users of A0 never need this: the released `a0` binary is self-contained.

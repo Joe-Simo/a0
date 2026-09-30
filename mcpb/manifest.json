@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/main/dist/mcpb-manifest-v0.3.schema.json",
+  "manifest_version": "0.3",
+  "name": "a0",
+  "display_name": "A0",
+  "version": "0.0.0",
+  "description": "Write, check, run and compile A0 programs through revision-checked structured edits.",
+  "long_description": "A0 is a programming language built for AI. This extension runs the `a0 mcp` stdio server over one folder you choose: agents open a function view with a handle, apply edits that are checked before they land, run the reference interpreter, and emit native, wasm, JavaScript, JVM, .NET, GPU or SystemVerilog output. Paths are confined to the chosen folder, no shell is run, and nothing is sent over the network.",
+  "author": { "name": "Joe Simo", "url": "https://github.com/Joe-Simo" },
+  "repository": { "type": "git", "url": "https://github.com/Joe-Simo/a0" },
+  "homepage": "https://a0lang.com",
+  "documentation": "https://a0lang.com/docs/",
+  "support": "https://github.com/Joe-Simo/a0/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["a0", "compiler", "programming-language", "structured-editing", "code-generation"],
+  "privacy_policies": ["https://github.com/Joe-Simo/a0#privacy"],
+  "server": {
+    "type": "binary",
+    "entry_point": "server/a0",
+    "mcp_config": {
+      "command": "${__dirname}/server/a0",
+      "args": ["mcp", "${user_config.root}"],
+      "env": {}
+    }
+  },
+  "tools": [
+    { "name": "a0_open", "description": "Open a function view with a revision handle." },
+    { "name": "a0_program", "description": "Program handle, optionally scoped to a target." },
+    { "name": "a0_apply", "description": "Apply an edit under a handle; returns the new view or a diagnostic with a fix." },
+    { "name": "a0_check", "description": "Validate the program: one line per function with its revision." },
+    { "name": "a0_run", "description": "Run a function in the fuel-bounded reference interpreter." },
+    { "name": "a0_emit", "description": "Emit code for any target (arm64, c, wasm, js, java, dotnet, metal, sv)." },
+    { "name": "a0_save", "description": "Write the program to disk after a successful apply." }
+  ],
+  "user_config": {
+    "root": {
+      "type": "directory",
+      "title": "A0 project folder",
+      "description": "Folder (or .a0 file's folder) the server may read and write. Paths outside it are rejected.",
+      "required": true,
+      "default": "${HOME}/Documents"
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"]
+  }
+}

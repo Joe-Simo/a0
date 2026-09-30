@@ -9,4 +9,7 @@ for t in darwin-arm64 darwin-x64 linux-x64 linux-arm64 windows-x64; do
   bun build --compile --target="bun-$t" --minify dist/src/cli.js --outfile "release/a0-$t"
 done
 codesign -s - --force release/a0-darwin-arm64 release/a0-darwin-x64 2>/dev/null || true
+# MCP Bundles (.mcpb) per platform, and server.json with their release URLs and hashes.
+# Pass the release version: sh tools/release.sh 0.8.16
+if [ -n "${1:-}" ]; then node dist/tools/mcpb.js "$1"; fi
 ls -la release
