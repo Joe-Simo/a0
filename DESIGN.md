@@ -78,6 +78,8 @@ type        = "u32" | "bool" | "io" | type "x" length | "(" type ("," type)* ")"
 
 Each function has one result. Node identifiers are lowercase letters followed by lowercase letters, digits, or underscores, at most 64 characters. `p<number>`, `fn`, `ret`, `end`, `patch`, `true`, and `false` are reserved node identifiers. Node IDs are unique within a function; function names are unique within a program, including across every file linked by `use` (the linker names both files on a clash and maps diagnostics back to `file:line`). Parameters are indexed from zero. `call` may only name a function defined earlier in the same program, so the call graph is acyclic; recursion, loops, heap, strings, arrays, and I/O are not accepted. Unsupported constructs are errors.
 
+**Decision, nested expressions (2026-09-30):** `r select c (sub p1 p0) (sub p0 p1)` is not accepted. One operation per line with an id is what makes every value addressable by the edit protocol (replace, insert-after, delete by id) and what keeps the diagnostics, the revision hashes, and the hardware stage mapping one-to-one with lines. Measured need: 2 replies out of 312 cells across four collections used parentheses; `ret OP ARGS` covers the common case of one temporary before the result. Revisit only if a collection shows nested forms in more than 5 % of replies.
+
 ### Exact operations
 
 | Operation | Inputs | Output | Meaning |
