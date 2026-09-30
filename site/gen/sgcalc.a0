@@ -756,3 +756,525 @@ bk fold binkb nk 0 p3 s10 afh
 s11 fold vnum one s10 p2 132 0 bk
 ret s11
 end
+
+# ---- lines of the template: fields and maps
+fn fnext u32 u32 u32x128x512 -> u32
+e call fieldend p2 p0
+r add e 1
+ret r
+end
+# the start of field p2 (1 the op) of the line at p1
+fn fstart u32x128x512 u32 u32 -> u32
+a add p1 2
+n sub p2 2
+r fold fnext n a p0
+ret r
+end
+fn flen u32x128x512 u32 -> u32
+e call fieldend p0 p1
+r sub e p1
+ret r
+end
+fn fhash u32x128x512 u32 u32 -> u32
+a call fstart p0 p1 p2
+n call flen p0 a
+r call shash p0 a n
+ret r
+end
+fn decb u32 u32 u32x128x512 u32 -> u32
+a add p3 p1
+b call sb p2 a
+d sub b 48
+t mul p0 10
+r add t d
+ret r
+end
+fn fnum u32x128x512 u32 u32 -> u32
+a call fstart p0 p1 p2
+n call flen p0 a
+r fold decb n 0 p0 a
+ret r
+end
+# the value of the `m` line at p1 (from field 4 to the end of the line): start, length
+fn mval u32x128x512 u32 -> (u32,u32)
+a call fstart p0 p1 4
+e call tplend p0
+nl call sfind p0 a e 10
+n sub nl a
+r rec a n
+ret r
+end
+# the `m` lines of map word p3 among the p2 lines p1: position of the entry with key hash p4
+fn mfstep u32 u32 u32x128 u32x128x512 u32 u32 -> u32
+pos get p2 p1
+nm call fhash p3 pos 2
+w call whash p3 p4
+k call fhash p3 pos 3
+a eq nm w
+b eq k p5
+c and a b
+nf eq p0 0
+d and c nf
+r select d pos p0
+ret r
+end
+fn mfind u32x128x512 u32 u32 -> u32
+ml call lines p0 109
+l at ml 0
+c at ml 1
+r fold mfstep c 0 l p0 p1 p2
+ret r
+end
+# copy the value of map word p3, key hash p4 into the pool (fold body); variables word p5 := ref,
+# or the ref at variables word p6 when the key is not in the map
+fn vmapv u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
+one mov 1
+pos call mfind p2 p3 p4
+has ne pos 0
+mv call mval p2 pos
+a at mv 0
+n0 at mv 1
+n select has n0 0
+st call rd128 p0 0
+s1 fold vapst n p0 p2 a
+r0 call since s1 st
+dflt call rd128 s1 p6
+r1 select has r0 dflt
+r fold wr128 one s1 p5 r1
+ret r
+end
+
+# ---- cost per edit
+# the line of the p3-th entry of map word p4 among the `m` lines (fold body: (count, pos))
+fn mnstep (u32,u32) u32 u32x128 u32x128x512 u32 u32 -> (u32,u32)
+c at p0 0
+p at p0 1
+pos get p2 p1
+nm call fhash p3 pos 2
+w call whash p3 p5
+is eq nm w
+hit eq c p4
+t and is hit
+p2n select t pos p
+c1 add c 1
+cn select is c1 c
+r rec cn p2n
+ret r
+end
+fn mnth u32x128x512 u32 u32 -> u32
+ml call lines p0 109
+l at ml 0
+c at ml 1
+s0 rec 0 0
+s fold mnstep c s0 l p0 p1 p2
+r at s 1
+ret r
+end
+fn mcount u32x128x512 u32 -> u32
+ml call lines p0 109
+l at ml 0
+c at ml 1
+s0 rec 0 0
+s fold mnstep c s0 l p0 4294967295 p1
+r at s 0
+ret r
+end
+# the labels of the cost map into variables words 22 + r (fold body over the entries)
+fn clab u32x128x128 u32 u32x128x512 -> u32x128x128
+one mov 1
+pos call mnth p2 p1 62
+mv call mval p2 pos
+a at mv 0
+n at mv 1
+e call fieldend p2 a
+a1 add e 1
+k sub a1 a
+l sub n k
+st call rd128 p0 0
+s1 fold vapst l p0 p2 a1
+r0 call since s1 st
+d add p1 22
+r fold wr128 one s1 d r0
+ret r
+end
+# the cost file slot + 1 of size p1, model word p2, kind hash p3 (0 when there is none)
+fn slstep (u32,u32) u32 u32x128 u32x128x512 u32 u32 u32 -> (u32,u32)
+s at p0 0
+f at p0 1
+pos get p2 p1
+ro call fhash p3 pos 2
+cw call whash p3 62
+isc eq ro cw
+sz call fnum p3 pos 3
+mo call fhash p3 pos 4
+mw call whash p3 p5
+ki call fhash p3 pos 5
+a eq sz p4
+b eq mo mw
+c eq ki p6
+ab and a b
+abc and ab c
+hit and abc isc
+s1 add s 1
+fs select hit s1 f
+nf eq f 0
+ok and hit nf
+fn2 select ok s1 f
+sn select isc s1 s
+r rec sn fn2
+ret r
+end
+fn slot u32x128x512 u32 u32 u32 -> u32
+fl call lines p0 102
+l at fl 0
+c at fl 1
+s0 rec 0 0
+s fold slstep c s0 l p0 p1 p2 p3
+r at s 1
+ret r
+end
+# the cell of slot + 1 p1, representation p2: (trials, primer, code, write, total, accepted %)
+fn cell u32x128x64 u32 u32 -> (u32,u32,u32,u32,u32,u32)
+s sub p1 1
+s8 shl s 3
+sr add s8 p2
+s6 mul sr 6
+b add s6 6800
+n0 call rd64 p0 b
+b1 add b 1
+ca call rd64 p0 b1
+b2 add b 2
+pp call rd64 p0 b2
+b3 add b 3
+cc call rd64 p0 b3
+b4 add b 4
+ww call rd64 p0 b4
+b5 add b 5
+aa call rd64 p0 b5
+z0 eq p1 0
+n select z0 0 n0
+z eq n 0
+n1 select z 1 n
+c1 select z 1 ca
+q5 mul pp 5
+c4 mul c1 4
+pr call rdiv q5 c4
+co call rdiv cc n1
+wr call rdiv ww n1
+t0 mul q5 n1
+cw add cc ww
+t1 mul c4 cw
+tn add t0 t1
+td mul c4 n1
+to call rdiv tn td
+a100 mul aa 100
+ac call rdiv a100 n1
+r rec n pr co wr to ac
+ret r
+end
+# the rows of size p3: (representation, total, primer, code, write, accepted, Haiku accepted + 1)
+fn crow (u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x512 u32x128x64 u32 -> (u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32)
+rp at p0 0
+tt at p0 1
+pr at p0 2
+co at p0 3
+wr at p0 4
+ac at p0 5
+hk at p0 6
+n at p0 7
+pos call mnth p2 p1 62
+kh call fhash p2 pos 4
+ss call slot p2 p4 31 kh
+sh call slot p2 p4 54 kh
+cs call cell p3 ss p1
+ch call cell p3 sh p1
+cn at cs 0
+has gt cn 0
+hn at ch 0
+hh gt hn 0
+ha at ch 5
+ha1 add ha 1
+hv select hh ha1 0
+rp2 set rp n p1
+x1 at cs 4
+tt2 set tt n x1
+x2 at cs 1
+pr2 set pr n x2
+x3 at cs 2
+co2 set co n x3
+x4 at cs 3
+wr2 set wr n x4
+x5 at cs 5
+ac2 set ac n x5
+hk2 set hk n hv
+n1 add n 1
+nn select has n1 n
+r rec rp2 tt2 pr2 co2 wr2 ac2 hk2 nn
+ret r
+end
+fn crows u32x128x512 u32x128x64 u32 -> (u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32)
+z call z64l
+s0 rec z z z z z z z 0
+nr call mcount p0 62
+r fold crow nr s0 p0 p1 p2
+ret r
+end
+# the total of representation word p3 at size p2 (fold body over the rows: (total))
+fn totstep u32 u32 u32x64 u32x64 u32 -> u32
+rp get p2 p1
+t get p3 p1
+e eq rp p4
+r select e t p0
+ret r
+end
+fn rxstep u32 u32 u32x128x512 u32 u32 -> u32
+pos call mnth p2 p1 62
+k call fhash p2 pos 3
+e eq k p3
+nf eq p0 p4
+c and e nf
+r select c p1 p0
+ret r
+end
+# the entry of the cost map with key word p1 (of p2 entries)
+fn repidx u32x128x512 u32 u32 -> u32
+h call whash p0 p1
+r fold rxstep p2 p2 p0 h p2
+ret r
+end
+fn reptot u32x128x512 u32x128x64 u32 u32 -> u32
+rs call crows p0 p1 p2
+rp at rs 0
+tt at rs 1
+n at rs 7
+nr call mcount p0 62
+ri call repidx p0 p3 nr
+r fold totstep n 0 rp tt ri
+ret r
+end
+fn repacc u32x128x512 u32x128x64 u32 u32 -> u32
+rs call crows p0 p1 p2
+rp at rs 0
+ac at rs 5
+n at rs 7
+nr call mcount p0 62
+ri call repidx p0 p3 nr
+r fold totstep n 0 rp ac ri
+ret r
+end
+# the sizes of the cost files in their order, and ascending
+fn szstep (u32x64,u32) u32 u32x128 u32x128x512 -> (u32x64,u32)
+l at p0 0
+n at p0 1
+pos get p2 p1
+ro call fhash p3 pos 2
+cw call whash p3 62
+isc eq ro cw
+sz call fnum p3 pos 3
+f fold inlist n false l sz
+nf select f false true
+add and isc nf
+l2 set l n sz
+n1 add n 1
+nn select add n1 n
+r rec l2 nn
+ret r
+end
+fn sizes u32x128x512 -> (u32x64,u32)
+fl call lines p0 102
+l at fl 0
+c at fl 1
+z call z64l
+s0 rec z 0
+r fold szstep c s0 l p0
+ret r
+end
+# label hashes of the rows' representations (fold body over rows)
+fn lhstep u32x64 u32 u32x64 u32x128x128 -> u32x64
+r0 get p2 p1
+a add r0 22
+rf call rd128 p3 a
+h call vhash p3 rf
+r set p0 p1 h
+ret r
+end
+fn csumrow u32x128x128 u32 u32x128x512 u32x128x64 u32x64 u32x64 -> u32x128x128
+one mov 1
+i get p5 p1
+sz get p4 i
+k call key1 p1
+s1 fold vnum one p0 p2 134 k sz
+many ne sz 1
+s2 fold vflag one s1 p2 135 k many
+a call reptot p2 p3 sz 47
+t call reptot p2 p3 sz 48
+ru call reptot p2 p3 sz 9
+s3 fold vnum one s2 p2 136 k a
+s4 fold vnum one s3 p2 137 k t
+s5 fold vnum one s4 p2 138 k ru
+t100 mul t 100
+a105 mul a 105
+w gt t100 a105
+wr call cref s5 12
+lr call cref s5 11
+cl select w wr lr
+s6 fold vref one s5 p2 139 k cl
+ret s6
+end
+fn cbrow u32x128x128 u32 u32x128x512 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p5 p1
+k call key2 p3 p1
+r0 get p4 i
+t get p6 i
+a add r0 22
+rf call rd128 p0 a
+s1 fold vref one p0 p2 155 k rf
+nr call mcount p2 62
+ai call repidx p2 47 nr
+isa eq r0 ai
+s2 fold vflag one s1 p2 156 k isa
+lt0 call lg t
+pc call pct lt0 p7 p8
+s3 fold vnum one s2 p2 157 k pc
+s4 fold vnum one s3 p2 158 k t
+ret s4
+end
+fn ctrow u32x128x128 u32 u32x128x512 u32 (u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32x64,u32) u32 -> u32x128x128
+one mov 1
+k call key2 p3 p1
+rp at p4 0
+tt at p4 1
+pr at p4 2
+co at p4 3
+wr at p4 4
+ac at p4 5
+hk at p4 6
+r0 get rp p1
+a add r0 22
+rf call rd128 p0 a
+s1 fold vref one p0 p2 160 k rf
+nr call mcount p2 62
+ai call repidx p2 47 nr
+isa eq r0 ai
+s2 fold vflag one s1 p2 161 k isa
+x1 get pr p1
+s3 fold vnum one s2 p2 162 k x1
+x2 get co p1
+s4 fold vnum one s3 p2 163 k x2
+x3 get wr p1
+s5 fold vnum one s4 p2 164 k x3
+t get tt p1
+s6 fold vnum one s5 p2 165 k t
+ge0 ge t p5
+fr call cref s6 9
+br call cref s6 10
+lr call cref s6 11
+c0 select ge0 br lr
+cl select isa fr c0
+s7 fold vref one s6 p2 166 k cl
+t100 mul t 100
+ra call rdiv t100 p5
+s8 fold vnum one s7 p2 167 k ra
+x5 get ac p1
+s9 fold vnum one s8 p2 168 k x5
+h get hk p1
+hp gt h 0
+h1 sub h 1
+cn select hp 1 0
+s10 fold vnum cn s9 p2 169 k h1
+nh select hp false true
+cz select nh 1 0
+s11 fold vref cz s10 p2 169 k 0
+ret s11
+end
+fn cszrow u32x128x128 u32 u32x128x512 u32x128x64 u32x64 u32x64 u32 -> u32x128x128
+one mov 1
+sz get p4 p1
+k call key1 p1
+s1 fold vnum one p0 p2 148 k sz
+many ne sz 1
+s2 fold vflag one s1 p2 149 k many
+rs call crows p2 p3 sz
+rp at rs 0
+tt at rs 1
+n at rs 7
+s3 fold vnum one s2 p2 150 k n
+a call reptot p2 p3 sz 47
+t call reptot p2 p3 sz 48
+loss gt a t
+s4 fold vflag one s3 p2 151 k loss
+z call z64l
+hs fold lhstep n z rp s4
+cv call cover p5 p6 hs n
+s4a fold vnum one s4 p2 152 k cv
+part ne cv p6
+s5 fold vflag one s4a p2 153 k part
+s6 fold vnum one s5 p2 154 k n
+pm call sortperm tt n
+mn call lmin tt n
+mx call lmax tt n
+l9 call lg 9
+l10 call lg 10
+lm call lg mn
+lo0 add lm l9
+lo sub lo0 l10
+hi call lg mx
+s7 fold cbrow n s6 p2 p1 rp pm tt lo hi
+s8 fold vnum one s7 p2 159 k n
+s9 fold ctrow n s8 p2 p1 rs a
+ret s9
+end
+fn ccost u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+nr call mcount p2 62
+s0 fold clab nr p0 p2
+sz call sizes p2
+sl at sz 0
+ns at sz 1
+asc call sortperm sl ns
+s1 fold vnum one s0 p2 133 0 ns
+s2 fold csumrow ns s1 p2 p3 sl asc
+ia call repidx p2 47 nr
+it call repidx p2 48 nr
+ir call repidx p2 9 nr
+z call z64l
+ra add ia 22
+rt add it 22
+rr add ir 22
+fa call rd128 s2 ra
+ft call rd128 s2 rt
+fr call rd128 s2 rr
+ha call vhash s2 fa
+ht call vhash s2 ft
+hr call vhash s2 fr
+z1 set z 0 ha
+z2 set z1 1 ht
+z3 set z2 2 hr
+al call alllangs p3 s2
+alh at al 0
+na at al 1
+cv call cover alh na z3 3
+s3 fold vcov one s2 p2 140 141 cv na
+nl sub ns 1
+bi get asc nl
+big get sl bi
+si get asc 0
+sml get sl si
+ba call reptot p2 p3 big 47
+bt call reptot p2 p3 big 48
+s4 fold vnum one s3 p2 142 0 ba
+s5 fold vnum one s4 p2 143 0 bt
+bq div bt ba
+s6 fold vnum one s5 p2 144 0 bq
+bc call repacc p2 p3 big 47
+s7 fold vnum one s6 p2 145 0 bc
+ma call reptot p2 p3 sml 47
+mt call reptot p2 p3 sml 48
+m100 mul ma 100
+mr call rdiv m100 mt
+s8 fold vnum one s7 p2 146 0 mr
+s9 fold vnum one s8 p2 147 0 ns
+s10 fold cszrow ns s9 p2 p3 sl alh na
+ret s10
+end
