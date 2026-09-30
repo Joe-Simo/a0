@@ -4,7 +4,7 @@
 
 A0 is a compact, exactly specified language that models write and edit through revision-checked structured edits. A model reads only what an edit touches, writes only the changed lines, and nothing invalid lands. One program compiles to native machine code (A0's own AArch64 code generator, or C), the browser (wasm32), JavaScript, the JVM, .NET, Metal GPU kernels, and clocked SystemVerilog, and every target is verified against one oracle.
 
-Measured on the repository's benchmarks (Apple M3, quiet machine, `results/*.json`):
+Measured on the repository's benchmarks (Apple M3, 8 cores, `results/*.json`). The machine was not quiet: `results/exec-benchmark.json` records a 1/5/15-minute load average of 6.4-8.0 for the main and arm64 runs and 32-40 for the JavaScript remeasurement; a quiet-machine rerun is pending:
 
 | | |
 |---|---|

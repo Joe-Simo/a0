@@ -1427,11 +1427,36 @@ export async function checkJvm(
 
 // --- main --------------------------------------------------------------------
 
+/**
+ * The row for the compiler found by `findGcc`, named by what actually runs: on macOS `gcc` is
+ * usually Apple clang, and a row labelled gcc would then misreport the compiler.
+ */
+function gccCompilerRow(): {
+  readonly key: string;
+  readonly tool: ToolInfo;
+  readonly label: string;
+} {
+  const tool = findGcc();
+  const identity = tool.version ?? 'unknown compiler';
+  const isClang = /clang/i.test(identity);
+  const key = !isClang
+    ? 'native_c_gcc'
+    : /apple/i.test(identity)
+      ? 'native_c_apple_clang_via_gcc'
+      : 'native_c_clang_via_gcc';
+  const via = tool.path ?? 'gcc';
+  const label = isClang
+    ? `native C via ${via}, which is ${identity} (not GCC)`
+    : `native C via ${via} (${identity})`;
+  return { key, tool, label };
+}
+
 async function main(): Promise<void> {
   const program = generateCorpus();
   const cases = generateCases(program);
   const interpreter = checkInterpreter(program, cases);
   const optimizer = checkOptimizer(program, cases);
+  const gccRow = gccCompilerRow();
   const report = {
     generatedAt: new Date().toISOString(),
     node: process.version,
@@ -1457,13 +1482,7 @@ async function main(): Promise<void> {
       } as TargetReport,
       javascript: await checkJs(program, cases),
       native_c_clang: await checkNative(program, cases, findClang(), false, 'native C via clang'),
-      native_c_gcc: await checkNative(
-        program,
-        cases,
-        findGcc(),
-        false,
-        'native C via gcc (on macOS `gcc` may be Apple clang; see tool field)',
-      ),
+      [gccRow.key]: await checkNative(program, cases, gccRow.tool, false, gccRow.label),
       native_cpp_clang: await checkNative(
         program,
         cases,
