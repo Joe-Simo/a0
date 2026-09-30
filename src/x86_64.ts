@@ -69,6 +69,7 @@ import {
   type Type,
   type TypedFunc,
 } from './core.js';
+import { emitFused, type FillRun, fillRun, overwritesState } from './optimize.js';
 
 export type X86Platform = 'darwin' | 'linux';
 
@@ -100,6 +101,48 @@ const ARG_REGS = ['%edi', '%esi', '%edx', '%ecx', '%r8d', '%r9d'];
 const LEAF_ARG_HOMES = ['%edi', '%esi', '%r8d', '%r9d'];
 
 const FRESH_OPS = new Set<Op>(['arr', 'rec', 'set', 'put']);
+
+/**
+ * Is the aggregate literal at `index` only the initial state of a fold that writes every
+ * element before reading it (optimize.ts `overwritesState`)? Its stores are then dead.
+ */
+function deadLiteral(fn: TypedFunc, index: number): boolean {
+  const node = fn.nodes[index] as Node;
+  const me = (o: Operand): boolean => o.kind === 'node' && o.id === node.id;
+  if (me(fn.ret)) return false;
+  const users = fn.nodes.filter((n) => n.args.some(me));
+  const user = users[0];
+  return (
+    users.length === 1 &&
+    user !== undefined &&
+    user.op === 'fold' &&
+    user.args.filter(me).length === 1 &&
+    user.args[1] !== undefined &&
+    me(user.args[1]) &&
+    overwritesState(fn, user)
+  );
+}
+
+/** SSE2 registers for a fill run: xmm1 lane indices, xmm2 step, xmm3.. values, xmm14/15 temps. */
+const SSE_FIRST = 3;
+const SSE_LAST = 13;
+const SSE_OP: Partial<Record<Op, string>> = {
+  add: 'paddd',
+  sub: 'psubd',
+  and: 'pand',
+  or: 'por',
+  xor: 'pxor',
+  shl: 'pslld',
+  shr: 'psrld',
+};
+
+/** A uniform operand of a fill run as a map key: `u:<literal>` or `p:<parameter index>`. */
+function formatUniform(o: Operand): string {
+  if (o.kind === 'u32') return `u:${o.value >>> 0}`;
+  if (o.kind === 'bool') return `u:${o.value ? 1 : 0}`;
+  if (o.kind === 'param') return `p:${o.index}`;
+  return `n:${o.id}`;
+}
 
 /** The 64-bit name of a 32-bit register. */
 function q(reg: string): string {
@@ -955,6 +998,7 @@ class FunctionEmitter {
       case 'arr':
       case 'rec': {
         this.#def(key, t);
+        if (deadLiteral(env.fn, index)) return;
         let off = this.#slot(key);
         const first = vals[0];
         if (
@@ -1075,6 +1119,30 @@ class FunctionEmitter {
         const cval: Val = { kind: 'key', key: counter, type: 'u32' };
         this.#use(init);
         for (const e of extras) this.#use(e);
+        const run =
+          n.op === 'fold' &&
+          count.kind === 'lit' &&
+          count.value >= 4 &&
+          this.#inlinable(callee, env)
+            ? fillRun(env.fn, n)
+            : undefined;
+        // The initial value is dead when every element is written before any trip reads it.
+        const deadInit = overwritesState(env.fn, n);
+        if (run !== undefined && this.#sseRegisters(run) !== undefined) {
+          if (
+            init.kind === 'key' &&
+            mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0)
+          )
+            this.#defAlias(key, init.key, t);
+          else {
+            this.#def(key, t);
+            if (!deadInit) this.#place(init, '%rsp', this.#slot(key));
+          }
+          this.#sseFill(run, key, extras);
+          this.#pos += 1;
+          this.#use(state);
+          return;
+        }
         if (isPrimitive(t)) scalar((d) => this.#into(d, init));
         else if (
           init.kind === 'key' &&
@@ -1083,7 +1151,7 @@ class FunctionEmitter {
           this.#defAlias(key, init.key, t);
         else {
           this.#def(key, t);
-          this.#place(init, '%rsp', this.#slot(key));
+          if (!deadInit) this.#place(init, '%rsp', this.#slot(key));
         }
         this.#def(counter, 'u32');
         if (count.kind === 'lit') this.#bounds.set(counter, count.value);
@@ -1148,6 +1216,149 @@ class FunctionEmitter {
       case 'puts':
         refuse(`${n.op} is an io operation`);
         return;
+    }
+  }
+
+  // --- SSE2 fill runs -----------------------------------------------------------------------
+
+  /**
+   * xmm registers for a fill run (optimize.ts `fillRun`): one per uniform operand (literal or
+   * extra parameter) and per body node; undefined when they do not fit. Shift distances are
+   * immediates (literal) or a count register holding the parameter mod 32.
+   */
+  #sseRegisters(
+    run: FillRun,
+  ):
+    | { uniform: Map<string, string>; counts: Map<number, string>; nodes: Map<string, string> }
+    | undefined {
+    const uniform = new Map<string, string>();
+    const counts = new Map<number, string>();
+    const nodes = new Map<string, string>();
+    let next = SSE_FIRST;
+    const take = (): string | undefined => (next <= SSE_LAST ? `%xmm${next++}` : undefined);
+    const need = (o: Operand): boolean => {
+      if (o.kind === 'node' || (o.kind === 'param' && o.index === 1)) return true;
+      const k = formatUniform(o);
+      if (uniform.has(k)) return true;
+      const r = take();
+      if (r === undefined) return false;
+      uniform.set(k, r);
+      return true;
+    };
+    for (const m of run.nodes) {
+      if (SSE_OP[m.op] === undefined && m.op !== 'mul') return undefined;
+      const [a, b] = m.args as [Operand, Operand];
+      if (!need(a)) return undefined;
+      if (m.op === 'shl' || m.op === 'shr') {
+        if (b.kind === 'param' && !counts.has(b.index)) {
+          const r = take();
+          if (r === undefined) return undefined;
+          counts.set(b.index, r);
+        }
+      } else if (!need(b)) return undefined;
+      const r = take();
+      if (r === undefined) return undefined;
+      nodes.set(m.id, r);
+    }
+    if (!need(run.value)) return undefined;
+    return { uniform, counts, nodes };
+  }
+
+  /**
+   * Elements 0..count-1 of the array `key` from a fill run, four lanes per trip in xmm
+   * registers (SSE2 only: 32-bit multiplies are two pmuludq on the even and odd lanes). A
+   * remainder of count mod 4 elements is one more group stored lane by lane (the extra lanes
+   * are pure and total, so computing them is unobservable). Uses rax, r10, r11, xmm1-xmm15.
+   */
+  #sseFill(run: FillRun, key: string, extras: readonly Val[]): void {
+    const regs = this.#sseRegisters(run);
+    if (regs === undefined) refuse('internal: fill run registers');
+    const reg = (o: Operand): string => {
+      if (o.kind === 'node') return regs.nodes.get(o.id) as string;
+      if (o.kind === 'param' && o.index === 1) return '%xmm1';
+      return regs.uniform.get(formatUniform(o)) as string;
+    };
+    const extra = (i: number): Val => extras[i - 2] ?? refuse(`fill run reads missing p${i}`);
+    for (const e of extras) this.#use(e);
+    // Preheader: lane indices {0, 1, 2, 3}, step {4, 4, 4, 4}, uniform operands broadcast.
+    this.#emit(
+      'movabsq $4294967296, %rax',
+      'movq %rax, %xmm1',
+      'movabsq $12884901890, %rax',
+      'movq %rax, %xmm2',
+      'punpcklqdq %xmm2, %xmm1',
+      'movl $4, %eax',
+      'movd %eax, %xmm2',
+      'pshufd $0, %xmm2, %xmm2',
+    );
+    for (const [k, r] of regs.uniform) {
+      const [kind, v] = k.split(':') as [string, string];
+      if (kind === 'u' && Number(v) === 0) this.#emit(`pxor ${r}, ${r}`);
+      else {
+        const src = kind === 'u' ? imm(Number(v)) : this.#operand(extra(Number(v)), '%eax');
+        this.#emit(`movl ${src}, %eax`, `movd %eax, ${r}`, `pshufd $0, ${r}, ${r}`);
+      }
+    }
+    for (const [p, r] of regs.counts)
+      this.#emit(
+        `movl ${this.#operand(extra(p), '%eax')}, %eax`,
+        'andl $31, %eax',
+        `movd %eax, ${r}`,
+      );
+    const lanes = (): void => {
+      for (const m of run.nodes) {
+        const d = regs.nodes.get(m.id) as string;
+        const [a, b] = m.args as [Operand, Operand];
+        const ra = reg(a);
+        if (m.op === 'mul') {
+          // Even lanes: pmuludq of lanes 0 and 2; odd lanes: the same after a 32-bit shift.
+          const rb = reg(b);
+          this.#emit(
+            `movdqa ${ra}, ${d}`,
+            `pmuludq ${rb}, ${d}`,
+            `pshufd $245, ${ra}, %xmm14`,
+            `pshufd $245, ${rb}, %xmm15`,
+            'pmuludq %xmm15, %xmm14',
+            `pshufd $232, ${d}, ${d}`,
+            'pshufd $232, %xmm14, %xmm14',
+            `punpckldq %xmm14, ${d}`,
+          );
+          continue;
+        }
+        const insn = SSE_OP[m.op] as string;
+        this.#emit(`movdqa ${ra}, ${d}`);
+        if (m.op === 'shl' || m.op === 'shr') {
+          if (b.kind === 'u32') {
+            if ((b.value & 31) !== 0) this.#emit(`${insn} $${b.value & 31}, ${d}`);
+          } else this.#emit(`${insn} ${regs.counts.get((b as { index: number }).index)}, ${d}`);
+        } else this.#emit(`${insn} ${reg(b)}, ${d}`);
+      }
+    };
+    const out = reg(run.value);
+    const groups = Math.floor(run.count / 4);
+    this.#emit(`leaq ${this.#m('%rsp', this.#slot(key))}, %r10`);
+    if (groups === 1) {
+      lanes();
+      this.#emit(`movups ${out}, (%r10)`);
+    } else {
+      const top = this.#label();
+      this.#emit(`movl ${imm(groups)}, %r11d`, `${top}:`);
+      lanes();
+      this.#emit(
+        `movups ${out}, (%r10)`,
+        'addq $16, %r10',
+        'paddd %xmm2, %xmm1',
+        'subl $1, %r11d',
+        `jne ${top}`,
+      );
+    }
+    const rest = run.count % 4;
+    if (rest === 0) return;
+    if (groups === 1) this.#emit('addq $16, %r10', 'paddd %xmm2, %xmm1');
+    lanes();
+    for (let k = 0; k < rest; k += 1) {
+      this.#emit(`movd ${out}, %eax`, `movl %eax, ${4 * k}(%r10)`);
+      if (k + 1 < rest) this.#emit(`psrldq $4, ${out}`);
     }
   }
 
@@ -1347,7 +1558,7 @@ export function emitX86_64Function(
   fn: TypedFunc,
   platform: X86Platform = HOST_X86_PLATFORM,
 ): string {
-  return new FunctionEmitter(fn, platform).emit();
+  return emitFused(fn, (f) => new FunctionEmitter(f, platform).emit());
 }
 
 /** Assemble function blocks into one .s module for `clang -x assembler` / `as`. */

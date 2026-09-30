@@ -273,7 +273,7 @@ end`;
     () => parseAndValidate(`${src.split('\n\n')[0]}\nfn f bool -> u32\na call sq p0\nret a\nend`),
     /expected u32, got bool/,
   );
-  // Constant calls fold exactly; non-constant calls are kept and deduplicated.
+  // Constant calls fold exactly; small pure scalar calls are inlined and then deduplicated.
   const folded = optimizeFunction(
     fn(
       `${src.split('\n\n')[0]}\nfn k u32 -> u32\na call sq 7\nb call sq p0\nc call sq p0\nd add b c\ne add d a\nret e\nend`,
@@ -282,11 +282,14 @@ end`;
   );
   assert.equal(
     formatFunction(folded.fn),
-    'fn k u32 -> u32\nb call sq p0\nd add b b\ne add d 49\nret e\nend',
+    'fn k u32 -> u32\no_1 mul p0 p0\nd add o_1 o_1\ne add d 49\nret e\nend',
   );
-  // Every backend emits the call; JS executes it.
+  // Every backend emits the call (unoptimized: the optimizer inlines a callee this small).
   for (const target of ['js', 'c', 'java', 'sv'] as const)
-    assert.ok(compile(p, target).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('), target);
+    assert.ok(
+      compile(p, target, { optimize: false }).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('),
+      target,
+    );
 });
 
 test('emission cache key follows callee changes (semantic revision)', async () => {
@@ -414,7 +417,8 @@ end`;
   const lit = parseAndValidate(
     `${src.split('\n\n')[0]}\nfn h3 u32 -> u32\nr fold step 3 0 p0\nret r\nend`,
   );
-  const sv = compile(lit, 'sv').text;
+  // Unoptimized: the IR optimizer itself unrolls a literal count this short.
+  const sv = compile(lit, 'sv', { optimize: false }).text;
   assert.equal((sv.match(/a0_step u_r_/g) ?? []).length, 3);
 });
 
@@ -474,7 +478,8 @@ end`;
   const lit = parseAndValidate(
     `${src.split('\n\n').slice(0, 2).join('\n\n')}\nfn a3 u32 -> u32\nr loop below step 3 0 p0\nret r\nend`,
   );
-  const sv = compile(lit, 'sv').text;
+  // Unoptimized: the IR optimizer itself unrolls a literal count this short.
+  const sv = compile(lit, 'sv', { optimize: false }).text;
   assert.equal((sv.match(/a0_below u_r_p/g) ?? []).length, 3);
   assert.ok(sv.includes("assign n_r_d1 = 1'b0 | ~n_r_c0;"));
 });
@@ -1268,7 +1273,8 @@ test('JS emission: zero arrays allocate, power-of-two indices mask, owned sets a
   const src =
     'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nx get a p1\ny get a 3\ns add x y\nret s\nend';
   const p = parseAndValidate(src);
-  const js = compile(p, 'js').text;
+  // Emission shapes of the fold itself (the IR optimizer unrolls an 8-trip fold away).
+  const js = compile(p, 'js', { optimize: false }).text;
   assert.ok(js.includes('new Uint32Array(8)'));
   assert.ok(js.includes('[(p1 & 7)]'));
   assert.ok(/a0o_put8[\s\S]*\(p0\[\(p1 & 7\)\] = n_v, p0\)/.test(js));
@@ -1298,7 +1304,8 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   const src =
     'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn below u32x8 u32 u32 -> bool\na get p0 0\nc lt a p2\nret c\nend\nfn keepold u32x8 u32 u32 -> u32x8\nn set p0 p1 p2\na get p0 p1\nm set n 0 a\nret m\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nl loop below keepold 8 a p1\nx get l p1\ny get a 3\ns add x y\nret s\nend';
   const p = parseAndValidate(src);
-  const c = compile(p, 'c').text;
+  // Emission shapes of the fold itself (the IR optimizer unrolls an 8-trip fold away).
+  const c = compile(p, 'c', { optimize: false }).text;
   // The owned variant writes through the state pointer and returns nothing; the value ABI
   // updates its private by-value copy in place and returns it.
   assert.ok(
@@ -1324,7 +1331,7 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   assert.ok(c.includes('if (!a0r_below(&n_l, i, p1)) break; a0o_keepold(&n_l, i, p1); }'));
   assert.ok(c.includes('a0zero_a8_u()'));
   assert.ok(emitMetal(p).includes('thread a0t_a8_u *p0'));
-  assert.ok(compile(p, 'java').text.includes('new int[8]'));
+  assert.ok(compile(p, 'java', { optimize: false }).text.includes('new int[8]'));
   // Native paths accept 65536-element arrays; hardware and GPU refuse them with a limit code.
   assert.equal(LIMITS.maxArrayLength, 65536);
   const big = parseAndValidate(
@@ -1844,7 +1851,8 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn scan u32x12 u32 u32 -> u32x12\nj sub p1 1\nt get p0 j\ns get p0 p1\nu mul t p2\nv add u s\nn set p0 p1 v\nret n\nend',
     'fn carried u32 u32 -> u32\nz arr p0 1 2 3 4 5 6 7 8 9 10 p1\na fold scan 20 z p1\nq and p0 15\nr get a q\nw get a 11\ns add r w\nret s\nend',
     // neighbour reads (i + 3 mod 16) as two loads joined by ext, wrapping at the end
-    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nn set p0 p1 w\nret n\nend',
+    // (the fill costs more than fusion may recompute at the second index, so it is stored)
+    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nx mul w p2\nn set p0 p1 x\nret n\nend',
     'fn sm u32x16 u32 u32x16 -> u32x16\nj add 3 p1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend',
     `fn shifted u32 u32 -> u32\nz arr ${zeros(16)}\na fold f16 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sm 16 z2 a\nq and p1 15\nr get b q\nw get b 15\ns add r w\nret s\nend`,
     // sixteen products feeding a record literal (written through, no register each)
@@ -1876,11 +1884,128 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
   assert.match(asm, /ext v\d+\.16b, v30\.16b, v31\.16b, #12/);
   const fusedBody = /_a0_fused:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
   // `a` is also read after the loop, so it is stored; `b` has one use and is fused away.
-  assert.equal(fusedBody.match(/str q/g)?.length, 1);
+  // Two loops: the fill of `a`, and the dot product with `b` computed in its lanes.
+  assert.equal(fusedBody.match(/\nLa0_fused_\d+:/g)?.length, 2);
+  assert.equal(fusedBody.match(/\n\tst[rp] q/g)?.length, 2);
   for (const optimize of [true, false]) {
     const text = compile(p, 'arm64', { optimize }).text;
     await withTempDir(async (dir) => {
       await writeFile(join(dir, 'module.s'), text, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+      assert.ok(ld.ok, ld.stderr);
+      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected);
+    });
+  }
+});
+
+test('arm64 instruction selection, unrolled and vectorized folds equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const seq = (n: number, f: (i: number) => number): string =>
+    Array.from({ length: n }, (_, i) => String(f(i))).join(' ');
+  // Each entry: a module fragment and its two-parameter entry function.
+  const cases: [string, string][] = [
+    ['rotl7', 'fn rotl7 u32 u32 -> u32\na shl p0 7\nb shr p0 25\nc or b a\nret c\nend'],
+    ['rotr', 'fn rotr u32 u32 -> u32\na shr p0 p1\nn sub 64 p1\nb shl p0 n\nc or a b\nret c\nend'],
+    [
+      'rotlv',
+      'fn rotlv u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend',
+    ],
+    [
+      'maddsub',
+      'fn maddsub u32 u32 -> u32\nm mul p0 p1\na add p1 m\ns mul p0 7\nb sub a s\nret b\nend',
+    ],
+    [
+      'shifted',
+      'fn shifted u32 u32 -> u32\ns shr p0 3\na sub p1 s\nt shl p1 31\nb xor t a\nu shl b 0\nc add p0 u\nret c\nend',
+    ],
+    [
+      'fused',
+      'fn fused u32 u32 -> u32\nc lt 100 p0\nr select c p1 0\nd ge p0 p1\ne select d r 5000000\nf select d e r\nret f\nend',
+    ],
+    [
+      'aggsel',
+      'fn aggsel u32 u32 -> u32\nx arr p0 p1\ny arr p1 p0\nc gt p0 p1\ns select c x y\ng get s 1\nret g\nend',
+    ],
+    [
+      'unroll',
+      'fn ust u32 u32 u32 -> u32\na mul p0 2654435761\nb add a p1\nc xor b p2\nret c\nend\nfn unroll u32 u32 -> u32\nf fold ust 5 p0 p1\ng fold ust 0 f p1\nret g\nend',
+    ],
+    [
+      'loopk',
+      'fn lst u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc shr b 15\nd xor b c\ne add d p1\nret e\nend\nfn late u32 u32 u32 -> u32\na mul p0 3\nb add a p1\nc xor b p0\nret b\nend\nfn loopk u32 u32 -> u32\nk and p1 3\nf fold lst 64 p0 p1\ng fold lst k f p0\nh fold late 40 g k\nret h\nend',
+    ],
+    [
+      'vfill',
+      'fn fl u32x37 u32 u32 u32 -> u32x37\na mul p1 p2\nb shr a 3\nc xor b p3\nd shl c p2\ne sub d 1000\ng shr e p3\nn set p0 p1 g\nret n\nend\n' +
+        `fn vfill u32 u32 -> u32\nz arr ${seq(37, () => 0)}\nf fold fl 37 z p0 p1\ni and p1 31\nx get f i\ny get f 36\nw get f 0\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'vpart',
+      'fn fp u32x40 u32 u32 -> u32x40\nv add p1 p2\nn set p0 p1 v\nret n\nend\n' +
+        `fn vpart u32 u32 -> u32\nz arr ${seq(40, (i) => i * 7 + 1)}\nf fold fp 21 z p0\ni rem p1 40\nx get f i\ny get f 30\nw get f 20\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'v4',
+      'fn f4 u32x103 u32 u32 -> u32x103\nv add p1 p2\nn set p0 p1 v\nret n\nend\n' +
+        `fn v4 u32 u32 -> u32\nz arr ${seq(103, () => 9)}\nf fold f4 103 z p0\ni rem p1 103\nx get f i\ny get f 102\nw get f 99\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'zeros',
+      `fn zeros u32 u32 -> u32\nz arr ${seq(40, () => 0)} p0 ${seq(35, () => 0)} p1\ni rem p1 77\nx get z i\ny get z 40\nw get z 76\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'odd5',
+      'fn o5 u32x5 u32 u32 -> u32x5\na get p0 p1\nb add a p2\nn set p0 p1 b\nret n\nend\n' +
+        'fn odd5 u32 u32 -> u32\nz arr 1 2 3 4 5\nf fold o5 25 z p0\ni rem p1 5\nx get f i\nret x\nend',
+    ],
+  ];
+  const p = parseAndValidate(cases.map(([, src]) => src).join('\n\n'));
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [999, 3],
+    [100, 100],
+    [101, 32],
+  ];
+  const expected = inputs
+    .flatMap(([a, b]) =>
+      cases.map(([name]) => String(run(p.byName.get(name) as TypedFunc, [a, b]))),
+    )
+    .join('\n');
+  const decls = cases.map(([name]) => `extern uint32_t a0_${name}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => cases.map(([name]) => `  printf("%u\\n", a0_${name}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${decls}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  for (const optimize of [true, false]) {
+    const asm = compile(p, 'arm64', { optimize }).text;
+    if (optimize) {
+      assert.match(asm, /\tror w\d+, w\d+, #25\n/);
+      assert.match(asm, /\tneg w10, w\d+\n\tror /);
+      assert.match(asm, /\tmsub /);
+      assert.match(asm, /, lsr #3\n/);
+      assert.match(asm, /\tstp q\d+, q\d+, \[x14, #0\]/);
+      assert.match(asm, /\tstp q0, q0, \[x15\], #32/);
+      assert.match(asm, /_a0_rotl7:\n\tror w0, w0, #25\n\tret/);
+    }
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
       await writeFile(join(dir, 'driver.c'), driver, 'utf8');
       const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
         cwd: dir,
@@ -1984,8 +2109,10 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
       'a',
     ),
   );
-  assert.match(fill, /xorps %xmm0, %xmm0\n\tmovups %xmm0, \(%rsp\)\n\tmovups %xmm0, 16\(%rsp\)/);
-  assert.match(fill, /movl %\w+, 0\(%rsp,%r\w+,4\)/);
+  // The fold overwrites every element, so the zero literal is never stored; the fill run
+  // is four lanes per SSE2 store.
+  assert.doesNotMatch(fill, /xorps %xmm0, %xmm0/);
+  assert.match(fill, /paddd %xmm3, %xmm4\n\tmovups %xmm4, \(%r10\)/);
   assert.doesNotMatch(fill, /andl \$7/);
   const get5 = emitX86_64Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get5, /movl \$5, %r10d\n\tdivl %r10d\n\tmovl %edx, %r10d/);
@@ -3307,6 +3434,74 @@ end`);
   }
 });
 
+test('direct wasm backend: simd fills, carried reads, scalar state, lazy arms, exports equal the interpreter', async () => {
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const { KERNELS } = await import('../tools/exec-bench-kernels.js');
+  const lazy = `fn lz u32 u32 -> u32
+c lt p0 p1
+d div p1 p0
+e rem d 7
+f mul e p1
+g div f 3
+h select c g p0
+ret h
+end`;
+  // A fill of 1026 elements into a 1030-element array: simd for 1024, two scalar trips, and
+  // four elements of the zero literal that stay live (the fill does not cover the array).
+  const fill = `fn fl u32x1030 u32 u32 -> u32x1030
+a mul p1 p2
+b shr a 3
+c xor b p1
+n set p0 p1 c
+ret n
+end
+fn part u32 u32 -> u32
+z arr ${Array.from({ length: 1030 }, () => '0').join(' ')}
+a fold fl 1026 z p0
+q rem p1 1030
+x get a q
+y get a 1029
+w get a 1025
+s add x y
+t add s w
+ret t
+end`;
+  const cases: [string, string, number][] = [
+    ...KERNELS.map((k): [string, string, number] => [k.a0, k.name, k.arity]),
+    [lazy, 'lz', 2],
+    [fill, 'part', 2],
+  ];
+  const inputs = [0, 1, 7, 1029, 0x9e3779b9, 0xffff_ffff];
+  for (const [src, name, arity] of cases) {
+    const p = parseAndValidate(src);
+    const f = p.byName.get(name) as TypedFunc;
+    for (const options of [
+      {},
+      { wasmSimd: false },
+      { wasmUnroll: 4 as const },
+      { optimize: false },
+    ]) {
+      const text = compile(p, 'wasm', { ...options, wasmExports: [name] }).text;
+      const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+      const e = instance.exports as Record<string, unknown>;
+      // Only the requested function is exported.
+      assert.deepEqual(
+        Object.keys(e).filter((x) => x.startsWith('a0_')),
+        [`a0_${name}`],
+      );
+      const g = e[`a0_${name}`] as (...a: number[]) => number;
+      for (const x of inputs) {
+        const args = Array.from({ length: arity }, (_, j) => (x * (j + 3) + j) >>> 0);
+        assert.equal(
+          g(...args.map((v) => v | 0)) >>> 0,
+          run(f, args),
+          `${name}(${args}) ${JSON.stringify(options)}`,
+        );
+      }
+    }
+  }
+});
+
 test('function cap: 4000-function programs are legal; the cap is LIMITS.maxFunctions', async () => {
   const { LIMITS, parse, validate } = await import('../src/core.js');
   assert.equal(LIMITS.maxFunctions, 65536);
@@ -3340,5 +3535,114 @@ test('corpus generator: seeds 1-200 generate (a bool-result body with no bool sl
         `seed ${seed} scalar=${scalar}`,
       );
     }
+  }
+});
+
+test('loop fusion and fill runs: IR shapes, and arm64, x86_64, wasm equal the interpreter', async () => {
+  const { fuseLoops } = await import('../src/optimize.js');
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
+  const fill = (name: string, n: number, body: string): string =>
+    `fn ${name} u32x${n} u32 u32 u32 -> u32x${n}\n${body}\nn set p0 p1 v\nret n\nend`;
+  // [source, entry, folds after fusion (undefined: nothing fuses)]
+  const cases: [string, string, number | undefined][] = [
+    // two fills into one reduce (extras read at the counter), length not a power of two
+    [
+      `${fill('fa', 12, 'u mul p1 p2\nv add u p3')}\n${fill('fb', 12, 'u xor p1 p3\nv mul u p2')}\nfn dt u32 u32 u32x12 u32x12 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend\nfn dot u32 u32 -> u32\nz arr ${zeros(12)}\na fold fa 12 z p0 p1\nz2 arr ${zeros(12)}\nb fold fb 12 z2 p0 p1\nd fold dt 12 p1 a b\nret d\nend`,
+      'dot',
+      1,
+    ],
+    // a cheap fill read at a wrapping neighbour index (recomputed at (i + 5) mod 12)
+    [
+      `${fill('fc', 12, 'v add p1 p2')}\nfn nb u32x12 u32 u32x12 -> u32x12\nj add p1 5\nu get p2 p1\nw get p2 j\nx xor u w\nn set p0 p1 x\nret n\nend\nfn nbr u32 u32 -> u32\nz arr ${zeros(12)}\na fold fc 12 z p0 p1\nz2 arr ${zeros(12)}\nb fold nb 12 z2 a\nq rem p1 12\nr get b q\nw get b 11\ns add r w\nret s\nend`,
+      'nbr',
+      1,
+    ],
+    // a fill as the initial state of an in-place prefix sum (guarded previous read)
+    [
+      `${fill('fd', 12, 'u mul p1 p2\nv add u p3')}\nfn px u32x12 u32 -> u32x12\nc eq p1 0\nj sub p1 1\nt get p0 j\nu select c 0 t\ns get p0 p1\nv add u s\nn set p0 p1 v\nret n\nend\nfn pre u32 u32 -> u32\nz arr ${zeros(12)}\na fold fd 12 z p0 p1\nb fold px 12 a\nq rem p1 12\nr get b q\nw get b 11\ns add r w\nret s\nend`,
+      'pre',
+      1,
+    ],
+    // a recurrence producer read at the counter by a shorter scalar reduce
+    [
+      `fn xf u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nc2 shr b 17\nd xor b c2\nn set p0 p1 d\nret n\nend\nfn xr u32 u32 u32x10 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn rec u32 u32 -> u32\nz arr ${zeros(10)}\na fold xf 10 z p0\nr fold xr 9 p1 a\nret r\nend`,
+      'rec',
+      1,
+    ],
+    // not fused: the array is also read after the consumer
+    [
+      `${fill('fe', 8, 'v add p1 p2')}\nfn sm u32 u32 u32x8 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn keep u32 u32 -> u32\nz arr ${zeros(8)}\na fold fe 8 z p0 p1\nr fold sm 8 p1 a\nq and p1 7\nx get a q\ns add r x\nret s\nend`,
+      'keep',
+      undefined,
+    ],
+    // fill runs of 4, 5, 7, 13 elements (mul, variable shift) over a live literal
+    ...[4, 5, 7, 13].map((n): [string, string, number | undefined] => [
+      `${fill(`g${n}`, 16, 'u mul p1 p2\nw shl u p3\nv sub w p1')}\nfn run${n} u32 u32 -> u32\nz arr ${Array.from({ length: 16 }, (_, i) => String(i * 3 + 1)).join(' ')}\na fold g${n} ${n} z p0 p1\nq and p1 15\nr get a q\nw get a 15\nx get a ${n - 1}\ns add r w\nt add s x\nret t\nend`,
+      `run${n}`,
+      undefined,
+    ]),
+  ];
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [0x9e3779b9, 31],
+  ];
+  const all = parseAndValidate(cases.map(([s]) => s).join('\n\n'));
+  const names = cases.map(([, n]) => n);
+  for (const [, name, folds] of cases) {
+    const fn = optimizeFunction(all.byName.get(name) as TypedFunc).fn;
+    const fused = fuseLoops(fn, { recordState: true });
+    assert.equal(fused?.nodes.filter((n) => n.op === 'fold').length, folds, `${name}: folds`);
+    if (fused !== undefined)
+      for (const [a, b] of inputs) assert.equal(run(fused, [a, b]), run(fn, [a, b]), name);
+  }
+  const expected = inputs
+    .flatMap(([a, b]) => names.map((n) => String(run(all.byName.get(n) as TypedFunc, [a, b]))))
+    .join('\n');
+  const text = compile(all, 'wasm', { wasmExports: names }).text;
+  const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+  const e = instance.exports as Record<string, (...a: number[]) => number>;
+  const got = inputs
+    .flatMap(([a, b]) =>
+      names.map((n) => String((e[`a0_${n}`] as (...a: number[]) => number)(a | 0, b | 0) >>> 0)),
+    )
+    .join('\n');
+  assert.equal(got, expected, 'wasm');
+  const clang = findClang().path;
+  if (clang === undefined) return;
+  const protos = names.map((n) => `extern uint32_t a0_${n}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => names.map((n) => `  printf("%u\\n", a0_${n}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${protos}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const natives: ['arm64' | 'x86_64', string[], string[]][] = [];
+  if (ARM64_HOST) natives.push(['arm64', [], []]);
+  if (X86_64_HOST !== undefined) natives.push(['x86_64', X86_64_HOST.arch, X86_64_HOST.runner]);
+  for (const [target, arch, runner] of natives) {
+    const asm = compile(all, target).text;
+    assert.doesNotMatch(asm, /zfuse/, `${target}: fused bodies are inlined`);
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, [...arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, [...arch, '-O1', '-o', 'driver', 'driver.c', 'module.o'], {
+        cwd: dir,
+      });
+      assert.ok(ld.ok, ld.stderr);
+      const [cmd, ...pre] = [...runner, join(dir, 'driver')];
+      const exec = runTool(cmd as string, pre, { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected, target);
+    });
   }
 });
