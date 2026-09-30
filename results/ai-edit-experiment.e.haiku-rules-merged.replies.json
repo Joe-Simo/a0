@@ -1,0 +1,105 @@
+{
+ "e-fold-count-fix/a0/structured": [
+  "r fold addi 5 p0"
+ ],
+ "e-swap-fields/a0/structured": [
+  "r rec d s"
+ ],
+ "e-guard-zero-div/a0/structured": [
+  "z eq p1 0\nr select z 0 q\nret r"
+ ],
+ "e-helper-sq-twice/a0/structured": [
+  "fn sq u32 -> u32\nr mul p0 p0\nret r\nend\nx call sq p0\ny call sq p1"
+ ],
+ "e-mask-widen/a0/structured": [
+  "a and p0 4095"
+ ],
+ "e-cmp-direction/a0/structured": [
+  "c gt p0 p1"
+ ],
+ "e-sum-range/a0/structured": [
+  "r fold stepadd 3 1 p0",
+  "r fold stepadd 4 0 p0"
+ ],
+ "e-popcount-fold/a0/structured": [
+  "fn bitcount u32 u32 -> u32 end\nr fold bitcount 32 0 p0\nret r",
+  "fn bitcount u32 u32 -> u32\nbit shr p0 p1\nlow and bit 1\nret low\nend\nfn popcnt u32 -> u32\nr fold bitcount 32 0 p0\nret r\nend"
+ ],
+ "e-max3-helper/a0/structured": [
+  "x call max2 p0 p1\ny call max2 x p2\nret y"
+ ],
+ "e-hash-const/a0/structured": [
+  "m mul p0 33"
+ ],
+ "e-thread-param/a0/structured": [
+  "a call addk p0 p1\nb call addk a p1",
+  "fn apply u32 u32 -> u32\na call addk p0 p1\nb call addk a p1\nret b\nend\nfn addk u32 u32 -> u32\nres add p0 p1\nret res\nend"
+ ],
+ "e-fold-count-fix/ts/structured": [
+  "3 for (let i = 0; i < 5; i++) {"
+ ],
+ "e-swap-fields/ts/structured": [
+  "4 return [d, s];"
+ ],
+ "e-guard-zero-div/ts/structured": [
+  "2 return b === 0 ? 0 : Math.floor(a / b);"
+ ],
+ "e-helper-sq-twice/ts/structured": [
+  "1 export function sq(x: number): number { return Math.imul(x, x) >>> 0; }\n+1 export function sumsq(a: number, b: number): number {\n2   return (sq(a) + sq(b)) >>> 0;"
+ ],
+ "e-mask-widen/ts/structured": [
+  "2 return (x & 4095) >>> 0;"
+ ],
+ "e-cmp-direction/ts/structured": [
+  "2 return a > b;"
+ ],
+ "e-sum-range/ts/structured": [
+  "3 for (let i = 1; i < 4; i++) {"
+ ],
+ "e-popcount-fold/ts/structured": [
+  "2   let c = 0;\n+2   for (let i = 0; i < 32; i++) c = (c + ((x >>> i) & 1)) >>> 0;\n3   return c >>> 0;\n+3 }"
+ ],
+ "e-max3-helper/ts/structured": [
+  "5 return max2(max2(a, b), c);"
+ ],
+ "e-hash-const/ts/structured": [
+  "2 return (Math.imul(a, 33) + b) >>> 0;"
+ ],
+ "e-thread-param/ts/structured": [
+  "1 export function addk(x: number, k: number): number {\n2   return (x + k) >>> 0;\n4 export function apply(x: number, k: number): number {\n5   return addk(addk(x, k), k);"
+ ],
+ "e-fold-count-fix/rust/structured": [
+  "3 for i in 0..5u32 {"
+ ],
+ "e-swap-fields/rust/structured": [
+  "4 (d, s)"
+ ],
+ "e-guard-zero-div/rust/structured": [
+  "2 if b == 0 { 0 } else { a / b }"
+ ],
+ "e-helper-sq-twice/rust/structured": [
+  "+0 pub fn sq(x: u32) -> u32 {\n+1     x.wrapping_mul(x)\n+2 }\n3 pub fn sumsq(a: u32, b: u32) -> u32 {\n4     sq(a).wrapping_add(sq(b))",
+  "+0 pub fn sq(x: u32) -> u32 {\n+1     x.wrapping_mul(x)\n+2 }\n4 pub fn sumsq(a: u32, b: u32) -> u32 {\n5     sq(a).wrapping_add(sq(b))"
+ ],
+ "e-mask-widen/rust/structured": [
+  "2 x & 4095"
+ ],
+ "e-cmp-direction/rust/structured": [
+  "2 a > b"
+ ],
+ "e-sum-range/rust/structured": [
+  "3 for i in 1..4 {"
+ ],
+ "e-popcount-fold/rust/structured": [
+  "2 (0..32).fold(0, |c, i| c + ((x >> i) & 1))"
+ ],
+ "e-max3-helper/rust/structured": [
+  "5 max2(max2(a, b), c)"
+ ],
+ "e-hash-const/rust/structured": [
+  "2 a.wrapping_mul(33).wrapping_add(b)"
+ ],
+ "e-thread-param/rust/structured": [
+  "1 pub fn addk(x: u32, k: u32) -> u32 {\n2     x.wrapping_add(k)\n4 pub fn apply(x: u32, k: u32) -> u32 {\n5     addk(addk(x, k), k)"
+ ]
+}

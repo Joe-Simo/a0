@@ -1,0 +1,101 @@
+{
+ "e-fold-count-fix/a0/structured": [
+  "r fold addi 5 p0"
+ ],
+ "e-swap-fields/a0/structured": [
+  "r rec d s"
+ ],
+ "e-guard-zero-div/a0/structured": [
+  "z eq p1 0\nr select z 0 q\nret r"
+ ],
+ "e-helper-sq-twice/a0/structured": [
+  "fn sq u32 -> u32\nr mul p0 p0\nret r\nend\nx call sq p0\ny call sq p1"
+ ],
+ "e-mask-widen/a0/structured": [
+  "a and p0 4095"
+ ],
+ "e-cmp-direction/a0/structured": [
+  "c gt p0 p1"
+ ],
+ "e-sum-range/a0/structured": [
+  "x get p0 1\ny get p0 2\nz get p0 3\nt add x y\nr add t z"
+ ],
+ "e-popcount-fold/a0/structured": [
+  "fn popstep u32 u32 u32 -> u32\nb shr p2 p1\nc and b 1\nr add p0 c\nret r\nend\nr fold popstep 32 0 p0\n-a\nret r"
+ ],
+ "e-max3-helper/a0/structured": [
+  "y call max2 x p2\nret y"
+ ],
+ "e-hash-const/a0/structured": [
+  "m mul p0 33"
+ ],
+ "e-thread-param/a0/structured": [
+  "fn addk u32 u32 -> u32\nr add p0 p1\nret r\nend\nfn apply u32 u32 -> u32\na call addk p0 p1\nb call addk a p1\nret b\nend"
+ ],
+ "e-fold-count-fix/ts/structured": [
+  "3   for (let i = 0; i < 5; i++) {"
+ ],
+ "e-swap-fields/ts/structured": [
+  "4   return [d, s];"
+ ],
+ "e-guard-zero-div/ts/structured": [
+  "2   return b === 0 ? 0 : Math.floor(a / b);"
+ ],
+ "e-helper-sq-twice/ts/structured": [
+  "2   return (sq(a) + sq(b)) >>> 0;\n+3 export function sq(x: number): number { return Math.imul(x, x) >>> 0; }"
+ ],
+ "e-mask-widen/ts/structured": [
+  "2   return (x & 4095) >>> 0;"
+ ],
+ "e-cmp-direction/ts/structured": [
+  "2   return a > b;"
+ ],
+ "e-sum-range/ts/structured": [
+  "3   for (let i = 1; i < 4; i++) {"
+ ],
+ "e-popcount-fold/ts/structured": [
+  "2   let c = 0; for (let i = 0; i < 32; i++) { c = (c + ((x >>> i) & 1)) >>> 0; } return c;"
+ ],
+ "e-max3-helper/ts/structured": [
+  "5   return max2(max2(a, b), c);"
+ ],
+ "e-hash-const/ts/structured": [
+  "2   return (Math.imul(a, 33) + b) >>> 0;"
+ ],
+ "e-thread-param/ts/structured": [
+  "1 export function addk(x: number, k: number): number {\n2   return (x + k) >>> 0;\n4 export function apply(x: number, k: number): number {\n5   return addk(addk(x, k), k);"
+ ],
+ "e-fold-count-fix/rust/structured": [
+  "3     for i in 0..5u32 {"
+ ],
+ "e-swap-fields/rust/structured": [
+  "4     (d, s)"
+ ],
+ "e-guard-zero-div/rust/structured": [
+  "2     if b == 0 { 0 } else { a / b }"
+ ],
+ "e-helper-sq-twice/rust/structured": [
+  "+0 pub fn sq(x: u32) -> u32 { x.wrapping_mul(x) }\n2     sq(a).wrapping_add(sq(b))"
+ ],
+ "e-mask-widen/rust/structured": [
+  "2     x & 4095"
+ ],
+ "e-cmp-direction/rust/structured": [
+  "2     a > b"
+ ],
+ "e-sum-range/rust/structured": [
+  "3     for i in 1..4 {"
+ ],
+ "e-popcount-fold/rust/structured": [
+  "2     (0..32u32).fold(0u32, |c, i| c.wrapping_add((x >> i) & 1))"
+ ],
+ "e-max3-helper/rust/structured": [
+  "5     max2(max2(a, b), c)"
+ ],
+ "e-hash-const/rust/structured": [
+  "2     a.wrapping_mul(33).wrapping_add(b)"
+ ],
+ "e-thread-param/rust/structured": [
+  "1 pub fn addk(x: u32, k: u32) -> u32 {\n2     x.wrapping_add(k)\n4 pub fn apply(x: u32, k: u32) -> u32 {\n5     addk(addk(x, k), k)"
+ ]
+}
