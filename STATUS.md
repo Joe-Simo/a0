@@ -449,6 +449,12 @@ Wins, ties, losses, stated separately:
 
 ## Session 2026-09-29 (late): primer size, JS guards
 
+- **Universality target (user, 2026-09-30):** every CPU and the silicon itself. Order of
+  direct backends after AArch64: x86-64 (Linux, Windows, Intel Mac; verified here under
+  Rosetta 2), 32-bit ARM (Cortex-M, older Raspberry Pi), RISC-V, AVR (Arduino-class
+  8-bit), each verified with the corpus under QEMU/simavr where the hardware is absent;
+  wasm32 emitted directly as binary. SystemVerilog already covers FPGA/ASIC. Nothing is
+  listed as supported until the corpus passes on it.
 - **Direction set by the user (2026-09-30): A0 must reach the machine through its own
   code generator, not through C.** Started: a direct AArch64 assembly backend (`arm64`
   target) for io-free functions, verified against the corpus and benchmarked next to the

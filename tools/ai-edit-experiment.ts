@@ -30,11 +30,14 @@ import {
   formatProgram,
   parseAndValidate,
   run,
+  type Type,
   type TypedFunc,
+  type TypedProgram,
   type Value,
 } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
+import { TASKS_B } from './ai-edit-tasks-b.js';
 
 type Representation = 'a0' | 'ts' | 'rust';
 type Protocol = 'conventional' | 'structured';
@@ -61,7 +64,7 @@ interface Task {
 
 // --- Held-out style tasks (small; the harness, not the task set, is the deliverable) ---
 
-const TASKS: readonly Task[] = [
+const TASKS_A: readonly Task[] = [
   {
     id: 'affine-sign',
     kind: 'targeted-edit',
@@ -446,6 +449,20 @@ function applyTs(protocol: Protocol, source: string, reply: string, handle: stri
 
 // --- Acceptance -----------------------------------------------------------------
 
+/** Structural equality over u32/bool/arrays/records (typed arrays count as arrays). */
+function sameValue(a: unknown, b: unknown): boolean {
+  const isArr = (x: unknown): x is ArrayLike<unknown> =>
+    Array.isArray(x) || x instanceof Uint32Array || x instanceof Uint8Array;
+  if (isArr(a) && isArr(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) if (!sameValue(a[i], b[i])) return false;
+    return true;
+  }
+  if (typeof a === 'number' && typeof b === 'boolean') return a === (b ? 1 : 0);
+  if (typeof a === 'boolean' && typeof b === 'number') return (a ? 1 : 0) === b;
+  return a === b;
+}
+
 function fmt(v: Value): string {
   return typeof v === 'boolean' ? String(v) : String(v);
 }
@@ -466,7 +483,7 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
     }
     try {
       const got = run(fn, t.args);
-      if (got !== t.expected)
+      if (!sameValue(got, t.expected))
         failures.push(
           `${t.fn}(${t.args.map(fmt).join(',')}) = ${fmt(got)}, expected ${fmt(t.expected)}`,
         );
@@ -477,19 +494,31 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
   return failures;
 }
 
-function rustLiteral(v: Value): string {
+/** Rust literal for an A0 value of type `t`: arrays as `[..]`, records as tuples. */
+function rustLiteral(v: Value, t: Type | undefined): string {
   if (typeof v === 'number') return `${v}u32`;
   if (typeof v === 'boolean') return v ? 'true' : 'false';
-  if (Array.isArray(v)) return `(${v.map(rustLiteral).join(', ')})`;
+  if (Array.isArray(v)) {
+    if (t !== undefined && typeof t !== 'string' && t.kind === 'arr')
+      return `[${v.map((x) => rustLiteral(x, t.elem)).join(', ')}]`;
+    const fields = t !== undefined && typeof t !== 'string' && t.kind === 'rec' ? t.fields : [];
+    return `(${v.map((x, i) => rustLiteral(x, fields[i])).join(', ')})`;
+  }
   return '0u32';
 }
 
-async function acceptRust(source: string, tests: readonly AcceptanceCase[]): Promise<string[]> {
-  // Single file: the candidate source plus a generated main that checks every case.
-  const checks = tests.map(
-    (t, i) =>
-      `    { let got = ${t.fn}(${t.args.map(rustLiteral).join(', ')}); if got != ${rustLiteral(t.expected)} { println!("FAIL ${i} {}", got); } }`,
-  );
+async function acceptRust(
+  source: string,
+  tests: readonly AcceptanceCase[],
+  typed: TypedProgram,
+): Promise<string[]> {
+  // Single file: the candidate source plus a generated main that checks every case. The
+  // A0 reference program supplies the value shapes (array vs record) for the literals.
+  const checks = tests.map((t, i) => {
+    const fn = typed.byName.get(t.fn);
+    const args = t.args.map((a, k) => rustLiteral(a, fn?.params[k])).join(', ');
+    return `    { let got = ${t.fn}(${args}); if got != ${rustLiteral(t.expected, fn?.result)} { println!("FAIL ${i} {:?}", got); } }`;
+  });
   const main = `\n#[allow(dead_code)]\nfn main() {\n${checks.join('\n')}\n    println!("DONE");\n}\n`;
   return withTempDir(async (dir) => {
     const file = join(dir, 'candidate.rs');
@@ -557,7 +586,7 @@ async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promi
       }
       try {
         const got = f(...t.args);
-        if (got !== t.expected)
+        if (!sameValue(got, t.expected))
           failures.push(
             `${t.fn}(${t.args.map(fmt).join(',')}) = ${fmt(got)}, expected ${fmt(t.expected)}`,
           );
@@ -781,7 +810,7 @@ async function runTrial(
         : representation === 'a0'
           ? await acceptA0(applied.source, task.tests)
           : representation === 'rust'
-            ? await acceptRust(applied.source, task.tests)
+            ? await acceptRust(applied.source, task.tests, parseAndValidate(task.reference.a0))
             : await acceptTs(applied.source, task.tests);
     attempts.push({
       status: classify(applied, protocol, failures),
@@ -841,6 +870,15 @@ async function main(): Promise<void> {
   const maxRepairs = 2;
   // The language primer is the dominant A0 cost; A0_EXPERIMENT_GUIDE selects an alternative
   // (e.g. MODEL_GUIDE.min.txt) so live runs can compare acceptance against primer size.
+  // Task set: 'a' (the original 13, written by the harness author), 'b' (12 written by an
+  // agent that had not seen set a or the corpus), or 'all'.
+  const setName = process.env.A0_EXPERIMENT_TASKSET ?? 'a';
+  const TASKS: readonly Task[] =
+    setName === 'b'
+      ? (TASKS_B as readonly Task[])
+      : setName === 'all'
+        ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
+        : TASKS_A;
   const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.min.txt';
   const guide = await readFile(guidePath, 'utf8');
   const encoders = {
@@ -859,9 +897,12 @@ async function main(): Promise<void> {
       (await acceptA0(task.a0Source, task.tests)).length > 0 ? [] : ['original already passes'];
     selfCheck[`${task.id}/ts-original-must-fail`] =
       (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
-    selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests);
+    const typedRef = parseAndValidate(task.reference.a0);
+    selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);
     selfCheck[`${task.id}/rust-original-must-fail`] =
-      (await acceptRust(task.rustSource, task.tests)).length > 0 ? [] : ['original already passes'];
+      (await acceptRust(task.rustSource, task.tests, typedRef)).length > 0
+        ? []
+        : ['original already passes'];
   }
   const selfCheckOk = Object.values(selfCheck).every((f) => f.length === 0);
 
@@ -976,6 +1017,7 @@ async function main(): Promise<void> {
         : 'unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)',
     model: live ? model : null,
     languagePrimer: guidePath,
+    taskSet: setName,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
     design: {

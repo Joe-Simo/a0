@@ -78,7 +78,8 @@ export const TASKS_B: readonly Task[] = [
     instruction:
       'rot8 is meant to rotate a 32-bit value left by 8 bits, but one shift constant is wrong. Fix that single constant.',
     a0Source: 'fn rot8 u32 -> u32\na shl p0 8\nb shr p0 23\nc or a b\nret c\nend\n',
-    tsSource: 'export function rot8(x: number): number {\n  return ((x << 8) | (x >>> 23)) >>> 0;\n}\n',
+    tsSource:
+      'export function rot8(x: number): number {\n  return ((x << 8) | (x >>> 23)) >>> 0;\n}\n',
     rustSource: 'pub fn rot8(x: u32) -> u32 {\n    (x << 8) | (x >> 23)\n}\n',
     tests: [
       { fn: 'rot8', args: [0x1234_5678], expected: 0x3456_7812 },
@@ -164,8 +165,7 @@ export const TASKS_B: readonly Task[] = [
     kind: 'multi-node-edit',
     instruction:
       'inrange(x, lo, hi) must be true when lo <= x <= hi (unsigned), inclusive at both ends. Both comparisons are currently strict; fix both.',
-    a0Source:
-      'fn inrange u32 u32 u32 -> bool\na gt p0 p1\nb lt p0 p2\nc and a b\nret c\nend\n',
+    a0Source: 'fn inrange u32 u32 u32 -> bool\na gt p0 p1\nb lt p0 p2\nc and a b\nret c\nend\n',
     tsSource:
       'export function inrange(x: number, lo: number, hi: number): boolean {\n  return x > lo && x < hi;\n}\n',
     rustSource: 'pub fn inrange(x: u32, lo: u32, hi: u32) -> bool {\n    x > lo && x < hi\n}\n',
@@ -222,8 +222,8 @@ export const TASKS_B: readonly Task[] = [
     tests: [
       { fn: 'checksum', args: [[0, 0, 0, 0]], expected: 6464647 },
       { fn: 'checksum', args: [[1, 2, 3, 4]], expected: 6496457 },
-      { fn: 'checksum', args: [[MAX, MAX, MAX, MAX]], expected: 0 },
-      { fn: 'checksum', args: [[0, 0, 0, 1]], expected: 0 },
+      { fn: 'checksum', args: [[MAX, MAX, MAX, MAX]], expected: 6433863 },
+      { fn: 'checksum', args: [[0, 0, 0, 1]], expected: 6464648 },
     ],
     reference: {
       a0: 'fn mixel u32 u32 u32x4 -> u32\nm mul p0 31\na get p2 p1\nb add m a\nret b\nend\nfn checksum u32x4 -> u32\nr fold mixel 4 7 p0\nret r\nend\n',
@@ -248,7 +248,14 @@ export const TASKS_B: readonly Task[] = [
       { fn: 'norm2', args: [[65536, 1, 0, 0]], expected: 1 },
       { fn: 'norm2', args: [[0, 0, 0, 0]], expected: 0 },
       { fn: 'norm2', args: [[3, 0, 0, 4]], expected: 25 },
-      { fn: 'dot', args: [[1, 2, 3, 4], [4, 3, 2, 1]], expected: 20 },
+      {
+        fn: 'dot',
+        args: [
+          [1, 2, 3, 4],
+          [4, 3, 2, 1],
+        ],
+        expected: 20,
+      },
     ],
     reference: {
       a0: 'fn dstep u32 u32 u32x4 u32x4 -> u32\na get p2 p1\nb get p3 p1\nc mul a b\nd add p0 c\nret d\nend\nfn dot u32x4 u32x4 -> u32\nr fold dstep 4 0 p0 p1\nret r\nend\nfn norm2 u32x4 -> u32\nr call dot p0 p0\nret r\nend\n',
