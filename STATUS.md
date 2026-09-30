@@ -783,6 +783,13 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
 - Startup (one process, one iteration, median ms; native A0 2.3): Odin 1.6, Nim 1.7, Swift 1.8, C++ 1.9, Zig 2.0, Lua 2.5, Go 2.7, OCaml 2.7, Crystal 3.1, D 3.4, Perl 5.3, Tcl 7.2, Dart 11.1, SBCL 16.3, Haskell 18.6, Python 20.7, C# 22.0, Node/TypeScript 23.0, Kotlin 31.3, Java 36.5, Ruby 48.1, PHP 49.7, Racket 62.8, Scala 75.2, R 113, Julia 131, Erlang 156, Elixir 238, Clojure 342, Groovy 734.
 - Bugs found while verifying: GnuCOBOL 3.2 evaluates `B-XOR`/`B-SHIFT-R` wrongly for values above 2^31 when nested inside a `FUNCTION MOD` argument (kernels keep boolean and arithmetic steps in separate `COMPUTE`s); gforth 0.7.3 has no `umin`/`umax`; Homebrew gfortran needs the macOS SDK library path passed to `ld`; Zig 0.16 moved argv to `std.process.Init.Minimal`.
 
+## Session 2026-09-30 (merged: 45 languages, checker, playground, arm64 re-measured)
+
+- Merged this session: arm64 register allocation and inlining (a0c-0.1.7), 65536-element arrays with in-place C updates, both under COMPILER_VERSION a0c-0.1.8 with results regenerated; A0 lexer, parser, and type checker written in A0 (`compiler/`), each differentially verified against an independent TypeScript reference and run on every target by `bun run app`; the /play/ page (a third A0 program running the self-hosted front end in the browser); task set C; the tiny primer; the Haiku repair round; 45 language baselines in exec-bench (table-driven, every kernel checksum-verified, 0 skipped).
+- exec-bench ledger: the 45-language run was taken under load (1-minute load 11.6 at start, recorded in the JSON); A0 via C still ties C and Rust on all ten kernels. The arm64 rows were re-measured afterwards with the new backend (load ~7): ties clang on 6 of 10 (within 10%), behind on loop64 1.36x, arrfill 1.30x, mix 1.12x, rotl 1.11x; geomean 1.10x (was 1.80x with the old backend, 30x and 8.4x on the two loop kernels). A quiet-machine rerun of the whole ledger is still owed.
+- Site: 48-language chart (log scale) on the home page; native paragraph and limits computed from the ledger; README table from the ledger.
+- Open: quiet-machine exec-bench; stage 4 of self-hosting (optimizer and AArch64 emitter in A0); bootstrap fixed point; x86-64 and other targets; release note when the ledger reads parity or better on every axis except the single-function primer cost.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
