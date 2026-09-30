@@ -1333,6 +1333,33 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - What blocks the full fixed point (stage 1 compiling emit_c.a0 itself), exact limits hit by the linked emitter (formatted, comments stripped: 93,053 bytes; files emit_c 30,049 + check 48,907 + parse 25,581 + lex 5,718 bytes): source 93,053 bytes against the lexer's 512 (u32x512 source array, and a u32x512 token array); nodes 2,378 = 14,268 words against the 4,096-word node table; operands 45,962 words against 8,192; distinct names 6,307 bytes against the 512-word pool, and 1,530 names = 3,060 sym words against 512; functions 119 = 833 of 1,024 fns words (fits). `emitcio` has no `use` resolution, so the input must be pre-linked. Beyond the front end, stage 1's own C would need `emitc` run in chunks (as tools/selfhost-c.ts does) and in-place array updates in the A0 C emitter (it copies the 8,192-word tables on every `set`). The other agent's raise of the front end limit is the next unblock; the script measures the limits from the linked program, so the numbers update with it.
 - Gate (this worktree): lint pass; typecheck pass; test 55/55; bootstrap 0 failures.
 
+## Session 2026-09-30 (output tokens per edit)
+
+Loss addressed: A0 structured replies cost ~34 o200k output tokens per edit vs ~28 TypeScript and ~26 Rust (sets b, c400 scoped, d; Haiku and Sonnet subagents, min primer).
+
+Attribution of the accepted A0 replies (72 replies, o200k, token assigned by its first non-space character): operands 8.3 (25%), whole-function headers in `fn` blocks 7.3 (22%), newlines 5.8 (17%), code fence 3.0 (9%), ids 2.4, ops 2.1, handle line 2.0 (6%, plus its newline), `ret` lines 1.8, `end` 0.7. TS/Rust replies spend the same 3 fence + 2 handle tokens; the rest is the replaced line text.
+
+Protocol changes (src/edit.ts, test/edit.test.ts; protocol only, COMPILER_VERSION unchanged, noted in DESIGN section 5):
+- handle line optional when implied: exactly one function handle open (or, with none, exactly one program handle); an explicit handle, several handles, or an unknown handle behave as before;
+- a function handle also takes `-fn name` lines (it already took whole `fn` blocks);
+- `end` of a `fn` block is optional: the block closes at the next `fn`/`-fn` line or the end of the reply (`fn`/`end` are reserved, so no instruction line is mistaken for a boundary);
+- no code fence required (the harness already accepted bare lines; the protocol text now asks for bare lines). MODEL_GUIDE.min.txt EDIT line and PROTOCOL_STRUCTURED_A0 updated; the view is unchanged.
+Old fenced, handle-first replies (sets b and d, both models) re-score identically.
+
+Fresh subjects (Agent tool subagents, model haiku / sonnet, each reading only its group file; results/ai-edit-experiment.{b,c400,d}.{haiku,sonnet}-bare.json, A0 structured cell only; TS/Rust from the existing -min files):
+
+| set / model | A0 accepted before -> after | A0 output/edit before -> after | TS output | Rust output | A0 whole-task total before -> after |
+|---|---|---|---|---|---|
+| b haiku | 12/12 -> 12/12 | 45.3 -> 31.6 | 30.2 | 26.4 | 590 -> 579 |
+| b sonnet | 12/12 -> 12/12 | 34.2 -> 27.5 | 27.9 | 25.3 | 579 -> 575 |
+| c400 haiku | 10/12 -> 11/12 | 30.7 -> 29.8 | 30.7 | 26.5 | 611 -> 597 |
+| c400 sonnet | 12/12 -> 12/12 | 34.0 -> 25.6 | 28.0 | 26.0 | 596 -> 590 |
+| d haiku | 13/13 -> 13/13 | 35.0 -> 24.5 | 25.3 | 25.8 | 560 -> 553 |
+| d sonnet | 13/13 -> 13/13 | 26.2 -> 19.2 | 25.2 | 25.8 | 551 -> 547 |
+| mean | | 34.2 -> 26.4 | 27.9 | 26.0 | |
+
+A0 output per edit is now below TypeScript and level with Rust. Caveat: TS and Rust still use their fenced, handle-first protocol; the same relaxation there would save them about 5 tokens too. Whole-task totals barely move because the primer dominates (TS/Rust totals: ~230-265 on b/d, ~14.3k on c400). Remaining A0 output: operands 33%, `fn` headers 27% (models resend whole functions under a function handle for small edits), newlines 13%. The one failure (c400-bounds-largest, Haiku) is a language error (nested `select (lt ...)`), as before.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
