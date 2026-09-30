@@ -1,7 +1,8 @@
 /**
  * Source emission for JavaScript (ES module), C (C-compatible, also valid C++), Java,
- * SystemVerilog, direct Darwin AArch64 assembly (src/arm64.ts), and direct x86-64 assembly
- * (src/x86_64.ts, System V, macOS and Linux), plus a bounded in-memory function-emission cache.
+ * SystemVerilog, direct Darwin AArch64 assembly (src/arm64.ts), direct x86-64 assembly
+ * (src/x86_64.ts, System V, macOS and Linux), and a direct wasm32 binary module (src/wasm.ts;
+ * the compiled text is the module's base64, see `wasmModuleBytes`), plus a bounded in-memory function-emission cache.
  *
  * Every backend preserves the exact v0.1 semantics: wrapping u32 arithmetic,
  * logical right shift, shift distance masked to five bits, unsigned comparison,
@@ -27,12 +28,13 @@ import {
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
+import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.9';
+export const COMPILER_VERSION = 'a0c-0.1.10';
 
-export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64';
-export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64', 'x86_64'];
+export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64' | 'wasm';
+export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64', 'x86_64', 'wasm'];
 
 export function isTarget(text: string): text is Target {
   return (TARGETS as readonly string[]).includes(text);
@@ -1031,6 +1033,7 @@ const EMITTERS: Readonly<Record<Target, Emitter>> = {
   sv: emitSvFunction,
   arm64: emitArm64Function,
   x86_64: emitX86_64Function,
+  wasm: emitWasmFunction,
 };
 
 /** True when any function of the program carries an io token anywhere in its types. */
@@ -1059,6 +1062,18 @@ export function assemble(
       return assembleArm64(bodies, COMPILER_VERSION);
     case 'x86_64':
       return assembleX86_64(bodies, COMPILER_VERSION);
+    case 'wasm':
+      return Buffer.from(
+        assembleWasm(
+          bodies,
+          program,
+          {
+            ioInputCapacity: options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+            ioOutputCapacity: options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+          },
+          COMPILER_VERSION,
+        ),
+      ).toString('base64');
     case 'js':
       return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
     case 'c': {

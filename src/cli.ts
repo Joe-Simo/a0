@@ -4,10 +4,14 @@
  *
  *   a0 check <file.a0>
  *   a0 run <file.a0> <function> <args...>
- *   a0 emit <js|c|java|sv|arm64|x86_64> <file.a0> [out]
+ *   a0 emit <js|c|java|sv|arm64|x86_64|wasm> <file.a0> [out]
  *   a0 wasm <file.a0> <out.wasm>
  *   a0 patch <file.a0> <patch-file> [out.a0]
  *   a0 revision <file.a0> <function>
+ *
+ * `emit wasm` writes the binary module of A0's own wasm32 backend (src/wasm.ts; no C, Clang,
+ * or wasm-ld). `a0 wasm` builds the C-derived module instead: the C backend compiled by Clang
+ * and linked by wasm-ld (the build the site ships); both have the same exports and io layout.
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -27,6 +31,7 @@ import {
 import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
 import { link } from './link.js';
 import { compileWasm } from './toolchain.js';
+import { wasmModuleBytes } from './wasm.js';
 
 function usage(): never {
   process.stderr.write(
@@ -35,7 +40,7 @@ function usage(): never {
       '  a0 check <file.a0>',
       '  a0 run <file.a0> <function> <args...>',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
-      '  a0 wasm <file.a0> <out.wasm>',
+      '  a0 wasm <file.a0> <out.wasm>             # C backend + Clang + wasm-ld (emit wasm: direct)',
       '  a0 patch <file.a0> <patch-file> [out.a0]',
       '  a0 revision <file.a0> <function>',
       '  a0 view <file.a0> <function>          # function plus callee signatures',
@@ -99,8 +104,10 @@ async function main(argv: readonly string[]): Promise<void> {
         cache === undefined
           ? { ...compile(program, target), hits: 0, misses: 0 }
           : await compileCached(program, target, cache);
-      if (out === undefined) process.stdout.write(text);
-      else await writeFile(out, text, 'utf8');
+      // The wasm target's text is the binary module in base64; the output gets the bytes.
+      const data = target === 'wasm' ? wasmModuleBytes(text) : text;
+      if (out === undefined) process.stdout.write(data);
+      else await writeFile(out, data);
       if (process.env.A0_CACHE_STATS === '1')
         process.stderr.write(`cache: ${hits} hits, ${misses} misses\n`);
       return;

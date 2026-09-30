@@ -2022,3 +2022,105 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     assert.ok(typeEquals(got, typed.types.get(n.id) as Type), `${n.id}: ${formatType(got)}`);
   });
 });
+
+/** Run `session` of a direct-wasm module with the site's io layout (site/app.ts). */
+async function wasmSession(
+  bytes: Uint8Array,
+  input: readonly number[],
+): Promise<{ result: number; output: number[] }> {
+  const IN = 1024;
+  const OUT = 65536;
+  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
+  const e = instance.exports as {
+    memory: WebAssembly.Memory;
+    __heap_base: WebAssembly.Global;
+    a0_session: (t: number) => number;
+  };
+  const base = e.__heap_base.value as number;
+  const needed = base + (IN + 2 + OUT + 1) * 4;
+  if (e.memory.buffer.byteLength < needed)
+    e.memory.grow(Math.ceil((needed - e.memory.buffer.byteLength) / 65536));
+  const words = new Uint32Array(e.memory.buffer, base, IN + 2 + OUT + 1);
+  words.set(input, 0);
+  words[IN] = input.length;
+  const result = e.a0_session(base) >>> 0;
+  const nout = words[IN + 2 + OUT] as number;
+  return { result, output: [...words.subarray(IN + 2, IN + 2 + nout)] };
+}
+
+test('direct wasm backend: site page, docs, and play programs write the interpreter words', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const src = [...Buffer.from('fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend\n')];
+  const ill = [...Buffer.from('fn g u32 bool -> u32\na lt p0 1\nb add a p1\nret b\nend\n')];
+  const runs: [string, number[][]][] = [
+    ['site/page.a0', [[0, 0, 0, 0, 0]]],
+    ['site/docs.a0', [[0, 0, 0, 0, 0]]],
+    [
+      'site/play.a0',
+      [
+        [0, 0, 0, 0, 0],
+        [1, 0, 0, src.length, ...src, 0],
+        [1, 0, 0, ill.length, ...ill, 0],
+      ],
+    ],
+  ];
+  for (const [file, inputs] of runs) {
+    const p = (await link(file, (f) => readFile(f, 'utf8'))).program;
+    const session = p.byName.get('session') as TypedFunc;
+    for (const optimize of [true, false]) {
+      const text = compile(p, 'wasm', { ioInputCapacity: 1024, ioOutputCapacity: 65536, optimize });
+      const bytes = wasmModuleBytes(text.text);
+      for (const input of inputs) {
+        const io = makeIo(input);
+        const expected = run(session, [io]);
+        const got = await wasmSession(bytes, input);
+        assert.equal(got.result, expected, file);
+        assert.ok(io.output.length > 100, file);
+        assert.deepEqual(got.output, [...io.output], `${file} ${optimize ? 'O1' : 'O0'}`);
+      }
+    }
+  }
+});
+
+test('direct wasm backend: in-place updates keep value semantics', async () => {
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  // `step` reads the fold's extra argument, which names the fold's own initial value: the
+  // state must not be updated in that storage. `bump` writes through a set chain in place.
+  const p = parseAndValidate(`fn step u32x4 u32 u32x4 -> u32x4
+a get p2 0
+b add a p1
+c set p0 p1 b
+ret c
+end
+fn go u32 -> u32
+a arr p0 0 0 0
+b fold step 4 a a
+c get b 3
+d get b 0
+e add c d
+ret e
+end
+fn bump u32 -> u32
+a arr 1 2 3 4 5
+b set a p0 9
+c set b 1 p0
+d get c 1
+e get a 0
+f add d e
+ret f
+end`);
+  for (const optimize of [true, false]) {
+    const bytes = wasmModuleBytes(compile(p, 'wasm', { optimize }).text);
+    const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
+    const e = instance.exports as Record<string, (...a: number[]) => number>;
+    for (const x of [0, 1, 7, 0xffff_ffff]) {
+      for (const name of ['go', 'bump'])
+        assert.equal(
+          (e[`a0_${name}`] as (v: number) => number)(x | 0) >>> 0,
+          run(p.byName.get(name) as TypedFunc, [x]),
+          `${name}(${x})`,
+        );
+    }
+  }
+});

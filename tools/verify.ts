@@ -37,6 +37,7 @@ import {
   type ToolInfo,
   withTempDir,
 } from '../src/toolchain.js';
+import { wasmModuleBytes } from '../src/wasm.js';
 import {
   type Case,
   CORPUS_SEED,
@@ -478,6 +479,52 @@ export async function checkX86_64(
 
 // --- WebAssembly -------------------------------------------------------------
 
+/**
+ * Instantiate a wasm32 module of the C-derived shape (`a0_<fn>` exports, `memory`,
+ * `__heap_base`) and run every case. io state lives in linear memory at __heap_base with the
+ * C struct layout: input[IN], ninput, position, output[OUT], noutput (all u32).
+ */
+export async function runWasmCases(
+  program: TypedProgram,
+  cases: readonly Case[],
+  bytes: Uint8Array,
+  caps: { ioInputCapacity: number; ioOutputCapacity: number },
+): Promise<string[]> {
+  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
+  const exports = instance.exports as Record<string, unknown>;
+  const memory = exports.memory as WebAssembly.Memory | undefined;
+  const heapBase = (exports.__heap_base as WebAssembly.Global | undefined)?.value as
+    | number
+    | undefined;
+  const IN = caps.ioInputCapacity;
+  const OUT = caps.ioOutputCapacity;
+  return cases.map((c) => {
+    const fn = exports[`a0_${c.functionName}`];
+    if (typeof fn !== 'function') return '<missing>';
+    const scalars = c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : (a as number) | 0));
+    const type = (program.byName.get(c.functionName) as TypedFunc).result;
+    if (c.input === undefined) {
+      const raw = (fn as (...a: number[]) => number)(...scalars);
+      return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+    }
+    if (memory === undefined || heapBase === undefined) return '<no memory>';
+    const needed = heapBase + (IN + 2 + OUT + 1) * 4;
+    if (memory.buffer.byteLength < needed)
+      memory.grow(Math.ceil((needed - memory.buffer.byteLength) / 65536));
+    const words = new Uint32Array(memory.buffer, heapBase, IN + 2 + OUT + 1);
+    words.fill(0);
+    c.input.forEach((w, k) => {
+      words[k] = w;
+    });
+    words[IN] = c.input.length;
+    const raw = (fn as (...a: number[]) => number)(...scalars, heapBase);
+    const result = type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+    const nout = words[IN + 2 + OUT] as number;
+    const out = Array.from(words.subarray(IN + 2, IN + 2 + nout), String);
+    return [result, ...out].join(' ');
+  });
+}
+
 export async function checkWasm(
   program: TypedProgram,
   cases: readonly Case[],
@@ -494,41 +541,7 @@ export async function checkWasm(
   try {
     const caps = ioCaps(cases);
     const build = await compileWasm(compile(program, 'c', caps).text);
-    const { instance } = await WebAssembly.instantiate(build.bytes as BufferSource, {});
-    const exports = instance.exports as Record<string, unknown>;
-    // io state lives in linear memory at __heap_base with the C struct layout:
-    // input[256], ninput, position, output[1024], noutput (all u32).
-    const memory = exports.memory as WebAssembly.Memory | undefined;
-    const heapBase = (exports.__heap_base as WebAssembly.Global | undefined)?.value as
-      | number
-      | undefined;
-    const IN = caps.ioInputCapacity;
-    const OUT = caps.ioOutputCapacity;
-    const actual = cases.map((c) => {
-      const fn = exports[`a0_${c.functionName}`];
-      if (typeof fn !== 'function') return '<missing>';
-      const scalars = c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : (a as number) | 0));
-      const type = (program.byName.get(c.functionName) as TypedFunc).result;
-      if (c.input === undefined) {
-        const raw = (fn as (...a: number[]) => number)(...scalars);
-        return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
-      }
-      if (memory === undefined || heapBase === undefined) return '<no memory>';
-      const needed = heapBase + (IN + 2 + OUT + 1) * 4;
-      if (memory.buffer.byteLength < needed)
-        memory.grow(Math.ceil((needed - memory.buffer.byteLength) / 65536));
-      const words = new Uint32Array(memory.buffer, heapBase, IN + 2 + OUT + 1);
-      words.fill(0);
-      c.input.forEach((w, k) => {
-        words[k] = w;
-      });
-      words[IN] = c.input.length;
-      const raw = (fn as (...a: number[]) => number)(...scalars, heapBase);
-      const result = type === 'u32' ? String(raw >>> 0) : String(raw & 1);
-      const nout = words[IN + 2 + OUT] as number;
-      const out = Array.from(words.subarray(IN + 2, IN + 2 + nout), String);
-      return [result, ...out].join(' ');
-    });
+    const actual = await runWasmCases(program, cases, build.bytes, caps);
     return {
       ...timed(
         compareAll(
@@ -545,6 +558,51 @@ export async function checkWasm(
       status: 'failed',
       cases: 0,
       detail: 'wasm build/execution error',
+      failures: [err instanceof Error ? err.message : String(err)],
+    };
+  }
+}
+
+/**
+ * A0's own wasm32 backend (src/wasm.ts): the binary module comes straight from the compiler,
+ * with no C, Clang, or wasm-ld, and runs under the same host harness as the C-derived module.
+ */
+export async function checkWasmDirect(
+  program: TypedProgram,
+  cases: readonly Case[],
+): Promise<TargetReport> {
+  const start = performance.now();
+  const label =
+    'A0 wasm32 backend (src/wasm.ts): binary module emitted directly, no C/Clang/wasm-ld; executed in Node WebAssembly runtime with the C-derived harness';
+  try {
+    const caps = ioCaps(cases);
+    let report: TargetReport | undefined;
+    for (const optimize of [true, false]) {
+      const bytes = wasmModuleBytes(compile(program, 'wasm', { ...caps, optimize }).text);
+      const level = optimize ? 'optimized' : 'unoptimized';
+      const r = compareAll(
+        cases,
+        await runWasmCases(program, cases, bytes, caps),
+        `${level}: ${label}`,
+      );
+      if (r.status !== 'passed') return timed(r, start);
+      report = r;
+    }
+    return {
+      ...timed(
+        {
+          ...(report as TargetReport),
+          detail: `${label}; optimized and unoptimized emissions each executed on every case`,
+        },
+        start,
+      ),
+      tool: `node ${process.version}`,
+    };
+  } catch (err) {
+    return {
+      status: 'failed',
+      cases: 0,
+      detail: 'wasm (direct): build/execution error',
       failures: [err instanceof Error ? err.message : String(err)],
     };
   }
@@ -695,6 +753,7 @@ async function main(): Promise<void> {
       native_arm64: await checkArm64(program, cases, findClang()),
       native_x86_64: await checkX86_64(program, cases, findClang()),
       webassembly: await checkWasm(program, cases),
+      webassembly_direct: await checkWasmDirect(program, cases),
       jvm: await checkJvm(program, cases),
       systemverilog: {
         status: 'unverified',
