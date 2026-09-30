@@ -489,6 +489,24 @@ Wins, ties, losses, stated separately:
 
 ## Session 2026-09-29 (late): primer size, JS guards
 
+- **Direct AArch64 backend landed (v0.8.14, `src/arm64.ts`, target `arm64`)**: A0 to
+  Darwin AArch64 assembly with no C generated for the program; clang is used only as the
+  assembler/linker driver. Scope: u32, bool, arrays, records, every scalar op with exact
+  semantics, call (AAPCS64-compatible for scalars; aggregates by pointer to caller-owned
+  slots; aggregate results via x8), fold and loop with literal or variable counts. io
+  functions are refused (C path covers them). Verified: `native_arm64` path in `bun run
+  verify` runs the io-free corpus (4297 cases) against the same oracle driver at both
+  optimization levels; unit tests cover 12-parameter calls, aggregate results, a 4 KiB
+  frame, fold with array state, loop with a variable cap. Performance, first version
+  (per-node stack slots, no register allocation, a real call per iteration): parity with
+  the clang path on 8 of 10 kernels (0.96–1.14×, chain3 1.40×), **losses of 10.2× on
+  loop64 and 28.7× on arrfill**. Next: register allocation and inlining of small bodies.
+  Also fixed: the validator compared loop-predicate parameter types by reference, so a
+  loop with array or record state was always rejected (now structural, with a test).
+- **Baselines against the languages AI writes most** (`bun run exec-bench`, load average
+  16–21 at start so ratios only): native A0 vs hand-written JavaScript on Node 9–44× faster
+  per call, vs hand-written Python on CPython 3.9 200–600× (loop64 207×, affine 249×);
+  startup latency of one native process 2.5–4.5 ms vs Node 35–59 ms and Python 35–71 ms.
 - **Universality target (user, 2026-09-30):** every CPU and the silicon itself. Order of
   direct backends after AArch64: x86-64 (Linux, Windows, Intel Mac; verified here under
   Rosetta 2), 32-bit ARM (Cortex-M, older Raspberry Pi), RISC-V, AVR (Arduino-class
@@ -701,7 +719,13 @@ with status as of 2026-09-29:
 
 ## Repository
 
-Private GitHub repo `Joe-Simo/a0` (verified `isPrivate: true`), branch `main`, project
+**Public since 2026-09-30 under the MIT license** (user decision, superseding the earlier
+"private during research" rule): https://github.com/Joe-Simo/a0. Tracked files were scanned
+for secrets before the change (none; `results/tokens.json` and `tools/token-bench.ts` are
+token counts).
+
+
+GitHub repo `Joe-Simo/a0` (public, MIT), branch `main`, project
 at repo root, `bun.lock` committed, `dist/` and `node_modules/` ignored. Commits are
 listed by `git log`; the push is verified against `origin/main` after each commit.
 

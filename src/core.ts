@@ -1002,7 +1002,7 @@ export function validateFunction(
         expect(pred.result, 'bool', `${where} predicate result`);
         if (
           pred.params.length !== callee.params.length ||
-          pred.params.some((t, i) => t !== callee.params[i])
+          pred.params.some((t, i) => !typeEquals(t, callee.params[i] as Type))
         ) {
           throw new A0Error(
             `${where}: predicate ${pred.name} must take the same parameters as body ${callee.name}`,

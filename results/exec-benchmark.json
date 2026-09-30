@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T02:41:30.120Z",
+  "generatedAt": "2026-09-30T02:46:49.319Z",
   "node": "v24.14.0",
   "platform": "darwin-arm64",
   "clang": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
@@ -14,33 +14,45 @@
     "python": 100000
   },
   "samplesPerSide": 7,
-  "meaning": "Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.",
+  "loadAverage": [
+    5.33251953125,
+    9.88037109375,
+    20.419921875
+  ],
+  "meaning": "Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.",
   "kernels": {
     "affine": {
       "python": {
-        "medianNsPerCall": 2806.944,
-        "minNsPerCall": 2722.961,
-        "maxNsPerCall": 4402.76,
+        "medianNsPerCall": 2011.146,
+        "minNsPerCall": 1748.33,
+        "maxNsPerCall": 2463.852,
         "checksum": "3688860875",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 70.71320800000103,
-        "node": 59.403167000000394
+        "python": 46.63483300000007,
+        "node": 42.64875000000029
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 11.2715,
-          "minNsPerCall": 8.9832,
-          "maxNsPerCall": 12.3229,
+          "medianNsPerCall": 4.9305,
+          "minNsPerCall": 4.8201,
+          "maxNsPerCall": 6.1266,
           "checksum": "123884448",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 11.0831,
-          "minNsPerCall": 8.8928,
-          "maxNsPerCall": 24.3007,
+          "medianNsPerCall": 4.9108,
+          "minNsPerCall": 4.8249,
+          "maxNsPerCall": 5.7839,
+          "checksum": "123884448",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 4.9046,
+          "minNsPerCall": 4.8185,
+          "maxNsPerCall": 5.6587,
           "checksum": "123884448",
           "samples": 7
         },
@@ -49,35 +61,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 9.48975000000064,
-          "handwritten": 10.29033299999901
+          "emitted": 2.5538329999999405,
+          "handwritten": 2.363999999999578
         },
         "rust": {
-          "medianNsPerCall": 11.1216,
-          "minNsPerCall": 9.0036,
-          "maxNsPerCall": 11.6785,
+          "medianNsPerCall": 4.9439,
+          "minNsPerCall": 4.8021,
+          "maxNsPerCall": 5.6036,
           "checksum": "123884448",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 183.557417,
-          "rustc": 1170.4395000000004
+          "a0ToNative": 96.7314580000002,
+          "rustc": 675.6230420000011
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 0.9947469830645979,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 114.34494999999998,
-          "minNsPerCall": 95.91515,
-          "maxNsPerCall": 142.6158832,
+          "medianNsPerCall": 86.73234160000011,
+          "minNsPerCall": 79.84291660000017,
+          "maxNsPerCall": 92.25462499999995,
           "checksum": "3188725591",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 102.86326659999995,
-          "minNsPerCall": 91.90088319999995,
-          "maxNsPerCall": 129.12177499999999,
+          "medianNsPerCall": 85.87170819999992,
+          "minNsPerCall": 75.06047500000005,
+          "maxNsPerCall": 91.8445084,
           "checksum": "3188725591",
           "samples": 7
         },
@@ -86,29 +102,36 @@
     },
     "rotl": {
       "python": {
-        "medianNsPerCall": 1519.775,
-        "minNsPerCall": 1271.879,
-        "maxNsPerCall": 1663.773,
+        "medianNsPerCall": 1052.276,
+        "minNsPerCall": 995.428,
+        "maxNsPerCall": 1641.366,
         "checksum": "839522519",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 39.30829199999789,
-        "node": 40.13900000000285
+        "python": 35.03254199999719,
+        "node": 33.59783299999981
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 3.838,
-          "minNsPerCall": 3.7437,
-          "maxNsPerCall": 4.6056,
+          "medianNsPerCall": 3.3991,
+          "minNsPerCall": 3.204,
+          "maxNsPerCall": 3.6799,
           "checksum": "3606392347",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 3.9628,
-          "minNsPerCall": 3.7288,
-          "maxNsPerCall": 4.2672,
+          "medianNsPerCall": 3.3816,
+          "minNsPerCall": 3.2093,
+          "maxNsPerCall": 3.5808,
+          "checksum": "3606392347",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 3.4232,
+          "minNsPerCall": 3.2376,
+          "maxNsPerCall": 3.5057,
           "checksum": "3606392347",
           "samples": 7
         },
@@ -117,35 +140,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.780166000000463,
-          "handwritten": 2.5169999999998254
+          "emitted": 1.727999999999156,
+          "handwritten": 1.8583749999997963
         },
         "rust": {
-          "medianNsPerCall": 3.8231,
-          "minNsPerCall": 3.7101,
-          "maxNsPerCall": 4.0339,
+          "medianNsPerCall": 3.3038,
+          "minNsPerCall": 3.1984,
+          "maxNsPerCall": 3.4329,
           "checksum": "3606392347",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 89.87370800000281,
-          "rustc": 172.37229200000002
+          "a0ToNative": 66.01699899999949,
+          "rustc": 131.5202500000014
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.007090112088494,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 68.48220839999993,
-          "minNsPerCall": 49.88672499999957,
-          "maxNsPerCall": 72.37330839999996,
+          "medianNsPerCall": 32.592425,
+          "minNsPerCall": 30.3822500000002,
+          "maxNsPerCall": 36.89058340000011,
           "checksum": "2356118761",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 67.32946660000016,
-          "minNsPerCall": 56.23755000000019,
-          "maxNsPerCall": 69.69091679999983,
+          "medianNsPerCall": 34.001316599999704,
+          "minNsPerCall": 30.47270819999976,
+          "maxNsPerCall": 36.0101333999999,
           "checksum": "2356118761",
           "samples": 7
         },
@@ -154,29 +181,36 @@
     },
     "clamp": {
       "python": {
-        "medianNsPerCall": 1558.98,
-        "minNsPerCall": 1399.401,
-        "maxNsPerCall": 1691.964,
+        "medianNsPerCall": 2031.225,
+        "minNsPerCall": 1851.941,
+        "maxNsPerCall": 2328.086,
         "checksum": "973910028",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 37.322667000000365,
-        "node": 37.251665999996476
+        "python": 48.83837499999936,
+        "node": 47.24866699999984
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 5.5506,
-          "minNsPerCall": 5.2101,
-          "maxNsPerCall": 6.7872,
+          "medianNsPerCall": 4.8781,
+          "minNsPerCall": 4.8121,
+          "maxNsPerCall": 10.1247,
           "checksum": "3059794934",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 5.4261,
-          "minNsPerCall": 5.2089,
-          "maxNsPerCall": 6.1693,
+          "medianNsPerCall": 4.8657,
+          "minNsPerCall": 4.8171,
+          "maxNsPerCall": 5.2692,
+          "checksum": "3059794934",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 4.9812,
+          "minNsPerCall": 4.8154,
+          "maxNsPerCall": 5.1615,
           "checksum": "3059794934",
           "samples": 7
         },
@@ -185,35 +219,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.5420000000012806,
-          "handwritten": 2.1899170000033337
+          "emitted": 2.2164169999996375,
+          "handwritten": 1.986166000002413
         },
         "rust": {
-          "medianNsPerCall": 5.4346,
-          "minNsPerCall": 5.1391,
-          "maxNsPerCall": 6.0345,
+          "medianNsPerCall": 4.9273,
+          "minNsPerCall": 4.8185,
+          "maxNsPerCall": 5.431,
           "checksum": "3059794934",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 87.37483399999473,
-          "rustc": 171.71104200000264
+          "a0ToNative": 337.79225000000224,
+          "rustc": 789.278792000001
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.0211352780795802,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 52.88362500000003,
-          "minNsPerCall": 51.47544999999955,
-          "maxNsPerCall": 60.63502500000031,
+          "medianNsPerCall": 74.18572500000009,
+          "minNsPerCall": 46.209866599999806,
+          "maxNsPerCall": 211.16161659999997,
           "checksum": "773013403",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 51.18312499999884,
-          "minNsPerCall": 48.356975000000965,
-          "maxNsPerCall": 56.38428320000021,
+          "medianNsPerCall": 72.86621659999946,
+          "minNsPerCall": 51.6372832000001,
+          "maxNsPerCall": 365.14111660000054,
           "checksum": "773013403",
           "samples": 7
         },
@@ -222,29 +260,36 @@
     },
     "mix": {
       "python": {
-        "medianNsPerCall": 1315.134,
-        "minNsPerCall": 1239.024,
-        "maxNsPerCall": 1670.673,
+        "medianNsPerCall": 1001.237,
+        "minNsPerCall": 970.796,
+        "maxNsPerCall": 1103.94,
         "checksum": "2386108661",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 36.31587500000023,
-        "node": 35.8234999999986
+        "python": 27.09283300000243,
+        "node": 30.357959000000847
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 3.8621,
-          "minNsPerCall": 3.6513,
-          "maxNsPerCall": 4.04,
+          "medianNsPerCall": 3.2249,
+          "minNsPerCall": 3.2092,
+          "maxNsPerCall": 3.3915,
           "checksum": "1680684422",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 3.7513,
-          "minNsPerCall": 3.6772,
-          "maxNsPerCall": 4.0113,
+          "medianNsPerCall": 3.2816,
+          "minNsPerCall": 3.2075,
+          "maxNsPerCall": 3.6056,
+          "checksum": "1680684422",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 3.4362,
+          "minNsPerCall": 3.3912,
+          "maxNsPerCall": 3.6525,
           "checksum": "1680684422",
           "samples": 7
         },
@@ -253,35 +298,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.560166000002937,
-          "handwritten": 2.211042000002635
+          "emitted": 1.6754589999982272,
+          "handwritten": 1.748875000004773
         },
         "rust": {
-          "medianNsPerCall": 3.7235,
-          "minNsPerCall": 3.6194,
-          "maxNsPerCall": 4.093,
+          "medianNsPerCall": 3.2562,
+          "minNsPerCall": 3.2236,
+          "maxNsPerCall": 3.4395,
           "checksum": "1680684422",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 83.3099169999914,
-          "rustc": 175.18170799999643
+          "a0ToNative": 62.658292000000074,
+          "rustc": 127.4353340000016
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.0655214115166363,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 42.32540000000008,
-          "minNsPerCall": 36.546108399999504,
-          "maxNsPerCall": 45.77270839999983,
+          "medianNsPerCall": 32.81793340000004,
+          "minNsPerCall": 29.67385820000054,
+          "maxNsPerCall": 33.07445000000007,
           "checksum": "1418202781",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 41.2701000000001,
-          "minNsPerCall": 36.08071659999987,
-          "maxNsPerCall": 45.639358199998966,
+          "medianNsPerCall": 32.78736659999995,
+          "minNsPerCall": 29.19833339999896,
+          "maxNsPerCall": 33.355375000000635,
           "checksum": "1418202781",
           "samples": 7
         },
@@ -290,29 +339,36 @@
     },
     "ident": {
       "python": {
-        "medianNsPerCall": 701.322,
-        "minNsPerCall": 646.504,
-        "maxNsPerCall": 734.745,
+        "medianNsPerCall": 475.189,
+        "minNsPerCall": 454.299,
+        "maxNsPerCall": 503.412,
         "checksum": "3886422687",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 34.98695800000132,
-        "node": 34.80670799999643
+        "python": 25.43183300000237,
+        "node": 26.3372920000038
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 1.8925,
-          "minNsPerCall": 1.8658,
-          "maxNsPerCall": 2.2351,
+          "medianNsPerCall": 1.6521,
+          "minNsPerCall": 1.6057,
+          "maxNsPerCall": 1.8177,
           "checksum": "1964997590",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 1.9311,
-          "minNsPerCall": 1.8737,
-          "maxNsPerCall": 2.185,
+          "medianNsPerCall": 1.6257,
+          "minNsPerCall": 1.6046,
+          "maxNsPerCall": 1.8166,
+          "checksum": "1964997590",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 1.6586,
+          "minNsPerCall": 1.6069,
+          "maxNsPerCall": 1.8828,
           "checksum": "1964997590",
           "samples": 7
         },
@@ -321,35 +377,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.657374999995227,
-          "handwritten": 2.3697919999976875
+          "emitted": 1.7290830000056303,
+          "handwritten": 1.5607080000045244
         },
         "rust": {
-          "medianNsPerCall": 1.8837,
-          "minNsPerCall": 1.8616,
-          "maxNsPerCall": 2.0393,
+          "medianNsPerCall": 1.6509,
+          "minNsPerCall": 1.6034,
+          "maxNsPerCall": 1.8939,
           "checksum": "1964997590",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 80.69075000000157,
-          "rustc": 169.39591700000165
+          "a0ToNative": 58.94041599999764,
+          "rustc": 122.03195899999992
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.0039343865383452,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 15.772641599999043,
-          "minNsPerCall": 14.181258399999935,
-          "maxNsPerCall": 18.110008199998994,
+          "medianNsPerCall": 13.400608400000785,
+          "minNsPerCall": 12.028641799998876,
+          "maxNsPerCall": 15.074916599999415,
           "checksum": "3156194351",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 14.361191600000893,
-          "minNsPerCall": 13.214949999999954,
-          "maxNsPerCall": 16.744533400000364,
+          "medianNsPerCall": 12.22479180000082,
+          "minNsPerCall": 11.027683400000388,
+          "maxNsPerCall": 14.125708199999645,
           "checksum": "3156194351",
           "samples": 7
         },
@@ -358,29 +418,36 @@
     },
     "noop": {
       "python": {
-        "medianNsPerCall": 642.744,
-        "minNsPerCall": 607.971,
-        "maxNsPerCall": 677.323,
+        "medianNsPerCall": 458.017,
+        "minNsPerCall": 441.899,
+        "maxNsPerCall": 469.235,
         "checksum": "3886422687",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 37.555458000002545,
-        "node": 38.07708300000377
+        "python": 27.37379100000544,
+        "node": 28.561750000000757
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 1.9682,
-          "minNsPerCall": 1.8611,
-          "maxNsPerCall": 2.3191,
+          "medianNsPerCall": 1.6097,
+          "minNsPerCall": 1.6024,
+          "maxNsPerCall": 1.6498,
           "checksum": "1964997590",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 1.9526,
-          "minNsPerCall": 1.8615,
-          "maxNsPerCall": 2.2417,
+          "medianNsPerCall": 1.6068,
+          "minNsPerCall": 1.6017,
+          "maxNsPerCall": 1.6795,
+          "checksum": "1964997590",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 1.6215,
+          "minNsPerCall": 1.6066,
+          "maxNsPerCall": 1.7648,
           "checksum": "1964997590",
           "samples": 7
         },
@@ -389,35 +456,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.7112919999999576,
-          "handwritten": 2.5225420000060694
+          "emitted": 1.5990409999940312,
+          "handwritten": 1.5939590000052704
         },
         "rust": {
-          "medianNsPerCall": 1.8758,
-          "minNsPerCall": 1.842,
-          "maxNsPerCall": 2.0849,
+          "medianNsPerCall": 1.6067,
+          "minNsPerCall": 1.6022,
+          "maxNsPerCall": 1.6637,
           "checksum": "1964997590",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 85.75700000000506,
-          "rustc": 174.60183400000096
+          "a0ToNative": 64.87883299999521,
+          "rustc": 121.14191600000049
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.0073305584891594,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 16.656308400000853,
-          "minNsPerCall": 15.136974999999802,
-          "maxNsPerCall": 18.09392499999958,
+          "medianNsPerCall": 13.17651659999974,
+          "minNsPerCall": 11.795149999999557,
+          "maxNsPerCall": 14.172391800000334,
           "checksum": "3156194351",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 14.683216600000742,
-          "minNsPerCall": 13.553966599999693,
-          "maxNsPerCall": 16.966066599999614,
+          "medianNsPerCall": 12.168183400000272,
+          "minNsPerCall": 10.82843339999963,
+          "maxNsPerCall": 13.29457500000135,
           "checksum": "3156194351",
           "samples": 7
         },
@@ -426,29 +497,36 @@
     },
     "chain3": {
       "python": {
-        "medianNsPerCall": 1578.271,
-        "minNsPerCall": 1385.09,
-        "maxNsPerCall": 1685.517,
+        "medianNsPerCall": 867.993,
+        "minNsPerCall": 849.774,
+        "maxNsPerCall": 887.871,
         "checksum": "4201481431",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 40.56262499999866,
-        "node": 40.71429199999693
+        "python": 21.915625000001455,
+        "node": 22.686208999999508
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 3.9226,
-          "minNsPerCall": 3.7447,
-          "maxNsPerCall": 5.1056,
+          "medianNsPerCall": 3.8138,
+          "minNsPerCall": 3.6675,
+          "maxNsPerCall": 4.0689,
           "checksum": "3631381073",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 3.814,
-          "minNsPerCall": 3.787,
-          "maxNsPerCall": 5.3393,
+          "medianNsPerCall": 3.8262,
+          "minNsPerCall": 3.5518,
+          "maxNsPerCall": 4.021,
+          "checksum": "3631381073",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 5.4158,
+          "minNsPerCall": 4.9073,
+          "maxNsPerCall": 5.6158,
           "checksum": "3631381073",
           "samples": 7
         },
@@ -457,35 +535,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.695832999997947,
-          "handwritten": 2.524749999996857
+          "emitted": 2.5897079999995185,
+          "handwritten": 2.3575000000055297
         },
         "rust": {
-          "medianNsPerCall": 3.8365,
-          "minNsPerCall": 3.7426,
-          "maxNsPerCall": 4.5073,
+          "medianNsPerCall": 3.9017,
+          "minNsPerCall": 3.6079,
+          "maxNsPerCall": 4.0979,
           "checksum": "3631381073",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 88.84979199999361,
-          "rustc": 193.08729099999618
+          "a0ToNative": 50.31366600000183,
+          "rustc": 178.3271670000031
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.4200534899575226,
+          "verdict": "loss"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 48.58062500000087,
-          "minNsPerCall": 37.49993339999928,
-          "maxNsPerCall": 75.53382500000008,
+          "medianNsPerCall": 29.741741600001113,
+          "minNsPerCall": 29.516074999999546,
+          "maxNsPerCall": 30.544466599999577,
           "checksum": "3028812403",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 47.7815499999997,
-          "minNsPerCall": 41.6174331999995,
-          "maxNsPerCall": 56.018941600000836,
+          "medianNsPerCall": 29.215833400000705,
+          "minNsPerCall": 29.031158200000934,
+          "maxNsPerCall": 30.000833399999827,
           "checksum": "3028812403",
           "samples": 7
         },
@@ -494,29 +576,36 @@
     },
     "branchy": {
       "python": {
-        "medianNsPerCall": 1436.633,
-        "minNsPerCall": 1297.27,
-        "maxNsPerCall": 1736.848,
+        "medianNsPerCall": 815.436,
+        "minNsPerCall": 772.744,
+        "maxNsPerCall": 837.144,
         "checksum": "315591559",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 42.52308400000038,
-        "node": 43.35962499999732
+        "python": 24.558334000001196,
+        "node": 25.032374999995227
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 5.2271,
-          "minNsPerCall": 3.9037,
-          "maxNsPerCall": 6.2635,
+          "medianNsPerCall": 3.2252,
+          "minNsPerCall": 3.1982,
+          "maxNsPerCall": 3.3836,
           "checksum": "707118217",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 5.0944,
-          "minNsPerCall": 3.976,
-          "maxNsPerCall": 5.885,
+          "medianNsPerCall": 3.213,
+          "minNsPerCall": 3.2016,
+          "maxNsPerCall": 3.3693,
+          "checksum": "707118217",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 3.4196,
+          "minNsPerCall": 3.3873,
+          "maxNsPerCall": 3.5426,
           "checksum": "707118217",
           "samples": 7
         },
@@ -525,35 +614,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 2.7538749999948777,
-          "handwritten": 2.746333000002778
+          "emitted": 1.8243750000037835,
+          "handwritten": 1.7028750000026776
         },
         "rust": {
-          "medianNsPerCall": 4.7578,
-          "minNsPerCall": 3.8888,
-          "maxNsPerCall": 14.5496,
+          "medianNsPerCall": 3.2286,
+          "minNsPerCall": 3.1959,
+          "maxNsPerCall": 3.4646,
           "checksum": "707118217",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 96.56845699998667,
-          "rustc": 180.09820899998886
+          "a0ToNative": 52.61137499999313,
+          "rustc": 103.62345900000219
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 1.0602753317623712,
+          "verdict": "tie"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 54.486616800000775,
-          "minNsPerCall": 38.092183200000726,
-          "maxNsPerCall": 70.92560840000078,
+          "medianNsPerCall": 44.59508340000029,
+          "minNsPerCall": 36.84691660000098,
+          "maxNsPerCall": 56.8244749999998,
           "checksum": "2922498074",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 54.029066600000085,
-          "minNsPerCall": 38.935199999999895,
-          "maxNsPerCall": 63.43920820000057,
+          "medianNsPerCall": 41.8617665999991,
+          "minNsPerCall": 34.23794180000114,
+          "maxNsPerCall": 84.33342499999999,
           "checksum": "2922498074",
           "samples": 7
         },
@@ -562,29 +655,36 @@
     },
     "arrfill": {
       "python": {
-        "medianNsPerCall": 3076.786,
-        "minNsPerCall": 2748.846,
-        "maxNsPerCall": 3682.398,
+        "medianNsPerCall": 1340.783,
+        "minNsPerCall": 1302.149,
+        "maxNsPerCall": 1453.135,
         "checksum": "2345088751",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 47.30654199999117,
-        "node": 44.9029589999991
+        "python": 29.36766699999862,
+        "node": 29.589291000011144
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 5.1501,
-          "minNsPerCall": 4.878,
-          "maxNsPerCall": 5.2214,
+          "medianNsPerCall": 3.257,
+          "minNsPerCall": 3.2075,
+          "maxNsPerCall": 3.8898,
           "checksum": "1524041681",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 5.1241,
-          "minNsPerCall": 4.8812,
-          "maxNsPerCall": 5.2126,
+          "medianNsPerCall": 3.2395,
+          "minNsPerCall": 3.2075,
+          "maxNsPerCall": 3.7865,
+          "checksum": "1524041681",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 98.2947,
+          "minNsPerCall": 94.5054,
+          "maxNsPerCall": 105.7792,
           "checksum": "1524041681",
           "samples": 7
         },
@@ -593,35 +693,39 @@
           "handwritten": 33656
         },
         "startupMs": {
-          "emitted": 3.138667000006535,
-          "handwritten": 2.569166999994195
+          "emitted": 1.6966670000110753,
+          "handwritten": 1.6103750000038417
         },
         "rust": {
-          "medianNsPerCall": 5.066,
-          "minNsPerCall": 4.9534,
-          "maxNsPerCall": 5.4318,
+          "medianNsPerCall": 3.2703,
+          "minNsPerCall": 3.1919,
+          "maxNsPerCall": 3.9472,
           "checksum": "1524041681",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 126.51499999999942,
-          "rustc": 820.829166999989
+          "a0ToNative": 68.85550000000512,
+          "rustc": 129.99379199999385
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 30.179521031624194,
+          "verdict": "loss"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 106.66099999999861,
-          "minNsPerCall": 81.99174999999813,
-          "maxNsPerCall": 131.27799179999857,
+          "medianNsPerCall": 52.78340820000012,
+          "minNsPerCall": 51.2437168000004,
+          "maxNsPerCall": 59.0303832000005,
           "checksum": "2928418179",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 224.7097999999998,
-          "minNsPerCall": 178.27498340000164,
-          "maxNsPerCall": 251.17831679999944,
+          "medianNsPerCall": 102.00319160000072,
+          "minNsPerCall": 98.11784999999945,
+          "maxNsPerCall": 108.4774000000005,
           "checksum": "2928418179",
           "samples": 7
         },
@@ -630,29 +734,36 @@
     },
     "loop64": {
       "python": {
-        "medianNsPerCall": 26684.374,
-        "minNsPerCall": 24417.693,
-        "maxNsPerCall": 29399.56,
+        "medianNsPerCall": 10407.678,
+        "minNsPerCall": 10147.072,
+        "maxNsPerCall": 21086.257,
         "checksum": "2917042398",
         "samples": 7
       },
       "pythonIterations": 100000,
       "startupInterpretersMs": {
-        "python": 58.73854199999187,
-        "node": 54.6352920000063
+        "python": 23.62920799999847,
+        "node": 24.12004199999501
       },
       "c": {
         "emitted": {
-          "medianNsPerCall": 128.78,
-          "minNsPerCall": 103.0931,
-          "maxNsPerCall": 155.8612,
+          "medianNsPerCall": 80.4241,
+          "minNsPerCall": 80.2694,
+          "maxNsPerCall": 85.6278,
           "checksum": "917904645",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 122.8957,
-          "minNsPerCall": 113.5282,
-          "maxNsPerCall": 141.6284,
+          "medianNsPerCall": 82.1062,
+          "minNsPerCall": 81.7284,
+          "maxNsPerCall": 92.5705,
+          "checksum": "917904645",
+          "samples": 7
+        },
+        "arm64": {
+          "medianNsPerCall": 675.9819,
+          "minNsPerCall": 671.672,
+          "maxNsPerCall": 692.3012,
           "checksum": "917904645",
           "samples": 7
         },
@@ -661,35 +772,39 @@
           "handwritten": 33528
         },
         "startupMs": {
-          "emitted": 4.533874999993714,
-          "handwritten": 4.7245420000108425
+          "emitted": 3.0107910000078846,
+          "handwritten": 2.697249999997439
         },
         "rust": {
-          "medianNsPerCall": 113.0156,
-          "minNsPerCall": 103.9716,
-          "maxNsPerCall": 126.6182,
+          "medianNsPerCall": 80.0082,
+          "minNsPerCall": 79.7131,
+          "maxNsPerCall": 80.572,
           "checksum": "917904645",
           "samples": 7
         },
         "buildMs": {
-          "a0ToNative": 143.56270899999072,
-          "rustc": 285.1708750000107
+          "a0ToNative": 55.12508299999172,
+          "rustc": 112.4960829999909
         },
         "verdict": "tie",
-        "verdictVsRust": "tie"
+        "verdictVsRust": "tie",
+        "arm64VsEmittedC": {
+          "ratio": 8.405215600796279,
+          "verdict": "loss"
+        }
       },
       "js": {
         "emitted": {
-          "medianNsPerCall": 241.761908199999,
-          "minNsPerCall": 216.61015820000028,
-          "maxNsPerCall": 319.44949159999965,
+          "medianNsPerCall": 123.86633339999825,
+          "minNsPerCall": 121.91619159999829,
+          "maxNsPerCall": 131.50156660000212,
           "checksum": "3865388415",
           "samples": 7
         },
         "handwritten": {
-          "medianNsPerCall": 253.9589500000002,
-          "minNsPerCall": 211.93759999999892,
-          "maxNsPerCall": 297.49697499999894,
+          "medianNsPerCall": 124.37315839999938,
+          "minNsPerCall": 121.52455000000191,
+          "maxNsPerCall": 136.43239999999932,
           "checksum": "3865388415",
           "samples": 7
         },

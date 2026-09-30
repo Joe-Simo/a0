@@ -742,28 +742,21 @@ test('div/rem are total unsigned (zero divisor: all ones / dividend); puts strea
   assert.ok(compile(p, 'sv').text.includes("32'hffffffff"));
 });
 
-test('site page program: A0 UI protocol with stylesheet, grid, timer, and 35-word state', async () => {
-  // The site is page.a0 plus what it uses (examples/life.a0), through the linker.
+test('site page program: A0 UI protocol, stylesheet, sized bars, and persisted state', async () => {
+  // The site is page.a0 plus what it uses, through the linker.
   const { link } = await import('../src/link.js');
   const { readFile } = await import('node:fs/promises');
   const p = (await link('site/page.a0', (f) => readFile(f, 'utf8'))).program;
   const session = p.byName.get('session') as TypedFunc;
-  interface Decoded {
-    texts: string[];
-    css: string;
-    state: number[];
-    events: number[];
-    grid: number[] | undefined;
-    timer: number[] | undefined;
-  }
-  const decode = (words: readonly number[]): Decoded => {
-    const d: Decoded = {
-      texts: [],
+  const decode = (
+    words: readonly number[],
+  ): { texts: string[]; css: string; state: number[]; sized: number; events: number[] } => {
+    const d = {
+      texts: [] as string[],
       css: '',
-      state: [],
-      events: [],
-      grid: undefined,
-      timer: undefined,
+      state: [] as number[],
+      sized: 0,
+      events: [] as number[],
     };
     const str = (i: number, n: number): string =>
       Buffer.from(words.slice(i, i + n)).toString('utf8');
@@ -781,65 +774,33 @@ test('site page program: A0 UI protocol with stylesheet, grid, timer, and 35-wor
         const n = words[i++] as number;
         d.state = words.slice(i, i + n) as number[];
         i += n;
-      } else if (c === 10) {
-        const n = words[i + 1] as number;
-        d.grid = words.slice(i + 2, i + 2 + n) as number[];
-        i += 2 + n;
-      } else if (c === 11) {
-        d.timer = [words[i] as number, words[i + 1] as number];
+      } else if (c === 10) i += 2 + (words[i + 1] as number);
+      else if (c === 11) i += 2;
+      else if (c === 12) {
+        d.sized += 1;
         i += 2;
-      } else if (c === 12)
-        i += 2; // SIZE prop percent (chart bars computed by the program)
-      else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
+      } else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
     }
     return d;
   };
-  // Initial render: event 0, no text, no state (reads past the input yield 0).
   const first = makeIo([0, 0, 0, 0, 0]);
   assert.equal(run(session, [first]), 0);
   const d0 = decode(first.output);
   assert.equal(d0.state.length, 35);
   assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
-  assert.deepEqual(
-    [...new Set(d0.events)].sort((a, b) => a - b),
-    [1, 2, 3, 4, 5, 6], // GRID carries cell-click event 7 with (x, y)
-  );
-  assert.equal(d0.grid?.length, 32);
-  assert.equal(d0.timer, undefined);
-  assert.ok(d0.texts.includes('Clicked ') && d0.texts.includes('Run'));
-  // Glider, then one step: generation 1, population 5, timer only while running.
-  const glider = makeIo([6, 0, 0, 0, 35, ...d0.state]);
-  run(session, [glider]);
-  const d1 = decode(glider.output);
-  assert.deepEqual(d1.state.slice(4, 7), [4, 8, 14]);
-  const step = makeIo([3, 0, 0, 0, 35, ...d1.state]);
-  run(session, [step]);
-  const d2 = decode(step.output);
-  assert.equal(d2.state[1], 1);
-  assert.deepEqual(d2.state.slice(3, 8), [0, 0, 10, 12, 4]);
-  const running = makeIo([4, 0, 0, 0, 35, ...d2.state]);
-  run(session, [running]);
-  const d3 = decode(running.output);
-  assert.equal(d3.state[2], 1);
-  assert.deepEqual(d3.timer, [120, 8]);
-  assert.ok(d3.texts.includes('Pause') && !d3.texts.includes('Run'));
-  // Counter click renders its decimal value; the echo input travels as bytes.
-  const click = makeIo([1, 0, 0, 2, 104, 105, 35, ...d3.state]);
-  assert.equal(run(session, [click]), 1);
-  const d4 = decode(click.output);
-  assert.equal(d4.state[0], 1);
-  assert.ok(d4.texts.includes('1') && d4.texts.includes('hi'));
+  assert.ok(d0.sized > 50); // chart bars and scatter points are sized by the program
+  const all = d0.texts.join(' ');
+  for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'faster than Python'])
+    assert.ok(all.includes(needle), `missing ${needle}`);
+  assert.ok(!all.includes('Clicked'), 'demo removed');
   // Emitted JS produces the identical stream.
   const js = compile(p, 'js').text;
   const mod = (await import(
     `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
-  )) as {
-    session: (t: unknown) => number;
-    a0_make_io: (i: number[]) => { output: number[] };
-  };
-  const st = mod.a0_make_io([1, 0, 0, 2, 104, 105, 35, ...d3.state]);
-  assert.equal(mod.session(st), 1);
-  assert.deepEqual(st.output, [...click.output]);
+  )) as { session: (t: unknown) => number; a0_make_io: (i: number[]) => { output: number[] } };
+  const st = mod.a0_make_io([0, 0, 0, 0, 0]);
+  assert.equal(mod.session(st), 0);
+  assert.deepEqual(st.output, [...first.output]);
 });
 
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
@@ -1296,4 +1257,12 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
       assert.equal(exec.stdout.trim(), expected);
     });
   }
+});
+
+test('loop predicates with aggregate state are compared structurally, not by reference', () => {
+  const p = parseAndValidate(
+    'fn body u32x4 u32 -> u32x4\nv get p0 p1\nw add v 1\nn set p0 p1 w\nret n\nend\nfn pred u32x4 u32 -> bool\nv get p0 p1\nc lt v 10\nret c\nend\nfn go u32x4 -> u32x4\nr loop pred body 4 p0\nret r\nend',
+  );
+  const out = run(p.byName.get('go') as TypedFunc, [[1, 2, 30, 4]]) as number[];
+  assert.deepEqual(Array.from(out), [2, 3, 30, 4]);
 });

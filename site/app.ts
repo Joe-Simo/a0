@@ -265,11 +265,11 @@ async function main(): Promise<void> {
     { threshold: 0.15 },
   );
   const animate = (): void => {
-    for (const el of root.querySelectorAll('.reveal')) observer.observe(el);
+    root.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
     requestAnimationFrame(() => {
-      for (const el of root.querySelectorAll('.fill')) el.classList.add('grown');
+      root.querySelectorAll('.fill').forEach((el) => el.classList.add('grown'));
     });
-    for (const el of root.querySelectorAll('.count')) {
+    for (const el of Array.from(root.querySelectorAll('.count'))) {
       const target = el.textContent ?? '';
       const m = /^(\d+)(\.\d+)?(.*)$/.exec(target);
       if (m === null || el.classList.contains('counted')) continue;
