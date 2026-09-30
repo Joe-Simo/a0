@@ -1,7 +1,9 @@
-# Chunked C emission for the bootstrap (DESIGN.md 7a stage 6), written in A0. `emitchunkio`
-# is the entry of a0c-stage1/2/3 (tools/bootstrap.ts): it compiles one chunk of a program
-# with the 16384-byte front end and the C emitter (emit_c.a0 `cunit` and `emitc`), so a
-# program over the source limit is compiled a chunk at a time.
+# Chunked emission for the bootstrap (DESIGN.md 7a stage 6), written in A0. `emitchunkio` is
+# the entry of a0c-stage1/2/3 (tools/bootstrap.ts): it compiles one chunk of a program with the
+# 16384-byte front end and the C emitter (emit_c.a0 `cunit` and `emitc`), so a program over the
+# source limit is compiled a chunk at a time. `emitachunkio` is the same with the arm64 emitter
+# (emit_arm64.a0 `qunit`), the entry of the arm64 stages (tools/bootstrap-arm64.ts); its output
+# is assembly text where `emitchunkio` writes C, and its prelude (head 1) the two copy helpers.
 # A chunk of a program in several chunks is: a header prelude (a function whose header names
 # every header type of the whole program, in a fixed order, so that every chunk interns the
 # same type table and the typedef names `a0t<index>` agree across chunks), the header of every
@@ -18,7 +20,7 @@
 # Nothing is written otherwise. The result is the diagnostic code (1 parse, 2 structure,
 # 3 type, 4 limit, 5 above).
 
-use "emit_c.a0"
+use "emit_arm64.a0"
 
 # `read` as a function: its (u32,io) result is named by this header, so the prelude interns it
 fn rdword io -> (u32,io)
@@ -57,7 +59,8 @@ w0 fold wfst k p0 p2 p3
 w1 write w0 k
 ret w1
 end
-fn emitchunkio io -> u32
+# the input: (source bytes, n, iteration bounds, from, strict, head, io)
+fn rdchunk io -> (u32x128x128,u32,u32x128x8,u32,bool,bool,io)
 rs call readsrc p0
 src at rs 0
 n at rs 1
@@ -78,7 +81,38 @@ fst at fsr 0
 t5 at fsr 1
 sb ne strict 0
 hd ne head 0
+r rec src n fst from sb hd t5
+ret r
+end
+fn emitchunkio io -> u32
+c call rdchunk p0
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+sb at c 4
+hd at c 5
+t5 at c 6
 u call cunit t5 src n fst from sb hd
+t6 at u 0
+code at u 1
+fstat at u 2
+nfns at u 3
+ok eq code 0
+go select ok 1 0
+t7 fold wtrail go t6 fstat from nfns
+ret code
+end
+fn emitachunkio io -> u32
+c call rdchunk p0
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+sb at c 4
+hd at c 5
+t5 at c 6
+u call qunit t5 src n fst from sb hd
 t6 at u 0
 code at u 1
 fstat at u 2

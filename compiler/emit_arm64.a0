@@ -25,8 +25,10 @@
 # the string in its comment), `ldec` a decimal, `lname` a symbol's bytes. The writers are
 # unrolled and the line buffer is small because the reference interpreter validates every
 # array element of every call argument.
+# This first version (`emitio`) is kept for tools/selfhost-verify.ts and tools/app.ts; the
+# whole-language emitter the arm64 bootstrap uses (`qunit`, the q functions) follows it below.
 
-use "check.a0"
+use "emit_c.a0"
 
 # up to 16 bytes packed little-endian in four words; zero bytes are skipped (unrolled)
 fn lp (u32x512,u32) u32 u32 u32 u32 bool -> (u32x512,u32)
@@ -3232,4 +3234,1166 @@ nbytes select ok nout 0
 w4 write w3 nbytes
 w5 fold wstep4096 nbytes w4 out
 ret code
+end
+
+# ---------------------------------------------------------------------------------------------
+# Whole-language emitter (stage 6b, the q functions): the checked paged IR of the 16384-byte
+# front end (the tables emit_c.a0 `cunit` builds) to Darwin arm64 assembly text, one byte per io
+# word, for every construct: u32 bool io, arrays and records at any nesting, call fold loop, arr rec text get set
+# at put, read write puts. `qunit` is `cunit` with this emitter; boot.a0 `emitachunkio` is its
+# chunked io entry, and a program compiled by it (the compiler itself included) needs no C.
+# Values: a u32 or bool is one 32-bit word (bool 0/1), an array its elements back to back, a
+# record its fields in order, io is zero bytes (the stream is the runtime's `_a0_io`, reached only
+# through `_a0rt_read`, `_a0rt_write` and `_a0rt_puts`, which the host links in). Every
+# parameter and node has an 8-byte cell at x21 + 8k (parameters first, then the nodes): a scalar
+# zero-extended, an aggregate as a pointer to its bytes. Aggregates are never written after they
+# are built, so `mov` `select` `get` `at` of an aggregate alias (the cell takes the pointer), and a
+# node that builds one (`arr` `rec` `text` `set` `put` `read`, a call or a fold with an aggregate
+# result) allocates its bytes on the machine stack (sp moves down; everything is released by the
+# epilogue). Calls follow the Darwin arm64 C convention for the parameter list without its io
+# entries: parameter k in the next of x0-x7 (a scalar as its w register, an aggregate as a
+# pointer), then the stack at Darwin's packing (u32 4 bytes, bool 1, pointer 8); a scalar result
+# in w0, an aggregate result written through x8 by the callee's `ret` (after the body, so x8 may
+# be the fold state the body reads). So a function over scalars is callable from C as
+# `_a0_<name>`. A fold or loop keeps its counter and bound in w19 and w20 and its state in the
+# node's cell (for an aggregate state: its own bytes, passed as p0 and as x8). Frame:
+#     x29 + 16 + ...   incoming stack parameters
+#     x29              saved x29 x30, then x19 x20, x21 x22 (x22: the incoming x8)
+#     x21 = sp at entry + cells (8 (np + nodes), rounded to 16); aggregates below
+# The prelude (head) writes `_a0rt_copy` (x0 destination, x1 source, x2 bytes) and `_a0rt_zero`
+# (x0, x2), which keep x9-x15. Node code: operands in x9-x11, the result in x12, element
+# addresses in x13, sizes and offsets through x16.
+
+# word p1 of a paged table (page p1 >> 7, word p1 & 127)
+fn qw65 u32x128x65 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+v get pg wi
+ret v
+end
+fn qw24 u32x128x24 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+v get pg wi
+ret v
+end
+fn qw128 u32x128x128 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+v get pg wi
+ret v
+end
+fn qw16 u32x128x16 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+v get pg wi
+ret v
+end
+fn qw256 u32x128x256 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+v get pg wi
+ret v
+end
+# word p2 of the triple (tag a b) of type p1
+fn qtw u32x384x65 u32 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+w3 mul wi 3
+i add w3 p2
+v get pg i
+ret v
+end
+# p0 plus the byte size of field p1 of the list tlist p3 from p4 (sizes p2)
+fn qfsz u32 u32 u32x128x65 u32x128x65 u32 -> u32
+i add p4 p1
+t call qw65 p3 i
+s call qw65 p2 t
+r add p0 s
+ret r
+end
+# the byte size of type p1 (u32 bool 4, io 0, arrays and records from their components, which
+# are interned before them) into the size table p0
+fn qszst u32x128x65 u32 u32x384x65 u32x128x65 -> u32x128x65
+tag call qtw p2 p1 0
+a call qtw p2 p1 1
+b call qtw p2 p1 2
+sc lt tag 3
+t4 eq tag 4
+t5 eq tag 5
+eb call qw65 p0 b
+am mul a eb
+n5 select t5 b 0
+rs fold qfsz n5 0 p0 p3 a
+s1 select sc 4 0
+s2 select t4 am s1
+s3 select t5 rs s2
+pi shr p1 7
+pg get p0 pi
+wi and p1 127
+pg2 set pg wi s3
+r set p0 pi pg2
+ret r
+end
+fn qszt u32x384x65 u32x128x65 u32 -> u32x128x65
+z call z65
+r fold qszst p2 z p0 p1
+ret r
+end
+# how a value of type p1 travels: 0 io (nowhere), 1 u32, 2 bool, 3 pointer (aggregates)
+fn qcls u32x384x65 u32 -> u32
+tag call qtw p0 p1 0
+c1 eq tag 1
+c2 eq tag 2
+c3 eq tag 3
+a select c2 2 3
+b select c1 1 a
+r select c3 0 b
+ret r
+end
+# the stack bytes of a class (Darwin packing)
+fn qcsz u32 -> u32
+c1 eq p0 1
+c2 eq p0 2
+c3 eq p0 3
+a select c3 8 0
+b select c2 1 a
+r select c1 4 b
+ret r
+end
+# placement state (registers used, stack bytes) after parameter p1 of the list tlist p2 from p4
+fn qplst (u32,u32) u32 u32x128x65 u32x384x65 u32 -> (u32,u32)
+nr at p0 0
+so at p0 1
+i add p4 p1
+t call qw65 p2 i
+c call qcls p3 t
+sz call qcsz c
+nio ne c 0
+rg lt nr 8
+nr1 add nr 1
+m1 sub sz 1
+x add so m1
+ng sub 0 sz
+al and x ng
+so1 add al sz
+ur and nio rg
+nrg select rg false true
+us and nio nrg
+nr2 select ur nr1 nr
+so2 select us so1 so
+r rec nr2 so2
+ret r
+end
+# where parameter p3 of the list tlist p0 from p2 travels: (0 nowhere / 1 register / 2 stack,
+# the register or the stack offset, the class)
+fn qplace u32x128x65 u32x384x65 u32 u32 -> (u32,u32,u32)
+z rec 0 0
+s fold qplst p3 z p0 p1 p2
+nr at s 0
+so at s 1
+i add p2 p3
+t call qw65 p0 i
+c call qcls p1 t
+sz call qcsz c
+nio ne c 0
+rg lt nr 8
+m1 sub sz 1
+x add so m1
+ng sub 0 sz
+al and x ng
+l1 select rg 1 2
+loc select nio l1 0
+wh select rg nr al
+r rec loc wh c
+ret r
+end
+# the stack argument bytes of the p3 parameters at tlist p0 from p2, rounded to 16
+fn qstk u32x128x65 u32x384x65 u32 u32 -> u32
+z rec 0 0
+s fold qplst p3 z p0 p1 p2
+so at s 1
+x add so 15
+r and x 4294967280
+ret r
+end
+# operand (kind p3, value p4) into register p2 (p5 parameters): 1 node and 2 parameter from
+# their cells, 3 u32 and 4 bool literals, 6 the fold counter w19
+fn qld io u32 u32 u32 u32 u32 -> io
+k1 eq p3 1
+k2 eq p3 2
+k3 eq p3 3
+k4 eq p3 4
+k6 eq p3 6
+c1 add p5 p4
+ca select k1 c1 p4
+off mul ca 8
+cell or k1 k2
+# t a p0 cell "\tldr x{p2}, [x21, #{off}]\n"
+a_1 call cws6c p0 cell 1919183881 30752 0 0 0 0
+a_2 call cwdecc a_1 cell p2
+a_3 call cws6c a_2 cell 2019237932 539767090 35 0 0 0
+a_4 call cwdecc a_3 cell off
+a call cws6c a_4 cell 2653 0 0 0 0 0
+lit or k3 k4
+lo and p4 65535
+hi shr p4 16
+hz ne hi 0
+lh and lit hz
+# t b a lit "\tmovz w{p2}, #{lo}\n"
+b_1 call cws6c a lit 1987013897 7807098 0 0 0 0
+b_2 call cwdecc b_1 lit p2
+b_3 call cws6c b_2 lit 2301996 0 0 0 0 0
+b_4 call cwdecc b_3 lit lo
+b call cws6c b_4 lit 10 0 0 0 0 0
+# t c b lh "\tmovk w{p2}, #{hi}, lsl #16\n"
+c_1 call cws6c b lh 1987013897 7807083 0 0 0 0
+c_2 call cwdecc c_1 lh p2
+c_3 call cws6c c_2 lh 2301996 0 0 0 0 0
+c_4 call cwdecc c_3 lh hi
+c call cws6c c_4 lh 1936465964 824385644 2614 0 0 0
+# t d c k6 "\tmov w{p2}, w19\n"
+d_1 call cws6c c k6 1987013897 30496 0 0 0 0
+d_2 call cwdecc d_1 k6 p2
+d call cws6c d_2 k6 829890604 2617 0 0 0 0
+ret d
+end
+# the 32-bit value p3 into x register p2 / w register p2
+fn qmovx io u32 u32 u32 -> io
+lo and p3 65535
+hi shr p3 16
+hz ne hi 0
+# t a p0 - "\tmovz x{p2}, #{lo}\n"
+a_1 call cws6 p0 1987013897 7872634 0 0 0 0
+a_2 call cwdec a_1 p2
+a_3 call cws6 a_2 2301996 0 0 0 0 0
+a_4 call cwdec a_3 lo
+a call cws6 a_4 10 0 0 0 0 0
+# t b a hz "\tmovk x{p2}, #{hi}, lsl #16\n"
+b_1 call cws6c a hz 1987013897 7872619 0 0 0 0
+b_2 call cwdecc b_1 hz p2
+b_3 call cws6c b_2 hz 2301996 0 0 0 0 0
+b_4 call cwdecc b_3 hz hi
+b call cws6c b_4 hz 1936465964 824385644 2614 0 0 0
+ret b
+end
+fn qmovw io u32 u32 u32 -> io
+lo and p3 65535
+hi shr p3 16
+hz ne hi 0
+# t a p0 - "\tmovz w{p2}, #{lo}\n"
+a_1 call cws6 p0 1987013897 7807098 0 0 0 0
+a_2 call cwdec a_1 p2
+a_3 call cws6 a_2 2301996 0 0 0 0 0
+a_4 call cwdec a_3 lo
+a call cws6 a_4 10 0 0 0 0 0
+# t b a hz "\tmovk w{p2}, #{hi}, lsl #16\n"
+b_1 call cws6c a hz 1987013897 7807083 0 0 0 0
+b_2 call cwdecc b_1 hz p2
+b_3 call cws6c b_2 hz 2301996 0 0 0 0 0
+b_4 call cwdecc b_3 hz hi
+b call cws6c b_4 hz 1936465964 824385644 2614 0 0 0
+ret b
+end
+# p2 bytes (rounded to 16) on the stack; x12 points at them
+fn qalloc io u32 u32 -> io
+s add p2 15
+r and s 4294967280
+a call qmovx p0 0 16 r
+# t b a - "\tsub sp, sp, x16\n\tmov x12, sp\n"
+b_1 call cws6 a 1651864329 745567008 745567008 909211680 1869416714 829956214
+b call cws6 b_1 1931488306 2672 0 0 0 0
+ret b
+end
+# x13 = x<p4> + (w10 mod p2) * p3: the address of the element an index selects
+fn qmod io u32 u32 u32 u32 -> io
+a call qmovw p0 0 11 p2
+# t b a - "\tudiv w13, w10, w11\n\tmsub w10, w13, w11, w10\n"
+b_1 call cws6 a 1768191241 829890678 1998597171 539766833 170996087 1970498825
+b call cws6 b_1 829890658 1998597168 539767601 741421431 808548128 10
+c call qmovx b 0 11 p3
+# t d c - "\tumaddl x13, w10, w11, x{p4}\n"
+d_1 call cws6 c 1634563337 543974500 741552504 808548128 829890604 2015374385
+d_2 call cwdec d_1 p4
+d call cws6 d_2 10 0 0 0 0 0
+ret d
+end
+# The node context (a record of 19 words): 0 index, 1 parameter count, 2 op, 3 operand count,
+# 4 first operand, 5 callee, 6 predicate, 7 type, 8 its tag, 9 its size, 10-15 the kinds and
+# values of the first three operands, 16 17 the function's name (pool start, length), 18 the
+# cell offset.
+# argument p1 of a call (mode 0: operand p1) or of a fold/loop body (mode 1: the state, the
+# counter, then operand p1) into its register or stack slot; the callee's list is tlist p6 from p7
+fn qarg io u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x384x65 u32x128x65 u32 -> io
+j at p3 0
+np at p3 1
+fa at p3 4
+o add fa p1
+w mul o 2
+kind call qw256 p4 w
+w1 add w 1
+val call qw256 p4 w1
+m1 eq p2 1
+z eq p1 0
+one eq p1 1
+s0 and m1 z
+s1 and m1 one
+kd0 select s0 1 kind
+kd select s1 6 kd0
+vl select s0 j val
+pl call qplace p6 p5 p7 p1
+loc at pl 0
+wh at pl 1
+cls at pl 2
+isr eq loc 1
+iss eq loc 2
+nr select isr 1 0
+nst select iss 1 0
+a fold qld nr p0 wh kd vl np
+b fold qld nst a 9 kd vl np
+c1 eq cls 1
+c2 eq cls 2
+c3 eq cls 3
+t1 and iss c1
+t2 and iss c2
+t3 and iss c3
+# t c b t1 "\tstr w9, [sp, #{wh}]\n"
+c_1 call cws6c b t1 1920234249 741963552 1886608160 2301996 0 0
+c_2 call cwdecc c_1 t1 wh
+c call cws6c c_2 t1 2653 0 0 0 0 0
+# t d c t2 "\tstrb w9, [sp, #{wh}]\n"
+d_1 call cws6c c t2 1920234249 964108386 1935351852 589311088 0 0
+d_2 call cwdecc d_1 t2 wh
+d call cws6c d_2 t2 2653 0 0 0 0 0
+# t e d t3 "\tstr x9, [sp, #{wh}]\n"
+e_1 call cws6c d t3 1920234249 741963808 1886608160 2301996 0 0
+e_2 call cwdecc e_1 t3 wh
+e call cws6c e_2 t3 2653 0 0 0 0 0
+ret e
+end
+# the arguments (mode p2), `bl` to function p10 and the stack arguments released
+fn qinvoke io u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x384x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 -> io
+cb mul p10 7
+cnp call cfw p7 cb 1
+cfp call cfw p7 cb 2
+s call qstk p6 p5 cfp cnp
+hs ne s 0
+n select hs 1 0
+a fold qmovx n p0 16 s
+# t b a hs "\tsub sp, sp, x16\n"
+b call cws6c a hs 1651864329 745567008 745567008 909211680 10 0
+c fold qarg cnp b p2 p3 p4 p5 p6 cfp
+m2 mul p10 2
+cs call qw16 p8 m2
+m3 add m2 1
+cl call qw16 p8 m3
+# t d c - "\tbl _a0_{name:p9,cs,cl}\n"
+d_1 call cws6 c 543973897 1597006175 0 0 0 0
+d_2 call cwnm d_1 true p9 cs cl
+d call cws6 d_2 10 0 0 0 0 0
+e fold qmovx n d 16 s
+# t f e hs "\tadd sp, sp, x16\n"
+f call cws6c e hs 1684300041 745567008 745567008 909211680 10 0
+ret f
+end
+# The node groups, each run once for its ops (p2 the context; tables args ntys types tlist szt
+# fns fnm pool; p11 the first node, p12 the first parameter).
+# mov (op 1) and select (18)
+fn qgmov io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+op at p2 2
+k0 at p2 10
+v0 at p2 11
+k1 at p2 12
+v1 at p2 13
+k2 at p2 14
+v2 at p2 15
+off at p2 18
+sl eq op 18
+nm select sl 0 1
+ns select sl 1 0
+a fold qld nm p0 12 k0 v0 np
+b fold qld ns a 9 k0 v0 np
+c fold qld ns b 10 k1 v1 np
+d fold qld ns c 11 k2 v2 np
+# t e d sl "\tcmp w9, #0\n\tcsel x12, x10, x11, ne\n"
+e_1 call cws6c d sl 1886216969 741963552 170926880 1702060809 829956204 2015374386
+e call cws6c e_1 sl 539766833 741421432 174419488 0 0 0
+# t f e - "\tstr x12, [x21, #{off}]\n"
+f_1 call cws6 e 1920234249 842102816 2019237932 539767090 35 0
+f_2 call cwdec f_1 off
+f call cws6 f_2 2653 0 0 0 0 0
+ret f
+end
+# ops 2-17
+fn qgalu io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+op at p2 2
+k0 at p2 10
+v0 at p2 11
+k1 at p2 12
+v1 at p2 13
+off at p2 18
+a call qld p0 0 9 k0 v0 np
+b call qld a 0 10 k1 v1 np
+is2 eq op 2
+is3 eq op 3
+is4 eq op 4
+is5 eq op 5
+is6 eq op 6
+is7 eq op 7
+is8 eq op 8
+is9 eq op 9
+is10 eq op 10
+is11 eq op 11
+is12 eq op 12
+is13 eq op 13
+is14 eq op 14
+is15 eq op 15
+is16 eq op 16
+is17 eq op 17
+# t c2 b is2 "\tadd w12, w9, w10\n"
+c2 call cws6c b is2 1684300041 842102560 964108332 829890604 2608 0
+# t c3 c2 is3 "\tsub w12, w9, w10\n"
+c3 call cws6c c2 is3 1651864329 842102560 964108332 829890604 2608 0
+# t c4 c3 is4 "\tmul w12, w9, w10\n"
+c4 call cws6c c3 is4 1819634953 842102560 964108332 829890604 2608 0
+# t c5 c4 is5 "\tand w12, w9, w10\n"
+c5 call cws6c c4 is5 1684955401 842102560 964108332 829890604 2608 0
+# t c6 c5 is6 "\torr w12, w9, w10\n"
+c6 call cws6c c5 is6 1920102153 842102560 964108332 829890604 2608 0
+# t c7 c6 is7 "\teor w12, w9, w10\n"
+c7 call cws6c c6 is7 1919902985 842102560 964108332 829890604 2608 0
+# t c8 c7 is8 "\tlsl w12, w9, w10\n"
+c8 call cws6c c7 is8 1819503625 842102560 964108332 829890604 2608 0
+# t c9 c8 is9 "\tlsr w12, w9, w10\n"
+c9 call cws6c c8 is9 1920166921 842102560 964108332 829890604 2608 0
+# t c10 c9 is10 "\tudiv w12, w9, w10\n\tcmp w10, #0\n\tcsinv w12, w12, wzr, ne\n"
+c10_1 call cws6c c9 is10 1768191241 829890678 1998597170 1998597177 151662641 544238947
+c10_2 call cws6c c10_1 is10 741355895 170926880 1769169673 1998616174 539767345 741486967
+c10 call cws6c c10_2 is10 1920628512 1701716012 10 0 0 0
+# t c11 c10 is11 "\tudiv w12, w9, w10\n\tmsub w12, w12, w10, w9\n"
+c11_1 call cws6c c10 is11 1768191241 829890678 1998597170 1998597177 151662641 1651864429
+c11 call cws6c c11_1 is11 842102560 829890604 1998597170 539766833 670071 0
+cmp ge op 12
+# t cc c11 cmp "\tcmp w9, w10\n"
+cc call cws6c c11 cmp 1886216969 741963552 808548128 10 0 0
+# t c12 cc is12 "\tcset w12, eq\n"
+c12 call cws6c cc is12 1702060809 829890676 1696607282 2673 0 0
+# t c13 c12 is13 "\tcset w12, ne\n"
+c13 call cws6c c12 is13 1702060809 829890676 1847602226 2661 0 0
+# t c14 c13 is14 "\tcset w12, lo\n"
+c14 call cws6c c13 is14 1702060809 829890676 1814047794 2671 0 0
+# t c15 c14 is15 "\tcset w12, ls\n"
+c15 call cws6c c14 is15 1702060809 829890676 1814047794 2675 0 0
+# t c16 c15 is16 "\tcset w12, hi\n"
+c16 call cws6c c15 is16 1702060809 829890676 1746938930 2665 0 0
+# t c17 c16 is17 "\tcset w12, hs\n"
+c17 call cws6c c16 is17 1702060809 829890676 1746938930 2675 0 0
+# t z c17 - "\tstr x12, [x21, #{off}]\n"
+z_1 call cws6 c17 1920234249 842102816 2019237932 539767090 35 0
+z_2 call cwdec z_1 off
+z call cws6 z_2 2653 0 0 0 0 0
+ret z
+end
+# call (op 19)
+fn qgcall io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+ce at p2 5
+tag at p2 8
+size at p2 9
+off at p2 18
+agg ge tag 4
+na select agg 1 0
+a fold qalloc na p0 size
+# t b a agg "\tstr x12, [x21, #{off}]\n\tmov x8, x12\n"
+b_1 call cws6c a agg 1920234249 842102816 2019237932 539767090 35 0
+b_2 call cwdecc b_1 agg off
+b call cws6c b_2 agg 1829309021 2015393391 2015374392 668209 0 0
+c call qinvoke b 0 0 p2 p3 p5 p6 p8 p9 p10 ce
+sc lt tag 3
+# t d c sc "\tmov w12, w0\n\tstr x12, [x21, #{off}]\n"
+d_1 call cws6c c sc 1987013897 842102560 813113388 1953696010 829956210 1528835122
+d_2 call cws6c d_1 sc 741421688 8992 0 0 0 0
+d_3 call cwdecc d_2 sc off
+d call cws6c d_3 sc 2653 0 0 0 0 0
+ret d
+end
+# fold (op 20) and loop (21)
+fn qgfold io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+j at p2 0
+np at p2 1
+op at p2 2
+ce at p2 5
+pr at p2 6
+tag at p2 8
+size at p2 9
+k0 at p2 10
+v0 at p2 11
+k1 at p2 12
+v1 at p2 13
+ns at p2 16
+nl at p2 17
+off at p2 18
+isl eq op 21
+nlp select isl 1 0
+agg ge tag 4
+na select agg 1 0
+sc select agg false true
+nsc select agg 0 1
+a fold qalloc na p0 size
+# t b a agg "\tstr x12, [x21, #{off}]\n"
+b_1 call cws6c a agg 1920234249 842102816 2019237932 539767090 35 0
+b_2 call cwdecc b_1 agg off
+b call cws6c b_2 agg 2653 0 0 0 0 0
+c fold qld na b 1 k1 v1 np
+# t d c agg "\tmov x0, x12\n"
+d call cws6c c agg 1987013897 741373984 842102816 10 0 0
+e fold qmovx na d 2 size
+# t f e agg "\tbl _a0rt_copy\n"
+f call cws6c e agg 543973897 1915773279 1868783476 686448 0 0
+g fold qld nsc f 12 k1 v1 np
+# t h g sc "\tstr x12, [x21, #{off}]\n"
+h_1 call cws6c g sc 1920234249 842102816 2019237932 539767090 35 0
+h_2 call cwdecc h_1 sc off
+h call cws6c h_2 sc 2653 0 0 0 0 0
+i call qld h 0 9 k0 v0 np
+# t l i - "\tmov w20, w9\n\tmovz w19, #0\nL{name:p10,ns,nl}_{j}t:\n\tcmp w19, w20\n\tb.hs L{name:p10,ns,nl}_{j}e\n"
+l_1 call cws6 i 1987013897 808613664 964108332 1869416714 1998617206 539769137
+l_2 call cws6 l_1 1275736099 0 0 0 0 0
+l_3 call cwnm l_2 true p10 ns nl
+l_4 call cws6 l_3 95 0 0 0 0 0
+l_5 call cwdec l_4 j
+l_6 call cws6 l_5 151665268 544238947 741945719 808613664 778176778 1277195112
+l_7 call cwnm l_6 true p10 ns nl
+l_8 call cws6 l_7 95 0 0 0 0 0
+l_9 call cwdec l_8 j
+l call cws6 l_9 2661 0 0 0 0 0
+m fold qinvoke nlp l 1 p2 p3 p5 p6 p8 p9 p10 pr
+# t o m isl "\tcbz w0, L{name:p10,ns,nl}_{j}e\n"
+o_1 call cws6c m isl 2053268233 741373728 19488 0 0 0
+o_2 call cwnm o_1 isl p10 ns nl
+o_3 call cws6c o_2 isl 95 0 0 0 0 0
+o_4 call cwdecc o_3 isl j
+o call cws6c o_4 isl 2661 0 0 0 0 0
+# t q o agg "\tldr x8, [x21, #{off}]\n"
+q_1 call cws6c o agg 1919183881 741898272 846748448 589311025 0 0
+q_2 call cwdecc q_1 agg off
+q call cws6c q_2 agg 2653 0 0 0 0 0
+r call qinvoke q 0 1 p2 p3 p5 p6 p8 p9 p10 ce
+# t s r sc "\tmov w12, w0\n\tstr x12, [x21, #{off}]\n"
+s_1 call cws6c r sc 1987013897 842102560 813113388 1953696010 829956210 1528835122
+s_2 call cws6c s_1 sc 741421688 8992 0 0 0 0
+s_3 call cwdecc s_2 sc off
+s call cws6c s_3 sc 2653 0 0 0 0 0
+# t u s - "\tadd w19, w19, #1\n\tb L{name:p10,ns,nl}_{j}t\nL{name:p10,ns,nl}_{j}e:\n"
+u_1 call cws6 s 1684300041 959543072 829890604 589311033 1644759601 19488
+u_2 call cwnm u_1 true p10 ns nl
+u_3 call cws6 u_2 95 0 0 0 0 0
+u_4 call cwdec u_3 j
+u_5 call cws6 u_4 4983412 0 0 0 0 0
+u_6 call cwnm u_5 true p10 ns nl
+u_7 call cws6 u_6 95 0 0 0 0 0
+u_8 call cwdec u_7 j
+u call cws6 u_8 670309 0 0 0 0 0
+ret u
+end
+# element p1 of an array literal (element bytes p4, aggregate p5) at x12
+fn qael io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32 bool -> io
+np at p2 1
+fa at p2 4
+o add fa p1
+w mul o 2
+kind call qw256 p3 w
+w1 add w 1
+val call qw256 p3 w1
+eo mul p1 p4
+a call qmovx p0 0 13 eo
+# t b a - "\tadd x13, x12, x13\n"
+b call cws6 a 1684300041 858880032 829956140 2015374386 668465 0
+sc select p5 false true
+ns select p5 0 1
+ng select p5 1 0
+c fold qld ns b 11 kind val np
+# t d c sc "\tstr w11, [x13]\n"
+d call cws6c c sc 1920234249 825325344 2019237932 173880113 0 0
+e fold qld ng d 1 kind val np
+# t f e p5 "\tmov x0, x13\n"
+f call cws6c e p5 1987013897 741373984 858880032 10 0 0
+g fold qmovx ng f 2 p4
+# t h g p5 "\tbl _a0rt_copy\n"
+h call cws6c g p5 543973897 1915773279 1868783476 686448 0 0
+ret h
+end
+# arr (op 22) and text (24); all-zero literals are one `_a0rt_zero`
+fn qgarr io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+na at p2 3
+fa at p2 4
+t at p2 7
+size at p2 9
+off at p2 18
+a call qalloc p0 0 size
+zhi add fa na
+zhas lt fa zhi
+zlp shr fa 6
+zh1 sub zhi 1
+zhp shr zh1 6
+zd sub zhp zlp
+znp add zd 1
+zn select zhas znp 0
+allz fold czpg zn true p3 fa zhi zlp
+nz select allz 1 0
+# t b a allz "\tmov x0, x12\n"
+b call cws6c a allz 1987013897 741373984 842102816 10 0 0
+c fold qmovx nz b 2 size
+# t d c allz "\tbl _a0rt_zero\n"
+d call cws6c c allz 543973897 1915773279 1702518644 683890 0 0
+ne select allz 0 na
+et call qtw p5 t 2
+esz call qw65 p7 et
+etag call qtw p5 et 0
+eagg ge etag 4
+e fold qael ne d p2 p3 esz eagg
+# t f e - "\tstr x12, [x21, #{off}]\n"
+f_1 call cws6 e 1920234249 842102816 2019237932 539767090 35 0
+f_2 call cwdec f_1 off
+f call cws6 f_2 2653 0 0 0 0 0
+ret f
+end
+# field p1 of a record literal at x12 (fields tlist p5 from p7; state: io, the field's offset)
+fn qrfl (io,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x384x65 u32x128x65 u32x128x65 u32 -> (io,u32)
+t0 at p0 0
+o at p0 1
+np at p2 1
+fa at p2 4
+fi add p7 p1
+ft call qw65 p5 fi
+fsz call qw65 p6 ft
+ftag call qtw p4 ft 0
+x add fa p1
+w mul x 2
+kind call qw256 p3 w
+w1 add w 1
+val call qw256 p3 w1
+fagg ge ftag 4
+fsc lt ftag 3
+ns select fsc 1 0
+ng select fagg 1 0
+a call qmovx t0 0 13 o
+# t b a - "\tadd x13, x12, x13\n"
+b call cws6 a 1684300041 858880032 829956140 2015374386 668465 0
+c fold qld ns b 11 kind val np
+# t d c fsc "\tstr w11, [x13]\n"
+d call cws6c c fsc 1920234249 825325344 2019237932 173880113 0 0
+e fold qld ng d 1 kind val np
+# t f e fagg "\tmov x0, x13\n"
+f call cws6c e fagg 1987013897 741373984 858880032 10 0 0
+g fold qmovx ng f 2 fsz
+# t h g fagg "\tbl _a0rt_copy\n"
+h call cws6c g fagg 543973897 1915773279 1868783476 686448 0 0
+o2 add o fsz
+r rec h o2
+ret r
+end
+# rec (op 23)
+fn qgrec io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+na at p2 3
+t at p2 7
+size at p2 9
+off at p2 18
+a call qalloc p0 0 size
+first call qtw p5 t 1
+s0 rec a 0
+s fold qrfl na s0 p2 p3 p5 p6 p7 first
+b at s 0
+# t c b - "\tstr x12, [x21, #{off}]\n"
+c_1 call cws6 b 1920234249 842102816 2019237932 539767090 35 0
+c_2 call cwdec c_1 off
+c call cws6 c_2 2653 0 0 0 0 0
+ret c
+end
+# get (op 25): a scalar element is loaded, an aggregate one aliased
+fn qgget io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+k0 at p2 10
+v0 at p2 11
+k1 at p2 12
+v1 at p2 13
+off at p2 18
+ct call cotype k0 v0 p4 p6 p11 p12
+n call qtw p5 ct 1
+et call qtw p5 ct 2
+esz call qw65 p7 et
+etag call qtw p5 et 0
+eagg ge etag 4
+sc select eagg false true
+a call qld p0 0 9 k0 v0 np
+b call qld a 0 10 k1 v1 np
+c call qmod b 0 n esz 9
+# t d c sc "\tldr w12, [x13]\n"
+d call cws6c c sc 1919183881 842102560 2019237932 173880113 0 0
+# t e d eagg "\tmov x12, x13\n"
+e call cws6c d eagg 1987013897 842102816 829956140 2611 0 0
+# t f e - "\tstr x12, [x21, #{off}]\n"
+f_1 call cws6 e 1920234249 842102816 2019237932 539767090 35 0
+f_2 call cwdec f_1 off
+f call cws6 f_2 2653 0 0 0 0 0
+ret f
+end
+# set (op 26): a copy with one element replaced
+fn qgset io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+t at p2 7
+size at p2 9
+k0 at p2 10
+v0 at p2 11
+k1 at p2 12
+v1 at p2 13
+k2 at p2 14
+v2 at p2 15
+off at p2 18
+n call qtw p5 t 1
+et call qtw p5 t 2
+esz call qw65 p7 et
+etag call qtw p5 et 0
+eagg ge etag 4
+sc select eagg false true
+ns select eagg 0 1
+ng select eagg 1 0
+a call qalloc p0 0 size
+b call qld a 0 9 k0 v0 np
+# t c b - "\tmov x0, x12\n\tmov x1, x9\n"
+c_1 call cws6 b 1987013897 741373984 842102816 1869416714 829956214 964173868
+c call cws6 c_1 10 0 0 0 0 0
+d call qmovx c 0 2 size
+# t e d - "\tbl _a0rt_copy\n"
+e call cws6 d 543973897 1915773279 1868783476 686448 0 0
+f call qld e 0 10 k1 v1 np
+g call qmod f 0 n esz 12
+h fold qld ns g 11 k2 v2 np
+# t i h sc "\tstr w11, [x13]\n"
+i call cws6c h sc 1920234249 825325344 2019237932 173880113 0 0
+l fold qld ng i 1 k2 v2 np
+# t m l eagg "\tmov x0, x13\n"
+m call cws6c l eagg 1987013897 741373984 858880032 10 0 0
+o fold qmovx ng m 2 esz
+# t q o eagg "\tbl _a0rt_copy\n"
+q call cws6c o eagg 543973897 1915773279 1868783476 686448 0 0
+# t r q - "\tstr x12, [x21, #{off}]\n"
+r_1 call cws6 q 1920234249 842102816 2019237932 539767090 35 0
+r_2 call cwdec r_1 off
+r call cws6 r_2 2653 0 0 0 0 0
+ret r
+end
+# at (op 27): field V1 at its offset, loaded or aliased
+fn qgat io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+k0 at p2 10
+v0 at p2 11
+v1 at p2 13
+off at p2 18
+ct call cotype k0 v0 p4 p6 p11 p12
+first call qtw p5 ct 1
+fo fold qfsz v1 0 p7 p6 first
+fi add first v1
+ft call qw65 p6 fi
+ftag call qtw p5 ft 0
+fagg ge ftag 4
+fsc lt ftag 3
+a call qld p0 0 9 k0 v0 np
+b call qmovx a 0 13 fo
+# t c b - "\tadd x13, x9, x13\n"
+c call cws6 b 1684300041 858880032 964173868 829956140 2611 0
+# t d c fsc "\tldr w12, [x13]\n"
+d call cws6c c fsc 1919183881 842102560 2019237932 173880113 0 0
+# t e d fagg "\tmov x12, x13\n"
+e call cws6c d fagg 1987013897 842102816 829956140 2611 0 0
+# t f e - "\tstr x12, [x21, #{off}]\n"
+f_1 call cws6 e 1920234249 842102816 2019237932 539767090 35 0
+f_2 call cwdec f_1 off
+f call cws6 f_2 2653 0 0 0 0 0
+ret f
+end
+# put (op 28): a copy with field V1 replaced
+fn qgput io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+t at p2 7
+size at p2 9
+k0 at p2 10
+v0 at p2 11
+v1 at p2 13
+k2 at p2 14
+v2 at p2 15
+off at p2 18
+first call qtw p5 t 1
+fo fold qfsz v1 0 p7 p6 first
+fi add first v1
+ft call qw65 p6 fi
+fsz call qw65 p7 ft
+ftag call qtw p5 ft 0
+fagg ge ftag 4
+fsc lt ftag 3
+ns select fsc 1 0
+ng select fagg 1 0
+a call qalloc p0 0 size
+b call qld a 0 9 k0 v0 np
+# t c b - "\tmov x0, x12\n\tmov x1, x9\n"
+c_1 call cws6 b 1987013897 741373984 842102816 1869416714 829956214 964173868
+c call cws6 c_1 10 0 0 0 0 0
+d call qmovx c 0 2 size
+# t e d - "\tbl _a0rt_copy\n"
+e call cws6 d 543973897 1915773279 1868783476 686448 0 0
+f call qmovx e 0 13 fo
+# t g f - "\tadd x13, x12, x13\n"
+g call cws6 f 1684300041 858880032 829956140 2015374386 668465 0
+h fold qld ns g 11 k2 v2 np
+# t i h fsc "\tstr w11, [x13]\n"
+i call cws6c h fsc 1920234249 825325344 2019237932 173880113 0 0
+l fold qld ng i 1 k2 v2 np
+# t m l fagg "\tmov x0, x13\n"
+m call cws6c l fagg 1987013897 741373984 858880032 10 0 0
+o fold qmovx ng m 2 fsz
+# t q o fagg "\tbl _a0rt_copy\n"
+q call cws6c o fagg 543973897 1915773279 1868783476 686448 0 0
+# t r q - "\tstr x12, [x21, #{off}]\n"
+r_1 call cws6 q 1920234249 842102816 2019237932 539767090 35 0
+r_2 call cwdec r_1 off
+r call cws6 r_2 2653 0 0 0 0 0
+ret r
+end
+# read (op 29), write (30), puts (31) through the runtime
+fn qgio io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+np at p2 1
+op at p2 2
+k1 at p2 12
+v1 at p2 13
+size at p2 9
+off at p2 18
+rd eq op 29
+wr eq op 30
+pu eq op 31
+nrd select rd 1 0
+npu select pu 1 0
+# t a p0 rd "\tbl _a0rt_read\n\tmov w13, w0\n"
+a_1 call cws6c p0 rd 543973897 1915773279 1701994356 151676001 544632685 741552503
+a call cws6c a_1 rd 170948384 0 0 0 0 0
+b fold qalloc nrd a size
+# t c b rd "\tstr w13, [x12]\n\tstr x12, [x21, #{off}]\n"
+c_1 call cws6c b rd 1920234249 858879776 2019237932 173879857 1920234249 842102816
+c_2 call cws6c c_1 rd 2019237932 539767090 35 0 0 0
+c_3 call cwdecc c_2 rd off
+c call cws6c c_3 rd 2653 0 0 0 0 0
+wp or wr pu
+nwp select wp 1 0
+d fold qld nwp c 0 k1 v1 np
+# t e d wr "\tbl _a0rt_write\n"
+e call cws6c d wr 543973897 1915773279 1920425844 174421097 0 0
+pt call cotype k1 v1 p4 p6 p11 p12
+pn call qtw p5 pt 1
+f fold qmovw npu e 1 pn
+# t g f pu "\tbl _a0rt_puts\n"
+g call cws6c f pu 543973897 1915773279 1970298740 684916 0 0
+ret g
+end
+# node p1 of the function with first node p11, first parameter p12, p13 parameters and the
+# name (p14 p15); tables nodes args ntys types tlist szt fns fnm pool
+fn qnode io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 u32 u32 u32 -> io
+g add p11 p1
+b6 mul g 6
+b1 add b6 1
+op call qw128 p2 b1
+b2 add b6 2
+na call qw128 p2 b2
+b3 add b6 3
+fa call qw128 p2 b3
+b4 add b6 4
+ce call qw128 p2 b4
+b5 add b6 5
+pr call qw128 p2 b5
+t call qw24 p4 g
+tag call qtw p5 t 0
+size call qw65 p7 t
+x0 mul fa 2
+k0 call qw256 p3 x0
+x1 add x0 1
+v0 call qw256 p3 x1
+x2 add x0 2
+k1 call qw256 p3 x2
+x3 add x0 3
+v1 call qw256 p3 x3
+x4 add x0 4
+k2 call qw256 p3 x4
+x5 add x0 5
+v2 call qw256 p3 x5
+cell add p13 p1
+off mul cell 8
+nc rec p1 p13 op na fa ce pr t tag size k0 v0 k1 v1 k2 v2 p14 p15 off
+o1 eq op 1
+o18 eq op 18
+ms or o1 o18
+nms select ms 1 0
+alo ge op 2
+ahi le op 17
+alu and alo ahi
+nalu select alu 1 0
+o19 eq op 19
+ncall select o19 1 0
+o20 eq op 20
+o21 eq op 21
+fl or o20 o21
+nfl select fl 1 0
+o22 eq op 22
+o24 eq op 24
+ar or o22 o24
+nar select ar 1 0
+o23 eq op 23
+nrec select o23 1 0
+o25 eq op 25
+nget select o25 1 0
+o26 eq op 26
+nset select o26 1 0
+o27 eq op 27
+nat select o27 1 0
+o28 eq op 28
+nput select o28 1 0
+oio ge op 29
+nio select oio 1 0
+a fold qgmov nms p0 nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+b fold qgalu nalu a nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+c fold qgcall ncall b nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+d fold qgfold nfl c nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+e fold qgarr nar d nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+f fold qgrec nrec e nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+h fold qgget nget f nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+i fold qgset nset h nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+l fold qgat nat i nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+m fold qgput nput l nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+o fold qgio nio m nc p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+ret o
+end
+# parameter p1 (list tlist p2 from p4) from its register or stack slot into its cell
+fn qprm io u32 u32x128x65 u32x384x65 u32 -> io
+pl call qplace p2 p3 p4 p1
+loc at pl 0
+wh at pl 1
+cls at pl 2
+isr eq loc 1
+iss eq loc 2
+c1 eq cls 1
+c2 eq cls 2
+c3 eq cls 3
+sc or c1 c2
+rs and isr sc
+rp and isr c3
+# t a p0 rs "\tmov w9, w{wh}\n"
+a_1 call cws6c p0 rs 1987013897 741963552 30496 0 0 0
+a_2 call cwdecc a_1 rs wh
+a call cws6c a_2 rs 10 0 0 0 0 0
+# t b a rp "\tmov x9, x{wh}\n"
+b_1 call cws6c a rp 1987013897 741963808 30752 0 0 0
+b_2 call cwdecc b_1 rp wh
+b call cws6c b_2 rp 10 0 0 0 0 0
+so add wh 16
+s1 and iss c1
+s2 and iss c2
+s3 and iss c3
+# t c b s1 "\tldr w9, [x29, #{so}]\n"
+c_1 call cws6c b s1 1919183881 741963552 846748448 589311033 0 0
+c_2 call cwdecc c_1 s1 so
+c call cws6c c_2 s1 2653 0 0 0 0 0
+# t d c s2 "\tldrb w9, [x29, #{so}]\n"
+d_1 call cws6c c s2 1919183881 964108386 2019237932 539769138 35 0
+d_2 call cwdecc d_1 s2 so
+d call cws6c d_2 s2 2653 0 0 0 0 0
+# t e d s3 "\tldr x9, [x29, #{so}]\n"
+e_1 call cws6c d s3 1919183881 741963808 846748448 589311033 0 0
+e_2 call cwdecc e_1 s3 so
+e call cws6c e_2 s3 2653 0 0 0 0 0
+nio ne loc 0
+ko mul p1 8
+# t f e nio "\tstr x9, [x21, #{ko}]\n"
+f_1 call cws6c e nio 1920234249 741963808 846748448 589311025 0 0
+f_2 call cwdecc f_1 nio ko
+f call cws6c f_2 nio 2653 0 0 0 0 0
+ret f
+end
+# function p11 + p1 (tables nodes args ntys types tlist szt fns fnm pool)
+fn qfn io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 -> io
+f add p11 p1
+fb mul f 7
+np call cfw p8 fb 1
+fp call cfw p8 fb 2
+rt call cfw p8 fb 3
+fn0 call cfw p8 fb 4
+cnt call cfw p8 fb 5
+rw call cfw p8 fb 6
+m2 mul f 2
+ns call qw16 p9 m2
+m3 add m2 1
+nl call qw16 p9 m3
+nn add np cnt
+cb mul nn 8
+c15 add cb 15
+cells and c15 4294967280
+# t a p0 - "\t.globl _a0_{name:p10,ns,nl}\n\t.p2align 2\n_a0_{name:p10,ns,nl}:\n\tstp x29, x30, [sp, #-16]!\n\tmov x29, sp\n\tstp x19, x20, [sp, #-16]!\n\tstp x21, x22, [sp, #-16]!\n"
+a_1 call cws6 p0 1818701321 543973999 1597006175 0 0 0
+a_2 call cwnm a_1 true p10 ns nl
+a_3 call cws6 a_2 1882065162 1768710450 840986215 811687690 95 0
+a_4 call cwnm a_3 true p10 ns nl
+a_5 call cws6 a_4 1929972282 2015391860 539769138 741356408 1886608160 757276716
+a_6 call cws6 a_5 559756849 1869416714 846733430 1931488313 1929972336 2015391860
+a_7 call cws6 a_6 539769137 741356152 1886608160 757276716 559756849 1953696010
+a call cws6 a_7 846733424 2015374385 539767346 745567067 825041696 169958710
+b call qmovx a 0 16 cells
+# t c b - "\tsub sp, sp, x16\n\tmov x21, sp\n\tmov x22, x8\n"
+c_1 call cws6 b 1651864329 745567008 745567008 909211680 1869416714 846733430
+c call cws6 c_1 1931488305 1829309040 2015393391 539767346 669816 0
+d fold qprm np c p6 p5 fp
+e fold qnode cnt d p2 p3 p4 p5 p6 p7 p8 p9 p10 fn0 fp np ns nl
+rk shr rw 28
+rv and rw 268435455
+rtag call qtw p5 rt 0
+ragg ge rtag 4
+rsc lt rtag 3
+nsc select rsc 1 0
+nag select ragg 1 0
+g fold qld nsc e 0 rk rv np
+h fold qld nag g 1 rk rv np
+# t l h ragg "\tmov x0, x22\n"
+l call cws6c h ragg 1987013897 741373984 842168352 10 0 0
+rsz call qw65 p7 rt
+m fold qmovx nag l 2 rsz
+# t o m ragg "\tbl _a0rt_copy\n"
+o call cws6c m ragg 543973897 1915773279 1868783476 686448 0 0
+# t q o - "\tsub sp, x29, #32\n\tldp x21, x22, [sp], #16\n\tldp x19, x20, [sp], #16\n\tldp x29, x30, [sp], #16\n\tret\n\n"
+q_1 call cws6 o 1651864329 745567008 959608864 857940012 1812531762 2015391844
+q_2 call cws6 q_1 539767090 741487224 1886608160 589311069 151664177 544236652
+q_3 call cws6 q_2 741945720 808613920 1935351852 539778416 171323683 1885629449
+q_4 call cws6 q_3 959608864 863510572 1528835120 744321139 909189920 1701972234
+q call cws6 q_4 658036 0 0 0 0 0
+ret q
+end
+fn qpre io u32 -> io
+# t a p0 - "// Generated by the A0 AArch64 emitter written in A0 (compiler/emit_arm64.a0).\n\t.text\n\t.p2align 2\n_a0rt_copy:\n\tcmp x2, #16\n\tb.lo 2f\n1:\tldr q16, [x1], #16\n\tstr q16, [x0], #16\n\tsub x2, x2, #16\n\tcmp x2, #16\n\tb.hs 1b\n2:\tcbz x2, 4f\n3:\tldr w3, [x1], #4\n\tstr w3, [x0], #4\n\tsub x2, x2, #4\n\tcbnz x2, 3b\n4:\tret\n\t.p2align 2\n_a0rt_zero:\n\tmovi v16.2d, #0\n\tcmp x2, #16\n\tb.lo 2f\n1:\tstr q16, [x0], #16\n\tsub x2, x2, #16\n\tcmp x2, #16\n\tb.hs 1b\n2:\tcbz x2, 4f\n3:\tstr wzr, [x0], #4\n\tsub x2, x2, #4\n\tcbnz x2, 3b\n4:\tret\n\n"
+a_1 call cws6 p0 1193291567 1919250021 1684370529 544825888 543516788 1092628545
+a_2 call cws6 a_1 1751347777 1696609334 1953786221 1998615141 1953786226 1763733093
+a_3 call cws6 a_2 809574510 1868769312 1818849389 1697608293 1601464685 913142369
+a_4 call cws6 a_3 811675188 151662121 2019914798 772344436 1818309232 544106345
+a_5 call cws6 a_4 1633618482 1601466928 2037411683 1661536826 2015391853 589311026
+a_6 call cws6 a_5 151664177 1869360738 174469664 1812544049 1897951844 539768369
+a_7 call cws6 a_6 1563523163 824385580 1929972278 1897951860 539768369 1563457627
+a_8 call cws6 a_7 824385580 1929972278 2015388277 2015374386 589311026 151664177
+a_9 call cws6 a_8 544238947 539767416 171323683 1747870217 1647386739 154808842
+a_10 call cws6 a_9 544891491 539767416 856319540 1684801850 863445106 2019237932
+a_11 call cws6 a_10 539778353 151663651 544371827 539767671 1563457627 874717228
+a_12 call cws6 a_11 1970473226 846733410 846733356 874717228 1650657546 2015394414
+a_13 call cws6 a_12 857746482 976489058 1952805385 1882065162 1768710450 840986215
+a_14 call cws6 a_13 811687690 2053076082 980382309 1869416714 1981835638 841889329
+a_15 call cws6 a_14 589311076 1661536816 2015391853 589311026 151664177 1869360738
+a_16 call cws6 a_15 174469664 1929984561 1897951860 539768369 1563457627 824385580
+a_17 call cws6 a_16 1929972278 2015388277 2015374386 589311026 151664177 544238947
+a_18 call cws6 a_17 539767416 171323683 1747870217 1647386739 154808842 544891491
+a_19 call cws6 a_18 539767416 856319540 1953696058 2054627442 1528835186 744304760
+a_20 call cws6 a_19 171189024 1651864329 741505056 741505056 171189024 1851941641
+a call cws6 a_20 846733434 1647517740 154809354 175400306 10 0
+ret a
+end
+# (io types tlist fns nodes args ntys pool fnm ntypes from to head): the prelude when head is 1,
+# then functions [from, to)
+fn qemit io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 -> io
+szt call qszt p1 p2 p9
+a fold qpre p12 p0
+nf sub p11 p10
+c fold qfn nf a p4 p5 p6 p1 p2 szt p3 p8 p7 p10
+ret c
+end
+fn qemst io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 -> io
+r call qemit p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13
+ret r
+end
+# `cunit` (emit_c.a0) with this emitter: lex, parse and check the source p1 of p2 bytes,
+# functions [p4, nfns) checked given the bounds p3 (p5 strict), and their assembly written when
+# there is no diagnostic (the prelude when p6). (io code fstat nfns). The front end is repeated
+# here, not shared: its tables together are over the 2^21-bit bound of one aggregate, so they
+# cannot be returned from a common function.
+fn qunit io u32x128x128 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+lx call lexsrc p1 p2
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 p1 toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+nsym at s1 7
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s2 call pass2 p1 sinfo nsym
+pool at s2 0
+s3 call pass3 p1 toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4
+fns at s5 0
+nodes at s5 1
+args at s5 2
+pcode at s5 8
+# after a parse error the function count may be below p4: nothing is checked then
+cfrom call cumin p4 nhc
+ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
+types2 at ck 0
+tlist2 at ck 2
+ntys at ck 4
+fstat at ck 7
+ntypes2 at ck 8
+cerr at ck 10
+ns127 add nsym 127
+nsp shr ns127 7
+z64 call z64
+st0 rec z64 0
+st fold cstpg nsp st0 sinfo
+starts at st 0
+z16 call z16
+fnm fold cfnm nhc z16 fns sinfo starts
+grew ne ntypes2 ntypes
+added and grew p5
+pok eq pcode 0
+c1 select added 5 0
+cok eq cerr 0
+c2 select cok c1 cerr
+code select pok c2 pcode
+ok eq code 0
+go select ok 1 0
+hw select p6 1 0
+t fold qemst go p0 types2 tlist2 fns nodes args ntys pool fnm ntypes2 p4 nhc hw
+r rec t code fstat nhc
+ret r
 end

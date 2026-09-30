@@ -32,6 +32,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { pathToFileURL } from 'node:url';
 import { C_IO_INPUT_CAPACITY, C_IO_OUTPUT_CAPACITY, compile } from '../src/backends.js';
 import {
   type Func,
@@ -52,18 +53,18 @@ import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
 /** The front end's source limit (compiler/lex.a0 `readsrc`). */
-const FRONT_END_BYTES = 16384;
+export const FRONT_END_BYTES = 16384;
 /** Name of the header-prelude function of a chunk (must not name a program function). */
-const PRELUDE = 'a0boottypes';
+export const PRELUDE = 'a0boottypes';
 /** io capacities of every stage: n, the bytes, head, strict, from and up to 1024 bounds in. */
-const STAGE_INPUT = 1 + FRONT_END_BYTES + 3 + 1024;
-const STAGE_OUTPUT = 1 << 22;
+export const STAGE_INPUT = 1 + FRONT_END_BYTES + 3 + 1024;
+export const STAGE_OUTPUT = 1 << 22;
 /** Stack of the thread that runs the compiler (aggregates are passed by value). */
-const STAGE_STACK = 1 << 30;
-const BUILD_DIR = join('dist', 'bootstrap');
-const CLANG_BUILD = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Wno-unused-parameter'];
+export const STAGE_STACK = 1 << 30;
+export const BUILD_DIR = join('dist', 'bootstrap');
+export const CLANG_BUILD = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Wno-unused-parameter'];
 
-const SMALL: [string, string][] = [
+export const SMALL: [string, string][] = [
   [
     'clamp',
     'fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\na select lo p1 p0\nhi gt a p2\nr select hi p2 a\nret r\nend\n',
@@ -76,8 +77,11 @@ const SMALL: [string, string][] = [
   ],
 ];
 
-/** Every stage's entry: stdin words (little-endian) are the io input; see compiler/boot.a0. */
-const STAGE_MAIN = `#include <pthread.h>
+/**
+ * The C main of a stage whose compiler is `entry`: stdin words (little-endian) are the io
+ * input, stdout the text bytes then the trailer words; see compiler/boot.a0.
+ */
+export const stageMain = (entry: string): string => `#include <pthread.h>
 #include <stdio.h>
 #define A0_IO_INPUT_CAPACITY ${STAGE_INPUT}u
 #define A0_IO_OUTPUT_CAPACITY ${STAGE_OUTPUT}u
@@ -86,7 +90,7 @@ static a0_io io;
 static uint32_t code;
 static void *run(void *arg) {
   (void)arg;
-  code = a0_emitchunkio(&io);
+  code = a0_${entry}(&io);
   return NULL;
 }
 int main(void) {
@@ -129,11 +133,11 @@ int main(void) {
 `;
 
 /** Sources also compiled by `emitchunkio` in the reference interpreter (seconds each there). */
-const INTERPRETED = new Set(['small', 'kernels.a0']);
-const INTERPRETED_ILL_TYPED = 4;
+export const INTERPRETED = new Set(['small', 'kernels.a0']);
+export const INTERPRETED_ILL_TYPED = 4;
 
 /** A module without driver-callable functions: it must compile warning-free on its own. */
-async function compileOnly(clang: ToolInfo, text: string): Promise<TargetReport> {
+export async function compileOnly(clang: ToolInfo, text: string): Promise<TargetReport> {
   return withTempDir(async (dir) => {
     await writeFile(join(dir, 'module.c'), text, 'utf8');
     // Included like the test driver includes it, so unused prelude helpers draw no warning.
@@ -151,7 +155,7 @@ async function compileOnly(clang: ToolInfo, text: string): Promise<TargetReport>
 
 // --- chunked mode --------------------------------------------------------------------------
 
-interface Chunk {
+export interface Chunk {
   readonly source: string;
   readonly head: boolean;
   /** 1 when the program is split: a body may then not build a type no header names. */
@@ -176,7 +180,7 @@ function headerTypes(line: string): string[] {
  * program over the limits is split at function boundaries (consecutive functions in program
  * order, each chunk within the front end's source limit).
  */
-function planChunks(src: string): Chunk[] {
+export function planChunks(src: string): Chunk[] {
   let program: Program | undefined;
   try {
     program = parse(src);
@@ -229,13 +233,13 @@ function planChunks(src: string): Chunk[] {
   return chunks;
 }
 
-interface StageRun {
+export interface StageRun {
   readonly code: number;
   readonly bounds: number[];
   readonly text: string;
 }
 
-function runStageChunk(exe: string, chunk: Chunk, bounds: readonly number[]): StageRun {
+export function runStageChunk(exe: string, chunk: Chunk, bounds: readonly number[]): StageRun {
   const bytes = [...Buffer.from(chunk.source)];
   const words = [bytes.length, ...bytes, chunk.head ? 1 : 0, chunk.strict ? 1 : 0];
   words.push(bounds.length, ...bounds);
@@ -252,7 +256,11 @@ function runStageChunk(exe: string, chunk: Chunk, bounds: readonly number[]): St
   return { code: 0, bounds: own, text: out.subarray(0, c).toString('latin1') };
 }
 
-function runInterpreterChunk(entry: TypedFunc, chunk: Chunk, bounds: readonly number[]): StageRun {
+export function runInterpreterChunk(
+  entry: TypedFunc,
+  chunk: Chunk,
+  bounds: readonly number[],
+): StageRun {
   const bytes = [...Buffer.from(chunk.source)];
   const io = makeIo([
     bytes.length,
@@ -274,7 +282,7 @@ function runInterpreterChunk(entry: TypedFunc, chunk: Chunk, bounds: readonly nu
   };
 }
 
-interface Emission {
+export interface Emission {
   readonly code: number;
   readonly text: string;
   readonly chunks: number;
@@ -284,7 +292,7 @@ interface Emission {
 }
 
 /** A program's C through a compiler stage, chunk by chunk; the first nonzero code stops it. */
-function emitChunked(
+export function emitChunked(
   src: string,
   step: (chunk: Chunk, bounds: readonly number[]) => StageRun,
 ): Emission {
@@ -312,7 +320,7 @@ function emitChunked(
 }
 
 /** A stage that rejects the compiler: the failing chunk is kept for inspection. */
-async function rejected(stage: string, e: Emission): Promise<void> {
+export async function rejected(stage: string, e: Emission): Promise<void> {
   if (e.code === 0) return;
   const path = join(BUILD_DIR, 'rejected-chunk.a0');
   await writeFile(path, e.failed?.source ?? '', 'utf8');
@@ -321,11 +329,16 @@ async function rejected(stage: string, e: Emission): Promise<void> {
   );
 }
 
-async function buildStage(clang: ToolInfo, name: string, c: string): Promise<[string, number]> {
+export async function buildStage(
+  clang: ToolInfo,
+  name: string,
+  c: string,
+  entry = 'emitchunkio',
+): Promise<[string, number]> {
   const dir = join(BUILD_DIR, name);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'emitter.c'), c, 'utf8');
-  await writeFile(join(dir, 'main.c'), STAGE_MAIN, 'utf8');
+  await writeFile(join(dir, 'main.c'), stageMain(entry), 'utf8');
   const start = performance.now();
   const r = runTool(clang.path as string, [...CLANG_BUILD, '-o', name, 'main.c'], {
     cwd: dir,
@@ -336,7 +349,7 @@ async function buildStage(clang: ToolInfo, name: string, c: string): Promise<[st
 }
 
 /** Function `name` with every function it reaches (calls, fold/loop bodies and predicates). */
-function closure(fns: readonly Func[], root: string): string {
+export function closure(fns: readonly Func[], root: string): string {
   const byName = new Map(fns.map((f) => [f.name, f] as const));
   const seen = new Set<string>();
   const visit = (name: string): void => {
@@ -352,7 +365,7 @@ function closure(fns: readonly Func[], root: string): string {
 }
 
 /** Distinct callee closures of every function of `program`, labelled `prefix/name`. */
-function closures(prefix: string, program: TypedProgram): [string, string][] {
+export function closures(prefix: string, program: TypedProgram): [string, string][] {
   const out = new Map<string, string>();
   for (const f of program.functions) {
     const src = closure(program.functions, f.name);
@@ -386,7 +399,7 @@ interface SourceReport {
   readonly detail?: string;
 }
 
-const round1 = (ms: number): number => Math.round(ms * 10) / 10;
+export const round1 = (ms: number): number => Math.round(ms * 10) / 10;
 
 async function main(): Promise<void> {
   const clang = findClang();
@@ -618,7 +631,8 @@ async function main(): Promise<void> {
   process.exit(failed === 0 && passed.length > 0 && fixedPoint ? 0 : 1);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });
