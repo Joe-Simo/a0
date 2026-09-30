@@ -627,6 +627,71 @@ Wins, ties, losses, stated separately:
   - Second general fix: an edit's new node that nothing reads is rejected with the fix (`add 'ret ID'`), so that shape is a diagnosed rejection instead of a silently wrong program. Regression check: every earlier collection has identical accepted counts under the new checks.
   - Loss still published: Haiku one shot on the 304-token primer is 2 tasks below the 388-token primer on set A. The default primer stays MODEL_GUIDE.min.txt until a repair-round collection shows the short one recovers.
 
+## Session 2026-09-30 (arm64 registers and loops)
+
+- **Direct AArch64 backend, second version (a0c-0.1.7, `src/arm64.ts`)**: the two published
+  losses against A0-via-clang came from the first version keeping every value in a stack slot
+  and making a real call per iteration. Three changes, all inside the backend:
+  1. **Register allocation for scalars.** A dry pass over the emission walk records each
+     u32/bool value's definition position and last use (a value read inside a loop stays live
+     to the loop's end); a linear scan then gives each one a home among the callee-saved
+     w19-w28, spilling to a slot only when they run out. A function with no residual call is a
+     leaf and also uses w0-w7, keeping parameter i in w_i, so `ident` is `ret` and `affine` is
+     two instructions. Callee-saved homes survive residual calls, so nothing is saved or
+     restored around a call; AAPCS64 argument and result placement is unchanged.
+  2. **Inlining at `call`, `fold`, and `loop` sites.** Callees of at most 48 nodes (nested to
+     6 deep) are emitted in the caller's frame with their parameters bound to the caller's
+     values; the loop state and counter are ordinary scalars, so `loop64` is a ten-instruction
+     register loop (compare, branch, five ops, state move, increment, branch). Larger callees
+     are still called out of line.
+  3. **Aggregates updated in place.** A `set`/`put` on a provably unshared value (the same
+     `mutableHere` analysis the JavaScript backend uses: fresh or the owned iteration state,
+     read only by `get`/`at` before the node, not returned) stores one element and its result
+     aliases the container's slot; `mov` and an inlined callee's result alias likewise, and a
+     fold whose init is unshared iterates in the init's own slot. `arrfill` went from two
+     8-word copies plus a call per iteration to one `str`.
+  Frames above 4 KiB are now probed one page at a time inline instead of through
+  `___chkstk_darwin`.
+- **Correctness**: `bun run verify` native_arm64 4297/4297 at both optimization levels, every
+  other path unchanged (5262). Two bugs found by the corpus and fixed before this commit: a
+  residual call did not record its argument reads, so a loop state could take the register of
+  a parameter still needed as an argument (g13); and an inlined callee's result was bound at
+  the position of the callee's last node, so a dead trailing node could share the return
+  value's register (g29). Unit tests 35/35 (12-parameter call, aggregate result, 4 KiB frame,
+  fold with array state, loop with variable cap all still covered); lint and typecheck clean.
+- **Measured (arm64 vs A0-via-clang, same C driver, interleaved, median of 9 samples of 20 M
+  calls; the machine was NOT quiet: load average 10-21 on 8 cores for both runs, so only the
+  ratios are meaningful and even those carry noise of about +-0.1x on the 3-6 ns kernels)**:
+
+  | kernel | before | after |
+  |---|---|---|
+  | affine | 0.95x | 1.02x |
+  | rotl | 1.00x | 1.19x |
+  | clamp | 1.00x | 1.08x |
+  | mix | 1.06x | 1.12x |
+  | ident | 1.00x | 1.01x |
+  | noop | 1.01x | 1.01x |
+  | chain3 | 1.39x | 1.03x |
+  | branchy | 1.06x | 1.02x |
+  | arrfill | **30.89x** | **1.32x** |
+  | loop64 | **8.47x** | **1.12x** |
+
+  A second "after" pass under a heavier load (14-18) gave affine 1.05x, rotl 1.19x, clamp
+  1.11x, mix 1.10x, ident 1.00x, noop 0.98x, chain3 1.02x, branchy 1.23x, arrfill 1.38x,
+  loop64 1.27x, with absolute times up to 2x the first pass: the spread between the two
+  passes is the load, and the honest claim is "arrfill and loop64 went from 30x and 8x to
+  within about 1.1-1.4x of the clang path"; the exact number needs a quiet machine.
+  The arm64 kernel is still an out-of-line call from the C driver while the C path inlines
+  into the driver loop, so a ratio near 1.0x on a 2-5 ns kernel is the call overhead, not
+  code quality. `results/exec-benchmark.json` is not regenerated here (the full bench needs a
+  quiet machine); the committed 8.4x/30x numbers there and on the site are superseded by this
+  table and should be refreshed by a quiet `bun run exec-bench`.
+- **What remains**: a leaf still saves and restores x29/x30 (four instructions around `rotl`'s five), loop-invariant constants (the `movz/movk` of a literal multiplier is
+  materialized inside the loop), the per-iteration `mov` of the body's result into the state
+  register (the body's last node could be homed on the state), no register homes for
+  aggregates or their elements, callees above 48 nodes still copy aggregate arguments on
+  entry, and the C driver's call boundary itself. io functions are still refused.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
