@@ -35,6 +35,13 @@
  * `get`/`at` result aliases into its container (no copy), which is why such reads count as
  * sharing for the analysis; `mov` aliases; `select` chooses an address at run time.
  *
+ * Code shape: fold/loop bodies and predicates of up to INLINE_BODY_NODES nodes, and scalar
+ * calls of functions of up to INLINE_CALL_NODES nodes, are emitted in place when they need no
+ * frame and no io (literal arguments become constants); counted loops are rotated (one entry
+ * guard, a `br_if` back edge); element addresses scale by a shift. Each body then goes through
+ * `Code.finish`: adjacent set/get pairs stay on the operand stack or become `local.tee`, dead
+ * stores are dropped, and locals with disjoint live ranges share an index.
+ *
  * Per-function emission (`emitWasmFunction`) is a JSON record of the function's variants with
  * their code as byte runs plus symbolic call and constant-pool references; `assembleWasm`
  * resolves them into function indices and data addresses, so the per-function cache holds
@@ -175,12 +182,36 @@ const symbolFunction = (symbol: string): string | undefined =>
       ? symbol.slice(3)
       : undefined;
 
+/** One instruction (or run of plain bytes) of a body under construction. */
+type Ins =
+  | { readonly bytes: readonly number[] }
+  | { readonly local: 'get' | 'set' | 'tee'; readonly index: number }
+  | { readonly call: string }
+  | { readonly pool: number }
+  | { readonly loop: 'open' | 'close' };
+
+const LOCAL_KIND: Readonly<Record<number, 'get' | 'set' | 'tee'>> = {
+  [OP.localGet]: 'get',
+  [OP.localSet]: 'set',
+  [OP.localTee]: 'tee',
+};
+const LOCAL_OP = { get: OP.localGet, set: OP.localSet, tee: OP.localTee } as const;
+const DROP = 0x1a;
+
+/**
+ * A function body as an instruction list. Local accesses stay symbolic until `finish`, which
+ * keeps a value on the operand stack instead of a `local.set x; local.get x` pair when x has
+ * no other access, turns a set followed by a get of the same local into a `local.tee`, drops
+ * dead stores, and renumbers the non-parameter locals so ones with disjoint live ranges share
+ * an index (a range that touches a loop covers the whole loop, for the back edge).
+ */
 class Code {
-  readonly parts: Part[] = [];
-  #buf: number[] = [];
+  readonly ins: Ins[] = [];
 
   op(...b: readonly number[]): void {
-    this.#buf.push(...b);
+    const last = this.ins[this.ins.length - 1];
+    if (last !== undefined && 'bytes' in last) (last.bytes as number[]).push(...b);
+    else this.ins.push({ bytes: [...b] });
   }
 
   i32(v: number): void {
@@ -188,7 +219,9 @@ class Code {
   }
 
   local(op: number, index: number): void {
-    this.op(op, ...uleb(index));
+    const kind = LOCAL_KIND[op];
+    if (kind === undefined) throw new A0Error('wasm: not a local access');
+    this.ins.push({ local: kind, index });
   }
 
   /** i32.load / i32.store with a 4-aligned static offset. */
@@ -196,27 +229,141 @@ class Code {
     this.op(op, 2, ...uleb(offset));
   }
 
-  #flush(): void {
-    if (this.#buf.length > 0) {
-      this.parts.push(Buffer.from(this.#buf).toString('base64'));
-      this.#buf = [];
-    }
-  }
-
   call(symbol: string): void {
-    this.#flush();
-    this.parts.push({ call: symbol });
+    this.ins.push({ call: symbol });
   }
 
   poolAddress(index: number): void {
-    this.#flush();
-    this.parts.push({ pool: index });
+    this.ins.push({ pool: index });
   }
 
-  finish(): Part[] {
-    this.#flush();
-    return this.parts;
+  loopOpen(): void {
+    this.ins.push({ loop: 'open' });
   }
+
+  loopClose(): void {
+    this.ins.push({ loop: 'close' });
+  }
+
+  append(other: Code): void {
+    this.ins.push(...other.ins);
+  }
+
+  /** Resolve locals (optimised when `params` is given: locals below it are fixed) into parts. */
+  finish(params?: number): { parts: Part[]; locals: number } {
+    let ins = this.ins;
+    let locals = 0;
+    if (params === undefined) {
+      for (const x of ins) if ('local' in x) locals = Math.max(locals, x.index + 1);
+    } else {
+      ins = stackify(ins, params);
+      const map = allocateLocals(ins, params);
+      locals = map.count;
+      ins = ins.map((x) =>
+        'local' in x ? { local: x.local, index: map.index.get(x.index) ?? x.index } : x,
+      );
+    }
+    const parts: Part[] = [];
+    let buf: number[] = [];
+    const flush = (): void => {
+      if (buf.length > 0) parts.push(Buffer.from(buf).toString('base64'));
+      buf = [];
+    };
+    for (const x of ins) {
+      if ('bytes' in x) buf.push(...x.bytes);
+      else if ('local' in x) buf.push(LOCAL_OP[x.local], ...uleb(x.index));
+      else if ('loop' in x) buf.push(...(x.loop === 'open' ? [OP.loop, VOID] : [OP.end]));
+      else {
+        flush();
+        parts.push(x);
+      }
+    }
+    flush();
+    return { parts, locals };
+  }
+}
+
+function localCounts(ins: readonly Ins[]): {
+  gets: Map<number, number>;
+  sets: Map<number, number>;
+} {
+  const gets = new Map<number, number>();
+  const sets = new Map<number, number>();
+  for (const x of ins) {
+    if (!('local' in x)) continue;
+    const m = x.local === 'get' ? gets : sets;
+    m.set(x.index, (m.get(x.index) ?? 0) + 1);
+  }
+  return { gets, sets };
+}
+
+/** Peephole over adjacent local accesses (see `Code`); parameters are left alone. */
+function stackify(input: readonly Ins[], params: number): Ins[] {
+  const { gets, sets } = localCounts(input);
+  const out: Ins[] = [];
+  for (let i = 0; i < input.length; i += 1) {
+    const x = input[i] as Ins;
+    if (!('local' in x) || x.index < params || x.local === 'get') {
+      out.push(x);
+      continue;
+    }
+    const next = input[i + 1];
+    const reads = gets.get(x.index) ?? 0;
+    const followed =
+      next !== undefined && 'local' in next && next.local === 'get' && next.index === x.index;
+    if (x.local === 'set' && followed) {
+      i += 1;
+      if (reads === 1 && sets.get(x.index) === 1) continue;
+      out.push({ local: 'tee', index: x.index });
+    } else if (reads === 0) {
+      if (x.local === 'set') out.push({ bytes: [DROP] });
+    } else {
+      out.push(x);
+    }
+  }
+  return out;
+}
+
+/** Linear-scan reuse of non-parameter local indices over live ranges widened across loops. */
+function allocateLocals(
+  ins: readonly Ins[],
+  params: number,
+): { index: Map<number, number>; count: number } {
+  const range = new Map<number, [number, number]>();
+  const loops: [number, number][] = [];
+  const open: number[] = [];
+  for (const [p, x] of ins.entries()) {
+    if ('loop' in x) {
+      if (x.loop === 'open') open.push(p);
+      else loops.push([open.pop() as number, p]);
+    } else if ('local' in x && x.index >= params) {
+      const r = range.get(x.index);
+      if (r === undefined) range.set(x.index, [p, p]);
+      else r[1] = p;
+    }
+  }
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const r of range.values()) {
+      for (const [a, b] of loops) {
+        if (r[0] <= b && r[1] >= a && (r[0] > a || r[1] < b)) {
+          r[0] = Math.min(r[0], a);
+          r[1] = Math.max(r[1], b);
+          changed = true;
+        }
+      }
+    }
+  }
+  const order = [...range.entries()].sort((x, y) => x[1][0] - y[1][0]);
+  const slotEnd: number[] = [];
+  const index = new Map<number, number>();
+  for (const [local, [start, end]] of order) {
+    let slot = slotEnd.findIndex((e) => e < start);
+    if (slot < 0) slot = slotEnd.length;
+    slotEnd[slot] = end;
+    index.set(local, params + slot);
+  }
+  return { index, count: slotEnd.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +423,20 @@ function mutableHere(
 
 type Variant = 'value' | 'owned';
 
+/** Where an inlined function's parameter comes from: a local of the host, or a literal. */
+type ParamSource = { readonly local: number } | { readonly value: number };
+
+interface InlineHost {
+  readonly parent: FunctionEmitter;
+  readonly params: readonly ParamSource[];
+}
+
+/** Iteration bodies and predicates up to this many nodes are emitted inside the loop. */
+const INLINE_BODY_NODES = 24;
+/** Scalar calls of functions up to this many nodes are emitted at the call site. */
+const INLINE_CALL_NODES = 8;
+const INLINE_DEPTH = 3;
+
 const isIterationShape = (fn: TypedFunc): boolean =>
   fn.params[0] !== undefined && !isPrimitive(fn.params[0]) && fn.params[1] === 'u32';
 
@@ -331,7 +492,9 @@ function literalBytes(fn: TypedFunc, node: Node): Uint8Array | undefined {
 class FunctionEmitter {
   readonly fn: TypedFunc;
   readonly variant: Variant;
-  readonly code = new Code();
+  readonly code: Code;
+  readonly host: InlineHost | undefined;
+  readonly depth: number;
   readonly pool: string[];
   readonly poolIndex: Map<string, number>;
   /** Nodes that alias other storage, mapped to the root operand (a slot node or a parameter). */
@@ -345,12 +508,21 @@ class FunctionEmitter {
   /** The node whose storage is the result address (value variant, aggregate result). */
   readonly retSlot: string | undefined;
 
-  constructor(fn: TypedFunc, variant: Variant, pool: string[], poolIndex: Map<string, number>) {
+  constructor(
+    fn: TypedFunc,
+    variant: Variant,
+    pool: string[],
+    poolIndex: Map<string, number>,
+    host?: InlineHost,
+  ) {
     this.fn = fn;
     this.variant = variant;
     this.pool = pool;
     this.poolIndex = poolIndex;
-    const aggregateResult = variant === 'value' && !isPrimitive(fn.result);
+    this.host = host;
+    this.code = host === undefined ? new Code() : host.parent.code;
+    this.depth = host === undefined ? 0 : host.parent.depth + 1;
+    const aggregateResult = host === undefined && variant === 'value' && !isPrimitive(fn.result);
     this.sret = aggregateResult ? 0 : undefined;
     this.paramBase = aggregateResult ? 1 : 0;
     this.#nextLocal = this.paramBase + fn.params.length;
@@ -409,7 +581,23 @@ class FunctionEmitter {
   }
 
   newLocal(): number {
-    return this.#nextLocal++;
+    return this.host === undefined ? this.#nextLocal++ : this.host.parent.newLocal();
+  }
+
+  /** The local holding parameter `i` (an inlined body maps it to the host's local). */
+  paramLocal(i: number): number {
+    if (this.host === undefined) return this.paramBase + i;
+    const src = this.host.params[i];
+    if (src === undefined || !('local' in src))
+      throw new A0Error('wasm: literal parameter has no local');
+    return src.local;
+  }
+
+  /** Does emitting this function need frame storage (so it cannot be inlined into a host)? */
+  needsFrame(): boolean {
+    return this.fn.nodes.some(
+      (n) => !isPrimitive(this.fn.types.get(n.id) ?? 'u32') && this.#ownsSlot(n.id),
+    );
   }
 
   fp(): number {
@@ -419,28 +607,31 @@ class FunctionEmitter {
 
   /** Bind a node's local: a fresh frame slot (or the result address) for slot-owning nodes. */
   bindSlot(id: string, t: Type): number {
+    if (id === this.retSlot) {
+      this.locals.set(id, this.sret as number);
+      return this.sret as number;
+    }
+    const offset = this.frame;
+    this.frame += align(bytesOf(t), 4);
+    // The first slot is the frame pointer itself.
+    if (offset === 0) {
+      this.locals.set(id, this.fp());
+      return this.fp();
+    }
     const local = this.newLocal();
     this.locals.set(id, local);
-    if (id === this.retSlot) {
-      this.code.local(OP.localGet, this.sret as number);
-    } else {
-      const offset = this.frame;
-      this.frame += align(bytesOf(t), 4);
-      this.code.local(OP.localGet, this.fp());
-      if (offset !== 0) {
-        this.code.i32(offset);
-        this.code.op(OP.add);
-      }
-    }
+    this.code.local(OP.localGet, this.fp());
+    this.code.i32(offset);
+    this.code.op(OP.add);
     this.code.local(OP.localSet, local);
     return local;
   }
 
   localOf(o: Operand): number {
-    if (o.kind === 'param') return this.paramBase + o.index;
+    if (o.kind === 'param') return this.paramLocal(o.index);
     if (o.kind !== 'node') throw new A0Error('wasm: literal has no local');
     const root = this.root(o);
-    if (root.kind === 'param') return this.paramBase + root.index;
+    if (root.kind === 'param') return this.paramLocal(root.index);
     if (root.kind !== 'node') throw new A0Error('wasm: literal has no local');
     const local = this.locals.get(root.id);
     if (local === undefined) throw new A0Error(`wasm: unbound node ${o.id}`);
@@ -451,7 +642,62 @@ class FunctionEmitter {
   push(o: Operand): void {
     if (o.kind === 'u32') this.code.i32(o.value);
     else if (o.kind === 'bool') this.code.i32(o.value ? 1 : 0);
-    else this.code.local(OP.localGet, this.localOf(o));
+    else {
+      const src = this.#paramSource(o);
+      if (src !== undefined && 'value' in src) this.code.i32(src.value);
+      else this.code.local(OP.localGet, this.localOf(o));
+    }
+  }
+
+  #paramSource(o: Operand): ParamSource | undefined {
+    if (this.host === undefined) return undefined;
+    const root = this.root(o);
+    return root.kind === 'param' ? this.host.params[root.index] : undefined;
+  }
+
+  /** An operand as the parameter source of a function inlined here. */
+  #source(o: Operand): ParamSource {
+    if (o.kind === 'u32') return { value: o.value };
+    if (o.kind === 'bool') return { value: o.value ? 1 : 0 };
+    return this.#paramSource(o) ?? { local: this.localOf(o) };
+  }
+
+  /**
+   * Emit `callee` (variant `variant`) at this point with the given parameter sources when it is
+   * small, io-free, and needs no frame; its scalar result (value variant) is left on the stack.
+   * Returns false, having emitted nothing, when it must be called instead.
+   */
+  #tryInline(
+    callee: TypedFunc,
+    variant: Variant,
+    params: readonly ParamSource[],
+    limit: number,
+  ): boolean {
+    if (this.depth >= INLINE_DEPTH || callee.nodes.length > limit) return false;
+    if (variant === 'value' && !isPrimitive(callee.result)) return false;
+    if (callee.params.some(containsIo) || [...callee.types.values()].some(containsIo)) return false;
+    const child = new FunctionEmitter(callee, variant, this.pool, this.poolIndex, {
+      parent: this,
+      params,
+    });
+    if (child.needsFrame()) return false;
+    child.emitInline();
+    return true;
+  }
+
+  /** The body of an inlined function: its nodes, then its result (see `#tryInline`). */
+  emitInline(): void {
+    for (const n of this.fn.nodes) this.emitNode(n);
+    const root = this.root(this.fn.ret);
+    if (this.variant === 'owned') {
+      if (!(root.kind === 'param' && root.index === 0)) {
+        this.code.local(OP.localGet, this.paramLocal(0));
+        this.push(this.fn.ret);
+        this.copy(bytesOf(this.fn.result));
+      }
+    } else {
+      this.push(this.fn.ret);
+    }
   }
 
   /** dst src n memory.copy with the operands already pushed. */
@@ -479,8 +725,9 @@ class FunctionEmitter {
       this.code.op(OP.rem_u);
     }
     if (elemBytes !== 1) {
-      this.code.i32(elemBytes);
-      this.code.op(OP.mul);
+      const log = Math.log2(elemBytes);
+      this.code.i32(Number.isInteger(log) ? log : elemBytes);
+      this.code.op(Number.isInteger(log) ? OP.shl : OP.mul);
     }
     this.code.op(OP.add);
     return 0;
@@ -572,8 +819,11 @@ class FunctionEmitter {
         const callee = fn.calls.get(node.callee ?? '');
         if (callee === undefined) throw new A0Error(`wasm: unknown callee ${node.callee}`);
         if (isPrimitive(t)) {
-          for (const arg of node.args) this.push(arg);
-          c.call(`a0_${callee.name}`);
+          const params = node.args.map((arg) => this.#source(arg));
+          if (!this.#tryInline(callee, 'value', params, INLINE_CALL_NODES)) {
+            for (const arg of node.args) this.push(arg);
+            c.call(`a0_${callee.name}`);
+          }
           set();
         } else {
           const local = this.bindSlot(node.id, t);
@@ -747,40 +997,53 @@ class FunctionEmitter {
       this.push(init);
       c.local(OP.localSet, state);
     }
+    // Rotated counted loop: the trip test sits at the bottom, guarded once on entry unless the
+    // count is a literal above zero.
     const i = this.newLocal();
     c.i32(0);
     c.local(OP.localSet, i);
-    c.op(OP.block, VOID);
-    c.op(OP.loop, VOID);
-    c.local(OP.localGet, i);
-    this.push(count);
-    c.op(OP.ge_u);
-    c.op(OP.br_if, 1);
+    const guard = !(count.kind === 'u32' && count.value > 0);
+    const exit = guard || pred !== undefined;
+    if (exit) c.op(OP.block, VOID);
+    if (guard) {
+      this.push(count);
+      c.op(OP.eqz);
+      c.op(OP.br_if, 0);
+    }
+    c.loopOpen();
+    const sources = (): ParamSource[] => [
+      { local: state },
+      { local: i },
+      ...extra.map((e) => this.#source(e)),
+    ];
     const args = (): void => {
       c.local(OP.localGet, state);
       c.local(OP.localGet, i);
       for (const e of extra) this.push(e);
     };
     if (pred !== undefined) {
-      args();
-      c.call(`a0_${pred.name}`);
+      if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES)) {
+        args();
+        c.call(`a0_${pred.name}`);
+      }
       c.op(OP.eqz);
       c.op(OP.br_if, 1);
     }
-    args();
-    if (aggregate) {
-      c.call(`a0o_${body.name}`);
-    } else {
-      c.call(`a0_${body.name}`);
-      c.local(OP.localSet, state);
+    const variant: Variant = aggregate ? 'owned' : 'value';
+    if (!this.#tryInline(body, variant, sources(), INLINE_BODY_NODES)) {
+      args();
+      c.call(aggregate ? `a0o_${body.name}` : `a0_${body.name}`);
     }
+    if (!aggregate) c.local(OP.localSet, state);
     c.local(OP.localGet, i);
     c.i32(1);
     c.op(OP.add);
-    c.local(OP.localSet, i);
-    c.op(OP.br, 0);
-    c.op(OP.end);
-    c.op(OP.end);
+    c.local(OP.localTee, i);
+    this.push(count);
+    c.op(OP.lt_u);
+    c.op(OP.br_if, 0);
+    c.loopClose();
+    if (exit) c.op(OP.end);
   }
 
   /** Emit the whole variant and return its record. */
@@ -793,7 +1056,7 @@ class FunctionEmitter {
     if (this.variant === 'owned') {
       // The state is already updated in place when the result is p0's storage; otherwise store it.
       if (!(root.kind === 'param' && root.index === 0)) {
-        c.local(OP.localGet, this.paramBase);
+        c.local(OP.localGet, this.paramLocal(0));
         this.push(ret);
         this.copy(bytesOf(fn.result));
       }
@@ -806,31 +1069,33 @@ class FunctionEmitter {
     } else {
       this.push(ret);
     }
-    const body = c.finish();
     const frame = align(this.frame, STACK_ALIGN);
-    const pro = new Code();
-    const epi = new Code();
+    const all = new Code();
     if (frame > 0) {
       const fp = this.fp();
-      pro.op(OP.globalGet, 0);
-      pro.i32(frame);
-      pro.op(OP.sub);
-      pro.local(OP.localTee, fp);
-      pro.op(OP.globalSet, 0);
-      epi.local(OP.localGet, fp);
-      epi.i32(frame);
-      epi.op(OP.add);
-      epi.op(OP.globalSet, 0);
+      all.op(OP.globalGet, 0);
+      all.i32(frame);
+      all.op(OP.sub);
+      all.local(OP.localTee, fp);
+      all.op(OP.globalSet, 0);
     }
+    all.append(c);
+    if (frame > 0) {
+      all.local(OP.localGet, this.fp());
+      all.i32(frame);
+      all.op(OP.add);
+      all.op(OP.globalSet, 0);
+    }
+    const { parts, locals } = all.finish(this.paramCount);
     const symbol = this.variant === 'owned' ? `a0o_${fn.name}` : `a0_${fn.name}`;
     return {
       symbol,
       ...(this.variant === 'value' ? { exportAs: symbol } : {}),
       params: this.paramCount,
       result: this.variant === 'value' && isPrimitive(fn.result),
-      locals: this.localCount,
+      locals,
       frame,
-      code: [...pro.finish(), ...body, ...epi.finish()],
+      code: parts,
     };
   }
 }
@@ -908,7 +1173,7 @@ function ioRead(inCap: number): Fn {
   c.op(OP.else);
   c.i32(0);
   c.op(OP.end);
-  return { symbol: IO_READ, params: 1, result: true, locals: 0, code: c.finish() };
+  return { symbol: IO_READ, params: 1, result: true, locals: 0, code: c.finish().parts };
 }
 
 /** void a0_write(io t, u32 v): output[noutput++] = v while noutput < OUT. */
@@ -936,7 +1201,7 @@ function ioWrite(inCap: number, outCap: number): Fn {
   c.op(OP.add);
   c.mem(OP.store, noutput);
   c.op(OP.end);
-  return { symbol: IO_WRITE, params: 2, result: false, locals: 0, code: c.finish() };
+  return { symbol: IO_WRITE, params: 2, result: false, locals: 0, code: c.finish().parts };
 }
 
 /** void a0_puts(io t, u32 *e, u32 n): write(n), then every element. */
@@ -948,7 +1213,7 @@ function ioPuts(): Fn {
   c.i32(0);
   c.local(OP.localSet, 3);
   c.op(OP.block, VOID);
-  c.op(OP.loop, VOID);
+  c.loopOpen();
   c.local(OP.localGet, 3);
   c.local(OP.localGet, 2);
   c.op(OP.ge_u);
@@ -966,9 +1231,9 @@ function ioPuts(): Fn {
   c.op(OP.add);
   c.local(OP.localSet, 3);
   c.op(OP.br, 0);
+  c.loopClose();
   c.op(OP.end);
-  c.op(OP.end);
-  return { symbol: IO_PUTS, params: 3, result: false, locals: 1, code: c.finish() };
+  return { symbol: IO_PUTS, params: 3, result: false, locals: 1, code: c.finish().parts };
 }
 
 function section(id: number, payload: readonly number[]): number[] {
