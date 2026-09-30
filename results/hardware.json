@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T23:02:15.623Z",
+  "generatedAt": "2026-09-30T00:25:07.572Z",
   "functions": 48,
   "sequentialFunctions": 48,
   "excludedIoFunctions": 0,
@@ -25,13 +25,13 @@
     "cases": 5946,
     "failures": 0,
     "timeouts": 0,
-    "detail": "Icarus Verilog -g2012 RTL simulation of every emitted module against BigInt-oracle cases (combinational, zero-delay).",
-    "elapsedMs": 54489.657625
+    "detail": "Icarus Verilog -g2012 RTL simulation of every emitted module against BigInt-oracle cases (pure modules zero-delay; clocked modules driven by start/done, io by valid/ready handshakes).",
+    "elapsedMs": 132373.260541
   },
   "synthesis": {
     "status": "passed",
-    "detail": "Yosys generic `synth -noabc` to internal gate-level cells (no ABC logic optimization: ABC stalls on the deep combinational div/rem cones, not on multipliers); `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.",
-    "elapsedMs": 7604.918874999996,
+    "detail": "Yosys generic `synth -noabc` to internal gate-level cells (ABC logic optimization skipped to keep the gate fast; it completes in ~45 s for the corpus since division became a 32-cycle clocked unit); `check -assert` found no issues. Not technology-mapped to any FPGA/ASIC library; cell counts are relative complexity only.",
+    "elapsedMs": 45034.124291000015,
     "modules": {
       "a0_g47": {
         "cells": 585,

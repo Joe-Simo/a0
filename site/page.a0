@@ -1,5 +1,5 @@
-# a0lang.com, authored in A0. Linked with examples/life.a0 (whole-program concatenation by
-# tools/site-build.ts). The page is an io program speaking the A0 UI protocol:
+# a0lang.com, authored in A0. Uses examples/life.a0 for the Life rules. The page is an io
+# program speaking the A0 UI protocol:
 #   input : event x y ntext text[ntext] nstate state[nstate]
 #           events 0 render, 1 counter, 2 submit, 3 step, 4 run/pause, 5 clear, 6 glider,
 #           7 cell (x,y), 8 timer tick
@@ -11,6 +11,8 @@
 #   attr keys: 1 id 2 class 3 href 4 type 5 placeholder 6 aria-label
 #   state words: counter, generation, running, then the 32 grid rows
 # The browser runtime (site/app.ts) builds DOM from this stream and reports events back.
+
+use "../examples/life.a0"
 
 fn open io u32 -> io
 a write p0 1

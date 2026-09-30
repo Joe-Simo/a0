@@ -336,6 +336,17 @@ dominant cost; the A0-side levers remain the view size and the primer size.
 
 ## Session 2026-09-29 (late): primer size, JS guards
 
+- **`use` imports (v0.8.9, `src/link.ts`)**: `use "relative.a0"` lines at the head of a file
+  link another file into the program. The linker loads each file once by resolved path in
+  dependency order, rejects cycles and cross-file duplicate names (naming both files), and
+  validates the flat result; diagnostics are mapped back to `file:line`, including
+  validator errors that only name `fn.node`. The CLI (`check run emit wasm view patch`) and
+  the site build go through it; `site/page.a0` now declares `use "../examples/life.a0"`
+  instead of the build tool concatenating sources. Guides document the line. Test covers
+  transitive use, once-only loading, cycle, duplicate, and line mapping. Still one flat
+  namespace and no re-export or renaming: measured need was exactly the site; anything
+  more waits for a second consumer.
+
 - **Compact primer** `MODEL_GUIDE.min.txt`: 342 o200k tokens against 610 for `MODEL_GUIDE.txt`
   (target was ≤ 300; the worked example costs ~30 and is kept). Harness option
   `A0_EXPERIMENT_GUIDE` selects it; scripted run recorded in
@@ -480,7 +491,7 @@ listed by `git log`; the push is verified against `origin/main` after each commi
   key exists on this machine (only `ANTHROPIC_BASE_URL` is set), so the run is unrun.
   With a key: `ANTHROPIC_API_KEY=… A0_ALLOW_PAID_MODEL_CALLS=1 bun run experiment`.
 - No Claude-tokenizer counts (needs `count_tokens` with credentials).
-- Not implemented: memory/regions beyond fixed arrays, library import/FFI, network edit
+- Not implemented: memory/regions beyond fixed arrays, FFI, network edit
   service, hardware pipelining/scheduling beyond the multi-cycle divider, timing/area on a
   real cell library, mobile packaging.
 - This machine: shell `node` now resolves to an x64 Node 22 under nvm; the project needs

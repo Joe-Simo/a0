@@ -7,17 +7,16 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { compile } from '../src/backends.js';
-import { parseAndValidate } from '../src/core.js';
+import { link } from '../src/link.js';
 import { compileWasm, runTool } from '../src/toolchain.js';
 
 async function main(): Promise<void> {
   const out = join('site', 'dist');
   await mkdir(out, { recursive: true });
-  // The site is one A0 program: site/page.a0 linked with examples/life.a0 by whole-program
-  // concatenation (A0 has no module system yet; both files share one namespace). The io
-  // buffers are widened because the page writes its stylesheet and every string as words.
-  const source = `${await readFile(join('examples', 'life.a0'), 'utf8')}\n${await readFile(join('site', 'page.a0'), 'utf8')}`;
-  const program = parseAndValidate(source);
+  // The site is one A0 program: site/page.a0 and what it `use`s (examples/life.a0), linked
+  // into one namespace. The io buffers are widened because the page writes its stylesheet
+  // and every string as words.
+  const program = (await link(join('site', 'page.a0'), (p) => readFile(p, 'utf8'))).program;
   const c = compile(program, 'c', { ioInputCapacity: 512, ioOutputCapacity: 65536 }).text;
   const wasm = await compileWasm(c);
   await writeFile(join(out, 'page.wasm'), wasm.bytes);

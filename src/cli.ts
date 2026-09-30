@@ -22,9 +22,11 @@ import {
   LIMITS,
   parseAndValidate,
   run,
+  type TypedProgram,
   type Value,
 } from './core.js';
 import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
+import { link } from './link.js';
 import { compileWasm } from './toolchain.js';
 
 function usage(): never {
@@ -51,6 +53,11 @@ async function readSource(path: string): Promise<string> {
   return text;
 }
 
+/** Load a file and everything it `use`s as one validated program. */
+async function loadProgram(path: string): Promise<TypedProgram> {
+  return (await link(path, (p) => readFile(p, 'utf8'))).program;
+}
+
 function parseValue(text: string): Value {
   if (text === 'true') return true;
   if (text === 'false') return false;
@@ -64,7 +71,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'check': {
       const [file] = rest;
       if (file === undefined) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       for (const fn of program.functions) {
         process.stdout.write(
           `${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
@@ -75,7 +82,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'run': {
       const [file, name, ...args] = rest;
       if (file === undefined || name === undefined) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       const values = args.map(parseValue);
@@ -87,7 +94,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'emit': {
       const [target, file, out] = rest;
       if (target === undefined || file === undefined || !isTarget(target)) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
       const { text, hits, misses } =
         cache === undefined
@@ -102,7 +109,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'wasm': {
       const [file, out] = rest;
       if (file === undefined || out === undefined) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
       const cText =
         cache === undefined
@@ -118,7 +125,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'patch': {
       const [file, patchFile, out] = rest;
       if (file === undefined || patchFile === undefined) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       const patch = parsePatch(await readSource(patchFile));
       const next = applyPatch(program, patch);
       const text = formatProgram(next);
@@ -129,7 +136,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'view': {
       const [file, name] = rest;
       if (file === undefined || name === undefined) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       process.stdout.write(`${scopedView(fn)}\n`);
@@ -138,7 +145,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'revision': {
       const [file, name] = rest;
       if (file === undefined || name === undefined) usage();
-      const program = parseAndValidate(await readSource(file));
+      const program = await loadProgram(file);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       process.stdout.write(`${revision(fn)}\n`);

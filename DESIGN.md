@@ -62,7 +62,9 @@ The function computes `(p0 * p1 + p2) modulo 2^32`. Here the interface meaning i
 ### Grammar
 
 ```text
-program     = function+
+file        = use* function+
+use         = "use" quoted_relative_path NEWLINE
+program     = function+            (a file with its uses linked, dependency order, one namespace)
 function    = "fn" name type* "->" type NEWLINE
               instruction* "ret" operand NEWLINE "end"
 instruction = id operation operand{operation_arity} NEWLINE
@@ -74,7 +76,7 @@ parameter   = "p" decimal_index
 type        = "u32" | "bool" | "io" | type "x" length | "(" type ("," type)* ")"
 ```
 
-Each function has one result. Node identifiers are lowercase letters followed by lowercase letters, digits, or underscores, at most 64 characters. `p<number>`, `fn`, `ret`, `end`, `patch`, `true`, and `false` are reserved node identifiers. Node IDs are unique within a function; function names are unique within a program. Parameters are indexed from zero. `call` may only name a function defined earlier in the same program, so the call graph is acyclic; recursion, loops, heap, strings, arrays, and I/O are not accepted. Unsupported constructs are errors.
+Each function has one result. Node identifiers are lowercase letters followed by lowercase letters, digits, or underscores, at most 64 characters. `p<number>`, `fn`, `ret`, `end`, `patch`, `true`, and `false` are reserved node identifiers. Node IDs are unique within a function; function names are unique within a program, including across every file linked by `use` (the linker names both files on a clash and maps diagnostics back to `file:line`). Parameters are indexed from zero. `call` may only name a function defined earlier in the same program, so the call graph is acyclic; recursion, loops, heap, strings, arrays, and I/O are not accepted. Unsupported constructs are errors.
 
 ### Exact operations
 

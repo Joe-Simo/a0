@@ -738,10 +738,10 @@ test('div/rem are total unsigned (zero divisor: all ones / dividend); puts strea
 
 test('site page program: A0 UI protocol with stylesheet, grid, timer, and 35-word state', async () => {
   const { readFileSync } = await import('node:fs');
-  // The site is page.a0 linked with life.a0 by concatenation (as tools/site-build.ts does).
-  const p = parseAndValidate(
-    `${readFileSync('examples/life.a0', 'utf8')}\n${readFileSync('site/page.a0', 'utf8')}`,
-  );
+  // The site is page.a0 plus what it uses (examples/life.a0), through the linker.
+  const { link } = await import('../src/link.js');
+  const { readFile } = await import('node:fs/promises');
+  const p = (await link('site/page.a0', (f) => readFile(f, 'utf8'))).program;
   const session = p.byName.get('session') as TypedFunc;
   interface Decoded {
     texts: string[];
@@ -1001,4 +1001,41 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.equal(stale.code, 'handle');
   assert.match(stale.fix ?? '', /open a new view/);
   assert.match(formatDiagnostic(stale), /^handle: .* fix: /);
+});
+
+test('linker: use lines resolve relative paths once, reject cycles and duplicate names, map lines', async () => {
+  const { link } = await import('../src/link.js');
+  const files: Record<string, string> = {
+    '/p/lib.a0': 'fn twice u32 -> u32\na add p0 p0\nret a\nend\n',
+    '/p/mid.a0': 'use "lib.a0"\nfn quad u32 -> u32\na call twice p0\nb call twice a\nret b\nend\n',
+    '/p/main.a0': 'use "lib.a0"\nuse "mid.a0"\nfn main u32 -> u32\nq call quad p0\nret q\nend\n',
+    '/p/cyc1.a0': 'use "cyc2.a0"\nfn c1 -> u32\nret 1\nend\n',
+    '/p/cyc2.a0': 'use "cyc1.a0"\nfn c2 -> u32\nret 2\nend\n',
+    '/p/dup.a0': 'use "lib.a0"\nfn twice u32 -> u32\nret p0\nend\n',
+    '/p/bad.a0': 'use "lib.a0"\nfn f u32 -> u32\na add p0 true\nret a\nend\n',
+  };
+  const read = async (path: string): Promise<string> => {
+    const t = files[path];
+    if (t === undefined) throw new Error(`missing ${path}`);
+    return t;
+  };
+  const linked = await link('/p/main.a0', read);
+  assert.deepEqual(
+    linked.sources.map((s) => s.path),
+    ['/p/lib.a0', '/p/mid.a0', '/p/main.a0'],
+  );
+  assert.equal(run(linked.program.byName.get('main') as TypedFunc, [5]), 20);
+  await assert.rejects(
+    link('/p/cyc1.a0', read),
+    (e: unknown) => e instanceof A0Error && /cycle/.test(e.message),
+  );
+  await assert.rejects(
+    link('/p/dup.a0', read),
+    (e: unknown) => e instanceof A0Error && /both/.test(e.message),
+  );
+  await assert.rejects(
+    link('/p/bad.a0', read),
+    (e: unknown) =>
+      e instanceof A0Error && e.code === 'type' && /^\/p\/bad\.a0:3: /.test(e.message),
+  );
 });

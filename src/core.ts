@@ -237,6 +237,12 @@ export interface Func {
 
 export interface Program {
   readonly functions: readonly Func[];
+  /**
+   * `use "path"` lines from the head of the file: other A0 files whose functions this one
+   * calls. Resolved by the linker (src/link.ts) into one flat program; `validate` on an
+   * unlinked program with uses fails on the first unresolved callee.
+   */
+  readonly uses?: readonly string[];
 }
 
 /** A function whose every node has an inferred result type. */
@@ -527,8 +533,19 @@ export function parse(source: string): Program {
     return undefined;
   };
 
+  const uses: string[] = [];
   for (let cur = next(); cur !== undefined; cur = next()) {
     const head = cur.text.split(/\s+/);
+    if (head[0] === 'use') {
+      const m = /^use\s+"([^"\\]+)"$/.exec(cur.text);
+      if (m === null || functions.length > 0)
+        throw new A0Error('use expects `use "path.a0"` before the first fn', cur.line, {
+          code: 'parse',
+          fix: 'write use "relative/path.a0" as its own line at the top of the file',
+        });
+      uses.push(m[1] as string);
+      continue;
+    }
     if (head[0] !== 'fn')
       throw new A0Error(`expected 'fn', got '${head[0]}'`, cur.line, { code: 'parse' });
     const name = head[1];
@@ -580,7 +597,7 @@ export function parse(source: string): Program {
     names.add(name);
     functions.push({ name, params, result, nodes, ret });
   }
-  return { functions };
+  return { functions, uses };
 }
 
 // ---------------------------------------------------------------------------
