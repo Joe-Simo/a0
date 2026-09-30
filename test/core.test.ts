@@ -1907,13 +1907,17 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   const { emitX86_64Function } = await import('../src/x86_64.js');
   const fn = (src: string, name: string): TypedFunc =>
     parseAndValidate(src).byName.get(name) as TypedFunc;
-  // A leaf keeps its parameters in edi/esi and returns in eax; the platform switch names symbols.
+  // A leaf keeps its parameters in edi/esi and computes its result straight into eax; small
+  // multipliers and three-operand adds are lea; an empty frame needs no rsp restore. The
+  // platform switch names symbols.
   const affine = fn('fn affine u32 u32 -> u32\na mul p0 3\nb add a p1\nret b\nend', 'affine');
   const darwin = emitX86_64Function(affine, 'darwin');
   assert.match(darwin, /^\t\.globl _a0_affine$/m);
-  assert.match(darwin, /imull \$3, %edi, %edi/);
-  assert.match(darwin, /addl %esi, %edi/);
-  assert.match(darwin, /movl %edi, %eax\n\tmovq %rbp, %rsp\n\tpopq %rbp\n\tret$/);
+  assert.match(
+    darwin,
+    /leal \(%rdi,%rdi,2\), %edi\n\tleal \(%rdi,%rsi\), %eax\n\tpopq %rbp\n\tret$/,
+  );
+  assert.doesNotMatch(darwin, /movq %rbp, %rsp/);
   const linux = emitX86_64Function(affine, 'linux');
   assert.match(linux, /^\t\.globl a0_affine$/m);
   assert.match(linux, /^\t\.type a0_affine,@function$/m);
@@ -1933,18 +1937,56 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
     fn('fn s u32 u32 -> u32\na shl p0 33\nb shl a p1\nret b\nend', 's'),
   );
   assert.match(shl, /shll \$1, %edi/);
-  assert.match(shl, /movl %esi, %ecx\n\tshll %cl, %edi/);
-  // Unsigned comparison and select without a branch.
+  assert.match(shl, /movl %esi, %ecx\n\tmovl %edi, %eax\n\tshll %cl, %eax/);
+  // Rotates: both halves of shl/shr by n and 32 - n (variable) or k and 32 - k (literal).
+  const rotv = emitX86_64Function(
+    fn('fn r u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nh shr p0 n\no or l h\nret o\nend', 'r'),
+  );
+  assert.match(rotv, /movl %esi, %ecx\n\tmovl %edi, %eax\n\troll %cl, %eax/);
+  assert.doesNotMatch(rotv, /shll|shrl/);
+  const rotk = emitX86_64Function(
+    fn('fn r u32 -> u32\nl shl p0 13\nh shr p0 19\no xor h l\nret o\nend', 'r'),
+  );
+  assert.match(rotk, /roll \$13, %eax/);
+  // A comparison that only feeds selects is flags plus cmov, never a 0/1 value; a single-bit
+  // mask compared with 0 is a test.
   const sel = emitX86_64Function(
     fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
   );
-  assert.match(
-    sel,
-    /cmpl %esi, %edi\n\tsetb %al\n\tmovzbl %al, (%\w+)\n\ttestl \1, \1\n\tcmovel %esi, %edi/,
+  assert.match(sel, /cmpl %esi, %edi\n\tmovl %esi, %eax\n\tcmovbl %edi, %eax/);
+  assert.doesNotMatch(sel, /set/);
+  const bit = emitX86_64Function(
+    fn('fn t u32 u32 -> u32\nb and p0 4\nc eq b 0\nr select c p1 p0\nret r\nend', 't'),
   );
-  // Index modulo the length: a power of two is a mask, another length divides.
+  assert.match(bit, /testl \$4, %edi\n\tmovl %edi, %eax\n\tcmovel %esi, %eax/);
+  // A materialized comparison zeroes its destination first and writes only the low byte.
+  const lt = emitX86_64Function(fn('fn l u32 u32 -> bool\nc lt p0 p1\nret c\nend', 'l'));
+  assert.match(lt, /xorl %eax, %eax\n\tcmpl %esi, %edi\n\tsetb %al/);
+  // Index modulo the length: a power of two is a mask, another length divides; the element
+  // size is the SIB scale.
   const get8 = emitX86_64Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
-  assert.match(get8, /andl \$7, %r10d\n\tshlq \$2, %r10\n\tmovl 0\(%rsp,%r10\), %\w+/);
+  assert.match(get8, /andl \$7, %r10d\n\tmovl 0\(%rsp,%r10,4\), %eax/);
+  // Loops test at the bottom (a variable count gets one zero guard), and a fold counter below
+  // the array length indexes it with no mask.
+  const loop = emitX86_64Function(
+    fn(
+      'fn st u32 u32 -> u32\na add p0 p1\nret a\nend\nfn f u32 u32 -> u32\nr fold st p1 p0\nret r\nend',
+      'f',
+    ),
+  );
+  assert.match(
+    loop,
+    /testl %esi, %esi\n\tje (La0_f_\d+)\n(La0_f_\d+):[\s\S]*cmpl %esi, %r8d\n\tjb \2\n\1:/,
+  );
+  const fill = emitX86_64Function(
+    fn(
+      'fn put u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn a u32 -> u32\nz arr 0 0 0 0 0 0 0 0\nf fold put 8 z p0\nx get f 3\nret x\nend',
+      'a',
+    ),
+  );
+  assert.match(fill, /xorps %xmm0, %xmm0\n\tmovups %xmm0, \(%rsp\)\n\tmovups %xmm0, 16\(%rsp\)/);
+  assert.match(fill, /movl %\w+, 0\(%rsp,%r\w+,4\)/);
+  assert.doesNotMatch(fill, /andl \$7/);
   const get5 = emitX86_64Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get5, /movl \$5, %r10d\n\tdivl %r10d\n\tmovl %edx, %r10d/);
   // An aggregate result comes back through the sret pointer in rdi, also returned in rax.
@@ -1955,12 +1997,17 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
     pair,
     /movq %rdi, (\d+\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
   );
-  // A parameter arriving in rcx is parked in a slot only when an incoming aggregate is copied
-  // by the counted loop, which uses ecx.
+  // Aggregates are copied 16 bytes at a time through xmm0 (a loop above 32 words), so a
+  // parameter arriving in rcx stays there in a leaf.
   const big = emitX86_64Function(
     fn('fn b u32x32 u32 u32 u32 -> u32\nv get p0 p3\nw add v p2\nret w\nend', 'b'),
   );
-  assert.match(big, /movq %rcx, (\d+\(%rsp\))[\s\S]*movl \$32, %ecx[\s\S]*movl \1, %\w+/);
+  assert.match(big, /movups 112\(%rdi\), %xmm0\n\tmovups %xmm0, 112\(%rsp\)\n\tmovl %ecx, %r10d/);
+  const huge = emitX86_64Function(fn('fn h u32x40 -> u32\nv get p0 39\nret v\nend', 'h'));
+  assert.match(
+    huge,
+    /movups \(%r10,%rax\), %xmm0\n\tmovups %xmm0, \(%r11,%rax\)\n\taddq \$16, %rax\n\tcmpq \$160, %rax/,
+  );
   // Frames above a page are probed page by page.
   const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
   const probe = emitX86_64Function(
@@ -2082,9 +2129,15 @@ test('x86_64 backend: assembled, linked with a C driver, and executed equal to t
     'fn keep u32 u32 -> bool\nb lt p0 1000\nret b\nend',
     'fn grow u32 u32 -> u32\nb mul p0 3\nc add b p1\nret c\nend',
     'fn top u32 u32 bool -> u32\nk and p1 15\nz arr p0 p1 1 2 3 4 5 6\nf fold step k z p0\ng get f p1\nr call pair p0 p1\nh at r 0\ns loop keep grow p1 h\nt put r 0 s\nu at t 1\nt0 at t 0\nm call many p0 p1 g t0 p0 p1 g s u p0 p2 t0\nq ge m g\nw select q m g\nx div w p1\ny rem p0 p1\nv add x y\nret v\nend',
-    // a 4 KiB array: word-copy loops, a parked rcx parameter, and a page-probed frame
+    // a 4 KiB array: 16-byte copy and fill loops, an rcx parameter, and a page-probed frame
     'fn poke u32x1024 u32 u32 -> u32x1024\nn set p0 p2 p1\nret n\nend',
     `fn bigtop u32 u32 -> u32\nz arr ${zeros}\nk and p1 7\nf fold poke k z p0\na get f p1\nb get f 3\nc add a b\nret c\nend`,
+    // instruction selection: variable rotl/rotr, a literal rotate written with add, bit tests
+    // and fused compares feeding selects (literal operands), lea/shift multipliers, sub from a
+    // literal, a variable trip count that may be zero, a non-zero fill, edx/ecx leaf homes
+    'fn rs u32 u32 u32 -> u32\na mul p0 5\nb add a p1\nc xor b p2\nret c\nend',
+    'fn gtb u32 u32 -> bool\nc gt p0 p1\nret c\nend',
+    'fn sel u32 u32 u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nh shr p0 n\no or l h\nl2 shr p2 p3\nn2 sub 64 p3\nh2 shl p2 n2\no2 or h2 l2\nk1 shl p1 7\nk2 shr p1 25\no3 add k1 k2\nm and p0 8\nc1 eq m 0\ns1 select c1 o o2\nm2 and p1 1\nc2 ne m2 1\ns2 select c2 s1 o3\nc3 lt p2 p3\ns3 select c3 7 s2\ns4 select c3 s3 9\nd sub 100 s4\ne mul d 9\nf mul e 4\ng mul f 3\nk and p3 3\nq fold rs k g p0\nz arr 5 5 5 5 5 5 5 5 5 5\nzz get z q\nb call gtb q zz\nc4 lt 50 p0\nw select b q zz\nx select c4 w p1\ny mul x 2\nret y\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
   const inputs: [number, number, boolean][] = [
@@ -2097,15 +2150,26 @@ test('x86_64 backend: assembled, linked with a C driver, and executed equal to t
   ];
   const top = p.byName.get('top') as TypedFunc;
   const bigtop = p.byName.get('bigtop') as TypedFunc;
+  const sel = p.byName.get('sel') as TypedFunc;
+  const selArgs = (a: number, b: number): number[] => [a, b, (a ^ b) >>> 0, (b + 7) >>> 0];
   const expected = inputs
-    .flatMap(([a, b, c]) => [String(run(top, [a, b, c])), String(run(bigtop, [a, b]))])
+    .flatMap(([a, b, c]) => [
+      String(run(top, [a, b, c])),
+      String(run(bigtop, [a, b])),
+      String(run(sel, selArgs(a, b))),
+    ])
     .join('\n');
+  const selCall = (a: number, b: number): string =>
+    `a0_sel(${selArgs(a, b)
+      .map((v) => `${v}u`)
+      .join(', ')})`;
   const calls = inputs
     .map(
-      ([a, b, c]) => `  printf("%u\\n%u\\n", a0_top(${a}u, ${b}u, ${c}), a0_bigtop(${a}u, ${b}u));`,
+      ([a, b, c]) =>
+        `  printf("%u\\n%u\\n%u\\n", a0_top(${a}u, ${b}u, ${c}), a0_bigtop(${a}u, ${b}u), ${selCall(a, b)});`,
     )
     .join('\n');
-  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nextern uint32_t a0_sel(uint32_t, uint32_t, uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
   for (const optimize of [true, false]) {
     const asm = compile(p, 'x86_64', { optimize }).text;
     assert.doesNotMatch(asm, /#include|int main/);
