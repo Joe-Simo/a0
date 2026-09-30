@@ -276,6 +276,7 @@ interface OpenHandle {
   /** Function name, or '*' for a program-level handle. */
   readonly functionName: string;
   readonly revision: string;
+  readonly scope: ViewOptions['scope'];
 }
 
 /** Program-level view: one signature line per function, in definition order. */
@@ -289,6 +290,12 @@ export function programView(program: TypedProgram): string {
  * `-fn name` removes a function. The whole program is re-validated; callers of a removed or
  * re-typed function fail the edit atomically.
  */
+/** A one-line `fn NAME types -> T end` naming an existing function: the view's signature line echoed back, carrying no change. */
+function isSignatureEcho(line: string, program: TypedProgram): boolean {
+  const m = /^fn\s+([a-z][a-z0-9_]*)\b.*\send$/.exec(line);
+  return m !== null && program.byName.has(m[1] ?? '');
+}
+
 export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const lines = text.split(/\r?\n/);
   const removals = new Set<string>();
@@ -297,6 +304,7 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
     const line = stripComment(raw).trim();
     const m = /^-fn\s+([a-z][a-z0-9_]*)$/.exec(line);
     if (m) removals.add(m[1] ?? '');
+    else if (isSignatureEcho(line, program)) continue;
     else kept.push(raw);
   }
   const incoming = parse(kept.join('\n')).functions;
@@ -309,14 +317,29 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
         code: 'edit',
       });
   }
+  // New functions are placed where the reply put them relative to replaced ones: everything
+  // written above a replaced function is inserted just before it (so a new callee written
+  // above its caller is defined earlier); trailing new functions are appended.
+  const before = new Map<string, Func[]>();
+  let pending: Func[] = [];
+  for (const f of incoming) {
+    if (program.byName.has(f.name)) {
+      before.set(f.name, pending);
+      pending = [];
+    } else pending.push(f);
+  }
   const functions: Func[] = [];
   for (const f of program.functions) {
     if (removals.has(f.name)) continue;
     const replacement = byName.get(f.name);
+    if (replacement !== undefined) functions.push(...(before.get(f.name) ?? []));
     functions.push(replacement ?? f);
-    byName.delete(f.name);
   }
-  for (const f of incoming) if (byName.has(f.name)) functions.push(f);
+  functions.push(...pending);
+  if (functions.length === 0)
+    throw new A0Error('edit would leave the program with no functions', undefined, {
+      code: 'edit',
+    });
   return validate({ functions });
 }
 
@@ -332,7 +355,8 @@ export class EditSession {
   #program: TypedProgram;
   readonly #handles = new Map<string, OpenHandle>();
   readonly #maxOpen: number;
-  #next = 0;
+  #nextFn = 0;
+  #nextProgram = 0;
 
   constructor(program: TypedProgram, options: SessionOptions = {}) {
     this.#program = program;
@@ -358,10 +382,10 @@ export class EditSession {
         },
       );
     }
-    const handle = `g${this.#next}`;
-    this.#next += 1;
+    const handle = `g${this.#nextProgram}`;
+    this.#nextProgram += 1;
     const rev = programRevision(this.#program);
-    this.#handles.set(handle, { functionName: '*', revision: rev });
+    this.#handles.set(handle, { functionName: '*', revision: rev, scope: undefined });
     return {
       handle,
       functionName: '*',
@@ -384,12 +408,42 @@ export class EditSession {
         },
       );
     }
-    const handle = `e${this.#next}`;
-    this.#next += 1;
+    const handle = `e${this.#nextFn}`;
+    this.#nextFn += 1;
     const rev = revision(fn);
-    this.#handles.set(handle, { functionName, revision: rev });
+    this.#handles.set(handle, { functionName, revision: rev, scope: options.scope });
     const body = options.scope === 'deps' ? scopedView(fn) : formatFunction(fn);
     return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
+  }
+
+  /** The current view under an open handle (handles are stable for the session). */
+  view(handle: string): string {
+    const bound = this.#handles.get(handle);
+    if (bound === undefined) throw new A0Error(`unknown handle '${handle}'`, 1, { code: 'handle' });
+    if (bound.functionName === '*') return `${handle}\n${programView(this.#program)}`;
+    const fn = this.#program.byName.get(bound.functionName);
+    if (fn === undefined)
+      throw new A0Error(`handle '${handle}' refers to a removed function`, 1, { code: 'handle' });
+    return `${handle}\n${bound.scope === 'deps' ? scopedView(fn) : formatFunction(fn)}`;
+  }
+
+  /**
+   * After a successful edit every open handle follows the program: a session has one
+   * editor, so its handles stay valid and keep their names; a handle whose function was
+   * removed is closed. The revision check still rejects any edit written against text
+   * that is no longer current.
+   */
+  #rebind(): void {
+    const progRev = programRevision(this.#program);
+    for (const [handle, bound] of this.#handles) {
+      if (bound.functionName === '*') {
+        this.#handles.set(handle, { ...bound, revision: progRev });
+        continue;
+      }
+      const fn = this.#program.byName.get(bound.functionName);
+      if (fn === undefined) this.#handles.delete(handle);
+      else this.#handles.set(handle, { ...bound, revision: revision(fn) });
+    }
   }
 
   close(handle: string): boolean {
@@ -399,7 +453,8 @@ export class EditSession {
   /**
    * Apply a session edit: first line is the handle, remaining lines are replacement
    * nodes. The handle must be open and bound to the function's current revision.
-   * On success the handle is consumed and the new program is committed atomically.
+   * On success the new program is committed atomically and every open handle is rebound
+   * to the new revision (handles are stable names for the session).
    */
   apply(text: string): TypedProgram {
     if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
@@ -414,9 +469,9 @@ export class EditSession {
     }
     const bound = this.#handles.get(handle);
     if (bound === undefined)
-      throw new A0Error(`unknown or consumed handle '${handle}'`, 1, {
+      throw new A0Error(`unknown handle '${handle}'`, 1, {
         code: 'handle',
-        fix: 'a handle is consumed by a successful edit; open a new view and use the handle it returns',
+        fix: 'reply with the handle line exactly as shown at the top of the view',
       });
     if (bound.functionName === '*') {
       if (programRevision(this.#program) !== bound.revision) {
@@ -430,7 +485,7 @@ export class EditSession {
         .split(/\r?\n/)
         .slice(text.split(/\r?\n/).findIndex((l) => stripComment(l).trim() === handle) + 1);
       this.#program = editProgram(this.#program, rawBody.join('\n'));
-      this.#handles.delete(handle);
+      this.#rebind();
       return this.#program;
     }
     const fn = this.#program.byName.get(bound.functionName);
@@ -445,11 +500,47 @@ export class EditSession {
         { code: 'handle' },
       );
     }
-    const nodes = parseReplacementNodes(lines.slice(1), 2);
-    const updated = replaceNodes(this.#program, fn, nodes);
-    // Validation succeeded: commit and consume the handle atomically.
+    let body = lines.slice(1);
+    // The rest of the view echoed back (another handle line followed only by signature
+    // lines) carries no change: drop it.
+    const echoAt = body.findIndex((l) => /^[eg][0-9]+$/.test(stripComment(l).trim()));
+    if (
+      echoAt >= 0 &&
+      body.slice(echoAt + 1).every((l) => {
+        const t = stripComment(l).trim();
+        return t === '' || isSignatureEcho(t, this.#program);
+      })
+    )
+      body = body.slice(0, echoAt);
+    // A trailing `end` mirrors the view and carries no information: accept it.
+    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end')
+      body = body.slice(0, -1);
+    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
+      body = body.slice(0, -1);
+    const first = stripComment(body[0] ?? '').trim();
+    let updated: TypedFunc;
+    if (/^fn\s/.test(first)) {
+      // The whole function was sent back under its own handle: an unambiguous replacement.
+      const parsed = parse(`${body.join('\n')}\nend`);
+      const [only] = parsed.functions;
+      if (only === undefined || parsed.functions.length !== 1 || only.name !== fn.name) {
+        throw new A0Error(
+          `handle '${handle}' edits '${fn.name}': send edit lines, or exactly that function as a whole 'fn ${fn.name} ... end' block; use a program handle to add or replace other functions`,
+          1,
+          {
+            code: 'edit',
+            fix: `reply with '${handle}' followed by edit lines for '${fn.name}' only`,
+          },
+        );
+      }
+      updated = editProgram(this.#program, formatFunction(only)).byName.get(fn.name) as TypedFunc;
+    } else {
+      const nodes = parseReplacementNodes(body, 2);
+      updated = replaceNodes(this.#program, fn, nodes);
+    }
+    // Validation succeeded: commit atomically; handles follow the new revision.
     this.#program = commit(this.#program, updated);
-    this.#handles.delete(handle);
+    this.#rebind();
     return this.#program;
   }
 }

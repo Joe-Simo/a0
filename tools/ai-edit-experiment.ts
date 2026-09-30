@@ -422,8 +422,9 @@ function applyTs(protocol: Protocol, source: string, reply: string, handle: stri
     const n = Number(m[2]);
     const mode = m[1] ?? '';
     if (mode === '+') {
-      if (n < 0 || n > out.length) return { source, error: `bad insert position ${n}` };
-      inserts.set(n, [...(inserts.get(n) ?? []), m[3] ?? '']);
+      // Positions past the end append, in order (a model numbering new lines sequentially).
+      const at = Math.min(n, out.length);
+      inserts.set(at, [...(inserts.get(at) ?? []), m[3] ?? '']);
       continue;
     }
     if (seen.has(n) || n < 1 || n > out.length)
@@ -595,8 +596,8 @@ async function buildCell(
       // line selects which one is used.
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
-      const fnView = session.open(fnName, { scope: 'deps' }).text;
-      const progView = session.openProgram().text;
+      const fnView = session.open(fnName, { scope: 'deps' }).text; // e0
+      const progView = session.openProgram().text; // g0
       const view = `${fnView}\n${progView}`;
       return { cell: { representation, protocol, ...primers, system, view }, session, handle };
     }
@@ -642,6 +643,8 @@ interface Attempt {
   readonly status: AttemptStatus;
   readonly failures: readonly string[];
   readonly outputTokensLocal: Record<string, number>;
+  /** The exact repair message sent after this attempt (absent on the last attempt). */
+  readonly repair?: string;
 }
 
 function classify(
@@ -748,8 +751,11 @@ async function runTrial(
   for (let attempt = 0; attempt <= maxRepairs; attempt += 1) {
     const res = await ask(messages);
     if (res === undefined) {
-      attempts.push({ status: 'no-reply', failures: ['no reply'], outputTokensLocal: count('') });
-      failures = ['no reply'];
+      // No further reply available (scripted mode): keep the last real rejection as the outcome.
+      if (attempt === 0) {
+        attempts.push({ status: 'no-reply', failures: ['no reply'], outputTokensLocal: count('') });
+        failures = ['no reply'];
+      }
       break;
     }
     calls += 1;
@@ -784,14 +790,20 @@ async function runTrial(
       break;
     }
     messages.push({ role: 'assistant', content: res.reply });
-    const nextView =
+    // An edit that applied but failed acceptance consumed its handles and changed the
+    // program: send the fresh view (function handle and program handle, as at the start).
+    let nextView: string | undefined;
+    if (
       protocol === 'structured' &&
       representation === 'a0' &&
       session !== undefined &&
       applied.error === undefined
-        ? session.open(parseAndValidate(applied.source).functions[0]?.name ?? '').text
-        : undefined;
+    ) {
+      // Handles are stable: show the current text under the same e0 / g0.
+      nextView = `${session.view('e0')}\n${session.view('g0')}`;
+    }
     const repair = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
+    attempts[attempts.length - 1] = { ...(attempts[attempts.length - 1] as Attempt), repair };
     toolContext += count(repair).o200k_base ?? 0;
     messages.push({ role: 'user', content: repair });
   }
@@ -825,7 +837,7 @@ async function main(): Promise<void> {
   const maxRepairs = 2;
   // The language primer is the dominant A0 cost; A0_EXPERIMENT_GUIDE selects an alternative
   // (e.g. MODEL_GUIDE.min.txt) so live runs can compare acceptance against primer size.
-  const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.txt';
+  const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.min.txt';
   const guide = await readFile(guidePath, 'utf8');
   const encoders = {
     o200k_base: getEncoding('o200k_base'),

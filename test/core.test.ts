@@ -144,28 +144,34 @@ test('self-contained patch requires the exact current revision; edits are valida
   assert.throws(() => applyPatch(program, parsePatch(forward)), /undefined or later/);
 });
 
-test('session edits: short handle, atomic commit, one-use, stale and unknown handles rejected', () => {
+test('session edits: stable handles, atomic commit, rebinding after success, unknown handles rejected', () => {
   const session = new EditSession(parseAndValidate(AFFINE), { maxOpenHandles: 2 });
   const view = session.open('affine');
   assert.equal(view.handle, 'e0');
   assert.equal(view.text, `e0\n${AFFINE}`);
   const edit = 'e0\nb sub a p2\n'; // 14 bytes including the terminating newline
   assert.equal(Buffer.byteLength(edit, 'utf8'), 14);
-  const stale = session.open('affine'); // e1, bound to the pre-edit revision
+  const other = session.open('affine'); // e1, follows the program like e0
   const next = session.apply(edit);
   assert.equal(run(next.byName.get('affine') as TypedFunc, [10, 3, 7]), 23);
-  assert.equal(session.openHandles, 1);
-  assert.throws(() => session.apply(edit), /unknown or consumed/);
-  assert.throws(() => session.apply(`${stale.handle}\nb add a p2`), /stale/);
-  assert.throws(() => session.apply('e9\nb add a p2'), /unknown or consumed/);
+  assert.equal(session.openHandles, 2);
+  // The same handle keeps working after its own edit (rebound to the new revision).
+  const again = session.apply('e0\nb add a p2');
+  assert.equal(run(again.byName.get('affine') as TypedFunc, [10, 3, 7]), 37);
+  assert.equal(
+    session.view('e0'),
+    `e0\n${formatFunction(again.byName.get('affine') as TypedFunc)}`,
+  );
+  const viaOther = session.apply(`${other.handle}\nb xor a p2`);
+  assert.equal(run(viaOther.byName.get('affine') as TypedFunc, [10, 3, 7]), 30 ^ 7);
+  assert.throws(() => session.apply('e9\nb add a p2'), /unknown handle/);
   assert.throws(() => session.apply('zz\nb add a p2'), /invalid handle/);
-  // A failed edit leaves the program and handle untouched.
-  const h = session.open('affine');
-  assert.throws(() => session.apply(`${h.handle}\nb add a p9`), /out of range/);
+  // A failed edit leaves the program and handles untouched.
+  assert.throws(() => session.apply('e0\nb add a p9'), /out of range/);
   assert.equal(session.openHandles, 2);
   assert.throws(() => session.open('affine'), /handle limit/);
-  assert.equal(session.close(h.handle), true);
-  assert.equal(session.close(h.handle), false);
+  assert.ok(session.close('e1'));
+  assert.equal(session.openHandles, 1);
 });
 
 test('backends emit every target and the JS module executes with input guards', async () => {
@@ -909,12 +915,24 @@ test('program-level edits: add, replace, and remove whole functions through a pr
     n4.functions.map((f) => f.name),
     ['sq'],
   );
-  assert.throws(() => session.apply(`${v3.handle}\n-fn sq`), /unknown or consumed/);
-  // Stale program handle after a function-level edit.
+  // The program handle stays usable after its own edit; removing the last function fails.
+  assert.throws(
+    () => session.apply(`${v3.handle}\n-fn sq`),
+    /no functions/,
+  );
+  // A program handle follows a function-level edit made through another handle.
   const g = session.openProgram();
   const f = session.open('sq');
   session.apply(`${f.handle}\na mul p0 3`);
-  assert.throws(() => session.apply(`${g.handle}\nfn z -> u32\nret 1\nend`), /stale/);
+  const n5 = session.apply(`${g.handle}\nfn z -> u32\nret 1\nend`);
+  assert.deepEqual(
+    n5.functions.map((x) => x.name),
+    ['sq', 'z'],
+  );
+  // A handle to a removed function is closed.
+  const hz = session.open('z');
+  session.apply(`${g.handle}\n-fn z`);
+  assert.throws(() => session.apply(`${hz.handle}\nret 2`), /removed|unknown handle/);
 });
 
 test('persistent cache: per-function emission keyed by semantic revision; wasm artifact by module text', async () => {
@@ -987,20 +1005,19 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   ]);
 
   const session = new EditSession(parseAndValidate('fn f u32 -> u32\na add p0 1\nret a\nend\n'));
-  const h = session.open('f').handle;
-  session.apply(`${h}\na add p0 2\nret a`);
-  const stale = (() => {
+  session.open('f');
+  const unknown = (() => {
     try {
-      session.apply(`${h}\na add p0 3\nret a`);
+      session.apply('e7\na add p0 3\nret a');
     } catch (e) {
       return e;
     }
     return undefined;
   })();
-  assert.ok(stale instanceof A0Error);
-  assert.equal(stale.code, 'handle');
-  assert.match(stale.fix ?? '', /open a new view/);
-  assert.match(formatDiagnostic(stale), /^handle: .* fix: /);
+  assert.ok(unknown instanceof A0Error);
+  assert.equal(unknown.code, 'handle');
+  assert.match(unknown.fix ?? '', /exactly as shown/);
+  assert.match(formatDiagnostic(unknown), /^handle: .* fix: /);
 });
 
 test('linker: use lines resolve relative paths once, reject cycles and duplicate names, map lines', async () => {
@@ -1066,4 +1083,39 @@ test('JS emission: zero arrays allocate, power-of-two indices mask, owned sets a
     'js',
   ).text;
   assert.ok(js3.includes('[p1 % 3]'));
+});
+
+test('edit tolerance: trailing end, whole-function block under its handle, echoed signatures, callee order', () => {
+  const src =
+    'fn sq u32 -> u32\na mul p0 p0\nret a\nend\nfn main u32 -> u32\nb call sq p0\nret b\nend';
+  // Trailing `end` after edit lines is accepted.
+  let s = new EditSession(parseAndValidate(src));
+  let h = s.open('sq').handle;
+  let p = s.apply(`${h}\na add p0 p0\nret a\nend`);
+  assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 6);
+  // The whole function sent back under its own handle replaces it; another function is refused.
+  s = new EditSession(parseAndValidate(src));
+  h = s.open('sq').handle;
+  p = s.apply(`${h}\nfn sq u32 -> u32\na sub p0 1\nret a\nend`);
+  assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 2);
+  s = new EditSession(parseAndValidate(src));
+  h = s.open('sq').handle;
+  assert.throws(() => s.apply(`${h}\nfn other u32 -> u32\nret p0\nend`), /edit lines/);
+  // An echo of the rest of the view (program handle line plus signature lines) is ignored.
+  s = new EditSession(parseAndValidate(src));
+  const e = s.open('sq').handle;
+  const g = s.openProgram().handle;
+  p = s.apply(`${e}\na xor p0 1\nret a\nend\n${g}\nfn sq u32 -> u32 end\nfn main u32 -> u32 end`);
+  assert.equal(run(p.byName.get('sq') as TypedFunc, [3]), 2);
+  // Program edit: a new callee written above its replaced caller is placed before it.
+  s = new EditSession(parseAndValidate(src));
+  const g2 = s.openProgram().handle;
+  p = s.apply(
+    `${g2}\nfn sq u32 -> u32 end\nfn cube u32 -> u32\nq call sq p0\nc mul q p0\nret c\nend\nfn main u32 -> u32\nb call cube p0\nret b\nend`,
+  );
+  assert.deepEqual(
+    p.functions.map((f) => f.name),
+    ['sq', 'cube', 'main'],
+  );
+  assert.equal(run(p.byName.get('main') as TypedFunc, [3]), 27);
 });

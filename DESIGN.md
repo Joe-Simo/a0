@@ -119,7 +119,7 @@ e0
 b sub a p2
 ```
 
-The handle binds the edit to one exact viewed function. Existing node `b` changes; unchanged nodes are not emitted. The compiler checks the complete replacement and commits atomically. Unknown or consumed handles, mismatched content, invalid types, duplicate replacements, and forward references fail. Other function objects remain unchanged. There is a bounded session size and explicit handle closing; successful handles are one-use.
+The handle binds the edit to one exact viewed function. Existing node `b` changes; unchanged nodes are not emitted. The compiler checks the complete replacement and commits atomically. Unknown handles, edits written against text that is no longer current (revision mismatch), invalid types, duplicate replacements, and forward references fail. Other function objects remain unchanged. There is a bounded session size and explicit handle closing. Handles are stable names for the session (`e0`, `g0`, ...): after a successful edit every open handle is rebound to the new revision, so a model keeps replying with the handle it was shown (v0.8.10; the earlier one-use rule was measured to be the main failure mode of a small model, with no safety benefit inside a single-editor session).
 
 The handle is not a secret or an authorization credential. A future network service must isolate sessions by authenticated principal and apply normal access controls. No network service exists in v0.1.
 

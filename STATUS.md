@@ -259,140 +259,76 @@ cost; the target is recorded as an ambition, not a result.
 ### Gate A / Gate 6: AI-edit experiment (`bun run experiment`)
 
 Harness implemented and self-checked (reference solutions pass, originals fail in all six
-cells: A0/TypeScript/Rust × conventional/structured). Whole-task accounting: setup, view,
-output, provider usage, calls, validation failures, repairs, wall time. Thirteen held-out
-tasks (targeted, multi-node, multi-function, comprehension, iteration, records, bit ops,
-saturation) with independent acceptance tests (Rust acceptance compiles with rustc -O).
+cells: A0/TypeScript/Rust × conventional/structured). Whole-task accounting: four
+never-merged token buckets (language primer, workflow primer, tool context, output),
+per-attempt failure status, one-shot vs after-repair acceptance, `taskSetSha256`.
+Thirteen held-out tasks with independent acceptance tests (Rust acceptance compiles with
+rustc -O). Live SDK runs (`A0_ALLOW_PAID_MODEL_CALLS=1`) remain unrun; instead the run
+below used **fresh Claude subagents as subjects**: each subject started with no context
+beyond the cell's system prompt (primer + protocol) and the task, did not author the
+tasks, answered its 13 tasks of one cell in isolation, and got exactly one repair message
+(the checker's rejection with the current view) for a failed cell. Token counts are local
+o200k counts; nothing was billed beyond this session.
 
-**Live model runs (claude-opus-5-5 via SDK): unrun**, they need `A0_ALLOW_PAID_MODEL_CALLS=1`
-and Anthropic credentials, which the user declined to provision.
+**Run 2026-09-30, 13 tasks × 6 cells × 2 models × 2 A0 primers** (results in
+`results/ai-edit-experiment.{haiku,sonnet}-{full,min}.json`; the min primer is
+`MODEL_GUIDE.min.txt`, 342 tokens; the full one 610):
 
-**Scripted run, 2026-09-29, subject: Claude Fable 5.1 in-session.** The harness has a
-replies mode (`A0_EXPERIMENT_REPLIES`, `A0_EXPERIMENT_DUMP`, `A0_EXPERIMENT_SUBJECT`): all
-78 cell prompts were dumped, answered once each from the prompt alone, and fed back as
-model replies. Caveats, so this is evidence about the harness and the protocols, not an
-unbiased model measurement: (1) the subject authored the tasks and reference solutions
-(contamination); (2) tokens are local o200k counts, not provider usage; (3) one trial per
-cell; (4) no reasoning-token accounting. Result file: `results/ai-edit-experiment.json`.
+| subject | cell | one-shot | after 1 repair | output tokens | whole-task uncached | cache-adjusted |
+|---|---|---|---|---|---|---|
+| Sonnet, min primer | A0 conventional | 12/13 | 13/13 | 725 | 6789 | 2288 |
+| Sonnet, min primer | A0 structured | 12/13 | 13/13 | 406 | 8367 | 2378 |
+| Sonnet, full primer | A0 conventional | 13/13 | 13/13 | 635 | 9831 | 2650 |
+| Sonnet, full primer | A0 structured | 12/13 | 13/13 | 364 | 12133 | 2852 |
+| Sonnet | TypeScript conventional | 13/13 | 13/13 | 586 | 2019 | 1484 |
+| Sonnet | TypeScript structured | 13/13 | 13/13 | 371 | 2919 | 1503 |
+| Sonnet | Rust conventional | 13/13 | 13/13 | 630 | 2289 | 1587 |
+| Sonnet | Rust structured | 13/13 | 13/13 | 369 | 3143 | 1560 |
+| Haiku, min primer | A0 conventional | 13/13 | 13/13 | 652 | 6312 | 2164 |
+| Haiku, min primer | A0 structured | 12/13 | 13/13 | 488 | 8499 | 2510 |
+| Haiku, full primer | A0 conventional | 12/13 | 13/13 | 726 | 10598 | 2806 |
+| Haiku, full primer | A0 structured | 8/13 | 11/13 | 701 | 15845 | 3650 |
+| Haiku | TypeScript conventional | 13/13 | 13/13 | 587 | 2020 | 1485 |
+| Haiku | TypeScript structured | 13/13 | 13/13 | 382 | 2930 | 1514 |
+| Haiku | Rust conventional | 13/13 | 13/13 | 620 | 2279 | 1577 |
+| Haiku | Rust structured | 12/13 | 13/13 | 400 | 3329 | 1611 |
 
-| cell | accepted | model calls | setup tokens | view tokens (13 tasks) | output tokens (13 tasks) |
-|---|---|---|---|---|---|
-| A0 conventional | 13/13 | 13 | 627 | 447 | 612 |
-| A0 structured | 13/13 | 13 | 750 | 622 | 341 |
-| TypeScript conventional | 13/13 | 13 | 48 | 432 | 579 |
-| TypeScript structured | 13/13 | 13 | 127 | 520 | 397 |
-| Rust conventional | 13/13 | 13 | 63 | 463 | 596 |
-| Rust structured | 13/13 | 13 | 142 | 551 | 381 |
+Cache-adjusted = primer and protocol charged once at 1.25× and at 0.05× per further call
+(Opus 5.5 cache-read rate), context and output at 1×.
 
-Whole-task token buckets (o200k, summed over 13 tasks, primers charged once per call;
-harness now records these separately plus a per-attempt failure status of
-protocol / compile / missing / runtime / wrong-output / no-reply and one-shot vs
-after-repair acceptance):
-
-| cell | language primer | workflow primer | tool context | output | total |
-|---|---|---|---|---|---|
-| A0 conventional | 7930 | 221 | 824 | 612 | 9587 |
-| A0 structured | 7930 | 1820 | 999 | 341 | 11090 |
-| TypeScript conventional | 403 | 221 | 809 | 579 | 2012 |
-| TypeScript structured | 403 | 1248 | 897 | 397 | 2945 |
-| Rust conventional | 598 | 221 | 840 | 596 | 2255 |
-| Rust structured | 598 | 1248 | 928 | 381 | 3155 |
-
-Wins / ties / losses for A0 on this run: acceptance is a six-way tie (every cell 13/13
-one-shot, zero repairs). Output tokens: A0 structured wins (341 vs 397 TypeScript, 381
-Rust, −14 % / −10 %); A0 conventional loses (612 vs 579 / 596). **Whole-task cost: A0
-loses by 4.8× (conventional) and 3.8× (structured) against TypeScript**, because the
-language primer (MODEL_GUIDE.txt, 610 tokens per call) is charged on every call while a
-TypeScript or Rust model needs only a 31–46 token semantics note. At 13 small tasks the
-primer is 72–83 % of A0's whole-task spend. The 200–400× ambition is contradicted by
-these numbers; the only measured A0 advantage is the 10–14 % output reduction on
-structured edits. Levers, in order of measured size: (1) primer amortisation through
-prompt caching, (2) a shorter primer or a primer the model already knows, (3) the output
-reduction.
-
-Prompt caching (read 2026-09-29 from the Anthropic and OpenAI docs the user supplied):
-Anthropic caches an exact system-prompt prefix for a minimum of 512 tokens on Claude
-Fable 5.1 / Opus 5.5 / Sonnet 5.5 (1024–4096 on older models); cache reads cost 0.025×
-(Fable 5.1), 0.05× (Opus 5.5) or 0.1× base input, writes 1.25× (5 min) or 2× (1 h).
-OpenAI caches automatically from 1024 tokens with reads at 0.1× (GPT-5.6+). The A0 primer
-plus protocol (627–750 tokens) is above Anthropic's 512-token floor and below OpenAI's
-1024, so it is cacheable on the Claude models the harness targets and not on OpenAI's
-without padding. The harness already marks the system prompt with `cache_control`.
-Cache-adjusted whole-task cost, primer buckets weighted at the Opus 5.5 read rate 0.05
-after one write per cell (tool context and output at 1×), 13 tasks:
-
-| cell | uncached total | cache-adjusted | vs TypeScript same protocol |
-|---|---|---|---|
-| A0 conventional | 9587 | ≈1843 | 1.26× |
-| A0 structured | 11090 | ≈1828 | 1.30× |
-| TypeScript conventional | 2012 | ≈1419 | — |
-| TypeScript structured | 2945 | ≈1377 | — |
-
-Caching narrows A0's whole-task loss from 3.8–4.8× to about 1.3×; it does not turn it
-into a win, because tool context (the view plus task text) and output are charged in
-full and A0's structured view is the largest of the six. The language-independent part
-of this (caching is a provider feature) is recorded here only because the primer is A0's
-dominant cost; the A0-side levers remain the view size and the primer size.
-
-## Session 2026-09-29 (late): primer size, JS guards
-
-- **Optimizer proofs now cover io (48/48)**: `tools/equiv-verify.ts` models an io token as
-  a bounded symbolic input of 8 words (reads past the end yield 0 as in the language), an
-  output buffer with one slot per static emit site and a symbolic length, and a read
-  position; equivalence requires equal results, equal output length, equal words below
-  it, and equal final position. Result: 48 proved, 0 counterexamples, 0 unknown, solver
-  2.3 s; self-check mutates one pure and one io function and gets a counterexample for
-  each. Stable across three consecutive runs. Implementation note: `z3-solver`'s async
-  `check` races its finalizers on the wasm heap and crashed about half the runs; the tool
-  calls the synchronous export instead (documented in the file).
-- **Hardware cycles and divisors** (`results/hardware.json`): per-module mean cycles per
-  case now recorded; slowest a0_g44 1581 and a0_g36 1040 (multiple dependent 32-cycle
-  divides), then 137, 133, 71. Divisor census after optimization: 3 literal, 32 variable
-  `div`/`rem` nodes (57/148 before), so a combinational literal-divisor path has no
-  measured need; the variable ones are the cycle cost and would need a faster divider
-  (radix-4 or pipelined) if hardware latency ever becomes a target.
-- **JS fold-body inlining: tie, reverted.** Source-level inlining of small fold/loop bodies
-  measured 0.98–1.02× on arrfill and loop64 (V8 already inlines the `a0o_` callees), so
-  it was not kept. The same measurement pointed at the real costs, which were fixed
-  instead: all-zero array literals now allocate (`new Uint32Array(n)`), power-of-two
-  array indices mask (`i & (n-1)`, exact for u32), and owned in-place `set`/`put` emit
-  `(a[i] = v, a)` with no helper. Interleaved A/B: arrfill 0.37–0.38× the previous
-  emission and 0.50× the hand-written JavaScript; loop64 unchanged. Compiler version
-  a0c-0.1.3.
-- **Execution benchmark re-run on a quiet machine** (load average 10–16,
-  `results/exec-benchmark.json`): C-path A0 vs hand-written C 0.98–1.00× on all 10
-  kernels, vs Rust 0.97–1.01×; JavaScript 0.99–1.08× (ties) with arrfill 0.53× (win);
-  build time A0→native 0.14–0.57× of rustc per kernel, 2.8× faster summed over the ten (the 3.9× figure from
-  the loaded-machine run is withdrawn and the site tile now shows the quiet number).
-
-- **`use` imports (v0.8.9, `src/link.ts`)**: `use "relative.a0"` lines at the head of a file
-  link another file into the program. The linker loads each file once by resolved path in
-  dependency order, rejects cycles and cross-file duplicate names (naming both files), and
-  validates the flat result; diagnostics are mapped back to `file:line`, including
-  validator errors that only name `fn.node`. The CLI (`check run emit wasm view patch`) and
-  the site build go through it; `site/page.a0` now declares `use "../examples/life.a0"`
-  instead of the build tool concatenating sources. Guides document the line. Test covers
-  transitive use, once-only loading, cycle, duplicate, and line mapping. Still one flat
-  namespace and no re-export or renaming: measured need was exactly the site; anything
-  more waits for a second consumer.
-
-- **Compact primer** `MODEL_GUIDE.min.txt`: 342 o200k tokens against 610 for `MODEL_GUIDE.txt`
-  (target was ≤ 300; the worked example costs ~30 and is kept). Harness option
-  `A0_EXPERIMENT_GUIDE` selects it; scripted run recorded in
-  `results/ai-edit-experiment.min-guide.json`: language-primer bucket 7930 → 4446 tokens
-  over 13 tasks, whole-task total 9587 → 6103 (conventional, −36 %) and 11090 → 7606
-  (structured, −31 %). Acceptance stayed 13/13 in every cell, but the scripted subject
-  does not read the primer, so **this run says nothing about whether a model can still
-  write A0 from the shorter guide**; only a live run can decide that, and it must compare
-  both guides with the same accounting.
-- **JS boundary guards** now emit one inline comparison per scalar parameter
-  (`(v >>> 0) !== v`) instead of a helper call. Interleaved same-process A/B on the affine
-  kernel, 21 rounds: old 62.1 ns, new 62.1 ns, hand-written 49.8 ns. No measured change:
-  V8 already inlined the helper. The remaining ~12 ns per call is the validation itself,
-  which is the boundary's purpose; internal calls never pay it. Kept for simplicity only.
-- `bun run exec-bench` was run under a load average of 115 from other applications and
-  produced C ratios from 0.44× to 1.41× on unchanged code; that run was discarded and the
-  committed results are unchanged. Whole-suite timing runs need a quiet machine.
+Wins, ties, losses, stated separately:
+- **Acceptance**: tie for Sonnet (every A0 cell reaches 13/13 with one repair, like
+  TypeScript and Rust); for Haiku a tie with the compact primer and a **loss with the
+  full primer** on structured edits (11/13). The shorter primer is better for both models,
+  so it is now the default primer for the experiment.
+- **Output tokens per edit**: tie. A0 structured 364–406 vs TypeScript 371–382 and Rust
+  369–400 over 13 tasks. The 10–14 % reduction recorded from the author-scripted run is
+  withdrawn: it was the author's own terseness, not the language.
+- **Whole-task cost**: **loss**, 1.5–1.6× TypeScript cache-adjusted (2.7–2.9× uncached)
+  with the compact primer, because a model editing TypeScript needs a 31-token semantics
+  note where A0 needs its 342-token primer on every call, plus a longer protocol text
+  (140 vs 96 tokens per call). Levers, all measurable: a primer the model already knows
+  (impossible for a new language; this is the structural cost of novelty), a shorter
+  structured-protocol text, prompt caching (already assumed above).
+- **What the failures were, and what changed because of them**: the first collection had
+  Haiku at 0/13 on A0 structured edits. Every one of those failures was a protocol
+  friction that a small model hits and a large one does not: a trailing `end` after the
+  edit lines, the whole function echoed back under its handle, the view's signature lines
+  echoed back, a program handle named `g1` where both primers say `g0`, and handles that
+  were consumed after a successful edit so the repair reply reused a dead name. Each was
+  made tolerant or fixed (v0.8.10: trailing `end` accepted; a whole `fn … end` block under
+  its own handle is a replacement; signature echoes are ignored; program handles are
+  numbered from `g0`; handles are stable for the session and rebind after each successful
+  edit; new functions written above a replaced caller are placed before it; an empty
+  program is rejected). After re-collecting with fresh subjects, Haiku's structured cell
+  went from 0/13 to 12/13 one-shot with the compact primer. Remaining failures are model
+  errors: a bool used where u32 is required (both models, `loop-inclusive`, because A0 has
+  no boolean `and`/`or`/`not` and `eq` was u32-only), an invented `le` op, a forward
+  reference, and Haiku ignoring the "edit lines only" rule once.
+- **Contamination and caveats**: the subjects are Claude models from the same family as
+  the author, prompted in this session; tasks were written by the author; one trial per
+  cell; local tokenizer; no reasoning tokens. Repair messages were delivered in a fresh
+  context that contained the whole conversation, which is equivalent to a live turn.
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
