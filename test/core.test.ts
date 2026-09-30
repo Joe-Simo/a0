@@ -4,6 +4,7 @@ import { compile, FunctionCache } from '../src/backends.js';
 import { compileCached, DiskCache } from '../src/cache.js';
 import {
   A0Error,
+  type Func,
   formatDiagnostic,
   formatFunction,
   formatType,
@@ -15,11 +16,14 @@ import {
   run,
   type Type,
   type TypedFunc,
+  typeEquals,
+  validate,
 } from '../src/core.js';
 import { applyPatch, EditSession, formatPatch, parsePatch, revision } from '../src/edit.js';
 import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
-import { IR_OPS, refParse, type WordIr, wellFormedPrefix } from '../tools/ref-parse.js';
+import { ILL_TYPED, type IrTables, NONE, refCheck } from '../tools/ref-check.js';
+import { IR_OPS, irOp, refParse, type WordIr, wellFormedPrefix } from '../tools/ref-parse.js';
 
 const AFFINE = `fn affine u32 u32 u32 -> u32
 a mul p0 p1
@@ -1536,4 +1540,241 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
     const code = run(parseio, [io]) as number;
     return [code, io.output[1] as number];
   }
+});
+
+test('self-hosted checker (compiler/check.a0) agrees with validate() on the corpus, the examples, the compiler, and ill-typed programs', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const checker = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
+  const check = checker.byName.get('check') as TypedFunc;
+  const checkio = checker.byName.get('checkio') as TypedFunc;
+  const SIZES = { types: 768, tlist: 1024, fns: 1024, nodes: 4096, args: 8192, fstat: 256 };
+  const pad = (t: readonly number[], n: number): number[] => [
+    ...t,
+    ...new Array(n - t.length).fill(0),
+  ];
+
+  /** The word IR of a TypeScript Program: every header, the bodies of functions [from, to) only. */
+  const encode = (fns: readonly Func[], from: number, to: number): IrTables => {
+    const types = [1, 0, 0, 2, 0, 0, 3, 0, 0];
+    const tlist: number[] = [];
+    const intern = (t: Type): number => {
+      if (t === 'u32') return 0;
+      if (t === 'bool') return 1;
+      if (t === 'io') return 2;
+      if (t.kind === 'arr') {
+        const elem = intern(t.elem);
+        for (let i = 0; i < types.length / 3; i += 1) {
+          if (types[i * 3] === 4 && types[i * 3 + 1] === t.length && types[i * 3 + 2] === elem)
+            return i;
+        }
+        types.push(4, t.length, elem);
+        return types.length / 3 - 1;
+      }
+      const fields = t.fields.map(intern);
+      for (let i = 0; i < types.length / 3; i += 1) {
+        if (types[i * 3] !== 5 || types[i * 3 + 2] !== fields.length) continue;
+        const a = types[i * 3 + 1] as number;
+        if (fields.every((f, k) => tlist[a + k] === f)) return i;
+      }
+      types.push(5, tlist.length, fields.length);
+      tlist.push(...fields);
+      return types.length / 3 - 1;
+    };
+    const table: number[] = [];
+    const nodes: number[] = [];
+    const args: number[] = [];
+    fns.forEach((fn, fi) => {
+      const params = fn.params.map(intern);
+      const first = tlist.length;
+      tlist.push(...params);
+      const result = intern(fn.result);
+      const operand = (o: Operand): [number, number] =>
+        o.kind === 'node'
+          ? [1, fn.nodes.findIndex((n) => n.id === o.id)]
+          : o.kind === 'param'
+            ? [2, o.index]
+            : o.kind === 'u32'
+              ? [3, o.value]
+              : [4, o.value ? 1 : 0];
+      const inChunk = fi >= from && fi < to;
+      const firstNode = nodes.length / 6;
+      if (inChunk) {
+        for (const n of fn.nodes) {
+          const callee = n.callee === undefined ? 0 : fns.findIndex((g) => g.name === n.callee);
+          const pred = n.pred === undefined ? 0 : fns.findIndex((g) => g.name === n.pred);
+          nodes.push(0, irOp(n.op), n.args.length, args.length / 2, callee, pred);
+          for (const a of n.args) args.push(...operand(a));
+        }
+      }
+      const [rk, rv] = operand(fn.ret);
+      const count = inChunk ? fn.nodes.length : 0;
+      table.push(0, params.length, first, result, firstNode, count, rk * 2 ** 28 + rv);
+    });
+    return { types, tlist, fns: table, nodes, args };
+  };
+  /** A type index of the checker's tables as a Type. */
+  const decode = (types: readonly number[], tlist: readonly number[], t: number): Type => {
+    const [tag, a, b] = [types[t * 3], types[t * 3 + 1], types[t * 3 + 2]] as [
+      number,
+      number,
+      number,
+    ];
+    if (tag === 1) return 'u32';
+    if (tag === 2) return 'bool';
+    if (tag === 3) return 'io';
+    if (tag === 4) return { kind: 'arr', length: a, elem: decode(types, tlist, b) };
+    return { kind: 'rec', fields: tlist.slice(a, a + b).map((f) => decode(types, tlist, f)) };
+  };
+  type State = [
+    number[],
+    number[],
+    number[],
+    number[],
+    number,
+    number,
+    number[],
+    number[],
+    number[],
+    number[],
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  /** Every function of a program, in chunks that fit the tables, against validate() and refCheck. */
+  const checkProgram = async (label: string, fns: readonly Func[]): Promise<void> => {
+    const typed = validate({ functions: fns, uses: [] });
+    let fstat: number[] = [];
+    let from = 0;
+    while (from < fns.length) {
+      let to = from;
+      let nn = 0;
+      let na = 0;
+      while (to < fns.length) {
+        const fn = fns[to] as Func;
+        const a = fn.nodes.reduce((n, x) => n + x.args.length, 0);
+        if (to > from && (nn + fn.nodes.length > SIZES.nodes / 6 || na + a > SIZES.args / 2)) break;
+        nn += fn.nodes.length;
+        na += a;
+        to += 1;
+      }
+      const ir = encode(fns, from, to);
+      const where = `${label}: functions ${from}..${to}`;
+      if (ir.nodes.length > SIZES.nodes || ir.args.length > SIZES.args) {
+        // A table cannot hold its own zero literal: the checker's `zeros8192` has 8192
+        // operands, more than the args table; its bound is 1 like every literal.
+        assert.equal(to, from + 1, `${where} fit`);
+        assert.deepEqual(
+          (fns[from] as Func).nodes.map((n) => n.op),
+          ['arr'],
+          `${where} fit`,
+        );
+        fstat = [...fstat, 1];
+        from = to;
+        continue;
+      }
+      const ref = refCheck(ir, from, fstat, to);
+      assert.equal(ref.code, 0, `${where} reference verdict`);
+      const s = run(check, [
+        pad(ir.types, SIZES.types),
+        pad(ir.tlist, SIZES.tlist),
+        pad(ir.fns, SIZES.fns),
+        pad(ir.nodes, SIZES.nodes),
+        pad(ir.args, SIZES.args),
+        pad(fstat, SIZES.fstat),
+        ir.types.length / 3,
+        ir.tlist.length,
+        to,
+        from,
+      ]) as State;
+      assert.equal(s[10], 0, `${where} A0 verdict (${s[11]}, ${s[12]})`);
+      assert.deepEqual(s[9].slice(0, to), ref.fstat.slice(0, to), `${where} iteration bounds`);
+      for (let fi = from; fi < to; fi += 1) {
+        const fn = typed.functions[fi] as TypedFunc;
+        const firstNode = ir.fns[fi * 7 + 4] as number;
+        fn.nodes.forEach((node, ni) => {
+          const want = fn.types.get(node.id) as Type;
+          const got = decode(s[0], s[1], s[6][firstNode + ni] as number);
+          const w = `${label} ${fn.name}.${node.id}`;
+          assert.ok(typeEquals(got, want), `${w}: ${formatType(got)} vs ${formatType(want)}`);
+          const refGot = decode(ref.types, ref.tlist, ref.nodeTypes[firstNode + ni] as number);
+          assert.ok(typeEquals(refGot, want), `${w}: reference ${formatType(refGot)}`);
+        });
+      }
+      fstat = s[9].slice(0, to);
+      from = to;
+    }
+  };
+  await checkProgram('corpus', parse(await readFile('results/corpus.a0', 'utf8')).functions);
+  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort())
+    await checkProgram(f, parse(await readFile(`examples/${f}`, 'utf8')).functions);
+  for (const f of ['compiler/lex.a0', 'compiler/parse.a0', 'compiler/check.a0'])
+    await checkProgram(f, (await link(f, (p) => readFile(p, 'utf8'))).program.functions);
+
+  // Ill-typed programs through the whole A0 front (lex, parse, check): the diagnostic must be
+  // validate()'s category at validate()'s function and node (the node count for `ret`, none for
+  // a header). Programs the TypeScript parser already rejects (arity, an unknown node) are
+  // compared by category only.
+  const a0Check = (src: string): [number, number, number] => {
+    const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
+    run(checkio, [io]);
+    return io.output.slice(1, 4) as [number, number, number];
+  };
+  const CODES: Record<string, number> = { type: 3, structure: 2, limit: 4 };
+  const tsCheck = (src: string): [number, number | undefined, number | undefined] => {
+    let program: ReturnType<typeof parse>;
+    try {
+      program = parse(src);
+    } catch (e) {
+      assert.ok(e instanceof A0Error);
+      return [0, undefined, undefined];
+    }
+    try {
+      validate(program);
+    } catch (e) {
+      assert.ok(e instanceof A0Error);
+      const m = /^([a-z][a-z0-9_]*)(?:\.([a-z][a-z0-9_]*))?[ :]/.exec(e.message);
+      assert.ok(m !== null, e.message);
+      const fi = program.functions.findIndex((g) => g.name === m[1]);
+      const fn = program.functions[fi] as Func;
+      const node =
+        m[2] === undefined
+          ? NONE
+          : m[2] === 'ret'
+            ? fn.nodes.length
+            : fn.nodes.findIndex((n) => n.id === m[2]);
+      return [CODES[e.code] as number, fi, node];
+    }
+    return [0, 0, 0];
+  };
+  for (const [label, src] of ILL_TYPED) {
+    const [code, fi, node] = tsCheck(src);
+    const got = a0Check(src);
+    if (fi === undefined) {
+      // Rejected by the TypeScript parser (category `parse`): the A0 front reports the
+      // structure error of validateFunction (arity) or of the A0 parser (an unknown node).
+      assert.equal(got[0], 2, `${label}: category`);
+      continue;
+    }
+    assert.notEqual(code, 0, label);
+    assert.equal(got[0], code, `${label}: category`);
+    if (got[1] !== NONE) assert.deepEqual(got, [code, fi, node], label);
+  }
+  // A well-typed source through the front: every node type agrees with validate().
+  const src =
+    'fn f u32x4 (u32,bool) io -> (u32,io)\nx mov 4294967295\nr read p2\nv at p1 1\nb arr v v\ng get b x\nret r\nend\n';
+  const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
+  assert.equal(run(checkio, [io]), 0);
+  const w = io.output;
+  assert.deepEqual(w.slice(0, 4), [1, 0, 0, 0]);
+  const nt = w[4] as number;
+  const nl = w[5 + nt] as number;
+  const nodeTypes = w.slice(7 + nt + nl);
+  const typed = parseAndValidate(src).functions[0] as TypedFunc;
+  assert.equal(nodeTypes.length, typed.nodes.length);
+  typed.nodes.forEach((n, i) => {
+    const got = decode(w.slice(5, 5 + nt), w.slice(6 + nt, 6 + nt + nl), nodeTypes[i] as number);
+    assert.ok(typeEquals(got, typed.types.get(n.id) as Type), `${n.id}: ${formatType(got)}`);
+  });
 });

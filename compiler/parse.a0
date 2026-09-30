@@ -991,19 +991,12 @@ b set a 3 2
 c set b 6 3
 ret c
 end
-# io front: read n then n source bytes; write code, token index, then each table preceded by
-# its word count (all zero on an error). The result is the error code.
-fn parseio io -> u32
-r0 read p0
-n0 at r0 0
-t0 at r0 1
-big lt 512 n0
-n select big 512 n0
+# the parser: source bytes src[0..n) to the word IR
+# (code etok pool sym types tlist fns nodes args uses npool nsym ntypes ntlist nfns nnodes nargs nuses)
+fn parse u32x512 u32 -> (u32,u32,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32,u32,u32,u32,u32,u32,u32,u32)
+src mov p0
+n mov p1
 z call zeros512
-s0 rec z t0
-rd fold readbyte n s0
-src at rd 0
-t1 at rd 1
 lx call lex src n
 tok at lx 0
 nw at lx 1
@@ -1066,6 +1059,41 @@ berr0 eq berr 0
 beof and berr0 bopen
 code select beof 1 berr
 etok select beof ntok betok
+r rec code etok pool sym types tlist fns nodes args uses npool nsym ntypes ntlist nfns nnodes nargs nuses
+ret r
+end
+# io front: read n then n source bytes; write code, token index, then each table preceded by
+# its word count (all zero on an error). The result is the error code.
+fn parseio io -> u32
+r0 read p0
+n0 at r0 0
+t0 at r0 1
+big lt 512 n0
+n select big 512 n0
+z call zeros512
+s0 rec z t0
+rd fold readbyte n s0
+src at rd 0
+t1 at rd 1
+pr call parse src n
+code at pr 0
+etok at pr 1
+pool at pr 2
+sym at pr 3
+types at pr 4
+tlist at pr 5
+fns at pr 6
+nodes at pr 7
+args at pr 8
+uses at pr 9
+npool at pr 10
+nsym at pr 11
+ntypes at pr 12
+ntlist at pr 13
+nfns at pr 14
+nnodes at pr 15
+nargs at pr 16
+nuses at pr 17
 ok eq code 0
 w0 write t1 code
 w1 write w0 etok
