@@ -2263,3 +2263,49 @@ Findings:
 - **Retries improved: 74/76 after one retry vs 72/76.** 10 of 12 failures were repaired from the message alone (earlier 7 of 11). The two unrepaired: Haiku absdiff (wrong output twice) and Haiku b-bounds-largest (uppercase id again).
 - **Cost: single task still wins, sessions still lose.** 237 vs TS 284 and Rust 312 for one task; 168 vs 148 / 160 in a 10-task session; 160 vs 133 / 143 unbounded. The loss in sessions is the retry rate (1.16 calls/task vs 1.12 / 1.11) and longer replies, not the system text.
 - Candidates for a further step, not taken here (adding spellings measured on the sample that found them would overfit): `lte`/`gte`/`neq` spellings, and a fix hint for uppercase ids.
+
+## Session 2026-09-30 (general optimizations for direct wasm32, shared IR, a0c-0.1.26)
+
+Merged `wasm-vs-clang` first (conflict in tools/exec-bench.ts: its kernel table moved to tools/exec-bench-kernels.ts, which now also holds the 8 newer kernels, so wasm-bench runs 19 kernels, not 11).
+
+**Shared IR optimizer (src/optimize.ts, every backend):**
+- Inlining of pure scalar-only calls up to 16 nodes, then constant folding across the old boundary (chain3 folds to `2*p0 + p1 + 3` in the IR).
+- Reassociation of u32 literal chains: `(x op K1) op K2` for add/mul/and/or/xor, `(x+K1)*K2 = x*K2 + K1*K2`, literals moved outward through `add`. `sub` is left alone on purpose: arm64 matches `sub p1 1` (previous element) and arm32/riscv64 match `sub 32 m` (rotates).
+- Full unrolling of folds with a literal count up to 8 (body up to 256 nodes, at most 2048 new nodes, values at most 64 words, within LIMITS.maxNodesPerFunction). Then scalar replacement: a `set`/`put` with a literal index on an `arr`/`rec` literal that nothing else uses becomes that literal with one operand replaced, so literal-index reads fold (arrfill becomes `arr p0 p0+1 .. p0+7` plus one dynamic read). The limit is 8, not 16, because 16-trip fills are arm64's NEON test shape.
+- Shared analyses for backends: `overwritesState` (a fold writes the whole array before any read, so the zero fill or copy is dead), `fillRun` (lane-independent fill: the hook for SIMD; see below), `lazyArms` (the select arms worth a branch: pure, used only by that arm, cost >= 8).
+- Tests updated where they asserted the old optimized shape (6 assertions now compile with `optimize: false` or expect the inlined form). Nothing was relaxed.
+
+**src/wasm.ts:** simd128 i32x4 for fill runs (on by default; `wasmSimd: false` turns it off; supported in Chrome/Edge 91+, Firefox 89+, Safari 16.4+ and Node 16.4+; there is no browser matrix in the repo, so this is my assumption). Dead zero-fill and dead-copy elimination. `i*K` in inlined bodies becomes an induction variable. Small aggregate fold state (up to 8 scalar words) is kept in locals for the whole loop and stored once at the end. The previous element (`get p0 (p1-1)`) is carried in a local. Index masks are dropped when p1 < count <= length. Constant folding of literal sources inside inlined bodies. Lazy select arms as `if/else`. `wasmExports` compile option: only the named functions are exported, and functions nothing reaches are dropped. Unrolling by 2 or 4 is implemented (`wasmUnroll`) but off by default: in an interleaved A/B test in one V8 process it was 0.95 to 1.03x on 9 kernels (V8 already unrolls), and it only made modules bigger. Array/record parameters are already read in place on wasm (no copy on entry), so nothing changed there.
+
+**SIMD hook for the other backends (not implemented by me; src/arm64.ts and src/x86_64.ts belong to other agents):** call `fillRun(fn, node)` on a fold. When it returns a run, `nodes` are LANE_OPS over p1 (index), scalar extras (params >= 2, broadcast once) and literals. Shift amounts are always uniform scalars. Lower each node to a 4-lane op (NEON `.4s` / SSE2 `_epi32`; `mul` is `pmulld` on SSE4.1, or two `pmuludq` on SSE2), store 4 lanes, step an index vector by 4, and finish count mod 4 with scalar trips. `overwritesState` tells you when to skip the initial zero fill.
+
+**wasm-bench (interleaved A0/clang, 15 samples, Node 24.14).** Before is the merge commit 05882f6 built separately; the two runs were taken back to back. Load averages: 7.7 to 8.4 during before, 8.1 rising to 33.2 during after, on 8 cores. Absolute ns in the after run are inflated for both sides, so compare ratios (clang ns / A0 ns):
+
+| kernel | bytes A0 before / after / clang | load ms A0 / clang (after) | speedup before -> after |
+|---|---|---|---|
+| affine | 344 / 229 / 536 | 0.036 / 0.035 | 0.74 -> 0.74 (loss) |
+| rotl | 353 / 220 / 468 | 0.041 / 0.037 | 0.90 -> 0.88 (loss) |
+| clamp | 402 / 241 / 393 | 0.041 / 0.045 | 0.98 -> 0.95 (loss) |
+| mix | 413 / 242 / 380 | 0.041 / 0.042 | 1.00 -> 0.99 (tie) |
+| ident | 238 / 173 / 486 | 0.033 / 0.035 | 1.03 -> 1.04 (tie) |
+| noop | 237 / 173 / 485 | 0.038 / 0.038 | 0.93 -> 0.99 (tie) |
+| chain3 | 367 / 209 / 500 | 0.039 / 0.037 | 0.98 -> 1.00 (tie) |
+| branchy | 351 / 257 / 394 | 0.038 / 0.038 | 0.92 -> 0.93 (loss) |
+| arrfill | 476 / 346 / 493 | 0.048 / 0.043 | 0.57 -> 0.84 (loss) |
+| arrfill4k | 495 / 358 / 526 | 0.052 / 0.052 | 0.34 -> 1.08 (win) |
+| loop64 | 496 / 247 / 507 | 0.039 / 0.035 | 1.07 -> 1.11 (win) |
+| dot1k | 769 / 517 / 658 | 0.068 / 0.048 | 0.49 -> 0.93 (loss) |
+| prefix1k | 835 / 480 / 639 | 0.100 / 0.086 | 0.26 -> 0.57 (loss) |
+| hist256 | 841 / 526 / 646 | 0.081 / 0.076 | 0.64 -> 0.97 (tie) |
+| mat4 | 3548 / 7058 / 1546 | 0.092 / 0.066 | 0.74 -> 1.06 (win) |
+| fnv4k | 794 / 505 / 611 | 0.115 / 0.094 | 0.97 -> 1.01 (tie) |
+| xs4k | 767 / 390 / 582 | 0.143 / 0.119 | 0.65 -> 0.81 (loss) |
+| minmax1k | 858 / 509 / 662 | 0.085 / 0.077 | 0.53 -> 1.11 (win) |
+| filter2 | 956 / 589 / 753 | 0.075 / 0.063 | 0.62 -> 0.82 (loss) |
+| geomean | | | 0.710 -> 0.928 |
+
+(The 11-kernel set of the previous section had a geomean of 0.782. On these 19 kernels the merged code measures 0.710.)
+
+- Reading the results: the aggregate kernels account for the gain (SIMD fills, dead fills, state in locals, carried reads). The scalar kernels are unchanged within noise (V8 already inlines and unrolls). affine, rotl and branchy stay at 0.74 to 0.93x. The IR form of affine is already minimal, so what remains is how V8 schedules the driver loop, which I have not explained. mat4 wins only by fully unrolling 8 x 145 nodes, so its module is 7 KB against clang's 1.5 KB and loads 0.03 ms slower. Load times are otherwise within 0.02 ms of clang, and every other A0 module is now smaller than clang's (exports pruned).
+- Still losing: prefix1k (clang fuses the fill with the scan), xs4k (the 16 KiB zero fill stays because trip 0 reads a discarded element), filter2 and dot1k (arm64 fuses fill into consumer; wasm does not), arrfill (8 scalar stores against clang's 2 vector stores).
+- Gate: lint, typecheck, test 83/83 (new test: every kernel plus a lazy-select case and a partial 1026/1030 fill, under the default, `wasmSimd: false`, `wasmUnroll: 4` and unoptimized builds, equal to the interpreter, and only the requested export present), verify all paths passed (webassembly_direct 5262, arm64/x86_64/riscv64/avr/arm32 4297 each at both optimization levels, JVM 5262), equiv 48/48, app, hw, dotnet, gpu passed. results/*.json regenerated under a0c-0.1.26. No change to src/arm64.ts, x86_64.ts, riscv64.ts or arm32.ts; their outputs change only through the shared IR (inlining, reassociation, unrolling of folds up to 8 trips), and verify passes on all of them. I did not measure whether that changes their speed.

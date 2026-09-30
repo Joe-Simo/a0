@@ -52,6 +52,7 @@
 import {
   A0Error,
   containsIo,
+  evalOp,
   formatType,
   isPrimitive,
   type Node,
@@ -61,6 +62,7 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
+import { type FillRun, fillRun, lazyArms, overwritesState } from './optimize.js';
 
 const PAGE = 65536;
 /** Address of the constant pool (the first page's low KiB stays unused, as in wasm-ld's layout). */
@@ -146,6 +148,27 @@ const OP = {
 } as const;
 const VOID = 0x40;
 const I32 = 0x7f;
+const V128 = 0x7b;
+/** simd128 opcodes (after the 0xfd prefix). */
+const SIMD = {
+  load: 0x00,
+  store: 0x0b,
+  const: 0x0c,
+  splat: 0x11,
+  and: 0x4e,
+  or: 0x50,
+  xor: 0x51,
+  shl: 0xab,
+  shr_u: 0xad,
+  add: 0xae,
+  sub: 0xb1,
+  mul: 0xb5,
+} as const;
+/**
+ * v128 locals share the symbolic index space above this base until `Code.finish` places them
+ * after the i32 locals.
+ */
+const VBASE = 1 << 20;
 const MEMORY_COPY = [0xfc, 0x0a, 0x00, 0x00];
 const MEMORY_FILL = [0xfc, 0x0b, 0x00];
 
@@ -159,6 +182,8 @@ interface VariantRecord {
   readonly params: number;
   readonly result: boolean;
   readonly locals: number;
+  /** v128 locals, declared after the i32 ones. */
+  readonly vlocals?: number;
   readonly frame: number;
   readonly code: readonly Part[];
 }
@@ -249,18 +274,31 @@ class Code {
     this.ins.push(...other.ins);
   }
 
-  /** Resolve locals (optimised when `params` is given: locals below it are fixed) into parts. */
-  finish(params?: number): { parts: Part[]; locals: number } {
+  simd(op: number): void {
+    this.op(0xfd, ...uleb(op));
+  }
+
+  /**
+   * Resolve locals into parts: adjacent pairs stackified, i32 locals above `params` packed by
+   * live range, then the v128 locals (symbolic indices from VBASE) packed after them.
+   */
+  finish(params?: number): { parts: Part[]; locals: number; vlocals: number } {
     let ins = this.ins;
     let locals = 0;
+    let vlocals = 0;
     if (params === undefined) {
+      // Hand-numbered helper bodies: indices are final.
       for (const x of ins) if ('local' in x) locals = Math.max(locals, x.index + 1);
     } else {
       ins = stackify(ins, params);
-      const map = allocateLocals(ins, params);
-      locals = map.count;
+      const i32 = allocateLocals(ins, params, (i) => i < VBASE);
+      const v128 = allocateLocals(ins, params + i32.count, (i) => i >= VBASE);
+      locals = i32.count;
+      vlocals = v128.count;
       ins = ins.map((x) =>
-        'local' in x ? { local: x.local, index: map.index.get(x.index) ?? x.index } : x,
+        'local' in x
+          ? { local: x.local, index: (x.index < VBASE ? i32 : v128).index.get(x.index) ?? x.index }
+          : x,
       );
     }
     const parts: Part[] = [];
@@ -279,7 +317,7 @@ class Code {
       }
     }
     flush();
-    return { parts, locals };
+    return { parts, locals, vlocals };
   }
 }
 
@@ -328,6 +366,7 @@ function stackify(input: readonly Ins[], params: number): Ins[] {
 function allocateLocals(
   ins: readonly Ins[],
   params: number,
+  mine: (index: number) => boolean,
 ): { index: Map<number, number>; count: number } {
   const range = new Map<number, [number, number]>();
   const loops: [number, number][] = [];
@@ -336,7 +375,7 @@ function allocateLocals(
     if ('loop' in x) {
       if (x.loop === 'open') open.push(p);
       else loops.push([open.pop() as number, p]);
-    } else if ('local' in x && x.index >= params) {
+    } else if ('local' in x && x.index >= params && mine(x.index)) {
       const r = range.get(x.index);
       if (r === undefined) range.set(x.index, [p, p]);
       else r[1] = p;
@@ -429,6 +468,93 @@ type ParamSource = { readonly local: number } | { readonly value: number };
 interface InlineHost {
   readonly parent: FunctionEmitter;
   readonly params: readonly ParamSource[];
+  /** Body nodes computed by the host as induction variables: node id -> host local. */
+  readonly induction?: ReadonlyMap<string, number>;
+  /** Scalar replacement of the p0 state: host locals holding its words (see `scalarState`). */
+  readonly fields?: readonly number[];
+  /**
+   * The previous element carried in a local: `get` (reading p0 at p1 - 1) is that local, and
+   * after the in-place `set` (p0 at p1) the stored value becomes it (see `carriedRead`).
+   */
+  readonly carry?: { readonly get: string; readonly set: string; readonly local: number };
+  /** p1 is the host's trip index, below this literal bound (so p1 needs no masking below it). */
+  readonly indexBound?: number;
+}
+
+/**
+ * A fold body `set p0 p1 v` (its only update) that also reads the element before p1,
+ * `get p0 (sub p1 1)`: trip i reads what trip i-1 stored, so a backend may carry that value
+ * in a register instead of reloading it (trip 0 reads element (2^32 - 1) mod length).
+ */
+function carriedRead(body: TypedFunc): { get: string; set: string } | undefined {
+  const ret = body.ret;
+  if (ret.kind !== 'node') return undefined;
+  const set = body.nodes.find((n) => n.id === ret.id);
+  const isParam = (o: Operand | undefined, i: number): boolean =>
+    o?.kind === 'param' && o.index === i;
+  if (set?.op !== 'set' || !isParam(set.args[0], 0) || !isParam(set.args[1], 1)) return undefined;
+  if (body.nodes.filter((n) => n.op === 'set' || n.op === 'put').length !== 1) return undefined;
+  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  for (const n of body.nodes) {
+    const j = n.args[1];
+    if (n.op !== 'get' || !isParam(n.args[0], 0) || j?.kind !== 'node') continue;
+    const d = defs.get(j.id);
+    const one = d?.args[1];
+    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1)
+      return { get: n.id, set: set.id };
+  }
+  return undefined;
+}
+
+/** Fold state of at most this many one-word fields or elements is kept in locals. */
+const STATE_WORDS = 8;
+
+/**
+ * Can a fold body's small aggregate state p0 live in locals for the whole loop? Its words must
+ * all be scalars, and p0 may only be read with literal-index `at`/`get` and updated by a chain
+ * of literal-index `put`/`set` (or rebuilt by a `rec`/`arr` of scalars) ending in the result.
+ * Returns the ids of the chain nodes (they become field lists, never storage).
+ */
+function scalarState(body: TypedFunc): ReadonlySet<string> | undefined {
+  const st = body.params[0];
+  if (st === undefined || isPrimitive(st)) return undefined;
+  const scalars = st.kind === 'arr' ? [st.elem] : st.fields;
+  const n = st.kind === 'arr' ? st.length : st.fields.length;
+  if (n > STATE_WORDS || !scalars.every((f) => f === 'u32' || f === 'bool')) return undefined;
+  const chain = new Set<string>();
+  const isP0 = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 0;
+  const inChain = (o: Operand | undefined): boolean => o?.kind === 'node' && chain.has(o.id);
+  for (const node of body.nodes) {
+    const [a, k] = node.args;
+    const update = node.op === 'set' || node.op === 'put';
+    const read = node.op === 'get' || node.op === 'at';
+    if ((update || read) && (isP0(a) || inChain(a))) {
+      if (k?.kind !== 'u32' || (read && !isP0(a))) return undefined;
+      if (update) chain.add(node.id);
+      if (node.args.slice(1).some((x) => isP0(x) || inChain(x))) return undefined;
+      continue;
+    }
+    if (
+      (node.op === 'rec' || node.op === 'arr') &&
+      formatType(body.types.get(node.id) ?? 'u32') === formatType(st)
+    ) {
+      chain.add(node.id);
+      continue;
+    }
+    if (node.args.some((x) => isP0(x) || inChain(x))) return undefined;
+  }
+  const ret = body.ret;
+  if (!(isP0(ret) || inChain(ret))) return undefined;
+  // A chain node may be the base of the next update or the result, nothing else.
+  for (const node of body.nodes)
+    for (const [i, x] of node.args.entries())
+      if (inChain(x) && !((node.op === 'set' || node.op === 'put') && i === 0)) return undefined;
+  const uses = new Map<string, number>();
+  for (const node of body.nodes)
+    for (const x of node.args) if (x.kind === 'node') uses.set(x.id, (uses.get(x.id) ?? 0) + 1);
+  if (ret.kind === 'node') uses.set(ret.id, (uses.get(ret.id) ?? 0) + 1);
+  for (const id of chain) if ((uses.get(id) ?? 0) > 1) return undefined;
+  return chain;
 }
 
 /** Iteration bodies and predicates up to this many nodes are emitted inside the loop. */
@@ -436,6 +562,18 @@ const INLINE_BODY_NODES = 24;
 /** Scalar calls of functions up to this many nodes are emitted at the call site. */
 const INLINE_CALL_NODES = 8;
 const INLINE_DEPTH = 3;
+/** Inlined fold bodies up to this many nodes are unrolled when `WasmEmitOptions.unroll` > 1. */
+const UNROLL_BODY_NODES = 12;
+
+/** Per-function code generation choices (part of the emission cache key when not default). */
+export interface WasmEmitOptions {
+  /** simd128 i32x4 for fill runs. */
+  readonly simd: boolean;
+  /** Copies of a small inlined fold body per loop back edge (1: no unrolling). */
+  readonly unroll: 1 | 2 | 4;
+}
+
+const DEFAULT_EMIT: WasmEmitOptions = { simd: true, unroll: 1 };
 
 const isIterationShape = (fn: TypedFunc): boolean =>
   fn.params[0] !== undefined && !isPrimitive(fn.params[0]) && fn.params[1] === 'u32';
@@ -507,6 +645,16 @@ class FunctionEmitter {
   frame = 0;
   /** The node whose storage is the result address (value variant, aggregate result). */
   readonly retSlot: string | undefined;
+  readonly options: WasmEmitOptions;
+  /** Scalar nodes whose value is known at compile time (folded across an inlined boundary). */
+  readonly consts = new Map<string, number>();
+  /** Select arms evaluated on their own path (see optimize.ts `lazyArms`). */
+  readonly lazy: ReturnType<typeof lazyArms>;
+  readonly byId: ReadonlyMap<string, Node>;
+  #nextVLocal = VBASE;
+  /** Scalar-replaced state: the update-chain nodes and each one's words (see `scalarState`). */
+  readonly #chain: ReadonlySet<string> | undefined;
+  readonly #words = new Map<string, readonly ParamSource[]>();
 
   constructor(
     fn: TypedFunc,
@@ -514,8 +662,13 @@ class FunctionEmitter {
     pool: string[],
     poolIndex: Map<string, number>,
     host?: InlineHost,
+    options: WasmEmitOptions = DEFAULT_EMIT,
   ) {
     this.fn = fn;
+    this.options = options;
+    this.lazy = lazyArms(fn);
+    this.byId = new Map(fn.nodes.map((n) => [n.id, n]));
+    this.#chain = host?.fields === undefined ? undefined : scalarState(fn);
     this.variant = variant;
     this.pool = pool;
     this.poolIndex = poolIndex;
@@ -570,7 +723,7 @@ class FunctionEmitter {
   /** A node that owns a frame slot (not an alias, not a run-time address). */
   #ownsSlot(id: string): boolean {
     const n = this.fn.nodes.find((x) => x.id === id);
-    if (n === undefined || this.aliases.has(id)) return false;
+    if (n === undefined || this.aliases.has(id) || this.#chain?.has(id) === true) return false;
     return !(n.op === 'get' || n.op === 'at' || n.op === 'select' || n.op === 'mov');
   }
 
@@ -582,6 +735,11 @@ class FunctionEmitter {
 
   newLocal(): number {
     return this.host === undefined ? this.#nextLocal++ : this.host.parent.newLocal();
+  }
+
+  /** A fresh v128 local (symbolic, from VBASE; see `Code.finish`). */
+  newVLocal(): number {
+    return this.host === undefined ? this.#nextVLocal++ : this.host.parent.newVLocal();
   }
 
   /** The local holding parameter `i` (an inlined body maps it to the host's local). */
@@ -640,8 +798,8 @@ class FunctionEmitter {
 
   /** Push an operand: a scalar value, a token address, or an aggregate address. */
   push(o: Operand): void {
-    if (o.kind === 'u32') this.code.i32(o.value);
-    else if (o.kind === 'bool') this.code.i32(o.value ? 1 : 0);
+    const k = this.#constOf(o);
+    if (k !== undefined) this.code.i32(k);
     else {
       const src = this.#paramSource(o);
       if (src !== undefined && 'value' in src) this.code.i32(src.value);
@@ -655,10 +813,22 @@ class FunctionEmitter {
     return root.kind === 'param' ? this.host.params[root.index] : undefined;
   }
 
+  /** The compile-time value of a scalar operand, when known (literal, literal source, folded). */
+  #constOf(o: Operand): number | undefined {
+    if (o.kind === 'u32') return o.value;
+    if (o.kind === 'bool') return o.value ? 1 : 0;
+    if (o.kind === 'node') {
+      const k = this.consts.get(o.id);
+      if (k !== undefined) return k;
+    }
+    const src = this.#paramSource(o);
+    return src !== undefined && 'value' in src ? src.value : undefined;
+  }
+
   /** An operand as the parameter source of a function inlined here. */
   #source(o: Operand): ParamSource {
-    if (o.kind === 'u32') return { value: o.value };
-    if (o.kind === 'bool') return { value: o.value ? 1 : 0 };
+    const k = this.#constOf(o);
+    if (k !== undefined) return { value: k };
     return this.#paramSource(o) ?? { local: this.localOf(o) };
   }
 
@@ -672,22 +842,75 @@ class FunctionEmitter {
     variant: Variant,
     params: readonly ParamSource[],
     limit: number,
+    loop: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {},
+  ): boolean {
+    if (!this.#canInline(callee, variant, params, limit, loop.fields)) return false;
+    const host: InlineHost = { parent: this, params, ...loop };
+    new FunctionEmitter(
+      callee,
+      variant,
+      this.pool,
+      this.poolIndex,
+      host,
+      this.options,
+    ).emitInline();
+    return true;
+  }
+
+  /** Is `id` of `callee`, inlined as an owned body here, an in-place update? Emits nothing. */
+  #inPlace(callee: TypedFunc, id: string, params: readonly ParamSource[]): boolean {
+    const host: InlineHost = { parent: this, params };
+    return new FunctionEmitter(
+      callee,
+      'owned',
+      this.pool,
+      this.poolIndex,
+      host,
+      this.options,
+    ).aliases.has(id);
+  }
+
+  /** Would `#tryInline` emit `callee` in place (small, io-free, no frame)? Emits nothing. */
+  #canInline(
+    callee: TypedFunc,
+    variant: Variant,
+    params: readonly ParamSource[],
+    limit: number,
+    fields?: readonly number[],
   ): boolean {
     if (this.depth >= INLINE_DEPTH || callee.nodes.length > limit) return false;
     if (variant === 'value' && !isPrimitive(callee.result)) return false;
     if (callee.params.some(containsIo) || [...callee.types.values()].some(containsIo)) return false;
-    const child = new FunctionEmitter(callee, variant, this.pool, this.poolIndex, {
-      parent: this,
-      params,
-    });
-    if (child.needsFrame()) return false;
-    child.emitInline();
-    return true;
+    const host: InlineHost = { parent: this, params, ...(fields === undefined ? {} : { fields }) };
+    return !new FunctionEmitter(
+      callee,
+      variant,
+      this.pool,
+      this.poolIndex,
+      host,
+      this.options,
+    ).needsFrame();
   }
 
   /** The body of an inlined function: its nodes, then its result (see `#tryInline`). */
   emitInline(): void {
-    for (const n of this.fn.nodes) this.emitNode(n);
+    this.#emitNodes();
+    const fields = this.host?.fields;
+    if (this.#chain !== undefined && fields !== undefined) {
+      // New state words: all read before any field local is written (a swap stays exact).
+      const ret = this.fn.ret;
+      const words = ret.kind === 'node' ? this.#words.get(ret.id) : undefined;
+      if (words === undefined) return;
+      const changed = words.flatMap((w, k) =>
+        'local' in w && w.local === fields[k] ? [] : [{ w, k }],
+      );
+      for (const { w } of changed) {
+        if ('local' in w) this.code.local(OP.localGet, w.local);
+        else this.code.i32(w.value);
+      }
+      for (const { k } of changed.reverse()) this.code.local(OP.localSet, fields[k] as number);
+      return;
+    }
     const root = this.root(this.fn.ret);
     if (this.variant === 'owned') {
       if (!(root.kind === 'param' && root.index === 0)) {
@@ -698,6 +921,28 @@ class FunctionEmitter {
     } else {
       this.push(this.fn.ret);
     }
+  }
+
+  /** Every node in order, except those a lazy select arm emits on its own path. */
+  #emitNodes(): void {
+    for (const n of this.fn.nodes) if (!this.lazy.owner.has(n.id)) this.emitNode(n);
+  }
+
+  /** Is the aggregate literal `id` only the initial state of a fold that overwrites it all? */
+  #deadInit(id: string): boolean {
+    const fn = this.fn;
+    if (fn.ret.kind === 'node' && fn.ret.id === id) return false;
+    const users = fn.nodes.filter((n) => n.args.some((a) => a.kind === 'node' && a.id === id));
+    const user = users[0];
+    if (users.length !== 1 || user === undefined) return false;
+    const init = user.args[1];
+    return (
+      init?.kind === 'node' &&
+      init.id === id &&
+      user.args.filter((a) => a.kind === 'node' && a.id === id).length === 1 &&
+      this.aliases.has(user.id) &&
+      overwritesState(fn, user)
+    );
   }
 
   /** dst src n memory.copy with the operands already pushed. */
@@ -717,7 +962,13 @@ class FunctionEmitter {
     if (lit !== undefined) return (lit % length) * elemBytes;
     if (idx === undefined) throw new A0Error('wasm: missing index');
     this.push(idx);
-    if ((length & (length - 1)) === 0) {
+    const root = this.root(idx);
+    const bound = this.host?.indexBound;
+    const inRange =
+      root.kind === 'param' && root.index === 1 && bound !== undefined && bound <= length;
+    if (inRange) {
+      // The trip index never reaches the length: no wrap.
+    } else if ((length & (length - 1)) === 0) {
       this.code.i32(length - 1);
       this.code.op(OP.and);
     } else {
@@ -752,10 +1003,54 @@ class FunctionEmitter {
     const fn = this.fn;
     const t = fn.types.get(node.id) ?? 'u32';
     const c = this.code;
+    const induced = this.host?.induction?.get(node.id);
+    if (induced !== undefined) {
+      this.locals.set(node.id, induced);
+      return;
+    }
+    if (this.host?.carry?.get === node.id) {
+      this.locals.set(node.id, this.host.carry.local);
+      return;
+    }
+    const fields = this.host?.fields;
+    if (this.#chain !== undefined && fields !== undefined) {
+      const [base, k] = node.args;
+      const width = fields.length;
+      const onP0 = base?.kind === 'param' && base.index === 0;
+      if ((node.op === 'at' || node.op === 'get') && onP0 && k?.kind === 'u32') {
+        this.locals.set(node.id, fields[k.value % width] as number);
+        return;
+      }
+      if (this.#chain.has(node.id)) {
+        if (node.op === 'rec' || node.op === 'arr') {
+          this.#words.set(
+            node.id,
+            node.args.map((a) => this.#source(a)),
+          );
+        } else {
+          const from = onP0
+            ? fields.map((local) => ({ local }))
+            : (this.#words.get((base as { id: string }).id) ?? []);
+          const at = (k as { value: number }).value % width;
+          const value = this.#source(node.args[2] as Operand);
+          this.#words.set(
+            node.id,
+            from.map((w, i) => (i === at ? value : w)),
+          );
+        }
+        return;
+      }
+    }
     if (this.aliases.has(node.id)) {
       // In place: one element store (set/put), a loop in the initial value's storage, or nothing (mov).
-      if (node.op === 'set' || node.op === 'put') this.#storeElement(node, node.args[0] as Operand);
-      else if (node.op === 'fold' || node.op === 'loop') this.#iteration(node);
+      if (node.op === 'set' || node.op === 'put') {
+        this.#storeElement(node, node.args[0] as Operand);
+        const carry = this.host?.carry;
+        if (carry?.set === node.id) {
+          this.push(node.args[2] as Operand);
+          c.local(OP.localSet, carry.local);
+        }
+      } else if (node.op === 'fold' || node.op === 'loop') this.#iteration(node);
       return;
     }
     if (node.op === 'fold' || node.op === 'loop') {
@@ -783,6 +1078,13 @@ class FunctionEmitter {
       case 'le':
       case 'gt':
       case 'ge': {
+        const x = this.#constOf(a as Operand);
+        const y = this.#constOf(b as Operand);
+        if (x !== undefined && y !== undefined && operandType(fn, a as Operand) === 'u32') {
+          const v = evalOp(node.op, [x, y]);
+          this.consts.set(node.id, typeof v === 'boolean' ? (v ? 1 : 0) : (v as number));
+          return;
+        }
         this.push(a as Operand);
         this.push(b as Operand);
         c.op(BINARY[node.op] as number);
@@ -808,13 +1110,34 @@ class FunctionEmitter {
         set();
         return;
       }
-      case 'select':
+      case 'select': {
+        const k = this.#constOf(a as Operand);
+        if (k !== undefined) {
+          this.push((k !== 0 ? b : node.args[2]) as Operand);
+          set();
+          return;
+        }
+        const arms = this.lazy.arms.get(node.id);
+        if (arms !== undefined) {
+          // Each costly arm is computed on its own path only.
+          this.push(a as Operand);
+          c.op(OP.if, I32);
+          for (const id of arms[0]) this.emitNode(this.byId.get(id) as Node);
+          this.push(b as Operand);
+          c.op(OP.else);
+          for (const id of arms[1]) this.emitNode(this.byId.get(id) as Node);
+          this.push(node.args[2] as Operand);
+          c.op(OP.end);
+          set();
+          return;
+        }
         this.push(b as Operand);
         this.push(node.args[2] as Operand);
         this.push(a as Operand);
         c.op(OP.select);
         set();
         return;
+      }
       case 'call': {
         const callee = fn.calls.get(node.callee ?? '');
         if (callee === undefined) throw new A0Error(`wasm: unknown callee ${node.callee}`);
@@ -835,6 +1158,8 @@ class FunctionEmitter {
       }
       case 'arr': {
         const local = this.bindSlot(node.id, t);
+        // Dead initial contents (a later fold writes every element first): storage only.
+        if (this.#deadInit(node.id)) return;
         const elem = arrayType(fn, { kind: 'node', id: node.id }).elem;
         const literal = literalBytes(fn, node);
         if (literal !== undefined) {
@@ -981,6 +1306,8 @@ class FunctionEmitter {
     if (node.op === 'loop' && pred === undefined)
       throw new A0Error(`wasm: unknown predicate ${node.pred}`);
     const aggregate = !isPrimitive(t);
+    // The initial value is dead when every element is written before any trip reads it.
+    const deadInit = overwritesState(fn, node);
     // State: a scalar local, the aliased storage, or a slot initialised by copying.
     let state: number;
     if (aggregate) {
@@ -988,68 +1315,266 @@ class FunctionEmitter {
         state = this.localOf({ kind: 'node', id: node.id });
       } else {
         state = this.bindSlot(node.id, t);
-        c.local(OP.localGet, state);
-        this.push(init);
-        this.copy(bytesOf(t));
+        if (!deadInit) {
+          c.local(OP.localGet, state);
+          this.push(init);
+          this.copy(bytesOf(t));
+        }
       }
     } else {
       state = this.#bindScalar(node.id);
       this.push(init);
       c.local(OP.localSet, state);
     }
-    // Rotated counted loop: the trip test sits at the bottom, guarded once on entry unless the
-    // count is a literal above zero.
     const i = this.newLocal();
-    c.i32(0);
-    c.local(OP.localSet, i);
-    const guard = !(count.kind === 'u32' && count.value > 0);
-    const exit = guard || pred !== undefined;
-    if (exit) c.op(OP.block, VOID);
-    if (guard) {
-      this.push(count);
-      c.op(OP.eqz);
-      c.op(OP.br_if, 0);
+    const variant: Variant = aggregate ? 'owned' : 'value';
+    const lit = count.kind === 'u32' ? count.value : undefined;
+    // Fill runs: four elements per trip with simd128, the rest by the scalar loop below.
+    let start = 0;
+    const run = this.options.simd && aggregate ? fillRun(fn, node) : undefined;
+    if (run !== undefined && run.count >= 4) {
+      start = run.count - (run.count % 4);
+      this.#vectorFill(run, state, start, extra);
     }
-    c.loopOpen();
+    c.i32(start);
+    c.local(OP.localSet, i);
+    if (lit !== undefined && start >= lit) return;
     const sources = (): ParamSource[] => [
       { local: state },
       { local: i },
       ...extra.map((e) => this.#source(e)),
     ];
+    // Scalar replacement: a small aggregate state lives in locals for the whole loop.
+    const width =
+      aggregate && !isPrimitive(t) ? (t.kind === 'arr' ? t.length : t.fields.length) : 0;
+    const small = node.op === 'fold' && aggregate && scalarState(body) !== undefined;
+    const probe = small ? Array.from({ length: width }, () => state) : undefined;
+    const inlineBody = this.#canInline(body, variant, sources(), INLINE_BODY_NODES, probe);
+    let fields: number[] | undefined;
+    if (small && inlineBody) {
+      fields = [];
+      for (let k = 0; k < width; k += 1) {
+        const local = this.newLocal();
+        c.local(OP.localGet, state);
+        c.mem(OP.load, k * 4);
+        c.local(OP.localSet, local);
+        fields.push(local);
+      }
+    }
+    // Strength reduction: `p1 * K` in an inlined body is an induction variable stepping by K.
+    const induction = new Map<string, { local: number; step: number }>();
+    if (inlineBody) {
+      for (const n of body.nodes) {
+        if (n.op !== 'mul') continue;
+        const [x, y] = n.args;
+        const isIndex = (o: Operand | undefined): boolean => o?.kind === 'param' && o.index === 1;
+        const k =
+          isIndex(x) && y?.kind === 'u32' ? y : isIndex(y) && x?.kind === 'u32' ? x : undefined;
+        if (k === undefined || k.kind !== 'u32') continue;
+        const local = this.newLocal();
+        c.i32(Math.imul(start, k.value));
+        c.local(OP.localSet, local);
+        induction.set(n.id, { local, step: k.value });
+      }
+    }
+    const inductionLocals = new Map([...induction].map(([id, v]) => [id, v.local]));
+    // The previous element in a local (in-place array state, inlined body).
+    const carried = aggregate && inlineBody && fields === undefined ? carriedRead(body) : undefined;
+    let carry: InlineHost['carry'];
+    if (carried !== undefined && this.#inPlace(body, carried.set, sources())) {
+      const local = this.newLocal();
+      const { length } = t as { length: number };
+      c.local(OP.localGet, state);
+      c.mem(OP.load, (((start - 1) >>> 0) % length) * 4);
+      c.local(OP.localSet, local);
+      carry = { ...carried, local };
+    }
+    const loopHost: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {
+      induction: inductionLocals,
+      ...(fields === undefined ? {} : { fields }),
+      ...(carry === undefined ? {} : { carry }),
+      ...(lit === undefined ? {} : { indexBound: lit }),
+    };
     const args = (): void => {
       c.local(OP.localGet, state);
       c.local(OP.localGet, i);
       for (const e of extra) this.push(e);
     };
-    if (pred !== undefined) {
-      if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES)) {
-        args();
-        c.call(`a0_${pred.name}`);
+    /** One trip: predicate exit (to the enclosing block, `depth` labels out), body, steps. */
+    const trip = (depth: number): void => {
+      if (pred !== undefined) {
+        const bound = lit === undefined ? {} : { indexBound: lit };
+        if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES, bound)) {
+          args();
+          c.call(`a0_${pred.name}`);
+        }
+        c.op(OP.eqz);
+        c.op(OP.br_if, depth);
       }
-      c.op(OP.eqz);
-      c.op(OP.br_if, 1);
+      if (!inlineBody || !this.#tryInline(body, variant, sources(), INLINE_BODY_NODES, loopHost)) {
+        args();
+        c.call(aggregate ? `a0o_${body.name}` : `a0_${body.name}`);
+      }
+      if (!aggregate) c.local(OP.localSet, state);
+      for (const { local, step } of induction.values()) {
+        c.local(OP.localGet, local);
+        c.i32(step);
+        c.op(OP.add);
+        c.local(OP.localSet, local);
+      }
+      c.local(OP.localGet, i);
+      c.i32(1);
+      c.op(OP.add);
+      c.local(OP.localSet, i);
+    };
+    /**
+     * A rotated counted loop from the current i up to `limit` (pushed by `limit`, or the
+     * literal `limitLit`), `copies` trips per back edge: the trip test sits at the bottom,
+     * guarded once on entry unless the bound is a literal above the start.
+     */
+    const counted = (
+      limit: () => void,
+      limitLit: number | undefined,
+      from: number,
+      copies: number,
+    ): void => {
+      const guard = !(limitLit !== undefined && limitLit > from);
+      const exit = guard || pred !== undefined;
+      if (exit) c.op(OP.block, VOID);
+      if (guard) {
+        c.local(OP.localGet, i);
+        limit();
+        c.op(OP.ge_u);
+        c.op(OP.br_if, 0);
+      }
+      c.loopOpen();
+      for (let k = 0; k < copies; k += 1) trip(1);
+      c.local(OP.localGet, i);
+      limit();
+      c.op(OP.lt_u);
+      c.op(OP.br_if, 0);
+      c.loopClose();
+      if (exit) c.op(OP.end);
+    };
+    // Unrolling: a small inlined fold body runs UNROLL copies per back edge, then a remainder
+    // loop finishes the last count mod UNROLL trips.
+    const unroll =
+      node.op === 'fold' && inlineBody && body.nodes.length <= UNROLL_BODY_NODES
+        ? this.options.unroll
+        : 1;
+    const pushCount = (): void => this.push(count);
+    if (unroll === 1 || (lit !== undefined && lit - start < unroll)) {
+      counted(pushCount, lit, start, 1);
+    } else if (lit !== undefined) {
+      const main = start + (lit - start) - ((lit - start) % unroll);
+      counted(() => c.i32(main), main, start, unroll);
+      if (main < lit) counted(pushCount, lit, main, 1);
+    } else {
+      // Variable count (start is 0 here: fill runs have literal counts).
+      const bound = this.newLocal();
+      this.push(count);
+      c.i32(-unroll);
+      c.op(OP.and);
+      c.local(OP.localSet, bound);
+      counted(() => c.local(OP.localGet, bound), undefined, start, unroll);
+      counted(pushCount, undefined, start, 1);
     }
-    const variant: Variant = aggregate ? 'owned' : 'value';
-    if (!this.#tryInline(body, variant, sources(), INLINE_BODY_NODES)) {
-      args();
-      c.call(aggregate ? `a0o_${body.name}` : `a0_${body.name}`);
+    // The scalar-replaced state goes back to its storage once, after the loop.
+    for (const [k, local] of (fields ?? []).entries()) {
+      c.local(OP.localGet, state);
+      c.local(OP.localGet, local);
+      c.mem(OP.store, k * 4);
     }
-    if (!aggregate) c.local(OP.localSet, state);
-    c.local(OP.localGet, i);
-    c.i32(1);
+  }
+
+  /**
+   * simd128 form of a fill run (see optimize.ts `fillRun`): elements [0, end) of the array at
+   * `state`, four per trip, the index vector stepping by four.
+   */
+  #vectorFill(run: FillRun, state: number, end: number, extra: readonly Operand[]): void {
+    const c = this.code;
+    const vconst = (lanes: readonly number[]): void => {
+      c.simd(SIMD.const);
+      const b = new Uint8Array(16);
+      const view = new DataView(b.buffer);
+      for (const [k, v] of lanes.entries()) view.setUint32(k * 4, v >>> 0, true);
+      c.op(...b);
+    };
+    const index = this.newVLocal();
+    vconst([0, 1, 2, 3]);
+    c.local(OP.localSet, index);
+    // Loop-invariant extras as splats, once before the loop.
+    const splats = new Map<number, number>();
+    for (const n of run.nodes)
+      for (const a of [...n.args, run.value])
+        if (a.kind === 'param' && a.index >= 2 && !splats.has(a.index)) {
+          const v = this.newVLocal();
+          this.push(extra[a.index - 2] as Operand);
+          c.simd(SIMD.splat);
+          c.local(OP.localSet, v);
+          splats.set(a.index, v);
+        }
+    const ptr = this.newLocal();
+    c.local(OP.localGet, state);
+    c.local(OP.localSet, ptr);
+    const lanes = new Map<string, number>();
+    const pushLanes = (o: Operand): void => {
+      if (o.kind === 'u32') vconst([o.value, o.value, o.value, o.value]);
+      else if (o.kind === 'param')
+        c.local(OP.localGet, o.index === 1 ? index : (splats.get(o.index) as number));
+      else if (o.kind === 'node') c.local(OP.localGet, lanes.get(o.id) as number);
+    };
+    /** A shift amount: the same in every lane, so a scalar. */
+    const pushScalar = (o: Operand): void => {
+      if (o.kind === 'u32') c.i32(o.value);
+      else if (o.kind === 'param') this.push(extra[o.index - 2] as Operand);
+    };
+    const VOP: Readonly<Record<string, number>> = {
+      add: SIMD.add,
+      sub: SIMD.sub,
+      mul: SIMD.mul,
+      and: SIMD.and,
+      or: SIMD.or,
+      xor: SIMD.xor,
+      shl: SIMD.shl,
+      shr: SIMD.shr_u,
+    };
+    c.loopOpen();
+    for (const n of run.nodes) {
+      const [a, b] = n.args as [Operand, Operand];
+      pushLanes(a);
+      if (n.op === 'shl' || n.op === 'shr') pushScalar(b);
+      else pushLanes(b);
+      c.simd(VOP[n.op] as number);
+      const v = this.newVLocal();
+      c.local(OP.localSet, v);
+      lanes.set(n.id, v);
+    }
+    c.local(OP.localGet, ptr);
+    pushLanes(run.value);
+    // v128.store with a 4-byte alignment hint (frames are 4-aligned) and offset 0.
+    c.simd(SIMD.store);
+    c.op(2, 0);
+    c.local(OP.localGet, index);
+    vconst([4, 4, 4, 4]);
+    c.simd(SIMD.add);
+    c.local(OP.localSet, index);
+    c.local(OP.localGet, ptr);
+    c.i32(16);
     c.op(OP.add);
-    c.local(OP.localTee, i);
-    this.push(count);
+    c.local(OP.localTee, ptr);
+    c.local(OP.localGet, state);
+    c.i32(end * 4);
+    c.op(OP.add);
     c.op(OP.lt_u);
     c.op(OP.br_if, 0);
     c.loopClose();
-    if (exit) c.op(OP.end);
   }
 
   /** Emit the whole variant and return its record. */
   emit(): VariantRecord {
     const fn = this.fn;
-    for (const n of fn.nodes) this.emitNode(n);
+    this.#emitNodes();
     const c = this.code;
     const ret = fn.ret;
     const root = this.root(ret);
@@ -1086,7 +1611,7 @@ class FunctionEmitter {
       all.op(OP.add);
       all.op(OP.globalSet, 0);
     }
-    const { parts, locals } = all.finish(this.paramCount);
+    const { parts, locals, vlocals } = all.finish(this.paramCount);
     const symbol = this.variant === 'owned' ? `a0o_${fn.name}` : `a0_${fn.name}`;
     return {
       symbol,
@@ -1094,6 +1619,7 @@ class FunctionEmitter {
       params: this.paramCount,
       result: this.variant === 'value' && isPrimitive(fn.result),
       locals,
+      ...(vlocals > 0 ? { vlocals } : {}),
       frame,
       code: parts,
     };
@@ -1118,11 +1644,13 @@ const BINARY: Readonly<Record<string, number>> = {
 };
 
 /** One function's variants as a JSON record (the unit of the emission caches). */
-export function emitWasmFunction(fn: TypedFunc): string {
+export function emitWasmFunction(fn: TypedFunc, options: WasmEmitOptions = DEFAULT_EMIT): string {
   const pool: string[] = [];
   const poolIndex = new Map<string, number>();
-  const variants = [new FunctionEmitter(fn, 'value', pool, poolIndex).emit()];
-  if (hasOwnedVariant(fn)) variants.push(new FunctionEmitter(fn, 'owned', pool, poolIndex).emit());
+  const emitter = (v: Variant): FunctionEmitter =>
+    new FunctionEmitter(fn, v, pool, poolIndex, undefined, options);
+  const variants = [emitter('value').emit()];
+  if (hasOwnedVariant(fn)) variants.push(emitter('owned').emit());
   const record: FnRecord = { name: fn.name, pool, variants };
   return JSON.stringify(record);
 }
@@ -1137,6 +1665,7 @@ interface Fn {
   readonly params: number;
   readonly result: boolean;
   readonly locals: number;
+  readonly vlocals?: number;
   readonly code: readonly Part[];
 }
 
@@ -1252,6 +1781,12 @@ function name(text: string): number[] {
 export interface WasmLayout {
   readonly ioInputCapacity: number;
   readonly ioOutputCapacity: number;
+  /**
+   * Functions the host calls (A0 names). When given, only these are exported and functions no
+   * export reaches (for instance ones every call site inlined) are left out of the module;
+   * absent, every function is exported (the shape site/app.ts and tools/verify.ts drive).
+   */
+  readonly exports?: readonly string[];
 }
 
 /**
@@ -1313,6 +1848,7 @@ export function assembleWasm(
         params: v.params,
         result: v.result,
         locals: v.locals,
+        ...(v.vlocals === undefined ? {} : { vlocals: v.vlocals }),
         code: v.code.map((p) =>
           typeof p === 'object' && 'pool' in p
             ? Buffer.from([
@@ -1325,6 +1861,27 @@ export function assembleWasm(
     }
     frames.set(r.name, frame);
     callees.set(r.name, out);
+  }
+  if (layout.exports !== undefined) {
+    // Keep what the exported functions reach through calls; export only those.
+    const roots = new Set(layout.exports.map((n) => `a0_${n}`));
+    const bySymbol = new Map(fns.map((f) => [f.symbol, f]));
+    const reached = new Set<string>();
+    const stack = [...roots];
+    for (let s = stack.pop(); s !== undefined; s = stack.pop()) {
+      const f = bySymbol.get(s);
+      if (f === undefined || reached.has(s)) continue;
+      reached.add(s);
+      for (const p of f.code) if (typeof p === 'object' && 'call' in p) stack.push(p.call);
+    }
+    for (const r of roots)
+      if (!reached.has(r)) throw new A0Error(`wasm: exported function ${r.slice(3)} not found`);
+    const kept = fns
+      .filter((f) => reached.has(f.symbol))
+      .map(({ exportAs: _exportAs, ...f }) =>
+        roots.has(f.symbol) ? { ...f, exportAs: f.symbol } : f,
+      );
+    fns.splice(0, fns.length, ...kept);
   }
   const index = new Map(fns.map((f, i) => [f.symbol, i] as const));
 
@@ -1379,7 +1936,10 @@ export function assembleWasm(
         code.push(OP.call, ...uleb(target));
       } else throw new A0Error('wasm: unresolved constant');
     }
-    const locals = f.locals > 0 ? [...uleb(1), ...uleb(f.locals), I32] : [0];
+    const groups: number[][] = [];
+    if (f.locals > 0) groups.push([...uleb(f.locals), I32]);
+    if ((f.vlocals ?? 0) > 0) groups.push([...uleb(f.vlocals ?? 0), V128]);
+    const locals = [...uleb(groups.length), ...groups.flat()];
     const body = [...locals, ...code, OP.end];
     return [...uleb(body.length), ...body];
   });

@@ -107,7 +107,9 @@ interface Row {
 
 async function benchKernel(k: Kernel, clang: string, dir: string): Promise<Row> {
   const program = parseAndValidate(a0Driver(k));
-  const a0Bytes = new Uint8Array(wasmModuleBytes(compile(program, 'wasm').text));
+  const a0Bytes = new Uint8Array(
+    wasmModuleBytes(compile(program, 'wasm', { wasmExports: ['wb_run'] }).text),
+  );
   const cPath = join(dir, `${k.name}.c`);
   const wPath = join(dir, `${k.name}.wasm`);
   await writeFile(cPath, cDriver(k));

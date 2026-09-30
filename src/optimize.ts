@@ -14,10 +14,12 @@ import {
   containsIo,
   evalOp,
   formatOperand,
+  isPrimitive,
   isScalar,
   type Node,
   type Operand,
   run,
+  type Type,
   type TypedFunc,
   type TypedProgram,
   type Value,
@@ -302,35 +304,281 @@ export interface OptimizeStats {
   readonly after: number;
 }
 
-export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: OptimizeStats } {
+/** Scalar calls of pure, scalar-only functions up to this many nodes are inlined in the IR. */
+const INLINE_CALL_NODES = 16;
+/** Folds with a literal trip count up to this many are fully unrolled in the IR... */
+const UNROLL_TRIPS = 8;
+/** ...when the body has at most this many nodes and the unrolled copy at most UNROLL_NODES. */
+const UNROLL_BODY_NODES = 256;
+const UNROLL_NODES = 2048;
+/** Values of an unrolled body stay below this many words (never an arena-sized value). */
+const UNROLL_STATE_WORDS = 64;
+
+function typeWords(t: Type): number {
+  if (isPrimitive(t)) return 1;
+  if (t.kind === 'arr') return t.length * typeWords(t.elem);
+  return t.fields.reduce((n, f) => n + typeWords(f), 0);
+}
+
+const funcHasIo = (f: TypedFunc): boolean =>
+  containsIo(f.result) || f.params.some(containsIo) || [...f.types.values()].some(containsIo);
+
+/** Working state of one function: its nodes with their types and the callees they name. */
+interface Body {
+  readonly nodes: readonly Node[];
+  readonly ret: Operand;
+  readonly types: Map<string, Type>;
+  readonly calls: Map<string, TypedFunc>;
+}
+
+/** Fresh node identifiers that collide with no identifier already in use. */
+class Names {
+  readonly #taken: Set<string>;
+  #next = 0;
+  constructor(taken: Iterable<string>) {
+    this.#taken = new Set(taken);
+  }
+  fresh(): string {
+    for (;;) {
+      const id = `o_${(this.#next++).toString(36)}`;
+      if (!this.#taken.has(id)) {
+        this.#taken.add(id);
+        return id;
+      }
+    }
+  }
+}
+
+/**
+ * Copy `callee`'s nodes into `out` with fresh identifiers, its parameters bound to `args`;
+ * returns the operand its result maps to. Exact: the callees inlined are pure and total.
+ */
+function inlineInto(
+  callee: TypedFunc,
+  args: readonly Operand[],
+  out: Node[],
+  into: { types: Map<string, Type>; calls: Map<string, TypedFunc> },
+  names: Names,
+): Operand {
+  const map = new Map<string, Operand>();
+  const sub = (o: Operand): Operand => {
+    if (o.kind === 'param') return args[o.index] as Operand;
+    if (o.kind === 'node') return map.get(o.id) ?? o;
+    return o;
+  };
+  for (const n of callee.nodes) {
+    const id = names.fresh();
+    const { text: _text, ...rest } = n;
+    out.push({ ...rest, id, args: n.args.map(sub) });
+    into.types.set(id, callee.types.get(n.id) ?? 'u32');
+    map.set(n.id, { kind: 'node', id });
+  }
+  for (const [name, f] of callee.calls) into.calls.set(name, f);
+  return sub(callee.ret);
+}
+
+/**
+ * Inline small pure scalar calls and fully unroll short literal-count folds, so literals and
+ * the index of each trip reach the caller's folding (constant folding across calls; a small
+ * fixed array built by such a fold then becomes an `arr` of its element values).
+ */
+function expand(body: Body): Body {
+  const names = new Names(body.types.keys());
+  const rename = new Map<string, Operand>();
+  const r = (o: Operand): Operand => (o.kind === 'node' ? (rename.get(o.id) ?? o) : o);
+  const out: Node[] = [];
+  const types = new Map(body.types);
+  const calls = new Map(body.calls);
+  let changed = false;
+  for (const node0 of body.nodes) {
+    const node: Node = { ...node0, args: node0.args.map(r) };
+    const callee = node.callee === undefined ? undefined : calls.get(node.callee);
+    if (
+      node.op === 'call' &&
+      callee !== undefined &&
+      callee.nodes.length <= INLINE_CALL_NODES &&
+      isScalar(callee.result) &&
+      callee.params.every(isScalar) &&
+      [...callee.types.values()].every(isScalar)
+    ) {
+      rename.set(node.id, inlineInto(callee, node.args, out, { types, calls }, names));
+      changed = true;
+      continue;
+    }
+    const [count, init, ...extra] = node.args;
+    if (
+      node.op === 'fold' &&
+      callee !== undefined &&
+      count?.kind === 'u32' &&
+      count.value > 0 &&
+      count.value <= UNROLL_TRIPS &&
+      init !== undefined &&
+      callee.nodes.length <= UNROLL_BODY_NODES &&
+      callee.nodes.length * count.value <= UNROLL_NODES &&
+      !funcHasIo(callee) &&
+      [callee.result, ...callee.types.values()].every((t) => typeWords(t) <= UNROLL_STATE_WORDS)
+    ) {
+      let state = init;
+      for (let k = 0; k < count.value; k += 1)
+        state = inlineInto(
+          callee,
+          [state, { kind: 'u32', value: k }, ...extra],
+          out,
+          { types, calls },
+          names,
+        );
+      rename.set(node.id, state);
+      changed = true;
+      continue;
+    }
+    out.push(node);
+  }
+  return changed ? { nodes: out, ret: r(body.ret), types, calls } : body;
+}
+
+/** Uses of each node among `nodes` and the result. */
+function useCounts(nodes: readonly Node[], ret: Operand): Map<string, number> {
+  const uses = new Map<string, number>();
+  const add = (o: Operand): void => {
+    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
+  };
+  for (const n of nodes) n.args.forEach(add);
+  add(ret);
+  return uses;
+}
+
+const u32 = (v: number): Operand => ({ kind: 'u32', value: v >>> 0 });
+const ASSOC: ReadonlySet<Node['op']> = new Set(['add', 'mul', 'and', 'or', 'xor']);
+
+function combine(op: Node['op'], x: number, y: number): number {
+  switch (op) {
+    case 'add':
+      return (x + y) >>> 0;
+    case 'mul':
+      return Math.imul(x, y) >>> 0;
+    case 'and':
+      return (x & y) >>> 0;
+    case 'or':
+      return (x | y) >>> 0;
+    default:
+      return (x ^ y) >>> 0;
+  }
+}
+
+/**
+ * Reassociation of u32 chains with literals (exact in wrapping arithmetic): `(x op K1) op K2`
+ * is `x op (K1 op K2)` for add/mul/and/or/xor; `(x + K1) * K2` is `x*K2 + K1*K2`; `(x + K) + y`
+ * and `(x + K) + (x + K)` move the literal outward to meet the next one. Rewrites whose inner
+ * node has other uses are skipped (they would add work). `sub` is left as written: backends
+ * match `sub p1 1` (previous element) and `sub 32 m` (rotates).
+ * Returns the replacement node and the new nodes to place before it.
+ */
+function reassociate(
+  node: Node,
+  defs: ReadonlyMap<string, Node>,
+  types: ReadonlyMap<string, Type>,
+  uses: ReadonlyMap<string, number>,
+  names: Names,
+): { pre: Node[]; node: Node } | undefined {
+  if (types.get(node.id) !== 'u32') return undefined;
+  const [a, b] = node.args;
+  if (a === undefined || b === undefined) return undefined;
+  if (!ASSOC.has(node.op)) return undefined;
+  const withLiteral = (o: Operand, n: number): { def: Node; x: Operand; k: number } | undefined => {
+    if (o.kind !== 'node' || (uses.get(o.id) ?? 0) !== n) return undefined;
+    const def = defs.get(o.id);
+    if (def === undefined || types.get(def.id) !== 'u32') return undefined;
+    const [x, y] = def.args;
+    if (x === undefined || y === undefined) return undefined;
+    if (y.kind === 'u32' && x.kind !== 'u32') return { def, x, k: y.value };
+    if (x.kind === 'u32' && y.kind !== 'u32') return { def, x: y, k: x.value };
+    return undefined;
+  };
+  const lit = b.kind === 'u32' ? b : a.kind === 'u32' ? a : undefined;
+  if (lit !== undefined) {
+    const d = withLiteral(lit === b ? a : b, 1);
+    if (d === undefined) return undefined;
+    if (d.def.op === node.op)
+      return { pre: [], node: { ...node, args: [d.x, u32(combine(node.op, d.k, lit.value))] } };
+    if (node.op === 'mul' && d.def.op === 'add') {
+      const id = names.fresh();
+      return {
+        pre: [{ id, op: 'mul', args: [d.x, lit] }],
+        node: { ...node, op: 'add', args: [{ kind: 'node', id }, u32(Math.imul(d.k, lit.value))] },
+      };
+    }
+    return undefined;
+  }
+  if (node.op !== 'add') return undefined;
+  if (a.kind === 'node' && b.kind === 'node' && a.id === b.id) {
+    // (x + K) + (x + K) = (x + x) + 2K: the inner node's two uses are both here.
+    const d = withLiteral(a, 2);
+    if (d === undefined || d.def.op !== 'add') return undefined;
+    const id = names.fresh();
+    return {
+      pre: [{ id, op: 'add', args: [d.x, d.x] }],
+      node: { ...node, args: [{ kind: 'node', id }, u32(2 * d.k)] },
+    };
+  }
+  for (const [p, q] of [
+    [a, b],
+    [b, a],
+  ] as const) {
+    const d = withLiteral(p, 1);
+    if (d === undefined || d.def.op !== 'add') continue;
+    const id = names.fresh();
+    return {
+      pre: [{ id, op: 'add', args: [d.x, q] }],
+      node: { ...node, args: [{ kind: 'node', id }, u32(d.k)] },
+    };
+  }
+  return undefined;
+}
+
+/** One folding / reassociation / CSE / dead-code pass over a body. */
+function pass(fn: TypedFunc, body: Body): Body {
+  const types = new Map(body.types);
+  const view: TypedFunc = { ...fn, types, calls: body.calls };
+  const names = new Names(types.keys());
+  const uses = useCounts(body.nodes, body.ret);
   const subst = new Map<string, Operand>();
   const resolve = (o: Operand): Operand => {
     let cur = o;
-    for (let guard = 0; guard < fn.nodes.length + 1; guard += 1) {
+    for (;;) {
       if (cur.kind !== 'node') return cur;
       const next = subst.get(cur.id);
       if (next === undefined) return cur;
       cur = next;
     }
-    return cur;
   };
   const cse = new Map<string, string>();
   const kept: Node[] = [];
   const defs = new Map<string, Node>();
   const anchored = new Set<string>();
-  for (const node of fn.nodes) {
+  const work = [...body.nodes].reverse();
+  while (work.length > 0) {
+    const node = work.pop() as Node;
     const rewritten: Node = { ...node, args: node.args.map(resolve) };
     // Effectful nodes are anchored: never folded, merged, or removed; their order is
     // fixed by token data dependencies (each token is consumed once).
-    if (isEffectful(node, fn)) {
+    if (isEffectful(node, view)) {
       kept.push(rewritten);
       defs.set(node.id, rewritten);
       anchored.add(node.id);
       continue;
     }
-    const simple = simplify(rewritten, fn, defs);
+    const simple = simplify(rewritten, view, defs);
     if (simple !== undefined) {
       subst.set(node.id, simple);
+      continue;
+    }
+    const re = reassociate(rewritten, defs, types, uses, names);
+    if (re !== undefined) {
+      for (const p of re.pre) {
+        types.set(p.id, 'u32');
+        uses.set(p.id, 1);
+      }
+      work.push(re.node, ...[...re.pre].reverse());
       continue;
     }
     const reduced = strengthReduce(rewritten);
@@ -349,7 +597,7 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
     kept.push(reduced);
     defs.set(node.id, reduced);
   }
-  const ret = resolve(fn.ret);
+  const ret = resolve(body.ret);
   // Dead-code elimination: keep only nodes reachable from the result.
   const live = new Set<string>();
   const mark = (o: Operand): void => {
@@ -361,12 +609,54 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
     const node = kept[i];
     if (node !== undefined && live.has(node.id)) node.args.forEach(mark);
   }
-  const reachable = kept.filter((n) => live.has(n.id));
-  const nodes = anchored.size === 0 ? schedule(reachable, ret) : reachable;
-  // Whole program: callees are optimized too, so a backend that inlines them (arm64,
-  // x86-64) sees the optimized bodies, not the source ones.
+  return { nodes: kept.filter((n) => live.has(n.id)), ret, types, calls: body.calls };
+}
+
+/**
+ * Scalar replacement of small aggregates: a `set`/`put` with a literal index on an `arr`/`rec`
+ * literal that nothing else uses is that literal with one operand replaced (exact under value
+ * semantics), so element reads with literal indices then fold to the stored values.
+ */
+function forwardAggregates(body: Body): Body | undefined {
+  const uses = useCounts(body.nodes, body.ret);
+  const defs = new Map<string, Node>();
+  let changed = false;
+  const nodes = body.nodes.map((n) => {
+    defs.set(n.id, n);
+    const [target, index, value] = n.args;
+    if ((n.op !== 'set' && n.op !== 'put') || target?.kind !== 'node' || index?.kind !== 'u32')
+      return n;
+    const def = defs.get(target.id);
+    if (def === undefined || (uses.get(target.id) ?? 0) !== 1 || value === undefined) return n;
+    if (!(n.op === 'set' ? def.op === 'arr' : def.op === 'rec')) return n;
+    const k = n.op === 'set' ? index.value % def.args.length : index.value;
+    const out: Node = { id: n.id, op: def.op, args: def.args.map((a, i) => (i === k ? value : a)) };
+    defs.set(n.id, out);
+    changed = true;
+    return out;
+  });
+  return changed ? { ...body, nodes } : undefined;
+}
+
+export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: OptimizeStats } {
+  // Whole program: callees are optimized first, so IR inlining and the backends that inline
+  // (arm64, x86-64, wasm) see the optimized bodies, not the source ones.
   const calls = new Map([...fn.calls].map(([name, callee]) => [name, optimizedCallee(callee)]));
-  const optimized = validateFunction({ ...fn, nodes, ret }, calls);
+  let body = pass(fn, expand({ nodes: fn.nodes, ret: fn.ret, types: new Map(fn.types), calls }));
+  for (let round = 0; round < 8; round += 1) {
+    const next = forwardAggregates(body);
+    if (next === undefined) break;
+    body = pass(fn, next);
+  }
+  const view: TypedFunc = { ...fn, types: body.types, calls: body.calls };
+  const anchored = body.nodes.some((n) => isEffectful(n, view));
+  const nodes = anchored ? body.nodes : schedule(body.nodes, body.ret);
+  const used = new Set(nodes.flatMap((n) => [n.callee, n.pred]));
+  const scope = new Map([...body.calls].filter(([name]) => used.has(name)));
+  const optimized = validateFunction(
+    { name: fn.name, params: fn.params, result: fn.result, nodes, ret: body.ret },
+    scope,
+  );
   return { fn: optimized, stats: { before: fn.nodes.length, after: nodes.length } };
 }
 
@@ -390,4 +680,161 @@ export function optimize(program: TypedProgram): { program: TypedProgram; stats:
     return r.fn;
   });
   return { program: validate({ functions }), stats: { before, after } };
+}
+
+// ---------------------------------------------------------------------------
+// Shared analyses for backends. The IR has no control flow and no vector type; these name
+// the shapes a backend may lower specially, with the exact conditions that make it exact.
+// ---------------------------------------------------------------------------
+
+const arrayOf = (t: Type | undefined): { length: number; elem: Type } | undefined =>
+  t !== undefined && !isPrimitive(t) && t.kind === 'arr' ? t : undefined;
+
+/** The `set p0 p1 v` result node of a body that uses p0 only as that node's target. */
+function storeOnly(body: TypedFunc): Node | undefined {
+  const ret = body.ret;
+  if (ret.kind !== 'node') return undefined;
+  const set = body.nodes.find((n) => n.id === ret.id);
+  if (set?.op !== 'set') return undefined;
+  const [target, index] = set.args;
+  if (target?.kind !== 'param' || target.index !== 0) return undefined;
+  if (index?.kind !== 'param' || index.index !== 1) return undefined;
+  for (const n of body.nodes)
+    for (const [k, a] of n.args.entries())
+      if (a.kind === 'param' && a.index === 0 && !(n === set && k === 0)) return undefined;
+  return set;
+}
+
+/**
+ * Does the fold `node` overwrite every element of its array state before anything reads it?
+ * True when its trip count is a literal at least the array length and its body is `set p0 p1 v`
+ * with p0 used nowhere else (no trip reads the state; trips 0..length-1 write every index).
+ * The initial value is then dead: its zero fill (or copy into the state) can be skipped.
+ */
+export function overwritesState(fn: TypedFunc, node: Node): boolean {
+  if (node.op !== 'fold') return false;
+  const arr = arrayOf(fn.types.get(node.id));
+  const count = node.args[0];
+  const body = fn.calls.get(node.callee ?? '');
+  if (arr === undefined || count?.kind !== 'u32' || count.value < arr.length || body === undefined)
+    return false;
+  return storeOnly(body) !== undefined;
+}
+
+/** Element-wise u32 operations whose lanes are independent (shift amounts stay uniform). */
+export const LANE_OPS: ReadonlySet<Node['op']> = new Set([
+  'add',
+  'sub',
+  'mul',
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+]);
+
+/**
+ * A fill run: a fold whose trips i = 0 .. count-1 store f(i, extras) at index i of a u32 array,
+ * f built only from LANE_OPS over the index, loop-invariant scalar extras and literals, and
+ * count a literal no larger than the array (no index wraps). Trips are independent, so a
+ * backend may compute and store several consecutive elements at once (wasm simd128 i32x4,
+ * NEON .4s, SSE2 epi32) and finish the remainder one element at a time. `nodes` are the body
+ * nodes computing the stored `value`, in body order.
+ */
+export interface FillRun {
+  readonly body: TypedFunc;
+  readonly nodes: readonly Node[];
+  readonly value: Operand;
+  readonly count: number;
+}
+
+export function fillRun(fn: TypedFunc, node: Node): FillRun | undefined {
+  if (node.op !== 'fold') return undefined;
+  const arr = arrayOf(fn.types.get(node.id));
+  const count = node.args[0];
+  const body = fn.calls.get(node.callee ?? '');
+  if (arr === undefined || arr.elem !== 'u32' || body === undefined) return undefined;
+  if (count?.kind !== 'u32' || count.value === 0 || count.value > arr.length) return undefined;
+  const set = storeOnly(body);
+  if (set === undefined) return undefined;
+  const scalarParam = (i: number): boolean => i >= 1 && body.params[i] === 'u32';
+  const uniform = (o: Operand): boolean =>
+    o.kind === 'u32' || (o.kind === 'param' && o.index >= 2 && scalarParam(o.index));
+  const nodes = body.nodes.filter((n) => n !== set);
+  for (const n of nodes) {
+    if (!LANE_OPS.has(n.op) || body.types.get(n.id) !== 'u32') return undefined;
+    for (const [k, a] of n.args.entries()) {
+      if (a.kind === 'bool') return undefined;
+      if (a.kind === 'param' && !scalarParam(a.index)) return undefined;
+      if ((n.op === 'shl' || n.op === 'shr') && k === 1 && !uniform(a)) return undefined;
+    }
+  }
+  const value = set.args[2];
+  if (value === undefined || value.kind === 'bool') return undefined;
+  if (value.kind === 'param' && !scalarParam(value.index)) return undefined;
+  return { body, nodes, value, count: count.value };
+}
+
+/** Rough cost of evaluating a node, for deciding when a select arm is worth a branch. */
+function nodeCost(op: Node['op']): number {
+  if (op === 'call' || op === 'fold' || op === 'loop') return 16;
+  if (op === 'div' || op === 'rem') return 8;
+  if (op === 'mul') return 3;
+  return 1;
+}
+
+/** A select arm whose own nodes cost at least this much (see nodeCost) gets its own path. */
+export const LAZY_ARM_COST = 8;
+
+/**
+ * Lazy select arms. For each scalar `select c a b`, the pure scalar nodes needed only by arm a
+ * (or only by arm b); when one arm's nodes cost at least LAZY_ARM_COST, a backend may branch
+ * on c and evaluate each arm's nodes on its own path only (exact: the nodes are pure and
+ * total, and nothing else reads them). `owner` maps each such node to its select; `arms` gives
+ * each select's two node lists in body order. Selects are taken in body order and a node is
+ * owned once, so a select inside an outer arm keeps its own arms (emitted when it is).
+ */
+export function lazyArms(fn: TypedFunc): {
+  owner: ReadonlyMap<string, string>;
+  arms: ReadonlyMap<string, readonly [readonly string[], readonly string[]]>;
+} {
+  const owner = new Map<string, string>();
+  const arms = new Map<string, readonly [readonly string[], readonly string[]]>();
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  const index = new Map(fn.nodes.map((n, i) => [n.id, i]));
+  const users = new Map<string, string[]>();
+  for (const n of fn.nodes)
+    for (const a of n.args)
+      if (a.kind === 'node') users.set(a.id, [...(users.get(a.id) ?? []), n.id]);
+  const isRet = (id: string): boolean => fn.ret.kind === 'node' && fn.ret.id === id;
+  const eligible = (n: Node): boolean =>
+    isScalar(fn.types.get(n.id) ?? 'io') && !isEffectful(n, fn) && !isRet(n.id) && !owner.has(n.id);
+  for (const s of fn.nodes) {
+    if (s.op !== 'select' || !isScalar(fn.types.get(s.id) ?? 'io')) continue;
+    const [c, x, y] = s.args;
+    const same = (p: Operand | undefined, q: Operand | undefined): boolean =>
+      p?.kind === 'node' && q?.kind === 'node' && p.id === q.id;
+    const cone = (arm: Operand | undefined, other: Operand | undefined): string[] => {
+      if (arm?.kind !== 'node' || same(arm, other) || same(arm, c)) return [];
+      const root = byId.get(arm.id);
+      if (root === undefined || !eligible(root)) return [];
+      if ((users.get(root.id) ?? []).some((u) => u !== s.id)) return [];
+      const set = new Set([root.id]);
+      // Walk back from the root: a node joins when every one of its users is already in.
+      for (let i = (index.get(root.id) ?? 0) - 1; i >= 0; i -= 1) {
+        const n = fn.nodes[i] as Node;
+        const us = users.get(n.id) ?? [];
+        if (eligible(n) && us.length > 0 && us.every((u) => set.has(u))) set.add(n.id);
+      }
+      return fn.nodes.filter((n) => set.has(n.id)).map((n) => n.id);
+    };
+    const a = cone(x, y);
+    const b = cone(y, x);
+    const cost = (ids: readonly string[]): number =>
+      ids.reduce((n, id) => n + nodeCost((byId.get(id) as Node).op), 0);
+    if (Math.max(cost(a), cost(b)) < LAZY_ARM_COST) continue;
+    for (const id of [...a, ...b]) owner.set(id, s.id);
+    arms.set(s.id, [a, b]);
+  }
+  return { owner, arms };
 }

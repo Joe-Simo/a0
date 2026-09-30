@@ -271,7 +271,7 @@ end`;
     () => parseAndValidate(`${src.split('\n\n')[0]}\nfn f bool -> u32\na call sq p0\nret a\nend`),
     /expected u32, got bool/,
   );
-  // Constant calls fold exactly; non-constant calls are kept and deduplicated.
+  // Constant calls fold exactly; small pure scalar calls are inlined and then deduplicated.
   const folded = optimizeFunction(
     fn(
       `${src.split('\n\n')[0]}\nfn k u32 -> u32\na call sq 7\nb call sq p0\nc call sq p0\nd add b c\ne add d a\nret e\nend`,
@@ -280,11 +280,14 @@ end`;
   );
   assert.equal(
     formatFunction(folded.fn),
-    'fn k u32 -> u32\nb call sq p0\nd add b b\ne add d 49\nret e\nend',
+    'fn k u32 -> u32\no_1 mul p0 p0\nd add o_1 o_1\ne add d 49\nret e\nend',
   );
-  // Every backend emits the call; JS executes it.
+  // Every backend emits the call (unoptimized: the optimizer inlines a callee this small).
   for (const target of ['js', 'c', 'java', 'sv'] as const)
-    assert.ok(compile(p, target).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('), target);
+    assert.ok(
+      compile(p, target, { optimize: false }).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('),
+      target,
+    );
 });
 
 test('emission cache key follows callee changes (semantic revision)', async () => {
@@ -379,7 +382,8 @@ end`;
   const lit = parseAndValidate(
     `${src.split('\n\n')[0]}\nfn h3 u32 -> u32\nr fold step 3 0 p0\nret r\nend`,
   );
-  const sv = compile(lit, 'sv').text;
+  // Unoptimized: the IR optimizer itself unrolls a literal count this short.
+  const sv = compile(lit, 'sv', { optimize: false }).text;
   assert.equal((sv.match(/a0_step u_r_/g) ?? []).length, 3);
 });
 
@@ -439,7 +443,8 @@ end`;
   const lit = parseAndValidate(
     `${src.split('\n\n').slice(0, 2).join('\n\n')}\nfn a3 u32 -> u32\nr loop below step 3 0 p0\nret r\nend`,
   );
-  const sv = compile(lit, 'sv').text;
+  // Unoptimized: the IR optimizer itself unrolls a literal count this short.
+  const sv = compile(lit, 'sv', { optimize: false }).text;
   assert.equal((sv.match(/a0_below u_r_p/g) ?? []).length, 3);
   assert.ok(sv.includes("assign n_r_d1 = 1'b0 | ~n_r_c0;"));
 });
@@ -1233,7 +1238,8 @@ test('JS emission: zero arrays allocate, power-of-two indices mask, owned sets a
   const src =
     'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nx get a p1\ny get a 3\ns add x y\nret s\nend';
   const p = parseAndValidate(src);
-  const js = compile(p, 'js').text;
+  // Emission shapes of the fold itself (the IR optimizer unrolls an 8-trip fold away).
+  const js = compile(p, 'js', { optimize: false }).text;
   assert.ok(js.includes('new Uint32Array(8)'));
   assert.ok(js.includes('[(p1 & 7)]'));
   assert.ok(/a0o_put8[\s\S]*\(p0\[\(p1 & 7\)\] = n_v, p0\)/.test(js));
@@ -1263,7 +1269,8 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   const src =
     'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn below u32x8 u32 u32 -> bool\na get p0 0\nc lt a p2\nret c\nend\nfn keepold u32x8 u32 u32 -> u32x8\nn set p0 p1 p2\na get p0 p1\nm set n 0 a\nret m\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nl loop below keepold 8 a p1\nx get l p1\ny get a 3\ns add x y\nret s\nend';
   const p = parseAndValidate(src);
-  const c = compile(p, 'c').text;
+  // Emission shapes of the fold itself (the IR optimizer unrolls an 8-trip fold away).
+  const c = compile(p, 'c', { optimize: false }).text;
   // The owned variant writes through the state pointer and returns nothing; the value ABI
   // updates its private by-value copy in place and returns it.
   assert.ok(
@@ -1289,7 +1296,7 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   assert.ok(c.includes('if (!a0r_below(&n_l, i, p1)) break; a0o_keepold(&n_l, i, p1); }'));
   assert.ok(c.includes('a0zero_a8_u()'));
   assert.ok(emitMetal(p).includes('thread a0t_a8_u *p0'));
-  assert.ok(compile(p, 'java').text.includes('new int[8]'));
+  assert.ok(compile(p, 'java', { optimize: false }).text.includes('new int[8]'));
   // Native paths accept 65536-element arrays; hardware and GPU refuse them with a limit code.
   assert.equal(LIMITS.maxArrayLength, 65536);
   const big = parseAndValidate(
@@ -3048,6 +3055,74 @@ end`);
           run(p.byName.get(name) as TypedFunc, [x]),
           `${name}(${x})`,
         );
+    }
+  }
+});
+
+test('direct wasm backend: simd fills, carried reads, scalar state, lazy arms, exports equal the interpreter', async () => {
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const { KERNELS } = await import('../tools/exec-bench-kernels.js');
+  const lazy = `fn lz u32 u32 -> u32
+c lt p0 p1
+d div p1 p0
+e rem d 7
+f mul e p1
+g div f 3
+h select c g p0
+ret h
+end`;
+  // A fill of 1026 elements into a 1030-element array: simd for 1024, two scalar trips, and
+  // four elements of the zero literal that stay live (the fill does not cover the array).
+  const fill = `fn fl u32x1030 u32 u32 -> u32x1030
+a mul p1 p2
+b shr a 3
+c xor b p1
+n set p0 p1 c
+ret n
+end
+fn part u32 u32 -> u32
+z arr ${Array.from({ length: 1030 }, () => '0').join(' ')}
+a fold fl 1026 z p0
+q rem p1 1030
+x get a q
+y get a 1029
+w get a 1025
+s add x y
+t add s w
+ret t
+end`;
+  const cases: [string, string, number][] = [
+    ...KERNELS.map((k): [string, string, number] => [k.a0, k.name, k.arity]),
+    [lazy, 'lz', 2],
+    [fill, 'part', 2],
+  ];
+  const inputs = [0, 1, 7, 1029, 0x9e3779b9, 0xffff_ffff];
+  for (const [src, name, arity] of cases) {
+    const p = parseAndValidate(src);
+    const f = p.byName.get(name) as TypedFunc;
+    for (const options of [
+      {},
+      { wasmSimd: false },
+      { wasmUnroll: 4 as const },
+      { optimize: false },
+    ]) {
+      const text = compile(p, 'wasm', { ...options, wasmExports: [name] }).text;
+      const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+      const e = instance.exports as Record<string, unknown>;
+      // Only the requested function is exported.
+      assert.deepEqual(
+        Object.keys(e).filter((x) => x.startsWith('a0_')),
+        [`a0_${name}`],
+      );
+      const g = e[`a0_${name}`] as (...a: number[]) => number;
+      for (const x of inputs) {
+        const args = Array.from({ length: arity }, (_, j) => (x * (j + 3) + j) >>> 0);
+        assert.equal(
+          g(...args.map((v) => v | 0)) >>> 0,
+          run(f, args),
+          `${name}(${args}) ${JSON.stringify(options)}`,
+        );
+      }
     }
   }
 });
