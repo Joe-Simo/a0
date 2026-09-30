@@ -1712,3 +1712,39 @@ listed by `git log`; the push is verified against `origin/main` after each commi
    combinational. Optionally run the full ABC synth in `bun run hw` behind a flag.
 6. Keep MLIR/LLVM, GPU, and .NET scope unchanged unless a measured need appears
    (`results/exec-benchmark.json` ties vs C and Rust on all kernels).
+
+### No primer and lazy primer (single-function tasks)
+
+On single-function tasks A0 lost to TS/Rust only through the primer. Two harness options remove it (`A0_EXPERIMENT_PRIMER`, default unchanged `always`): `none` makes the A0 system text only the edit protocol (`PROTOCOL_STRUCTURED_A0_SELF`, 64 o200k tokens: the guide's EDIT rules on their own), so the model infers A0 from the view. `lazy` does the same on the first attempt and adds `MODEL_GUIDE.tiny.txt` (`A0_EXPERIMENT_LAZY_GUIDE`) to the repair message only after a protocol or compile rejection. The lazy primer is charged to the language-primer bucket. Both modes allow exactly one repair.
+
+Method: fresh Haiku and Sonnet subagents, one shot, each reading one group file (sets a, b, d; structured cells). The first-attempt prompt is identical under none and lazy, so one set of first replies serves both. Retries: fresh subagents per model and group (A0-none, A0-lazy, TS, Rust), given system, request, the earlier reply, and the exact repair message. TS/Rust got the same one retry. TS/Rust relaxed replies for b and d are the existing ones from the relaxed-protocol collection. Set a had no relaxed TS/Rust replies, so they were collected fresh. Results: `results/ai-edit-experiment.{,b.,d.}{haiku,sonnet}-primer-{none,lazy}.json`.
+
+How cost is counted, in o200k tokens per task: the system text is charged 1.25x on the first call of a session and 0.05x on each later call. Everything else is charged 1x each time it is sent. A retry re-sends task + view + first reply + repair (including the lazy primer). A 10-task session amortizes the cache write over 10 tasks. Unbounded means the system text costs 0.05x on every call.
+
+Pooled over a+b+d, 76 trials per cell (Haiku 38 + Sonnet 38):
+
+| cell | one-shot | after 1 retry | calls/task | system | 1 task | 10-task session | unbounded |
+|---|---|---|---|---|---|---|---|
+| A0 no primer | 65/76 | 72/76 | 1.14 | 64 | 235 | 166 | 158 |
+| A0 lazy primer | 65/76 | 75/76 | 1.14 | 64 | 262 | 193 | 185 |
+| TS relaxed | 67/76 | 76/76 | 1.12 | 126 | 284 | 148 | 133 |
+| Rust relaxed | 68/76 | 74/76 | 1.11 | 141 | 312 | 160 | 143 |
+| A0 min primer (existing, one shot, b+d only, 50 trials) | 50/50 | - | 1.00 | 443 | 674 | 195 | 142 |
+
+By model: Haiku A0 none 30/38 -> 35/38, lazy 30/38 -> 38/38, TS 34 -> 38, Rust 32 -> 36. Sonnet A0 none 35/38 -> 37/38, lazy 35 -> 37, TS 33 -> 38, Rust 36 -> 38. Haiku set b is the weak spot for A0: 7/12 one shot. With no primer, the retry brings it to 10/12, and 10-task-session cost is 275 vs TS 159.
+
+Findings:
+- **Single task (the cold case): A0 now wins.** No primer costs 235 vs TS 284 and Rust 312. Lazy costs 262. The primer was the whole gap, and TS/Rust still carry their semantics notes (126/141 tokens) against A0's 64-token protocol.
+- **10-task session and unbounded: loss.** Once cached, the system text is almost free for every language. What remains is A0's extra retries and larger replies: none 166 vs TS 148 vs Rust 160; unbounded 158 vs 133 vs 143. Lazy is worse still (193 / 185), because the tiny primer travels uncached inside the repair.
+- **Acceptance: loss for no primer, parity for lazy.** A0 one-shot acceptance without a primer is 65/76, against 50/50 with the min primer on b+d. No primer ends at 72/76 after one retry, below TS 76/76 and Rust 74/76. Lazy recovers to 75/76. The error message alone repaired 7 of 11 first-attempt failures. Error plus primer repaired 10 of 11.
+- The default stays `always` (MODEL_GUIDE.min.txt). `lazy` is the candidate for cold single-task use, and it pays about 45 tokens per task in a session.
+
+A0 syntax that models guessed wrong without a primer (first attempts, both models). These are candidates for making the syntax more guessable. The language was not changed in this task.
+1. Calling a function by its name as the op (`r dot p0 p0`, `popcnt`, `limit`, `extract`), not `call F ...`. 4 of Haiku's 5 set-b parse failures.
+2. Nested operands (`(sub ...)`), the same shape as grammar item B.
+3. Guessed op names: `udiv` for `div`.
+4. `get` used on a record (record vs array access, `at` vs `get`).
+5. fold callee arity: extra arguments passed to a fold step that takes none.
+6. Instruction lines sent under the program handle without a `fn` header (`expected 'fn', got 'a'`).
+7. Retries that attempted recursion, called a function defined later (definition order), or used an uppercase id (`A1`).
+One remaining failure is a type error (a bool returned where u32 was declared). A second is a wrong-output model error on b-checksum-poly (Haiku).

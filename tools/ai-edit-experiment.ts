@@ -105,6 +105,11 @@ const PROTOCOL_CONVENTIONAL =
   'Reply with the complete updated source file and nothing else, inside one ```code block.';
 const PROTOCOL_STRUCTURED_A0 =
   'The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.';
+// Primer-free A0 structured protocol (A0_EXPERIMENT_PRIMER=none|lazy): the edit rules of the
+// guide's EDIT line, stated on their own, so the system text is the edit protocol only and the
+// language itself must be inferred from the view.
+const PROTOCOL_STRUCTURED_A0_SELF =
+  'The view starts with edit handles. Reply with only edit lines, bare: no code fence, no handle line. `id op ...` replaces or inserts before ret; `-id` deletes; `ret x`; a `fn ...` block adds or replaces a function; `-fn name` removes one.';
 const PROTOCOL_STRUCTURED_TS =
   'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, bare: no code fence, no handle line.';
 const RUST_SEMANTICS =
@@ -294,6 +299,13 @@ async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promi
 
 // --- Cells ------------------------------------------------------------------------
 
+/**
+ * A0 language primer policy: 'always' (default) sends the guide in every call's system text;
+ * 'none' sends only the edit protocol; 'lazy' sends no primer on the first attempt and the
+ * lazy primer (MODEL_GUIDE.tiny.txt) with the repair message after an invalid reply.
+ */
+type PrimerMode = 'always' | 'none' | 'lazy';
+
 interface Cell {
   readonly representation: Representation;
   readonly protocol: Protocol;
@@ -311,12 +323,19 @@ async function buildCell(
   protocol: Protocol,
   guide: string,
   programScope: 'all' | 'deps' = 'all',
+  primerMode: PrimerMode = 'always',
 ): Promise<{ cell: Cell; session?: EditSession; handle: string }> {
   const handle = 'e0';
   if (representation === 'a0') {
+    const withPrimer = primerMode === 'always';
     const protocolText =
-      protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : PROTOCOL_STRUCTURED_A0;
-    const system = `${guide}\n\n${protocolText}`;
+      protocol === 'conventional'
+        ? PROTOCOL_CONVENTIONAL
+        : withPrimer
+          ? PROTOCOL_STRUCTURED_A0
+          : PROTOCOL_STRUCTURED_A0_SELF;
+    if (!withPrimer) guide = '';
+    const system = withPrimer ? `${guide}\n\n${protocolText}` : protocolText;
     const primers = { languagePrimer: guide, workflowPrimer: protocolText };
     if (protocol === 'structured') {
       // Two handles per view: e0 edits the target function, g1 edits the program (add,
@@ -451,6 +470,7 @@ async function runTrial(
   maxRepairs: number,
   count: (text: string) => Record<string, number>,
   ask: (messages: Anthropic.MessageParam[]) => Promise<ReplyResult | undefined>,
+  lazyPrimer?: string,
 ): Promise<
   Omit<
     Trial,
@@ -477,6 +497,7 @@ async function runTrial(
   let failures: string[] = [];
   let accepted = false;
   let outputText = '';
+  let lazyPrimerTokens = 0;
   for (let attempt = 0; attempt <= maxRepairs; attempt += 1) {
     const res = await ask(messages);
     if (res === undefined) {
@@ -538,12 +559,21 @@ async function runTrial(
       // Handles are stable: show the current text under the same e0 / g0.
       nextView = `${session.view('e0')}\n${session.view('g0')}`;
     }
-    const repair = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
+    const rejection = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
+    // Lazy primer: sent once, with the first repair after a reply the checker could not accept
+    // as A0 (protocol or compile failure); charged to the language-primer bucket.
+    const status = attempts[attempts.length - 1]?.status;
+    const sendPrimer =
+      lazyPrimer !== undefined &&
+      lazyPrimerTokens === 0 &&
+      (status === 'protocol' || status === 'compile');
+    if (sendPrimer) lazyPrimerTokens = count(lazyPrimer).o200k_base ?? 0;
+    const repair = sendPrimer ? `${lazyPrimer}\n\n${rejection}` : rejection;
     attempts[attempts.length - 1] = { ...(attempts[attempts.length - 1] as Attempt), repair };
-    toolContext += count(repair).o200k_base ?? 0;
+    toolContext += count(rejection).o200k_base ?? 0;
     messages.push({ role: 'user', content: repair });
   }
-  const languagePrimer = (count(cell.languagePrimer).o200k_base ?? 0) * calls;
+  const languagePrimer = (count(cell.languagePrimer).o200k_base ?? 0) * calls + lazyPrimerTokens;
   const workflowPrimer = (count(cell.workflowPrimer).o200k_base ?? 0) * calls;
   const output = count(outputText).o200k_base ?? 0;
   return {
@@ -577,7 +607,13 @@ async function main(): Promise<void> {
   const live = process.env.A0_ALLOW_PAID_MODEL_CALLS === '1';
   const model = process.env.A0_EXPERIMENT_MODEL ?? 'claude-opus-5-5';
   const trialsPerCell = Number(process.env.A0_EXPERIMENT_TRIALS ?? '3');
-  const maxRepairs = 2;
+  // A0_EXPERIMENT_PRIMER=none|lazy: see PrimerMode. Both allow exactly one repair (the retry
+  // with the checker's message); the default keeps the guide in every call and two repairs.
+  const primerEnv = process.env.A0_EXPERIMENT_PRIMER ?? 'always';
+  if (primerEnv !== 'always' && primerEnv !== 'none' && primerEnv !== 'lazy')
+    throw new Error(`unknown A0_EXPERIMENT_PRIMER ${primerEnv}`);
+  const primerMode: PrimerMode = primerEnv;
+  const maxRepairs = primerMode === 'always' ? 2 : 1;
   // The language primer is the dominant A0 cost; A0_EXPERIMENT_GUIDE selects an alternative
   // (e.g. MODEL_GUIDE.min.txt) so live runs can compare acceptance against primer size.
   // Task set: 'a' (the original 13, written by the harness author), 'b' (12 written by an
@@ -656,6 +692,9 @@ async function main(): Promise<void> {
   };
   const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.min.txt';
   const guide = await readFile(guidePath, 'utf8');
+  const lazyPrimerPath = process.env.A0_EXPERIMENT_LAZY_GUIDE ?? 'MODEL_GUIDE.tiny.txt';
+  const lazyPrimer =
+    primerMode === 'lazy' ? (await readFile(lazyPrimerPath, 'utf8')).trimEnd() : undefined;
   const encoders = {
     o200k_base: getEncoding('o200k_base'),
     cl100k_base: getEncoding('cl100k_base'),
@@ -713,6 +752,7 @@ async function main(): Promise<void> {
             protocol,
             guide,
             programScope,
+            primerMode,
           );
           const base = {
             task: task.id,
@@ -741,6 +781,7 @@ async function main(): Promise<void> {
                 const reply = answers.shift();
                 return reply === undefined ? undefined : { reply };
               },
+              representation === 'a0' ? lazyPrimer : undefined,
             );
             trials.push({ ...base, ...result });
             continue;
@@ -790,6 +831,7 @@ async function main(): Promise<void> {
                 },
               };
             },
+            representation === 'a0' ? lazyPrimer : undefined,
           );
           trials.push({ ...base, ...result });
         }
@@ -831,7 +873,13 @@ async function main(): Promise<void> {
         ? `run with scripted replies from ${repliesPath} (subject: ${process.env.A0_EXPERIMENT_SUBJECT ?? 'unspecified'})`
         : 'unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)',
     model: live ? model : null,
-    languagePrimer: guidePath,
+    languagePrimer:
+      primerMode === 'always'
+        ? guidePath
+        : primerMode === 'none'
+          ? 'none (A0 system text is the edit protocol only; one repair)'
+          : `lazy: none on the first attempt, ${lazyPrimerPath} with the repair after a protocol or compile rejection (one repair)`,
+    primerMode,
     taskSet: setName,
     programView: programScope,
     method,
