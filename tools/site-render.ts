@@ -37,6 +37,7 @@ const TAGS: Record<number, string> = {
   24: 'h6',
   25: 'b',
   26: 'i',
+  27: 'textarea',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',

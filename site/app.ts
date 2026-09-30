@@ -1,23 +1,28 @@
 /**
  * Generic browser runtime for an A0 page program (a0lang.com).
  *
- * The page is one A0 io program (site/page.a0 linked with examples/life.a0), compiled to
- * freestanding wasm32 through C. Everything on the page, including its stylesheet, its
- * layout, its buttons, the Life grid logic, the timer, and the persisted state, comes from
- * the word stream that program writes. This file knows nothing about the page: it feeds
- * events in, interprets the A0 UI protocol out, and builds DOM.
+ * The page is one A0 io program (site/page.a0, site/docs.a0, or site/play.a0 with what it
+ * uses), compiled to freestanding wasm32 through C. Everything on the page, including its
+ * stylesheet, its layout, its buttons, the text it computes, the timer, and the persisted
+ * state, comes from the word stream that program writes. This file knows nothing about the
+ * page: it feeds events in, interprets the A0 UI protocol out, and builds DOM.
  *
  * Input words:  event x y ntext text[ntext] nstate state[nstate]
+ *   text is the current bytes of the page's input or textarea (at most TEXT_CAP), state is
+ *   what the last render's STATE command left; together they fit IN_CAP words.
  * Output words: 1 OPEN tag | 2 TEXT n bytes | 3 CLOSE | 4 ATTR key n bytes | 5 ONCLICK event
- *               6 STATE n words | 8 ONSUBMIT event | 9 STYLE n bytes | 10 GRID event rows row...
+ *               6 STATE n words | 8 ONSUBMIT event (Enter in an input, Ctrl/Cmd+Enter in a
+ *               textarea, sends the event) | 9 STYLE n bytes | 10 GRID event rows row...
  *               11 TIMER ms event | 12 SIZE prop percent (1 width, 2 height, 3 left, 4 bottom)
  *               13 SHADER n bytes (a GLSL fragment shader drawn on a canvas in the open element)
  * Tags and attribute keys are small integer tables shared with the program (see page.a0).
  */
 
-const IN_CAP = 512;
+// The same capacities as tools/site-build.ts gives the C io struct (ioInputCapacity/ioOutputCapacity).
+const IN_CAP = 1024;
 const OUT_CAP = 65536;
-const TEXT_CAP = 64;
+/** Bytes of the input field sent with an event: 3 + 1 + TEXT_CAP + 1 + state words <= IN_CAP. */
+const TEXT_CAP = 480;
 
 interface IoExports {
   readonly memory: WebAssembly.Memory;
@@ -82,6 +87,7 @@ const TAGS: Record<number, string> = {
   24: 'h6',
   25: 'b',
   26: 'i',
+  27: 'textarea',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',
@@ -275,14 +281,25 @@ function render(
         break;
       }
       case 8: {
-        // ONSUBMIT: Enter in this text input sends the event; the field's bytes travel as input.
+        // ONSUBMIT: Enter in a text input, or Ctrl/Cmd+Enter in a textarea, sends the event; the
+        // field's bytes travel as input. An input keeps what was typed; a textarea shows the
+        // TEXT the program writes into it (the program echoes the submitted source).
         const event = words[i++] as number;
-        const input = top as HTMLInputElement;
-        input.type = 'text';
-        input.value = inputText;
-        input.addEventListener('keydown', (ev) => {
-          if (ev.key === 'Enter') onEvent(event);
-        });
+        if (top instanceof HTMLTextAreaElement) {
+          top.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
+              ev.preventDefault();
+              onEvent(event);
+            }
+          });
+        } else {
+          const input = top as HTMLInputElement;
+          input.type = 'text';
+          input.value = inputText;
+          input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') onEvent(event);
+          });
+        }
         break;
       }
       case 9:
@@ -351,7 +368,10 @@ async function main(): Promise<void> {
   const show: EventSink = (event, x = 0, y = 0) => {
     if (pending !== undefined) window.clearTimeout(pending);
     pending = undefined;
-    const field = root.querySelector('input') as HTMLInputElement | null;
+    const field = root.querySelector('input, textarea') as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | null;
     const text = field?.value ?? '';
     const textBytes = Array.from(encoder.encode(text)).slice(0, TEXT_CAP);
     const r = runSession(page, 'a0_session', [

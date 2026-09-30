@@ -1,5 +1,5 @@
 /**
- * Build a0lang.com: site/page.a0 and site/docs.a0 (each with what it `use`s) -> C -> wasm32
+ * Build a0lang.com: site/page.a0, site/docs.a0 and site/play.a0 (each with what it `use`s) -> C -> wasm32
  * (clang + wasm-ld), the generic runtime (site/app.ts -> site/dist/app.js via tsc), the HTML
  * shells, and the self-hosted Geist fonts. Output: site/dist/. Nothing is deployed by this script.
  */
@@ -23,9 +23,11 @@ interface Built {
 }
 
 async function buildProgram(entry: string, outName: string): Promise<Built> {
-  // The io buffers are widened because a page writes its stylesheet and every string as words.
+  // The io buffers are widened because a page writes its stylesheet and every string as words;
+  // the input holds the play page's source text (480 bytes) and the state that echoes it.
+  // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
   const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'))).program;
-  const c = compile(program, 'c', { ioInputCapacity: 512, ioOutputCapacity: 65536 }).text;
+  const c = compile(program, 'c', { ioInputCapacity: 1024, ioOutputCapacity: 65536 }).text;
   const wasm = await compileWasm(c);
   await writeFile(join(out, `${outName}.wasm`), wasm.bytes);
   await writeFile(join(out, `${outName}.c`), c, 'utf8');
@@ -88,6 +90,7 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[
       'https://a0lang.com/',
       'https://a0lang.com/docs/',
+      'https://a0lang.com/play/',
       'https://a0lang.com/llms.txt',
       'https://a0lang.com/primer.txt',
     ]
@@ -122,9 +125,11 @@ async function copyFonts(): Promise<void> {
 
 async function main(): Promise<void> {
   await mkdir(join(out, 'docs'), { recursive: true });
+  await mkdir(join(out, 'play'), { recursive: true });
   const page = await buildProgram('page.a0', 'page');
   const docs = await buildProgram('docs.a0', 'docs');
-  const sizes = [page.size, docs.size];
+  const play = await buildProgram('play.a0', 'play');
+  const sizes = [page.size, docs.size, play.size];
   const tsc = join('node_modules', '.bin', 'tsc');
   const r = runTool(tsc, [
     '--strict',
@@ -154,10 +159,15 @@ async function main(): Promise<void> {
     fill(await readFile(join('site', 'docs.html'), 'utf8'), docs),
     'utf8',
   );
+  await writeFile(
+    join(out, 'play', 'index.html'),
+    fill(await readFile(join('site', 'play.html'), 'utf8'), play),
+    'utf8',
+  );
   await writeAgentFiles(page, docs);
   await copyFonts();
   process.stdout.write(
-    `site/dist: ${sizes.join(', ')}, app.js, index.html, docs/index.html (prerendered), llms.txt, fonts/\n`,
+    `site/dist: ${sizes.join(', ')}, app.js, index.html, docs/index.html, play/index.html (prerendered), llms.txt, fonts/\n`,
   );
 }
 

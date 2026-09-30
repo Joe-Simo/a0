@@ -1,76 +1,10 @@
 # a0lang.com home page, authored in A0. An io program speaking the A0 UI protocol (see ui.a0):
 #   input : event x y ntext text[ntext] nstate state[nstate]   (this page keeps no state)
 #   tags: 1 h1 2 p 3 button 4 code 5 div 6 span 7 ul 8 li 9 a 10 pre 11 h2 12 input 13 section
-#         14 nav 15 h3 16 strong 17 footer 18 header 19 table 20 tr 21 td 22 th 23 small
+#         14 nav 15 h3 16 strong 17 footer 18 header 19 table 20 tr 21 td 22 th 23 small 24 h6 25 b 26 i 27 textarea
 #   attr keys: 1 id 2 class 3 href 4 type 5 placeholder 6 aria-label
 # The browser runtime (site/app.ts) builds DOM from this stream and reports events back.
 use "ui.a0"
-fn sec_nav io -> io
-x73 call open p0 18
-x74 write x73 4
-x75 write x74 2
-x76 text "top"
-x77 puts x75 x76
-x78 call open x77 14
-x79 write x78 4
-x80 write x79 2
-x81 text "nav"
-x82 puts x80 x81
-x83 call open x82 9
-x84 write x83 4
-x85 write x84 2
-x86 text "brand pixel"
-x87 puts x85 x86
-x88 write x87 4
-x89 write x88 3
-x90 text "/"
-x91 puts x89 x90
-x92 write x91 2
-x93 text "A0"
-x94 puts x92 x93
-x95 call close x94 
-x96 call open x95 5
-x97 write x96 4
-x98 write x97 2
-x99 text "links"
-x100 puts x98 x99
-x101 call open x100 9
-x102 write x101 4
-x103 write x102 3
-x104 text "/docs/"
-x105 puts x103 x104
-x106 write x105 2
-x107 text "Docs"
-x108 puts x106 x107
-x109 call close x108 
-x110 call open x109 9
-x111 write x110 4
-x112 write x111 3
-x113 text "/#benchmarks"
-x114 puts x112 x113
-x115 write x114 2
-x116 text "Benchmarks"
-x117 puts x115 x116
-x118 call close x117 
-x119 call close x118 
-x120 call open x119 9
-x121 write x120 4
-x122 write x121 2
-x123 text "pill"
-x124 puts x122 x123
-x125 write x124 4
-x126 write x125 3
-x127 text "https://github.com/Joe-Simo/a0"
-x128 puts x126 x127
-x129 write x128 2
-x130 text "GitHub"
-x131 puts x129 x130
-x132 call close x131 
-x133 call close x132 
-x134 call close x133 
-ret x134
-end
-
 fn sec_hero io -> io
 x136 call open p0 13
 x137 write x136 4
@@ -4893,50 +4827,6 @@ x4884 call close x4883
 ret x4884
 end
 
-fn sec_foot io -> io
-x4886 call open p0 17
-x4887 write x4886 4
-x4888 write x4887 2
-x4889 text "foot"
-x4890 puts x4888 x4889
-x4891 call open x4890 2
-x4892 write x4891 2
-x4893 text "Every number on this site is measured, reproducible from the repository, and published with its losses."
-x4894 puts x4892 x4893
-x4895 call close x4894 
-x4896 call open x4895 2
-x4897 write x4896 2
-x4898 text "Made by "
-x4899 puts x4897 x4898
-x4900 call open x4899 9
-x4901 write x4900 4
-x4902 write x4901 3
-x4903 text "https://x.com/joesimo"
-x4904 puts x4902 x4903
-x4905 write x4904 2
-x4906 text "@joesimo"
-x4907 puts x4905 x4906
-x4908 call close x4907 
-x4909 write x4908 2
-x4910 text " · "
-x4911 puts x4909 x4910
-x4912 call open x4911 9
-x4913 write x4912 4
-x4914 write x4913 3
-x4915 text "https://github.com/Joe-Simo/a0"
-x4916 puts x4914 x4915
-x4917 write x4916 2
-x4918 text "GitHub"
-x4919 puts x4917 x4918
-x4920 call close x4919 
-x4921 write x4920 2
-x4922 text " · MIT · 2026"
-x4923 puts x4921 x4922
-x4924 call close x4923 
-x4925 call close x4924 
-ret x4925
-end
-
 fn session io -> u32
 r0 read p0
 event at r0 0
@@ -5013,7 +4903,7 @@ x69 puts x67 x68
 x70 write x69 9
 x71 text "@keyframes a1{0%,61.354%{opacity:0;transform:translateY(5px)}65.729%,100%{opacity:1;transform:none}}\n@keyframes a2{0%,62.292%{opacity:0;transform:translateY(5px)}66.667%,100%{opacity:1;transform:none}}\n@keyframes a3{0%,63.229%{opacity:0;transform:translateY(5px)}67.604%,100%{opacity:1;transform:none}}\n@keyframes a4{0%,64.167%{opacity:0;transform:translateY(5px)}68.542%,100%{opacity:1;transform:none}}\n@keyframes ns{0%,65.615%{opacity:0}65.625%{opacity:1;content:\"0.0\"}66.667%{opacity:1;content:\"1.2\"}67.708%{opacity:1;content:\"2.4\"}68.750%{opacity:1;content:\"3.4\"}69.792%{opacity:1;content:\"4.2\"}70.833%{opacity:1;content:\"4.7\"}71.875%{opacity:1;content:\"4.9\"}72.917%{opacity:1;content:\"5.0\"}100%{opacity:1;content:\"5.0\"}}\n"
 x72 puts x70 x71
-x135 call sec_nav x72
+x135 call nav x72
 x653 call sec_hero x135
 x802 call sec_intro x653
 x913 call sec_rail x802
@@ -5038,7 +4928,7 @@ x4596 call endsec4594 x4594
 x4747 call sec_targets x4596
 x4882 call sec_dev x4747
 x4885 call sec_close x4882
-x4926 call sec_foot x4885
+x4926 call foot x4885
 x4927 write x4926 6
 x4928 write x4927 0
 ret event

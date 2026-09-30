@@ -1,71 +1,5 @@
 # a0lang.com/docs, authored in A0. Same protocol and runtime as page.a0 (see ui.a0).
 use "ui.a0"
-fn sec_nav io -> io
-x73 call open p0 18
-x74 write x73 4
-x75 write x74 2
-x76 text "top"
-x77 puts x75 x76
-x78 call open x77 14
-x79 write x78 4
-x80 write x79 2
-x81 text "nav"
-x82 puts x80 x81
-x83 call open x82 9
-x84 write x83 4
-x85 write x84 2
-x86 text "brand pixel"
-x87 puts x85 x86
-x88 write x87 4
-x89 write x88 3
-x90 text "/"
-x91 puts x89 x90
-x92 write x91 2
-x93 text "A0"
-x94 puts x92 x93
-x95 call close x94 
-x96 call open x95 5
-x97 write x96 4
-x98 write x97 2
-x99 text "links"
-x100 puts x98 x99
-x101 call open x100 9
-x102 write x101 4
-x103 write x102 3
-x104 text "/docs/"
-x105 puts x103 x104
-x106 write x105 2
-x107 text "Docs"
-x108 puts x106 x107
-x109 call close x108 
-x110 call open x109 9
-x111 write x110 4
-x112 write x111 3
-x113 text "/#benchmarks"
-x114 puts x112 x113
-x115 write x114 2
-x116 text "Benchmarks"
-x117 puts x115 x116
-x118 call close x117 
-x119 call close x118 
-x120 call open x119 9
-x121 write x120 4
-x122 write x121 2
-x123 text "pill"
-x124 puts x122 x123
-x125 write x124 4
-x126 write x125 3
-x127 text "https://github.com/Joe-Simo/a0"
-x128 puts x126 x127
-x129 write x128 2
-x130 text "GitHub"
-x131 puts x129 x130
-x132 call close x131 
-x133 call close x132 
-x134 call close x133 
-ret x134
-end
-
 fn sec_head io -> io
 x136 call open p0 5
 x137 write x136 4
@@ -850,50 +784,6 @@ x906 call close x905
 ret x906
 end
 
-fn sec_foot io -> io
-x908 call open p0 17
-x909 write x908 4
-x910 write x909 2
-x911 text "foot"
-x912 puts x910 x911
-x913 call open x912 2
-x914 write x913 2
-x915 text "Every number on this site is measured, reproducible from the repository, and published with its losses."
-x916 puts x914 x915
-x917 call close x916 
-x918 call open x917 2
-x919 write x918 2
-x920 text "Made by "
-x921 puts x919 x920
-x922 call open x921 9
-x923 write x922 4
-x924 write x923 3
-x925 text "https://x.com/joesimo"
-x926 puts x924 x925
-x927 write x926 2
-x928 text "@joesimo"
-x929 puts x927 x928
-x930 call close x929 
-x931 write x930 2
-x932 text " · "
-x933 puts x931 x932
-x934 call open x933 9
-x935 write x934 4
-x936 write x935 3
-x937 text "https://github.com/Joe-Simo/a0"
-x938 puts x936 x937
-x939 write x938 2
-x940 text "GitHub"
-x941 puts x939 x940
-x942 call close x941 
-x943 write x942 2
-x944 text " · MIT · 2026"
-x945 puts x943 x944
-x946 call close x945 
-x947 call close x946 
-ret x947
-end
-
 fn session io -> u32
 r0 read p0
 event at r0 0
@@ -970,12 +860,12 @@ x69 puts x67 x68
 x70 write x69 9
 x71 text "@keyframes a1{0%,61.354%{opacity:0;transform:translateY(5px)}65.729%,100%{opacity:1;transform:none}}\n@keyframes a2{0%,62.292%{opacity:0;transform:translateY(5px)}66.667%,100%{opacity:1;transform:none}}\n@keyframes a3{0%,63.229%{opacity:0;transform:translateY(5px)}67.604%,100%{opacity:1;transform:none}}\n@keyframes a4{0%,64.167%{opacity:0;transform:translateY(5px)}68.542%,100%{opacity:1;transform:none}}\n@keyframes ns{0%,65.615%{opacity:0}65.625%{opacity:1;content:\"0.0\"}66.667%{opacity:1;content:\"1.2\"}67.708%{opacity:1;content:\"2.4\"}68.750%{opacity:1;content:\"3.4\"}69.792%{opacity:1;content:\"4.2\"}70.833%{opacity:1;content:\"4.7\"}71.875%{opacity:1;content:\"4.9\"}72.917%{opacity:1;content:\"5.0\"}100%{opacity:1;content:\"5.0\"}}\n"
 x72 puts x70 x71
-x135 call sec_nav x72
+x135 call nav x72
 x347 call sec_head x135
 x701 call sec_lang x347
 x829 call sec_iter x701
 x907 call sec_run x829
-x948 call sec_foot x907
+x948 call foot x907
 x949 write x948 6
 x950 write x949 0
 ret event

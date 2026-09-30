@@ -1,0 +1,715 @@
+# a0lang.com/play, authored in A0: the live playground. The self-hosted lexer (compiler/lex.a0)
+# and parser (compiler/parse.a0) run on the source in the text area, and the page (nav, editor,
+# tokens, word IR, diagnostic, stylesheet) is this one io program. Same protocol and runtime as
+# page.a0 (see ui.a0). Input: event x y ntext text[ntext] nstate state[nstate]; event 0 renders
+# (the state's source, or the default clamp function), event 1 runs the submitted text. The
+# state is the source (n then n bytes) so the text survives a re-render. Sources are at most
+# 480 bytes (TEXT_CAP of the runtime); the tables of the compiler are u32x512.
+use "ui.a0"
+use "../compiler/parse.a0"
+# TEXT with the p1 bytes of p2 from p3
+fn substep io u32 u32x512 u32 -> io
+i add p3 p1
+v get p2 i
+w write p0 v
+ret w
+end
+fn putsub io u32 u32x512 u32 -> io
+a write p0 2
+b write a p1
+c fold substep p1 b p2 p3
+ret c
+end
+# TEXT of symbol p3 (pool p1, sym table p2)
+fn putsym io u32x512 u32x512 u32 -> io
+i2 mul p3 2
+s get p2 i2
+i21 add i2 1
+l get p2 i21
+r call putsub p0 l p1 s
+ret r
+end
+fn putsp io u32 -> io
+a write p0 2
+b write a 1
+c write b 32
+ret c
+end
+fn putnl io u32 -> io
+a write p0 2
+b write a 1
+c write b 10
+ret c
+end
+# operation names of DESIGN.md 7a, six bytes per op, with their lengths
+fn opnames -> u32x186
+t text "mov   add   sub   mul   and   or    xor   shl   shr   div   rem   eq    ne    lt    le    gt    ge    selectcall  fold  loop  arr   rec   text  get   set   at    put   read  write puts  "
+ret t
+end
+fn oplens -> u32x31
+a arr 3 3 3 3 3 2 3 3 3 3 3 2 2 2 2 2 2 6 4 4 4 3 3 4 3 3 2 3 4 5 4
+ret a
+end
+fn opstep io u32 u32x186 u32 -> io
+i add p3 p1
+v get p2 i
+w write p0 v
+ret w
+end
+fn putop io u32 -> io
+names call opnames
+lens call oplens
+ok1 ge p1 1
+ok2 le p1 31
+ok and ok1 ok2
+i1 sub p1 1
+i select ok i1 0
+len get lens i
+off mul i 6
+a write p0 2
+b write a len
+c fold opstep len b names off
+ret c
+end
+# token kinds of compiler/lex.a0, seven bytes per kind
+fn kindnames -> u32x63
+t text "ident  number string arrow  newlineminus  at     ?      error  "
+ret t
+end
+fn kindlens -> u32x9
+a arr 5 6 6 5 7 5 2 1 5
+ret a
+end
+fn kindstep io u32 u32x63 u32 -> io
+i add p3 p1
+v get p2 i
+w write p0 v
+ret w
+end
+fn putkind io u32 -> io
+names call kindnames
+lens call kindlens
+ok1 ge p1 1
+ok2 le p1 9
+ok and ok1 ok2
+i1 sub p1 1
+i select ok i1 7
+len get lens i
+off mul i 7
+a write p0 2
+b write a len
+c fold kindstep len b names off
+ret c
+end
+# type p2 of the types table p1 (triples tag a b): u32 bool io u32xN record
+fn tynames -> u32x30
+t text "u32   bool  io    u32x  record"
+ret t
+end
+fn tylens -> u32x5
+a arr 3 4 2 4 6
+ret a
+end
+fn tystep io u32 u32x30 u32 -> io
+i add p3 p1
+v get p2 i
+w write p0 v
+ret w
+end
+fn numstep io u32 u32 -> io
+r call putnum p0 p2
+ret r
+end
+fn puttype io u32x512 u32 -> io
+i3 mul p2 3
+tag get p1 i3
+i31 add i3 1
+a get p1 i31
+ok1 ge tag 1
+ok2 le tag 5
+ok and ok1 ok2
+t1 sub tag 1
+t select ok t1 0
+lens call tylens
+len get lens t
+off mul t 6
+names call tynames
+w write p0 2
+w2 write w len
+w3 fold tystep len w2 names off
+isarr eq tag 4
+na select isarr 1 0
+w4 fold numstep na w3 a
+ret w4
+end
+# one operand (kind value): 1 node of this function, 2 param, 3 u32, 4 bool
+fn argnode io u32 u32x512 u32x512 u32x512 u32 u32 -> io
+n add p5 p6
+i6 mul n 6
+s get p4 i6
+r call putsym p0 p2 p3 s
+ret r
+end
+fn argparam io u32 u32 -> io
+a write p0 2
+b write a 1
+c write b 112
+d call putnum c p2
+ret d
+end
+fn puttrue io u32 -> io
+t text "true"
+a write p0 2
+b puts a t
+ret b
+end
+fn putfalse io u32 -> io
+t text "false"
+a write p0 2
+b puts a t
+ret b
+end
+fn putarg io u32 u32 u32x512 u32x512 u32x512 u32 -> io
+k1 eq p1 1
+k2 eq p1 2
+k3 eq p1 3
+k4 eq p1 4
+n1 select k1 1 0
+n2 select k2 1 0
+n3 select k3 1 0
+ist ne p2 0
+isf eq p2 0
+t4 and k4 ist
+f4 and k4 isf
+n4t select t4 1 0
+n4f select f4 1 0
+a fold argnode n1 p0 p3 p4 p5 p6 p2
+b fold argparam n2 a p2
+c fold numstep n3 b p2
+d fold puttrue n4t c
+e fold putfalse n4f d
+ret e
+end
+# operand p1 of a node: a space then the operand (args p6 from p7; pool p2 sym p3 nodes p4 firstnode p5)
+fn argstep io u32 u32x512 u32x512 u32x512 u32 u32x512 u32 -> io
+a call putsp p0 0
+i add p7 p1
+i2 mul i 2
+k get p6 i2
+i21 add i2 1
+v get p6 i21
+r call putarg a k v p2 p3 p4 p5
+ret r
+end
+# node p1 of a function as one line: id op args (pool p2 sym p3 nodes p4 args p5 firstnode p6)
+fn nodestep io u32 u32x512 u32x512 u32x512 u32x512 u32 -> io
+n add p6 p1
+i6 mul n 6
+id get p4 i6
+i61 add i6 1
+op get p4 i61
+i62 add i6 2
+nargs get p4 i62
+i63 add i6 3
+farg get p4 i63
+a call putsym p0 p2 p3 id
+b call putsp a 0
+c call putop b op
+d fold argstep nargs c p2 p3 p4 p6 p5 farg
+e call putnl d 0
+ret e
+end
+# function p1: name, params, result type, node count, then its nodes and ret
+# (pool p2 sym p3 types p4 fns p5 nodes p6 args p7)
+fn fnstep io u32 u32x512 u32x512 u32x512 u32x512 u32x512 u32x512 -> io
+i7 mul p1 7
+name get p5 i7
+i71 add i7 1
+np get p5 i71
+i73 add i7 3
+rt get p5 i73
+i74 add i7 4
+fnode get p5 i74
+i75 add i7 5
+nn get p5 i75
+i76 add i7 6
+retw get p5 i76
+rk shr retw 28
+rv and retw 268435455
+a call open p0 5
+a1 write a 4
+a2 write a1 2
+a3 text "fnb"
+a4 puts a2 a3
+b call open a4 15
+b1 call putsym b p2 p3 name
+b2 call close b1
+c call open b2 2
+c1 write c 4
+c2 write c1 2
+c3 text "meta"
+c4 puts c2 c3
+c5 write c4 2
+c6 text "params "
+c7 puts c5 c6
+c8 call putnum c7 np
+c9 write c8 2
+c10 text " · result "
+c11 puts c9 c10
+c12 call puttype c11 p4 rt
+c13 write c12 2
+c14 text " · nodes "
+c15 puts c13 c14
+c16 call putnum c15 nn
+c17 call close c16
+d call open c17 10
+d1 write d 4
+d2 write d1 2
+d3 text "code"
+d4 puts d2 d3
+d5 fold nodestep nn d4 p2 p3 p6 p7 fnode
+d6 write d5 2
+d7 text "ret"
+d8 puts d6 d7
+d9 call putsp d8 0
+d10 call putarg d9 rk rv p2 p3 p6 fnode
+d11 call close d10
+e call close d11
+ret e
+end
+# token p1 as a table row: index, kind, text (tokens p2, source p3)
+fn tokstep io u32 u32x512 u32x512 -> io
+t call tokat p2 p1
+k at t 0
+s at t 1
+l at t 2
+a call open p0 20
+b call open a 21
+b1 write b 4
+b2 write b1 2
+b3 text "k"
+b4 puts b2 b3
+b5 call putnum b4 p1
+b6 call close b5
+c call open b6 21
+c1 call putkind c k
+c2 call close c1
+d call open c2 21
+d1 call open d 4
+d2 call putsub d1 l p3 s
+d3 call close d2
+d4 call close d3
+e call close d4
+ret e
+end
+fn putparse io u32 -> io
+t text "parse error"
+a write p0 2
+b puts a t
+ret b
+end
+fn putstruct io u32 -> io
+t text "structure error"
+a write p0 2
+b puts a t
+ret b
+end
+fn putok io u32 -> io
+t text "No diagnostic: the source parsed."
+a write p0 2
+b puts a t
+ret b
+end
+fn putattok io u32 u32 u32x512 u32x512 -> io
+t text " at token "
+a write p0 2
+b puts a t
+c call putnum b p2
+tk call tokat p3 p2
+s at tk 1
+l at tk 2
+d write c 2
+e text ": "
+f puts d e
+g call open f 4
+h call putsub g l p4 s
+i call close h
+ret i
+end
+fn putateof io u32 u32 -> io
+t text " at the end of the input (token "
+a write p0 2
+b puts a t
+c call putnum b p2
+d write c 2
+e text ")"
+f puts d e
+ret f
+end
+fn attrok io u32 -> io
+t text "diag ok"
+a write p0 4
+b write a 2
+c puts b t
+ret c
+end
+fn attrbad io u32 -> io
+t text "diag"
+a write p0 4
+b write a 2
+c puts b t
+ret c
+end
+# the first diagnostic: code p1 (0 none, 1 parse, 2 structure) at token p2 of p3 (tokens p4, source p5)
+fn putdiag io u32 u32 u32 u32x512 u32x512 -> io
+ok eq p1 0
+bad select ok false true
+c1 eq p1 1
+c2 eq p1 2
+n0 select ok 1 0
+nbad select bad 1 0
+n1 select c1 1 0
+n2 select c2 1 0
+inside lt p2 p3
+attok and bad inside
+ateof0 select inside false true
+ateof and bad ateof0
+nt select attok 1 0
+ne select ateof 1 0
+a call open p0 2
+b fold attrok n0 a
+c fold attrbad nbad b
+d fold putok n0 c
+e fold putparse n1 d
+f fold putstruct n2 e
+g fold putattok nt f p2 p4 p5
+h fold putateof ne g p2
+i call close h
+ret i
+end
+# the passes of compiler/parse.a0 (as parseio runs them) on source p0 of p1 bytes:
+# (code etok ntok tok pool sym types fns nodes args nfns); the tables are zero on an error
+fn analyze u32x512 u32 -> (u32,u32,u32,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32)
+lx call lex p0 p1
+tok at lx 0
+nw at lx 1
+ntok div nw 3
+z call zeros512
+pool0 call retvalpool
+sym0a set z 0 0
+sym0 set sym0a 1 6
+is0 rec pool0 sym0 z 6 1
+is fold internstep ntok is0 p0 tok
+pool at is 0
+sym at is 1
+tsym at is 2
+us0 rec z 0 0 0 0 0
+us loop usesok usesstep ntok us0 p0 tok tsym ntok
+umode at us 3
+uerr at us 4
+uetok at us 5
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+uerr2 select ueof 1 uerr
+uetok2 select ueof ntok uetok
+ty0 call basetypes
+z256 call zeros256
+hs0 rec ty0 z z z256 3 0 0 0 0 0 uerr2 uetok2 0 0 0 0 0
+hs loop hdrok hdrstep ntok hs0 p0 tok tsym ntok
+types at hs 0
+fns0 at hs 2
+nfns at hs 6
+hmode at hs 9
+herr at hs 10
+hetok at hs 11
+hopen ne hmode 0
+herr0 eq herr 0
+heof and herr0 hopen
+herr2 select heof 1 herr
+hetok2 select heof ntok hetok
+bs0 rec fns0 z z 0 0 0 0 herr2 hetok2 0 0 0
+bs loop bodyok bodystep ntok bs0 p0 tok tsym ntok
+fns at bs 0
+nodes at bs 1
+args at bs 2
+bmode at bs 6
+berr at bs 7
+betok at bs 8
+b0 eq bmode 0
+b9 eq bmode 9
+bclosed or b0 b9
+bopen select bclosed false true
+berr0 eq berr 0
+beof and berr0 bopen
+code select beof 1 berr
+etok select beof ntok betok
+ok eq code 0
+nfnsw select ok nfns 0
+r rec code etok ntok tok pool sym types fns nodes args nfnsw
+ret r
+end
+# the default source: the clamp function of the home page
+fn deftext -> u32x96
+t text "fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\na select lo p1 p0\nhi lt p2 a\nr select hi p2 a\nret r\nend\n"
+ret t
+end
+fn defstep u32x512 u32 u32x96 -> u32x512
+v get p2 p1
+s set p0 p1 v
+ret s
+end
+fn defsrc -> u32x512
+z call zeros512
+t call deftext
+s fold defstep 96 z t
+ret s
+end
+# event 0: render the state's source (or the default); event 1: run the submitted text
+fn session io -> u32
+r0 read p0
+event at r0 0
+t0 at r0 1
+r1 read t0
+t1 at r1 1
+r2 read t1
+t2 at r2 1
+r3 read t2
+ntext0 at r3 0
+t3 at r3 1
+big lt 480 ntext0
+ntext select big 480 ntext0
+z call zeros512
+s0 rec z t3
+rd fold readbyte ntext s0
+tin at rd 0
+t4 at rd 1
+r4 read t4
+t5 at r4 1
+r5 read t5
+nst0 at r5 0
+t6 at r5 1
+bigs lt 480 nst0
+nst select bigs 480 nst0
+sd0 rec z t6
+sd fold readbyte nst sd0
+tst at sd 0
+t7 at sd 1
+run eq event 1
+hasst gt nst 0
+def call defsrc
+src1 select hasst tst def
+n1 select hasst nst 96
+src select run tin src1
+n select run ntext n1
+an call analyze src n
+code at an 0
+etok at an 1
+ntok at an 2
+tok at an 3
+pool at an 4
+sym at an 5
+types at an 6
+fns at an 7
+nodes at an 8
+args at an 9
+nfns at an 10
+y1 write t7 9
+y2 text "@font-face{font-family:\"Geist\";src:url(\"/fonts/Geist-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Mono\";src:url(\"/fonts/GeistMono-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Pixel\";src:url(\"/fonts/GeistPixel-Square.woff2\") format(\"woff2\");font-weight:400;font-display:swap}\n:root{color-scheme:light dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--body:#c9ccd1;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--line2:#33373d;--card:#0b0c0e;--pillbg:#fff;--pillfg:#000;--ghost:#17191d;--a0:#ffd166;--c:#7aa2ff;--rust:#f0885a;--gray:#9aa0a6;--win:#5ad19a;--loss:#ff7a7a;--glow1:rgba(120,140,255,.22);--glow2:rgba(255,209,102,.12)}\n"
+y3 puts y1 y2
+y4 write y3 9
+y5 text "@media (prefers-color-scheme:light){:root{--bg:#fff;--fg:#0a0a0a;--fg2:#222;--body:#3a3f47;--muted:#6b7079;--dim:#9aa0a6;--line:#e6e8eb;--line2:#cfd3d8;--card:#fafafa;--pillbg:#0a0a0a;--pillfg:#fff;--ghost:#f0f1f3;--a0:#d99a00;--c:#3b6cf0;--rust:#d9622b;--gray:#8a8f98;--win:#1f9d63;--loss:#d63c3c;--glow1:rgba(120,140,255,.28);--glow2:rgba(255,190,60,.22)}}\n*{box-sizing:border-box}\nhtml{scroll-behavior:smooth;scroll-padding-top:80px}\nbody{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 \"Geist\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}\na{color:inherit}\n.pixel{font-family:\"Geist Pixel\",\"Geist Mono\",monospace;font-weight:400}\n.mono{font-family:\"Geist Mono\",ui-monospace,SFMono-Regular,Menlo,monospace}\n.top{position:fixed;inset:0 0 auto 0;z-index:20;height:64px;display:flex;align-items:center;padding:0 28px;background:linear-gradient(var(--bg),transparent)}\n"
+y6 puts y4 y5
+y7 write y6 9
+y8 text ".nav{display:flex;align-items:center;gap:28px;width:100%}\n.brand{font-size:1.25rem;letter-spacing:.02em;text-decoration:none;margin-right:12px}\n.links{display:flex;gap:22px;flex:1}\n.links a{color:var(--fg2);text-decoration:none;font-size:.9rem}\n.links a:hover{color:var(--fg)}\n.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;background:var(--pillbg);color:var(--pillfg);text-decoration:none;font-size:.9rem;font-weight:500}\n.pill.ghost{background:var(--ghost);color:var(--fg)}\n.pill:hover{filter:brightness(.92)}\n@media (max-width:640px){.top{background:var(--bg);border-bottom:1px solid var(--line);height:56px;padding:0 20px}.links{gap:14px}.links a{font-size:.85rem}.pill{padding:6px 12px;font-size:.85rem}}\n.hero{position:relative;min-height:100vh;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 96px;overflow:hidden}\n"
+y9 puts y7 y8
+y10 write y9 9
+y11 text ".layout{display:grid;grid-template-columns:200px minmax(0,760px);gap:56px;justify-content:center;padding:80px 24px 0;max-width:1160px;margin:0 auto}\n.rail{position:sticky;top:96px;align-self:start;font-size:.8rem;display:flex;flex-direction:column;gap:10px}\n.rail .rh{color:var(--fg2);margin:14px 0 2px}\n.rail a{color:var(--muted);text-decoration:none;padding-left:12px}\n.rail a:hover{color:var(--fg)}\n@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:24px;padding-top:56px}.rail{position:static;flex-direction:row;flex-wrap:wrap;gap:8px}.rail .rh{display:none}.rail a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:.78rem}}\n.main h2{font-size:clamp(1.6rem,3vw,2.1rem);font-weight:500;letter-spacing:-.02em;margin:0 0 16px}\n.main h3{font-size:1.15rem;font-weight:500;margin:28px 0 8px}\n.main p{color:var(--body);margin:0 0 14px;font-size:1.02rem}\n.main p strong{color:var(--fg);font-weight:500}\n"
+y12 puts y10 y11
+y13 write y12 9
+y14 text ".main section{padding:32px 0 40px;border-top:1px solid var(--line)}\n.main section:last-child{padding-bottom:8px}\n.main section:first-child{border-top:0;padding-top:0}\n.main section.cont{border-top:0;padding-top:0}\n.chart{border:1px solid var(--line);border-radius:18px;background:var(--card);padding:22px 22px 18px;margin:22px 0 28px}\n.chart .ct{font-size:1.05rem;margin:0 0 4px;font-weight:500;color:var(--fg)}\n.chart .sub{color:var(--muted);font-size:.85rem;margin:0 0 16px}\n.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.82rem;color:var(--fg2);margin:0 0 14px}\n.legend span::before{content:\"\";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px}\n.legend .la0::before{background:var(--a0)}\n.legend .lc::before{background:var(--c)}\n.legend .lrust::before{background:var(--rust)}\n.legend .lgray::before{background:var(--gray)}\n"
+y15 puts y13 y14
+y16 write y15 9
+y17 text "pre.code{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;overflow:auto;font:13px/1.65 \"Geist Mono\",ui-monospace,monospace;color:var(--fg2);margin:16px 0 0;white-space:pre}\npre.code .cm{color:var(--dim)}\npre.wrap{white-space:pre-wrap}\n@media (max-width:720px){pre.code{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}}\ntable.ops{width:100%;border-collapse:collapse;font-size:.9rem;margin:12px 0 20px}\n.ops th{text-align:left;color:var(--muted);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);font-size:.8rem}\n.ops td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg2)}\n.ops td:first-child{white-space:nowrap;color:var(--fg)}\n@media (max-width:720px){.ops tr{display:block;padding:8px 0;border-bottom:1px solid var(--line)}.ops td,.ops th{display:block;border:0;padding:2px 0}.ops th:last-child{display:none}.ops td:first-child{white-space:normal}}\n"
+y18 puts y16 y17
+y19 write y18 9
+y20 text ".limits{border-left:2px solid var(--loss);padding-left:16px}\n.foot{max-width:1160px;margin:32px auto 0;padding:32px 24px 48px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}\n.foot a{color:var(--fg2);text-decoration:none}\n.card:hover{border-color:var(--line2)}\na:focus-visible,.pill:focus-visible{outline:2px solid var(--c);outline-offset:3px;border-radius:4px}\n.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}\n.reveal.in{opacity:1;transform:none}\n.docs .hero{min-height:0;padding:120px 24px 0;align-items:flex-start;flex-direction:column;justify-content:flex-start}\n.docs .hero::after{display:none}\n.docs .hero .name{font-size:clamp(2.6rem,7vw,5rem)}\n@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.fill{transition:none}.hero::before{animation:none}.hero .name,.hero .tag,.hero .sub{animation:none}}\n"
+y21 puts y19 y20
+y22 write y21 9
+y23 text ".lead{color:var(--muted);max-width:620px;margin:10px 0 0;font-size:1.05rem}\n.single{max-width:860px;margin:0 auto;padding:40px 24px 0}\ntextarea.src{display:block;width:100%;min-height:210px;resize:vertical;background:var(--card);color:var(--fg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font:13px/1.65 \"Geist Mono\",ui-monospace,monospace;white-space:pre;tab-size:2}\ntextarea.src:focus{outline:2px solid var(--c);outline-offset:2px}\n.bar{display:flex;align-items:center;gap:16px;margin:14px 0 0;flex-wrap:wrap}\nbutton.pill{border:0;cursor:pointer;font:inherit}\n.hint{color:var(--muted);font-size:.85rem}\n.count{font-variant-numeric:tabular-nums;color:var(--fg)}\n.diag{border-left:2px solid var(--loss);padding-left:16px;color:var(--fg2)}\n.diag.ok{border-color:var(--win)}\n.fnb{margin:0 0 22px}\n.fnb h3{margin:0 0 2px}\n.fnb .meta{color:var(--muted);font-size:.85rem;margin:0}\n.ops td.k{color:var(--muted)}\n"
+y24 puts y22 y23
+y25 call nav y24
+y26 call open y25 5
+y27 write y26 4
+y28 write y27 2
+y29 text "docs"
+y30 puts y28 y29
+y31 call open y30 13
+y32 write y31 4
+y33 write y32 1
+y34 text "top"
+y35 puts y33 y34
+y36 write y35 4
+y37 write y36 2
+y38 text "hero"
+y39 puts y37 y38
+y40 call open y39 1
+y41 write y40 4
+y42 write y41 2
+y43 text "name pixel"
+y44 puts y42 y43
+y45 write y44 2
+y46 text "Play"
+y47 puts y45 y46
+y48 call close y47
+y49 call open y48 2
+y50 write y49 4
+y51 write y50 2
+y52 text "lead"
+y53 puts y51 y52
+y54 write y53 2
+y55 text "Type an A0 function and run it through the A0 lexer and parser, both written in A0 and compiled to wasm: the tokens, the parsed word IR, and the first diagnostic. Everything on this page is computed by that program."
+y56 puts y54 y55
+y57 call close y56
+y58 call close y57
+y59 call open y58 5
+y60 write y59 4
+y61 write y60 2
+y62 text "single main"
+y63 puts y61 y62
+y64 call open y63 13
+y65 write y64 4
+y66 write y65 1
+y67 text "editor"
+y68 puts y66 y67
+y69 call open y68 27
+y70 write y69 4
+y71 write y70 2
+y72 text "src"
+y73 puts y71 y72
+y74 write y73 4
+y75 write y74 6
+y76 text "A0 source"
+y77 puts y75 y76
+y78 write y77 8
+y79 write y78 1
+y80 write y79 2
+y81 write y80 n
+y82 fold wstep n y81 src
+y83 call close y82
+y84 call open y83 5
+y85 write y84 4
+y86 write y85 2
+y87 text "bar"
+y88 puts y86 y87
+y89 call open y88 3
+y90 write y89 4
+y91 write y90 2
+y92 text "pill"
+y93 puts y91 y92
+y94 write y93 5
+y95 write y94 1
+y96 write y95 2
+y97 text "Run"
+y98 puts y96 y97
+y99 call close y98
+y100 call open y99 6
+y101 write y100 4
+y102 write y101 2
+y103 text "hint"
+y104 puts y102 y103
+y105 write y104 2
+y106 text "Ctrl/Cmd+Enter runs it too. "
+y107 puts y105 y106
+y108 call close y107
+y109 call open y108 6
+y110 write y109 4
+y111 write y110 2
+y112 text "count"
+y113 puts y111 y112
+y114 call putnum y113 ntok
+y115 write y114 2
+y116 text " tokens"
+y117 puts y115 y116
+y118 call close y117
+y119 call close y118
+y120 call close y119
+y121 call open y120 13
+y122 write y121 4
+y123 write y122 1
+y124 text "tokens"
+y125 puts y123 y124
+y126 call open y125 11
+y127 write y126 2
+y128 text "Tokens"
+y129 puts y127 y128
+y130 call close y129
+y131 call open y130 19
+y132 write y131 4
+y133 write y132 2
+y134 text "ops"
+y135 puts y133 y134
+y136 call open y135 20
+y137 call open y136 22
+y138 write y137 2
+y139 text "#"
+y140 puts y138 y139
+y141 call close y140
+y142 call open y141 22
+y143 write y142 2
+y144 text "kind"
+y145 puts y143 y144
+y146 call close y145
+y147 call open y146 22
+y148 write y147 2
+y149 text "text"
+y150 puts y148 y149
+y151 call close y150
+y152 call close y151
+y153 fold tokstep ntok y152 tok src
+y154 call close y153
+y155 call close y154
+y156 call open y155 13
+y157 write y156 4
+y158 write y157 1
+y159 text "ir"
+y160 puts y158 y159
+y161 call open y160 11
+y162 write y161 2
+y163 text "IR"
+y164 puts y162 y163
+y165 call close y164
+y166 call open y165 2
+y167 write y166 4
+y168 write y167 2
+y169 text "meta"
+y170 puts y168 y169
+y171 call putnum y170 nfns
+y172 write y171 2
+y173 text " functions"
+y174 puts y172 y173
+y175 call close y174
+y176 fold fnstep nfns y175 pool sym types fns nodes args
+y177 call close y176
+y178 call open y177 13
+y179 write y178 4
+y180 write y179 1
+y181 text "diag"
+y182 puts y180 y181
+y183 call open y182 11
+y184 write y183 2
+y185 text "Diagnostic"
+y186 puts y184 y185
+y187 call close y186
+y188 call putdiag y187 code etok ntok tok src
+y189 call close y188
+y190 call close y189
+y191 call close y190
+y192 call foot y191
+y193 write y192 6
+y194 add n 1
+y195 write y193 y194
+y196 write y195 n
+y197 fold wstep n y196 src
+ret 0
+end

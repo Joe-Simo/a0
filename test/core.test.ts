@@ -845,6 +845,66 @@ test('site docs program: A0 UI protocol, stylesheet, and reference sections', as
     assert.ok(all.includes(needle), `missing ${needle}`);
 });
 
+test('site play program: the A0 lexer and parser render tokens, IR, and the diagnostic of a submitted source', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const p = (await link('site/play.a0', (f) => readFile(f, 'utf8'))).program;
+  const session = p.byName.get('session') as TypedFunc;
+  const lex = p.byName.get('lex') as TypedFunc;
+  const decode = (words: readonly number[]): { text: string; state: number[]; css: string } => {
+    const str = (i: number, n: number): string =>
+      Buffer.from(words.slice(i, i + n)).toString('utf8');
+    const d = { text: '', state: [] as number[], css: '' };
+    for (let i = 0; i < words.length; ) {
+      const c = words[i++];
+      if (c === 1 || c === 5 || c === 8) i += 1;
+      else if (c === 2 || c === 4 || c === 9 || c === 13) {
+        if (c === 4) i += 1;
+        const n = words[i++] as number;
+        if (c === 9) d.css += str(i, n);
+        else if (c === 2) d.text += str(i, n);
+        i += n;
+      } else if (c === 6) {
+        const n = words[i++] as number;
+        d.state = words.slice(i, i + n) as number[];
+        i += n;
+      } else if (c === 10) i += 2 + (words[i + 1] as number);
+      else if (c === 11 || c === 12) i += 2;
+      else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
+    }
+    return d;
+  };
+  // Event 1 (Run) with a submitted source: the token count, every node as `id op args`, the ret.
+  const src = 'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend\n';
+  const bytes = [...Buffer.from(src)];
+  const io = makeIo([1, 0, 0, bytes.length, ...bytes, 0]);
+  assert.equal(run(session, [io]), 0);
+  const d = decode(io.output);
+  const arr = new Array(512).fill(0);
+  bytes.forEach((v, i) => {
+    arr[i] = v;
+  });
+  const ntok = (run(lex, [arr, bytes.length]) as [number[], number])[1] / 3;
+  assert.ok(d.css.includes('textarea.src{'));
+  assert.ok(d.text.includes(`${ntok} tokens`), d.text);
+  assert.ok(d.text.includes('1 functions'), d.text);
+  assert.ok(d.text.includes('params 2 · result u32 · nodes 2'), d.text);
+  assert.ok(d.text.includes('a add p0 p1\nb mul a 2\nret b'), d.text);
+  assert.ok(d.text.includes('No diagnostic'), d.text);
+  // The state is the source, so the text survives a re-render (event 0 with that state).
+  assert.deepEqual(d.state, [bytes.length, ...bytes]);
+  const again = makeIo([0, 0, 0, 0, d.state.length, ...d.state]);
+  assert.equal(run(session, [again]), 0);
+  assert.ok(decode(again.output).text.includes('a add p0 p1'));
+  // The default (no text, no state) is the clamp function; an invalid source names the token.
+  const first = makeIo([0, 0, 0, 0, 0]);
+  assert.equal(run(session, [first]), 0);
+  assert.ok(decode(first.output).text.includes('fn clamp u32 u32 u32 -> u32'));
+  const badSrc = [...Buffer.from('fn f u32 -> u32\na call g p0\nret a\nend\n')];
+  const bad = makeIo([1, 0, 0, badSrc.length, ...badSrc, 0]);
+  assert.equal(run(session, [bad]), 0);
+  assert.ok(decode(bad.output).text.includes('structure error at token 8: g'));
+});
+
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
   const src = 'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend';
   const session = new EditSession(parseAndValidate(src));
