@@ -27,7 +27,7 @@ import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.7';
+export const COMPILER_VERSION = 'a0c-0.1.8';
 
 export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64';
 export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64'];
