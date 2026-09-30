@@ -23,8 +23,8 @@ import {
 import { applyPatch, EditSession, formatPatch, parsePatch, revision } from '../src/edit.js';
 import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
-import { ILL_TYPED, type IrTables, NONE, refCheck } from '../tools/ref-check.js';
-import { IR_OPS, irOp, refParse, type WordIr, wellFormedPrefix } from '../tools/ref-parse.js';
+import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
+import { FRONT_END_SOURCE_LIMIT, IR_OPS, irOp, refParse, type WordIr } from '../tools/ref-parse.js';
 
 const AFFINE = `fn affine u32 u32 u32 -> u32
 a mul p0 p1
@@ -1633,10 +1633,17 @@ test('loop predicates with aggregate state are compared structurally, not by ref
   assert.deepEqual(Array.from(out), [2, 3, 30, 4]);
 });
 
+/** A self-hosted front-end table: `words` in `pages` pages of `size` (zero past the end). */
+function pagesOf(words: readonly number[], size: number, pages: number): number[][] {
+  return Array.from({ length: pages }, (_, i) =>
+    Array.from({ length: size }, (_, k) => words[i * size + k] ?? 0),
+  );
+}
+
 test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A0 sources', async () => {
   const { readFile, readdir } = await import('node:fs/promises');
   const p = parseAndValidate(await readFile('compiler/lex.a0', 'utf8'));
-  const lex = p.byName.get('lex') as TypedFunc;
+  const lex = p.byName.get('lexsrc') as TypedFunc;
   // Reference: the same token grammar, written directly.
   const reference = (src: string): number[][] => {
     const out: number[][] = [];
@@ -1674,21 +1681,21 @@ test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A
   const sources: string[] = [
     'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n',
     '# c\nfn f u32x4 -> (u32,bool)\nt text "a\\"b\\\\c"\n-a\nb add p0 1 @ a\ng0\n-fn f\n  x  mov 4294967295\t\r\n?',
+    '- > ->-"x\\"y" "open',
   ];
+  // whole files: the examples, the site's UI program and the lexer's own source
   for (const f of await readdir('examples'))
-    if (f.endsWith('.a0')) sources.push((await readFile(`examples/${f}`, 'utf8')).slice(0, 500));
-  sources.push((await readFile('site/ui.a0', 'utf8')).slice(0, 500));
+    if (f.endsWith('.a0')) sources.push(await readFile(`examples/${f}`, 'utf8'));
+  sources.push(await readFile('site/ui.a0', 'utf8'));
+  sources.push(await readFile('compiler/lex.a0', 'utf8'));
   for (const src of sources) {
-    const cut = src.slice(0, src.lastIndexOf('\n') + 1);
-    const bytes = [...Buffer.from(cut)];
-    const arr = new Array(512).fill(0);
-    bytes.forEach((v, i) => {
-      arr[i] = v;
-    });
-    const r = run(lex, [arr, bytes.length]) as [number[], number];
+    const bytes = [...Buffer.from(src)];
+    assert.ok(bytes.length <= FRONT_END_SOURCE_LIMIT, src.slice(0, 40));
+    const r = run(lex, [pagesOf(bytes, 128, 128), bytes.length]) as [number[][], number];
+    const words = r[0].flat();
     const got: number[][] = [];
-    for (let i = 0; i < r[1]; i += 3) got.push([r[0][i], r[0][i + 1], r[0][i + 2]] as number[]);
-    assert.deepEqual(got, reference(cut), cut.slice(0, 40));
+    for (let i = 0; i < r[1]; i += 3) got.push(words.slice(i, i + 3));
+    assert.deepEqual(got, reference(src), src.slice(0, 40));
   }
 });
 
@@ -1763,20 +1770,23 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
       assert.equal(f[6], rk * 2 ** 28 + rv, `${where} ret`);
     });
   };
-  const files = (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort();
+  // whole files: every example, the site's UI program (text literals) and the lexer's source
+  const files = (await readdir('examples'))
+    .filter((f) => f.endsWith('.a0'))
+    .sort()
+    .map((f) => `examples/${f}`);
+  files.push('site/ui.a0', 'compiler/lex.a0');
   for (const f of files) {
-    const text = await readFile(`examples/${f}`, 'utf8');
-    // the TypeScript reference on the whole file, the A0 parser on a well-formed prefix
+    const text = await readFile(f, 'utf8');
+    assert.ok(Buffer.byteLength(text) <= FRONT_END_SOURCE_LIMIT, f);
     check(refParse(text), text, `ref ${f}`);
-    const prefix = wellFormedPrefix(text, 500);
-    assert.ok(prefix.length > 0, f);
-    const ir = a0Parse(prefix);
-    assert.deepEqual(ir, refParse(prefix), `a0 ${f}`);
-    check(ir, prefix, `a0 ${f}`);
+    const ir = a0Parse(text);
+    assert.deepEqual(ir, refParse(text), `a0 ${f}`);
+    check(ir, text, `a0 ${f}`);
   }
-  const lexFull = await readFile('compiler/lex.a0', 'utf8');
-  const lexPrefix = wellFormedPrefix(lexFull.slice(lexFull.indexOf('\nfn ') + 1), 500);
-  check(a0Parse(lexPrefix), lexPrefix, 'a0 lex.a0');
+  // nested array types: u32x4x2 is the array of 2 of u32x4
+  const nested = a0Parse('fn f u32x4x2 u32x4 -> u32x4x2\nret p0\nend\n');
+  assert.deepEqual(nested.types.slice(9), [4, 4, 0, 4, 2, 3]);
   // an unknown callee is a structure error at its token
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\na call g p0\nret a\nend\n'), [2, 8]);
   function a0ParseCode(src: string): [number, number] {
@@ -1789,13 +1799,22 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
 test('self-hosted checker (compiler/check.a0) agrees with validate() on the corpus, the examples, the compiler, and ill-typed programs', async () => {
   const { readFile, readdir } = await import('node:fs/promises');
   const checker = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
-  const check = checker.byName.get('check') as TypedFunc;
+  const check = checker.byName.get('checkir') as TypedFunc;
   const checkio = checker.byName.get('checkio') as TypedFunc;
-  const SIZES = { types: 768, tlist: 1024, fns: 1024, nodes: 4096, args: 8192, fstat: 256 };
-  const pad = (t: readonly number[], n: number): number[] => [
-    ...t,
-    ...new Array(n - t.length).fill(0),
-  ];
+  // the parser's tables: (page size, pages)
+  const SHAPES = {
+    types: [384, 65],
+    tlist: [128, 65],
+    fns: [128, 45],
+    nodes: [128, 128],
+    args: [128, 256],
+    fstat: [128, 8],
+  } as const;
+  const words = (t: keyof typeof SHAPES): number => SHAPES[t][0] * SHAPES[t][1];
+  const paged = (w: readonly number[], t: keyof typeof SHAPES): number[][] => {
+    assert.ok(w.length <= words(t), `${t}: ${w.length} words`);
+    return pagesOf(w, SHAPES[t][0], SHAPES[t][1]);
+  };
 
   /** The word IR of a TypeScript Program: every header, the bodies of functions [from, to) only. */
   const encode = (fns: readonly Func[], from: number, to: number): IrTables => {
@@ -1869,26 +1888,29 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     if (tag === 4) return { kind: 'arr', length: a, elem: decode(types, tlist, b) };
     return { kind: 'rec', fields: tlist.slice(a, a + b).map((f) => decode(types, tlist, f)) };
   };
+  /** (types tsig tlist tinfo ntys ncons pcons fstat ntypes ntlist err errfn errnode lit stat) */
   type State = [
+    number[][],
+    number[][],
+    number[][],
+    number[][],
+    number[][],
+    number[][],
     number[],
-    number[],
-    number[],
-    number[],
+    number[][],
     number,
     number,
-    number[],
-    number[],
-    number[],
-    number[],
     number,
     number,
     number,
     number,
     number,
   ];
-  /** Every function of a program, in chunks that fit the tables, against validate() and refCheck. */
-  const checkProgram = async (label: string, fns: readonly Func[]): Promise<void> => {
+  /** Every function of a program, in chunks that fit the tables (one for any program within the
+   * front end's source limit), against validate() and refCheck. */
+  const checkProgram = async (label: string, fns: readonly Func[]): Promise<number> => {
     const typed = validate({ functions: fns, uses: [] });
+    let chunks = 0;
     let fstat: number[] = [];
     let from = 0;
     while (from < fns.length) {
@@ -1898,62 +1920,63 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
       while (to < fns.length) {
         const fn = fns[to] as Func;
         const a = fn.nodes.reduce((n, x) => n + x.args.length, 0);
-        if (to > from && (nn + fn.nodes.length > SIZES.nodes / 6 || na + a > SIZES.args / 2)) break;
+        if (to > from && (nn + fn.nodes.length > words('nodes') / 6 || na + a > words('args') / 2))
+          break;
         nn += fn.nodes.length;
         na += a;
         to += 1;
       }
       const ir = encode(fns, from, to);
       const where = `${label}: functions ${from}..${to}`;
-      if (ir.nodes.length > SIZES.nodes || ir.args.length > SIZES.args) {
-        // A table cannot hold its own zero literal: the checker's `zeros8192` has 8192
-        // operands, more than the args table; its bound is 1 like every literal.
-        assert.equal(to, from + 1, `${where} fit`);
-        assert.deepEqual(
-          (fns[from] as Func).nodes.map((n) => n.op),
-          ['arr'],
-          `${where} fit`,
-        );
-        fstat = [...fstat, 1];
-        from = to;
-        continue;
-      }
+      chunks += 1;
       const ref = refCheck(ir, from, fstat, to);
       assert.equal(ref.code, 0, `${where} reference verdict`);
       const s = run(check, [
-        pad(ir.types, SIZES.types),
-        pad(ir.tlist, SIZES.tlist),
-        pad(ir.fns, SIZES.fns),
-        pad(ir.nodes, SIZES.nodes),
-        pad(ir.args, SIZES.args),
-        pad(fstat, SIZES.fstat),
+        paged(ir.types, 'types'),
+        paged(ir.tlist, 'tlist'),
+        paged(ir.fns, 'fns'),
+        paged(ir.nodes, 'nodes'),
+        paged(ir.args, 'args'),
+        paged(fstat, 'fstat'),
         ir.types.length / 3,
         ir.tlist.length,
         to,
         from,
       ]) as State;
       assert.equal(s[10], 0, `${where} A0 verdict (${s[11]}, ${s[12]})`);
-      assert.deepEqual(s[9].slice(0, to), ref.fstat.slice(0, to), `${where} iteration bounds`);
+      const sfstat = s[7].flat();
+      const stypes = s[0].flat();
+      const stlist = s[2].flat();
+      const sntys = s[4].flat();
+      assert.deepEqual(sfstat.slice(0, to), ref.fstat.slice(0, to), `${where} iteration bounds`);
       for (let fi = from; fi < to; fi += 1) {
         const fn = typed.functions[fi] as TypedFunc;
         const firstNode = ir.fns[fi * 7 + 4] as number;
         fn.nodes.forEach((node, ni) => {
           const want = fn.types.get(node.id) as Type;
-          const got = decode(s[0], s[1], s[6][firstNode + ni] as number);
+          const got = decode(stypes, stlist, sntys[firstNode + ni] as number);
           const w = `${label} ${fn.name}.${node.id}`;
           assert.ok(typeEquals(got, want), `${w}: ${formatType(got)} vs ${formatType(want)}`);
           const refGot = decode(ref.types, ref.tlist, ref.nodeTypes[firstNode + ni] as number);
           assert.ok(typeEquals(refGot, want), `${w}: reference ${formatType(refGot)}`);
         });
       }
-      fstat = s[9].slice(0, to);
+      fstat = sfstat.slice(0, to);
       from = to;
     }
+    return chunks;
   };
-  await checkProgram('corpus', parse(await readFile('results/corpus.a0', 'utf8')).functions);
-  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort())
-    await checkProgram(f, parse(await readFile(`examples/${f}`, 'utf8')).functions);
-  for (const f of ['compiler/lex.a0', 'compiler/parse.a0', 'compiler/check.a0'])
+  // the corpus, the examples and the lexer each fit the tables whole (one chunk); the linked
+  // parser and checker are larger than any source of 16384 bytes and are checked in chunks
+  const corpus = parse(await readFile('results/corpus.a0', 'utf8')).functions;
+  assert.equal(await checkProgram('corpus', corpus), 1, 'corpus in one chunk');
+  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort()) {
+    const fns = parse(await readFile(`examples/${f}`, 'utf8')).functions;
+    assert.equal(await checkProgram(f, fns), 1, `${f} in one chunk`);
+  }
+  const lexFns = (await link('compiler/lex.a0', (p) => readFile(p, 'utf8'))).program.functions;
+  assert.equal(await checkProgram('compiler/lex.a0', lexFns), 1, 'lex.a0 in one chunk');
+  for (const f of ['compiler/parse.a0', 'compiler/check.a0'])
     await checkProgram(f, (await link(f, (p) => readFile(p, 'utf8'))).program.functions);
 
   // Ill-typed programs through the whole A0 front (lex, parse, check): the diagnostic must be
@@ -2004,6 +2027,13 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     assert.notEqual(code, 0, label);
     assert.equal(got[0], code, `${label}: category`);
     if (got[1] !== NONE) assert.deepEqual(got, [code, fi, node], label);
+  }
+  // Whole files through the front (lex, parse, check): the words refCheckWords computes.
+  for (const f of ['examples/life.a0', 'site/ui.a0', 'compiler/lex.a0']) {
+    const text = await readFile(f, 'utf8');
+    const io = makeIo([Buffer.byteLength(text), ...Buffer.from(text)]);
+    assert.equal(run(checkio, [io]), 0, f);
+    assert.deepEqual(io.output, refCheckWords(text), f);
   }
   // A well-typed source through the front: every node type agrees with validate().
   const src =
