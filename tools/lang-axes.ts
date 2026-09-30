@@ -25,7 +25,7 @@
  * no number. Nothing is estimated.
  *
  * Usage: bun run lang-axes [-- options]
- *   --langs=a,b      only these language ids (a0 always runs)
+ *   --langs=a,b      only these language ids (a0 and a0node always run)
  *   --kernels=a,b    timed kernels (default affine,branchy,arrfill)
  *   --rounds=N       timed rounds (default 5)
  *   --work=DIR       build root (default: a fresh directory under the OS temp dir)
@@ -51,6 +51,7 @@ import {
   versionLine,
 } from './exec-bench-languages.js';
 import { MORE_LANGUAGES } from './exec-bench-languages-more.js';
+import { buildNativeCheck, NATIVE_A0 } from './native-check.js';
 
 const TABLE: readonly Language[] = [...CORE_LANGUAGES, ...MORE_LANGUAGES];
 /** The kernels results/exec-benchmark.json reports, the set every chart uses. */
@@ -74,7 +75,12 @@ const COMMENT: Readonly<Record<string, (text: string) => string>> = (() => {
   const semi = (t: string): string => `; ${t}`;
   const pct = (t: string): string => `% ${t}`;
   const dash = (t: string): string => `-- ${t}`;
-  const out: Record<string, (text: string) => string> = { a0: hash, c: slash, rust: slash };
+  const out: Record<string, (text: string) => string> = {
+    a0: hash,
+    a0node: hash,
+    c: slash,
+    rust: slash,
+  };
   out.js = slash;
   for (const id of 'typescript cpp objc java kotlin go swift zig csharp fsharp dart scala groovy d v odin vala haxe gleam pascal php'.split(
     ' ',
@@ -156,6 +162,7 @@ interface Subject {
 
 const node = process.execPath;
 const A0_CLI = join(process.cwd(), 'dist', 'src', 'cli.js');
+const A0_NATIVE = join(process.cwd(), NATIVE_A0);
 
 function jsDriver(k: Kernel): string {
   const args = Array.from({ length: k.arity }, (_, i) => `a${i}`);
@@ -182,12 +189,40 @@ function baselines(clang: string | undefined, rustc: string | undefined): Subjec
       id: 'a0',
       label: 'A0',
       family: 'a0',
+      toolchain: `native a0 (dist/native/a0: the self-hosted checker compiled by A0's C backend and clang); emit via the a0 CLI on ${nodeVersion}; clang for the native run`,
+      file: 'kernel.a0',
+      kernelSource: (k) => k.a0,
+      program: (_k, src) => `${src}\n`,
+      check: (dir) => [{ cmd: A0_NATIVE, args: ['check', join(dir, 'kernel.a0')] }],
+      checkKind: 'a0 check (native self-hosted lexer, parser and checker; cold process, no Node)',
+      toRun: (dir) =>
+        clang === undefined
+          ? []
+          : [
+              {
+                cmd: node,
+                args: [A0_CLI, 'emit', 'c', join(dir, 'kernel.a0'), join(dir, 'kernel.c')],
+              },
+              {
+                cmd: clang,
+                args: ['-std=c11', '-O2', '-o', join(dir, 'bench'), join(dir, 'main.c')],
+              },
+            ],
+      run: (dir) => ({ cmd: join(dir, 'bench'), args: ['1'] }),
+      ...(clang === undefined ? { missing: 'clang not found (needed for the native run)' } : {}),
+    },
+    {
+      ...common,
+      id: 'a0node',
+      label: 'A0 (Node CLI)',
+      family: 'a0',
       toolchain: `a0 CLI (dist/src/cli.js) on ${nodeVersion}; clang for the native run`,
       file: 'kernel.a0',
       kernelSource: (k) => k.a0,
       program: (_k, src) => `${src}\n`,
       check: (dir) => [{ cmd: node, args: [A0_CLI, 'check', join(dir, 'kernel.a0')] }],
-      checkKind: 'a0 check (parse and type-check, cold CLI process)',
+      checkKind:
+        'a0 check (TypeScript parse and type-check, cold Node CLI process; the previous A0 path)',
       toRun: (dir) =>
         clang === undefined
           ? []
@@ -304,7 +339,8 @@ interface TokenRow {
 function tokenAxis(subjects: readonly Subject[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const a0Kernel = new Map(KERNELS.map((k) => [k.name, tok(k.a0)]));
-  for (const s of subjects) {
+  // A0 through the Node CLI is the same source as A0: one token row.
+  for (const s of subjects.filter((x) => x.id !== 'a0node')) {
     const perKernel: Record<string, TokenRow | { status: 'no-source' }> = {};
     const ratios: number[] = [];
     let sumKernel = 0;
@@ -437,7 +473,7 @@ async function prepare(s: Subject, k: Kernel, root: string): Promise<Job | JobFa
   const base = s.program(k, src).replace(/\n+$/, '');
   for (const [name, text] of Object.entries(s.extraFiles(dir)))
     await writeFile(join(dir, name), text, 'utf8');
-  if (s.id === 'a0')
+  if (s.family === 'a0')
     await writeFile(
       join(dir, 'main.c'),
       `#include "kernel.c"\n${cDriver(() => `a0_${k.name}(ARGS)`, k.arity)}`,
@@ -476,7 +512,7 @@ async function main(): Promise<void> {
   );
   const subjects = [
     ...baselines(clang, rustc).filter(
-      (b) => b.id === 'a0' || CLI.langs === null || CLI.langs.has(b.id),
+      (b) => b.family === 'a0' || CLI.langs === null || CLI.langs.has(b.id),
     ),
     ...table,
   ];
@@ -485,6 +521,8 @@ async function main(): Promise<void> {
   await readFile(A0_CLI).catch(() => {
     throw new Error(`${A0_CLI} missing: run the build first`);
   });
+  const nativeBuild = await buildNativeCheck();
+  process.stderr.write(`built ${NATIVE_A0} in ${nativeBuild.ms} ms\n`);
 
   const tokens = tokenAxis(subjects);
 
@@ -578,7 +616,7 @@ async function main(): Promise<void> {
 
   const count = (o: Record<string, unknown>, pred: (v: Record<string, unknown>) => boolean) =>
     Object.values(o).filter((v) => pred(v as Record<string, unknown>)).length;
-  const others = subjects.length - 1;
+  const others = subjects.filter((s) => s.family !== 'a0').length;
   const report = {
     generatedAt: new Date().toISOString(),
     tool: 'tools/lang-axes.ts',
@@ -596,9 +634,9 @@ async function main(): Promise<void> {
     tokenKernels: EXEC_KERNELS,
     coverage: {
       languagesBesideA0: others,
-      tokens: count(tokens, (v) => v.label !== 'A0' && (v.kernelsCovered as number) > 0),
-      checkRun: count(validation, (v) => v.label !== 'A0' && v.status === 'measured'),
-      check: count(validation, (v) => v.label !== 'A0' && v.checkMedianMs !== null),
+      tokens: count(tokens, (v) => v.family !== 'a0' && (v.kernelsCovered as number) > 0),
+      checkRun: count(validation, (v) => v.family !== 'a0' && v.status === 'measured'),
+      check: count(validation, (v) => v.family !== 'a0' && v.checkMedianMs !== null),
       notInstalled: Object.entries(validation)
         .filter(([, v]) => (v as { status: string }).status === 'not-installed')
         .map(([id]) => id),
