@@ -185,6 +185,9 @@ export const WASM_FLAGS = [
   '-fuse-ld=lld',
   '-Wl,--no-entry',
   '-Wl,--export-all',
+  // Aggregate values live on the wasm stack; a page program with hundreds of text literals
+  // in one function exceeds wasm-ld's 64 KiB default.
+  '-Wl,-z,stack-size=1048576',
 ] as const;
 
 export async function compileWasm(cSource: string, cache?: ArtifactStore): Promise<WasmBuild> {

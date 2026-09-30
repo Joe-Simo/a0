@@ -34,6 +34,9 @@ const TAGS: Record<number, string> = {
   21: 'td',
   22: 'th',
   23: 'small',
+  24: 'h6',
+  25: 'b',
+  26: 'i',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',
@@ -72,6 +75,11 @@ export function renderWords(words: readonly number[]): Prerendered {
   const out: string[] = [];
   const text: string[] = [];
   const open: { tag: string; attrs: string[]; styles: string[]; started: boolean }[] = [];
+  // Chrome (header, nav, footer) and the animated hero scene carry no content for text readers.
+  const skipText = (): boolean =>
+    open.some(
+      (o) => /^(header|nav|footer)$/.test(o.tag) || o.attrs.some((a) => a.includes('id="live"')),
+    );
   let css = '';
   let i = 0;
   const bytes = (): Uint8Array => {
@@ -105,7 +113,7 @@ export function renderWords(words: readonly number[]): Prerendered {
         flush();
         const s = decoder.decode(bytes());
         out.push(escapeText(s));
-        text.push(s);
+        if (!skipText()) text.push(s);
         break;
       }
       case 3: {
@@ -114,7 +122,8 @@ export function renderWords(words: readonly number[]): Prerendered {
         if (top !== undefined && !VOID.has(top.tag)) out.push(`</${top.tag}>`);
         if (top !== undefined && /^(h1|h2|h3|p|li|tr|pre|section|footer|div)$/.test(top.tag))
           text.push('\n');
-        else if (top !== undefined && /^(a|span|strong|td|th|code|button)$/.test(top.tag))
+        else if (top !== undefined && /^(td|th)$/.test(top.tag)) text.push(' \u2014 ');
+        else if (top !== undefined && /^(a|span|strong|code|button|b|i)$/.test(top.tag))
           text.push(' ');
         break;
       }
@@ -180,6 +189,9 @@ export function renderWords(words: readonly number[]): Prerendered {
     css,
     text: text
       .join('')
+      .replace(/ +([.,;:])/g, '$1')
+      .replace(/ {2,}/g, ' ')
+      .replace(/ \u2014 \n/g, '\n')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim(),

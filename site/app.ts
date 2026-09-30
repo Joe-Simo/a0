@@ -79,6 +79,9 @@ const TAGS: Record<number, string> = {
   21: 'td',
   22: 'th',
   23: 'small',
+  24: 'h6',
+  25: 'b',
+  26: 'i',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',

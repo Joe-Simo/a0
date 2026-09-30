@@ -61,7 +61,12 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
     '',
     '## Rules of the language, in one line each',
     '',
-    ...primer.split('\n').map((l) => `- ${l}`),
+    '(In the Example line, `/` stands for a newline.)',
+    '',
+    ...primer
+      .split('\n')
+      .filter((l) => l.trim().length > 0)
+      .map((l) => `- ${l}`),
     '',
   ].join('\n');
   await writeFile(join(out, 'llms.txt'), llms, 'utf8');

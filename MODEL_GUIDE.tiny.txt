@@ -1,0 +1,3 @@
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG`, `end`. Types u32 bool io, arrays u32xN, records (u32,bool). Params p0 p1... Args: earlier ID, pN, literal, true, false. One op per line, no nesting, no forward refs, no recursion; u32 wraps mod 2^32.
+mov add sub mul and or xor shl shr div rem | eq ne lt le gt ge -> bool | select c x y | call F a... | fold F n s a... (state=s; i<n: state=F(state,i,a...)) | loop P F n s a... (stops when P false) | arr e... | rec e... | get a i | set a i v | at r k | put r k v
+EDIT: reply starts with the shown handle. e0: `id op ...` replaces or inserts before ret; `-id` deletes; `ret x`. g0: `fn ... end` adds/replaces; `-fn name` removes.
