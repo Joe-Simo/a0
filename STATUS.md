@@ -627,6 +627,13 @@ Wins, ties, losses, stated separately:
   - Second general fix: an edit's new node that nothing reads is rejected with the fix (`add 'ret ID'`), so that shape is a diagnosed rejection instead of a silently wrong program. Regression check: every earlier collection has identical accepted counts under the new checks.
   - Loss still published: Haiku one shot on the 304-token primer is 2 tasks below the 388-token primer on set A. The default primer stays MODEL_GUIDE.min.txt until a repair-round collection shows the short one recovers.
 
+## Session 2026-09-30 (self-hosting starts: the lexer in A0)
+
+- Direction (user): the compiler itself must be A0. Today it is TypeScript; the published `a0` binaries embed Bun's runtime (60–115 MB). Plan, in order: (1) room for a compiler in the language (larger arrays with in-place updates on C and arm64; two agents are on it), (2) front end in A0 verified differentially against the TypeScript one, (3) AArch64 emitter in A0, (4) bootstrap fixed point. The TypeScript compiler then becomes an oracle only.
+- `compiler/lex.a0`: the A0 lexer written in A0 (tokens as `kind start length` word triples; idents, numbers, strings with escapes, arrow, newline, minus, at, comments dropped; every branch selected, no control flow). Pure entry `lex u32x512 u32 -> (u32x512,u32)` and io front `lexio`. Sizes are 512 today because a record is capped at 65536 bits; the cap rises with step (1).
+- Verified two ways: a differential test against an independent reference tokenizer on the repo's own A0 sources (`test/core.test.ts`), and `bun run app` now runs the lexer through interpreter, optimizer, JavaScript, native C, wasm32, and JVM on 7 sources (all pass). The verify drivers' io buffers are now sized to the cases (`ioCaps`) instead of fixed 80/256-word limits.
+- Also this session: standalone `a0` binaries released (v0.8.15, five platforms) so users need no package manager; README install section; site hero performance fix (capped resolution, 30 fps, edge culling, no backdrop blur).
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

@@ -158,6 +158,20 @@ export async function checkJs(
  * included; the arm64 path passes extern prototypes of the `_a0_*` symbols in the linked
  * object instead (scalar signatures, so the Darwin C ABI and the backend's ABI coincide).
  */
+/** io buffer capacities large enough for every case (the backend defaults are the floor). */
+export function ioCaps(cases: readonly Case[]): {
+  ioInputCapacity: number;
+  ioOutputCapacity: number;
+} {
+  let inCap = C_IO_INPUT_CAPACITY;
+  let outCap = C_IO_OUTPUT_CAPACITY;
+  for (const c of cases) {
+    if (c.input !== undefined) inCap = Math.max(inCap, c.input.length + 1);
+    if (c.expectedOutput !== undefined) outCap = Math.max(outCap, c.expectedOutput.length + 1);
+  }
+  return { ioInputCapacity: inCap, ioOutputCapacity: outCap };
+}
+
 function cDriver(program: TypedProgram, header = '#include "module.c"'): string {
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `    case ${i}: printf("skip\\n"); break;`;
@@ -183,10 +197,10 @@ function cDriver(program: TypedProgram, header = '#include "module.c"'): string 
 #include <string.h>
 ${header}
 int main(void) {
-  char line[4096];
+  static char line[1 << 16];
 ${usesIo(program) ? '  static a0_io io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {
-    char *tok[80]; int n = 0;
-    for (char *p = strtok(line, " \\n"); p && n < 80; p = strtok(NULL, " \\n")) tok[n++] = p;
+    static char *tok[1 << 14]; int n = 0;
+    for (char *p = strtok(line, " \\n"); p && n < (1 << 14); p = strtok(NULL, " \\n")) tok[n++] = p;
     if (n < 1) continue;
     int idx = atoi(tok[0]);
     memmove(tok, tok + 1, sizeof(char*) * (size_t)(n - 1));
@@ -220,7 +234,7 @@ export async function checkNative(
 ): Promise<TargetReport> {
   if (tool.path === undefined) return blocked(tool, label);
   const start = performance.now();
-  const cSource = compile(program, 'c').text;
+  const cSource = compile(program, 'c', ioCaps(cases)).text;
   return withTempDir(async (dir) => {
     await writeFile(join(dir, 'module.c'), cSource, 'utf8');
     const driver = join(dir, asCpp ? 'driver.cpp' : 'driver.c');
@@ -375,7 +389,8 @@ export async function checkWasm(
   }
   const start = performance.now();
   try {
-    const build = await compileWasm(compile(program, 'c').text);
+    const caps = ioCaps(cases);
+    const build = await compileWasm(compile(program, 'c', caps).text);
     const { instance } = await WebAssembly.instantiate(build.bytes as BufferSource, {});
     const exports = instance.exports as Record<string, unknown>;
     // io state lives in linear memory at __heap_base with the C struct layout:
@@ -384,8 +399,8 @@ export async function checkWasm(
     const heapBase = (exports.__heap_base as WebAssembly.Global | undefined)?.value as
       | number
       | undefined;
-    const IN = C_IO_INPUT_CAPACITY;
-    const OUT = C_IO_OUTPUT_CAPACITY;
+    const IN = caps.ioInputCapacity;
+    const OUT = caps.ioOutputCapacity;
     const actual = cases.map((c) => {
       const fn = exports[`a0_${c.functionName}`];
       if (typeof fn !== 'function') return '<missing>';

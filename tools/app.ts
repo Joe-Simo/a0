@@ -1,5 +1,6 @@
 /**
- * Gate 5 application acceptance: Conway's Life (examples/life.a0) across targets.
+ * Gate 5 application acceptance across targets: Conway's Life (examples/life.a0) and the
+ * self-hosted A0 lexer (compiler/lex.a0), each checked against an independent reference.
  *
  * Expected results come from an independent TypeScript reference implementation of Life
  * on a 32x32 torus (no A0 code involved). Cases exercise the session protocol
@@ -140,6 +141,70 @@ export function buildCases(): (Case & { readonly label: string })[] {
   return cases;
 }
 
+// --- Self-hosted lexer reference ---------------------------------------------------
+
+/** The token grammar of compiler/lex.a0, written directly: (kind start length) triples. */
+export function refLex(src: string): number[] {
+  const out: number[] = [];
+  const b = Buffer.from(src);
+  let i = 0;
+  const word = (c: number): boolean => (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95;
+  while (i < b.length) {
+    const c = b[i] as number;
+    if (c === 32 || c === 9 || c === 13) i += 1;
+    else if (c === 10) {
+      out.push(5, i, 1);
+      i += 1;
+    } else if (c === 35) {
+      while (i < b.length && b[i] !== 10) i += 1;
+    } else if (word(c)) {
+      const s = i;
+      while (i < b.length && word(b[i] as number)) i += 1;
+      out.push(c >= 48 && c <= 57 ? 2 : 1, s, i - s);
+    } else if (c === 34) {
+      const s = i + 1;
+      i += 1;
+      while (i < b.length && b[i] !== 34) i += b[i] === 92 ? 2 : 1;
+      if (i < b.length) out.push(3, s, i - s);
+      i += 1;
+    } else if (c === 45 && b[i + 1] === 62) {
+      out.push(4, i, 2);
+      i += 2;
+    } else {
+      out.push(c === 45 ? 6 : c === 64 ? 7 : 9, i, 1);
+      i += 1;
+    }
+  }
+  return out;
+}
+
+export async function buildLexCases(): Promise<(Case & { readonly label: string })[]> {
+  const sources: [string, string][] = [
+    ['sq', 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n'],
+    ['edit', 'e0\nb add p0 1 @ a\n-a\ng0\n-fn f\n'],
+    ['text', 'fn f -> u32x3\nt text "a\\"b\\\\c"\nret t\nend\n'],
+    ['types', 'fn f u32x4 (u32,bool) io -> (u32,io)  # comment\n\tx  mov 4294967295\r\n?\n'],
+  ];
+  const { readdir } = await import('node:fs/promises');
+  for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort()) {
+    const text = (await readFile(`examples/${f}`, 'utf8')).slice(0, 500);
+    sources.push([f, text.slice(0, text.lastIndexOf('\n') + 1)]);
+  }
+  sources.push(['lex.a0', (await readFile('compiler/lex.a0', 'utf8')).slice(0, 500)]);
+  return sources.map(([label, src]) => {
+    const bytes = [...Buffer.from(src)];
+    const words = refLex(src);
+    return {
+      label: `lex/${label}`,
+      functionName: 'lexio',
+      args: [],
+      expected: words.length,
+      input: [bytes.length, ...bytes],
+      expectedOutput: [words.length, ...words],
+    };
+  });
+}
+
 async function main(): Promise<void> {
   const source = await readFile('examples/life.a0', 'utf8');
   const program = parseAndValidate(source);
@@ -169,9 +234,32 @@ async function main(): Promise<void> {
     webassembly: await checkWasm(program, cases),
     jvm: await checkJvm(program, cases),
   };
+  const lexProgram = parseAndValidate(await readFile('compiler/lex.a0', 'utf8'));
+  const lexCases = await buildLexCases();
+  const lexTargets: Record<string, TargetReport> = {
+    interpreter: checkInterpreter(lexProgram, lexCases),
+    optimizer: checkOptimizer(lexProgram, lexCases),
+    javascript: await checkJs(lexProgram, lexCases),
+    native_c_clang: await checkNative(
+      lexProgram,
+      lexCases,
+      findClang(),
+      false,
+      'native C via clang',
+    ),
+    webassembly: await checkWasm(lexProgram, lexCases),
+    jvm: await checkJvm(lexProgram, lexCases),
+  };
   const report = {
     generatedAt: new Date().toISOString(),
     application: 'Conway’s Life 32x32 torus session protocol (examples/life.a0)',
+    lexer: {
+      application: 'Self-hosted A0 lexer (compiler/lex.a0), io front lexio',
+      reference: 'Independent TypeScript tokenizer refLex in tools/app.ts',
+      cases: lexCases.length,
+      caseLabels: lexCases.map((c) => c.label),
+      targets: lexTargets,
+    },
     reference:
       'Independent TypeScript implementation in tools/app.ts (refStep/refSession); no A0 code involved',
     referenceSelfCheck,
@@ -192,7 +280,18 @@ async function main(): Promise<void> {
     if (t.failures)
       for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
   }
-  const bad = !referenceSelfCheck || Object.values(targets).some((t) => t.status === 'failed');
+  process.stdout.write('lexer (compiler/lex.a0):\n');
+  for (const [name, t] of Object.entries(lexTargets)) {
+    process.stdout.write(
+      `${name.padEnd(18)} ${t.status.padEnd(10)} ${String(t.cases).padStart(5)} cases  ${t.detail.slice(0, 80)}\n`,
+    );
+    if (t.failures)
+      for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
+  }
+  const bad =
+    !referenceSelfCheck ||
+    Object.values(targets).some((t) => t.status === 'failed') ||
+    Object.values(lexTargets).some((t) => t.status === 'failed');
   process.exit(bad ? 1 : 0);
 }
 

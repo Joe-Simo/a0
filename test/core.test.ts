@@ -1335,3 +1335,62 @@ test('loop predicates with aggregate state are compared structurally, not by ref
   const out = run(p.byName.get('go') as TypedFunc, [[1, 2, 30, 4]]) as number[];
   assert.deepEqual(Array.from(out), [2, 3, 30, 4]);
 });
+
+test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A0 sources', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const p = parseAndValidate(await readFile('compiler/lex.a0', 'utf8'));
+  const lex = p.byName.get('lex') as TypedFunc;
+  // Reference: the same token grammar, written directly.
+  const reference = (src: string): number[][] => {
+    const out: number[][] = [];
+    const b = Buffer.from(src);
+    let i = 0;
+    const word = (c: number): boolean => (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95;
+    while (i < b.length) {
+      const c = b[i] as number;
+      if (c === 32 || c === 9 || c === 13) i += 1;
+      else if (c === 10) {
+        out.push([5, i, 1]);
+        i += 1;
+      } else if (c === 35) {
+        while (i < b.length && b[i] !== 10) i += 1;
+      } else if (word(c)) {
+        const s = i;
+        while (i < b.length && word(b[i] as number)) i += 1;
+        out.push([c >= 48 && c <= 57 ? 2 : 1, s, i - s]);
+      } else if (c === 34) {
+        const s = i + 1;
+        i += 1;
+        while (i < b.length && b[i] !== 34) i += b[i] === 92 ? 2 : 1;
+        if (i < b.length) out.push([3, s, i - s]);
+        i += 1;
+      } else if (c === 45 && b[i + 1] === 62) {
+        out.push([4, i, 2]);
+        i += 2;
+      } else {
+        out.push([c === 45 ? 6 : c === 64 ? 7 : 9, i, 1]);
+        i += 1;
+      }
+    }
+    return out;
+  };
+  const sources: string[] = [
+    'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n',
+    '# c\nfn f u32x4 -> (u32,bool)\nt text "a\\"b\\\\c"\n-a\nb add p0 1 @ a\ng0\n-fn f\n  x  mov 4294967295\t\r\n?',
+  ];
+  for (const f of await readdir('examples'))
+    if (f.endsWith('.a0')) sources.push((await readFile(`examples/${f}`, 'utf8')).slice(0, 500));
+  sources.push((await readFile('site/ui.a0', 'utf8')).slice(0, 500));
+  for (const src of sources) {
+    const cut = src.slice(0, src.lastIndexOf('\n') + 1);
+    const bytes = [...Buffer.from(cut)];
+    const arr = new Array(512).fill(0);
+    bytes.forEach((v, i) => {
+      arr[i] = v;
+    });
+    const r = run(lex, [arr, bytes.length]) as [number[], number];
+    const got: number[][] = [];
+    for (let i = 0; i < r[1]; i += 3) got.push([r[0][i], r[0][i + 1], r[0][i + 2]] as number[]);
+    assert.deepEqual(got, reference(cut), cut.slice(0, 40));
+  }
+});

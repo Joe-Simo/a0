@@ -1,0 +1,209 @@
+# A0 lexer, written in A0. First module of the self-hosted compiler.
+# Input: source bytes src[0..n) in a u32x512 array. Output: tokens as word triples
+# (kind start length) packed in a u32x512 array, and the number of words written.
+# kinds: 1 ident (a-z 0-9 _) 2 number (starts with a digit) 3 string (bytes between quotes,
+#        escapes kept raw) 4 arrow (->) 5 newline 6 minus 7 at 9 error (one byte)
+# Comments (# to end of line) and spaces are dropped; the newline of a comment line is kept.
+# Every branch is computed and selected: there is no control flow in A0, only folds.
+
+fn isalpha u32 -> bool
+lo ge p0 97
+hi le p0 122
+a and lo hi
+us eq p0 95
+r or a us
+ret r
+end
+fn isdigit u32 -> bool
+lo ge p0 48
+hi le p0 57
+r and lo hi
+ret r
+end
+fn isword u32 -> bool
+a call isalpha p0
+d call isdigit p0
+r or a d
+ret r
+end
+fn isspace u32 -> bool
+sp eq p0 32
+tb eq p0 9
+cr eq p0 13
+a or sp tb
+r or a cr
+ret r
+end
+# write the triple (kind start len) at index nout; the caller selects whether to keep it
+fn emit u32x512 u32 u32 u32 u32 -> u32x512
+a set p0 p1 p2
+n1 add p1 1
+b set a n1 p3
+n2 add p1 2
+c set b n2 p4
+ret c
+end
+# state: (src out nout start kind esc)  kind: 0 none 1 ident 2 number 3 string 8 comment
+# esc: 1 when the previous string byte was a backslash
+fn lexstep (u32x512,u32x512,u32,u32,u32,u32) u32 -> (u32x512,u32x512,u32,u32,u32,u32)
+src at p0 0
+out at p0 1
+nout at p0 2
+start at p0 3
+kind at p0 4
+esc at p0 5
+c get src p1
+inword call isword c
+isnl eq c 10
+isq eq c 34
+isbs eq c 92
+ishash eq c 35
+isminus eq c 45
+isgt eq c 62
+isat eq c 64
+issp call isspace c
+k1 eq kind 1
+k2 eq kind 2
+k3 eq kind 3
+k8 eq kind 8
+inw or k1 k2
+# phase A: a pending word ends at a non-word byte
+wordend and inw inword
+closew select wordend false inw
+wlen sub p1 start
+outw call emit out nout kind start wlen
+out1 select closew outw out
+nout3 add nout 3
+nout1 select closew nout3 nout
+kind1 select closew 0 kind
+# phase A': a string closes at an unescaped quote, a comment ends at newline
+escd eq esc 1
+strq and k3 isq
+notesc select escd false true
+closes and strq notesc
+sstart add start 1
+slen sub wlen 1
+outs call emit out1 nout1 3 sstart slen
+out2 select closes outs out1
+nout2 select closes nout3 nout1
+kind2 select closes 0 kind1
+esc1 select isbs 1 0
+escn select escd 0 esc1
+esc2 select k3 escn 0
+closec and k8 isnl
+kind3 select closec 0 kind2
+# phase B: with no pending token, the byte starts or is one
+free eq kind3 0
+stillstr eq kind3 3
+stillcom eq kind3 8
+startw and free inword
+isd call isdigit c
+wkind select isd 2 1
+startq0 and free isq
+startq select closes false startq0
+starth and free ishash
+kind4 select startw wkind kind3
+kind5 select startq 3 kind4
+kind6 select starth 8 kind5
+start1 select startw p1 start
+start2 select startq p1 start1
+# single-byte tokens and the arrow (a minus token followed by '>' becomes an arrow)
+nl and free isnl
+nlc or nl closec
+minus and free isminus
+at and free isat
+gt and free isgt
+lastk sub nout2 3
+lastkind get out2 lastk
+lastminus eq lastkind 6
+arrow and gt lastminus
+badbyte or issp inword
+bad1 or badbyte isnl
+bad2 or bad1 isq
+bad3 or bad2 ishash
+bad4 or bad3 isminus
+bad5 or bad4 isat
+bad6 or bad5 isgt
+isbad select bad6 false true
+bad and free isbad
+badgt select arrow false gt
+oneb or nlc minus
+onec or oneb at
+oned or onec badgt
+onek or oned bad
+k5 select nlc 5 0
+k6 select minus 6 k5
+k7 select at 7 k6
+k9 select bad 9 k7
+k10 select badgt 9 k9
+outo call emit out2 nout2 k10 p1 1
+out3 select onek outo out2
+noutb add nout2 3
+nout3b select onek noutb nout2
+# the arrow rewrites the previous minus token in place
+outa set out3 lastk 4
+lastlen add lastk 2
+outa2 set outa lastlen 2
+out4 select arrow outa2 out3
+esc3 select stillstr esc2 0
+r rec src out4 nout3b start2 kind6 esc3
+ret r
+end
+fn zeros512 -> u32x512
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+# flush a pending word at end of input
+fn lex u32x512 u32 -> (u32x512,u32)
+zero call zeros512
+s0 rec p0 zero 0 0 0 0
+s fold lexstep p1 s0
+out at s 1
+nout at s 2
+start at s 3
+kind at s 4
+k1 eq kind 1
+k2 eq kind 2
+pend or k1 k2
+wlen sub p1 start
+outw call emit out nout kind start wlen
+outf select pend outw out
+nout3 add nout 3
+noutf select pend nout3 nout
+r rec outf noutf
+ret r
+end
+# io front: read n then n source bytes, write nout then the token words
+fn readbyte (u32x512,io) u32 -> (u32x512,io)
+buf at p0 0
+tk at p0 1
+r read tk
+v at r 0
+t at r 1
+nb set buf p1 v
+out rec nb t
+ret out
+end
+fn wstep io u32 u32x512 -> io
+v get p2 p1
+w write p0 v
+ret w
+end
+fn lexio io -> u32
+r0 read p0
+n0 at r0 0
+t0 at r0 1
+big lt 512 n0
+n select big 512 n0
+z call zeros512
+s0 rec z t0
+rd fold readbyte n s0
+src at rd 0
+t1 at rd 1
+lx call lex src n
+out at lx 0
+nout at lx 1
+t2 write t1 nout
+t3 fold wstep nout t2 out
+ret nout
+end
