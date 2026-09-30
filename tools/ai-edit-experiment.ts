@@ -3,6 +3,10 @@
  *
  *   representation: A0 | TypeScript        x    protocol: conventional | structured
  *
+ * Task sets: A (13 tasks, harness author), B (12 held-out tasks), C (the set-B tasks embedded
+ * in one 40-function program per representation, tools/ai-edit-tasks-c.ts); select with
+ * A0_EXPERIMENT_TASKSET=a|b|c|all.
+ *
  * Each cell gives the model the same task, the same acceptance tests, and an
  * equally capable edit protocol; whole-task accounting records setup (language
  * instructions + protocol instructions), view, output, tool calls, validation
@@ -38,6 +42,7 @@ import {
 import { EditSession } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import { TASKS_B } from './ai-edit-tasks-b.js';
+import { buildTasksC } from './ai-edit-tasks-c.js';
 
 type Representation = 'a0' | 'ts' | 'rust';
 type Protocol = 'conventional' | 'structured';
@@ -863,6 +868,17 @@ async function runTrial(
   };
 }
 
+function cellNames(): readonly string[] {
+  return [
+    'a0/conventional',
+    'a0/structured',
+    'ts/conventional',
+    'ts/structured',
+    'rust/conventional',
+    'rust/structured',
+  ];
+}
+
 async function main(): Promise<void> {
   const live = process.env.A0_ALLOW_PAID_MODEL_CALLS === '1';
   const model = process.env.A0_EXPERIMENT_MODEL ?? 'claude-opus-5-5';
@@ -871,14 +887,33 @@ async function main(): Promise<void> {
   // The language primer is the dominant A0 cost; A0_EXPERIMENT_GUIDE selects an alternative
   // (e.g. MODEL_GUIDE.min.txt) so live runs can compare acceptance against primer size.
   // Task set: 'a' (the original 13, written by the harness author), 'b' (12 written by an
-  // agent that had not seen set a or the corpus), or 'all'.
+  // agent that had not seen set a or the corpus), 'c' (the 12 set-B tasks, each embedded in
+  // the same deterministic 40-function program; see ai-edit-tasks-c.ts), or 'all' (a + b).
   const setName = process.env.A0_EXPERIMENT_TASKSET ?? 'a';
   const TASKS: readonly Task[] =
     setName === 'b'
       ? (TASKS_B as readonly Task[])
-      : setName === 'all'
-        ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
-        : TASKS_A;
+      : setName === 'c'
+        ? buildTasksC(TASKS_A, TASKS_B)
+        : setName === 'all'
+          ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
+          : TASKS_A;
+  // What each protocol sends. Set C makes the asymmetry visible: the structured A0 cell
+  // sends the scoped view of the target function plus the program's signature lines, while
+  // the structured TypeScript and Rust cells send the whole numbered file, since locating
+  // the function is part of the job for an agent editing a real file.
+  const method = {
+    conventional: 'whole file in every representation; reply is the whole updated file',
+    structured: {
+      a0: 'dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines',
+      ts: 'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
+      rust: 'whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)',
+    },
+    note:
+      setName === 'c'
+        ? 'set C: every task shares one 40-function program per representation; the structured A0 view is per-function while the structured TS/Rust view is the whole numbered file'
+        : 'sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size',
+  };
   const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.min.txt';
   const guide = await readFile(guidePath, 'utf8');
   const encoders = {
@@ -1008,6 +1043,30 @@ async function main(): Promise<void> {
 
   if (dumpPath !== undefined)
     await writeFile(dumpPath, `${JSON.stringify(dump, null, 2)}\n`, 'utf8');
+  // Mean context per cell (o200k): the view alone (always available) and the whole tool
+  // context of the first attempt (task text + view + repairs; scripted or live runs only).
+  const contextTokensByCell = Object.fromEntries(
+    cellNames().map((cellName) => {
+      const [representation, protocol] = cellName.split('/');
+      const rows = trials.filter(
+        (t) => t.representation === representation && t.protocol === protocol,
+      );
+      const mean = (xs: number[]): number | null =>
+        xs.length === 0 ? null : Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
+      return [
+        cellName,
+        {
+          trials: rows.length,
+          meanView: mean(rows.map((t) => t.viewTokensLocal.o200k_base ?? 0)),
+          meanToolContext: mean(
+            rows.flatMap((t) =>
+              t.tokenBucketsLocal === null ? [] : [t.tokenBucketsLocal.toolContext],
+            ),
+          ),
+        },
+      ];
+    }),
+  );
   const report = {
     generatedAt: new Date().toISOString(),
     status: live
@@ -1018,17 +1077,11 @@ async function main(): Promise<void> {
     model: live ? model : null,
     languagePrimer: guidePath,
     taskSet: setName,
+    method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
     design: {
-      cells: [
-        'a0/conventional',
-        'a0/structured',
-        'ts/conventional',
-        'ts/structured',
-        'rust/conventional',
-        'rust/structured',
-      ],
+      cells: cellNames(),
       heldConstant: [
         'model',
         'task text',
@@ -1052,6 +1105,7 @@ async function main(): Promise<void> {
       .digest('hex'),
     tasks: TASKS.map((t) => ({ id: t.id, kind: t.kind, tests: t.tests.length })),
     harnessSelfCheck: { ok: selfCheckOk, details: selfCheck },
+    contextTokensByCell,
     trials,
   };
   await mkdir('results', { recursive: true });
@@ -1066,6 +1120,10 @@ async function main(): Promise<void> {
       `${tr.task.padEnd(12)} ${tr.representation}/${tr.protocol.padEnd(12)} setup o200k=${tr.setupTokensLocal.o200k_base} view o200k=${tr.viewTokensLocal.o200k_base}${tr.accepted === null ? '' : ` one-shot=${tr.acceptedOneShot} accepted=${tr.accepted} calls=${tr.modelCalls} total=${tr.tokenBucketsLocal?.total} status=${tr.attempts.map((a) => a.status).join(',')}`}\n`,
     );
   }
+  for (const [cellName, c] of Object.entries(contextTokensByCell))
+    process.stdout.write(
+      `mean ${cellName.padEnd(18)} view o200k=${c.meanView} toolContext o200k=${c.meanToolContext ?? 'n/a'} (${c.trials} trials)\n`,
+    );
   if (!selfCheckOk) process.exit(1);
 }
 
