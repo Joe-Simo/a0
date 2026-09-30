@@ -1,0 +1,496 @@
+# Site generator, module 10: phase C, the computed values. Every number is integer arithmetic
+# with the rounding rules of sgvars.a0 (ties to even; logs in Q20 through tables). The data
+# table (sgjson.a0) is read; the variables table is the state of every fold.
+use "sgvars.a0"
+
+fn kf u32x128x64 u32 u32 -> u32
+a shl p1 4
+b add a 400
+c add b p2
+r call rd64 p0 c
+ret r
+end
+fn med u32x128x64 u32 u32 -> u32
+a shl p1 4
+b add a p2
+c add b 1424
+r call rd64 p0 c
+ret r
+end
+fn ranon u32x128x64 u32 u32 -> bool
+a shl p1 4
+b add a p2
+c add b 2448
+v call rd64 p0 c
+r eq v 1
+ret r
+end
+fn cref u32x128x128 u32 -> u32
+r call rd128 p0 p1
+ret r
+end
+# FNV-1a of the pool bytes of ref p1
+fn vhb u32 u32 u32x128x128 u32 -> u32
+a add p3 p1
+b call vb p2 a
+x xor p0 b
+r mul x 16777619
+ret r
+end
+fn vhash u32x128x128 u32 -> u32
+s shr p1 16
+l and p1 65535
+r fold vhb l 2166136261 p0 s
+ret r
+end
+
+# ---- the strings of the data table into the pool (fold bodies over the strings of a kind)
+fn cpstr u32x128x128 u32 u32x128x64 u32 u32 u32 u32 u32 -> u32x128x128
+one mov 1
+sw0 mul p1 p4
+sw add p3 sw0
+lw0 mul p1 p6
+lw add p5 lw0
+l call rd64 p2 lw
+sb0 shl sw 2
+st call rd128 p0 0
+s1 fold vappa l p0 p2 sb0
+r0 call since s1 st
+d add p7 p1
+r fold wr128 one s1 d r0
+ret r
+end
+fn cword u32x128x128 u32 u32x128x512 u32 u32 -> u32x128x128
+one mov 1
+w add p3 p1
+d add p4 p1
+r fold vconst one p0 p2 w d
+ret r
+end
+fn strings u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+n18 mov 18
+s1 fold cword n18 p0 p2 73 2
+s2 fold vconst one s1 p2 46 20
+s3 fold vconst one s2 p2 47 21
+nl call rd64 p3 129
+s4 fold cpstr nl s3 p3 912 8 848 1 32
+nk call rd64 p3 128
+s5 fold cpstr nk s4 p3 256 8 384 1 96
+n0 call rd64 p3 130
+s6 fold cpstr n0 s5 p3 3728 8 3600 1 112
+n1 call rd64 p3 131
+s7 fold cpstr n1 s6 p3 4240 8 3664 1 176
+ne call rd64 p3 7768
+s8 fold cpstr ne s7 p3 7774 11 7773 11 240
+np call rd64 p3 7952
+s9 fold cpstr np s8 p3 7953 20 7961 20 256
+ret s9
+end
+
+# ---- lists of up to 64 values
+fn z64l -> u32x64
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn rkstep u32 u32 u32x64 u32 -> u32
+v get p2 p1
+k get p2 p3
+lt0 lt v k
+eq0 eq v k
+bef lt p1 p3
+t and eq0 bef
+c or lt0 t
+a add p0 1
+r select c a p0
+ret r
+end
+fn permstep u32x64 u32 u32x64 u32 -> u32x64
+rk fold rkstep p3 0 p2 p1
+r set p0 rk p1
+ret r
+end
+# the stable sorting permutation of the first p1 keys: position -> index
+fn sortperm u32x64 u32 -> u32x64
+z call z64l
+r fold permstep p1 z p0 p1
+ret r
+end
+fn minstep u32 u32 u32x64 -> u32
+v get p2 p1
+a lt v p0
+r select a v p0
+ret r
+end
+fn maxstep u32 u32 u32x64 -> u32
+v get p2 p1
+a gt v p0
+r select a v p0
+ret r
+end
+fn lmin u32x64 u32 -> u32
+r fold minstep p1 4294967295 p0
+ret r
+end
+fn lmax u32x64 u32 -> u32
+r fold maxstep p1 0 p0
+ret r
+end
+# median of the first p1 values (the lower middle and the upper averaged, floor)
+fn median u32x64 u32 -> u32
+pm call sortperm p0 p1
+h shr p1 1
+odd and p1 1
+o eq odd 1
+h1 sub h 1
+ia get pm h
+ib get pm h1
+a get p0 ia
+b get p0 ib
+s add a b
+m shr s 1
+r select o a m
+ret r
+end
+fn inlist bool u32 u32x64 u32 -> bool
+v get p2 p1
+e eq v p3
+r or p0 e
+ret r
+end
+# how many of the p1 hashes p0 (all languages) are among the p3 hashes p2 (a chart's labels)
+fn covstep u32 u32 u32x64 u32x64 u32 -> u32
+h get p2 p1
+f fold inlist p4 false p3 h
+a add p0 1
+r select f a p0
+ret r
+end
+fn cover u32x64 u32 u32x64 u32 -> u32
+r fold covstep p1 0 p0 p2 p3
+ret r
+end
+# the coverage variables: word p3 the count, word p4 the partial flag (fold body)
+fn vcov u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
+one mov 1
+s1 fold vnum one p0 p2 p3 0 p5
+part ne p5 p6
+s2 fold vflag one s1 p2 p4 0 part
+ret s2
+end
+
+# ---- exec
+fn gmstep (u32,u32) u32 u32x128x64 u32 u32 -> (u32,u32)
+s at p0 0
+c at p0 1
+k mov p1
+ha call kf p2 k 0
+has eq ha 1
+isk0 lt p3 4096
+isk1 eq p3 8192
+isk or isk0 isk1
+lk mov p3
+f0 call kf p2 k p3
+lm sub p3 4096
+f1 call med p2 lm k
+num0 select isk f0 f1
+inv eq p3 8192
+a1 call kf p2 k 1
+num select inv a1 num0
+rn call ranon p2 lm k
+all eq p4 0
+ok0 or all rn
+ok1 or isk ok0
+ok and has ok1
+d1 call kf p2 k 1
+d2 call kf p2 k 2
+den select inv d2 d1
+d call ldiff num den
+s2 add s d
+c1 add c 1
+sn select ok s2 s
+cn select ok c1 c
+r rec sn cn
+ret r
+end
+# biased log geomean over the kernels with arm64 of kernel field p2 (p2 < 4096) or of
+# language p2 - 4096 (on the kernels where it ran when p3): (log, count)
+fn gm u32x128x64 u32 u32 -> (u32,u32)
+nk call rd64 p0 128
+s0 rec 0 0
+s fold gmstep nk s0 p0 p1 p2
+t at s 0
+c at s 1
+z eq c 0
+c1 select z 1 c
+q div t c1
+r rec q c
+ret r
+end
+# the language rows: (label ref, family 0 a0 1 compiled 2 interpreted 3 other, log, label hash)
+fn lgstep (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x128 -> (u32x64,u32x64,u32x64,u32x64,u32)
+rf at p0 0
+fm at p0 1
+lg at p0 2
+hs at p0 3
+n at p0 4
+ri add p1 784
+ran call rd64 p2 ri
+l4 add p1 4096
+g call gm p2 l4 1
+gv at g 0
+gc at g 1
+ok0 eq ran 1
+ok1 gt gc 0
+ok and ok0 ok1
+ra add p1 32
+ref call rd128 p3 ra
+fi add p1 720
+fa call rd64 p2 fi
+h call vhash p3 ref
+rf2 set rf n ref
+fm2 set fm n fa
+lg2 set lg n gv
+hs2 set hs n h
+n1 add n 1
+nn select ok n1 n
+o rec rf2 fm2 lg2 hs2 nn
+ret o
+end
+fn addrow (u32x64,u32x64,u32x64,u32x64,u32) u32 u32 u32 u32 u32 -> (u32x64,u32x64,u32x64,u32x64,u32)
+rf at p0 0
+fm at p0 1
+lg at p0 2
+hs at p0 3
+n at p0 4
+rf2 set rf n p2
+fm2 set fm n p3
+lg2 set lg n p4
+hs2 set hs n p5
+n1 add n 1
+o rec rf2 fm2 lg2 hs2 n1
+ret o
+end
+fn langs u32x128x64 u32x128x128 -> (u32x64,u32x64,u32x64,u32x64,u32)
+one mov 1
+z call z64l
+s0 rec z z z z 0
+c call cref p1 3
+ch call vhash p1 c
+g2 call gm p0 2 0
+l2 at g2 0
+s1 fold addrow one s0 c 1 l2 ch
+ru call cref p1 4
+rh call vhash p1 ru
+g3 call gm p0 3 0
+l3 at g3 0
+s2 fold addrow one s1 ru 1 l3 rh
+js call cref p1 5
+jh call vhash p1 js
+g4 call gm p0 4 0
+l4 at g4 0
+s3 fold addrow one s2 js 3 l4 jh
+nl call rd64 p0 129
+s4 fold lgstep nl s3 p0 p1
+a0 call cref p1 2
+ah call vhash p1 a0
+b call bias
+s5 fold addrow one s4 a0 0 b ah
+ret s5
+end
+fn clsref u32x128x128 u32 -> u32
+a eq p1 0
+b eq p1 1
+c eq p1 2
+x0 call cref p0 20
+x1 call cref p0 8
+x2 call cref p0 7
+x3 call cref p0 21
+r0 select c x1 x0
+r1 select b x2 r0
+r select a x3 r1
+ret r
+end
+fn lgrow u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p3 p1
+k call key1 p1
+rf get p4 i
+fm get p5 i
+lg get p6 i
+s1 fold vref one p0 p2 95 k rf
+cl call clsref s1 fm
+s2 fold vref one s1 p2 96 k cl
+me eq fm 0
+s3 fold vflag one s2 p2 97 k me
+pc call pct lg p7 p8
+s4 fold vnum one s3 p2 98 k pc
+g call ex lg 100
+s5 fold vnum one s4 p2 99 k g
+ret s5
+end
+# ahead: labels (in order) whose log is below p5, joined with ", "
+fn ahstep u32x128x128 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p2 p1
+l get p4 i
+rf get p3 i
+below lt l p5
+o call rd128 p0 0
+first eq o p6
+nf select first false true
+c0 and below nf
+cs select c0 1 0
+sp call cref p0 14
+s1 fold vapref cs p0 sp
+cb select below 1 0
+s2 fold vapref cb s1 rf
+ret s2
+end
+fn tiestep u32 u32 u32x64 u32x64 u32 u32 -> u32
+f get p2 p1
+l get p3 p1
+nf ne f 0
+a ge l p4
+b le l p5
+c0 and a b
+c and c0 nf
+x add p0 1
+r select c x p0
+ret r
+end
+fn t95 u32 -> u32
+a call lg p0
+b call lg 100
+bi call bias
+x add a bi
+r sub x b
+ret r
+end
+# all languages: A0, C, Rust, JavaScript, then the languages that ran (label hashes)
+fn allstep (u32x64,u32) u32 u32x128x64 u32x128x128 -> (u32x64,u32)
+l at p0 0
+n at p0 1
+ri add p1 784
+ran call rd64 p2 ri
+ok eq ran 1
+ra add p1 32
+ref call rd128 p3 ra
+h call vhash p3 ref
+l2 set l n h
+n1 add n 1
+nn select ok n1 n
+o rec l2 nn
+ret o
+end
+fn alllangs u32x128x64 u32x128x128 -> (u32x64,u32)
+z call z64l
+a call cref p1 2
+b call cref p1 3
+c call cref p1 4
+d call cref p1 5
+ha call vhash p1 a
+hb call vhash p1 b
+hc call vhash p1 c
+hd0 call vhash p1 d
+z1 set z 0 ha
+z2 set z1 1 hb
+z3 set z2 2 hc
+z4 set z3 3 hd0
+s0 rec z4 4
+nl call rd64 p0 129
+r fold allstep nl s0 p0 p1
+ret r
+end
+fn aheadn u32 u32 u32x64 u32 -> u32
+l get p2 p1
+b lt l p3
+a add p0 1
+r select b a p0
+ret r
+end
+fn apstep u32x64 u32 u32x64 u32x64 -> u32x64
+i get p2 p1
+v get p3 i
+r set p0 p1 v
+ret r
+end
+# the values p1 in the order of the permutation p0
+fn applyp u32x64 u32x64 u32 -> u32x64
+z call z64l
+r fold apstep p2 z p0 p1
+ret r
+end
+fn dblstep u32x64 u32 u32x64 u32x64 -> u32x64
+l get p2 p1
+f get p3 p1
+a add l l
+nz ne f 0
+b select nz 1 0
+k add a b
+r set p0 p1 k
+ret r
+end
+# sort keys of the language rows: log, then A0 before a language with the same log
+fn dbl u32x64 u32 u32x64 -> u32x64
+z call z64l
+r fold dblstep p1 z p0 p2
+ret r
+end
+fn cexec u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+nl call rd64 p3 129
+pyh call whash p2 49
+py call lookup p3 656 nl pyh
+py4 add py 4096
+gp call gm p3 py4 0
+gpl at gp 0
+pyg call ex gpl 1
+s1 fold vnum one p0 p2 91 0 pyg
+gj call gm p3 4 0
+gjl at gj 0
+jsg call ex gjl 1
+s2 fold vnum one s1 p2 92 0 jsg
+gc call gm p3 8192 0
+gcl at gc 0
+nk at gc 1
+cr call ex gcl 100
+s3 fold vfix2 one s2 p2 93 0 cr
+s4 fold vnum one s3 p2 94 0 nk
+ls call langs p3 s4
+rf at ls 0
+fm at ls 1
+lg at ls 2
+hs at ls 3
+n at ls 4
+keys0 call dbl lg n fm
+pm call sortperm keys0 n
+mn call lmin lg n
+mx call lmax lg n
+l97 call lg 97
+l100 call lg 100
+lo0 add mn l97
+lo sub lo0 l100
+s5 fold vnum one s4 p2 56 0 n
+s6 fold lgrow n s5 p2 pm rf fm lg lo mx
+n1 sub n 1
+s7 fold vnum one s6 p2 100 0 n1
+s8 fold vnum one s7 p2 101 0 n
+lo95 call t95 95
+hi105 call t95 105
+ti fold tiestep n 0 fm lg lo95 hi105
+s9 fold vnum one s8 p2 102 0 ti
+ah fold aheadn n 0 lg lo95
+s10 fold vnum one s9 p2 103 0 ah
+st call rd128 s10 0
+s11 fold ahstep n s10 pm rf lg lo95 st
+ar call since s11 st
+s12 fold vref one s11 p2 104 0 ar
+al call alllangs p3 s12
+all at al 0
+na at al 1
+s13 fold vnum one s12 p2 105 0 na
+cv call cover all na hs n
+s14 fold vcov one s13 p2 106 107 cv na
+ret s14
+end

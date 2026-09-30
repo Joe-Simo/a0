@@ -1,0 +1,280 @@
+# Site generator, module 9: the variables the template reads, and the integer arithmetic.
+# Variables table (u32x128x128): 0 end of the pool (a byte position), 1 number of variables,
+# 2..31 refs of constant words, 32..271 refs of the data table strings (sgcalc.a0), 272 + 4e
+# variable e: name hash, key (dims << 28 | i << 14 | j), ref (start << 16 | length, bytes of
+# this table), number; the pool of string bytes from byte 33856. A variable has 0, 1 or 2
+# dimensions: it is read with the loop indices i (outer) and j (inner) of the template.
+use "sgphase.a0"
+use "sgtables.a0"
+
+fn vhd u32x128x128 u32 -> u32
+r call rd128 p0 p1
+ret r
+end
+# append byte p2 to the pool
+fn vapb u32x128x128 u32 u32 -> u32x128x128
+one mov 1
+o call rd128 p0 0
+s1 fold wb128 one p0 o p2
+o1 add o 1
+r fold wr128 one s1 0 o1
+ret r
+end
+# append store byte p3 + p1 / pool byte p2 + p1 / data table byte p3 + p1
+fn vapst u32x128x128 u32 u32x128x512 u32 -> u32x128x128
+one mov 1
+a add p3 p1
+b call sb p2 a
+r fold vapb one p0 b
+ret r
+end
+fn vapv u32x128x128 u32 u32 -> u32x128x128
+one mov 1
+a add p2 p1
+b call vb p0 a
+r fold vapb one p0 b
+ret r
+end
+fn vappa u32x128x128 u32 u32x128x64 u32 -> u32x128x128
+one mov 1
+a add p3 p1
+b call pb p2 a
+r fold vapb one p0 b
+ret r
+end
+# append the bytes of ref p2
+fn vapref u32x128x128 u32 u32 -> u32x128x128
+s shr p2 16
+l and p2 65535
+r fold vapv l p0 s
+ret r
+end
+fn vdig u32x128x128 u32 u32 u32 -> u32x128x128
+one mov 1
+ch call digit p1 p2 p3
+r fold vapb one p0 ch
+ret r
+end
+# append the decimal rendering of p2
+fn vapd u32x128x128 u32 u32 -> u32x128x128
+nd call ndig p2
+r fold vdig nd p0 p2 nd
+ret r
+end
+# append p2 hundredths as "a.bc", tenths as "a.b"
+fn vapf2 u32x128x128 u32 u32 -> u32x128x128
+one mov 1
+ip div p2 100
+fp rem p2 100
+t div fp 10
+o rem fp 10
+t1 add t 48
+o1 add o 48
+s1 fold vapd one p0 ip
+s2 fold vapb one s1 46
+s3 fold vapb one s2 t1
+s4 fold vapb one s3 o1
+ret s4
+end
+fn vapf1 u32x128x128 u32 u32 -> u32x128x128
+one mov 1
+ip div p2 10
+o rem p2 10
+o1 add o 48
+s1 fold vapd one p0 ip
+s2 fold vapb one s1 46
+s3 fold vapb one s2 o1
+ret s3
+end
+# the ref of the bytes appended since p1
+fn since u32x128x128 u32 -> u32
+o call rd128 p0 0
+l sub o p1
+s shl p1 16
+r or s l
+ret r
+end
+# variable: name hash p2, key p3, ref p4, number p5 (fold body)
+fn vdef u32x128x128 u32 u32 u32 u32 u32 -> u32x128x128
+one mov 1
+n call rd128 p0 1
+e0 shl n 2
+e add e0 272
+e1 add e 1
+e2 add e 2
+e3 add e 3
+s1 fold wr128 one p0 e p2
+s2 fold wr128 one s1 e1 p3
+s3 fold wr128 one s2 e2 p4
+s4 fold wr128 one s3 e3 p5
+n1 add n 1
+s5 fold wr128 one s4 1 n1
+ret s5
+end
+fn key1 u32 -> u32
+a shl p0 14
+r or a 268435456
+ret r
+end
+fn key2 u32 u32 -> u32
+a shl p0 14
+b or a p1
+r or b 536870912
+ret r
+end
+# a number variable: name word p3, key p4, number p5 (fold body; p2 the store)
+fn vnum u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+one mov 1
+h call whash p2 p3
+st call rd128 p0 0
+s1 fold vapd one p0 p5
+r0 call since s1 st
+r fold vdef one s1 h p4 r0 p5
+ret r
+end
+# a variable of p5 hundredths / tenths
+fn vfix2 u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+one mov 1
+h call whash p2 p3
+st call rd128 p0 0
+s1 fold vapf2 one p0 p5
+r0 call since s1 st
+r fold vdef one s1 h p4 r0 0
+ret r
+end
+fn vfix1 u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+one mov 1
+h call whash p2 p3
+st call rd128 p0 0
+s1 fold vapf1 one p0 p5
+r0 call since s1 st
+r fold vdef one s1 h p4 r0 0
+ret r
+end
+# a string variable of ref p5 / a flag ("1" or empty) of p5
+fn vref u32x128x128 u32 u32x128x512 u32 u32 u32 -> u32x128x128
+one mov 1
+h call whash p2 p3
+r fold vdef one p0 h p4 p5 0
+ret r
+end
+fn vflag u32x128x128 u32 u32x128x512 u32 u32 bool -> u32x128x128
+one mov 1
+h call whash p2 p3
+w call rd128 p0 13
+r0 select p5 w 0
+r fold vdef one p0 h p4 r0 0
+ret r
+end
+# the constant word p2 appended to the pool, its ref at variables word p3 (fold body)
+fn vconst u32x128x128 u32 u32x128x512 u32 u32 -> u32x128x128
+one mov 1
+st call rd128 p0 0
+s call wstart p2 p3
+l call wlen p2 p3
+s1 fold vapst l p0 p2 s
+r0 call since s1 st
+r fold wr128 one s1 p4 r0
+ret r
+end
+
+# ---- integer arithmetic (tools/site-gen.py until it was replaced: the same rules)
+fn nbmore u32 u32 u32 -> bool
+a shr p2 p0
+b gt a 1
+c lt p0 31
+r and b c
+ret r
+end
+fn nbstep u32 u32 u32 -> u32
+r add p0 1
+ret r
+end
+# log2 of p0 (at least 1) in Q20: table of log2(1 + i/1024), linear in between
+fn lg u32 -> u32
+z eq p0 0
+n select z 1 p0
+e loop nbmore nbstep 32 0 n
+sh sub 31 e
+m shl n sh
+i0 shr m 21
+i and i0 1023
+f0 shr m 5
+f and f0 65535
+t call tlg
+a get t i
+i1 add i 1
+b get t i1
+d sub b a
+df mul d f
+dd shr df 16
+e20 shl e 20
+x add e20 a
+r add x dd
+ret r
+end
+# the bias of signed Q20 logs: a log difference is stored plus 2^28
+fn bias -> u32
+r mov 268435456
+ret r
+end
+fn ldiff u32 u32 -> u32
+a call lg p0
+b call lg p1
+bi call bias
+x add a bi
+r sub x b
+ret r
+end
+# round(p1 * 2^(L / 2^20)) for the biased log p0 (p1 * 2^21 < 2^32)
+fn ex u32 u32 -> u32
+eb shr p0 20
+f and p0 1048575
+i shr f 10
+fr and f 1023
+t call tex
+a get t i
+i1 add i 1
+b get t i1
+d sub b a
+dm mul d fr
+dd shr dm 10
+m add a dd
+x mul m p1
+big ge eb 276
+up sub eb 276
+xl shl x up
+s sub 276 eb
+far ge s 32
+s1 sub s 1
+h shl 1 s1
+xh add x h
+xr shr xh s
+r0 select far 0 xr
+r select big xl r0
+ret r
+end
+# p0 / p1 rounded to the nearest integer, ties to even
+fn rdiv u32 u32 -> u32
+q div p0 p1
+r rem p0 p1
+r2 add r r
+up gt r2 p1
+tie eq r2 p1
+odd and q 1
+o eq odd 1
+t and tie o
+c or up t
+q1 add q 1
+v select c q1 q
+ret v
+end
+# bar length 3..100 of the biased log p0 between p1 and p2
+fn pct u32 u32 u32 -> u32
+a sub p0 p1
+b sub p2 p1
+n mul a 97
+q call rdiv n b
+r add q 3
+ret r
+end

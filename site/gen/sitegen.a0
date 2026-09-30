@@ -1,11 +1,24 @@
-use "sgphase.a0"
-fn dumpw io u32 u32x128x64 -> io
-v call rd64 p2 p1
-a call putd p0 true v
-b write a 10
-ret b
+use "sgcalc.a0"
+fn dumpv io u32 u32x128x128 -> io
+e0 shl p1 2
+e add e0 272
+h call rd128 p2 e
+e1 add e 1
+k call rd128 p2 e1
+e2 add e 2
+rf call rd128 p2 e2
+a call putd p0 true h
+b write a 32
+c call putd b true k
+d write c 32
+s shr rf 16
+l and rf 65535
+f call cpvt d true false p2 s l
+g write f 10
+ret g
 end
 fn sitegen io -> u32
+one mov 1
 a call phasea p0
 st at a 0
 t at a 1
@@ -13,7 +26,11 @@ k at a 2
 b call phaseb st t k
 pa at b 0
 t2 at b 1
-n mov 8192
-o fold dumpw n t2 pa
+z call z128
+v0 fold wr128 one z 0 33856
+v1 fold strings one v0 st pa
+v2 fold cexec one v1 st pa
+n call rd128 v2 1
+o fold dumpv n t2 v2
 ret 0
 end
