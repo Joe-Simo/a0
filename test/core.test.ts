@@ -1284,7 +1284,7 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
     'fn keep u32 u32 -> bool\nb lt p0 1000\nret b\nend',
     'fn grow u32 u32 -> u32\nb mul p0 3\nc add b p1\nret c\nend',
     'fn top u32 u32 bool -> u32\nk and p1 15\nz arr p0 p1 1 2 3 4 5 6\nf fold step k z p0\ng get f p1\nr call pair p0 p1\nh at r 0\ns loop keep grow p1 h\nt put r 0 s\nu at t 1\nt0 at t 0\nm call many p0 p1 g t0 p0 p1 g s u p0 p2 t0\nq ge m g\nw select q m g\nx div w p1\ny rem p0 p1\nv add x y\nret v\nend',
-    // a 4 KiB array: word-copy loops and a probed (___chkstk_darwin) frame
+    // a 4 KiB array: word-copy loops and a page-probed frame
     'fn poke u32x1024 u32 u32 -> u32x1024\nn set p0 p2 p1\nret n\nend',
     `fn bigtop u32 u32 -> u32\nz arr ${zeros}\nk and p1 7\nf fold poke k z p0\na get f p1\nb get f 3\nc add a b\nret c\nend`,
   ].join('\n\n');
