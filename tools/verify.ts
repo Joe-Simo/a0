@@ -373,6 +373,109 @@ export async function checkArm64(
   };
 }
 
+// --- native x86-64 (direct assembly; under Rosetta on Apple silicon) ------------
+
+/** How this host can build and run x86-64 code: natively, through Rosetta, or not at all. */
+function x86Host(clang: string): { arch: string[]; runner: string[] } | string {
+  if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
+    return { arch: [], runner: [] };
+  if (process.platform !== 'darwin' || process.arch !== 'arm64')
+    return `needs macOS or Linux on x86-64, or macOS on Apple silicon with Rosetta; found ${process.platform}-${process.arch}`;
+  if (!runTool('/usr/bin/arch', ['-x86_64', '/usr/bin/true']).ok)
+    return 'Rosetta 2 is not installed (softwareupdate --install-rosetta)';
+  const probe = runTool(clang, ['-arch', 'x86_64', '-x', 'c', '-o', '/dev/null', '-'], {
+    input: 'int main(void) { return 0; }\n',
+  });
+  if (!probe.ok)
+    return `clang cannot build for x86_64 (no x86_64 SDK slice): ${probe.stderr.slice(0, 200)}`;
+  return { arch: ['-arch', 'x86_64'], runner: ['/usr/bin/arch', '-x86_64'] };
+}
+
+export async function checkX86_64(
+  program: TypedProgram,
+  cases: readonly Case[],
+  tool: ToolInfo,
+): Promise<TargetReport & { skippedIoFunctions: number; skippedIoCases: number }> {
+  const subset = ioFreeSubset(program);
+  const keep = new Set(subset.functions.map((f) => f.name));
+  const own = cases.filter((c) => keep.has(c.functionName));
+  const skipped = {
+    skippedIoFunctions: program.functions.length - subset.functions.length,
+    skippedIoCases: cases.length - own.length,
+  };
+  const label = `native x86-64 assembly (src/x86_64.ts) via ${'`clang -x assembler`'}, linked with the C test driver; ${skipped.skippedIoFunctions} io functions (${skipped.skippedIoCases} cases) skipped: io is out of scope for this backend`;
+  if (tool.path === undefined) return { ...blocked(tool, 'x86_64'), ...skipped };
+  const host = x86Host(tool.path);
+  if (typeof host === 'string')
+    return { status: 'blocked', cases: 0, detail: `x86_64: ${host}`, ...skipped };
+  const how =
+    host.runner.length === 0 ? 'executed natively' : 'executed under Rosetta 2 (arch -x86_64)';
+  const start = performance.now();
+  const protos = [
+    '#include <stdint.h>',
+    '#include <stdbool.h>',
+    ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
+  ].join('\n');
+  const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
+    status: 'failed',
+    cases: 0,
+    detail: `x86_64: ${what}`,
+    tool: tool.version,
+    failures: [stderr.slice(0, 2000)],
+    ...skipped,
+  });
+  let report: TargetReport | undefined;
+  for (const optimize of [true, false]) {
+    const asm = compile(subset, 'x86_64', { optimize }).text;
+    const level = optimize ? 'optimized' : 'unoptimized';
+    const r = await withTempDir(async (dir): Promise<TargetReport> => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
+      const as = runTool(
+        tool.path as string,
+        [...host.arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
+        { cwd: dir },
+      );
+      if (!as.ok) return fail(`${level}: assembly failed`, as.stderr);
+      const link = runTool(
+        tool.path as string,
+        [
+          ...host.arch,
+          '-std=c11',
+          '-O1',
+          '-Wall',
+          '-Wextra',
+          '-Werror',
+          '-o',
+          'driver',
+          'driver.c',
+          'module.o',
+        ],
+        { cwd: dir },
+      );
+      if (!link.ok) return fail(`${level}: driver build/link failed`, link.stderr);
+      const [cmd, ...pre] =
+        host.runner.length === 0 ? [join(dir, 'driver')] : [...host.runner, join(dir, 'driver')];
+      const exec = runTool(cmd as string, pre, { input: caseInput(subset, own), cwd: dir });
+      if (!exec.ok) return fail(`${level}: execution failed`, exec.stderr);
+      return compareAll(own, exec.stdout.trim().split('\n'), `${level}: ${label}`);
+    });
+    if (r.status !== 'passed') return { ...r, tool: tool.version, ...skipped };
+    report = r;
+  }
+  return {
+    ...timed(
+      {
+        ...(report as TargetReport),
+        detail: `${label}; ${how}; optimized and unoptimized emissions each executed on every case`,
+      },
+      start,
+    ),
+    tool: tool.version,
+    ...skipped,
+  };
+}
+
 // --- WebAssembly -------------------------------------------------------------
 
 export async function checkWasm(
@@ -590,6 +693,7 @@ async function main(): Promise<void> {
         'C-compatible output compiled as C++17 via clang++',
       ),
       native_arm64: await checkArm64(program, cases, findClang()),
+      native_x86_64: await checkX86_64(program, cases, findClang()),
       webassembly: await checkWasm(program, cases),
       jvm: await checkJvm(program, cases),
       systemverilog: {
