@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-09-30T13:39:44.779Z",
+  "stage": "Self-hosting stage 4b: C emitter written in A0 (compiler/emit_c.a0, linked with check.a0, parse.a0, lex.a0)",
+  "method": "Word IR built per checker chunk; compiler/check.a0 types each chunk and compiler/emit_c.a0 `emitc` writes its C, both in the reference interpreter; the C is compiled by clang (-std=c11 -O1 -Wall -Wextra -Werror, UBSan) with the standard driver of tools/verify.ts and compared with the independent BigInt oracle of tools/corpus.ts.",
+  "scope": "The generated verification corpus and every example program (all within the front end table sizes). Byte equality with the TypeScript emitter is not required; observable results are.",
+  "programs": [
+    {
+      "label": "corpus",
+      "functions": 48,
+      "chunks": 4,
+      "cases": 5262,
+      "cBytes": 116771,
+      "typescriptCBytes": 26399,
+      "emitMs": 60006,
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 5262,
+        "detail": "C from compiler/emit_c.a0 (reference interpreter) via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 1104.2319999999963,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "kernels.a0",
+      "functions": 5,
+      "chunks": 1,
+      "cases": 763,
+      "cBytes": 2513,
+      "typescriptCBytes": 925,
+      "emitMs": 238,
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 763,
+        "detail": "C from compiler/emit_c.a0 (reference interpreter) via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 258.5140839999949,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    },
+    {
+      "label": "life.a0",
+      "functions": 14,
+      "chunks": 1,
+      "cases": 346,
+      "cBytes": 10335,
+      "typescriptCBytes": 12798,
+      "emitMs": 3251,
+      "native_c_clang": {
+        "status": "passed",
+        "cases": 346,
+        "detail": "C from compiler/emit_c.a0 (reference interpreter) via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+        "elapsedMs": 473.34916599999997,
+        "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+      }
+    }
+  ],
+  "totalCases": 6371,
+  "passedCases": 6371
+}

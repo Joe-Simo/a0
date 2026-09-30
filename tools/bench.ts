@@ -49,7 +49,8 @@ async function main(): Promise<void> {
   const emission: Record<string, { cold: Sample; cached: Sample }> = {};
   // arm64 refuses io functions, which the corpus contains; its emission is not timed here.
   for (const target of TARGETS.filter(
-    (t): t is Target => t !== 'arm64' && t !== 'x86_64' && t !== 'riscv64' && t !== 'avr' && t !== 'wasm',
+    (t): t is Target =>
+      t !== 'arm64' && t !== 'x86_64' && t !== 'riscv64' && t !== 'avr' && t !== 'wasm',
   )) {
     const input = corpus;
     const cold = measure(runs, () => compile(input, target));
