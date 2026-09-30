@@ -1739,6 +1739,82 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
   }
 });
 
+test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
+  const src = [
+    // element-wise fills (vectorized) feeding a multiply-accumulate (fused, no arrays stored)
+    'fn fa u32x64 u32 u32 u32 -> u32x64\nv mul p1 p2\nw add v p3\nn set p0 p1 w\nret n\nend',
+    'fn fb u32x64 u32 u32 u32 -> u32x64\nv xor p1 p3\nw mul v p2\nn set p0 p1 w\nret n\nend',
+    'fn dot u32 u32 u32x64 u32x64 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend',
+    `fn fused u32 u32 -> u32\nz arr ${zeros(64)}\na fold fa 64 z p0 p1\nz2 arr ${zeros(64)}\nb fold fb 64 z2 p0 p1\nd fold dot 64 p1 a b\nx get a p0\nr add d x\nret r\nend`,
+    // record state: running (min, max) as NEON umin/umax, plus a scalar min and a mul reduce
+    'fn mm (u32,u32) u32 u32x64 -> (u32,u32)\nv get p2 p1\nlo at p0 0\nhi at p0 1\nc lt v lo\nnlo select c v lo\nd gt v hi\nnhi select d v hi\nr put p0 0 nlo\nr2 put r 1 nhi\nret r2\nend',
+    'fn smin u32 u32 u32x64 -> u32\nv get p2 p1\nc le p0 v\nm select c p0 v\nret m\nend',
+    'fn prod u32 u32 u32x64 -> u32\nv get p2 p1\nw or v 1\nm mul w p0\nret m\nend',
+    `fn minmax u32 u32 -> u32\nz arr ${zeros(64)}\na fold fa 64 z p0 p1\ni rec p1 p0\nm fold mm 64 i a\nlo at m 0\nhi at m 1\ns fold smin 64 p0 a\nq fold prod 64 p1 a\nt sub hi lo\nu xor t s\nw add u q\nret w\nend`,
+    // the previous element carried in a register: a length that is not a power of two and
+    // more trips than elements, so trip 0 reads element (2^32 - 1) mod 12 of the initial state
+    'fn scan u32x12 u32 u32 -> u32x12\nj sub p1 1\nt get p0 j\ns get p0 p1\nu mul t p2\nv add u s\nn set p0 p1 v\nret n\nend',
+    'fn carried u32 u32 -> u32\nz arr p0 1 2 3 4 5 6 7 8 9 10 p1\na fold scan 20 z p1\nq and p0 15\nr get a q\nw get a 11\ns add r w\nret s\nend',
+    // neighbour reads (i + 3 mod 16) as two loads joined by ext, wrapping at the end
+    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nn set p0 p1 w\nret n\nend',
+    'fn sm u32x16 u32 u32x16 -> u32x16\nj add 3 p1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend',
+    `fn shifted u32 u32 -> u32\nz arr ${zeros(16)}\na fold f16 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sm 16 z2 a\nq and p1 15\nr get b q\nw get b 15\ns add r w\nret s\nend`,
+    // sixteen products feeding a record literal (written through, no register each)
+    'fn wide u32 u32 -> u32\na mul p0 3\nb mul p1 5\nc mul a b\nd add a b\ne xor c d\nf mul e 7\ng sub f a\nh shr g 3\nr arr a b c d e f g h a b c d e f g h\nk and p0 15\nx get r k\ny get r 7\nz add x y\nret z\nend',
+  ].join('\n\n');
+  const p = parseAndValidate(src);
+  const names = ['fused', 'minmax', 'carried', 'shifted', 'wide'];
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [0x9e3779b9, 0x7f4a7c15],
+  ];
+  const expected = inputs
+    .flatMap(([a, b]) => names.map((n) => String(run(p.byName.get(n) as TypedFunc, [a, b]))))
+    .join('\n');
+  const protos = names.map((n) => `extern uint32_t a0_${n}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => names.map((n) => `  printf("%u\\n", a0_${n}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${protos}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const asm = compile(p, 'arm64').text;
+  // The shapes the optimizer is meant to produce are really there.
+  assert.match(asm, /umin v\d+\.4s/);
+  assert.match(asm, /umax v\d+\.4s/);
+  assert.match(asm, /addv s\d+/);
+  assert.match(asm, /ext v\d+\.16b, v30\.16b, v31\.16b, #12/);
+  const fusedBody = /_a0_fused:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  // `a` is also read after the loop, so it is stored; `b` has one use and is fused away.
+  assert.equal(fusedBody.match(/str q/g)?.length, 1);
+  for (const optimize of [true, false]) {
+    const text = compile(p, 'arm64', { optimize }).text;
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), text, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+      assert.ok(ld.ok, ld.stderr);
+      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected);
+    });
+  }
+});
+
 test('x86_64 backend refuses io functions with a diagnostic', () => {
   const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
   assert.throws(

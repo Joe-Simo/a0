@@ -26,6 +26,14 @@ export const KERNEL_NAMES = [
   'arrfill',
   'loop64',
   'arrfill4k',
+  'dot1k',
+  'prefix1k',
+  'hist256',
+  'mat4',
+  'fnv4k',
+  'xs4k',
+  'minmax1k',
+  'filter2',
 ] as const;
 export type KernelName = (typeof KERNEL_NAMES)[number];
 
@@ -630,6 +638,20 @@ main()
         'fn arrfill(x: u32, y: u32) u32 { var a: [8]u32 = undefined; for (&a, 0..) |*e, i| e.* = @as(u32, @intCast(i)) +% x; return a[y % 8] +% a[3]; }',
       loop64:
         'fn loop64(s0: u32, k: u32) u32 { var s = s0; var i: u32 = 0; while (i < 64) : (i += 1) { const b = (s ^ k) *% 2654435761; s = (b ^ (b >> 15)) +% i; } return s; }',
+      dot1k:
+        'fn dot1k(x: u32, y: u32) u32 { var a: [1024]u32 = undefined; var b: [1024]u32 = undefined; for (0..1024) |i| { const iu: u32 = @intCast(i); a[i] = iu *% x +% y; b[i] = (iu ^ y) *% x; } var s: u32 = 0; for (0..1024) |i| s +%= a[i] *% b[i]; return s; }',
+      prefix1k:
+        'fn prefix1k(x: u32, y: u32) u32 { var a: [1024]u32 = undefined; for (0..1024) |i| a[i] = @as(u32, @intCast(i)) *% x +% y; for (1..1024) |i| a[i] +%= a[i - 1]; return a[y & 1023] +% a[1023]; }',
+      hist256:
+        'fn hist256(x: u32, y: u32) u32 { var a: [4096]u32 = undefined; for (0..4096) |i| { const w = @as(u32, @intCast(i)) *% x +% y; a[i] = (w ^ (w >> 15)) *% 2654435761; } var h = [_]u32{0} ** 256; for (0..4096) |i| h[a[i] >> 24] += 1; return h[y & 255] *% 65599 +% h[x & 255]; }',
+      mat4: 'fn mat4(x: u32, y: u32) u32 { var a: [16]u32 = undefined; var b: [16]u32 = undefined; for (0..16) |k| { const ku: u32 = @intCast(k); const sh: u5 = @intCast(k); a[k] = (x *% (ku + 1)) ^ (y >> sh); b[k] = (y *% (ku + 3)) +% (x >> sh); } for (0..8) |_| { var c: [16]u32 = undefined; for (0..4) |r| { for (0..4) |j| { var s: u32 = 0; for (0..4) |k| s +%= a[r * 4 + k] *% b[k * 4 + j]; c[r * 4 + j] = s; } } a = c; } return a[0] +% a[5] +% a[10] +% a[15] +% a[x & 15]; }',
+      fnv4k:
+        'fn fnv4k(x: u32, y: u32) u32 { var a: [4096]u32 = undefined; for (0..4096) |i| { const w = @as(u32, @intCast(i)) *% x +% y; a[i] = (w ^ (w >> 15)) *% 2654435761; } var s: u32 = 2166136261; for (0..4096) |i| { const v = a[i]; s = (s ^ (v & 255)) *% 16777619; s = (s ^ ((v >> 8) & 255)) *% 16777619; s = (s ^ ((v >> 16) & 255)) *% 16777619; s = (s ^ (v >> 24)) *% 16777619; } return s; }',
+      xs4k: 'fn xs4k(x: u32, y: u32) u32 { var a: [4096]u32 = undefined; var s = x; for (0..4096) |i| { s ^= s << 13; s ^= s >> 17; s ^= s << 5; a[i] = s; } var r = y; for (0..4096) |i| r ^= a[i]; return r; }',
+      minmax1k:
+        'fn minmax1k(x: u32, y: u32) u32 { var a: [1024]u32 = undefined; for (0..1024) |i| { const w = @as(u32, @intCast(i)) *% x +% y; a[i] = (w ^ (w >> 15)) *% 2654435761; } var lo: u32 = 0xffffffff; var hi: u32 = 0; for (0..1024) |i| { const v = a[i]; lo = if (v < lo) v else lo; hi = if (v > hi) v else hi; } return hi -% lo; }',
+      filter2:
+        'fn filter2(x: u32, y: u32) u32 { var a: [1024]u32 = undefined; var b: [1024]u32 = undefined; var c: [1024]u32 = undefined; for (0..1024) |i| { const w = @as(u32, @intCast(i)) *% x +% y; a[i] = (w ^ (w >> 15)) *% 2654435761; } for (0..1024) |i| b[i] = (a[i] +% a[(i + 1) & 1023]) >> 1; for (0..1024) |i| c[i] = (b[i] +% b[(i + 1) & 1023]) >> 1; return c[y & 1023] +% c[1023]; }',
     },
     program: (k, src) => `const std = @import("std");
 ${src}

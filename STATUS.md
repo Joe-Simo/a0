@@ -1980,6 +1980,38 @@ Fresh subjects, same method as the -bare runs (Agent subagents, haiku / sonnet, 
 (accepted one shot, mean o200k output tokens per edit over all replies.) Output per edit went up, not down (26.2 -> 27.2 / 27.9), acceptance dropped (73/74 -> 51/74 / 64/74), and the primer grew by 38 tokens per call; A0 is further from TS (21.9) and Rust (19.8) than before. Why, from the replies: the models did switch small edits to line form (0 -> 29-30 of 74 replies are line edits only), but those replaced id-addressed lines of the same size; replies with `fn` blocks did not drop (44 -> 42 / 43 of 74), because most of them add a function, change a signature, or rewrite a callee whose body the view does not show, none of which a line number can address; and the numbers leaked into the blocks (models number the lines of new functions, `0+` inside blocks, lines numbered past the end), so number prefixes are 8% (round 1) and 14% (round 2) of A0 output. Failures: round 1 d (Haiku 6, Sonnet 7), 12 of them numbered `fn` blocks rejected by the strict build (re-scored with the round-2 rule round 1 is 63/74), Haiku c400 9 replies written on one line with ` / ` separators (as in the primer's example; not a line-edit effect), Haiku b 1; round 2 Haiku b 8 (`0+` inside new `fn` blocks, numbers past the end of a function), Sonnet d 2 (`-fn f` plus a new `fn f` block in one reply, rejected as before). The round-2 rule was chosen after seeing round 1, and round 2 then showed new failure shapes; tightening further would be fitting the protocol to these replies. Decision: the default harness view and MODEL_GUIDE.min.txt are unchanged (the -bare protocol stays the measured best: 73/74, 26.2); line-addressed edits stay in EditSession as an opt-in (numbered views only) and in the harness behind the flag. The remaining gap is not addressable by line numbers under these views: it is new-function and signature headers, and callee rewrites without a visible body.
 
 
+## Session 2026-09-30 (optimizer: beating best-flag baselines)
+
+Compiler a0c-0.1.10. Performance is UNMEASURED: the full exec-bench rerun was stopped
+(machine load above 200 on 8 cores; an earlier 1-minute dip to 3.7 did not hold, 15-minute
+load 41), so results/exec-benchmark.json was not regenerated and no win, tie or loss is
+claimed. A later quiet-machine run records `arm64VsBestFlags` per kernel and in total.
+
+Landed:
+- Eight kernels in tools/exec-bench.ts (dot1k, prefix1k, hist256, mat4, fnv4k, xs4k,
+  minmax1k, filter2) with hand-written C, Rust and JS, and Zig in the table; other table
+  languages report skipped-no-source. Checksums matched across A0 C, A0 arm64, C, Rust and
+  Zig in a scaled (--scale=20) check run.
+- Best-flag baselines: hand-written C also built at -O3 -march=native (`handwrittenBest`);
+  Rust now `-C opt-level=3 -C target-cpu=native`; per kernel `arm64VsBestFlags` against the
+  fastest of C-O3-native, Rust and Zig ReleaseFast, a win only at >= 1.2x.
+- src/optimize.ts: callees optimized with the caller (arm64/x86-64 inline optimized bodies);
+  demand-driven scheduling of pure bodies; aggregate literals not CSE-merged.
+- src/arm64.ts: NEON vectorization of element-wise folds (fills, add/xor/or/and/mul reduces,
+  umin/umax from select+compare, record state of up to 4 u32 fields, neighbour reads
+  `get a (i+c)` as two loads + ext); fusion of a fill fold into its single consumer fold
+  (the array is never stored; exact under value semantics); previous-element read carried in
+  a register (prefix/recurrence loops); loop-invariant literal hoisting; scalars written
+  straight into aggregate literal slots; linear-scan spilling of the furthest-ending value;
+  zero literals as NEON stores, dead zero fills skipped; wzr never used where register 31 is sp.
+- Static emitted arm64 for the new kernels (instructions / memory ops in the top function,
+  before -> after): dot1k 1095/1035 -> 34/2 (one fused 4-lane loop), prefix1k 1090/1035 ->
+  61/11, hist256 4932/4361 -> 45/7, mat4 350/201 -> 425/167, fnv4k 4159/4101 -> 42/6,
+  xs4k 4145/4102 -> 56/7, minmax1k 1080/1037 -> 49/10 (umin/umax), filter2 1132/1042 -> 74/14.
+  Static counts, not timings.
+- Gate: lint, typecheck, test 44/44, verify (native_arm64 4297, native_x86_64 4297, all
+  paths passed), equiv 48/48, app, hw, dotnet, gpu passed.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
