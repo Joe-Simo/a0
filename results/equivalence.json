@@ -1,310 +1,318 @@
 {
-  "generatedAt": "2026-09-29T22:53:08.041Z",
+  "generatedAt": "2026-09-30T00:44:29.858Z",
   "solver": "z3-solver (Z3 via WebAssembly), QF_BV, 32-bit",
   "corpusSha256": "5169be2bf3807fcdb5332b47b886400f81bef1fc6b15200df4da9b00e0dddc18",
   "selfCheck": {
     "ok": true,
-    "mutated": {
-      "fn": "g0",
-      "verdict": "sat"
-    }
+    "mutated": [
+      {
+        "fn": "g0",
+        "mutation": "node 7 and -> add",
+        "verdict": "sat"
+      },
+      {
+        "fn": "g1",
+        "mutation": "node 5 write dropped",
+        "verdict": "sat"
+      }
+    ]
   },
-  "scope": "intra-procedural, io-free values (u32, bool, arrays and records of those, element-wise); ops mov add sub mul and or xor shl shr div rem eq lt select arr rec get set at put; call inlined; fold with literal count <= 64 unrolled. Excluded: io, loop, variable-count fold, read/write/puts. A proof here covers all 2^(32n) inputs of that function; functions marked out-of-scope are covered only by the sampled differential corpus (results/verification.json).",
+  "scope": "intra-procedural values (u32, bool, arrays and records of those, element-wise) plus a bounded io model: the input stream is 8 symbolic 32-bit words (K = 8; reads past K yield 0 and stop advancing, the language's exhausted-input rule), write appends a word, puts appends the length then every element, effects happen in node order on one shared stream as in the reference interpreter. Ops mov add sub mul and or xor shl shr div rem eq lt select arr rec get set at put read write puts; call inlined; fold and loop with literal count <= 64 unrolled (loop steps and their effects gated by the predicate). Equivalence: result values equal, output lengths equal, every output word below that length equal, final read position equal. Excluded: variable-count fold/loop. A proof covers all 2^(32n) value inputs and every input prefix of at most 8 words; functions marked out-of-scope are covered only by the sampled differential corpus (results/verification.json).",
   "summary": {
     "functions": 48,
-    "proved": 38,
+    "proved": 48,
     "counterexample": 0,
     "unknown": 0,
-    "outOfScope": 10
+    "outOfScope": 0
   },
   "results": [
     {
       "fn": "g0",
       "status": "proved",
       "detail": null,
-      "ms": 484.441875
+      "ms": 105.51274999999998
     },
     {
       "fn": "g1",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 17.502124999999978
     },
     {
       "fn": "g2",
       "status": "proved",
       "detail": null,
-      "ms": 156.79533300000003
+      "ms": 18.624082999999985
     },
     {
       "fn": "g3",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 21.306208000000026
     },
     {
       "fn": "g4",
       "status": "proved",
       "detail": null,
-      "ms": 363.932
+      "ms": 12.633166000000017
     },
     {
       "fn": "g5",
       "status": "proved",
       "detail": null,
-      "ms": 55.85983299999998
+      "ms": 14.882292000000007
     },
     {
       "fn": "g6",
       "status": "proved",
       "detail": null,
-      "ms": 65.58175000000006
+      "ms": 14.099542000000042
     },
     {
       "fn": "g7",
       "status": "proved",
       "detail": null,
-      "ms": 56.22337500000003
+      "ms": 9.816417000000001
     },
     {
       "fn": "g8",
       "status": "proved",
       "detail": null,
-      "ms": 76.62937499999998
+      "ms": 14.376458999999954
     },
     {
       "fn": "g9",
       "status": "proved",
       "detail": null,
-      "ms": 11.417332999999871
+      "ms": 2.0821670000000267
     },
     {
       "fn": "g10",
       "status": "proved",
       "detail": null,
-      "ms": 387.3120829999998
+      "ms": 80.41616599999998
     },
     {
       "fn": "g11",
       "status": "proved",
       "detail": null,
-      "ms": 45.21991600000001
+      "ms": 12.792957999999999
     },
     {
       "fn": "g12",
       "status": "proved",
       "detail": null,
-      "ms": 18.805833000000348
+      "ms": 8.463124999999991
     },
     {
       "fn": "g13",
       "status": "proved",
       "detail": null,
-      "ms": 83.7302910000003
+      "ms": 27.222792000000027
     },
     {
       "fn": "g14",
       "status": "proved",
       "detail": null,
-      "ms": 13.424665999999888
+      "ms": 2.5242920000000595
     },
     {
       "fn": "g15",
       "status": "proved",
       "detail": null,
-      "ms": 90.5763750000001
+      "ms": 31.842167000000018
     },
     {
       "fn": "g16",
       "status": "proved",
       "detail": null,
-      "ms": 27.572834000000057
+      "ms": 11.303459000000089
     },
     {
       "fn": "g17",
       "status": "proved",
       "detail": null,
-      "ms": 20.277416999999787
+      "ms": 5.8309169999999995
     },
     {
       "fn": "g18",
       "status": "proved",
       "detail": null,
-      "ms": 17.321791999999732
+      "ms": 6.2287919999999986
     },
     {
       "fn": "g19",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 13.749874999999975
     },
     {
       "fn": "g20",
       "status": "proved",
       "detail": null,
-      "ms": 96.7342920000001
+      "ms": 26.310040999999956
     },
     {
       "fn": "g21",
       "status": "proved",
       "detail": null,
-      "ms": 92.24008400000002
+      "ms": 24.713375000000042
     },
     {
       "fn": "g22",
       "status": "proved",
       "detail": null,
-      "ms": 26.947499999999764
+      "ms": 2.2145000000000437
     },
     {
       "fn": "g23",
       "status": "proved",
       "detail": null,
-      "ms": 535.7243749999998
+      "ms": 25.92270899999994
     },
     {
       "fn": "g24",
       "status": "proved",
       "detail": null,
-      "ms": 21.71050000000014
+      "ms": 7.474624999999946
     },
     {
       "fn": "g25",
       "status": "proved",
       "detail": null,
-      "ms": 82.66249999999991
+      "ms": 44.46570900000006
     },
     {
       "fn": "g26",
       "status": "proved",
       "detail": null,
-      "ms": 140.32300000000032
+      "ms": 42.034042
     },
     {
       "fn": "g27",
       "status": "proved",
       "detail": null,
-      "ms": 135.69891700000016
+      "ms": 8.151250000000005
     },
     {
       "fn": "g28",
       "status": "proved",
       "detail": null,
-      "ms": 196.413
+      "ms": 42.769874999999956
     },
     {
       "fn": "g29",
       "status": "proved",
       "detail": null,
-      "ms": 12.931750000000193
+      "ms": 3.1671250000000555
     },
     {
       "fn": "g30",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 26.819000000000074
     },
     {
       "fn": "g31",
       "status": "proved",
       "detail": null,
-      "ms": 256.92875000000004
+      "ms": 131.94362499999988
     },
     {
       "fn": "g32",
       "status": "proved",
       "detail": null,
-      "ms": 120.62666600000011
+      "ms": 26.431334000000106
     },
     {
       "fn": "g33",
       "status": "proved",
       "detail": null,
-      "ms": 359.97058300000026
+      "ms": 123.26741599999991
     },
     {
       "fn": "g34",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 54.969875
     },
     {
       "fn": "g35",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 295.6022909999999
     },
     {
       "fn": "g36",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 257.6247500000002
     },
     {
       "fn": "g37",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 8.47466600000007
     },
     {
       "fn": "g38",
       "status": "proved",
       "detail": null,
-      "ms": 76.34587499999998
+      "ms": 27.53995800000007
     },
     {
       "fn": "g39",
       "status": "proved",
       "detail": null,
-      "ms": 42.064000000000306
+      "ms": 7.838166999999885
     },
     {
       "fn": "g40",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 265.72512500000016
     },
     {
       "fn": "g41",
       "status": "proved",
       "detail": null,
-      "ms": 556.8865829999995
+      "ms": 39.082332999999835
     },
     {
       "fn": "g42",
       "status": "proved",
       "detail": null,
-      "ms": 29.187582999999904
+      "ms": 1.7725839999998243
     },
     {
       "fn": "g43",
       "status": "proved",
       "detail": null,
-      "ms": 27.298041000000012
+      "ms": 1.3464170000002014
     },
     {
       "fn": "g44",
-      "status": "out-of-scope",
-      "detail": "io in signature",
-      "ms": 0
+      "status": "proved",
+      "detail": null,
+      "ms": 262.83287500000006
     },
     {
       "fn": "g45",
       "status": "proved",
       "detail": null,
-      "ms": 210.414667
+      "ms": 48.758834000000206
     },
     {
       "fn": "g46",
       "status": "proved",
       "detail": null,
-      "ms": 32.433375000000524
+      "ms": 4.556625000000167
     },
     {
       "fn": "g47",
       "status": "proved",
       "detail": null,
-      "ms": 63.3931249999996
+      "ms": 8.978000000000065
     }
   ]
 }
