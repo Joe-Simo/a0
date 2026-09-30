@@ -21,13 +21,95 @@
  * the callee-saved s1-s11, plus a0-a7 in a leaf. Scratch: t0-t5 data and pointers; t6 is
  * reserved for out-of-range addressing (load/store offsets are 12-bit).
  *
- * Frame layout (sp is fixed after the prologue; all slots are addressed from sp):
+ * Frame layout (sp is fixed after the prologue; all slots are addressed from sp, no frame
+ * pointer). F is the frame size; a function with no residual call saves no ra and a leaf
+ * with no slots and no callee-saved homes has no frame at all:
  *
- *     incoming stack parameters     s0 + 16 + 8k (one XLEN slot each)
- *     saved s0, ra                  <- s0
+ *     incoming stack parameters     sp + F + 8k (one XLEN slot each)
+ *     saved ra (non-leaf only)      sp + F - 8
  *     value slots (S bytes)         sp + O ... sp + O + S - 1
  *     outgoing stack arguments      sp ... sp + O - 1
+ *
+ * Code quality: literals read inside a loop body are hoisted into registers at loop entry
+ * when a register is free across the loop; copies (`mov`, inlined results, fold state
+ * initialization) prefer the source's register; an inlined fold/loop body whose result is
+ * computed after its last read of the state writes the state register directly; select
+ * emits one conditional move sequence with no redundant copy. With `zbb`
+ * (RV64GC+Zbb targets only; the default is plain RV64GC) `or(shl x k, shr x (32-k))`
+ * becomes `roriw`, and the variable forms `rolw`/`rorw`.
  */
+
+/** Target options. The default is plain RV64GC; `zbb` declares the Zbb extension present. */
+export interface Riscv64Options {
+  readonly zbb?: boolean;
+}
+
+/** A recognized 32-bit rotate: `insn d, x, amount` (amount a literal or an operand). */
+interface Rotate {
+  readonly insn: 'roriw' | 'rolw' | 'rorw';
+  readonly x: Operand;
+  readonly amount: Operand | number;
+}
+
+/**
+ * Zbb rotates in `fn`: `or` nodes of a `shl` and a `shr` of the same value whose distances
+ * sum to 0 mod 32, with the shifts (and the `sub L n`, L = 0 mod 32, of a variable distance)
+ * used only by that `or`. Returns the rotates by `or` id and the node ids they absorb.
+ */
+function findRotates(fn: TypedFunc): { rot: Map<string, Rotate>; skip: Set<string> } {
+  const uses = new Map<string, number>();
+  const count = (o: Operand): void => {
+    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
+  };
+  for (const n of fn.nodes) for (const o of n.args) count(o);
+  count(fn.ret);
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  const single = (o: Operand | undefined, op: Op): Node | undefined => {
+    if (o?.kind !== 'node' || uses.get(o.id) !== 1) return undefined;
+    const d = byId.get(o.id);
+    return d?.op === op ? d : undefined;
+  };
+  const rot = new Map<string, Rotate>();
+  const skip = new Set<string>();
+  for (const n of fn.nodes) {
+    if (n.op !== 'or') continue;
+    const [u, v] = n.args;
+    const l = single(u, 'shl') ?? single(v, 'shl');
+    const r = single(u, 'shr') ?? single(v, 'shr');
+    if (l === undefined || r === undefined) continue;
+    const [lx, la] = l.args as [Operand, Operand];
+    const [rx, ra] = r.args as [Operand, Operand];
+    if (!sameOp(lx, rx) && !(lx.kind === 'u32' && rx.kind === 'u32' && lx.value === rx.value))
+      continue;
+    /** `sub L m` with L = 0 mod 32 used only by the shift: the distance 32 - m. */
+    const negOf = (o: Operand): Node | undefined => {
+      const s = single(o, 'sub');
+      const [k, m] = (s?.args ?? []) as Operand[];
+      return k?.kind === 'u32' && k.value % 32 === 0 && m !== undefined ? s : undefined;
+    };
+    let found: Rotate | undefined;
+    const absorbed = [l.id, r.id];
+    if (la.kind === 'u32' && ra.kind === 'u32') {
+      const a = la.value & 31;
+      const b = ra.value & 31;
+      if (a !== 0 && a + b === 32) found = { insn: 'roriw', x: lx, amount: b };
+    } else {
+      const nr = negOf(ra);
+      const nl = negOf(la);
+      if (nr !== undefined && sameOp(nr.args[1] as Operand, la)) {
+        found = { insn: 'rolw', x: lx, amount: la };
+        absorbed.push(nr.id);
+      } else if (nl !== undefined && sameOp(nl.args[1] as Operand, ra)) {
+        found = { insn: 'rorw', x: lx, amount: ra };
+        absorbed.push(nl.id);
+      }
+    }
+    if (found === undefined) continue;
+    rot.set(n.id, found);
+    for (const id of absorbed) skip.add(id);
+  }
+  return { rot, skip };
+}
 
 import {
   A0Error,
@@ -151,7 +233,20 @@ class FunctionEmitter {
   #labels = 0;
   readonly #defs = new Map<string, { pos: number; type: Type }>();
   readonly #last = new Map<string, number>();
-  #loops: { start: number; used: Set<string> }[] = [];
+  #loops: { start: number; used: Set<string>; key: string; lits: Set<number> }[] = [];
+  /** Hoisted loop literals: key `<loop>#<value>` -> definition (loop start) and loop end. */
+  readonly #hoisted = new Map<string, { pos: number; last: number }>();
+  /** Copy sources: a key prefers its source's register when that register is free. */
+  readonly #hint = new Map<string, string>();
+  /** Inlined fold/loop results that may be computed straight into the state's register. */
+  readonly #coalesce = new Map<string, string>();
+  readonly #useLog = new Map<string, number[]>();
+  /** Positions of residual calls (they clobber a0-a7 and t0-t6). */
+  readonly #calls: number[] = [];
+  /** A register a key would like as its home (a call result or the returned value: a0). */
+  readonly #want = new Map<string, string>();
+  readonly #rotates = new Map<TypedFunc, ReturnType<typeof findRotates>>();
+  #zbbUsed = false;
   readonly #alias = new Map<string, string>();
   readonly #regs = new Map<string, string>();
   readonly #slots = new Map<string, number>();
@@ -160,7 +255,10 @@ class FunctionEmitter {
   #leaf = true;
   #saved: string[] = [];
 
-  constructor(readonly fn: TypedFunc) {}
+  constructor(
+    readonly fn: TypedFunc,
+    readonly options: Riscv64Options = {},
+  ) {}
 
   #emit(...lines: string[]): void {
     if (this.#dry) return;
@@ -213,6 +311,9 @@ class FunctionEmitter {
   #use(v: Val): void {
     if (!this.#dry || v.kind !== 'key') return;
     this.#last.set(v.key, this.#pos);
+    const log = this.#useLog.get(v.key);
+    if (log === undefined) this.#useLog.set(v.key, [this.#pos]);
+    else log.push(this.#pos);
     for (const l of this.#loops) l.used.add(v.key);
   }
 
@@ -283,7 +384,18 @@ class FunctionEmitter {
   /** A register holding scalar `v`: its home register, or `scratch` after materializing. */
   #read(v: Val, scratch: string): string {
     if (v.kind === 'lit') {
-      this.#emit(`li ${scratch}, ${v.value | 0}`);
+      const value = v.value | 0;
+      if (value === 0) return 'zero';
+      if (this.#dry) {
+        const loop = this.#loops.at(-1);
+        if (loop !== undefined) loop.lits.add(value);
+        return scratch;
+      }
+      for (let k = this.#loops.length - 1; k >= 0; k -= 1) {
+        const reg = this.#regs.get(`${this.#loops[k]?.key}#${value}`);
+        if (reg !== undefined) return reg;
+      }
+      this.#emit(`li ${scratch}, ${value}`);
       return scratch;
     }
     const home = this.#home(v.key);
@@ -294,6 +406,10 @@ class FunctionEmitter {
 
   /** dst = scalar `v`. */
   #into(dst: string, v: Val): void {
+    if (v.kind === 'lit') {
+      this.#emit(`li ${dst}, ${v.value | 0}`);
+      return;
+    }
     const r = this.#read(v, dst);
     if (r !== dst) this.#emit(`mv ${dst}, ${r}`);
   }
@@ -320,15 +436,7 @@ class FunctionEmitter {
 
   /** Store `v` (any type) at [base + off]. */
   #place(v: Val, base: string, off: number): void {
-    if (v.kind === 'lit') {
-      if (v.value === 0) this.#mem('sw', 'zero', base, off);
-      else {
-        this.#emit(`li t0, ${v.value | 0}`);
-        this.#mem('sw', 't0', base, off);
-      }
-      return;
-    }
-    if (isPrimitive(v.type)) {
+    if (v.kind === 'lit' || isPrimitive(v.type)) {
       this.#mem('sw', this.#read(v, 't0'), base, off);
       return;
     }
@@ -363,22 +471,53 @@ class FunctionEmitter {
     const { places, bytes } = argLayout(callee.params, callee.result);
     this.#outgoing = Math.max(this.#outgoing, bytes);
     for (const a of args) this.#use(a);
+    if (this.#dry) {
+      this.#calls.push(this.#pos);
+      if (isPrimitive(callee.result)) this.#want.set(dst, 'a0');
+    }
+    // Stack arguments first (through t0), then the register arguments as one parallel move
+    // (sources may be homed in a0-a7), then the ones that read no argument register.
+    const moves: { dst: string; src: string }[] = [];
+    const late: (() => void)[] = [];
     args.forEach((a, k) => {
       const place = places[k] as ArgPlace;
-      if (place.reg !== undefined) {
-        const r = `a${place.reg}`;
-        if (a.kind === 'lit' || isPrimitive(a.type)) this.#into(r, a);
-        else this.#addr(r, 'sp', this.#slot(a.key));
+      const scalar = a.kind === 'lit' || isPrimitive(a.type);
+      if (place.reg === undefined) {
+        if (scalar) this.#into('t0', a);
+        else this.#addr('t0', 'sp', this.#slot(a.key));
+        this.#mem('sd', 't0', 'sp', place.stack as number);
         return;
       }
-      const at = place.stack as number;
-      if (a.kind === 'lit' || isPrimitive(a.type)) this.#into('t0', a);
-      else this.#addr('t0', 'sp', this.#slot(a.key));
-      this.#mem('sd', 't0', 'sp', at);
+      const r = `a${place.reg}`;
+      const home = a.kind === 'key' && scalar ? this.#home(a.key) : undefined;
+      if (home !== undefined && 'reg' in home) moves.push({ dst: r, src: home.reg });
+      else if (a.kind === 'lit' || scalar) late.push(() => this.#into(r, a));
+      else late.push(() => this.#addr(r, 'sp', this.#slot(a.key)));
     });
+    let pending = moves.filter((m) => m.dst !== m.src);
+    while (pending.length > 0) {
+      const ready = pending.find((m) => !pending.some((o) => o !== m && o.src === m.dst));
+      if (ready !== undefined) {
+        this.#emit(`mv ${ready.dst}, ${ready.src}`);
+        pending = pending.filter((m) => m !== ready);
+        continue;
+      }
+      // A cycle: park one destination's current value in t0.
+      const first = pending[0] as { dst: string; src: string };
+      this.#emit(`mv t0, ${first.dst}`);
+      pending = pending.map((m) => (m.src === first.dst ? { dst: m.dst, src: 't0' } : m));
+    }
+    for (const f of late) f();
     if (!isPrimitive(callee.result)) this.#addr('a0', 'sp', this.#slot(dst));
     this.#emit(`call a0_${name}`);
-    if (isPrimitive(callee.result)) this.#set(dst, (d) => this.#emit(`mv ${d}, a0`), true);
+    if (isPrimitive(callee.result))
+      this.#set(
+        dst,
+        (d) => {
+          if (d !== 'a0') this.#emit(`mv ${d}, a0`);
+        },
+        true,
+      );
   }
 
   #inline(
@@ -405,7 +544,18 @@ class FunctionEmitter {
     const ret = this.#resolve(sub, callee.ret);
     this.#use(ret);
     if (isPrimitive(type)) {
-      if (sink === 'bind') this.#def(result, type);
+      if (sink === 'bind') {
+        this.#def(result, type);
+        if (ret.kind === 'key' && this.#dry) this.#hint.set(result, ret.key);
+      } else if (ret.kind === 'key' && ret.key !== result && this.#dry) {
+        // The state is dead from its last read in this trip to the store: when the result is
+        // defined inside the trip after that read, compute it straight into the state register.
+        const def = this.#defs.get(ret.key);
+        const start = this.#loops.at(-1)?.start ?? Number.POSITIVE_INFINITY;
+        const reads = (this.#useLog.get(result) ?? []).filter((q) => q > start);
+        if (def !== undefined && def.pos > start && reads.every((q) => q <= def.pos))
+          this.#coalesce.set(ret.key, result);
+      }
       this.#set(result, (d) => this.#into(d, ret), true);
       return;
     }
@@ -420,7 +570,33 @@ class FunctionEmitter {
   // --- nodes -------------------------------------------------------------------------------
 
   #body(env: Env): void {
-    for (const [i, n] of env.fn.nodes.entries()) this.#node(env, n, i);
+    let rotates = this.#rotates.get(env.fn);
+    if (rotates === undefined) {
+      rotates =
+        this.options.zbb === true ? findRotates(env.fn) : { rot: new Map(), skip: new Set() };
+      this.#rotates.set(env.fn, rotates);
+    }
+    for (const [i, n] of env.fn.nodes.entries()) {
+      if (rotates.skip.has(n.id)) continue;
+      const rot = rotates.rot.get(n.id);
+      if (rot === undefined) this.#node(env, n, i);
+      else this.#rotate(env, n, rot);
+    }
+  }
+
+  /** A Zbb rotate in place of `or(shl, shr)`. */
+  #rotate(env: Env, n: Node, rot: Rotate): void {
+    const key = `${env.prefix}n_${n.id}`;
+    const x = this.#resolve(env, rot.x);
+    const amount = typeof rot.amount === 'number' ? undefined : this.#resolve(env, rot.amount);
+    this.#pos += 1;
+    this.#use(x);
+    if (amount !== undefined) this.#use(amount);
+    this.#zbbUsed = true;
+    const rx = this.#read(x, 't1');
+    const ra = amount === undefined ? String(rot.amount) : this.#read(amount, 't2');
+    this.#def(key, 'u32');
+    this.#set(key, (d) => this.#emit(`${rot.insn} ${d}, ${rx}, ${ra}`), true);
   }
 
   #node(env: Env, n: Node, index: number): void {
@@ -479,7 +655,10 @@ class FunctionEmitter {
       case 'mov': {
         const v = a as Val;
         if (v.kind === 'key' && !isPrimitive(v.type)) this.#defAlias(key, v.key, t);
-        else scalar((d) => this.#into(d, v), true);
+        else {
+          if (v.kind === 'key' && this.#dry) this.#hint.set(key, v.key);
+          scalar((d) => this.#into(d, v), true);
+        }
         return;
       }
       case 'add':
@@ -541,8 +720,16 @@ class FunctionEmitter {
           const rb = this.#read(b as Val, 't1');
           const rcc = this.#read(c as Val, 't2');
           scalar((d) => {
-            this.#emit(`beqz ${rc}, ${other}`, `mv ${d}, ${rb}`, `j ${end}`, `${other}:`);
-            this.#emit(`mv ${d}, ${rcc}`, `${end}:`);
+            if (rb === rcc) {
+              if (d !== rb) this.#emit(`mv ${d}, ${rb}`);
+            } else if (d === rb) this.#emit(`bnez ${rc}, ${end}`, `mv ${d}, ${rcc}`, `${end}:`);
+            else if (d === rcc) this.#emit(`beqz ${rc}, ${end}`, `mv ${d}, ${rb}`, `${end}:`);
+            else if (d !== rc)
+              this.#emit(`mv ${d}, ${rcc}`, `beqz ${rc}, ${end}`, `mv ${d}, ${rb}`, `${end}:`);
+            else {
+              this.#emit(`beqz ${rc}, ${other}`, `mv ${d}, ${rb}`, `j ${end}`, `${other}:`);
+              this.#emit(`mv ${d}, ${rcc}`, `${end}:`);
+            }
           }, true);
           return;
         }
@@ -666,8 +853,10 @@ class FunctionEmitter {
         // State: a scalar home, or the init slot itself when nothing else reads it.
         this.#use(init);
         for (const e of extras) this.#use(e);
-        if (isPrimitive(t)) scalar((d) => this.#into(d, init), true);
-        else if (
+        if (isPrimitive(t)) {
+          if (init.kind === 'key' && this.#dry) this.#hint.set(key, init.key);
+          scalar((d) => this.#into(d, init), true);
+        } else if (
           init.kind === 'key' &&
           mutableHere(env.fn, n.args[1] as Operand, index, env.ownedP0)
         )
@@ -678,7 +867,18 @@ class FunctionEmitter {
         }
         this.#def(counter, 'u32');
         this.#set(counter, (d) => this.#emit(`li ${d}, 0`), true);
-        this.#loops.push({ start: this.#pos, used: new Set() });
+        const loop = { start: this.#pos, used: new Set<string>(), key, lits: new Set<number>() };
+        if (!this.#dry) {
+          for (const [k, h] of this.#hoisted) {
+            const reg = this.#regs.get(k);
+            if (h.pos === loop.start && k.startsWith(`${key}#`) && reg !== undefined)
+              this.#emit(`li ${reg}, ${k.slice(key.length + 1)}`);
+          }
+        }
+        this.#loops.push(loop);
+        // The trip starts after the state and counter definitions: a residual call in the
+        // trip then lies strictly inside their live ranges (so they avoid a0-a7).
+        this.#pos += 1;
         const top = this.#label();
         const done = this.#label();
         this.#emit(`${top}:`);
@@ -718,6 +918,8 @@ class FunctionEmitter {
             if (def !== undefined && def.pos < region.start)
               this.#last.set(k, Math.max(this.#last.get(k) ?? 0, this.#pos));
           }
+          for (const v of region.lits)
+            this.#hoisted.set(`${region.key}#${v}`, { pos: region.start, last: this.#pos });
         }
         return;
       }
@@ -731,27 +933,58 @@ class FunctionEmitter {
 
   // --- register allocation ---------------------------------------------------------------
 
-  /** Linear scan over definition order: scalars get callee-saved homes (and a0-a7 in a leaf). */
+  /**
+   * Interval allocation over definition order: scalars get callee-saved homes (and a0-a7 in a
+   * leaf). A parameter prefers its own argument register, a copy its source's register, an
+   * inlined fold result the state's register (when #coalesce proved it safe), and the
+   * returned value a0. Hoisted loop literals are placed last, only into registers still free
+   * across their loop.
+   */
   #allocate(): void {
-    const pool = this.#leaf ? [...ARG_REGS, ...CALLEE_SAVED] : CALLEE_SAVED;
+    // A value live across no residual call may also live in a0-a7.
+    const poolFor = (from: number, to: number): readonly string[] =>
+      this.#calls.some((c) => from < c && c < to) ? CALLEE_SAVED : [...ARG_REGS, ...CALLEE_SAVED];
     const shift = isPrimitive(this.fn.result) ? 0 : 1;
+    const taken = new Map<string, [number, number][]>();
+    // Disjoint, or touching where one interval's last read precedes the other's write.
+    const free = (r: string, from: number, to: number): boolean =>
+      (taken.get(r) ?? []).every(([d, l]) => l <= from || (to <= d && from < d));
+    const take = (key: string, r: string, from: number, to: number): void => {
+      const list = taken.get(r);
+      if (list === undefined) taken.set(r, [[from, to]]);
+      else list.push([from, to]);
+      this.#regs.set(key, r);
+    };
     const keys = [...this.#defs.entries()]
       .filter(([k, d]) => isPrimitive(d.type) && !this.#alias.has(k))
       .sort((x, y) => x[1].pos - y[1].pos);
-    const busy = new Map<string, number>();
+    const ret = this.fn.ret.kind === 'node' ? `n_${this.fn.ret.id}` : undefined;
     for (const [key, d] of keys) {
       const last = this.#last.get(key) ?? d.pos;
-      for (const [r, l] of busy) if (l <= d.pos) busy.delete(r);
-      let reg: string | undefined;
-      const p = /^p(\d+)$/.exec(key);
-      if (this.#leaf && p !== null) {
-        const own = `a${Number(p[1]) + shift}`;
-        if (ARG_REGS.includes(own) && !busy.has(own)) reg = own;
+      const into = this.#coalesce.get(key);
+      const intoReg = into === undefined ? undefined : this.#regs.get(into);
+      if (intoReg !== undefined) {
+        this.#regs.set(key, intoReg);
+        continue;
       }
-      if (reg === undefined) reg = pool.find((r) => !busy.has(r));
-      if (reg === undefined) continue;
-      busy.set(reg, last);
-      this.#regs.set(key, reg);
+      const pool = poolFor(d.pos, last);
+      const wants: string[] = [];
+      const p = /^p(\d+)$/.exec(key);
+      if (p !== null) wants.push(`a${Number(p[1]) + shift}`);
+      const src = this.#hint.get(key);
+      const srcReg = src === undefined ? undefined : this.#regs.get(src);
+      if (srcReg !== undefined) wants.push(srcReg);
+      const want = this.#want.get(key);
+      if (want !== undefined) wants.push(want);
+      if (key === ret && shift === 0) wants.push('a0');
+      const reg = [...wants.filter((r) => pool.includes(r)), ...pool].find((r) =>
+        free(r, d.pos, last),
+      );
+      if (reg !== undefined) take(key, reg, d.pos, last);
+    }
+    for (const [key, h] of this.#hoisted) {
+      const reg = poolFor(h.pos, h.last).find((r) => free(r, h.pos, h.last));
+      if (reg !== undefined) take(key, reg, h.pos, h.last);
     }
     const used = new Set(this.#regs.values());
     this.#saved = CALLEE_SAVED.filter((r) => used.has(r));
@@ -790,7 +1023,8 @@ class FunctionEmitter {
     const sretSlot = !isPrimitive(fn.result);
     if (sretSlot) this.#alloc('sret', 8, 8);
     this.#outgoing = align(this.#outgoing, 16);
-    const frame = this.#outgoing + align(this.#slotBytes, 16);
+    // A residual call clobbers ra: only then does the frame hold it (in its top 8 bytes).
+    const frame = this.#outgoing + align(this.#slotBytes, 16) + (this.#leaf ? 0 : 16);
     // Pass 2: emission.
     this.#dry = false;
     this.out = [];
@@ -799,7 +1033,6 @@ class FunctionEmitter {
     this.#loops = [];
     const sym = `a0_${fn.name}`;
     this.out.push(`\t.globl ${sym}`, `\t.type ${sym}, @function`, '\t.p2align 2', `${sym}:`);
-    this.#emit('addi sp, sp, -16', 'sd s0, 0(sp)', 'sd ra, 8(sp)', 'mv s0, sp');
     if (frame > 4096) {
       // Probe one page at a time so a guard page is never skipped.
       const pages = Math.floor(frame / 4096);
@@ -810,6 +1043,7 @@ class FunctionEmitter {
       if (frame % 4096 > 0) this.#emit(`addi sp, sp, -${frame % 4096}`);
     } else if (frame > 2048) this.#emit(`li ${ADDR}, ${frame}`, `sub sp, sp, ${ADDR}`);
     else if (frame > 0) this.#emit(`addi sp, sp, -${frame}`);
+    if (!this.#leaf) this.#mem('sd', 'ra', 'sp', frame - 8);
     for (const [k, r] of this.#saved.entries())
       this.#mem('sd', r, 'sp', this.#slot('save') + 8 * k);
     if (sretSlot) this.#mem('sd', 'a0', 'sp', this.#slot('sret'));
@@ -822,7 +1056,7 @@ class FunctionEmitter {
       if (place.reg !== undefined)
         this.#copy('sp', this.#slot(`p${i}`), `a${place.reg}`, 0, words(t));
       else {
-        this.#mem('ld', 't3', 'sp', frame + 16 + (place.stack as number));
+        this.#mem('ld', 't3', 'sp', frame + (place.stack as number));
         this.#copy('sp', this.#slot(`p${i}`), 't3', 0, words(t));
       }
     });
@@ -842,7 +1076,7 @@ class FunctionEmitter {
     fn.params.forEach((t, i) => {
       const place = places[i] as ArgPlace;
       if (!isPrimitive(t) || place.stack === undefined) return;
-      const incoming = frame + 16 + place.stack;
+      const incoming = frame + place.stack;
       this.#set(
         `p${i}`,
         (d) => {
@@ -861,15 +1095,23 @@ class FunctionEmitter {
     }
     for (const [k, r] of this.#saved.entries())
       this.#mem('ld', r, 'sp', this.#slot('save') + 8 * k);
-    this.#emit('mv sp, s0', 'ld s0, 0(sp)', 'ld ra, 8(sp)', 'addi sp, sp, 16', 'ret');
+    if (!this.#leaf) this.#mem('ld', 'ra', 'sp', frame - 8);
+    if (frame > 2047) this.#emit(`li ${ADDR}, ${frame}`, `add sp, sp, ${ADDR}`);
+    else if (frame > 0) this.#emit(`addi sp, sp, ${frame}`);
+    this.#emit('ret');
     this.out.push(`\t.size ${sym}, .-${sym}`);
+    if (this.#zbbUsed) {
+      // Zbb instructions assemble under a module built for plain RV64GC too.
+      this.out.splice(0, 0, '\t.option push', '\t.option arch, +zbb');
+      this.out.push('\t.option pop');
+    }
     return this.out.join('\n');
   }
 }
 
 /** Emit one function as RV64 assembly (a `.globl a0_<name>` block). */
-export function emitRiscv64Function(fn: TypedFunc): string {
-  return new FunctionEmitter(fn).emit();
+export function emitRiscv64Function(fn: TypedFunc, options: Riscv64Options = {}): string {
+  return new FunctionEmitter(fn, options).emit();
 }
 
 /** Assemble function blocks into one .s module for a GNU or LLVM RISC-V assembler. */

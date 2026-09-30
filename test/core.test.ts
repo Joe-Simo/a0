@@ -1633,8 +1633,8 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
   );
   assert.match(affine, /^\t\.globl a0_affine$/m);
   assert.match(affine, /^\t\.type a0_affine, @function$/m);
-  assert.match(affine, /li t2, 3\n\tmulw a0, a0, t2\n\taddw a0, a0, a1\n/);
-  assert.match(affine, /addi sp, sp, 16\n\tret$/m);
+  // Frameless leaf: no ra/s0 save, no stack adjustment.
+  assert.match(affine, /^a0_affine:\n\tli t2, 3\n\tmulw a0, a0, t2\n\taddw a0, a0, a1\n\tret$/m);
   // divuw/remuw already give all ones and the dividend for a zero divisor: no branch.
   const div = emitRiscv64Function(
     fn('fn d u32 u32 -> u32\nq div p0 p1\nr rem p0 p1\ns add q r\nret s\nend', 'd'),
@@ -1650,7 +1650,8 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
   const sel = emitRiscv64Function(
     fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
   );
-  assert.match(sel, /sltu (\w+), a0, a1\n\tbeqz \1, /);
+  // The chosen value already in the destination: one branch and one move, no redundant mv.
+  assert.match(sel, /sltu (\w+), a0, a1\n\tbnez \1, (\.\w+)\n\tmv a0, a1\n\2:\n\tret/);
   // A power-of-two index is masked.
   const get8 = emitRiscv64Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get8, /andi t1, a1, 7\n\tslli t1, t1, 2/);
@@ -1659,6 +1660,45 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
     fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'),
   );
   assert.match(pair, /sd a0, (\d+)\(sp\)[\s\S]*sltiu a0, a1, 1[\s\S]*ld t3, \1\(sp\)/);
+  // Fold: loop-invariant literals hoisted before the loop; the inlined body writes the state
+  // register directly (no copy per trip); a leaf keeps no frame.
+  const loop = emitRiscv64Function(
+    fn(
+      'fn step u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc add b p1\nret c\nend\nfn l u32 u32 -> u32\nr fold step 64 p0 p1\nret r\nend',
+      'l',
+    ),
+  );
+  assert.match(
+    loop,
+    /li (\w+), 64\n\tli (\w+), -1640531535\n\.\w+:\n\tbgeu \w+, \1, [\s\S]*mulw (\w+), \3, \2\n\taddw a0, \3, /,
+  );
+  assert.doesNotMatch(loop, /\bmv\b|sp, sp|\bra\b/);
+  // A residual call saves ra only (no frame pointer).
+  const big = Array.from({ length: 50 }, (_, k) => `x${k} add p0 ${k + 1}`).join('\n');
+  const caller = emitRiscv64Function(
+    fn(`fn big u32 -> u32\n${big}\nret x49\nend\nfn c u32 -> u32\nr call big p0\nret r\nend`, 'c'),
+  );
+  assert.match(caller, /^a0_c:\n\taddi sp, sp, -16\n\tsd ra, 8\(sp\)\n/m);
+  assert.match(caller, /ld ra, 8\(sp\)\n\taddi sp, sp, 16\n\tret$/m);
+  assert.doesNotMatch(caller, /\bs0\b|\bmv\b/);
+  // Swapped register arguments: one parallel move with the cycle broken through t0.
+  const swap = emitRiscv64Function(
+    fn(
+      `fn big u32 u32 -> u32\n${big}\nx50 add x49 p1\nret x50\nend\nfn w u32 u32 -> u32\nr call big p1 p0\nret r\nend`,
+      'w',
+    ),
+  );
+  assert.match(swap, /mv t0, (a[01])\n\tmv \1, (a[01])\n\tmv \2, t0\n\tcall a0_big/);
+  // Rotates: plain RV64GC by default; roriw/rolw only when Zbb is declared.
+  const rot = fn(
+    'fn r u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\ns shr p0 n\no or l s\na shl o 13\nb shr o 19\nc or b a\nret c\nend',
+    'r',
+  );
+  assert.doesNotMatch(emitRiscv64Function(rot), /ro[lr]i?w|zbb/);
+  const zbb = emitRiscv64Function(rot, { zbb: true });
+  assert.match(zbb, /^\t\.option arch, \+zbb$/m);
+  assert.match(zbb, /rolw a0, a0, a1\n\troriw a0, a0, 19\n\tret/);
+  assert.doesNotMatch(zbb, /sllw|srlw|slliw|srliw|subw/);
 });
 
 const X86_64_HOST = (() => {
