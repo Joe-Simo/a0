@@ -1433,6 +1433,13 @@ Set c400 (one 400-function program, structured):
   With TS (14143 / 14202) and Rust (14210 / 14294) from the earlier collection, A0 structured is 58x–70x cheaper per task than every one of the seven languages at 400 functions; the whole numbered file is 12.4k–13.7k tokens in each of them (Python smallest, C# largest). Haiku's misses: Python indentation again (11), Go (6 compile, e.g. a line number taken from the file position rather than the view number; 1 divide-by-zero panic in `pctof`), C# replies without the handle line (3). Sonnet's one miss: a Go insert inside `popcnt`.
 - Caveat as before: the scoped A0 view is protocol-supplied; the other languages get no per-function tool.
 
+## Session 2026-09-30 (grammar item B: nested expressions)
+
+- Prototype (not kept): `ParseOptions.nested` in `src/core.ts` `parse`/`parseAndValidate` and `SessionOptions.nested` in `src/edit.ts` (edit lines, `ret OP …`, and `fn` blocks), desugaring one level of `ID OP (OP ARGS) ARGS` into fresh nodes `ID_1, ID_2…` left to right just before the line (ids renamed if taken in the function or the edit), typing unchanged; off by default; 1 test with 8 cases (equivalence to the explicit program, collisions, `ret` form, `@` placement, depth/unmatched/empty errors, the option off rejects). Harness switch `A0_EXPERIMENT_NESTED=1`.
+- Collection (no rescore of old replies): fresh Agent-tool subjects (Haiku, Sonnet), each reading only its group file, sets B and D, A0 conventional and structured, current `MODEL_GUIDE.min.txt` (control) versus the same primer plus one line, "Nested: one level of parentheses is accepted, e.g. `r select (lt a b) a b` (each group becomes a fresh line)." (option on for scoring). 16 groups, scratchpad gB-nested. Results `results/ai-edit-experiment.{b,d}.{haiku,sonnet}-min-itemb-{control,nested}.json`.
+- One shot, control vs option: Haiku B conv 12/12 vs 12/12, B struct 10/12 vs 11/12, D conv 13/13 vs 12/13, D struct 12/13 vs 12/13 (47/50 both); Sonnet 50/50 both. Nested replies: Haiku 1/50 control (bounds task, the parse diagnostic) and 2/50 with the line (bounds, which then failed with a type error; isdiv, accepted); Sonnet 0/100. Primer 405/440 -> 436/471 tokens per call; one-task cache-adjusted tokens up in all 8 cells (Haiku 198->201, 195->196, 152->159, 168->176; Sonnet 198->201, 184->192, 152->155, 154->157).
+- Decision: refused (no acceptance gain on either model, cost up). Prototype removed; DESIGN.md records the numbers. COMPILER_VERSION unchanged.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
