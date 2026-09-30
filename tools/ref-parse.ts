@@ -99,9 +99,12 @@ export const IR_OPS = [
   'puts',
 ] as const;
 
-/** Op code of DESIGN.md 7a (1-based); 0 when the word is not an op. */
+/** Accepted op spellings: udiv is div, urem is rem. */
+const IR_ALIASES: Readonly<Record<string, string>> = { udiv: 'div', urem: 'rem' };
+
+/** Op code of DESIGN.md 7a (1-based), aliases included; 0 when the word is not an op. */
 export function irOp(name: string): number {
-  return (IR_OPS as readonly string[]).indexOf(name) + 1;
+  return (IR_OPS as readonly string[]).indexOf(IR_ALIASES[name] ?? name) + 1;
 }
 
 /** Exact packing of a word of at most six [a-z0-9_] bytes: sum of code(c_j)*37^j, code 1..37. */
@@ -344,6 +347,18 @@ export function refParse(src: string): WordIr {
       nodes.push(id, op, 0, args.length / 2, 0, 0);
       mode = op === 19 || op === 20 ? 41 : op === 21 ? 42 : 4;
     };
+    /** `id F ARGS`: a call node of the function named by token i, defined before this one. */
+    const directCall = (id: number, i: number): boolean => {
+      const f = findFn(symAt(i), fi - 1);
+      if (f >= fi - 1) {
+        fail(2, i);
+        return false;
+      }
+      emit(id, 19);
+      nodes[cur() * 6 + 4] = f;
+      mode = 4;
+      return true;
+    };
     const findNode = (s: number, n: number): number => {
       for (let j = 0; j < n; j += 1) if (nodes[(firstNode + j) * 6] === s) return j;
       return n;
@@ -397,8 +412,9 @@ export function refParse(src: string): WordIr {
         }
       } else if (mode === 3) {
         const op = opOf(i);
-        if (op === 0) fail(1, i);
-        else emit(pendId, op);
+        if (op !== 0) emit(pendId, op);
+        else if (k === 1 && !RESERVED_KEYS.includes(kk)) directCall(pendId, i);
+        else fail(1, i);
       } else if (mode === 41 || mode === 42) {
         if (k !== 1) fail(1, i);
         else {
@@ -434,6 +450,8 @@ export function refParse(src: string): WordIr {
         if (opOf(i) !== 0 && kind(i + 1) !== 5) {
           emit(0, opOf(i));
           setRet(1, cur() - firstNode);
+        } else if (k === 1 && !RESERVED_KEYS.includes(kk) && kind(i + 1) !== 5) {
+          if (directCall(0, i)) setRet(1, cur() - firstNode);
         } else if (k === 1 || k === 2) {
           const o = operand(i, nin());
           if (o === 'bad') fail(1, i);

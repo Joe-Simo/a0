@@ -25,16 +25,16 @@ import {
   formatProgram,
   formatType,
   freshRetId,
+  isRetNodeForm,
   isValidIdentifier,
   LIMITS,
   type Node,
-  OPS,
-  type Op,
   type Operand,
   type Program,
   parse,
   parseNode,
   parseOperand,
+  retOperandError,
   stripComment,
   type TypedFunc,
   type TypedProgram,
@@ -101,7 +101,7 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
       if (sawRet) throw new A0Error('duplicate ret in edit', line, { code: 'edit' });
       sawRet = true;
       const parts = text.split(/\s+/);
-      if (parts.length > 2 && OPS.includes(parts[1] as Op)) {
+      if (isRetNodeForm(parts)) {
         // `ret OP ARGS…`: a fresh node plus `ret` of it (same sugar as in source).
         // The id is provisional: replaceNodes picks one that is free in the function.
         const node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
@@ -109,11 +109,7 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
         ops.push({ kind: 'ret', operand: { kind: 'node', id: 'retval' } });
         return;
       }
-      if (parts.length !== 2)
-        throw new A0Error('ret expects one operand', line, {
-          code: 'edit',
-          fix: 'write `ret ID` or `ret OP ARGS…`',
-        });
+      if (parts.length !== 2) throw retOperandError(parts, line, 'edit');
       ops.push({ kind: 'ret', operand: parseOperand(parts[1] ?? '', line) });
       return;
     }
@@ -259,6 +255,32 @@ export function semanticRevision(fn: TypedFunc): string {
     if (callee !== undefined) text += `|${name}=${semanticRevision(callee)}`;
   }
   return bytesToHex(sha256(new TextEncoder().encode(text)));
+}
+
+/**
+ * Functions a reply adds (absent from `before`) that its edit lines for `target` call are moved
+ * to just before `target`, in their order, so the handled function may call a function added in
+ * the same reply (callees precede callers). Other functions keep their places.
+ */
+function placeNewCallees(
+  before: TypedProgram,
+  program: TypedProgram,
+  target: string,
+  edits: readonly EditOp[],
+): TypedProgram {
+  const called = new Set(
+    edits.flatMap((e) =>
+      e.kind === 'node' ? [e.node.callee, e.node.pred].filter((c) => c !== undefined) : [],
+    ),
+  );
+  const at = program.functions.findIndex((f) => f.name === target);
+  const moved = program.functions.filter(
+    (f, i) => i > at && called.has(f.name) && !before.byName.has(f.name),
+  );
+  if (moved.length === 0) return program;
+  const rest = program.functions.filter((f) => !moved.includes(f));
+  const k = rest.findIndex((f) => f.name === target);
+  return validate({ functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)] });
 }
 
 function commit(program: TypedProgram, updated: TypedFunc): TypedProgram {
@@ -753,16 +775,29 @@ export class EditSession {
     // function sent back whole replaces itself, and any other function is added or replaced
     // exactly as under a program handle. Edit lines before the first block apply to the
     // handled function after the blocks, so a callee changed in the same reply type-checks.
-    // `-fn name` lines before the first block are program-level too.
+    // `-fn name` lines before the first block are program-level too, and so are edit lines
+    // after a block's explicit `end` (outside every block they can only edit the handled
+    // function; a block without `end` still takes the lines up to the next `fn`).
     const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
     const head = blockAt < 0 ? body : body.slice(0, blockAt);
     const isRemoval = (l: string): boolean => /^-fn\s/.test(stripComment(l).trim());
     const editLines = head.filter((l) => !isRemoval(l));
-    const programLines = [...head.filter(isRemoval), ...(blockAt < 0 ? [] : body.slice(blockAt))];
+    const programLines = head.filter(isRemoval);
+    let open = false;
+    for (const l of blockAt < 0 ? [] : body.slice(blockAt)) {
+      const t = stripComment(l).trim();
+      if (/^fn\s/.test(t)) open = !/\send$/.test(t);
+      else if (t === 'end' || isRemoval(l)) open = false;
+      else if (!open && t !== '') {
+        editLines.push(l);
+        continue;
+      }
+      programLines.push(l);
+    }
     let program = this.#program;
     if (programLines.length > 0) {
       const blocks = programLines.join('\n');
-      program = editProgram(program, strippedEnd && blockAt >= 0 ? `${blocks}\nend` : blocks);
+      program = editProgram(program, strippedEnd && open ? `${blocks}\nend` : blocks);
     }
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);
@@ -773,7 +808,11 @@ export class EditSession {
           { code: 'edit', fix: `keep '${fn.name}' or send only whole function blocks` },
         );
       const nodes = parseReplacementNodes(editLines, 2);
-      program = commit(program, replaceNodes(program, target, nodes));
+      program = placeNewCallees(this.#program, program, fn.name, nodes);
+      program = commit(
+        program,
+        replaceNodes(program, program.byName.get(fn.name) ?? target, nodes),
+      );
     }
     this.#program = program;
     this.#rebind();

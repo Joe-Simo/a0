@@ -904,6 +904,17 @@ test('site play program: the A0 lexer, parser and checker render tokens, typed I
   // Every node line carries the checker's type of the node.
   assert.ok(d.text.includes('a add p0 p1  u32\nb mul a 2  u32\nret b'), d.text);
   assert.ok(d.text.includes('valid: parsed and type-checked'), d.text);
+  // The guessable spellings (direct call, ret F ARGS, udiv) render as their canonical ops.
+  const guessed = [
+    ...Buffer.from(
+      'fn dot u32 u32 -> u32\na mul p0 p1\nret a\nend\nfn f u32 -> u32\nb dot p0 p0\nc udiv b 3\nret dot c 2\nend\n',
+    ),
+  ];
+  const gio = makeIo([1, 0, 0, guessed.length, ...guessed, 0]);
+  assert.equal(run(session, [gio]), 0);
+  const gText = decode(gio.output).text;
+  assert.ok(gText.includes('valid: parsed and type-checked'), gText);
+  assert.ok(gText.includes('b call ') && gText.includes('c div b 3'), gText);
   // The state is the source, so the text survives a re-render (event 0 with that state).
   assert.deepEqual(d.state, [bytes.length, ...bytes]);
   const again = makeIo([0, 0, 0, 0, d.state.length, ...d.state]);
@@ -1542,6 +1553,69 @@ test('ret expression sugar: `ret OP ARGS` in source and in edits', () => {
   const n = s.apply(`${h}\nret mul retval 2`);
   assert.equal(n.byName.get('f')?.nodes.at(-1)?.id, 'retval2');
   assert.equal(run(n.byName.get('f') as TypedFunc, [4]), 10);
+});
+
+test('guessable forms: `id F args` calls F, udiv/urem are div/rem, and near misses carry a one-line fix', () => {
+  const src =
+    'fn dot u32 u32 -> u32\na mul p0 p1\nret a\nend\nfn f u32 -> u32\nb dot p0 p0\nc udiv b 3\nd urem b 3\ne add c d\nret dot e 2\nend';
+  const p = parseAndValidate(src);
+  const f = p.byName.get('f') as TypedFunc;
+  assert.equal(run(f, [5]), 18);
+  // The canonical form prints the op: the alias and the direct call are only spellings.
+  assert.equal(
+    formatFunction(f),
+    'fn f u32 -> u32\nb call dot p0 p0\nc div b 3\nd rem b 3\ne add c d\nretval call dot e 2\nret retval\nend',
+  );
+  // Ops win over a function of the same name.
+  const shadow = parseAndValidate(
+    'fn add u32 u32 -> u32\na sub p0 p1\nret a\nend\nfn g u32 -> u32\nb add p0 1\nc call add b 1\nret c\nend',
+  );
+  assert.equal(run(shadow.byName.get('g') as TypedFunc, [4]), 4);
+  const diag = (s: string): string => {
+    try {
+      parseAndValidate(s);
+    } catch (e) {
+      return formatDiagnostic(e);
+    }
+    throw new Error('accepted');
+  };
+  // A direct call is checked exactly like `call`: unknown, recursive, later callees and arity.
+  assert.match(
+    diag('fn f u32 -> u32\nr extract p0 0\nret r\nend'),
+    /^structure: .*unknown callee 'extract'.* fix: 'extract' is neither an op nor a function defined above f/,
+  );
+  assert.match(diag('fn f u32 -> u32\nr f p0\nret r\nend'), /unknown callee 'f'/);
+  assert.match(
+    diag('fn f u32 -> u32\nr g p0\nret r\nend\nfn g u32 -> u32\nret p0\nend'),
+    /unknown callee 'g'/,
+  );
+  assert.match(
+    diag('fn dot u32 u32 -> u32\nret p0\nend\nfn f u32 -> u32\nr dot p0\nret r\nend'),
+    /dot expects 2 arguments, got 1/,
+  );
+  // Nested operands are not A0; the fix spells out the two lines.
+  assert.equal(
+    diag('fn f u32 -> u32\nc lt p0 1\nr select c (sub p0 1) 0\nret r\nend'),
+    'parse: line 3: nested operand: A0 has one op per line fix: one op per line: write `r1 sub p0 1` above, then `r select c r1 0`',
+  );
+  assert.match(
+    diag('fn f u32 -> (u32,u32)\na add p0 1\nret (a, p0)\nend'),
+    /fix: write `ret rec a p0`$/,
+  );
+  // Record vs array access.
+  assert.match(
+    diag('fn f (u32,u32) -> u32\nr get p0 0\nret r\nend'),
+    /get expects an array, got \(u32,u32\) fix: records use at with a literal field index: `at R K`/,
+  );
+  assert.match(
+    diag('fn f u32x4 -> u32\nr at p0 1\nret r\nend'),
+    /at expects a record, got u32x4 fix: arrays use get: `get A I`/,
+  );
+  // Instruction lines without a header.
+  assert.match(
+    diag('a add p0 1\n'),
+    /expected 'fn', got 'a' fix: instruction lines belong inside a function/,
+  );
 });
 
 const ARM64_HOST = process.platform === 'darwin' && process.arch === 'arm64';
@@ -2401,6 +2475,16 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
   assert.deepEqual(nested.types.slice(9), [4, 4, 0, 4, 2, 3]);
   // an unknown callee is a structure error at its token
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\na call g p0\nret a\nend\n'), [2, 8]);
+  // direct calls `id F ARGS`, `ret F ARGS`, and the udiv/urem spellings give call, div and rem
+  // nodes; a direct call of an unknown or later function is a structure error
+  const guessed =
+    'fn dot u32 u32 -> u32\na mul p0 p1\nret a\nend\nfn f u32 -> u32\nb dot p0 p0\nc udiv b 3\nd urem b 3\ne add c d\nret dot e 2\nend\n';
+  check(refParse(guessed), guessed, 'ref guessed');
+  assert.deepEqual(a0Parse(guessed), refParse(guessed));
+  check(a0Parse(guessed), guessed, 'a0 guessed');
+  assert.deepEqual(a0ParseCode('fn f u32 -> u32\na g p0\nret a\nend\n'), [2, 7]);
+  assert.deepEqual(a0ParseCode('fn f u32 -> u32\nret g p0\nend\n'), [2, 7]);
+  assert.equal(refParse('fn f u32 -> u32\na g p0\nret a\nend\n').code, 2);
   function a0ParseCode(src: string): [number, number] {
     const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
     const code = run(parseio, [io]) as number;

@@ -1894,3 +1894,27 @@ A0 syntax that models guessed wrong without a primer (first attempts, both model
 6. Instruction lines sent under the program handle without a `fn` header (`expected 'fn', got 'a'`).
 7. Retries that attempted recursion, called a function defined later (definition order), or used an uppercase id (`A1`).
 One remaining failure is a type error (a bool returned where u32 was declared). A second is a wrong-output model error on b-checksum-poly (Haiku).
+
+### Guessable spellings (no primer, re-measured)
+
+The no-primer failures above were turned into language decisions (DESIGN.md, "Decision, guessable spellings"). Accepted as other spellings of exactly one canonical form, in `src/core.ts`, `src/edit.ts`, `compiler/parse.a0`, `compiler/front512.a0` and `tools/ref-parse.ts`: `ID F ARGS` and `ret F ARGS` for `call F` (F a function name that is not an op; ops win; checked exactly like `call`), and `udiv`/`urem` for `div`/`rem`. In edits, instruction lines after a block's explicit `end` edit the handled function, and a function added in the same reply that the handled function calls is placed before it (the d-calc-inc-first reply shape). Rejected with a one-line fix: parenthesised operands (the fix names the node to add and the rewritten line; `ret (a, b)` gets `ret rec a b`), `get`/`set` on a record and `at`/`put` on an array, instruction lines outside a `fn` block, and a misspelt op (now an unknown callee whose fix lists the ops). Canonical output, revisions and emitted code are unchanged (COMPILER_VERSION not bumped). The primers were not changed.
+
+Method: identical to the subsection above. The A0 prompts are byte-identical to that collection (checked against its dump), so the parser is the only change. Fresh Haiku and Sonnet subagents, one shot, one group file each (sets a, b, d), then one retry per failed trial by a fresh subagent per model, given the reply and the checker's message. TS/Rust are the numbers of the subsection above (their prompts do not depend on A0). Results: `results/ai-edit-experiment.{,b.,d.}{haiku,sonnet}-primer-none-guessable.json`.
+
+Pooled over a+b+d, 76 trials per cell, cost per task in o200k tokens:
+
+| cell | one-shot | after 1 retry | calls/task | 1 task | 10-task session | unbounded |
+|---|---|---|---|---|---|---|
+| A0 no primer, guessable spellings (fresh replies) | 64/76 | 74/76 | 1.16 | 237 | 168 | 160 |
+| A0 no primer (subsection above) | 65/76 | 72/76 | 1.14 | 235 | 166 | 158 |
+| TS relaxed | 67/76 | 76/76 | 1.12 | 284 | 148 | 133 |
+| Rust relaxed | 68/76 | 74/76 | 1.11 | 312 | 160 | 143 |
+
+By model: Haiku 29/38 -> 36/38 (earlier 30 -> 35), 258 / 189 / 181 tokens; Sonnet 35/38 -> 38/38 (earlier 35 -> 37), 216 / 147 / 139.
+
+Findings:
+- **The accepted spellings work where they are guessed.** The same earlier replies re-scored with the new parser: one-shot 65/76 -> 69/76 (Haiku `dot`, `popcnt`, `limit` direct calls and Sonnet `udiv` now parse). In the fresh collection Haiku again wrote `r dot p0 p0`, `r limit ...`, `r popcnt ...` on set b, and all three were accepted one shot; under the old parser they were rejections.
+- **Pooled one-shot acceptance did not rise: 64/76 vs 65/76.** The fresh sample failed on other guesses: `lte`/`gte` for `le`/`ge` (2), an uppercase id (`M`), `at` on an array, `get` on a record, a fold step given an extra argument, `loop` used as `fold`, goto-style control flow, a bool returned for u32, and three wrong-output replies. Only 2 of the 12 fresh first-attempt failures were of a form this change handles (both record/array access, rejected with the new fix, both repaired on the retry). Sample-to-sample variation (about ±3 of 76) is as large as the effect.
+- **Retries improved: 74/76 after one retry vs 72/76.** 10 of 12 failures were repaired from the message alone (earlier 7 of 11). The two unrepaired: Haiku absdiff (wrong output twice) and Haiku b-bounds-largest (uppercase id again).
+- **Cost: single task still wins, sessions still lose.** 237 vs TS 284 and Rust 312 for one task; 168 vs 148 / 160 in a 10-task session; 160 vs 133 / 143 unbounded. The loss in sessions is the retry rate (1.16 calls/task vs 1.12 / 1.11) and longer replies, not the system text.
+- Candidates for a further step, not taken here (adding spellings measured on the sample that found them would overfit): `lte`/`gte`/`neq` spellings, and a fix hint for uppercase ids.
