@@ -4,7 +4,14 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { compile } from '../src/backends.js';
 import { parseAndValidate, run } from '../src/core.js';
-import { analyzeBody, chooseStrategy, parallelC, planProgram } from '../src/parallel.js';
+import {
+  analyzeBody,
+  chooseStrategy,
+  elementFunction,
+  gpuKernel,
+  parallelC,
+  planProgram,
+} from '../src/parallel.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 
 const body = (src: string) => {
@@ -148,6 +155,12 @@ h call inner2 p1 p2
 s add p0 h
 ret s
 end
+fn rfirst u32 u32 u32x300 -> u32
+a get p2 7
+b add a p1
+s xor p0 b
+ret s
+end
 fn top u32 u32 -> u32
 n and p1 4095
 a fold radd n p0 p0
@@ -172,7 +185,9 @@ w2 fold rnest n 0 p0
 s8 add s7 w2
 v fold rsum m 0 x
 s9 add s8 v
-ret s9
+y fold rfirst m 0 x
+s10 xor s9 y
+ret s10
 end
 `;
   const p = parseAndValidate(src);
@@ -186,24 +201,93 @@ end
     [12345, 511],
   ];
   const want = inputs.map(([a, b]) => String(run(top, [a, b], { fuel: 1e9 })));
-  const cParallel = parallelC({ mode: 'auto', force: true }) ?? assert.fail();
-  const text = compile(p, 'c', { cParallel }).text;
-  assert.ok(text.includes('a0p_top_x('), 'map fold parallelized');
-  await withTempDir(async (dir) => {
-    await writeFile(join(dir, 'm.c'), text, 'utf8');
-    await writeFile(
-      join(dir, 'd.c'),
-      `#include <stdint.h>\n#include <stdio.h>\nuint32_t a0_top(uint32_t, uint32_t);\nint main(void) { const uint32_t v[][2] = { ${inputs.map(([a, b]) => `{ ${a}u, ${b}u }`).join(', ')} }; for (unsigned i = 0; i < ${inputs.length}u; i++) printf("%u\\n", a0_top(v[i][0], v[i][1])); return 0; }\n`,
-      'utf8',
-    );
-    const b = runTool(clang, ['-std=c11', '-O2', '-o', 'x', 'd.c', 'm.c'], {
-      cwd: dir,
-    });
-    assert.ok(b.ok, b.stderr);
-    for (const threads of ['1', '3', '8']) {
-      const r = runTool(join(dir, 'x'), [], { env: { ...process.env, A0_THREADS: threads } });
-      assert.ok(r.ok, r.stderr);
-      assert.deepEqual(r.stdout.trim().split('\n'), want, `A0_THREADS=${threads}`);
+  // The driver calls top on every input 8 times, so the pool serves many regions per process
+  // (and must join at exit: a hang fails runTool's timeout).
+  const driver = `#include <stdint.h>\n#include <stdio.h>\nuint32_t a0_top(uint32_t, uint32_t);\nint main(void) { const uint32_t v[][2] = { ${inputs.map(([a, b]) => `{ ${a}u, ${b}u }`).join(', ')} }; for (unsigned i = 0; i < ${inputs.length}u; i++) { uint32_t r = a0_top(v[i][0], v[i][1]); for (unsigned k = 0; k < 7u; k++) if (a0_top(v[i][0], v[i][1]) != r) return 3; printf("%u\\n", r); } return 0; }\n`;
+  const legs: { mode: 'auto' | 'gpu'; objc: boolean }[] = [{ mode: 'auto', objc: false }];
+  if (process.platform === 'darwin') legs.push({ mode: 'gpu', objc: true });
+  for (const { mode, objc } of legs) {
+    const cParallel = parallelC({ mode, force: true }) ?? assert.fail();
+    const text = compile(p, 'c', { cParallel }).text;
+    assert.ok(text.includes('a0p_top_x('), 'map fold parallelized');
+    if (mode === 'gpu') {
+      // Map and array-input reduction have GPU kernels; a read at another index does not.
+      assert.ok(text.includes('a0gpu_run') && text.includes('kernel void a0gk'));
+      const helper = (name: string): string => {
+        const start = text.indexOf(`static uint32_t a0p_${name}(`);
+        return text.slice(start, text.indexOf('\n}\n', start));
+      };
+      assert.ok(helper('top_v').includes('a0gpu_run'), 'array-input reduction on the GPU');
+      assert.equal(helper('top_y').includes('a0gpu_run'), false, 'read at index 7: threads');
     }
-  });
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'm.c'), text, 'utf8');
+      await writeFile(join(dir, 'd.c'), driver, 'utf8');
+      const b = objc
+        ? runTool(clang, ['-x', 'objective-c', '-fobjc-arc', '-O2', '-c', '-o', 'm.o', 'm.c'], {
+            cwd: dir,
+          })
+        : runTool(clang, ['-std=c11', '-O2', '-c', '-o', 'm.o', 'm.c'], { cwd: dir });
+      assert.ok(b.ok, b.stderr);
+      const l = runTool(
+        clang,
+        [
+          '-O2',
+          '-o',
+          'x',
+          'd.c',
+          'm.o',
+          ...(objc ? ['-framework', 'Metal', '-framework', 'Foundation'] : []),
+        ],
+        { cwd: dir },
+      );
+      assert.ok(l.ok, l.stderr);
+      for (const threads of ['1', '3', '8']) {
+        const r = runTool(join(dir, 'x'), [], {
+          env: { ...process.env, A0_THREADS: threads, A0_GPU_LOG: '1' },
+          timeoutMs: 120_000,
+        });
+        assert.ok(r.ok, r.stderr);
+        assert.deepEqual(r.stdout.trim().split('\n'), want, `${mode} A0_THREADS=${threads}`);
+        if (objc) {
+          assert.ok(r.stderr.includes('a0gpu ran'), 'GPU dispatches ran');
+          assert.equal(r.stderr.includes('a0gpu fallback'), false, r.stderr.slice(0, 400));
+        }
+      }
+    });
+  }
+});
+
+test('parallel: GPU element functions exist only for element-wise shapes', () => {
+  const plan = (text: string) => {
+    const p = analyzeBody(body(text));
+    assert.ok(p);
+    return p;
+  };
+  const map = plan('fn f u32x8 u32 u32 -> u32x8\nh mul p1 p2\nv set p0 p1 h\nret v\nend');
+  const e = elementFunction(map);
+  assert.deepEqual(e?.params, ['u32', 'u32', 'u32']);
+  assert.equal(e?.result, 'u32');
+  assert.ok(gpuKernel(map)?.includes('kernel void a0gk'));
+  const dot = plan(
+    'fn d u32 u32 u32x8 u32x8 -> u32\na get p2 p1\nb get p3 p1\nm mul a b\ns add p0 m\nret s\nend',
+  );
+  assert.deepEqual(elementFunction(dot)?.params, ['u32', 'u32', 'u32', 'u32']);
+  // Reads at another index, or a map over bool elements, have no GPU form.
+  assert.equal(
+    elementFunction(plan('fn d u32 u32 u32x8 -> u32\na get p2 3\ns add p0 a\nret s\nend')),
+    null,
+  );
+  assert.equal(
+    elementFunction(plan('fn f boolx8 u32 bool -> boolx8\nv set p0 p1 p2\nret v\nend')),
+    null,
+  );
+  // Cost model: a heavy map goes to the GPU in gpu mode, a light one stays on threads.
+  const heavy = parseAndValidate(
+    `fn g u32 u32 -> u32\na mul p0 2654435761\nb xor a p1\nret b\nend\nfn m u32 u32 u32 -> u32\nh call g p0 p2\nret h\nend\nfn f u32x65536 u32 u32 -> u32x65536\nr fold m 256 p1 p2\nv set p0 p1 r\nret v\nend`,
+  );
+  const hp = analyzeBody(heavy.byName.get('f') ?? assert.fail()) ?? assert.fail();
+  assert.equal(chooseStrategy(hp, 65536, 'gpu'), 'gpu');
+  assert.equal(chooseStrategy(hp, 65536, 'auto'), 'threads');
+  assert.equal(chooseStrategy(map, 8, 'gpu'), 'serial');
 });

@@ -1324,6 +1324,36 @@ Findings: validating an A0 edit costs about half a millisecond, about 30x under 
 - Gate: lint, typecheck, test 55/55, verify (all paths passed; jvm 5262/5262), app (jvm
   134/7/15/39/12/20 all passed), equiv 48/48 proved, hw passed, dotnet passed, gpu 4297 passed.
 
+## Session 2026-09-30 (parallel folds: pool and GPU maps)
+
+- **a0c-0.1.16, `src/parallel.ts` only (plus the version bump in `src/backends.ts`; the C emitter hook `CFoldSite`/`CParallel` is unchanged).**
+- **Persistent worker pool** replaces per-region pthread create/join: helpers are created once on the first parallel region (`pthread_once`, at most 64, `A0_THREADS` or the online CPUs), wait on a generation counter (a short `yield` spin, then a condition variable), and an `atexit` handler wakes and joins them. A region entered while another host thread holds the pool (atomic flag) or from inside a chunk (thread-local depth) runs sequentially, so there is never oversubscription or a deadlock.
+- **Scheduling**: static contiguous chunks, one per thread, each a multiple of 128 bytes (32 words; the Apple M line), so map chunks never share a line of the state array; each thread's partial sits in its own 128-byte `_Alignas` slot (no false sharing); partials combined in thread order (exact for every op anyway). The caller runs chunk 0.
+- **GPU (Metal) for maps and array-input reductions**: the body becomes a scalar *element function* by a syntactic, exact rewrite (`elementFunction`): each u32-array extra read only as `get x p1` becomes a scalar parameter (x[i % length]) and its `get` a `mov`; for a map, parameter 0 becomes an unused u32 and the final `set p0 p1 v` is dropped, returning v. That function goes through `emitMetal` (so no second emitter, and callees with arrays over Metal's 1024 limit simply make the fold ineligible), plus kernel `a0gk` over device buffers (prm, out, one buffer per array). Reductions: 65536 strided partials combined on the CPU; maps: one thread per index, result copied into the state. Reads at any other index, bool arrays, or records stay on threads. Cost model: GPU when n x cost >= 2^25 + 64 x (words copied: array inputs + map output); `A0_GPU_LOG=1` reports each dispatch (ran / fallback), and tests and the bench require "ran".
+- **Thresholds**: THREAD_WORK stays 2^20 (a smoke run at load ~250 with 2^18 moved the 64K fills to threads and lost 8x; not re-tuned at low load), GPU_WORK 2^25.
+- **Exactness**: `test/parallel.test.ts` runs the all-ops/maps/nesting/variable-count program (now plus an array-input reduction and a read at a fixed index, which must stay off the GPU) forced on threads (C) and forced on the GPU (Objective-C + Metal), 8 calls per input so the pool serves many regions and exits cleanly, at `A0_THREADS` 1, 3, 8, against the interpreter; new unit test for element-function shapes and the GPU cost model. par-bench small-size verification: all 7 kernels off / threads / GPU forced exact on 5 seeds, GPU dispatch confirmed. At full size every baseline checksum equals A0 serial; the a0_gpu rows logged 2-4 dispatches and 0 fallbacks.
+- **New kernel hash64k**: sum of a 65536-element array whose element i is 64 chained gen rounds (a heavy map; the cost model picks the GPU for the map and serial for the 64K sum).
+- **Measurements (`bun run par-bench`, median of 7, interleaved; load NOT quiet: the 15-minute wait expired at 1-minute load 194 (5-min 212), 77 at the end, on 8 cores; many other agents were running. Every multicore number is depressed and noisy)**, us per call:
+
+  | kernel | A0 serial | A0 auto | A0 threads forced | A0 GPU | C | OpenMP C | Rust | Zig | Go | Java | Python | JS |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | sum24 | 6110 | 2591 | 2681 | 2169 | 6197 | 2858 | 6270 | 19645 | 26566 | 16587 | 10.8 s | 178921 |
+  | xor24 | 7274 | 3783 | 3233 | 1865 | 6860 | 2938 | 7148 | 21896 | 28346 | 20156 | 13.0 s | 26540 |
+  | count20 | 464 | 310 | 381 | - | 458 | 429 | 1171 | 1503 | 1870 | 2322 | 0.73 s | 4011 |
+  | mr22 | 3043 | 3065 | 2443 | 2543 | 2905 | 1521 | 2810 | 8597 | 12343 | 10770 | 6.1 s | 14554 |
+  | dot64k | 51.4 | 48.8 | 283 | - | 41.1 | 192 | 43.8 | 144 | 192 | 141 | 68 ms | 139 |
+  | max64k | 29.4 | 29.1 | 379 | - | 23.3 | 189 | 22.8 | 129 | 171 | 74.2 | 31 ms | 112 |
+  | hash64k | 20353 | 6200 | 5494 | 1306 | 22562 | 5898 | 23755 | 23997 | 21187 | 21864 | 2.9 s | 47663 |
+
+- **Wins / ties / losses** (baseline / best of A0 auto and A0 GPU; above 1 means A0 is faster):
+  - vs C -O3: wins sum24 2.9x, xor24 3.7x, count20 1.5x, mr22 1.14x, hash64k 17x; losses dot64k 0.84x and max64k 0.80x (both serial; the fill fold goes through the owned variant and is slower than C's plain loop).
+  - vs Rust: wins 2.9x, 3.8x, 3.8x, 1.10x, 18x; losses 0.90x (dot64k), 0.78x (max64k).
+  - vs Zig ReleaseFast: wins everywhere, 3.0-18x. vs Go: 3.9-16x. vs Java: 2.5-17x. vs JS: 2.8-82x. vs Python: 1000-5000x.
+  - **vs OpenMP C: wins sum24 1.32x (GPU), xor24 1.58x (GPU), count20 1.38x (was a 0.78x loss), hash64k 4.5x (GPU map), dot64k 3.9x and max64k 6.5x (A0 stays serial where OpenMP pays its fork/join); loss mr22 0.60x unchanged (OpenMP 1.5 ms vs A0 threads forced 2.4 ms / GPU 2.5 ms; auto did not beat serial at this load).**
+  - Forced threads on the 64K folds went from 650-718 us (create/join per region) to 283-379 us with the pool, still slower than OpenMP's 189-192 us, so the cost model keeps them serial.
+- Not done: mr22 still loses to OpenMP (the two-generator body is not vectorized per chunk as `omp simd` does, and the static split does not balance P and E cores); no GPU form for bool arrays, records or reads at other indices; the arm64 direct backend still does not call the runtime; thresholds not re-tuned on a quiet machine (load never fell below 77 during this session); page claims need a run at load < 6.
+- Gate (this worktree): lint pass; typecheck pass; test 60/60; verify all paths pass (incl. native_c_parallel 5262); gpu pass (4297 on Apple M3); par-bench exit 0. `results/{verification,gpu,parallel}.json` regenerated under a0c-0.1.16.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
