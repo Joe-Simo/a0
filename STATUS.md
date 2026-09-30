@@ -752,6 +752,11 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
 - Haiku's two A0 misses: `select (lt a b) ...` (nested expression, third sighting, all from Haiku on the bounds task; Sonnet never; the diagnostic names the fix) and a callee defined after its caller in the whole-file cell (a model error against the stated rule). Item B decision: refusal documented, not added; 3 occurrences in ~150 Haiku structured replies, 0 in Sonnet.
 - Site: the Edits card and the Cost section now lead with set C and keep the single-function loss (0.68x/0.71x vs TypeScript) in the same chart.
 
+## Session 2026-09-30 (repair round, Haiku)
+
+- One repair round after the one-shot pass (rule 1), Haiku, min primer, all sets, fresh subject contexts seeing the original prompt, their first reply, and the rejection (scratchpad g13). Results `results/ai-edit-experiment.{,b.,c.}haiku-min-repair.json`.
+- After one repair: set A all six cells 13/13; set B all six 12/12; set C A0 conventional 12/12, A0 structured 11/12, TypeScript structured 10/12, Rust structured 11/12, the rest 12/12. The one A0 miss is the bounds task: first a nested `select (lt ...)`, then the body of the callee written under the caller's handle (model error). Sonnet had no first-attempt failures to repair.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
