@@ -1851,7 +1851,8 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn scan u32x12 u32 u32 -> u32x12\nj sub p1 1\nt get p0 j\ns get p0 p1\nu mul t p2\nv add u s\nn set p0 p1 v\nret n\nend',
     'fn carried u32 u32 -> u32\nz arr p0 1 2 3 4 5 6 7 8 9 10 p1\na fold scan 20 z p1\nq and p0 15\nr get a q\nw get a 11\ns add r w\nret s\nend',
     // neighbour reads (i + 3 mod 16) as two loads joined by ext, wrapping at the end
-    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nn set p0 p1 w\nret n\nend',
+    // (the fill costs more than fusion may recompute at the second index, so it is stored)
+    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nx mul w p2\nn set p0 p1 x\nret n\nend',
     'fn sm u32x16 u32 u32x16 -> u32x16\nj add 3 p1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend',
     `fn shifted u32 u32 -> u32\nz arr ${zeros(16)}\na fold f16 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sm 16 z2 a\nq and p1 15\nr get b q\nw get b 15\ns add r w\nret s\nend`,
     // sixteen products feeding a record literal (written through, no register each)
@@ -2108,8 +2109,10 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
       'a',
     ),
   );
-  assert.match(fill, /xorps %xmm0, %xmm0\n\tmovups %xmm0, \(%rsp\)\n\tmovups %xmm0, 16\(%rsp\)/);
-  assert.match(fill, /movl %\w+, 0\(%rsp,%r\w+,4\)/);
+  // The fold overwrites every element, so the zero literal is never stored; the fill run
+  // is four lanes per SSE2 store.
+  assert.doesNotMatch(fill, /xorps %xmm0, %xmm0/);
+  assert.match(fill, /paddd %xmm3, %xmm4\n\tmovups %xmm4, \(%r10\)/);
   assert.doesNotMatch(fill, /andl \$7/);
   const get5 = emitX86_64Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get5, /movl \$5, %r10d\n\tdivl %r10d\n\tmovl %edx, %r10d/);
@@ -3425,5 +3428,114 @@ test('corpus generator: seeds 1-200 generate (a bool-result body with no bool sl
         `seed ${seed} scalar=${scalar}`,
       );
     }
+  }
+});
+
+test('loop fusion and fill runs: IR shapes, and arm64, x86_64, wasm equal the interpreter', async () => {
+  const { fuseLoops } = await import('../src/optimize.js');
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
+  const fill = (name: string, n: number, body: string): string =>
+    `fn ${name} u32x${n} u32 u32 u32 -> u32x${n}\n${body}\nn set p0 p1 v\nret n\nend`;
+  // [source, entry, folds after fusion (undefined: nothing fuses)]
+  const cases: [string, string, number | undefined][] = [
+    // two fills into one reduce (extras read at the counter), length not a power of two
+    [
+      `${fill('fa', 12, 'u mul p1 p2\nv add u p3')}\n${fill('fb', 12, 'u xor p1 p3\nv mul u p2')}\nfn dt u32 u32 u32x12 u32x12 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend\nfn dot u32 u32 -> u32\nz arr ${zeros(12)}\na fold fa 12 z p0 p1\nz2 arr ${zeros(12)}\nb fold fb 12 z2 p0 p1\nd fold dt 12 p1 a b\nret d\nend`,
+      'dot',
+      1,
+    ],
+    // a cheap fill read at a wrapping neighbour index (recomputed at (i + 5) mod 12)
+    [
+      `${fill('fc', 12, 'v add p1 p2')}\nfn nb u32x12 u32 u32x12 -> u32x12\nj add p1 5\nu get p2 p1\nw get p2 j\nx xor u w\nn set p0 p1 x\nret n\nend\nfn nbr u32 u32 -> u32\nz arr ${zeros(12)}\na fold fc 12 z p0 p1\nz2 arr ${zeros(12)}\nb fold nb 12 z2 a\nq rem p1 12\nr get b q\nw get b 11\ns add r w\nret s\nend`,
+      'nbr',
+      1,
+    ],
+    // a fill as the initial state of an in-place prefix sum (guarded previous read)
+    [
+      `${fill('fd', 12, 'u mul p1 p2\nv add u p3')}\nfn px u32x12 u32 -> u32x12\nc eq p1 0\nj sub p1 1\nt get p0 j\nu select c 0 t\ns get p0 p1\nv add u s\nn set p0 p1 v\nret n\nend\nfn pre u32 u32 -> u32\nz arr ${zeros(12)}\na fold fd 12 z p0 p1\nb fold px 12 a\nq rem p1 12\nr get b q\nw get b 11\ns add r w\nret s\nend`,
+      'pre',
+      1,
+    ],
+    // a recurrence producer read at the counter by a shorter scalar reduce
+    [
+      `fn xf u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nc2 shr b 17\nd xor b c2\nn set p0 p1 d\nret n\nend\nfn xr u32 u32 u32x10 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn rec u32 u32 -> u32\nz arr ${zeros(10)}\na fold xf 10 z p0\nr fold xr 9 p1 a\nret r\nend`,
+      'rec',
+      1,
+    ],
+    // not fused: the array is also read after the consumer
+    [
+      `${fill('fe', 8, 'v add p1 p2')}\nfn sm u32 u32 u32x8 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn keep u32 u32 -> u32\nz arr ${zeros(8)}\na fold fe 8 z p0 p1\nr fold sm 8 p1 a\nq and p1 7\nx get a q\ns add r x\nret s\nend`,
+      'keep',
+      undefined,
+    ],
+    // fill runs of 4, 5, 7, 13 elements (mul, variable shift) over a live literal
+    ...[4, 5, 7, 13].map((n): [string, string, number | undefined] => [
+      `${fill(`g${n}`, 16, 'u mul p1 p2\nw shl u p3\nv sub w p1')}\nfn run${n} u32 u32 -> u32\nz arr ${Array.from({ length: 16 }, (_, i) => String(i * 3 + 1)).join(' ')}\na fold g${n} ${n} z p0 p1\nq and p1 15\nr get a q\nw get a 15\nx get a ${n - 1}\ns add r w\nt add s x\nret t\nend`,
+      `run${n}`,
+      undefined,
+    ]),
+  ];
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [0x9e3779b9, 31],
+  ];
+  const all = parseAndValidate(cases.map(([s]) => s).join('\n\n'));
+  const names = cases.map(([, n]) => n);
+  for (const [, name, folds] of cases) {
+    const fn = optimizeFunction(all.byName.get(name) as TypedFunc).fn;
+    const fused = fuseLoops(fn, { recordState: true });
+    assert.equal(fused?.nodes.filter((n) => n.op === 'fold').length, folds, `${name}: folds`);
+    if (fused !== undefined)
+      for (const [a, b] of inputs) assert.equal(run(fused, [a, b]), run(fn, [a, b]), name);
+  }
+  const expected = inputs
+    .flatMap(([a, b]) => names.map((n) => String(run(all.byName.get(n) as TypedFunc, [a, b]))))
+    .join('\n');
+  const text = compile(all, 'wasm', { wasmExports: names }).text;
+  const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+  const e = instance.exports as Record<string, (...a: number[]) => number>;
+  const got = inputs
+    .flatMap(([a, b]) =>
+      names.map((n) => String((e[`a0_${n}`] as (...a: number[]) => number)(a | 0, b | 0) >>> 0)),
+    )
+    .join('\n');
+  assert.equal(got, expected, 'wasm');
+  const clang = findClang().path;
+  if (clang === undefined) return;
+  const protos = names.map((n) => `extern uint32_t a0_${n}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => names.map((n) => `  printf("%u\\n", a0_${n}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${protos}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const natives: ['arm64' | 'x86_64', string[], string[]][] = [];
+  if (ARM64_HOST) natives.push(['arm64', [], []]);
+  if (X86_64_HOST !== undefined) natives.push(['x86_64', X86_64_HOST.arch, X86_64_HOST.runner]);
+  for (const [target, arch, runner] of natives) {
+    const asm = compile(all, target).text;
+    assert.doesNotMatch(asm, /zfuse/, `${target}: fused bodies are inlined`);
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, [...arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, [...arch, '-O1', '-o', 'driver', 'driver.c', 'module.o'], {
+        cwd: dir,
+      });
+      assert.ok(ld.ok, ld.stderr);
+      const [cmd, ...pre] = [...runner, join(dir, 'driver')];
+      const exec = runTool(cmd as string, pre, { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected, target);
+    });
   }
 });

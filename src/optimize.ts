@@ -708,7 +708,8 @@ function storeOnly(body: TypedFunc): Node | undefined {
 /**
  * Does the fold `node` overwrite every element of its array state before anything reads it?
  * True when its trip count is a literal at least the array length and its body is `set p0 p1 v`
- * with p0 used nowhere else (no trip reads the state; trips 0..length-1 write every index).
+ * with p0 otherwise read only by guarded previous-element reads (no trip observes an element it
+ * did not write; trips 0..length-1 write every index).
  * The initial value is then dead: its zero fill (or copy into the state) can be skipped.
  */
 export function overwritesState(fn: TypedFunc, node: Node): boolean {
@@ -718,7 +719,8 @@ export function overwritesState(fn: TypedFunc, node: Node): boolean {
   const body = fn.calls.get(node.callee ?? '');
   if (arr === undefined || count?.kind !== 'u32' || count.value < arr.length || body === undefined)
     return false;
-  return storeOnly(body) !== undefined;
+  // Guarded previous-element reads observe only elements this fold wrote (guardedPrevReads).
+  return producerShape(body) !== undefined;
 }
 
 /** Element-wise u32 operations whose lanes are independent (shift amounts stay uniform). */
@@ -749,10 +751,18 @@ export interface FillRun {
 }
 
 export function fillRun(fn: TypedFunc, node: Node): FillRun | undefined {
+  return fillRunIn(fn.types, fn.calls, node);
+}
+
+function fillRunIn(
+  types: ReadonlyMap<string, Type>,
+  calls: ReadonlyMap<string, TypedFunc>,
+  node: Node,
+): FillRun | undefined {
   if (node.op !== 'fold') return undefined;
-  const arr = arrayOf(fn.types.get(node.id));
+  const arr = arrayOf(types.get(node.id));
   const count = node.args[0];
-  const body = fn.calls.get(node.callee ?? '');
+  const body = calls.get(node.callee ?? '');
   if (arr === undefined || arr.elem !== 'u32' || body === undefined) return undefined;
   if (count?.kind !== 'u32' || count.value === 0 || count.value > arr.length) return undefined;
   const set = storeOnly(body);
@@ -837,4 +847,471 @@ export function lazyArms(fn: TypedFunc): {
     arms.set(s.id, [a, b]);
   }
   return { owner, arms };
+}
+
+// ---------------------------------------------------------------------------
+// Producer-consumer loop fusion
+// ---------------------------------------------------------------------------
+
+const isParamOp = (o: Operand | undefined, i: number): boolean =>
+  o?.kind === 'param' && o.index === i;
+
+/** Prefix of every fused body's name: a backend that must inline it can check its output. */
+export const FUSED_PREFIX = 'zfuse';
+
+/** A fused body may recompute a producer's element at non-counter indices up to this cost. */
+const FUSE_RECOMPUTE_COST = 4;
+/** Fused bodies stay within every inlining backend's body limit. */
+const FUSE_MAX_NODES = 48;
+
+/**
+ * Reads `get p0 (p1 - 1)` whose value is used only where p1 != 0: every user is a select on
+ * `eq p1 0` holding the read in its false arm (or on `ne p1 0`, in its true arm). At trip
+ * i >= 1 the read is element i-1, which trip i-1 wrote; at trip 0 its value is discarded, so
+ * the state's initial contents are never observed through it. Undefined when p0 has another
+ * element read that is not of this form.
+ */
+function guardedPrevReads(body: TypedFunc): Set<string> | undefined {
+  const defs = new Map(body.nodes.map((n) => [n.id, n]));
+  const users = new Map<string, { n: Node; k: number }[]>();
+  for (const n of body.nodes)
+    for (const [k, a] of n.args.entries())
+      if (a.kind === 'node') users.set(a.id, [...(users.get(a.id) ?? []), { n, k }]);
+  const zeroTest = (o: Operand | undefined, op: 'eq' | 'ne'): boolean => {
+    const d = o?.kind === 'node' ? defs.get(o.id) : undefined;
+    if (d?.op !== op) return false;
+    const [x, y] = d.args as [Operand, Operand];
+    return (isParamOp(x, 1) && isU32(y, 0)) || (isParamOp(y, 1) && isU32(x, 0));
+  };
+  const out = new Set<string>();
+  for (const n of body.nodes) {
+    if (n.op !== 'get' || !isParamOp(n.args[0], 0) || isParamOp(n.args[1], 1)) continue;
+    const j = n.args[1];
+    const d = j?.kind === 'node' ? defs.get(j.id) : undefined;
+    const [x, y] = (d?.args ?? []) as Operand[];
+    const prev =
+      (d?.op === 'sub' && isParamOp(x, 1) && y !== undefined && isU32(y, 1)) ||
+      (d?.op === 'add' &&
+        ((isParamOp(x, 1) && y !== undefined && isU32(y, 0xffff_ffff)) ||
+          (isParamOp(y, 1) && x !== undefined && isU32(x, 0xffff_ffff))));
+    if (!prev || (body.ret.kind === 'node' && body.ret.id === n.id)) return undefined;
+    const ok = (users.get(n.id) ?? []).every(
+      ({ n: u, k }) =>
+        u.op === 'select' &&
+        ((k === 2 && zeroTest(u.args[0], 'eq')) || (k === 1 && zeroTest(u.args[0], 'ne'))),
+    );
+    if (!ok) return undefined;
+    out.add(n.id);
+  }
+  return out;
+}
+
+/**
+ * An array-producing fold body: `ret` is `set p0 p1 v`, and p0 is otherwise read only by
+ * guarded previous-element reads (see guardedPrevReads). `pure` when there are none: element
+ * i is then a function of i and the extras alone.
+ */
+function producerShape(
+  body: TypedFunc,
+): { set: Node; prev: ReadonlySet<string>; pure: boolean } | undefined {
+  const ret = body.ret;
+  const set = ret.kind === 'node' ? body.nodes.find((n) => n.id === ret.id) : undefined;
+  if (set?.op !== 'set' || !isParamOp(set.args[0], 0) || !isParamOp(set.args[1], 1))
+    return undefined;
+  const prev = guardedPrevReads(body);
+  if (prev === undefined) return undefined;
+  for (const n of body.nodes)
+    for (const [k, a] of n.args.entries())
+      if (isParamOp(a, 0) && k === 0 ? !(n === set || prev.has(n.id)) : isParamOp(a, 0))
+        return undefined;
+  return { set, prev, pure: prev.size === 0 };
+}
+
+/** Builds a fused body: copies of callee nodes under fresh ids with operand substitution. */
+class BodyBuilder {
+  readonly nodes: Node[] = [];
+  #next = 0;
+  add(op: Node['op'], args: readonly Operand[]): Operand {
+    const id = `f${(this.#next++).toString(36)}`;
+    this.nodes.push({ id, op, args });
+    return { kind: 'node', id };
+  }
+  /**
+   * Copy `body`'s nodes except `skip`; `param` maps its parameters and `swap` may replace a
+   * node by an existing operand. Returns the operand map for the copy.
+   */
+  copy(
+    body: TypedFunc,
+    param: (i: number) => Operand,
+    swap: (n: Node, map: (o: Operand) => Operand) => Operand | undefined,
+    skip?: Node,
+  ): (o: Operand) => Operand {
+    const ids = new Map<string, Operand>();
+    const map = (o: Operand): Operand => {
+      if (o.kind === 'param') return param(o.index);
+      if (o.kind === 'node') {
+        const m = ids.get(o.id);
+        if (m === undefined) throw new Error(`internal: fused body lost node ${o.id}`);
+        return m;
+      }
+      return o;
+    };
+    for (const n of body.nodes) {
+      if (n === skip) continue;
+      const replaced = swap(n, map);
+      if (replaced !== undefined) {
+        ids.set(n.id, replaced);
+        continue;
+      }
+      const id = `f${(this.#next++).toString(36)}`;
+      const { callee, pred } = n;
+      this.nodes.push({
+        id,
+        op: n.op,
+        args: n.args.map(map),
+        ...(callee === undefined ? {} : { callee }),
+        ...(pred === undefined ? {} : { pred }),
+      });
+      ids.set(n.id, { kind: 'node', id });
+    }
+    return map;
+  }
+}
+
+const bodyCost = (nodes: readonly Node[]): number => nodes.reduce((s, n) => s + nodeCost(n.op), 0);
+
+/**
+ * Producer-consumer loop fusion. `A = fold f1 N1 z e1...` builds a u32 array of length L
+ * with f1 of producerShape (trip i writes element i and nothing else) and N1 <= L, and A's
+ * only use is operand k of `C = fold f2 N2 s e2...`. Then A is never materialized:
+ *  - k >= 2, f1 pure: each `get pk x` in f2 becomes f1's element expression at x (at p1 when
+ *    x is the counter and N2 <= N1; at x mod L when N1 = L and the recomputation is cheap);
+ *  - k = 1 (A is C's initial state), f1 pure, N1 = N2 = L, f2 writes element i at trip i and
+ *    reads its state only at p1 (still A[i] = f1(i): no earlier trip wrote index i) or through
+ *    guarded previous-element reads (its own writes): `get p0 p1` becomes f1(p1), and C starts
+ *    from f1's initial state, which it now overwrites before any read observes it;
+ *  - k >= 2, f1 a recurrence (guarded previous reads), f2 with scalar state reading A only at
+ *    p1, N2 <= N1: one fold carries (C's state, f1's previous element) as a record.
+ * Exact under value semantics: A is immutable, unshared and has no identity, so nothing can
+ * observe that it was not stored. Fused bodies are named FUSED_PREFIX... and are not program
+ * functions: a backend applying this must inline them (and fall back when it does not).
+ */
+export function fuseLoops(fn: TypedFunc, options: FuseOptions = {}): TypedFunc | undefined {
+  if (funcHasIo(fn)) return undefined;
+  let cur = fn;
+  let changed = false;
+  for (let round = 0; round < 8; round += 1) {
+    const next = fuseOnce(cur, options);
+    if (next === undefined) break;
+    cur = next;
+    changed = true;
+  }
+  return changed ? cur : undefined;
+}
+
+/**
+ * Emit `fn` with its loops fused (see fuseLoops) when the emitter inlined every fused body:
+ * an output that still names one (an out-of-line call) is discarded for the unfused form.
+ */
+export function emitFused(
+  fn: TypedFunc,
+  emit: (f: TypedFunc) => string,
+  options: FuseOptions = {},
+): string {
+  const fused = fuseLoops(fn, options);
+  if (fused === undefined) return emit(fn);
+  const out = emit(fused);
+  return out.includes(FUSED_PREFIX) ? emit(fn) : out;
+}
+
+/**
+ * `recordState`: also fuse a recurrence producer, which makes the fused fold's state a
+ * (state, previous element) record; only worth it where small record state stays in registers
+ * or locals (wasm keeps it in locals; the native backends store it every trip).
+ */
+export interface FuseOptions {
+  readonly recordState?: boolean;
+}
+
+interface FuseSite {
+  readonly fn: TypedFunc;
+  readonly consumer: Node;
+  readonly body2: TypedFunc;
+  readonly k: number;
+  readonly producer: Node;
+  readonly body1: TypedFunc;
+  readonly shape: { set: Node; prev: ReadonlySet<string>; pure: boolean };
+  readonly length: number;
+  readonly n1: number;
+  readonly n2: number;
+}
+
+function fuseOnce(fn: TypedFunc, options: FuseOptions): TypedFunc | undefined {
+  const uses = useCounts(fn.nodes, fn.ret);
+  const defs = new Map(fn.nodes.map((n) => [n.id, n]));
+  for (const consumer of fn.nodes) {
+    if (consumer.op !== 'fold') continue;
+    const n2 = consumer.args[0];
+    const body2 = fn.calls.get(consumer.callee ?? '');
+    if (n2?.kind !== 'u32' || body2 === undefined || funcHasIo(body2)) continue;
+    for (let k = 1; k < consumer.args.length; k += 1) {
+      const a = consumer.args[k] as Operand;
+      if (a.kind !== 'node' || uses.get(a.id) !== 1) continue;
+      const producer = defs.get(a.id);
+      if (producer?.op !== 'fold') continue;
+      const body1 = fn.calls.get(producer.callee ?? '');
+      const n1 = producer.args[0];
+      const arr = arrayOf(fn.types.get(producer.id));
+      if (body1 === undefined || n1?.kind !== 'u32' || arr === undefined || arr.elem !== 'u32')
+        continue;
+      if (n1.value > arr.length || funcHasIo(body1)) continue;
+      const shape = producerShape(body1);
+      if (shape === undefined) continue;
+      const site: FuseSite = {
+        fn,
+        consumer,
+        body2,
+        k,
+        producer,
+        body1,
+        shape,
+        length: arr.length,
+        n1: n1.value,
+        n2: n2.value,
+      };
+      const fused =
+        k === 1
+          ? fuseIntoState(site)
+          : shape.pure
+            ? fuseExtra(site)
+            : options.recordState === true
+              ? fuseRecurrence(site)
+              : undefined;
+      if (fused !== undefined) return fused;
+    }
+  }
+  return undefined;
+}
+
+/** Validate a fused body (undefined when it exceeds FUSE_MAX_NODES). */
+function finishBody(
+  site: FuseSite,
+  b: BodyBuilder,
+  params: readonly Type[],
+  result: Type,
+  ret: Operand,
+): TypedFunc | undefined {
+  if (b.nodes.length > FUSE_MAX_NODES) return undefined;
+  let i = 0;
+  while (site.fn.calls.has(`${FUSED_PREFIX}${i}`)) i += 1;
+  const calls = new Map([...site.body2.calls, ...site.body1.calls]);
+  const body = validateFunction(
+    { name: `${FUSED_PREFIX}${i}`, params, result, nodes: b.nodes, ret },
+    calls,
+  );
+  // Clean up the copies (dead guarded-read indices, repeated subexpressions).
+  return optimizeFunction(body).fn;
+}
+
+/** fn with the producer removed and the consumer replaced by `replacement`. */
+function rewriteTop(site: FuseSite, replacement: readonly Node[], fused: TypedFunc): TypedFunc {
+  const { fn } = site;
+  const nodes: Node[] = [];
+  for (const n of fn.nodes) {
+    if (n === site.producer) continue;
+    if (n === site.consumer) nodes.push(...replacement);
+    else nodes.push(n);
+  }
+  // Drop what only the producer used (its initial literal, for instance).
+  const live = new Set<string>();
+  const mark = (o: Operand): void => {
+    if (o.kind === 'node') live.add(o.id);
+  };
+  mark(fn.ret);
+  for (let i = nodes.length - 1; i >= 0; i -= 1) {
+    const n = nodes[i] as Node;
+    if (live.has(n.id)) n.args.forEach(mark);
+  }
+  const kept = nodes.filter((n) => live.has(n.id));
+  const calls = new Map(fn.calls);
+  calls.set(fused.name, fused);
+  const used = new Set(kept.flatMap((n) => [n.callee, n.pred]));
+  return validateFunction(
+    { name: fn.name, params: fn.params, result: fn.result, nodes: kept, ret: fn.ret },
+    new Map([...calls].filter(([name]) => used.has(name))),
+  );
+}
+
+/** Is parameter k of `body` read only as the array of `get` nodes? */
+function readByGetOnly(body: TypedFunc, k: number): boolean {
+  if (isParamOp(body.ret, k)) return false;
+  return body.nodes.every((n) =>
+    n.args.every((o, j) => !isParamOp(o, k) || (n.op === 'get' && j === 0)),
+  );
+}
+
+/** The producer's element at `index` (p1 itself, or any index reduced mod the length). */
+function elementBuilder(
+  site: FuseSite,
+  b: BodyBuilder,
+  extraBase: number,
+): (index: Operand) => Operand {
+  const { body1, shape, length } = site;
+  const cache = new Map<string, Operand>();
+  return (index) => {
+    const key = formatOperand(index);
+    const have = cache.get(key);
+    if (have !== undefined) return have;
+    let idx = index;
+    if (!isParamOp(index, 1)) {
+      if (length === 1) idx = { kind: 'u32', value: 0 };
+      else if ((length & (length - 1)) === 0)
+        idx = b.add('and', [index, { kind: 'u32', value: length - 1 }]);
+      else idx = b.add('rem', [index, { kind: 'u32', value: length }]);
+    }
+    const map = b.copy(
+      body1,
+      (i) => (i === 1 ? idx : { kind: 'param', index: extraBase + i - 2 }),
+      () => undefined,
+      shape.set,
+    );
+    const v = map(shape.set.args[2] as Operand);
+    cache.set(key, v);
+    return v;
+  };
+}
+
+function fuseExtra(site: FuseSite): TypedFunc | undefined {
+  const { consumer, body2, k, producer, body1, shape, length, n1, n2 } = site;
+  if (!readByGetOnly(body2, k)) return undefined;
+  const gets = body2.nodes.filter((n) => n.op === 'get' && isParamOp(n.args[0], k));
+  const atCounter = gets.every((g) => isParamOp(g.args[1], 1));
+  if (atCounter ? n2 > n1 : n1 !== length) return undefined;
+  const others = new Set(
+    gets.filter((g) => !isParamOp(g.args[1], 1)).map((g) => formatOperand(g.args[1] as Operand)),
+  );
+  const cost = bodyCost(body1.nodes.filter((n) => n !== shape.set));
+  if (others.size * cost > FUSE_RECOMPUTE_COST) return undefined;
+  // Fused parameters: C's without pk, then the producer's extras.
+  const b = new BodyBuilder();
+  const element = elementBuilder(site, b, body2.params.length - 1);
+  const map2 = b.copy(
+    body2,
+    (i) => ({ kind: 'param', index: i < k ? i : i - 1 }),
+    (n, map) =>
+      n.op === 'get' && isParamOp(n.args[0], k) ? element(map(n.args[1] as Operand)) : undefined,
+  );
+  const params = [...body2.params.filter((_, i) => i !== k), ...body1.params.slice(2)];
+  const fused = finishBody(site, b, params, body2.result, map2(body2.ret));
+  if (fused === undefined) return undefined;
+  const args = [...consumer.args.filter((_, i) => i !== k), ...producer.args.slice(2)];
+  return rewriteTop(site, [{ ...consumer, callee: fused.name, args }], fused);
+}
+
+function fuseIntoState(site: FuseSite): TypedFunc | undefined {
+  const { consumer, body2, producer, body1, shape, length, n1, n2 } = site;
+  if (!shape.pure || n1 !== length || n2 !== length) return undefined;
+  if (consumer.args.slice(2).some((o) => sameOperand(o, consumer.args[1] as Operand)))
+    return undefined;
+  const ret = body2.ret;
+  const set = ret.kind === 'node' ? body2.nodes.find((n) => n.id === ret.id) : undefined;
+  if (set?.op !== 'set' || !isParamOp(set.args[0], 0) || !isParamOp(set.args[1], 1))
+    return undefined;
+  const prev = guardedPrevReads(body2);
+  if (prev === undefined) return undefined;
+  const atCounter = (n: Node): boolean =>
+    n.op === 'get' && isParamOp(n.args[0], 0) && isParamOp(n.args[1], 1);
+  for (const n of body2.nodes)
+    for (const [j, o] of n.args.entries())
+      if (isParamOp(o, 0) && !(j === 0 && (n === set || prev.has(n.id) || atCounter(n))))
+        return undefined;
+  if (!body2.nodes.some(atCounter)) return undefined;
+  const b = new BodyBuilder();
+  const element = elementBuilder(site, b, body2.params.length);
+  const map2 = b.copy(
+    body2,
+    (i) => ({ kind: 'param', index: i }),
+    (n) => (atCounter(n) ? element({ kind: 'param', index: 1 }) : undefined),
+  );
+  const params = [...body2.params, ...body1.params.slice(2)];
+  const fused = finishBody(site, b, params, body2.result, map2(body2.ret));
+  if (fused === undefined) return undefined;
+  const args = [
+    consumer.args[0] as Operand,
+    producer.args[1] as Operand,
+    ...consumer.args.slice(2),
+    ...producer.args.slice(2),
+  ];
+  return rewriteTop(site, [{ ...consumer, callee: fused.name, args }], fused);
+}
+
+function fuseRecurrence(site: FuseSite): TypedFunc | undefined {
+  const { fn, consumer, body2, k, producer, body1, shape, n1, n2 } = site;
+  const s2 = body2.params[0];
+  if (n2 > n1 || s2 === undefined || !isPrimitive(s2) || s2 === 'io') return undefined;
+  if (!readByGetOnly(body2, k)) return undefined;
+  const gets = body2.nodes.filter((n) => n.op === 'get' && isParamOp(n.args[0], k));
+  if (!gets.every((g) => isParamOp(g.args[1], 1))) return undefined;
+  const b = new BodyBuilder();
+  const state = b.add('at', [
+    { kind: 'param', index: 0 },
+    { kind: 'u32', value: 0 },
+  ]);
+  const carried = b.add('at', [
+    { kind: 'param', index: 0 },
+    { kind: 'u32', value: 1 },
+  ]);
+  const extraBase = body2.params.length - 1;
+  const map1 = b.copy(
+    body1,
+    (i) => (i === 1 ? { kind: 'param', index: 1 } : { kind: 'param', index: extraBase + i - 2 }),
+    (n) => (shape.prev.has(n.id) ? carried : undefined),
+    shape.set,
+  );
+  const element = map1(shape.set.args[2] as Operand);
+  const map2 = b.copy(
+    body2,
+    (i) => (i === 0 ? state : { kind: 'param', index: i < k ? i : i - 1 }),
+    (n) => (n.op === 'get' && isParamOp(n.args[0], k) ? element : undefined),
+  );
+  const pair = b.add('rec', [map2(body2.ret), element]);
+  const recT: Type = { kind: 'rec', fields: [s2, 'u32'] };
+  const params = [
+    recT,
+    ...body2.params.slice(1).filter((_, i) => i + 1 !== k),
+    ...body1.params.slice(2),
+  ];
+  const fused = finishBody(site, b, params, recT, pair);
+  if (fused === undefined) return undefined;
+  const taken = new Set(fn.nodes.map((n) => n.id));
+  const freshTop = (base: string): string => {
+    let i = 0;
+    while (taken.has(`${base}${i}`)) i += 1;
+    taken.add(`${base}${i}`);
+    return `${base}${i}`;
+  };
+  const initId = freshTop('zfi');
+  const foldId = freshTop('zff');
+  const args: Operand[] = [
+    consumer.args[0] as Operand,
+    { kind: 'node', id: initId },
+    ...consumer.args.slice(2).filter((_, i) => i + 2 !== k),
+    ...producer.args.slice(2),
+  ];
+  return rewriteTop(
+    site,
+    [
+      { id: initId, op: 'rec', args: [consumer.args[1] as Operand, { kind: 'u32', value: 0 }] },
+      { id: foldId, op: 'fold', callee: fused.name, args },
+      {
+        id: consumer.id,
+        op: 'at',
+        args: [
+          { kind: 'node', id: foldId },
+          { kind: 'u32', value: 0 },
+        ],
+      },
+    ],
+    fused,
+  );
 }

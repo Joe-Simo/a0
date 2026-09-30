@@ -62,7 +62,7 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
-import { type FillRun, fillRun, lazyArms, overwritesState } from './optimize.js';
+import { emitFused, type FillRun, fillRun, lazyArms, overwritesState } from './optimize.js';
 
 const PAGE = 65536;
 /** Address of the constant pool (the first page's low KiB stays unused, as in wasm-ld's layout). */
@@ -1645,6 +1645,11 @@ const BINARY: Readonly<Record<string, number>> = {
 
 /** One function's variants as a JSON record (the unit of the emission caches). */
 export function emitWasmFunction(fn: TypedFunc, options: WasmEmitOptions = DEFAULT_EMIT): string {
+  // Small record state lives in locals here, so recurrence producers fuse too.
+  return emitFused(fn, (f) => emitWasmRecord(f, options), { recordState: true });
+}
+
+function emitWasmRecord(fn: TypedFunc, options: WasmEmitOptions): string {
   const pool: string[] = [];
   const poolIndex = new Map<string, number>();
   const emitter = (v: Variant): FunctionEmitter =>

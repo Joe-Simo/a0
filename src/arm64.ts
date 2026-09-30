@@ -93,8 +93,8 @@ import {
   type Operand,
   type Type,
   type TypedFunc,
-  validateFunction,
 } from './core.js';
+import { emitFused, fillRun, overwritesState } from './optimize.js';
 
 function refuse(message: string): never {
   throw new A0Error(`arm64: ${message}`, undefined, {
@@ -187,23 +187,8 @@ function zeroArray(fn: TypedFunc, n: Node): boolean {
 }
 
 /**
- * Does every trip of `body` (as a fold body) write state element i (`set p0 p1 v` is the
- * result) without reading the state at all? Then a fold over the whole array overwrites
- * every element of its initial value before anything can observe it.
- */
-function writesEveryElement(body: TypedFunc): boolean {
-  const ret = body.ret;
-  if (ret.kind !== 'node') return false;
-  const set = body.nodes.find((n) => n.id === ret.id);
-  if (set === undefined || set.op !== 'set' || !isParam(set.args[0], 0) || !isParam(set.args[1], 1))
-    return false;
-  return body.nodes.every((n) => n === set || n.args.every((a) => !isParam(a, 0)));
-}
-
-/**
  * Is the zero array at `index` dead storage: its only use is the initial state of a `fold`
- * whose literal trip count is the array length and whose body writes element i on every
- * trip without reading the state? Its zero fill is then unobservable and is skipped.
+ * that writes every element before reading it (see optimize.ts `overwritesState`)? Its zero fill is then unobservable and is skipped.
  */
 function deadZeroFill(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index] as Node;
@@ -218,10 +203,7 @@ function deadZeroFill(fn: TypedFunc, index: number): boolean {
         use = { n, k };
       }
   if (count !== 1 || use === undefined || use.n.op !== 'fold' || use.k !== 1) return false;
-  const trips = use.n.args[0];
-  if (trips === undefined || trips.kind !== 'u32' || trips.value !== node.args.length) return false;
-  const body = fn.calls.get(use.n.callee ?? '');
-  return body !== undefined && writesEveryElement(body);
+  return overwritesState(fn, use.n);
 }
 
 const FEEDABLE: ReadonlySet<Op> = new Set<Op>([
@@ -1086,6 +1068,8 @@ interface Carry {
   readonly get: string;
   /** The body's result `set p0 p1 v`. */
   readonly set: string;
+  /** The `sub p1 1` index when the read is its only use (then never computed). */
+  readonly index?: string;
   readonly key: string;
   readonly type: 'u32' | 'bool';
 }
@@ -1097,7 +1081,7 @@ interface Carry {
  * element at (2^32 - 1) mod N. It is carried in a register instead of reloaded, which
  * takes the store-to-load round trip off the recurrence.
  */
-function carriedRead(body: TypedFunc): { get: string; set: string } | undefined {
+function carriedRead(body: TypedFunc): { get: string; set: string; index?: string } | undefined {
   const ret = body.ret;
   const state = body.params[0];
   if (ret.kind !== 'node' || state === undefined || isPrimitive(state) || state.kind !== 'arr')
@@ -1112,8 +1096,12 @@ function carriedRead(body: TypedFunc): { get: string; set: string } | undefined 
     if (n.op !== 'get' || !isParam(n.args[0], 0) || j?.kind !== 'node') continue;
     const d = defs.get(j.id);
     const one = d?.args[1];
-    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1)
-      return { get: n.id, set: set.id };
+    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1) {
+      const reads = body.nodes.filter((m) => m.args.some((a) => sameOp(a, j))).length;
+      return reads === 1 && !sameOp(body.ret, j)
+        ? { get: n.id, set: set.id, index: d.id }
+        : { get: n.id, set: set.id };
+    }
   }
   return undefined;
 }
@@ -1726,7 +1714,9 @@ class FunctionEmitter {
     key: string,
     t: Type,
   ): boolean {
-    const body = fillBody(callee);
+    // The shared fill-run analysis (optimize.ts `fillRun`) decides the shape.
+    const run = fillRun(env.fn, n);
+    const body = run === undefined ? undefined : { value: run.value, nodes: run.nodes };
     if (
       body === undefined ||
       count.kind !== 'lit' ||
@@ -1802,8 +1792,11 @@ class FunctionEmitter {
       'movk x10, #3, lsl #32',
       'fmov d16, x9',
       'mov v16.d[1], x10',
-      `movi v17.4s, #${4 * copies}`,
     );
+    const trips = Math.floor(count.value / (4 * copies));
+    // One trip covering the whole fill is straight-line code (no counter, no branch).
+    const single = trips === 1 && count.value === 4 * copies;
+    if (!single) this.#emit(`movi v17.4s, #${4 * copies}`);
     for (let u = 1; u < copies; u += 1)
       this.#emit(
         `movi ${counters[u]}.4s, #${4 * u}`,
@@ -1860,10 +1853,9 @@ class FunctionEmitter {
       }
     };
     const q = (u: number): string => `q${reg(body.value, u).slice(1)}`;
-    const trips = Math.floor(count.value / (4 * copies));
     const top = this.#label();
     this.#addr('x14', 'sp', this.#slot(key));
-    this.#emit(...movImm('w13', trips), `${top}:`);
+    if (!single) this.#emit(...movImm('w13', trips), `${top}:`);
     for (let u = 0; u < copies; u += 1) lanes(u);
     for (let u = 0; u < copies; u += 2)
       this.#emit(
@@ -1871,6 +1863,7 @@ class FunctionEmitter {
           ? `stp ${q(u)}, ${q(u + 1)}, [x14, #${16 * u}]`
           : `str ${q(u)}, [x14, #${16 * u}]`,
       );
+    if (single) return true;
     this.#emit(`add x14, x14, #${16 * copies}`);
     for (const c of counters) this.#emit(`add ${c}.4s, ${c}.4s, v17.4s`);
     this.#emit('subs w13, w13, #1', `b.ne ${top}`);
@@ -1927,6 +1920,8 @@ class FunctionEmitter {
     this.#pos += 1;
     // Absorbed into its consumer's instruction (see `selection`): nothing to emit here.
     if (sel.deferred.has(n.id)) return;
+    // The index of the carried previous-element read: the read comes from a register.
+    if (env.carry?.index === n.id) return;
     const vals = n.args.map((o) => this.#resolve(env, o));
     const [a, b, c] = vals;
     if (n.op !== 'fold' && n.op !== 'loop') for (const v of vals) this.#use(v);
@@ -2019,6 +2014,15 @@ class FunctionEmitter {
     if (env.carry?.get === n.id) {
       const cv: Val = { kind: 'key', key: env.carry.key, type: env.carry.type };
       this.#use(cv);
+      // Another name for the carried register when every read of it precedes the `set`
+      // that overwrites the register with this trip's element.
+      const me: Operand = { kind: 'node', id: n.id };
+      const setAt = env.fn.nodes.findIndex((m) => m.id === env.carry?.set);
+      const early = env.fn.nodes.every((m, i) => i < setAt || !m.args.some((o) => sameOp(o, me)));
+      if (feed === undefined && early && !sameOp(env.fn.ret, me)) {
+        this.#defAlias(key, env.carry.key, t);
+        return;
+      }
       scalar((d) => this.#into(d, cv), true);
       return;
     }
@@ -2307,12 +2311,12 @@ class FunctionEmitter {
             );
           return;
         }
-        if (n.op === 'fold' && this.#vectorFill(env, n, index, callee, count, init, extras, key, t))
-          return;
         const plan =
           n.op === 'fold' && count.kind === 'lit' && this.#inlinable(callee, env)
             ? vectorPlan(callee, count.value)
             : undefined;
+        if (n.op === 'fold' && this.#vectorFill(env, n, index, callee, count, init, extras, key, t))
+          return;
         // State: a scalar home, or the init slot itself when nothing else reads it.
         if (isPrimitive(t)) {
           if (plan === undefined) scalar((d) => this.#into(d, init), true);
@@ -2609,156 +2613,6 @@ class FunctionEmitter {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Fold fusion
-// ---------------------------------------------------------------------------
-
-/**
- * Fuse a producer fold into its consumer: when `A = fold f1 N z e...` builds an N-element
- * array whose element i depends only on i and `e` (f1 writes element i on every trip and
- * never reads its state), and A's only use is an extra argument of `fold f2 N init ... A
- * ...` whose body reads A only at the counter, the consumer's `get A i` becomes f1's
- * element expression and A is never stored. Exact under A0's value semantics: A is
- * immutable, unshared, and has no identity, so no other code can observe that it was not
- * materialized. The fused body is synthesized for this backend only (it is always inlined:
- * the top-level function is depth 0).
- */
-function fuseFolds(fn: TypedFunc): TypedFunc {
-  let cur = fn;
-  for (let round = 0; round < 8; round += 1) {
-    const next = fuseOnce(cur);
-    if (next === undefined) return cur;
-    cur = next;
-  }
-  return cur;
-}
-
-function fuseOnce(fn: TypedFunc): TypedFunc | undefined {
-  const uses = new Map<string, number>();
-  const count = (o: Operand): void => {
-    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
-  };
-  for (const n of fn.nodes) n.args.forEach(count);
-  count(fn.ret);
-  const defs = new Map(fn.nodes.map((n) => [n.id, n]));
-  for (const consumer of fn.nodes) {
-    const trips = consumer.args[0];
-    const body2 = fn.calls.get(consumer.callee ?? '');
-    if (consumer.op !== 'fold' || trips?.kind !== 'u32' || body2 === undefined) continue;
-    for (let k = 2; k < consumer.args.length; k += 1) {
-      const a = consumer.args[k] as Operand;
-      if (a.kind !== 'node' || uses.get(a.id) !== 1) continue;
-      const producer = defs.get(a.id);
-      const body1 = fn.calls.get(producer?.callee ?? '');
-      if (
-        producer === undefined ||
-        body1 === undefined ||
-        producer.op !== 'fold' ||
-        producer.args[0]?.kind !== 'u32' ||
-        producer.args[0].value !== trips.value ||
-        !isU32Array(fn.types.get(producer.id), trips.value) ||
-        !writesEveryElement(body1)
-      )
-        continue;
-      // The consumer reads its parameter k only as `get pk p1`.
-      const onlyAtCounter = body2.nodes.every((n) =>
-        n.args.every(
-          (o, j) => !isParam(o, k) || (n.op === 'get' && j === 0 && isParam(n.args[1], 1)),
-        ),
-      );
-      if (!onlyAtCounter || isParam(body2.ret, k)) continue;
-      const fused = fuseBodies(fn, body2, k, body1);
-      if (fused === undefined) continue;
-      const init = producer.args[1] as Operand;
-      const dropInit =
-        init.kind === 'node' && uses.get(init.id) === 1 && defs.get(init.id)?.op === 'arr';
-      const extras2 = consumer.args.slice(2).filter((_, j) => j + 2 !== k);
-      const nodes = fn.nodes
-        .filter((n) => n !== producer && !(dropInit && init.kind === 'node' && n.id === init.id))
-        .map((n) =>
-          n === consumer
-            ? {
-                ...n,
-                callee: fused.name,
-                args: [trips, consumer.args[1] as Operand, ...extras2, ...producer.args.slice(2)],
-              }
-            : n,
-        );
-      const calls = new Map(fn.calls);
-      calls.set(fused.name, fused);
-      return validateFunction(
-        { name: fn.name, params: fn.params, result: fn.result, nodes, ret: fn.ret },
-        calls,
-      );
-    }
-  }
-  return undefined;
-}
-
-/** The body of `fold f2` with its parameter k replaced by f1's element expression. */
-function fuseBodies(
-  fn: TypedFunc,
-  body2: TypedFunc,
-  k: number,
-  body1: TypedFunc,
-): TypedFunc | undefined {
-  const set = body1.nodes.find((n) => body1.ret.kind === 'node' && n.id === body1.ret.id);
-  if (set === undefined || body1.nodes.some((n) => n.args.some((o) => sameOp(o, body1.ret))))
-    return undefined;
-  const extras2 = body2.params.length - 3;
-  let fresh = 0;
-  const rename = new Map<string, string>();
-  const nextId = (prefix: string, id: string): string => {
-    const name = `v${fresh}`;
-    fresh += 1;
-    rename.set(`${prefix}${id}`, name);
-    return name;
-  };
-  const map1 = (o: Operand): Operand => {
-    if (o.kind === 'node') return { kind: 'node', id: rename.get(`a${o.id}`) as string };
-    if (o.kind === 'param' && o.index >= 2)
-      return { kind: 'param', index: 2 + extras2 + o.index - 2 };
-    return o;
-  };
-  const nodes: Node[] = [];
-  for (const n of body1.nodes) {
-    if (n === set) continue;
-    const args = n.args.map(map1);
-    nodes.push({ ...n, id: nextId('a', n.id), args });
-  }
-  const element = map1(set.args[2] as Operand);
-  const map2 = (o: Operand): Operand => {
-    if (o.kind === 'node') return { kind: 'node', id: rename.get(`b${o.id}`) as string };
-    if (o.kind === 'param' && o.index > k) return { kind: 'param', index: o.index - 1 };
-    return o;
-  };
-  for (const n of body2.nodes) {
-    const id = nextId('b', n.id);
-    if (n.op === 'get' && isParam(n.args[0], k)) nodes.push({ id, op: 'mov', args: [element] });
-    else {
-      const { callee, pred, text } = n;
-      nodes.push({
-        id,
-        op: n.op,
-        args: n.args.map(map2),
-        ...(callee === undefined ? {} : { callee }),
-        ...(pred === undefined ? {} : { pred }),
-        ...(text === undefined ? {} : { text }),
-      });
-    }
-  }
-  if (nodes.length > INLINE_MAX_NODES) return undefined;
-  const calls = new Map([...body2.calls, ...body1.calls]);
-  let name = 'fz';
-  for (let i = 0; calls.has(name) || fn.calls.has(name) || name === fn.name; i += 1)
-    name = `fz${i}`;
-  const params = [...body2.params.filter((_, j) => j !== k), ...body1.params.slice(2)];
-  return validateFunction(
-    { name, params, result: body2.result, nodes, ret: map2(body2.ret) },
-    calls,
-  );
-}
-
 /** Instructions that leave the flags alone; the first operand is the destination (none for stores). */
 const FLAG_PRESERVING = new Set([
   'add',
@@ -2868,7 +2722,7 @@ function pairMemory(lines: readonly string[]): string[] {
 
 /** Emit one function as Darwin AArch64 assembly (a `.globl _a0_<name>` block). */
 export function emitArm64Function(fn: TypedFunc): string {
-  return new FunctionEmitter(fuseFolds(fn)).emit();
+  return emitFused(fn, (f) => new FunctionEmitter(f).emit());
 }
 
 /** Assemble function blocks into one .s module for `clang -x assembler` / `as`. */
