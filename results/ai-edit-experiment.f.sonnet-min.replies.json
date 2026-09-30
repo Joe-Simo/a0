@@ -1,0 +1,237 @@
+{
+  "f-min4-seed/a0/conventional": [
+    "```\nfn minel u32 u32 u32x4 -> u32\na get p2 p1\nc lt a p0\nr select c a p0\nret r\nend\nfn min4 u32x4 -> u32\nr fold minel 4 4294967295 p0\nret r\nend\n```"
+  ],
+  "f-third-index/a0/conventional": [
+    "```\nfn third u32x4 -> u32\nr get p0 2\nret r\nend\n```"
+  ],
+  "f-advance-wrap/a0/conventional": [
+    "```\nfn advance u32 u32 -> u32\na add p0 1\nc eq a p1\nr select c 0 a\nret r\nend\n```"
+  ],
+  "f-bump-cap/a0/conventional": [
+    "```\nfn bump u32 -> u32\na add p0 10\nc gt a 100\nr select c 100 a\nret r\nend\n```"
+  ],
+  "f-divrem-pair/a0/conventional": [
+    "```\nfn divrem u32 u32 -> (u32,u32)\nq div p0 p1\nm rem p0 p1\nr rec q m\nret r\nend\n```"
+  ],
+  "f-remaining-order/a0/conventional": [
+    "```\nfn remaining u32 u32 -> u32\na sub p1 p0\nret a\nend\n```"
+  ],
+  "f-sumlow-bound/a0/conventional": [
+    "```\nfn addlow u32 u32 -> u32\nc lt p1 6\nv select c p1 0\nr add p0 v\nret r\nend\nfn sumlow u32 -> u32\nr fold addlow 8 p0\nret r\nend\n```"
+  ],
+  "f-setlow-or/a0/conventional": [
+    "```\nfn setlow u32 -> u32\na or p0 15\nret a\nend\n```"
+  ],
+  "f-sumsq-helper/a0/conventional": [
+    "```\nfn sq u32 -> u32\na mul p0 p0\nret a\nend\nfn sumsq u32 u32 -> u32\nx call sq p0\ny call sq p1\ns add x y\nret s\nend\n```"
+  ],
+  "f-countabove-gt/a0/conventional": [
+    "```\nfn cnt u32 u32 u32x4 u32 -> u32\na get p2 p1\nc gt a p3\nd select c 1 0\nr add p0 d\nret r\nend\nfn countabove u32x4 u32 -> u32\nr fold cnt 4 0 p0 p1\nret r\nend\n```"
+  ],
+  "f-avg4-floor/a0/conventional": [
+    "```\nfn addel u32 u32 u32x4 -> u32\na get p2 p1\nb add p0 a\nret b\nend\nfn avg4 u32x4 -> u32\ns fold addel 4 0 p0\nq div s 4\nret q\nend\n```"
+  ],
+  "f-addover-bool/a0/conventional": [
+    "```\nfn addover u32 u32 -> bool\ns add p0 p1\nc lt s p0\nret c\nend\n```"
+  ],
+  "f-highbyte-shr/a0/conventional": [
+    "```\nfn highbyte u32 -> u32\na shr p0 24\nret a\nend\n```"
+  ],
+  "f-min4-seed/a0/structured": [
+    "r fold minel 4 4294967295 p0"
+  ],
+  "f-third-index/a0/structured": [
+    "r get p0 2"
+  ],
+  "f-advance-wrap/a0/structured": [
+    "c eq a p1\nr select c 0 a\nret r"
+  ],
+  "f-bump-cap/a0/structured": [
+    "c gt a 100\nr select c 100 a\nret r"
+  ],
+  "f-divrem-pair/a0/structured": [
+    "fn divrem u32 u32 -> (u32,u32)\nq div p0 p1\nm rem p0 p1\nr rec q m\nret r\nend"
+  ],
+  "f-remaining-order/a0/structured": [
+    "a sub p1 p0"
+  ],
+  "f-sumlow-bound/a0/structured": [
+    "fn addlow u32 u32 -> u32\nc lt p1 6\nv select c p1 0\ns add p0 v\nret s\nend"
+  ],
+  "f-setlow-or/a0/structured": [
+    "a or p0 15"
+  ],
+  "f-sumsq-helper/a0/structured": [
+    "fn sq u32 -> u32\na mul p0 p0\nret a\nend\na call sq p0\nb call sq p1\nc add a b",
+    "a call sq p0\nb call sq p1\nc add a b\nfn sq u32 -> u32\na mul p0 p0\nret a\nend"
+  ],
+  "f-countabove-gt/a0/structured": [
+    "fn cnt u32 u32 u32x4 u32 -> u32\ne get p2 p1\nc gt e p3\nd select c 1 0\ns add p0 d\nret s\nend"
+  ],
+  "f-avg4-floor/a0/structured": [
+    "q shr s 2\nret q"
+  ],
+  "f-addover-bool/a0/structured": [
+    "fn addover u32 u32 -> bool\ns add p0 p1\nc lt s p0\nret c\nend"
+  ],
+  "f-highbyte-shr/a0/structured": [
+    "a shr p0 24"
+  ],
+  "f-min4-seed/ts/conventional": [
+    "```ts\nexport function min4(a: number[]): number {\n  let s = 4294967295;\n  for (let i = 0; i < 4; i++) {\n    const v = a[i % 4]!;\n    s = v < s ? v : s;\n  }\n  return s;\n}\n```"
+  ],
+  "f-third-index/ts/conventional": [
+    "```ts\nexport function third(a: number[]): number {\n  return a[2]!;\n}\n```"
+  ],
+  "f-advance-wrap/ts/conventional": [
+    "```ts\nexport function advance(i: number, n: number): number {\n  const next = (i + 1) >>> 0;\n  return next === n ? 0 : next;\n}\n```"
+  ],
+  "f-bump-cap/ts/conventional": [
+    "```ts\nexport function bump(x: number): number {\n  const r = (x + 10) >>> 0;\n  return r > 100 ? 100 : r;\n}\n```"
+  ],
+  "f-divrem-pair/ts/conventional": [
+    "```ts\nexport function divrem(a: number, b: number): [number, number] {\n  return b === 0 ? [4294967295, a >>> 0] : [Math.floor(a / b), (a % b) >>> 0];\n}\n```"
+  ],
+  "f-remaining-order/ts/conventional": [
+    "```ts\nexport function remaining(used: number, total: number): number {\n  return (total - used) >>> 0;\n}\n```"
+  ],
+  "f-sumlow-bound/ts/conventional": [
+    "```ts\nexport function sumlow(x: number): number {\n  let s = x >>> 0;\n  for (let i = 0; i < 8; i++) {\n    if (i < 6) {\n      s = (s + i) >>> 0;\n    }\n  }\n  return s;\n}\n```"
+  ],
+  "f-setlow-or/ts/conventional": [
+    "```ts\nexport function setlow(x: number): number {\n  return (x | 15) >>> 0;\n}\n```"
+  ],
+  "f-sumsq-helper/ts/conventional": [
+    "```ts\nexport function sq(x: number): number {\n  return Math.imul(x, x) >>> 0;\n}\nexport function sumsq(a: number, b: number): number {\n  return (sq(a) + sq(b)) >>> 0;\n}\n```"
+  ],
+  "f-countabove-gt/ts/conventional": [
+    "```ts\nexport function countabove(a: number[], t: number): number {\n  let n = 0;\n  for (let i = 0; i < 4; i++) {\n    if (a[i % 4]! > t) {\n      n = (n + 1) >>> 0;\n    }\n  }\n  return n;\n}\n```"
+  ],
+  "f-avg4-floor/ts/conventional": [
+    "```ts\nexport function avg4(a: number[]): number {\n  let s = 0;\n  for (let i = 0; i < 4; i++) {\n    s = (s + a[i % 4]!) >>> 0;\n  }\n  return Math.floor(s / 4);\n}\n```"
+  ],
+  "f-addover-bool/ts/conventional": [
+    "```ts\nexport function addover(a: number, b: number): boolean {\n  return a + b >= 4294967296;\n}\n```"
+  ],
+  "f-highbyte-shr/ts/conventional": [
+    "```ts\nexport function highbyte(x: number): number {\n  return x >>> 24;\n}\n```"
+  ],
+  "f-min4-seed/ts/structured": [
+    "2   let s = 4294967295;"
+  ],
+  "f-third-index/ts/structured": [
+    "2   return a[2]!;"
+  ],
+  "f-advance-wrap/ts/structured": [
+    "2   return (i + 1) >>> 0 === n ? 0 : (i + 1) >>> 0;"
+  ],
+  "f-bump-cap/ts/structured": [
+    "2   return Math.min((x + 10) >>> 0, 100);"
+  ],
+  "f-divrem-pair/ts/structured": [
+    "1 export function divrem(a: number, b: number): [number, number] {\n2   return b === 0 ? [4294967295, a] : [Math.floor(a / b), a % b];"
+  ],
+  "f-remaining-order/ts/structured": [
+    "2   return (total - used) >>> 0;"
+  ],
+  "f-sumlow-bound/ts/structured": [
+    "4     if (i < 6) {"
+  ],
+  "f-setlow-or/ts/structured": [
+    "2   return (x | 15) >>> 0;"
+  ],
+  "f-sumsq-helper/ts/structured": [
+    "2   return (sq(a) + sq(b)) >>> 0;\n+0 export function sq(x: number): number { return Math.imul(x, x) >>> 0; }"
+  ],
+  "f-countabove-gt/ts/structured": [
+    "4     if (a[i % 4]! > t) {"
+  ],
+  "f-avg4-floor/ts/structured": [
+    "6   return s >>> 2;"
+  ],
+  "f-addover-bool/ts/structured": [
+    "1 export function addover(a: number, b: number): boolean {\n2   return a + b >= 4294967296;"
+  ],
+  "f-highbyte-shr/ts/structured": [
+    "2   return x >>> 24;"
+  ],
+  "f-min4-seed/rust/conventional": [
+    "```rust\npub fn min4(a: [u32; 4]) -> u32 {\n    let mut s: u32 = u32::MAX;\n    for i in 0..4 {\n        if a[i] < s {\n            s = a[i];\n        }\n    }\n    s\n}\n```"
+  ],
+  "f-third-index/rust/conventional": [
+    "```rust\npub fn third(a: [u32; 4]) -> u32 {\n    a[2]\n}\n```"
+  ],
+  "f-advance-wrap/rust/conventional": [
+    "```rust\npub fn advance(i: u32, n: u32) -> u32 {\n    let r = i.wrapping_add(1);\n    if r == n { 0 } else { r }\n}\n```"
+  ],
+  "f-bump-cap/rust/conventional": [
+    "```rust\npub fn bump(x: u32) -> u32 {\n    let r = x.wrapping_add(10);\n    if r > 100 { 100 } else { r }\n}\n```"
+  ],
+  "f-divrem-pair/rust/conventional": [
+    "```rust\npub fn divrem(a: u32, b: u32) -> (u32, u32) {\n    if b == 0 { (u32::MAX, a) } else { (a / b, a % b) }\n}\n```"
+  ],
+  "f-remaining-order/rust/conventional": [
+    "```rust\npub fn remaining(used: u32, total: u32) -> u32 {\n    total.wrapping_sub(used)\n}\n```"
+  ],
+  "f-sumlow-bound/rust/conventional": [
+    "```rust\npub fn sumlow(x: u32) -> u32 {\n    let mut s = x;\n    for i in 0..8u32 {\n        if i < 6 {\n            s = s.wrapping_add(i);\n        }\n    }\n    s\n}\n```"
+  ],
+  "f-setlow-or/rust/conventional": [
+    "```rust\npub fn setlow(x: u32) -> u32 {\n    x | 15\n}\n```"
+  ],
+  "f-sumsq-helper/rust/conventional": [
+    "```rust\npub fn sq(x: u32) -> u32 {\n    x.wrapping_mul(x)\n}\npub fn sumsq(a: u32, b: u32) -> u32 {\n    sq(a).wrapping_add(sq(b))\n}\n```"
+  ],
+  "f-countabove-gt/rust/conventional": [
+    "```rust\npub fn countabove(a: [u32; 4], t: u32) -> u32 {\n    let mut n: u32 = 0;\n    for i in 0..4 {\n        if a[i] > t {\n            n += 1;\n        }\n    }\n    n\n}\n```"
+  ],
+  "f-avg4-floor/rust/conventional": [
+    "```rust\npub fn avg4(a: [u32; 4]) -> u32 {\n    let mut s: u32 = 0;\n    for i in 0..4 {\n        s = s.wrapping_add(a[i]);\n    }\n    s / 4\n}\n```"
+  ],
+  "f-addover-bool/rust/conventional": [
+    "```rust\npub fn addover(a: u32, b: u32) -> bool {\n    a.wrapping_add(b) < a\n}\n```"
+  ],
+  "f-highbyte-shr/rust/conventional": [
+    "```rust\npub fn highbyte(x: u32) -> u32 {\n    x >> 24\n}\n```"
+  ],
+  "f-min4-seed/rust/structured": [
+    "2     let mut s: u32 = u32::MAX;"
+  ],
+  "f-third-index/rust/structured": [
+    "2     a[2]"
+  ],
+  "f-advance-wrap/rust/structured": [
+    "1 pub fn advance(i: u32, n: u32) -> u32 {\n2     if i.wrapping_add(1) == n { 0 } else { i.wrapping_add(1) }"
+  ],
+  "f-bump-cap/rust/structured": [
+    "2     x.wrapping_add(10).min(100)"
+  ],
+  "f-divrem-pair/rust/structured": [
+    "1 pub fn divrem(a: u32, b: u32) -> (u32, u32) {\n2     if b == 0 { (u32::MAX, a) } else { (a / b, a % b) }"
+  ],
+  "f-remaining-order/rust/structured": [
+    "2     total.wrapping_sub(used)"
+  ],
+  "f-sumlow-bound/rust/structured": [
+    "4         if i < 6 {"
+  ],
+  "f-setlow-or/rust/structured": [
+    "2     x | 15"
+  ],
+  "f-sumsq-helper/rust/structured": [
+    "2     sq(a).wrapping_add(sq(b))\n+3 pub fn sq(x: u32) -> u32 { x.wrapping_mul(x) }"
+  ],
+  "f-countabove-gt/rust/structured": [
+    "4         if a[i] > t {"
+  ],
+  "f-avg4-floor/rust/structured": [
+    "6     s / 4"
+  ],
+  "f-addover-bool/rust/structured": [
+    "1 pub fn addover(a: u32, b: u32) -> bool {\n2     a.checked_add(b).is_none()"
+  ],
+  "f-highbyte-shr/rust/structured": [
+    "2     x >> 24"
+  ]
+}
