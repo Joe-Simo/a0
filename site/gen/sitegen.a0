@@ -1,10 +1,19 @@
-use "sgread.a0"
+use "sgphase.a0"
+fn dumpw io u32 u32x128x64 -> io
+v call rd64 p2 p1
+a call putd p0 true v
+b write a 10
+ret b
+end
 fn sitegen io -> u32
 a call phasea p0
 st at a 0
 t at a 1
-s call hd st 4
-n call hd st 5
-o call cpst t true false st s n
+k at a 2
+b call phaseb st t k
+pa at b 0
+t2 at b 1
+n mov 8192
+o fold dumpw n t2 pa
 ret 0
 end

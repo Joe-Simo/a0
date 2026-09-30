@@ -301,13 +301,17 @@ a2 add a 1
 v call rd64 p0 a2
 f0 eq p1 0
 vv select f0 1 v
+one mov 1
 d add p2 p1
-r call addw1 p0 d vv
+r fold addw one p0 d vv
 ret r
 end
-fn addw1 u32x128x64 u32 u32 -> u32x128x64
+fn clr u32x128x64 u32 -> u32x128x64
 one mov 1
-r fold addw one p0 p1 p2
+a add 7760 p1
+z0 eq p1 0
+v select z0 255 0
+r fold wr64 one p0 a v
 ret r
 end
 fn hcost u32x128x64 u32 u32x128x512 -> u32x128x64
@@ -388,14 +392,6 @@ sl6 mul slr 6
 base add sl6 6800
 s9 fold cadd cc s8 base
 ret s9
-end
-fn clr u32x128x64 u32 -> u32x128x64
-one mov 1
-a add 7760 p1
-z0 eq p1 0
-v select z0 255 0
-r fold wr64 one p0 a v
-ret r
 end
 
 # ---- edit: results/edit-loop(.quiet).json. 7768 rows 7769 load maximum (x 100) 7770 quiet run;
@@ -685,6 +681,12 @@ cex select ex 1 0
 s5 fold wr64 cex s4 10 1
 ret s5
 end
+fn zcap u32x128x64 u32 -> u32x128x64
+one mov 1
+a add 80 p1
+r fold wr64 one p0 a 0
+ret r
+end
 # a byte between tokens (fold body)
 fn tsep u32x128x64 u32 u32 u32x128x512 -> u32x128x64
 one mov 1
@@ -767,12 +769,6 @@ s24 fold wr64 cl s23 0 3
 s25 fold wr64 cl s24 11 b
 ret s25
 end
-fn zcap u32x128x64 u32 -> u32x128x64
-one mov 1
-a add 80 p1
-r fold wr64 one p0 a 0
-ret r
-end
 fn tbyte u32x128x64 u32 u32x128 u32x128x512 -> u32x128x64
 one mov 1
 w0 shr p1 2
@@ -840,7 +836,18 @@ one mov 1
 r0 read p1
 n at r0 0
 t at r0 1
-s1 fold wr64 one p0 13 p2
+eq5 eq p2 5
+has gt n 0
+qv select has 1 0
+c5 select eq5 1 0
+s0 fold wr64 c5 p0 7770 qv
+q call g s0 7770
+eq3 eq p2 3
+q1 eq q 1
+skip and eq3 q1
+r1 select eq5 3 p2
+role select skip 0 r1
+s1 fold wr64 one s0 13 role
 s2 fold wr64 one s1 14 p3
 s3 fold wr64 one s2 0 0
 s4 fold wr64 one s3 1 0
