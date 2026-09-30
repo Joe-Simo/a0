@@ -1406,10 +1406,14 @@ test('edit tolerance: trailing end, whole-function block under its handle, echoe
     run(p.byName.get('checksum') as TypedFunc, [[1, 2, 3, 4]]),
     ((((7 * 31 + 1) * 31 + 2) * 31 + 3) * 31 + 4) >>> 0,
   );
-  // Removal is a program-level edit, not a node edit: refused under a function handle.
+  // `-fn` is a program-level edit under a function handle too; removing the handled
+  // function while also editing it is refused.
   s = new EditSession(parseAndValidate(src2));
   h = s.open('checksum').handle;
-  assert.throws(() => s.apply(`${h}\nr fold mixel 4 7 p0\n-fn checksum`), /invalid delete target/);
+  assert.throws(
+    () => s.apply(`${h}\nr fold mixel 4 7 p0\n-fn checksum`),
+    /which this reply removes/,
+  );
   // An echo of the rest of the view (program handle line plus signature lines) is ignored.
   s = new EditSession(parseAndValidate(src));
   const e = s.open('sq').handle;

@@ -4,7 +4,9 @@
  * Two edit paths:
  *  1. Self-contained patch: `patch <fn> <sha256>` + replacement nodes + `end`.
  *  2. Session-bound edit: a session retains the revision and hands out a short
- *     handle (`e0`); the edit text is the handle line followed by replacement nodes.
+ *     handle (`e0`); the edit text is the handle line followed by replacement nodes. The
+ *     handle line may be omitted when exactly one function handle (or, with none, one
+ *     program handle) is open.
  *
  * Both paths replace existing nodes only. The full replacement set is validated
  * against the whole function before anything is committed. Successful handles are
@@ -411,6 +413,26 @@ export function scopedProgramView(program: TypedProgram, target: string): string
  * `-fn name` removes a function. The whole program is re-validated; callers of a removed or
  * re-typed function fail the edit atomically.
  */
+/**
+ * Close every `fn` block of an edit that the reply left open: a block ends at the next `fn` or
+ * `-fn` line or at the end of the reply, so its trailing `end` is optional. Unambiguous because
+ * `fn` and `end` are reserved and never start an instruction line.
+ */
+function closeBlocks(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  let open = false;
+  for (const raw of lines) {
+    const t = stripComment(raw).trim();
+    if (/^-?fn\s/.test(t)) {
+      if (open) out.push('end');
+      open = t.startsWith('fn') && !/\send$/.test(t);
+    } else if (t === 'end') open = false;
+    out.push(raw);
+  }
+  if (open) out.push('end');
+  return out;
+}
+
 /** A one-line `fn NAME types -> T end` naming an existing function: the view's signature line echoed back, carrying no change. */
 function isSignatureEcho(line: string, program: TypedProgram): boolean {
   const m = /^fn\s+([a-z][a-z0-9_]*)\b.*\send$/.exec(line);
@@ -441,7 +463,7 @@ function orderFunctionsByCalls(fns: readonly Func[]): Func[] {
 }
 
 export function editProgram(program: TypedProgram, text: string): TypedProgram {
-  const lines = text.split(/\r?\n/);
+  const lines = closeBlocks(text.split(/\r?\n/));
   const removals = new Set<string>();
   const kept: string[] = [];
   for (const raw of lines) {
@@ -625,6 +647,21 @@ export class EditSession {
     if (utf8Length(text) > LIMITS.maxSourceBytes)
       throw new A0Error('edit too large', undefined, { code: 'limit' });
     const rawLines = text.split(/\r?\n/);
+    // The handle line may be left out when it is implied: the reply then edits the one open
+    // function handle (which also takes whole `fn` blocks and `-fn` lines), or, with no
+    // function handle open, the one open program handle.
+    const firstLine = rawLines.map((l) => stripComment(l).trim()).find((l) => l.length > 0) ?? '';
+    if (!HANDLE.test(firstLine) && !PROGRAM_HANDLE.test(firstLine)) {
+      const open = [...this.#handles.keys()];
+      const fnHandles = open.filter((h) => HANDLE.test(h));
+      const implied = fnHandles.length > 0 ? fnHandles : open;
+      if (implied.length !== 1)
+        throw new A0Error(`invalid handle '${firstLine}'`, 1, {
+          code: 'handle',
+          fix: 'start the reply with one of the handle lines shown in the view',
+        });
+      return this.apply(`${implied[0] as string}\n${text}`);
+    }
     // A reply may carry several sections, each headed by an open handle; they apply in
     // order as one atomic edit (all or nothing).
     const heads = rawLines
@@ -716,12 +753,16 @@ export class EditSession {
     // function sent back whole replaces itself, and any other function is added or replaced
     // exactly as under a program handle. Edit lines before the first block apply to the
     // handled function after the blocks, so a callee changed in the same reply type-checks.
+    // `-fn name` lines before the first block are program-level too.
     const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
-    const editLines = blockAt < 0 ? body : body.slice(0, blockAt);
+    const head = blockAt < 0 ? body : body.slice(0, blockAt);
+    const isRemoval = (l: string): boolean => /^-fn\s/.test(stripComment(l).trim());
+    const editLines = head.filter((l) => !isRemoval(l));
+    const programLines = [...head.filter(isRemoval), ...(blockAt < 0 ? [] : body.slice(blockAt))];
     let program = this.#program;
-    if (blockAt >= 0) {
-      const blocks = body.slice(blockAt).join('\n');
-      program = editProgram(program, strippedEnd ? `${blocks}\nend` : blocks);
+    if (programLines.length > 0) {
+      const blocks = programLines.join('\n');
+      program = editProgram(program, strippedEnd && blockAt >= 0 ? `${blocks}\nend` : blocks);
     }
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);
