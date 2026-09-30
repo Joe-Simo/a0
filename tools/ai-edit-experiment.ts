@@ -823,7 +823,10 @@ async function main(): Promise<void> {
   const model = process.env.A0_EXPERIMENT_MODEL ?? 'claude-opus-5-5';
   const trialsPerCell = Number(process.env.A0_EXPERIMENT_TRIALS ?? '3');
   const maxRepairs = 2;
-  const guide = await readFile('MODEL_GUIDE.txt', 'utf8');
+  // The language primer is the dominant A0 cost; A0_EXPERIMENT_GUIDE selects an alternative
+  // (e.g. MODEL_GUIDE.min.txt) so live runs can compare acceptance against primer size.
+  const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.txt';
+  const guide = await readFile(guidePath, 'utf8');
   const encoders = {
     o200k_base: getEncoding('o200k_base'),
     cl100k_base: getEncoding('cl100k_base'),
@@ -956,6 +959,7 @@ async function main(): Promise<void> {
         ? `run with scripted replies from ${repliesPath} (subject: ${process.env.A0_EXPERIMENT_SUBJECT ?? 'unspecified'})`
         : 'unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)',
     model: live ? model : null,
+    languagePrimer: guidePath,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
     design: {

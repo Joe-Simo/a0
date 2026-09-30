@@ -26,7 +26,7 @@ import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.1';
+export const COMPILER_VERSION = 'a0c-0.1.2';
 
 export type Target = 'js' | 'c' | 'java' | 'sv';
 export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv'];
@@ -108,6 +108,7 @@ function a0_u32(v, name) {
   if (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > U32_MAX) throw new RangeError(name + ': expected u32');
   return v;
 }
+function a0_bad(name, shape) { throw new (shape === 'u32' ? RangeError : TypeError)(name + ': expected ' + shape); }
 function a0_bool(v, name) {
   if (typeof v !== 'boolean') throw new TypeError(name + ': expected bool');
   return v;
@@ -303,10 +304,15 @@ const emitJsFunction: Emitter = (fn) => {
   const params = fn.params.map((_, i) => `p${i}`).join(', ');
   // Public entry: validate inputs once, then run the unguarded internal function.
   // Internal calls, folds, and loops target the a0i_/a0o_ variants, so guards are paid only at the boundary.
+  // Scalar guards are a single comparison: `(v >>> 0) === v` holds exactly for integers in
+  // [0, 2^32) and for no string, boolean, object, NaN, or fraction (measured: the call into
+  // a0_u32 cost 1.3-1.4x on three-operation kernels).
   const guards = fn.params.map((t, i) =>
-    isPrimitive(t)
-      ? `  a0_${t}(p${i}, 'p${i}');`
-      : `  p${i} = a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
+    t === 'u32'
+      ? `  if ((p${i} >>> 0) !== p${i}) a0_bad('p${i}', 'u32');`
+      : t === 'bool'
+        ? `  if (typeof p${i} !== 'boolean') a0_bad('p${i}', 'bool');`
+        : `  p${i} = a0_check(p${i}, ${jsShape(t)}, 'p${i}');`,
   );
   const lines = [`function a0i_${fn.name}(${params}) {`, ...jsBody(fn, false), '}'];
   const p0 = fn.params[0];

@@ -334,6 +334,26 @@ full and A0's structured view is the largest of the six. The language-independen
 of this (caching is a provider feature) is recorded here only because the primer is A0's
 dominant cost; the A0-side levers remain the view size and the primer size.
 
+## Session 2026-09-29 (late): primer size, JS guards
+
+- **Compact primer** `MODEL_GUIDE.min.txt`: 342 o200k tokens against 610 for `MODEL_GUIDE.txt`
+  (target was ≤ 300; the worked example costs ~30 and is kept). Harness option
+  `A0_EXPERIMENT_GUIDE` selects it; scripted run recorded in
+  `results/ai-edit-experiment.min-guide.json`: language-primer bucket 7930 → 4446 tokens
+  over 13 tasks, whole-task total 9587 → 6103 (conventional, −36 %) and 11090 → 7606
+  (structured, −31 %). Acceptance stayed 13/13 in every cell, but the scripted subject
+  does not read the primer, so **this run says nothing about whether a model can still
+  write A0 from the shorter guide**; only a live run can decide that, and it must compare
+  both guides with the same accounting.
+- **JS boundary guards** now emit one inline comparison per scalar parameter
+  (`(v >>> 0) !== v`) instead of a helper call. Interleaved same-process A/B on the affine
+  kernel, 21 rounds: old 62.1 ns, new 62.1 ns, hand-written 49.8 ns. No measured change:
+  V8 already inlined the helper. The remaining ~12 ns per call is the validation itself,
+  which is the boundary's purpose; internal calls never pay it. Kept for simplicity only.
+- `bun run exec-bench` was run under a load average of 115 from other applications and
+  produced C ratios from 0.44× to 1.41× on unchanged code; that run was discarded and the
+  committed results are unchanged. Whole-suite timing runs need a quiet machine.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
