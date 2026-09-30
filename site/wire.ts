@@ -18,7 +18,10 @@ export function readBytes(
   return { bytes, next: i + n };
 }
 
-/** An href the page may set: http(s), a site-relative path, a fragment, or mailto. */
+/**
+ * An href the page may set: http(s), a site-relative path, a fragment, or mailto. A path must
+ * not start with `//` or `/\\`, which browsers resolve as another host.
+ */
 export function safeHref(value: string): boolean {
-  return /^(https?:|\/|#|mailto:)/i.test(value);
+  return /^(https?:|\/(?![/\\])|#|mailto:)/i.test(value);
 }

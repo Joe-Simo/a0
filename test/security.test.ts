@@ -9,6 +9,7 @@ import { link } from '../src/link.js';
 import { parallelC } from '../src/parallel.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
+import { fillShell, renderWords, SITE_CSP } from '../tools/site-render.js';
 import { cDriver } from '../tools/verify.js';
 
 const fuelError = (e: unknown): boolean =>
@@ -163,8 +164,38 @@ test('site wire: byte lengths are clamped to the stream and hrefs are restricted
   assert.equal(readBytes([], 0).bytes.length, 0);
   for (const ok of ['https://a0lang.com', 'http://x', '/docs', '#top', 'MAILTO:a@b.c'])
     assert.ok(safeHref(ok), ok);
-  for (const bad of ['javascript:alert(1)', 'JavaScript:x', 'data:text/html,x', ' /x', ''])
+  for (const bad of [
+    'javascript:alert(1)',
+    'JavaScript:x',
+    'data:text/html,x',
+    ' /x',
+    '',
+    '//evil.example',
+    '/\\evil.example',
+  ])
     assert.equal(safeHref(bad), false, bad);
+});
+
+test('site prerender: same href rule and length clamp as the runtime; shells get the CSP', () => {
+  const str = (s: string): number[] => [s.length, ...[...s].map((c) => c.charCodeAt(0))];
+  // OPEN a, ATTR href "//evil.example", ATTR href "javascript:x", ATTR href "/docs", TEXT, CLOSE.
+  const words = [1, 9, 4, 3, ...str('//evil.example'), 4, 3, ...str('javascript:x')];
+  const r = renderWords([...words, 4, 3, ...str('/docs'), 2, ...str('$&'), 3]);
+  assert.equal(r.html, '<a href="/docs">$&amp;</a>');
+  // A hostile length word reads only the words present (no 4 GB allocation).
+  assert.equal(renderWords([2, 0xffff_ffff, 104, 105]).html, 'hi');
+  const shell =
+    '<html><head>\n  <meta charset="utf-8" />\n</head><body><main id="app"></main></body></html>';
+  const page = fillShell(shell, { html: '<p>$&amp;$1</p>', css: 'p{color:red}', text: '' });
+  assert.ok(page.includes(`<meta http-equiv="Content-Security-Policy" content="${SITE_CSP}" />`));
+  assert.ok(page.includes('<main id="app"><p>$&amp;$1</p></main>'));
+  assert.ok(page.includes('<style>p{color:red}</style>'));
+  assert.match(SITE_CSP, /script-src 'self' 'wasm-unsafe-eval';/);
+  assert.match(SITE_CSP, /object-src 'none'.*base-uri 'none'/);
+  assert.throws(
+    () => fillShell(shell, { html: '', css: 'p{}</STYLE><script>alert(1)</script>', text: '' }),
+    /<\/style/,
+  );
 });
 
 test('verify C driver: ninput is clamped to the capacity and to the tokens present', async () => {

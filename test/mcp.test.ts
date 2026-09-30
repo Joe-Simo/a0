@@ -129,3 +129,36 @@ test('mcp: paths are confined to the root, symlink escapes included', () =>
     assert.equal(ok.text, 'sub.a0');
     await client.close();
   }));
+
+test('mcp: diagnostics carry no host paths; an .a0 name must also resolve to an .a0 file', () =>
+  withRoot(async (base) => {
+    const root = join(base, 'root');
+    await writeFile(join(root, 'bad.a0'), 'fn r u32 -> u32\na call r p0\nret a\nend\n');
+    await writeFile(join(root, 'secret.env'), 'TOKEN=abc\n');
+    await symlink(join(root, 'secret.env'), join(root, 'env.a0'));
+    await mkdir(join(root, 'dir.a0'));
+    const client = await connect(root);
+    const bad = await call(client, 'a0_check', { file: 'bad.a0' });
+    assert.ok(bad.error);
+    assert.match(bad.text, /bad\.a0/);
+    const view = await call(client, 'a0_open', { file: 'm.a0', function: 'f' });
+    await call(client, 'a0_apply', {
+      file: 'm.a0',
+      edit: `${view.text.split('\n')[0] ?? ''}\nc add b 5`,
+    });
+    const dir = await call(client, 'a0_save', { file: 'm.a0', path: 'dir.a0' });
+    assert.ok(dir.error);
+    for (const r of [bad, dir]) {
+      assert.ok(!r.text.includes(base), r.text);
+      assert.ok(!r.text.includes('/private/'), r.text);
+    }
+    for (const r of [
+      await call(client, 'a0_check', { file: 'env.a0' }),
+      await call(client, 'a0_save', { file: 'm.a0', path: 'env.a0' }),
+    ]) {
+      assert.ok(r.error);
+      assert.ok(!r.text.includes('TOKEN'), r.text);
+    }
+    assert.equal(await readFile(join(root, 'secret.env'), 'utf8'), 'TOKEN=abc\n');
+    await client.close();
+  }));

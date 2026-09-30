@@ -2014,6 +2014,13 @@ Landed:
 - Gate: lint, typecheck, test 44/44, verify (native_arm64 4297, native_x86_64 4297, all
   paths passed), equiv 48/48, app, hw, dotnet, gpu passed.
 
+### Security review a0c-0.1.24 (arena, AVR inlining, call aliases, MCP, site)
+
+- C large-aggregate arena (a0c-0.1.16 design): the static arena and its top were process-global, so host threads calling exported functions concurrently raced on `a0arena_top` (ThreadSanitizer: data race), overlapped allocations, and could push allocations past the static bound. The arena is now thread-local (`_Thread_local`, C++ `thread_local`; wasm32 without threads lowers it to a plain global). Single-threaded, the static bound held: a differential run of loop/fold/select/mov/record programs under ASan+UBSan matched the interpreter. Test: `test/core.test.ts` (4 pthreads, TSan, C and C++).
+- MCP: diagnostics leaked absolute host paths (link errors, raw fs errors such as EISDIR): the root prefix is stripped and non-A0 errors report their code only. A `.a0` name resolving through a symlink to a non-`.a0` file inside the root (e.g. `.env`) was readable and overwritable: the resolved target must be `.a0` too. Test: `test/mcp.test.ts`. Not changed: a0_run is synchronous (a fuel-bounded run can hold the stdio server ~28 s; fuel is the bound, no wall clock), and save is check-then-write (a local process racing a symlink swap inside the root).
+- Site: no CSP was produced (the earlier vercel.json headers are not in the tree). Every page now carries a CSP `<meta>` (`tools/site-render.ts` SITE_CSP: `script-src 'self' 'wasm-unsafe-eval'`, `object-src`/`base-uri` `'none'`, `form-action 'none'`, Trusted Types required; `frame-ancestors` needs a header, so a host must still send it). The shell fill used string replacement patterns (`$&` in page text was expanded) and inlined the stylesheet unescaped (`</style` refused now). `safeHref` accepted `//host` and `/\host`; the prerenderer applied no href rule and no length clamp. Tests: `test/security.test.ts`. Built pages run under the CSP (home, play) with no violations.
+- Reviewed without findings: AVR inlining (200 random programs plus alias, count, and far-frame cases under simavr matched the interpreter), parser call-by-name aliases (recursion still rejected in all three parsers, ops shadow function names, no parser divergence on the new forms).
+
 
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 

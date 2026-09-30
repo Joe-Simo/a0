@@ -888,11 +888,8 @@ export class EditSession {
     )
       body = body.slice(0, echoAt);
     // A trailing `end` mirrors the view and carries no information: accept it.
-    let strippedEnd = false;
-    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end') {
+    while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === 'end')
       body = body.slice(0, -1);
-      strippedEnd = true;
-    }
     while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
       body = body.slice(0, -1);
     // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
@@ -925,8 +922,7 @@ export class EditSession {
     }
     let program = this.#program;
     if (programLines.length > 0 || lineBlocks.length > 0) {
-      const blocks = closeBlocks(strippedEnd && open ? [...programLines, 'end'] : programLines);
-      program = editProgram(program, [...blocks, ...lineBlocks].join('\n'));
+      program = editProgram(program, [...closeBlocks(programLines), ...lineBlocks].join('\n'));
     }
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);
