@@ -7438,75 +7438,78 @@ x7405 write x7404 2
 x7406 text "cm"
 x7407 puts x7405 x7406
 x7408 write x7407 2
-x7409 text "# git clone https://github.com/Joe-Simo/a0 && bun install && bun run build\n"
+x7409 text "# one binary, no package manager (macOS arm64 shown; linux, windows, x64 builds on GitHub)\n"
 x7410 puts x7408 x7409
 x7411 call close x7410 
 x7412 write x7411 2
-x7413 text "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n"
+x7413 text "curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0\n"
 x7414 puts x7412 x7413
 x7415 write x7414 2
-x7416 text "node dist/src/cli.js run sq.a0 sq 12        # 144\n"
+x7416 text "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n"
 x7417 puts x7415 x7416
 x7418 write x7417 2
-x7419 text "node dist/src/cli.js emit arm64 sq.a0        # or c, js, java, sv\n"
+x7419 text "./a0 run sq.a0 sq 12          # 144\n"
 x7420 puts x7418 x7419
 x7421 write x7420 2
-x7422 text "bun run verify                                # 5262 cases on every target"
+x7422 text "./a0 emit arm64 sq.a0         # A0's own machine code; or c, js, java, sv\n"
 x7423 puts x7421 x7422
-x7424 call close x7423 
-x7425 call close x7424 
-x7426 call close x7425 
-ret x7426
-end
-
-fn sec_close io -> io
-x7428 call close p0 
+x7424 write x7423 2
+x7425 text "./a0 check sq.a0              # diagnostics with codes and the one fix"
+x7426 puts x7424 x7425
+x7427 call close x7426 
+x7428 call close x7427 
 x7429 call close x7428 
 ret x7429
 end
 
+fn sec_close io -> io
+x7431 call close p0 
+x7432 call close x7431 
+ret x7432
+end
+
 fn sec_foot io -> io
-x7431 call open p0 17
-x7432 write x7431 4
-x7433 write x7432 2
-x7434 text "foot"
-x7435 puts x7433 x7434
-x7436 call open x7435 2
-x7437 write x7436 2
-x7438 text "A0 is a research project. Every number on this site comes from the repository's evidence ledger and is reproducible with its verification suite. Wins, ties, and losses are published together."
-x7439 puts x7437 x7438
-x7440 call close x7439 
-x7441 call open x7440 2
-x7442 write x7441 2
-x7443 text "Made by "
-x7444 puts x7442 x7443
-x7445 call open x7444 9
-x7446 write x7445 4
-x7447 write x7446 3
-x7448 text "https://x.com/joesimo"
-x7449 puts x7447 x7448
-x7450 write x7449 2
-x7451 text "@joesimo"
+x7434 call open p0 17
+x7435 write x7434 4
+x7436 write x7435 2
+x7437 text "foot"
+x7438 puts x7436 x7437
+x7439 call open x7438 2
+x7440 write x7439 2
+x7441 text "A0 is a research project. Every number on this site comes from the repository's evidence ledger and is reproducible with its verification suite. Wins, ties, and losses are published together."
+x7442 puts x7440 x7441
+x7443 call close x7442 
+x7444 call open x7443 2
+x7445 write x7444 2
+x7446 text "Made by "
+x7447 puts x7445 x7446
+x7448 call open x7447 9
+x7449 write x7448 4
+x7450 write x7449 3
+x7451 text "https://x.com/joesimo"
 x7452 puts x7450 x7451
-x7453 call close x7452 
-x7454 write x7453 2
-x7455 text " · "
-x7456 puts x7454 x7455
-x7457 call open x7456 9
-x7458 write x7457 4
-x7459 write x7458 3
-x7460 text "https://github.com/Joe-Simo/a0"
-x7461 puts x7459 x7460
-x7462 write x7461 2
-x7463 text "GitHub"
+x7453 write x7452 2
+x7454 text "@joesimo"
+x7455 puts x7453 x7454
+x7456 call close x7455 
+x7457 write x7456 2
+x7458 text " · "
+x7459 puts x7457 x7458
+x7460 call open x7459 9
+x7461 write x7460 4
+x7462 write x7461 3
+x7463 text "https://github.com/Joe-Simo/a0"
 x7464 puts x7462 x7463
-x7465 call close x7464 
-x7466 write x7465 2
-x7467 text " · MIT · 2026"
-x7468 puts x7466 x7467
-x7469 call close x7468 
-x7470 call close x7469 
-ret x7470
+x7465 write x7464 2
+x7466 text "GitHub"
+x7467 puts x7465 x7466
+x7468 call close x7467 
+x7469 write x7468 2
+x7470 text " · MIT · 2026"
+x7471 puts x7469 x7470
+x7472 call close x7471 
+x7473 call close x7472 
+ret x7473
 end
 
 fn session io -> u32
@@ -7573,10 +7576,10 @@ x6881 call sec_cost x6154
 x6905 call sec_hw x6881
 x7103 call chart9 x6905
 x7263 call sec_targets x7103
-x7427 call sec_dev x7263
-x7430 call sec_close x7427
-x7471 call sec_foot x7430
-x7472 write x7471 6
-x7473 write x7472 0
+x7430 call sec_dev x7263
+x7433 call sec_close x7430
+x7474 call sec_foot x7433
+x7475 write x7474 6
+x7476 write x7475 0
 ret event
 end

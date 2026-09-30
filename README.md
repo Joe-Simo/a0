@@ -22,6 +22,24 @@ semantics, [MODEL_GUIDE.txt](MODEL_GUIDE.txt) for the AI-facing language
 instructions, [STATUS.md](STATUS.md) for the current implemented scope, evidence
 ledger, blockers, and next action, and `results/` for machine-readable evidence.
 
+## Install
+
+A0 needs no package manager, no Node, and no Bun. Download the `a0` binary for your platform from the [latest release](https://github.com/Joe-Simo/a0/releases/latest) and run it:
+
+```bash
+curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0
+printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
+./a0 run sq.a0 sq 12            # 144
+./a0 emit arm64 sq.a0           # A0's own machine code; or c, js, java, sv
+./a0 check sq.a0                # diagnostics with codes
+```
+
+Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, `a0-windows-x64.exe`. A C compiler (clang or gcc) is needed only to link native output on your machine.
+
+## Building the compiler from source
+
+The compiler itself is written in TypeScript (A0 is not self-hosted yet), so building it from source needs Bun or Node 22+. Users of A0 do not need this.
+
 Requires Node 22+ and Bun (npm equivalents work: `npm install`, `npm run <script>`).
 
 ```bash
