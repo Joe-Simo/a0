@@ -79,6 +79,11 @@ export interface Language {
   /** Extra files written next to the source (project files). */
   readonly extraFiles?: (dir: string, t: Toolchain) => Readonly<Record<string, string>>;
   readonly build?: (dir: string, t: Toolchain) => readonly Cmd[];
+  /**
+   * Static check without running, for a language with no build step, using the toolchain's own
+   * checker (tools/lang-axes.ts times it per edit). Absent when the toolchain has none.
+   */
+  readonly check?: (dir: string, t: Toolchain) => readonly Cmd[];
   /** Command that runs one sample of `iters` iterations (a decimal string). */
   readonly run: (dir: string, t: Toolchain, iters: string) => Cmd;
   readonly env?: (t: Toolchain) => Readonly<Record<string, string>>;
@@ -731,6 +736,7 @@ def main():
     print(f"{dt * 1e9 / iters:.3f} {acc}")
 main()
 `,
+    check: (dir, t) => [[t.bin.main as string, ['-m', 'py_compile', join(dir, 'bench.py')]]],
     run: (dir, t, iters) => [t.bin.main as string, [join(dir, 'bench.py'), iters]],
   },
   // ---------------------------------------------------------------- Ruby
@@ -771,6 +777,7 @@ end
 dt = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
 puts "#{'%.3f' % (dt * 1e9 / iters)} #{acc}"
 `,
+    check: (dir, t) => [[t.bin.main as string, ['-c', join(dir, 'bench.rb')]]],
     run: (dir, t, iters) => [t.bin.main as string, [join(dir, 'bench.rb'), iters]],
   },
   // ---------------------------------------------------------------- PHP
@@ -813,6 +820,7 @@ function main(array $argv): void {
 }
 main($argv);
 `,
+    check: (dir, t) => [[t.bin.main as string, ['-l', join(dir, 'bench.php')]]],
     run: (dir, t, iters) => [t.bin.main as string, [join(dir, 'bench.php'), iters]],
   },
   // ---------------------------------------------------------------- Lua
@@ -894,6 +902,7 @@ for (1 .. $iters) {
 my $dt = time - $t0;
 printf("%.3f %u\\n", $dt * 1e9 / $iters, $acc);
 `,
+    check: (dir, t) => [[t.bin.main as string, ['-c', join(dir, 'bench.pl')]]],
     run: (dir, t, iters) => [t.bin.main as string, [join(dir, 'bench.pl'), iters]],
   },
   // ---------------------------------------------------------------- Tcl
@@ -933,7 +942,7 @@ for {set i 0} {$i < $iters} {incr i} {
   set acc [expr {($acc ^ [${k.name} ${args(k, ' ', '$')}]) & ${M}}]
 }
 set dt [expr {[clock microseconds] - $t0}]
-puts [format "%.3f %d" [expr {$dt * 1000.0 / $iters}] $acc]
+puts [format "%.3f %ld" [expr {$dt * 1000.0 / $iters}] $acc]
 `,
     run: (dir, t, iters) => [t.bin.main as string, [join(dir, 'bench.tcl'), iters]],
   },
