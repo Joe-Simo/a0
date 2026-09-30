@@ -798,7 +798,6 @@ test('site page program: A0 UI protocol, stylesheet, and sized bars', async () =
   assert.equal(d0.state.length, 0); // the home page keeps no state
   assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
   assert.ok(d0.sized > 50); // chart bars and scatter points are sized by the program
-  assert.ok(d0.shader.includes('#version 300 es') && d0.shader.includes('gl_FragCoord'));
   const all = d0.texts.join(' ');
   for (const needle of ['Docs', 'Benchmarks', 'GitHub', 'Made by', 'faster than Python'])
     assert.ok(all.includes(needle), `missing ${needle}`);

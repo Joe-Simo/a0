@@ -377,7 +377,11 @@ async function main(): Promise<void> {
     { threshold: 0.15 },
   );
   const animate = (): void => {
-    root.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+    // Anything already on screen is shown at once; only what scrolls into view later fades in.
+    root.querySelectorAll('.reveal').forEach((el) => {
+      if (el.getBoundingClientRect().top < innerHeight) el.classList.add('in');
+      else observer.observe(el);
+    });
     requestAnimationFrame(() => {
       root.querySelectorAll('.fill').forEach((el) => el.classList.add('grown'));
     });
@@ -391,7 +395,7 @@ async function main(): Promise<void> {
       const suffix = m[3] ?? '';
       const t0 = performance.now();
       const step = (now: number): void => {
-        const k = Math.min(1, (now - t0) / 900);
+        const k = Math.min(1, (now - t0) / 600);
         const eased = 1 - (1 - k) * (1 - k) * (1 - k);
         el.textContent = `${Math.round(whole * eased)}${k >= 1 ? frac : ''}${suffix}`;
         if (k < 1) requestAnimationFrame(step);

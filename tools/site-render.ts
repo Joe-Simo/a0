@@ -122,8 +122,14 @@ export function renderWords(words: readonly number[]): Prerendered {
         const key = ATTRS[words[i++] as number];
         const value = decoder.decode(bytes());
         const top = open[open.length - 1];
-        if (key !== undefined && top !== undefined && !top.started)
-          top.attrs.push(` ${key}="${escapeAttr(value)}"`);
+        if (key !== undefined && top !== undefined && !top.started) {
+          // Motion classes are for the browser runtime; static HTML shows everything at once.
+          const v =
+            key === 'class'
+              ? value.replace(/\breveal\b/, 'reveal in').replace(/\bfill\b/, 'fill grown')
+              : value;
+          top.attrs.push(` ${key}="${escapeAttr(v)}"`);
+        }
         break;
       }
       case 5:
