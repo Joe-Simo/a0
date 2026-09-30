@@ -449,6 +449,15 @@ Wins, ties, losses, stated separately:
 
 ## Session 2026-09-29 (late): primer size, JS guards
 
+- **Direction set by the user (2026-09-30): A0 must reach the machine through its own
+  code generator, not through C.** Started: a direct AArch64 assembly backend (`arm64`
+  target) for io-free functions, verified against the corpus and benchmarked next to the
+  C path. The C path stays until the direct path reaches parity on the execution ledger;
+  both numbers will be published. A0 has always been its own language (grammar, types,
+  exact semantics, validator, optimizer, edit protocol, interpreter, proofs); C was one
+  emission target among JavaScript, Java, C#, Metal, and SystemVerilog, used for native
+  code the way Nim and GHC use it and the way Rust uses LLVM.
+
 - **General fixes from the failure classes (v0.8.12)**, none tied to a model:
   (1) edit lines may come in any order that has a valid dependency order; the edit
   layer places each node after its last reference (a true cycle is still rejected);
