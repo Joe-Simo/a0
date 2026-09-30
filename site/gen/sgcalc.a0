@@ -494,3 +494,265 @@ cv call cover all na hs n
 s14 fold vcov one s13 p2 106 107 cv na
 ret s14
 end
+
+# ---- A0's rank per kernel: (entries, entries faster than A0, fastest other, its label ref)
+fn rkone (u32,u32,u32,u32) u32 u32 u32 u32 -> (u32,u32,u32,u32)
+n at p0 0
+f at p0 1
+bv at p0 2
+br at p0 3
+n1 add n 1
+fs lt p2 p4
+f1 add f 1
+fn2 select fs f1 f
+b lt p2 bv
+bv2 select b p2 bv
+br2 select b p3 br
+r rec n1 fn2 bv2 br2
+ret r
+end
+fn rklang (u32,u32,u32,u32) u32 u32x128x64 u32x128x128 u32 u32 -> (u32,u32,u32,u32)
+one mov 1
+rn call ranon p2 p1 p4
+c select rn 1 0
+v call med p2 p1 p4
+ra add p1 32
+rf call rd128 p3 ra
+r fold rkone c p0 v rf p5
+ret r
+end
+fn hasstep u32 u32 u32x128x64 -> u32
+h call kf p2 p1 0
+o eq h 1
+a add p0 1
+r select o a p0
+ret r
+end
+fn rkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+h call kf p3 p1 0
+has eq h 1
+ch select has 1 0
+row fold hasstep p1 0 p3
+k call key1 row
+arm call kf p3 p1 1
+s0 rec 1 0 4294967295 0
+c call kf p3 p1 2
+cr call cref p0 3
+s1 fold rkone one s0 c cr arm
+ru call kf p3 p1 3
+rr call cref p0 4
+s2 fold rkone one s1 ru rr arm
+js call kf p3 p1 4
+jr call cref p0 5
+s3 fold rkone one s2 js jr arm
+nl call rd64 p3 129
+s4 fold rklang nl s3 p3 p0 p1 arm
+n at s4 0
+fa at s4 1
+bv at s4 2
+br at s4 3
+rank add fa 1
+kr add p1 96
+nm call rd128 p0 kr
+v1 fold vref ch p0 p2 109 k nm
+v2 fold vnum ch v1 p2 110 k rank
+first eq rank 1
+v3 fold vflag ch v2 p2 111 k first
+v4 fold vnum ch v3 p2 112 k n
+v5 fold vref ch v4 p2 113 k br
+b100 call rdiv bv 100
+v6 fold vfix2 ch v5 p2 114 k b100
+a100 mul arm 100
+ra call rdiv a100 bv
+v7 fold vnum ch v6 p2 115 k ra
+win le arm bv
+v8 fold vflag ch v7 p2 116 k win
+ret v8
+end
+fn cranks u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+nk call rd64 p3 128
+nr fold hasstep nk 0 p3
+s1 fold vnum one p0 p2 108 0 nr
+s2 fold rkrow nk s1 p2 p3
+ret s2
+end
+
+# ---- startup: rows (label ref, family, median ms x 10^6, label hash)
+fn kvals (u32x64,u32) u32 u32x128x64 u32 -> (u32x64,u32)
+l at p0 0
+n at p0 1
+h call kf p2 p1 0
+has eq h 1
+v call kf p2 p1 p3
+l2 set l n v
+n1 add n 1
+nn select has n1 n
+r rec l2 nn
+ret r
+end
+fn svals (u32x64,u32) u32 u32x128x64 u32 -> (u32x64,u32)
+l at p0 0
+n at p0 1
+h call kf p2 p1 0
+has eq h 1
+a add p3 p1
+v1 call rd64 p2 a
+pr gt v1 0
+ok and has pr
+v sub v1 1
+l2 set l n v
+n1 add n 1
+nn select ok n1 n
+r rec l2 nn
+ret r
+end
+fn strow (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x128 u32x128x512 u32 -> (u32x64,u32x64,u32x64,u32x64,u32)
+one mov 1
+e0 shl p5 6
+e add e0 p1
+hi add e 3472
+lid call rd64 p2 hi
+e16 shl e 4
+vb add e16 4752
+z call z64l
+nk call rd64 p2 128
+s0 rec z 0
+vs fold svals nk s0 p2 vb
+vl at vs 0
+vn at vs 1
+m call median vl vn
+nh call whash p4 50
+isnode eq lid nh
+nl call rd64 p2 129
+li call lookup p2 656 nl lid
+inl lt li nl
+lr0 add li 32
+lr call rd128 p3 lr0
+sr0 add e 112
+sr call rd128 p3 sr0
+jr call cref p3 5
+ref0 select inl lr sr
+ref select isnode jr ref0
+lf0 add li 720
+lf call rd64 p2 lf0
+f0 select isnode 3 2
+fam select inl lf f0
+h call vhash p3 ref
+r fold addrow one p0 ref fam m h
+ret r
+end
+fn strowv u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
+one mov 1
+i get p3 p1
+k call key1 p1
+rf get p4 i
+fm get p5 i
+v get p6 i
+s1 fold vref one p0 p2 122 k rf
+isa eq i 0
+cl0 call clsref s1 fm
+a0r call cref s1 21
+cl select isa a0r cl0
+s2 fold vref one s1 p2 123 k cl
+s3 fold vflag one s2 p2 124 k isa
+lv call lg v
+pc call pct lv p7 p8
+s4 fold vnum one s3 p2 125 k pc
+h call rdiv v 10000
+s5 fold vnum one s4 p2 126 k h
+ret s5
+end
+fn findh u32 u32 u32x64 u32 u32 -> u32
+h get p2 p1
+e eq h p3
+nf eq p0 p4
+c and e nf
+r select c p1 p0
+ret r
+end
+fn bsum u32 u32 u32x128x64 u32 -> u32
+v call kf p2 p1 p3
+r0 call rdiv v 1000
+r add p0 r0
+ret r
+end
+fn binkb u32 u32 u32x128x64 u32x128x128 u32 -> u32
+ra add p1 96
+rf call rd128 p3 ra
+h call vhash p3 rf
+e eq h p4
+v call kf p2 p1 9
+k shr v 10
+r select e k p0
+ret r
+end
+fn cstart u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+one mov 1
+z call z64l
+nk call rd64 p3 128
+s0 rec z 0
+a fold kvals nk s0 p3 7
+b fold kvals nk s0 p3 8
+av at a 0
+an at a 1
+am call median av an
+bv at b 0
+bn at b 1
+bm call median bv bn
+t0 rec z z z z 0
+ar call cref p0 2
+ah call vhash p0 ar
+t1 fold addrow one t0 ar 0 am ah
+cr call cref p0 3
+ch call vhash p0 cr
+t2 fold addrow one t1 cr 1 bm ch
+g0 call rd64 p3 130
+t3 fold strow g0 t2 p3 p0 p2 0
+g1 call rd64 p3 131
+t4 fold strow g1 t3 p3 p0 p2 1
+rf at t4 0
+fm at t4 1
+vl at t4 2
+hs at t4 3
+n at t4 4
+jr call cref p0 5
+jh call vhash p0 jr
+pr call cref p0 6
+ph call vhash p0 pr
+ni fold findh n n hs jh n
+pi fold findh n n hs ph n
+nv get vl ni
+pv get vl pi
+a100 call rdiv am 10000
+s1 fold vfix2 one p0 p2 117 0 a100
+nd call rdiv nv 1000000
+s2 fold vnum one s1 p2 118 0 nd
+pd call rdiv pv 1000000
+s3 fold vnum one s2 p2 119 0 pd
+pm call sortperm vl n
+mn call lmin vl n
+mx call lmax vl n
+lo call lg mn
+hi call lg mx
+s4 fold vnum one s3 p2 120 0 n
+s5 fold vnum one s4 p2 121 0 n
+s6 fold strowv n s5 p2 pm rf fm vl lo hi
+zr fold findh n n pm 0 n
+rk add zr 1
+s7 fold vnum one s6 p2 127 0 rk
+al call alllangs p3 s7
+all at al 0
+na at al 1
+cv call cover all na hs n
+s8 fold vcov one s7 p2 128 129 cv na
+ab fold bsum nk 0 p3 5
+s9 fold vnum one s8 p2 130 0 ab
+rb fold bsum nk 0 p3 6
+s10 fold vnum one s9 p2 131 0 rb
+afh call whash p2 51
+bk fold binkb nk 0 p3 s10 afh
+s11 fold vnum one s10 p2 132 0 bk
+ret s11
+end
