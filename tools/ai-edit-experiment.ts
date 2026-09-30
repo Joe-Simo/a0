@@ -7,7 +7,8 @@
  * in one 40-function program per representation, tools/ai-edit-tasks-c.ts); select with
  * A0_EXPERIMENT_TASKSET=a|b|c|all.
  *
- * A0 cell options: A0_EXPERIMENT_GUIDE (primer file), A0_EXPERIMENT_PRIMER=always|none|lazy|rules,
+ * A0 cell options: A0_EXPERIMENT_GUIDE (primer file),
+ * A0_EXPERIMENT_PRIMER=always|none|lazy|rules|rules-merged,
  * A0_EXPERIMENT_PROGRAM_VIEW=all|deps
  * (program handle scope), A0_EXPERIMENT_SYSTEM=separate|merged (protocol paragraph after the
  * primer, or folded into the primer's EDIT line). A0_EXPERIMENT_OUT sets the report path.
@@ -121,10 +122,10 @@ const PROTOCOL_STRUCTURED_A0_SELF =
 const PROTOCOL_STRUCTURED_TS =
   'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, bare: no code fence, no handle line.';
 const RUST_SEMANTICS =
-  'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. The file must compile with rustc, edition 2021.';
+  'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must compile with rustc, edition 2021.';
 const PROTOCOL_STRUCTURED_RUST = PROTOCOL_STRUCTURED_TS;
 const TS_SEMANTICS =
-  'Numbers are unsigned 32-bit integers: every arithmetic result must be normalized with >>> 0, use Math.imul for multiplication, and comparisons are unsigned.';
+  'Numbers are unsigned 32-bit integers: every arithmetic result must be normalized with >>> 0, use Math.imul for multiplication, and comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend.';
 
 /**
  * System-text layout of the A0 cells. 'separate': the primer followed by the protocol
@@ -345,9 +346,11 @@ async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promi
  * lazy primer (MODEL_GUIDE.tiny.txt) with the repair message after an invalid reply;
  * 'rules' sends the guide (A0_EXPERIMENT_GUIDE, e.g. MODEL_GUIDE.rules.txt: only the language
  * rules models get wrong without a primer) followed by the self-contained edit protocol of
- * 'none', so the protocol is stated once and the guide carries no EDIT line.
+ * 'none', so the protocol is stated once and the guide carries no EDIT line;
+ * 'rules-merged' sends the guide alone (e.g. MODEL_GUIDE.rules-merged.txt: the rules and the
+ * edit protocol in one text), structured cells only.
  */
-type PrimerMode = 'always' | 'none' | 'lazy' | 'rules';
+type PrimerMode = 'always' | 'none' | 'lazy' | 'rules' | 'rules-merged';
 
 interface Cell {
   readonly representation: Representation;
@@ -371,7 +374,10 @@ async function buildCell(
 ): Promise<{ cell: Cell; session?: EditSession; handle: string }> {
   const handle = 'e0';
   if (representation === 'a0') {
-    const withPrimer = primerMode === 'always' || primerMode === 'rules';
+    if (primerMode === 'rules-merged' && protocol !== 'structured')
+      throw new Error('A0_EXPERIMENT_PRIMER=rules-merged carries the structured protocol only');
+    const withPrimer =
+      primerMode === 'always' || primerMode === 'rules' || primerMode === 'rules-merged';
     const protocolText =
       protocol === 'conventional'
         ? PROTOCOL_CONVENTIONAL
@@ -379,15 +385,17 @@ async function buildCell(
           ? PROTOCOL_STRUCTURED_A0
           : PROTOCOL_STRUCTURED_A0_SELF;
     if (!withPrimer) guide = '';
-    if (primerMode === 'rules') guide = guide.trimEnd();
+    if (primerMode === 'rules' || primerMode === 'rules-merged') guide = guide.trimEnd();
     const { system, ...primers } =
       primerMode === 'always' && layout === 'merged'
         ? mergedA0System(guide, protocol)
-        : {
-            system: withPrimer ? `${guide}\n\n${protocolText}` : protocolText,
-            languagePrimer: guide,
-            workflowPrimer: protocolText,
-          };
+        : primerMode === 'rules-merged'
+          ? { system: guide, languagePrimer: guide, workflowPrimer: '' }
+          : {
+              system: withPrimer ? `${guide}\n\n${protocolText}` : protocolText,
+              languagePrimer: guide,
+              workflowPrimer: protocolText,
+            };
     if (protocol === 'structured') {
       // Two handles per view: e0 edits the target function, g1 edits the program (add,
       // replace, or remove whole functions, e.g. for signature changes). The reply's first
@@ -658,14 +666,15 @@ async function main(): Promise<void> {
   const live = process.env.A0_ALLOW_PAID_MODEL_CALLS === '1';
   const model = process.env.A0_EXPERIMENT_MODEL ?? 'claude-opus-5-5';
   const trialsPerCell = Number(process.env.A0_EXPERIMENT_TRIALS ?? '3');
-  // A0_EXPERIMENT_PRIMER=none|lazy|rules: see PrimerMode. All three allow exactly one repair (the retry
+  // A0_EXPERIMENT_PRIMER=none|lazy|rules|rules-merged: see PrimerMode. All allow exactly one repair (the retry
   // with the checker's message); the default keeps the guide in every call and two repairs.
   const primerEnv = process.env.A0_EXPERIMENT_PRIMER ?? 'always';
   if (
     primerEnv !== 'always' &&
     primerEnv !== 'none' &&
     primerEnv !== 'lazy' &&
-    primerEnv !== 'rules'
+    primerEnv !== 'rules' &&
+    primerEnv !== 'rules-merged'
   )
     throw new Error(`unknown A0_EXPERIMENT_PRIMER ${primerEnv}`);
   const primerMode: PrimerMode = primerEnv;
@@ -942,7 +951,9 @@ async function main(): Promise<void> {
           ? 'none (A0 system text is the edit protocol only; one repair)'
           : primerMode === 'rules'
             ? `${guidePath} followed by the self-contained edit protocol (one repair)`
-            : `lazy: none on the first attempt, ${lazyPrimerPath} with the repair after a protocol or compile rejection (one repair)`,
+            : primerMode === 'rules-merged'
+              ? `${guidePath} alone: rules and edit protocol in one text (one repair)`
+              : `lazy: none on the first attempt, ${lazyPrimerPath} with the repair after a protocol or compile rejection (one repair)`,
     primerMode,
     taskSet: setName,
     programView: programScope,

@@ -130,3 +130,38 @@ test('edit lines after a closed block edit the handled function; a new callee la
       e instanceof A0Error && /expected 'fn'/.test(e.message) && /fn NAME/.test(e.fix ?? ''),
   );
 });
+
+test('edit lines closed by `end`, then a new fn block: the block applies first', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  session.openProgram();
+  session.apply('y call inc x\nret y\nend\nfn inc u32 -> u32\nb add p0 1\nret b\nend');
+  assert.deepEqual(
+    session.program.functions.map((f) => f.name),
+    ['sq', 'inc', 'twice'],
+  );
+  assert.equal(call(session, 'twice', 3), 10);
+});
+
+test('-fn f with a new fn f block in one reply replaces f in place', () => {
+  for (const removal of ['-fn sq', '-fn sq u32 -> u32', '-fn  sq  u32  ->  u32']) {
+    const session = new EditSession(parseAndValidate(SRC));
+    session.open('twice');
+    session.apply(`${removal}\nfn sq u32 -> u32\nb add p0 p0\nret b\nend`);
+    assert.deepEqual(
+      session.program.functions.map((f) => f.name),
+      ['sq', 'twice'],
+    );
+    assert.equal(call(session, 'twice', 5), 20);
+  }
+  // A signature after -fn must be the current one; a new signature goes in the block.
+  const session = new EditSession(parseAndValidate(SRC));
+  session.openProgram();
+  assert.throws(
+    () => session.apply('-fn sq u32 -> bool\nfn sq u32 -> u32\nret p0\nend'),
+    (e: unknown) => e instanceof A0Error && e.code === 'edit' && /-fn sq` alone/.test(e.fix ?? ''),
+  );
+  // -fn alone still removes, and callers of the removed function fail the edit atomically.
+  assert.throws(() => session.apply('-fn sq'), /unknown callee 'sq'/);
+  assert.equal(session.program.functions.length, 2);
+});

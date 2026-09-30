@@ -1,0 +1,119 @@
+{
+ "affine-sign/a0/structured": [
+  "b sub a p2"
+ ],
+ "clamp-both/a0/structured": [
+  "fn clamp u32 u32 u32 -> u32\na lt p0 p1\nb select a p1 p0\nc lt p2 b\nr select c p2 b\nret r\nend"
+ ],
+ "rotl-fix/a0/structured": [
+  "fn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 31 p1\nh shr p0 1\nr shr h n\no or l r\nret o\nend"
+ ],
+ "add-cube/a0/structured": [
+  "fn cube u32 -> u32\na call sq p0\nb mul a p0\nret b\nend"
+ ],
+ "absdiff/a0/structured": [
+  "fn absdiff u32 u32 -> u32\nc lt p0 p1\nd sub p0 p1\ne sub p1 p0\nr select c e d\nret r\nend"
+ ],
+ "xor4/a0/structured": [
+  "a xor p0 p1\nb xor a p2\nc xor b p3"
+ ],
+ "min3/a0/structured": [
+  "-fn min2\nfn min3 u32 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nd lt p2 r\ns select d p2 r\nret s\nend"
+ ],
+ "sq-twice/a0/structured": [
+  "fn quad u32 -> u32\nx call sq p0\ny call sq x\nret y\nend"
+ ],
+ "sum-squares/a0/structured": [
+  "fn sqacc u32 u32 -> u32\nm mul p1 p1\na add p0 m\nret a\nend\nfn sumto u32 -> u32\nr fold sqacc p0 0\nret r\nend"
+ ],
+ "loop-inclusive/a0/structured": [
+  "c le p0 p2"
+ ],
+ "record-flag/a0/structured": [
+  "fn pick (u32,bool) -> u32\nv at p0 0\nf at p0 1\nw add v 1\nr select f w v\nret r\nend"
+ ],
+ "byte-select/a0/structured": [
+  "s shr p0 16"
+ ],
+ "saturating-add/a0/structured": [
+  "fn sadd u32 u32 -> u32\ns add p0 p1\nc lt s p0\nr select c 4294967295 s\nret r\nend"
+ ],
+ "affine-sign/ts/structured": [
+  "2   return (Math.imul(x, scale) - offset) >>> 0;"
+ ],
+ "clamp-both/ts/structured": [
+  "1 export function clamp(x: number, lo: number, hi: number): number {\n2   return x < lo ? lo : hi < x ? hi : x;"
+ ],
+ "rotl-fix/ts/structured": [
+  "2   return ((x << n) | (x >>> (32 - n))) >>> 0;"
+ ],
+ "add-cube/ts/structured": [
+  "+3 export function cube(x: number): number { return Math.imul(sq(x), x) >>> 0; }"
+ ],
+ "absdiff/ts/structured": [
+  "2   return (a < b ? b - a : a - b) >>> 0;"
+ ],
+ "xor4/ts/structured": [
+  "2   return (a ^ b ^ c ^ d) >>> 0;"
+ ],
+ "min3/ts/structured": [
+  "1 export function min3(a: number, b: number, c: number): number {\n2   return c < (b < a ? b : a) ? c : (b < a ? b : a);"
+ ],
+ "sq-twice/ts/structured": [
+  "5   return sq(sq(x));"
+ ],
+ "sum-squares/ts/structured": [
+  "3   for (let i = 0; i < n; i++) s = (s + Math.imul(i, i)) >>> 0;"
+ ],
+ "loop-inclusive/ts/structured": [
+  "4     if (!(s <= limit)) break;"
+ ],
+ "record-flag/ts/structured": [
+  "2   return r[1] ? (r[0] + 1) >>> 0 : r[0];"
+ ],
+ "byte-select/ts/structured": [
+  "2   return (x >>> 16) & 0xff;"
+ ],
+ "saturating-add/ts/structured": [
+  "2   return a + b > 4294967295 ? 4294967295 : (a + b) >>> 0;"
+ ],
+ "affine-sign/rust/structured": [
+  "2     x.wrapping_mul(scale).wrapping_sub(offset)"
+ ],
+ "clamp-both/rust/structured": [
+  "1 pub fn clamp(x: u32, lo: u32, hi: u32) -> u32 {\n2     if x < lo { lo } else if hi < x { hi } else { x }"
+ ],
+ "rotl-fix/rust/structured": [
+  "2     (x << (n & 31)) | (x >> ((32u32.wrapping_sub(n)) & 31))"
+ ],
+ "add-cube/rust/structured": [
+  "+3 pub fn cube(x: u32) -> u32 { sq(x).wrapping_mul(x) }"
+ ],
+ "absdiff/rust/structured": [
+  "2     if a < b { b.wrapping_sub(a) } else { a.wrapping_sub(b) }"
+ ],
+ "xor4/rust/structured": [
+  "2     a ^ b ^ c ^ d"
+ ],
+ "min3/rust/structured": [
+  "1 pub fn min3(a: u32, b: u32, c: u32) -> u32 {\n2     let m = if b < a { b } else { a }; if c < m { c } else { m }"
+ ],
+ "sq-twice/rust/structured": [
+  "5     sq(sq(x))"
+ ],
+ "sum-squares/rust/structured": [
+  "3     for i in 0..n { s = s.wrapping_add(i.wrapping_mul(i)); }"
+ ],
+ "loop-inclusive/rust/structured": [
+  "4         if !(s <= limit) { break; }"
+ ],
+ "record-flag/rust/structured": [
+  "2     if r.1 { r.0.wrapping_add(1) } else { r.0 }"
+ ],
+ "byte-select/rust/structured": [
+  "2     (x >> 16) & 0xff"
+ ],
+ "saturating-add/rust/structured": [
+  "2     a.saturating_add(b)"
+ ]
+}

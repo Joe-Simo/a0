@@ -33,12 +33,12 @@ export function isLang(x: string): x is Lang {
 /** Language primers (bucket 1), the counterpart of TS_SEMANTICS and RUST_SEMANTICS. */
 export const LANG_SEMANTICS: Record<Lang, string> = {
   python:
-    'Integers are unsigned 32-bit: mask every arithmetic result with & 0xFFFFFFFF, mask shift counts to 5 bits (& 31); comparisons are unsigned. The file must run with python3.',
-  go: 'Integers are uint32 with wrapping arithmetic; mask shift counts to 5 bits (& 31), since Go shifts of 32 or more give 0; comparisons are unsigned. The file must build with go build (package main).',
-  java: 'Integers are u32 held in int with wrapping arithmetic: compare with Integer.compareUnsigned, divide with Integer.divideUnsigned / remainderUnsigned, shift right with >>> (shift counts are masked to 5 bits). The file must compile with javac.',
+    'Integers are unsigned 32-bit: mask every arithmetic result with & 0xFFFFFFFF, mask shift counts to 5 bits (& 31); comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must run with python3.',
+  go: 'Integers are uint32 with wrapping arithmetic; mask shift counts to 5 bits (& 31), since Go shifts of 32 or more give 0; comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must build with go build (package main).',
+  java: 'Integers are u32 held in int with wrapping arithmetic: compare with Integer.compareUnsigned, divide with Integer.divideUnsigned / remainderUnsigned, shift right with >>> (shift counts are masked to 5 bits). Division by zero gives 4294967295; remainder by zero gives the dividend. The file must compile with javac.',
   csharp:
-    'Integers are uint with wrapping (unchecked) arithmetic; shift counts are masked to 5 bits; comparisons are unsigned; records are value tuples. The file must compile with the .NET SDK.',
-  cpp: 'Integers are uint32_t with wrapping arithmetic; mask shift counts to 5 bits (& 31); comparisons are unsigned; records are std::pair. The file must compile with clang++ -std=c++20.',
+    'Integers are uint with wrapping (unchecked) arithmetic; shift counts are masked to 5 bits; comparisons are unsigned; records are value tuples. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must compile with the .NET SDK.',
+  cpp: 'Integers are uint32_t with wrapping arithmetic; mask shift counts to 5 bits (& 31); comparisons are unsigned; records are std::pair. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must compile with clang++ -std=c++20.',
 };
 
 // --- File layout ------------------------------------------------------------------

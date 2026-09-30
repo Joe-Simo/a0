@@ -543,7 +543,8 @@ export function scopedProgramView(program: TypedProgram, target: string): string
 /**
  * Apply a program-level edit: `fn … end` blocks replace a function of the same name in
  * place or append a new function at the end (where it may call every existing function);
- * `-fn name` removes a function. The whole program is re-validated; callers of a removed or
+ * `-fn name` removes a function (with a `fn name` block in the same edit, the pair replaces it
+ * in place). The whole program is re-validated; callers of a removed or
  * re-typed function fail the edit atomically.
  */
 /**
@@ -601,9 +602,22 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const kept: string[] = [];
   for (const raw of lines) {
     const line = stripComment(raw).trim();
-    const m = /^-fn\s+([a-z][a-z0-9_]*)$/.exec(line);
-    if (m) removals.add(m[1] ?? '');
-    else if (isSignatureEcho(line, program)) continue;
+    // `-fn name`, optionally followed by the function's current signature as the view shows it.
+    const m = /^-fn\s+([a-z][a-z0-9_]*)(?:\s+(.*))?$/.exec(line);
+    if (m) {
+      const name = m[1] ?? '';
+      const shown = program.byName.get(name);
+      if (
+        m[2] !== undefined &&
+        shown !== undefined &&
+        `fn ${name} ${m[2]}`.split(/\s+/).join(' ') !== formatSignature(shown)
+      )
+        throw new A0Error(`'${line}' does not match ${formatSignature(shown)}`, undefined, {
+          code: 'edit',
+          fix: `write \`-fn ${name}\` alone; a new signature goes in the \`fn ${name} ...\` block`,
+        });
+      removals.add(name);
+    } else if (isSignatureEcho(line, program)) continue;
     else kept.push(raw);
   }
   const incoming = orderFunctionsByCalls(parse(kept.join('\n')).functions);
@@ -611,10 +625,8 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   for (const name of removals) {
     if (!program.byName.has(name))
       throw new A0Error(`cannot remove unknown function '${name}'`, undefined, { code: 'edit' });
-    if (byName.has(name))
-      throw new A0Error(`function '${name}' is both removed and defined`, undefined, {
-        code: 'edit',
-      });
+    // `-fn f` with a new `fn f` block in the same reply is a replacement, in place.
+    if (byName.has(name)) removals.delete(name);
   }
   // New functions are placed where the reply put them relative to replaced ones: everything
   // written above a replaced function is inserted just before it (so a new callee written
@@ -910,7 +922,8 @@ export class EditSession {
     const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
     const head = blockAt < 0 ? body : body.slice(0, blockAt);
     const isRemoval = (l: string): boolean => /^-fn\s/.test(stripComment(l).trim());
-    const editLines = head.filter((l) => !isRemoval(l));
+    // An `end` before the first block closes the handled function's lines, as in the view.
+    const editLines = head.filter((l) => !isRemoval(l) && stripComment(l).trim() !== 'end');
     const programLines = head.filter(isRemoval);
     let open = false;
     for (const l of blockAt < 0 ? [] : body.slice(blockAt)) {
