@@ -1,0 +1,99 @@
+# Shared UI helpers for a0lang.com programs (site/page.a0, site/docs.a0). Protocol words:
+#   1 OPEN tag | 2 TEXT n bytes | 3 CLOSE | 4 ATTR key n bytes | 5 ONCLICK event | 6 STATE n words
+#   9 STYLE n bytes | 12 SIZE prop percent (1 width 2 height 3 left 4 bottom)
+fn open io u32 -> io
+a write p0 1
+b write a p1
+ret b
+end
+fn close io -> io
+a write p0 3
+ret a
+end
+fn mulstep u32 u32 -> u32
+m mul p0 10
+ret m
+end
+# 10^p1 (p1 <= 9)
+fn tenpow u32 -> u32
+r fold mulstep p0 1
+ret r
+end
+fn digitstep u32 u32 u32 -> u32
+s add p0 1
+ret s
+end
+fn morecheck u32 u32 u32 -> bool
+p call tenpow p0
+fits lt p2 p
+more select fits false true
+ret more
+end
+# number of decimal digits of n
+fn ndigits u32 -> u32
+n loop morecheck digitstep 10 1 p0
+ret n
+end
+fn putdigit io u32 u32 u32 -> io
+rest sub p3 p1
+pos sub rest 1
+p call tenpow pos
+q div p2 p
+d rem q 10
+ch add d 48
+t write p0 2
+u write t 1
+v write u ch
+ret v
+end
+# TEXT command with the decimal rendering of p1
+fn putnum io u32 -> io
+nd call ndigits p1
+t fold putdigit nd p0 p1 nd
+ret t
+end
+# TEXT with p1 rendered in hundredths: 2151 -> "21.51"
+fn putfix io u32 -> io
+ip div p1 100
+fp rem p1 100
+a call putnum p0 ip
+b write a 2
+dot text "."
+c puts b dot
+tens div fp 10
+ones rem fp 10
+d0 add tens 48
+d1 add ones 48
+d write c 2
+e write d 2
+f write e d0
+g write f d1
+ret g
+end
+# div.fill sized to p1/p2 of the track (SIZE width percent computed here)
+fn fill io u32 u32 -> io
+a call open p0 5
+b write a 4
+c write b 2
+cls text "fill"
+d puts c cls
+e write d 12
+f write e 1
+num mul p1 100
+pct div num p2
+g write f pct
+h call close g
+ret h
+end
+fn max3 u32 u32 u32 -> u32
+ab lt p0 p1
+m1 select ab p1 p0
+mc lt m1 p2
+m2 select mc p2 m1
+ret m2
+end
+fn max2 u32 u32 -> u32
+ab lt p0 p1
+m select ab p1 p0
+ret m
+end

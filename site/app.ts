@@ -227,8 +227,8 @@ function render(
 // --- Page -------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const page = await load('page.wasm');
   const root = document.getElementById('app') as HTMLElement;
+  const page = await load(root.dataset.program ?? '/page.wasm');
   const styleEl = document.createElement('style');
   document.head.appendChild(styleEl);
   let state: number[] = [];

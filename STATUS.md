@@ -608,6 +608,14 @@ Wins, ties, losses, stated separately:
   produced C ratios from 0.44× to 1.41× on unchanged code; that run was discarded and the
   committed results are unchanged. Whole-suite timing runs need a quiet machine.
 
+## Session 2026-09-29 (site redesign, docs page, Geist)
+
+- a0lang.com rebuilt as two A0 programs sharing `site/ui.a0` (protocol helpers): `site/page.a0` (home) and `site/docs.a0` (served at /docs/). One generic runtime `site/app.ts` reads the program URL from `data-program` on `#app`. `tools/site-build.ts` builds both wasm files and copies the Geist Sans, Geist Mono, and Geist Pixel variable fonts from the `geist` npm package into `site/dist/fonts/` (self-hosted, no font CDN).
+- Design follows the reference the user chose: full-height hero (Geist Pixel wordmark, orb, drifting glow), centered thesis, three summary cards (native, edits, hardware), sticky contents rail, one chart card per measurement with an italic caption, cost-versus-acceptance scatter with gridlines, target and FAQ grids. Light or dark follows the system (`prefers-color-scheme`, tokens on `:root`). All CSS, numbers, and bar sizes are still computed by the A0 programs from results/*.json at generation time.
+- Losses stay visible: whole-task tokens vs TypeScript (set A 1.46x, set B), emitted JS vs hand-written JS, direct AArch64 loop64 8.4x and arrfill 30x.
+- Tests: page test now asserts an empty state (the demo and its Life grid are gone from the page); new docs program test. Gate: lint, typecheck, test 35/35, verify (all paths incl. arm64 4297), app, equiv 48/48, hw pass.
+- Not done: X handle in the footer (not provided); playground page; arm64 register allocation.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

@@ -742,7 +742,7 @@ test('div/rem are total unsigned (zero divisor: all ones / dividend); puts strea
   assert.ok(compile(p, 'sv').text.includes("32'hffffffff"));
 });
 
-test('site page program: A0 UI protocol, stylesheet, sized bars, and persisted state', async () => {
+test('site page program: A0 UI protocol, stylesheet, and sized bars', async () => {
   // The site is page.a0 plus what it uses, through the linker.
   const { link } = await import('../src/link.js');
   const { readFile } = await import('node:fs/promises');
@@ -786,7 +786,7 @@ test('site page program: A0 UI protocol, stylesheet, sized bars, and persisted s
   const first = makeIo([0, 0, 0, 0, 0]);
   assert.equal(run(session, [first]), 0);
   const d0 = decode(first.output);
-  assert.equal(d0.state.length, 35);
+  assert.equal(d0.state.length, 0); // the home page keeps no state
   assert.ok(d0.css.includes('body{') && d0.css.length > 3000);
   assert.ok(d0.sized > 50); // chart bars and scatter points are sized by the program
   const all = d0.texts.join(' ');
@@ -801,6 +801,38 @@ test('site page program: A0 UI protocol, stylesheet, sized bars, and persisted s
   const st = mod.a0_make_io([0, 0, 0, 0, 0]);
   assert.equal(mod.session(st), 0);
   assert.deepEqual(st.output, [...first.output]);
+});
+
+test('site docs program: A0 UI protocol, stylesheet, and reference sections', async () => {
+  const { link } = await import('../src/link.js');
+  const { readFile } = await import('node:fs/promises');
+  const p = (await link('site/docs.a0', (f) => readFile(f, 'utf8'))).program;
+  const session = p.byName.get('session') as TypedFunc;
+  const io = makeIo([0, 0, 0, 0, 0]);
+  assert.equal(run(session, [io]), 0);
+  const words = io.output;
+  const str = (i: number, n: number): string => Buffer.from(words.slice(i, i + n)).toString('utf8');
+  let css = '';
+  const texts: string[] = [];
+  for (let i = 0; i < words.length; ) {
+    const c = words[i++];
+    if (c === 1) i += 1;
+    else if (c === 5 || c === 8 || c === 11) i += c === 11 ? 2 : 1;
+    else if (c === 2 || c === 4 || c === 9) {
+      if (c === 4) i += 1;
+      const n = words[i++] as number;
+      if (c === 9) css += str(i, n);
+      else texts.push(str(i, n));
+      i += n;
+    } else if (c === 6) i += 1 + (words[i] as number);
+    else if (c === 10) i += 2 + (words[i + 1] as number);
+    else if (c === 12) i += 2;
+    else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
+  }
+  assert.ok(css.includes('body{'));
+  const all = texts.join(' ');
+  for (const needle of ['Operations', 'GitHub'])
+    assert.ok(all.includes(needle), `missing ${needle}`);
 });
 
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
