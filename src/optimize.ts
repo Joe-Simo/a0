@@ -121,13 +121,25 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
       return a;
     case 'add':
     case 'or':
-    case 'xor':
+    case 'xor': {
       if (b === undefined) return undefined;
+      if (fn.types.get(node.id) === 'bool') {
+        // Logical identities: x or false = x, x or true = true, x xor false = x, x xor x = false.
+        const isB = (o: Operand, v: boolean): boolean => o.kind === 'bool' && o.value === v;
+        if (isB(b, false)) return a;
+        if (isB(a, false)) return b;
+        if (node.op === 'or' && (isB(a, true) || isB(b, true)))
+          return { kind: 'bool', value: true };
+        if (node.op === 'xor' && sameOperand(a, b)) return { kind: 'bool', value: false };
+        if (node.op === 'or' && sameOperand(a, b)) return a;
+        return undefined;
+      }
       if (isU32(b, 0)) return a;
       if (isU32(a, 0)) return b;
       if (node.op === 'xor' && sameOperand(a, b)) return { kind: 'u32', value: 0 };
       if (node.op === 'or' && sameOperand(a, b)) return a;
       return undefined;
+    }
     case 'div':
       if (b !== undefined && isU32(b, 1)) return a;
       return undefined;
@@ -149,6 +161,14 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
       return undefined;
     case 'and':
       if (b === undefined) return undefined;
+      if (fn.types.get(node.id) === 'bool') {
+        const isB = (o: Operand, v: boolean): boolean => o.kind === 'bool' && o.value === v;
+        if (isB(a, false) || isB(b, false)) return { kind: 'bool', value: false };
+        if (isB(b, true)) return a;
+        if (isB(a, true)) return b;
+        if (sameOperand(a, b)) return a;
+        return undefined;
+      }
       if (isU32(a, 0) || isU32(b, 0)) return { kind: 'u32', value: 0 };
       if (isU32(b, 0xffff_ffff)) return a;
       if (isU32(a, 0xffff_ffff)) return b;

@@ -15,14 +15,7 @@
  * interpreter: exact u32 arithmetic, trip counts, early exit, and stream order.
  */
 
-import {
-  operandTypeOf,
-  SV_MAX_UNROLL,
-  svExpr,
-  svFieldOffset,
-  svOperand,
-  svType,
-} from './backends.js';
+import { operandTypeOf, SV_MAX_UNROLL, svExpr, svOperand } from './backends.js';
 import {
   A0Error,
   bitWidth,

@@ -743,7 +743,6 @@ test('div/rem are total unsigned (zero divisor: all ones / dividend); puts strea
 });
 
 test('site page program: A0 UI protocol with stylesheet, grid, timer, and 35-word state', async () => {
-  const { readFileSync } = await import('node:fs');
   // The site is page.a0 plus what it uses (examples/life.a0), through the linker.
   const { link } = await import('../src/link.js');
   const { readFile } = await import('node:fs/promises');
@@ -916,10 +915,7 @@ test('program-level edits: add, replace, and remove whole functions through a pr
     ['sq'],
   );
   // The program handle stays usable after its own edit; removing the last function fails.
-  assert.throws(
-    () => session.apply(`${v3.handle}\n-fn sq`),
-    /no functions/,
-  );
+  assert.throws(() => session.apply(`${v3.handle}\n-fn sq`), /no functions/);
   // A program handle follows a function-level edit made through another handle.
   const g = session.openProgram();
   const f = session.open('sq');
@@ -1118,4 +1114,47 @@ test('edit tolerance: trailing end, whole-function block under its handle, echoe
     ['sq', 'cube', 'main'],
   );
   assert.equal(run(p.byName.get('main') as TypedFunc, [3]), 27);
+});
+
+test('boolean and/or/xor/eq: typed, exact, optimized, and identical on the JS backend', async () => {
+  const src =
+    'fn logic u32 u32 -> bool\na lt p0 p1\nb eq p0 p1\nc or a b\nd xor a b\ne and c d\nf eq e false\ng xor f true\nret g\nend';
+  const p = parseAndValidate(src);
+  const f = p.byName.get('logic') as TypedFunc;
+  assert.equal(f.types.get('c'), 'bool');
+  assert.equal(f.types.get('g'), 'bool');
+  const ref = (x: number, y: number): boolean => {
+    const a = x < y;
+    const b = x === y;
+    const c = a || b;
+    const d = a !== b;
+    const e = c && d;
+    const fv = e === false;
+    return fv !== true;
+  };
+  const opt = optimize(p).program.byName.get('logic') as TypedFunc;
+  const js = compile(p, 'js').text;
+  const mod = (await import(
+    `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`
+  )) as { logic: (x: number, y: number) => boolean };
+  for (const [x, y] of [
+    [1, 2],
+    [2, 1],
+    [5, 5],
+    [0, 0xffffffff],
+  ] as const) {
+    assert.equal(run(f, [x, y]), ref(x, y));
+    assert.equal(run(opt, [x, y]), ref(x, y));
+    assert.equal(mod.logic(x, y), ref(x, y));
+  }
+  // Mixed operand types are rejected; identities respect the bool type.
+  assert.throws(
+    () => parseAndValidate('fn m u32 bool -> bool\nx and p0 p1\nret x\nend'),
+    /expected/,
+  );
+  const folded = optimize(
+    parseAndValidate('fn k bool -> bool\nx xor p0 p0\ny or x p0\nz and y true\nret z\nend'),
+  ).program.byName.get('k') as TypedFunc;
+  assert.equal(run(folded, [true]), true);
+  assert.equal(run(folded, [false]), false);
 });

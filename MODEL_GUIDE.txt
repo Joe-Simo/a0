@@ -3,8 +3,8 @@ Types: u32 bool io, arrays Tx4, records (u32,bool); nest without spaces. Params 
 Operands: earlier ID in this function, pN, decimal u32, true, false. IDs [a-z][a-z0-9_]*. # comment.
 `use "file.a0"` at the top links another file (one namespace). No forward refs, no recursion, no memory. All ops are exact and total.
 OPS
- mov x | add sub mul (mod 2^32) | and or xor | shl a n = a<<(n&31) | shr a n = a>>>(n&31) logical
- div a b (b=0 -> 4294967295) | rem a b (b=0 -> a) | eq lt (unsigned) -> bool | select c x y (both computed)
+ mov x | add sub mul (mod 2^32) | and or xor (u32 bitwise; on two bools: logical) | shl a n = a<<(n&31) | shr a n = a>>>(n&31) logical
+ div a b (b=0 -> 4294967295) | rem a b (b=0 -> a) | eq (u32 or bool) lt (unsigned) -> bool | select c x y (both computed)
  call F a...   F defined EARLIER; args match F's params; result = F's result type
  fold F n s a...   state=s; for i in 0..n-1: state=F(state,i,a...); F: (state,u32,a...) -> state
  loop P F n s a... fold that stops before iteration i when P(state,i,a...) is false; P: F's params -> bool

@@ -20,7 +20,6 @@ import {
   formatProgram,
   formatType,
   LIMITS,
-  parseAndValidate,
   run,
   type TypedProgram,
   type Value,

@@ -14,7 +14,6 @@ import {
   containsIo,
   formatType,
   isPrimitive,
-  isScalar,
   type Node,
   type Op,
   type Operand,
@@ -26,7 +25,7 @@ import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.3';
+export const COMPILER_VERSION = 'a0c-0.1.4';
 
 export type Target = 'js' | 'c' | 'java' | 'sv';
 export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv'];
@@ -203,6 +202,9 @@ function mutableHere(fn: TypedFunc, o: Operand, index: number, ownedP0: boolean)
   return true;
 }
 
+/** A node whose result (and therefore whose and/or/xor operands) is bool. */
+const isBoolNode = (fn: TypedFunc, node: Node): boolean => fn.types.get(node.id) === 'bool';
+
 function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string {
   const [a, b, c] = node.args.map(jsOperand);
   switch (node.op) {
@@ -215,11 +217,11 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     case 'mul':
       return `Math.imul(${a}, ${b}) >>> 0`;
     case 'and':
-      return `(${a} & ${b}) >>> 0`;
+      return isBoolNode(fn, node) ? `(${a} && ${b})` : `(${a} & ${b}) >>> 0`;
     case 'or':
-      return `(${a} | ${b}) >>> 0`;
+      return isBoolNode(fn, node) ? `(${a} || ${b})` : `(${a} | ${b}) >>> 0`;
     case 'xor':
-      return `(${a} ^ ${b}) >>> 0`;
+      return isBoolNode(fn, node) ? `(${a} !== ${b})` : `(${a} ^ ${b}) >>> 0`;
     case 'shl':
       return `(${a} << (${b} & 31)) >>> 0`;
     case 'shr':
@@ -428,11 +430,11 @@ function cExpr(node: Node, fn: TypedFunc): string {
     case 'mul':
       return `(uint32_t)((uint64_t)${a} * (uint64_t)${b})`;
     case 'and':
-      return `(${a} & ${b})`;
+      return isBoolNode(fn, node) ? `(${a} && ${b})` : `(${a} & ${b})`;
     case 'or':
-      return `(${a} | ${b})`;
+      return isBoolNode(fn, node) ? `(${a} || ${b})` : `(${a} | ${b})`;
     case 'xor':
-      return `(${a} ^ ${b})`;
+      return isBoolNode(fn, node) ? `(${a} != ${b})` : `(${a} ^ ${b})`;
     case 'shl':
       return `(uint32_t)(${a} << (${b} & 31u))`;
     case 'shr':

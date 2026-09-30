@@ -330,6 +330,82 @@ Wins, ties, losses, stated separately:
   cell; local tokenizer; no reasoning tokens. Repair messages were delivered in a fresh
   context that contained the whole conversation, which is equivalent to a live turn.
 
+## Session 2026-09-29 (late): primer size, JS guards
+
+- **Corpus regenerated (v0.8.11)**: the seeded generator now emits boolean logic, so the
+  corpus hash and case count changed (5946 → 5262 cases; the generator draws a different
+  sequence). Every result file was regenerated on this corpus: 8 software paths, .NET,
+  Metal GPU, hardware simulation and synthesis, and 48/48 Z3 proofs all pass.
+- **Boolean logic (v0.8.11)**: `and`, `or`, `xor`, and `eq` now accept two `bool`
+  operands (logical; boolean equality) as well as two `u32` (bitwise; unsigned equality);
+  mixing is rejected. Motivation is measured: in the Gate 6 run both Sonnet and Haiku
+  failed `loop-inclusive` by writing boolean logic that the language did not have
+  (`eq c false`, `or a b` on bools). Implemented in the validator, interpreter, optimizer
+  (logical identities), every backend (JavaScript and C emit `&&`/`||`/`!=`; Java, C#,
+  SystemVerilog, and Metal via C accept the operators on booleans), the corpus oracle and
+  generator (the corpus now holds 89 boolean and/or/xor nodes and 46 boolean `eq` nodes
+  across 40 of 48 functions; the corpus hash changed and every result file was
+  regenerated), and the Z3 tool. Both primers document it (min 372 tokens, full 646).
+  The Gate 6 results above were collected before this change and are not rescored.
+
+- **Optimizer proofs now cover io (48/48)**: `tools/equiv-verify.ts` models an io token as
+  a bounded symbolic input of 8 words (reads past the end yield 0 as in the language), an
+  output buffer with one slot per static emit site and a symbolic length, and a read
+  position; equivalence requires equal results, equal output length, equal words below
+  it, and equal final position. Result: 48 proved, 0 counterexamples, 0 unknown, solver
+  2.3 s; self-check mutates one pure and one io function and gets a counterexample for
+  each. Stable across three consecutive runs. Implementation note: `z3-solver`'s async
+  `check` races its finalizers on the wasm heap and crashed about half the runs; the tool
+  calls the synchronous export instead (documented in the file).
+- **Hardware cycles and divisors** (`results/hardware.json`): per-module mean cycles per
+  case now recorded; slowest a0_g44 1581 and a0_g36 1040 (multiple dependent 32-cycle
+  divides), then 137, 133, 71. Divisor census after optimization: 3 literal, 32 variable
+  `div`/`rem` nodes (57/148 before), so a combinational literal-divisor path has no
+  measured need; the variable ones are the cycle cost and would need a faster divider
+  (radix-4 or pipelined) if hardware latency ever becomes a target.
+- **JS fold-body inlining: tie, reverted.** Source-level inlining of small fold/loop bodies
+  measured 0.98–1.02× on arrfill and loop64 (V8 already inlines the `a0o_` callees), so
+  it was not kept. The same measurement pointed at the real costs, which were fixed
+  instead: all-zero array literals now allocate (`new Uint32Array(n)`), power-of-two
+  array indices mask (`i & (n-1)`, exact for u32), and owned in-place `set`/`put` emit
+  `(a[i] = v, a)` with no helper. Interleaved A/B: arrfill 0.37–0.38× the previous
+  emission and 0.50× the hand-written JavaScript; loop64 unchanged. Compiler version
+  a0c-0.1.3.
+- **Execution benchmark re-run on a quiet machine** (load average 10–16,
+  `results/exec-benchmark.json`): C-path A0 vs hand-written C 0.98–1.00× on all 10
+  kernels, vs Rust 0.97–1.01×; JavaScript 0.99–1.08× (ties) with arrfill 0.53× (win);
+  build time A0→native 0.14–0.57× of rustc per kernel, 2.8× faster summed over the ten (the 3.9× figure from
+  the loaded-machine run is withdrawn and the site tile now shows the quiet number).
+
+- **`use` imports (v0.8.9, `src/link.ts`)**: `use "relative.a0"` lines at the head of a file
+  link another file into the program. The linker loads each file once by resolved path in
+  dependency order, rejects cycles and cross-file duplicate names (naming both files), and
+  validates the flat result; diagnostics are mapped back to `file:line`, including
+  validator errors that only name `fn.node`. The CLI (`check run emit wasm view patch`) and
+  the site build go through it; `site/page.a0` now declares `use "../examples/life.a0"`
+  instead of the build tool concatenating sources. Guides document the line. Test covers
+  transitive use, once-only loading, cycle, duplicate, and line mapping. Still one flat
+  namespace and no re-export or renaming: measured need was exactly the site; anything
+  more waits for a second consumer.
+
+- **Compact primer** `MODEL_GUIDE.min.txt`: 342 o200k tokens against 610 for `MODEL_GUIDE.txt`
+  (target was ≤ 300; the worked example costs ~30 and is kept). Harness option
+  `A0_EXPERIMENT_GUIDE` selects it; scripted run recorded in
+  `results/ai-edit-experiment.min-guide.json`: language-primer bucket 7930 → 4446 tokens
+  over 13 tasks, whole-task total 9587 → 6103 (conventional, −36 %) and 11090 → 7606
+  (structured, −31 %). Acceptance stayed 13/13 in every cell, but the scripted subject
+  does not read the primer, so **this run says nothing about whether a model can still
+  write A0 from the shorter guide**; only a live run can decide that, and it must compare
+  both guides with the same accounting.
+- **JS boundary guards** now emit one inline comparison per scalar parameter
+  (`(v >>> 0) !== v`) instead of a helper call. Interleaved same-process A/B on the affine
+  kernel, 21 rounds: old 62.1 ns, new 62.1 ns, hand-written 49.8 ns. No measured change:
+  V8 already inlined the helper. The remaining ~12 ns per call is the validation itself,
+  which is the boundary's purpose; internal calls never pay it. Kept for simplicity only.
+- `bun run exec-bench` was run under a load average of 115 from other applications and
+  produced C ratios from 0.44× to 1.41× on unchanged code; that run was discarded and the
+  committed results are unchanged. Whole-suite timing runs need a quiet machine.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

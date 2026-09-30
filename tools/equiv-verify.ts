@@ -258,13 +258,13 @@ async function main(): Promise<void> {
           v = X().mul(Y());
           break;
         case 'and':
-          v = X().and(Y());
+          v = isBV(scalar(x)) ? X().and(Y()) : (scalar(x) as Bool).and(scalar(y) as Bool);
           break;
         case 'or':
-          v = X().or(Y());
+          v = isBV(scalar(x)) ? X().or(Y()) : (scalar(x) as Bool).or(scalar(y) as Bool);
           break;
         case 'xor':
-          v = X().xor(Y());
+          v = isBV(scalar(x)) ? X().xor(Y()) : (scalar(x) as Bool).xor(scalar(y) as Bool);
           break;
         case 'shl':
           v = X().shl(Y().and(bv(31)));
@@ -279,7 +279,7 @@ async function main(): Promise<void> {
           v = Z.If(Y().eq(bv(0)), X(), X().urem(Y()));
           break;
         case 'eq':
-          v = X().eq(Y());
+          v = isBV(scalar(x)) ? X().eq(Y()) : (scalar(x) as Bool).eq(scalar(y) as Bool);
           break;
         case 'lt':
           v = X().ult(Y());

@@ -67,6 +67,7 @@ const U32_OPS: readonly Op[] = [
   'rem',
 ];
 const CMP_OPS: readonly Op[] = ['eq', 'lt'];
+const BOOL_OPS: readonly Op[] = ['and', 'or', 'xor', 'eq'];
 
 interface Slot {
   readonly operand: Operand;
@@ -291,6 +292,11 @@ export function generateCorpus(seed = CORPUS_SEED, count = CORPUS_FUNCTIONS): Ty
         const s = pick(rng, slots);
         args = [s.operand];
         type = s.type;
+      } else if (roll === 9 && boolSlots().length > 1) {
+        // Boolean logic: and/or/xor/eq over two bool slots.
+        op = pick(rng, BOOL_OPS);
+        args = [pick(rng, boolSlots()).operand, pick(rng, boolSlots()).operand];
+        type = 'bool';
       } else if (roll === 8 && boolSlots().length > 0) {
         op = 'select';
         const cond = pick(rng, boolSlots()).operand;
@@ -437,10 +443,13 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
     case 'mul':
       return (big(a, op) * big(b, op)) & MASK;
     case 'and':
+      if (typeof a === 'boolean') return a && b === true;
       return big(a, op) & big(b, op);
     case 'or':
+      if (typeof a === 'boolean') return a || b === true;
       return big(a, op) | big(b, op);
     case 'xor':
+      if (typeof a === 'boolean') return a !== (b === true);
       return big(a, op) ^ big(b, op);
     case 'shl':
       return (big(a, op) << (big(b, op) & 31n)) & MASK;
@@ -451,6 +460,7 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
     case 'rem':
       return big(b, op) === 0n ? big(a, op) : big(a, op) % big(b, op);
     case 'eq':
+      if (typeof a === 'boolean') return a === b;
       return big(a, op) === big(b, op);
     case 'lt':
       return big(a, op) < big(b, op);

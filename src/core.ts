@@ -667,12 +667,22 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
   switch (op) {
     case 'mov':
       return a;
-    case 'add':
-    case 'sub':
-    case 'mul':
     case 'and':
     case 'or':
     case 'xor':
+      // Bitwise on u32, logical on bool: both operands must share the type.
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (a === 'bool') {
+        expect(b, 'bool', where);
+        return 'bool';
+      }
+      expect(a, 'u32', where);
+      expect(b, 'u32', where);
+      return 'u32';
+    case 'add':
+    case 'sub':
+    case 'mul':
     case 'shl':
     case 'shr':
     case 'div':
@@ -683,6 +693,15 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       expect(b, 'u32', where);
       return 'u32';
     case 'eq':
+      if (b === undefined)
+        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (a === 'bool') {
+        expect(b, 'bool', where);
+        return 'bool';
+      }
+      expect(a, 'u32', where);
+      expect(b, 'u32', where);
+      return 'bool';
     case 'lt':
       if (b === undefined)
         throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
@@ -1103,10 +1122,13 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'mul':
       return Math.imul(num(a), num(b)) >>> 0;
     case 'and':
+      if (typeof a === 'boolean') return a && b === true;
       return (num(a) & num(b)) >>> 0;
     case 'or':
+      if (typeof a === 'boolean') return a || b === true;
       return (num(a) | num(b)) >>> 0;
     case 'xor':
+      if (typeof a === 'boolean') return a !== (b === true);
       return (num(a) ^ num(b)) >>> 0;
     case 'shl':
       return (num(a) << (num(b) & 31)) >>> 0;
@@ -1118,6 +1140,7 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'rem':
       return num(b) === 0 ? num(a) : num(a) % num(b);
     case 'eq':
+      if (typeof a === 'boolean') return a === b;
       return num(a) === num(b);
     case 'lt':
       return num(a) < num(b);

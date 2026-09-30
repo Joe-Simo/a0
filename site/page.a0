@@ -512,7 +512,7 @@ x245 puts x243 x244
 x246 call close x245 
 x247 call open x246 2
 x248 write x247 2
-x249 text "Wrapping u32 arithmetic, index mod N, and linear io tokens give the same answer in JavaScript, C, WebAssembly, Java, C#, Metal, and SystemVerilog. A 5946-case oracle and Z3 proofs check that it stays that way."
+x249 text "Wrapping u32 arithmetic, index mod N, and linear io tokens give the same answer in JavaScript, C, WebAssembly, Java, C#, Metal, and SystemVerilog. A 5262-case oracle and Z3 proofs check that it stays that way."
 x250 puts x248 x249
 x251 call close x250 
 x252 call close x251 
@@ -602,7 +602,7 @@ x335 write x334 2
 x336 text "lede"
 x337 puts x335 x336
 x338 write x337 2
-x339 text "This is the complete primer a model receives before it writes or edits A0: 342 tokens. There is nothing else to learn. Every line is an `id op args` triple, every value is exact, and every edit is validated against the revision it was written for."
+x339 text "This is the complete primer a model receives before it writes or edits A0: 372 tokens. There is nothing else to learn. Every line is an `id op args` triple, every value is exact, and every edit is validated against the revision it was written for."
 x340 puts x338 x339
 x341 call close x340 
 x342 call open x341 10
@@ -615,7 +615,7 @@ x348 write x347 2
 x349 text "A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG`, `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use \"file.a0\"` at top links a file. No forward refs or recursion; ops exact mod 2^32.\n"
 x350 puts x348 x349
 x351 write x350 2
-x352 text "mov add sub mul and or xor | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq lt -> bool | select c x y\n"
+x352 text "mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq (u32 or bool) lt -> bool | select c x y\n"
 x353 puts x351 x352
 x354 write x353 2
 x355 text "call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false\n"
@@ -733,7 +733,7 @@ x466 puts x464 x465
 x467 call close x466 
 x468 call open x467 2
 x469 write x468 2
-x470 text "5946 of 5946 oracle cases pass on all 9 execution paths, from JavaScript to synthesized hardware"
+x470 text "5262 of 5262 oracle cases pass on all 9 execution paths, from JavaScript to synthesized hardware"
 x471 puts x469 x470
 x472 call close x471 
 x473 call close x472 
@@ -747,8 +747,8 @@ x480 write x479 4
 x481 write x480 2
 x482 text "big"
 x483 puts x481 x482
-x484 mov 5946
-x485 mov 5946
+x484 mov 5262
+x485 mov 5262
 x486 mul x484 100
 x487 div x486 x485
 x488 call putnum x483 x487
@@ -758,7 +758,7 @@ x491 puts x489 x490
 x492 call close x491 
 x493 call open x492 2
 x494 write x493 2
-x495 text "Life on 7 targets and 5946 corpus cases pass on the interpreter, optimizer, JavaScript, C, C++, wasm32, JVM, .NET, and Metal"
+x495 text "Life on 7 targets and 5262 corpus cases pass on the interpreter, optimizer, JavaScript, C, C++, wasm32, JVM, .NET, and Metal"
 x496 puts x494 x495
 x497 call close x496 
 x498 call close x497 
