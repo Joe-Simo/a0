@@ -1556,7 +1556,8 @@ ret r
 end
 # state: (types tlist tio tbits ntypes ntlist ntys ncons pcons fstat err errfn errnode lit stat)
 # ntys: type per node; ncons/pcons: consumed tokens by node / by parameter (tlist index);
-# fstat: iteration bound per function; lit/stat: literal and total iteration bounds so far.
+# fstat: literal iteration bound per function (a variable count is a factor of 1); lit/stat:
+# literal and total iteration bounds so far.
 fn v1nodestep (u32x768,u32x1024,u32x256,u32x256,u32,u32,u32x1024,u32x1024,u32x1024,u32x256,u32,u32,u32,u32,u32) u32 u32x4096 u32x8192 u32x1024 u32 -> (u32x768,u32x1024,u32x256,u32x256,u32,u32,u32x1024,u32x1024,u32x1024,u32x256,u32,u32,u32,u32,u32)
 types at p0 0
 tlist at p0 1
@@ -1847,7 +1848,8 @@ lpty and isloop lpty1
 islit eq k0 3
 prod call v1satmul v0 cstat 16777216
 litf0 call v1umax lit prod
-litf select islit litf0 lit
+litc call v1umax lit cstat
+litf select islit litf0 litc
 itbad0 gt litf 16777216
 itbad and islit itbad0
 flc0 select itbad 2 0
@@ -1862,7 +1864,6 @@ flc8 select flbad2 2 flc7
 flc9 select notu0 3 flc8
 flcode select flbad1 2 flc9
 # the iteration bounds after this node
-litc call v1umax lit cstat
 lit1 select isfl litf lit
 lit2 select iscall litc lit1
 statc call v1umax stat cstat
@@ -1960,7 +1961,7 @@ ncons6 at s6 7
 pcons6 at s6 8
 fstat6 at s6 9
 errnode6 at s6 12
-stat6 at s6 14
+lit6 at s6 13
 rk shr retw 28
 rv and retw 268435455
 rt call v1opndty rk rv tlist6 ntys6 fp np first
@@ -1986,7 +1987,7 @@ rerr ne rcode 0
 apply and err0 rerr
 err2 select apply rcode err
 errnode2 select apply cnt errnode6
-fstat2 set fstat6 f stat6
+fstat2 set fstat6 f lit6
 s7 put s6 10 err2
 s8 put s7 12 errnode2
 s9 put s8 9 fstat2

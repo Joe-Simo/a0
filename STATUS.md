@@ -2516,3 +2516,37 @@ Decision: A0 does not win or tie on acceptance and cost at all three lengths poo
 - **Encoder checked against clang instruction by instruction:** 224 assembly texts (the 248 sources of tools/bootstrap.ts emitted by stage 2, which gives stage 1's code and text on all 248; the compiler's whole assembly; the runtime; the src/arm64.ts output of the corpus and examples): 293,545 instructions, words and relocation offsets/kinds equal to `clang -c -x assembler`, 0 mismatches.
 - **Still outside A0:** the encoder and Mach-O writer are TypeScript; the A0 version (compiler/asm_arm64.a0, compiler/macho.a0 with SHA-256 in A0, byte-identical to src/macho.ts) is not written yet. Stage 1 is still the C seed.
 - Gate (this worktree): lint pass; typecheck pass; test 85/85 (new test/macho.test.ts); bootstrap C, arm64 and macho all fixed points, 0 failures; selfhost 50 passed / 3 skipped; verify exit 0.
+
+## Session 2026-09-30 (borrowed aggregate reads; literal iteration bound; a0c-0.1.31)
+
+Two general limits found by an agent writing a large A0 program (a site generator).
+
+- **Aggregate reads borrow (performance).** Reading a field or element that is itself an array
+  or record copied it on every access: C wrote `T n = c.fK` (or, for a value over 4 KiB, took
+  arena storage and a memcpy), arm64/x86_64/riscv64/arm32 copied into a slot of their own, and
+  compiler/emit_c.a0 declared a struct copy. A fold body reading `at p0 0` of a
+  `(u32x16384,u32)` state copied 64 KiB per trip. Now `get`/`at` of an aggregate names part of
+  its container: C `const T *const n = &c.fK;` (any size), the native backends alias the slot at
+  an offset (`at`, and `get` at a literal index; a variable-index aggregate `get` still copies),
+  the A0 C emitter `const a0tK *const n<j> = &...` with root kind 6 `(*n<j>)`. wasm already
+  aliased. Value semantics: the new `borrowLive` (src/core.ts) says whether a borrow of a value
+  (through get/at of borrows, mov, select) is read after a node; every in-place rule (C
+  `cMutableHere`, the native and wasm `mutableHere`, emit_c.a0 `crt` via the borrow table
+  `cbrn`/`cbrret`) refuses an in-place write while a borrow is live, so the write copies. wasm's
+  old rule (any aggregate get/at forbids in-place) is relaxed to the same rule, so e.g. a state
+  record's scalar field is updated in place even when the body also borrows its array.
+  compiler/emit_arm64.a0 never writes aggregates in place and already aliased reads: unchanged.
+- **Literal iteration cap (validator bug).** A call to a function with a variable-count loop
+  made its caller's literal bound 2^32 (the total `staticIterations`), so any later literal
+  fold was rejected with "exceeds the compute bound". The cap now uses a separate
+  `literalIterations` (TypedFunc field): the largest product of literal trip counts along any
+  nesting path, a variable count being a factor of 1 (fuel bounds it at run time). Not
+  weakened: a variable fold still passes its body's literal bound up, so literal 4096 over a
+  variable fold over literal 65536 is still rejected (new ILL_TYPED `iterations-through-variable`).
+  Same rule in compiler/check.a0 and compiler/front512.a0 (fstat now holds the literal bound)
+  and tools/ref-check.ts. `staticIterations` is unchanged (still reports 2^32).
+- Tests (test/core.test.ts): `iteration bound: a call to a variable-count loop ...`,
+  `C emission: reading a field or element ... borrows it ...`, `self-hosted C emitter
+  (compiler/emit_c.a0) borrows aggregate reads ...` all fail on a0c-0.1.30 and pass now;
+  `native and wasm backends: aggregate reads borrow ...` (arm64 native, x86_64 via Rosetta,
+  wasm direct; clobber cases through `at` and a borrow of a borrow) is the value-semantics guard.

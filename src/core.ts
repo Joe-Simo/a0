@@ -292,6 +292,12 @@ export interface TypedFunc extends Func {
    * exceeds LIMITS.maxStaticIterations; variable counts are reported, not rejected.
    */
   readonly staticIterations: number;
+  /**
+   * Largest product of literal trip counts along any nesting path through callees (a variable
+   * count contributes a factor of 1, since fuel bounds it at run time). This, not
+   * `staticIterations`, is what LIMITS.maxStaticIterations bounds.
+   */
+  readonly literalIterations: number;
   /** Resolved callees (each defined earlier in the same program). */
   readonly calls: ReadonlyMap<string, TypedFunc>;
 }
@@ -299,6 +305,42 @@ export interface TypedFunc extends Func {
 export interface TypedProgram {
   readonly functions: readonly TypedFunc[];
   readonly byName: ReadonlyMap<string, TypedFunc>;
+}
+
+/**
+ * Borrowed reads (backends with flat aggregate storage: C, the native targets, wasm). A `get`
+ * or `at` whose result is an aggregate names a part of its container's storage instead of
+ * copying it; `mov` and `select` of a borrow alias it too. Value semantics then require that
+ * the container is not updated in place while a borrow of it is still read. Is some borrow of
+ * `o` read after the node at `index` (or by that node itself, unless `selfRead`: a `set`/`put`
+ * reads its value operand before writing its target, whereas a fold's body keeps reading its
+ * extras while the state changes), or returned?
+ */
+export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: boolean): boolean {
+  const same = (x: Operand): boolean =>
+    (x.kind === 'node' && o.kind === 'node' && x.id === o.id) ||
+    (x.kind === 'param' && o.kind === 'param' && x.index === o.index);
+  const borrows = new Set<string>();
+  for (const n of fn.nodes) {
+    const t = fn.types.get(n.id);
+    if (t === undefined || isPrimitive(t)) continue;
+    const from = (x: Operand | undefined): boolean =>
+      x !== undefined && (same(x) || (x.kind === 'node' && borrows.has(x.id)));
+    const borrowed =
+      ((n.op === 'get' || n.op === 'at') && from(n.args[0])) ||
+      (n.op === 'mov' && from(n.args[0])) ||
+      (n.op === 'select' && (from(n.args[1]) || from(n.args[2])));
+    // From `o` itself or from an earlier borrow of it (nodes are in definition order).
+    if (borrowed) borrows.add(n.id);
+  }
+  if (borrows.size === 0) return false;
+  const isBorrow = (x: Operand): boolean => x.kind === 'node' && borrows.has(x.id);
+  if (isBorrow(fn.ret)) return true;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j < index || (j === index && selfRead)) continue;
+    if (n.args.some(isBorrow)) return true;
+  }
+  return false;
 }
 
 /**
@@ -1110,7 +1152,7 @@ export function validateFunction(
       calls.set(callee.name, callee);
       types.set(node.id, callee.result);
       staticIterations = Math.max(staticIterations, callee.staticIterations);
-      literalIterations = Math.max(literalIterations, callee.staticIterations);
+      literalIterations = Math.max(literalIterations, callee.literalIterations);
     } else if (node.op === 'fold' || node.op === 'loop') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
@@ -1184,7 +1226,7 @@ export function validateFunction(
       const trips = countOp?.kind === 'u32' ? countOp.value : 2 ** 32;
       staticIterations = Math.max(staticIterations, trips * callee.staticIterations);
       if (countOp?.kind === 'u32') {
-        literalIterations = Math.max(literalIterations, trips * callee.staticIterations);
+        literalIterations = Math.max(literalIterations, trips * callee.literalIterations);
         if (literalIterations > LIMITS.maxStaticIterations) {
           throw new A0Error(
             `${where}: literal iteration count ${literalIterations} exceeds the compute bound ${LIMITS.maxStaticIterations}`,
@@ -1192,6 +1234,8 @@ export function validateFunction(
             { code: 'structure' },
           );
         }
+      } else {
+        literalIterations = Math.max(literalIterations, callee.literalIterations);
       }
       types.set(node.id, stateT);
     } else {
@@ -1209,7 +1253,7 @@ export function validateFunction(
         code: 'structure',
       });
   }
-  return { ...fn, types, calls, staticIterations };
+  return { ...fn, types, calls, staticIterations, literalIterations };
 }
 
 export function validate(program: Program): TypedProgram {

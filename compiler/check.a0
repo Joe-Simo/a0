@@ -11,7 +11,7 @@
 # node count for the ret operand, 4294967295 for a header error. Iteration bounds are kept
 # saturated at 2^24+1 and aggregate widths at 2^21+1, since only the comparison with the limit
 # matters. `checkir` validates functions [from, to) given the iteration bounds of the earlier
-# ones (fstat). The tables are the parser's (paged; types u32x384x65, tlist u32x128x65, fns
+# ones (fstat: the literal bound, a variable count being a factor of 1). The tables are the parser's (paged; types u32x384x65, tlist u32x128x65, fns
 # u32x128x45, nodes u32x128x128, args u32x128x256), which hold any program of 16384 source
 # bytes together with the types its bodies add; per type the checker keeps tinfo (io*2^31 +
 # bits) and tsig (a record's field hash, as the parser's), per node its type and whether its
@@ -818,7 +818,8 @@ lpty and isloop lpty1
 islit eq k0 3
 prod call satmul v0 cstat 16777216
 litf0 call umax lit prod
-litf select islit litf0 lit
+litc call umax lit cstat
+litf select islit litf0 litc
 itbad0 gt litf 16777216
 itbad and islit itbad0
 flc0 select itbad 2 0
@@ -833,7 +834,6 @@ flc8 select flbad2 2 flc7
 flc9 select notu0 3 flc8
 flcode select flbad1 2 flc9
 # the iteration bounds after this node
-litc call umax lit cstat
 lit1 select isfl litf lit
 lit2 select iscall litc lit1
 statc call umax stat cstat
@@ -986,7 +986,7 @@ pcons6 at s6 6
 tinfo6 at s6 3
 fstat6 at s6 7
 errnode6 at s6 12
-stat6 at s6 14
+lit6 at s6 13
 rk shr retw 28
 rv and retw 268435455
 isn eq rk 1
@@ -1035,7 +1035,7 @@ fsh shr f 7
 fsl and f 127
 fsg get fstat6 fsh
 fso get fsg fsl
-fsx select noerr stat6 fso
+fsx select noerr lit6 fso
 fsg2 set fsg fsl fsx
 fstat7 set fstat6 fsh fsg2
 s7 put s6 10 err7
