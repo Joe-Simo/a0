@@ -37,8 +37,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.12';
-export const COMPILER_VERSION = 'a0c-0.1.10';
+export const COMPILER_VERSION = 'a0c-0.1.13';
 
 export type Target =
   | 'js'
