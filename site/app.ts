@@ -170,9 +170,10 @@ function mountShader(el: HTMLElement, fragment: string): void {
     mouse = [ev.clientX / innerWidth, 1 - ev.clientY / innerHeight];
   };
   const size = (): void => {
-    const dpr = Math.min(devicePixelRatio, 2);
-    const w = Math.floor(el.clientWidth * dpr);
-    const h = Math.floor(el.clientHeight * dpr);
+    // The scene is soft glow art: render at most ~1 megapixel and let the browser scale it.
+    const scale = Math.min(1, Math.sqrt(1000000 / Math.max(1, el.clientWidth * el.clientHeight)));
+    const w = Math.floor(el.clientWidth * scale);
+    const h = Math.floor(el.clientHeight * scale);
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -188,8 +189,13 @@ function mountShader(el: HTMLElement, fragment: string): void {
     gl.uniform1f(uDark, dark.matches ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
-  const loop = (): void => {
-    if (visible) draw();
+  let last = 0;
+  const loop = (now: number): void => {
+    // 30 frames per second is enough for a slow scene and halves the GPU time.
+    if (visible && !document.hidden && now - last >= 32) {
+      last = now;
+      draw();
+    }
     frame = still ? 0 : requestAnimationFrame(loop);
   };
   const io = new IntersectionObserver((entries) => {
@@ -200,7 +206,7 @@ function mountShader(el: HTMLElement, fragment: string): void {
   ro.observe(el);
   addEventListener('pointermove', onMove, { passive: true });
   dark.addEventListener('change', draw);
-  loop();
+  loop(performance.now());
   scenes.push(() => {
     cancelAnimationFrame(frame);
     io.disconnect();
