@@ -849,7 +849,7 @@ test('site docs program: A0 UI protocol, stylesheet, and reference sections', as
     assert.ok(all.includes(needle), `missing ${needle}`);
 });
 
-test('site play program: the A0 lexer and parser render tokens, IR, and the diagnostic of a submitted source', async () => {
+test('site play program: the A0 lexer, parser and checker render tokens, typed IR, and the diagnostic of a submitted source', async () => {
   const { readFile } = await import('node:fs/promises');
   const p = (await link('site/play.a0', (f) => readFile(f, 'utf8'))).program;
   const session = p.byName.get('session') as TypedFunc;
@@ -892,8 +892,9 @@ test('site play program: the A0 lexer and parser render tokens, IR, and the diag
   assert.ok(d.text.includes(`${ntok} tokens`), d.text);
   assert.ok(d.text.includes('1 functions'), d.text);
   assert.ok(d.text.includes('params 2 · result u32 · nodes 2'), d.text);
-  assert.ok(d.text.includes('a add p0 p1\nb mul a 2\nret b'), d.text);
-  assert.ok(d.text.includes('No diagnostic'), d.text);
+  // Every node line carries the checker's type of the node.
+  assert.ok(d.text.includes('a add p0 p1  u32\nb mul a 2  u32\nret b'), d.text);
+  assert.ok(d.text.includes('valid: parsed and type-checked'), d.text);
   // The state is the source, so the text survives a re-render (event 0 with that state).
   assert.deepEqual(d.state, [bytes.length, ...bytes]);
   const again = makeIo([0, 0, 0, 0, d.state.length, ...d.state]);
@@ -907,6 +908,39 @@ test('site play program: the A0 lexer and parser render tokens, IR, and the diag
   const bad = makeIo([1, 0, 0, badSrc.length, ...badSrc, 0]);
   assert.equal(run(session, [bad]), 0);
   assert.ok(decode(bad.output).text.includes('structure error at token 8: g'));
+  // An ill-typed program parses, so the checker's diagnostic names the code, function and node
+  // id; the nodes before it are typed, the ones after are not.
+  const illSrc = [
+    ...Buffer.from('fn g u32 bool -> u32\na lt p0 1\nb add a p1\nc mul p0 2\nret c\nend\n'),
+  ];
+  const ill = makeIo([1, 0, 0, illSrc.length, ...illSrc, 0]);
+  assert.equal(run(session, [ill]), 0);
+  const illText = decode(ill.output).text;
+  assert.ok(illText.includes('type error in fn g at node b: an operand has a type'), illText);
+  assert.ok(illText.includes('a lt p0 1  bool\nb add a p1\nc mul p0 2\nret c'), illText);
+  assert.ok(!illText.includes('valid:'), illText);
+  // A consumed io token returned twice is a structure error at the ret operand.
+  const retSrc = [...Buffer.from('fn h io -> io\na write p0 1\nret p0\nend\n')];
+  const rt = makeIo([1, 0, 0, retSrc.length, ...retSrc, 0]);
+  assert.equal(run(session, [rt]), 0);
+  assert.ok(decode(rt.output).text.includes('structure error in fn h at ret: the operand count'));
+  // Types built by bodies (arrays, records, the (u32,io) of read) render like the source.
+  const tySrc = [
+    ...Buffer.from(
+      'fn k io u32x4 -> (u32,io)\nr read p0\nt at r 1\nv arr 1 2\nx rec v p1\ns at x 0\nret r\nend\n',
+    ),
+  ];
+  const ty = makeIo([1, 0, 0, tySrc.length, ...tySrc, 0]);
+  assert.equal(run(session, [ty]), 0);
+  const tyText = decode(ty.output).text;
+  assert.ok(tyText.includes('params 2 · result (u32,io)'), tyText);
+  assert.ok(
+    tyText.includes(
+      'r read p0  (u32,io)\nt at r 1  io\nv arr 1 2  u32x2\nx rec v p1  (u32x2,u32x4)\ns at x 0  u32x2\nret r',
+    ),
+    tyText,
+  );
+  assert.ok(tyText.includes('valid: parsed and type-checked'), tyText);
 });
 
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {

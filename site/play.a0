@@ -1,12 +1,14 @@
-# a0lang.com/play, authored in A0: the live playground. The self-hosted lexer (compiler/lex.a0)
-# and parser (compiler/parse.a0) run on the source in the text area, and the page (nav, editor,
-# tokens, word IR, diagnostic, stylesheet) is this one io program. Same protocol and runtime as
+# a0lang.com/play, authored in A0: the live playground. The self-hosted lexer (compiler/lex.a0),
+# parser (compiler/parse.a0) and type checker (compiler/check.a0) run on the source in the text
+# area, and the page (nav, editor, tokens, word IR with the type of every node, diagnostic,
+# stylesheet) is this one io program. Same protocol and runtime as
 # page.a0 (see ui.a0). Input: event x y ntext text[ntext] nstate state[nstate]; event 0 renders
 # (the state's source, or the default clamp function), event 1 runs the submitted text. The
 # state is the source (n then n bytes) so the text survives a re-render. Sources are at most
-# 480 bytes (TEXT_CAP of the runtime); the tables of the compiler are u32x512.
+# 480 bytes (TEXT_CAP of the runtime); the parser's tables are u32x512, widened for the checker
+# as checkio does.
 use "ui.a0"
-use "../compiler/parse.a0"
+use "../compiler/check.a0"
 # TEXT with the p1 bytes of p2 from p3
 fn substep io u32 u32x512 u32 -> io
 i add p3 p1
@@ -101,16 +103,18 @@ b write a len
 c fold kindstep len b names off
 ret c
 end
-# type p2 of the types table p1 (triples tag a b): u32 bool io u32xN record
-fn tynames -> u32x30
-t text "u32   bool  io    u32x  record"
+# type p3 of the checker's types p1 (triples tag a b: 1 u32, 2 bool, 3 io, (4 length elem),
+# (5 tlist-offset count)) with the record fields in p2, rendered like the source: u32xN,
+# (u32,io), (u32,io)x2. Three levels of nesting (ty3); a deeper aggregate prints as ?
+fn tynames -> u32x16
+t text "u32 boolio  ?   "
 ret t
 end
-fn tylens -> u32x5
-a arr 3 4 2 4 6
+fn tylens -> u32x4
+a arr 3 4 2 1
 ret a
 end
-fn tystep io u32 u32x30 u32 -> io
+fn tystep io u32 u32x16 u32 -> io
 i add p3 p1
 v get p2 i
 w write p0 v
@@ -120,27 +124,181 @@ fn numstep io u32 u32 -> io
 r call putnum p0 p2
 ret r
 end
-fn puttype io u32x512 u32 -> io
-i3 mul p2 3
-tag get p1 i3
-i31 add i3 1
-a get p1 i31
-ok1 ge tag 1
-ok2 le tag 5
-ok and ok1 ok2
-t1 sub tag 1
-t select ok t1 0
-lens call tylens
-len get lens t
-off mul t 6
+fn putcomma io u32 -> io
+a write p0 2
+b write a 1
+c write b 44
+ret c
+end
+fn basestep io u32 u32 -> io
 names call tynames
+lens call tylens
+ok1 ge p2 1
+ok2 le p2 3
+ok and ok1 ok2
+t1 sub p2 1
+t select ok t1 3
+len get lens t
+off mul t 4
 w write p0 2
 w2 write w len
 w3 fold tystep len w2 names off
+ret w3
+end
+fn ty0 io u32x768 u32x1024 u32 -> io
+i3 mul p3 3
+tag get p1 i3
+w call basestep p0 0 tag
+ret w
+end
+fn arr1 io u32 u32x768 u32x1024 u32 u32 -> io
+e call ty0 p0 p2 p3 p5
+x write e 2
+x1 write x 1
+x2 write x1 120
+n call putnum x2 p4
+ret n
+end
+fn fld1 io u32 u32x768 u32x1024 u32 -> io
+nz gt p1 0
+nc select nz 1 0
+c fold putcomma nc p0
+k add p4 p1
+t get p3 k
+r call ty0 c p2 p3 t
+ret r
+end
+fn rec1 io u32 u32x768 u32x1024 u32 u32 -> io
+o write p0 2
+o1 write o 1
+o2 write o1 40
+f fold fld1 p5 o2 p2 p3 p4
+c write f 2
+c1 write c 1
+c2 write c1 41
+ret c2
+end
+fn ty1 io u32x768 u32x1024 u32 -> io
+i3 mul p3 3
+tag get p1 i3
+i31 add i3 1
+a get p1 i31
+i32 add i3 2
+b get p1 i32
 isarr eq tag 4
-na select isarr 1 0
-w4 fold numstep na w3 a
-ret w4
+isrec eq tag 5
+isagg or isarr isrec
+nbase select isagg 0 1
+narr select isarr 1 0
+nrec select isrec 1 0
+w fold basestep nbase p0 tag
+w2 fold arr1 narr w p1 p2 a b
+w3 fold rec1 nrec w2 p1 p2 a b
+ret w3
+end
+fn arr2 io u32 u32x768 u32x1024 u32 u32 -> io
+e call ty1 p0 p2 p3 p5
+x write e 2
+x1 write x 1
+x2 write x1 120
+n call putnum x2 p4
+ret n
+end
+fn fld2 io u32 u32x768 u32x1024 u32 -> io
+nz gt p1 0
+nc select nz 1 0
+c fold putcomma nc p0
+k add p4 p1
+t get p3 k
+r call ty1 c p2 p3 t
+ret r
+end
+fn rec2 io u32 u32x768 u32x1024 u32 u32 -> io
+o write p0 2
+o1 write o 1
+o2 write o1 40
+f fold fld2 p5 o2 p2 p3 p4
+c write f 2
+c1 write c 1
+c2 write c1 41
+ret c2
+end
+fn ty2 io u32x768 u32x1024 u32 -> io
+i3 mul p3 3
+tag get p1 i3
+i31 add i3 1
+a get p1 i31
+i32 add i3 2
+b get p1 i32
+isarr eq tag 4
+isrec eq tag 5
+isagg or isarr isrec
+nbase select isagg 0 1
+narr select isarr 1 0
+nrec select isrec 1 0
+w fold basestep nbase p0 tag
+w2 fold arr2 narr w p1 p2 a b
+w3 fold rec2 nrec w2 p1 p2 a b
+ret w3
+end
+fn arr3 io u32 u32x768 u32x1024 u32 u32 -> io
+e call ty2 p0 p2 p3 p5
+x write e 2
+x1 write x 1
+x2 write x1 120
+n call putnum x2 p4
+ret n
+end
+fn fld3 io u32 u32x768 u32x1024 u32 -> io
+nz gt p1 0
+nc select nz 1 0
+c fold putcomma nc p0
+k add p4 p1
+t get p3 k
+r call ty2 c p2 p3 t
+ret r
+end
+fn rec3 io u32 u32x768 u32x1024 u32 u32 -> io
+o write p0 2
+o1 write o 1
+o2 write o1 40
+f fold fld3 p5 o2 p2 p3 p4
+c write f 2
+c1 write c 1
+c2 write c1 41
+ret c2
+end
+fn ty3 io u32x768 u32x1024 u32 -> io
+i3 mul p3 3
+tag get p1 i3
+i31 add i3 1
+a get p1 i31
+i32 add i3 2
+b get p1 i32
+isarr eq tag 4
+isrec eq tag 5
+isagg or isarr isrec
+nbase select isagg 0 1
+narr select isarr 1 0
+nrec select isrec 1 0
+w fold basestep nbase p0 tag
+w2 fold arr3 narr w p1 p2 a b
+w3 fold rec3 nrec w2 p1 p2 a b
+ret w3
+end
+# the type of a node, as a muted span after its line
+fn tyspan io u32 u32x768 u32x1024 u32 -> io
+a call open p0 6
+b write a 4
+c write b 2
+d text "ty"
+e puts c d
+f write e 2
+g text "  "
+h puts f g
+i call ty3 h p2 p3 p4
+j call close i
+ret j
 end
 # one operand (kind value): 1 node of this function, 2 param, 3 u32, 4 bool
 fn argnode io u32 u32x512 u32x512 u32x512 u32 u32 -> io
@@ -201,8 +359,10 @@ v get p6 i21
 r call putarg a k v p2 p3 p4 p5
 ret r
 end
-# node p1 of a function as one line: id op args (pool p2 sym p3 nodes p4 args p5 firstnode p6)
-fn nodestep io u32 u32x512 u32x512 u32x512 u32x512 u32 -> io
+# node p1 of a function as one line: id op args, then its type when the checker reached it
+# (pool p2 sym p3 nodes p4 args p5 firstnode p6 types p7 tlist p8 ntys p9 fn p10 errfn p11
+# errnode p12: the nodes of earlier functions and the nodes before the error are typed)
+fn irnode io u32 u32x512 u32x512 u32x512 u32x512 u32 u32x768 u32x1024 u32x1024 u32 u32 u32 -> io
 n add p6 p1
 i6 mul n 6
 id get p4 i6
@@ -216,24 +376,32 @@ a call putsym p0 p2 p3 id
 b call putsp a 0
 c call putop b op
 d fold argstep nargs c p2 p3 p4 p6 p5 farg
-e call putnl d 0
-ret e
+before lt p10 p11
+same eq p10 p11
+inn lt p1 p12
+here and same inn
+typed or before here
+nt select typed 1 0
+ty get p9 n
+e fold tyspan nt d p7 p8 ty
+f call putnl e 0
+ret f
 end
-# function p1: name, params, result type, node count, then its nodes and ret
-# (pool p2 sym p3 types p4 fns p5 nodes p6 args p7)
-fn fnstep io u32 u32x512 u32x512 u32x512 u32x512 u32x512 u32x512 -> io
+# function p1: name, params, result type, node count, then its nodes (typed) and ret
+# (pool p2 sym p3 fns p4 nodes p5 args p6 types p7 tlist p8 ntys p9 errfn p10 errnode p11)
+fn irfn io u32 u32x512 u32x512 u32x512 u32x512 u32x512 u32x768 u32x1024 u32x1024 u32 u32 -> io
 i7 mul p1 7
-name get p5 i7
+name get p4 i7
 i71 add i7 1
-np get p5 i71
+np get p4 i71
 i73 add i7 3
-rt get p5 i73
+rt get p4 i73
 i74 add i7 4
-fnode get p5 i74
+fnode get p4 i74
 i75 add i7 5
-nn get p5 i75
+nn get p4 i75
 i76 add i7 6
-retw get p5 i76
+retw get p4 i76
 rk shr retw 28
 rv and retw 268435455
 a call open p0 5
@@ -256,7 +424,7 @@ c8 call putnum c7 np
 c9 write c8 2
 c10 text " · result "
 c11 puts c9 c10
-c12 call puttype c11 p4 rt
+c12 call ty3 c11 p7 p8 rt
 c13 write c12 2
 c14 text " · nodes "
 c15 puts c13 c14
@@ -267,12 +435,12 @@ d1 write d 4
 d2 write d1 2
 d3 text "code"
 d4 puts d2 d3
-d5 fold nodestep nn d4 p2 p3 p6 p7 fnode
+d5 fold irnode nn d4 p2 p3 p5 p6 fnode p7 p8 p9 p1 p10 p11
 d6 write d5 2
 d7 text "ret"
 d8 puts d6 d7
 d9 call putsp d8 0
-d10 call putarg d9 rk rv p2 p3 p6 fnode
+d10 call putarg d9 rk rv p2 p3 p5 fnode
 d11 call close d10
 e call close d11
 ret e
@@ -315,7 +483,7 @@ b puts a t
 ret b
 end
 fn putok io u32 -> io
-t text "No diagnostic: the source parsed."
+t text "valid: parsed and type-checked"
 a write p0 2
 b puts a t
 ret b
@@ -360,9 +528,108 @@ b write a 2
 c puts b t
 ret c
 end
-# the first diagnostic: code p1 (0 none, 1 parse, 2 structure) at token p2 of p3 (tokens p4, source p5)
-fn putdiag io u32 u32 u32 u32x512 u32x512 -> io
-ok eq p1 0
+fn puttyerr io u32 -> io
+t text "type error"
+a write p0 2
+b puts a t
+ret b
+end
+fn putlimit io u32 -> io
+t text "limit error"
+a write p0 2
+b puts a t
+ret b
+end
+fn puthdr io u32 -> io
+t text " in the header"
+a write p0 2
+b puts a t
+ret b
+end
+fn putret io u32 -> io
+t text " at ret"
+a write p0 2
+b puts a t
+ret b
+end
+fn putatnode io u32 u32x512 u32x512 u32 -> io
+t text " at node "
+a write p0 2
+b puts a t
+c call putsym b p2 p3 p4
+ret c
+end
+fn meanstruct io u32 -> io
+t text "the operand count, an io token consumed twice, or a field index does not fit the operation"
+a write p0 2
+b puts a t
+ret b
+end
+fn meantype io u32 -> io
+t text "an operand has a type the operation does not accept"
+a write p0 2
+b puts a t
+ret b
+end
+fn meanlimit io u32 -> io
+t text "a parameter, node, aggregate width or iteration limit of the language is exceeded"
+a write p0 2
+b puts a t
+ret b
+end
+# the checker's diagnostic: code p2 (2 structure, 3 type, 4 limit) in function p3 at node p4
+# (its index in the function; the node count for the ret operand; 4294967295 for the header),
+# named from the pool p5, sym p6, fns p7 and nodes p8
+fn putcheck io u32 u32 u32 u32 u32x512 u32x512 u32x512 u32x512 -> io
+c2 eq p2 2
+c3 eq p2 3
+c4 eq p2 4
+n2 select c2 1 0
+n3 select c3 1 0
+n4 select c4 1 0
+a fold putstruct n2 p0
+b fold puttyerr n3 a
+c fold putlimit n4 b
+d write c 2
+d1 text " in fn "
+d2 puts d d1
+fok lt p3 1024
+f select fok p3 0
+f7 mul f 7
+name get p7 f7
+e call putsym d2 p5 p6 name
+i74 add f7 4
+fnode get p7 i74
+i75 add f7 5
+nn get p7 i75
+ishdr eq p4 4294967295
+isret eq p4 nn
+nh select ishdr 1 0
+nr select isret 1 0
+inb lt p4 nn
+nnode select inb 1 0
+gi0 add fnode p4
+gi select inb gi0 0
+i6 mul gi 6
+id get p8 i6
+g fold puthdr nh e
+h fold putret nr g
+i fold putatnode nnode h p5 p6 id
+j write i 2
+j1 text ": "
+j2 puts j j1
+k fold meanstruct n2 j2
+l fold meantype n3 k
+m fold meanlimit n4 l
+ret m
+end
+# the first diagnostic: the parser's code p1 (0 none, 1 parse, 2 structure) at token p2 of p3
+# (tokens p4, source p5), else the checker's code p6 (0 none) in function p7 at node p8
+# (pool p9 sym p10 fns p11 nodes p12); a green line when both passed
+fn putdiag io u32 u32 u32 u32x512 u32x512 u32 u32 u32 u32x512 u32x512 u32x512 u32x512 -> io
+pok eq p1 0
+cok eq p6 0
+ok and pok cok
 bad select ok false true
 c1 eq p1 1
 c2 eq p1 2
@@ -371,11 +638,15 @@ nbad select bad 1 0
 n1 select c1 1 0
 n2 select c2 1 0
 inside lt p2 p3
-attok and bad inside
+pbad select pok false true
+attok and pbad inside
 ateof0 select inside false true
-ateof and bad ateof0
+ateof and pbad ateof0
 nt select attok 1 0
 ne select ateof 1 0
+cbad select cok false true
+ccheck and pok cbad
+nc select ccheck 1 0
 a call open p0 2
 b fold attrok n0 a
 c fold attrbad nbad b
@@ -384,70 +655,9 @@ e fold putparse n1 d
 f fold putstruct n2 e
 g fold putattok nt f p2 p4 p5
 h fold putateof ne g p2
-i call close h
+h2 fold putcheck nc h p6 p7 p8 p9 p10 p11 p12
+i call close h2
 ret i
-end
-# the passes of compiler/parse.a0 (as parseio runs them) on source p0 of p1 bytes:
-# (code etok ntok tok pool sym types fns nodes args nfns); the tables are zero on an error
-fn analyze u32x512 u32 -> (u32,u32,u32,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32x512,u32)
-lx call lex p0 p1
-tok at lx 0
-nw at lx 1
-ntok div nw 3
-z call zeros512
-pool0 call retvalpool
-sym0a set z 0 0
-sym0 set sym0a 1 6
-is0 rec pool0 sym0 z 6 1
-is fold internstep ntok is0 p0 tok
-pool at is 0
-sym at is 1
-tsym at is 2
-us0 rec z 0 0 0 0 0
-us loop usesok usesstep ntok us0 p0 tok tsym ntok
-umode at us 3
-uerr at us 4
-uetok at us 5
-uopen ne umode 0
-uerr0 eq uerr 0
-ueof and uerr0 uopen
-uerr2 select ueof 1 uerr
-uetok2 select ueof ntok uetok
-ty0 call basetypes
-z256 call zeros256
-hs0 rec ty0 z z z256 3 0 0 0 0 0 uerr2 uetok2 0 0 0 0 0
-hs loop hdrok hdrstep ntok hs0 p0 tok tsym ntok
-types at hs 0
-fns0 at hs 2
-nfns at hs 6
-hmode at hs 9
-herr at hs 10
-hetok at hs 11
-hopen ne hmode 0
-herr0 eq herr 0
-heof and herr0 hopen
-herr2 select heof 1 herr
-hetok2 select heof ntok hetok
-bs0 rec fns0 z z 0 0 0 0 herr2 hetok2 0 0 0
-bs loop bodyok bodystep ntok bs0 p0 tok tsym ntok
-fns at bs 0
-nodes at bs 1
-args at bs 2
-bmode at bs 6
-berr at bs 7
-betok at bs 8
-b0 eq bmode 0
-b9 eq bmode 9
-bclosed or b0 b9
-bopen select bclosed false true
-berr0 eq berr 0
-beof and berr0 bopen
-code select beof 1 berr
-etok select beof ntok betok
-ok eq code 0
-nfnsw select ok nfns 0
-r rec code etok ntok tok pool sym types fns nodes args nfnsw
-ret r
 end
 # the default source: the clamp function of the home page
 fn deftext -> u32x96
@@ -502,18 +712,52 @@ src1 select hasst tst def
 n1 select hasst nst 96
 src select run tin src1
 n select run ntext n1
-an call analyze src n
-code at an 0
-etok at an 1
-ntok at an 2
-tok at an 3
-pool at an 4
-sym at an 5
-types at an 6
-fns at an 7
-nodes at an 8
-args at an 9
-nfns at an 10
+lx call lex src n
+tok at lx 0
+nw at lx 1
+ntok div nw 3
+pr call parse src n
+code at pr 0
+etok at pr 1
+pool at pr 2
+sym at pr 3
+types at pr 4
+tlist at pr 5
+fns at pr 6
+nodes at pr 7
+args at pr 8
+ntypes0 at pr 12
+ntlist0 at pr 13
+nfns0 at pr 14
+nnodes0 at pr 15
+nargs0 at pr 16
+pok eq code 0
+ntypes select pok ntypes0 0
+ntlist select pok ntlist0 0
+nfns select pok nfns0 0
+nnodes select pok nnodes0 0
+nargs select pok nargs0 0
+ntypes3 mul ntypes 3
+nfns7 mul nfns 7
+nnodes6 mul nnodes 6
+nargs2 mul nargs 2
+z768 call zeros768
+z1024 call zeros1024
+z4096 call zeros4096
+z8192 call zeros8192
+z256 call zeros256
+types1 fold cp768 ntypes3 z768 types
+tlist1 fold cp1024 ntlist z1024 tlist
+fns1 fold cp1024 nfns7 z1024 fns
+nodes1 fold cp4096 nnodes6 z4096 nodes
+args1 fold cp8192 nargs2 z8192 args
+ck call check types1 tlist1 fns1 nodes1 args1 z256 ntypes ntlist nfns 0
+types2 at ck 0
+tlist2 at ck 1
+ntys at ck 6
+cerr at ck 10
+cfn at ck 11
+cnode at ck 12
 y1 write t7 9
 y2 text "@font-face{font-family:\"Geist\";src:url(\"/fonts/Geist-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Mono\";src:url(\"/fonts/GeistMono-Variable.woff2\") format(\"woff2\");font-weight:100 900;font-display:swap}\n@font-face{font-family:\"Geist Pixel\";src:url(\"/fonts/GeistPixel-Square.woff2\") format(\"woff2\");font-weight:400;font-display:swap}\n:root{color-scheme:light dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--body:#c9ccd1;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--line2:#33373d;--card:#0b0c0e;--pillbg:#fff;--pillfg:#000;--ghost:#17191d;--a0:#ffd166;--c:#7aa2ff;--rust:#f0885a;--gray:#9aa0a6;--win:#5ad19a;--loss:#ff7a7a;--glow1:rgba(120,140,255,.22);--glow2:rgba(255,209,102,.12)}\n"
 y3 puts y1 y2
@@ -536,7 +780,7 @@ y19 write y18 9
 y20 text ".limits{border-left:2px solid var(--loss);padding-left:16px}\n.foot{max-width:1160px;margin:32px auto 0;padding:32px 24px 48px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}\n.foot a{color:var(--fg2);text-decoration:none}\n.card:hover{border-color:var(--line2)}\na:focus-visible,.pill:focus-visible{outline:2px solid var(--c);outline-offset:3px;border-radius:4px}\n.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}\n.reveal.in{opacity:1;transform:none}\n.docs .hero{min-height:0;padding:120px 24px 0;align-items:flex-start;flex-direction:column;justify-content:flex-start}\n.docs .hero::after{display:none}\n.docs .hero .name{font-size:clamp(2.6rem,7vw,5rem)}\n@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.fill{transition:none}.hero::before{animation:none}.hero .name,.hero .tag,.hero .sub{animation:none}}\n"
 y21 puts y19 y20
 y22 write y21 9
-y23 text ".lead{color:var(--muted);max-width:620px;margin:10px 0 0;font-size:1.05rem}\n.single{max-width:860px;margin:0 auto;padding:40px 24px 0}\ntextarea.src{display:block;width:100%;min-height:210px;resize:vertical;background:var(--card);color:var(--fg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font:13px/1.65 \"Geist Mono\",ui-monospace,monospace;white-space:pre;tab-size:2}\ntextarea.src:focus{outline:2px solid var(--c);outline-offset:2px}\n.bar{display:flex;align-items:center;gap:16px;margin:14px 0 0;flex-wrap:wrap}\nbutton.pill{border:0;cursor:pointer;font:inherit}\n.hint{color:var(--muted);font-size:.85rem}\n.count{font-variant-numeric:tabular-nums;color:var(--fg)}\n.diag{border-left:2px solid var(--loss);padding-left:16px;color:var(--fg2)}\n.diag.ok{border-color:var(--win)}\n.fnb{margin:0 0 22px}\n.fnb h3{margin:0 0 2px}\n.fnb .meta{color:var(--muted);font-size:.85rem;margin:0}\n.ops td.k{color:var(--muted)}\n"
+y23 text ".lead{color:var(--muted);max-width:620px;margin:10px 0 0;font-size:1.05rem}\n.single{max-width:860px;margin:0 auto;padding:40px 24px 0}\ntextarea.src{display:block;width:100%;min-height:210px;resize:vertical;background:var(--card);color:var(--fg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font:13px/1.65 \"Geist Mono\",ui-monospace,monospace;white-space:pre;tab-size:2}\ntextarea.src:focus{outline:2px solid var(--c);outline-offset:2px}\n.bar{display:flex;align-items:center;gap:16px;margin:14px 0 0;flex-wrap:wrap}\nbutton.pill{border:0;cursor:pointer;font:inherit}\n.hint{color:var(--muted);font-size:.85rem}\n.count{font-variant-numeric:tabular-nums;color:var(--fg)}\n.diag{border-left:2px solid var(--loss);padding-left:16px;color:var(--fg2)}\n.diag.ok{border-color:var(--win);color:var(--win)}\npre.code .ty{color:var(--muted)}\n.fnb{margin:0 0 22px}\n.fnb h3{margin:0 0 2px}\n.fnb .meta{color:var(--muted);font-size:.85rem;margin:0}\n.ops td.k{color:var(--muted)}\n"
 y24 puts y22 y23
 y25 call nav y24
 y26 call open y25 5
@@ -568,7 +812,7 @@ y51 write y50 2
 y52 text "lead"
 y53 puts y51 y52
 y54 write y53 2
-y55 text "Type an A0 function and run it through the A0 lexer and parser, both written in A0 and compiled to wasm: the tokens, the parsed word IR, and the first diagnostic. Everything on this page is computed by that program."
+y55 text "Type an A0 function and run it through the A0 lexer, parser and type checker, all written in A0 and compiled to wasm: the tokens, the parsed word IR with the type of every node, and the first diagnostic. Everything on this page is computed by that program."
 y56 puts y54 y55
 y57 call close y56
 y58 call close y57
@@ -689,7 +933,7 @@ y172 write y171 2
 y173 text " functions"
 y174 puts y172 y173
 y175 call close y174
-y176 fold fnstep nfns y175 pool sym types fns nodes args
+y176 fold irfn nfns y175 pool sym fns nodes args types2 tlist2 ntys cfn cnode
 y177 call close y176
 y178 call open y177 13
 y179 write y178 4
@@ -701,7 +945,7 @@ y184 write y183 2
 y185 text "Diagnostic"
 y186 puts y184 y185
 y187 call close y186
-y188 call putdiag y187 code etok ntok tok src
+y188 call putdiag y187 code etok ntok tok src cerr cfn cnode pool sym fns nodes
 y189 call close y188
 y190 call close y189
 y191 call close y190
