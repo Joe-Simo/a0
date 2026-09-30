@@ -1,24 +1,45 @@
 /**
- * Bootstrap step 1 of self-hosting (DESIGN.md 7a stage 6). Stage 1: the A0-written C emitter
- * pipeline (compiler/emit_c.a0 linked with check.a0, parse.a0, lex.a0; entry `emitcio`) is
- * compiled by the TypeScript compiler's C backend plus clang into a native `a0c-stage1` that
- * reads A0 source bytes on stdin and writes C on stdout (exit status: the front end's
- * diagnostic code). Stage 2: stage 1 compiles small programs, the corpus and example functions
- * (each with its callees) and the compiler's own functions, as far as they fit the front end's
- * tables; its output must equal the interpreter's `emitcio` byte for byte, its C is compiled by
- * clang and must give the independent oracle's result on every case, and the TypeScript C
- * emitter's module must give the same results (observable agreement). Rejected programs must
- * give the reference checker's code and no C. Writes results/bootstrap.json.
+ * Bootstrap of the self-hosted compiler (DESIGN.md 7a stage 6) up to the self-compilation
+ * fixed point. The compiler is compiler/boot.a0 (entry `emitchunkio`) linked with emit_c.a0,
+ * check.a0, parse.a0, lex.a0 and front512.a0: it compiles one chunk of A0 source (up to the
+ * front end's 16384 bytes) to C.
+ *
+ * - Stage 1: the TypeScript C backend compiles the linked compiler, clang builds it with a
+ *   stdin/stdout main into `a0c-stage1`.
+ * - Chunked mode: a program that does not fit one chunk is split here by function boundaries
+ *   only (no A0 semantics in TypeScript): each chunk is a header prelude naming every header
+ *   type of the program (so every chunk interns the same type table), the signature lines of
+ *   the functions the chunk calls (stub bodies, parsed but not checked or emitted), then the
+ *   chunk's functions in program order. The A0 front end checks and the A0 emitter emits each
+ *   chunk; the iteration bounds the checker computes for a chunk's functions are returned and
+ *   passed back, unread here, with the stubs of later chunks. The C of the chunks is
+ *   concatenated (the first chunk also writes the prelude and every typedef).
+ * - Stage 2: a0c-stage1 compiles the linked compiler in chunks; clang builds that C into
+ *   `a0c-stage2`. Stage 3: a0c-stage2 compiles it again. The fixed point holds when the C of
+ *   stage 2 and stage 3 is byte-identical; a0c-stage3 is built too and must reproduce it.
+ * - Every stage compiles the same test sources: small programs, the ill-typed programs of
+ *   tools/ref-check.ts, the corpus (its function closures and the whole corpus), the examples
+ *   and their closures, and the compiler's own function closures. Stage 1's C must equal
+ *   `emitchunkio` in the reference interpreter on the small sources; its C is compiled with the
+ *   standard driver of tools/verify.ts and must give the independent oracle's result on every
+ *   case (the TypeScript emitter's C too: observable agreement); rejected sources must give the
+ *   reference checker's code and no C. Stage 2 and stage 3 must give stage 1's output byte for
+ *   byte (code and C) on every source; a source where they differ is verified on the oracle on
+ *   its own. Writes results/bootstrap.json.
  */
 
+import { spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { C_IO_INPUT_CAPACITY, C_IO_OUTPUT_CAPACITY, compile } from '../src/backends.js';
 import {
   type Func,
+  formatFunction,
   formatProgram,
   makeIo,
+  type Program,
+  parse,
   parseAndValidate,
   run,
   type TypedFunc,
@@ -30,14 +51,17 @@ import { generateCases, generateCorpus } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
-/** The front end's source limit (compiler/lex.a0: u32x512 source and token arrays). */
-const FRONT_END_BYTES = 512;
-/** Stage 1's io capacities: the length word plus the source, and the C it writes. */
-const STAGE1_INPUT = FRONT_END_BYTES + 8;
-const STAGE1_OUTPUT = 1 << 20;
-/** Table capacities of the A0 front end (compiler/parse.a0, check.a0) for the limit report. */
-const TABLES = { fns: 1024, nodes: 4096, args: 8192, pool: 512, sym: 512, types: 768 };
+/** The front end's source limit (compiler/lex.a0 `readsrc`). */
+const FRONT_END_BYTES = 16384;
+/** Name of the header-prelude function of a chunk (must not name a program function). */
+const PRELUDE = 'a0boottypes';
+/** io capacities of every stage: n, the bytes, head, strict, from and up to 1024 bounds in. */
+const STAGE_INPUT = 1 + FRONT_END_BYTES + 3 + 1024;
+const STAGE_OUTPUT = 1 << 22;
+/** Stack of the thread that runs the compiler (aggregates are passed by value). */
+const STAGE_STACK = 1 << 30;
 const BUILD_DIR = join('dist', 'bootstrap');
+const CLANG_BUILD = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Wno-unused-parameter'];
 
 const SMALL: [string, string][] = [
   [
@@ -52,31 +76,59 @@ const SMALL: [string, string][] = [
   ],
 ];
 
-/** Stage 1's entry: stdin bytes become the io stream (length, bytes); output words are bytes. */
-const STAGE1_MAIN = `#include <stdio.h>
+/** Every stage's entry: stdin words (little-endian) are the io input; see compiler/boot.a0. */
+const STAGE_MAIN = `#include <pthread.h>
+#include <stdio.h>
+#define A0_IO_INPUT_CAPACITY ${STAGE_INPUT}u
+#define A0_IO_OUTPUT_CAPACITY ${STAGE_OUTPUT}u
 #include "emitter.c"
+static a0_io io;
+static uint32_t code;
+static void *run(void *arg) {
+  (void)arg;
+  code = a0_emitchunkio(&io);
+  return NULL;
+}
 int main(void) {
-  static a0_io io;
-  static unsigned char src[${FRONT_END_BYTES + 1}];
-  size_t n = fread(src, 1, sizeof src, stdin);
-  if (n > ${FRONT_END_BYTES}u) {
-    fprintf(stderr, "a0c-stage1: source over the front end's ${FRONT_END_BYTES} bytes\\n");
-    return 64;
+  unsigned char b[4];
+  uint32_t n = 0;
+  while (fread(b, 1, 4, stdin) == 4) {
+    if (n == A0_IO_INPUT_CAPACITY) {
+      fprintf(stderr, "a0c: input over %u words\\n", A0_IO_INPUT_CAPACITY);
+      return 64;
+    }
+    io.input[n++] = (uint32_t)b[0] | (uint32_t)b[1] << 8 | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 24;
   }
-  io.input[0] = (uint32_t)n;
-  for (size_t k = 0; k < n; k++) io.input[k + 1] = src[k];
-  io.ninput = (uint32_t)n + 1u;
-  uint32_t code = a0_emitcio(&io);
-  if (io.noutput >= ${STAGE1_OUTPUT}u) {
-    fprintf(stderr, "a0c-stage1: output capacity reached\\n");
+  io.ninput = n;
+  pthread_attr_t attr;
+  pthread_t thread;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, (size_t)${STAGE_STACK}u);
+  if (pthread_create(&thread, &attr, run, NULL) != 0 || pthread_join(thread, NULL) != 0) {
+    fprintf(stderr, "a0c: cannot run the compiler thread\\n");
+    return 66;
+  }
+  if (io.noutput >= A0_IO_OUTPUT_CAPACITY) {
+    fprintf(stderr, "a0c: output capacity reached\\n");
     return 65;
   }
-  for (uint32_t k = 0; k < io.noutput; k++) putchar((int)(io.output[k] & 255u));
+  /* The C bytes, then the trailer words (k bounds, then k) little-endian. */
+  uint32_t k = io.noutput > 0 ? io.output[io.noutput - 1] : 0;
+  uint32_t c = io.noutput > k ? io.noutput - k - 1 : 0;
+  for (uint32_t i = 0; i < io.noutput; i++) {
+    uint32_t w = io.output[i];
+    putchar((int)(w & 255u));
+    if (i >= c) {
+      putchar((int)(w >> 8 & 255u));
+      putchar((int)(w >> 16 & 255u));
+      putchar((int)(w >> 24 & 255u));
+    }
+  }
   return (int)code;
 }
 `;
 
-/** Sources compared with `emitcio` in the reference interpreter (about 4.5 s each there). */
+/** Sources also compiled by `emitchunkio` in the reference interpreter (seconds each there). */
 const INTERPRETED = new Set(['small', 'kernels.a0']);
 const INTERPRETED_ILL_TYPED = 4;
 
@@ -97,30 +149,190 @@ async function compileOnly(clang: ToolInfo, text: string): Promise<TargetReport>
   });
 }
 
+// --- chunked mode --------------------------------------------------------------------------
+
+interface Chunk {
+  readonly source: string;
+  readonly head: boolean;
+  /** 1 when the program is split: a body may then not build a type no header names. */
+  readonly strict: boolean;
+  /** Functions before the chunk's own: the prelude, then the stubs (their bounds are passed). */
+  readonly before: readonly string[];
+  readonly own: readonly string[];
+}
+
+const signature = (f: Func): string => formatFunction(f).split('\n')[0] as string;
+
+/** Header type words of a signature line (`fn name T... -> R`), as written. */
+function headerTypes(line: string): string[] {
+  return line
+    .split(' ')
+    .slice(2)
+    .filter((w) => w !== '->');
+}
+
+/**
+ * The chunks of a program source. A source that fits one chunk is one chunk as written; a
+ * program over the limits is split at function boundaries (consecutive functions in program
+ * order, each chunk within the front end's source limit).
+ */
+function planChunks(src: string): Chunk[] {
+  let program: Program | undefined;
+  try {
+    program = parse(src);
+  } catch {
+    program = undefined;
+  }
+  const whole = [{ source: src, head: true, strict: false, before: [], own: [] }];
+  // The front end's tables hold any source within its limit, so the limit is the only bound.
+  if (program === undefined || Buffer.byteLength(src) <= FRONT_END_BYTES) return whole;
+  const fns = program.functions;
+  if ((program.uses?.length ?? 0) > 0) throw new Error('chunked mode needs a linked source');
+  if (fns.some((f) => f.name === PRELUDE)) throw new Error(`a function is named ${PRELUDE}`);
+  const types: string[] = [];
+  for (const f of fns)
+    for (const t of headerTypes(signature(f))) if (!types.includes(t)) types.push(t);
+  const prelude = `fn ${PRELUDE} ${types.join(' ')} -> u32\nret 0\nend\n`;
+  const index = new Map(fns.map((f, i) => [f.name, i] as const));
+  const text = fns.map((f) => `${formatFunction(f)}\n`);
+  const stubOf = (f: Func): string => `${signature(f)}\nret 0\nend\n`;
+  const build = (from: number, to: number): Chunk & { fits: boolean } => {
+    const own = fns.slice(from, to);
+    const called = new Set<number>();
+    for (const f of own)
+      for (const n of f.nodes)
+        for (const c of [n.callee, n.pred]) {
+          const i = c === undefined ? undefined : index.get(c);
+          if (i !== undefined && (i < from || i >= to)) called.add(i);
+        }
+    const stubs = [...called].sort((a, b) => a - b).map((i) => fns[i] as Func);
+    const source = [prelude, ...stubs.map(stubOf), ...text.slice(from, to)].join('');
+    return {
+      source,
+      head: from === 0,
+      strict: true,
+      before: [PRELUDE, ...stubs.map((f) => f.name)],
+      own: own.map((f) => f.name),
+      fits: Buffer.byteLength(source) <= FRONT_END_BYTES,
+    };
+  };
+  const chunks: Chunk[] = [];
+  let from = 0;
+  while (from < fns.length) {
+    let to = from + 1;
+    if (!build(from, to).fits) throw new Error(`${(fns[from] as Func).name} does not fit a chunk`);
+    while (to < fns.length && build(from, to + 1).fits) to += 1;
+    const { fits: _, ...chunk } = build(from, to);
+    chunks.push(chunk);
+    from = to;
+  }
+  return chunks;
+}
+
+interface StageRun {
+  readonly code: number;
+  readonly bounds: number[];
+  readonly text: string;
+}
+
+function runStageChunk(exe: string, chunk: Chunk, bounds: readonly number[]): StageRun {
+  const bytes = [...Buffer.from(chunk.source)];
+  const words = [bytes.length, ...bytes, chunk.head ? 1 : 0, chunk.strict ? 1 : 0];
+  words.push(bounds.length, ...bounds);
+  const input = Buffer.alloc(words.length * 4);
+  for (const [i, w] of words.entries()) input.writeUInt32LE(w, i * 4);
+  const r = spawnSync(exe, [], { input, timeout: 600_000, maxBuffer: 1 << 28 });
+  if (r.status === null || r.status > 6)
+    throw new Error(`${exe} failed (${r.status ?? r.signal}): ${r.stderr?.toString() ?? ''}`);
+  const out = r.stdout;
+  if (r.status !== 0) return { code: r.status, bounds: [], text: out.toString('latin1') };
+  const k = out.readUInt32LE(out.length - 4);
+  const c = out.length - 4 * (k + 1);
+  const own = Array.from({ length: k }, (_, i) => out.readUInt32LE(c + i * 4));
+  return { code: 0, bounds: own, text: out.subarray(0, c).toString('latin1') };
+}
+
+function runInterpreterChunk(entry: TypedFunc, chunk: Chunk, bounds: readonly number[]): StageRun {
+  const bytes = [...Buffer.from(chunk.source)];
+  const io = makeIo([
+    bytes.length,
+    ...bytes,
+    chunk.head ? 1 : 0,
+    chunk.strict ? 1 : 0,
+    bounds.length,
+    ...bounds,
+  ]);
+  const code = run(entry, [io], { fuel: 1e12 }) as number;
+  const out = io.output;
+  if (code !== 0) return { code, bounds: [], text: '' };
+  const k = out[out.length - 1] as number;
+  const c = out.length - k - 1;
+  return {
+    code,
+    bounds: out.slice(c, c + k),
+    text: Buffer.from(out.slice(0, c).map((w) => w & 255)).toString('latin1'),
+  };
+}
+
 interface Emission {
   readonly code: number;
   readonly text: string;
+  readonly chunks: number;
   readonly ms: number;
+  /** The chunk that gave the nonzero code. */
+  readonly failed?: Chunk;
 }
 
-function runStage1(exe: string, src: string): Emission {
+/** A program's C through a compiler stage, chunk by chunk; the first nonzero code stops it. */
+function emitChunked(
+  src: string,
+  step: (chunk: Chunk, bounds: readonly number[]) => StageRun,
+): Emission {
   const start = performance.now();
-  const r = runTool(exe, [], { input: src, timeoutMs: 60_000 });
-  const ms = performance.now() - start;
-  if (r.status === null || r.status > 4) throw new Error(`a0c-stage1 failed: ${r.stderr}`);
-  return { code: r.status, text: r.stdout, ms };
+  const chunks = planChunks(src);
+  const bounds = new Map<string, number>();
+  let text = '';
+  for (const chunk of chunks) {
+    const r = step(
+      chunk,
+      chunk.before.map((name) => (name === PRELUDE ? 0 : (bounds.get(name) as number))),
+    );
+    if (r.code !== 0)
+      return {
+        code: r.code,
+        text: r.text,
+        chunks: chunks.length,
+        ms: performance.now() - start,
+        failed: chunk,
+      };
+    for (const [i, name] of chunk.own.entries()) bounds.set(name, r.bounds[i] as number);
+    text += r.text;
+  }
+  return { code: 0, text, chunks: chunks.length, ms: performance.now() - start };
 }
 
-function runInterpreter(emitcio: TypedFunc, src: string): Emission {
-  const bytes = [...Buffer.from(src)];
-  const io = makeIo([bytes.length, ...bytes]);
+/** A stage that rejects the compiler: the failing chunk is kept for inspection. */
+async function rejected(stage: string, e: Emission): Promise<void> {
+  if (e.code === 0) return;
+  const path = join(BUILD_DIR, 'rejected-chunk.a0');
+  await writeFile(path, e.failed?.source ?? '', 'utf8');
+  throw new Error(
+    `${stage} rejected the compiler: code ${e.code} in the chunk of ${e.failed?.own.join(' ') ?? '?'} (${path})`,
+  );
+}
+
+async function buildStage(clang: ToolInfo, name: string, c: string): Promise<[string, number]> {
+  const dir = join(BUILD_DIR, name);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'emitter.c'), c, 'utf8');
+  await writeFile(join(dir, 'main.c'), STAGE_MAIN, 'utf8');
   const start = performance.now();
-  const code = run(emitcio, [io], { fuel: 1e12 }) as number;
-  return {
-    code,
-    text: Buffer.from(io.output.map((w) => w & 255)).toString('latin1'),
-    ms: performance.now() - start,
-  };
+  const r = runTool(clang.path as string, [...CLANG_BUILD, '-o', name, 'main.c'], {
+    cwd: dir,
+    timeoutMs: 1_800_000,
+  });
+  if (!r.ok) throw new Error(`${name} build failed:\n${r.stderr.slice(0, 4000)}`);
+  return [join(dir, name), Math.round(performance.now() - start)];
 }
 
 /** Function `name` with every function it reaches (calls, fold/loop bodies and predicates). */
@@ -153,86 +365,119 @@ interface SourceReport {
   readonly label: string;
   readonly group: string;
   readonly bytes: number;
-  readonly outcome: 'passed' | 'compiled' | 'rejected' | 'too-large' | 'failed';
-  readonly code?: number;
+  readonly chunks: number;
+  readonly outcome: 'passed' | 'compiled' | 'rejected' | 'failed';
+  readonly code: number;
   readonly functions?: number;
   readonly cases?: number;
   readonly cBytes?: number;
-  readonly stage1Ms?: number;
-  /** Present when the source was also emitted by `emitcio` in the reference interpreter. */
+  readonly stage1Ms: number;
+  readonly stage2Ms: number;
+  readonly stage3Ms: number;
+  /** Stage 2 and stage 3 gave stage 1's code and C byte for byte. */
+  readonly stagesIdentical: boolean;
+  /** Present when the source was also compiled by `emitchunkio` in the reference interpreter. */
   readonly interpreterMs?: number;
   readonly sameAsInterpreter?: boolean;
   readonly stage1C?: TargetReport;
+  readonly stage2C?: TargetReport;
+  readonly stage3C?: TargetReport;
   readonly typescriptC?: TargetReport;
   readonly detail?: string;
 }
 
+const round1 = (ms: number): number => Math.round(ms * 10) / 10;
+
 async function main(): Promise<void> {
   const clang = findClang();
   if (clang.path === undefined) throw new Error('clang not found');
-  const emitter = (await link('compiler/emit_c.a0', (p) => readFile(p, 'utf8'))).program;
-  const emitcio = emitter.byName.get('emitcio') as TypedFunc;
+  // The compiler is `emitchunkio` with every function it reaches (front512.a0, which check.a0
+  // uses for the playground, is not reached).
+  const linked = (await link('compiler/boot.a0', (p) => readFile(p, 'utf8'))).program;
+  const compilerSource = closure(linked.functions, 'emitchunkio');
+  const compiler = parseAndValidate(compilerSource);
+  const entry = compiler.byName.get('emitchunkio') as TypedFunc;
 
-  // Stage 1: the emitter pipeline through the TypeScript C backend and clang.
-  await mkdir(BUILD_DIR, { recursive: true });
-  const emitterC = compile(emitter, 'c', {
-    ioInputCapacity: STAGE1_INPUT,
-    ioOutputCapacity: STAGE1_OUTPUT,
+  // Stage 1: the compiler through the TypeScript C backend and clang.
+  const stage1C = compile(compiler, 'c', {
+    ioInputCapacity: STAGE_INPUT,
+    ioOutputCapacity: STAGE_OUTPUT,
   }).text;
-  await writeFile(join(BUILD_DIR, 'emitter.c'), emitterC, 'utf8');
-  await writeFile(join(BUILD_DIR, 'main.c'), STAGE1_MAIN, 'utf8');
-  const exe = join(BUILD_DIR, 'a0c-stage1');
-  const buildStart = performance.now();
-  const build = runTool(
-    clang.path,
-    ['-std=c11', '-O2', '-Wall', '-Wextra', '-Wno-unused-parameter', '-o', 'a0c-stage1', 'main.c'],
-    { cwd: BUILD_DIR, timeoutMs: 600_000 },
-  );
-  const buildMs = Math.round(performance.now() - buildStart);
-  if (!build.ok) throw new Error(`stage 1 build failed:\n${build.stderr.slice(0, 4000)}`);
+  const [stage1, stage1BuildMs] = await buildStage(clang, 'a0c-stage1', stage1C);
   process.stdout.write(
-    `stage 1: ${emitter.functions.length} functions, ${Buffer.byteLength(emitterC)} C bytes, clang -O2 in ${buildMs} ms -> ${exe}\n`,
+    `stage 1: ${compiler.functions.length} functions (${Buffer.byteLength(compilerSource)} source bytes), TypeScript C ${Buffer.byteLength(stage1C)} bytes, clang -O2 ${stage1BuildMs} ms -> ${stage1}\n`,
   );
 
-  // Stage 2 inputs.
+  // Stage 2 and 3: the compiler compiles itself in chunks.
+  const self1 = emitChunked(compilerSource, (c, b) => runStageChunk(stage1, c, b));
+  await rejected('stage 1', self1);
+  const [stage2, stage2BuildMs] = await buildStage(clang, 'a0c-stage2', self1.text);
+  process.stdout.write(
+    `stage 2: a0c-stage1 compiled the compiler in ${self1.chunks} chunks (${Math.round(self1.ms)} ms, ${Buffer.byteLength(self1.text)} C bytes), clang -O2 ${stage2BuildMs} ms -> ${stage2}\n`,
+  );
+  const self2 = emitChunked(compilerSource, (c, b) => runStageChunk(stage2, c, b));
+  await rejected('stage 2', self2);
+  const fixedPoint = self2.text === self1.text;
+  const [stage3, stage3BuildMs] = await buildStage(clang, 'a0c-stage3', self2.text);
+  const self3 = emitChunked(compilerSource, (c, b) => runStageChunk(stage3, c, b));
+  process.stdout.write(
+    `stage 3: a0c-stage2 compiled the compiler in ${Math.round(self2.ms)} ms (${Buffer.byteLength(self2.text)} C bytes): ${fixedPoint ? 'byte-identical to stage 2 (fixed point)' : 'DIFFERS from stage 2'}; a0c-stage3 (clang ${stage3BuildMs} ms) reproduces it: ${self3.code === 0 && self3.text === self2.text}\n`,
+  );
+
+  // Test sources.
+  const corpus = generateCorpus();
   const groups: [string, [string, string][]][] = [
     ['small', SMALL],
     ['ill-typed', [...ILL_TYPED]],
-    ['corpus', closures('corpus', generateCorpus())],
+    ['corpus', [['corpus', formatProgram(corpus)], ...closures('corpus', corpus)]],
   ];
   for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort()) {
     const text = await readFile(`examples/${f}`, 'utf8');
-    const program = parseAndValidate(text);
-    groups.push([f, [[f, text], ...closures(f, program)]]);
+    groups.push([f, [[f, text], ...closures(f, parseAndValidate(text))]]);
   }
-  groups.push(['compiler', closures('emit_c.a0', emitter)]);
+  // The closure of the entry is the whole compiler: stages 2 and 3 are it, exercised on every
+  // source above (its io cases would each run the whole compiler in the reference interpreter).
+  groups.push([
+    'compiler',
+    closures('boot.a0', compiler).filter(([label]) => label !== 'boot.a0/emitchunkio'),
+  ]);
 
   const reports: SourceReport[] = [];
   for (const [group, sources] of groups) {
     for (const [index, [label, src]] of sources.entries()) {
       const bytes = Buffer.byteLength(src);
-      if (bytes > FRONT_END_BYTES) {
-        reports.push({ label, group, bytes, outcome: 'too-large' });
-        continue;
-      }
-      const s1 = runStage1(exe, src);
+      const s1 = emitChunked(src, (c, b) => runStageChunk(stage1, c, b));
+      const s2 = emitChunked(src, (c, b) => runStageChunk(stage2, c, b));
+      const s3 = emitChunked(src, (c, b) => runStageChunk(stage3, c, b));
+      const same2 = s2.code === s1.code && s2.text === s1.text;
+      const same3 = s3.code === s1.code && s3.text === s1.text;
       const interpret =
         INTERPRETED.has(group) || (group === 'ill-typed' && index < INTERPRETED_ILL_TYPED);
-      const interp = interpret ? runInterpreter(emitcio, src) : undefined;
-      const same = interp === undefined || (s1.code === interp.code && s1.text === interp.text);
+      const start = performance.now();
+      const interp = interpret
+        ? emitChunked(src, (c, b) => runInterpreterChunk(entry, c, b))
+        : undefined;
+      const interpMs = performance.now() - start;
+      const sameInterp =
+        interp === undefined || (s1.code === interp.code && s1.text === interp.text);
       const common = {
         label,
         group,
         bytes,
+        chunks: s1.chunks,
         code: s1.code,
-        stage1Ms: Math.round(s1.ms * 10) / 10,
+        stage1Ms: round1(s1.ms),
+        stage2Ms: round1(s2.ms),
+        stage3Ms: round1(s3.ms),
+        stagesIdentical: same2 && same3,
         ...(interp === undefined
           ? {}
-          : { interpreterMs: Math.round(interp.ms), sameAsInterpreter: same }),
+          : { interpreterMs: Math.round(interpMs), sameAsInterpreter: sameInterp }),
       };
+      const agree = same2 && same3 && sameInterp;
       if (s1.code !== 0) {
         const expected = refCheckWords(src)[1] as number;
-        const ok = same && s1.text.length === 0 && (group !== 'ill-typed' || s1.code === expected);
+        const ok = agree && s1.text.length === 0 && s1.code === expected;
         reports.push({
           ...common,
           outcome: ok ? 'rejected' : 'failed',
@@ -248,44 +493,29 @@ async function main(): Promise<void> {
         caps.ioOutputCapacity > C_IO_OUTPUT_CAPACITY
       )
         throw new Error(`${label}: cases exceed the emitted C's fixed io capacities`);
-      if (cases.length === 0) {
-        const stage1C = await compileOnly(clang, s1.text);
-        const typescriptC = await compileOnly(clang, compile(program, 'c').text);
-        const ok = same && stage1C.status === 'passed' && typescriptC.status === 'passed';
-        reports.push({
-          ...common,
-          outcome: ok ? 'compiled' : 'failed',
-          functions: program.functions.length,
-          cases: 0,
-          cBytes: Buffer.byteLength(s1.text),
-          stage1C,
-          typescriptC,
-        });
-        continue;
-      }
-      const stage1C = await checkNative(
-        program,
-        cases,
-        clang,
-        false,
-        'C from a0c-stage1 via clang',
-        s1.text,
-      );
-      const typescriptC = await checkNative(
-        program,
-        cases,
-        clang,
-        false,
-        'C from the TypeScript emitter via clang',
-      );
-      const ok = same && stage1C.status === 'passed' && typescriptC.status === 'passed';
+      const verify = async (text: string, what: string): Promise<TargetReport> =>
+        cases.length === 0
+          ? compileOnly(clang, text)
+          : checkNative(program, cases, clang, false, `C from ${what} via clang`, text);
+      const c1 = await verify(s1.text, 'a0c-stage1');
+      const c2 = same2 ? undefined : await verify(s2.text, 'a0c-stage2');
+      const c3 = same3 ? undefined : await verify(s3.text, 'a0c-stage3');
+      const typescriptC =
+        cases.length === 0
+          ? await compileOnly(clang, compile(program, 'c').text)
+          : await checkNative(program, cases, clang, false, 'C from the TypeScript emitter');
+      const ok =
+        sameInterp &&
+        [c1, c2, c3, typescriptC].every((r) => r === undefined || r.status === 'passed');
       reports.push({
         ...common,
-        outcome: ok ? 'passed' : 'failed',
+        outcome: ok ? (cases.length === 0 ? 'compiled' : 'passed') : 'failed',
         functions: program.functions.length,
         cases: cases.length,
         cBytes: Buffer.byteLength(s1.text),
-        stage1C,
+        stage1C: c1,
+        ...(c2 === undefined ? {} : { stage2C: c2 }),
+        ...(c3 === undefined ? {} : { stage3C: c3 }),
         typescriptC,
       });
     }
@@ -293,103 +523,87 @@ async function main(): Promise<void> {
     const count = (o: SourceReport['outcome']): number =>
       mine.filter((r) => r.outcome === o).length;
     process.stdout.write(
-      `${group.padEnd(12)} ${mine.length} sources: ${count('passed')} passed, ${count('compiled')} compile-only (${mine.reduce((n, r) => n + (r.outcome === 'passed' ? (r.cases ?? 0) : 0), 0)} cases), ${count('rejected')} rejected as expected, ${count('too-large')} over ${FRONT_END_BYTES} bytes, ${count('failed')} failed\n`,
+      `${group.padEnd(12)} ${mine.length} sources (${mine.filter((r) => r.chunks > 1).length} chunked): ${count('passed')} passed (${mine.reduce((n, r) => n + (r.outcome === 'passed' ? (r.cases ?? 0) : 0), 0)} cases), ${count('compiled')} compile-only, ${count('rejected')} rejected as expected, ${count('failed')} failed; stages 1-3 identical on ${mine.filter((r) => r.stagesIdentical).length}\n`,
     );
     for (const r of mine.filter((r) => r.outcome === 'failed'))
       process.stdout.write(
-        `    FAIL ${r.label}: ${r.detail ?? ''} same=${r.sameAsInterpreter} ${[...(r.stage1C?.failures ?? []), ...(r.typescriptC?.failures ?? [])].join(' | ').slice(0, 600)}\n`,
+        `    FAIL ${r.label}: ${r.detail ?? ''} stages=${r.stagesIdentical} interp=${r.sameAsInterpreter} ${[...(r.stage1C?.failures ?? []), ...(r.typescriptC?.failures ?? [])].join(' | ').slice(0, 600)}\n`,
       );
   }
 
-  const fed = reports.filter((r) => r.stage1Ms !== undefined);
-  const timedBoth = fed.filter((r) => r.interpreterMs !== undefined);
-  const stage1Ms = timedBoth.reduce((n, r) => n + (r.stage1Ms ?? 0), 0);
-  const interpreterMs = timedBoth.reduce((n, r) => n + (r.interpreterMs ?? 0), 0);
+  const timed = reports.filter((r) => r.interpreterMs !== undefined);
+  const stageMs = (k: 'stage1Ms' | 'stage2Ms' | 'stage3Ms', list: SourceReport[]): number =>
+    Math.round(list.reduce((n, r) => n + r[k], 0));
+  const interpreterMs = timed.reduce((n, r) => n + (r.interpreterMs ?? 0), 0);
   process.stdout.write(
-    `emission over ${timedBoth.length} sources run both ways: a0c-stage1 ${Math.round(stage1Ms)} ms (process spawn included), interpreter ${interpreterMs} ms, ${(interpreterMs / stage1Ms).toFixed(1)}x; all ${fed.length} fed sources through stage 1 in ${Math.round(fed.reduce((n, r) => n + (r.stage1Ms ?? 0), 0))} ms\n`,
-  );
-
-  // What blocks the full fixed point: stage 1 compiling compiler/emit_c.a0 itself.
-  const linkedSource = formatProgram({ functions: emitter.functions });
-  const nodes = emitter.functions.reduce((n, f) => n + f.nodes.length, 0);
-  const args = emitter.functions.reduce(
-    (n, f) => n + f.nodes.reduce((m, x) => m + x.args.length, 0),
-    0,
-  );
-  const names = new Set<string>();
-  for (const f of emitter.functions) {
-    names.add(f.name);
-    for (const n of f.nodes) names.add(n.id);
-  }
-  const poolBytes = [...names].reduce((n, s) => n + Buffer.byteLength(s), 0);
-  const selfFits = reports.filter((r) => r.group === 'compiler' && r.outcome !== 'too-large');
-  const selfOk = selfFits.filter((r) => r.outcome === 'passed' || r.outcome === 'compiled');
-  const fixedPoint = {
-    emitterFiles: {
-      'emit_c.a0': Buffer.byteLength(await readFile('compiler/emit_c.a0', 'utf8')),
-      'check.a0': Buffer.byteLength(await readFile('compiler/check.a0', 'utf8')),
-      'parse.a0': Buffer.byteLength(await readFile('compiler/parse.a0', 'utf8')),
-      'lex.a0': Buffer.byteLength(await readFile('compiler/lex.a0', 'utf8')),
-    },
-    linkedFormattedBytes: Buffer.byteLength(linkedSource),
-    sourceLimitBytes: FRONT_END_BYTES,
-    functions: emitter.functions.length,
-    fnsWords: emitter.functions.length * 7,
-    fnsCapacity: TABLES.fns,
-    nodes,
-    nodesWords: nodes * 6,
-    nodesCapacity: TABLES.nodes,
-    argWords: args * 2,
-    argsCapacity: TABLES.args,
-    distinctNameBytes: poolBytes,
-    poolCapacity: TABLES.pool,
-    symWords: names.size * 2,
-    symCapacity: TABLES.sym,
-    largestFunctionNodes: Math.max(...emitter.functions.map((f) => f.nodes.length)),
-    ownClosuresWithinLimit: selfFits.length,
-    ownClosuresPassed: selfOk.length,
-    ownClosuresWithCases: selfFits.filter((r) => r.outcome === 'passed').length,
-    ownClosures: reports.filter((r) => r.group === 'compiler').length,
-    use: 'emitcio has no `use` resolution: the input is one self-contained source, so emit_c.a0 must be fed pre-linked',
-  };
-  process.stdout.write(
-    `fixed point: emit_c.a0 linked is ${fixedPoint.linkedFormattedBytes} bytes (limit ${FRONT_END_BYTES}), ${fixedPoint.functions} fns (${fixedPoint.fnsWords}/${TABLES.fns} words), ${nodes} nodes (${fixedPoint.nodesWords}/${TABLES.nodes}), ${fixedPoint.argWords}/${TABLES.args} arg words, ${poolBytes}/${TABLES.pool} name bytes; ${fixedPoint.ownClosuresPassed}/${fixedPoint.ownClosures} of its own function closures compiled by stage 1 and verified\n`,
+    `emission over all ${reports.length} sources: stage 1 ${stageMs('stage1Ms', reports)} ms, stage 2 ${stageMs('stage2Ms', reports)} ms, stage 3 ${stageMs('stage3Ms', reports)} ms (one process per chunk); on the ${timed.length} also interpreted: stage 1 ${stageMs('stage1Ms', timed)} ms, interpreter ${interpreterMs} ms\n`,
   );
 
   const passed = reports.filter((r) => r.outcome === 'passed');
+  const failed = reports.filter((r) => r.outcome === 'failed').length;
   const report = {
     generatedAt: new Date().toISOString(),
     stage:
-      'Self-hosting stage 6 (bootstrap), step 1: the A0 C emitter pipeline as a native binary (a0c-stage1)',
-    stage1: {
-      entry: 'emitcio (compiler/emit_c.a0 linked with check.a0, parse.a0, lex.a0)',
-      method: `TypeScript C backend (compile(program, 'c', { ioInputCapacity: ${STAGE1_INPUT}, ioOutputCapacity: ${STAGE1_OUTPUT} })) plus a stdin/stdout main, clang -std=c11 -O2`,
-      functions: emitter.functions.length,
-      cBytes: Buffer.byteLength(emitterC),
-      buildMs,
+      'Self-hosting stage 6 (bootstrap): the A0 compiler compiles itself in chunks to a C fixed point',
+    compiler: {
+      entry:
+        'emitchunkio (compiler/boot.a0 linked with emit_c.a0, check.a0, parse.a0, lex.a0, front512.a0)',
+      functions: compiler.functions.length,
+      sourceBytes: Buffer.byteLength(compilerSource),
+      linkedFunctions: linked.functions.length,
+      chunkSourceBytes: FRONT_END_BYTES,
+      io: { inputWords: STAGE_INPUT, outputWords: STAGE_OUTPUT, stackBytes: STAGE_STACK },
       clang: clang.version,
+      build: CLANG_BUILD.join(' '),
+    },
+    stage1: {
+      method: `TypeScript C backend (compile(program, 'c', { ioInputCapacity: ${STAGE_INPUT}, ioOutputCapacity: ${STAGE_OUTPUT} })) plus the stage main, clang`,
+      cBytes: Buffer.byteLength(stage1C),
+      buildMs: stage1BuildMs,
     },
     stage2: {
+      method: 'a0c-stage1 compiles the linked compiler in chunks; clang builds that C',
+      chunks: self1.chunks,
+      emitMs: Math.round(self1.ms),
+      cBytes: Buffer.byteLength(self1.text),
+      buildMs: stage2BuildMs,
+    },
+    stage3: {
+      method: 'a0c-stage2 compiles the linked compiler in chunks; clang builds that C',
+      chunks: self2.chunks,
+      emitMs: Math.round(self2.ms),
+      cBytes: Buffer.byteLength(self2.text),
+      buildMs: stage3BuildMs,
+      stage3ReproducesMs: Math.round(self3.ms),
+      stage3Reproduces: self3.code === 0 && self3.text === self2.text,
+    },
+    fixedPoint: {
+      holds: fixedPoint,
+      detail: fixedPoint
+        ? 'the C of the compiler written by a0c-stage1 (stage 2) and by a0c-stage2 (stage 3) is byte-identical'
+        : 'the C of stage 2 and stage 3 differs',
+    },
+    tests: {
       method:
-        'Each source (at most 512 bytes) goes to a0c-stage1; the small programs, kernels.a0 and four ill-typed programs also go to emitcio in the reference interpreter, and the outputs must be byte-identical. Accepted sources: the stage 1 C and the TypeScript C module are each compiled by clang (-std=c11 -O1 -Wall -Wextra -Werror, UBSan) with the standard driver of tools/verify.ts and must give the independent oracle result on every case of tools/corpus.ts generateCases. Rejected sources must write no C; ill-typed ones must give the reference checker code. Programs without a driver-callable function are compiled with -Werror only.',
+        'Every source goes through a0c-stage1, a0c-stage2 and a0c-stage3 (chunked when it does not fit one chunk). Stage 1 output must equal emitchunkio in the reference interpreter on the small programs, kernels.a0 and four ill-typed programs; stage 2 and 3 output must equal stage 1 byte for byte. Accepted sources: the C is compiled by clang (-std=c11 -O1 -Wall -Wextra -Werror, UBSan) with the standard driver of tools/verify.ts and must give the independent oracle result on every case of tools/corpus.ts generateCases, as must the TypeScript C module (observable agreement); sources without a driver-callable function are compiled with -Werror only. Rejected sources must write no C; ill-typed ones must give the reference checker code.',
       sources: reports.length,
-      fed: fed.length,
+      chunked: reports.filter((r) => r.chunks > 1).length,
       passedSources: passed.length,
       compileOnly: reports.filter((r) => r.outcome === 'compiled').length,
-      comparedWithInterpreter: timedBoth.length,
       rejectedAsExpected: reports.filter((r) => r.outcome === 'rejected').length,
-      tooLarge: reports.filter((r) => r.outcome === 'too-large').length,
-      failed: reports.filter((r) => r.outcome === 'failed').length,
+      failed,
+      stagesIdentical: reports.filter((r) => r.stagesIdentical).length,
       cases: passed.reduce((n, r) => n + (r.cases ?? 0), 0),
       emission: {
-        sources: timedBoth.length,
-        stage1Ms: Math.round(stage1Ms),
+        stage1Ms: stageMs('stage1Ms', reports),
+        stage2Ms: stageMs('stage2Ms', reports),
+        stage3Ms: stageMs('stage3Ms', reports),
+        interpreted: timed.length,
+        interpretedStage1Ms: stageMs('stage1Ms', timed),
         interpreterMs,
-        speedup: Math.round((interpreterMs / stage1Ms) * 10) / 10,
-        note: 'stage 1 time includes one process spawn per source',
+        note: 'one process spawn per chunk',
       },
     },
-    fixedPoint,
     sources: reports,
   };
   await mkdir('results', { recursive: true });
@@ -399,9 +613,9 @@ async function main(): Promise<void> {
     'utf8',
   );
   process.stdout.write(
-    `total ${passed.length} sources passed, ${report.stage2.cases} cases; ${report.stage2.failed} failed\n`,
+    `total ${passed.length} sources passed, ${report.tests.cases} cases; ${failed} failed; fixed point ${fixedPoint ? 'reached' : 'NOT reached'}\n`,
   );
-  process.exit(report.stage2.failed === 0 && passed.length > 0 ? 0 : 1);
+  process.exit(failed === 0 && passed.length > 0 && fixedPoint ? 0 : 1);
 }
 
 main().catch((err: unknown) => {

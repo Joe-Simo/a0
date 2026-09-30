@@ -210,7 +210,7 @@ function cDriver(program: TypedProgram, header = '#include "module.c"'): string 
 ${header}
 int main(void) {
   static char line[1 << 16];
-${usesIo(program) ? '  static a0_io io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {
+${usesIo(program) ? '  static a0_io io; (void)io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {
     static char *tok[1 << 14]; int n = 0;
     for (char *p = strtok(line, " \\n"); p && n < (1 << 14); p = strtok(NULL, " \\n")) tok[n++] = p;
     if (n < 1) continue;
