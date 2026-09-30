@@ -1665,6 +1665,121 @@ test('arm64 backend: assembled, linked with a C driver, and executed equal to th
   }
 });
 
+test('arm64 instruction selection, unrolled and vectorized folds equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const seq = (n: number, f: (i: number) => number): string =>
+    Array.from({ length: n }, (_, i) => String(f(i))).join(' ');
+  // Each entry: a module fragment and its two-parameter entry function.
+  const cases: [string, string][] = [
+    ['rotl7', 'fn rotl7 u32 u32 -> u32\na shl p0 7\nb shr p0 25\nc or b a\nret c\nend'],
+    ['rotr', 'fn rotr u32 u32 -> u32\na shr p0 p1\nn sub 64 p1\nb shl p0 n\nc or a b\nret c\nend'],
+    [
+      'rotlv',
+      'fn rotlv u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend',
+    ],
+    [
+      'maddsub',
+      'fn maddsub u32 u32 -> u32\nm mul p0 p1\na add p1 m\ns mul p0 7\nb sub a s\nret b\nend',
+    ],
+    [
+      'shifted',
+      'fn shifted u32 u32 -> u32\ns shr p0 3\na sub p1 s\nt shl p1 31\nb xor t a\nu shl b 0\nc add p0 u\nret c\nend',
+    ],
+    [
+      'fused',
+      'fn fused u32 u32 -> u32\nc lt 100 p0\nr select c p1 0\nd ge p0 p1\ne select d r 5000000\nf select d e r\nret f\nend',
+    ],
+    [
+      'aggsel',
+      'fn aggsel u32 u32 -> u32\nx arr p0 p1\ny arr p1 p0\nc gt p0 p1\ns select c x y\ng get s 1\nret g\nend',
+    ],
+    [
+      'unroll',
+      'fn ust u32 u32 u32 -> u32\na mul p0 2654435761\nb add a p1\nc xor b p2\nret c\nend\nfn unroll u32 u32 -> u32\nf fold ust 5 p0 p1\ng fold ust 0 f p1\nret g\nend',
+    ],
+    [
+      'loopk',
+      'fn lst u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc shr b 15\nd xor b c\ne add d p1\nret e\nend\nfn late u32 u32 u32 -> u32\na mul p0 3\nb add a p1\nc xor b p0\nret b\nend\nfn loopk u32 u32 -> u32\nk and p1 3\nf fold lst 64 p0 p1\ng fold lst k f p0\nh fold late 40 g k\nret h\nend',
+    ],
+    [
+      'vfill',
+      'fn fl u32x37 u32 u32 u32 -> u32x37\na mul p1 p2\nb shr a 3\nc xor b p3\nd shl c p2\ne sub d 1000\ng shr e p3\nn set p0 p1 g\nret n\nend\n' +
+        `fn vfill u32 u32 -> u32\nz arr ${seq(37, () => 0)}\nf fold fl 37 z p0 p1\ni and p1 31\nx get f i\ny get f 36\nw get f 0\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'vpart',
+      'fn fp u32x40 u32 u32 -> u32x40\nv add p1 p2\nn set p0 p1 v\nret n\nend\n' +
+        `fn vpart u32 u32 -> u32\nz arr ${seq(40, (i) => i * 7 + 1)}\nf fold fp 21 z p0\ni rem p1 40\nx get f i\ny get f 30\nw get f 20\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'v4',
+      'fn f4 u32x103 u32 u32 -> u32x103\nv add p1 p2\nn set p0 p1 v\nret n\nend\n' +
+        `fn v4 u32 u32 -> u32\nz arr ${seq(103, () => 9)}\nf fold f4 103 z p0\ni rem p1 103\nx get f i\ny get f 102\nw get f 99\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'zeros',
+      `fn zeros u32 u32 -> u32\nz arr ${seq(40, () => 0)} p0 ${seq(35, () => 0)} p1\ni rem p1 77\nx get z i\ny get z 40\nw get z 76\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'odd5',
+      'fn o5 u32x5 u32 u32 -> u32x5\na get p0 p1\nb add a p2\nn set p0 p1 b\nret n\nend\n' +
+        'fn odd5 u32 u32 -> u32\nz arr 1 2 3 4 5\nf fold o5 25 z p0\ni rem p1 5\nx get f i\nret x\nend',
+    ],
+  ];
+  const p = parseAndValidate(cases.map(([, src]) => src).join('\n\n'));
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [999, 3],
+    [100, 100],
+    [101, 32],
+  ];
+  const expected = inputs
+    .flatMap(([a, b]) =>
+      cases.map(([name]) => String(run(p.byName.get(name) as TypedFunc, [a, b]))),
+    )
+    .join('\n');
+  const decls = cases.map(([name]) => `extern uint32_t a0_${name}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => cases.map(([name]) => `  printf("%u\\n", a0_${name}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${decls}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  for (const optimize of [true, false]) {
+    const asm = compile(p, 'arm64', { optimize }).text;
+    if (optimize) {
+      assert.match(asm, /\tror w\d+, w\d+, #25\n/);
+      assert.match(asm, /\tneg w10, w\d+\n\tror /);
+      assert.match(asm, /\tmsub /);
+      assert.match(asm, /, lsr #3\n/);
+      assert.match(asm, /\tstp q\d+, q\d+, \[x14, #0\]/);
+      assert.match(asm, /\tstp xzr, xzr, \[x14\], #16/);
+      assert.match(asm, /_a0_rotl7:\n\tror w0, w0, #25\n\tret/);
+    }
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+      assert.ok(ld.ok, ld.stderr);
+      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected);
+    });
+  }
+});
+
 test('x86_64 backend refuses io functions with a diagnostic', () => {
   const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
   assert.throws(
