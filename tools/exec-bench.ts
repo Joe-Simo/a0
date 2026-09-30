@@ -22,6 +22,8 @@ interface Kernel {
   readonly a0: string;
   readonly c: string;
   readonly js: string;
+  /** Hand-written Python with the same u32 semantics (masking with 0xffffffff). */
+  readonly py: string;
   /** Hand-written Rust with identical wrapping semantics (compiled with rustc -O). */
   readonly rust: string;
 }
@@ -33,6 +35,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend',
     c: 'static inline uint32_t hw_affine(uint32_t x, uint32_t s, uint32_t o) { return x * s + o; }',
     js: 'export function affine(x, s, o) { return (Math.imul(x, s) + o) >>> 0; }',
+    py: 'def affine(x, s, o):\n    return (x * s + o) & 0xFFFFFFFF',
     rust: '#[inline] fn hw_affine(x: u32, s: u32, o: u32) -> u32 { x.wrapping_mul(s).wrapping_add(o) }',
   },
   {
@@ -41,6 +44,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend',
     c: 'static inline uint32_t hw_rotl(uint32_t x, uint32_t n) { return (x << (n & 31)) | (x >> ((32 - n) & 31)); }',
     js: 'export function rotl(x, n) { return ((x << (n & 31)) | (x >>> ((32 - n) & 31))) >>> 0; }',
+    py: 'def rotl(x, n):\n    return ((x << (n & 31)) | (x >> ((32 - n) & 31))) & 0xFFFFFFFF',
     rust: '#[inline] fn hw_rotl(x: u32, n: u32) -> u32 { (x << (n & 31)) | (x >> ((32u32.wrapping_sub(n)) & 31)) }',
   },
   {
@@ -49,6 +53,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn clamp u32 u32 u32 -> u32\nc lt p2 p0\nr select c p2 p0\nd lt r p1\ns select d p1 r\nret s\nend',
     c: 'static inline uint32_t hw_clamp(uint32_t x, uint32_t lo, uint32_t hi) { uint32_t t = hi < x ? hi : x; return t < lo ? lo : t; }',
     js: 'export function clamp(x, lo, hi) { const t = hi < x ? hi : x; return t < lo ? lo : t; }',
+    py: 'def clamp(x, lo, hi):\n    t = hi if hi < x else x\n    return lo if t < lo else t',
     rust: '#[inline] fn hw_clamp(x: u32, lo: u32, hi: u32) -> u32 { let t = if hi < x { hi } else { x }; if t < lo { lo } else { t } }',
   },
   {
@@ -57,6 +62,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn mix u32 u32 -> u32\na xor p0 p1\nb shl a 13\nc shr a 19\nd or b c\ne mul d 2654435761\nf add e p0\ng shr f 16\nh xor f g\nret h\nend',
     c: 'static inline uint32_t hw_mix(uint32_t x, uint32_t y) { uint32_t a = x ^ y; uint32_t d = (a << 13) | (a >> 19); uint32_t f = d * 2654435761u + x; return f ^ (f >> 16); }',
     js: 'export function mix(x, y) { const a = (x ^ y) >>> 0; const d = ((a << 13) | (a >>> 19)) >>> 0; const f = (Math.imul(d, 2654435761) + x) >>> 0; return (f ^ (f >>> 16)) >>> 0; }',
+    py: 'def mix(x, y):\n    a = x ^ y\n    d = ((a << 13) | (a >> 19)) & 0xFFFFFFFF\n    f = (d * 2654435761 + x) & 0xFFFFFFFF\n    return (f ^ (f >> 16)) & 0xFFFFFFFF',
     rust: '#[inline] fn hw_mix(x: u32, y: u32) -> u32 { let a = x ^ y; let d = (a << 13) | (a >> 19); let f = d.wrapping_mul(2654435761).wrapping_add(x); f ^ (f >> 16) }',
   },
   {
@@ -65,6 +71,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn ident u32 -> u32\nret p0\nend',
     c: 'static inline uint32_t hw_ident(uint32_t x) { return x; }',
     js: 'export function ident(x) { return x; }',
+    py: 'def ident(x):\n    return x',
     rust: '#[inline] fn hw_ident(x: u32) -> u32 { x }',
   },
   {
@@ -73,6 +80,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn noop u32 -> u32\na add p0 0\nb mul a 1\nc xor b 0\nret c\nend',
     c: 'static inline uint32_t hw_noop(uint32_t x) { return x; }',
     js: 'export function noop(x) { return x; }',
+    py: 'def noop(x):\n    return x',
     rust: '#[inline] fn hw_noop(x: u32) -> u32 { x }',
   },
   {
@@ -81,6 +89,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn inc1 u32 -> u32\na add p0 1\nret a\nend\nfn dbl u32 -> u32\na add p0 p0\nret a\nend\nfn chain3 u32 u32 -> u32\na call inc1 p0\nb call dbl a\nc call inc1 b\nd add c p1\nret d\nend',
     c: 'static inline uint32_t hw_inc1(uint32_t x) { return x + 1; }\nstatic inline uint32_t hw_dbl(uint32_t x) { return x + x; }\nstatic inline uint32_t hw_chain3(uint32_t x, uint32_t y) { return hw_inc1(hw_dbl(hw_inc1(x))) + y; }',
     js: 'function inc1(x) { return (x + 1) >>> 0; }\nfunction dbl(x) { return (x + x) >>> 0; }\nexport function chain3(x, y) { return (inc1(dbl(inc1(x))) + y) >>> 0; }',
+    py: 'def inc1(x):\n    return (x + 1) & 0xFFFFFFFF\ndef dbl(x):\n    return (x + x) & 0xFFFFFFFF\ndef chain3(x, y):\n    return (inc1(dbl(inc1(x))) + y) & 0xFFFFFFFF',
     rust: '#[inline] fn inc1(x: u32) -> u32 { x.wrapping_add(1) }\n#[inline] fn dbl(x: u32) -> u32 { x.wrapping_add(x) }\n#[inline] fn hw_chain3(x: u32, y: u32) -> u32 { inc1(dbl(inc1(x))).wrapping_add(y) }',
   },
   {
@@ -89,6 +98,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn branchy u32 u32 -> u32\nc1 lt p0 p1\nc2 eq p0 p1\nd sub p0 p1\ne sub p1 p0\nm select c1 e d\nz select c2 0 m\nb and z 1\nc3 eq b 1\nr select c3 z p0\nret r\nend',
     c: 'static inline uint32_t hw_branchy(uint32_t x, uint32_t y) { uint32_t m = x < y ? y - x : x - y; uint32_t z = x == y ? 0u : m; return (z & 1u) == 1u ? z : x; }',
     js: 'export function branchy(x, y) { const m = x < y ? (y - x) >>> 0 : (x - y) >>> 0; const z = x === y ? 0 : m; return (z & 1) === 1 ? z : x; }',
+    py: 'def branchy(x, y):\n    m = (y - x) & 0xFFFFFFFF if x < y else (x - y) & 0xFFFFFFFF\n    z = 0 if x == y else m\n    return z if (z & 1) == 1 else x',
     rust: '#[inline] fn hw_branchy(x: u32, y: u32) -> u32 { let m = if x < y { y.wrapping_sub(x) } else { x.wrapping_sub(y) }; let z = if x == y { 0 } else { m }; if (z & 1) == 1 { z } else { x } }',
   },
   {
@@ -97,6 +107,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nx get a p1\ny get a 3\ns add x y\nret s\nend',
     c: 'static inline uint32_t hw_arrfill(uint32_t x, uint32_t y) { uint32_t a[8]; for (uint32_t i = 0; i < 8; i++) a[i] = i + x; return a[y % 8u] + a[3]; }',
     js: 'export function arrfill(x, y) { const a = new Uint32Array(8); for (let i = 0; i < 8; i++) a[i] = (i + x) >>> 0; return (a[y % 8] + a[3]) >>> 0; }',
+    py: 'def arrfill(x, y):\n    a = [0] * 8\n    for i in range(8):\n        a[i] = (i + x) & 0xFFFFFFFF\n    return (a[y % 8] + a[3]) & 0xFFFFFFFF',
     rust: '#[inline] fn hw_arrfill(x: u32, y: u32) -> u32 { let mut a = [0u32; 8]; for i in 0..8u32 { a[i as usize] = i.wrapping_add(x); } a[(y % 8) as usize].wrapping_add(a[3]) }',
   },
   {
@@ -105,6 +116,7 @@ const KERNELS: readonly Kernel[] = [
     a0: 'fn mixstep u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc shr b 15\nd xor b c\ne add d p1\nret e\nend\nfn loop64 u32 u32 -> u32\nr fold mixstep 64 p0 p1\nret r\nend',
     c: 'static inline uint32_t hw_loop64(uint32_t s, uint32_t k) { for (uint32_t i = 0; i < 64; i++) { uint32_t b = (s ^ k) * 2654435761u; s = (b ^ (b >> 15)) + i; } return s; }',
     js: 'export function loop64(s, k) { for (let i = 0; i < 64; i++) { const b = Math.imul((s ^ k) >>> 0, 2654435761) >>> 0; s = ((b ^ (b >>> 15)) + i) >>> 0; } return s; }',
+    py: 'def loop64(s, k):\n    for i in range(64):\n        b = ((s ^ k) * 2654435761) & 0xFFFFFFFF\n        s = ((b ^ (b >> 15)) + i) & 0xFFFFFFFF\n    return s',
     rust: '#[inline] fn hw_loop64(s0: u32, k: u32) -> u32 { let mut s = s0; for i in 0..64u32 { let b = (s ^ k).wrapping_mul(2654435761); s = (b ^ (b >> 15)).wrapping_add(i); } s }',
   },
 ];
@@ -281,7 +293,9 @@ async function benchC(
   });
 }
 
-async function benchJs(kernel: Kernel): Promise<{ emitted: Sample; handwritten: Sample }> {
+async function benchJs(
+  kernel: Kernel,
+): Promise<{ emitted: Sample; handwritten: Sample; checksumAt: (iters: number) => string }> {
   const program = parseAndValidate(kernel.a0);
   const load = async (src: string): Promise<(...a: number[]) => number> => {
     const mod = (await import(
@@ -294,12 +308,15 @@ async function benchJs(kernel: Kernel): Promise<{ emitted: Sample; handwritten: 
   const emitted = await load(compile(program, 'js').text);
   const handwritten = await load(kernel.js);
   const iters = ITER / 4;
-  const run = (f: (...a: number[]) => number): { ns: number; checksum: string } => {
+  const run = (
+    f: (...a: number[]) => number,
+    iterations = iters,
+  ): { ns: number; checksum: string } => {
     let s = 0x9e3779b9;
     let acc = 0;
     const a = [0, 0, 0];
     const start = performance.now();
-    for (let i = 0; i < iters; i += 1) {
+    for (let i = 0; i < iterations; i += 1) {
       for (let k = 0; k < kernel.arity; k += 1) {
         s ^= s << 13;
         s >>>= 0;
@@ -316,7 +333,7 @@ async function benchJs(kernel: Kernel): Promise<{ emitted: Sample; handwritten: 
             : f(a[0] as number, a[1] as number, a[2] as number);
       acc = (acc ^ r) >>> 0;
     }
-    return { ns: ((performance.now() - start) * 1e6) / iters, checksum: String(acc) };
+    return { ns: ((performance.now() - start) * 1e6) / iterations, checksum: String(acc) };
   };
   run(emitted);
   run(handwritten); // warm-up (JIT)
@@ -333,7 +350,81 @@ async function benchJs(kernel: Kernel): Promise<{ emitted: Sample; handwritten: 
     hc = b.checksum;
   }
   if (ec !== hc) throw new Error(`${kernel.name}: js checksum mismatch`);
-  return { emitted: summarize(es, ec), handwritten: summarize(hs, hc) };
+  return {
+    emitted: summarize(es, ec),
+    handwritten: summarize(hs, hc),
+    checksumAt: (n) => run(handwritten, n).checksum,
+  };
+}
+
+/** Hand-written Python through CPython: ns per call with the same generator loop, fewer iterations. */
+async function benchPy(
+  kernel: Kernel,
+  expected: (iters: number) => string,
+): Promise<{ python: Sample; pyIters: number; startupMs: { python: number; node: number } }> {
+  const iters = ITER / 200;
+  const driver = `${kernel.py}
+import sys, time
+M = 0xFFFFFFFF
+def main():
+    iters = int(sys.argv[1])
+    s = 0x9e3779b9
+    acc = 0
+    f = ${kernel.name}
+    t0 = time.perf_counter()
+    for _ in range(iters):
+        a = [0, 0, 0]
+        for k in range(${kernel.arity}):
+            s ^= (s << 13) & M
+            s ^= s >> 17
+            s ^= (s << 5) & M
+            a[k] = s
+        r = f(a[0]) if ${kernel.arity} == 1 else (f(a[0], a[1]) if ${kernel.arity} == 2 else f(a[0], a[1], a[2]))
+        acc = (acc ^ r) & M
+    dt = time.perf_counter() - t0
+    print(f"{dt * 1e9 / iters:.3f} {acc}")
+main()
+`;
+  return withTempDir(async (dir) => {
+    const file = join(dir, `${kernel.name}.py`);
+    await writeFile(file, driver, 'utf8');
+    const ns: number[] = [];
+    let checksum = '';
+    for (let i = 0; i < SAMPLES; i += 1) {
+      const r = runTool('python3', [file, String(iters)], { timeoutMs: 600_000 });
+      if (!r.ok) throw new Error(`${kernel.name}: python failed: ${r.stderr.slice(0, 200)}`);
+      const [t, c] = r.stdout.trim().split(' ');
+      ns.push(Number(t));
+      checksum = c ?? '';
+    }
+    if (checksum !== expected(iters)) throw new Error(`${kernel.name}: python checksum mismatch`);
+    // Startup latency: one process launch running a single iteration.
+    const su = (cmd: string, args: string[]): number => {
+      const t = performance.now();
+      runTool(cmd, args, { timeoutMs: 60_000 });
+      return performance.now() - t;
+    };
+    const jsFile = join(dir, `${kernel.name}.mjs`);
+    await writeFile(
+      jsFile,
+      `${kernel.js}
+${kernel.name}(1${kernel.arity > 1 ? ', 2' : ''}${kernel.arity > 2 ? ', 3' : ''});
+`,
+      'utf8',
+    );
+    const py: number[] = [];
+    const nd: number[] = [];
+    for (let i = 0; i < SAMPLES; i += 1) {
+      py.push(su('python3', [file, '1']));
+      nd.push(su(process.execPath, [jsFile]));
+    }
+    const med = (a: number[]): number => [...a].sort((p, q) => p - q)[a.length >> 1] ?? 0;
+    return {
+      python: summarize(ns, checksum),
+      pyIters: iters,
+      startupMs: { python: med(py), node: med(nd) },
+    };
+  });
 }
 
 function verdict(emitted: Sample, handwritten: Sample): 'win' | 'tie' | 'loss' {
@@ -356,8 +447,12 @@ async function main(): Promise<void> {
   const results: Record<string, unknown> = {};
   for (const k of KERNELS) {
     const js = await benchJs(k);
+    const py = await benchPy(k, js.checksumAt);
     const c = clang.path === undefined ? null : await benchC(k, clang.path, rustc);
     results[k.name] = {
+      python: py.python,
+      pythonIterations: py.pyIters,
+      startupInterpretersMs: py.startupMs,
       c:
         c === null
           ? { status: 'blocked', detail: 'clang not found' }
@@ -366,7 +461,11 @@ async function main(): Promise<void> {
               verdict: verdict(c.emitted, c.handwritten),
               verdictVsRust: c.rust === null ? 'blocked' : verdict(c.emitted, c.rust),
             },
-      js: { ...js, verdict: verdict(js.emitted, js.handwritten) },
+      js: {
+        emitted: js.emitted,
+        handwritten: js.handwritten,
+        verdict: verdict(js.emitted, js.handwritten),
+      },
     };
     const cv =
       c === null
@@ -386,7 +485,7 @@ async function main(): Promise<void> {
       return r.ok ? r.stdout.trim() : null;
     })(),
     flags: { c: '-std=c11 -O2 (no sanitizer)', js: 'Node default JIT, in-process, warm' },
-    iterationsPerSample: { c: ITER, js: ITER / 4 },
+    iterationsPerSample: { c: ITER, js: ITER / 4, python: ITER / 200 },
     samplesPerSide: SAMPLES,
     meaning:
       'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',

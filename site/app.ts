@@ -250,12 +250,46 @@ async function main(): Promise<void> {
     ]);
     const next = render(root, styleEl, r.output, show, text);
     state = next.state;
+    if (typeof animate === 'function') animate();
     if (next.timer !== undefined) {
       const { ms, event: ev } = next.timer;
       pending = window.setTimeout(() => show(ev), ms);
     }
   };
+  // Generic motion hooks: `.reveal` elements get `in` when scrolled into view, `.fill`
+  // bars grow after layout, and `.count` numbers count up once. The program chooses the classes.
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) if (e.isIntersecting) e.target.classList.add('in');
+    },
+    { threshold: 0.15 },
+  );
+  const animate = (): void => {
+    for (const el of root.querySelectorAll('.reveal')) observer.observe(el);
+    requestAnimationFrame(() => {
+      for (const el of root.querySelectorAll('.fill')) el.classList.add('grown');
+    });
+    for (const el of root.querySelectorAll('.count')) {
+      const target = el.textContent ?? '';
+      const m = /^(\d+)(\.\d+)?(.*)$/.exec(target);
+      if (m === null || el.classList.contains('counted')) continue;
+      el.classList.add('counted');
+      const whole = Number(m[1]);
+      const frac = m[2] ?? '';
+      const suffix = m[3] ?? '';
+      const t0 = performance.now();
+      const step = (now: number): void => {
+        const k = Math.min(1, (now - t0) / 900);
+        const eased = 1 - (1 - k) * (1 - k) * (1 - k);
+        el.textContent = `${Math.round(whole * eased)}${k >= 1 ? frac : ''}${suffix}`;
+        if (k < 1) requestAnimationFrame(step);
+        else el.textContent = target;
+      };
+      requestAnimationFrame(step);
+    }
+  };
   show(0);
+  animate();
   // The page exists only after the first render, so honor a fragment in the URL now.
   if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   (window as unknown as { a0page: { show: EventSink; state: () => number[] } }).a0page = {
