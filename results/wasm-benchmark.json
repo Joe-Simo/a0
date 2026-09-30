@@ -1,0 +1,219 @@
+{
+  "compiler": "a0c-0.1.24",
+  "engine": "node v24.14.0 (V8 13.6.233.17-node.41)",
+  "clang": "/opt/homebrew/opt/llvm/bin/clang (Homebrew clang version 23.1.2), -O3 --target=wasm32 -nostdlib, wasm-ld --no-entry",
+  "samples": 15,
+  "method": "Same driver on both sides (n dependent trips of h = h*5 + K(args(h, i)), run inside the module). A0: kernel and driver in A0, direct wasm32 backend. clang: hand-written C kernel from tools/exec-bench-kernels.ts, driver as a C loop. Medians over interleaved samples after warm-up; load = WebAssembly.compile + instantiate.",
+  "geomeanSpeedup": 0.7817812096965296,
+  "rows": [
+    {
+      "kernel": "affine",
+      "trips": 5000000,
+      "checksum": 2424423401,
+      "bytes": {
+        "a0": 336,
+        "clang": 536
+      },
+      "loadMs": {
+        "a0": 0.08883300000002237,
+        "clang": 0.07529099999999289
+      },
+      "nsPerTrip": {
+        "a0": 10.362041599999975,
+        "clang": 8.42673319999999
+      },
+      "speedup": 0.8132309756409404,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "rotl",
+      "trips": 5000000,
+      "checksum": 1205475452,
+      "bytes": {
+        "a0": 345,
+        "clang": 468
+      },
+      "loadMs": {
+        "a0": 0.10358300000007148,
+        "clang": 0.07745900000008987
+      },
+      "nsPerTrip": {
+        "a0": 7.34481679999999,
+        "clang": 6.309666800000014
+      },
+      "speedup": 0.8590638775360636,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "clamp",
+      "trips": 5000000,
+      "checksum": 2541220396,
+      "bytes": {
+        "a0": 394,
+        "clang": 393
+      },
+      "loadMs": {
+        "a0": 0.09058299999924202,
+        "clang": 0.09554200000002311
+      },
+      "nsPerTrip": {
+        "a0": 11.90491660000007,
+        "clang": 10.843299999999907
+      },
+      "speedup": 0.9108253643708721,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "mix",
+      "trips": 5000000,
+      "checksum": 3767554440,
+      "bytes": {
+        "a0": 405,
+        "clang": 380
+      },
+      "loadMs": {
+        "a0": 0.08745799999996962,
+        "clang": 0.08558300000004238
+      },
+      "nsPerTrip": {
+        "a0": 9.490324999999938,
+        "clang": 9.726316600000064
+      },
+      "speedup": 1.0248665456662578,
+      "verdict": "tie"
+    },
+    {
+      "kernel": "ident",
+      "trips": 5000000,
+      "checksum": 2819162399,
+      "bytes": {
+        "a0": 230,
+        "clang": 486
+      },
+      "loadMs": {
+        "a0": 0.443874999999025,
+        "clang": 0.20650000000023283
+      },
+      "nsPerTrip": {
+        "a0": 2.334716800000024,
+        "clang": 2.142416599999706
+      },
+      "speedup": 0.9176344642740756,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "noop",
+      "trips": 5000000,
+      "checksum": 2819162399,
+      "bytes": {
+        "a0": 247,
+        "clang": 485
+      },
+      "loadMs": {
+        "a0": 0.08216600000014296,
+        "clang": 0.0715409999993426
+      },
+      "nsPerTrip": {
+        "a0": 2.5318584000000555,
+        "clang": 1.9417250000002242
+      },
+      "speedup": 0.7669169018299687,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "chain3",
+      "trips": 5000000,
+      "checksum": 4035138509,
+      "bytes": {
+        "a0": 359,
+        "clang": 500
+      },
+      "loadMs": {
+        "a0": 0.09408299999995506,
+        "clang": 0.09045900000091933
+      },
+      "nsPerTrip": {
+        "a0": 6.495658399999956,
+        "clang": 7.021166799999991
+      },
+      "speedup": 1.0809014833661879,
+      "verdict": "win"
+    },
+    {
+      "kernel": "branchy",
+      "trips": 5000000,
+      "checksum": 1409085727,
+      "bytes": {
+        "a0": 339,
+        "clang": 394
+      },
+      "loadMs": {
+        "a0": 0.07804200000100536,
+        "clang": 0.06516700000065612
+      },
+      "nsPerTrip": {
+        "a0": 10.577816600000006,
+        "clang": 9.607566600000064
+      },
+      "speedup": 0.9082750215200421,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "arrfill",
+      "trips": 5000000,
+      "checksum": 3767083254,
+      "bytes": {
+        "a0": 468,
+        "clang": 493
+      },
+      "loadMs": {
+        "a0": 0.10766599999988102,
+        "clang": 0.11566599999969185
+      },
+      "nsPerTrip": {
+        "a0": 24.691333400000442,
+        "clang": 9.943499999999768
+      },
+      "speedup": 0.4027121516248122,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "arrfill4k",
+      "trips": 39062,
+      "checksum": 35937288,
+      "bytes": {
+        "a0": 487,
+        "clang": 526
+      },
+      "loadMs": {
+        "a0": 0.09624999999869033,
+        "clang": 0.09679099999993923
+      },
+      "nsPerTrip": {
+        "a0": 5794.236291024462,
+        "clang": 1863.6430546310798
+      },
+      "speedup": 0.32163739292405946,
+      "verdict": "loss"
+    },
+    {
+      "kernel": "loop64",
+      "trips": 5000000,
+      "checksum": 1657883070,
+      "bytes": {
+        "a0": 488,
+        "clang": 507
+      },
+      "loadMs": {
+        "a0": 0.08387500000026193,
+        "clang": 0.06962500000008731
+      },
+      "nsPerTrip": {
+        "a0": 310.79750840000054,
+        "clang": 355.0507666000005
+      },
+      "speedup": 1.142386142114902,
+      "verdict": "win"
+    }
+  ]
+}
