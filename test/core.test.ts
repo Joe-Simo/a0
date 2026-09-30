@@ -1775,8 +1775,46 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
   const sel = emitRiscv64Function(
     fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
   );
-  // The chosen value already in the destination: one branch and one move, no redundant mv.
-  assert.match(sel, /sltu (\w+), a0, a1\n\tbnez \1, (\.\w+)\n\tmv a0, a1\n\2:\n\tret/);
+  // The compare is the select's branch; the chosen value already in the destination: one
+  // branch and one move, no materialized bool.
+  assert.match(sel, /a0_m:\n\tbltu a0, a1, (\.\w+)\n\tmv a0, a1\n\1:\n\tret/);
+  assert.doesNotMatch(sel, /sltu/);
+  // A compare used elsewhere too is still materialized.
+  const sel2 = emitRiscv64Function(
+    fn(
+      'fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nx select c 1 2\ny add r x\nret y\nend',
+      'm',
+    ),
+  );
+  assert.match(sel2, /sltu/);
+  // gt/le swap the operands; a 0/1 value compared with 1 branches on zero.
+  const sel3 = emitRiscv64Function(
+    fn(
+      'fn m u32 u32 -> u32\nc gt p0 p1\nr select c p0 p1\nb and r 1\nd eq b 1\ns select d r 7\nret s\nend',
+      'm',
+    ),
+  );
+  assert.match(sel3, /bltu a1, a0, /);
+  assert.match(sel3, /andi (\w+), a0, 1\n\t(?:li \w+, 7\n\t)?bne \1, zero, /);
+  assert.doesNotMatch(sel3, /seqz|xori/);
+  // `sub 32 n` read only as a shift distance is -n (negw).
+  const rotl = emitRiscv64Function(
+    fn('fn r u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\ns shr p0 n\no or l s\nret o\nend', 'r'),
+  );
+  assert.match(rotl, /subw (\w+), zero, a1\n\tsrlw \w+, a0, \1/);
+  assert.doesNotMatch(rotl, /li \w+, 32/);
+  // A long constant array literal is a store loop (doublewords of zero), not one store each.
+  const zeros = Array.from({ length: 64 }, () => '0').join(' ');
+  const fill = emitRiscv64Function(
+    fn(`fn z u32 -> u32\na arr ${zeros}\nv get a p0\nret v\nend`, 'z'),
+  );
+  assert.match(
+    fill,
+    /li t3, 8\n\.\w+:\n\tsd zero, 0\(t4\)\n\tsd zero, 8\(t4\)\n\tsd zero, 16\(t4\)\n\tsd zero, 24\(t4\)\n\taddi t4, t4, 32\n\taddi t3, t3, -1\n\tbnez t3, /,
+  );
+  assert.ok((fill.match(/\bs[dw] /g) ?? []).length <= 4);
+  // Functions are 2-byte aligned (RV64GC has compressed instructions).
+  assert.match(sel, /^\t\.p2align 1$/m);
   // A power-of-two index is masked.
   const get8 = emitRiscv64Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get8, /andi t1, a1, 7\n\tslli t1, t1, 2/);
@@ -1793,11 +1831,30 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
       'l',
     ),
   );
+  // Rotated: no entry test for a positive literal count, one bltu back per trip, no `j`.
   assert.match(
     loop,
-    /li (\w+), 64\n\tli (\w+), -1640531535\n\.\w+:\n\tbgeu \w+, \1, [\s\S]*mulw (\w+), \3, \2\n\taddw a0, \3, /,
+    /li (\w+), -1640531535\n\tli (\w+), 64\n\.(\w+):\n[\s\S]*mulw (\w+), \4, \1\n\taddw a0, \4, [\s\S]*\n\tbltu \w+, \2, \.\3\n/,
   );
-  assert.doesNotMatch(loop, /\bmv\b|sp, sp|\bra\b/);
+  assert.doesNotMatch(loop, /\bmv\b|sp, sp|\bra\b|\bj\b|bgeu/);
+  // A variable trip count: one entry test, then the same bottom test; a counter with a literal
+  // trip count indexes an array of that length without the mask.
+  const vloop = emitRiscv64Function(
+    fn(
+      'fn step u32 u32 -> u32\na add p0 p1\nret a\nend\nfn l u32 u32 -> u32\nr fold step p1 p0\nret r\nend',
+      'l',
+    ),
+  );
+  assert.match(vloop, /beqz a1, (\.\w+)\n\.(\w+):[\s\S]*bltu \w+, a1, \.\2\n\1:/);
+  const put = emitRiscv64Function(
+    fn(
+      'fn put u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn f u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put 8 z p0\nx get a p1\nret x\nend',
+      'f',
+    ),
+  );
+  assert.match(put, /slli t1, (\w+), 2\n\tadd t1, t1, sp\n\tsw \w+, 0\(t1\)/);
+  assert.match(put, /andi t1, a1, 7/);
+  assert.equal((put.match(/andi/g) ?? []).length, 1);
   // A residual call saves ra only (no frame pointer).
   const big = Array.from({ length: 50 }, (_, k) => `x${k} add p0 ${k + 1}`).join('\n');
   const caller = emitRiscv64Function(
@@ -2133,12 +2190,22 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
   // A32 modified immediates: an 8-bit value rotated right by an even amount.
   assert.ok(isArmImm(255) && isArmImm(0xff000000) && isArmImm(0xf000000f) && isArmImm(1020));
   assert.ok(!isArmImm(257) && !isArmImm(0x1fe00001) && !isArmImm(4095));
-  // A scalar leaf keeps its first two parameters in r0/r1 (r12, r3, r2 are its scratch) and
-  // has no frame at all.
+  // A scalar leaf keeps its parameters in r0-r3 (the scratch roles are the registers no value
+  // uses) and has no frame at all; add of a single-use mul is one mla.
   const affine = fn('fn affine u32 u32 -> u32\na mul p0 3\nb add a p1\nret b\nend', 'affine');
   const s = emitArm32Function(affine);
   assert.match(s, /^\t\.globl a0_affine\n\t\.type a0_affine, %function$/m);
-  assert.match(s, /a0_affine:\n\tmov r3, #3\n\tmul r0, r0, r3\n\tadd r0, r0, r1\n\tbx lr\n/);
+  assert.match(s, /a0_affine:\n\tmov r3, #3\n\tmla r0, r0, r3, r1\n\tbx lr\n/);
+  const affine3 = emitArm32Function(
+    fn('fn a u32 u32 u32 -> u32\nm mul p0 p1\nb add m p2\nret b\nend', 'a'),
+  );
+  assert.match(affine3, /a0_a:\n\tmla r0, r0, r1, r2\n\tbx lr\n/);
+  // A single-use literal shift is the second operand's shifter (rsb for a shifted minuend).
+  const shifted = emitArm32Function(
+    fn('fn x u32 u32 -> u32\na shr p0 15\nb xor p0 a\nc shl p1 3\nd sub c b\nret d\nend', 'x'),
+  );
+  assert.match(shifted, /eor (r\d+), r0, r0, lsr #15\n\trsb r0, \1, r1, lsl #3\n\tbx lr/);
+  assert.doesNotMatch(shifted, /\blsl r|\blsr r/);
   // Division: no UDIV on baseline ARMv7-A, so the module's own routine runs; it gives all ones
   // for a zero divisor and the dividend as the remainder. A caller moves its parameters to
   // callee-saved homes (r4-r11, no frame pointer) and pushes lr with them.
@@ -2168,12 +2235,24 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
     fn('fn s u32 u32 -> u32\na shl p0 33\nb shr a p1\nret b\nend', 's'),
   );
   assert.match(shl, /lsl r0, r0, #1\n\tand r2, r1, #31\n\tlsr r0, r0, r2\n\tbx lr/);
-  // Unsigned comparison and a predicated select, no branch; the arm already in the result
-  // register needs no move.
+  // Unsigned comparison fused into the predicated select (no materialized bool, no branch); the
+  // arm already in the result register needs no move, a literal arm is an immediate.
   const sel = emitArm32Function(
     fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
   );
-  assert.match(sel, /cmp r0, r1\n\tmov (r\d+), #0\n\tmovlo \1, #1\n\tcmp \1, #0\n\tmoveq r0, r1\n/);
+  assert.match(sel, /a0_m:\n\tcmp r0, r1\n\tmovhs r0, r1\n\tbx lr\n/);
+  const selk = emitArm32Function(
+    fn('fn m u32 u32 -> u32\nc gt p0 p1\nr select c 7 p0\nret r\nend', 'm'),
+  );
+  assert.match(selk, /a0_m:\n\tcmp r0, r1\n\tmovhi r0, #7\n\tbx lr\n/);
+  // A compare with another use is still materialized.
+  const sel2 = emitArm32Function(
+    fn(
+      'fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nx select c 1 2\ny add r x\nret y\nend',
+      'm',
+    ),
+  );
+  assert.match(sel2, /movlo (r\d+), #1/);
   // Index modulo the length: a power of two is a bit-field extract, another length divides;
   // the element is addressed with a scaled register offset.
   const get8 = emitArm32Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
@@ -2211,8 +2290,27 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
   );
   assert.match(
     hoist,
-    /movw (r\d+), #22136\n\tmovt \1, #4660\n\tb (\.La0_h_\d+)\n(\.La0_h_\d+):\n\tmul (r\d+), r0, \1\n\tadd r0, \4, (r\d+)\n\tadd \5, \5, #1\n\2:\n\tcmp \5, r1\n\tblo \3\n/,
+    /movw (r\d+), #22136\n\tmovt \1, #4660\n\tb (\.La0_h_\d+)\n(\.La0_h_\d+):\n\tmla r0, r0, \1, (r\d+)\n\tadd \4, \4, #1\n\2:\n\tcmp \4, r1\n\tblo \3\n/,
   );
+  assert.doesNotMatch(hoist, /push/);
+  // A long constant array literal is a store loop; a counter with a literal trip count indexes
+  // an array of that length directly (no ubfx), a variable index is still reduced.
+  const zeros20 = Array.from({ length: 20 }, () => '0').join(' ');
+  const fill = emitArm32Function(
+    parseAndValidate(
+      `fn put u32x16 u32 u32 -> u32x16\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn f u32 u32 -> u32\nz arr ${zeros20.split(' ').slice(0, 16).join(' ')}\na fold put 16 z p0\nx get a p1\nret x\nend\nfn g u32 -> u32\nz arr ${zeros20}\nx get z p0\nret x\nend`,
+    ).byName.get('f') as TypedFunc,
+  );
+  assert.match(fill, /str (r\d+), \[sp, (r\d+), lsl #2\]\n\tadd \2, \2, #1/);
+  assert.equal((fill.match(/ubfx/g) ?? []).length, 1);
+  const fill20 = emitArm32Function(
+    fn(`fn g u32 -> u32\nz arr ${zeros20}\nx get z p0\nret x\nend`, 'g'),
+  );
+  assert.match(
+    fill20,
+    /mov r3, #0\n\tmov r2, #5\n(\.\w+):\n(\tstr r3, \[r12\], #4\n){4}\tsubs r2, r2, #1\n\tbne \1\n/,
+  );
+  assert.ok((fill20.match(/\bstr\b/g) ?? []).length === 4);
   // Stack parameters of a leaf load straight into their homes, above the pushed registers.
   const six = emitArm32Function(
     fn(
@@ -2222,7 +2320,7 @@ test('arm32 backend: emitted sequences carry the exact semantics', async () => {
   );
   assert.match(
     six,
-    /push \{r4, r5, r6, r7, r12, lr\}\n\tmov r4, r2\n\tmov r5, r3\n\tldr r6, \[sp, #24\]\n\tldr r7, \[sp, #28\]\n\tadd r0, r0, r7\n/,
+    /push \{r4, r5, r12, lr\}\n\tldr r4, \[sp, #16\]\n\tldr r5, \[sp, #20\]\n\tadd r0, r0, r5\n/,
   );
   // An aggregate result comes back through the hidden pointer in r0, kept in a slot.
   const pair = emitArm32Function(
@@ -2280,6 +2378,11 @@ test('arm32 backend: assembled, linked with a C driver, and executed on an emula
     'fn st u32 u32 -> u32\na mul p0 305419896\nb add a p1\nret b\nend',
     'fn six u32 u32 u32 u32 u32 u32 -> u32\na add p0 p5\nb xor a p4\nc sub b p3\nd add c p2\ne add d p1\nret e\nend',
     'fn ext u32 u32 -> u32\nr call rotv p0 p1\nk shl p0 5\nl shr p0 27\nm or k l\nj and p1 31\nf fold st j r\nx rem f p1\ns call six r m f x p0 p1\nret s\nend',
+    // fusions: shifter operands, mla, compares folded into selects, a constant-fill loop,
+    // a fold counter indexing without reduction, four parameters kept in r0-r3
+    'fn fput u32x20 u32 u32 -> u32x20\nv mul p1 p2\nn set p0 p1 v\nret n\nend',
+    `fn fz u32 u32 u32 u32 -> u32\na shr p0 7\nb xor p1 a\nc shl p2 3\nd sub c b\ne mul d p3\nf add p0 e\ng gt f p1\nh select g 7 f\ni le h p2\nj select i p3 h\nk ne j p0\nl select k j 5\nm and l 1\nq eq m 1\nr select q l p1\nz arr ${Array.from({ length: 20 }, () => '9').join(' ')}\nfo fold fput 20 z r\nx get fo p2\ny get fo 19\ns add x y\nret s\nend`,
+    'fn fl u32 u32 u32 u32 -> u32\na shl p0 3\nb add a p1\nc mul b p2\nd add c p3\ne lt d p2\nf select e p0 d\nret f\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
   const inputs: [number, number, boolean][] = [
@@ -2298,6 +2401,8 @@ test('arm32 backend: assembled, linked with a C driver, and executed on an emula
   const dv = p.byName.get('dv') as TypedFunc;
   const ext = p.byName.get('ext') as TypedFunc;
   const six = p.byName.get('six') as TypedFunc;
+  const fz = p.byName.get('fz') as TypedFunc;
+  const fl = p.byName.get('fl') as TypedFunc;
   const expected = inputs
     .flatMap(([a, b, c]) =>
       [
@@ -2306,16 +2411,18 @@ test('arm32 backend: assembled, linked with a C driver, and executed on an emula
         run(dv, [a, b]),
         run(ext, [a, b]),
         run(six, [a, b, (a ^ b) >>> 0, 7, b, a]),
+        run(fz, [a, b, (a ^ b) >>> 0, b >>> 3]),
+        run(fl, [a, b, (a ^ b) >>> 0, b >>> 3]),
       ].map(String),
     )
     .join('\n');
   const calls = inputs
     .map(
       ([a, b, c]) =>
-        `  printf("%u\\n%u\\n%u\\n%u\\n%u\\n", (unsigned)a0_top(${a}u, ${b}u, ${c}), (unsigned)a0_bigtop(${a}u, ${b}u), (unsigned)a0_dv(${a}u, ${b}u), (unsigned)a0_ext(${a}u, ${b}u), (unsigned)a0_six(${a}u, ${b}u, ${(a ^ b) >>> 0}u, 7u, ${b}u, ${a}u));`,
+        `  printf("%u\\n%u\\n%u\\n%u\\n%u\\n%u\\n%u\\n", (unsigned)a0_top(${a}u, ${b}u, ${c}), (unsigned)a0_bigtop(${a}u, ${b}u), (unsigned)a0_dv(${a}u, ${b}u), (unsigned)a0_ext(${a}u, ${b}u), (unsigned)a0_six(${a}u, ${b}u, ${(a ^ b) >>> 0}u, 7u, ${b}u, ${a}u), (unsigned)a0_fz(${a}u, ${b}u, ${(a ^ b) >>> 0}u, ${b >>> 3}u), (unsigned)a0_fl(${a}u, ${b}u, ${(a ^ b) >>> 0}u, ${b >>> 3}u));`,
     )
     .join('\n');
-  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nextern uint32_t a0_dv(uint32_t, uint32_t);\nextern uint32_t a0_ext(uint32_t, uint32_t);\nextern uint32_t a0_six(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const driver = `#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\nextern uint32_t a0_top(uint32_t, uint32_t, bool);\nextern uint32_t a0_bigtop(uint32_t, uint32_t);\nextern uint32_t a0_dv(uint32_t, uint32_t);\nextern uint32_t a0_ext(uint32_t, uint32_t);\nextern uint32_t a0_six(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);\nextern uint32_t a0_fz(uint32_t, uint32_t, uint32_t, uint32_t);\nextern uint32_t a0_fl(uint32_t, uint32_t, uint32_t, uint32_t);\nint main(void) {\n${calls}\n  return 0;\n}\n`;
   const { assembleArm32, emitArm32Function } = await import('../src/arm32.js');
   // The default ARMv7-A emission, and the ARMv7VE (udiv) one: Cortex-A7 implements both.
   const builds = [true, false].flatMap((optimize) => [

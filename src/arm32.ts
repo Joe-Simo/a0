@@ -35,10 +35,17 @@
  *   loop level) among the live ones goes to a stack slot. Homes: r4-r11 in every function
  *   (there is no frame pointer: slots are addressed from sp, which is fixed after the
  *   prologue); in a leaf (no out-of-line call, no divide routine) also lr, which is saved
- *   anyway once anything is pushed; in a leaf without aggregates also r0 and r1 (the
- *   argument registers, so the first two parameters stay where they arrive), with r12, r3,
- *   and r2 as the only scratch registers. A leaf that needs no callee-saved home and no slot
+ *   anyway once anything is pushed; in a leaf without aggregates first r0-r3 (parameters
+ *   stay where they arrive; the scratch roles are the registers among r12, r3-r0 that no
+ *   value uses, and the plan is abandoned if its code needs a role it lacks), then r0 and
+ *   r1 with r12, r3, and r2 as scratch. A leaf that needs no callee-saved home and no slot
  *   has no prologue at all and returns with `bx lr`.
+ * - Fusions: a compare whose only use is a scalar select's condition sets the flags for that
+ *   select's predicated moves (a literal arm is an immediate); `add` of a single-use `mul`
+ *   is `mla`; a single-use shift by a literal feeding add/sub/and/orr/eor is that op's
+ *   shifter operand (`rsb` when it is the minuend). A counter with a literal trip count
+ *   indexes an array at least that long without `ubfx`/division; a literal array of more
+ *   than 16 equal words is a loop of post-indexed stores.
  * - Literals that need a register inside a loop (movw/movt constants, operands without an
  *   immediate form, variable trip counts written as literals) are materialized once before
  *   the outermost loop when a register is free over the whole loop.
@@ -110,17 +117,129 @@ const CALLEE_SAVED = ['r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11'];
 const FAR = 'lr';
 const UDIVMOD = '.La0_udivmod';
 
-/** Scratch roles of one function: operands A/B, result/mask D, data T, address ADDR. */
+/**
+ * Scratch roles of one function: operands A/B, result/mask D, data T, address ADDR. A plan
+ * may leave roles unassigned; emitting code that needs one abandons that plan (MissingRole).
+ */
 interface Roles {
-  readonly A: string;
-  readonly B: string;
-  readonly D: string;
-  readonly T?: string;
-  readonly ADDR?: string;
+  readonly A?: string | undefined;
+  readonly B?: string | undefined;
+  readonly D?: string | undefined;
+  readonly T?: string | undefined;
+  readonly ADDR?: string | undefined;
 }
 const DEFAULT_ROLES: Roles = { A: 'r0', B: 'r1', D: 'r2', T: 'r3', ADDR: 'r12' };
 /** A leaf without aggregates: r0/r1 become homes, only three scratch registers remain. */
 const SCALAR_LEAF_ROLES: Roles = { A: 'r12', B: 'r3', D: 'r2' };
+
+/** Thrown when a register plan lacks a scratch role its code needs; the next plan is tried. */
+class MissingRole extends Error {}
+
+const missing = (): never => {
+  throw new MissingRole('scratch role');
+};
+
+/** Uses of each node id in `fn` (node arguments and the returned operand). */
+function useCounts(fn: TypedFunc): Map<string, number> {
+  const uses = new Map<string, number>();
+  const count = (o: Operand): void => {
+    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
+  };
+  for (const n of fn.nodes) for (const o of n.args) count(o);
+  count(fn.ret);
+  return uses;
+}
+
+const COMPARES = new Set<Op>(['eq', 'ne', 'lt', 'le', 'gt', 'ge']);
+const SHIFTABLE = new Set<Op>(['add', 'sub', 'and', 'or', 'xor']);
+
+/** A shifted second operand: `op d, x, y, <kind> #amount`. */
+interface ShiftedOperand {
+  /** Index of the argument that is the shift node. */
+  readonly arg: number;
+  readonly src: Operand;
+  readonly kind: 'lsl' | 'lsr';
+  readonly amount: number;
+}
+
+/** Node fusions of one function (computed once, identical in both emission passes). */
+interface Fusion {
+  /** Compare nodes whose only use is the condition of a scalar select (its flags). */
+  readonly cmp: Set<string>;
+  /** `add` nodes with a single-use `mul` operand: `mla`; value = index of the mul argument. */
+  readonly mla: Map<string, number>;
+  /** ALU nodes with a single-use literal-distance shift operand. */
+  readonly shifted: Map<string, ShiftedOperand>;
+  /** Nodes emitted by their consumer (the absorbed mul and shift nodes). */
+  readonly skip: Set<string>;
+}
+
+const FUSIONS = new WeakMap<TypedFunc, Fusion>();
+
+function fusionOf(fn: TypedFunc): Fusion {
+  const cached = FUSIONS.get(fn);
+  if (cached !== undefined) return cached;
+  const rot = rotatesOf(fn);
+  const uses = useCounts(fn);
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  const single = (o: Operand | undefined): Node | undefined =>
+    o?.kind === 'node' && uses.get(o.id) === 1 && !rot.skip.has(o.id) && !rot.fused.has(o.id)
+      ? byId.get(o.id)
+      : undefined;
+  const cmp = new Set<string>();
+  const mla = new Map<string, number>();
+  const shifted = new Map<string, ShiftedOperand>();
+  const skip = new Set<string>();
+  for (const n of fn.nodes) {
+    if (rot.fused.has(n.id) || rot.skip.has(n.id)) continue;
+    const t = fn.types.get(n.id);
+    if (n.op === 'select') {
+      const d = single(n.args[0]);
+      if (d !== undefined && COMPARES.has(d.op) && t !== undefined && isPrimitive(t)) cmp.add(d.id);
+      continue;
+    }
+    if (n.op === 'add') {
+      const k = [0, 1].find((j) => single(n.args[j])?.op === 'mul');
+      if (k !== undefined) {
+        mla.set(n.id, k);
+        skip.add((n.args[k] as { id: string }).id);
+        continue;
+      }
+    }
+    if (!SHIFTABLE.has(n.op)) continue;
+    // The second operand first (no operand swap needed), then the first for commutative ops
+    // and for sub (as rsb).
+    for (const j of [1, 0]) {
+      const s = single(n.args[j]);
+      const dist = s?.args[1];
+      if (s === undefined || (s.op !== 'shl' && s.op !== 'shr') || dist?.kind !== 'u32') continue;
+      if ((dist.value & 31) === 0 || s.args[0]?.kind === 'u32') continue;
+      const other = n.args[1 - j];
+      if (other === undefined || (other.kind === 'node' && skip.has(other.id))) continue;
+      shifted.set(n.id, {
+        arg: j,
+        src: s.args[0] as Operand,
+        kind: s.op === 'shl' ? 'lsl' : 'lsr',
+        amount: dist.value & 31,
+      });
+      skip.add(s.id);
+      break;
+    }
+  }
+  const result = { cmp, mla, shifted, skip };
+  FUSIONS.set(fn, result);
+  return result;
+}
+
+/** The condition that holds exactly when `cc` does not. */
+const INVERSE: Readonly<Record<string, string>> = {
+  eq: 'ne',
+  ne: 'eq',
+  lo: 'hs',
+  hs: 'lo',
+  hi: 'ls',
+  ls: 'hi',
+};
 
 /** Code generation options. */
 export interface Arm32Options {
@@ -358,26 +477,32 @@ class FunctionEmitter {
   /** Set by any aggregate value, parameter, or result. */
   #aggregates = false;
   #roles: Roles = DEFAULT_ROLES;
+  /** Fold/loop counters with a literal trip count: key -> exclusive upper bound. */
+  readonly #bound = new Map<string, number>();
+  /** Compares fused into their select: key -> condition code and operands. */
+  readonly #fusedCmp = new Map<string, { cond: string; x: Val; y: Val }>();
 
   constructor(
     readonly fn: TypedFunc,
     readonly options: Arm32Options,
   ) {}
 
+  // In the dry pass the roles are placeholders (no code is kept); in emission a missing role
+  // abandons the register plan.
   get #A(): string {
-    return this.#roles.A;
+    return this.#roles.A ?? (this.#dry ? 'r0' : missing());
   }
   get #B(): string {
-    return this.#roles.B;
+    return this.#roles.B ?? (this.#dry ? 'r1' : missing());
   }
   get #D(): string {
-    return this.#roles.D;
+    return this.#roles.D ?? (this.#dry ? 'r2' : missing());
   }
   get #T(): string {
-    return this.#roles.T ?? refuse('internal: data scratch used in a scalar leaf');
+    return this.#roles.T ?? (this.#dry ? 'r3' : missing());
   }
   get #ADDR(): string {
-    return this.#roles.ADDR ?? refuse('internal: address scratch used in a scalar leaf');
+    return this.#roles.ADDR ?? (this.#dry ? 'r12' : missing());
   }
 
   #emit(...lines: string[]): void {
@@ -502,9 +627,13 @@ class FunctionEmitter {
 
   /**
    * A register holding scalar `v`: its home register, a literal hoisted out of the enclosing
-   * loops, or `scratch` after materializing. Callers never write the returned register.
+   * loops, or `scratch` after materializing (a register, or a scratch role resolved only when
+   * it is needed, so a plan without that role can still read register operands). Callers
+   * never write the returned register.
    */
-  #read(v: Val, scratch: string): string {
+  #read(v: Val, role: string): string {
+    const pick = (): string =>
+      role === 'A' ? this.#A : role === 'B' ? this.#B : role === 'D' ? this.#D : role;
     if (v.kind === 'lit') {
       const outer = this.#loops[0];
       if (outer !== undefined) {
@@ -516,11 +645,13 @@ class FunctionEmitter {
           if (reg !== undefined) return reg;
         }
       }
+      const scratch = pick();
       this.#emit(...movImm(scratch, v.value));
       return scratch;
     }
     const home = this.#home(v.key);
     if ('reg' in home) return home.reg;
+    const scratch = pick();
     this.#mem('ldr', scratch, 'sp', home.slot);
     return scratch;
   }
@@ -564,6 +695,12 @@ class FunctionEmitter {
    * elementBytes (`A, lsl #k` for a power of two). Uses r0-r3 (the divide routine) and lr.
    */
   #scaledIndex(idx: Val, n: number, elemBytes: number): string {
+    const bound = idx.kind === 'key' ? this.#bound.get(idx.key) : undefined;
+    if (bound !== undefined && bound <= n && (elemBytes & (elemBytes - 1)) === 0) {
+      // A counter already below the length: scale its home register directly.
+      const r = this.#read(idx, this.#A);
+      return elemBytes > 1 ? `${r}, lsl #${Math.log2(elemBytes)}` : r;
+    }
     const [A, B] = [this.#A, this.#B];
     if (n === 1) this.#emit(`mov ${A}, #0`);
     else if ((n & (n - 1)) === 0)
@@ -682,9 +819,11 @@ class FunctionEmitter {
   #node(env: Env, n: Node, index: number): void {
     const rot = rotatesOf(env.fn);
     if (rot.skip.has(n.id)) return;
+    const fusion = fusionOf(env.fn);
+    if (fusion.skip.has(n.id)) return;
     const t = env.fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
     const key = `${env.prefix}n_${n.id}`;
-    const [A, B] = [this.#A, this.#B];
+    const [A, B] = ['A', 'B'];
     this.#pos += 1;
     const scalar = (produce: (d: string) => void): void => {
       this.#def(key, t);
@@ -711,6 +850,18 @@ class FunctionEmitter {
     const [a, b, c] = vals;
     if (n.op !== 'fold' && n.op !== 'loop') for (const v of vals) this.#use(v);
     const bin = (insn: string, commutes: boolean, imm: boolean): void => {
+      const sh = fusion.shifted.get(n.id);
+      if (sh !== undefined) {
+        // `op d, x, y, <shift>`; a shifted first operand of sub is `rsb`.
+        const src = this.#resolve(env, sh.src);
+        this.#use(src);
+        const other = (sh.arg === 1 ? a : b) as Val;
+        const op = sh.arg === 0 && insn === 'sub' ? 'rsb' : insn;
+        const rx = this.#read(other, A);
+        const ry = this.#read(src, B);
+        scalar((d) => this.#emit(`${op} ${d}, ${rx}, ${ry}, ${sh.kind} #${sh.amount}`));
+        return;
+      }
       let [x, y] = [a as Val, b as Val];
       if (commutes && x.kind === 'lit' && y.kind !== 'lit') [x, y] = [y, x];
       if (imm && insn === 'sub' && x.kind === 'lit' && y.kind !== 'lit' && isArmImm(x.value)) {
@@ -744,6 +895,11 @@ class FunctionEmitter {
     const cmp = (cond: string): void => {
       let [x, y, cc] = [a as Val, b as Val, cond];
       if (x.kind === 'lit' && y.kind !== 'lit') [x, y, cc] = [y, x, SWAPPED[cond] as string];
+      if (fusion.cmp.has(n.id)) {
+        // The select that consumes it compares and moves under the condition.
+        this.#fusedCmp.set(key, { cond: cc, x, y });
+        return;
+      }
       const rx = this.#read(x, A);
       const ry = y.kind === 'lit' && isArmImm(y.value) ? `#${y.value}` : this.#read(y, B);
       scalar((d) => this.#emit(`cmp ${rx}, ${ry}`, `mov ${d}, #0`, `mov${cc} ${d}, #1`));
@@ -752,13 +908,12 @@ class FunctionEmitter {
       if (this.options.udiv === true) {
         const ra = this.#read(a as Val, A);
         const rb = this.#read(b as Val, B);
-        const tmp = this.#D;
         scalar((d) => {
           // A zero divisor: udiv gives 0 (ARMv7-A), so mls leaves the dividend; the quotient
           // becomes all ones under the flags of a comparison made before the divide.
           if (quotient) this.#emit(`cmp ${rb}, #0`, `udiv ${d}, ${ra}, ${rb}`, `mvneq ${d}, #0`);
           else {
-            const q = d !== ra && d !== rb ? d : tmp;
+            const q = d !== ra && d !== rb ? d : this.#D;
             this.#emit(`udiv ${q}, ${ra}, ${rb}`, `mls ${d}, ${q}, ${rb}, ${ra}`);
           }
         });
@@ -782,9 +937,25 @@ class FunctionEmitter {
         else scalar((d) => this.#into(d, v));
         return;
       }
-      case 'add':
-        bin('add', true, true);
+      case 'add': {
+        const k = fusion.mla.get(n.id);
+        if (k === undefined) {
+          bin('add', true, true);
+          return;
+        }
+        // add (mul x y) z = mla d, x, y, z (the mul node is not emitted on its own).
+        const mulId = (n.args[k] as { id: string }).id;
+        const mul = env.fn.nodes.find((m) => m.id === mulId) as Node;
+        const [x, y] = mul.args.map((o) => this.#resolve(env, o)) as [Val, Val];
+        this.#use(x);
+        this.#use(y);
+        const z = vals[1 - k] as Val;
+        const rx = this.#read(x, A);
+        const ry = this.#read(y, B);
+        const rz = this.#read(z, 'D');
+        scalar((d) => this.#emit(`mla ${d}, ${rx}, ${ry}, ${rz}`));
         return;
+      }
       case 'sub':
         bin('sub', false, true);
         return;
@@ -833,20 +1004,40 @@ class FunctionEmitter {
       case 'select': {
         if (isPrimitive(t)) {
           // The condition sets the flags first; loading the arms (mov/movw/ldr) keeps them.
-          this.#emit(`cmp ${this.#read(a as Val, A)}, #0`);
-          const rb = this.#read(b as Val, A);
-          const rc = this.#read(c as Val, B);
+          const fused = a?.kind === 'key' ? this.#fusedCmp.get(a.key) : undefined;
+          let cc = 'ne';
+          if (fused === undefined) this.#emit(`cmp ${this.#read(a as Val, A)}, #0`);
+          else {
+            this.#use(fused.x);
+            this.#use(fused.y);
+            const rx = this.#read(fused.x, A);
+            const y = fused.y;
+            const ry =
+              y.kind === 'lit' && isArmImm(y.value) ? `#${y.value >>> 0}` : this.#read(y, B);
+            this.#emit(`cmp ${rx}, ${ry}`);
+            cc = fused.cond;
+          }
+          // An arm that is an encodable literal is moved as an immediate.
+          const arm = (v: Val, role: string): string =>
+            v.kind === 'lit' && isArmImm(v.value) ? `#${v.value >>> 0}` : this.#read(v, role);
+          const rb = arm(b as Val, A);
+          const rc = arm(c as Val, B);
+          const inv = INVERSE[cc] as string;
           scalar((d) => {
-            if (d !== rb) this.#emit(`movne ${d}, ${rb}`);
-            if (d !== rc) this.#emit(`moveq ${d}, ${rc}`);
+            if (d !== rb) this.#emit(`mov${cc} ${d}, ${rb}`);
+            if (d !== rc) this.#emit(`mov${inv} ${d}, ${rc}`);
           });
           return;
         }
         const rc = this.#read(a as Val, this.#T);
         this.#def(key, t);
-        this.#addr(A, 'sp', this.#slot(aggregateOf(b as Val, 'a value').key));
-        this.#addr(B, 'sp', this.#slot(aggregateOf(c as Val, 'a value').key));
-        this.#emit(`cmp ${rc}, #0`, `movne ${this.#ADDR}, ${A}`, `moveq ${this.#ADDR}, ${B}`);
+        this.#addr(this.#A, 'sp', this.#slot(aggregateOf(b as Val, 'a value').key));
+        this.#addr(this.#B, 'sp', this.#slot(aggregateOf(c as Val, 'a value').key));
+        this.#emit(
+          `cmp ${rc}, #0`,
+          `movne ${this.#ADDR}, ${this.#A}`,
+          `moveq ${this.#ADDR}, ${this.#B}`,
+        );
         this.#copy('sp', this.#slot(key), this.#ADDR, 0, words(t));
         return;
       }
@@ -859,6 +1050,24 @@ class FunctionEmitter {
         let bias = 0;
         let held: number | undefined;
         let off = this.#slot(key);
+        const first = vals[0];
+        if (
+          vals.length > 16 &&
+          first?.kind === 'lit' &&
+          vals.every((v) => v.kind === 'lit' && v.value === first.value)
+        ) {
+          // A long run of one constant: a loop of four post-indexed stores per trip.
+          const T = this.#T;
+          const trips = Math.floor(vals.length / 4);
+          const top = this.#label();
+          this.#addr(this.#ADDR, 'sp', off);
+          this.#emit(...movImm(T, first.value), ...movImm(this.#D, trips), `${top}:`);
+          for (let k = 0; k < 4; k += 1) this.#emit(`str ${T}, [${this.#ADDR}], #4`);
+          this.#emit(`subs ${this.#D}, ${this.#D}, #1`, `bne ${top}`);
+          for (let k = trips * 4; k < vals.length; k += 1)
+            this.#emit(`str ${T}, [${this.#ADDR}], #4`);
+          return;
+        }
         for (const v of vals) {
           const size = 4 * words(v.type);
           if (off - bias + size > 4096) {
@@ -996,7 +1205,7 @@ class FunctionEmitter {
    */
   #loop(env: Env, n: Node, index: number, key: string, t: Type, vals: readonly Val[]): void {
     const [count, init, ...extras] = vals as [Val, Val, ...Val[]];
-    const [A, B] = [this.#A, this.#B];
+    const [A, B] = ['A', 'B'];
     const name = n.callee as string;
     const callee = env.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
     const pred = n.pred === undefined ? undefined : env.fn.calls.get(n.pred);
@@ -1019,6 +1228,7 @@ class FunctionEmitter {
     }
     this.#def(counter, 'u32');
     this.#set(counter, (d) => this.#emit(`mov ${d}, #0`));
+    if (count.kind === 'lit' && count.value > 0) this.#bound.set(counter, count.value);
     if (!this.#dry && this.#loops.length === 0)
       for (const h of this.#hoisted.get(key) ?? []) {
         const reg = this.#regs.get(h.key);
@@ -1180,7 +1390,16 @@ class FunctionEmitter {
     this.#outgoing = align(this.#outgoing, 8);
     // Register pools, most registers first; lr (and r0/r1) only while every sp offset fits
     // the 12-bit immediate, since lr is the large-offset scratch.
-    const plans: { pool: string[]; roles: Roles; near: boolean }[] = [];
+    const plans: { pool: string[]; roles: Roles | 'free'; near: boolean }[] = [];
+    // A scalar leaf with every argument register a home: parameters stay where they arrive;
+    // the scratch roles are whichever of r12, r3-r0 no value uses (a plan whose code needs a
+    // role it lacks is abandoned for the next).
+    if (this.#leaf && !this.#aggregates)
+      plans.push({
+        pool: ['r0', 'r1', 'r2', 'r3', ...CALLEE_SAVED, 'lr'],
+        roles: 'free',
+        near: true,
+      });
     if (this.#leaf && !this.#aggregates)
       plans.push({
         pool: ['r0', 'r1', ...CALLEE_SAVED, 'lr'],
@@ -1190,10 +1409,12 @@ class FunctionEmitter {
     if (this.#leaf) plans.push({ pool: [...CALLEE_SAVED, 'lr'], roles: DEFAULT_ROLES, near: true });
     plans.push({ pool: CALLEE_SAVED, roles: DEFAULT_ROLES, near: false });
     const aggregateBytes = this.#slotBytes;
-    let frame = 0;
-    let pushed: string[] = [];
-    for (const plan of plans) {
+    const slots = new Map(this.#slots);
+    for (const [p, plan] of plans.entries()) {
+      const last = p === plans.length - 1;
       this.#slotBytes = aggregateBytes;
+      this.#slots.clear();
+      for (const [k, v] of slots) this.#slots.set(k, v);
       this.#allocate(plan.pool);
       for (const [k, d] of this.#defs)
         if (
@@ -1203,15 +1424,32 @@ class FunctionEmitter {
           !k.startsWith('lit:')
         )
           this.#alloc(k, 4);
-      frame = this.#outgoing + align(this.#slotBytes, 8);
+      const frame = this.#outgoing + align(this.#slotBytes, 8);
       const saved = this.#saved.filter((r) => r !== 'lr');
-      pushed =
+      const pushed =
         this.#leaf && this.#saved.length === 0
           ? []
           : [...saved, ...(saved.length % 2 === 0 ? ['r12'] : []), 'lr'];
-      this.#roles = plan.roles;
-      if (!plan.near || frame + 4 * pushed.length + incomingBytes <= 4095) break;
+      if (plan.roles === 'free') {
+        const homes = new Set(this.#regs.values());
+        const [A, B, D] = ['r12', 'r3', 'r2', 'r1', 'r0'].filter((r) => !homes.has(r));
+        this.#roles = { A, B, D };
+      } else this.#roles = plan.roles;
+      if (!last && plan.near && frame + 4 * pushed.length + incomingBytes > 4095) continue;
+      try {
+        return this.#finish(env, ret, frame, pushed);
+      } catch (e) {
+        if (last || !(e instanceof MissingRole)) throw e;
+      }
     }
+    return refuse('internal: no register plan');
+  }
+
+  /** Pass 2: emission under the chosen register plan. */
+  #finish(env: Env, ret: Val, frame: number, pushed: readonly string[]): string {
+    const fn = this.fn;
+    const sret = !isPrimitive(fn.result);
+    const { places } = argLayout(fn.params, sret);
     // Incoming stack parameters, relative to the final sp.
     const incoming = frame + 4 * pushed.length;
     // Pass 2: emission.
