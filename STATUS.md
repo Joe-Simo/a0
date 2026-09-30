@@ -2230,3 +2230,61 @@ Findings:
 - **Retries improved: 74/76 after one retry vs 72/76.** 10 of 12 failures were repaired from the message alone (earlier 7 of 11). The two unrepaired: Haiku absdiff (wrong output twice) and Haiku b-bounds-largest (uppercase id again).
 - **Cost: single task still wins, sessions still lose.** 237 vs TS 284 and Rust 312 for one task; 168 vs 148 / 160 in a 10-task session; 160 vs 133 / 143 unbounded. The loss in sessions is the retry rate (1.16 calls/task vs 1.12 / 1.11) and longer replies, not the system text.
 - Candidates for a further step, not taken here (adding spellings measured on the sample that found them would overfit): `lte`/`gte`/`neq` spellings, and a fix hint for uppercase ids.
+
+### Rules-only primer (the rules models break without one)
+
+Question: what is the smallest primer that keeps A0 acceptance at or above TS, given the guessable spellings above?
+
+Ranking. The two no-primer first-attempt samples (the earlier replies re-scored with the guessable parser, plus the fresh guessable collection; 152 trials, 19 failures) were matched against the MODEL_GUIDE.min.txt rules. Violations per rule, counting replies:
+- fold step contract: 4. The step is called as `F(state, i, extras...)`, and models passed extras it does not take, used `loop` as `fold`, or read `i` as the element.
+- record vs array access (`get`/`set` on a record, `at` on an array): 4.
+- no nested operands: 2.
+- exact op names (`lte`/`gte`): 2.
+- comparison result is bool (d-isdiv-bool kept `-> u32`): 2.
+- lowercase ids, tuple return via `rec`, no labels or goto: 1 each.
+- wrong output, not tied to any rule: 4.
+
+Never violated: io and linear tokens, `use`, div/rem by zero, shift masking, `text`/`puts`, `loop`, parameter names, and the header syntax (the view shows it).
+
+Primers. The harness gets a new option, `A0_EXPERIMENT_PRIMER=rules`: the guide (`A0_EXPERIMENT_GUIDE`, trailing newline trimmed), then the self-contained edit protocol of `none`, with one repair. The guide carries no EDIT line, so the protocol appears once.
+- `MODEL_GUIDE.rules.txt`, 71 o200k tokens, system text 136:
+  `A0: one `id op args` per line, no nesting, lowercase ids. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n`
+  The op list is space-separated with no separators or groups; every op is 1 o200k token except `shl` (2). `mov`, `loop`, io and all semantics notes are left out.
+- `MODEL_GUIDE.rules2.txt`, system text 129: the same without `lowercase ids` and `(->bool)`, the two rules ranked lowest that cost tokens. The bool rule had not prevented d-isdiv-bool under `rules`.
+
+Method: the same as the two subsections above. Fresh Haiku and Sonnet subagents, one shot, one group file each (sets a, b, d), then one retry per failed trial by a fresh subagent per model, given the reply and the checker's message. TS/Rust are the relaxed replies of "No primer and lazy primer". Results: `results/ai-edit-experiment.{,b.,d.}{haiku,sonnet}-primer-{rules,rules2}.json`. Self-check ok in all 12. Costs are computed as above.
+
+Pooled over a+b+d, 76 trials per cell:
+
+| cell | system | one-shot | after 1 retry | calls/task | 1 task | 10-task session | unbounded |
+|---|---|---|---|---|---|---|---|
+| A0 rules primer | 136 | **73/76** | **76/76** | 1.04 | 291 | **145** | **128** |
+| A0 rules2 primer | 129 | 69/76 | 76/76 | 1.09 | 294 | 154 | 139 |
+| A0 no primer, guessable | 64 | 64/76 | 74/76 | 1.16 | 237 | 168 | 160 |
+| TS relaxed | 126 | 67/76 | 76/76 | 1.12 | 284 | 148 | 133 |
+| Rust relaxed | 141 | 68/76 | 74/76 | 1.11 | 312 | 160 | 143 |
+
+By model (rules primer):
+- Haiku: 35/38 -> 38/38, costing 301 / 154 / 138, against TS 34 -> 38 at 282 / 146 / 131 and Rust 32 -> 36 at 337 / 184 / 168.
+- Sonnet: 38/38 one shot, costing 282 / 135 / 118, against TS 33 -> 38 at 286 / 150 / 135 and Rust 36 -> 38 at 288 / 136 / 119.
+
+On b+d only, the sets where the default min primer was measured (one shot, 50 trials: 50/50 at 674 / 195 / 142):
+- rules: 47/50 -> 50/50 at 301 / 154 / 138.
+- TS: 45/50 -> 50/50 at 290 / 154 / 139.
+- Rust: 45/50 -> 48/50 at 321 / 169 / 152.
+
+Findings:
+- **Acceptance: the rules primer is above TS and Rust.** One shot it gets 73/76, against 67 and 68. After one retry it gets 76/76, against 76 and 74. Its three first-attempt failures, all Haiku, were repaired by the retry:
+  - b-sumfrom-eight: an extra fold argument, although the fold rule is in the primer.
+  - d-isdiv-bool: kept `-> u32`, although the bool rule is in the primer.
+  - d-rename-twice: used the new name before defining it.
+- **Cost against TS: a loss for one task, a win in sessions.**
+  - 1 task: 291 vs 284 (+7, +2%). The system text is 10 tokens longer than TS's (136 vs 126), and the 1.25x cache write outweighs the retries saved.
+  - 10-task session: 145 vs 148 (-2%).
+  - Unbounded: 128 vs 133 (-4%).
+  - The pooled figures hide the models. Haiku alone loses to TS at every length (301 / 154 / 138 vs 282 / 146 / 131). Sonnet alone wins at every length.
+- **Cost against Rust: a win at all three lengths** (291 / 145 / 128 vs 312 / 160 / 143).
+- **Against no primer**, the extra 72 tokens of system text pay for themselves once a session has more than one task (145 vs 168). For a single cold task, no primer stays cheapest (237), at 64/76 one shot.
+- **rules2 (7 fewer tokens) is worse.** Haiku one shot fell from 35/38 to 31/38. It had 7 failures, none of them tied to the two dropped rules: a parameter out of range, a duplicate edit, `-fn` under a function handle, a nested operand, a fold extra argument, a wrong output, and isdiv again. This is within subject variance (about ±3 of 76), so the two dropped rules are not shown to matter. What rules2 shows is that 7 tokens of system text are cheaper than the retries that one-shot swings cause. The smallest primer measured to hold TS-level acceptance is `rules` at 136 tokens.
+- **Decision: the default is unchanged** (`always`, MODEL_GUIDE.min.txt). The rules primer is far cheaper than the default (b+d: 301 / 154 / 138 vs 674 / 195 / 142), but it does not win on acceptance: it scores 47/50 one shot where min scored 50/50. It also loses to TS for a single task, and on every length for Haiku. `A0_EXPERIMENT_PRIMER=rules` with MODEL_GUIDE.rules.txt is the measured best for sessions.
+- Single subjects per cell. Remaining gap to TS on single tasks: 10 tokens of system text. The one rule that still fails despite being stated is the fold step contract; a checker fix that names the step's parameters may do more than primer text.

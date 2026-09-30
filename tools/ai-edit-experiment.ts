@@ -7,7 +7,8 @@
  * in one 40-function program per representation, tools/ai-edit-tasks-c.ts); select with
  * A0_EXPERIMENT_TASKSET=a|b|c|all.
  *
- * A0 cell options: A0_EXPERIMENT_GUIDE (primer file), A0_EXPERIMENT_PROGRAM_VIEW=all|deps
+ * A0 cell options: A0_EXPERIMENT_GUIDE (primer file), A0_EXPERIMENT_PRIMER=always|none|lazy|rules,
+ * A0_EXPERIMENT_PROGRAM_VIEW=all|deps
  * (program handle scope), A0_EXPERIMENT_SYSTEM=separate|merged (protocol paragraph after the
  * primer, or folded into the primer's EDIT line). A0_EXPERIMENT_OUT sets the report path.
  *
@@ -341,9 +342,12 @@ async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promi
 /**
  * A0 language primer policy: 'always' (default) sends the guide in every call's system text;
  * 'none' sends only the edit protocol; 'lazy' sends no primer on the first attempt and the
- * lazy primer (MODEL_GUIDE.tiny.txt) with the repair message after an invalid reply.
+ * lazy primer (MODEL_GUIDE.tiny.txt) with the repair message after an invalid reply;
+ * 'rules' sends the guide (A0_EXPERIMENT_GUIDE, e.g. MODEL_GUIDE.rules.txt: only the language
+ * rules models get wrong without a primer) followed by the self-contained edit protocol of
+ * 'none', so the protocol is stated once and the guide carries no EDIT line.
  */
-type PrimerMode = 'always' | 'none' | 'lazy';
+type PrimerMode = 'always' | 'none' | 'lazy' | 'rules';
 
 interface Cell {
   readonly representation: Representation;
@@ -367,16 +371,17 @@ async function buildCell(
 ): Promise<{ cell: Cell; session?: EditSession; handle: string }> {
   const handle = 'e0';
   if (representation === 'a0') {
-    const withPrimer = primerMode === 'always';
+    const withPrimer = primerMode === 'always' || primerMode === 'rules';
     const protocolText =
       protocol === 'conventional'
         ? PROTOCOL_CONVENTIONAL
-        : withPrimer
+        : primerMode === 'always'
           ? PROTOCOL_STRUCTURED_A0
           : PROTOCOL_STRUCTURED_A0_SELF;
     if (!withPrimer) guide = '';
+    if (primerMode === 'rules') guide = guide.trimEnd();
     const { system, ...primers } =
-      withPrimer && layout === 'merged'
+      primerMode === 'always' && layout === 'merged'
         ? mergedA0System(guide, protocol)
         : {
             system: withPrimer ? `${guide}\n\n${protocolText}` : protocolText,
@@ -653,10 +658,15 @@ async function main(): Promise<void> {
   const live = process.env.A0_ALLOW_PAID_MODEL_CALLS === '1';
   const model = process.env.A0_EXPERIMENT_MODEL ?? 'claude-opus-5-5';
   const trialsPerCell = Number(process.env.A0_EXPERIMENT_TRIALS ?? '3');
-  // A0_EXPERIMENT_PRIMER=none|lazy: see PrimerMode. Both allow exactly one repair (the retry
+  // A0_EXPERIMENT_PRIMER=none|lazy|rules: see PrimerMode. All three allow exactly one repair (the retry
   // with the checker's message); the default keeps the guide in every call and two repairs.
   const primerEnv = process.env.A0_EXPERIMENT_PRIMER ?? 'always';
-  if (primerEnv !== 'always' && primerEnv !== 'none' && primerEnv !== 'lazy')
+  if (
+    primerEnv !== 'always' &&
+    primerEnv !== 'none' &&
+    primerEnv !== 'lazy' &&
+    primerEnv !== 'rules'
+  )
     throw new Error(`unknown A0_EXPERIMENT_PRIMER ${primerEnv}`);
   const primerMode: PrimerMode = primerEnv;
   const maxRepairs = primerMode === 'always' ? 2 : 1;
@@ -930,7 +940,9 @@ async function main(): Promise<void> {
         ? guidePath
         : primerMode === 'none'
           ? 'none (A0 system text is the edit protocol only; one repair)'
-          : `lazy: none on the first attempt, ${lazyPrimerPath} with the repair after a protocol or compile rejection (one repair)`,
+          : primerMode === 'rules'
+            ? `${guidePath} followed by the self-contained edit protocol (one repair)`
+            : `lazy: none on the first attempt, ${lazyPrimerPath} with the repair after a protocol or compile rejection (one repair)`,
     primerMode,
     taskSet: setName,
     programView: programScope,
