@@ -1,7 +1,7 @@
 /**
  * Gate 5 application acceptance across targets: Conway's Life (examples/life.a0) and the
- * self-hosted A0 lexer (compiler/lex.a0) and parser (compiler/parse.a0), each checked
- * against an independent reference.
+ * self-hosted A0 lexer (compiler/lex.a0), parser (compiler/parse.a0) and checker
+ * (compiler/check.a0), each checked against an independent reference.
  *
  * Expected results come from an independent TypeScript reference implementation of Life
  * on a 32x32 torus (no A0 code involved). Cases exercise the session protocol
@@ -17,6 +17,7 @@ import { parseAndValidate } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
+import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { irWords, refLex, refParse, wellFormedPrefix } from './ref-parse.js';
 import {
   checkInterpreter,
@@ -171,7 +172,8 @@ export async function buildLexCases(): Promise<(Case & { readonly label: string 
   });
 }
 
-export async function buildParseCases(): Promise<(Case & { readonly label: string })[]> {
+/** Sources the parser and the checker share: small programs, error cases, and prefixes of the repo's A0 files. */
+async function frontEndSources(): Promise<[string, string][]> {
   const sources: [string, string][] = [
     ['sq', 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n'],
     ['retop', 'fn f u32 u32 -> u32\nret add p0 p1\nend\n'],
@@ -200,6 +202,11 @@ export async function buildParseCases(): Promise<(Case & { readonly label: strin
   const lex = lexFull.slice(lexFull.indexOf('\nfn ') + 1, lexFull.indexOf('\nfn ') + 501);
   sources.push(['lex.a0', lex.slice(0, lex.lastIndexOf('\n') + 1)]);
   sources.push(['lex.a0/fns', wellFormedPrefix(lex, 500)]);
+  return sources;
+}
+
+export async function buildParseCases(): Promise<(Case & { readonly label: string })[]> {
+  const sources = await frontEndSources();
   return sources.map(([label, src]) => {
     const bytes = [...Buffer.from(src)];
     const ir = refParse(src);
@@ -209,6 +216,22 @@ export async function buildParseCases(): Promise<(Case & { readonly label: strin
       functionName: 'parseio',
       args: [],
       expected: ir.code,
+      input: [bytes.length, ...bytes],
+      expectedOutput: words,
+    };
+  });
+}
+
+export async function buildCheckCases(): Promise<(Case & { readonly label: string })[]> {
+  const sources = [...(await frontEndSources()), ...ILL_TYPED];
+  return sources.map(([label, src]) => {
+    const bytes = [...Buffer.from(src)];
+    const words = refCheckWords(src);
+    return {
+      label: `check/${label}`,
+      functionName: 'checkio',
+      args: [],
+      expected: words[1] as number,
       input: [bytes.length, ...bytes],
       expectedOutput: words,
     };
@@ -276,6 +299,22 @@ async function main(): Promise<void> {
     webassembly: await checkWasm(parseProgram, parseCases),
     jvm: await checkJvm(parseProgram, parseCases),
   };
+  const checkProgram = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
+  const checkCases = await buildCheckCases();
+  const checkTargets: Record<string, TargetReport> = {
+    interpreter: checkInterpreter(checkProgram, checkCases),
+    optimizer: checkOptimizer(checkProgram, checkCases),
+    javascript: await checkJs(checkProgram, checkCases),
+    native_c_clang: await checkNative(
+      checkProgram,
+      checkCases,
+      findClang(),
+      false,
+      'native C via clang',
+    ),
+    webassembly: await checkWasm(checkProgram, checkCases),
+    jvm: await checkJvm(checkProgram, checkCases),
+  };
   const report = {
     generatedAt: new Date().toISOString(),
     application: 'Conway’s Life 32x32 torus session protocol (examples/life.a0)',
@@ -292,6 +331,15 @@ async function main(): Promise<void> {
       cases: parseCases.length,
       caseLabels: parseCases.map((c) => c.label),
       targets: parseTargets,
+    },
+    checker: {
+      application:
+        'Self-hosted A0 checker (compiler/check.a0 linked with parse.a0 and lex.a0), io front checkio',
+      reference:
+        'Independent TypeScript checker refCheck in tools/ref-check.ts over the word IR of refParse',
+      cases: checkCases.length,
+      caseLabels: checkCases.map((c) => c.label),
+      targets: checkTargets,
     },
     reference:
       'Independent TypeScript implementation in tools/app.ts (refStep/refSession); no A0 code involved',
@@ -329,11 +377,20 @@ async function main(): Promise<void> {
     if (t.failures)
       for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
   }
+  process.stdout.write('checker (compiler/check.a0):\n');
+  for (const [name, t] of Object.entries(checkTargets)) {
+    process.stdout.write(
+      `${name.padEnd(18)} ${t.status.padEnd(10)} ${String(t.cases).padStart(5)} cases  ${t.detail.slice(0, 80)}\n`,
+    );
+    if (t.failures)
+      for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
+  }
   const bad =
     !referenceSelfCheck ||
     Object.values(targets).some((t) => t.status === 'failed') ||
     Object.values(lexTargets).some((t) => t.status === 'failed') ||
-    Object.values(parseTargets).some((t) => t.status === 'failed');
+    Object.values(parseTargets).some((t) => t.status === 'failed') ||
+    Object.values(checkTargets).some((t) => t.status === 'failed');
   process.exit(bad ? 1 : 0);
 }
 
