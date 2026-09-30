@@ -1550,6 +1550,53 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   assert.match(probe, /subq \$4096, %rsp\n\tmovq \$0, \(%rsp\)\n\tdecl %eax\n\tjne/);
 });
 
+test('riscv64 backend refuses io functions with a diagnostic', () => {
+  const p = parseAndValidate('fn w io u32 -> io\nt write p0 p1\nret t\nend');
+  assert.throws(
+    () => compile(p, 'riscv64'),
+    (e: unknown) =>
+      e instanceof A0Error && /riscv64: .*io functions are out of scope/.test(e.message),
+  );
+});
+
+test('riscv64 backend: emitted sequences carry the exact semantics', async () => {
+  const { emitRiscv64Function } = await import('../src/riscv64.js');
+  const fn = (src: string, name: string): TypedFunc =>
+    parseAndValidate(src).byName.get(name) as TypedFunc;
+  // A leaf keeps its parameters in a0/a1; W-form instructions keep u32 canonical (sign-extended).
+  const affine = emitRiscv64Function(
+    fn('fn affine u32 u32 -> u32\na mul p0 3\nb add a p1\nret b\nend', 'affine'),
+  );
+  assert.match(affine, /^\t\.globl a0_affine$/m);
+  assert.match(affine, /^\t\.type a0_affine, @function$/m);
+  assert.match(affine, /li t2, 3\n\tmulw a0, a0, t2\n\taddw a0, a0, a1\n/);
+  assert.match(affine, /addi sp, sp, 16\n\tret$/m);
+  // divuw/remuw already give all ones and the dividend for a zero divisor: no branch.
+  const div = emitRiscv64Function(
+    fn('fn d u32 u32 -> u32\nq div p0 p1\nr rem p0 p1\ns add q r\nret s\nend', 'd'),
+  );
+  assert.match(div, /divuw (\w+), a0, a1\n\tremuw a0, a0, a1\n\taddw a0, \1, a0/);
+  assert.doesNotMatch(div, /beqz|bnez/);
+  // A literal shift distance is masked at compile time; a variable one uses srlw (masks to 5 bits).
+  const sh = emitRiscv64Function(
+    fn('fn s u32 u32 -> u32\na shl p0 33\nb shr a p1\nret b\nend', 's'),
+  );
+  assert.match(sh, /slliw a0, a0, 1\n\tsrlw a0, a0, a1/);
+  // Unsigned comparison on canonical registers.
+  const sel = emitRiscv64Function(
+    fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
+  );
+  assert.match(sel, /sltu (\w+), a0, a1\n\tbeqz \1, /);
+  // A power-of-two index is masked.
+  const get8 = emitRiscv64Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
+  assert.match(get8, /andi t1, a1, 7\n\tslli t1, t1, 2/);
+  // An aggregate result goes through the pointer in a0; the parameter shifts to a1.
+  const pair = emitRiscv64Function(
+    fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'),
+  );
+  assert.match(pair, /sd a0, (\d+)\(sp\)[\s\S]*sltiu a0, a1, 1[\s\S]*ld t3, \1\(sp\)/);
+});
+
 const X86_64_HOST = (() => {
   if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
     return { arch: [] as string[], runner: [] as string[] };

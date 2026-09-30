@@ -32,6 +32,8 @@ import {
   findGcc,
   findJava,
   findJavac,
+  findQemuRiscv64,
+  findRiscv64Gcc,
   findWasmClang,
   runTool,
   type ToolInfo,
@@ -476,6 +478,249 @@ export async function checkX86_64(
   };
 }
 
+// --- native RISC-V RV64 (direct assembly; bare-metal under qemu-system-riscv64) ---
+
+/**
+ * The bare-metal runtime that lets the unchanged C test driver run on QEMU's `virt` board:
+ * the few libc entry points it calls, over the NS16550 UART (0x10000000) for stdout and the
+ * case input assembled into the image with `.incbin` for stdin, and the SiFive test device
+ * (0x100000) for exit. No newlib is needed; the A0 functions themselves call none of it.
+ */
+const RV_SHIM_HEADERS: Readonly<Record<string, string>> = {
+  'stdio.h': `#pragma once
+#include <stddef.h>
+typedef struct a0_file FILE;
+extern FILE *stdin;
+char *fgets(char *s, int n, FILE *f);
+int printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+`,
+  'stdlib.h': `#pragma once
+#include <stddef.h>
+unsigned long strtoul(const char *s, char **end, int base);
+int atoi(const char *s);
+`,
+  'string.h': `#pragma once
+#include <stddef.h>
+char *strtok(char *s, const char *delim);
+void *memmove(void *d, const void *s, size_t n);
+void *memset(void *d, int c, size_t n);
+void *memcpy(void *d, const void *s, size_t n);
+`,
+};
+
+const RV_SHIM_C = `#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+struct a0_file { int unused; };
+static struct a0_file in_file;
+FILE *stdin = &in_file;
+extern const char a0_input[], a0_input_end[];
+static const char *in_pos = a0_input;
+#define UART ((volatile unsigned char *)0x10000000UL)
+static void put(char c) { while ((UART[5] & 0x20) == 0) {} UART[0] = (unsigned char)c; }
+char *fgets(char *s, int n, FILE *f) {
+  (void)f;
+  if (in_pos >= a0_input_end || n < 2) return NULL;
+  int i = 0;
+  while (i < n - 1 && in_pos < a0_input_end) { char c = *in_pos++; s[i++] = c; if (c == '\\n') break; }
+  s[i] = 0;
+  return s;
+}
+static void put_u(unsigned long v) { char b[24]; int k = 0; do { b[k++] = (char)('0' + v % 10); v /= 10; } while (v); while (k) put(b[--k]); }
+int printf(const char *fmt, ...) {
+  va_list ap; va_start(ap, fmt);
+  for (const char *p = fmt; *p; p++) {
+    if (*p != '%') { put(*p); continue; }
+    p++;
+    if (*p == 'u') put_u(va_arg(ap, unsigned));
+    else if (*p == 'd') { int v = va_arg(ap, int); if (v < 0) { put('-'); put_u(0UL - (unsigned long)(long)v); } else put_u((unsigned long)v); }
+    else if (*p == '%') put('%');
+    else if (*p == 0) break;
+  }
+  va_end(ap);
+  return 0;
+}
+unsigned long strtoul(const char *s, char **end, int base) {
+  (void)base; unsigned long v = 0;
+  while (*s >= '0' && *s <= '9') v = v * 10 + (unsigned long)(*s++ - '0');
+  if (end) *end = (char *)s;
+  return v;
+}
+int atoi(const char *s) { return (int)strtoul(s, NULL, 10); }
+static int is_delim(char c, const char *d) { for (; *d; d++) if (*d == c) return 1; return 0; }
+char *strtok(char *s, const char *d) {
+  static char *next;
+  if (s == NULL) s = next;
+  if (s == NULL) return NULL;
+  while (*s && is_delim(*s, d)) s++;
+  if (*s == 0) { next = NULL; return NULL; }
+  char *t = s;
+  while (*s && !is_delim(*s, d)) s++;
+  if (*s) *s++ = 0;
+  next = s;
+  return t;
+}
+void *memmove(void *d, const void *s, size_t n) {
+  unsigned char *dp = d; const unsigned char *sp = s;
+  if (dp < sp) for (size_t i = 0; i < n; i++) dp[i] = sp[i];
+  else for (size_t i = n; i > 0; i--) dp[i - 1] = sp[i - 1];
+  return d;
+}
+void *memcpy(void *d, const void *s, size_t n) { return memmove(d, s, n); }
+void *memset(void *d, int c, size_t n) { unsigned char *p = d; for (size_t i = 0; i < n; i++) p[i] = (unsigned char)c; return d; }
+int main(void);
+void a0_cstart(void);
+void a0_cstart(void) {
+  int code = main();
+  *(volatile unsigned *)0x100000UL = code == 0 ? 0x5555u : ((unsigned)code << 16) | 0x3333u;
+  for (;;) {}
+}
+`;
+
+const RV_START_S = `\t.section .text.start, "ax"
+\t.globl _start
+_start:
+\tla sp, a0_stack_top
+\tcall a0_cstart
+\t.section .rodata
+\t.globl a0_input
+\t.globl a0_input_end
+a0_input:
+\t.incbin "input.txt"
+a0_input_end:
+\t.bss
+\t.balign 16
+\t.space 8 << 20
+a0_stack_top:
+`;
+
+const RV_LINK_LD = `ENTRY(_start)
+SECTIONS {
+  . = 0x80000000;
+  .text : { *(.text.start) *(.text .text.*) }
+  .rodata : { *(.rodata .rodata.* .srodata .srodata.*) }
+  .data : { *(.data .data.* .sdata .sdata.*) }
+  .bss : { *(.bss .bss.* .sbss .sbss.* COMMON) }
+}
+`;
+
+export async function checkRiscv64(
+  program: TypedProgram,
+  cases: readonly Case[],
+  gcc: ToolInfo,
+  qemu: ToolInfo,
+): Promise<TargetReport & { skippedIoFunctions: number; skippedIoCases: number }> {
+  const subset = ioFreeSubset(program);
+  const keep = new Set(subset.functions.map((f) => f.name));
+  const own = cases.filter((c) => keep.has(c.functionName));
+  const skipped = {
+    skippedIoFunctions: program.functions.length - subset.functions.length,
+    skippedIoCases: cases.length - own.length,
+  };
+  const label = `native RISC-V RV64 assembly (src/riscv64.ts) via ${'`riscv64-elf-gcc -march=rv64gc -mabi=lp64`'}, linked with the C test driver over a bare-metal libc shim (UART out, embedded input), executed under qemu-system-riscv64 (virt board, no firmware); ${skipped.skippedIoFunctions} io functions (${skipped.skippedIoCases} cases) skipped: io is out of scope for this backend`;
+  if (gcc.path === undefined) return { ...blocked(gcc, 'riscv64'), ...skipped };
+  if (qemu.path === undefined) return { ...blocked(qemu, 'riscv64'), ...skipped };
+  const tool = `${gcc.version}; ${qemu.version}`;
+  const start = performance.now();
+  const protos = [
+    '#include <stdint.h>',
+    '#include <stdbool.h>',
+    ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
+  ].join('\n');
+  const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
+    status: 'failed',
+    cases: 0,
+    detail: `riscv64: ${what}`,
+    tool,
+    failures: [stderr.slice(0, 2000)],
+    ...skipped,
+  });
+  let report: TargetReport | undefined;
+  for (const optimize of [true, false]) {
+    const asm = compile(subset, 'riscv64', { optimize }).text;
+    const level = optimize ? 'optimized' : 'unoptimized';
+    const r = await withTempDir(async (dir): Promise<TargetReport> => {
+      await mkdir(join(dir, 'include'));
+      for (const [name, text] of Object.entries(RV_SHIM_HEADERS))
+        await writeFile(join(dir, 'include', name), text, 'utf8');
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
+      await writeFile(join(dir, 'shim.c'), RV_SHIM_C, 'utf8');
+      await writeFile(join(dir, 'start.S'), RV_START_S, 'utf8');
+      await writeFile(join(dir, 'link.ld'), RV_LINK_LD, 'utf8');
+      await writeFile(join(dir, 'input.txt'), caseInput(subset, own), 'utf8');
+      const build = runTool(
+        gcc.path as string,
+        [
+          '-march=rv64gc',
+          '-mabi=lp64',
+          '-mcmodel=medany',
+          '-ffreestanding',
+          '-fno-builtin',
+          '-nostdlib',
+          '-static',
+          '-std=c11',
+          '-O1',
+          '-Wall',
+          '-Wextra',
+          '-Werror',
+          '-Iinclude',
+          '-Tlink.ld',
+          '-o',
+          'driver.elf',
+          'start.S',
+          'shim.c',
+          'driver.c',
+          'module.s',
+          '-lgcc',
+        ],
+        { cwd: dir },
+      );
+      if (!build.ok) return fail(`${level}: build/link failed`, build.stderr);
+      const exec = runTool(
+        qemu.path as string,
+        [
+          '-machine',
+          'virt',
+          '-bios',
+          'none',
+          '-m',
+          '256M',
+          '-display',
+          'none',
+          '-monitor',
+          'none',
+          '-serial',
+          'stdio',
+          '-kernel',
+          'driver.elf',
+        ],
+        { cwd: dir, timeoutMs: 600_000 },
+      );
+      if (!exec.ok) return fail(`${level}: execution failed (status ${exec.status})`, exec.stderr);
+      return compareAll(
+        own,
+        exec.stdout.replace(/\r/g, '').trim().split('\n'),
+        `${level}: ${label}`,
+      );
+    });
+    if (r.status !== 'passed') return { ...r, tool, ...skipped };
+    report = r;
+  }
+  return {
+    ...timed(
+      {
+        ...(report as TargetReport),
+        detail: `${label}; optimized and unoptimized emissions each executed on every case`,
+      },
+      start,
+    ),
+    tool,
+    ...skipped,
+  };
+}
+
 // --- WebAssembly -------------------------------------------------------------
 
 export async function checkWasm(
@@ -694,6 +939,7 @@ async function main(): Promise<void> {
       ),
       native_arm64: await checkArm64(program, cases, findClang()),
       native_x86_64: await checkX86_64(program, cases, findClang()),
+      native_riscv64: await checkRiscv64(program, cases, findRiscv64Gcc(), findQemuRiscv64()),
       webassembly: await checkWasm(program, cases),
       jvm: await checkJvm(program, cases),
       systemverilog: {

@@ -148,7 +148,7 @@ AI-assisted discovery is a separate future workflow: propose a transformation, v
 | Family | Intended implementation strategy | v0.1 status |
 |---|---|---|
 | Browser / Node | ES modules, Wasm, typed host adapters | ES modules run in Node; Wasm compiled and run in Node and in a browser page through the io-stream adapter (`site/`). No general DOM/browser API bindings yet. |
-| Native server / desktop / mobile / embedded | MLIR/LLVM/native artifacts and platform ABIs | C-compatible output compiled and run on Linux. No phone deployment or platform SDK adapters. |
+| Native server / desktop / mobile / embedded | MLIR/LLVM/native artifacts and platform ABIs | C-compatible output compiled and run on Linux. Direct assembly backends for io-free functions: AArch64 (Darwin, run natively), x86-64 (System V, run under Rosetta 2), and RISC-V RV64 (LP64, run bare-metal under qemu-system-riscv64). No phone deployment or platform SDK adapters. |
 | C++ ecosystems | Typed ABI boundary or explicit bindings | Generated C-compatible kernels compile as C++; existing C++ source is not imported. |
 | JVM | Defined managed-runtime representation and bindings | Generated Java compiled and executed on a JVM. No Android packaging or Java library importer. |
 | .NET | Managed backend and runtime bindings | C# emitted (native `uint`, records, clone-on-write arrays, io runtime); built and executed on .NET 10 against the oracle incl. io streams. No .NET library bindings. |

@@ -118,6 +118,22 @@ export function findWasmClang(): ToolInfo & { readonly wasmLd: string | undefine
   return { name: 'wasm-clang', path, version: versionOf(path), wasmLd };
 }
 
+/** A RISC-V cross GCC (bare-metal `riscv64-elf-gcc` or a Linux `riscv64-linux-gnu-gcc`). */
+export function findRiscv64Gcc(): ToolInfo {
+  const path = firstExisting([
+    process.env.A0_RISCV64_GCC,
+    onPath('riscv64-elf-gcc'),
+    onPath('riscv64-unknown-elf-gcc'),
+  ]);
+  return { name: 'riscv64-elf-gcc', path, version: versionOf(path) };
+}
+
+/** QEMU's RV64 system emulator (Homebrew's qemu ships system mode only on macOS). */
+export function findQemuRiscv64(): ToolInfo {
+  const path = firstExisting([process.env.A0_QEMU_RISCV64, onPath('qemu-system-riscv64')]);
+  return { name: 'qemu-system-riscv64', path, version: versionOf(path) };
+}
+
 export function findJavac(): ToolInfo {
   // macOS ships /usr/bin/javac as a stub that fails without an installed JDK, so prefer Homebrew.
   const path = firstExisting([

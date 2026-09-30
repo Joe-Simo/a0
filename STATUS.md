@@ -851,6 +851,38 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   entry); the `.a0-cache` key does not carry the platform, so a cache shared between a
   macOS and a Linux checkout would need clearing (the cache is per checkout).
 
+## Session 2026-09-30 (RISC-V backend)
+
+- **Direct RISC-V backend (a0c-0.1.10, `src/riscv64.ts`, target `riscv64`, `a0 emit riscv64`)**:
+  RV64GC assembly for the LP64 psABI (Linux symbol form: `a0_` symbols, `.L` labels,
+  `.type`/`.size`, `.note.GNU-stack`). Same scope and semantics as arm64/x86_64: u32/bool
+  scalars, fixed-size arrays and records with the same in-place scheme, `call`/`fold`/`loop`
+  with callees of at most 48 nodes inlined, io functions refused with the same `structure`
+  diagnostic. Scalars live sign-extended in registers (RV64's canonical 32-bit form), so the
+  W-form ops (`addw`, `subw`, `mulw`, `sllw`, `srlw`) wrap exactly, `sltu` is A0's unsigned
+  comparison, and `divuw`/`remuw` already give all ones and the dividend for a zero divisor
+  (no branch). Homes: s1-s11, plus a0-a7 in a leaf; t6 reserved for out-of-range offsets.
+  Aggregates by pointer; an aggregate result through a pointer in a0.
+- **Verification on this Mac**: Homebrew's `qemu` ships no user-mode `qemu-riscv64` on macOS
+  and Homebrew's `riscv64-elf-gcc` 16.2.0 has no newlib, so `native_riscv64` builds the same
+  C test driver freestanding (`-march=rv64gc -mabi=lp64 -mcmodel=medany -nostdlib`) against a
+  minimal libc shim in `tools/verify.ts` (fgets over the case input embedded with `.incbin`,
+  printf over the virt NS16550 UART, strtok/strtoul/atoi/mem*, exit through the SiFive test
+  device), and runs it under `qemu-system-riscv64 -machine virt -bios none` (QEMU 11.1.2).
+  Blocked with the reason when either tool is missing (`A0_RISCV64_GCC`, `A0_QEMU_RISCV64`
+  override discovery). Result: **4297/4297** at both optimization levels, the same 10 io
+  functions (965 cases) skipped. Other paths unchanged (5262 each; arm64, x86_64 4297).
+- Unit tests: io refusal; emitted sequences (`mulw`/`addw` leaf, branch-free
+  `divuw`/`remuw`, literal `slliw` masked to 1 and variable `srlw`, `sltu` select, mask
+  index, aggregate result pointer in a0 with the parameter shifted to a1).
+- Gate: lint, typecheck, test 45/45, verify, app, equiv 48/48, hw, dotnet 5262, gpu 4297 all
+  pass; `results/{verification,app,equivalence,hardware,dotnet,gpu}.json` regenerated under
+  a0c-0.1.10. `bun run bench` skips `riscv64` as it skips the other direct backends.
+- Not done: no run under Linux (user-mode QEMU or hardware); no execution unit test in
+  `test/core.test.ts` (the verify path covers execution); no performance numbers; select
+  still emits a redundant `mv` when the chosen value is already in the destination; the same
+  leaves as arm64/x86_64 (aggregates never in registers, literals rematerialized per trip).
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,

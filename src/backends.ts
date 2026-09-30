@@ -1,7 +1,8 @@
 /**
  * Source emission for JavaScript (ES module), C (C-compatible, also valid C++), Java,
  * SystemVerilog, direct Darwin AArch64 assembly (src/arm64.ts), and direct x86-64 assembly
- * (src/x86_64.ts, System V, macOS and Linux), plus a bounded in-memory function-emission cache.
+ * (src/x86_64.ts, System V, macOS and Linux), direct RISC-V RV64 assembly (src/riscv64.ts,
+ * LP64, Linux), plus a bounded in-memory function-emission cache.
  *
  * Every backend preserves the exact v0.1 semantics: wrapping u32 arithmetic,
  * logical right shift, shift distance masked to five bits, unsigned comparison,
@@ -27,12 +28,13 @@ import {
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
+import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.9';
+export const COMPILER_VERSION = 'a0c-0.1.10';
 
-export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64';
-export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64', 'x86_64'];
+export type Target = 'js' | 'c' | 'java' | 'sv' | 'arm64' | 'x86_64' | 'riscv64';
+export const TARGETS: readonly Target[] = ['js', 'c', 'java', 'sv', 'arm64', 'x86_64', 'riscv64'];
 
 export function isTarget(text: string): text is Target {
   return (TARGETS as readonly string[]).includes(text);
@@ -1031,6 +1033,7 @@ const EMITTERS: Readonly<Record<Target, Emitter>> = {
   sv: emitSvFunction,
   arm64: emitArm64Function,
   x86_64: emitX86_64Function,
+  riscv64: emitRiscv64Function,
 };
 
 /** True when any function of the program carries an io token anywhere in its types. */
@@ -1059,6 +1062,8 @@ export function assemble(
       return assembleArm64(bodies, COMPILER_VERSION);
     case 'x86_64':
       return assembleX86_64(bodies, COMPILER_VERSION);
+    case 'riscv64':
+      return assembleRiscv64(bodies, COMPILER_VERSION);
     case 'js':
       return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
     case 'c': {
