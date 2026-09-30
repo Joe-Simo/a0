@@ -231,10 +231,12 @@ export async function checkNative(
   tool: ToolInfo,
   asCpp: boolean,
   label: string,
+  /** C module to test instead of the TypeScript emitter's (tools/selfhost-c.ts). */
+  source?: string,
 ): Promise<TargetReport> {
   if (tool.path === undefined) return blocked(tool, label);
   const start = performance.now();
-  const cSource = compile(program, 'c', ioCaps(cases)).text;
+  const cSource = source ?? compile(program, 'c', ioCaps(cases)).text;
   return withTempDir(async (dir) => {
     await writeFile(join(dir, 'module.c'), cSource, 'utf8');
     const driver = join(dir, asCpp ? 'driver.cpp' : 'driver.c');

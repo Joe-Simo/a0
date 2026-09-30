@@ -1,7 +1,9 @@
 /**
  * Gate 5 application acceptance across targets: Conway's Life (examples/life.a0) and the
- * self-hosted A0 lexer (compiler/lex.a0), parser (compiler/parse.a0) and checker
- * (compiler/check.a0), each checked against an independent reference.
+ * self-hosted A0 lexer (compiler/lex.a0), parser (compiler/parse.a0), checker
+ * (compiler/check.a0) and C emitter (compiler/emit_c.a0), the first three checked against an
+ * independent reference; the emitter's C must be byte-identical on every target to `emitc` run
+ * over the reference front end's tables (tools/selfhost-c.ts compiles and runs that C).
  *
  * Expected results come from an independent TypeScript reference implementation of Life
  * on a 32x32 torus (no A0 code involved). Cases exercise the session protocol
@@ -13,11 +15,11 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseAndValidate } from '../src/core.js';
+import { makeIo, parseAndValidate, run, type TypedFunc } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
-import { ILL_TYPED, refCheckWords } from './ref-check.js';
+import { ILL_TYPED, refCheck, refCheckWords } from './ref-check.js';
 import { irWords, refLex, refParse, wellFormedPrefix } from './ref-parse.js';
 import {
   checkInterpreter,
@@ -238,6 +240,62 @@ export async function buildCheckCases(): Promise<(Case & { readonly label: strin
   });
 }
 
+/**
+ * emitcio cases: the C bytes of `emitc` (in the reference interpreter) over the tables of the
+ * reference parser and checker, or no output with the diagnostic code for rejected programs.
+ */
+export async function buildEmitCases(
+  emitc: TypedFunc,
+): Promise<(Case & { readonly label: string })[]> {
+  const sources: [string, string][] = [
+    [
+      'clamp',
+      'fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\na select lo p1 p0\nhi gt a p2\nr select hi p2 a\nret r\nend\n',
+    ],
+    ...(await frontEndSources()),
+    ...ILL_TYPED.slice(0, 4),
+  ];
+  const pad = (t: readonly number[], n: number): number[] => [
+    ...t,
+    ...new Array(n - t.length).fill(0),
+  ];
+  return sources.map(([label, src]) => {
+    const bytes = [...Buffer.from(src)];
+    const code = refCheckWords(src)[1] as number;
+    let output: number[] = [];
+    if (code === 0) {
+      const ir = refParse(src);
+      const r = refCheck(ir);
+      const io = makeIo([]);
+      run(emitc, [
+        io,
+        pad(r.types, 768),
+        pad(r.tlist, 1024),
+        pad(ir.fns, 1024),
+        pad(ir.nodes, 4096),
+        pad(ir.args, 8192),
+        pad(r.nodeTypes, 1024),
+        pad(ir.pool, 512),
+        pad(ir.sym, 512),
+        r.types.length / 3,
+        3,
+        0,
+        ir.fns.length / 7,
+        1,
+      ]);
+      output = [...io.output];
+    }
+    return {
+      label: `emitc/${label}`,
+      functionName: 'emitcio',
+      args: [],
+      expected: code,
+      input: [bytes.length, ...bytes],
+      expectedOutput: output,
+    };
+  });
+}
+
 async function main(): Promise<void> {
   const source = await readFile('examples/life.a0', 'utf8');
   const program = parseAndValidate(source);
@@ -315,6 +373,28 @@ async function main(): Promise<void> {
     webassembly: await checkWasm(checkProgram, checkCases),
     jvm: await checkJvm(checkProgram, checkCases),
   };
+  const emitProgram = (await link('compiler/emit_c.a0', (p) => readFile(p, 'utf8'))).program;
+  const emitCases = await buildEmitCases(emitProgram.byName.get('emitc') as TypedFunc);
+  const emitTargets: Record<string, TargetReport> = {
+    interpreter: checkInterpreter(emitProgram, emitCases),
+    optimizer: checkOptimizer(emitProgram, emitCases),
+    javascript: await checkJs(emitProgram, emitCases),
+    native_c_clang: await checkNative(
+      emitProgram,
+      emitCases,
+      findClang(),
+      false,
+      'native C via clang',
+    ),
+    webassembly: await checkWasm(emitProgram, emitCases),
+    // The Java runtime's A0Io keeps a fixed 1024-word output array (src/backends.ts), and every
+    // emitcio output (one C byte per word, the prelude alone is over 1700) is longer.
+    jvm: {
+      status: 'blocked',
+      cases: 0,
+      detail: `jvm: the Java A0Io output buffer is fixed at 1024 words; emitcio writes ${Math.min(...emitCases.filter((c) => (c.expectedOutput?.length ?? 0) > 0).map((c) => c.expectedOutput?.length ?? 0))} to ${Math.max(...emitCases.map((c) => c.expectedOutput?.length ?? 0))} words`,
+    },
+  };
   const report = {
     generatedAt: new Date().toISOString(),
     application: 'Conway’s Life 32x32 torus session protocol (examples/life.a0)',
@@ -340,6 +420,16 @@ async function main(): Promise<void> {
       cases: checkCases.length,
       caseLabels: checkCases.map((c) => c.label),
       targets: checkTargets,
+    },
+    emitter: {
+      application:
+        'Self-hosted A0 C emitter (compiler/emit_c.a0 linked with check.a0, parse.a0 and lex.a0), io front emitcio',
+      reference:
+        'emitc in the reference interpreter over the tables of refParse and refCheck: the C bytes must be identical on every target (tools/selfhost-c.ts compiles that C and checks it against the oracle)',
+      cases: emitCases.length,
+      caseLabels: emitCases.map((c) => c.label),
+      cBytes: Object.fromEntries(emitCases.map((c) => [c.label, c.expectedOutput?.length ?? 0])),
+      targets: emitTargets,
     },
     reference:
       'Independent TypeScript implementation in tools/app.ts (refStep/refSession); no A0 code involved',
@@ -385,8 +475,17 @@ async function main(): Promise<void> {
     if (t.failures)
       for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
   }
+  process.stdout.write('C emitter (compiler/emit_c.a0):\n');
+  for (const [name, t] of Object.entries(emitTargets)) {
+    process.stdout.write(
+      `${name.padEnd(18)} ${t.status.padEnd(10)} ${String(t.cases).padStart(5)} cases  ${t.detail.slice(0, 80)}\n`,
+    );
+    if (t.failures)
+      for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
+  }
   const bad =
     !referenceSelfCheck ||
+    Object.values(emitTargets).some((t) => t.status === 'failed') ||
     Object.values(targets).some((t) => t.status === 'failed') ||
     Object.values(lexTargets).some((t) => t.status === 'failed') ||
     Object.values(parseTargets).some((t) => t.status === 'failed') ||
