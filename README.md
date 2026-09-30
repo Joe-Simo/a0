@@ -43,17 +43,17 @@ Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, 
 
 ## Use with AI agents
 
-Put `a0` on your PATH first (see Install). Every entry below runs the same local stdio server, `a0 mcp <dir>`, with no hosting and no account. Ready-to-copy configs are in [`integrations/`](integrations/). The Agent Skill in [`skills/a0/`](skills/a0/SKILL.md) teaches the language and loads the primer and the edit protocol only when they are needed.
+Put `a0` on your PATH first (see Install). Every entry below runs the same local stdio server, `a0 mcp <dir>`, with no hosting and no account. Ready-to-copy configs are in [`integrations/`](integrations/). The Agent Skill in [`plugin/skills/a0/`](plugin/skills/a0/SKILL.md) teaches the language and loads the primer and the edit protocol only when they are needed.
 
 | Agent | Install | Local stdio |
 |---|---|---|
 | Claude Code | `claude mcp add a0 -- a0 mcp .` (MCP only), or `/plugin marketplace add Joe-Simo/a0` then `/plugin install a0@a0` (MCP plus skill) | yes |
 | Claude Desktop | Double-click `a0-mcp-<os>-<arch>.mcpb` from the [latest release](https://github.com/Joe-Simo/a0/releases/latest), or add [`integrations/mcp.json`](integrations/mcp.json) to `claude_desktop_config.json` | yes |
-| Claude.ai | Zip `skills/a0/` and upload it under Settings > Capabilities > Skills (skill only; claude.ai connectors are remote-only) | skill only |
+| Claude.ai | Zip `plugin/skills/a0/` and upload it under Settings > Capabilities > Skills (skill only; claude.ai connectors are remote-only) | skill only |
 | Cursor | [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=a0&config=eyJjb21tYW5kIjoiYTAiLCJhcmdzIjpbIm1jcCIsIiR7d29ya3NwYWNlRm9sZGVyfSJdfQ==), or [`integrations/mcp.json`](integrations/mcp.json) in `.cursor/mcp.json` | yes |
 | VS Code / GitHub Copilot | `code --add-mcp '{"name":"a0","command":"a0","args":["mcp","${workspaceFolder}"]}'`, or [`integrations/vscode.mcp.json`](integrations/vscode.mcp.json) as `.vscode/mcp.json`; skill in `.github/skills/` or `~/.copilot/skills/` | yes |
 | GitHub Copilot CLI | `copilot mcp add` or `~/.copilot/mcp-config.json` ([`mcp.json`](integrations/mcp.json) shape) | yes |
-| OpenAI Codex CLI/IDE | `codex mcp add a0 -- a0 mcp .`, or [`integrations/codex.config.toml`](integrations/codex.config.toml); skill in `.agents/skills/`; plugin manifest in `.codex-plugin/` | yes |
+| OpenAI Codex CLI/IDE | `codex mcp add a0 -- a0 mcp .`, or [`integrations/codex.config.toml`](integrations/codex.config.toml); skill in `.agents/skills/`; plugin in `plugin/.codex-plugin/` | yes |
 | Gemini CLI | `gemini extensions install https://github.com/Joe-Simo/a0` (MCP plus `GEMINI.md`) | yes |
 | Qwen Code | `qwen mcp add a0 a0 mcp .`, or `qwen extensions install https://github.com/Joe-Simo/a0` (reads Gemini extensions) | yes |
 | Windsurf / Devin Desktop | [`mcp.json`](integrations/mcp.json) in `~/.codeium/windsurf/mcp_config.json` | yes |
@@ -78,7 +78,7 @@ Put `a0` on your PATH first (see Install). Every entry below runs the same local
 | Perplexity (Mac app) | Connectors > Add > Simple: `a0 mcp /path/to/project` (needs the PerplexityXPC helper) | yes |
 | Hugging Face smolagents | `MCPClient(StdioServerParameters(command="a0", args=["mcp", "."]))` | yes |
 | Hugging Face tiny-agents | `"servers": [{"type": "stdio", "command": "a0", "args": ["mcp", "."]}]` in `agent.json` | yes |
-| Aider | No MCP. `aider --read skills/a0/references/primer.txt` and use the `a0` CLI | no MCP |
+| Aider | No MCP. `aider --read plugin/skills/a0/references/primer.txt` and use the `a0` CLI | no MCP |
 | Open WebUI (Ollama) | Streamable HTTP only; A0 does not ship a hosted server | needs remote MCP |
 | ChatGPT (developer mode / Apps) | Remote HTTPS only | needs remote MCP |
 | Mistral Le Chat | Remote connectors only | needs remote MCP |
@@ -86,6 +86,14 @@ Put `a0` on your PATH first (see Install). Every entry below runs the same local
 | Replit Agent, Bolt.new, Lovable, v0 | Remote HTTPS only | needs remote MCP |
 
 Replace `.` with the folder the server may read and write when your agent does not start servers in the project folder.
+
+### Project rules, hooks and CI
+
+- `a0 init [dir]` writes `AGENTS.md` (read by Codex, Cursor, Copilot, Jules and others) with the MCP tool workflow, the edit protocol and the primer path (`.a0/MODEL_GUIDE.txt`, copied in when available, otherwise the GitHub URL), plus `@AGENTS.md` pointers in `CLAUDE.md` and `GEMINI.md`, glob rules for Cursor (`.cursor/rules/a0.mdc`), Windsurf (`.windsurf/rules/a0.md`) and Copilot (`.github/instructions/a0.instructions.md`), and a Gemini CLI `AfterTool` hook (`.gemini/settings.json`). Existing instruction files get the A0 section appended once; other existing files are kept.
+- `a0 hook` is the after-edit check: it reads a hook's tool-call JSON on stdin and, when an edited `*.a0` file fails `a0 check`, prints a blocking response whose reason is the exact diagnostic with its `fix:`.
+- Claude Code plugin (`plugin/`): a `PostToolUse` hook on `Edit|Write|MultiEdit` (`plugin/hooks/hooks.json`, runs `a0 hook`; set `A0_BIN` if `a0` is not on `PATH`) and the slash commands `/a0-check`, `/a0-emit`, `/a0-run` (`plugin/commands/`).
+- CI: `uses: Joe-Simo/a0@main` (root `action.yml`, input `version`, default `latest`) downloads the release binary for the runner and checks every tracked `.a0` file. pre-commit: `repo: https://github.com/Joe-Simo/a0`, hook id `a0-check` (needs `a0` on `PATH`).
+- `a0 check` accepts several files and exits 1 if any fails, printing `<file>: error: <code>: ... fix: ...` per failure.
 
 ### Privacy
 
