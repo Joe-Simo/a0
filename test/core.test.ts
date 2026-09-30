@@ -2746,6 +2746,28 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     assert.equal(run(checkio, [io]), 0, f);
     assert.deepEqual(io.output, refCheckWords(text), f);
   }
+  // The most one-line functions a 16384-byte source holds: validate() accepts them (the
+  // function cap is 65536), so the A0 checker must too, with no limit diagnostic.
+  {
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const names = [...letters];
+    for (const x of letters)
+      for (const y of `${letters}0123456789`) if (x + y !== 'fn') names.push(x + y);
+    let many = '';
+    let n = 0;
+    for (const name of names) {
+      const f = `fn ${name} -> u32\nret 0\nend\n`;
+      if (Buffer.byteLength(many + f) > FRONT_END_SOURCE_LIMIT) break;
+      many += f;
+      n += 1;
+    }
+    assert.equal(n, 713);
+    assert.equal(parseAndValidate(many).functions.length, n);
+    const io = makeIo([Buffer.byteLength(many), ...Buffer.from(many)]);
+    assert.equal(run(checkio, [io]), 0);
+    assert.deepEqual(io.output.slice(0, 4), [1, 0, 0, 0]);
+    assert.deepEqual(io.output, refCheckWords(many));
+  }
   // A well-typed source through the front: every node type agrees with validate().
   const src =
     'fn f u32x4 (u32,bool) io -> (u32,io)\nx mov 4294967295\nr read p2\nv at p1 1\nb arr v v\ng get b x\nret r\nend\n';

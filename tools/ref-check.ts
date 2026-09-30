@@ -14,7 +14,7 @@ import { irOp, refParse, type WordIr } from './ref-parse.js';
 export const NONE = 0xffff_ffff;
 const MAX_PARAMS = 64;
 const MAX_NODES = 4096;
-const MAX_FUNCTIONS = 1024;
+const MAX_FUNCTIONS = 65536;
 const MAX_ITERATIONS = 1 << 24;
 const MAX_BITS = 1 << 21;
 
