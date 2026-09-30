@@ -1,0 +1,124 @@
+# Chunked emission for the bootstrap (DESIGN.md 7a stage 6), written in A0. `emitchunkio` is
+# the entry of a0c-stage1/2/3 (tools/bootstrap.ts): it compiles one chunk of a program with the
+# 16384-byte front end and the C emitter (emit_c.a0 `cunit` and `emitc`), so a program over the
+# source limit is compiled a chunk at a time. `emitachunkio` is the same with the arm64 emitter
+# (emit_arm64.a0 `qunit`), the entry of the arm64 stages (tools/bootstrap-arm64.ts); its output
+# is assembly text where `emitchunkio` writes C, and its prelude (head 1) the two copy helpers.
+# A chunk of a program in several chunks is: a header prelude (a function whose header names
+# every header type of the whole program, in a fixed order, so that every chunk interns the
+# same type table and the typedef names `a0t<index>` agree across chunks), the header of every
+# function the chunk calls with a stub body, then the chunk's functions. Functions [from, nfns)
+# are checked (given the iteration bounds of the earlier functions, read from the input) and
+# emitted; the prelude and the stubs are only parsed. The C prelude and the typedefs of every
+# type are written when head is 1.
+# Input words: n, n source bytes, head, strict, from, then `from` iteration bounds. strict is 1
+# for a program in several chunks: a body that builds a type no header names is then code 5,
+# since its typedef index would differ between chunks. A program in one chunk (head 1, from 0)
+# is compiled as `emitcio` compiles it.
+# Output words when the code is 0: the C bytes, one per word, then the k = nfns - from
+# iteration bounds of the chunk's functions (passed back with later chunks' stubs), then k.
+# Nothing is written otherwise. The result is the diagnostic code (1 parse, 2 structure,
+# 3 type, 4 limit, 5 above).
+
+use "emit_arm64.a0"
+
+# `read` as a function: its (u32,io) result is named by this header, so the prelude interns it
+fn rdword io -> (u32,io)
+r read p0
+ret r
+end
+# iteration bound p1 of the input into the paged table
+fn rdfst (u32x128x8,io) u32 -> (u32x128x8,io)
+fs at p0 0
+tk at p0 1
+r call rdword tk
+v at r 0
+t at r 1
+pi shr p1 7
+wi and p1 127
+pg get fs pi
+pg2 set pg wi v
+fs2 set fs pi pg2
+o rec fs2 t
+ret o
+end
+# iteration bound p3 + p1 of the paged table
+fn wfst io u32 u32x128x8 u32 -> io
+i add p3 p1
+pi shr i 7
+wi and i 127
+pg get p2 pi
+v get pg wi
+w write p0 v
+ret w
+end
+# after the C: the k = p4 - p3 iteration bounds (table p2) of the chunk's functions, then k
+fn wtrail io u32 u32x128x8 u32 u32 -> io
+k sub p4 p3
+w0 fold wfst k p0 p2 p3
+w1 write w0 k
+ret w1
+end
+# the input: (source bytes, n, iteration bounds, from, strict, head, io)
+fn rdchunk io -> (u32x128x128,u32,u32x128x8,u32,bool,bool,io)
+rs call readsrc p0
+src at rs 0
+n at rs 1
+t1 at rs 2
+rh call rdword t1
+head at rh 0
+t2 at rh 1
+rt call rdword t2
+strict at rt 0
+t3 at rt 1
+rf call rdword t3
+from at rf 0
+t4 at rf 1
+z8 call z8
+fs0 rec z8 t4
+fsr fold rdfst from fs0
+fst at fsr 0
+t5 at fsr 1
+sb ne strict 0
+hd ne head 0
+r rec src n fst from sb hd t5
+ret r
+end
+fn emitchunkio io -> u32
+c call rdchunk p0
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+sb at c 4
+hd at c 5
+t5 at c 6
+u call cunit t5 src n fst from sb hd
+t6 at u 0
+code at u 1
+fstat at u 2
+nfns at u 3
+ok eq code 0
+go select ok 1 0
+t7 fold wtrail go t6 fstat from nfns
+ret code
+end
+fn emitachunkio io -> u32
+c call rdchunk p0
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+sb at c 4
+hd at c 5
+t5 at c 6
+u call qunit t5 src n fst from sb hd
+t6 at u 0
+code at u 1
+fstat at u 2
+nfns at u 3
+ok eq code 0
+go select ok 1 0
+t7 fold wtrail go t6 fstat from nfns
+ret code
+end

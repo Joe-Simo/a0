@@ -1,30 +1,38 @@
 # A0 C emitter, written in A0. Stage 4b of the self-hosted compiler (DESIGN.md 7a).
-# Input: the word IR of compiler/parse.a0 (pool sym fns nodes args) with the checker's tables
-# (types tlist extended by the bodies, ntys: the type index of every node). Output: C source
-# bytes, one byte per io word. Scalars are uint32_t/bool, arrays and records are structs by
-# value (`a0t<type index>` with `e[N]` / `f<k>`), io is `a0_io *` with the layout of the
-# TypeScript emitter (input[256] ninput position output[1024] noutput) so the standard test
-# driver links against it. Functions are `a0_<name>`, parameters `p<k>`, nodes `n<index>`;
+# Input: the word IR of compiler/parse.a0 (pool fns nodes args) with the checker's tables
+# (types tlist extended by the bodies, ntys: the type index of every node) and fnm, the pool
+# start and length of each function's name (words 2i, 2i+1). The tables are the paged ones of
+# the 16384-byte front end (types u32x384x65, tlist u32x128x65, fns u32x128x45, nodes
+# u32x128x128, args u32x128x256, ntys u32x128x24, pool u32x128x129, fnm u32x128x16; word w at
+# page w>>7, a type's triple at page t>>7), read inline; an operand list is walked a page (64
+# operands) at a time. Output: C source bytes, one byte per io word. Scalars are
+# uint32_t/bool, arrays and records are structs by value (`a0t<type index>` with `e[N]` /
+# `f<k>`), io is `a0_io *` with the layout of the TypeScript emitter (input[256] ninput
+# position output[1024] noutput; the capacities are the macros A0_IO_INPUT_CAPACITY and
+# A0_IO_OUTPUT_CAPACITY, which a program may define first) so the standard test driver links
+# against it. Functions are `a0_<name>`, parameters `p<k>`, nodes `n<index>`;
 # every node is a local declared once, except a set/put or aggregate-state fold/loop that
 # updates an unshared value in place (the rule of src/backends.ts `mutableHere`: `crt`), which
 # declares nothing and aliases that value's storage. An iteration body over array or record
 # state also gets `void a0o_f(T *p0, ...)` (the state updated through the pointer) and a
 # predicate `bool a0r_f(const T *p0, ...)`; aggregate-state folds and loops call those with the
-# state's address, so no trip copies the state. Fold and loop are counted `for` loops, and every u32
+# state's address, so no trip copies the state. The use statistics (u32x128x64) and the roots
+# (u32x128x24, one word per node of the function) are paged like the IR tables. Fold and loop
+# are counted `for` loops, and every u32
 # operation is a static inline prelude function (so literal or repeated operands draw no
 # -Werror warning): a zero divisor gives all ones / the dividend, shifts use the low five bits.
 # Every piece of text is written by a fold whose count is 0 or 1 (there is no control flow);
 # strings are packed little-endian four bytes per u32 word, six words per write (`cws6`), and a
 # template `cwt` interleaves up to six such strings with five operand slots (1-3 operands A B C,
 # 4 the node's own name, 5 6 the array lengths of operands A and B, 7 the literal of B, 8 the
-# operand count). No fold here has a literal count, so no iteration bound saturates.
+# operand count). The only literal fold count is the 128 words of a page.
 # The comment above each packed write gives its text: `s id token "..."` (unconditional),
 # `sc id token cond "..."`, and `t id token cond nc ...` for a template, where A B C are the
 # operands, S the node's name, L0 L1 the array lengths, V1 the literal of B, NA the count.
 # `emitc` emits types [tfrom, ntypes) and functions [from, to) (plus the prelude when head is
-# 1), so a large program is emitted in the checker's chunks; `emitcio` runs lex, parse, check
-# and emit on up to 512 source bytes and writes the C bytes (nothing on an error); its result
-# is the diagnostic code.
+# 1), so a large program is emitted in chunks; `cunit` runs lex, parse and check (lex.a0,
+# parse.a0, check.a0 `checkir`) and builds fnm; `emitcio` runs it on up to 16384 source bytes
+# and writes the C bytes (nothing on an error); its result is the diagnostic code.
 
 use "check.a0"
 
@@ -245,28 +253,40 @@ r fold cwtst n p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p1
 ret r
 end
 # "a0_" is written by the caller; the name bytes pool[start..start+len) when p1
-fn cnmst io u32 u32x512 u32 -> io
+fn cnmst io u32 u32x128x129 u32 -> io
 j add p3 p1
-b get p2 j
+jp shr j 7
+pg get p2 jp
+jl and j 127
+b get pg jl
 w write p0 b
 ret w
 end
-fn cwnm io bool u32x512 u32 u32 -> io
+fn cwnm io bool u32x128x129 u32 u32 -> io
 n select p1 p4 0
 r fold cnmst n p0 p2 p3
 ret r
 end
+# min(p0, p1)
+fn cumin u32 u32 -> u32
+b lt p0 p1
+r select b p0 p1
+ret r
+end
 # the storage of operand (p0 p1) in variant p3 with the roots p2 (kind * 2^28 + value: 1 node,
-# 2 parameter, 5 `(*p0)`): a node resolves to the root it aliases, p0 of the owned and ref
-# variants is `(*p0)`, anything else is itself
-fn cres u32 u32 u32x1024 u32 -> (u32,u32)
+# 2 parameter, 5 `(*p0)`; node j at page j>>7): a node resolves to the root it aliases, p0 of
+# the owned and ref variants is `(*p0)`, anything else is itself
+fn cres u32 u32 u32x128x24 u32 -> (u32,u32)
 isn eq p0 1
 isp eq p0 2
 v0 eq p1 0
 nv ne p3 0
 dp0 and isp v0
 dp and dp0 nv
-r get p2 p1
+rp shr p1 7
+rg get p2 rp
+rl and p1 127
+r get rg rl
 rk shr r 28
 rv and r 268435455
 k1 select dp 5 p0
@@ -276,22 +296,24 @@ v select isn rv v1
 o rec k v
 ret o
 end
-# operand list from index p5 in mode p4: 1 call arguments, 2 extra iteration arguments,
-# 3 array elements, 4 record fields; operands resolved with roots p6 in variant p7
-fn clst io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x8192 u32 u32 u32x1024 u32 -> io
+# operand p5 + p1 of an operand list (the operands of args page p3; the list starts at p6) in
+# mode p4: 1 call arguments, 2 extra iteration arguments, 3 array elements, 4 record fields;
+# operands resolved with roots p7 in variant p8
+fn clst io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128 u32 u32 u32 u32x128x24 u32 -> io
 i at p2 0
 fa at p2 10
-kk add p5 p1
-x add fa kk
-x2 mul x 2
-kd get p3 x2
-x3 add x2 1
+oi add p5 p1
+kk sub oi fa
+x2 mul oi 2
+xl and x2 127
+kd get p3 xl
+x3 add xl 1
 vd get p3 x3
 m1 eq p4 1
 m2 eq p4 2
 m3 eq p4 3
 m4 eq p4 4
-pos ne p1 0
+pos ne oi p6
 s1 and m1 pos
 sep or s1 m2
 # sc a p0 sep ", "
@@ -312,7 +334,7 @@ j call cws6c h m4 26158 0 0 0 0 0
 k call cwdecc j m4 kk
 # sc l k m4 " = "
 l call cws6c k m4 2112800 0 0 0 0 0
-rs call cres kd vd p6 p7
+rs call cres kd vd p7 p8
 rsk at rs 0
 rsv at rs 1
 m call cwop l rsk rsv
@@ -321,19 +343,47 @@ agg or m3 m4
 o call cws6c m agg 59 0 0 0 0 0
 ret o
 end
-fn cwlist io bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x8192 u32 u32 u32x1024 u32 -> io
+# args page p7 + p1 (64 operands) of the operand list [p5, p6) (p5: its first operand)
+fn clpg io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32 u32 u32 u32 u32x128x24 u32 -> io
+pi add p7 p1
+pg get p3 pi
+b mul pi 64
+e add b 64
+lo call umax p5 b
+hi call cumin p6 e
+cnt sub hi lo
+r fold clst cnt p0 p2 pg p4 lo p5 p8 p9
+ret r
+end
+# the operand list from index p5 of the node, a page at a time (roots p6, variant p7)
+fn cwlist io bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32 u32 u32x128x24 u32 -> io
+fa at p2 10
 na at p2 11
-c sub na p5
-n select p1 c 0
-r fold clst n p0 p2 p3 p4 p5 p6 p7
+lo add fa p5
+hi add fa na
+has lt lo hi
+go and p1 has
+lp shr lo 6
+h1 sub hi 1
+hp shr h1 6
+d sub hp lp
+np add d 1
+n select go np 0
+r fold clpg n p0 p2 p3 p4 lo hi lp p6 p7
 ret r
 end
 # type index of operand (kind value) in the function with first node p4 and first param p5
-fn cotype u32 u32 u32x1024 u32x1024 u32 u32 -> u32
+fn cotype u32 u32 u32x128x24 u32x128x65 u32 u32 -> u32
 g add p4 p1
-tn get p2 g
+gp shr g 7
+gpg get p2 gp
+gl and g 127
+tn get gpg gl
 q add p5 p1
-tp get p3 q
+qp shr q 7
+qpg get p3 qp
+ql and q 127
+tp get qpg ql
 k1 eq p0 1
 k2 eq p0 2
 k4 eq p0 4
@@ -342,10 +392,11 @@ b select k2 tp a
 c select k1 tn b
 ret c
 end
-# all operands from p3 are the literal 0 / false
-fn czst bool u32 u32x8192 u32 -> bool
+# operand p3 + p1 (in args page p2) is the literal 0 / false, and so were the ones before
+fn czst bool u32 u32x128 u32 -> bool
 j add p3 p1
-a mul j 2
+aw mul j 2
+a and aw 127
 k get p2 a
 b add a 1
 v get p2 b
@@ -357,70 +408,128 @@ lz and lit z
 r and p0 lz
 ret r
 end
-# node p1 of the function with first node p10 and first param p11, in variant p13 with the
-# roots p12 (crt): a node that updates its operand in place declares no local of its own
-fn cnode io u32 u32x4096 u32x8192 u32x1024 u32x768 u32x1024 u32x512 u32x512 u32x1024 u32 u32 u32x1024 u32 -> io
-g add p10 p1
+# args page p5 + p1 of the operands [p3, p4)
+fn czpg bool u32 u32x128x256 u32 u32 u32 -> bool
+pi add p5 p1
+pg get p2 pi
+b mul pi 64
+e add b 64
+lo call umax p3 b
+hi call cumin p4 e
+cnt sub hi lo
+r fold czst cnt p0 pg lo
+ret r
+end
+# node p1 of the function with first node p9 and first param p10 (tables: nodes args ntys
+# types tlist pool fnm); a table word w is read from page w>>7 (types: triple t from page t>>7);
+# in variant p12 with the roots p11 (crt): a node that updates its operand in place declares no
+# local of its own
+fn cnode io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32 u32 u32x128x24 u32 -> io
+g add p9 p1
 b6 mul g 6
 b1 add b6 1
-op get p2 b1
+b1p shr b1 7
+b1g get p2 b1p
+b1l and b1 127
+op get b1g b1l
 b2 add b6 2
-na get p2 b2
+b2p shr b2 7
+b2g get p2 b2p
+b2l and b2 127
+na get b2g b2l
 b3 add b6 3
-fa get p2 b3
+b3p shr b3 7
+b3g get p2 b3p
+b3l and b3 127
+fa get b3g b3l
 b4 add b6 4
-ce get p2 b4
+b4p shr b4 7
+b4g get p2 b4p
+b4l and b4 127
+ce get b4g b4l
 b5 add b6 5
-pr get p2 b5
-t get p4 g
-t3 mul t 3
-tag get p5 t3
+b5p shr b5 7
+b5g get p2 b5p
+b5l and b5 127
+pr get b5g b5l
+gp shr g 7
+gpg get p4 gp
+gl and g 127
+t get gpg gl
+tp shr t 7
+tpg get p5 tp
+tl and t 127
+t3 mul tl 3
+tag get tpg t3
 t5 add t3 2
-et get p5 t5
-et3 mul et 3
-etag get p5 et3
+et get tpg t5
+ep shr et 7
+epg get p5 ep
+el and et 127
+et3 mul el 3
+etag get epg et3
 x0 mul fa 2
-k0 get p3 x0
-x1 add x0 1
-v0 get p3 x1
+x0p shr x0 7
+x0g get p3 x0p
+x0l and x0 127
+k0 get x0g x0l
+x1 add x0l 1
+v0 get x0g x1
 x2 add x0 2
-k1 get p3 x2
-x3 add x0 3
-v1 get p3 x3
+x2p shr x2 7
+x2g get p3 x2p
+x2l and x2 127
+k1 get x2g x2l
+x3 add x2l 1
+v1 get x2g x3
 x4 add x0 4
-k2 get p3 x4
-x5 add x0 5
-v2 get p3 x5
-o0 call cotype k0 v0 p4 p6 p10 p11
-o1 call cotype k1 v1 p4 p6 p10 p11
-o03 mul o0 3
+x4p shr x4 7
+x4g get p3 x4p
+x4l and x4 127
+k2 get x4g x4l
+x5 add x4l 1
+v2 get x4g x5
+o0 call cotype k0 v0 p4 p6 p9 p10
+o1 call cotype k1 v1 p4 p6 p9 p10
+o0p shr o0 7
+o0g get p5 o0p
+o0t and o0 127
+o03 mul o0t 3
 o0l add o03 1
-l0 get p5 o0l
-o13 mul o1 3
+l0 get o0g o0l
+o1p shr o1 7
+o1g get p5 o1p
+o1t and o1 127
+o13 mul o1t 3
 o1l add o13 1
-l1 get p5 o1l
-ce7 mul ce 7
-csy get p9 ce7
-csy2 mul csy 2
-cs get p8 csy2
-csy3 add csy2 1
-cl get p8 csy3
-pr7 mul pr 7
-psy get p9 pr7
-psy2 mul psy 2
-ps get p8 psy2
-psy3 add psy2 1
-pl get p8 psy3
-r0 call cres k0 v0 p12 p13
+l1 get o1g o1l
+ce2 mul ce 2
+cep shr ce2 7
+ceg get p8 cep
+cel and ce2 127
+cs get ceg cel
+ce3 add cel 1
+cl get ceg ce3
+pr2 mul pr 2
+prp shr pr2 7
+prg get p8 prp
+prl and pr2 127
+ps get prg prl
+pr3 add prl 1
+pl get prg pr3
+r0 call cres k0 v0 p11 p12
 q0 at r0 0
 u0 at r0 1
-r1 call cres k1 v1 p12 p13
+r1 call cres k1 v1 p11 p12
 q1 at r1 0
 u1 at r1 1
-r2 call cres k2 v2 p12 p13
+r2 call cres k2 v2 p11 p12
 q2 at r2 0
 u2 at r2 1
-sr get p12 p1
+srp shr p1 7
+srg get p11 srp
+srl and p1 127
+sr get srg srl
 sk shr sr 28
 sv and sr 268435455
 sw add 268435456 p1
@@ -523,7 +632,7 @@ d19 call cwt d18 is19 nc 1629502752 24368 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
 e19 call cwnm d19 is19 p7 cs cl
 # t f19 e19 is19 nc "("
 f19 call cwt e19 is19 nc 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-g19 call cwlist f19 is19 nc p3 1 0 p12 p13
+g19 call cwlist f19 is19 nc p3 1 0 p11 p12
 # t h19 g19 is19 nc ");"
 h19 call cwt g19 is19 nc 15145 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 it or is20 is21
@@ -541,7 +650,7 @@ e21 call cwt e20 lv nc 543582496 811671848 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
 f21 call cwnm e21 lv p7 ps pl
 # t g21 f21 lv "(" S ", a0i"
 g21 call cwt f21 lv nc 40 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-h21 call cwlist g21 lv nc p3 2 2 p12 p13
+h21 call cwlist g21 lv nc p3 2 2 p11 p12
 # t j21 h21 lv ")) break;"
 j21 call cwt h21 lv nc 1646274857 1801545074 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # t e24 j21 la " if (!a0r_"
@@ -549,7 +658,7 @@ e24 call cwt j21 la nc 543582496 811671848 24434 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 f24 call cwnm e24 la p7 ps pl
 # t g24 f24 la "(&" S ", a0i"
 g24 call cwt f24 la nc 9768 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-h24 call cwlist g24 la nc p3 2 2 p12 p13
+h24 call cwlist g24 la nc p3 2 2 p11 p12
 # t j24 h24 la ")) break;"
 j24 call cwt h24 la nc 1646274857 1801545074 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # t k20 j24 itv " " S " = a0_"
@@ -557,7 +666,7 @@ k20 call cwt j24 itv nc 32 0 0 0 0 0 4 1629502752 24368 0 0 0 0 0 0 0 0 0 0 0 0 
 l20 call cwnm k20 itv p7 cs cl
 # t m20 l20 itv "(" S ", a0i"
 m20 call cwt l20 itv nc 40 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-n20 call cwlist m20 itv nc p3 2 2 p12 p13
+n20 call cwlist m20 itv nc p3 2 2 p11 p12
 # t o21 n20 itv "); }"
 o21 call cwt n20 itv nc 2099264297 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # t k23 o21 ita " a0o_"
@@ -565,13 +674,21 @@ k23 call cwt o21 ita nc 1865441568 95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
 l23 call cwnm k23 ita p7 cs cl
 # t m23 l23 ita "(&" S ", a0i"
 m23 call cwt l23 ita nc 9768 0 0 0 0 0 4 811671596 105 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-n23 call cwlist m23 ita nc p3 2 2 p12 p13
+n23 call cwlist m23 ita nc p3 2 2 p11 p12
 # t o20 n23 ita "); }"
 o20 call cwt n23 ita nc 2099264297 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 e1 eq etag 1
 e2 eq etag 2
 es or e1 e2
-allz fold czst na true p3 fa
+zhi add fa na
+zhas lt fa zhi
+zlp shr fa 6
+zh1 sub zhi 1
+zhp shr zh1 6
+zd sub zhp zlp
+znp add zd 1
+zn select zhas znp 0
+allz fold czpg zn true p3 fa zhi zlp
 zr and is22 allz
 zero and zr es
 nzr select zero false true
@@ -581,10 +698,10 @@ lst and ia nzr
 d22 call cwt o20 zero nc 1868963899 1965564018 863268457 544497458 543764577 993009725 0 1764778272 2112544 0 0 0 0 8 1629502325 724265264 8233 0 0 0 4 1633379630 542992688 993009725 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # t e22 d22 lst nc ";"
 e22 call cwt d22 lst nc 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-f22 call cwlist e22 lst nc p3 3 0 p12 p13
+f22 call cwlist e22 lst nc p3 3 0 p11 p12
 # t d23 f22 is23 nc ";"
 d23 call cwt f22 is23 nc 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-e23 call cwlist d23 is23 nc p3 4 0 p12 p13
+e23 call cwlist d23 is23 nc p3 4 0 p11 p12
 # t d25 e23 is25 nc " = " A ".e[" B " % " L0 "u];"
 d25 call cwt e23 is25 nc 2112800 0 0 0 0 0 1 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 3890549 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 s26n and is26 nal
@@ -616,11 +733,17 @@ y3 call cws6 y2 10 0 0 0 0 0
 ret y3
 end
 # parameter p1 of the list at tlist[p4..]
-fn cprm io u32 u32x1024 u32x768 u32 -> io
+fn cprm io u32 u32x128x65 u32x384x65 u32 -> io
 q add p4 p1
-t get p2 q
-t3 mul t 3
-tag get p3 t3
+qp shr q 7
+qg get p2 qp
+ql and q 127
+t get qg ql
+tp shr t 7
+tg get p3 tp
+tl and t 127
+t3 mul tl 3
+tag get tg t3
 pos ne p1 0
 # sc a p0 pos ", "
 a call cws6c p0 pos 8236 0 0 0 0 0
@@ -630,8 +753,17 @@ c call cws6 b 28704 0 0 0 0 0
 d call cwdec c p1
 ret d
 end
+# word p1 + p2 of the fns table
+fn cfw u32x128x45 u32 u32 -> u32
+w add p1 p2
+wp shr w 7
+wg get p0 wp
+wl and w 127
+v get wg wl
+ret v
+end
 # parameter p1 + 1 (the parameters after p0 of the owned and ref variants)
-fn cprm1 io u32 u32x1024 u32x768 u32 -> io
+fn cprm1 io u32 u32x128x65 u32x384x65 u32 -> io
 k add p1 1
 r call cprm p0 k p2 p3 p4
 ret r
@@ -639,63 +771,111 @@ end
 # In-place analysis (src/backends.ts `mutableHere`): a value (a node, or a parameter the
 # variant owns: all of them except p0 of the ref variant) may be updated in place by the node
 # at j when it is fresh (arr text rec set put, or a parameter), not returned, and every other
-# use of it is a get/at of it (operand 0) before j. Use statistics per function: word v (node
-# v; parameter v at 2048 + v) holds 2^16 * (uses other than get/at operand 0) + (last user + 1).
-# operand p1 of the node at local index p4 whose operands start at p3; p5: it is a get or at
-fn cusa u32x4096 u32 u32x8192 u32 u32 bool -> u32x4096
-x add p3 p1
-x2 mul x 2
+# use of it is a get/at of it (operand 0) before j. Use statistics per function, paged: word v
+# (node v; parameter v at 4096 + v) holds 2^16 * (uses other than get/at operand 0) + (last
+# user + 1).
+# operand p3 + p1 (in args page p2) of the node at local index p5 whose operands start at p4;
+# p6: it is a get or at
+fn cusa u32x128x64 u32 u32x128 u32 u32 u32 bool -> u32x128x64
+oi add p3 p1
+xw mul oi 2
+x2 and xw 127
 kd get p2 x2
 x3 add x2 1
 vd get p2 x3
 isn eq kd 1
 isp eq kd 2
-q add vd 2048
+q add vd 4096
 slot select isp q vd
-w get p0 slot
+sp shr slot 7
+sl and slot 127
+pg get p0 sp
+w get pg sl
 nb shr w 16
-k0 eq p1 0
-good and p5 k0
+k0 eq oi p4
+good and p6 k0
 bad select good 0 1
 nb2 add nb bad
 hi shl nb2 16
-j1 add p4 1
+j1 add p5 1
 nw or hi j1
 val or isn isp
 out select val nw w
-r set p0 slot out
+pg2 set pg sl out
+r set p0 sp pg2
 ret r
 end
-# the operands of node p1 of the function whose first node is p4
-fn cusn u32x4096 u32 u32x4096 u32x8192 u32 -> u32x4096
+# args page p5 + p1 (64 operands) of the operands [p3, p4) of node p6 (p7: get or at)
+fn cuspg u32x128x64 u32 u32x128x256 u32 u32 u32 u32 bool -> u32x128x64
+pi add p5 p1
+pg get p2 pi
+b mul pi 64
+e add b 64
+lo call umax p3 b
+hi call cumin p4 e
+cnt sub hi lo
+r fold cusa cnt p0 pg lo p3 p6 p7
+ret r
+end
+# the operands of node p1 of the function whose first node is p4, a page at a time
+fn cusn u32x128x64 u32 u32x128x128 u32x128x256 u32 -> u32x128x64
 g add p4 p1
 b6 mul g 6
 b1 add b6 1
-op get p2 b1
+b1p shr b1 7
+b1g get p2 b1p
+b1l and b1 127
+op get b1g b1l
 b2 add b6 2
-na get p2 b2
+b2p shr b2 7
+b2g get p2 b2p
+b2l and b2 127
+na get b2g b2l
 b3 add b6 3
-fa get p2 b3
+b3p shr b3 7
+b3g get p2 b3p
+b3l and b3 127
+fa get b3g b3l
 isg eq op 25
 isa eq op 27
 ga or isg isa
-r fold cusa na p0 p3 fa p1 ga
+hi add fa na
+has lt fa hi
+lp shr fa 6
+h1 sub hi 1
+hp shr h1 6
+d sub hp lp
+np add d 1
+n select has np 0
+r fold cuspg n p0 p3 fa hi lp p1 ga
 ret r
 end
 # Roots, per node: its own storage `n<j>` (2^28 + j) or, when it updates its target in place,
 # the target's root. Targets: operand 0 of set/put, the initial state (operand 1) of a
 # fold/loop with aggregate state. Node p1 of the function with first node p7, variant p8 (0
-# value, 1 owned, 2 ref), use statistics p6, ret operand (p9 p10).
-fn crt u32x1024 u32 u32x4096 u32x8192 u32x1024 u32x768 u32x4096 u32 u32 u32 u32 -> u32x1024
+# value, 1 owned, 2 ref), use statistics p6, ret operand (p9 p10); tables nodes args ntys types.
+fn crt u32x128x24 u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x64 u32 u32 u32 u32 -> u32x128x24
 g add p7 p1
 b6 mul g 6
 b1 add b6 1
-op get p2 b1
+b1p shr b1 7
+b1g get p2 b1p
+b1l and b1 127
+op get b1g b1l
 b3 add b6 3
-fa get p2 b3
-t get p4 g
-t3 mul t 3
-tag get p5 t3
+b3p shr b3 7
+b3g get p2 b3p
+b3l and b3 127
+fa get b3g b3l
+gp shr g 7
+gpg get p4 gp
+gl and g 127
+t get gpg gl
+tp shr t 7
+tpg get p5 tp
+tl and t 127
+t3 mul tl 3
+tag get tpg t3
 g4 eq tag 4
 g5 eq tag 5
 agg or g4 g5
@@ -709,15 +889,21 @@ isfl and it agg
 slot select isfl 1 0
 x add fa slot
 x2 mul x 2
-kd get p3 x2
-x3 add x2 1
-vd get p3 x3
+xp shr x2 7
+xg get p3 xp
+xl and x2 127
+kd get xg xl
+x3 add xl 1
+vd get xg x3
 isn eq kd 1
 isp eq kd 2
 dg add p7 vd
 d6 mul dg 6
 d1 add d6 1
-dop get p2 d1
+d1p shr d1 7
+d1g get p2 d1p
+d1l and d1 127
+dop get d1g d1l
 q22 eq dop 22
 q23 eq dop 23
 q24 eq dop 24
@@ -738,9 +924,12 @@ e1 eq kd p9
 e2 eq vd p10
 rs and e1 e2
 nrs select rs false true
-us0 add vd 2048
+us0 add vd 4096
 us1 select isp us0 vd
-w get p6 us1
+usp shr us1 7
+usg get p6 usp
+usl and us1 127
+w get usg usl
 nb shr w 16
 lu and w 65535
 c1 eq nb 1
@@ -751,7 +940,10 @@ i1 and cand okk
 i2 and i1 nrs
 i3 and i2 c1
 inp and i3 c2
-rr get p0 vd
+rp shr vd 7
+rg get p0 rp
+rl and vd 127
+rr get rg rl
 nv ne p8 0
 dp and v0 nv
 pw add 536870912 vd
@@ -759,35 +951,42 @@ pp select dp 1342177280 pw
 res select isn rr pp
 self add 268435456 p1
 nw select inp res self
-r set p0 p1 nw
+op1 shr p1 7
+opg get p0 op1
+ol and p1 127
+opg2 set opg ol nw
+r set p0 op1 opg2
 ret r
 end
-# variant p12 (0 value `a0_f`, 1 owned `void a0o_f(T *p0, ...)` updating the state through
-# the pointer, 2 ref `bool a0r_f(const T *p0, ...)`) of function p10 with use statistics p11
-fn cvar io u32 u32x4096 u32x8192 u32x1024 u32x768 u32x1024 u32x512 u32x512 u32x1024 u32 u32x4096 u32 -> io
-b mul p10 7
-nm get p9 b
-b1 add b 1
-np get p9 b1
-b2 add b 2
-fp get p9 b2
-b3 add b 3
-rt get p9 b3
-b4 add b 4
-fn0 get p9 b4
-b5 add b 5
-cnt get p9 b5
-b6 add b 6
-rw get p9 b6
-r3 mul rt 3
-rtag get p5 r3
-q0 get p6 fp
-q03 mul q0 3
-qtag get p5 q03
-v0 eq p12 0
-v1 eq p12 1
-v2 eq p12 2
-nv ne p12 0
+# variant p11 (0 value `a0_f`, 1 owned `void a0o_f(T *p0, ...)` updating the state through
+# the pointer, 2 ref `bool a0r_f(const T *p0, ...)`) of function p9 with use statistics p10
+# (tables p1-p8: nodes args ntys types tlist pool fnm fns)
+fn cvar io u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32x128x45 u32 u32x128x64 u32 -> io
+b mul p9 7
+np call cfw p8 b 1
+fp call cfw p8 b 2
+rt call cfw p8 b 3
+fn0 call cfw p8 b 4
+cnt call cfw p8 b 5
+rw call cfw p8 b 6
+rp shr rt 7
+rg get p4 rp
+rl and rt 127
+r3 mul rl 3
+rtag get rg r3
+qp shr fp 7
+qg get p5 qp
+ql and fp 127
+q0 get qg ql
+q0p shr q0 7
+q0g get p4 q0p
+q0l and q0 127
+q03 mul q0l 3
+qtag get q0g q03
+v0 eq p11 0
+v1 eq p11 1
+v2 eq p11 2
+nv ne p11 0
 a call cwtyc p0 v0 rtag rt
 # sc a1 a v1 "static inline void a0o_"
 a1 call cws6c a v1 1952543859 1763730281 1852402798 1870012517 1629512809 6254384
@@ -795,11 +994,14 @@ a1 call cws6c a v1 1952543859 1763730281 1852402798 1870012517 1629512809 625438
 a2 call cws6c a1 v2 1952543859 1763730281 1852402798 1868701797 1629514863 6255152
 # sc c a2 v0 " a0_"
 c call cws6c a2 v0 1597006112 0 0 0 0 0
-s2 mul nm 2
-ss get p8 s2
-s3 add s2 1
-sl get p8 s3
-d call cwnm c true p7 ss sl
+s2 mul p9 2
+sp shr s2 7
+sg get p7 sp
+sw and s2 127
+ss get sg sw
+s3 add sw 1
+sl get sg s3
+d call cwnm c true p6 ss sl
 # s e d "("
 e call cws6 d 40 0 0 0 0 0
 z eq np 0
@@ -812,18 +1014,18 @@ g2 call cwtyc g1 nv qtag q0
 # sc g3 g2 nv " *p0"
 g3 call cws6c g2 nv 812657184 0 0 0 0 0
 n0 select v0 np 0
-h0 fold cprm n0 g3 p6 p5 fp
+h0 fold cprm n0 g3 p5 p4 fp
 np1 sub np 1
 n1 select nv np1 0
-h1 fold cprm1 n1 h0 p6 p5 fp
+h1 fold cprm1 n1 h0 p5 p4 fp
 # s j h1 ") {\n"
 j call cws6 h1 175841321 0 0 0 0 0
 rk shr rw 28
 rv and rw 268435455
-z1024 call zeros1024
-ro fold crt cnt z1024 p2 p3 p4 p5 p11 fn0 p12 rk rv
-k fold cnode cnt j p2 p3 p4 p5 p6 p7 p8 p9 fn0 fp ro p12
-rr call cres rk rv ro p12
+z24 call z24
+ro fold crt cnt z24 p1 p2 p3 p4 p10 fn0 p11 rk rv
+k fold cnode cnt j p1 p2 p3 p4 p5 p6 p7 fn0 fp ro p11
+rr call cres rk rv ro p11
 rrk at rr 0
 rrv at rr 1
 d5 eq rrk 5
@@ -842,30 +1044,39 @@ m1 call cws6c m emit 2619 0 0 0 0 0
 o call cws6 m1 658045 0 0 0 0 0
 ret o
 end
-# function p10 + p1: the value variant, then the owned variant when p0 is an array or record,
-# p1 is u32 and the result is p0's type (a fold or loop body over aggregate state), and the
-# ref variant when the result is bool instead (a loop predicate)
-fn cfn io u32 u32x4096 u32x8192 u32x1024 u32x768 u32x1024 u32x512 u32x512 u32x1024 u32 -> io
+fn cvarst io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32x128x45 u32 u32x128x64 u32 -> io
+r call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+ret r
+end
+# function p10 + p1 (tables: nodes args ntys types tlist pool fnm fns): the value variant,
+# then the owned variant when p0 is an array or record, p1 is u32 and the result is p0's type
+# (a fold or loop body over aggregate state), and the ref variant when the result is bool
+# instead (a loop predicate)
+fn cfn io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32x128x45 u32 -> io
 f add p10 p1
 b mul f 7
-b1 add b 1
-np get p9 b1
-b2 add b 2
-fp get p9 b2
-b3 add b 3
-rt get p9 b3
-b4 add b 4
-fn0 get p9 b4
-b5 add b 5
-cnt get p9 b5
-z4096 call zeros4096
-us fold cusn cnt z4096 p2 p3 fn0
-a call cvar p0 0 p2 p3 p4 p5 p6 p7 p8 p9 f us 0
-t0 get p6 fp
+np call cfw p9 b 1
+fp call cfw p9 b 2
+rt call cfw p9 b 3
+fn0 call cfw p9 b 4
+cnt call cfw p9 b 5
+z64 call z64
+us fold cusn cnt z64 p2 p3 fn0
+a call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 f us 0
+tq0p shr fp 7
+tq0g get p6 tq0p
+tq0l and fp 127
+t0 get tq0g tq0l
 fp1 add fp 1
-t1 get p6 fp1
-t03 mul t0 3
-tag0 get p5 t03
+tq1p shr fp1 7
+tq1g get p6 tq1p
+tq1l and fp1 127
+t1 get tq1g tq1l
+t0p shr t0 7
+t0g get p5 t0p
+t0l and t0 127
+t03 mul t0l 3
+tag0 get t0g t03
 g4 eq tag0 4
 g5 eq tag0 5
 ag or g4 g5
@@ -878,17 +1089,23 @@ sb eq rt 1
 ho and sh so
 hr and sh sb
 no select ho 1 0
-bo fold cvar no a p2 p3 p4 p5 p6 p7 p8 p9 f us 1
+bo fold cvarst no a p2 p3 p4 p5 p6 p7 p8 p9 f us 1
 nr select hr 1 0
-br fold cvar nr bo p2 p3 p4 p5 p6 p7 p8 p9 f us 2
+br fold cvarst nr bo p2 p3 p4 p5 p6 p7 p8 p9 f us 2
 ret br
 end
 # field p1 of the record whose fields are tlist[p4..]
-fn cfld io u32 u32x1024 u32x768 u32 -> io
+fn cfld io u32 u32x128x65 u32x384x65 u32 -> io
 q add p4 p1
-t get p2 q
-t3 mul t 3
-tag get p3 t3
+qp shr q 7
+qg get p2 qp
+ql and q 127
+t get qg ql
+tp shr t 7
+tg get p3 tp
+tl and t 127
+t3 mul tl 3
+tag get tg t3
 # s a p0 " "
 a call cws6 p0 32 0 0 0 0 0
 b call cwty a tag t
@@ -899,14 +1116,20 @@ d call cwdec c p1
 e call cws6 d 59 0 0 0 0 0
 ret e
 end
-fn ctarr io u32 u32x768 u32 -> io
-t3 mul p3 3
+fn ctarr io u32 u32x384x65 u32 -> io
+tp shr p3 7
+tg get p2 tp
+tl and p3 127
+t3 mul tl 3
 a1 add t3 1
-n get p2 a1
+n get tg a1
 a2 add t3 2
-e get p2 a2
-e3 mul e 3
-etag get p2 e3
+e get tg a2
+ep shr e 7
+eg get p2 ep
+el and e 127
+e3 mul el 3
+etag get eg e3
 # s a p0 "typedef struct { "
 a call cws6 p0 1701869940 543581540 1970435187 2065724515 32 0
 b call cwty a etag e
@@ -920,12 +1143,15 @@ g call cwdec f p3
 h call cws6 g 2619 0 0 0 0 0
 ret h
 end
-fn ctrec io u32 u32x768 u32x1024 u32 -> io
-t3 mul p4 3
+fn ctrec io u32 u32x384x65 u32x128x65 u32 -> io
+tp shr p4 7
+tg get p2 tp
+tl and p4 127
+t3 mul tl 3
 a1 add t3 1
-first get p2 a1
+first get tg a1
 a2 add t3 2
-cnt get p2 a2
+cnt get tg a2
 # s a p0 "typedef struct {"
 a call cws6 p0 1701869940 543581540 1970435187 2065724515 0 0
 b fold cfld cnt a p3 p2 first
@@ -937,10 +1163,13 @@ e call cws6 d 2619 0 0 0 0 0
 ret e
 end
 # typedef of type p4 + p1 (arrays and records; scalars have none)
-fn ctd io u32 u32x768 u32x1024 u32 -> io
+fn ctd io u32 u32x384x65 u32x128x65 u32 -> io
 t add p4 p1
-t3 mul t 3
-tag get p2 t3
+tp shr t 7
+tg get p2 tp
+tl and t 127
+t3 mul tl 3
+tag get tg t3
 c4 eq tag 4
 c5 eq tag 5
 n4 select c4 1 0
@@ -950,85 +1179,93 @@ b fold ctrec n5 a p2 p3 t
 ret b
 end
 fn cpre io u32 -> io
-# s a p0 "/* Generated by the A0 C emitter written in A0 (compiler/emit_c.a0). */\n#include <stdint.h>\n#include <stdbool.h>\ntypedef struct a0_io a0_io;\nstruct a0_io { uint32_t input[256]; uint32_t ninput; uint32_t position; uint32_t output[1024]; uint32_t noutput; };\nstatic inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < 1024u) t->output[t->noutput++] = v; return t; }\nstatic inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }\nstatic inline uint32_t a0_add(uint32_t a, uint32_t b) { return a + b; }\nstatic inline uint32_t a0_sub(uint32_t a, uint32_t b) { return a - b; }\nstatic inline uint32_t a0_mul(uint32_t a, uint32_t b) { return (uint32_t)((uint64_t)a * b); }\nstatic inline uint32_t a0_and(uint32_t a, uint32_t b) { return a & b; }\nstatic inline uint32_t a0_or(uint32_t a, uint32_t b) { return a | b; }\nstatic inline uint32_t a0_xor(uint32_t a, uint32_t b) { return a ^ b; }\nstatic inline uint32_t a0_shl(uint32_t a, uint32_t b) { return a << (b & 31u); }\nstatic inline uint32_t a0_shr(uint32_t a, uint32_t b) { return a >> (b & 31u); }\nstatic inline bool a0_eq(uint32_t a, uint32_t b) { return a == b; }\nstatic inline bool a0_ne(uint32_t a, uint32_t b) { return a != b; }\nstatic inline bool a0_lt(uint32_t a, uint32_t b) { return a < b; }\nstatic inline bool a0_le(uint32_t a, uint32_t b) { return a <= b; }\nstatic inline bool a0_gt(uint32_t a, uint32_t b) { return a > b; }\nstatic inline bool a0_ge(uint32_t a, uint32_t b) { return a >= b; }\nstatic inline uint32_t a0_div(uint32_t a, uint32_t b) { return b == 0u ? 0xffffffffu : a / b; }\nstatic inline uint32_t a0_rem(uint32_t a, uint32_t b) { return b == 0u ? a : a % b; }\n\n"
+# s a p0 "/* Generated by the A0 C emitter written in A0 (compiler/emit_c.a0). */\n#include <stdint.h>\n#include <stdbool.h>\ntypedef struct a0_io a0_io;\n#ifndef A0_IO_INPUT_CAPACITY\n#define A0_IO_INPUT_CAPACITY 256u\n#endif\n#ifndef A0_IO_OUTPUT_CAPACITY\n#define A0_IO_OUTPUT_CAPACITY 1024u\n#endif\nstruct a0_io { uint32_t input[A0_IO_INPUT_CAPACITY]; uint32_t ninput; uint32_t position; uint32_t output[A0_IO_OUTPUT_CAPACITY]; uint32_t noutput; };\nstatic inline a0_io *a0_write(a0_io *t, uint32_t v) { if (t->noutput < A0_IO_OUTPUT_CAPACITY) t->output[t->noutput++] = v; return t; }\nstatic inline a0_io *a0_puts(a0_io *t, const uint32_t *e, uint32_t n) { a0_write(t, n); for (uint32_t i = 0; i < n; i++) a0_write(t, e[i]); return t; }\nstatic inline uint32_t a0_add(uint32_t a, uint32_t b) { return a + b; }\nstatic inline uint32_t a0_sub(uint32_t a, uint32_t b) { return a - b; }\nstatic inline uint32_t a0_mul(uint32_t a, uint32_t b) { return (uint32_t)((uint64_t)a * b); }\nstatic inline uint32_t a0_and(uint32_t a, uint32_t b) { return a & b; }\nstatic inline uint32_t a0_or(uint32_t a, uint32_t b) { return a | b; }\nstatic inline uint32_t a0_xor(uint32_t a, uint32_t b) { return a ^ b; }\nstatic inline uint32_t a0_shl(uint32_t a, uint32_t b) { return a << (b & 31u); }\nstatic inline uint32_t a0_shr(uint32_t a, uint32_t b) { return a >> (b & 31u); }\nstatic inline bool a0_eq(uint32_t a, uint32_t b) { return a == b; }\nstatic inline bool a0_ne(uint32_t a, uint32_t b) { return a != b; }\nstatic inline bool a0_lt(uint32_t a, uint32_t b) { return a < b; }\nstatic inline bool a0_le(uint32_t a, uint32_t b) { return a <= b; }\nstatic inline bool a0_gt(uint32_t a, uint32_t b) { return a > b; }\nstatic inline bool a0_ge(uint32_t a, uint32_t b) { return a >= b; }\nstatic inline uint32_t a0_div(uint32_t a, uint32_t b) { return b == 0u ? 0xffffffffu : a / b; }\nstatic inline uint32_t a0_rem(uint32_t a, uint32_t b) { return b == 0u ? a : a % b; }\n\n"
 a_0 call cws6 p0 1193290287 1919250021 1684370529 544825888 543516788 1126182977
 a_1 call cws6 a_0 1768776992 1919251572 1769109280 1852142708 544106784 673198145
 a_2 call cws6 a_1 1886220131 1919249513 1768777007 778264436 774451297 170863136
 a_3 call cws6 a_2 1668180259 1701082476 1953709088 1953392996 171862062 1668180259
 a_4 call cws6 a_3 1701082476 1953709088 1869570660 1047015020 1887007754 1717920869
-a_5 call cws6 a_4 1920234272 544498549 1767845985 811671663 997157215 1920234250
-a_6 call cws6 a_5 544498549 1767845985 544940143 1953393013 1952395827 1886284064
-a_7 call cws6 a_6 844854389 995964469 1852405024 1597125492 1768824948 1953853550
-a_8 call cws6 a_7 1769283643 842232942 1881175135 1953067887 997093225 1852405024
-a_9 call cws6 a_8 1597125492 1970217076 1953853556 842019163 540761396 1953393013
-a_10 call cws6 a_9 1952395827 1970236960 1953853556 998055995 1635021578 543385972
-a_11 call cws6 a_10 1768713833 1629513070 1869176624 811674144 1769109343 1630037364
-a_12 call cws6 a_11 1869176624 745810464 1852405024 1597125492 695607412 1763736352
-a_13 call cws6 a_12 1948786790 1869495853 1970304117 540811380 875704369 1948264821
-a_14 call cws6 a_13 1970224685 1953853556 1043166299 1953853294 729052528 1025531179
-a_15 call cws6 a_14 540767776 1970562418 1948282482 175972411 1952543859 1763730281
-a_16 call cws6 a_15 1852402798 811671653 544172383 1597006122 1937012080 1597006120
-a_17 call cws6 a_16 706768745 1663052916 1953721967 1852405024 1597125492 1697259636
-a_18 call cws6 a_17 1769283628 842232942 1847620703 544940073 2002727009 1702127986
-a_19 call cws6 a_18 539784232 540748142 544370534 1852405032 1597125492 543760500
-a_20 call cws6 a_19 993009725 1008757024 540765728 690695017 1597006112 1953067639
-a_21 call cws6 a_20 745810021 1767597344 540748125 1970562418 1948282482 175972411
-a_22 call cws6 a_21 1952543859 1763730281 1852402798 1769283685 842232942 1629516895
-a_23 call cws6 a_22 1684102960 1769285732 842232942 1629516895 1769283628 842232942
-a_24 call cws6 a_23 1646294111 544940073 1970562418 1629515378 1646275360 175972411
-a_25 call cws6 a_24 1952543859 1763730281 1852402798 1769283685 842232942 1629516895
-a_26 call cws6 a_25 1970495280 1769285730 842232942 1629516895 1769283628 842232942
-a_27 call cws6 a_26 1646294111 544940073 1970562418 1629515378 1646275872 175972411
-a_28 call cws6 a_27 1952543859 1763730281 1852402798 1769283685 842232942 1629516895
-a_29 call cws6 a_28 1970102064 1769285740 842232942 1629516895 1769283628 842232942
-a_30 call cws6 a_29 1646294111 544940073 1970562418 673214066 1953393013 1952395827
-a_31 call cws6 a_30 1965565993 913600105 695492404 539631713 540748130 1953696381
-a_32 call cws6 a_31 1667855457 1819175200 543518313 1953393013 1952395827 1597006112
-a_33 call cws6 a_32 677670497 1953393013 1952395827 539779360 1953393013 1952395827
-a_34 call cws6 a_33 539583008 1701978235 1852994932 639656224 540762656 1953696381
-a_35 call cws6 a_34 1667855457 1819175200 543518313 1953393013 1952395827 1597006112
-a_36 call cws6 a_35 1965585007 863268457 544497458 1965042785 863268457 544497458
-a_37 call cws6 a_36 2065705314 1952805408 544109173 545005665 2099264354 1635021578
-a_38 call cws6 a_37 543385972 1768713833 1965057390 863268457 544497458 2019504225
-a_39 call cws6 a_38 1965585007 863268457 544497458 1965042785 863268457 544497458
-a_40 call cws6 a_39 2065705314 1952805408 544109173 543039585 2099264354 1635021578
-a_41 call cws6 a_40 543385972 1768713833 1965057390 863268457 544497458 1935618145
-a_42 call cws6 a_41 1965583464 863268457 544497458 1965042785 863268457 544497458
-a_43 call cws6 a_42 2065705314 1952805408 544109173 1010573409 543303712 825434150
-a_44 call cws6 a_43 540748149 1953696381 1667855457 1819175200 543518313 1953393013
-a_45 call cws6 a_44 1952395827 1597006112 678586483 1953393013 1952395827 539779360
-a_46 call cws6 a_45 1953393013 1952395827 539583008 1701978235 1852994932 1042309408
-a_47 call cws6 a_46 1646796862 857744928 992572721 1930067232 1769234804 1852383331
-a_48 call cws6 a_47 1701734764 1869570592 811671660 678520159 1953393013 1952395827
-a_49 call cws6 a_48 539779360 1953393013 1952395827 539583008 1701978235 1852994932
-a_50 call cws6 a_49 1025532192 996286525 1930067232 1769234804 1852383331 1701734764
-a_51 call cws6 a_50 1869570592 811671660 677736031 1953393013 1952395827 539779360
-a_52 call cws6 a_51 1953393013 1952395827 539583008 1701978235 1852994932 555770144
-a_53 call cws6 a_52 996286525 1930067232 1769234804 1852383331 1701734764 1869570592
-a_54 call cws6 a_53 811671660 678718559 1953393013 1952395827 539779360 1953393013
-a_55 call cws6 a_54 1952395827 539583008 1701978235 1852994932 1008754976 540762656
-a_56 call cws6 a_55 1953696381 1667855457 1819175200 543518313 1819242338 1597006112
-a_57 call cws6 a_56 1965581676 863268457 544497458 1965042785 863268457 544497458
-a_58 call cws6 a_57 2065705314 1952805408 544109173 1027350625 540762656 1953696381
-a_59 call cws6 a_58 1667855457 1819175200 543518313 1819242338 1597006112 1965585511
-a_60 call cws6 a_59 863268457 544497458 1965042785 863268457 544497458 2065705314
-a_61 call cws6 a_60 1952805408 544109173 540942433 2099264354 1635021578 543385972
-a_62 call cws6 a_61 1768713833 1646290286 543977327 1734291553 1769285733 842232942
-a_63 call cws6 a_62 1629516895 1769283628 842232942 1646294111 544940073 1970562418
-a_64 call cws6 a_63 1629515378 540884512 2099264354 1635021578 543385972 1768713833
-a_65 call cws6 a_64 1965057390 863268457 544497458 1683959905 1965586025 863268457
-a_66 call cws6 a_65 544497458 1965042785 863268457 544497458 2065705314 1952805408
-a_67 call cws6 a_66 544109173 1027416162 544550944 2016419903 1717986918 1717986918
-a_68 call cws6 a_67 540680309 539959393 2099264354 1635021578 543385972 1768713833
-a_69 call cws6 a_68 1965057390 863268457 544497458 1918840929 1965583717 863268457
-a_70 call cws6 a_69 544497458 1965042785 863268457 544497458 2065705314 1952805408
-a_71 call cws6 a_70 544109173 1027416162 544550944 543236159 543236154 996286501
-a call cws6 a_71 168459552 0 0 0 0 0
+a_5 call cws6 a_4 1920234272 544498549 1767845985 811671663 997157215 1718166282
+a_6 call cws6 a_5 1717920878 1596997920 1230982985 1414877262 1346454367 1414087489
+a_7 call cws6 a_6 1680018009 1852401253 809574501 1599031647 1431326281 1094934356
+a_8 call cws6 a_7 1229144400 840980820 175453749 1684956451 587884137 1684956777
+a_9 call cws6 a_8 1092642405 1330208560 1414877023 1599362384 1095778627 1498696003
+a_10 call cws6 a_9 1701061386 1701734758 1596997920 1331646281 1431327829 1094934356
+a_11 call cws6 a_10 1229144400 824203604 1966354992 1852121866 174483812 1970435187
+a_12 call cws6 a_11 1629516899 1869176624 1965062944 863268457 544497458 1970302569
+a_13 call cws6 a_12 809589620 1599031647 1431326281 1094934356 1229144400 995973460
+a_14 call cws6 a_13 1852405024 1597125492 1768824948 1953853550 1769283643 842232942
+a_15 call cws6 a_14 1881175135 1953067887 997093225 1852405024 1597125492 1970217076
+a_16 call cws6 a_15 1953853556 1596997979 1331646281 1431327829 1094934356 1229144400
+a_17 call cws6 a_16 995973460 1852405024 1597125492 1869488244 1970304117 2099264372
+a_18 call cws6 a_17 1953696315 1667855457 1819175200 543518313 1767845985 1630150767
+a_19 call cws6 a_18 1920425776 677737577 1767845985 1948917871 1769283628 842232942
+a_20 call cws6 a_19 1981838431 544940073 673212009 1849568628 1886680431 1008759925
+a_21 call cws6 a_20 1596997920 1331646281 1431327829 1094934356 1229144400 539580756
+a_22 call cws6 a_21 1866345844 1970304117 762600308 1970236990 1953853556 542976811
+a_23 call cws6 a_22 997597245 1952805408 544109173 2099264372 1635021578 543385972
+a_24 call cws6 a_23 1768713833 1629513070 1869176624 811674144 1953853535 811673715
+a_25 call cws6 a_24 544172383 539784234 1936617315 1769283700 842232942 706770015
+a_26 call cws6 a_25 1965042789 863268457 544497458 2065705326 1597006112 1953067639
+a_27 call cws6 a_26 745810021 992570912 1919903264 1769285664 842232942 1763734623
+a_28 call cws6 a_27 807419168 543760443 997072956 724265248 811671593 1769109343
+a_29 call cws6 a_28 1948804468 1533354028 992566633 1952805408 544109173 2099264372
+a_30 call cws6 a_29 1635021578 543385972 1768713833 1965057390 863268457 544497458
+a_31 call cws6 a_30 1633628257 1965581412 863268457 544497458 1965042785 863268457
+a_32 call cws6 a_31 544497458 2065705314 1952805408 544109173 539697249 2099264354
+a_33 call cws6 a_32 1635021578 543385972 1768713833 1965057390 863268457 544497458
+a_34 call cws6 a_33 1935618145 1965580917 863268457 544497458 1965042785 863268457
+a_35 call cws6 a_34 544497458 2065705314 1952805408 544109173 539828321 2099264354
+a_36 call cws6 a_35 1635021578 543385972 1768713833 1965057390 863268457 544497458
+a_37 call cws6 a_36 1834954849 1965583477 863268457 544497458 1965042785 863268457
+a_38 call cws6 a_37 544497458 2065705314 1952805408 544109173 1852405032 1597125492
+a_39 call cws6 a_38 673720692 1953393013 1952396342 706765097 992567840 1930067232
+a_40 call cws6 a_39 1769234804 1852383331 1701734764 1852405024 1597125492 811671668
+a_41 call cws6 a_40 1684955487 1852405032 1597125492 744562804 1852405024 1597125492
+a_42 call cws6 a_41 694296692 1914731296 1920300133 543236206 996286502 1930067232
+a_43 call cws6 a_42 1769234804 1852383331 1701734764 1852405024 1597125492 811671668
+a_44 call cws6 a_43 678588255 1953393013 1952395827 539779360 1953393013 1952395827
+a_45 call cws6 a_44 539583008 1701978235 1852994932 2082496800 540762656 1953696381
+a_46 call cws6 a_45 1667855457 1819175200 543518313 1953393013 1952395827 1597006112
+a_47 call cws6 a_46 678588280 1953393013 1952395827 539779360 1953393013 1952395827
+a_48 call cws6 a_47 539583008 1701978235 1852994932 1579180320 540762656 1953696381
+a_49 call cws6 a_48 1667855457 1819175200 543518313 1953393013 1952395827 1597006112
+a_50 call cws6 a_49 678193267 1953393013 1952395827 539779360 1953393013 1952395827
+a_51 call cws6 a_50 539583008 1701978235 1852994932 1008754976 1646796860 857744928
+a_52 call cws6 a_51 992572721 1930067232 1769234804 1852383331 1701734764 1852405024
+a_53 call cws6 a_52 1597125492 811671668 1919447903 1852405032 1597125492 744562804
+a_54 call cws6 a_53 1852405024 1597125492 694296692 1914731296 1920300133 543236206
+a_55 call cws6 a_54 673201726 539369570 695546163 175972411 1952543859 1763730281
+a_56 call cws6 a_55 1852402798 1868701797 1629514863 1902468912 1852405032 1597125492
+a_57 call cws6 a_56 744562804 1852405024 1597125492 694296692 1914731296 1920300133
+a_58 call cws6 a_57 543236206 1646279997 175972411 1952543859 1763730281 1852402798
+a_59 call cws6 a_58 1868701797 1629514863 1701732144 1852405032 1597125492 744562804
+a_60 call cws6 a_59 1852405024 1597125492 694296692 1914731296 1920300133 543236206
+a_61 call cws6 a_60 1646279969 175972411 1952543859 1763730281 1852402798 1868701797
+a_62 call cws6 a_61 1629514863 1953259312 1852405032 1597125492 744562804 1852405024
+a_63 call cws6 a_62 1597125492 694296692 1914731296 1920300133 543236206 996286524
+a_64 call cws6 a_63 1930067232 1769234804 1852383331 1701734764 1869570592 811671660
+a_65 call cws6 a_64 677735519 1953393013 1952395827 539779360 1953393013 1952395827
+a_66 call cws6 a_65 539583008 1701978235 1852994932 1008754976 996286525 1930067232
+a_67 call cws6 a_66 1769234804 1852383331 1701734764 1869570592 811671660 678717279
+a_68 call cws6 a_67 1953393013 1952395827 539779360 1953393013 1952395827 539583008
+a_69 call cws6 a_68 1701978235 1852994932 1042309408 540762656 1953696381 1667855457
+a_70 call cws6 a_69 1819175200 543518313 1819242338 1597006112 1965581671 863268457
+a_71 call cws6 a_70 544497458 1965042785 863268457 544497458 2065705314 1952805408
+a_72 call cws6 a_71 544109173 1027481697 540762656 1953696381 1667855457 1819175200
+a_73 call cws6 a_72 543518313 1953393013 1952395827 1597006112 678848868 1953393013
+a_74 call cws6 a_73 1952395827 539779360 1953393013 1952395827 539583008 1701978235
+a_75 call cws6 a_74 1852994932 1025532448 1966088253 807419680 1717986936 1717986918
+a_76 call cws6 a_75 975205734 790651168 540762656 1953696381 1667855457 1819175200
+a_77 call cws6 a_76 543518313 1953393013 1952395827 1597006112 678258034 1953393013
+a_78 call cws6 a_77 1952395827 539779360 1953393013 1952395827 539583008 1701978235
+a_79 call cws6 a_78 1852994932 1025532448 1966088253 1629503264 1629501984 1646273824
+a call cws6 a_79 175972411 10 0 0 0 0
 ret a
 end
-# (io types tlist fns nodes args ntys pool sym ntypes tfrom from to head): the prelude when
+# (io types tlist fns nodes args ntys pool fnm ntypes tfrom from to head): the prelude when
 # head is 1, typedefs of types [tfrom, ntypes), functions [from, to)
-fn emitc io u32x768 u32x1024 u32x1024 u32x4096 u32x8192 u32x1024 u32x512 u32x512 u32 u32 u32 u32 u32 -> io
+fn emitc io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 u32 -> io
 a fold cpre p13 p0
 nt sub p9 p10
 b fold ctd nt a p1 p2 p10
@@ -1036,61 +1273,148 @@ nf sub p12 p11
 c fold cfn nf b p4 p5 p6 p1 p2 p7 p8 p3 p11
 ret c
 end
-fn cemit io u32 u32x768 u32x1024 u32x1024 u32x4096 u32x8192 u32x1024 u32x512 u32x512 u32 u32 -> io
-r call emitc p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 3 0 p11 1
+fn cemit io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 u32 -> io
+r call emitc p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14
 ret r
 end
-# io front: read n then n source bytes; write the C bytes when lex, parse and check succeed.
-# The result is the diagnostic code (0 when the C was written).
-fn emitcio io -> u32
-r0 read p0
-n0 at r0 0
-t0 at r0 1
-big lt 512 n0
-n select big 512 n0
-z call zeros512
-s0 rec z t0
-rd fold readbyte n s0
-src at rd 0
-t1 at rd 1
-pr call parse src n
-pcode at pr 0
-pool at pr 2
-sym at pr 3
-types at pr 4
-tlist at pr 5
-fns at pr 6
-nodes at pr 7
-args at pr 8
-ntypes at pr 12
-ntlist at pr 13
-nfns at pr 14
-nnodes at pr 15
-nargs at pr 16
-ntypes3 mul ntypes 3
-nfns7 mul nfns 7
-nnodes6 mul nnodes 6
-nargs2 mul nargs 2
-z768 call zeros768
-z1024 call zeros1024
-z4096 call zeros4096
-z8192 call zeros8192
-z256 call zeros256
-types1 fold cp768 ntypes3 z768 types
-tlist1 fold cp1024 ntlist z1024 tlist
-fns1 fold cp1024 nfns7 z1024 fns
-nodes1 fold cp4096 nnodes6 z4096 nodes
-args1 fold cp8192 nargs2 z8192 args
-ck call check types1 tlist1 fns1 nodes1 args1 z256 ntypes ntlist nfns 0
+# the pool start of every symbol: word p1 of a sinfo page (length & 32767) to the start page;
+# state (start page, sum)
+fn cstw (u32x128,u32) u32 u32x128 -> (u32x128,u32)
+pg at p0 0
+sum at p0 1
+v get p2 p1
+l and v 32767
+pg2 set pg p1 sum
+s2 add sum l
+r rec pg2 s2
+ret r
+end
+fn cstpg (u32x128x64,u32) u32 u32x128x64 -> (u32x128x64,u32)
+st at p0 0
+sum at p0 1
+pg get p2 p1
+zp call zpage
+s0 rec zp sum
+s fold cstw 128 s0 pg
+npg at s 0
+ns at s 1
+st2 set st p1 npg
+r rec st2 ns
+ret r
+end
+# fnm words 2 p1 and 2 p1 + 1: the pool start and length of the name of function p1 (fns p2,
+# sinfo p3, symbol starts p4)
+fn cfnm u32x128x16 u32 u32x128x45 u32x128x64 u32x128x64 -> u32x128x16
+b mul p1 7
+sy call cfw p2 b 0
+sp shr sy 7
+sl and sy 127
+stg get p4 sp
+start get stg sl
+ing get p3 sp
+iv get ing sl
+len and iv 32767
+w mul p1 2
+wp shr w 7
+wl and w 127
+pg get p0 wp
+pg1 set pg wl start
+w1 add wl 1
+pg2 set pg1 w1 len
+r set p0 wp pg2
+ret r
+end
+# lex, parse and check the source p1 of p2 bytes (at most 16384), checking functions
+# [p4, nfns) given the iteration bounds p3 of the earlier ones (p5: a body that builds a type no
+# header names is code 5), and write their C to p0 when there is no diagnostic (the prelude and
+# every typedef when p6, otherwise no typedef). (io code fstat nfns): the diagnostic code, the
+# checker's iteration bounds and the function count.
+fn cunit io u32x128x128 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+lx call lexsrc p1 p2
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 p1 toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+nsym at s1 7
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s2 call pass2 p1 sinfo nsym
+pool at s2 0
+s3 call pass3 p1 toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4
+fns at s5 0
+nodes at s5 1
+args at s5 2
+pcode at s5 8
+# after a parse error the function count may be below p4: nothing is checked then
+cfrom call cumin p4 nhc
+ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
 types2 at ck 0
-tlist2 at ck 1
-ntypes2 at ck 4
-ntys at ck 6
+tlist2 at ck 2
+ntys at ck 4
+fstat at ck 7
+ntypes2 at ck 8
 cerr at ck 10
+ns127 add nsym 127
+nsp shr ns127 7
+z64 call z64
+st0 rec z64 0
+st fold cstpg nsp st0 sinfo
+starts at st 0
+z16 call z16
+fnm fold cfnm nhc z16 fns sinfo starts
+grew ne ntypes2 ntypes
+added and grew p5
 pok eq pcode 0
-code select pok cerr pcode
+c1 select added 5 0
+cok eq cerr 0
+c2 select cok c1 cerr
+code select pok c2 pcode
 ok eq code 0
 go select ok 1 0
-t2 fold cemit go t1 types2 tlist2 fns1 nodes1 args1 ntys pool sym ntypes2 nfns
+hw select p6 1 0
+tfrom select p6 3 ntypes2
+t fold cemit go p0 types2 tlist2 fns nodes args ntys pool fnm ntypes2 tfrom p4 nhc hw
+r rec t code fstat nhc
+ret r
+end
+# io front: read n then n source bytes (n is clamped to 16384); write the C bytes when lex,
+# parse and check succeed. The result is the diagnostic code (0 when the C was written).
+fn emitcio io -> u32
+rs call readsrc p0
+src at rs 0
+n at rs 1
+t1 at rs 2
+z8 call z8
+u call cunit t1 src n z8 0 false true
+code at u 1
 ret code
 end
