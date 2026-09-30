@@ -851,6 +851,51 @@ Step 1 of self-hosting the compiler in A0: make large arrays practical on the na
   entry); the `.a0-cache` key does not carry the platform, so a cache shared between a
   macOS and a Linux checkout would need clearing (the cache is per checkout).
 
+## Session 2026-09-30 (faster emitted JavaScript)
+
+- Starting point: the JS emitter already had the ideas on the list. Unguarded `a0i_`
+  internals called between A0 functions with guards only at exports, single-comparison
+  `(v >>> 0) !== v` scalar guards, typed arrays with in-place `set`/`put` on owned state
+  (`mutableHere`, `a0o_` owned iteration bodies), plain counted `for` loops for fold/loop,
+  `Math.imul(...) >>> 0` / `>>> 0` on every u32 result, no closures.
+- Change (a0c-0.1.10, `src/backends.ts` JS emitter only): a scalar-signature export now
+  carries its body after the guards instead of calling `a0i_`, one frame fewer at the
+  boundary. Aggregate-signature exports keep the call (their guards rebind parameters).
+  Internal calls still target `a0i_`/`a0o_`.
+- Not done, and why: cross-function inlining of small callees in the JS text would make a
+  caller's emitted text depend on its callee, which the per-function emit cache
+  (`FunctionCache.key` = version|target|opt|semanticRevision(fn)) does not key on; V8 inlines
+  these callees itself. Removing guards is out (public boundary).
+- Measured (`exec-bench --langs=`, emitted/hand-written JS median ns, 7 interleaved samples):
+
+  | kernel | before (0.1.9) | after (0.1.10) |
+  |---|---|---|
+  | affine | 0.85 | 1.07 |
+  | rotl | 1.02 | 1.01 |
+  | clamp | 1.02 | 1.05 |
+  | mix | 1.01 | 1.01 |
+  | ident | 1.09 | 1.07 |
+  | noop | 1.11 | 1.09 |
+  | chain3 | 1.01 | 1.01 |
+  | branchy | 1.04 | 1.03 |
+  | arrfill | 0.51 | 0.45 |
+  | arrfill4k | 1.03 | 1.05 |
+  | loop64 | 1.07 | 0.68 |
+
+  Load average: before 15.5/25.4/19.9, after 32.0/35.0/40.2 (other agents running; waited
+  10 min, load never held under 4). At this load the rows are noise: in a scratch run of the
+  same harness loop, two byte-identical hand-written `ident` modules differed by 1.09-1.30x,
+  and a standalone check of the guard (`(x >>> 0) !== x` vs none) put its cost within noise.
+  So the residual 1.01-1.11 gaps are not shown to be emitted-code cost, and the 0.1.10
+  change is not shown to help; it is kept because it is sound and verified. The loop64 0.68
+  and affine 0.85 values are the same noise, not wins. The JS rows of
+  `results/exec-benchmark.json` are replaced from the after run (`jsRemeasured`); arrfill4k
+  is not in that file's kernel set, so it is recorded here only.
+- Gate: lint, typecheck, test 43/43, verify (javascript 5262/5262), app (javascript 39/39),
+  equiv 48/48 proved.
+- Next: re-measure on an idle machine; the harness always runs emitted first in each sample
+  on a shared polymorphic call site, so alternating the order would remove one bias.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
