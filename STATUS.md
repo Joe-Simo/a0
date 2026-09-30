@@ -1440,6 +1440,20 @@ Set c400 (one 400-function program, structured):
 - One shot, control vs option: Haiku B conv 12/12 vs 12/12, B struct 10/12 vs 11/12, D conv 13/13 vs 12/13, D struct 12/13 vs 12/13 (47/50 both); Sonnet 50/50 both. Nested replies: Haiku 1/50 control (bounds task, the parse diagnostic) and 2/50 with the line (bounds, which then failed with a type error; isdiv, accepted); Sonnet 0/100. Primer 405/440 -> 436/471 tokens per call; one-task cache-adjusted tokens up in all 8 cells (Haiku 198->201, 195->196, 152->159, 168->176; Sonnet 198->201, 184->192, 152->155, 154->157).
 - Decision: refused (no acceptance gain on either model, cost up). Prototype removed; DESIGN.md records the numbers. COMPILER_VERSION unchanged.
 
+## Session 2026-09-30 (fold state passed again as an extra: A0's own backends)
+
+COMPILER_VERSION a0c-0.1.16 -> a0c-0.1.17. Follow-up to the C/JS fix of the same bug (commit
+1916986 on worktree-agent-ac1281cf5c7e55f6b; not merged here).
+
+- Affected: arm64, x86_64, riscv64, arm32. Their `mutableHere` skipped the updating node's own
+  operands, so a fold whose initial value was also an extra argument ran in that value's storage
+  and later trips read the mutated state (chain(5,1): 7 instead of 1). Fixed as in src/wasm.ts:
+  `mutableHere` takes the operand position and the updating node may name `o` only there.
+- Not affected: wasm (already had the position check), avr (the fold state is always a fresh copy).
+- Regression test (test/core.test.ts): the step/chain program at u32x8 and u32x1024 through
+  checkWasmDirect, checkArm64, checkX86_64, checkRiscv64, checkArm32 and (u32x8) checkAvr; fails
+  before the fix on the four affected backends at both sizes.
+
 ## Related work (studied 2026-09-29, from public repos/docs only; nothing built or reproduced)
 
 The user supplied a list of 20 repositories. The eight closest were read via their READMEs,
