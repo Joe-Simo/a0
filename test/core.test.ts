@@ -1752,60 +1752,118 @@ test('avr backend refuses io and what the ATmega328P cannot hold, with diagnosti
   const zeros = Array.from({ length: 60 }, () => '0').join(' ');
   const nodes = Array.from({ length: 5 }, (_, k) => `a${k} arr ${zeros}`).join('\n');
   refused(`fn f u32 -> u32\n${nodes}\nret p0\nend`, 'limit', /-byte frame; the limit is 1024/);
-  refused(
-    'fn m u32 u32 u32 u32 u32 -> u32\nret p0\nend',
-    'limit',
-    /more than the 18 argument registers/,
+  // Parameters past the 18 argument registers go on the stack (avr-gcc's convention).
+  assert.doesNotThrow(() =>
+    compile(parseAndValidate('fn m u32 u32 u32 u32 u32 -> u32\nret p4\nend'), 'avr'),
   );
 });
 
-test('avr backend: emitted sequences carry the exact semantics', async () => {
+test('avr backend: register allocation and peepholes keep the exact semantics', async () => {
   const { assembleAvr, emitAvrFunction } = await import('../src/avr.js');
   const fn = (src: string, name: string): TypedFunc =>
     parseAndValidate(src).byName.get(name) as TypedFunc;
-  // avr-gcc convention: p0 arrives in r22-r25, p1 in r18-r21; the u32 result leaves in r22-r25.
+  const body = (asm: string): string =>
+    asm
+      .split('\n')
+      .filter((l) => !/^\t\.|:$/.test(l))
+      .join('\n');
+  // avr-gcc convention: p0 arrives in r22-r25, p1 in r18-r21, the result leaves in r22-r25;
+  // the sum is computed where p0 arrived: no frame, no saved register, no move.
   const add = emitAvrFunction(fn('fn a u32 u32 -> u32\nb add p0 p1\nret b\nend', 'a'));
   assert.match(add, /^\t\.globl a0_a$/m);
-  assert.match(
-    add,
-    /std Y\+1, r22\n\tstd Y\+2, r23\n\tstd Y\+3, r24\n\tstd Y\+4, r25\n\tstd Y\+5, r18/,
-  );
-  assert.match(add, /add r22, r18\n\tadc r23, r19\n\tadc r24, r20\n\tadc r25, r21/);
-  assert.match(add, /pop r29\n\tpop r28\n\tret$/m);
-  // Unsigned compare over the carry chain; gt swaps the operands.
+  assert.equal(body(add), '\tadd r22, r18\n\tadc r23, r19\n\tadc r24, r20\n\tadc r25, r21\n\tret');
+  // Unsigned compare over the carry chain (gt swaps operands); the bool comes from the carry.
   const gt = emitAvrFunction(fn('fn g u32 u32 -> bool\nc gt p0 p1\nret c\nend', 'g'));
-  assert.match(
-    gt,
-    /cp r18, r22\n\tcpc r19, r23\n\tcpc r20, r24\n\tcpc r21, r25\n\tldi r26, 1\n\tbrlo/,
+  assert.equal(
+    body(gt),
+    '\tcp r18, r22\n\tcpc r19, r23\n\tcpc r20, r24\n\tcpc r21, r25\n\tmov r24, r1\n\trol r24\n\tret',
   );
-  assert.match(gt, /ldd r24, Y\+9\n\tclr r25/);
-  // A literal shift distance is masked to five bits: 33 is one bit; 9 is a byte move and a bit.
-  const shl = emitAvrFunction(fn('fn s u32 -> u32\na shl p0 33\nb shr a 9\nret b\nend', 's'));
-  assert.match(shl, /lsl r22\n\trol r23\n\trol r24\n\trol r25\n\tstd/);
-  assert.match(shl, /mov r22, r23\n\tmov r23, r24\n\tmov r24, r25\n\tclr r25\n\tlsr r25/);
-  // mul, div, rem and variable shifts are helpers, emitted once and only when referenced.
+  // A compare feeding a select is fused into its branch; a literal operand uses cpi and r1.
+  const clamp = emitAvrFunction(
+    fn('fn c u32 -> u32\nk lt p0 1000\nr select k p0 1000\nret r\nend', 'c'),
+  );
+  assert.match(
+    clamp,
+    /cpi r22, 232\n\tldi r27, 3\n\tcpc r23, r27\n\tcpc r24, r1\n\tcpc r25, r1\n\tbrlo/,
+  );
+  assert.doesNotMatch(clamp, /rol|inc/);
+  // A literal shift distance is masked to five bits: 33 is one bit; 9 is a byte move and a
+  // bit over the three live bytes, and the shifted-in byte is known zero.
+  const sh = emitAvrFunction(fn('fn s u32 -> u32\na shl p0 33\nb shr a 9\nret b\nend', 's'));
+  assert.match(sh, /lsl r22\n\trol r23\n\trol r24\n\trol r25\n\tmov r22, r23/);
+  assert.match(sh, /mov r24, r25\n\tlsr r24\n\tror r23\n\tror r22\n\tmov r25, r1\n\tret/);
+  // An `and` with a single bit tested against zero is bst/brtc on that bit.
+  const bit = emitAvrFunction(
+    fn('fn t u32 u32 -> u32\na and p0 1024\nz eq a 0\nr select z p1 p0\nret r\nend', 't'),
+  );
+  assert.match(bit, /bst r23, 2\n\tbrts/);
+  // mul uses the hardware multiplier; div/rem share one helper; a variable shift is an inline
+  // loop; a power-of-two multiplier is a shift. Helpers are emitted once, when referenced.
   const helpers = emitAvrFunction(
-    fn('fn h u32 u32 -> u32\na div p0 p1\nb rem a p1\nc mul b p0\nd shl c p1\nret d\nend', 'h'),
+    fn(
+      'fn h u32 u32 -> u32\na div p0 p1\nb rem a p1\nc mul b p0\nd shl c p1\ne mul d 8\nret e\nend',
+      'h',
+    ),
   );
   const module = assembleAvr([helpers], 'test');
-  for (const h of ['__a0_udivmod32', '__a0_mul32', '__a0_shl32'])
+  for (const h of ['__a0_udivmod32', '__a0_mul32'])
     assert.equal(module.match(new RegExp(`^${h}:$`, 'gm'))?.length, 1, h);
-  assert.doesNotMatch(module, /^__a0_shr32:$/m);
+  assert.equal(module.match(/call __a0_mul32/g)?.length, 1);
+  assert.match(module, /__a0_mul32:\n\tmul r22, r21/);
+  assert.match(helpers, /andi r26, 31\n\tbreq/);
+  assert.match(helpers, /dec r26\n\tbrne/);
   assert.match(module, /call __a0_udivmod32\n\tmovw r22, r26\n\tmovw r24, r30/);
-  // An aggregate result goes through the hidden pointer in r24:r25; mov/at are aliases.
+  // An aggregate parameter is read in place through its pointer; an aggregate result goes
+  // through the hidden pointer in r24:r25, written last.
+  const rec = emitAvrFunction(fn('fn q (u32,bool) -> u32\na at p0 0\nret a\nend', 'q'));
+  assert.equal(
+    body(rec),
+    '\tmovw r30, r24\n\tldd r22, Z+0\n\tldd r23, Z+1\n\tldd r24, Z+2\n\tldd r25, Z+3\n\tret',
+  );
   const pair = emitAvrFunction(
     fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nm mov r\nret m\nend', 'p'),
   );
-  assert.match(pair, /^\tstd Y\+1, r24\n\tstd Y\+2, r25$/m);
-  assert.match(pair, /ldd r24, Y\+1\n\tldd r25, Y\+2\n\tmovw r30, r24/);
-  // Slots past Y+63 are reached through Z.
-  const far = emitAvrFunction(
+  assert.match(pair, /cpi r20, 1\n/);
+  assert.match(pair, /movw r26, r28\n\tadiw r26, 1\n\tmovw r30, r24\n/);
+  // Stack arguments: the caller pushes the last byte first and pops after the call; the callee
+  // reads them above its saved registers and return address.
+  const stack = assembleAvr(
+    [
+      emitAvrFunction(
+        fn('fn w u32 u32 u32 u32 u32 bool -> u32\na add p4 p0\ns select p5 a p1\nret s\nend', 'w'),
+      ),
+      emitAvrFunction(
+        fn(
+          'fn w u32 u32 u32 u32 u32 bool -> u32\na add p4 p0\ns select p5 a p1\nret s\nend\nfn c u32 -> u32\nr call w p0 p0 p0 p0 p0 true\nret r\nend',
+          'c',
+        ),
+      ),
+    ],
+    'test',
+  );
+  assert.match(stack, /in r28, 0x3d\n\tin r29, 0x3e\n\tldd r2, Y\+10\n/);
+  assert.match(stack, /ldi r26, 1\n\tpush r26\n\tpush r25\n\tpush r24\n\tpush r23\n\tpush r22\n/);
+  assert.match(stack, /call a0_w\n\tpop r0\n\tpop r0\n\tpop r0\n\tpop r0\n\tpop r0\n/);
+  // Fold state and counter stay in callee-saved registers across the body calls.
+  const fold = emitAvrFunction(
     fn(
-      `fn f u32 -> u32\na arr ${Array.from({ length: 20 }, () => 'p0').join(' ')}\nv get a p0\nret v\nend`,
+      'fn st u32 u32 -> u32\na add p0 p1\nret a\nend\nfn f u32 -> u32\nr fold st p0 0\nret r\nend',
       'f',
     ),
   );
-  assert.match(far, /movw r30, r28\n\tsubi r30, \d+\n\tsbci r31, \d+\n\tld r22, Z/);
+  assert.doesNotMatch(fold, /ldd|std/);
+  assert.match(fold, /call a0_st\n\tmovw r6, r22\n\tmovw r8, r24\n\tsec\n\tadc r10, r1/);
+  // Spills past Y+63 are staged through a reload area near Y.
+  const many = Array.from({ length: 24 }, (_, k) => `v${k} mul p0 ${k + 3}`).join('\n');
+  const sum = Array.from(
+    { length: 23 },
+    (_, k) => `s${k} add ${k === 0 ? 'v0' : `s${k - 1}`} v${k + 1}`,
+  ).join('\n');
+  const far = emitAvrFunction(fn(`fn f u32 -> u32\n${many}\n${sum}\nret s22\nend`, 'f'));
+  assert.match(
+    far,
+    /movw r30, r28\n\tsubi r30, \d+\n\tsbci r31, 255\n\tldd r0, Z\+0\n\tstd Y\+\d+, r0/,
+  );
 });
 
 test('avr backend: assembled, linked with an avr-gcc driver, and run under simavr equal to the interpreter', async (t) => {
@@ -1825,10 +1883,20 @@ test('avr backend: assembled, linked with an avr-gcc driver, and run under simav
     'fn grow u32 u32 -> u32\nb mul p0 3\nc add b p1\nret c\nend',
     'fn five u32x5 u32 u32 -> u32x5\nv get p0 p1\nw xor v p2\nn set p0 p2 w\nret n\nend',
     `fn top u32 u32 bool -> u32\nk and p1 15\nz arr p0 p1 1 2 3 4 5 6\nf fold step k z p0\ng get f p1\nr call pair p0 p1\nh at r 0\ns loop keep grow p1 h\nt put r 0 s\nu at t 1\nt0 at t 0\nm call many p0 p1 g t0 u\nq ge m g\nw select q m g\nx div w p1\ny rem p0 p1\nv add x y\nb arr ${Array.from({ length: 20 }, () => 'v').join(' ')}\nb2 set b p0 x\nb3 get b2 p1\nfv arr p0 p1 3 4 5\nff fold five 7 fv p1\nf5 get ff p0\nbb arr p2 q p2 q\nbi get bb p0\no select bi b3 f5\nret o\nend`,
+    // Stack arguments both ways (C driver to A0, A0 to A0), a bool after the spill.
+    'fn wide u32 u32 u32 u32 u32 bool u32 -> u32\na add p0 p4\nb xor a p6\nc select p5 b p1\nd sub c p3\ne mul d p2\nret e\nend',
+    'fn wide_call u32 u32 bool -> u32\nx call wide p0 p1 p0 p1 p0 p2 p1\ny call wide x p0 x p1 x p2 x\nz add x y\nret z\nend',
+    // An in-place aggregate parameter on the stack, and one passed on at an offset.
+    'fn agg_last u32 u32 u32 u32 bool u32x3 -> u32\nv get p5 p1\nw add v p2\ns select p4 w p3\nret s\nend',
+    'fn pick3 u32x3 u32 -> u32\nv get p0 p1\nret v\nend',
+    'fn nest (u32,u32x3,bool) u32 -> u32\na at p0 1\nv call pick3 a p1\nb at p0 2\nc at p0 0\nd select b v c\nret d\nend',
+    'fn agg_call u32 u32 bool -> u32\na arr p0 p1 7\nr call agg_last p0 p1 p0 p1 p2 a\nf lt p0 p1\nq rec p0 a f\nv call nest q p1\ns add r v\nret s\nend',
+    // Fold state with stack-argument extras; bit tests; high bytes known zero.
+    'fn wstep u32 u32 u32 u32 u32 u32 -> u32\na add p0 p1\nb xor a p2\nc add b p3\nd sub c p4\ne add d p5\nret e\nend',
+    'fn bits u32 u32 -> u32\nf fold wstep 9 p0 p1 p0 p1 p0\na and f 128\nz eq a 0\ns select z p1 f\nb and p1 65536\ny ne b 0\nt select y s 77\nu shr t 24\nv shl u 3\nw or v p1\nret w\nend',
   ].join('\n\n');
   const p = parseAndValidate(src);
-  const top = p.byName.get('top') as TypedFunc;
-  const many = p.byName.get('many') as TypedFunc;
+  const fnOf = (name: string): TypedFunc => p.byName.get(name) as TypedFunc;
   const inputs: [number, number, boolean][] = [
     [0, 0, false],
     [1, 2, true],
@@ -1837,14 +1905,18 @@ test('avr backend: assembled, linked with an avr-gcc driver, and run under simav
     [123456, 0xfffffff0, true],
     [999, 3, false],
   ];
-  const cases = inputs.flatMap(([a, b, c]) => [
-    { functionName: 'top', args: [a, b, c], expected: run(top, [a, b, c]) },
-    {
-      functionName: 'many',
-      args: [a, b, (a ^ b) >>> 0, b, c],
-      expected: run(many, [a, b, (a ^ b) >>> 0, b, c]),
-    },
-  ]);
+  const cases = inputs.flatMap(([a, b, c]) =>
+    (
+      [
+        ['top', [a, b, c]],
+        ['many', [a, b, (a ^ b) >>> 0, b, c]],
+        ['wide', [a, b, 3, (a + 7) >>> 0, (b ^ 5) >>> 0, c, a]],
+        ['wide_call', [a, b, c]],
+        ['agg_call', [a, b, c]],
+        ['bits', [a, b]],
+      ] as [string, (number | boolean)[]][]
+    ).map(([name, args]) => ({ functionName: name, args, expected: run(fnOf(name), args) })),
+  );
   const report = await checkAvr(p, cases, avrGcc, findClang());
   assert.equal(report.status, 'passed', JSON.stringify(report.failures ?? report.detail));
   assert.equal(report.cases, cases.length);

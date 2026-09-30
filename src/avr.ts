@@ -7,41 +7,54 @@
  * Scope: functions over u32 and bool, small fixed-size arrays and records of them (value
  * semantics), every scalar op with A0's exact meaning, `call`, `fold`, and `loop`. io
  * functions are refused (`structure`), and so is anything that does not fit the part: one
- * aggregate above AGGREGATE_MAX_BYTES, a frame above FRAME_MAX_BYTES, or more argument bytes
- * than the avr-gcc registers carry (`limit`).
+ * aggregate above AGGREGATE_MAX_BYTES or a frame above FRAME_MAX_BYTES (`limit`).
  *
  * Representation: a u32 is four bytes, little-endian; a bool is one byte holding 0 or 1; an
  * array is its elements back to back and a record its fields in order, with no padding.
  *
- * Code shape: the AVR is an 8-bit machine, so every value lives in a frame slot addressed
- * from the frame pointer Y (ldd/std reach Y+63; farther slots go through Z). An operation
- * loads its operands into r22-r25 (A) and r18-r21 (B), computes, and stores the result. add,
- * sub, and, or, xor, compares, select, and constant shifts are inline byte sequences with
- * carry chains; mul (shift-and-add), div/rem (one restoring divider whose zero-divisor
- * behaviour is A0's: quotient all ones, remainder the dividend), variable shifts (count
- * masked to five bits), and block copies are helper routines emitted once per module, only
- * when referenced. Values are immutable, so `mov`, `at`, and a literal-index `get` are
- * aliases of the source slot and emit nothing; `set`/`put` copy. `call`, `fold`, and `loop`
- * call the callee out of line.
+ * Register allocation: every scalar (u32, bool, and the hidden result pointer) is a virtual
+ * register with a live interval over the node order; a linear scan gives it a home in the
+ * register file (a u32 takes an aligned group of four of r2-r25, a pointer an even pair, a
+ * bool one register) or, when none is free, a spill slot near the frame pointer Y. Values
+ * live across a call or helper routine avoid the registers it clobbers (r18-r27, r30, r31
+ * and the callee's argument registers), so they sit in the callee-saved r2-r17, which the
+ * prologue saves when used; fold and loop state and counters live there for the whole loop.
+ * Hints place a result in its dying operand's registers, parameters where they arrive, and
+ * call results where they return, so most moves disappear. r0, r26, r27 (X), r30, r31 (Z)
+ * are never homes: they are the byte temporaries and pointers of the emitted sequences.
+ *
+ * Code shape: add, sub, and, or, xor, compares, select, and shifts are inline byte
+ * sequences on the carry chain, peepholed per byte (immediate forms on r16-r31, the zero
+ * register r1 for zero bytes, identity bytes skipped, movw for aligned pairs, byte moves for
+ * multiples of eight bits, swap for nibbles, branch-free booleans, a compare fused into the
+ * select that consumes it). Variable shifts are an inline counted loop. mul uses the
+ * hardware 8x8 multiplier in one helper (ten `mul`s for the low 32 bits); div/rem share a
+ * restoring divider whose zero-divisor behaviour is A0's (quotient all ones, remainder the
+ * dividend); mul/div/rem by a power-of-two literal become shifts and masks. Aggregates live
+ * in the frame; `mov`, `at`, and a literal-index `get` of an aggregate alias the source
+ * slot; copies are inline (unrolled or a counted loop). `call`, `fold`, and `loop` call the
+ * callee out of line.
  *
  * Calling convention (avr-gcc): each parameter takes the next registers downward from r25,
  * its size rounded up to even: a u32 in four registers (lowest byte in the lowest), a bool in
  * one (the low register of its pair), an aggregate as a 16-bit pointer to a caller-owned
- * copy the callee never changes. A u32 result returns in r22-r25 and a bool in r24; an
+ * copy the callee never changes. The first parameter that does not fit above r8, and every
+ * one after it, goes on the stack in order at unpadded sizes (the caller pushes the last
+ * byte first and pops after the call). A u32 result returns in r22-r25 and a bool in r24; an
  * aggregate result is written through a hidden pointer that comes first (r24:r25), so from C
  * such a function is `void a0_f(T *out, const T *p0, ...)`. The callee copies aggregate
  * parameters into its frame on entry and writes the result last, so `out` may alias an
  * argument (fold state updates rely on this). r0 and r18-r27, r30, r31 are scratch; r1 is
- * zero on every call and return; r2-r17 and r28-r29 are preserved (argument registers below
- * r18 that this function loads for its own calls are saved in its prologue). Each function
- * and helper sits in its own `.text.<symbol>` section, so `--gc-sections` keeps only what a
- * program reaches.
+ * zero on every call and return; r2-r17 and r28-r29 are preserved. Each function and helper
+ * sits in its own `.text.<symbol>` section, so `--gc-sections` keeps only what a program
+ * reaches.
  */
 
 import {
   A0Error,
   containsIo,
   isPrimitive,
+  type Op,
   type Operand,
   type Type,
   type TypedFunc,
@@ -75,42 +88,158 @@ function bytesOf(t: Type): number {
   return t.fields.reduce((n, f) => n + bytesOf(f), 0);
 }
 
-/** avr-gcc register placement: the lowest register of each parameter (a hidden sret pointer first). */
-function argLayout(params: readonly Type[], sret: boolean, where: string): number[] {
-  let cursor = 26;
-  if (sret) cursor -= 2;
-  return params.map((t) => {
+/** Where one argument travels: its lowest register, or its byte offset among the stack arguments. */
+interface ArgSlot {
+  readonly reg?: number;
+  readonly stack?: number;
+  readonly size: number;
+}
+
+/** avr-gcc placement of `params` (a hidden result pointer in r24:r25 first when `sret`). */
+function argLayout(
+  params: readonly Type[],
+  sret: boolean,
+): { slots: ArgSlot[]; stackBytes: number } {
+  let cursor = sret ? 24 : 26;
+  let stack = 0;
+  let spilled = false;
+  const slots = params.map((t): ArgSlot => {
     const size = isPrimitive(t) ? bytesOf(t) : 2;
-    cursor -= (size + 1) & ~1;
-    if (cursor < 8)
-      refuse(
-        `${where}: parameters need more than the 18 argument registers (r8-r25); stack arguments are not supported`,
-        'limit',
-      );
-    return cursor;
+    const next = cursor - ((size + 1) & ~1);
+    if (!spilled && next >= 8) {
+      cursor = next;
+      return { reg: next, size };
+    }
+    spilled = true;
+    stack += size;
+    return { stack: stack - size, size };
   });
+  return { slots, stackBytes: stack };
+}
+
+/** Registers an out-of-line call writes that the callee need not preserve for its caller. */
+const SCRATCH: readonly number[] = [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 31];
+
+/** Argument registers of `callee` (including a hidden result pointer). */
+function argRegisters(callee: TypedFunc): number[] {
+  const sret = !isPrimitive(callee.result);
+  const regs = sret ? [24, 25] : [];
+  for (const s of argLayout(callee.params, sret).slots)
+    if (s.reg !== undefined) for (let k = 0; k < s.size; k += 1) regs.push(s.reg + k);
+  return regs;
 }
 
 const A = [22, 23, 24, 25];
 const B = [18, 19, 20, 21];
-const REM = [26, 27, 30, 31];
+const T = [26, 27, 30, 31];
 
-type Val =
-  | { readonly kind: 'lit'; readonly value: number; readonly type: 'u32' | 'bool' }
-  | { readonly kind: 'key'; readonly key: string; readonly type: Type };
-
+const byteOf = (n: number, k: number): number => (n >>> (8 * k)) & 0xff;
 const lo = (n: number): number => n & 0xff;
 const hi = (n: number): number => (n >> 8) & 0xff;
 const neg16 = (n: number): number => -n & 0xffff;
+const isPow2 = (n: number): boolean => n > 0 && (n & (n - 1)) === 0;
+const log2 = (n: number): number => 31 - Math.clz32(n);
+
+/** Allocation order per size: caller-saved first (no prologue cost), then callee-saved. */
+const STARTS: Readonly<Record<1 | 2 | 4, readonly number[]>> = {
+  4: [22, 18, 2, 6, 10, 14],
+  2: [24, 22, 20, 18, 2, 4, 6, 8, 10, 12, 14, 16],
+  1: [24, 25, 22, 23, 18, 19, 20, 21, 16, 17, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+};
+
+type Home =
+  | { readonly kind: 'reg'; readonly r: number }
+  | { readonly kind: 'slot'; readonly off: number };
+
+interface VReg {
+  readonly name: string;
+  size: 1 | 2 | 4;
+  /** A u32 value (its home may hold fewer bytes when the high ones are known zero). */
+  readonly wide: boolean;
+  readonly def: number;
+  end: number;
+  used: boolean;
+  home?: Home;
+  readonly forbid: Set<number>;
+  /** Preferred lowest registers, or values whose home to share. */
+  readonly hints: (number | VReg)[];
+  /** The register a parameter arrives in. */
+  arrival?: number;
+  /** Bytes known to be zero (bit k for byte k): never read from the home, never necessarily written. */
+  zero: number;
+}
+
+type Scalar = 'u32' | 'bool';
+
+type Val =
+  | { readonly kind: 'lit'; readonly value: number; readonly type: Scalar }
+  | { readonly kind: 'v'; readonly v: VReg; readonly type: Scalar }
+  | {
+      readonly kind: 'agg';
+      readonly rel: number;
+      readonly type: Type;
+      /** A parameter aggregate read in place through this pointer (rel from it); else in the frame. */
+      readonly base?: VReg;
+    }
+  | {
+      readonly kind: 'cmp';
+      readonly op: Op;
+      readonly a: Val;
+      readonly b: Val;
+      /** Set when the condition is the T flag (a bit test stored by `bst`): its branch condition. */
+      readonly t?: 'ts' | 'tc';
+    };
+
+type BSrc =
+  | { readonly k: 'r'; readonly r: number }
+  | { readonly k: 'lit'; readonly b: number }
+  | { readonly k: 'slot'; readonly off: number };
+type BDst = { readonly k: 'r'; readonly r: number } | { readonly k: 'slot'; readonly off: number };
+interface Move {
+  readonly d: BDst;
+  readonly s: BSrc;
+}
+
+/** One node after planning: its effective op (power-of-two mul/div/rem lowered) and operands. */
+interface Planned {
+  readonly id: string;
+  readonly op: Op;
+  readonly vals: readonly Val[];
+  readonly type: Type;
+  readonly callee: string | undefined;
+  readonly pred: string | undefined;
+  readonly fused: boolean;
+  /** An `and` with a power of two whose only use is a fused test: `bst` of that bit. */
+  readonly bit?: { readonly x: Val; readonly bit: number };
+}
+
+const COMPARES = new Set<Op>(['eq', 'ne', 'lt', 'le', 'gt', 'ge']);
+const INVERSE: Readonly<Record<string, string>> = {
+  lo: 'sh',
+  sh: 'lo',
+  eq: 'ne',
+  ne: 'eq',
+  ts: 'tc',
+  tc: 'ts',
+};
 
 class AvrEmitter {
-  readonly out: string[] = [];
-  readonly #slots = new Map<string, number>();
-  #size = 0;
-  #labels = 0;
+  out: string[] = [];
+  readonly #vals = new Map<string, Val>();
+  readonly #vregs: VReg[] = [];
+  readonly #planned: Planned[] = [];
+  readonly #state = new Map<string, VReg>();
+  readonly #counters = new Map<string, VReg>();
+  readonly #bitCandidates = new Map<VReg, { id: string; index: number; x: Val; bit: number }>();
   readonly #saved = new Set<number>();
+  #aggSize = 0;
+  #spillSize = 0;
+  #labels = 0;
+  #sretV: VReg | undefined;
+  #retVal: Val | undefined;
   frameBytes = 0;
   pushes = 0;
+  outgoing = 0;
 
   constructor(readonly fn: TypedFunc) {}
 
@@ -123,15 +252,38 @@ class AvrEmitter {
     return `.La0_${this.fn.name}_${this.#labels}`;
   }
 
-  #alloc(key: string, bytes: number): number {
-    const off = this.#size + 1;
-    this.#size += bytes;
-    this.#slots.set(key, off);
-    return off;
+  /** Run `f` with a fresh output buffer and return what it emitted. */
+  #capture(f: () => void): string[] {
+    const saved = this.out;
+    this.out = [];
+    f();
+    const got = this.out;
+    this.out = saved;
+    return got;
   }
 
-  #slot(key: string): number {
-    return this.#slots.get(key) ?? refuse(`no slot for ${key}`);
+  // --- planning -------------------------------------------------------------------------
+
+  #newV(name: string, size: 1 | 2 | 4, def: number, hints: (number | VReg)[] = []): VReg {
+    const v: VReg = {
+      name,
+      size,
+      wide: size === 4,
+      def,
+      end: def,
+      used: false,
+      forbid: new Set(),
+      hints,
+      zero: 0,
+    };
+    this.#vregs.push(v);
+    return v;
+  }
+
+  #aggAlloc(bytes: number): number {
+    const rel = this.#aggSize;
+    this.#aggSize += bytes;
+    return rel;
   }
 
   #resolve(o: Operand): Val {
@@ -141,410 +293,1278 @@ class AvrEmitter {
       case 'bool':
         return { kind: 'lit', value: o.value ? 1 : 0, type: 'bool' };
       case 'param':
-        return {
-          kind: 'key',
-          key: `p${o.index}`,
-          type: this.fn.params[o.index] ?? refuse(`unknown parameter p${o.index}`),
-        };
+        return this.#vals.get(`p${o.index}`) ?? refuse(`unknown parameter p${o.index}`);
       case 'node':
-        return {
-          kind: 'key',
-          key: `n_${o.id}`,
-          type: this.fn.types.get(o.id) ?? refuse(`unknown node ${o.id}`),
-        };
+        return this.#vals.get(`n_${o.id}`) ?? refuse(`unknown node ${o.id}`);
     }
   }
 
-  // --- memory ---------------------------------------------------------------------------
-
-  /** Address `n` bytes at frame offset `off`: Y+off when ldd/std reach, else Z = Y+off. */
-  #mem(off: number, n: number): (k: number) => string {
-    if (off + n - 1 <= 63) return (k) => `Y+${off + k}`;
-    this.#pointer(30, off);
-    return (k) => (k === 0 ? 'Z' : `Z+${k}`);
+  /** Bytes of scalar `v` known to be zero. */
+  #zeroOf(v: Val): number {
+    if (v.kind === 'v') return v.v.zero;
+    if (v.kind !== 'lit') return 0;
+    let m = 0;
+    for (let k = 0; k < bytesOf(v.type); k += 1) if (byteOf(v.value, k) === 0) m |= 1 << k;
+    return m;
   }
 
-  /** r(pair):r(pair+1) = Y + off, for pair 26 (X) or 30 (Z). */
-  #pointer(pair: 26 | 30, off: number): void {
-    this.#emit(`movw r${pair}, r28`);
-    if (off !== 0)
-      this.#emit(`subi r${pair}, ${lo(neg16(off))}`, `sbci r${pair + 1}, ${hi(neg16(off))}`);
+  #use(val: Val, pos: number): void {
+    const v = val.kind === 'v' ? val.v : val.kind === 'agg' ? val.base : undefined;
+    if (v !== undefined) {
+      v.end = Math.max(v.end, pos);
+      v.used = true;
+    } else if (val.kind === 'cmp') refuse('a fused compare has one consumer');
   }
 
-  #load(regs: readonly number[], off: number): void {
-    const m = this.#mem(off, regs.length);
-    regs.forEach((r, k) => {
-      const at = m(k);
-      this.#emit(at === 'Z' ? `ld r${r}, Z` : `ldd r${r}, ${at}`);
+  /** The register value `val` depends on: its own, or the pointer of an in-place aggregate. */
+  #regOf(val: Val | undefined): VReg[] {
+    if (val?.kind === 'v') return [val.v];
+    if (val?.kind === 'agg' && val.base !== undefined) return [val.base];
+    return [];
+  }
+
+  #plan(): void {
+    const fn = this.fn;
+    const nodes = fn.nodes;
+    const at = (i: number): number => 2 * i + 2;
+    const RET = 2 * nodes.length + 2;
+    const sret = !isPrimitive(fn.result);
+    const layout = argLayout(fn.params, sret);
+    if (sret) {
+      this.#sretV = this.#newV('sret', 2, 0, [24]);
+      this.#sretV.arrival = 24;
+    }
+    // Aggregate parameters are read in place through their pointers (values are immutable,
+    // and the result is written last), so nothing is copied on entry.
+    fn.params.forEach((t, i) => {
+      const reg = layout.slots[i]?.reg;
+      const size = isPrimitive(t) ? (bytesOf(t) as 1 | 4) : 2;
+      const v = this.#newV(`p${i}`, size, 0, reg === undefined ? [] : [reg]);
+      if (reg !== undefined) v.arrival = reg;
+      if (isPrimitive(t)) this.#vals.set(`p${i}`, { kind: 'v', v, type: t as Scalar });
+      else this.#vals.set(`p${i}`, { kind: 'agg', rel: 0, type: t, base: v });
     });
-  }
-
-  #store(regs: readonly number[], off: number): void {
-    const m = this.#mem(off, regs.length);
-    regs.forEach((r, k) => {
-      const at = m(k);
-      this.#emit(at === 'Z' ? `st Z, r${r}` : `std ${at}, r${r}`);
+    // A compare whose only consumer is the next node's select condition is fused into it.
+    const refs = new Map<string, number>();
+    const count = (o: Operand): void => {
+      if (o.kind === 'node') refs.set(o.id, (refs.get(o.id) ?? 0) + 1);
+    };
+    for (const n of nodes) for (const o of n.args) count(o);
+    count(fn.ret);
+    const clobbers: { pos: number; set: readonly number[]; through: VReg[] }[] = [];
+    nodes.forEach((n, i) => {
+      const t = fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
+      if (!isPrimitive(t) && bytesOf(t) > AVR_AGGREGATE_MAX_BYTES)
+        refuse(
+          `node ${n.id} is a ${bytesOf(t)}-byte aggregate; the limit is ${AVR_AGGREGATE_MAX_BYTES} bytes of the ATmega328P's 2 KiB SRAM`,
+          'limit',
+        );
+      const key = `n_${n.id}`;
+      const pos = at(i);
+      let op = n.op;
+      let vals = n.args.map((o) => this.#resolve(o));
+      // Power-of-two literals: mul becomes shl, div shr, rem and.
+      const [x, y] = vals as [Val, Val];
+      if (op === 'mul' && x.kind === 'lit' && isPow2(x.value)) vals = [y, x];
+      const [a0, b0] = vals as [Val, Val];
+      if ((op === 'mul' || op === 'div' || op === 'rem') && b0.kind === 'lit' && isPow2(b0.value)) {
+        vals =
+          op === 'rem'
+            ? [a0, { kind: 'lit', value: b0.value - 1, type: 'u32' }]
+            : [a0, { kind: 'lit', value: log2(b0.value), type: 'u32' }];
+        op = op === 'mul' ? 'shl' : op === 'div' ? 'shr' : 'and';
+      }
+      const [a, b] = vals as [Val, Val];
+      const next = nodes[i + 1];
+      const fused =
+        COMPARES.has(op) &&
+        refs.get(n.id) === 1 &&
+        next !== undefined &&
+        next.op === 'select' &&
+        next.args[0]?.kind === 'node' &&
+        next.args[0].id === n.id &&
+        isPrimitive(fn.types.get(next.id) ?? 'io') &&
+        fn.types.get(next.id) !== 'io';
+      this.#planned.push({ id: n.id, op, vals, type: t, callee: n.callee, pred: n.pred, fused });
+      const scalar = (hints: (number | VReg)[] = [], def = pos): VReg => {
+        const v = this.#newV(key, bytesOf(t) as 1 | 4, def, hints);
+        this.#vals.set(key, { kind: 'v', v, type: t as Scalar });
+        return v;
+      };
+      const fresh = (): void => {
+        if (isPrimitive(t)) scalar();
+        else this.#vals.set(key, { kind: 'agg', rel: this.#aggAlloc(bytesOf(t)), type: t });
+      };
+      const vOf = (v: Val | undefined): VReg[] => (v?.kind === 'v' ? [v.v] : []);
+      const useAll = (): void => {
+        for (const v of vals) this.#use(v, pos);
+      };
+      switch (op) {
+        case 'mov':
+          this.#vals.set(key, a);
+          return;
+        case 'eq':
+        case 'ne':
+        case 'lt':
+        case 'le':
+        case 'gt':
+        case 'ge':
+          if (fused) {
+            // `and x 2^k` compared with zero, used only here: a bit test through the T flag.
+            const [p, q] = a.kind === 'lit' ? [b, a] : [a, b];
+            const cand = p.kind === 'v' ? this.#bitCandidates.get(p.v) : undefined;
+            if (
+              (op === 'eq' || op === 'ne') &&
+              q.kind === 'lit' &&
+              q.value === 0 &&
+              cand !== undefined &&
+              refs.get(cand.id) === 1 &&
+              n.args.some((o) => o.kind === 'node' && o.id === cand.id) &&
+              this.#planned.slice(cand.index + 1).every((m) => m.bit === undefined)
+            ) {
+              const and = this.#planned[cand.index] as Planned;
+              this.#planned[cand.index] = { ...and, bit: { x: cand.x, bit: cand.bit } };
+              this.#vals.set(key, { kind: 'cmp', op, a, b, t: op === 'eq' ? 'tc' : 'ts' });
+              return;
+            }
+            this.#vals.set(key, { kind: 'cmp', op, a, b });
+            this.#use(a, at(i + 1));
+            this.#use(b, at(i + 1));
+            return;
+          }
+          scalar();
+          useAll();
+          return;
+        case 'add':
+        case 'and':
+        case 'or':
+        case 'xor': {
+          const v = scalar([...vOf(a), ...vOf(b)]);
+          const za = this.#zeroOf(a);
+          const zb = this.#zeroOf(b);
+          v.zero = op === 'and' ? za | zb : op === 'add' ? 0 : za & zb;
+          const [m, x] = a.kind === 'lit' ? [a, b] : [b, a];
+          if (op === 'and' && m.kind === 'lit' && isPow2(m.value) && x.kind === 'v')
+            this.#bitCandidates.set(v, {
+              id: n.id,
+              index: this.#planned.length - 1,
+              x,
+              bit: log2(m.value),
+            });
+          useAll();
+          return;
+        }
+        case 'sub':
+        case 'shl':
+        case 'shr': {
+          const v = scalar(vOf(a));
+          if (op !== 'sub' && b.kind === 'lit') {
+            const bytes = (b.value & 31) >> 3;
+            v.zero = op === 'shl' ? (1 << bytes) - 1 : (0xf0 >> bytes) & 0xf;
+          }
+          useAll();
+          return;
+        }
+        case 'mul':
+        case 'div':
+        case 'rem':
+          scalar([22]);
+          useAll();
+          clobbers.push({ pos, set: SCRATCH, through: [] });
+          return;
+        case 'select': {
+          const [, sx, sy] = vals as [Val, Val, Val];
+          if (isPrimitive(t))
+            scalar([...vOf(sx), ...vOf(sy)]).zero = this.#zeroOf(sx) & this.#zeroOf(sy);
+          else fresh();
+          if (a.kind !== 'cmp') this.#use(a, pos);
+          this.#use(sx, pos);
+          this.#use(sy, pos);
+          return;
+        }
+        case 'arr':
+        case 'rec':
+          fresh();
+          useAll();
+          return;
+        case 'get':
+        case 'at': {
+          if (a.kind !== 'agg') refuse(`${op} needs an aggregate`);
+          const at0 = a.type;
+          if (isPrimitive(at0)) refuse(`${op} needs an aggregate`);
+          if (b.kind === 'lit') {
+            const off =
+              at0.kind === 'arr'
+                ? (b.value % at0.length) * bytesOf(at0.elem)
+                : at0.fields.slice(0, b.value).reduce((s, f) => s + bytesOf(f), 0);
+            if (!isPrimitive(t)) this.#vals.set(key, { ...a, rel: a.rel + off, type: t });
+            else {
+              scalar();
+              this.#use(a, pos);
+            }
+            return;
+          }
+          if (op === 'at' || at0.kind !== 'arr') refuse('at needs a literal field');
+          fresh();
+          this.#use(a, pos);
+          this.#use(b, pos);
+          if (!isPow2(at0.length)) clobbers.push({ pos, set: SCRATCH, through: this.#regOf(a) });
+          return;
+        }
+        case 'set':
+        case 'put': {
+          if (a.kind !== 'agg' || isPrimitive(a.type)) refuse(`${op} needs an aggregate`);
+          fresh();
+          useAll();
+          if (op === 'set' && a.type.kind === 'arr' && b.kind !== 'lit' && !isPow2(a.type.length))
+            clobbers.push({ pos, set: SCRATCH, through: this.#regOf(vals[2]) });
+          return;
+        }
+        case 'call': {
+          const callee = fn.calls.get(n.callee as string) ?? refuse(`unknown callee ${n.callee}`);
+          if (isPrimitive(t)) scalar([t === 'bool' ? 24 : 22]);
+          else fresh();
+          const cl = argLayout(callee.params, !isPrimitive(callee.result));
+          vals.forEach((v, k) => {
+            const r = cl.slots[k]?.reg;
+            if (r !== undefined) for (const u of this.#regOf(v)) u.hints.push(r);
+          });
+          useAll();
+          const regs = argRegisters(callee);
+          for (const r of regs) if (r < 18) this.#saved.add(r);
+          clobbers.push({ pos, set: [...SCRATCH, ...regs.filter((r) => r < 18)], through: [] });
+          return;
+        }
+        case 'fold':
+        case 'loop': {
+          const body = fn.calls.get(n.callee as string) ?? refuse(`unknown callee ${n.callee}`);
+          const pred = n.pred === undefined ? undefined : fn.calls.get(n.pred);
+          const through: VReg[] = [];
+          if (isPrimitive(t)) {
+            const s = scalar([], pos - 1);
+            this.#state.set(n.id, s);
+            through.push(s);
+          } else fresh();
+          const counter = this.#newV(`i_${n.id}`, 4, pos - 1);
+          counter.end = pos;
+          counter.used = true;
+          this.#counters.set(n.id, counter);
+          through.push(counter);
+          useAll();
+          const [, , ...extras] = vals;
+          through.push(...this.#regOf(vals[0]), ...extras.flatMap((e) => this.#regOf(e)));
+          const regs = [...argRegisters(body), ...(pred === undefined ? [] : argRegisters(pred))];
+          for (const r of regs) if (r < 18) this.#saved.add(r);
+          clobbers.push({ pos, set: [...SCRATCH, ...regs.filter((r) => r < 18)], through });
+          return;
+        }
+        case 'read':
+        case 'write':
+        case 'puts':
+          refuse(`${op} is an io operation`);
+      }
     });
+    const ret = this.#resolve(fn.ret);
+    this.#retVal = ret;
+    this.#use(ret, RET);
+    if (ret.kind === 'v') ret.v.hints.unshift(fn.result === 'bool' ? 24 : 22);
+    if (this.#sretV !== undefined) {
+      this.#sretV.end = RET;
+      this.#sretV.used = true;
+    }
+    for (const v of this.#vregs) v.end = Math.max(v.end, v.def + 1);
+    for (const c of clobbers) {
+      for (const v of this.#vregs)
+        if (v.def < c.pos && c.pos < v.end) for (const r of c.set) v.forbid.add(r);
+      for (const v of c.through) for (const r of c.set) v.forbid.add(r);
+    }
   }
 
-  /** One byte constant into any register (ldi reaches r16-r31 only). */
-  #imm(reg: number, byte: number): void {
-    if (reg >= 16) this.#emit(`ldi r${reg}, ${byte}`);
-    else if (byte === 0) this.#emit(`mov r${reg}, r1`);
-    else this.#emit(`ldi r30, ${byte}`, `mov r${reg}, r30`);
+  /** Linear scan in definition order: a hinted, then a free register group, else a spill slot. */
+  #allocate(): void {
+    // A u32 whose high bytes are known zero keeps only its low bytes in registers.
+    for (const v of this.#vregs) {
+      if (!v.wide) continue;
+      let live = 0;
+      for (let k = 0; k < 4; k += 1) if (!((v.zero >> k) & 1)) live = k + 1;
+      v.size = live <= 1 ? 1 : live === 2 ? 2 : 4;
+    }
+    const order = [...this.#vregs].sort((x, y) => x.def - y.def);
+    const done: VReg[] = [];
+    for (const v of order) {
+      const busy = new Set<number>();
+      const slots: { off: number; size: number; exact?: boolean }[] = [];
+      for (const u of done) {
+        if (!(u.def < v.end && v.def < u.end) || u.home === undefined) continue;
+        if (u.home.kind === 'reg') for (let k = 0; k < u.size; k += 1) busy.add(u.home.r + k);
+        else slots.push({ off: u.home.off, size: u.size });
+      }
+      const starts = STARTS[v.size];
+      // Operands dying where v is defined may share its registers only exactly (u32 byte
+      // sequences read operand byte k after writing result byte j < k).
+      const dying = done.filter(
+        (u) => u.end === v.def && u.wide && v.wide && u.home?.kind === 'reg',
+      );
+      const fits = (r: number): boolean => {
+        if (v.size === 4 ? r % 2 !== 0 || r < 2 || r > 22 : !starts.includes(r)) return false;
+        for (let k = 0; k < v.size; k += 1)
+          if (busy.has(r + k) || v.forbid.has(r + k)) return false;
+        for (const u of dying) {
+          const ur = (u.home as { r: number }).r;
+          if (r !== ur && r < ur + u.size && ur < r + v.size) return false;
+        }
+        return true;
+      };
+      const hinted = v.hints.map((h) =>
+        typeof h === 'number' ? h : h.home?.kind === 'reg' ? h.home.r : -1,
+      );
+      // Registers that cost nothing: caller-saved, already saved, or where a parameter arrived.
+      const cheap = (r: number): boolean =>
+        r === v.arrival ||
+        Array.from({ length: v.size }, (_, k) => r + k).every((q) => q >= 18 || this.#saved.has(q));
+      const r = [...hinted.filter(cheap), ...starts.filter(cheap), ...hinted, ...starts].find(fits);
+      if (r !== undefined) v.home = { kind: 'reg', r };
+      else {
+        // Slots of operands dying here are shared only exactly, as registers are.
+        for (const u of done)
+          if (u.end === v.def && u.home?.kind === 'slot')
+            slots.push({ off: u.home.off, size: u.size, exact: true });
+        let off = 1;
+        for (;;) {
+          const clash = slots.find(
+            (s) => off < s.off + s.size && s.off < off + v.size && !(s.exact && s.off === off),
+          );
+          if (clash === undefined) break;
+          off = clash.off + clash.size;
+        }
+        this.#spillSize = Math.max(this.#spillSize, off + v.size - 1);
+        v.home = { kind: 'slot', off };
+      }
+      done.push(v);
+      // A callee-saved register is saved only when written: a parameter left where it arrived is not.
+      if (v.home.kind === 'reg' && v.home.r !== v.arrival)
+        for (let k = 0; k < v.size; k += 1) if (v.home.r + k < 18) this.#saved.add(v.home.r + k);
+    }
+    // Spills past Y+63: a reload area at Y+1 stages a node's far operands and result, so
+    // every operation addresses its scalars from Y.
+    if (this.#spillSize > 63) {
+      let area = 0;
+      for (const n of this.#planned)
+        area = Math.max(
+          area,
+          this.#touched(n).reduce((s, v) => s + v.size, 0),
+        );
+      for (const v of this.#vregs)
+        if (v.home?.kind === 'slot') v.home = { kind: 'slot', off: v.home.off + area };
+      this.#spillSize += area;
+    }
   }
 
-  /** Scalar `v` into `regs` (one register for bool, four for u32). */
-  #read(v: Val, regs: readonly number[]): void {
-    if (v.kind === 'lit') {
-      regs.forEach((r, k) => {
-        this.#imm(r, (v.value >>> (8 * k)) & 0xff);
-      });
+  /** Scalar registers node `n` reads or writes (operands, result, loop counter). */
+  #touched(n: Planned): VReg[] {
+    const seen = new Set<VReg>();
+    const add = (x: Val | undefined): void => {
+      if (x?.kind === 'v') seen.add(x.v);
+      else if (x?.kind === 'agg' && x.base !== undefined) seen.add(x.base);
+      else if (x?.kind === 'cmp') {
+        add(x.a);
+        add(x.b);
+      }
+    };
+    for (const x of n.vals) add(x);
+    if (n.op !== 'mov') add(this.#vals.get(`n_${n.id}`));
+    const c = this.#counters.get(n.id);
+    if (c !== undefined) seen.add(c);
+    return [...seen];
+  }
+
+  #far(v: VReg): boolean {
+    return v.home?.kind === 'slot' && v.home.off + v.size - 1 > 63;
+  }
+
+  /** Emit node `n`, staging far-slot operands into the reload area and far results back out. */
+  #nodeStaged(n: Planned): void {
+    const far = this.#touched(n).filter((v) => this.#far(v));
+    if (n.fused || far.length === 0) {
+      this.#node(n);
       return;
     }
-    this.#load(regs, this.#slot(v.key));
+    const map = new Map<VReg, VReg>();
+    let next = 1;
+    for (const v of far) {
+      map.set(v, { ...v, home: { kind: 'slot', off: next }, forbid: new Set(), hints: [] });
+      next += v.size;
+    }
+    const sub = (x: Val): Val => {
+      if (x.kind === 'v') return { ...x, v: map.get(x.v) ?? x.v };
+      if (x.kind === 'agg' && x.base !== undefined)
+        return { ...x, base: map.get(x.base) ?? x.base };
+      if (x.kind === 'cmp') return { ...x, a: sub(x.a), b: sub(x.b) };
+      return x;
+    };
+    const key = `n_${n.id}`;
+    const self = this.#vals.get(key);
+    const result = self?.kind === 'v' && n.op !== 'mov' ? self.v : undefined;
+    const counter = this.#counters.get(n.id);
+    const state = this.#state.get(n.id);
+    const copy = (v: VReg, out: boolean): void => {
+      const far0 = (this.#home(v) as { off: number }).off;
+      const near = (this.#home(map.get(v) as VReg) as { off: number }).off;
+      this.#pointer(30, far0);
+      for (let k = 0; k < v.size; k += 1)
+        this.#emit(
+          ...(out
+            ? [`ldd r0, Y+${near + k}`, `std Z+${k}, r0`]
+            : [`ldd r0, Z+${k}`, `std Y+${near + k}, r0`]),
+        );
+    };
+    for (const v of far) if (v !== result && v !== counter) copy(v, false);
+    const swap = <K, V>(m: Map<K, V>, k: K, v: V | undefined): void => {
+      if (v !== undefined) m.set(k, v);
+    };
+    if (self !== undefined && self.kind !== 'agg') swap(this.#vals, key, sub(self));
+    if (state !== undefined) swap(this.#state, n.id, map.get(state));
+    if (counter !== undefined) swap(this.#counters, n.id, map.get(counter));
+    const bit = n.bit === undefined ? undefined : { ...n.bit, x: sub(n.bit.x) };
+    this.#node({ ...n, vals: n.vals.map(sub), ...(bit === undefined ? {} : { bit }) });
+    if (self !== undefined) this.#vals.set(key, self);
+    if (state !== undefined) this.#state.set(n.id, state);
+    if (counter !== undefined) this.#counters.set(n.id, counter);
+    if (result !== undefined && map.has(result)) copy(result, true);
+  }
+
+  // --- values and moves -----------------------------------------------------------------
+
+  #home(v: VReg): Home {
+    return v.home ?? refuse(`no home for ${v.name}`);
+  }
+
+  #abs(rel: number): number {
+    return 1 + this.#spillSize + rel;
+  }
+
+  #scalar(v: Val): Exclude<Val, { kind: 'agg' } | { kind: 'cmp' }> {
+    if (v.kind === 'agg' || v.kind === 'cmp') refuse('expected a scalar');
+    return v;
+  }
+
+  /** A register name holding byte `k` of scalar `v`, loading into `tmp` (r16-r31) if needed; flags are kept. */
+  #byte(v0: Val, k: number, tmp: number): string {
+    const v = this.#scalar(v0);
+    if (v.kind === 'lit') {
+      const b = byteOf(v.value, k);
+      if (b === 0) return 'r1';
+      this.#emit(`ldi r${tmp}, ${b}`);
+      return `r${tmp}`;
+    }
+    if ((v.v.zero >> k) & 1) return 'r1';
+    const h = this.#home(v.v);
+    if (h.kind === 'reg') return `r${h.r + k}`;
+    this.#emit(`ldd r${tmp}, Y+${h.off + k}`);
+    return `r${tmp}`;
+  }
+
+  #src(v0: Val, k: number): BSrc {
+    const v = this.#scalar(v0);
+    if (v.kind === 'lit') return { k: 'lit', b: byteOf(v.value, k) };
+    if ((v.v.zero >> k) & 1) return { k: 'lit', b: 0 };
+    const h = this.#home(v.v);
+    return h.kind === 'reg' ? { k: 'r', r: h.r + k } : { k: 'slot', off: h.off + k };
+  }
+
+  #dst(h: Home, k: number): BDst {
+    return h.kind === 'reg' ? { k: 'r', r: h.r + k } : { k: 'slot', off: h.off + k };
+  }
+
+  #sameHome(h: Home, v: Val): boolean {
+    if (v.kind !== 'v') return false;
+    const g = this.#home(v.v);
+    return (
+      g.kind === h.kind &&
+      (h.kind === 'reg' ? g.kind === 'reg' && g.r === h.r : g.kind === 'slot' && g.off === h.off)
+    );
+  }
+
+  /** Moves done as if at once: register cycles break through r0; only mov/movw/ldi/ldd/std, so flags survive. */
+  #parallel(moves: readonly Move[], litTmp = 26): void {
+    // A slot past Y+63 goes through Z (only outside operations: entry, return, calls).
+    let zbase: number | undefined;
+    const ref = (off: number): string => {
+      if (off <= 63) return `Y+${off}`;
+      if (zbase === undefined || off < zbase || off - zbase > 63) {
+        this.#pointer(30, off);
+        zbase = off;
+      }
+      return `Z+${off - zbase}`;
+    };
+    const pend: { d: BDst; s: number }[] = [];
+    const rest: Move[] = [];
+    for (const m of moves) {
+      if (m.s.k !== 'r') rest.push(m);
+      else if (!(m.d.k === 'r' && m.d.r === m.s.r)) pend.push({ d: m.d, s: m.s.r });
+    }
+    const readBy = (r: number, except: object): boolean =>
+      pend.some((p) => p !== except && p.s === r);
+    while (pend.length > 0) {
+      const p = pend.find((q) => q.d.k === 'slot' || !readBy(q.d.r, q));
+      if (p === undefined) {
+        const first = pend[0] as { d: BDst; s: number };
+        const r = (first.d as { r: number }).r;
+        this.#emit(`mov r0, r${r}`);
+        for (const q of pend) if (q.s === r) q.s = 0;
+        continue;
+      }
+      pend.splice(pend.indexOf(p), 1);
+      if (p.d.k === 'slot') {
+        this.#emit(`std ${ref(p.d.off)}, r${p.s}`);
+        continue;
+      }
+      const d = p.d.r;
+      if (d % 2 === 0 && p.s % 2 === 0) {
+        const q = pend.find((m) => m.d.k === 'r' && m.d.r === d + 1 && m.s === p.s + 1);
+        if (q !== undefined && !readBy(d + 1, q)) {
+          pend.splice(pend.indexOf(q), 1);
+          this.#emit(`movw r${d}, r${p.s}`);
+          continue;
+        }
+      }
+      this.#emit(`mov r${d}, r${p.s}`);
+    }
+    let cached: number | undefined;
+    const lit = (b: number): string => {
+      if (b === 0) return 'r1';
+      if (cached !== b) this.#emit(`ldi r${litTmp}, ${b}`);
+      cached = b;
+      return `r${litTmp}`;
+    };
+    for (const m of rest) {
+      if (m.s.k === 'lit') {
+        if (m.d.k === 'r' && m.d.r >= 16 && m.s.b !== 0) this.#emit(`ldi r${m.d.r}, ${m.s.b}`);
+        else if (m.d.k === 'r') this.#emit(`mov r${m.d.r}, ${lit(m.s.b)}`);
+        else this.#emit(`std ${ref(m.d.off)}, ${lit(m.s.b)}`);
+      } else if (m.s.k === 'slot') {
+        if (m.d.k === 'r') this.#emit(`ldd r${m.d.r}, ${ref(m.s.off)}`);
+        else {
+          this.#emit(`ldd r0, ${ref(m.s.off)}`);
+          this.#emit(`std ${ref(m.d.off)}, r0`);
+        }
+      }
+    }
+  }
+
+  /** Scalar `s` into home `d`. */
+  #move(d: Home, size: number, s: Val, litTmp = 26, skip = 0): void {
+    const moves: Move[] = [];
+    for (let k = 0; k < size; k += 1)
+      if (!((skip >> k) & 1)) moves.push({ d: this.#dst(d, k), s: this.#src(s, k) });
+    this.#parallel(moves, litTmp);
+  }
+
+  /** Registers `regs` into home `d`. */
+  #fromRegs(d: Home, regs: readonly number[]): void {
+    this.#parallel(regs.map((r, k) => ({ d: this.#dst(d, k), s: { k: 'r', r } })));
+  }
+
+  // --- frame memory ---------------------------------------------------------------------
+
+  /** r(pair):r(pair+1) = Y + off. */
+  #pointer(pair: 26 | 30, off: number): void {
+    this.#emit(`movw r${pair}, r28`);
+    if (off === 0) return;
+    if (off <= 63) this.#emit(`adiw r${pair}, ${off}`);
+    else this.#emit(`subi r${pair}, ${lo(neg16(off))}`, `sbci r${pair + 1}, ${hi(neg16(off))}`);
+  }
+
+  /** Base register and displacement reaching frame bytes [off, off+n): Y when near, else Z. */
+  #frame(off: number, n: number): { base: string; disp: number } {
+    if (off + n - 1 <= 63) return { base: 'Y', disp: off };
+    this.#pointer(30, off);
+    return { base: 'Z', disp: 0 };
+  }
+
+  #loadFrame(d: Home, size: number, off: number): void {
+    const m = this.#frame(off, size);
+    for (let k = 0; k < size; k += 1) {
+      if (d.kind === 'reg') this.#emit(`ldd r${d.r + k}, ${m.base}+${m.disp + k}`);
+      else this.#emit(`ldd r0, ${m.base}+${m.disp + k}`, `std Y+${d.off + k}, r0`);
+    }
+  }
+
+  #storeFrame(off: number, v: Val): void {
+    const size = bytesOf(this.#scalar(v).type);
+    const m = this.#frame(off, size);
+    for (let k = 0; k < size; k += 1)
+      this.#emit(`std ${m.base}+${m.disp + k}, ${this.#byte(v, k, 26)}`);
+  }
+
+  /** r1 = n (1-255), the counter of a copy loop; r1 returns to zero when the loop ends. */
+  #counter(n: number, tmp: 26 | 30): void {
+    this.#emit(`ldi r${tmp}, ${n}`, `mov r1, r${tmp}`);
+  }
+
+  /** X = source, Z = destination, r1 = count already set. */
+  #copyLoop(): void {
+    const top = this.#label();
+    this.#emit(`${top}:`, 'ld r0, X+', 'st Z+, r0', 'dec r1', `brne ${top}`);
   }
 
   /** Copy `n` bytes between frame offsets. */
   #copy(dst: number, src: number, n: number): void {
     if (dst === src || n === 0) return;
-    if (n <= 12) {
-      for (let k = 0; k < n; k += 4) {
-        const regs = A.slice(0, Math.min(4, n - k));
-        this.#load(regs, src + k);
-        this.#store(regs, dst + k);
-      }
+    if (n <= 8 && dst + n - 1 <= 63 && src + n - 1 <= 63) {
+      for (let k = 0; k < n; k += 1) this.#emit(`ldd r0, Y+${src + k}`, `std Y+${dst + k}, r0`);
       return;
     }
+    this.#counter(n, 26);
     this.#pointer(26, src);
     this.#pointer(30, dst);
-    this.#copyCall(n);
-  }
-
-  /** X = source, Z = destination already set: copy `n` bytes. */
-  #copyCall(n: number): void {
-    this.#emit(`ldi r24, ${lo(n)}`, `ldi r25, ${hi(n)}`, 'call __a0_copy');
+    this.#copyLoop();
   }
 
   /** Place value `v` of any type at frame offset `off`. */
   #place(v: Val, off: number): void {
-    if (v.kind === 'lit' || isPrimitive(v.type)) {
-      const regs = A.slice(0, bytesOf(v.type));
-      this.#read(v, regs);
-      this.#store(regs, off);
+    if (v.kind !== 'agg') {
+      this.#storeFrame(off, v);
       return;
     }
-    this.#copy(off, this.#slot(v.key), bytesOf(v.type));
-  }
-
-  /** Branch to `target` when `cc` holds, at any distance. */
-  #branchFar(inverse: string, target: string): void {
-    const skip = this.#label();
-    this.#emit(`${inverse} ${skip}`, `jmp ${target}`, `${skip}:`);
-  }
-
-  /** r20 = (index mod n) * elemBytes, for a variable index (the aggregate is at most 255 bytes). */
-  #elementOffset(idx: Val, n: number, elemBytes: number): void {
-    if ((n & (n - 1)) === 0) {
-      this.#read(idx, [20]);
-      this.#emit(`andi r20, ${n - 1}`);
-    } else {
-      this.#read(idx, A);
-      this.#read({ kind: 'lit', value: n, type: 'u32' }, B);
-      this.#emit('call __a0_udivmod32', 'mov r20, r26');
+    const n = bytesOf(v.type);
+    if (v.base === undefined) {
+      this.#copy(off, this.#abs(v.rel), n);
+      return;
     }
-    if (elemBytes > 1) this.#emit(`ldi r21, ${elemBytes}`, 'mul r20, r21', 'mov r20, r0', 'clr r1');
+    if (n <= 8 && off + n - 1 <= 63) {
+      this.#aggPtr(26, v);
+      for (let k = 0; k < n; k += 1) this.#emit('ld r0, X+', `std Y+${off + k}, r0`);
+      return;
+    }
+    this.#counter(n, 26);
+    this.#aggPtr(26, v);
+    this.#pointer(30, off);
+    this.#copyLoop();
+  }
+
+  /** r(pair) = the address of byte `extra` of aggregate `v` (a frame slot, or in place through its pointer). */
+  #aggPtr(pair: 26 | 30, v: Val, extra = 0): void {
+    if (v.kind !== 'agg') refuse('expected an aggregate');
+    if (v.base === undefined) {
+      this.#pointer(pair, this.#abs(v.rel) + extra);
+      return;
+    }
+    const h = this.#home(v.base);
+    if (h.kind === 'reg') this.#emit(`movw r${pair}, r${h.r}`);
+    else if (h.off + 1 <= 63)
+      this.#emit(`ldd r${pair}, Y+${h.off}`, `ldd r${pair + 1}, Y+${h.off + 1}`);
+    else {
+      this.#pointer(30, h.off);
+      this.#emit('ldd r0, Z+0', `ldd r${pair + 1}, Z+1`, `mov r${pair}, r0`);
+    }
+    const off = v.rel + extra;
+    if (off === 0) return;
+    if (off <= 63) this.#emit(`adiw r${pair}, ${off}`);
+    else this.#emit(`subi r${pair}, ${lo(neg16(off))}`, `sbci r${pair + 1}, ${hi(neg16(off))}`);
+  }
+
+  // --- operations -----------------------------------------------------------------------
+
+  /** d = a op b over `w` bytes for add, sub, and, or, xor. */
+  #bytewise(op: Op, d: Home, a0: Val, b0: Val, w: number, dz: number): void {
+    let a = a0;
+    let b = b0;
+    const comm = op !== 'sub';
+    if (comm && a.kind === 'lit' && b.kind !== 'lit') [a, b] = [b, a];
+    if (comm && this.#sameHome(d, b) && !this.#sameHome(d, a)) [a, b] = [b, a];
+    if (d.kind === 'reg' && this.#sameHome(d, b) && !this.#sameHome(d, a)) {
+      // sub into the subtrahend's own registers.
+      if (a.kind === 'lit') {
+        // c - x = ~x + (c + 1)
+        this.#move(d, w, b);
+        for (let k = 0; k < w; k += 1) this.#emit(`com r${d.r + k}`);
+        const self: VReg = {
+          name: 'self',
+          size: 4,
+          wide: true,
+          def: 0,
+          end: 0,
+          used: true,
+          home: d,
+          forbid: new Set(),
+          hints: [],
+          zero: 0,
+        };
+        const c1 = (a.value + 1) >>> 0;
+        if (c1 !== 0)
+          this.#bytewise(
+            'add',
+            d,
+            { kind: 'v', v: self, type: 'u32' },
+            { kind: 'lit', value: c1, type: 'u32' },
+            w,
+            0,
+          );
+        return;
+      }
+      for (let k = 0; k < w; k += 1) {
+        const ak = this.#byte(a, k, 26);
+        if (ak !== 'r26') this.#emit(`mov r26, ${ak}`);
+        this.#emit(
+          `${k === 0 ? 'sub' : 'sbc'} r26, ${this.#byte(b, k, 27)}`,
+          `mov r${d.r + k}, r26`,
+        );
+      }
+      return;
+    }
+    const inReg = d.kind === 'reg';
+    if (inReg) this.#move(d, w, a, 26, dz);
+    const work = (k: number): number => {
+      if (inReg) return d.r + k;
+      const ak = this.#byte(a, k, 26);
+      if (ak !== 'r26') this.#emit(`mov r26, ${ak}`);
+      return 26;
+    };
+    const flush = (k: number, r: number): void => {
+      if (!inReg) this.#emit(`std Y+${d.off + k}, r${r}`);
+    };
+    const keep = (k: number): void => {
+      if (!inReg) flush(k, work(k));
+    };
+    const lit = b.kind === 'lit' ? b.value : undefined;
+    if (op === 'and' || op === 'or' || op === 'xor') {
+      const mn = op === 'xor' ? 'eor' : op;
+      for (let k = 0; k < w; k += 1) {
+        if ((dz >> k) & 1) continue;
+        if (lit === undefined && op !== 'and' && (this.#zeroOf(b) >> k) & 1) {
+          keep(k);
+          continue;
+        }
+        if (lit === undefined) {
+          const r = work(k);
+          this.#emit(`${mn} r${r}, ${this.#byte(b, k, 27)}`);
+          flush(k, r);
+          continue;
+        }
+        const bk = byteOf(lit, k);
+        if ((op === 'and' && bk === 0xff) || (op !== 'and' && bk === 0)) {
+          keep(k);
+          continue;
+        }
+        if (op === 'and' && bk === 0) {
+          this.#emit(inReg ? `mov r${d.r + k}, r1` : `std Y+${d.off + k}, r1`);
+          continue;
+        }
+        if (op === 'or' && bk === 0xff) {
+          const r = inReg ? d.r + k : 26;
+          if (r >= 16) this.#emit(`ldi r${r}, 255`);
+          else this.#emit('ldi r27, 255', `mov r${r}, r27`);
+          flush(k, r);
+          continue;
+        }
+        const r = work(k);
+        if (op === 'xor' && bk === 0xff) this.#emit(`com r${r}`);
+        else if (r >= 16 && op !== 'xor')
+          this.#emit(`${op === 'and' ? 'andi' : 'ori'} r${r}, ${bk}`);
+        else this.#emit(`ldi r27, ${bk}`, `${mn} r${r}, r27`);
+        flush(k, r);
+      }
+      return;
+    }
+    // add / sub on the carry chain
+    if (lit === undefined) {
+      for (let k = 0; k < w; k += 1) {
+        const r = work(k);
+        const mn = op === 'add' ? (k === 0 ? 'add' : 'adc') : k === 0 ? 'sub' : 'sbc';
+        this.#emit(`${mn} r${r}, ${this.#byte(b, k, 27)}`);
+        flush(k, r);
+      }
+      return;
+    }
+    let f = 0;
+    while (f < w && byteOf(lit, f) === 0) f += 1;
+    for (let k = 0; k < f; k += 1) keep(k);
+    if (f === w) return;
+    let imm = true;
+    if (inReg) for (let k = f; k < w; k += 1) if (d.r + k < 16) imm = false;
+    const c = op === 'add' ? -lit >>> 0 : lit;
+    for (let k = f; k < w; k += 1) {
+      const r = work(k);
+      if (imm) this.#emit(`${k === f ? 'subi' : 'sbci'} r${r}, ${byteOf(c, k)}`);
+      else {
+        const bk = byteOf(lit, k);
+        const s = bk === 0 ? 'r1' : 'r27';
+        if (bk !== 0) this.#emit(`ldi r27, ${bk}`);
+        const mn = op === 'add' ? (k === f ? 'add' : 'adc') : k === f ? 'sub' : 'sbc';
+        this.#emit(`${mn} r${r}, ${s}`);
+      }
+      flush(k, r);
+    }
+  }
+
+  /** Compare for `op`; returns the condition (lo, sh, eq, ne) that is true when the compare holds. */
+  #cmp(op: Op, a: Val, b: Val): string {
+    let [x, y, cond] =
+      op === 'lt'
+        ? [a, b, 'lo']
+        : op === 'ge'
+          ? [a, b, 'sh']
+          : op === 'gt'
+            ? [b, a, 'lo']
+            : op === 'le'
+              ? [b, a, 'sh']
+              : [a, b, op];
+    if ((cond === 'eq' || cond === 'ne') && x.kind === 'lit' && y.kind !== 'lit') [x, y] = [y, x];
+    const w = bytesOf(this.#scalar(x).type);
+    // Bytes zero in both operands leave every flag of the chain as the lower bytes set it.
+    const both = this.#zeroOf(x) & this.#zeroOf(y);
+    let first = true;
+    for (let k = 0; k < w; k += 1) {
+      if ((both >> k) & 1) continue;
+      const xk = this.#byte(x, k, 26);
+      if (first && y.kind === 'lit' && xk !== 'r1' && Number(xk.slice(1)) >= 16)
+        this.#emit(`cpi ${xk}, ${byteOf(y.value, k)}`);
+      else this.#emit(`${first ? 'cp' : 'cpc'} ${xk}, ${this.#byte(y, k, 27)}`);
+      first = false;
+    }
+    if (first) this.#emit('cp r1, r1');
+    return cond;
+  }
+
+  /** d = (condition holds) as 0 or 1, without branches for lo/sh. */
+  #setBool(d: Home, cond: string): void {
+    const r = d.kind === 'reg' ? d.r : 26;
+    if (cond === 'lo') this.#emit(`mov r${r}, r1`, `rol r${r}`);
+    else if (cond === 'sh') this.#emit(`sbc r${r}, r${r}`, `inc r${r}`);
+    else {
+      const skip = this.#label();
+      this.#emit(`mov r${r}, r1`, `br${INVERSE[cond]} ${skip}`, `inc r${r}`, `${skip}:`);
+    }
+    if (d.kind === 'slot') this.#emit(`std Y+${d.off}, r26`);
+  }
+
+  /** Test condition `c` (a fused compare or a bool); returns the branch condition for true. */
+  #test(c: Val): string {
+    if (c.kind === 'cmp') return c.t ?? this.#cmp(c.op, c.a, c.b);
+    this.#emit(`tst ${this.#byte(c, 0, 26)}`);
+    return 'ne';
+  }
+
+  #select(d: Home, size: number, c: Val, x: Val, y: Val, dz: number): void {
+    if (c.kind === 'lit') {
+      this.#move(d, size, c.value !== 0 ? x : y, 26, dz);
+      return;
+    }
+    const same =
+      (x.kind === 'v' && y.kind === 'v' && x.v === y.v) ||
+      (x.kind === 'lit' && y.kind === 'lit' && x.value === y.value);
+    if (same) {
+      this.#move(d, size, x, 26, dz);
+      return;
+    }
+    const cond = this.#test(c);
+    const skip = this.#label();
+    if (this.#sameHome(d, x)) {
+      // d keeps x when the condition holds: x's known-zero bytes the result needs become real.
+      const zx = this.#zeroOf(x) & ~dz;
+      for (let k = 0; k < size; k += 1)
+        if ((zx >> k) & 1)
+          this.#emit(d.kind === 'reg' ? `mov r${d.r + k}, r1` : `std Y+${d.off + k}, r1`);
+      this.#emit(`br${cond} ${skip}`);
+      this.#move(d, size, y, 26, dz);
+    } else {
+      this.#move(d, size, y, 26, dz);
+      this.#emit(`br${INVERSE[cond]} ${skip}`);
+      this.#move(d, size, x, 26, dz);
+    }
+    this.#emit(`${skip}:`);
+  }
+
+  #shift(d: Home, a: Val, b: Val, left: boolean): void {
+    const inReg = d.kind === 'reg';
+    const W = inReg ? [d.r, d.r + 1, d.r + 2, d.r + 3] : T;
+    const step = (live: readonly number[]): void => {
+      const order = left ? live : [...live].reverse();
+      order.forEach((r, j) => {
+        this.#emit(`${j === 0 ? (left ? 'lsl' : 'lsr') : left ? 'rol' : 'ror'} r${r}`);
+      });
+    };
+    if (b.kind === 'lit') {
+      // Whole bytes move as one parallel move of the surviving bytes; the shifted-in bytes
+      // are known zero (never written); the remaining bits step over the live bytes only.
+      const k = b.value & 31;
+      const bytes = k >> 3;
+      let bits = k & 7;
+      const idx = [0, 1, 2, 3].filter((i) => (left ? i >= bytes : i <= 3 - bytes));
+      this.#parallel(
+        idx.map((i) => ({
+          d: { k: 'r', r: W[i] as number },
+          s: this.#src(a, left ? i - bytes : i + bytes),
+        })),
+      );
+      const live = idx.map((i) => W[i] as number);
+      const only = live[0] as number;
+      if (live.length === 1 && bits >= 4 && only >= 16) {
+        this.#emit(`swap r${only}`, `andi r${only}, ${left ? 0xf0 : 0x0f}`);
+        bits -= 4;
+      }
+      for (let s = 0; s < bits; s += 1) step(live);
+      if (!inReg) for (const i of idx) this.#emit(`std Y+${d.off + i}, r${W[i]}`);
+      return;
+    }
+    // Slot result: the value steps in r26, r27, r30, r31 with the count in r1 (zero again at
+    // the end), so bytes 1-3 load before r1 stops being zero and byte 0 after the count.
+    if (!inReg)
+      for (let k = 1; k < 4; k += 1) {
+        const s = this.#byte(a, k, T[k] as number);
+        if (s !== `r${T[k]}`) this.#emit(`mov r${T[k]}, ${s}`);
+      }
+    const cnt = this.#byte(b, 0, 26);
+    if (cnt !== 'r26') this.#emit(`mov r26, ${cnt}`);
+    this.#emit('andi r26, 31');
+    let ctr = 'r26';
+    if (!inReg) {
+      this.#emit('mov r1, r26');
+      ctr = 'r1';
+      const s0 = this.#byte(a, 0, 26);
+      if (s0 === 'r1') this.#emit('ldi r26, 0');
+      else if (s0 !== 'r26') this.#emit(`mov r26, ${s0}`);
+    } else this.#move(d, 4, a, 27);
+    const top = this.#label();
+    const done = this.#label();
+    this.#emit(`breq ${done}`, `${top}:`);
+    step(W);
+    this.#emit(`dec ${ctr}`, `brne ${top}`, `${done}:`);
+    if (!inReg) for (let k = 0; k < 4; k += 1) this.#emit(`std Y+${d.off + k}, r${W[k]}`);
+  }
+
+  /** r26 = (index mod n) * elemBytes, for a variable index (the aggregate is at most 255 bytes). */
+  #elementOffset(idx: Val, n: number, es: number): void {
+    if (isPow2(n)) {
+      const s = this.#byte(idx, 0, 26);
+      if (s !== 'r26') this.#emit(`mov r26, ${s}`);
+      this.#emit(`andi r26, ${n - 1}`);
+    } else {
+      this.#parallel([
+        ...A.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(idx, k) })),
+        ...B.map((r, k) => ({
+          d: { k: 'r', r } as BDst,
+          s: { k: 'lit', b: byteOf(n, k) } as BSrc,
+        })),
+      ]);
+      this.#emit('call __a0_udivmod32');
+    }
+    if (es === 1) return;
+    if (isPow2(es)) for (let s = 0; s < log2(es); s += 1) this.#emit('lsl r26');
+    else this.#emit(`ldi r27, ${es}`, 'mul r26, r27', 'mov r26, r0', 'clr r1');
+  }
+
+  /** Z = address of aggregate `v` (span bytes) + r26 - displacement; returns the displacement. */
+  #elementPointer(v: Val, span: number): number {
+    if (v.kind !== 'agg') refuse('expected an aggregate');
+    if (v.base !== undefined) {
+      this.#aggPtr(30, v);
+      this.#emit('add r30, r26', 'adc r31, r1');
+      return 0;
+    }
+    const base = this.#abs(v.rel);
+    this.#emit('movw r30, r28', 'add r30, r26', 'adc r31, r1');
+    if (base + span - 1 <= 63) return base;
+    this.#emit(`subi r30, ${lo(neg16(base))}`, `sbci r31, ${hi(neg16(base))}`);
+    return 0;
   }
 
   // --- calls ------------------------------------------------------------------------------
 
-  /** Out-of-line call of `name` with `args`; the result goes to frame offset `dst`. */
-  #call(name: string, callee: TypedFunc, args: readonly Val[], dst: number): void {
+  /** Out-of-line call of `name`; a scalar result goes to `d`, an aggregate one to frame offset `agg`. */
+  #call(name: string, callee: TypedFunc, args: readonly Val[], d?: Home, agg?: number): void {
     const sret = !isPrimitive(callee.result);
-    const places = argLayout(callee.params, sret, `call to ${name}`);
-    args.forEach((a, k) => {
-      const r = places[k] as number;
-      const width = a.kind === 'lit' || isPrimitive(a.type) ? bytesOf(a.type) : 2;
-      for (let j = 0; j < width; j += 1) if (r + j < 18) this.#saved.add(r + j);
-      const regs = Array.from({ length: width }, (_, j) => r + j);
-      if (a.kind === 'lit' || isPrimitive(a.type)) this.#read(a, regs);
-      else {
-        this.#pointer(30, this.#slot(a.key));
-        this.#emit(`movw r${r}, r30`);
-      }
+    const { slots, stackBytes } = argLayout(callee.params, sret);
+    for (let j = args.length - 1; j >= 0; j -= 1) {
+      const s = slots[j] as ArgSlot;
+      const a = args[j] as Val;
+      if (s.stack === undefined) continue;
+      if (a.kind === 'agg') {
+        this.#aggPtr(30, a);
+        this.#emit('push r31', 'push r30');
+      } else for (let k = s.size - 1; k >= 0; k -= 1) this.#emit(`push ${this.#byte(a, k, 26)}`);
+    }
+    this.outgoing = Math.max(this.outgoing, stackBytes);
+    const moves: Move[] = [];
+    const pointers: { r: number; off: number }[] = [];
+    const offsets: { r: number; off: number }[] = [];
+    args.forEach((a, j) => {
+      const s = slots[j] as ArgSlot;
+      if (s.reg === undefined) return;
+      if (a.kind === 'agg' && a.base === undefined)
+        pointers.push({ r: s.reg, off: this.#abs(a.rel) });
+      else if (a.kind === 'agg') {
+        // An in-place aggregate passes its own pointer on (plus its offset).
+        const h = this.#home(a.base as VReg);
+        for (let k = 0; k < 2; k += 1)
+          moves.push({
+            d: { k: 'r', r: s.reg + k },
+            s: h.kind === 'reg' ? { k: 'r', r: h.r + k } : { k: 'slot', off: h.off + k },
+          });
+        if (a.rel !== 0) offsets.push({ r: s.reg, off: a.rel });
+      } else
+        for (let k = 0; k < s.size; k += 1)
+          moves.push({ d: { k: 'r', r: s.reg + k }, s: this.#src(a, k) });
     });
+    this.#parallel(moves);
+    for (const p of offsets) {
+      if (p.r >= 16 && p.r !== 24)
+        this.#emit(`subi r${p.r}, ${lo(neg16(p.off))}`, `sbci r${p.r + 1}, ${hi(neg16(p.off))}`);
+      else if (p.r === 24 && p.off <= 63) this.#emit(`adiw r24, ${p.off}`);
+      else {
+        this.#emit(
+          `movw r30, r${p.r}`,
+          `subi r30, ${lo(neg16(p.off))}`,
+          `sbci r31, ${hi(neg16(p.off))}`,
+          `movw r${p.r}, r30`,
+        );
+      }
+    }
+    for (const p of pointers) {
+      this.#pointer(30, p.off);
+      this.#emit(`movw r${p.r}, r30`);
+    }
     if (sret) {
-      this.#pointer(30, dst);
+      this.#pointer(30, agg ?? refuse('aggregate call result needs a slot'));
       this.#emit('movw r24, r30');
     }
     this.#emit(`call a0_${name}`);
-    if (!sret) this.#store(callee.result === 'bool' ? [24] : A, dst);
+    if (stackBytes > 0 && stackBytes <= 6)
+      for (let k = 0; k < stackBytes; k += 1) this.#emit('pop r0');
+    else if (stackBytes > 0) {
+      this.#emit('in r26, 0x3d', 'in r27, 0x3e');
+      if (stackBytes <= 63) this.#emit(`adiw r26, ${stackBytes}`);
+      else this.#emit(`subi r26, ${lo(neg16(stackBytes))}`, `sbci r27, ${hi(neg16(stackBytes))}`);
+      this.#emit('in r0, 0x3f', 'cli', 'out 0x3e, r27', 'out 0x3f, r0', 'out 0x3d, r26');
+    }
+    if (d !== undefined && !sret) this.#fromRegs(d, callee.result === 'bool' ? [24] : A);
   }
 
   // --- nodes ------------------------------------------------------------------------------
 
-  #node(n: TypedFunc['nodes'][number]): void {
-    const t = this.fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
+  #node(n: Planned): void {
+    const t = n.type;
     const key = `n_${n.id}`;
-    const vals = n.args.map((o) => this.#resolve(o));
-    const [a, b, c] = vals as [Val, Val, Val];
-    if (!isPrimitive(t) && bytesOf(t) > AVR_AGGREGATE_MAX_BYTES)
-      refuse(
-        `node ${n.id} is a ${bytesOf(t)}-byte aggregate; the limit is ${AVR_AGGREGATE_MAX_BYTES} bytes of the ATmega328P's 2 KiB SRAM`,
-        'limit',
-      );
-    const fresh = (): number => this.#alloc(key, bytesOf(t));
-    const alias = (off: number): void => {
-      this.#slots.set(key, off);
-    };
-    const width = (v: Val): number[] => A.slice(0, bytesOf(v.type));
-    const operands = (): number => {
-      const w = bytesOf(a.type);
-      this.#read(a, A.slice(0, w));
-      this.#read(b, B.slice(0, w));
-      return w;
-    };
-    const bytewise = (first: string, rest: string): void => {
-      const w = operands();
-      for (let k = 0; k < w; k += 1) this.#emit(`${k === 0 ? first : rest} r${A[k]}, r${B[k]}`);
-      this.#store(A.slice(0, w), fresh());
-    };
-    const compare = (swap: boolean, branch: string): void => {
-      const w = operands();
-      const [x, y] = swap ? [B, A] : [A, B];
-      for (let k = 0; k < w; k += 1) this.#emit(`${k === 0 ? 'cp' : 'cpc'} r${x[k]}, r${y[k]}`);
-      const done = this.#label();
-      this.#emit('ldi r26, 1', `${branch} ${done}`, 'ldi r26, 0', `${done}:`);
-      this.#store([26], fresh());
-    };
-    const helper = (name: string, result: readonly number[]): void => {
-      this.#read(a, A);
-      this.#read(b, B);
-      this.#emit(`call ${name}`);
-      if (result === REM) this.#emit('movw r22, r26', 'movw r24, r30');
-      this.#store(A, fresh());
-    };
-    const shift = (left: boolean): void => {
-      if (b.kind === 'lit') {
-        const k = b.value & 31;
-        this.#read(a, A);
-        const bytes = k >> 3;
-        const order = left ? [3, 2, 1, 0] : [0, 1, 2, 3];
-        if (bytes > 0)
-          for (const i of order) {
-            const from = left ? i - bytes : i + bytes;
-            if (from >= 0 && from <= 3) this.#emit(`mov r${A[i]}, r${A[from]}`);
-            else this.#emit(`clr r${A[i]}`);
-          }
-        for (let s = 0; s < (k & 7); s += 1)
-          this.#emit(
-            ...(left
-              ? ['lsl r22', 'rol r23', 'rol r24', 'rol r25']
-              : ['lsr r25', 'ror r24', 'ror r23', 'ror r22']),
-          );
-        this.#store(A, fresh());
-        return;
-      }
-      this.#read(a, A);
-      this.#read(b, [18]);
-      this.#emit(`call ${left ? '__a0_shl32' : '__a0_shr32'}`);
-      this.#store(A, fresh());
-    };
-    const aggregate = (v: Val, what: string): { off: number; type: Type } => {
-      if (v.kind !== 'key' || isPrimitive(v.type)) refuse(`${n.op} needs ${what}`);
-      return { off: this.#slot(v.key), type: v.type };
-    };
+    const [a, b, c] = n.vals as [Val, Val, Val];
+    const self = this.#vals.get(key);
+    const dz = self?.kind === 'v' ? self.v.zero : 0;
+    const d = (): Home => (self?.kind === 'v' ? this.#home(self.v) : refuse(`no home for ${key}`));
+    const aggOff = (): number =>
+      self?.kind === 'agg' ? this.#abs(self.rel) : refuse(`no slot for ${key}`);
+    if (n.bit !== undefined) {
+      this.#emit(`bst ${this.#byte(n.bit.x, n.bit.bit >> 3, 26)}, ${n.bit.bit & 7}`);
+      return;
+    }
     switch (n.op) {
       case 'mov':
-        if (a.kind === 'key') alias(this.#slot(a.key));
-        else this.#place(a, fresh());
         return;
       case 'add':
-        bytewise('add', 'adc');
-        return;
       case 'sub':
-        bytewise('sub', 'sbc');
-        return;
       case 'and':
-        bytewise('and', 'and');
-        return;
       case 'or':
-        bytewise('or', 'or');
-        return;
       case 'xor':
-        bytewise('eor', 'eor');
+        this.#bytewise(n.op, d(), a, b, bytesOf(t), dz);
         return;
       case 'mul':
-        helper('__a0_mul32', A);
-        return;
       case 'div':
-        helper('__a0_udivmod32', A);
-        return;
       case 'rem':
-        helper('__a0_udivmod32', REM);
+        this.#parallel([
+          ...A.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(a, k) })),
+          ...B.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(b, k) })),
+        ]);
+        this.#emit(`call ${n.op === 'mul' ? '__a0_mul32' : '__a0_udivmod32'}`);
+        this.#fromRegs(d(), n.op === 'rem' ? T : A);
         return;
       case 'shl':
-        shift(true);
-        return;
       case 'shr':
-        shift(false);
+        this.#shift(d(), a, b, n.op === 'shl');
         return;
       case 'eq':
-        compare(false, 'breq');
-        return;
       case 'ne':
-        compare(false, 'brne');
-        return;
       case 'lt':
-        compare(false, 'brlo');
-        return;
       case 'ge':
-        compare(false, 'brsh');
-        return;
       case 'gt':
-        compare(true, 'brlo');
-        return;
       case 'le':
-        compare(true, 'brsh');
+        if (!n.fused) this.#setBool(d(), this.#cmp(n.op, a, b));
         return;
       case 'select': {
-        const dst = fresh();
+        if (isPrimitive(t)) {
+          this.#select(d(), bytesOf(t), a, b, c, dz);
+          return;
+        }
+        const dst = aggOff();
         const other = this.#label();
         const done = this.#label();
-        this.#read(a, [26]);
-        this.#emit('tst r26');
-        this.#branchFar('brne', other);
-        this.#place(b, dst);
-        this.#emit(`jmp ${done}`, `${other}:`);
+        const cond = this.#test(a);
+        this.#emit(`br${cond} ${other}`);
         this.#place(c, dst);
+        this.#emit(`rjmp ${done}`, `${other}:`);
+        this.#place(b, dst);
         this.#emit(`${done}:`);
         return;
       }
       case 'arr':
       case 'rec': {
-        let off = fresh();
-        for (const v of vals) {
+        let off = aggOff();
+        for (const v of n.vals) {
           this.#place(v, off);
-          off += bytesOf(v.type);
+          off += bytesOf(v.kind === 'agg' ? v.type : this.#scalar(v).type);
         }
         return;
       }
-      case 'get': {
-        const src = aggregate(a, 'an array');
-        if (isPrimitive(src.type) || src.type.kind !== 'arr') refuse('get needs an array');
-        const es = bytesOf(src.type.elem);
-        const len = src.type.length;
+      case 'get':
+      case 'at': {
+        if (a.kind !== 'agg' || isPrimitive(a.type)) refuse(`${n.op} needs an aggregate`);
         if (b.kind === 'lit') {
-          alias(src.off + (b.value % len) * es);
+          if (!isPrimitive(t)) return; // alias
+          const off =
+            a.type.kind === 'arr'
+              ? (b.value % a.type.length) * bytesOf(a.type.elem)
+              : a.type.fields.slice(0, b.value).reduce((s, f) => s + bytesOf(f), 0);
+          if (a.base === undefined) this.#loadFrame(d(), bytesOf(t), this.#abs(a.rel) + off);
+          else {
+            this.#aggPtr(30, a, off);
+            const h = d();
+            for (let k = 0; k < bytesOf(t); k += 1)
+              this.#emit(
+                ...(h.kind === 'reg'
+                  ? [`ldd r${h.r + k}, Z+${k}`]
+                  : [`ldd r0, Z+${k}`, `std Y+${h.off + k}, r0`]),
+              );
+          }
           return;
         }
-        const dst = fresh();
-        this.#elementOffset(b, len, es);
-        this.#pointer(26, src.off);
-        this.#emit('add r26, r20', 'adc r27, r1');
+        if (a.type.kind !== 'arr') refuse('at needs a literal field');
+        const es = bytesOf(a.type.elem);
+        this.#elementOffset(b, a.type.length, es);
+        const disp = this.#elementPointer(a, bytesOf(a.type));
         if (isPrimitive(t)) {
-          const regs = A.slice(0, es);
-          for (const r of regs) this.#emit(`ld r${r}, X+`);
-          this.#store(regs, dst);
+          const h = d();
+          for (let k = 0; k < es; k += 1) {
+            if (h.kind === 'reg') this.#emit(`ldd r${h.r + k}, Z+${disp + k}`);
+            else this.#emit(`ldd r0, Z+${disp + k}`, `std Y+${h.off + k}, r0`);
+          }
         } else {
-          this.#pointer(30, dst);
-          this.#copyCall(es);
+          if (disp !== 0) this.#emit(`adiw r30, ${disp}`);
+          this.#emit('movw r26, r30');
+          this.#counter(es, 30);
+          this.#pointer(30, aggOff());
+          this.#copyLoop();
         }
         return;
       }
-      case 'set': {
-        const src = aggregate(a, 'an array');
-        if (isPrimitive(src.type) || src.type.kind !== 'arr') refuse('set needs an array');
-        const es = bytesOf(src.type.elem);
-        const len = src.type.length;
-        const dst = fresh();
-        this.#copy(dst, src.off, bytesOf(src.type));
-        if (b.kind === 'lit') {
-          this.#place(c, dst + (b.value % len) * es);
-          return;
-        }
-        this.#elementOffset(b, len, es);
-        if (c.kind === 'lit' || isPrimitive(c.type)) {
-          const regs = width(c);
-          this.#read(c, regs);
-          this.#pointer(26, dst);
-          this.#emit('add r26, r20', 'adc r27, r1');
-          for (const r of regs) this.#emit(`st X+, r${r}`);
-        } else {
-          this.#pointer(30, dst);
-          this.#emit('add r30, r20', 'adc r31, r1');
-          this.#pointer(26, this.#slot(c.key));
-          this.#copyCall(es);
-        }
-        return;
-      }
-      case 'at':
+      case 'set':
       case 'put': {
-        const src = aggregate(a, 'a record');
-        const rt = src.type;
-        if (isPrimitive(rt) || rt.kind !== 'rec' || b.kind !== 'lit')
-          refuse(`${n.op} needs a record and a literal field`);
-        if (rt.fields[b.value] === undefined) refuse('field out of range');
-        const off = rt.fields.slice(0, b.value).reduce((s, f) => s + bytesOf(f), 0);
-        if (n.op === 'at') {
-          alias(src.off + off);
+        if (a.kind !== 'agg' || isPrimitive(a.type)) refuse(`${n.op} needs an aggregate`);
+        const rt = a.type;
+        const dst = aggOff();
+        this.#place(a, dst);
+        if (b.kind === 'lit') {
+          const off =
+            rt.kind === 'arr'
+              ? (b.value % rt.length) * bytesOf(rt.elem)
+              : (rt.fields[b.value] === undefined ? refuse('field out of range') : 0) +
+                rt.fields.slice(0, b.value).reduce((s, f) => s + bytesOf(f), 0);
+          this.#place(c, dst + off);
           return;
         }
-        const dst = fresh();
-        this.#copy(dst, src.off, bytesOf(rt));
-        this.#place(c, dst + off);
+        if (rt.kind !== 'arr') refuse('put needs a literal field');
+        const es = bytesOf(rt.elem);
+        this.#elementOffset(b, rt.length, es);
+        const disp = this.#elementPointer(self as Val, bytesOf(rt));
+        if (c.kind === 'agg') {
+          if (disp !== 0) this.#emit(`adiw r30, ${disp}`);
+          this.#counter(es, 26);
+          this.#aggPtr(26, c);
+          this.#copyLoop();
+        } else
+          for (let k = 0; k < es; k += 1) this.#emit(`std Z+${disp + k}, ${this.#byte(c, k, 27)}`);
         return;
       }
       case 'call': {
         const name = n.callee as string;
         const callee = this.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
-        this.#call(name, callee, vals, fresh());
+        if (isPrimitive(t)) this.#call(name, callee, n.vals, d());
+        else this.#call(name, callee, n.vals, undefined, aggOff());
         return;
       }
       case 'fold':
-      case 'loop': {
-        const [count, init, ...extras] = vals as [Val, Val, ...Val[]];
-        const name = n.callee as string;
-        const callee = this.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
-        const pred = n.pred === undefined ? undefined : this.fn.calls.get(n.pred);
-        const state = fresh();
-        this.#place(init, state);
-        const counterKey = `i_${n.id}`;
-        const counter = this.#alloc(counterKey, 4);
-        this.#store([1, 1, 1, 1], counter);
-        const top = this.#label();
-        const body = this.#label();
-        const done = this.#label();
-        this.#emit(`${top}:`);
-        this.#load(A, counter);
-        this.#read(count, B);
-        for (let k = 0; k < 4; k += 1) this.#emit(`${k === 0 ? 'cp' : 'cpc'} r${A[k]}, r${B[k]}`);
-        this.#emit(`brlo ${body}`, `jmp ${done}`, `${body}:`);
-        const args: Val[] = [
-          { kind: 'key', key, type: t },
-          { kind: 'key', key: counterKey, type: 'u32' },
-          ...extras,
-        ];
-        if (pred !== undefined) {
-          const flag = this.#alloc(`c_${n.id}`, 1);
-          this.#call(n.pred as string, pred, args, flag);
-          this.#load([24], flag);
-          this.#emit('tst r24');
-          this.#branchFar('brne', done);
-        }
-        this.#call(name, callee, args, state);
-        this.#load(A, counter);
-        this.#emit('subi r22, 255', 'sbci r23, 255', 'sbci r24, 255', 'sbci r25, 255');
-        this.#store(A, counter);
-        this.#emit(`jmp ${top}`, `${done}:`);
+      case 'loop':
+        this.#loop(n);
         return;
-      }
       case 'read':
       case 'write':
       case 'puts':
         refuse(`${n.op} is an io operation`);
     }
   }
+
+  /** fold/loop: state and counter stay in their (callee-saved) homes across every body call. */
+  #loop(n: Planned): void {
+    const [count, init, ...extras] = n.vals as [Val, Val, ...Val[]];
+    const name = n.callee as string;
+    const body = this.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
+    const pred = n.pred === undefined ? undefined : this.fn.calls.get(n.pred);
+    const counterV = this.#counters.get(n.id) ?? refuse('loop counter');
+    const counterH = this.#home(counterV);
+    const counter: Val = { kind: 'v', v: counterV, type: 'u32' };
+    const stateV = this.#state.get(n.id);
+    const self = this.#vals.get(`n_${n.id}`) ?? refuse('loop state');
+    let state: Val;
+    if (stateV !== undefined) {
+      const h = this.#home(stateV);
+      this.#move(h, stateV.size, init);
+      state = { kind: 'v', v: stateV, type: n.type as Scalar };
+    } else {
+      if (self.kind !== 'agg') refuse('loop state');
+      this.#place(init, this.#abs(self.rel));
+      state = self;
+    }
+    this.#move(counterH, 4, { kind: 'lit', value: 0, type: 'u32' });
+    const args = [state, counter, ...extras];
+    const top = this.#label();
+    const test = this.#label();
+    const done = this.#label();
+    const lines = this.#capture(() => {
+      if (pred !== undefined) {
+        this.#call(n.pred as string, pred, args);
+        const go = this.#label();
+        this.#emit('tst r24', `brne ${go}`, `rjmp ${done}`, `${go}:`);
+      }
+      if (stateV !== undefined) this.#call(name, body, args, this.#home(stateV));
+      else this.#call(name, body, args, undefined, this.#abs((self as { rel: number }).rel));
+      this.#increment(counterH);
+    });
+    this.#emit(`rjmp ${test}`, `${top}:`);
+    this.out.push(...lines);
+    this.#emit(`${test}:`);
+    this.#cmp('lt', counter, count);
+    const words = lines.filter((l) => !l.endsWith(':')).length * 2 + 16;
+    if (words <= 60) this.#emit(`brlo ${top}`);
+    else this.#emit(`brsh ${done}`, `rjmp ${top}`);
+    this.#emit(`${done}:`);
+  }
+
+  #increment(h: Home): void {
+    if (h.kind === 'slot') {
+      for (let k = 0; k < 4; k += 1)
+        this.#emit(
+          `ldd r26, Y+${h.off + k}`,
+          `${k === 0 ? 'subi' : 'sbci'} r26, 255`,
+          `std Y+${h.off + k}, r26`,
+        );
+      return;
+    }
+    if (h.r >= 16) {
+      for (let k = 0; k < 4; k += 1) this.#emit(`${k === 0 ? 'subi' : 'sbci'} r${h.r + k}, 255`);
+      return;
+    }
+    this.#emit('sec');
+    for (let k = 0; k < 4; k += 1) this.#emit(`adc r${h.r + k}, r1`);
+  }
+
+  // --- function -------------------------------------------------------------------------
 
   emit(): string {
     const fn = this.fn;
@@ -560,55 +1580,67 @@ class AvrEmitter {
           `function ${fn.name} has a ${bytesOf(t)}-byte aggregate in its signature; the limit is ${AVR_AGGREGATE_MAX_BYTES} bytes`,
           'limit',
         );
-    const sret = !isPrimitive(fn.result);
-    const places = argLayout(fn.params, sret, `function ${fn.name}`);
-    // Entry: every incoming register goes to the frame first (the copy helper uses r24-r27,
-    // r30, r31, which may still hold arguments), then aggregates are copied in.
-    const sretSlot = sret ? this.#alloc('sret', 2) : 0;
-    if (sret) this.#store([24, 25], sretSlot);
-    const pointers: { i: number; slot: number }[] = [];
-    fn.params.forEach((t, i) => {
-      const r = places[i] as number;
-      if (isPrimitive(t)) {
-        this.#store(
-          Array.from({ length: bytesOf(t) }, (_, j) => r + j),
-          this.#alloc(`p${i}`, bytesOf(t)),
-        );
-        return;
-      }
-      const slot = this.#alloc(`pp${i}`, 2);
-      this.#store([r, r + 1], slot);
-      pointers.push({ i, slot });
-    });
-    for (const { i, slot } of pointers) {
-      const size = bytesOf(fn.params[i] as Type);
-      const own = this.#alloc(`p${i}`, size);
-      this.#load([24, 25], slot);
-      this.#emit('movw r26, r24');
-      this.#pointer(30, own);
-      this.#copyCall(size);
-    }
-    for (const n of fn.nodes) this.#node(n);
-    const ret = this.#resolve(fn.ret);
-    if (!sret) {
-      this.#read(ret, fn.result === 'bool' ? [24] : A);
-      if (fn.result === 'bool') this.#emit('clr r25');
-    } else {
-      if (ret.kind !== 'key') refuse('an aggregate literal cannot be returned');
-      this.#load([24, 25], sretSlot);
-      this.#emit('movw r30, r24');
-      this.#pointer(26, this.#slot(ret.key));
-      this.#copyCall(bytesOf(fn.result));
-    }
-    const frame = this.#size;
+    this.#plan();
+    this.#allocate();
+    const frame = this.#spillSize + this.#aggSize;
     if (frame > AVR_FRAME_MAX_BYTES)
       refuse(
         `function ${fn.name} needs a ${frame}-byte frame; the limit is ${AVR_FRAME_MAX_BYTES} bytes of the ATmega328P's 2 KiB SRAM`,
         'limit',
       );
+    const sret = !isPrimitive(fn.result);
+    const layout = argLayout(fn.params, sret);
+    const needsFrame = frame > 0 || layout.stackBytes > 0;
     const saved = [...this.#saved].sort((x, y) => x - y);
+    const pushes = saved.length + (needsFrame ? 2 : 0);
+    const stackBase = frame + pushes + 3;
+    const entry: Move[] = [];
+    const sretV = this.#sretV;
+    if (sretV !== undefined)
+      for (let k = 0; k < 2; k += 1)
+        entry.push({ d: this.#dst(this.#home(sretV), k), s: { k: 'r', r: 24 + k } });
+    fn.params.forEach((_, i) => {
+      const s = layout.slots[i] as ArgSlot;
+      const v = this.#regOf(this.#vals.get(`p${i}`))[0];
+      if (v === undefined || !v.used || s.reg === undefined) return;
+      for (let k = 0; k < s.size; k += 1)
+        entry.push({ d: this.#dst(this.#home(v), k), s: { k: 'r', r: s.reg + k } });
+    });
+    this.#parallel(entry);
+    fn.params.forEach((_, i) => {
+      const s = layout.slots[i] as ArgSlot;
+      const v = this.#regOf(this.#vals.get(`p${i}`))[0];
+      if (v === undefined || !v.used || s.stack === undefined) return;
+      const h = this.#home(v);
+      const base = stackBase + s.stack;
+      this.#parallel(
+        Array.from({ length: s.size }, (_, k) => ({
+          d: this.#dst(h, k),
+          s: { k: 'slot', off: base + k },
+        })),
+      );
+    });
+    for (const n of this.#planned) this.#nodeStaged(n);
+    const ret = this.#retVal ?? refuse('no return value');
+    if (!sret) this.#fromValue(fn.result === 'bool' ? [24] : A, ret);
+    else {
+      if (ret.kind !== 'agg') refuse('an aggregate literal cannot be returned');
+      const h = this.#home(sretV as VReg);
+      this.#counter(bytesOf(fn.result), 26);
+      this.#aggPtr(26, ret);
+      if (h.kind === 'reg') this.#emit(`movw r30, r${h.r}`);
+      else {
+        const m = this.#frame(h.off, 2);
+        this.#emit(
+          `ldd r0, ${m.base}+${m.disp}`,
+          `ldd r31, ${m.base}+${m.disp + 1}`,
+          'mov r30, r0',
+        );
+      }
+      this.#copyLoop();
+    }
     this.frameBytes = frame;
-    this.pushes = 2 + saved.length;
+    this.pushes = pushes;
     const body = this.out.splice(0);
     const sym = `a0_${fn.name}`;
     const setSp = ['in r0, 0x3f', 'cli', 'out 0x3e, r29', 'out 0x3f, r0', 'out 0x3d, r28'];
@@ -618,16 +1650,57 @@ class AvrEmitter {
       `\t.type ${sym}, @function`,
       `${sym}:`,
     );
-    this.#emit(...saved.map((r) => `push r${r}`), 'push r28', 'push r29');
-    this.#emit('in r28, 0x3d', 'in r29, 0x3e');
-    if (frame > 0) this.#emit(`subi r28, ${lo(frame)}`, `sbci r29, ${hi(frame)}`, ...setSp);
+    this.#emit(...saved.map((r) => `push r${r}`));
+    const small = frame <= 6;
+    if (needsFrame) {
+      this.#emit('push r28', 'push r29');
+      if (small) {
+        for (let k = 0; k + 1 < frame; k += 2) this.#emit('rcall .');
+        if (frame % 2 === 1) this.#emit('push r1');
+        this.#emit('in r28, 0x3d', 'in r29, 0x3e');
+      } else {
+        this.#emit('in r28, 0x3d', 'in r29, 0x3e');
+        if (frame <= 63) this.#emit(`sbiw r28, ${frame}`);
+        else this.#emit(`subi r28, ${lo(frame)}`, `sbci r29, ${hi(frame)}`);
+        this.#emit(...setSp);
+      }
+    }
     this.out.push(...body);
-    if (frame > 0)
-      this.#emit(`subi r28, ${lo(neg16(frame))}`, `sbci r29, ${hi(neg16(frame))}`, ...setSp);
-    this.#emit('pop r29', 'pop r28', ...saved.reverse().map((r) => `pop r${r}`), 'ret');
+    if (needsFrame) {
+      if (small) for (let k = 0; k < frame; k += 1) this.#emit('pop r0');
+      else {
+        if (frame <= 63) this.#emit(`adiw r28, ${frame}`);
+        else this.#emit(`subi r28, ${lo(neg16(frame))}`, `sbci r29, ${hi(neg16(frame))}`);
+        this.#emit(...setSp);
+      }
+      this.#emit('pop r29', 'pop r28');
+    }
+    this.#emit(...[...saved].reverse().map((r) => `pop r${r}`), 'ret');
+    const lines = peephole(this.out);
+    // rjmp reaches +-2 KiW; a longer function takes jmp.
+    const long = lines.filter((l) => l.startsWith('\t') && !l.startsWith('\t.')).length > 1800;
+    this.out = long ? lines.map((l) => l.replace(/^\trjmp \.La0_/, '\tjmp .La0_')) : lines;
     this.out.push(`\t.size ${sym}, .-${sym}`);
     return this.out.join('\n');
   }
+
+  /** Scalar `v` into the fixed registers `regs`. */
+  #fromValue(regs: readonly number[], v: Val): void {
+    this.#parallel(regs.map((r, k) => ({ d: { k: 'r', r }, s: this.#src(v, k) })));
+  }
+}
+
+/** Drop self-moves and jumps to the next line. */
+function peephole(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  lines.forEach((l, i) => {
+    const m = /^\t(mov|movw) r(\d+), r(\d+)$/.exec(l);
+    if (m !== null && m[2] === m[3]) return;
+    const j = /^\trjmp (\S+)$/.exec(l);
+    if (j !== null && lines[i + 1] === `${j[1]}:`) return;
+    out.push(l);
+  });
+  return out;
 }
 
 /** Emit one function as AVR assembly (a `.globl a0_<name>` block in `.text.a0_<name>`). */
@@ -637,7 +1710,8 @@ export function emitAvrFunction(fn: TypedFunc): string {
 
 /**
  * Static upper bound on the SRAM stack one call of `fn` uses (frames, saved registers, return
- * addresses, and helper calls, through every callee), for the emission `compile` produces.
+ * addresses, outgoing stack arguments, and helper calls, through every callee), for the
+ * emission `compile` produces.
  */
 export function avrStackBytes(fn: TypedFunc, optimize = true): number {
   const memo = new Map<string, number>();
@@ -649,7 +1723,7 @@ export function avrStackBytes(fn: TypedFunc, optimize = true): number {
     e.emit();
     let deepest = 2; // a helper's return address
     for (const callee of source.calls.values()) deepest = Math.max(deepest, walk(callee));
-    const total = 2 + e.pushes + e.frameBytes + deepest;
+    const total = 2 + e.pushes + e.frameBytes + e.outgoing + deepest;
     memo.set(f.name, total);
     return total;
   };
@@ -657,32 +1731,38 @@ export function avrStackBytes(fn: TypedFunc, optimize = true): number {
 }
 
 const HELPERS: Readonly<Record<string, readonly string[]>> = {
-  // r22-r25 = r22-r25 * r18-r21 (low 32 bits): shift and add, 32 steps.
+  // r22-r25 = r22-r25 * r18-r21 (low 32 bits) on the hardware multiplier: the ten byte
+  // products whose weight is below 2^32, accumulated by column into r26, r27, r30, r31.
   __a0_mul32: [
-    'ldi r26, 32',
-    'mov r0, r26',
-    'clr r26',
-    'clr r27',
-    'clr r30',
-    'clr r31',
-    '.La0_mul_step:',
-    'sbrs r18, 0',
-    'rjmp .La0_mul_shift',
-    'add r26, r22',
-    'adc r27, r23',
-    'adc r30, r24',
-    'adc r31, r25',
-    '.La0_mul_shift:',
-    'lsl r22',
-    'rol r23',
-    'rol r24',
-    'rol r25',
-    'lsr r21',
-    'ror r20',
-    'ror r19',
-    'ror r18',
-    'dec r0',
-    'brne .La0_mul_step',
+    'mul r22, r21',
+    'mov r31, r0',
+    'mul r23, r20',
+    'add r31, r0',
+    'mul r24, r19',
+    'add r31, r0',
+    'mul r25, r18',
+    'add r31, r0',
+    'mul r22, r20',
+    'mov r30, r0',
+    'add r31, r1',
+    'mul r23, r19',
+    'add r30, r0',
+    'adc r31, r1',
+    'mul r24, r18',
+    'add r30, r0',
+    'adc r31, r1',
+    'clr r21',
+    'mul r22, r18',
+    'movw r26, r0',
+    'mul r22, r19',
+    'add r27, r0',
+    'adc r30, r1',
+    'adc r31, r21',
+    'mul r23, r18',
+    'add r27, r0',
+    'adc r30, r1',
+    'adc r31, r21',
+    'clr r1',
     'movw r22, r26',
     'movw r24, r30',
     'ret',
@@ -695,8 +1775,7 @@ const HELPERS: Readonly<Record<string, readonly string[]>> = {
     'mov r0, r26',
     'clr r26',
     'clr r27',
-    'clr r30',
-    'clr r31',
+    'movw r30, r26',
     '.La0_div_step:',
     'lsl r22',
     'rol r23',
@@ -721,43 +1800,6 @@ const HELPERS: Readonly<Record<string, readonly string[]>> = {
     '.La0_div_next:',
     'dec r0',
     'brne .La0_div_step',
-    'ret',
-  ],
-  // r22-r25 <<= r18 & 31.
-  __a0_shl32: [
-    'andi r18, 31',
-    'breq .La0_shl_done',
-    '.La0_shl_step:',
-    'lsl r22',
-    'rol r23',
-    'rol r24',
-    'rol r25',
-    'dec r18',
-    'brne .La0_shl_step',
-    '.La0_shl_done:',
-    'ret',
-  ],
-  // r22-r25 >>= r18 & 31 (logical).
-  __a0_shr32: [
-    'andi r18, 31',
-    'breq .La0_shr_done',
-    '.La0_shr_step:',
-    'lsr r25',
-    'ror r24',
-    'ror r23',
-    'ror r22',
-    'dec r18',
-    'brne .La0_shr_step',
-    '.La0_shr_done:',
-    'ret',
-  ],
-  // Copy r24:r25 (> 0) bytes from X to Z.
-  __a0_copy: [
-    '.La0_copy_step:',
-    'ld r0, X+',
-    'st Z+, r0',
-    'sbiw r24, 1',
-    'brne .La0_copy_step',
     'ret',
   ],
 };
