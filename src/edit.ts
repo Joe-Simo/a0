@@ -43,6 +43,8 @@ import {
   validate,
   validateFunction,
 } from './core.js';
+import { formatDenseFunction, formatDenseSignature } from './dense.js';
+import { denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
 
@@ -348,6 +350,11 @@ export interface ViewOptions {
    * top), and `f:N...` addresses function f. The header and `end` are not numbered.
    */
   readonly numbered?: boolean;
+  /**
+   * Show the function in the dense form (src/dense.ts) and read the replies written under this
+   * handle as dense text (src/dense-edit.ts). Revisions, validation and commits are unchanged.
+   */
+  readonly dense?: boolean;
 }
 
 export function formatSignature(fn: Func): string {
@@ -366,6 +373,27 @@ export function numberedFunction(fn: Func): string {
 export function scopedView(fn: TypedFunc, numbered = false): string {
   const text = numbered ? numberedFunction(fn) : formatFunction(fn);
   const sigs = [...fn.calls.values()].map((c) => `${formatSignature(c)} end`);
+  return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
+}
+
+/**
+ * A callee's signature in a dense view: a comment line (`# inc u32 -> u32`), so it can never be
+ * mistaken for, or copied as, a function header (models that saw `fn inc u32 -> u32 end` wrote it
+ * back as a body-less header followed by a second `fn inc ...` line).
+ */
+function denseSignatureLine(fn: Func): string {
+  return `# ${formatDenseSignature(fn).slice(3)}`;
+}
+
+/** The dense view of a function: its dense text, then one dense signature per direct callee. */
+export function scopedViewDense(
+  fn: TypedFunc,
+  program: TypedProgram,
+  scope: 'function' | 'deps',
+): string {
+  const text = formatDenseFunction(fn, program);
+  if (scope === 'function') return text;
+  const sigs = [...fn.calls.values()].map((c) => denseSignatureLine(c));
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
 }
 
@@ -531,6 +559,8 @@ interface OpenHandle {
   readonly functionName: string;
   readonly revision: string;
   readonly scope: ViewOptions['scope'];
+  /** Dense view: the view is dense text and replies under this handle are dense text. */
+  readonly dense?: boolean;
   /** Program handles opened with `scope: 'deps'`: the function the view is centred on. */
   readonly target?: string;
   readonly numbered?: boolean;
@@ -545,11 +575,15 @@ export interface ProgramViewOptions {
   readonly scope?: 'all' | 'deps';
   /** Required with `scope: 'deps'`. */
   readonly target?: string;
+  /** Dense signature lines, and dense replies under this handle. */
+  readonly dense?: boolean;
 }
 
 /** Program-level view: one signature line per function, in definition order. */
-export function programView(program: TypedProgram): string {
-  return program.functions.map((f) => `${formatSignature(f)} end`).join('\n');
+export function programView(program: TypedProgram, dense = false): string {
+  return program.functions
+    .map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`))
+    .join('\n');
 }
 
 /**
@@ -575,10 +609,13 @@ export function programNeighbourhood(program: TypedProgram, target: string): Typ
 }
 
 /** Dependency-scoped program view (without a handle line); see `ProgramViewOptions`. */
-export function scopedProgramView(program: TypedProgram, target: string): string {
+export function scopedProgramView(program: TypedProgram, target: string, dense = false): string {
   const shown = programNeighbourhood(program, target);
   const head = `# ${program.functions.length} functions; shown: ${target}, its callees, its callers`;
-  return [head, ...shown.map((f) => `${formatSignature(f)} end`)].join('\n');
+  return [
+    head,
+    ...shown.map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`)),
+  ].join('\n');
 }
 
 /**
@@ -699,6 +736,30 @@ export interface SessionOptions {
  * A bounded, in-memory edit session. Not a network service; no authentication or
  * multi-principal isolation exists in v0.1.
  */
+/**
+ * A diagnostic for a dense reply that names the dense text, not canonical ids: `sumsq.a` becomes
+ * ``sumsq (`fold addel 4 0 A`)`` and `isdiv.ret` becomes `isdiv's result`, using the node texts of the
+ * functions the reply defined (the dense text never shows an unnamed node's id).
+ */
+function denseDiagnostic(
+  e: A0Error,
+  names: ReadonlyMap<string, ReadonlyMap<string, string>>,
+): A0Error {
+  if (names.size === 0) return e;
+  const swap = (text: string): string =>
+    text.replace(/\b([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\b/g, (m, f: string, id: string) => {
+      const nodes = names.get(f);
+      if (nodes === undefined) return m;
+      if (id === 'ret') return `${f}'s result`;
+      const t = nodes.get(id);
+      return t === undefined ? m : `${f} (\`${t}\`)`;
+    });
+  const message = swap(e.detail);
+  const fix = e.fix === undefined ? undefined : swap(e.fix);
+  if (message === e.detail && fix === e.fix) return e;
+  return e.reworded(message, e.line, fix);
+}
+
 export class EditSession {
   #program: TypedProgram;
   readonly #handles = new Map<string, OpenHandle>();
@@ -737,25 +798,27 @@ export class EditSession {
     const handle = `g${this.#nextProgram}`;
     this.#nextProgram += 1;
     const rev = programRevision(this.#program);
+    const dense = options.dense === true;
     this.#handles.set(handle, {
       functionName: '*',
       revision: rev,
       scope: undefined,
       ...(target === undefined ? {} : { target }),
+      ...(dense ? { dense } : {}),
     });
     return {
       handle,
       functionName: '*',
       revision: rev,
-      text: `${handle}\n${this.#programText(target)}`,
+      text: `${handle}\n${this.#programText(target, dense)}`,
     };
   }
 
   /** A scoped program view whose target was removed falls back to the full listing. */
-  #programText(target: string | undefined): string {
+  #programText(target: string | undefined, dense = false): string {
     return target !== undefined && this.#program.byName.has(target)
-      ? scopedProgramView(this.#program, target)
-      : programView(this.#program);
+      ? scopedProgramView(this.#program, target, dense)
+      : programView(this.#program, dense);
   }
 
   /** Open a view of one function and return a short handle bound to its current revision. */
@@ -769,13 +832,15 @@ export class EditSession {
     this.#nextFn += 1;
     const rev = revision(fn);
     const numbered = options.numbered === true;
+    const dense = options.dense === true;
     this.#handles.set(handle, {
       functionName,
       revision: rev,
       scope: options.scope,
       ...(numbered ? { numbered } : {}),
+      ...(dense ? { dense } : {}),
     });
-    const body = this.#functionText(fn, options.scope, numbered);
+    const body = this.#functionText(fn, options.scope, numbered, dense);
     return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
   }
 
@@ -783,13 +848,20 @@ export class EditSession {
   view(handle: string): string {
     const bound = this.#handles.get(handle);
     if (bound === undefined) throw diag('A0611', [handle], { line: 1 });
-    if (bound.functionName === '*') return `${handle}\n${this.#programText(bound.target)}`;
+    if (bound.functionName === '*')
+      return `${handle}\n${this.#programText(bound.target, bound.dense === true)}`;
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined) throw diag('A0613', [handle], { line: 1 });
-    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true)}`;
+    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true, bound.dense === true)}`;
   }
 
-  #functionText(fn: TypedFunc, scope: ViewOptions['scope'], numbered: boolean): string {
+  #functionText(
+    fn: TypedFunc,
+    scope: ViewOptions['scope'],
+    numbered: boolean,
+    dense = false,
+  ): string {
+    if (dense) return scopedViewDense(fn, this.#program, scope === 'deps' ? 'deps' : 'function');
     if (scope === 'deps') return scopedView(fn, numbered);
     return numbered ? numberedFunction(fn) : formatFunction(fn);
   }
@@ -886,6 +958,18 @@ export class EditSession {
    * to the new revision (handles are stable names for the session).
    */
   apply(text: string): TypedProgram {
+    this.#denseNames = new Map();
+    try {
+      return this.#applyOrFix(text);
+    } catch (e) {
+      throw e instanceof A0Error ? denseDiagnostic(e, this.#denseNames) : e;
+    }
+  }
+
+  /** Dense text of the nodes of the functions the current dense reply names (see `denseDiagnostic`). */
+  #denseNames: Map<string, Map<string, string>> = new Map();
+
+  #applyOrFix(text: string): TypedProgram {
     if (this.#isFixAll(text)) return this.#fixAll();
     try {
       const next = this.#apply(text);
@@ -982,9 +1066,16 @@ export class EditSession {
       if (programRevision(this.#program) !== bound.revision) {
         throw diag('A0614', [handle]);
       }
-      const rawBody = text
+      let rawBody = text
         .split(/\r?\n/)
         .slice(text.split(/\r?\n/).findIndex((l) => stripComment(l).trim() === handle) + 1);
+      if (bound.dense === true)
+        rawBody = denseEditBody(
+          rawBody.map((l) => stripComment(l).trim()).filter((l) => l.length > 0),
+          this.#program,
+          undefined,
+          this.#denseNames,
+        );
       const { edits, rest } = splitLineEdits(rawBody);
       const blocks = lineEditBlocks(this.#program, edits, undefined);
       this.#program = editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n'));
@@ -1013,6 +1104,7 @@ export class EditSession {
       body = body.slice(0, -1);
     while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
       body = body.slice(0, -1);
+    if (bound.dense === true) body = denseEditBody(body, this.#program, fn, this.#denseNames);
     // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
     // function sent back whole replaces itself, and any other function is added or replaced
     // exactly as under a program handle. Edit lines before the first block apply to the

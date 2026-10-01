@@ -166,6 +166,21 @@ export class A0Error extends Error {
     return new A0Error(message, line, this.detailOf());
   }
 
+  /**
+   * The same diagnostic worded for another surface syntax (the dense view): its own message and
+   * fix text, no edits (they are canonical lines) and so no applicability.
+   */
+  reworded(message: string, line: number | undefined, fix: string | undefined): A0Error {
+    const { expected, actual, id } = this.detailOf();
+    return new A0Error(message, line, {
+      code: this.code,
+      ...(fix === undefined ? {} : { fix }),
+      ...(expected === undefined ? {} : { expected }),
+      ...(actual === undefined ? {} : { actual }),
+      ...(id === undefined ? {} : { id }),
+    });
+  }
+
   /** The same diagnostic with edits added or replaced. */
   withEdits(edits: readonly FixEdit[], applicability?: Applicability): A0Error {
     return new A0Error(this.detail, this.line, {

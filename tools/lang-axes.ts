@@ -30,6 +30,8 @@
  *   --rounds=N       timed rounds (default 5)
  *   --work=DIR       build root (default: a fresh directory under the OS temp dir)
  *   --out=PATH       report path (default results/lang-axes.json)
+ *   --tokens-only    recompute only the tokens axis and merge it into the existing report
+ *                    (no toolchain runs; the validation timings stay as recorded)
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -40,6 +42,7 @@ import { getEncoding } from 'js-tiktoken';
 import { compile } from '../src/backends.js';
 import { parseAndValidate } from '../src/core.js';
 import { findClang, runTool } from '../src/toolchain.js';
+import { denseOf } from './dense-tokens.js';
 import { cDriver, KERNELS, type Kernel, rustDriver } from './exec-bench-kernels.js';
 import {
   type Cmd,
@@ -105,6 +108,7 @@ interface Cli {
   readonly rounds: number;
   readonly work: string | null;
   readonly out: string;
+  readonly tokensOnly: boolean;
 }
 
 function parseCli(argv: readonly string[]): Cli {
@@ -113,6 +117,7 @@ function parseCli(argv: readonly string[]): Cli {
   let rounds = 5;
   let work: string | null = null;
   let out = join('results', 'lang-axes.json');
+  let tokensOnly = false;
   for (const a of argv) {
     const [key, value = ''] = a.split('=', 2) as [string, string?];
     const list = value.split(',').filter((v) => v.length > 0);
@@ -124,9 +129,10 @@ function parseCli(argv: readonly string[]): Cli {
     } else if (key === '--rounds') rounds = Math.max(1, Number(value) || 5);
     else if (key === '--work') work = value;
     else if (key === '--out') out = value;
+    else if (key === '--tokens-only') tokensOnly = true;
     else throw new Error(`unknown option ${a}`);
   }
-  return { langs, kernels, rounds, work, out };
+  return { langs, kernels, rounds, work, out, tokensOnly };
 }
 
 const CLI = parseCli(process.argv.slice(2));
@@ -334,6 +340,37 @@ interface TokenRow {
   readonly program: number;
 }
 
+/**
+ * A0's dense view of the same kernels (src/dense.ts, after `normalizeProgram`: the same behavior,
+ * nodes ordered and named for the dense text). The ledger and the rank use these counts for A0's
+ * source; the canonical counts above stay as recorded.
+ */
+function denseTokenRow(): Record<string, unknown> {
+  const kernels: Record<string, TokenRow> = {};
+  let sumKernel = 0;
+  let sumProgram = 0;
+  const ratios: number[] = [];
+  for (const k of KERNELS) {
+    if (!EXEC_KERNELS.includes(k.name)) continue;
+    const text = denseOf(k.a0);
+    const row = { kernel: tok(text), program: tok(`${text}\n`) };
+    kernels[k.name] = row;
+    sumKernel += row.kernel;
+    sumProgram += row.program;
+    ratios.push(row.kernel / tok(k.a0));
+  }
+  return {
+    meaning:
+      'o200k tokens of the dense text of each kernel (src/dense.ts) after normalizeProgram: same behavior as the canonical kernel, nodes ordered and named for the dense form; canonical -> dense -> canonical is lossless, tools/dense-tokens.ts measures every feature.',
+    sumKernelTokens: sumKernel,
+    sumProgramTokens: sumProgram,
+    kernelTokensOverCanonicalGeomean: Math.exp(
+      ratios.reduce((a, r) => a + Math.log(r), 0) / ratios.length,
+    ),
+    kernels,
+  };
+}
+
 function tokenAxis(subjects: readonly Subject[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const a0Kernel = new Map(KERNELS.map((k) => [k.name, tok(k.a0)]));
@@ -369,9 +406,66 @@ function tokenAxis(subjects: readonly Subject[]): Record<string, unknown> {
           ? null
           : Math.exp(ratios.reduce((a, r) => a + Math.log(r), 0) / ratios.length),
       kernels: perKernel,
+      ...(s.id === 'a0' ? { dense: denseTokenRow() } : {}),
     };
   }
+  addDenseRank(out);
   return out;
+}
+
+interface RankRow {
+  readonly family?: unknown;
+  readonly kernelsCovered?: number;
+  readonly sumKernelTokens?: number;
+  readonly kernels?: Record<string, { kernel?: number }>;
+  dense?: Record<string, unknown> & { sumKernelTokens: number; kernels: Record<string, TokenRow> };
+}
+
+/** Rank of A0 (canonical and dense) among every language that wrote all the kernels, and per kernel. */
+function addDenseRank(rows: Record<string, unknown>): void {
+  const a0 = rows.a0 as RankRow | undefined;
+  const dense = a0?.dense;
+  if (a0 === undefined || dense === undefined) return;
+  const others = Object.entries(rows).filter(
+    ([id, v]) => id !== 'a0' && (v as RankRow).kernelsCovered === EXEC_KERNELS.length,
+  ) as [string, RankRow][];
+  const sums = others.map(([, v]) => v.sumKernelTokens ?? 0);
+  const rankOf = (mine: number): number => 1 + sums.filter((x) => x < mine).length;
+  const best = (name: string): { lang: string; tokens: number } => {
+    let pick = { lang: '', tokens: Number.POSITIVE_INFINITY };
+    for (const [id, v] of Object.entries(rows)) {
+      const t = (v as RankRow).kernels?.[name]?.kernel;
+      if (id !== 'a0' && typeof t === 'number' && t < pick.tokens) pick = { lang: id, tokens: t };
+    }
+    return pick;
+  };
+  const perKernel: Record<string, unknown> = {};
+  for (const [name, row] of Object.entries(dense.kernels)) {
+    const b = best(name);
+    const canonical = a0.kernels?.[name]?.kernel ?? 0;
+    perKernel[name] = {
+      canonical,
+      dense: row.kernel,
+      best: b.tokens,
+      bestLanguage: b.lang,
+      denseOverBest: Number((row.kernel / b.tokens).toFixed(3)),
+      canonicalOverBest: Number((canonical / b.tokens).toFixed(3)),
+    };
+  }
+  const bestSum = Object.values(perKernel).reduce<number>(
+    (n, v) => n + (v as { best: number }).best,
+    0,
+  );
+  dense.vsBest = {
+    languagesRanked: others.length + 1,
+    canonicalRank: rankOf(a0.sumKernelTokens ?? 0),
+    denseRank: rankOf(dense.sumKernelTokens),
+    bestSingleLanguageSum: Math.min(...sums),
+    sumOfPerKernelBests: bestSum,
+    denseOverBestSingleLanguage: Number((dense.sumKernelTokens / Math.min(...sums)).toFixed(3)),
+    denseOverPerKernelBests: Number((dense.sumKernelTokens / bestSum).toFixed(3)),
+    perKernel,
+  };
 }
 
 // ---------------------------------------------------------------- validation timing
@@ -502,7 +596,25 @@ const median = (a: readonly number[]): number => {
   return s.length % 2 === 1 ? (s[m] as number) : ((s[m - 1] as number) + (s[m] as number)) / 2;
 };
 
+/** Recompute only the tokens axis and merge it into the existing report. */
+async function tokensOnly(): Promise<void> {
+  const subjects = [
+    ...baselines(undefined, undefined).filter(
+      (b) => b.family === 'a0' || CLI.langs === null || CLI.langs.has(b.id),
+    ),
+    ...TABLE.filter((l) => CLI.langs === null || CLI.langs.has(l.id)).map((l) =>
+      tableSubject(l, undefined),
+    ),
+  ];
+  const report = JSON.parse(await readFile(CLI.out, 'utf8')) as Record<string, unknown>;
+  report.tokens = tokenAxis(subjects);
+  report.tokensGeneratedAt = new Date().toISOString();
+  await writeFile(CLI.out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  process.stderr.write(`merged tokens into ${CLI.out}\n`);
+}
+
 async function main(): Promise<void> {
+  if (CLI.tokensOnly) return tokensOnly();
   const clang = findClang().path;
   const rustcPath = join(process.env.HOME ?? '', '.cargo', 'bin', 'rustc');
   const rustc = runTool(rustcPath, ['--version']).ok ? rustcPath : undefined;

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T05:26:35.126Z",
+  "generatedAt": "2026-10-01T07:37:30.807Z",
   "node": "v24.14.0",
   "platform": "darwin-arm64",
   "functions": 48,
@@ -16,46 +16,46 @@
       "status": "passed",
       "cases": 5262,
       "detail": "Reference interpreter vs BigInt oracle",
-      "elapsedMs": 477.29074999999995
+      "elapsedMs": 211.34112499999998
     },
     "optimizer": {
       "status": "passed",
       "cases": 5262,
       "detail": "Optimized graph vs BigInt oracle",
-      "elapsedMs": 76.82945800000005
+      "elapsedMs": 46.28750000000002
     },
     "javascript": {
       "status": "passed",
       "cases": 5262,
       "detail": "Executed emitted ES module in Node; public input guards retained.",
-      "elapsedMs": 46.447167000000036
+      "elapsedMs": 22.01120800000001
     },
     "native_c_clang": {
       "status": "passed",
       "cases": 5262,
       "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-      "elapsedMs": 423.78641700000003,
+      "elapsedMs": 346.568625,
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
     },
     "native_c_apple_clang_via_gcc": {
       "status": "passed",
       "cases": 5262,
       "detail": "native C via /usr/bin/gcc, which is Apple clang version 21.0.0 (clang-2100.3.34.2) (not GCC); undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-      "elapsedMs": 487.6112499999999,
+      "elapsedMs": 353.63020900000004,
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
     },
     "native_cpp_clang": {
       "status": "passed",
       "cases": 5262,
       "detail": "C-compatible output compiled as C++17 via clang++; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-      "elapsedMs": 505.41708399999993,
+      "elapsedMs": 341.75487499999986,
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
     },
     "native_c_parallel": {
       "status": "passed",
       "cases": 5262,
       "detail": "native C via clang with automatic parallel folds forced on every recognized fold (src/parallel.ts; 0 of 0 corpus folds recognized); undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
-      "elapsedMs": 383.16166599999997,
+      "elapsedMs": 353.0202089999998,
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
     },
     "native_arm64": {
@@ -63,16 +63,14 @@
       "cases": 4297,
       "detail": "native arm64 assembly (src/arm64.ts) via `clang -x assembler`, linked with the C test driver; 10 io functions (965 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 753.5341670000003,
+      "elapsedMs": 587.8076249999999,
       "skippedIoFunctions": 10,
       "skippedIoCases": 965
     },
     "native_x86_64": {
-      "status": "passed",
-      "cases": 4297,
-      "detail": "native x86-64 assembly (src/x86_64.ts) via `clang -x assembler`, linked with the C test driver; 10 io functions (965 cases) skipped: io is out of scope for this backend; executed under Rosetta 2 (arch -x86_64); optimized and unoptimized emissions each executed on every case",
-      "elapsedMs": 967.7230420000001,
-      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "status": "blocked",
+      "cases": 0,
+      "detail": "x86_64: needs a working x86-64 host: A0_SKIP_X86=1 disables it (a Rosetta that cannot start new binaries)",
       "skippedIoFunctions": 10,
       "skippedIoCases": 965
     },
@@ -80,7 +78,7 @@
       "status": "passed",
       "cases": 4297,
       "detail": "native RISC-V RV64 assembly (src/riscv64.ts) via `riscv64-elf-gcc -march=rv64gc -mabi=lp64`, linked with the C test driver over a bare-metal libc shim (UART out, embedded input), executed under qemu-system-riscv64 (virt board, no firmware); 10 io functions (965 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
-      "elapsedMs": 1028.9320420000004,
+      "elapsedMs": 716.3008749999999,
       "tool": "riscv64-elf-gcc (GCC) 16.2.0; QEMU emulator version 11.1.2",
       "skippedIoFunctions": 10,
       "skippedIoCases": 965
@@ -89,7 +87,7 @@
       "status": "passed",
       "cases": 4297,
       "detail": "native AVR assembly for the ATmega328P (src/avr.ts) via avr-as, linked with an avr-gcc C driver per function (cases in program memory, results on UART0), executed under libsimavr; 10 io functions (965 cases) skipped: io is out of scope for this backend; every io-free function fits the part; optimized and unoptimized emissions each executed on every case run",
-      "elapsedMs": 5243.059792,
+      "elapsedMs": 3450.5014169999995,
       "tool": "avr-gcc (Homebrew AVR GCC 9.5.0) 9.5.0; simavr 1.7_1",
       "skippedIoFunctions": 10,
       "skippedIoCases": 965,
@@ -101,7 +99,7 @@
       "status": "passed",
       "cases": 4297,
       "detail": "native 32-bit ARM assembly (src/arm32.ts, ARMv7-A ARM mode, AAPCS hard-float) assembled and linked with the C test driver by `arm-none-eabi-gcc` (newlib, semihosting), executed on an emulated Cortex-A7 (`qemu-system-arm -M virt`); 10 io functions (965 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
-      "elapsedMs": 658.3364579999998,
+      "elapsedMs": 498.7191670000002,
       "tool": "arm-none-eabi-gcc (Arm GNU Toolchain 15.3.Rel1 (Build arm-15.149)) 15.3.1 20260627; QEMU emulator version 11.1.2",
       "skippedIoFunctions": 10,
       "skippedIoCases": 965
@@ -110,21 +108,21 @@
       "status": "passed",
       "cases": 5262,
       "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
-      "elapsedMs": 377.1754579999997,
+      "elapsedMs": 386.6811659999994,
       "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld"
     },
     "webassembly_direct": {
       "status": "passed",
       "cases": 5262,
       "detail": "A0 wasm32 backend (src/wasm.ts): binary module emitted directly, no C/Clang/wasm-ld; executed in Node WebAssembly runtime with the C-derived harness; optimized and unoptimized emissions each executed on every case",
-      "elapsedMs": 61.87395900000047,
+      "elapsedMs": 54.710125000001426,
       "tool": "node v24.14.0"
     },
     "jvm": {
       "status": "passed",
       "cases": 5262,
       "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
-      "elapsedMs": 1283.578583999999,
+      "elapsedMs": 821.695667,
       "tool": "javac 27; openjdk version \"27\" 2026-09-15"
     },
     "systemverilog": {

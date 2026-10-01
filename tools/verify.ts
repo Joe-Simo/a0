@@ -413,6 +413,8 @@ export async function checkArm64(
 
 /** How this host can build and run x86-64 code: natively, through Rosetta, or not at all. */
 function x86Host(clang: string): { arch: string[]; runner: string[] } | string {
+  if (process.env.A0_SKIP_X86 === '1')
+    return 'needs a working x86-64 host: A0_SKIP_X86=1 disables it (a Rosetta that cannot start new binaries)';
   if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
     return { arch: [], runner: [] };
   if (process.platform !== 'darwin' || process.arch !== 'arm64')

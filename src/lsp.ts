@@ -43,8 +43,9 @@ import {
   parse,
   stripComment,
 } from './core.js';
+import { formatDense } from './dense.js';
 import { applyEdit } from './fix.js';
-import { link } from './link.js';
+import { isDensePath, link, parseFile } from './link.js';
 import { confine } from './mcp.js';
 
 /** One-line reference for every op, shown on hover and in completion. */
@@ -84,7 +85,7 @@ export const OP_DOCS: Readonly<Record<Op, string>> = {
 const FN_LINE = /^\s*fn\s+([a-z][a-z0-9_]*)\b/;
 const USE_LINE = /^\s*use\s+"([^"\\]+)"\s*$/;
 const END_LINE = /^\s*end\s*$/;
-const LINKED_AT = /^(\/[^\n]*?\.a0)(?::(\d+))?: /;
+const LINKED_AT = /^(\/[^\n]*?\.a0d?)(?::(\d+))?: /;
 
 interface FnDef {
   readonly name: string;
@@ -366,13 +367,19 @@ export async function startServer(connection: Connection, launch: string): Promi
     return [...ops, ...fns];
   });
 
-  connection.onDocumentFormatting(({ textDocument }): TextEdit[] | null => {
+  connection.onDocumentFormatting(async ({ textDocument }): Promise<TextEdit[] | null> => {
     const doc = documents.get(textDocument.uri);
-    if (doc === undefined || !paths.has(doc.uri)) return null;
+    const path = paths.get(textDocument.uri);
+    if (doc === undefined || path === undefined) return null;
     const text = doc.getText();
     let formatted: string;
     try {
-      formatted = formatSource(parse(text));
+      if (isDensePath(path)) {
+        // Dense text is formatted through the dense printer, with the parameter counts of
+        // the files it uses (a call's arity comes from its callee).
+        const { program, known } = await parseFile(path, read);
+        formatted = formatDense(program, { known, comments: true });
+      } else formatted = formatSource(parse(text));
     } catch {
       return null;
     }

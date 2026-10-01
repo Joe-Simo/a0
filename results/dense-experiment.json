@@ -1,0 +1,373 @@
+{
+  "meaning": "Dense view vs canonical A0 with the rules-merged primer, fresh Haiku and Sonnet subagents, one shot plus one retry (tools/ai-edit-experiment.ts with A0_EXPERIMENT_DENSE=1 for dense). Tokens are o200k per task: system text 1.25x on the first call of a session and 0.05x after, everything else 1x; a retry re-sends task, view, first reply and the rejection. Dense primer MODEL_GUIDE.dense.txt, canonical primer MODEL_GUIDE.rules-merged.txt.",
+  "setsAbd": {
+    "sets": [
+      "a",
+      "b",
+      "d"
+    ],
+    "rows": [
+      {
+        "model": "haiku",
+        "form": "canonical",
+        "trials": 38,
+        "systemTokens": 118,
+        "oneShot": 30,
+        "afterOneRetry": 36,
+        "callsPerTask": 1.21,
+        "meanTaskPromptTokens": 88,
+        "meanReplyTokens": 25.2,
+        "cost1Task": 304,
+        "cost10TaskSession": 177,
+        "costUnbounded": 163,
+        "unresolved": [
+          "b:b-bounds-largest",
+          "b:b-checksum-poly"
+        ]
+      },
+      {
+        "model": "haiku",
+        "form": "dense",
+        "trials": 38,
+        "systemTokens": 145,
+        "oneShot": 34,
+        "afterOneRetry": 34,
+        "callsPerTask": 1.11,
+        "meanTaskPromptTokens": 73,
+        "meanReplyTokens": 28.1,
+        "cost1Task": 308,
+        "cost10TaskSession": 152,
+        "costUnbounded": 134,
+        "unresolved": [
+          "a:loop-inclusive",
+          "b:b-bounds-largest",
+          "d:d-total-six",
+          "d:d-prod4-seed"
+        ]
+      },
+      {
+        "model": "sonnet",
+        "form": "canonical",
+        "trials": 38,
+        "systemTokens": 118,
+        "oneShot": 38,
+        "afterOneRetry": 38,
+        "callsPerTask": 1,
+        "meanTaskPromptTokens": 88,
+        "meanReplyTokens": 24.9,
+        "cost1Task": 261,
+        "cost10TaskSession": 133,
+        "costUnbounded": 119,
+        "unresolved": []
+      },
+      {
+        "model": "sonnet",
+        "form": "dense",
+        "trials": 38,
+        "systemTokens": 145,
+        "oneShot": 36,
+        "afterOneRetry": 38,
+        "callsPerTask": 1.05,
+        "meanTaskPromptTokens": 73,
+        "meanReplyTokens": 18.7,
+        "cost1Task": 280,
+        "cost10TaskSession": 123,
+        "costUnbounded": 106,
+        "unresolved": []
+      },
+      {
+        "model": "both",
+        "form": "canonical",
+        "trials": 76,
+        "systemTokens": 118,
+        "oneShot": 68,
+        "afterOneRetry": 74,
+        "callsPerTask": 1.11,
+        "meanTaskPromptTokens": 88,
+        "meanReplyTokens": 25.1,
+        "cost1Task": 282,
+        "cost10TaskSession": 155,
+        "costUnbounded": 141,
+        "unresolved": [
+          "b:b-bounds-largest",
+          "b:b-checksum-poly"
+        ]
+      },
+      {
+        "model": "both",
+        "form": "dense",
+        "trials": 76,
+        "systemTokens": 145,
+        "oneShot": 70,
+        "afterOneRetry": 72,
+        "callsPerTask": 1.08,
+        "meanTaskPromptTokens": 73,
+        "meanReplyTokens": 23.4,
+        "cost1Task": 294,
+        "cost10TaskSession": 137,
+        "costUnbounded": 120,
+        "unresolved": [
+          "a:loop-inclusive",
+          "b:b-bounds-largest",
+          "d:d-total-six",
+          "d:d-prod4-seed"
+        ]
+      }
+    ]
+  },
+  "setsAbdef": {
+    "sets": [
+      "a",
+      "b",
+      "d",
+      "e",
+      "f"
+    ],
+    "rows": [
+      {
+        "model": "haiku",
+        "form": "canonical",
+        "trials": 62,
+        "systemTokens": 118,
+        "oneShot": 50,
+        "afterOneRetry": 59,
+        "callsPerTask": 1.19,
+        "meanTaskPromptTokens": 89,
+        "meanReplyTokens": 27,
+        "cost1Task": 307,
+        "cost10TaskSession": 179,
+        "costUnbounded": 165,
+        "unresolved": [
+          "b:b-bounds-largest",
+          "b:b-checksum-poly",
+          "e:e-sum-range"
+        ]
+      },
+      {
+        "model": "haiku",
+        "form": "dense",
+        "trials": 62,
+        "systemTokens": 145,
+        "oneShot": 52,
+        "afterOneRetry": 53,
+        "callsPerTask": 1.16,
+        "meanTaskPromptTokens": 74,
+        "meanReplyTokens": 28.5,
+        "cost1Task": 317,
+        "cost10TaskSession": 160,
+        "costUnbounded": 143,
+        "unresolved": [
+          "a:loop-inclusive",
+          "b:b-bounds-largest",
+          "d:d-total-six",
+          "d:d-prod4-seed",
+          "e:e-sum-range",
+          "e:e-popcount-fold",
+          "e:e-thread-param",
+          "f:f-min4-seed",
+          "f:f-countabove-gt"
+        ]
+      },
+      {
+        "model": "sonnet",
+        "form": "canonical",
+        "trials": 62,
+        "systemTokens": 118,
+        "oneShot": 61,
+        "afterOneRetry": 61,
+        "callsPerTask": 1.02,
+        "meanTaskPromptTokens": 89,
+        "meanReplyTokens": 24.9,
+        "cost1Task": 264,
+        "cost10TaskSession": 136,
+        "costUnbounded": 122,
+        "unresolved": [
+          "f:f-divrem-pair"
+        ]
+      },
+      {
+        "model": "sonnet",
+        "form": "dense",
+        "trials": 62,
+        "systemTokens": 145,
+        "oneShot": 59,
+        "afterOneRetry": 61,
+        "callsPerTask": 1.05,
+        "meanTaskPromptTokens": 74,
+        "meanReplyTokens": 19.3,
+        "cost1Task": 281,
+        "cost10TaskSession": 124,
+        "costUnbounded": 107,
+        "unresolved": [
+          "f:f-divrem-pair"
+        ]
+      },
+      {
+        "model": "both",
+        "form": "canonical",
+        "trials": 124,
+        "systemTokens": 118,
+        "oneShot": 111,
+        "afterOneRetry": 120,
+        "callsPerTask": 1.1,
+        "meanTaskPromptTokens": 89,
+        "meanReplyTokens": 26,
+        "cost1Task": 285,
+        "cost10TaskSession": 158,
+        "costUnbounded": 144,
+        "unresolved": [
+          "b:b-bounds-largest",
+          "b:b-checksum-poly",
+          "e:e-sum-range",
+          "f:f-divrem-pair"
+        ]
+      },
+      {
+        "model": "both",
+        "form": "dense",
+        "trials": 124,
+        "systemTokens": 145,
+        "oneShot": 111,
+        "afterOneRetry": 114,
+        "callsPerTask": 1.1,
+        "meanTaskPromptTokens": 74,
+        "meanReplyTokens": 23.9,
+        "cost1Task": 299,
+        "cost10TaskSession": 142,
+        "costUnbounded": 125,
+        "unresolved": [
+          "a:loop-inclusive",
+          "b:b-bounds-largest",
+          "d:d-total-six",
+          "d:d-prod4-seed",
+          "e:e-sum-range",
+          "e:e-popcount-fold",
+          "e:e-thread-param",
+          "f:f-min4-seed",
+          "f:f-countabove-gt",
+          "f:f-divrem-pair"
+        ]
+      }
+    ]
+  },
+  "setsEf": {
+    "sets": [
+      "e",
+      "f"
+    ],
+    "rows": [
+      {
+        "model": "haiku",
+        "form": "canonical",
+        "trials": 24,
+        "systemTokens": 118,
+        "oneShot": 20,
+        "afterOneRetry": 23,
+        "callsPerTask": 1.17,
+        "meanTaskPromptTokens": 91,
+        "meanReplyTokens": 29.9,
+        "cost1Task": 310,
+        "cost10TaskSession": 183,
+        "costUnbounded": 169,
+        "unresolved": [
+          "e:e-sum-range"
+        ]
+      },
+      {
+        "model": "haiku",
+        "form": "dense",
+        "trials": 24,
+        "systemTokens": 145,
+        "oneShot": 18,
+        "afterOneRetry": 19,
+        "callsPerTask": 1.25,
+        "meanTaskPromptTokens": 77,
+        "meanReplyTokens": 29.2,
+        "cost1Task": 330,
+        "cost10TaskSession": 174,
+        "costUnbounded": 156,
+        "unresolved": [
+          "e:e-sum-range",
+          "e:e-popcount-fold",
+          "e:e-thread-param",
+          "f:f-min4-seed",
+          "f:f-countabove-gt"
+        ]
+      },
+      {
+        "model": "sonnet",
+        "form": "canonical",
+        "trials": 24,
+        "systemTokens": 118,
+        "oneShot": 23,
+        "afterOneRetry": 23,
+        "callsPerTask": 1.04,
+        "meanTaskPromptTokens": 91,
+        "meanReplyTokens": 25,
+        "cost1Task": 269,
+        "cost10TaskSession": 141,
+        "costUnbounded": 127,
+        "unresolved": [
+          "f:f-divrem-pair"
+        ]
+      },
+      {
+        "model": "sonnet",
+        "form": "dense",
+        "trials": 24,
+        "systemTokens": 145,
+        "oneShot": 23,
+        "afterOneRetry": 23,
+        "callsPerTask": 1.04,
+        "meanTaskPromptTokens": 77,
+        "meanReplyTokens": 20.1,
+        "cost1Task": 283,
+        "cost10TaskSession": 127,
+        "costUnbounded": 109,
+        "unresolved": [
+          "f:f-divrem-pair"
+        ]
+      },
+      {
+        "model": "both",
+        "form": "canonical",
+        "trials": 48,
+        "systemTokens": 118,
+        "oneShot": 43,
+        "afterOneRetry": 46,
+        "callsPerTask": 1.1,
+        "meanTaskPromptTokens": 91,
+        "meanReplyTokens": 27.4,
+        "cost1Task": 289,
+        "cost10TaskSession": 162,
+        "costUnbounded": 148,
+        "unresolved": [
+          "e:e-sum-range",
+          "f:f-divrem-pair"
+        ]
+      },
+      {
+        "model": "both",
+        "form": "dense",
+        "trials": 48,
+        "systemTokens": 145,
+        "oneShot": 41,
+        "afterOneRetry": 42,
+        "callsPerTask": 1.15,
+        "meanTaskPromptTokens": 77,
+        "meanReplyTokens": 24.6,
+        "cost1Task": 307,
+        "cost10TaskSession": 150,
+        "costUnbounded": 133,
+        "unresolved": [
+          "e:e-sum-range",
+          "e:e-popcount-fold",
+          "e:e-thread-param",
+          "f:f-min4-seed",
+          "f:f-countabove-gt",
+          "f:f-divrem-pair"
+        ]
+      }
+    ]
+  }
+}

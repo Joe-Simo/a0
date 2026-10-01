@@ -7,7 +7,9 @@
  * in one 40-function program per representation, tools/ai-edit-tasks-c.ts); select with
  * A0_EXPERIMENT_TASKSET=a|b|c|all.
  *
- * A0 cell options: A0_EXPERIMENT_GUIDE (primer file),
+ * A0 cell options: A0_EXPERIMENT_DENSE=1 (the structured A0 cell shows the dense view and reads
+ * dense replies, src/dense.ts; use with a dense primer such as MODEL_GUIDE.dense.txt),
+ * A0_EXPERIMENT_GUIDE (primer file),
  * A0_EXPERIMENT_PRIMER=always|none|lazy|rules|rules-merged,
  * A0_EXPERIMENT_PROGRAM_VIEW=all|deps
  * (program handle scope), A0_EXPERIMENT_SYSTEM=separate|merged (protocol paragraph after the
@@ -114,6 +116,10 @@ const PROTOCOL_CONVENTIONAL =
 // them (`N line`, `N-`, `N+ line`); measured 2026-09-30 with MODEL_GUIDE.lines.txt, it raised
 // output per edit and lowered acceptance, so the default view stays unnumbered.
 const A0_NUMBERED_VIEW = process.env.A0_EXPERIMENT_A0_VIEW === 'numbered';
+// A0_EXPERIMENT_DENSE=1: the structured A0 cell is shown the dense view (function and program
+// handles) and its replies are dense text; the program, the acceptance tests and the checker
+// are the same.
+const A0_DENSE_VIEW = process.env.A0_EXPERIMENT_DENSE === '1';
 const PROTOCOL_STRUCTURED_A0 = `The view starts with edit handles. Reply with only the edit lines the guide describes (${A0_NUMBERED_VIEW ? 'numbered or ' : ''}instruction lines edit the shown function; \`fn\` blocks or \`-fn name\` edit the program), bare: no code fence, no handle line.`;
 // Primer-free A0 structured protocol (A0_EXPERIMENT_PRIMER=none|lazy): the edit rules of the
 // guide's EDIT line, stated on their own, so the system text is the edit protocol only and the
@@ -411,8 +417,16 @@ async function buildCell(
       // line selects which one is used.
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
-      const fnView = session.open(fnName, { scope: 'deps', numbered: A0_NUMBERED_VIEW }).text; // e0
-      const progView = session.openProgram({ scope: programScope, target: fnName }).text; // g0
+      const fnView = session.open(fnName, {
+        scope: 'deps',
+        numbered: A0_NUMBERED_VIEW,
+        dense: A0_DENSE_VIEW,
+      }).text; // e0
+      const progView = session.openProgram({
+        scope: programScope,
+        target: fnName,
+        dense: A0_DENSE_VIEW,
+      }).text; // g0
       const view = `${fnView}\n${progView}`;
       return { cell: { representation, protocol, ...primers, system, view }, session, handle };
     }
@@ -798,17 +812,19 @@ async function main(): Promise<void> {
     selfCheck[`${task.id}/a0`] = await acceptA0(task.reference.a0, task.tests);
     selfCheck[`${task.id}/a0-original-must-fail`] =
       (await acceptA0(task.a0Source, task.tests)).length > 0 ? [] : ['original already passes'];
-    // An A0-only run (A0_EXPERIMENT_REPS=a0) checks only the A0 references: the TS and Rust
-    // toolchains are not on its path.
-    if (reps.length === 1 && reps[0] === 'a0') continue;
-    selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
-    selfCheck[`${task.id}/ts-original-must-fail`] =
-      (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
-    selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);
-    selfCheck[`${task.id}/rust-original-must-fail`] =
-      (await acceptRust(task.rustSource, task.tests, typedRef)).length > 0
-        ? []
-        : ['original already passes'];
+    // The TypeScript and Rust checks compile and run, so they only run for cells that use them.
+    if (reps.includes('ts')) {
+      selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
+      selfCheck[`${task.id}/ts-original-must-fail`] =
+        (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
+    }
+    if (reps.includes('rust')) {
+      selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);
+      selfCheck[`${task.id}/rust-original-must-fail`] =
+        (await acceptRust(task.rustSource, task.tests, typedRef)).length > 0
+          ? []
+          : ['original already passes'];
+    }
   }
   const selfCheckOk = Object.values(selfCheck).every((f) => f.length === 0);
 
@@ -971,6 +987,7 @@ async function main(): Promise<void> {
     programView: programScope,
     systemLayout,
     a0View: A0_NUMBERED_VIEW ? 'numbered' : 'plain',
+    a0Syntax: A0_DENSE_VIEW ? 'dense' : 'canonical',
     method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',
