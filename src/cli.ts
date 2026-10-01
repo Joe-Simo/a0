@@ -2,7 +2,7 @@
 /**
  * Local command-line interface.
  *
- *   a0 check <file.a0>...
+ *   a0 check <file.a0>...                (add --dense to any command to read dense text; `.a0d` files always are)
  *   a0 init [dir]         (AGENTS.md + agent rule files, src/agents.ts)
  *   a0 hook               (after-edit check for agent hooks: JSON on stdin)
  *   a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]
@@ -12,6 +12,8 @@
  *   a0 wasm <file.a0> <out.wasm>
  *   a0 patch <file.a0> <patch-file> [out.a0]
  *   a0 revision <file.a0> <function>
+ *   a0 dense <file.a0> [out] [--normalize] [--comments]   (canonical to dense text, src/dense.ts)
+ *   a0 canon <file.a0d> [out]             (dense text to canonical)
  *   a0 mcp <file-or-dir>   (MCP server over stdio, src/mcp.ts)
  *   a0 lsp [root]          (Language Server Protocol over stdio, src/lsp.ts)
  *
@@ -35,8 +37,9 @@ import {
   type TypedProgram,
   type Value,
 } from './core.js';
-import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
-import { link } from './link.js';
+import { formatDense, normalizeProgram } from './dense.js';
+import { applyPatch, parsePatch, revision, scopedView, scopedViewDense } from './edit.js';
+import { link, parseFile } from './link.js';
 import { serveLsp } from './lsp.js';
 import { serveStdio } from './mcp.js';
 import { parallelC } from './parallel.js';
@@ -55,6 +58,9 @@ function usage(): never {
       '  a0 wasm <file.a0> <out.wasm>             # C backend + Clang + wasm-ld (emit wasm: direct)',
       '  a0 patch <file.a0> <patch-file> [out.a0]',
       '  a0 revision <file.a0> <function>',
+      '  a0 dense <file.a0> [out] [--normalize] [--comments]   # canonical file to dense text',
+      '  a0 canon <file.a0d> [out]               # dense file to canonical text',
+      '  (any command: --dense reads files as dense text; .a0d files always are)',
       '  a0 view <file.a0> <function>          # function plus callee signatures',
       '  a0 mcp <file-or-dir>                  # MCP server (stdio), paths confined to the root;',
       '      tools: a0_open a0_program a0_apply a0_check a0_run a0_emit a0_save',
@@ -75,8 +81,8 @@ async function readSource(path: string): Promise<string> {
 }
 
 /** Load a file and everything it `use`s as one validated program. */
-async function loadProgram(path: string): Promise<TypedProgram> {
-  return (await link(path, (p) => readFile(p, 'utf8'))).program;
+async function loadProgram(path: string, dense = false): Promise<TypedProgram> {
+  return (await link(path, (p) => readFile(p, 'utf8'), { dense })).program;
 }
 
 function parseValue(text: string): Value {
@@ -95,15 +101,16 @@ function flagNumber(args: readonly string[], name: string): number | undefined {
   return Number(text);
 }
 
-async function main(argv: readonly string[]): Promise<void> {
-  const [cmd, ...rest] = argv;
+async function main(args: readonly string[]): Promise<void> {
+  const dense = args.includes('--dense');
+  const [cmd, ...rest] = args.filter((a) => a !== '--dense');
   switch (cmd) {
     case 'check': {
       if (rest.length === 0) usage();
       let failed = 0;
       for (const file of rest) {
         try {
-          const program = await loadProgram(file);
+          const program = await loadProgram(file, dense);
           for (const fn of program.functions) {
             process.stdout.write(
               `${rest.length > 1 ? `${file}: ` : ''}${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
@@ -126,7 +133,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'hook': {
       const chunks: Buffer[] = [];
       for await (const c of process.stdin) chunks.push(c as Buffer);
-      const out = await hookResponse(Buffer.concat(chunks).toString('utf8'), loadProgram);
+      const out = await hookResponse(Buffer.concat(chunks).toString('utf8'), (p) => loadProgram(p));
       if (out !== undefined) process.stdout.write(`${out}\n`);
       return;
     }
@@ -134,7 +141,7 @@ async function main(argv: readonly string[]): Promise<void> {
       const flags = rest.filter((a) => a.startsWith('--'));
       const [file, name, ...args] = rest.filter((a) => !a.startsWith('--'));
       if (file === undefined || name === undefined) usage();
-      const program = await loadProgram(file);
+      const program = await loadProgram(file, dense);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       const values = args.map(parseValue);
@@ -156,7 +163,7 @@ async function main(argv: readonly string[]): Promise<void> {
       const trips = flagNumber(rest, '--traps');
       const [target, file, out] = rest.filter((a) => a !== flag && !a.startsWith('--traps'));
       if (target === undefined || file === undefined || !isTarget(target)) usage();
-      const program = await loadProgram(file);
+      const program = await loadProgram(file, dense);
       if (flag !== undefined) {
         const mode = flag === '--parallel' ? 'auto' : flag.slice('--parallel='.length);
         if (target !== 'c' || (mode !== 'auto' && mode !== 'gpu' && mode !== 'off')) usage();
@@ -189,7 +196,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'wasm': {
       const [file, out] = rest;
       if (file === undefined || out === undefined) usage();
-      const program = await loadProgram(file);
+      const program = await loadProgram(file, dense);
       const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
       const cText =
         cache === undefined
@@ -205,7 +212,7 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'patch': {
       const [file, patchFile, out] = rest;
       if (file === undefined || patchFile === undefined) usage();
-      const program = await loadProgram(file);
+      const program = await loadProgram(file, dense);
       const patch = parsePatch(await readSource(patchFile));
       const next = applyPatch(program, patch);
       const text = formatSource(next);
@@ -216,19 +223,39 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'view': {
       const [file, name] = rest;
       if (file === undefined || name === undefined) usage();
-      const program = await loadProgram(file);
+      const program = await loadProgram(file, dense);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
-      process.stdout.write(`${scopedView(fn)}\n`);
+      process.stdout.write(`${dense ? scopedViewDense(fn, program, 'deps') : scopedView(fn)}\n`);
       return;
     }
     case 'revision': {
       const [file, name] = rest;
       if (file === undefined || name === undefined) usage();
-      const program = await loadProgram(file);
+      const program = await loadProgram(file, dense);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       process.stdout.write(`${revision(fn)}\n`);
+      return;
+    }
+    case 'dense': {
+      const flags = rest.filter((a) => a.startsWith('--'));
+      const [file, out] = rest.filter((a) => !a.startsWith('--'));
+      if (file === undefined) usage();
+      const { program, known } = await parseFile(file, (p) => readFile(p, 'utf8'));
+      const shown = flags.includes('--normalize') ? normalizeProgram(program) : program;
+      const text = formatDense(shown, { known, comments: flags.includes('--comments') });
+      if (out === undefined) process.stdout.write(text);
+      else await writeFile(out, text, 'utf8');
+      return;
+    }
+    case 'canon': {
+      const [file, out] = rest;
+      if (file === undefined) usage();
+      const { program } = await parseFile(file, (p) => readFile(p, 'utf8'), true);
+      const text = formatSource(program);
+      if (out === undefined) process.stdout.write(text);
+      else await writeFile(out, text, 'utf8');
       return;
     }
     case 'mcp': {

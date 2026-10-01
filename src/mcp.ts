@@ -27,8 +27,9 @@ import {
   type TypedProgram,
   type Value,
 } from './core.js';
+import { formatDense } from './dense.js';
 import { EditSession, revision } from './edit.js';
-import { link } from './link.js';
+import { DENSE_EXTENSION, isDensePath, link } from './link.js';
 
 /** Largest text any tool returns, in characters. */
 export const MAX_OUTPUT = 1 << 20;
@@ -41,6 +42,9 @@ interface Opened {
   /** True once an edit has been applied and not yet saved. */
   dirty: boolean;
 }
+
+/** A source file: canonical `.a0` or dense `.a0d`. */
+const isA0Path = (path: string): boolean => path.endsWith('.a0') || path.endsWith(DENSE_EXTENSION);
 
 const within = (root: string, path: string): boolean => {
   const rel = relative(root, path);
@@ -56,7 +60,7 @@ const denied = (path: string): A0Error =>
 /** Resolve `path` inside `root`; the real path (symlinks followed) must stay inside too. */
 export async function confine(root: string, path: string, mustExist: boolean): Promise<string> {
   const abs = resolve(root, path);
-  if (!within(root, abs) || !abs.endsWith('.a0'))
+  if (!within(root, abs) || !isA0Path(abs))
     throw within(root, abs)
       ? new A0Error(`'${path}' is not an .a0 file`, undefined, { code: 'limit' })
       : denied(path);
@@ -64,7 +68,7 @@ export async function confine(root: string, path: string, mustExist: boolean): P
     const real = await realpath(abs);
     if (!within(root, real)) throw denied(path);
     // The name alone is not enough: `x.a0 -> .env` would expose (and a save overwrite) it.
-    if (!real.endsWith('.a0'))
+    if (!isA0Path(real))
       throw new A0Error(`'${path}' is not an .a0 file`, undefined, { code: 'limit' });
     return real;
   } catch (e) {
@@ -165,7 +169,13 @@ export async function createServer(launch: string): Promise<McpServer> {
   const fileField = z
     .string()
     .optional()
-    .describe('.a0 file relative to the server root (default: the launched file)');
+    .describe('.a0 or .a0d (dense) file relative to the server root (default: the launched file)');
+  const denseField = z
+    .boolean()
+    .optional()
+    .describe(
+      'dense view: the function (or signatures) in the dense syntax; replies under this handle are dense too',
+    );
 
   const server = new McpServer({ name: 'a0', version: '0.1.0' });
 
@@ -178,11 +188,16 @@ export async function createServer(launch: string): Promise<McpServer> {
         file: fileField,
         function: z.string(),
         scope: z.enum(['deps', 'full']).optional(),
+        dense: denseField,
       },
     },
-    tool(async ({ file, function: name, scope }) => {
+    tool(async ({ file, function: name, scope, dense }) => {
       const { session } = await sessionFor(file);
-      return session.open(name, scope === 'full' ? {} : { scope: 'deps' }).text;
+      const useDense = dense ?? isDensePath(await fileOf(file));
+      return session.open(name, {
+        ...(scope === 'full' ? {} : { scope: 'deps' as const }),
+        ...(useDense ? { dense: true } : {}),
+      }).text;
     }),
   );
 
@@ -191,11 +206,15 @@ export async function createServer(launch: string): Promise<McpServer> {
     {
       description:
         'Open a program handle: every function signature, or with target only those around it. The handle accepts whole fn ... end blocks that add or replace functions.',
-      inputSchema: { file: fileField, target: z.string().optional() },
+      inputSchema: { file: fileField, target: z.string().optional(), dense: denseField },
     },
-    tool(async ({ file, target }) => {
+    tool(async ({ file, target, dense }) => {
       const { session } = await sessionFor(file);
-      return session.openProgram(target === undefined ? {} : { scope: 'deps', target }).text;
+      const useDense = dense ?? isDensePath(await fileOf(file));
+      return session.openProgram({
+        ...(target === undefined ? {} : { scope: 'deps' as const, target }),
+        ...(useDense ? { dense: true } : {}),
+      }).text;
     }),
   );
 
@@ -291,7 +310,13 @@ export async function createServer(launch: string): Promise<McpServer> {
           code: 'edit',
           fix: 'pass path: a new .a0 file inside the root',
         });
-      await writeFile(out, formatSource(entry.session.program), 'utf8');
+      await writeFile(
+        out,
+        isDensePath(out)
+          ? formatDense(entry.session.program, { comments: true })
+          : formatSource(entry.session.program),
+        'utf8',
+      );
       entry.dirty = false;
       return relative(root, out);
     }),
