@@ -1693,6 +1693,12 @@ export const DIAGNOSTICS = {
     why: ['`a0 explain` takes a code of the form A0nnnn from the diagnostics table.'],
     unrunnable: 'command-line input; covered by test/diagnostics.test.ts',
   },
+  A0814: {
+    cls: 'structure',
+    message: "invalid {0} '{1}'",
+    why: ['A `--fuel=N` or `--max-trips=N` flag takes a non-negative decimal integer.'],
+    unrunnable: 'command-line input; covered by test/trap.test.ts',
+  },
   A0812: {
     cls: 'structure',
     message: "unknown function '{0}'",

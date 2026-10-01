@@ -117,7 +117,7 @@ function flagNumber(args: readonly string[], name: string): number | undefined {
   const a = args.find((x) => x.startsWith(`${name}=`));
   if (a === undefined) return undefined;
   const text = a.slice(name.length + 1);
-  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw new A0Error(`invalid ${name} '${text}'`);
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw diag('A0814', [name, text]);
   return Number(text);
 }
 
