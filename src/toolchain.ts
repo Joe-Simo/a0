@@ -10,7 +10,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
@@ -54,6 +54,50 @@ export function runTool(
     shell: false,
   });
   return { ok: r.status === 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
+}
+
+let rosettaProbe: string | undefined;
+
+/**
+ * Whether x86-64 code that has never run before executes under Rosetta 2 on this machine, as a
+ * reason when it does not (undefined when it does). `arch -x86_64 /usr/bin/true` is not enough:
+ * that binary is already translated. When Rosetta's translation service wedges, a new x86-64
+ * binary stays in an uninterruptible state for good, and a synchronous wait on it (spawnSync with
+ * a timeout) never returns, which hangs every test and gate step that runs generated x86-64 code.
+ * The probe therefore builds a fresh binary, starts it in the background of a small shell and
+ * stops waiting after 20 s without waiting for it to exit. Cached per process.
+ */
+export function rosettaStuck(clang: string): string | undefined {
+  if (rosettaProbe !== undefined) return rosettaProbe === '' ? undefined : rosettaProbe;
+  const dir = mkdtempSync(join(tmpdir(), 'a0-rosetta-'));
+  let reason = '';
+  try {
+    const src = join(dir, 'p.c');
+    const exe = join(dir, 'p');
+    writeFileSync(
+      src,
+      `int main(void) { return ${(process.pid % 200) + 1} - ${(process.pid % 200) + 1}; }\n`,
+    );
+    const build = runTool(clang, ['-arch', 'x86_64', '-o', exe, src], { timeoutMs: 60_000 });
+    if (!build.ok) reason = `clang cannot build for x86_64: ${build.stderr.slice(0, 200)}`;
+    else {
+      const script =
+        'p=$1; shift; "$@" >/dev/null 2>&1 & c=$!; i=0; while [ $i -lt 200 ]; do kill -0 $c 2>/dev/null || { wait $c; exit $?; }; sleep 0.1; i=$((i+1)); done; exit 124';
+      const r = spawnSync('/bin/sh', ['-c', script, 'sh', exe, '/usr/bin/arch', '-x86_64', exe], {
+        encoding: 'utf8',
+        shell: false,
+        timeout: 60_000,
+      });
+      if (r.status !== 0)
+        reason =
+          'needs Rosetta 2 to run new x86-64 binaries: its translation service is stuck on this machine (the probe binary did not exit in 20 s)';
+    }
+  } finally {
+    // A stuck probe cannot be removed; leave its directory behind.
+    if (reason === '') rmSync(dir, { recursive: true, force: true });
+  }
+  rosettaProbe = reason;
+  return reason === '' ? undefined : reason;
 }
 
 function firstExisting(candidates: readonly (string | undefined)[]): string | undefined {

@@ -31,6 +31,7 @@ import {
 } from '../src/edit.js';
 import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
+import { findClang, rosettaStuck } from '../src/toolchain.js';
 import { generateFiller } from '../tools/ai-edit-tasks-c.js';
 import { generateCorpus } from '../tools/corpus.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
@@ -2331,6 +2332,9 @@ const X86_64_HOST = (() => {
     return { arch: [] as string[], runner: [] as string[] };
   if (process.platform !== 'darwin' || process.arch !== 'arm64') return undefined;
   if (spawnSync('/usr/bin/arch', ['-x86_64', '/usr/bin/true']).status !== 0) return undefined;
+  // A fresh x86-64 binary must run: a wedged Rosetta leaves new binaries stuck for good.
+  const clang = findClang().path;
+  if (clang === undefined || rosettaStuck(clang) !== undefined) return undefined;
   return { arch: ['-arch', 'x86_64'], runner: ['/usr/bin/arch', '-x86_64'] };
 })();
 
