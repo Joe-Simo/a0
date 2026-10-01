@@ -2527,6 +2527,40 @@ Findings:
 - **Cost: single task still wins, sessions still lose.** 237 vs TS 284 and Rust 312 for one task; 168 vs 148 / 160 in a 10-task session; 160 vs 133 / 143 unbounded. The loss in sessions is the retry rate (1.16 calls/task vs 1.12 / 1.11) and longer replies, not the system text.
 - Candidates for a further step, not taken here (adding spellings measured on the sample that found them would overfit): `lte`/`gte`/`neq` spellings, and a fix hint for uppercase ids.
 
+## Session 2026-09-30 (every chart on the full language set: deterministic axes)
+
+New tool `bun run lang-axes` (tools/lang-axes.ts) writes `results/lang-axes.json`. It runs on the same programs as exec-bench: the kernel sources and drivers now live in tools/exec-bench-kernels.ts, which exec-bench.ts and lang-axes.ts both import. It covers A0 plus 48 languages: C, Rust and JavaScript (exec-bench's core baselines) and the 45 table languages.
+
+- **Tokens:** o200k tokens of each kernel source and of each full runnable program, over the 10 exec-benchmark kernels.
+- **Validation per edit:** a warm project directory. Each sample adds one real comment line to the file, so content-hash caches (Go, Zig) rebuild.
+  - `checkMs` is the language's own static step: its exec-bench build, or its toolchain checker (py_compile, ruby -c, php -l, perl -c). It is null when the toolchain has no static check.
+  - `checkRunMs` adds everything needed to run once, plus one run whose checksum must match A0.
+  - Kernels affine, branchy and arrfill; 5 rounds interleaved across every (language, kernel) pair, with the order rotated each round. The load average is recorded each round.
+- **Startup:** not re-measured, because exec-bench already has it for all table languages.
+
+The machine was loaded. The 1-minute load averages per round were 24.9, 28.9, 17.8, 50.4, 165.7, then 60.4 after the last round, on 8 CPUs. Absolute milliseconds are comparable only within this run.
+
+Every toolchain is installed on this machine, so no "not installed" rows. Tcl first failed its checksum: its driver printed the checksum with `format %d`, which prints values over 2^31 as negative numbers. I fixed it to `%ld` and re-measured Tcl alone with an A0 control. The file marks this as `validation.tcl.separateRun`. lua has no static check here because only `lua` is located, not `luac`.
+
+The A0 static check is a cold CLI process (node startup included): median 353 ms. That is slower than C (182), Python (116) or JS `--check` (70), and faster than TypeScript (778), Java (1395) or Kotlin (10700). The in-process figure is in results/edit-loop.json.
+
+Coverage by axis (languages beside A0, M = 48):
+
+| axis | before | after |
+|---|---|---|
+| execution speed (exec-benchmark.json) | 48/48 | 48/48 (unchanged) |
+| startup (exec-benchmark.json) | 46/48 (C and Rust startup measured but not charted) | 46/48 (unchanged) |
+| source tokens read/write per kernel (tokens.json: TS, C, Python) | 3/48 | 48/48 (lang-axes.json) |
+| validation, static check per edit (edit-loop.json: TS, Rust, Go) | 3/48 | 33/48 have a static step; the other 15 have none in their toolchain |
+| validation, check + run per edit | 0/48 | 48/48 |
+| AI-edit acceptance and cost (model subjects) | set b and c400: 7/48 (TS, Rust, Python, Go, Java, C#, C++); sets c and c4000: 2/48 (TS, Rust) | unchanged; not fanned out (see plan) |
+| parallel folds (parallel.json) | 7/48 (C, Rust, Zig, Go, Java, JS, Python) | unchanged |
+
+Plan for the model-subject axes, not run: each language needs a hand translation of task set B plus the project filler, with an acceptance harness (tools/ai-edit-langs.ts took about 290 lines per language for 5 languages).
+1. Add 8 languages that span the families (Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig) to ai-edit-langs.ts.
+2. Collect set b with Haiku only: 24 trials per language, 192 subject calls.
+3. Then Sonnet on the same set, and c400 for the 3 cheapest to accept.
+4. Show the deterministic token and validation axes for all 48 languages next to it, labelled as proxies and not acceptance.
 ### Rules-only primer (the rules models break without one)
 
 Question: what is the smallest primer that keeps A0 acceptance at or above TS, given the guessable spellings above?
