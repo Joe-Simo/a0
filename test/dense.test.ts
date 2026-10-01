@@ -379,6 +379,19 @@ test('dense edits: a new function block may call one defined later in the reply'
   );
 });
 
+test('dense edits: scope bodies shows the direct callees as dense text, so a bug in a helper is visible', () => {
+  const session = dense(BASE);
+  const deps = session.open('two', { scope: 'deps', dense: true }).text;
+  const bodies = session.open('two', { scope: 'bodies', dense: true }).text;
+  assert.ok(deps.includes('# inc u32 -> u32'), deps);
+  assert.ok(!bodies.includes('# inc'), bodies);
+  assert.ok(/\nfn inc /.test(bodies), bodies);
+  // the same handle edits a callee body with a whole block
+  const handle = bodies.split('\n')[0] as string;
+  session.apply(`${handle}\nfn inc add A 2`);
+  assert.equal(run(session.program.byName.get('inc') as TypedProgram['functions'][number], [1]), 3);
+});
+
 test('dense edits: program handle lists dense signatures and takes dense blocks', () => {
   const session = dense(BASE);
   const view = session.openProgram({ dense: true });
