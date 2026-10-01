@@ -23,6 +23,7 @@ import {
   type Func,
   formatTextLiteral,
   formatType,
+  freshRetId,
   isValidIdentifier,
   LIMITS,
   lineComment,
@@ -141,9 +142,34 @@ function fail(message: string, line: number | undefined, fix?: string): never {
 // Printer
 // ---------------------------------------------------------------------------
 
+/**
+ * Spellings the printer can turn off one at a time. Every one prints text the parser reads back
+ * to the same program, so they are lossless; they exist to measure what each feature saves
+ * (tools/dense-tokens.ts) and default to on.
+ */
+export interface DenseStyle {
+  /** Nest a value used once into its consumer (off: one operation per statement). */
+  readonly nest?: boolean;
+  /** Leave out ids that equal their default name (off: every statement carries its id). */
+  readonly implicitIds?: boolean;
+  /** Leave out `u32` parameter types and `-> u32` (off: the canonical header). */
+  readonly implicitTypes?: boolean;
+  /** `A`, `B`, ... for parameters (off: `p0`, `p1`, ...). */
+  readonly letters?: boolean;
+  /** `<<` and `>>` (off: `shl` and `shr`). */
+  readonly symbols?: boolean;
+  /** `[x;N]` for N equal elements (off: every element). */
+  readonly repeat?: boolean;
+  /** The first statement of a one-statement function on the header line. */
+  readonly join?: boolean;
+  /** The last statement is the result (off: `ret` before it and `end` after the function). */
+  readonly implicitRet?: boolean;
+}
+
 export interface DenseOptions {
   /** Keep source comments in place (a formatter); the canonical-equivalent view omits them. */
   readonly comments?: boolean;
+  readonly style?: DenseStyle;
   /** Parameter counts of functions defined outside the printed program (`use`d files). */
   readonly known?: Arities;
 }
@@ -152,6 +178,7 @@ interface PrintCtx {
   readonly arities: Arities;
   readonly fnNames: ReadonlySet<string>;
   readonly comments: boolean;
+  readonly style: Required<DenseStyle>;
 }
 
 function operandWord(o: Operand, ctx: PrintCtx): string {
@@ -159,7 +186,7 @@ function operandWord(o: Operand, ctx: PrintCtx): string {
     case 'node':
       return needsEscape(o.id, ctx.fnNames) ? `$${o.id}` : o.id;
     case 'param':
-      return paramWord(o.index);
+      return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
     case 'u32':
       return String(o.value);
     case 'bool':
@@ -167,8 +194,14 @@ function operandWord(o: Operand, ctx: PrintCtx): string {
   }
 }
 
+/** The word an op is spelled with in messages (the dense symbol for shifts). */
+function opWordFor(op: Op): string {
+  return op === 'shl' ? '<<' : op === 'shr' ? '>>' : op;
+}
+
 /** The word printed for an op (`shl` and `shr` use their symbols). */
-function opWord(op: Op): string {
+function opWord(op: Op, ctx: PrintCtx): string {
+  if (!ctx.style.symbols) return op;
   return op === 'shl' ? '<<' : op === 'shr' ? '>>' : op;
 }
 
@@ -179,6 +212,19 @@ interface Plan {
   readonly named: ReadonlySet<number>;
   /** The result is the last statement (no separate result line). */
   readonly tail: boolean;
+  /**
+   * The result node when it is written `ret EXPR` (its id is the fresh `retval` the canonical
+   * `ret OP ARGS` sugar gives it, so neither a name nor a default id is spent on it).
+   */
+  readonly retNode: number | undefined;
+}
+
+/** A function printed with its `ret` and `end` lines: asked for, or they carry comments. */
+function explicitRet(fn: Func, ctx: PrintCtx): boolean {
+  return (
+    !ctx.style.implicitRet ||
+    (ctx.comments && (fn.retComments !== undefined || fn.endComments !== undefined))
+  );
 }
 
 function highestParam(fn: Func): number {
@@ -215,17 +261,23 @@ function planFunction(fn: Func, ctx: PrintCtx): Plan {
         code: 'structure',
       });
   }
-  const keepRet = ctx.comments && (fn.retComments !== undefined || fn.endComments !== undefined);
+  const keepRet = explicitRet(fn, ctx);
   // The result is the last statement when it is the last node, unless `ret` carries comments.
-  const tail = retIndex === n - 1 && !(keepRet && fn.retComments !== undefined);
+  const tail = retIndex === n - 1 && !keepRet;
   if (retIndex !== undefined && !tail) uses[retIndex] = (uses[retIndex] as number) + 1;
+  const retNode =
+    tail && ctx.style.implicitIds && fn.nodes[n - 1]?.id === freshRetId(fn.nodes.slice(0, n - 1))
+      ? n - 1
+      : undefined;
 
   const forced = new Set<number>();
+  if (!ctx.style.implicitIds) for (let k = 0; k < n; k += 1) forced.add(k);
   for (;;) {
     const nest: (number | undefined)[][] = fn.nodes.map((node) => node.args.map(() => undefined));
     const claimed = new Array<boolean>(n).fill(false);
     let cursor = n - 1;
     const canNest = (c: number): boolean =>
+      ctx.style.nest &&
       uses[c] === 1 &&
       !forced.has(c) &&
       !(ctx.comments && fn.nodes[c]?.comments !== undefined) &&
@@ -255,7 +307,7 @@ function planFunction(fn: Func, ctx: PrintCtx): Plan {
     roots.reverse();
     // A root is named when something refers to it, or when its id is not the default.
     const named = new Set<number>(forced);
-    for (const r of roots) if ((uses[r] as number) > 0) named.add(r);
+    for (const r of roots) if ((uses[r] as number) > 0 && r !== retNode) named.add(r);
     const explicit = new Set<string>();
     for (const k of named) explicit.add((fn.nodes[k] as Node).id);
     // Walk the unnamed nodes in order against the default names they would get; a node whose id
@@ -264,7 +316,7 @@ function planFunction(fn: Func, ctx: PrintCtx): Plan {
     const names = new NameSeq(explicit);
     let grew = false;
     for (let k = 0; k < n; k += 1) {
-      if (named.has(k)) continue;
+      if (named.has(k) || k === retNode) continue;
       const id = (fn.nodes[k] as Node).id;
       if (id === names.current) names.advance();
       else {
@@ -273,7 +325,7 @@ function planFunction(fn: Func, ctx: PrintCtx): Plan {
         grew = true;
       }
     }
-    if (!grew) return { nest, roots, named, tail };
+    if (!grew) return { nest, roots, named, tail, retNode };
   }
 }
 
@@ -290,13 +342,15 @@ function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string
   if (node.op === 'arr') {
     const first = node.args[0] as Operand;
     const same =
+      ctx.style.repeat &&
       node.args.length >= 3 &&
       first.kind !== 'node' &&
       plan.nest[k]?.every((c) => c === undefined) === true &&
       node.args.every((a) => operandWord(a, ctx) === operandWord(first, ctx));
     return same ? `[${args[0]};${args.length}]` : `[${args.join(' ')}]`;
   }
-  if (node.op === 'rec') return `(${args.join(' ')})`;
+  // a one-field record needs its comma: `(x,)` ((x) is just x)
+  if (node.op === 'rec') return args.length === 1 ? `(${args[0]},)` : `(${args.join(' ')})`;
   if (node.op === 'call') {
     const callee = node.callee as string;
     const direct = opOf(callee) === undefined && callee !== 'text' && !KEYWORDS.has(callee);
@@ -305,7 +359,7 @@ function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string
   if (node.op === 'fold') return ['fold', node.callee as string, ...args].join(' ');
   if (node.op === 'loop')
     return ['loop', node.pred as string, node.callee as string, ...args].join(' ');
-  return [opWord(node.op), ...args].join(' ');
+  return [opWord(node.op, ctx), ...args].join(' ');
 }
 
 function commentLines(c: Comments | undefined): string[] {
@@ -319,37 +373,51 @@ function trailing(c: Comments | undefined): string {
 /** One function as dense text lines. */
 function printFunction(fn: Func, ctx: PrintCtx): string[] {
   const plan = planFunction(fn, ctx);
-  const keepRet = ctx.comments && (fn.retComments !== undefined || fn.endComments !== undefined);
+  const keepRet = explicitRet(fn, ctx);
   const idWord = (id: string): string => (needsEscape(id, ctx.fnNames) ? `$${id}` : id);
-  const body: { text: string; comments: Comments | undefined }[] = [];
+  const body: { text: string; comments: Comments | undefined; named: boolean }[] = [];
   for (const r of plan.roots) {
     const node = fn.nodes[r] as Node;
     const expr = printNodeTokens(fn, r, plan, ctx);
     body.push({
-      text: plan.named.has(r) ? `${idWord(node.id)} ${expr}` : expr,
+      text: plan.named.has(r)
+        ? `${idWord(node.id)} ${expr}`
+        : r === plan.retNode
+          ? `ret ${expr}`
+          : expr,
       comments: ctx.comments ? node.comments : undefined,
+      named: plan.named.has(r),
     });
   }
   if (!plan.tail) {
     body.push({
-      text: `${keepRet && fn.retComments !== undefined ? 'ret ' : ''}${operandWord(fn.ret, ctx)}`,
+      text: `${keepRet ? 'ret ' : ''}${operandWord(fn.ret, ctx)}`,
       comments: ctx.comments ? fn.retComments : undefined,
+      named: false,
     });
   }
 
   const needed = highestParam(fn) + 1;
-  const plain = fn.params.length === needed && fn.params.every((t) => t === 'u32');
+  const plain =
+    ctx.style.implicitTypes && fn.params.length === needed && fn.params.every((t) => t === 'u32');
+  // A type list always ends with its `->`; without a list a u32 result is left out.
+  const implicitResult = plain && fn.result === 'u32';
   const sig =
-    (plain ? '' : fn.params.map((t) => (t === 'u32' ? '_' : formatType(t))).join(' ')) +
-    (fn.result === 'u32' ? '' : `${plain ? '' : ' '}-> ${formatType(fn.result)}`);
+    (plain ? '' : fn.params.map(formatType).join(' ')) +
+    (implicitResult
+      ? ''
+      : `${plain || fn.params.length === 0 ? '' : ' '}-> ${formatType(fn.result)}`);
   const head = `fn ${fn.name}${sig === '' ? '' : ` ${sig}`}`;
   const lines: string[] = [...commentLines(ctx.comments ? fn.comments : undefined)];
-  const first = body[0] as { text: string; comments: Comments | undefined };
-  // A function of one statement keeps it on the header line; longer ones list statements below.
+  const first = body[0] as { text: string; comments: Comments | undefined; named: boolean };
+  // A function of one unnamed statement keeps it on the header line; a named statement and
+  // longer bodies list their statements below it.
   const joinable =
+    ctx.style.join &&
     body.length === 1 &&
+    !first.named &&
     (!ctx.comments || (fn.comments === undefined && first.comments === undefined)) &&
-    !(keepRet && fn.endComments !== undefined);
+    !keepRet;
   if (joinable) {
     lines.push(`${head} ${first.text}`);
     body.shift();
@@ -360,8 +428,11 @@ function printFunction(fn: Func, ctx: PrintCtx): string[] {
     lines.push(...commentLines(b.comments));
     lines.push(`${b.text}${trailing(b.comments)}`);
   }
-  if (keepRet && fn.endComments !== undefined) {
-    lines.push(...commentLines(fn.endComments), `end${trailing(fn.endComments)}`);
+  if (keepRet) {
+    lines.push(
+      ...commentLines(ctx.comments ? fn.endComments : undefined),
+      `end${ctx.comments ? trailing(fn.endComments) : ''}`,
+    );
   }
   if (ctx.comments && fn.afterComments !== undefined) lines.push('', ...fn.afterComments);
   return lines;
@@ -374,6 +445,16 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
     arities,
     fnNames: new Set(arities.keys()),
     comments: options.comments === true,
+    style: {
+      nest: options.style?.nest !== false,
+      implicitIds: options.style?.implicitIds !== false,
+      implicitTypes: options.style?.implicitTypes !== false,
+      letters: options.style?.letters !== false,
+      symbols: options.style?.symbols !== false,
+      repeat: options.style?.repeat !== false,
+      join: options.style?.join !== false,
+      implicitRet: options.style?.implicitRet !== false,
+    },
   };
 }
 
@@ -402,11 +483,13 @@ export function formatDense(program: Program, options: DenseOptions = {}): strin
   return parts.length === 0 ? '' : `${parts.join('\n\n')}\n`;
 }
 
-/** The signature line of a function in dense form: `fn name types -> T` (`_` is `u32`). */
+/**
+ * The signature line of a function in dense form, as its header would be written with types:
+ * `fn name T... -> T` (what a view shows for a callee; the result is always given).
+ */
 export function formatDenseSignature(fn: Func): string {
-  const params = fn.params.map((t) => (t === 'u32' ? '_' : formatType(t)));
-  const sig = [...params, ...(fn.result === 'u32' ? [] : ['->', formatType(fn.result)])];
-  return `fn ${fn.name}${sig.length === 0 ? '' : ` ${sig.join(' ')}`}`;
+  const params = fn.params.map(formatType);
+  return `fn ${fn.name}${params.length === 0 ? '' : ` ${params.join(' ')}`} -> ${formatType(fn.result)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -414,7 +497,7 @@ export function formatDenseSignature(fn: Func): string {
 // ---------------------------------------------------------------------------
 
 export interface Tok {
-  readonly kind: 'word' | 'str' | 'open' | 'close' | 'semi';
+  readonly kind: 'word' | 'str' | 'open' | 'close' | 'semi' | 'comma';
   readonly text: string;
 }
 
@@ -424,7 +507,10 @@ export function lexDense(text: string, line: number): Tok[] {
   let i = 0;
   while (i < text.length) {
     const c = text[i] as string;
-    if (c === ' ' || c === '\t' || c === ',') {
+    if (c === ' ' || c === '\t') {
+      i += 1;
+    } else if (c === ',') {
+      out.push({ kind: 'comma', text: c });
       i += 1;
     } else if (c === '"') {
       let j = i + 1;
@@ -522,6 +608,8 @@ export class FunctionParser {
   readonly nodes: Pending[] = [];
   readonly names = new Map<string, number>();
   readonly explicit: (string | undefined)[] = [];
+  /** The node a `ret EXPR` statement created: its id is the fresh `retval`. */
+  retNode: number | undefined;
   line = 0;
   toks: Tok[] = [];
   pos = 0;
@@ -548,11 +636,18 @@ export class FunctionParser {
     return this.ref(k);
   }
 
+  /** Skip commas (blanks, except after the one element of `(x,)`). */
+  private skipCommas(): void {
+    while (this.toks[this.pos]?.kind === 'comma') this.pos += 1;
+  }
+
   private peek(): Tok | undefined {
+    this.skipCommas();
     return this.toks[this.pos];
   }
 
   private eat(what: string): Tok {
+    this.skipCommas();
     const t = this.toks[this.pos];
     if (t === undefined)
       return fail(
@@ -603,6 +698,7 @@ export class FunctionParser {
   private aggregate(op: 'arr' | 'rec'): Operand {
     const close = op === 'arr' ? ']' : ')';
     const args: Operand[] = [];
+    let comma = false;
     for (;;) {
       const t = this.peek();
       if (t === undefined) return fail(`missing '${close}'`, this.line);
@@ -625,9 +721,12 @@ export class FunctionParser {
         continue;
       }
       args.push(this.expr());
+      if (this.toks[this.pos]?.kind === 'comma') comma = true;
     }
     if (args.length === 0)
       return fail(`${op === 'arr' ? '[]' : '()'} needs at least one element`, this.line);
+    // `(EXPR)` is EXPR (grouping); a record has two or more fields, or one with a comma: `(x,)`.
+    if (op === 'rec' && args.length === 1 && !comma) return args[0] as Operand;
     return this.make({ op, args });
   }
 
@@ -642,9 +741,17 @@ export class FunctionParser {
     return args;
   }
 
-  private operands(count: number): Operand[] {
+  private operands(count: number, label: string, note = ''): Operand[] {
     const args: Operand[] = [];
-    for (let i = 0; i < count; i += 1) args.push(this.expr());
+    for (let i = 0; i < count; i += 1) {
+      if (this.peek() === undefined)
+        fail(
+          `\`${label}\` needs ${count} operand${count === 1 ? '' : 's'}${note} but the line ended after ${i}`,
+          this.line,
+          `an operation takes its operands right after it, each a parameter, a number, a named value or another operation; write \`${label}\` followed by exactly ${count}`,
+        );
+      args.push(this.expr());
+    }
     return args;
   }
 
@@ -673,7 +780,11 @@ export class FunctionParser {
     }
     if (this.fnNames.has(w) || this.arities.has(w)) {
       const n = this.callArity(w);
-      return this.make({ op: 'call', callee: w, args: this.operands(n) });
+      return this.make({
+        op: 'call',
+        callee: w,
+        args: this.operands(n, w, ` (${w} has ${n} parameter${n === 1 ? '' : 's'})`),
+      });
     }
     const local = this.names.get(w);
     if (local !== undefined) return this.ref(local);
@@ -681,7 +792,7 @@ export class FunctionParser {
     return fail(
       `'${w}' is not an operation, a function, or a named value defined above`,
       this.line,
-      `use one of ${OPS.join(' ')}, or a function defined above, or name the value first (\`${w} op ...\` on its own line)`,
+      `parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (\`${w} op ...\` on its own line)`,
     );
   }
 
@@ -694,16 +805,25 @@ export class FunctionParser {
     if (op === 'call' || op === 'fold') {
       const callee = this.functionName(`a function name after ${op}`);
       const n = this.callArity(callee);
-      return this.make({ op, callee, args: this.operands(n) });
+      return this.make({
+        op,
+        callee,
+        args: this.operands(n, `${op} ${callee}`, ` (${callee} has ${n} parameters)`),
+      });
     }
     if (op === 'loop') {
       const pred = this.functionName('a predicate name after loop');
       const callee = this.functionName('a body function name after the predicate');
       this.callArity(pred);
       const n = this.callArity(callee);
-      return this.make({ op, pred, callee, args: this.operands(n) });
+      return this.make({
+        op,
+        pred,
+        callee,
+        args: this.operands(n, `loop ${pred} ${callee}`, ` (${callee} has ${n} parameters)`),
+      });
     }
-    return this.make({ op, args: this.operands(OP_ARITY[op]) });
+    return this.make({ op, args: this.operands(OP_ARITY[op], opWordFor(op)) });
   }
 
   /** Parse one statement line; returns its value operand and whether it is `ret`-prefixed. */
@@ -745,6 +865,7 @@ export class FunctionParser {
     }
     const before = this.nodes.length;
     const value = this.expr();
+    this.skipCommas();
     if (this.pos < tokens.length) {
       const extra = tokens[this.pos] as Tok;
       fail(
@@ -768,6 +889,7 @@ export class FunctionParser {
     const k = value.kind === 'node' ? this.nodes.length - 1 : -1;
     if (comments !== undefined && k >= 0 && this.nodes.length > before && !ret)
       (this.nodes[k] as Pending).comments = comments;
+    if (ret && k >= 0 && this.nodes.length > before) this.retNode = k;
     return { value, ret, named: name !== undefined };
   }
 
@@ -775,9 +897,12 @@ export class FunctionParser {
   finish(): { nodes: Node[]; resolve: (o: Operand) => Operand } {
     const explicit = new Set(this.explicit.filter((e): e is string => e !== undefined));
     const names = defaultNames(explicit);
-    return this.finishWith(
-      this.nodes.map((_, k) => this.explicit[k] ?? (names.next().value as string)),
+    const ids = this.nodes.map((_, k) =>
+      this.retNode === k ? '' : (this.explicit[k] ?? (names.next().value as string)),
     );
+    if (this.retNode !== undefined)
+      ids[this.retNode] = freshRetId(ids.filter((id) => id !== '').map((id) => ({ id })));
+    return this.finishWith(ids);
   }
 
   /** The nodes with the given final ids (one per node, in order). */
@@ -806,6 +931,8 @@ export class FunctionParser {
 export function parseDenseHeader(
   text: string,
   line: number,
+  /** Accept a type list without `->` (the signature lines of a view). */
+  lenient = false,
 ): { name: string; params: Type[] | undefined; result: Type; rest: string } {
   const m = /^(\S+)\s*(.*)$/.exec(text);
   const name = m?.[1] ?? '';
@@ -814,9 +941,11 @@ export function parseDenseHeader(
   let rest = m?.[2] ?? '';
   let params: Type[] | undefined;
   let result: Type = 'u32';
+  let arrow = false;
   for (;;) {
     rest = rest.trimStart();
     if (rest.startsWith('->') && (rest.length === 2 || /\s/.test(rest[2] as string))) {
+      arrow = true;
       rest = rest.slice(2).trimStart();
       const tok = typeTokenEnd(rest, 0);
       if (tok === undefined) fail(`expected a result type after '->'`, line);
@@ -835,6 +964,12 @@ export function parseDenseHeader(
     rest = rest.slice(tok.end);
   }
   if (params !== undefined && params.length > LIMITS.maxParams) fail('too many parameters', line);
+  if (params !== undefined && !arrow && !lenient)
+    fail(
+      `the type list of '${name}' needs '-> RESULT' after it`,
+      line,
+      `write \`fn ${name} ${params.map((t) => (t === 'u32' ? 'u32' : formatType(t))).join(' ')} -> u32\` (the last type after \`->\` is the result), or leave the type list out when every parameter is u32 (\`fn ${name} ...\`: parameters are A, B, C by position)`,
+    );
   return { name, params, result, rest: rest.trim() };
 }
 

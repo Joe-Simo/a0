@@ -30,7 +30,7 @@ export function isDenseSignatureEcho(line: string, program: TypedProgram): boole
   const t = line.trim();
   if (!/^fn\s/.test(t) || !/\send$/.test(t)) return false;
   try {
-    const head = parseDenseHeader(t.slice(2, -3).trim(), 0);
+    const head = parseDenseHeader(t.slice(2, -3).trim(), 0, true);
     return head.rest === '' && program.byName.has(head.name);
   } catch {
     return false;

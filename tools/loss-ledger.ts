@@ -9,7 +9,8 @@
  *   exec-benchmark.json   ns per call, A0 emitted C against hand-written C, Rust, and every language
  *                         that ran; emitted JS against hand-written JS; binary size against C.
  *   wasm-benchmark.json   ns per trip, module bytes and load time, A0 direct wasm against clang.
- *   lang-axes.json        tokens per kernel and per program, validation (check and check+run) time.
+ *   lang-axes.json        tokens per kernel and per program (A0 counted in its dense form when
+ *                         recorded, src/dense.ts), validation (check and check+run) time.
  *   ai-edit-experiment.{haiku,sonnet}-min.json and .{a..f,c400,c4000}.{haiku,sonnet}-min.json
  *                         (the shipped primer): accepted rate and tokens per trial, A0 against TS
  *                         and Rust, per protocol.
@@ -274,11 +275,15 @@ function langAxesObservations(root: string): Observation[] {
   const out: Observation[] = [];
   const tokens = obj(doc.tokens);
   const a0t = obj(tokens?.a0);
+  // A0's source is counted in its dense form when lang-axes recorded it (src/dense.ts: the same
+  // programs, every command and the edit protocol accept it); the canonical counts stay in the
+  // results file next to it.
+  const a0dense = obj(obj(a0t?.dense)?.kernels);
   for (const [lang, value] of Object.entries(tokens ?? {})) {
     if (lang === 'a0') continue;
     const k = obj(obj(value)?.kernels);
     for (const [kernel, a0row] of Object.entries(obj(a0t?.kernels) ?? {})) {
-      const mine = obj(a0row);
+      const mine = obj(a0dense?.[kernel]) ?? obj(a0row);
       const theirs = obj(k?.[kernel]);
       for (const [field, axis] of [
         ['kernel', 'tokens-kernel'],

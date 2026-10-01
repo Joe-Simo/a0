@@ -1,0 +1,42 @@
+{
+  "affine-sign/a0/structured": [
+    "fn affine sub mul A B C"
+  ],
+  "clamp-both/a0/structured": [
+    "fn clamp u32 u32 u32 -> u32\nc1 lt A B\ns1 select c1 B A\nc2 gt s1 C\nr select c2 C s1"
+  ],
+  "rotl-fix/a0/structured": [
+    "fn rotl\nl << A B\nn sub 32 B\nr >> A n\no or l r"
+  ],
+  "add-cube/a0/structured": [
+    "fn sq mul A A\nfn cube u32 -> u32\ns sq A\nr mul s A"
+  ],
+  "absdiff/a0/structured": [
+    "fn absdiff u32 u32 -> u32\nc lt A B\nd1 sub A B\nd2 sub B A\nr select c d2 d1"
+  ],
+  "xor4/a0/structured": [
+    "fn combine4 xor xor xor A B C D"
+  ],
+  "min3/a0/structured": [
+    "fn min3 u32 u32 u32 -> u32\nc1 lt B A\nm1 select c1 B A\nc2 lt C m1\nr select c2 C m1"
+  ],
+  "sq-twice/a0/structured": [
+    "fn quad u32 -> u32\nx sq A\ny sq x"
+  ],
+  "sum-squares/a0/structured": [
+    "fn addi u32 u32 -> u32\ni mul B B\ns add A i"
+  ],
+  "loop-inclusive/a0/structured": [
+    "fn below\nc le A C",
+    "fn below u32 u32 u32 -> bool\nret le A C"
+  ],
+  "record-flag/a0/structured": [
+    "fn pick (u32,bool) -> u32\nv at A 0\nf at A 1\ni select f 1 0\nr add v i"
+  ],
+  "byte-select/a0/structured": [
+    "fn byte1\ns >> A 16\nm and s 255"
+  ],
+  "saturating-add/a0/structured": [
+    "fn sadd\ns add A B\nc lt s A\nr select c 4294967295 s"
+  ]
+}

@@ -162,3 +162,49 @@ test('mcp: diagnostics carry no host paths; an .a0 name must also resolve to an 
     assert.equal(await readFile(join(root, 'secret.env'), 'utf8'), 'TOKEN=abc\n');
     await client.close();
   }));
+
+test('mcp: dense views, dense replies, and a dense file saved as dense', () =>
+  withRoot(async (base) => {
+    await writeFile(join(base, 'root', 'd.a0d'), 'fn sq mul A A\n\nfn f add sq A 1\n');
+    const client = await connect(join(base, 'root'));
+    // A .a0d file is dense by default.
+    const view = await call(client, 'a0_open', { file: 'd.a0d', function: 'f' });
+    assert.ok(!view.error, view.text);
+    assert.equal(
+      view.text.split('\n').slice(1).join('\n'),
+      'fn f add sq A 1\nfn sq u32 -> u32 end',
+    );
+    const handle = view.text.split('\n')[0] ?? '';
+    const edit = await call(client, 'a0_apply', {
+      file: 'd.a0d',
+      edit: `${handle}\nfn f add sq A 2`,
+    });
+    assert.ok(!edit.error, edit.text);
+    assert.equal(
+      (await call(client, 'a0_run', { file: 'd.a0d', function: 'f', args: [3] })).text,
+      '11',
+    );
+    const prog = await call(client, 'a0_program', { file: 'd.a0d' });
+    assert.equal(
+      prog.text.split('\n').slice(1).join('\n'),
+      'fn sq u32 -> u32 end\nfn f u32 -> u32 end',
+    );
+    assert.equal((await call(client, 'a0_save', { file: 'd.a0d' })).text, 'd.a0d');
+    assert.equal(
+      await readFile(join(base, 'root', 'd.a0d'), 'utf8'),
+      'fn sq mul A A\n\nfn f add sq A 2\n',
+    );
+    // A canonical file can still be viewed and edited dense on request; it saves as canonical.
+    const v2 = await call(client, 'a0_open', { file: 'm.a0', function: 'f', dense: true });
+    assert.match(v2.text, /^e[0-9]+\nfn f\nb sq A\nc add b 1\nfn sq u32 -> u32 end$/);
+    const h2 = v2.text.split('\n')[0] ?? '';
+    const e2 = await call(client, 'a0_apply', { file: 'm.a0', edit: `${h2}\nfn f add sq A 5` });
+    assert.ok(!e2.error, e2.text);
+    assert.equal(
+      (await call(client, 'a0_run', { file: 'm.a0', function: 'f', args: [2] })).text,
+      '9',
+    );
+    await call(client, 'a0_save', { file: 'm.a0' });
+    assert.match(await readFile(join(base, 'root', 'm.a0'), 'utf8'), /^fn sq u32 -> u32\n/);
+    await client.close();
+  }));

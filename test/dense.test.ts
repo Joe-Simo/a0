@@ -14,7 +14,13 @@ import {
   validate,
   valueEquals,
 } from '../src/core.js';
-import { formatDense, formatDenseSignature, normalizeProgram, parseDense } from '../src/dense.js';
+import {
+  type DenseStyle,
+  formatDense,
+  formatDenseSignature,
+  normalizeProgram,
+  parseDense,
+} from '../src/dense.js';
 import { EditSession, revision } from '../src/edit.js';
 import { link, parseFile } from '../src/link.js';
 import { generateCases, generateCorpus } from '../tools/corpus.js';
@@ -83,7 +89,7 @@ test('dense: natural nested sources compile to the same behavior as the canonica
     chain3: 'fn inc1 add A 1\n\nfn dbl add A A\n\nfn chain3 add inc1 dbl inc1 A B',
     branchy: 'fn branchy\nf select eq A B 0 select lt A B sub B A sub A B\nselect eq and f 1 1 f A',
     arrfill:
-      'fn put8 u32x8 _ _ -> u32x8 set A B add B C\n\nfn arrfill\nb fold put8 8 [0;8] A\nadd get b B get b 3',
+      'fn put8 u32x8 u32 u32 -> u32x8 set A B add B C\n\nfn arrfill\nb fold put8 8 [0;8] A\nadd get b B get b 3',
     loop64:
       'fn mixstep\nb mul xor A C 2654435761\nadd xor b >> b 15 B\n\nfn loop64 fold mixstep 64 A B',
   };
@@ -245,7 +251,13 @@ test('dense: diagnostics name the line and the fix', () => {
       text,
     );
   };
-  bad('fn f add A', /ended where an operand was expected/);
+  bad('fn f add A', /`add` needs 2 operands but the line ended after 1/);
+  bad('fn f u32 u32 u32', /needs '-> RESULT'/);
+  bad(
+    'fn two add A B\n\nfn f fold two 3',
+    /`fold two` needs 2 operands \(two has 2 parameters\) but the line ended after 1/,
+  );
+  bad('fn f mul n A', /parameters are written A, B, C by position/);
   bad('fn f add A B C', /unexpected 'C' after a complete expression/);
   bad('fn f frob A', /neither an operation nor a function/);
   bad('fn f g A', /neither an operation nor a function/);
@@ -299,7 +311,7 @@ test('dense: link reads .a0d files, mixed with canonical files through use', asy
 
 test('dense: signatures use _ for u32', () => {
   const p = parse('fn a u32 bool u32x4 -> (u32,bool)\nr rec p0 p1\nret r\nend');
-  assert.equal(formatDenseSignature(p.functions[0] as never), 'fn a _ bool u32x4 -> (u32,bool)');
+  assert.equal(formatDenseSignature(p.functions[0] as never), 'fn a u32 bool u32x4 -> (u32,bool)');
 });
 
 function dense(source: string): EditSession {
@@ -321,7 +333,7 @@ end`;
 test('dense edits: the view is dense and a whole-function reply replaces the function', () => {
   const session = dense(BASE);
   const view = session.open('two', { dense: true, scope: 'deps' });
-  assert.equal(view.text, 'e0\nfn two\na inc A\nadd mul a B a\nfn inc _ end');
+  assert.equal(view.text, 'e0\nfn two\na inc A\nadd mul a B a\nfn inc u32 -> u32 end');
   const before = session.program.byName.get('inc');
   session.apply('e0\nfn two\na inc A\nadd mul a B a');
   assert.equal(revision(session.program.byName.get('inc') as never), revision(before as never));
@@ -360,7 +372,7 @@ test('dense edits: a new function block may call one defined later in the reply'
 test('dense edits: program handle lists dense signatures and takes dense blocks', () => {
   const session = dense(BASE);
   const view = session.openProgram({ dense: true });
-  assert.equal(view.text, 'g0\nfn inc _ end\nfn two _ _ end');
+  assert.equal(view.text, 'g0\nfn inc u32 -> u32 end\nfn two u32 u32 -> u32 end');
   session.apply('g0\nfn half shr A 1');
   assert.equal(
     run(session.program.byName.get('half') as TypedProgram['functions'][number], [10]),
@@ -481,4 +493,79 @@ test('dense: random canonical programs (odd ids, shared values, dead nodes) roun
     void callee;
     roundTrip(lines.join('\n\n'));
   }
+});
+
+test('dense: a result written `ret EXPR` is the canonical `ret OP ARGS` node', () => {
+  assert.equal(roundTrip('fn s u32 u32 -> u32\nret add p0 p1\nend'), 'fn s ret add A B\n');
+  assert.equal(
+    roundTrip('fn s u32 u32 -> u32\na mul p0 p1\nret add a p1\nend'),
+    'fn s ret add mul A B B\n',
+  );
+  // a second fresh result id when `retval` is taken
+  roundTrip('fn s u32 -> u32\nretval add p0 1\nretval2 mul retval retval\nret retval2\nend');
+  const p = parseDense('fn f ret add A B');
+  assert.equal(p.functions[0]?.nodes[0]?.id, 'retval');
+  // a named single statement does not share the header line
+  assert.equal(
+    roundTrip('fn pick (u32,bool) -> u32\nv at p0 0\nret v\nend'),
+    'fn pick (u32,bool) -> u32\nv at A 0\n',
+  );
+});
+
+test('dense: every style variant prints text that parses back to the same program', async () => {
+  const styles: DenseStyle[] = [
+    {},
+    { nest: false },
+    { implicitIds: false },
+    { implicitTypes: false },
+    { letters: false },
+    { symbols: false },
+    { repeat: false },
+    { join: false },
+    { implicitRet: false },
+    {
+      nest: false,
+      implicitIds: false,
+      implicitTypes: false,
+      letters: false,
+      symbols: false,
+      repeat: false,
+      join: false,
+      implicitRet: false,
+    },
+  ];
+  const sources = [
+    ...KERNELS.map((k) => k.a0),
+    readFileSync(join(ROOT, 'examples', 'life.a0'), 'utf8'),
+    readFileSync(join(ROOT, 'site', 'ui.a0'), 'utf8'),
+  ];
+  for (const source of sources) {
+    const program = parse(source);
+    for (const style of styles) {
+      for (const p of [program, normalizeProgram(program)]) {
+        const text = formatDense(p, { style });
+        assert.equal(
+          formatProgram(parseDense(text)),
+          formatProgram(p),
+          `style ${JSON.stringify(style)} for:\n${text.slice(0, 300)}`,
+        );
+      }
+    }
+  }
+});
+
+test('dense: parentheses group, and a one-field record keeps its comma', () => {
+  assert.equal(roundTrip('fn r u32 -> (u32)\na rec p0\nret a\nend'), 'fn r -> (u32) (A,)\n');
+  assert.equal(
+    formatProgram(parseDense('fn f select (lt A B) (sub B A) (sub A B)')),
+    formatProgram(parseDense('fn f select lt A B sub B A sub A B')),
+  );
+  assert.equal(
+    formatProgram(parseDense('fn f (add A 1)')),
+    formatProgram(parseDense('fn f add A 1')),
+  );
+  assert.equal(
+    formatProgram(parseDense('fn f -> (u32,u32) (A B)')),
+    formatProgram(parseDense('fn f -> (u32,u32) (A, B)')),
+  );
 });

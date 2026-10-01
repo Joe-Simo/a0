@@ -216,3 +216,34 @@ test('lsp: a use escaping the root is rejected', () =>
       await stop(s);
     }
   }));
+
+test('lsp: dense documents get diagnostics and dense formatting', () =>
+  withRoot(async (_base, root) => {
+    const s = await start(root);
+    try {
+      await writeFile(join(root, 'd.a0d'), 'fn sq mul A A\n');
+      const uri = pathToFileURL(join(root, 'd.a0d')).href;
+      const doc = { textDocument: { uri } };
+      assert.deepEqual((await open(s, uri, 'fn sq mul A A\n\nfn f add sq A 1\n')).diagnostics, []);
+      // a type error is reported on the function's line
+      const bad = s.next(uri);
+      await s.conn.sendNotification('textDocument/didChange', {
+        textDocument: { uri, version: 2 },
+        contentChanges: [{ text: 'fn sq mul A A\n\nfn f lt sq A 1\nfn g add f A 1\n' }],
+      });
+      const [diag] = (await bad).diagnostics;
+      assert.equal(diag?.code, 'type');
+      // formatting goes through the dense printer, comments kept
+      await s.conn.sendNotification('textDocument/didChange', {
+        textDocument: { uri, version: 3 },
+        contentChanges: [{ text: '# sq\nfn sq   mul A A   # sq\n\n\nfn f\nx sq A\nadd x 1\n' }],
+      });
+      const edits = await s.conn.sendRequest<{ newText: string }[]>('textDocument/formatting', {
+        ...doc,
+        options: { tabSize: 2, insertSpaces: true },
+      });
+      assert.equal(edits[0]?.newText, '# sq\nfn sq # sq\nmul A A\n\nfn f\nx sq A\nadd x 1\n');
+    } finally {
+      await stop(s);
+    }
+  }));
