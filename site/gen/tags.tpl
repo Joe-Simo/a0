@@ -31,3 +31,5 @@ m attr href 3
 m attr type 4
 m attr placeholder 5
 m attr aria-label 6
+m tag details 28
+m tag summary 29

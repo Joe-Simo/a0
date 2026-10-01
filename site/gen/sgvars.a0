@@ -1,10 +1,11 @@
 # Site generator, module 9: the variables the template reads, and the integer arithmetic.
 # Variables table (u32x128x128): 0 end of the pool (a byte position), 1 number of variables,
-# 2..31 refs of constant words, 32..287 refs of the data table strings (sgcalc.a0: 32 languages,
-# 96 kernels, 112 startup ids, 240 edit kinds, 256 parallel kernels, 272 parallel labels), 288 + 4e
-# variable e: name hash, key (dims << 28 | i << 14 | j), ref (start << 16 | length, bytes of
-# this table), number; the pool of string bytes from byte 33920. A variable has 0, 1 or 2
-# dimensions: it is read with the loop indices i (outer) and j (inner) of the template.
+# 2..31 refs of constant words, 32..351 refs of the data table strings (sgcalc.a0: 32 languages,
+# 96 kernels, 112 startup ids, 240 edit kinds, 256 parallel kernels, 272 parallel labels, 288 the
+# language labels of lang-axes.json), 352 + 4e variable e: name hash, key (dims << 28 | i << 14 | j),
+# ref (start << 16 | length, bytes of this table), number; the pool of string bytes from byte 56000
+# (so up to 3412 variables). A variable has 0, 1 or 2 dimensions: it is read with the loop indices
+# i (outer) and j (inner) of the template.
 use "sgphase.a0"
 use "sgtables.a0"
 
@@ -92,7 +93,7 @@ end
 fn vdef u32x128x128 u32 u32 u32 u32 u32 -> u32x128x128
 n call rd128 p0 1
 e0 shl n 2
-e add e0 288
+e add e0 352
 e1 add e 1
 e2 add e 2
 e3 add e 3
