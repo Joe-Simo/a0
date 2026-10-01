@@ -165,6 +165,86 @@ test('arm64 carried recurrences start at the guard value instead of selecting it
   assert.doesNotMatch(body, /csel/);
 });
 
+test('arm64 4x4 products of scalar grids run in NEON registers and equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  // S x M (right) or M x S (left) as straight-line code, folded `count` times over two arrays
+  // built from the inputs; the optimizer turns the fold into products of scalar grids.
+  const step = (name: string, side: 'right' | 'left'): string => {
+    const lines = [`fn ${name} u32x16 u32 u32x16 -> u32x16`];
+    for (let k = 0; k < 16; k += 1) lines.push(`a${k} get p0 ${k}`, `b${k} get p2 ${k}`);
+    const cs: string[] = [];
+    for (let r = 0; r < 4; r += 1)
+      for (let c = 0; c < 4; c += 1) {
+        const terms: string[] = [];
+        for (let k = 0; k < 4; k += 1) {
+          const [x, y] = side === 'right' ? [r * 4 + k, k * 4 + c] : [k * 4 + c, r * 4 + k];
+          lines.push(
+            side === 'right' ? `m${r}${c}${k} mul a${x} b${y}` : `m${r}${c}${k} mul b${y} a${x}`,
+          );
+          terms.push(`m${r}${c}${k}`);
+        }
+        lines.push(
+          `s${r}${c}a add ${terms[0]} ${terms[1]}`,
+          `s${r}${c}b add s${r}${c}a ${terms[2]}`,
+          `c${r}${c} add s${r}${c}b ${terms[3]}`,
+        );
+        cs.push(`c${r}${c}`);
+      }
+    lines.push(`n arr ${cs.join(' ')}`, 'ret n', 'end');
+    return lines.join('\n');
+  };
+  const grid = (id: string, mulBy: (k: number) => string, shiftBy: string): string[] => {
+    const out: string[] = [];
+    for (let k = 0; k < 16; k += 1)
+      out.push(
+        `${id}e${k} mul ${mulBy(k)} ${k + 1}`,
+        `${id}f${k} shr ${shiftBy} ${k & 7}`,
+        `${id}${k} xor ${id}e${k} ${id}f${k}`,
+      );
+    return out;
+  };
+  const tops = (name: string, count: number, side: string, reads: string): string =>
+    [
+      `fn ${name} u32 u32 -> u32`,
+      ...grid('ga', () => 'p0', 'p1'),
+      ...grid('gb', () => 'p1', 'p0'),
+      `a arr ${Array.from({ length: 16 }, (_, k) => `ga${k}`).join(' ')}`,
+      `b arr ${Array.from({ length: 16 }, (_, k) => `gb${k}`).join(' ')}`,
+      `r fold ms_${side} ${count} a b`,
+      reads,
+      'end',
+    ].join('\n');
+  const reads = 'q and p0 15\nx get r q\nt0 get r 0\nt5 get r 5\ns add x t0\nt add s t5\nret t';
+  const src = [
+    step('ms_right', 'right'),
+    step('ms_left', 'left'),
+    tops('mr1', 1, 'right', reads),
+    tops('mr2', 2, 'right', reads),
+    tops('mr3', 3, 'right', reads),
+    tops('mr5', 5, 'right', reads),
+    tops('mr8', 8, 'right', reads),
+    tops('ml3', 3, 'left', reads),
+    tops('ml8', 8, 'left', reads),
+    // one element only, and the whole array summed: rows are emitted when their inputs exist
+    tops('mr4', 4, 'right', 't get r 10\nret t'),
+    tops(
+      'mr6',
+      6,
+      'right',
+      `${Array.from({ length: 16 }, (_, k) => `e${k} get r ${k}`).join('\n')}\n${Array.from({ length: 15 }, (_, k) => `f${k} add ${k === 0 ? 'e0' : `f${k - 1}`} e${k + 1}`).join('\n')}\nret f14`,
+    ),
+  ].join('\n\n');
+  const names = ['mr1', 'mr2', 'mr3', 'mr5', 'mr8', 'ml3', 'ml8', 'mr4', 'mr6'];
+  const asm = await checkAgainstInterpreter(src, names, clang);
+  const body = /_a0_mr8:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.match(body, /mla v\d+\.4s, v\d+\.4s, v\d+\.s\[\d\]/);
+  // the 32 + 16 scalar products of the straight-line form are gone
+  assert.ok((body.match(/\n\tmul w/g)?.length ?? 0) < 60);
+});
+
 test('arm64 absolute differences and bit tests use subs/cneg and tst, and equal the interpreter', {
   skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
 }, async () => {

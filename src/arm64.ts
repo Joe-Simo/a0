@@ -333,6 +333,8 @@ interface Selection {
   /** Each `get` of such an array, to its group (the first one emits the loop). */
   readonly queryGet: ReadonlyMap<string, QueryGroup>;
   readonly compare: ReadonlySet<string>;
+  /** 4 x 4 products of scalar grids computed in NEON registers (see `MatrixGroup`). */
+  readonly matrix: MatrixPlan;
   /**
    * Compares of `(x & mask)` against zero or the mask (a single bit): one `tst`. Keyed by the
    * compare; `negate` when the compare asks whether the bit is set.
@@ -397,6 +399,490 @@ const HOISTABLE: ReadonlySet<Op> = new Set<Op>([
   'div',
   'rem',
 ]);
+
+/**
+ * A 4 x 4 product of two grids of scalars (as the shared optimizer writes one out in straight-line
+ * code): z[r][c] = ((x[r][0]*y[0][c] + x[r][1]*y[1][c]) + x[r][2]*y[2][c]) + x[r][3]*y[3][c]. The 16
+ * sums are computed in four NEON registers, one row each: row r of the result is the sum over k
+ * of row k of Y scaled (by element) by x[r][k]. A grid that is itself the result of an earlier
+ * product stays in its registers.
+ */
+interface MatrixRow {
+  /** Row r of the result, emitted right after the node `at` (when its inputs exist). */
+  readonly r: number;
+  /** Rows of Y to build from scalars first (only the group's first row does). */
+  readonly yPacks: readonly { readonly reg: number; readonly ops: readonly Operand[] }[];
+  /** Row r of X when it is built from scalars (an aligned one is its producer's register). */
+  readonly xPack?: { readonly reg: number; readonly ops: readonly Operand[] };
+  readonly xReg: number;
+  /** The lane of the X row that holds x[r][k]. */
+  readonly xLane: readonly number[];
+  readonly yReg: readonly number[];
+  readonly zReg: number;
+  readonly tmp: number;
+  /** The row's four sums (lane order) and those that scalar code reads: copied out. */
+  readonly z: readonly string[];
+  readonly external: ReadonlySet<string>;
+}
+
+interface MatrixPlan {
+  readonly at: ReadonlyMap<string, readonly MatrixRow[]>;
+  readonly owned: ReadonlySet<string>;
+}
+
+const NO_MATRIX: MatrixPlan = { at: new Map(), owned: new Set() };
+
+function operandKey(o: Operand): string {
+  return o.kind === 'node'
+    ? `n${o.id}`
+    : o.kind === 'param'
+      ? `p${o.index}`
+      : `${o.kind}${o.value}`;
+}
+
+function matrixPlan(fn: TypedFunc): MatrixPlan {
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  const order = new Map(fn.nodes.map((n, i) => [n.id, i]));
+  const uses = new Map<string, { consumer: Node | undefined }[]>();
+  const useOf = (o: Operand, consumer: Node | undefined): void => {
+    if (o.kind !== 'node') return;
+    const list = uses.get(o.id) ?? [];
+    list.push({ consumer });
+    uses.set(o.id, list);
+  };
+  for (const n of fn.nodes) for (const o of n.args) useOf(o, n);
+  useOf(fn.ret, undefined);
+  const useCount = (id: string): number => uses.get(id)?.length ?? 0;
+  if (fn.nodes.filter((n) => n.op === 'mul').length < 64) return NO_MATRIX;
+  interface Cand {
+    readonly z: string;
+    readonly x: Operand[];
+    readonly y: Operand[];
+    readonly owned: string[];
+  }
+  /** A chain of four products before it is known which factor of each belongs to which matrix. */
+  interface Raw {
+    readonly z: string;
+    readonly pairs: [Operand, Operand][];
+    readonly owned: string[];
+  }
+  // Left-leaning chains of four products: add(add(add(m0, m1), m2), m3).
+  const chainOf = (top: Node): Raw | undefined => {
+    const terms: Node[] = [];
+    const owned: string[] = [];
+    let cur: Node = top;
+    for (let i = 0; i < 3; i += 1) {
+      if (cur.op !== 'add' || fn.types.get(cur.id) !== 'u32') return undefined;
+      owned.push(cur.id);
+      const [l, r] = cur.args as [Operand, Operand];
+      const mr = r.kind === 'node' ? byId.get(r.id) : undefined;
+      if (mr?.op !== 'mul') return undefined;
+      terms.unshift(mr);
+      const ln = l.kind === 'node' ? byId.get(l.id) : undefined;
+      if (ln === undefined) return undefined;
+      if (i === 2) {
+        if (ln.op !== 'mul') return undefined;
+        terms.unshift(ln);
+      } else {
+        cur = ln;
+      }
+    }
+    for (const m of terms) owned.push(m.id);
+    return {
+      z: top.id,
+      pairs: terms.map((m) => [m.args[0] as Operand, m.args[1] as Operand]),
+      owned,
+    };
+  };
+  const raws: Raw[] = [];
+  for (const n of fn.nodes) {
+    const c = n.op === 'add' ? chainOf(n) : undefined;
+    if (c !== undefined) raws.push(c);
+  }
+  if (raws.length < 16) return NO_MATRIX;
+  // The factors of a product are unordered (a shared product may have had its operands sorted), so
+  // rows and columns are found from what the chains share: two sums of one row of the result share
+  // x[r][k] at every position k, two of one column share y[k][c].
+  const keyPairs = raws.map((r) =>
+    r.pairs.map(([u, v]) => [operandKey(u), operandKey(v)] as const),
+  );
+  const sharedWith = (a: number, b: number): string[] | undefined => {
+    const out: string[] = [];
+    for (let k = 0; k < 4; k += 1) {
+      const [u1, v1] = (keyPairs[a] as (typeof keyPairs)[number])[k] as readonly [string, string];
+      const [u2, v2] = (keyPairs[b] as (typeof keyPairs)[number])[k] as readonly [string, string];
+      const common = [...new Set([u1, v1])].filter((x) => x === u2 || x === v2);
+      if (common.length !== 1) return undefined;
+      out.push(common[0] as string);
+    }
+    return out;
+  };
+  const neighbours = raws.map((_, i) => {
+    const clusters = new Map<string, number[]>();
+    raws.forEach((_r, j) => {
+      if (j === i) return;
+      const sh = sharedWith(i, j);
+      if (sh !== undefined) clusters.set(sh.join(','), [...(clusters.get(sh.join(',')) ?? []), j]);
+    });
+    return clusters;
+  });
+  const gridUsed = new Set<number>();
+  const gridRows: Cand[][][] = [];
+  for (let i0 = 0; i0 < raws.length; i0 += 1) {
+    if (gridUsed.has(i0)) continue;
+    const cl = [...(neighbours[i0] as Map<string, number[]>).values()];
+    if (cl.length !== 2 || cl.some((c) => c.length !== 3)) continue;
+    const rowOf = (i: number, not: number): number[] | undefined => {
+      const cs = [...(neighbours[i] as Map<string, number[]>).values()].filter(
+        (c) => c.length === 3 && !c.includes(not),
+      );
+      return cs.length === 1 ? [i, ...(cs[0] as number[])] : undefined;
+    };
+    const first = [i0, ...(cl[0] as number[])];
+    const colMates = cl[1] as number[];
+    // Which of the two clusters is the row of i0 is arbitrary (the product transposes); the rows
+    // below are the rows of its column-mates, ordered by column.
+    const rows: number[][] = [first];
+    for (const m of colMates) {
+      const r = rowOf(m, i0);
+      if (r === undefined) break;
+      rows.push(r);
+    }
+    if (rows.length !== 4) continue;
+    // Column c of each row: the member that shares y[.][c] with first[c].
+    const ordered: number[][] = [first];
+    let good = true;
+    for (const r of rows.slice(1)) {
+      const row: number[] = [];
+      for (const f of first) {
+        const mate = r.find((m) => sharedWith(f, m) !== undefined);
+        if (mate === undefined || row.includes(mate)) good = false;
+        else row.push(mate);
+      }
+      ordered.push(row);
+    }
+    if (!good || new Set(ordered.flat()).size !== 16 || ordered.flat().some((i) => gridUsed.has(i)))
+      continue;
+    // x[r][k] is the factor shared along row r; y[k][c] is what is left of each pair.
+    const grid: Cand[][] = [];
+    for (const row of ordered) {
+      const xs = sharedWith(row[0] as number, row[1] as number);
+      if (xs === undefined) {
+        good = false;
+        break;
+      }
+      const cs: Cand[] = [];
+      for (const i of row) {
+        const raw = raws[i] as Raw;
+        const x: Operand[] = [];
+        const y: Operand[] = [];
+        raw.pairs.forEach(([u, v], k) => {
+          const keep = operandKey(u) === xs[k] ? u : v;
+          const other = keep === u ? v : u;
+          x.push(keep);
+          y.push(operandKey(u) === xs[k] && operandKey(v) === xs[k] ? u : other);
+        });
+        cs.push({ z: raw.z, x, y, owned: raw.owned });
+      }
+      grid.push(cs);
+    }
+    if (!good) continue;
+    // Every sum of a row shares the same x tuple, and every sum of a column the same y tuple.
+    const xKey = (c: Cand): string => c.x.map(operandKey).join(',');
+    const yKey = (c: Cand): string => c.y.map(operandKey).join(',');
+    for (const row of grid) {
+      if (new Set(row.map(xKey)).size !== 1) good = false;
+      for (const [c, cand] of row.entries())
+        if (yKey(cand) !== yKey((grid[0] as Cand[])[c] as Cand)) good = false;
+    }
+    if (!good) continue;
+    for (const i of ordered.flat()) gridUsed.add(i);
+    gridRows.push(grid);
+  }
+  if (gridRows.length === 0) return NO_MATRIX;
+  interface Draft {
+    readonly rows: Cand[][];
+    readonly sample: Cand[];
+    readonly owned: string[];
+    readonly last: string;
+  }
+  const colKey = (c: Cand): string => c.y.map(operandKey).join(',');
+  const drafts: Draft[] = gridRows.map((rs) => {
+    const owned = rs.flatMap((r) => r.flatMap((c) => c.owned));
+    const last = [...owned].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0)).at(-1);
+    return { rows: rs, sample: rs[0] as Cand[], owned, last: last as string };
+  });
+  if (drafts.length === 0) return NO_MATRIX;
+  // Groups in dependency order: a product whose operands are sums of another is emitted after it.
+  const zOwner = new Map<string, number>();
+  drafts.forEach((d, i) => {
+    for (const r of d.rows) for (const c of r) zOwner.set(c.z, i);
+  });
+  const depsOf = drafts.map((d) => {
+    const out = new Set<number>();
+    for (const r of d.rows)
+      for (const c of r)
+        for (const o of [...c.x, ...c.y]) {
+          const p = o.kind === 'node' ? zOwner.get(o.id) : undefined;
+          if (p !== undefined && p !== zOwner.get(c.z)) out.add(p);
+        }
+    return out;
+  });
+  const sorted: number[] = [];
+  const done = new Set<number>();
+  const pending = drafts
+    .map((_, i) => i)
+    .sort(
+      (a, b) =>
+        (order.get((drafts[a] as Draft).last) ?? 0) - (order.get((drafts[b] as Draft).last) ?? 0),
+    );
+  while (pending.length > 0) {
+    const at = pending.findIndex((i) => [...(depsOf[i] as Set<number>)].every((d) => done.has(d)));
+    if (at < 0) return NO_MATRIX;
+    const [next] = pending.splice(at, 1) as [number];
+    sorted.push(next);
+    done.add(next);
+  }
+  const producer = new Map<string, { g: number; r: number; c: number }>();
+  const xFrom: ({ g: number; r: number; lanes: number[] } | undefined)[][] = [];
+  const yFrom: ({ g: number; r: number; lanes: number[] } | undefined)[][] = [];
+  const zRows: string[][][] = [];
+  const colsOf: Cand[][][] = [];
+  const gOwned: string[][] = [];
+  const rowsOf: Cand[][][] = [];
+  for (const [gi, di] of sorted.entries()) {
+    const d = drafts[di] as Draft;
+    const alignedTo = (
+      ops: readonly Operand[],
+      anyLanes = false,
+    ): { g: number; r: number; lanes: number[] } | undefined => {
+      const ps = ops.map((o) => (o.kind === 'node' ? producer.get(o.id) : undefined));
+      const p0 = ps[0];
+      if (p0 === undefined || !ps.every((p) => p?.g === p0.g && p.r === p0.r)) return undefined;
+      const lanes = ps.map((p) => (p as { c: number }).c);
+      // The multiplier of a row is read lane by lane: any distinct lanes will do. A multiplicand
+      // row is used whole, so its lanes must be in order.
+      const ok = anyLanes ? new Set(lanes).size === 4 : lanes.every((c, k) => c === k);
+      return ok ? { g: p0.g, r: p0.r, lanes } : undefined;
+    };
+    // The product can be read two ways (rows against columns, or the transpose, which swaps the
+    // roles of x and y): take the one whose operand rows come from registers already holding them.
+    const transposed: Cand[][] = [0, 1, 2, 3].map((c) =>
+      d.rows.map((row) => {
+        const cand = row[c] as Cand;
+        return { z: cand.z, x: cand.y, y: cand.x, owned: cand.owned };
+      }),
+    );
+    const evaluate = (rows: Cand[][]) => {
+      // Columns in the lane order of the registers Y comes from (so its rows can be reused as they are).
+      const lane = (c: Cand): number => {
+        const y0 = c.y[0];
+        return y0?.kind === 'node' ? (producer.get(y0.id)?.c ?? 99) : 99;
+      };
+      const keys = [...(rows[0] as Cand[])].sort((a, b) => lane(a) - lane(b)).map(colKey);
+      const cols = keys.map((k) => rows.map((r) => r.find((c) => colKey(c) === k) as Cand));
+      const xf = rows.map((r) => alignedTo((r[0] as Cand).x, true));
+      const yf = [0, 1, 2, 3].map((k) =>
+        alignedTo(cols.map((col) => (col[0] as Cand).y[k] as Operand)),
+      );
+      const score = [...xf, ...yf].filter((f) => f !== undefined).length;
+      return { rows, keys, cols, xf, yf, score };
+    };
+    const first = evaluate(d.rows);
+    const second = evaluate(transposed);
+    const pick = second.score > first.score ? second : first;
+    rowsOf.push(pick.rows);
+    colsOf.push(pick.cols);
+    gOwned.push(d.owned);
+    const z = pick.rows.map((r) =>
+      pick.keys.map((k) => (r.find((c) => colKey(c) === k) as Cand).z),
+    );
+    zRows.push(z);
+    xFrom.push(pick.xf);
+    yFrom.push(pick.yf);
+    z.forEach((row, r) => {
+      row.forEach((id, c) => {
+        producer.set(id, { g: gi, r, c });
+      });
+    });
+  }
+  // Which sums need scalars: any use that is not a product row read straight from the register.
+  const aligned = new Map<string, number>();
+  const bump = (id: string, by: number): void => void aligned.set(id, (aligned.get(id) ?? 0) + by);
+  sorted.forEach((_di, gi) => {
+    (rowsOf[gi] as Cand[][]).forEach((r, ri) => {
+      if (xFrom[gi]?.[ri] !== undefined)
+        for (const o of (r[0] as Cand).x) if (o.kind === 'node') bump(o.id, 4);
+    });
+    [0, 1, 2, 3].forEach((k) => {
+      if (yFrom[gi]?.[k] !== undefined)
+        for (const col of colsOf[gi] as Cand[][]) {
+          const o = (col[0] as Cand).y[k] as Operand;
+          if (o.kind === 'node') bump(o.id, 4);
+        }
+    });
+  });
+  const ownedAll = new Set(drafts.flatMap((d) => d.owned));
+  // Products and partial sums may be shared inside the groups, never read from outside them.
+  const sumIds = new Set(zOwner.keys());
+  for (const id of ownedAll) {
+    if (sumIds.has(id)) continue;
+    for (const u of uses.get(id) ?? [])
+      if (u.consumer === undefined || !ownedAll.has(u.consumer.id)) return NO_MATRIX;
+  }
+  const external = (id: string): boolean => useCount(id) > (aligned.get(id) ?? 0);
+  // Straight-line code only: the registers are caller-saved and shared with the vector loops.
+  if (fn.nodes.some((n) => n.op === 'call' || n.op === 'fold' || n.op === 'loop')) return NO_MATRIX;
+  // Rows are emitted as soon as their inputs exist: after the latest node among x[r][.], all of Y,
+  // and the rows they come from.
+  const later = (a: string | undefined, b: string | undefined): string | undefined =>
+    a === undefined ? b : b === undefined ? a : (order.get(a) ?? 0) >= (order.get(b) ?? 0) ? a : b;
+  const rowPos = new Map<string, string>();
+  const defPos = (o: Operand): string | undefined => {
+    if (o.kind !== 'node') return undefined;
+    const pz = producer.get(o.id);
+    return pz === undefined ? o.id : rowPos.get(`${pz.g}:${pz.r}`);
+  };
+  interface Ev {
+    readonly gi: number;
+    readonly r: number;
+    readonly pos: string;
+  }
+  const events: Ev[] = [];
+  for (const [gi, di] of sorted.entries()) {
+    const d = drafts[di] as Draft;
+    const cols = colsOf[gi] as Cand[][];
+    let yPos: string | undefined;
+    for (const col of cols) for (const o of (col[0] as Cand).y) yPos = later(yPos, defPos(o));
+    const first = [...d.owned].sort(
+      (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0),
+    )[0] as string;
+    for (let r = 0; r < 4; r += 1) {
+      let pos = yPos;
+      for (const o of ((rowsOf[gi] as Cand[][])[r] as Cand[])[0]?.x ?? [])
+        pos = later(pos, defPos(o));
+      pos = pos ?? first;
+      rowPos.set(`${gi}:${r}`, pos);
+      events.push({ gi, r, pos });
+    }
+  }
+  // Every outside reader of a sum comes after the row that produces it.
+  for (const [gi, z] of zRows.entries())
+    for (const [r, row] of z.entries())
+      for (const id of row) {
+        if (!external(id)) continue;
+        for (const u of uses.get(id) ?? [])
+          if (u.consumer !== undefined && !ownedAll.has(u.consumer.id))
+            if (
+              (order.get(u.consumer.id) ?? 0) <=
+              (order.get(rowPos.get(`${gi}:${r}`) as string) ?? 0)
+            )
+              return NO_MATRIX;
+      }
+  events.sort(
+    (a, b) => (order.get(a.pos) ?? 0) - (order.get(b.pos) ?? 0) || a.gi - b.gi || a.r - b.r,
+  );
+  // Registers v16..v31 walked along the events.
+  const free = Array.from({ length: 16 }, (_, i) => 16 + i);
+  const take = (): number | undefined => free.shift();
+  const refs = zRows.map((_z, gi) => {
+    const counts = [0, 0, 0, 0];
+    for (let g2 = gi + 1; g2 < sorted.length; g2 += 1) {
+      for (const f of xFrom[g2] ?? []) if (f?.g === gi) counts[f.r] = (counts[f.r] ?? 0) + 1;
+      for (const f of yFrom[g2] ?? []) if (f?.g === gi) counts[f.r] = (counts[f.r] ?? 0) + 1;
+    }
+    return counts;
+  });
+  const zRegs: number[][] = zRows.map(() => [-1, -1, -1, -1]);
+  const yRegs: number[][] = zRows.map(() => []);
+  const ypacks: { reg: number; ops: Operand[] }[][] = zRows.map(() => []);
+  const seenEvents = new Map<number, number>();
+  const at = new Map<string, MatrixRow[]>();
+  const release = (g: number, r: number): void => {
+    const left = ((refs[g] as number[])[r] as number) - 1;
+    (refs[g] as number[])[r] = left;
+    if (left === 0) free.push((zRegs[g] as number[])[r] as number);
+  };
+  for (const ev of events) {
+    const { gi, r } = ev;
+    const cols = colsOf[gi] as Cand[][];
+    const firstOfGroup = !seenEvents.has(gi);
+    seenEvents.set(gi, (seenEvents.get(gi) ?? 0) + 1);
+    const lastOfGroup = seenEvents.get(gi) === 4;
+    if (firstOfGroup) {
+      const byTuple = new Map<string, number>();
+      for (let k = 0; k < 4; k += 1) {
+        const ops = cols.map((col) => (col[0] as Cand).y[k] as Operand);
+        const from = yFrom[gi]?.[k];
+        if (from !== undefined) {
+          (yRegs[gi] as number[]).push((zRegs[from.g] as number[])[from.r] as number);
+          continue;
+        }
+        const key = ops.map(operandKey).join(',');
+        const known = byTuple.get(key);
+        if (known !== undefined) {
+          (yRegs[gi] as number[]).push(known);
+          continue;
+        }
+        const reg = take();
+        if (reg === undefined) return NO_MATRIX;
+        byTuple.set(key, reg);
+        (ypacks[gi] as { reg: number; ops: Operand[] }[]).push({ reg, ops });
+        (yRegs[gi] as number[]).push(reg);
+      }
+    }
+    const xops = ((rowsOf[gi] as Cand[][])[r] as Cand[])[0]?.x ?? [];
+    const xf = xFrom[gi]?.[r];
+    let xReg: number;
+    let xPack: { reg: number; ops: Operand[] } | undefined;
+    if (xf !== undefined) xReg = (zRegs[xf.g] as number[])[xf.r] as number;
+    else {
+      // The same tuple as a Y row built for this group is shared.
+      const key = xops.map(operandKey).join(',');
+      const dup = (ypacks[gi] as { reg: number; ops: Operand[] }[]).find(
+        (p) => p.ops.map(operandKey).join(',') === key,
+      );
+      if (dup !== undefined) xReg = dup.reg;
+      else {
+        const reg = take();
+        if (reg === undefined) return NO_MATRIX;
+        xReg = reg;
+        xPack = { reg, ops: xops };
+      }
+    }
+    const tmp = take();
+    const zReg = take();
+    if (tmp === undefined || zReg === undefined) return NO_MATRIX;
+    (zRegs[gi] as number[])[r] = zReg;
+    const zrow = (zRows[gi] as string[][])[r] as string[];
+    const row: MatrixRow = {
+      r,
+      yPacks: firstOfGroup ? [...(ypacks[gi] as { reg: number; ops: Operand[] }[])] : [],
+      ...(xPack === undefined ? {} : { xPack }),
+      xReg,
+      xLane: xf?.lanes ?? [0, 1, 2, 3],
+      yReg: yRegs[gi] as number[],
+      zReg,
+      tmp,
+      z: zrow,
+      external: new Set(zrow.filter(external)),
+    };
+    at.set(ev.pos, [...(at.get(ev.pos) ?? []), row]);
+    // After the row: the temporary and a scratch X row go back; a produced row at its last reader.
+    free.push(tmp);
+    if (xPack !== undefined) free.push(xPack.reg);
+    if (xf !== undefined) release(xf.g, xf.r);
+    if (lastOfGroup) {
+      for (const p of ypacks[gi] as { reg: number; ops: Operand[] }[]) free.push(p.reg);
+      for (let k = 0; k < 4; k += 1) {
+        const from = yFrom[gi]?.[k];
+        if (from !== undefined) release(from.g, from.r);
+      }
+    }
+    if (((refs[gi] as number[])[r] as number) === 0) free.push(zReg);
+  }
+  return { at, owned: ownedAll };
+}
 
 /** Ops of an element-wise map body: scalar arithmetic over the index and extras, and reads of extra arrays. */
 const MAP_OPS: ReadonlySet<Op> = new Set<Op>([
@@ -785,6 +1271,7 @@ function selection(fn: TypedFunc): Selection {
     byId,
     deferred,
     deadInit,
+    matrix: matrixPlan(fn),
     testBit,
     absDiff,
     elided,
@@ -2961,6 +3448,59 @@ class FunctionEmitter {
     }
   }
 
+  /** One row of a 4 x 4 product: rows built from scalars, four products, the scalars others read. */
+  #matrixRow(env: Env, g: MatrixRow): void {
+    // A position of its own: what a row defines is read by later rows at later positions.
+    this.#pos += 1;
+    const v = (r: number, lanes = '4s'): string => `v${r}.${lanes}`;
+    const pack = (reg: number, ops: readonly Operand[]): void => {
+      const vals = ops.map((o) => {
+        const val = this.#resolve(env, o);
+        this.#use(val);
+        return val;
+      });
+      const same = vals.every(
+        (x, i) =>
+          i === 0 ||
+          (x.kind === 'key' && vals[0]?.kind === 'key' && x.key === vals[0].key) ||
+          (x.kind === 'lit' && vals[0]?.kind === 'lit' && x.value === vals[0].value),
+      );
+      if (same) {
+        this.#emit(`dup ${v(reg)}, ${this.#read(vals[0] as Val, 'w9')}`);
+        return;
+      }
+      vals.forEach((val, lane) => {
+        const r = this.#read(val, 'w9');
+        this.#emit(lane === 0 ? `fmov s${reg}, ${r}` : `ins v${reg}.s[${lane}], ${r}`);
+      });
+    };
+    for (const p of g.yPacks) pack(p.reg, p.ops);
+    if (g.xPack !== undefined) pack(g.xPack.reg, g.xPack.ops);
+    const y = g.yReg as readonly number[];
+    this.#emit(
+      `mul ${v(g.zReg)}, ${v(y[0] as number)}, v${g.xReg}.s[${g.xLane[0]}]`,
+      `mul ${v(g.tmp)}, ${v(y[1] as number)}, v${g.xReg}.s[${g.xLane[1]}]`,
+      `mla ${v(g.zReg)}, ${v(y[2] as number)}, v${g.xReg}.s[${g.xLane[2]}]`,
+      `mla ${v(g.tmp)}, ${v(y[3] as number)}, v${g.xReg}.s[${g.xLane[3]}]`,
+      `add ${v(g.zReg)}, ${v(g.zReg)}, ${v(g.tmp)}`,
+    );
+    for (const [c, id] of g.z.entries()) {
+      if (!g.external.has(id)) continue;
+      const key = `${env.prefix}n_${id}`;
+      const feed = feedsOf(env.fn).get(id);
+      if (feed !== undefined) {
+        const akey = `${env.prefix}n_${feed.arr}`;
+        const at = env.fn.types.get(feed.arr) ?? refuse(`untyped node ${feed.arr}`);
+        if (this.#dry && !this.#defs.has(akey)) this.#def(akey, at);
+        this.#emit(`umov w12, v${g.zReg}.s[${c}]`);
+        this.#mem('str', 'w12', 'sp', this.#slot(akey) + 4 * feed.word);
+      } else {
+        this.#def(key, 'u32');
+        this.#set(key, (d) => this.#emit(`umov ${d}, v${g.zReg}.s[${c}]`), true);
+      }
+    }
+  }
+
   /**
    * The vector loop of a query group: the later scalar nodes that compute the indices first, then
    * one loop whose accumulators are the answers (each `get`'s key is defined here).
@@ -3225,11 +3765,19 @@ class FunctionEmitter {
   }
 
   #node(env: Env, n: Node, index: number): void {
+    this.#nodeBody(env, n, index);
+    // Rows of 4 x 4 products whose inputs exist now (see `MatrixRow`).
+    for (const row of selection(env.fn).matrix.at.get(n.id) ?? []) this.#matrixRow(env, row);
+  }
+
+  #nodeBody(env: Env, n: Node, index: number): void {
     const t = env.fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
     const key = `${env.prefix}n_${n.id}`;
     const sel = selection(env.fn);
     this.#pos += 1;
     if (this.#hoisted.has(key)) return;
+    // Part of a 4 x 4 product held in NEON registers: its rows are emitted when their inputs exist.
+    if (sel.matrix.owned.has(n.id)) return;
     // Absorbed into its consumer's instruction (see `selection`): nothing to emit here.
     if (sel.deferred.has(n.id)) return;
     // The index of the carried previous-element read: the read comes from a register.
