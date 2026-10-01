@@ -57,6 +57,10 @@ export const STEPS: readonly StepInfo[] = [
       'test/parallel.test.ts',
       'test/security.test.ts',
       'test/sitegen.test.ts',
+      'test/behavior.test.ts',
+      'test/trap.test.ts',
+      'test/loss-ledger.test.ts',
+      'test/seed.test.ts',
     ],
     light: true,
   },
@@ -235,7 +239,18 @@ function dataDeps(root: string): Map<StepId, string[]> {
         'MODEL_GUIDE.min.txt',
       ],
     ],
-    ['test', ['site/gen/sitegen.a0', ...list('site/gen', '.tpl')]],
+    [
+      'test',
+      [
+        'site/gen/sitegen.a0',
+        ...list('site/gen', '.tpl'),
+        // The seed (seed/) compiles compiler/*.a0: a compiler change makes it stale (test/seed.test.ts).
+        ...compiler,
+        ...['a0c-seed.c', 'stage-main.c', 'driver.c', 'bootstrap.sh', 'plan.txt', 'MANIFEST'].map(
+          (f) => `seed/${f}`,
+        ),
+      ],
+    ],
   ]);
 }
 
@@ -322,6 +337,10 @@ function classify(
   }
   if (file.startsWith('test/')) {
     add('test', `${file} is a test`);
+    return 'code';
+  }
+  if (file.startsWith('seed/')) {
+    add('test', `${file} is part of the bootstrap seed, checked by test/seed.test.ts`);
     return 'code';
   }
   let hit = false;

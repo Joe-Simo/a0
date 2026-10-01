@@ -569,7 +569,8 @@ function avrDriver(fn: TypedFunc, cases: readonly Case[]): string {
 #include <stdint.h>
 #include <stdlib.h>
 extern ${cSignature(fn)};
-static const uint32_t cases[${cases.length}][${width}] PROGMEM = {
+// A function with no parameter reads no argument row, so the table may be unused.
+static const uint32_t cases[${cases.length}][${width}] PROGMEM __attribute__((unused)) = {
 ${rows.join('\n')}
 };
 static void tx(char c) {
@@ -1431,7 +1432,7 @@ export async function checkJvm(
  * The row for the compiler found by `findGcc`, named by what actually runs: on macOS `gcc` is
  * usually Apple clang, and a row labelled gcc would then misreport the compiler.
  */
-function gccCompilerRow(): {
+export function gccCompilerRow(): {
   readonly key: string;
   readonly tool: ToolInfo;
   readonly label: string;
