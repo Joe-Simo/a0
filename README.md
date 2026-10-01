@@ -63,7 +63,7 @@ Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, 
 
 ## Use with AI agents
 
-Put `a0` on your PATH first (see Install). Every entry below runs the same local stdio server, `a0 mcp <dir>`, with no hosting and no account. Ready-to-copy configs are in [`integrations/`](integrations/). The Agent Skill in [`plugin/skills/a0/`](plugin/skills/a0/SKILL.md) teaches the language and loads the primer and the edit protocol only when they are needed.
+Put `a0` on your PATH first (see Install). Every entry below runs the same local stdio server, `a0 mcp <dir>`, with no hosting and no account. Ready-to-copy configs are in [`integrations/`](integrations/). The Agent Skill in [`skills/a0/`](skills/a0/SKILL.md) (install with `npx skills add Joe-Simo/a0`) teaches the language and loads the primer and the edit protocol only when they are needed.
 
 | Agent | Install | Local stdio |
 |---|---|---|

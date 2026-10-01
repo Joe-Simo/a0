@@ -6,13 +6,17 @@ const read = (path: string): string =>
   readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 
 test('skill primer matches MODEL_GUIDE.min.txt', () => {
+  assert.equal(read('skills/a0/references/primer.txt'), read('MODEL_GUIDE.min.txt'));
   assert.equal(read('plugin/skills/a0/references/primer.txt'), read('MODEL_GUIDE.min.txt'));
 });
 
+test('plugin skill is a byte-identical copy of skills/a0 (run bun tools/sync-skill.ts)', () => {
+  for (const f of ['SKILL.md', 'references/primer.txt', 'references/edit-protocol.md'])
+    assert.equal(read(`plugin/skills/a0/${f}`), read(`skills/a0/${f}`), f);
+});
+
 test('skill frontmatter follows the Agent Skills spec', () => {
-  const front = /^---\nname: ([^\n]+)\ndescription: ([^\n]+)\n/.exec(
-    read('plugin/skills/a0/SKILL.md'),
-  );
+  const front = /^---\nname: ([^\n]+)\ndescription: ([^\n]+)\n/.exec(read('skills/a0/SKILL.md'));
   assert.ok(front);
   assert.equal(front[1], 'a0');
   assert.ok((front[2] ?? '').length <= 1024);
