@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-01T18:40:01.456Z",
+  "generatedAt": "2026-10-01T19:52:50.573Z",
   "compilerVersion": "a0c-0.1.37",
   "stage": "arm64 bootstrap to a signed Mach-O executable without the system assembler and linker",
   "toolchain": "Stage 1 is the C seed (TypeScript C backend + clang). Stages 2 and 3: A0-emitted assembly plus the runtime of tools/arm64-runtime.ts, encoded by src/arm64enc.ts and linked and ad-hoc signed by src/macho.ts (SHA-256 code directory written in TypeScript); dyld binds libSystem _mmap/_read/_write. clang, ld and codesign produce no byte of stages 2 and 3; clang is the reference of the encoder check and codesign -v checks the signature.",
   "stage1": {
-    "cBytes": 584156,
-    "buildMs": 1862
+    "cBytes": 586347,
+    "buildMs": 2205
   },
   "stage2": {
-    "asmBytes": 1050038,
-    "executableBytes": 247936,
-    "linkMs": 105
+    "asmBytes": 1053994,
+    "executableBytes": 264448,
+    "linkMs": 135
   },
   "stage3": {
-    "asmBytes": 1050038,
-    "executableBytes": 247936,
-    "emitMs": 2294,
+    "asmBytes": 1053994,
+    "executableBytes": 264448,
+    "emitMs": 2843,
     "reproduces": true
   },
   "fixedPoint": {
@@ -25,10 +25,10 @@
   },
   "encoder": {
     "method": "arm64enc words equal clang -c -x assembler __text words one by one, and the relocation offsets and kinds are equal",
-    "texts": 240,
-    "sources": 265,
+    "texts": 241,
+    "sources": 266,
     "stage2DiffersFromStage1": 0,
-    "instructions": 426563,
+    "instructions": 427655,
     "failed": 0,
     "checks": [
       {
@@ -1035,13 +1035,13 @@
       },
       {
         "label": "boot.a0/fnstep",
-        "instructions": 7465,
+        "instructions": 7542,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/checkir",
-        "instructions": 8869,
+        "instructions": 8946,
         "relocations": 0,
         "mismatches": []
       },
@@ -1162,6 +1162,12 @@
       {
         "label": "boot.a0/cfnm",
         "instructions": 238,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/aretq",
+        "instructions": 144,
         "relocations": 0,
         "mismatches": []
       },
@@ -1383,7 +1389,7 @@
       },
       {
         "label": "boot.a0/qfn",
-        "instructions": 7618,
+        "instructions": 7746,
         "relocations": 3,
         "mismatches": []
       },
@@ -1395,19 +1401,19 @@
       },
       {
         "label": "boot.a0/qemit",
-        "instructions": 8649,
+        "instructions": 8777,
         "relocations": 3,
         "mismatches": []
       },
       {
         "label": "boot.a0/qemst",
-        "instructions": 8709,
+        "instructions": 8837,
         "relocations": 3,
         "mismatches": []
       },
       {
         "label": "boot.a0/qunit",
-        "instructions": 55248,
+        "instructions": 55453,
         "relocations": 3,
         "mismatches": []
       },
@@ -1443,7 +1449,7 @@
       },
       {
         "label": "compiler (whole)",
-        "instructions": 56815,
+        "instructions": 57020,
         "relocations": 8,
         "mismatches": []
       },
