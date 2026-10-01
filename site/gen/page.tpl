@@ -346,10 +346,10 @@ s 13 glsl
 "Gates and cycles
 >
 .div big pixel
-"70%
+"$hw_cells$
 >
 .p d
-"fewer gates than the same programs with single-cycle dividers (A0 hardware backend, before and after adding a shared 32-cycle divider); optimizer proved equivalent with Z3.
+"generic cells for the $hw_fns$ corpus functions in A0's clocked SystemVerilog, simulated on $hw_cases$ oracle cases; optimizer proved equivalent with Z3.
 >
 >
 >
@@ -1407,112 +1407,43 @@ c putratio %a
 +id hardware
 =h2 Hardware
 .p take
-"The $hw_fns$ corpus functions compile to $hw_mods$ synthesized modules (the shared divider counts as one), $hw_cells$ generic cells in all and $hw_max$ in the largest, simulated on $hw_cases$ oracle cases.
+"The $hw_fns$ corpus functions compile to $hw_mods$ synthesized modules (the shared divider counts as one): $hw_cells$ generic cells in all, $hw_max$ in the largest, simulated on $hw_cases$ oracle cases.
 >
 <p
-"A0 compiles the same programs to clocked SystemVerilog. A cell is one gate-level element after Yosys generic synthesis, so fewer cells means a smaller circuit; cell counts are relative size, not area on a real chip. When a shared 32-cycle divider replaced single-cycle dividers, the corpus fell from 260,146 to 78,835 cells (about 3.3x fewer); those two figures were measured when the divider was added.
+"A0 compiles the same programs to clocked SystemVerilog. A cell is one gate-level element after Yosys generic synthesis, so fewer cells means a smaller circuit; cell counts are relative size, not area on a real chip. Every number here is read from results/hardware.json.
 >
-}
-{chart3
-.div chart single reveal
-.p ct
-"Size of the synthesized circuits: A0's single-cycle divider design vs its shared 32-cycle divider
+.div tiles
+.div tile
+.div n
+"$hw_mods$
 >
-.p take
-"The shared 32-cycle divider design was about 3.3x fewer cells than the single-cycle design when it was added (78,835 against 260,146); the current build is $hw_cells$ cells.
->
-.p sub
-"Synthesized cells, Yosys generic; shorter bar = a smaller circuit. All three bars are A0's own hardware backend on the same corpus at different times, not other languages.
->
-.div legend
-.span lc
-"single-cycle divide (measured then)
->
-.span lrust
-"shared 32-cycle divider (measured then)
->
-.span la0
-"current build
+.p
+"synthesized modules
 >
 >
-.div row
-.span lbl
-"all corpus modules
+.div tile
+.div n
+"$hw_cells$
 >
-.div bars
-n a mov 260146
-n b mov 78835
-n c mov $hw_cells$
-n m call max3 %a %b %c
-.div track c
-c fill %a %m
-.span val
-c putnum %a
-" cells
+.p
+"generic cells in all modules
 >
 >
-.div track rust
-c fill %b %m
-.span val
-c putnum %b
-" cells
+.div tile
+.div n
+"$hw_max$
+>
+.p
+"cells in the largest module
 >
 >
-.div track a0
-c fill %c %m
-.span val
-c putnum %c
-" cells
+.div tile
+.div n
+"$hw_cases$
 >
+.p
+"oracle cases simulated
 >
->
-n r mul %a 100
-n q div %r %b
-.span ratio win
-c putratio %q
-"x fewer than single-cycle
->
->
-.div row
-.span lbl
-"largest module
->
-.div bars
-n a mov 104460
-n b mov 1175
-n c mov $hw_max$
-n m call max3 %a %b %c
-.div track c
-c fill %a %m
-.span val
-c putnum %a
-" cells
->
->
-.div track rust
-c fill %b %m
-.span val
-c putnum %b
-" cells
->
->
-.div track a0
-c fill %c %m
-.span val
-c putnum %c
-" cells
->
->
->
-n r mul %a 100
-n q div %r %b
-.span ratio win
-c putratio %q
-"x fewer than single-cycle
->
->
-.p cap
-"The ratio on the right compares the first two bars of each row (single-cycle divide over shared divider). Simulated on the oracle cases; optimizer proved equivalent with Z3. Current build: results/hardware.json; the other two figures are from the divider change (STATUS.md).
 >
 >
 }

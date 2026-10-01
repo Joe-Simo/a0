@@ -670,7 +670,7 @@ x758 write x757 2
 x759 text "big pixel"
 x760 puts x758 x759
 x761 write x760 2
-x762 text "70%"
+x762 text "55530"
 x763 puts x761 x762
 x764 call close x763 
 x765 call open x764 2
@@ -679,7 +679,7 @@ x767 write x766 2
 x768 text "d"
 x769 puts x767 x768
 x770 write x769 2
-x771 text "fewer gates than the same programs with single-cycle dividers (A0 hardware backend, before and after adding a shared 32-cycle divider); optimizer proved equivalent with Z3."
+x771 text "generic cells for the 48 corpus functions in A0's clocked SystemVerilog, simulated on 5262 oracle cases; optimizer proved equivalent with Z3."
 x772 puts x770 x771
 x773 call close x772 
 x774 call close x773 
@@ -21292,605 +21292,436 @@ x21296 write x21295 2
 x21297 text "take"
 x21298 puts x21296 x21297
 x21299 write x21298 2
-x21300 text "The 48 corpus functions compile to 49 synthesized modules (the shared divider counts as one), 55530 generic cells in all and 9325 in the largest, simulated on 5262 oracle cases."
+x21300 text "The 48 corpus functions compile to 49 synthesized modules (the shared divider counts as one): 55530 generic cells in all, 9325 in the largest, simulated on 5262 oracle cases."
 x21301 puts x21299 x21300
 x21302 call close x21301 
 x21303 call open x21302 2
 x21304 write x21303 2
-x21305 text "A0 compiles the same programs to clocked SystemVerilog. A cell is one gate-level element after Yosys generic synthesis, so fewer cells means a smaller circuit; cell counts are relative size, not area on a real chip. When a shared 32-cycle divider replaced single-cycle dividers, the corpus fell from 260,146 to 78,835 cells (about 3.3x fewer); those two figures were measured when the divider was added."
+x21305 text "A0 compiles the same programs to clocked SystemVerilog. A cell is one gate-level element after Yosys generic synthesis, so fewer cells means a smaller circuit; cell counts are relative size, not area on a real chip. Every number here is read from results/hardware.json."
 x21306 puts x21304 x21305
 x21307 call close x21306 
-ret x21307
-end
-
-fn chart3 io -> io
-x21309 call open p0 5
-x21310 write x21309 4
-x21311 write x21310 2
-x21312 text "chart single reveal"
-x21313 puts x21311 x21312
-x21314 call open x21313 2
-x21315 write x21314 4
-x21316 write x21315 2
-x21317 text "ct"
-x21318 puts x21316 x21317
-x21319 write x21318 2
-x21320 text "Size of the synthesized circuits: A0's single-cycle divider design vs its shared 32-cycle divider"
-x21321 puts x21319 x21320
-x21322 call close x21321 
-x21323 call open x21322 2
-x21324 write x21323 4
-x21325 write x21324 2
-x21326 text "take"
-x21327 puts x21325 x21326
+x21308 call open x21307 5
+x21309 write x21308 4
+x21310 write x21309 2
+x21311 text "tiles"
+x21312 puts x21310 x21311
+x21313 call open x21312 5
+x21314 write x21313 4
+x21315 write x21314 2
+x21316 text "tile"
+x21317 puts x21315 x21316
+x21318 call open x21317 5
+x21319 write x21318 4
+x21320 write x21319 2
+x21321 text "n"
+x21322 puts x21320 x21321
+x21323 write x21322 2
+x21324 text "49"
+x21325 puts x21323 x21324
+x21326 call close x21325 
+x21327 call open x21326 2
 x21328 write x21327 2
-x21329 text "The shared 32-cycle divider design was about 3.3x fewer cells than the single-cycle design when it was added (78,835 against 260,146); the current build is 55530 cells."
+x21329 text "synthesized modules"
 x21330 puts x21328 x21329
 x21331 call close x21330 
-x21332 call open x21331 2
-x21333 write x21332 4
-x21334 write x21333 2
-x21335 text "sub"
-x21336 puts x21334 x21335
-x21337 write x21336 2
-x21338 text "Synthesized cells, Yosys generic; shorter bar = a smaller circuit. All three bars are A0's own hardware backend on the same corpus at different times, not other languages."
-x21339 puts x21337 x21338
-x21340 call close x21339 
-x21341 call open x21340 5
-x21342 write x21341 4
+x21332 call close x21331 
+x21333 call open x21332 5
+x21334 write x21333 4
+x21335 write x21334 2
+x21336 text "tile"
+x21337 puts x21335 x21336
+x21338 call open x21337 5
+x21339 write x21338 4
+x21340 write x21339 2
+x21341 text "n"
+x21342 puts x21340 x21341
 x21343 write x21342 2
-x21344 text "legend"
+x21344 text "55530"
 x21345 puts x21343 x21344
-x21346 call open x21345 6
-x21347 write x21346 4
+x21346 call close x21345 
+x21347 call open x21346 2
 x21348 write x21347 2
-x21349 text "lc"
+x21349 text "generic cells in all modules"
 x21350 puts x21348 x21349
-x21351 write x21350 2
-x21352 text "single-cycle divide (measured then)"
-x21353 puts x21351 x21352
-x21354 call close x21353 
-x21355 call open x21354 6
-x21356 write x21355 4
-x21357 write x21356 2
-x21358 text "lrust"
-x21359 puts x21357 x21358
+x21351 call close x21350 
+x21352 call close x21351 
+x21353 call open x21352 5
+x21354 write x21353 4
+x21355 write x21354 2
+x21356 text "tile"
+x21357 puts x21355 x21356
+x21358 call open x21357 5
+x21359 write x21358 4
 x21360 write x21359 2
-x21361 text "shared 32-cycle divider (measured then)"
+x21361 text "n"
 x21362 puts x21360 x21361
-x21363 call close x21362 
-x21364 call open x21363 6
-x21365 write x21364 4
-x21366 write x21365 2
-x21367 text "la0"
-x21368 puts x21366 x21367
-x21369 write x21368 2
-x21370 text "current build"
-x21371 puts x21369 x21370
+x21363 write x21362 2
+x21364 text "9325"
+x21365 puts x21363 x21364
+x21366 call close x21365 
+x21367 call open x21366 2
+x21368 write x21367 2
+x21369 text "cells in the largest module"
+x21370 puts x21368 x21369
+x21371 call close x21370 
 x21372 call close x21371 
-x21373 call close x21372 
-x21374 call open x21373 5
-x21375 write x21374 4
-x21376 write x21375 2
-x21377 text "row"
-x21378 puts x21376 x21377
-x21379 call open x21378 6
-x21380 write x21379 4
-x21381 write x21380 2
-x21382 text "lbl"
-x21383 puts x21381 x21382
-x21384 write x21383 2
-x21385 text "all corpus modules"
-x21386 puts x21384 x21385
-x21387 call close x21386 
-x21388 call open x21387 5
-x21389 write x21388 4
-x21390 write x21389 2
-x21391 text "bars"
-x21392 puts x21390 x21391
-x21393 mov 260146
-x21394 mov 78835
-x21395 mov 55530
-x21396 call max3 x21393 x21394 x21395
-x21397 call open x21392 5
-x21398 write x21397 4
-x21399 write x21398 2
-x21400 text "track c"
-x21401 puts x21399 x21400
-x21402 call fill x21401 x21393 x21396
-x21403 call open x21402 6
-x21404 write x21403 4
-x21405 write x21404 2
-x21406 text "val"
-x21407 puts x21405 x21406
-x21408 call putnum x21407 x21393
-x21409 write x21408 2
-x21410 text " cells"
-x21411 puts x21409 x21410
-x21412 call close x21411 
-x21413 call close x21412 
-x21414 call open x21413 5
-x21415 write x21414 4
-x21416 write x21415 2
-x21417 text "track rust"
-x21418 puts x21416 x21417
-x21419 call fill x21418 x21394 x21396
-x21420 call open x21419 6
-x21421 write x21420 4
-x21422 write x21421 2
-x21423 text "val"
-x21424 puts x21422 x21423
-x21425 call putnum x21424 x21394
-x21426 write x21425 2
-x21427 text " cells"
-x21428 puts x21426 x21427
-x21429 call close x21428 
-x21430 call close x21429 
-x21431 call open x21430 5
-x21432 write x21431 4
-x21433 write x21432 2
-x21434 text "track a0"
-x21435 puts x21433 x21434
-x21436 call fill x21435 x21395 x21396
-x21437 call open x21436 6
-x21438 write x21437 4
-x21439 write x21438 2
-x21440 text "val"
-x21441 puts x21439 x21440
-x21442 call putnum x21441 x21395
-x21443 write x21442 2
-x21444 text " cells"
-x21445 puts x21443 x21444
-x21446 call close x21445 
-x21447 call close x21446 
-x21448 call close x21447 
-x21449 mul x21393 100
-x21450 div x21449 x21394
-x21451 call open x21448 6
-x21452 write x21451 4
-x21453 write x21452 2
-x21454 text "ratio win"
-x21455 puts x21453 x21454
-x21456 call putratio x21455 x21450
-x21457 write x21456 2
-x21458 text "x fewer than single-cycle"
-x21459 puts x21457 x21458
-x21460 call close x21459 
-x21461 call close x21460 
-x21462 call open x21461 5
-x21463 write x21462 4
-x21464 write x21463 2
-x21465 text "row"
-x21466 puts x21464 x21465
-x21467 call open x21466 6
-x21468 write x21467 4
-x21469 write x21468 2
-x21470 text "lbl"
-x21471 puts x21469 x21470
-x21472 write x21471 2
-x21473 text "largest module"
-x21474 puts x21472 x21473
-x21475 call close x21474 
-x21476 call open x21475 5
-x21477 write x21476 4
-x21478 write x21477 2
-x21479 text "bars"
-x21480 puts x21478 x21479
-x21481 mov 104460
-x21482 mov 1175
-x21483 mov 9325
-x21484 call max3 x21481 x21482 x21483
-x21485 call open x21480 5
-x21486 write x21485 4
-x21487 write x21486 2
-x21488 text "track c"
-x21489 puts x21487 x21488
-x21490 call fill x21489 x21481 x21484
-x21491 call open x21490 6
-x21492 write x21491 4
-x21493 write x21492 2
-x21494 text "val"
-x21495 puts x21493 x21494
-x21496 call putnum x21495 x21481
-x21497 write x21496 2
-x21498 text " cells"
-x21499 puts x21497 x21498
-x21500 call close x21499 
-x21501 call close x21500 
-x21502 call open x21501 5
-x21503 write x21502 4
-x21504 write x21503 2
-x21505 text "track rust"
-x21506 puts x21504 x21505
-x21507 call fill x21506 x21482 x21484
-x21508 call open x21507 6
-x21509 write x21508 4
-x21510 write x21509 2
-x21511 text "val"
-x21512 puts x21510 x21511
-x21513 call putnum x21512 x21482
-x21514 write x21513 2
-x21515 text " cells"
-x21516 puts x21514 x21515
-x21517 call close x21516 
-x21518 call close x21517 
-x21519 call open x21518 5
-x21520 write x21519 4
-x21521 write x21520 2
-x21522 text "track a0"
-x21523 puts x21521 x21522
-x21524 call fill x21523 x21483 x21484
-x21525 call open x21524 6
-x21526 write x21525 4
-x21527 write x21526 2
-x21528 text "val"
-x21529 puts x21527 x21528
-x21530 call putnum x21529 x21483
-x21531 write x21530 2
-x21532 text " cells"
-x21533 puts x21531 x21532
-x21534 call close x21533 
-x21535 call close x21534 
-x21536 call close x21535 
-x21537 mul x21481 100
-x21538 div x21537 x21482
-x21539 call open x21536 6
-x21540 write x21539 4
-x21541 write x21540 2
-x21542 text "ratio win"
-x21543 puts x21541 x21542
-x21544 call putratio x21543 x21538
-x21545 write x21544 2
-x21546 text "x fewer than single-cycle"
-x21547 puts x21545 x21546
-x21548 call close x21547 
-x21549 call close x21548 
-x21550 call open x21549 2
-x21551 write x21550 4
-x21552 write x21551 2
-x21553 text "cap"
-x21554 puts x21552 x21553
-x21555 write x21554 2
-x21556 text "The ratio on the right compares the first two bars of each row (single-cycle divide over shared divider). Simulated on the oracle cases; optimizer proved equivalent with Z3. Current build: results/hardware.json; the other two figures are from the divider change (STATUS.md)."
-x21557 puts x21555 x21556
-x21558 call close x21557 
-x21559 call close x21558 
-ret x21559
+x21373 call open x21372 5
+x21374 write x21373 4
+x21375 write x21374 2
+x21376 text "tile"
+x21377 puts x21375 x21376
+x21378 call open x21377 5
+x21379 write x21378 4
+x21380 write x21379 2
+x21381 text "n"
+x21382 puts x21380 x21381
+x21383 write x21382 2
+x21384 text "5262"
+x21385 puts x21383 x21384
+x21386 call close x21385 
+x21387 call open x21386 2
+x21388 write x21387 2
+x21389 text "oracle cases simulated"
+x21390 puts x21388 x21389
+x21391 call close x21390 
+x21392 call close x21391 
+x21393 call close x21392 
+ret x21393
 end
 
-fn endsec21560 io -> io
-x21561 call close p0 
-ret x21561
+fn endsec21394 io -> io
+x21395 call close p0 
+ret x21395
 end
 
 fn sec_targets io -> io
-x21563 call open p0 13
-x21564 write x21563 4
-x21565 write x21564 1
-x21566 text "targets"
-x21567 puts x21565 x21566
-x21568 call open x21567 11
-x21569 write x21568 2
-x21570 text "Targets"
-x21571 puts x21569 x21570
-x21572 call close x21571 
-x21573 call open x21572 2
-x21574 write x21573 2
-x21575 text "One source, 5262 oracle cases, every target."
-x21576 puts x21574 x21575
+x21397 call open p0 13
+x21398 write x21397 4
+x21399 write x21398 1
+x21400 text "targets"
+x21401 puts x21399 x21400
+x21402 call open x21401 11
+x21403 write x21402 2
+x21404 text "Targets"
+x21405 puts x21403 x21404
+x21406 call close x21405 
+x21407 call open x21406 2
+x21408 write x21407 2
+x21409 text "One source, 5262 oracle cases, every target."
+x21410 puts x21408 x21409
+x21411 call close x21410 
+x21412 call open x21411 5
+x21413 write x21412 4
+x21414 write x21413 2
+x21415 text "grid four"
+x21416 puts x21414 x21415
+x21417 call open x21416 5
+x21418 write x21417 4
+x21419 write x21418 2
+x21420 text "card reveal"
+x21421 puts x21419 x21420
+x21422 call open x21421 15
+x21423 write x21422 2
+x21424 text "AArch64"
+x21425 puts x21423 x21424
+x21426 call close x21425 
+x21427 call open x21426 2
+x21428 write x21427 2
+x21429 text "A0's own code generator, no C in between"
+x21430 puts x21428 x21429
+x21431 call close x21430 
+x21432 call close x21431 
+x21433 call open x21432 5
+x21434 write x21433 4
+x21435 write x21434 2
+x21436 text "card reveal"
+x21437 puts x21435 x21436
+x21438 call open x21437 15
+x21439 write x21438 2
+x21440 text "x86-64"
+x21441 puts x21439 x21440
+x21442 call close x21441 
+x21443 call open x21442 2
+x21444 write x21443 2
+x21445 text "A0's own code generator, verified under Rosetta"
+x21446 puts x21444 x21445
+x21447 call close x21446 
+x21448 call close x21447 
+x21449 call open x21448 5
+x21450 write x21449 4
+x21451 write x21450 2
+x21452 text "card reveal"
+x21453 puts x21451 x21452
+x21454 call open x21453 15
+x21455 write x21454 2
+x21456 text "RISC-V, ARM32, AVR"
+x21457 puts x21455 x21456
+x21458 call close x21457 
+x21459 call open x21458 2
+x21460 write x21459 2
+x21461 text "A0's own code generators for 64-bit RISC-V, 32-bit ARM, and 8-bit AVR"
+x21462 puts x21460 x21461
+x21463 call close x21462 
+x21464 call close x21463 
+x21465 call open x21464 5
+x21466 write x21465 4
+x21467 write x21466 2
+x21468 text "card reveal"
+x21469 puts x21467 x21468
+x21470 call open x21469 15
+x21471 write x21470 2
+x21472 text "wasm32"
+x21473 puts x21471 x21472
+x21474 call close x21473 
+x21475 call open x21474 2
+x21476 write x21475 2
+x21477 text "A0's own wasm backend, or the C path through Clang: this site"
+x21478 puts x21476 x21477
+x21479 call close x21478 
+x21480 call close x21479 
+x21481 call open x21480 5
+x21482 write x21481 4
+x21483 write x21482 2
+x21484 text "card reveal"
+x21485 puts x21483 x21484
+x21486 call open x21485 15
+x21487 write x21486 2
+x21488 text "Native C"
+x21489 puts x21487 x21488
+x21490 call close x21489 
+x21491 call open x21490 2
+x21492 write x21491 2
+x21493 text "through clang or gcc, UBSan-clean, parity with hand-written C; --parallel for threads"
+x21494 puts x21492 x21493
+x21495 call close x21494 
+x21496 call close x21495 
+x21497 call open x21496 5
+x21498 write x21497 4
+x21499 write x21498 2
+x21500 text "card reveal"
+x21501 puts x21499 x21500
+x21502 call open x21501 15
+x21503 write x21502 2
+x21504 text "JavaScript"
+x21505 puts x21503 x21504
+x21506 call close x21505 
+x21507 call open x21506 2
+x21508 write x21507 2
+x21509 text "typed arrays, in-place updates, boundary guards only"
+x21510 puts x21508 x21509
+x21511 call close x21510 
+x21512 call close x21511 
+x21513 call open x21512 5
+x21514 write x21513 4
+x21515 write x21514 2
+x21516 text "card reveal"
+x21517 puts x21515 x21516
+x21518 call open x21517 15
+x21519 write x21518 2
+x21520 text "JVM"
+x21521 puts x21519 x21520
+x21522 call close x21521 
+x21523 call open x21522 2
+x21524 write x21523 2
+x21525 text "Java source, compiled and verified with javac"
+x21526 puts x21524 x21525
+x21527 call close x21526 
+x21528 call close x21527 
+x21529 call open x21528 5
+x21530 write x21529 4
+x21531 write x21530 2
+x21532 text "card reveal"
+x21533 puts x21531 x21532
+x21534 call open x21533 15
+x21535 write x21534 2
+x21536 text ".NET"
+x21537 puts x21535 x21536
+x21538 call close x21537 
+x21539 call open x21538 2
+x21540 write x21539 2
+x21541 text "C# source, verified on .NET 10"
+x21542 puts x21540 x21541
+x21543 call close x21542 
+x21544 call close x21543 
+x21545 call open x21544 5
+x21546 write x21545 4
+x21547 write x21546 2
+x21548 text "card reveal"
+x21549 puts x21547 x21548
+x21550 call open x21549 15
+x21551 write x21550 2
+x21552 text "GPU"
+x21553 puts x21551 x21552
+x21554 call close x21553 
+x21555 call open x21554 2
+x21556 write x21555 2
+x21557 text "Metal Shading Language kernels, verified on Apple silicon"
+x21558 puts x21556 x21557
+x21559 call close x21558 
+x21560 call close x21559 
+x21561 call open x21560 5
+x21562 write x21561 4
+x21563 write x21562 2
+x21564 text "card reveal"
+x21565 puts x21563 x21564
+x21566 call open x21565 15
+x21567 write x21566 2
+x21568 text "FPGA / ASIC"
+x21569 puts x21567 x21568
+x21570 call close x21569 
+x21571 call open x21570 2
+x21572 write x21571 2
+x21573 text "clocked SystemVerilog, simulated and synthesized"
+x21574 puts x21572 x21573
+x21575 call close x21574 
+x21576 call close x21575 
 x21577 call close x21576 
-x21578 call open x21577 5
-x21579 write x21578 4
-x21580 write x21579 2
-x21581 text "grid four"
-x21582 puts x21580 x21581
-x21583 call open x21582 5
-x21584 write x21583 4
-x21585 write x21584 2
-x21586 text "card reveal"
-x21587 puts x21585 x21586
-x21588 call open x21587 15
-x21589 write x21588 2
-x21590 text "AArch64"
-x21591 puts x21589 x21590
-x21592 call close x21591 
-x21593 call open x21592 2
-x21594 write x21593 2
-x21595 text "A0's own code generator, no C in between"
-x21596 puts x21594 x21595
-x21597 call close x21596 
-x21598 call close x21597 
-x21599 call open x21598 5
-x21600 write x21599 4
-x21601 write x21600 2
-x21602 text "card reveal"
-x21603 puts x21601 x21602
-x21604 call open x21603 15
-x21605 write x21604 2
-x21606 text "x86-64"
-x21607 puts x21605 x21606
-x21608 call close x21607 
-x21609 call open x21608 2
-x21610 write x21609 2
-x21611 text "A0's own code generator, verified under Rosetta"
-x21612 puts x21610 x21611
-x21613 call close x21612 
-x21614 call close x21613 
-x21615 call open x21614 5
-x21616 write x21615 4
-x21617 write x21616 2
-x21618 text "card reveal"
-x21619 puts x21617 x21618
-x21620 call open x21619 15
-x21621 write x21620 2
-x21622 text "RISC-V, ARM32, AVR"
-x21623 puts x21621 x21622
-x21624 call close x21623 
-x21625 call open x21624 2
-x21626 write x21625 2
-x21627 text "A0's own code generators for 64-bit RISC-V, 32-bit ARM, and 8-bit AVR"
-x21628 puts x21626 x21627
-x21629 call close x21628 
-x21630 call close x21629 
-x21631 call open x21630 5
-x21632 write x21631 4
-x21633 write x21632 2
-x21634 text "card reveal"
-x21635 puts x21633 x21634
-x21636 call open x21635 15
-x21637 write x21636 2
-x21638 text "wasm32"
-x21639 puts x21637 x21638
-x21640 call close x21639 
-x21641 call open x21640 2
-x21642 write x21641 2
-x21643 text "A0's own wasm backend, or the C path through Clang: this site"
-x21644 puts x21642 x21643
-x21645 call close x21644 
-x21646 call close x21645 
-x21647 call open x21646 5
-x21648 write x21647 4
-x21649 write x21648 2
-x21650 text "card reveal"
-x21651 puts x21649 x21650
-x21652 call open x21651 15
-x21653 write x21652 2
-x21654 text "Native C"
-x21655 puts x21653 x21654
-x21656 call close x21655 
-x21657 call open x21656 2
-x21658 write x21657 2
-x21659 text "through clang or gcc, UBSan-clean, parity with hand-written C; --parallel for threads"
-x21660 puts x21658 x21659
-x21661 call close x21660 
-x21662 call close x21661 
-x21663 call open x21662 5
-x21664 write x21663 4
-x21665 write x21664 2
-x21666 text "card reveal"
-x21667 puts x21665 x21666
-x21668 call open x21667 15
-x21669 write x21668 2
-x21670 text "JavaScript"
-x21671 puts x21669 x21670
-x21672 call close x21671 
-x21673 call open x21672 2
-x21674 write x21673 2
-x21675 text "typed arrays, in-place updates, boundary guards only"
-x21676 puts x21674 x21675
-x21677 call close x21676 
-x21678 call close x21677 
-x21679 call open x21678 5
-x21680 write x21679 4
-x21681 write x21680 2
-x21682 text "card reveal"
-x21683 puts x21681 x21682
-x21684 call open x21683 15
-x21685 write x21684 2
-x21686 text "JVM"
-x21687 puts x21685 x21686
-x21688 call close x21687 
-x21689 call open x21688 2
-x21690 write x21689 2
-x21691 text "Java source, compiled and verified with javac"
-x21692 puts x21690 x21691
-x21693 call close x21692 
-x21694 call close x21693 
-x21695 call open x21694 5
-x21696 write x21695 4
-x21697 write x21696 2
-x21698 text "card reveal"
-x21699 puts x21697 x21698
-x21700 call open x21699 15
-x21701 write x21700 2
-x21702 text ".NET"
-x21703 puts x21701 x21702
-x21704 call close x21703 
-x21705 call open x21704 2
-x21706 write x21705 2
-x21707 text "C# source, verified on .NET 10"
-x21708 puts x21706 x21707
-x21709 call close x21708 
-x21710 call close x21709 
-x21711 call open x21710 5
-x21712 write x21711 4
-x21713 write x21712 2
-x21714 text "card reveal"
-x21715 puts x21713 x21714
-x21716 call open x21715 15
-x21717 write x21716 2
-x21718 text "GPU"
-x21719 puts x21717 x21718
-x21720 call close x21719 
-x21721 call open x21720 2
-x21722 write x21721 2
-x21723 text "Metal Shading Language kernels, verified on Apple silicon"
-x21724 puts x21722 x21723
-x21725 call close x21724 
-x21726 call close x21725 
-x21727 call open x21726 5
-x21728 write x21727 4
-x21729 write x21728 2
-x21730 text "card reveal"
-x21731 puts x21729 x21730
-x21732 call open x21731 15
-x21733 write x21732 2
-x21734 text "FPGA / ASIC"
-x21735 puts x21733 x21734
-x21736 call close x21735 
-x21737 call open x21736 2
-x21738 write x21737 2
-x21739 text "clocked SystemVerilog, simulated and synthesized"
-x21740 puts x21738 x21739
-x21741 call close x21740 
-x21742 call close x21741 
-x21743 call close x21742 
-x21744 call close x21743 
-ret x21744
+x21578 call close x21577 
+ret x21578
 end
 
 fn sec_dev io -> io
-x21746 call open p0 13
-x21747 write x21746 4
-x21748 write x21747 1
-x21749 text "developers"
-x21750 puts x21748 x21749
-x21751 call open x21750 11
-x21752 write x21751 2
-x21753 text "Developers"
-x21754 puts x21752 x21753
-x21755 call close x21754 
-x21756 call open x21755 5
-x21757 write x21756 4
-x21758 write x21757 2
-x21759 text "grid two"
-x21760 puts x21758 x21759
-x21761 call open x21760 5
-x21762 write x21761 4
-x21763 write x21762 2
-x21764 text "card reveal"
-x21765 puts x21763 x21764
-x21766 call open x21765 15
-x21767 write x21766 2
-x21768 text "How big is the runtime?"
-x21769 puts x21767 x21768
-x21770 call close x21769 
-x21771 call open x21770 2
-x21772 write x21771 2
-x21773 text "There is none. A native binary of the ten benchmark kernels is about 32 KB including its driver; the wasm behind this page is under a megabyte."
-x21774 puts x21772 x21773
-x21775 call close x21774 
-x21776 call close x21775 
-x21777 call open x21776 5
-x21778 write x21777 4
-x21779 write x21778 2
-x21780 text "card reveal"
-x21781 puts x21779 x21780
-x21782 call open x21781 15
-x21783 write x21782 2
-x21784 text "What happens when a model makes a mistake?"
-x21785 puts x21783 x21784
-x21786 call close x21785 
-x21787 call open x21786 2
-x21788 write x21787 2
-x21789 text "The edit is rejected before it lands, with a stable code (parse, type, structure, handle, revision), what was expected, what was seen, and the one fix that resolves it."
-x21790 puts x21788 x21789
-x21791 call close x21790 
-x21792 call close x21791 
-x21793 call open x21792 5
-x21794 write x21793 4
-x21795 write x21794 2
-x21796 text "card reveal"
-x21797 puts x21795 x21796
-x21798 call open x21797 15
-x21799 write x21798 2
-x21800 text "Can a wrong program run forever?"
-x21801 puts x21799 x21800
-x21802 call close x21801 
-x21803 call open x21802 2
-x21804 write x21803 2
-x21805 text "Literal iteration counts are bounded statically. Variable counts are bounded by fuel in the reference interpreter; compiled targets have no execution budget, so a variable count runs as long as it says. io output is bounded by the caller's buffer, and there is no heap or recursion."
-x21806 puts x21804 x21805
-x21807 call close x21806 
-x21808 call close x21807 
-x21809 call open x21808 5
-x21810 write x21809 4
-x21811 write x21810 2
-x21812 text "card reveal"
-x21813 puts x21811 x21812
-x21814 call open x21813 15
-x21815 write x21814 2
-x21816 text "How is correctness checked?"
-x21817 puts x21815 x21816
-x21818 call close x21817 
-x21819 call open x21818 2
-x21820 write x21819 2
-x21821 text "A BigInt oracle runs 5262 generated cases through every backend, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized."
-x21822 puts x21820 x21821
-x21823 call close x21822 
-x21824 call close x21823 
-x21825 call close x21824 
-x21826 call open x21825 15
-x21827 write x21826 2
-x21828 text "Not yet"
-x21829 puts x21827 x21828
-x21830 call close x21829 
-x21831 call open x21830 5
-x21832 write x21831 4
-x21833 write x21832 2
-x21834 text "limits"
-x21835 puts x21833 x21834
-x21836 call open x21835 2
-x21837 write x21836 2
-x21838 text "No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written."
-x21839 puts x21837 x21838
-x21840 call close x21839 
-x21841 call close x21840 
-x21842 call open x21841 15
-x21843 write x21842 2
-x21844 text "Try it"
-x21845 puts x21843 x21844
-x21846 call close x21845 
-x21847 call open x21846 10
-x21848 write x21847 4
-x21849 write x21848 2
-x21850 text "code"
-x21851 puts x21849 x21850
-x21852 call open x21851 4
-x21853 call open x21852 6
-x21854 write x21853 4
-x21855 write x21854 2
-x21856 text "cm"
-x21857 puts x21855 x21856
-x21858 write x21857 2
-x21859 text "# one binary, no package manager\n"
-x21860 puts x21858 x21859
-x21861 call close x21860 
-x21862 write x21861 2
-x21863 text "curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0\n"
-x21864 puts x21862 x21863
-x21865 write x21864 2
-x21866 text "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n"
-x21867 puts x21865 x21866
-x21868 write x21867 2
-x21869 text "./a0 run sq.a0 sq 12          # 144\n"
-x21870 puts x21868 x21869
-x21871 write x21870 2
-x21872 text "./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n"
-x21873 puts x21871 x21872
-x21874 write x21873 2
-x21875 text "./a0 check sq.a0              # diagnostics with the fix"
-x21876 puts x21874 x21875
-x21877 call close x21876 
-x21878 call close x21877 
-x21879 call close x21878 
-ret x21879
+x21580 call open p0 13
+x21581 write x21580 4
+x21582 write x21581 1
+x21583 text "developers"
+x21584 puts x21582 x21583
+x21585 call open x21584 11
+x21586 write x21585 2
+x21587 text "Developers"
+x21588 puts x21586 x21587
+x21589 call close x21588 
+x21590 call open x21589 5
+x21591 write x21590 4
+x21592 write x21591 2
+x21593 text "grid two"
+x21594 puts x21592 x21593
+x21595 call open x21594 5
+x21596 write x21595 4
+x21597 write x21596 2
+x21598 text "card reveal"
+x21599 puts x21597 x21598
+x21600 call open x21599 15
+x21601 write x21600 2
+x21602 text "How big is the runtime?"
+x21603 puts x21601 x21602
+x21604 call close x21603 
+x21605 call open x21604 2
+x21606 write x21605 2
+x21607 text "There is none. A native binary of the ten benchmark kernels is about 32 KB including its driver; the wasm behind this page is under a megabyte."
+x21608 puts x21606 x21607
+x21609 call close x21608 
+x21610 call close x21609 
+x21611 call open x21610 5
+x21612 write x21611 4
+x21613 write x21612 2
+x21614 text "card reveal"
+x21615 puts x21613 x21614
+x21616 call open x21615 15
+x21617 write x21616 2
+x21618 text "What happens when a model makes a mistake?"
+x21619 puts x21617 x21618
+x21620 call close x21619 
+x21621 call open x21620 2
+x21622 write x21621 2
+x21623 text "The edit is rejected before it lands, with a stable code (parse, type, structure, handle, revision), what was expected, what was seen, and the one fix that resolves it."
+x21624 puts x21622 x21623
+x21625 call close x21624 
+x21626 call close x21625 
+x21627 call open x21626 5
+x21628 write x21627 4
+x21629 write x21628 2
+x21630 text "card reveal"
+x21631 puts x21629 x21630
+x21632 call open x21631 15
+x21633 write x21632 2
+x21634 text "Can a wrong program run forever?"
+x21635 puts x21633 x21634
+x21636 call close x21635 
+x21637 call open x21636 2
+x21638 write x21637 2
+x21639 text "Literal iteration counts are bounded statically. Variable counts are bounded by fuel in the reference interpreter; compiled targets have no execution budget, so a variable count runs as long as it says. io output is bounded by the caller's buffer, and there is no heap or recursion."
+x21640 puts x21638 x21639
+x21641 call close x21640 
+x21642 call close x21641 
+x21643 call open x21642 5
+x21644 write x21643 4
+x21645 write x21644 2
+x21646 text "card reveal"
+x21647 puts x21645 x21646
+x21648 call open x21647 15
+x21649 write x21648 2
+x21650 text "How is correctness checked?"
+x21651 puts x21649 x21650
+x21652 call close x21651 
+x21653 call open x21652 2
+x21654 write x21653 2
+x21655 text "A BigInt oracle runs 5262 generated cases through every backend, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized."
+x21656 puts x21654 x21655
+x21657 call close x21656 
+x21658 call close x21657 
+x21659 call close x21658 
+x21660 call open x21659 15
+x21661 write x21660 2
+x21662 text "Not yet"
+x21663 puts x21661 x21662
+x21664 call close x21663 
+x21665 call open x21664 5
+x21666 write x21665 4
+x21667 write x21666 2
+x21668 text "limits"
+x21669 puts x21667 x21668
+x21670 call open x21669 2
+x21671 write x21670 2
+x21672 text "No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written."
+x21673 puts x21671 x21672
+x21674 call close x21673 
+x21675 call close x21674 
+x21676 call open x21675 15
+x21677 write x21676 2
+x21678 text "Try it"
+x21679 puts x21677 x21678
+x21680 call close x21679 
+x21681 call open x21680 10
+x21682 write x21681 4
+x21683 write x21682 2
+x21684 text "code"
+x21685 puts x21683 x21684
+x21686 call open x21685 4
+x21687 call open x21686 6
+x21688 write x21687 4
+x21689 write x21688 2
+x21690 text "cm"
+x21691 puts x21689 x21690
+x21692 write x21691 2
+x21693 text "# one binary, no package manager\n"
+x21694 puts x21692 x21693
+x21695 call close x21694 
+x21696 write x21695 2
+x21697 text "curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0\n"
+x21698 puts x21696 x21697
+x21699 write x21698 2
+x21700 text "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n"
+x21701 puts x21699 x21700
+x21702 write x21701 2
+x21703 text "./a0 run sq.a0 sq 12          # 144\n"
+x21704 puts x21702 x21703
+x21705 write x21704 2
+x21706 text "./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n"
+x21707 puts x21705 x21706
+x21708 write x21707 2
+x21709 text "./a0 check sq.a0              # diagnostics with the fix"
+x21710 puts x21708 x21709
+x21711 call close x21710 
+x21712 call close x21711 
+x21713 call close x21712 
+ret x21713
 end
 
 fn sec_close io -> io
-x21881 call close p0 
-x21882 call close x21881 
-ret x21882
+x21715 call close p0 
+x21716 call close x21715 
+ret x21716
 end
 
 fn session io -> u32
@@ -22038,14 +21869,13 @@ x18535 call endsec18533 x18533
 x18568 call sec_par x18535
 x21281 call chart_par x18568
 x21283 call endsec21281 x21281
-x21308 call sec_hw x21283
-x21560 call chart3 x21308
-x21562 call endsec21560 x21560
-x21745 call sec_targets x21562
-x21880 call sec_dev x21745
-x21883 call sec_close x21880
-x21884 call foot x21883 
-x21885 write x21884 6
-x21886 write x21885 0
+x21394 call sec_hw x21283
+x21396 call endsec21394 x21394
+x21579 call sec_targets x21396
+x21714 call sec_dev x21579
+x21717 call sec_close x21714
+x21718 call foot x21717 
+x21719 write x21718 6
+x21720 write x21719 0
 ret event
 end
