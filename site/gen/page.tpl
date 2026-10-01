@@ -26,6 +26,8 @@ f par results/parallel.json
 f axes results/lang-axes.json
 f hw results/hardware.json
 f tokfx results/tokens.json
+f b48 results/ai-edit-b48-dense.json
+f densetok results/dense-tokens.json
 # Cost rows, in order: representation -> results file kind and label.
 m cost a0 min A0
 m cost ts min TypeScript

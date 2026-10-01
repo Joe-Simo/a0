@@ -1709,7 +1709,11 @@ vc at p0 1
 vr at p0 2
 fm at p0 3
 ski add p1 896
-tk call rd64 p2 ski
+tk0 call rd64 p2 ski
+nsl call rd64 p2 128
+isd eq p1 nsl
+dtv call rd64 p2 2602
+tk select isd dtv tk0
 ok gt tk 0
 cki add p1 1152
 c0 call rd64 p2 cki
@@ -1725,7 +1729,8 @@ tv select ok tk 4294967295
 cv select okc cm1 4294967295
 rv select okr rm1 4294967295
 fi add p1 832
-f call rd64 p2 fi
+f0 call rd64 p2 fi
+f select isd 0 f0
 vt2 set vt p1 tv
 vc2 set vc p1 cv
 vr2 set vr p1 rv
@@ -1791,7 +1796,8 @@ vd0 call rdiv v 10
 vd select lgm vd0 v
 w4 add p6 4
 s5 fold vnum 1 s4 p2 w4 k vd
-tp call intop p2 s5 rf
+tp0 call intop p2 s5 rf
+tp or tp0 me
 w5 add p6 5
 s6 fold vflag 1 s5 p2 w5 k tp
 ret s6
@@ -1800,7 +1806,7 @@ end
 # (the largest u32 when a language has none), families p4, slots p5, first variables word p6
 # (rows start there; +6 the row count, +7 A0's value, +8 its place, +9 the best language, +10 its
 # value, +11 the median, +12 and +13 the coverage), mode p7, languages in all p8.
-fn axaxis u32x128x128 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 -> u32x128x128
+fn axaxis u32x128x128 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 u32 -> u32x128x128
 pm call sortperm p3 p5
 nv fold vldstep p5 0 p3
 l1 sub nv 1
@@ -1838,7 +1844,8 @@ w11 add p6 11
 s7 fold axval 1 s6 p2 w11 0 p7 md
 w12 add p6 12
 w13 add p6 13
-s8 fold vcov 1 s7 p2 w12 w13 nv p8
+nvc sub nv p9
+s8 fold vcov 1 s7 p2 w12 w13 nvc p8
 ret s8
 end
 # the label hashes of the cost map's representations (fold body)
@@ -1851,9 +1858,12 @@ ret r
 end
 # the labels of the languages with a token count that are not among the hashes p3 (p4 of them),
 # joined with ", " (fold body over slots); p5 the start of the pool string
-fn cmstep u32x128x128 u32 u32x64 u32x64 u32 u32 -> u32x128x128
+fn cmstep u32x128x128 u32 u32x64 u32x64 u32 u32 u32x64 -> u32x128x128
 v get p2 p1
-ok lt v 4294967295
+ok0 lt v 4294967295
+fam get p6 p1
+isl ne fam 0
+ok and ok0 isl
 a add p1 288
 rf call rd128 p0 a
 h call vhash p0 rf
@@ -1871,20 +1881,157 @@ cb select inc 1 0
 s2 fold vapref cb s1 rf
 ret s2
 end
+# how many languages (family not 0, a value) compare to p4 as p5 says (0 below, 1 equal, 2 above)
+# (fold body over the slots, values p2, families p3)
+fn cmpo u32 u32 u32x64 u32x64 u32 u32 -> u32
+v get p2 p1
+f get p3 p1
+oth ne f 0
+valid lt v 4294967295
+l lt v p4
+e eq v p4
+g gt v p4
+m1 eq p5 1
+m2 eq p5 2
+r0 select m2 g l
+r1 select m1 e r0
+c0 and oth valid
+c and c0 r1
+a add p0 1
+r select c a p0
+ret r
+end
+# the A0 subjects of a token axis: place and wins, ties and losses against the other languages
+# (fold body: values p3, families p4, the canonical slot p5, the dense slot p6, the lossless dense total p7)
+fn tkx u32x128x128 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 -> u32x128x128
+cv get p3 p5
+dv get p3 p6
+lc fold cmpo p8 0 p3 p4 cv 0
+ec fold cmpo p8 0 p3 p4 cv 1
+gc fold cmpo p8 0 p3 p4 cv 2
+ld fold cmpo p8 0 p3 p4 dv 0
+ed fold cmpo p8 0 p3 p4 dv 1
+gd fold cmpo p8 0 p3 p4 dv 2
+lx fold cmpo p8 0 p3 p4 p7 0
+cr add lc 1
+dr add ld 1
+xr add lx 1
+s1 fold vnum 1 p0 p2 383 0 cr
+s2 fold vnum 1 s1 p2 384 0 ec
+s3 fold vnum 1 s2 p2 385 0 gc
+s4 fold vnum 1 s3 p2 386 0 lc
+s5 fold vnum 1 s4 p2 387 0 dr
+s6 fold vnum 1 s5 p2 388 0 ed
+s7 fold vnum 1 s6 p2 389 0 gd
+s8 fold vnum 1 s7 p2 390 0 ld
+s9 fold vnum 1 s8 p2 391 0 dv
+s10 fold vnum 1 s9 p2 392 0 p7
+s11 fold vnum 1 s10 p2 393 0 xr
+ret s11
+end
+# the session cost of 10 tasks per slot (the largest u32 when the slot has none): set b, proto2
+# (fold body: state list, slot p1, table p2, token values p3, subject hash of the dense slot p4)
+fn ecstep u32x64 u32 u32x128x64 u32x64 u32 u32x128x512 -> u32x64
+tv get p3 p1
+nsl call rd64 p2 128
+isd eq p1 nsl
+ia add p1 192
+ih0 call rd64 p2 ia
+tsw call whash p5 441
+ist eq ih0 tsw
+tsh call whash p5 48
+ih select ist tsh ih0
+h select isd p4 ih
+nb call rd64 p2 1899
+bi call lookup p2 1900 nb h
+found lt bi nb
+va add bi 2440
+v call rd64 p2 va
+v1 call rdiv v 100
+ok0 lt tv 4294967295
+okv gt v1 0
+ok1 and ok0 found
+ok and ok1 okv
+k select ok v1 4294967295
+r set p0 p1 k
+ret r
+end
+# a scalar of a subject's pooled cell: field p1 of the subject at index p4 into the variable word p5 + p1
+# (fold body)
+fn ecf u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+f60 mul p1 60
+a add f60 1960
+b add a p4
+v call rd64 p3 b
+v1 call rdiv v 100
+w add p5 p1
+r fold vnum 1 p0 p2 w 0 v1
+ret r
+end
+# the metric table row p1: A0 and the dense A0 against the other 48 languages (fold body)
+fn emrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+k call key1 p1
+r0 add p1 372
+sc add p1 340
+s1 fold vconst 1 p0 p2 r0 sc
+nm call rd128 s1 sc
+s2 fold vref 1 s1 p2 409 k nm
+m3 mul p1 3
+c0 add m3 1800
+c1 add m3 1801
+d0 add m3 1820
+d1 add m3 1821
+w0 add m3 1860
+w1 add m3 1861
+w2 add m3 1862
+e0 add m3 1840
+e1 add m3 1841
+e2 add m3 1842
+cr call rd64 p3 c0
+ct call rd64 p3 c1
+cw call rd64 p3 w0
+cx call rd64 p3 w1
+cl call rd64 p3 w2
+dr call rd64 p3 d0
+dt call rd64 p3 d1
+dw call rd64 p3 e0
+dx call rd64 p3 e1
+dl call rd64 p3 e2
+s3 fold vnum 1 s2 p2 410 k cr
+s4 fold vnum 1 s3 p2 411 k ct
+s5 fold vnum 1 s4 p2 412 k cw
+s6 fold vnum 1 s5 p2 413 k cx
+s7 fold vnum 1 s6 p2 414 k cl
+s8 fold vnum 1 s7 p2 415 k dr
+s9 fold vnum 1 s8 p2 416 k dt
+s10 fold vnum 1 s9 p2 417 k dw
+s11 fold vnum 1 s10 p2 418 k dx
+s12 fold vnum 1 s11 p2 419 k dl
+ret s12
+end
 fn caxes u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 nax call rd64 p4 128
+nax1 add nax 1
 z call z64l
 s0 rec z z z z
-ls fold axstep nax s0 p4
+ls fold axstep nax1 s0 p4
 vt at ls 0
 vc at ls 1
 vr at ls 2
 fm at ls 3
-al call alllangs p3 p0
+ha call whash p2 47
+ia call lookup p4 192 nax ha
+da add ia 288
+dd add nax 288
+o1 fold vconst 1 p0 p2 381 da
+o2 fold vconst 1 o1 p2 382 dd
+al call alllangs p3 o2
 na at al 1
-s1 fold axaxis 1 p0 p2 vt fm nax 240 0 na
-s2 fold axaxis 1 s1 p2 vc fm nax 254 1 na
-s3 fold axaxis 1 s2 p2 vr fm nax 268 1 na
+s1 fold axaxis 1 o2 p2 vt fm nax1 240 0 na 1
+s2 fold axaxis 1 s1 p2 vc fm nax1 254 1 na 0
+s3 fold axaxis 1 s2 p2 vr fm nax1 268 1 na 0
+dx call rd64 p4 2601
+s3a fold tkx 1 s3 p2 vt fm ia nax dx nax1
 nh call whash p2 232
 ni call lookup p4 192 nax nh
 has lt ni nax
@@ -1895,7 +2042,7 @@ nc0 call rd64 p4 cki
 nr0 call rd64 p4 cri
 nc1 sub nc0 1
 nr1 sub nr0 1
-s4 fold axval c s3 p2 282 0 1 nc1
+s4 fold axval c s3a p2 282 0 1 nc1
 s5 fold axval c s4 p2 283 0 1 nr1
 ld call rd64 p4 1344
 l100 call rdiv ld 100
@@ -1906,12 +2053,27 @@ nr call mcount p2 62
 z2 call z64l
 mh fold mhstep nr z2 s7
 st call rd128 s7 0
-s8 fold cmstep nax s7 vt mh nr st
+s8 fold cmstep nax1 s7 vt mh nr st fm
 ar call since s8 st
 s9 fold vref 1 s8 p2 284 0 ar
-ret s9
+dh call whash p2 371
+z3 call z64l
+ke fold ecstep nax1 z3 p4 vt dh p2
+s10 fold axaxis 1 s9 p2 ke fm nax1 394 0 na 1
+nb call rd64 p4 1899
+cbi call lookup p4 1900 nb ha
+dbi call lookup p4 1900 nb dh
+s11 fold ecf 10 s10 p2 p4 cbi 420
+s12 fold ecf 10 s11 p2 p4 dbi 430
+nbv add cbi 2080
+n100 call rd64 p4 nbv
+nn call rdiv n100 100
+tr call rdiv 1000 nn
+s13 fold vfix1 1 s12 p2 440 0 tr
+s14 fold vnum 1 s13 p2 408 0 5
+s15 fold emrow 5 s14 p2 p4
+ret s15
 end
-
 # ---- tokens.json fixtures and hardware.json totals (the axes table p3)
 # the o200k tokens of the fixture whose name is word p4 into variable word p5 (fold body)
 fn tfv u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
