@@ -40,7 +40,7 @@ import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { callTraps, mayTrapFn, optimizeFunction, siteOf } from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
-import { assembleX86_64, emitX86_64Function } from './x86_64.js';
+import { assembleX86_64, emitX86_64Function, type X86Platform } from './x86_64.js';
 
 export const COMPILER_VERSION = 'a0c-0.1.37';
 
@@ -1904,7 +1904,7 @@ export function assemble(
     case 'arm64':
       return assembleArm64(bodies, COMPILER_VERSION);
     case 'x86_64':
-      return assembleX86_64(bodies, COMPILER_VERSION);
+      return assembleX86_64(bodies, COMPILER_VERSION, options.x86Platform);
     case 'riscv64':
       return assembleRiscv64(bodies, COMPILER_VERSION);
     case 'avr':
@@ -1975,6 +1975,8 @@ export function assemble(
 }
 
 export interface CompileOptions {
+  /** x86_64 target only: the symbol and section conventions (default: the host's). */
+  readonly x86Platform?: X86Platform;
   readonly optimize?: boolean;
   /** C/wasm/Java/C# io capacities in words (defaults C_IO_INPUT_CAPACITY / C_IO_OUTPUT_CAPACITY); prelude only, bodies are unaffected. */
   readonly ioInputCapacity?: number;
@@ -2081,6 +2083,7 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
       simd: options.wasmSimd !== false,
       unroll: options.wasmUnroll ?? 1,
     });
+  if (target === 'x86_64') return emitX86_64Function(source, options.x86Platform);
   return EMITTERS[target](source);
 }
 
@@ -2104,9 +2107,11 @@ export function compile(
         ? `|${options.cParallel.key}`
         : target === 'c' && options.cTrap !== undefined
           ? '|trap'
-          : target === 'wasm'
-            ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
-            : '',
+          : target === 'x86_64' && options.x86Platform !== undefined
+            ? `|${options.x86Platform}`
+            : target === 'wasm'
+              ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
+              : '',
     );
     const hit = cache.get(key);
     if (hit !== undefined) {

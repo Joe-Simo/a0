@@ -444,7 +444,7 @@ async function emissionDigests(): Promise<Record<string, string>> {
         let v: string;
         try {
           v = createHash('sha256')
-            .update(compile(program, target, { optimize }).text)
+            .update(compile(program, target, { optimize, x86Platform: 'darwin' }).text)
             .digest('hex');
         } catch (e) {
           v = `refused: ${String((e as Error).message).slice(0, 80)}`;
