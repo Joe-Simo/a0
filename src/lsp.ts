@@ -35,10 +35,10 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   A0Error,
+  ALL_OPS,
   type FixEdit,
   formatSource,
   OP_ALIASES,
-  OPS,
   type Op,
   parse,
   stripComment,
@@ -81,6 +81,12 @@ export const OP_DOCS: Readonly<Record<Op, string>> = {
   div: 'div a b: a / b (unsigned); b = 0 gives 4294967295',
   rem: 'rem a b: a mod b (unsigned); b = 0 gives a',
   puts: 'puts t a -> io: output the array a as bytes',
+  cadd: 'cadd a b -> (u32,bool): the wrapped sum and whether it did not overflow',
+  csub: 'csub a b -> (u32,bool): the wrapped difference and whether a >= b',
+  cmul: 'cmul a b -> (u32,bool): the wrapped product and whether it did not overflow',
+  cdiv: 'cdiv a b -> (u32,bool): a / b and true; (0,false) when b = 0',
+  crem: 'crem a b -> (u32,bool): a mod b and true; (0,false) when b = 0',
+  cget: 'cget a i -> (u32,bool): element i of a u32 array and true; (0,false) when i is out of range',
 };
 
 const FN_LINE = /^\s*fn\s+([a-z][a-z0-9_]*)\b/;
@@ -317,7 +323,7 @@ export async function startServer(connection: Connection, launch: string): Promi
     if (word === undefined) return null;
     const def = (await inScope(doc.uri)).find((d) => d.name === word);
     if (def !== undefined) return { contents: { kind: 'markdown', value: `\`${def.signature}\`` } };
-    const op = (OPS as readonly string[]).includes(word) ? (word as Op) : OP_ALIASES[word];
+    const op = (ALL_OPS as readonly string[]).includes(word) ? (word as Op) : OP_ALIASES[word];
     if (op === undefined) return null;
     const alias = op === word ? '' : `\`${word}\` is an alias of \`${op}\`\n\n`;
     return { contents: { kind: 'markdown', value: `${alias}${OP_DOCS[op]}` } };
@@ -352,12 +358,12 @@ export async function startServer(connection: Connection, launch: string): Promi
 
   connection.onCompletion(async ({ textDocument }): Promise<CompletionItem[]> => {
     if (!paths.has(textDocument.uri)) return [];
-    const ops: CompletionItem[] = [...OPS, ...Object.keys(OP_ALIASES)].map((name) => ({
+    const ops: CompletionItem[] = [...ALL_OPS, ...Object.keys(OP_ALIASES)].map((name) => ({
       label: name,
       kind: CompletionItemKind.Operator,
       detail:
         OP_DOCS[
-          (OPS as readonly string[]).includes(name) ? (name as Op) : (OP_ALIASES[name] as Op)
+          (ALL_OPS as readonly string[]).includes(name) ? (name as Op) : (OP_ALIASES[name] as Op)
         ],
     }));
     const fns: CompletionItem[] = (await inScope(textDocument.uri)).map((d) => ({

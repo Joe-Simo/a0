@@ -19,6 +19,7 @@ import {
   formatNode,
   formatOperand,
   freshRetId,
+  isProfileEdit,
   isValidIdentifier,
   type Node,
   type TypedFunc,
@@ -129,7 +130,7 @@ export function denseEditBody(
   const outer: Item[] = [];
   let open = false;
   for (const t of lines) {
-    if (/^-fn(\s|$)/.test(t)) {
+    if (/^-fn(\s|$)/.test(t) || isProfileEdit(t)) {
       outer.push({ kind: 'line', text: t });
       open = false;
     } else if (/^fn(\s|$)/.test(t)) {
@@ -205,7 +206,8 @@ export function denseEditBody(
   for (const item of outer) {
     if (item.kind === 'block') {
       for (const f of parsed.get(item.index) ?? []) out.push(...formatFunction(f).split('\n'));
-    } else if (ctx === undefined || item.text.startsWith('-fn')) out.push(item.text);
+    } else if (ctx === undefined || item.text.startsWith('-fn') || isProfileEdit(item.text))
+      out.push(item.text);
     else out.push(...translateEditLine(item.text, ctx));
   }
   return out;

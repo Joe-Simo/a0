@@ -18,6 +18,7 @@ import { assembleArm64, emitArm64Function } from './arm64.js';
 import { assembleAvr, emitAvrFunction } from './avr.js';
 import {
   A0Error,
+  assertTargetSupports,
   assertVectorSized,
   bitWidth,
   borrowLive,
@@ -32,6 +33,7 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
+import { diag } from './diagnostics.js';
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { optimizeFunction } from './optimize.js';
@@ -446,6 +448,13 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return `a0_write(${a}, ${b})`;
     case 'puts':
       return `a0_puts(${a}, ${b})`;
+    case 'cadd':
+    case 'csub':
+    case 'cmul':
+    case 'cdiv':
+    case 'crem':
+    case 'cget':
+      throw diag('A0713', ['js', `the checked op ${node.op}`]);
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -980,6 +989,13 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
       return `a0_write(${a}, ${b})`;
     case 'puts':
       return `a0_puts(${a}, ${b}.e, ${arrayLength(fn, node.args[1])}u)`;
+    case 'cadd':
+    case 'csub':
+    case 'cmul':
+    case 'cdiv':
+    case 'crem':
+    case 'cget':
+      throw diag('A0713', ['c', `the checked op ${node.op}`]);
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -1414,6 +1430,13 @@ function javaExpr(node: Node, fn: TypedFunc): string {
       return `write(${a}, ${b})`;
     case 'puts':
       return `puts(${a}, ${b})`;
+    case 'cadd':
+    case 'csub':
+    case 'cmul':
+    case 'cdiv':
+    case 'crem':
+    case 'cget':
+      throw diag('A0713', ['java', `the checked op ${node.op}`]);
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -1538,6 +1561,13 @@ export function svExpr(node: Node, fn: TypedFunc): string {
       throw new A0Error(
         `${node.op}: io effects need sequential state, which the combinational SystemVerilog backend does not implement`,
       );
+    case 'cadd':
+    case 'csub':
+    case 'cmul':
+    case 'cdiv':
+    case 'crem':
+    case 'cget':
+      throw diag('A0713', ['sv', `the checked op ${node.op}`]);
     case 'call':
     case 'fold':
     case 'loop':
@@ -1675,6 +1705,7 @@ export function assemble(
   program: TypedProgram,
   options: CompileOptions = {},
 ): string {
+  assertTargetSupports(target, program);
   const types = aggregateTypes(program);
   const io = usesIo(program);
   if (io && !types.some((t) => formatType(t) === '(u32,io)')) {
@@ -1830,6 +1861,10 @@ export class FunctionCache {
 }
 
 export function emitFunction(target: Target, fn: TypedFunc, options: CompileOptions = {}): string {
+  assertTargetSupports(target, {
+    ...(fn.profile === 'strict' ? { profile: 'strict' as const } : {}),
+    functions: [fn],
+  });
   // The trap runtime counts the trips the reference interpreter takes, so it keeps every iteration.
   const source =
     options.optimize === false || options.cTrap !== undefined ? fn : optimizeFunction(fn).fn;
@@ -1856,6 +1891,7 @@ export function compile(
   options: CompileOptions = {},
   cache?: FunctionCache,
 ): CompileResult {
+  assertTargetSupports(target, program);
   const optimized = options.optimize !== false;
   let cacheHits = 0;
   let cacheMisses = 0;

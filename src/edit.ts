@@ -25,6 +25,7 @@ import {
   formatProgram,
   formatType,
   freshRetId,
+  isProfileEdit,
   isRetNodeForm,
   isValidIdentifier,
   LIMITS,
@@ -222,7 +223,7 @@ export function replaceNodes(
     if (f.name === fn.name) break;
     scope.set(f.name, f);
   }
-  const typed = validateFunction(replaced, scope);
+  const typed = validateFunction(replaced, scope, undefined, program.profile);
   // A node this edit adds that nothing reads is almost always a result the reply forgot to
   // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
   const existing = new Set(fn.nodes.map((n) => n.id));
@@ -243,7 +244,8 @@ export function replaceNodes(
  * is the editing identity of one function's text).
  */
 export function semanticRevision(fn: TypedFunc): string {
-  let text = revision(fn);
+  // The profile changes what the function means, so it is part of every key derived from it.
+  let text = fn.profile === 'strict' ? `profile strict|${revision(fn)}` : revision(fn);
   for (const name of [...fn.calls.keys()].sort()) {
     const callee = fn.calls.get(name);
     if (callee !== undefined) text += `|${name}=${semanticRevision(callee)}`;
@@ -274,12 +276,20 @@ function placeNewCallees(
   if (moved.length === 0) return program;
   const rest = program.functions.filter((f) => !moved.includes(f));
   const k = rest.findIndex((f) => f.name === target);
-  return validate({ functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)] });
+  return validate({
+    ...profileField(program),
+    functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)],
+  });
+}
+
+/** `{ profile: 'strict' }` for a strict program, nothing for a canonical one (spread into `validate`). */
+function profileField(program: { readonly profile?: 'strict' }): { profile?: 'strict' } {
+  return program.profile === 'strict' ? { profile: 'strict' } : {};
 }
 
 function commit(program: TypedProgram, updated: TypedFunc): TypedProgram {
   const functions = program.functions.map((f) => (f.name === updated.name ? updated : f));
-  return validate({ functions });
+  return validate({ ...profileField(program), functions });
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +426,7 @@ function splitLineEdits(lines: readonly string[]): { edits: string[]; rest: stri
   let open = false;
   for (const raw of lines) {
     const t = stripComment(raw).trim();
-    if (/^-?fn\s/.test(t)) {
+    if (/^-?fn\s/.test(t) || isProfileEdit(t)) {
       open = t.startsWith('fn') && !/\send$/.test(t);
       rest.push(raw);
     } else if (open) {
@@ -585,9 +595,15 @@ export interface ProgramViewOptions {
 
 /** Program-level view: one signature line per function, in definition order. */
 export function programView(program: TypedProgram, dense = false): string {
-  return program.functions
-    .map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`))
-    .join('\n');
+  return [
+    ...profileLine(program),
+    ...program.functions.map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`)),
+  ].join('\n');
+}
+
+/** The view's first line for a strict program (nothing for a canonical one: views are unchanged). */
+function profileLine(program: { readonly profile?: 'strict' }): string[] {
+  return program.profile === 'strict' ? ['profile strict'] : [];
 }
 
 /**
@@ -618,6 +634,7 @@ export function scopedProgramView(program: TypedProgram, target: string, dense =
   const head = `# ${program.functions.length} functions; shown: ${target}, its callees, its callers`;
   return [
     head,
+    ...profileLine(program),
     ...shown.map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`)),
   ].join('\n');
 }
@@ -639,7 +656,7 @@ function closeBlocks(lines: readonly string[]): string[] {
   let open = false;
   for (const raw of lines) {
     const t = stripComment(raw).trim();
-    if (/^-?fn\s/.test(t)) {
+    if (/^-?fn\s/.test(t) || isProfileEdit(t)) {
       if (open) out.push('end');
       open = t.startsWith('fn') && !/\send$/.test(t);
     } else if (t === 'end') open = false;
@@ -682,8 +699,13 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const lines = closeBlocks(text.split(/\r?\n/));
   const removals = new Set<string>();
   const kept: string[] = [];
+  let profile: 'strict' | undefined = program.profile;
   for (const raw of lines) {
     const line = stripComment(raw).trim();
+    if (isProfileEdit(line)) {
+      profile = line === '-profile' ? undefined : 'strict';
+      continue;
+    }
     // `-fn name`, optionally followed by the function's current signature as the view shows it.
     const m = /^-fn\s+([a-z][a-z0-9_]*)(?:\s+(.*))?$/.exec(line);
     if (m) {
@@ -729,7 +751,7 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   }
   functions.push(...pending);
   if (functions.length === 0) throw diag('A0518');
-  return validate({ functions });
+  return validate({ ...(profile === undefined ? {} : { profile }), functions });
 }
 
 export interface SessionOptions {
@@ -1123,7 +1145,10 @@ export class EditSession {
     body = split.rest;
     const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
     const head = blockAt < 0 ? body : body.slice(0, blockAt);
-    const isRemoval = (l: string): boolean => /^-fn\s/.test(stripComment(l).trim());
+    const isRemoval = (l: string): boolean => {
+      const t = stripComment(l).trim();
+      return /^-fn\s/.test(t) || isProfileEdit(t);
+    };
     // An `end` before the first block closes the handled function's lines, as in the view.
     const editLines = head.filter((l) => !isRemoval(l) && stripComment(l).trim() !== 'end');
     const programLines = head.filter(isRemoval);

@@ -16,6 +16,7 @@ import {
 } from './backends.js';
 import {
   A0Error,
+  assertTargetSupports,
   containsIo,
   isPrimitive,
   type Node,
@@ -24,6 +25,7 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
+import { diag } from './diagnostics.js';
 import { optimizeFunction } from './optimize.js';
 
 export const CS_CLASS = 'A0Module';
@@ -159,6 +161,13 @@ function csExpr(node: Node, fn: TypedFunc): string {
       return `write(${a}, ${b})`;
     case 'puts':
       return `puts(${a}, ${b})`;
+    case 'cadd':
+    case 'csub':
+    case 'cmul':
+    case 'cdiv':
+    case 'crem':
+    case 'cget':
+      throw diag('A0713', ['dotnet', `the checked op ${node.op}`]);
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -188,6 +197,7 @@ export function emitCSharp(
   program: TypedProgram,
   options: Pick<CompileOptions, 'optimize' | 'ioInputCapacity' | 'ioOutputCapacity'> = {},
 ): string {
+  assertTargetSupports('dotnet', program);
   const types = aggregateTypes(program);
   const io = usesIo(program);
   if (

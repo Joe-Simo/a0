@@ -12,6 +12,7 @@
 import { compile } from './backends.js';
 import {
   A0Error,
+  assertTargetSupports,
   assertVectorSized,
   containsIo,
   isScalar,
@@ -33,6 +34,7 @@ export function isKernelCallable(fn: TypedFunc): boolean {
 
 /** Emit an MSL translation unit: mapped C functions plus elementwise kernels. */
 export function emitMetal(program: TypedProgram): string {
+  assertTargetSupports('metal', program);
   for (const fn of program.functions) {
     if (fn.params.some(containsIo) || containsIo(fn.result)) {
       throw new A0Error(`${fn.name}: io functions have no GPU form; use ioFreeSubset first`);

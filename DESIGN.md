@@ -62,7 +62,8 @@ The function computes `(p0 * p1 + p2) modulo 2^32`. Here the interface meaning i
 ### Grammar
 
 ```text
-file        = use* function+
+file        = profile? use* function+
+profile     = "profile" "strict" NEWLINE          (first line; absent = canonical)
 use         = "use" quoted_relative_path NEWLINE
 program     = function+            (a file with its uses linked, dependency order, one namespace)
 function    = "fn" name type* "->" type NEWLINE
@@ -106,6 +107,31 @@ Each function has one result. Node identifiers are lowercase letters followed by
 | `puts` | io, u32xN | io | Consume the token, emit the length word then every element (v0.8.0) |
 | `read` | io | (u32,io) | Consume the token, yield the next input word (0 when exhausted) and the next token (v0.3.0) |
 | `write` | io, u32 | io | Consume the token, emit one word, yield the next token (v0.3.0) |
+
+### Profiles: canonical and strict (a0c, step 2 of the strict/checked design)
+
+A program is in one **profile**. The default, `canonical`, is everything above: every operation is total and wraps. A file whose first line (before any `use`) is `profile strict`, or any command run with `--profile strict`, is in the opt-in **strict** profile: the four places where canonical silently invents a value become traps. `--profile canonical` forces the default on a strict file. The directive is part of the canonical text, of `programRevision` and of every derived key (`semanticRevision`, so the artifact and function-emission cache keys); a canonical program prints, hashes and emits exactly as before (a golden test pins the emission of the corpus, the examples and compiler files on every target).
+
+| Case | canonical | strict |
+|---|---|---|
+| `get`, `set` index `>= N` | index modulo N | trap `bounds` (A0710) |
+| `at`, `put` field `>= N` | unreachable (the field is a checked literal) | trap `bounds` (A0710) |
+| `div`, `rem` by zero | all ones / the dividend | trap `divzero` (A0711) |
+| `read` on exhausted input | 0, position unchanged | trap `input` (A0712) |
+| `add`, `sub`, `mul`, `shl`, `shr` | wrap, shift distance masked to five bits | the same: they never trap |
+| `select` | evaluates both arms | the same, so a trap in the untaken arm is a trap |
+
+A trap reuses the budget-trap mechanism: `A0Error.trap` is `{kind, fn, at, trip, chain}` (`kind` is `bounds`, `divzero` or `input`; `at` and `trip` name the innermost running fold/loop), and `formatTrap` prints `runtime: trap bounds fn=... at=... trip=... chain=... fix: ...` (the budget traps keep their `limit:` prefix).
+
+**Checked operations**, valid in both profiles and never trapping, give a `(u32,bool)` record `(value, ok)`:
+
+| Operation | Inputs | Output | Meaning |
+|---|---|---|---|
+| `cadd`, `csub`, `cmul` | u32, u32 | (u32,bool) | The wrapped result, and `ok` false when the exact result does not fit u32 (`csub`: when `a < b`) |
+| `cdiv`, `crem` | u32, u32 | (u32,bool) | `(a / b, true)` / `(a mod b, true)`; `(0, false)` when `b = 0` |
+| `cget` | u32xN, u32 | (u32,bool) | `(a[i], true)`; `(0, false)` when `i >= N` |
+
+**Scope of this step.** The reference interpreter (`run`) is the only implementation of `strict` and of the checked ops. Every other target (`js c java sv arm64 x86_64 riscv64 avr wasm arm32`, Metal, .NET) refuses a strict program, and a program that uses a checked op in either profile, with `structure` A0713 naming the target and the construct, so nothing silently runs canonical semantics; canonical programs without checked ops compile as before. The checked ops are not in `OPS` (the 30 operations the self-hosted front end knows) but in `ALL_OPS`; the self-hosted compiler does not know them yet. A program's files must agree on the profile (`structure` A0624, `profile mismatch`). The edit protocol has `profile strict` and `-profile` as program-level lines (under a program or function handle, canonical or dense), and views of a strict program begin with `profile strict`.
 
 Effects: `io` is a linear capability token. Each token value is consumed at most once, a function takes at most one `io` parameter, arrays cannot hold tokens, and `select` cannot choose between them; the token data dependencies therefore form one chain per function, which is the effect order. Effectful nodes (`read`, `write`, and calls/iterations that carry a token) are anchored in the optimizer: never folded, merged, reordered, or removed. Software backends thread a mutable stream state (JS object, C `a0_io*` with fixed 256/1024-word capacity, Java `A0Io`); in hardware, functions that iterate with a variable count, perform io, or call such functions are emitted as clocked modules (v0.4.0): `clk`/`rst`/`start`/`done` plus `in_data`/`in_valid`/`in_ready` and `out_data`/`out_valid`/`out_ready` word handshakes; each effectful or iterating node is a stage of a linear FSM whose results are registers, iteration bodies are instantiated once and stepped per clock, and sequential callees run through nested start/done handshakes. Pure functions stay combinational. Two tiers exist for platform integration: portable capability operations (`read`, `write`, `puts`) and platform-specific adapters that interpret word protocols, such as the browser UI protocol used by the a0lang.com page (`site/page.a0` + `site/app.ts`); adapters are runtimes, not compiler guesswork. Aggregates have value semantics: no operation mutates or aliases; `set`/`put` return copies. Backends: direct AArch64 assembly (v0.8.14; A0's own code generator, no C in between, io functions refused for now; since a0c-0.1.7 scalars are register-allocated by a linear scan over callee-saved registers, plus w0-w7 in leaf functions, callees of at most 48 nodes are inlined at `call`/`fold`/`loop` sites so an iteration is a branch with its state and counter in registers, and a `set`/`put` on a provably unshared aggregate, the same `mutableHere` analysis as the JS backend, writes one element in place), direct x86-64 assembly (a0c-0.1.9, `src/x86_64.ts`: the same scope, code shape, and in-place scheme on the System V AMD64 ABI with AT&T syntax, macOS `_a0_` or Linux `a0_` symbols by a platform switch, scalars homed in ebx/r12d-r15d plus edi/esi/r8d/r9d in leaves, `div`/`rem` branching around the trapping DIV to give A0's zero-divisor values, verified under Rosetta 2 on Apple silicon), direct AVR assembly for the ATmega328P (a0c-0.1.10, `src/avr.ts`: avr-gcc calling convention so a C driver calls `a0_<name>`, exact u32 built from 8-bit carry chains with shift-and-add multiply, a restoring divider whose zero-divisor result is A0's without a special case, and five-bit-masked shift helpers, every value in a Y-relative frame slot, small arrays and records up to 255 bytes, io and larger aggregates or frames refused with `structure`/`limit` diagnostics, verified under libsimavr through an avr-gcc UART driver), direct 32-bit ARM assembly (a0c-0.1.12, `src/arm32.ts`: the same scope, code shape, and in-place scheme for ARMv7-A in ARM mode on AAPCS hard-float Linux (arm-linux-gnueabihf, the Raspberry Pi 2/3 32-bit userland), u32 directly in 32-bit registers, scalars homed in r4-r10, `div`/`rem` and index reduction through a module-local shift-subtract routine because UDIV is optional on ARMv7-A, verified bare-metal on an emulated Cortex-A7 under qemu-system-arm), JS arrays with copy-on-write, C structs by value, Java arrays/records with clone-on-write, SystemVerilog packed bit vectors (element 0 at the LSB) with part-selects. Integer literals are decimal 0 through 4,294,967,295. A Boolean is not implicitly a number; `and`, `or`, `xor`, `eq`, and `ne` accept either two `u32` (bitwise, unsigned equality) or two `bool` (logical, boolean equality), never a mix (v0.8.11, added because both model subjects in the Gate 6 run reached for boolean logic and there was none). Comparisons are `eq ne lt le gt ge` on `u32`, unsigned (v0.8.12; a subject invented `le`). Invalid values, missing references, duplicate definitions, wrong arity, and inconsistent types are rejected. Every current operation is pure and total on valid input. Both `select` inputs are ordinary values; this is not lazy branching with effects.
 

@@ -147,7 +147,13 @@ export type Op =
   | 'write'
   | 'div'
   | 'rem'
-  | 'puts';
+  | 'puts'
+  | 'cadd'
+  | 'csub'
+  | 'cmul'
+  | 'cdiv'
+  | 'crem'
+  | 'cget';
 
 export const OPS: readonly Op[] = [
   'mov',
@@ -182,6 +188,35 @@ export const OPS: readonly Op[] = [
   'puts',
 ];
 
+/**
+ * The total (checked) operations, valid in both profiles: each yields the `(value, ok)` record
+ * `(u32,bool)` and never traps. Only the reference interpreter evaluates them; every
+ * other backend refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
+ * `OPS`, the 30 operations the self-hosted front end (compiler/*.a0) knows by number and name;
+ * `ALL_OPS` is what the TypeScript parser, the dense form and the editor tools accept.
+ */
+export const CHECKED_OP_NAMES = ['cadd', 'csub', 'cmul', 'cdiv', 'crem', 'cget'] as const;
+export const CHECKED_OPS: ReadonlySet<Op> = new Set<Op>(CHECKED_OP_NAMES);
+export const ALL_OPS: readonly Op[] = [...OPS, ...CHECKED_OP_NAMES];
+
+/**
+ * Refuse what a target cannot honour. Every target but the reference interpreter implements only
+ * the canonical profile and none of the checked ops yet, and none may silently run the canonical
+ * semantics for a strict program: a strict function, or one with a checked op, is a `structure`
+ * error (A0713) naming the target and what it lacks. Canonical programs pass untouched.
+ */
+export function assertTargetSupports(
+  target: string,
+  p: { readonly profile?: 'strict'; readonly functions: readonly Func[] },
+): void {
+  if (p.profile === 'strict') throw diag('A0713', [target, 'a `profile strict` program']);
+  for (const fn of p.functions) {
+    const node = fn.nodes.find((n) => CHECKED_OPS.has(n.op));
+    if (node !== undefined)
+      throw diag('A0713', [target, `the checked op ${node.op} (${fn.name}.${node.id})`]);
+  }
+}
+
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
 export const OP_ARITY: Readonly<Record<Op, number>> = {
   mov: 1,
@@ -214,6 +249,12 @@ export const OP_ARITY: Readonly<Record<Op, number>> = {
   div: 2,
   rem: 2,
   puts: 2,
+  cadd: 2,
+  csub: 2,
+  cmul: 2,
+  cdiv: 2,
+  crem: 2,
+  cget: 2,
 };
 
 export type Operand =
@@ -304,14 +345,38 @@ export interface Func {
   readonly afterComments?: readonly string[];
 }
 
+/**
+ * The operations profile. `canonical` (the default, never written) is the total, wrapping
+ * semantics every target implements: `get`/`set` wrap the index modulo the length, `div` by zero
+ * is all ones, `rem` by zero is the dividend, an exhausted `read` yields 0. `strict` (the first
+ * line `profile strict`, or `--profile strict`) makes those four cases trap instead; add, sub,
+ * mul and the shifts still wrap. Only the reference interpreter implements `strict`.
+ */
+export type Profile = 'canonical' | 'strict';
+export const PROFILES: readonly Profile[] = ['canonical', 'strict'];
+
+/**
+ * The edit lines that change the profile (program-level, like `-fn`): `profile strict` sets it,
+ * `-profile` restores the canonical default. Both are idempotent; neither belongs to a function body.
+ */
+export const isProfileEdit = (line: string): boolean => /^(profile\s+strict|-profile)$/.test(line);
+
+/** The profile a program declares: `strict` only when it says so. */
+export const profileOf = (p: { readonly profile?: Profile } | undefined): Profile =>
+  p?.profile === 'strict' ? 'strict' : 'canonical';
+
 export interface Program {
   readonly functions: readonly Func[];
+  /** `profile strict` on the first line; absent means canonical (and is never stored as such). */
+  readonly profile?: 'strict';
   /**
    * `use "path"` lines from the head of the file: other A0 files whose functions this one
    * calls. Resolved by the linker (src/link.ts) into one flat program; `validate` on an
    * unlinked program with uses fails on the first unresolved callee.
    */
   readonly uses?: readonly string[];
+  /** Comments on the `profile` line. */
+  readonly profileComments?: Comments;
   /** Comments on each `use` line, parallel to `uses`. */
   readonly useComments?: readonly (Comments | undefined)[];
   /** Whole-line comments of a file without functions (otherwise the last one's `afterComments`). */
@@ -320,6 +385,8 @@ export interface Program {
 
 /** A function whose every node has an inferred result type. */
 export interface TypedFunc extends Func {
+  /** `strict` when the program it belongs to is; absent means canonical. */
+  readonly profile?: 'strict';
   readonly types: ReadonlyMap<string, Type>;
   /**
    * Static upper bound on body evaluations per call: products of trip counts (a variable
@@ -338,6 +405,8 @@ export interface TypedFunc extends Func {
 }
 
 export interface TypedProgram {
+  /** `strict` when the program declares `profile strict` (or was linked with `--profile strict`). */
+  readonly profile?: 'strict';
   readonly functions: readonly TypedFunc[];
   readonly byName: ReadonlyMap<string, TypedFunc>;
 }
@@ -606,7 +675,7 @@ export function parseOperand(text: string, line?: number, lineText?: string): Op
 }
 
 function isOp(text: string): text is Op {
-  return (OPS as readonly string[]).includes(text);
+  return (ALL_OPS as readonly string[]).includes(text);
 }
 
 /**
@@ -866,8 +935,20 @@ export function parse(source: string): Program {
 
   const uses: string[] = [];
   const useComments: (Comments | undefined)[] = [];
+  let profile: 'strict' | undefined;
+  let profileComments: Comments | undefined;
+  let first = true;
   for (let cur = next(); cur !== undefined; cur = next()) {
     const head = cur.text.split(/\s+/);
+    const atStart = first;
+    first = false;
+    if (head[0] === 'profile') {
+      if (!atStart || head.length !== 2 || head[1] !== 'strict')
+        throw diag('A0031', [], { line: cur.line });
+      profile = 'strict';
+      profileComments = cur.comments;
+      continue;
+    }
     if (head[0] === 'use') {
       const m = /^use\s+"([^"\\]+)"$/.exec(cur.text);
       if (m === null || functions.length > 0) throw diag('A0017', [], { line: cur.line });
@@ -972,6 +1053,8 @@ export function parse(source: string): Program {
     functions[functions.length - 1] = { ...last, afterComments: pending };
   return {
     functions,
+    ...(profile === undefined ? {} : { profile }),
+    ...(profileComments === undefined ? {} : { profileComments }),
     uses,
     ...(useComments.some((c) => c !== undefined) ? { useComments } : {}),
     ...(last === undefined && pending.length > 0 ? { tailComments: pending } : {}),
@@ -1184,6 +1267,23 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
         throw diag('A0208', [where, formatType(b)]);
       }
       return 'io';
+    case 'cadd':
+    case 'csub':
+    case 'cmul':
+    case 'cdiv':
+    case 'crem':
+      if (b === undefined) throw diag('A0202', [where]);
+      expect(a, 'u32', where);
+      expect(b, 'u32', where);
+      return { kind: 'rec', fields: ['u32', 'bool'] };
+    case 'cget':
+      if (b === undefined) throw diag('A0202', [where]);
+      if (isPrimitive(a) || a.kind !== 'arr' || a.elem !== 'u32')
+        throw diag('A0209', [where, formatType(a)], {
+          fix: 'cget reads an array of u32: `cget A I` gives (value, in-range)',
+        });
+      expect(b, 'u32', `${where} index`);
+      return { kind: 'rec', fields: ['u32', 'bool'] };
     case 'get':
       if (b === undefined) throw diag('A0202', [where]);
       if (isPrimitive(a) || a.kind !== 'arr')
@@ -1255,6 +1355,7 @@ export function validateFunction(
   fn: Func,
   scope: ReadonlyMap<string, TypedFunc> = new Map(),
   later?: ReadonlySet<string>,
+  profile?: 'strict',
 ): TypedFunc {
   if (!isValidFunctionName(fn.name)) throw diag('A0301', [fn.name]);
   if (fn.params.length > LIMITS.maxParams) throw diag('A0315', [fn.name]);
@@ -1461,7 +1562,16 @@ export function validateFunction(
         fix: `return the record with the token put back: \`put ${key} ${taken.get(key)} <io>\``,
       });
   }
-  return { ...fn, types, calls, staticIterations, literalIterations };
+  // The profile comes from the program being validated, never from an earlier typing of `fn`.
+  const { profile: _earlier, ...base } = fn as Func & { profile?: 'strict' };
+  return {
+    ...base,
+    ...(profile === 'strict' ? { profile } : {}),
+    types,
+    calls,
+    staticIterations,
+    literalIterations,
+  };
 }
 
 export function validate(program: Program): TypedProgram {
@@ -1471,11 +1581,15 @@ export function validate(program: Program): TypedProgram {
   const names = program.functions.map((f) => f.name);
   for (const [k, fn] of program.functions.entries()) {
     if (byName.has(fn.name)) throw diag('A0021', [fn.name]);
-    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)));
+    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), program.profile);
     byName.set(fn.name, typed);
     functions.push(typed);
   }
-  return { functions, byName };
+  return {
+    ...(program.profile === 'strict' ? { profile: program.profile } : {}),
+    functions,
+    byName,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1511,7 +1625,9 @@ export function formatFunction(fn: Func): string {
 }
 
 export function formatProgram(program: Program): string {
-  return `${program.functions.map(formatFunction).join('\n\n')}\n`;
+  // The directive is part of the canonical form, so a strict program has a different hash.
+  const head = program.profile === 'strict' ? 'profile strict\n\n' : '';
+  return `${head}${program.functions.map(formatFunction).join('\n\n')}\n`;
 }
 
 /** One source line with its comments: leading lines above it, trailing after one space. */
@@ -1539,13 +1655,18 @@ export function formatFunctionSource(fn: Func): string {
  * this is not a revision input; comments never change a hash.
  */
 export function formatSource(program: Program): string {
+  const directive =
+    program.profile === 'strict'
+      ? `${withComments('profile strict', program.profileComments)}\n`
+      : '';
   const uses = (program.uses ?? [])
     .map((u, k) => `${withComments(`use "${u}"`, program.useComments?.[k])}\n`)
     .join('');
   const fns = program.functions.map(formatFunctionSource).join('\n\n');
   const body = fns.length > 0 ? `${fns}\n` : '';
   const tail = (program.tailComments ?? []).map((c) => `${c}\n`).join('');
-  return `${uses}${uses && (body || tail) ? '\n' : ''}${body}${tail}`;
+  const head = `${directive}${uses}`;
+  return `${head}${head && (body || tail) ? '\n' : ''}${body}${tail}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1590,7 +1711,16 @@ export function valueEquals(a: Value, b: Value): boolean {
   return a === b;
 }
 
-export function evalOp(op: Op, args: readonly Value[]): Value {
+/** What the strict profile does at a trapping case: raise the trap of that kind (never returns). */
+export type StrictTrap = (kind: 'bounds' | 'divzero' | 'input') => never;
+
+/**
+ * One operation on concrete values. Canonical semantics unless `strict` is given: then an index
+ * at or past the length (`get` `set` `at` `put`), a division or remainder by zero, and a `read`
+ * on exhausted input call `strict` instead of wrapping. The checked ops (`cadd` ... `cget`) are
+ * total and behave the same in both profiles.
+ */
+export function evalOp(op: Op, args: readonly Value[], strict?: StrictTrap): Value {
   const a = args[0];
   const b = args[1];
   const c = args[2];
@@ -1623,9 +1753,25 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       return num(a) >>> (num(b) & 31);
     case 'div':
       // Unsigned division; division by zero yields all ones (total, as on RISC-V).
+      if (num(b) === 0 && strict !== undefined) return strict('divzero');
       return num(b) === 0 ? 0xffff_ffff : Math.floor(num(a) / num(b));
     case 'rem':
+      if (num(b) === 0 && strict !== undefined) return strict('divzero');
       return num(b) === 0 ? num(a) : num(a) % num(b);
+    case 'cadd':
+      return [(num(a) + num(b)) >>> 0, num(a) + num(b) <= U32_MAX];
+    case 'csub':
+      return [(num(a) - num(b)) >>> 0, num(a) >= num(b)];
+    case 'cmul':
+      return [Math.imul(num(a), num(b)) >>> 0, BigInt(num(a)) * BigInt(num(b)) <= BigInt(U32_MAX)];
+    case 'cdiv':
+      return num(b) === 0 ? [0, false] : [Math.floor(num(a) / num(b)), true];
+    case 'crem':
+      return num(b) === 0 ? [0, false] : [num(a) % num(b), true];
+    case 'cget': {
+      if (!Array.isArray(a)) throw diag('A0790', ['cget: expected array']);
+      return num(b) < a.length ? [a[num(b)] as Value, true] : [0, false];
+    }
     case 'eq':
       if (typeof a === 'boolean') return a === b;
       return num(a) === num(b);
@@ -1650,11 +1796,13 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       return [...args];
     case 'get': {
       if (!Array.isArray(a) || a.length === 0) throw diag('A0790', ['get: expected array']);
+      if (num(b) >= a.length && strict !== undefined) return strict('bounds');
       return a[num(b) % a.length] as Value;
     }
     case 'set': {
       if (!Array.isArray(a) || a.length === 0 || c === undefined)
         throw diag('A0790', ['set: expected array']);
+      if (num(b) >= a.length && strict !== undefined) return strict('bounds');
       const copy = [...a];
       copy[num(b) % a.length] = c;
       return copy;
@@ -1662,10 +1810,12 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'at': {
       if (!Array.isArray(a)) throw diag('A0790', ['at: expected record']);
       const v = a[num(b)];
+      if (v === undefined && strict !== undefined) return strict('bounds');
       if (v === undefined) throw diag('A0790', ['at: field out of range']);
       return v;
     }
     case 'put': {
+      if (Array.isArray(a) && num(b) >= a.length && strict !== undefined) return strict('bounds');
       if (!Array.isArray(a) || c === undefined || num(b) >= a.length)
         throw diag('A0790', ['put: bad field']);
       const copy = [...a];
@@ -1675,6 +1825,7 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'read': {
       // Exhausted input reads as 0; the token identity is the state itself.
       if (a === undefined || !isIoState(a)) throw diag('A0790', ['read: expected io token']);
+      if (a.position >= a.input.length && strict !== undefined) return strict('input');
       const v = a.input[a.position] ?? 0;
       if (a.position < a.input.length) a.position += 1;
       return [v, a];
@@ -1780,6 +1931,15 @@ export function run(
   return exec(fn, args, options);
 }
 
+const STRICT_TRAP_ID = { bounds: 'A0710', divzero: 'A0711', input: 'A0712' } as const;
+
+/** The strict profile's trap raiser for a run: the `{kind, fn, at, trip, chain}` of the running frames. */
+function strictTrap(options: RunOptions): StrictTrap {
+  return (kind) => {
+    throw diag(STRICT_TRAP_ID[kind], [trapOf(kind, options).fn], { trap: trapOf(kind, options) });
+  };
+}
+
 /** Charge `units` of fuel; exhaustion throws a `limit` A0Error. */
 function charge(fn: TypedFunc, options: RunOptions, units: number): void {
   options.fuel -= units;
@@ -1872,7 +2032,7 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
         node.id,
         node.op === 'write' || node.op === 'puts'
           ? ioOp(node, operands, options)
-          : evalOp(node.op, operands),
+          : evalOp(node.op, operands, fn.profile === 'strict' ? strictTrap(options) : undefined),
       );
     }
   }

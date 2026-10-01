@@ -15,8 +15,10 @@ import {
   A0Error,
   formatSource,
   LIMITS,
+  type Profile,
   type Program,
   parse,
+  profileOf,
   stripComment,
   type TypedProgram,
   utf8Length,
@@ -71,6 +73,11 @@ export interface LinkOptions {
   readonly root?: string;
   /** Read every file as dense text (a file ending in `.a0d` is always dense). */
   readonly dense?: boolean;
+  /**
+   * The profile of the whole linked program, overriding what the files declare (`--profile`).
+   * The files must still agree with each other (A0624).
+   */
+  readonly profile?: Profile;
 }
 
 function projectRoot(entry: string): string {
@@ -103,7 +110,13 @@ export async function link(
     return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
   };
   /** `text` is the canonical text the program is built from; `shown` the file as written. */
-  const order: { path: string; text: string; shown: string; fns: string[] }[] = [];
+  const order: {
+    path: string;
+    text: string;
+    shown: string;
+    fns: string[];
+    profile: Profile;
+  }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
   /** Parameter counts of every function a file defines or reaches through its uses. */
@@ -119,7 +132,8 @@ export async function link(
     if (utf8Length(shown) > LIMITS.maxSourceBytes)
       throw diag('A0621', [abs, LIMITS.maxSourceBytes]);
     const isDense = options.dense === true || isDensePath(abs);
-    const uses = isDense ? denseUses(shown) : (parse(shown).uses ?? []);
+    const parsedCanonical = isDense ? undefined : parse(shown);
+    const uses = isDense ? denseUses(shown) : (parsedCanonical?.uses ?? []);
     const known = new Map<string, number>();
     for (const use of uses) {
       const target = await canonical(resolve(dirname(abs), use));
@@ -130,6 +144,7 @@ export async function link(
     }
     let text = shown;
     let functions: readonly { name: string; params: readonly unknown[] }[];
+    let declared: Profile = 'canonical';
     if (isDense) {
       let parsed: ReturnType<typeof parseDense>;
       try {
@@ -140,17 +155,28 @@ export async function link(
       }
       text = formatSource(parsed);
       functions = parsed.functions;
+      declared = profileOf(parsed);
     } else {
-      functions = parse(shown).functions;
+      functions = (parsedCanonical as Program).functions;
+      declared = profileOf(parsedCanonical);
     }
     const own = new Map<string, number>();
     for (const f of functions) own.set(f.name, f.params.length);
     closureOf.set(abs, new Map([...known, ...own]));
     visiting.delete(abs);
     done.add(abs);
-    order.push({ path: abs, text, shown, fns: functions.map((f) => f.name) });
+    order.push({ path: abs, text, shown, fns: functions.map((f) => f.name), profile: declared });
   };
   await visit(entry, undefined);
+
+  // One profile per program: every file must declare what the entry file declares.
+  const entryFile = order.find((o) => o.path === resolve(entry));
+  const rootProfile = entryFile?.profile ?? 'canonical';
+  for (const o of order) {
+    if (o.profile !== rootProfile)
+      throw diag('A0624', [resolve(entry), rootProfile, o.path, o.profile]);
+  }
+  const profile = options.profile ?? rootProfile;
 
   // Duplicate function names across files: report both definitions.
   const owner = new Map<string, string>();
@@ -169,7 +195,9 @@ export async function link(
   const parts: string[] = [];
   for (const { path, text } of order) {
     // Drop `use` lines (already resolved) but keep line count so diagnostics map back.
-    const body = text.replace(/^\s*use\s+"[^"]*"\s*$/gm, '');
+    const body = text
+      .replace(/^\s*use\s+"[^"]*"\s*$/gm, '')
+      .replace(/^[ \t]*profile[ \t]+strict[ \t]*(#.*)?$/gm, '');
     const lineCount = body.split(/\r?\n/).length;
     sources.push({ path, startLine: line, lineCount });
     parts.push(body);
@@ -178,7 +206,12 @@ export async function link(
   const combined = parts.join('\n');
   if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
   try {
-    return { program: validate(parse(combined)), text: combined, sources };
+    const parsed = parse(combined);
+    return {
+      program: validate(profile === 'strict' ? { ...parsed, profile } : parsed),
+      text: combined,
+      sources,
+    };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
     // Parse errors carry a line in the combined text; validator errors name `fn.node` or

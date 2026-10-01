@@ -19,6 +19,7 @@
 
 import {
   A0Error,
+  ALL_OPS,
   type Comments,
   type Func,
   formatTextLiteral,
@@ -29,7 +30,6 @@ import {
   lineComment,
   type Node,
   OP_ARITY,
-  OPS,
   type Op,
   type Operand,
   opOf,
@@ -69,7 +69,7 @@ const SYMBOL_OPS: Readonly<Record<string, Op>> = {
 
 /** Words that are never an unescaped id: ops, aliases, structure words and type names. */
 const KEYWORDS = new Set<string>([
-  ...OPS,
+  ...ALL_OPS,
   'udiv',
   'urem',
   'text',
@@ -542,7 +542,14 @@ export function formatDense(program: Program, options: DenseOptions = {}): strin
     .filter((f) => !skipped.has(f.name))
     .map((f) => printFunction(f, ctx).join('\n'));
   const tail = comments ? (program.tailComments ?? []) : [];
-  const head = withUse.join('\n');
+  const directive =
+    program.profile === 'strict'
+      ? (() => {
+          const c = comments ? program.profileComments : undefined;
+          return [...commentLines(c), `profile strict${trailing(c)}`].join('\n');
+        })()
+      : '';
+  const head = [directive, ...withUse].filter((p) => p !== '').join('\n');
   const body = fns.join('\n\n');
   const parts = [head, body, tail.join('\n')].filter((p) => p !== '');
   return parts.length === 0 ? '' : `${parts.join('\n\n')}\n`;
@@ -1247,8 +1254,28 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
   const useComments: (Comments | undefined)[] = [];
   const functions: Func[] = [];
   let k = 0;
+  let profile: 'strict' | undefined;
+  let profileComments: Comments | undefined;
+  const firstItem = items[0];
+  if (firstItem !== undefined && /^profile(\s|$)/.test(firstItem.text)) {
+    if (firstItem.text !== 'profile strict')
+      fail(
+        'profile expects `profile strict` as the first line of the file',
+        firstItem.line,
+        'write `profile strict` as the very first line, before any use or fn, or remove the line for the canonical profile',
+      );
+    profile = 'strict';
+    profileComments = firstItem.comments;
+    k = 1;
+  }
   while (k < items.length) {
     const it = items[k] as Item;
+    if (/^profile(\s|$)/.test(it.text))
+      fail(
+        'profile expects `profile strict` as the first line of the file',
+        it.line,
+        'write `profile strict` as the very first line, before any use or fn, or remove the line for the canonical profile',
+      );
     if (/^use(\s|$)/.test(it.text)) {
       const m = /^use\s+"([^"\\]+)"$/.exec(it.text);
       if (m === null || functions.length > 0)
@@ -1361,6 +1388,8 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     functions[functions.length - 1] = { ...last, afterComments: trailingPending };
   return {
     functions,
+    ...(profile === undefined ? {} : { profile }),
+    ...(profileComments === undefined ? {} : { profileComments }),
     uses,
     ...(useComments.some((c) => c !== undefined) ? { useComments } : {}),
     ...(last === undefined && trailingPending.length > 0 ? { tailComments: trailingPending } : {}),

@@ -33,6 +33,7 @@ import {
   formatSource,
   formatType,
   LIMITS,
+  type Profile,
   parseAndValidate,
   run,
   type TypedProgram,
@@ -68,6 +69,7 @@ function usage(): never {
       '  a0 dense <file.a0> [out] [--normalize] [--comments]   # canonical file to dense text',
       '  a0 canon <file.a0d> [out]               # dense file to canonical text',
       '  (any command: --dense reads files as dense text; .a0d files always are)',
+      "  (any command: --profile strict|canonical overrides the program's `profile` line; strict runs only in the interpreter)",
       '  a0 view <file.a0> <function>          # function plus callee signatures',
       '  a0 mcp <file-or-dir>                  # MCP server (stdio), paths confined to the root;',
       '      tools: a0_open a0_program a0_apply a0_check a0_run a0_emit a0_save',
@@ -86,9 +88,37 @@ async function readSource(path: string): Promise<string> {
   return text;
 }
 
+/** The `--profile strict|canonical` override: which profile the whole program is compiled under. */
+let profileOverride: Profile | undefined;
+
 /** Load a file and everything it `use`s as one validated program. */
 async function loadProgram(path: string, dense = false): Promise<TypedProgram> {
-  return (await link(path, (p) => readFile(p, 'utf8'), { dense })).program;
+  return (
+    await link(path, (p) => readFile(p, 'utf8'), {
+      dense,
+      ...(profileOverride === undefined ? {} : { profile: profileOverride }),
+    })
+  ).program;
+}
+
+/** Take `--profile=NAME` or `--profile NAME` out of the arguments and remember it. */
+function takeProfile(args: readonly string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i] as string;
+    let name: string | undefined;
+    if (a === '--profile') {
+      name = args[i + 1];
+      i += 1;
+    } else if (a.startsWith('--profile=')) name = a.slice('--profile='.length);
+    else {
+      out.push(a);
+      continue;
+    }
+    if (name !== 'strict' && name !== 'canonical') throw diag('A0814', ['--profile', name ?? '']);
+    profileOverride = name;
+  }
+  return out;
 }
 
 /**
@@ -135,7 +165,7 @@ async function main(args: readonly string[]): Promise<void> {
     return;
   }
   const dense = args.includes('--dense');
-  const [cmd, ...rest] = args.filter((a) => a !== '--dense');
+  const [cmd, ...rest] = takeProfile(args.filter((a) => a !== '--dense'));
   switch (cmd) {
     case 'check': {
       const flags = rest.filter((a) => a.startsWith('--'));

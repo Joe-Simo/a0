@@ -74,7 +74,7 @@ export type FixEdit =
  * Why a run stopped before returning: the budget that ran out (`fuel`: node evaluations,
  * `iter`: the total fold/loop trip cap, `io`: the io output cap), where, and how it got there.
  */
-export type TrapKind = 'fuel' | 'iter' | 'io';
+export type TrapKind = 'fuel' | 'iter' | 'io' | 'bounds' | 'divzero' | 'input';
 
 export interface Trap {
   readonly kind: TrapKind;
@@ -92,7 +92,13 @@ export const TRAP_FIX: Record<TrapKind, string> = {
   fuel: 'raise the fuel budget or lower the fold/loop counts on the chain',
   iter: 'raise the trip cap or lower the fold/loop counts on the chain',
   io: 'write fewer words, or return the output in smaller pieces',
+  bounds: 'keep the index below the length (check it, or use cget for a total read)',
+  divzero: 'test the divisor first, or use cdiv/crem, which return (0,false) for a zero divisor',
+  input: 'supply more input words, or stop reading when the input is exhausted',
 };
+
+/** The strict profile's traps (a program fault), as against the budget traps (a resource stop). */
+const PROGRAM_TRAPS: ReadonlySet<TrapKind> = new Set<TrapKind>(['bounds', 'divzero', 'input']);
 
 /**
  * The one-line trap code, the same `code: message fix: fix` shape as every other diagnostic:
@@ -100,7 +106,7 @@ export const TRAP_FIX: Record<TrapKind, string> = {
  * trap runtime (CompileOptions.cTrap) prints exactly this line for an iteration-cap stop.
  */
 export function formatTrap(t: Trap): string {
-  return `limit: trap ${t.kind} fn=${t.fn} at=${t.at ?? '-'} trip=${t.trip ?? '-'} chain=${t.chain.join('>')} fix: ${TRAP_FIX[t.kind]}`;
+  return `${PROGRAM_TRAPS.has(t.kind) ? 'runtime' : 'limit'}: trap ${t.kind} fn=${t.fn} at=${t.at ?? '-'} trip=${t.trip ?? '-'} chain=${t.chain.join('>')} fix: ${TRAP_FIX[t.kind]}`;
 }
 
 export interface DiagnosticDetail {
@@ -712,6 +718,21 @@ export const DIAGNOSTICS = {
       'More than one word that is not an op is neither.',
     ],
     example: { kind: 'source', bad: F('a mov p0\nret 1 2'), good: F('a mov p0\nret a') },
+  },
+  A0031: {
+    cls: 'parse',
+    message: 'profile expects `profile strict` as the first line of the file',
+    fix: 'write `profile strict` as the very first line, before any use or fn, or remove the line for the canonical profile',
+    why: [
+      'The operations profile is chosen once per program: `profile strict` makes an index past the',
+      'length, a division or remainder by zero, and a read of exhausted input trap. No line means',
+      'the canonical profile; `strict` is the only name, and the line comes before `use` and `fn`.',
+    ],
+    example: {
+      kind: 'source',
+      bad: `profile lax\n${F('a mov p0\nret a')}`,
+      good: `profile strict\n${F('a mov p0\nret a')}`,
+    },
   },
 
   // --- Names (A01nn) -----------------------------------------------------------
@@ -1489,6 +1510,18 @@ export const DIAGNOSTICS = {
     why: ['Two files `use` each other (directly or through others); a program is a DAG of files.'],
     unrunnable: 'needs files on disk; covered by the linker tests (test/core.test.ts)',
   },
+  A0624: {
+    cls: 'structure',
+    message: 'profile mismatch: {0} is {1} but {2} is {3}',
+    fix: 'give every file of the program the same `profile` line (or none): the profile is chosen per program',
+    why: [
+      'A file that `use`s another must declare the same profile as the files it uses: a library',
+      'written for canonical wrapping cannot run under strict traps, or the other way round.',
+      '`a0 ... --profile strict|canonical` overrides the choice for the whole program, not the',
+      'agreement between the files.',
+    ],
+    unrunnable: 'needs files on disk; covered by the linker tests (test/profile.test.ts)',
+  },
   A0621: {
     cls: 'limit',
     message: '{0}: source exceeds {1} bytes',
@@ -1602,6 +1635,60 @@ export const DIAGNOSTICS = {
     ],
     unrunnable: 'needs the trip cap option, which the explain examples do not set',
   },
+  A0710: {
+    cls: 'runtime',
+    message: '{0}: index out of bounds (strict profile)',
+    why: [
+      'Under `profile strict`, get, set, at and put with an index at or past the length trap',
+      'instead of wrapping the index. The trap names the function and, inside a fold or loop,',
+      'the node and the trip. `cget A I` is the total read: (value, in range).',
+    ],
+    example: {
+      kind: 'run',
+      fn: 'f',
+      args: [5],
+      goodArgs: [1],
+      bad: 'profile strict\nfn f u32 -> u32\na arr 1 2\nb get a p0\nret b\nend\n',
+      good: 'profile strict\nfn f u32 -> u32\na arr 1 2\nb get a p0\nret b\nend\n',
+    },
+  },
+  A0711: {
+    cls: 'runtime',
+    message: '{0}: division by zero (strict profile)',
+    why: [
+      'Under `profile strict`, div and rem with a zero divisor trap; the canonical profile',
+      'yields all ones and the dividend. `cdiv` and `crem` return (0,false) for a zero divisor.',
+    ],
+    example: {
+      kind: 'run',
+      fn: 'f',
+      args: [0],
+      goodArgs: [3],
+      bad: 'profile strict\nfn f u32 -> u32\na div 12 p0\nret a\nend\n',
+      good: 'profile strict\nfn f u32 -> u32\na div 12 p0\nret a\nend\n',
+    },
+  },
+  A0712: {
+    cls: 'runtime',
+    message: '{0}: read of exhausted input (strict profile)',
+    why: [
+      'Under `profile strict`, a read after the last input word traps; the canonical profile',
+      'yields 0 and keeps the position.',
+    ],
+    unrunnable: 'needs an io token with a chosen input, which the explain examples do not set',
+  },
+  A0713: {
+    cls: 'structure',
+    message: 'target {0} cannot compile {1}',
+    fix: 'run it with the reference interpreter (`a0 run`), or remove the construct the target lacks',
+    why: [
+      'A program that declares `profile strict`, or uses a checked op (cadd csub cmul cdiv crem',
+      'cget), is refused by every target but the reference interpreter: a target must',
+      'never silently run the canonical semantics for a strict program. `--profile canonical`',
+      'compiles a strict file under the canonical profile when that is what is wanted.',
+    ],
+    unrunnable: 'raised by the emitters, which the explain examples do not run',
+  },
   A0790: {
     cls: 'structure',
     message: '{0}',
@@ -1711,7 +1798,10 @@ export const DIAGNOSTICS = {
   A0814: {
     cls: 'structure',
     message: "invalid {0} '{1}'",
-    why: ['A `--fuel=N` or `--max-trips=N` flag takes a non-negative decimal integer.'],
+    why: [
+      'A `--fuel=N` or `--max-trips=N` flag takes a non-negative decimal integer; `--profile` takes',
+      '`strict` or `canonical`.',
+    ],
     unrunnable: 'command-line input; covered by test/trap.test.ts',
   },
   A0812: {

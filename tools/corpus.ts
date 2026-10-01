@@ -486,6 +486,22 @@ export function oracleOp(op: Op, args: readonly OracleValue[]): OracleValue {
       return big(b, op) === 0n ? MASK : big(a, op) / big(b, op);
     case 'rem':
       return big(b, op) === 0n ? big(a, op) : big(a, op) % big(b, op);
+    case 'cadd':
+      return [(big(a, op) + big(b, op)) & MASK, big(a, op) + big(b, op) <= MASK];
+    case 'csub':
+      return [(big(a, op) - big(b, op) + (1n << 32n)) & MASK, big(a, op) >= big(b, op)];
+    case 'cmul':
+      return [(big(a, op) * big(b, op)) & MASK, big(a, op) * big(b, op) <= MASK];
+    case 'cdiv':
+      return big(b, op) === 0n ? [0n, false] : [big(a, op) / big(b, op), true];
+    case 'crem':
+      return big(b, op) === 0n ? [0n, false] : [big(a, op) % big(b, op), true];
+    case 'cget': {
+      if (!Array.isArray(a)) throw new Error('oracle cget');
+      return big(b, op) < BigInt(a.length)
+        ? [a[Number(big(b, op))] as OracleValue, true]
+        : [0n, false];
+    }
     case 'eq':
       if (typeof a === 'boolean') return a === b;
       return big(a, op) === big(b, op);
