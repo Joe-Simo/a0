@@ -167,7 +167,7 @@ export async function createServer(launch: string): Promise<McpServer> {
       inputSchema: {
         file: fileField,
         function: z.string(),
-        scope: z.enum(['deps', 'full']).optional(),
+        scope: z.enum(['deps', 'full', 'bodies']).optional(),
         dense: denseField,
         lean: z
           .boolean()
@@ -181,7 +181,9 @@ export async function createServer(launch: string): Promise<McpServer> {
       const { session } = await sessionFor(file);
       const useDense = dense ?? isDensePath(await fileOf(file));
       const text = session.open(name, {
-        ...(scope === 'full' ? {} : { scope: 'deps' as const }),
+        ...(scope === 'full'
+          ? {}
+          : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
         ...(useDense ? { dense: true } : {}),
       }).text;
       return useDense && lean === true ? text.slice(text.indexOf('\n') + 1) : text;

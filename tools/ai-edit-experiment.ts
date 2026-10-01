@@ -123,7 +123,9 @@ const A0_DENSE_VIEW = process.env.A0_EXPERIMENT_DENSE === '1';
 // A0_EXPERIMENT_DENSE_VIEW=lean: with the dense view, show only the function view (no handle line,
 // no program handle): the reply is applied to the one open handle, which is implied.
 const A0_LEAN_VIEW =
-  A0_DENSE_VIEW && ['lean', 'bare'].includes(process.env.A0_EXPERIMENT_DENSE_VIEW ?? '');
+  A0_DENSE_VIEW && ['lean', 'bare', 'bodies'].includes(process.env.A0_EXPERIMENT_DENSE_VIEW ?? '');
+// 'bodies' shows the direct callees' dense text instead of their signature lines.
+const A0_BODIES_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bodies';
 // 'bare' also drops the callee signature lines (scope function instead of deps).
 const A0_BARE_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bare';
 const withoutHandle = (view: string): string => view.slice(view.indexOf('\n') + 1);
@@ -425,7 +427,7 @@ async function buildCell(
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
       const fnView = session.open(fnName, {
-        scope: A0_BARE_VIEW ? 'function' : 'deps',
+        scope: A0_BARE_VIEW ? 'function' : A0_BODIES_VIEW ? 'bodies' : 'deps',
         numbered: A0_NUMBERED_VIEW,
         dense: A0_DENSE_VIEW,
       }).text; // e0

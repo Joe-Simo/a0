@@ -199,6 +199,14 @@ test('mcp: dense views, dense replies, and a dense file saved as dense', () =>
       (await call(client, 'a0_run', { file: 'l.a0d', function: 'f', args: [3] })).text,
       '12',
     );
+    // scope bodies: the direct callees' dense text instead of their signature lines
+    const bodies = await call(client, 'a0_open', {
+      file: 'l.a0d',
+      function: 'f',
+      scope: 'bodies',
+      lean: true,
+    });
+    assert.equal(bodies.text, 'fn f add sq A 3\nfn sq mul A A');
     // A canonical file can still be viewed and edited dense on request; it saves as canonical.
     const v2 = await call(client, 'a0_open', { file: 'm.a0', function: 'f', dense: true });
     assert.match(v2.text, /^e[0-9]+\nfn f\nb sq A\nc add b 1\n# sq u32 -> u32$/);
