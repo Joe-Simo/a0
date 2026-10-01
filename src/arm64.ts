@@ -2371,12 +2371,45 @@ class FunctionEmitter {
     interface Red {
       readonly op: ReduceOp;
       readonly acc: VReg;
-      readonly x: VReg;
+      x: VReg;
       readonly field?: number;
       readonly sub?: boolean;
       fused?: { readonly a: VReg; readonly b: VReg };
+      /** Constants every term was multiplied by: moved out of the sum (c * (x + y) = c*x + c*y). */
+      readonly scale: VReg[];
     }
-    const reds: Red[] = (plan.reduce ?? []).map((r) => ({ ...r, x: rd(r.x) }));
+    const reds: Red[] = (plan.reduce ?? []).map((r) => ({ ...r, x: rd(r.x), scale: [] }));
+    /** The lane value behind `reg` when `reg` is a single-use product with a broadcast constant. */
+    const unscaled = (reg: VReg, owner: Red): { value: VReg; c: VReg } | undefined => {
+      let j = -1;
+      body.forEach((st, i) => {
+        if (stepWrite(st) === reg) j = i;
+      });
+      const d = body[j];
+      if (d === undefined || d.k !== 'op3' || d.insn !== 'mul' || d.lanes !== '4s')
+        return undefined;
+      const [value, c] = operandConst.has(d.b)
+        ? [d.a, d.b]
+        : operandConst.has(d.a)
+          ? [d.b, d.a]
+          : [];
+      if (value === undefined || c === undefined || operandConst.has(value)) return undefined;
+      if (body.some((st, i) => i !== j && stepReads(st).includes(reg))) return undefined;
+      if (
+        reds.some((o) => o !== owner && (o.x === reg || o.fused?.a === reg || o.fused?.b === reg))
+      )
+        return undefined;
+      if (body.slice(j + 1).some((st) => stepWrite(st) === value)) return undefined;
+      body.splice(j, 1);
+      return { value, c };
+    };
+    for (const r of reds) {
+      if (r.op !== 'add' || r.sub === true || r.field !== undefined) continue;
+      for (let more = unscaled(r.x, r); more !== undefined; more = unscaled(r.x, r)) {
+        r.x = more.value;
+        r.scale.push(more.c);
+      }
+    }
     // acc += a * b becomes one `mla` when the product feeds nothing else.
     for (const r of reds) {
       if (r.op !== 'add' || r.sub === true) continue;
@@ -2391,6 +2424,16 @@ class FunctionEmitter {
       if (body.slice(j + 1).some((s) => [d.a, d.b].includes(stepWrite(s) ?? -1))) continue;
       body.splice(j, 1);
       r.fused = { a: d.a, b: d.b };
+      // a constant factor inside either operand moves out of the loop too
+      if (r.field === undefined) {
+        for (const side of ['a', 'b'] as const) {
+          const f: { readonly a: VReg; readonly b: VReg } = r.fused ?? { a: d.a, b: d.b };
+          const more = unscaled(f[side], r);
+          if (more === undefined) continue;
+          r.fused = { ...f, [side]: more.value };
+          r.scale.push(more.c);
+        }
+      }
     }
     // Drop induction registers nothing reads.
     const readNow = new Set<VReg>();
@@ -2483,9 +2526,10 @@ class FunctionEmitter {
       for (const [c, reg] of ivStep)
         this.#emit(`movi ${v(t0)}, #${4 * unroll}`, `mul ${v(reg)}, ${v(t0)}, ${v(c)}`);
     }
-    for (const { op, acc, field } of reds) {
-      if (plan.queries !== undefined) {
-        // Point queries start from zero: the array they describe starts as zeros.
+    for (const { op, acc, field, scale } of reds) {
+      if (plan.queries !== undefined || scale.length > 0) {
+        // Point queries start from zero: the array they describe starts as zeros. A sum whose terms
+        // were scaled outside the loop starts from zero too; its seed is added after the scaling.
         for (let k = 0; k < unroll; k += 1) this.#emit(`movi ${v(at(k, acc))}, #0`);
         continue;
       }
@@ -2648,7 +2692,7 @@ class FunctionEmitter {
       for (const p of ptrs) this.#emit(`add ${VECTOR_PTRS[p]}, ${VECTOR_PTRS[p]}, #${16 * unroll}`);
     else this.#emit('add x10, x10, #16');
     this.#emit(`subs w11, w11, #${4 * unroll}`, `b.ne ${top}`);
-    for (const [ri, { op, acc, field }] of reds.entries()) {
+    for (const [ri, { op, acc, field, scale }] of reds.entries()) {
       // Combine the unrolled copies, then the four lanes into w9.
       for (let k = 1; k < unroll; k += 1) {
         const lanes = lanesOf(op);
@@ -2663,6 +2707,10 @@ class FunctionEmitter {
         this.#emit(`umov w9, v${acc}.s[0]`);
         for (let lane = 1; lane < 4; lane += 1)
           this.#emit(`umov w10, v${acc}.s[${lane}]`, `${op} w9, w9, w10`);
+      }
+      if (scale.length > 0) {
+        for (const c of scale) this.#emit(`umov w10, v${c}.s[0]`, 'mul w9, w9, w10');
+        this.#emit(`add w9, w9, ${this.#read(init, 'w10')}`);
       }
       if (plan.queries !== undefined) {
         // Each answer is defined at a position of its own: the seed is read again for the next one.

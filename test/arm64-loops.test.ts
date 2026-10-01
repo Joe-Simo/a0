@@ -120,6 +120,13 @@ test('arm64 prefix scans, indexed updates, induction variables and unrolled redu
       `fn mfa${n} u32x${n} u32 u32 u32 -> u32x${n}\nw mul p1 p2\nx add w p3\nx2 shr x 15\ny xor x x2\nz mul y 2654435761\nn set p0 p1 z\nret n\nend\nfn mmst${n} (u32,u32) u32 u32x${n} -> (u32,u32)\nv get p2 p1\nlo at p0 0\nhi at p0 1\nc lt v lo\nnlo select c v lo\nd gt v hi\nnhi select d v hi\nr put p0 0 nlo\nr2 put r 1 nhi\nret r2\nend\nfn mm${n} u32 u32 -> u32\nz arr ${zeros(n)}\na fold mfa${n} ${n} z p0 p1\ni rec 4294967295 0\nm fold mmst${n} ${n} i a\nlo at m 0\nhi at m 1\ns sub hi lo\nret s\nend`,
     );
   }
+  // Sums whose terms carry a constant factor (moved out of the loop), with a seed.
+  for (const n of [16, 24, 64]) {
+    add(
+      `sc${n}`,
+      `fn scf${n} u32x${n} u32 u32 u32 -> u32x${n}\nv xor p1 p3\nw mul v p2\nn set p0 p1 w\nret n\nend\nfn scs${n} u32 u32 u32x${n} u32 -> u32\ne get p2 p1\nf mul e p3\nh add p0 f\nret h\nend\nfn scd${n} u32 u32 u32x${n} u32x${n} u32 u32 -> u32\ne get p2 p1\nf get p3 p1\ng mul e p4\nh mul f p5\nk mul g h\nm add p0 k\nret m\nend\nfn sc${n} u32 u32 -> u32\nz arr ${zeros(n)}\na fold scf${n} ${n} z p0 p1\nz2 arr ${zeros(n)}\nb fold scf${n} ${n} z2 p1 p0\nd fold scs${n} ${n} p1 a p0\ne fold scd${n} ${n} p0 a b p1 p0\nr add d e\nret r\nend`,
+    );
+  }
   const src = funcs.join('\n\n');
   const asm = await checkAgainstInterpreter(src, names, clang);
   // The scan is a NEON scan with a running carry, the histogram an indexed update per lane, the
@@ -130,6 +137,7 @@ test('arm64 prefix scans, indexed updates, induction variables and unrolled redu
   assert.match(asm, /_a0_sa:[\s\S]*?cmhs v\d+\.4s/);
   assert.match(asm, /_a0_ha:[\s\S]*?cmeq v\d+\.4s/);
   assert.doesNotMatch(/_a0_ha:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '', /uxtw #2/);
+  assert.match(asm, /_a0_sc64:[\s\S]*?umov w10, v\d+\.s\[0\]\n\tmul w9, w9, w10/);
   assert.match(asm, /_a0_dot64:[\s\S]*?mla v\d+\.4s/);
 });
 
