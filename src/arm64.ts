@@ -629,8 +629,85 @@ type VecStep =
       readonly imm: number;
     }
   | { readonly k: 'copy'; readonly dst: VReg; readonly a: VReg }
+  /**
+   * Inclusive scan of `a`'s four lanes plus the running total in `carry` (which then advances by
+   * this vector's total): dst = carry + prefix(a); `tmp` is scratch, `zero` an all-zero constant.
+   */
+  | {
+      readonly k: 'scan';
+      readonly insn: 'add' | 'eor';
+      readonly dst: VReg;
+      readonly a: VReg;
+      readonly tmp: VReg;
+      readonly carry: VReg;
+      readonly zero: VReg;
+    }
+  /**
+   * One scalar read-modify-write per lane, in lane order: `state[idx lane] = op(state[idx lane], w)`
+   * with w a lane of `w`, or the scalar `imm` (an operand held in x16). `idx` is already below the
+   * state length.
+   */
+  | {
+      readonly k: 'scatter';
+      readonly insn: 'add' | 'sub' | 'eor' | 'orr' | 'and';
+      readonly idx: VReg;
+      readonly w?: VReg;
+      readonly imm?: Operand;
+      readonly swap: boolean;
+      readonly ptr: number;
+    }
   | { readonly k: 'not'; readonly dst: VReg; readonly a: VReg }
   | { readonly k: 'bsl'; readonly dst: VReg; readonly c: VReg; readonly a: VReg; readonly b: VReg };
+
+/** Registers a vector step reads. */
+function stepReads(s: VecStep): VReg[] {
+  switch (s.k) {
+    case 'load':
+    case 'loadx':
+      return [];
+    case 'store':
+      return [s.src];
+    case 'op3':
+      return [s.a, s.b];
+    case 'shift':
+    case 'copy':
+    case 'not':
+      return [s.a];
+    case 'scan':
+      return [s.a, s.tmp];
+    case 'scatter':
+      return s.w === undefined ? [s.idx] : [s.idx, s.w];
+    case 'bsl':
+      return [s.c, s.a, s.b];
+  }
+}
+
+/** The register a vector step defines, if any. */
+function stepWrite(s: VecStep): VReg | undefined {
+  return s.k === 'store' || s.k === 'scatter' ? undefined : s.dst;
+}
+
+/** The step with every register it reads passed through `f` (the destination is unchanged). */
+function remapReads(s: VecStep, f: (r: VReg) => VReg): VecStep {
+  switch (s.k) {
+    case 'load':
+    case 'loadx':
+      return s;
+    case 'store':
+      return { ...s, src: f(s.src) };
+    case 'scatter':
+      return s.w === undefined ? { ...s, idx: f(s.idx) } : { ...s, idx: f(s.idx), w: f(s.w) };
+    case 'op3':
+      return { ...s, a: f(s.a), b: f(s.b) };
+    case 'shift':
+    case 'copy':
+    case 'not':
+    case 'scan':
+      return { ...s, a: f(s.a) };
+    case 'bsl':
+      return { ...s, c: f(s.c), a: f(s.a), b: f(s.b) };
+  }
+}
 
 type VecConst =
   | { readonly reg: VReg; readonly kind: 'operand'; readonly o: Operand }
@@ -660,6 +737,8 @@ interface VecPlan {
    * the initial value in lane 0 (every lane for min/max) and the identity elsewhere.
    */
   readonly reduce?: readonly Reduction[];
+  /** A running prefix (inclusive scan) over the stored element: every lane of `carry` starts at `seed`. */
+  readonly scan?: { readonly carry: VReg; readonly seed: Operand };
 }
 
 /**
@@ -717,6 +796,135 @@ const isU32Array = (t: Type | undefined, n: number): boolean =>
  * element-wise (see the header), or undefined when it is not. Pure: both emission passes
  * compute the same plan.
  */
+/**
+ * The body `set p0 p1 (op (select (eq p1 0) seed (get p0 (sub p1 1))) e)` with op add or xor:
+ * element i is seed op e(0) op ... op e(i), an inclusive prefix scan (trip i's previous element is
+ * the one trip i - 1 wrote; trip 0 takes the seed). Returns the pieces and the plumbing nodes.
+ */
+function scanOf(
+  body: TypedFunc,
+  defs: ReadonlyMap<string, Node>,
+  resolve: (o: Operand) => Operand,
+  ret: Node,
+):
+  | { e: Operand; insn: 'add' | 'eor'; seed: Operand; plumbing: readonly string[] }
+  | undefined {
+  const value = ret.args[2];
+  const v = value === undefined ? undefined : resolve(value);
+  const vn = v?.kind === 'node' ? defs.get(v.id) : undefined;
+  if (vn === undefined || (vn.op !== 'add' && vn.op !== 'xor')) return undefined;
+  const users = (id: string): number =>
+    body.nodes.filter((m) => m.args.some((a) => sameOp(resolve(a), { kind: 'node', id }))).length;
+  const isSel = (o: Operand | undefined): Node | undefined => {
+    const r = o === undefined ? undefined : resolve(o);
+    const d = r?.kind === 'node' ? defs.get(r.id) : undefined;
+    return d?.op === 'select' ? d : undefined;
+  };
+  const [x, y] = vn.args;
+  const sel = isSel(x) ?? isSel(y);
+  if (sel === undefined) return undefined;
+  const e = resolve(sel === isSel(x) ? (y as Operand) : (x as Operand));
+  const [c, seed, g] = sel.args.map(resolve);
+  if (c === undefined || seed === undefined || g === undefined) return undefined;
+  if (e.kind === 'node' && (e.id === sel.id || e.id === vn.id)) return undefined;
+  const gn = g.kind === 'node' ? defs.get(g.id) : undefined;
+  const cn = c.kind === 'node' ? defs.get(c.id) : undefined;
+  if (gn?.op !== 'get' || cn?.op !== 'eq' || !isParam(resolve(gn.args[0] as Operand), 0))
+    return undefined;
+  const [p, q] = cn.args.map(resolve);
+  const zero =
+    (isParam(p, 1) && q?.kind === 'u32' && q.value === 0) ||
+    (isParam(q, 1) && p?.kind === 'u32' && p.value === 0);
+  if (!zero) return undefined;
+  const j = resolve(gn.args[1] as Operand);
+  const jn = j.kind === 'node' ? defs.get(j.id) : undefined;
+  const one = jn === undefined ? undefined : resolve(jn.args[1] as Operand);
+  if (jn?.op !== 'sub' || !isParam(resolve(jn.args[0] as Operand), 1)) return undefined;
+  if (one?.kind !== 'u32' || one.value !== 1) return undefined;
+  const invariant = seed.kind === 'u32' || (seed.kind === 'param' && seed.index >= 2);
+  if (!invariant || (seed.kind === 'param' && body.params[seed.index] !== 'u32')) return undefined;
+  if (users(vn.id) !== 1 || users(sel.id) !== 1 || users(gn.id) !== 1) return undefined;
+  if (users(cn.id) !== 1 || users(jn.id) !== 1) return undefined;
+  return {
+    e,
+    insn: vn.op === 'add' ? 'add' : 'eor',
+    seed,
+    plumbing: [vn.id, sel.id, gn.id, cn.id, jn.id],
+  };
+}
+
+const SCATTER_OPS: Readonly<Partial<Record<Op, 'add' | 'sub' | 'eor' | 'orr' | 'and'>>> = {
+  add: 'add',
+  sub: 'sub',
+  xor: 'eor',
+  or: 'orr',
+  and: 'and',
+};
+
+/**
+ * `set p0 K (op (get p0 K) w)` with K computed lane-wise from the counter: a read-modify-write
+ * of one state element per trip at a data-dependent index (a histogram update). The element
+ * updates stay sequential in trip order, so only K and w are computed four at a time.
+ */
+function scatterOf(
+  body: TypedFunc,
+  defs: ReadonlyMap<string, Node>,
+  resolve: (o: Operand) => Operand,
+  ret: Node,
+):
+  | { k: Operand; w: Operand; insn: 'add' | 'sub' | 'eor' | 'orr' | 'and'; swap: boolean; plumbing: readonly string[] }
+  | undefined {
+  const k = resolve(ret.args[1] as Operand);
+  if (k.kind !== 'node') return undefined;
+  const value = resolve(ret.args[2] as Operand);
+  const vn = value.kind === 'node' ? defs.get(value.id) : undefined;
+  const insn = vn === undefined ? undefined : SCATTER_OPS[vn.op];
+  if (vn === undefined || insn === undefined) return undefined;
+  const [x, y] = vn.args.map(resolve);
+  if (x === undefined || y === undefined) return undefined;
+  const isGet = (o: Operand): Node | undefined => {
+    const d = o.kind === 'node' ? defs.get(o.id) : undefined;
+    return d?.op === 'get' &&
+      isParam(resolve(d.args[0] as Operand), 0) &&
+      sameOp(resolve(d.args[1] as Operand), k)
+      ? d
+      : undefined;
+  };
+  const gx = isGet(x);
+  const gy = isGet(y);
+  if ((gx === undefined) === (gy === undefined)) return undefined;
+  const g = gx ?? (gy as Node);
+  const w = gx === undefined ? x : y;
+  if (w.kind === 'node' && w.id === g.id) return undefined;
+  const swap = gx === undefined;
+  if (swap && vn.op !== 'sub' && SCATTER_OPS[vn.op] === undefined) return undefined;
+  const users = body.nodes.filter((m) =>
+    m.args.some((a) => sameOp(resolve(a), { kind: 'node', id: g.id })),
+  ).length;
+  if (users !== 1) return undefined;
+  return { k, w, insn, swap, plumbing: [g.id, vn.id] };
+}
+
+/** Largest value a lane-wise operand can take, when a shift or mask bounds it. */
+function laneBound(
+  o: Operand,
+  defs: ReadonlyMap<string, Node>,
+  resolve: (o: Operand) => Operand,
+  depth = 0,
+): number {
+  const r = resolve(o);
+  if (r.kind === 'u32') return r.value >>> 0;
+  if (r.kind !== 'node' || depth > 8) return 0xffffffff;
+  const d = defs.get(r.id);
+  if (d === undefined) return 0xffffffff;
+  const [a, b] = d.args.map(resolve);
+  if (d.op === 'shr' && b?.kind === 'u32' && a !== undefined)
+    return laneBound(a, defs, resolve, depth + 1) >>> (b.value & 31);
+  if (d.op === 'and' && a !== undefined && b !== undefined)
+    return Math.min(laneBound(a, defs, resolve, depth + 1), laneBound(b, defs, resolve, depth + 1));
+  return 0xffffffff;
+}
+
 function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
   if (count % 4 !== 0 || count < 8 || body.nodes.length > 64) return undefined;
   const state = body.params[0];
@@ -727,7 +935,8 @@ function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
       ? state.fields.length
       : undefined;
   if (arrayState) {
-    if (!isU32Array(state, count)) return undefined;
+    // A longer or shorter state is allowed only for an indexed update (checked below).
+    if (state.kind !== 'arr' || state.elem !== 'u32') return undefined;
   } else if (recordFields === undefined && state !== 'u32') return undefined;
   if (recordFields !== undefined && (recordFields < 1 || recordFields > 4)) return undefined;
   for (const [i, t] of body.params.entries())
@@ -750,6 +959,8 @@ function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
   // Reduction shape: ret = op(p0, x) (or a min/max select) with p0 read nowhere else; for
   // a record, ret = put(... put(p0, k, op(at p0 k, x_k)) ...) covering every field once.
   let reduce: { op: ReduceOp; x: Operand; field?: number }[] | undefined;
+  let scanInfo: ReturnType<typeof scanOf>;
+  let scatterInfo: ReturnType<typeof scatterOf>;
   /** Nodes that are accumulator plumbing, not per-lane steps. */
   const skip = new Set<string>();
   if (!arrayState && recordFields === undefined) {
@@ -813,7 +1024,16 @@ function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
       }
     }
   } else {
-    if (ret.op !== 'set' || !isParam(ret.args[0], 0) || !isParam(ret.args[1], 1)) return undefined;
+    if (ret.op !== 'set' || !isParam(ret.args[0], 0)) return undefined;
+    scanInfo = isParam(ret.args[1], 1) ? scanOf(body, defs, resolve, ret) : undefined;
+    for (const id of scanInfo?.plumbing ?? []) skip.add(id);
+    if (scanInfo === undefined) {
+      scatterInfo = scatterOf(body, defs, resolve, ret);
+      for (const id of scatterInfo?.plumbing ?? []) skip.add(id);
+    }
+    if (scatterInfo === undefined && (!isParam(ret.args[1], 1) || !isU32Array(state, count)))
+      return undefined;
+    if (scatterInfo !== undefined && !isU32Array(state, count) && count % 4 !== 0) return undefined;
     for (const n of body.nodes)
       if (n !== ret)
         for (const [k, o] of n.args.entries())
@@ -896,6 +1116,8 @@ function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
     if (acc === undefined) return undefined;
     accs.push(acc);
   }
+  const scanCarry = scanInfo === undefined ? undefined : take();
+  if (scanInfo !== undefined && scanCarry === undefined) return undefined;
   /** Register holding an operand's lanes (allocating constants on demand). */
   const regOf = (o: Operand): VReg | undefined => {
     const r = resolve(o);
@@ -941,6 +1163,48 @@ function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
       if (ptr === undefined || dst === undefined) return undefined;
       steps.push(c === undefined ? { k: 'load', dst, ptr } : { k: 'loadx', dst, ptr, c });
       release();
+      continue;
+    }
+    if (n === ret && scatterInfo !== undefined && !isPrimitive(state) && state.kind === 'arr') {
+      let idx = regOf(scatterInfo.k);
+      const stateLen = state.length;
+      if (idx === undefined) return undefined;
+      if (laneBound(scatterInfo.k, defs, resolve) >= stateLen) {
+        if ((stateLen & (stateLen - 1)) !== 0) return undefined;
+        const mask = constFor({ kind: 'u32', value: stateLen - 1 });
+        const masked = take();
+        if (mask === undefined || masked === undefined) return undefined;
+        steps.push({ k: 'op3', insn: 'and', dst: masked, a: idx, b: mask, lanes: '16b' });
+        idx = masked;
+      }
+      const w = resolve(scatterInfo.w);
+      const laneW = w.kind === 'node' ? regOf(w) : undefined;
+      if (w.kind === 'node' && laneW === undefined) return undefined;
+      if (w.kind === 'bool' || (w.kind === 'param' && body.params[w.index] !== 'u32'))
+        return undefined;
+      const ptr = ptrFor({ kind: 'param', index: 0 });
+      if (ptr === undefined) return undefined;
+      steps.push({
+        k: 'scatter',
+        insn: scatterInfo.insn,
+        idx,
+        ...(laneW === undefined ? { imm: w } : { w: laneW }),
+        swap: scatterInfo.swap,
+        ptr,
+      });
+      continue;
+    }
+    if (n === ret && scanInfo !== undefined && scanCarry !== undefined) {
+      const x = regOf(scanInfo.e);
+      const zero = constFor({ kind: 'u32', value: 0 });
+      const tmp = take();
+      const dst = take();
+      const ptr = ptrFor({ kind: 'param', index: 0 });
+      if (x === undefined || zero === undefined || tmp === undefined || dst === undefined)
+        return undefined;
+      if (ptr === undefined) return undefined;
+      steps.push({ k: 'scan', insn: scanInfo.insn, dst, a: x, tmp, carry: scanCarry, zero });
+      steps.push({ k: 'store', src: dst, ptr });
       continue;
     }
     if (n === ret) {
@@ -1036,7 +1300,11 @@ function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
     const plan: VecPlan = { n: count, arrays, consts, steps, reduce: out };
     return index === undefined ? plan : { ...plan, index };
   }
-  const plan: VecPlan = { n: count, arrays, consts, steps };
+  const base: VecPlan = { n: count, arrays, consts, steps };
+  const plan: VecPlan =
+    scanInfo === undefined || scanCarry === undefined
+      ? base
+      : { ...base, scan: { carry: scanCarry, seed: scanInfo.seed } };
   return index === undefined ? plan : { ...plan, index };
 }
 
@@ -1073,6 +1341,12 @@ interface Carry {
   readonly set: string;
   /** The `sub p1 1` index when the read is its only use (then never computed). */
   readonly index?: string;
+  /**
+   * `select (eq p1 0) seed get` where the carried read feeds only that select: trip 0 takes
+   * `seed` and every later trip the carried element, so the register starts at `seed` and the
+   * select (and its compare) never run.
+   */
+  readonly seed?: { readonly select: string; readonly value: Operand };
   readonly key: string;
   readonly type: 'u32' | 'bool';
 }
@@ -1084,7 +1358,9 @@ interface Carry {
  * element at (2^32 - 1) mod N. It is carried in a register instead of reloaded, which
  * takes the store-to-load round trip off the recurrence.
  */
-function carriedRead(body: TypedFunc): { get: string; set: string; index?: string } | undefined {
+function carriedRead(body: TypedFunc):
+  | { get: string; set: string; index?: string; seed?: { select: string; value: Operand } }
+  | undefined {
   const ret = body.ret;
   const state = body.params[0];
   if (ret.kind !== 'node' || state === undefined || isPrimitive(state) || state.kind !== 'arr')
@@ -1101,12 +1377,43 @@ function carriedRead(body: TypedFunc): { get: string; set: string; index?: strin
     const one = d?.args[1];
     if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1) {
       const reads = body.nodes.filter((m) => m.args.some((a) => sameOp(a, j))).length;
-      return reads === 1 && !sameOp(body.ret, j)
-        ? { get: n.id, set: set.id, index: d.id }
-        : { get: n.id, set: set.id };
+      const base =
+        reads === 1 && !sameOp(body.ret, j)
+          ? { get: n.id, set: set.id, index: d.id }
+          : { get: n.id, set: set.id };
+      const seed = seedOf(body, defs, n.id);
+      return seed === undefined ? base : { ...base, seed };
     }
   }
   return undefined;
+}
+
+/** `select (eq p1 0) seed get` with `get` and the compare read nowhere else, `seed` loop-invariant. */
+function seedOf(
+  body: TypedFunc,
+  defs: ReadonlyMap<string, Node>,
+  get: string,
+): { select: string; value: Operand } | undefined {
+  const me: Operand = { kind: 'node', id: get };
+  const users = body.nodes.filter((m) => m.args.some((a) => sameOp(a, me)));
+  const sel = users[0];
+  if (users.length !== 1 || sel === undefined || sel.op !== 'select' || sameOp(body.ret, me))
+    return undefined;
+  const [c, x, y] = sel.args;
+  if (c?.kind !== 'node' || x === undefined || y === undefined || !sameOp(y, me)) return undefined;
+  if (sameOp(x, me)) return undefined;
+  const cmp = defs.get(c.id);
+  const [p, q] = cmp?.args ?? [];
+  const zeroIndex =
+    cmp?.op === 'eq' &&
+    ((isParam(p, 1) && q?.kind === 'u32' && q.value === 0) ||
+      (isParam(q, 1) && p?.kind === 'u32' && p.value === 0));
+  if (!zeroIndex) return undefined;
+  const cond: Operand = { kind: 'node', id: c.id };
+  const condUsers = body.nodes.filter((m) => m.args.some((a) => sameOp(a, cond)));
+  if (condUsers.length !== 1 || sameOp(body.ret, cond)) return undefined;
+  const invariant = x.kind === 'u32' || x.kind === 'bool' || (x.kind === 'param' && x.index >= 2);
+  return invariant ? { select: sel.id, value: x } : undefined;
 }
 
 type Home = { readonly reg: string } | { readonly slot: number };
@@ -1434,6 +1741,18 @@ class FunctionEmitter {
     if (v.kind === 'key') this.#copy(base, off, 'sp', this.#slot(v.key), words(v.type));
   }
 
+  /** Largest value `v` can hold: a literal, a known bound, or 2^32 - 1. */
+  #limit(v: Val): number {
+    if (v.kind === 'lit') return v.value >>> 0;
+    return this.#bound.get(this.#canon(v.key)) ?? 0xffffffff;
+  }
+
+  /** `and` with a bounded operand is bounded by the smaller limit. */
+  #boundAnd(key: string, a: Val, b: Val): void {
+    const m = Math.min(this.#limit(a), this.#limit(b));
+    if (m < 0xffffffff) this.#bound.set(key, m);
+  }
+
   /**
    * A w register holding (index operand mod n), n > 1: the index itself when its bound
    * proves it in range, else w10. Uses w10-w12.
@@ -1599,13 +1918,154 @@ class FunctionEmitter {
       lits: env.lits,
     };
     const v = (r: VReg, lanes = '4s'): string => `v${r}.${lanes}`;
+    const plain = plan.steps.every((s) => s.k !== 'loadx');
+    const trips = plan.n / 4;
+    const lanesOf = (op: ReduceOp): '4s' | '16b' =>
+      op === 'eor' || op === 'orr' || op === 'and' ? '16b' : '4s';
+    // Registers the plan uses; the rest are free for induction variables and unrolled copies.
+    const used = new Set<VReg>();
+    for (const c of plan.consts) used.add(c.reg);
+    for (const s of plan.steps) {
+      for (const r of stepReads(s)) used.add(r);
+      const w = stepWrite(s);
+      if (w !== undefined) used.add(w);
+    }
+    for (const r of plan.reduce ?? []) {
+      used.add(r.acc);
+      used.add(r.x);
+    }
+    if (plan.scan !== undefined) used.add(plan.scan.carry);
+    const free = VECTOR_POOL.filter((r) => !used.has(r));
+    // Strength reduction: `mul index c` (c a broadcast constant, optionally `+ y`) becomes a
+    // register that steps by 4U*c each trip instead of being multiplied afresh.
+    interface Induction {
+      readonly reg: VReg;
+      readonly c: VReg;
+      readonly y?: VReg;
+    }
+    const operandConst = new Set(plan.consts.filter((c) => c.kind === 'operand').map((c) => c.reg));
+    const idxReg = plan.index?.reg;
+    const ivs: Induction[] = [];
+    const ivStep = new Map<VReg, VReg>();
+    const repl = new Map<VReg, VReg>();
+    const rd = (r: VReg): VReg => repl.get(r) ?? r;
+    const body: VecStep[] = [];
+    const newIv = (c: VReg, y?: VReg): VReg | undefined => {
+      if (free.length < (ivStep.has(c) ? 1 : 2)) return undefined;
+      if (!ivStep.has(c)) ivStep.set(c, free.shift() as VReg);
+      const reg = free.shift() as VReg;
+      ivs.push(y === undefined ? { reg, c } : { reg, c, y });
+      return reg;
+    };
+    for (const s0 of plan.steps) {
+      const s = remapReads(s0, rd);
+      const w = stepWrite(s);
+      if (w !== undefined) repl.delete(w);
+      if (plain && idxReg !== undefined && s.k === 'op3' && s.lanes === '4s') {
+        if (s.insn === 'mul') {
+          const c =
+            s.a === idxReg && operandConst.has(s.b)
+              ? s.b
+              : s.b === idxReg && operandConst.has(s.a)
+                ? s.a
+                : undefined;
+          const reg = c === undefined ? undefined : newIv(c);
+          if (reg !== undefined) {
+            repl.set(s.dst, reg);
+            continue;
+          }
+        } else if (s.insn === 'add') {
+          const base = ivs.find(
+            (x) =>
+              x.y === undefined &&
+              ((x.reg === s.a && operandConst.has(s.b)) ||
+                (x.reg === s.b && operandConst.has(s.a))),
+          );
+          const reg = base === undefined ? undefined : newIv(base.c, base.reg === s.a ? s.b : s.a);
+          if (reg !== undefined) {
+            repl.set(s.dst, reg);
+            continue;
+          }
+        }
+      }
+      body.push(s);
+    }
+    interface Red {
+      readonly op: ReduceOp;
+      readonly acc: VReg;
+      readonly x: VReg;
+      readonly field?: number;
+      fused?: { readonly a: VReg; readonly b: VReg };
+    }
+    const reds: Red[] = (plan.reduce ?? []).map((r) => ({ ...r, x: rd(r.x) }));
+    // acc += a * b becomes one `mla` when the product feeds nothing else.
+    for (const r of reds) {
+      if (r.op !== 'add') continue;
+      let j = -1;
+      body.forEach((s, i) => {
+        if (stepWrite(s) === r.x) j = i;
+      });
+      const d = body[j];
+      if (d === undefined || d.k !== 'op3' || d.insn !== 'mul' || d.lanes !== '4s') continue;
+      if (body.some((s, i) => i !== j && stepReads(s).includes(r.x))) continue;
+      if (reds.some((o) => o !== r && o.x === r.x)) continue;
+      if (body.slice(j + 1).some((s) => [d.a, d.b].includes(stepWrite(s) ?? -1))) continue;
+      body.splice(j, 1);
+      r.fused = { a: d.a, b: d.b };
+    }
+    // Drop induction registers nothing reads.
+    const readNow = new Set<VReg>();
+    for (const s of body) for (const r of stepReads(s)) readNow.add(r);
+    for (const r of reds) {
+      readNow.add(r.x);
+      if (r.fused !== undefined) {
+        readNow.add(r.fused.a);
+        readNow.add(r.fused.b);
+      }
+    }
+    for (let i = ivs.length - 1; i >= 0; i -= 1)
+      if (!readNow.has((ivs[i] as Induction).reg)) ivs.splice(i, 1);
+    const idxLive = idxReg !== undefined && readNow.has(idxReg);
+    // Per-copy registers: everything the trip writes or carries; constants stay shared.
+    const perCopy = new Set<VReg>();
+    for (const s of body) {
+      for (const r of stepReads(s)) perCopy.add(r);
+      const w = stepWrite(s);
+      if (w !== undefined) perCopy.add(w);
+    }
+    for (const r of reds) {
+      perCopy.add(r.acc);
+      perCopy.add(r.x);
+      if (r.fused !== undefined) {
+        perCopy.add(r.fused.a);
+        perCopy.add(r.fused.b);
+      }
+    }
+    for (const iv of ivs) perCopy.add(iv.reg);
+    if (idxLive && idxReg !== undefined) perCopy.add(idxReg);
+    for (const c of plan.consts) if (c.kind !== 'index') perCopy.delete(c.reg);
+    for (const r of ivStep.values()) perCopy.delete(r);
+    let unroll = 1;
+    if (plain)
+      for (const u of [4, 2])
+        if (trips % u === 0 && trips >= u && perCopy.size * (u - 1) <= free.length) {
+          unroll = u;
+          break;
+        }
+    const maps: Map<VReg, VReg>[] = [new Map()];
+    for (let k = 1; k < unroll; k += 1) {
+      const m = new Map<VReg, VReg>();
+      for (const r of perCopy) m.set(r, free.shift() as VReg);
+      maps.push(m);
+    }
+    const at = (k: number, r: VReg): VReg => maps[k]?.get(r) ?? r;
     // Constants: broadcast scalars and literals, the lane index vector, its step, the accumulator.
     for (const c of plan.consts) {
       if (c.kind === 'index') {
         this.#emit(`movi ${v(c.reg)}, #0`);
         for (let lane = 1; lane < 4; lane += 1)
           this.#emit(`movz w9, #${lane}`, `ins v${c.reg}.s[${lane}], w9`);
-      } else if (c.kind === 'step') this.#emit(`movi ${v(c.reg)}, #4`);
+      } else if (c.kind === 'step') this.#emit(`movi ${v(c.reg)}, #${4 * unroll}`);
       else if (c.o.kind === 'bool')
         this.#emit(c.o.value ? `mvni ${v(c.reg)}, #0` : `movi ${v(c.reg)}, #0`);
       else {
@@ -1616,7 +2076,26 @@ class FunctionEmitter {
         else this.#emit(`dup ${v(c.reg)}, ${r}`);
       }
     }
-    for (const { op, acc, field } of plan.reduce ?? []) {
+    const [t0, t1] = VEC_TMP;
+    if (idxReg !== undefined) {
+      if (idxLive)
+        for (let k = 1; k < unroll; k += 1)
+          this.#emit(`movi ${v(t0)}, #${4 * k}`, `add ${v(at(k, idxReg))}, ${v(idxReg)}, ${v(t0)}`);
+      for (const iv of ivs)
+        for (let k = 0; k < unroll; k += 1) {
+          let src = idxReg;
+          if (k > 0) {
+            this.#emit(`movi ${v(t1)}, #${4 * k}`, `add ${v(t0)}, ${v(idxReg)}, ${v(t1)}`);
+            src = t0;
+          }
+          this.#emit(`mul ${v(at(k, iv.reg))}, ${v(src)}, ${v(iv.c)}`);
+          if (iv.y !== undefined)
+            this.#emit(`add ${v(at(k, iv.reg))}, ${v(at(k, iv.reg))}, ${v(iv.y)}`);
+        }
+      for (const [c, reg] of ivStep)
+        this.#emit(`movi ${v(t0)}, #${4 * unroll}`, `mul ${v(reg)}, ${v(t0)}, ${v(c)}`);
+    }
+    for (const { op, acc, field } of reds) {
       // The initial value: the scalar state, or its record field.
       let r: string;
       if (field === undefined) r = this.#read(init, 'w9');
@@ -1625,75 +2104,158 @@ class FunctionEmitter {
         this.#mem('ldr', 'w9', 'sp', this.#slot(init.key) + 4 * field);
         r = 'w9';
       }
-      if (op === 'umin' || op === 'umax') {
-        this.#emit(`dup ${v(acc)}, ${r}`);
-        continue;
+      for (let k = 0; k < unroll; k += 1) {
+        const a = at(k, acc);
+        if (op === 'umin' || op === 'umax') {
+          this.#emit(`dup ${v(a)}, ${r}`);
+          continue;
+        }
+        this.#emit(
+          op === 'and'
+            ? `mvni ${v(a)}, #0`
+            : op === 'mul'
+              ? `movi ${v(a)}, #1`
+              : `movi ${v(a)}, #0`,
+        );
+        if (k === 0) this.#emit(`ins v${a}.s[0], ${r}`);
       }
-      this.#emit(
-        op === 'and'
-          ? `mvni ${v(acc)}, #0`
-          : op === 'mul'
-            ? `movi ${v(acc)}, #1`
-            : `movi ${v(acc)}, #0`,
-      );
-      this.#emit(`ins v${acc}.s[0], ${r}`);
+    }
+    if (plan.scan !== undefined) {
+      const seed = this.#resolve(sub, plan.scan.seed);
+      this.#use(seed);
+      const r = this.#read(seed, 'w9');
+      this.#emit(r === 'wzr' ? `movi ${v(plan.scan.carry)}, #0` : `dup ${v(plan.scan.carry)}, ${r}`);
     }
     plan.arrays.forEach((o, k) => {
       const val = this.#resolve(sub, o);
       if (val.kind !== 'key') refuse('vector loop over a literal');
       this.#addr(VECTOR_PTRS[k] as string, 'sp', this.#slot(val.key));
     });
+    // The scalar operand of an indexed update lives in w16 for the whole loop.
+    for (const st of body) {
+      if (st.k !== 'scatter' || st.imm === undefined) continue;
+      const val = this.#resolve(sub, st.imm);
+      this.#use(val);
+      const r = this.#read(val, 'w9');
+      this.#emit(r === 'wzr' ? 'movz w16, #0' : `mov w16, ${r}`);
+      break;
+    }
     const top = this.#label();
-    this.#emit('movz x10, #0', ...movImm('w11', plan.n), `${top}:`);
-    for (const s of plan.steps) {
-      switch (s.k) {
-        case 'load':
-          this.#emit(`ldr q${s.dst}, [${VECTOR_PTRS[s.ptr]}, x10]`);
-          break;
-        case 'loadx': {
-          const [lo, hi] = VEC_TMP;
-          const base = VECTOR_PTRS[s.ptr];
-          this.#emit(
-            'add x9, x10, #16',
-            `and x9, x9, #${4 * plan.n - 1}`,
-            `ldr q${lo}, [${base}, x10]`,
-            `ldr q${hi}, [${base}, x9]`,
-            `ext v${s.dst}.16b, v${lo}.16b, v${hi}.16b, #${4 * s.c}`,
-          );
-          break;
+    if (!plain) this.#emit('movz x10, #0');
+    this.#emit(...movImm('w11', plan.n), `${top}:`);
+    const ptrs = new Set<number>();
+    for (const s of body) {
+      for (let k = 0; k < unroll; k += 1) {
+        switch (s.k) {
+          case 'load': {
+            const p = VECTOR_PTRS[s.ptr] as string;
+            ptrs.add(s.ptr);
+            if (!plain) this.#emit(`ldr q${s.dst}, [${p}, x10]`);
+            else if (unroll === 1) this.#emit(`ldr q${s.dst}, [${p}]`);
+            else if (k % 2 === 0)
+              this.#emit(`ldp q${at(k, s.dst)}, q${at(k + 1, s.dst)}, [${p}, #${16 * k}]`);
+            break;
+          }
+          case 'loadx': {
+            const [lo, hi] = VEC_TMP;
+            const base = VECTOR_PTRS[s.ptr];
+            this.#emit(
+              'add x9, x10, #16',
+              `and x9, x9, #${4 * plan.n - 1}`,
+              `ldr q${lo}, [${base}, x10]`,
+              `ldr q${hi}, [${base}, x9]`,
+              `ext v${s.dst}.16b, v${lo}.16b, v${hi}.16b, #${4 * s.c}`,
+            );
+            break;
+          }
+          case 'store': {
+            const p = VECTOR_PTRS[s.ptr] as string;
+            ptrs.add(s.ptr);
+            if (!plain) this.#emit(`str q${s.src}, [${p}, x10]`);
+            else if (unroll === 1) this.#emit(`str q${s.src}, [${p}]`);
+            else if (k % 2 === 1)
+              this.#emit(`stp q${at(k - 1, s.src)}, q${at(k, s.src)}, [${p}, #${16 * (k - 1)}]`);
+            break;
+          }
+          case 'op3':
+            this.#emit(
+              `${s.insn} ${v(at(k, s.dst), s.lanes)}, ${v(at(k, s.a), s.lanes)}, ${v(at(k, s.b), s.lanes)}`,
+            );
+            break;
+          case 'shift':
+            this.#emit(`${s.insn} ${v(at(k, s.dst))}, ${v(at(k, s.a))}, #${s.imm}`);
+            break;
+          case 'copy':
+            this.#emit(
+              `orr ${v(at(k, s.dst), '16b')}, ${v(at(k, s.a), '16b')}, ${v(at(k, s.a), '16b')}`,
+            );
+            break;
+          case 'not':
+            this.#emit(`mvn ${v(at(k, s.dst), '16b')}, ${v(at(k, s.a), '16b')}`);
+            break;
+          case 'scatter': {
+            const p = VECTOR_PTRS[s.ptr] as string;
+            const idx = at(k, s.idx);
+            for (let lane = 0; lane < 4; lane += 1) {
+              this.#emit(`umov w9, v${idx}.s[${lane}]`, `ldr w10, [${p}, w9, uxtw #2]`);
+              if (s.w !== undefined) this.#emit(`umov w16, v${at(k, s.w)}.s[${lane}]`);
+              this.#emit(
+                s.swap ? `${s.insn} w10, w16, w10` : `${s.insn} w10, w10, w16`,
+                `str w10, [${p}, w9, uxtw #2]`,
+              );
+            }
+            break;
+          }
+          case 'scan': {
+            const [d, a, tm] = [at(k, s.dst), at(k, s.a), at(k, s.tmp)];
+            const lanes = s.insn === 'eor' ? '16b' : '4s';
+            this.#emit(
+              `ext ${v(tm, '16b')}, ${v(s.zero, '16b')}, ${v(a, '16b')}, #12`,
+              `${s.insn} ${v(d, lanes)}, ${v(a, lanes)}, ${v(tm, lanes)}`,
+              `ext ${v(tm, '16b')}, ${v(s.zero, '16b')}, ${v(d, '16b')}, #8`,
+              `${s.insn} ${v(d, lanes)}, ${v(d, lanes)}, ${v(tm, lanes)}`,
+              `dup ${v(tm)}, v${d}.s[3]`,
+              `${s.insn} ${v(d, lanes)}, ${v(d, lanes)}, ${v(s.carry, lanes)}`,
+              `${s.insn} ${v(s.carry, lanes)}, ${v(s.carry, lanes)}, ${v(tm, lanes)}`,
+            );
+            break;
+          }
+          case 'bsl':
+            this.#emit(
+              `orr ${v(at(k, s.dst), '16b')}, ${v(at(k, s.c), '16b')}, ${v(at(k, s.c), '16b')}`,
+              `bsl ${v(at(k, s.dst), '16b')}, ${v(at(k, s.a), '16b')}, ${v(at(k, s.b), '16b')}`,
+            );
+            break;
         }
-        case 'store':
-          this.#emit(`str q${s.src}, [${VECTOR_PTRS[s.ptr]}, x10]`);
-          break;
-        case 'op3':
-          this.#emit(`${s.insn} ${v(s.dst, s.lanes)}, ${v(s.a, s.lanes)}, ${v(s.b, s.lanes)}`);
-          break;
-        case 'shift':
-          this.#emit(`${s.insn} ${v(s.dst)}, ${v(s.a)}, #${s.imm}`);
-          break;
-        case 'copy':
-          this.#emit(`orr ${v(s.dst, '16b')}, ${v(s.a, '16b')}, ${v(s.a, '16b')}`);
-          break;
-        case 'not':
-          this.#emit(`mvn ${v(s.dst, '16b')}, ${v(s.a, '16b')}`);
-          break;
-        case 'bsl':
-          this.#emit(
-            `orr ${v(s.dst, '16b')}, ${v(s.c, '16b')}, ${v(s.c, '16b')}`,
-            `bsl ${v(s.dst, '16b')}, ${v(s.a, '16b')}, ${v(s.b, '16b')}`,
-          );
-          break;
       }
     }
-    for (const { op, acc, x } of plan.reduce ?? []) {
-      const lanes = op === 'eor' || op === 'orr' || op === 'and' ? '16b' : '4s';
-      this.#emit(`${op} ${v(acc, lanes)}, ${v(acc, lanes)}, ${v(x, lanes)}`);
-    }
-    if (plan.index !== undefined)
-      this.#emit(`add ${v(plan.index.reg)}, ${v(plan.index.reg)}, ${v(plan.index.step)}`);
-    this.#emit('add x10, x10, #16', 'subs w11, w11, #4', `b.ne ${top}`);
-    for (const { op, acc, field } of plan.reduce ?? []) {
-      // Horizontal combine of the four lanes into w9.
+    for (const r of reds)
+      for (let k = 0; k < unroll; k += 1) {
+        const lanes = lanesOf(r.op);
+        const acc = at(k, r.acc);
+        if (r.fused !== undefined)
+          this.#emit(`mla ${v(acc)}, ${v(at(k, r.fused.a))}, ${v(at(k, r.fused.b))}`);
+        else this.#emit(`${r.op} ${v(acc, lanes)}, ${v(acc, lanes)}, ${v(at(k, r.x), lanes)}`);
+      }
+    for (const iv of ivs)
+      for (let k = 0; k < unroll; k += 1)
+        this.#emit(`add ${v(at(k, iv.reg))}, ${v(at(k, iv.reg))}, ${v(ivStep.get(iv.c) as VReg)}`);
+    if (idxLive && plan.index !== undefined)
+      for (let k = 0; k < unroll; k += 1)
+        this.#emit(
+          `add ${v(at(k, plan.index.reg))}, ${v(at(k, plan.index.reg))}, ${v(plan.index.step)}`,
+        );
+    if (plain)
+      for (const p of ptrs)
+        this.#emit(`add ${VECTOR_PTRS[p]}, ${VECTOR_PTRS[p]}, #${16 * unroll}`);
+    else this.#emit('add x10, x10, #16');
+    this.#emit(`subs w11, w11, #${4 * unroll}`, `b.ne ${top}`);
+    for (const { op, acc, field } of reds) {
+      // Combine the unrolled copies, then the four lanes into w9.
+      for (let k = 1; k < unroll; k += 1) {
+        const lanes = lanesOf(op);
+        this.#emit(`${op} ${v(acc, lanes)}, ${v(acc, lanes)}, ${v(at(k, acc), lanes)}`);
+      }
       if (op === 'add' || op === 'umin' || op === 'umax') {
         this.#emit(
           `${op === 'add' ? 'addv' : `${op}v`} s${acc}, ${v(acc)}`,
@@ -2025,6 +2587,19 @@ class FunctionEmitter {
       if (v.kind !== 'key' || isPrimitive(v.type)) refuse(`${n.op} needs ${what}`);
       return { key: v.key, type: v.type };
     };
+    if (env.carry?.seed?.select === n.id) {
+      const cv: Val = { kind: 'key', key: env.carry.key, type: env.carry.type };
+      this.#use(cv);
+      const me: Operand = { kind: 'node', id: n.id };
+      const setAt = env.fn.nodes.findIndex((m) => m.id === env.carry?.set);
+      const early = env.fn.nodes.every((m, i) => i < setAt || !m.args.some((o) => sameOp(o, me)));
+      if (feed === undefined && early && !sameOp(env.fn.ret, me)) {
+        this.#defAlias(key, env.carry.key, t);
+        return;
+      }
+      scalar((d) => this.#into(d, cv), true);
+      return;
+    }
     if (env.carry?.get === n.id) {
       const cv: Val = { kind: 'key', key: env.carry.key, type: env.carry.type };
       this.#use(cv);
@@ -2057,6 +2632,7 @@ class FunctionEmitter {
         bin('mul');
         return;
       case 'and':
+        this.#boundAnd(key, a as Val, b as Val);
         arith('and', logical);
         return;
       case 'or':
@@ -2070,6 +2646,8 @@ class FunctionEmitter {
         bin('lsl', shift);
         return;
       case 'shr':
+        if (b?.kind === 'lit' && (a as Val).kind !== 'lit')
+          this.#bound.set(key, this.#limit(a as Val) >>> (b.value & 31));
         bin('lsr', shift);
         return;
       case 'div': {
@@ -2202,6 +2780,22 @@ class FunctionEmitter {
         const dst = this.#slot(key);
         if (env.carry?.set === n.id) {
           const carry = env.carry;
+          // The element is computed straight into the carried register when nothing reads the
+          // previous element after it is defined (no copy per trip on the recurrence).
+          if (this.#dry && (c as Val).kind === 'key') {
+            const rk = this.#canon((c as { key: string }).key);
+            const def = this.#defs.get(rk);
+            const lastCarry = this.#last.get(this.#canon(carry.key)) ?? Number.POSITIVE_INFINITY;
+            const loop = this.#loops.at(-1);
+            if (
+              def !== undefined &&
+              !this.#consts.has(rk) &&
+              loop !== undefined &&
+              def.pos > loop.start &&
+              lastCarry <= def.pos
+            )
+              this.#coalesce.set(rk, this.#canon(carry.key));
+          }
           this.#set(carry.key, (d) => this.#into(d, c as Val), true);
         }
         if (b?.kind === 'lit' || at.length === 1) {
@@ -2379,7 +2973,16 @@ class FunctionEmitter {
           const ckey = `${env.prefix}r_${n.id}`;
           const off = this.#slot(key) + 4 * (0xffffffff % t.length);
           this.#def(ckey, elem);
-          this.#set(ckey, (d) => this.#mem('ldr', d, 'sp', off), true);
+          const sv = carried.seed?.value;
+          const seedVal: Val | undefined =
+            sv === undefined
+              ? undefined
+              : sv.kind === 'param'
+                ? (extras[sv.index - 2] as Val)
+                : this.#val(env, sv);
+          if (seedVal !== undefined) this.#use(seedVal);
+          if (seedVal === undefined) this.#set(ckey, (d) => this.#mem('ldr', d, 'sp', off), true);
+          else this.#set(ckey, (d) => this.#into(d, seedVal), true);
           carry = { ...carried, key: ckey, type: elem };
           hoisted.push({ kind: 'key', key: ckey, type: elem });
         }
