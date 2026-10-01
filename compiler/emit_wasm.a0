@@ -466,7 +466,10 @@ ret r
 end
 # M[p2] := M[p2] + p3
 fn wxad u32x128x512 u32 u32 u32 -> u32x128x512
-v call wxg p0 p2
+v_gp shr p2 7
+v_gw and p2 127
+v_gg get p0 v_gp
+v get v_gg v_gw
 n add v p3
 r fold wxs 1 p0 p2 n
 ret r
@@ -545,7 +548,10 @@ ret r
 end
 # the instruction (kind p2, value p3) appended (a fold of one trip); capacity 22528
 fn wxe u32x128x512 u32 u32 u32 -> u32x128x512
-n call wxg p0 0
+n_gp shr 0 7
+n_gw and 0 127
+n_gg get p0 n_gp
+n get n_gg n_gw
 a mul n 2
 ad add a 20480
 full ge n 22528
@@ -561,7 +567,10 @@ ret m4
 end
 # a fresh i32 local id into register 16 (ids from 8192 are a capacity error)
 fn wxnl u32x128x512 u32 -> u32x128x512
-n call wxg p0 1
+n_gp shr 1 7
+n_gw and 1 127
+n_gg get p0 n_gp
+n get n_gg n_gw
 big ge n 8192
 m1 fold wxs 1 p0 16 n
 n1 add n 1
@@ -572,7 +581,10 @@ ret m3
 end
 # a fresh v128 local id (2^20 + k) into register 16
 fn wxnv u32x128x512 u32 -> u32x128x512
-n call wxg p0 2
+n_gp shr 2 7
+n_gw and 2 127
+n_gg get p0 n_gp
+n get n_gg n_gw
 big ge n 128
 id add n 1048576
 m1 fold wxs 1 p0 16 id
@@ -584,11 +596,17 @@ ret m3
 end
 # the frame pointer local into register 16, created on first use
 fn wxfp u32x128x512 u32 -> u32x128x512
-f call wxg p0 4
+f_gp shr 4 7
+f_gw and 4 127
+f_gg get p0 f_gp
+f get f_gg f_gw
 none eq f 4294967295
 cn1_m1 select none 1 0
 m1 fold wxnl cn1_m1 p0
-nl call wxg m1 16
+nl_gp shr 16 7
+nl_gw and 16 127
+nl_gg get m1 nl_gp
+nl get nl_gg nl_gw
 fp select none nl f
 cn2_m2 select none 1 0
 m2 fold wxs cn2_m2 m1 4 fp
@@ -597,7 +615,10 @@ ret m3
 end
 # push an item (kind p2, a p3, b p4, c p5) on the work stack (512 items)
 fn wxpu u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
-sp call wxg p0 7
+sp_gp shr 7 7
+sp_gw and 7 127
+sp_gg get p0 sp_gp
+sp get sp_gg sp_gw
 full ge sp 512
 ok select full 0 1
 a mul sp 4
@@ -617,17 +638,32 @@ ret m6
 end
 # pop the top item into registers 16 (kind) 17 18 19
 fn wxpo u32x128x512 u32 -> u32x128x512
-sp call wxg p0 7
+sp_gp shr 7 7
+sp_gw and 7 127
+sp_gg get p0 sp_gp
+sp get sp_gg sp_gw
 s1 sub sp 1
 a mul s1 4
 ad add a 1344
-k call wxg p0 ad
+k_gp shr ad 7
+k_gw and ad 127
+k_gg get p0 k_gp
+k get k_gg k_gw
 ad1 add ad 1
-x call wxg p0 ad1
+x_gp shr ad1 7
+x_gw and ad1 127
+x_gg get p0 x_gp
+x get x_gg x_gw
 ad2 add ad 2
-y call wxg p0 ad2
+y_gp shr ad2 7
+y_gw and ad2 127
+y_gg get p0 y_gp
+y get y_gg y_gw
 ad3 add ad 3
-z call wxg p0 ad3
+z_gp shr ad3 7
+z_gw and ad3 127
+z_gg get p0 z_gp
+z get z_gg z_gw
 m1 fold wxs 1 p0 16 k
 m2 fold wxs 1 m1 17 x
 m3 fold wxs 1 m2 18 y
@@ -762,11 +798,47 @@ l3 eq p3 3
 l4 eq p3 4
 lit or l3 l4
 j select isn p4 0
-fl call wxrg p0 p2 j 2
+fl_t1 eq p2 0
+fl_t2 mul j 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 hc and fl 1
 hcb ne hc 0
-cv call wxrg p0 p2 j 1
-rt call wxrg p0 p2 j 3
+cv_t1 eq p2 0
+cv_t2 mul j 4
+cv_t3 add cv_t2 5440
+cv_t4 sub p2 1
+cv_t5 mul cv_t4 128
+cv_t6 add cv_t5 16704
+cv_t7 add cv_t6 cv_t2
+cv_t8 select cv_t1 cv_t3 cv_t7
+cv_t9 add cv_t8 1
+cv_rp shr cv_t9 7
+cv_rw and cv_t9 127
+cv_rg get p0 cv_rp
+cv get cv_rg cv_rw
+rt_t1 eq p2 0
+rt_t2 mul j 4
+rt_t3 add rt_t2 5440
+rt_t4 sub p2 1
+rt_t5 mul rt_t4 128
+rt_t6 add rt_t5 16704
+rt_t7 add rt_t6 rt_t2
+rt_t8 select rt_t1 rt_t3 rt_t7
+rt_t9 add rt_t8 3
+rt_rp shr rt_t9 7
+rt_rw and rt_t9 127
+rt_rg get p0 rt_rp
+rt get rt_rg rt_rw
 rk shr rt 28
 rv and rt 268435455
 rp eq rk 2
@@ -776,17 +848,44 @@ pi0 select isp p4 rv
 pidx select anypar pi0 0
 x2 mul pidx 2
 sk0 add x2 32
-sk call wxfg p0 p2 sk0
+sk_fa mul p2 128
+sk_fb add sk_fa 128
+sk_fc add sk_fb sk0
+sk_fp shr sk_fc 7
+sk_fw and sk_fc 127
+sk_fg get p0 sk_fp
+sk get sk_fg sk_fw
 sv0 add x2 33
-sv call wxfg p0 p2 sv0
+sv_fa mul p2 128
+sv_fb add sv_fa 128
+sv_fc add sv_fb sv0
+sv_fp shr sv_fc 7
+sv_fw and sv_fc 127
+sv_fg get p0 sv_fp
+sv get sv_fg sv_fw
 hh gt p2 0
 hs and hh anypar
 issv eq sk 1
 srcv and hs issv
 rz eq rt 0
 rnode select rz j rv
-nl call wxrg p0 p2 rnode 0
-pb call wxg p0 10
+nl_t1 eq p2 0
+nl_t2 mul rnode 4
+nl_t3 add nl_t2 5440
+nl_t4 sub p2 1
+nl_t5 mul nl_t4 128
+nl_t6 add nl_t5 16704
+nl_t7 add nl_t6 nl_t2
+nl_t8 select nl_t1 nl_t3 nl_t7
+nl_t9 add nl_t8 0
+nl_rp shr nl_t9 7
+nl_rw and nl_t9 127
+nl_rg get p0 nl_rp
+nl get nl_rg nl_rw
+pb_gp shr 10 7
+pb_gw and 10 127
+pb_gg get p0 pb_gp
+pb get pb_gg pb_gw
 pl add pb pidx
 plocal select hh sv pl
 loc select anypar plocal nl
@@ -811,8 +910,14 @@ end
 # push operand (kind p3, value p4) of frame p2
 fn wxpsh u32x128x512 u32 u32 u32 u32 -> u32x128x512
 m1 fold wxres 1 p0 p2 p3 p4
-c call wxg m1 16
-v call wxg m1 17
+c_gp shr 16 7
+c_gw and 16 127
+c_gg get m1 c_gp
+c get c_gg c_gw
+v_gp shr 17 7
+v_gw and 17 127
+v_gg get m1 v_gp
+v get v_gg v_gw
 r fold wxpr 1 m1 c v
 ret r
 end
@@ -820,7 +925,10 @@ end
 # (M, trip, frame, node); the local is left in register 16
 fn wxset u32x128x512 u32 u32 u32 -> u32x128x512
 m1 fold wxnl 1 p0
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 m2 fold wxrs 1 m1 p2 p3 0 l
 m3 fold wxe 1 m2 4 l
 ret m3
@@ -885,8 +993,20 @@ m2 fold wxpsh cn1_m2 m1 p2 p5 p6
 isp1a eq p5 2
 isp1b eq p6 1
 isp1 and isp1a isp1b
-bf call wxfg m2 p2 22
-bv call wxfg m2 p2 23
+bf_fa mul p2 128
+bf_fb add bf_fa 128
+bf_fc add bf_fb 22
+bf_fp shr bf_fc 7
+bf_fw and bf_fc 127
+bf_fg get m2 bf_fp
+bf get bf_fg bf_fw
+bv_fa mul p2 128
+bv_fb add bv_fa 128
+bv_fc add bv_fb 23
+bv_fp shr bv_fc 7
+bv_fw and bv_fc 127
+bv_fg get m2 bv_fp
+bv get bv_fg bv_fw
 hb ne bf 0
 bok le bv p7
 in1 and isp1 hb
@@ -1096,7 +1216,19 @@ a2 and a1 agg
 a3 and agg o1
 ali or a2 a3
 uvn select isn uv 0
-rr call wxrg p0 p2 uvn 3
+rr_t1 eq p2 0
+rr_t2 mul uvn 4
+rr_t3 add rr_t2 5440
+rr_t4 sub p2 1
+rr_t5 mul rr_t4 128
+rr_t6 add rr_t5 16704
+rr_t7 add rr_t6 rr_t2
+rr_t8 select rr_t1 rr_t3 rr_t7
+rr_t9 add rr_t8 3
+rr_rp shr rr_t9 7
+rr_rw and rr_t9 127
+rr_rg get p0 rr_rp
+rr get rr_rg rr_rw
 rz eq rr 0
 nrt add 268435456 uv
 rootn select rz nrt rr
@@ -1119,12 +1251,21 @@ end
 # result slot, else the frame pointer (the first slot) or the frame pointer plus the offset; its
 # local is left in register 16
 fn wxslot u32x128x512 u32 u32 u32 u32 -> u32x128x512
-rs call wxg p0 11
+rs_gp shr 11 7
+rs_gw and 11 127
+rs_gg get p0 rs_gp
+rs get rs_gg rs_gw
 isr eq rs p3
 d0 eq p2 0
 isr0 and isr d0
-sret call wxg p0 9
-off call wxg p0 3
+sret_gp shr 9 7
+sret_gw and 9 127
+sret_gg get p0 sret_gp
+sret get sret_gg sret_gw
+off_gp shr 3 7
+off_gw and 3 127
+off_gg get p0 off_gp
+off get off_gg off_gw
 nrs select isr0 false true
 al add p4 3
 alg and al 4294967292
@@ -1137,11 +1278,20 @@ nfirst select first false true
 other and nrs nfirst
 cn2_m2 select first 1 0
 m2 fold wxfp cn2_m2 m1
-fpl call wxg m2 16
+fpl_gp shr 16 7
+fpl_gw and 16 127
+fpl_gg get m2 fpl_gp
+fpl get fpl_gg fpl_gw
 cn3_m3 select other 1 0
 m3 fold wxnl cn3_m3 m2
-nl call wxg m3 16
-fp call wxg m3 4
+nl_gp shr 16 7
+nl_gw and 16 127
+nl_gg get m3 nl_gp
+nl get nl_gg nl_gw
+fp_gp shr 4 7
+fp_gw and 4 127
+fp_gg get m3 fp_gp
+fp get fp_gg fp_gw
 cn4_m4 select other 1 0
 m4 fold wxlg cn4_m4 m3 fp
 cn5_m5 select other 1 0
@@ -1294,7 +1444,10 @@ s0 at p2 18
 c1 at p2 19
 s1 at p2 20
 m1 fold wxnl 1 p0
-zl call wxg m1 16
+zl_gp shr 16 7
+zl_gw and 16 127
+zl_gg get m1 zl_gp
+zl get zl_gg zl_gw
 m2 fold wxpr 1 m1 c1 s1
 m3 fold wxop 1 m2 69
 m4 fold wxls 1 m3 zl
@@ -1324,7 +1477,10 @@ a add 2816 g
 own call wxsh p4 a
 j1 add p3 1
 hit eq own j1
-cnt call wxg p0 20
+cnt_gp shr 20 7
+cnt_gw and 20 127
+cnt_gg get p0 cnt_gp
+cnt get cnt_gg cnt_gw
 c2 add cnt 1
 cn1_r select hit 1 0
 r fold wxs cn1_r p0 20 c2
@@ -1352,12 +1508,27 @@ cn1_m1 select isk 1 0
 m1 fold wxpr cn1_m1 p0 ck sk
 cn2_m2 select isk 1 0
 m2 fold wxset cn2_m2 m1 d j
-g0 call wxfg m2 d 2
-nn call wxfg m2 d 3
+g0_fa mul d 128
+g0_fb add g0_fa 128
+g0_fc add g0_fb 2
+g0_fp shr g0_fc 7
+g0_fw and g0_fc 127
+g0_fg get m2 g0_fp
+g0 get g0_fg g0_fw
+nn_fa mul d 128
+nn_fb add nn_fa 128
+nn_fc add nn_fb 3
+nn_fp shr nn_fc 7
+nn_fw and nn_fc 127
+nn_fg get m2 nn_fp
+nn get nn_fg nn_fw
 cn3_m3 select nisk 1 0
 m3 fold wxs cn3_m3 m2 20 0
 m4 fold wxown nn m3 g0 j p3
-nown call wxg m4 20
+nown_gp shr 20 7
+nown_gw and 20 127
+nown_gg get m4 nown_gp
+nown get nown_gg nown_gw
 lazy0 gt nown 0
 lazy and lazy0 nisk
 nlazy select lazy false true
@@ -1404,7 +1575,10 @@ arm call wxsh p6 b
 j1 add p3 1
 o1 eq own j1
 a2 eq arm p4
-cur call wxg p0 21
+cur_gp shr 21 7
+cur_gw and 21 127
+cur_gg get p0 cur_gp
+cur get cur_gg cur_gw
 none eq cur 4294967295
 h1 and o1 a2
 hit and h1 none
@@ -1456,8 +1630,32 @@ op call wxnw p4 g 1
 t call wa24 p5 g
 tag call wxtag p6 t
 agg ge tag 4
-rt call wxrg p0 p2 p1 3
-fl call wxrg p0 p2 p1 2
+rt_t1 eq p2 0
+rt_t2 mul p1 4
+rt_t3 add rt_t2 5440
+rt_t4 sub p2 1
+rt_t5 mul rt_t4 128
+rt_t6 add rt_t5 16704
+rt_t7 add rt_t6 rt_t2
+rt_t8 select rt_t1 rt_t3 rt_t7
+rt_t9 add rt_t8 3
+rt_rp shr rt_t9 7
+rt_rw and rt_t9 127
+rt_rg get p0 rt_rp
+rt get rt_rg rt_rw
+fl_t1 eq p2 0
+fl_t2 mul p1 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 ch and fl 2
 na eq rt 0
 nch eq ch 0
@@ -1546,16 +1744,34 @@ isp2 eq v 0
 isp and isp1 isp2
 isn eq k 1
 vn select isn v 0
-fl call wxrg p0 p2 vn 2
+fl_t1 eq p2 0
+fl_t2 mul vn 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 c1 and fl 2
 c2 ne c1 0
 inc and isn c2
 hit or isp inc
 h1 select hit 1 0
-a24 call wxg p0 24
+a24_gp shr 24 7
+a24_gw and 24 127
+a24_gg get p0 a24_gp
+a24 get a24_gg a24_gw
 n24 or a24 h1
 m1 fold wxs 1 p0 24 n24
-a23 call wxg m1 23
+a23_gp shr 23 7
+a23_gw and 23 127
+a23_gg get m1 a23_gp
+a23 get a23_gg a23_gw
 n23 or a23 h1
 nz ne p1 0
 w23 select nz n23 a23
@@ -1578,7 +1794,19 @@ isp2 eq v0 0
 isp and isp1 isp2
 isn eq k0 1
 vn select isn v0 0
-fl call wxrg p0 p2 vn 2
+fl_t1 eq p2 0
+fl_t2 mul vn 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 c1 and fl 2
 c2 ne c1 0
 inc and isn c2
@@ -1594,8 +1822,14 @@ cond1 and ur a0
 m1 fold wxs 1 p0 23 0
 m2 fold wxs 1 m1 24 0
 m3 fold wxchs na m2 p2 fa p5
-any1v call wxg m3 23
-anyv call wxg m3 24
+any1v_gp shr 23 7
+any1v_gw and 23 127
+any1v_gg get m3 any1v_gp
+any1v get any1v_gg any1v_gw
+anyv_gp shr 24 7
+anyv_gw and 24 127
+anyv_gg get m3 anyv_gp
+anyv get anyv_gg anyv_gw
 any1 ne any1v 0
 anyall ne anyv 0
 nk3 ne k1 3
@@ -1633,7 +1867,19 @@ k call wxok p5 o
 v call wxov p5 o
 isn eq k 1
 vn select isn v 0
-fl call wxrg p0 p2 vn 2
+fl_t1 eq p2 0
+fl_t2 mul vn 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 c1 and fl 2
 c2 ne c1 0
 inc and isn c2
@@ -1645,7 +1891,10 @@ bad and inc nb
 cn1_m1 select bad 1 0
 m1 fold wxs cn1_m1 p0 22 0
 us call wxbk p2 vn 1
-u0 call wxg m1 us
+u0_gp shr us 7
+u0_gw and us 127
+u0_gg get m1 u0_gp
+u0 get u0_gg u0_gw
 u1 add u0 1
 cn2_m2 select isn 1 0
 m2 fold wxs cn2_m2 m1 us u1
@@ -1665,11 +1914,26 @@ ret r
 end
 # chain node p1 of frame p2 used more than once
 fn wxch4 u32x128x512 u32 u32 -> u32x128x512
-fl call wxrg p0 p2 p1 2
+fl_t1 eq p2 0
+fl_t2 mul p1 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 c1 and fl 2
 c2 ne c1 0
 us call wxbk p2 p1 1
-n call wxg p0 us
+n_gp shr us 7
+n_gw and us 127
+n_gg get p0 n_gp
+n get n_gg n_gw
 many gt n 1
 bad and c2 many
 cn1_m1 select bad 1 0
@@ -1688,8 +1952,14 @@ rk at rop 0
 rv at rop 1
 st call wa65 p9 fp
 m1 fold wxsm0 1 p0 fp p9 p8
-fa1 call wxg m1 25
-nfl call wxg m1 26
+fa1_gp shr 25 7
+fa1_gw and 25 127
+fa1_gg get m1 fa1_gp
+fa1 get fa1_gg fa1_gw
+nfl_gp shr 26 7
+nfl_gw and 26 127
+nfl_gg get m1 nfl_gp
+nfl get nfl_gg nfl_gw
 m2 fold wxsm1 nfl m1 fa1 p9
 m3 fold wxch1 nn m2 p2 g0 p5 p6 p7 st
 m4 fold wxch2 nn m3 p2 g0 p5 p6
@@ -1698,7 +1968,19 @@ rp2 eq rv 0
 rp and rp1 rp2
 rn eq rk 1
 rvn select rn rv 0
-rfl call wxrg m4 p2 rvn 2
+rfl_t1 eq p2 0
+rfl_t2 mul rvn 4
+rfl_t3 add rfl_t2 5440
+rfl_t4 sub p2 1
+rfl_t5 mul rfl_t4 128
+rfl_t6 add rfl_t5 16704
+rfl_t7 add rfl_t6 rfl_t2
+rfl_t8 select rfl_t1 rfl_t3 rfl_t7
+rfl_t9 add rfl_t8 2
+rfl_rp shr rfl_t9 7
+rfl_rw and rfl_t9 127
+rfl_rg get m4 rfl_rp
+rfl get rfl_rg rfl_rw
 rc1 and rfl 2
 rc2 ne rc1 0
 rinc and rn rc2
@@ -1707,7 +1989,10 @@ nrok select rok false true
 cn1_m5 select nrok 1 0
 m5 fold wxs cn1_m5 m4 22 0
 rus call wxbk p2 rvn 1
-ru0 call wxg m5 rus
+ru0_gp shr rus 7
+ru0_gw and rus 127
+ru0_gg get m5 ru0_gp
+ru0 get ru0_gg ru0_gw
 ru1 add ru0 1
 cn2_m6 select rn 1 0
 m6 fold wxs cn2_m6 m5 rus ru1
@@ -1756,8 +2041,12 @@ b2 and b1 small
 base and b2 vok
 cnt select base nn 0
 cnp select base np 0
-need and dok opq
-cm call wxg p0 15
+need0 and dok opq
+need and need0 small
+cm_gp shr 15 7
+cm_gw and 15 127
+cm_gg get p0 cm_gp
+cm get cm_gg cm_gw
 cn1_m0 select need 1 0
 m0 fold wxs cn1_m0 p0 15 cm
 idx add 32 cm
@@ -1781,9 +2070,18 @@ m7 fold wxnf cnt m6 dn g0 p8 p10 p11
 m8 fold wxs 1 m7 19 0
 m9 fold wxiop cnp m8 fp p12 p13
 m10 fold wxion cnt m9 g0 p10 p13
-nf call wxg m10 18
-io call wxg m10 19
-cr call wxg m10 22
+nf_gp shr 18 7
+nf_gw and 18 127
+nf_gg get m10 nf_gp
+nf get nf_gg nf_gw
+io_gp shr 19 7
+io_gw and 19 127
+io_gg get m10 io_gp
+io get io_gg io_gw
+cr_gp shr 22 7
+cr_gw and 22 127
+cr_gg get m10 cr_gp
+cr get cr_gg cr_gw
 nonf eq nf 0
 noio eq io 0
 chok1 eq cr 1
@@ -1798,7 +2096,13 @@ ret m11
 end
 # enter frame p2 (set up by `wxcan`): its nodes, then its end, are run next
 fn wxenter u32x128x512 u32 u32 -> u32x128x512
-nn call wxfg p0 p2 3
+nn_fa mul p2 128
+nn_fb add nn_fa 128
+nn_fc add nn_fb 3
+nn_fp shr nn_fc 7
+nn_fw and nn_fc 127
+nn_fg get p0 nn_fp
+nn get nn_fg nn_fw
 has gt nn 0
 m1 fold wxpu 1 p0 5 p2 0 0
 cn1_m2 select has 1 0
@@ -1816,10 +2120,22 @@ wk1 add wk0 4
 wk2 add wk0 5
 wk call wxbk p2 p3 wk1
 wv call wxbk p2 p3 wk2
-kk call wxg p0 wk
-vv call wxg p0 wv
+kk_gp shr wk 7
+kk_gw and wk 127
+kk_gg get p0 kk_gp
+kk get kk_gg kk_gw
+vv_gp shr wv 7
+vv_gw and wv 127
+vv_gg get p0 vv_gp
+vv get vv_gg vv_gw
 fi add p1 10
-fl call wxfg p0 p2 fi
+fl_fa mul p2 128
+fl_fb add fl_fa 128
+fl_fc add fl_fb fi
+fl_fp shr fl_fc 7
+fl_fw and fl_fc 127
+fl_fg get p0 fl_fp
+fl get fl_fg fl_fw
 isl eq kk 0
 sml eq vv fl
 same and isl sml
@@ -1842,10 +2158,22 @@ wk1 add wk0 4
 wk2 add wk0 5
 wk call wxbk p2 p3 wk1
 wv call wxbk p2 p3 wk2
-kk call wxg p0 wk
-vv call wxg p0 wv
+kk_gp shr wk 7
+kk_gw and wk 127
+kk_gg get p0 kk_gp
+kk get kk_gg kk_gw
+vv_gp shr wv 7
+vv_gw and wv 127
+vv_gg get p0 vv_gp
+vv get vv_gg vv_gw
 fi add k 10
-fl call wxfg p0 p2 fi
+fl_fa mul p2 128
+fl_fb add fl_fa 128
+fl_fc add fl_fb fi
+fl_fp shr fl_fc 7
+fl_fw and fl_fc 127
+fl_fg get p0 fl_fp
+fl get fl_fg fl_fw
 isl eq kk 0
 sml eq vv fl
 same and isl sml
@@ -1855,14 +2183,56 @@ m1 fold wxls cn1_m1 p0 fl
 ret m1
 end
 fn wxend u32x128x512 u32 u32 u32x128x45 u32x128x65 -> u32x128x512
-variant call wxfg p0 p2 1
-rk call wxfg p0 p2 5
-rv call wxfg p0 p2 6
-width call wxfg p0 p2 9
-fi call wxfg p0 p2 0
+variant_fa mul p2 128
+variant_fb add variant_fa 128
+variant_fc add variant_fb 1
+variant_fp shr variant_fc 7
+variant_fw and variant_fc 127
+variant_fg get p0 variant_fp
+variant get variant_fg variant_fw
+rk_fa mul p2 128
+rk_fb add rk_fa 128
+rk_fc add rk_fb 5
+rk_fp shr rk_fc 7
+rk_fw and rk_fc 127
+rk_fg get p0 rk_fp
+rk get rk_fg rk_fw
+rv_fa mul p2 128
+rv_fb add rv_fa 128
+rv_fc add rv_fb 6
+rv_fp shr rv_fc 7
+rv_fw and rv_fc 127
+rv_fg get p0 rv_fp
+rv get rv_fg rv_fw
+width_fa mul p2 128
+width_fb add width_fa 128
+width_fc add width_fb 9
+width_fp shr width_fc 7
+width_fw and width_fc 127
+width_fg get p0 width_fp
+width get width_fg width_fw
+fi_fa mul p2 128
+fi_fb add fi_fa 128
+fi_fc add fi_fb 0
+fi_fp shr fi_fc 7
+fi_fw and fi_fc 127
+fi_fg get p0 fi_fp
+fi get fi_fg fi_fw
 isn eq rk 1
 rj select isn rv 0
-fl call wxrg p0 p2 rj 2
+fl_t1 eq p2 0
+fl_t2 mul rj 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get p0 fl_rp
+fl get fl_rg fl_rw
 cc1 and fl 2
 cc2 ne cc1 0
 chn and isn cc2
@@ -1873,8 +2243,23 @@ pw1 select hasw width 0
 wd select chainmode width 0
 m1 fold wxec1 wd p0 p2 rj
 m2 fold wxec2 wd m1 p2 rj wd
-rr call wxrg m2 p2 rj 3
-rc call wxg m2 0
+rr_t1 eq p2 0
+rr_t2 mul rj 4
+rr_t3 add rr_t2 5440
+rr_t4 sub p2 1
+rr_t5 mul rr_t4 128
+rr_t6 add rr_t5 16704
+rr_t7 add rr_t6 rr_t2
+rr_t8 select rr_t1 rr_t3 rr_t7
+rr_t9 add rr_t8 3
+rr_rp shr rr_t9 7
+rr_rw and rr_t9 127
+rr_rg get m2 rr_rp
+rr get rr_rg rr_rw
+rc_gp shr 0 7
+rc_gw and 0 127
+rc_gg get m2 rc_gp
+rc get rc_gg rc_gw
 rkk shr rr 28
 rvv and rr 268435455
 rz eq rr 0
@@ -1892,7 +2277,13 @@ val select own false true
 cpy and own nrp0
 cpy2 and cpy nchm
 vp and val nchm
-ps call wxfg m2 p2 33
+ps_fa mul p2 128
+ps_fb add ps_fa 128
+ps_fc add ps_fb 33
+ps_fp shr ps_fc 7
+ps_fw and ps_fc 127
+ps_fg get m2 ps_fp
+ps get ps_fg ps_fw
 cn1_m3 select cpy2 1 0
 m3 fold wxlg cn1_m3 m2 ps
 cn2_m4 select cpy2 1 0
@@ -1917,7 +2308,10 @@ fn wxhind u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u
 d at p2 0
 j at p2 1
 w call wxbk d j 0
-l call wxg p0 w
+l_gp shr w 7
+l_gw and w 127
+l_gg get p0 l_gp
+l get l_gg l_gw
 l1 sub l 1
 r fold wxrs 1 p0 d j 0 l1
 ret r
@@ -1926,7 +2320,13 @@ end
 fn wxhcar u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
 d at p2 0
 j at p2 1
-l call wxfg p0 d 21
+l_fa mul d 128
+l_fb add l_fa 128
+l_fc add l_fb 21
+l_fp shr l_fc 7
+l_fw and l_fc 127
+l_fg get p0 l_fp
+l get l_fg l_fw
 r fold wxrs 1 p0 d j 0 l
 ret r
 end
@@ -1936,10 +2336,22 @@ fn wxhfld u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u
 d at p2 0
 j at p2 1
 v1 at p2 14
-w call wxfg p0 d 9
+w_fa mul d 128
+w_fb add w_fa 128
+w_fc add w_fb 9
+w_fp shr w_fc 7
+w_fw and w_fc 127
+w_fg get p0 w_fp
+w get w_fg w_fw
 k rem v1 w
 fi add k 10
-l call wxfg p0 d fi
+l_fa mul d 128
+l_fb add l_fa 128
+l_fc add l_fb fi
+l_fp shr l_fc 7
+l_fw and l_fc 127
+l_fg get p0 l_fp
+l get l_fg l_fw
 r fold wxrs 1 p0 d j 0 l
 ret r
 end
@@ -1951,8 +2363,14 @@ o add p5 p1
 k call wxok p6 o
 v call wxov p6 o
 m1 fold wxres 1 p0 p2 k v
-c call wxg m1 16
-s call wxg m1 17
+c_gp shr 16 7
+c_gw and 16 127
+c_gg get m1 c_gp
+c get c_gg c_gw
+s_gp shr 17 7
+s_gw and 17 127
+s_gg get m1 s_gp
+s get s_gg s_gw
 w0 mul p1 2
 w1 add w0 4
 w2 add w0 5
@@ -1969,11 +2387,23 @@ w0 mul p1 2
 w1 add w0 4
 w2 add w0 5
 fi add p1 10
-fl call wxfg p0 p2 fi
+fl_fa mul p2 128
+fl_fb add fl_fa 128
+fl_fc add fl_fb fi
+fl_fp shr fl_fc 7
+fl_fw and fl_fc 127
+fl_fg get p0 fl_fp
+fl get fl_fg fl_fw
 bk call wxbk p2 p5 w1
 bv call wxbk p2 p5 w2
-ak call wxg p0 bk
-av call wxg p0 bv
+ak_gp shr bk 7
+ak_gw and bk 127
+ak_gg get p0 ak_gp
+ak get ak_gg ak_gw
+av_gp shr bv 7
+av_gw and bv 127
+av_gg get p0 av_gp
+av get av_gg av_gw
 ik eq p4 1
 fk0 select ik 0 ak
 fv0 select ik fl av
@@ -2005,7 +2435,13 @@ r1 or o22 o23
 isrec or r1 o24
 nrec select isrec 1 0
 nupd select isrec 0 1
-w call wxfg p0 d 9
+w_fa mul d 128
+w_fb add w_fa 128
+w_fc add w_fb 9
+w_fp shr w_fc 7
+w_fw and w_fc 127
+w_fg get p0 w_fp
+w get w_fg w_fw
 m1 fold wxwk nrec p0 d j 0 fa p3
 isp1 eq k0 2
 isp2 eq v0 0
@@ -2028,10 +2464,14 @@ etag call wxtag p11 et
 esz call wxbyt p13 et
 cn1_m1 select issets 1 0
 m1 fold wxea cn1_m1 p0 p2 p3 p4 p5 p6 len esz
-offs call wxg m1 16
+offs_gp shr 16 7
+offs_gw and 16 127
+offs_gg get m1 offs_gp
+offs get offs_gg offs_gw
 fs call wxty p11 p10 1
 lit3 eq p5 3
-kk select lit3 p6 0
+kk1 select lit3 p6 0
+kk select isput kk1 0
 offp call wafo p12 p13 fs kk
 ft0 add fs kk
 ft call wa65 p12 ft0
@@ -2059,9 +2499,27 @@ k2 at p2 15
 v2 at p2 16
 ty0 at p2 23
 m1 fold wxsto 1 p0 d k0 v0 k1 v1 k2 v2 op ty0 p3 p4 p5
-cf call wxfg m1 d 18
-cs call wxfg m1 d 20
-cl call wxfg m1 d 21
+cf_fa mul d 128
+cf_fb add cf_fa 128
+cf_fc add cf_fb 18
+cf_fp shr cf_fc 7
+cf_fw and cf_fc 127
+cf_fg get m1 cf_fp
+cf get cf_fg cf_fw
+cs_fa mul d 128
+cs_fb add cs_fa 128
+cs_fc add cs_fb 20
+cs_fp shr cs_fc 7
+cs_fw and cs_fc 127
+cs_fg get m1 cs_fp
+cs get cs_fg cs_fw
+cl_fa mul d 128
+cl_fb add cl_fa 128
+cl_fc add cl_fb 21
+cl_fp shr cl_fc 7
+cl_fw and cl_fc 127
+cl_fg get m1 cl_fp
+cl get cl_fg cl_fw
 a ne cf 0
 b eq cs j
 c and a b
@@ -2085,7 +2543,10 @@ k2 at p2 15
 v2 at p2 16
 ty0 at p2 23
 m1 fold wxslot 1 p0 d j by
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 m2 fold wxlg 1 m1 l
 m3 fold wxpsh 1 m2 d k0 v0
 m4 fold wxcp 1 m3 by
@@ -2096,14 +2557,44 @@ end
 # state of a fold that overwrites it all (register 27 := 1); the statistics word of the node is
 # in its row (uses: bits 18-19, last user + 1: bits 0-15)
 fn wxdead u32x128x512 u32 u32 u32 u32x128x128 u32x128x512 u32x128x200 -> u32x128x512
-w call wxrg p0 p2 p3 1
+w_t1 eq p2 0
+w_t2 mul p3 4
+w_t3 add w_t2 5440
+w_t4 sub p2 1
+w_t5 mul w_t4 128
+w_t6 add w_t5 16704
+w_t7 add w_t6 w_t2
+w_t8 select w_t1 w_t3 w_t7
+w_t9 add w_t8 1
+w_rp shr w_t9 7
+w_rw and w_t9 127
+w_rg get p0 w_rp
+w get w_rg w_rw
 t0 shr w 18
 tot and t0 3
 lu and w 65535
 user sub lu 1
-g0 call wxfg p0 p2 2
-rk call wxfg p0 p2 5
-rv call wxfg p0 p2 6
+g0_fa mul p2 128
+g0_fb add g0_fa 128
+g0_fc add g0_fb 2
+g0_fp shr g0_fc 7
+g0_fw and g0_fc 127
+g0_fg get p0 g0_fp
+g0 get g0_fg g0_fw
+rk_fa mul p2 128
+rk_fb add rk_fa 128
+rk_fc add rk_fb 5
+rk_fp shr rk_fc 7
+rk_fw and rk_fc 127
+rk_fg get p0 rk_fp
+rk get rk_fg rk_fw
+rv_fa mul p2 128
+rv_fb add rv_fa 128
+rv_fc add rv_fb 6
+rv_fp shr rv_fc 7
+rv_fw and rv_fc 127
+rv_fg get p0 rv_fp
+rv get rv_fg rv_fw
 r1 eq rk 1
 r2 eq rv p3
 isret and r1 r2
@@ -2115,7 +2606,19 @@ v1 call wxov p5 fa1
 i1 eq k1 1
 i2 eq v1 p3
 init and i1 i2
-rt call wxrg p0 p2 user 3
+rt_t1 eq p2 0
+rt_t2 mul user 4
+rt_t3 add rt_t2 5440
+rt_t4 sub p2 1
+rt_t5 mul rt_t4 128
+rt_t6 add rt_t5 16704
+rt_t7 add rt_t6 rt_t2
+rt_t8 select rt_t1 rt_t3 rt_t7
+rt_t9 add rt_t8 3
+rt_rp shr rt_t9 7
+rt_rw and rt_t9 127
+rt_rg get p0 rt_rp
+rt get rt_rg rt_rw
 ali ne rt 0
 oa add 8448 ug
 ov call wxsh p6 oa
@@ -2195,9 +2698,15 @@ fa at p2 5
 t at p2 8
 by at p2 10
 m1 fold wxslot 1 p0 d j by
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 m2 fold wxdead 1 m1 d j p3 p4 p5
-dead call wxg m2 27
+dead_gp shr 27 7
+dead_gw and 27 127
+dead_gg get m2 dead_gp
+dead get dead_gg dead_gw
 live eq dead 0
 et call wxty p6 t 2
 etag call wxtag p6 et
@@ -2217,7 +2726,10 @@ dozero and dolit az
 dopool and dolit nz
 nbytes mul na 4
 cnt select doel na 0
-npl call wxg m2 5
+npl_gp shr 5 7
+npl_gw and 5 127
+npl_gg get m2 npl_gp
+npl get npl_gg npl_gw
 cn1_m3 select dolit 1 0
 m3 fold wxlg cn1_m3 m2 l
 cn2_m4 select dozero 1 0
@@ -2227,19 +2739,15 @@ m5 fold wxkc cn3_m5 m4 nbytes
 cn4_m6 select dozero 1 0
 m6 fold wxe cn4_m6 m5 17 0
 pad add 3392 npl
-cn5_m7 select dopool 1 0
-m7 fold wxlg cn5_m7 m6 l
-cn6_m8 select dopool 1 0
-m8 fold wxs cn6_m8 m7 pad g
+cn5_m8 select dopool 1 0
+m8 fold wxs cn5_m8 m6 pad g
 npl1 add npl 1
-cn7_m9 select dopool 1 0
-m9 fold wxs cn7_m9 m8 5 npl1
-cn8_m10 select dopool 1 0
-m10 fold wxe cn8_m10 m9 7 npl
-cn9_m11 select dopool 1 0
-m11 fold wxkc cn9_m11 m10 nbytes
-cn10_m12 select dopool 1 0
-m12 fold wxcp cn10_m12 m11 nbytes
+cn6_m9 select dopool 1 0
+m9 fold wxs cn6_m9 m8 5 npl1
+cn7_m10 select dopool 1 0
+m10 fold wxe cn7_m10 m9 7 npl
+cn8_m12 select dopool 1 0
+m12 fold wxcp cn8_m12 m10 nbytes
 r fold wxael cnt m12 d fa l etag esz p4
 ret r
 end
@@ -2252,7 +2760,10 @@ ti add p5 p1
 ft call wa65 p8 ti
 ftag call wxtag p7 ft
 fby call wxbyt p9 ft
-off call wxg p0 27
+off_gp shr 27 7
+off_gw and 27 127
+off_gg get p0 off_gp
+off get off_gg off_gw
 m1 fold wxlg 1 p0 p4
 m2 fold wxsa 1 m1 p2 k v ftag fby off
 noff add off fby
@@ -2268,7 +2779,10 @@ fa at p2 5
 t at p2 8
 by at p2 10
 m1 fold wxslot 1 p0 d j by
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 fs call wxty p4 t 1
 m2 fold wxs 1 m1 27 0
 r fold wxrecf na m2 d fa l fs p3 p4 p5 p6
@@ -2288,7 +2802,10 @@ et call wxty p3 ty0 2
 etag call wxtag p3 et
 esz call wxbyt p4 et
 m1 fold wxea 1 p0 d k0 v0 k1 v1 len esz
-off call wxg m1 16
+off_gp shr 16 7
+off_gw and 16 127
+off_gg get m1 off_gp
+off get off_gg off_gw
 prim lt etag 4
 nprim select prim false true
 nz ne off 0
@@ -2336,7 +2853,10 @@ by at p2 10
 k0 at p2 11
 v0 at p2 12
 m1 fold wxslot 1 p0 d j by
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 m2 fold wxlg 1 m1 l
 m3 fold wxpsh 1 m2 d k0 v0
 m4 fold wxe 1 m3 6 256
@@ -2386,8 +2906,14 @@ o add p3 p1
 k call wxok p4 o
 v call wxov p4 o
 m1 fold wxres 1 p0 p2 k v
-c call wxg m1 16
-s call wxg m1 17
+c_gp shr 16 7
+c_gw and 16 127
+c_gg get m1 c_gp
+c get c_gg c_gw
+s_gp shr 17 7
+s_gw and 17 127
+s_gg get m1 s_gp
+s get s_gg s_gw
 dn add p2 1
 w0 mul p1 2
 w1 add w0 32
@@ -2424,7 +2950,10 @@ cs select prim na 0
 m1 fold wxsrc cs m0 d fa p5
 cn2_m2 select prim 1 0
 m2 fold wxcan cn2_m2 m1 d ce 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10
-okr call wxg m2 16
+okr_gp shr 16 7
+okr_gw and 16 127
+okr_gg get m2 okr_gp
+okr get okr_gg okr_gw
 ok1 eq okr 1
 ok and prim ok1
 nok select ok false true
@@ -2441,7 +2970,10 @@ x1 add x 1
 mk0 call wa16 p11 x
 mk add mk0 259
 dp call wa16 p11 x1
-md call wxg m5 12
+md_gp shr 12 7
+md_gw and 12 127
+md_gg get m5 md_gp
+md get md_gg md_gw
 mx call umax md dp
 mkk select direct mk 0
 cn5_m6 select direct 1 0
@@ -2452,7 +2984,10 @@ cn7_m8 select direct 1 0
 m8 fold wxset cn7_m8 m7 d j
 cn8_m9 select nprim 1 0
 m9 fold wxslot cn8_m9 m8 d j by
-l call wxg m9 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m9 l_gp
+l get l_gg l_gw
 cn9_m10 select nprim 1 0
 m10 fold wxlg cn9_m10 m9 l
 cagg select nprim na 0
@@ -2481,8 +3016,20 @@ dn add p2 1
 a0 mul p1 2
 a1 add a0 104
 a2 add a1 1
-c call wxcg p0 p2 a1
-v call wxcg p0 p2 a2
+c_ca mul p2 176
+c_cb add c_ca 640
+c_cc add c_cb a1
+c_cp shr c_cc 7
+c_cw and c_cc 127
+c_cg get p0 c_cp
+c get c_cg c_cw
+v_ca mul p2 176
+v_cb add v_ca 640
+v_cc add v_cb a2
+v_cp shr v_cc 7
+v_cw and v_cc 127
+v_cg get p0 v_cp
+v get v_cg v_cw
 w1 add a0 36
 w2 add a0 37
 m1 fold wxfs 1 p0 dn w1 c
@@ -2493,7 +3040,13 @@ end
 fn wxhf u32x128x512 u32 u32 -> u32x128x512
 dn add p2 1
 a add 168 p1
-l call wxcg p0 p2 a
+l_ca mul p2 176
+l_cb add l_ca 640
+l_cc add l_cb a
+l_cp shr l_cc 7
+l_cw and l_cc 127
+l_cg get p0 l_cp
+l get l_cg l_cw
 f add p1 10
 r fold wxfs 1 p0 dn f l
 ret r
@@ -2503,16 +3056,76 @@ end
 # element; p3 = 2: only the width (the probe of the body)
 fn wxhost u32x128x512 u32 u32 u32 -> u32x128x512
 dn add p2 1
-st call wxcg p0 p2 0
-ic call wxcg p0 p2 1
-ne call wxcg p0 p2 17
-lf call wxcg p0 p2 3
-lv call wxcg p0 p2 4
-wd call wxcg p0 p2 12
-cf call wxcg p0 p2 13
-cg call wxcg p0 p2 14
-cs call wxcg p0 p2 15
-cl call wxcg p0 p2 16
+st_ca mul p2 176
+st_cb add st_ca 640
+st_cc add st_cb 0
+st_cp shr st_cc 7
+st_cw and st_cc 127
+st_cg get p0 st_cp
+st get st_cg st_cw
+ic_ca mul p2 176
+ic_cb add ic_ca 640
+ic_cc add ic_cb 1
+ic_cp shr ic_cc 7
+ic_cw and ic_cc 127
+ic_cg get p0 ic_cp
+ic get ic_cg ic_cw
+ne_ca mul p2 176
+ne_cb add ne_ca 640
+ne_cc add ne_cb 17
+ne_cp shr ne_cc 7
+ne_cw and ne_cc 127
+ne_cg get p0 ne_cp
+ne get ne_cg ne_cw
+lf_ca mul p2 176
+lf_cb add lf_ca 640
+lf_cc add lf_cb 3
+lf_cp shr lf_cc 7
+lf_cw and lf_cc 127
+lf_cg get p0 lf_cp
+lf get lf_cg lf_cw
+lv_ca mul p2 176
+lv_cb add lv_ca 640
+lv_cc add lv_cb 4
+lv_cp shr lv_cc 7
+lv_cw and lv_cc 127
+lv_cg get p0 lv_cp
+lv get lv_cg lv_cw
+wd_ca mul p2 176
+wd_cb add wd_ca 640
+wd_cc add wd_cb 12
+wd_cp shr wd_cc 7
+wd_cw and wd_cc 127
+wd_cg get p0 wd_cp
+wd get wd_cg wd_cw
+cf_ca mul p2 176
+cf_cb add cf_ca 640
+cf_cc add cf_cb 13
+cf_cp shr cf_cc 7
+cf_cw and cf_cc 127
+cf_cg get p0 cf_cp
+cf get cf_cg cf_cw
+cg_ca mul p2 176
+cg_cb add cg_ca 640
+cg_cc add cg_cb 14
+cg_cp shr cg_cc 7
+cg_cw and cg_cc 127
+cg_cg get p0 cg_cp
+cg get cg_cg cg_cw
+cs_ca mul p2 176
+cs_cb add cs_ca 640
+cs_cc add cs_cb 15
+cs_cp shr cs_cc 7
+cs_cw and cs_cc 127
+cs_cg get p0 cs_cp
+cs get cs_cg cs_cw
+cl_ca mul p2 176
+cl_cb add cl_ca 640
+cl_cc add cl_cb 16
+cl_cp shr cl_cc 7
+cl_cw and cl_cc 127
+cl_cg get p0 cl_cp
+cl get cl_cg cl_cw
 isb eq p3 1
 isp eq p3 2
 bp or isb isp
@@ -2541,12 +3154,42 @@ end
 fn wxlim u32x128x512 u32 u32 u32 -> u32x128x512
 b0 mul p3 5
 b1 add b0 24
-kd call wxcg p0 p2 b1
+kd_ca mul p2 176
+kd_cb add kd_ca 640
+kd_cc add kd_cb b1
+kd_cp shr kd_cc 7
+kd_cw and kd_cc 127
+kd_cg get p0 kd_cp
+kd get kd_cg kd_cw
 b2 add b1 2
-lit call wxcg p0 p2 b2
-bl call wxcg p0 p2 34
-ck call wxcg p0 p2 18
-cv call wxcg p0 p2 19
+lit_ca mul p2 176
+lit_cb add lit_ca 640
+lit_cc add lit_cb b2
+lit_cp shr lit_cc 7
+lit_cw and lit_cc 127
+lit_cg get p0 lit_cp
+lit get lit_cg lit_cw
+bl_ca mul p2 176
+bl_cb add bl_ca 640
+bl_cc add bl_cb 34
+bl_cp shr bl_cc 7
+bl_cw and bl_cc 127
+bl_cg get p0 bl_cp
+bl get bl_cg bl_cw
+ck_ca mul p2 176
+ck_cb add ck_ca 640
+ck_cc add ck_cb 18
+ck_cp shr ck_cc 7
+ck_cw and ck_cc 127
+ck_cg get p0 ck_cp
+ck get ck_cg ck_cw
+cv_ca mul p2 176
+cv_cb add cv_ca 640
+cv_cc add cv_cb 19
+cv_cp shr cv_cc 7
+cv_cw and cv_cc 127
+cv_cg get p0 cv_cp
+cv get cv_cg cv_cw
 k0 eq kd 0
 k1 eq kd 1
 k2 eq kd 2
@@ -2566,11 +3209,41 @@ b1 add b0 24
 b2 add b1 1
 b3 add b1 2
 b4 add b1 3
-lf call wxcg p0 p2 b2
-lit call wxcg p0 p2 b3
-from call wxcg p0 p2 b4
-pr call wxcg p0 p2 6
-ic call wxcg p0 p2 1
+lf_ca mul p2 176
+lf_cb add lf_ca 640
+lf_cc add lf_cb b2
+lf_cp shr lf_cc 7
+lf_cw and lf_cc 127
+lf_cg get p0 lf_cp
+lf get lf_cg lf_cw
+lit_ca mul p2 176
+lit_cb add lit_ca 640
+lit_cc add lit_cb b3
+lit_cp shr lit_cc 7
+lit_cw and lit_cc 127
+lit_cg get p0 lit_cp
+lit get lit_cg lit_cw
+from_ca mul p2 176
+from_cb add from_ca 640
+from_cc add from_cb b4
+from_cp shr from_cc 7
+from_cw and from_cc 127
+from_cg get p0 from_cp
+from get from_cg from_cw
+pr_ca mul p2 176
+pr_cb add pr_ca 640
+pr_cc add pr_cb 6
+pr_cp shr pr_cc 7
+pr_cw and pr_cc 127
+pr_cg get p0 pr_cp
+pr get pr_cg pr_cw
+ic_ca mul p2 176
+ic_cb add ic_ca 640
+ic_cc add ic_cb 1
+ic_cp shr ic_cc 7
+ic_cw and ic_cc 127
+ic_cg get p0 ic_cp
+ic get ic_cg ic_cw
 g1 ne lf 0
 g2 gt lit from
 g3 and g1 g2
@@ -2597,17 +3270,53 @@ end
 fn wxindw u32x128x512 u32 u32 -> u32x128x512
 dn add p2 1
 a add 40 p1
-l call wxcg p0 p2 a
+l_ca mul p2 176
+l_cb add l_ca 640
+l_cc add l_cb a
+l_cp shr l_cc 7
+l_cw and l_cc 127
+l_cg get p0 l_cp
+l get l_cg l_cw
 m1 fold wxbs 1 p0 dn p1 0 l
 ret m1
 end
 # the arguments of a body or predicate call of loop d: the state, the counter, the extras
 fn wxiarg u32x128x512 u32 u32 u32x128x128 u32x128x512 -> u32x128x512
-st call wxcg p0 p2 0
-ic call wxcg p0 p2 1
-nx call wxcg p0 p2 17
-j call wxcg p0 p2 9
-g0 call wxfg p0 p2 2
+st_ca mul p2 176
+st_cb add st_ca 640
+st_cc add st_cb 0
+st_cp shr st_cc 7
+st_cw and st_cc 127
+st_cg get p0 st_cp
+st get st_cg st_cw
+ic_ca mul p2 176
+ic_cb add ic_ca 640
+ic_cc add ic_cb 1
+ic_cp shr ic_cc 7
+ic_cw and ic_cc 127
+ic_cg get p0 ic_cp
+ic get ic_cg ic_cw
+nx_ca mul p2 176
+nx_cb add nx_ca 640
+nx_cc add nx_cb 17
+nx_cp shr nx_cc 7
+nx_cw and nx_cc 127
+nx_cg get p0 nx_cp
+nx get nx_cg nx_cw
+j_ca mul p2 176
+j_cb add j_ca 640
+j_cc add j_cb 9
+j_cp shr j_cc 7
+j_cw and j_cc 127
+j_cg get p0 j_cp
+j get j_cg j_cw
+g0_fa mul p2 128
+g0_fb add g0_fa 128
+g0_fc add g0_fb 2
+g0_fp shr g0_fc 7
+g0_fw and g0_fc 127
+g0_fg get p0 g0_fp
+g0 get g0_fg g0_fw
 g add g0 j
 fa call wxnw p3 g 3
 fa2 add fa 2
@@ -2618,15 +3327,30 @@ ret m3
 end
 # the start of a trip of loop p2 (`trip`): the predicate (inlined, else called) before the body
 fn wxtrip u32x128x512 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
-pq call wxcg p0 p2 6
-pf call wxcg p0 p2 7
+pq_ca mul p2 176
+pq_cb add pq_ca 640
+pq_cc add pq_cb 6
+pq_cp shr pq_cc 7
+pq_cw and pq_cc 127
+pq_cg get p0 pq_cp
+pq get pq_cg pq_cw
+pf_ca mul p2 176
+pf_cb add pf_ca 640
+pf_cc add pf_cb 7
+pf_cp shr pf_cc 7
+pf_cw and pf_cc 127
+pf_cg get p0 pf_cp
+pf get pf_cg pf_cw
 hp ne pq 0
 npq select hp false true
 cn1_m1 select hp 1 0
 m1 fold wxhost cn1_m1 p0 p2 0
 cn2_m2 select hp 1 0
 m2 fold wxcan cn2_m2 m1 p2 pf 0 24 0 p3 p4 p5 p6 p7 p8 p9 p10
-okr call wxg m2 16
+okr_gp shr 16 7
+okr_gw and 16 127
+okr_gg get m2 okr_gp
+okr get okr_gg okr_gw
 ok1 eq okr 1
 ok and hp ok1
 nok select ok false true
@@ -2642,7 +3366,10 @@ x1 add x 1
 mk0 call wa16 p11 x
 mk add mk0 259
 dp call wa16 p11 x1
-md call wxg m5 12
+md_gp shr 12 7
+md_gw and 12 127
+md_gg get m5 md_gp
+md get md_gg md_gw
 mx call umax md dp
 cn5_m6 select dir 1 0
 m6 fold wxe cn5_m6 m5 6 mk
@@ -2653,24 +3380,63 @@ end
 # the body of a trip of loop p2: leave the loop when the predicate is false, then the body
 # (inlined when it was probed so, else called: the owned variant for aggregate state)
 fn wxtbod u32x128x512 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
-pq call wxcg p0 p2 6
+pq_ca mul p2 176
+pq_cb add pq_ca 640
+pq_cc add pq_cb 6
+pq_cp shr pq_cc 7
+pq_cw and pq_cc 127
+pq_cg get p0 pq_cp
+pq get pq_cg pq_cw
 hp ne pq 0
 cn1_m1 select hp 1 0
 m1 fold wxop cn1_m1 p0 69
 cn2_m2 select hp 1 0
 m2 fold wxe cn2_m2 m1 12 1
-bf call wxcg m2 p2 8
-inl call wxcg m2 p2 10
-ag call wxcg m2 p2 2
-vr call wxcg m2 p2 11
-wd call wxcg m2 p2 12
+bf_ca mul p2 176
+bf_cb add bf_ca 640
+bf_cc add bf_cb 8
+bf_cp shr bf_cc 7
+bf_cw and bf_cc 127
+bf_cg get m2 bf_cp
+bf get bf_cg bf_cw
+inl_ca mul p2 176
+inl_cb add inl_ca 640
+inl_cc add inl_cb 10
+inl_cp shr inl_cc 7
+inl_cw and inl_cc 127
+inl_cg get m2 inl_cp
+inl get inl_cg inl_cw
+ag_ca mul p2 176
+ag_cb add ag_ca 640
+ag_cc add ag_cb 2
+ag_cp shr ag_cc 7
+ag_cw and ag_cc 127
+ag_cg get m2 ag_cp
+ag get ag_cg ag_cw
+vr_ca mul p2 176
+vr_cb add vr_ca 640
+vr_cc add vr_cb 11
+vr_cp shr vr_cc 7
+vr_cw and vr_cc 127
+vr_cg get m2 vr_cp
+vr get vr_cg vr_cw
+wd_ca mul p2 176
+wd_cb add wd_ca 640
+wd_cc add wd_cb 12
+wd_cp shr wd_cc 7
+wd_cw and wd_cc 127
+wd_cg get m2 wd_cp
+wd get wd_cg wd_cw
 isi ne inl 0
 nis select isi false true
 cn3_m3 select isi 1 0
 m3 fold wxhost cn3_m3 m2 p2 1
 cn4_m4a select isi 1 0
 m4a fold wxcan cn4_m4a m3 p2 bf vr 24 wd p3 p4 p5 p6 p7 p8 p9 p10
-okr call wxg m4a 16
+okr_gp shr 16 7
+okr_gw and 16 127
+okr_gg get m4a okr_gp
+okr get okr_gg okr_gw
 bad1 ne okr 1
 bad and isi bad1
 cn5_m4 select bad 1 0
@@ -2695,7 +3461,10 @@ mk1 add mk0 259
 mk2 add mk1 1
 mk select agi mk2 mk1
 dp call wa16 p11 x1
-md call wxg m9 12
+md_gp shr 12 7
+md_gw and 12 127
+md_gg get m9 md_gp
+md get md_gg md_gw
 mx call umax md dp
 cn10_m10 select nis 1 0
 m10 fold wxe cn10_m10 m9 6 mk
@@ -2706,9 +3475,21 @@ end
 # induction variable p1 of the body of loop p2 steps: local += step (when the body node has one)
 fn wxupd u32x128x512 u32 u32 -> u32x128x512
 a add 40 p1
-l1 call wxcg p0 p2 a
+l1_ca mul p2 176
+l1_cb add l1_ca 640
+l1_cc add l1_cb a
+l1_cp shr l1_cc 7
+l1_cw and l1_cc 127
+l1_cg get p0 l1_cp
+l1 get l1_cg l1_cw
 b add 72 p1
-stp call wxcg p0 p2 b
+stp_ca mul p2 176
+stp_cb add stp_ca 640
+stp_cc add stp_cb b
+stp_cp shr stp_cc 7
+stp_cw and stp_cc 127
+stp_cg get p0 stp_cp
+stp get stp_cg stp_cw
 has ne l1 0
 l sub l1 1
 cn1_m1 select has 1 0
@@ -2723,9 +3504,21 @@ ret m4
 end
 # state word p1 of loop p2 goes back to the state's storage after the loop
 fn wxfst u32x128x512 u32 u32 -> u32x128x512
-st call wxcg p0 p2 0
+st_ca mul p2 176
+st_cb add st_ca 640
+st_cc add st_cb 0
+st_cp shr st_cc 7
+st_cw and st_cc 127
+st_cg get p0 st_cp
+st get st_cg st_cw
 a add 168 p1
-l call wxcg p0 p2 a
+l_ca mul p2 176
+l_cb add l_ca 640
+l_cc add l_cb a
+l_cp shr l_cc 7
+l_cw and l_cc 127
+l_cg get p0 l_cp
+l get l_cg l_cw
 off mul p1 4
 m1 fold wxlg 1 p0 st
 m2 fold wxlg 1 m1 l
@@ -2736,25 +3529,103 @@ end
 # induction variables and the counter step; the next copy of the trip, or the end of the loop
 # (bound test, back edge) and the next phase, or the state words go back to the storage
 fn wxtend u32x128x512 u32 u32 -> u32x128x512
-ag call wxcg p0 p2 2
-st call wxcg p0 p2 0
-ic call wxcg p0 p2 1
-copy call wxcg p0 p2 22
-ph call wxcg p0 p2 21
-nph call wxcg p0 p2 23
-wd call wxcg p0 p2 12
-nnb call wxcg p0 p2 37
-pr call wxcg p0 p2 6
+ag_ca mul p2 176
+ag_cb add ag_ca 640
+ag_cc add ag_cb 2
+ag_cp shr ag_cc 7
+ag_cw and ag_cc 127
+ag_cg get p0 ag_cp
+ag get ag_cg ag_cw
+st_ca mul p2 176
+st_cb add st_ca 640
+st_cc add st_cb 0
+st_cp shr st_cc 7
+st_cw and st_cc 127
+st_cg get p0 st_cp
+st get st_cg st_cw
+ic_ca mul p2 176
+ic_cb add ic_ca 640
+ic_cc add ic_cb 1
+ic_cp shr ic_cc 7
+ic_cw and ic_cc 127
+ic_cg get p0 ic_cp
+ic get ic_cg ic_cw
+copy_ca mul p2 176
+copy_cb add copy_ca 640
+copy_cc add copy_cb 22
+copy_cp shr copy_cc 7
+copy_cw and copy_cc 127
+copy_cg get p0 copy_cp
+copy get copy_cg copy_cw
+ph_ca mul p2 176
+ph_cb add ph_ca 640
+ph_cc add ph_cb 21
+ph_cp shr ph_cc 7
+ph_cw and ph_cc 127
+ph_cg get p0 ph_cp
+ph get ph_cg ph_cw
+nph_ca mul p2 176
+nph_cb add nph_ca 640
+nph_cc add nph_cb 23
+nph_cp shr nph_cc 7
+nph_cw and nph_cc 127
+nph_cg get p0 nph_cp
+nph get nph_cg nph_cw
+wd_ca mul p2 176
+wd_cb add wd_ca 640
+wd_cc add wd_cb 12
+wd_cp shr wd_cc 7
+wd_cw and wd_cc 127
+wd_cg get p0 wd_cp
+wd get wd_cg wd_cw
+nnb_ca mul p2 176
+nnb_cb add nnb_ca 640
+nnb_cc add nnb_cb 37
+nnb_cp shr nnb_cc 7
+nnb_cw and nnb_cc 127
+nnb_cg get p0 nnb_cp
+nnb get nnb_cg nnb_cw
+pr_ca mul p2 176
+pr_cb add pr_ca 640
+pr_cc add pr_cb 6
+pr_cp shr pr_cc 7
+pr_cw and pr_cc 127
+pr_cg get p0 pr_cp
+pr get pr_cg pr_cw
 b0 mul ph 5
 b1 add b0 24
 bc add b1 4
-copies call wxcg p0 p2 bc
+copies_ca mul p2 176
+copies_cb add copies_ca 640
+copies_cc add copies_cb bc
+copies_cp shr copies_cc 7
+copies_cw and copies_cc 127
+copies_cg get p0 copies_cp
+copies get copies_cg copies_cw
 bl add b1 1
-litf call wxcg p0 p2 bl
+litf_ca mul p2 176
+litf_cb add litf_ca 640
+litf_cc add litf_cb bl
+litf_cp shr litf_cc 7
+litf_cw and litf_cc 127
+litf_cg get p0 litf_cp
+litf get litf_cg litf_cw
 bll add b1 2
-lit call wxcg p0 p2 bll
+lit_ca mul p2 176
+lit_cb add lit_ca 640
+lit_cc add lit_cb bll
+lit_cp shr lit_cc 7
+lit_cw and lit_cc 127
+lit_cg get p0 lit_cp
+lit get lit_cg lit_cw
 bf add b1 3
-from call wxcg p0 p2 bf
+from_ca mul p2 176
+from_cb add from_ca 640
+from_cc add from_cb bf
+from_cp shr from_cc 7
+from_cw and from_cc 127
+from_cg get p0 from_cp
+from get from_cg from_cw
 isag ne ag 0
 nag select isag false true
 cn1_m1 select nag 1 0
@@ -2809,8 +3680,14 @@ o add p3 p1
 k call wxok p4 o
 v call wxov p4 o
 m1 fold wxres 1 p0 p2 k v
-c call wxg m1 16
-s call wxg m1 17
+c_gp shr 16 7
+c_gw and 16 127
+c_gg get m1 c_gp
+c get c_gg c_gw
+s_gp shr 17 7
+s_gw and 17 127
+s_gg get m1 s_gp
+s get s_gg s_gw
 a0 mul p1 2
 a1 add a0 104
 a2 add a1 1
@@ -2829,7 +3706,10 @@ end
 # state word p1 of loop p2 (state local p3) is loaded into a fresh local
 fn wxfld1 u32x128x512 u32 u32 u32 -> u32x128x512
 m1 fold wxnl 1 p0
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 off mul p1 4
 m2 fold wxlg 1 m1 p3
 m3 fold wxld 1 m2 off
@@ -2867,7 +3747,10 @@ found and ism cc
 kv select c1 v1 v0
 cn1_m1 select found 1 0
 m1 fold wxnl cn1_m1 p0
-l call wxg m1 16
+l_gp shr 16 7
+l_gw and 16 127
+l_gg get m1 l_gp
+l get l_gg l_gw
 iv mul p6 kv
 cn2_m2 select found 1 0
 m2 fold wxkc cn2_m2 m1 iv
@@ -2891,7 +3774,10 @@ op call wxnw p3 g 1
 o26 eq op 26
 o28 eq op 28
 u or o26 o28
-n call wxg p0 31
+n_gp shr 31 7
+n_gw and 31 127
+n_gg get p0 n_gp
+n get n_gg n_gw
 n1 add n 1
 cn1_r select u 1 0
 r fold wxs cn1_r p0 31 n1
@@ -2926,7 +3812,10 @@ isp1 and e1 e2
 e3 eq dk1 3
 e4 eq dv1 1
 one and e3 e4
-cur call wxg p0 29
+cur_gp shr 29 7
+cur_gw and 29 127
+cur_gg get p0 cur_gp
+cur get cur_gg cur_gw
 none eq cur 4294967295
 t1 and isg isp0
 t2 and t1 b1
@@ -2969,8 +3858,14 @@ m1 fold wxs 1 p0 31 0
 m2 fold wxs 1 m1 29 4294967295
 m3 fold wxcr0 nn m2 g0 p4
 m4 fold wxcr1 nn m3 g0 p4 p5
-cnt call wxg m4 31
-gj call wxg m4 29
+cnt_gp shr 31 7
+cnt_gw and 31 127
+cnt_gg get m4 cnt_gp
+cnt get cnt_gg cnt_gw
+gj_gp shr 29 7
+gj_gw and 29 127
+gj_gg get m4 gj_gp
+gj get gj_gg gj_gw
 one eq cnt 1
 fnd ne gj 4294967295
 c1 and cond one
@@ -2997,11 +3892,20 @@ iv eq p3 1
 ixp and isp iv
 niv select iv false true
 spp and isp niv
-ix call wxg p0 19104
+ix_gp shr 19104 7
+ix_gw and 19104 127
+ix_gg get p0 ix_gp
+ix get ix_gg ix_gw
 a1 add 19072 p3
-sp call wxg p0 a1
+sp_gp shr a1 7
+sp_gw and a1 127
+sp_gg get p0 sp_gp
+sp get sp_gg sp_gw
 a2 add 19008 p3
-ln call wxg p0 a2
+ln_gp shr a2 7
+ln_gw and a2 127
+ln_gg get p0 ln_gp
+ln get ln_gg ln_gw
 cn1_m1 select l3 1 0
 m1 fold wxe cn1_m1 p0 21 p3
 cn2_m2 select ixp 1 0
@@ -3016,8 +3920,14 @@ end
 fn wxvsc u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
 l3 eq p2 3
 isp eq p2 2
-d call wxg p0 19110
-fa2 call wxg p0 19111
+d_gp shr 19110 7
+d_gw and 19110 127
+d_gg get p0 d_gp
+d get d_gg d_gw
+fa2_gp shr 19111 7
+fa2_gw and 19111 127
+fa2_gg get p0 fa2_gp
+fa2 get fa2_gg fa2_gw
 e0 sub p3 2
 e1 add fa2 e0
 ek call wxok p4 e1
@@ -3034,18 +3944,30 @@ isp eq p2 2
 big ge p3 2
 wsp and isp big
 a add 19072 p3
-cur call wxg p0 a
+cur_gp shr a 7
+cur_gw and a 127
+cur_gg get p0 cur_gp
+cur get cur_gg cur_gw
 none eq cur 0
 go and wsp none
-d call wxg p0 19110
-fa2 call wxg p0 19111
+d_gp shr 19110 7
+d_gw and 19110 127
+d_gg get p0 d_gp
+d get d_gg d_gw
+fa2_gp shr 19111 7
+fa2_gw and 19111 127
+fa2_gg get p0 fa2_gp
+fa2 get fa2_gg fa2_gw
 e0 sub p3 2
 e1 add fa2 e0
 ek call wxok p4 e1
 ev call wxov p4 e1
 cn1_m1 select go 1 0
 m1 fold wxnv cn1_m1 p0
-v call wxg m1 16
+v_gp shr 16 7
+v_gw and 16 127
+v_gg get m1 v_gp
+v get v_gg v_gw
 cn2_m2 select go 1 0
 m2 fold wxpsh cn2_m2 m1 d ek ev
 cn3_m3 select go 1 0
@@ -3066,10 +3988,22 @@ ret r
 end
 # splats for body node p1 (nodes p2, operands p3): its operands, then the stored value operand
 fn wxvsa u32x128x512 u32 u32x128x128 u32x128x512 -> u32x128x512
-g0 call wxg p0 19112
-sj call wxg p0 19113
-vk call wxg p0 19114
-vv call wxg p0 19115
+g0_gp shr 19112 7
+g0_gw and 19112 127
+g0_gg get p0 g0_gp
+g0 get g0_gg g0_gw
+sj_gp shr 19113 7
+sj_gw and 19113 127
+sj_gg get p0 sj_gp
+sj get sj_gg sj_gw
+vk_gp shr 19114 7
+vk_gw and 19114 127
+vk_gg get p0 vk_gp
+vk get vk_gg vk_gw
+vv_gp shr 19115 7
+vv_gw and 19115 127
+vv_gg get p0 vv_gp
+vv get vv_gg vv_gw
 g add g0 p1
 foa call wxnw p2 g 3
 na call wxnw p2 g 2
@@ -3082,8 +4016,14 @@ ret m2
 end
 # the lane operation of body node p1 (nodes p2, operands p3): operands, operation, its lanes
 fn wxvn1 u32x128x512 u32 u32x128x128 u32x128x512 -> u32x128x512
-g0 call wxg p0 19112
-sj call wxg p0 19113
+g0_gp shr 19112 7
+g0_gw and 19112 127
+g0_gg get p0 g0_gp
+g0 get g0_gg g0_gw
+sj_gp shr 19113 7
+sj_gw and 19113 127
+sj_gg get p0 sj_gp
+sj get sj_gg sj_gw
 g add g0 p1
 op call wxnw p2 g 1
 foa call wxnw p2 g 3
@@ -3125,7 +4065,10 @@ cn4_m4 select noset 1 0
 m4 fold wxe cn4_m4 m3 18 vop
 cn5_m5 select noset 1 0
 m5 fold wxnv cn5_m5 m4
-v call wxg m5 16
+v_gp shr 16 7
+v_gw and 16 127
+v_gg get m5 v_gp
+v get v_gg v_gw
 cn6_m6 select noset 1 0
 m6 fold wxls cn6_m6 m5 v
 a add 19008 p1
@@ -3157,13 +4100,19 @@ m6 fold wxs 1 m5 19115 vv
 m7 fold wxs 1 m6 19116 nn
 m8 fold wxs 1 m7 19117 p5
 m9 fold wxnv 1 m8
-ix call wxg m9 16
+ix_gp shr 16 7
+ix_gw and 16 127
+ix_gg get m9 ix_gp
+ix get ix_gg ix_gw
 m10 fold wxs 1 m9 19104 ix
 m11 fold wxe 1 m10 20 0
 m12 fold wxls 1 m11 ix
 m13 fold wxvsa nn m12 p7 p8
 m14 fold wxnl 1 m13
-ptr call wxg m14 16
+ptr_gp shr 16 7
+ptr_gw and 16 127
+ptr_gg get m14 ptr_gp
+ptr get ptr_gg ptr_gw
 m15 fold wxs 1 m14 19105 ptr
 m16 fold wxlg 1 m15 p5
 m17 fold wxls 1 m16 ptr
@@ -3222,15 +4171,69 @@ t at p2 8
 tag at p2 9
 k0 at p2 11
 dn add d 1
-st call wxcg p0 d 0
-agg call wxcg p0 d 2
-lf call wxcg p0 d 3
-ll call wxcg p0 d 4
-start call wxcg p0 d 5
-ce call wxcg p0 d 8
-vr call wxcg p0 d 11
-isf call wxcg p0 d 35
-nnb call wxcg p0 d 37
+st_ca mul d 176
+st_cb add st_ca 640
+st_cc add st_cb 0
+st_cp shr st_cc 7
+st_cw and st_cc 127
+st_cg get p0 st_cp
+st get st_cg st_cw
+agg_ca mul d 176
+agg_cb add agg_ca 640
+agg_cc add agg_cb 2
+agg_cp shr agg_cc 7
+agg_cw and agg_cc 127
+agg_cg get p0 agg_cp
+agg get agg_cg agg_cw
+lf_ca mul d 176
+lf_cb add lf_ca 640
+lf_cc add lf_cb 3
+lf_cp shr lf_cc 7
+lf_cw and lf_cc 127
+lf_cg get p0 lf_cp
+lf get lf_cg lf_cw
+ll_ca mul d 176
+ll_cb add ll_ca 640
+ll_cc add ll_cb 4
+ll_cp shr ll_cc 7
+ll_cw and ll_cc 127
+ll_cg get p0 ll_cp
+ll get ll_cg ll_cw
+start_ca mul d 176
+start_cb add start_ca 640
+start_cc add start_cb 5
+start_cp shr start_cc 7
+start_cw and start_cc 127
+start_cg get p0 start_cp
+start get start_cg start_cw
+ce_ca mul d 176
+ce_cb add ce_ca 640
+ce_cc add ce_cb 8
+ce_cp shr ce_cc 7
+ce_cw and ce_cc 127
+ce_cg get p0 ce_cp
+ce get ce_cg ce_cw
+vr_ca mul d 176
+vr_cb add vr_ca 640
+vr_cc add vr_cb 11
+vr_cp shr vr_cc 7
+vr_cw and vr_cc 127
+vr_cg get p0 vr_cp
+vr get vr_cg vr_cw
+isf_ca mul d 176
+isf_cb add isf_ca 640
+isf_cc add isf_cb 35
+isf_cp shr isf_cc 7
+isf_cw and isf_cc 127
+isf_cg get p0 isf_cp
+isf get isf_cg isf_cw
+nnb_ca mul d 176
+nnb_cb add nnb_ca 640
+nnb_cc add nnb_cb 37
+nnb_cp shr nnb_cc 7
+nnb_cw and nnb_cc 127
+nnb_cg get p0 nnb_cp
+nnb get nnb_cg nnb_cw
 w0 call wxty p7 t 1
 w1 call wxty p7 t 2
 is4 eq tag 4
@@ -3250,39 +4253,70 @@ m1 fold wxclr cn p0 dn
 m2 fold wxs 1 m1 22 1
 cn1_m3 select cands 1 0
 m3 fold wxsmall cn1_m3 m2 dn ce p3 p4 p5 p6 p7 p8
-rs call wxg m3 22
+rs_gp shr 22 7
+rs_gw and 22 127
+rs_gg get m3 rs_gp
+rs get rs_gg rs_gw
 rs1 eq rs 1
 sm and cands rs1
 wprobe select sm width 0
 m4 fold wxcs 1 m3 d 12 wprobe
 m5 fold wxhost 1 m4 d 2
 m6 fold wxcan 1 m5 d ce vr 24 wprobe p3 p4 p5 p6 p7 p8 p9 p10
-okr call wxg m6 16
+okr_gp shr 16 7
+okr_gw and 16 127
+okr_gg get m6 okr_gp
+okr get okr_gg okr_gw
 inl eq okr 1
 fon and sm inl
 wf select fon width 0
 inli select inl 1 0
 m7 fold wxcs 1 m6 d 12 wf
-m8 fold wxcs 1 m7 d 10 inli
-m9 fold wxfld1 wf m8 d st
 cni select inl nnb 0
+m8a fold wxcs 1 m7 d 10 inli
+m8 fold wxcs 1 m8a d 37 cni
+m9 fold wxfld1 wf m8 d st
 m10 fold wxind1 cni m9 d g0b p4 p5 start
 nfon select fon false true
 c4 and aggb inl
 cd and c4 nfon
 cn2_m11 select cd 1 0
 m11 fold wxcarry cn2_m11 m10 ce p3 p4 p5
-cf call wxg m11 28
-gj call wxg m11 29
-sj call wxg m11 30
+cf_gp shr 28 7
+cf_gw and 28 127
+cf_gg get m11 cf_gp
+cf get cf_gg cf_gw
+gj_gp shr 29 7
+gj_gw and 29 127
+gj_gg get m11 gj_gp
+gj get gj_gg gj_gw
+sj_gp shr 30 7
+sj_gw and 30 127
+sj_gg get m11 sj_gp
+sj get sj_gg sj_gw
 fnd eq cf 1
-sg call wxrg m11 dn sj 3
+sg_t1 eq dn 0
+sg_t2 mul sj 4
+sg_t3 add sg_t2 5440
+sg_t4 sub dn 1
+sg_t5 mul sg_t4 128
+sg_t6 add sg_t5 16704
+sg_t7 add sg_t6 sg_t2
+sg_t8 select sg_t1 sg_t3 sg_t7
+sg_t9 add sg_t8 3
+sg_rp shr sg_t9 7
+sg_rw and sg_t9 127
+sg_rg get m11 sg_rp
+sg get sg_rg sg_rw
 inp ne sg 0
 c5 and cd fnd
 doc and c5 inp
 cn3_m12 select doc 1 0
 m12 fold wxnl cn3_m12 m11
-cl call wxg m12 16
+cl_gp shr 16 7
+cl_gw and 16 127
+cl_gg get m12 cl_gp
+cl get cl_gg cl_gw
 sm1 add start 4294967295
 lm rem sm1 w0
 off mul lm 4
@@ -3297,7 +4331,10 @@ m16 fold wxcs 1 m15 d 13 docn
 m17 fold wxcs 1 m16 d 14 gj
 m18 fold wxcs 1 m17 d 15 sj
 m19 fold wxcs 1 m18 d 16 cl
-opt call wxg m19 14
+opt_gp shr 14 7
+opt_gw and 14 127
+opt_gg get m19 opt_gp
+opt get opt_gg opt_gw
 lim12 le nnb 12
 u1 and isfb inl
 u2 and u1 lim12
@@ -3338,9 +4375,24 @@ fr1 select caseb main start
 m21 fold wxphs f1 m20 d 1 0 lfc lvc fr1 1
 cn7_m22 select casec 1 0
 m22 fold wxnl cn7_m22 m21
-bl call wxg m22 16
-ck call wxcg m22 d 18
-cv call wxcg m22 d 19
+bl_gp shr 16 7
+bl_gw and 16 127
+bl_gg get m22 bl_gp
+bl get bl_gg bl_gw
+ck_ca mul d 176
+ck_cb add ck_ca 640
+ck_cc add ck_cb 18
+ck_cp shr ck_cc 7
+ck_cw and ck_cc 127
+ck_cg get m22 ck_cp
+ck get ck_cg ck_cw
+cv_ca mul d 176
+cv_cb add cv_ca 640
+cv_cc add cv_cb 19
+cv_cp shr cv_cc 7
+cv_cw and cv_cc 127
+cv_cg get m22 cv_cp
+cv get cv_cg cv_cw
 cn8_m23 select casec 1 0
 m23 fold wxpsh cn8_m23 m22 d ck cv
 negu sub 0 unr
@@ -3393,13 +4445,22 @@ cn1_m0 select big 1 0
 m0 fold wxs cn1_m0 p0 8 2
 cn2_m1 select a1 1 0
 m1 fold wxres cn2_m1 m0 d 1 j
-sa call wxg m1 17
+sa_gp shr 17 7
+sa_gw and 17 127
+sa_gg get m1 sa_gp
+sa get sa_gg sa_gw
 cn3_m2 select a2 1 0
 m2 fold wxslot cn3_m2 m1 d j by
-sb call wxg m2 16
+sb_gp shr 16 7
+sb_gw and 16 127
+sb_gg get m2 sb_gp
+sb get sb_gg sb_gw
 cn4_m3 select a3 1 0
 m3 fold wxnl cn4_m3 m2
-sc call wxg m3 16
+sc_gp shr 16 7
+sc_gw and 16 127
+sc_gg get m3 sc_gp
+sc get sc_gg sc_gw
 cn5_m4 select a3 1 0
 m4 fold wxbind cn5_m4 m3 d j sc
 sx select a2 sb sc
@@ -3416,8 +4477,14 @@ m8 fold wxpsh cn9_m8 m7 d k1 v1
 cn10_m9 select a3 1 0
 m9 fold wxls cn10_m9 m8 state
 m10 fold wxnl 1 m9
-ic call wxg m10 16
-simd call wxg m10 13
+ic_gp shr 16 7
+ic_gw and 16 127
+ic_gg get m10 ic_gp
+ic get ic_gg ic_gw
+simd_gp shr 13 7
+simd_gw and 13 127
+simd_gg get m10 simd_gp
+simd get simd_gg simd_gw
 sd ne simd 0
 runc call wxsh p10 g
 r4 ge runc 4
@@ -3471,9 +4538,21 @@ end
 # induction variable, the carried element, a read of scalar state in locals, a chain node's
 # words; then an aliasing set/put (one store), a fold/loop, and the ops by number.
 fn wxnode u32x128x512 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
-g0 call wxfg p0 p2 2
+g0_fa mul p2 128
+g0_fb add g0_fa 128
+g0_fc add g0_fb 2
+g0_fp shr g0_fc 7
+g0_fw and g0_fc 127
+g0_fg get p0 g0_fp
+g0 get g0_fg g0_fw
 g add g0 p3
-fi call wxfg p0 p2 0
+fi_fa mul p2 128
+fi_fb add fi_fa 128
+fi_fc add fi_fb 0
+fi_fp shr fi_fc 7
+fi_fw and fi_fc 127
+fi_fg get p0 fi_fp
+fi get fi_fg fi_fw
 fpt call wxfw p4 fi 2
 op call wxnw p5 g 1
 na call wxnw p5 g 2
@@ -3496,39 +4575,90 @@ n1 gt na 1
 n2 gt na 2
 cn1_m1 select n0 1 0
 m1 fold wxres cn1_m1 p0 p2 k0 v0
-c0r call wxg m1 16
-s0r call wxg m1 17
+c0r_gp shr 16 7
+c0r_gw and 16 127
+c0r_gg get m1 c0r_gp
+c0r get c0r_gg c0r_gw
+s0r_gp shr 17 7
+s0r_gw and 17 127
+s0r_gg get m1 s0r_gp
+s0r get s0r_gg s0r_gw
 c0 select n0 c0r 0
 s0 select n0 s0r 0
 cn2_m2 select n1 1 0
 m2 fold wxres cn2_m2 m1 p2 k1 v1
-c1r call wxg m2 16
-s1r call wxg m2 17
+c1r_gp shr 16 7
+c1r_gw and 16 127
+c1r_gg get m2 c1r_gp
+c1r get c1r_gg c1r_gw
+s1r_gp shr 17 7
+s1r_gw and 17 127
+s1r_gg get m2 s1r_gp
+s1r get s1r_gg s1r_gw
 c1 select n1 c1r 0
 s1 select n1 s1r 0
 cn3_m3 select n2 1 0
 m3 fold wxres cn3_m3 m2 p2 k2 v2
-c2r call wxg m3 16
-s2r call wxg m3 17
+c2r_gp shr 16 7
+c2r_gw and 16 127
+c2r_gg get m3 c2r_gp
+c2r get c2r_gg c2r_gw
+s2r_gp shr 17 7
+s2r_gw and 17 127
+s2r_gg get m3 s2r_gp
+s2r get s2r_gg s2r_gw
 c2 select n2 c2r 0
 s2 select n2 s2r 0
 ty0 call wxopty k0 v0 p7 p9 fpt g0
 ty1 call wxopty k1 v1 p7 p9 fpt g0
-rw call wxrg m3 p2 p3 3
+rw_t1 eq p2 0
+rw_t2 mul p3 4
+rw_t3 add rw_t2 5440
+rw_t4 sub p2 1
+rw_t5 mul rw_t4 128
+rw_t6 add rw_t5 16704
+rw_t7 add rw_t6 rw_t2
+rw_t8 select rw_t1 rw_t3 rw_t7
+rw_t9 add rw_t8 3
+rw_rp shr rw_t9 7
+rw_rw and rw_t9 127
+rw_rg get m3 rw_rp
+rw get rw_rg rw_rw
 ali ne rw 0
 aliu select ali 1 0
 c rec p2 p3 g op na fa ce pr t tag by k0 v0 k1 v1 k2 v2 c0 s0 c1 s1 c2 s2 ty0 ty1 aliu 0 0
 dpos gt p2 0
 bk0 call wxbk p2 p3 0
-indv call wxg m3 bk0
+indv_gp shr bk0 7
+indv_gw and bk0 127
+indv_gg get m3 indv_gp
+indv get indv_gg indv_gw
 hi1 ne indv 0
 hasind and dpos hi1
-cf call wxfg m3 p2 18
-cg call wxfg m3 p2 19
+cf_fa mul p2 128
+cf_fb add cf_fa 128
+cf_fc add cf_fb 18
+cf_fp shr cf_fc 7
+cf_fw and cf_fc 127
+cf_fg get m3 cf_fp
+cf get cf_fg cf_fw
+cg_fa mul p2 128
+cg_fb add cg_fa 128
+cg_fc add cg_fb 19
+cg_fp shr cg_fc 7
+cg_fw and cg_fc 127
+cg_fg get m3 cg_fp
+cg get cg_fg cg_fw
 cf1 ne cf 0
 cg1 eq cg p3
 carryget and cf1 cg1
-wd call wxfg m3 p2 9
+wd_fa mul p2 128
+wd_fb add wd_fa 128
+wd_fc add wd_fb 9
+wd_fp shr wd_fc 7
+wd_fw and wd_fc 127
+wd_fg get m3 wd_fp
+wd get wd_fg wd_fw
 hw gt wd 0
 o25 eq op 25
 o27 eq op 27
@@ -3540,7 +4670,19 @@ l1 eq k1 3
 f1 and hw isget
 f2 and f1 isp0
 fldr0 and f2 l1
-fl call wxrg m3 p2 p3 2
+fl_t1 eq p2 0
+fl_t2 mul p3 4
+fl_t3 add fl_t2 5440
+fl_t4 sub p2 1
+fl_t5 mul fl_t4 128
+fl_t6 add fl_t5 16704
+fl_t7 add fl_t6 fl_t2
+fl_t8 select fl_t1 fl_t3 fl_t7
+fl_t9 add fl_t8 2
+fl_rp shr fl_t9 7
+fl_rw and fl_t9 127
+fl_rg get m3 fl_rp
+fl get fl_rg fl_rw
 ch1 and fl 2
 ch2 ne ch1 0
 chn and hw ch2
@@ -3652,11 +4794,27 @@ end
 # and set node b of frame a, 8 start phase b of loop a, 9 a trip of loop a, 10 its body, 11 its
 # end
 fn wxstep u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
-m1 fold wxpo 1 p0
-k call wxg m1 16
-a call wxg m1 17
-b call wxg m1 18
-c call wxg m1 19
+m0 fold wxad 1 p0 95 1
+m1x fold wxpo 1 m0
+k_gp shr 16 7
+k_gw and 16 127
+k_gg get m1x k_gp
+k get k_gg k_gw
+a_gp shr 17 7
+a_gw and 17 127
+a_gg get m1x a_gp
+a get a_gg a_gw
+b_gp shr 18 7
+b_gw and 18 127
+b_gg get m1x b_gp
+b get b_gg b_gw
+c_gp shr 19 7
+c_gw and 19 127
+c_gg get m1x c_gp
+c get c_gg c_gw
+m1y fold wxs 1 m1x 96 k
+m1z fold wxs 1 m1y 97 a
+m1 fold wxs 1 m1z 98 b
 k1 eq k 1
 k2 eq k 2
 k3 eq k 3
@@ -3668,8 +4826,20 @@ k8 eq k 8
 k9 eq k 9
 k10 eq k 10
 k11 eq k 11
-nn call wxfg m1 a 3
-g0 call wxfg m1 a 2
+nn_fa mul a 128
+nn_fb add nn_fa 128
+nn_fc add nn_fb 3
+nn_fp shr nn_fc 7
+nn_fw and nn_fc 127
+nn_fg get m1 nn_fp
+nn get nn_fg nn_fw
+g0_fa mul a 128
+g0_fb add g0_fa 128
+g0_fc add g0_fb 2
+g0_fp shr g0_fc 7
+g0_fw and g0_fc 127
+g0_fg get m1 g0_fp
+g0 get g0_fg g0_fw
 b1 add b 1
 mor lt b1 nn
 rest1 and k1 mor
@@ -3698,7 +4868,10 @@ cnt select fg cnt0 0
 cn6_m7 select k6 1 0
 m7 fold wxs cn6_m7 m6 21 4294967295
 m8 fold wxfnd cnt m7 g0 b arm1 fr p9
-fnd call wxg m8 21
+fnd_gp shr 21 7
+fnd_gw and 21 127
+fnd_gg get m8 fnd_gp
+fnd get fnd_gg fnd_gw
 has ne fnd 4294967295
 fm1 add fnd 1
 nxt shl fm1 2
@@ -3722,26 +4895,120 @@ ret m15
 end
 # keep stepping while items remain and no error was raised
 fn wxgo u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> bool
-sp call wxg p0 7
-er call wxg p0 8
+sp_gp shr 7 7
+sp_gw and 7 127
+sp_gg get p0 sp_gp
+sp get sp_gg sp_gw
+er_gp shr 8 7
+er_gw and 8 127
+er_gg get p0 er_gp
+er get er_gg er_gw
+st_gp shr 95 7
+st_gw and 95 127
+st_gg get p0 st_gp
+st get st_gg st_gw
 a gt sp 0
 b eq er 0
-r and a b
+c lt st 5000
+ab and a b
+r and ab c
 ret r
 end
 # ---------------------------------------------------------------------------------------------
 # One variant of one function (src/wasm.ts `FunctionEmitter.emit`).
 
+# a debugging stop: the machine ran too many steps: its state is left in the miss list words
+fn wxdbg u32x128x512 u32 -> u32x128x512
+st_gp shr 95 7
+st_gw and 95 127
+st_gg get p0 st_gp
+st get st_gg st_gw
+sp_gp shr 7 7
+sp_gw and 7 127
+sp_gg get p0 sp_gp
+sp get sp_gg sp_gw
+k_gp shr 96 7
+k_gw and 96 127
+k_gg get p0 k_gp
+k get k_gg k_gw
+a_gp shr 97 7
+a_gw and 97 127
+a_gg get p0 a_gp
+a get a_gg a_gw
+b_gp shr 98 7
+b_gw and 98 127
+b_gg get p0 b_gp
+b get b_gg b_gw
+a1 add 1280 0
+sp1 sub sp 1
+t4 mul sp1 4
+ta add t4 1280
+tk_gp shr ta 7
+tk_gw and ta 127
+tk_gg get p0 tk_gp
+tk get tk_gg tk_gw
+ta1 add ta 1
+tx_gp shr ta1 7
+tx_gw and ta1 127
+tx_gg get p0 tx_gp
+tx get tx_gg tx_gw
+ta2 add ta 2
+ty_gp shr ta2 7
+ty_gw and ta2 127
+ty_gg get p0 ty_gp
+ty get ty_gg ty_gw
+m1 fold wxs 1 p0 8 9
+m2 fold wxs 1 m1 15 8
+m3 fold wxs 1 m2 32 st
+m4 fold wxs 1 m3 33 sp
+m5 fold wxs 1 m4 34 k
+m6 fold wxs 1 m5 35 a
+m7 fold wxs 1 m6 36 b
+m8 fold wxs 1 m7 37 tk
+m9 fold wxs 1 m8 38 tx
+m10 fold wxs 1 m9 39 ty
+ret m10
+end
 # the result slot of the value variant of a function with an aggregate result: the node the ret
 # operand's root is, when that node owns storage (an `arr` `rec` `call` ... not get at select
 # mov and not an alias); register 11 (4294967295: none)
 fn wxrsl u32x128x512 u32 u32 u32x128x128 -> u32x128x512
-rk call wxfg p0 0 5
-rv call wxfg p0 0 6
-g0 call wxfg p0 0 2
+rk_fa mul 0 128
+rk_fb add rk_fa 128
+rk_fc add rk_fb 5
+rk_fp shr rk_fc 7
+rk_fw and rk_fc 127
+rk_fg get p0 rk_fp
+rk get rk_fg rk_fw
+rv_fa mul 0 128
+rv_fb add rv_fa 128
+rv_fc add rv_fb 6
+rv_fp shr rv_fc 7
+rv_fw and rv_fc 127
+rv_fg get p0 rv_fp
+rv get rv_fg rv_fw
+g0_fa mul 0 128
+g0_fb add g0_fa 128
+g0_fc add g0_fb 2
+g0_fp shr g0_fc 7
+g0_fw and g0_fc 127
+g0_fg get p0 g0_fp
+g0 get g0_fg g0_fw
 isn eq rk 1
 rj select isn rv 0
-rr call wxrg p0 0 rj 3
+rr_t1 eq 0 0
+rr_t2 mul rj 4
+rr_t3 add rr_t2 5440
+rr_t4 sub 0 1
+rr_t5 mul rr_t4 128
+rr_t6 add rr_t5 16704
+rr_t7 add rr_t6 rr_t2
+rr_t8 select rr_t1 rr_t3 rr_t7
+rr_t9 add rr_t8 3
+rr_rp shr rr_t9 7
+rr_rw and rr_t9 127
+rr_rg get p0 rr_rp
+rr get rr_rg rr_rw
 rz eq rr 0
 rkk shr rr 28
 rvv and rr 268435455
@@ -3753,7 +5020,19 @@ okn0 and isn sflag
 hasn ne rnode 4294967295
 okn and okn0 hasn
 rn2 select okn rnode 0
-rr2 call wxrg p0 0 rn2 3
+rr2_t1 eq 0 0
+rr2_t2 mul rn2 4
+rr2_t3 add rr2_t2 5440
+rr2_t4 sub 0 1
+rr2_t5 mul rr2_t4 128
+rr2_t6 add rr2_t5 16704
+rr2_t7 add rr2_t6 rr2_t2
+rr2_t8 select rr2_t1 rr2_t3 rr2_t7
+rr2_t9 add rr2_t8 3
+rr2_rp shr rr2_t9 7
+rr2_rw and rr2_t9 127
+rr2_rg get p0 rr2_rp
+rr2 get rr2_rg rr2_rw
 al2 eq rr2 0
 ng add g0 rn2
 op call wxnw p3 ng 1
@@ -3790,13 +5069,49 @@ m10 fold wxs 1 m9 20489 0
 ret m10
 end
 fn wxfinal u32x128x512 u32 u32x128x45 u32x128x65 -> u32x128x512
-variant call wxfg p0 0 1
-rk call wxfg p0 0 5
-rv call wxfg p0 0 6
-fi call wxfg p0 0 0
+variant_fa mul 0 128
+variant_fb add variant_fa 128
+variant_fc add variant_fb 1
+variant_fp shr variant_fc 7
+variant_fw and variant_fc 127
+variant_fg get p0 variant_fp
+variant get variant_fg variant_fw
+rk_fa mul 0 128
+rk_fb add rk_fa 128
+rk_fc add rk_fb 5
+rk_fp shr rk_fc 7
+rk_fw and rk_fc 127
+rk_fg get p0 rk_fp
+rk get rk_fg rk_fw
+rv_fa mul 0 128
+rv_fb add rv_fa 128
+rv_fc add rv_fb 6
+rv_fp shr rv_fc 7
+rv_fw and rv_fc 127
+rv_fg get p0 rv_fp
+rv get rv_fg rv_fw
+fi_fa mul 0 128
+fi_fb add fi_fa 128
+fi_fc add fi_fb 0
+fi_fp shr fi_fc 7
+fi_fw and fi_fc 127
+fi_fg get p0 fi_fp
+fi get fi_fg fi_fw
 isn eq rk 1
 rj select isn rv 0
-rr call wxrg p0 0 rj 3
+rr_t1 eq 0 0
+rr_t2 mul rj 4
+rr_t3 add rr_t2 5440
+rr_t4 sub 0 1
+rr_t5 mul rr_t4 128
+rr_t6 add rr_t5 16704
+rr_t7 add rr_t6 rr_t2
+rr_t8 select rr_t1 rr_t3 rr_t7
+rr_t9 add rr_t8 3
+rr_rp shr rr_t9 7
+rr_rw and rr_t9 127
+rr_rg get p0 rr_rp
+rr get rr_rg rr_rw
 rkk shr rr 28
 rvv and rr 268435455
 isn2 eq rk 2
@@ -3809,11 +5124,20 @@ rnn1 and isn rn3
 rp1 or rp0 rnn1
 nrp0 select rp1 false true
 own eq variant 1
-sret call wxg p0 9
+sret_gp shr 9 7
+sret_gw and 9 127
+sret_gg get p0 sret_gp
+sret get sret_gg sret_gw
 hasret ne sret 4294967295
-rsl call wxg p0 11
+rsl_gp shr 11 7
+rsl_gw and 11 127
+rsl_gg get p0 rsl_gp
+rsl get rsl_gg rsl_gw
 norsl eq rsl 4294967295
-pbase call wxg p0 10
+pbase_gp shr 10 7
+pbase_gw and 10 127
+pbase_gg get p0 pbase_gp
+pbase get pbase_gg pbase_gw
 rt call wxfw p2 fi 3
 by call wxbyt p3 rt
 c1 and own nrp0
@@ -3833,11 +5157,17 @@ cn3_m3 select cp 1 0
 m3 fold wxcp cn3_m3 m2 by
 cn4_m4 select sc1 1 0
 m4 fold wxpsh cn4_m4 m3 0 rk rv
-fr call wxg m4 3
+fr_gp shr 3 7
+fr_gw and 3 127
+fr_gg get m4 fr_gp
+fr get fr_gg fr_gw
 fr15 add fr 15
 frame and fr15 4294967280
 hf gt frame 0
-fp call wxg m4 4
+fp_gp shr 4 7
+fp_gw and 4 127
+fp_gg get m4 fp_gp
+fp get fp_gg fp_gw
 cn5_m5 select hf 1 0
 m5 fold wxlg cn5_m5 m4 fp
 cn6_m6 select hf 1 0
@@ -3883,7 +5213,14 @@ cn2_m13 select has 1 0
 m13 fold wxpu cn2_m13 m12 1 0 0 0
 bign add 0 16777216
 m14 loop wxgo wxstep bign m13 p7 p8 p9 p10 p11 p12 p13 p14 p15
-m15 fold wxfinal 1 m14 p7 p13
+st_gp shr 95 7
+st_gw and 95 127
+st_gg get m14 st_gp
+st get st_gg st_gw
+bigs ge st 5000
+cn3_m14b select bigs 1 0
+m14b fold wxdbg cn3_m14b m14
+m15 fold wxfinal 1 m14b p7 p13
 ret m15
 end
 # whether function p4 carries an io token anywhere in its types
@@ -3975,7 +5312,10 @@ ret r
 end
 # word p1 of a code table is a marker word (>= 256)
 fn wxcm u32 u32 u32x128x512 -> u32
-w call wxg p2 p1
+w_gp shr p1 7
+w_gw and p1 127
+w_gg get p2 w_gp
+w get w_gg w_gw
 a ge w 256
 n select a 1 0
 r add p0 n
@@ -3983,7 +5323,10 @@ ret r
 end
 # write word p1 of the code table when it is a marker
 fn wxwm io u32 u32x128x512 -> io
-w call wxg p2 p1
+w_gp shr p1 7
+w_gw and p1 127
+w_gg get p2 w_gp
+w get w_gg w_gw
 a ge w 256
 n select a 1 0
 r fold wawr n p0 w
@@ -3991,7 +5334,10 @@ ret r
 end
 # write word p1 of the code table
 fn wxwc io u32 u32x128x512 -> io
-w call wxg p2 p1
+w_gp shr p1 7
+w_gw and p1 127
+w_gg get p2 w_gp
+w get w_gg w_gw
 r write p0 w
 ret r
 end
@@ -4006,7 +5352,10 @@ end
 fn wxpoc io u32 u32x128x512 u32x128x128 u32x128x512 u32 -> io
 i add p5 p1
 a add 3392 i
-g call wxg p2 a
+g_gp shr a 7
+g_gw and a 127
+g_gg get p2 g_gp
+g get g_gg g_gw
 na call wxnw p3 g 2
 fa call wxnw p3 g 3
 w1 write p0 na
@@ -4017,7 +5366,10 @@ end
 fn wxpsz u32 u32 u32x128x512 u32x128x128 u32 -> u32
 i add p4 p1
 a add 3392 i
-g call wxg p2 a
+g_gp shr a 7
+g_gw and a 127
+g_gg get p2 g_gp
+g get g_gg g_gw
 na call wxnw p3 g 2
 n add na 1
 r add p0 n
@@ -4026,11 +5378,29 @@ end
 # one variant's META (parameters, result, locals, v128 locals, 0, the markers, 0, bytes): p1 the
 # machine table, p2 its code table, p3 whether it is the value variant of an aggregate-free function
 fn wxmv io u32x128x512 u32x128x512 bool -> io
-nw call wxg p2 65533
-nl call wxg p2 65534
-nv call wxg p2 65535
-np call wxfg p1 0 4
-pb call wxg p1 10
+nw_gp shr 65533 7
+nw_gw and 65533 127
+nw_gg get p2 nw_gp
+nw get nw_gg nw_gw
+nl_gp shr 65534 7
+nl_gw and 65534 127
+nl_gg get p2 nl_gp
+nl get nl_gg nl_gw
+nv_gp shr 65535 7
+nv_gw and 65535 127
+nv_gg get p2 nv_gp
+nv get nv_gg nv_gw
+np_fa mul 0 128
+np_fb add np_fa 128
+np_fc add np_fb 4
+np_fp shr np_fc 7
+np_fw and np_fc 127
+np_fg get p1 np_fp
+np get np_fg np_fw
+pb_gp shr 10 7
+pb_gw and 10 127
+pb_gg get p1 pb_gp
+pb get pb_gg pb_gw
 pc add pb np
 res select p3 1 0
 mk fold wxcm nw 0 p2
@@ -4074,7 +5444,10 @@ fn wxmg (u32,u32x128x8) u32 u32x128x512 -> (u32,u32x128x8)
 n at p0 0
 t at p0 1
 a add 32 p1
-e call wxg p2 a
+e_gp shr a 7
+e_gw and a 127
+e_gg get p2 e_gp
+e get e_gg e_gw
 pi shr n 7
 wi and n 127
 pg get t pi
@@ -4098,32 +5471,74 @@ own call waown p5 p10 p9 f
 ownu select own 1 0
 z call z512
 m0 fold wxemit 1 z f 0 0 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 dt
-n0 call wxg m0 0
-np0 call wxfg m0 0 4
-pb0 call wxg m0 10
+n0_gp shr 0 7
+n0_gw and 0 127
+n0_gg get m0 n0_gp
+n0 get n0_gg n0_gw
+np0_fa mul 0 128
+np0_fb add np0_fa 128
+np0_fc add np0_fb 4
+np0_fp shr np0_fc 7
+np0_fw and np0_fc 127
+np0_fg get m0 np0_fp
+np0 get np0_fg np0_fw
+pb0_gp shr 10 7
+pb0_gw and 10 127
+pb0_gg get m0 pb0_gp
+pb0 get pb0_gg pb0_gw
 pc0 add pb0 np0
 zi call z352
 i0 fold wxcpi 352 zi m0
 c0 call wfzfin i0 n0 pc0
-npl0 call wxg m0 5
+npl0_gp shr 5 7
+npl0_gw and 5 127
+npl0_gg get m0 npl0_gp
+npl0 get npl0_gg npl0_gw
 z2 call z512
 m1 fold wxemit ownu z2 f 1 npl0 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 dt
-n1 call wxg m1 0
-np1 call wxfg m1 0 4
-pb1 call wxg m1 10
+n1_gp shr 0 7
+n1_gw and 0 127
+n1_gg get m1 n1_gp
+n1 get n1_gg n1_gw
+np1_fa mul 0 128
+np1_fb add np1_fa 128
+np1_fc add np1_fb 4
+np1_fp shr np1_fc 7
+np1_fw and np1_fc 127
+np1_fg get m1 np1_fp
+np1 get np1_fg np1_fw
+pb1_gp shr 10 7
+pb1_gw and 10 127
+pb1_gg get m1 pb1_gp
+pb1 get pb1_gg pb1_gw
 pc1 add pb1 np1
 zi1 call z352
 i1 fold wxcpi 352 zi1 m1
 c1 call wfzfin i1 n1 pc1
-npl1 call wxg m1 5
+npl1_gp shr 5 7
+npl1_gw and 5 127
+npl1_gg get m1 npl1_gp
+npl1 get npl1_gg npl1_gw
 plt select own npl1 npl0
-nw0 call wxg c0 65533
-nw1x call wxg c1 65533
+nw0_gp shr 65533 7
+nw0_gw and 65533 127
+nw0_gg get c0 nw0_gp
+nw0 get nw0_gg nw0_gw
+nw1x_gp shr 65533 7
+nw1x_gw and 65533 127
+nw1x_gg get c1 nw1x_gp
+nw1x get nw1x_gg nw1x_gw
 nw1 select own nw1x 0
 mk0 fold wxcm nw0 0 c0
 mk1x fold wxcm nw1 0 c1
-fr0 call wxg m0 3
-fr1x call wxg m1 3
+fr0_gp shr 3 7
+fr0_gw and 3 127
+fr0_gg get m0 fr0_gp
+fr0 get fr0_gg fr0_gw
+fr1x_gp shr 3 7
+fr1x_gw and 3 127
+fr1x_gg get m1 fr1x_gp
+fr1x get fr1x_gg fr1x_gw
 fr1 select own fr1x 0
 f0a add fr0 15
 f0 and f0a 4294967280
@@ -4131,13 +5546,25 @@ f1a add fr1 15
 f1b and f1a 4294967280
 fz select own f1b 0
 fm call umax f0 fz
-md0 call wxg m0 12
-md1x call wxg m1 12
+md0_gp shr 12 7
+md0_gw and 12 127
+md0_gg get m0 md0_gp
+md0 get md0_gg md0_gw
+md1x_gp shr 12 7
+md1x_gw and 12 127
+md1x_gg get m1 md1x_gp
+md1x get md1x_gg md1x_gw
 md1 select own md1x 0
 md call umax md0 md1
 dep add fm md
-e0 call wxg m0 8
-e1 call wxg m1 8
+e0_gp shr 8 7
+e0_gw and 8 127
+e0_gg get m0 e0_gp
+e0 get e0_gg e0_gw
+e1_gp shr 8 7
+e1_gw and 8 127
+e1_gg get m1 e1_gp
+e1 get e1_gg e1_gw
 e01 call umax e0 e1
 er2 call umax er e01
 fio call waio p5 p10 p8 p11 f
@@ -4146,7 +5573,8 @@ ns call wa16 p14 fb
 fb1 add fb 1
 nlen call wa16 p14 fb1
 ps0 fold wxpsz npl0 0 m0 p6 0
-nl1 sub npl1 npl0
+nl1a sub npl1 npl0
+nl1 select own nl1a 0
 ps1x fold wxpsz nl1 0 m1 p6 npl0
 ps1 select own ps1x 0
 psz add ps0 ps1
@@ -4177,8 +5605,14 @@ w12 call wxmv w11 m0 c0 rprim
 w13 fold wxmvf ownn w12 m1 c1
 w14 fold wxwc nw0 w13 c0
 w15 fold wxwc nw1 w14 c1
-mc0 call wxg m0 15
-mc1x call wxg m1 15
+mc0_gp shr 15 7
+mc0_gw and 15 127
+mc0_gg get m0 mc0_gp
+mc0 get mc0_gg mc0_gw
+mc1x_gp shr 15 7
+mc1x_gw and 15 127
+mc1x_gg get m1 mc1x_gp
+mc1x get mc1x_gg mc1x_gw
 mc1 select own mc1x 0
 ms0 rec nm ml
 ms1 fold wxmg mc0 ms0 m0
@@ -5435,23 +6869,19 @@ z1_g get p0 z1_p
 z1_w and b7 127
 z1 get z1_g z1_w
 lz eq lc 0
+vz eq fr 0
 ul call wauln lc
-l2 add ul 2
-lsz select lz 1 l2
-sf call wasln fr
-uf call wauln fp
-pro0 add sf uf
-pro add pro0 7
-epi0 add uf sf
-epi add epi0 5
-pe0 add pro epi
-fz eq fr 0
-pe select fz 0 pe0
+vl call wauln fr
+lg2 add ul 1
+vg2 add vl 1
+ig select lz 0 lg2
+vg select vz 0 vg2
+lsz0 add ig vg
+lsz add lsz0 1
 rz select p2 z1 z0
-s1 add lsz pe
-s2 add s1 nb
-s3 add s2 rz
-s add s3 1
+s1 add lsz nb
+s2 add s1 rz
+s add s2 1
 ret s
 end
 fn wkcsz u32 u32 u32x128x256 bool -> u32
@@ -5540,7 +6970,7 @@ z call z8
 r fold wkfop 8 z p0 p1
 ret r
 end
-# variant p4 + p1: size, locals, prologue, code, epilogue, end
+# variant p4 + p1: size, local groups (i32, v128), code, end
 fn wkcvar (io,u32,u32,u32) u32 u32x128x256 u32x128x8 u32 bool -> (io,u32,u32,u32)
 v add p4 p1
 bs call wkbsz p2 v p5
@@ -5573,28 +7003,20 @@ nr_w and b5 127
 nr get nr_g nr_w
 a call waul p0 bs true
 lz eq lc 0
+vz eq fr 0
 nlz select lz 0 1
-n0 select lz 1 0
-c fold wabst n0 a 0 true
-d fold wabst nlz c 1 true
-e fold waulst nlz d lc true
-f fold wabst nlz e 127 true
-fz eq fr 0
-nf select fz 0 1
-g fold wab2st nf f 35 0 true
-h fold wacist nf g fr true
-i fold wabst nf h 107 true
-j fold walxst nf i 34 fp true
-k fold wab2st nf j 36 0 true
+nvz select vz 0 1
+ng1 add nlz nvz
+c call wab a ng1 true
+d fold waulst nlz c lc true
+e fold wabst nlz d 127 true
+f fold waulst nvz e fr true
+g fold wabst nvz f 123 true
 nw add nb nr
 n127 add nw 127
 np shr n127 7
-l fold wkcpg np k nw p3 nh
-m fold walxst nf l 32 fp true
-n fold wacist nf m fr true
-o fold wabst nf n 106 true
-q fold wab2st nf o 36 0 true
-r call wab q 11 true
+l fold wkcpg np g nw p3 nh
+r call wab l 11 true
 ret r
 end
 # function p1's variants (field 2 of the state: the index of its first variant)
@@ -5828,4 +7250,3 @@ t8 fold wkmodst go t7 lv lf ln occ lt ver vlen inc outc nf nvar maxd iof npw
 r rec t8 err
 ret r
 end
-
