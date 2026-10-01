@@ -16,6 +16,7 @@ import {
   parse,
   parseAndValidate,
   run,
+  STRICT_TARGETS,
   type StrictTrap,
   type TypedFunc,
   type Value,
@@ -397,10 +398,10 @@ test('the profile is part of every derived key', () => {
 // Other targets refuse a strict program (and the checked ops), never run it canonical
 // ---------------------------------------------------------------------------
 
-test('every target refuses a strict program with A0713 naming the target', () => {
+test('every target without the strict profile refuses a strict program with A0713 naming the target', () => {
   const strict = parseAndValidate(`${STRICT}${BODY}`);
   const checked = parseAndValidate('fn t u32 u32 -> (u32,bool)\na cadd p0 p1\nret a\nend\n');
-  for (const target of TARGETS) {
+  for (const target of TARGETS.filter((t) => !STRICT_TARGETS.has(t))) {
     const e = raised(() => compile(strict, target));
     assert.equal(e.id, 'A0713', target);
     assert.equal(e.code, 'structure');

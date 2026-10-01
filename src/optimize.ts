@@ -8,9 +8,18 @@
  * Every rewrite is valid for all inputs under the exact v0.1 semantics (wrapping
  * arithmetic, logical shifts, pure total operations). The result is re-validated.
  * Optimizations produce a derived function; the editable source is untouched.
+ *
+ * Under `profile strict` the same rewrites must also preserve WHEN the program traps: every
+ * rewrite keeps the value AND the trap condition. A node that can trap (a `get`/`set` whose
+ * index is not provably below the length, a `div`/`rem` whose divisor is not provably nonzero, a
+ * `read`, or a call/fold/loop of a callee that can) is anchored like an effect: never removed,
+ * never folded into a value that hides its trap, never reordered, never inlined (the trap line
+ * names the frame and the call chain, which inlining would change). Sites proved safe by a
+ * small bounds analysis (`strictSite`) are ordinary pure nodes again.
  */
 
 import {
+  A0Error,
   containsIo,
   evalOp,
   formatOperand,
@@ -109,8 +118,184 @@ function atEqual(
   return undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Strict profile: which nodes can trap
+// ---------------------------------------------------------------------------
+
+const U32_TOP = 0xffff_ffff;
+
+/** Largest value `o` can take in an execution that reaches it (a bound, not exact). */
+function upperBound(o: Operand, defs: ReadonlyMap<string, Node>, depth = 0): number {
+  if (o.kind === 'u32') return o.value;
+  if (o.kind !== 'node' || depth > 8) return U32_TOP;
+  const n = defs.get(o.id);
+  if (n === undefined) return U32_TOP;
+  const [x, y, z] = n.args;
+  const ub = (q: Operand | undefined): number =>
+    q === undefined ? U32_TOP : upperBound(q, defs, depth + 1);
+  switch (n.op) {
+    case 'mov':
+      return ub(x);
+    case 'and':
+      return Math.min(ub(x), ub(y));
+    case 'rem':
+      return Math.min(ub(x), Math.max(ub(y) - 1, 0));
+    case 'div':
+      return y?.kind === 'u32' && y.value > 0 ? Math.floor(ub(x) / y.value) : ub(x);
+    case 'shr':
+      return y?.kind === 'u32' ? ub(x) >>> (y.value & 31) : ub(x);
+    case 'select':
+      return Math.max(ub(y), ub(z));
+    case 'add': {
+      const s = ub(x) + ub(y);
+      return s <= U32_TOP ? s : U32_TOP;
+    }
+    case 'mul': {
+      const p = ub(x) * ub(y);
+      return p <= U32_TOP ? p : U32_TOP;
+    }
+    case 'or':
+    case 'xor': {
+      const m = Math.max(ub(x), ub(y));
+      return m === 0 ? 0 : 2 ** (32 - Math.clz32(m)) - 1;
+    }
+    default:
+      return U32_TOP;
+  }
+}
+
+/** Is `o` provably nonzero in an execution that reaches it? */
+function nonZero(o: Operand, defs: ReadonlyMap<string, Node>, depth = 0): boolean {
+  if (o.kind === 'u32') return o.value !== 0;
+  if (o.kind !== 'node' || depth > 8) return false;
+  const n = defs.get(o.id);
+  if (n === undefined) return false;
+  const [x, y, z] = n.args;
+  const nz = (q: Operand | undefined): boolean => q !== undefined && nonZero(q, defs, depth + 1);
+  switch (n.op) {
+    case 'mov':
+      return nz(x);
+    case 'or':
+      return nz(x) || nz(y);
+    case 'select':
+      return nz(y) && nz(z);
+    case 'add':
+      // x + y does not wrap and one side is at least 1: the sum is at least 1.
+      return (
+        x !== undefined &&
+        y !== undefined &&
+        upperBound(x, defs, depth + 1) + upperBound(y, defs, depth + 1) <= U32_TOP &&
+        (nz(x) || nz(y))
+      );
+    default:
+      return false;
+  }
+}
+
+export type StrictSite = 'bounds' | 'divzero' | 'input';
+
+/**
+ * The trap `node` can raise itself under `profile strict`, or undefined when it cannot: an index
+ * proved below the array length, a divisor proved nonzero, and every op that never traps.
+ * `defs` maps node ids to their nodes (the function's, or the optimizer's working set).
+ */
+export function strictSite(
+  fn: Pick<TypedFunc, 'params' | 'types'>,
+  node: Node,
+  defs: ReadonlyMap<string, Node>,
+): StrictSite | undefined {
+  const [a, b] = node.args;
+  switch (node.op) {
+    case 'get':
+    case 'set': {
+      if (a === undefined || b === undefined) return 'bounds';
+      const t =
+        a.kind === 'param'
+          ? fn.params[a.index]
+          : a.kind === 'node'
+            ? fn.types.get(a.id)
+            : undefined;
+      if (t === undefined || isPrimitive(t) || t.kind !== 'arr') return 'bounds';
+      return upperBound(b, defs) < t.length ? undefined : 'bounds';
+    }
+    case 'div':
+    case 'rem':
+      return b !== undefined && nonZero(b, defs) ? undefined : 'divzero';
+    case 'read':
+      return 'input';
+    default:
+      return undefined;
+  }
+}
+
+const nodesById = (nodes: readonly Node[]): Map<string, Node> =>
+  new Map(nodes.map((n) => [n.id, n]));
+
+const DEFS = new WeakMap<TypedFunc, ReadonlyMap<string, Node>>();
+
+/** The nodes of `fn` by id (memoized), the `defs` the strict analyses take. */
+export function nodeDefs(fn: TypedFunc): ReadonlyMap<string, Node> {
+  const have = DEFS.get(fn);
+  if (have !== undefined) return have;
+  const d = nodesById(fn.nodes);
+  DEFS.set(fn, d);
+  return d;
+}
+
+/** The strict trap a node of `fn` can raise itself, or undefined (also for a canonical `fn`). */
+export function siteOf(fn: TypedFunc, node: Node): StrictSite | undefined {
+  return fn.profile === 'strict' ? strictSite(fn, node, nodeDefs(fn)) : undefined;
+}
+
+/** Can the call, fold or loop `node` of `fn` trap through its body or predicate? */
+export function callTraps(fn: TypedFunc, node: Node): boolean {
+  return (
+    (node.op === 'call' || node.op === 'fold' || node.op === 'loop') &&
+    mayTrapNode(fn, node, nodeDefs(fn))
+  );
+}
+
+/**
+ * Can `node` trap, itself or through a callee? Only a strict function has traps; a call, fold
+ * or loop can trap exactly when its body or predicate can.
+ */
+export function mayTrapNode(
+  fn: Pick<TypedFunc, 'params' | 'types' | 'calls' | 'profile'>,
+  node: Node,
+  defs: ReadonlyMap<string, Node>,
+): boolean {
+  if (fn.profile !== 'strict') return false;
+  if (node.op === 'call' || node.op === 'fold' || node.op === 'loop') {
+    return [node.callee, node.pred].some((c) => {
+      const f = c === undefined ? undefined : fn.calls.get(c);
+      return f !== undefined && mayTrapFn(f);
+    });
+  }
+  return strictSite(fn, node, defs) !== undefined;
+}
+
+const MAY_TRAP = new WeakMap<TypedFunc, boolean>();
+
+/** Can a call of `fn` trap? (False for every canonical function.) */
+export function mayTrapFn(fn: TypedFunc): boolean {
+  if (fn.profile !== 'strict') return false;
+  const known = MAY_TRAP.get(fn);
+  if (known !== undefined) return known;
+  const defs = nodesById(fn.nodes);
+  const r = fn.nodes.some((n) => mayTrapNode(fn, n, defs));
+  MAY_TRAP.set(fn, r);
+  return r;
+}
+
+/** Raised by the folding evaluator when strict semantics would trap: the node is left alone. */
+class StrictStop extends Error {}
+const stopStrict = (): never => {
+  throw new StrictStop('strict trap');
+};
+
 /** Return a replacement operand if the node folds/simplifies to an existing value. */
 function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): Operand | undefined {
+  const strict = fn.profile === 'strict';
   const [a, b, c] = node.args;
   if (node.args.every(isConst)) {
     // Aggregate results have no literal form; only scalar-valued constant nodes fold.
@@ -123,7 +308,15 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
     if (node.op === 'call') {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined) return undefined;
-      value = run(callee, values, { fuel: FOLD_EVAL_LIMIT }); // pure, total, and fuel-bounded
+      if (strict) {
+        // A call that traps for these arguments keeps its trap: the node stays.
+        try {
+          value = run(callee, values, { fuel: FOLD_EVAL_LIMIT });
+        } catch (e) {
+          if (e instanceof A0Error) return undefined;
+          throw e;
+        }
+      } else value = run(callee, values, { fuel: FOLD_EVAL_LIMIT }); // pure, total, and fuel-bounded
     } else if (node.op === 'fold' || node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
       const pred = node.op === 'loop' ? fn.calls.get(node.pred ?? '') : undefined;
@@ -149,6 +342,14 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
         return undefined; // too expensive to evaluate at compile time; keep the loop
       }
       value = state;
+    } else if (strict) {
+      // Under strict a zero divisor stays a trap, never the canonical value.
+      try {
+        value = evalOp(node.op, values, stopStrict);
+      } catch (e) {
+        if (e instanceof StrictStop) return undefined;
+        throw e;
+      }
     } else {
       value = evalOp(node.op, values);
     }
@@ -165,7 +366,9 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
     case 'get': {
       // get of a directly built array with a literal index is that element.
       const def = a.kind === 'node' ? defs.get(a.id) : undefined;
-      if (def?.op === 'arr' && b?.kind === 'u32') return def.args[b.value % def.args.length];
+      // Strict: an index past the end traps instead of wrapping, so only an in-range one folds.
+      if (def?.op === 'arr' && b?.kind === 'u32' && (!strict || b.value < def.args.length))
+        return def.args[b.value % def.args.length];
       return undefined;
     }
     case 'at': {
@@ -626,6 +829,7 @@ function expand(body: Body): Body {
       node.op === 'call' &&
       callee !== undefined &&
       irCost(callee.nodes) <= INLINE_THRESHOLD &&
+      !mayTrapFn(callee) &&
       isScalar(callee.result) &&
       callee.params.every(isScalar) &&
       [...callee.types.values()].every(isScalar)
@@ -641,6 +845,7 @@ function expand(body: Body): Body {
       count?.kind === 'u32' &&
       init !== undefined &&
       count.value >= 3 &&
+      !mayTrapFn(callee) &&
       !funcHasIo(callee) &&
       [callee.result, ...callee.types.values()].every((t) => typeWords(t) <= UNROLL_STATE_WORDS)
     ) {
@@ -662,6 +867,7 @@ function expand(body: Body): Body {
       count?.kind === 'u32' &&
       count.value > 0 &&
       count.value <= UNROLL_TRIPS &&
+      !mayTrapFn(callee) &&
       init !== undefined &&
       irCost(callee.nodes) <= UNROLL_BODY_COST &&
       irCost(callee.nodes) * count.value <= UNROLL_COST &&
@@ -805,6 +1011,7 @@ function pass(fn: TypedFunc, body: Body): Body {
   const kept: Node[] = [];
   const defs = new Map<string, Node>();
   const anchored = new Set<string>();
+  const strict = fn.profile === 'strict';
   // Count nodes kept as values: see `keepCount`.
   const counts = new Set<string>();
   /**
@@ -871,6 +1078,8 @@ function pass(fn: TypedFunc, body: Body): Body {
     }
     kept.push(reduced);
     defs.set(node.id, reduced);
+    // Strict: a node that can still trap is anchored like an effect (kept, in order).
+    if (strict && mayTrapNode(view, reduced, defs)) anchored.add(node.id);
   }
   const ret = resolve(body.ret);
   // Dead-code elimination: keep only nodes reachable from the result.
@@ -892,7 +1101,7 @@ function pass(fn: TypedFunc, body: Body): Body {
  * literal that nothing else uses is that literal with one operand replaced (exact under value
  * semantics), so element reads with literal indices then fold to the stored values.
  */
-function forwardAggregates(body: Body): Body | undefined {
+function forwardAggregates(body: Body, strict: boolean): Body | undefined {
   const uses = useCounts(body.nodes, body.ret);
   const defs = new Map<string, Node>();
   let changed = false;
@@ -904,6 +1113,8 @@ function forwardAggregates(body: Body): Body | undefined {
     const def = defs.get(target.id);
     if (def === undefined || (uses.get(target.id) ?? 0) !== 1 || value === undefined) return n;
     if (!(n.op === 'set' ? def.op === 'arr' : def.op === 'rec')) return n;
+    // Strict: a `set` index past the end traps instead of wrapping, so it is not a store.
+    if (strict && n.op === 'set' && index.value >= def.args.length) return n;
     const k = n.op === 'set' ? index.value % def.args.length : index.value;
     const out: Node = { id: n.id, op: def.op, args: def.args.map((a, i) => (i === k ? value : a)) };
     defs.set(n.id, out);
@@ -919,18 +1130,22 @@ export function optimizeFunction(fn: TypedFunc): { fn: TypedFunc; stats: Optimiz
   const calls = new Map([...fn.calls].map(([name, callee]) => [name, optimizedCallee(callee)]));
   let body = pass(fn, expand({ nodes: fn.nodes, ret: fn.ret, types: new Map(fn.types), calls }));
   for (let round = 0; round < 8; round += 1) {
-    const next = forwardAggregates(body);
+    const next = forwardAggregates(body, fn.profile === 'strict');
     if (next === undefined) break;
     body = pass(fn, next);
   }
   const view: TypedFunc = { ...fn, types: body.types, calls: body.calls };
-  const anchored = body.nodes.some((n) => isEffectful(n, view));
+  const defs = nodesById(body.nodes);
+  // Effects and strict traps fix the order of nodes: only a function with neither is scheduled.
+  const anchored = body.nodes.some((n) => isEffectful(n, view) || mayTrapNode(view, n, defs));
   const nodes = anchored ? body.nodes : schedule(body.nodes, body.ret);
   const used = new Set(nodes.flatMap((n) => [n.callee, n.pred]));
   const scope = new Map([...body.calls].filter(([name]) => used.has(name)));
   const optimized = validateFunction(
     { name: fn.name, params: fn.params, result: fn.result, nodes, ret: body.ret },
     scope,
+    undefined,
+    fn.profile,
   );
   return { fn: optimized, stats: { before: fn.nodes.length, after: nodes.length } };
 }
@@ -954,7 +1169,13 @@ export function optimize(program: TypedProgram): { program: TypedProgram; stats:
     after += r.stats.after;
     return r.fn;
   });
-  return { program: validate({ functions }), stats: { before, after } };
+  return {
+    program: validate({
+      ...(program.profile === 'strict' ? { profile: 'strict' as const } : {}),
+      functions,
+    }),
+    stats: { before, after },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1272,7 +1493,8 @@ const bodyCost = (nodes: readonly Node[]): number => nodes.reduce((s, n) => s + 
  * functions: a backend applying this must inline them (and fall back when it does not).
  */
 export function fuseLoops(fn: TypedFunc, options: FuseOptions = {}): TypedFunc | undefined {
-  if (funcHasIo(fn)) return undefined;
+  // Strict: fusion re-indexes reads modulo the length and drops the producer's own traps.
+  if (funcHasIo(fn) || fn.profile === 'strict') return undefined;
   let cur = fn;
   let changed = false;
   for (let round = 0; round < 8; round += 1) {

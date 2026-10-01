@@ -69,7 +69,7 @@ function usage(): never {
       '  a0 dense <file.a0> [out] [--normalize] [--comments]   # canonical file to dense text',
       '  a0 canon <file.a0d> [out]               # dense file to canonical text',
       '  (any command: --dense reads files as dense text; .a0d files always are)',
-      "  (any command: --profile strict|canonical overrides the program's `profile` line; strict runs only in the interpreter)",
+      "  (any command: --profile strict|canonical overrides the program's `profile` line; strict runs in the interpreter, js and c)",
       '  a0 view <file.a0> <function>          # function plus callee signatures',
       '  a0 mcp <file-or-dir>                  # MCP server (stdio), paths confined to the root;',
       '      tools: a0_open a0_program a0_apply a0_check a0_run a0_emit a0_save',

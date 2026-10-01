@@ -190,8 +190,8 @@ export const OPS: readonly Op[] = [
 
 /**
  * The total (checked) operations, valid in both profiles: each yields the `(value, ok)` record
- * `(u32,bool)` and never traps. Only the reference interpreter evaluates them; every
- * other backend refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
+ * `(u32,bool)` and never traps. The reference interpreter, JS and C evaluate them; every
+ * target outside `STRICT_TARGETS` refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
  * `OPS`, the 30 operations the self-hosted front end (compiler/*.a0) knows by number and name;
  * `ALL_OPS` is what the TypeScript parser, the dense form and the editor tools accept.
  */
@@ -199,9 +199,12 @@ export const CHECKED_OP_NAMES = ['cadd', 'csub', 'cmul', 'cdiv', 'crem', 'cget']
 export const CHECKED_OPS: ReadonlySet<Op> = new Set<Op>(CHECKED_OP_NAMES);
 export const ALL_OPS: readonly Op[] = [...OPS, ...CHECKED_OP_NAMES];
 
+/** The targets that implement the strict profile and the checked ops (`js`, and `c` with its C++ and parallel variants). */
+export const STRICT_TARGETS: ReadonlySet<string> = new Set(['js', 'c']);
+
 /**
  * Refuse what a target cannot honour. Every target but the reference interpreter implements only
- * the canonical profile and none of the checked ops yet, and none may silently run the canonical
+ * the canonical profile and none of the checked ops yet (`STRICT_TARGETS` do both), and none may silently run the canonical
  * semantics for a strict program: a strict function, or one with a checked op, is a `structure`
  * error (A0713) naming the target and what it lacks. Canonical programs pass untouched.
  */
@@ -209,6 +212,7 @@ export function assertTargetSupports(
   target: string,
   p: { readonly profile?: 'strict'; readonly functions: readonly Func[] },
 ): void {
+  if (STRICT_TARGETS.has(target)) return;
   if (p.profile === 'strict') throw diag('A0713', [target, 'a `profile strict` program']);
   for (const fn of p.functions) {
     const node = fn.nodes.find((n) => CHECKED_OPS.has(n.op));
@@ -350,7 +354,7 @@ export interface Func {
  * semantics every target implements: `get`/`set` wrap the index modulo the length, `div` by zero
  * is all ones, `rem` by zero is the dividend, an exhausted `read` yields 0. `strict` (the first
  * line `profile strict`, or `--profile strict`) makes those four cases trap instead; add, sub,
- * mul and the shifts still wrap. Only the reference interpreter implements `strict`.
+ * mul and the shifts still wrap. The reference interpreter, JS and C implement `strict`.
  */
 export type Profile = 'canonical' | 'strict';
 export const PROFILES: readonly Profile[] = ['canonical', 'strict'];

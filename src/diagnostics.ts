@@ -1680,11 +1680,12 @@ export const DIAGNOSTICS = {
   A0713: {
     cls: 'structure',
     message: 'target {0} cannot compile {1}',
-    fix: 'run it with the reference interpreter (`a0 run`), or remove the construct the target lacks',
+    fix: 'compile it for js or c, or run it with the reference interpreter (`a0 run`), or remove the construct the target lacks',
     why: [
       'A program that declares `profile strict`, or uses a checked op (cadd csub cmul cdiv crem',
-      'cget), is refused by every target but the reference interpreter: a target must',
-      'never silently run the canonical semantics for a strict program. `--profile canonical`',
+      'cget), is refused by every target that does not implement it (js and c do; the others',
+      'are listed in STRICT_TARGETS): a target must never silently run the canonical',
+      'semantics for a strict program. `--profile canonical`',
       'compiles a strict file under the canonical profile when that is what is wanted.',
     ],
     unrunnable: 'raised by the emitters, which the explain examples do not run',

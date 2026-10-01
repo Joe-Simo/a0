@@ -27,6 +27,7 @@ import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import { type CParallel, compile } from '../src/backends.js';
 import {
+  A0Error,
   isScalar,
   makeIo,
   parseAndValidate,
@@ -36,6 +37,7 @@ import {
   type Value,
   validate,
 } from '../src/core.js';
+import { formatTrap } from '../src/diagnostics.js';
 import { link } from '../src/link.js';
 import { parallelC } from '../src/parallel.js';
 import {
@@ -97,6 +99,18 @@ const SELFHOST_SCALAR =
  * Everything a target does not run, and why. An entry is a coverage gap, never silent: it appears
  * in results/behavior.json and the tests pin this list to the rendered ledger.
  */
+/** The strict and checked-op programs of the table: only some targets implement them yet. */
+const strictPrograms = (): string[] =>
+  BEHAVIOR_SPEC.filter((s) => s.profile === 'strict' || s.checkedOps === true).map((s) => s.name);
+
+/** `target` does not implement `profile strict` (or the checked ops) yet: each such program is skipped. */
+const NO_STRICT = (target: string, why: string): Skip[] =>
+  strictPrograms().map((program) => ({
+    target,
+    program,
+    reason: `strict profile not yet implemented${why} (a strict program and the checked ops are refused with A0713)`,
+  }));
+
 export const SKIPS: readonly Skip[] = [
   {
     target: 'systemverilog',
@@ -115,6 +129,18 @@ export const SKIPS: readonly Skip[] = [
   { target: 'selfhost-arm64', program: 'text', reason: SELFHOST_SCALAR },
   { target: 'selfhost-arm64', program: 'io', reason: SELFHOST_SCALAR },
   { target: 'selfhost-arm64', program: 'iterate', fn: 'fill_sum', reason: SELFHOST_SCALAR },
+  ...NO_STRICT('java', ''),
+  ...NO_STRICT('dotnet', ''),
+  ...NO_STRICT('wasm-c', ': the freestanding wasm build has no stdio for the trap line'),
+  ...NO_STRICT('wasm-direct', ''),
+  ...NO_STRICT('arm64', ''),
+  ...NO_STRICT('x86_64', ''),
+  ...NO_STRICT('riscv64', ''),
+  ...NO_STRICT('avr', ''),
+  ...NO_STRICT('arm32', ''),
+  ...NO_STRICT('metal', ''),
+  ...NO_STRICT('selfhost-c', ': compiler/emit_c.a0 does not know it'),
+  ...NO_STRICT('selfhost-arm64', ': compiler/emit_arm64.a0 does not know it'),
 ];
 
 // --- the table --------------------------------------------------------------------------------
@@ -251,6 +277,7 @@ export function caseOf(row: BehaviorRow): Case {
     functionName: row.fn,
     args: row.args,
     expected: row.expected,
+    ...(row.trap === undefined ? {} : { expectedTrap: row.trap }),
     ...(row.input === undefined ? {} : { input: row.input, expectedOutput: row.output ?? [] }),
   };
 }
@@ -259,7 +286,13 @@ export function programOf(spec: BehaviorProgramSpec): TypedProgram {
   return parseAndValidate(spec.source);
 }
 
-/** All the programs as one namespace, in table order; a name used twice is an error. */
+const STRICT_HEAD = 'profile strict\n';
+
+/**
+ * All the programs as one namespace, in table order; a name used twice is an error. The
+ * profile is program-wide, so a strict program's directive is hoisted: the specs given must
+ * agree on it (the table is run as one canonical group and one strict group, `profileGroups`).
+ */
 export function wholeSource(specs: readonly BehaviorProgramSpec[] = BEHAVIOR_SPEC): string {
   const seen = new Map<string, string>();
   for (const spec of specs)
@@ -269,12 +302,31 @@ export function wholeSource(specs: readonly BehaviorProgramSpec[] = BEHAVIOR_SPE
         throw new Error(`function ${fn.name} is defined by both ${other} and ${spec.name}`);
       seen.set(fn.name, spec.name);
     }
-  return specs.map((s) => s.source).join('');
+  const strict = specs.filter((s) => s.profile === 'strict').length;
+  if (strict !== 0 && strict !== specs.length)
+    throw new Error('wholeSource: the programs must all be strict or all canonical');
+  const body = specs.map((s) => (strict > 0 ? s.source.slice(STRICT_HEAD.length) : s.source));
+  return `${strict > 0 ? STRICT_HEAD : ''}${body.join('')}`;
+}
+
+/** The table's programs by profile: the canonical group first, then the strict group. */
+export function profileGroups(): {
+  profile: 'canonical' | 'strict';
+  specs: BehaviorProgramSpec[];
+}[] {
+  return (['canonical', 'strict'] as const)
+    .map((profile) => ({
+      profile,
+      specs: BEHAVIOR_SPEC.filter((s) => (s.profile ?? 'canonical') === profile),
+    }))
+    .filter((g) => g.specs.length > 0);
 }
 
 export interface RowValue {
   readonly expected: Value;
   readonly output?: readonly number[];
+  /** The trap line, when the strict profile traps on this row (the oracle has no traps). */
+  readonly trap?: string;
 }
 
 /**
@@ -289,6 +341,17 @@ export function deriveRow(
 ): RowValue {
   const io = fn.params[fn.params.length - 1] === 'io';
   if (io !== (input !== undefined)) throw new Error(`${label}: input words iff a trailing io`);
+  if (fn.profile === 'strict') {
+    // A trap is the interpreter's own result: the BigInt oracle has no traps, so a row that
+    // traps carries the line; a row that does not must still equal the oracle's value.
+    try {
+      run(fn, io ? [...args, makeIo(input ?? [])] : args);
+    } catch (e) {
+      if (e instanceof A0Error && e.trap !== undefined && e.code === 'runtime')
+        return { expected: 0, trap: formatTrap(e.trap) };
+      throw e;
+    }
+  }
   if (input === undefined) {
     const interp = run(fn, args);
     const oracle = oracleToValue(oracleRun(fn, args));
@@ -335,6 +398,7 @@ export function deriveTable(
           ...(r.input === undefined ? {} : { input: r.input }),
           expected: v.expected,
           ...(v.output === undefined ? {} : { output: v.output }),
+          ...(v.trap === undefined ? {} : { trap: v.trap }),
         });
       }
     }
@@ -358,7 +422,7 @@ export function renderTable(table: Readonly<Record<string, readonly BehaviorRow[
     lines.push(`  ${name}: [`);
     for (const r of rows)
       lines.push(
-        `    { fn: '${r.fn}', args: ${q(r.args)}, ${r.input === undefined ? '' : `input: ${q(r.input)}, `}expected: ${q(r.expected)}${r.output === undefined ? '' : `, output: ${q(r.output)}`} },`,
+        `    { fn: '${r.fn}', args: ${q(r.args)}, ${r.input === undefined ? '' : `input: ${q(r.input)}, `}expected: ${q(r.expected)}${r.output === undefined ? '' : `, output: ${q(r.output)}`}${r.trap === undefined ? '' : `, trap: ${q(r.trap)}`} },`,
       );
     lines.push('  ],');
   }
@@ -369,15 +433,29 @@ export function renderTable(table: Readonly<Record<string, readonly BehaviorRow[
 export function tableSha256(): string {
   return createHash('sha256')
     .update(JSON.stringify(BEHAVIOR_TABLE))
-    .update(wholeSource())
+    .update(
+      profileGroups()
+        .map((g) => wholeSource(g.specs))
+        .join('\n'),
+    )
     .digest('hex');
 }
 
 // --- selection: what a target runs --------------------------------------------------------------
 
-export interface Selection {
+/** The part of a selection that runs under one profile (a program has one profile). */
+export interface SelectionGroup {
+  readonly profile: 'canonical' | 'strict';
   readonly program: TypedProgram;
   readonly cases: Case[];
+}
+
+export interface Selection {
+  /** The canonical group's program (the table's strict programs are in `groups`). */
+  readonly program: TypedProgram;
+  /** Every case of every group. */
+  readonly cases: Case[];
+  readonly groups: SelectionGroup[];
   /** Per table program: every function ran, only some did, or none did. */
   readonly coverage: Record<string, 'full' | 'partial' | 'none'>;
   /** The ledger entries that applied, plus functions dropped because a callee was skipped. */
@@ -393,7 +471,11 @@ export function select(
   target: string,
   options: { only?: readonly string[]; ignoreSkips?: boolean } = {},
 ): Selection {
-  const whole = parseAndValidate(wholeSource());
+  const wholes = profileGroups().map((g) => ({
+    profile: g.profile,
+    specs: g.specs,
+    whole: parseAndValidate(wholeSource(g.specs)),
+  }));
   const owner = new Map<string, string>();
   for (const spec of BEHAVIOR_SPEC)
     for (const fn of programOf(spec).functions) owner.set(fn.name, spec.name);
@@ -416,37 +498,48 @@ export function select(
         if (s.fn === undefined || s.fn === f.name) dropped.set(f.name, s.reason);
     }
   }
-  // A function that calls a dropped one cannot run either.
+  // A function that calls a dropped one cannot run either (function names are unique table-wide).
   for (let changed = true; changed; ) {
     changed = false;
-    for (const f of whole.functions) {
-      if (dropped.has(f.name)) continue;
-      const callee = [...f.calls.keys()].find((c) => dropped.has(c));
-      if (callee !== undefined) {
-        dropped.set(f.name, `calls skipped function ${callee}`);
-        skipped.push({
-          program: owner.get(f.name) as string,
-          fn: f.name,
-          reason: `calls skipped function ${callee}`,
-          derived: true,
-        });
-        changed = true;
+    for (const { whole } of wholes)
+      for (const f of whole.functions) {
+        if (dropped.has(f.name)) continue;
+        const callee = [...f.calls.keys()].find((c) => dropped.has(c));
+        if (callee !== undefined) {
+          dropped.set(f.name, `calls skipped function ${callee}`);
+          skipped.push({
+            program: owner.get(f.name) as string,
+            fn: f.name,
+            reason: `calls skipped function ${callee}`,
+            derived: true,
+          });
+          changed = true;
+        }
       }
-    }
   }
-  const kept = whole.functions.filter((f) => !dropped.has(f.name));
-  const program = validate({ functions: kept });
   const cases: Case[] = [];
+  const groups: SelectionGroup[] = [];
   const coverage: Selection['coverage'] = {};
-  for (const spec of BEHAVIOR_SPEC) {
-    const rows = BEHAVIOR_TABLE[spec.name] ?? [];
-    const callable = [...new Set(rows.map((r) => r.fn))];
-    const live2 = callable.filter((n) => !dropped.has(n));
-    coverage[spec.name] =
-      live2.length === callable.length ? 'full' : live2.length === 0 ? 'none' : 'partial';
-    for (const r of rows) if (!dropped.has(r.fn)) cases.push(caseOf(r));
+  for (const { profile, specs, whole } of wholes) {
+    const kept = whole.functions.filter((f) => !dropped.has(f.name));
+    const program = validate({
+      ...(profile === 'strict' ? { profile: 'strict' as const } : {}),
+      functions: kept,
+    });
+    const own: Case[] = [];
+    for (const spec of specs) {
+      const rows = BEHAVIOR_TABLE[spec.name] ?? [];
+      const callable = [...new Set(rows.map((r) => r.fn))];
+      const live2 = callable.filter((n) => !dropped.has(n));
+      coverage[spec.name] =
+        live2.length === callable.length ? 'full' : live2.length === 0 ? 'none' : 'partial';
+      for (const r of rows) if (!dropped.has(r.fn)) own.push(caseOf(r));
+    }
+    cases.push(...own);
+    groups.push({ profile, program, cases: own });
   }
-  return { program, cases, coverage, skipped };
+  const canonical = groups.find((g) => g.profile === 'canonical');
+  return { program: (canonical as SelectionGroup).program, cases, groups, coverage, skipped };
 }
 
 // --- running -------------------------------------------------------------------------------------
@@ -462,6 +555,25 @@ export interface TargetResult {
   readonly failures?: string[] | undefined;
   /** Per program: passed, partial (some functions skipped), skipped, blocked or failed. */
   readonly programs: Record<string, 'passed' | 'partial' | 'skipped' | 'blocked' | 'failed'>;
+}
+
+/** One report for the profile groups of a target: failed beats blocked beats passed. */
+function mergeReports(reports: readonly TargetReport[]): TargetReport {
+  const first = reports[0] as TargetReport;
+  if (reports.length === 1) return first;
+  const status = reports.some((r) => r.status === 'failed')
+    ? 'failed'
+    : reports.some((r) => r.status === 'blocked')
+      ? 'blocked'
+      : first.status;
+  return {
+    status,
+    cases: reports.reduce((n, r) => n + r.cases, 0),
+    detail: first.detail,
+    tool: first.tool,
+    elapsedMs: reports.reduce((n, r) => n + (r.elapsedMs ?? 0), 0),
+    failures: reports.flatMap((r) => r.failures ?? []),
+  };
 }
 
 export async function runTarget(def: TargetDef): Promise<TargetResult> {
@@ -490,17 +602,21 @@ export async function runTarget(def: TargetDef): Promise<TargetResult> {
       elapsedMs: 0,
       programs: programs('passed'),
     };
-  let report: TargetReport;
-  try {
-    report = await def.run(sel.program, sel.cases);
-  } catch (e) {
-    report = {
-      status: 'failed',
-      cases: 0,
-      detail: 'the check threw',
-      failures: [e instanceof Error ? (e.stack ?? e.message) : String(e)],
-    };
+  const reports: TargetReport[] = [];
+  for (const g of sel.groups) {
+    if (g.cases.length === 0) continue;
+    try {
+      reports.push(await def.run(g.program, g.cases));
+    } catch (e) {
+      reports.push({
+        status: 'failed',
+        cases: 0,
+        detail: 'the check threw',
+        failures: [e instanceof Error ? (e.stack ?? e.message) : String(e)],
+      });
+    }
   }
+  const report = mergeReports(reports);
   const status =
     report.status === 'passed' ? 'passed' : report.status === 'blocked' ? 'blocked' : 'failed';
   let perProgram = programs(status);
@@ -564,7 +680,10 @@ export function buildReport(targets: readonly TargetResult[]): BehaviorReport {
     platform: `${process.platform}-${process.arch}`,
     table: {
       programs: BEHAVIOR_SPEC.length,
-      functions: parseAndValidate(wholeSource()).functions.length,
+      functions: profileGroups().reduce(
+        (n, g) => n + parseAndValidate(wholeSource(g.specs)).functions.length,
+        0,
+      ),
       rows,
       sha256: tableSha256(),
       oracle:
@@ -645,13 +764,18 @@ async function main(): Promise<void> {
       )
         continue;
       const sel = select(s.target, { only: [s.program], ignoreSkips: true });
-      const r = await def.run(sel.program, sel.cases).catch(
-        (e: unknown): TargetReport => ({
-          status: 'failed',
-          cases: 0,
-          detail: e instanceof Error ? e.message : String(e),
-        }),
-      );
+      const parts: TargetReport[] = [];
+      for (const g of sel.groups.filter((x) => x.cases.length > 0))
+        parts.push(
+          await def.run(g.program, g.cases).catch(
+            (e: unknown): TargetReport => ({
+              status: 'failed',
+              cases: 0,
+              detail: e instanceof Error ? e.message : String(e),
+            }),
+          ),
+        );
+      const r = mergeReports(parts);
       // A check that drops what it cannot run (io on the direct backends) reports fewer cases than
       // it was given: that is the skip still in force, not a pass.
       const ran = r.status === 'passed' && r.cases >= sel.cases.length;

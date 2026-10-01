@@ -20,6 +20,7 @@ import {
 } from '../src/backends.js';
 
 import {
+  A0Error,
   formatProgram,
   makeIo,
   run,
@@ -27,6 +28,7 @@ import {
   type TypedProgram,
   type Value,
 } from '../src/core.js';
+import { formatTrap, type Trap } from '../src/diagnostics.js';
 import { optimize } from '../src/optimize.js';
 import { parallelC, planProgram } from '../src/parallel.js';
 import {
@@ -76,6 +78,7 @@ const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : St
 
 /** Expected line: result, then the output words for io functions. */
 function expectedLine(c: Case): string {
+  if (c.expectedTrap !== undefined) return `trap: ${c.expectedTrap}`;
   return c.expectedOutput === undefined
     ? fmt(c.expected)
     : [fmt(c.expected), ...c.expectedOutput.map(String)].join(' ');
@@ -83,11 +86,20 @@ function expectedLine(c: Case): string {
 
 /** Run one case in-process (interpreter or optimized graph), threading an io state when needed. */
 function runCase(fn: TypedFunc, c: Case): string {
-  if (c.input === undefined) return fmt(run(fn, c.args));
-  const state = makeIo(c.input);
-  const result = fmt(run(fn, [...c.args, state]));
-  return [result, ...state.output.map(String)].join(' ');
+  try {
+    if (c.input === undefined) return fmt(run(fn, c.args));
+    const state = makeIo(c.input);
+    const result = fmt(run(fn, [...c.args, state]));
+    return [result, ...state.output.map(String)].join(' ');
+  } catch (e) {
+    // A strict trap is a result too: its line is what every target must print.
+    if (e instanceof A0Error && e.trap !== undefined) return trapLine(e.trap);
+    throw e;
+  }
 }
+
+/** The line a trapping case is compared by: `trap: ` and the interpreter's `formatTrap` line. */
+export const trapLine = (t: Trap): string => `trap: ${formatTrap(t)}`;
 
 function compareAll(
   cases: readonly Case[],
@@ -154,10 +166,17 @@ export async function checkJs(
   const actual = cases.map((c) => {
     const f = mod[c.functionName];
     if (typeof f !== 'function') return '<missing>';
-    if (c.input === undefined) return fmt(f(...c.args));
-    const state = mod.a0_make_io([...c.input]);
-    const result = fmt(f(...c.args, state as unknown as Value));
-    return [result, ...state.output.map(String)].join(' ');
+    try {
+      if (c.input === undefined) return fmt(f(...c.args));
+      const state = mod.a0_make_io([...c.input]);
+      const result = fmt(f(...c.args, state as unknown as Value));
+      return [result, ...state.output.map(String)].join(' ');
+    } catch (e) {
+      // The emitted module throws an error whose `.trap` is the interpreter's record.
+      const trap = (e as { trap?: Trap }).trap;
+      if (trap !== undefined) return trapLine(trap);
+      throw e;
+    }
   });
   return timed(
     compareAll(cases, actual, 'Executed emitted ES module in Node; public input guards retained.'),
@@ -187,6 +206,9 @@ export function ioCaps(cases: readonly Case[]): {
 }
 
 export function cDriver(program: TypedProgram, header = '#include "module.c"'): string {
+  // A strict module reports a trap through A0_TRAP_EMIT / A0_TRAP_EXIT: the driver takes both
+  // over, so one process runs every case and a trap is a `trap: <line>` result like any other.
+  const strict = program.profile === 'strict';
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `    case ${i}: printf("skip\\n"); break;`;
     const io = hasIoParam(fn);
@@ -205,12 +227,18 @@ export function cDriver(program: TypedProgram, header = '#include "module.c"'): 
       ? ' for (uint32_t k = 0; k < io.noutput; k++) printf(" %u", (unsigned)io.output[k]);'
       : '';
     const need = scalars.length + (io ? 1 : 0);
-    return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n"); break; }`;
+    const guard = strict
+      ? 'if (setjmp(a0_jmp) != 0) { printf("trap: %s\\n", a0_trapbuf); break; } '
+      : '';
+    return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${guard}${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n"); break; }`;
   });
+  const hooks = strict
+    ? '#include <setjmp.h>\nstatic jmp_buf a0_jmp;\n#define A0_TRAP_EMIT(line) ((void)(line))\n#define A0_TRAP_EXIT() longjmp(a0_jmp, 1)\n'
+    : '';
   return `#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-${header}
+${hooks}${header}
 int main(void) {
   static char line[1 << 21]; /* one case per line: up to 2^18 words (a 131072-byte front-end source) */
 ${usesIo(program) ? '  static a0_io io; (void)io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {

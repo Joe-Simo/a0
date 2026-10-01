@@ -37,19 +37,37 @@ test('behavior: the skip ledger names real targets, programs and functions, each
   const total = Object.values(BEHAVIOR_TABLE).reduce((n, r) => n + r.length, 0);
   assert.equal(select('js').cases.length, total);
   const ioRows = (BEHAVIOR_TABLE.io ?? []).length;
-  assert.equal(select('arm64').cases.length, total - ioRows);
+  // The strict and checked-op programs run on the interpreter, the optimizer, js and the C paths only.
+  const strictRows = BEHAVIOR_SPEC.filter((p) => p.profile === 'strict' || p.checkedOps === true)
+    .map((p) => (BEHAVIOR_TABLE[p.name] ?? []).length)
+    .reduce((n, r) => n + r, 0);
+  assert.ok(strictRows > 0);
+  assert.equal(select('arm64').cases.length, total - ioRows - strictRows);
+  assert.equal(select('c-clang').cases.length, total);
+  assert.equal(select('java').cases.length, total - strictRows);
 });
 
 test('behavior: a wrong expected value fails on a backend (the check is not vacuous)', async () => {
-  const sel = select('js');
-  const first = sel.cases[0];
+  const group = select('js').groups[0];
+  assert.ok(group !== undefined);
+  const first = group.cases[0];
   assert.ok(first !== undefined && typeof first.expected === 'number');
   const wrong = { ...first, expected: (first.expected + 1) >>> 0 };
   const js = TARGETS.find((t) => t.id === 'js');
   assert.ok(js);
-  const r = await js.run(sel.program, [wrong, ...sel.cases.slice(1)]);
+  const r = await js.run(group.program, [wrong, ...group.cases.slice(1)]);
   assert.equal(r.status, 'failed');
   assert.match(r.failures?.[0] ?? '', /expected/);
+  // A trap row is not vacuous either: a wrong trap line fails.
+  const strict = select('js').groups.find((g) => g.profile === 'strict');
+  const trapRow = strict?.cases.find((c) => c.expectedTrap !== undefined);
+  assert.ok(strict !== undefined && trapRow !== undefined);
+  const bent = {
+    ...trapRow,
+    expectedTrap: String(trapRow.expectedTrap).replace('bounds', 'divzero'),
+  };
+  const t = await js.run(strict.program, [bent, ...strict.cases.filter((c) => c !== trapRow)]);
+  assert.equal(t.status, 'failed');
 });
 
 test('behavior: every program passes on every target or sits in the ledger', async () => {

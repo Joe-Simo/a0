@@ -22,6 +22,7 @@ import {
   assertVectorSized,
   bitWidth,
   borrowLive,
+  CHECKED_OPS,
   containsIo,
   formatType,
   isPrimitive,
@@ -33,10 +34,10 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
-import { diag } from './diagnostics.js';
+import { DIAGNOSTICS, diag } from './diagnostics.js';
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
-import { optimizeFunction } from './optimize.js';
+import { callTraps, mayTrapFn, optimizeFunction, siteOf } from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
@@ -90,8 +91,19 @@ export function operandTypeOf(fn: TypedFunc, o: Operand): Type {
 }
 
 /** `index mod N` for a u32 index: a literal folds, a power-of-two N masks, else `%`. */
-function jsIndex(fn: TypedFunc, arr: Operand | undefined, idx: Operand | undefined): string {
+function jsIndex(
+  fn: TypedFunc,
+  arr: Operand | undefined,
+  idx: Operand | undefined,
+  checked = false,
+): string {
   const n = arrayLength(fn, arr);
+  if (checked) {
+    // Strict: an index at or past the length traps (before any write) instead of wrapping.
+    if (idx?.kind === 'u32') return idx.value < n ? String(idx.value) : 'a0_strap(0)';
+    const i = jsOperand(idx as Operand);
+    return `(${i} < ${n} ? ${i} : a0_strap(0))`;
+  }
   if (idx?.kind === 'u32') return String(idx.value % n);
   const i = jsOperand(idx as Operand);
   return (n & (n - 1)) === 0 ? `(${i} & ${n - 1})` : `${i} % ${n}`;
@@ -190,6 +202,50 @@ function a0_read(t) { const v = t.position < t.input.length ? t.input[t.position
 function a0_write(t, v) { t.output.push(v); return t; }
 function a0_puts(t, a) { t.output.push(a.length); for (let i = 0; i < a.length; i++) t.output.push(a[i]); return t; }
 `;
+
+const JS_CHECKED = `// Checked ops: total, (value, ok) records, the same in both profiles.
+function a0_cadd(a, b) { const s = a + b; return [s >>> 0, s <= U32_MAX]; }
+function a0_csub(a, b) { return [(a - b) >>> 0, a >= b]; }
+function a0_cmul(a, b) { return [Math.imul(a, b) >>> 0, a * b <= U32_MAX]; }
+function a0_cdiv(a, b) { return b === 0 ? [0, false] : [Math.floor(a / b), true]; }
+function a0_crem(a, b) { return b === 0 ? [0, false] : [a % b, true]; }
+function a0_cget(a, i) { return i < a.length ? [a[i], true] : [0, false]; }
+`;
+
+/** The strict traps in the numbering the emitted runtimes use: 0 bounds, 1 divzero, 2 input. */
+const STRICT_TRAPS = [
+  ['bounds', 'A0710'],
+  ['divzero', 'A0711'],
+  ['input', 'A0712'],
+] as const;
+
+/** The strict profile's runtime for JS: the shadow stack of frames and the trap raiser. */
+const jsStrictRuntime =
+  (): string => `// Strict profile: a trap is an A0Trap; its .trap is the interpreter's {kind, fn, at, trip, chain}.
+export class A0Trap extends Error {
+  constructor(id, message, trap) { super(message); this.name = 'A0Error'; this.code = 'runtime'; this.id = id; this.trap = trap; }
+}
+const a0_ch = [], a0_nd = [], a0_tr = [];
+let a0_depth = 0;
+function a0_enter(fn) { a0_ch[a0_depth] = fn; a0_nd[a0_depth] = null; a0_depth++; }
+const A0_TRAPS = ${JSON.stringify(STRICT_TRAPS.map(([kind, id]) => [kind, id, DIAGNOSTICS[id].message]))};
+function a0_strap(k) {
+  const top = a0_depth - 1;
+  let at = null, trip = null;
+  for (let i = top; i >= 0; i--) if (a0_nd[i] !== null) { at = a0_ch[i] + '.' + a0_nd[i]; trip = a0_tr[i]; break; }
+  const fn = top >= 0 ? a0_ch[top] : '-';
+  const chain = a0_ch.slice(0, a0_depth);
+  a0_depth = 0;
+  throw new A0Trap(A0_TRAPS[k][1], A0_TRAPS[k][2].replace('{0}', fn), { kind: A0_TRAPS[k][0], fn, at, trip, chain });
+}
+function a0_sread(t) { if (t.position >= t.input.length) a0_strap(2); return [t.input[t.position++], t]; }
+`;
+
+/** The runtime a program needs beyond the fixed prelude; empty for a canonical program without checked ops. */
+const jsExtras = (program: TypedProgram): string => {
+  const checked = program.functions.some((f) => f.nodes.some((n) => CHECKED_OPS.has(n.op)));
+  return `${checked ? JS_CHECKED : ''}${program.functions.some(mayTrapFn) ? jsStrictRuntime() : ''}`;
+};
 
 function jsOperand(o: Operand): string {
   switch (o.kind) {
@@ -360,6 +416,7 @@ const isBoolNode = (fn: TypedFunc, node: Node): boolean => fn.types.get(node.id)
 
 function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string {
   const [a, b, c] = node.args.map(jsOperand);
+  const site = siteOf(fn, node);
   switch (node.op) {
     case 'mov':
       return `${a}`;
@@ -380,8 +437,12 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     case 'shr':
       return `${a} >>> (${b} & 31)`;
     case 'div':
+      if (site === 'divzero') return `(${b} === 0 ? a0_strap(1) : Math.floor(${a} / ${b}))`;
+      if (fn.profile === 'strict') return `Math.floor(${a} / ${b})`;
       return `(${b} === 0 ? 0xffffffff : Math.floor(${a} / ${b}))`;
     case 'rem':
+      if (site === 'divzero') return `(${b} === 0 ? a0_strap(1) : ${a} % ${b})`;
+      if (fn.profile === 'strict') return `${a} % ${b}`;
       return `(${b} === 0 ? ${a} : ${a} % ${b})`;
     case 'eq':
       return `${a} === ${b}`;
@@ -423,7 +484,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     case 'get': {
       const t = operandTypeOf(fn, node.args[0] as Operand);
       const elem = !isPrimitive(t) && t.kind === 'arr' ? t.elem : 'u32';
-      const read = `${a}[${jsIndex(fn, node.args[0], node.args[1])}]`;
+      const read = `${a}[${jsIndex(fn, node.args[0], node.args[1], site === 'bounds')}]`;
       return elem === 'bool' ? `${read} === 1` : read;
     }
     case 'set': {
@@ -432,7 +493,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       const et = operandTypeOf(fn, node.args[0] as Operand);
       const boolElem = !isPrimitive(et) && et.kind === 'arr' && et.elem === 'bool';
       const value = boolElem ? `(${c} ? 1 : 0)` : c;
-      const idx = jsIndex(fn, node.args[0], node.args[1]);
+      const idx = jsIndex(fn, node.args[0], node.args[1], site === 'bounds');
       return inPlace ? `(${a}[${idx}] = ${value}, ${a})` : `a0_with(${a}, ${idx}, ${value})`;
     }
     case 'at':
@@ -443,7 +504,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
       return inPlace ? `(${a}[${b}] = ${c}, ${a})` : `a0_with(${a}, ${b}, ${c})`;
     }
     case 'read':
-      return `a0_read(${a})`;
+      return fn.profile === 'strict' ? `a0_sread(${a})` : `a0_read(${a})`;
     case 'write':
       return `a0_write(${a}, ${b})`;
     case 'puts':
@@ -454,7 +515,7 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
     case 'cdiv':
     case 'crem':
     case 'cget':
-      throw diag('A0713', ['js', `the checked op ${node.op}`]);
+      return `a0_${node.op}(${a}, ${b})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -464,6 +525,9 @@ function jsExpr(node: Node, fn: TypedFunc, index = -1, ownedP0 = false): string 
 /** Emit one JS function body; `owned` marks the p0-owned iteration-body variant. */
 function jsBody(fn: TypedFunc, owned: boolean): string[] {
   const stateAggregate = (o: Operand): boolean => !isPrimitive(operandTypeOf(fn, o));
+  // Strict: a function that can trap keeps a frame (its name, and the fold it is iterating) on
+  // the shadow stack, so a trap names the same fn/at/trip/chain as the interpreter's.
+  const framed = mayTrapFn(fn);
   const body = fn.nodes.map((n, index) => {
     if (n.op !== 'fold' && n.op !== 'loop')
       return `  const n_${n.id} = ${jsExpr(n, fn, index, owned)};`;
@@ -480,7 +544,9 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
     const bodyName = stateAggregate(n.args[1] as Operand)
       ? `a0o_${n.callee ?? ''}`
       : `a0i_${n.callee ?? ''}`;
-    return `  let n_${n.id} = ${initExpr};\n  for (let i = 0; i < ${count}; i++) {${guard} n_${n.id} = ${bodyName}(${call}); }`;
+    const marked = framed && callTraps(fn, n);
+    const trip = marked ? ' a0_tr[a0_depth - 1] = i;' : '';
+    return `  let n_${n.id} = ${initExpr};\n${marked ? `  a0_nd[a0_depth - 1] = ${JSON.stringify(n.id)};\n` : ''}  for (let i = 0; i < ${count}; i++) {${trip}${guard} n_${n.id} = ${bodyName}(${call}); }${marked ? '\n  a0_nd[a0_depth - 1] = null;' : ''}`;
   });
   // An owned variant must return an owned value: copy unless the result is p0 itself or fresh.
   const ret = fn.ret;
@@ -489,6 +555,14 @@ function jsBody(fn: TypedFunc, owned: boolean): string[] {
     (ret.kind === 'node' && FRESH_OPS.has(fn.nodes.find((n) => n.id === ret.id)?.op ?? 'mov'));
   const retExpr =
     owned && !isPrimitive(fn.result) && !fresh ? `${jsOperand(ret)}.slice()` : jsOperand(ret);
+  if (framed)
+    return [
+      `  a0_enter(${JSON.stringify(fn.name)});`,
+      ...body,
+      `  const a0_r = ${retExpr};`,
+      '  a0_depth--;',
+      '  return a0_r;',
+    ];
   return [...body, `  return ${retExpr};`];
 }
 
@@ -553,6 +627,84 @@ static void a0_trap(const char *fn, const char *node, uint32_t trip) {
   exit(3);
 }
 static inline void a0_trip(const char *fn, const char *node, uint32_t i) { if (a0_budget == 0u) a0_trap(fn, node, i); a0_budget--; }`;
+};
+
+/**
+ * The frame runtime of a strict program (and of `cTrap` on one): a shadow stack of the functions
+ * that can trap, each with the fold it is iterating and its trip, and the trap raiser. A trap
+ * prints the reference interpreter's line (`formatTrap`: `runtime: trap bounds fn=.. at=..
+ * trip=.. chain=a>b fix: ..`) to stderr and exits 3. `A0_TRAP_EMIT(line)` and `A0_TRAP_EXIT()`
+ * may be defined before the module to take the line and the exit over (a test driver recovers
+ * with `longjmp`); the stack is reset before either runs.
+ */
+const cFrameRuntime = (
+  program: TypedProgram,
+  inputCapacity: number,
+  maxTrips: number | undefined,
+): string => {
+  const strict = program.profile === 'strict';
+  const depth = program.functions.length + 1;
+  const names = program.functions.reduce((n, f) => n + f.name.length + 1, 0);
+  const ids = Math.max(1, ...program.functions.flatMap((f) => f.nodes.map((n) => n.id.length)));
+  const cap = 1024 + 3 * (names + depth * (ids + 2));
+  const lines = [
+    '#include <stdio.h>',
+    '#include <stdlib.h>',
+    `/* Frame runtime: a trap prints one line and exits 3 (A0_TRAP_EMIT / A0_TRAP_EXIT override both). */`,
+    `static const char *a0_chain[${depth}u];`,
+    `static const char *a0_node[${depth}u];`,
+    `static uint32_t a0_trp[${depth}u];`,
+    'static uint32_t a0_depth;',
+    `static char a0_trapbuf[${cap}];`,
+    '#ifndef A0_TRAP_EMIT',
+    '#define A0_TRAP_EMIT(line) fprintf(stderr, "%s\\n", (line))',
+    '#endif',
+    '#ifndef A0_TRAP_EXIT',
+    '#define A0_TRAP_EXIT() exit(3)',
+    '#endif',
+    `static inline void a0_enter(const char *fn) { if (a0_depth < ${depth}u) { a0_chain[a0_depth] = fn; a0_node[a0_depth] = 0; } a0_depth++; }`,
+    'static inline void a0_leave(void) { a0_depth--; }',
+    `static inline void a0_mark(const char *node) { if (a0_depth - 1u < ${depth}u) a0_node[a0_depth - 1u] = node; }`,
+    `static inline void a0_idx(uint32_t i) { if (a0_depth - 1u < ${depth}u) a0_trp[a0_depth - 1u] = i; }`,
+    `static void a0_report(const char *cls, const char *kind, const char *fix) {`,
+    `  const uint32_t n = a0_depth < ${depth}u ? a0_depth : ${depth}u;`,
+    '  const char *fn = n > 0u ? a0_chain[n - 1u] : "-";',
+    '  const char *atfn = 0, *atnode = 0;',
+    '  uint32_t trip = 0u;',
+    '  for (uint32_t k = n; k-- > 0u;) if (a0_node[k]) { atfn = a0_chain[k]; atnode = a0_node[k]; trip = a0_trp[k]; break; }',
+    `  size_t o = (size_t)snprintf(a0_trapbuf, sizeof a0_trapbuf, "%s: trap %s fn=%s at=", cls, kind, fn);`,
+    `  if (atnode) o += (size_t)snprintf(a0_trapbuf + o, sizeof a0_trapbuf - o, "%s.%s trip=%u", atfn, atnode, (unsigned)trip);`,
+    `  else o += (size_t)snprintf(a0_trapbuf + o, sizeof a0_trapbuf - o, "- trip=-");`,
+    `  o += (size_t)snprintf(a0_trapbuf + o, sizeof a0_trapbuf - o, " chain=");`,
+    `  for (uint32_t k = 0u; k < n; k++) o += (size_t)snprintf(a0_trapbuf + o, sizeof a0_trapbuf - o, "%s%s", k == 0u ? "" : ">", a0_chain[k]);`,
+    `  snprintf(a0_trapbuf + o, sizeof a0_trapbuf - o, " fix: %s", fix);`,
+    '  a0_depth = 0u;',
+    '  A0_TRAP_EMIT(a0_trapbuf);',
+    '  A0_TRAP_EXIT();',
+    '}',
+  ];
+  if (maxTrips !== undefined)
+    lines.push(
+      `static uint32_t a0_budget = ${maxTrips}u;`,
+      `static inline void a0_trip(const char *fn, const char *node, uint32_t i) { (void)fn; if (a0_budget == 0u) { a0_mark(node); a0_idx(i); a0_report("limit", "iter", ${JSON.stringify(TRAP_FIX.iter)}); } a0_budget--; }`,
+    );
+  if (strict) {
+    lines.push(
+      `static const char *const a0_kinds[3] = ${JSON.stringify(STRICT_TRAPS.map(([k]) => k))
+        .replace('[', '{')
+        .replace(']', '}')};`,
+      `static const char *const a0_fixes[3] = {${STRICT_TRAPS.map(([k]) => JSON.stringify(TRAP_FIX[k])).join(', ')}};`,
+      'static void a0_strap(int k) { a0_report("runtime", a0_kinds[k], a0_fixes[k]); }',
+      'static inline uint32_t a0_oob(void) { a0_strap(0); return 0u; }',
+      'static inline uint32_t a0_dz(void) { a0_strap(1); return 0u; }',
+      'static inline uint32_t a0_ck(uint32_t i, uint32_t n) { return i < n ? i : a0_oob(); }',
+    );
+    if (usesIo(program))
+      lines.push(
+        `static inline a0t_r2_u_io a0_sread(a0_io *t) { a0t_r2_u_io r; if (t->position >= t->ninput || t->position >= ${inputCapacity}u) a0_strap(2); r.f0 = t->input[t->position++]; r.f1 = t; return r; }`,
+      );
+  }
+  return lines.join('\n');
 };
 
 /** Fixed-capacity io runtime for C targets (freestanding-safe: no allocation). */
@@ -911,10 +1063,17 @@ export interface CParallel {
     | undefined;
 }
 
+/** `index mod N`; under strict a site that can leave the array checks instead (traps at or past N). */
+const cIdx = (fn: TypedFunc, node: Node, index: string): string => {
+  const n = arrayLength(fn, node.args[0]);
+  return siteOf(fn, node) === 'bounds' ? `a0_ck(${index}, ${n}u)` : `${index} % ${n}u`;
+};
+
 function cExpr(ctx: CContext, node: Node, index: number): string {
   const fn = ctx.fn;
   const vals = node.args.map((o) => cVal(ctx, o));
   const [a, b, c] = vals;
+  const site = siteOf(fn, node);
   switch (node.op) {
     case 'mov':
       return `${a}`;
@@ -935,8 +1094,12 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
     case 'shr':
       return `(${a} >> (${b} & 31u))`;
     case 'div':
+      if (site === 'divzero') return `(${b} == 0u ? a0_dz() : ${a} / ${b})`;
+      if (fn.profile === 'strict') return `(${a} / ${b})`;
       return `(${b} == 0u ? 0xffffffffu : ${a} / ${b})`;
     case 'rem':
+      if (site === 'divzero') return `(${b} == 0u ? a0_dz() : ${a} % ${b})`;
+      if (fn.profile === 'strict') return `(${a} % ${b})`;
       return `(${b} == 0u ? ${a} : ${a} % ${b})`;
     case 'eq':
       return `(${a} == ${b})`;
@@ -969,12 +1132,14 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
     case 'rec':
       return `a0mk_${mangleType(fn.types.get(node.id) ?? 'u32')}(${vals.join(', ')})`;
     case 'get':
-      return `${a}.e[${b} % ${arrayLength(fn, node.args[0])}u]`;
+      return `${a}.e[${cIdx(fn, node, b as string)}]`;
     case 'set': {
-      const idx = `${b} % ${arrayLength(fn, node.args[0])}u`;
-      // In place: an assignment statement; the node aliases its operand's storage.
+      const idx = cIdx(fn, node, b as string);
+      // In place: an assignment statement; the node aliases its operand's storage. The index
+      // check (strict) is part of the subscript, so it runs before the store.
       if (cInPlace(ctx, node, index)) return `${a}.e[${idx}] = ${c};`;
-      return `a0set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${b}, ${c})`;
+      const checked = site === 'bounds' ? idx : b;
+      return `a0set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${checked}, ${c})`;
     }
     case 'at':
       return `${a}.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}`;
@@ -984,18 +1149,26 @@ function cExpr(ctx: CContext, node: Node, index: number): string {
       return `a0put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${k}(${a}, ${c})`;
     }
     case 'read':
-      return `a0_read(${a})`;
+      return fn.profile === 'strict' ? `a0_sread(${a})` : `a0_read(${a})`;
     case 'write':
       return `a0_write(${a}, ${b})`;
     case 'puts':
       return `a0_puts(${a}, ${b}.e, ${arrayLength(fn, node.args[1])}u)`;
+    // The checked ops build the (u32,bool) record `(value, ok)`; operands are plain values.
     case 'cadd':
+      return `a0mk_r2_u_b((uint32_t)(${a} + ${b}), (uint64_t)${a} + (uint64_t)${b} <= 0xffffffffu)`;
     case 'csub':
+      return `a0mk_r2_u_b((uint32_t)(${a} - ${b}), ${a} >= ${b})`;
     case 'cmul':
+      return `a0mk_r2_u_b((uint32_t)((uint64_t)${a} * (uint64_t)${b}), (uint64_t)${a} * (uint64_t)${b} <= 0xffffffffu)`;
     case 'cdiv':
+      return `a0mk_r2_u_b(${b} == 0u ? 0u : ${a} / ${b}, ${b} != 0u)`;
     case 'crem':
-    case 'cget':
-      throw diag('A0713', ['c', `the checked op ${node.op}`]);
+      return `a0mk_r2_u_b(${b} == 0u ? 0u : ${a} % ${b}, ${b} != 0u)`;
+    case 'cget': {
+      const n = arrayLength(fn, node.args[0]);
+      return `a0mk_r2_u_b(${b} < ${n}u ? ${a}.e[${b}] : 0u, ${b} < ${n}u)`;
+    }
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -1051,7 +1224,7 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
     case 'select':
       return `  const ${cType(t)} *const ${name} = ${a} ? ${cArg(ctx, ob)} : ${cArg(ctx, oc)};`;
     case 'set': {
-      const at = `.e[${b} % ${arrayLength(fn, oa)}u]`;
+      const at = `.e[${cIdx(fn, n, b as string)}]`;
       if (cInPlace(ctx, n, index)) return `  ${a}${at} = ${c};`;
       return `  ${cLargeStorage(ctx, n)} *${name} = ${a}; (*${name})${at} = ${c};`;
     }
@@ -1075,7 +1248,7 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
       return `  ${cLargeStorage(ctx, n)} ${n.args.map((o, k) => `${name}->f${k} = ${cVal(ctx, o)};`).join(' ')}`;
     // Only the result's root in `out` is a copy; any other read borrows (see cBorrow).
     case 'get':
-      return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.e[${b} % ${arrayLength(fn, oa)}u];`;
+      return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.e[${cIdx(fn, n, b as string)}];`;
     case 'at':
       return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.f${ob.kind === 'u32' ? ob.value : 0};`;
     case 'call':
@@ -1099,7 +1272,7 @@ function cBorrow(ctx: CContext, n: Node): string | undefined {
   const a = cVal(ctx, oa);
   const part =
     n.op === 'get'
-      ? `.e[${cVal(ctx, ob)} % ${arrayLength(ctx.fn, oa)}u]`
+      ? `.e[${cIdx(ctx.fn, n, cVal(ctx, ob))}]`
       : `.f${ob.kind === 'u32' ? ob.value : 0}`;
   ctx.borrows.add(n.id);
   // An owned projection is not a const borrow: a `set`/`put` on it writes the field in place.
@@ -1182,14 +1355,24 @@ function cBodyWith(
     const large =
       isLargeC(fn.types.get(site.node.id) ?? 'u32') ||
       callees.some((g) => g !== undefined && touchesLarge(g));
-    const out = large ? undefined : parallel?.fold(site);
+    // A strict body that can trap keeps the sequential loop: the trap must be the first one in
+    // trip order, and the frame stack is single-threaded.
+    const out = large || callTraps(fn, site.node) ? undefined : parallel?.fold(site);
     if (out === undefined) return `${site.decl.length > 0 ? `  ${site.decl}\n` : ''}  ${site.loop}`;
     for (const [name, text] of out.helpers) helpers?.set(name, text);
     return out.text;
   };
+  // A frame (function name on the shadow stack) is kept by every function under the iteration
+  // trap runtime, and under strict by exactly the functions that can trap.
+  const framed = trap || mayTrapFn(fn);
   const lines = fn.nodes.map((n, index) => {
     const t = cType(fn.types.get(n.id) ?? 'u32');
     if (n.op === 'fold' || n.op === 'loop') {
+      // Strict: the fold this frame is iterating, and its trip, name `at` and `trip` of a trap.
+      const marked = framed && callTraps(fn, n);
+      const markOpen = marked ? `a0_mark("${n.id}"); ` : '';
+      const markTrip = marked ? ' a0_idx(i);' : '';
+      const markClose = marked ? ' a0_mark(0);' : '';
       const [count, init, ...extra] = n.args.map((o) => cVal(ctx, o));
       // Extras as passed to a by-value or owned body: large ones by pointer.
       const passed = n.args.slice(2).map((o) => cArg(ctx, o));
@@ -1203,7 +1386,7 @@ function cBodyWith(
         const step = view
           ? `a0v_${n.callee ?? ''}(${[`n_${n.id}`, 'i', ...extra.map((e, k) => (isPrimitive(body.params[k + 2] as Type) ? e : `&${e}`))].join(', ')})`
           : `a0_${n.callee ?? ''}(${call})`;
-        const loop = `for (uint32_t i = 0; i < ${count}; i++) {${tripCall(trap, fn, n)}${guard} n_${n.id} = ${step}; }`;
+        const loop = `${markOpen}for (uint32_t i = 0; i < ${count}; i++) {${markTrip}${tripCall(trap, fn, n)}${guard} n_${n.id} = ${step}; }${markClose}`;
         return hooked({ fn, node: n, count: `${count}`, extra, state: `n_${n.id}`, decl, loop });
       }
       // Aggregate state: the body updates it through a pointer and the predicate reads it
@@ -1219,7 +1402,7 @@ function cBodyWith(
       const state = owned ? `${init}` : large ? `(*n_${n.id})` : `n_${n.id}`;
       const call = [`&${state}`, 'i', ...passed].join(', ');
       const guard = n.op === 'loop' ? ` if (!a0r_${n.pred ?? ''}(${call})) break;` : '';
-      const loop = `for (uint32_t i = 0; i < ${count}; i++) {${tripCall(trap, fn, n)}${guard} a0o_${n.callee ?? ''}(${call}); }`;
+      const loop = `${markOpen}for (uint32_t i = 0; i < ${count}; i++) {${markTrip}${tripCall(trap, fn, n)}${guard} a0o_${n.callee ?? ''}(${call}); }${markClose}`;
       const decl = owned
         ? ''
         : large
@@ -1244,7 +1427,13 @@ function cBodyWith(
     // `const T x` for values; `T *const x` for the io pointer (the pointee is mutable state).
     const decl = t.endsWith('*') ? `${t}const` : `const ${t}`;
     // Effect results may be legitimately unused (the effect is the point); keep -Wall clean.
-    const effect = n.op === 'read' || n.op === 'write' || containsIo(fn.types.get(n.id) ?? 'u32');
+    // A strict node kept only for its trap is likewise unused.
+    const effect =
+      n.op === 'read' ||
+      n.op === 'write' ||
+      containsIo(fn.types.get(n.id) ?? 'u32') ||
+      siteOf(fn, n) !== undefined ||
+      callTraps(fn, n);
     return `  ${decl} n_${n.id} = ${expr};${effect ? ` (void)n_${n.id};` : ''}`;
   });
   // A local updated in place cannot be const: drop the qualifier on every aliased node.
@@ -1256,7 +1445,7 @@ function cBodyWith(
     return m !== null && roots.has(m[1] as string) ? line.replace('  const ', '  ') : line;
   });
   const root = cRoot(ctx, fn.ret);
-  const tail: string[] = trap ? ['  a0_leave();'] : [];
+  const tail: string[] = framed ? ['  a0_leave();'] : [];
   if (variant === 'owned') {
     // The state is already updated in place when the result aliases p0; otherwise store it.
     if (!(root.kind === 'param' && root.index === 0)) tail.push(`  *p0 = ${cVal(ctx, fn.ret)};`);
@@ -1269,7 +1458,7 @@ function cBodyWith(
   if (variant !== 'owned' && !(variant === 'value' && isLargeC(fn.result)))
     tail.push(`  return ${cVal(ctx, fn.ret)};`);
   const mark = ctx.arena > 0 ? ['  const uint32_t a0arena_mark = a0arena_top;'] : [];
-  const enter = trap ? [`  a0_enter("${fn.name}");`] : [];
+  const enter = framed ? [`  a0_enter("${fn.name}");`] : [];
   const text = [
     `${cVariantSignature(fn, variant)} {`,
     ...enter,
@@ -1736,7 +1925,7 @@ export function assemble(
     case 'arm32':
       return assembleArm32(bodies, COMPILER_VERSION);
     case 'js':
-      return `${JS_PRELUDE}\n${bodies.join('\n\n')}\n`;
+      return `${JS_PRELUDE}\n${jsExtras(program)}${bodies.join('\n\n')}\n`;
     case 'c': {
       const decls = types.map(cTypeDecl).filter((d) => d.length > 0);
       if (io)
@@ -1749,14 +1938,24 @@ export function assemble(
       const arena = cArenaRuntime(program);
       if (arena !== undefined) decls.push(arena);
       if (options.cParallel !== undefined) decls.push(options.cParallel.runtime);
-      if (options.cTrap !== undefined) {
-        if (options.cParallel !== undefined)
-          throw new A0Error('cTrap and cParallel cannot be combined', undefined, {
-            code: 'cli',
-            fix: 'drop the parallel option: the trap runtime is single-threaded',
-          });
+      if (options.cTrap !== undefined && options.cParallel !== undefined)
+        throw new A0Error('cTrap and cParallel cannot be combined', undefined, {
+          code: 'cli',
+          fix: 'drop the parallel option: the trap runtime is single-threaded',
+        });
+      if (
+        program.profile === 'strict' &&
+        (options.cTrap !== undefined || program.functions.some(mayTrapFn))
+      )
+        decls.push(
+          cFrameRuntime(
+            program,
+            options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
+            options.cTrap?.maxTrips,
+          ),
+        );
+      else if (options.cTrap !== undefined && program.profile !== 'strict')
         decls.push(cTrapRuntime(options.cTrap.maxTrips, program.functions.length + 1));
-      }
       return `${C_PRELUDE}\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n`;
     }
     case 'java': {

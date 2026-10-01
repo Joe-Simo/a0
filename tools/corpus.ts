@@ -643,6 +643,11 @@ export interface Case {
   /** Scalar arguments only; the io token, when present, is the last parameter and is built from `input`. */
   readonly args: readonly Value[];
   readonly expected: Value;
+  /**
+   * A strict-profile case that traps: the exact trap line (`formatTrap`) every target must
+   * reproduce; `expected` is then unused. A target that prints or throws anything else fails.
+   */
+  readonly expectedTrap?: string;
   /** Present for io functions: the input word stream and the expected output words. */
   readonly input?: readonly number[];
   readonly expectedOutput?: readonly number[];

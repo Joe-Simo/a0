@@ -14,6 +14,8 @@ export interface BehaviorRow {
   readonly args: readonly Value[];
   readonly input?: readonly number[];
   readonly expected: Value;
+  /** A strict-profile row that traps: the exact trap line; `expected` is then 0 and unused. */
+  readonly trap?: string;
   /** Expected io output words for a function with a trailing io parameter. */
   readonly output?: readonly number[];
 }
@@ -35,6 +37,10 @@ export interface BehaviorProgramSpec {
   readonly about: string;
   /** The program uses an io token: backends that refuse io must list a skip with a reason. */
   readonly io: boolean;
+  /** `strict`: the source starts with `profile strict` and the program runs on the strict group of the table. */
+  readonly profile?: 'strict';
+  /** The program uses the checked ops (cadd .. cget), which only some targets implement. */
+  readonly checkedOps?: true;
   readonly source: string;
   readonly calls: readonly BehaviorCallSpec[];
 }
@@ -49,6 +55,50 @@ const rowsOf = (...lists: readonly (readonly Value[])[]): BehaviorRowSpec[] =>
 
 const one = (vals: readonly Value[]): BehaviorRowSpec[] => vals.map((v) => ({ args: [v] }));
 const BOOLS: readonly Value[] = [false, true];
+
+const EDGES = [0, 1, 2, 0x7fff_ffff, 0x8000_0000, 0xffff_ffff];
+const CHECKED_BINARY = ['cadd', 'csub', 'cmul', 'cdiv', 'crem'] as const;
+
+/** The six checked ops as scalar functions: `<p>_<op>_v` (the value) and `<p>_<op>_ok` (the flag). */
+const checkedSource = (head: string, p: string): string =>
+  `${head}${[...CHECKED_BINARY]
+    .map(
+      (op) => `fn ${p}_${op}_v u32 u32 -> u32
+r ${op} p0 p1
+v at r 0
+ret v
+end
+fn ${p}_${op}_ok u32 u32 -> bool
+r ${op} p0 p1
+v at r 1
+ret v
+end
+`,
+    )
+    .join('')}fn ${p}_cget_v u32 -> u32
+a arr 5 6 7 8
+r cget a p0
+v at r 0
+ret v
+end
+fn ${p}_cget_ok u32 -> bool
+a arr 5 6 7 8
+r cget a p0
+v at r 1
+ret v
+end
+`;
+
+const checkedCalls = (p: string): BehaviorCallSpec[] => [
+  ...CHECKED_BINARY.flatMap((op) => [
+    { fn: `${p}_${op}_v`, rows: rowsOf(EDGES, EDGES) },
+    { fn: `${p}_${op}_ok`, rows: rowsOf(EDGES, EDGES) },
+  ]),
+  { fn: `${p}_cget_v`, rows: one([0, 1, 3, 4, 0x8000_0000, 0xffff_ffff]) },
+  { fn: `${p}_cget_ok`, rows: one([0, 1, 3, 4, 0x8000_0000, 0xffff_ffff]) },
+];
+
+const IDX = [0, 1, 2, 3, 4, 0x7fff_ffff, 0xffff_ffff];
 
 export const BEHAVIOR_SPEC: readonly BehaviorProgramSpec[] = [
   {
@@ -499,6 +549,277 @@ end
           { args: [3], input: [1, 2, 3, 4] },
           { args: [5], input: [10, 20] },
           { args: [4], input: [0xffff_ffff, 1, 2, 3] },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'checked',
+    about:
+      'the total checked ops return (value, ok): cadd/csub/cmul flag overflow, cdiv/crem a zero divisor, cget an index at or past the length',
+    io: false,
+    checkedOps: true,
+    source: checkedSource('', 'c'),
+    calls: checkedCalls('c'),
+  },
+  {
+    name: 'strict_checked',
+    about: 'the checked ops give the same values under profile strict, and never trap',
+    io: false,
+    profile: 'strict',
+    checkedOps: true,
+    source: checkedSource('profile strict\n', 'sc'),
+    calls: checkedCalls('sc'),
+  },
+  {
+    name: 'strict_index',
+    about:
+      'profile strict: get/set at or past the length trap bounds (a dead get too, and a get in the untaken select arm), an index proved in range does not',
+    io: false,
+    profile: 'strict',
+    source: `profile strict
+fn s_get u32 -> u32
+a arr 10 20 30
+r get a p0
+ret r
+end
+fn s_set_sum u32 -> u32
+a arr 10 20 30
+b set a p0 99
+x get b 0
+y get b 1
+z get b 2
+t add x y
+u add t z
+ret u
+end
+fn s_mask u32 -> u32
+a arr 10 20 30 40
+m and p0 3
+r get a m
+ret r
+end
+fn s_mod u32 -> u32
+a arr 10 20 30
+m rem p0 3
+r get a m
+ret r
+end
+fn s_dead_get u32 -> u32
+a arr 1 2 3
+b get a p0
+ret 7
+end
+fn s_select_arms u32 -> u32
+a arr 1 2
+b get a p0
+c select true 7 b
+ret c
+end
+`,
+    calls: [
+      { fn: 's_get', rows: one(IDX) },
+      { fn: 's_set_sum', rows: one(IDX) },
+      { fn: 's_mask', rows: one(IDX) },
+      { fn: 's_mod', rows: one(IDX) },
+      { fn: 's_dead_get', rows: one(IDX) },
+      { fn: 's_select_arms', rows: one(IDX) },
+    ],
+  },
+  {
+    name: 'strict_div',
+    about:
+      'profile strict: div/rem by zero trap divzero (a dead div too); a divisor proved nonzero does not; the first trap in node order wins',
+    io: false,
+    profile: 'strict',
+    source: `profile strict
+fn s_div u32 u32 -> u32
+r div p0 p1
+ret r
+end
+fn s_rem u32 u32 -> u32
+r rem p0 p1
+ret r
+end
+fn s_div8 u32 -> u32
+r div p0 8
+ret r
+end
+fn s_rem7 u32 -> u32
+r rem p0 7
+ret r
+end
+fn s_or1 u32 u32 -> u32
+d or p1 1
+r div p0 d
+ret r
+end
+fn s_dead_div u32 -> u32
+a div 1 p0
+ret 5
+end
+fn s_order u32 u32 -> u32
+d div 1 p0
+a arr 1 2
+g get a p1
+r add d g
+ret r
+end
+`,
+    calls: [
+      { fn: 's_div', rows: rowsOf(WORDS, [0, 1, 7, 0xffff_ffff]) },
+      { fn: 's_rem', rows: rowsOf(WORDS, [0, 1, 7, 0xffff_ffff]) },
+      { fn: 's_div8', rows: one(WORDS) },
+      { fn: 's_rem7', rows: one(WORDS) },
+      { fn: 's_or1', rows: rowsOf([0, 5, 0xffff_ffff], [0, 1, 0xffff_ffff]) },
+      { fn: 's_dead_div', rows: one([0, 1, 0xffff_ffff]) },
+      { fn: 's_order', rows: rowsOf([0, 1, 2], [0, 1, 2, 5]) },
+    ],
+  },
+  {
+    name: 'strict_wrap',
+    about: 'profile strict: add, sub, mul and the shifts still wrap and mask; they never trap',
+    io: false,
+    profile: 'strict',
+    source: `profile strict
+fn s_add u32 u32 -> u32
+r add p0 p1
+ret r
+end
+fn s_sub u32 u32 -> u32
+r sub p0 p1
+ret r
+end
+fn s_mul u32 u32 -> u32
+r mul p0 p1
+ret r
+end
+fn s_shl u32 u32 -> u32
+r shl p0 p1
+ret r
+end
+fn s_shr u32 u32 -> u32
+r shr p0 p1
+ret r
+end
+`,
+    calls: [
+      { fn: 's_add', rows: rowsOf(WORDS, WORDS) },
+      { fn: 's_sub', rows: rowsOf(WORDS, WORDS) },
+      { fn: 's_mul', rows: rowsOf(WORDS, WORDS) },
+      { fn: 's_shl', rows: rowsOf(WORDS, B) },
+      { fn: 's_shr', rows: rowsOf(WORDS, B) },
+    ],
+  },
+  {
+    name: 'strict_iterate',
+    about:
+      'profile strict: a trap in a fold or loop body names the node, the trip and the call chain; an aggregate-state fold updated in place traps before it writes',
+    io: false,
+    profile: 'strict',
+    source: `profile strict
+fn s_step u32 u32 -> u32
+a arr 1 2 3
+b get a p1
+c add p0 b
+ret c
+end
+fn s_top u32 -> u32
+r fold s_step p0 0
+ret r
+end
+fn s_outer u32 -> u32
+a call s_top p0
+b add a 1
+ret b
+end
+fn s_lbody u32 u32 -> u32
+a arr 5 6 7
+g get a p1
+s add p0 g
+ret s
+end
+fn s_lpred u32 u32 -> bool
+c lt p0 100
+ret c
+end
+fn s_loop u32 -> u32
+r loop s_lpred s_lbody p0 0
+ret r
+end
+fn s_fill u32x4 u32 -> u32x4
+a mul p1 p1
+b set p0 p1 a
+ret b
+end
+fn s_fill_sum u32 -> u32
+z arr 0 0 0 0
+f fold s_fill p0 z
+a get f 0
+b get f 1
+c get f 2
+d get f 3
+s add a b
+t add c d
+u add s t
+ret u
+end
+`,
+    calls: [
+      { fn: 's_top', rows: one([0, 1, 3, 4, 9]) },
+      { fn: 's_outer', rows: one([0, 3, 4]) },
+      { fn: 's_loop', rows: one([0, 3, 4, 9]) },
+      { fn: 's_fill_sum', rows: one([0, 1, 4, 5]) },
+    ],
+  },
+  {
+    name: 'strict_io',
+    about:
+      'profile strict: a read after the last input word traps input (inside a fold too); within the input it reads as usual',
+    io: true,
+    profile: 'strict',
+    source: `profile strict
+fn s_io_scale u32 io -> u32
+a read p1
+v at a 0
+t at a 1
+m mul v p0
+w write t m
+ret m
+end
+fn s_acc (u32,io) u32 -> (u32,io)
+t at p0 1
+s at p0 0
+r read t
+v at r 0
+t2 at r 1
+n add s v
+o rec n t2
+ret o
+end
+fn s_io_total u32 io -> u32
+z rec 0 p1
+f fold s_acc p0 z
+s at f 0
+ret s
+end
+`,
+    calls: [
+      {
+        fn: 's_io_scale',
+        rows: [
+          { args: [3], input: [] },
+          { args: [3], input: [14, 15] },
+          { args: [0xffff_ffff], input: [2] },
+        ],
+      },
+      {
+        fn: 's_io_total',
+        rows: [
+          { args: [0], input: [] },
+          { args: [3], input: [1, 2, 3, 4] },
+          { args: [3], input: [1, 2] },
+          { args: [2], input: [] },
         ],
       },
     ],

@@ -17,6 +17,16 @@
  *  - excluded: variable-count fold/loop.
  * Division by zero follows the language: div yields all ones, rem yields the dividend.
  *
+ * Strict profile (`profile strict`): the same scope, and the proof is of "equal value AND equal
+ * trap". Every site that traps under strict (a `get`/`set` index at or past the length, a `div`
+ * or `rem` by zero, a `read` past the modelled input) records its trap kind under its path
+ * condition into a symbolic first-trap code (0 none, 1 bounds, 2 divzero, 3 input); two sides
+ * are equivalent when the first-trap codes are equal and, where neither traps, the results and
+ * the stream are equal. A rewrite that drops a dead `get`, reorders two trapping nodes, or folds
+ * a zero divisor into a value is therefore a counterexample. The trap's fn/at/trip/chain are not
+ * modelled (the proof inlines calls and unrolls folds); the optimizer keeps them by never
+ * inlining, unrolling or fusing a body that can trap, and the runtime tests compare the full line.
+ *
  * Bounded io model (mirrors the reference interpreter's shared IoState): the input is a
  * symbolic sequence of IO_WORDS 32-bit words; `read` yields input[pos] (0 once pos reaches
  * IO_WORDS, the language's exhausted-input rule) and advances pos while pos < IO_WORDS;
@@ -33,10 +43,126 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { init } from 'z3-solver';
-import type { Operand, Type, TypedFunc, TypedProgram } from '../src/core.js';
+import {
+  type Operand,
+  parseAndValidate,
+  type Type,
+  type TypedFunc,
+  type TypedProgram,
+  validate,
+} from '../src/core.js';
 import { optimize } from '../src/optimize.js';
 import { CORPUS_SEED, corpusSha256, generateCorpus } from './corpus.js';
 import { writeReport } from './scrub-results.js';
+
+/**
+ * Strict-profile kernels, one per rule of the strict optimizer: a dead get and a dead div keep
+ * their traps, two traps keep their order, a select evaluates both arms, a zero divisor and an
+ * out-of-range literal index are never folded to a value, proved-safe sites stay ordinary, a
+ * trapping callee is not inlined or unrolled, a strict `read` past the input traps.
+ */
+const STRICT_KERNELS = `profile strict
+fn dead_get u32 -> u32
+a arr 1 2 3
+b get a p0
+ret 7
+end
+fn dead_div u32 -> u32
+a div 1 p0
+ret 5
+end
+fn order u32 u32 -> u32
+d div 1 p0
+a arr 1 2
+g get a p1
+r add d g
+ret r
+end
+fn arms u32 -> u32
+a arr 1 2
+b get a p0
+c select true 7 b
+ret c
+end
+fn zero_div u32 -> u32
+a div 7 0
+b add a p0
+ret b
+end
+fn lit_oob u32 -> u32
+a arr 1 2 3
+b get a 5
+c add b p0
+ret c
+end
+fn set_oob u32 -> u32
+a arr 1 2 3
+b set a 3 9
+c get b p0
+ret c
+end
+fn safe_mask u32 -> u32
+a arr 10 20 30 40
+m and p0 3
+b get a m
+c rem p0 3
+d arr 1 2 3
+e get d c
+f div p0 8
+g add b e
+h add g f
+ret h
+end
+fn safe_or u32 u32 -> u32
+d or p1 1
+r div p0 d
+ret r
+end
+fn leaf u32 u32 -> u32
+a arr 1 2 3
+b get a p1
+c add p0 b
+ret c
+end
+fn unrolled u32 -> u32
+r fold leaf 3 p0
+ret r
+end
+fn unrolled_oob u32 -> u32
+r fold leaf 4 p0
+ret r
+end
+fn inlined u32 -> u32
+r call leaf p0 7
+ret r
+end
+fn read1 io -> u32
+a read p0
+v at a 0
+ret v
+end
+fn read3 io -> u32
+a read p0
+v at a 0
+t at a 1
+b read t
+w at b 0
+u at b 1
+c read u
+x at c 0
+s add v w
+r add s x
+ret r
+end
+fn pred u32 u32 -> bool
+c lt p0 100
+ret c
+end
+fn loop_oob u32 -> u32
+r loop pred leaf 5 p0
+ret r
+end
+`;
 
 const UNROLL_CAP = 64;
 /** Bound on the modelled input stream (words). */
@@ -157,7 +283,15 @@ async function main(): Promise<void> {
   interface Ctx {
     readonly io: IoSym;
     readonly guard: Bool | null;
+    /** The first strict trap so far: 0 none, 1 bounds, 2 divzero, 3 input (a path-guarded term). */
+    readonly trap: { kind: BV };
   }
+  const freshTrap = (): { kind: BV } => ({ kind: bv(0) });
+  /** Record a strict trap of `code` when `cond` holds on the path, unless an earlier one fired. */
+  const raise = (ctx: Ctx, code: number, cond: Bool): void => {
+    const here = ctx.guard === null ? cond : ctx.guard.and(cond);
+    ctx.trap.kind = Z.If(ctx.trap.kind.eq(bv(0)).and(here), bv(code), ctx.trap.kind);
+  };
   /** Append one word under the guard: a new slot is opened, the word lands at index len. */
   const emit = (ctx: Ctx, word: BV): void => {
     const { io, guard } = ctx;
@@ -242,6 +376,7 @@ async function main(): Promise<void> {
       }
     };
     const lit = (o: Operand | undefined): number => (o as { value: number }).value;
+    const strict = fn.profile === 'strict';
     for (const node of fn.nodes) {
       const a = node.args.map(operand);
       const x = a[0] as SVal;
@@ -278,9 +413,11 @@ async function main(): Promise<void> {
           v = X().lshr(Y().and(bv(31)));
           break;
         case 'div':
+          if (strict) raise(ctx, 2, Y().eq(bv(0)));
           v = Z.If(Y().eq(bv(0)), bv(0xffff_ffff), X().udiv(Y()));
           break;
         case 'rem':
+          if (strict) raise(ctx, 2, Y().eq(bv(0)));
           v = Z.If(Y().eq(bv(0)), X(), X().urem(Y()));
           break;
         case 'eq':
@@ -311,6 +448,7 @@ async function main(): Promise<void> {
         case 'get': {
           // index mod N, total: an If-chain over every position.
           const arr = agg(x);
+          if (strict) raise(ctx, 1, Y().uge(bv(arr.length)));
           const idx = Y().urem(bv(arr.length));
           v = arr[arr.length - 1] as SVal;
           for (let i = arr.length - 2; i >= 0; i -= 1) v = ite(idx.eq(bv(i)), arr[i] as SVal, v);
@@ -318,6 +456,7 @@ async function main(): Promise<void> {
         }
         case 'set': {
           const arr = agg(x);
+          if (strict) raise(ctx, 1, Y().uge(bv(arr.length)));
           const idx = Y().urem(bv(arr.length));
           v = arr.map((e, i) => ite(idx.eq(bv(i)), a[2] as SVal, e));
           break;
@@ -331,6 +470,7 @@ async function main(): Promise<void> {
           break;
         }
         case 'read':
+          if (strict) raise(ctx, 3, asBV(ctx.io.pos).uge(bv(IO_WORDS)));
           v = [readWord(ctx), TOKEN];
           break;
         case 'write':
@@ -372,11 +512,11 @@ async function main(): Promise<void> {
           for (let i = 0; i < count; i += 1) {
             const args: SVal[] = [state, bv(i), ...extra];
             const holds = scalar(
-              evalFn(pred, program, args, { io: ctx.io, guard: running }),
+              evalFn(pred, program, args, { io: ctx.io, guard: running, trap: ctx.trap }),
             ) as Bool;
             const step: Bool = running === null ? holds : running.and(holds);
             running = step;
-            const next = evalFn(callee, program, args, { io: ctx.io, guard: step });
+            const next = evalFn(callee, program, args, { io: ctx.io, guard: step, trap: ctx.trap });
             state = ite(step, next, state);
           }
           v = state;
@@ -402,76 +542,115 @@ async function main(): Promise<void> {
 
   const source = generateCorpus(CORPUS_SEED);
   const optimized = optimize(source).program;
-  const results: {
+  interface Result {
     fn: string;
     status: 'proved' | 'counterexample' | 'unknown' | 'out-of-scope';
     detail: string | null;
     ms: number;
-  }[] = [];
-  for (const fn of source.functions) {
-    const why = outOfScope(fn, source);
-    if (why !== undefined) {
-      results.push({ fn: fn.name, status: 'out-of-scope', detail: why, ms: 0 });
-      continue;
-    }
-    const opt = optimized.byName.get(fn.name) as TypedFunc;
-    const whyOpt = outOfScope(opt, optimized);
-    if (whyOpt !== undefined) {
-      results.push({ fn: fn.name, status: 'out-of-scope', detail: `optimized: ${whyOpt}`, ms: 0 });
-      continue;
-    }
-    const start = performance.now();
-    const params: SVal[] = fn.params.map((t, i) => fresh(t, `p${i}`));
-    const withIo = fn.params.includes('io');
-    // Both sides read the same symbolic input words; each has its own position and output.
-    const ioL = freshIo('io');
-    const ioR: IoSym = { ...freshIo('io'), input: ioL.input };
-    const lhs = evalFn(fn, source, params, { io: ioL, guard: null });
-    const rhs = evalFn(opt, optimized, params, { io: ioR, guard: null });
-    const solver = new Z.Solver();
-    solver.set('timeout', TIMEOUT_MS);
-    const equal = withIo ? same(lhs, rhs).and(sameIo(ioL, ioR)) : same(lhs, rhs);
-    solver.add(equal.not());
-    const verdict = check(solver);
-    const ms = performance.now() - start;
-    if (verdict === 'unsat') {
-      results.push({ fn: fn.name, status: 'proved', detail: null, ms });
-    } else if (verdict === 'sat') {
-      const model = solver.model();
-      const parts = params
-        .flatMap(leaves)
-        .map((p) => `${p.toString()}=${model.eval(p).toString()}`);
-      if (withIo) {
-        parts.push(`input=[${ioL.input.map((w) => model.eval(w).toString()).join(',')}]`);
-        parts.push(`source: ${showIo(ioL, model)}`, `optimized: ${showIo(ioR, model)}`);
-      }
-      results.push({ fn: fn.name, status: 'counterexample', detail: parts.join(' '), ms });
-    } else {
-      results.push({
-        fn: fn.name,
-        status: 'unknown',
-        detail: `solver returned unknown (${solver.reasonUnknown()}) after ${ms.toFixed(0)} ms, timeout ${TIMEOUT_MS} ms`,
-        ms,
-      });
-    }
   }
+  const results: Result[] = [];
+  /**
+   * Prove each function of `src` equal to its optimized form in `opt`. Under the strict profile
+   * the claim is "equal first-trap code, and where neither traps, equal value and stream".
+   */
+  const proveAll = (src: TypedProgram, opt: TypedProgram, out: Result[], tag = ''): void => {
+    const strictRun = src.profile === 'strict';
+    for (const fn of src.functions) {
+      const name = `${tag}${fn.name}`;
+      const why = outOfScope(fn, src);
+      if (why !== undefined) {
+        out.push({ fn: name, status: 'out-of-scope', detail: why, ms: 0 });
+        continue;
+      }
+      const o = opt.byName.get(fn.name) as TypedFunc;
+      const whyOpt = outOfScope(o, opt);
+      if (whyOpt !== undefined) {
+        out.push({ fn: name, status: 'out-of-scope', detail: `optimized: ${whyOpt}`, ms: 0 });
+        continue;
+      }
+      const start = performance.now();
+      const params: SVal[] = fn.params.map((t, i) => fresh(t, `p${i}`));
+      const withIo = fn.params.includes('io');
+      // Both sides read the same symbolic input words; each has its own position and output.
+      const ioL = freshIo('io');
+      const ioR: IoSym = { ...freshIo('io'), input: ioL.input };
+      const trapL = freshTrap();
+      const trapR = freshTrap();
+      const lhs = evalFn(fn, src, params, { io: ioL, guard: null, trap: trapL });
+      const rhs = evalFn(o, opt, params, { io: ioR, guard: null, trap: trapR });
+      const solver = new Z.Solver();
+      solver.set('timeout', TIMEOUT_MS);
+      const values = withIo ? same(lhs, rhs).and(sameIo(ioL, ioR)) : same(lhs, rhs);
+      const equal = strictRun
+        ? trapL.kind.eq(trapR.kind).and(trapL.kind.eq(bv(0)).implies(values))
+        : values;
+      solver.add(equal.not());
+      const verdict = check(solver);
+      const ms = performance.now() - start;
+      if (verdict === 'unsat') {
+        out.push({ fn: name, status: 'proved', detail: null, ms });
+      } else if (verdict === 'sat') {
+        const model = solver.model();
+        const parts = params
+          .flatMap(leaves)
+          .map((p) => `${p.toString()}=${model.eval(p).toString()}`);
+        if (strictRun)
+          parts.push(
+            `trap source=${model.eval(trapL.kind).toString()} optimized=${model.eval(trapR.kind).toString()}`,
+          );
+        if (withIo) {
+          parts.push(`input=[${ioL.input.map((w) => model.eval(w).toString()).join(',')}]`);
+          parts.push(`source: ${showIo(ioL, model)}`, `optimized: ${showIo(ioR, model)}`);
+        }
+        out.push({ fn: name, status: 'counterexample', detail: parts.join(' '), ms });
+      } else {
+        out.push({
+          fn: name,
+          status: 'unknown',
+          detail: `solver returned unknown (${solver.reasonUnknown()}) after ${ms.toFixed(0)} ms, timeout ${TIMEOUT_MS} ms`,
+          ms,
+        });
+      }
+    }
+  };
+  proveAll(source, optimized, results);
+
+  // The strict profile: the same corpus under `profile strict` (almost every function now has a
+  // trap site: its get/set indices and div/rem divisors are arbitrary), plus kernels written to
+  // exercise each strict rule of the optimizer (dead get, dead div, order of two traps, select
+  // arms, proved-safe sites, a zero divisor or an out-of-range index in a literal, io).
+  const strictCorpus = validate({ profile: 'strict', functions: source.functions });
+  const strictKernels = parseAndValidate(STRICT_KERNELS);
+  const strictResults: Result[] = [];
+  proveAll(strictCorpus, optimize(strictCorpus).program, strictResults, 'strict:');
+  proveAll(strictKernels, optimize(strictKernels).program, strictResults, 'kernel:');
 
   // Self-check: a deliberately wrong "optimization" must produce a counterexample, or the
   // checker is not looking at the right thing. Two mutations: the first add/sub/xor/and/or/mul
   // node of the first in-scope io-free function swapped to another op, and the first `write`
   // of the first in-scope io function dropped (its stream must then differ).
   const mutable = new Set(['add', 'sub', 'xor', 'and', 'or', 'mul']);
-  const mutate = (fn: TypedFunc, nodes: TypedFunc['nodes']): string => {
+  const mutateIn = (program: TypedProgram, fn: TypedFunc, nodes: TypedFunc['nodes']): string => {
     const params: SVal[] = fn.params.map((t, i) => fresh(t, `p${i}`));
     const ioL = freshIo('io');
     const ioR: IoSym = { ...freshIo('io'), input: ioL.input };
-    const lhs = evalFn(fn, source, params, { io: ioL, guard: null });
-    const rhs = evalFn({ ...fn, nodes }, source, params, { io: ioR, guard: null });
+    const trapL = freshTrap();
+    const trapR = freshTrap();
+    const lhs = evalFn(fn, program, params, { io: ioL, guard: null, trap: trapL });
+    const rhs = evalFn({ ...fn, nodes }, program, params, { io: ioR, guard: null, trap: trapR });
     const solver = new Z.Solver();
     solver.set('timeout', TIMEOUT_MS);
-    solver.add(same(lhs, rhs).and(sameIo(ioL, ioR)).not());
+    solver.add(
+      fn.profile === 'strict'
+        ? trapL.kind
+            .eq(trapR.kind)
+            .and(trapL.kind.eq(bv(0)).implies(same(lhs, rhs).and(sameIo(ioL, ioR))))
+            .not()
+        : same(lhs, rhs).and(sameIo(ioL, ioR)).not(),
+    );
     return check(solver);
   };
+  const mutate = (fn: TypedFunc, nodes: TypedFunc['nodes']): string => mutateIn(source, fn, nodes);
   const selfChecks: { fn: string; mutation: string; verdict: string }[] = [];
   for (const fn of source.functions) {
     if (outOfScope(fn, source) !== undefined || fn.params.includes('io')) continue;
@@ -499,7 +678,21 @@ async function main(): Promise<void> {
     selfChecks.push({ fn: fn.name, mutation: `node ${k} write dropped`, verdict });
     break;
   }
-  const selfCheckOk = selfChecks.length === 2 && selfChecks.every((c) => c.verdict === 'sat');
+  // Strict: dropping a dead `get` keeps every value and changes the trap, so it must not be proved.
+  const deadGet = strictKernels.byName.get('dead_get');
+  if (deadGet !== undefined) {
+    const k = deadGet.nodes.findIndex((n) => n.op === 'get');
+    selfChecks.push({
+      fn: deadGet.name,
+      mutation: `node ${k} get dropped (strict)`,
+      verdict: mutateIn(
+        strictKernels,
+        deadGet,
+        deadGet.nodes.filter((_, i) => i !== k),
+      ),
+    });
+  }
+  const selfCheckOk = selfChecks.length === 3 && selfChecks.every((c) => c.verdict === 'sat');
 
   const count = (s: string): number => results.filter((r) => r.status === s).length;
   const report = {
@@ -516,17 +709,30 @@ async function main(): Promise<void> {
       outOfScope: count('out-of-scope'),
     },
     results,
+    strict: {
+      scope:
+        'the strict profile: the corpus under `profile strict` and hand-written kernels for each rule of the strict optimizer. Equivalence is first-trap code equal (0 none, 1 bounds, 2 divzero, 3 input, in node order) and, where neither side traps, result values, output stream and read position equal. The trap line fields fn/at/trip/chain are not modelled here; the optimizer keeps them by never inlining, unrolling or fusing a body that can trap, and test/strict-targets.test.ts compares the whole line.',
+      summary: {
+        functions: strictResults.length,
+        proved: strictResults.filter((r) => r.status === 'proved').length,
+        counterexample: strictResults.filter((r) => r.status === 'counterexample').length,
+        unknown: strictResults.filter((r) => r.status === 'unknown').length,
+        outOfScope: strictResults.filter((r) => r.status === 'out-of-scope').length,
+      },
+      results: strictResults,
+    },
   };
   await mkdir('results', { recursive: true });
   await writeReport(join('results', 'equivalence.json'), report);
-  for (const r of results)
+  for (const r of [...results, ...strictResults])
     process.stdout.write(
       `${r.fn.padEnd(6)} ${r.status.padEnd(15)} ${r.ms.toFixed(0).padStart(6)} ms${r.detail === null ? '' : `  ${r.detail}`}\n`,
     );
   process.stdout.write(
-    `self-check (mutations yield counterexamples): ${selfCheckOk ? 'ok' : 'FAILED'} ${JSON.stringify(selfChecks)}\n${JSON.stringify(report.summary)}\n`,
+    `self-check (mutations yield counterexamples): ${selfCheckOk ? 'ok' : 'FAILED'} ${JSON.stringify(selfChecks)}\n${JSON.stringify(report.summary)}\nstrict ${JSON.stringify(report.strict.summary)}\n`,
   );
-  if (report.summary.counterexample > 0 || !selfCheckOk) process.exit(1);
+  if (report.summary.counterexample > 0 || report.strict.summary.counterexample > 0 || !selfCheckOk)
+    process.exit(1);
 }
 
 main().catch((err: unknown) => {
