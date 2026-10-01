@@ -23,6 +23,7 @@ import {
   type Type,
   type TypedFunc,
   type TypedProgram,
+  typeEquals,
   type Value,
   validate,
   validateFunction,
@@ -46,6 +47,67 @@ const isConst = (o: Operand): o is Extract<Operand, { kind: 'u32' | 'bool' }> =>
   o.kind === 'u32' || o.kind === 'bool';
 const isU32 = (o: Operand, v: number): boolean => o.kind === 'u32' && o.value === v;
 const isBool = (o: Operand, v: boolean): boolean => o.kind === 'bool' && o.value === v;
+
+/** A value known while two operands are equal: a literal, or the operands' common value. */
+type AtEq = { readonly lit: number | boolean } | { readonly common: true };
+
+/**
+ * What `o` evaluates to under the assumption that `x` and `y` are equal, when that is a literal
+ * (or the shared value itself): `x - y` is 0, `x < y` is false, `x ^ y` is 0, and so on through
+ * the pure scalar nodes that compute `o`. Exact for every input where `x == y`; used to drop a
+ * select that only repeats what its other arm already yields when the compared values are
+ * equal (`select (x == y) 0 (abs-diff x y)` is the abs-diff). Bounded depth, scalar ops only.
+ */
+function atEqual(
+  o: Operand,
+  x: Operand,
+  y: Operand,
+  fn: TypedFunc,
+  defs: ReadonlyMap<string, Node>,
+  depth = 0,
+): AtEq | undefined {
+  if (isConst(o)) return { lit: o.value };
+  if (sameOperand(o, x) || sameOperand(o, y))
+    return isConst(x) ? { lit: x.value } : isConst(y) ? { lit: y.value } : { common: true };
+  const def = o.kind === 'node' ? defs.get(o.id) : undefined;
+  if (def === undefined || depth >= 6 || def.callee !== undefined) return undefined;
+  const t = fn.types.get(def.id);
+  if (t === undefined || !isScalar(t)) return undefined;
+  const vals = def.args.map((arg) => atEqual(arg, x, y, fn, defs, depth + 1));
+  const [p, q, r] = vals;
+  if (def.op === 'select') {
+    if (p === undefined || !('lit' in p)) return undefined;
+    return p.lit === true ? q : r;
+  }
+  if (p === undefined || q === undefined) return undefined;
+  if ('lit' in p && 'lit' in q) {
+    try {
+      const v = evalOp(def.op, [p.lit, q.lit]);
+      return typeof v === 'number' || typeof v === 'boolean' ? { lit: v } : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  if ('common' in p && 'common' in q) {
+    switch (def.op) {
+      case 'sub':
+      case 'xor':
+        return { lit: 0 };
+      case 'ne':
+      case 'lt':
+      case 'gt':
+        return { lit: false };
+      case 'eq':
+      case 'le':
+      case 'ge':
+        return { lit: true };
+      case 'and':
+      case 'or':
+        return { common: true };
+    }
+  }
+  return undefined;
+}
 
 /** Return a replacement operand if the node folds/simplifies to an existing value. */
 function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): Operand | undefined {
@@ -214,6 +276,18 @@ function simplify(node: Node, fn: TypedFunc, defs: ReadonlyMap<string, Node>): O
       if (isBool(a, true)) return b;
       if (isBool(a, false)) return c;
       if (sameOperand(b, c)) return b;
+      {
+        // select (x == y) K v is v when v is already K at x == y (and the mirrored `ne` form).
+        const cond = a.kind === 'node' ? defs.get(a.id) : undefined;
+        const [x, y] = cond?.args ?? [];
+        if ((cond?.op === 'eq' || cond?.op === 'ne') && x !== undefined && y !== undefined) {
+          const [lit, other] = cond.op === 'eq' ? [b, c] : [c, b];
+          if (isConst(lit)) {
+            const at = atEqual(other, x, y, fn, defs);
+            if (at !== undefined && 'lit' in at && at.lit === lit.value) return other;
+          }
+        }
+      }
       return undefined;
   }
 }
@@ -305,12 +379,26 @@ export interface OptimizeStats {
   readonly after: number;
 }
 
-/** Scalar calls of pure, scalar-only functions up to this many nodes are inlined in the IR. */
-const INLINE_CALL_NODES = 16;
+/**
+ * Cost model of the IR transformations, the one Rust's MIR inliner uses: an instruction costs
+ * 5, a call (or a loop, which is one) 25. There is no one-call bonus: every backend emits each
+ * function it is given, so inlining the only call site removes no code.
+ */
+const INSTR_COST = 5;
+const CALL_COST = 25;
+const irCost = (nodes: readonly Node[]): number =>
+  nodes.reduce(
+    (sum, n) =>
+      sum + (n.op === 'call' || n.op === 'fold' || n.op === 'loop' ? CALL_COST : INSTR_COST),
+    0,
+  );
+/** Scalar calls of pure, scalar-only functions costing up to this are inlined in the IR. */
+const INLINE_THRESHOLD = 16 * INSTR_COST;
 /** Folds with a literal trip count up to this many are fully unrolled in the IR... */
 const UNROLL_TRIPS = 8;
-/** ...when the body has at most this many nodes and the unrolled copy at most UNROLL_NODES. */
-const UNROLL_BODY_NODES = 256;
+/** ...when the body costs at most UNROLL_BODY_COST and the unrolled copy at most UNROLL_COST. */
+const UNROLL_BODY_COST = 256 * INSTR_COST;
+const UNROLL_COST = 2048 * INSTR_COST;
 const UNROLL_NODES = 2048;
 /** Values of an unrolled body stay below this many words (never an arena-sized value). */
 const UNROLL_STATE_WORDS = 64;
@@ -379,6 +467,146 @@ function inlineInto(
 }
 
 /**
+ * A fold step that is one square-matrix product: the state is an n x n u32 array (row-major) and
+ * every trip multiplies it by one loop-invariant matrix, taken from an extra parameter, on the
+ * right (`S x M`) or on the left (`M x S`). Recognized from the body's dataflow alone: each
+ * result element must be a sum of n products of one state element and one element of the
+ * extra array, in the index pattern of the matrix product, and nothing else.
+ */
+interface MatrixStep {
+  readonly n: number;
+  readonly side: 'right' | 'left';
+  /** Index of the invariant matrix among the callee's parameters. */
+  readonly param: number;
+}
+
+function matrixStep(callee: TypedFunc): MatrixStep | undefined {
+  const t = callee.result;
+  if (isPrimitive(t) || t.kind !== 'arr' || t.elem !== 'u32') return undefined;
+  const n = Math.round(Math.sqrt(t.length));
+  if (n < 2 || n * n !== t.length) return undefined;
+  if (!typeEquals(callee.params[0] ?? 'u32', t)) return undefined;
+  const defs = new Map(callee.nodes.map((x) => [x.id, x]));
+  const ret = callee.ret.kind === 'node' ? defs.get(callee.ret.id) : undefined;
+  if (ret?.op !== 'arr' || ret.args.length !== t.length) return undefined;
+  type Terms = Map<number, { param: number; index: number }>;
+  const element = (o: Operand): { param: number; index: number } | undefined => {
+    const d = o.kind === 'node' ? defs.get(o.id) : undefined;
+    const [src, idx] = d?.args ?? [];
+    if (d?.op !== 'get' || src?.kind !== 'param' || idx?.kind !== 'u32') return undefined;
+    const arrT = callee.params[src.index];
+    if (arrT === undefined || isPrimitive(arrT) || arrT.kind !== 'arr' || idx.value >= arrT.length)
+      return undefined;
+    return { param: src.index, index: idx.value };
+  };
+  const terms = (o: Operand): Terms | undefined => {
+    const d = o.kind === 'node' ? defs.get(o.id) : undefined;
+    if (d === undefined) return undefined;
+    const [x, y] = d.args;
+    if (x === undefined || y === undefined) return undefined;
+    if (d.op === 'mul') {
+      for (const [s, m] of [
+        [x, y],
+        [y, x],
+      ] as const) {
+        const st = element(s);
+        const me = element(m);
+        if (st?.param === 0 && me !== undefined && me.param >= 2) return new Map([[st.index, me]]);
+      }
+      return undefined;
+    }
+    if (d.op !== 'add') return undefined;
+    const l = terms(x);
+    const r = terms(y);
+    if (l === undefined || r === undefined) return undefined;
+    for (const [k, v] of r) {
+      if (l.has(k)) return undefined;
+      l.set(k, v);
+    }
+    return l;
+  };
+  const rows: Terms[] = [];
+  for (const o of ret.args) {
+    const f = terms(o);
+    if (f === undefined || f.size !== n) return undefined;
+    rows.push(f);
+  }
+  for (const side of ['right', 'left'] as const) {
+    let param = -1;
+    let ok = true;
+    for (let i = 0; i < t.length && ok; i += 1) {
+      const r = Math.floor(i / n);
+      const c = i % n;
+      for (let k = 0; k < n && ok; k += 1) {
+        const have = (rows[i] as Terms).get(side === 'right' ? r * n + k : k * n + c);
+        const want = side === 'right' ? k * n + c : r * n + k;
+        if (have === undefined || have.index !== want || (param >= 0 && have.param !== param))
+          ok = false;
+        else param = have.param;
+      }
+    }
+    if (ok) return { n, side, param };
+  }
+  return undefined;
+}
+
+/** Matrix products needed for the trips-th power by squaring and one product per set bit. */
+const matrixPowerProducts = (trips: number): number =>
+  31 - Math.clz32(trips) + (trips.toString(2).match(/1/g) ?? []).length;
+
+/**
+ * `fold` of a matrix-product step over `trips` trips is `S x M^trips` (matrix product is
+ * associative and distributes over wrapping u32 add and mul, so this is exact): square M and
+ * multiply by the set bits of the trip count, `log2 + popcount` products instead of `trips`.
+ * Returns the result array's operand, or undefined when that would not be cheaper.
+ */
+function matrixPower(
+  step: MatrixStep,
+  trips: number,
+  state: Operand,
+  matrix: Operand,
+  out: Node[],
+  into: { types: Map<string, Type>; calls: Map<string, TypedFunc> },
+  names: Names,
+  arrType: Type,
+): Operand | undefined {
+  const { n } = step;
+  const products = matrixPowerProducts(trips);
+  if (products >= trips || products * 2 * n * n * n > UNROLL_NODES) return undefined;
+  const emit = (op: Node['op'], args: Operand[]): Operand => {
+    const id = names.fresh();
+    out.push({ id, op, args });
+    into.types.set(id, 'u32');
+    return { kind: 'node', id };
+  };
+  const elements = (src: Operand): Operand[] =>
+    Array.from({ length: n * n }, (_, i) => emit('get', [src, { kind: 'u32', value: i }]));
+  const product = (x: readonly Operand[], y: readonly Operand[]): Operand[] => {
+    const z: Operand[] = [];
+    for (let r = 0; r < n; r += 1)
+      for (let c = 0; c < n; c += 1) {
+        let sum: Operand | undefined;
+        for (let k = 0; k < n; k += 1) {
+          const m = emit('mul', [x[r * n + k] as Operand, y[k * n + c] as Operand]);
+          sum = sum === undefined ? m : emit('add', [sum, m]);
+        }
+        z.push(sum as Operand);
+      }
+    return z;
+  };
+  let acc = elements(state);
+  let pow = elements(matrix);
+  for (let left = trips; left > 0; left >>= 1) {
+    if ((left & 1) === 1) acc = step.side === 'right' ? product(acc, pow) : product(pow, acc);
+    if (left > 1) pow = product(pow, pow);
+  }
+  const id = names.fresh();
+  out.push({ id, op: 'arr', args: acc });
+  into.types.set(id, arrType);
+  return { kind: 'node', id };
+}
+
+/**
  * Inline small pure scalar calls and fully unroll short literal-count folds, so literals and
  * the index of each trip reach the caller's folding (constant folding across calls; a small
  * fixed array built by such a fold then becomes an `arr` of its element values).
@@ -397,7 +625,7 @@ function expand(body: Body): Body {
     if (
       node.op === 'call' &&
       callee !== undefined &&
-      callee.nodes.length <= INLINE_CALL_NODES &&
+      irCost(callee.nodes) <= INLINE_THRESHOLD &&
       isScalar(callee.result) &&
       callee.params.every(isScalar) &&
       [...callee.types.values()].every(isScalar)
@@ -411,11 +639,32 @@ function expand(body: Body): Body {
       node.op === 'fold' &&
       callee !== undefined &&
       count?.kind === 'u32' &&
+      init !== undefined &&
+      count.value >= 3 &&
+      !funcHasIo(callee) &&
+      [callee.result, ...callee.types.values()].every((t) => typeWords(t) <= UNROLL_STATE_WORDS)
+    ) {
+      const step = matrixStep(callee);
+      const m = step === undefined ? undefined : extra[step.param - 2];
+      const powered =
+        step === undefined || m === undefined
+          ? undefined
+          : matrixPower(step, count.value, init, m, out, { types, calls }, names, callee.result);
+      if (powered !== undefined) {
+        rename.set(node.id, powered);
+        changed = true;
+        continue;
+      }
+    }
+    if (
+      node.op === 'fold' &&
+      callee !== undefined &&
+      count?.kind === 'u32' &&
       count.value > 0 &&
       count.value <= UNROLL_TRIPS &&
       init !== undefined &&
-      callee.nodes.length <= UNROLL_BODY_NODES &&
-      callee.nodes.length * count.value <= UNROLL_NODES &&
+      irCost(callee.nodes) <= UNROLL_BODY_COST &&
+      irCost(callee.nodes) * count.value <= UNROLL_COST &&
       !funcHasIo(callee) &&
       [callee.result, ...callee.types.values()].every((t) => typeWords(t) <= UNROLL_STATE_WORDS)
     ) {
