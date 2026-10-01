@@ -47,6 +47,7 @@ import { formatDense } from './dense.js';
 import { applyEdit } from './fix.js';
 import { isDensePath, link, parseFile } from './link.js';
 import { confine } from './mcp.js';
+import { A0_VERSION } from './version.js';
 
 /** One-line reference for every op, shown on hover and in completion. */
 export const OP_DOCS: Readonly<Record<Op, string>> = {
@@ -288,7 +289,7 @@ export async function startServer(connection: Connection, launch: string): Promi
       documentFormattingProvider: true,
       codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
     },
-    serverInfo: { name: 'a0', version: '0.1.0' },
+    serverInfo: { name: 'a0', version: A0_VERSION },
   }));
 
   documents.onDidOpen(async ({ document }) => {

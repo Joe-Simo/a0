@@ -24,7 +24,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { hookResponse, init } from './agents.js';
-import { compile, isTarget, TARGETS } from './backends.js';
+import { COMPILER_VERSION, compile, isTarget, TARGETS } from './backends.js';
 import { compileCached, DiskCache } from './cache.js';
 import {
   A0Error,
@@ -48,12 +48,14 @@ import { serveLsp } from './lsp.js';
 import { serveStdio } from './mcp.js';
 import { parallelC } from './parallel.js';
 import { compileWasm } from './toolchain.js';
+import { A0_VERSION } from './version.js';
 import { wasmModuleBytes } from './wasm.js';
 
 function usage(): never {
   process.stderr.write(
     [
       'usage:',
+      '  a0 --version                           # release and compiler version',
       '  a0 check <file.a0>... [--json] [--fix] [--hints]    # --json: diagnostics as fields; --fix: apply the exact fixes',
       '  a0 explain [A0nnnn|--verify]           # what a diagnostic means, a failing and a fixed example',
       '  a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]',
@@ -128,6 +130,10 @@ function flagNumber(args: readonly string[], name: string): number | undefined {
 }
 
 async function main(args: readonly string[]): Promise<void> {
+  if (args.length === 1 && (args[0] === '--version' || args[0] === '-V' || args[0] === 'version')) {
+    process.stdout.write(`a0 ${A0_VERSION} (compiler ${COMPILER_VERSION})\n`);
+    return;
+  }
   const dense = args.includes('--dense');
   const [cmd, ...rest] = args.filter((a) => a !== '--dense');
   switch (cmd) {

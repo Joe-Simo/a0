@@ -2,7 +2,7 @@
 # Install the a0 binary from GitHub Releases.
 #   curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
 # Environment:
-#   A0_VERSION      release tag to install (e.g. v0.8.15); default: latest
+#   A0_VERSION      release tag to install (e.g. v0.8.16); default: latest
 #   A0_INSTALL_DIR  destination directory; default: $HOME/.local/bin
 #   A0_RELEASE_URL  base URL holding the assets and checksums.txt (overrides A0_VERSION; for mirrors)
 set -eu
