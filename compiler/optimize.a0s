@@ -448,8 +448,7 @@ def karg(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, j: u32) -> (
   let kc = ((fl & 8) != 0) & (j == 0)
   let (rk, rv) = rdp(oa, cl[C_AS + x] + j)
   let (qk, qv) = pres(fw, rk, rv)
-  let dk = j == 0 ? fw[F_A0K + x] : fw[F_A1K + x]
-  let dv = j == 0 ? fw[F_A0V + x] : fw[F_A1V + x]
+  let (dk, dv) = pres(fw, j == 0 ? fw[F_A0K + x] : fw[F_A1K + x], j == 0 ? fw[F_A0V + x] : fw[F_A1V + x])
   return (desc ? dk : kc ? rk : qk, desc ? dv : kc ? rv : qv)
 end
 def kop(fw: u32x128x426, cl: u32x128x193, x: u32) -> u32
@@ -980,8 +979,7 @@ end
 fn oaw1(oa: u32x128x512, k: u32, fw: u32x128x426, as_: u32, x: u32, desc: bool, kc: bool) -> u32x128x512
   let (rk, rv) = rdp(oa, as_ + k)
   let (qk, qv) = pres(fw, rk, rv)
-  let dk = k == 0 ? fw[F_A0K + x] : fw[F_A1K + x]
-  let dv = k == 0 ? fw[F_A0V + x] : fw[F_A1V + x]
+  let (dk, dv) = pres(fw, k == 0 ? fw[F_A0K + x] : fw[F_A1K + x], k == 0 ? fw[F_A0V + x] : fw[F_A1V + x])
   let keep = kc & (k == 0)
   return wrp(oa, as_ + k, desc ? dk : keep ? rk : qk, desc ? dv : keep ? rv : qv)
 end
