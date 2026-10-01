@@ -3757,3 +3757,100 @@ test('loop fusion and fill runs: IR shapes, and arm64, x86_64, wasm equal the in
     });
   }
 });
+
+/** An n x n matrix-product fold step (state on the `side` of the invariant matrix) and a caller. */
+function matrixFoldSource(n: number, side: 'right' | 'left', trips: number): string {
+  const len = n * n;
+  const lines = [`fn step u32x${len} u32 u32x${len} -> u32x${len}`];
+  for (let k = 0; k < len; k += 1) lines.push(`a${k} get p0 ${k}`, `b${k} get p2 ${k}`);
+  const out: string[] = [];
+  for (let r = 0; r < n; r += 1)
+    for (let c = 0; c < n; c += 1) {
+      let sum = '';
+      for (let k = 0; k < n; k += 1) {
+        const [x, y] = side === 'right' ? [r * n + k, k * n + c] : [k * n + c, r * n + k];
+        lines.push(`m${r}${c}${k} mul a${x} b${y}`);
+        if (k === 0) sum = `m${r}${c}0`;
+        else {
+          lines.push(`s${r}${c}${k} add ${sum} m${r}${c}${k}`);
+          sum = `s${r}${c}${k}`;
+        }
+      }
+      out.push(sum);
+    }
+  lines.push(`o arr ${out.join(' ')}`, 'ret o', 'end');
+  lines.push(`fn top u32x${len} u32x${len} -> u32x${len}`, `r fold step ${trips} p0 p1`, 'ret r');
+  lines.push('end');
+  return lines.join('\n');
+}
+
+test('optimizer: a fold of a matrix-product step is the matrix power, exact and cheaper', () => {
+  let seed = 0x2545f491;
+  const next = (): number => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return seed >>> 0;
+  };
+  for (const n of [2, 3, 4])
+    for (const side of ['right', 'left'] as const)
+      for (const trips of [3, 4, 5, 7, 8, 13, 100]) {
+        const f = fn(matrixFoldSource(n, side, trips), 'top');
+        const o = optimizeFunction(f).fn;
+        assert.ok(
+          !o.nodes.some((x) => x.op === 'fold' || x.op === 'call'),
+          `${n} ${side} ${trips}`,
+        );
+        const muls = o.nodes.filter((x) => x.op === 'mul').length;
+        const products = 31 - Math.clz32(trips) + trips.toString(2).replaceAll('0', '').length;
+        assert.ok(
+          muls <= Math.min(products, trips) * n ** 3,
+          `${n} ${side} ${trips}: ${muls} muls`,
+        );
+        for (let t = 0; t < 8; t += 1) {
+          const a = Array.from({ length: n * n }, next);
+          const b = Array.from({ length: n * n }, next);
+          assert.deepEqual(
+            run(o, [a, b], { fuel: 1e9 }),
+            run(f, [a, b], { fuel: 1e9 }),
+            `${n} ${side} ${trips}`,
+          );
+        }
+      }
+  // Non-matrix steps are left to the ordinary unroller.
+  const notMatrix = fn(
+    'fn step u32x4 u32 u32x4 -> u32x4\na get p0 0\nb get p2 0\nc mul a b\nd get p0 1\ne add c d\nn arr e e e e\nret n\nend\nfn top u32x4 u32x4 -> u32x4\nr fold step 8 p0 p1\nret r\nend',
+    'top',
+  );
+  assert.ok(!optimizeFunction(notMatrix).fn.nodes.some((x) => x.op === 'fold'));
+});
+
+test('optimizer: select on equality drops an arm that is already the literal at equality', () => {
+  const branchy = fn(
+    'fn branchy u32 u32 -> u32\nc1 lt p0 p1\nc2 eq p0 p1\nd sub p0 p1\ne sub p1 p0\nm select c1 e d\nz select c2 0 m\nb and z 1\nc3 eq b 1\nr select c3 z p0\nret r\nend',
+    'branchy',
+  );
+  const o = optimizeFunction(branchy).fn;
+  assert.equal(o.nodes.filter((x) => x.op === 'select').length, 2);
+  assert.ok(!o.nodes.some((x) => x.op === 'eq' && x.args.every((a) => a.kind === 'param')));
+  for (const [x, y] of [
+    [0, 0],
+    [5, 5],
+    [3, 9],
+    [9, 3],
+    [4294967295, 0],
+    [0, 4294967295],
+    [7, 8],
+  ] as const)
+    assert.equal(run(o, [x, y]), run(branchy, [x, y]), `${x} ${y}`);
+  // Kept: the literal arm is not what the other arm yields at equality.
+  const kept = optimizeFunction(
+    fn('fn k u32 u32 -> u32\nc eq p0 p1\nd add p0 p1\nr select c 7 d\nret r\nend', 'k'),
+  ).fn;
+  assert.equal(kept.nodes.filter((x) => x.op === 'select').length, 1);
+  // The mirrored `ne` form.
+  const ne = optimizeFunction(
+    fn('fn n u32 u32 -> u32\nc ne p0 p1\nd xor p0 p1\nr select c d 0\nret r\nend', 'n'),
+  ).fn;
+  assert.equal(ne.nodes.filter((x) => x.op === 'select').length, 0);
+});
