@@ -65,3 +65,18 @@ export function branchFiles(repo: string, base: string, branch: string): string[
 }
 
 export { lines };
+
+/**
+ * results/*.json are regenerate-only (the attributes file names the `a0-results` merge driver). A merge
+ * driver must be configured per clone; this sets it to "keep the current side", so merges never
+ * conflict in a results file and the gate's results step regenerates and commits them.
+ */
+export function ensureMergeDriver(repo: string): boolean {
+  const a = vcs(repo, [
+    'config',
+    'merge.a0-results.name',
+    'A0 results: regenerate, keep ours on merge',
+  ]);
+  const b = vcs(repo, ['config', 'merge.a0-results.driver', 'true']);
+  return a.ok && b.ok;
+}

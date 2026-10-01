@@ -6,7 +6,16 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkFile, loadsIn } from '../tools/dev/claim-check.js';
-import { BUILD, COMMANDS, plan, pushDecision, resultLine, runGate } from '../tools/dev/dev-gate.js';
+import {
+  BUILD,
+  COMMANDS,
+  parallelBudget,
+  phases,
+  plan,
+  pushDecision,
+  resultLine,
+  runGate,
+} from '../tools/dev/dev-gate.js';
 import { drive } from '../tools/dev/drive.js';
 import { noteCovers, writeNote } from '../tools/dev/gate-note.js';
 import {
@@ -36,6 +45,8 @@ import { orderIds, sentinels } from '../tools/dev/order.js';
 import { reviewDiff } from '../tools/dev/prereview.js';
 import { buildQueue } from '../tools/dev/queue.js';
 import { classifyByRules } from '../tools/dev/reply-classify.js';
+import { ensureMergeDriver } from '../tools/dev/repo.js';
+import { isCacheable, stepKey } from '../tools/dev/step-cache.js';
 
 // dist/test/dev-tools.test.js -> repo root is two levels up.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -376,6 +387,125 @@ test('dev-gate: runs steps one at a time with logs, a clear final line, timeouts
 test('dev-gate: plans lint and typecheck before the build, then the dist steps', () => {
   const order = plan(['verify', 'lint', 'test'], { ...COMMANDS, build: BUILD }).map((r) => r.id);
   assert.deepEqual(order, ['lint', 'build', 'verify', 'test']);
+});
+
+test('step cache: key follows the closure, never caches timing steps, skips an unchanged passing step', async () => {
+  const repo = tempRepo();
+  const out = scratch();
+  try {
+    mkdirSync(join(repo, 'tools'));
+    writeFileSync(join(repo, 'tools', 'verify.ts'), "import { x } from '../src/core.js';\n");
+    const k1 = stepKey(repo, 'verify', 'node verify');
+    assert.equal(stepKey(repo, 'verify', 'node verify'), k1);
+    assert.notEqual(stepKey(repo, 'verify', 'node verify --other'), k1);
+    writeFileSync(join(repo, 'src', 'core.ts'), 'changed\n');
+    assert.notEqual(stepKey(repo, 'verify', 'node verify'), k1);
+    assert.equal(isCacheable('exec-bench'), false);
+    assert.equal(isCacheable('lang-axes'), false);
+    assert.equal(isCacheable('verify'), true);
+    sh(repo, 'add', '-A');
+    sh(repo, 'commit', '-q', '-m', 'closure change');
+    const run = { id: 'verify', cmd: 'true', timeoutMs: 10_000 };
+    const opts = {
+      repo,
+      runs: [run],
+      required: ['verify'],
+      light: false,
+      keepGoing: false,
+      scratch: out,
+      cache: true,
+      note: false,
+      log: () => undefined,
+    };
+    const first = await runGate(opts);
+    assert.equal(first.results[0]?.outcome, 'pass');
+    const second = await runGate(opts);
+    assert.equal(second.results[0]?.outcome, 'cached');
+    assert.match(second.line, /^GATE RESULT: pass verify=cached\([0-9a-f]{12}\)$/);
+    assert.equal(second.pass, true);
+    writeFileSync(join(repo, 'src', 'core.ts'), 'changed again\n');
+    const third = await runGate(opts);
+    assert.equal(third.results[0]?.outcome, 'pass');
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test('scheduler: light steps overlap up to a load-aware budget, heavy steps run alone', () => {
+  assert.equal(parallelBudget(0, 8), 4);
+  assert.equal(parallelBudget(3, 8), 1);
+  assert.equal(parallelBudget(11, 8), 1);
+  assert.equal(parallelBudget(0, 2), 1);
+  const ids = ['lint', 'typecheck', 'build', 'test', 'site', 'verify', 'app'];
+  const groups = phases(ids.map((id) => ({ id, cmd: 'true', timeoutMs: 1 }))).map((g) =>
+    g.map((r) => r.id),
+  );
+  assert.deepEqual(groups, [
+    ['lint', 'typecheck'],
+    ['build'],
+    ['test', 'site'],
+    ['verify'],
+    ['app'],
+  ]);
+});
+
+test('dev-gate: parallel light steps overlap; a pass commits regenerated results as one commit', async () => {
+  const repo = tempRepo();
+  const out = scratch();
+  try {
+    mkdirSync(join(repo, 'results'));
+    writeFileSync(join(repo, 'results', 'a.json'), '{"v":1}\n');
+    sh(repo, 'add', '-A');
+    sh(repo, 'commit', '-q', '-m', 'results');
+    const runs = [
+      { id: 'test', cmd: 'sleep 1; echo 2 > results/a.json', timeoutMs: 10_000 },
+      { id: 'site', cmd: 'sleep 1', timeoutMs: 10_000 },
+    ];
+    const r = await runGate({
+      repo,
+      runs,
+      required: ['test', 'site'],
+      light: false,
+      keepGoing: false,
+      scratch: out,
+      maxParallel: 2,
+      commitResults: true,
+      log: () => undefined,
+    });
+    assert.equal(r.pass, true);
+    assert.ok(r.wallMs < 1900, `expected overlap, took ${r.wallMs} ms`);
+    assert.equal(r.resultsCommitted, true);
+    assert.equal(sh(repo, 'log', '-1', '--format=%s').trim(), 'Regenerate results after the gate');
+    assert.equal(noteCovers(repo, 'HEAD', ['test', 'site']).ok, true);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test('results merge driver: two branches regenerating a results file merge without a conflict', () => {
+  const repo = tempRepo();
+  try {
+    mkdirSync(join(repo, 'results'));
+    writeFileSync(join(repo, 'results', 'a.json'), '{"v":0}\n');
+    writeFileSync(join(repo, '.gitattributes'), 'results/*.json merge=a0-results\n');
+    sh(repo, 'add', '-A');
+    sh(repo, 'commit', '-q', '-m', 'results');
+    branch(repo, 'r1', 'results/a.json', '{"v":1}\n');
+    branch(repo, 'r2', 'results/a.json', '{"v":2}\n');
+    sh(repo, 'merge', '-q', '--no-edit', 'r1');
+    assert.throws(
+      () => sh(repo, 'merge', '-q', '--no-edit', 'r2'),
+      'without the driver the merge conflicts',
+    );
+    sh(repo, 'merge', '--abort');
+    assert.equal(ensureMergeDriver(repo), true);
+    sh(repo, 'merge', '-q', '--no-edit', 'r2');
+    assert.equal(readFileSync(join(repo, 'results', 'a.json'), 'utf8'), '{"v":1}\n');
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
 
 // --- history, ordering, decisions ------------------------------------------------------------

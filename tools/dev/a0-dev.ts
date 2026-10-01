@@ -18,6 +18,7 @@
  *   order       riskiest-first step order and sentinels      (order)
  *   note        show the gate note on a commit               (gate-note)
  *   check       stuck | bench-validity | launch-gate | rank | verify-report  (loop-checks)
+ *   setup       configure the results merge driver in this clone
  *   loop        per-step wall-clock summary from results/dev-loop.json
  *   pre-merge   scope, plan (--plan=a,b), gate, claims in order; the first failing stage sets the exit code
  */
@@ -26,7 +27,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLog, summarize } from './loop-log.js';
-import { defaultBase, defaultRepo } from './repo.js';
+import { defaultBase, defaultRepo, ensureMergeDriver } from './repo.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -61,6 +62,14 @@ const stage = (title: string): void => {
 const tool = TOOLS[cmd];
 if (tool) {
   process.exit(run(tool, rest));
+} else if (cmd === 'setup') {
+  const ok = ensureMergeDriver(defaultRepo());
+  process.stdout.write(
+    ok
+      ? 'merge driver a0-results configured: results/*.json keep the current side on merge; the gate regenerates them\n'
+      : 'could not configure the merge driver\n',
+  );
+  process.exit(ok ? 0 : 1);
 } else if (cmd === 'loop') {
   const rows = summarize(readLog(defaultRepo()));
   process.stdout.write(
