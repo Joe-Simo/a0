@@ -149,7 +149,10 @@ export function checkFile(root: string, file: string, text: string): Finding[] {
 /** Line numbers added or changed in `file` since `ref` (working tree included). */
 export function changedLines(root: string, ref: string, file: string): Set<number> {
   const out = new Set<number>();
-  const diff = vcs(root, ['diff', '-U0', ref, '--', file]);
+  // diff from the merge base, so lines that only the moving base added are not this branch's claims
+  const mb = vcs(root, ['merge-base', ref, 'HEAD']);
+  const from = mb.ok ? mb.stdout.trim() : ref;
+  const diff = vcs(root, ['diff', '-U0', from, '--', file]);
   for (const m of diff.stdout.matchAll(/^@@ -\S+ \+(\d+)(?:,(\d+))? @@/gm)) {
     const start = Number(m[1]);
     const n = m[2] === undefined ? 1 : Number(m[2]);

@@ -184,8 +184,10 @@ async function main(): Promise<void> {
   const page = await buildProgram('page.a0', 'page');
   const docs = await buildProgram('docs.a0', 'docs');
   const sizes = [page.size, docs.size];
-  const tsc = join('node_modules', '.bin', 'tsc');
-  const r = runTool(tsc, [
+  // resolve typescript from this file, not from the working directory (worktrees share the parent's modules)
+  const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+  const r = runTool(process.execPath, [
+    tsc,
     '--strict',
     '--target',
     'es2022',
