@@ -225,11 +225,24 @@ function linkChunks(exe: string, chunks: readonly ChunkOutput[], layout: WasmLay
   const functions = chunks.reduce((n, c) => n + c.calls.length, 0);
   const words: number[] = [3, version.length, ...version];
   words.push(layout.ioInputCapacity, layout.ioOutputCapacity, functions);
+  // The export list: 0 = every function exported, n + 1 = n names (length, then the bytes).
+  if (layout.exports === undefined) words.push(0);
+  else {
+    words.push(layout.exports.length + 1);
+    for (const name of layout.exports) {
+      const bytes = Buffer.from(name, 'utf8');
+      words.push(bytes.length, ...bytes);
+    }
+  }
   for (const c of chunks) for (const r of c.records) for (const w of r.pool) words.push(w);
   words.push(0);
   for (const c of chunks) for (const r of c.records) for (const w of r.meta) words.push(w);
   for (const c of chunks) for (const r of c.records) for (const w of r.code) words.push(w);
   const r = runTool32(exe, words);
+  if (r.code === 6)
+    throw new Error(
+      `wasm: an exported function is not in the program (${layout.exports?.join(', ')})`,
+    );
   if (r.code !== 0) throw new Error(`a0w linker: code ${r.code} (a table is full)`);
   return Uint8Array.from(r.out, (w) => w & 255);
 }
@@ -863,7 +876,10 @@ export interface EmitOptions {
 }
 
 /** The trailing words of mode 2: the simd option (2: off) and the unroll option (0: 1). */
-const optionWords = (o: EmitOptions): number[] => [o.simd === false ? 2 : 1, o.unroll === 1 ? 0 : (o.unroll ?? 0)];
+const optionWords = (o: EmitOptions): number[] => [
+  o.simd === false ? 2 : 1,
+  o.unroll === 1 ? 0 : (o.unroll ?? 0),
+];
 
 /** What a chunk of the emitter adds to the module: its output and the runs it took. */
 interface Emitted {
@@ -894,7 +910,14 @@ function emitTables(
   for (;;) {
     if (!chunk.fits) return undefined;
     const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
-    const r = runTool32(exe, [MODE.tables, base, chunk.before.length, ...table, ...chunk.words, ...tail]);
+    const r = runTool32(exe, [
+      MODE.tables,
+      base,
+      chunk.before.length,
+      ...table,
+      ...chunk.words,
+      ...tail,
+    ]);
     runs += 1;
     if (r.code === 0) return { out: splitChunk(r.out), runs, to };
     if (r.code === CAPACITY) return undefined;
@@ -998,7 +1021,11 @@ function sourceChunk(
     source,
     head: from === 0,
     strict: false,
-    before: [PRELUDE, ...stubs.map((i) => (fns[i] as Func).name), ...bodies.map((i) => (fns[i] as Func).name)],
+    before: [
+      PRELUDE,
+      ...stubs.map((i) => (fns[i] as Func).name),
+      ...bodies.map((i) => (fns[i] as Func).name),
+    ],
     own: fns.slice(from, to).map((f) => f.name),
     cfrom: 1 + stubs.length,
     counts: [1, ...stubs.map((i) => (fns[i] as TypedFunc).nodes.length)],
@@ -1056,7 +1083,10 @@ export function a0WasmFromSource(
   const text = formatProgram({ functions: forms });
   // the chunks of tools/bootstrap.ts planChunks are the first guess of where to cut
   const plan = planChunks(text);
-  const planned = plan[0] !== undefined && plan[0].own.length === 0 ? [fns.length] : plan.map((c) => c.own.length);
+  const planned =
+    plan[0] !== undefined && plan[0].own.length === 0
+      ? [fns.length]
+      : plan.map((c) => c.own.length);
   const ends = planned.map((_, i) => planned.slice(0, i + 1).reduce((a, b) => a + b, 0));
   let runs = opt?.runs ?? 0;
   let base = 0;
@@ -1068,7 +1098,17 @@ export function a0WasmFromSource(
     const whole = plan[0] !== undefined && plan[0].own.length === 0;
     for (;;) {
       const chunk: SourceChunk = whole
-        ? { source: text, head: true, strict: false, before: [], own: [], cfrom: 0, counts: [], ownStart: from, ownEnd: to }
+        ? {
+            source: text,
+            head: true,
+            strict: false,
+            before: [],
+            own: [],
+            cfrom: 0,
+            counts: [],
+            ownStart: from,
+            ownEnd: to,
+          }
         : sourceChunk(fns, forms, from, to, supplied, prelude);
       if (!whole && !frontEndFits(chunk.source)) return undefined;
       const bytes = [...Buffer.from(chunk.source)];
@@ -1105,7 +1145,8 @@ export function a0WasmFromSource(
       to = from + Math.ceil((to - from) / 2);
       out = run(from, to);
     }
-    if (out === undefined) return { code, chunks: outputs.length + 1, runs, failed: failed as Chunk };
+    if (out === undefined)
+      return { code, chunks: outputs.length + 1, runs, failed: failed as Chunk };
     for (const [i, name] of fns.slice(from, to).entries())
       calls.set(name.name, out.calls[i] as [number, number, number]);
     outputs.push(out);
@@ -1125,7 +1166,9 @@ export function typescriptWasm(
   return wasmModuleBytes(
     compile(program, 'wasm', {
       ...(optimize ? {} : { optimize: false }),
-      ...layout,
+      ioInputCapacity: layout.ioInputCapacity,
+      ioOutputCapacity: layout.ioOutputCapacity,
+      ...(layout.exports === undefined ? {} : { wasmExports: layout.exports }),
       ...(options.simd === false ? { wasmSimd: false } : {}),
       ...(options.unroll === undefined ? {} : { wasmUnroll: options.unroll }),
     }).text,
