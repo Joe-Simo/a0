@@ -865,27 +865,26 @@ g2 set g l w
 r set p0 h g2
 ret r
 end
-# The profile directive: the first token that is not a newline (p3, 4294967295 when there is
+# The profile directive: the first token that is not a newline (p2, 4294967295 when there is
 # none) is the word `profile`, then the word `strict`, then the end of the line (the TypeScript
 # parser: the first line of the file is exactly `profile strict`, and the word is nothing else at
-# the top level of a file). p0 the source, p1 the tokens (p4 of them), p2 their words (kind in the
-# low four bits), p5 p6 the error so far. (words with the directive blanked, error, error token,
-# profile): the directive's two tokens read as newlines to the passes after the first; a
-# `profile` first token without `strict` right after it, or with more on the line, is a parse
-# error at the first token that is not as expected (before any error of the use lines, which come
-# later in the file)
-fn dirfix u32x512x64 u32x128x384 u32x128x128 u32 u32 u32 u32 -> (u32x128x128,u32,u32,u32)
-t0 call dirtok p1 p3 p4
+# the top level of a file). p0 the source, p1 the tokens (p3 of them), p4 p5 the error so far.
+# (error, error token, profile): a `profile` first token without `strict` right after it, or with
+# more on the line, is a parse error at the first token that is not as expected (before any error
+# of the use lines, which come later in the file); the profile is 1 for a valid directive, whose
+# two tokens `pass1` then blanks (they read as newlines to the passes after the first)
+fn dirfix u32x512x64 u32x128x384 u32 u32 u32 u32 -> (u32,u32,u32)
+t0 call dirtok p1 p2 p3
 k0 at t0 0
 s0 at t0 1
 n0 at t0 2
-f1 add p3 1
-t1 call dirtok p1 f1 p4
+f1 add p2 1
+t1 call dirtok p1 f1 p3
 k1 at t1 0
 s1 at t1 1
 n1 at t1 2
-f2 add p3 2
-t2 call dirtok p1 f2 p4
+f2 add p2 2
+t2 call dirtok p1 f2 p3
 k2 at t2 0
 sh0 shr s0 7
 so0 and s0 127
@@ -916,12 +915,10 @@ eb and eb0 noeol
 okd and eb0 eol
 bad or ea eb
 etk select ea f1 f2
-err2 select bad 1 p5
-et2 select bad etk p6
-ta1 call dirblank p2 p3 okd
-ta2 call dirblank ta1 f1 okd
+err2 select bad 1 p4
+et2 select bad etk p5
 prof select okd 1 0
-r rec ta2 err2 et2 prof
+r rec err2 et2 prof
 ret r
 end
 fn pass1 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
@@ -957,11 +954,14 @@ x16 at s 16
 # the `profile strict` directive on the first line: its two tokens become blank lines for the
 # later passes, a malformed directive is the first error (a parse error at the token that is not
 # as expected), and the last word is the profile (1 strict)
-d call dirfix p0 p1 x2 x16 p2 x11 x12
-ta2 at d 0
-err2 at d 1
-et2 at d 2
-prof at d 3
+d call dirfix p0 p1 x16 p2 x11 x12
+err2 at d 0
+et2 at d 1
+prof at d 2
+okd eq prof 1
+f1 add x16 1
+ta1 call dirblank x2 x16 okd
+ta2 call dirblank ta1 f1 okd
 r rec x0 x1 ta2 x3 x4 x5 x6 x7 x8 x9 x10 err2 et2 x13 x14 x15 prof
 ret r
 end
