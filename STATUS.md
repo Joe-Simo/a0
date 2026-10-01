@@ -3314,6 +3314,33 @@ By model (a-f, 62 trials each): Sonnet dense 61/62 one shot, canonical 61/62, bo
 
 How the grammar got here, because the first collections found real problems (all Haiku; Sonnet was 38/38 in every round): round 1 (grammar v1, primer 190 tokens) Haiku a+b+d 28/38 against canonical 30/38. Its failures: an explicit type list without `->` (`fn absdiff u32 u32 u32`, the last type meant as the result; read as three parameters, so a runtime arity error, three trials) was an ambiguity and was fixed generally: a type list now needs its `->`, and the error says how; `_` as the printed `u32` in headers was copied as a wildcard (`fn sumsq _ -> u32` for a `u32x4` parameter), so the printer writes `u32`; `S`, a model-invented parameter letter, inflated a function to 19 parameters, so operand-count errors now name the callee and its parameter count; the first Haiku round also passed a name (`n`) for a parameter, so the unknown-word fix says parameters are `A`, `B`, ... Round 2 (primer 214 to 204 tokens) Haiku wrote Lisp-style `(lt A B)`, which the first parser read as a one-field record (a silent type error, six trials): `(EXPR)` is now grouping and a one-field record is `(x,)`; the same replies re-scored with that parser went 7/13 to 13/13 on set a. Round 3 is the table above, fresh replies with the final grammar and primer on a, b, d and the held-out e, f. Remaining Haiku failures are model errors that the canonical cell shares: `fold` given an extra operand (`d-total-six`, `b-sumfrom-eight`), a bool result without `-> bool` (`d-isdiv-bool`), `get` on a record, wrong arithmetic. One new dense-only shape: a Haiku subject copied the signature lines of the program view (`fn offset u32 u32 -> u32`) as a body-less header followed by a second `fn offset ...` line (five trials in the second d sample; the retry repaired five of that sample's six failures); the d set was collected twice for Haiku dense (9/13 and 7/13 one shot), the second file is the one kept. Not fixed: the grammar cannot tell that apart from a function with no result, and the error already says so.
 
+Losses, recorded and not hidden: acceptance after the repair is 23/24 for dense, as for canonical, and 33 languages reach 24/24 (one trial, a wrong output by Haiku, stays unresolved); Ruby is ahead of dense on 10 tasks and, with Kotlin, OCaml, JavaScript, Common Lisp, Crystal and D, on unbounded sessions (Ruby reads 85 and writes 19 tokens per task against dense 99 and 23, with a 217-token primer that a long session amortizes). Dense cuts reading from 119 to 99 tokens and writing from 35 to 23 against canonical, which is what moves the 10-task rank from 23 to 2 and the unbounded rank from 30 to 8. Sample: 24 trials per cell, so a difference of one or two trials in acceptance is within noise; the canonical cell here is the b48 collection, a second fresh canonical collection on the same set (this session) costs 321 / 194 / 180 against its 326 / 199 / 185.
+
+### Dense session-cost levers (set b first, then a, d, e, f)
+
+Aim: the rows where dense A0 still lost in the 49-language set-B table (10 tasks 156 against Ruby 141, unbounded 138 against 115). Method as before: fresh Haiku and Sonnet subagents, one shot plus one retry by a fresh subagent given the rejection, o200k tokens, system text 1.25x on the first call and 0.05x after. Results: `results/ai-edit-experiment.{a,b,d,e,f}.{haiku,sonnet}-dense-{lean,lean2,lean3,lean4,bare}*.json`, `results/ai-edit-b48-dense.json`, `results/dense-experiment.json`.
+
+Found first: `b-sumfrom-eight` had no `target`, so the A0 view showed its helper `addi`, not `sumfrom`, which holds the bug (models rewrote `sumfrom` from the instruction). The task now names its target (`tools/ai-edit-tasks-b.ts`); the earlier canonical and dense cells of that table were collected with the old view, so the table's canonical A0 row is not re-collected.
+
+| lever | what | result (a-f, both models, 124 trials unless stated) |
+|---|---|---|
+| 1 read: lean view | function view only: no handle line (the reply applies to the one open function), no program handle with its signature lines | adopted. Read per task 74 to 54 tokens; one shot 114/124 (dense 111, canonical 111), after retry 122/124 (dense 114, canonical 120); cost 272 / 115 / 98 for 1 task / 10 tasks / unbounded against dense 299 / 142 / 125 and canonical 285 / 158 / 144 |
+| 1b read: bare view | also drop the callee signature lines | not adopted: set b only, 3.5 fewer tokens per task (54 to 50), one shot 22/24 as lean, Haiku fails the same two tasks; callee arities are what fold and call replies need |
+| 2 write: edit-line replies | `ret EXPR` and `ID EXPR` replies instead of whole functions | rejected: set b one shot 15/24 against 22/24 (Haiku 6/12 against 10/12, Sonnet 9/12 against 12/12); models mixed bare lines with `fn` blocks, and the system text is 21 tokens longer; replies shrink to 14 tokens only because they fail. This is the earlier numbered-edit failure in another form |
+| 3 primer 145 to 124 (`MODEL_GUIDE.dense3.txt`, op list cut) | | not adopted: one shot 107/124, after retry 115/124 (Haiku f 6/13 one shot); cost 256 / 123 / 108, worse than lean at 10 tasks and unbounded. 108 tokens (`MODEL_GUIDE.dense4.txt`): set b one shot 20/24 |
+| 4 inline fold and loop bodies | done earlier (arrfill 31, loop64 29 tokens) | nothing further |
+
+Ranks in the 49-language set-B table (`results/ai-edit-b48-dense.json`, proto2; the subject against the 48 languages; W/T/L against the 48 with a 1% cost band; 24 trials per cell, set b only). The earlier dense cell is `a0-dense`; the lean cell is `a0-dense-lean`; `a0-dense-lean3` is the 124-token primer:
+
+| subject | 1 task | 10 tasks | unbounded | one shot | after repair |
+|---|---|---|---|---|---|
+| canonical A0 | 326, rank 1 | 199, rank 23 | 185, rank 30 | 21/24 | 23/24 |
+| a0-dense (before) | 312, rank 1 (48/0/0) | 156, rank 2 (46/1/1) | 138, rank 8 (39/2/7) | 23/24 | 23/24, rank 34 |
+| a0-dense-lean | 297, rank 1 (48/0/0) | 141, rank 1 (47/1/0, a tie with Ruby 141) | 123, rank 2 (47/0/1) | 22/24, rank 21 | 24/24, rank 1 (33 ties) |
+| a0-dense-lean3 | 284, rank 1 | 150, rank 2 | 135, rank 4 | 22/24 | 22/24, rank 48 |
+
+Remaining loss: unbounded sessions, 123 against Ruby 115. Ruby reads 85 and writes 19 tokens per task; the lean cell reads 77 and writes 26 (the write mean includes the retried replies of the two Haiku tasks that fail first, `b-bounds-largest` and `b-checksum-poly`, which every form fails once). One fewer retry in twelve tasks is about 8 tokens, so that row is within the noise of 24 trials and not yet won. The harness variable is `A0_EXPERIMENT_DENSE_VIEW=lean|bare`; the MCP tool `a0_open` takes `lean: true` for the same view (test/mcp.test.ts).
+
 **Follow-up (primer, shapes, diagnostics, inline bodies).**
 
 - Ledger: canonical and dense are separate subjects (see 3); `test/loss-ledger.test.ts` covers the subject split.
@@ -3340,3 +3367,29 @@ By model (a-f, 62 trials each): Sonnet dense 59 -> 61, canonical 61 -> 61 (cost 
 ## Session 2026-10-01 (x86-64 steps blocked while Rosetta 2 is stuck)
 
 Rosetta 2's translation service on the gate machine stopped running any x86-64 binary that had not run before (a fresh `clang -arch x86_64` program never exits; already translated binaries such as `arch -x86_64 /usr/bin/true` still do). `rosettaStuck()` in src/toolchain.ts detects it, so the x86-64 target is reported as blocked ("needs Rosetta 2 to run new x86-64 binaries ...") instead of hanging the tests. The gate below passed with that target blocked. Rerun after the Mac restarts: `verify` (the native x86-64 row of results/verification.json), `test` (the x86-64 tests of test/core.test.ts are skipped) and `behavior` (its x86_64 column); regenerate results/verification.json and results/behavior.json from the gate.
+
+### Same task definition for every A0 cell, and the two tasks every form failed
+
+**1. Comparability.** `b-sumfrom-eight` now names its target, which changes the A0 view only. The task was re-collected fresh (one shot; every cell passed, so no retry was needed) for canonical A0, dense, lean and lean3, Haiku and Sonnet, and the 12-task cells were rescored with that trial replaced (`results/ai-edit-experiment.b.{haiku,sonnet}-a0.json` for canonical; the dense cells in `...-dense*-retry.json`). Every A0 cell of `results/ai-edit-b48-dense.json` now uses the same task definition. Corrected canonical A0 (replaces the 326 / 199 / 185 row of the 49-language table above; its Haiku trial now passes one shot): one shot 22/24, after repair 24/24 (rank 1, 33 ties), 311 / 184 / 170 tokens for 1 task / 10 tasks / unbounded, ranks 1 / 12 / 24.
+
+**2. The two tasks every form failed first (`b-bounds-largest`, `b-checksum-poly`; Haiku only, Sonnet passes both).** Read from the replies and the checker rejection: not model error and not task wording. In `bounds` the bug is in the helper `minmax` (second field wrong) and in `checksum` the seed `0` is shown but the missing `* 31` is in `mixel`; the `deps` view shows a callee as a signature line only, so the helper bodies were invisible. Haiku fixed what it could see (swapped the seed, set seed 7) and the checker rejected the wrong output; Sonnet rewrote the helpers from the instruction. The other 48 languages show the whole source, so this was a missing capability of the A0 views, fixed generally: `scope: 'bodies'` (`src/edit.ts` `scopedViewDense`, MCP `a0_open` `scope: 'bodies'`) prints each direct callee as dense text instead of a signature line (about 8 tokens more for a function with a helper; no cost for one without). Test: `dense edits: scope bodies ...` (test/dense.test.ts) and a case in test/mcp.test.ts. Canonical views have the same limit (`bodies` is dense only; canonical treats it as `deps`); canonical A0 is not changed.
+
+**Result with callee bodies** (lean view plus `bodies`, primer 145; `results/ai-edit-experiment.*-dense-bodies*.json`, harness `A0_EXPERIMENT_DENSE_VIEW=bodies`). Set b: one shot 24/24 (both tasks pass for both models). All sets a, b, d, e, f, fresh Haiku and Sonnet, 124 trials (one retry each; the d-set Haiku trial `d-rename-twice` that the subject left unanswered was re-asked fresh):
+
+| form | one shot | after 1 retry | read/task | cost 1 task / 10 / unbounded |
+|---|---|---|---|---|
+| canonical | 112 | 120 | 89 | 284 / 157 / 143 |
+| dense (program view) | 111 | 114 | 75 | 299 / 143 / 125 |
+| dense lean | 114 | 122 | 54 | 272 / 115 / 98 |
+| dense lean + bodies | 120 | 123 | 56 | 264 / 107 / 90 |
+
+Set-B 49-language table, the subject against the 48 languages (24 trials per cell; W/T/L on cost uses the 1% band):
+
+| subject | 1 task | 10 tasks | unbounded | one shot | after repair |
+|---|---|---|---|---|---|
+| canonical A0 | 311, rank 1 | 184, rank 12 | 170, rank 24 | 22/24, rank 21 | 24/24, rank 1 |
+| dense (program view) | 314, rank 1 | 157, rank 2 | 140, rank 8 | 23/24, rank 6 | 23/24, rank 34 |
+| dense lean | 297, rank 1 | 141, rank 1 (ties Ruby) | 123, rank 2 (Ruby 115 ahead) | 22/24, rank 21 | 24/24, rank 1 |
+| dense lean + bodies | 274, rank 1 (48/0/0) | 117, rank 1 (48/0/0) | 100, rank 1 (48/0/0) | 24/24, rank 1 (43/5/0) | 24/24, rank 1 (15/33/0) |
+
+From results/ai-edit-b48-dense.json: the earlier statement that the unbounded row is a loss to Ruby by a few tokens holds for the lean view without callee bodies (123 against 115) and is gone with `bodies` (100 against 115), where the gain is fewer retries (calls per task 1.00) rather than fewer tokens; with 24 trials per cell, a one-trial change in acceptance moves a cost by about 8 tokens, so the row is won by a margin of that order and should be read with that noise. Recommendation from the numbers: the lean view with callee bodies is the best dense form on every measured row, and canonical remains the default (its 49-language ranks are 1 / 12 / 24). Whether to make it the recommended dense form of the MCP and docs is left to the owner: the evidence supports it for the dense view (non-inferior or better on acceptance in all five sets, 20 to 40% fewer tokens per task), but dense still needs a 145-token primer, and Haiku's one-shot failures on arity (`f-divrem-pair`, `d-isdiv-bool`) remain.

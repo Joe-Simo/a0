@@ -1,0 +1,42 @@
+{
+  "f-min4-seed/a0/structured": [
+    "fn min4 u32x4 -> u32\nm get A 0\nr fold minel 4 m A\nfn minel u32 u32 u32x4 -> u32\na get C B\nc lt a A\nr select c a A"
+  ],
+  "f-third-index/a0/structured": [
+    "fn third u32x4 -> u32\nr get A 2"
+  ],
+  "f-advance-wrap/a0/structured": [
+    "fn advance u32 u32 -> u32\ns add A 1\nc eq s B\nr select c 0 s"
+  ],
+  "f-bump-cap/a0/structured": [
+    "fn bump u32 -> u32\ns add A 10\nc le s 100\nr select c s 100"
+  ],
+  "f-divrem-pair/a0/structured": [
+    "fn divrem u32 u32 -> (u32 u32)\nq div A B\nr rem A B\n(q r)",
+    "fn divrem\nq div A B\nr rem A B\n(q r)"
+  ],
+  "f-remaining-order/a0/structured": [
+    "fn remaining u32 u32 -> u32\nr sub B A"
+  ],
+  "f-sumlow-bound/a0/structured": [
+    "fn sumlow u32 -> u32\nr fold addlow 8 A\nfn addlow u32 u32 -> u32\nc lt B 6\nv select c B 0\nr add A v"
+  ],
+  "f-setlow-or/a0/structured": [
+    "fn setlow u32 -> u32\nr or A 15"
+  ],
+  "f-sumsq-helper/a0/structured": [
+    "fn sumsq u32 u32 -> u32\na sq A\nb sq B\nr add a b\nfn sq u32 -> u32\nr mul A A"
+  ],
+  "f-countabove-gt/a0/structured": [
+    "fn countabove u32x4 u32 -> u32\nr fold cnt 4 0 A B\nfn cnt u32 u32 u32x4 u32 -> u32\nc gt get C B D\nd select c 1 0\nr add A d"
+  ],
+  "f-avg4-floor/a0/structured": [
+    "fn avg4 u32x4 -> u32\ns fold addel 4 0 A\nr div s 4\nfn addel u32 u32 u32x4 -> u32 add A get C B"
+  ],
+  "f-addover-bool/a0/structured": [
+    "fn addover u32 u32 -> bool\ns add A B\nr lt s A"
+  ],
+  "f-highbyte-shr/a0/structured": [
+    "fn highbyte u32 -> u32\nr >> A 24"
+  ]
+}

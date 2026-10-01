@@ -167,17 +167,26 @@ export async function createServer(launch: string): Promise<McpServer> {
       inputSchema: {
         file: fileField,
         function: z.string(),
-        scope: z.enum(['deps', 'full']).optional(),
+        scope: z.enum(['deps', 'full', 'bodies']).optional(),
         dense: denseField,
+        lean: z
+          .boolean()
+          .optional()
+          .describe(
+            'dense only: return the function view without its handle line; a reply with no handle line edits the one open function',
+          ),
       },
     },
-    tool(async ({ file, function: name, scope, dense }) => {
+    tool(async ({ file, function: name, scope, dense, lean }) => {
       const { session } = await sessionFor(file);
       const useDense = dense ?? isDensePath(await fileOf(file));
-      return session.open(name, {
-        ...(scope === 'full' ? {} : { scope: 'deps' as const }),
+      const text = session.open(name, {
+        ...(scope === 'full'
+          ? {}
+          : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
         ...(useDense ? { dense: true } : {}),
       }).text;
+      return useDense && lean === true ? text.slice(text.indexOf('\n') + 1) : text;
     }),
   );
 

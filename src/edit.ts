@@ -341,9 +341,11 @@ export interface ViewOptions {
   /**
    * 'function' (default): the function only. 'deps': the function plus one signature line
    * (`fn name types -> type`) per direct callee, which is everything a type-correct edit of
-   * this function can depend on; bodies of callees are not shown.
+   * this function can depend on; bodies of callees are not shown. 'bodies' (dense views only;
+   * a canonical view treats it as 'deps'): the function plus the dense text of each direct callee,
+   * for edits whose bug may sit in a helper.
    */
-  readonly scope?: 'function' | 'deps';
+  readonly scope?: 'function' | 'deps' | 'bodies';
   /**
    * Number the function's body lines (`1 a add p0 p1` ... `N ret a`) so a reply can address
    * them: `N line` replaces line N, `N-` deletes it, `N+ line` inserts after it (`0+` at the
@@ -389,11 +391,13 @@ function denseSignatureLine(fn: Func): string {
 export function scopedViewDense(
   fn: TypedFunc,
   program: TypedProgram,
-  scope: 'function' | 'deps',
+  scope: 'function' | 'deps' | 'bodies',
 ): string {
   const text = formatDenseFunction(fn, program);
   if (scope === 'function') return text;
-  const sigs = [...fn.calls.values()].map((c) => denseSignatureLine(c));
+  const sigs = [...fn.calls.values()].map((c) =>
+    scope === 'bodies' ? formatDenseFunction(c, program) : denseSignatureLine(c),
+  );
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
 }
 
@@ -861,8 +865,8 @@ export class EditSession {
     numbered: boolean,
     dense = false,
   ): string {
-    if (dense) return scopedViewDense(fn, this.#program, scope === 'deps' ? 'deps' : 'function');
-    if (scope === 'deps') return scopedView(fn, numbered);
+    if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function');
+    if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered);
     return numbered ? numberedFunction(fn) : formatFunction(fn);
   }
 

@@ -1,0 +1,36 @@
+{
+  "e-fold-count-fix/a0/structured": [
+    "fn sumto\nr fold addi 5 A\nfn addi add A B"
+  ],
+  "e-swap-fields/a0/structured": [
+    "fn split -> (u32,u32)\ns add A B\nd sub A B\nr (d s)"
+  ],
+  "e-guard-zero-div/a0/structured": [
+    "fn quot\nc eq B 0\nr select c 0 (div A B)"
+  ],
+  "e-helper-sq-twice/a0/structured": [
+    "fn sq mul A A\nfn sumsq\nx sq A\ny sq B\ns add x y"
+  ],
+  "e-mask-widen/a0/structured": [
+    "fn lowbits and A 4095"
+  ],
+  "e-cmp-direction/a0/structured": [
+    "fn above -> bool\nc gt A B"
+  ],
+  "e-sum-range/a0/structured": [
+    "fn sum3 u32x4 -> u32\nr fold stepadd 3 1 A\nfn stepadd u32 u32 u32x4 -> u32\nv get C B\nr add A v",
+    "fn sum3 u32x4 -> u32\nr fold stepadd 3 0 A\nfn stepadd u32 u32 u32x4 -> u32\nv get C (add B 1)\nr add A v"
+  ],
+  "e-popcount-fold/a0/structured": [
+    "fn popcnt\nr fold bitcount 32 0 A\nfn bitcount u32 u32 u32 -> u32\nv >> C B\nb and v 1\nr add A b"
+  ],
+  "e-max3-helper/a0/structured": [
+    "fn max3 u32 u32 u32 -> u32\nx max2 A B\nr max2 x C\nfn max2\nc gt A B\nr select c A B"
+  ],
+  "e-hash-const/a0/structured": [
+    "fn hash2\nm mul A 33\nh add m B"
+  ],
+  "e-thread-param/a0/structured": [
+    "fn apply u32 u32 -> u32\nx addk A B\nr addk x B\nfn addk u32 u32 -> u32\nr add A B"
+  ]
+}

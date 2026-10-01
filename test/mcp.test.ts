@@ -188,6 +188,25 @@ test('mcp: dense views, dense replies, and a dense file saved as dense', () =>
       await readFile(join(base, 'root', 'd.a0d'), 'utf8'),
       'fn sq mul A A\n\nfn f add sq A 2\n',
     );
+    // lean: no handle line; a reply without one edits the one open function
+    await writeFile(join(base, 'root', 'l.a0d'), 'fn sq mul A A\n\nfn f add sq A 1\n');
+    const lean = await call(client, 'a0_open', { file: 'l.a0d', function: 'f', lean: true });
+    assert.ok(!lean.error, lean.text);
+    assert.equal(lean.text, 'fn f add sq A 1\n# sq u32 -> u32');
+    const leanEdit = await call(client, 'a0_apply', { file: 'l.a0d', edit: 'fn f add sq A 3' });
+    assert.ok(!leanEdit.error, leanEdit.text);
+    assert.equal(
+      (await call(client, 'a0_run', { file: 'l.a0d', function: 'f', args: [3] })).text,
+      '12',
+    );
+    // scope bodies: the direct callees' dense text instead of their signature lines
+    const bodies = await call(client, 'a0_open', {
+      file: 'l.a0d',
+      function: 'f',
+      scope: 'bodies',
+      lean: true,
+    });
+    assert.equal(bodies.text, 'fn f add sq A 3\nfn sq mul A A');
     // A canonical file can still be viewed and edited dense on request; it saves as canonical.
     const v2 = await call(client, 'a0_open', { file: 'm.a0', function: 'f', dense: true });
     assert.match(v2.text, /^e[0-9]+\nfn f\nb sq A\nc add b 1\n# sq u32 -> u32$/);
