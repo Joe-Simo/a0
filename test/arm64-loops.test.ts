@@ -165,6 +165,49 @@ test('arm64 carried recurrences start at the guard value instead of selecting it
   assert.doesNotMatch(body, /csel/);
 });
 
+test('arm64 absolute differences and bit tests use subs/cneg and tst, and equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const fns: string[] = [];
+  const names: string[] = [];
+  const add = (name: string, body: string): void => {
+    fns.push(`fn ${name} u32 u32 -> u32\n${body}\nend`);
+    names.push(name);
+  };
+  // select (x ? y) (y - x) (x - y) in every orientation of the comparison and the picked arm
+  for (const [op, x, y] of [
+    ['lt', 'p0', 'p1'],
+    ['le', 'p0', 'p1'],
+    ['gt', 'p0', 'p1'],
+    ['ge', 'p1', 'p0'],
+    ['lt', 'p0', '100'],
+    ['gt', '100', 'p0'],
+  ] as const) {
+    const base = `ad_${op}_${x}_${y}`;
+    add(`${base}_a`, `c ${op} ${x} ${y}\ne sub ${y} ${x}\nd sub ${x} ${y}\nm select c e d\nret m`);
+    add(`${base}_b`, `c ${op} ${x} ${y}\ne sub ${y} ${x}\nd sub ${x} ${y}\nm select c d e\nret m`);
+  }
+  // a subtraction with another use keeps its own instruction
+  add('ad_shared', 'c lt p0 p1\ne sub p1 p0\nd sub p0 p1\nm select c e d\nr add m d\nret r');
+  // (x & m) == 0, == m for a single bit, != , a mask that is not a bit, a literal on the left
+  add('tb_1', 'b and p0 1\nc eq b 1\nr select c p1 p0\nret r');
+  add('tb_2', 'b and p0 4\nc eq b 0\nr select c p1 p0\nret r');
+  add('tb_3', 'b and p0 240\nc ne b 0\nr select c p1 p0\nret r');
+  add('tb_4', 'b and p0 16\nc ne b 16\nr select c p1 p0\nret r');
+  add('tb_5', 'b and p0 3\nc eq b 3\nr select c p1 p0\nret r');
+  add('tb_6', 'b and p0 3\nc eq b 2\nr select c p1 p0\nret r');
+  add('tb_7', 'b and 8 p0\nc eq 0 b\nr select c p1 p0\nret r');
+  add('tb_8', 'b and p0 1\nc eq b 1\nr select c p1 p0\nq add b r\nret q');
+  const asm = await checkAgainstInterpreter(fns.join('\n\n'), names, clang);
+  const abs = /_a0_ad_lt_p0_p1_a:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.match(abs, /subs w\d+, w\d+, w\d+\n\tcneg w\d+, w\d+, lo/);
+  assert.doesNotMatch(abs, /csel/);
+  const bit = /_a0_tb_1:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.match(bit, /tst w\d+, #1\n\tcsel/);
+});
+
 test('arm64 fold state records of scalars live in registers and equal the interpreter', {
   skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
 }, async () => {

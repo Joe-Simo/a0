@@ -333,6 +333,22 @@ interface Selection {
   /** Each `get` of such an array, to its group (the first one emits the loop). */
   readonly queryGet: ReadonlyMap<string, QueryGroup>;
   readonly compare: ReadonlySet<string>;
+  /**
+   * Compares of `(x & mask)` against zero or the mask (a single bit): one `tst`. Keyed by the
+   * compare; `negate` when the compare asks whether the bit is set.
+   */
+  readonly testBit: ReadonlyMap<
+    string,
+    { readonly x: Operand; readonly mask: number; readonly bitSet: boolean }
+  >;
+  /**
+   * `select (x < y) (y - x) (x - y)` and its mirrors (an absolute difference): `subs` then `cneg`
+   * on the condition code `cc`; the two subtractions are not emitted.
+   */
+  readonly absDiff: ReadonlyMap<
+    string,
+    { readonly x: Operand; readonly y: Operand; readonly cc: string }
+  >;
   readonly rotate: ReadonlyMap<string, Rotate>;
   readonly madd: ReadonlyMap<string, { readonly mul: Node; readonly other: Operand }>;
   readonly shifted: ReadonlyMap<
@@ -477,6 +493,68 @@ function selection(fn: TypedFunc): Selection {
     ) {
       compare.add(n.id);
       deferred.add(n.id);
+    }
+  }
+  const testBit = new Map<string, { x: Operand; mask: number; bitSet: boolean }>();
+  const absDiff = new Map<string, { x: Operand; y: Operand; cc: string }>();
+  for (const n of fn.nodes) {
+    // (x & m) == 0, (x & m) == m, and their negations: one `tst`.
+    if (compare.has(n.id) && (n.op === 'eq' || n.op === 'ne')) {
+      const [p, q] = n.args;
+      for (const [masked, lit] of [
+        [p, q],
+        [q, p],
+      ] as const) {
+        const d = masked === undefined ? undefined : soleUse(masked, n);
+        if (d?.op !== 'and' || lit?.kind !== 'u32') continue;
+        const [u, v] = d.args as [Operand, Operand];
+        const [x, m] = u.kind === 'u32' ? [v, u] : [u, v];
+        if (m.kind !== 'u32' || !isLogicalImm32(m.value) || x.kind === 'u32') continue;
+        const single = (m.value & (m.value - 1)) === 0;
+        if (lit.value !== 0 && !(lit.value === m.value && single)) continue;
+        testBit.set(n.id, {
+          x,
+          mask: m.value,
+          bitSet: (lit.value !== 0) === (n.op === 'eq'),
+        });
+        deferred.add(d.id);
+        break;
+      }
+    }
+    if (n.op === 'select') {
+      const cond = n.args[0]?.kind === 'node' ? byId.get(n.args[0].id) : undefined;
+      const a = n.args[1] === undefined ? undefined : soleUse(n.args[1], n);
+      const b = n.args[2] === undefined ? undefined : soleUse(n.args[2], n);
+      const ordered =
+        cond?.op === 'lt' || cond?.op === 'le' || cond?.op === 'gt' || cond?.op === 'ge';
+      if (
+        ordered &&
+        cond !== undefined &&
+        a?.op === 'sub' &&
+        b?.op === 'sub' &&
+        fn.types.get(n.id) === 'u32'
+      ) {
+        const [x, y] = cond.args as [Operand, Operand];
+        const [u, v] = a.args as [Operand, Operand];
+        const [u2, v2] = b.args as [Operand, Operand];
+        const swapped = sameOp(u, v2) && sameOp(v, u2);
+        const less = cond.op === 'lt' || cond.op === 'le';
+        // w = x - y; the result is w or -w
+        const direct = sameOp(u, x) && sameOp(v, y);
+        const mirrored = sameOp(u, y) && sameOp(v, x);
+        if (swapped && (direct || mirrored) && !(x.kind === 'u32' && y.kind === 'u32')) {
+          // `a` is picked when the condition holds. less: x < y.
+          //   a = x - y (direct):   less holds -> w, else -w (negate when x >= y: hs)
+          //   a = y - x (mirrored): less holds -> -w (negate when x < y: lo)
+          // greater is the mirror image of less.
+          let cc: string;
+          if (less) cc = direct ? 'hs' : 'lo';
+          else cc = direct ? 'ls' : 'hi';
+          absDiff.set(n.id, { x, y, cc });
+          deferred.add(a.id);
+          deferred.add(b.id);
+        }
+      }
     }
   }
   for (const n of fn.nodes) {
@@ -707,6 +785,8 @@ function selection(fn: TypedFunc): Selection {
     byId,
     deferred,
     deadInit,
+    testBit,
+    absDiff,
     elided,
     lazyQuery,
     queryGet,
@@ -3122,6 +3202,11 @@ class FunctionEmitter {
       this.#emit(`cmp ${this.#read(this.#val(env, o), 'w9')}, #0`);
       return 'ne';
     }
+    const bit = sel.testBit.get(def.id);
+    if (bit !== undefined) {
+      this.#emit(`tst ${this.#read(this.#val(env, bit.x), 'w10')}, #${bit.mask}`);
+      return bit.bitSet ? 'ne' : 'eq';
+    }
     let x = this.#val(env, def.args[0] as Operand);
     let y = this.#val(env, def.args[1] as Operand);
     let cond = CONDITION[def.op] as string;
@@ -3351,6 +3436,14 @@ class FunctionEmitter {
         cmp('hs');
         return;
       case 'select': {
+        const abs = sel.absDiff.get(n.id);
+        if (abs !== undefined) {
+          const rx = this.#read(this.#val(env, abs.x), 'w10');
+          const yv = this.#val(env, abs.y);
+          const ry = yv.kind === 'lit' && yv.value <= 4095 ? `#${yv.value}` : this.#read(yv, 'w11');
+          scalar((d) => this.#emit(`subs ${d}, ${rx}, ${ry}`, `cneg ${d}, ${d}, ${abs.cc}`), true);
+          return;
+        }
         // Both operands are already computed values; select picks one. A compare whose
         // only uses are selects sets the flags here instead of materializing a bool.
         const cc = this.#condition(env, n.args[0] as Operand);
