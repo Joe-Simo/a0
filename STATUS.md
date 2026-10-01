@@ -2674,3 +2674,38 @@ lang-axes re-run (5 rounds, interleaved across all 49 subjects + `a0node`, the o
 Gate: lint, typecheck, test 86/86, verify, app, equiv, hw, dotnet, gpu, selfhost, selfhost:c, bootstrap and native-check all exit 0 (lint re-run after a formatter fix to lang-axes.ts).
 
 Tcl exec-bench re-run (`--langs=tcl`, load 18.6/35.8/46.1). All 10 checksums equal the stored ones, so the signed-checksum bug was only in lang-axes' 1-iteration driver, and results/exec-benchmark.json was not changed. The re-run's times are 1.0-2.8x slower (tclsh 9.0.4 now vs 8.5.9 recorded, plus load), geomean 532 vs 475 stored.
+
+## Session 2026-09-30 (native check + run: one A0 process, no Node, no clang)
+
+Merged worktree-agent-ad9f20b9b1e9ad5a2 (46d71dc, native `a0 check`). Conflicts were in the generated results, STATUS.md (both sections kept) and tools/bootstrap.ts (`closure`/`closures` now live in tools/corpus.ts; bootstrap-arm64/macho import them from there).
+
+Route chosen, measured. `dist/native/a0` now has `run`, `bench` and `calls` next to `check`. One process links the `use` files, runs the self-hosted front end, and evaluates the checked word IR.
+- (a) JIT through the self-hosted arm64 emitter, rejected. A native build of `emitachunkio` (boot.a0, the front end plus the q emitter, C backend + clang -O2) takes 18.7 / 20.8 / 22.4 ms per process on affine / branchy / arrfill just to write the assembly text. That is before any encoding: the in-process encoder (src/arm64enc.ts) is TypeScript, and running it would need Node. The same machine and load ran the evaluator route at 6-10 ms per process.
+- (b) Evaluator over the self-hosted IR, chosen. A new entry, `irio` in compiler/check.a0, is checkio plus the whole IR: types, tlist, node types, pool, sym, fns, nodes, args. The host driver tools/native/a0.c lays out one static frame per function, which is safe because A0 calls only functions above, so no function is ever active twice. Values are flat words. A `set`/`put` whose operand dies there writes in place, and fold state lives in the body's p0. There is no codegen at run time.
+- `a0 bench FILE FN N` is the exec-bench driver: xorshift32 inputs, an xor checksum, and a "ns checksum" line. lang-axes uses it with the `fused` flag: checkRunMs is that one process, which checks first. checkMs is still the separate `a0 check`.
+
+Source-size slowdown. The cause was linear, not quadratic. The C backend copied the paged front-end tables (64-100 KB each) on every token: an `at p0 k` of the fold state, a `set` on that copy, then a whole-record store back to `*p0`.
+- src/backends.ts, owned fold variant: aggregate field projections of the state point at the field (`stateProjections`). A `set`/`put` on them, or on nodes already updated in place, writes in place when `mutableHere` allows. C counts call arguments, fold extras and aggregate operands as reads (`cRead`). The final `rec` stores only the changed fields (`cStateStores`). Field projections of large local records do the same (`localProjections`).
+- compiler/parse.a0 p3tok: the 100 KB types table was wrapped into a record on every token for the 0/1 `arrone` fold. `arrinfo` and `arrapply` replace it: (ntypes ok id) with the table read by pointer, and the table as its own fold state.
+- `a0 check` on the 713-function source, from the 2 KB prefix to the full 16 KB: 36 / 91 / 153 / 272 ms before, 5.3 / 8.2 / 12.6 / 21.7 ms after (results/native-check.json). The 8 KB compiler/lex.a0 dropped from 100 ms to under 10 ms of user time. Per small kernel: 21.1M -> 17.7M instructions retired (Lua `print(1)`: 18.5M), and RSS 5.1 -> 3.9 MB.
+- COMPILER_VERSION a0c-0.1.31 -> a0c-0.1.32 (C emission changed).
+
+Linking. `use` lines are resolved natively, as src/link.ts resolves them: relative paths, realpath, project root = the nearest package.json, each file once, dependencies first, cycles rejected. The joined text must fit the front end's 16384 bytes: over that it exits 65, where the TypeScript linker allows 1 MiB. Not lifted: the chunked check that the bootstrap does in TypeScript (planChunks) has no native port. A name defined in two files is the front end's duplicate-name parse error (exit 1); src/link.ts reports it as structure.
+
+Verification, `bun run native-check` (results/native-check.json):
+- Diagnostics: 105/105 equal refCheckWords on the TypeScript-linked text.
+- Evaluator: 60 programs and 6528 cases equal the BigInt oracle, io included. The programs are every corpus function with what it reaches, the kernels without iterScale, and examples/kernels.a0 and life.a0. 4 corpus closures with bool-array headers are outside the self-hosted front end's language; both checkers reject them, so they are skipped. The iteration-scaled kernels are not run in the evaluator check, because their oracle takes minutes.
+- Commands: `run` matches src/cli.ts output and `bench` matches the reference checksum, 40/40.
+- Linking: 6/6 (diamond, cycle, outside root, missing file, duplicate, over-limit).
+- The evaluator has no fuel limit. The TypeScript `run` stops at 1e8 node evaluations.
+
+lang-axes (results/lang-axes.json, 5 rounds interleaved, 1-minute load per round 27.9 / 26.5 / 26.7 / 32.6 / 19.1, then 16.7 after the last round, on 8 CPUs).
+- **Check + run per edit: A0 is fastest of 49 subjects.** A0 takes 6.2 ms (affine 6.2, branchy 6.4, arrfill 5.8). Next are Forth 10.5, Lua 14.0, Smalltalk 25.6, Common Lisp 53.5, Prolog 55.2, Tcl 62.5, Perl 64.9, Guile 68.6, JS 116.6 and C 235.2. A0 is fastest on each of the 3 kernels. The old path (`a0node`: Node check + `emit c` + clang) took 785.6 ms.
+- **Static check: A0 6.7 ms, fastest of 33** (Perl 31.5, JS 53.3, C 135.2).
+- Caveats:
+  - The load was above 10 throughout, so absolute times hold only within this run. Lua's median spread is wide (10.0 to 17.7 across kernels), and an earlier run of the same code before the last two copy fixes, under load 13-60, had Lua 7.4 ahead of A0 8.9.
+  - The recorded run used the binary from just before the last one-line fix: local projections now exclude the function result, a value-variant bug that the gate's -Werror build caught. The fix changes no kernel path except one extra 100 KB copy for an array type word (arrfill's `u32x8`).
+  - A confirmation run was started but stopped by the coordinator at load 190. It should be re-run when the load is under 10.
+- Coverage unchanged: tokens 48/48, check+run 48/48, check 33/48, none failed.
+
+Gate (this worktree, after the fix): typecheck, test 92/92, verify (all 15 paths passed), app, equiv, hw, dotnet, gpu, selfhost, selfhost:c, bootstrap and native-check all exit 0. lint failed once on formatting of the fix, was re-run after `biome --write`, and exits 0.
