@@ -164,43 +164,10 @@ t at p0 0
 r call walink t
 ret r
 end
-# modes 4 5 6: the optimized chunk (4 source, 5 tables), the optimized IR of a table chunk (6)
-fn wam4 (io,u32) u32 -> (io,u32)
+# mode 7: the optimizer on one function (compiler/optimize.a0 `ozone`)
+fn wam7 (io,u32) u32 -> (io,u32)
 t at p0 0
-c call rdchunk t
-src at c 0
-n at c 1
-fst at c 2
-from at c 3
-t5 at c 6
-rb call rdword t5
-base at rb 0
-t6 at rb 1
-nd mul from 2
-rd call warn16 t6 nd
-dt at rd 0
-t7 at rd 1
-re call readsrc t7
-esrc at re 0
-en at re 1
-t8 at re 2
-rm call rdword t8
-nm at rm 0
-t9 at rm 1
-rq call warn16 t9 nm
-emap at rq 0
-t10 at rq 1
-u call ozsunit t10 src n fst from dt base esrc en emap
-ret u
-end
-fn wam5 (io,u32) u32 -> (io,u32)
-t at p0 0
-r call ozirchunk t false
-ret r
-end
-fn wam6 (io,u32) u32 -> (io,u32)
-t at p0 0
-r call ozirchunk t true
+r call ozone t
 ret r
 end
 fn emitwasmio io -> u32
@@ -211,21 +178,15 @@ s0 rec t 6
 m1 eq m 1
 m2 eq m 2
 m3 eq m 3
-m4 eq m 4
-m5 eq m 5
-m6 eq m 6
+m7 eq m 7
 c1 select m1 1 0
 c2 select m2 1 0
 c3 select m3 1 0
-c4 select m4 1 0
-c5 select m5 1 0
-c6 select m6 1 0
+c7 select m7 1 0
 a fold wam1 c1 s0
 b fold wam2 c2 a
 c fold wam3 c3 b
-d fold wam4 c4 c
-e fold wam5 c5 d
-f fold wam6 c6 e
-code at f 1
+d fold wam7 c7 c
+code at d 1
 ret code
 end
