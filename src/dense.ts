@@ -35,8 +35,10 @@ import {
   opOf,
   type Program,
   parseType,
+  resultType,
   stripComment,
   type Type,
+  typeEquals,
 } from './core.js';
 
 // ---------------------------------------------------------------------------
@@ -164,6 +166,8 @@ export interface DenseStyle {
   readonly join?: boolean;
   /** The last statement is the result (off: `ret` before it and `end` after the function). */
   readonly implicitRet?: boolean;
+  /** Fold and loop bodies called once and named `CALLER_1`, ... written as `{statements}`. */
+  readonly inline?: boolean;
 }
 
 export interface DenseOptions {
@@ -175,6 +179,11 @@ export interface DenseOptions {
 }
 
 interface PrintCtx {
+  readonly program: Program;
+  /** Fold and loop bodies written inline, by the function that contains them (see `planLambdas`). */
+  readonly lambdas: ReadonlyMap<string, readonly string[]>;
+  /** For the function being printed: callee name to its inline `{body}` text. */
+  readonly inline: ReadonlyMap<string, string>;
   readonly arities: Arities;
   readonly fnNames: ReadonlySet<string>;
   readonly comments: boolean;
@@ -356,9 +365,10 @@ function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string
     const direct = opOf(callee) === undefined && callee !== 'text' && !KEYWORDS.has(callee);
     return [direct ? callee : `call ${callee}`, ...args].join(' ');
   }
-  if (node.op === 'fold') return ['fold', node.callee as string, ...args].join(' ');
+  const callee = (name: string): string => ctx.inline.get(name) ?? name;
+  if (node.op === 'fold') return ['fold', callee(node.callee as string), ...args].join(' ');
   if (node.op === 'loop')
-    return ['loop', node.pred as string, node.callee as string, ...args].join(' ');
+    return ['loop', callee(node.pred as string), callee(node.callee as string), ...args].join(' ');
   return [opWord(node.op, ctx), ...args].join(' ');
 }
 
@@ -371,7 +381,24 @@ function trailing(c: Comments | undefined): string {
 }
 
 /** One function as dense text lines. */
-function printFunction(fn: Func, ctx: PrintCtx): string[] {
+function printFunction(fn: Func, outer: PrintCtx): string[] {
+  const own = outer.lambdas.get(fn.name) ?? [];
+  const byName = new Map(outer.program.functions.map((f) => [f.name, f] as const));
+  const inline = new Map<string, string>();
+  for (const name of own) {
+    const f = byName.get(name) as Func;
+    const text = statementsOf(f, { ...outer, inline: new Map() }).body.map((b) => b.text);
+    inline.set(name, `{${text.join(';')}}`);
+  }
+  const ctx: PrintCtx = { ...outer, inline };
+  const { body } = statementsOf(fn, ctx);
+  return printLines(fn, ctx, body, explicitRet(fn, ctx));
+}
+
+function statementsOf(
+  fn: Func,
+  ctx: PrintCtx,
+): { body: { text: string; comments: Comments | undefined; named: boolean }[]; plan: Plan } {
   const plan = planFunction(fn, ctx);
   const keepRet = explicitRet(fn, ctx);
   const idWord = (id: string): string => (needsEscape(id, ctx.fnNames) ? `$${id}` : id);
@@ -396,7 +423,15 @@ function printFunction(fn: Func, ctx: PrintCtx): string[] {
       named: false,
     });
   }
+  return { body, plan };
+}
 
+function printLines(
+  fn: Func,
+  ctx: PrintCtx,
+  body: { text: string; comments: Comments | undefined; named: boolean }[],
+  keepRet: boolean,
+): string[] {
   const needed = highestParam(fn) + 1;
   const plain =
     ctx.style.implicitTypes && fn.params.length === needed && fn.params.every((t) => t === 'u32');
@@ -441,7 +476,10 @@ function printFunction(fn: Func, ctx: PrintCtx): string[] {
 function contextFor(program: Program, options: DenseOptions): PrintCtx {
   const arities = new Map<string, number>(options.known ?? []);
   for (const f of program.functions) arities.set(f.name, f.params.length);
-  return {
+  const base = {
+    program,
+    lambdas: new Map<string, readonly string[]>(),
+    inline: new Map<string, string>(),
     arities,
     fnNames: new Set(arities.keys()),
     comments: options.comments === true,
@@ -454,8 +492,32 @@ function contextFor(program: Program, options: DenseOptions): PrintCtx {
       repeat: options.style?.repeat !== false,
       join: options.style?.join !== false,
       implicitRet: options.style?.implicitRet !== false,
+      inline: options.style?.inline !== false,
     },
   };
+  return options.comments === true || options.style?.inline === false
+    ? base
+    : { ...base, lambdas: planLambdas(program) };
+}
+
+/**
+ * The dense text of each node of a function, by canonical id: what a diagnostic can show in
+ * place of an id the dense text does not carry (`sumsq.a` becomes `fold addel 4 0 A`).
+ */
+export function denseNodeTexts(
+  fn: Func,
+  program: Program,
+  options: DenseOptions = {},
+): Map<string, string> {
+  const out = new Map<string, string>();
+  try {
+    const ctx = contextFor(program, options);
+    const plan = planFunction(fn, ctx);
+    for (const [k, node] of fn.nodes.entries()) out.set(node.id, printNodeTokens(fn, k, plan, ctx));
+  } catch {
+    // an invalid function has no dense text; its diagnostics keep the canonical ids
+  }
+  return out;
 }
 
 /** One function in dense form (callable only inside the program it belongs to). */
@@ -475,7 +537,10 @@ export function formatDense(program: Program, options: DenseOptions = {}): strin
     const c = comments ? program.useComments?.[k] : undefined;
     return [...commentLines(c), `use "${u}"${trailing(c)}`].join('\n');
   });
-  const fns = program.functions.map((f) => printFunction(f, ctx).join('\n'));
+  const skipped = new Set([...ctx.lambdas.values()].flat());
+  const fns = program.functions
+    .filter((f) => !skipped.has(f.name))
+    .map((f) => printFunction(f, ctx).join('\n'));
   const tail = comments ? (program.tailComments ?? []) : [];
   const head = withUse.join('\n');
   const body = fns.join('\n\n');
@@ -497,7 +562,7 @@ export function formatDenseSignature(fn: Func): string {
 // ---------------------------------------------------------------------------
 
 export interface Tok {
-  readonly kind: 'word' | 'str' | 'open' | 'close' | 'semi' | 'comma';
+  readonly kind: 'word' | 'str' | 'open' | 'close' | 'semi' | 'comma' | 'lbrace' | 'rbrace';
   readonly text: string;
 }
 
@@ -527,9 +592,12 @@ export function lexDense(text: string, line: number): Tok[] {
     } else if (c === ';') {
       out.push({ kind: 'semi', text: c });
       i += 1;
+    } else if (c === '{' || c === '}') {
+      out.push({ kind: c === '{' ? 'lbrace' : 'rbrace', text: c });
+      i += 1;
     } else {
       let j = i;
-      while (j < text.length && !' \t,"[]();'.includes(text[j] as string)) j += 1;
+      while (j < text.length && !' \t,"[]();{}'.includes(text[j] as string)) j += 1;
       out.push({ kind: 'word', text: text.slice(i, j) });
       i = j;
     }
@@ -603,6 +671,29 @@ export interface Pending {
   comments?: Comments;
 }
 
+type Sig = { readonly params: readonly Type[]; readonly result: Type };
+
+/**
+ * What a function body parser needs to write a fold or loop body inline (`fold {A+B} ...`): the
+ * enclosing function's name (the lifted body is `NAME_1`, `NAME_2`, ... in node order), the list
+ * the lifted functions go to (they precede the function), and the types that give the lifted
+ * function its signature (state type of the initial value, the extra operands' types).
+ */
+export interface LambdaCtx {
+  readonly fnName: string;
+  readonly lifted: Func[];
+  readonly sigs: Map<string, Sig>;
+  readonly paramTypes: readonly Type[] | undefined;
+  readonly nested: boolean;
+  readonly counter: { n: number };
+}
+
+interface Inline {
+  readonly arity: number;
+  readonly nodes: Node[];
+  readonly ret: Operand;
+}
+
 /** Statement parser for one function body; the edit protocol drives it line by line too. */
 export class FunctionParser {
   readonly nodes: Pending[] = [];
@@ -619,7 +710,98 @@ export class FunctionParser {
     readonly fnNames: ReadonlySet<string>,
     /** Ids of nodes that already exist (an edit refers to them by name). */
     readonly external: ReadonlySet<string> = new Set(),
+    readonly lam?: LambdaCtx,
   ) {}
+
+  private typeOf(o: Operand): Type {
+    if (o.kind === 'u32') return 'u32';
+    if (o.kind === 'bool') return 'bool';
+    if (o.kind === 'param') return this.lam?.paramTypes?.[o.index] ?? 'u32';
+    if (!o.id.startsWith('\u0000'))
+      return fail(
+        'an inline body needs the type of a value defined by an earlier edit',
+        this.line,
+        'write the body as a function instead',
+      );
+    return this.nodeType(Number(o.id.slice(1)));
+  }
+
+  private nodeType(k: number): Type {
+    const p = this.nodes[k] as Pending;
+    const args = p.args.map((a) => this.typeOf(a));
+    if (p.op === 'call') {
+      const sig = this.lam?.sigs.get(p.callee as string);
+      if (sig === undefined)
+        return fail(
+          `an inline body needs the result type of '${p.callee}'`,
+          this.line,
+          'define that function above, in this file',
+        );
+      return sig.result;
+    }
+    if (p.op === 'fold' || p.op === 'loop') return args[1] as Type;
+    if (p.op === 'arr') return { kind: 'arr', length: args.length, elem: args[0] as Type };
+    if (p.op === 'rec') return { kind: 'rec', fields: args };
+    return resultType(p.op, args, `line ${this.line}`);
+  }
+
+  /** `{ statement ; statement }` after `fold` or `loop`: the body as a function of its own. */
+  private inlineBody(): Inline {
+    if (this.lam === undefined || this.lam.nested)
+      return fail(
+        'an inline body is only allowed in a function, not inside another inline body',
+        this.line,
+      );
+    const groups: Tok[][] = [[]];
+    let depth = 0;
+    for (;;) {
+      const t = this.toks[this.pos];
+      if (t === undefined) return fail("missing '}'", this.line);
+      this.pos += 1;
+      if (t.kind === 'rbrace') break;
+      if (t.kind === 'lbrace') return fail('inline bodies do not nest', this.line);
+      if (t.kind === 'open') depth += 1;
+      if (t.kind === 'close') depth -= 1;
+      if (t.kind === 'semi' && depth === 0) groups.push([]);
+      else (groups[groups.length - 1] as Tok[]).push(t);
+    }
+    const sub = new FunctionParser(this.arities, this.fnNames, new Set(), {
+      ...this.lam,
+      nested: true,
+    });
+    const stmts: { value: Operand; ret: boolean; line: number }[] = [];
+    for (const g of groups.filter((x) => x.length > 0)) {
+      const st = sub.statement(g, this.line, undefined);
+      stmts.push({ value: st.value, ret: st.ret, line: this.line });
+    }
+    const { nodes, ret } = assemble(sub, stmts, 'an inline body', this.line);
+    let top = 1;
+    const see = (o: Operand): void => {
+      if (o.kind === 'param' && o.index > top) top = o.index;
+    };
+    for (const n of nodes) n.args.forEach(see);
+    see(ret);
+    return { arity: top + 1, nodes, ret };
+  }
+
+  /** The lifted function of an inline body once the call's operands are known. */
+  private lift(body: Inline, args: readonly Operand[], result: 'state' | 'bool'): string {
+    const lam = this.lam as LambdaCtx;
+    lam.counter.n += 1;
+    const name = `${lam.fnName}_${lam.counter.n}`;
+    const state = this.typeOf(args[1] as Operand);
+    const params: Type[] = [state, 'u32', ...args.slice(2).map((a) => this.typeOf(a))];
+    const f: Func = {
+      name,
+      params,
+      result: result === 'bool' ? 'bool' : state,
+      nodes: body.nodes,
+      ret: body.ret,
+    };
+    lam.lifted.push(f);
+    lam.sigs.set(name, { params, result: f.result });
+    return name;
+  }
 
   private temp(k: number): string {
     return `\u0000${k}`;
@@ -802,7 +984,7 @@ export class FunctionParser {
       if (args.length === 0) fail(`${op} expects at least one operand`, this.line);
       return this.make({ op, args });
     }
-    if (op === 'call' || op === 'fold') {
+    if (op === 'call') {
       const callee = this.functionName(`a function name after ${op}`);
       const n = this.callArity(callee);
       return this.make({
@@ -811,19 +993,52 @@ export class FunctionParser {
         args: this.operands(n, `${op} ${callee}`, ` (${callee} has ${n} parameters)`),
       });
     }
+    if (op === 'fold') {
+      const spec = this.bodySpec('a function name or {body} after fold');
+      const n = spec.name === undefined ? (spec.inline as Inline).arity : this.callArity(spec.name);
+      const label = `fold ${spec.name ?? '{...}'}`;
+      const args = this.operands(
+        n,
+        label,
+        spec.name === undefined ? '' : ` (${spec.name} has ${n} parameters)`,
+      );
+      const callee = spec.name ?? this.lift(spec.inline as Inline, args, 'state');
+      return this.make({ op, callee, args });
+    }
     if (op === 'loop') {
-      const pred = this.functionName('a predicate name after loop');
-      const callee = this.functionName('a body function name after the predicate');
-      this.callArity(pred);
-      const n = this.callArity(callee);
-      return this.make({
-        op,
-        pred,
-        callee,
-        args: this.operands(n, `loop ${pred} ${callee}`, ` (${callee} has ${n} parameters)`),
-      });
+      const pred = this.bodySpec('a predicate name or {body} after loop');
+      const body = this.bodySpec('a body function name or {body} after the predicate');
+      const named = body.name ?? pred.name;
+      let n: number;
+      if (named !== undefined) n = this.callArity(named);
+      else n = Math.max((pred.inline as Inline).arity, (body.inline as Inline).arity);
+      for (const sp of [pred, body])
+        if (sp.inline !== undefined && sp.inline.arity > n)
+          fail(
+            `an inline body uses parameter ${paramWord(sp.inline.arity - 1)} but the loop takes ${n}`,
+            this.line,
+          );
+      const args = this.operands(
+        n,
+        `loop ${pred.name ?? '{...}'} ${body.name ?? '{...}'}`,
+        named === undefined ? '' : ` (${named} has ${n} parameters)`,
+      );
+      const predName = pred.name ?? this.lift(pred.inline as Inline, args, 'bool');
+      const callee = body.name ?? this.lift(body.inline as Inline, args, 'state');
+      return this.make({ op, pred: predName, callee, args });
     }
     return this.make({ op, args: this.operands(OP_ARITY[op], opWordFor(op)) });
+  }
+
+  private bodySpec(what: string): { name?: string; inline?: Inline } {
+    const t = this.peek();
+    if (t?.kind === 'lbrace') {
+      this.pos += 1;
+      return { inline: this.inlineBody() };
+    }
+    const name = this.functionName(what);
+    this.callArity(name);
+    return { name };
   }
 
   /** Parse one statement line; returns its value operand and whether it is `ret`-prefixed. */
@@ -864,7 +1079,7 @@ export class FunctionParser {
         this.pos += 1;
     }
     const before = this.nodes.length;
-    const value = this.expr();
+    let value = this.expr();
     this.skipCommas();
     if (this.pos < tokens.length) {
       const extra = tokens[this.pos] as Tok;
@@ -875,6 +1090,9 @@ export class FunctionParser {
       );
     }
     if (name !== undefined) {
+      // `x y` with y a value defined above names a copy of it (`x mov y`): a guessable spelling.
+      if (value.kind === 'node' && this.nodes.length === before && !this.external.has(value.id))
+        value = this.make({ op: 'mov', args: [value] });
       if (value.kind !== 'node' || this.nodes.length === before)
         fail(
           `'${name}' is neither an operation nor a function defined above`,
@@ -925,6 +1143,25 @@ export class FunctionParser {
     });
     return { nodes, resolve: map };
   }
+}
+
+/** The nodes and result of a parsed body: its statements, the last one being the result. */
+function assemble(
+  fp: FunctionParser,
+  stmts: readonly { value: Operand; ret: boolean; line: number }[],
+  what: string,
+  line: number,
+): { nodes: Node[]; ret: Operand } {
+  if (stmts.length === 0) fail(`${what} has no result`, line);
+  for (const [si, st] of stmts.entries())
+    if (si < stmts.length - 1 && st.value.kind !== 'node')
+      fail(
+        'a bare value is only allowed as the last statement (the result)',
+        st.line,
+        'delete it, or write it last',
+      );
+  const { nodes, resolve } = fp.finish();
+  return { nodes, ret: resolve((stmts[stmts.length - 1] as { value: Operand }).value) };
 }
 
 /** Parse a function header line (after `fn`): name, optional type list and result, rest. */
@@ -1005,6 +1242,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     if (m !== null) fnNames.add(m[1] as string);
   }
 
+  const sigs = new Map<string, Sig>();
   const uses: string[] = [];
   const useComments: (Comments | undefined)[] = [];
   const functions: Func[] = [];
@@ -1033,7 +1271,15 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     const head = parseDenseHeader(it.text.slice(2).trim(), it.line);
     if (functions.some((f) => f.name === head.name) || arities.has(head.name))
       fail(`duplicate function '${head.name}'`, it.line);
-    const fp = new FunctionParser(arities, fnNames);
+    const lifted: Func[] = [];
+    const fp = new FunctionParser(arities, fnNames, new Set(), {
+      fnName: head.name,
+      lifted,
+      sigs,
+      paramTypes: head.params,
+      nested: false,
+      counter: { n: 0 },
+    });
     const stmts: { value: Operand; ret: boolean; line: number; comments?: Comments }[] = [];
     let endComments: Comments | undefined;
     const body: { text: string; line: number; comments?: Comments }[] = [];
@@ -1065,7 +1311,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       fail(
         `function '${head.name}' has no result`,
         it.line,
-        'write the result expression after the header, e.g. `fn id A`',
+        'write the result expression after the header (same line or below), e.g. `fn id A`; do not repeat `fn NAME` for the body',
       );
     stmts.forEach((s, si) => {
       if (si < stmts.length - 1 && s.value.kind !== 'node')
@@ -1087,6 +1333,16 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     see(ret);
     const params = head.params ?? new Array<Type>(needed).fill('u32');
     if (params.length > LIMITS.maxParams) fail('too many parameters', it.line);
+    for (const lf of lifted) {
+      if (
+        functions.some((f) => f.name === lf.name) ||
+        arities.has(lf.name) ||
+        lf.name === head.name
+      )
+        fail(`the inline body name '${lf.name}' is already a function`, it.line);
+      functions.push(lf);
+      arities.set(lf.name, lf.params.length);
+    }
     functions.push({
       name: head.name,
       params,
@@ -1097,6 +1353,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       ...(retComments === undefined ? {} : { retComments }),
       ...(endComments === undefined ? {} : { endComments }),
     });
+    sigs.set(head.name, { params, result: head.result });
     arities.set(head.name, params.length);
   }
   const last = functions[functions.length - 1];
@@ -1108,6 +1365,192 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     ...(useComments.some((c) => c !== undefined) ? { useComments } : {}),
     ...(last === undefined && trailingPending.length > 0 ? { tailComments: trailingPending } : {}),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Inline fold and loop bodies
+// ---------------------------------------------------------------------------
+
+/** Type of an operand of `fn`'s nodes (undefined when a callee's signature is unknown). */
+function typerFor(fn: Func, sigs: ReadonlyMap<string, Sig>): (o: Operand) => Type | undefined {
+  const byId = new Map(fn.nodes.map((n, k) => [n.id, k] as const));
+  const memo = new Map<string, Type | undefined>();
+  const operand = (o: Operand): Type | undefined => {
+    if (o.kind === 'u32') return 'u32';
+    if (o.kind === 'bool') return 'bool';
+    if (o.kind === 'param') return fn.params[o.index];
+    if (memo.has(o.id)) return memo.get(o.id);
+    const node = fn.nodes[byId.get(o.id) as number] as Node;
+    let t: Type | undefined;
+    try {
+      const args = node.args.map(operand);
+      if (args.some((a) => a === undefined)) t = undefined;
+      else if (node.op === 'call') t = sigs.get(node.callee as string)?.result;
+      else if (node.op === 'fold' || node.op === 'loop') t = args[1];
+      else if (node.op === 'arr') t = { kind: 'arr', length: args.length, elem: args[0] as Type };
+      else if (node.op === 'rec') t = { kind: 'rec', fields: args as Type[] };
+      else t = resultType(node.op, args as Type[], fn.name);
+    } catch {
+      t = undefined;
+    }
+    memo.set(o.id, t);
+    return t;
+  };
+  return operand;
+}
+
+/** The parameters a body that mentions up to parameter `top` has when written inline (at least 2). */
+function inlineArity(f: Func): number {
+  return Math.max(2, highestParam(f) + 1);
+}
+
+/**
+ * Which functions are written inline in which caller. `F` is a fold or loop body (a loop's
+ * predicate too) written `{...}` when it is called from exactly one node of exactly one caller `G`,
+ * is named `G_1`, `G_2`, ... in the order those nodes appear, sits immediately before `G`, has no
+ * fold or loop of its own, and has the signature the parser derives from the call (state type of
+ * the initial value, `u32` index, the extra operands' types; result the state type, or bool for a
+ * predicate). Nothing else is inlined, so converting back restores the program exactly.
+ */
+export function planLambdas(program: Program): Map<string, string[]> {
+  const sigs = new Map<string, Sig>(
+    program.functions.map((f) => [f.name, { params: f.params, result: f.result }] as const),
+  );
+  const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
+  const foldUses = new Map<string, number>();
+  const called = new Set<string>();
+  for (const f of program.functions)
+    for (const n of f.nodes) {
+      if (n.op === 'call') called.add(n.callee as string);
+      if (n.op === 'fold' || n.op === 'loop') {
+        foldUses.set(n.callee as string, (foldUses.get(n.callee as string) ?? 0) + 1);
+        if (n.op === 'loop')
+          foldUses.set(n.pred as string, (foldUses.get(n.pred as string) ?? 0) + 1);
+      }
+    }
+  const out = new Map<string, string[]>();
+  for (const [gi, g] of program.functions.entries()) {
+    const typeOf = typerFor(g, sigs);
+    const chosen: string[] = [];
+    for (const node of g.nodes) {
+      if (node.op !== 'fold' && node.op !== 'loop') continue;
+      const slots: { name: string; result: 'state' | 'bool' }[] =
+        node.op === 'loop'
+          ? [
+              { name: node.pred as string, result: 'bool' },
+              { name: node.callee as string, result: 'state' },
+            ]
+          : [{ name: node.callee as string, result: 'state' }];
+      const state = typeOf(node.args[1] as Operand);
+      const extras = node.args.slice(2).map(typeOf);
+      if (state === undefined || extras.some((e) => e === undefined)) continue;
+      const params: Type[] = [state, 'u32', ...(extras as Type[])];
+      const before = chosen.length;
+      const picked: Func[] = [];
+      for (const slot of slots) {
+        const fi = index.get(slot.name);
+        const f = fi === undefined ? undefined : (program.functions[fi] as Func);
+        if (
+          f === undefined ||
+          fi === gi ||
+          foldUses.get(slot.name) !== 1 ||
+          called.has(slot.name) ||
+          f.name !== `${g.name}_${chosen.length + 1}` ||
+          f.comments !== undefined ||
+          f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
+          f.params.length !== params.length ||
+          !f.params.every((t, i) => typeEquals(t, params[i] as Type)) ||
+          !typeEquals(f.result, slot.result === 'bool' ? 'bool' : state)
+        )
+          continue;
+        chosen.push(f.name);
+        picked.push(f);
+      }
+      // The parser takes the loop's operand count from a named body, or else from the inline
+      // bodies' own parameter use: that must be the call's count.
+      const named = slots.find((sl) => !picked.some((f) => f.name === sl.name));
+      const n = params.length;
+      const natural = Math.max(...picked.map(inlineArity), 0);
+      const ok =
+        picked.length === 0 ||
+        (picked.every((f) => inlineArity(f) <= n) && (named !== undefined || natural === n));
+      if (!ok) chosen.length = before;
+    }
+    if (chosen.length === 0) continue;
+    const prior = program.functions.slice(gi - chosen.length, gi).map((f) => f.name);
+    if (gi >= chosen.length && prior.every((nm, i) => nm === chosen[i])) out.set(g.name, chosen);
+  }
+  return out;
+}
+
+/**
+ * Rename each helper that only a fold or loop in the function right after it calls to the name
+ * the dense form writes inline (`G_1`, ...), moving it directly before that function: part of
+ * the normal form, since the rename changes the program text (not its behavior).
+ */
+export function liftHelpers(program: Program): Program {
+  let fns = [...program.functions];
+  const sigs = (): Map<string, Sig> =>
+    new Map(fns.map((f) => [f.name, { params: f.params, result: f.result }] as const));
+  const uses = new Map<string, number>();
+  const called = new Set<string>();
+  for (const f of fns)
+    for (const n of f.nodes) {
+      if (n.op === 'call') called.add(n.callee as string);
+      if (n.op === 'fold' || n.op === 'loop') {
+        uses.set(n.callee as string, (uses.get(n.callee as string) ?? 0) + 1);
+        if (n.op === 'loop') uses.set(n.pred as string, (uses.get(n.pred as string) ?? 0) + 1);
+      }
+    }
+  for (const gName of program.functions.map((f) => f.name)) {
+    const g = fns.find((f) => f.name === gName) as Func;
+    const typeOf = typerFor(g, sigs());
+    const renames = new Map<string, string>();
+    for (const node of g.nodes) {
+      if (node.op !== 'fold' && node.op !== 'loop') continue;
+      const state = typeOf(node.args[1] as Operand);
+      if (state === undefined) continue;
+      const slots =
+        node.op === 'loop' ? [node.pred as string, node.callee as string] : [node.callee as string];
+      for (const name of slots) {
+        const f = fns.find((x) => x.name === name);
+        if (
+          f === undefined ||
+          name === gName ||
+          uses.get(name) !== 1 ||
+          called.has(name) ||
+          f.comments !== undefined ||
+          f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
+          fns.indexOf(f) > fns.findIndex((x) => x.name === gName) ||
+          renames.has(name)
+        )
+          continue;
+        renames.set(name, `${gName}_${renames.size + 1}`);
+      }
+    }
+    if (renames.size === 0) continue;
+    const moved = [...renames.keys()].map((n) => fns.find((f) => f.name === n) as Func);
+    const rest = fns.filter((f) => !moved.includes(f));
+    const at = rest.findIndex((f) => f.name === gName);
+    const rn = (n: string | undefined): string | undefined =>
+      n === undefined ? n : (renames.get(n) ?? n);
+    const newG: Func = {
+      ...g,
+      nodes: g.nodes.map((n) =>
+        n.callee === undefined && n.pred === undefined
+          ? n
+          : {
+              ...n,
+              ...(n.callee === undefined ? {} : { callee: rn(n.callee) as string }),
+              ...(n.pred === undefined ? {} : { pred: rn(n.pred) as string }),
+            },
+      ),
+    };
+    rest[at] = newG;
+    const lifted = moved.map((f) => ({ ...f, name: renames.get(f.name) as string }));
+    fns = [...rest.slice(0, at), ...lifted, ...rest.slice(at)];
+  }
+  return { ...program, functions: fns };
 }
 
 // ---------------------------------------------------------------------------
@@ -1174,5 +1617,5 @@ export function normalizeFunction(fn: Func): Func {
 
 /** `normalizeFunction` on every function of a program. */
 export function normalizeProgram(program: Program): Program {
-  return { ...program, functions: program.functions.map(normalizeFunction) };
+  return liftHelpers({ ...program, functions: program.functions.map(normalizeFunction) });
 }

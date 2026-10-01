@@ -9,8 +9,8 @@
  *   exec-benchmark.json   ns per call, A0 emitted C against hand-written C, Rust, and every language
  *                         that ran; emitted JS against hand-written JS; binary size against C.
  *   wasm-benchmark.json   ns per trip, module bytes and load time, A0 direct wasm against clang.
- *   lang-axes.json        tokens per kernel and per program (A0 counted in its dense form when
- *                         recorded, src/dense.ts), validation (check and check+run) time.
+ *   lang-axes.json        tokens per kernel and per program for canonical A0 and, as a separate
+ *                         subject `a0-dense`, for the dense view (src/dense.ts); validation time.
  *   ai-edit-experiment.{haiku,sonnet}-min.json and .{a..f,c400,c4000}.{haiku,sonnet}-min.json
  *                         (the shipped primer): accepted rate and tokens per trial, A0 against TS
  *                         and Rust, per protocol.
@@ -55,6 +55,8 @@ export interface Observation {
   readonly kernel: string;
   readonly axis: Axis;
   readonly competitor: string;
+  /** The A0 form measured when it is not the default canonical one (`a0-dense`). */
+  readonly subject?: 'a0-dense';
   /** A0's value and the competitor's, in the axis unit (ns, bytes, tokens, ms, or a rate). */
   readonly a0: number;
   readonly other: number;
@@ -90,7 +92,7 @@ export interface Ledger {
 }
 
 const MEANING =
-  'Recorded losses of A0 against its competitor set, per kernel and axis (tools/loss-ledger.ts). A loss is a competitor ahead of A0 by more than the tie band (`noise`). The ledger can only shrink: `bun run loss-ledger` fails on a new loss or a loss worse than `gap + noise`; `--update --reason` is the one way to grow it. `unverified` entries were recorded above load 10 (or with no load recorded) and are not trusted either way.';
+  'Recorded losses of A0 against its competitor set, per kernel and axis (tools/loss-ledger.ts). A loss is a competitor ahead of A0 by more than the tie band (`noise`). The ledger can only shrink: `bun run loss-ledger` fails on a new loss or a loss worse than `gap + noise`; `--update --reason` is the one way to grow it. Token rows exist for canonical A0 and, with `subject: a0-dense`, for the opt-in dense view (the canonical losses are never replaced by it). `unverified` entries were recorded above load 10 (or with no load recorded) and are not trusted either way.';
 
 // --- reading the results --------------------------------------------------------------------------
 
@@ -275,32 +277,37 @@ function langAxesObservations(root: string): Observation[] {
   const out: Observation[] = [];
   const tokens = obj(doc.tokens);
   const a0t = obj(tokens?.a0);
-  // A0's source is counted in its dense form when lang-axes recorded it (src/dense.ts: the same
-  // programs, every command and the edit protocol accept it); the canonical counts stay in the
-  // results file next to it.
+  // Two A0 subjects on the tokens axes: canonical A0 (the default form, as recorded before the
+  // dense view existed) and A0 dense (src/dense.ts, opt-in; the same programs). The dense rows
+  // are separate ledger entries (`subject: 'a0-dense'`), so the canonical losses stay recorded.
   const a0dense = obj(obj(a0t?.dense)?.kernels);
   for (const [lang, value] of Object.entries(tokens ?? {})) {
     if (lang === 'a0') continue;
     const k = obj(obj(value)?.kernels);
     for (const [kernel, a0row] of Object.entries(obj(a0t?.kernels) ?? {})) {
-      const mine = obj(a0dense?.[kernel]) ?? obj(a0row);
-      const theirs = obj(k?.[kernel]);
-      for (const [field, axis] of [
-        ['kernel', 'tokens-kernel'],
-        ['program', 'tokens-program'],
+      for (const [subject, mine] of [
+        [undefined, obj(a0row)],
+        ['a0-dense', obj(a0dense?.[kernel])],
       ] as const) {
-        const o = lower(
-          'lang-axes',
-          kernel,
-          axis,
-          lang,
-          num(mine?.[field]) ?? 0,
-          num(theirs?.[field]) ?? 0,
-          0,
-          null,
-          false,
-        );
-        if (o !== undefined) out.push(o);
+        if (mine === undefined) continue;
+        const theirs = obj(k?.[kernel]);
+        for (const [field, axis] of [
+          ['kernel', 'tokens-kernel'],
+          ['program', 'tokens-program'],
+        ] as const) {
+          const o = lower(
+            subject === undefined ? 'lang-axes' : 'lang-axes-dense',
+            kernel,
+            axis,
+            lang,
+            num(mine[field]) ?? 0,
+            num(theirs?.[field]) ?? 0,
+            0,
+            null,
+            false,
+          );
+          if (o !== undefined) out.push(subject === undefined ? o : { ...o, subject });
+        }
       }
     }
   }

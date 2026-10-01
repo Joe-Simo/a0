@@ -161,7 +161,7 @@ expr      = integer | "true" | "false" | PARAM | name | "$" name | string
 
 ### Measured (2026-10-01, o200k_base)
 
-See STATUS.md, "Session 2026-10-01 (dense view)", results/dense-tokens.json, results/lang-axes.json and results/dense-experiment.json. Kernels: canonical 559 tokens for the ten lang-axes kernels, dense 224 (lossless conversion of the stored kernels 286); rank 41 of 49 became 1 of 49, 0.69 of the best single language (Forth, 323).
+See STATUS.md, "Session 2026-10-01 (dense view)", results/dense-tokens.json, results/lang-axes.json and results/dense-experiment.json. Kernels: canonical 559 tokens for the ten lang-axes kernels, dense 202 (lossless conversion of the stored kernels 286); canonical stays rank 41 of 49 and dense, as a separate ledger subject, is rank 1 of 49, 0.63 of the best single language (Forth, 323). Fold and loop bodies may be written inline (`fold {set A B add B C} 8 [0;8] A`, `loop {lt A C} {add A 1} 10 0 A`); they are lifted to `CALLER_N` functions.
 
 ## 6. Compiler policy
 

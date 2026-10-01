@@ -1,39 +1,39 @@
 {
   "b-fits-inclusive/a0/structured": [
-    "fn fits u32 u32 -> bool ret le A B"
+    "fn fits -> bool ret le A B"
   ],
   "b-sumfrom-eight/a0/structured": [
-    "fn addi u32 u32 -> u32 ret add A B\nfn sumfrom u32 -> u32 ret fold addi 8 0 A",
-    "fn addi u32 u32 -> u32\nret add A B\nfn sumfrom u32 -> u32\nret fold addi 8 0 A"
+    "fn sumfrom u32 -> u32 fold addi 8 A"
   ],
   "b-rot8-constant/a0/structured": [
-    "fn rot8 u32 -> u32 ret or << A 8 >> A 24"
+    "fn rot8 or << A 8 >> A 24"
   ],
   "b-onlyone-xor/a0/structured": [
     "fn onlyone bool bool -> bool ret xor A B"
   ],
   "b-avgfloor-nowrap/a0/structured": [
-    "fn avgfloor u32 u32 -> u32 ret add and A B >> xor A B 1"
+    "fn avgfloor add and A B >> xor A B 1"
   ],
   "b-sumsq-array/a0/structured": [
-    "fn addel u32 u32 u32x4 -> u32 ret add A mul get C B get C B\nfn sumsq u32x4 -> u32 ret fold addel 4 0 A"
+    "fn addel u32 u32 u32x4 -> u32 add A mul get C B get C B"
   ],
   "b-inrange-inclusive/a0/structured": [
-    "fn inrange u32 u32 u32 -> bool ret and ge A B le A C"
+    "fn inrange -> bool and ge A B le A C"
   ],
   "b-bounds-largest/a0/structured": [
-    "fn minmax (u32,u32) u32 u32x4 -> (u32,u32) ret put put A 0 select lt get C B at A 0 get C B at A 0 1 select gt get C B at A 1 get C B at A 1\nfn bounds u32x4 -> (u32,u32) ret fold minmax 4 (4294967295 0) A"
+    "fn minmax (u32,u32) u32 u32x4 -> (u32,u32) (select lt B at A 0 B at A 0 select gt B at A 1 B at A 1)",
+    "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nr select lt B at A 0 (at A 0 B) (select gt B at A 1 B at A 1)"
   ],
   "b-checksum-poly/a0/structured": [
-    "fn checksum u32x4 -> u32 ret fold mixel 4 7 A\nfn mixel u32 u32 u32x4 -> u32 ret add mul A 31 get C B"
+    "fn mixel u32 u32 u32x4 -> u32 add mul A 31 get C B\nfn checksum u32x4 -> u32 fold mixel 4 7 A"
   ],
   "b-norm2-dot/a0/structured": [
-    "fn norm2 u32x4 -> u32 ret dot A A"
+    "fn norm2 u32x4 -> u32 dot A A"
   ],
   "b-pctof-limit/a0/structured": [
-    "fn pctof u32 u32 -> u32 ret limit div mul A 100 B 0 100"
+    "fn pctof u32 u32 -> u32 limit div mul A 100 B 0 100"
   ],
   "b-hamming-popcnt/a0/structured": [
-    "fn hamming u32 u32 -> u32 ret popcnt xor A B"
+    "fn hamming u32 u32 -> u32 popcnt xor A B"
   ]
 }

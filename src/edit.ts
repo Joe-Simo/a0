@@ -400,6 +400,15 @@ export function scopedView(fn: TypedFunc, numbered = false): string {
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
 }
 
+/**
+ * A callee's signature in a dense view: a comment line (`# inc u32 -> u32`), so it can never be
+ * mistaken for, or copied as, a function header (models that saw `fn inc u32 -> u32 end` wrote it
+ * back as a body-less header followed by a second `fn inc ...` line).
+ */
+function denseSignatureLine(fn: Func): string {
+  return `# ${formatDenseSignature(fn).slice(3)}`;
+}
+
 /** The dense view of a function: its dense text, then one dense signature per direct callee. */
 export function scopedViewDense(
   fn: TypedFunc,
@@ -408,7 +417,7 @@ export function scopedViewDense(
 ): string {
   const text = formatDenseFunction(fn, program);
   if (scope === 'function') return text;
-  const sigs = [...fn.calls.values()].map((c) => `${formatDenseSignature(c)} end`);
+  const sigs = [...fn.calls.values()].map((c) => denseSignatureLine(c));
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
 }
 
@@ -616,7 +625,7 @@ export interface ProgramViewOptions {
 /** Program-level view: one signature line per function, in definition order. */
 export function programView(program: TypedProgram, dense = false): string {
   return program.functions
-    .map((f) => `${dense ? formatDenseSignature(f) : formatSignature(f)} end`)
+    .map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`))
     .join('\n');
 }
 
@@ -649,7 +658,7 @@ export function scopedProgramView(program: TypedProgram, target: string, dense =
   const head = `# ${program.functions.length} functions; shown: ${target}, its callees, its callers`;
   return [
     head,
-    ...shown.map((f) => `${dense ? formatDenseSignature(f) : formatSignature(f)} end`),
+    ...shown.map((f) => (dense ? denseSignatureLine(f) : `${formatSignature(f)} end`)),
   ].join('\n');
 }
 
@@ -775,6 +784,35 @@ export interface SessionOptions {
  * A bounded, in-memory edit session. Not a network service; no authentication or
  * multi-principal isolation exists in v0.1.
  */
+/**
+ * A diagnostic for a dense reply that names the dense text, not canonical ids: `sumsq.a` becomes
+ * ``sumsq (`fold addel 4 0 A`)`` and `isdiv.ret` becomes `isdiv's result`, using the node texts of the
+ * functions the reply defined (the dense text never shows an unnamed node's id).
+ */
+function denseDiagnostic(
+  e: A0Error,
+  names: ReadonlyMap<string, ReadonlyMap<string, string>>,
+): A0Error {
+  if (names.size === 0) return e;
+  const swap = (text: string): string =>
+    text.replace(/\b([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\b/g, (m, f: string, id: string) => {
+      const nodes = names.get(f);
+      if (nodes === undefined) return m;
+      if (id === 'ret') return `${f}'s result`;
+      const t = nodes.get(id);
+      return t === undefined ? m : `${f} (\`${t}\`)`;
+    });
+  const message = swap(e.message);
+  const fix = e.fix === undefined ? undefined : swap(e.fix);
+  if (message === e.message && fix === e.fix) return e;
+  return new A0Error(message, undefined, {
+    code: e.code,
+    ...(fix === undefined ? {} : { fix }),
+    ...(e.expected === undefined ? {} : { expected: e.expected }),
+    ...(e.actual === undefined ? {} : { actual: e.actual }),
+  });
+}
+
 export class EditSession {
   #program: TypedProgram;
   readonly #handles = new Map<string, OpenHandle>();
@@ -986,6 +1024,18 @@ export class EditSession {
    * to the new revision (handles are stable names for the session).
    */
   apply(text: string): TypedProgram {
+    this.#denseNames = new Map();
+    try {
+      return this.#apply(text);
+    } catch (e) {
+      throw e instanceof A0Error ? denseDiagnostic(e, this.#denseNames) : e;
+    }
+  }
+
+  /** Dense text of the nodes of the functions the current dense reply names (see `denseDiagnostic`). */
+  #denseNames: Map<string, Map<string, string>> = new Map();
+
+  #apply(text: string): TypedProgram {
     if (utf8Length(text) > LIMITS.maxSourceBytes)
       throw new A0Error('edit too large', undefined, { code: 'limit' });
     const rawLines = text.split(/\r?\n/);
@@ -1002,7 +1052,7 @@ export class EditSession {
           code: 'handle',
           fix: 'start the reply with one of the handle lines shown in the view',
         });
-      return this.apply(`${implied[0] as string}\n${text}`);
+      return this.#apply(`${implied[0] as string}\n${text}`);
     }
     // A reply may carry several sections, each headed by an open handle; they apply in
     // order as one atomic edit (all or nothing).
@@ -1023,7 +1073,7 @@ export class EditSession {
             .map((l) => stripComment(l).trim())
             .filter((l) => l.length > 0);
           if (body.every((l) => l === 'end' || isSignatureEcho(l, this.#program))) continue;
-          this.apply(section.join('\n'));
+          this.#apply(section.join('\n'));
         }
       } catch (e) {
         this.#program = savedProgram;
@@ -1060,6 +1110,7 @@ export class EditSession {
           rawBody.map((l) => stripComment(l).trim()).filter((l) => l.length > 0),
           this.#program,
           undefined,
+          this.#denseNames,
         );
       const { edits, rest } = splitLineEdits(rawBody);
       const blocks = lineEditBlocks(this.#program, edits, undefined);
@@ -1096,7 +1147,7 @@ export class EditSession {
       body = body.slice(0, -1);
     while (body.length > 0 && stripComment(body[body.length - 1] ?? '').trim() === '')
       body = body.slice(0, -1);
-    if (bound.dense === true) body = denseEditBody(body, this.#program, fn);
+    if (bound.dense === true) body = denseEditBody(body, this.#program, fn, this.#denseNames);
     // Whole `fn ... end` blocks are program-level edits wherever they appear: the handled
     // function sent back whole replaces itself, and any other function is added or replaced
     // exactly as under a program handle. Edit lines before the first block apply to the

@@ -14,6 +14,7 @@
 
 import {
   A0Error,
+  type Func,
   formatFunction,
   formatNode,
   formatOperand,
@@ -23,7 +24,7 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
-import { FunctionParser, lexDense, parseDense, parseDenseHeader } from './dense.js';
+import { denseNodeTexts, FunctionParser, lexDense, parseDense, parseDenseHeader } from './dense.js';
 
 /** A one-line `fn NAME types -> T end` naming an existing function: a signature echoed back. */
 export function isDenseSignatureEcho(line: string, program: TypedProgram): boolean {
@@ -120,6 +121,8 @@ export function denseEditBody(
   lines: readonly string[],
   program: TypedProgram,
   handled: TypedFunc | undefined,
+  /** Receives, per function the reply defines or edits, the dense text of its nodes by id. */
+  sink?: Map<string, Map<string, string>>,
 ): string[] {
   type Item = { kind: 'block'; index: number } | { kind: 'line'; text: string };
   const blocks: string[][] = [];
@@ -148,8 +151,13 @@ export function denseEditBody(
   // function a block redefines counts with its new parameter list), then earlier blocks.
   const arities = new Map<string, number>(program.functions.map((f) => [f.name, f.params.length]));
   const names = blocks.map((b) => /^fn\s+(\S+)/.exec(b[0] ?? '')?.[1] ?? '');
-  for (const name of names) arities.delete(name);
-  const parsed = new Map<number, ReturnType<typeof parseDense>['functions'][number]>();
+  for (const name of names) {
+    arities.delete(name);
+    // the inline bodies a block writes are lifted to `NAME_1`, ...: they replace the old ones
+    for (const key of [...arities.keys()])
+      if (new RegExp(`^${name}_[0-9]+$`).test(key)) arities.delete(key);
+  }
+  const parsed = new Map<number, Func[]>();
   let pending = blocks.map((_, i) => i);
   let firstError: unknown;
   while (pending.length > 0) {
@@ -161,11 +169,8 @@ export function denseEditBody(
           known: arities,
           names: new Set(names),
         });
-        const f = p.functions[0];
-        if (f !== undefined) {
-          parsed.set(i, f);
-          arities.set(f.name, f.params.length);
-        }
+        parsed.set(i, [...p.functions]);
+        for (const f of p.functions) arities.set(f.name, f.params.length);
       } catch (e) {
         if (e instanceof A0Error && /unknown function/.test(e.message)) {
           stuck.push(i);
@@ -177,6 +182,12 @@ export function denseEditBody(
     pending = stuck;
   }
 
+  if (sink !== undefined) {
+    for (const f of [...parsed.values()].flat())
+      sink.set(f.name, denseNodeTexts(f, { functions: [f] }, { known: arities }));
+    if (handled !== undefined && !sink.has(handled.name))
+      sink.set(handled.name, denseNodeTexts(handled, program, {}));
+  }
   const target =
     handled === undefined ? undefined : (blockFor(parsed, names, handled.name) ?? handled);
   const ctx: EditCtx | undefined =
@@ -193,19 +204,18 @@ export function denseEditBody(
   const out: string[] = [];
   for (const item of outer) {
     if (item.kind === 'block') {
-      const f = parsed.get(item.index);
-      if (f !== undefined) out.push(...formatFunction(f).split('\n'));
+      for (const f of parsed.get(item.index) ?? []) out.push(...formatFunction(f).split('\n'));
     } else if (ctx === undefined || item.text.startsWith('-fn')) out.push(item.text);
     else out.push(...translateEditLine(item.text, ctx));
   }
   return out;
 }
 
-function blockFor<T extends { name: string }>(
-  parsed: ReadonlyMap<number, T>,
+function blockFor(
+  parsed: ReadonlyMap<number, readonly Func[]>,
   names: readonly string[],
   name: string,
-): T | undefined {
+): Func | undefined {
   const i = names.indexOf(name);
-  return i < 0 ? undefined : parsed.get(i);
+  return i < 0 ? undefined : parsed.get(i)?.find((f) => f.name === name);
 }

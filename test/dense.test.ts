@@ -141,12 +141,20 @@ test('dense: the generated corpus round-trips, and its normal form behaves ident
     const dense = formatDense(program);
     assert.equal(formatProgram(parseDense(dense)), formatProgram(program));
     const normal = validate(normalizeProgram(program));
+    const lifted = new Set(
+      program.functions.map((f) => f.name).filter((n) => !normal.byName.has(n)),
+    );
+    assert.ok(lifted.size < program.functions.length / 2);
     const again = formatDense(normal);
     assert.equal(formatProgram(parseDense(again)), formatProgram(normal));
     assert.ok(again.length <= dense.length, 'normalizing never lengthens the dense text');
     for (const c of generateCases(program, 0x12345678, 8)) {
       const g = normal.byName.get(c.functionName);
-      assert.ok(g !== undefined);
+      // a helper only one fold calls is renamed `CALLER_1` by the normal form (and written inline)
+      if (g === undefined) {
+        assert.ok(lifted.has(c.functionName), c.functionName);
+        continue;
+      }
       if (c.input === undefined) {
         assert.ok(valueEquals(run(g, [...c.args]), c.expected), c.functionName);
       } else {
@@ -262,7 +270,6 @@ test('dense: diagnostics name the line and the fix', () => {
   bad('fn f frob A', /neither an operation nor a function/);
   bad('fn f g A', /neither an operation nor a function/);
   bad('fn f\nx add A 1\nx add A 2\nx', /duplicate id 'x'/);
-  bad('fn f\nx A', /neither an operation nor a function/);
   bad('fn f\nA\nadd A 1', /only allowed as the last statement/);
   bad('fn f', /has no result/);
   bad('add A B', /expected 'fn'/);
@@ -333,7 +340,7 @@ end`;
 test('dense edits: the view is dense and a whole-function reply replaces the function', () => {
   const session = dense(BASE);
   const view = session.open('two', { dense: true, scope: 'deps' });
-  assert.equal(view.text, 'e0\nfn two\na inc A\nadd mul a B a\nfn inc u32 -> u32 end');
+  assert.equal(view.text, 'e0\nfn two\na inc A\nadd mul a B a\n# inc u32 -> u32');
   const before = session.program.byName.get('inc');
   session.apply('e0\nfn two\na inc A\nadd mul a B a');
   assert.equal(revision(session.program.byName.get('inc') as never), revision(before as never));
@@ -372,7 +379,7 @@ test('dense edits: a new function block may call one defined later in the reply'
 test('dense edits: program handle lists dense signatures and takes dense blocks', () => {
   const session = dense(BASE);
   const view = session.openProgram({ dense: true });
-  assert.equal(view.text, 'g0\nfn inc u32 -> u32 end\nfn two u32 u32 -> u32 end');
+  assert.equal(view.text, 'g0\n# inc u32 -> u32\n# two u32 u32 -> u32');
   session.apply('g0\nfn half shr A 1');
   assert.equal(
     run(session.program.byName.get('half') as TypedProgram['functions'][number], [10]),
@@ -568,4 +575,118 @@ test('dense: parentheses group, and a one-field record keeps its comma', () => {
     formatProgram(parseDense('fn f -> (u32,u32) (A B)')),
     formatProgram(parseDense('fn f -> (u32,u32) (A, B)')),
   );
+});
+
+test('dense edits: diagnostics name the dense text, not canonical auto ids', () => {
+  const session = dense(BASE);
+  session.open('two', { dense: true });
+  assert.throws(
+    () => session.apply('e0\nfn two select A B A'),
+    (e) =>
+      e instanceof A0Error &&
+      e.message.includes('two (`select A B A`)') &&
+      !/two\.[a-z]/.test(`${e.message} ${e.fix ?? ''}`),
+  );
+  assert.throws(
+    () => session.apply('e0\nfn two -> bool add A B'),
+    (e) => e instanceof A0Error && e.message.includes("two's result"),
+  );
+});
+
+test('dense edits: signature lines are comments, never a header that could be copied', () => {
+  const session = dense(BASE);
+  const view = session.open('two', { dense: true, scope: 'deps' }).text;
+  assert.ok(
+    view
+      .split('\n')
+      .slice(1)
+      .every((l) => !l.startsWith('fn ') || l === 'fn two'),
+  );
+  assert.ok(view.includes('# inc u32 -> u32'));
+  // A reply that echoes the signature lines back changes nothing
+  session.apply('e0\n# inc u32 -> u32');
+  // the shape models wrote after copying a signature (a header, then `fn` again) says what is wrong
+  assert.throws(
+    () => session.apply('e0\nfn inc u32 -> u32\nfn inc add A 2'),
+    (e) =>
+      e instanceof A0Error && /has no result/.test(e.message) && /do not repeat/.test(e.fix ?? ''),
+  );
+});
+
+test('dense: fold and loop bodies are written inline and lifted to CALLER_N functions', () => {
+  const src = `fn put8_1 u32x8 u32 u32 -> u32x8
+v add p1 p2
+n set p0 p1 v
+ret n
+end
+
+fn arrfill u32 u32 -> u32
+z arr 0 0 0 0 0 0 0 0
+a fold put8_1 8 z p0
+x get a p1
+y get a 3
+s add x y
+ret s
+end`;
+  // not inlined as written: the helper is not named arrfill_1
+  assert.ok(!formatDense(parse(src)).includes('{'));
+  const named = src.replaceAll('put8_1', 'arrfill_1');
+  const dense = roundTrip(named);
+  assert.ok(dense.includes('fold {'), dense);
+  assert.ok(!dense.includes('fn arrfill_1'), dense);
+  // the normal form lifts helpers itself, and the result runs the same
+  const lifted = normalizeProgram(parse(src));
+  const text = formatDense(lifted);
+  assert.ok(text.includes('fold {set A B add B C} 8 [0;8] A') && text.includes('fn arrfill'), text);
+  const a = parseAndValidate(src).byName.get('arrfill');
+  const b = validate(parseDense(text)).byName.get('arrfill');
+  assert.ok(a !== undefined && b !== undefined);
+  for (const args of [
+    [1, 2],
+    [7, 9],
+    [4294967295, 5],
+  ])
+    assert.ok(valueEquals(run(a, args), run(b, args)));
+  // loops: predicate and body, both inline, or one named and one inline
+  const loops = `fn lp_1 u32 u32 u32 -> bool
+c lt p0 p2
+ret c
+end
+
+fn lp_2 u32 u32 u32 -> u32
+a add p0 1
+ret a
+end
+
+fn lp u32 -> u32
+r loop lp_1 lp_2 10 0 p0
+ret r
+end`;
+  const both = roundTrip(loops);
+  assert.ok(
+    both.includes('loop {c lt A C} {a add A 1} 10 0 A') ||
+      both.includes('loop {c lt A C} {add A 1} 10 0 A'),
+    both,
+  );
+  const mixed = parseDense('fn pr -> bool lt A C\n\nfn lp loop pr {add A 1} 10 0 A');
+  assert.deepEqual(
+    mixed.functions.map((f) => f.name),
+    ['pr', 'lp_1', 'lp'],
+  );
+  validate(mixed);
+  // errors
+  assert.throws(() => parseDense('fn f fold {add A {add A 1}} 3 0'), /nest|inline/);
+  assert.throws(() => parseDense('fn f fold {add A B} 3'), /needs 2 operands/);
+  assert.throws(
+    () => parseDense('fn f_1 add A 1\n\nfn f fold {add A B} 3 0'),
+    /already a function/,
+  );
+});
+
+test('dense: `x y` with y a value above names a copy of it', () => {
+  const alias = parseDense('fn f -> bool\nc gt A B\nr c\nr');
+  validate(alias);
+  assert.ok(formatProgram(alias).includes('r mov c'));
+  // a bare parameter or an unknown word is still an error that says how to name a value
+  assert.throws(() => parseDense('fn f\nx A'), /neither an operation nor a function/);
 });

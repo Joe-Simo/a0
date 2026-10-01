@@ -3,39 +3,41 @@
     "fn affine sub mul A B C"
   ],
   "clamp-both/a0/structured": [
-    "fn clamp\nm select lt A B B A\nselect lt C m C m"
+    "fn clamp\na lt A B\nm select a B A\nc lt C m\nr select c C m"
   ],
   "rotl-fix/a0/structured": [
-    "r >> A n"
+    "fn rotl\nl << A B\ns sub 32 B\nn and s 31\nr >> A n\no or l r"
   ],
   "add-cube/a0/structured": [
-    "fn cube mul A sq A"
+    "fn cube\ns sq A\nr mul s A 0",
+    "fn cube\ns sq A\nmul s A"
   ],
   "absdiff/a0/structured": [
-    "d select lt A B sub B A sub A B"
+    "fn absdiff\nd sub A B\ne sub B A\nc lt A B\nr select c e d"
   ],
   "xor4/a0/structured": [
     "fn combine4 xor xor xor A B C D"
   ],
   "min3/a0/structured": [
-    "-fn min2\nfn min3\nm select lt B A B A\nselect lt C m C m"
+    "-fn min2\nfn min3\na lt B A\nm select a B A\nc lt C m\nr select c C m"
   ],
   "sq-twice/a0/structured": [
-    "x sq sq A"
+    "fn quad\nx sq A\ny sq x"
   ],
   "sum-squares/a0/structured": [
-    "fn addi add mul B B A"
+    "fn addsq mul B B A\nfn sumto fold addsq A 0",
+    "fn addsq add mul B B A\nfn sumto fold addsq A 0"
   ],
   "loop-inclusive/a0/structured": [
-    "c le A C"
+    "fn below -> bool\nc le A C"
   ],
   "record-flag/a0/structured": [
-    "ret add v select at A 1 1 0"
+    "fn pick (u32,bool) -> u32\nv at A 0\nf at A 1\np add v 1\nr select f p v"
   ],
   "byte-select/a0/structured": [
-    "s >> A 16"
+    "fn byte1\ns >> A 16\nm and s 255"
   ],
   "saturating-add/a0/structured": [
-    "ret select lt s A 4294967295 s"
+    "fn sadd\ns add A B\nc lt s A\nr select c 4294967295 s"
   ]
 }

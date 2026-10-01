@@ -2322,6 +2322,7 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
 });
 
 const X86_64_HOST = (() => {
+  if (process.env.A0_SKIP_X86 === '1') return undefined;
   if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
     return { arch: [] as string[], runner: [] as string[] };
   if (process.platform !== 'darwin' || process.arch !== 'arm64') return undefined;
