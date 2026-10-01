@@ -231,11 +231,24 @@ function linkChunks(exe: string, chunks: readonly ChunkOutput[], layout: WasmLay
   const functions = chunks.reduce((n, c) => n + c.calls.length, 0);
   const words: number[] = [3, version.length, ...version];
   words.push(layout.ioInputCapacity, layout.ioOutputCapacity, functions);
+  // The export list: 0 = every function exported, n + 1 = n names (length, then the bytes).
+  if (layout.exports === undefined) words.push(0);
+  else {
+    words.push(layout.exports.length + 1);
+    for (const name of layout.exports) {
+      const bytes = Buffer.from(name, 'utf8');
+      words.push(bytes.length, ...bytes);
+    }
+  }
   for (const c of chunks) for (const r of c.records) for (const w of r.pool) words.push(w);
   words.push(0);
   for (const c of chunks) for (const r of c.records) for (const w of r.meta) words.push(w);
   for (const c of chunks) for (const r of c.records) for (const w of r.code) words.push(w);
   const r = runTool32(exe, words);
+  if (r.code === 6)
+    throw new Error(
+      `wasm: an exported function is not in the program (${layout.exports?.join(', ')})`,
+    );
   if (r.code !== 0) throw new Error(`a0w linker: code ${r.code} (a table is full)`);
   return Uint8Array.from(r.out, (w) => w & 255);
 }
@@ -1159,7 +1172,9 @@ export function typescriptWasm(
   return wasmModuleBytes(
     compile(program, 'wasm', {
       ...(optimize ? {} : { optimize: false }),
-      ...layout,
+      ioInputCapacity: layout.ioInputCapacity,
+      ioOutputCapacity: layout.ioOutputCapacity,
+      ...(layout.exports === undefined ? {} : { wasmExports: layout.exports }),
       ...(options.simd === false ? { wasmSimd: false } : {}),
       ...(options.unroll === undefined ? {} : { wasmUnroll: options.unroll }),
     }).text,

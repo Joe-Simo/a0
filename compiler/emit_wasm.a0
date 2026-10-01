@@ -9817,9 +9817,11 @@ ret e
 end
 # ---------------------------------------------------------------------------------------------
 # The module linker (src/wasm.ts `assembleWasm`), mode 3. Input: the version (length, bytes),
-# the io input and output capacities, the function count, every chunk's POOL then a 0, every
-# chunk's META, every chunk's CODE. Output: the module, one byte per word; the result is 0, or
-# 4 when a table below is full.
+# the io input and output capacities, the function count, the export list (a 0: every function
+# is exported; n + 1: the n function names that are, each its length then its bytes), every
+# chunk's POOL then a 0, every chunk's META, every chunk's CODE. Output: the module, one byte
+# per word; the result is 0, 4 when a table below is full, or 6 when an exported name is no
+# function of the program.
 # The pool table u32x128x500: the address of every literal occurrence (words 0-4095), a hash table of
 # the distinct literals (2048 slots of hash, start, length from 4096), the distinct literals'
 # words (from 10240; 53632 words), a scratch word (63999) for writes that do not apply.
@@ -10055,6 +10057,68 @@ a get p2 p1
 b set p0 p1 a
 ret b
 end
+# Plan tables (export pruning, below): word p1 of a table of 16, 64, 256 or 500 pages, and a copy
+# of the table with that word set. An index past the table wraps (A0 `get`/`set` reduce it).
+fn wk16g u32x128x16 u32 -> u32
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+w get page lo
+ret w
+end
+fn wk16s u32x128x16 u32 u32 -> u32x128x16
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+np set page lo p2
+nt set p0 pg np
+ret nt
+end
+fn wk64g u32x128x64 u32 -> u32
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+w get page lo
+ret w
+end
+fn wk64s u32x128x64 u32 u32 -> u32x128x64
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+np set page lo p2
+nt set p0 pg np
+ret nt
+end
+fn wk256g u32x128x256 u32 -> u32
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+w get page lo
+ret w
+end
+fn wk256s u32x128x256 u32 u32 -> u32x128x256
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+np set page lo p2
+nt set p0 pg np
+ret nt
+end
+fn wk500g u32x128x500 u32 -> u32
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+w get page lo
+ret w
+end
+fn wk500s u32x128x500 u32 u32 -> u32x128x500
+pg shr p1 7
+page get p0 pg
+lo and p1 127
+np set page lo p2
+nt set p0 pg np
+ret nt
+end
 # META of a function: its name into the name table, each variant (8 words: params | result
 # << 16, locals, frame, frame pointer, bytes, markers, marker bytes without and with the io
 # helpers), (name start, length, variant count, first literal) per function
@@ -10089,16 +10153,18 @@ h select b g 0
 i fold wkrdlnpg h p0 p1 a c
 ret i
 end
-fn wkrgo (io,u32,u32,u32,bool) u32 u32x128x32 u32 -> bool
+fn wkrgo (io,u32,u32,u32,bool,u32x128x500,u32) u32 u32x128x32 u32 -> bool
 a at p0 4
 b select a false true
 ret b
 end
-fn wkref (io,u32,u32,u32,bool) u32 u32x128x32 u32 -> (io,u32,u32,u32,bool)
+fn wkref (io,u32,u32,u32,bool,u32x128x500,u32) u32 u32x128x32 u32 -> (io,u32,u32,u32,bool,u32x128x500,u32)
 a at p0 0
 b at p0 1
 c at p0 2
 d at p0 3
+ee at p0 5
+ep at p0 6
 e read a
 f at e 0
 g at e 1
@@ -10129,13 +10195,26 @@ ae select h 0 1
 af add b ac
 ag add c ad
 ah add d ae
-ai rec g af ag ah h
+cl ge f 256
+np select i false true
+isc and cl np
+keep or h isc
+room lt ep 63999
+store and keep room
+widx select store ep 63999
+wval select h 0 f
+ee2 call wk500s ee widx wval
+inc select keep 1 0
+ep2 add ep inc
+ai rec g af ag ah h ee2 ep2
 ret ai
 end
-fn wkmv (u32x128x256,io,u32) u32 u32x128x32 u32 -> (u32x128x256,io,u32)
+fn wkmv (u32x128x256,io,u32,u32x128x500,u32) u32 u32x128x32 u32 -> (u32x128x256,io,u32,u32x128x500,u32)
 a at p0 0
 b at p0 1
 c at p0 2
+ee at p0 3
+ep at p0 4
 d call wardw b
 e at d 0
 f at d 1
@@ -10151,12 +10230,14 @@ o at m 1
 p call wardw o
 q at p 0
 r at p 1
-s rec r 0 0 0 false
+s rec r 0 0 0 false ee ep
 t loop wkrgo wkref 16777216 s p2 p3
 u at t 0
 v at t 1
 w at t 2
 x at t 3
+te at t 5
+tp at t 6
 y call wardw u
 z at y 0
 aa at y 1
@@ -10211,11 +10292,11 @@ bn and bk 127
 bo set bm bn w
 bp set bj bl bo
 bq add c 1
-br rec bp aa bq
+br rec bp aa bq te tp
 ret br
 end
 # state: (variants functions names io variants literals depth io-flag name-bytes code)
-fn wkmf (u32x128x256,u32x128x64,u32x128x64,io,u32,u32,u32,u32,u32,u32) u32 u32x128x32 -> (u32x128x256,u32x128x64,u32x128x64,io,u32,u32,u32,u32,u32,u32)
+fn wkmf (u32x128x256,u32x128x64,u32x128x64,io,u32,u32,u32,u32,u32,u32,u32x128x500,u32) u32 u32x128x32 -> (u32x128x256,u32x128x64,u32x128x64,io,u32,u32,u32,u32,u32,u32,u32x128x500,u32)
 a at p0 0
 b at p0 1
 c at p0 2
@@ -10226,6 +10307,8 @@ g at p0 6
 h at p0 7
 i at p0 8
 j at p0 9
+ex at p0 10
+ey at p0 11
 k call wardw d
 l at k 0
 m at k 1
@@ -10245,11 +10328,13 @@ z at x 1
 aa call wardw z
 ab at aa 0
 ac at aa 1
-ad rec a ac e
+ad rec a ac e ex ey
 ae fold wkmv ab ad p2 f
 af at ae 0
 ag at ae 1
 ah at ae 2
+ez at ae 3
+ew at ae 4
 ai mul p1 4
 aj shr ai 7
 ak get b aj
@@ -10284,7 +10369,7 @@ bd gt ah 4096
 be or bb bc
 bf or be bd
 bg select bf 4 j
-bh rec af a6 y ag ah a7 a8 a9 ba bg
+bh rec af a6 y ag ah a7 a8 a9 ba bg ez ew
 ret bh
 end
 # --- module writers (state (io,u32,u32,u32); field 2 is a running variant index where one is needed)
@@ -10315,12 +10400,6 @@ l rec h j k
 ret l
 end
 # the signatures of the io helpers (keys 2 params + result: 3, 4, 6)
-fn wktyh (u32x256,u32x256,u32) u32 -> (u32x256,u32x256,u32)
-a call wktyadd p0 3
-b call wktyadd a 4
-c call wktyadd b 6
-ret c
-end
 fn wkkey u32x128x256 u32 -> u32
 a mul p1 8
 b shr a 7
@@ -10337,6 +10416,23 @@ fn wktyv (u32x256,u32x256,u32) u32 u32x128x256 -> (u32x256,u32x256,u32)
 a call wkkey p2 p1
 b call wktyadd p0 a
 ret b
+end
+fn wktyk (u32x256,u32x256,u32) u32 u32 -> (u32x256,u32x256,u32)
+a call wktyadd p0 p2
+ret a
+end
+fn wktyvg (u32x256,u32x256,u32) u32 u32 u32x128x256 -> (u32x256,u32x256,u32)
+a call wktyv p0 p2 p3
+ret a
+end
+# the signature of variant p1 when the plan p3 keeps it
+fn wktyvt (u32x256,u32x256,u32) u32 u32x128x256 u32x128x64 -> (u32x256,u32x256,u32)
+i3 add p1 3
+tv call wk64g p3 i3
+kk ne tv 4294967295
+cnt select kk 1 0
+r fold wktyvg cnt p0 p1 p2
+ret r
 end
 fn wab7f (io,u32,u32,u32) u32 bool -> (io,u32,u32,u32)
 a call wab p0 127 p2
@@ -10368,25 +10464,35 @@ c sub b 1
 d call waul p0 c p4
 ret d
 end
-fn wkfnh (io,u32,u32,u32) u32 u32x256 bool -> (io,u32,u32,u32)
-a get p2 3
+fn wkfnhk (io,u32,u32,u32) u32 u32x256 u32 bool -> (io,u32,u32,u32)
+a get p2 p3
 b sub a 1
-c get p2 4
-d sub c 1
-e get p2 6
-f sub e 1
-g call waul p0 b p3
-h call waul g d p3
-i call waul h f p3
-ret i
+c call waul p0 b p4
+ret c
 end
-fn wkfuncs (io,u32,u32,u32) u32x128x256 u32 u32x256 bool bool -> (io,u32,u32,u32)
-a select p4 3 0
-b select p4 1 0
-c add a p2
-d call waul p0 c p5
-e fold wkfnh b d p3 p5
-f fold wkfnone p2 e p1 p3 p5
+fn wkfnonez (io,u32,u32,u32) u32 u32 u32x128x256 u32x256 bool -> (io,u32,u32,u32)
+a call wkfnone p0 p2 p3 p4 p5
+ret a
+end
+fn wkfnonet (io,u32,u32,u32) u32 u32x128x256 u32x256 bool u32x128x64 -> (io,u32,u32,u32)
+a add p1 3
+tv call wk64g p5 a
+kk ne tv 4294967295
+cnt select kk 1 0
+r fold wkfnonez cnt p0 p1 p2 p3 p4
+ret r
+end
+# the function section: p1 the variants, p2 their count, p3 the type table, p4 the kept variants,
+# p5 p6 p7 the kept io helpers (read, write, puts), p8 the plan (function index of each variant)
+fn wkfuncs (io,u32,u32,u32) u32x128x256 u32 u32x256 u32 u32 u32 u32 u32x128x64 bool -> (io,u32,u32,u32)
+hk1 add p5 p6
+hk add hk1 p7
+c add hk p4
+d call waul p0 c p9
+e0 fold wkfnhk p5 d p3 3 p9
+e1 fold wkfnhk p6 e0 p3 4 p9
+e2 fold wkfnhk p7 e1 p3 6 p9
+f fold wkfnonet p2 e2 p1 p3 p9 p8
 ret f
 end
 fn wklnb (io,u32,u32,u32) u32 u32x128x64 u32 bool -> (io,u32,u32,u32)
@@ -10398,7 +10504,7 @@ e get c d
 f call wab p0 e p4
 ret f
 end
-fn wkexone (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32 bool -> (io,u32,u32,u32)
+fn wkexone (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32x128x64 bool -> (io,u32,u32,u32)
 a mul p1 4
 b shr a 7
 c get p2 b
@@ -10420,8 +10526,9 @@ r call wab3 q 97 48 95 p5
 s fold wklnb j r p3 e p5
 t call wab s 0 p5
 u at t 2
-v add u p4
-w call waul t v p5
+v add u 3
+vt call wk64g p4 v
+w call waul t vt p5
 x at w 0
 y at w 1
 z at w 3
@@ -10429,22 +10536,48 @@ aa add u o
 ab rec x y aa z
 ret ab
 end
-fn wkexports (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32 bool -> (io,u32,u32,u32)
-a add p1 2
-b call waul p0 a p5
-c call wab3 b 6 109 101 p5
-d call wab3 c 109 111 114 p5
-e call wab3 d 121 2 0 p5
-f call wab3 e 11 95 95 p5
-g call wab3 f 104 101 97 p5
-h call wab3 g 112 95 98 p5
-i call wab3 h 97 115 101 p5
-j call wab2 i 3 1 p5
+fn wkexoneg (io,u32,u32,u32) u32 u32 u32x128x64 u32x128x64 u32x128x64 bool -> (io,u32,u32,u32)
+a call wkexone p0 p2 p3 p4 p5 p6
+ret a
+end
+# function p2 is not exported: only its variants are passed
+fn wkexadv (io,u32,u32,u32) u32 u32 u32x128x64 -> (io,u32,u32,u32)
+a at p0 0
+b at p0 1
+u at p0 2
+d at p0 3
+f4 mul p2 4
+f42 add f4 2
+cnt call wk64g p3 f42
+u2 add u cnt
+r rec a b u2 d
+ret r
+end
+fn wkexonek (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 bool -> (io,u32,u32,u32)
+rt call wk16g p5 p1
+isr ne rt 0
+c1 select isr 1 0
+c0 select isr 0 1
+s1 fold wkexoneg c1 p0 p1 p2 p3 p4 p6
+s2 fold wkexadv c0 s1 p1 p2
+ret s2
+end
+fn wkexports (io,u32,u32,u32) u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 u32 bool -> (io,u32,u32,u32)
+a add p6 2
+b call waul p0 a p7
+c call wab3 b 6 109 101 p7
+d call wab3 c 109 111 114 p7
+e call wab3 d 121 2 0 p7
+f call wab3 e 11 95 95 p7
+g call wab3 f 104 101 97 p7
+h call wab3 g 112 95 98 p7
+i call wab3 h 97 115 101 p7
+j call wab2 i 3 1 p7
 k at j 0
 l at j 1
 m at j 3
 n rec k l 0 m
-o fold wkexone p1 n p2 p3 p4 p5
+o fold wkexonek p1 n p2 p3 p4 p5 p7
 ret o
 end
 # the io helpers' bodies (locals, code, end): src/wasm.ts `ioRead`, `ioWrite`, `ioPuts`
@@ -10507,11 +10640,11 @@ w call wamem v 54 d p3
 x call wab2 w 11 11 p3
 ret x
 end
-fn wkhpu (io,u32,u32,u32) bool -> (io,u32,u32,u32)
+fn wkhpu (io,u32,u32,u32) bool u32 -> (io,u32,u32,u32)
 a call wab3 p0 1 1 127 p1
 b call walx a 32 0 p1
 c call walx b 32 2 p1
-d call walx c 16 1 p1
+d call walx c 16 p2 p1
 e call waci d 0 p1
 f call walx e 33 3 p1
 g call wab2 f 2 64 p1
@@ -10526,7 +10659,7 @@ o call walx n 32 3 p1
 p call waci o 4 p1
 q call wab2 p 108 106 p1
 r call wamem q 40 0 p1
-s call walx r 16 1 p1
+s call walx r 16 p2 p1
 t call walx s 32 3 p1
 u call waci t 1 p1
 v call wab u 106 p1
@@ -10535,8 +10668,8 @@ x call wab2 w 12 0 p1
 y call wab3 x 11 11 11 p1
 ret y
 end
-# the three helpers, each with its size first
-fn wkhelp (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32)
+# one io helper: its size, then its body (state in and out: io, bytes so far)
+fn wkhr1 (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32)
 a at p0 0
 b at p0 1
 c rec a 0 0 0
@@ -10544,32 +10677,53 @@ d call wkhrd c p2 false
 e at d 1
 f at d 0
 g rec f b 0 0
-h call waul g e p4
-i call wkhrd h p2 p4
+h call waul g e p3
+i call wkhrd h p2 p3
 j at i 0
 k at i 1
-l rec j 0 0 0
-m call wkhwr l p2 p3 false
-n at m 1
-o at m 0
-p rec o k 0 0
-q call waul p n p4
-r call wkhwr q p2 p3 p4
-s at r 0
-t at r 1
-u rec s 0 0 0
-v call wkhpu u false
-w at v 1
-x at v 0
-y rec x t 0 0
-z call waul y w p4
-aa call wkhpu z p4
-ret aa
+l rec j k 0 0
+ret l
+end
+fn wkhw1 (io,u32,u32,u32) u32 u32 u32 bool -> (io,u32,u32,u32)
+a at p0 0
+b at p0 1
+c rec a 0 0 0
+d call wkhwr c p2 p3 false
+e at d 1
+f at d 0
+g rec f b 0 0
+h call waul g e p4
+i call wkhwr h p2 p3 p4
+j at i 0
+k at i 1
+l rec j k 0 0
+ret l
+end
+# p2: the function index of io:write
+fn wkhp1 (io,u32,u32,u32) u32 u32 bool -> (io,u32,u32,u32)
+a at p0 0
+b at p0 1
+c rec a 0 0 0
+d call wkhpu c false p2
+e at d 1
+f at d 0
+g rec f b 0 0
+h call waul g e p3
+i call wkhpu h p3 p2
+ret i
+end
+# the three helpers, each with its size first
+# the kept io helpers (p5 read, p6 write, p7 puts: 1 when kept), each with its size first
+fn wkhelp (io,u32,u32,u32) u32 u32 u32 bool u32 u32 u32 -> (io,u32,u32,u32)
+r1 fold wkhr1 p5 p0 p2 p4
+r2 fold wkhw1 p6 r1 p2 p3 p4
+r3 fold wkhp1 p7 r2 p5 p4
+ret r3
 end
 # the helpers' code section bytes (sizes included)
-fn wkhsum io u32 u32 -> (io,u32)
+fn wkhsum io u32 u32 u32 u32 u32 -> (io,u32)
 a rec p0 0 0 0
-b call wkhelp a 0 p1 p2 false
+b call wkhelp a 0 p1 p2 false p3 p4 p5
 c at b 0
 d at b 1
 e rec c d
@@ -10631,9 +10785,22 @@ c add b a
 d add p0 c
 ret d
 end
+fn wkcszg u32 u32 u32 u32x128x256 bool -> u32
+a call wkcsz p0 p2 p3 p4
+ret a
+end
+# the size of variant p1's body (with its length prefix) when the plan p4 keeps it
+fn wkcszt u32 u32 u32x128x256 bool u32x128x64 -> u32
+a add p1 3
+tv call wk64g p4 a
+kk ne tv 4294967295
+cnt select kk 1 0
+r fold wkcszg cnt p0 p1 p2 p3
+ret r
+end
 # word p1 of a page of code: a byte, a call marker or a pool marker (literal addresses p3,
 # p4 the io helper count)
-fn wkcw (io,u32,u32,u32) u32 u32x128 u32x128x8 u32 -> (io,u32,u32,u32)
+fn wkcw (io,u32,u32,u32) u32 u32x128 u32x128x8 u32x128x64 bool -> (io,u32,u32,u32)
 a get p2 p1
 b lt a 256
 c ge a 2147483648
@@ -10645,25 +10812,27 @@ h select f false true
 i and g e
 j and i h
 k select b 1 0
-l fold wabst k p0 a true
+l fold wabst k p0 a p5
 m sub a 259
-n add m p4
+m3 add m 3
+tv call wk64g p4 m3
 o sub a 256
-p select f n o
+th call wk64g p4 o
+p select f tv th
 q or f j
 r select q 1 0
-s fold walxst r l 16 p true
+s fold walxst r l 16 p p5
 t and a 2147483647
 u shr t 7
 v get p3 u
 w and t 127
 x get v w
 y select c 1 0
-z fold wacist y s x true
+z fold wacist y s x p5
 ret z
 end
 # page p1 of a variant's p2 code words, read and written
-fn wkcpg (io,u32,u32,u32) u32 u32 u32x128x8 u32 -> (io,u32,u32,u32)
+fn wkcpg (io,u32,u32,u32) u32 u32 u32x128x8 u32x128x64 bool -> (io,u32,u32,u32)
 a at p0 0
 b at p0 1
 c at p0 2
@@ -10678,7 +10847,7 @@ k fold rbyte h j
 l at k 0
 m at k 1
 n rec m b c d
-o fold wkcw h n l p3 p4
+o fold wkcw h n l p3 p4 p5
 ret o
 end
 # the literal addresses of a function: occurrences [p1, p1 + 1024)
@@ -10711,10 +10880,12 @@ b fold wkfop 8 a p0 p1
 ret b
 end
 # variant p4 + p1: size, local groups (i32, v128), code, end
-fn wkcvar (io,u32,u32,u32) u32 u32x128x256 u32x128x8 u32 bool -> (io,u32,u32,u32)
+fn wkcvar (io,u32,u32,u32) u32 u32x128x256 u32x128x8 u32 u32x128x64 -> (io,u32,u32,u32)
 a add p4 p1
-b call wkbsz p2 a p5
-c select p5 3 0
+a3 add a 3
+tv call wk64g p5 a3
+kk ne tv 4294967295
+b call wkbsz p2 a false
 d mul a 8
 e add d 1
 f shr e 7
@@ -10741,26 +10912,26 @@ z shr y 7
 aa get p2 z
 ab and y 127
 ac get aa ab
-ad call waul p0 b true
+ad call waul p0 b kk
 ae eq i 0
 af eq n 0
 ag select ae 0 1
 ah select af 0 1
 ai add ag ah
-aj call wab ad ai true
-ak fold waulst ag aj i true
-al fold wabst ag ak 127 true
-am fold waulst ah al n true
-an fold wabst ah am 123 true
+aj call wab ad ai kk
+ak fold waulst ag aj i kk
+al fold wabst ag ak 127 kk
+am fold waulst ah al n kk
+an fold wabst ah am 123 kk
 ao add x ac
 ap add ao 127
 aq shr ap 7
-ar fold wkcpg aq an ao p3 c
-as call wab ar 11 true
+ar fold wkcpg aq an ao p3 p5 kk
+as call wab ar 11 kk
 ret as
 end
 # function p1's variants (field 2 of the state: the index of its first variant)
-fn wkcfn (io,u32,u32,u32) u32 u32x128x256 u32x128x64 u32x128x32 bool -> (io,u32,u32,u32)
+fn wkcfn (io,u32,u32,u32) u32 u32x128x256 u32x128x64 u32x128x32 u32x128x64 -> (io,u32,u32,u32)
 a mul p1 4
 b add a 2
 c shr b 7
@@ -10821,13 +10992,13 @@ l shr k 7
 m fold wkdpg l j p2 p3 true
 ret m
 end
-fn wkhsumst (io,u32) u32 u32 u32 -> (io,u32)
+fn wkhsumst (io,u32) u32 u32 u32 u32 u32 u32 -> (io,u32)
 a at p0 0
-b call wkhsum a p2 p3
+b call wkhsum a p2 p3 p4 p5 p6
 ret b
 end
-fn wkhelpst (io,u32,u32,u32) u32 u32 u32 -> (io,u32,u32,u32)
-a call wkhelp p0 0 p2 p3 true
+fn wkhelpst (io,u32,u32,u32) u32 u32 u32 u32 u32 u32 -> (io,u32,u32,u32)
+a call wkhelp p0 0 p2 p3 true p4 p5 p6
 ret a
 end
 fn wkdatast (io,u32,u32,u32) u32 u32x128x500 u32 -> (io,u32,u32,u32)
@@ -10835,11 +11006,19 @@ a call wkdata p0 0 p2 p3 true
 ret a
 end
 # the module (io lv lf ln occ lt version vlen incap outcap functions variants depth io words)
-fn wkmod io u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x500 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 -> io
-a ne p13 0
-b select a 3 0
-c select a 1 0
-d add b p11
+fn wkmod io u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x500 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 -> io
+ph0 call wk64g p15 0
+ph1 call wk64g p15 1
+ph2 call wk64g p15 2
+pg0 ne ph0 4294967295
+pg1 ne ph1 4294967295
+pg2 ne ph2 4294967295
+pk0 select pg0 1 0
+pk1 select pg1 1 0
+pk2 select pg2 1 0
+phk1 add pk0 pk1
+phk add phk1 pk2
+d add phk p18
 e rec p0 0 0 0
 f call wab3 e 0 97 115 true
 g call wab3 f 109 1 0 true
@@ -10850,8 +11029,10 @@ k call waul j i true
 l call wkcus k p6 p7 true
 m call zk256
 n rec m m 0
-o fold wktyh c n
-p fold wktyv p11 o p1
+o0 fold wktyk pk0 n 3
+o1 fold wktyk pk1 o0 4
+o fold wktyk pk2 o1 6
+p fold wktyvt p11 o p1 p15
 q at p 0
 r at p 1
 s at p 2
@@ -10866,13 +11047,13 @@ aa call waul z w true
 ab call wktypes aa r s true
 ac at ab 0
 ad rec ac 0 0 0
-ae call wkfuncs ad p1 p11 q a false
+ae call wkfuncs ad p1 p11 q p18 pk0 pk1 pk2 p15 false
 af at ae 1
 ag at ae 0
 ah rec ag 0 0 0
 ai call wab ah 3 true
 aj call waul ai af true
-ak call wkfuncs aj p1 p11 q a true
+ak call wkfuncs aj p1 p11 q p18 pk0 pk1 pk2 p15 true
 al mul p14 4
 am add 1024 al
 an add am 15
@@ -10907,19 +11088,19 @@ bg call wasl bf au true
 bh call wab bg 11 true
 bi at bh 0
 bj rec bi 0 0 0
-bk call wkexports bj p10 p2 p3 b false
+bk call wkexports bj p10 p2 p3 p15 p16 p17 false
 bl at bk 1
 bm at bk 0
 bn rec bm 0 0 0
 bo call wab bn 7 true
 bp call waul bo bl true
-bq call wkexports bp p10 p2 p3 b true
+bq call wkexports bp p10 p2 p3 p15 p16 p17 true
 br at bq 0
 bs rec br 0
-bt fold wkhsumst c bs p8 p9
+bt fold wkhsumst 1 bs p8 p9 pk0 pk1 pk2
 bu at bt 0
 bv at bt 1
-bw fold wkcsz p11 0 p1 a
+bw fold wkcszt p11 0 p1 false p15
 bx call wauln d
 by add bx bv
 bz add by bw
@@ -10927,20 +11108,351 @@ b0 rec bu 0 0 0
 b1 call wab b0 10 true
 b2 call waul b1 bz true
 b3 call waul b2 d true
-b4 fold wkhelpst c b3 p8 p9
+b4 fold wkhelpst 1 b3 p8 p9 pk0 pk1 pk2
 b5 at b4 0
 b6 at b4 1
 b7 rec b5 b6 0 0
-b8 fold wkcfn p10 b7 p1 p2 p4 a
+b8 fold wkcfn p10 b7 p1 p2 p4 p15
 b9 ne p14 0
 ca select b9 1 0
 cb fold wkdatast ca b8 p5 p14
 cc at cb 0
 ret cc
 end
-fn wkmodst io u32 u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x500 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 -> io
-a call wkmod p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15
+fn wkmodst io u32 u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x500 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 -> io
+a call wkmod p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19
 ret a
+end
+# ---------------------------------------------------------------------------------------------
+# Export pruning (src/wasm.ts `assembleWasm` with `layout.exports`). The plan: K, a table of
+# 64 pages whose word 0-2 are the io helpers (read, write, puts) and word 3 + v variant v, 1 when
+# the function it stands for is kept. Without a list (the input word 0) every variant, and the
+# io helpers when the program uses io, are kept and every function is exported. With a list of
+# n names (the word n + 1) the roots are the first variant (the value variant) of each function
+# named, and what the roots reach through call markers is kept: the markers of a variant (the
+# calls and helper markers of its META) are in the edge table E (u32x128x500), each variant's
+# markers then a 0, in variant order. T is K turned into the function index each kept variant
+# and helper gets in the module (the kept helpers first, then the kept variants in order;
+# 4294967295 for one left out). R: 1 for each exported function. The stack and the constant pool
+# are those of the whole program, as in src/wasm.ts.
+# one export name into X (names, from p3) and its start and length into Y: (X, Y, io, offset)
+fn wkxrd (u32x128x64,u32x128x16,io,u32) u32 -> (u32x128x64,u32x128x16,io,u32)
+xx at p0 0
+yy at p0 1
+tok at p0 2
+off at p0 3
+r call wardw tok
+len at r 0
+tok2 at r 1
+xi rec xx tok2
+xr call wkrdln xi off len
+xx2 at xr 0
+tok3 at xr 1
+e2 mul p1 2
+yy1 call wk16s yy e2 off
+e3 add e2 1
+yy2 call wk16s yy1 e3 len
+off2 add off len
+o rec xx2 yy2 tok3 off2
+ret o
+end
+# the index of the first variant of every function (FV, running count)
+fn wkfv (u32x128x16,u32) u32 u32x128x64 -> (u32x128x16,u32)
+fvt at p0 0
+run at p0 1
+fvt2 call wk16s fvt p1 run
+fi4 mul p1 4
+fi5 add fi4 2
+cnt call wk64g p2 fi5
+run2 add run cnt
+r rec fvt2 run2
+ret r
+end
+# byte p1 of the name of function (at p3 in N p2) is byte p1 of the export name (at p5 in X p4)
+fn wkeqb bool u32 u32x128x64 u32 u32x128x64 u32 -> bool
+ni add p3 p1
+nb call wk64g p2 ni
+xi add p5 p1
+xb call wk64g p4 xi
+e eq nb xb
+r and p0 e
+ret r
+end
+# function p1 against export p7: a name match roots the function (state K, R, matches)
+fn wkrootf (u32x128x64,u32x128x16,u32) u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 u32x128x16 u32 -> (u32x128x64,u32x128x16,u32)
+kt at p0 0
+rt at p0 1
+fd at p0 2
+f4 mul p1 4
+ns call wk64g p2 f4
+f41 add f4 1
+nl call wk64g p2 f41
+e2 mul p7 2
+xs call wk16g p5 e2
+e3 add e2 1
+xl call wk16g p5 e3
+leq eq nl xl
+cnt select leq nl 0
+same fold wkeqb cnt true p3 ns p4 xs
+hit and leq same
+fv call wk16g p6 p1
+kidx add fv 3
+widx select hit kidx 8190
+kt2 call wk64s kt widx 1
+ro call wk16g rt p1
+rn select hit 1 ro
+rt2 call wk16s rt p1 rn
+hitn select hit 1 0
+fd2 add fd hitn
+o rec kt2 rt2 fd2
+ret o
+end
+# export p1: every function against it; whether every export so far named a function
+fn wkroote (u32x128x64,u32x128x16,bool) u32 u32 u32x128x64 u32x128x64 u32x128x64 u32x128x16 u32x128x16 -> (u32x128x64,u32x128x16,bool)
+kt at p0 0
+rt at p0 1
+okb at p0 2
+s rec kt rt 0
+r fold wkrootf p2 s p3 p4 p5 p6 p7 p1
+kt2 at r 0
+rt2 at r 1
+fd at r 2
+found ne fd 0
+ok2 and okb found
+o rec kt2 rt2 ok2
+ret o
+end
+fn wkallk u32x128x64 u32 -> u32x128x64
+c add p1 3
+r call wk64s p0 c 1
+ret r
+end
+fn wkallr u32x128x16 u32 -> u32x128x16
+r call wk16s p0 p1 1
+ret r
+end
+# the markers of variant (state: K, position in E, changed, whether the variant is kept, done)
+fn wkrcgo (u32x128x64,u32,u32,u32,bool) u32 u32x128x500 -> bool
+a at p0 4
+b select a false true
+ret b
+end
+fn wkrcst (u32x128x64,u32,u32,u32,bool) u32 u32x128x500 -> (u32x128x64,u32,u32,u32,bool)
+kt at p0 0
+pos at p0 1
+ch at p0 2
+kept at p0 3
+w call wk500g p2 pos
+isend eq w 0
+iscall ge w 259
+ishelp1 ge w 256
+ishelp2 lt w 259
+ishelp and ishelp1 ishelp2
+isedge or iscall ishelp
+wm sub w 259
+t1 add wm 3
+t2 sub w 256
+tg select iscall t1 t2
+cur call wk64g kt tg
+kb eq kept 1
+apply and kb isedge
+widx select apply tg 8190
+kt2 call wk64s kt widx 1
+curz eq cur 0
+chg and apply curz
+chgn select chg 1 0
+ch2 or ch chgn
+pos2 add pos 1
+o rec kt2 pos2 ch2 kept isend
+ret o
+end
+fn wkrcv (u32x128x64,u32,u32) u32 u32x128x500 -> (u32x128x64,u32,u32)
+kt at p0 0
+pos at p0 1
+ch at p0 2
+i3 add p1 3
+kept call wk64g kt i3
+s rec kt pos ch kept false
+r loop wkrcgo wkrcst 65536 s p2
+kt2 at r 0
+pos2 at r 1
+ch2 at r 2
+o rec kt2 pos2 ch2
+ret o
+end
+# one pass over the variants: those kept keep what they call (state: K, changed)
+fn wkrcgo2 (u32x128x64,u32) u32 u32x128x500 u32 -> bool
+a at p0 1
+b ne a 0
+ret b
+end
+fn wkrcpass (u32x128x64,u32) u32 u32x128x500 u32 -> (u32x128x64,u32)
+kt at p0 0
+s rec kt 0 0
+r fold wkrcv p3 s p2
+kt2 at r 0
+ch at r 2
+o rec kt2 ch
+ret o
+end
+# io:puts calls io:write
+fn wkputw u32x128x64 -> u32x128x64
+p call wk64g p0 2
+w call wk64g p0 1
+both or p w
+r call wk64s p0 1 both
+ret r
+end
+# variant p1: its function index (the kept helpers p3 first) or 4294967295; (T, kept so far)
+fn wkrank (u32x128x64,u32) u32 u32x128x64 u32 -> (u32x128x64,u32)
+tt at p0 0
+cnt at p0 1
+i3 add p1 3
+kv call wk64g p2 i3
+kk eq kv 1
+nv add p3 cnt
+val select kk nv 4294967295
+tt2 call wk64s tt i3 val
+cn select kk 1 0
+cnt2 add cnt cn
+o rec tt2 cnt2
+ret o
+end
+fn wksumr u32 u32 u32x128x16 -> u32
+v call wk16g p2 p1
+r add p0 v
+ret r
+end
+# the marker bytes of a kept variant change with the function indexes: the call markers of the
+# variant (from E at the position) cost uleb(index) + 1 each (state: position, bytes before,
+# bytes after, done); the old index is the variant's + p4 (3 helpers when the program has io)
+fn wkmgo (u32,u32,u32,bool) u32 u32x128x500 u32x128x64 u32 -> bool
+a at p0 3
+b select a false true
+ret b
+end
+fn wkmst (u32,u32,u32,bool) u32 u32x128x500 u32x128x64 u32 -> (u32,u32,u32,bool)
+pos at p0 0
+os at p0 1
+ns at p0 2
+w call wk500g p2 pos
+isend eq w 0
+iscall ge w 259
+s sub w 259
+oi add s p4
+ob call wauln oi
+ob1 add ob 1
+s3 add s 3
+ni call wk64g p3 s3
+nb call wauln ni
+nb1 add nb 1
+od select iscall ob1 0
+nd select iscall nb1 0
+os2 add os od
+ns2 add ns nd
+pos2 add pos 1
+o rec pos2 os2 ns2 isend
+ret o
+end
+# p1 variant, p2 E, p3 T, p4 old helper count, p5 cap (0: the markers are not walked)
+fn wkmdv (u32x128x256,u32) u32 u32x128x500 u32x128x64 u32 u32 -> (u32x128x256,u32)
+vt at p0 0
+pos at p0 1
+s rec pos 0 0 false
+r loop wkmgo wkmst p5 s p2 p3 p4
+pos2 at r 0
+os at r 1
+ns at r 2
+i3 add p1 3
+tv call wk64g p3 i3
+kept ne tv 4294967295
+v8 mul p1 8
+f6i add v8 6
+f7i add v8 7
+f6 call wk256g vt f6i
+f7 call wk256g vt f7i
+hio ne p4 0
+old select hio f7 f6
+a sub old os
+nw add a ns
+n6 select kept nw f6
+n7 select kept nw f7
+vt2 call wk256s vt f6i n6
+vt3 call wk256s vt2 f7i n7
+o rec vt3 pos2
+ret o
+end
+# the plan: V p0, F p1, N p2, E p3 with p4 words, the export names X p5 Y p6, the list word p7
+# (0: none; n + 1: n names), p8 functions, p9 variants, p10 io flag, p11 result code so far;
+# returns (V with the marker bytes updated, T, R, exported functions, kept variants, code)
+fn wkplan u32x128x256 u32x128x64 u32x128x64 u32x128x500 u32 u32x128x64 u32x128x16 u32 u32 u32 u32 u32 -> (u32x128x256,u32x128x64,u32x128x16,u32,u32,u32)
+hasx ne p7 0
+dfb select hasx false true
+dflt select hasx 0 1
+nxm sub p7 1
+nx select hasx nxm 0
+ion ne p10 0
+iou select ion 1 0
+hv select dfb iou 0
+kz call z64
+rz call z16
+fz call z16
+nvd mul p9 dflt
+nfd mul p8 dflt
+ka fold wkallk nvd kz
+kb0 call wk64s ka 0 hv
+kb1 call wk64s kb0 1 hv
+kb call wk64s kb1 2 hv
+ra fold wkallr nfd rz
+fvs rec fz 0
+fvr fold wkfv p8 fvs p1
+fv at fvr 0
+rs rec kb ra true
+rr fold wkroote nx rs p8 p1 p2 p5 p6 fv
+kroot at rr 0
+rroot at rr 1
+okf at rr 2
+capv add p9 2
+capr select hasx capv 0
+ri rec kroot 1
+rl loop wkrcgo2 wkrcpass capr ri p3 p9
+kr at rl 0
+kf call wkputw kr
+k0 call wk64g kf 0
+k1 call wk64g kf 1
+k2 call wk64g kf 2
+hk1 add k0 k1
+hk add hk1 k2
+k0b eq k0 1
+k1b eq k1 1
+k2b eq k2 1
+t0 select k0b 0 4294967295
+t1 select k1b k0 4294967295
+t2 select k2b hk1 4294967295
+tz call z64
+tz0 call wk64s tz 0 t0
+tz1 call wk64s tz0 1 t1
+tz2 call wk64s tz1 2 t2
+trs rec tz2 0
+trr fold wkrank p9 trs kf hk
+tt at trr 0
+nk at trr 1
+nroots fold wksumr p8 0 rroot
+hold select ion 3 0
+capm select hasx 65536 0
+vs rec p0 0
+vr fold wkmdv p9 vs p3 tt hold capm
+vout at vr 0
+over gt p4 63999
+eover and over hasx
+nfound select okf false true
+nfx and hasx nfound
+c2 select eover 4 p11
+c2z eq c2 0
+nf2 and nfx c2z
+c3 select nf2 6 c2
+o rec vout tt rroot nroots nk c3
+ret o
 end
 # mode 3: the module
 fn walink io -> (io,u32)
@@ -10961,8 +11473,22 @@ n at l 1
 o call wardw n
 p at o 0
 q at o 1
+q1 call wardw q
+nx1 at q1 0
+q2 at q1 1
+hasx ne nx1 0
+nxm sub nx1 1
+nx select hasx nxm 0
+zx call z64
+zy call z16
+xst rec zx zy q2 0
+xf fold wkxrd nx xst
+xx at xf 0
+xy at xf 1
+q3 at xf 2
+xoff at xf 3
 r call z500
-s rec r q 0 0 0 false 0
+s rec r q3 0 0 0 false 0
 t add 4096 1
 u loop wkpgo wkpst t s
 v at u 0
@@ -10974,7 +11500,8 @@ aa fold wkocc 32 z v
 ab call z256
 ac call z64
 ad call z64
-ae rec ab ac ad w 0 0 0 0 0 y
+ez call z500
+ae rec ab ac ad w 0 0 0 0 0 y ez 0
 af fold wkmf p ae aa
 ag at af 0
 ah at af 1
@@ -10984,9 +11511,22 @@ ak at af 4
 al at af 6
 am at af 7
 an at af 9
-ao eq an 0
+ee0 at af 10
+ep0 at af 11
+xb1 gt nx 1024
+xb2 gt xoff 8192
+xbad or xb1 xb2
+an2 select xbad 4 an
+pl call wkplan ag ah ai ee0 ep0 xx xy nx1 p ak am an2
+vv at pl 0
+tt at pl 1
+rr at pl 2
+nr at pl 3
+nk at pl 4
+cd at pl 5
+ao eq cd 0
 ap select ao 1 0
-aq fold wkmodst ap aj ag ah ai aa v g b j m p ak al am x
-ar rec aq an
+aq fold wkmodst ap aj vv ah ai aa v g b j m p ak al am x tt rr nr nk
+ar rec aq cd
 ret ar
 end
