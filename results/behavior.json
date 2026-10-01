@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-01T19:42:33.580Z",
+  "generatedAt": "2026-10-01T23:13:05.816Z",
   "node": "v24.14.0",
   "platform": "darwin-arm64",
   "table": {
-    "programs": 9,
-    "functions": 52,
-    "rows": 736,
-    "sha256": "97fd3943a456fb7c5d5b785a4dfa410f401f3920700cc04ba3908ba4e43bab4a",
+    "programs": 16,
+    "functions": 105,
+    "rows": 1870,
+    "sha256": "2e13f36bbda5c230df897b03bc2874d009ccc78d9141ffea42ff8f9e3a950c6b",
     "oracle": "expected values: reference interpreter, confirmed by the independent BigInt oracle (tools/corpus.ts) when the table was generated"
   },
   "programs": [
@@ -54,6 +54,41 @@
       "name": "io",
       "about": "io tokens order effects: read (0 when exhausted), write, puts, folds that thread the stream",
       "rows": 14
+    },
+    {
+      "name": "checked",
+      "about": "the total checked ops return (value, ok): cadd/csub/cmul flag overflow, cdiv/crem a zero divisor, cget an index at or past the length",
+      "rows": 372
+    },
+    {
+      "name": "strict_checked",
+      "about": "the checked ops give the same values under profile strict, and never trap",
+      "rows": 372
+    },
+    {
+      "name": "strict_index",
+      "about": "profile strict: get/set at or past the length trap bounds (a dead get too, and a get in the untaken select arm), an index proved in range does not",
+      "rows": 42
+    },
+    {
+      "name": "strict_div",
+      "about": "profile strict: div/rem by zero trap divzero (a dead div too); a divisor proved nonzero does not; the first trap in node order wins",
+      "rows": 94
+    },
+    {
+      "name": "strict_wrap",
+      "about": "profile strict: add, sub, mul and the shifts still wrap and mask; they never trap",
+      "rows": 231
+    },
+    {
+      "name": "strict_iterate",
+      "about": "profile strict: a trap in a fold or loop body names the node, the trip and the call chain; an aggregate-state fold updated in place traps before it writes",
+      "rows": 16
+    },
+    {
+      "name": "strict_io",
+      "about": "profile strict: a read after the last input word traps input (inside a fold too); within the input it reads as usual",
+      "rows": 7
     }
   ],
   "summary": {
@@ -67,9 +102,10 @@
       "id": "interpreter",
       "label": "reference interpreter",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "Reference interpreter vs BigInt oracle",
-      "elapsedMs": 14,
+      "elapsedMs": 59,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -79,16 +115,24 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
       "id": "optimizer",
       "label": "optimized graph (src/optimize.ts)",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "Optimized graph vs BigInt oracle",
-      "elapsedMs": 16,
+      "elapsedMs": 59,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -98,16 +142,24 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
       "id": "js",
       "label": "JavaScript (ES module in Node)",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "Executed emitted ES module in Node; public input guards retained.",
-      "elapsedMs": 5,
+      "elapsedMs": 22,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -117,17 +169,25 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
       "id": "c-clang",
       "label": "C via clang (UBSan, -Werror)",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 269,
+      "elapsedMs": 827,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -137,17 +197,25 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
       "id": "c-gcc",
       "label": "C via the gcc driver",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "native C via /usr/bin/gcc, which is Apple clang version 21.0.0 (clang-2100.3.34.2) (not GCC); undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 196,
+      "elapsedMs": 935,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -157,17 +225,25 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
       "id": "cpp",
       "label": "C-compatible output as C++17 via clang++",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "C-compatible output compiled as C++17; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 206,
+      "elapsedMs": 885,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -177,17 +253,25 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
       "id": "c-parallel",
       "label": "C with automatic parallel folds forced on",
       "status": "passed",
-      "cases": 736,
+      "cases": 1870,
       "detail": "native C via clang with automatic parallel folds forced on; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 220,
+      "elapsedMs": 1029,
+      "failures": [],
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -197,7 +281,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "passed",
+        "strict_checked": "passed",
+        "strict_index": "passed",
+        "strict_div": "passed",
+        "strict_wrap": "passed",
+        "strict_iterate": "passed",
+        "strict_io": "passed"
       }
     },
     {
@@ -207,7 +298,7 @@
       "cases": 736,
       "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
       "tool": "javac 27; openjdk version \"27\" 2026-09-15",
-      "elapsedMs": 427,
+      "elapsedMs": 1521,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -217,7 +308,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -227,7 +325,7 @@
       "cases": 736,
       "detail": "C# built with .NET SDK 10.0.401 (Release, warnings as errors) and executed; 736 cases incl. io streams.",
       "tool": "10.0.401",
-      "elapsedMs": 2320,
+      "elapsedMs": 2441,
       "failures": [],
       "programs": {
         "arith": "passed",
@@ -238,7 +336,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -248,7 +353,7 @@
       "cases": 736,
       "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
       "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld",
-      "elapsedMs": 277,
+      "elapsedMs": 425,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -258,7 +363,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -268,7 +380,7 @@
       "cases": 736,
       "detail": "A0 wasm32 backend (src/wasm.ts): binary module emitted directly, no C/Clang/wasm-ld; executed in Node WebAssembly runtime with the C-derived harness; optimized and unoptimized emissions each executed on every case",
       "tool": "node v24.14.0",
-      "elapsedMs": 12,
+      "elapsedMs": 30,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -278,7 +390,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -288,7 +407,7 @@
       "cases": 722,
       "detail": "native arm64 assembly (src/arm64.ts) via `clang -x assembler`, linked with the C test driver; 0 io functions (0 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 245,
+      "elapsedMs": 674,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -298,7 +417,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -308,7 +434,7 @@
       "cases": 722,
       "detail": "native x86-64 assembly (src/x86_64.ts) via `clang -x assembler`, linked with the C test driver; 0 io functions (0 cases) skipped: io is out of scope for this backend; executed under Rosetta 2 (arch -x86_64); optimized and unoptimized emissions each executed on every case",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 449,
+      "elapsedMs": 1173,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -318,7 +444,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -328,7 +461,7 @@
       "cases": 722,
       "detail": "native RISC-V RV64 assembly (src/riscv64.ts) via `riscv64-elf-gcc -march=rv64gc -mabi=lp64`, linked with the C test driver over a bare-metal libc shim (UART out, embedded input), executed under qemu-system-riscv64 (virt board, no firmware); 0 io functions (0 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
       "tool": "riscv64-elf-gcc (GCC) 16.2.0; QEMU emulator version 11.1.2",
-      "elapsedMs": 408,
+      "elapsedMs": 903,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -338,7 +471,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -348,7 +488,7 @@
       "cases": 722,
       "detail": "native AVR assembly for the ATmega328P (src/avr.ts) via avr-as, linked with an avr-gcc C driver per function (cases in program memory, results on UART0), executed under libsimavr; 0 io functions (0 cases) skipped: io is out of scope for this backend; every io-free function fits the part; optimized and unoptimized emissions each executed on every case run",
       "tool": "avr-gcc (Homebrew AVR GCC 9.5.0) 9.5.0; simavr 1.7_1",
-      "elapsedMs": 2390,
+      "elapsedMs": 6803,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -358,7 +498,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -368,7 +515,7 @@
       "cases": 722,
       "detail": "native 32-bit ARM assembly (src/arm32.ts, ARMv7-A ARM mode, AAPCS hard-float) assembled and linked with the C test driver by `arm-none-eabi-gcc` (newlib, semihosting), executed on an emulated Cortex-A7 (`qemu-system-arm -M virt`); 0 io functions (0 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
       "tool": "arm-none-eabi-gcc (Arm GNU Toolchain 15.3.Rel1 (Build arm-15.149)) 15.3.1 20260627; QEMU emulator version 11.1.2",
-      "elapsedMs": 299,
+      "elapsedMs": 632,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -378,7 +525,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -387,7 +541,7 @@
       "status": "passed",
       "cases": 722,
       "detail": "Swift host + Metal runtime compile of generated MSL; 722 cases dispatched one thread each on device=Apple M3.",
-      "elapsedMs": 1079,
+      "elapsedMs": 2866,
       "failures": [],
       "programs": {
         "arith": "passed",
@@ -398,7 +552,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -417,7 +578,14 @@
         "calls": "skipped",
         "bigret": "skipped",
         "text": "skipped",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -427,7 +595,7 @@
       "cases": 736,
       "detail": "C from compiler/emit_c.a0 (1 chunk(s)); undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
       "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
-      "elapsedMs": 183,
+      "elapsedMs": 463,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -437,7 +605,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "passed",
-        "io": "passed"
+        "io": "passed",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     },
     {
@@ -446,7 +621,7 @@
       "status": "passed",
       "cases": 629,
       "detail": "A0-emitted arm64 (compiler/emit_arm64.a0 through the interpreter), 629 cases; 0 functions skipped",
-      "elapsedMs": 5301,
+      "elapsedMs": 13553,
       "programs": {
         "arith": "passed",
         "logic": "passed",
@@ -456,7 +631,14 @@
         "calls": "passed",
         "bigret": "passed",
         "text": "skipped",
-        "io": "skipped"
+        "io": "skipped",
+        "checked": "skipped",
+        "strict_checked": "skipped",
+        "strict_index": "skipped",
+        "strict_div": "skipped",
+        "strict_wrap": "skipped",
+        "strict_iterate": "skipped",
+        "strict_io": "skipped"
       }
     }
   ],
@@ -521,6 +703,426 @@
       "program": "iterate",
       "fn": "fill_sum",
       "reason": "compiler/emit_arm64.a0 is scalar-only: every node of the function and its callees must be u32 or bool"
+    },
+    {
+      "target": "java",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "java",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "java",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "java",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "java",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "java",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "java",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "dotnet",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "checked",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-c",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented: the freestanding wasm build has no stdio for the trap line (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "wasm-direct",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm64",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "x86_64",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "riscv64",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "avr",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "arm32",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "metal",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "checked",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-c",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented: compiler/emit_c.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "checked",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "strict_checked",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "strict_index",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "strict_div",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "strict_wrap",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "strict_iterate",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "strict_io",
+      "reason": "strict profile not yet implemented: compiler/emit_arm64.a0 does not know it (a strict program and the checked ops are refused with A0713)"
     }
   ],
   "coverage": {
@@ -533,7 +1135,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "optimizer": {
       "arith": "passed",
@@ -544,7 +1153,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "js": {
       "arith": "passed",
@@ -555,7 +1171,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "c-clang": {
       "arith": "passed",
@@ -566,7 +1189,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "c-gcc": {
       "arith": "passed",
@@ -577,7 +1207,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "cpp": {
       "arith": "passed",
@@ -588,7 +1225,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "c-parallel": {
       "arith": "passed",
@@ -599,7 +1243,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "passed",
+      "strict_checked": "passed",
+      "strict_index": "passed",
+      "strict_div": "passed",
+      "strict_wrap": "passed",
+      "strict_iterate": "passed",
+      "strict_io": "passed"
     },
     "java": {
       "arith": "passed",
@@ -610,7 +1261,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "dotnet": {
       "arith": "passed",
@@ -621,7 +1279,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "wasm-c": {
       "arith": "passed",
@@ -632,7 +1297,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "wasm-direct": {
       "arith": "passed",
@@ -643,7 +1315,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "arm64": {
       "arith": "passed",
@@ -654,7 +1333,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "x86_64": {
       "arith": "passed",
@@ -665,7 +1351,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "riscv64": {
       "arith": "passed",
@@ -676,7 +1369,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "avr": {
       "arith": "passed",
@@ -687,7 +1387,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "arm32": {
       "arith": "passed",
@@ -698,7 +1405,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "metal": {
       "arith": "passed",
@@ -709,7 +1423,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "systemverilog": {
       "arith": "skipped",
@@ -720,7 +1441,14 @@
       "calls": "skipped",
       "bigret": "skipped",
       "text": "skipped",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "selfhost-c": {
       "arith": "passed",
@@ -731,7 +1459,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "passed",
-      "io": "passed"
+      "io": "passed",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     },
     "selfhost-arm64": {
       "arith": "passed",
@@ -742,7 +1477,14 @@
       "calls": "passed",
       "bigret": "passed",
       "text": "skipped",
-      "io": "skipped"
+      "io": "skipped",
+      "checked": "skipped",
+      "strict_checked": "skipped",
+      "strict_index": "skipped",
+      "strict_div": "skipped",
+      "strict_wrap": "skipped",
+      "strict_iterate": "skipped",
+      "strict_io": "skipped"
     }
   }
 }
