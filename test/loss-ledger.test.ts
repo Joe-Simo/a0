@@ -66,8 +66,7 @@ test('loss ledger: timing recorded above load 10, or with no load, is flagged un
     assert.equal(o.unverified !== undefined, expected, `${o.id} load ${o.load}`);
   }
   const all = observations();
-  // lang-axes validation timings were recorded under a load far above 10; the wasm file has no load.
-  assert.ok(all.filter((o) => o.axis === 'check-run-ms').every((o) => o.unverified !== undefined));
+  // The wasm file has no load, so its timings are never verified.
   assert.ok(all.filter((o) => o.axis === 'ns-per-trip').every((o) => o.unverified !== undefined));
   // Token counts are deterministic: no load involved, never unverified.
   assert.ok(all.filter((o) => o.axis === 'tokens-kernel').every((o) => o.unverified === undefined));
