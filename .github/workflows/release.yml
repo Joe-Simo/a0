@@ -1,0 +1,63 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    # macOS so the darwin binaries get ad-hoc signed by tools/release.sh.
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      # Five standalone binaries (release/a0-<os>-<arch>), one MCP Bundle per binary
+      # (release/a0-mcp-<os>-<arch>.mcpb), and server.json with the bundles' URLs and SHA-256.
+      - name: Build binaries and MCP Bundles
+        run: sh tools/release.sh "$VERSION"
+      - name: Checksums
+        working-directory: release
+        run: shasum -a 256 a0-darwin-* a0-linux-* a0-windows-* a0-mcp-*.mcpb > checksums.txt && cat checksums.txt
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "A0 $GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" release/a0-darwin-* release/a0-linux-* release/a0-windows-* release/a0-mcp-*.mcpb release/checksums.txt --clobber
+      - name: Update main (server.json, Homebrew formula, plugin and extension versions)
+        run: |
+          cp server.json "$RUNNER_TEMP/server.json"
+          git checkout -- server.json
+          git checkout main
+          cp "$RUNNER_TEMP/server.json" server.json
+          sh tools/homebrew-formula.sh "$VERSION" release/checksums.txt
+          for f in plugin/.claude-plugin/plugin.json plugin/.codex-plugin/plugin.json gemini-extension.json editors/vscode/package.json; do
+            node -e 'const fs=require("node:fs");const [f,v]=process.argv.slice(1);const j=JSON.parse(fs.readFileSync(f,"utf8"));j.version=v;fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")' "$f" "$VERSION"
+          done
+          # The root JSON files are under biome (bun run lint).
+          bunx biome format --write server.json gemini-extension.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.json packaging/homebrew/a0.rb plugin gemini-extension.json editors/vscode/package.json
+          git diff --cached --quiet || { git commit -m "Release $GITHUB_REF_NAME: server.json, Homebrew formula, plugin and extension versions" && git push origin main; }
+      - name: Push formula to tap Joe-Simo/homebrew-a0
+        if: ${{ env.TAP_TOKEN != '' }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/Joe-Simo/homebrew-a0.git" tap
+          mkdir -p tap/Formula
+          cp packaging/homebrew/a0.rb tap/Formula/a0.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/a0.rb
+          git diff --cached --quiet || { git commit -m "a0 $GITHUB_REF_NAME" && git push; }

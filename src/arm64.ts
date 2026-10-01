@@ -40,6 +40,23 @@
  *   literals, comparisons, select) runs four elements per iteration in v registers. The
  *   language guarantees that make this sound are value semantics (no aliasing between the
  *   state and the arrays it reads) and the static bound (index i < N is the array length).
+ *   callee's result alias likewise. A fold over an array therefore updates one element per
+ *   iteration instead of copying the array twice per iteration.
+ * - Instruction selection (third version): a compare used only by selects sets the flags
+ *   for `csel` directly; a single-use `mul` feeding `add`/`sub` becomes `madd`/`msub`; a
+ *   single-use literal shift becomes the shifted-register operand; `shl`/`shr` pairs whose
+ *   distances sum to 0 mod 32 become `ror`; a zero literal reads as wzr. Literals that need
+ *   movz/movk are materialized once (in the outermost loop's preheader) and kept in a
+ *   register. Repeated compares and adjacent word loads/stores are cleaned up afterwards
+ *   (one `cmp`, `ldp`/`stp`).
+ * - Loops are rotated (test at the bottom, entry test only when the count may be zero); a
+ *   loop body's result is computed straight into the state's register when the state is not
+ *   read after it. A fold with a literal count of at most 16 trips and 64 body nodes is
+ *   unrolled with literal counters. A fold that only fills its array state (`set p0 p1 v`,
+ *   no other read of p0) with lane-wise body ops runs four elements per NEON register, up to
+ *   four registers per trip; when such a fold writes every element its initial array is
+ *   never stored. Array accesses use scaled register offsets, and a counter known to be in
+ *   range needs no mask. A leaf with a small frame keeps no frame record.
  *
  * Calling convention (compatible with AAPCS64/Darwin for scalar signatures, so C can call
  * `_a0_<name>` directly):
@@ -69,6 +86,7 @@
 
 import {
   A0Error,
+  borrowLive,
   containsIo,
   isPrimitive,
   type Node,
@@ -76,8 +94,8 @@ import {
   type Operand,
   type Type,
   type TypedFunc,
-  validateFunction,
 } from './core.js';
+import { emitFused, fillRun, overwritesState } from './optimize.js';
 
 function refuse(message: string): never {
   throw new A0Error(`arm64: ${message}`, undefined, {
@@ -100,6 +118,11 @@ const INLINE_MAX_NODES = 512;
 const INLINE_MAX_DEPTH = 6;
 /** Literals hoisted out of one loop (each takes a register for the loop's extent). */
 const HOIST_MAX = 6;
+/** A fold with a literal trip count is emitted straight-line when trips x body nodes fit. */
+const UNROLL_MAX_NODES = 64;
+const UNROLL_MAX_TRIPS = 16;
+/** Zero-literal runs at least this long are cleared by a store loop instead of straight-line stores. */
+const ZERO_LOOP_WORDS = 32;
 const CALLEE_SAVED = ['w19', 'w20', 'w21', 'w22', 'w23', 'w24', 'w25', 'w26', 'w27', 'w28'];
 const ARG_REGS = ['w0', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7'];
 
@@ -148,7 +171,9 @@ function mutableHere(
       if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
   }
-  return true;
+  // A borrowed read (`at`, or `get` at a literal index) names part of `o`'s storage.
+  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
+  return !borrowLive(fn, o, index, writes);
 }
 
 /** An all-zero literal of an array of scalars. */
@@ -165,23 +190,8 @@ function zeroArray(fn: TypedFunc, n: Node): boolean {
 }
 
 /**
- * Does every trip of `body` (as a fold body) write state element i (`set p0 p1 v` is the
- * result) without reading the state at all? Then a fold over the whole array overwrites
- * every element of its initial value before anything can observe it.
- */
-function writesEveryElement(body: TypedFunc): boolean {
-  const ret = body.ret;
-  if (ret.kind !== 'node') return false;
-  const set = body.nodes.find((n) => n.id === ret.id);
-  if (set === undefined || set.op !== 'set' || !isParam(set.args[0], 0) || !isParam(set.args[1], 1))
-    return false;
-  return body.nodes.every((n) => n === set || n.args.every((a) => !isParam(a, 0)));
-}
-
-/**
  * Is the zero array at `index` dead storage: its only use is the initial state of a `fold`
- * whose literal trip count is the array length and whose body writes element i on every
- * trip without reading the state? Its zero fill is then unobservable and is skipped.
+ * that writes every element before reading it (see optimize.ts `overwritesState`)? Its zero fill is then unobservable and is skipped.
  */
 function deadZeroFill(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index] as Node;
@@ -196,10 +206,7 @@ function deadZeroFill(fn: TypedFunc, index: number): boolean {
         use = { n, k };
       }
   if (count !== 1 || use === undefined || use.n.op !== 'fold' || use.k !== 1) return false;
-  const trips = use.n.args[0];
-  if (trips === undefined || trips.kind !== 'u32' || trips.value !== node.args.length) return false;
-  const body = fn.calls.get(use.n.callee ?? '');
-  return body !== undefined && writesEveryElement(body);
+  return overwritesState(fn, use.n);
 }
 
 const FEEDABLE: ReadonlySet<Op> = new Set<Op>([
@@ -261,6 +268,237 @@ function feedsOf(fn: TypedFunc): ReadonlyMap<string, { arr: string; word: number
   FEEDS.set(fn, out);
   return out;
 }
+
+const CONDITION: Partial<Record<Op, string>> = {
+  eq: 'eq',
+  ne: 'ne',
+  lt: 'lo',
+  le: 'ls',
+  gt: 'hi',
+  ge: 'hs',
+};
+/** The condition that holds after `cmp b, a` exactly when `cond` holds after `cmp a, b`. */
+const SWAPPED: Record<string, string> = {
+  eq: 'eq',
+  ne: 'ne',
+  lo: 'hi',
+  hi: 'lo',
+  ls: 'hs',
+  hs: 'ls',
+};
+
+/** A rotate recognized from `or (shl x s) (shr x t)` with s + t = 0 (mod 32). */
+type Rotate =
+  | { readonly x: Operand; readonly right: number }
+  | { readonly x: Operand; readonly rightBy: Operand }
+  | { readonly x: Operand; readonly leftBy: Operand };
+
+/**
+ * Instruction-selection plan for one function body: nodes whose only consumer can absorb
+ * them into a single AArch64 instruction are emitted at that consumer instead of at their
+ * definition (a compare into `csel`, a `mul` into `madd`/`msub`, a literal shift into the
+ * shifted-register operand, `shl`/`shr` pairs into `ror`). Decided from the function's
+ * use lists alone, so it holds for every inlined instance of the function.
+ */
+interface Selection {
+  readonly byId: ReadonlyMap<string, Node>;
+  readonly deferred: ReadonlySet<string>;
+  /** `arr` nodes whose only use is as the state of a fill fold that overwrites every element. */
+  readonly deadInit: ReadonlySet<string>;
+  readonly compare: ReadonlySet<string>;
+  readonly rotate: ReadonlyMap<string, Rotate>;
+  readonly madd: ReadonlyMap<string, { readonly mul: Node; readonly other: Operand }>;
+  readonly shifted: ReadonlyMap<
+    string,
+    {
+      readonly other: Operand;
+      readonly x: Operand;
+      readonly kind: 'lsl' | 'lsr';
+      readonly by: number;
+    }
+  >;
+}
+
+const SELECTIONS = new WeakMap<TypedFunc, Selection>();
+
+function selection(fn: TypedFunc): Selection {
+  const cached = SELECTIONS.get(fn);
+  if (cached !== undefined) return cached;
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  const uses = new Map<string, { consumer: Node | undefined; position: number }[]>();
+  const useOf = (o: Operand, consumer: Node | undefined, position: number): void => {
+    if (o.kind !== 'node') return;
+    const list = uses.get(o.id) ?? [];
+    list.push({ consumer, position });
+    uses.set(o.id, list);
+  };
+  for (const n of fn.nodes) for (const [k, o] of n.args.entries()) useOf(o, n, k);
+  useOf(fn.ret, undefined, 0);
+  /** The node behind operand `o` when its single use is by `consumer`. */
+  const soleUse = (o: Operand, consumer: Node): Node | undefined => {
+    if (o.kind !== 'node') return undefined;
+    const list = uses.get(o.id) ?? [];
+    return list.length === 1 && list[0]?.consumer === consumer ? byId.get(o.id) : undefined;
+  };
+  const litShift = (n: Node | undefined, op: Op): n is Node =>
+    n !== undefined && n.op === op && n.args[1]?.kind === 'u32';
+  const deferred = new Set<string>();
+  const compare = new Set<string>();
+  const rotate = new Map<string, Rotate>();
+  const madd = new Map<string, { mul: Node; other: Operand }>();
+  const shifted = new Map<
+    string,
+    { other: Operand; x: Operand; kind: 'lsl' | 'lsr'; by: number }
+  >();
+  for (const n of fn.nodes) {
+    const list = uses.get(n.id) ?? [];
+    if (
+      CONDITION[n.op] !== undefined &&
+      list.length > 0 &&
+      list.every((u) => u.consumer?.op === 'select' && u.position === 0)
+    ) {
+      compare.add(n.id);
+      deferred.add(n.id);
+    }
+  }
+  for (const n of fn.nodes) {
+    if (n.op === 'or') {
+      const pa = soleUse(n.args[0] as Operand, n);
+      const pb = soleUse(n.args[1] as Operand, n);
+      const [l, r] =
+        pa?.op === 'shl' && pb?.op === 'shr'
+          ? [pa, pb]
+          : pa?.op === 'shr' && pb?.op === 'shl'
+            ? [pb, pa]
+            : [];
+      if (
+        l !== undefined &&
+        r !== undefined &&
+        sameOp(l.args[0] as Operand, r.args[0] as Operand)
+      ) {
+        const x = l.args[0] as Operand;
+        const ls = l.args[1] as Operand;
+        const rs = r.args[1] as Operand;
+        let plan: Rotate | undefined;
+        let extra: Node | undefined;
+        if (ls.kind === 'u32' && rs.kind === 'u32') {
+          if (((ls.value & 31) + (rs.value & 31)) % 32 === 0) plan = { x, right: rs.value & 31 };
+        } else {
+          // Variable distances: one side is `sub L s` with L = 0 (mod 32), the other `s`.
+          const subOf = (o: Operand, user: Node): Node | undefined => {
+            const d = soleUse(o, user);
+            return d?.op === 'sub' && d.args[0]?.kind === 'u32' && d.args[0].value % 32 === 0
+              ? d
+              : undefined;
+          };
+          const rsub = subOf(rs, r);
+          const lsub = subOf(ls, l);
+          if (rsub !== undefined && sameOp(rsub.args[1] as Operand, ls)) {
+            plan = { x, leftBy: ls };
+            extra = rsub;
+          } else if (lsub !== undefined && sameOp(lsub.args[1] as Operand, rs)) {
+            plan = { x, rightBy: rs };
+            extra = lsub;
+          }
+        }
+        if (plan !== undefined) {
+          rotate.set(n.id, plan);
+          deferred.add(l.id);
+          deferred.add(r.id);
+          if (extra !== undefined) deferred.add(extra.id);
+          continue;
+        }
+      }
+    }
+    if (n.op === 'add' || n.op === 'sub') {
+      const positions = n.op === 'add' ? [1, 0] : [1];
+      const k = positions.find((p) => soleUse(n.args[p] as Operand, n)?.op === 'mul');
+      if (k !== undefined) {
+        const mul = soleUse(n.args[k] as Operand, n) as Node;
+        madd.set(n.id, { mul, other: n.args[1 - k] as Operand });
+        deferred.add(mul.id);
+        continue;
+      }
+    }
+    if (n.op === 'add' || n.op === 'sub' || n.op === 'and' || n.op === 'or' || n.op === 'xor') {
+      const positions = n.op === 'sub' ? [1] : [1, 0];
+      for (const p of positions) {
+        const s = soleUse(n.args[p] as Operand, n);
+        if (!(litShift(s, 'shl') || litShift(s, 'shr'))) continue;
+        const by = (s.args[1] as { value: number }).value & 31;
+        shifted.set(n.id, {
+          other: n.args[1 - p] as Operand,
+          x: s.args[0] as Operand,
+          kind: s.op === 'shl' ? 'lsl' : 'lsr',
+          by,
+        });
+        deferred.add(s.id);
+        break;
+      }
+    }
+  }
+  const deadInit = new Set<string>();
+  for (const n of fn.nodes) {
+    if (n.op !== 'arr') continue;
+    const list = uses.get(n.id) ?? [];
+    const only = list.length === 1 ? list[0] : undefined;
+    const fold = only?.consumer;
+    const t = fn.types.get(n.id);
+    if (only === undefined || fold === undefined || fold.op !== 'fold' || only.position !== 1)
+      continue;
+    const count = fold.args[0];
+    const body = fold.callee === undefined ? undefined : fn.calls.get(fold.callee);
+    if (
+      count?.kind === 'u32' &&
+      t !== undefined &&
+      !isPrimitive(t) &&
+      t.kind === 'arr' &&
+      count.value >= t.length &&
+      body !== undefined &&
+      fillBody(body) !== undefined
+    )
+      deadInit.add(n.id);
+  }
+  const result: Selection = { byId, deferred, deadInit, compare, rotate, madd, shifted };
+  SELECTIONS.set(fn, result);
+  return result;
+}
+
+/**
+ * A fold body that only fills its state: `ret` is `set p0 p1 v` and nothing else reads p0,
+ * so trip i writes element i and reads no element. With a literal count of at least the
+ * array length every element is written, so the initial value is never observed.
+ */
+function fillBody(callee: TypedFunc): { value: Operand; nodes: readonly Node[] } | undefined {
+  const ret = callee.ret;
+  if (ret.kind !== 'node') return undefined;
+  const last = callee.nodes.find((n) => n.id === ret.id);
+  const state = callee.params[0];
+  if (
+    last === undefined ||
+    last.op !== 'set' ||
+    state === undefined ||
+    isPrimitive(state) ||
+    state.kind !== 'arr' ||
+    words(state.elem) !== 1
+  )
+    return undefined;
+  const [target, index, value] = last.args as [Operand, Operand, Operand];
+  if (
+    !(target.kind === 'param' && target.index === 0 && index.kind === 'param' && index.index === 1)
+  )
+    return undefined;
+  for (const n of callee.nodes)
+    for (const [k, o] of n.args.entries())
+      if (o.kind === 'param' && o.index === 0 && !(n === last && k === 0)) return undefined;
+  return { value, nodes: callee.nodes.filter((n) => n !== last) };
+}
+
+/** Ops a fill body may use to be computed four lanes at a time (32-bit lanes, A0 wrap semantics). */
+const VECTOR_OPS = new Set<Op>(['mov', 'add', 'sub', 'mul', 'and', 'or', 'xor', 'shl', 'shr']);
+/** Vector registers for a vectorized fill: v16 lane counters, v17 step, v18 shift mask, v19.. values. */
+const VECTOR_FIRST = 19;
+const VECTOR_LAST = 31;
 
 /** Where each parameter travels: a register index, or a byte offset in the stack area. */
 interface ArgPlace {
@@ -833,6 +1071,8 @@ interface Carry {
   readonly get: string;
   /** The body's result `set p0 p1 v`. */
   readonly set: string;
+  /** The `sub p1 1` index when the read is its only use (then never computed). */
+  readonly index?: string;
   readonly key: string;
   readonly type: 'u32' | 'bool';
 }
@@ -844,7 +1084,7 @@ interface Carry {
  * element at (2^32 - 1) mod N. It is carried in a register instead of reloaded, which
  * takes the store-to-load round trip off the recurrence.
  */
-function carriedRead(body: TypedFunc): { get: string; set: string } | undefined {
+function carriedRead(body: TypedFunc): { get: string; set: string; index?: string } | undefined {
   const ret = body.ret;
   const state = body.params[0];
   if (ret.kind !== 'node' || state === undefined || isPrimitive(state) || state.kind !== 'arr')
@@ -859,8 +1099,12 @@ function carriedRead(body: TypedFunc): { get: string; set: string } | undefined 
     if (n.op !== 'get' || !isParam(n.args[0], 0) || j?.kind !== 'node') continue;
     const d = defs.get(j.id);
     const one = d?.args[1];
-    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1)
-      return { get: n.id, set: set.id };
+    if (d?.op === 'sub' && isParam(d.args[0], 1) && one?.kind === 'u32' && one.value === 1) {
+      const reads = body.nodes.filter((m) => m.args.some((a) => sameOp(a, j))).length;
+      return reads === 1 && !sameOp(body.ret, j)
+        ? { get: n.id, set: set.id, index: d.id }
+        : { get: n.id, set: set.id };
+    }
   }
   return undefined;
 }
@@ -874,14 +1118,22 @@ class FunctionEmitter {
   #labels = 0;
   readonly #defs = new Map<string, { pos: number; type: Type }>();
   readonly #last = new Map<string, number>();
-  #loops: { start: number; used: Set<string> }[] = [];
+  #loops: { start: number; used: Set<string>; key: string }[] = [];
+  /** Literals materialized once: keyed by value and the outermost enclosing loop ('' at top). */
+  readonly #consts = new Map<string, number>();
+  /** Hoisted literals per outermost loop key, materialized in that loop's preheader. */
+  readonly #loopConsts = new Map<string, string[]>();
+  /** Top-level literals already materialized in pass 2. */
+  readonly #ready = new Set<string>();
+  /** Largest value a scalar key can hold (a literal-count loop counter). */
+  readonly #bound = new Map<string, number>();
+  /** Register hints: key -> key whose register it takes (a loop body result onto its state). */
+  readonly #coalesce = new Map<string, string>();
   readonly #alias = new Map<string, string>();
+  /** Byte offset of an alias within the storage it names (a borrowed field or element). */
+  readonly #aliasOff = new Map<string, number>();
   readonly #regs = new Map<string, string>();
   readonly #slots = new Map<string, number>();
-  /** Body results that may share the loop state's register (no state read after their definition). */
-  readonly #coalesce = new Map<string, string>();
-  /** Scalar keys known to be below a literal bound (loop counters with a literal count). */
-  readonly #bounds = new Map<string, number>();
   #slotBytes = 0;
   #outgoing = 0;
   #leaf = true;
@@ -915,6 +1167,14 @@ class FunctionEmitter {
     return k;
   }
 
+  /** Byte offset of `key` within its canonical slot (0 unless it is a borrowed part). */
+  #offset(key: string): number {
+    let off = 0;
+    for (let k = key, a = this.#alias.get(k); a !== undefined; k = a, a = this.#alias.get(k))
+      off += this.#aliasOff.get(k) ?? 0;
+    return off;
+  }
+
   /** Byte offset from sp of a key's slot (aliases resolved). */
   #slot(key: string): number {
     const off = this.#slots.get(this.#canon(key));
@@ -922,7 +1182,7 @@ class FunctionEmitter {
       if (this.#dry) return 0;
       throw new A0Error(`arm64: no slot for ${key}`);
     }
-    return this.#outgoing + off;
+    return this.#outgoing + off + this.#offset(key);
   }
 
   /** Define `key` at the current position; aggregates get a slot. */
@@ -933,25 +1193,76 @@ class FunctionEmitter {
   }
 
   /** Define aggregate `key` as another name for `target`'s storage. */
-  #defAlias(key: string, target: string, type: Type): void {
+  #defAlias(key: string, target: string, type: Type, offset = 0): void {
     if (!this.#dry) return;
+    if (this.#consts.has(this.#canon(target))) refuse('internal: alias of a literal');
     this.#defs.set(key, { pos: this.#pos, type });
+    this.#aliasOff.set(key, offset + this.#offset(target));
     this.#alias.set(key, this.#canon(target));
   }
 
   /** Record a read of `v` at the current position (for liveness). */
   #use(v: Val): void {
     if (!this.#dry) return;
-    const key = v.kind === 'key' ? v.key : v.home;
-    if (key === undefined) return;
-    this.#last.set(key, this.#pos);
-    for (const l of this.#loops) l.used.add(key);
+    // A literal with a hoisted home reads that home.
+    const raw = v.kind === 'key' ? v.key : v.home;
+    if (raw === undefined) return;
+    const k = this.#canon(raw);
+    this.#last.set(k, this.#pos);
+    for (const l of this.#loops) l.used.add(k);
   }
 
   #home(key: string): Home {
     if (this.#dry) return { slot: 0 };
-    const reg = this.#regs.get(key);
+    const reg = this.#regs.get(this.#canon(key));
     return reg === undefined ? { slot: this.#slot(key) } : { reg };
+  }
+
+  /** Resolve operand `o` and record the read. */
+  #val(env: Env, o: Operand): Val {
+    const v = this.#resolve(env, o);
+    this.#use(v);
+    return v;
+  }
+
+  /**
+   * A register holding literal `value`. Literals needing movz/movk are materialized once:
+   * in the preheader of the outermost enclosing loop, or at their first read in straight-line
+   * code, and kept in a register while later reads remain (inline in `scratch` when spilled).
+   */
+  #lit(value: number, scratch: string): string {
+    const outer = this.#loops[0];
+    // Outside loops only a literal needing movz+movk is worth a register across its reads.
+    if (outer === undefined && movImm(scratch, value).length === 1) {
+      if (!this.#dry) this.#emit(...movImm(scratch, value));
+      return scratch;
+    }
+    const scope = outer?.key ?? '';
+    const key = `#k${value}@${scope}`;
+    if (this.#dry) {
+      if (!this.#defs.has(key)) {
+        // Half a position early: the register is taken before this node's operands die.
+        this.#defs.set(key, {
+          pos: (outer === undefined ? this.#pos : outer.start) - 0.5,
+          type: 'u32',
+        });
+        this.#consts.set(key, value);
+        if (outer !== undefined)
+          this.#loopConsts.set(scope, [...(this.#loopConsts.get(scope) ?? []), key]);
+      }
+      this.#use({ kind: 'key', key, type: 'u32' });
+      return scratch;
+    }
+    const reg = this.#regs.get(key);
+    if (reg === undefined) {
+      this.#emit(...movImm(scratch, value));
+      return scratch;
+    }
+    if (outer === undefined && !this.#ready.has(key)) {
+      this.#emit(...movImm(reg, value));
+      this.#ready.add(key);
+    }
+    return reg;
   }
 
   #resolve(env: Env, o: Operand): Val {
@@ -1014,9 +1325,13 @@ class FunctionEmitter {
     if (dst === src && d === so) return;
     const chunks = Math.floor(n / 8);
     if (chunks < 2) {
-      for (let k = 0; k < n; k += 1) {
+      // Loads then stores two words at a time; `pairMemory` turns each pair into ldp/stp.
+      for (let k = 0; k < n; k += 2) {
+        const two = k + 1 < n;
         this.#mem('ldr', 'w9', src, so + 4 * k);
+        if (two) this.#mem('ldr', 'w13', src, so + 4 * k + 4);
         this.#mem('str', 'w9', dst, d + 4 * k);
+        if (two) this.#mem('str', 'w13', dst, d + 4 * k + 4);
       }
       return;
     }
@@ -1050,12 +1365,18 @@ class FunctionEmitter {
     for (let k = 0; k < n % 8; k += 1) this.#emit(`str wzr, [x15, #${4 * k}]`);
   }
 
-  /** A w register holding scalar `v`: its home register, or `scratch` after materializing. */
-  #read(v: Val, scratch: string): string {
+  /**
+   * A w register holding scalar `v`: its home register, or `scratch` after materializing.
+   * With `zr`, a zero literal reads as wzr (only where register 31 means the zero register).
+   */
+  #read(v: Val, scratch: string, zr = false): string {
     if (v.kind === 'lit' && v.home === undefined) {
-      if (v.value === 0) return 'wzr';
-      this.#emit(...movImm(scratch, v.value));
-      return scratch;
+      if (v.value === 0) {
+        if (zr) return 'wzr';
+        this.#emit(`movz ${scratch}, #0`);
+        return scratch;
+      }
+      return this.#lit(v.value, scratch);
     }
     const home = this.#home(v.kind === 'lit' ? (v.home as string) : v.key);
     if ('reg' in home) return home.reg;
@@ -1076,6 +1397,10 @@ class FunctionEmitter {
 
   /** dst = scalar `v`. */
   #into(dst: string, v: Val): void {
+    if (v.kind === 'lit') {
+      this.#emit(...movImm(dst, v.value));
+      return;
+    }
     const r = this.#read(v, dst);
     if (r !== dst) this.#emit(`mov ${dst}, ${r}`);
   }
@@ -1103,38 +1428,49 @@ class FunctionEmitter {
   /** Store `v` (any type) at [base + off]. */
   #place(v: Val, base: string, off: number): void {
     if (v.kind === 'lit' || isPrimitive(v.type)) {
-      this.#mem('str', this.#read(v, 'w9'), base, off);
+      this.#mem('str', this.#read(v, 'w9', true), base, off);
       return;
     }
-    this.#copy(base, off, 'sp', this.#slot(v.key), words(v.type));
+    if (v.kind === 'key') this.#copy(base, off, 'sp', this.#slot(v.key), words(v.type));
   }
 
   /**
-   * A w register holding `idx mod n` (a bounded counter needs no mask; a power of two
-   * masks; otherwise udiv/msub). Uses w10-w12.
+   * A w register holding (index operand mod n), n > 1: the index itself when its bound
+   * proves it in range, else w10. Uses w10-w12.
    */
   #index(idx: Val, n: number): string {
     const r = this.#read(idx, 'w10');
-    if (n === 1) return 'wzr';
-    if (idx.kind === 'key' && (this.#bounds.get(idx.key) ?? Number.POSITIVE_INFINITY) <= n)
-      return r;
-    if (idx.kind === 'lit') {
-      this.#emit(...movImm('w10', idx.value % n));
-      return 'w10';
-    }
+    const bound = idx.kind === 'key' ? this.#bound.get(this.#canon(idx.key)) : undefined;
+    if (bound !== undefined && bound < n) return r;
     if ((n & (n - 1)) === 0) this.#emit(`and w10, ${r}, #${n - 1}`);
-    else this.#emit(...movImm('w11', n), `udiv w12, ${r}, w11`, `msub w10, w12, w11, ${r}`);
+    else {
+      const rn = this.#lit(n, 'w11');
+      this.#emit(`udiv w12, ${r}, ${rn}`, `msub w10, w12, ${rn}, ${r}`);
+    }
     return 'w10';
   }
 
-  /** x16 = sp + base + (idx mod n) * elemBytes for aggregate elements. */
-  #elementAddr(base: number, idx: Val, n: number, elemBytes: number): void {
-    const r = this.#index(idx, n);
-    if ((elemBytes & (elemBytes - 1)) === 0)
-      this.#emit(`ubfiz x10, x${r.slice(1)}, #${Math.log2(elemBytes)}, #32`);
-    else this.#emit(...movImm('w11', elemBytes), `umull x10, ${r}, w11`);
+  /**
+   * Address operand of element `index` (a w register) of an array at [sp + base]. One-word
+   * elements use the scaled register-offset form; larger ones compute x16 (uses x10, x16).
+   */
+  #element(base: number, index: string, elemBytes: number, pointer: boolean): string {
+    if (elemBytes === 4 && !pointer) {
+      let b = 'sp';
+      if (base !== 0) {
+        this.#addr('x16', 'sp', base);
+        b = 'x16';
+      }
+      return `[${b}, ${index}, uxtw #2]`;
+    }
     this.#addr('x16', 'sp', base);
-    this.#emit('add x16, x16, x10');
+    const shift = Math.log2(elemBytes);
+    if (Number.isInteger(shift) && shift <= 4) this.#emit(`add x16, x16, ${index}, uxtw #${shift}`);
+    else {
+      const re = this.#lit(elemBytes, 'w11');
+      this.#emit(`umull x10, ${index}, ${re}`, 'add x16, x16, x10');
+    }
+    return '[x16]';
   }
 
   // --- calls and inlining ------------------------------------------------------------------
@@ -1202,14 +1538,30 @@ class FunctionEmitter {
     this.#pos += 1;
     const ret = this.#resolve(sub, callee.ret);
     if (isPrimitive(type)) {
-      if (sink === 'bind') this.#def(result, type);
-      else if (this.#dry && ret.kind === 'key' && callee.ret.kind === 'node') {
-        // The body's own result may live in the state's register when the state is not
-        // read after it is defined: the per-trip move then vanishes.
-        const def = this.#defs.get(ret.key);
-        const lastRead = this.#last.get(result) ?? -1;
-        if (def !== undefined && !this.#alias.has(ret.key) && lastRead <= def.pos)
-          this.#coalesce.set(ret.key, result);
+      if (sink === 'bind') {
+        // A scalar result is another name for the callee's return value.
+        if (ret.kind === 'key') this.#defAlias(result, ret.key, type);
+        else {
+          this.#def(result, type);
+          this.#set(result, (d) => this.#into(d, ret), true);
+        }
+        return;
+      }
+      // Loop state: when the state is not read after the body's result is defined, the
+      // result can be computed straight into the state's register (no copy per trip).
+      if (this.#dry && ret.kind === 'key') {
+        const rk = this.#canon(ret.key);
+        const def = this.#defs.get(rk);
+        const lastState = this.#last.get(this.#canon(result)) ?? Number.POSITIVE_INFINITY;
+        const loop = this.#loops.at(-1);
+        if (
+          def !== undefined &&
+          !this.#consts.has(rk) &&
+          loop !== undefined &&
+          def.pos > loop.start &&
+          lastState <= def.pos
+        )
+          this.#coalesce.set(rk, this.#canon(result));
       }
       this.#use(ret);
       this.#set(result, (d) => this.#into(d, ret), true);
@@ -1359,6 +1711,218 @@ class FunctionEmitter {
 
   // --- nodes -------------------------------------------------------------------------------
 
+  /**
+   * A fill fold (see `fillBody`) with a literal count within the array, whose body uses only
+   * lane-wise ops over the counter, loop-invariant scalars, and literals: computed four
+   * elements per trip in NEON registers and stored 16 bytes at a time, with the count mod 4
+   * trailing trips inlined as scalar code. Returns false when the fold does not qualify.
+   */
+  #vectorFill(
+    env: Env,
+    n: Node,
+    index: number,
+    callee: TypedFunc,
+    count: Val,
+    init: Val,
+    extras: readonly Val[],
+    key: string,
+    t: Type,
+  ): boolean {
+    // The shared fill-run analysis (optimize.ts `fillRun`) decides the shape.
+    const run = fillRun(env.fn, n);
+    const body = run === undefined ? undefined : { value: run.value, nodes: run.nodes };
+    if (
+      body === undefined ||
+      count.kind !== 'lit' ||
+      count.value < 8 ||
+      isPrimitive(t) ||
+      t.kind !== 'arr' ||
+      count.value > t.length ||
+      extras.some((e) => e.kind === 'key' && !isPrimitive(e.type)) ||
+      !this.#inlinable(callee, env) ||
+      body.nodes.some((m) => !VECTOR_OPS.has(m.op) || !isPrimitive(callee.types.get(m.id) ?? 'io'))
+    )
+      return false;
+    // Registers: invariants and literals once; per unrolled copy, one per node plus a lane
+    // counter (copy 0 uses v16). Four copies when they fit, else two, else one.
+    const lits = new Map<number, string>();
+    const invariants = new Map<number, string>();
+    const varShift = body.nodes.some(
+      (m) => (m.op === 'shl' || m.op === 'shr') && m.args[1]?.kind !== 'u32',
+    );
+    let next = VECTOR_FIRST;
+    const take = (): string | undefined => (next <= VECTOR_LAST ? `v${next++}` : undefined);
+    const shared = (o: Operand): boolean => {
+      if (o.kind === 'node' || (o.kind === 'param' && o.index === 1)) return true;
+      if (o.kind === 'param') {
+        if (!invariants.has(o.index)) {
+          const r = take();
+          if (r === undefined) return false;
+          invariants.set(o.index, r);
+        }
+        return true;
+      }
+      const v = o.kind === 'u32' ? o.value : o.value ? 1 : 0;
+      if (!lits.has(v)) {
+        const r = take();
+        if (r === undefined) return false;
+        lits.set(v, r);
+      }
+      return true;
+    };
+    for (const m of body.nodes)
+      for (const [k, o] of m.args.entries())
+        if (!((m.op === 'shl' || m.op === 'shr') && k === 1 && o.kind === 'u32') && !shared(o))
+          return false;
+    if (!shared(body.value)) return false;
+    const free = VECTOR_LAST - next + 1;
+    const copies = [4, 2, 1].find(
+      (u) => u * body.nodes.length + (u - 1) <= free && 4 * u <= count.value,
+    );
+    if (copies === undefined) return false;
+    const counters = ['v16'];
+    for (let u = 1; u < copies; u += 1) counters.push(take() as string);
+    const regs: Map<string, string>[] = [];
+    for (let u = 0; u < copies; u += 1)
+      regs.push(new Map(body.nodes.map((m) => [m.id, take() as string])));
+    const reg = (o: Operand, u: number): string => {
+      if (o.kind === 'node') return regs[u]?.get(o.id) as string;
+      if (o.kind === 'param')
+        return o.index === 1 ? (counters[u] as string) : (invariants.get(o.index) as string);
+      return lits.get(o.kind === 'u32' ? o.value : o.value ? 1 : 0) as string;
+    };
+    // State: the init slot itself when owned, else a copy (skipped when the init is dead).
+    if (init.kind === 'key' && mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0))
+      this.#defAlias(key, init.key, t);
+    else {
+      this.#def(key, t);
+      this.#place(init, 'sp', this.#slot(key));
+    }
+    // Preheader: lane counters {4u, 4u+1, 4u+2, 4u+3}, step 4 x copies, invariants broadcast.
+    this.#emit(
+      'movz x9, #0',
+      'movk x9, #1, lsl #32',
+      'movz x10, #2',
+      'movk x10, #3, lsl #32',
+      'fmov d16, x9',
+      'mov v16.d[1], x10',
+    );
+    const trips = Math.floor(count.value / (4 * copies));
+    // One trip covering the whole fill is straight-line code (no counter, no branch).
+    const single = trips === 1 && count.value === 4 * copies;
+    if (!single) this.#emit(`movi v17.4s, #${4 * copies}`);
+    for (let u = 1; u < copies; u += 1)
+      this.#emit(
+        `movi ${counters[u]}.4s, #${4 * u}`,
+        `add ${counters[u]}.4s, ${counters[u]}.4s, v16.4s`,
+      );
+    if (varShift) this.#emit('movi v18.4s, #31');
+    for (const [p, r] of invariants) {
+      const v = extras[p - 2] ?? refuse(`fill body reads missing parameter p${p}`);
+      this.#use(v);
+      this.#emit(`dup ${r}.4s, ${this.#read(v, 'w9', true)}`);
+    }
+    for (const [v, r] of lits) {
+      if (v <= 255) this.#emit(`movi ${r}.4s, #${v}`);
+      else this.#emit(...movImm('w9', v), `dup ${r}.4s, w9`);
+    }
+    const lanes = (u: number): void => {
+      for (const m of body.nodes) {
+        const d = regs[u]?.get(m.id) as string;
+        const [a, b] = m.args as [Operand, Operand];
+        const ra = reg(a, u);
+        switch (m.op) {
+          case 'mov':
+            this.#emit(`orr ${d}.16b, ${ra}.16b, ${ra}.16b`);
+            break;
+          case 'add':
+          case 'sub':
+          case 'mul':
+            this.#emit(`${m.op} ${d}.4s, ${ra}.4s, ${reg(b, u)}.4s`);
+            break;
+          case 'and':
+          case 'or':
+          case 'xor':
+            this.#emit(
+              `${{ and: 'and', or: 'orr', xor: 'eor' }[m.op]} ${d}.16b, ${ra}.16b, ${reg(b, u)}.16b`,
+            );
+            break;
+          case 'shl':
+          case 'shr': {
+            if (b.kind === 'u32') {
+              const k = b.value & 31;
+              if (k === 0) this.#emit(`orr ${d}.16b, ${ra}.16b, ${ra}.16b`);
+              else this.#emit(`${m.op === 'shl' ? 'shl' : 'ushr'} ${d}.4s, ${ra}.4s, #${k}`);
+              break;
+            }
+            // Distance modulo 32 (A0's five-bit mask); USHL shifts right for negative lanes.
+            this.#emit(`and ${d}.16b, ${reg(b, u)}.16b, v18.16b`);
+            if (m.op === 'shr') this.#emit(`neg ${d}.4s, ${d}.4s`);
+            this.#emit(`ushl ${d}.4s, ${ra}.4s, ${d}.4s`);
+            break;
+          }
+          default:
+            refuse(`internal: ${m.op} in a vector fill`);
+        }
+      }
+    };
+    const q = (u: number): string => `q${reg(body.value, u).slice(1)}`;
+    const top = this.#label();
+    this.#addr('x14', 'sp', this.#slot(key));
+    if (!single) this.#emit(...movImm('w13', trips), `${top}:`);
+    for (let u = 0; u < copies; u += 1) lanes(u);
+    for (let u = 0; u < copies; u += 2)
+      this.#emit(
+        u + 1 < copies
+          ? `stp ${q(u)}, ${q(u + 1)}, [x14, #${16 * u}]`
+          : `str ${q(u)}, [x14, #${16 * u}]`,
+      );
+    if (single) return true;
+    this.#emit(`add x14, x14, #${16 * copies}`);
+    for (const c of counters) this.#emit(`add ${c}.4s, ${c}.4s, v17.4s`);
+    this.#emit('subs w13, w13, #1', `b.ne ${top}`);
+    // Whole groups of four left over: copy u's counters already hold the next group u.
+    const groups = Math.floor((count.value - trips * 4 * copies) / 4);
+    for (let u = 0; u < groups; u += 1) {
+      lanes(u);
+      this.#emit(`str ${q(u)}, [x14, #${16 * u}]`);
+    }
+    const state: Val = { kind: 'key', key, type: t };
+    for (let i = 4 * Math.floor(count.value / 4); i < count.value; i += 1)
+      this.#inline(
+        env,
+        callee,
+        [state, { kind: 'lit', value: i, type: 'u32' }, ...extras],
+        true,
+        key,
+        t,
+        `${n.id}#${i}`,
+        'store',
+      );
+    return true;
+  }
+
+  /** Set the flags for select condition `o` and return the condition code meaning true. */
+  #condition(env: Env, o: Operand): string {
+    const sel = selection(env.fn);
+    const def = o.kind === 'node' && sel.compare.has(o.id) ? sel.byId.get(o.id) : undefined;
+    if (def === undefined) {
+      this.#emit(`cmp ${this.#read(this.#val(env, o), 'w9')}, #0`);
+      return 'ne';
+    }
+    let x = this.#val(env, def.args[0] as Operand);
+    let y = this.#val(env, def.args[1] as Operand);
+    let cond = CONDITION[def.op] as string;
+    if (x.kind === 'lit' && y.kind !== 'lit') {
+      [x, y] = [y, x];
+      cond = SWAPPED[cond] as string;
+    }
+    const rx = this.#read(x, 'w10');
+    const ry = y.kind === 'lit' && y.value <= 4095 ? `#${y.value}` : this.#read(y, 'w11', true);
+    this.#emit(`cmp ${rx}, ${ry}`);
+    return cond;
+  }
+
   #body(env: Env): void {
     for (const [i, n] of env.fn.nodes.entries()) this.#node(env, n, i);
   }
@@ -1366,9 +1930,14 @@ class FunctionEmitter {
   #node(env: Env, n: Node, index: number): void {
     const t = env.fn.types.get(n.id) ?? refuse(`untyped node ${n.id}`);
     const key = `${env.prefix}n_${n.id}`;
+    const sel = selection(env.fn);
+    this.#pos += 1;
+    // Absorbed into its consumer's instruction (see `selection`): nothing to emit here.
+    if (sel.deferred.has(n.id)) return;
+    // The index of the carried previous-element read: the read comes from a register.
+    if (env.carry?.index === n.id) return;
     const vals = n.args.map((o) => this.#resolve(env, o));
     const [a, b, c] = vals;
-    this.#pos += 1;
     if (n.op !== 'fold' && n.op !== 'loop') for (const v of vals) this.#use(v);
     const feed = feedsOf(env.fn).get(n.id);
     const scalar = (produce: (d: string) => void, direct = false): void => {
@@ -1384,27 +1953,73 @@ class FunctionEmitter {
       this.#def(key, t);
       this.#set(key, produce, direct);
     };
+    const COMMUTES = new Set(['add', 'mul', 'and', 'orr', 'eor']);
     const bin = (insn: string, imm?: (v: number) => string | undefined): void => {
-      const literal = b?.kind === 'lit' && imm !== undefined ? imm(b.value) : undefined;
-      const ra =
-        literal !== undefined && (insn === 'add' || insn === 'sub')
-          ? this.#readRn(a as Val, 'w10')
-          : this.#read(a as Val, 'w10');
-      if (literal !== undefined) {
-        scalar((d) => this.#emit(`${insn} ${d}, ${ra}, ${literal}`), true);
+      let [x, y] = [a as Val, b as Val];
+      if (COMMUTES.has(insn) && x.kind === 'lit' && y.kind !== 'lit') [x, y] = [y, x];
+      const literal = y.kind === 'lit' && imm !== undefined ? imm(y.value) : undefined;
+      if (literal === '#0' && insn !== 'and') {
+        // x op 0 = x for add, sub, orr, eor, and both shifts.
+        scalar((d) => this.#into(d, x), true);
         return;
       }
-      const rb = this.#read(b as Val, 'w11');
-      scalar((d) => this.#emit(`${insn} ${d}, ${ra}, ${rb}`), true);
+      if (literal !== undefined) {
+        const rx = this.#read(x, 'w10');
+        scalar((d) => this.#emit(`${insn} ${d}, ${rx}, ${literal}`), true);
+        return;
+      }
+      const rx = this.#read(x, 'w10', true);
+      const ry = this.#read(y, 'w11', true);
+      scalar((d) => this.#emit(`${insn} ${d}, ${rx}, ${ry}`), true);
+    };
+    /** add/sub/and/orr/eor, absorbing a planned rotate, multiply, or shifted operand. */
+    const arith = (insn: string, imm: (v: number) => string | undefined): void => {
+      const rot = sel.rotate.get(n.id);
+      if (rot !== undefined) {
+        const rx = this.#read(this.#val(env, rot.x), 'w11', true);
+        if ('right' in rot) {
+          scalar((d) => this.#emit(`ror ${d}, ${rx}, #${rot.right}`), true);
+          return;
+        }
+        const by = this.#read(
+          this.#val(env, 'rightBy' in rot ? rot.rightBy : rot.leftBy),
+          'w10',
+          true,
+        );
+        if ('rightBy' in rot) scalar((d) => this.#emit(`ror ${d}, ${rx}, ${by}`), true);
+        // Left by s is right by -s: RORV takes the distance modulo 32.
+        else scalar((d) => this.#emit(`neg w10, ${by}`, `ror ${d}, ${rx}, w10`), true);
+        return;
+      }
+      const ma = sel.madd.get(n.id);
+      if (ma !== undefined) {
+        const r0 = this.#read(this.#val(env, ma.mul.args[0] as Operand), 'w10', true);
+        const r1 = this.#read(this.#val(env, ma.mul.args[1] as Operand), 'w11', true);
+        const ro = this.#read(this.#val(env, ma.other), 'w9', true);
+        const op = insn === 'add' ? 'madd' : 'msub';
+        scalar((d) => this.#emit(`${op} ${d}, ${r0}, ${r1}, ${ro}`), true);
+        return;
+      }
+      const sh = sel.shifted.get(n.id);
+      if (sh !== undefined) {
+        const ro = this.#read(this.#val(env, sh.other), 'w10', true);
+        const rx = this.#read(this.#val(env, sh.x), 'w11', true);
+        scalar((d) => this.#emit(`${insn} ${d}, ${ro}, ${rx}, ${sh.kind} #${sh.by}`), true);
+        return;
+      }
+      bin(insn, imm);
     };
     const small = (v: number): string | undefined => (v <= 4095 ? `#${v}` : undefined);
     const logical = (v: number): string | undefined => (isLogicalImm32(v) ? `#${v}` : undefined);
     const shift = (v: number): string => `#${v & 31}`;
     const cmp = (cond: string): void => {
-      const immB = b?.kind === 'lit' && b.value <= 4095 ? `#${b.value}` : undefined;
-      const ra = immB !== undefined ? this.#readRn(a as Val, 'w10') : this.#read(a as Val, 'w10');
-      const rb = immB ?? this.#read(b as Val, 'w11');
-      scalar((d) => this.#emit(`cmp ${ra}, ${rb}`, `cset ${d}, ${cond}`), true);
+      const [x, y, cc] =
+        a?.kind === 'lit' && b?.kind !== 'lit'
+          ? [b as Val, a, SWAPPED[cond] as string]
+          : [a as Val, b as Val, cond];
+      const rx = this.#read(x, 'w10');
+      const ry = y.kind === 'lit' && y.value <= 4095 ? `#${y.value}` : this.#read(y, 'w11', true);
+      scalar((d) => this.#emit(`cmp ${rx}, ${ry}`, `cset ${d}, ${cc}`), true);
     };
     const aggregateOf = (v: Val, what: string): { key: string; type: Type } => {
       if (v.kind !== 'key' || isPrimitive(v.type)) refuse(`${n.op} needs ${what}`);
@@ -1413,33 +2028,42 @@ class FunctionEmitter {
     if (env.carry?.get === n.id) {
       const cv: Val = { kind: 'key', key: env.carry.key, type: env.carry.type };
       this.#use(cv);
+      // Another name for the carried register when every read of it precedes the `set`
+      // that overwrites the register with this trip's element.
+      const me: Operand = { kind: 'node', id: n.id };
+      const setAt = env.fn.nodes.findIndex((m) => m.id === env.carry?.set);
+      const early = env.fn.nodes.every((m, i) => i < setAt || !m.args.some((o) => sameOp(o, me)));
+      if (feed === undefined && early && !sameOp(env.fn.ret, me)) {
+        this.#defAlias(key, env.carry.key, t);
+        return;
+      }
       scalar((d) => this.#into(d, cv), true);
       return;
     }
     switch (n.op) {
       case 'mov': {
         const v = a as Val;
-        if (v.kind === 'key' && !isPrimitive(v.type)) this.#defAlias(key, v.key, t);
+        if (v.kind === 'key') this.#defAlias(key, v.key, t);
         else scalar((d) => this.#into(d, v), true);
         return;
       }
       case 'add':
-        bin('add', small);
+        arith('add', small);
         return;
       case 'sub':
-        bin('sub', small);
+        arith('sub', small);
         return;
       case 'mul':
         bin('mul');
         return;
       case 'and':
-        bin('and', logical);
+        arith('and', logical);
         return;
       case 'or':
-        bin('orr', logical);
+        arith('orr', logical);
         return;
       case 'xor':
-        bin('eor', logical);
+        arith('eor', logical);
         return;
       // LSLV/LSRV on W registers use the distance modulo 32: A0's five-bit mask.
       case 'shl':
@@ -1487,34 +2111,54 @@ class FunctionEmitter {
         cmp('hs');
         return;
       case 'select': {
-        // Both operands are already computed values; select picks one.
-        const rc = this.#readRn(a as Val, 'w9');
+        // Both operands are already computed values; select picks one. A compare whose
+        // only uses are selects sets the flags here instead of materializing a bool.
+        const cc = this.#condition(env, n.args[0] as Operand);
         if (isPrimitive(t)) {
-          const rb = this.#read(b as Val, 'w10');
-          const rcc = this.#read(c as Val, 'w11');
-          scalar((d) => this.#emit(`cmp ${rc}, #0`, `csel ${d}, ${rb}, ${rcc}, ne`), true);
+          const rb = this.#read(b as Val, 'w13', true);
+          const rcc = this.#read(c as Val, 'w14', true);
+          scalar((d) => this.#emit(`csel ${d}, ${rb}, ${rcc}, ${cc}`), true);
           return;
         }
         this.#def(key, t);
         this.#addr('x10', 'sp', this.#slot(aggregateOf(b as Val, 'a value').key));
         this.#addr('x11', 'sp', this.#slot(aggregateOf(c as Val, 'a value').key));
-        this.#emit(`cmp ${rc}, #0`, 'csel x16, x10, x11, ne');
+        this.#emit(`csel x16, x10, x11, ${cc}`);
         this.#copy('sp', this.#slot(key), 'x16', 0, words(t));
         return;
       }
       case 'arr':
       case 'rec': {
+        // A feed (see feedsOf) may already have defined the slot.
         if (!(this.#dry && this.#defs.has(key))) this.#def(key, t);
+        if (sel.deadInit.has(n.id)) return;
         if (zeroArray(env.fn, n)) {
           if (!deadZeroFill(env.fn, index)) this.#zero(this.#slot(key), vals.length);
           return;
         }
         const feeds = feedsOf(env.fn);
         let off = this.#slot(key);
-        for (const [k, v] of vals.entries()) {
-          const o = n.args[k] as Operand;
-          if (!(o.kind === 'node' && feeds.get(o.id)?.arr === n.id)) this.#place(v, 'sp', off);
+        for (let i = 0; i < vals.length; ) {
+          const o = n.args[i] as Operand;
+          if (o.kind === 'node' && feeds.get(o.id)?.arr === n.id) {
+            off += 4 * words((vals[i] as Val).type);
+            i += 1;
+            continue;
+          }
+          // A run of zero literals is cleared 16 bytes per store.
+          let run = 0;
+          while (vals[i + run]?.kind === 'lit' && (vals[i + run] as { value: number }).value === 0)
+            run += 1;
+          if (run >= ZERO_LOOP_WORDS) {
+            this.#zero(off, run);
+            off += 4 * run;
+            i += run;
+            continue;
+          }
+          const v = vals[i] as Val;
+          this.#place(v, 'sp', off);
           off += 4 * words(v.type);
+          i += 1;
         }
         return;
       }
@@ -1524,24 +2168,24 @@ class FunctionEmitter {
         if (isPrimitive(at) || at.kind !== 'arr') refuse('get needs an array');
         const ew = words(at.elem);
         const base = this.#slot(src.key);
-        if (b?.kind === 'lit') {
-          const off = base + (b.value % at.length) * ew * 4;
+        if (b?.kind === 'lit' || at.length === 1) {
+          const off = base + (b?.kind === 'lit' ? b.value % at.length : 0) * ew * 4;
           if (isPrimitive(t)) scalar((d) => this.#mem('ldr', d, 'sp', off), true);
           else {
-            this.#def(key, t);
-            this.#copy('sp', this.#slot(key), 'sp', off, ew);
+            // A borrowed read of a literal element: named in place, not copied.
+            this.#defAlias(key, src.key, t, off - base);
           }
           return;
         }
+        const ri = this.#index(b as Val, at.length);
         if (isPrimitive(t)) {
-          const r = this.#index(b as Val, at.length);
-          this.#addr('x16', 'sp', base);
-          scalar((d) => this.#emit(`ldr ${d}, [x16, ${r}, uxtw #2]`), true);
-          return;
+          const where = this.#element(base, ri, ew * 4, false);
+          scalar((d) => this.#emit(`ldr ${d}, ${where}`), true);
+        } else {
+          this.#def(key, t);
+          this.#element(base, ri, ew * 4, true);
+          this.#copy('sp', this.#slot(key), 'x16', 0, ew);
         }
-        this.#elementAddr(base, b as Val, at.length, ew * 4);
-        this.#def(key, t);
-        this.#copy('sp', this.#slot(key), 'x16', 0, ew);
         return;
       }
       case 'set': {
@@ -1560,18 +2204,20 @@ class FunctionEmitter {
           const carry = env.carry;
           this.#set(carry.key, (d) => this.#into(d, c as Val), true);
         }
-        if (b?.kind === 'lit') {
-          this.#place(c as Val, 'sp', dst + (b.value % at.length) * ew * 4);
+        if (b?.kind === 'lit' || at.length === 1) {
+          const k = b?.kind === 'lit' ? b.value % at.length : 0;
+          this.#place(c as Val, 'sp', dst + k * ew * 4);
           return;
         }
-        if (isPrimitive(at.elem)) {
-          const r = this.#index(b as Val, at.length);
-          this.#addr('x16', 'sp', dst);
-          this.#emit(`str ${this.#read(c as Val, 'w9')}, [x16, ${r}, uxtw #2]`);
+        const ri = this.#index(b as Val, at.length);
+        const v = c as Val;
+        if (v.kind === 'lit' || isPrimitive(v.type)) {
+          const where = this.#element(dst, ri, ew * 4, false);
+          this.#emit(`str ${this.#read(v, 'w9', true)}, ${where}`);
           return;
         }
-        this.#elementAddr(dst, b as Val, at.length, ew * 4);
-        this.#place(c as Val, 'x16', 0);
+        this.#element(dst, ri, ew * 4, true);
+        this.#place(v, 'x16', 0);
         return;
       }
       case 'at':
@@ -1580,14 +2226,14 @@ class FunctionEmitter {
         const rt = src.type;
         if (isPrimitive(rt) || rt.kind !== 'rec' || b?.kind !== 'lit')
           refuse(`${n.op} needs a record and a literal field`);
-        const field = rt.fields[b.value] ?? refuse('field out of range');
+        if (rt.fields[b.value] === undefined) refuse('field out of range');
         const off = 4 * rt.fields.slice(0, b.value).reduce((s, f) => s + words(f), 0);
         if (n.op === 'at') {
           const from = this.#slot(src.key) + off;
           if (isPrimitive(t)) scalar((d) => this.#mem('ldr', d, 'sp', from), true);
           else {
-            this.#def(key, t);
-            this.#copy('sp', this.#slot(key), 'sp', from, words(field));
+            // A borrowed read: the field is named in place, not copied.
+            this.#defAlias(key, src.key, t, off);
           }
           return;
         }
@@ -1627,10 +2273,64 @@ class FunctionEmitter {
         const cval: Val = { kind: 'key', key: counter, type: 'u32' };
         this.#use(init);
         for (const e of extras) this.#use(e);
+        // A short fold with a literal count is straight-line code: each trip is the inlined
+        // body with its counter bound to a literal (constant indices, no loop overhead).
+        if (
+          n.op === 'fold' &&
+          count.kind === 'lit' &&
+          count.value <= UNROLL_MAX_TRIPS &&
+          count.value * callee.nodes.length <= UNROLL_MAX_NODES &&
+          this.#inlinable(callee, env)
+        ) {
+          const trip = (i: number): Val => ({ kind: 'lit', value: i, type: 'u32' });
+          if (isPrimitive(t)) {
+            let cur = init;
+            for (let i = 0; i < count.value; i += 1) {
+              const k = `${key}#${i}`;
+              this.#inline(
+                env,
+                callee,
+                [cur, trip(i), ...extras],
+                true,
+                k,
+                t,
+                `${n.id}#${i}`,
+                'bind',
+              );
+              cur = { kind: 'key', key: k, type: t };
+            }
+            if (cur.kind === 'key') this.#defAlias(key, cur.key, t);
+            else scalar((d) => this.#into(d, cur), true);
+            return;
+          }
+          if (
+            init.kind === 'key' &&
+            mutableHere(env.fn, n.args[1] as Operand, index, 1, env.ownedP0)
+          )
+            this.#defAlias(key, init.key, t);
+          else {
+            this.#def(key, t);
+            this.#place(init, 'sp', this.#slot(key));
+          }
+          for (let i = 0; i < count.value; i += 1)
+            this.#inline(
+              env,
+              callee,
+              [state, trip(i), ...extras],
+              true,
+              key,
+              t,
+              `${n.id}#${i}`,
+              'store',
+            );
+          return;
+        }
         const plan =
           n.op === 'fold' && count.kind === 'lit' && this.#inlinable(callee, env)
             ? vectorPlan(callee, count.value)
             : undefined;
+        if (n.op === 'fold' && this.#vectorFill(env, n, index, callee, count, init, extras, key, t))
+          return;
         // State: a scalar home, or the init slot itself when nothing else reads it.
         if (isPrimitive(t)) {
           if (plan === undefined) scalar((d) => this.#into(d, init), true);
@@ -1685,20 +2385,25 @@ class FunctionEmitter {
         }
         const countVal = this.#resolve(loopEnv, n.args[0] as Operand);
         this.#def(counter, 'u32');
+        if (count.kind === 'lit' && count.value > 0) this.#bound.set(counter, count.value - 1);
         this.#set(counter, (d) => this.#emit(`movz ${d}, #0`), true);
-        if (count.kind === 'lit') this.#bounds.set(counter, count.value);
-        this.#loops.push({ start: this.#pos, used: new Set() });
+        this.#loops.push({ start: this.#pos, used: new Set(), key });
         const top = this.#label();
         const done = this.#label();
-        this.#emit(`${top}:`);
+        // Preheader: literals the loop reads, once (outermost loop only).
+        if (!this.#dry && this.#loops.length === 1)
+          for (const ck of this.#loopConsts.get(key) ?? []) {
+            const reg = this.#regs.get(ck);
+            if (reg !== undefined) this.#emit(...movImm(reg, this.#consts.get(ck) as number));
+          }
+        // Rotated loop: the trip test sits at the bottom; the entry test (counter = 0 < count)
+        // is needed only when the count may be zero.
         this.#use(countVal);
         this.#use(cval);
-        const ci = this.#read(cval, 'w9');
-        const limit =
-          count.kind === 'lit' && count.value <= 4095
-            ? `#${count.value}`
-            : this.#read(countVal, 'w10');
-        this.#emit(`cmp ${ci}, ${limit}`, `b.hs ${done}`);
+        if (count.kind === 'lit') {
+          if (count.value === 0) this.#emit(`b ${done}`);
+        } else this.#emit(`cbz ${this.#read(countVal, 'w10')}, ${done}`);
+        this.#emit(`${top}:`);
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
@@ -1718,9 +2423,15 @@ class FunctionEmitter {
         this.#use(cval);
         const cr = this.#read(cval, 'w9');
         this.#set(counter, (d) => this.#emit(`add ${d}, ${cr}, #1`), true);
-        this.#emit(`b ${top}`, `${done}:`);
-        // Loop end: values from outside that the body reads stay live to here; so do the
-        // state, the counter, and the hoisted literals.
+        this.#use(countVal);
+        this.#use(cval);
+        const ci = this.#read(cval, 'w9');
+        const limit =
+          count.kind === 'lit' && count.value <= 4095
+            ? `#${count.value}`
+            : this.#read(countVal, 'w10');
+        this.#emit(`cmp ${ci}, ${limit}`, `b.lo ${top}`, `${done}:`);
+        // Loop end: values from outside that the body reads stay live to here; so do the state and counter.
         this.#pos += 1;
         this.#use(state);
         this.#use(cval);
@@ -1762,12 +2473,12 @@ class FunctionEmitter {
           busy.delete(r);
           holder.delete(r);
         }
-      const target = this.#coalesce.get(key);
-      const shared = target === undefined ? undefined : this.#regs.get(target);
-      if (shared !== undefined) {
+      // A coalesced loop result shares its state's register, which stays busy for the
+      // state's whole range (that range contains the result's).
+      const hinted = this.#coalesce.get(key);
+      const shared = hinted === undefined ? undefined : this.#regs.get(hinted);
+      if (shared !== undefined && (busy.get(shared) ?? -1) >= last) {
         this.#regs.set(key, shared);
-        busy.set(shared, Math.max(busy.get(shared) ?? 0, last));
-        holder.delete(shared);
         continue;
       }
       let reg: string | undefined;
@@ -1829,7 +2540,8 @@ class FunctionEmitter {
     this.#use(ret);
     this.#allocate();
     for (const [k, d] of this.#defs)
-      if (isPrimitive(d.type) && !this.#regs.has(k) && !this.#alias.has(k)) this.#alloc(k, 4);
+      if (isPrimitive(d.type) && !this.#regs.has(k) && !this.#alias.has(k) && !this.#consts.has(k))
+        this.#alloc(k, 4);
     if (this.#saved.length > 0) this.#alloc('save', 8 * this.#saved.length, 8);
     const sretSlot = !isPrimitive(fn.result) && !this.#leaf;
     if (sretSlot) this.#alloc('sret', 8, 8);
@@ -1841,10 +2553,13 @@ class FunctionEmitter {
     this.#labels = 0;
     this.#pos = 0;
     this.#loops = [];
-    this.#bounds.clear();
+    this.#ready.clear();
     const sym = `_a0_${fn.name}`;
     this.out.push(`\t.globl ${sym}`, '\t.p2align 2', `${sym}:`);
-    this.#emit('stp x29, x30, [sp, #-16]!', 'mov x29, sp');
+    // A leaf with a small frame needs no frame record: sp alone addresses its slots.
+    const record = !this.#leaf || frame > 4080;
+    const incomingBase = frame + (record ? 16 : 0);
+    if (record) this.#emit('stp x29, x30, [sp, #-16]!', 'mov x29, sp');
     if (frame > 4096) {
       // Probe one page at a time so the guard page is never skipped.
       const pages = Math.floor(frame / 4096);
@@ -1865,7 +2580,7 @@ class FunctionEmitter {
       if (place.reg !== undefined)
         this.#copy('sp', this.#slot(`p${i}`), `x${place.reg}`, 0, words(t));
       else {
-        this.#mem('ldr', 'x12', 'sp', frame + 16 + (place.stack as number));
+        this.#mem('ldr', 'x12', 'sp', incomingBase + (place.stack as number));
         this.#copy('sp', this.#slot(`p${i}`), 'x12', 0, words(t));
       }
     });
@@ -1885,7 +2600,7 @@ class FunctionEmitter {
     fn.params.forEach((t, i) => {
       const place = places[i] as ArgPlace;
       if (!isPrimitive(t) || place.stack === undefined) return;
-      const incoming = frame + 16 + place.stack;
+      const incoming = incomingBase + place.stack;
       this.#set(
         `p${i}`,
         (d) => {
@@ -1905,164 +2620,123 @@ class FunctionEmitter {
     }
     for (const [k, r] of this.#saved.entries())
       this.#mem('ldr', r, 'sp', this.#slot('save') + 8 * k);
-    this.#emit('mov sp, x29', 'ldp x29, x30, [sp], #16', 'ret');
-    return this.out.join('\n');
+    if (record) this.#emit('mov sp, x29', 'ldp x29, x30, [sp], #16');
+    else if (frame > 0) this.#emit(`add sp, sp, #${frame}`);
+    this.#emit('ret');
+    return pairMemory(dropRepeatedCompares(this.out)).join('\n');
   }
 }
 
-// ---------------------------------------------------------------------------
-// Fold fusion
-// ---------------------------------------------------------------------------
+/** Instructions that leave the flags alone; the first operand is the destination (none for stores). */
+const FLAG_PRESERVING = new Set([
+  'add',
+  'sub',
+  'and',
+  'orr',
+  'eor',
+  'mul',
+  'madd',
+  'msub',
+  'udiv',
+  'umull',
+  'csel',
+  'cset',
+  'csinv',
+  'movz',
+  'movk',
+  'mov',
+  'lsl',
+  'lsr',
+  'ror',
+  'neg',
+  'ldr',
+  'ldrb',
+  'ldp',
+  'str',
+  'strb',
+  'stp',
+]);
+
+/** Register number named by a w/x operand, or undefined for zr/sp/immediates. */
+const regNumber = (o: string): string | undefined => /^[wx](\d+)$/.exec(o)?.[1];
 
 /**
- * Fuse a producer fold into its consumer: when `A = fold f1 N z e...` builds an N-element
- * array whose element i depends only on i and `e` (f1 writes element i on every trip and
- * never reads its state), and A's only use is an extra argument of `fold f2 N init ... A
- * ...` whose body reads A only at the counter, the consumer's `get A i` becomes f1's
- * element expression and A is never stored. Exact under A0's value semantics: A is
- * immutable, unshared, and has no identity, so no other code can observe that it was not
- * materialized. The fused body is synthesized for this backend only (it is always inlined:
- * the top-level function is depth 0).
+ * Drop a `cmp` that repeats the previous flag-setting instruction when nothing in between
+ * wrote the flags, a compared register, or control flow (labels and branches end the run).
  */
-function fuseFolds(fn: TypedFunc): TypedFunc {
-  let cur = fn;
-  for (let round = 0; round < 8; round += 1) {
-    const next = fuseOnce(cur);
-    if (next === undefined) return cur;
-    cur = next;
+function dropRepeatedCompares(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  let live: { text: string; regs: Set<string> } | undefined;
+  for (const line of lines) {
+    const m = /^\t(\S+)\s*(.*)$/.exec(line);
+    if (m === null) {
+      live = undefined;
+      out.push(line);
+      continue;
+    }
+    const [, op, rest] = m as unknown as [string, string, string];
+    const operands = rest.split(',').map((o) => o.trim());
+    if (op === 'cmp') {
+      if (live?.text === rest) continue;
+      live = {
+        text: rest,
+        regs: new Set(operands.map(regNumber).filter((r): r is string => r !== undefined)),
+      };
+      out.push(line);
+      continue;
+    }
+    if (live !== undefined) {
+      if (!FLAG_PRESERVING.has(op) || /\]!|\], #/.test(rest)) live = undefined;
+      else {
+        const dests =
+          op === 'ldp' ? operands.slice(0, 2) : op.startsWith('st') ? [] : operands.slice(0, 1);
+        if (dests.some((d) => live?.regs.has(regNumber(d) ?? '') === true)) live = undefined;
+      }
+    }
+    out.push(line);
   }
-  return cur;
+  return out;
 }
 
-function fuseOnce(fn: TypedFunc): TypedFunc | undefined {
-  const uses = new Map<string, number>();
-  const count = (o: Operand): void => {
-    if (o.kind === 'node') uses.set(o.id, (uses.get(o.id) ?? 0) + 1);
-  };
-  for (const n of fn.nodes) n.args.forEach(count);
-  count(fn.ret);
-  const defs = new Map(fn.nodes.map((n) => [n.id, n]));
-  for (const consumer of fn.nodes) {
-    const trips = consumer.args[0];
-    const body2 = fn.calls.get(consumer.callee ?? '');
-    if (consumer.op !== 'fold' || trips?.kind !== 'u32' || body2 === undefined) continue;
-    for (let k = 2; k < consumer.args.length; k += 1) {
-      const a = consumer.args[k] as Operand;
-      if (a.kind !== 'node' || uses.get(a.id) !== 1) continue;
-      const producer = defs.get(a.id);
-      const body1 = fn.calls.get(producer?.callee ?? '');
+const SINGLE_MEM = /^\t(ldr|str) (w\d+|wzr), \[(sp|x\d+), #(\d+)\]$/;
+
+/**
+ * Pair adjacent word loads/stores to consecutive offsets from one base into ldp/stp (the
+ * signed 7-bit scaled offset reaches 252). A load pair needs two distinct destinations,
+ * neither of them the base.
+ */
+function pairMemory(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const x = SINGLE_MEM.exec(lines[i] as string);
+    const y = x === null ? null : SINGLE_MEM.exec(lines[i + 1] ?? '');
+    if (x !== null && y !== null) {
+      const [, op, r1, base, o1] = x as unknown as [string, string, string, string, string];
+      const [, op2, r2, base2, o2] = y as unknown as [string, string, string, string, string];
+      const off = Number(o1);
+      const baseNum = base.slice(1);
+      const loadOk = op === 'str' || (r1 !== r2 && r1.slice(1) !== baseNum && r1 !== 'wzr');
       if (
-        producer === undefined ||
-        body1 === undefined ||
-        producer.op !== 'fold' ||
-        producer.args[0]?.kind !== 'u32' ||
-        producer.args[0].value !== trips.value ||
-        !isU32Array(fn.types.get(producer.id), trips.value) ||
-        !writesEveryElement(body1)
-      )
+        op === op2 &&
+        base === base2 &&
+        Number(o2) === off + 4 &&
+        off % 4 === 0 &&
+        off <= 252 &&
+        loadOk
+      ) {
+        out.push(`\t${op === 'ldr' ? 'ldp' : 'stp'} ${r1}, ${r2}, [${base}, #${off}]`);
+        i += 1;
         continue;
-      // The consumer reads its parameter k only as `get pk p1`.
-      const onlyAtCounter = body2.nodes.every((n) =>
-        n.args.every(
-          (o, j) => !isParam(o, k) || (n.op === 'get' && j === 0 && isParam(n.args[1], 1)),
-        ),
-      );
-      if (!onlyAtCounter || isParam(body2.ret, k)) continue;
-      const fused = fuseBodies(fn, body2, k, body1);
-      if (fused === undefined) continue;
-      const init = producer.args[1] as Operand;
-      const dropInit =
-        init.kind === 'node' && uses.get(init.id) === 1 && defs.get(init.id)?.op === 'arr';
-      const extras2 = consumer.args.slice(2).filter((_, j) => j + 2 !== k);
-      const nodes = fn.nodes
-        .filter((n) => n !== producer && !(dropInit && init.kind === 'node' && n.id === init.id))
-        .map((n) =>
-          n === consumer
-            ? {
-                ...n,
-                callee: fused.name,
-                args: [trips, consumer.args[1] as Operand, ...extras2, ...producer.args.slice(2)],
-              }
-            : n,
-        );
-      const calls = new Map(fn.calls);
-      calls.set(fused.name, fused);
-      return validateFunction(
-        { name: fn.name, params: fn.params, result: fn.result, nodes, ret: fn.ret },
-        calls,
-      );
+      }
     }
+    out.push(lines[i] as string);
   }
-  return undefined;
-}
-
-/** The body of `fold f2` with its parameter k replaced by f1's element expression. */
-function fuseBodies(
-  fn: TypedFunc,
-  body2: TypedFunc,
-  k: number,
-  body1: TypedFunc,
-): TypedFunc | undefined {
-  const set = body1.nodes.find((n) => body1.ret.kind === 'node' && n.id === body1.ret.id);
-  if (set === undefined || body1.nodes.some((n) => n.args.some((o) => sameOp(o, body1.ret))))
-    return undefined;
-  const extras2 = body2.params.length - 3;
-  let fresh = 0;
-  const rename = new Map<string, string>();
-  const nextId = (prefix: string, id: string): string => {
-    const name = `v${fresh}`;
-    fresh += 1;
-    rename.set(`${prefix}${id}`, name);
-    return name;
-  };
-  const map1 = (o: Operand): Operand => {
-    if (o.kind === 'node') return { kind: 'node', id: rename.get(`a${o.id}`) as string };
-    if (o.kind === 'param' && o.index >= 2)
-      return { kind: 'param', index: 2 + extras2 + o.index - 2 };
-    return o;
-  };
-  const nodes: Node[] = [];
-  for (const n of body1.nodes) {
-    if (n === set) continue;
-    const args = n.args.map(map1);
-    nodes.push({ ...n, id: nextId('a', n.id), args });
-  }
-  const element = map1(set.args[2] as Operand);
-  const map2 = (o: Operand): Operand => {
-    if (o.kind === 'node') return { kind: 'node', id: rename.get(`b${o.id}`) as string };
-    if (o.kind === 'param' && o.index > k) return { kind: 'param', index: o.index - 1 };
-    return o;
-  };
-  for (const n of body2.nodes) {
-    const id = nextId('b', n.id);
-    if (n.op === 'get' && isParam(n.args[0], k)) nodes.push({ id, op: 'mov', args: [element] });
-    else {
-      const { callee, pred, text } = n;
-      nodes.push({
-        id,
-        op: n.op,
-        args: n.args.map(map2),
-        ...(callee === undefined ? {} : { callee }),
-        ...(pred === undefined ? {} : { pred }),
-        ...(text === undefined ? {} : { text }),
-      });
-    }
-  }
-  if (nodes.length > INLINE_MAX_NODES) return undefined;
-  const calls = new Map([...body2.calls, ...body1.calls]);
-  let name = 'fz';
-  for (let i = 0; calls.has(name) || fn.calls.has(name) || name === fn.name; i += 1)
-    name = `fz${i}`;
-  const params = [...body2.params.filter((_, j) => j !== k), ...body1.params.slice(2)];
-  return validateFunction(
-    { name, params, result: body2.result, nodes, ret: map2(body2.ret) },
-    calls,
-  );
+  return out;
 }
 
 /** Emit one function as Darwin AArch64 assembly (a `.globl _a0_<name>` block). */
 export function emitArm64Function(fn: TypedFunc): string {
-  return new FunctionEmitter(fuseFolds(fn)).emit();
+  return emitFused(fn, (f) => new FunctionEmitter(f).emit());
 }
 
 /** Assemble function blocks into one .s module for `clang -x assembler` / `as`. */

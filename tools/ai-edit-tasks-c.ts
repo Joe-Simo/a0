@@ -21,10 +21,10 @@
 
 import { formatFunction, parseAndValidate } from '../src/core.js';
 import {
+  FILLER_LANGS,
   fillerText,
   LANG_B,
   LANG_PROJECT_FILLER,
-  LANGS,
   type Lang,
   langFile,
   splitLang,
@@ -501,13 +501,13 @@ export function buildTasksC(
   }
   const build = (rep: Representation, src: string): string =>
     assemble(order, filler[rep], splitFunctions(rep, src));
-  // The five further languages: set-B originals, then the set-A originals and extras.
+  // The further languages: set-B originals, then the set-A originals and extras.
   const langFiller = new Map<Lang, Map<string, string>>();
-  for (const lang of LANGS) {
+  for (const lang of FILLER_LANGS) {
     const m = new Map<string, string>();
     const sources = [
       ...tasksB.map((t) => LANG_B[t.id]?.[lang].source ?? ''),
-      LANG_PROJECT_FILLER[lang],
+      LANG_PROJECT_FILLER[lang] ?? '',
     ];
     for (const src of sources)
       for (const [name, text] of splitLang(lang, src)) if (!m.has(name)) m.set(name, text);
@@ -520,7 +520,7 @@ export function buildTasksC(
     const perTask = LANG_B[task.id];
     if (perTask === undefined) return {};
     const files = Object.fromEntries(
-      LANGS.map((lang) => [
+      FILLER_LANGS.map((lang) => [
         lang,
         {
           source: buildLang(lang, perTask[lang].source),

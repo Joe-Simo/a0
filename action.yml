@@ -1,0 +1,52 @@
+name: a0 check
+description: Download the a0 release binary and check every .a0 file in the repository
+branding:
+  icon: check-circle
+  color: gray-dark
+inputs:
+  version:
+    description: Release tag to download (for example v0.1.30), or latest
+    default: latest
+  path:
+    description: Directory to search for .a0 files
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Download a0
+      shell: bash
+      env:
+        A0_VERSION: ${{ inputs.version }}
+        RUNNER_OS_NAME: ${{ runner.os }}
+        RUNNER_ARCH_NAME: ${{ runner.arch }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS_NAME" in
+          Linux) os=linux ext= ;;
+          macOS) os=darwin ext= ;;
+          Windows) os=windows ext=.exe ;;
+          *) echo "unsupported runner OS: $RUNNER_OS_NAME" >&2; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH_NAME" in
+          X64) arch=x64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "unsupported runner arch: $RUNNER_ARCH_NAME" >&2; exit 1 ;;
+        esac
+        if [ "$A0_VERSION" = latest ]; then
+          base=https://github.com/Joe-Simo/a0/releases/latest/download
+        else
+          base="https://github.com/Joe-Simo/a0/releases/download/$A0_VERSION"
+        fi
+        dir="$RUNNER_TEMP/a0-bin"
+        mkdir -p "$dir"
+        curl -fsSL --retry 3 "$base/a0-$os-$arch$ext" -o "$dir/a0$ext"
+        chmod +x "$dir/a0$ext"
+        echo "$dir" >> "$GITHUB_PATH"
+    - name: Check .a0 files
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        set -euo pipefail
+        mapfile -t files < <(git ls-files -co --exclude-standard -- '*.a0')
+        if [ "${#files[@]}" -eq 0 ]; then echo "no .a0 files"; exit 0; fi
+        a0 check "${files[@]}"

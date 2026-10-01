@@ -51,6 +51,8 @@ import { closure, closures, generateCases, generateCorpus } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
+export { closure, closures };
+
 /** The front end's source limit (compiler/lex.a0 `readsrc`). */
 export const FRONT_END_BYTES = 16384;
 /** Name of the header-prelude function of a chunk (must not name a program function). */

@@ -20,12 +20,14 @@ import {
   A0Error,
   assertVectorSized,
   bitWidth,
+  borrowLive,
   containsIo,
   formatType,
   isPrimitive,
   type Node,
   type Op,
   type Operand,
+  TRAP_FIX,
   type Type,
   type TypedFunc,
   type TypedProgram,
@@ -37,7 +39,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.32';
+export const COMPILER_VERSION = 'a0c-0.1.33';
 
 export type Target =
   | 'js'
@@ -213,9 +215,7 @@ function sameOp(x: Operand, y: Operand): boolean {
  * May the aggregate operand `o` be updated in place by the node at `index`?
  * Sound when the value is provably unshared: it is a fresh allocation (arr/rec/set/put result)
  * or a parameter the target owns privately (`ownedParam`: in JS only the p0 state of an
- * iteration body, in C every by-value parameter and the owned loop state), or a node the
- * target owns (`ownedNodes`: in C the field projections of the owned state, see
- * `stateProjections`); every other use of
+ * iteration body, in C every by-value parameter and the owned loop state); every other use of
  * it is a non-escaping element/field read (`get`/`at` as first operand) that happens before
  * `index`; and it is not returned. `get`/`at` results alias their container and are never mutated.
  */
@@ -224,13 +224,10 @@ function mutableHere(
   o: Operand,
   index: number,
   ownedParam: (paramIndex: number) => boolean,
-  ownedNodes?: ReadonlySet<string>,
-  reads: (n: Node, k: number) => boolean = firstOperandRead,
 ): boolean {
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
-    if (def === undefined || !(FRESH_OPS.has(def.op) || ownedNodes?.has(o.id) === true))
-      return false;
+    if (def === undefined || !FRESH_OPS.has(def.op)) return false;
   } else if (!(o.kind === 'param' && ownedParam(o.index))) {
     return false;
   }
@@ -240,45 +237,47 @@ function mutableHere(
     for (const [k, arg] of n.args.entries()) {
       if (!sameOp(arg, o)) continue;
       if (j > index) return false;
-      if (!reads(n, k)) return false;
+      if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
   }
   return true;
 }
 
-/** A use that only reads the value: the container of `get`/`at` (they copy what they read). */
-const firstOperandRead = (n: Node, k: number): boolean =>
-  (n.op === 'get' || n.op === 'at') && k === 0;
-
 /**
- * Uses that only read an aggregate in C, where no emitted value aliases its operands: the
- * container of `get`/`at`, a call argument (a copy, or a large value borrowed by a const
- * pointer the callee cannot write or return), the initial state or an extra of a fold or loop
- * (copied, borrowed, or owned only when `mutableHere` allows), an element or field value
- * stored into another aggregate, and the operands of `arr`/`rec`/`write`/`puts` (copies). A
- * `mov` or `select` of a large value is a pointer to it, so it is not a read.
+ * C only: `mutableHere` with two more facts of the C emitter. A `fold`/`loop`/`call` result is
+ * storage of this function (a fresh local, or the loop state aliasing an unshared initial value),
+ * so it is fresh like `arr`/`set`. And an earlier use that only reads the value is harmless: a
+ * callee or a loop body receives aggregates by const pointer and keeps nothing, so a `call`
+ * argument or a `fold`/`loop` extra before `index` does not share it. Uses that could mutate or
+ * alias it (a `set`/`put` target, a `fold`/`loop` initial state, a `select` operand) still do.
  */
-const cRead = (n: Node, k: number): boolean => {
-  switch (n.op) {
-    case 'get':
-    case 'at':
-      return k === 0;
-    case 'set':
-    case 'put':
-      return k === 2;
-    case 'call':
-    case 'arr':
-    case 'rec':
-    case 'write':
-    case 'puts':
-      return true;
-    case 'fold':
-    case 'loop':
-      return k >= 1;
-    default:
-      return false;
+function mutableHereC(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  ownedParam: (paramIndex: number) => boolean,
+): boolean {
+  if (o.kind === 'node') {
+    const def = fn.nodes.find((n) => n.id === o.id);
+    if (def === undefined || !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op))) return false;
+  } else if (!(o.kind === 'param' && ownedParam(o.index))) {
+    return false;
   }
-};
+  if (sameOp(fn.ret, o)) return false;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j === index) continue;
+    for (const [k, arg] of n.args.entries()) {
+      if (!sameOp(arg, o)) continue;
+      if (j > index) return false;
+      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
+      if (n.op === 'call') continue;
+      if ((n.op === 'fold' || n.op === 'loop') && k >= 2) continue;
+      return false;
+    }
+  }
+  return true;
+}
+const C_FRESH_OPS = new Set<Op>(['fold', 'loop', 'call']);
 
 /** JS ownership: only the p0 state of the owned iteration-body variant is private. */
 const jsOwned =
@@ -457,6 +456,27 @@ const C_PRELUDE = `/* Generated by A0 ${COMPILER_VERSION}. Exact u32/bool semant
 #include <stdbool.h>
 typedef struct a0_io a0_io;
 `;
+
+/** The trap runtime of `CompileOptions.cTrap`; `depth` bounds the call chain (no recursion). */
+const cTrapRuntime = (maxTrips: number, depth: number): string => {
+  if (!Number.isInteger(maxTrips) || maxTrips < 0 || maxTrips > 0xffff_ffff)
+    throw new A0Error('cTrap.maxTrips must be a u32', undefined, { code: 'cli' });
+  return `#include <stdio.h>
+#include <stdlib.h>
+/* Trap runtime: a fold/loop trip cap; the stop prints one code line and exits 3. */
+static const char *a0_chain[${depth}u];
+static uint32_t a0_depth;
+static uint32_t a0_budget = ${maxTrips}u;
+static inline void a0_enter(const char *fn) { if (a0_depth < ${depth}u) a0_chain[a0_depth] = fn; a0_depth++; }
+static inline void a0_leave(void) { a0_depth--; }
+static void a0_trap(const char *fn, const char *node, uint32_t trip) {
+  fprintf(stderr, "limit: trap iter fn=%s at=%s.%s trip=%u chain=", fn, fn, node, (unsigned)trip);
+  for (uint32_t i = 0; i < a0_depth && i < ${depth}u; i++) fprintf(stderr, "%s%s", i == 0 ? "" : ">", a0_chain[i]);
+  fprintf(stderr, " fix: ${TRAP_FIX.iter}\\n");
+  exit(3);
+}
+static inline void a0_trip(const char *fn, const char *node, uint32_t i) { if (a0_budget == 0u) a0_trap(fn, node, i); a0_budget--; }`;
+};
 
 /** Fixed-capacity io runtime for C targets (freestanding-safe: no allocation). */
 export const C_IO_INPUT_CAPACITY = 256;
@@ -674,92 +694,12 @@ interface CContext {
   readonly variant: CVariant;
   /** Nodes updated in place, mapped to the storage they alias (a value node or a parameter). */
   readonly aliases: Map<string, Operand>;
+  /** Aggregate `get`/`at` nodes held as `const T *` into their container (borrowed reads). */
+  readonly borrows: Set<string>;
   /** The large node built directly in the caller's `out` storage (the result's root). */
   readonly retOut?: string | undefined;
   /** Arena allocations emitted so far (the body then saves and restores the arena top). */
   arena: number;
-  /**
-   * Owned variant: aggregate field projections of the state (`x at p0 k`) that point at the
-   * field's own storage instead of copying it (`stateProjections`), node id to field.
-   */
-  readonly projections: ReadonlyMap<string, number>;
-  /** Field projections of large local records (`localProjections`): node id to (record, field). */
-  readonly locals: ReadonlyMap<string, readonly [string, number]>;
-}
-
-const LOCAL_STORAGE_OPS = new Set<Op>(['rec', 'put', 'call', 'fold', 'loop', 'at', 'get']);
-
-/**
- * Field projections of large local records that may alias the record's storage: a record node
- * R that has its own storage (built, copied or returned into it: not a `mov`/`select`
- * pointer), is not the result, and is used only by `at` nodes with a literal field. An
- * aggregate field read by exactly one such node (not the result either) is that node's storage (`&R.fk`, no copy) and
- * the node is owned: `mutableHere` decides whether a `set`/`put` on it writes in place. Nothing
- * else reads R's field afterwards, so value semantics hold.
- */
-function localProjections(fn: TypedFunc): Map<string, readonly [string, number]> {
-  const out = new Map<string, readonly [string, number]>();
-  for (const r of fn.nodes) {
-    const t = fn.types.get(r.id) ?? 'u32';
-    if (isPrimitive(t) || t.kind !== 'rec' || !isLargeC(t) || !LOCAL_STORAGE_OPS.has(r.op))
-      continue;
-    if (fn.ret.kind === 'node' && fn.ret.id === r.id) continue;
-    const byField = new Map<number, string[]>();
-    let only = true;
-    for (const n of fn.nodes)
-      for (const [k, o] of n.args.entries()) {
-        if (!(o.kind === 'node' && o.id === r.id)) continue;
-        const field = n.args[1];
-        if (n.op === 'at' && k === 0 && field?.kind === 'u32')
-          byField.set(field.value, [...(byField.get(field.value) ?? []), n.id]);
-        else only = false;
-      }
-    if (!only) continue;
-    for (const [field, ids] of byField) {
-      const id = ids[0] as string;
-      const ret = fn.ret.kind === 'node' && fn.ret.id === id;
-      if (ids.length === 1 && !ret && !isPrimitive(fn.types.get(id) ?? 'u32'))
-        out.set(id, [r.id, field]);
-    }
-  }
-  return out;
-}
-
-/**
- * Field projections of an owned iteration body's state that may alias the state's storage.
- * The shape is the one of a pass over big tables: the state is a record, read only through
- * `at p0 k` nodes, and the result is a `rec` of the new fields as the last node. Then each
- * aggregate field read by exactly one `at` node is that node's storage: the node points at
- * `(*p0).fk` instead of copying it, a `set`/`put` on it (or on its in-place successors)
- * updates the field in place when `mutableHere` allows (every other use of the old value is an
- * earlier read), and the final `rec` stores only the fields whose new value is not already the
- * field itself. Nothing else writes the state before that final store, so a read of a
- * projection always sees the field's old value, as value semantics require.
- */
-function stateProjections(fn: TypedFunc): Map<string, number> {
-  const out = new Map<string, number>();
-  const last = fn.nodes[fn.nodes.length - 1];
-  if (
-    last === undefined ||
-    last.op !== 'rec' ||
-    fn.ret.kind !== 'node' ||
-    fn.ret.id !== last.id ||
-    isPrimitive(fn.params[0] as Type)
-  )
-    return out;
-  const byField = new Map<number, string[]>();
-  for (const n of fn.nodes)
-    for (const [k, o] of n.args.entries()) {
-      if (!(o.kind === 'param' && o.index === 0)) continue;
-      const field = n.args[1];
-      if (!(n.op === 'at' && k === 0 && field?.kind === 'u32')) return new Map();
-      byField.set(field.value, [...(byField.get(field.value) ?? []), n.id]);
-    }
-  for (const [field, ids] of byField) {
-    const id = ids[0] as string;
-    if (ids.length === 1 && !isPrimitive(fn.types.get(id) ?? 'u32')) out.set(id, field);
-  }
-  return out;
 }
 
 function cOperand(o: Operand): string {
@@ -783,8 +723,6 @@ function cRoot(ctx: CContext, o: Operand): Operand {
 /** Value (lvalue) expression of an operand; p0 is a pointer outside the value variant. */
 function cVal(ctx: CContext, o: Operand): string {
   const root = cRoot(ctx, o);
-  if (root.kind === 'node' && (ctx.projections.has(root.id) || ctx.locals.has(root.id)))
-    return `(*${cOperand(root)})`;
   if (
     root.kind === 'param' &&
     root.index === 0 &&
@@ -794,7 +732,9 @@ function cVal(ctx: CContext, o: Operand): string {
     return '(*p0)';
   if (root.kind === 'param' && isViewParam(ctx.fn, ctx.variant, root.index))
     return `(*p${root.index})`;
-  // Large values are pointers: to a borrowed parameter, arena storage, or `out`.
+  // Large values and borrowed reads are pointers: to a borrowed parameter, arena storage,
+  // `out`, or a part of another value.
+  if (root.kind === 'node' && ctx.borrows.has(root.id)) return `(*${cOperand(root)})`;
   if ((root.kind === 'param' || root.kind === 'node') && isLargeC(operandTypeOf(ctx.fn, root)))
     return `(*${cOperand(root)})`;
   return cOperand(root);
@@ -819,12 +759,24 @@ const cOwned =
     !(fn !== undefined && isViewParam(fn, variant, i)) &&
     !(fn !== undefined && isLargeC(fn.params[i] as Type) && !(variant === 'owned' && i === 0));
 
+/**
+ * The C in-place rule: `mutableHereC`, and no borrowed read of the target (an aggregate
+ * `get`/`at`, which C holds as a pointer into the target) is read after this update.
+ */
+function cMutableHere(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  owned: (i: number) => boolean,
+  selfRead: boolean,
+): boolean {
+  return mutableHereC(fn, o, index, owned) && !borrowLive(fn, o, index, selfRead);
+}
+
 /** Does the node at `index` update its first operand in place? Records the alias. */
 function cInPlace(ctx: CContext, node: Node, index: number): boolean {
   const target = node.args[0] as Operand;
-  // A node already updated in place (an alias) is storage this body owns, as is a projection.
-  const owned = new Set([...ctx.projections.keys(), ...ctx.locals.keys(), ...ctx.aliases.keys()]);
-  if (!mutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn), owned, cRead)) return false;
+  if (!cMutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn), true)) return false;
   ctx.aliases.set(node.id, cRoot(ctx, target));
   return true;
 }
@@ -837,14 +789,7 @@ export function ownedUpdateInPlace(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index];
   return (
     node !== undefined &&
-    mutableHere(
-      fn,
-      node.args[0] as Operand,
-      index,
-      cOwned('owned', fn),
-      new Set(stateProjections(fn).keys()),
-      cRead,
-    )
+    cMutableHere(fn, node.args[0] as Operand, index, cOwned('owned', fn), true)
   );
 }
 
@@ -1030,6 +975,7 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
     }
     case 'rec':
       return `  ${cLargeStorage(ctx, n)} ${n.args.map((o, k) => `${name}->f${k} = ${cVal(ctx, o)};`).join(' ')}`;
+    // Only the result's root in `out` is a copy; any other read borrows (see cBorrow).
     case 'get':
       return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.e[${b} % ${arrayLength(fn, oa)}u];`;
     case 'at':
@@ -1042,36 +988,23 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
 }
 
 /**
- * The final `rec` of an owned body with state projections, written into the state itself: a
- * field whose new value is its projection (updated in place or unchanged) is not stored. The
- * stores run in field order and read no other field's storage (a value that is, or may point at,
- * another field's projection keeps the copying form: undefined).
+ * A read of an aggregate element or field borrows it: `const T *const n = &c.f;` instead of a
+ * copy of the element (a large one would take arena storage and a memcpy on every call). The
+ * container is never updated in place while a borrow is read (`cMutableHere`), and nothing
+ * writes through a borrow (only fresh values and owned parameters are updated in place), so
+ * the value read is the value a copy would hold. The result's root built in `out` stays a copy.
  */
-function cStateStores(ctx: CContext, rec: Node): string | undefined {
-  const stores: string[] = [];
-  for (const [m, o] of rec.args.entries()) {
-    // A large mov/select is a pointer to one of its operands: every storage it may point at.
-    const roots: Operand[] = [];
-    const reach = (x: Operand): void => {
-      const def = x.kind === 'node' ? ctx.fn.nodes.find((n) => n.id === x.id) : undefined;
-      if (
-        def !== undefined &&
-        (def.op === 'mov' || def.op === 'select') &&
-        isLargeC(operandTypeOf(ctx.fn, x))
-      )
-        for (const a of def.op === 'mov' ? def.args : def.args.slice(1)) reach(a);
-      else roots.push(cRoot(ctx, x));
-    };
-    reach(o);
-    const fields = roots.map((r) => (r.kind === 'node' ? ctx.projections.get(r.id) : undefined));
-    if (fields.every((f) => f === m)) continue;
-    if (fields.some((f) => f !== undefined && f !== m)) return undefined;
-    // A pointer that may be the field itself is stored only when it is not.
-    const self = fields.includes(m) ? `if (${cArg(ctx, o)} != &(*p0).f${m}) ` : '';
-    stores.push(`${self}(*p0).f${m} = ${cVal(ctx, o)};`);
-  }
-  ctx.aliases.set(rec.id, { kind: 'param', index: 0 });
-  return stores.length === 0 ? '' : `  ${stores.join(' ')}`;
+function cBorrow(ctx: CContext, n: Node): string | undefined {
+  const t = ctx.fn.types.get(n.id) ?? 'u32';
+  if ((n.op !== 'get' && n.op !== 'at') || isPrimitive(t) || ctx.retOut === n.id) return undefined;
+  const [oa, ob] = n.args as [Operand, Operand];
+  const a = cVal(ctx, oa);
+  const part =
+    n.op === 'get'
+      ? `.e[${cVal(ctx, ob)} % ${arrayLength(ctx.fn, oa)}u]`
+      : `.f${ob.kind === 'u32' ? ob.value : 0}`;
+  ctx.borrows.add(n.id);
+  return `  const ${cType(t)} *const n_${n.id} = &${a}${part};`;
 }
 
 function cBody(
@@ -1079,14 +1012,15 @@ function cBody(
   variant: CVariant,
   parallel?: CParallel,
   helpers?: Map<string, string>,
+  trap = false,
 ): string {
-  const first = cBodyWith(fn, variant, undefined, parallel, helpers);
+  const first = cBodyWith(fn, variant, undefined, parallel, helpers, trap);
   if (variant !== 'value' || !isLargeC(fn.result)) return first.text;
   // A large result: build its root node in `out` (no final copy) unless the root only aliases.
   const root = cRoot(first.ctx, fn.ret);
   const def = root.kind === 'node' ? fn.nodes.find((n) => n.id === root.id) : undefined;
   if (def === undefined || def.op === 'mov' || def.op === 'select') return first.text;
-  return cBodyWith(fn, variant, def.id, parallel, helpers).text;
+  return cBodyWith(fn, variant, def.id, parallel, helpers, trap).text;
 }
 
 function cBodyWith(
@@ -1095,16 +1029,9 @@ function cBodyWith(
   retOut: string | undefined,
   parallel?: CParallel,
   helpers?: Map<string, string>,
+  trap = false,
 ): { readonly text: string; readonly ctx: CContext } {
-  const ctx: CContext = {
-    fn,
-    variant,
-    aliases: new Map(),
-    retOut,
-    arena: 0,
-    projections: variant === 'owned' ? stateProjections(fn) : new Map(),
-    locals: localProjections(fn),
-  };
+  const ctx: CContext = { fn, variant, aliases: new Map(), borrows: new Set(), retOut, arena: 0 };
   const hooked = (site: CFoldSite): string => {
     // The arena is single-threaded: a fold touching large values keeps its sequential loop.
     const callees = [site.node.callee, site.node.pred].map((c) => fn.calls.get(c ?? ''));
@@ -1132,7 +1059,7 @@ function cBodyWith(
         const step = view
           ? `a0v_${n.callee ?? ''}(${[`n_${n.id}`, 'i', ...extra.map((e, k) => (isPrimitive(body.params[k + 2] as Type) ? e : `&${e}`))].join(', ')})`
           : `a0_${n.callee ?? ''}(${call})`;
-        const loop = `for (uint32_t i = 0; i < ${count}; i++) {${guard} n_${n.id} = ${step}; }`;
+        const loop = `for (uint32_t i = 0; i < ${count}; i++) {${tripCall(trap, fn, n)}${guard} n_${n.id} = ${step}; }`;
         return hooked({ fn, node: n, count: `${count}`, extra, state: `n_${n.id}`, decl, loop });
       }
       // Aggregate state: the body updates it through a pointer and the predicate reads it
@@ -1141,20 +1068,14 @@ function cBodyWith(
       // initial value passed again as an extra is read by every trip, so it is not unshared.
       const initOperand = n.args[1] as Operand;
       const owned =
-        mutableHere(
-          fn,
-          initOperand,
-          index,
-          cOwned(variant, fn),
-          new Set([...ctx.projections.keys(), ...ctx.locals.keys(), ...ctx.aliases.keys()]),
-          cRead,
-        ) && !n.args.slice(2).some((o) => sameOp(o, initOperand));
+        cMutableHere(fn, initOperand, index, cOwned(variant, fn), false) &&
+        !n.args.slice(2).some((o) => sameOp(o, initOperand));
       if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
       const large = isLargeC(fn.types.get(n.id) ?? 'u32');
       const state = owned ? `${init}` : large ? `(*n_${n.id})` : `n_${n.id}`;
       const call = [`&${state}`, 'i', ...passed].join(', ');
       const guard = n.op === 'loop' ? ` if (!a0r_${n.pred ?? ''}(${call})) break;` : '';
-      const loop = `for (uint32_t i = 0; i < ${count}; i++) {${guard} a0o_${n.callee ?? ''}(${call}); }`;
+      const loop = `for (uint32_t i = 0; i < ${count}; i++) {${tripCall(trap, fn, n)}${guard} a0o_${n.callee ?? ''}(${call}); }`;
       const decl = owned
         ? ''
         : large
@@ -1162,15 +1083,8 @@ function cBodyWith(
           : `${t} n_${n.id} = ${init};`;
       return hooked({ fn, node: n, count: `${count}`, extra, state, decl, loop });
     }
-    const field = ctx.projections.get(n.id);
-    if (field !== undefined) return `  ${t} *const n_${n.id} = &(*p0).f${field};`;
-    const local = ctx.locals.get(n.id);
-    if (local !== undefined)
-      return `  ${t} *const n_${n.id} = &${cVal(ctx, { kind: 'node', id: local[0] })}.f${local[1]};`;
-    if (ctx.projections.size > 0 && index === fn.nodes.length - 1) {
-      const stores = cStateStores(ctx, n);
-      if (stores !== undefined) return stores;
-    }
+    const borrow = cBorrow(ctx, n);
+    if (borrow !== undefined) return borrow;
     if (isLargeC(fn.types.get(n.id) ?? 'u32')) return cLargeNode(ctx, n, index);
     const expr = cExpr(ctx, n, index);
     if (ctx.aliases.has(n.id)) return `  ${expr}`;
@@ -1189,7 +1103,7 @@ function cBodyWith(
     return m !== null && roots.has(m[1] as string) ? line.replace('  const ', '  ') : line;
   });
   const root = cRoot(ctx, fn.ret);
-  const tail: string[] = [];
+  const tail: string[] = trap ? ['  a0_leave();'] : [];
   if (variant === 'owned') {
     // The state is already updated in place when the result aliases p0; otherwise store it.
     if (!(root.kind === 'param' && root.index === 0)) tail.push(`  *p0 = ${cVal(ctx, fn.ret)};`);
@@ -1202,17 +1116,29 @@ function cBodyWith(
   if (variant !== 'owned' && !(variant === 'value' && isLargeC(fn.result)))
     tail.push(`  return ${cVal(ctx, fn.ret)};`);
   const mark = ctx.arena > 0 ? ['  const uint32_t a0arena_mark = a0arena_top;'] : [];
-  const text = [`${cVariantSignature(fn, variant)} {`, ...mark, ...body, ...tail, '}'].join('\n');
+  const enter = trap ? [`  a0_enter("${fn.name}");`] : [];
+  const text = [
+    `${cVariantSignature(fn, variant)} {`,
+    ...enter,
+    ...mark,
+    ...body,
+    ...tail,
+    '}',
+  ].join('\n');
   return { text, ctx };
 }
 
-const emitCFunction = (fn: TypedFunc, parallel?: CParallel): string => {
+/** One trip of a fold/loop under the trap runtime: counted against the cap before it runs. */
+const tripCall = (trap: boolean, fn: TypedFunc, n: Node): string =>
+  trap ? ` a0_trip("${fn.name}", "${n.id}", i);` : '';
+
+const emitCFunction = (fn: TypedFunc, parallel?: CParallel, trap = false): string => {
   const variants: CVariant[] = ['value'];
   if (hasOwnedVariant(fn)) variants.push('owned');
   if (hasRefVariant(fn)) variants.push('ref');
   if (hasViewVariant(fn)) variants.push('view');
   const helpers = new Map<string, string>();
-  const bodies = variants.map((v) => cBody(fn, v, parallel, helpers));
+  const bodies = variants.map((v) => cBody(fn, v, parallel, helpers, trap));
   return [...helpers.values(), ...bodies].join('\n\n');
 };
 
@@ -1634,6 +1560,7 @@ export function assemble(
           {
             ioInputCapacity: options.ioInputCapacity ?? C_IO_INPUT_CAPACITY,
             ioOutputCapacity: options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
+            ...(options.wasmExports === undefined ? {} : { exports: options.wasmExports }),
           },
           COMPILER_VERSION,
         ),
@@ -1654,6 +1581,14 @@ export function assemble(
       const arena = cArenaRuntime(program);
       if (arena !== undefined) decls.push(arena);
       if (options.cParallel !== undefined) decls.push(options.cParallel.runtime);
+      if (options.cTrap !== undefined) {
+        if (options.cParallel !== undefined)
+          throw new A0Error('cTrap and cParallel cannot be combined', undefined, {
+            code: 'cli',
+            fix: 'drop the parallel option: the trap runtime is single-threaded',
+          });
+        decls.push(cTrapRuntime(options.cTrap.maxTrips, program.functions.length + 1));
+      }
       return `${C_PRELUDE}\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n`;
     }
     case 'java': {
@@ -1679,6 +1614,32 @@ export interface CompileOptions {
   readonly ioOutputCapacity?: number;
   /** C target only: automatic parallel folds (src/parallel.ts `parallelC`); absent = sequential. */
   readonly cParallel?: CParallel;
+  /**
+   * C target only: the trap runtime. The module counts every fold/loop trip against `maxTrips`
+   * (the interpreter's `RunOptions.maxTrips`) and tracks the call chain; the trip past the cap
+   * prints one line (`limit: trap iter fn=.. at=fn.node trip=.. chain=a>b fix: ..`, the
+   * interpreter's `formatTrap` text) to stderr and exits with status 3. Single-threaded, never
+   * combined with `cParallel`, and emitted unoptimized so the trips are the interpreter's.
+   */
+  readonly cTrap?: { readonly maxTrips: number };
+  /**
+   * wasm target only: the functions to export. Absent, every function is exported as
+   * `a0_<name>`; given, only these are, and functions none of them reaches (for example
+   * callees every call site inlined) are left out of the module.
+   */
+  readonly wasmExports?: readonly string[];
+  /**
+   * wasm target only: simd128 for fill runs (default true; fixed-width SIMD is in every
+   * current engine: Chrome/Edge 91+, Firefox 89+, Safari 16.4+, Node 16.4+). false emits
+   * scalar code only, for older engines.
+   */
+  readonly wasmSimd?: boolean;
+  /**
+   * wasm target only: copies of a small inlined fold body per loop back edge (default 1). V8
+   * unrolls such loops itself, so 2 or 4 measured no faster there (STATUS, a0c-0.1.26) and
+   * only grows the module; engines without their own unrolling may gain.
+   */
+  readonly wasmUnroll?: 1 | 2 | 4;
 }
 
 export interface CompileResult {
@@ -1732,7 +1693,9 @@ export class FunctionCache {
 }
 
 export function emitFunction(target: Target, fn: TypedFunc, options: CompileOptions = {}): string {
-  const source = options.optimize === false ? fn : optimizeFunction(fn).fn;
+  // The trap runtime counts the trips the reference interpreter takes, so it keeps every iteration.
+  const source =
+    options.optimize === false || options.cTrap !== undefined ? fn : optimizeFunction(fn).fn;
   // Hardware form is decided on the source function so callers and testbenches agree even
   // when optimization removes every iteration or effect.
   if (target === 'sv' && needsSequential(fn)) {
@@ -1741,6 +1704,12 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
   }
   if (target === 'c' && options.cParallel !== undefined)
     return emitCFunction(source, options.cParallel);
+  if (target === 'c' && options.cTrap !== undefined) return emitCFunction(source, undefined, true);
+  if (target === 'wasm')
+    return emitWasmFunction(source, {
+      simd: options.wasmSimd !== false,
+      unroll: options.wasmUnroll ?? 1,
+    });
   return EMITTERS[target](source);
 }
 
@@ -1759,7 +1728,13 @@ export function compile(
       target,
       optimized,
       fn,
-      target === 'c' && options.cParallel !== undefined ? `|${options.cParallel.key}` : '',
+      target === 'c' && options.cParallel !== undefined
+        ? `|${options.cParallel.key}`
+        : target === 'c' && options.cTrap !== undefined
+          ? '|trap'
+          : target === 'wasm'
+            ? `${options.wasmSimd === false ? '|nosimd' : ''}${options.wasmUnroll === undefined || options.wasmUnroll === 1 ? '' : `|unroll${options.wasmUnroll}`}`
+            : '',
     );
     const hit = cache.get(key);
     if (hit !== undefined) {

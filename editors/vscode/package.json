@@ -1,0 +1,89 @@
+{
+  "name": "a0",
+  "displayName": "A0",
+  "description": "A0 language support: syntax highlighting and the a0 language server",
+  "version": "0.1.0",
+  "publisher": "a0lang",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Joe-Simo/a0.git"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "languages": [
+      {
+        "id": "a0",
+        "aliases": [
+          "A0",
+          "a0"
+        ],
+        "extensions": [
+          ".a0"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "a0",
+        "scopeName": "source.a0",
+        "path": "./syntaxes/a0.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "A0",
+      "properties": {
+        "a0.server.path": {
+          "type": "string",
+          "default": "a0",
+          "scope": "machine-overridable",
+          "description": "Path to the a0 executable; the extension runs `<path> lsp` over stdio."
+        },
+        "a0.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the a0 language server."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "a0.restartServer",
+        "title": "A0: Restart Language Server"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --minify --outfile=dist/extension.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "vscode:prepublish": "bun run typecheck && bun run build",
+    "package": "vsce package --no-dependencies --out a0-0.1.0.vsix"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/vscode": "~1.100.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.2"
+  },
+  "trustedDependencies": [
+    "esbuild"
+  ]
+}

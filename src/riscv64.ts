@@ -119,6 +119,7 @@ function findRotates(fn: TypedFunc): { rot: Map<string, Rotate>; skip: Set<strin
 
 import {
   A0Error,
+  borrowLive,
   containsIo,
   isPrimitive,
   type Node,
@@ -257,7 +258,9 @@ function mutableHere(
       if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
   }
-  return true;
+  // A borrowed read (`at`, or `get` at a literal index) names part of `o`'s storage.
+  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
+  return !borrowLive(fn, o, index, writes);
 }
 
 /** Where each parameter travels: an argument register index, or a byte offset in the stack area. */
@@ -334,6 +337,8 @@ class FunctionEmitter {
   readonly #bits = new Set<string>();
   /** Compares fused into their select: key -> the compare op and its operands. */
   readonly #fusedCmp = new Map<string, { op: string; x: Val; y: Val }>();
+  /** Byte offset of an alias within the storage it names (a borrowed field or element). */
+  readonly #aliasOff = new Map<string, number>();
   readonly #regs = new Map<string, string>();
   readonly #slots = new Map<string, number>();
   #slotBytes = 0;
@@ -372,6 +377,14 @@ class FunctionEmitter {
     return k;
   }
 
+  /** Byte offset of `key` within its canonical slot (0 unless it is a borrowed part). */
+  #offset(key: string): number {
+    let off = 0;
+    for (let k = key, a = this.#alias.get(k); a !== undefined; k = a, a = this.#alias.get(k))
+      off += this.#aliasOff.get(k) ?? 0;
+    return off;
+  }
+
   /** Byte offset from sp of a key's slot (aliases resolved). */
   #slot(key: string): number {
     const off = this.#slots.get(this.#canon(key));
@@ -379,7 +392,7 @@ class FunctionEmitter {
       if (this.#dry) return 0;
       throw new A0Error(`riscv64: no slot for ${key}`);
     }
-    return this.#outgoing + off;
+    return this.#outgoing + off + this.#offset(key);
   }
 
   #def(key: string, type: Type): void {
@@ -388,9 +401,10 @@ class FunctionEmitter {
     if (!isPrimitive(type)) this.#alloc(key, 4 * words(type), words(type) > 1 ? 8 : 4);
   }
 
-  #defAlias(key: string, target: string, type: Type): void {
+  #defAlias(key: string, target: string, type: Type, offset = 0): void {
     if (!this.#dry) return;
     this.#defs.set(key, { pos: this.#pos, type });
+    this.#aliasOff.set(key, offset + this.#offset(target));
     this.#alias.set(key, this.#canon(target));
   }
 
@@ -970,8 +984,8 @@ class FunctionEmitter {
           const off = base + (b.value % at.length) * ew * 4;
           if (isPrimitive(t)) scalar((d) => this.#mem('lw', d, 'sp', off), true);
           else {
-            this.#def(key, t);
-            this.#copy('sp', this.#slot(key), 'sp', off, ew);
+            // A borrowed read of a literal element: named in place, not copied.
+            this.#defAlias(key, src.key, t, (b.value % at.length) * ew * 4);
           }
           return;
         }
@@ -1009,14 +1023,14 @@ class FunctionEmitter {
         const rt = src.type;
         if (isPrimitive(rt) || rt.kind !== 'rec' || b?.kind !== 'lit')
           refuse(`${n.op} needs a record and a literal field`);
-        const field = rt.fields[b.value] ?? refuse('field out of range');
+        if (rt.fields[b.value] === undefined) refuse('field out of range');
         const off = 4 * rt.fields.slice(0, b.value).reduce((s, f) => s + words(f), 0);
         if (n.op === 'at') {
           const from = this.#slot(src.key) + off;
           if (isPrimitive(t)) scalar((d) => this.#mem('lw', d, 'sp', from), true);
           else {
-            this.#def(key, t);
-            this.#copy('sp', this.#slot(key), 'sp', from, words(field));
+            // A borrowed read: the field is named in place, not copied.
+            this.#defAlias(key, src.key, t, off);
           }
           return;
         }

@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { pathToFileURL } from 'node:url';
 import type { TypedProgram, Value } from '../src/core.js';
 import { CS_CLASS, emitCSharp } from '../src/dotnet.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
@@ -18,7 +19,7 @@ import {
   hasIoParam,
   isDriverCallable,
 } from './corpus.js';
-import { ioCaps } from './verify.js';
+import { ioCaps, type TargetReport } from './verify.js';
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
 
@@ -81,85 +82,112 @@ function expectedLine(c: Case): string {
     : [fmt(c.expected), ...c.expectedOutput.map(String)].join(' ');
 }
 
+/** What `checkDotnet` reports: the shared target report plus the SDK version. */
+export type DotnetReport = TargetReport;
+
+/** The program emitted as C#, built Release with the .NET SDK, and every case executed. */
+export async function checkDotnet(
+  program: TypedProgram,
+  cases: readonly Case[],
+): Promise<DotnetReport> {
+  const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
+  const dotnet = findDotnet();
+  if (dotnet === undefined)
+    return {
+      status: 'blocked',
+      cases: 0,
+      detail: 'dotnet SDK not found (set A0_DOTNET or install to ~/.dotnet)',
+    };
+  const start = performance.now();
+  let report: DotnetReport = { status: 'failed', cases: 0, detail: 'not run' };
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, `${CS_CLASS}.cs`), emitCSharp(program, ioCaps(cases)), 'utf8');
+    await writeFile(join(dir, 'Driver.cs'), driver(program), 'utf8');
+    await writeFile(
+      join(dir, 'a0.csproj'),
+      `<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <Nullable>enable</Nullable>\n    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n    <ImplicitUsings>disable</ImplicitUsings>\n  </PropertyGroup>\n</Project>\n`,
+      'utf8',
+    );
+    const env = {
+      ...process.env,
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+      DOTNET_NOLOGO: '1',
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
+    };
+    const build = runTool(dotnet, ['build', '-c', 'Release', '-o', join(dir, 'out'), '--nologo'], {
+      cwd: dir,
+      env,
+      timeoutMs: 600_000,
+    });
+    const version = runTool(dotnet, ['--version'], { env, timeoutMs: 30_000 }).stdout.trim();
+    if (!build.ok) {
+      report = {
+        status: 'failed',
+        cases: 0,
+        detail: `dotnet build failed: ${(build.stdout + build.stderr).slice(-3000)}`,
+        tool: version,
+      };
+      return;
+    }
+    const input = `${cases
+      .map((c) => {
+        const tokens = [String(index.get(c.functionName)), ...c.args.map(fmt)];
+        if (c.input !== undefined) tokens.push(String(c.input.length), ...c.input.map(String));
+        return tokens.join(' ');
+      })
+      .join('\n')}\n`;
+    // Run through the SDK host so a user-local runtime (~/.dotnet) is found without DOTNET_ROOT.
+    const exec = runTool(dotnet, [join(dir, 'out', 'a0.dll')], {
+      cwd: dir,
+      env,
+      input,
+      timeoutMs: 600_000,
+    });
+    if (!exec.ok) {
+      report = {
+        status: 'failed',
+        cases: 0,
+        detail: `execution failed: ${exec.stderr.slice(0, 2000)}`,
+        tool: version,
+      };
+      return;
+    }
+    const actual = exec.stdout.trim().split('\n');
+    const failures: string[] = [];
+    cases.forEach((c, i) => {
+      if (actual[i]?.trim() !== expectedLine(c)) {
+        failures.push(
+          `${c.functionName}(${c.args.map(fmt).join(',')}) expected ${expectedLine(c)} got ${actual[i] ?? '<missing>'}`,
+        );
+      }
+    });
+    report = {
+      status: failures.length === 0 ? 'passed' : 'failed',
+      cases: cases.length,
+      detail: `C# built with .NET SDK ${version} (Release, warnings as errors) and executed; ${cases.length} cases incl. io streams.`,
+      tool: version,
+      elapsedMs: performance.now() - start,
+      failures: failures.slice(0, 20),
+    };
+  });
+  return report;
+}
+
 async function main(): Promise<void> {
   const program = generateCorpus();
   const cases = generateCases(program);
-  const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
-  const dotnet = findDotnet();
+  const r = await checkDotnet(program, cases);
   const report: Record<string, unknown> = {
     generatedAt: new Date().toISOString(),
     functions: program.functions.length,
     inputCases: cases.length,
     scope:
       'Corpus emitted as C# (uint semantics), built Release with the .NET SDK, executed through a stdin driver, compared with the BigInt oracle.',
+    status: r.status,
+    ...(r.status === 'blocked' ? {} : { failures: r.failures ?? [], tool: r.tool }),
+    detail: r.detail,
+    ...(r.elapsedMs === undefined ? {} : { elapsedMs: r.elapsedMs }),
   };
-  if (dotnet === undefined) {
-    report.status = 'blocked';
-    report.detail = 'dotnet SDK not found (set A0_DOTNET or install to ~/.dotnet)';
-  } else {
-    const start = performance.now();
-    await withTempDir(async (dir) => {
-      await writeFile(join(dir, `${CS_CLASS}.cs`), emitCSharp(program, ioCaps(cases)), 'utf8');
-      await writeFile(join(dir, 'Driver.cs'), driver(program), 'utf8');
-      await writeFile(
-        join(dir, 'a0.csproj'),
-        `<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <Nullable>enable</Nullable>\n    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n    <ImplicitUsings>disable</ImplicitUsings>\n  </PropertyGroup>\n</Project>\n`,
-        'utf8',
-      );
-      const env = {
-        ...process.env,
-        DOTNET_CLI_TELEMETRY_OPTOUT: '1',
-        DOTNET_NOLOGO: '1',
-        DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
-      };
-      const build = runTool(
-        dotnet,
-        ['build', '-c', 'Release', '-o', join(dir, 'out'), '--nologo'],
-        { cwd: dir, env, timeoutMs: 600_000 },
-      );
-      const version = runTool(dotnet, ['--version'], { env, timeoutMs: 30_000 }).stdout.trim();
-      if (!build.ok) {
-        report.status = 'failed';
-        report.detail = `dotnet build failed: ${(build.stdout + build.stderr).slice(-3000)}`;
-        report.tool = version;
-        return;
-      }
-      const input = `${cases
-        .map((c) => {
-          const tokens = [String(index.get(c.functionName)), ...c.args.map(fmt)];
-          if (c.input !== undefined) tokens.push(String(c.input.length), ...c.input.map(String));
-          return tokens.join(' ');
-        })
-        .join('\n')}\n`;
-      // Run through the SDK host so a user-local runtime (~/.dotnet) is found without DOTNET_ROOT.
-      const exec = runTool(dotnet, [join(dir, 'out', 'a0.dll')], {
-        cwd: dir,
-        env,
-        input,
-        timeoutMs: 600_000,
-      });
-      if (!exec.ok) {
-        report.status = 'failed';
-        report.detail = `execution failed: ${exec.stderr.slice(0, 2000)}`;
-        report.tool = version;
-        return;
-      }
-      const actual = exec.stdout.trim().split('\n');
-      const failures: string[] = [];
-      cases.forEach((c, i) => {
-        if (actual[i]?.trim() !== expectedLine(c)) {
-          failures.push(
-            `${c.functionName}(${c.args.map(fmt).join(',')}) expected ${expectedLine(c)} got ${actual[i] ?? '<missing>'}`,
-          );
-        }
-      });
-      report.status = failures.length === 0 ? 'passed' : 'failed';
-      report.failures = failures.slice(0, 20);
-      report.tool = version;
-      report.detail = `C# built with .NET SDK ${version} (Release, warnings as errors) and executed; ${cases.length} cases incl. io streams.`;
-      report.elapsedMs = performance.now() - start;
-    });
-  }
   await mkdir('results', { recursive: true });
   await writeFile(join('results', 'dotnet.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   process.stdout.write(
@@ -168,7 +196,10 @@ async function main(): Promise<void> {
   process.exit(report.status === 'passed' ? 0 : 1);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly)
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });

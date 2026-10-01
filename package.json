@@ -8,8 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "lint": "biome check .",
+    "build": "tsc -p tsconfig.json --incremental --tsBuildInfoFile dist/.tsbuildinfo",
+    "lint": "biome check . && bun tools/dev/claim-check.ts --since=origin/main && bun tools/loss-ledger.ts",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun run build && node --test dist/test/*.test.js",
@@ -20,34 +20,54 @@
     "equiv": "bun run build && node dist/tools/equiv-verify.js",
     "experiment": "bun run build && node dist/tools/ai-edit-experiment.js",
     "exec-bench": "bun run build && node dist/tools/exec-bench.js",
+    "wasm-bench": "bun run build && node dist/tools/wasm-bench.js",
     "edit-loop-bench": "bun run build && node dist/tools/edit-loop-bench.js",
     "par-bench": "bun run build && node dist/tools/par-bench.js",
     "lang-axes": "bun run build && node dist/tools/lang-axes.js",
+    "behavior": "bun run build && node dist/tools/behavior.js",
+    "loss-ledger": "bun run build && node dist/tools/loss-ledger.js",
     "native-check": "bun run build && node dist/tools/native-check.js",
     "app": "bun run build && node dist/tools/app.js",
     "selfhost": "bun run build && node dist/tools/selfhost-verify.js",
     "selfhost:c": "bun run build && node dist/tools/selfhost-c.js",
     "bootstrap": "bun run build && node dist/tools/bootstrap.js && node dist/tools/bootstrap-arm64.js && node dist/tools/bootstrap-macho.js",
+    "seed": "bun run build && node dist/tools/seed.js",
     "bootstrap:arm64": "bun run build && node dist/tools/bootstrap-arm64.js",
     "bootstrap:macho": "bun run build && node dist/tools/bootstrap-macho.js",
     "site": "bun run build && node dist/tools/site-build.js",
     "gpu": "bun run build && node dist/tools/gpu-verify.js",
     "dotnet": "bun run build && node dist/tools/dotnet-verify.js",
-    "release": "sh tools/release.sh"
+    "release": "sh tools/release.sh",
+    "claims": "bun tools/dev/claim-check.ts",
+    "a0-dev": "bun run build && node dist/tools/dev/a0-dev.js",
+    "gate-scope": "bun run build && node dist/tools/dev/gate-scope.js",
+    "merge-plan": "bun run build && node dist/tools/dev/merge-plan.js",
+    "dev-gate": "bun run build && node dist/tools/dev/dev-gate.js",
+    "drive": "bun run build && node dist/tools/dev/drive.js",
+    "mcpb": "bun run build && node dist/tools/mcpb.js",
+    "setup:merge": "bun run build && node dist/tools/dev/a0-dev.js setup"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
     "@anthropic-ai/sdk": "^0.129.0",
     "@biomejs/biome": "^2.2.4",
     "@types/node": "^24.5.2",
     "js-tiktoken": "^1.0.20",
-    "typescript": "^5.9.2"
+    "tree-sitter-cli": "^0.27.0",
+    "typescript": "^5.9.2",
+    "vscode-jsonrpc": "^9.0.3"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
     "@noble/hashes": "^2.4.0",
     "geist": "^1.7.2",
+    "vscode-languageserver": "^10.1.2",
+    "vscode-languageserver-textdocument": "^1.0.15",
     "z3-solver": "^5.2.0",
     "zod": "^4.6.5"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "trustedDependencies": [
+    "tree-sitter-cli"
+  ]
 }

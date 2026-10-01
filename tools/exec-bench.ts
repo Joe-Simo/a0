@@ -129,6 +129,8 @@ async function benchC(
   handwrittenBest: Sample;
   /** Direct AArch64 backend (src/arm64.ts) as an out-of-line call from the same driver; null off Apple silicon. */
   arm64: Sample | null;
+  /** The emitted C at clang -O3 -mcpu=native in its own object: the same call boundary as `arm64`. */
+  clangO3OutOfLine: Sample | null;
   binaryBytes: { emitted: number; handwritten: number };
 }> {
   const tEmit = performance.now();
@@ -158,6 +160,7 @@ async function benchC(
     // `clang -x assembler`, linked with the same driver. The call is out of line (no inlining
     // across the object boundary), unlike the C paths where the kernel inlines into the loop.
     let arm64Exe: string | null = null;
+    let clangO3Exe: string | null = null;
     if (process.platform === 'darwin' && process.arch === 'arm64' && kernel.noArm64 === undefined) {
       await writeFile(join(dir, 'kernel.s'), compile(program, 'arm64').text, 'utf8');
       const as = runTool(clang, [
@@ -179,6 +182,29 @@ async function benchC(
       );
       const r = runTool(clang, ['-std=c11', '-O2', '-o', arm64Exe, src, join(dir, 'kernel.o')]);
       if (!r.ok) throw new Error(`arm64 link: ${r.stderr}`);
+      // The code-quality baseline for the direct backend: clang -O3 on the same program, compiled
+      // to its own object and linked with the identical driver, so both pay the same call.
+      await writeFile(join(dir, 'kernel-c.c'), emittedSrc, 'utf8');
+      const kc = runTool(clang, [
+        '-std=c11',
+        '-O3',
+        '-mcpu=native',
+        '-c',
+        '-o',
+        join(dir, 'kernel-c.o'),
+        join(dir, 'kernel-c.c'),
+      ]);
+      if (!kc.ok) throw new Error(`clang -O3 kernel: ${kc.stderr}`);
+      clangO3Exe = join(dir, 'clang-o3');
+      const lc = runTool(clang, [
+        '-std=c11',
+        '-O2',
+        '-o',
+        clangO3Exe,
+        src,
+        join(dir, 'kernel-c.o'),
+      ]);
+      if (!lc.ok) throw new Error(`clang -O3 link: ${lc.stderr}`);
     }
     const h = await build(
       'handwritten',
@@ -216,7 +242,9 @@ async function benchC(
     const hbs: number[] = [];
     let hbc = '';
     const as64: number[] = [];
+    const co3: number[] = [];
     let ac = '';
+    let oc = '';
     let ec = '';
     let hc = '';
     // Startup: wall time of a process that runs a single iteration (spawn + exit dominated).
@@ -246,10 +274,19 @@ async function benchC(
       const best = runOne(hb.exe);
       hbs.push(best.ns);
       hbc = best.checksum;
-      if (arm64Exe !== null) {
-        const r = runOne(arm64Exe);
-        as64.push(r.ns);
-        ac = r.checksum;
+      // arm64 and its clang -O3 baseline alternate which runs first, sample by sample.
+      const pair = [arm64Exe, clangO3Exe];
+      if (i % 2 === 1) pair.reverse();
+      for (const exe of pair) {
+        if (exe === null) continue;
+        const r = runOne(exe);
+        if (exe === arm64Exe) {
+          as64.push(r.ns);
+          ac = r.checksum;
+        } else {
+          co3.push(r.ns);
+          oc = r.checksum;
+        }
       }
       if (rustOk) {
         const r = runOne(rustExe);
@@ -263,6 +300,8 @@ async function benchC(
       throw new Error(`${kernel.name}: checksum mismatch emitted=${ec} best-flags C=${hbc}`);
     if (arm64Exe !== null && ac !== ec)
       throw new Error(`${kernel.name}: arm64 checksum mismatch ${ac} vs ${ec}`);
+    if (clangO3Exe !== null && oc !== ec)
+      throw new Error(`${kernel.name}: clang -O3 checksum mismatch ${oc} vs ${ec}`);
     if (rustOk && rc !== ec)
       throw new Error(`${kernel.name}: rust checksum mismatch ${rc} vs ${ec}`);
     return {
@@ -270,6 +309,7 @@ async function benchC(
       handwritten: summarize(hs, hc),
       handwrittenBest: summarize(hbs, hbc),
       arm64: arm64Exe === null ? null : summarize(as64, ac),
+      clangO3OutOfLine: clangO3Exe === null ? null : summarize(co3, oc),
       binaryBytes: { emitted: e.bytes, handwritten: h.bytes },
       startupMs,
       rust: rustOk ? summarize(rs, rc) : null,
@@ -632,6 +672,8 @@ async function main(): Promise<void> {
       push('cBest', c.handwrittenBest.medianNsPerCall / c.emitted.medianNsPerCall);
       if (c.rust !== null) push('rust', c.rust.medianNsPerCall / c.emitted.medianNsPerCall);
       if (c.arm64 !== null) push('arm64', c.arm64.medianNsPerCall / c.emitted.medianNsPerCall);
+      if (c.arm64 !== null && c.clangO3OutOfLine !== null)
+        push('arm64VsClangO3', c.arm64.medianNsPerCall / c.clangO3OutOfLine.medianNsPerCall);
       push('js', js.handwritten.medianNsPerCall / c.emitted.medianNsPerCall);
       push('jsEmitted', js.emitted.medianNsPerCall / c.emitted.medianNsPerCall);
     }
@@ -675,6 +717,13 @@ async function main(): Promise<void> {
                       ratio: c.arm64.medianNsPerCall / c.emitted.medianNsPerCall,
                       verdict: verdict(c.arm64, c.emitted),
                     },
+              arm64VsClangO3OutOfLine:
+                c.arm64 === null || c.clangO3OutOfLine === null
+                  ? (k.noArm64 ?? 'blocked')
+                  : {
+                      ratio: c.arm64.medianNsPerCall / c.clangO3OutOfLine.medianNsPerCall,
+                      verdict: verdict(c.arm64, c.clangO3OutOfLine),
+                    },
             },
       js: {
         emitted: js.emitted,
@@ -686,7 +735,7 @@ async function main(): Promise<void> {
     const cv =
       c === null
         ? 'blocked'
-        : `${verdict(c.emitted, c.handwritten)} (${c.emitted.medianNsPerCall.toFixed(3)} vs ${c.handwritten.medianNsPerCall.toFixed(3)} ns)${c.rust === null ? '' : `; vs Rust ${verdict(c.emitted, c.rust)} (${c.rust.medianNsPerCall.toFixed(3)} ns)`}${c.arm64 === null ? '' : `; arm64 ${c.arm64.medianNsPerCall.toFixed(3)} ns (${(c.arm64.medianNsPerCall / c.emitted.medianNsPerCall).toFixed(2)}x C)`}; C-O3-native ${c.handwrittenBest.medianNsPerCall.toFixed(3)} ns${vsBest === null ? '' : `; arm64 vs best-flag ${vsBest.best} ${vsBest.speedup.toFixed(2)}x ${vsBest.verdict}`}`;
+        : `${verdict(c.emitted, c.handwritten)} (${c.emitted.medianNsPerCall.toFixed(3)} vs ${c.handwritten.medianNsPerCall.toFixed(3)} ns)${c.rust === null ? '' : `; vs Rust ${verdict(c.emitted, c.rust)} (${c.rust.medianNsPerCall.toFixed(3)} ns)`}${c.arm64 === null ? '' : `; arm64 ${c.arm64.medianNsPerCall.toFixed(3)} ns (${(c.arm64.medianNsPerCall / c.emitted.medianNsPerCall).toFixed(2)}x C${c.clangO3OutOfLine === null ? '' : `, ${(c.arm64.medianNsPerCall / c.clangO3OutOfLine.medianNsPerCall).toFixed(2)}x clang -O3 out of line`})`}; C-O3-native ${c.handwrittenBest.medianNsPerCall.toFixed(3)} ns${vsBest === null ? '' : `; arm64 vs best-flag ${vsBest.best} ${vsBest.speedup.toFixed(2)}x ${vsBest.verdict}`}`;
     const others = table
       .map(({ lang }) => {
         const row = rows[lang.id];
@@ -709,6 +758,7 @@ async function main(): Promise<void> {
     'cBest',
     'rust',
     'arm64',
+    'arm64VsClangO3',
     'js',
     'jsEmitted',
     ...table.map((t) => t.lang.id),
@@ -760,7 +810,7 @@ async function main(): Promise<void> {
     scale: SCALE,
     loadAverage: (await import('node:os')).loadavg(),
     meaning:
-      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
+      'Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; its ratio is against the emitted-C path. clangO3OutOfLine is the same emitted C at clang -O3 -mcpu=native in its own object behind the identical driver (the same call boundary), run interleaved with arm64 in alternating order; arm64VsClangO3OutOfLine and geomeans.arm64VsClangO3 compare the code of the direct backend and of clang at equal call cost. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.',
     geomeans,
     arm64VsBestFlags: {
       ...bestFlag,

@@ -1,0 +1,1584 @@
+# The a0lang.com home page (site/page.a0), as a template of the site generator (site/gen/sitegen.a0,
+# where the template language is described). Every number comes from the results files below.
+f tags site/gen/tags.tpl
+f css site/gen/style.css
+f glsl site/gen/scene.glsl
+f exec results/exec-benchmark.json
+f cost 1 sonnet min results/ai-edit-experiment.b.sonnet-min.json
+f cost 1 sonnet langs results/ai-edit-experiment.b.sonnet-langs.json
+f cost 1 haiku min results/ai-edit-experiment.b.haiku-min.json
+f cost 1 haiku langs results/ai-edit-experiment.b.haiku-langs.json
+f cost 40 sonnet min results/ai-edit-experiment.c.sonnet-min.json
+f cost 40 sonnet langs results/ai-edit-experiment.c.sonnet-langs.json
+f cost 40 haiku min results/ai-edit-experiment.c.haiku-min.json
+f cost 40 haiku langs results/ai-edit-experiment.c.haiku-langs.json
+f cost 400 sonnet min results/ai-edit-experiment.c400.sonnet-min.json
+f cost 400 sonnet langs results/ai-edit-experiment.c400.sonnet-langs.json
+f cost 400 haiku min results/ai-edit-experiment.c400.haiku-min.json
+f cost 400 haiku langs results/ai-edit-experiment.c400.haiku-langs.json
+f cost 4000 sonnet min results/ai-edit-experiment.c4000.sonnet-min.json
+f cost 4000 sonnet langs results/ai-edit-experiment.c4000.sonnet-langs.json
+f cost 4000 haiku min results/ai-edit-experiment.c4000.haiku-min.json
+f cost 4000 haiku langs results/ai-edit-experiment.c4000.haiku-langs.json
+f editq results/edit-loop.quiet.json
+f edit results/edit-loop.json
+f par results/parallel.json
+f axes results/lang-axes.json
+f hw results/hardware.json
+f tokfx results/tokens.json
+# Cost rows, in order: representation -> results file kind and label.
+m cost a0 min A0
+m cost ts min TypeScript
+m cost rust min Rust
+m cost python langs Python
+m cost go langs Go
+m cost java langs Java
+m cost csharp langs C#
+m cost cpp langs C++
+# Validation rows: edit-loop kind -> label; language of a kind (the part before the first dot) -> label.
+m el a0.structured A0 structured
+m el a0.conventional A0 whole file
+m el ts.warm TypeScript warm
+m el ts.cold TypeScript cold
+m el rust.warm Rust warm
+m el rust.cold Rust cold
+m el go.build.warm Go build warm
+m el go.build.cold Go build cold
+m el go.vet.warm Go vet warm
+m ellang a0 A0
+m ellang ts TypeScript
+m ellang rust Rust
+m ellang go Go
+# Parallel rows, in order: implementation -> label; the language a label counts as in the coverage line.
+m par a0_auto A0
+m par c_openmp C + OpenMP
+m par c C
+m par rust Rust
+m par zig Zig
+m par go Go
+m par java Java
+m par js JavaScript
+m par python Python
+m parcov c_openmp C
+# The well-known languages that open each chart of the many-language sections; every other language is behind a disclosure.
+m top A0
+m top C
+m top C++
+m top Rust
+m top Zig
+m top Go
+m top Swift
+m top Java
+m top Kotlin
+m top C#
+m top JavaScript
+m top TypeScript
+m top Python
+m top Ruby
+1# a0lang.com home page, authored in A0. An io program speaking the A0 UI protocol (see ui.a0):
+1#   input : event x y ntext text[ntext] nstate state[nstate]   (this page keeps no state)
+1#   tags: 1 h1 2 p 3 button 4 code 5 div 6 span 7 ul 8 li 9 a 10 pre 11 h2 12 input 13 section
+1#         14 nav 15 h3 16 strong 17 footer 18 header 19 table 20 tr 21 td 22 th 23 small
+1#   attr keys: 1 id 2 class 3 href 4 type 5 placeholder 6 aria-label
+1# The browser runtime (site/app.ts) builds DOM from this stream and reports events back.
+1use "ui.a0"
+2
+2fn session io -> u32
+2r0 read p0
+2event at r0 0
+2tok at r0 1
+s 9 css
+c nav
+{sec_hero
+<section
++id top
++class hero
+.div stage
+s 13 glsl
+>
+<div
++id live
++class live mono reveal
+"\n\s\s\s\s
+<div
++class col view
+"\n\s\s\s\s\s\s
+<h6
+"view\s
+<b
+"clamp
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v0
++class ln
+<span
++id v0t
++class ty
+"e0
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v1
++class ln
+<span
++id v1t
++class ty
+"fn clamp u32 u32 u32 -> u32
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v2
++class ln
+<span
++id v2t
++class ty
+"lo lt p0 p1
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v3
++class ln mark
+<span
++id v3t
++class ty
+"hi lt p2 p0
+>
+<span
++id v3n
++class alt
+"a select lo p1 p0
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v4
++class ln mark
+<span
++id v4t
++class ty
+"a select lo p1 p0
+>
+<span
++id v4n
++class alt
+"hi lt p2 a
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v5
++class ln
+<span
++id v5t
++class ty
+"r select hi p2 a
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v6
++class ln
+<span
++id v6t
++class ty
+"ret r
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id v7
++class ln
+<span
++id v7t
++class ty
+"end
+>
+>
+"\n\s\s\s\s
+>
+"\n\s\s\s\s
+<div
++class col model
+"\n\s\s\s\s\s\s
+<h6
+"model\s
+<b
+"reply
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id r0
++class ln
+<span
++id r0t
++class ty
+"e0
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id r1
++class ln
+<span
++id r1t
++class ty
+"hi lt p2 a
+>
+>
+"\n\s\s\s\s\s\s
+<div
++class stamp
+<i
+>
+<b
+"accepted
+>
+<span
+"· rev fe014071
+>
+>
+"\n\s\s\s\s
+>
+"\n\s\s\s\s
+<div
++class col asm
+"\n\s\s\s\s\s\s
+<h6
+"aarch64\s
+<b
+"native
+>
+>
+"\n\s\s\s\s\s\s
+<div
++id a0
++class ln
+"cmp w10, w11
+>
+"\n\s\s\s\s\s\s
+<div
++id a1
++class ln
+"cset w12, lo
+>
+"\n\s\s\s\s\s\s
+<div
++id a2
++class ln
+"cmp w9, #0
+>
+"\n\s\s\s\s\s\s
+<div
++id a3
++class ln
+"csel w12, w10, w11, ne
+>
+"\n\s\s\s\s\s\s
+<div
++id a4
++class ln
+"ret
+>
+"\n\s\s\s\s\s\s
+<div
++class ns
+<b
+>
+" ns per call
+>
+"\n\s\s\s\s
+>
+"\n\s\s
+>
+.h1 name pixel
+"A0
+>
+.p tag pixel
+"for AI
+>
+>
+}
+{sec_intro
+.div center
+=h2 Native speed. Verified edits. Every target.
+=p A model writes A0 directly. Nothing invalid lands. One source runs on every target, checked against one oracle.
+>
+.div trio
+.div tcard native reveal
+.div k
+"Native
+>
+.div t pixel
+"Machine code
+>
+.div big pixel
+"$py_geomean$x
+>
+.p d
+"faster than Python and $js_geomean$x faster than JavaScript: geometric mean of time per call over $n_k$ test programs, measured against $n_langs$ other languages. Machine code from A0's own code generator.
+>
+>
+.div tcard edits reveal
+.div k
+"Edits
+>
+.div t pixel
+"Made by models
+>
+.div big pixel
+"$cmax_ratio$x
+>
+.p d
+"fewer tokens per edit than TypeScript in a 4000-function program, $cmax_acc$% accepted (Sonnet). On a one-function file A0 costs more.
+>
+>
+.div tcard hw reveal
+.div k
+"Hardware
+>
+.div t pixel
+"Gates and cycles
+>
+.div big pixel
+"$hw_cells$
+>
+.p d
+"generic cells for the $hw_fns$ corpus functions in A0's clocked SystemVerilog, simulated on $hw_cases$ oracle cases; optimizer proved equivalent with Z3.
+>
+>
+>
+}
+{sec_rail
+.div layout
+.nav rail
+.div rh
+"Benchmarks
+>
+<a
++href #native
+"Native speed
+>
+<a
++href #languages
+"$n_langs$ languages
+>
+<a
++href #startup
+"Startup
+>
+<a
++href #tokens
+"Tokens
+>
+<a
++href #cost
+"Cost
+>
+<a
++href #validation
+"Validation
+>
+<a
++href #parallel
+"Parallel folds
+>
+<a
++href #hardware
+"Hardware
+>
+.div rh
+"More
+>
+<a
++href #targets
+"Targets
+>
+<a
++href #developers
+"Developers
+>
+>
+<div
++id benchmarks
++class main
+}
+{sec_native
+<section
++id native
+=h2 Native speed
+.p take
+"A0 takes $c_ratio$x as long as hand-written C, a geometric mean over $n_k$ test programs; 1.00x would be equal.
+>
+<p
+"Every speed result below uses the same $n_k$ test programs. A test program is one small function (benchmark authors call it a kernel), written by hand in every language and timed on the same inputs; each result is checked against a checksum before it is timed. A0 here is machine code from A0's own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between.
+>
+}
+{rank_table
+.div chart reveal
+.p ct
+"Where A0 places on each test program
+>
+.p take
+"Fastest on $rk_nwin$ of $rk_nk$ test programs; on every one, A0 takes at most $rk_max$x as long as the fastest language.
+>
+.p sub
+"Place 1 = fastest of all $n_langs1$ languages. Time per call, median of 7 interleaved runs, every result checksum-verified.
+>
+.p cov mono{cov_langs_part| part}
+"measured: $cov_langs$ of $n_all$ languages
+>
+.div tblwrap
+.table ops rank fit
+<tr
+=th Test program
+=th A0's place (1 = fastest)
+=th Fastest language other than A0
+=th A0 takes this many times as long
+>
+[ranks
+<tr
+.td mono
+"$rk_name$
+>
+.td mono{rk_first| first}
+n a mov $rk_rank$
+c putnum %a
+" of $rk_n$
+>
+=td $rk_best$, $rk_bv$ ns
+.td mono {rk_win|first|behind}
+n a mov $rk_ratio$
+c putratio %a
+"x{rk_same|\s(same speed)}{rk_fast|\s(A0 is faster)}{rk_slow|\s(A0 is slower)}
+>
+>
+]
+>
+>
+.p cap
+"Reading a row: the third column names the fastest of the other languages and its time per call; the last column is A0's time divided by that time. Below 1.00x, A0 is faster than every other language on that test program; above 1.00x, that language is faster and the number is the gap A0 has to close.
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_langs
+<section
++id languages
+=h2 Speed against $n_langs$ other languages
+.p take
+"$n_ahead$ of the other $n_langs$ languages are more than 5% faster than A0{ahead| ($ahead$)}; $n_ties$ are within 5% of A0; the rest are slower.
+>
+<p
+"The same $n_k$ test programs, hand-written in each language and checksum-verified before they are timed. Each bar below is one language: its time per call divided by A0's, as a geometric mean over the test programs.
+>
+}
+{chart_langs
+.div chart langs reveal
+.p ct
+"How long each language takes, as a multiple of A0's time
+>
+.p sub
+"1.00x = the same speed as A0; a longer bar = slower than A0. Bar length is logarithmic. Interleaved runs, medians; JIT rows warm; interpreters at their own iteration tier.
+>
+.p cov mono{cov_langs_part| part}
+"measured: $cov_langs$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"compiled
+>
+.span ljit
+"JIT or VM
+>
+.span lint
+"interpreted
+>
+>
+[langs lg_top
+.div lrow{lg_me| me}
+.span lbl
+"$lg_label$
+>
+.div track $lg_cls$
+.div fill
+w 12
+w 1
+w $lg_pct$
+>
+.span val
+n a mov $lg_g100$
+c putratio %a
+"x
+>
+>
+>
+]
+.details more
+<summary
+"Show all $n_langs1$ languages
+>
+[langs
+.div lrow{lg_me| me}
+.span lbl
+"$lg_label$
+>
+.div track $lg_cls$
+.div fill
+w 12
+w 1
+w $lg_pct$
+>
+.span val
+n a mov $lg_g100$
+c putratio %a
+"x
+>
+>
+>
+]
+>
+.p cap
+"Shown first: A0 and the best-known languages. All $n_langs1$ languages are behind the disclosure, in the same order. A0 here is machine code from A0's own AArch64 code generator, with no C compiler in between. Numbers, toolchains and iteration tiers are in results/exec-benchmark.json.
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_start
+<section
++id startup
+=h2 Startup
+.p take
+"A0 takes $start_a0$ ms from launch to first result: place $start_rank$ of $n_starts$ languages (1 = fastest). Node takes $start_node$ ms and Python $start_py$ ms.
+>
+<p
+"Startup is the time for one process launch to run one iteration of a test program and print its result; compile time is separate ($a0_build$ ms for the ten test programs with A0, $rs_build$ ms with rustc).
+>
+}
+{chart_start
+.div chart langs reveal
+.p ct
+"Time from launch to first result
+>
+.p sub
+"Milliseconds, shorter bar = faster start. Bar length is logarithmic. JVM and .NET rows include their runtime start.
+>
+.p cov mono{cov_start_part| part}
+"measured: $cov_start$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"compiled
+>
+.span ljit
+"JIT or VM
+>
+.span lint
+"interpreted
+>
+>
+[starts st_top
+.div lrow{st_me| me}
+.span lbl
+"$st_label$
+>
+.div track $st_cls$
+.div fill
+w 12
+w 1
+w $st_pct$
+>
+.span val
+n a mov $st_v100$
+c putfix %a
+" ms
+>
+>
+>
+]
+.details more
+<summary
+"Show all $n_starts$ languages
+>
+[starts
+.div lrow{st_me| me}
+.span lbl
+"$st_label$
+>
+.div track $st_cls$
+.div fill
+w 12
+w 1
+w $st_pct$
+>
+.span val
+n a mov $st_v100$
+c putfix %a
+" ms
+>
+>
+>
+]
+>
+.p cap
+"Shown first: A0 and the best-known languages; all $n_starts$ are behind the disclosure, in the same order. The A0 binary for startup is the C-path build; startup of the direct AArch64 binary is not yet measured.
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_tok
+<section
++id tokens
+=h2 Tokens
+.p take
+"Writing the $n_k$ test programs takes A0 $tk_a0$ tokens: place $tk_rank$ of $tkrows$ languages (1 = fewest). The fewest is $tk_bestl$ with $tk_best$; the median language needs $tk_med$.
+>
+<p
+"A token is the unit a model reads and writes. Fewer tokens for the same program means less to read, write and pay for. The count below is the source of the same test programs in each language, with the o200k tokenizer. How many tokens a whole edit costs, measured with real models, is in the Cost section.
+>
+}
+{chart_tk
+.div chart langs reveal
+.p ct
+"Source tokens of the $n_k$ test programs, per language
+>
+.p sub
+"Sum over the test programs of the o200k tokens of each program as written in that language, shorter bar = fewer tokens. Bar length is proportional to the count.
+>
+.p cov mono{tk_covpart| part}
+"measured: $tk_cov$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"compiled
+>
+.span ljit
+"JIT or VM
+>
+.span lint
+"interpreted
+>
+>
+[tkrows tk_top
+.div lrow{tk_me| me}
+.span lbl
+"$tk_label$
+>
+.div track $tk_cls$
+.div fill
+w 12
+w 1
+w $tk_pct$
+>
+.span val
+n a mov $tk_val$
+c putnum %a
+" tok
+>
+>
+>
+]
+.details more
+<summary
+"Show all $tkrows$ languages
+>
+[tkrows
+.div lrow{tk_me| me}
+.span lbl
+"$tk_label$
+>
+.div track $tk_cls$
+.div fill
+w 12
+w 1
+w $tk_pct$
+>
+.span val
+n a mov $tk_val$
+c putnum %a
+" tok
+>
+>
+>
+]
+>
+.p cap
+"Program length is one input; what a whole edit costs, measured with models, is in the Cost section. Shown first: A0 and the best-known languages; all $tkrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+>
+>
+}
+{chart_edit
+.div chart single reveal
+.p ct
+"Tokens to make one small edit, A0 against other languages
+>
+.p take
+"To change one operator in a one-function file, A0 reads $tf_a0_view$ tokens and writes a $tf_a0_edit$-token reply. TypeScript reads $tf_ts_file$ and writes $tf_ts_line$ as a line edit, $tf_ts_sr$ as a search-and-replace block or $tf_ts_diff$ as a unified diff; C reads $tf_c_file$ and writes $tf_c_diff$ as a unified diff.
+>
+.p sub
+"o200k tokens for the same edit, in each language's usual form. Shorter bar = fewer tokens. A0 reads more than C on this tiny file; the scoped view pays off as programs grow (Cost section).
+>
+.p kh mono
+"Read: the code in front of the model
+>
+n a mov $tf_c_file$
+n b mov $tf_a0_file$
+n c mov $tf_a0_view$
+n d mov $tf_py_file$
+n e mov $tf_ts_file$
+n f call max3 %a %b %c
+n m call max3 %d %e %f
+.div lrow wide
+.span lbl
+"C file
+>
+.div track nat
+c fill %a %m
+.span val
+c putnum %a
+" tok
+>
+>
+>
+.div lrow wide me
+.span lbl
+"A0 scoped view
+>
+.div track a0
+c fill %c %m
+.span val
+c putnum %c
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"A0 whole file
+>
+.div track a0
+c fill %b %m
+.span val
+c putnum %b
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"Python file
+>
+.div track int
+c fill %d %m
+.span val
+c putnum %d
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"TS file
+>
+.div track jit
+c fill %e %m
+.span val
+c putnum %e
+" tok
+>
+>
+>
+.p kh mono
+"Write: the model's reply
+>
+n a mov $tf_a0_edit$
+n b mov $tf_ts_line$
+n c mov $tf_ts_sr$
+n d mov $tf_a0_patch$
+n e mov $tf_c_diff$
+n f call max3 %a %b %c
+n g call max3 %d %e %f
+n h mov $tf_ts_diff$
+n m call max2 %g %h
+.div lrow wide me
+.span lbl
+"A0 line edit
+>
+.div track a0
+c fill %a %m
+.span val
+c putnum %a
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"TS line edit
+>
+.div track jit
+c fill %b %m
+.span val
+c putnum %b
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"TS search/replace
+>
+.div track jit
+c fill %c %m
+.span val
+c putnum %c
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"A0 patch
+>
+.div track a0
+c fill %d %m
+.span val
+c putnum %d
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"C unified diff
+>
+.div track nat
+c fill %e %m
+.span val
+c putnum %e
+" tok
+>
+>
+>
+.div lrow wide
+.span lbl
+"TS unified diff
+>
+.div track jit
+c fill %h %m
+.span val
+c putnum %h
+" tok
+>
+>
+>
+.p cap
+"Bars are linear within each group. The fixtures are the edit of affine in results/tokens.json; a model's real replies (Cost section) include the instructions it must be given first.
+>
+>
+}
+{chart1
+.div chart single reveal
+.p ct
+"How A0 shrinks an edit: A0 reading a whole file vs A0's scoped view
+>
+.p take
+"For one edit in life.a0 (17 functions), A0's scoped view is $tf_life_x$x fewer tokens than reading the whole life.a0 file in A0: $tf_life_view$ against $tf_life_all$. Both bars are A0; this is not a comparison with another language.
+>
+.p sub
+"Tokens a model reads to edit one function, o200k tokenizer. Shorter bar = fewer tokens.
+>
+.div legend
+.span lc
+"whole life.a0 file
+>
+.span la0
+"A0 scoped view
+>
+>
+.div row
+.span lbl
+"life.a0
+>
+.div bars
+n a mov $tf_life_all$
+n b mov $tf_life_view$
+n m call max2 %a %b
+.div track c
+c fill %a %m
+.span val
+c putnum %a
+" tok
+>
+>
+.div track a0
+c fill %b %m
+.span val
+c putnum %b
+" tok
+>
+>
+>
+n r mul %a 100
+n q div %r %b
+.span ratio win
+c putratio %q
+"x fewer than the whole file
+>
+>
+.p cap
+"The view: one function, its callees' signatures, one handle.
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_cost
+<section
++id cost
+=h2 Cost
+.p take
+"At 4000 functions an A0 edit costs $cmax_a0$ tokens against $cmax_ts$ for TypeScript, which is $cmax_ratio$x fewer than TypeScript. At 1 function A0 costs $cmin_100$x TypeScript's tokens and $cmin_rs100$x Rust's. Sonnet, cache-adjusted.
+>
+<p
+"Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so A0's advantage grows with program size and reverses on a one-function file, where the primer dominates.
+>
+}
+{chart2
+.div chart reveal
+.p ct
+"Tokens a model reads and writes per edit, by program size, Sonnet
+>
+.p sub
+"Cache-adjusted; shorter bar = fewer tokens. The number on the right is TypeScript's tokens divided by A0's: above 1.00x A0 uses fewer tokens than TypeScript, below 1.00x (red) A0 uses more.
+>
+.p cov mono{cov_sum_part| part}
+"measured: $cov_sum$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lc
+"TypeScript
+>
+.span lrust
+"Rust
+>
+>
+[csum
+.div row
+.span lbl
+"$cs_size$ function{cs_many|s}
+>
+.div bars
+n a mov $cs_a0$
+n b mov $cs_ts$
+n c mov $cs_rust$
+n m call max3 %a %b %c
+.div track a0
+c fill %a %m
+.span val
+c putnum %a
+" tok
+>
+>
+.div track c
+c fill %b %m
+.span val
+c putnum %b
+" tok
+>
+>
+.div track rust
+c fill %c %m
+.span val
+c putnum %c
+" tok
+>
+>
+>
+n r mul %b 100
+n q div %r %a
+.span ratio $cs_cls$
+c putratio %q
+"x TS ÷ A0
+>
+>
+]
+.p cap
+"Bars are linear within each row. The per-size charts below add every other language that has data at that size. Languages with no model-edit data: $cost_missing$. Each needs a hand-written translation of every edit task, a build-and-run acceptance check and paid model calls; only the languages shown have them.
+>
+>
+}
+[csz
+{cost_$cz_size$
+.div chart langs reveal
+.p ct
+"Edits in a $cz_size$-function program: tokens read and written, $cz_n$ languages{cz_loss| (a loss for A0)}
+>
+.p take
+"At $cz_size$ function{cz_many|s}, A0 uses $cz_a0$ tokens per edit: place $cz_rank$ of $cz_n$ languages (1 = fewest). The fewest is $cz_bestl$ with $cz_best$.
+>
+.p sub
+"Sonnet, cache-adjusted, shorter bar = fewer tokens; bar length is logarithmic. A language is listed only if it was measured at this size.
+>
+.p cov mono{cz_covpart| part}
+"measured: $cz_cov$ of $n_all$ languages
+>
+[cb
+.div lrow wide{cb_a0| me}
+.span lbl
+"$cb_label$
+>
+.div track {cb_a0|a0|nat}
+.div fill
+w 12
+w 1
+w $cb_pct$
+>
+.span val
+n a mov $cb_total$
+c putnum %a
+" tok
+>
+>
+>
+]
+.div tblwrap
+.table ops rank
+<tr
+=th Language
+=th Primer (instructions)
+=th Code read
+=th Reply written
+=th Total tokens
+=th Total as a multiple of A0's
+=th Sonnet edits accepted
+=th Haiku edits accepted
+>
+[ct
+<tr
+.td {ct_a0|first}
+"$ct_label$
+>
+.td mono
+n a mov $ct_primer$
+c putnum %a
+>
+.td mono
+n a mov $ct_code$
+c putnum %a
+>
+.td mono
+n a mov $ct_write$
+c putnum %a
+>
+.td mono
+n a mov $ct_total$
+c putnum %a
+>
+.td mono $ct_cls$
+n a mov $ct_ratio$
+c putratio %a
+"x
+>
+.td mono
+"$ct_acc$%
+>
+.td mono
+"{ct_hk|$ct_hk$%|not run}
+>
+>
+]
+>
+>
+.p cap
+"Primer: language and workflow instructions, first read at the 1.25x cache-write rate. Code read: the view or numbered file. Reply written: the model's edit. Total as a multiple of A0's: the row total divided by A0's total; below 1.00x (red) that language needs fewer tokens than A0. Edits accepted: the share of the 12 tasks whose edit passed the tests on the first try, for each model.
+>
+>
+}
+]
+.p cap
+"Tasks are the same edits in every language; sets 400 and 4000 are one shared program grown to that size. Subjects are fresh Sonnet and Haiku contexts that see only the primer. Numbers: results/ai-edit-experiment.\{b,c,c400,c4000\}.*.json.
+>
+{endsec$k$
+>
+}
+{sec_val
+<section
++id validation
+=h2 Validation
+.p take
+"After an edit, A0's native checker answers in $ck_a0$ ms: place $ck_rank$ of $ckrows$ languages that have a separate check step (1 = fastest). Checking and running the edit takes A0 $cr_a0$ ms: place $cr_rank$ of $crrows$ languages.
+>
+<p
+"Validation is how long it takes to know an edit is right. The check is the build or type-check of the edited test program. Check and run adds compiling to an executable when the language needs it, and one run whose checksum must match. Every language uses its own toolchain on the same test programs, from a cold process.
+>
+}
+{chart_ck
+.div chart langs reveal
+.p ct
+"Time to check one edited test program
+>
+.p take
+"A0's checker takes $ck_a0$ ms: place $ck_rank$ of $ckrows$ (1 = fastest). Fastest: $ck_bestl$, $ck_best$ ms. Median language: $ck_med$ ms. A0's earlier Node-based checker took $ck_node$ ms.
+>
+.p sub
+"Median milliseconds over the test programs, shorter bar = faster. Bar length is logarithmic.
+>
+.p cov mono{ck_covpart| part}
+"measured: $ck_cov$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"compiled
+>
+.span ljit
+"JIT or VM
+>
+.span lint
+"interpreted
+>
+>
+[ckrows ck_top
+.div lrow wide{ck_me| me}
+.span lbl
+"$ck_label$
+>
+.div track $ck_cls$
+.div fill
+w 12
+w 1
+w $ck_pct$
+>
+.span val
+n a mov $ck_val$
+c putfix %a
+" ms
+>
+>
+>
+]
+.details more
+<summary
+"Show all $ckrows$ languages
+>
+[ckrows
+.div lrow wide{ck_me| me}
+.span lbl
+"$ck_label$
+>
+.div track $ck_cls$
+.div fill
+w 12
+w 1
+w $ck_pct$
+>
+.span val
+n a mov $ck_val$
+c putfix %a
+" ms
+>
+>
+>
+]
+>
+.p cap
+"Languages with no separate check step (they run the file directly) are only in the next chart. A0 here is the self-compiled native checker, run as a cold process. Shown first: A0 and the best-known languages; all $ckrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+>
+>
+}
+{chart_cr
+.div chart langs reveal
+.p ct
+"Time to check and run one edited test program
+>
+.p take
+"Checking and running takes A0 $cr_a0$ ms: place $cr_rank$ of $crrows$ (1 = fastest). Fastest: $cr_bestl$, $cr_best$ ms. Median language: $cr_med$ ms. A0's Node-based path took $cr_node$ ms.
+>
+.p sub
+"Median milliseconds over the test programs, shorter bar = faster. Bar length is logarithmic. The run must reproduce A0's checksum.
+>
+.p cov mono{cr_covpart| part}
+"measured: $cr_cov$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"compiled
+>
+.span ljit
+"JIT or VM
+>
+.span lint
+"interpreted
+>
+>
+[crrows cr_top
+.div lrow wide{cr_me| me}
+.span lbl
+"$cr_label$
+>
+.div track $cr_cls$
+.div fill
+w 12
+w 1
+w $cr_pct$
+>
+.span val
+n a mov $cr_val$
+c putfix %a
+" ms
+>
+>
+>
+]
+.details more
+<summary
+"Show all $crrows$ languages
+>
+[crrows
+.div lrow wide{cr_me| me}
+.span lbl
+"$cr_label$
+>
+.div track $cr_cls$
+.div fill
+w 12
+w 1
+w $cr_pct$
+>
+.span val
+n a mov $cr_val$
+c putfix %a
+" ms
+>
+>
+>
+]
+>
+.p cap
+"A0's check and run emits C and compiles it with clang, which is why it is slower than its check alone. Timings are wall-clock under a heavy machine load (1-minute load average up to $ax_load$ on $ax_cpus$ cores), so absolute values will move on a quiet machine; the order is what to read. Shown first: A0 and the best-known languages; all $crrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+>
+>
+}
+{chart_val
+.div chart langs reveal
+.p ct
+"Model edits: time from a reply to a type-checked program
+>
+.p take
+"On the model edits below, A0 applies the edit and type-checks the whole program in $el_a0$ ms at the median; TypeScript with a warm compiler takes $el_tsw$ ms.
+>
+.p sub
+"Milliseconds from reply received to program type-checked, median per edit, over the accepted set-C Sonnet edits on the 40-function program; shorter bar = faster; bar length is logarithmic. Go uses hand translations of the reference edits.
+>
+.p cov mono{cov_val_part| part}
+"measured: $cov_val$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"other toolchains
+>
+>
+[el
+.div lrow wide{el_a0row| me}
+.span lbl
+"$el_label$
+>
+.div track {el_a0row|a0|nat}
+.div fill
+w 12
+w 1
+w $el_pct$
+>
+.span val
+n a mov $el_med100$
+c putfix %a
+" ms
+>
+>
+>
+]
+.p cap
+"{el_loaded|Measured on a loaded machine (load average up to $el_load$ on 8 cores); absolute times will move on a quiet run, which will replace these. }Cold rows start the compiler per edit; warm rows reuse a running one. Only these languages have model-written edits to replay, because the model-edit experiment exists only for them (Cost section); every language is checked on a fixed edit in the two charts above. results/edit-loop{el_quiet|.quiet}.json.
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_par
+<section
++id parallel
+=h2 Parallel folds
+.p take
+"A0 --parallel is the fastest implementation on $par_nwin$ of $par_nk$ test programs; on the others, at least one other implementation is faster (listed under the chart).
+>
+<p
+"A fold whose step is an associative reduction can be split across cores without changing its result.\s
+=strong a0 emit c --parallel
+" does that from a cost model; every result is checked exact against serial A0 and the reference interpreter. Below, each test program is run by A0 --parallel and by hand-parallel versions in other languages.
+>
+}
+{chart_par
+.div chart langs reveal
+.p ct
+"Each implementation's time as a multiple of A0 --parallel's, per test program
+>
+.p sub
+"1.00x = the same speed as A0 --parallel; above 1.00x A0 --parallel is faster; below 1.00x (red) the other implementation is faster. Bar length is logarithmic. $par_cpus$ cores, median of $par_samples$ interleaved samples.
+>
+.p cov mono{cov_par_part| part}
+"measured: $cov_par$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0
+>
+.span lnat
+"other languages
+>
+>
+[pk
+.p kh mono
+"$pk_name$: $pk_trips$ iterations, A0 $pk_ms$ ms
+>
+[pr
+.div lrow wide{pr_a0| me}
+.span lbl
+"$pr_label$
+>
+.div track {pr_a0|a0|nat}
+.div fill
+w 12
+w 1
+w $pr_pct$
+>
+.span val{pr_loss| loss}
+n a mov $pr_r100$
+c putratio %a
+"x
+>
+>
+>
+]
+]
+.p cap
+"{par_loaded|Measured on a loaded machine (load average up to $par_load$ on $par_cpus$ cores when timing started); ratios are interleaved, absolute times will move on a quiet run. }Hand-parallel C is OpenMP parallel-for with a reduction. Where another implementation is faster, its time as a multiple of A0 --parallel's is in parentheses: $par_losses$. On the 64K-element kernels the cost model keeps A0 serial. results/parallel.json.
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_hw
+<section
++id hardware
+=h2 Hardware
+.p take
+"The $hw_fns$ corpus functions compile to $hw_mods$ synthesized modules (the shared divider counts as one): $hw_cells$ generic cells in all, $hw_max$ in the largest, simulated on $hw_cases$ oracle cases.
+>
+<p
+"A0 compiles the same programs to clocked SystemVerilog. A cell is one gate-level element after Yosys generic synthesis, so fewer cells means a smaller circuit; cell counts are relative size, not area on a real chip. Every number here is read from results/hardware.json.
+>
+.div tiles
+.div tile
+.div n
+"$hw_mods$
+>
+.p
+"synthesized modules
+>
+>
+.div tile
+.div n
+"$hw_cells$
+>
+.p
+"generic cells in all modules
+>
+>
+.div tile
+.div n
+"$hw_max$
+>
+.p
+"cells in the largest module
+>
+>
+.div tile
+.div n
+"$hw_cases$
+>
+.p
+"oracle cases simulated
+>
+>
+>
+.p take
+"Of the $hw_sim$ modules simulated, $hw_clk$ are clocked: they take a median of $hw_cmed$ clock cycles per case, from $hw_cmin$ to $hw_cmax$. The rest are combinational and answer within the same cycle.
+>
+<p
+"A cycle count is how many clock ticks a module needs from receiving its inputs (start) to raising its done signal, averaged over the simulated oracle cases. Division, remainder and loops make a module clocked, because they run over several cycles.
+>
+.div tiles
+.div tile
+.div n
+"$hw_cmin$
+>
+.p
+"fewest mean cycles, any clocked module
+>
+>
+.div tile
+.div n
+"$hw_cmed$
+>
+.p
+"median mean cycles across clocked modules
+>
+>
+.div tile
+.div n
+"$hw_cmax$
+>
+.p
+"most mean cycles, any clocked module
+>
+>
+>
+}
+{endsec$k$
+>
+}
+{sec_targets
+<section
++id targets
+=h2 Targets
+=p One source, 5262 oracle cases, every target.
+.div grid four
+.div card reveal
+=h3 AArch64
+=p A0's own code generator, no C in between
+>
+.div card reveal
+=h3 x86-64
+=p A0's own code generator, verified under Rosetta
+>
+.div card reveal
+=h3 RISC-V, ARM32, AVR
+=p A0's own code generators for 64-bit RISC-V, 32-bit ARM, and 8-bit AVR
+>
+.div card reveal
+=h3 wasm32
+=p A0's own wasm backend, or the C path through Clang: this site
+>
+.div card reveal
+=h3 Native C
+=p through clang or gcc, UBSan-clean, parity with hand-written C; --parallel for threads
+>
+.div card reveal
+=h3 JavaScript
+=p typed arrays, in-place updates, boundary guards only
+>
+.div card reveal
+=h3 JVM
+=p Java source, compiled and verified with javac
+>
+.div card reveal
+=h3 .NET
+=p C# source, verified on .NET 10
+>
+.div card reveal
+=h3 GPU
+=p Metal Shading Language kernels, verified on Apple silicon
+>
+.div card reveal
+=h3 FPGA / ASIC
+=p clocked SystemVerilog, simulated and synthesized
+>
+>
+>
+}
+{sec_dev
+<section
++id developers
+=h2 Developers
+.div grid two
+.div card reveal
+=h3 How big is the runtime?
+=p There is none. A native binary of the ten benchmark kernels is about $bin_kb$ KB including its driver; the wasm behind this page is under a megabyte.
+>
+.div card reveal
+=h3 What happens when a model makes a mistake?
+=p The edit is rejected before it lands, with a stable code (parse, type, structure, handle, revision), what was expected, what was seen, and the one fix that resolves it.
+>
+.div card reveal
+=h3 Can a wrong program run forever?
+=p Literal iteration counts are bounded statically. Variable counts are bounded by fuel in the reference interpreter; compiled targets have no execution budget, so a variable count runs as long as it says. io output is bounded by the caller's buffer, and there is no heap or recursion.
+>
+.div card reveal
+=h3 How is correctness checked?
+=p A BigInt oracle runs 5262 generated cases through every backend, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized.
+>
+>
+=h3 Not yet
+.div limits
+=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written.
+>
+=h3 Try it
+.pre code
+<code
+.span cm
+"# one binary, no package manager\n
+>
+"curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0\n
+"printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n
+"./a0 run sq.a0 sq 12          # 144\n
+"./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n
+"./a0 check sq.a0              # diagnostics with the fix
+>
+>
+>
+}
+{sec_close
+>
+>
+}
+c foot
+w 6
+w 0
+2
+2ret event
+2end

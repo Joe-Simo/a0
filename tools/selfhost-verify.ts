@@ -11,6 +11,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   formatProgram,
   makeIo,
@@ -22,7 +23,7 @@ import {
 } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang } from '../src/toolchain.js';
-import { generateCases, generateCorpus, hasScalarSignature } from './corpus.js';
+import { type Case, generateCases, generateCorpus, hasScalarSignature } from './corpus.js';
 import { refLex } from './ref-parse.js';
 import { checkArm64Assembly, type TargetReport } from './verify.js';
 
@@ -77,6 +78,63 @@ export function emitWithA0(emitter: TypedProgram, source: string): EmitResult {
     fn,
     node,
     asm: Buffer.from(state.output.slice(5, 5 + n)).toString('latin1'),
+  };
+}
+
+/**
+ * The A0-written AArch64 emitter run over `program`: each scalar-only function with its callees
+ * is emitted by `emitio` in the interpreter, assembled, linked with the C driver, and its cases
+ * executed. Functions the front end cannot hold (512 bytes, 512 token words) are returned in
+ * `skipped` with the reason, never counted as passes.
+ */
+export async function checkSelfHostedArm64(
+  emitter: TypedProgram,
+  program: TypedProgram,
+  cases: readonly Case[],
+): Promise<TargetReport & { skipped: { fn: string; reason: string }[] }> {
+  const clang = findClang();
+  const skipped: { fn: string; reason: string }[] = [];
+  let ran = 0;
+  for (const fn of program.functions) {
+    const mine = cases.filter((c) => c.functionName === fn.name);
+    if (mine.length === 0) continue;
+    if (!isScalarOnly(fn)) {
+      skipped.push({ fn: fn.name, reason: 'aggregate or io types: the emitter is scalar-only' });
+      continue;
+    }
+    const subset = closure(program, fn);
+    const source = formatProgram(subset);
+    const tokenWords = refLex(source).length;
+    if (Buffer.byteLength(source) > MAX_SOURCE_BYTES || tokenWords > MAX_TOKEN_WORDS) {
+      skipped.push({
+        fn: fn.name,
+        reason: `source over the front end's limit (${Buffer.byteLength(source)} bytes, ${tokenWords} token words)`,
+      });
+      continue;
+    }
+    const emitted = emitWithA0(emitter, source);
+    if (!emitted.ok)
+      return {
+        status: 'failed',
+        cases: ran,
+        detail: `emitio refused ${fn.name}: code ${emitted.code} at fn ${emitted.fn} node ${emitted.node}`,
+        skipped,
+      };
+    const r = await checkArm64Assembly(
+      subset,
+      emitted.asm,
+      mine,
+      clang,
+      'A0-emitted arm64 assembly (compiler/emit_arm64.a0 through the interpreter)',
+    );
+    if (r.status !== 'passed') return { ...r, skipped };
+    ran += r.cases;
+  }
+  return {
+    status: ran > 0 ? 'passed' : 'blocked',
+    cases: ran,
+    detail: `A0-emitted arm64 (compiler/emit_arm64.a0 through the interpreter), ${ran} cases; ${skipped.length} functions skipped`,
+    skipped,
   };
 }
 
@@ -210,7 +268,8 @@ async function main(): Promise<void> {
   process.exit(summary.failed > 0 || summary.passed === 0 ? 1 : 0);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href)
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });

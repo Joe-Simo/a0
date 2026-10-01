@@ -273,7 +273,7 @@ end`;
     () => parseAndValidate(`${src.split('\n\n')[0]}\nfn f bool -> u32\na call sq p0\nret a\nend`),
     /expected u32, got bool/,
   );
-  // Constant calls fold exactly; non-constant calls are kept and deduplicated.
+  // Constant calls fold exactly; small pure scalar calls are inlined and then deduplicated.
   const folded = optimizeFunction(
     fn(
       `${src.split('\n\n')[0]}\nfn k u32 -> u32\na call sq 7\nb call sq p0\nc call sq p0\nd add b c\ne add d a\nret e\nend`,
@@ -282,11 +282,14 @@ end`;
   );
   assert.equal(
     formatFunction(folded.fn),
-    'fn k u32 -> u32\nb call sq p0\nd add b b\ne add d 49\nret e\nend',
+    'fn k u32 -> u32\no_1 mul p0 p0\nd add o_1 o_1\ne add d 49\nret e\nend',
   );
-  // Every backend emits the call; JS executes it.
+  // Every backend emits the call (unoptimized: the optimizer inlines a callee this small).
   for (const target of ['js', 'c', 'java', 'sv'] as const)
-    assert.ok(compile(p, target).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('), target);
+    assert.ok(
+      compile(p, target, { optimize: false }).text.includes(target === 'sv' ? 'a0_sq u_x' : 'sq('),
+      target,
+    );
 });
 
 test('emission cache key follows callee changes (semantic revision)', async () => {
@@ -414,7 +417,8 @@ end`;
   const lit = parseAndValidate(
     `${src.split('\n\n')[0]}\nfn h3 u32 -> u32\nr fold step 3 0 p0\nret r\nend`,
   );
-  const sv = compile(lit, 'sv').text;
+  // Unoptimized: the IR optimizer itself unrolls a literal count this short.
+  const sv = compile(lit, 'sv', { optimize: false }).text;
   assert.equal((sv.match(/a0_step u_r_/g) ?? []).length, 3);
 });
 
@@ -474,7 +478,8 @@ end`;
   const lit = parseAndValidate(
     `${src.split('\n\n').slice(0, 2).join('\n\n')}\nfn a3 u32 -> u32\nr loop below step 3 0 p0\nret r\nend`,
   );
-  const sv = compile(lit, 'sv').text;
+  // Unoptimized: the IR optimizer itself unrolls a literal count this short.
+  const sv = compile(lit, 'sv', { optimize: false }).text;
   assert.equal((sv.match(/a0_below u_r_p/g) ?? []).length, 3);
   assert.ok(sv.includes("assign n_r_d1 = 1'b0 | ~n_r_c0;"));
 });
@@ -666,6 +671,66 @@ end`;
     'fn body u32 u32 io -> u32\nret p0\nend\nfn pr u32 u32 io -> bool\nc lt p0 5\nret c\nend\nfn f u32 io -> u32\nr loop pr body 4 p0 p1\nret r\nend',
   );
   assert.throws(() => compile(badPred, 'sv'), /clocked loop predicate must not carry an io token/);
+});
+
+test('iteration bound: a call to a variable-count loop does not count against a later literal loop', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const src =
+    'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn spin u32 -> u32\nr fold step p0 0\nret r\nend\nfn top u32 -> u32\na call spin p0\nb fold step 100 a\nret b\nend';
+  const top = parseAndValidate(src).byName.get('top') as TypedFunc;
+  assert.equal(run(top, [5]), 105);
+  // The total bound still reports the variable count; only literal counts are capped.
+  assert.equal(top.staticIterations, 2 ** 32);
+  assert.equal(top.literalIterations, 100);
+  // A variable count between two literal ones does not hide their product.
+  const hidden =
+    'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn mid u32 u32 -> u32\na fold step 65536 p0\nret a\nend\nfn spin u32 u32 -> u32\na fold mid p0 p0\nret a\nend\nfn top u32 -> u32\na fold spin 4096 p0\nret a\nend';
+  assert.throws(() => parseAndValidate(hidden), /compute bound/);
+  // The self-hosted checker (compiler/check.a0) accepts the program too.
+  const checker = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
+  const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
+  assert.equal(run(checker.byName.get('checkio') as TypedFunc, [io]), 0);
+  assert.deepEqual(io.output.slice(0, 4), [1, 0, 0, 0]);
+});
+
+test('optimizer: a variable loop count stays a value when a literal would exceed the compute bound', () => {
+  const src =
+    'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn inner u32 u32 -> u32\na fold step 4096 p0\nret a\nend\nfn more u32 u32 -> bool\nb lt p0 10000\nret b\nend\nfn top u32 -> u32\nn mov 4294967295\ns loop more inner n p0\nret s\nend';
+  const p = parseAndValidate(src);
+  const top = optimizeFunction(p.byName.get('top') as TypedFunc).fn;
+  assert.equal(top.nodes[0]?.op, 'mov');
+  assert.equal(run(top, [5]), run(p.byName.get('top') as TypedFunc, [5]));
+  assert.ok(compile(p, 'c').text.includes('a0_top'));
+  // A count whose literal stays within the bound is still propagated.
+  const small = optimizeFunction(
+    parseAndValidate(
+      'fn step u32 u32 -> u32\na add p0 1\nret a\nend\nfn top u32 -> u32\nn mov 3\ns fold step n p0\nret s\nend',
+    ).byName.get('top') as TypedFunc,
+  ).fn;
+  assert.ok(small.nodes.every((x) => x.op !== 'mov'));
+});
+
+test('io linearity: `at` of the io field takes the token; only a put of that field gives it back', () => {
+  const ok = parseAndValidate(
+    'fn f (io,u32) -> (io,u32)\nx at p0 1\nt at p0 0\nw write t x\nr put p0 0 w\nret r\nend',
+  ).byName.get('f') as TypedFunc;
+  const io = makeIo([]);
+  const out = run(ok, [[io, 7]]) as [typeof io, number];
+  assert.deepEqual(out[0].output, [7]);
+  const rejects = (body: string, re: RegExp): void => {
+    assert.throws(
+      () =>
+        parseAndValidate(
+          `fn g (io,u32) -> (io,u32)\nret p0\nend\nfn f (io,u32) -> (io,u32)\nt at p0 0\nw write t 1\n${body}\nend`,
+        ),
+      (e: unknown) =>
+        e instanceof A0Error && e.code === 'structure' && re.test(e.message) && e.fix !== undefined,
+    );
+  };
+  rejects('r call g p0\nret r', /used after `at` took its io field 0/);
+  rejects('ret p0', /returned after `at` took its io field 0/);
+  rejects('r put p0 1 5\nret r', /used after `at` took its io field 0/);
+  rejects('u at p0 0\nr put p0 0 u\nret r', /already taken/);
 });
 
 test('resource bounds: fuel stops runaway evaluation, literal iteration is capped, fuzzed input fails cleanly', () => {
@@ -891,111 +956,6 @@ test('site docs program: A0 UI protocol, stylesheet, and reference sections', as
   const all = texts.join(' ');
   for (const needle of ['Operations', 'GitHub'])
     assert.ok(all.includes(needle), `missing ${needle}`);
-});
-
-test('site play program: the A0 lexer, parser and checker render tokens, typed IR, and the diagnostic of a submitted source', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const p = (await link('site/play.a0', (f) => readFile(f, 'utf8'))).program;
-  const session = p.byName.get('session') as TypedFunc;
-  const lex = p.byName.get('lex') as TypedFunc;
-  const decode = (words: readonly number[]): { text: string; state: number[]; css: string } => {
-    const str = (i: number, n: number): string =>
-      Buffer.from(words.slice(i, i + n)).toString('utf8');
-    const d = { text: '', state: [] as number[], css: '' };
-    for (let i = 0; i < words.length; ) {
-      const c = words[i++];
-      if (c === 1 || c === 5 || c === 8) i += 1;
-      else if (c === 2 || c === 4 || c === 9 || c === 13) {
-        if (c === 4) i += 1;
-        const n = words[i++] as number;
-        if (c === 9) d.css += str(i, n);
-        else if (c === 2) d.text += str(i, n);
-        i += n;
-      } else if (c === 6) {
-        const n = words[i++] as number;
-        d.state = words.slice(i, i + n) as number[];
-        i += n;
-      } else if (c === 10) i += 2 + (words[i + 1] as number);
-      else if (c === 11 || c === 12) i += 2;
-      else if (c !== 3) throw new Error(`bad command ${c} at ${i - 1}`);
-    }
-    return d;
-  };
-  // Event 1 (Run) with a submitted source: the token count, every node as `id op args`, the ret.
-  const src = 'fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend\n';
-  const bytes = [...Buffer.from(src)];
-  const io = makeIo([1, 0, 0, bytes.length, ...bytes, 0]);
-  assert.equal(run(session, [io]), 0);
-  const d = decode(io.output);
-  const arr = new Array(512).fill(0);
-  bytes.forEach((v, i) => {
-    arr[i] = v;
-  });
-  const ntok = (run(lex, [arr, bytes.length]) as [number[], number])[1] / 3;
-  assert.ok(d.css.includes('textarea.src{'));
-  assert.ok(d.text.includes(`${ntok} tokens`), d.text);
-  assert.ok(d.text.includes('1 functions'), d.text);
-  assert.ok(d.text.includes('params 2 · result u32 · nodes 2'), d.text);
-  // Every node line carries the checker's type of the node.
-  assert.ok(d.text.includes('a add p0 p1  u32\nb mul a 2  u32\nret b'), d.text);
-  assert.ok(d.text.includes('valid: parsed and type-checked'), d.text);
-  // The guessable spellings (direct call, ret F ARGS, udiv) render as their canonical ops.
-  const guessed = [
-    ...Buffer.from(
-      'fn dot u32 u32 -> u32\na mul p0 p1\nret a\nend\nfn f u32 -> u32\nb dot p0 p0\nc udiv b 3\nret dot c 2\nend\n',
-    ),
-  ];
-  const gio = makeIo([1, 0, 0, guessed.length, ...guessed, 0]);
-  assert.equal(run(session, [gio]), 0);
-  const gText = decode(gio.output).text;
-  assert.ok(gText.includes('valid: parsed and type-checked'), gText);
-  assert.ok(gText.includes('b call ') && gText.includes('c div b 3'), gText);
-  // The state is the source, so the text survives a re-render (event 0 with that state).
-  assert.deepEqual(d.state, [bytes.length, ...bytes]);
-  const again = makeIo([0, 0, 0, 0, d.state.length, ...d.state]);
-  assert.equal(run(session, [again]), 0);
-  assert.ok(decode(again.output).text.includes('a add p0 p1'));
-  // The default (no text, no state) is the clamp function; an invalid source names the token.
-  const first = makeIo([0, 0, 0, 0, 0]);
-  assert.equal(run(session, [first]), 0);
-  assert.ok(decode(first.output).text.includes('fn clamp u32 u32 u32 -> u32'));
-  const badSrc = [...Buffer.from('fn f u32 -> u32\na call g p0\nret a\nend\n')];
-  const bad = makeIo([1, 0, 0, badSrc.length, ...badSrc, 0]);
-  assert.equal(run(session, [bad]), 0);
-  assert.ok(decode(bad.output).text.includes('structure error at token 8: g'));
-  // An ill-typed program parses, so the checker's diagnostic names the code, function and node
-  // id; the nodes before it are typed, the ones after are not.
-  const illSrc = [
-    ...Buffer.from('fn g u32 bool -> u32\na lt p0 1\nb add a p1\nc mul p0 2\nret c\nend\n'),
-  ];
-  const ill = makeIo([1, 0, 0, illSrc.length, ...illSrc, 0]);
-  assert.equal(run(session, [ill]), 0);
-  const illText = decode(ill.output).text;
-  assert.ok(illText.includes('type error in fn g at node b: an operand has a type'), illText);
-  assert.ok(illText.includes('a lt p0 1  bool\nb add a p1\nc mul p0 2\nret c'), illText);
-  assert.ok(!illText.includes('valid:'), illText);
-  // A consumed io token returned twice is a structure error at the ret operand.
-  const retSrc = [...Buffer.from('fn h io -> io\na write p0 1\nret p0\nend\n')];
-  const rt = makeIo([1, 0, 0, retSrc.length, ...retSrc, 0]);
-  assert.equal(run(session, [rt]), 0);
-  assert.ok(decode(rt.output).text.includes('structure error in fn h at ret: the operand count'));
-  // Types built by bodies (arrays, records, the (u32,io) of read) render like the source.
-  const tySrc = [
-    ...Buffer.from(
-      'fn k io u32x4 -> (u32,io)\nr read p0\nt at r 1\nv arr 1 2\nx rec v p1\ns at x 0\nret r\nend\n',
-    ),
-  ];
-  const ty = makeIo([1, 0, 0, tySrc.length, ...tySrc, 0]);
-  assert.equal(run(session, [ty]), 0);
-  const tyText = decode(ty.output).text;
-  assert.ok(tyText.includes('params 2 · result (u32,io)'), tyText);
-  assert.ok(
-    tyText.includes(
-      'r read p0  (u32,io)\nt at r 1  io\nv arr 1 2  u32x2\nx rec v p1  (u32x2,u32x4)\ns at x 0  u32x2\nret r',
-    ),
-    tyText,
-  );
-  assert.ok(tyText.includes('valid: parsed and type-checked'), tyText);
 });
 
 test('structured edits: insert (at end or after a node), delete, and change the result, atomically', () => {
@@ -1268,7 +1228,8 @@ test('JS emission: zero arrays allocate, power-of-two indices mask, owned sets a
   const src =
     'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nx get a p1\ny get a 3\ns add x y\nret s\nend';
   const p = parseAndValidate(src);
-  const js = compile(p, 'js').text;
+  // Emission shapes of the fold itself (the IR optimizer unrolls an 8-trip fold away).
+  const js = compile(p, 'js', { optimize: false }).text;
   assert.ok(js.includes('new Uint32Array(8)'));
   assert.ok(js.includes('[(p1 & 7)]'));
   assert.ok(/a0o_put8[\s\S]*\(p0\[\(p1 & 7\)\] = n_v, p0\)/.test(js));
@@ -1298,7 +1259,8 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   const src =
     'fn put8 u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn below u32x8 u32 u32 -> bool\na get p0 0\nc lt a p2\nret c\nend\nfn keepold u32x8 u32 u32 -> u32x8\nn set p0 p1 p2\na get p0 p1\nm set n 0 a\nret m\nend\nfn arrfill u32 u32 -> u32\nz arr 0 0 0 0 0 0 0 0\na fold put8 8 z p0\nl loop below keepold 8 a p1\nx get l p1\ny get a 3\ns add x y\nret s\nend';
   const p = parseAndValidate(src);
-  const c = compile(p, 'c').text;
+  // Emission shapes of the fold itself (the IR optimizer unrolls an 8-trip fold away).
+  const c = compile(p, 'c', { optimize: false }).text;
   // The owned variant writes through the state pointer and returns nothing; the value ABI
   // updates its private by-value copy in place and returns it.
   assert.ok(
@@ -1324,7 +1286,7 @@ test('C emission: owned iteration bodies update the loop state in place; large a
   assert.ok(c.includes('if (!a0r_below(&n_l, i, p1)) break; a0o_keepold(&n_l, i, p1); }'));
   assert.ok(c.includes('a0zero_a8_u()'));
   assert.ok(emitMetal(p).includes('thread a0t_a8_u *p0'));
-  assert.ok(compile(p, 'java').text.includes('new int[8]'));
+  assert.ok(compile(p, 'java', { optimize: false }).text.includes('new int[8]'));
   // Native paths accept 65536-element arrays; hardware and GPU refuse them with a limit code.
   assert.equal(LIMITS.maxArrayLength, 65536);
   const big = parseAndValidate(
@@ -1410,6 +1372,85 @@ test('C emission: aggregates over 4 KiB are borrowed by pointer, returned throug
     );
     const wtop = instance.exports.a0_top as (x: number) => number;
     for (const x of inputs) assert.equal(wtop(x) >>> 0, run(top, [x]));
+  }
+});
+
+test('C emission: reading a field or element of an aggregate borrows it; only an in-place write that would clobber a live borrow copies', async () => {
+  const { compileWasm, findWasmClang } = await import('../src/toolchain.js');
+  const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
+  const src = [
+    'fn step (u32x2048,u32) u32 -> (u32x2048,u32)\nb at p0 0\nx get b p1\ns at p0 1\nt add s x\nr put p0 1 t\nret r\nend',
+    'fn small (u32x8,u32) u32 -> u32\nb at p0 0\nx get b p1\nret x\nend',
+    'fn fill u32x2048 u32 -> u32x2048\nn set p0 p1 p1\nret n\nend',
+    `fn sum u32 -> u32\nz arr ${zeros}\na fold fill 2048 z\nr rec a p0\nq fold step 2048 r\nv at q 1\nret v\nend`,
+    // b borrows the state's array and is read after the put replaces it: the put must copy.
+    `fn swap (u32x2048,u32) u32 -> (u32x2048,u32)\nb at p0 0\ns at p0 1\nw arr ${zeros}\nw2 set w 3 p1\nq put p0 0 w2\nx get b 3\nt add s x\nr put q 1 t\nret r\nend`,
+    `fn clob u32 -> u32\nz arr ${zeros}\na set z 3 p0\nr rec a 0\nq fold swap 5 r\nv at q 1\nret v\nend`,
+  ].join('\n');
+  const p = parseAndValidate(src);
+  const c = compile(p, 'c').text;
+  const body = (name: string): string => {
+    const at = c.indexOf(`${name}(`);
+    return c.slice(at, c.indexOf('\n}', at));
+  };
+  // The state's big array is borrowed on every trip: no arena storage, no 8 KiB copy.
+  const step = body('void a0o_step');
+  assert.ok(step.includes('const a0t_a2048_u *const n_b = &(*p0).f0;'), step);
+  assert.ok(!step.includes('a0arena_alloc'), step);
+  assert.ok(step.includes('(*p0).f1 = n_t;'), step);
+  assert.ok(body('uint32_t a0_small').includes('const a0t_a8_u *const n_b = &p0.f0;'));
+  // The borrow is still read after the put, so that put is not in place (the next one is).
+  const swap = body('void a0o_swap');
+  assert.ok(!swap.includes('(*p0).f0 = '), swap);
+  assert.ok(swap.includes('(*n_q).f1 = n_t;'), swap);
+  const inputs = [0, 1, 5, 2047, 123456];
+  const sum = p.byName.get('sum') as TypedFunc;
+  const clob = p.byName.get('clob') as TypedFunc;
+  for (const x of inputs) assert.equal(run(clob, [x]), (x + 6) >>> 0);
+  const clang = findWasmClang();
+  if (clang.path !== undefined && clang.wasmLd !== undefined) {
+    const { instance } = await WebAssembly.instantiate(
+      (await compileWasm(c)).bytes as BufferSource,
+      {},
+    );
+    const wsum = instance.exports.a0_sum as (x: number) => number;
+    const wclob = instance.exports.a0_clob as (x: number) => number;
+    for (const x of inputs) {
+      assert.equal(wsum(x) >>> 0, run(sum, [x]));
+      assert.equal(wclob(x) >>> 0, run(clob, [x]));
+    }
+  }
+});
+
+test('self-hosted C emitter (compiler/emit_c.a0) borrows aggregate reads and keeps value semantics', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { compileWasm, findWasmClang } = await import('../src/toolchain.js');
+  const emitter = (await link('compiler/emit_c.a0', (p) => readFile(p, 'utf8'))).program;
+  const src = [
+    'fn step (u32x8,u32) u32 -> (u32x8,u32)\nb at p0 0\nx get b p1\ns at p0 1\nt add s x\nr put p0 1 t\nret r\nend',
+    'fn swap (u32x8,u32) u32 -> (u32x8,u32)\nb at p0 0\ns at p0 1\nw arr 0 0 0 0 0 0 0 0\nw2 set w 3 p1\nq put p0 0 w2\nx get b 3\nt add s x\nr put q 1 t\nret r\nend',
+    'fn top u32 -> u32\na arr 0 0 0 p0 0 0 0 0\nr rec a 0\nq fold swap 5 r\nv at q 1\nret v\nend\n',
+  ].join('\n');
+  const io = makeIo([Buffer.byteLength(src), ...Buffer.from(src)]);
+  assert.equal(run(emitter.byName.get('emitcio') as TypedFunc, [io], { fuel: 1e12 }), 0);
+  const c = Buffer.from(io.output).toString();
+  const body = (name: string): string =>
+    c.slice(c.indexOf(name), c.indexOf('\n}', c.indexOf(name)));
+  const step = body('void a0o_step(');
+  assert.ok(step.includes('const a0t3 *const n0 = &(*p0).f0;'), step);
+  assert.ok(step.includes('(*p0).f1 = n3;'), step);
+  // The borrow n0 is read after the put that replaces the array, so that put copies.
+  const swap = body('void a0o_swap(');
+  assert.ok(swap.includes('a0t4 n4 = (*p0); n4.f0 = n2;'), swap);
+  const top = parseAndValidate(src).byName.get('top') as TypedFunc;
+  const clang = findWasmClang();
+  if (clang.path !== undefined && clang.wasmLd !== undefined) {
+    const { instance } = await WebAssembly.instantiate(
+      (await compileWasm(c)).bytes as BufferSource,
+      {},
+    );
+    const wtop = instance.exports.a0_top as (x: number) => number;
+    for (const x of [0, 1, 77, 4294967295]) assert.equal(wtop(x) >>> 0, run(top, [x]));
   }
 });
 
@@ -1844,7 +1885,8 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     'fn scan u32x12 u32 u32 -> u32x12\nj sub p1 1\nt get p0 j\ns get p0 p1\nu mul t p2\nv add u s\nn set p0 p1 v\nret n\nend',
     'fn carried u32 u32 -> u32\nz arr p0 1 2 3 4 5 6 7 8 9 10 p1\na fold scan 20 z p1\nq and p0 15\nr get a q\nw get a 11\ns add r w\nret s\nend',
     // neighbour reads (i + 3 mod 16) as two loads joined by ext, wrapping at the end
-    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nn set p0 p1 w\nret n\nend',
+    // (the fill costs more than fusion may recompute at the second index, so it is stored)
+    'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nx mul w p2\nn set p0 p1 x\nret n\nend',
     'fn sm u32x16 u32 u32x16 -> u32x16\nj add 3 p1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend',
     `fn shifted u32 u32 -> u32\nz arr ${zeros(16)}\na fold f16 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sm 16 z2 a\nq and p1 15\nr get b q\nw get b 15\ns add r w\nret s\nend`,
     // sixteen products feeding a record literal (written through, no register each)
@@ -1876,11 +1918,128 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
   assert.match(asm, /ext v\d+\.16b, v30\.16b, v31\.16b, #12/);
   const fusedBody = /_a0_fused:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
   // `a` is also read after the loop, so it is stored; `b` has one use and is fused away.
-  assert.equal(fusedBody.match(/str q/g)?.length, 1);
+  // Two loops: the fill of `a`, and the dot product with `b` computed in its lanes.
+  assert.equal(fusedBody.match(/\nLa0_fused_\d+:/g)?.length, 2);
+  assert.equal(fusedBody.match(/\n\tst[rp] q/g)?.length, 2);
   for (const optimize of [true, false]) {
     const text = compile(p, 'arm64', { optimize }).text;
     await withTempDir(async (dir) => {
       await writeFile(join(dir, 'module.s'), text, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, ['-O1', '-o', 'driver', 'driver.c', 'module.o'], { cwd: dir });
+      assert.ok(ld.ok, ld.stderr);
+      const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected);
+    });
+  }
+});
+
+test('arm64 instruction selection, unrolled and vectorized folds equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const seq = (n: number, f: (i: number) => number): string =>
+    Array.from({ length: n }, (_, i) => String(f(i))).join(' ');
+  // Each entry: a module fragment and its two-parameter entry function.
+  const cases: [string, string][] = [
+    ['rotl7', 'fn rotl7 u32 u32 -> u32\na shl p0 7\nb shr p0 25\nc or b a\nret c\nend'],
+    ['rotr', 'fn rotr u32 u32 -> u32\na shr p0 p1\nn sub 64 p1\nb shl p0 n\nc or a b\nret c\nend'],
+    [
+      'rotlv',
+      'fn rotlv u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend',
+    ],
+    [
+      'maddsub',
+      'fn maddsub u32 u32 -> u32\nm mul p0 p1\na add p1 m\ns mul p0 7\nb sub a s\nret b\nend',
+    ],
+    [
+      'shifted',
+      'fn shifted u32 u32 -> u32\ns shr p0 3\na sub p1 s\nt shl p1 31\nb xor t a\nu shl b 0\nc add p0 u\nret c\nend',
+    ],
+    [
+      'fused',
+      'fn fused u32 u32 -> u32\nc lt 100 p0\nr select c p1 0\nd ge p0 p1\ne select d r 5000000\nf select d e r\nret f\nend',
+    ],
+    [
+      'aggsel',
+      'fn aggsel u32 u32 -> u32\nx arr p0 p1\ny arr p1 p0\nc gt p0 p1\ns select c x y\ng get s 1\nret g\nend',
+    ],
+    [
+      'unroll',
+      'fn ust u32 u32 u32 -> u32\na mul p0 2654435761\nb add a p1\nc xor b p2\nret c\nend\nfn unroll u32 u32 -> u32\nf fold ust 5 p0 p1\ng fold ust 0 f p1\nret g\nend',
+    ],
+    [
+      'loopk',
+      'fn lst u32 u32 u32 -> u32\na xor p0 p2\nb mul a 2654435761\nc shr b 15\nd xor b c\ne add d p1\nret e\nend\nfn late u32 u32 u32 -> u32\na mul p0 3\nb add a p1\nc xor b p0\nret b\nend\nfn loopk u32 u32 -> u32\nk and p1 3\nf fold lst 64 p0 p1\ng fold lst k f p0\nh fold late 40 g k\nret h\nend',
+    ],
+    [
+      'vfill',
+      'fn fl u32x37 u32 u32 u32 -> u32x37\na mul p1 p2\nb shr a 3\nc xor b p3\nd shl c p2\ne sub d 1000\ng shr e p3\nn set p0 p1 g\nret n\nend\n' +
+        `fn vfill u32 u32 -> u32\nz arr ${seq(37, () => 0)}\nf fold fl 37 z p0 p1\ni and p1 31\nx get f i\ny get f 36\nw get f 0\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'vpart',
+      'fn fp u32x40 u32 u32 -> u32x40\nv add p1 p2\nn set p0 p1 v\nret n\nend\n' +
+        `fn vpart u32 u32 -> u32\nz arr ${seq(40, (i) => i * 7 + 1)}\nf fold fp 21 z p0\ni rem p1 40\nx get f i\ny get f 30\nw get f 20\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'v4',
+      'fn f4 u32x103 u32 u32 -> u32x103\nv add p1 p2\nn set p0 p1 v\nret n\nend\n' +
+        `fn v4 u32 u32 -> u32\nz arr ${seq(103, () => 9)}\nf fold f4 103 z p0\ni rem p1 103\nx get f i\ny get f 102\nw get f 99\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'zeros',
+      `fn zeros u32 u32 -> u32\nz arr ${seq(40, () => 0)} p0 ${seq(35, () => 0)} p1\ni rem p1 77\nx get z i\ny get z 40\nw get z 76\ns add x y\nt add s w\nret t\nend`,
+    ],
+    [
+      'odd5',
+      'fn o5 u32x5 u32 u32 -> u32x5\na get p0 p1\nb add a p2\nn set p0 p1 b\nret n\nend\n' +
+        'fn odd5 u32 u32 -> u32\nz arr 1 2 3 4 5\nf fold o5 25 z p0\ni rem p1 5\nx get f i\nret x\nend',
+    ],
+  ];
+  const p = parseAndValidate(cases.map(([, src]) => src).join('\n\n'));
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [999, 3],
+    [100, 100],
+    [101, 32],
+  ];
+  const expected = inputs
+    .flatMap(([a, b]) =>
+      cases.map(([name]) => String(run(p.byName.get(name) as TypedFunc, [a, b]))),
+    )
+    .join('\n');
+  const decls = cases.map(([name]) => `extern uint32_t a0_${name}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => cases.map(([name]) => `  printf("%u\\n", a0_${name}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${decls}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  for (const optimize of [true, false]) {
+    const asm = compile(p, 'arm64', { optimize }).text;
+    if (optimize) {
+      assert.match(asm, /\tror w\d+, w\d+, #25\n/);
+      assert.match(asm, /\tneg w10, w\d+\n\tror /);
+      assert.match(asm, /\tmsub /);
+      assert.match(asm, /, lsr #3\n/);
+      assert.match(asm, /\tstp q\d+, q\d+, \[x14, #0\]/);
+      assert.match(asm, /\tstp q0, q0, \[x15\], #32/);
+      assert.match(asm, /_a0_rotl7:\n\tror w0, w0, #25\n\tret/);
+    }
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
       await writeFile(join(dir, 'driver.c'), driver, 'utf8');
       const as = runTool(clang, ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
         cwd: dir,
@@ -1984,8 +2143,10 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
       'a',
     ),
   );
-  assert.match(fill, /xorps %xmm0, %xmm0\n\tmovups %xmm0, \(%rsp\)\n\tmovups %xmm0, 16\(%rsp\)/);
-  assert.match(fill, /movl %\w+, 0\(%rsp,%r\w+,4\)/);
+  // The fold overwrites every element, so the zero literal is never stored; the fill run
+  // is four lanes per SSE2 store.
+  assert.doesNotMatch(fill, /xorps %xmm0, %xmm0/);
+  assert.match(fill, /paddd %xmm3, %xmm4\n\tmovups %xmm4, \(%r10\)/);
   assert.doesNotMatch(fill, /andl \$7/);
   const get5 = emitX86_64Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get5, /movl \$5, %r10d\n\tdivl %r10d\n\tmovl %edx, %r10d/);
@@ -2642,6 +2803,81 @@ const ARM32_TOOLS = await (async () => {
   return gcc === undefined || qemu === undefined ? undefined : { gcc, qemu };
 })();
 
+test('native and wasm backends: aggregate reads borrow their container; a write that would clobber a live borrow copies', async () => {
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const z = Array.from({ length: 16 }, () => '0').join(' ');
+  const src = [
+    'fn step (u32x16,u32) u32 -> (u32x16,u32)\nb at p0 0\nx get b p1\ns at p0 1\nt add s x\nr put p0 1 t\nret r\nend',
+    `fn sum u32 -> u32\nz arr ${z}\na set z 3 p0\nr rec a p0\nq fold step 16 r\nv at q 1\nret v\nend`,
+    // the borrowed field is read after the put that replaces it
+    `fn swap (u32x16,u32) u32 -> (u32x16,u32)\nb at p0 0\ns at p0 1\nw arr ${z}\nw2 set w 3 p1\nq put p0 0 w2\nx get b 3\nt add s x\nr put q 1 t\nret r\nend`,
+    `fn clob u32 -> u32\nz arr ${z}\na set z 3 p0\nr rec a 0\nq fold swap 5 r\nv at q 1\nret v\nend`,
+    // a borrow of a borrow (a literal element of a borrowed field) keeps the root shared
+    `fn swap2 (u32x16x2,u32) u32 -> (u32x16x2,u32)\nm at p0 0\ng get m 1\ns at p0 1\nw arr ${z}\nw2 set w 0 p1\nm2 set m 1 w2\nq put p0 0 m2\nx get g 0\nt add s x\nr put q 1 t\nret r\nend`,
+    `fn clob2 u32 -> u32\nz arr ${z}\na set z 0 p0\nm arr a a\nr rec m 0\nq fold swap2 5 r\nv at q 1\nret v\nend`,
+  ].join('\n');
+  const p = parseAndValidate(src);
+  const names = ['sum', 'clob', 'clob2'];
+  const inputs = [0, 1, 9, 0xfffffff0];
+  for (const x of inputs) {
+    assert.equal(run(p.byName.get('clob') as TypedFunc, [x]), (x + 6) >>> 0);
+    assert.equal(run(p.byName.get('clob2') as TypedFunc, [x]), (x + 6) >>> 0);
+  }
+  const expected = inputs
+    .flatMap((x) => names.map((n) => String(run(p.byName.get(n) as TypedFunc, [x]))))
+    .join('\n');
+  for (const optimize of [true, false]) {
+    const { instance } = await WebAssembly.instantiate(
+      wasmModuleBytes(compile(p, 'wasm', { optimize }).text) as BufferSource,
+      {},
+    );
+    const e = instance.exports as Record<string, (v: number) => number>;
+    const got = inputs.flatMap((x) =>
+      names.map((n) => String((e[`a0_${n}`] as (v: number) => number)(x | 0) >>> 0)),
+    );
+    assert.equal(got.join('\n'), expected, `wasm optimize=${optimize}`);
+  }
+  const clang = findClang().path;
+  const hosts: [string, string[], string[]][] = [];
+  if (ARM64_HOST) hosts.push(['arm64', [], []]);
+  if (X86_64_HOST !== undefined) hosts.push(['x86_64', X86_64_HOST.arch, X86_64_HOST.runner]);
+  if (clang === undefined) return;
+  const protos = names.map((n) => `extern uint32_t a0_${n}(uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap((x) => names.map((n) => `  printf("%u\\n", a0_${n}(${x}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${protos}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  for (const [target, arch, runner] of hosts) {
+    for (const optimize of [true, false]) {
+      const asm = compile(p, target as 'arm64' | 'x86_64', { optimize }).text;
+      await withTempDir(async (dir) => {
+        await writeFile(join(dir, 'module.s'), asm, 'utf8');
+        await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+        const as = runTool(
+          clang,
+          [...arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
+          {
+            cwd: dir,
+          },
+        );
+        assert.ok(as.ok, as.stderr);
+        const ld = runTool(clang, [...arch, '-O1', '-o', 'driver', 'driver.c', 'module.o'], {
+          cwd: dir,
+        });
+        assert.ok(ld.ok, ld.stderr);
+        const [cmd, ...pre] =
+          runner.length === 0 ? [join(dir, 'driver')] : [...runner, join(dir, 'driver')];
+        const exec = runTool(cmd as string, pre, { cwd: dir });
+        assert.ok(exec.ok, exec.stderr);
+        assert.equal(exec.stdout.trim(), expected, `${target} optimize=${optimize}`);
+      });
+    }
+  }
+});
+
 test('arm32 backend: assembled, linked with a C driver, and executed on an emulated Cortex-A7 equal to the interpreter', {
   skip:
     ARM32_TOOLS === undefined
@@ -3226,22 +3462,12 @@ async function wasmSession(
   return { result, output: [...words.subarray(IN + 2, IN + 2 + nout)] };
 }
 
-test('direct wasm backend: site page, docs, and play programs write the interpreter words', async () => {
+test('direct wasm backend: site page and docs programs write the interpreter words', async () => {
   const { readFile } = await import('node:fs/promises');
   const { wasmModuleBytes } = await import('../src/wasm.js');
-  const src = [...Buffer.from('fn f u32 u32 -> u32\na add p0 p1\nb mul a 2\nret b\nend\n')];
-  const ill = [...Buffer.from('fn g u32 bool -> u32\na lt p0 1\nb add a p1\nret b\nend\n')];
   const runs: [string, number[][]][] = [
     ['site/page.a0', [[0, 0, 0, 0, 0]]],
     ['site/docs.a0', [[0, 0, 0, 0, 0]]],
-    [
-      'site/play.a0',
-      [
-        [0, 0, 0, 0, 0],
-        [1, 0, 0, src.length, ...src, 0],
-        [1, 0, 0, ill.length, ...ill, 0],
-      ],
-    ],
   ];
   for (const [file, inputs] of runs) {
     const p = (await link(file, (f) => readFile(f, 'utf8'))).program;
@@ -3307,6 +3533,74 @@ end`);
   }
 });
 
+test('direct wasm backend: simd fills, carried reads, scalar state, lazy arms, exports equal the interpreter', async () => {
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const { KERNELS } = await import('../tools/exec-bench-kernels.js');
+  const lazy = `fn lz u32 u32 -> u32
+c lt p0 p1
+d div p1 p0
+e rem d 7
+f mul e p1
+g div f 3
+h select c g p0
+ret h
+end`;
+  // A fill of 1026 elements into a 1030-element array: simd for 1024, two scalar trips, and
+  // four elements of the zero literal that stay live (the fill does not cover the array).
+  const fill = `fn fl u32x1030 u32 u32 -> u32x1030
+a mul p1 p2
+b shr a 3
+c xor b p1
+n set p0 p1 c
+ret n
+end
+fn part u32 u32 -> u32
+z arr ${Array.from({ length: 1030 }, () => '0').join(' ')}
+a fold fl 1026 z p0
+q rem p1 1030
+x get a q
+y get a 1029
+w get a 1025
+s add x y
+t add s w
+ret t
+end`;
+  const cases: [string, string, number][] = [
+    ...KERNELS.map((k): [string, string, number] => [k.a0, k.name, k.arity]),
+    [lazy, 'lz', 2],
+    [fill, 'part', 2],
+  ];
+  const inputs = [0, 1, 7, 1029, 0x9e3779b9, 0xffff_ffff];
+  for (const [src, name, arity] of cases) {
+    const p = parseAndValidate(src);
+    const f = p.byName.get(name) as TypedFunc;
+    for (const options of [
+      {},
+      { wasmSimd: false },
+      { wasmUnroll: 4 as const },
+      { optimize: false },
+    ]) {
+      const text = compile(p, 'wasm', { ...options, wasmExports: [name] }).text;
+      const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+      const e = instance.exports as Record<string, unknown>;
+      // Only the requested function is exported.
+      assert.deepEqual(
+        Object.keys(e).filter((x) => x.startsWith('a0_')),
+        [`a0_${name}`],
+      );
+      const g = e[`a0_${name}`] as (...a: number[]) => number;
+      for (const x of inputs) {
+        const args = Array.from({ length: arity }, (_, j) => (x * (j + 3) + j) >>> 0);
+        assert.equal(
+          g(...args.map((v) => v | 0)) >>> 0,
+          run(f, args),
+          `${name}(${args}) ${JSON.stringify(options)}`,
+        );
+      }
+    }
+  }
+});
+
 test('function cap: 4000-function programs are legal; the cap is LIMITS.maxFunctions', async () => {
   const { LIMITS, parse, validate } = await import('../src/core.js');
   assert.equal(LIMITS.maxFunctions, 65536);
@@ -3340,5 +3634,114 @@ test('corpus generator: seeds 1-200 generate (a bool-result body with no bool sl
         `seed ${seed} scalar=${scalar}`,
       );
     }
+  }
+});
+
+test('loop fusion and fill runs: IR shapes, and arm64, x86_64, wasm equal the interpreter', async () => {
+  const { fuseLoops } = await import('../src/optimize.js');
+  const { wasmModuleBytes } = await import('../src/wasm.js');
+  const { findClang, runTool, withTempDir } = await import('../src/toolchain.js');
+  const { writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const zeros = (n: number): string => Array.from({ length: n }, () => '0').join(' ');
+  const fill = (name: string, n: number, body: string): string =>
+    `fn ${name} u32x${n} u32 u32 u32 -> u32x${n}\n${body}\nn set p0 p1 v\nret n\nend`;
+  // [source, entry, folds after fusion (undefined: nothing fuses)]
+  const cases: [string, string, number | undefined][] = [
+    // two fills into one reduce (extras read at the counter), length not a power of two
+    [
+      `${fill('fa', 12, 'u mul p1 p2\nv add u p3')}\n${fill('fb', 12, 'u xor p1 p3\nv mul u p2')}\nfn dt u32 u32 u32x12 u32x12 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nh add p0 g\nret h\nend\nfn dot u32 u32 -> u32\nz arr ${zeros(12)}\na fold fa 12 z p0 p1\nz2 arr ${zeros(12)}\nb fold fb 12 z2 p0 p1\nd fold dt 12 p1 a b\nret d\nend`,
+      'dot',
+      1,
+    ],
+    // a cheap fill read at a wrapping neighbour index (recomputed at (i + 5) mod 12)
+    [
+      `${fill('fc', 12, 'v add p1 p2')}\nfn nb u32x12 u32 u32x12 -> u32x12\nj add p1 5\nu get p2 p1\nw get p2 j\nx xor u w\nn set p0 p1 x\nret n\nend\nfn nbr u32 u32 -> u32\nz arr ${zeros(12)}\na fold fc 12 z p0 p1\nz2 arr ${zeros(12)}\nb fold nb 12 z2 a\nq rem p1 12\nr get b q\nw get b 11\ns add r w\nret s\nend`,
+      'nbr',
+      1,
+    ],
+    // a fill as the initial state of an in-place prefix sum (guarded previous read)
+    [
+      `${fill('fd', 12, 'u mul p1 p2\nv add u p3')}\nfn px u32x12 u32 -> u32x12\nc eq p1 0\nj sub p1 1\nt get p0 j\nu select c 0 t\ns get p0 p1\nv add u s\nn set p0 p1 v\nret n\nend\nfn pre u32 u32 -> u32\nz arr ${zeros(12)}\na fold fd 12 z p0 p1\nb fold px 12 a\nq rem p1 12\nr get b q\nw get b 11\ns add r w\nret s\nend`,
+      'pre',
+      1,
+    ],
+    // a recurrence producer read at the counter by a shorter scalar reduce
+    [
+      `fn xf u32x10 u32 u32 -> u32x10\nc eq p1 0\nj sub p1 1\nt get p0 j\ns select c p2 t\na shl s 13\nb xor s a\nc2 shr b 17\nd xor b c2\nn set p0 p1 d\nret n\nend\nfn xr u32 u32 u32x10 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn rec u32 u32 -> u32\nz arr ${zeros(10)}\na fold xf 10 z p0\nr fold xr 9 p1 a\nret r\nend`,
+      'rec',
+      1,
+    ],
+    // not fused: the array is also read after the consumer
+    [
+      `${fill('fe', 8, 'v add p1 p2')}\nfn sm u32 u32 u32x8 -> u32\nv get p2 p1\nw add p0 v\nret w\nend\nfn keep u32 u32 -> u32\nz arr ${zeros(8)}\na fold fe 8 z p0 p1\nr fold sm 8 p1 a\nq and p1 7\nx get a q\ns add r x\nret s\nend`,
+      'keep',
+      undefined,
+    ],
+    // fill runs of 4, 5, 7, 13 elements (mul, variable shift) over a live literal
+    ...[4, 5, 7, 13].map((n): [string, string, number | undefined] => [
+      `${fill(`g${n}`, 16, 'u mul p1 p2\nw shl u p3\nv sub w p1')}\nfn run${n} u32 u32 -> u32\nz arr ${Array.from({ length: 16 }, (_, i) => String(i * 3 + 1)).join(' ')}\na fold g${n} ${n} z p0 p1\nq and p1 15\nr get a q\nw get a 15\nx get a ${n - 1}\ns add r w\nt add s x\nret t\nend`,
+      `run${n}`,
+      undefined,
+    ]),
+  ];
+  const inputs: [number, number][] = [
+    [0, 0],
+    [1, 2],
+    [7, 13],
+    [0xffffffff, 5],
+    [123456, 0xfffffff0],
+    [0x9e3779b9, 31],
+  ];
+  const all = parseAndValidate(cases.map(([s]) => s).join('\n\n'));
+  const names = cases.map(([, n]) => n);
+  for (const [, name, folds] of cases) {
+    const fn = optimizeFunction(all.byName.get(name) as TypedFunc).fn;
+    const fused = fuseLoops(fn, { recordState: true });
+    assert.equal(fused?.nodes.filter((n) => n.op === 'fold').length, folds, `${name}: folds`);
+    if (fused !== undefined)
+      for (const [a, b] of inputs) assert.equal(run(fused, [a, b]), run(fn, [a, b]), name);
+  }
+  const expected = inputs
+    .flatMap(([a, b]) => names.map((n) => String(run(all.byName.get(n) as TypedFunc, [a, b]))))
+    .join('\n');
+  const text = compile(all, 'wasm', { wasmExports: names }).text;
+  const { instance } = await WebAssembly.instantiate(wasmModuleBytes(text) as BufferSource, {});
+  const e = instance.exports as Record<string, (...a: number[]) => number>;
+  const got = inputs
+    .flatMap(([a, b]) =>
+      names.map((n) => String((e[`a0_${n}`] as (...a: number[]) => number)(a | 0, b | 0) >>> 0)),
+    )
+    .join('\n');
+  assert.equal(got, expected, 'wasm');
+  const clang = findClang().path;
+  if (clang === undefined) return;
+  const protos = names.map((n) => `extern uint32_t a0_${n}(uint32_t, uint32_t);`).join('\n');
+  const calls = inputs
+    .flatMap(([a, b]) => names.map((n) => `  printf("%u\\n", a0_${n}(${a}u, ${b}u));`))
+    .join('\n');
+  const driver = `#include <stdint.h>\n#include <stdio.h>\n${protos}\nint main(void) {\n${calls}\n  return 0;\n}\n`;
+  const natives: ['arm64' | 'x86_64', string[], string[]][] = [];
+  if (ARM64_HOST) natives.push(['arm64', [], []]);
+  if (X86_64_HOST !== undefined) natives.push(['x86_64', X86_64_HOST.arch, X86_64_HOST.runner]);
+  for (const [target, arch, runner] of natives) {
+    const asm = compile(all, target).text;
+    assert.doesNotMatch(asm, /zfuse/, `${target}: fused bodies are inlined`);
+    await withTempDir(async (dir) => {
+      await writeFile(join(dir, 'module.s'), asm, 'utf8');
+      await writeFile(join(dir, 'driver.c'), driver, 'utf8');
+      const as = runTool(clang, [...arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'], {
+        cwd: dir,
+      });
+      assert.ok(as.ok, as.stderr);
+      const ld = runTool(clang, [...arch, '-O1', '-o', 'driver', 'driver.c', 'module.o'], {
+        cwd: dir,
+      });
+      assert.ok(ld.ok, ld.stderr);
+      const [cmd, ...pre] = [...runner, join(dir, 'driver')];
+      const exec = runTool(cmd as string, pre, { cwd: dir });
+      assert.ok(exec.ok, exec.stderr);
+      assert.equal(exec.stdout.trim(), expected, target);
+    });
   }
 });

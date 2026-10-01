@@ -20,6 +20,7 @@ import {
   A0Error,
   checkArgument,
   formatProgram,
+  formatSource,
   formatType,
   LIMITS,
   run,
@@ -53,7 +54,7 @@ const denied = (path: string): A0Error =>
   });
 
 /** Resolve `path` inside `root`; the real path (symlinks followed) must stay inside too. */
-async function confine(root: string, path: string, mustExist: boolean): Promise<string> {
+export async function confine(root: string, path: string, mustExist: boolean): Promise<string> {
   const abs = resolve(root, path);
   if (!within(root, abs) || !abs.endsWith('.a0'))
     throw within(root, abs)
@@ -290,7 +291,7 @@ export async function createServer(launch: string): Promise<McpServer> {
           code: 'edit',
           fix: 'pass path: a new .a0 file inside the root',
         });
-      await writeFile(out, formatProgram(entry.session.program), 'utf8');
+      await writeFile(out, formatSource(entry.session.program), 'utf8');
       entry.dirty = false;
       return relative(root, out);
     }),
