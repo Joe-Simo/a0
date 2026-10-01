@@ -210,10 +210,10 @@ export function cDriver(program: TypedProgram, header = '#include "module.c"'): 
 #include <string.h>
 ${header}
 int main(void) {
-  static char line[1 << 16];
+  static char line[1 << 21]; /* one case per line: up to 2^18 words (a 131072-byte front-end source) */
 ${usesIo(program) ? '  static a0_io io; (void)io;\n' : ''}  while (fgets(line, sizeof line, stdin)) {
-    static char *tok[1 << 14]; int n = 0;
-    for (char *p = strtok(line, " \\n"); p && n < (1 << 14); p = strtok(NULL, " \\n")) tok[n++] = p;
+    static char *tok[1 << 18]; int n = 0;
+    for (char *p = strtok(line, " \\n"); p && n < (1 << 18); p = strtok(NULL, " \\n")) tok[n++] = p;
     if (n < 1) continue;
     int idx = atoi(tok[0]);
     memmove(tok, tok + 1, sizeof(char*) * (size_t)(n - 1));

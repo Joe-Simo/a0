@@ -3104,7 +3104,7 @@ end
 # p17 p18 and its map p19, then emit the chunk (p20 false) or write the optimized IR (p20).
 # Code 7: the requested chunk functions are written instead; 4: a limit (fuel of a call,
 # the evaluator's capacities, the operand slots).
-fn ozemit io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x129 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x16 bool -> (io,u32)
+fn ozemit io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x16 bool -> (io,u32)
 k sub p13 p12
 info call wainfo p1 p2 p11
 z1 call z100
@@ -3148,7 +3148,7 @@ w3 fold ozrq grq w2 o1 p13
 r rec w3 code
 ret r
 end
-fn ozemitst (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x129 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x16 -> (io,u32)
+fn ozemitst (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x16 -> (io,u32)
 t at p0 0
 r call ozemit t p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 false
 ret r
@@ -3213,7 +3213,7 @@ t14 at ra 1
 r15 call wardw t14
 npl at r15 0
 t15 at r15 1
-rp call warn129 t15 npl
+rp call warn400 t15 npl
 pl at rp 0
 t16 at rp 1
 nfm mul nf 2
@@ -3248,53 +3248,11 @@ z8 call z8
 w call ozemit t24 ty tl fs nds ar nty2 pl fm dt z8 nty from nf base no efn enode earg emap p1
 ret w
 end
-# the functions, nodes and operands of a source through the A0 lexer and parser, and the
-# parse code
-fn ozparse u32x128x128 u32 -> (u32x128x45,u32x128x128,u32x128x256,u32)
-lx call lexsrc p0 p1
-toks at lx 0
-nw at lx 1
-ntok div nw 3
-s1 call pass1 p0 toks ntok
-ta at s1 2
-tv at s1 3
-hdrs at s1 5
-umode at s1 10
-uerr at s1 11
-uetok at s1 12
-nhdr at s1 15
-uopen ne umode 0
-uerr0 eq uerr 0
-ueof and uerr0 uopen
-e1 select ueof 1 uerr
-et1 select ueof ntok uetok
-s3 call pass3 p0 toks ta hdrs nhdr e1 et1 ntok
-hout at s3 4
-e3 at s3 11
-et3 at s3 12
-nhc at s3 18
-nhn at s3 19
-s4 call pass4 hout nhn nhc
-fns0 at s4 0
-names at s4 1
-derr at s4 2
-dtok at s4 3
-dup ne derr 0
-e4 select dup derr e3
-et4 select dup dtok et3
-s5 call pass5 fns0 names p0 toks ta tv ntok e4 et4
-fns at s5 0
-nodes at s5 1
-args at s5 2
-pcode at s5 8
-r rec fns nodes args pcode
-ret r
-end
-# mode 4: `wasunit` with the optimizer. Lex, parse and check the source p1 of p2 bytes,
-# functions [p4, nfns) given the iteration bounds p3; with no diagnostic, optimize the chunk
-# (call table p5, p6 variants before it) with the eval program source p7 (p8 bytes) and its
-# map p9, and emit it. (io code)
-fn ozsunit io u32x128x128 u32 u32x128x8 u32 u32x128x16 u32 u32x128x128 u32 u32x128x16 -> (io,u32)
+# mode 4: `wasunit` (compiler/emit_wasm.a0) with the optimizer. Lex, parse and check the
+# source p1 of p2 bytes, functions [p4, nfns) given the iteration bounds p3; parse the eval
+# program source p7 (p8 bytes; not checked); with no diagnostic, optimize the chunk (call table
+# p5, p6 variants before it) with the eval program and its map p9, and emit it. (io code)
+fn ozsunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 u32x512x64 u32 u32x128x16 -> (io,u32)
 lx call lexsrc p1 p2
 toks at lx 0
 nw at lx 1
@@ -3334,12 +3292,23 @@ dtok at s4 3
 dup ne derr 0
 e4 select dup derr e3
 et4 select dup dtok et3
-s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4 0
 fns at s5 0
 nodes at s5 1
-args at s5 2
-nargs at s5 5
-pcode at s5 8
+alo at s5 2
+narg at s5 5
+args call bodyargs alo narg fns0 names p1 toks ta tv ntok e4 et4
+fcs at s1 7
+fcu at s1 8
+fcp at s2 1
+fch at s3 19
+fct at s3 5
+fcl at s3 6
+fcn at s5 4
+ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn narg
+pcode0 at s5 8
+pcode select ovr 4 pcode0
+# after a parse error the function count may be below p4: nothing is checked then
 cfrom call cumin p4 nhc
 ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
 types2 at ck 0
@@ -3357,25 +3326,63 @@ starts at st 0
 z16 call z16
 fnm fold cfnm nhc z16 fns sinfo starts
 pok eq pcode 0
-code1 select pok cerr pcode
-ep call ozparse p7 p8
-efn at ep 0
-enode at ep 1
-eargs at ep 2
-ecode at ep 3
-e0 eq code1 0
-enz ne ecode 0
-ebad and e0 enz
-code select ebad 1 code1
+code select pok cerr pcode
 ok eq code 0
-go select ok 1 0
-wide call wawide args
-earg call wawide eargs
+e_lx call lexsrc p7 p8
+e_toks at e_lx 0
+e_nw at e_lx 1
+e_ntok div e_nw 3
+e_s1 call pass1 p7 e_toks e_ntok
+e_sinfo at e_s1 1
+e_ta at e_s1 2
+e_tv at e_s1 3
+e_hdrs at e_s1 5
+e_nsym at e_s1 7
+e_umode at e_s1 10
+e_uerr at e_s1 11
+e_uetok at e_s1 12
+e_nhdr at e_s1 15
+e_uopen ne e_umode 0
+e_uerr0 eq e_uerr 0
+e_ueof and e_uerr0 e_uopen
+e_e1 select e_ueof 1 e_uerr
+e_et1 select e_ueof e_ntok e_uetok
+e_s3 call pass3 p7 e_toks e_ta e_hdrs e_nhdr e_e1 e_et1 e_ntok
+e_types at e_s3 0
+e_tlist at e_s3 2
+e_hout at e_s3 4
+e_ntypes at e_s3 5
+e_ntlist at e_s3 6
+e_e3 at e_s3 11
+e_et3 at e_s3 12
+e_nhc at e_s3 18
+e_nhn at e_s3 19
+e_s4 call pass4 e_hout e_nhn e_nhc
+e_fns0 at e_s4 0
+e_names at e_s4 1
+e_derr at e_s4 2
+e_dtok at e_s4 3
+e_dup ne e_derr 0
+e_e4 select e_dup e_derr e_e3
+e_et4 select e_dup e_dtok e_et3
+e_s5 call pass5 e_fns0 e_names p7 e_toks e_ta e_tv e_ntok e_e4 e_et4 0
+e_fns at e_s5 0
+e_nodes at e_s5 1
+e_alo at e_s5 2
+e_narg at e_s5 5
+e_args call bodyargs e_alo e_narg e_fns0 e_names p7 e_toks e_ta e_tv e_ntok e_e4 e_et4
+e_pcode0 at e_s5 8
+e0 eq code 0
+enz ne e_pcode0 0
+ebad and e0 enz
+code2 select ebad 1 code
+ok2 eq code2 0
+go select ok2 1 0
 s0 rec p0 0
-t fold ozemitst go s0 types2 tlist2 fns nodes wide ntys pool fnm p5 fstat ntypes2 p4 nhc p6 nargs efn enode earg p9
+t fold ozemitst go s0 types2 tlist2 fns nodes args ntys pool fnm p5 fstat ntypes2 p4 nhc p6 narg e_fns e_nodes e_args p9
 tk at t 0
 oc at t 1
-rc select ok oc code
+rc select ok2 oc code2
 r rec tk rc
 ret r
 end

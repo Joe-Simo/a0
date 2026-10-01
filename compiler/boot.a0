@@ -1,6 +1,6 @@
 # Chunked emission for the bootstrap (DESIGN.md 7a stage 6), written in A0. `emitchunkio` is
 # the entry of a0c-stage1/2/3 (tools/bootstrap.ts): it compiles one chunk of a program with the
-# 16384-byte front end and the C emitter (emit_c.a0 `cunit` and `emitc`), so a program over the
+# A0 front end (131072 source bytes, parse.a0 `fecap`) and the C emitter (emit_c.a0 `cunit` and `emitc`), so a program over the
 # source limit is compiled a chunk at a time. `emitachunkio` is the same with the arm64 emitter
 # (emit_arm64.a0 `qunit`), the entry of the arm64 stages (tools/bootstrap-arm64.ts); its output
 # is assembly text where `emitchunkio` writes C, and its prelude (head 1) the two copy helpers.
@@ -73,7 +73,7 @@ w1 write w0 k
 ret w1
 end
 # the input: (source bytes, n, iteration bounds, from, strict, head, io)
-fn rdchunk io -> (u32x128x128,u32,u32x128x8,u32,bool,bool,io)
+fn rdchunk io -> (u32x512x64,u32,u32x128x8,u32,bool,bool,io)
 rs call readsrc p0
 src at rs 0
 n at rs 1

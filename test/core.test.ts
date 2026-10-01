@@ -34,7 +34,15 @@ import { optimize, optimizeFunction } from '../src/optimize.js';
 import { generateFiller } from '../tools/ai-edit-tasks-c.js';
 import { generateCorpus } from '../tools/corpus.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
-import { FRONT_END_SOURCE_LIMIT, IR_OPS, irOp, refParse, type WordIr } from '../tools/ref-parse.js';
+import {
+  FRONT_END_CAPACITY,
+  FRONT_END_SOURCE_LIMIT,
+  frontEndFits,
+  IR_OPS,
+  irOp,
+  refParse,
+  type WordIr,
+} from '../tools/ref-parse.js';
 
 const AFFINE = `fn affine u32 u32 u32 -> u32
 a mul p0 p1
@@ -2807,7 +2815,17 @@ test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A
   for (const src of sources) {
     const bytes = [...Buffer.from(src)];
     assert.ok(bytes.length <= FRONT_END_SOURCE_LIMIT, src.slice(0, 40));
-    const r = run(lex, [pagesOf(bytes, 128, 128), bytes.length]) as [number[][], number];
+    // the source packed four bytes a word, low byte first, in 64 pages of 512 words
+    const packed = Array.from(
+      { length: Math.ceil(bytes.length / 4) },
+      (_, w) =>
+        ((bytes[w * 4] ?? 0) |
+          ((bytes[w * 4 + 1] ?? 0) << 8) |
+          ((bytes[w * 4 + 2] ?? 0) << 16) |
+          ((bytes[w * 4 + 3] ?? 0) << 24)) >>>
+        0,
+    );
+    const r = run(lex, [pagesOf(packed, 512, 64), bytes.length]) as [number[][], number];
     const words = r[0].flat();
     const got: number[][] = [];
     for (let i = 0; i < r[1]; i += 3) got.push(words.slice(i, i + 3));
@@ -2956,7 +2974,7 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     tlist: [128, 65],
     fns: [128, 45],
     nodes: [128, 128],
-    args: [128, 256],
+    args: [128, 512],
     fstat: [128, 8],
   } as const;
   const words = (t: keyof typeof SHAPES): number => SHAPES[t][0] * SHAPES[t][1];
@@ -3184,27 +3202,26 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     assert.equal(run(checkio, [io]), 0, f);
     assert.deepEqual(io.output, refCheckWords(text), f);
   }
-  // The most one-line functions a 16384-byte source holds: validate() accepts them (the
-  // function cap is 65536), so the A0 checker must too, with no limit diagnostic.
+  // The most functions the front end's function table holds: validate() accepts them (the
+  // function cap is 65536), so the A0 checker must too; one more is its limit diagnostic 4.
   {
     const letters = 'abcdefghijklmnopqrstuvwxyz';
     const names = [...letters];
     for (const x of letters)
       for (const y of `${letters}0123456789`) if (x + y !== 'fn') names.push(x + y);
-    let many = '';
-    let n = 0;
-    for (const name of names) {
-      const f = `fn ${name} -> u32\nret 0\nend\n`;
-      if (Buffer.byteLength(many + f) > FRONT_END_SOURCE_LIMIT) break;
-      many += f;
-      n += 1;
-    }
-    assert.equal(n, 713);
-    assert.equal(parseAndValidate(many).functions.length, n);
+    const cap = FRONT_END_CAPACITY.functions;
+    const many = names
+      .slice(0, cap)
+      .map((name) => `fn ${name} -> u32\nret 0\nend\n`)
+      .join('');
+    assert.equal(parseAndValidate(many).functions.length, cap);
     const io = makeIo([Buffer.byteLength(many), ...Buffer.from(many)]);
     assert.equal(run(checkio, [io]), 0);
     assert.deepEqual(io.output.slice(0, 4), [1, 0, 0, 0]);
     assert.deepEqual(io.output, refCheckWords(many));
+    const over = `${many}fn ${names[cap]} -> u32\nret 0\nend\n`;
+    assert.equal(frontEndFits(over), false);
+    assert.equal(run(checkio, [makeIo([Buffer.byteLength(over), ...Buffer.from(over)])]), 4);
   }
   // A well-typed source through the front: every node type agrees with validate().
   const src =

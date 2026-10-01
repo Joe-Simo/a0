@@ -75,7 +75,7 @@ import { irOp } from './ref-parse.js';
 export const WASM_TOOL_INPUT = 1 << 21;
 export const WASM_TOOL_OUTPUT = 1 << 22;
 /** Table capacities of compiler/emit_wasm.a0 for one chunk (and of an eval program). */
-const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 16512 };
+const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
 /** `emitwasmio` modes. */
 const MODE = { source: 1, tables: 2, link: 3, sourceOpt: 4, tablesOpt: 5, ir: 6 } as const;
 /** The result code of an optimized chunk that needs more bodies. */

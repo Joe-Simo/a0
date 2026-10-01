@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-09-30T21:01:24.687Z",
-  "compilerVersion": "a0c-0.1.30",
+  "generatedAt": "2026-09-30T23:57:48.342Z",
+  "compilerVersion": "a0c-0.1.31",
   "stage": "arm64 bootstrap to a signed Mach-O executable without the system assembler and linker",
   "toolchain": "Stage 1 is the C seed (TypeScript C backend + clang). Stages 2 and 3: A0-emitted assembly plus the runtime of tools/arm64-runtime.ts, encoded by src/arm64enc.ts and linked and ad-hoc signed by src/macho.ts (SHA-256 code directory written in TypeScript); dyld binds libSystem _mmap/_read/_write. clang, ld and codesign produce no byte of stages 2 and 3; clang is the reference of the encoder check and codesign -v checks the signature.",
   "stage1": {
-    "cBytes": 487365,
-    "buildMs": 7057
+    "cBytes": 579548,
+    "buildMs": 4363
   },
   "stage2": {
-    "asmBytes": 786048,
-    "executableBytes": 198400,
-    "linkMs": 256
+    "asmBytes": 1036371,
+    "executableBytes": 247936,
+    "linkMs": 290
   },
   "stage3": {
-    "asmBytes": 786048,
-    "executableBytes": 198400,
-    "emitMs": 8154,
+    "asmBytes": 1036371,
+    "executableBytes": 247936,
+    "emitMs": 7706,
     "reproduces": true
   },
   "fixedPoint": {
@@ -25,10 +25,10 @@
   },
   "encoder": {
     "method": "arm64enc words equal clang -c -x assembler __text words one by one, and the relocation offsets and kinds are equal",
-    "texts": 224,
-    "sources": 248,
+    "texts": 239,
+    "sources": 258,
     "stage2DiffersFromStage1": 0,
-    "instructions": 293545,
+    "instructions": 420114,
     "failed": 0,
     "checks": [
       {
@@ -53,6 +53,12 @@
         "label": "calls",
         "instructions": 173,
         "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus",
+        "instructions": 17435,
+        "relocations": 52,
         "mismatches": []
       },
       {
@@ -194,6 +200,12 @@
         "mismatches": []
       },
       {
+        "label": "corpus/g23",
+        "instructions": 217,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
         "label": "corpus/g24",
         "instructions": 396,
         "relocations": 0,
@@ -209,6 +221,12 @@
         "label": "corpus/g26",
         "instructions": 329,
         "relocations": 4,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g27",
+        "instructions": 452,
+        "relocations": 0,
         "mismatches": []
       },
       {
@@ -284,6 +302,12 @@
         "mismatches": []
       },
       {
+        "label": "corpus/g40",
+        "instructions": 1583,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
         "label": "corpus/g41",
         "instructions": 438,
         "relocations": 0,
@@ -316,6 +340,12 @@
       {
         "label": "corpus/g46",
         "instructions": 913,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "corpus/g47",
+        "instructions": 499,
         "relocations": 0,
         "mismatches": []
       },
@@ -470,6 +500,12 @@
         "mismatches": []
       },
       {
+        "label": "boot.a0/srcpg",
+        "instructions": 1767,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
         "label": "boot.a0/lexstep",
         "instructions": 543,
         "relocations": 0,
@@ -483,13 +519,13 @@
       },
       {
         "label": "boot.a0/lexpage",
-        "instructions": 1311,
+        "instructions": 3088,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/tokput",
-        "instructions": 121,
+        "instructions": 130,
         "relocations": 0,
         "mismatches": []
       },
@@ -513,25 +549,43 @@
       },
       {
         "label": "boot.a0/lexsrc",
-        "instructions": 4263,
+        "instructions": 6049,
         "relocations": 0,
         "mismatches": []
       },
       {
-        "label": "boot.a0/rbyte",
-        "instructions": 100,
+        "label": "boot.a0/zpk",
+        "instructions": 49,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/zsrcp",
+        "instructions": 494,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rpkb",
+        "instructions": 102,
+        "relocations": 1,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/rpkw",
+        "instructions": 241,
         "relocations": 1,
         "mismatches": []
       },
       {
         "label": "boot.a0/readpage",
-        "instructions": 231,
+        "instructions": 382,
         "relocations": 1,
         "mismatches": []
       },
       {
         "label": "boot.a0/readsrc",
-        "instructions": 1186,
+        "instructions": 987,
         "relocations": 2,
         "mismatches": []
       },
@@ -572,8 +626,8 @@
         "mismatches": []
       },
       {
-        "label": "boot.a0/z129",
-        "instructions": 853,
+        "label": "boot.a0/z400",
+        "instructions": 2750,
         "relocations": 0,
         "mismatches": []
       },
@@ -609,13 +663,13 @@
       },
       {
         "label": "boot.a0/scanb",
-        "instructions": 485,
+        "instructions": 543,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/scanseg",
-        "instructions": 597,
+        "instructions": 2395,
         "relocations": 0,
         "mismatches": []
       },
@@ -627,13 +681,13 @@
       },
       {
         "label": "boot.a0/cmpseg",
-        "instructions": 285,
+        "instructions": 2023,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/prstep",
-        "instructions": 491,
+        "instructions": 2230,
         "relocations": 0,
         "mismatches": []
       },
@@ -645,19 +699,19 @@
       },
       {
         "label": "boot.a0/p1tok",
-        "instructions": 3497,
+        "instructions": 5347,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/p1page",
-        "instructions": 4527,
+        "instructions": 6377,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/pass1",
-        "instructions": 6323,
+        "instructions": 8173,
         "relocations": 0,
         "mismatches": []
       },
@@ -669,25 +723,25 @@
       },
       {
         "label": "boot.a0/poolseg",
-        "instructions": 420,
+        "instructions": 2160,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/poolsym",
-        "instructions": 738,
+        "instructions": 2476,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/poolpage",
-        "instructions": 837,
+        "instructions": 2575,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/pass2",
-        "instructions": 1874,
+        "instructions": 5509,
         "relocations": 0,
         "mismatches": []
       },
@@ -723,19 +777,19 @@
       },
       {
         "label": "boot.a0/arrseg",
-        "instructions": 1090,
+        "instructions": 2830,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/arrword",
-        "instructions": 1361,
+        "instructions": 3105,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/arrone",
-        "instructions": 1412,
+        "instructions": 3162,
         "relocations": 0,
         "mismatches": []
       },
@@ -777,25 +831,25 @@
       },
       {
         "label": "boot.a0/frcopy",
-        "instructions": 172,
+        "instructions": 228,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/p3tok",
-        "instructions": 4009,
+        "instructions": 6090,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/p3chunk",
-        "instructions": 4207,
+        "instructions": 6288,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/pass3",
-        "instructions": 6501,
+        "instructions": 8593,
         "relocations": 0,
         "mismatches": []
       },
@@ -813,19 +867,19 @@
       },
       {
         "label": "boot.a0/txtb",
-        "instructions": 302,
+        "instructions": 359,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/txtseg",
-        "instructions": 619,
+        "instructions": 2418,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/p5tok",
-        "instructions": 2418,
+        "instructions": 2433,
         "relocations": 0,
         "mismatches": []
       },
@@ -837,19 +891,55 @@
       },
       {
         "label": "boot.a0/p5seg",
-        "instructions": 4411,
+        "instructions": 6234,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/p5more",
-        "instructions": 65,
+        "instructions": 67,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/pass5",
-        "instructions": 7273,
+        "instructions": 9102,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/p5hi",
+        "instructions": 9171,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/argcat",
+        "instructions": 8116,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/bodyargs",
+        "instructions": 17366,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/toklen",
+        "instructions": 90,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/toklpg",
+        "instructions": 207,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/fecap",
+        "instructions": 361,
         "relocations": 0,
         "mismatches": []
       },
@@ -1094,7 +1184,7 @@
         "mismatches": []
       },
       {
-        "label": "boot.a0/qw256",
+        "label": "boot.a0/qw512",
         "instructions": 69,
         "relocations": 0,
         "mismatches": []
@@ -1311,7 +1401,7 @@
       },
       {
         "label": "boot.a0/qunit",
-        "instructions": 41621,
+        "instructions": 54545,
         "relocations": 3,
         "mismatches": []
       },
@@ -1341,13 +1431,13 @@
       },
       {
         "label": "boot.a0/rdchunk",
-        "instructions": 1579,
+        "instructions": 1404,
         "relocations": 3,
         "mismatches": []
       },
       {
         "label": "compiler (whole)",
-        "instructions": 42566,
+        "instructions": 56112,
         "relocations": 8,
         "mismatches": []
       },
