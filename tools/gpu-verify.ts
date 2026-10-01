@@ -13,6 +13,7 @@ import type { TypedProgram, Value } from '../src/core.js';
 import { emitMetal, isKernelCallable, kernelName } from '../src/metal.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import { type Case, generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 import type { TargetReport } from './verify.js';
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
@@ -188,7 +189,7 @@ async function main(): Promise<void> {
     detail: r.detail,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(join('results', 'gpu.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(join('results', 'gpu.json'), report);
   process.stdout.write(
     `${JSON.stringify({ status: report.status, device: report.device, cases: report.inputCases, kernels: report.kernels, detail: report.detail, failures: (report.failures as string[] | undefined)?.slice(0, 5) }, null, 2)}\n`,
   );

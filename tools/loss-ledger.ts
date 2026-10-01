@@ -26,6 +26,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { scrubText } from './scrub-results.js';
 
 /** AGENTS.md: no timing claim from a run recorded above load average 10. */
 export const LOAD_LIMIT = 10;
@@ -564,7 +565,7 @@ function main(): void {
   }
   if (args.includes('--update')) {
     const { ledger, added, worsened, removed } = nextLedger(previous, current, reason);
-    writeFileSync(LEDGER_PATH, renderLedger(ledger), 'utf8');
+    writeFileSync(LEDGER_PATH, scrubText(renderLedger(ledger)), 'utf8');
     process.stdout.write(
       `wrote ${LEDGER_PATH}: ${summary(ledger)}; ${added} added, ${worsened} worsened, ${removed} removed\n`,
     );

@@ -67,7 +67,10 @@ export function stepFiles(root: string, step: StepId): string[] {
   if (step === 'test') {
     extra.push(...walk(root, 'examples', /\.a0$/), ...walk(root, 'compiler', /\.a0$/));
     extra.push(...walk(root, 'src', /\.ts$/), ...walk(root, 'tools', /\.ts$/));
-    extra.push(...readdirSync(root).filter((f) => /^MODEL_GUIDE.*\.txt$/.test(f)));
+    extra.push(
+      ...readdirSync(root).filter((f) => /^MODEL_GUIDE.*\.txt$/.test(f)),
+      ...walk(root, 'experiments', /\.txt$/),
+    );
   }
   for (const r of ['verify', 'app', 'selfhost', 'selfhost-c', 'bootstrap', 'equiv', 'hw']) {
     if (r === step) extra.push(...walk(root, 'tools', /\.ts$/).filter((f) => closure.has(f)));

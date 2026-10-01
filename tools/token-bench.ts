@@ -6,13 +6,14 @@
  * encodings, which are NOT the tokenizer of Claude or any other vendor's model.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getEncoding, type TiktokenEncoding } from 'js-tiktoken';
 import { compile } from '../src/backends.js';
 import { formatFunction, formatProgram, parseAndValidate, type TypedFunc } from '../src/core.js';
 import { EditSession, formatPatch, scopedView } from '../src/edit.js';
 import { generateCorpus } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 
 const ENCODINGS: readonly TiktokenEncoding[] = ['o200k_base', 'cl100k_base'];
 
@@ -149,7 +150,7 @@ async function main(): Promise<void> {
     ...results,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(join('results', 'tokens.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(join('results', 'tokens.json'), report);
   for (const group of ['fixtures', 'views', 'corpora'] as const) {
     process.stdout.write(`\n${group}\n`);
     for (const [name, r] of Object.entries(results[group] ?? {})) {

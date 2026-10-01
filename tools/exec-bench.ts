@@ -53,6 +53,7 @@ import {
 } from './exec-bench-languages.js';
 import { MORE_LANGUAGES } from './exec-bench-languages-more.js';
 import { loadGate, waitQuiet } from './quiet.js';
+import { writeReport } from './scrub-results.js';
 
 const LANGUAGES: readonly Language[] = [...CORE_LANGUAGES, ...MORE_LANGUAGES];
 
@@ -828,7 +829,7 @@ async function main(): Promise<void> {
     kernels: results,
   };
   await mkdir(join(CLI.out, '..'), { recursive: true });
-  await writeFile(CLI.out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(CLI.out, report);
 }
 
 main().catch((err: unknown) => {

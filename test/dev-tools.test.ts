@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkFile, loadsIn } from '../tools/dev/claim-check.js';
+import { CLAIM_FILES, checkFile, loadsIn } from '../tools/dev/claim-check.js';
 import {
   BUILD,
   COMMANDS,
@@ -155,6 +155,42 @@ test('claim-check: claims need a nearby results reference; load above 10 flags s
     assert.match(by('40%')?.problems.join(' ') ?? '', /missing results file/);
     assert.deepEqual(by('5x smaller')?.problems, []);
     assert.deepEqual(loadsIn('load average 10-23'), [10, 23]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('claim-check: an archived record needs no reference, a dangling one is still flagged', () => {
+  const root = scratch();
+  try {
+    mkdirSync(join(root, 'results'));
+    mkdirSync(join(root, 'docs', 'history'), { recursive: true });
+    writeFileSync(join(root, 'docs', 'history', '2026-01-01-x.md'), '# x\n');
+    writeFileSync(join(root, 'results', 'x.json'), '{}\n');
+    const body = [
+      '## Loaded',
+      'A0 was 9x faster; load average 40 while measuring.',
+      '',
+      '## Dangling',
+      'A0 used 3x fewer tokens (results/nope.json).',
+      '',
+      '## Supported',
+      'A0 is 2x faster, see results/x.json.',
+    ];
+    const archive = checkFile(
+      root,
+      'docs/history/2026-01-01-x.md',
+      ['# x', '', 'claim-check: archive. Dated record.', '', ...body].join('\n'),
+    );
+    assert.equal(archive.length, 3);
+    assert.deepEqual(archive[0]?.problems, []);
+    assert.match(archive[1]?.problems.join(' ') ?? '', /missing results file/);
+    assert.deepEqual(archive[2]?.problems, []);
+    // the same lines without the mark are claims: unsupported, loaded, dangling
+    const plain = checkFile(root, 'STATUS.md', body.join('\n'));
+    assert.match(plain[0]?.problems.join(' ') ?? '', /unsupported/);
+    assert.match(plain[0]?.problems.join(' ') ?? '', /load 40/);
+    assert.ok(CLAIM_FILES(root).includes('docs/history/2026-01-01-x.md'));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

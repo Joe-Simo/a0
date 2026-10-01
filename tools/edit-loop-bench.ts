@@ -42,6 +42,7 @@ import { TASKS_A } from './ai-edit-tasks-a.js';
 import { TASKS_B, type Task } from './ai-edit-tasks-b.js';
 import { buildTasksC } from './ai-edit-tasks-c.js';
 import { GO_EDITS, goFile } from './edit-loop-go.js';
+import { writeReport } from './scrub-results.js';
 
 type Kind =
   | 'a0.structured'
@@ -561,7 +562,7 @@ async function main(): Promise<void> {
       load,
       ...report,
     };
-    await writeFile('results/edit-loop.json', `${JSON.stringify(out, null, 2)}\n`, 'utf8');
+    await writeReport('results/edit-loop.json', out);
     for (const m of models) {
       process.stdout.write(`\n${m}\n`);
       for (const r of (report[m] as { rows: Row[] }).rows)

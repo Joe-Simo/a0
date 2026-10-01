@@ -213,7 +213,10 @@ test('explain: every example runs (the failing one raises its code, the fixed on
   assert.equal(explain('A9999'), undefined);
   assert.equal(explainIndex().split('\n').filter(Boolean).length, diagnosticIds().length);
   // Explanations stay out of the primer.
-  return readFile(join(root, 'MODEL_GUIDE.rules-merged.txt'), 'utf8').then((primer) => {
+  return readFile(
+    join(root, 'experiments', 'primers', 'MODEL_GUIDE.rules-merged.txt'),
+    'utf8',
+  ).then((primer) => {
     assert.ok(!/A0[0-9]{3}|explain/.test(primer));
   });
 });

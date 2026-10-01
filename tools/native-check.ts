@@ -57,6 +57,7 @@ import { KERNELS } from './exec-bench-kernels.js';
 import { frontEndSources, UNKNOWN_NAMES } from './front-end-sources.js';
 import { ILL_TYPED, NONE, refCheckWords } from './ref-check.js';
 import { FRONT_END_SOURCE_LIMIT, refSuggest } from './ref-parse.js';
+import { scrubText } from './scrub-results.js';
 
 export const NATIVE_DIR = join('dist', 'native');
 export const NATIVE_A0 = join(NATIVE_DIR, 'a0');
@@ -505,64 +506,66 @@ async function main(): Promise<void> {
   await mkdir('results', { recursive: true });
   await writeFile(
     'results/native-check.json',
-    `${JSON.stringify(
-      {
-        tool: 'bun run native-check (tools/native-check.ts)',
-        executable: NATIVE_A0,
-        build: {
-          method:
-            'compiler/native.a0 (compiler/check.a0 and compiler/suggest.a0 linked with parse.a0 and lex.a0; entries checkio, irio and suggestio) compiled by the A0 C backend (src/backends.ts), with the host driver tools/native/a0.c (linking, commands, IR evaluator), by clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node and no C compiler at run time',
-          functions: build.fns,
-          cBytes: build.cBytes,
-          ms: build.ms,
-          clang: findClang().version,
-        },
-        verification: {
-          method:
-            'each source is written to a file and checked by a separate `dist/native/a0 check FILE` process; its (code, function, node) must equal refCheckWords of tools/ref-check.ts on the text src/link.ts links (code 0: accepted)',
-          sources: rows.length,
-          agree: rows.length - failed.length,
-          rejectedByReference: rejected,
-          failed: failed.length,
-          suggestions: {
+    scrubText(
+      `${JSON.stringify(
+        {
+          tool: 'bun run native-check (tools/native-check.ts)',
+          executable: NATIVE_A0,
+          build: {
             method:
-              'for a token error (code 1 or 2) the executable also prints `A0nnnn ...` (compiler/suggest.a0 suggestio on the rejected token); that line must equal the one built from refSuggest (tools/ref-parse.ts)',
-            checked: rows.filter((r) => r.suggestion !== null).length,
-            printed: rows.filter((r) => r.suggestion?.got != null).length,
-            agree: rows.filter(
-              (r) => r.suggestion !== null && r.suggestion.expected === r.suggestion.got,
-            ).length,
+              'compiler/native.a0 (compiler/check.a0 and compiler/suggest.a0 linked with parse.a0 and lex.a0; entries checkio, irio and suggestio) compiled by the A0 C backend (src/backends.ts), with the host driver tools/native/a0.c (linking, commands, IR evaluator), by clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node and no C compiler at run time',
+            functions: build.fns,
+            cBytes: build.cBytes,
+            ms: build.ms,
+            clang: findClang().version,
           },
+          verification: {
+            method:
+              'each source is written to a file and checked by a separate `dist/native/a0 check FILE` process; its (code, function, node) must equal refCheckWords of tools/ref-check.ts on the text src/link.ts links (code 0: accepted)',
+            sources: rows.length,
+            agree: rows.length - failed.length,
+            rejectedByReference: rejected,
+            failed: failed.length,
+            suggestions: {
+              method:
+                'for a token error (code 1 or 2) the executable also prints `A0nnnn ...` (compiler/suggest.a0 suggestio on the rejected token); that line must equal the one built from refSuggest (tools/ref-parse.ts)',
+              checked: rows.filter((r) => r.suggestion !== null).length,
+              printed: rows.filter((r) => r.suggestion?.got != null).length,
+              agree: rows.filter(
+                (r) => r.suggestion !== null && r.suggestion.expected === r.suggestion.got,
+              ).length,
+            },
+          },
+          evaluator: {
+            method:
+              'the IR evaluator of tools/native/a0.c through `a0 calls FILE` (the tools/verify.ts driver protocol): every corpus function with the functions it reaches, the exec-bench kernels and the examples; each result and io output must equal the BigInt oracle of tools/corpus.ts generateCases',
+            programs: evals.length,
+            skippedOutsideFrontEnd: evals.filter((r) => r.skipped).length,
+            cases: evalCases,
+            failedPrograms: evalFailed.length,
+            rows: evals,
+          },
+          commands: {
+            method:
+              '`a0 run` output must equal String() of the reference `run` (what src/cli.ts prints); the `a0 bench K N` checksum must equal the reference over the exec-bench xorshift32 inputs',
+            rows: commands,
+          },
+          linking: {
+            method:
+              'small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit must be refused natively (exit 65: the 16384-byte front end) where the TypeScript linker accepts 1 MiB',
+            rows: linking,
+          },
+          checkTimeBySize: {
+            method:
+              'median of 5 wall-clock `a0 check` processes on the first 88, 176, 355 and 713 functions of the most-functions source; machine load not controlled',
+            rows: scale,
+          },
+          rows,
         },
-        evaluator: {
-          method:
-            'the IR evaluator of tools/native/a0.c through `a0 calls FILE` (the tools/verify.ts driver protocol): every corpus function with the functions it reaches, the exec-bench kernels and the examples; each result and io output must equal the BigInt oracle of tools/corpus.ts generateCases',
-          programs: evals.length,
-          skippedOutsideFrontEnd: evals.filter((r) => r.skipped).length,
-          cases: evalCases,
-          failedPrograms: evalFailed.length,
-          rows: evals,
-        },
-        commands: {
-          method:
-            '`a0 run` output must equal String() of the reference `run` (what src/cli.ts prints); the `a0 bench K N` checksum must equal the reference over the exec-bench xorshift32 inputs',
-          rows: commands,
-        },
-        linking: {
-          method:
-            'small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit must be refused natively (exit 65: the 16384-byte front end) where the TypeScript linker accepts 1 MiB',
-          rows: linking,
-        },
-        checkTimeBySize: {
-          method:
-            'median of 5 wall-clock `a0 check` processes on the first 88, 176, 355 and 713 functions of the most-functions source; machine load not controlled',
-          rows: scale,
-        },
-        rows,
-      },
-      null,
-      2,
-    )}\n`,
+        null,
+        2,
+      )}\n`,
+    ),
     'utf8',
   );
   process.exit(allOk ? 0 : 1);

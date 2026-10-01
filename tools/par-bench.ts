@@ -35,6 +35,7 @@ import { parseAndValidate, run, type TypedProgram } from '../src/core.js';
 import { type ParallelMode, parallelC, planProgram } from '../src/parallel.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 import { jvm, single, type Toolchain } from './exec-bench-languages.js';
+import { writeReport } from './scrub-results.js';
 
 const KERNELS = ['sum24', 'xor24', 'count20', 'mr22', 'dot64k', 'max64k', 'hash64k'] as const;
 type K = (typeof KERNELS)[number];
@@ -796,7 +797,7 @@ async function main(): Promise<void> {
     kernels: report,
   };
   await mkdir(join(cli.out, '..'), { recursive: true });
-  await writeFile(cli.out, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
+  await writeReport(cli.out, result);
 }
 
 main().catch((err: unknown) => {

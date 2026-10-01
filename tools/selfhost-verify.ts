@@ -9,7 +9,7 @@
  * 512 token words) are counted as skipped, never as passes. Writes results/selfhost.json.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -25,6 +25,7 @@ import { link } from '../src/link.js';
 import { findClang } from '../src/toolchain.js';
 import { type Case, generateCases, generateCorpus, hasScalarSignature } from './corpus.js';
 import { refLex } from './ref-parse.js';
+import { writeReport } from './scrub-results.js';
 import { checkArm64Assembly, type TargetReport } from './verify.js';
 
 export const SCALAR_CORPUS_SEED = 0xa05ca1a;
@@ -254,7 +255,7 @@ async function main(): Promise<void> {
     programs: all,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(join('results', 'selfhost.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(join('results', 'selfhost.json'), report);
   for (const r of all) {
     process.stdout.write(
       `${r.label.padEnd(32)} ${r.status.padEnd(8)} ${String(r.cases).padStart(5)} cases  ${String(r.sourceBytes).padStart(4)} src B ${String(r.asmBytes).padStart(5)} asm B  ${r.detail.slice(0, 60)}\n`,

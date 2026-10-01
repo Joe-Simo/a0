@@ -50,6 +50,7 @@ import { findClang, runTool, type ToolInfo, withTempDir } from '../src/toolchain
 import { closure, closures, generateCases, generateCorpus } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { FRONT_END_SOURCE_LIMIT, frontEndFits } from './ref-parse.js';
+import { writeReport } from './scrub-results.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
 export { closure, closures };
@@ -613,11 +614,7 @@ async function main(): Promise<void> {
     sources: reports,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'bootstrap.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'bootstrap.json'), report);
   process.stdout.write(
     `total ${passed.length} sources passed, ${report.tests.cases} cases; ${failed} failed; fixed point ${fixedPoint ? 'reached' : 'NOT reached'}\n`,
   );

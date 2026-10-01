@@ -1,7 +1,8 @@
 # Rules for every agent working on A0
 
 These rules are binding. The loop below is how A0 is developed; the tools are free, local and
-deterministic (no key, no network, nothing paid). Reference: `docs/DEVELOPMENT.md`.
+deterministic (no key, no network, nothing paid). Reference: `docs/DEVELOPMENT.md`. The way in for a new
+contributor, with the layout, the build and the measurement rules, is `CONTRIBUTING.md`.
 
 ## The loop
 
@@ -23,7 +24,7 @@ deterministic (no key, no network, nothing paid). Reference: `docs/DEVELOPMENT.m
    pre-existing or unexplained. A flake is quarantined only when two distinct runs on one tree
    disagree. A single failing run is "unexplained: needs evidence", never a flake.
 7. **Claims.** `a0-dev claims --since=<base>` (also part of `bun run lint`). Every number or comparison
-   ("N times faster", "fewer", percentages, "fastest") in STATUS.md or a site template needs a nearby
+   ("N times faster", "fewer", percentages, "fastest") in STATUS.md, `docs/history/` or a site template needs a nearby
    `results/*.json` reference or a recorded value. A claim you cannot back is deleted or marked
    `claim-ok: <reason>`.
 8. **Before you push.** `a0-dev gate` (full) must print `GATE RESULT: pass`; with `--push=<remote>` it
@@ -49,4 +50,7 @@ deterministic (no key, no network, nothing paid). Reference: `docs/DEVELOPMENT.m
   loss; growing `results/loss-ledger.json` needs `--update --reason "..."`. A change to
   `compiler/*.a0` needs `bun run seed` (the checked-in bootstrap seed in `seed/` is stale otherwise;
   `test/seed.test.ts` fails).
+- **Nothing local in the repository.** Results are written through `tools/scrub-results.ts` (local paths become
+  `<repo>`, `<home>`, `<tmp>`); no absolute home or temp path, session identifier, key, `.env` file or editor or
+  agent state is committed (`test/hygiene.test.ts` fails otherwise).
 - **Push only a passing gate.** Never push a branch whose gate result is missing or failed.

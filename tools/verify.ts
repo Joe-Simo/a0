@@ -61,6 +61,7 @@ import {
   ioFreeSubset,
   isDriverCallable,
 } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 
 export interface TargetReport {
   status: 'passed' | 'failed' | 'blocked' | 'unverified';
@@ -1521,11 +1522,7 @@ async function main(): Promise<void> {
       'Includes emission/build/startup/checking for each path; not a comparative runtime benchmark.',
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'verification.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'verification.json'), report);
   await writeFile(join('results', 'corpus.a0'), formatProgram(program), 'utf8');
   for (const [name, t] of Object.entries(report.targets)) {
     process.stdout.write(

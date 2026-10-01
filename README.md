@@ -20,8 +20,8 @@ The site a0lang.com is itself two A0 programs (`site/page.a0`, `site/docs.a0`).
 
 See [DESIGN.md](DESIGN.md) for intent and
 semantics, [MODEL_GUIDE.txt](MODEL_GUIDE.txt) for the AI-facing language
-instructions, [STATUS.md](STATUS.md) for the current implemented scope, evidence
-ledger, blockers, and next action, and `results/` for machine-readable evidence.
+instructions, [STATUS.md](STATUS.md) for the current results, loss ledger, known limits, and next actions
+(session history in [docs/history/](docs/history/)), and `results/` for machine-readable evidence.
 
 ## Install
 
@@ -119,6 +119,8 @@ Replace `.` with the folder the server may read and write when your agent does n
 The a0 MCP server and the `.mcpb` bundles run entirely on your machine. They collect no data, make no network requests, and read or write only inside the folder you give them.
 
 ## Contributing to the compiler
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout, the edit protocol, how to add a backend or a language to the experiments, and the measurement rules.
 
 The compiler is being rewritten in A0 (see `compiler/` and DESIGN.md section 7a). Until that lands, the compiler itself is TypeScript, and working on it needs Bun or Node 22+. Users of A0 never need this: the released `a0` binary is self-contained.
 
