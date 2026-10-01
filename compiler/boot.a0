@@ -236,6 +236,12 @@ b mul a 2
 c call wxdts p0 0 b p3
 ret c
 end
+# word p1 of the shape table p2 written (a fold body: the debug dump of the shape table)
+fn wshd io u32 u32x128x200 -> io
+a call wshw p2 p1
+b write p0 a
+ret b
+end
 # one trip: 1 when instruction p1 of the machine table p2 is a call (kind 6) to a code index of
 # p3 or more
 fn wbad1 u32 u32 u32x128x512 u32 -> u32
@@ -342,15 +348,20 @@ b call shcounts a p16 p17 p14 p11 p12
 c fold wshp p14 b p1 p2 p3 p4 p5 p6
 nown sub p14 p13
 miss call wshw c 16128
+dmp eq p18 5
+dmpn select dmp 25600 0
+io1 fold wshd dmpn p0 c
 z call z8
 m0 rec 0 z
 m1 fold wmq miss m0 c
 mc at m1 0
 ml at m1 1
 none eq miss 0
-cnt select none nown 0
+nodmp eq dmp false
+runq and none nodmp
+cnt select runq nown 0
 ai call wainfo p1 p2 p11
-st0 rec p0 p15 p9 mc ml 0
+st0 rec io1 p15 p9 mc ml 0
 st fold wxfunf cnt st0 p13 p18 p19 p3 p4 p5 p6 p1 p2 ai c p7 p8
 r call wachunkend st nown p10 p13 p15
 ret r
@@ -430,9 +441,11 @@ t19 at ru 1
 sj eq sopt 2
 sk eq sopt 3
 sl eq sopt 4
+sd eq sopt 5
 sm select sk 3 1
 sn select sl 4 sm
-simd select sj 0 sn
+so select sd 5 sn
+simd select sj 0 so
 uz eq uopt 0
 unroll select uz 1 uopt
 r call wxorch t19 ty tl fns nodes args nt names fnm dt fst nty ntl nbef nfn base nnode narg simd unroll

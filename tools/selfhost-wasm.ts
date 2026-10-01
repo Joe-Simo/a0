@@ -77,7 +77,7 @@ export const WASM_TOOL_OUTPUT = 1 << 22;
 /** Table capacities of compiler/emit_wasm.a0 for one chunk (and of an eval program). */
 const CAP = { nodes: 2816, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
 /** `emitwasmio` modes. */
-const MODE = { source: 1, tables: 2, link: 3, optimize: 7, image: 8 } as const;
+export const MODE = { source: 1, tables: 2, link: 3, optimize: 7, image: 8 } as const;
 /** The result code of an optimized chunk that needs more bodies. */
 const NEEDS_BODIES = 7;
 /** The result code of a chunk that does not fit a table. */
@@ -303,7 +303,7 @@ function encodeBodies(
 }
 
 /** A chunk as tables: the words of mode 2 after the call table, and how they were numbered. */
-interface ChunkTables {
+export interface ChunkTables {
   /** Its callees outside the chunk, in program order (the call table's functions). */
   readonly before: number[];
   /** The chunk's function space: `before`, then its own functions (program indices). */
@@ -320,7 +320,7 @@ interface ChunkTables {
  * An external function has a row with its body only when the emitter asked for it (`supplied`,
  * code 7: program indices); its own callees outside the chunk are then external too.
  */
-function encodeChunk(
+export function encodeChunk(
   fns: readonly TypedFunc[],
   from: number,
   to: number,
