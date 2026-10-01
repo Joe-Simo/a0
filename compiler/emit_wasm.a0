@@ -471,8 +471,12 @@ v_gw and p2 127
 v_gg get p0 v_gp
 v get v_gg v_gw
 n add v p3
-r fold wxs 1 p0 p2 n
-ret r
+r__pg shr p2 7
+r__w and p2 127
+r__g get p0 r__pg
+r__g2 set r__g r__w n
+r__r set p0 r__pg r__g2
+ret r__r
 end
 # the address of word p2 of frame p1 / of loop context p1 / of word p3 of node p2 in frame p1
 fn wxfr u32 u32 -> u32
@@ -528,42 +532,66 @@ end
 # frame d word k := v, loop context, node row: (M, trip, d, k, v) and (M, trip, d, j, k, v)
 fn wxfs u32x128x512 u32 u32 u32 u32 -> u32x128x512
 a call wxfr p2 p3
-r fold wxs 1 p0 a p4
-ret r
+r__pg shr a 7
+r__w and a 127
+r__g get p0 r__pg
+r__g2 set r__g r__w p4
+r__r set p0 r__pg r__g2
+ret r__r
 end
 fn wxcs u32x128x512 u32 u32 u32 u32 -> u32x128x512
 a call wxcx p2 p3
-r fold wxs 1 p0 a p4
-ret r
+r__pg shr a 7
+r__w and a 127
+r__g get p0 r__pg
+r__g2 set r__g r__w p4
+r__r set p0 r__pg r__g2
+ret r__r
 end
 fn wxrs u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
 a call wxrw p2 p3 p4
-r fold wxs 1 p0 a p5
-ret r
+r__pg shr a 7
+r__w and a 127
+r__g get p0 r__pg
+r__g2 set r__g r__w p5
+r__r set p0 r__pg r__g2
+ret r__r
 end
 fn wxbs u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
 a call wxbk p2 p3 p4
-r fold wxs 1 p0 a p5
-ret r
+r__pg shr a 7
+r__w and a 127
+r__g get p0 r__pg
+r__g2 set r__g r__w p5
+r__r set p0 r__pg r__g2
+ret r__r
 end
-# the instruction (kind p2, value p3) appended (a fold of one trip); capacity 22528
+# the instruction (kind p2, value p3) appended (a fold of one trip); capacity 22528, then the
+# error register is set and nothing is written. The register page first, then the page of the
+# instruction: a chain of sets, each on the result of the previous one
 fn wxe u32x128x512 u32 u32 u32 -> u32x128x512
-n_gp shr 0 7
-n_gw and 0 127
-n_gg get p0 n_gp
-n get n_gg n_gw
+g0 get p0 0
+n get g0 0
+e8 get g0 8
+full ge n 22528
+okn select full 0 1
+n1 add n okn
+e2 select full 1 e8
+g0a set g0 0 n1
+g0b set g0a 8 e2
+m1 set p0 0 g0b
 a mul n 2
 ad add a 20480
-full ge n 22528
-ok select full 0 1
-m1 fold wxs ok p0 ad p2
-ad1 add ad 1
-m2 fold wxs ok m1 ad1 p3
-n1 add n 1
-m3 fold wxs ok m2 0 n1
-cn1_m4 select full 1 0
-m4 fold wxs cn1_m4 m3 8 1
-ret m4
+pg shr ad 7
+w and ad 127
+g get m1 pg
+w1 add w 1
+g1 set g w p2
+g2 set g1 w1 p3
+okb eq full false
+g3 select okb g2 g
+m2 set m1 pg g3
+ret m2
 end
 # a fresh i32 local id into register 16 (ids from 8192 are a capacity error)
 fn wxnl u32x128x512 u32 -> u32x128x512
@@ -572,12 +600,27 @@ n_gw and 1 127
 n_gg get p0 n_gp
 n get n_gg n_gw
 big ge n 8192
-m1 fold wxs 1 p0 16 n
+m1__pg shr 16 7
+m1__w and 16 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w n
+m1__r set p0 m1__pg m1__g2
 n1 add n 1
-m2 fold wxs 1 m1 1 n1
+m2__pg shr 1 7
+m2__w and 1 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w n1
+m2__r set m1__r m2__pg m2__g2
 cn1_m3 select big 1 0
-m3 fold wxs cn1_m3 m2 8 1
-ret m3
+m3__gcondb ne cn1_m3 0
+m3__pg shr 8 7
+m3__w and 8 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w 1
+m3__r_o get m2__r m3__pg
+m3__r_s select m3__gcondb m3__g2 m3__r_o
+m3__r set m2__r m3__pg m3__r_s
+ret m3__r
 end
 # a fresh v128 local id (2^20 + k) into register 16
 fn wxnv u32x128x512 u32 -> u32x128x512
@@ -587,12 +630,27 @@ n_gg get p0 n_gp
 n get n_gg n_gw
 big ge n 128
 id add n 1048576
-m1 fold wxs 1 p0 16 id
+m1__pg shr 16 7
+m1__w and 16 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w id
+m1__r set p0 m1__pg m1__g2
 n1 add n 1
-m2 fold wxs 1 m1 2 n1
+m2__pg shr 2 7
+m2__w and 2 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w n1
+m2__r set m1__r m2__pg m2__g2
 cn1_m3 select big 1 0
-m3 fold wxs cn1_m3 m2 8 1
-ret m3
+m3__gcondb ne cn1_m3 0
+m3__pg shr 8 7
+m3__w and 8 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w 1
+m3__r_o get m2__r m3__pg
+m3__r_s select m3__gcondb m3__g2 m3__r_o
+m3__r set m2__r m3__pg m3__r_s
+ret m3__r
 end
 # the frame pointer local into register 16, created on first use
 fn wxfp u32x128x512 u32 -> u32x128x512
@@ -609,9 +667,20 @@ nl_gg get m1 nl_gp
 nl get nl_gg nl_gw
 fp select none nl f
 cn2_m2 select none 1 0
-m2 fold wxs cn2_m2 m1 4 fp
-m3 fold wxs 1 m2 16 fp
-ret m3
+m2__gcondb ne cn2_m2 0
+m2__pg shr 4 7
+m2__w and 4 127
+m2__g get m1 m2__pg
+m2__g2 set m2__g m2__w fp
+m2__r_o get m1 m2__pg
+m2__r_s select m2__gcondb m2__g2 m2__r_o
+m2__r set m1 m2__pg m2__r_s
+m3__pg shr 16 7
+m3__w and 16 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w fp
+m3__r set m2__r m3__pg m3__g2
+ret m3__r
 end
 # push an item (kind p2, a p3, b p4, c p5) on the work stack (512 items)
 fn wxpu u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
@@ -623,18 +692,60 @@ full ge sp 512
 ok select full 0 1
 a mul sp 4
 ad add a 1344
-m1 fold wxs ok p0 ad p2
+m1__gcondb ne ok 0
+m1__pg shr ad 7
+m1__w and ad 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w p2
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
 ad1 add ad 1
-m2 fold wxs ok m1 ad1 p3
+m2__gcondb ne ok 0
+m2__pg shr ad1 7
+m2__w and ad1 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w p3
+m2__r_o get m1__r m2__pg
+m2__r_s select m2__gcondb m2__g2 m2__r_o
+m2__r set m1__r m2__pg m2__r_s
 ad2 add ad 2
-m3 fold wxs ok m2 ad2 p4
+m3__gcondb ne ok 0
+m3__pg shr ad2 7
+m3__w and ad2 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w p4
+m3__r_o get m2__r m3__pg
+m3__r_s select m3__gcondb m3__g2 m3__r_o
+m3__r set m2__r m3__pg m3__r_s
 ad3 add ad 3
-m4 fold wxs ok m3 ad3 p5
+m4__gcondb ne ok 0
+m4__pg shr ad3 7
+m4__w and ad3 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w p5
+m4__r_o get m3__r m4__pg
+m4__r_s select m4__gcondb m4__g2 m4__r_o
+m4__r set m3__r m4__pg m4__r_s
 sp1 add sp 1
-m5 fold wxs ok m4 7 sp1
+m5__gcondb ne ok 0
+m5__pg shr 7 7
+m5__w and 7 127
+m5__g get m4__r m5__pg
+m5__g2 set m5__g m5__w sp1
+m5__r_o get m4__r m5__pg
+m5__r_s select m5__gcondb m5__g2 m5__r_o
+m5__r set m4__r m5__pg m5__r_s
 cn1_m6 select full 1 0
-m6 fold wxs cn1_m6 m5 8 1
-ret m6
+m6__gcondb ne cn1_m6 0
+m6__pg shr 8 7
+m6__w and 8 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w 1
+m6__r_o get m5__r m6__pg
+m6__r_s select m6__gcondb m6__g2 m6__r_o
+m6__r set m5__r m6__pg m6__r_s
+ret m6__r
 end
 # pop the top item into registers 16 (kind) 17 18 19
 fn wxpo u32x128x512 u32 -> u32x128x512
@@ -664,12 +775,32 @@ z_gp shr ad3 7
 z_gw and ad3 127
 z_gg get p0 z_gp
 z get z_gg z_gw
-m1 fold wxs 1 p0 16 k
-m2 fold wxs 1 m1 17 x
-m3 fold wxs 1 m2 18 y
-m4 fold wxs 1 m3 19 z
-m5 fold wxs 1 m4 7 s1
-ret m5
+m1__pg shr 16 7
+m1__w and 16 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w k
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 17 7
+m2__w and 17 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w x
+m2__r set m1__r m2__pg m2__g2
+m3__pg shr 18 7
+m3__w and 18 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w y
+m3__r set m2__r m3__pg m3__g2
+m4__pg shr 19 7
+m4__w and 19 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w z
+m4__r set m3__r m4__pg m4__g2
+m5__pg shr 7 7
+m5__w and 7 127
+m5__g get m4__r m5__pg
+m5__g2 set m5__g m5__w s1
+m5__r set m4__r m5__pg m5__g2
+ret m5__r
 end
 # a zero instruction table (352 pages)
 fn z352 -> u32x128x352
@@ -896,16 +1027,44 @@ v1 select cb cv sv
 v2 select lit p4 v1
 val select isc v2 loc
 isc1 select isc 1 0
-m1 fold wxs 1 p0 16 isc1
-m2 fold wxs 1 m1 17 val
-ret m2
+m1__pg shr 16 7
+m1__w and 16 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w isc1
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 17 7
+m2__w and 17 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w val
+m2__r set m1__r m2__pg m2__g2
+ret m2__r
 end
 # emit the push of a resolved operand (constant flag p2, value or local p3)
 fn wxpr u32x128x512 u32 u32 u32 -> u32x128x512
 c ne p2 0
 k select c 2 3
-r fold wxe 1 p0 k p3
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w k
+r__g2 set r__g1 r__w1 p3
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 # push operand (kind p3, value p4) of frame p2
 fn wxpsh u32x128x512 u32 u32 u32 u32 -> u32x128x512
@@ -930,8 +1089,28 @@ l_gw and 16 127
 l_gg get m1 l_gp
 l get l_gg l_gw
 m2 fold wxrs 1 m1 p2 p3 0 l
-m3 fold wxe 1 m2 4 l
-ret m3
+m3__g0 get m2 0
+m3__n get m3__g0 0
+m3__e8 get m3__g0 8
+m3__full ge m3__n 22528
+m3__okn select m3__full 0 1
+m3__n1 add m3__n m3__okn
+m3__e2 select m3__full 1 m3__e8
+m3__g0a set m3__g0 0 m3__n1
+m3__g0b set m3__g0a 8 m3__e2
+m3__m1 set m2 0 m3__g0b
+m3__a mul m3__n 2
+m3__ad add m3__a 20480
+m3__pg shr m3__ad 7
+m3__w and m3__ad 127
+m3__g get m3__m1 m3__pg
+m3__w1 add m3__w 1
+m3__g1 set m3__g m3__w 4
+m3__g2 set m3__g1 m3__w1 l
+m3__okb eq m3__full false
+m3__g3 select m3__okb m3__g2 m3__g
+m3__m2 set m3__m1 m3__pg m3__g3
+ret m3__m2
 end
 # a node's local bound to p4 (frame p2, node p3)
 fn wxbind u32x128x512 u32 u32 u32 u32 -> u32x128x512
@@ -940,43 +1119,243 @@ ret r
 end
 # i32.const p2
 fn wxkc u32x128x512 u32 u32 -> u32x128x512
-r fold wxe 1 p0 2 p2
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w 2
+r__g2 set r__g1 r__w1 p2
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 # local.get p2 / local.set p2
 fn wxlg u32x128x512 u32 u32 -> u32x128x512
-r fold wxe 1 p0 3 p2
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w 3
+r__g2 set r__g1 r__w1 p2
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 fn wxls u32x128x512 u32 u32 -> u32x128x512
-r fold wxe 1 p0 4 p2
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w 4
+r__g2 set r__g1 r__w1 p2
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 # a byte opcode
 fn wxop u32x128x512 u32 u32 -> u32x128x512
-r fold wxe 1 p0 1 p2
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w 1
+r__g2 set r__g1 r__w1 p2
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 # memory.copy of p2 bytes (destination and source already pushed)
 fn wxcp u32x128x512 u32 u32 -> u32x128x512
-m1 fold wxe 1 p0 2 p2
-m2 fold wxe 1 m1 16 0
-ret m2
+m1__g0 get p0 0
+m1__n get m1__g0 0
+m1__e8 get m1__g0 8
+m1__full ge m1__n 22528
+m1__okn select m1__full 0 1
+m1__n1 add m1__n m1__okn
+m1__e2 select m1__full 1 m1__e8
+m1__g0a set m1__g0 0 m1__n1
+m1__g0b set m1__g0a 8 m1__e2
+m1__m1 set p0 0 m1__g0b
+m1__a mul m1__n 2
+m1__ad add m1__a 20480
+m1__pg shr m1__ad 7
+m1__w and m1__ad 127
+m1__g get m1__m1 m1__pg
+m1__w1 add m1__w 1
+m1__g1 set m1__g m1__w 2
+m1__g2 set m1__g1 m1__w1 p2
+m1__okb eq m1__full false
+m1__g3 select m1__okb m1__g2 m1__g
+m1__m2 set m1__m1 m1__pg m1__g3
+m2__g0 get m1__m2 0
+m2__n get m2__g0 0
+m2__e8 get m2__g0 8
+m2__full ge m2__n 22528
+m2__okn select m2__full 0 1
+m2__n1 add m2__n m2__okn
+m2__e2 select m2__full 1 m2__e8
+m2__g0a set m2__g0 0 m2__n1
+m2__g0b set m2__g0a 8 m2__e2
+m2__m1 set m1__m2 0 m2__g0b
+m2__a mul m2__n 2
+m2__ad add m2__a 20480
+m2__pg shr m2__ad 7
+m2__w and m2__ad 127
+m2__g get m2__m1 m2__pg
+m2__w1 add m2__w 1
+m2__g1 set m2__g m2__w 16
+m2__g2 set m2__g1 m2__w1 0
+m2__okb eq m2__full false
+m2__g3 select m2__okb m2__g2 m2__g
+m2__m2 set m2__m1 m2__pg m2__g3
+ret m2__m2
 end
 # i32.load / i32.store at offset p2
 fn wxld u32x128x512 u32 u32 -> u32x128x512
-r fold wxe 1 p0 10 p2
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w 10
+r__g2 set r__g1 r__w1 p2
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 fn wxst u32x128x512 u32 u32 -> u32x128x512
-r fold wxe 1 p0 11 p2
-ret r
+r__g0 get p0 0
+r__n get r__g0 0
+r__e8 get r__g0 8
+r__full ge r__n 22528
+r__okn select r__full 0 1
+r__n1 add r__n r__okn
+r__e2 select r__full 1 r__e8
+r__g0a set r__g0 0 r__n1
+r__g0b set r__g0a 8 r__e2
+r__m1 set p0 0 r__g0b
+r__a mul r__n 2
+r__ad add r__a 20480
+r__pg shr r__ad 7
+r__w and r__ad 127
+r__g get r__m1 r__pg
+r__w1 add r__w 1
+r__g1 set r__g r__w 11
+r__g2 set r__g1 r__w1 p2
+r__okb eq r__full false
+r__g3 select r__okb r__g2 r__g
+r__m2 set r__m1 r__pg r__g3
+ret r__m2
 end
 # `i32.const p2; i32.add` (a non-zero static offset on an address)
 fn wxadd u32x128x512 u32 u32 -> u32x128x512
-m1 fold wxe 1 p0 2 p2
-m2 fold wxe 1 m1 1 106
-ret m2
+m1__g0 get p0 0
+m1__n get m1__g0 0
+m1__e8 get m1__g0 8
+m1__full ge m1__n 22528
+m1__okn select m1__full 0 1
+m1__n1 add m1__n m1__okn
+m1__e2 select m1__full 1 m1__e8
+m1__g0a set m1__g0 0 m1__n1
+m1__g0b set m1__g0a 8 m1__e2
+m1__m1 set p0 0 m1__g0b
+m1__a mul m1__n 2
+m1__ad add m1__a 20480
+m1__pg shr m1__ad 7
+m1__w and m1__ad 127
+m1__g get m1__m1 m1__pg
+m1__w1 add m1__w 1
+m1__g1 set m1__g m1__w 2
+m1__g2 set m1__g1 m1__w1 p2
+m1__okb eq m1__full false
+m1__g3 select m1__okb m1__g2 m1__g
+m1__m2 set m1__m1 m1__pg m1__g3
+m2__g0 get m1__m2 0
+m2__n get m2__g0 0
+m2__e8 get m2__g0 8
+m2__full ge m2__n 22528
+m2__okn select m2__full 0 1
+m2__n1 add m2__n m2__okn
+m2__e2 select m2__full 1 m2__e8
+m2__g0a set m2__g0 0 m2__n1
+m2__g0b set m2__g0a 8 m2__e2
+m2__m1 set m1__m2 0 m2__g0b
+m2__a mul m2__n 2
+m2__ad add m2__a 20480
+m2__pg shr m2__ad 7
+m2__w and m2__ad 127
+m2__g get m2__m1 m2__pg
+m2__w1 add m2__w 1
+m2__g1 set m2__g m2__w 1
+m2__g2 set m2__g1 m2__w1 106
+m2__okb eq m2__full false
+m2__g3 select m2__okb m2__g2 m2__g
+m2__m2 set m2__m1 m2__pg m2__g3
+ret m2__m2
 end
 # the address of element (index operand p5 p6) of the array operand (p3 p4) of frame p2 with
 # p7 elements of p8 bytes: the array pushed, then the dynamic index (masked or reduced to the
@@ -1045,8 +1424,12 @@ m10 fold wxop cn9_m10 m9 108
 cn10_m11 select isd 1 0
 m11 fold wxop cn10_m11 m10 106
 off1 select lit off 0
-m12 fold wxs 1 m11 16 off1
-ret m12
+m12__pg shr 16 7
+m12__w and 16 127
+m12__g get m11 m12__pg
+m12__g2 set m12__g m12__w off1
+m12__r set m11 m12__pg m12__g2
+ret m12__r
 end
 # store operand (kind p3, value p4) of frame p2 (type tag p5, bytes p6) at the pushed address
 # plus the static offset p7 (`storeAt`)
@@ -1236,9 +1619,19 @@ pw add 536870912 uv
 tr select isn rootn pw
 val select ali tr 0
 nuse call wxu64 p5 p1
-m1 fold wxrs 1 p0 p2 p1 3 val
-r fold wxrs 1 m1 p2 p1 1 nuse
-ret r
+m1__a call wxrw p2 p1 3
+m1__r__pg shr m1__a 7
+m1__r__w and m1__a 127
+m1__r__g get p0 m1__r__pg
+m1__r__g2 set m1__r__g m1__r__w val
+m1__r__r set p0 m1__r__pg m1__r__g2
+r__a call wxrw p2 p1 1
+r__r__pg shr r__a 7
+r__r__w and r__a 127
+r__r__g get m1__r__r r__r__pg
+r__r__g2 set r__r__g r__r__w nuse
+r__r__r set m1__r__r r__r__pg r__r__g2
+ret r__r__r
 end
 # ---------------------------------------------------------------------------------------------
 # Node emission (src/wasm.ts `emitNode`). The node context (28 u32): 0 frame, 1 node (index in
@@ -1271,13 +1664,20 @@ al add p4 3
 alg and al 4294967292
 fr2 add off alg
 cn1_m1 select nrs 1 0
-m1 fold wxs cn1_m1 p0 3 fr2
+m1__gcondb ne cn1_m1 0
+m1__pg shr 3 7
+m1__w and 3 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w fr2
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
 z eq off 0
 first and nrs z
 nfirst select first false true
 other and nrs nfirst
 cn2_m2 select first 1 0
-m2 fold wxfp cn2_m2 m1
+m2 fold wxfp cn2_m2 m1__r
 fpl_gp shr 16 7
 fpl_gw and 16 127
 fpl_gg get m2 fpl_gp
@@ -1303,8 +1703,12 @@ m7 fold wxls cn7_m7 m6 nl
 l1 select first fpl nl
 loc select isr0 sret l1
 m8 fold wxrs 1 m7 p2 p3 0 loc
-m9 fold wxs 1 m8 16 loc
-ret m9
+m9__pg shr 16 7
+m9__w and 16 127
+m9__g get m8 m9__pg
+m9__g2 set m9__g m9__w loc
+m9__r set m8 m9__pg m9__g2
+ret m9__r
 end
 # the binary operator byte of op p0 (add sub mul and or xor shl shr; eq ne lt le gt ge)
 fn wxbop u32 -> u32
@@ -1471,19 +1875,14 @@ end
 # select (18): a known condition picks its arm; an arm with nodes of its own (the shape table's
 # OWN and ARM columns: `lazyArms`) becomes an if/else around those nodes; else `select`
 # register 20 counts the nodes owned by select p3 (frame first node p2)
-fn wxown u32x128x512 u32 u32 u32 u32x128x200 -> u32x128x512
+fn wxown u32 u32 u32 u32 u32x128x200 -> u32
 g add p2 p1
 a add 2816 g
 own call wxsh p4 a
 j1 add p3 1
 hit eq own j1
-cnt_gp shr 20 7
-cnt_gw and 20 127
-cnt_gg get p0 cnt_gp
-cnt get cnt_gg cnt_gw
-c2 add cnt 1
-cn1_r select hit 1 0
-r fold wxs cn1_r p0 20 c2
+n select hit 1 0
+r add p0 n
 ret r
 end
 fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x200 -> u32x128x512
@@ -1522,50 +1921,69 @@ nn_fp shr nn_fc 7
 nn_fw and nn_fc 127
 nn_fg get m2 nn_fp
 nn get nn_fg nn_fw
-cn3_m3 select nisk 1 0
-m3 fold wxs cn3_m3 m2 20 0
-m4 fold wxown nn m3 g0 j p3
-nown_gp shr 20 7
-nown_gw and 20 127
-nown_gg get m4 nown_gp
-nown get nown_gg nown_gw
+nown fold wxown nn 0 g0 j p3
 lazy0 gt nown 0
 lazy and lazy0 nisk
 nlazy select lazy false true
 plain and nisk nlazy
-cn4_m5 select plain 1 0
-m5 fold wxpr cn4_m5 m4 c1 s1
-cn5_m6 select plain 1 0
-m6 fold wxpr cn5_m6 m5 c2 s2
-cn6_m7 select plain 1 0
-m7 fold wxpr cn6_m7 m6 c0 s0
-cn7_m8 select plain 1 0
-m8 fold wxop cn7_m8 m7 27
-cn8_m9 select plain 1 0
-m9 fold wxset cn8_m9 m8 d j
-cn9_m10 select lazy 1 0
-m10 fold wxpr cn9_m10 m9 c0 s0
-cn10_m11 select lazy 1 0
-m11 fold wxe cn10_m11 m10 15 127
-cn11_m12 select lazy 1 0
-m12 fold wxpu cn11_m12 m11 7 d j 0
-cn12_m13 select lazy 1 0
-m13 fold wxpu cn12_m13 m12 4 1 11 0
-cn13_m14 select lazy 1 0
-m14 fold wxpu cn13_m14 m13 3 d k2 v2
-cn14_m15 select lazy 1 0
-m15 fold wxpu cn14_m15 m14 6 d j 1
-cn15_m16 select lazy 1 0
-m16 fold wxpu cn15_m16 m15 4 1 5 0
-cn16_m17 select lazy 1 0
-m17 fold wxpu cn16_m17 m16 3 d k1 v1
-cn17_m18 select lazy 1 0
-m18 fold wxpu cn17_m18 m17 6 d j 0
+cn3_m5 select plain 1 0
+m5 fold wxpr cn3_m5 m2 c1 s1
+cn4_m6 select plain 1 0
+m6 fold wxpr cn4_m6 m5 c2 s2
+cn5_m7 select plain 1 0
+m7 fold wxpr cn5_m7 m6 c0 s0
+cn6_m8 select plain 1 0
+m8 fold wxop cn6_m8 m7 27
+cn7_m9 select plain 1 0
+m9 fold wxset cn7_m9 m8 d j
+cn8_m10 select lazy 1 0
+m10 fold wxpr cn8_m10 m9 c0 s0
+cn9_m11 select lazy 1 0
+m11__gcondb ne cn9_m11 0
+m11__g0 get m10 0
+m11__n get m11__g0 0
+m11__e8 get m11__g0 8
+m11__full ge m11__n 22528
+m11__okn select m11__full 0 1
+m11__n1 add m11__n m11__okn
+m11__e2 select m11__full 1 m11__e8
+m11__g0a set m11__g0 0 m11__n1
+m11__g0b set m11__g0a 8 m11__e2
+m11__m1_o get m10 0
+m11__m1_s select m11__gcondb m11__g0b m11__m1_o
+m11__m1 set m10 0 m11__m1_s
+m11__a mul m11__n 2
+m11__ad add m11__a 20480
+m11__pg shr m11__ad 7
+m11__w and m11__ad 127
+m11__g get m11__m1 m11__pg
+m11__w1 add m11__w 1
+m11__g1 set m11__g m11__w 15
+m11__g2 set m11__g1 m11__w1 127
+m11__okb eq m11__full false
+m11__g3 select m11__okb m11__g2 m11__g
+m11__m2_o get m11__m1 m11__pg
+m11__m2_s select m11__gcondb m11__g3 m11__m2_o
+m11__m2 set m11__m1 m11__pg m11__m2_s
+cn10_m12 select lazy 1 0
+m12 fold wxpu cn10_m12 m11__m2 7 d j 0
+cn11_m13 select lazy 1 0
+m13 fold wxpu cn11_m13 m12 4 1 11 0
+cn12_m14 select lazy 1 0
+m14 fold wxpu cn12_m14 m13 3 d k2 v2
+cn13_m15 select lazy 1 0
+m15 fold wxpu cn13_m15 m14 6 d j 1
+cn14_m16 select lazy 1 0
+m16 fold wxpu cn14_m16 m15 4 1 5 0
+cn15_m17 select lazy 1 0
+m17 fold wxpu cn15_m17 m16 3 d k1 v1
+cn16_m18 select lazy 1 0
+m18 fold wxpu cn16_m18 m17 6 d j 0
 ret m18
 end
-# the next node of frame (first node p2) owned by select p3 in ARM column value p4 (1 or 2) at or
-# after node p5, in register 21 (4294967295: none): node p1 + p5
-fn wxfnd u32x128x512 u32 u32 u32 u32 u32 u32x128x200 -> u32x128x512
+# the first node at or after node p5 of the frame (first node p2) owned by select p3 in ARM column
+# value p4 (1 or 2); p0 is the node found so far (4294967295: none): node p1 + p5
+fn wxfnd u32 u32 u32 u32 u32 u32 u32x128x200 -> u32
 j add p5 p1
 g add p2 j
 a add 2816 g
@@ -1575,15 +1993,10 @@ arm call wxsh p6 b
 j1 add p3 1
 o1 eq own j1
 a2 eq arm p4
-cur_gp shr 21 7
-cur_gw and 21 127
-cur_gg get p0 cur_gp
-cur get cur_gg cur_gw
-none eq cur 4294967295
+none eq p0 4294967295
 h1 and o1 a2
 hit and h1 none
-cn1_r select hit 1 0
-r fold wxs cn1_r p0 21 j
+r select hit j p0
 ret r
 end
 # ---------------------------------------------------------------------------------------------
@@ -1614,13 +2027,43 @@ ret m8
 end
 # clear the row (and the induction and use words) of node p1 of inline frame p2
 fn wxclr u32x128x512 u32 u32 -> u32x128x512
-m1 fold wxrs 1 p0 p2 p1 0 0
-m2 fold wxrs 1 m1 p2 p1 1 0
-m3 fold wxrs 1 m2 p2 p1 2 0
-m4 fold wxrs 1 m3 p2 p1 3 0
-m5 fold wxbs 1 m4 p2 p1 0 0
-m6 fold wxbs 1 m5 p2 p1 1 0
-ret m6
+m1__a call wxrw p2 p1 0
+m1__r__pg shr m1__a 7
+m1__r__w and m1__a 127
+m1__r__g get p0 m1__r__pg
+m1__r__g2 set m1__r__g m1__r__w 0
+m1__r__r set p0 m1__r__pg m1__r__g2
+m2__a call wxrw p2 p1 1
+m2__r__pg shr m2__a 7
+m2__r__w and m2__a 127
+m2__r__g get m1__r__r m2__r__pg
+m2__r__g2 set m2__r__g m2__r__w 0
+m2__r__r set m1__r__r m2__r__pg m2__r__g2
+m3__a call wxrw p2 p1 2
+m3__r__pg shr m3__a 7
+m3__r__w and m3__a 127
+m3__r__g get m2__r__r m3__r__pg
+m3__r__g2 set m3__r__g m3__r__w 0
+m3__r__r set m2__r__r m3__r__pg m3__r__g2
+m4__a call wxrw p2 p1 3
+m4__r__pg shr m4__a 7
+m4__r__w and m4__a 127
+m4__r__g get m3__r__r m4__r__pg
+m4__r__g2 set m4__r__g m4__r__w 0
+m4__r__r set m3__r__r m4__r__pg m4__r__g2
+m5__a call wxbk p2 p1 0
+m5__r__pg shr m5__a 7
+m5__r__w and m5__a 127
+m5__r__g get m4__r__r m5__r__pg
+m5__r__g2 set m5__r__g m5__r__w 0
+m5__r__r set m4__r__r m5__r__pg m5__r__g2
+m6__a call wxbk p2 p1 1
+m6__r__pg shr m6__a 7
+m6__r__w and m6__a 127
+m6__r__g get m5__r__r m6__r__pg
+m6__r__g2 set m6__r__g m6__r__w 0
+m6__r__r set m5__r__r m6__r__pg m6__r__g2
+ret m6__r__r
 end
 # register 18 := 1 when node p1 (first node p3) of frame p2 needs frame storage: an aggregate
 # that is not an alias, not in the scalar state chain, and not a get at select mov
@@ -1671,8 +2114,15 @@ a1 and agg na
 a2 and a1 nch
 a3 and a2 nox
 cn1_m1 select a3 1 0
-m1 fold wxs cn1_m1 p0 18 1
-ret m1
+m1__gcondb ne cn1_m1 0
+m1__pg shr 18 7
+m1__w and 18 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 1
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
+ret m1__r
 end
 # register 19 := 1 when parameter p1 (first parameter type p2 of tlist p3, info p4) / node p1
 # (first node p2, node types p3, info p4) contains io
@@ -1682,8 +2132,15 @@ t call wa65 p3 i
 io call wxio p4 t
 a ne io 0
 cn1_m1 select a 1 0
-m1 fold wxs cn1_m1 p0 19 1
-ret m1
+m1__gcondb ne cn1_m1 0
+m1__pg shr 19 7
+m1__w and 19 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 1
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
+ret m1__r
 end
 fn wxion u32x128x512 u32 u32 u32x128x24 u32x128x65 -> u32x128x512
 g add p2 p1
@@ -1691,8 +2148,15 @@ t call wa24 p3 g
 io call wxio p4 t
 a ne io 0
 cn1_m1 select a 1 0
-m1 fold wxs cn1_m1 p0 19 1
-ret m1
+m1__gcondb ne cn1_m1 0
+m1__pg shr 19 7
+m1__w and 19 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 1
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
+ret m1__r
 end
 # ---------------------------------------------------------------------------------------------
 # Scalar replacement of small fold state (src/wasm.ts `scalarState`): can the state p0 of a body
@@ -1718,11 +2182,27 @@ o1 and agg nok
 ok and o1 eok
 okv select ok 1 0
 nr select isa 0 b
-m1 fold wxs 1 p0 22 okv
-m2 fold wxs 1 m1 24 n
-m3 fold wxs 1 m2 25 a
-m4 fold wxs 1 m3 26 nr
-ret m4
+m1__pg shr 22 7
+m1__w and 22 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w okv
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 24 7
+m2__w and 24 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w n
+m2__r set m1__r m2__pg m2__g2
+m3__pg shr 25 7
+m3__w and 25 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w a
+m3__r set m2__r m3__pg m3__g2
+m4__pg shr 26 7
+m4__w and 26 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w nr
+m4__r set m3__r m4__pg m4__g2
+ret m4__r
 end
 # field p1 of the record whose first field is p2 (tlist p3) is a scalar
 fn wxsm1 u32x128x512 u32 u32 u32x128x65 -> u32x128x512
@@ -1730,8 +2210,15 @@ i add p2 p1
 t call wa65 p3 i
 bad gt t 1
 cn1_m1 select bad 1 0
-m1 fold wxs cn1_m1 p0 22 0
-ret m1
+m1__gcondb ne cn1_m1 0
+m1__pg shr 22 7
+m1__w and 22 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 0
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
+ret m1__r
 end
 # operand p1 of a node whose operands start at p3: register 23 |= is p0 or a chain node (not for
 # operand 0), 24 |= the same (operands 0 included); frame p2
@@ -1767,16 +2254,24 @@ a24_gw and 24 127
 a24_gg get p0 a24_gp
 a24 get a24_gg a24_gw
 n24 or a24 h1
-m1 fold wxs 1 p0 24 n24
+m1__pg shr 24 7
+m1__w and 24 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w n24
+m1__r set p0 m1__pg m1__g2
 a23_gp shr 23 7
 a23_gw and 23 127
-a23_gg get m1 a23_gp
+a23_gg get m1__r a23_gp
 a23 get a23_gg a23_gw
 n23 or a23 h1
 nz ne p1 0
 w23 select nz n23 a23
-m2 fold wxs 1 m1 23 w23
-ret m2
+m2__pg shr 23 7
+m2__w and 23 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w w23
+m2__r set m1__r m2__pg m2__g2
+ret m2__r
 end
 # node p1 (first node p3) of frame p2, its type p6 the state type p7: the first loop of `scalarState`
 fn wxch1 u32x128x512 u32 u32 u32 u32x128x128 u32x128x512 u32x128x24 u32 -> u32x128x512
@@ -1819,9 +2314,17 @@ upd or o26 o28
 rd or o25 o27
 ur or upd rd
 cond1 and ur a0
-m1 fold wxs 1 p0 23 0
-m2 fold wxs 1 m1 24 0
-m3 fold wxchs na m2 p2 fa p5
+m1__pg shr 23 7
+m1__w and 23 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 0
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 24 7
+m2__w and 24 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w 0
+m2__r set m1__r m2__pg m2__g2
+m3 fold wxchs na m2__r p2 fa p5
 any1v_gp shr 23 7
 any1v_gw and 23 127
 any1v_gg get m3 any1v_gp
@@ -1854,10 +2357,26 @@ f2a and ncond nreb
 fail2 and f2a anyall
 fail or fail1 fail2
 cn1_m4 select cadd 1 0
-m4 fold wxrs cn1_m4 m3 p2 p1 2 2
+m4__gcondb ne cn1_m4 0
+m4__a call wxrw p2 p1 2
+m4__r__gcondb ne cn1_m4 0
+m4__r__pg shr m4__a 7
+m4__r__w and m4__a 127
+m4__r__g get m3 m4__r__pg
+m4__r__g2 set m4__r__g m4__r__w 2
+m4__r__r_o get m3 m4__r__pg
+m4__r__r_s select m4__r__gcondb m4__r__g2 m4__r__r_o
+m4__r__r set m3 m4__r__pg m4__r__r_s
 cn2_m5 select fail 1 0
-m5 fold wxs cn2_m5 m4 22 0
-ret m5
+m5__gcondb ne cn2_m5 0
+m5__pg shr 22 7
+m5__w and 22 127
+m5__g get m4__r__r m5__pg
+m5__g2 set m5__g m5__w 0
+m5__r_o get m4__r__r m5__pg
+m5__r_s select m5__gcondb m5__g2 m5__r_o
+m5__r set m4__r__r m5__pg m5__r_s
+ret m5__r
 end
 # operand p1 of a node (first operand p3, update op p4): a chain node used other than as the base
 # of an update fails (register 22 := 0); every node operand counts a use (block word 1)
@@ -1889,16 +2408,30 @@ base and updb z
 nb select base false true
 bad and inc nb
 cn1_m1 select bad 1 0
-m1 fold wxs cn1_m1 p0 22 0
+m1__gcondb ne cn1_m1 0
+m1__pg shr 22 7
+m1__w and 22 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 0
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
 us call wxbk p2 vn 1
 u0_gp shr us 7
 u0_gw and us 127
-u0_gg get m1 u0_gp
+u0_gg get m1__r u0_gp
 u0 get u0_gg u0_gw
 u1 add u0 1
 cn2_m2 select isn 1 0
-m2 fold wxs cn2_m2 m1 us u1
-ret m2
+m2__gcondb ne cn2_m2 0
+m2__pg shr us 7
+m2__w and us 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w u1
+m2__r_o get m1__r m2__pg
+m2__r_s select m2__gcondb m2__g2 m2__r_o
+m2__r set m1__r m2__pg m2__r_s
+ret m2__r
 end
 fn wxch2 u32x128x512 u32 u32 u32 u32x128x128 u32x128x512 -> u32x128x512
 g add p3 p1
@@ -1937,8 +2470,15 @@ n get n_gg n_gw
 many gt n 1
 bad and c2 many
 cn1_m1 select bad 1 0
-m1 fold wxs cn1_m1 p0 22 0
-ret m1
+m1__gcondb ne cn1_m1 0
+m1__pg shr 22 7
+m1__w and 22 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 0
+m1__r_o get p0 m1__pg
+m1__r_s select m1__gcondb m1__g2 m1__r_o
+m1__r set p0 m1__pg m1__r_s
+ret m1__r
 end
 # can the state of function p3 (nodes p4, ...) live in locals: register 22 (frame p2's rows must
 # be clear); on success p2's chain nodes are marked
@@ -1987,16 +2527,30 @@ rinc and rn rc2
 rok or rp rinc
 nrok select rok false true
 cn1_m5 select nrok 1 0
-m5 fold wxs cn1_m5 m4 22 0
+m5__gcondb ne cn1_m5 0
+m5__pg shr 22 7
+m5__w and 22 127
+m5__g get m4 m5__pg
+m5__g2 set m5__g m5__w 0
+m5__r_o get m4 m5__pg
+m5__r_s select m5__gcondb m5__g2 m5__r_o
+m5__r set m4 m5__pg m5__r_s
 rus call wxbk p2 rvn 1
 ru0_gp shr rus 7
 ru0_gw and rus 127
-ru0_gg get m5 ru0_gp
+ru0_gg get m5__r ru0_gp
 ru0 get ru0_gg ru0_gw
 ru1 add ru0 1
 cn2_m6 select rn 1 0
-m6 fold wxs cn2_m6 m5 rus ru1
-m7 fold wxch4 nn m6 p2
+m6__gcondb ne cn2_m6 0
+m6__pg shr rus 7
+m6__w and rus 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w ru1
+m6__r_o get m5__r m6__pg
+m6__r_s select m6__gcondb m6__g2 m6__r_o
+m6__r set m5__r m6__pg m6__r_s
+m7 fold wxch4 nn m6__r p2
 ret m7
 end
 # ---------------------------------------------------------------------------------------------
@@ -2048,27 +2602,60 @@ cm_gw and 15 127
 cm_gg get p0 cm_gp
 cm get cm_gg cm_gw
 cn1_m0 select need 1 0
-m0 fold wxs cn1_m0 p0 15 cm
+m0__gcondb ne cn1_m0 0
+m0__pg shr 15 7
+m0__w and 15 127
+m0__g get p0 m0__pg
+m0__g2 set m0__g m0__w cm
+m0__r_o get p0 m0__pg
+m0__r_s select m0__gcondb m0__g2 m0__r_o
+m0__r set p0 m0__pg m0__r_s
 idx add 32 cm
 cm1 add cm 1
 cn2_m01 select need 1 0
-m01 fold wxs cn2_m01 m0 idx p3
+m01__gcondb ne cn2_m01 0
+m01__pg shr idx 7
+m01__w and idx 127
+m01__g get m0__r m01__pg
+m01__g2 set m01__g m01__w p3
+m01__r_o get m0__r m01__pg
+m01__r_s select m01__gcondb m01__g2 m01__r_o
+m01__r set m0__r m01__pg m01__r_s
 cn3_m02 select need 1 0
-m02 fold wxs cn3_m02 m01 15 cm1
+m02__gcondb ne cn3_m02 0
+m02__pg shr 15 7
+m02__w and 15 127
+m02__g get m01__r m02__pg
+m02__g2 set m02__g m02__w cm1
+m02__r_o get m01__r m02__pg
+m02__r_s select m02__gcondb m02__g2 m02__r_o
+m02__r set m01__r m02__pg m02__r_s
 cn4_m1 select base 1 0
-m1 fold wxfset cn4_m1 m02 dn p3 p4 p7 p9
+m1 fold wxfset cn4_m1 m02__r dn p3 p4 p7 p9
 m2 fold wxclr cnt m1 dn
-m3 fold wxs 1 m2 22 1
+m3__pg shr 22 7
+m3__w and 22 127
+m3__g get m2 m3__pg
+m3__g2 set m3__g m3__w 1
+m3__r set m2 m3__pg m3__g2
 hasw gt p6 0
 dochain and base hasw
 cn5_m4 select dochain 1 0
-m4 fold wxsmall cn5_m4 m3 dn p3 p7 p8 p9 p10 p11 p12
+m4 fold wxsmall cn5_m4 m3__r dn p3 p7 p8 p9 p10 p11 p12
 cn6_m5 select base 1 0
 m5 fold wxana cn6_m5 m4 dn p3 p4 p7 p8 p9 p10 p11 p14
-m6 fold wxs 1 m5 18 0
-m7 fold wxnf cnt m6 dn g0 p8 p10 p11
-m8 fold wxs 1 m7 19 0
-m9 fold wxiop cnp m8 fp p12 p13
+m6__pg shr 18 7
+m6__w and 18 127
+m6__g get m5 m6__pg
+m6__g2 set m6__g m6__w 0
+m6__r set m5 m6__pg m6__g2
+m7 fold wxnf cnt m6__r dn g0 p8 p10 p11
+m8__pg shr 19 7
+m8__w and 19 127
+m8__g get m7 m8__pg
+m8__g2 set m8__g m8__w 0
+m8__r set m7 m8__pg m8__g2
+m9 fold wxiop cnp m8__r fp p12 p13
 m10 fold wxion cnt m9 g0 p10 p13
 nf_gp shr 18 7
 nf_gw and 18 127
@@ -2091,8 +2678,12 @@ o1 and base nonf
 o2 and o1 noio
 ok and o2 chok
 okv select ok 1 0
-m11 fold wxs 1 m10 16 okv
-ret m11
+m11__pg shr 16 7
+m11__w and 16 127
+m11__g get m10 m11__pg
+m11__g2 set m11__g m11__w okv
+m11__r set m10 m11__pg m11__g2
+ret m11__r
 end
 # enter frame p2 (set up by `wxcan`): its nodes, then its end, are run next
 fn wxenter u32x128x512 u32 u32 -> u32x128x512
@@ -2107,8 +2698,12 @@ has gt nn 0
 m1 fold wxpu 1 p0 5 p2 0 0
 cn1_m2 select has 1 0
 m2 fold wxpu cn1_m2 m1 1 p2 0 0
-m3 fold wxs 1 m2 6 p2
-ret m3
+m3__pg shr 6 7
+m3__w and 6 127
+m3__g get m2 m3__pg
+m3__g2 set m3__g m3__w p2
+m3__r set m2 m3__pg m3__g2
+ret m3__r
 end
 # push item (kind p2) copies of the host's words: the parameter sources of frame p2 + 1 are
 # written by the callers; here the end of inline frame p2 (`emitInline` after its nodes): the
@@ -2145,10 +2740,62 @@ c2 and chg isc
 nisc select isc false true
 c3 and chg nisc
 cn1_m1 select c2 1 0
-m1 fold wxkc cn1_m1 p0 vv
+m1__gcondb ne cn1_m1 0
+m1__r__gcondb ne cn1_m1 0
+m1__r__g0 get p0 0
+m1__r__n get m1__r__g0 0
+m1__r__e8 get m1__r__g0 8
+m1__r__full ge m1__r__n 22528
+m1__r__okn select m1__r__full 0 1
+m1__r__n1 add m1__r__n m1__r__okn
+m1__r__e2 select m1__r__full 1 m1__r__e8
+m1__r__g0a set m1__r__g0 0 m1__r__n1
+m1__r__g0b set m1__r__g0a 8 m1__r__e2
+m1__r__m1_o get p0 0
+m1__r__m1_s select m1__r__gcondb m1__r__g0b m1__r__m1_o
+m1__r__m1 set p0 0 m1__r__m1_s
+m1__r__a mul m1__r__n 2
+m1__r__ad add m1__r__a 20480
+m1__r__pg shr m1__r__ad 7
+m1__r__w and m1__r__ad 127
+m1__r__g get m1__r__m1 m1__r__pg
+m1__r__w1 add m1__r__w 1
+m1__r__g1 set m1__r__g m1__r__w 2
+m1__r__g2 set m1__r__g1 m1__r__w1 vv
+m1__r__okb eq m1__r__full false
+m1__r__g3 select m1__r__okb m1__r__g2 m1__r__g
+m1__r__m2_o get m1__r__m1 m1__r__pg
+m1__r__m2_s select m1__r__gcondb m1__r__g3 m1__r__m2_o
+m1__r__m2 set m1__r__m1 m1__r__pg m1__r__m2_s
 cn2_m2 select c3 1 0
-m2 fold wxlg cn2_m2 m1 vv
-ret m2
+m2__gcondb ne cn2_m2 0
+m2__r__gcondb ne cn2_m2 0
+m2__r__g0 get m1__r__m2 0
+m2__r__n get m2__r__g0 0
+m2__r__e8 get m2__r__g0 8
+m2__r__full ge m2__r__n 22528
+m2__r__okn select m2__r__full 0 1
+m2__r__n1 add m2__r__n m2__r__okn
+m2__r__e2 select m2__r__full 1 m2__r__e8
+m2__r__g0a set m2__r__g0 0 m2__r__n1
+m2__r__g0b set m2__r__g0a 8 m2__r__e2
+m2__r__m1_o get m1__r__m2 0
+m2__r__m1_s select m2__r__gcondb m2__r__g0b m2__r__m1_o
+m2__r__m1 set m1__r__m2 0 m2__r__m1_s
+m2__r__a mul m2__r__n 2
+m2__r__ad add m2__r__a 20480
+m2__r__pg shr m2__r__ad 7
+m2__r__w and m2__r__ad 127
+m2__r__g get m2__r__m1 m2__r__pg
+m2__r__w1 add m2__r__w 1
+m2__r__g1 set m2__r__g m2__r__w 3
+m2__r__g2 set m2__r__g1 m2__r__w1 vv
+m2__r__okb eq m2__r__full false
+m2__r__g3 select m2__r__okb m2__r__g2 m2__r__g
+m2__r__m2_o get m2__r__m1 m2__r__pg
+m2__r__m2_s select m2__r__gcondb m2__r__g3 m2__r__m2_o
+m2__r__m2 set m2__r__m1 m2__r__pg m2__r__m2_s
+ret m2__r__m2
 end
 fn wxec2 u32x128x512 u32 u32 u32 u32 -> u32x128x512
 w1 sub p4 1
@@ -2179,8 +2826,34 @@ sml eq vv fl
 same and isl sml
 chg select same false true
 cn1_m1 select chg 1 0
-m1 fold wxls cn1_m1 p0 fl
-ret m1
+m1__gcondb ne cn1_m1 0
+m1__r__gcondb ne cn1_m1 0
+m1__r__g0 get p0 0
+m1__r__n get m1__r__g0 0
+m1__r__e8 get m1__r__g0 8
+m1__r__full ge m1__r__n 22528
+m1__r__okn select m1__r__full 0 1
+m1__r__n1 add m1__r__n m1__r__okn
+m1__r__e2 select m1__r__full 1 m1__r__e8
+m1__r__g0a set m1__r__g0 0 m1__r__n1
+m1__r__g0b set m1__r__g0a 8 m1__r__e2
+m1__r__m1_o get p0 0
+m1__r__m1_s select m1__r__gcondb m1__r__g0b m1__r__m1_o
+m1__r__m1 set p0 0 m1__r__m1_s
+m1__r__a mul m1__r__n 2
+m1__r__ad add m1__r__a 20480
+m1__r__pg shr m1__r__ad 7
+m1__r__w and m1__r__ad 127
+m1__r__g get m1__r__m1 m1__r__pg
+m1__r__w1 add m1__r__w 1
+m1__r__g1 set m1__r__g m1__r__w 4
+m1__r__g2 set m1__r__g1 m1__r__w1 fl
+m1__r__okb eq m1__r__full false
+m1__r__g3 select m1__r__okb m1__r__g2 m1__r__g
+m1__r__m2_o get m1__r__m1 m1__r__pg
+m1__r__m2_s select m1__r__gcondb m1__r__g3 m1__r__m2_o
+m1__r__m2 set m1__r__m1 m1__r__pg m1__r__m2_s
+ret m1__r__m2
 end
 fn wxend u32x128x512 u32 u32 u32x128x45 u32x128x65 -> u32x128x512
 variant_fa mul p2 128
@@ -2295,8 +2968,12 @@ m5 fold wxcp cn3_m5 m4 by
 cn4_m6 select vp 1 0
 m6 fold wxpsh cn4_m6 m5 p2 rk rv
 dm1 sub p2 1
-m7 fold wxs 1 m6 6 dm1
-ret m7
+m7__pg shr 6 7
+m7__w and 6 127
+m7__g get m6 m7__pg
+m7__g2 set m7__g m7__w dm1
+m7__r set m6 m7__pg m7__g2
+ret m7__r
 end
 # ---------------------------------------------------------------------------------------------
 # Handlers of the nodes whose emission does not run another frame. Each is a fold body
@@ -2362,23 +3039,144 @@ fn wxwk u32x128x512 u32 u32 u32 u32 u32 u32x128x512 -> u32x128x512
 o add p5 p1
 k call wxok p6 o
 v call wxov p6 o
-m1 fold wxres 1 p0 p2 k v
+m1__isn eq k 1
+m1__isp eq k 2
+m1__l3 eq k 3
+m1__l4 eq k 4
+m1__lit or m1__l3 m1__l4
+m1__j select m1__isn v 0
+m1__fl_t1 eq p2 0
+m1__fl_t2 mul m1__j 4
+m1__fl_t3 add m1__fl_t2 5440
+m1__fl_t4 sub p2 1
+m1__fl_t5 mul m1__fl_t4 128
+m1__fl_t6 add m1__fl_t5 16704
+m1__fl_t7 add m1__fl_t6 m1__fl_t2
+m1__fl_t8 select m1__fl_t1 m1__fl_t3 m1__fl_t7
+m1__fl_t9 add m1__fl_t8 2
+m1__fl_rp shr m1__fl_t9 7
+m1__fl_rw and m1__fl_t9 127
+m1__fl_rg get p0 m1__fl_rp
+m1__fl get m1__fl_rg m1__fl_rw
+m1__hc and m1__fl 1
+m1__hcb ne m1__hc 0
+m1__cv_t1 eq p2 0
+m1__cv_t2 mul m1__j 4
+m1__cv_t3 add m1__cv_t2 5440
+m1__cv_t4 sub p2 1
+m1__cv_t5 mul m1__cv_t4 128
+m1__cv_t6 add m1__cv_t5 16704
+m1__cv_t7 add m1__cv_t6 m1__cv_t2
+m1__cv_t8 select m1__cv_t1 m1__cv_t3 m1__cv_t7
+m1__cv_t9 add m1__cv_t8 1
+m1__cv_rp shr m1__cv_t9 7
+m1__cv_rw and m1__cv_t9 127
+m1__cv_rg get p0 m1__cv_rp
+m1__cv get m1__cv_rg m1__cv_rw
+m1__rt_t1 eq p2 0
+m1__rt_t2 mul m1__j 4
+m1__rt_t3 add m1__rt_t2 5440
+m1__rt_t4 sub p2 1
+m1__rt_t5 mul m1__rt_t4 128
+m1__rt_t6 add m1__rt_t5 16704
+m1__rt_t7 add m1__rt_t6 m1__rt_t2
+m1__rt_t8 select m1__rt_t1 m1__rt_t3 m1__rt_t7
+m1__rt_t9 add m1__rt_t8 3
+m1__rt_rp shr m1__rt_t9 7
+m1__rt_rw and m1__rt_t9 127
+m1__rt_rg get p0 m1__rt_rp
+m1__rt get m1__rt_rg m1__rt_rw
+m1__rk shr m1__rt 28
+m1__rv and m1__rt 268435455
+m1__rp eq m1__rk 2
+m1__rpn and m1__isn m1__rp
+m1__anypar or m1__rpn m1__isp
+m1__pi0 select m1__isp v m1__rv
+m1__pidx select m1__anypar m1__pi0 0
+m1__x2 mul m1__pidx 2
+m1__sk0 add m1__x2 32
+m1__sk_fa mul p2 128
+m1__sk_fb add m1__sk_fa 128
+m1__sk_fc add m1__sk_fb m1__sk0
+m1__sk_fp shr m1__sk_fc 7
+m1__sk_fw and m1__sk_fc 127
+m1__sk_fg get p0 m1__sk_fp
+m1__sk get m1__sk_fg m1__sk_fw
+m1__sv0 add m1__x2 33
+m1__sv_fa mul p2 128
+m1__sv_fb add m1__sv_fa 128
+m1__sv_fc add m1__sv_fb m1__sv0
+m1__sv_fp shr m1__sv_fc 7
+m1__sv_fw and m1__sv_fc 127
+m1__sv_fg get p0 m1__sv_fp
+m1__sv get m1__sv_fg m1__sv_fw
+m1__hh gt p2 0
+m1__hs and m1__hh m1__anypar
+m1__issv eq m1__sk 1
+m1__srcv and m1__hs m1__issv
+m1__rz eq m1__rt 0
+m1__rnode select m1__rz m1__j m1__rv
+m1__nl_t1 eq p2 0
+m1__nl_t2 mul m1__rnode 4
+m1__nl_t3 add m1__nl_t2 5440
+m1__nl_t4 sub p2 1
+m1__nl_t5 mul m1__nl_t4 128
+m1__nl_t6 add m1__nl_t5 16704
+m1__nl_t7 add m1__nl_t6 m1__nl_t2
+m1__nl_t8 select m1__nl_t1 m1__nl_t3 m1__nl_t7
+m1__nl_t9 add m1__nl_t8 0
+m1__nl_rp shr m1__nl_t9 7
+m1__nl_rw and m1__nl_t9 127
+m1__nl_rg get p0 m1__nl_rp
+m1__nl get m1__nl_rg m1__nl_rw
+m1__pb_gp shr 10 7
+m1__pb_gw and 10 127
+m1__pb_gg get p0 m1__pb_gp
+m1__pb get m1__pb_gg m1__pb_gw
+m1__pl add m1__pb m1__pidx
+m1__plocal select m1__hh m1__sv m1__pl
+m1__loc select m1__anypar m1__plocal m1__nl
+m1__cb and m1__isn m1__hcb
+m1__c1 or m1__lit m1__cb
+m1__isc or m1__c1 m1__srcv
+m1__v1 select m1__cb m1__cv m1__sv
+m1__v2 select m1__lit v m1__v1
+m1__val select m1__isc m1__v2 m1__loc
+m1__isc1 select m1__isc 1 0
+m1__m1__pg shr 16 7
+m1__m1__w and 16 127
+m1__m1__g get p0 m1__m1__pg
+m1__m1__g2 set m1__m1__g m1__m1__w m1__isc1
+m1__m1__r set p0 m1__m1__pg m1__m1__g2
+m1__m2__pg shr 17 7
+m1__m2__w and 17 127
+m1__m2__g get m1__m1__r m1__m2__pg
+m1__m2__g2 set m1__m2__g m1__m2__w m1__val
+m1__m2__r set m1__m1__r m1__m2__pg m1__m2__g2
 c_gp shr 16 7
 c_gw and 16 127
-c_gg get m1 c_gp
+c_gg get m1__m2__r c_gp
 c get c_gg c_gw
 s_gp shr 17 7
 s_gw and 17 127
-s_gg get m1 s_gp
+s_gg get m1__m2__r s_gp
 s get s_gg s_gw
 w0 mul p1 2
 w1 add w0 4
 w2 add w0 5
 a1 call wxbk p2 p3 w1
 a2 call wxbk p2 p3 w2
-m2 fold wxs 1 m1 a1 c
-m3 fold wxs 1 m2 a2 s
-ret m3
+m2__pg shr a1 7
+m2__w and a1 127
+m2__g get m1__m2__r m2__pg
+m2__g2 set m2__g m2__w c
+m2__r set m1__m2__r m2__pg m2__g2
+m3__pg shr a2 7
+m3__w and a2 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w s
+m3__r set m2__r m3__pg m3__g2
+ret m3__r
 end
 # word p1 of an update's words (frame p2, node p3): from the host's fields (p4 = 1) or the words of
 # node p5, with word p6 replaced by the source (p7 kind, p8 value)
@@ -2412,9 +3210,17 @@ vk select at p7 fk0
 vv select at p8 fv0
 a1 call wxbk p2 p3 w1
 a2 call wxbk p2 p3 w2
-m1 fold wxs 1 p0 a1 vk
-m2 fold wxs 1 m1 a2 vv
-ret m2
+m1__pg shr a1 7
+m1__w and a1 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w vk
+m1__r set p0 m1__pg m1__g2
+m2__pg shr a2 7
+m2__w and a2 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w vv
+m2__r set m1__r m2__pg m2__g2
+ret m2__r
 end
 # (scalar state in locals) the chain node's words (args table p3)
 fn wxhwrd u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 -> u32x128x512
@@ -2630,8 +3436,12 @@ c2 and c1 init
 c3 and c2 ali
 c4 and c3 over
 d select c4 1 0
-r fold wxs 1 p0 27 d
-ret r
+r__pg shr 27 7
+r__w and 27 127
+r__g get p0 r__pg
+r__g2 set r__g r__w d
+r__r set p0 r__pg r__g2
+ret r__r
 end
 # element p1 of an arr (operands from p3, element type tag p5 bytes p6): store it at local p4
 fn wxael u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x512 -> u32x128x512
@@ -2639,9 +3449,313 @@ o add p3 p1
 k call wxok p7 o
 v call wxov p7 o
 off mul p1 p6
-m1 fold wxlg 1 p0 p4
-r fold wxsa 1 m1 p2 k v p5 p6 off
-ret r
+m1__r__g0 get p0 0
+m1__r__n get m1__r__g0 0
+m1__r__e8 get m1__r__g0 8
+m1__r__full ge m1__r__n 22528
+m1__r__okn select m1__r__full 0 1
+m1__r__n1 add m1__r__n m1__r__okn
+m1__r__e2 select m1__r__full 1 m1__r__e8
+m1__r__g0a set m1__r__g0 0 m1__r__n1
+m1__r__g0b set m1__r__g0a 8 m1__r__e2
+m1__r__m1 set p0 0 m1__r__g0b
+m1__r__a mul m1__r__n 2
+m1__r__ad add m1__r__a 20480
+m1__r__pg shr m1__r__ad 7
+m1__r__w and m1__r__ad 127
+m1__r__g get m1__r__m1 m1__r__pg
+m1__r__w1 add m1__r__w 1
+m1__r__g1 set m1__r__g m1__r__w 3
+m1__r__g2 set m1__r__g1 m1__r__w1 p4
+m1__r__okb eq m1__r__full false
+m1__r__g3 select m1__r__okb m1__r__g2 m1__r__g
+m1__r__m2 set m1__r__m1 m1__r__pg m1__r__g3
+r__prim lt p5 4
+r__nprim select r__prim false true
+r__nz ne off 0
+r__agg and r__nprim r__nz
+r__cn1_m1 select r__agg 1 0
+r__m1__gcondb ne r__cn1_m1 0
+r__m1__m1__gcondb ne r__cn1_m1 0
+r__m1__m1__g0 get m1__r__m2 0
+r__m1__m1__n get r__m1__m1__g0 0
+r__m1__m1__e8 get r__m1__m1__g0 8
+r__m1__m1__full ge r__m1__m1__n 22528
+r__m1__m1__okn select r__m1__m1__full 0 1
+r__m1__m1__n1 add r__m1__m1__n r__m1__m1__okn
+r__m1__m1__e2 select r__m1__m1__full 1 r__m1__m1__e8
+r__m1__m1__g0a set r__m1__m1__g0 0 r__m1__m1__n1
+r__m1__m1__g0b set r__m1__m1__g0a 8 r__m1__m1__e2
+r__m1__m1__m1_o get m1__r__m2 0
+r__m1__m1__m1_s select r__m1__m1__gcondb r__m1__m1__g0b r__m1__m1__m1_o
+r__m1__m1__m1 set m1__r__m2 0 r__m1__m1__m1_s
+r__m1__m1__a mul r__m1__m1__n 2
+r__m1__m1__ad add r__m1__m1__a 20480
+r__m1__m1__pg shr r__m1__m1__ad 7
+r__m1__m1__w and r__m1__m1__ad 127
+r__m1__m1__g get r__m1__m1__m1 r__m1__m1__pg
+r__m1__m1__w1 add r__m1__m1__w 1
+r__m1__m1__g1 set r__m1__m1__g r__m1__m1__w 2
+r__m1__m1__g2 set r__m1__m1__g1 r__m1__m1__w1 off
+r__m1__m1__okb eq r__m1__m1__full false
+r__m1__m1__g3 select r__m1__m1__okb r__m1__m1__g2 r__m1__m1__g
+r__m1__m1__m2_o get r__m1__m1__m1 r__m1__m1__pg
+r__m1__m1__m2_s select r__m1__m1__gcondb r__m1__m1__g3 r__m1__m1__m2_o
+r__m1__m1__m2 set r__m1__m1__m1 r__m1__m1__pg r__m1__m1__m2_s
+r__m1__m2__gcondb ne r__cn1_m1 0
+r__m1__m2__g0 get r__m1__m1__m2 0
+r__m1__m2__n get r__m1__m2__g0 0
+r__m1__m2__e8 get r__m1__m2__g0 8
+r__m1__m2__full ge r__m1__m2__n 22528
+r__m1__m2__okn select r__m1__m2__full 0 1
+r__m1__m2__n1 add r__m1__m2__n r__m1__m2__okn
+r__m1__m2__e2 select r__m1__m2__full 1 r__m1__m2__e8
+r__m1__m2__g0a set r__m1__m2__g0 0 r__m1__m2__n1
+r__m1__m2__g0b set r__m1__m2__g0a 8 r__m1__m2__e2
+r__m1__m2__m1_o get r__m1__m1__m2 0
+r__m1__m2__m1_s select r__m1__m2__gcondb r__m1__m2__g0b r__m1__m2__m1_o
+r__m1__m2__m1 set r__m1__m1__m2 0 r__m1__m2__m1_s
+r__m1__m2__a mul r__m1__m2__n 2
+r__m1__m2__ad add r__m1__m2__a 20480
+r__m1__m2__pg shr r__m1__m2__ad 7
+r__m1__m2__w and r__m1__m2__ad 127
+r__m1__m2__g get r__m1__m2__m1 r__m1__m2__pg
+r__m1__m2__w1 add r__m1__m2__w 1
+r__m1__m2__g1 set r__m1__m2__g r__m1__m2__w 1
+r__m1__m2__g2 set r__m1__m2__g1 r__m1__m2__w1 106
+r__m1__m2__okb eq r__m1__m2__full false
+r__m1__m2__g3 select r__m1__m2__okb r__m1__m2__g2 r__m1__m2__g
+r__m1__m2__m2_o get r__m1__m2__m1 r__m1__m2__pg
+r__m1__m2__m2_s select r__m1__m2__gcondb r__m1__m2__g3 r__m1__m2__m2_o
+r__m1__m2__m2 set r__m1__m2__m1 r__m1__m2__pg r__m1__m2__m2_s
+r__m2__m1__isn eq k 1
+r__m2__m1__isp eq k 2
+r__m2__m1__l3 eq k 3
+r__m2__m1__l4 eq k 4
+r__m2__m1__lit or r__m2__m1__l3 r__m2__m1__l4
+r__m2__m1__j select r__m2__m1__isn v 0
+r__m2__m1__fl_t1 eq p2 0
+r__m2__m1__fl_t2 mul r__m2__m1__j 4
+r__m2__m1__fl_t3 add r__m2__m1__fl_t2 5440
+r__m2__m1__fl_t4 sub p2 1
+r__m2__m1__fl_t5 mul r__m2__m1__fl_t4 128
+r__m2__m1__fl_t6 add r__m2__m1__fl_t5 16704
+r__m2__m1__fl_t7 add r__m2__m1__fl_t6 r__m2__m1__fl_t2
+r__m2__m1__fl_t8 select r__m2__m1__fl_t1 r__m2__m1__fl_t3 r__m2__m1__fl_t7
+r__m2__m1__fl_t9 add r__m2__m1__fl_t8 2
+r__m2__m1__fl_rp shr r__m2__m1__fl_t9 7
+r__m2__m1__fl_rw and r__m2__m1__fl_t9 127
+r__m2__m1__fl_rg get r__m1__m2__m2 r__m2__m1__fl_rp
+r__m2__m1__fl get r__m2__m1__fl_rg r__m2__m1__fl_rw
+r__m2__m1__hc and r__m2__m1__fl 1
+r__m2__m1__hcb ne r__m2__m1__hc 0
+r__m2__m1__cv_t1 eq p2 0
+r__m2__m1__cv_t2 mul r__m2__m1__j 4
+r__m2__m1__cv_t3 add r__m2__m1__cv_t2 5440
+r__m2__m1__cv_t4 sub p2 1
+r__m2__m1__cv_t5 mul r__m2__m1__cv_t4 128
+r__m2__m1__cv_t6 add r__m2__m1__cv_t5 16704
+r__m2__m1__cv_t7 add r__m2__m1__cv_t6 r__m2__m1__cv_t2
+r__m2__m1__cv_t8 select r__m2__m1__cv_t1 r__m2__m1__cv_t3 r__m2__m1__cv_t7
+r__m2__m1__cv_t9 add r__m2__m1__cv_t8 1
+r__m2__m1__cv_rp shr r__m2__m1__cv_t9 7
+r__m2__m1__cv_rw and r__m2__m1__cv_t9 127
+r__m2__m1__cv_rg get r__m1__m2__m2 r__m2__m1__cv_rp
+r__m2__m1__cv get r__m2__m1__cv_rg r__m2__m1__cv_rw
+r__m2__m1__rt_t1 eq p2 0
+r__m2__m1__rt_t2 mul r__m2__m1__j 4
+r__m2__m1__rt_t3 add r__m2__m1__rt_t2 5440
+r__m2__m1__rt_t4 sub p2 1
+r__m2__m1__rt_t5 mul r__m2__m1__rt_t4 128
+r__m2__m1__rt_t6 add r__m2__m1__rt_t5 16704
+r__m2__m1__rt_t7 add r__m2__m1__rt_t6 r__m2__m1__rt_t2
+r__m2__m1__rt_t8 select r__m2__m1__rt_t1 r__m2__m1__rt_t3 r__m2__m1__rt_t7
+r__m2__m1__rt_t9 add r__m2__m1__rt_t8 3
+r__m2__m1__rt_rp shr r__m2__m1__rt_t9 7
+r__m2__m1__rt_rw and r__m2__m1__rt_t9 127
+r__m2__m1__rt_rg get r__m1__m2__m2 r__m2__m1__rt_rp
+r__m2__m1__rt get r__m2__m1__rt_rg r__m2__m1__rt_rw
+r__m2__m1__rk shr r__m2__m1__rt 28
+r__m2__m1__rv and r__m2__m1__rt 268435455
+r__m2__m1__rp eq r__m2__m1__rk 2
+r__m2__m1__rpn and r__m2__m1__isn r__m2__m1__rp
+r__m2__m1__anypar or r__m2__m1__rpn r__m2__m1__isp
+r__m2__m1__pi0 select r__m2__m1__isp v r__m2__m1__rv
+r__m2__m1__pidx select r__m2__m1__anypar r__m2__m1__pi0 0
+r__m2__m1__x2 mul r__m2__m1__pidx 2
+r__m2__m1__sk0 add r__m2__m1__x2 32
+r__m2__m1__sk_fa mul p2 128
+r__m2__m1__sk_fb add r__m2__m1__sk_fa 128
+r__m2__m1__sk_fc add r__m2__m1__sk_fb r__m2__m1__sk0
+r__m2__m1__sk_fp shr r__m2__m1__sk_fc 7
+r__m2__m1__sk_fw and r__m2__m1__sk_fc 127
+r__m2__m1__sk_fg get r__m1__m2__m2 r__m2__m1__sk_fp
+r__m2__m1__sk get r__m2__m1__sk_fg r__m2__m1__sk_fw
+r__m2__m1__sv0 add r__m2__m1__x2 33
+r__m2__m1__sv_fa mul p2 128
+r__m2__m1__sv_fb add r__m2__m1__sv_fa 128
+r__m2__m1__sv_fc add r__m2__m1__sv_fb r__m2__m1__sv0
+r__m2__m1__sv_fp shr r__m2__m1__sv_fc 7
+r__m2__m1__sv_fw and r__m2__m1__sv_fc 127
+r__m2__m1__sv_fg get r__m1__m2__m2 r__m2__m1__sv_fp
+r__m2__m1__sv get r__m2__m1__sv_fg r__m2__m1__sv_fw
+r__m2__m1__hh gt p2 0
+r__m2__m1__hs and r__m2__m1__hh r__m2__m1__anypar
+r__m2__m1__issv eq r__m2__m1__sk 1
+r__m2__m1__srcv and r__m2__m1__hs r__m2__m1__issv
+r__m2__m1__rz eq r__m2__m1__rt 0
+r__m2__m1__rnode select r__m2__m1__rz r__m2__m1__j r__m2__m1__rv
+r__m2__m1__nl_t1 eq p2 0
+r__m2__m1__nl_t2 mul r__m2__m1__rnode 4
+r__m2__m1__nl_t3 add r__m2__m1__nl_t2 5440
+r__m2__m1__nl_t4 sub p2 1
+r__m2__m1__nl_t5 mul r__m2__m1__nl_t4 128
+r__m2__m1__nl_t6 add r__m2__m1__nl_t5 16704
+r__m2__m1__nl_t7 add r__m2__m1__nl_t6 r__m2__m1__nl_t2
+r__m2__m1__nl_t8 select r__m2__m1__nl_t1 r__m2__m1__nl_t3 r__m2__m1__nl_t7
+r__m2__m1__nl_t9 add r__m2__m1__nl_t8 0
+r__m2__m1__nl_rp shr r__m2__m1__nl_t9 7
+r__m2__m1__nl_rw and r__m2__m1__nl_t9 127
+r__m2__m1__nl_rg get r__m1__m2__m2 r__m2__m1__nl_rp
+r__m2__m1__nl get r__m2__m1__nl_rg r__m2__m1__nl_rw
+r__m2__m1__pb_gp shr 10 7
+r__m2__m1__pb_gw and 10 127
+r__m2__m1__pb_gg get r__m1__m2__m2 r__m2__m1__pb_gp
+r__m2__m1__pb get r__m2__m1__pb_gg r__m2__m1__pb_gw
+r__m2__m1__pl add r__m2__m1__pb r__m2__m1__pidx
+r__m2__m1__plocal select r__m2__m1__hh r__m2__m1__sv r__m2__m1__pl
+r__m2__m1__loc select r__m2__m1__anypar r__m2__m1__plocal r__m2__m1__nl
+r__m2__m1__cb and r__m2__m1__isn r__m2__m1__hcb
+r__m2__m1__c1 or r__m2__m1__lit r__m2__m1__cb
+r__m2__m1__isc or r__m2__m1__c1 r__m2__m1__srcv
+r__m2__m1__v1 select r__m2__m1__cb r__m2__m1__cv r__m2__m1__sv
+r__m2__m1__v2 select r__m2__m1__lit v r__m2__m1__v1
+r__m2__m1__val select r__m2__m1__isc r__m2__m1__v2 r__m2__m1__loc
+r__m2__m1__isc1 select r__m2__m1__isc 1 0
+r__m2__m1__m1__pg shr 16 7
+r__m2__m1__m1__w and 16 127
+r__m2__m1__m1__g get r__m1__m2__m2 r__m2__m1__m1__pg
+r__m2__m1__m1__g2 set r__m2__m1__m1__g r__m2__m1__m1__w r__m2__m1__isc1
+r__m2__m1__m1__r set r__m1__m2__m2 r__m2__m1__m1__pg r__m2__m1__m1__g2
+r__m2__m1__m2__pg shr 17 7
+r__m2__m1__m2__w and 17 127
+r__m2__m1__m2__g get r__m2__m1__m1__r r__m2__m1__m2__pg
+r__m2__m1__m2__g2 set r__m2__m1__m2__g r__m2__m1__m2__w r__m2__m1__val
+r__m2__m1__m2__r set r__m2__m1__m1__r r__m2__m1__m2__pg r__m2__m1__m2__g2
+r__m2__c_gp shr 16 7
+r__m2__c_gw and 16 127
+r__m2__c_gg get r__m2__m1__m2__r r__m2__c_gp
+r__m2__c get r__m2__c_gg r__m2__c_gw
+r__m2__v_gp shr 17 7
+r__m2__v_gw and 17 127
+r__m2__v_gg get r__m2__m1__m2__r r__m2__v_gp
+r__m2__v get r__m2__v_gg r__m2__v_gw
+r__m2__r__c ne r__m2__c 0
+r__m2__r__k select r__m2__r__c 2 3
+r__m2__r__r__g0 get r__m2__m1__m2__r 0
+r__m2__r__r__n get r__m2__r__r__g0 0
+r__m2__r__r__e8 get r__m2__r__r__g0 8
+r__m2__r__r__full ge r__m2__r__r__n 22528
+r__m2__r__r__okn select r__m2__r__r__full 0 1
+r__m2__r__r__n1 add r__m2__r__r__n r__m2__r__r__okn
+r__m2__r__r__e2 select r__m2__r__r__full 1 r__m2__r__r__e8
+r__m2__r__r__g0a set r__m2__r__r__g0 0 r__m2__r__r__n1
+r__m2__r__r__g0b set r__m2__r__r__g0a 8 r__m2__r__r__e2
+r__m2__r__r__m1 set r__m2__m1__m2__r 0 r__m2__r__r__g0b
+r__m2__r__r__a mul r__m2__r__r__n 2
+r__m2__r__r__ad add r__m2__r__r__a 20480
+r__m2__r__r__pg shr r__m2__r__r__ad 7
+r__m2__r__r__w and r__m2__r__r__ad 127
+r__m2__r__r__g get r__m2__r__r__m1 r__m2__r__r__pg
+r__m2__r__r__w1 add r__m2__r__r__w 1
+r__m2__r__r__g1 set r__m2__r__r__g r__m2__r__r__w r__m2__r__k
+r__m2__r__r__g2 set r__m2__r__r__g1 r__m2__r__r__w1 r__m2__v
+r__m2__r__r__okb eq r__m2__r__r__full false
+r__m2__r__r__g3 select r__m2__r__r__okb r__m2__r__r__g2 r__m2__r__r__g
+r__m2__r__r__m2 set r__m2__r__r__m1 r__m2__r__r__pg r__m2__r__r__g3
+r__cn2_m3 select r__prim 1 0
+r__m3__gcondb ne r__cn2_m3 0
+r__m3__r__gcondb ne r__cn2_m3 0
+r__m3__r__g0 get r__m2__r__r__m2 0
+r__m3__r__n get r__m3__r__g0 0
+r__m3__r__e8 get r__m3__r__g0 8
+r__m3__r__full ge r__m3__r__n 22528
+r__m3__r__okn select r__m3__r__full 0 1
+r__m3__r__n1 add r__m3__r__n r__m3__r__okn
+r__m3__r__e2 select r__m3__r__full 1 r__m3__r__e8
+r__m3__r__g0a set r__m3__r__g0 0 r__m3__r__n1
+r__m3__r__g0b set r__m3__r__g0a 8 r__m3__r__e2
+r__m3__r__m1_o get r__m2__r__r__m2 0
+r__m3__r__m1_s select r__m3__r__gcondb r__m3__r__g0b r__m3__r__m1_o
+r__m3__r__m1 set r__m2__r__r__m2 0 r__m3__r__m1_s
+r__m3__r__a mul r__m3__r__n 2
+r__m3__r__ad add r__m3__r__a 20480
+r__m3__r__pg shr r__m3__r__ad 7
+r__m3__r__w and r__m3__r__ad 127
+r__m3__r__g get r__m3__r__m1 r__m3__r__pg
+r__m3__r__w1 add r__m3__r__w 1
+r__m3__r__g1 set r__m3__r__g r__m3__r__w 11
+r__m3__r__g2 set r__m3__r__g1 r__m3__r__w1 off
+r__m3__r__okb eq r__m3__r__full false
+r__m3__r__g3 select r__m3__r__okb r__m3__r__g2 r__m3__r__g
+r__m3__r__m2_o get r__m3__r__m1 r__m3__r__pg
+r__m3__r__m2_s select r__m3__r__gcondb r__m3__r__g3 r__m3__r__m2_o
+r__m3__r__m2 set r__m3__r__m1 r__m3__r__pg r__m3__r__m2_s
+r__cn3_m4 select r__nprim 1 0
+r__m4__gcondb ne r__cn3_m4 0
+r__m4__m1__gcondb ne r__cn3_m4 0
+r__m4__m1__g0 get r__m3__r__m2 0
+r__m4__m1__n get r__m4__m1__g0 0
+r__m4__m1__e8 get r__m4__m1__g0 8
+r__m4__m1__full ge r__m4__m1__n 22528
+r__m4__m1__okn select r__m4__m1__full 0 1
+r__m4__m1__n1 add r__m4__m1__n r__m4__m1__okn
+r__m4__m1__e2 select r__m4__m1__full 1 r__m4__m1__e8
+r__m4__m1__g0a set r__m4__m1__g0 0 r__m4__m1__n1
+r__m4__m1__g0b set r__m4__m1__g0a 8 r__m4__m1__e2
+r__m4__m1__m1_o get r__m3__r__m2 0
+r__m4__m1__m1_s select r__m4__m1__gcondb r__m4__m1__g0b r__m4__m1__m1_o
+r__m4__m1__m1 set r__m3__r__m2 0 r__m4__m1__m1_s
+r__m4__m1__a mul r__m4__m1__n 2
+r__m4__m1__ad add r__m4__m1__a 20480
+r__m4__m1__pg shr r__m4__m1__ad 7
+r__m4__m1__w and r__m4__m1__ad 127
+r__m4__m1__g get r__m4__m1__m1 r__m4__m1__pg
+r__m4__m1__w1 add r__m4__m1__w 1
+r__m4__m1__g1 set r__m4__m1__g r__m4__m1__w 2
+r__m4__m1__g2 set r__m4__m1__g1 r__m4__m1__w1 p6
+r__m4__m1__okb eq r__m4__m1__full false
+r__m4__m1__g3 select r__m4__m1__okb r__m4__m1__g2 r__m4__m1__g
+r__m4__m1__m2_o get r__m4__m1__m1 r__m4__m1__pg
+r__m4__m1__m2_s select r__m4__m1__gcondb r__m4__m1__g3 r__m4__m1__m2_o
+r__m4__m1__m2 set r__m4__m1__m1 r__m4__m1__pg r__m4__m1__m2_s
+r__m4__m2__gcondb ne r__cn3_m4 0
+r__m4__m2__g0 get r__m4__m1__m2 0
+r__m4__m2__n get r__m4__m2__g0 0
+r__m4__m2__e8 get r__m4__m2__g0 8
+r__m4__m2__full ge r__m4__m2__n 22528
+r__m4__m2__okn select r__m4__m2__full 0 1
+r__m4__m2__n1 add r__m4__m2__n r__m4__m2__okn
+r__m4__m2__e2 select r__m4__m2__full 1 r__m4__m2__e8
+r__m4__m2__g0a set r__m4__m2__g0 0 r__m4__m2__n1
+r__m4__m2__g0b set r__m4__m2__g0a 8 r__m4__m2__e2
+r__m4__m2__m1_o get r__m4__m1__m2 0
+r__m4__m2__m1_s select r__m4__m2__gcondb r__m4__m2__g0b r__m4__m2__m1_o
+r__m4__m2__m1 set r__m4__m1__m2 0 r__m4__m2__m1_s
+r__m4__m2__a mul r__m4__m2__n 2
+r__m4__m2__ad add r__m4__m2__a 20480
+r__m4__m2__pg shr r__m4__m2__ad 7
+r__m4__m2__w and r__m4__m2__ad 127
+r__m4__m2__g get r__m4__m2__m1 r__m4__m2__pg
+r__m4__m2__w1 add r__m4__m2__w 1
+r__m4__m2__g1 set r__m4__m2__g r__m4__m2__w 16
+r__m4__m2__g2 set r__m4__m2__g1 r__m4__m2__w1 0
+r__m4__m2__okb eq r__m4__m2__full false
+r__m4__m2__g3 select r__m4__m2__okb r__m4__m2__g2 r__m4__m2__g
+r__m4__m2__m2_o get r__m4__m2__m1 r__m4__m2__pg
+r__m4__m2__m2_s select r__m4__m2__gcondb r__m4__m2__g3 r__m4__m2__m2_o
+r__m4__m2__m2 set r__m4__m2__m1 r__m4__m2__pg r__m4__m2__m2_s
+ret r__m4__m2__m2
 end
 # the operands [p1, p1 + p2) are all literals (kind 3 or 4), all zero
 fn wxlitop (bool,bool) u32 u32x128 u32 -> (bool,bool)
@@ -2737,17 +3851,81 @@ m4 fold wxkc cn2_m4 m3 0
 cn3_m5 select dozero 1 0
 m5 fold wxkc cn3_m5 m4 nbytes
 cn4_m6 select dozero 1 0
-m6 fold wxe cn4_m6 m5 17 0
+m6__gcondb ne cn4_m6 0
+m6__g0 get m5 0
+m6__n get m6__g0 0
+m6__e8 get m6__g0 8
+m6__full ge m6__n 22528
+m6__okn select m6__full 0 1
+m6__n1 add m6__n m6__okn
+m6__e2 select m6__full 1 m6__e8
+m6__g0a set m6__g0 0 m6__n1
+m6__g0b set m6__g0a 8 m6__e2
+m6__m1_o get m5 0
+m6__m1_s select m6__gcondb m6__g0b m6__m1_o
+m6__m1 set m5 0 m6__m1_s
+m6__a mul m6__n 2
+m6__ad add m6__a 20480
+m6__pg shr m6__ad 7
+m6__w and m6__ad 127
+m6__g get m6__m1 m6__pg
+m6__w1 add m6__w 1
+m6__g1 set m6__g m6__w 17
+m6__g2 set m6__g1 m6__w1 0
+m6__okb eq m6__full false
+m6__g3 select m6__okb m6__g2 m6__g
+m6__m2_o get m6__m1 m6__pg
+m6__m2_s select m6__gcondb m6__g3 m6__m2_o
+m6__m2 set m6__m1 m6__pg m6__m2_s
 pad add 3392 npl
 cn5_m8 select dopool 1 0
-m8 fold wxs cn5_m8 m6 pad g
+m8__gcondb ne cn5_m8 0
+m8__pg shr pad 7
+m8__w and pad 127
+m8__g get m6__m2 m8__pg
+m8__g2 set m8__g m8__w g
+m8__r_o get m6__m2 m8__pg
+m8__r_s select m8__gcondb m8__g2 m8__r_o
+m8__r set m6__m2 m8__pg m8__r_s
 npl1 add npl 1
 cn6_m9 select dopool 1 0
-m9 fold wxs cn6_m9 m8 5 npl1
+m9__gcondb ne cn6_m9 0
+m9__pg shr 5 7
+m9__w and 5 127
+m9__g get m8__r m9__pg
+m9__g2 set m9__g m9__w npl1
+m9__r_o get m8__r m9__pg
+m9__r_s select m9__gcondb m9__g2 m9__r_o
+m9__r set m8__r m9__pg m9__r_s
 cn7_m10 select dopool 1 0
-m10 fold wxe cn7_m10 m9 7 npl
+m10__gcondb ne cn7_m10 0
+m10__g0 get m9__r 0
+m10__n get m10__g0 0
+m10__e8 get m10__g0 8
+m10__full ge m10__n 22528
+m10__okn select m10__full 0 1
+m10__n1 add m10__n m10__okn
+m10__e2 select m10__full 1 m10__e8
+m10__g0a set m10__g0 0 m10__n1
+m10__g0b set m10__g0a 8 m10__e2
+m10__m1_o get m9__r 0
+m10__m1_s select m10__gcondb m10__g0b m10__m1_o
+m10__m1 set m9__r 0 m10__m1_s
+m10__a mul m10__n 2
+m10__ad add m10__a 20480
+m10__pg shr m10__ad 7
+m10__w and m10__ad 127
+m10__g get m10__m1 m10__pg
+m10__w1 add m10__w 1
+m10__g1 set m10__g m10__w 7
+m10__g2 set m10__g1 m10__w1 npl
+m10__okb eq m10__full false
+m10__g3 select m10__okb m10__g2 m10__g
+m10__m2_o get m10__m1 m10__pg
+m10__m2_s select m10__gcondb m10__g3 m10__m2_o
+m10__m2 set m10__m1 m10__pg m10__m2_s
 cn8_m12 select dopool 1 0
-m12 fold wxcp cn8_m12 m10 nbytes
+m12 fold wxcp cn8_m12 m10__m2 nbytes
 r fold wxael cnt m12 d fa l etag esz p4
 ret r
 end
@@ -2764,11 +3942,319 @@ off_gp shr 27 7
 off_gw and 27 127
 off_gg get p0 off_gp
 off get off_gg off_gw
-m1 fold wxlg 1 p0 p4
-m2 fold wxsa 1 m1 p2 k v ftag fby off
+m1__r__g0 get p0 0
+m1__r__n get m1__r__g0 0
+m1__r__e8 get m1__r__g0 8
+m1__r__full ge m1__r__n 22528
+m1__r__okn select m1__r__full 0 1
+m1__r__n1 add m1__r__n m1__r__okn
+m1__r__e2 select m1__r__full 1 m1__r__e8
+m1__r__g0a set m1__r__g0 0 m1__r__n1
+m1__r__g0b set m1__r__g0a 8 m1__r__e2
+m1__r__m1 set p0 0 m1__r__g0b
+m1__r__a mul m1__r__n 2
+m1__r__ad add m1__r__a 20480
+m1__r__pg shr m1__r__ad 7
+m1__r__w and m1__r__ad 127
+m1__r__g get m1__r__m1 m1__r__pg
+m1__r__w1 add m1__r__w 1
+m1__r__g1 set m1__r__g m1__r__w 3
+m1__r__g2 set m1__r__g1 m1__r__w1 p4
+m1__r__okb eq m1__r__full false
+m1__r__g3 select m1__r__okb m1__r__g2 m1__r__g
+m1__r__m2 set m1__r__m1 m1__r__pg m1__r__g3
+m2__prim lt ftag 4
+m2__nprim select m2__prim false true
+m2__nz ne off 0
+m2__agg and m2__nprim m2__nz
+m2__cn1_m1 select m2__agg 1 0
+m2__m1__gcondb ne m2__cn1_m1 0
+m2__m1__m1__gcondb ne m2__cn1_m1 0
+m2__m1__m1__g0 get m1__r__m2 0
+m2__m1__m1__n get m2__m1__m1__g0 0
+m2__m1__m1__e8 get m2__m1__m1__g0 8
+m2__m1__m1__full ge m2__m1__m1__n 22528
+m2__m1__m1__okn select m2__m1__m1__full 0 1
+m2__m1__m1__n1 add m2__m1__m1__n m2__m1__m1__okn
+m2__m1__m1__e2 select m2__m1__m1__full 1 m2__m1__m1__e8
+m2__m1__m1__g0a set m2__m1__m1__g0 0 m2__m1__m1__n1
+m2__m1__m1__g0b set m2__m1__m1__g0a 8 m2__m1__m1__e2
+m2__m1__m1__m1_o get m1__r__m2 0
+m2__m1__m1__m1_s select m2__m1__m1__gcondb m2__m1__m1__g0b m2__m1__m1__m1_o
+m2__m1__m1__m1 set m1__r__m2 0 m2__m1__m1__m1_s
+m2__m1__m1__a mul m2__m1__m1__n 2
+m2__m1__m1__ad add m2__m1__m1__a 20480
+m2__m1__m1__pg shr m2__m1__m1__ad 7
+m2__m1__m1__w and m2__m1__m1__ad 127
+m2__m1__m1__g get m2__m1__m1__m1 m2__m1__m1__pg
+m2__m1__m1__w1 add m2__m1__m1__w 1
+m2__m1__m1__g1 set m2__m1__m1__g m2__m1__m1__w 2
+m2__m1__m1__g2 set m2__m1__m1__g1 m2__m1__m1__w1 off
+m2__m1__m1__okb eq m2__m1__m1__full false
+m2__m1__m1__g3 select m2__m1__m1__okb m2__m1__m1__g2 m2__m1__m1__g
+m2__m1__m1__m2_o get m2__m1__m1__m1 m2__m1__m1__pg
+m2__m1__m1__m2_s select m2__m1__m1__gcondb m2__m1__m1__g3 m2__m1__m1__m2_o
+m2__m1__m1__m2 set m2__m1__m1__m1 m2__m1__m1__pg m2__m1__m1__m2_s
+m2__m1__m2__gcondb ne m2__cn1_m1 0
+m2__m1__m2__g0 get m2__m1__m1__m2 0
+m2__m1__m2__n get m2__m1__m2__g0 0
+m2__m1__m2__e8 get m2__m1__m2__g0 8
+m2__m1__m2__full ge m2__m1__m2__n 22528
+m2__m1__m2__okn select m2__m1__m2__full 0 1
+m2__m1__m2__n1 add m2__m1__m2__n m2__m1__m2__okn
+m2__m1__m2__e2 select m2__m1__m2__full 1 m2__m1__m2__e8
+m2__m1__m2__g0a set m2__m1__m2__g0 0 m2__m1__m2__n1
+m2__m1__m2__g0b set m2__m1__m2__g0a 8 m2__m1__m2__e2
+m2__m1__m2__m1_o get m2__m1__m1__m2 0
+m2__m1__m2__m1_s select m2__m1__m2__gcondb m2__m1__m2__g0b m2__m1__m2__m1_o
+m2__m1__m2__m1 set m2__m1__m1__m2 0 m2__m1__m2__m1_s
+m2__m1__m2__a mul m2__m1__m2__n 2
+m2__m1__m2__ad add m2__m1__m2__a 20480
+m2__m1__m2__pg shr m2__m1__m2__ad 7
+m2__m1__m2__w and m2__m1__m2__ad 127
+m2__m1__m2__g get m2__m1__m2__m1 m2__m1__m2__pg
+m2__m1__m2__w1 add m2__m1__m2__w 1
+m2__m1__m2__g1 set m2__m1__m2__g m2__m1__m2__w 1
+m2__m1__m2__g2 set m2__m1__m2__g1 m2__m1__m2__w1 106
+m2__m1__m2__okb eq m2__m1__m2__full false
+m2__m1__m2__g3 select m2__m1__m2__okb m2__m1__m2__g2 m2__m1__m2__g
+m2__m1__m2__m2_o get m2__m1__m2__m1 m2__m1__m2__pg
+m2__m1__m2__m2_s select m2__m1__m2__gcondb m2__m1__m2__g3 m2__m1__m2__m2_o
+m2__m1__m2__m2 set m2__m1__m2__m1 m2__m1__m2__pg m2__m1__m2__m2_s
+m2__m2__m1__isn eq k 1
+m2__m2__m1__isp eq k 2
+m2__m2__m1__l3 eq k 3
+m2__m2__m1__l4 eq k 4
+m2__m2__m1__lit or m2__m2__m1__l3 m2__m2__m1__l4
+m2__m2__m1__j select m2__m2__m1__isn v 0
+m2__m2__m1__fl_t1 eq p2 0
+m2__m2__m1__fl_t2 mul m2__m2__m1__j 4
+m2__m2__m1__fl_t3 add m2__m2__m1__fl_t2 5440
+m2__m2__m1__fl_t4 sub p2 1
+m2__m2__m1__fl_t5 mul m2__m2__m1__fl_t4 128
+m2__m2__m1__fl_t6 add m2__m2__m1__fl_t5 16704
+m2__m2__m1__fl_t7 add m2__m2__m1__fl_t6 m2__m2__m1__fl_t2
+m2__m2__m1__fl_t8 select m2__m2__m1__fl_t1 m2__m2__m1__fl_t3 m2__m2__m1__fl_t7
+m2__m2__m1__fl_t9 add m2__m2__m1__fl_t8 2
+m2__m2__m1__fl_rp shr m2__m2__m1__fl_t9 7
+m2__m2__m1__fl_rw and m2__m2__m1__fl_t9 127
+m2__m2__m1__fl_rg get m2__m1__m2__m2 m2__m2__m1__fl_rp
+m2__m2__m1__fl get m2__m2__m1__fl_rg m2__m2__m1__fl_rw
+m2__m2__m1__hc and m2__m2__m1__fl 1
+m2__m2__m1__hcb ne m2__m2__m1__hc 0
+m2__m2__m1__cv_t1 eq p2 0
+m2__m2__m1__cv_t2 mul m2__m2__m1__j 4
+m2__m2__m1__cv_t3 add m2__m2__m1__cv_t2 5440
+m2__m2__m1__cv_t4 sub p2 1
+m2__m2__m1__cv_t5 mul m2__m2__m1__cv_t4 128
+m2__m2__m1__cv_t6 add m2__m2__m1__cv_t5 16704
+m2__m2__m1__cv_t7 add m2__m2__m1__cv_t6 m2__m2__m1__cv_t2
+m2__m2__m1__cv_t8 select m2__m2__m1__cv_t1 m2__m2__m1__cv_t3 m2__m2__m1__cv_t7
+m2__m2__m1__cv_t9 add m2__m2__m1__cv_t8 1
+m2__m2__m1__cv_rp shr m2__m2__m1__cv_t9 7
+m2__m2__m1__cv_rw and m2__m2__m1__cv_t9 127
+m2__m2__m1__cv_rg get m2__m1__m2__m2 m2__m2__m1__cv_rp
+m2__m2__m1__cv get m2__m2__m1__cv_rg m2__m2__m1__cv_rw
+m2__m2__m1__rt_t1 eq p2 0
+m2__m2__m1__rt_t2 mul m2__m2__m1__j 4
+m2__m2__m1__rt_t3 add m2__m2__m1__rt_t2 5440
+m2__m2__m1__rt_t4 sub p2 1
+m2__m2__m1__rt_t5 mul m2__m2__m1__rt_t4 128
+m2__m2__m1__rt_t6 add m2__m2__m1__rt_t5 16704
+m2__m2__m1__rt_t7 add m2__m2__m1__rt_t6 m2__m2__m1__rt_t2
+m2__m2__m1__rt_t8 select m2__m2__m1__rt_t1 m2__m2__m1__rt_t3 m2__m2__m1__rt_t7
+m2__m2__m1__rt_t9 add m2__m2__m1__rt_t8 3
+m2__m2__m1__rt_rp shr m2__m2__m1__rt_t9 7
+m2__m2__m1__rt_rw and m2__m2__m1__rt_t9 127
+m2__m2__m1__rt_rg get m2__m1__m2__m2 m2__m2__m1__rt_rp
+m2__m2__m1__rt get m2__m2__m1__rt_rg m2__m2__m1__rt_rw
+m2__m2__m1__rk shr m2__m2__m1__rt 28
+m2__m2__m1__rv and m2__m2__m1__rt 268435455
+m2__m2__m1__rp eq m2__m2__m1__rk 2
+m2__m2__m1__rpn and m2__m2__m1__isn m2__m2__m1__rp
+m2__m2__m1__anypar or m2__m2__m1__rpn m2__m2__m1__isp
+m2__m2__m1__pi0 select m2__m2__m1__isp v m2__m2__m1__rv
+m2__m2__m1__pidx select m2__m2__m1__anypar m2__m2__m1__pi0 0
+m2__m2__m1__x2 mul m2__m2__m1__pidx 2
+m2__m2__m1__sk0 add m2__m2__m1__x2 32
+m2__m2__m1__sk_fa mul p2 128
+m2__m2__m1__sk_fb add m2__m2__m1__sk_fa 128
+m2__m2__m1__sk_fc add m2__m2__m1__sk_fb m2__m2__m1__sk0
+m2__m2__m1__sk_fp shr m2__m2__m1__sk_fc 7
+m2__m2__m1__sk_fw and m2__m2__m1__sk_fc 127
+m2__m2__m1__sk_fg get m2__m1__m2__m2 m2__m2__m1__sk_fp
+m2__m2__m1__sk get m2__m2__m1__sk_fg m2__m2__m1__sk_fw
+m2__m2__m1__sv0 add m2__m2__m1__x2 33
+m2__m2__m1__sv_fa mul p2 128
+m2__m2__m1__sv_fb add m2__m2__m1__sv_fa 128
+m2__m2__m1__sv_fc add m2__m2__m1__sv_fb m2__m2__m1__sv0
+m2__m2__m1__sv_fp shr m2__m2__m1__sv_fc 7
+m2__m2__m1__sv_fw and m2__m2__m1__sv_fc 127
+m2__m2__m1__sv_fg get m2__m1__m2__m2 m2__m2__m1__sv_fp
+m2__m2__m1__sv get m2__m2__m1__sv_fg m2__m2__m1__sv_fw
+m2__m2__m1__hh gt p2 0
+m2__m2__m1__hs and m2__m2__m1__hh m2__m2__m1__anypar
+m2__m2__m1__issv eq m2__m2__m1__sk 1
+m2__m2__m1__srcv and m2__m2__m1__hs m2__m2__m1__issv
+m2__m2__m1__rz eq m2__m2__m1__rt 0
+m2__m2__m1__rnode select m2__m2__m1__rz m2__m2__m1__j m2__m2__m1__rv
+m2__m2__m1__nl_t1 eq p2 0
+m2__m2__m1__nl_t2 mul m2__m2__m1__rnode 4
+m2__m2__m1__nl_t3 add m2__m2__m1__nl_t2 5440
+m2__m2__m1__nl_t4 sub p2 1
+m2__m2__m1__nl_t5 mul m2__m2__m1__nl_t4 128
+m2__m2__m1__nl_t6 add m2__m2__m1__nl_t5 16704
+m2__m2__m1__nl_t7 add m2__m2__m1__nl_t6 m2__m2__m1__nl_t2
+m2__m2__m1__nl_t8 select m2__m2__m1__nl_t1 m2__m2__m1__nl_t3 m2__m2__m1__nl_t7
+m2__m2__m1__nl_t9 add m2__m2__m1__nl_t8 0
+m2__m2__m1__nl_rp shr m2__m2__m1__nl_t9 7
+m2__m2__m1__nl_rw and m2__m2__m1__nl_t9 127
+m2__m2__m1__nl_rg get m2__m1__m2__m2 m2__m2__m1__nl_rp
+m2__m2__m1__nl get m2__m2__m1__nl_rg m2__m2__m1__nl_rw
+m2__m2__m1__pb_gp shr 10 7
+m2__m2__m1__pb_gw and 10 127
+m2__m2__m1__pb_gg get m2__m1__m2__m2 m2__m2__m1__pb_gp
+m2__m2__m1__pb get m2__m2__m1__pb_gg m2__m2__m1__pb_gw
+m2__m2__m1__pl add m2__m2__m1__pb m2__m2__m1__pidx
+m2__m2__m1__plocal select m2__m2__m1__hh m2__m2__m1__sv m2__m2__m1__pl
+m2__m2__m1__loc select m2__m2__m1__anypar m2__m2__m1__plocal m2__m2__m1__nl
+m2__m2__m1__cb and m2__m2__m1__isn m2__m2__m1__hcb
+m2__m2__m1__c1 or m2__m2__m1__lit m2__m2__m1__cb
+m2__m2__m1__isc or m2__m2__m1__c1 m2__m2__m1__srcv
+m2__m2__m1__v1 select m2__m2__m1__cb m2__m2__m1__cv m2__m2__m1__sv
+m2__m2__m1__v2 select m2__m2__m1__lit v m2__m2__m1__v1
+m2__m2__m1__val select m2__m2__m1__isc m2__m2__m1__v2 m2__m2__m1__loc
+m2__m2__m1__isc1 select m2__m2__m1__isc 1 0
+m2__m2__m1__m1__pg shr 16 7
+m2__m2__m1__m1__w and 16 127
+m2__m2__m1__m1__g get m2__m1__m2__m2 m2__m2__m1__m1__pg
+m2__m2__m1__m1__g2 set m2__m2__m1__m1__g m2__m2__m1__m1__w m2__m2__m1__isc1
+m2__m2__m1__m1__r set m2__m1__m2__m2 m2__m2__m1__m1__pg m2__m2__m1__m1__g2
+m2__m2__m1__m2__pg shr 17 7
+m2__m2__m1__m2__w and 17 127
+m2__m2__m1__m2__g get m2__m2__m1__m1__r m2__m2__m1__m2__pg
+m2__m2__m1__m2__g2 set m2__m2__m1__m2__g m2__m2__m1__m2__w m2__m2__m1__val
+m2__m2__m1__m2__r set m2__m2__m1__m1__r m2__m2__m1__m2__pg m2__m2__m1__m2__g2
+m2__m2__c_gp shr 16 7
+m2__m2__c_gw and 16 127
+m2__m2__c_gg get m2__m2__m1__m2__r m2__m2__c_gp
+m2__m2__c get m2__m2__c_gg m2__m2__c_gw
+m2__m2__v_gp shr 17 7
+m2__m2__v_gw and 17 127
+m2__m2__v_gg get m2__m2__m1__m2__r m2__m2__v_gp
+m2__m2__v get m2__m2__v_gg m2__m2__v_gw
+m2__m2__r__c ne m2__m2__c 0
+m2__m2__r__k select m2__m2__r__c 2 3
+m2__m2__r__r__g0 get m2__m2__m1__m2__r 0
+m2__m2__r__r__n get m2__m2__r__r__g0 0
+m2__m2__r__r__e8 get m2__m2__r__r__g0 8
+m2__m2__r__r__full ge m2__m2__r__r__n 22528
+m2__m2__r__r__okn select m2__m2__r__r__full 0 1
+m2__m2__r__r__n1 add m2__m2__r__r__n m2__m2__r__r__okn
+m2__m2__r__r__e2 select m2__m2__r__r__full 1 m2__m2__r__r__e8
+m2__m2__r__r__g0a set m2__m2__r__r__g0 0 m2__m2__r__r__n1
+m2__m2__r__r__g0b set m2__m2__r__r__g0a 8 m2__m2__r__r__e2
+m2__m2__r__r__m1 set m2__m2__m1__m2__r 0 m2__m2__r__r__g0b
+m2__m2__r__r__a mul m2__m2__r__r__n 2
+m2__m2__r__r__ad add m2__m2__r__r__a 20480
+m2__m2__r__r__pg shr m2__m2__r__r__ad 7
+m2__m2__r__r__w and m2__m2__r__r__ad 127
+m2__m2__r__r__g get m2__m2__r__r__m1 m2__m2__r__r__pg
+m2__m2__r__r__w1 add m2__m2__r__r__w 1
+m2__m2__r__r__g1 set m2__m2__r__r__g m2__m2__r__r__w m2__m2__r__k
+m2__m2__r__r__g2 set m2__m2__r__r__g1 m2__m2__r__r__w1 m2__m2__v
+m2__m2__r__r__okb eq m2__m2__r__r__full false
+m2__m2__r__r__g3 select m2__m2__r__r__okb m2__m2__r__r__g2 m2__m2__r__r__g
+m2__m2__r__r__m2 set m2__m2__r__r__m1 m2__m2__r__r__pg m2__m2__r__r__g3
+m2__cn2_m3 select m2__prim 1 0
+m2__m3__gcondb ne m2__cn2_m3 0
+m2__m3__r__gcondb ne m2__cn2_m3 0
+m2__m3__r__g0 get m2__m2__r__r__m2 0
+m2__m3__r__n get m2__m3__r__g0 0
+m2__m3__r__e8 get m2__m3__r__g0 8
+m2__m3__r__full ge m2__m3__r__n 22528
+m2__m3__r__okn select m2__m3__r__full 0 1
+m2__m3__r__n1 add m2__m3__r__n m2__m3__r__okn
+m2__m3__r__e2 select m2__m3__r__full 1 m2__m3__r__e8
+m2__m3__r__g0a set m2__m3__r__g0 0 m2__m3__r__n1
+m2__m3__r__g0b set m2__m3__r__g0a 8 m2__m3__r__e2
+m2__m3__r__m1_o get m2__m2__r__r__m2 0
+m2__m3__r__m1_s select m2__m3__r__gcondb m2__m3__r__g0b m2__m3__r__m1_o
+m2__m3__r__m1 set m2__m2__r__r__m2 0 m2__m3__r__m1_s
+m2__m3__r__a mul m2__m3__r__n 2
+m2__m3__r__ad add m2__m3__r__a 20480
+m2__m3__r__pg shr m2__m3__r__ad 7
+m2__m3__r__w and m2__m3__r__ad 127
+m2__m3__r__g get m2__m3__r__m1 m2__m3__r__pg
+m2__m3__r__w1 add m2__m3__r__w 1
+m2__m3__r__g1 set m2__m3__r__g m2__m3__r__w 11
+m2__m3__r__g2 set m2__m3__r__g1 m2__m3__r__w1 off
+m2__m3__r__okb eq m2__m3__r__full false
+m2__m3__r__g3 select m2__m3__r__okb m2__m3__r__g2 m2__m3__r__g
+m2__m3__r__m2_o get m2__m3__r__m1 m2__m3__r__pg
+m2__m3__r__m2_s select m2__m3__r__gcondb m2__m3__r__g3 m2__m3__r__m2_o
+m2__m3__r__m2 set m2__m3__r__m1 m2__m3__r__pg m2__m3__r__m2_s
+m2__cn3_m4 select m2__nprim 1 0
+m2__m4__gcondb ne m2__cn3_m4 0
+m2__m4__m1__gcondb ne m2__cn3_m4 0
+m2__m4__m1__g0 get m2__m3__r__m2 0
+m2__m4__m1__n get m2__m4__m1__g0 0
+m2__m4__m1__e8 get m2__m4__m1__g0 8
+m2__m4__m1__full ge m2__m4__m1__n 22528
+m2__m4__m1__okn select m2__m4__m1__full 0 1
+m2__m4__m1__n1 add m2__m4__m1__n m2__m4__m1__okn
+m2__m4__m1__e2 select m2__m4__m1__full 1 m2__m4__m1__e8
+m2__m4__m1__g0a set m2__m4__m1__g0 0 m2__m4__m1__n1
+m2__m4__m1__g0b set m2__m4__m1__g0a 8 m2__m4__m1__e2
+m2__m4__m1__m1_o get m2__m3__r__m2 0
+m2__m4__m1__m1_s select m2__m4__m1__gcondb m2__m4__m1__g0b m2__m4__m1__m1_o
+m2__m4__m1__m1 set m2__m3__r__m2 0 m2__m4__m1__m1_s
+m2__m4__m1__a mul m2__m4__m1__n 2
+m2__m4__m1__ad add m2__m4__m1__a 20480
+m2__m4__m1__pg shr m2__m4__m1__ad 7
+m2__m4__m1__w and m2__m4__m1__ad 127
+m2__m4__m1__g get m2__m4__m1__m1 m2__m4__m1__pg
+m2__m4__m1__w1 add m2__m4__m1__w 1
+m2__m4__m1__g1 set m2__m4__m1__g m2__m4__m1__w 2
+m2__m4__m1__g2 set m2__m4__m1__g1 m2__m4__m1__w1 fby
+m2__m4__m1__okb eq m2__m4__m1__full false
+m2__m4__m1__g3 select m2__m4__m1__okb m2__m4__m1__g2 m2__m4__m1__g
+m2__m4__m1__m2_o get m2__m4__m1__m1 m2__m4__m1__pg
+m2__m4__m1__m2_s select m2__m4__m1__gcondb m2__m4__m1__g3 m2__m4__m1__m2_o
+m2__m4__m1__m2 set m2__m4__m1__m1 m2__m4__m1__pg m2__m4__m1__m2_s
+m2__m4__m2__gcondb ne m2__cn3_m4 0
+m2__m4__m2__g0 get m2__m4__m1__m2 0
+m2__m4__m2__n get m2__m4__m2__g0 0
+m2__m4__m2__e8 get m2__m4__m2__g0 8
+m2__m4__m2__full ge m2__m4__m2__n 22528
+m2__m4__m2__okn select m2__m4__m2__full 0 1
+m2__m4__m2__n1 add m2__m4__m2__n m2__m4__m2__okn
+m2__m4__m2__e2 select m2__m4__m2__full 1 m2__m4__m2__e8
+m2__m4__m2__g0a set m2__m4__m2__g0 0 m2__m4__m2__n1
+m2__m4__m2__g0b set m2__m4__m2__g0a 8 m2__m4__m2__e2
+m2__m4__m2__m1_o get m2__m4__m1__m2 0
+m2__m4__m2__m1_s select m2__m4__m2__gcondb m2__m4__m2__g0b m2__m4__m2__m1_o
+m2__m4__m2__m1 set m2__m4__m1__m2 0 m2__m4__m2__m1_s
+m2__m4__m2__a mul m2__m4__m2__n 2
+m2__m4__m2__ad add m2__m4__m2__a 20480
+m2__m4__m2__pg shr m2__m4__m2__ad 7
+m2__m4__m2__w and m2__m4__m2__ad 127
+m2__m4__m2__g get m2__m4__m2__m1 m2__m4__m2__pg
+m2__m4__m2__w1 add m2__m4__m2__w 1
+m2__m4__m2__g1 set m2__m4__m2__g m2__m4__m2__w 16
+m2__m4__m2__g2 set m2__m4__m2__g1 m2__m4__m2__w1 0
+m2__m4__m2__okb eq m2__m4__m2__full false
+m2__m4__m2__g3 select m2__m4__m2__okb m2__m4__m2__g2 m2__m4__m2__g
+m2__m4__m2__m2_o get m2__m4__m2__m1 m2__m4__m2__pg
+m2__m4__m2__m2_s select m2__m4__m2__gcondb m2__m4__m2__g3 m2__m4__m2__m2_o
+m2__m4__m2__m2 set m2__m4__m2__m1 m2__m4__m2__pg m2__m4__m2__m2_s
 noff add off fby
-m3 fold wxs 1 m2 27 noff
-ret m3
+m3__pg shr 27 7
+m3__w and 27 127
+m3__g get m2__m4__m2__m2 m3__pg
+m3__g2 set m3__g m3__w noff
+m3__r set m2__m4__m2__m2 m3__pg m3__g2
+ret m3__r
 end
 # rec (23): its storage, then each field stored at its offset
 fn wxhrec u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
@@ -2784,8 +4270,12 @@ l_gw and 16 127
 l_gg get m1 l_gp
 l get l_gg l_gw
 fs call wxty p4 t 1
-m2 fold wxs 1 m1 27 0
-r fold wxrecf na m2 d fa l fs p3 p4 p5 p6
+m2__pg shr 27 7
+m2__w and 27 127
+m2__g get m1 m2__pg
+m2__g2 set m2__g m2__w 0
+m2__r set m1 m2__pg m2__g2
+r fold wxrecf na m2__r d fa l fs p3 p4 p5 p6
 ret r
 end
 # get (25): the element's value is loaded, or (an aggregate) its address computed
@@ -2859,8 +4349,28 @@ l_gg get m1 l_gp
 l get l_gg l_gw
 m2 fold wxlg 1 m1 l
 m3 fold wxpsh 1 m2 d k0 v0
-m4 fold wxe 1 m3 6 256
-m5 fold wxst 1 m4 0
+m4__g0 get m3 0
+m4__n get m4__g0 0
+m4__e8 get m4__g0 8
+m4__full ge m4__n 22528
+m4__okn select m4__full 0 1
+m4__n1 add m4__n m4__okn
+m4__e2 select m4__full 1 m4__e8
+m4__g0a set m4__g0 0 m4__n1
+m4__g0b set m4__g0a 8 m4__e2
+m4__m1 set m3 0 m4__g0b
+m4__a mul m4__n 2
+m4__ad add m4__a 20480
+m4__pg shr m4__ad 7
+m4__w and m4__ad 127
+m4__g get m4__m1 m4__pg
+m4__w1 add m4__w 1
+m4__g1 set m4__g m4__w 6
+m4__g2 set m4__g1 m4__w1 256
+m4__okb eq m4__full false
+m4__g3 select m4__okb m4__g2 m4__g
+m4__m2 set m4__m1 m4__pg m4__g3
+m5 fold wxst 1 m4__m2 0
 m6 fold wxlg 1 m5 l
 m7 fold wxpsh 1 m6 d k0 v0
 m8 fold wxst 1 m7 4
@@ -2876,8 +4386,28 @@ k1 at p2 13
 v1 at p2 14
 m1 fold wxpsh 1 p0 d k0 v0
 m2 fold wxpsh 1 m1 d k1 v1
-m3 fold wxe 1 m2 6 257
-m4 fold wxpsh 1 m3 d k0 v0
+m3__g0 get m2 0
+m3__n get m3__g0 0
+m3__e8 get m3__g0 8
+m3__full ge m3__n 22528
+m3__okn select m3__full 0 1
+m3__n1 add m3__n m3__okn
+m3__e2 select m3__full 1 m3__e8
+m3__g0a set m3__g0 0 m3__n1
+m3__g0b set m3__g0a 8 m3__e2
+m3__m1 set m2 0 m3__g0b
+m3__a mul m3__n 2
+m3__ad add m3__a 20480
+m3__pg shr m3__ad 7
+m3__w and m3__ad 127
+m3__g get m3__m1 m3__pg
+m3__w1 add m3__w 1
+m3__g1 set m3__g m3__w 6
+m3__g2 set m3__g1 m3__w1 257
+m3__okb eq m3__full false
+m3__g3 select m3__okb m3__g2 m3__g
+m3__m2 set m3__m1 m3__pg m3__g3
+m4 fold wxpsh 1 m3__m2 d k0 v0
 m5 fold wxset 1 m4 d j
 ret m5
 end
@@ -2894,8 +4424,28 @@ len call wxty p3 ty1 1
 m1 fold wxpsh 1 p0 d k0 v0
 m2 fold wxpsh 1 m1 d k1 v1
 m3 fold wxkc 1 m2 len
-m4 fold wxe 1 m3 6 258
-m5 fold wxpsh 1 m4 d k0 v0
+m4__g0 get m3 0
+m4__n get m4__g0 0
+m4__e8 get m4__g0 8
+m4__full ge m4__n 22528
+m4__okn select m4__full 0 1
+m4__n1 add m4__n m4__okn
+m4__e2 select m4__full 1 m4__e8
+m4__g0a set m4__g0 0 m4__n1
+m4__g0b set m4__g0a 8 m4__e2
+m4__m1 set m3 0 m4__g0b
+m4__a mul m4__n 2
+m4__ad add m4__a 20480
+m4__pg shr m4__ad 7
+m4__w and m4__ad 127
+m4__g get m4__m1 m4__pg
+m4__w1 add m4__w 1
+m4__g1 set m4__g m4__w 6
+m4__g2 set m4__g1 m4__w1 258
+m4__okb eq m4__full false
+m4__g3 select m4__okb m4__g2 m4__g
+m4__m2 set m4__m1 m4__pg m4__g3
+m5 fold wxpsh 1 m4__m2 d k0 v0
 m6 fold wxset 1 m5 d j
 ret m6
 end
@@ -2905,30 +4455,297 @@ fn wxsrc u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
 o add p3 p1
 k call wxok p4 o
 v call wxov p4 o
-m1 fold wxres 1 p0 p2 k v
+m1__isn eq k 1
+m1__isp eq k 2
+m1__l3 eq k 3
+m1__l4 eq k 4
+m1__lit or m1__l3 m1__l4
+m1__j select m1__isn v 0
+m1__fl_t1 eq p2 0
+m1__fl_t2 mul m1__j 4
+m1__fl_t3 add m1__fl_t2 5440
+m1__fl_t4 sub p2 1
+m1__fl_t5 mul m1__fl_t4 128
+m1__fl_t6 add m1__fl_t5 16704
+m1__fl_t7 add m1__fl_t6 m1__fl_t2
+m1__fl_t8 select m1__fl_t1 m1__fl_t3 m1__fl_t7
+m1__fl_t9 add m1__fl_t8 2
+m1__fl_rp shr m1__fl_t9 7
+m1__fl_rw and m1__fl_t9 127
+m1__fl_rg get p0 m1__fl_rp
+m1__fl get m1__fl_rg m1__fl_rw
+m1__hc and m1__fl 1
+m1__hcb ne m1__hc 0
+m1__cv_t1 eq p2 0
+m1__cv_t2 mul m1__j 4
+m1__cv_t3 add m1__cv_t2 5440
+m1__cv_t4 sub p2 1
+m1__cv_t5 mul m1__cv_t4 128
+m1__cv_t6 add m1__cv_t5 16704
+m1__cv_t7 add m1__cv_t6 m1__cv_t2
+m1__cv_t8 select m1__cv_t1 m1__cv_t3 m1__cv_t7
+m1__cv_t9 add m1__cv_t8 1
+m1__cv_rp shr m1__cv_t9 7
+m1__cv_rw and m1__cv_t9 127
+m1__cv_rg get p0 m1__cv_rp
+m1__cv get m1__cv_rg m1__cv_rw
+m1__rt_t1 eq p2 0
+m1__rt_t2 mul m1__j 4
+m1__rt_t3 add m1__rt_t2 5440
+m1__rt_t4 sub p2 1
+m1__rt_t5 mul m1__rt_t4 128
+m1__rt_t6 add m1__rt_t5 16704
+m1__rt_t7 add m1__rt_t6 m1__rt_t2
+m1__rt_t8 select m1__rt_t1 m1__rt_t3 m1__rt_t7
+m1__rt_t9 add m1__rt_t8 3
+m1__rt_rp shr m1__rt_t9 7
+m1__rt_rw and m1__rt_t9 127
+m1__rt_rg get p0 m1__rt_rp
+m1__rt get m1__rt_rg m1__rt_rw
+m1__rk shr m1__rt 28
+m1__rv and m1__rt 268435455
+m1__rp eq m1__rk 2
+m1__rpn and m1__isn m1__rp
+m1__anypar or m1__rpn m1__isp
+m1__pi0 select m1__isp v m1__rv
+m1__pidx select m1__anypar m1__pi0 0
+m1__x2 mul m1__pidx 2
+m1__sk0 add m1__x2 32
+m1__sk_fa mul p2 128
+m1__sk_fb add m1__sk_fa 128
+m1__sk_fc add m1__sk_fb m1__sk0
+m1__sk_fp shr m1__sk_fc 7
+m1__sk_fw and m1__sk_fc 127
+m1__sk_fg get p0 m1__sk_fp
+m1__sk get m1__sk_fg m1__sk_fw
+m1__sv0 add m1__x2 33
+m1__sv_fa mul p2 128
+m1__sv_fb add m1__sv_fa 128
+m1__sv_fc add m1__sv_fb m1__sv0
+m1__sv_fp shr m1__sv_fc 7
+m1__sv_fw and m1__sv_fc 127
+m1__sv_fg get p0 m1__sv_fp
+m1__sv get m1__sv_fg m1__sv_fw
+m1__hh gt p2 0
+m1__hs and m1__hh m1__anypar
+m1__issv eq m1__sk 1
+m1__srcv and m1__hs m1__issv
+m1__rz eq m1__rt 0
+m1__rnode select m1__rz m1__j m1__rv
+m1__nl_t1 eq p2 0
+m1__nl_t2 mul m1__rnode 4
+m1__nl_t3 add m1__nl_t2 5440
+m1__nl_t4 sub p2 1
+m1__nl_t5 mul m1__nl_t4 128
+m1__nl_t6 add m1__nl_t5 16704
+m1__nl_t7 add m1__nl_t6 m1__nl_t2
+m1__nl_t8 select m1__nl_t1 m1__nl_t3 m1__nl_t7
+m1__nl_t9 add m1__nl_t8 0
+m1__nl_rp shr m1__nl_t9 7
+m1__nl_rw and m1__nl_t9 127
+m1__nl_rg get p0 m1__nl_rp
+m1__nl get m1__nl_rg m1__nl_rw
+m1__pb_gp shr 10 7
+m1__pb_gw and 10 127
+m1__pb_gg get p0 m1__pb_gp
+m1__pb get m1__pb_gg m1__pb_gw
+m1__pl add m1__pb m1__pidx
+m1__plocal select m1__hh m1__sv m1__pl
+m1__loc select m1__anypar m1__plocal m1__nl
+m1__cb and m1__isn m1__hcb
+m1__c1 or m1__lit m1__cb
+m1__isc or m1__c1 m1__srcv
+m1__v1 select m1__cb m1__cv m1__sv
+m1__v2 select m1__lit v m1__v1
+m1__val select m1__isc m1__v2 m1__loc
+m1__isc1 select m1__isc 1 0
+m1__m1__pg shr 16 7
+m1__m1__w and 16 127
+m1__m1__g get p0 m1__m1__pg
+m1__m1__g2 set m1__m1__g m1__m1__w m1__isc1
+m1__m1__r set p0 m1__m1__pg m1__m1__g2
+m1__m2__pg shr 17 7
+m1__m2__w and 17 127
+m1__m2__g get m1__m1__r m1__m2__pg
+m1__m2__g2 set m1__m2__g m1__m2__w m1__val
+m1__m2__r set m1__m1__r m1__m2__pg m1__m2__g2
 c_gp shr 16 7
 c_gw and 16 127
-c_gg get m1 c_gp
+c_gg get m1__m2__r c_gp
 c get c_gg c_gw
 s_gp shr 17 7
 s_gw and 17 127
-s_gg get m1 s_gp
+s_gg get m1__m2__r s_gp
 s get s_gg s_gw
 dn add p2 1
 w0 mul p1 2
 w1 add w0 32
 w2 add w0 33
-m2 fold wxfs 1 m1 dn w1 c
-m3 fold wxfs 1 m2 dn w2 s
-ret m3
+m2__a call wxfr dn w1
+m2__r__pg shr m2__a 7
+m2__r__w and m2__a 127
+m2__r__g get m1__m2__r m2__r__pg
+m2__r__g2 set m2__r__g m2__r__w c
+m2__r__r set m1__m2__r m2__r__pg m2__r__g2
+m3__a call wxfr dn w2
+m3__r__pg shr m3__a 7
+m3__r__w and m3__a 127
+m3__r__g get m2__r__r m3__r__pg
+m3__r__g2 set m3__r__g m3__r__w s
+m3__r__r set m2__r__r m3__r__pg m3__r__g2
+ret m3__r__r
 end
 # push operand p1 (operands from p3, table p4) of frame p2
 fn wxpa u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
 o add p3 p1
 k call wxok p4 o
 v call wxov p4 o
-r fold wxpsh 1 p0 p2 k v
-ret r
+r__m1__isn eq k 1
+r__m1__isp eq k 2
+r__m1__l3 eq k 3
+r__m1__l4 eq k 4
+r__m1__lit or r__m1__l3 r__m1__l4
+r__m1__j select r__m1__isn v 0
+r__m1__fl_t1 eq p2 0
+r__m1__fl_t2 mul r__m1__j 4
+r__m1__fl_t3 add r__m1__fl_t2 5440
+r__m1__fl_t4 sub p2 1
+r__m1__fl_t5 mul r__m1__fl_t4 128
+r__m1__fl_t6 add r__m1__fl_t5 16704
+r__m1__fl_t7 add r__m1__fl_t6 r__m1__fl_t2
+r__m1__fl_t8 select r__m1__fl_t1 r__m1__fl_t3 r__m1__fl_t7
+r__m1__fl_t9 add r__m1__fl_t8 2
+r__m1__fl_rp shr r__m1__fl_t9 7
+r__m1__fl_rw and r__m1__fl_t9 127
+r__m1__fl_rg get p0 r__m1__fl_rp
+r__m1__fl get r__m1__fl_rg r__m1__fl_rw
+r__m1__hc and r__m1__fl 1
+r__m1__hcb ne r__m1__hc 0
+r__m1__cv_t1 eq p2 0
+r__m1__cv_t2 mul r__m1__j 4
+r__m1__cv_t3 add r__m1__cv_t2 5440
+r__m1__cv_t4 sub p2 1
+r__m1__cv_t5 mul r__m1__cv_t4 128
+r__m1__cv_t6 add r__m1__cv_t5 16704
+r__m1__cv_t7 add r__m1__cv_t6 r__m1__cv_t2
+r__m1__cv_t8 select r__m1__cv_t1 r__m1__cv_t3 r__m1__cv_t7
+r__m1__cv_t9 add r__m1__cv_t8 1
+r__m1__cv_rp shr r__m1__cv_t9 7
+r__m1__cv_rw and r__m1__cv_t9 127
+r__m1__cv_rg get p0 r__m1__cv_rp
+r__m1__cv get r__m1__cv_rg r__m1__cv_rw
+r__m1__rt_t1 eq p2 0
+r__m1__rt_t2 mul r__m1__j 4
+r__m1__rt_t3 add r__m1__rt_t2 5440
+r__m1__rt_t4 sub p2 1
+r__m1__rt_t5 mul r__m1__rt_t4 128
+r__m1__rt_t6 add r__m1__rt_t5 16704
+r__m1__rt_t7 add r__m1__rt_t6 r__m1__rt_t2
+r__m1__rt_t8 select r__m1__rt_t1 r__m1__rt_t3 r__m1__rt_t7
+r__m1__rt_t9 add r__m1__rt_t8 3
+r__m1__rt_rp shr r__m1__rt_t9 7
+r__m1__rt_rw and r__m1__rt_t9 127
+r__m1__rt_rg get p0 r__m1__rt_rp
+r__m1__rt get r__m1__rt_rg r__m1__rt_rw
+r__m1__rk shr r__m1__rt 28
+r__m1__rv and r__m1__rt 268435455
+r__m1__rp eq r__m1__rk 2
+r__m1__rpn and r__m1__isn r__m1__rp
+r__m1__anypar or r__m1__rpn r__m1__isp
+r__m1__pi0 select r__m1__isp v r__m1__rv
+r__m1__pidx select r__m1__anypar r__m1__pi0 0
+r__m1__x2 mul r__m1__pidx 2
+r__m1__sk0 add r__m1__x2 32
+r__m1__sk_fa mul p2 128
+r__m1__sk_fb add r__m1__sk_fa 128
+r__m1__sk_fc add r__m1__sk_fb r__m1__sk0
+r__m1__sk_fp shr r__m1__sk_fc 7
+r__m1__sk_fw and r__m1__sk_fc 127
+r__m1__sk_fg get p0 r__m1__sk_fp
+r__m1__sk get r__m1__sk_fg r__m1__sk_fw
+r__m1__sv0 add r__m1__x2 33
+r__m1__sv_fa mul p2 128
+r__m1__sv_fb add r__m1__sv_fa 128
+r__m1__sv_fc add r__m1__sv_fb r__m1__sv0
+r__m1__sv_fp shr r__m1__sv_fc 7
+r__m1__sv_fw and r__m1__sv_fc 127
+r__m1__sv_fg get p0 r__m1__sv_fp
+r__m1__sv get r__m1__sv_fg r__m1__sv_fw
+r__m1__hh gt p2 0
+r__m1__hs and r__m1__hh r__m1__anypar
+r__m1__issv eq r__m1__sk 1
+r__m1__srcv and r__m1__hs r__m1__issv
+r__m1__rz eq r__m1__rt 0
+r__m1__rnode select r__m1__rz r__m1__j r__m1__rv
+r__m1__nl_t1 eq p2 0
+r__m1__nl_t2 mul r__m1__rnode 4
+r__m1__nl_t3 add r__m1__nl_t2 5440
+r__m1__nl_t4 sub p2 1
+r__m1__nl_t5 mul r__m1__nl_t4 128
+r__m1__nl_t6 add r__m1__nl_t5 16704
+r__m1__nl_t7 add r__m1__nl_t6 r__m1__nl_t2
+r__m1__nl_t8 select r__m1__nl_t1 r__m1__nl_t3 r__m1__nl_t7
+r__m1__nl_t9 add r__m1__nl_t8 0
+r__m1__nl_rp shr r__m1__nl_t9 7
+r__m1__nl_rw and r__m1__nl_t9 127
+r__m1__nl_rg get p0 r__m1__nl_rp
+r__m1__nl get r__m1__nl_rg r__m1__nl_rw
+r__m1__pb_gp shr 10 7
+r__m1__pb_gw and 10 127
+r__m1__pb_gg get p0 r__m1__pb_gp
+r__m1__pb get r__m1__pb_gg r__m1__pb_gw
+r__m1__pl add r__m1__pb r__m1__pidx
+r__m1__plocal select r__m1__hh r__m1__sv r__m1__pl
+r__m1__loc select r__m1__anypar r__m1__plocal r__m1__nl
+r__m1__cb and r__m1__isn r__m1__hcb
+r__m1__c1 or r__m1__lit r__m1__cb
+r__m1__isc or r__m1__c1 r__m1__srcv
+r__m1__v1 select r__m1__cb r__m1__cv r__m1__sv
+r__m1__v2 select r__m1__lit v r__m1__v1
+r__m1__val select r__m1__isc r__m1__v2 r__m1__loc
+r__m1__isc1 select r__m1__isc 1 0
+r__m1__m1__pg shr 16 7
+r__m1__m1__w and 16 127
+r__m1__m1__g get p0 r__m1__m1__pg
+r__m1__m1__g2 set r__m1__m1__g r__m1__m1__w r__m1__isc1
+r__m1__m1__r set p0 r__m1__m1__pg r__m1__m1__g2
+r__m1__m2__pg shr 17 7
+r__m1__m2__w and 17 127
+r__m1__m2__g get r__m1__m1__r r__m1__m2__pg
+r__m1__m2__g2 set r__m1__m2__g r__m1__m2__w r__m1__val
+r__m1__m2__r set r__m1__m1__r r__m1__m2__pg r__m1__m2__g2
+r__c_gp shr 16 7
+r__c_gw and 16 127
+r__c_gg get r__m1__m2__r r__c_gp
+r__c get r__c_gg r__c_gw
+r__v_gp shr 17 7
+r__v_gw and 17 127
+r__v_gg get r__m1__m2__r r__v_gp
+r__v get r__v_gg r__v_gw
+r__r__c ne r__c 0
+r__r__k select r__r__c 2 3
+r__r__r__g0 get r__m1__m2__r 0
+r__r__r__n get r__r__r__g0 0
+r__r__r__e8 get r__r__r__g0 8
+r__r__r__full ge r__r__r__n 22528
+r__r__r__okn select r__r__r__full 0 1
+r__r__r__n1 add r__r__r__n r__r__r__okn
+r__r__r__e2 select r__r__r__full 1 r__r__r__e8
+r__r__r__g0a set r__r__r__g0 0 r__r__r__n1
+r__r__r__g0b set r__r__r__g0a 8 r__r__r__e2
+r__r__r__m1 set r__m1__m2__r 0 r__r__r__g0b
+r__r__r__a mul r__r__r__n 2
+r__r__r__ad add r__r__r__a 20480
+r__r__r__pg shr r__r__r__ad 7
+r__r__r__w and r__r__r__ad 127
+r__r__r__g get r__r__r__m1 r__r__r__pg
+r__r__r__w1 add r__r__r__w 1
+r__r__r__g1 set r__r__r__g r__r__r__w r__r__k
+r__r__r__g2 set r__r__r__g1 r__r__r__w1 r__v
+r__r__r__okb eq r__r__r__full false
+r__r__r__g3 select r__r__r__okb r__r__r__g2 r__r__r__g
+r__r__r__m2 set r__r__r__m1 r__r__r__pg r__r__r__g3
+ret r__r__r__m2
 end
 # call (19): a scalar callee that is small and needs no frame is emitted in place (its operands
 # become its parameters' sources); otherwise a call (an aggregate result is written through the
@@ -2945,9 +4762,16 @@ prim lt tag 4
 nprim select prim false true
 big gt na 32
 cn1_m0 select big 1 0
-m0 fold wxs cn1_m0 p0 8 2
+m0__gcondb ne cn1_m0 0
+m0__pg shr 8 7
+m0__w and 8 127
+m0__g get p0 m0__pg
+m0__g2 set m0__g m0__w 2
+m0__r_o get p0 m0__pg
+m0__r_s select m0__gcondb m0__g2 m0__r_o
+m0__r set p0 m0__pg m0__r_s
 cs select prim na 0
-m1 fold wxsrc cs m0 d fa p5
+m1 fold wxsrc cs m0__r d fa p5
 cn2_m2 select prim 1 0
 m2 fold wxcan cn2_m2 m1 d ce 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10
 okr_gp shr 16 7
@@ -2977,11 +4801,43 @@ md get md_gg md_gw
 mx call umax md dp
 mkk select direct mk 0
 cn5_m6 select direct 1 0
-m6 fold wxe cn5_m6 m5 6 mk
+m6__gcondb ne cn5_m6 0
+m6__g0 get m5 0
+m6__n get m6__g0 0
+m6__e8 get m6__g0 8
+m6__full ge m6__n 22528
+m6__okn select m6__full 0 1
+m6__n1 add m6__n m6__okn
+m6__e2 select m6__full 1 m6__e8
+m6__g0a set m6__g0 0 m6__n1
+m6__g0b set m6__g0a 8 m6__e2
+m6__m1_o get m5 0
+m6__m1_s select m6__gcondb m6__g0b m6__m1_o
+m6__m1 set m5 0 m6__m1_s
+m6__a mul m6__n 2
+m6__ad add m6__a 20480
+m6__pg shr m6__ad 7
+m6__w and m6__ad 127
+m6__g get m6__m1 m6__pg
+m6__w1 add m6__w 1
+m6__g1 set m6__g m6__w 6
+m6__g2 set m6__g1 m6__w1 mk
+m6__okb eq m6__full false
+m6__g3 select m6__okb m6__g2 m6__g
+m6__m2_o get m6__m1 m6__pg
+m6__m2_s select m6__gcondb m6__g3 m6__m2_o
+m6__m2 set m6__m1 m6__pg m6__m2_s
 cn6_m7 select direct 1 0
-m7 fold wxs cn6_m7 m6 12 mx
+m7__gcondb ne cn6_m7 0
+m7__pg shr 12 7
+m7__w and 12 127
+m7__g get m6__m2 m7__pg
+m7__g2 set m7__g m7__w mx
+m7__r_o get m6__m2 m7__pg
+m7__r_s select m7__gcondb m7__g2 m7__r_o
+m7__r set m6__m2 m7__pg m7__r_s
 cn7_m8 select direct 1 0
-m8 fold wxset cn7_m8 m7 d j
+m8 fold wxset cn7_m8 m7__r d j
 cn8_m9 select nprim 1 0
 m9 fold wxslot cn8_m9 m8 d j by
 l_gp shr 16 7
@@ -2993,10 +4849,42 @@ m10 fold wxlg cn9_m10 m9 l
 cagg select nprim na 0
 m11 fold wxpa cagg m10 d fa p5
 cn10_m12 select nprim 1 0
-m12 fold wxe cn10_m12 m11 6 mk
+m12__gcondb ne cn10_m12 0
+m12__g0 get m11 0
+m12__n get m12__g0 0
+m12__e8 get m12__g0 8
+m12__full ge m12__n 22528
+m12__okn select m12__full 0 1
+m12__n1 add m12__n m12__okn
+m12__e2 select m12__full 1 m12__e8
+m12__g0a set m12__g0 0 m12__n1
+m12__g0b set m12__g0a 8 m12__e2
+m12__m1_o get m11 0
+m12__m1_s select m12__gcondb m12__g0b m12__m1_o
+m12__m1 set m11 0 m12__m1_s
+m12__a mul m12__n 2
+m12__ad add m12__a 20480
+m12__pg shr m12__ad 7
+m12__w and m12__ad 127
+m12__g get m12__m1 m12__pg
+m12__w1 add m12__w 1
+m12__g1 set m12__g m12__w 6
+m12__g2 set m12__g1 m12__w1 mk
+m12__okb eq m12__full false
+m12__g3 select m12__okb m12__g2 m12__g
+m12__m2_o get m12__m1 m12__pg
+m12__m2_s select m12__gcondb m12__g3 m12__m2_o
+m12__m2 set m12__m1 m12__pg m12__m2_s
 cn11_m13 select nprim 1 0
-m13 fold wxs cn11_m13 m12 12 mx
-ret m13
+m13__gcondb ne cn11_m13 0
+m13__pg shr 12 7
+m13__w and 12 127
+m13__g get m12__m2 m13__pg
+m13__g2 set m13__g m13__w mx
+m13__r_o get m12__m2 m13__pg
+m13__r_s select m13__gcondb m13__g2 m13__r_o
+m13__r set m12__m2 m13__pg m13__r_s
+ret m13__r
 end
 # ---------------------------------------------------------------------------------------------
 # fold / loop (src/wasm.ts `#iteration`). The loop context of frame d (words from 640 + 176 d):
@@ -3032,9 +4920,19 @@ v_cg get p0 v_cp
 v get v_cg v_cw
 w1 add a0 36
 w2 add a0 37
-m1 fold wxfs 1 p0 dn w1 c
-m2 fold wxfs 1 m1 dn w2 v
-ret m2
+m1__a call wxfr dn w1
+m1__r__pg shr m1__a 7
+m1__r__w and m1__a 127
+m1__r__g get p0 m1__r__pg
+m1__r__g2 set m1__r__g m1__r__w c
+m1__r__r set p0 m1__r__pg m1__r__g2
+m2__a call wxfr dn w2
+m2__r__pg shr m2__a 7
+m2__r__w and m2__a 127
+m2__r__g get m1__r__r m2__r__pg
+m2__r__g2 set m2__r__g m2__r__w v
+m2__r__r set m1__r__r m2__r__pg m2__r__g2
+ret m2__r__r
 end
 # state word p1 of the loop of frame p2 as word p1 of frame p2 + 1's fields
 fn wxhf u32x128x512 u32 u32 -> u32x128x512
@@ -3048,8 +4946,13 @@ l_cw and l_cc 127
 l_cg get p0 l_cp
 l get l_cg l_cw
 f add p1 10
-r fold wxfs 1 p0 dn f l
-ret r
+r__a call wxfr dn f
+r__r__pg shr r__a 7
+r__r__w and r__a 127
+r__r__g get p0 r__r__pg
+r__r__g2 set r__r__g r__r__w l
+r__r__r set p0 r__r__pg r__r__g2
+ret r__r__r
 end
 # the host words of frame p2 + 1 for the loop of frame p2: parameter sources (state, counter,
 # extras), the literal bound, and for p3 = 1 (the body) the state words in locals and the carried
@@ -3251,17 +5154,87 @@ guard select g3 false true
 pq ne pr 0
 exit or guard pq
 cn1_m1 select exit 1 0
-m1 fold wxe cn1_m1 p0 14 64
+m1__gcondb ne cn1_m1 0
+m1__g0 get p0 0
+m1__n get m1__g0 0
+m1__e8 get m1__g0 8
+m1__full ge m1__n 22528
+m1__okn select m1__full 0 1
+m1__n1 add m1__n m1__okn
+m1__e2 select m1__full 1 m1__e8
+m1__g0a set m1__g0 0 m1__n1
+m1__g0b set m1__g0a 8 m1__e2
+m1__m1_o get p0 0
+m1__m1_s select m1__gcondb m1__g0b m1__m1_o
+m1__m1 set p0 0 m1__m1_s
+m1__a mul m1__n 2
+m1__ad add m1__a 20480
+m1__pg shr m1__ad 7
+m1__w and m1__ad 127
+m1__g get m1__m1 m1__pg
+m1__w1 add m1__w 1
+m1__g1 set m1__g m1__w 14
+m1__g2 set m1__g1 m1__w1 64
+m1__okb eq m1__full false
+m1__g3 select m1__okb m1__g2 m1__g
+m1__m2_o get m1__m1 m1__pg
+m1__m2_s select m1__gcondb m1__g3 m1__m2_o
+m1__m2 set m1__m1 m1__pg m1__m2_s
 cn2_m2 select guard 1 0
-m2 fold wxlg cn2_m2 m1 ic
+m2 fold wxlg cn2_m2 m1__m2 ic
 cn3_m3 select guard 1 0
 m3 fold wxlim cn3_m3 m2 p2 p3
 cn4_m4 select guard 1 0
 m4 fold wxop cn4_m4 m3 79
 cn5_m5 select guard 1 0
-m5 fold wxe cn5_m5 m4 12 0
-m6 fold wxe 1 m5 8 0
-m7 fold wxcs 1 m6 p2 22 0
+m5__gcondb ne cn5_m5 0
+m5__g0 get m4 0
+m5__n get m5__g0 0
+m5__e8 get m5__g0 8
+m5__full ge m5__n 22528
+m5__okn select m5__full 0 1
+m5__n1 add m5__n m5__okn
+m5__e2 select m5__full 1 m5__e8
+m5__g0a set m5__g0 0 m5__n1
+m5__g0b set m5__g0a 8 m5__e2
+m5__m1_o get m4 0
+m5__m1_s select m5__gcondb m5__g0b m5__m1_o
+m5__m1 set m4 0 m5__m1_s
+m5__a mul m5__n 2
+m5__ad add m5__a 20480
+m5__pg shr m5__ad 7
+m5__w and m5__ad 127
+m5__g get m5__m1 m5__pg
+m5__w1 add m5__w 1
+m5__g1 set m5__g m5__w 12
+m5__g2 set m5__g1 m5__w1 0
+m5__okb eq m5__full false
+m5__g3 select m5__okb m5__g2 m5__g
+m5__m2_o get m5__m1 m5__pg
+m5__m2_s select m5__gcondb m5__g3 m5__m2_o
+m5__m2 set m5__m1 m5__pg m5__m2_s
+m6__g0 get m5__m2 0
+m6__n get m6__g0 0
+m6__e8 get m6__g0 8
+m6__full ge m6__n 22528
+m6__okn select m6__full 0 1
+m6__n1 add m6__n m6__okn
+m6__e2 select m6__full 1 m6__e8
+m6__g0a set m6__g0 0 m6__n1
+m6__g0b set m6__g0a 8 m6__e2
+m6__m1 set m5__m2 0 m6__g0b
+m6__a mul m6__n 2
+m6__ad add m6__a 20480
+m6__pg shr m6__ad 7
+m6__w and m6__ad 127
+m6__g get m6__m1 m6__pg
+m6__w1 add m6__w 1
+m6__g1 set m6__g m6__w 8
+m6__g2 set m6__g1 m6__w1 0
+m6__okb eq m6__full false
+m6__g3 select m6__okb m6__g2 m6__g
+m6__m2 set m6__m1 m6__pg m6__g3
+m7 fold wxcs 1 m6__m2 p2 22 0
 m8 fold wxpu 1 m7 9 p2 0 0
 ret m8
 end
@@ -3277,8 +5250,13 @@ l_cp shr l_cc 7
 l_cw and l_cc 127
 l_cg get p0 l_cp
 l get l_cg l_cw
-m1 fold wxbs 1 p0 dn p1 0 l
-ret m1
+m1__a call wxbk dn p1 0
+m1__r__pg shr m1__a 7
+m1__r__w and m1__a 127
+m1__r__g get p0 m1__r__pg
+m1__r__g2 set m1__r__g m1__r__w l
+m1__r__r set p0 m1__r__pg m1__r__g2
+ret m1__r__r
 end
 # the arguments of a body or predicate call of loop d: the state, the counter, the extras
 fn wxiarg u32x128x512 u32 u32 u32x128x128 u32x128x512 -> u32x128x512
@@ -3372,10 +5350,42 @@ md_gg get m5 md_gp
 md get md_gg md_gw
 mx call umax md dp
 cn5_m6 select dir 1 0
-m6 fold wxe cn5_m6 m5 6 mk
+m6__gcondb ne cn5_m6 0
+m6__g0 get m5 0
+m6__n get m6__g0 0
+m6__e8 get m6__g0 8
+m6__full ge m6__n 22528
+m6__okn select m6__full 0 1
+m6__n1 add m6__n m6__okn
+m6__e2 select m6__full 1 m6__e8
+m6__g0a set m6__g0 0 m6__n1
+m6__g0b set m6__g0a 8 m6__e2
+m6__m1_o get m5 0
+m6__m1_s select m6__gcondb m6__g0b m6__m1_o
+m6__m1 set m5 0 m6__m1_s
+m6__a mul m6__n 2
+m6__ad add m6__a 20480
+m6__pg shr m6__ad 7
+m6__w and m6__ad 127
+m6__g get m6__m1 m6__pg
+m6__w1 add m6__w 1
+m6__g1 set m6__g m6__w 6
+m6__g2 set m6__g1 m6__w1 mk
+m6__okb eq m6__full false
+m6__g3 select m6__okb m6__g2 m6__g
+m6__m2_o get m6__m1 m6__pg
+m6__m2_s select m6__gcondb m6__g3 m6__m2_o
+m6__m2 set m6__m1 m6__pg m6__m2_s
 cn6_m7 select dir 1 0
-m7 fold wxs cn6_m7 m6 12 mx
-ret m7
+m7__gcondb ne cn6_m7 0
+m7__pg shr 12 7
+m7__w and 12 127
+m7__g get m6__m2 m7__pg
+m7__g2 set m7__g m7__w mx
+m7__r_o get m6__m2 m7__pg
+m7__r_s select m7__gcondb m7__g2 m7__r_o
+m7__r set m6__m2 m7__pg m7__r_s
+ret m7__r
 end
 # the body of a trip of loop p2: leave the loop when the predicate is false, then the body
 # (inlined when it was probed so, else called: the owned variant for aggregate state)
@@ -3391,46 +5401,71 @@ hp ne pq 0
 cn1_m1 select hp 1 0
 m1 fold wxop cn1_m1 p0 69
 cn2_m2 select hp 1 0
-m2 fold wxe cn2_m2 m1 12 1
+m2__gcondb ne cn2_m2 0
+m2__g0 get m1 0
+m2__n get m2__g0 0
+m2__e8 get m2__g0 8
+m2__full ge m2__n 22528
+m2__okn select m2__full 0 1
+m2__n1 add m2__n m2__okn
+m2__e2 select m2__full 1 m2__e8
+m2__g0a set m2__g0 0 m2__n1
+m2__g0b set m2__g0a 8 m2__e2
+m2__m1_o get m1 0
+m2__m1_s select m2__gcondb m2__g0b m2__m1_o
+m2__m1 set m1 0 m2__m1_s
+m2__a mul m2__n 2
+m2__ad add m2__a 20480
+m2__pg shr m2__ad 7
+m2__w and m2__ad 127
+m2__g get m2__m1 m2__pg
+m2__w1 add m2__w 1
+m2__g1 set m2__g m2__w 12
+m2__g2 set m2__g1 m2__w1 1
+m2__okb eq m2__full false
+m2__g3 select m2__okb m2__g2 m2__g
+m2__m2_o get m2__m1 m2__pg
+m2__m2_s select m2__gcondb m2__g3 m2__m2_o
+m2__m2 set m2__m1 m2__pg m2__m2_s
 bf_ca mul p2 176
 bf_cb add bf_ca 640
 bf_cc add bf_cb 8
 bf_cp shr bf_cc 7
 bf_cw and bf_cc 127
-bf_cg get m2 bf_cp
+bf_cg get m2__m2 bf_cp
 bf get bf_cg bf_cw
 inl_ca mul p2 176
 inl_cb add inl_ca 640
 inl_cc add inl_cb 10
 inl_cp shr inl_cc 7
 inl_cw and inl_cc 127
-inl_cg get m2 inl_cp
+inl_cg get m2__m2 inl_cp
 inl get inl_cg inl_cw
 ag_ca mul p2 176
 ag_cb add ag_ca 640
 ag_cc add ag_cb 2
 ag_cp shr ag_cc 7
 ag_cw and ag_cc 127
-ag_cg get m2 ag_cp
+ag_cg get m2__m2 ag_cp
 ag get ag_cg ag_cw
 vr_ca mul p2 176
 vr_cb add vr_ca 640
 vr_cc add vr_cb 11
 vr_cp shr vr_cc 7
 vr_cw and vr_cc 127
-vr_cg get m2 vr_cp
+vr_cg get m2__m2 vr_cp
 vr get vr_cg vr_cw
 wd_ca mul p2 176
 wd_cb add wd_ca 640
 wd_cc add wd_cb 12
 wd_cp shr wd_cc 7
 wd_cw and wd_cc 127
-wd_cg get m2 wd_cp
+wd_cg get m2__m2 wd_cp
 wd get wd_cg wd_cw
 isi ne inl 0
 nis select isi false true
 cn3_m3 select isi 1 0
-m3 fold wxhost cn3_m3 m2 p2 1
+m3 fold wxhost cn3_m3 m2__m2 p2 1
 cn4_m4a select isi 1 0
 m4a fold wxcan cn4_m4a m3 p2 bf vr 24 wd p3 p4 p5 p6 p7 p8 p9 p10
 okr_gp shr 16 7
@@ -3440,11 +5475,18 @@ okr get okr_gg okr_gw
 bad1 ne okr 1
 bad and isi bad1
 cn5_m4 select bad 1 0
-m4 fold wxs cn5_m4 m4a 8 3
+m4__gcondb ne cn5_m4 0
+m4__pg shr 8 7
+m4__w and 8 127
+m4__g get m4a m4__pg
+m4__g2 set m4__g m4__w 3
+m4__r_o get m4a m4__pg
+m4__r_s select m4__gcondb m4__g2 m4__r_o
+m4__r set m4a m4__pg m4__r_s
 dn add p2 1
 nnb call wxfw p3 bf 5
 cn select isi nnb 0
-m5 fold wxindw cn m4 p2
+m5 fold wxindw cn m4__r p2
 cn6_m6 select isi 1 0
 m6 fold wxpu cn6_m6 m5 11 p2 0 0
 cn7_m7 select isi 1 0
@@ -3467,10 +5509,42 @@ md_gg get m9 md_gp
 md get md_gg md_gw
 mx call umax md dp
 cn10_m10 select nis 1 0
-m10 fold wxe cn10_m10 m9 6 mk
+m10__gcondb ne cn10_m10 0
+m10__g0 get m9 0
+m10__n get m10__g0 0
+m10__e8 get m10__g0 8
+m10__full ge m10__n 22528
+m10__okn select m10__full 0 1
+m10__n1 add m10__n m10__okn
+m10__e2 select m10__full 1 m10__e8
+m10__g0a set m10__g0 0 m10__n1
+m10__g0b set m10__g0a 8 m10__e2
+m10__m1_o get m9 0
+m10__m1_s select m10__gcondb m10__g0b m10__m1_o
+m10__m1 set m9 0 m10__m1_s
+m10__a mul m10__n 2
+m10__ad add m10__a 20480
+m10__pg shr m10__ad 7
+m10__w and m10__ad 127
+m10__g get m10__m1 m10__pg
+m10__w1 add m10__w 1
+m10__g1 set m10__g m10__w 6
+m10__g2 set m10__g1 m10__w1 mk
+m10__okb eq m10__full false
+m10__g3 select m10__okb m10__g2 m10__g
+m10__m2_o get m10__m1 m10__pg
+m10__m2_s select m10__gcondb m10__g3 m10__m2_o
+m10__m2 set m10__m1 m10__pg m10__m2_s
 cn11_m11 select nis 1 0
-m11 fold wxs cn11_m11 m10 12 mx
-ret m11
+m11__gcondb ne cn11_m11 0
+m11__pg shr 12 7
+m11__w and 12 127
+m11__g get m10__m2 m11__pg
+m11__g2 set m11__g m11__w mx
+m11__r_o get m10__m2 m11__pg
+m11__r_s select m11__gcondb m11__g2 m11__r_o
+m11__r set m10__m2 m11__pg m11__r_s
+ret m11__r
 end
 # induction variable p1 of the body of loop p2 steps: local += step (when the body node has one)
 fn wxupd u32x128x512 u32 u32 -> u32x128x512
@@ -3493,14 +5567,118 @@ stp get stp_cg stp_cw
 has ne l1 0
 l sub l1 1
 cn1_m1 select has 1 0
-m1 fold wxlg cn1_m1 p0 l
+m1__gcondb ne cn1_m1 0
+m1__r__gcondb ne cn1_m1 0
+m1__r__g0 get p0 0
+m1__r__n get m1__r__g0 0
+m1__r__e8 get m1__r__g0 8
+m1__r__full ge m1__r__n 22528
+m1__r__okn select m1__r__full 0 1
+m1__r__n1 add m1__r__n m1__r__okn
+m1__r__e2 select m1__r__full 1 m1__r__e8
+m1__r__g0a set m1__r__g0 0 m1__r__n1
+m1__r__g0b set m1__r__g0a 8 m1__r__e2
+m1__r__m1_o get p0 0
+m1__r__m1_s select m1__r__gcondb m1__r__g0b m1__r__m1_o
+m1__r__m1 set p0 0 m1__r__m1_s
+m1__r__a mul m1__r__n 2
+m1__r__ad add m1__r__a 20480
+m1__r__pg shr m1__r__ad 7
+m1__r__w and m1__r__ad 127
+m1__r__g get m1__r__m1 m1__r__pg
+m1__r__w1 add m1__r__w 1
+m1__r__g1 set m1__r__g m1__r__w 3
+m1__r__g2 set m1__r__g1 m1__r__w1 l
+m1__r__okb eq m1__r__full false
+m1__r__g3 select m1__r__okb m1__r__g2 m1__r__g
+m1__r__m2_o get m1__r__m1 m1__r__pg
+m1__r__m2_s select m1__r__gcondb m1__r__g3 m1__r__m2_o
+m1__r__m2 set m1__r__m1 m1__r__pg m1__r__m2_s
 cn2_m2 select has 1 0
-m2 fold wxkc cn2_m2 m1 stp
+m2__gcondb ne cn2_m2 0
+m2__r__gcondb ne cn2_m2 0
+m2__r__g0 get m1__r__m2 0
+m2__r__n get m2__r__g0 0
+m2__r__e8 get m2__r__g0 8
+m2__r__full ge m2__r__n 22528
+m2__r__okn select m2__r__full 0 1
+m2__r__n1 add m2__r__n m2__r__okn
+m2__r__e2 select m2__r__full 1 m2__r__e8
+m2__r__g0a set m2__r__g0 0 m2__r__n1
+m2__r__g0b set m2__r__g0a 8 m2__r__e2
+m2__r__m1_o get m1__r__m2 0
+m2__r__m1_s select m2__r__gcondb m2__r__g0b m2__r__m1_o
+m2__r__m1 set m1__r__m2 0 m2__r__m1_s
+m2__r__a mul m2__r__n 2
+m2__r__ad add m2__r__a 20480
+m2__r__pg shr m2__r__ad 7
+m2__r__w and m2__r__ad 127
+m2__r__g get m2__r__m1 m2__r__pg
+m2__r__w1 add m2__r__w 1
+m2__r__g1 set m2__r__g m2__r__w 2
+m2__r__g2 set m2__r__g1 m2__r__w1 stp
+m2__r__okb eq m2__r__full false
+m2__r__g3 select m2__r__okb m2__r__g2 m2__r__g
+m2__r__m2_o get m2__r__m1 m2__r__pg
+m2__r__m2_s select m2__r__gcondb m2__r__g3 m2__r__m2_o
+m2__r__m2 set m2__r__m1 m2__r__pg m2__r__m2_s
 cn3_m3 select has 1 0
-m3 fold wxop cn3_m3 m2 106
+m3__gcondb ne cn3_m3 0
+m3__r__gcondb ne cn3_m3 0
+m3__r__g0 get m2__r__m2 0
+m3__r__n get m3__r__g0 0
+m3__r__e8 get m3__r__g0 8
+m3__r__full ge m3__r__n 22528
+m3__r__okn select m3__r__full 0 1
+m3__r__n1 add m3__r__n m3__r__okn
+m3__r__e2 select m3__r__full 1 m3__r__e8
+m3__r__g0a set m3__r__g0 0 m3__r__n1
+m3__r__g0b set m3__r__g0a 8 m3__r__e2
+m3__r__m1_o get m2__r__m2 0
+m3__r__m1_s select m3__r__gcondb m3__r__g0b m3__r__m1_o
+m3__r__m1 set m2__r__m2 0 m3__r__m1_s
+m3__r__a mul m3__r__n 2
+m3__r__ad add m3__r__a 20480
+m3__r__pg shr m3__r__ad 7
+m3__r__w and m3__r__ad 127
+m3__r__g get m3__r__m1 m3__r__pg
+m3__r__w1 add m3__r__w 1
+m3__r__g1 set m3__r__g m3__r__w 1
+m3__r__g2 set m3__r__g1 m3__r__w1 106
+m3__r__okb eq m3__r__full false
+m3__r__g3 select m3__r__okb m3__r__g2 m3__r__g
+m3__r__m2_o get m3__r__m1 m3__r__pg
+m3__r__m2_s select m3__r__gcondb m3__r__g3 m3__r__m2_o
+m3__r__m2 set m3__r__m1 m3__r__pg m3__r__m2_s
 cn4_m4 select has 1 0
-m4 fold wxls cn4_m4 m3 l
-ret m4
+m4__gcondb ne cn4_m4 0
+m4__r__gcondb ne cn4_m4 0
+m4__r__g0 get m3__r__m2 0
+m4__r__n get m4__r__g0 0
+m4__r__e8 get m4__r__g0 8
+m4__r__full ge m4__r__n 22528
+m4__r__okn select m4__r__full 0 1
+m4__r__n1 add m4__r__n m4__r__okn
+m4__r__e2 select m4__r__full 1 m4__r__e8
+m4__r__g0a set m4__r__g0 0 m4__r__n1
+m4__r__g0b set m4__r__g0a 8 m4__r__e2
+m4__r__m1_o get m3__r__m2 0
+m4__r__m1_s select m4__r__gcondb m4__r__g0b m4__r__m1_o
+m4__r__m1 set m3__r__m2 0 m4__r__m1_s
+m4__r__a mul m4__r__n 2
+m4__r__ad add m4__r__a 20480
+m4__r__pg shr m4__r__ad 7
+m4__r__w and m4__r__ad 127
+m4__r__g get m4__r__m1 m4__r__pg
+m4__r__w1 add m4__r__w 1
+m4__r__g1 set m4__r__g m4__r__w 4
+m4__r__g2 set m4__r__g1 m4__r__w1 l
+m4__r__okb eq m4__r__full false
+m4__r__g3 select m4__r__okb m4__r__g2 m4__r__g
+m4__r__m2_o get m4__r__m1 m4__r__pg
+m4__r__m2_s select m4__r__gcondb m4__r__g3 m4__r__m2_o
+m4__r__m2 set m4__r__m1 m4__r__pg m4__r__m2_s
+ret m4__r__m2
 end
 # state word p1 of loop p2 goes back to the state's storage after the loop
 fn wxfst u32x128x512 u32 u32 -> u32x128x512
@@ -3520,10 +5698,70 @@ l_cw and l_cc 127
 l_cg get p0 l_cp
 l get l_cg l_cw
 off mul p1 4
-m1 fold wxlg 1 p0 st
-m2 fold wxlg 1 m1 l
-m3 fold wxst 1 m2 off
-ret m3
+m1__r__g0 get p0 0
+m1__r__n get m1__r__g0 0
+m1__r__e8 get m1__r__g0 8
+m1__r__full ge m1__r__n 22528
+m1__r__okn select m1__r__full 0 1
+m1__r__n1 add m1__r__n m1__r__okn
+m1__r__e2 select m1__r__full 1 m1__r__e8
+m1__r__g0a set m1__r__g0 0 m1__r__n1
+m1__r__g0b set m1__r__g0a 8 m1__r__e2
+m1__r__m1 set p0 0 m1__r__g0b
+m1__r__a mul m1__r__n 2
+m1__r__ad add m1__r__a 20480
+m1__r__pg shr m1__r__ad 7
+m1__r__w and m1__r__ad 127
+m1__r__g get m1__r__m1 m1__r__pg
+m1__r__w1 add m1__r__w 1
+m1__r__g1 set m1__r__g m1__r__w 3
+m1__r__g2 set m1__r__g1 m1__r__w1 st
+m1__r__okb eq m1__r__full false
+m1__r__g3 select m1__r__okb m1__r__g2 m1__r__g
+m1__r__m2 set m1__r__m1 m1__r__pg m1__r__g3
+m2__r__g0 get m1__r__m2 0
+m2__r__n get m2__r__g0 0
+m2__r__e8 get m2__r__g0 8
+m2__r__full ge m2__r__n 22528
+m2__r__okn select m2__r__full 0 1
+m2__r__n1 add m2__r__n m2__r__okn
+m2__r__e2 select m2__r__full 1 m2__r__e8
+m2__r__g0a set m2__r__g0 0 m2__r__n1
+m2__r__g0b set m2__r__g0a 8 m2__r__e2
+m2__r__m1 set m1__r__m2 0 m2__r__g0b
+m2__r__a mul m2__r__n 2
+m2__r__ad add m2__r__a 20480
+m2__r__pg shr m2__r__ad 7
+m2__r__w and m2__r__ad 127
+m2__r__g get m2__r__m1 m2__r__pg
+m2__r__w1 add m2__r__w 1
+m2__r__g1 set m2__r__g m2__r__w 3
+m2__r__g2 set m2__r__g1 m2__r__w1 l
+m2__r__okb eq m2__r__full false
+m2__r__g3 select m2__r__okb m2__r__g2 m2__r__g
+m2__r__m2 set m2__r__m1 m2__r__pg m2__r__g3
+m3__r__g0 get m2__r__m2 0
+m3__r__n get m3__r__g0 0
+m3__r__e8 get m3__r__g0 8
+m3__r__full ge m3__r__n 22528
+m3__r__okn select m3__r__full 0 1
+m3__r__n1 add m3__r__n m3__r__okn
+m3__r__e2 select m3__r__full 1 m3__r__e8
+m3__r__g0a set m3__r__g0 0 m3__r__n1
+m3__r__g0b set m3__r__g0a 8 m3__r__e2
+m3__r__m1 set m2__r__m2 0 m3__r__g0b
+m3__r__a mul m3__r__n 2
+m3__r__ad add m3__r__a 20480
+m3__r__pg shr m3__r__ad 7
+m3__r__w and m3__r__ad 127
+m3__r__g get m3__r__m1 m3__r__pg
+m3__r__w1 add m3__r__w 1
+m3__r__g1 set m3__r__g m3__r__w 11
+m3__r__g2 set m3__r__g1 m3__r__w1 off
+m3__r__okb eq m3__r__full false
+m3__r__g3 select m3__r__okb m3__r__g2 m3__r__g
+m3__r__m2 set m3__r__m1 m3__r__pg m3__r__g3
+ret m3__r__m2
 end
 # the end of a trip of loop p2 (`trip` after the body): the state of a scalar fold is set, the
 # induction variables and the counter step; the next copy of the trip, or the end of the loop
@@ -3648,9 +5886,59 @@ m10 fold wxlim cn4_m10 m9 p2 ph
 cn5_m11 select nmore 1 0
 m11 fold wxop cn5_m11 m10 73
 cn6_m12 select nmore 1 0
-m12 fold wxe cn6_m12 m11 12 0
+m12__gcondb ne cn6_m12 0
+m12__g0 get m11 0
+m12__n get m12__g0 0
+m12__e8 get m12__g0 8
+m12__full ge m12__n 22528
+m12__okn select m12__full 0 1
+m12__n1 add m12__n m12__okn
+m12__e2 select m12__full 1 m12__e8
+m12__g0a set m12__g0 0 m12__n1
+m12__g0b set m12__g0a 8 m12__e2
+m12__m1_o get m11 0
+m12__m1_s select m12__gcondb m12__g0b m12__m1_o
+m12__m1 set m11 0 m12__m1_s
+m12__a mul m12__n 2
+m12__ad add m12__a 20480
+m12__pg shr m12__ad 7
+m12__w and m12__ad 127
+m12__g get m12__m1 m12__pg
+m12__w1 add m12__w 1
+m12__g1 set m12__g m12__w 12
+m12__g2 set m12__g1 m12__w1 0
+m12__okb eq m12__full false
+m12__g3 select m12__okb m12__g2 m12__g
+m12__m2_o get m12__m1 m12__pg
+m12__m2_s select m12__gcondb m12__g3 m12__m2_o
+m12__m2 set m12__m1 m12__pg m12__m2_s
 cn7_m13 select nmore 1 0
-m13 fold wxe cn7_m13 m12 9 0
+m13__gcondb ne cn7_m13 0
+m13__g0 get m12__m2 0
+m13__n get m13__g0 0
+m13__e8 get m13__g0 8
+m13__full ge m13__n 22528
+m13__okn select m13__full 0 1
+m13__n1 add m13__n m13__okn
+m13__e2 select m13__full 1 m13__e8
+m13__g0a set m13__g0 0 m13__n1
+m13__g0b set m13__g0a 8 m13__e2
+m13__m1_o get m12__m2 0
+m13__m1_s select m13__gcondb m13__g0b m13__m1_o
+m13__m1 set m12__m2 0 m13__m1_s
+m13__a mul m13__n 2
+m13__ad add m13__a 20480
+m13__pg shr m13__ad 7
+m13__w and m13__ad 127
+m13__g get m13__m1 m13__pg
+m13__w1 add m13__w 1
+m13__g1 set m13__g m13__w 9
+m13__g2 set m13__g1 m13__w1 0
+m13__okb eq m13__full false
+m13__g3 select m13__okb m13__g2 m13__g
+m13__m2_o get m13__m1 m13__pg
+m13__m2_s select m13__gcondb m13__g3 m13__m2_o
+m13__m2 set m13__m1 m13__pg m13__m2_s
 g1 ne litf 0
 g2 gt lit from
 g3 and g1 g2
@@ -3659,7 +5947,7 @@ pq ne pr 0
 exit or guard pq
 ex and nmore exit
 cn8_m14 select ex 1 0
-m14 fold wxop cn8_m14 m13 11
+m14 fold wxop cn8_m14 m13__m2 11
 ph1 add ph 1
 nxt lt ph1 nph
 dnx and nmore nxt
@@ -3679,44 +5967,266 @@ fn wxext u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
 o add p3 p1
 k call wxok p4 o
 v call wxov p4 o
-m1 fold wxres 1 p0 p2 k v
+m1__isn eq k 1
+m1__isp eq k 2
+m1__l3 eq k 3
+m1__l4 eq k 4
+m1__lit or m1__l3 m1__l4
+m1__j select m1__isn v 0
+m1__fl_t1 eq p2 0
+m1__fl_t2 mul m1__j 4
+m1__fl_t3 add m1__fl_t2 5440
+m1__fl_t4 sub p2 1
+m1__fl_t5 mul m1__fl_t4 128
+m1__fl_t6 add m1__fl_t5 16704
+m1__fl_t7 add m1__fl_t6 m1__fl_t2
+m1__fl_t8 select m1__fl_t1 m1__fl_t3 m1__fl_t7
+m1__fl_t9 add m1__fl_t8 2
+m1__fl_rp shr m1__fl_t9 7
+m1__fl_rw and m1__fl_t9 127
+m1__fl_rg get p0 m1__fl_rp
+m1__fl get m1__fl_rg m1__fl_rw
+m1__hc and m1__fl 1
+m1__hcb ne m1__hc 0
+m1__cv_t1 eq p2 0
+m1__cv_t2 mul m1__j 4
+m1__cv_t3 add m1__cv_t2 5440
+m1__cv_t4 sub p2 1
+m1__cv_t5 mul m1__cv_t4 128
+m1__cv_t6 add m1__cv_t5 16704
+m1__cv_t7 add m1__cv_t6 m1__cv_t2
+m1__cv_t8 select m1__cv_t1 m1__cv_t3 m1__cv_t7
+m1__cv_t9 add m1__cv_t8 1
+m1__cv_rp shr m1__cv_t9 7
+m1__cv_rw and m1__cv_t9 127
+m1__cv_rg get p0 m1__cv_rp
+m1__cv get m1__cv_rg m1__cv_rw
+m1__rt_t1 eq p2 0
+m1__rt_t2 mul m1__j 4
+m1__rt_t3 add m1__rt_t2 5440
+m1__rt_t4 sub p2 1
+m1__rt_t5 mul m1__rt_t4 128
+m1__rt_t6 add m1__rt_t5 16704
+m1__rt_t7 add m1__rt_t6 m1__rt_t2
+m1__rt_t8 select m1__rt_t1 m1__rt_t3 m1__rt_t7
+m1__rt_t9 add m1__rt_t8 3
+m1__rt_rp shr m1__rt_t9 7
+m1__rt_rw and m1__rt_t9 127
+m1__rt_rg get p0 m1__rt_rp
+m1__rt get m1__rt_rg m1__rt_rw
+m1__rk shr m1__rt 28
+m1__rv and m1__rt 268435455
+m1__rp eq m1__rk 2
+m1__rpn and m1__isn m1__rp
+m1__anypar or m1__rpn m1__isp
+m1__pi0 select m1__isp v m1__rv
+m1__pidx select m1__anypar m1__pi0 0
+m1__x2 mul m1__pidx 2
+m1__sk0 add m1__x2 32
+m1__sk_fa mul p2 128
+m1__sk_fb add m1__sk_fa 128
+m1__sk_fc add m1__sk_fb m1__sk0
+m1__sk_fp shr m1__sk_fc 7
+m1__sk_fw and m1__sk_fc 127
+m1__sk_fg get p0 m1__sk_fp
+m1__sk get m1__sk_fg m1__sk_fw
+m1__sv0 add m1__x2 33
+m1__sv_fa mul p2 128
+m1__sv_fb add m1__sv_fa 128
+m1__sv_fc add m1__sv_fb m1__sv0
+m1__sv_fp shr m1__sv_fc 7
+m1__sv_fw and m1__sv_fc 127
+m1__sv_fg get p0 m1__sv_fp
+m1__sv get m1__sv_fg m1__sv_fw
+m1__hh gt p2 0
+m1__hs and m1__hh m1__anypar
+m1__issv eq m1__sk 1
+m1__srcv and m1__hs m1__issv
+m1__rz eq m1__rt 0
+m1__rnode select m1__rz m1__j m1__rv
+m1__nl_t1 eq p2 0
+m1__nl_t2 mul m1__rnode 4
+m1__nl_t3 add m1__nl_t2 5440
+m1__nl_t4 sub p2 1
+m1__nl_t5 mul m1__nl_t4 128
+m1__nl_t6 add m1__nl_t5 16704
+m1__nl_t7 add m1__nl_t6 m1__nl_t2
+m1__nl_t8 select m1__nl_t1 m1__nl_t3 m1__nl_t7
+m1__nl_t9 add m1__nl_t8 0
+m1__nl_rp shr m1__nl_t9 7
+m1__nl_rw and m1__nl_t9 127
+m1__nl_rg get p0 m1__nl_rp
+m1__nl get m1__nl_rg m1__nl_rw
+m1__pb_gp shr 10 7
+m1__pb_gw and 10 127
+m1__pb_gg get p0 m1__pb_gp
+m1__pb get m1__pb_gg m1__pb_gw
+m1__pl add m1__pb m1__pidx
+m1__plocal select m1__hh m1__sv m1__pl
+m1__loc select m1__anypar m1__plocal m1__nl
+m1__cb and m1__isn m1__hcb
+m1__c1 or m1__lit m1__cb
+m1__isc or m1__c1 m1__srcv
+m1__v1 select m1__cb m1__cv m1__sv
+m1__v2 select m1__lit v m1__v1
+m1__val select m1__isc m1__v2 m1__loc
+m1__isc1 select m1__isc 1 0
+m1__m1__pg shr 16 7
+m1__m1__w and 16 127
+m1__m1__g get p0 m1__m1__pg
+m1__m1__g2 set m1__m1__g m1__m1__w m1__isc1
+m1__m1__r set p0 m1__m1__pg m1__m1__g2
+m1__m2__pg shr 17 7
+m1__m2__w and 17 127
+m1__m2__g get m1__m1__r m1__m2__pg
+m1__m2__g2 set m1__m2__g m1__m2__w m1__val
+m1__m2__r set m1__m1__r m1__m2__pg m1__m2__g2
 c_gp shr 16 7
 c_gw and 16 127
-c_gg get m1 c_gp
+c_gg get m1__m2__r c_gp
 c get c_gg c_gw
 s_gp shr 17 7
 s_gw and 17 127
-s_gg get m1 s_gp
+s_gg get m1__m2__r s_gp
 s get s_gg s_gw
 a0 mul p1 2
 a1 add a0 104
 a2 add a1 1
-m2 fold wxcs 1 m1 p2 a1 c
-m3 fold wxcs 1 m2 p2 a2 s
-ret m3
+m2__a call wxcx p2 a1
+m2__r__pg shr m2__a 7
+m2__r__w and m2__a 127
+m2__r__g get m1__m2__r m2__r__pg
+m2__r__g2 set m2__r__g m2__r__w c
+m2__r__r set m1__m2__r m2__r__pg m2__r__g2
+m3__a call wxcx p2 a2
+m3__r__pg shr m3__a 7
+m3__r__w and m3__a 127
+m3__r__g get m2__r__r m3__r__pg
+m3__r__g2 set m3__r__g m3__r__w s
+m3__r__r set m2__r__r m3__r__pg m3__r__g2
+ret m3__r__r
 end
 # clear induction slot p1 of loop p2 (local + 1 and step)
 fn wxcclr u32x128x512 u32 u32 -> u32x128x512
 a add 40 p1
 b add 72 p1
-m1 fold wxcs 1 p0 p2 a 0
-m2 fold wxcs 1 m1 p2 b 0
-ret m2
+m1__a call wxcx p2 a
+m1__r__pg shr m1__a 7
+m1__r__w and m1__a 127
+m1__r__g get p0 m1__r__pg
+m1__r__g2 set m1__r__g m1__r__w 0
+m1__r__r set p0 m1__r__pg m1__r__g2
+m2__a call wxcx p2 b
+m2__r__pg shr m2__a 7
+m2__r__w and m2__a 127
+m2__r__g get m1__r__r m2__r__pg
+m2__r__g2 set m2__r__g m2__r__w 0
+m2__r__r set m1__r__r m2__r__pg m2__r__g2
+ret m2__r__r
 end
 # state word p1 of loop p2 (state local p3) is loaded into a fresh local
 fn wxfld1 u32x128x512 u32 u32 u32 -> u32x128x512
-m1 fold wxnl 1 p0
+m1__n_gp shr 1 7
+m1__n_gw and 1 127
+m1__n_gg get p0 m1__n_gp
+m1__n get m1__n_gg m1__n_gw
+m1__big ge m1__n 8192
+m1__m1__pg shr 16 7
+m1__m1__w and 16 127
+m1__m1__g get p0 m1__m1__pg
+m1__m1__g2 set m1__m1__g m1__m1__w m1__n
+m1__m1__r set p0 m1__m1__pg m1__m1__g2
+m1__n1 add m1__n 1
+m1__m2__pg shr 1 7
+m1__m2__w and 1 127
+m1__m2__g get m1__m1__r m1__m2__pg
+m1__m2__g2 set m1__m2__g m1__m2__w m1__n1
+m1__m2__r set m1__m1__r m1__m2__pg m1__m2__g2
+m1__cn1_m3 select m1__big 1 0
+m1__m3__gcondb ne m1__cn1_m3 0
+m1__m3__pg shr 8 7
+m1__m3__w and 8 127
+m1__m3__g get m1__m2__r m1__m3__pg
+m1__m3__g2 set m1__m3__g m1__m3__w 1
+m1__m3__r_o get m1__m2__r m1__m3__pg
+m1__m3__r_s select m1__m3__gcondb m1__m3__g2 m1__m3__r_o
+m1__m3__r set m1__m2__r m1__m3__pg m1__m3__r_s
 l_gp shr 16 7
 l_gw and 16 127
-l_gg get m1 l_gp
+l_gg get m1__m3__r l_gp
 l get l_gg l_gw
 off mul p1 4
-m2 fold wxlg 1 m1 p3
-m3 fold wxld 1 m2 off
-m4 fold wxls 1 m3 l
+m2__r__g0 get m1__m3__r 0
+m2__r__n get m2__r__g0 0
+m2__r__e8 get m2__r__g0 8
+m2__r__full ge m2__r__n 22528
+m2__r__okn select m2__r__full 0 1
+m2__r__n1 add m2__r__n m2__r__okn
+m2__r__e2 select m2__r__full 1 m2__r__e8
+m2__r__g0a set m2__r__g0 0 m2__r__n1
+m2__r__g0b set m2__r__g0a 8 m2__r__e2
+m2__r__m1 set m1__m3__r 0 m2__r__g0b
+m2__r__a mul m2__r__n 2
+m2__r__ad add m2__r__a 20480
+m2__r__pg shr m2__r__ad 7
+m2__r__w and m2__r__ad 127
+m2__r__g get m2__r__m1 m2__r__pg
+m2__r__w1 add m2__r__w 1
+m2__r__g1 set m2__r__g m2__r__w 3
+m2__r__g2 set m2__r__g1 m2__r__w1 p3
+m2__r__okb eq m2__r__full false
+m2__r__g3 select m2__r__okb m2__r__g2 m2__r__g
+m2__r__m2 set m2__r__m1 m2__r__pg m2__r__g3
+m3__r__g0 get m2__r__m2 0
+m3__r__n get m3__r__g0 0
+m3__r__e8 get m3__r__g0 8
+m3__r__full ge m3__r__n 22528
+m3__r__okn select m3__r__full 0 1
+m3__r__n1 add m3__r__n m3__r__okn
+m3__r__e2 select m3__r__full 1 m3__r__e8
+m3__r__g0a set m3__r__g0 0 m3__r__n1
+m3__r__g0b set m3__r__g0a 8 m3__r__e2
+m3__r__m1 set m2__r__m2 0 m3__r__g0b
+m3__r__a mul m3__r__n 2
+m3__r__ad add m3__r__a 20480
+m3__r__pg shr m3__r__ad 7
+m3__r__w and m3__r__ad 127
+m3__r__g get m3__r__m1 m3__r__pg
+m3__r__w1 add m3__r__w 1
+m3__r__g1 set m3__r__g m3__r__w 10
+m3__r__g2 set m3__r__g1 m3__r__w1 off
+m3__r__okb eq m3__r__full false
+m3__r__g3 select m3__r__okb m3__r__g2 m3__r__g
+m3__r__m2 set m3__r__m1 m3__r__pg m3__r__g3
+m4__r__g0 get m3__r__m2 0
+m4__r__n get m4__r__g0 0
+m4__r__e8 get m4__r__g0 8
+m4__r__full ge m4__r__n 22528
+m4__r__okn select m4__r__full 0 1
+m4__r__n1 add m4__r__n m4__r__okn
+m4__r__e2 select m4__r__full 1 m4__r__e8
+m4__r__g0a set m4__r__g0 0 m4__r__n1
+m4__r__g0b set m4__r__g0a 8 m4__r__e2
+m4__r__m1 set m3__r__m2 0 m4__r__g0b
+m4__r__a mul m4__r__n 2
+m4__r__ad add m4__r__a 20480
+m4__r__pg shr m4__r__ad 7
+m4__r__w and m4__r__ad 127
+m4__r__g get m4__r__m1 m4__r__pg
+m4__r__w1 add m4__r__w 1
+m4__r__g1 set m4__r__g m4__r__w 4
+m4__r__g2 set m4__r__g1 m4__r__w1 l
+m4__r__okb eq m4__r__full false
+m4__r__g3 select m4__r__okb m4__r__g2 m4__r__g
+m4__r__m2 set m4__r__m1 m4__r__pg m4__r__g3
 a add 168 p1
-m5 fold wxcs 1 m4 p2 a l
-ret m5
+m5__a call wxcx p2 a
+m5__r__pg shr m5__a 7
+m5__r__w and m5__a 127
+m5__r__g get m4__r__m2 m5__r__pg
+m5__r__g2 set m5__r__g m5__r__w l
+m5__r__r set m4__r__m2 m5__r__pg m5__r__g2
+ret m5__r__r
 end
 # strength reduction: body node p1 (first node p3) of loop p2 that is `p1 * K` (or `K * p1`)
 # with K a literal gets an induction local starting at start * K (start p6)
@@ -3746,24 +6256,126 @@ cc or c1 c2
 found and ism cc
 kv select c1 v1 v0
 cn1_m1 select found 1 0
-m1 fold wxnl cn1_m1 p0
+m1__gcondb ne cn1_m1 0
+m1__n_gp shr 1 7
+m1__n_gw and 1 127
+m1__n_gg get p0 m1__n_gp
+m1__n get m1__n_gg m1__n_gw
+m1__big ge m1__n 8192
+m1__m1__gcondb ne cn1_m1 0
+m1__m1__pg shr 16 7
+m1__m1__w and 16 127
+m1__m1__g get p0 m1__m1__pg
+m1__m1__g2 set m1__m1__g m1__m1__w m1__n
+m1__m1__r_o get p0 m1__m1__pg
+m1__m1__r_s select m1__m1__gcondb m1__m1__g2 m1__m1__r_o
+m1__m1__r set p0 m1__m1__pg m1__m1__r_s
+m1__n1 add m1__n 1
+m1__m2__gcondb ne cn1_m1 0
+m1__m2__pg shr 1 7
+m1__m2__w and 1 127
+m1__m2__g get m1__m1__r m1__m2__pg
+m1__m2__g2 set m1__m2__g m1__m2__w m1__n1
+m1__m2__r_o get m1__m1__r m1__m2__pg
+m1__m2__r_s select m1__m2__gcondb m1__m2__g2 m1__m2__r_o
+m1__m2__r set m1__m1__r m1__m2__pg m1__m2__r_s
+m1__cn1_m3 select m1__big 1 0
+m1__m3_c and cn1_m1 m1__cn1_m3
+m1__m3__gcondb ne m1__m3_c 0
+m1__m3__pg shr 8 7
+m1__m3__w and 8 127
+m1__m3__g get m1__m2__r m1__m3__pg
+m1__m3__g2 set m1__m3__g m1__m3__w 1
+m1__m3__r_o get m1__m2__r m1__m3__pg
+m1__m3__r_s select m1__m3__gcondb m1__m3__g2 m1__m3__r_o
+m1__m3__r set m1__m2__r m1__m3__pg m1__m3__r_s
 l_gp shr 16 7
 l_gw and 16 127
-l_gg get m1 l_gp
+l_gg get m1__m3__r l_gp
 l get l_gg l_gw
 iv mul p6 kv
 cn2_m2 select found 1 0
-m2 fold wxkc cn2_m2 m1 iv
+m2__gcondb ne cn2_m2 0
+m2__r__gcondb ne cn2_m2 0
+m2__r__g0 get m1__m3__r 0
+m2__r__n get m2__r__g0 0
+m2__r__e8 get m2__r__g0 8
+m2__r__full ge m2__r__n 22528
+m2__r__okn select m2__r__full 0 1
+m2__r__n1 add m2__r__n m2__r__okn
+m2__r__e2 select m2__r__full 1 m2__r__e8
+m2__r__g0a set m2__r__g0 0 m2__r__n1
+m2__r__g0b set m2__r__g0a 8 m2__r__e2
+m2__r__m1_o get m1__m3__r 0
+m2__r__m1_s select m2__r__gcondb m2__r__g0b m2__r__m1_o
+m2__r__m1 set m1__m3__r 0 m2__r__m1_s
+m2__r__a mul m2__r__n 2
+m2__r__ad add m2__r__a 20480
+m2__r__pg shr m2__r__ad 7
+m2__r__w and m2__r__ad 127
+m2__r__g get m2__r__m1 m2__r__pg
+m2__r__w1 add m2__r__w 1
+m2__r__g1 set m2__r__g m2__r__w 2
+m2__r__g2 set m2__r__g1 m2__r__w1 iv
+m2__r__okb eq m2__r__full false
+m2__r__g3 select m2__r__okb m2__r__g2 m2__r__g
+m2__r__m2_o get m2__r__m1 m2__r__pg
+m2__r__m2_s select m2__r__gcondb m2__r__g3 m2__r__m2_o
+m2__r__m2 set m2__r__m1 m2__r__pg m2__r__m2_s
 cn3_m3 select found 1 0
-m3 fold wxls cn3_m3 m2 l
+m3__gcondb ne cn3_m3 0
+m3__r__gcondb ne cn3_m3 0
+m3__r__g0 get m2__r__m2 0
+m3__r__n get m3__r__g0 0
+m3__r__e8 get m3__r__g0 8
+m3__r__full ge m3__r__n 22528
+m3__r__okn select m3__r__full 0 1
+m3__r__n1 add m3__r__n m3__r__okn
+m3__r__e2 select m3__r__full 1 m3__r__e8
+m3__r__g0a set m3__r__g0 0 m3__r__n1
+m3__r__g0b set m3__r__g0a 8 m3__r__e2
+m3__r__m1_o get m2__r__m2 0
+m3__r__m1_s select m3__r__gcondb m3__r__g0b m3__r__m1_o
+m3__r__m1 set m2__r__m2 0 m3__r__m1_s
+m3__r__a mul m3__r__n 2
+m3__r__ad add m3__r__a 20480
+m3__r__pg shr m3__r__ad 7
+m3__r__w and m3__r__ad 127
+m3__r__g get m3__r__m1 m3__r__pg
+m3__r__w1 add m3__r__w 1
+m3__r__g1 set m3__r__g m3__r__w 4
+m3__r__g2 set m3__r__g1 m3__r__w1 l
+m3__r__okb eq m3__r__full false
+m3__r__g3 select m3__r__okb m3__r__g2 m3__r__g
+m3__r__m2_o get m3__r__m1 m3__r__pg
+m3__r__m2_s select m3__r__gcondb m3__r__g3 m3__r__m2_o
+m3__r__m2 set m3__r__m1 m3__r__pg m3__r__m2_s
 l1p add l 1
 a add 40 p1
 b add 72 p1
 cn4_m4 select found 1 0
-m4 fold wxcs cn4_m4 m3 p2 a l1p
+m4__gcondb ne cn4_m4 0
+m4__a call wxcx p2 a
+m4__r__gcondb ne cn4_m4 0
+m4__r__pg shr m4__a 7
+m4__r__w and m4__a 127
+m4__r__g get m3__r__m2 m4__r__pg
+m4__r__g2 set m4__r__g m4__r__w l1p
+m4__r__r_o get m3__r__m2 m4__r__pg
+m4__r__r_s select m4__r__gcondb m4__r__g2 m4__r__r_o
+m4__r__r set m3__r__m2 m4__r__pg m4__r__r_s
 cn5_m5 select found 1 0
-m5 fold wxcs cn5_m5 m4 p2 b kv
-ret m5
+m5__gcondb ne cn5_m5 0
+m5__a call wxcx p2 b
+m5__r__gcondb ne cn5_m5 0
+m5__r__pg shr m5__a 7
+m5__r__w and m5__a 127
+m5__r__g get m4__r__r m5__r__pg
+m5__r__g2 set m5__r__g m5__r__w kv
+m5__r__r_o get m4__r__r m5__r__pg
+m5__r__r_s select m5__r__gcondb m5__r__g2 m5__r__r_o
+m5__r__r set m4__r__r m5__r__pg m5__r__r_s
+ret m5__r__r
 end
 # carried previous element (src/wasm.ts `carriedRead`): register 31 counts the set/put nodes of
 # the body (first node p2), 28 := 1 when the body is `set p0 p1 v` (its ret) with exactly one update
@@ -3780,8 +6392,15 @@ n_gg get p0 n_gp
 n get n_gg n_gw
 n1 add n 1
 cn1_r select u 1 0
-r fold wxs cn1_r p0 31 n1
-ret r
+r__gcondb ne cn1_r 0
+r__pg shr 31 7
+r__w and 31 127
+r__g get p0 r__pg
+r__g2 set r__g r__w n1
+r__r_o get p0 r__pg
+r__r_s select r__gcondb r__g2 r__r_o
+r__r set p0 r__pg r__r_s
+ret r__r
 end
 fn wxcr1 u32x128x512 u32 u32 u32x128x128 u32x128x512 -> u32x128x512
 g add p2 p1
@@ -3824,8 +6443,15 @@ t4 and t3 isp1
 t5 and t4 one
 hit and t5 none
 cn1_r select hit 1 0
-r fold wxs cn1_r p0 29 p1
-ret r
+r__gcondb ne cn1_r 0
+r__pg shr 29 7
+r__w and 29 127
+r__g get p0 r__pg
+r__g2 set r__g r__w p1
+r__r_o get p0 r__pg
+r__r_s select r__gcondb r__g2 r__r_o
+r__r set p0 r__pg r__r_s
+ret r__r
 end
 fn wxcarry u32x128x512 u32 u32 u32x128x45 u32x128x128 u32x128x512 -> u32x128x512
 g0 call wxfw p3 p2 4
@@ -3854,9 +6480,17 @@ b2 and b1 a2
 b3 and b2 a3
 b4 and b3 a4
 cond and b4 a5
-m1 fold wxs 1 p0 31 0
-m2 fold wxs 1 m1 29 4294967295
-m3 fold wxcr0 nn m2 g0 p4
+m1__pg shr 31 7
+m1__w and 31 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 0
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 29 7
+m2__w and 29 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w 4294967295
+m2__r set m1__r m2__pg m2__g2
+m3 fold wxcr0 nn m2__r g0 p4
 m4 fold wxcr1 nn m3 g0 p4 p5
 cnt_gp shr 31 7
 cnt_gw and 31 127
@@ -3871,9 +6505,17 @@ fnd ne gj 4294967295
 c1 and cond one
 c2 and c1 fnd
 f select c2 1 0
-m5 fold wxs 1 m4 28 f
-m6 fold wxs 1 m5 30 sj
-ret m6
+m5__pg shr 28 7
+m5__w and 28 127
+m5__g get m4 m5__pg
+m5__g2 set m5__g m5__w f
+m5__r set m4 m5__pg m5__g2
+m6__pg shr 30 7
+m6__w and 30 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w sj
+m6__r set m5__r m6__pg m6__g2
+ret m6__r
 end
 # ---------------------------------------------------------------------------------------------
 # simd128 fill runs (src/wasm.ts `#vectorFill`). Scratch words of M: 19008 + j the v128 local of
@@ -3907,9 +6549,34 @@ ln_gw and a2 127
 ln_gg get p0 ln_gp
 ln get ln_gg ln_gw
 cn1_m1 select l3 1 0
-m1 fold wxe cn1_m1 p0 21 p3
+m1__gcondb ne cn1_m1 0
+m1__g0 get p0 0
+m1__n get m1__g0 0
+m1__e8 get m1__g0 8
+m1__full ge m1__n 22528
+m1__okn select m1__full 0 1
+m1__n1 add m1__n m1__okn
+m1__e2 select m1__full 1 m1__e8
+m1__g0a set m1__g0 0 m1__n1
+m1__g0b set m1__g0a 8 m1__e2
+m1__m1_o get p0 0
+m1__m1_s select m1__gcondb m1__g0b m1__m1_o
+m1__m1 set p0 0 m1__m1_s
+m1__a mul m1__n 2
+m1__ad add m1__a 20480
+m1__pg shr m1__ad 7
+m1__w and m1__ad 127
+m1__g get m1__m1 m1__pg
+m1__w1 add m1__w 1
+m1__g1 set m1__g m1__w 21
+m1__g2 set m1__g1 m1__w1 p3
+m1__okb eq m1__full false
+m1__g3 select m1__okb m1__g2 m1__g
+m1__m2_o get m1__m1 m1__pg
+m1__m2_s select m1__gcondb m1__g3 m1__m2_o
+m1__m2 set m1__m1 m1__pg m1__m2_s
 cn2_m2 select ixp 1 0
-m2 fold wxlg cn2_m2 m1 ix
+m2 fold wxlg cn2_m2 m1__m2 ix
 cn3_m3 select spp 1 0
 m3 fold wxlg cn3_m3 m2 sp
 cn4_m4 select isn 1 0
@@ -3963,20 +6630,269 @@ e1 add fa2 e0
 ek call wxok p4 e1
 ev call wxov p4 e1
 cn1_m1 select go 1 0
-m1 fold wxnv cn1_m1 p0
+m1__gcondb ne cn1_m1 0
+m1__n_gp shr 2 7
+m1__n_gw and 2 127
+m1__n_gg get p0 m1__n_gp
+m1__n get m1__n_gg m1__n_gw
+m1__big ge m1__n 128
+m1__id add m1__n 1048576
+m1__m1__gcondb ne cn1_m1 0
+m1__m1__pg shr 16 7
+m1__m1__w and 16 127
+m1__m1__g get p0 m1__m1__pg
+m1__m1__g2 set m1__m1__g m1__m1__w m1__id
+m1__m1__r_o get p0 m1__m1__pg
+m1__m1__r_s select m1__m1__gcondb m1__m1__g2 m1__m1__r_o
+m1__m1__r set p0 m1__m1__pg m1__m1__r_s
+m1__n1 add m1__n 1
+m1__m2__gcondb ne cn1_m1 0
+m1__m2__pg shr 2 7
+m1__m2__w and 2 127
+m1__m2__g get m1__m1__r m1__m2__pg
+m1__m2__g2 set m1__m2__g m1__m2__w m1__n1
+m1__m2__r_o get m1__m1__r m1__m2__pg
+m1__m2__r_s select m1__m2__gcondb m1__m2__g2 m1__m2__r_o
+m1__m2__r set m1__m1__r m1__m2__pg m1__m2__r_s
+m1__cn1_m3 select m1__big 1 0
+m1__m3_c and cn1_m1 m1__cn1_m3
+m1__m3__gcondb ne m1__m3_c 0
+m1__m3__pg shr 8 7
+m1__m3__w and 8 127
+m1__m3__g get m1__m2__r m1__m3__pg
+m1__m3__g2 set m1__m3__g m1__m3__w 1
+m1__m3__r_o get m1__m2__r m1__m3__pg
+m1__m3__r_s select m1__m3__gcondb m1__m3__g2 m1__m3__r_o
+m1__m3__r set m1__m2__r m1__m3__pg m1__m3__r_s
 v_gp shr 16 7
 v_gw and 16 127
-v_gg get m1 v_gp
+v_gg get m1__m3__r v_gp
 v get v_gg v_gw
 cn2_m2 select go 1 0
-m2 fold wxpsh cn2_m2 m1 d ek ev
+m2__gcondb ne cn2_m2 0
+m2__m1__gcondb ne cn2_m2 0
+m2__m1__isn eq ek 1
+m2__m1__isp eq ek 2
+m2__m1__l3 eq ek 3
+m2__m1__l4 eq ek 4
+m2__m1__lit or m2__m1__l3 m2__m1__l4
+m2__m1__j select m2__m1__isn ev 0
+m2__m1__fl_t1 eq d 0
+m2__m1__fl_t2 mul m2__m1__j 4
+m2__m1__fl_t3 add m2__m1__fl_t2 5440
+m2__m1__fl_t4 sub d 1
+m2__m1__fl_t5 mul m2__m1__fl_t4 128
+m2__m1__fl_t6 add m2__m1__fl_t5 16704
+m2__m1__fl_t7 add m2__m1__fl_t6 m2__m1__fl_t2
+m2__m1__fl_t8 select m2__m1__fl_t1 m2__m1__fl_t3 m2__m1__fl_t7
+m2__m1__fl_t9 add m2__m1__fl_t8 2
+m2__m1__fl_rp shr m2__m1__fl_t9 7
+m2__m1__fl_rw and m2__m1__fl_t9 127
+m2__m1__fl_rg get m1__m3__r m2__m1__fl_rp
+m2__m1__fl get m2__m1__fl_rg m2__m1__fl_rw
+m2__m1__hc and m2__m1__fl 1
+m2__m1__hcb ne m2__m1__hc 0
+m2__m1__cv_t1 eq d 0
+m2__m1__cv_t2 mul m2__m1__j 4
+m2__m1__cv_t3 add m2__m1__cv_t2 5440
+m2__m1__cv_t4 sub d 1
+m2__m1__cv_t5 mul m2__m1__cv_t4 128
+m2__m1__cv_t6 add m2__m1__cv_t5 16704
+m2__m1__cv_t7 add m2__m1__cv_t6 m2__m1__cv_t2
+m2__m1__cv_t8 select m2__m1__cv_t1 m2__m1__cv_t3 m2__m1__cv_t7
+m2__m1__cv_t9 add m2__m1__cv_t8 1
+m2__m1__cv_rp shr m2__m1__cv_t9 7
+m2__m1__cv_rw and m2__m1__cv_t9 127
+m2__m1__cv_rg get m1__m3__r m2__m1__cv_rp
+m2__m1__cv get m2__m1__cv_rg m2__m1__cv_rw
+m2__m1__rt_t1 eq d 0
+m2__m1__rt_t2 mul m2__m1__j 4
+m2__m1__rt_t3 add m2__m1__rt_t2 5440
+m2__m1__rt_t4 sub d 1
+m2__m1__rt_t5 mul m2__m1__rt_t4 128
+m2__m1__rt_t6 add m2__m1__rt_t5 16704
+m2__m1__rt_t7 add m2__m1__rt_t6 m2__m1__rt_t2
+m2__m1__rt_t8 select m2__m1__rt_t1 m2__m1__rt_t3 m2__m1__rt_t7
+m2__m1__rt_t9 add m2__m1__rt_t8 3
+m2__m1__rt_rp shr m2__m1__rt_t9 7
+m2__m1__rt_rw and m2__m1__rt_t9 127
+m2__m1__rt_rg get m1__m3__r m2__m1__rt_rp
+m2__m1__rt get m2__m1__rt_rg m2__m1__rt_rw
+m2__m1__rk shr m2__m1__rt 28
+m2__m1__rv and m2__m1__rt 268435455
+m2__m1__rp eq m2__m1__rk 2
+m2__m1__rpn and m2__m1__isn m2__m1__rp
+m2__m1__anypar or m2__m1__rpn m2__m1__isp
+m2__m1__pi0 select m2__m1__isp ev m2__m1__rv
+m2__m1__pidx select m2__m1__anypar m2__m1__pi0 0
+m2__m1__x2 mul m2__m1__pidx 2
+m2__m1__sk0 add m2__m1__x2 32
+m2__m1__sk_fa mul d 128
+m2__m1__sk_fb add m2__m1__sk_fa 128
+m2__m1__sk_fc add m2__m1__sk_fb m2__m1__sk0
+m2__m1__sk_fp shr m2__m1__sk_fc 7
+m2__m1__sk_fw and m2__m1__sk_fc 127
+m2__m1__sk_fg get m1__m3__r m2__m1__sk_fp
+m2__m1__sk get m2__m1__sk_fg m2__m1__sk_fw
+m2__m1__sv0 add m2__m1__x2 33
+m2__m1__sv_fa mul d 128
+m2__m1__sv_fb add m2__m1__sv_fa 128
+m2__m1__sv_fc add m2__m1__sv_fb m2__m1__sv0
+m2__m1__sv_fp shr m2__m1__sv_fc 7
+m2__m1__sv_fw and m2__m1__sv_fc 127
+m2__m1__sv_fg get m1__m3__r m2__m1__sv_fp
+m2__m1__sv get m2__m1__sv_fg m2__m1__sv_fw
+m2__m1__hh gt d 0
+m2__m1__hs and m2__m1__hh m2__m1__anypar
+m2__m1__issv eq m2__m1__sk 1
+m2__m1__srcv and m2__m1__hs m2__m1__issv
+m2__m1__rz eq m2__m1__rt 0
+m2__m1__rnode select m2__m1__rz m2__m1__j m2__m1__rv
+m2__m1__nl_t1 eq d 0
+m2__m1__nl_t2 mul m2__m1__rnode 4
+m2__m1__nl_t3 add m2__m1__nl_t2 5440
+m2__m1__nl_t4 sub d 1
+m2__m1__nl_t5 mul m2__m1__nl_t4 128
+m2__m1__nl_t6 add m2__m1__nl_t5 16704
+m2__m1__nl_t7 add m2__m1__nl_t6 m2__m1__nl_t2
+m2__m1__nl_t8 select m2__m1__nl_t1 m2__m1__nl_t3 m2__m1__nl_t7
+m2__m1__nl_t9 add m2__m1__nl_t8 0
+m2__m1__nl_rp shr m2__m1__nl_t9 7
+m2__m1__nl_rw and m2__m1__nl_t9 127
+m2__m1__nl_rg get m1__m3__r m2__m1__nl_rp
+m2__m1__nl get m2__m1__nl_rg m2__m1__nl_rw
+m2__m1__pb_gp shr 10 7
+m2__m1__pb_gw and 10 127
+m2__m1__pb_gg get m1__m3__r m2__m1__pb_gp
+m2__m1__pb get m2__m1__pb_gg m2__m1__pb_gw
+m2__m1__pl add m2__m1__pb m2__m1__pidx
+m2__m1__plocal select m2__m1__hh m2__m1__sv m2__m1__pl
+m2__m1__loc select m2__m1__anypar m2__m1__plocal m2__m1__nl
+m2__m1__cb and m2__m1__isn m2__m1__hcb
+m2__m1__c1 or m2__m1__lit m2__m1__cb
+m2__m1__isc or m2__m1__c1 m2__m1__srcv
+m2__m1__v1 select m2__m1__cb m2__m1__cv m2__m1__sv
+m2__m1__v2 select m2__m1__lit ev m2__m1__v1
+m2__m1__val select m2__m1__isc m2__m1__v2 m2__m1__loc
+m2__m1__isc1 select m2__m1__isc 1 0
+m2__m1__m1__gcondb ne cn2_m2 0
+m2__m1__m1__pg shr 16 7
+m2__m1__m1__w and 16 127
+m2__m1__m1__g get m1__m3__r m2__m1__m1__pg
+m2__m1__m1__g2 set m2__m1__m1__g m2__m1__m1__w m2__m1__isc1
+m2__m1__m1__r_o get m1__m3__r m2__m1__m1__pg
+m2__m1__m1__r_s select m2__m1__m1__gcondb m2__m1__m1__g2 m2__m1__m1__r_o
+m2__m1__m1__r set m1__m3__r m2__m1__m1__pg m2__m1__m1__r_s
+m2__m1__m2__gcondb ne cn2_m2 0
+m2__m1__m2__pg shr 17 7
+m2__m1__m2__w and 17 127
+m2__m1__m2__g get m2__m1__m1__r m2__m1__m2__pg
+m2__m1__m2__g2 set m2__m1__m2__g m2__m1__m2__w m2__m1__val
+m2__m1__m2__r_o get m2__m1__m1__r m2__m1__m2__pg
+m2__m1__m2__r_s select m2__m1__m2__gcondb m2__m1__m2__g2 m2__m1__m2__r_o
+m2__m1__m2__r set m2__m1__m1__r m2__m1__m2__pg m2__m1__m2__r_s
+m2__c_gp shr 16 7
+m2__c_gw and 16 127
+m2__c_gg get m2__m1__m2__r m2__c_gp
+m2__c get m2__c_gg m2__c_gw
+m2__v_gp shr 17 7
+m2__v_gw and 17 127
+m2__v_gg get m2__m1__m2__r m2__v_gp
+m2__v get m2__v_gg m2__v_gw
+m2__r__gcondb ne cn2_m2 0
+m2__r__c ne m2__c 0
+m2__r__k select m2__r__c 2 3
+m2__r__r__gcondb ne cn2_m2 0
+m2__r__r__g0 get m2__m1__m2__r 0
+m2__r__r__n get m2__r__r__g0 0
+m2__r__r__e8 get m2__r__r__g0 8
+m2__r__r__full ge m2__r__r__n 22528
+m2__r__r__okn select m2__r__r__full 0 1
+m2__r__r__n1 add m2__r__r__n m2__r__r__okn
+m2__r__r__e2 select m2__r__r__full 1 m2__r__r__e8
+m2__r__r__g0a set m2__r__r__g0 0 m2__r__r__n1
+m2__r__r__g0b set m2__r__r__g0a 8 m2__r__r__e2
+m2__r__r__m1_o get m2__m1__m2__r 0
+m2__r__r__m1_s select m2__r__r__gcondb m2__r__r__g0b m2__r__r__m1_o
+m2__r__r__m1 set m2__m1__m2__r 0 m2__r__r__m1_s
+m2__r__r__a mul m2__r__r__n 2
+m2__r__r__ad add m2__r__r__a 20480
+m2__r__r__pg shr m2__r__r__ad 7
+m2__r__r__w and m2__r__r__ad 127
+m2__r__r__g get m2__r__r__m1 m2__r__r__pg
+m2__r__r__w1 add m2__r__r__w 1
+m2__r__r__g1 set m2__r__r__g m2__r__r__w m2__r__k
+m2__r__r__g2 set m2__r__r__g1 m2__r__r__w1 m2__v
+m2__r__r__okb eq m2__r__r__full false
+m2__r__r__g3 select m2__r__r__okb m2__r__r__g2 m2__r__r__g
+m2__r__r__m2_o get m2__r__r__m1 m2__r__r__pg
+m2__r__r__m2_s select m2__r__r__gcondb m2__r__r__g3 m2__r__r__m2_o
+m2__r__r__m2 set m2__r__r__m1 m2__r__r__pg m2__r__r__m2_s
 cn3_m3 select go 1 0
-m3 fold wxe cn3_m3 m2 18 17
+m3__gcondb ne cn3_m3 0
+m3__g0 get m2__r__r__m2 0
+m3__n get m3__g0 0
+m3__e8 get m3__g0 8
+m3__full ge m3__n 22528
+m3__okn select m3__full 0 1
+m3__n1 add m3__n m3__okn
+m3__e2 select m3__full 1 m3__e8
+m3__g0a set m3__g0 0 m3__n1
+m3__g0b set m3__g0a 8 m3__e2
+m3__m1_o get m2__r__r__m2 0
+m3__m1_s select m3__gcondb m3__g0b m3__m1_o
+m3__m1 set m2__r__r__m2 0 m3__m1_s
+m3__a mul m3__n 2
+m3__ad add m3__a 20480
+m3__pg shr m3__ad 7
+m3__w and m3__ad 127
+m3__g get m3__m1 m3__pg
+m3__w1 add m3__w 1
+m3__g1 set m3__g m3__w 18
+m3__g2 set m3__g1 m3__w1 17
+m3__okb eq m3__full false
+m3__g3 select m3__okb m3__g2 m3__g
+m3__m2_o get m3__m1 m3__pg
+m3__m2_s select m3__gcondb m3__g3 m3__m2_o
+m3__m2 set m3__m1 m3__pg m3__m2_s
 cn4_m4 select go 1 0
-m4 fold wxls cn4_m4 m3 v
+m4__gcondb ne cn4_m4 0
+m4__r__gcondb ne cn4_m4 0
+m4__r__g0 get m3__m2 0
+m4__r__n get m4__r__g0 0
+m4__r__e8 get m4__r__g0 8
+m4__r__full ge m4__r__n 22528
+m4__r__okn select m4__r__full 0 1
+m4__r__n1 add m4__r__n m4__r__okn
+m4__r__e2 select m4__r__full 1 m4__r__e8
+m4__r__g0a set m4__r__g0 0 m4__r__n1
+m4__r__g0b set m4__r__g0a 8 m4__r__e2
+m4__r__m1_o get m3__m2 0
+m4__r__m1_s select m4__r__gcondb m4__r__g0b m4__r__m1_o
+m4__r__m1 set m3__m2 0 m4__r__m1_s
+m4__r__a mul m4__r__n 2
+m4__r__ad add m4__r__a 20480
+m4__r__pg shr m4__r__ad 7
+m4__r__w and m4__r__ad 127
+m4__r__g get m4__r__m1 m4__r__pg
+m4__r__w1 add m4__r__w 1
+m4__r__g1 set m4__r__g m4__r__w 4
+m4__r__g2 set m4__r__g1 m4__r__w1 v
+m4__r__okb eq m4__r__full false
+m4__r__g3 select m4__r__okb m4__r__g2 m4__r__g
+m4__r__m2_o get m4__r__m1 m4__r__pg
+m4__r__m2_s select m4__r__gcondb m4__r__g3 m4__r__m2_o
+m4__r__m2 set m4__r__m1 m4__r__pg m4__r__m2_s
 cn5_m5 select go 1 0
-m5 fold wxs cn5_m5 m4 a v
-ret m5
+m5__gcondb ne cn5_m5 0
+m5__pg shr a 7
+m5__w and a 127
+m5__g get m4__r__m2 m5__pg
+m5__g2 set m5__g m5__w v
+m5__r_o get m4__r__m2 m5__pg
+m5__r_s select m5__gcondb m5__g2 m5__r_o
+m5__r set m4__r__m2 m5__pg m5__r_s
+ret m5__r
 end
 # operand p1 (operands from p2, table p3) of a body node: its splat
 fn wxvsb u32x128x512 u32 u32 u32x128x512 -> u32x128x512
@@ -4038,12 +6954,488 @@ sh9 eq op 9
 isw or sh8 sh9
 nsw select isw false true
 cn1_m1 select noset 1 0
-m1 fold wxvpl cn1_m1 p0 ak av
+m1__gcondb ne cn1_m1 0
+m1__l3 eq ak 3
+m1__isn eq ak 1
+m1__isp eq ak 2
+m1__iv eq av 1
+m1__ixp and m1__isp m1__iv
+m1__niv select m1__iv false true
+m1__spp and m1__isp m1__niv
+m1__ix_gp shr 19104 7
+m1__ix_gw and 19104 127
+m1__ix_gg get p0 m1__ix_gp
+m1__ix get m1__ix_gg m1__ix_gw
+m1__a1 add 19072 av
+m1__sp_gp shr m1__a1 7
+m1__sp_gw and m1__a1 127
+m1__sp_gg get p0 m1__sp_gp
+m1__sp get m1__sp_gg m1__sp_gw
+m1__a2 add 19008 av
+m1__ln_gp shr m1__a2 7
+m1__ln_gw and m1__a2 127
+m1__ln_gg get p0 m1__ln_gp
+m1__ln get m1__ln_gg m1__ln_gw
+m1__cn1_m1 select m1__l3 1 0
+m1__m1_c and cn1_m1 m1__cn1_m1
+m1__m1__gcondb ne m1__m1_c 0
+m1__m1__g0 get p0 0
+m1__m1__n get m1__m1__g0 0
+m1__m1__e8 get m1__m1__g0 8
+m1__m1__full ge m1__m1__n 22528
+m1__m1__okn select m1__m1__full 0 1
+m1__m1__n1 add m1__m1__n m1__m1__okn
+m1__m1__e2 select m1__m1__full 1 m1__m1__e8
+m1__m1__g0a set m1__m1__g0 0 m1__m1__n1
+m1__m1__g0b set m1__m1__g0a 8 m1__m1__e2
+m1__m1__m1_o get p0 0
+m1__m1__m1_s select m1__m1__gcondb m1__m1__g0b m1__m1__m1_o
+m1__m1__m1 set p0 0 m1__m1__m1_s
+m1__m1__a mul m1__m1__n 2
+m1__m1__ad add m1__m1__a 20480
+m1__m1__pg shr m1__m1__ad 7
+m1__m1__w and m1__m1__ad 127
+m1__m1__g get m1__m1__m1 m1__m1__pg
+m1__m1__w1 add m1__m1__w 1
+m1__m1__g1 set m1__m1__g m1__m1__w 21
+m1__m1__g2 set m1__m1__g1 m1__m1__w1 av
+m1__m1__okb eq m1__m1__full false
+m1__m1__g3 select m1__m1__okb m1__m1__g2 m1__m1__g
+m1__m1__m2_o get m1__m1__m1 m1__m1__pg
+m1__m1__m2_s select m1__m1__gcondb m1__m1__g3 m1__m1__m2_o
+m1__m1__m2 set m1__m1__m1 m1__m1__pg m1__m1__m2_s
+m1__cn2_m2 select m1__ixp 1 0
+m1__m2_c and cn1_m1 m1__cn2_m2
+m1__m2__gcondb ne m1__m2_c 0
+m1__m2__r__gcondb ne m1__m2_c 0
+m1__m2__r__g0 get m1__m1__m2 0
+m1__m2__r__n get m1__m2__r__g0 0
+m1__m2__r__e8 get m1__m2__r__g0 8
+m1__m2__r__full ge m1__m2__r__n 22528
+m1__m2__r__okn select m1__m2__r__full 0 1
+m1__m2__r__n1 add m1__m2__r__n m1__m2__r__okn
+m1__m2__r__e2 select m1__m2__r__full 1 m1__m2__r__e8
+m1__m2__r__g0a set m1__m2__r__g0 0 m1__m2__r__n1
+m1__m2__r__g0b set m1__m2__r__g0a 8 m1__m2__r__e2
+m1__m2__r__m1_o get m1__m1__m2 0
+m1__m2__r__m1_s select m1__m2__r__gcondb m1__m2__r__g0b m1__m2__r__m1_o
+m1__m2__r__m1 set m1__m1__m2 0 m1__m2__r__m1_s
+m1__m2__r__a mul m1__m2__r__n 2
+m1__m2__r__ad add m1__m2__r__a 20480
+m1__m2__r__pg shr m1__m2__r__ad 7
+m1__m2__r__w and m1__m2__r__ad 127
+m1__m2__r__g get m1__m2__r__m1 m1__m2__r__pg
+m1__m2__r__w1 add m1__m2__r__w 1
+m1__m2__r__g1 set m1__m2__r__g m1__m2__r__w 3
+m1__m2__r__g2 set m1__m2__r__g1 m1__m2__r__w1 m1__ix
+m1__m2__r__okb eq m1__m2__r__full false
+m1__m2__r__g3 select m1__m2__r__okb m1__m2__r__g2 m1__m2__r__g
+m1__m2__r__m2_o get m1__m2__r__m1 m1__m2__r__pg
+m1__m2__r__m2_s select m1__m2__r__gcondb m1__m2__r__g3 m1__m2__r__m2_o
+m1__m2__r__m2 set m1__m2__r__m1 m1__m2__r__pg m1__m2__r__m2_s
+m1__cn3_m3 select m1__spp 1 0
+m1__m3_c and cn1_m1 m1__cn3_m3
+m1__m3__gcondb ne m1__m3_c 0
+m1__m3__r__gcondb ne m1__m3_c 0
+m1__m3__r__g0 get m1__m2__r__m2 0
+m1__m3__r__n get m1__m3__r__g0 0
+m1__m3__r__e8 get m1__m3__r__g0 8
+m1__m3__r__full ge m1__m3__r__n 22528
+m1__m3__r__okn select m1__m3__r__full 0 1
+m1__m3__r__n1 add m1__m3__r__n m1__m3__r__okn
+m1__m3__r__e2 select m1__m3__r__full 1 m1__m3__r__e8
+m1__m3__r__g0a set m1__m3__r__g0 0 m1__m3__r__n1
+m1__m3__r__g0b set m1__m3__r__g0a 8 m1__m3__r__e2
+m1__m3__r__m1_o get m1__m2__r__m2 0
+m1__m3__r__m1_s select m1__m3__r__gcondb m1__m3__r__g0b m1__m3__r__m1_o
+m1__m3__r__m1 set m1__m2__r__m2 0 m1__m3__r__m1_s
+m1__m3__r__a mul m1__m3__r__n 2
+m1__m3__r__ad add m1__m3__r__a 20480
+m1__m3__r__pg shr m1__m3__r__ad 7
+m1__m3__r__w and m1__m3__r__ad 127
+m1__m3__r__g get m1__m3__r__m1 m1__m3__r__pg
+m1__m3__r__w1 add m1__m3__r__w 1
+m1__m3__r__g1 set m1__m3__r__g m1__m3__r__w 3
+m1__m3__r__g2 set m1__m3__r__g1 m1__m3__r__w1 m1__sp
+m1__m3__r__okb eq m1__m3__r__full false
+m1__m3__r__g3 select m1__m3__r__okb m1__m3__r__g2 m1__m3__r__g
+m1__m3__r__m2_o get m1__m3__r__m1 m1__m3__r__pg
+m1__m3__r__m2_s select m1__m3__r__gcondb m1__m3__r__g3 m1__m3__r__m2_o
+m1__m3__r__m2 set m1__m3__r__m1 m1__m3__r__pg m1__m3__r__m2_s
+m1__cn4_m4 select m1__isn 1 0
+m1__m4_c and cn1_m1 m1__cn4_m4
+m1__m4__gcondb ne m1__m4_c 0
+m1__m4__r__gcondb ne m1__m4_c 0
+m1__m4__r__g0 get m1__m3__r__m2 0
+m1__m4__r__n get m1__m4__r__g0 0
+m1__m4__r__e8 get m1__m4__r__g0 8
+m1__m4__r__full ge m1__m4__r__n 22528
+m1__m4__r__okn select m1__m4__r__full 0 1
+m1__m4__r__n1 add m1__m4__r__n m1__m4__r__okn
+m1__m4__r__e2 select m1__m4__r__full 1 m1__m4__r__e8
+m1__m4__r__g0a set m1__m4__r__g0 0 m1__m4__r__n1
+m1__m4__r__g0b set m1__m4__r__g0a 8 m1__m4__r__e2
+m1__m4__r__m1_o get m1__m3__r__m2 0
+m1__m4__r__m1_s select m1__m4__r__gcondb m1__m4__r__g0b m1__m4__r__m1_o
+m1__m4__r__m1 set m1__m3__r__m2 0 m1__m4__r__m1_s
+m1__m4__r__a mul m1__m4__r__n 2
+m1__m4__r__ad add m1__m4__r__a 20480
+m1__m4__r__pg shr m1__m4__r__ad 7
+m1__m4__r__w and m1__m4__r__ad 127
+m1__m4__r__g get m1__m4__r__m1 m1__m4__r__pg
+m1__m4__r__w1 add m1__m4__r__w 1
+m1__m4__r__g1 set m1__m4__r__g m1__m4__r__w 3
+m1__m4__r__g2 set m1__m4__r__g1 m1__m4__r__w1 m1__ln
+m1__m4__r__okb eq m1__m4__r__full false
+m1__m4__r__g3 select m1__m4__r__okb m1__m4__r__g2 m1__m4__r__g
+m1__m4__r__m2_o get m1__m4__r__m1 m1__m4__r__pg
+m1__m4__r__m2_s select m1__m4__r__gcondb m1__m4__r__g3 m1__m4__r__m2_o
+m1__m4__r__m2 set m1__m4__r__m1 m1__m4__r__pg m1__m4__r__m2_s
 cn2_m2 select nsw 1 0
-m2 fold wxvpl cn2_m2 m1 bk bv
+m2__gcondb ne cn2_m2 0
+m2__l3 eq bk 3
+m2__isn eq bk 1
+m2__isp eq bk 2
+m2__iv eq bv 1
+m2__ixp and m2__isp m2__iv
+m2__niv select m2__iv false true
+m2__spp and m2__isp m2__niv
+m2__ix_gp shr 19104 7
+m2__ix_gw and 19104 127
+m2__ix_gg get m1__m4__r__m2 m2__ix_gp
+m2__ix get m2__ix_gg m2__ix_gw
+m2__a1 add 19072 bv
+m2__sp_gp shr m2__a1 7
+m2__sp_gw and m2__a1 127
+m2__sp_gg get m1__m4__r__m2 m2__sp_gp
+m2__sp get m2__sp_gg m2__sp_gw
+m2__a2 add 19008 bv
+m2__ln_gp shr m2__a2 7
+m2__ln_gw and m2__a2 127
+m2__ln_gg get m1__m4__r__m2 m2__ln_gp
+m2__ln get m2__ln_gg m2__ln_gw
+m2__cn1_m1 select m2__l3 1 0
+m2__m1_c and cn2_m2 m2__cn1_m1
+m2__m1__gcondb ne m2__m1_c 0
+m2__m1__g0 get m1__m4__r__m2 0
+m2__m1__n get m2__m1__g0 0
+m2__m1__e8 get m2__m1__g0 8
+m2__m1__full ge m2__m1__n 22528
+m2__m1__okn select m2__m1__full 0 1
+m2__m1__n1 add m2__m1__n m2__m1__okn
+m2__m1__e2 select m2__m1__full 1 m2__m1__e8
+m2__m1__g0a set m2__m1__g0 0 m2__m1__n1
+m2__m1__g0b set m2__m1__g0a 8 m2__m1__e2
+m2__m1__m1_o get m1__m4__r__m2 0
+m2__m1__m1_s select m2__m1__gcondb m2__m1__g0b m2__m1__m1_o
+m2__m1__m1 set m1__m4__r__m2 0 m2__m1__m1_s
+m2__m1__a mul m2__m1__n 2
+m2__m1__ad add m2__m1__a 20480
+m2__m1__pg shr m2__m1__ad 7
+m2__m1__w and m2__m1__ad 127
+m2__m1__g get m2__m1__m1 m2__m1__pg
+m2__m1__w1 add m2__m1__w 1
+m2__m1__g1 set m2__m1__g m2__m1__w 21
+m2__m1__g2 set m2__m1__g1 m2__m1__w1 bv
+m2__m1__okb eq m2__m1__full false
+m2__m1__g3 select m2__m1__okb m2__m1__g2 m2__m1__g
+m2__m1__m2_o get m2__m1__m1 m2__m1__pg
+m2__m1__m2_s select m2__m1__gcondb m2__m1__g3 m2__m1__m2_o
+m2__m1__m2 set m2__m1__m1 m2__m1__pg m2__m1__m2_s
+m2__cn2_m2 select m2__ixp 1 0
+m2__m2_c and cn2_m2 m2__cn2_m2
+m2__m2__gcondb ne m2__m2_c 0
+m2__m2__r__gcondb ne m2__m2_c 0
+m2__m2__r__g0 get m2__m1__m2 0
+m2__m2__r__n get m2__m2__r__g0 0
+m2__m2__r__e8 get m2__m2__r__g0 8
+m2__m2__r__full ge m2__m2__r__n 22528
+m2__m2__r__okn select m2__m2__r__full 0 1
+m2__m2__r__n1 add m2__m2__r__n m2__m2__r__okn
+m2__m2__r__e2 select m2__m2__r__full 1 m2__m2__r__e8
+m2__m2__r__g0a set m2__m2__r__g0 0 m2__m2__r__n1
+m2__m2__r__g0b set m2__m2__r__g0a 8 m2__m2__r__e2
+m2__m2__r__m1_o get m2__m1__m2 0
+m2__m2__r__m1_s select m2__m2__r__gcondb m2__m2__r__g0b m2__m2__r__m1_o
+m2__m2__r__m1 set m2__m1__m2 0 m2__m2__r__m1_s
+m2__m2__r__a mul m2__m2__r__n 2
+m2__m2__r__ad add m2__m2__r__a 20480
+m2__m2__r__pg shr m2__m2__r__ad 7
+m2__m2__r__w and m2__m2__r__ad 127
+m2__m2__r__g get m2__m2__r__m1 m2__m2__r__pg
+m2__m2__r__w1 add m2__m2__r__w 1
+m2__m2__r__g1 set m2__m2__r__g m2__m2__r__w 3
+m2__m2__r__g2 set m2__m2__r__g1 m2__m2__r__w1 m2__ix
+m2__m2__r__okb eq m2__m2__r__full false
+m2__m2__r__g3 select m2__m2__r__okb m2__m2__r__g2 m2__m2__r__g
+m2__m2__r__m2_o get m2__m2__r__m1 m2__m2__r__pg
+m2__m2__r__m2_s select m2__m2__r__gcondb m2__m2__r__g3 m2__m2__r__m2_o
+m2__m2__r__m2 set m2__m2__r__m1 m2__m2__r__pg m2__m2__r__m2_s
+m2__cn3_m3 select m2__spp 1 0
+m2__m3_c and cn2_m2 m2__cn3_m3
+m2__m3__gcondb ne m2__m3_c 0
+m2__m3__r__gcondb ne m2__m3_c 0
+m2__m3__r__g0 get m2__m2__r__m2 0
+m2__m3__r__n get m2__m3__r__g0 0
+m2__m3__r__e8 get m2__m3__r__g0 8
+m2__m3__r__full ge m2__m3__r__n 22528
+m2__m3__r__okn select m2__m3__r__full 0 1
+m2__m3__r__n1 add m2__m3__r__n m2__m3__r__okn
+m2__m3__r__e2 select m2__m3__r__full 1 m2__m3__r__e8
+m2__m3__r__g0a set m2__m3__r__g0 0 m2__m3__r__n1
+m2__m3__r__g0b set m2__m3__r__g0a 8 m2__m3__r__e2
+m2__m3__r__m1_o get m2__m2__r__m2 0
+m2__m3__r__m1_s select m2__m3__r__gcondb m2__m3__r__g0b m2__m3__r__m1_o
+m2__m3__r__m1 set m2__m2__r__m2 0 m2__m3__r__m1_s
+m2__m3__r__a mul m2__m3__r__n 2
+m2__m3__r__ad add m2__m3__r__a 20480
+m2__m3__r__pg shr m2__m3__r__ad 7
+m2__m3__r__w and m2__m3__r__ad 127
+m2__m3__r__g get m2__m3__r__m1 m2__m3__r__pg
+m2__m3__r__w1 add m2__m3__r__w 1
+m2__m3__r__g1 set m2__m3__r__g m2__m3__r__w 3
+m2__m3__r__g2 set m2__m3__r__g1 m2__m3__r__w1 m2__sp
+m2__m3__r__okb eq m2__m3__r__full false
+m2__m3__r__g3 select m2__m3__r__okb m2__m3__r__g2 m2__m3__r__g
+m2__m3__r__m2_o get m2__m3__r__m1 m2__m3__r__pg
+m2__m3__r__m2_s select m2__m3__r__gcondb m2__m3__r__g3 m2__m3__r__m2_o
+m2__m3__r__m2 set m2__m3__r__m1 m2__m3__r__pg m2__m3__r__m2_s
+m2__cn4_m4 select m2__isn 1 0
+m2__m4_c and cn2_m2 m2__cn4_m4
+m2__m4__gcondb ne m2__m4_c 0
+m2__m4__r__gcondb ne m2__m4_c 0
+m2__m4__r__g0 get m2__m3__r__m2 0
+m2__m4__r__n get m2__m4__r__g0 0
+m2__m4__r__e8 get m2__m4__r__g0 8
+m2__m4__r__full ge m2__m4__r__n 22528
+m2__m4__r__okn select m2__m4__r__full 0 1
+m2__m4__r__n1 add m2__m4__r__n m2__m4__r__okn
+m2__m4__r__e2 select m2__m4__r__full 1 m2__m4__r__e8
+m2__m4__r__g0a set m2__m4__r__g0 0 m2__m4__r__n1
+m2__m4__r__g0b set m2__m4__r__g0a 8 m2__m4__r__e2
+m2__m4__r__m1_o get m2__m3__r__m2 0
+m2__m4__r__m1_s select m2__m4__r__gcondb m2__m4__r__g0b m2__m4__r__m1_o
+m2__m4__r__m1 set m2__m3__r__m2 0 m2__m4__r__m1_s
+m2__m4__r__a mul m2__m4__r__n 2
+m2__m4__r__ad add m2__m4__r__a 20480
+m2__m4__r__pg shr m2__m4__r__ad 7
+m2__m4__r__w and m2__m4__r__ad 127
+m2__m4__r__g get m2__m4__r__m1 m2__m4__r__pg
+m2__m4__r__w1 add m2__m4__r__w 1
+m2__m4__r__g1 set m2__m4__r__g m2__m4__r__w 3
+m2__m4__r__g2 set m2__m4__r__g1 m2__m4__r__w1 m2__ln
+m2__m4__r__okb eq m2__m4__r__full false
+m2__m4__r__g3 select m2__m4__r__okb m2__m4__r__g2 m2__m4__r__g
+m2__m4__r__m2_o get m2__m4__r__m1 m2__m4__r__pg
+m2__m4__r__m2_s select m2__m4__r__gcondb m2__m4__r__g3 m2__m4__r__m2_o
+m2__m4__r__m2 set m2__m4__r__m1 m2__m4__r__pg m2__m4__r__m2_s
 ds and noset isw
 cn3_m3 select ds 1 0
-m3 fold wxvsc cn3_m3 m2 bk bv p3
+m3__gcondb ne cn3_m3 0
+m3__l3 eq bk 3
+m3__isp eq bk 2
+m3__d_gp shr 19110 7
+m3__d_gw and 19110 127
+m3__d_gg get m2__m4__r__m2 m3__d_gp
+m3__d get m3__d_gg m3__d_gw
+m3__fa2_gp shr 19111 7
+m3__fa2_gw and 19111 127
+m3__fa2_gg get m2__m4__r__m2 m3__fa2_gp
+m3__fa2 get m3__fa2_gg m3__fa2_gw
+m3__e0 sub bv 2
+m3__e1 add m3__fa2 m3__e0
+m3__ek call wxok p3 m3__e1
+m3__ev call wxov p3 m3__e1
+m3__cn1_m1 select m3__l3 1 0
+m3__m1_c and cn3_m3 m3__cn1_m1
+m3__m1__gcondb ne m3__m1_c 0
+m3__m1__r__gcondb ne m3__m1_c 0
+m3__m1__r__g0 get m2__m4__r__m2 0
+m3__m1__r__n get m3__m1__r__g0 0
+m3__m1__r__e8 get m3__m1__r__g0 8
+m3__m1__r__full ge m3__m1__r__n 22528
+m3__m1__r__okn select m3__m1__r__full 0 1
+m3__m1__r__n1 add m3__m1__r__n m3__m1__r__okn
+m3__m1__r__e2 select m3__m1__r__full 1 m3__m1__r__e8
+m3__m1__r__g0a set m3__m1__r__g0 0 m3__m1__r__n1
+m3__m1__r__g0b set m3__m1__r__g0a 8 m3__m1__r__e2
+m3__m1__r__m1_o get m2__m4__r__m2 0
+m3__m1__r__m1_s select m3__m1__r__gcondb m3__m1__r__g0b m3__m1__r__m1_o
+m3__m1__r__m1 set m2__m4__r__m2 0 m3__m1__r__m1_s
+m3__m1__r__a mul m3__m1__r__n 2
+m3__m1__r__ad add m3__m1__r__a 20480
+m3__m1__r__pg shr m3__m1__r__ad 7
+m3__m1__r__w and m3__m1__r__ad 127
+m3__m1__r__g get m3__m1__r__m1 m3__m1__r__pg
+m3__m1__r__w1 add m3__m1__r__w 1
+m3__m1__r__g1 set m3__m1__r__g m3__m1__r__w 2
+m3__m1__r__g2 set m3__m1__r__g1 m3__m1__r__w1 bv
+m3__m1__r__okb eq m3__m1__r__full false
+m3__m1__r__g3 select m3__m1__r__okb m3__m1__r__g2 m3__m1__r__g
+m3__m1__r__m2_o get m3__m1__r__m1 m3__m1__r__pg
+m3__m1__r__m2_s select m3__m1__r__gcondb m3__m1__r__g3 m3__m1__r__m2_o
+m3__m1__r__m2 set m3__m1__r__m1 m3__m1__r__pg m3__m1__r__m2_s
+m3__cn2_m2 select m3__isp 1 0
+m3__m2_c and cn3_m3 m3__cn2_m2
+m3__m2__gcondb ne m3__m2_c 0
+m3__m2__m1__gcondb ne m3__m2_c 0
+m3__m2__m1__isn eq m3__ek 1
+m3__m2__m1__isp eq m3__ek 2
+m3__m2__m1__l3 eq m3__ek 3
+m3__m2__m1__l4 eq m3__ek 4
+m3__m2__m1__lit or m3__m2__m1__l3 m3__m2__m1__l4
+m3__m2__m1__j select m3__m2__m1__isn m3__ev 0
+m3__m2__m1__fl_t1 eq m3__d 0
+m3__m2__m1__fl_t2 mul m3__m2__m1__j 4
+m3__m2__m1__fl_t3 add m3__m2__m1__fl_t2 5440
+m3__m2__m1__fl_t4 sub m3__d 1
+m3__m2__m1__fl_t5 mul m3__m2__m1__fl_t4 128
+m3__m2__m1__fl_t6 add m3__m2__m1__fl_t5 16704
+m3__m2__m1__fl_t7 add m3__m2__m1__fl_t6 m3__m2__m1__fl_t2
+m3__m2__m1__fl_t8 select m3__m2__m1__fl_t1 m3__m2__m1__fl_t3 m3__m2__m1__fl_t7
+m3__m2__m1__fl_t9 add m3__m2__m1__fl_t8 2
+m3__m2__m1__fl_rp shr m3__m2__m1__fl_t9 7
+m3__m2__m1__fl_rw and m3__m2__m1__fl_t9 127
+m3__m2__m1__fl_rg get m3__m1__r__m2 m3__m2__m1__fl_rp
+m3__m2__m1__fl get m3__m2__m1__fl_rg m3__m2__m1__fl_rw
+m3__m2__m1__hc and m3__m2__m1__fl 1
+m3__m2__m1__hcb ne m3__m2__m1__hc 0
+m3__m2__m1__cv_t1 eq m3__d 0
+m3__m2__m1__cv_t2 mul m3__m2__m1__j 4
+m3__m2__m1__cv_t3 add m3__m2__m1__cv_t2 5440
+m3__m2__m1__cv_t4 sub m3__d 1
+m3__m2__m1__cv_t5 mul m3__m2__m1__cv_t4 128
+m3__m2__m1__cv_t6 add m3__m2__m1__cv_t5 16704
+m3__m2__m1__cv_t7 add m3__m2__m1__cv_t6 m3__m2__m1__cv_t2
+m3__m2__m1__cv_t8 select m3__m2__m1__cv_t1 m3__m2__m1__cv_t3 m3__m2__m1__cv_t7
+m3__m2__m1__cv_t9 add m3__m2__m1__cv_t8 1
+m3__m2__m1__cv_rp shr m3__m2__m1__cv_t9 7
+m3__m2__m1__cv_rw and m3__m2__m1__cv_t9 127
+m3__m2__m1__cv_rg get m3__m1__r__m2 m3__m2__m1__cv_rp
+m3__m2__m1__cv get m3__m2__m1__cv_rg m3__m2__m1__cv_rw
+m3__m2__m1__rt_t1 eq m3__d 0
+m3__m2__m1__rt_t2 mul m3__m2__m1__j 4
+m3__m2__m1__rt_t3 add m3__m2__m1__rt_t2 5440
+m3__m2__m1__rt_t4 sub m3__d 1
+m3__m2__m1__rt_t5 mul m3__m2__m1__rt_t4 128
+m3__m2__m1__rt_t6 add m3__m2__m1__rt_t5 16704
+m3__m2__m1__rt_t7 add m3__m2__m1__rt_t6 m3__m2__m1__rt_t2
+m3__m2__m1__rt_t8 select m3__m2__m1__rt_t1 m3__m2__m1__rt_t3 m3__m2__m1__rt_t7
+m3__m2__m1__rt_t9 add m3__m2__m1__rt_t8 3
+m3__m2__m1__rt_rp shr m3__m2__m1__rt_t9 7
+m3__m2__m1__rt_rw and m3__m2__m1__rt_t9 127
+m3__m2__m1__rt_rg get m3__m1__r__m2 m3__m2__m1__rt_rp
+m3__m2__m1__rt get m3__m2__m1__rt_rg m3__m2__m1__rt_rw
+m3__m2__m1__rk shr m3__m2__m1__rt 28
+m3__m2__m1__rv and m3__m2__m1__rt 268435455
+m3__m2__m1__rp eq m3__m2__m1__rk 2
+m3__m2__m1__rpn and m3__m2__m1__isn m3__m2__m1__rp
+m3__m2__m1__anypar or m3__m2__m1__rpn m3__m2__m1__isp
+m3__m2__m1__pi0 select m3__m2__m1__isp m3__ev m3__m2__m1__rv
+m3__m2__m1__pidx select m3__m2__m1__anypar m3__m2__m1__pi0 0
+m3__m2__m1__x2 mul m3__m2__m1__pidx 2
+m3__m2__m1__sk0 add m3__m2__m1__x2 32
+m3__m2__m1__sk_fa mul m3__d 128
+m3__m2__m1__sk_fb add m3__m2__m1__sk_fa 128
+m3__m2__m1__sk_fc add m3__m2__m1__sk_fb m3__m2__m1__sk0
+m3__m2__m1__sk_fp shr m3__m2__m1__sk_fc 7
+m3__m2__m1__sk_fw and m3__m2__m1__sk_fc 127
+m3__m2__m1__sk_fg get m3__m1__r__m2 m3__m2__m1__sk_fp
+m3__m2__m1__sk get m3__m2__m1__sk_fg m3__m2__m1__sk_fw
+m3__m2__m1__sv0 add m3__m2__m1__x2 33
+m3__m2__m1__sv_fa mul m3__d 128
+m3__m2__m1__sv_fb add m3__m2__m1__sv_fa 128
+m3__m2__m1__sv_fc add m3__m2__m1__sv_fb m3__m2__m1__sv0
+m3__m2__m1__sv_fp shr m3__m2__m1__sv_fc 7
+m3__m2__m1__sv_fw and m3__m2__m1__sv_fc 127
+m3__m2__m1__sv_fg get m3__m1__r__m2 m3__m2__m1__sv_fp
+m3__m2__m1__sv get m3__m2__m1__sv_fg m3__m2__m1__sv_fw
+m3__m2__m1__hh gt m3__d 0
+m3__m2__m1__hs and m3__m2__m1__hh m3__m2__m1__anypar
+m3__m2__m1__issv eq m3__m2__m1__sk 1
+m3__m2__m1__srcv and m3__m2__m1__hs m3__m2__m1__issv
+m3__m2__m1__rz eq m3__m2__m1__rt 0
+m3__m2__m1__rnode select m3__m2__m1__rz m3__m2__m1__j m3__m2__m1__rv
+m3__m2__m1__nl_t1 eq m3__d 0
+m3__m2__m1__nl_t2 mul m3__m2__m1__rnode 4
+m3__m2__m1__nl_t3 add m3__m2__m1__nl_t2 5440
+m3__m2__m1__nl_t4 sub m3__d 1
+m3__m2__m1__nl_t5 mul m3__m2__m1__nl_t4 128
+m3__m2__m1__nl_t6 add m3__m2__m1__nl_t5 16704
+m3__m2__m1__nl_t7 add m3__m2__m1__nl_t6 m3__m2__m1__nl_t2
+m3__m2__m1__nl_t8 select m3__m2__m1__nl_t1 m3__m2__m1__nl_t3 m3__m2__m1__nl_t7
+m3__m2__m1__nl_t9 add m3__m2__m1__nl_t8 0
+m3__m2__m1__nl_rp shr m3__m2__m1__nl_t9 7
+m3__m2__m1__nl_rw and m3__m2__m1__nl_t9 127
+m3__m2__m1__nl_rg get m3__m1__r__m2 m3__m2__m1__nl_rp
+m3__m2__m1__nl get m3__m2__m1__nl_rg m3__m2__m1__nl_rw
+m3__m2__m1__pb_gp shr 10 7
+m3__m2__m1__pb_gw and 10 127
+m3__m2__m1__pb_gg get m3__m1__r__m2 m3__m2__m1__pb_gp
+m3__m2__m1__pb get m3__m2__m1__pb_gg m3__m2__m1__pb_gw
+m3__m2__m1__pl add m3__m2__m1__pb m3__m2__m1__pidx
+m3__m2__m1__plocal select m3__m2__m1__hh m3__m2__m1__sv m3__m2__m1__pl
+m3__m2__m1__loc select m3__m2__m1__anypar m3__m2__m1__plocal m3__m2__m1__nl
+m3__m2__m1__cb and m3__m2__m1__isn m3__m2__m1__hcb
+m3__m2__m1__c1 or m3__m2__m1__lit m3__m2__m1__cb
+m3__m2__m1__isc or m3__m2__m1__c1 m3__m2__m1__srcv
+m3__m2__m1__v1 select m3__m2__m1__cb m3__m2__m1__cv m3__m2__m1__sv
+m3__m2__m1__v2 select m3__m2__m1__lit m3__ev m3__m2__m1__v1
+m3__m2__m1__val select m3__m2__m1__isc m3__m2__m1__v2 m3__m2__m1__loc
+m3__m2__m1__isc1 select m3__m2__m1__isc 1 0
+m3__m2__m1__m1__gcondb ne m3__m2_c 0
+m3__m2__m1__m1__pg shr 16 7
+m3__m2__m1__m1__w and 16 127
+m3__m2__m1__m1__g get m3__m1__r__m2 m3__m2__m1__m1__pg
+m3__m2__m1__m1__g2 set m3__m2__m1__m1__g m3__m2__m1__m1__w m3__m2__m1__isc1
+m3__m2__m1__m1__r_o get m3__m1__r__m2 m3__m2__m1__m1__pg
+m3__m2__m1__m1__r_s select m3__m2__m1__m1__gcondb m3__m2__m1__m1__g2 m3__m2__m1__m1__r_o
+m3__m2__m1__m1__r set m3__m1__r__m2 m3__m2__m1__m1__pg m3__m2__m1__m1__r_s
+m3__m2__m1__m2__gcondb ne m3__m2_c 0
+m3__m2__m1__m2__pg shr 17 7
+m3__m2__m1__m2__w and 17 127
+m3__m2__m1__m2__g get m3__m2__m1__m1__r m3__m2__m1__m2__pg
+m3__m2__m1__m2__g2 set m3__m2__m1__m2__g m3__m2__m1__m2__w m3__m2__m1__val
+m3__m2__m1__m2__r_o get m3__m2__m1__m1__r m3__m2__m1__m2__pg
+m3__m2__m1__m2__r_s select m3__m2__m1__m2__gcondb m3__m2__m1__m2__g2 m3__m2__m1__m2__r_o
+m3__m2__m1__m2__r set m3__m2__m1__m1__r m3__m2__m1__m2__pg m3__m2__m1__m2__r_s
+m3__m2__c_gp shr 16 7
+m3__m2__c_gw and 16 127
+m3__m2__c_gg get m3__m2__m1__m2__r m3__m2__c_gp
+m3__m2__c get m3__m2__c_gg m3__m2__c_gw
+m3__m2__v_gp shr 17 7
+m3__m2__v_gw and 17 127
+m3__m2__v_gg get m3__m2__m1__m2__r m3__m2__v_gp
+m3__m2__v get m3__m2__v_gg m3__m2__v_gw
+m3__m2__r__gcondb ne m3__m2_c 0
+m3__m2__r__c ne m3__m2__c 0
+m3__m2__r__k select m3__m2__r__c 2 3
+m3__m2__r__r__gcondb ne m3__m2_c 0
+m3__m2__r__r__g0 get m3__m2__m1__m2__r 0
+m3__m2__r__r__n get m3__m2__r__r__g0 0
+m3__m2__r__r__e8 get m3__m2__r__r__g0 8
+m3__m2__r__r__full ge m3__m2__r__r__n 22528
+m3__m2__r__r__okn select m3__m2__r__r__full 0 1
+m3__m2__r__r__n1 add m3__m2__r__r__n m3__m2__r__r__okn
+m3__m2__r__r__e2 select m3__m2__r__r__full 1 m3__m2__r__r__e8
+m3__m2__r__r__g0a set m3__m2__r__r__g0 0 m3__m2__r__r__n1
+m3__m2__r__r__g0b set m3__m2__r__r__g0a 8 m3__m2__r__r__e2
+m3__m2__r__r__m1_o get m3__m2__m1__m2__r 0
+m3__m2__r__r__m1_s select m3__m2__r__r__gcondb m3__m2__r__r__g0b m3__m2__r__r__m1_o
+m3__m2__r__r__m1 set m3__m2__m1__m2__r 0 m3__m2__r__r__m1_s
+m3__m2__r__r__a mul m3__m2__r__r__n 2
+m3__m2__r__r__ad add m3__m2__r__r__a 20480
+m3__m2__r__r__pg shr m3__m2__r__r__ad 7
+m3__m2__r__r__w and m3__m2__r__r__ad 127
+m3__m2__r__r__g get m3__m2__r__r__m1 m3__m2__r__r__pg
+m3__m2__r__r__w1 add m3__m2__r__r__w 1
+m3__m2__r__r__g1 set m3__m2__r__r__g m3__m2__r__r__w m3__m2__r__k
+m3__m2__r__r__g2 set m3__m2__r__r__g1 m3__m2__r__r__w1 m3__m2__v
+m3__m2__r__r__okb eq m3__m2__r__r__full false
+m3__m2__r__r__g3 select m3__m2__r__r__okb m3__m2__r__r__g2 m3__m2__r__r__g
+m3__m2__r__r__m2_o get m3__m2__r__r__m1 m3__m2__r__r__pg
+m3__m2__r__r__m2_s select m3__m2__r__r__gcondb m3__m2__r__r__g3 m3__m2__r__r__m2_o
+m3__m2__r__r__m2 set m3__m2__r__r__m1 m3__m2__r__r__pg m3__m2__r__r__m2_s
 e2 eq op 2
 e3 eq op 3
 e4 eq op 4
@@ -4062,19 +7454,110 @@ c7 select e7 81 c6
 c8 select e8 171 c7
 vop select e9 173 c8
 cn4_m4 select noset 1 0
-m4 fold wxe cn4_m4 m3 18 vop
+m4__gcondb ne cn4_m4 0
+m4__g0 get m3__m2__r__r__m2 0
+m4__n get m4__g0 0
+m4__e8 get m4__g0 8
+m4__full ge m4__n 22528
+m4__okn select m4__full 0 1
+m4__n1 add m4__n m4__okn
+m4__e2 select m4__full 1 m4__e8
+m4__g0a set m4__g0 0 m4__n1
+m4__g0b set m4__g0a 8 m4__e2
+m4__m1_o get m3__m2__r__r__m2 0
+m4__m1_s select m4__gcondb m4__g0b m4__m1_o
+m4__m1 set m3__m2__r__r__m2 0 m4__m1_s
+m4__a mul m4__n 2
+m4__ad add m4__a 20480
+m4__pg shr m4__ad 7
+m4__w and m4__ad 127
+m4__g get m4__m1 m4__pg
+m4__w1 add m4__w 1
+m4__g1 set m4__g m4__w 18
+m4__g2 set m4__g1 m4__w1 vop
+m4__okb eq m4__full false
+m4__g3 select m4__okb m4__g2 m4__g
+m4__m2_o get m4__m1 m4__pg
+m4__m2_s select m4__gcondb m4__g3 m4__m2_o
+m4__m2 set m4__m1 m4__pg m4__m2_s
 cn5_m5 select noset 1 0
-m5 fold wxnv cn5_m5 m4
+m5__gcondb ne cn5_m5 0
+m5__n_gp shr 2 7
+m5__n_gw and 2 127
+m5__n_gg get m4__m2 m5__n_gp
+m5__n get m5__n_gg m5__n_gw
+m5__big ge m5__n 128
+m5__id add m5__n 1048576
+m5__m1__gcondb ne cn5_m5 0
+m5__m1__pg shr 16 7
+m5__m1__w and 16 127
+m5__m1__g get m4__m2 m5__m1__pg
+m5__m1__g2 set m5__m1__g m5__m1__w m5__id
+m5__m1__r_o get m4__m2 m5__m1__pg
+m5__m1__r_s select m5__m1__gcondb m5__m1__g2 m5__m1__r_o
+m5__m1__r set m4__m2 m5__m1__pg m5__m1__r_s
+m5__n1 add m5__n 1
+m5__m2__gcondb ne cn5_m5 0
+m5__m2__pg shr 2 7
+m5__m2__w and 2 127
+m5__m2__g get m5__m1__r m5__m2__pg
+m5__m2__g2 set m5__m2__g m5__m2__w m5__n1
+m5__m2__r_o get m5__m1__r m5__m2__pg
+m5__m2__r_s select m5__m2__gcondb m5__m2__g2 m5__m2__r_o
+m5__m2__r set m5__m1__r m5__m2__pg m5__m2__r_s
+m5__cn1_m3 select m5__big 1 0
+m5__m3_c and cn5_m5 m5__cn1_m3
+m5__m3__gcondb ne m5__m3_c 0
+m5__m3__pg shr 8 7
+m5__m3__w and 8 127
+m5__m3__g get m5__m2__r m5__m3__pg
+m5__m3__g2 set m5__m3__g m5__m3__w 1
+m5__m3__r_o get m5__m2__r m5__m3__pg
+m5__m3__r_s select m5__m3__gcondb m5__m3__g2 m5__m3__r_o
+m5__m3__r set m5__m2__r m5__m3__pg m5__m3__r_s
 v_gp shr 16 7
 v_gw and 16 127
-v_gg get m5 v_gp
+v_gg get m5__m3__r v_gp
 v get v_gg v_gw
 cn6_m6 select noset 1 0
-m6 fold wxls cn6_m6 m5 v
+m6__gcondb ne cn6_m6 0
+m6__r__gcondb ne cn6_m6 0
+m6__r__g0 get m5__m3__r 0
+m6__r__n get m6__r__g0 0
+m6__r__e8 get m6__r__g0 8
+m6__r__full ge m6__r__n 22528
+m6__r__okn select m6__r__full 0 1
+m6__r__n1 add m6__r__n m6__r__okn
+m6__r__e2 select m6__r__full 1 m6__r__e8
+m6__r__g0a set m6__r__g0 0 m6__r__n1
+m6__r__g0b set m6__r__g0a 8 m6__r__e2
+m6__r__m1_o get m5__m3__r 0
+m6__r__m1_s select m6__r__gcondb m6__r__g0b m6__r__m1_o
+m6__r__m1 set m5__m3__r 0 m6__r__m1_s
+m6__r__a mul m6__r__n 2
+m6__r__ad add m6__r__a 20480
+m6__r__pg shr m6__r__ad 7
+m6__r__w and m6__r__ad 127
+m6__r__g get m6__r__m1 m6__r__pg
+m6__r__w1 add m6__r__w 1
+m6__r__g1 set m6__r__g m6__r__w 4
+m6__r__g2 set m6__r__g1 m6__r__w1 v
+m6__r__okb eq m6__r__full false
+m6__r__g3 select m6__r__okb m6__r__g2 m6__r__g
+m6__r__m2_o get m6__r__m1 m6__r__pg
+m6__r__m2_s select m6__r__gcondb m6__r__g3 m6__r__m2_o
+m6__r__m2 set m6__r__m1 m6__r__pg m6__r__m2_s
 a add 19008 p1
 cn7_m7 select noset 1 0
-m7 fold wxs cn7_m7 m6 a v
-ret m7
+m7__gcondb ne cn7_m7 0
+m7__pg shr a 7
+m7__w and a 127
+m7__g get m6__r__m2 m7__pg
+m7__g2 set m7__g m7__w v
+m7__r_o get m6__r__m2 m7__pg
+m7__r_s select m7__gcondb m7__g2 m7__r_o
+m7__r set m6__r__m2 m7__pg m7__r_s
+ret m7__r
 end
 # a fill run of the fold of frame p2 whose body is function p3 and whose first operand is p4 (state
 # local p5, elements [0, p6) by four per trip; nodes p7, args p8, fns p9): src/wasm.ts
@@ -4091,58 +7574,262 @@ sfa2 add sfa 2
 vk call wxok p8 sfa2
 vv call wxov p8 sfa2
 fa2 add p4 2
-m1 fold wxs 1 p0 19110 p2
-m2 fold wxs 1 m1 19111 fa2
-m3 fold wxs 1 m2 19112 g0
-m4 fold wxs 1 m3 19113 rv
-m5 fold wxs 1 m4 19114 vk
-m6 fold wxs 1 m5 19115 vv
-m7 fold wxs 1 m6 19116 nn
-m8 fold wxs 1 m7 19117 p5
-m9 fold wxnv 1 m8
+m1__pg shr 19110 7
+m1__w and 19110 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w p2
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 19111 7
+m2__w and 19111 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w fa2
+m2__r set m1__r m2__pg m2__g2
+m3__pg shr 19112 7
+m3__w and 19112 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w g0
+m3__r set m2__r m3__pg m3__g2
+m4__pg shr 19113 7
+m4__w and 19113 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w rv
+m4__r set m3__r m4__pg m4__g2
+m5__pg shr 19114 7
+m5__w and 19114 127
+m5__g get m4__r m5__pg
+m5__g2 set m5__g m5__w vk
+m5__r set m4__r m5__pg m5__g2
+m6__pg shr 19115 7
+m6__w and 19115 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w vv
+m6__r set m5__r m6__pg m6__g2
+m7__pg shr 19116 7
+m7__w and 19116 127
+m7__g get m6__r m7__pg
+m7__g2 set m7__g m7__w nn
+m7__r set m6__r m7__pg m7__g2
+m8__pg shr 19117 7
+m8__w and 19117 127
+m8__g get m7__r m8__pg
+m8__g2 set m8__g m8__w p5
+m8__r set m7__r m8__pg m8__g2
+m9 fold wxnv 1 m8__r
 ix_gp shr 16 7
 ix_gw and 16 127
 ix_gg get m9 ix_gp
 ix get ix_gg ix_gw
-m10 fold wxs 1 m9 19104 ix
-m11 fold wxe 1 m10 20 0
-m12 fold wxls 1 m11 ix
+m10__pg shr 19104 7
+m10__w and 19104 127
+m10__g get m9 m10__pg
+m10__g2 set m10__g m10__w ix
+m10__r set m9 m10__pg m10__g2
+m11__g0 get m10__r 0
+m11__n get m11__g0 0
+m11__e8 get m11__g0 8
+m11__full ge m11__n 22528
+m11__okn select m11__full 0 1
+m11__n1 add m11__n m11__okn
+m11__e2 select m11__full 1 m11__e8
+m11__g0a set m11__g0 0 m11__n1
+m11__g0b set m11__g0a 8 m11__e2
+m11__m1 set m10__r 0 m11__g0b
+m11__a mul m11__n 2
+m11__ad add m11__a 20480
+m11__pg shr m11__ad 7
+m11__w and m11__ad 127
+m11__g get m11__m1 m11__pg
+m11__w1 add m11__w 1
+m11__g1 set m11__g m11__w 20
+m11__g2 set m11__g1 m11__w1 0
+m11__okb eq m11__full false
+m11__g3 select m11__okb m11__g2 m11__g
+m11__m2 set m11__m1 m11__pg m11__g3
+m12 fold wxls 1 m11__m2 ix
 m13 fold wxvsa nn m12 p7 p8
 m14 fold wxnl 1 m13
 ptr_gp shr 16 7
 ptr_gw and 16 127
 ptr_gg get m14 ptr_gp
 ptr get ptr_gg ptr_gw
-m15 fold wxs 1 m14 19105 ptr
-m16 fold wxlg 1 m15 p5
+m15__pg shr 19105 7
+m15__w and 19105 127
+m15__g get m14 m15__pg
+m15__g2 set m15__g m15__w ptr
+m15__r set m14 m15__pg m15__g2
+m16 fold wxlg 1 m15__r p5
 m17 fold wxls 1 m16 ptr
-m18 fold wxe 1 m17 8 0
-m19 fold wxvn1 nn m18 p7 p8
+m18__g0 get m17 0
+m18__n get m18__g0 0
+m18__e8 get m18__g0 8
+m18__full ge m18__n 22528
+m18__okn select m18__full 0 1
+m18__n1 add m18__n m18__okn
+m18__e2 select m18__full 1 m18__e8
+m18__g0a set m18__g0 0 m18__n1
+m18__g0b set m18__g0a 8 m18__e2
+m18__m1 set m17 0 m18__g0b
+m18__a mul m18__n 2
+m18__ad add m18__a 20480
+m18__pg shr m18__ad 7
+m18__w and m18__ad 127
+m18__g get m18__m1 m18__pg
+m18__w1 add m18__w 1
+m18__g1 set m18__g m18__w 8
+m18__g2 set m18__g1 m18__w1 0
+m18__okb eq m18__full false
+m18__g3 select m18__okb m18__g2 m18__g
+m18__m2 set m18__m1 m18__pg m18__g3
+m19 fold wxvn1 nn m18__m2 p7 p8
 m20 fold wxlg 1 m19 ptr
 m21 fold wxvpl 1 m20 vk vv
-m22 fold wxe 1 m21 19 0
-m23 fold wxlg 1 m22 ix
-m24 fold wxe 1 m23 21 4
-m25 fold wxe 1 m24 18 174
-m26 fold wxls 1 m25 ix
+m22__g0 get m21 0
+m22__n get m22__g0 0
+m22__e8 get m22__g0 8
+m22__full ge m22__n 22528
+m22__okn select m22__full 0 1
+m22__n1 add m22__n m22__okn
+m22__e2 select m22__full 1 m22__e8
+m22__g0a set m22__g0 0 m22__n1
+m22__g0b set m22__g0a 8 m22__e2
+m22__m1 set m21 0 m22__g0b
+m22__a mul m22__n 2
+m22__ad add m22__a 20480
+m22__pg shr m22__ad 7
+m22__w and m22__ad 127
+m22__g get m22__m1 m22__pg
+m22__w1 add m22__w 1
+m22__g1 set m22__g m22__w 19
+m22__g2 set m22__g1 m22__w1 0
+m22__okb eq m22__full false
+m22__g3 select m22__okb m22__g2 m22__g
+m22__m2 set m22__m1 m22__pg m22__g3
+m23 fold wxlg 1 m22__m2 ix
+m24__g0 get m23 0
+m24__n get m24__g0 0
+m24__e8 get m24__g0 8
+m24__full ge m24__n 22528
+m24__okn select m24__full 0 1
+m24__n1 add m24__n m24__okn
+m24__e2 select m24__full 1 m24__e8
+m24__g0a set m24__g0 0 m24__n1
+m24__g0b set m24__g0a 8 m24__e2
+m24__m1 set m23 0 m24__g0b
+m24__a mul m24__n 2
+m24__ad add m24__a 20480
+m24__pg shr m24__ad 7
+m24__w and m24__ad 127
+m24__g get m24__m1 m24__pg
+m24__w1 add m24__w 1
+m24__g1 set m24__g m24__w 21
+m24__g2 set m24__g1 m24__w1 4
+m24__okb eq m24__full false
+m24__g3 select m24__okb m24__g2 m24__g
+m24__m2 set m24__m1 m24__pg m24__g3
+m25__g0 get m24__m2 0
+m25__n get m25__g0 0
+m25__e8 get m25__g0 8
+m25__full ge m25__n 22528
+m25__okn select m25__full 0 1
+m25__n1 add m25__n m25__okn
+m25__e2 select m25__full 1 m25__e8
+m25__g0a set m25__g0 0 m25__n1
+m25__g0b set m25__g0a 8 m25__e2
+m25__m1 set m24__m2 0 m25__g0b
+m25__a mul m25__n 2
+m25__ad add m25__a 20480
+m25__pg shr m25__ad 7
+m25__w and m25__ad 127
+m25__g get m25__m1 m25__pg
+m25__w1 add m25__w 1
+m25__g1 set m25__g m25__w 18
+m25__g2 set m25__g1 m25__w1 174
+m25__okb eq m25__full false
+m25__g3 select m25__okb m25__g2 m25__g
+m25__m2 set m25__m1 m25__pg m25__g3
+m26 fold wxls 1 m25__m2 ix
 m27 fold wxlg 1 m26 ptr
 m28 fold wxkc 1 m27 16
 m29 fold wxop 1 m28 106
-m30 fold wxe 1 m29 5 ptr
-m31 fold wxlg 1 m30 p5
+m30__g0 get m29 0
+m30__n get m30__g0 0
+m30__e8 get m30__g0 8
+m30__full ge m30__n 22528
+m30__okn select m30__full 0 1
+m30__n1 add m30__n m30__okn
+m30__e2 select m30__full 1 m30__e8
+m30__g0a set m30__g0 0 m30__n1
+m30__g0b set m30__g0a 8 m30__e2
+m30__m1 set m29 0 m30__g0b
+m30__a mul m30__n 2
+m30__ad add m30__a 20480
+m30__pg shr m30__ad 7
+m30__w and m30__ad 127
+m30__g get m30__m1 m30__pg
+m30__w1 add m30__w 1
+m30__g1 set m30__g m30__w 5
+m30__g2 set m30__g1 m30__w1 ptr
+m30__okb eq m30__full false
+m30__g3 select m30__okb m30__g2 m30__g
+m30__m2 set m30__m1 m30__pg m30__g3
+m31 fold wxlg 1 m30__m2 p5
 end4 mul p6 4
 m32 fold wxkc 1 m31 end4
 m33 fold wxop 1 m32 106
 m34 fold wxop 1 m33 73
-m35 fold wxe 1 m34 12 0
-m36 fold wxe 1 m35 9 0
-ret m36
+m35__g0 get m34 0
+m35__n get m35__g0 0
+m35__e8 get m35__g0 8
+m35__full ge m35__n 22528
+m35__okn select m35__full 0 1
+m35__n1 add m35__n m35__okn
+m35__e2 select m35__full 1 m35__e8
+m35__g0a set m35__g0 0 m35__n1
+m35__g0b set m35__g0a 8 m35__e2
+m35__m1 set m34 0 m35__g0b
+m35__a mul m35__n 2
+m35__ad add m35__a 20480
+m35__pg shr m35__ad 7
+m35__w and m35__ad 127
+m35__g get m35__m1 m35__pg
+m35__w1 add m35__w 1
+m35__g1 set m35__g m35__w 12
+m35__g2 set m35__g1 m35__w1 0
+m35__okb eq m35__full false
+m35__g3 select m35__okb m35__g2 m35__g
+m35__m2 set m35__m1 m35__pg m35__g3
+m36__g0 get m35__m2 0
+m36__n get m36__g0 0
+m36__e8 get m36__g0 8
+m36__full ge m36__n 22528
+m36__okn select m36__full 0 1
+m36__n1 add m36__n m36__okn
+m36__e2 select m36__full 1 m36__e8
+m36__g0a set m36__g0 0 m36__n1
+m36__g0b set m36__g0a 8 m36__e2
+m36__m1 set m35__m2 0 m36__g0b
+m36__a mul m36__n 2
+m36__ad add m36__a 20480
+m36__pg shr m36__ad 7
+m36__w and m36__ad 127
+m36__g get m36__m1 m36__pg
+m36__w1 add m36__w 1
+m36__g1 set m36__g m36__w 9
+m36__g2 set m36__g1 m36__w1 0
+m36__okb eq m36__full false
+m36__g3 select m36__okb m36__g2 m36__g
+m36__m2 set m36__m1 m36__pg m36__g3
+ret m36__m2
 end
 # forget the splat of parameter p1
 fn wxvclr u32x128x512 u32 -> u32x128x512
 a add 19072 p1
-r fold wxs 1 p0 a 0
-ret r
+r__pg shr a 7
+r__w and a 127
+r__g get p0 r__pg
+r__g2 set r__g r__w 0
+r__r set p0 r__pg r__g2
+ret r__r
 end
 # phase p3 of loop p2 as (limit kind p4, literal flag p5, literal or constant p6, first trip p7,
 # copies p8)
@@ -4250,9 +7937,13 @@ cands and c12 c3
 cn select cands nnb 0
 g0b call wxfw p3 ce 4
 m1 fold wxclr cn p0 dn
-m2 fold wxs 1 m1 22 1
+m2__pg shr 22 7
+m2__w and 22 127
+m2__g get m1 m2__pg
+m2__g2 set m2__g m2__w 1
+m2__r set m1 m2__pg m2__g2
 cn1_m3 select cands 1 0
-m3 fold wxsmall cn1_m3 m2 dn ce p3 p4 p5 p6 p7 p8
+m3 fold wxsmall cn1_m3 m2__r dn ce p3 p4 p5 p6 p7 p8
 rs_gp shr 22 7
 rs_gw and 22 127
 rs_gg get m3 rs_gp
@@ -4442,9 +8133,16 @@ lit eq k0 3
 nx sub na 2
 big gt nx 30
 cn1_m0 select big 1 0
-m0 fold wxs cn1_m0 p0 8 2
+m0__gcondb ne cn1_m0 0
+m0__pg shr 8 7
+m0__w and 8 127
+m0__g get p0 m0__pg
+m0__g2 set m0__g m0__w 2
+m0__r_o get p0 m0__pg
+m0__r_s select m0__gcondb m0__g2 m0__r_o
+m0__r set p0 m0__pg m0__r_s
 cn2_m1 select a1 1 0
-m1 fold wxres cn2_m1 m0 d 1 j
+m1 fold wxres cn2_m1 m0__r d 1 j
 sa_gp shr 17 7
 sa_gw and 17 127
 sa_gg get m1 sa_gp
@@ -4493,8 +8191,12 @@ dovec and dv1 r4
 rm rem runc 4
 sv sub runc rm
 start select dovec sv 0
-m11 fold wxs 1 m10 19110 0
-m12 fold wxvclr 32 m11
+m11__pg shr 19110 7
+m11__w and 19110 127
+m11__g get m10 m11__pg
+m11__g2 set m11__g m11__w 0
+m11__r set m10 m11__pg m11__g2
+m12 fold wxvclr 32 m11__r
 cn11_m13 select dovec 1 0
 m13 fold wxvfill cn11_m13 m12 d ce fa state start p4 p5 p3
 m14 fold wxkc 1 m13 start
@@ -4794,8 +8496,17 @@ end
 # and set node b of frame a, 8 start phase b of loop a, 9 a trip of loop a, 10 its body, 11 its
 # end
 fn wxstep u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
-m0 fold wxad 1 p0 95 1
-m1x fold wxpo 1 m0
+m0__v_gp shr 95 7
+m0__v_gw and 95 127
+m0__v_gg get p0 m0__v_gp
+m0__v get m0__v_gg m0__v_gw
+m0__n add m0__v 1
+m0__r__pg shr 95 7
+m0__r__w and 95 127
+m0__r__g get p0 m0__r__pg
+m0__r__g2 set m0__r__g m0__r__w m0__n
+m0__r__r set p0 m0__r__pg m0__r__g2
+m1x fold wxpo 1 m0__r__r
 k_gp shr 16 7
 k_gw and 16 127
 k_gg get m1x k_gp
@@ -4812,9 +8523,21 @@ c_gp shr 19 7
 c_gw and 19 127
 c_gg get m1x c_gp
 c get c_gg c_gw
-m1y fold wxs 1 m1x 96 k
-m1z fold wxs 1 m1y 97 a
-m1 fold wxs 1 m1z 98 b
+m1y__pg shr 96 7
+m1y__w and 96 127
+m1y__g get m1x m1y__pg
+m1y__g2 set m1y__g m1y__w k
+m1y__r set m1x m1y__pg m1y__g2
+m1z__pg shr 97 7
+m1z__w and 97 127
+m1z__g get m1y__r m1z__pg
+m1z__g2 set m1z__g m1z__w a
+m1z__r set m1y__r m1z__pg m1z__g2
+m1__pg shr 98 7
+m1__w and 98 127
+m1__g get m1z__r m1__pg
+m1__g2 set m1__g m1__w b
+m1__r set m1z__r m1__pg m1__g2
 k1 eq k 1
 k2 eq k 2
 k3 eq k 3
@@ -4831,20 +8554,20 @@ nn_fb add nn_fa 128
 nn_fc add nn_fb 3
 nn_fp shr nn_fc 7
 nn_fw and nn_fc 127
-nn_fg get m1 nn_fp
+nn_fg get m1__r nn_fp
 nn get nn_fg nn_fw
 g0_fa mul a 128
 g0_fb add g0_fa 128
 g0_fc add g0_fb 2
 g0_fp shr g0_fc 7
 g0_fw and g0_fc 127
-g0_fg get m1 g0_fp
+g0_fg get m1__r g0_fp
 g0 get g0_fg g0_fw
 b1 add b 1
 mor lt b1 nn
 rest1 and k1 mor
 cn1_m2 select rest1 1 0
-m2 fold wxpu cn1_m2 m1 1 a b1 0
+m2 fold wxpu cn1_m2 m1__r 1 a b1 0
 gg add g0 b
 oc add 2816 gg
 own call wxsh p9 oc
@@ -4856,41 +8579,61 @@ m3 fold wxnode cn2_m3 m2 a b p2 p3 p4 p5 p6 p7 p8 p9 p10
 cn3_m4 select k3 1 0
 m4 fold wxpsh cn3_m4 m3 a b c
 cn4_m5 select k4 1 0
-m5 fold wxe cn4_m5 m4 a b
+m5__gcondb ne cn4_m5 0
+m5__g0 get m4 0
+m5__n get m5__g0 0
+m5__e8 get m5__g0 8
+m5__full ge m5__n 22528
+m5__okn select m5__full 0 1
+m5__n1 add m5__n m5__okn
+m5__e2 select m5__full 1 m5__e8
+m5__g0a set m5__g0 0 m5__n1
+m5__g0b set m5__g0a 8 m5__e2
+m5__m1_o get m4 0
+m5__m1_s select m5__gcondb m5__g0b m5__m1_o
+m5__m1 set m4 0 m5__m1_s
+m5__a mul m5__n 2
+m5__ad add m5__a 20480
+m5__pg shr m5__ad 7
+m5__w and m5__ad 127
+m5__g get m5__m1 m5__pg
+m5__w1 add m5__w 1
+m5__g1 set m5__g m5__w a
+m5__g2 set m5__g1 m5__w1 b
+m5__okb eq m5__full false
+m5__g3 select m5__okb m5__g2 m5__g
+m5__m2_o get m5__m1 m5__pg
+m5__m2_s select m5__gcondb m5__g3 m5__m2_o
+m5__m2 set m5__m1 m5__pg m5__m2_s
 cn5_m6 select k5 1 0
-m6 fold wxend cn5_m6 m5 a p2 p8
+m6 fold wxend cn5_m6 m5__m2 a p2 p8
 arm and c 3
 fr shr c 2
 arm1 add arm 1
 fg gt nn fr
 cnt0 sub nn fr
-cnt select fg cnt0 0
-cn6_m7 select k6 1 0
-m7 fold wxs cn6_m7 m6 21 4294967295
-m8 fold wxfnd cnt m7 g0 b arm1 fr p9
-fnd_gp shr 21 7
-fnd_gw and 21 127
-fnd_gg get m8 fnd_gp
-fnd get fnd_gg fnd_gw
+cnt1 select fg cnt0 0
+cnt select k6 cnt1 0
+fnd fold wxfnd cnt 4294967295 g0 b arm1 fr p9
 has ne fnd 4294967295
 fm1 add fnd 1
 nxt shl fm1 2
 cc or arm nxt
 h6 and k6 has
-cn7_m9 select h6 1 0
-m9 fold wxpu cn7_m9 m8 6 a b cc
-cn8_m10 select h6 1 0
-m10 fold wxpu cn8_m10 m9 2 a fnd 0
-cn9_m11 select k7 1 0
-m11 fold wxset cn9_m11 m10 a b
-cn10_m12 select k8 1 0
-m12 fold wxlst cn10_m12 m11 a b
-cn11_m13 select k9 1 0
-m13 fold wxtrip cn11_m13 m12 a p2 p3 p4 p5 p6 p7 p8 p9 p10
-cn12_m14 select k10 1 0
-m14 fold wxtbod cn12_m14 m13 a p2 p3 p4 p5 p6 p7 p8 p9 p10
-cn13_m15 select k11 1 0
-m15 fold wxtend cn13_m15 m14 a
+cn6_m9 select h6 1 0
+m9 fold wxpu cn6_m9 m6 6 a b cc
+cn7_m10 select h6 1 0
+m10 fold wxpu cn7_m10 m9 2 a fnd 0
+cn8_m11 select k7 1 0
+m11 fold wxset cn8_m11 m10 a b
+cn9_m12 select k8 1 0
+m12 fold wxlst cn9_m12 m11 a b
+cn10_m13 select k9 1 0
+m13 fold wxtrip cn10_m13 m12 a p2 p3 p4 p5 p6 p7 p8 p9 p10
+cn11_m14 select k10 1 0
+m14 fold wxtbod cn11_m14 m13 a p2 p3 p4 p5 p6 p7 p8 p9 p10
+cn12_m15 select k11 1 0
+m15 fold wxtend cn12_m15 m14 a
 ret m15
 end
 # keep stepping while items remain and no error was raised
@@ -4909,7 +8652,7 @@ st_gg get p0 st_gp
 st get st_gg st_gw
 a gt sp 0
 b eq er 0
-c lt st 5000
+c lt st 400000
 ab and a b
 r and ab c
 ret r
@@ -4957,17 +8700,57 @@ ty_gp shr ta2 7
 ty_gw and ta2 127
 ty_gg get p0 ty_gp
 ty get ty_gg ty_gw
-m1 fold wxs 1 p0 8 9
-m2 fold wxs 1 m1 15 8
-m3 fold wxs 1 m2 32 st
-m4 fold wxs 1 m3 33 sp
-m5 fold wxs 1 m4 34 k
-m6 fold wxs 1 m5 35 a
-m7 fold wxs 1 m6 36 b
-m8 fold wxs 1 m7 37 tk
-m9 fold wxs 1 m8 38 tx
-m10 fold wxs 1 m9 39 ty
-ret m10
+m1__pg shr 8 7
+m1__w and 8 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 9
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 15 7
+m2__w and 15 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w 8
+m2__r set m1__r m2__pg m2__g2
+m3__pg shr 32 7
+m3__w and 32 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w st
+m3__r set m2__r m3__pg m3__g2
+m4__pg shr 33 7
+m4__w and 33 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w sp
+m4__r set m3__r m4__pg m4__g2
+m5__pg shr 34 7
+m5__w and 34 127
+m5__g get m4__r m5__pg
+m5__g2 set m5__g m5__w k
+m5__r set m4__r m5__pg m5__g2
+m6__pg shr 35 7
+m6__w and 35 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w a
+m6__r set m5__r m6__pg m6__g2
+m7__pg shr 36 7
+m7__w and 36 127
+m7__g get m6__r m7__pg
+m7__g2 set m7__g m7__w b
+m7__r set m6__r m7__pg m7__g2
+m8__pg shr 37 7
+m8__w and 37 127
+m8__g get m7__r m8__pg
+m8__g2 set m8__g m8__w tk
+m8__r set m7__r m8__pg m8__g2
+m9__pg shr 38 7
+m9__w and 38 127
+m9__g get m8__r m9__pg
+m9__g2 set m9__g m9__w tx
+m9__r set m8__r m9__pg m9__g2
+m10__pg shr 39 7
+m10__w and 39 127
+m10__g get m9__r m10__pg
+m10__g2 set m10__g m10__w ty
+m10__r set m9__r m10__pg m10__g2
+ret m10__r
 end
 # the result slot of the value variant of a function with an aggregate result: the node the ret
 # operand's root is, when that node owns storage (an `arr` `rec` `call` ... not get at select
@@ -5047,8 +8830,12 @@ nox select x3 false true
 c1 and okn al2
 c2 and c1 nox
 res select c2 rn2 4294967295
-r fold wxs 1 p0 11 res
-ret r
+r__pg shr 11 7
+r__w and 11 127
+r__g get p0 r__pg
+r__g2 set r__g r__w res
+r__r set p0 r__pg r__g2
+ret r__r
 end
 # the end of a top-level function (`emit`): the result is stored (owned variant, unless it is p0's
 # storage; value variant with a result address, unless it is the result slot) or pushed (scalar);
@@ -5056,17 +8843,57 @@ end
 # the frame prologue in instruction slots 0-4: global.get 0; i32.const frame; i32.sub;
 # local.tee fp; global.set 0
 fn wxprol u32x128x512 u32 u32 u32 -> u32x128x512
-m1 fold wxs 1 p0 20480 22
-m2 fold wxs 1 m1 20481 0
-m3 fold wxs 1 m2 20482 2
-m4 fold wxs 1 m3 20483 p3
-m5 fold wxs 1 m4 20484 1
-m6 fold wxs 1 m5 20485 107
-m7 fold wxs 1 m6 20486 5
-m8 fold wxs 1 m7 20487 p2
-m9 fold wxs 1 m8 20488 23
-m10 fold wxs 1 m9 20489 0
-ret m10
+m1__pg shr 20480 7
+m1__w and 20480 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 22
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 20481 7
+m2__w and 20481 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w 0
+m2__r set m1__r m2__pg m2__g2
+m3__pg shr 20482 7
+m3__w and 20482 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w 2
+m3__r set m2__r m3__pg m3__g2
+m4__pg shr 20483 7
+m4__w and 20483 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w p3
+m4__r set m3__r m4__pg m4__g2
+m5__pg shr 20484 7
+m5__w and 20484 127
+m5__g get m4__r m5__pg
+m5__g2 set m5__g m5__w 1
+m5__r set m4__r m5__pg m5__g2
+m6__pg shr 20485 7
+m6__w and 20485 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w 107
+m6__r set m5__r m6__pg m6__g2
+m7__pg shr 20486 7
+m7__w and 20486 127
+m7__g get m6__r m7__pg
+m7__g2 set m7__g m7__w 5
+m7__r set m6__r m7__pg m7__g2
+m8__pg shr 20487 7
+m8__w and 20487 127
+m8__g get m7__r m8__pg
+m8__g2 set m8__g m8__w p2
+m8__r set m7__r m8__pg m8__g2
+m9__pg shr 20488 7
+m9__w and 20488 127
+m9__g get m8__r m9__pg
+m9__g2 set m9__g m9__w 23
+m9__r set m8__r m9__pg m9__g2
+m10__pg shr 20489 7
+m10__w and 20489 127
+m10__g get m9__r m10__pg
+m10__g2 set m10__g m10__w 0
+m10__r set m9__r m10__pg m10__g2
+ret m10__r
 end
 fn wxfinal u32x128x512 u32 u32x128x45 u32x128x65 -> u32x128x512
 variant_fa mul 0 128
@@ -5175,9 +9002,34 @@ m6 fold wxkc cn6_m6 m5 frame
 cn7_m7 select hf 1 0
 m7 fold wxop cn7_m7 m6 106
 cn8_m8 select hf 1 0
-m8 fold wxe cn8_m8 m7 23 0
+m8__gcondb ne cn8_m8 0
+m8__g0 get m7 0
+m8__n get m8__g0 0
+m8__e8 get m8__g0 8
+m8__full ge m8__n 22528
+m8__okn select m8__full 0 1
+m8__n1 add m8__n m8__okn
+m8__e2 select m8__full 1 m8__e8
+m8__g0a set m8__g0 0 m8__n1
+m8__g0b set m8__g0a 8 m8__e2
+m8__m1_o get m7 0
+m8__m1_s select m8__gcondb m8__g0b m8__m1_o
+m8__m1 set m7 0 m8__m1_s
+m8__a mul m8__n 2
+m8__ad add m8__a 20480
+m8__pg shr m8__ad 7
+m8__w and m8__ad 127
+m8__g get m8__m1 m8__pg
+m8__w1 add m8__w 1
+m8__g1 set m8__g m8__w 23
+m8__g2 set m8__g1 m8__w1 0
+m8__okb eq m8__full false
+m8__g3 select m8__okb m8__g2 m8__g
+m8__m2_o get m8__m1 m8__pg
+m8__m2_s select m8__gcondb m8__g3 m8__m2_o
+m8__m2 set m8__m1 m8__pg m8__m2_s
 cn9_r select hf 1 0
-r fold wxprol cn9_r m8 fp frame
+r fold wxprol cn9_r m8__m2 fp frame
 ret r
 end
 # emit variant p3 of function p2 into the machine table (fresh: all zero): registers, frame 0 and
@@ -5194,16 +9046,52 @@ sret and v0 ragg
 pbase select sret 1 0
 pcount add pbase np
 srt select sret 0 4294967295
-m1 fold wxs 1 p0 0 5
-m2 fold wxs 1 m1 1 pcount
-m3 fold wxs 1 m2 4 4294967295
-m4 fold wxs 1 m3 5 p4
-m5 fold wxs 1 m4 9 srt
-m6 fold wxs 1 m5 10 pbase
-m7 fold wxs 1 m6 11 4294967295
-m8 fold wxs 1 m7 13 p5
-m9 fold wxs 1 m8 14 p6
-m10 fold wxfset 1 m9 0 p2 p3 p7 p9
+m1__pg shr 0 7
+m1__w and 0 127
+m1__g get p0 m1__pg
+m1__g2 set m1__g m1__w 5
+m1__r set p0 m1__pg m1__g2
+m2__pg shr 1 7
+m2__w and 1 127
+m2__g get m1__r m2__pg
+m2__g2 set m2__g m2__w pcount
+m2__r set m1__r m2__pg m2__g2
+m3__pg shr 4 7
+m3__w and 4 127
+m3__g get m2__r m3__pg
+m3__g2 set m3__g m3__w 4294967295
+m3__r set m2__r m3__pg m3__g2
+m4__pg shr 5 7
+m4__w and 5 127
+m4__g get m3__r m4__pg
+m4__g2 set m4__g m4__w p4
+m4__r set m3__r m4__pg m4__g2
+m5__pg shr 9 7
+m5__w and 9 127
+m5__g get m4__r m5__pg
+m5__g2 set m5__g m5__w srt
+m5__r set m4__r m5__pg m5__g2
+m6__pg shr 10 7
+m6__w and 10 127
+m6__g get m5__r m6__pg
+m6__g2 set m6__g m6__w pbase
+m6__r set m5__r m6__pg m6__g2
+m7__pg shr 11 7
+m7__w and 11 127
+m7__g get m6__r m7__pg
+m7__g2 set m7__g m7__w 4294967295
+m7__r set m6__r m7__pg m7__g2
+m8__pg shr 13 7
+m8__w and 13 127
+m8__g get m7__r m8__pg
+m8__g2 set m8__g m8__w p5
+m8__r set m7__r m8__pg m8__g2
+m9__pg shr 14 7
+m9__w and 14 127
+m9__g get m8__r m9__pg
+m9__g2 set m9__g m9__w p6
+m9__r set m8__r m9__pg m9__g2
+m10 fold wxfset 1 m9__r 0 p2 p3 p7 p9
 m11 fold wxana 1 m10 0 p2 p3 p7 p8 p9 p10 p11 p14
 sretu select sret 1 0
 cn1_m12 select sret 1 0
@@ -5217,7 +9105,7 @@ st_gp shr 95 7
 st_gw and 95 127
 st_gg get m14 st_gp
 st get st_gg st_gw
-bigs ge st 5000
+bigs ge st 400000
 cn3_m14b select bigs 1 0
 m14b fold wxdbg cn3_m14b m14
 m15 fold wxfinal 1 m14b p7 p13

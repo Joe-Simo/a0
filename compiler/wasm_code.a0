@@ -163,7 +163,10 @@ end
 # an i32 local is np + slot, a v128 local np + nl + slot
 fn wfzmap u32x128x512 u32 u32 u32 -> u32
 c call wfzcidx p3
-a call wfzg p0 c
+a_gp shr c 7
+a_gw and c 127
+a_gg get p0 a_gp
+a get a_gg a_gw
 lo lt p3 8192
 isp lt p3 p1
 q add p1 a
@@ -480,14 +483,25 @@ c8 add c 8320
 slot select is3 c c8
 good and act ok
 inc select good 1 0
-old call wfzg p0 slot
+old_gp shr slot 7
+old_gw and slot 127
+old_gg get p0 old_gp
+old get old_gg old_gw
 new add old inc
 nok eq ok false
 bad and act nok
 ft select bad 16640 16641
-t1 fold wfzp1 1 p0 slot new
-t2 fold wfzp1 1 t1 ft 1
-ret t2
+t1__pi shr slot 7
+t1__pg get p0 t1__pi
+t1__w and slot 127
+t1__pg2 set t1__pg t1__w new
+t1__t set p0 t1__pi t1__pg2
+t2__pi shr ft 7
+t2__pg get t1__t t2__pi
+t2__w and ft 127
+t2__pg2 set t2__pg t2__w 1
+t2__t set t1__t t2__pi t2__pg2
+ret t2__t
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -499,13 +513,25 @@ end
 # are untouched. A removed instruction is kind 0.
 fn wfzstk u32x128x512 u32 u32x128x512 u32 u32 -> u32x128x512
 w2 shl p1 1
-k call wfzg p0 w2
+k_gp shr w2 7
+k_gw and w2 127
+k_gg get p0 k_gp
+k get k_gg k_gw
 w3 add w2 1
-v call wfzg p0 w3
+v_gp shr w3 7
+v_gw and w3 127
+v_gg get p0 v_gp
+v get v_gg v_gw
 w4 add w2 2
-nk call wfzg p0 w4
+nk_gp shr w4 7
+nk_gw and w4 127
+nk_gg get p0 nk_gp
+nk get nk_gg nk_gw
 w5 add w2 3
-nv call wfzg p0 w5
+nv_gp shr w5 7
+nv_gw and w5 127
+nv_gg get p0 nv_gp
+nv get nv_gg nv_gw
 isl call wfzisl k
 big ge v p3
 inr lt p1 p4
@@ -513,8 +539,14 @@ a0 and isl big
 act and a0 inr
 c call wfzcidx v
 c8 add c 8320
-rd call wfzg p2 c
-st call wfzg p2 c8
+rd_gp shr c 7
+rd_gw and c 127
+rd_gg get p2 rd_gp
+rd get rd_gg rd_gw
+st_gp shr c8 7
+st_gw and c8 127
+st_gg get p2 st_gp
+st get st_gg st_gw
 i1 add p1 1
 inr1 lt i1 p4
 n3 eq nk 3
@@ -541,9 +573,19 @@ newv select act nv0 v
 kl0 and act is4
 kill and kl0 fol
 kv select kill 0 nk
-t1 fold wfzp2 1 p0 w2 newk newv
-t2 fold wfzp1 1 t1 w4 kv
-ret t2
+t1__pi shr w2 7
+t1__pg get p0 t1__pi
+t1__w and w2 127
+t1__pg2 set t1__pg t1__w newk
+t1__w1 add t1__w 1
+t1__pg3 set t1__pg2 t1__w1 newv
+t1__t set p0 t1__pi t1__pg3
+t2__pi shr w4 7
+t2__pg get t1__t t2__pi
+t2__w and w4 127
+t2__pg2 set t2__pg t2__w kv
+t2__t set t1__t t2__pi t2__pg2
+ret t2__t
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -552,11 +594,23 @@ end
 # instruction p1: loop depth and top-level loops; first and last access of a local
 fn wfzrng u32x128x512 u32 u32x128x512 u32 -> u32x128x512
 w2 shl p1 1
-k call wfzg p2 w2
+k_gp shr w2 7
+k_gw and w2 127
+k_gg get p2 k_gp
+k get k_gg k_gw
 w3 add w2 1
-v call wfzg p2 w3
-d call wfzg p0 0
-lc call wfzg p0 1
+v_gp shr w3 7
+v_gw and w3 127
+v_gg get p2 v_gp
+v get v_gg v_gw
+d_gp shr 0 7
+d_gw and 0 127
+d_gg get p0 d_gp
+d get d_gg d_gw
+lc_gp shr 1 7
+lc_gw and 1 127
+lc_gg get p0 lc_gp
+lc get lc_gg lc_gw
 isop eq k 8
 iscl eq k 9
 d0 eq d 0
@@ -577,9 +631,15 @@ act and isl big
 c call wfzcidx v
 c4 mul c 4
 b4 add c4 128
-f call wfzg p0 b4
+f_gp shr b4 7
+f_gw and b4 127
+f_gg get p0 f_gp
+f get f_gg f_gw
 b41 add b4 1
-tf0 call wfzg p0 b41
+tf0_gp shr b41 7
+tf0_gw and b41 127
+tf0_gg get p0 tf0_gp
+tf0 get tf0_gg tf0_gw
 isf eq f 0
 ip1 add p1 1
 a0w select isf ip1 f
@@ -589,11 +649,35 @@ lsi add lc2 33408
 lst select topop lsi 8
 lei add lc 44928
 lex select topcl lei 9
-t1 fold wfzp4 1 p0 tg4 a0w a1w p1 cur
-t2 fold wfzp2 1 t1 0 d2 lc2
-t3 fold wfzp1 1 t2 lst p1
-t4 fold wfzp1 1 t3 lex p1
-ret t4
+t1__pi shr tg4 7
+t1__pg get p0 t1__pi
+t1__w and tg4 127
+t1__pg2 set t1__pg t1__w a0w
+t1__w1 add t1__w 1
+t1__pg3 set t1__pg2 t1__w1 a1w
+t1__w2 add t1__w 2
+t1__pg4 set t1__pg3 t1__w2 p1
+t1__w3 add t1__w 3
+t1__pg5 set t1__pg4 t1__w3 cur
+t1__t set p0 t1__pi t1__pg5
+t2__pi shr 0 7
+t2__pg get t1__t t2__pi
+t2__w and 0 127
+t2__pg2 set t2__pg t2__w d2
+t2__w1 add t2__w 1
+t2__pg3 set t2__pg2 t2__w1 lc2
+t2__t set t1__t t2__pi t2__pg3
+t3__pi shr lst 7
+t3__pg get t2__t t3__pi
+t3__w and lst 127
+t3__pg2 set t3__pg t3__w p1
+t3__t set t2__t t3__pi t3__pg2
+t4__pi shr lex 7
+t4__pg get t3__t t4__pi
+t4__w and lex 127
+t4__pg2 set t4__pg t4__w p1
+t4__t set t3__t t4__pi t4__pg2
+ret t4__t
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -603,7 +687,10 @@ end
 # end is below the start p4, 4294967295 for none yet
 fn wfzfit u32 u32 u32x128x512 u32 u32 -> u32
 ix add p3 p1
-e call wfzg p2 ix
+e_gp shr ix 7
+e_gw and ix 127
+e_gg get p2 e_gp
+e get e_gg e_gw
 fr lt e p4
 nf eq p0 4294967295
 tk and fr nf
@@ -613,37 +700,64 @@ end
 # instruction p1: at the first access of a local, give it the first free slot of its kind
 fn wfzalc u32x128x512 u32 u32x128x512 u32x128x512 u32 -> u32x128x512
 w2 shl p1 1
-k call wfzg p2 w2
+k_gp shr w2 7
+k_gw and w2 127
+k_gg get p2 k_gp
+k get k_gg k_gw
 w3 add w2 1
-v call wfzg p2 w3
+v_gp shr w3 7
+v_gw and w3 127
+v_gg get p2 v_gp
+v get v_gg v_gw
 isl call wfzisl k
 big ge v p4
 act and isl big
 c call wfzcidx v
 c4 mul c 4
 b4 add c4 128
-f call wfzg p3 b4
+f_gp shr b4 7
+f_gw and b4 127
+f_gg get p3 f_gp
+f get f_gg f_gw
 b41 add b4 1
-tlf call wfzg p3 b41
+tlf_gp shr b41 7
+tlf_gw and b41 127
+tlf_gg get p3 tlf_gp
+tlf get tlf_gg tlf_gw
 b42 add b4 2
-last call wfzg p3 b42
+last_gp shr b42 7
+last_gw and b42 127
+last_gg get p3 last_gp
+last get last_gg last_gw
 b43 add b4 3
-tll call wfzg p3 b43
+tll_gp shr b43 7
+tll_gw and b43 127
+tll_gg get p3 tll_gp
+tll get tll_gg tll_gw
 ip1 add p1 1
 fe eq f ip1
 isf and act fe
 tz eq tlf 0
 lsi add tlf 33408
-lsv call wfzg p3 lsi
+lsv_gp shr lsi 7
+lsv_gw and lsi 127
+lsv_gg get p3 lsv_gp
+lsv get lsv_gg lsv_gw
 st select tz p1 lsv
 ez eq tll 0
 lei add tll 44928
-lev call wfzg p3 lei
+lev_gp shr lei 7
+lev_gw and lei 127
+lev_gg get p3 lev_gp
+lev get lev_gg lev_gw
 en select ez last lev
 lo lt v 8192
 sbase select lo 8320 16512
 cnti select lo 16640 16641
-cnt call wfzg p0 cnti
+cnt_gp shr cnti 7
+cnt_gw and cnti 127
+cnt_gg get p0 cnt_gp
+cnt get cnt_gg cnt_gw
 fit fold wfzfit cnt 4294967295 p0 sbase st
 nf eq fit 4294967295
 slot select nf cnt fit
@@ -653,10 +767,22 @@ cnt3 select isf cnt2 cnt
 ta select isf c 16650
 sl2 add sbase slot
 te select isf sl2 16651
-t1 fold wfzp1 1 p0 ta slot
-t2 fold wfzp1 1 t1 te en
-t3 fold wfzp1 1 t2 cnti cnt3
-ret t3
+t1__pi shr ta 7
+t1__pg get p0 t1__pi
+t1__w and ta 127
+t1__pg2 set t1__pg t1__w slot
+t1__t set p0 t1__pi t1__pg2
+t2__pi shr te 7
+t2__pg get t1__t t2__pi
+t2__w and te 127
+t2__pg2 set t2__pg t2__w en
+t2__t set t1__t t2__pi t2__pg2
+t3__pi shr cnti 7
+t3__pg get t2__t t3__pi
+t3__w and cnti 127
+t3__pg2 set t3__pg t3__w cnt3
+t3__t set t2__t t3__pi t3__pg2
+ret t3__t
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -666,39 +792,68 @@ end
 # state, the next at the sum with its length (slot table p3, np p4, i32 locals p5)
 fn wfzoff u32x128x512 u32 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
 w2 shl p1 1
-k call wfzg p2 w2
+k_gp shr w2 7
+k_gw and w2 127
+k_gg get p2 k_gp
+k get k_gg k_gw
 w3 add w2 1
-v call wfzg p2 w3
+v_gp shr w3 7
+v_gw and w3 127
+v_gg get p2 v_gp
+v get v_gg v_gw
 u call wfzuse p3 p4 p5 k v
 ln call wfzlen k u
-o call wfzg p0 p1
+o_gp shr p1 7
+o_gw and p1 127
+o_gg get p0 o_gp
+o get o_gg o_gw
 no add o ln
 ip1 add p1 1
-t fold wfzp1 1 p0 ip1 no
-ret t
+t__pi shr ip1 7
+t__pg get p0 t__pi
+t__w and ip1 127
+t__pg2 set t__pg t__w no
+t__t set p0 t__pi t__pg2
+ret t__t
 end
 # state: the code table; trip p1 writes word p2 + p1 (the instruction starts at word p2) when p1 is
 # below the length p5 of the instruction of kind p3 and operand p4 (a fold of 18 trips: the longest
 # instruction is 18 words)
 fn wfzbw u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
 ix add p2 p1
-old call wfzg p0 ix
+old_gp shr ix 7
+old_gw and ix 127
+old_gg get p0 old_gp
+old get old_gg old_gw
 b call wfzbyte p3 p4 p1
 act lt p1 p5
 val select act b old
-t fold wfzp1 1 p0 ix val
-ret t
+t__pi shr ix 7
+t__pg get p0 t__pi
+t__w and ix 127
+t__pg2 set t__pg t__w val
+t__t set p0 t__pi t__pg2
+ret t__t
 end
 # state: the code table; instruction p1 of the stackified list p2 (slot table p3, offsets p4, np
 # p5, i32 locals p6) written at its offset
 fn wfzcode u32x128x512 u32 u32x128x512 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
 w2 shl p1 1
-k call wfzg p2 w2
+k_gp shr w2 7
+k_gw and w2 127
+k_gg get p2 k_gp
+k get k_gg k_gw
 w3 add w2 1
-v call wfzg p2 w3
+v_gp shr w3 7
+v_gw and w3 127
+v_gg get p2 v_gp
+v get v_gg v_gw
 u call wfzuse p3 p5 p6 k v
 ln call wfzlen k u
-base call wfzg p4 p1
+base_gp shr p1 7
+base_gw and p1 127
+base_gg get p4 base_gp
+base get base_gg base_gw
 t fold wfzbw 18 p0 base k u ln
 ret t
 end
@@ -720,14 +875,26 @@ stk2 fold wfzstk nn stk cnt p2 nn
 rng fold wfzrng nn zr stk2 p2
 zs call wfzz
 sa fold wfzalc nn zs stk2 rng p2
-nl call wfzg sa 16640
-nv call wfzg sa 16641
+nl_gp shr 16640 7
+nl_gw and 16640 127
+nl_gg get sa nl_gp
+nl get nl_gg nl_gw
+nv_gp shr 16641 7
+nv_gw and 16641 127
+nv_gg get sa nv_gp
+nv get nv_gg nv_gw
 zo call wfzz
 off fold wfzoff nn zo stk2 sa p2 nl
 zout call wfzz
 cod fold wfzcode nn zout stk2 sa off p2 nl
-total call wfzg off nn
-flag call wfzg cnt 16640
+total_gp shr nn 7
+total_gw and nn 127
+total_gg get off total_gp
+total get total_gg total_gw
+flag_gp shr 16640 7
+flag_gw and 16640 127
+flag_gg get cnt flag_gp
+flag get flag_gg flag_gw
 f0 eq flag 0
 fits le total 65533
 g1 and f0 fits
