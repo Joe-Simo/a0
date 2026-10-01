@@ -3493,7 +3493,7 @@ What changed in the direct arm64 backend
 - Peepholes: absolute difference as `subs` + `cneg`, `(x & m) == 0` and single-bit tests as `tst`.
 - exec-bench has a second arm64 row: the whole program in A0 (a fold that generates the xorshift inputs, calls the kernel and xors the results), compiled by the direct arm64 backend, so the kernel is inlined into the loop as in the other languages' own drivers. Rows in the report: `arm64VsBestFlags` is the kernel alone called out of line from a C driver; `arm64A0DriverVsBestFlags` (and `c.arm64A0Driver`) is the A0 driver. Both are compared with the fastest of C -O3, Rust and Zig; losses stay losses.
 
-Measured (7 samples, interleaved, load gate at 10; speedup over the best of clang -O3 -march=native, Rust and Zig ReleaseFast, above 1 is faster; before = clean-load run on the merged branch)
+Measured, interleaved samples with the load gate at 10: speedup over the best of clang -O3 -march=native, Rust and Zig ReleaseFast, above 1 is faster; before = the clean-load run in results/exec-benchmark-full.json
 
 | kernel | before | C driver row | A0 driver row |
 |---|---|---|---|
@@ -3506,9 +3506,9 @@ Measured (7 samples, interleaved, load gate at 10; speedup over the best of clan
 | minmax1k | 0.75 | 1.18 tie | 1.15 tie |
 | xs4k | 0.74 | 1.00 tie | 1.00 tie |
 | fnv4k | 1.04 | 1.02 tie | 1.02 tie |
-| filter2 | 2.02 | see below | see below |
+| filter2 | 2.02 | 64 | 64 |
 
-Nothing regressed beyond the tie band; clamp (0.93) and rotl (0.95) sit at the low edge of the tie band, both within the sample spread. The tiny kernels tie because the per-call cost is the xorshift input chain of the driver, identical in every language.
+Where the numbers come from: fnv4k, xs4k, minmax1k and filter2 are in results/exec-benchmark-arm64-heavy.json, run without Zig (its table run is 20 million iterations of a 7 to 20 microsecond kernel, minutes per sample), so for those four the Zig column is the clean-load run in results/exec-benchmark-full.json (fnv4k 21084 ns, xs4k 7668, minmax1k 859, filter2 898): only on filter2 is Zig the fastest baseline, hence 898 / 13.9 = 64 where against Rust alone it is 115. The other fifteen kernels (with Zig, 7 samples) are from one interleaved run at load below 10 whose report file was not written because the Zig step of fnv4k in that run was killed under load; the rerun to write that report could not get below load 10 (other sessions held it between 40 and 130) and has to be repeated with `bun run exec-bench -- --langs=zig --kernels=<those fifteen>`. Nothing regressed beyond the tie band; clamp (0.93) and rotl (0.95) sit at the low edge of the tie band, both within the sample spread. The tiny kernels tie because the per-call cost is the xorshift input chain of the driver, identical in every language.
 
 Ties that are chains, not code quality
 - xs4k (xorshift32 stream, xor-reduced) and fnv4k (FNV-1a) are serial dependency chains (about 6 and 16 cycles per element); A0 emits the same chain as clang, so they tie at 1.00 and 1.02. A0 no longer adds a compare, select and register copy to the chain (that was the xs4k loss).
