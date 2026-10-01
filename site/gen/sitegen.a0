@@ -5,8 +5,9 @@
 # Template lines (first byte): `#` comment, `f` input file, `m` map entry, `1TEXT`/`2TEXT` a raw
 # line of pass 1/2, `<TAG` open, `.TAG CLASS` open with a class, `=TAG TEXT` a whole element,
 # `+KEY VALUE` attribute, `>` close, `"TEXT` text, `w WORD` a protocol word, `c FN ARGS` call,
-# `n R EXPR` a node named by register R (a-z, `%R` in later arguments), `s WORD ROLE` the text
-# file ROLE in chunks of at most 1000 bytes after protocol word WORD, `l ROLE` its lines as texts,
+# `n R EXPR` a node named by register R (a-z, `%R` in later arguments), `s WORD ROLE [LO [HI]]` the text
+# file ROLE in chunks of at most 1000 bytes after protocol word WORD (only the chunks that start at
+# a byte offset in [LO, HI) of the file, so a long file can be spread over several section functions), `l ROLE` its lines as texts,
 # `{NAME` / `}` a section function, `[VAR` / `]` a loop VAR times, or `[VAR FLAG` only over the rows
 # whose variable FLAG (read at the row index) is not empty (loops nest twice; variables
 # are read with the indices of the enclosing loops). In TEXT, VALUE, ARGS, EXPR and NAME:
@@ -597,12 +598,12 @@ s11 rec s10t s11r
 ret s11
 end
 # chunk state: (S, chunk start, chunk bytes, line start, done)
-fn chmore ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool) u32 u32x128x512 u32 u32 -> bool
+fn chmore ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool) u32 u32x128x512 u32 u32 u32 u32 u32 -> bool
 d at p0 4
 r select d false true
 ret r
 end
-fn chstep ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool) u32 u32x128x512 u32 u32 -> ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool)
+fn chstep ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool) u32 u32x128x512 u32 u32 u32 u32 u32 -> ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool)
 s at p0 0
 cs at p0 1
 cl at p0 2
@@ -612,7 +613,12 @@ l0 sub le ls
 l add l0 1
 t add cl l
 over gt t 1000
-co select over 1 0
+rel sub cs p5
+lo ge rel p6
+hi lt rel p7
+inr and lo hi
+ovr and over inr
+co select ovr 1 0
 ne gt cl 0
 c1 sub cl 1
 n select ne c1 0
@@ -625,16 +631,21 @@ dn ge le p4
 r rec s1 cs2 cl2 np dn
 ret r
 end
-fn opchunks (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+fn opchunks (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
 e add p3 p4
 c0 rec p0 p3 0 p3 false
 n add p4 1
-c loop chmore chstep n c0 p1 p2 e
+c loop chmore chstep n c0 p1 p2 e p3 p5 p6
 s at c 0
 cs at c 1
 cl at c 2
 ne gt cl 0
-cn select ne 1 0
+rel sub cs p3
+lo ge rel p5
+hi lt rel p6
+inr and lo hi
+nei and ne inr
+cn select nei 1 0
 c1 sub cl 1
 nn select ne c1 0
 r fold rawtext cn s p1 p2 cs nn ne
@@ -786,19 +797,31 @@ sp call tagsplit p2 a p5
 n sub sp a
 w fold decb n 0 p2 a
 c1 add sp 1
-rn sub p5 c1
+re call tagsplit p2 c1 p5
+rn sub re c1
 h call shash p2 c1 rn
 cw call whash p2 58
 iscss eq h cw
 cs call hd p2 4
 cl call hd p2 5
-fh call shash p2 c1 rn
-rg call regrole p2 fh
+rg call regrole p2 h
 rs at rg 0
 rl at rg 1
 st select iscss cs rs
 ln select iscss cl rl
-r call opchunks p0 p2 w st ln
+haslo lt re p5
+c2a add re 1
+c2 select haslo c2a p5
+sp3 call tagsplit p2 c2 p5
+n2 sub sp3 c2
+lo fold decb n2 0 p2 c2
+hashi lt sp3 p5
+c3a add sp3 1
+c3 select hashi c3a p5
+n3 sub p5 c3
+hi0 fold decb n3 0 p2 c3
+hi select hashi hi0 4294967295
+r call opchunks p0 p2 w st ln lo hi
 ret r
 end
 fn opl (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
