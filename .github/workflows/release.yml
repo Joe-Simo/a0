@@ -1,63 +1,84 @@
 name: release
+# Push a tag vX.Y.Z (see docs/RELEASING.md). Tags only: the commit this workflow pushes to main
+# does not start another run.
 on:
   push:
-    tags: ['v*']
-permissions:
-  contents: write
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+permissions: {}
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
   release:
     # macOS so the darwin binaries get ad-hoc signed by tools/release.sh.
     runs-on: macos-15
     timeout-minutes: 30
-    env:
-      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    permissions:
+      contents: write # create the release, upload its assets, push the formula to main
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: latest
+          bun-version: 1.3.4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Version and tag checks
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          # The binaries report the version baked into the tagged commit, so it must already be there.
+          bun tools/set-version.ts --check "${GITHUB_REF_NAME#v}"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "tag $GITHUB_REF_NAME is not on main" >&2; exit 1; }
+          grep -q "^# A0 v${GITHUB_REF_NAME#v}\$" RELEASE_NOTES.md || { echo "RELEASE_NOTES.md has no '# A0 $GITHUB_REF_NAME' heading" >&2; exit 1; }
       - run: bun install --frozen-lockfile
-      - name: Version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-      # Five standalone binaries (release/a0-<os>-<arch>), one MCP Bundle per binary
-      # (release/a0-mcp-<os>-<arch>.mcpb), and server.json with the bundles' URLs and SHA-256.
-      - name: Build binaries and MCP Bundles
+      - run: bun run lint
+      - run: bun run typecheck
+      # Five binaries, five MCP Bundles, release/server.json (bundle URLs and SHA-256), checksums.txt.
+      - name: Build artifacts
         run: sh tools/release.sh "$VERSION"
-      - name: Checksums
-        working-directory: release
-        run: shasum -a 256 a0-darwin-* a0-linux-* a0-windows-* a0-mcp-*.mcpb > checksums.txt && cat checksums.txt
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "A0 $GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" release/a0-darwin-* release/a0-linux-* release/a0-windows-* release/a0-mcp-*.mcpb release/checksums.txt --clobber
-      - name: Update main (server.json, Homebrew formula, plugin and extension versions)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "A0 $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "A0 $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+          fi
+          gh release upload "$GITHUB_REF_NAME" --clobber \
+            release/a0-darwin-arm64 release/a0-darwin-x64 release/a0-linux-arm64 release/a0-linux-x64 release/a0-windows-x64.exe \
+            release/a0-mcp-darwin-arm64.mcpb release/a0-mcp-darwin-x64.mcpb release/a0-mcp-linux-arm64.mcpb \
+            release/a0-mcp-linux-x64.mcpb release/a0-mcp-windows-x64.mcpb \
+            release/checksums.txt release/server.json
+          # Fail unless every expected asset is on the release.
+          gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | LC_ALL=C sort > "$RUNNER_TEMP/assets.txt"
+          printf '%s\n' a0-darwin-arm64 a0-darwin-x64 a0-linux-arm64 a0-linux-x64 a0-windows-x64.exe \
+            a0-mcp-darwin-arm64.mcpb a0-mcp-darwin-x64.mcpb a0-mcp-linux-arm64.mcpb a0-mcp-linux-x64.mcpb a0-mcp-windows-x64.mcpb \
+            checksums.txt server.json | LC_ALL=C sort > "$RUNNER_TEMP/expected.txt"
+          diff "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/assets.txt"
+      # main gets the formula's version and sha256 values and the registry manifest's bundles (the other
+      # version files were bumped before tagging and checked above).
+      # The checkout uses this job's own GITHUB_TOKEN; no other secret is involved.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: main
+          path: main-tree
+      - name: Update main (Formula/a0.rb and server.json)
+        working-directory: main-tree
         run: |
-          cp server.json "$RUNNER_TEMP/server.json"
-          git checkout -- server.json
-          git checkout main
-          cp "$RUNNER_TEMP/server.json" server.json
-          sh tools/homebrew-formula.sh "$VERSION" release/checksums.txt
-          for f in plugin/.claude-plugin/plugin.json plugin/.codex-plugin/plugin.json gemini-extension.json editors/vscode/package.json; do
-            node -e 'const fs=require("node:fs");const [f,v]=process.argv.slice(1);const j=JSON.parse(fs.readFileSync(f,"utf8"));j.version=v;fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")' "$f" "$VERSION"
-          done
-          # The root JSON files are under biome (bun run lint).
-          bunx biome format --write server.json gemini-extension.json
+          sh ../tools/homebrew-formula.sh "$VERSION" ../release/checksums.txt Formula/a0.rb
+          node -e 'const fs=require("node:fs");const [rel,dst]=process.argv.slice(1);const r=JSON.parse(fs.readFileSync(rel,"utf8"));const d=JSON.parse(fs.readFileSync(dst,"utf8"));d.version=r.version;d.packages=r.packages;fs.writeFileSync(dst,JSON.stringify(d,null,2)+"\n")' ../release/server.json server.json
+          ../node_modules/.bin/biome format --write server.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.json packaging/homebrew/a0.rb plugin gemini-extension.json editors/vscode/package.json
-          git diff --cached --quiet || { git commit -m "Release $GITHUB_REF_NAME: server.json, Homebrew formula, plugin and extension versions" && git push origin main; }
-      - name: Push formula to tap Joe-Simo/homebrew-a0
-        if: ${{ env.TAP_TOKEN != '' }}
-        run: |
-          git clone "https://x-access-token:${TAP_TOKEN}@github.com/Joe-Simo/homebrew-a0.git" tap
-          mkdir -p tap/Formula
-          cp packaging/homebrew/a0.rb tap/Formula/a0.rb
-          cd tap
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/a0.rb
-          git diff --cached --quiet || { git commit -m "a0 $GITHUB_REF_NAME" && git push; }
+          git add -u
+          if git diff --cached --quiet; then
+            echo "main already carries $GITHUB_REF_NAME"
+          else
+            git commit -m "Release $GITHUB_REF_NAME: Formula/a0.rb checksums and server.json bundles"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

@@ -1,7 +1,7 @@
 # Install the a0 binary from GitHub Releases on Windows.
 #   irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
 # Environment:
-#   A0_VERSION      release tag to install (e.g. v0.8.15); default: latest
+#   A0_VERSION      release tag to install (e.g. v0.8.16); default: latest
 #   A0_INSTALL_DIR  destination directory; default: $env:LOCALAPPDATA\Programs\a0
 #   A0_RELEASE_URL  base URL holding the assets and checksums.txt (overrides A0_VERSION; for mirrors)
 $ErrorActionPreference = 'Stop'

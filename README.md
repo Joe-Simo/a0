@@ -28,8 +28,9 @@ instructions, [STATUS.md](STATUS.md) for the current results, loss ledger, known
 A0 is a single self-contained binary: no Node, no Bun.
 
 ```bash
-# macOS / Linux: Homebrew
-brew install joe-simo/a0/a0
+# macOS / Linux: Homebrew (this repository is the tap; no separate tap repository)
+brew tap Joe-Simo/a0 https://github.com/Joe-Simo/a0
+brew install a0
 
 # macOS / Linux: script (detects OS/arch, verifies SHA-256, installs to ~/.local/bin)
 curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
@@ -40,7 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh
 irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex
 ```
 
-Both scripts accept `A0_VERSION=v0.8.15` to pin a release and `A0_INSTALL_DIR` to change the destination. Or download a binary from the [latest release](https://github.com/Joe-Simo/a0/releases/latest) by hand and check it against `checksums.txt`. Then:
+Both scripts accept `A0_VERSION=v0.8.16` to pin a release and `A0_INSTALL_DIR` to change the destination. Or download a binary from the [latest release](https://github.com/Joe-Simo/a0/releases/latest) by hand and check it against `checksums.txt`. `a0 --version` prints the release and compiler version. Then:
 
 ```bash
 printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0

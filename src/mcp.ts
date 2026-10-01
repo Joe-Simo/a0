@@ -31,6 +31,7 @@ import { formatDense } from './dense.js';
 import { diag } from './diagnostics.js';
 import { EditSession, revision } from './edit.js';
 import { DENSE_EXTENSION, isDensePath, link } from './link.js';
+import { A0_VERSION } from './version.js';
 
 /** Largest text any tool returns, in characters. */
 export const MAX_OUTPUT = 1 << 20;
@@ -157,7 +158,7 @@ export async function createServer(launch: string): Promise<McpServer> {
       'dense view: the function (or signatures) in the dense syntax; replies under this handle are dense too',
     );
 
-  const server = new McpServer({ name: 'a0', version: '0.1.0' });
+  const server = new McpServer({ name: 'a0', version: A0_VERSION });
 
   server.registerTool(
     'a0_open',
