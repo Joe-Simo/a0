@@ -1,0 +1,749 @@
+{
+  "generatedAt": "2026-10-01T04:35:24.354Z",
+  "status": "run with scripted replies from scratch/set-pairedhaiku-a.json (subject: paired replay: the recorded baseline first replies of haiku subagents, rejected by the diagnostics table; retry answered by a fresh haiku subagent)",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.rules-merged.txt alone: rules and edit protocol in one text (one repair)",
+  "primerMode": "rules-merged",
+  "taskSet": "a",
+  "programView": "all",
+  "systemLayout": "separate",
+  "a0View": "plain",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "a0/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; Python, Go, Java, C# and C++ cells carry their own u32 semantics note and are accepted by python3, go build, javac, dotnet build and clang++ with a generated driver (tools/ai-edit-langs.ts).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "1cfdf9d55300912e19e39162caa5da9b9d9aafc641e122ed9ac8d38a0f2beaa2",
+  "representations": [
+    "a0"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "affine-sign",
+      "kind": "targeted-edit",
+      "tests": 3
+    },
+    {
+      "id": "clamp-both",
+      "kind": "multi-node-edit",
+      "tests": 4
+    },
+    {
+      "id": "rotl-fix",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "add-cube",
+      "kind": "create",
+      "tests": 4
+    },
+    {
+      "id": "absdiff",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "xor4",
+      "kind": "multi-node-edit",
+      "tests": 3
+    },
+    {
+      "id": "min3",
+      "kind": "multi-node-edit",
+      "tests": 4
+    },
+    {
+      "id": "sq-twice",
+      "kind": "multi-node-edit",
+      "tests": 4
+    },
+    {
+      "id": "sum-squares",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "loop-inclusive",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "record-flag",
+      "kind": "comprehension-edit",
+      "tests": 3
+    },
+    {
+      "id": "byte-select",
+      "kind": "targeted-edit",
+      "tests": 3
+    },
+    {
+      "id": "saturating-add",
+      "kind": "comprehension-edit",
+      "tests": 4
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "affine-sign/a0": [],
+      "affine-sign/a0-original-must-fail": [],
+      "clamp-both/a0": [],
+      "clamp-both/a0-original-must-fail": [],
+      "rotl-fix/a0": [],
+      "rotl-fix/a0-original-must-fail": [],
+      "add-cube/a0": [],
+      "add-cube/a0-original-must-fail": [],
+      "absdiff/a0": [],
+      "absdiff/a0-original-must-fail": [],
+      "xor4/a0": [],
+      "xor4/a0-original-must-fail": [],
+      "min3/a0": [],
+      "min3/a0-original-must-fail": [],
+      "sq-twice/a0": [],
+      "sq-twice/a0-original-must-fail": [],
+      "sum-squares/a0": [],
+      "sum-squares/a0-original-must-fail": [],
+      "loop-inclusive/a0": [],
+      "loop-inclusive/a0-original-must-fail": [],
+      "record-flag/a0": [],
+      "record-flag/a0-original-must-fail": [],
+      "byte-select/a0": [],
+      "byte-select/a0-original-must-fail": [],
+      "saturating-add/a0": [],
+      "saturating-add/a0-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "a0/structured": {
+      "trials": 13,
+      "meanView": 48,
+      "meanToolContext": 95
+    }
+  },
+  "trials": [
+    {
+      "task": "affine-sign",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 61,
+        "output": 5,
+        "total": 184
+      },
+      "outputTokensLocal": {
+        "o200k_base": 5,
+        "cl100k_base": 5
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 2.416334000000006
+    },
+    {
+      "task": "clamp-both",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 88,
+        "output": 51,
+        "total": 257
+      },
+      "outputTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 51,
+            "cl100k_base": 51
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1.5735409999999774
+    },
+    {
+      "task": "rotl-fix",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 92,
+        "output": 5,
+        "total": 215
+      },
+      "outputTokensLocal": {
+        "o200k_base": 5,
+        "cl100k_base": 5
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1.2442499999999654
+    },
+    {
+      "task": "add-cube",
+      "kind": "create",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 60,
+        "output": 24,
+        "total": 202
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.9703339999998661
+    },
+    {
+      "task": "absdiff",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 63,
+        "output": 33,
+        "total": 214
+      },
+      "outputTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 33,
+            "cl100k_base": 33
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7457500000000437
+    },
+    {
+      "task": "xor4",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 60
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 78,
+        "output": 18,
+        "total": 214
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.608791999999994
+    },
+    {
+      "task": "min3",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 77,
+        "output": 52,
+        "total": 247
+      },
+      "outputTokensLocal": {
+        "o200k_base": 52,
+        "cl100k_base": 52
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 52,
+            "cl100k_base": 52
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7182080000000042
+    },
+    {
+      "task": "sq-twice",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 51
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 76,
+        "output": 13,
+        "total": 207
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.5617079999999532
+    },
+    {
+      "task": "sum-squares",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 50,
+        "cl100k_base": 50
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 236,
+        "workflowPrimer": 0,
+        "toolContext": 337,
+        "output": 62,
+        "total": 635
+      },
+      "outputTokensLocal": {
+        "o200k_base": 62,
+        "cl100k_base": 62
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "sumto(4) = 6, expected 14",
+            "sumto(10) = 45, expected 285",
+            "sumto(70000) = 2449965000, expected 3148892776"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 22
+          },
+          "repair": "Rejected:\nsumto(4) = 6, expected 14\nsumto(10) = 45, expected 285\nsumto(70000) = 2449965000, expected 3148892776\n\nCurrent view:\ne0\nfn addi u32 u32 -> u32\ns add p0 p1\nret s\nend\ng0\nfn addi u32 u32 -> u32 end\nfn sumto u32 -> u32 end\nTry again."
+        },
+        {
+          "status": "wrong-output",
+          "failures": [
+            "sumto(4) = 0, expected 14",
+            "sumto(10) = 0, expected 285",
+            "sumto(70000) = 0, expected 3148892776"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 40,
+            "cl100k_base": 40
+          },
+          "repair": "Rejected:\nsumto(4) = 0, expected 14\nsumto(10) = 0, expected 285\nsumto(70000) = 0, expected 3148892776\n\nCurrent view:\ne0\nfn addi u32 u32 -> u32\ns add p0 p1\nr fold addpow p0 0\nret r\nend\nfn addpow u32 u32 -> u32 end\ng0\nfn addpow u32 u32 -> u32 end\nfn addi u32 u32 -> u32 end\nfn sumto u32 -> u32 end\nTry again."
+        }
+      ],
+      "failures": [
+        "sumto(4) = 0, expected 14",
+        "sumto(10) = 0, expected 285",
+        "sumto(70000) = 0, expected 3148892776"
+      ],
+      "wallMs": 49.143583000000035
+    },
+    {
+      "task": "loop-inclusive",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 65,
+        "cl100k_base": 65
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 101,
+        "output": 6,
+        "total": 225
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.762333000000126
+    },
+    {
+      "task": "record-flag",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 76,
+        "output": 28,
+        "total": 222
+      },
+      "outputTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 28
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 28,
+            "cl100k_base": 28
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6236670000000686
+    },
+    {
+      "task": "byte-select",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 65,
+        "output": 6,
+        "total": 189
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.44729099999995015
+    },
+    {
+      "task": "saturating-add",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 65,
+        "output": 47,
+        "total": 230
+      },
+      "outputTokensLocal": {
+        "o200k_base": 47,
+        "cl100k_base": 47
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 47,
+            "cl100k_base": 47
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7482919999999922
+    }
+  ]
+}

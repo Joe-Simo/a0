@@ -1165,12 +1165,17 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.match(typeErr.fix ?? '', /u32/);
   assert.deepEqual(Object.keys(typeErr.toJSON()).sort(), [
     'actual',
+    'applicability',
     'code',
+    'edits',
     'expected',
     'fix',
+    'id',
     'line',
     'message',
   ]);
+  // The coarse class stays `code`; the table code is `id`.
+  assert.equal(typeErr.id, 'A0201');
 
   const session = new EditSession(parseAndValidate('fn f u32 -> u32\na add p0 1\nret a\nend\n'));
   session.open('f');
@@ -1185,7 +1190,7 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.ok(unknown instanceof A0Error);
   assert.equal(unknown.code, 'handle');
   assert.match(unknown.fix ?? '', /exactly as shown/);
-  assert.match(formatDiagnostic(unknown), /^handle: .* fix: /);
+  assert.match(formatDiagnostic(unknown), /^handle: .* fix: .* \[A0611\]$/);
 });
 
 test('linker: use lines resolve relative paths once, reject cycles and duplicate names, map lines', async () => {
@@ -1717,11 +1722,11 @@ test('guessable forms: `id F args` calls F, udiv/urem are div/rem, and near miss
   // Nested operands are not A0; the fix spells out the two lines.
   assert.equal(
     diag('fn f u32 -> u32\nc lt p0 1\nr select c (sub p0 1) 0\nret r\nend'),
-    'parse: line 3: nested operand: A0 has one op per line fix: one op per line: write `r1 sub p0 1` above, then `r select c r1 0`',
+    'parse: line 3: nested operand: A0 has one op per line fix: one op per line: write `r1 sub p0 1` above, then `r select c r1 0` Reply `fix all` to apply it. [A0010]',
   );
   assert.match(
     diag('fn f u32 -> (u32,u32)\na add p0 1\nret (a, p0)\nend'),
-    /fix: write `ret rec a p0`$/,
+    /fix: write `ret rec a p0` Reply `fix all` to apply it\. \[A0010\]$/,
   );
   // Record vs array access.
   assert.match(

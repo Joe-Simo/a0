@@ -1,0 +1,780 @@
+{
+  "generatedAt": "2026-10-01T04:35:27.103Z",
+  "status": "run with scripted replies from scratch/set-pairedhaiku-f.json (subject: paired replay: the recorded baseline first replies of haiku subagents, rejected by the diagnostics table; retry answered by a fresh haiku subagent)",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.rules-merged.txt alone: rules and edit protocol in one text (one repair)",
+  "primerMode": "rules-merged",
+  "taskSet": "f",
+  "programView": "all",
+  "systemLayout": "separate",
+  "a0View": "plain",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "a0/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; Python, Go, Java, C# and C++ cells carry their own u32 semantics note and are accepted by python3, go build, javac, dotnet build and clang++ with a generated driver (tools/ai-edit-langs.ts).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "2c02b500a28a44938379d2586b9f89dd6532ad500a437b0b242db252884f08f0",
+  "representations": [
+    "a0"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "f-min4-seed",
+      "kind": "comprehension-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-third-index",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "f-advance-wrap",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-bump-cap",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-divrem-pair",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-remaining-order",
+      "kind": "targeted-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-sumlow-bound",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "f-setlow-or",
+      "kind": "targeted-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-sumsq-helper",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-countabove-gt",
+      "kind": "comprehension-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-avg4-floor",
+      "kind": "comprehension-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-addover-bool",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "f-highbyte-shr",
+      "kind": "targeted-edit",
+      "tests": 6
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "f-min4-seed/a0": [],
+      "f-min4-seed/a0-original-must-fail": [],
+      "f-third-index/a0": [],
+      "f-third-index/a0-original-must-fail": [],
+      "f-advance-wrap/a0": [],
+      "f-advance-wrap/a0-original-must-fail": [],
+      "f-bump-cap/a0": [],
+      "f-bump-cap/a0-original-must-fail": [],
+      "f-divrem-pair/a0": [],
+      "f-divrem-pair/a0-original-must-fail": [],
+      "f-remaining-order/a0": [],
+      "f-remaining-order/a0-original-must-fail": [],
+      "f-sumlow-bound/a0": [],
+      "f-sumlow-bound/a0-original-must-fail": [],
+      "f-setlow-or/a0": [],
+      "f-setlow-or/a0-original-must-fail": [],
+      "f-sumsq-helper/a0": [],
+      "f-sumsq-helper/a0-original-must-fail": [],
+      "f-countabove-gt/a0": [],
+      "f-countabove-gt/a0-original-must-fail": [],
+      "f-avg4-floor/a0": [],
+      "f-avg4-floor/a0-original-must-fail": [],
+      "f-addover-bool/a0": [],
+      "f-addover-bool/a0-original-must-fail": [],
+      "f-highbyte-shr/a0": [],
+      "f-highbyte-shr/a0-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "a0/structured": {
+      "trials": 13,
+      "meanView": 50,
+      "meanToolContext": 121
+    }
+  },
+  "trials": [
+    {
+      "task": "f-min4-seed",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 76,
+        "cl100k_base": 76
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 104,
+        "output": 13,
+        "total": 235
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 2.209457999999927
+    },
+    {
+      "task": "f-third-index",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 69,
+        "output": 6,
+        "total": 193
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7261660000000347
+    },
+    {
+      "task": "f-advance-wrap",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 79,
+        "output": 22,
+        "total": 219
+      },
+      "outputTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 22
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 22
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.7822499999999764
+    },
+    {
+      "task": "f-bump-cap",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 74,
+        "output": 22,
+        "total": 214
+      },
+      "outputTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 22
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 22
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6308329999999387
+    },
+    {
+      "task": "f-divrem-pair",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 236,
+        "workflowPrimer": 0,
+        "toolContext": 139,
+        "output": 58,
+        "total": 433
+      },
+      "outputTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 58
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "type: divrem.ret: expected u32, got (u32,u32) fix: return a u32 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> (u32,u32)` [A0201]"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          },
+          "repair": "Rejected:\ntype: divrem.ret: expected u32, got (u32,u32) fix: return a u32 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> (u32,u32)` [A0201]\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 37,
+            "cl100k_base": 37
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1.599375000000009
+    },
+    {
+      "task": "f-remaining-order",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 70,
+        "output": 6,
+        "total": 194
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.41408400000000256
+    },
+    {
+      "task": "f-sumlow-bound",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 62,
+        "cl100k_base": 62
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 236,
+        "workflowPrimer": 0,
+        "toolContext": 262,
+        "output": 56,
+        "total": 554
+      },
+      "outputTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 56
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "sumlow(0) = 6, expected 15",
+            "sumlow(1) = 7, expected 16",
+            "sumlow(10) = 16, expected 25",
+            "sumlow(100) = 106, expected 115",
+            "sumlow(4294967295) = 5, expected 14"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 8,
+            "cl100k_base": 8
+          },
+          "repair": "Rejected:\nsumlow(0) = 6, expected 15\nsumlow(1) = 7, expected 16\nsumlow(10) = 16, expected 25\nsumlow(100) = 106, expected 115\nsumlow(4294967295) = 5, expected 14\n\nCurrent view:\ne0\nfn sumlow u32 -> u32\nr fold addlow 6 p0\nret r\nend\nfn addlow u32 u32 -> u32 end\ng0\nfn addlow u32 u32 -> u32 end\nfn sumlow u32 -> u32 end\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 48,
+            "cl100k_base": 48
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 4.386957999999936
+    },
+    {
+      "task": "f-setlow-or",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 36,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 81,
+        "output": 6,
+        "total": 205
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.5824999999999818
+    },
+    {
+      "task": "f-sumsq-helper",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 96,
+        "output": 39,
+        "total": 253
+      },
+      "outputTokensLocal": {
+        "o200k_base": 39,
+        "cl100k_base": 39
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 39,
+            "cl100k_base": 39
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.815291000000002
+    },
+    {
+      "task": "f-countabove-gt",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 83,
+        "cl100k_base": 83
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 236,
+        "workflowPrimer": 0,
+        "toolContext": 242,
+        "output": 59,
+        "total": 537
+      },
+      "outputTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 59
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0` Reply `fix all` to apply it. [A0010]"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 28,
+            "cl100k_base": 28
+          },
+          "repair": "Rejected:\nparse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0` Reply `fix all` to apply it. [A0010]\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "type: countabove.el: parameter p2 out of range fix: countabove has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn countabove ...` block with the parameter in its signature [A0105]"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 31,
+            "cl100k_base": 31
+          },
+          "repair": "Rejected:\ntype: countabove.el: parameter p2 out of range fix: countabove has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn countabove ...` block with the parameter in its signature [A0105]\n\nTry again."
+        }
+      ],
+      "failures": [
+        "type: countabove.el: parameter p2 out of range fix: countabove has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn countabove ...` block with the parameter in its signature [A0105]"
+      ],
+      "wallMs": 1.5219999999999345
+    },
+    {
+      "task": "f-avg4-floor",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 76,
+        "cl100k_base": 76
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 126,
+        "output": 19,
+        "total": 263
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.6690830000000005
+    },
+    {
+      "task": "f-addover-bool",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 236,
+        "workflowPrimer": 0,
+        "toolContext": 161,
+        "output": 42,
+        "total": 439
+      },
+      "outputTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "type: addover.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn addover u32 u32 -> bool` [A0201]"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          },
+          "repair": "Rejected:\ntype: addover.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn addover u32 u32 -> bool` [A0201]\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.9364590000000135
+    },
+    {
+      "task": "f-highbyte-shr",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 118,
+        "cl100k_base": 115
+      },
+      "viewTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 0,
+        "toolContext": 73,
+        "output": 6,
+        "total": 197
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 0.42191700000000765
+    }
+  ]
+}

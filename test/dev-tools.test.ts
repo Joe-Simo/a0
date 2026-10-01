@@ -80,6 +80,14 @@ test('gate-scope: unknown source runs everything; --light keeps only the cheap s
   assert.ok(light.skipped.some((s) => s.step === 'verify'));
 });
 
+test('gate-scope: a reject-corpus case needs the unit tests only', () => {
+  assert.deepEqual(ids(['corpus/reject/op-case.a0', 'corpus/reject/op-case.fixed.a0']), [
+    'lint',
+    'typecheck',
+    'test',
+  ]);
+});
+
 test('gate-scope: every chosen step carries a reason; callers can only add steps', () => {
   const s = computeScope(REPO, ['src/riscv64.ts']);
   for (const step of s.steps) assert.ok(step.reasons.length > 0);

@@ -175,7 +175,7 @@ function applyA0(
       parseAndValidate(body);
       return { source: body };
     } catch (e) {
-      return { source, error: formatDiagnostic(e) };
+      return { source, error: formatDiagnostic(e, false) };
     }
   }
   if (session === undefined) return { source, error: 'no session' };
@@ -213,7 +213,7 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
   try {
     program = parseAndValidate(source);
   } catch (e) {
-    return [`invalid A0: ${formatDiagnostic(e)}`];
+    return [`invalid A0: ${formatDiagnostic(e, false)}`];
   }
   for (const t of tests) {
     const fn = program.byName.get(t.fn) as TypedFunc | undefined;
@@ -787,9 +787,12 @@ async function main(): Promise<void> {
     }
     if (!reps.includes('a0') && !reps.includes('ts') && !reps.includes('rust')) continue;
     selfCheck[`${task.id}/a0`] = await acceptA0(task.reference.a0, task.tests);
-    selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
     selfCheck[`${task.id}/a0-original-must-fail`] =
       (await acceptA0(task.a0Source, task.tests)).length > 0 ? [] : ['original already passes'];
+    // An A0-only run (A0_EXPERIMENT_REPS=a0) checks only the A0 references: the TS and Rust
+    // toolchains are not on its path.
+    if (reps.length === 1 && reps[0] === 'a0') continue;
+    selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
     selfCheck[`${task.id}/ts-original-must-fail`] =
       (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
     selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);

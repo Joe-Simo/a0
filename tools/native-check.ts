@@ -5,7 +5,10 @@
  * at run time. `dist/native/a0 check FILE` reads the file, runs the A0 lexer, parser and
  * checker, prints `ok` or the diagnostic, and exits with the diagnostic code (0 ok, 1 parse,
  * 2 structure, 3 type, 4 limit; 64 usage or unreadable file, 65 over the source limit).
- * The self-hosted front end checks one file: `use` lines are parsed, not linked.
+ * The self-hosted front end checks one file: `use` lines are parsed, not linked. An unknown name
+ * (a type, a node, a callee, a fold or loop body, a loop predicate) also prints the code of its row
+ * in the diagnostics table and, when one is close, what it probably meant (compiler/suggest.a0,
+ * the rule of src/diagnostics.ts spellingSuggestion); every other diagnostic keeps its class.
  *
  * Verification: every source of the front-end set (tools/front-end-sources.ts: small and error
  * programs, the most functions one source holds, the examples, lex.a0, site/ui.a0), the
@@ -24,20 +27,81 @@ import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { CORPUS_FUNCTIONS, CORPUS_SEED, closures, generateCorpus } from './corpus.js';
 import { KERNELS } from './exec-bench-kernels.js';
-import { frontEndSources } from './front-end-sources.js';
+import { frontEndSources, UNKNOWN_NAMES } from './front-end-sources.js';
 import { ILL_TYPED, NONE, refCheckWords } from './ref-check.js';
-import { FRONT_END_SOURCE_LIMIT } from './ref-parse.js';
+import { FRONT_END_SOURCE_LIMIT, refSuggest } from './ref-parse.js';
 
 export const NATIVE_DIR = join('dist', 'native');
 export const NATIVE_A0 = join(NATIVE_DIR, 'a0');
 
-/** checkio writes 4 header words first; the tables after them are not read by the driver. */
-const OUTPUT_WORDS = 4;
+/**
+ * checkio writes 4 header words first and the tables after them, which the driver does not read;
+ * suggestio writes 5 words and a 64-byte name, so the output capacity holds that.
+ */
+const OUTPUT_WORDS = 72;
+
+/** The words after `A0` of each rule `suggestio` reports, as the executable prints them. */
+const RULE_TEXT: Readonly<Record<number, string>> = {
+  1: 'unknown type',
+  101: 'undefined node',
+  102: 'unknown callee',
+  103: 'unknown fold or loop body',
+  104: 'unknown loop predicate',
+};
+
+/**
+ * The line the executable prints for the words of `suggestio` on `src`, or null for rule 0:
+ * `A0102 unknown callee 'mull': did you mean 'mul'?`.
+ */
+export function suggestionLine(words: readonly number[], src: string): string | null {
+  const [rule, mode, len, start, nlen] = words as [number, number, number, number, number];
+  if (rule === 0) return null;
+  const name = Buffer.from(src)
+    .subarray(start, start + nlen)
+    .toString('latin1');
+  const guess = String.fromCharCode(...words.slice(5, 5 + len));
+  const tail =
+    mode === 1
+      ? `: did you mean '${guess}'?`
+      : mode === 2
+        ? ': defined later, so move it above'
+        : '';
+  return `A${String(rule).padStart(4, '0')} ${RULE_TEXT[rule] ?? 'unknown name'} '${name}'${tail}`;
+}
 
 const MAIN = `#include <stdio.h>
 #include <string.h>
 #include "checker.c"
 static a0_io io;
+static unsigned char src[${FRONT_END_SOURCE_LIMIT + 1}];
+static const struct { unsigned rule; const char *text; } rules[] = {
+  {1u, "unknown type"}, {101u, "undefined node"}, {102u, "unknown callee"},
+  {103u, "unknown fold or loop body"}, {104u, "unknown loop predicate"}};
+/* An unknown name: ask suggestio about the rejected token and print its row and the guess. */
+static void suggest(size_t n, uint32_t tok) {
+  io.position = 0u;
+  io.noutput = 0u;
+  io.input[0] = (uint32_t)n;
+  for (size_t k = 0; k < n; k++) io.input[k + 1] = src[k];
+  io.input[n + 1] = tok;
+  io.ninput = (uint32_t)n + 2u;
+  a0_suggestio(&io);
+  uint32_t rule = io.output[0], mode = io.output[1], len = io.output[2];
+  uint32_t start = io.output[3], nlen = io.output[4];
+  if (rule == 0u) return;
+  const char *text = "unknown name";
+  for (size_t k = 0; k < sizeof rules / sizeof rules[0]; k++)
+    if (rules[k].rule == rule) text = rules[k].text;
+  fprintf(stderr, "A%04u %s '%.*s'", rule, text, (int)nlen, (const char *)src + start);
+  if (mode == 1u) {
+    fputs(": did you mean '", stderr);
+    for (uint32_t k = 0; k < len; k++) fputc((int)io.output[5 + k], stderr);
+    fputs("'?", stderr);
+  } else if (mode == 2u) {
+    fputs(": defined later, so move it above", stderr);
+  }
+  fputc('\\n', stderr);
+}
 int main(int argc, char **argv) {
   if (argc != 3 || strcmp(argv[1], "check") != 0) {
     fputs("usage: a0 check <file.a0>\\n", stderr);
@@ -48,7 +112,6 @@ int main(int argc, char **argv) {
     fprintf(stderr, "a0: cannot read %s\\n", argv[2]);
     return 64;
   }
-  static unsigned char src[${FRONT_END_SOURCE_LIMIT + 1}];
   size_t n = fread(src, 1, sizeof src, f);
   int bad = ferror(f);
   fclose(f);
@@ -70,9 +133,11 @@ int main(int argc, char **argv) {
     return 0;
   }
   const char *kind = code < 5u ? kinds[code] : "unknown";
-  if (io.output[2] == 0xffffffffu)
-    fprintf(stderr, "%s: %s error %u at token %u\\n", argv[2], kind, code, io.output[3]);
-  else
+  if (io.output[2] == 0xffffffffu) {
+    uint32_t tok = io.output[3];
+    fprintf(stderr, "%s: %s error %u at token %u\\n", argv[2], kind, code, tok);
+    if (code == 1u || code == 2u) suggest(n, tok);
+  } else
     fprintf(stderr, "%s: %s error %u in function %u at node %u\\n", argv[2], kind, code,
             io.output[2], io.output[3]);
   return (int)code;
@@ -84,9 +149,9 @@ export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; 
   const clang = findClang().path;
   if (clang === undefined) throw new Error('clang not found');
   const t0 = performance.now();
-  const program = (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).program;
+  const program = (await link('compiler/native.a0', (p) => readFile(p, 'utf8'))).program;
   const c = compile(program, 'c', {
-    ioInputCapacity: FRONT_END_SOURCE_LIMIT + 2,
+    ioInputCapacity: FRONT_END_SOURCE_LIMIT + 3,
     ioOutputCapacity: OUTPUT_WORDS,
   }).text;
   await mkdir(NATIVE_DIR, { recursive: true });
@@ -111,6 +176,8 @@ interface Row {
   readonly got: [number, number, number] | null;
   readonly ms: number;
   readonly ok: boolean;
+  /** The suggestion line the reference predicts for a token error, and the one printed (null: none). */
+  readonly suggestion: { readonly expected: string | null; readonly got: string | null } | null;
 }
 
 async function sources(): Promise<[string, string][]> {
@@ -118,6 +185,7 @@ async function sources(): Promise<[string, string][]> {
   const out: [string, string][] = [
     ...(await frontEndSources()),
     ...ILL_TYPED.map(([l, s]): [string, string] => [`ill-typed/${l}`, s]),
+    ...UNKNOWN_NAMES.map(([id, s], k): [string, string] => [`unknown-name/${id}-${k}`, s]),
     ...closures('corpus', corpus).filter(([, s]) => Buffer.byteLength(s) <= FRONT_END_SOURCE_LIMIT),
     ...KERNELS.map((k): [string, string] => [`kernel/${k.name}`, k.a0]),
   ];
@@ -152,7 +220,21 @@ async function main(): Promise<void> {
     const r = runTool(NATIVE_A0, ['check', file]);
     const ms = performance.now() - t0;
     const got = parseDiagnostic(r.status ?? -1, r.stderr);
-    const ok = got?.every((v, k) => v === expected[k]) === true;
+    // A token error also carries the row of the diagnostics table and the suggestion.
+    const tokenError = expected[0] !== 0 && expected[1] === NONE && expected[0] <= 2;
+    const suggestion = tokenError
+      ? {
+          expected: suggestionLine(refSuggest(src, expected[2]), src),
+          got:
+            r.stderr
+              .split('\n')
+              .find((l) => /^A[0-9]{4} /.test(l))
+              ?.trimEnd() ?? null,
+        }
+      : null;
+    const ok =
+      got?.every((v, k) => v === expected[k]) === true &&
+      (suggestion === null || suggestion.expected === suggestion.got);
     rows.push({
       label,
       bytes: Buffer.byteLength(src),
@@ -160,10 +242,11 @@ async function main(): Promise<void> {
       got,
       ms: Math.round(ms * 10) / 10,
       ok,
+      suggestion,
     });
     if (!ok)
       process.stdout.write(
-        `  FAIL ${label}: expected ${expected.join(' ')}, got ${got?.join(' ') ?? r.stderr}\n`,
+        `  FAIL ${label}: expected ${expected.join(' ')}, got ${got?.join(' ') ?? r.stderr}${suggestion === null ? '' : ` (suggestion expected ${suggestion.expected}, got ${suggestion.got})`}\n`,
       );
   }
   const failed = rows.filter((r) => !r.ok);
@@ -180,7 +263,7 @@ async function main(): Promise<void> {
         executable: NATIVE_A0,
         build: {
           method:
-            'compiler/check.a0 linked with parse.a0 and lex.a0, entry checkio, compiled by the A0 C backend (src/backends.ts) and clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node at run time',
+            'compiler/native.a0 (compiler/check.a0 and compiler/suggest.a0 linked with parse.a0 and lex.a0), entries checkio and suggestio, compiled by the A0 C backend (src/backends.ts) and clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node at run time',
           functions: build.fns,
           cBytes: build.cBytes,
           ms: build.ms,
@@ -193,6 +276,15 @@ async function main(): Promise<void> {
           agree: rows.length - failed.length,
           rejectedByReference: rejected,
           failed: failed.length,
+          suggestions: {
+            method:
+              'for a token error (code 1 or 2) the executable also prints `A0nnnn ...` (compiler/suggest.a0 suggestio on the rejected token); that line must equal the one built from refSuggest (tools/ref-parse.ts)',
+            checked: rows.filter((r) => r.suggestion !== null).length,
+            printed: rows.filter((r) => r.suggestion?.got != null).length,
+            agree: rows.filter(
+              (r) => r.suggestion !== null && r.suggestion.expected === r.suggestion.got,
+            ).length,
+          },
         },
         rows,
       },

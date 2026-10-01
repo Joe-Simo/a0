@@ -1,0 +1,42 @@
+{
+ "affine-sign/a0/structured": [
+  "b sub a p2"
+ ],
+ "clamp-both/a0/structured": [
+  "fn clamp u32 u32 u32 -> u32\nc1 lt p0 p1\nx1 select c1 p1 p0\nc2 lt p2 x1\nr select c2 p2 x1\nret r\nend"
+ ],
+ "rotl-fix/a0/structured": [
+  "r shr p0 n"
+ ],
+ "add-cube/a0/structured": [
+  "fn cube u32 -> u32\ns call sq p0\nr mul p0 s\nret r\nend"
+ ],
+ "absdiff/a0/structured": [
+  "fn absdiff u32 u32 -> u32\nc lt p0 p1\nd1 sub p0 p1\nd2 sub p1 p0\nd select c d2 d1\nret d\nend"
+ ],
+ "xor4/a0/structured": [
+  "a xor p0 p1\nb xor a p2\nc xor b p3"
+ ],
+ "min3/a0/structured": [
+  "fn min3 u32 u32 u32 -> u32\nc1 lt p1 p0\nm12 select c1 p1 p0\nc2 lt p2 m12\nr select c2 p2 m12\nret r\nend"
+ ],
+ "sq-twice/a0/structured": [
+  "fn quad u32 -> u32\nx call sq p0\ny call sq x\nret y\nend"
+ ],
+ "sum-squares/a0/structured": [
+  "fn addsq u32 u32 -> u32\nisq mul p1 p1\nr add p0 isq\nret r\nend\nfn sumto u32 -> u32\nresult fold addsq 0 p0\nret result\nend",
+  "fn sumto u32 -> u32\nresult fold addsq p0 0\nret result\nend\nfn addsq u32 u32 -> u32\nisq mul p1 p1\nr add p0 isq\nret r\nend"
+ ],
+ "loop-inclusive/a0/structured": [
+  "c le p0 p2"
+ ],
+ "record-flag/a0/structured": [
+  "fn pick (u32,bool) -> u32\nv at p0 0\nf at p0 1\ninc add v 1\nr select f inc v\nret r\nend"
+ ],
+ "byte-select/a0/structured": [
+  "s shr p0 16"
+ ],
+ "saturating-add/a0/structured": [
+  "fn sadd u32 u32 -> u32\ns add p0 p1\nc lt s p0\nmax_val sub 0 1\nr select c max_val s\nret r\nend"
+ ]
+}

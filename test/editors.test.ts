@@ -22,6 +22,11 @@ test('tree-sitter grammar parses every .a0 file in the repository without errors
   })
     .split('\n')
     .filter((f) => f.endsWith('.a0'))
+    // The reject corpus holds programs that are invalid on purpose: its rejected cases are not
+    // grammar input (its fixed programs and bases are).
+    .filter(
+      (f) => !f.startsWith('corpus/reject/') || f.endsWith('.fixed.a0') || f.includes('/bases/'),
+    )
     .map((f) => join(root, f))
     .filter((f) => existsSync(f));
   for (const dir of ['results/', 'examples/', 'compiler/', 'site/'])

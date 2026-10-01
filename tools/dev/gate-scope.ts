@@ -315,6 +315,10 @@ function classify(
     add('test', `${file} is a test`);
     return 'code';
   }
+  if (file.startsWith('corpus/reject/')) {
+    add('test', `${file} is a reject-corpus case, read only by test/reject.test.ts`);
+    return 'code';
+  }
   let hit = false;
   for (const [step, set] of map.closures) {
     if (set.has(file)) {

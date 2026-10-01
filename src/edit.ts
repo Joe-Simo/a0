@@ -29,6 +29,7 @@ import {
   isValidIdentifier,
   LIMITS,
   type Node,
+  normalizeLine,
   type Operand,
   type Program,
   parse,
@@ -42,6 +43,8 @@ import {
   validate,
   validateFunction,
 } from './core.js';
+import { diag } from './diagnostics.js';
+import { fixAll } from './fix.js';
 
 export const REVISION_LENGTH = 64;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -77,28 +80,26 @@ export type EditOp =
   | { readonly kind: 'ret'; readonly operand: Operand };
 
 export function parseEditOps(lines: readonly string[], firstLine: number): EditOp[] {
-  if (lines.length === 0) throw new A0Error('edit contains no lines', undefined, { code: 'edit' });
-  if (lines.length > LIMITS.maxNodesPerFunction)
-    throw new A0Error('edit too large', undefined, { code: 'limit' });
+  if (lines.length === 0) throw diag('A0501');
+  if (lines.length > LIMITS.maxNodesPerFunction) throw diag('A0502');
   const seen = new Set<string>();
   const ops: EditOp[] = [];
   let sawRet = false;
   lines.forEach((text, i) => {
     const line = firstLine + i;
     const claim = (id: string): void => {
-      if (seen.has(id)) throw new A0Error(`duplicate edit for '${id}'`, line, { code: 'edit' });
+      if (seen.has(id)) throw diag('A0503', [id], { line });
       seen.add(id);
     };
     if (text.startsWith('-')) {
       const id = text.slice(1).trim();
-      if (!isValidIdentifier(id))
-        throw new A0Error(`invalid delete target '${id}'`, line, { code: 'edit' });
+      if (!isValidIdentifier(id)) throw diag('A0504', [id], { line });
       claim(id);
       ops.push({ kind: 'delete', id });
       return;
     }
     if (/^ret\s/.test(text)) {
-      if (sawRet) throw new A0Error('duplicate ret in edit', line, { code: 'edit' });
+      if (sawRet) throw diag('A0505', [], { line });
       sawRet = true;
       const parts = text.split(/\s+/);
       if (isRetNodeForm(parts)) {
@@ -183,10 +184,7 @@ export function replaceNodes(
     if (op.kind !== 'delete') continue;
     const before = nodes.length;
     nodes = nodes.filter((n) => n.id !== op.id);
-    if (nodes.length === before)
-      throw new A0Error(`${fn.name}: cannot delete unknown node '${op.id}'`, undefined, {
-        code: 'edit',
-      });
+    if (nodes.length === before) throw diag('A0506', [fn.name, op.id]);
   }
   // 2. replacements and insertions
   for (const op of edits) {
@@ -195,10 +193,7 @@ export function replaceNodes(
     if (op.after !== undefined) {
       if (at >= 0) nodes.splice(at, 1);
       const anchor = nodes.findIndex((n) => n.id === op.after);
-      if (anchor < 0)
-        throw new A0Error(`${fn.name}: cannot insert after unknown node '${op.after}'`, undefined, {
-          code: 'edit',
-        });
+      if (anchor < 0) throw diag('A0507', [fn.name, op.after]);
       nodes.splice(anchor + 1, 0, op.node);
     } else if (at >= 0) {
       // A replaced line keeps its comments unless the edit line brings its own.
@@ -217,8 +212,7 @@ export function replaceNodes(
   // that references a later node to just after its last reference. A true cycle is left
   // for the validator to report.
   nodes = orderByDependencies(nodes);
-  if (nodes.length > LIMITS.maxNodesPerFunction)
-    throw new A0Error(`${fn.name}: too many nodes`, undefined, { code: 'limit' });
+  if (nodes.length > LIMITS.maxNodesPerFunction) throw diag('A0316', [fn.name]);
   const replaced: Func = { ...fn, nodes, ret };
   // Legal call targets are exactly the functions defined before this one.
   const scope = new Map<string, TypedFunc>();
@@ -235,14 +229,7 @@ export function replaceNodes(
   if (ret.kind === 'node') used.add(ret.id);
   for (const op of edits) {
     if (op.kind !== 'node' || existing.has(op.node.id) || used.has(op.node.id)) continue;
-    throw new A0Error(
-      `${fn.name}: new node '${op.node.id}' is not used by any node or by ret`,
-      undefined,
-      {
-        code: 'edit',
-        fix: `add 'ret ${op.node.id}' if it is the new result, or use it in another node`,
-      },
-    );
+    throw diag('A0508', [fn.name, op.node.id]);
   }
   return typed;
 }
@@ -309,40 +296,29 @@ export function formatPatch(fn: Func, nodes: readonly Node[]): string {
 }
 
 export function parsePatch(text: string): Patch {
-  if (utf8Length(text) > LIMITS.maxSourceBytes)
-    throw new A0Error('patch too large', undefined, { code: 'limit' });
+  if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0606');
   const lines = text
     .split(/\r?\n/)
     .map((l) => stripComment(l).trim())
     .filter((l) => l.length > 0);
   const head = lines[0]?.split(/\s+/) ?? [];
   if (head[0] !== 'patch' || head.length !== 3) {
-    throw new A0Error("expected 'patch <function> <revision>'", 1, { code: 'patch' });
+    throw diag('A0601', [], { line: 1 });
   }
   const functionName = head[1] ?? '';
   const rev = head[2] ?? '';
-  if (!SHA256_HEX.test(rev))
-    throw new A0Error('revision must be 64 lowercase hex characters', 1, { code: 'patch' });
-  if (lines[lines.length - 1] !== 'end')
-    throw new A0Error("patch must end with 'end'", undefined, { code: 'patch' });
+  if (!SHA256_HEX.test(rev)) throw diag('A0602', [], { line: 1 });
+  if (lines[lines.length - 1] !== 'end') throw diag('A0603');
   const nodes = parseReplacementNodes(lines.slice(1, -1), 2);
   return { functionName, revision: rev, nodes };
 }
 
 export function applyPatch(program: TypedProgram, patch: Patch): TypedProgram {
   const fn = program.byName.get(patch.functionName);
-  if (fn === undefined)
-    throw new A0Error(`unknown function '${patch.functionName}'`, undefined, { code: 'patch' });
+  if (fn === undefined) throw diag('A0604', [patch.functionName]);
   const current = revision(fn);
   if (current !== patch.revision) {
-    throw new A0Error(
-      `revision mismatch for '${fn.name}': patch targets ${patch.revision.slice(0, 12)}…, current is ${current.slice(0, 12)}…`,
-      undefined,
-      {
-        code: 'revision',
-        fix: `re-read '${fn.name}' to obtain its current revision and re-issue the patch`,
-      },
-    );
+    throw diag('A0605', [fn.name, patch.revision.slice(0, 12), current.slice(0, 12)]);
   }
   return commit(program, replaceNodes(program, fn, patch.nodes));
 }
@@ -436,18 +412,11 @@ export function lineEditBlocks(
   for (const raw of lines) {
     const t = stripComment(raw).trim();
     const m = LINE_EDIT.exec(t);
-    if (m === null) throw new A0Error(`bad line edit '${t}'`, undefined, { code: 'edit' });
+    if (m === null) throw diag('A0509', [t]);
     const name = m[1] ?? defaultFn;
-    if (name === undefined)
-      throw new A0Error(`line edit '${t}' names no function`, undefined, {
-        code: 'edit',
-        fix: 'write `f:N line` with the function name',
-      });
+    if (name === undefined) throw diag('A0510', [t]);
     const fn = program.byName.get(name);
-    if (fn === undefined)
-      throw new A0Error(`line edit '${t}': unknown function '${name}'`, undefined, {
-        code: 'edit',
-      });
+    if (fn === undefined) throw diag('A0511', [t, name]);
     const size = formatFunction(fn).split('\n').length - 2;
     const n = Number(m[2]);
     const mode = m[3] ?? '';
@@ -455,25 +424,13 @@ export function lineEditBlocks(
     const entry = byFn.get(name) ?? { at: new Map(), after: new Map() };
     byFn.set(name, entry);
     if (mode === '+') {
-      if (n > size || text === '')
-        throw new A0Error(`line edit '${t}': insert after line 0..${size} with text`, undefined, {
-          code: 'edit',
-        });
+      if (n > size || text === '') throw diag('A0512', [t, size]);
       entry.after.set(n, [...(entry.after.get(n) ?? []), text]);
       continue;
     }
-    if (n < 1 || n > size)
-      throw new A0Error(`line edit '${t}': ${name} has lines 1..${size}`, undefined, {
-        code: 'edit',
-        fix: 'use the line numbers shown in the view',
-      });
-    if (entry.at.has(n))
-      throw new A0Error(`line edit '${t}': line ${n} edited twice`, undefined, { code: 'edit' });
-    if (mode === '' && text === '')
-      throw new A0Error(`line edit '${t}' has no text`, undefined, {
-        code: 'edit',
-        fix: `write '${n}-' to delete the line`,
-      });
+    if (n < 1 || n > size) throw diag('A0513', [t, name, size]);
+    if (entry.at.has(n)) throw diag('A0514', [t, n]);
+    if (mode === '' && text === '') throw diag('A0515', [t, n]);
     entry.at.set(n, mode === '-' ? null : text);
   }
   return [...byFn].map(([name, { at, after }]) => {
@@ -522,8 +479,7 @@ export function programView(program: TypedProgram): string {
  */
 export function programNeighbourhood(program: TypedProgram, target: string): TypedFunc[] {
   const fn = program.byName.get(target);
-  if (fn === undefined)
-    throw new A0Error(`unknown function '${target}'`, undefined, { code: 'handle' });
+  if (fn === undefined) throw diag('A0610', [target]);
   const keep = new Set<string>([target]);
   const stack: TypedFunc[] = [fn];
   while (stack.length > 0) {
@@ -617,9 +573,9 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
         shown !== undefined &&
         `fn ${name} ${m[2]}`.split(/\s+/).join(' ') !== formatSignature(shown)
       )
-        throw new A0Error(`'${line}' does not match ${formatSignature(shown)}`, undefined, {
-          code: 'edit',
-          fix: `write \`-fn ${name}\` alone; a new signature goes in the \`fn ${name} ...\` block`,
+        throw diag('A0516', [line, formatSignature(shown), name], {
+          applicability: 'exact',
+          edits: [{ op: 'lines', rule: 'signature', text: normalizeLine(line), to: `-fn ${name}` }],
         });
       removals.add(name);
     } else if (isSignatureEcho(line, program)) continue;
@@ -628,8 +584,7 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const incoming = orderFunctionsByCalls(parse(kept.join('\n')).functions);
   const byName = new Map(incoming.map((f) => [f.name, f] as const));
   for (const name of removals) {
-    if (!program.byName.has(name))
-      throw new A0Error(`cannot remove unknown function '${name}'`, undefined, { code: 'edit' });
+    if (!program.byName.has(name)) throw diag('A0517', [name]);
     // `-fn f` with a new `fn f` block in the same reply is a replacement, in place.
     if (byName.has(name)) removals.delete(name);
   }
@@ -652,10 +607,7 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
     functions.push(replacement ?? f);
   }
   functions.push(...pending);
-  if (functions.length === 0)
-    throw new A0Error('edit would leave the program with no functions', undefined, {
-      code: 'edit',
-    });
+  if (functions.length === 0) throw diag('A0518');
   return validate({ functions });
 }
 
@@ -673,6 +625,8 @@ export class EditSession {
   readonly #maxOpen: number;
   #nextFn = 0;
   #nextProgram = 0;
+  /** The last reply this session rejected, for `fix all`. */
+  #rejected: string | undefined;
 
   constructor(program: TypedProgram, options: SessionOptions = {}) {
     this.#program = program;
@@ -694,18 +648,11 @@ export class EditSession {
   openProgram(options: ProgramViewOptions = {}): View {
     const target = options.scope === 'deps' ? options.target : undefined;
     if (options.scope === 'deps' && (target === undefined || !this.#program.byName.has(target)))
-      throw new A0Error(`unknown function '${target ?? ''}'`, undefined, {
-        code: 'handle',
+      throw diag('A0610', [target ?? ''], {
         fix: "openProgram({ scope: 'deps', target }) needs the name of an existing function",
       });
     if (this.#handles.size >= this.#maxOpen) {
-      throw new A0Error(
-        `session handle limit (${this.#maxOpen}) reached; close handles first`,
-        undefined,
-        {
-          code: 'limit',
-        },
-      );
+      throw diag('A0520', [this.#maxOpen]);
     }
     const handle = `g${this.#nextProgram}`;
     this.#nextProgram += 1;
@@ -734,16 +681,9 @@ export class EditSession {
   /** Open a view of one function and return a short handle bound to its current revision. */
   open(functionName: string, options: ViewOptions = {}): View {
     const fn = this.#program.byName.get(functionName);
-    if (fn === undefined)
-      throw new A0Error(`unknown function '${functionName}'`, undefined, { code: 'handle' });
+    if (fn === undefined) throw diag('A0610', [functionName]);
     if (this.#handles.size >= this.#maxOpen) {
-      throw new A0Error(
-        `session handle limit (${this.#maxOpen}) reached; close handles first`,
-        undefined,
-        {
-          code: 'limit',
-        },
-      );
+      throw diag('A0520', [this.#maxOpen]);
     }
     const handle = `e${this.#nextFn}`;
     this.#nextFn += 1;
@@ -762,11 +702,10 @@ export class EditSession {
   /** The current view under an open handle (handles are stable for the session). */
   view(handle: string): string {
     const bound = this.#handles.get(handle);
-    if (bound === undefined) throw new A0Error(`unknown handle '${handle}'`, 1, { code: 'handle' });
+    if (bound === undefined) throw diag('A0611', [handle], { line: 1 });
     if (bound.functionName === '*') return `${handle}\n${this.#programText(bound.target)}`;
     const fn = this.#program.byName.get(bound.functionName);
-    if (fn === undefined)
-      throw new A0Error(`handle '${handle}' refers to a removed function`, 1, { code: 'handle' });
+    if (fn === undefined) throw diag('A0613', [handle], { line: 1 });
     return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true)}`;
   }
 
@@ -805,8 +744,50 @@ export class EditSession {
    * to the new revision (handles are stable names for the session).
    */
   apply(text: string): TypedProgram {
-    if (utf8Length(text) > LIMITS.maxSourceBytes)
-      throw new A0Error('edit too large', undefined, { code: 'limit' });
+    if (this.#isFixAll(text)) return this.#fixAll();
+    try {
+      const next = this.#apply(text);
+      this.#rejected = undefined;
+      return next;
+    } catch (e) {
+      if (e instanceof A0Error) this.#rejected = text;
+      throw e;
+    }
+  }
+
+  /** `fix all`, alone or under a handle line. */
+  #isFixAll(text: string): boolean {
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => stripComment(l).trim())
+      .filter((l) => l.length > 0);
+    if (lines.length === 2 && (HANDLE.test(lines[0] ?? '') || PROGRAM_HANDLE.test(lines[0] ?? '')))
+      lines.shift();
+    return lines.length === 1 && lines[0] === 'fix all';
+  }
+
+  /**
+   * `fix all`: replay the last rejected reply with every `exact` fix of its diagnostics applied.
+   * The edited reply goes through the ordinary path, so it is parsed and the whole program
+   * validated before anything is committed; if a diagnostic with no exact fix remains, nothing is
+   * committed and that diagnostic is the reply's rejection.
+   */
+  #fixAll(): TypedProgram {
+    const rejected = this.#rejected;
+    if (rejected === undefined) throw diag('A0521');
+    const out = fixAll(rejected, (t) => {
+      this.#apply(t);
+    });
+    if (out.error !== undefined) {
+      this.#rejected = out.text;
+      throw out.error;
+    }
+    this.#rejected = undefined;
+    return this.#program;
+  }
+
+  #apply(text: string): TypedProgram {
+    if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0502');
     const rawLines = text.split(/\r?\n/);
     // The handle line may be left out when it is implied: the reply then edits the one open
     // function handle (which also takes whole `fn` blocks and `-fn` lines), or, with no
@@ -816,12 +797,8 @@ export class EditSession {
       const open = [...this.#handles.keys()];
       const fnHandles = open.filter((h) => HANDLE.test(h));
       const implied = fnHandles.length > 0 ? fnHandles : open;
-      if (implied.length !== 1)
-        throw new A0Error(`invalid handle '${firstLine}'`, 1, {
-          code: 'handle',
-          fix: 'start the reply with one of the handle lines shown in the view',
-        });
-      return this.apply(`${implied[0] as string}\n${text}`);
+      if (implied.length !== 1) throw diag('A0612', [firstLine], { line: 1 });
+      return this.#apply(`${implied[0] as string}\n${text}`);
     }
     // A reply may carry several sections, each headed by an open handle; they apply in
     // order as one atomic edit (all or nothing).
@@ -842,7 +819,7 @@ export class EditSession {
             .map((l) => stripComment(l).trim())
             .filter((l) => l.length > 0);
           if (body.every((l) => l === 'end' || isSignatureEcho(l, this.#program))) continue;
-          this.apply(section.join('\n'));
+          this.#apply(section.join('\n'));
         }
       } catch (e) {
         this.#program = savedProgram;
@@ -855,21 +832,13 @@ export class EditSession {
     const lines = rawLines.map((l) => stripComment(l).trim()).filter((l) => l.length > 0);
     const handle = lines[0] ?? '';
     if (!HANDLE.test(handle) && !PROGRAM_HANDLE.test(handle)) {
-      throw new A0Error(`invalid handle '${handle}'`, 1, { code: 'handle' });
+      throw diag('A0612', [handle], { line: 1 });
     }
     const bound = this.#handles.get(handle);
-    if (bound === undefined)
-      throw new A0Error(`unknown handle '${handle}'`, 1, {
-        code: 'handle',
-        fix: 'reply with the handle line exactly as shown at the top of the view',
-      });
+    if (bound === undefined) throw diag('A0611', [handle], { line: 1 });
     if (bound.functionName === '*') {
       if (programRevision(this.#program) !== bound.revision) {
-        throw new A0Error(
-          `handle '${handle}' is stale: the program changed since the view was opened`,
-          undefined,
-          { code: 'handle' },
-        );
+        throw diag('A0614', [handle]);
       }
       const rawBody = text
         .split(/\r?\n/)
@@ -881,16 +850,9 @@ export class EditSession {
       return this.#program;
     }
     const fn = this.#program.byName.get(bound.functionName);
-    if (fn === undefined)
-      throw new A0Error(`handle '${handle}' refers to a removed function`, undefined, {
-        code: 'handle',
-      });
+    if (fn === undefined) throw diag('A0613', [handle]);
     if (revision(fn) !== bound.revision) {
-      throw new A0Error(
-        `handle '${handle}' is stale: '${fn.name}' changed since the view was opened`,
-        undefined,
-        { code: 'handle' },
-      );
+      throw diag('A0615', [handle, fn.name]);
     }
     let body = lines.slice(1);
     // The rest of the view echoed back (another handle line followed only by signature
@@ -944,12 +906,7 @@ export class EditSession {
     }
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);
-      if (target === undefined)
-        throw new A0Error(
-          `handle '${handle}' edits '${fn.name}', which this reply removes`,
-          undefined,
-          { code: 'edit', fix: `keep '${fn.name}' or send only whole function blocks` },
-        );
+      if (target === undefined) throw diag('A0519', [handle, fn.name]);
       const nodes = parseReplacementNodes(editLines, 2);
       program = placeNewCallees(this.#program, program, fn.name, nodes);
       program = commit(
