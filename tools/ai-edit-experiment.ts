@@ -183,7 +183,10 @@ function applyA0(
     const next = session.apply(body);
     return { source: formatProgram(next) };
   } catch (e) {
-    return { source, error: formatDiagnostic(e) };
+    return {
+      source,
+      error: formatDiagnostic(e, process.env.A0_EXPERIMENT_HINTS === '1' ? '`fix all`' : false),
+    };
   }
 }
 

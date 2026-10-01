@@ -167,19 +167,22 @@ export class A0Error extends Error {
 }
 
 /**
- * One-line diagnostic for a model: `class: message fix: ... [A0nnnn]`. When the diagnostic carries
- * exact edits and `apply` names how to apply them, the line ends with that reply (`fix all` in the
- * edit protocol, `a0 check --fix` on the command line); `apply: false` leaves it out (a protocol
- * with no such reply). The class stays first; the code is the key of `a0 explain`.
+ * One-line diagnostic for a model: `class: message fix: ...`, compact by default (measured: the
+ * id and the `fix all` line cost about 36 tokens per rejection and did not help a repair). With
+ * `hints` naming the reply that applies exact fixes (`fix all` in the edit protocol, `a0 check --fix`
+ * on the command line) a diagnostic that has exact edits ends with that reply, and every
+ * diagnostic with its code, `[A0nnnn]`, the key of `a0 explain`. The class stays first; the
+ * structured fields (`id`, `applicability`, `edits`) are always in `toJSON`.
  */
-export function formatDiagnostic(e: unknown, apply: string | false = '`fix all`'): string {
+export function formatDiagnostic(e: unknown, hints: string | false = false): string {
   if (!(e instanceof A0Error)) return e instanceof Error ? e.message : String(e);
   const fix = e.fix === undefined ? '' : ` fix: ${e.fix}`;
   const all =
-    apply !== false && e.applicability === 'exact' && e.edits.length > 0
-      ? ` Reply ${apply} to apply it.`
+    hints !== false && e.applicability === 'exact' && e.edits.length > 0
+      ? ` Reply ${hints} to apply it.`
       : '';
-  return `${e.code}: ${e.message}${fix}${all}${e.id === undefined ? '' : ` [${e.id}]`}`;
+  const id = hints !== false && e.id !== undefined ? ` [${e.id}]` : '';
+  return `${e.code}: ${e.message}${fix}${all}${id}`;
 }
 
 // ---------------------------------------------------------------------------

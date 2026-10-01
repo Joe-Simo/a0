@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T04:35:25.762Z",
+  "generatedAt": "2026-10-01T04:57:33.447Z",
   "status": "run with scripted replies from scratch/set-pairedhaiku-d.json (subject: paired replay: the recorded baseline first replies of haiku subagents, rejected by the diagnostics table; retry answered by a fresh haiku subagent)",
   "model": null,
   "languagePrimer": "MODEL_GUIDE.rules-merged.txt alone: rules and edit protocol in one text (one repair)",
@@ -147,7 +147,7 @@
     "a0/structured": {
       "trials": 13,
       "meanView": 47,
-      "meanToolContext": 97
+      "meanToolContext": 105
     }
   },
   "trials": [
@@ -193,7 +193,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.755292000000054
+      "wallMs": 2.4279169999999795
     },
     {
       "task": "d-offset-param",
@@ -237,7 +237,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.9537500000000136
+      "wallMs": 1.2584580000000187
     },
     {
       "task": "d-cube-sq",
@@ -281,7 +281,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.614208000000076
+      "wallMs": 0.8034580000000915
     },
     {
       "task": "d-total-six",
@@ -301,42 +301,47 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 185,
-        "output": 33,
-        "total": 454
+        "toolContext": 289,
+        "output": 35,
+        "total": 560
       },
       "outputTokensLocal": {
-        "o200k_base": 33,
-        "cl100k_base": 33
+        "o200k_base": 35,
+        "cl100k_base": 35
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 1,
+      "validationFailures": 2,
       "acceptedOneShot": false,
-      "accepted": true,
+      "accepted": false,
       "attempts": [
         {
           "status": "protocol",
           "failures": [
-            "structure: addtwice.r: unknown fold body 'addtwice' (must be defined earlier) fix: 'addtwice' is no function defined above addtwice: add a `fn addtwice ...` block that defines it (callees come first; a fold or loop body takes the state and the u32 step index), or name an existing function [A0103]"
+            "structure: addtwice.r: unknown fold body 'addtwice' (must be defined earlier) fix: 'addtwice' is no function defined above addtwice: add a `fn addtwice ...` block that defines it (callees come first; a fold or loop body takes the state and the u32 step index), or name an existing function"
           ],
           "outputTokensLocal": {
             "o200k_base": 11,
             "cl100k_base": 11
           },
-          "repair": "Rejected:\nstructure: addtwice.r: unknown fold body 'addtwice' (must be defined earlier) fix: 'addtwice' is no function defined above addtwice: add a `fn addtwice ...` block that defines it (callees come first; a fold or loop body takes the state and the u32 step index), or name an existing function [A0103]\n\nTry again."
+          "repair": "Rejected:\nstructure: addtwice.r: unknown fold body 'addtwice' (must be defined earlier) fix: 'addtwice' is no function defined above addtwice: add a `fn addtwice ...` block that defines it (callees come first; a fold or loop body takes the state and the u32 step index), or name an existing function\n\nTry again."
         },
         {
-          "status": "ok",
-          "failures": [],
+          "status": "protocol",
+          "failures": [
+            "structure: total.r: addtwice expects 0 extra arguments, got 1 fix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 22,
-            "cl100k_base": 22
-          }
+            "o200k_base": 24,
+            "cl100k_base": 24
+          },
+          "repair": "Rejected:\nstructure: total.r: addtwice expects 0 extra arguments, got 1 fix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 1.3495000000000346
+      "failures": [
+        "structure: total.r: addtwice expects 0 extra arguments, got 1 fix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras"
+      ],
+      "wallMs": 1.9147080000000187
     },
     {
       "task": "d-stats-second-field",
@@ -380,7 +385,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.49424999999996544
+      "wallMs": 4.079666999999972
     },
     {
       "task": "d-maxof-comparison",
@@ -424,7 +429,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.42458300000009785
+      "wallMs": 2.6897500000000036
     },
     {
       "task": "d-isdiv-bool",
@@ -444,9 +449,9 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 164,
+        "toolContext": 159,
         "output": 42,
-        "total": 442
+        "total": 437
       },
       "outputTokensLocal": {
         "o200k_base": 42,
@@ -461,13 +466,13 @@
         {
           "status": "protocol",
           "failures": [
-            "type: isdiv.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn isdiv u32 u32 -> bool` [A0201]"
+            "type: isdiv.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn isdiv u32 u32 -> bool`"
           ],
           "outputTokensLocal": {
             "o200k_base": 15,
             "cl100k_base": 15
           },
-          "repair": "Rejected:\ntype: isdiv.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn isdiv u32 u32 -> bool` [A0201]\n\nTry again."
+          "repair": "Rejected:\ntype: isdiv.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn isdiv u32 u32 -> bool`\n\nTry again."
         },
         {
           "status": "ok",
@@ -479,7 +484,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.8053750000000264
+      "wallMs": 1.245375000000081
     },
     {
       "task": "d-rename-twice",
@@ -523,7 +528,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.5484589999999798
+      "wallMs": 0.8475839999999835
     },
     {
       "task": "d-lowflip-xor",
@@ -567,7 +572,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.44375000000002274
+      "wallMs": 2.9303330000000187
     },
     {
       "task": "d-absdiff-wrap",
@@ -611,7 +616,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.5451249999999845
+      "wallMs": 0.806833000000097
     },
     {
       "task": "d-setmid-index",
@@ -655,7 +660,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.49937499999998636
+      "wallMs": 0.5563339999999926
     },
     {
       "task": "d-calc-inc-first",
@@ -699,7 +704,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.7740830000000187
+      "wallMs": 0.8380409999999756
     },
     {
       "task": "d-prod4-seed",
@@ -743,7 +748,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.6112499999999272
+      "wallMs": 0.6911660000000666
     }
   ]
 }

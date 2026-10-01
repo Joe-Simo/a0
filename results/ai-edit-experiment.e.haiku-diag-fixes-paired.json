@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T04:35:26.409Z",
+  "generatedAt": "2026-10-01T04:57:34.666Z",
   "status": "run with scripted replies from scratch/set-pairedhaiku-e.json (subject: paired replay: the recorded baseline first replies of haiku subagents, rejected by the diagnostics table; retry answered by a fresh haiku subagent)",
   "model": null,
   "languagePrimer": "MODEL_GUIDE.rules-merged.txt alone: rules and edit protocol in one text (one repair)",
@@ -133,7 +133,7 @@
     "a0/structured": {
       "trials": 11,
       "meanView": 52,
-      "meanToolContext": 129
+      "meanToolContext": 119
     }
   },
   "trials": [
@@ -179,7 +179,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.8497080000000778
+      "wallMs": 3.4860419999999976
     },
     {
       "task": "e-swap-fields",
@@ -223,7 +223,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.7662090000000035
+      "wallMs": 10.69054200000005
     },
     {
       "task": "e-guard-zero-div",
@@ -267,7 +267,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.5520410000000311
+      "wallMs": 2.5885419999999613
     },
     {
       "task": "e-helper-sq-twice",
@@ -311,7 +311,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.971416999999974
+      "wallMs": 1.9224589999998898
     },
     {
       "task": "e-mask-widen",
@@ -355,7 +355,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.4446659999999838
+      "wallMs": 0.9364590000000135
     },
     {
       "task": "e-cmp-direction",
@@ -399,7 +399,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.3712919999999258
+      "wallMs": 25.482750000000124
     },
     {
       "task": "e-sum-range",
@@ -420,12 +420,12 @@
         "languagePrimer": 236,
         "workflowPrimer": 0,
         "toolContext": 339,
-        "output": 70,
-        "total": 645
+        "output": 77,
+        "total": 652
       },
       "outputTokensLocal": {
-        "o200k_base": 70,
-        "cl100k_base": 70
+        "o200k_base": 77,
+        "cl100k_base": 77
       },
       "providerUsage": null,
       "modelCalls": 2,
@@ -453,13 +453,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 60,
-            "cl100k_base": 60
+            "o200k_base": 67,
+            "cl100k_base": 67
           }
         }
       ],
       "failures": [],
-      "wallMs": 1.3146249999999782
+      "wallMs": 2.1289589999998952
     },
     {
       "task": "e-popcount-fold",
@@ -479,47 +479,42 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 239,
-        "output": 74,
-        "total": 549
+        "toolContext": 127,
+        "output": 87,
+        "total": 450
       },
       "outputTokensLocal": {
-        "o200k_base": 74,
-        "cl100k_base": 74
+        "o200k_base": 87,
+        "cl100k_base": 87
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 2,
+      "validationFailures": 1,
       "acceptedOneShot": false,
-      "accepted": false,
+      "accepted": true,
       "attempts": [
         {
           "status": "protocol",
           "failures": [
-            "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type) [A0023]"
+            "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
           ],
           "outputTokensLocal": {
             "o200k_base": 25,
             "cl100k_base": 25
           },
-          "repair": "Rejected:\nparse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type) [A0023]\n\nTry again."
+          "repair": "Rejected:\nparse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)\n\nTry again."
         },
         {
-          "status": "protocol",
-          "failures": [
-            "structure: popcnt.r: bitcount expects 0 extra arguments, got 1 fix: each step runs state = bitcount(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn bitcount u32 u32 u32 -> u32`; bitcount is `fn bitcount u32 u32 -> u32`; as declared, write `fold bitcount N S` with S a u32 and no extras [A0215]"
-          ],
+          "status": "ok",
+          "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 49,
-            "cl100k_base": 49
-          },
-          "repair": "Rejected:\nstructure: popcnt.r: bitcount expects 0 extra arguments, got 1 fix: each step runs state = bitcount(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn bitcount u32 u32 u32 -> u32`; bitcount is `fn bitcount u32 u32 -> u32`; as declared, write `fold bitcount N S` with S a u32 and no extras [A0215]\n\nTry again."
+            "o200k_base": 62,
+            "cl100k_base": 62
+          }
         }
       ],
-      "failures": [
-        "structure: popcnt.r: bitcount expects 0 extra arguments, got 1 fix: each step runs state = bitcount(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn bitcount u32 u32 u32 -> u32`; bitcount is `fn bitcount u32 u32 -> u32`; as declared, write `fold bitcount N S` with S a u32 and no extras [A0215]"
-      ],
-      "wallMs": 1.3508750000000873
+      "failures": [],
+      "wallMs": 7.595666999999821
     },
     {
       "task": "e-max3-helper",
@@ -563,7 +558,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.4664579999999887
+      "wallMs": 1.3646659999999429
     },
     {
       "task": "e-hash-const",
@@ -607,7 +602,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.3468329999999469
+      "wallMs": 1.0792920000001232
     },
     {
       "task": "e-thread-param",
@@ -627,9 +622,9 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 158,
+        "toolContext": 154,
         "output": 70,
-        "total": 464
+        "total": 460
       },
       "outputTokensLocal": {
         "o200k_base": 70,
@@ -644,13 +639,13 @@
         {
           "status": "protocol",
           "failures": [
-            "type: apply.a: parameter p1 out of range fix: apply has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn apply ...` block with the parameter in its signature [A0105]"
+            "type: apply.a: parameter p1 out of range fix: apply has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn apply ...` block with the parameter in its signature"
           ],
           "outputTokensLocal": {
             "o200k_base": 16,
             "cl100k_base": 16
           },
-          "repair": "Rejected:\ntype: apply.a: parameter p1 out of range fix: apply has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn apply ...` block with the parameter in its signature [A0105]\n\nTry again."
+          "repair": "Rejected:\ntype: apply.a: parameter p1 out of range fix: apply has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn apply ...` block with the parameter in its signature\n\nTry again."
         },
         {
           "status": "ok",
@@ -662,7 +657,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.8662080000000287
+      "wallMs": 2.0593750000000455
     }
   ]
 }

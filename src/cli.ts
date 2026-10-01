@@ -47,7 +47,7 @@ function usage(): never {
   process.stderr.write(
     [
       'usage:',
-      '  a0 check <file.a0> [--json] [--fix]    # --json: diagnostics as fields; --fix: apply the exact fixes',
+      '  a0 check <file.a0> [--json] [--fix] [--hints]    # --json: diagnostics as fields; --fix: apply the exact fixes',
       '  a0 explain [A0nnnn|--verify]           # what a diagnostic means, a failing and a fixed example',
       '  a0 run <file.a0> <function> <args...>',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
@@ -111,7 +111,11 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'check': {
       const flags = rest.filter((a) => a.startsWith('--'));
       const [file] = rest.filter((a) => !a.startsWith('--'));
-      if (file === undefined || flags.some((f) => f !== '--json' && f !== '--fix')) usage();
+      if (
+        file === undefined ||
+        flags.some((f) => f !== '--json' && f !== '--fix' && f !== '--hints')
+      )
+        usage();
       const json = flags.includes('--json');
       if (flags.includes('--fix')) await fixFile(file);
       let program: TypedProgram;
@@ -258,7 +262,7 @@ async function main(argv: readonly string[]): Promise<void> {
 
 main(process.argv.slice(2)).catch((err: unknown) => {
   process.stderr.write(
-    `error: ${formatDiagnostic(err, process.argv[2] === 'check' ? '`a0 check --fix`' : false)}\n`,
+    `error: ${formatDiagnostic(err, process.argv[2] === 'check' && process.argv.includes('--hints') ? '`a0 check --fix`' : false)}\n`,
   );
   process.exit(1);
 });

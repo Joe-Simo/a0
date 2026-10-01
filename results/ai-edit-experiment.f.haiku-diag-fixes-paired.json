@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T04:35:27.103Z",
+  "generatedAt": "2026-10-01T04:57:36.101Z",
   "status": "run with scripted replies from scratch/set-pairedhaiku-f.json (subject: paired replay: the recorded baseline first replies of haiku subagents, rejected by the diagnostics table; retry answered by a fresh haiku subagent)",
   "model": null,
   "languagePrimer": "MODEL_GUIDE.rules-merged.txt alone: rules and edit protocol in one text (one repair)",
@@ -147,7 +147,7 @@
     "a0/structured": {
       "trials": 13,
       "meanView": 50,
-      "meanToolContext": 121
+      "meanToolContext": 119
     }
   },
   "trials": [
@@ -193,7 +193,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 2.209457999999927
+      "wallMs": 4.489000000000033
     },
     {
       "task": "f-third-index",
@@ -237,7 +237,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.7261660000000347
+      "wallMs": 2.1846250000000964
     },
     {
       "task": "f-advance-wrap",
@@ -281,7 +281,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.7822499999999764
+      "wallMs": 1.8344999999999345
     },
     {
       "task": "f-bump-cap",
@@ -325,7 +325,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.6308329999999387
+      "wallMs": 1.0762500000000728
     },
     {
       "task": "f-divrem-pair",
@@ -345,9 +345,9 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 139,
+        "toolContext": 135,
         "output": 58,
-        "total": 433
+        "total": 429
       },
       "outputTokensLocal": {
         "o200k_base": 58,
@@ -362,13 +362,13 @@
         {
           "status": "protocol",
           "failures": [
-            "type: divrem.ret: expected u32, got (u32,u32) fix: return a u32 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> (u32,u32)` [A0201]"
+            "type: divrem.ret: expected u32, got (u32,u32) fix: return a u32 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> (u32,u32)`"
           ],
           "outputTokensLocal": {
             "o200k_base": 21,
             "cl100k_base": 21
           },
-          "repair": "Rejected:\ntype: divrem.ret: expected u32, got (u32,u32) fix: return a u32 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> (u32,u32)` [A0201]\n\nTry again."
+          "repair": "Rejected:\ntype: divrem.ret: expected u32, got (u32,u32) fix: return a u32 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> (u32,u32)`\n\nTry again."
         },
         {
           "status": "ok",
@@ -380,7 +380,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.599375000000009
+      "wallMs": 3.8088329999998223
     },
     {
       "task": "f-remaining-order",
@@ -424,7 +424,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.41408400000000256
+      "wallMs": 1.3462919999999485
     },
     {
       "task": "f-sumlow-bound",
@@ -444,19 +444,19 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 262,
-        "output": 56,
-        "total": 554
+        "toolContext": 314,
+        "output": 70,
+        "total": 620
       },
       "outputTokensLocal": {
-        "o200k_base": 56,
-        "cl100k_base": 56
+        "o200k_base": 70,
+        "cl100k_base": 68
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 1,
+      "validationFailures": 2,
       "acceptedOneShot": false,
-      "accepted": true,
+      "accepted": false,
       "attempts": [
         {
           "status": "wrong-output",
@@ -474,16 +474,21 @@
           "repair": "Rejected:\nsumlow(0) = 6, expected 15\nsumlow(1) = 7, expected 16\nsumlow(10) = 16, expected 25\nsumlow(100) = 106, expected 115\nsumlow(4294967295) = 5, expected 14\n\nCurrent view:\ne0\nfn sumlow u32 -> u32\nr fold addlow 6 p0\nret r\nend\nfn addlow u32 u32 -> u32 end\ng0\nfn addlow u32 u32 -> u32 end\nfn sumlow u32 -> u32 end\nTry again."
         },
         {
-          "status": "ok",
-          "failures": [],
+          "status": "protocol",
+          "failures": [
+            "parse: line 3: nested operand: A0 has one op per line fix: one op per line: write `result1 add p0 p1` above, then `result select is_below result1 p0`"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 48,
-            "cl100k_base": 48
-          }
+            "o200k_base": 62,
+            "cl100k_base": 60
+          },
+          "repair": "Rejected:\nparse: line 3: nested operand: A0 has one op per line fix: one op per line: write `result1 add p0 p1` above, then `result select is_below result1 p0`\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 4.386957999999936
+      "failures": [
+        "parse: line 3: nested operand: A0 has one op per line fix: one op per line: write `result1 add p0 p1` above, then `result select is_below result1 p0`"
+      ],
+      "wallMs": 5.220874999999978
     },
     {
       "task": "f-setlow-or",
@@ -527,7 +532,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.5824999999999818
+      "wallMs": 0.9391250000001037
     },
     {
       "task": "f-sumsq-helper",
@@ -571,7 +576,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.815291000000002
+      "wallMs": 1.2919580000000224
     },
     {
       "task": "f-countabove-gt",
@@ -591,47 +596,42 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 242,
-        "output": 59,
-        "total": 537
+        "toolContext": 167,
+        "output": 77,
+        "total": 480
       },
       "outputTokensLocal": {
-        "o200k_base": 59,
-        "cl100k_base": 59
+        "o200k_base": 77,
+        "cl100k_base": 77
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 2,
+      "validationFailures": 1,
       "acceptedOneShot": false,
-      "accepted": false,
+      "accepted": true,
       "attempts": [
         {
           "status": "protocol",
           "failures": [
-            "parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0` Reply `fix all` to apply it. [A0010]"
+            "parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0`"
           ],
           "outputTokensLocal": {
             "o200k_base": 28,
             "cl100k_base": 28
           },
-          "repair": "Rejected:\nparse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0` Reply `fix all` to apply it. [A0010]\n\nTry again."
+          "repair": "Rejected:\nparse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0`\n\nTry again."
         },
         {
-          "status": "protocol",
-          "failures": [
-            "type: countabove.el: parameter p2 out of range fix: countabove has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn countabove ...` block with the parameter in its signature [A0105]"
-          ],
+          "status": "ok",
+          "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 31,
-            "cl100k_base": 31
-          },
-          "repair": "Rejected:\ntype: countabove.el: parameter p2 out of range fix: countabove has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn countabove ...` block with the parameter in its signature [A0105]\n\nTry again."
+            "o200k_base": 49,
+            "cl100k_base": 49
+          }
         }
       ],
-      "failures": [
-        "type: countabove.el: parameter p2 out of range fix: countabove has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn countabove ...` block with the parameter in its signature [A0105]"
-      ],
-      "wallMs": 1.5219999999999345
+      "failures": [],
+      "wallMs": 2.675042000000076
     },
     {
       "task": "f-avg4-floor",
@@ -675,7 +675,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.6690830000000005
+      "wallMs": 1.9397499999997763
     },
     {
       "task": "f-addover-bool",
@@ -695,9 +695,9 @@
       "tokenBucketsLocal": {
         "languagePrimer": 236,
         "workflowPrimer": 0,
-        "toolContext": 161,
+        "toolContext": 156,
         "output": 42,
-        "total": 439
+        "total": 434
       },
       "outputTokensLocal": {
         "o200k_base": 42,
@@ -712,13 +712,13 @@
         {
           "status": "protocol",
           "failures": [
-            "type: addover.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn addover u32 u32 -> bool` [A0201]"
+            "type: addover.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn addover u32 u32 -> bool`"
           ],
           "outputTokensLocal": {
             "o200k_base": 15,
             "cl100k_base": 15
           },
-          "repair": "Rejected:\ntype: addover.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn addover u32 u32 -> bool` [A0201]\n\nTry again."
+          "repair": "Rejected:\ntype: addover.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with its header as `fn addover u32 u32 -> bool`\n\nTry again."
         },
         {
           "status": "ok",
@@ -730,7 +730,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.9364590000000135
+      "wallMs": 23.827499999999873
     },
     {
       "task": "f-highbyte-shr",
@@ -774,7 +774,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 0.42191700000000765
+      "wallMs": 0.6662089999999807
     }
   ]
 }

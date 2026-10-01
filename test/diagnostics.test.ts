@@ -283,10 +283,10 @@ test('structured fields: class, table code, fix, applicability and edits', () =>
     { op: 'lines', rule: 'case', text: 'a ADD p0 1', to: 'a add p0 1', line: 2 },
   ]);
   assert.match(
-    formatDiagnostic(e),
+    formatDiagnostic(e, '`fix all`'),
     /^parse: line 2: unknown operation 'ADD' fix: write 'add'.* Reply `fix all` to apply it\. \[A0011\]$/,
   );
-  assert.doesNotMatch(formatDiagnostic(e, false), /fix all/);
+  assert.doesNotMatch(formatDiagnostic(e), /fix all|A0011/);
   // A diagnostic without a fix says so with nulls, not omissions.
   const none = rejected('fn f u32 -> u32\na add p0 1\na add p0 2\nret a\nend\n').toJSON();
   assert.equal(none.applicability, null);
@@ -442,8 +442,12 @@ test('a0 check --json, --fix and a0 explain', async () => {
       ['A0011', 'parse', 'exact', 2],
     );
     // Without --json the error line names the way to apply the exact fix.
-    const plain = spawnSync('node', [cli, 'check', file], { encoding: 'utf8' });
+    const plain = spawnSync('node', [cli, 'check', file, '--hints'], { encoding: 'utf8' });
     assert.match(plain.stderr, /Reply `a0 check --fix` to apply it\. \[A0011\]/);
+    assert.doesNotMatch(
+      spawnSync('node', [cli, 'check', file], { encoding: 'utf8' }).stderr,
+      /Reply|A0011/,
+    );
     assert.equal(plain.status, 1);
     // --fix writes the fixed file, and only when it is accepted.
     const fixed = spawnSync('node', [cli, 'check', file, '--fix'], { encoding: 'utf8' });

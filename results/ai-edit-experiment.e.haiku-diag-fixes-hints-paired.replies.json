@@ -19,11 +19,11 @@
  ],
  "e-sum-range/a0/structured": [
   "r fold stepadd 3 1 p0",
-  "fn stepadd u32 u32 u32x4 -> u32\nnext_idx add p1 1\nval get p2 next_idx\nres add p0 val\nret res\nend\nfn sum3 u32x4 -> u32\nr fold stepadd 3 0 p0\nret r\nend"
+  "fn stepadd u32 u32 u32x4 -> u32\nelem get p2 p1\nsum add p0 elem\ncmp eq p1 0\nresult select cmp p0 sum\nret result\nend\nr fold stepadd 4 0 p0\nret r"
  ],
  "e-popcount-fold/a0/structured": [
   "fn bitcount u32 u32 -> u32 end\nr fold bitcount 32 0 p0\nret r",
-  "fn bitcount u32 u32 u32 -> u32\nshifted shr p2 p1\nbit and shifted 1\nres add p0 bit\nret res\nend\nfn popcnt u32 -> u32\nc fold bitcount 32 0 p0\nret c\nend"
+  "fn bitcount u32 u32 -> u32\nshifted shr p0 p1\nbit and shifted 1\nres add p0 bit\nret res\nend\nr fold bitcount 32 0 p0\nret r"
  ],
  "e-max3-helper/a0/structured": [
   "x call max2 p0 p1\ny call max2 x p2\nret y"
@@ -33,6 +33,6 @@
  ],
  "e-thread-param/a0/structured": [
   "a call addk p0 p1\nb call addk a p1",
-  "fn addk u32 u32 -> u32\nres add p0 p1\nret res\nend\nfn apply u32 u32 -> u32\na call addk p0 p1\nb call addk a p1\nret b\nend"
+  "fn addk u32 u32 -> u32\ns add p0 p1\nret s\nend\nfn apply u32 u32 -> u32\na call addk p0 p1\nb call addk a p1\nret b\nend"
  ]
 }
