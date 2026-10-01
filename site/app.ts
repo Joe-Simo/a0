@@ -90,6 +90,8 @@ const TAGS: Record<number, string> = {
   25: 'b',
   26: 'i',
   27: 'textarea',
+  28: 'details',
+  29: 'summary',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',

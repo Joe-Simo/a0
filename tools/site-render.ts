@@ -39,6 +39,8 @@ const TAGS: Record<number, string> = {
   25: 'b',
   26: 'i',
   27: 'textarea',
+  28: 'details',
+  29: 'summary',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',
@@ -122,7 +124,10 @@ export function renderWords(words: readonly number[]): Prerendered {
         flush();
         const top = open.pop();
         if (top !== undefined && !VOID.has(top.tag)) out.push(`</${top.tag}>`);
-        if (top !== undefined && /^(h1|h2|h3|p|li|tr|pre|section|footer|div)$/.test(top.tag))
+        if (
+          top !== undefined &&
+          /^(h1|h2|h3|p|li|tr|pre|section|footer|div|details|summary)$/.test(top.tag)
+        )
           text.push('\n');
         else if (top !== undefined && /^(td|th)$/.test(top.tag)) text.push(' \u2014 ');
         else if (top !== undefined && /^(a|span|strong|code|button|b|i)$/.test(top.tag))

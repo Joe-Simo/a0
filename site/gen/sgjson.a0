@@ -5,7 +5,7 @@
 # Tokenizer words: 0 mode (0 between tokens, 1 string, 2 number, 3 literal) 1 depth 2 escape
 # 3 string is a key 4 string hash 5 captured bytes 6 integer part 7 fraction digits (9 of them
 # after the event) 8 fraction digit count 9 in fraction 10 in exponent 11 literal's first byte
-# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par, 0 ignore) 14 cost file slot
+# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par 6 axes 7 hw 8 tokfx, 0 ignore) 14 cost file slot
 # 15 event (1 key 2 string 3 number 4 true 5 false 6 null 7 open 9 close) 16 event depth
 # 32 + d key hash at depth d, 48 + d array index, 64 + d container (1 object 2 array)
 # 80..87 the first 32 bytes of the last string. Data from 128 (the extractors below).
@@ -522,21 +522,233 @@ s9 fold wr64 c8 s8 kj r51
 ret s9
 end
 
+# ---- axes: results/lang-axes.json, read into a table of its own. 128 languages; language s (< 64):
+# id hash 192 + s, label 256 + 8s, label length 768 + s, family 832 + s (as in exec), kernel
+# source tokens 896 + s, static check ms x 1000 + 1 at 1152 + s and check + run at 1216 + s (0 when
+# the language has none); 1344 the largest 1-minute load average x 100 of any round, 1345 cpus.
+fn haxes u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d1 eq d 1
+d2 eq d 2
+d3 eq d 3
+d5 eq d 5
+kt call kis p0 1 p2 227
+kv call kis p0 1 p2 228
+# a new language: an id key under tokens, or under validation when tokens did not have it
+x0 and iskey d2
+nl call g p0 128
+lid call key p0 2
+sl0 call lookup p0 192 nl lid
+isnew ge sl0 nl
+nv and kv isnew
+tn or kt nv
+x1 and x0 tn
+c1 select x1 1 0
+iw add nl 192
+s1 fold wr64 c1 p0 iw lid
+nl1 add nl 1
+s2 fold wr64 c1 s1 128 nl1
+n2 call g s2 128
+sl call lookup s2 192 n2 lid
+found lt sl n2
+v3 and found d3
+# tokens.ID.label, family, sumKernelTokens
+ls0 and v3 isstr
+ls1 and ls0 kt
+lb call kis s2 3 p2 2
+fa call kis s2 3 p2 3
+lbc and ls1 lb
+fac and ls1 fa
+l8 shl sl 3
+ld add l8 256
+ln add sl 768
+s3 call savecap s2 lbc ld ln
+cn call hashis s3 p2 44
+it call hashis s3 p2 45
+a0 call hashis s3 p2 47
+fv0 select it 2 3
+fv1 select cn 1 fv0
+fv select a0 0 fv1
+cf select fac 1 0
+fi add sl 832
+s4 fold wr64 cf s3 fi fv
+nm0 and v3 isnum
+nm1 and nm0 kt
+sk call kis s4 3 p2 229
+nsk and nm1 sk
+csk select nsk 1 0
+ski add sl 896
+v1 call num s4 1
+s5 fold wr64 csk s4 ski v1
+# validation.ID.checkMedianMs, checkRunMedianMs: milliseconds x 1000, plus one
+vm0 and v3 isnum
+vm1 and vm0 kv
+ck call kis s5 3 p2 230
+cr call kis s5 3 p2 231
+nck and vm1 ck
+ncr and vm1 cr
+cck select nck 1 0
+ccr select ncr 1 0
+v1000 call num s5 1000
+vp add v1000 1
+cki add sl 1152
+cri add sl 1216
+s6 fold wr64 cck s5 cki vp
+s7 fold wr64 ccr s6 cri vp
+# load.perRound[].loadavg[0] and cpus
+lk call kis s7 1 p2 29
+pk call kis s7 2 p2 233
+av call kis s7 4 p2 30
+ix call g s7 53
+i0 eq ix 0
+q0 and isnum d5
+q1 and q0 lk
+q2 and q1 pk
+q3 and q2 av
+q4 and q3 i0
+v100 call num s7 100
+m call g s7 1344
+mx call max m v100
+cq select q4 1 0
+s8 fold wr64 cq s7 1344 mx
+cp0 call kis s8 1 p2 35
+cp1 and isnum d1
+cp2 and cp1 cp0
+cpc select cp2 1 0
+cpv call num s8 1
+s9 fold wr64 cpc s8 1345 cpv
+ret s9
+end
+
+# ---- hw: results/hardware.json, into the axes table. 1400 modules synthesized, 1401 their cells in
+# all, 1402 the cells of the largest, 1403 functions, 1404 input cases, 1560 modules simulated,
+# 1600 + i mean cycles x 100 of simulated module i.
+fn hhw u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+d1 eq d 1
+d3 eq d 3
+d4 eq d 4
+ks call kis p0 1 p2 295
+km call kis p0 2 p2 296
+x0 and iskey d3
+x1 and x0 ks
+x2 and x1 km
+c1 select x2 1 0
+n call g p0 1400
+n1 add n 1
+s1 fold wr64 c1 p0 1400 n1
+y0 and isnum d4
+y1 and y0 ks
+y2 and y1 km
+kc call kis s1 4 p2 297
+y and y2 kc
+cy select y 1 0
+v call num s1 1
+sum call g s1 1401
+sum2 add sum v
+s2 fold wr64 cy s1 1401 sum2
+mx call g s2 1402
+m2 call max mx v
+s3 fold wr64 cy s2 1402 m2
+kfn call kis s3 1 p2 298
+kin call kis s3 1 p2 299
+z0 and isnum d1
+zf and z0 kfn
+zi and z0 kin
+cf select zf 1 0
+ci select zi 1 0
+s4 fold wr64 cf s3 1403 v
+s5 fold wr64 ci s4 1404 v
+ksim call kis s5 1 p2 339
+kcy call kis s5 2 p2 340
+kmc call kis s5 4 p2 341
+q1 and iskey d3
+q2 and q1 ksim
+q3 and q2 kcy
+cq select q3 1 0
+nc call g s5 1560
+nc1 add nc 1
+s6 fold wr64 cq s5 1560 nc1
+r0 and isnum d4
+r1 and r0 ksim
+r2 and r1 kcy
+r3 and r2 kmc
+cr select r3 1 0
+nn call g s6 1560
+li sub nn 1
+wi add li 1600
+mv call num s6 100
+s7 fold wr64 cr s6 wi mv
+ret s7
+end
+
+# ---- tokfx: results/tokens.json, into the axes table: the o200k tokens of each fixture and view.
+# 1450 their number, name hash of the i-th at 1456 + i, its tokens at 1488 + i (up to 32).
+fn htok u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+d2 eq d 2
+d4 eq d 4
+kf call kis p0 1 p2 300
+kv call kis p0 1 p2 301
+k1 or kf kv
+x0 and iskey d2
+x1 and x0 k1
+c1 select x1 1 0
+n call g p0 1450
+nh call key p0 2
+slot add n 1456
+s1 fold wr64 c1 p0 slot nh
+n1 add n 1
+s2 fold wr64 c1 s1 1450 n1
+kt call kis s2 3 p2 227
+ko call kis s2 4 p2 302
+y0 and isnum d4
+y1 and y0 k1
+y2 and y1 kt
+y and y2 ko
+cy select y 1 0
+n2 call g s2 1450
+last sub n2 1
+vslot add last 1488
+v call num s2 1
+s3 fold wr64 cy s2 vslot v
+ret s3
+end
+
 fn onev u32x128x64 u32 u32x128x512 -> u32x128x64
 role call g p0 13
 e eq role 1
 c eq role 2
 d eq role 3
 p eq role 4
+x eq role 6
+h eq role 7
+k eq role 8
 ce select e 1 0
 cc select c 1 0
 cd select d 1 0
 cp select p 1 0
+cx select x 1 0
+ch select h 1 0
+ck select k 1 0
 s1 fold hexec ce p0 p2
 s2 fold hcost cc s1 p2
 s3 fold hedit cd s2 p2
 s4 fold hpar cp s3 p2
-ret s4
+s5 fold haxes cx s4 p2
+s6 fold hhw ch s5 p2
+s7 fold htok ck s6 p2
+ret s7
 end
 # event p2 at depth p3, handled (fold body)
 fn event u32x128x64 u32 u32 u32 u32x128x512 -> u32x128x64

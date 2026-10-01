@@ -44,6 +44,81 @@ r fold vhb l 2166136261 p0 s
 ret r
 end
 
+# ---- lines of the template: fields and maps
+fn fnext u32 u32 u32x128x512 -> u32
+e call fieldend p2 p0
+r add e 1
+ret r
+end
+# the start of field p2 (1 the op) of the line at p1
+fn fstart u32x128x512 u32 u32 -> u32
+a add p1 2
+n sub p2 2
+r fold fnext n a p0
+ret r
+end
+fn flen u32x128x512 u32 -> u32
+e call fieldend p0 p1
+r sub e p1
+ret r
+end
+fn fhash u32x128x512 u32 u32 -> u32
+a call fstart p0 p1 p2
+n call flen p0 a
+r call shash p0 a n
+ret r
+end
+fn decb u32 u32 u32x128x512 u32 -> u32
+a add p3 p1
+b call sb p2 a
+d sub b 48
+t mul p0 10
+r add t d
+ret r
+end
+fn fnum u32x128x512 u32 u32 -> u32
+a call fstart p0 p1 p2
+n call flen p0 a
+r fold decb n 0 p0 a
+ret r
+end
+# the value of the `m` line at p1 (from field 4 to the end of the line): start, length
+fn mval u32x128x512 u32 -> (u32,u32)
+a call fstart p0 p1 4
+e call tplend p0
+nl call sfind p0 a e 10
+n sub nl a
+r rec a n
+ret r
+end
+# the `m` lines of map word p3 among the p2 lines p1: position of the entry with key hash p4
+fn mfstep u32 u32 u32x128 u32x128x512 u32 u32 -> u32
+pos get p2 p1
+nm call fhash p3 pos 2
+w call whash p3 p4
+k call fhash p3 pos 3
+a eq nm w
+b eq k p5
+c and a b
+nf eq p0 0
+d and c nf
+r select d pos p0
+ret r
+end
+fn mfind u32x128x512 u32 u32 -> u32
+ml call lines p0 109
+l at ml 0
+c at ml 1
+r fold mfstep c 0 l p0 p1 p2
+ret r
+end
+# is the label of ref p2 (bytes in the pool of p1) a key of the `top` map: the well-known languages
+fn intop u32x128x512 u32x128x128 u32 -> bool
+h call vhash p1 p2
+pos call mfind p0 234 h
+r ne pos 0
+ret r
+end
 # ---- the strings of the data table into the pool (fold bodies over the strings of a kind)
 fn cpstr u32x128x128 u32 u32x128x64 u32 u32 u32 u32 u32 -> u32x128x128
 sw0 mul p1 p4
@@ -65,7 +140,7 @@ d add p4 p1
 r fold vconst 1 p0 p2 w d
 ret r
 end
-fn strings u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn strings u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 s1 fold cword 18 p0 p2 73 2
 s2 fold vconst 1 s1 p2 46 20
 s3 fold vconst 1 s2 p2 47 21
@@ -81,7 +156,9 @@ ne call rd64 p3 7768
 s8 fold cpstr ne s7 p3 7774 11 7773 11 240
 np call rd64 p3 7952
 s9 fold cpstr np s8 p3 7953 20 7961 20 256
-ret s9
+nx call rd64 p4 128
+s10 fold cpstr nx s9 p4 256 8 768 1 288
+ret s10
 end
 
 # ---- lists of up to 64 values
@@ -130,6 +207,14 @@ ret r
 end
 fn lmax u32x64 u32 -> u32
 r fold maxstep p1 0 p0
+ret r
+end
+# how many of the first p1 values of the list p2 are below p3 (fold body over the first p1 positions)
+fn cntlt u32 u32 u32x64 u32 -> u32
+v get p2 p1
+l lt v p3
+a add p0 1
+r select l a p0
 ret r
 end
 # median of the first p1 values (the lower middle and the upper averaged, floor)
@@ -320,7 +405,9 @@ pc call pct lg p7 p8
 s4 fold vnum 1 s3 p2 98 k pc
 g call ex lg 100
 s5 fold vnum 1 s4 p2 99 k g
-ret s5
+tp call intop p2 s5 rf
+s6 fold vflag 1 s5 p2 238 k tp
+ret s6
 end
 # ahead: labels (in order) whose log is below p5, joined with ", "
 fn ahstep u32x128x128 u32 u32x64 u32x64 u32x64 u32 u32 -> u32x128x128
@@ -518,6 +605,45 @@ a add p0 1
 r select o a p0
 ret r
 end
+# the entries of kernel p2 (vars p0, table p1): (entries, entries faster than A0, fastest other, its label ref)
+fn rkcalc u32x128x128 u32x128x64 u32 -> (u32,u32,u32,u32)
+arm call kf p1 p2 1
+s0 rec 1 0 4294967295 0
+c call kf p1 p2 2
+cr call cref p0 3
+s1 fold rkone 1 s0 c cr arm
+ru call kf p1 p2 3
+rr call cref p0 4
+s2 fold rkone 1 s1 ru rr arm
+js call kf p1 p2 4
+jr call cref p0 5
+s3 fold rkone 1 s2 js jr arm
+nl call rd64 p1 129
+s4 fold rklang nl s3 p1 p0 p2 arm
+ret s4
+end
+# kernels A0 is first on, and the largest ratio x 100 of A0 to the fastest other (at least 100) (fold body)
+fn rkst (u32,u32) u32 u32x128x128 u32x128x64 -> (u32,u32)
+w at p0 0
+m at p0 1
+h call kf p3 p1 0
+has eq h 1
+arm call kf p3 p1 1
+r call rkcalc p2 p3 p1
+fa at r 1
+bv at r 2
+first eq fa 0
+w1 add w 1
+w2 select first w1 w
+a100 mul arm 100
+ra call rdiv a100 bv
+big gt ra m
+m1 select big ra m
+wn select has w2 w
+mn select has m1 m
+o rec wn mn
+ret o
+end
 fn rkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
 h call kf p3 p1 0
 has eq h 1
@@ -525,18 +651,7 @@ ch select has 1 0
 row fold hasstep p1 0 p3
 k call key1 row
 arm call kf p3 p1 1
-s0 rec 1 0 4294967295 0
-c call kf p3 p1 2
-cr call cref p0 3
-s1 fold rkone 1 s0 c cr arm
-ru call kf p3 p1 3
-rr call cref p0 4
-s2 fold rkone 1 s1 ru rr arm
-js call kf p3 p1 4
-jr call cref p0 5
-s3 fold rkone 1 s2 js jr arm
-nl call rd64 p3 129
-s4 fold rklang nl s3 p3 p0 p1 arm
+s4 call rkcalc p0 p3 p1
 n at s4 0
 fa at s4 1
 bv at s4 2
@@ -557,14 +672,27 @@ ra call rdiv a100 bv
 v7 fold vnum ch v6 p2 115 k ra
 win le arm bv
 v8 fold vflag ch v7 p2 116 k win
-ret v8
+same eq ra 100
+fast lt ra 100
+slow gt ra 100
+v9 fold vflag ch v8 p2 308 k same
+v10 fold vflag ch v9 p2 309 k fast
+v11 fold vflag ch v10 p2 310 k slow
+ret v11
 end
 fn cranks u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
 nk call rd64 p3 128
 nr fold hasstep nk 0 p3
 s1 fold vnum 1 p0 p2 108 0 nr
 s2 fold rkrow nk s1 p2 p3
-ret s2
+st0 rec 0 100
+st fold rkst nk st0 s2 p3
+wn at st 0
+mr at st 1
+s3 fold vnum 1 s2 p2 235 0 nr
+s4 fold vnum 1 s3 p2 236 0 wn
+s5 fold vfix2 1 s4 p2 237 0 mr
+ret s5
 end
 
 # ---- startup: rows (label ref, family, median ms x 10^6, label hash)
@@ -648,7 +776,9 @@ pc call pct lv p7 p8
 s4 fold vnum 1 s3 p2 125 k pc
 h call rdiv v 10000
 s5 fold vnum 1 s4 p2 126 k h
-ret s5
+tp call intop p2 s5 rf
+s6 fold vflag 1 s5 p2 239 k tp
+ret s6
 end
 fn findh u32 u32 u32x64 u32 u32 -> u32
 h get p2 p1
@@ -742,74 +872,6 @@ s11 fold vnum 1 s10 p2 132 0 bk
 ret s11
 end
 
-# ---- lines of the template: fields and maps
-fn fnext u32 u32 u32x128x512 -> u32
-e call fieldend p2 p0
-r add e 1
-ret r
-end
-# the start of field p2 (1 the op) of the line at p1
-fn fstart u32x128x512 u32 u32 -> u32
-a add p1 2
-n sub p2 2
-r fold fnext n a p0
-ret r
-end
-fn flen u32x128x512 u32 -> u32
-e call fieldend p0 p1
-r sub e p1
-ret r
-end
-fn fhash u32x128x512 u32 u32 -> u32
-a call fstart p0 p1 p2
-n call flen p0 a
-r call shash p0 a n
-ret r
-end
-fn decb u32 u32 u32x128x512 u32 -> u32
-a add p3 p1
-b call sb p2 a
-d sub b 48
-t mul p0 10
-r add t d
-ret r
-end
-fn fnum u32x128x512 u32 u32 -> u32
-a call fstart p0 p1 p2
-n call flen p0 a
-r fold decb n 0 p0 a
-ret r
-end
-# the value of the `m` line at p1 (from field 4 to the end of the line): start, length
-fn mval u32x128x512 u32 -> (u32,u32)
-a call fstart p0 p1 4
-e call tplend p0
-nl call sfind p0 a e 10
-n sub nl a
-r rec a n
-ret r
-end
-# the `m` lines of map word p3 among the p2 lines p1: position of the entry with key hash p4
-fn mfstep u32 u32 u32x128 u32x128x512 u32 u32 -> u32
-pos get p2 p1
-nm call fhash p3 pos 2
-w call whash p3 p4
-k call fhash p3 pos 3
-a eq nm w
-b eq k p5
-c and a b
-nf eq p0 0
-d and c nf
-r select d pos p0
-ret r
-end
-fn mfind u32x128x512 u32 u32 -> u32
-ml call lines p0 109
-l at ml 0
-c at ml 1
-r fold mfstep c 0 l p0 p1 p2
-ret r
-end
 # copy the value of map word p3, key hash p4 into the pool (fold body); variables word p5 := ref,
 # or the ref at variables word p6 when the key is not in the map
 fn vmapv u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
@@ -1191,6 +1253,17 @@ part ne cv p6
 s5 fold vflag 1 s4a p2 153 k part
 s6 fold vnum 1 s5 p2 154 k n
 pm call sortperm tt n
+rk fold cntlt n 0 tt a
+rk1 add rk 1
+s6a fold vnum 1 s6 p2 290 k rk1
+b0 get pm 0
+br0 get rp b0
+bw add br0 22
+brf call rd128 s6a bw
+s6b fold vref 1 s6a p2 291 k brf
+bv get tt b0
+s6c0 fold vnum 1 s6b p2 292 k bv
+s6c fold vnum 1 s6c0 p2 338 k a
 mn call lmin tt n
 mx call lmax tt n
 l9 call lg 9
@@ -1199,7 +1272,7 @@ lm call lg mn
 lo0 add lm l9
 lo sub lo0 l10
 hi call lg mx
-s7 fold cbrow n s6 p2 p1 rp pm tt lo hi
+s7 fold cbrow n s6c p2 p1 rp pm tt lo hi
 s8 fold vnum 1 s7 p2 159 k n
 s9 fold ctrow n s8 p2 p1 rs a
 ret s9
@@ -1243,16 +1316,20 @@ ba call reptot p2 p3 big 47
 bt call reptot p2 p3 big 48
 s4 fold vnum 1 s3 p2 142 0 ba
 s5 fold vnum 1 s4 p2 143 0 bt
-bq div bt ba
-s6 fold vnum 1 s5 p2 144 0 bq
+bt10 mul bt 10
+bq call rdiv bt10 ba
+s6 fold vfix1 1 s5 p2 144 0 bq
 bc call repacc p2 p3 big 47
 s7 fold vnum 1 s6 p2 145 0 bc
 ma call reptot p2 p3 sml 47
 mt call reptot p2 p3 sml 48
 m100 mul ma 100
 mr call rdiv m100 mt
-s8 fold vnum 1 s7 p2 146 0 mr
-s9 fold vnum 1 s8 p2 147 0 ns
+s8 fold vfix2 1 s7 p2 146 0 mr
+mrs call reptot p2 p3 sml 9
+mrr call rdiv m100 mrs
+s8r fold vfix2 1 s8 p2 289 0 mrr
+s9 fold vnum 1 s8r p2 147 0 ns
 s10 fold cszrow ns s9 p2 p3 sl alh na
 ret s10
 end
@@ -1551,6 +1628,32 @@ n1 add n 1
 r rec l2 n1
 ret r
 end
+# losses of kernel p1 to an implementation other than A0 (the number of rows faster than A0 --parallel)
+fn plc u32 u32 u32x64 u32x64 u32x128x512 -> u32
+j get p2 p1
+r get p3 p1
+pos call mnth p4 j 65
+kh call fhash p4 pos 3
+au call whash p4 40
+na ne kh au
+lo lt r 100000
+c and na lo
+a add p0 1
+r2 select c a p0
+ret r2
+end
+# the number of kernels (fold body) on which no other implementation beats A0 --parallel
+fn pwin u32 u32 u32x128x512 u32x128x64 -> u32
+rs call prows p3 p1
+jl at rs 0
+rl at rs 1
+n at rs 2
+lc fold plc n 0 jl rl p2
+z eq lc 0
+a add p0 1
+r select z a p0
+ret r
+end
 fn cpar u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
 nj call rd64 p3 8119
 s0 fold plab nj p0 p2
@@ -1591,5 +1694,301 @@ alh at al 0
 na at al 1
 cv call cover alh na hl nj
 s9 fold vcov 1 s8 p2 196 197 cv na
+nw fold pwin nk 0 p2 p3
+s10 fold vnum 1 s9 p2 285 0 nw
+s11 fold vnum 1 s10 p2 286 0 nk
+ret s11
+end
+
+# ---- axes: kernel source tokens and the time of a check and of a check + run, per language, from
+# lang-axes.json (the axes table p4). Language slot s has its label ref at variables word 288 + s.
+# per slot p1 (fold body): the three values (the largest u32 when the language has none) and its family
+fn axstep (u32x64,u32x64,u32x64,u32x64) u32 u32x128x64 -> (u32x64,u32x64,u32x64,u32x64)
+vt at p0 0
+vc at p0 1
+vr at p0 2
+fm at p0 3
+ski add p1 896
+tk call rd64 p2 ski
+ok gt tk 0
+cki add p1 1152
+c0 call rd64 p2 cki
+cri add p1 1216
+r0 call rd64 p2 cri
+c1 gt c0 0
+r1 gt r0 0
+okc and ok c1
+okr and ok r1
+cm1 sub c0 1
+rm1 sub r0 1
+tv select ok tk 4294967295
+cv select okc cm1 4294967295
+rv select okr rm1 4294967295
+fi add p1 832
+f call rd64 p2 fi
+vt2 set vt p1 tv
+vc2 set vc p1 cv
+vr2 set vr p1 rv
+fm2 set fm p1 f
+o rec vt2 vc2 vr2 fm2
+ret o
+end
+# how many of the values have a value (fold body)
+fn vldstep u32 u32 u32x64 -> u32
+v get p2 p1
+ok lt v 4294967295
+a add p0 1
+r select ok a p0
+ret r
+end
+# the sorted position of A0, else the count p4 (fold body over sorted positions)
+fn axa0 u32 u32 u32x64 u32x64 u32 -> u32
+s get p2 p1
+f get p3 s
+is eq f 0
+nf eq p0 p4
+c and is nf
+r select c p1 p0
+ret r
+end
+# a value variable: the number (p6 = 0) or milliseconds x 1000 shown in hundredths (fold body)
+fn axval u32x128x128 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x128
+t ne p5 0
+c1 select t 1 0
+c0 select t 0 1
+h call rdiv p6 10
+s1 fold vnum c0 p0 p2 p3 p4 p6
+s2 fold vfix2 c1 s1 p2 p3 p4 h
+ret s2
+end
+# the row at sorted position p1 of an axis (fold body): perm p3, values p4, families p5, first
+# variables word p6 (label, class, A0 flag, bar length, value, well-known flag), mode p7 (0 linear,
+# 1 logarithmic), the biased logs p8 p9 of the bar range and the largest value p10
+fn axrow u32x128x128 u32 u32x128x512 u32x64 u32x64 u32x64 u32 u32 u32 u32 u32 -> u32x128x128
+s get p3 p1
+v get p4 s
+fm get p5 s
+k call key1 p1
+lw add s 288
+rf call rd128 p0 lw
+s1 fold vref 1 p0 p2 p6 k rf
+cl call clsref s1 fm
+w1 add p6 1
+s2 fold vref 1 s1 p2 w1 k cl
+me eq fm 0
+w2 add p6 2
+s3 fold vflag 1 s2 p2 w2 k me
+lv call lg v
+pl call pct lv p8 p9
+n97 mul v 97
+ql call rdiv n97 p10
+pl1 add ql 3
+lgm ne p7 0
+pc select lgm pl pl1
+w3 add p6 3
+s4 fold vnum 1 s3 p2 w3 k pc
+vd0 call rdiv v 10
+vd select lgm vd0 v
+w4 add p6 4
+s5 fold vnum 1 s4 p2 w4 k vd
+tp call intop p2 s5 rf
+w5 add p6 5
+s6 fold vflag 1 s5 p2 w5 k tp
+ret s6
+end
+# one axis (fold body): its rows in ascending order of value and its summary variables. Keys p3
+# (the largest u32 when a language has none), families p4, slots p5, first variables word p6
+# (rows start there; +6 the row count, +7 A0's value, +8 its place, +9 the best language, +10 its
+# value, +11 the median, +12 and +13 the coverage), mode p7, languages in all p8.
+fn axaxis u32x128x128 u32 u32x128x512 u32x64 u32x64 u32 u32 u32 u32 -> u32x128x128
+pm call sortperm p3 p5
+nv fold vldstep p5 0 p3
+l1 sub nv 1
+li get pm l1
+mxv get p3 li
+f0 get pm 0
+mnv get p3 f0
+lmn call lg mnv
+l9 call lg 9
+l10 call lg 10
+lo0 add lmn l9
+lo sub lo0 l10
+hi call lg mxv
+s1 fold axrow nv p0 p2 pm p3 p4 p6 p7 lo hi mxv
+w6 add p6 6
+s2 fold vnum 1 s1 p2 w6 0 nv
+ai fold axa0 nv nv pm p4 nv
+sa get pm ai
+av get p3 sa
+rk fold cntlt p5 0 p3 av
+rk1 add rk 1
+w7 add p6 7
+s3 fold axval 1 s2 p2 w7 0 p7 av
+w8 add p6 8
+s4 fold vnum 1 s3 p2 w8 0 rk1
+bw add f0 288
+brf call rd128 s4 bw
+w9 add p6 9
+s5 fold vref 1 s4 p2 w9 0 brf
+w10 add p6 10
+s6 fold axval 1 s5 p2 w10 0 p7 mnv
+sv call applyp pm p3 p5
+md call median sv nv
+w11 add p6 11
+s7 fold axval 1 s6 p2 w11 0 p7 md
+w12 add p6 12
+w13 add p6 13
+s8 fold vcov 1 s7 p2 w12 w13 nv p8
+ret s8
+end
+# the label hashes of the cost map's representations (fold body)
+fn mhstep u32x64 u32 u32x128x128 -> u32x64
+a add p1 22
+rf call rd128 p2 a
+h call vhash p2 rf
+r set p0 p1 h
+ret r
+end
+# the labels of the languages with a token count that are not among the hashes p3 (p4 of them),
+# joined with ", " (fold body over slots); p5 the start of the pool string
+fn cmstep u32x128x128 u32 u32x64 u32x64 u32 u32 -> u32x128x128
+v get p2 p1
+ok lt v 4294967295
+a add p1 288
+rf call rd128 p0 a
+h call vhash p0 rf
+f fold inlist p4 false p3 h
+nf0 select f false true
+inc and ok nf0
+o call rd128 p0 0
+first eq o p5
+nf select first false true
+c0 and inc nf
+cs select c0 1 0
+sp call cref p0 14
+s1 fold vapref cs p0 sp
+cb select inc 1 0
+s2 fold vapref cb s1 rf
+ret s2
+end
+fn caxes u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
+nax call rd64 p4 128
+z call z64l
+s0 rec z z z z
+ls fold axstep nax s0 p4
+vt at ls 0
+vc at ls 1
+vr at ls 2
+fm at ls 3
+al call alllangs p3 p0
+na at al 1
+s1 fold axaxis 1 p0 p2 vt fm nax 240 0 na
+s2 fold axaxis 1 s1 p2 vc fm nax 254 1 na
+s3 fold axaxis 1 s2 p2 vr fm nax 268 1 na
+nh call whash p2 232
+ni call lookup p4 192 nax nh
+has lt ni nax
+c select has 1 0
+cki add ni 1152
+cri add ni 1216
+nc0 call rd64 p4 cki
+nr0 call rd64 p4 cri
+nc1 sub nc0 1
+nr1 sub nr0 1
+s4 fold axval c s3 p2 282 0 1 nc1
+s5 fold axval c s4 p2 283 0 1 nr1
+ld call rd64 p4 1344
+l100 call rdiv ld 100
+s6 fold vnum 1 s5 p2 287 0 l100
+cp call rd64 p4 1345
+s7 fold vnum 1 s6 p2 288 0 cp
+nr call mcount p2 62
+z2 call z64l
+mh fold mhstep nr z2 s7
+st call rd128 s7 0
+s8 fold cmstep nax s7 vt mh nr st
+ar call since s8 st
+s9 fold vref 1 s8 p2 284 0 ar
 ret s9
+end
+
+# ---- tokens.json fixtures and hardware.json totals (the axes table p3)
+# the o200k tokens of the fixture whose name is word p4 into variable word p5 (fold body)
+fn tfv u32x128x128 u32 u32x128x512 u32x128x64 u32 u32 -> u32x128x128
+h call whash p2 p4
+n call rd64 p3 1450
+i call lookup p3 1456 n h
+f lt i n
+c select f 1 0
+vi add i 1488
+v call rd64 p3 vi
+r fold vnum c p0 p2 p5 0 v
+ret r
+end
+fn ctok u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+s1 fold tfv 1 p0 p2 p3 311 324
+s2 fold tfv 1 s1 p2 p3 312 325
+s3 fold tfv 1 s2 p2 p3 313 326
+s4 fold tfv 1 s3 p2 p3 314 327
+s5 fold tfv 1 s4 p2 p3 315 328
+s6 fold tfv 1 s5 p2 p3 316 329
+s7 fold tfv 1 s6 p2 p3 317 330
+s8 fold tfv 1 s7 p2 p3 318 331
+s9 fold tfv 1 s8 p2 p3 319 332
+s10 fold tfv 1 s9 p2 p3 320 333
+s11 fold tfv 1 s10 p2 p3 321 334
+s12 fold tfv 1 s11 p2 p3 322 335
+s13 fold tfv 1 s12 p2 p3 323 336
+ha call whash p2 322
+hb call whash p2 323
+n call rd64 p3 1450
+ia call lookup p3 1456 n ha
+ib call lookup p3 1456 n hb
+va0 add ia 1488
+vb0 add ib 1488
+va call rd64 p3 va0
+vb call rd64 p3 vb0
+a10 mul va 10
+x call rdiv a10 vb
+s14 fold vfix1 1 s13 p2 337 0 x
+ret s14
+end
+# the mean cycles of simulated module p1 (none: the largest u32), as a sort key (fold body)
+fn cyst u32x64 u32 u32x128x64 -> u32x64
+a add p1 1600
+v call rd64 p2 a
+pos gt v 0
+k0 select pos v 4294967295
+k set p0 p1 k0
+ret k
+end
+fn chw u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+a call rd64 p3 1400
+b call rd64 p3 1401
+c call rd64 p3 1402
+d call rd64 p3 1403
+e call rd64 p3 1404
+s1 fold vnum 1 p0 p2 303 0 a
+s2 fold vnum 1 s1 p2 304 0 b
+s3 fold vnum 1 s2 p2 305 0 c
+s4 fold vnum 1 s3 p2 306 0 d
+s5 fold vnum 1 s4 p2 307 0 e
+ns call rd64 p3 1560
+z call z64l
+ks fold cyst ns z p3
+nv fold vldstep ns 0 ks
+pm call sortperm ks ns
+f0 get pm 0
+mn get ks f0
+l1 sub nv 1
+li get pm l1
+mx get ks li
+sv call applyp pm ks ns
+md call median sv nv
+s6 fold vnum 1 s5 p2 342 0 ns
+s7 fold vnum 1 s6 p2 343 0 nv
+s8 fold vfix2 1 s7 p2 344 0 mn
+s9 fold vfix2 1 s8 p2 345 0 md
+s10 fold vfix2 1 s9 p2 346 0 mx
+ret s10
 end
