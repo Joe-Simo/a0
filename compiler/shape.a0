@@ -42,7 +42,7 @@
 #       FILL OWN ARM OVER BORR (and MISS) of function f; run it for every function that has a body
 #       and may be emitted or inlined
 #
-use "emit_wasm.a0"
+use "optimize.a0"
 
 fn zsh -> u32x128x200
 z call zpage
@@ -579,7 +579,7 @@ af get af_b af_c
 r fold shpb4a na p0 p3 af p5 p1 p6
 ret r
 end
-fn shprod u32x128x128 u32x128x512 u32x128x45 u32 -> (u32x128x24,u32,u32,u32,u32)
+fn shprod u32x128x128 u32x128x512 u32x128x45 u32 bool -> (u32x128x24,u32,u32,u32,u32)
 fst_m mul p3 7
 fst_i add fst_m 4
 fst_a shr fst_i 7
@@ -601,9 +601,10 @@ rw get rw_b rw_c
 retk shr rw 28
 retv and rw 268435455
 z call zcol
-badu fold shpb2 nfn z p0 p1 fst
+nfg select p4 nfn 0
+badu fold shpb2 nfg z p0 p1 fst
 s0 rec z 0 0
-s1 fold shpb3 nfn s0 p0 p1 fst retk retv badu
+s1 fold shpb3 nfg s0 p0 p1 fst retk retv badu
 prev at s1 0
 gfail at s1 1
 cnt at s1 2
@@ -657,7 +658,7 @@ a1ok and a1ok_a a1ok_b
 c1 and isn isset
 c2 and a0ok a1ok
 sok and c1 c2
-f4 fold shpb4 nfn 0 p0 p1 fst prev setj
+f4 fold shpb4 nfg 0 p0 p1 fst prev setj
 nf4 eq f4 0
 ng eq gfail 0
 o1 and sok nf4
@@ -964,7 +965,7 @@ rw get rw_b rw_c
 opaque eq rw 0
 pop and pre opaque
 miss select pop c 4294967295
-pr call shprod p0 p1 p2 c
+pr call shprod p0 p1 p2 c true
 st at pr 1
 hs ne st 0
 nopq select opaque false true
@@ -1937,7 +1938,7 @@ isg eq n_op 25
 r fold shrga n_na p0 p3 n_af p5 isg
 ret r
 end
-fn shrdg u32x128x128 u32x128x512 u32x128x45 u32 u32 -> u32
+fn shrdg u32x128x128 u32x128x512 u32x128x45 u32 u32 bool -> u32
 b_f_m mul p3 7
 b_f_i add b_f_m 4
 b_f_a shr b_f_i 7
@@ -1995,7 +1996,8 @@ r_v select r_i5 r_q_v r_v0
 rp_a eq r_k 2
 rp_b eq r_v p4
 rp and rp_a rp_b
-bad fold shrgj b_n 0 p0 p1 b_f p4
+bn select p5 b_n 0
+bad fold shrgj bn 0 p0 p1 b_f p4
 nb eq bad 0
 nrp select rp false true
 o and nb nrp
@@ -2228,7 +2230,7 @@ x select cand 1 0
 r add p0 x
 ret r
 end
-fn shgets u32x128x128 u32x128x512 u32x128x45 u32 u32 -> (u32,u32)
+fn shgets u32x128x128 u32x128x512 u32x128x45 u32 u32 bool -> (u32,u32)
 b_f_m mul p3 7
 b_f_i add b_f_m 4
 b_f_a shr b_f_i 7
@@ -2265,8 +2267,9 @@ b_rs_a shr b_rs_i 7
 b_rs_b get p2 b_rs_a
 b_rs_c and b_rs_i 127
 b_rs get b_rs_b b_rs_c
-nc fold shgc b_n 0 p0 p1 b_f p4
-dc fold shgd1 b_n 0 p0 p1 b_f p4
+bn select p5 b_n 0
+nc fold shgc bn 0 p0 p1 b_f p4
+dc fold shgd1 bn 0 p0 p1 b_f p4
 r rec nc dc
 ret r
 end
@@ -2286,7 +2289,7 @@ x select isj 0 c
 r add p0 x
 ret r
 end
-fn shbcost u32x128x128 u32x128x45 u32 u32 -> u32
+fn shbcost u32x128x128 u32x128x45 u32 u32 bool -> u32
 b_f_m mul p2 7
 b_f_i add b_f_m 4
 b_f_a shr b_f_i 7
@@ -2323,7 +2326,8 @@ b_rs_a shr b_rs_i 7
 b_rs_b get p1 b_rs_a
 b_rs_c and b_rs_i 127
 b_rs get b_rs_b b_rs_c
-r fold shbcs b_n 0 p0 b_f p3
+bn select p4 b_n 0
+r fold shbcs bn 0 p0 b_f p3
 ret r
 end
 
@@ -2436,7 +2440,7 @@ has2 or has hx
 r rec bad2 has2
 ret r
 end
-fn shfs u32x128x128 u32x128x512 u32x128x45 u32 u32x128x24 u32 -> (u32,u32)
+fn shfs u32x128x128 u32x128x512 u32x128x45 u32 u32x128x24 u32 bool -> (u32,u32)
 b_f_m mul p3 7
 b_f_i add b_f_m 4
 b_f_a shr b_f_i 7
@@ -2474,7 +2478,8 @@ b_rs_b get p2 b_rs_a
 b_rs_c and b_rs_i 127
 b_rs get b_rs_b b_rs_c
 s0 rec 0 0
-r fold shfsj b_n s0 p0 p1 b_f p5 p4
+bn select p6 b_n 0
+r fold shfsj bn s0 p0 p1 b_f p5 p4
 ret r
 end
 
@@ -3448,20 +3453,20 @@ d2_rs_a shr d2_rs_i 7
 d2_rs_b get p2 d2_rs_a
 d2_rs_c and d2_rs_i 127
 d2_rs get d2_rs_b d2_rs_c
-sp call shprod p0 p1 p2 b1
+sp call shprod p0 p1 p2 b1 p6
 st1 at sp 1
 setj1 at sp 4
 pure eq st1 2
-rdg call shrdg p0 p1 p2 b2 k
+rdg call shrdg p0 p1 p2 b2 k p6
 rdgb eq rdg 1
-gt call shgets p0 p1 p2 b2 k
+gt call shgets p0 p1 p2 b2 k p6
 nct at gt 0
 dct at gt 1
 atc eq nct 0
 lel le n2 n1
 eql eq n1 len
 c1 select atc lel eql
-cost call shbcost p0 p2 b1 setj1
+cost call shbcost p0 p2 b1 setj1 p6
 prod mul dct cost
 c2 le prod 4
 kge ge k 2
@@ -3552,6 +3557,7 @@ i1_c and 1 127
 i1_d set i1_b i1_c 1
 i1 set i0 i1_a i1_d
 np1b sub d1_np 2
+np1g select p6 np1b 0
 npr add npm1 np1b
 i2_a shr 2 7
 i2_b get i1 i2_a
@@ -3565,6 +3571,7 @@ i3_d set i3_b i3_c d2_rs
 i3 set i2 i3_a i3_d
 nm1 sub nc 1
 npp sub np 2
+nppg select p6 npp 0
 nra add nm1 npp
 i4_a shr 4 7
 i4_b get i3 i4_a
@@ -3592,9 +3599,9 @@ i8_c and 8 127
 i8_d set i8_b i8_c cty
 i8 set i7 i8_a i8_d
 pa fold shpa d2_np i8 p3 d2_pf k false
-pb fold shpb np1b pa p3 d1_pf npm1
+pb fold shpb np1g pa p3 d1_pf npm1
 pf fold shpf nc pb p1 caf k 0 0
-pg fold shpg npp pf p1 paf nm1
+pg fold shpg nppg pf p1 paf nm1
 r rec b4 pg
 ret r
 end
@@ -3687,16 +3694,16 @@ d2_rs_a shr d2_rs_i 7
 d2_rs_b get p2 d2_rs_a
 d2_rs_c and d2_rs_i 127
 d2_rs get d2_rs_b d2_rs_c
-sp call shprod p0 p1 p2 b1
+sp call shprod p0 p1 p2 b1 p6
 st1 at sp 1
 setj1 at sp 4
 pure eq st1 2
-sp2 call shprod p0 p1 p2 b2
+sp2 call shprod p0 p1 p2 b2 p6
 prev2 at sp2 0
 gdef2 at sp2 2
 sok2 at sp2 3
 setj2 at sp2 4
-fsr call shfs p0 p1 p2 b2 prev2 setj2
+fsr call shfs p0 p1 p2 b2 prev2 setj2 p6
 fbad at fsr 0
 fhas at fsr 1
 caf1 add caf 1
@@ -3713,7 +3720,8 @@ c1_v_b get p1 c1_v_a
 c1_v_c and c1_v_i 127
 c1_v get c1_v_b c1_v_c
 nex sub nc 2
-dq fold shsq nex 0 p1 caf c1_k c1_v
+nexg select p6 nex 0
+dq fold shsq nexg 0 p1 caf c1_k c1_v
 noeq eq dq 0
 isk1 eq k 1
 n1l eq n1 len
@@ -3809,6 +3817,7 @@ i1_c and 1 127
 i1_d set i1_b i1_c 2
 i1 set i0 i1_a i1_d
 np1b sub d1_np 2
+np1g select p6 np1b 0
 npr add d2_np np1b
 i2_a shr 2 7
 i2_b get i1 i2_a
@@ -3821,6 +3830,7 @@ i3_c and 3 127
 i3_d set i3_b i3_c d2_rs
 i3 set i2 i3_a i3_d
 npp sub np 2
+nppg select p6 npp 0
 nra add nc npp
 i4_a shr 4 7
 i4_b get i3 i4_a
@@ -3848,7 +3858,7 @@ i8_c and 8 127
 i8_d set i8_b i8_c cty
 i8 set i7 i8_a i8_d
 pa fold shpc d2_np i8 p3 d2_pf
-pb fold shpb np1b pa p3 d1_pf d2_np
+pb fold shpb np1g pa p3 d1_pf d2_np
 q0_k_m mul caf 2
 q0_k_i add q0_k_m 0
 q0_k_a shr q0_k_i 7
@@ -3895,7 +3905,7 @@ h3_c and 131 127
 h3_d set h3_b h3_c q1_v
 h3 set h2 h3_a h3_d
 pf fold shpf nc h3 p1 caf 4294967295 2 2
-pg fold shpg npp pf p1 paf nc
+pg fold shpg nppg pf p1 paf nc
 r rec b4 pg
 ret r
 end
@@ -3989,14 +3999,14 @@ d2_rs_a shr d2_rs_i 7
 d2_rs_b get p2 d2_rs_a
 d2_rs_c and d2_rs_i 127
 d2_rs get d2_rs_b d2_rs_c
-sp call shprod p0 p1 p2 b1
+sp call shprod p0 p1 p2 b1 p6
 prev1 at sp 0
 st1 at sp 1
 setj1 at sp 4
 imp eq st1 1
-rdg call shrdg p0 p1 p2 b2 k
+rdg call shrdg p0 p1 p2 b2 k p6
 rdgb eq rdg 1
-gt call shgets p0 p1 p2 b2 k
+gt call shgets p0 p1 p2 b2 k p6
 nct at gt 0
 atc eq nct 0
 s2_a shr d2_pf 7
@@ -4143,6 +4153,7 @@ i1_c and 1 127
 i1_d set i1_b i1_c 3
 i1 set i0 i1_a i1_d
 np1b sub d1_np 2
+np1g select p6 np1b 0
 npm1 sub d2_np 1
 npr add npm1 np1b
 i2_a shr 2 7
@@ -4156,6 +4167,7 @@ i3_c and 3 127
 i3_d set i3_b i3_c 4294967280
 i3 set i2 i3_a i3_d
 npp sub np 2
+nppg select p6 npp 0
 nra0 add nc npp
 nra sub nra0 1
 i4_a shr 4 7
@@ -4199,7 +4211,7 @@ i16_c and 16 127
 i16_d set i16_b i16_c 4294967280
 i16 set i10 i16_a i16_d
 pa fold shpa d2_np i16 p3 d2_pf k true
-pb fold shpb np1b pa p3 d1_pf npm1
+pb fold shpb np1g pa p3 d1_pf npm1
 q0_k_m mul caf 2
 q0_k_i add q0_k_m 0
 q0_k_a shr q0_k_i 7
@@ -4234,7 +4246,7 @@ h3_d set h3_b h3_c 0
 h3 set h2 h3_a h3_d
 pf fold shpf nc h3 p1 caf k 2 2
 nm1 sub nc 1
-pg fold shpg npp pf p1 paf nm1
+pg fold shpg nppg pf p1 paf nm1
 r rec b4 pg
 ret r
 end
@@ -4410,15 +4422,15 @@ hio2 call shhasio p8 p6 p4 p7 c_ce
 hio1 call shhasio p8 p6 p4 p7 pr_ce
 nio2 eq hio2 0
 nio1 eq hio1 0
-sp call shprod p2 p3 p4 pr_ce
-st1 at sp 1
-sok ne st1 0
 c0 and nf isfold
 c1 and c0 n2l
 c2 and c1 kpos
 c3 and c2 isn
 c4 and c3 one
 cand0 and c4 isf
+sp call shprod p2 p3 p4 pr_ce cand0
+st1 at sp 1
+sok ne st1 0
 nh2 select has2 false true
 miss2 and cand0 nh2
 p1a and n1l isarr
@@ -5172,6 +5184,28 @@ w6_d set w6_b w6_c w6_v
 w6 set w5 w6_a w6_d
 ret w6
 end
+# the node range and ret of function p1 and its word 0 (1 + 2 literalIterations of the image)
+fn shinf3 u32x128x45 u32 u32x128x512 u32 u32 bool -> u32x128x45
+li_a shr 4 7
+li_b get p2 li_a
+li_c and 4 127
+li get li_b li_c
+l2 mul li 2
+l3 add l2 1
+f7 mul p1 7
+w0_o_a shr f7 7
+w0_o_b get p0 w0_o_a
+w0_o_c and f7 127
+w0_o get w0_o_b w0_o_c
+w0_v select p5 l3 w0_o
+w0_a shr f7 7
+w0_b get p0 w0_a
+w0_c and f7 127
+w0_d set w0_b w0_c w0_v
+w0 set p0 w0_a w0_d
+r call shinf2 w0 p1 p2 p3 p4 p5
+ret r
+end
 # parameter types of the new function (INF word 16 + i) at tlist p2 + i
 fn shinl1 u32x128x65 u32 u32x128x2 u32 -> u32x128x65
 i add 16 p1
@@ -5596,7 +5630,7 @@ cn select lv na 0
 r2 fold shrwe1 cn w4 p3 p5 isrepl p10 r p11 n_af p7 p8 p9 p14 p18
 ret r2
 end
-fn shrw u32x128x128 u32x128x512 u32x128x45 u32x128x24 u32x128x2 u32 -> u32x128x512
+fn shrw u32x128x128 u32x128x512 u32x128x45 u32x128x24 u32x128x2 u32 bool -> u32x128x512
 d_f_m mul p5 7
 d_f_i add d_f_m 4
 d_f_a shr d_f_i 7
@@ -5665,6 +5699,7 @@ is3 eq kind 3
 rr select is3 3 1
 t1 add d_n rr
 mm sub t1 2
+mg select p6 mm 0
 gc add d_f ci
 caf_m mul gc 6
 caf_i add caf_m 3
@@ -5704,10 +5739,10 @@ lv0_b get z lv0_a
 lv0_c and ix 127
 lv0_d set lv0_b lv0_c lv0_v
 lv0 set z lv0_a lv0_d
-lv fold shrwl mm lv0 p0 p1 p4 d_f mm ci pi rr kind caf nra
+lv fold shrwl mg lv0 p0 p1 p4 d_f mm ci pi rr kind caf nra
 z2 call zcol
 rk0 rec z2 0
-rkr fold shrwr mm rk0 lv
+rkr fold shrwr mg rk0 lv
 rk at rkr 0
 np at rkr 1
 im0 call z512
@@ -5716,7 +5751,7 @@ h1_b get im0 h1_a
 h1_c and 1 127
 h1_d set h1_b h1_c np
 h1 set im0 h1_a h1_d
-imf fold shrwe mm h1 p0 p1 p3 p4 d_f ci pi rr kind caf nra lv rk gidx rect cty np
+imf fold shrwe mg h1 p0 p1 p3 p4 d_f ci pi rr kind caf nra lv rk gidx rect cty np
 pairs_a shr 5 7
 pairs_b get imf pairs_a
 pairs_c and 5 127
@@ -5852,7 +5887,12 @@ fda1 at sra1 0
 bla1 at sra1 1
 ina1 at sra1 2
 msa1 at sra1 3
-goa1 ne fda1 0
+fdxa1 ne fda1 0
+stp1a1 ne lim0 0
+stp2a1 ne mis0 4294967295
+stpa1 or stp1a1 stp2a1
+nstpa1 select stpa1 false true
+goa1 and fdxa1 nstpa1
 gona1 select goa1 1 0
 kda1_a shr 1 7
 kda1_b get ina1 kda1_a
@@ -5947,11 +5987,22 @@ nnxa1 add nn0 imnsa1
 naxa1 add na0 impasa1
 nfxa1 add nf0 gona1
 ntlxa1 add ntlra1 nparsa1
-imba1 mov imaa1
-nodesba1 call shinn nodesaa1 imba1 nnxa1 naxa1 goa1
-argsba1 call shina argsaa1 imba1 naxa1 goa1
-ntba1 call shint ntaa1 imba1 nnxa1 goa1
-fnsba1 call shinf2 fnsaa1 nf0 imba1 nnxa1 naxa1 goa1
+gza1 select goa1 nf0 nfxa1
+imba1 call ozopt1 tya1 tlaa1 fnsaa1 nodesaa1 ntaa1 argsaa1 gza1 ntya1 nfxa1 naxa1
+bcodea1_a shr 0 7
+bcodea1_b get imba1 bcodea1_a
+bcodea1_c and 0 127
+bcodea1 get bcodea1_b bcodea1_c
+bmisa1_a shr 7 7
+bmisa1_b get imba1 bmisa1_a
+bmisa1_c and 7 127
+bmisa1 get bmisa1_b bmisa1_c
+boka1 eq bcodea1 0
+go1a1 and goa1 boka1
+nodesba1 call shinn nodesaa1 imba1 nnxa1 naxa1 go1a1
+argsba1 call shina argsaa1 imba1 naxa1 go1a1
+ntba1 call shint ntaa1 imba1 nnxa1 go1a1
+fnsba1 call shinf3 fnsaa1 nf0 imba1 nnxa1 naxa1 go1a1
 imbna1_a shr 1 7
 imbna1_b get imba1 imbna1_a
 imbna1_c and 1 127
@@ -5966,12 +6017,12 @@ imbrva1_c and 3 127
 imbrva1 get imbrva1_b imbrva1_c
 bigya1 ge imbrva1 268435456
 bigyna1 select bigya1 1 0
-imbnsa1 select goa1 imbna1 0
+imbnsa1 select go1a1 imbna1 0
 impba1 add imbpa1 bigyna1
-impbsa1 select goa1 impba1 0
+impbsa1 select go1a1 impba1 0
 nnya1 add nnxa1 imbnsa1
 naya1 add naxa1 impbsa1
-imfa1 call shrw nodesba1 argsba1 fnsba1 ntba1 i11a1 p7
+imfa1 call shrw nodesba1 argsba1 fnsba1 ntba1 i11a1 p7 go1a1
 fcodea1_a shr 0 7
 fcodea1_b get imfa1 fcodea1_a
 fcodea1_c and 0 127
@@ -6042,7 +6093,7 @@ fitna1 le fna1 dfa1_n
 fitaa1 le needa1 availa1
 inpla1 and fitna1 fitaa1
 ok0a1 eq fcodea1 0
-go2a1 and goa1 ok0a1
+go2a1 and go1a1 ok0a1
 nda1 select inpla1 dfa1_f nnya1
 ada1 select inpla1 s0a1 naya1
 nodesca1 call shinn nodesba1 imfa1 nda1 ada1 go2a1
@@ -6068,7 +6119,10 @@ bb2a1 or bb1a1 bad3a1
 bb3a1 or bb2a1 bad4a1
 bb4a1 or bb3a1 bad5a1
 bb5a1 or bb4a1 bad6a1
-bba1 and goa1 bb5a1
+bb0a1 and go1a1 bb5a1
+bl4a1 eq bcodea1 4
+bl4ga1 and goa1 bl4a1
+bba1 or bb0a1 bl4ga1
 limna1 select bba1 1 0
 lima1 or lim0 limna1
 nfda1 eq fda1 0
@@ -6076,7 +6130,12 @@ nmna1 ne msa1 4294967295
 mqa1 eq mis0 4294967295
 mm1a1 and nfda1 nmna1
 mm2a1 and mm1a1 mqa1
-misa1 select mm2a1 msa1 mis0
+mis1a1 select mm2a1 msa1 mis0
+bm7a1 eq bcodea1 7
+bm7ga1 and goa1 bm7a1
+mq2a1 eq mis1a1 4294967295
+bm7ha1 and bm7ga1 mq2a1
+misa1 select bm7ha1 bmisa1 mis1a1
 cnta1 add cnt0 gona1
 tla1 mov tlaa1
 fnsa1 mov fnsca1
@@ -6088,7 +6147,12 @@ fda2 at sra2 0
 bla2 at sra2 1
 ina2 at sra2 2
 msa2 at sra2 3
-goa2 ne fda2 0
+fdxa2 ne fda2 0
+stp1a2 ne lima1 0
+stp2a2 ne misa1 4294967295
+stpa2 or stp1a2 stp2a2
+nstpa2 select stpa2 false true
+goa2 and fdxa2 nstpa2
 gona2 select goa2 1 0
 kda2_a shr 1 7
 kda2_b get ina2 kda2_a
@@ -6183,11 +6247,22 @@ nnxa2 add nna1 imnsa2
 naxa2 add naa1 impasa2
 nfxa2 add nfa1 gona2
 ntlxa2 add ntlra2 nparsa2
-imba2 mov imaa2
-nodesba2 call shinn nodesaa2 imba2 nnxa2 naxa2 goa2
-argsba2 call shina argsaa2 imba2 naxa2 goa2
-ntba2 call shint ntaa2 imba2 nnxa2 goa2
-fnsba2 call shinf2 fnsaa2 nfa1 imba2 nnxa2 naxa2 goa2
+gza2 select goa2 nfa1 nfxa2
+imba2 call ozopt1 tya2 tlaa2 fnsaa2 nodesaa2 ntaa2 argsaa2 gza2 ntya2 nfxa2 naxa2
+bcodea2_a shr 0 7
+bcodea2_b get imba2 bcodea2_a
+bcodea2_c and 0 127
+bcodea2 get bcodea2_b bcodea2_c
+bmisa2_a shr 7 7
+bmisa2_b get imba2 bmisa2_a
+bmisa2_c and 7 127
+bmisa2 get bmisa2_b bmisa2_c
+boka2 eq bcodea2 0
+go1a2 and goa2 boka2
+nodesba2 call shinn nodesaa2 imba2 nnxa2 naxa2 go1a2
+argsba2 call shina argsaa2 imba2 naxa2 go1a2
+ntba2 call shint ntaa2 imba2 nnxa2 go1a2
+fnsba2 call shinf3 fnsaa2 nfa1 imba2 nnxa2 naxa2 go1a2
 imbna2_a shr 1 7
 imbna2_b get imba2 imbna2_a
 imbna2_c and 1 127
@@ -6202,12 +6277,12 @@ imbrva2_c and 3 127
 imbrva2 get imbrva2_b imbrva2_c
 bigya2 ge imbrva2 268435456
 bigyna2 select bigya2 1 0
-imbnsa2 select goa2 imbna2 0
+imbnsa2 select go1a2 imbna2 0
 impba2 add imbpa2 bigyna2
-impbsa2 select goa2 impba2 0
+impbsa2 select go1a2 impba2 0
 nnya2 add nnxa2 imbnsa2
 naya2 add naxa2 impbsa2
-imfa2 call shrw nodesba2 argsba2 fnsba2 ntba2 i11a2 p7
+imfa2 call shrw nodesba2 argsba2 fnsba2 ntba2 i11a2 p7 go1a2
 fcodea2_a shr 0 7
 fcodea2_b get imfa2 fcodea2_a
 fcodea2_c and 0 127
@@ -6278,7 +6353,7 @@ fitna2 le fna2 dfa2_n
 fitaa2 le needa2 availa2
 inpla2 and fitna2 fitaa2
 ok0a2 eq fcodea2 0
-go2a2 and goa2 ok0a2
+go2a2 and go1a2 ok0a2
 nda2 select inpla2 dfa2_f nnya2
 ada2 select inpla2 s0a2 naya2
 nodesca2 call shinn nodesba2 imfa2 nda2 ada2 go2a2
@@ -6304,7 +6379,10 @@ bb2a2 or bb1a2 bad3a2
 bb3a2 or bb2a2 bad4a2
 bb4a2 or bb3a2 bad5a2
 bb5a2 or bb4a2 bad6a2
-bba2 and goa2 bb5a2
+bb0a2 and go1a2 bb5a2
+bl4a2 eq bcodea2 4
+bl4ga2 and goa2 bl4a2
+bba2 or bb0a2 bl4ga2
 limna2 select bba2 1 0
 lima2 or lima1 limna2
 nfda2 eq fda2 0
@@ -6312,7 +6390,12 @@ nmna2 ne msa2 4294967295
 mqa2 eq misa1 4294967295
 mm1a2 and nfda2 nmna2
 mm2a2 and mm1a2 mqa2
-misa2 select mm2a2 msa2 misa1
+mis1a2 select mm2a2 msa2 misa1
+bm7a2 eq bcodea2 7
+bm7ga2 and goa2 bm7a2
+mq2a2 eq mis1a2 4294967295
+bm7ha2 and bm7ga2 mq2a2
+misa2 select bm7ha2 bmisa2 mis1a2
 cnta2 add cnta1 gona2
 tla2 mov tlaa2
 fnsa2 mov fnsca2
@@ -6324,7 +6407,12 @@ fda3 at sra3 0
 bla3 at sra3 1
 ina3 at sra3 2
 msa3 at sra3 3
-goa3 ne fda3 0
+fdxa3 ne fda3 0
+stp1a3 ne lima2 0
+stp2a3 ne misa2 4294967295
+stpa3 or stp1a3 stp2a3
+nstpa3 select stpa3 false true
+goa3 and fdxa3 nstpa3
 gona3 select goa3 1 0
 kda3_a shr 1 7
 kda3_b get ina3 kda3_a
@@ -6419,11 +6507,22 @@ nnxa3 add nna2 imnsa3
 naxa3 add naa2 impasa3
 nfxa3 add nfa2 gona3
 ntlxa3 add ntlra3 nparsa3
-imba3 mov imaa3
-nodesba3 call shinn nodesaa3 imba3 nnxa3 naxa3 goa3
-argsba3 call shina argsaa3 imba3 naxa3 goa3
-ntba3 call shint ntaa3 imba3 nnxa3 goa3
-fnsba3 call shinf2 fnsaa3 nfa2 imba3 nnxa3 naxa3 goa3
+gza3 select goa3 nfa2 nfxa3
+imba3 call ozopt1 tya3 tlaa3 fnsaa3 nodesaa3 ntaa3 argsaa3 gza3 ntya3 nfxa3 naxa3
+bcodea3_a shr 0 7
+bcodea3_b get imba3 bcodea3_a
+bcodea3_c and 0 127
+bcodea3 get bcodea3_b bcodea3_c
+bmisa3_a shr 7 7
+bmisa3_b get imba3 bmisa3_a
+bmisa3_c and 7 127
+bmisa3 get bmisa3_b bmisa3_c
+boka3 eq bcodea3 0
+go1a3 and goa3 boka3
+nodesba3 call shinn nodesaa3 imba3 nnxa3 naxa3 go1a3
+argsba3 call shina argsaa3 imba3 naxa3 go1a3
+ntba3 call shint ntaa3 imba3 nnxa3 go1a3
+fnsba3 call shinf3 fnsaa3 nfa2 imba3 nnxa3 naxa3 go1a3
 imbna3_a shr 1 7
 imbna3_b get imba3 imbna3_a
 imbna3_c and 1 127
@@ -6438,12 +6537,12 @@ imbrva3_c and 3 127
 imbrva3 get imbrva3_b imbrva3_c
 bigya3 ge imbrva3 268435456
 bigyna3 select bigya3 1 0
-imbnsa3 select goa3 imbna3 0
+imbnsa3 select go1a3 imbna3 0
 impba3 add imbpa3 bigyna3
-impbsa3 select goa3 impba3 0
+impbsa3 select go1a3 impba3 0
 nnya3 add nnxa3 imbnsa3
 naya3 add naxa3 impbsa3
-imfa3 call shrw nodesba3 argsba3 fnsba3 ntba3 i11a3 p7
+imfa3 call shrw nodesba3 argsba3 fnsba3 ntba3 i11a3 p7 go1a3
 fcodea3_a shr 0 7
 fcodea3_b get imfa3 fcodea3_a
 fcodea3_c and 0 127
@@ -6514,7 +6613,7 @@ fitna3 le fna3 dfa3_n
 fitaa3 le needa3 availa3
 inpla3 and fitna3 fitaa3
 ok0a3 eq fcodea3 0
-go2a3 and goa3 ok0a3
+go2a3 and go1a3 ok0a3
 nda3 select inpla3 dfa3_f nnya3
 ada3 select inpla3 s0a3 naya3
 nodesca3 call shinn nodesba3 imfa3 nda3 ada3 go2a3
@@ -6540,7 +6639,10 @@ bb2a3 or bb1a3 bad3a3
 bb3a3 or bb2a3 bad4a3
 bb4a3 or bb3a3 bad5a3
 bb5a3 or bb4a3 bad6a3
-bba3 and goa3 bb5a3
+bb0a3 and go1a3 bb5a3
+bl4a3 eq bcodea3 4
+bl4ga3 and goa3 bl4a3
+bba3 or bb0a3 bl4ga3
 limna3 select bba3 1 0
 lima3 or lima2 limna3
 nfda3 eq fda3 0
@@ -6548,7 +6650,12 @@ nmna3 ne msa3 4294967295
 mqa3 eq misa2 4294967295
 mm1a3 and nfda3 nmna3
 mm2a3 and mm1a3 mqa3
-misa3 select mm2a3 msa3 misa2
+mis1a3 select mm2a3 msa3 misa2
+bm7a3 eq bcodea3 7
+bm7ga3 and goa3 bm7a3
+mq2a3 eq mis1a3 4294967295
+bm7ha3 and bm7ga3 mq2a3
+misa3 select bm7ha3 bmisa3 mis1a3
 cnta3 add cnta2 gona3
 tla3 mov tlaa3
 fnsa3 mov fnsca3
@@ -6560,7 +6667,12 @@ fda4 at sra4 0
 bla4 at sra4 1
 ina4 at sra4 2
 msa4 at sra4 3
-goa4 ne fda4 0
+fdxa4 ne fda4 0
+stp1a4 ne lima3 0
+stp2a4 ne misa3 4294967295
+stpa4 or stp1a4 stp2a4
+nstpa4 select stpa4 false true
+goa4 and fdxa4 nstpa4
 gona4 select goa4 1 0
 kda4_a shr 1 7
 kda4_b get ina4 kda4_a
@@ -6655,11 +6767,22 @@ nnxa4 add nna3 imnsa4
 naxa4 add naa3 impasa4
 nfxa4 add nfa3 gona4
 ntlxa4 add ntlra4 nparsa4
-imba4 mov imaa4
-nodesba4 call shinn nodesaa4 imba4 nnxa4 naxa4 goa4
-argsba4 call shina argsaa4 imba4 naxa4 goa4
-ntba4 call shint ntaa4 imba4 nnxa4 goa4
-fnsba4 call shinf2 fnsaa4 nfa3 imba4 nnxa4 naxa4 goa4
+gza4 select goa4 nfa3 nfxa4
+imba4 call ozopt1 tya4 tlaa4 fnsaa4 nodesaa4 ntaa4 argsaa4 gza4 ntya4 nfxa4 naxa4
+bcodea4_a shr 0 7
+bcodea4_b get imba4 bcodea4_a
+bcodea4_c and 0 127
+bcodea4 get bcodea4_b bcodea4_c
+bmisa4_a shr 7 7
+bmisa4_b get imba4 bmisa4_a
+bmisa4_c and 7 127
+bmisa4 get bmisa4_b bmisa4_c
+boka4 eq bcodea4 0
+go1a4 and goa4 boka4
+nodesba4 call shinn nodesaa4 imba4 nnxa4 naxa4 go1a4
+argsba4 call shina argsaa4 imba4 naxa4 go1a4
+ntba4 call shint ntaa4 imba4 nnxa4 go1a4
+fnsba4 call shinf3 fnsaa4 nfa3 imba4 nnxa4 naxa4 go1a4
 imbna4_a shr 1 7
 imbna4_b get imba4 imbna4_a
 imbna4_c and 1 127
@@ -6674,12 +6797,12 @@ imbrva4_c and 3 127
 imbrva4 get imbrva4_b imbrva4_c
 bigya4 ge imbrva4 268435456
 bigyna4 select bigya4 1 0
-imbnsa4 select goa4 imbna4 0
+imbnsa4 select go1a4 imbna4 0
 impba4 add imbpa4 bigyna4
-impbsa4 select goa4 impba4 0
+impbsa4 select go1a4 impba4 0
 nnya4 add nnxa4 imbnsa4
 naya4 add naxa4 impbsa4
-imfa4 call shrw nodesba4 argsba4 fnsba4 ntba4 i11a4 p7
+imfa4 call shrw nodesba4 argsba4 fnsba4 ntba4 i11a4 p7 go1a4
 fcodea4_a shr 0 7
 fcodea4_b get imfa4 fcodea4_a
 fcodea4_c and 0 127
@@ -6750,7 +6873,7 @@ fitna4 le fna4 dfa4_n
 fitaa4 le needa4 availa4
 inpla4 and fitna4 fitaa4
 ok0a4 eq fcodea4 0
-go2a4 and goa4 ok0a4
+go2a4 and go1a4 ok0a4
 nda4 select inpla4 dfa4_f nnya4
 ada4 select inpla4 s0a4 naya4
 nodesca4 call shinn nodesba4 imfa4 nda4 ada4 go2a4
@@ -6776,7 +6899,10 @@ bb2a4 or bb1a4 bad3a4
 bb3a4 or bb2a4 bad4a4
 bb4a4 or bb3a4 bad5a4
 bb5a4 or bb4a4 bad6a4
-bba4 and goa4 bb5a4
+bb0a4 and go1a4 bb5a4
+bl4a4 eq bcodea4 4
+bl4ga4 and goa4 bl4a4
+bba4 or bb0a4 bl4ga4
 limna4 select bba4 1 0
 lima4 or lima3 limna4
 nfda4 eq fda4 0
@@ -6784,7 +6910,12 @@ nmna4 ne msa4 4294967295
 mqa4 eq misa3 4294967295
 mm1a4 and nfda4 nmna4
 mm2a4 and mm1a4 mqa4
-misa4 select mm2a4 msa4 misa3
+mis1a4 select mm2a4 msa4 misa3
+bm7a4 eq bcodea4 7
+bm7ga4 and goa4 bm7a4
+mq2a4 eq mis1a4 4294967295
+bm7ha4 and bm7ga4 mq2a4
+misa4 select bm7ha4 bmisa4 mis1a4
 cnta4 add cnta3 gona4
 tla4 mov tlaa4
 fnsa4 mov fnsca4
@@ -6796,7 +6927,12 @@ fda5 at sra5 0
 bla5 at sra5 1
 ina5 at sra5 2
 msa5 at sra5 3
-goa5 ne fda5 0
+fdxa5 ne fda5 0
+stp1a5 ne lima4 0
+stp2a5 ne misa4 4294967295
+stpa5 or stp1a5 stp2a5
+nstpa5 select stpa5 false true
+goa5 and fdxa5 nstpa5
 gona5 select goa5 1 0
 kda5_a shr 1 7
 kda5_b get ina5 kda5_a
@@ -6891,11 +7027,22 @@ nnxa5 add nna4 imnsa5
 naxa5 add naa4 impasa5
 nfxa5 add nfa4 gona5
 ntlxa5 add ntlra5 nparsa5
-imba5 mov imaa5
-nodesba5 call shinn nodesaa5 imba5 nnxa5 naxa5 goa5
-argsba5 call shina argsaa5 imba5 naxa5 goa5
-ntba5 call shint ntaa5 imba5 nnxa5 goa5
-fnsba5 call shinf2 fnsaa5 nfa4 imba5 nnxa5 naxa5 goa5
+gza5 select goa5 nfa4 nfxa5
+imba5 call ozopt1 tya5 tlaa5 fnsaa5 nodesaa5 ntaa5 argsaa5 gza5 ntya5 nfxa5 naxa5
+bcodea5_a shr 0 7
+bcodea5_b get imba5 bcodea5_a
+bcodea5_c and 0 127
+bcodea5 get bcodea5_b bcodea5_c
+bmisa5_a shr 7 7
+bmisa5_b get imba5 bmisa5_a
+bmisa5_c and 7 127
+bmisa5 get bmisa5_b bmisa5_c
+boka5 eq bcodea5 0
+go1a5 and goa5 boka5
+nodesba5 call shinn nodesaa5 imba5 nnxa5 naxa5 go1a5
+argsba5 call shina argsaa5 imba5 naxa5 go1a5
+ntba5 call shint ntaa5 imba5 nnxa5 go1a5
+fnsba5 call shinf3 fnsaa5 nfa4 imba5 nnxa5 naxa5 go1a5
 imbna5_a shr 1 7
 imbna5_b get imba5 imbna5_a
 imbna5_c and 1 127
@@ -6910,12 +7057,12 @@ imbrva5_c and 3 127
 imbrva5 get imbrva5_b imbrva5_c
 bigya5 ge imbrva5 268435456
 bigyna5 select bigya5 1 0
-imbnsa5 select goa5 imbna5 0
+imbnsa5 select go1a5 imbna5 0
 impba5 add imbpa5 bigyna5
-impbsa5 select goa5 impba5 0
+impbsa5 select go1a5 impba5 0
 nnya5 add nnxa5 imbnsa5
 naya5 add naxa5 impbsa5
-imfa5 call shrw nodesba5 argsba5 fnsba5 ntba5 i11a5 p7
+imfa5 call shrw nodesba5 argsba5 fnsba5 ntba5 i11a5 p7 go1a5
 fcodea5_a shr 0 7
 fcodea5_b get imfa5 fcodea5_a
 fcodea5_c and 0 127
@@ -6986,7 +7133,7 @@ fitna5 le fna5 dfa5_n
 fitaa5 le needa5 availa5
 inpla5 and fitna5 fitaa5
 ok0a5 eq fcodea5 0
-go2a5 and goa5 ok0a5
+go2a5 and go1a5 ok0a5
 nda5 select inpla5 dfa5_f nnya5
 ada5 select inpla5 s0a5 naya5
 nodesca5 call shinn nodesba5 imfa5 nda5 ada5 go2a5
@@ -7012,7 +7159,10 @@ bb2a5 or bb1a5 bad3a5
 bb3a5 or bb2a5 bad4a5
 bb4a5 or bb3a5 bad5a5
 bb5a5 or bb4a5 bad6a5
-bba5 and goa5 bb5a5
+bb0a5 and go1a5 bb5a5
+bl4a5 eq bcodea5 4
+bl4ga5 and goa5 bl4a5
+bba5 or bb0a5 bl4ga5
 limna5 select bba5 1 0
 lima5 or lima4 limna5
 nfda5 eq fda5 0
@@ -7020,7 +7170,12 @@ nmna5 ne msa5 4294967295
 mqa5 eq misa4 4294967295
 mm1a5 and nfda5 nmna5
 mm2a5 and mm1a5 mqa5
-misa5 select mm2a5 msa5 misa4
+mis1a5 select mm2a5 msa5 misa4
+bm7a5 eq bcodea5 7
+bm7ga5 and goa5 bm7a5
+mq2a5 eq mis1a5 4294967295
+bm7ha5 and bm7ga5 mq2a5
+misa5 select bm7ha5 bmisa5 mis1a5
 cnta5 add cnta4 gona5
 tla5 mov tlaa5
 fnsa5 mov fnsca5
@@ -7032,7 +7187,12 @@ fda6 at sra6 0
 bla6 at sra6 1
 ina6 at sra6 2
 msa6 at sra6 3
-goa6 ne fda6 0
+fdxa6 ne fda6 0
+stp1a6 ne lima5 0
+stp2a6 ne misa5 4294967295
+stpa6 or stp1a6 stp2a6
+nstpa6 select stpa6 false true
+goa6 and fdxa6 nstpa6
 gona6 select goa6 1 0
 kda6_a shr 1 7
 kda6_b get ina6 kda6_a
@@ -7127,11 +7287,22 @@ nnxa6 add nna5 imnsa6
 naxa6 add naa5 impasa6
 nfxa6 add nfa5 gona6
 ntlxa6 add ntlra6 nparsa6
-imba6 mov imaa6
-nodesba6 call shinn nodesaa6 imba6 nnxa6 naxa6 goa6
-argsba6 call shina argsaa6 imba6 naxa6 goa6
-ntba6 call shint ntaa6 imba6 nnxa6 goa6
-fnsba6 call shinf2 fnsaa6 nfa5 imba6 nnxa6 naxa6 goa6
+gza6 select goa6 nfa5 nfxa6
+imba6 call ozopt1 tya6 tlaa6 fnsaa6 nodesaa6 ntaa6 argsaa6 gza6 ntya6 nfxa6 naxa6
+bcodea6_a shr 0 7
+bcodea6_b get imba6 bcodea6_a
+bcodea6_c and 0 127
+bcodea6 get bcodea6_b bcodea6_c
+bmisa6_a shr 7 7
+bmisa6_b get imba6 bmisa6_a
+bmisa6_c and 7 127
+bmisa6 get bmisa6_b bmisa6_c
+boka6 eq bcodea6 0
+go1a6 and goa6 boka6
+nodesba6 call shinn nodesaa6 imba6 nnxa6 naxa6 go1a6
+argsba6 call shina argsaa6 imba6 naxa6 go1a6
+ntba6 call shint ntaa6 imba6 nnxa6 go1a6
+fnsba6 call shinf3 fnsaa6 nfa5 imba6 nnxa6 naxa6 go1a6
 imbna6_a shr 1 7
 imbna6_b get imba6 imbna6_a
 imbna6_c and 1 127
@@ -7146,12 +7317,12 @@ imbrva6_c and 3 127
 imbrva6 get imbrva6_b imbrva6_c
 bigya6 ge imbrva6 268435456
 bigyna6 select bigya6 1 0
-imbnsa6 select goa6 imbna6 0
+imbnsa6 select go1a6 imbna6 0
 impba6 add imbpa6 bigyna6
-impbsa6 select goa6 impba6 0
+impbsa6 select go1a6 impba6 0
 nnya6 add nnxa6 imbnsa6
 naya6 add naxa6 impbsa6
-imfa6 call shrw nodesba6 argsba6 fnsba6 ntba6 i11a6 p7
+imfa6 call shrw nodesba6 argsba6 fnsba6 ntba6 i11a6 p7 go1a6
 fcodea6_a shr 0 7
 fcodea6_b get imfa6 fcodea6_a
 fcodea6_c and 0 127
@@ -7222,7 +7393,7 @@ fitna6 le fna6 dfa6_n
 fitaa6 le needa6 availa6
 inpla6 and fitna6 fitaa6
 ok0a6 eq fcodea6 0
-go2a6 and goa6 ok0a6
+go2a6 and go1a6 ok0a6
 nda6 select inpla6 dfa6_f nnya6
 ada6 select inpla6 s0a6 naya6
 nodesca6 call shinn nodesba6 imfa6 nda6 ada6 go2a6
@@ -7248,7 +7419,10 @@ bb2a6 or bb1a6 bad3a6
 bb3a6 or bb2a6 bad4a6
 bb4a6 or bb3a6 bad5a6
 bb5a6 or bb4a6 bad6a6
-bba6 and goa6 bb5a6
+bb0a6 and go1a6 bb5a6
+bl4a6 eq bcodea6 4
+bl4ga6 and goa6 bl4a6
+bba6 or bb0a6 bl4ga6
 limna6 select bba6 1 0
 lima6 or lima5 limna6
 nfda6 eq fda6 0
@@ -7256,7 +7430,12 @@ nmna6 ne msa6 4294967295
 mqa6 eq misa5 4294967295
 mm1a6 and nfda6 nmna6
 mm2a6 and mm1a6 mqa6
-misa6 select mm2a6 msa6 misa5
+mis1a6 select mm2a6 msa6 misa5
+bm7a6 eq bcodea6 7
+bm7ga6 and goa6 bm7a6
+mq2a6 eq mis1a6 4294967295
+bm7ha6 and bm7ga6 mq2a6
+misa6 select bm7ha6 bmisa6 mis1a6
 cnta6 add cnta5 gona6
 tla6 mov tlaa6
 fnsa6 mov fnsca6
@@ -7268,7 +7447,12 @@ fda7 at sra7 0
 bla7 at sra7 1
 ina7 at sra7 2
 msa7 at sra7 3
-goa7 ne fda7 0
+fdxa7 ne fda7 0
+stp1a7 ne lima6 0
+stp2a7 ne misa6 4294967295
+stpa7 or stp1a7 stp2a7
+nstpa7 select stpa7 false true
+goa7 and fdxa7 nstpa7
 gona7 select goa7 1 0
 kda7_a shr 1 7
 kda7_b get ina7 kda7_a
@@ -7363,11 +7547,22 @@ nnxa7 add nna6 imnsa7
 naxa7 add naa6 impasa7
 nfxa7 add nfa6 gona7
 ntlxa7 add ntlra7 nparsa7
-imba7 mov imaa7
-nodesba7 call shinn nodesaa7 imba7 nnxa7 naxa7 goa7
-argsba7 call shina argsaa7 imba7 naxa7 goa7
-ntba7 call shint ntaa7 imba7 nnxa7 goa7
-fnsba7 call shinf2 fnsaa7 nfa6 imba7 nnxa7 naxa7 goa7
+gza7 select goa7 nfa6 nfxa7
+imba7 call ozopt1 tya7 tlaa7 fnsaa7 nodesaa7 ntaa7 argsaa7 gza7 ntya7 nfxa7 naxa7
+bcodea7_a shr 0 7
+bcodea7_b get imba7 bcodea7_a
+bcodea7_c and 0 127
+bcodea7 get bcodea7_b bcodea7_c
+bmisa7_a shr 7 7
+bmisa7_b get imba7 bmisa7_a
+bmisa7_c and 7 127
+bmisa7 get bmisa7_b bmisa7_c
+boka7 eq bcodea7 0
+go1a7 and goa7 boka7
+nodesba7 call shinn nodesaa7 imba7 nnxa7 naxa7 go1a7
+argsba7 call shina argsaa7 imba7 naxa7 go1a7
+ntba7 call shint ntaa7 imba7 nnxa7 go1a7
+fnsba7 call shinf3 fnsaa7 nfa6 imba7 nnxa7 naxa7 go1a7
 imbna7_a shr 1 7
 imbna7_b get imba7 imbna7_a
 imbna7_c and 1 127
@@ -7382,12 +7577,12 @@ imbrva7_c and 3 127
 imbrva7 get imbrva7_b imbrva7_c
 bigya7 ge imbrva7 268435456
 bigyna7 select bigya7 1 0
-imbnsa7 select goa7 imbna7 0
+imbnsa7 select go1a7 imbna7 0
 impba7 add imbpa7 bigyna7
-impbsa7 select goa7 impba7 0
+impbsa7 select go1a7 impba7 0
 nnya7 add nnxa7 imbnsa7
 naya7 add naxa7 impbsa7
-imfa7 call shrw nodesba7 argsba7 fnsba7 ntba7 i11a7 p7
+imfa7 call shrw nodesba7 argsba7 fnsba7 ntba7 i11a7 p7 go1a7
 fcodea7_a shr 0 7
 fcodea7_b get imfa7 fcodea7_a
 fcodea7_c and 0 127
@@ -7458,7 +7653,7 @@ fitna7 le fna7 dfa7_n
 fitaa7 le needa7 availa7
 inpla7 and fitna7 fitaa7
 ok0a7 eq fcodea7 0
-go2a7 and goa7 ok0a7
+go2a7 and go1a7 ok0a7
 nda7 select inpla7 dfa7_f nnya7
 ada7 select inpla7 s0a7 naya7
 nodesca7 call shinn nodesba7 imfa7 nda7 ada7 go2a7
@@ -7484,7 +7679,10 @@ bb2a7 or bb1a7 bad3a7
 bb3a7 or bb2a7 bad4a7
 bb4a7 or bb3a7 bad5a7
 bb5a7 or bb4a7 bad6a7
-bba7 and goa7 bb5a7
+bb0a7 and go1a7 bb5a7
+bl4a7 eq bcodea7 4
+bl4ga7 and goa7 bl4a7
+bba7 or bb0a7 bl4ga7
 limna7 select bba7 1 0
 lima7 or lima6 limna7
 nfda7 eq fda7 0
@@ -7492,7 +7690,12 @@ nmna7 ne msa7 4294967295
 mqa7 eq misa6 4294967295
 mm1a7 and nfda7 nmna7
 mm2a7 and mm1a7 mqa7
-misa7 select mm2a7 msa7 misa6
+mis1a7 select mm2a7 msa7 misa6
+bm7a7 eq bcodea7 7
+bm7ga7 and goa7 bm7a7
+mq2a7 eq mis1a7 4294967295
+bm7ha7 and bm7ga7 mq2a7
+misa7 select bm7ha7 bmisa7 mis1a7
 cnta7 add cnta6 gona7
 tla7 mov tlaa7
 fnsa7 mov fnsca7
@@ -7504,7 +7707,12 @@ fda8 at sra8 0
 bla8 at sra8 1
 ina8 at sra8 2
 msa8 at sra8 3
-goa8 ne fda8 0
+fdxa8 ne fda8 0
+stp1a8 ne lima7 0
+stp2a8 ne misa7 4294967295
+stpa8 or stp1a8 stp2a8
+nstpa8 select stpa8 false true
+goa8 and fdxa8 nstpa8
 gona8 select goa8 1 0
 kda8_a shr 1 7
 kda8_b get ina8 kda8_a
@@ -7599,11 +7807,22 @@ nnxa8 add nna7 imnsa8
 naxa8 add naa7 impasa8
 nfxa8 add nfa7 gona8
 ntlxa8 add ntlra8 nparsa8
-imba8 mov imaa8
-nodesba8 call shinn nodesaa8 imba8 nnxa8 naxa8 goa8
-argsba8 call shina argsaa8 imba8 naxa8 goa8
-ntba8 call shint ntaa8 imba8 nnxa8 goa8
-fnsba8 call shinf2 fnsaa8 nfa7 imba8 nnxa8 naxa8 goa8
+gza8 select goa8 nfa7 nfxa8
+imba8 call ozopt1 tya8 tlaa8 fnsaa8 nodesaa8 ntaa8 argsaa8 gza8 ntya8 nfxa8 naxa8
+bcodea8_a shr 0 7
+bcodea8_b get imba8 bcodea8_a
+bcodea8_c and 0 127
+bcodea8 get bcodea8_b bcodea8_c
+bmisa8_a shr 7 7
+bmisa8_b get imba8 bmisa8_a
+bmisa8_c and 7 127
+bmisa8 get bmisa8_b bmisa8_c
+boka8 eq bcodea8 0
+go1a8 and goa8 boka8
+nodesba8 call shinn nodesaa8 imba8 nnxa8 naxa8 go1a8
+argsba8 call shina argsaa8 imba8 naxa8 go1a8
+ntba8 call shint ntaa8 imba8 nnxa8 go1a8
+fnsba8 call shinf3 fnsaa8 nfa7 imba8 nnxa8 naxa8 go1a8
 imbna8_a shr 1 7
 imbna8_b get imba8 imbna8_a
 imbna8_c and 1 127
@@ -7618,12 +7837,12 @@ imbrva8_c and 3 127
 imbrva8 get imbrva8_b imbrva8_c
 bigya8 ge imbrva8 268435456
 bigyna8 select bigya8 1 0
-imbnsa8 select goa8 imbna8 0
+imbnsa8 select go1a8 imbna8 0
 impba8 add imbpa8 bigyna8
-impbsa8 select goa8 impba8 0
+impbsa8 select go1a8 impba8 0
 nnya8 add nnxa8 imbnsa8
 naya8 add naxa8 impbsa8
-imfa8 call shrw nodesba8 argsba8 fnsba8 ntba8 i11a8 p7
+imfa8 call shrw nodesba8 argsba8 fnsba8 ntba8 i11a8 p7 go1a8
 fcodea8_a shr 0 7
 fcodea8_b get imfa8 fcodea8_a
 fcodea8_c and 0 127
@@ -7694,7 +7913,7 @@ fitna8 le fna8 dfa8_n
 fitaa8 le needa8 availa8
 inpla8 and fitna8 fitaa8
 ok0a8 eq fcodea8 0
-go2a8 and goa8 ok0a8
+go2a8 and go1a8 ok0a8
 nda8 select inpla8 dfa8_f nnya8
 ada8 select inpla8 s0a8 naya8
 nodesca8 call shinn nodesba8 imfa8 nda8 ada8 go2a8
@@ -7720,7 +7939,10 @@ bb2a8 or bb1a8 bad3a8
 bb3a8 or bb2a8 bad4a8
 bb4a8 or bb3a8 bad5a8
 bb5a8 or bb4a8 bad6a8
-bba8 and goa8 bb5a8
+bb0a8 and go1a8 bb5a8
+bl4a8 eq bcodea8 4
+bl4ga8 and goa8 bl4a8
+bba8 or bb0a8 bl4ga8
 limna8 select bba8 1 0
 lima8 or lima7 limna8
 nfda8 eq fda8 0
@@ -7728,7 +7950,12 @@ nmna8 ne msa8 4294967295
 mqa8 eq misa7 4294967295
 mm1a8 and nfda8 nmna8
 mm2a8 and mm1a8 mqa8
-misa8 select mm2a8 msa8 misa7
+mis1a8 select mm2a8 msa8 misa7
+bm7a8 eq bcodea8 7
+bm7ga8 and goa8 bm7a8
+mq2a8 eq mis1a8 4294967295
+bm7ha8 and bm7ga8 mq2a8
+misa8 select bm7ha8 bmisa8 mis1a8
 cnta8 add cnta7 gona8
 tla8 mov tlaa8
 fnsa8 mov fnsca8
@@ -7780,7 +8007,12 @@ fda1 at sra1 0
 bla1 at sra1 1
 ina1 at sra1 2
 msa1 at sra1 3
-goa1 ne fda1 0
+fdxa1 ne fda1 0
+stp1a1 ne lim0 0
+stp2a1 ne mis0 4294967295
+stpa1 or stp1a1 stp2a1
+nstpa1 select stpa1 false true
+goa1 and fdxa1 nstpa1
 gona1 select goa1 1 0
 kda1_a shr 1 7
 kda1_b get ina1 kda1_a
@@ -7875,11 +8107,22 @@ nnxa1 add nn0 imnsa1
 naxa1 add na0 impasa1
 nfxa1 add nf0 gona1
 ntlxa1 add ntlra1 nparsa1
-imba1 mov imaa1
-nodesba1 call shinn nodesaa1 imba1 nnxa1 naxa1 goa1
-argsba1 call shina argsaa1 imba1 naxa1 goa1
-ntba1 call shint ntaa1 imba1 nnxa1 goa1
-fnsba1 call shinf2 fnsaa1 nf0 imba1 nnxa1 naxa1 goa1
+gza1 select goa1 nf0 nfxa1
+imba1 call ozopt1 tya1 tlaa1 fnsaa1 nodesaa1 ntaa1 argsaa1 gza1 ntya1 nfxa1 naxa1
+bcodea1_a shr 0 7
+bcodea1_b get imba1 bcodea1_a
+bcodea1_c and 0 127
+bcodea1 get bcodea1_b bcodea1_c
+bmisa1_a shr 7 7
+bmisa1_b get imba1 bmisa1_a
+bmisa1_c and 7 127
+bmisa1 get bmisa1_b bmisa1_c
+boka1 eq bcodea1 0
+go1a1 and goa1 boka1
+nodesba1 call shinn nodesaa1 imba1 nnxa1 naxa1 go1a1
+argsba1 call shina argsaa1 imba1 naxa1 go1a1
+ntba1 call shint ntaa1 imba1 nnxa1 go1a1
+fnsba1 call shinf3 fnsaa1 nf0 imba1 nnxa1 naxa1 go1a1
 imbna1_a shr 1 7
 imbna1_b get imba1 imbna1_a
 imbna1_c and 1 127
@@ -7894,12 +8137,12 @@ imbrva1_c and 3 127
 imbrva1 get imbrva1_b imbrva1_c
 bigya1 ge imbrva1 268435456
 bigyna1 select bigya1 1 0
-imbnsa1 select goa1 imbna1 0
+imbnsa1 select go1a1 imbna1 0
 impba1 add imbpa1 bigyna1
-impbsa1 select goa1 impba1 0
+impbsa1 select go1a1 impba1 0
 nnya1 add nnxa1 imbnsa1
 naya1 add naxa1 impbsa1
-imfa1 call shrw nodesba1 argsba1 fnsba1 ntba1 i11a1 p7
+imfa1 call shrw nodesba1 argsba1 fnsba1 ntba1 i11a1 p7 go1a1
 fcodea1_a shr 0 7
 fcodea1_b get imfa1 fcodea1_a
 fcodea1_c and 0 127
@@ -7970,7 +8213,7 @@ fitna1 le fna1 dfa1_n
 fitaa1 le needa1 availa1
 inpla1 and fitna1 fitaa1
 ok0a1 eq fcodea1 0
-go2a1 and goa1 ok0a1
+go2a1 and go1a1 ok0a1
 nda1 select inpla1 dfa1_f nnya1
 ada1 select inpla1 s0a1 naya1
 nodesca1 call shinn nodesba1 imfa1 nda1 ada1 go2a1
@@ -7996,7 +8239,10 @@ bb2a1 or bb1a1 bad3a1
 bb3a1 or bb2a1 bad4a1
 bb4a1 or bb3a1 bad5a1
 bb5a1 or bb4a1 bad6a1
-bba1 and goa1 bb5a1
+bb0a1 and go1a1 bb5a1
+bl4a1 eq bcodea1 4
+bl4ga1 and goa1 bl4a1
+bba1 or bb0a1 bl4ga1
 limna1 select bba1 1 0
 lima1 or lim0 limna1
 nfda1 eq fda1 0
@@ -8004,7 +8250,12 @@ nmna1 ne msa1 4294967295
 mqa1 eq mis0 4294967295
 mm1a1 and nfda1 nmna1
 mm2a1 and mm1a1 mqa1
-misa1 select mm2a1 msa1 mis0
+mis1a1 select mm2a1 msa1 mis0
+bm7a1 eq bcodea1 7
+bm7ga1 and goa1 bm7a1
+mq2a1 eq mis1a1 4294967295
+bm7ha1 and bm7ga1 mq2a1
+misa1 select bm7ha1 bmisa1 mis1a1
 cnta1 add cnt0 gona1
 tla1 mov tlaa1
 fnsa1 mov fnsca1
@@ -8016,7 +8267,12 @@ fda2 at sra2 0
 bla2 at sra2 1
 ina2 at sra2 2
 msa2 at sra2 3
-goa2 ne fda2 0
+fdxa2 ne fda2 0
+stp1a2 ne lima1 0
+stp2a2 ne misa1 4294967295
+stpa2 or stp1a2 stp2a2
+nstpa2 select stpa2 false true
+goa2 and fdxa2 nstpa2
 gona2 select goa2 1 0
 kda2_a shr 1 7
 kda2_b get ina2 kda2_a
@@ -8111,11 +8367,22 @@ nnxa2 add nna1 imnsa2
 naxa2 add naa1 impasa2
 nfxa2 add nfa1 gona2
 ntlxa2 add ntlra2 nparsa2
-imba2 mov imaa2
-nodesba2 call shinn nodesaa2 imba2 nnxa2 naxa2 goa2
-argsba2 call shina argsaa2 imba2 naxa2 goa2
-ntba2 call shint ntaa2 imba2 nnxa2 goa2
-fnsba2 call shinf2 fnsaa2 nfa1 imba2 nnxa2 naxa2 goa2
+gza2 select goa2 nfa1 nfxa2
+imba2 call ozopt1 tya2 tlaa2 fnsaa2 nodesaa2 ntaa2 argsaa2 gza2 ntya2 nfxa2 naxa2
+bcodea2_a shr 0 7
+bcodea2_b get imba2 bcodea2_a
+bcodea2_c and 0 127
+bcodea2 get bcodea2_b bcodea2_c
+bmisa2_a shr 7 7
+bmisa2_b get imba2 bmisa2_a
+bmisa2_c and 7 127
+bmisa2 get bmisa2_b bmisa2_c
+boka2 eq bcodea2 0
+go1a2 and goa2 boka2
+nodesba2 call shinn nodesaa2 imba2 nnxa2 naxa2 go1a2
+argsba2 call shina argsaa2 imba2 naxa2 go1a2
+ntba2 call shint ntaa2 imba2 nnxa2 go1a2
+fnsba2 call shinf3 fnsaa2 nfa1 imba2 nnxa2 naxa2 go1a2
 imbna2_a shr 1 7
 imbna2_b get imba2 imbna2_a
 imbna2_c and 1 127
@@ -8130,12 +8397,12 @@ imbrva2_c and 3 127
 imbrva2 get imbrva2_b imbrva2_c
 bigya2 ge imbrva2 268435456
 bigyna2 select bigya2 1 0
-imbnsa2 select goa2 imbna2 0
+imbnsa2 select go1a2 imbna2 0
 impba2 add imbpa2 bigyna2
-impbsa2 select goa2 impba2 0
+impbsa2 select go1a2 impba2 0
 nnya2 add nnxa2 imbnsa2
 naya2 add naxa2 impbsa2
-imfa2 call shrw nodesba2 argsba2 fnsba2 ntba2 i11a2 p7
+imfa2 call shrw nodesba2 argsba2 fnsba2 ntba2 i11a2 p7 go1a2
 fcodea2_a shr 0 7
 fcodea2_b get imfa2 fcodea2_a
 fcodea2_c and 0 127
@@ -8206,7 +8473,7 @@ fitna2 le fna2 dfa2_n
 fitaa2 le needa2 availa2
 inpla2 and fitna2 fitaa2
 ok0a2 eq fcodea2 0
-go2a2 and goa2 ok0a2
+go2a2 and go1a2 ok0a2
 nda2 select inpla2 dfa2_f nnya2
 ada2 select inpla2 s0a2 naya2
 nodesca2 call shinn nodesba2 imfa2 nda2 ada2 go2a2
@@ -8232,7 +8499,10 @@ bb2a2 or bb1a2 bad3a2
 bb3a2 or bb2a2 bad4a2
 bb4a2 or bb3a2 bad5a2
 bb5a2 or bb4a2 bad6a2
-bba2 and goa2 bb5a2
+bb0a2 and go1a2 bb5a2
+bl4a2 eq bcodea2 4
+bl4ga2 and goa2 bl4a2
+bba2 or bb0a2 bl4ga2
 limna2 select bba2 1 0
 lima2 or lima1 limna2
 nfda2 eq fda2 0
@@ -8240,7 +8510,12 @@ nmna2 ne msa2 4294967295
 mqa2 eq misa1 4294967295
 mm1a2 and nfda2 nmna2
 mm2a2 and mm1a2 mqa2
-misa2 select mm2a2 msa2 misa1
+mis1a2 select mm2a2 msa2 misa1
+bm7a2 eq bcodea2 7
+bm7ga2 and goa2 bm7a2
+mq2a2 eq mis1a2 4294967295
+bm7ha2 and bm7ga2 mq2a2
+misa2 select bm7ha2 bmisa2 mis1a2
 cnta2 add cnta1 gona2
 tla2 mov tlaa2
 fnsa2 mov fnsca2
@@ -8252,7 +8527,12 @@ fda3 at sra3 0
 bla3 at sra3 1
 ina3 at sra3 2
 msa3 at sra3 3
-goa3 ne fda3 0
+fdxa3 ne fda3 0
+stp1a3 ne lima2 0
+stp2a3 ne misa2 4294967295
+stpa3 or stp1a3 stp2a3
+nstpa3 select stpa3 false true
+goa3 and fdxa3 nstpa3
 gona3 select goa3 1 0
 kda3_a shr 1 7
 kda3_b get ina3 kda3_a
@@ -8347,11 +8627,22 @@ nnxa3 add nna2 imnsa3
 naxa3 add naa2 impasa3
 nfxa3 add nfa2 gona3
 ntlxa3 add ntlra3 nparsa3
-imba3 mov imaa3
-nodesba3 call shinn nodesaa3 imba3 nnxa3 naxa3 goa3
-argsba3 call shina argsaa3 imba3 naxa3 goa3
-ntba3 call shint ntaa3 imba3 nnxa3 goa3
-fnsba3 call shinf2 fnsaa3 nfa2 imba3 nnxa3 naxa3 goa3
+gza3 select goa3 nfa2 nfxa3
+imba3 call ozopt1 tya3 tlaa3 fnsaa3 nodesaa3 ntaa3 argsaa3 gza3 ntya3 nfxa3 naxa3
+bcodea3_a shr 0 7
+bcodea3_b get imba3 bcodea3_a
+bcodea3_c and 0 127
+bcodea3 get bcodea3_b bcodea3_c
+bmisa3_a shr 7 7
+bmisa3_b get imba3 bmisa3_a
+bmisa3_c and 7 127
+bmisa3 get bmisa3_b bmisa3_c
+boka3 eq bcodea3 0
+go1a3 and goa3 boka3
+nodesba3 call shinn nodesaa3 imba3 nnxa3 naxa3 go1a3
+argsba3 call shina argsaa3 imba3 naxa3 go1a3
+ntba3 call shint ntaa3 imba3 nnxa3 go1a3
+fnsba3 call shinf3 fnsaa3 nfa2 imba3 nnxa3 naxa3 go1a3
 imbna3_a shr 1 7
 imbna3_b get imba3 imbna3_a
 imbna3_c and 1 127
@@ -8366,12 +8657,12 @@ imbrva3_c and 3 127
 imbrva3 get imbrva3_b imbrva3_c
 bigya3 ge imbrva3 268435456
 bigyna3 select bigya3 1 0
-imbnsa3 select goa3 imbna3 0
+imbnsa3 select go1a3 imbna3 0
 impba3 add imbpa3 bigyna3
-impbsa3 select goa3 impba3 0
+impbsa3 select go1a3 impba3 0
 nnya3 add nnxa3 imbnsa3
 naya3 add naxa3 impbsa3
-imfa3 call shrw nodesba3 argsba3 fnsba3 ntba3 i11a3 p7
+imfa3 call shrw nodesba3 argsba3 fnsba3 ntba3 i11a3 p7 go1a3
 fcodea3_a shr 0 7
 fcodea3_b get imfa3 fcodea3_a
 fcodea3_c and 0 127
@@ -8442,7 +8733,7 @@ fitna3 le fna3 dfa3_n
 fitaa3 le needa3 availa3
 inpla3 and fitna3 fitaa3
 ok0a3 eq fcodea3 0
-go2a3 and goa3 ok0a3
+go2a3 and go1a3 ok0a3
 nda3 select inpla3 dfa3_f nnya3
 ada3 select inpla3 s0a3 naya3
 nodesca3 call shinn nodesba3 imfa3 nda3 ada3 go2a3
@@ -8468,7 +8759,10 @@ bb2a3 or bb1a3 bad3a3
 bb3a3 or bb2a3 bad4a3
 bb4a3 or bb3a3 bad5a3
 bb5a3 or bb4a3 bad6a3
-bba3 and goa3 bb5a3
+bb0a3 and go1a3 bb5a3
+bl4a3 eq bcodea3 4
+bl4ga3 and goa3 bl4a3
+bba3 or bb0a3 bl4ga3
 limna3 select bba3 1 0
 lima3 or lima2 limna3
 nfda3 eq fda3 0
@@ -8476,7 +8770,12 @@ nmna3 ne msa3 4294967295
 mqa3 eq misa2 4294967295
 mm1a3 and nfda3 nmna3
 mm2a3 and mm1a3 mqa3
-misa3 select mm2a3 msa3 misa2
+mis1a3 select mm2a3 msa3 misa2
+bm7a3 eq bcodea3 7
+bm7ga3 and goa3 bm7a3
+mq2a3 eq mis1a3 4294967295
+bm7ha3 and bm7ga3 mq2a3
+misa3 select bm7ha3 bmisa3 mis1a3
 cnta3 add cnta2 gona3
 tla3 mov tlaa3
 fnsa3 mov fnsca3
@@ -8488,7 +8787,12 @@ fda4 at sra4 0
 bla4 at sra4 1
 ina4 at sra4 2
 msa4 at sra4 3
-goa4 ne fda4 0
+fdxa4 ne fda4 0
+stp1a4 ne lima3 0
+stp2a4 ne misa3 4294967295
+stpa4 or stp1a4 stp2a4
+nstpa4 select stpa4 false true
+goa4 and fdxa4 nstpa4
 gona4 select goa4 1 0
 kda4_a shr 1 7
 kda4_b get ina4 kda4_a
@@ -8583,11 +8887,22 @@ nnxa4 add nna3 imnsa4
 naxa4 add naa3 impasa4
 nfxa4 add nfa3 gona4
 ntlxa4 add ntlra4 nparsa4
-imba4 mov imaa4
-nodesba4 call shinn nodesaa4 imba4 nnxa4 naxa4 goa4
-argsba4 call shina argsaa4 imba4 naxa4 goa4
-ntba4 call shint ntaa4 imba4 nnxa4 goa4
-fnsba4 call shinf2 fnsaa4 nfa3 imba4 nnxa4 naxa4 goa4
+gza4 select goa4 nfa3 nfxa4
+imba4 call ozopt1 tya4 tlaa4 fnsaa4 nodesaa4 ntaa4 argsaa4 gza4 ntya4 nfxa4 naxa4
+bcodea4_a shr 0 7
+bcodea4_b get imba4 bcodea4_a
+bcodea4_c and 0 127
+bcodea4 get bcodea4_b bcodea4_c
+bmisa4_a shr 7 7
+bmisa4_b get imba4 bmisa4_a
+bmisa4_c and 7 127
+bmisa4 get bmisa4_b bmisa4_c
+boka4 eq bcodea4 0
+go1a4 and goa4 boka4
+nodesba4 call shinn nodesaa4 imba4 nnxa4 naxa4 go1a4
+argsba4 call shina argsaa4 imba4 naxa4 go1a4
+ntba4 call shint ntaa4 imba4 nnxa4 go1a4
+fnsba4 call shinf3 fnsaa4 nfa3 imba4 nnxa4 naxa4 go1a4
 imbna4_a shr 1 7
 imbna4_b get imba4 imbna4_a
 imbna4_c and 1 127
@@ -8602,12 +8917,12 @@ imbrva4_c and 3 127
 imbrva4 get imbrva4_b imbrva4_c
 bigya4 ge imbrva4 268435456
 bigyna4 select bigya4 1 0
-imbnsa4 select goa4 imbna4 0
+imbnsa4 select go1a4 imbna4 0
 impba4 add imbpa4 bigyna4
-impbsa4 select goa4 impba4 0
+impbsa4 select go1a4 impba4 0
 nnya4 add nnxa4 imbnsa4
 naya4 add naxa4 impbsa4
-imfa4 call shrw nodesba4 argsba4 fnsba4 ntba4 i11a4 p7
+imfa4 call shrw nodesba4 argsba4 fnsba4 ntba4 i11a4 p7 go1a4
 fcodea4_a shr 0 7
 fcodea4_b get imfa4 fcodea4_a
 fcodea4_c and 0 127
@@ -8678,7 +8993,7 @@ fitna4 le fna4 dfa4_n
 fitaa4 le needa4 availa4
 inpla4 and fitna4 fitaa4
 ok0a4 eq fcodea4 0
-go2a4 and goa4 ok0a4
+go2a4 and go1a4 ok0a4
 nda4 select inpla4 dfa4_f nnya4
 ada4 select inpla4 s0a4 naya4
 nodesca4 call shinn nodesba4 imfa4 nda4 ada4 go2a4
@@ -8704,7 +9019,10 @@ bb2a4 or bb1a4 bad3a4
 bb3a4 or bb2a4 bad4a4
 bb4a4 or bb3a4 bad5a4
 bb5a4 or bb4a4 bad6a4
-bba4 and goa4 bb5a4
+bb0a4 and go1a4 bb5a4
+bl4a4 eq bcodea4 4
+bl4ga4 and goa4 bl4a4
+bba4 or bb0a4 bl4ga4
 limna4 select bba4 1 0
 lima4 or lima3 limna4
 nfda4 eq fda4 0
@@ -8712,7 +9030,12 @@ nmna4 ne msa4 4294967295
 mqa4 eq misa3 4294967295
 mm1a4 and nfda4 nmna4
 mm2a4 and mm1a4 mqa4
-misa4 select mm2a4 msa4 misa3
+mis1a4 select mm2a4 msa4 misa3
+bm7a4 eq bcodea4 7
+bm7ga4 and goa4 bm7a4
+mq2a4 eq mis1a4 4294967295
+bm7ha4 and bm7ga4 mq2a4
+misa4 select bm7ha4 bmisa4 mis1a4
 cnta4 add cnta3 gona4
 tla4 mov tlaa4
 fnsa4 mov fnsca4
@@ -8724,7 +9047,12 @@ fda5 at sra5 0
 bla5 at sra5 1
 ina5 at sra5 2
 msa5 at sra5 3
-goa5 ne fda5 0
+fdxa5 ne fda5 0
+stp1a5 ne lima4 0
+stp2a5 ne misa4 4294967295
+stpa5 or stp1a5 stp2a5
+nstpa5 select stpa5 false true
+goa5 and fdxa5 nstpa5
 gona5 select goa5 1 0
 kda5_a shr 1 7
 kda5_b get ina5 kda5_a
@@ -8819,11 +9147,22 @@ nnxa5 add nna4 imnsa5
 naxa5 add naa4 impasa5
 nfxa5 add nfa4 gona5
 ntlxa5 add ntlra5 nparsa5
-imba5 mov imaa5
-nodesba5 call shinn nodesaa5 imba5 nnxa5 naxa5 goa5
-argsba5 call shina argsaa5 imba5 naxa5 goa5
-ntba5 call shint ntaa5 imba5 nnxa5 goa5
-fnsba5 call shinf2 fnsaa5 nfa4 imba5 nnxa5 naxa5 goa5
+gza5 select goa5 nfa4 nfxa5
+imba5 call ozopt1 tya5 tlaa5 fnsaa5 nodesaa5 ntaa5 argsaa5 gza5 ntya5 nfxa5 naxa5
+bcodea5_a shr 0 7
+bcodea5_b get imba5 bcodea5_a
+bcodea5_c and 0 127
+bcodea5 get bcodea5_b bcodea5_c
+bmisa5_a shr 7 7
+bmisa5_b get imba5 bmisa5_a
+bmisa5_c and 7 127
+bmisa5 get bmisa5_b bmisa5_c
+boka5 eq bcodea5 0
+go1a5 and goa5 boka5
+nodesba5 call shinn nodesaa5 imba5 nnxa5 naxa5 go1a5
+argsba5 call shina argsaa5 imba5 naxa5 go1a5
+ntba5 call shint ntaa5 imba5 nnxa5 go1a5
+fnsba5 call shinf3 fnsaa5 nfa4 imba5 nnxa5 naxa5 go1a5
 imbna5_a shr 1 7
 imbna5_b get imba5 imbna5_a
 imbna5_c and 1 127
@@ -8838,12 +9177,12 @@ imbrva5_c and 3 127
 imbrva5 get imbrva5_b imbrva5_c
 bigya5 ge imbrva5 268435456
 bigyna5 select bigya5 1 0
-imbnsa5 select goa5 imbna5 0
+imbnsa5 select go1a5 imbna5 0
 impba5 add imbpa5 bigyna5
-impbsa5 select goa5 impba5 0
+impbsa5 select go1a5 impba5 0
 nnya5 add nnxa5 imbnsa5
 naya5 add naxa5 impbsa5
-imfa5 call shrw nodesba5 argsba5 fnsba5 ntba5 i11a5 p7
+imfa5 call shrw nodesba5 argsba5 fnsba5 ntba5 i11a5 p7 go1a5
 fcodea5_a shr 0 7
 fcodea5_b get imfa5 fcodea5_a
 fcodea5_c and 0 127
@@ -8914,7 +9253,7 @@ fitna5 le fna5 dfa5_n
 fitaa5 le needa5 availa5
 inpla5 and fitna5 fitaa5
 ok0a5 eq fcodea5 0
-go2a5 and goa5 ok0a5
+go2a5 and go1a5 ok0a5
 nda5 select inpla5 dfa5_f nnya5
 ada5 select inpla5 s0a5 naya5
 nodesca5 call shinn nodesba5 imfa5 nda5 ada5 go2a5
@@ -8940,7 +9279,10 @@ bb2a5 or bb1a5 bad3a5
 bb3a5 or bb2a5 bad4a5
 bb4a5 or bb3a5 bad5a5
 bb5a5 or bb4a5 bad6a5
-bba5 and goa5 bb5a5
+bb0a5 and go1a5 bb5a5
+bl4a5 eq bcodea5 4
+bl4ga5 and goa5 bl4a5
+bba5 or bb0a5 bl4ga5
 limna5 select bba5 1 0
 lima5 or lima4 limna5
 nfda5 eq fda5 0
@@ -8948,7 +9290,12 @@ nmna5 ne msa5 4294967295
 mqa5 eq misa4 4294967295
 mm1a5 and nfda5 nmna5
 mm2a5 and mm1a5 mqa5
-misa5 select mm2a5 msa5 misa4
+mis1a5 select mm2a5 msa5 misa4
+bm7a5 eq bcodea5 7
+bm7ga5 and goa5 bm7a5
+mq2a5 eq mis1a5 4294967295
+bm7ha5 and bm7ga5 mq2a5
+misa5 select bm7ha5 bmisa5 mis1a5
 cnta5 add cnta4 gona5
 tla5 mov tlaa5
 fnsa5 mov fnsca5
@@ -8960,7 +9307,12 @@ fda6 at sra6 0
 bla6 at sra6 1
 ina6 at sra6 2
 msa6 at sra6 3
-goa6 ne fda6 0
+fdxa6 ne fda6 0
+stp1a6 ne lima5 0
+stp2a6 ne misa5 4294967295
+stpa6 or stp1a6 stp2a6
+nstpa6 select stpa6 false true
+goa6 and fdxa6 nstpa6
 gona6 select goa6 1 0
 kda6_a shr 1 7
 kda6_b get ina6 kda6_a
@@ -9055,11 +9407,22 @@ nnxa6 add nna5 imnsa6
 naxa6 add naa5 impasa6
 nfxa6 add nfa5 gona6
 ntlxa6 add ntlra6 nparsa6
-imba6 mov imaa6
-nodesba6 call shinn nodesaa6 imba6 nnxa6 naxa6 goa6
-argsba6 call shina argsaa6 imba6 naxa6 goa6
-ntba6 call shint ntaa6 imba6 nnxa6 goa6
-fnsba6 call shinf2 fnsaa6 nfa5 imba6 nnxa6 naxa6 goa6
+gza6 select goa6 nfa5 nfxa6
+imba6 call ozopt1 tya6 tlaa6 fnsaa6 nodesaa6 ntaa6 argsaa6 gza6 ntya6 nfxa6 naxa6
+bcodea6_a shr 0 7
+bcodea6_b get imba6 bcodea6_a
+bcodea6_c and 0 127
+bcodea6 get bcodea6_b bcodea6_c
+bmisa6_a shr 7 7
+bmisa6_b get imba6 bmisa6_a
+bmisa6_c and 7 127
+bmisa6 get bmisa6_b bmisa6_c
+boka6 eq bcodea6 0
+go1a6 and goa6 boka6
+nodesba6 call shinn nodesaa6 imba6 nnxa6 naxa6 go1a6
+argsba6 call shina argsaa6 imba6 naxa6 go1a6
+ntba6 call shint ntaa6 imba6 nnxa6 go1a6
+fnsba6 call shinf3 fnsaa6 nfa5 imba6 nnxa6 naxa6 go1a6
 imbna6_a shr 1 7
 imbna6_b get imba6 imbna6_a
 imbna6_c and 1 127
@@ -9074,12 +9437,12 @@ imbrva6_c and 3 127
 imbrva6 get imbrva6_b imbrva6_c
 bigya6 ge imbrva6 268435456
 bigyna6 select bigya6 1 0
-imbnsa6 select goa6 imbna6 0
+imbnsa6 select go1a6 imbna6 0
 impba6 add imbpa6 bigyna6
-impbsa6 select goa6 impba6 0
+impbsa6 select go1a6 impba6 0
 nnya6 add nnxa6 imbnsa6
 naya6 add naxa6 impbsa6
-imfa6 call shrw nodesba6 argsba6 fnsba6 ntba6 i11a6 p7
+imfa6 call shrw nodesba6 argsba6 fnsba6 ntba6 i11a6 p7 go1a6
 fcodea6_a shr 0 7
 fcodea6_b get imfa6 fcodea6_a
 fcodea6_c and 0 127
@@ -9150,7 +9513,7 @@ fitna6 le fna6 dfa6_n
 fitaa6 le needa6 availa6
 inpla6 and fitna6 fitaa6
 ok0a6 eq fcodea6 0
-go2a6 and goa6 ok0a6
+go2a6 and go1a6 ok0a6
 nda6 select inpla6 dfa6_f nnya6
 ada6 select inpla6 s0a6 naya6
 nodesca6 call shinn nodesba6 imfa6 nda6 ada6 go2a6
@@ -9176,7 +9539,10 @@ bb2a6 or bb1a6 bad3a6
 bb3a6 or bb2a6 bad4a6
 bb4a6 or bb3a6 bad5a6
 bb5a6 or bb4a6 bad6a6
-bba6 and goa6 bb5a6
+bb0a6 and go1a6 bb5a6
+bl4a6 eq bcodea6 4
+bl4ga6 and goa6 bl4a6
+bba6 or bb0a6 bl4ga6
 limna6 select bba6 1 0
 lima6 or lima5 limna6
 nfda6 eq fda6 0
@@ -9184,7 +9550,12 @@ nmna6 ne msa6 4294967295
 mqa6 eq misa5 4294967295
 mm1a6 and nfda6 nmna6
 mm2a6 and mm1a6 mqa6
-misa6 select mm2a6 msa6 misa5
+mis1a6 select mm2a6 msa6 misa5
+bm7a6 eq bcodea6 7
+bm7ga6 and goa6 bm7a6
+mq2a6 eq mis1a6 4294967295
+bm7ha6 and bm7ga6 mq2a6
+misa6 select bm7ha6 bmisa6 mis1a6
 cnta6 add cnta5 gona6
 tla6 mov tlaa6
 fnsa6 mov fnsca6
@@ -9196,7 +9567,12 @@ fda7 at sra7 0
 bla7 at sra7 1
 ina7 at sra7 2
 msa7 at sra7 3
-goa7 ne fda7 0
+fdxa7 ne fda7 0
+stp1a7 ne lima6 0
+stp2a7 ne misa6 4294967295
+stpa7 or stp1a7 stp2a7
+nstpa7 select stpa7 false true
+goa7 and fdxa7 nstpa7
 gona7 select goa7 1 0
 kda7_a shr 1 7
 kda7_b get ina7 kda7_a
@@ -9291,11 +9667,22 @@ nnxa7 add nna6 imnsa7
 naxa7 add naa6 impasa7
 nfxa7 add nfa6 gona7
 ntlxa7 add ntlra7 nparsa7
-imba7 mov imaa7
-nodesba7 call shinn nodesaa7 imba7 nnxa7 naxa7 goa7
-argsba7 call shina argsaa7 imba7 naxa7 goa7
-ntba7 call shint ntaa7 imba7 nnxa7 goa7
-fnsba7 call shinf2 fnsaa7 nfa6 imba7 nnxa7 naxa7 goa7
+gza7 select goa7 nfa6 nfxa7
+imba7 call ozopt1 tya7 tlaa7 fnsaa7 nodesaa7 ntaa7 argsaa7 gza7 ntya7 nfxa7 naxa7
+bcodea7_a shr 0 7
+bcodea7_b get imba7 bcodea7_a
+bcodea7_c and 0 127
+bcodea7 get bcodea7_b bcodea7_c
+bmisa7_a shr 7 7
+bmisa7_b get imba7 bmisa7_a
+bmisa7_c and 7 127
+bmisa7 get bmisa7_b bmisa7_c
+boka7 eq bcodea7 0
+go1a7 and goa7 boka7
+nodesba7 call shinn nodesaa7 imba7 nnxa7 naxa7 go1a7
+argsba7 call shina argsaa7 imba7 naxa7 go1a7
+ntba7 call shint ntaa7 imba7 nnxa7 go1a7
+fnsba7 call shinf3 fnsaa7 nfa6 imba7 nnxa7 naxa7 go1a7
 imbna7_a shr 1 7
 imbna7_b get imba7 imbna7_a
 imbna7_c and 1 127
@@ -9310,12 +9697,12 @@ imbrva7_c and 3 127
 imbrva7 get imbrva7_b imbrva7_c
 bigya7 ge imbrva7 268435456
 bigyna7 select bigya7 1 0
-imbnsa7 select goa7 imbna7 0
+imbnsa7 select go1a7 imbna7 0
 impba7 add imbpa7 bigyna7
-impbsa7 select goa7 impba7 0
+impbsa7 select go1a7 impba7 0
 nnya7 add nnxa7 imbnsa7
 naya7 add naxa7 impbsa7
-imfa7 call shrw nodesba7 argsba7 fnsba7 ntba7 i11a7 p7
+imfa7 call shrw nodesba7 argsba7 fnsba7 ntba7 i11a7 p7 go1a7
 fcodea7_a shr 0 7
 fcodea7_b get imfa7 fcodea7_a
 fcodea7_c and 0 127
@@ -9386,7 +9773,7 @@ fitna7 le fna7 dfa7_n
 fitaa7 le needa7 availa7
 inpla7 and fitna7 fitaa7
 ok0a7 eq fcodea7 0
-go2a7 and goa7 ok0a7
+go2a7 and go1a7 ok0a7
 nda7 select inpla7 dfa7_f nnya7
 ada7 select inpla7 s0a7 naya7
 nodesca7 call shinn nodesba7 imfa7 nda7 ada7 go2a7
@@ -9412,7 +9799,10 @@ bb2a7 or bb1a7 bad3a7
 bb3a7 or bb2a7 bad4a7
 bb4a7 or bb3a7 bad5a7
 bb5a7 or bb4a7 bad6a7
-bba7 and goa7 bb5a7
+bb0a7 and go1a7 bb5a7
+bl4a7 eq bcodea7 4
+bl4ga7 and goa7 bl4a7
+bba7 or bb0a7 bl4ga7
 limna7 select bba7 1 0
 lima7 or lima6 limna7
 nfda7 eq fda7 0
@@ -9420,7 +9810,12 @@ nmna7 ne msa7 4294967295
 mqa7 eq misa6 4294967295
 mm1a7 and nfda7 nmna7
 mm2a7 and mm1a7 mqa7
-misa7 select mm2a7 msa7 misa6
+mis1a7 select mm2a7 msa7 misa6
+bm7a7 eq bcodea7 7
+bm7ga7 and goa7 bm7a7
+mq2a7 eq mis1a7 4294967295
+bm7ha7 and bm7ga7 mq2a7
+misa7 select bm7ha7 bmisa7 mis1a7
 cnta7 add cnta6 gona7
 tla7 mov tlaa7
 fnsa7 mov fnsca7
@@ -9432,7 +9827,12 @@ fda8 at sra8 0
 bla8 at sra8 1
 ina8 at sra8 2
 msa8 at sra8 3
-goa8 ne fda8 0
+fdxa8 ne fda8 0
+stp1a8 ne lima7 0
+stp2a8 ne misa7 4294967295
+stpa8 or stp1a8 stp2a8
+nstpa8 select stpa8 false true
+goa8 and fdxa8 nstpa8
 gona8 select goa8 1 0
 kda8_a shr 1 7
 kda8_b get ina8 kda8_a
@@ -9527,11 +9927,22 @@ nnxa8 add nna7 imnsa8
 naxa8 add naa7 impasa8
 nfxa8 add nfa7 gona8
 ntlxa8 add ntlra8 nparsa8
-imba8 mov imaa8
-nodesba8 call shinn nodesaa8 imba8 nnxa8 naxa8 goa8
-argsba8 call shina argsaa8 imba8 naxa8 goa8
-ntba8 call shint ntaa8 imba8 nnxa8 goa8
-fnsba8 call shinf2 fnsaa8 nfa7 imba8 nnxa8 naxa8 goa8
+gza8 select goa8 nfa7 nfxa8
+imba8 call ozopt1 tya8 tlaa8 fnsaa8 nodesaa8 ntaa8 argsaa8 gza8 ntya8 nfxa8 naxa8
+bcodea8_a shr 0 7
+bcodea8_b get imba8 bcodea8_a
+bcodea8_c and 0 127
+bcodea8 get bcodea8_b bcodea8_c
+bmisa8_a shr 7 7
+bmisa8_b get imba8 bmisa8_a
+bmisa8_c and 7 127
+bmisa8 get bmisa8_b bmisa8_c
+boka8 eq bcodea8 0
+go1a8 and goa8 boka8
+nodesba8 call shinn nodesaa8 imba8 nnxa8 naxa8 go1a8
+argsba8 call shina argsaa8 imba8 naxa8 go1a8
+ntba8 call shint ntaa8 imba8 nnxa8 go1a8
+fnsba8 call shinf3 fnsaa8 nfa7 imba8 nnxa8 naxa8 go1a8
 imbna8_a shr 1 7
 imbna8_b get imba8 imbna8_a
 imbna8_c and 1 127
@@ -9546,12 +9957,12 @@ imbrva8_c and 3 127
 imbrva8 get imbrva8_b imbrva8_c
 bigya8 ge imbrva8 268435456
 bigyna8 select bigya8 1 0
-imbnsa8 select goa8 imbna8 0
+imbnsa8 select go1a8 imbna8 0
 impba8 add imbpa8 bigyna8
-impbsa8 select goa8 impba8 0
+impbsa8 select go1a8 impba8 0
 nnya8 add nnxa8 imbnsa8
 naya8 add naxa8 impbsa8
-imfa8 call shrw nodesba8 argsba8 fnsba8 ntba8 i11a8 p7
+imfa8 call shrw nodesba8 argsba8 fnsba8 ntba8 i11a8 p7 go1a8
 fcodea8_a shr 0 7
 fcodea8_b get imfa8 fcodea8_a
 fcodea8_c and 0 127
@@ -9622,7 +10033,7 @@ fitna8 le fna8 dfa8_n
 fitaa8 le needa8 availa8
 inpla8 and fitna8 fitaa8
 ok0a8 eq fcodea8 0
-go2a8 and goa8 ok0a8
+go2a8 and go1a8 ok0a8
 nda8 select inpla8 dfa8_f nnya8
 ada8 select inpla8 s0a8 naya8
 nodesca8 call shinn nodesba8 imfa8 nda8 ada8 go2a8
@@ -9648,7 +10059,10 @@ bb2a8 or bb1a8 bad3a8
 bb3a8 or bb2a8 bad4a8
 bb4a8 or bb3a8 bad5a8
 bb5a8 or bb4a8 bad6a8
-bba8 and goa8 bb5a8
+bb0a8 and go1a8 bb5a8
+bl4a8 eq bcodea8 4
+bl4ga8 and goa8 bl4a8
+bba8 or bb0a8 bl4ga8
 limna8 select bba8 1 0
 lima8 or lima7 limna8
 nfda8 eq fda8 0
@@ -9656,7 +10070,12 @@ nmna8 ne msa8 4294967295
 mqa8 eq misa7 4294967295
 mm1a8 and nfda8 nmna8
 mm2a8 and mm1a8 mqa8
-misa8 select mm2a8 msa8 misa7
+mis1a8 select mm2a8 msa8 misa7
+bm7a8 eq bcodea8 7
+bm7ga8 and goa8 bm7a8
+mq2a8 eq mis1a8 4294967295
+bm7ha8 and bm7ga8 mq2a8
+misa8 select bm7ha8 bmisa8 mis1a8
 cnta8 add cnta7 gona8
 tla8 mov tlaa8
 fnsa8 mov fnsca8
