@@ -1,0 +1,743 @@
+use "emit_c.a0"
+
+# A0 port of the instruction-list post-processing `Code.finish` of src/wasm.ts (DESIGN.md 7a): the
+# function body arrives as a list of instructions with SYMBOLIC local indices; `wfzfin` stackifies
+# adjacent local.set/local.get pairs, drops dead stores, renumbers the non-parameter locals so that
+# ones with disjoint live ranges (widened across loops) share an index, and serializes the list.
+# The result is byte-identical to the TypeScript (compiler/wasm_code.a0 is checked against `finish`
+# on random lists and on every function body of the test programs).
+#
+# Input: the table `ins` (u32x128x352: 22528 instructions of 2 words; instruction k is word 2k =
+# kind, word 2k+1 = v), the instruction count n and the parameter count np (locals below np are
+# never renumbered or removed). The kinds, and the bytes each serializes to (uleb/sleb are the
+# LEB128 forms of src/wasm.ts, sleb of the int32 whose bit pattern is v):
+#    0 NOP nothing           1 OP v the byte v&255      2 CONST v 0x41 sleb(v)
+#    3 LGET v 0x20 uleb(v)   4 LSET v 0x21 uleb(v)      5 LTEE v 0x22 uleb(v)   (v renumbered below np)
+#    6 CALL v: one marker word v (>= 256)               7 POOL v: one marker word 2^31 + v
+#    8 LOOP 0x03 0x40        9 LOOPEND 0x0b             10 LOAD v 0x28 2 uleb(v)  11 STORE v 0x36 2 uleb(v)
+#   12 BRIF v 0x0d uleb(v)  13 BR v 0x0c uleb(v)        14 BLOCK v 0x02 v&255     15 IF v 0x04 v&255
+#   16 MEMCOPY 0xfc 0x0a 0 0  17 MEMFILL 0xfc 0x0b 0    18 SIMD v 0xfd uleb(v)    19 VSTORE 0xfd 0x0b 2 0
+#   20 VCONSTIDX 0xfd 0x0c then the lanes 0 1 2 3 (u32, little endian)
+#   21 VCONSTSPLAT v 0xfd 0x0c then v (little endian) four times
+#   22 GGET v 0x23 v&255    23 GSET v 0x24 v&255
+# A local id below 2^20 (VBASE) is an i32 local (id < 8192 when not a parameter), an id VBASE + k
+# (k < 128) a v128 local; the v128 locals are placed after the i32 ones. A local id outside these
+# ranges, more than 22528 instructions, or more than 65533 output words is the failure value.
+# Loops (kinds 8, 9) are balanced and nested; blocks and ifs are not loops.
+#
+# Result (wfzfin): the code table (u32x128x512). Words 0 .. nwords-1 are the body, one word per
+# byte plus a marker word for each CALL/POOL; the last three words are the header: word 65533 =
+# nwords, the number of words written (4294967295 on failure, then the other two are 0), word
+# 65534 = nlocals (the i32 locals above the np parameters) and word 65535 = nvlocals (the v128
+# locals), i.e. `locals` and `vlocals` of `Code.finish`. (A record with the table would pass
+# the 2^21 bit limit of a value, so the three scalars live in the table: the body holds at most
+# 65533 words.)
+#
+# Method. Every pass is a fold over the instructions whose state is a table (u32x128x512 = 65536
+# words, element i at page i>>7, word i&127), updated in place; tables read by a pass are fold
+# extras (borrowed, never copied), and a write is a one-trip fold of a tiny body (`wfzp1`, ...).
+# 1. wfzcnt: gets and sets per local (a LTEE counts as a set) over the original list.
+# 2. wfzstk: stackify on a copy of the list: a set directly followed by a get of the same local
+#    vanishes with it (one read, one write) or becomes a tee; a dead set becomes OP 0x1a, a dead
+#    tee vanishes. A removed instruction is kind 0; positions stay the original indices.
+# 3. wfzrng: per local its first and last access and the top-level (outermost) loop around each;
+#    per top-level loop its start and end. Since loops nest, repeated widening against all loops
+#    is the hull with the outermost loop around the first access (start) and last access (end).
+# 4. wfzalc: the locals in order of first access (the TypeScript stable sort by widened start gives
+#    the same order) take the first slot whose end is below the widened start; i32 and v128 locals
+#    have separate slot sets; the slot is kept per local.
+# 5. wfzoff, wfzcode: the offset of every instruction (running sum of its length), then its
+#    bytes, written one by one (wfzbyte).
+# The tables start as `wfzz` (all zero) and are laid out as follows (word indices):
+#   count table  : gets of local c at c, sets at 8320 + c (c: i32 id, or 8192 + k for VBASE + k),
+#                  16640: set to 1 when a local id is out of range, 16641 scratch
+#   range table  : 0 loop depth, 1 top-level loop count, 8 9 16..19 scratch, 128 + 4c: first
+#                  access + 1, its top-level loop, last access, its top-level loop,
+#                  33408 + L: start and 44928 + L: end of top-level loop L
+#   slot table   : c: slot of local c, 8320 + s: end of i32 slot s, 16512 + s: end of v128 slot
+#                  s, 16640 and 16641: slots used (i32, v128), 16650 and 16651 scratch
+#   offset table : word i is the offset of instruction i (n + 1 words)
+
+# ---------------------------------------------------------------------------------------------
+# Tables
+
+# word p1 of the table p0
+fn wfzg u32x128x512 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+w and p1 127
+v get pg w
+ret v
+end
+# word p1 of the input list
+fn wfzgi u32x128x352 u32 -> u32
+pi shr p1 7
+pg get p0 pi
+w and p1 127
+v get pg w
+ret v
+end
+# the state with word p2 set to p3 (a fold of one trip: p1 is the trip)
+fn wfzp1 u32x128x512 u32 u32 u32 -> u32x128x512
+pi shr p2 7
+pg get p0 pi
+w and p2 127
+pg2 set pg w p3
+t set p0 pi pg2
+ret t
+end
+# the state with the words p2 and p2 + 1 (same page) set to p3 and p4
+fn wfzp2 u32x128x512 u32 u32 u32 u32 -> u32x128x512
+pi shr p2 7
+pg get p0 pi
+w and p2 127
+pg2 set pg w p3
+w1 add w 1
+pg3 set pg2 w1 p4
+t set p0 pi pg3
+ret t
+end
+# the state with the words p2 .. p2 + 3 (p2 a multiple of 4) set to p3 .. p6
+fn wfzp4 u32x128x512 u32 u32 u32 u32 u32 u32 -> u32x128x512
+pi shr p2 7
+pg get p0 pi
+w and p2 127
+pg2 set pg w p3
+w1 add w 1
+pg3 set pg2 w1 p4
+w2 add w 2
+pg4 set pg3 w2 p5
+w3 add w 3
+pg5 set pg4 w3 p6
+t set p0 pi pg5
+ret t
+end
+# the zero table
+fn wfzz -> u32x128x512
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+# the zero input list
+fn wfzzi -> u32x128x352
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+# page p1 of the input list p2 copied into the state (a fold of 352 trips)
+fn wfzcp u32x128x512 u32 u32x128x352 -> u32x128x512
+pg get p2 p1
+t set p0 p1 pg
+ret t
+end
+
+# ---------------------------------------------------------------------------------------------
+# Local ids
+
+# 1 for a local access kind (3 get, 4 set, 5 tee)
+fn wfzisl u32 -> bool
+d sub p0 3
+r lt d 3
+ret r
+end
+# the compact index of local id p0: i32 ids below 8192 as they are, VBASE + k (k < 128) as 8192 + k,
+# 0 for an id out of range
+fn wfzcidx u32 -> u32
+lo lt p0 8192
+vv sub p0 1048576
+vl lt vv 128
+vi add vv 8192
+a select vl vi 0
+c select lo p0 a
+ret c
+end
+# is local id p0 in range
+fn wfzvok u32 -> bool
+lo lt p0 8192
+vv sub p0 1048576
+vl lt vv 128
+r or lo vl
+ret r
+end
+# the final index of local id p0 (slot table p0, parameters p1, i32 locals p2): parameters stay,
+# an i32 local is np + slot, a v128 local np + nl + slot
+fn wfzmap u32x128x512 u32 u32 u32 -> u32
+c call wfzcidx p3
+a call wfzg p0 c
+lo lt p3 8192
+isp lt p3 p1
+q add p1 a
+nl add p1 p2
+qv add nl a
+r0 select lo q qv
+r select isp p3 r0
+ret r
+end
+# the operand of an instruction after renumbering: the final index for a local access (kind p3,
+# value p4), else p4
+fn wfzuse u32x128x512 u32 u32 u32 u32 -> u32
+isl call wfzisl p3
+m call wfzmap p0 p1 p2 p4
+r select isl m p4
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Bytes
+
+# bytes of the uleb128 form of p0 (1..5)
+fn wfzul u32 -> u32
+a ge p0 128
+b ge p0 16384
+c ge p0 2097152
+d ge p0 268435456
+ai select a 1 0
+bi select b 1 0
+ci select c 1 0
+di select d 1 0
+s1 add ai bi
+s2 add s1 ci
+s3 add s2 di
+r add s3 1
+ret r
+end
+# bytes of the sleb128 form of the int32 with the bit pattern p0 (1..5)
+fn wfzsl u32 -> u32
+x1 add p0 64
+x2 add p0 8192
+x3 add p0 1048576
+x4 add p0 134217728
+a ge x1 128
+b ge x2 16384
+c ge x3 2097152
+d ge x4 268435456
+ai select a 1 0
+bi select b 1 0
+ci select c 1 0
+di select d 1 0
+s1 add ai bi
+s2 add s1 ci
+s3 add s2 di
+r add s3 1
+ret r
+end
+# byte p1 of the uleb128 form of p0
+fn wfzuleb u32 u32 -> u32
+len call wfzul p0
+m1 add p1 1
+cont lt m1 len
+sh mul p1 7
+x shr p0 sh
+b and x 127
+b8 or b 128
+r select cont b8 b
+ret r
+end
+# byte p1 of the sleb128 form of the int32 with the bit pattern p0
+fn wfzsleb u32 u32 -> u32
+len call wfzsl p0
+m1 add p1 1
+cont lt m1 len
+sh mul p1 7
+x shr p0 sh
+sg shr p0 31
+neg eq sg 1
+shp gt sh 0
+ng and neg shp
+rs sub 32 sh
+ones shl 4294967295 rs
+ext select ng ones 0
+y or x ext
+b and y 127
+b8 or b 128
+r select cont b8 b
+ret r
+end
+# length of the fixed prefix of kind p0
+fn wfzplen u32 -> u32
+qd mov 0
+qe2 eq p0 2
+qr2 select qe2 1 qd
+qe3 eq p0 3
+qr3 select qe3 1 qr2
+qe4 eq p0 4
+qr4 select qe4 1 qr3
+qe5 eq p0 5
+qr5 select qe5 1 qr4
+qe8 eq p0 8
+qr8 select qe8 2 qr5
+qe9 eq p0 9
+qr9 select qe9 1 qr8
+qe10 eq p0 10
+qr10 select qe10 2 qr9
+qe11 eq p0 11
+qr11 select qe11 2 qr10
+qe12 eq p0 12
+qr12 select qe12 1 qr11
+qe13 eq p0 13
+qr13 select qe13 1 qr12
+qe14 eq p0 14
+qr14 select qe14 1 qr13
+qe15 eq p0 15
+qr15 select qe15 1 qr14
+qe16 eq p0 16
+qr16 select qe16 4 qr15
+qe17 eq p0 17
+qr17 select qe17 3 qr16
+qe18 eq p0 18
+qr18 select qe18 1 qr17
+qe19 eq p0 19
+qr19 select qe19 4 qr18
+qe20 eq p0 20
+qr20 select qe20 2 qr19
+qe21 eq p0 21
+qr21 select qe21 2 qr20
+qe22 eq p0 22
+qr22 select qe22 1 qr21
+qe23 eq p0 23
+qr23 select qe23 1 qr22
+ret qr23
+end
+# the fixed prefix bytes of kind p0, packed little endian
+fn wfzpack u32 -> u32
+qd mov 0
+qe2 eq p0 2
+qr2 select qe2 65 qd
+qe3 eq p0 3
+qr3 select qe3 32 qr2
+qe4 eq p0 4
+qr4 select qe4 33 qr3
+qe5 eq p0 5
+qr5 select qe5 34 qr4
+qe8 eq p0 8
+qr8 select qe8 16387 qr5
+qe9 eq p0 9
+qr9 select qe9 11 qr8
+qe10 eq p0 10
+qr10 select qe10 552 qr9
+qe11 eq p0 11
+qr11 select qe11 566 qr10
+qe12 eq p0 12
+qr12 select qe12 13 qr11
+qe13 eq p0 13
+qr13 select qe13 12 qr12
+qe14 eq p0 14
+qr14 select qe14 2 qr13
+qe15 eq p0 15
+qr15 select qe15 4 qr14
+qe16 eq p0 16
+qr16 select qe16 2812 qr15
+qe17 eq p0 17
+qr17 select qe17 3068 qr16
+qe18 eq p0 18
+qr18 select qe18 253 qr17
+qe19 eq p0 19
+qr19 select qe19 134141 qr18
+qe20 eq p0 20
+qr20 select qe20 3325 qr19
+qe21 eq p0 21
+qr21 select qe21 3325 qr20
+qe22 eq p0 22
+qr22 select qe22 35 qr21
+qe23 eq p0 23
+qr23 select qe23 36 qr22
+ret qr23
+end
+# length of the variable part of kind p0 whose operand is p1
+fn wfzvlen u32 u32 -> u32
+ul call wfzul p1
+sl call wfzsl p1
+qd mov 0
+qe1 eq p0 1
+qr1 select qe1 1 qd
+qe2 eq p0 2
+qr2 select qe2 sl qr1
+qe3 eq p0 3
+qr3 select qe3 ul qr2
+qe4 eq p0 4
+qr4 select qe4 ul qr3
+qe5 eq p0 5
+qr5 select qe5 ul qr4
+qe6 eq p0 6
+qr6 select qe6 1 qr5
+qe7 eq p0 7
+qr7 select qe7 1 qr6
+qe10 eq p0 10
+qr10 select qe10 ul qr7
+qe11 eq p0 11
+qr11 select qe11 ul qr10
+qe12 eq p0 12
+qr12 select qe12 ul qr11
+qe13 eq p0 13
+qr13 select qe13 ul qr12
+qe14 eq p0 14
+qr14 select qe14 1 qr13
+qe15 eq p0 15
+qr15 select qe15 1 qr14
+qe18 eq p0 18
+qr18 select qe18 ul qr15
+qe20 eq p0 20
+qr20 select qe20 16 qr18
+qe21 eq p0 21
+qr21 select qe21 16 qr20
+qe22 eq p0 22
+qr22 select qe22 1 qr21
+qe23 eq p0 23
+qr23 select qe23 1 qr22
+ret qr23
+end
+# words of the instruction of kind p0 with operand p1 (a local access: its final index)
+fn wfzlen u32 u32 -> u32
+a call wfzplen p0
+b call wfzvlen p0 p1
+r add a b
+ret r
+end
+# the variable byte p2 of kind p0 with operand p1 (the index counts from the end of the prefix)
+fn wfzvar u32 u32 u32 -> u32
+ulb call wfzuleb p1 p2
+slb call wfzsleb p1 p2
+u8 and p1 255
+m3 and p2 3
+sh mul m3 8
+xs shr p1 sh
+bv and xs 255
+l0 eq m3 0
+ln shr p2 2
+lane select l0 ln 0
+mk add p1 2147483648
+qd mov 0
+qe1 eq p0 1
+qr1 select qe1 u8 qd
+qe2 eq p0 2
+qr2 select qe2 slb qr1
+qe3 eq p0 3
+qr3 select qe3 ulb qr2
+qe4 eq p0 4
+qr4 select qe4 ulb qr3
+qe5 eq p0 5
+qr5 select qe5 ulb qr4
+qe6 eq p0 6
+qr6 select qe6 p1 qr5
+qe7 eq p0 7
+qr7 select qe7 mk qr6
+qe10 eq p0 10
+qr10 select qe10 ulb qr7
+qe11 eq p0 11
+qr11 select qe11 ulb qr10
+qe12 eq p0 12
+qr12 select qe12 ulb qr11
+qe13 eq p0 13
+qr13 select qe13 ulb qr12
+qe14 eq p0 14
+qr14 select qe14 u8 qr13
+qe15 eq p0 15
+qr15 select qe15 u8 qr14
+qe18 eq p0 18
+qr18 select qe18 ulb qr15
+qe20 eq p0 20
+qr20 select qe20 lane qr18
+qe21 eq p0 21
+qr21 select qe21 bv qr20
+qe22 eq p0 22
+qr22 select qe22 u8 qr21
+qe23 eq p0 23
+qr23 select qe23 u8 qr22
+ret qr23
+end
+# word p2 of the instruction of kind p0 with operand p1: a byte, or a marker for a call or a pool address
+fn wfzbyte u32 u32 u32 -> u32
+pl call wfzplen p0
+pk call wfzpack p0
+inp lt p2 pl
+j8 mul p2 8
+x shr pk j8
+pb and x 255
+m sub p2 pl
+v call wfzvar p0 p1 m
+r select inp pb v
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Pass 1: counts. State: the count table; trip i: instruction i of p2 (n = p4, np = p3).
+
+# a get of a local adds one to its gets, a set or tee to its sets
+fn wfzcnt u32x128x512 u32 u32x128x352 u32 u32 -> u32x128x512
+w2 shl p1 1
+k call wfzgi p2 w2
+w3 add w2 1
+v call wfzgi p2 w3
+isl call wfzisl k
+big ge v p3
+inr lt p1 p4
+a0 and isl big
+act and a0 inr
+c call wfzcidx v
+ok call wfzvok v
+is3 eq k 3
+c8 add c 8320
+slot select is3 c c8
+good and act ok
+inc select good 1 0
+old call wfzg p0 slot
+new add old inc
+nok eq ok false
+bad and act nok
+ft select bad 16640 16641
+t1 fold wfzp1 1 p0 slot new
+t2 fold wfzp1 1 t1 ft 1
+ret t2
+end
+
+# ---------------------------------------------------------------------------------------------
+# Pass 2: stackify. State: the copy of the list; extras: the count table, np, n.
+
+# instruction p1: a set directly followed by a get of the same local (original adjacency) becomes
+# nothing together with the get when the local has one get and one set, else a tee; a set whose
+# local is never read is OP 0x1a (drop); a tee whose local is never read vanishes. Parameters
+# are untouched. A removed instruction is kind 0.
+fn wfzstk u32x128x512 u32 u32x128x512 u32 u32 -> u32x128x512
+w2 shl p1 1
+k call wfzg p0 w2
+w3 add w2 1
+v call wfzg p0 w3
+w4 add w2 2
+nk call wfzg p0 w4
+w5 add w2 3
+nv call wfzg p0 w5
+isl call wfzisl k
+big ge v p3
+inr lt p1 p4
+a0 and isl big
+act and a0 inr
+c call wfzcidx v
+c8 add c 8320
+rd call wfzg p2 c
+st call wfzg p2 c8
+i1 add p1 1
+inr1 lt i1 p4
+n3 eq nk 3
+nvs eq nv v
+f0 and n3 nvs
+fol and f0 inr1
+is4 eq k 4
+is5 eq k 5
+rd1 eq rd 1
+st1 eq st 1
+b1 and rd1 st1
+rd0 eq rd 0
+k4f select b1 0 5
+k4n select rd0 1 4
+k4 select fol k4f k4n
+vd select rd0 26 v
+v4 select fol v vd
+k5 select rd0 0 5
+k50 select is5 k5 k
+nk0 select is4 k4 k50
+nv0 select is4 v4 v
+newk select act nk0 k
+newv select act nv0 v
+kl0 and act is4
+kill and kl0 fol
+kv select kill 0 nk
+t1 fold wfzp2 1 p0 w2 newk newv
+t2 fold wfzp1 1 t1 w4 kv
+ret t2
+end
+
+# ---------------------------------------------------------------------------------------------
+# Pass 3: ranges. State: the range table; extras: the stackified list, np.
+
+# instruction p1: loop depth and top-level loops; first and last access of a local
+fn wfzrng u32x128x512 u32 u32x128x512 u32 -> u32x128x512
+w2 shl p1 1
+k call wfzg p2 w2
+w3 add w2 1
+v call wfzg p2 w3
+d call wfzg p0 0
+lc call wfzg p0 1
+isop eq k 8
+iscl eq k 9
+d0 eq d 0
+topop and isop d0
+topi select topop 1 0
+lc2 add lc topi
+d1 eq d 1
+topcl and iscl d1
+dinc add d 1
+ddec sub d 1
+dcl select iscl ddec d
+d2 select isop dinc dcl
+dpos gt d 0
+cur select dpos lc2 0
+isl call wfzisl k
+big ge v p3
+act and isl big
+c call wfzcidx v
+c4 mul c 4
+b4 add c4 128
+f call wfzg p0 b4
+b41 add b4 1
+tf0 call wfzg p0 b41
+isf eq f 0
+ip1 add p1 1
+a0w select isf ip1 f
+a1w select isf cur tf0
+tg4 select act b4 16
+lsi add lc2 33408
+lst select topop lsi 8
+lei add lc 44928
+lex select topcl lei 9
+t1 fold wfzp4 1 p0 tg4 a0w a1w p1 cur
+t2 fold wfzp2 1 t1 0 d2 lc2
+t3 fold wfzp1 1 t2 lst p1
+t4 fold wfzp1 1 t3 lex p1
+ret t4
+end
+
+# ---------------------------------------------------------------------------------------------
+# Pass 4: slots. State: the slot table; extras: the stackified list, the range table, np.
+
+# slot candidate p0 after slot p1 of the slot table p2 (slot ends from p3 on): the first slot whose
+# end is below the start p4, 4294967295 for none yet
+fn wfzfit u32 u32 u32x128x512 u32 u32 -> u32
+ix add p3 p1
+e call wfzg p2 ix
+fr lt e p4
+nf eq p0 4294967295
+tk and fr nf
+r select tk p1 p0
+ret r
+end
+# instruction p1: at the first access of a local, give it the first free slot of its kind
+fn wfzalc u32x128x512 u32 u32x128x512 u32x128x512 u32 -> u32x128x512
+w2 shl p1 1
+k call wfzg p2 w2
+w3 add w2 1
+v call wfzg p2 w3
+isl call wfzisl k
+big ge v p4
+act and isl big
+c call wfzcidx v
+c4 mul c 4
+b4 add c4 128
+f call wfzg p3 b4
+b41 add b4 1
+tlf call wfzg p3 b41
+b42 add b4 2
+last call wfzg p3 b42
+b43 add b4 3
+tll call wfzg p3 b43
+ip1 add p1 1
+fe eq f ip1
+isf and act fe
+tz eq tlf 0
+lsi add tlf 33408
+lsv call wfzg p3 lsi
+st select tz p1 lsv
+ez eq tll 0
+lei add tll 44928
+lev call wfzg p3 lei
+en select ez last lev
+lo lt v 8192
+sbase select lo 8320 16512
+cnti select lo 16640 16641
+cnt call wfzg p0 cnti
+fit fold wfzfit cnt 4294967295 p0 sbase st
+nf eq fit 4294967295
+slot select nf cnt fit
+inc select nf 1 0
+cnt2 add cnt inc
+cnt3 select isf cnt2 cnt
+ta select isf c 16650
+sl2 add sbase slot
+te select isf sl2 16651
+t1 fold wfzp1 1 p0 ta slot
+t2 fold wfzp1 1 t1 te en
+t3 fold wfzp1 1 t2 cnti cnt3
+ret t3
+end
+
+# ---------------------------------------------------------------------------------------------
+# Pass 5: offsets and bytes
+
+# state: the offset table; instruction p1 of the stackified list p2 starts at word p1 of the
+# state, the next at the sum with its length (slot table p3, np p4, i32 locals p5)
+fn wfzoff u32x128x512 u32 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
+w2 shl p1 1
+k call wfzg p2 w2
+w3 add w2 1
+v call wfzg p2 w3
+u call wfzuse p3 p4 p5 k v
+ln call wfzlen k u
+o call wfzg p0 p1
+no add o ln
+ip1 add p1 1
+t fold wfzp1 1 p0 ip1 no
+ret t
+end
+# state: the code table; trip p1 writes word p2 + p1 (the instruction starts at word p2) when p1 is
+# below the length p5 of the instruction of kind p3 and operand p4 (a fold of 18 trips: the longest
+# instruction is 18 words)
+fn wfzbw u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+ix add p2 p1
+old call wfzg p0 ix
+b call wfzbyte p3 p4 p1
+act lt p1 p5
+val select act b old
+t fold wfzp1 1 p0 ix val
+ret t
+end
+# state: the code table; instruction p1 of the stackified list p2 (slot table p3, offsets p4, np
+# p5, i32 locals p6) written at its offset
+fn wfzcode u32x128x512 u32 u32x128x512 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
+w2 shl p1 1
+k call wfzg p2 w2
+w3 add w2 1
+v call wfzg p2 w3
+u call wfzuse p3 p5 p6 k v
+ln call wfzlen k u
+base call wfzg p4 p1
+t fold wfzbw 18 p0 base k u ln
+ret t
+end
+
+# ---------------------------------------------------------------------------------------------
+# The function
+
+# `Code.finish(np)` of the list p0 of p1 instructions: the code table, whose last three words
+# 65533, 65534, 65535 are the words written (4294967295 on failure), the i32 locals and the v128 locals
+fn wfzfin u32x128x352 u32 u32 -> u32x128x512
+over gt p1 22528
+nn select over 22528 p1
+z0 call wfzz
+stk fold wfzcp 352 z0 p0
+zc call wfzz
+cnt fold wfzcnt nn zc p0 p2 nn
+zr call wfzz
+stk2 fold wfzstk nn stk cnt p2 nn
+rng fold wfzrng nn zr stk2 p2
+zs call wfzz
+sa fold wfzalc nn zs stk2 rng p2
+nl call wfzg sa 16640
+nv call wfzg sa 16641
+zo call wfzz
+off fold wfzoff nn zo stk2 sa p2 nl
+zout call wfzz
+cod fold wfzcode nn zout stk2 sa off p2 nl
+total call wfzg off nn
+flag call wfzg cnt 16640
+f0 eq flag 0
+fits le total 65533
+g1 and f0 fits
+nover eq over false
+ok and g1 nover
+nw select ok total 4294967295
+nl2 select ok nl 0
+nv2 select ok nv 0
+r1 fold wfzp1 1 cod 65533 nw
+r2 fold wfzp1 1 r1 65534 nl2
+r3 fold wfzp1 1 r2 65535 nv2
+ret r3
+end
