@@ -997,7 +997,6 @@ const signatureOf = (f: Func): string => formatFunction(f).split('\n')[0] as str
  */
 function sourceChunk(
   fns: readonly TypedFunc[],
-  forms: readonly TypedFunc[],
   from: number,
   to: number,
   supplied: ReadonlySet<number>,
@@ -1016,7 +1015,7 @@ function sourceChunk(
   for (const f of fns.slice(from, to)) for (const i of callees(f)) called.add(i);
   for (const g of bodies) for (const i of callees(fns[g] as Func)) called.add(i);
   const stubs = [...called].filter((i) => !supplied.has(i)).sort((a, b) => a - b);
-  const text = (i: number): string => `${formatFunction(forms[i] as Func)}\n`;
+  const text = (i: number): string => `${formatFunction(fns[i] as Func)}\n`;
   const source = [
     prelude,
     ...stubs.map((i) => `${signatureOf(fns[i] as Func)}\nret 0\nend\n`),
@@ -1038,17 +1037,6 @@ function sourceChunk(
     ownStart: from,
     ownEnd: to,
   };
-}
-
-/**
- * A function as the A0 front end takes it. The front end packs the ret operand as kind * 2^28 plus
- * value (compiler/parse.a0), which cannot hold a u32 literal of 2^28 or more (the tables of
- * mode 2 use a kind-5 operand for it): such a ret is bound to a node first.
- */
-function frontEndForm(f: TypedFunc): TypedFunc {
-  if (f.ret.kind !== 'u32' || f.ret.value < 2 ** 28) return f;
-  const id = 'a0retlit';
-  return { ...f, nodes: [...f.nodes, { id, op: 'mov', args: [f.ret] }], ret: { kind: 'node', id } };
 }
 
 /** The header types of a program, in a fixed order, as the prelude function of its chunks. */
@@ -1084,9 +1072,8 @@ export function a0WasmFromSource(
   const tail = optionWords(options);
   const calls = new Map<string, [number, number, number]>();
   const outputs: ChunkOutput[] = [];
-  const forms = fns.map(frontEndForm);
   const prelude = preludeOf(fns);
-  const text = formatProgram({ functions: forms });
+  const text = formatProgram({ functions: fns });
   // the chunks of tools/bootstrap.ts planChunks are the first guess of where to cut
   const plan = planChunks(text);
   const planned =
@@ -1115,7 +1102,7 @@ export function a0WasmFromSource(
             ownStart: from,
             ownEnd: to,
           }
-        : sourceChunk(fns, forms, from, to, supplied, prelude);
+        : sourceChunk(fns, from, to, supplied, prelude);
       if (!whole && !frontEndFits(chunk.source)) return undefined;
       const bytes = [...Buffer.from(chunk.source)];
       const none: [number, number, number] = [0, 0, 0];

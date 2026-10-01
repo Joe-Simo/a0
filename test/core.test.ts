@@ -3144,7 +3144,13 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
           assert.equal(symText(ir.fns[(n[5] as number) * 7] as number), node.pred, w);
       });
       const [rk, rv] = operand(fn.ret);
-      assert.equal(f[6], rk * 2 ** 28 + rv, `${where} ret`);
+      if (rv < 2 ** 28) assert.equal(f[6], rk * 2 ** 28 + rv, `${where} ret`);
+      else {
+        // a literal of 2^28 or more does not fit the ret word: kind 5, the operand at that args pair
+        assert.equal(Math.floor((f[6] as number) / 2 ** 28), 5, `${where} ret`);
+        const at = ((f[6] as number) % 2 ** 28) * 2;
+        assert.deepEqual(ir.args.slice(at, at + 2), [rk, rv], `${where} ret operand`);
+      }
     });
   };
   // whole files: every example, the site's UI program (text literals) and the lexer's source
@@ -3196,6 +3202,14 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
   check(refParse(guessed), guessed, 'ref guessed');
   assert.deepEqual(a0Parse(guessed), refParse(guessed));
   check(a0Parse(guessed), guessed, 'a0 guessed');
+  // u32 literals of 2^28 or more as a ret operand and in expressions (the ret word packs
+  // kind * 2^28 + value, so these go through a kind-5 operand)
+  for (const v of [2 ** 28 - 1, 2 ** 28, 2 ** 31, 2 ** 32 - 1]) {
+    const big = `fn f u32 -> u32\nret ${v}\nend\nfn g u32 -> u32\na add p0 ${v}\nret a\nend\nfn h u32 -> u32\na add p0 ${v}\nret ${v}\nend\n`;
+    check(refParse(big), big, `ref ${v}`);
+    assert.deepEqual(a0Parse(big), refParse(big), `a0 ${v}`);
+    check(a0Parse(big), big, `a0 ${v}`);
+  }
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\na g p0\nret a\nend\n'), [2, 7]);
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\nret g p0\nend\n'), [2, 7]);
   assert.equal(refParse('fn f u32 -> u32\na g p0\nret a\nend\n').code, 2);

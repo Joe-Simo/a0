@@ -1956,6 +1956,9 @@ e5opfn or e5op e5fn0
 e5num and m5 k2
 notdig select dig false true
 e5numbad and e5num notdig
+# a number of 2^28 or more does not fit the packed ret word: it goes to args, ret is kind 5
+e4big0 gt tv 268435455
+e5big and e5num e4big0
 e5id0 and m5 k1
 e5id1 select e5opfn false e5id0
 e5tf and e5id1 istf
@@ -2007,7 +2010,9 @@ pg2 set pg pl px
 names2 set names ph pg2
 # the ret operand, packed kind*2^28 | value
 rv5op add 268435456 nin
-rv5num add 805306368 tv
+rv5num0 add 805306368 tv
+rv5big add 1342177280 nargs
+rv5num select e5big rv5big rv5num0
 rv5tf add 1073741824 tfv
 rv5par add 536870912 tv
 rv5nd add 268435456 jall
@@ -2053,10 +2058,11 @@ e4ok1 or e4ok0 k3
 e4ok or e4ok1 k1
 e4bad0 select e4ok false true
 e4bad and m4 e4bad0
-ak0 select e4num 3 1
+e4n or e4num e5big
+ak0 select e4n 3 1
 ak1 select e4tf 4 ak0
 ak select e4par 2 ak1
-av0 select e4num tv jall
+av0 select e4n tv jall
 av1 select e4tf tfv av0
 av select e4par tv av1
 doarg0 or e4num e4tf
@@ -2065,7 +2071,9 @@ doarg2 or doarg1 e4nd
 doarg and doarg2 noerr
 arel sub nargs p9
 ain lt arel 16384
-dow and doarg ain
+doargw or doarg e5big
+dow0 and doargw noerr
+dow and dow0 ain
 a2 mul arel 2
 aa sub a2 abase
 ah shr aa 7
@@ -2080,7 +2088,7 @@ ag0 set ag al ax0
 ag1 set ag0 al1 ax1
 aw2 set aw ah ag1
 na1 add nargs 1
-nargs2 select doarg na1 nargs
+nargs2 select doargw na1 nargs
 cna3a add cna2 1
 cna3 select doarg cna3a cna2
 # a text literal ends the segment; its bytes are decoded after it

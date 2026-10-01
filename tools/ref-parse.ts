@@ -444,7 +444,12 @@ export function refParse(src: string): WordIr {
       nodes[cur() * 6 + 2] = (nodes[cur() * 6 + 2] as number) + 1;
     };
     const setRet = (k: number, v: number): void => {
-      fns[(fi - 1) * 7 + 6] = k * 2 ** 28 + v;
+      if (v < 2 ** 28) fns[(fi - 1) * 7 + 6] = k * 2 ** 28 + v;
+      else {
+        // the ret word cannot hold it: kind 5, the operand at that pair of args
+        args.push(k, v);
+        fns[(fi - 1) * 7 + 6] = 5 * 2 ** 28 + (args.length / 2 - 1);
+      }
     };
     /** operand of an identifier or number token: [kind, value], undefined for an unknown id, 'bad' for a number with a non-digit byte */
     const operand = (i: number, n: number): [number, number] | undefined | 'bad' => {
