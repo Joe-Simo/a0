@@ -6,10 +6,11 @@
  * source files the step exercises. A few rules sit on top of the closure because the backends all
  * hang off src/backends.ts, so a plain closure would say every backend change needs everything:
  * a leaf backend is mapped by hand to the steps that actually run it. Anything unmapped runs more,
- * never less. Callers may only ADD steps (`--add-steps=a,b`); `--json` prints every decision with
+ * never less. By default a results-only change runs lint only (the gate writes those files); with
+ * `--strict-results` a changed results file also runs the step that reproduces it. Callers may only ADD steps (`--add-steps=a,b`); `--json` prints every decision with
  * its reasons so any wrapper can drive the tools.
  *
- *   node dist/tools/dev/gate-scope.js [--base=<ref>] [--files=a,b] [--light] [--add-steps=a,b] [--json]
+ *   node dist/tools/dev/gate-scope.js [--base=<ref>] [--files=a,b] [--light] [--strict-results] [--add-steps=a,b] [--json]
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -257,8 +258,39 @@ const isResults = (f: string): boolean => f.startsWith('results/');
 
 type Add = (step: StepId, why: string) => void;
 
-function classify(file: string, map: StepMap, add: Add): 'doc' | 'results' | 'code' {
-  if (isResults(file)) return 'results';
+/** Results files a gate step writes. */
+export const RESULT_STEP: Readonly<Record<string, StepId>> = {
+  'results/verification.json': 'verify',
+  'results/equivalence.json': 'equiv',
+  'results/hardware.json': 'hw',
+  'results/app.json': 'app',
+  'results/dotnet.json': 'dotnet',
+  'results/gpu.json': 'gpu',
+  'results/selfhost.json': 'selfhost',
+  'results/selfhost-c.json': 'selfhost-c',
+  'results/bootstrap.json': 'bootstrap',
+  'results/bootstrap-arm64.json': 'bootstrap',
+  'results/bootstrap-macho.json': 'bootstrap',
+};
+
+function classify(
+  file: string,
+  map: StepMap,
+  add: Add,
+  strictResults: boolean,
+): 'doc' | 'results' | 'code' {
+  if (isResults(file)) {
+    const step = RESULT_STEP[file];
+    if (strictResults && step) {
+      add('lint', `${file} changed`);
+      add(
+        step,
+        `${file} is written by ${step}; strict results re-runs the step that reproduces it`,
+      );
+      return 'code';
+    }
+    return 'results';
+  }
   if (isDoc(file)) return 'doc';
   if (CONFIG_FILES.includes(file)) {
     for (const s of ALL_STEPS) add(s, `${file} is shared build config`);
@@ -306,7 +338,7 @@ function classify(file: string, map: StepMap, add: Add): 'doc' | 'results' | 'co
 export function computeScope(
   root: string,
   files: readonly string[],
-  opts: { readonly light?: boolean } = {},
+  opts: { readonly light?: boolean; readonly strictResults?: boolean } = {},
 ): Scope {
   const map = buildStepMap(root);
   const reasons = new Map<StepId, string[]>();
@@ -318,7 +350,7 @@ export function computeScope(
   let code = 0;
   let docResults = 0;
   for (const f of files) {
-    if (classify(f, map, add) === 'code') code += 1;
+    if (classify(f, map, add, opts.strictResults === true) === 'code') code += 1;
     else docResults += 1;
   }
   if (files.length > 0 && code === 0) {
@@ -395,7 +427,10 @@ async function main(): Promise<void> {
   const base = arg(args, 'base') ?? defaultBase(repo);
   const filesArg = arg(args, 'files');
   const files = filesArg ? filesArg.split(',').filter(Boolean) : changedFiles(repo, base);
-  let scope = computeScope(repo, files, { light: args.includes('--light') });
+  let scope = computeScope(repo, files, {
+    light: args.includes('--light'),
+    strictResults: args.includes('--strict-results'),
+  });
   scope = addSteps(scope, parseSteps(arg(args, 'add-steps')), '--add-steps');
   if (args.includes('--json')) {
     process.stdout.write(`${JSON.stringify({ base, ...scope }, null, 2)}\n`);
