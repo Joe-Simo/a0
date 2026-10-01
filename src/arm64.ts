@@ -2395,6 +2395,8 @@ class FunctionEmitter {
           : [];
       if (value === undefined || c === undefined || operandConst.has(value)) return undefined;
       if (body.some((st, i) => i !== j && stepReads(st).includes(reg))) return undefined;
+      // The owner itself may read the product twice (a * a): both reads need it.
+      if (owner.fused !== undefined && owner.fused.a === owner.fused.b) return undefined;
       if (
         reds.some((o) => o !== owner && (o.x === reg || o.fused?.a === reg || o.fused?.b === reg))
       )

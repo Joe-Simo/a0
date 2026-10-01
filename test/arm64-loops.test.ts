@@ -127,6 +127,12 @@ test('arm64 prefix scans, indexed updates, induction variables and unrolled redu
       `fn scf${n} u32x${n} u32 u32 u32 -> u32x${n}\nv xor p1 p3\nw mul v p2\nn set p0 p1 w\nret n\nend\nfn scs${n} u32 u32 u32x${n} u32 -> u32\ne get p2 p1\nf mul e p3\nh add p0 f\nret h\nend\nfn scd${n} u32 u32 u32x${n} u32x${n} u32 u32 -> u32\ne get p2 p1\nf get p3 p1\ng mul e p4\nh mul f p5\nk mul g h\nm add p0 k\nret m\nend\nfn sc${n} u32 u32 -> u32\nz arr ${zeros(n)}\na fold scf${n} ${n} z p0 p1\nz2 arr ${zeros(n)}\nb fold scf${n} ${n} z2 p1 p0\nd fold scs${n} ${n} p1 a p0\ne fold scd${n} ${n} p0 a b p1 p0\nr add d e\nret r\nend`,
     );
   }
+  // Both operands of a product are the same scaled expression: the factor leaves the loop once
+  // per operand, and the shared register must survive the first removal.
+  add(
+    'sq16',
+    `fn sqf u32x16 u32 u32 u32 -> u32x16\nt0 mul p1 31153\nt1 shr t0 4\nt2 mul t1 31153\nn set p0 p1 t2\nret n\nend\nfn sqd u32 u32 u32x16 u32x16 -> u32\ne get p2 p1\nf get p3 p1\ng mul e f\nr add p0 g\nret r\nend\nfn sq16 u32 u32 -> u32\nz arr ${zeros(16)}\na fold sqf 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sqf 16 z2 p1 p0\nr fold sqd 16 p1 a b\nret r\nend`,
+  );
   const src = funcs.join('\n\n');
   const asm = await checkAgainstInterpreter(src, names, clang);
   // The scan is a NEON scan with a running carry, the histogram an indexed update per lane, the
