@@ -82,3 +82,45 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+  # After the upload: install the released binary on each platform through the real install script
+  # (which verifies SHA-256 against the release's checksums.txt) and exercise it.
+  smoke:
+    needs: release
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14 # arm64
+          - os: macos-15-intel # x64
+          - os: ubuntu-24.04-arm
+          - os: ubuntu-24.04
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Install with install.sh
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          export A0_INSTALL_DIR="$RUNNER_TEMP/a0-bin"
+          curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/install.sh" | A0_VERSION="$GITHUB_REF_NAME" sh
+          echo "A0_BIN=$A0_INSTALL_DIR/a0" >> "$GITHUB_ENV"
+      - name: Install with install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:A0_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'a0-bin'
+          $env:A0_VERSION = $env:GITHUB_REF_NAME
+          irm "https://raw.githubusercontent.com/$env:GITHUB_REPOSITORY/$env:GITHUB_REF_NAME/install.ps1" | iex
+          "A0_BIN=$(Join-Path $env:A0_INSTALL_DIR 'a0.exe')" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+      - name: a0 --version, check, run, MCP initialize and tools/list
+        shell: bash
+        run: node tools/smoke.ts "$A0_BIN" "${GITHUB_REF_NAME#v}"

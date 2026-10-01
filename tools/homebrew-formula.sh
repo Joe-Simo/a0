@@ -1,6 +1,6 @@
 #!/bin/sh
 # Set the version and the four sha256 values of Formula/a0.rb from a release's checksums.txt.
-# Only those values change; the rest of the formula is edited by hand.
+# Only those values change, plus one `a0 --version` assertion in the test block; the rest is edited by hand.
 # Usage: sh tools/homebrew-formula.sh <version-without-v> <checksums.txt> [formula]
 # Fails when a checksum is missing, or when the formula does not carry the expected stanzas.
 set -eu
@@ -25,9 +25,12 @@ for asset in a0-darwin-arm64 a0-darwin-x64 a0-linux-arm64 a0-linux-x64; do
   pairs="$pairs $asset=$s"
 done
 
+# From 0.8.16 the binary has --version: the test block asserts it (added once, kept by later runs).
+hasver=0
+grep -q -e '--version' "$formula" && hasver=1
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT INT TERM
-awk -v version="$version" -v pairs="$pairs" '
+awk -v version="$version" -v pairs="$pairs" -v hasver="$hasver" '
   BEGIN {
     n = split(pairs, kv, " ")
     for (i = 1; i <= n; i++) { split(kv[i], p, "="); sum[p[1]] = p[2] }
@@ -38,6 +41,7 @@ awk -v version="$version" -v pairs="$pairs" '
     if (!(asset in sum)) { print "formula: no checksum for asset " asset > "/dev/stderr"; bad = 1; exit 1 }
     sub(/"[0-9a-f]*"/, "\"" sum[asset] "\""); print; s++; asset = ""; next
   }
+  /^    assert_equal "144"/ && !hasver { print "    assert_match version.to_s, shell_output(\"#{bin}/a0 --version\")"; hasver = 1 }
   { print }
   END { if (!bad && (v != 1 || s != 4)) { print "formula: expected 1 version and 4 sha256 lines, found " v " and " s > "/dev/stderr"; exit 1 } }
 ' "$formula" > "$tmp"

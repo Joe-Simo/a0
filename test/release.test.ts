@@ -53,6 +53,34 @@ test('release: the workflow is tag-only, pinned, minimal and uses no extra secre
     assert.ok(wf.includes(asset), `workflow does not mention ${asset}`);
 });
 
+test('release: every workflow pins actions to commits and requests least privilege', () => {
+  for (const name of ['ci', 'release']) {
+    const wf = read(`.github/workflows/${name}.yml`);
+    assert.match(wf, /^permissions:/m, `${name}.yml has no top-level permissions`);
+    for (const m of wf.matchAll(/uses:\s*(\S+)/g))
+      assert.match(m[1] ?? '', /@[0-9a-f]{40}$/, `${name}.yml: ${m[1]} is not pinned`);
+  }
+  const ci = read('.github/workflows/ci.yml');
+  assert.match(ci, /brew style/);
+  assert.match(ci, /brew audit --strict --new/);
+});
+
+test('release: a smoke job installs the release on all five platforms', () => {
+  const wf = read('.github/workflows/release.yml');
+  assert.match(wf, /\n {2}smoke:\n {4}needs: release/);
+  for (const os of [
+    'macos-14',
+    'macos-15-intel',
+    'ubuntu-24.04-arm',
+    'ubuntu-24.04',
+    'windows-latest',
+  ])
+    assert.ok(wf.includes(`os: ${os}`), `smoke matrix lacks ${os}`);
+  assert.ok(
+    wf.includes('install.sh') && wf.includes('install.ps1') && wf.includes('tools/smoke.ts'),
+  );
+});
+
 test('release: Formula/a0.rb is the tap formula and tools/homebrew-formula.sh updates it', () => {
   const formula = read('Formula/a0.rb');
   assert.match(formula, /^class A0 < Formula$/m);
@@ -74,6 +102,9 @@ test('release: Formula/a0.rb is the tap formula and tools/homebrew-formula.sh up
     execFileSync('sh', [join(root, 'tools/homebrew-formula.sh'), '9.9.9', sums, copy]);
     const out = readFileSync(copy, 'utf8');
     assert.match(out, /^ {2}version "9\.9\.9"$/m);
+    assert.equal([...out.matchAll(/a0 --version/g)].length, 1);
+    execFileSync('sh', [join(root, 'tools/homebrew-formula.sh'), '9.9.9', sums, copy]);
+    assert.equal(readFileSync(copy, 'utf8'), out, 'a second run changes nothing');
     for (const [i, a] of assets.slice(0, 4).entries()) {
       const at = out.indexOf(`/${a}"`);
       assert.ok(at > 0);
