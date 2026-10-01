@@ -1,0 +1,32 @@
+# A0 v0.1 examples. Comments are discarded by the parser.
+
+fn affine u32 u32 u32 -> u32
+a mul p0 p1
+b add a p2
+ret b
+end
+
+fn clamp_max u32 u32 -> u32
+c lt p1 p0
+r select c p1 p0
+ret r
+end
+
+fn rotl u32 u32 -> u32
+l shl p0 p1
+n sub 32 p1
+r shr p0 n
+o or l r
+ret o
+end
+
+fn is_even u32 -> bool
+m and p0 1
+z eq m 0
+ret z
+end
+
+fn parity_select bool u32 u32 -> u32
+r select p0 p1 p2
+ret r
+end

@@ -1,0 +1,145 @@
+================================================================================
+Function with operations and ret
+================================================================================
+
+fn affine u32 u32 u32 -> u32
+a mul p0 p1
+b add a p2
+ret b
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types
+      (primitive_type)
+      (primitive_type)
+      (primitive_type))
+    result: (primitive_type)
+    (instruction
+      id: (identifier)
+      (operation
+        operator: (operator)
+        argument: (parameter)
+        argument: (parameter)))
+    (instruction
+      id: (identifier)
+      (operation
+        operator: (operator)
+        argument: (identifier)
+        argument: (parameter)))
+    (return_statement
+      value: (identifier))))
+
+================================================================================
+Uses, comments, aggregate types and ret sugar
+================================================================================
+
+# header
+use "ui.a0"
+
+fn f (u32x4,io) bool -> u32x2x3
+t text "a#b\n" # trailing
+r rec p1 true
+ret select p1 t t
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (comment)
+  (use_declaration
+    path: (string))
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types
+      (tuple_type
+        (array_type)
+        (primitive_type))
+      (primitive_type))
+    result: (array_type)
+    (instruction
+      id: (identifier)
+      (text_expression
+        value: (string)))
+    (comment)
+    (instruction
+      id: (identifier)
+      (aggregate_expression
+        operator: (operator)
+        argument: (parameter)
+        argument: (boolean)))
+    (return_statement
+      (operation
+        operator: (operator)
+        argument: (parameter)
+        argument: (identifier)
+        argument: (identifier)))))
+
+================================================================================
+Calls, fold and loop
+================================================================================
+
+fn g u32 u32 -> u32
+ret add p0 p1
+end
+fn h u32 -> u32
+a call g p0 1
+b g a 2
+c fold g 4 0
+d loop keep g 8 0 p0
+ret g c d
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types
+      (primitive_type)
+      (primitive_type))
+    result: (primitive_type)
+    (return_statement
+      (operation
+        operator: (operator)
+        argument: (parameter)
+        argument: (parameter))))
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types
+      (primitive_type))
+    result: (primitive_type)
+    (instruction
+      id: (identifier)
+      (call_expression
+        function: (identifier)
+        argument: (parameter)
+        argument: (integer)))
+    (instruction
+      id: (identifier)
+      (direct_call_expression
+        function: (identifier)
+        argument: (identifier)
+        argument: (integer)))
+    (instruction
+      id: (identifier)
+      (fold_expression
+        function: (identifier)
+        count: (integer)
+        init: (integer)))
+    (instruction
+      id: (identifier)
+      (loop_expression
+        predicate: (identifier)
+        function: (identifier)
+        count: (integer)
+        init: (integer)
+        argument: (parameter)))
+    (return_statement
+      (direct_call_expression
+        function: (identifier)
+        argument: (identifier)
+        argument: (identifier)))))
