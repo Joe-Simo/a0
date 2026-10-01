@@ -18,7 +18,18 @@ const MAIN = 'use "lib.a0"\n\nfn f u32 -> u32\nb call sq p0\nc add b 1\nret c\ne
 
 interface Published {
   uri: string;
-  diagnostics: { code?: string; message: string; range: { start: { line: number } } }[];
+  diagnostics: {
+    code?: string;
+    message: string;
+    range: { start: { line: number } };
+    data?: {
+      id: string | null;
+      code: string;
+      fix: string | null;
+      applicability: string | null;
+      edits: unknown[];
+    };
+  }[];
 }
 
 interface Session {
@@ -212,6 +223,44 @@ test('lsp: a use escaping the root is rejected', () =>
         position: { line: 3, character: 8 },
       });
       assert.equal(def, null);
+    } finally {
+      await stop(s);
+    }
+  }));
+
+test('lsp: diagnostics carry the table code, fix and applicability, and an exact fix is a quick fix', () =>
+  withRoot(async (_base, root) => {
+    const s = await start(root);
+    try {
+      const uri = pathToFileURL(join(root, 'main.a0')).href;
+      await open(s, uri, MAIN);
+      const broken = MAIN.replace('c add b 1', 'c ADD b 1');
+      const pending = s.next(uri);
+      await s.conn.sendNotification('textDocument/didChange', {
+        textDocument: { uri, version: 2 },
+        contentChanges: [{ text: broken }],
+      });
+      const [diag] = (await pending).diagnostics;
+      assert.equal(diag?.code, 'parse', 'the LSP code is still the coarse class');
+      assert.equal(diag?.data?.id, 'A0011');
+      assert.equal(diag?.data?.applicability, 'exact');
+      assert.match(diag?.data?.fix ?? '', /add/);
+      const actions = (await s.conn.sendRequest('textDocument/codeAction', {
+        textDocument: { uri },
+        range: diag?.range,
+        context: { diagnostics: [diag] },
+      })) as {
+        title: string;
+        isPreferred: boolean;
+        edit: { changes: Record<string, { newText: string }[]> };
+      }[];
+      assert.equal(actions.length, 1);
+      assert.match(actions[0]?.title ?? '', /^Apply exact fix: /);
+      assert.equal(actions[0]?.isPreferred, true);
+      assert.deepEqual(
+        actions[0]?.edit.changes[uri]?.map((e) => e.newText),
+        ['c add b 1\n'],
+      );
     } finally {
       await stop(s);
     }

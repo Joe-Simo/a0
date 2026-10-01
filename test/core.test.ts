@@ -1165,12 +1165,17 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.match(typeErr.fix ?? '', /u32/);
   assert.deepEqual(Object.keys(typeErr.toJSON()).sort(), [
     'actual',
+    'applicability',
     'code',
+    'edits',
     'expected',
     'fix',
+    'id',
     'line',
     'message',
   ]);
+  // The coarse class stays `code`; the table code is `id`.
+  assert.equal(typeErr.id, 'A0201');
 
   const session = new EditSession(parseAndValidate('fn f u32 -> u32\na add p0 1\nret a\nend\n'));
   session.open('f');
@@ -1185,7 +1190,7 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.ok(unknown instanceof A0Error);
   assert.equal(unknown.code, 'handle');
   assert.match(unknown.fix ?? '', /exactly as shown/);
-  assert.match(formatDiagnostic(unknown), /^handle: .* fix: /);
+  assert.match(formatDiagnostic(unknown), /^handle: .* fix: [^[]*$/);
 });
 
 test('linker: use lines resolve relative paths once, reject cycles and duplicate names, map lines', async () => {

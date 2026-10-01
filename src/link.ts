@@ -11,15 +11,8 @@
 import { existsSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import {
-  A0Error,
-  type DiagnosticDetail,
-  LIMITS,
-  parse,
-  type TypedProgram,
-  utf8Length,
-  validate,
-} from './core.js';
+import { A0Error, LIMITS, parse, type TypedProgram, utf8Length, validate } from './core.js';
+import { diag } from './diagnostics.js';
 
 export interface LinkedSource {
   readonly path: string;
@@ -82,33 +75,15 @@ export async function link(
     const abs = resolve(path);
     if (done.has(abs)) return;
     if (visiting.has(abs)) {
-      throw new A0Error(
-        `use cycle: ${abs} is already being linked${from === undefined ? '' : ` (from ${from})`}`,
-        undefined,
-        {
-          code: 'structure',
-          fix: 'remove one direction of the use between these files',
-        },
-      );
+      throw diag('A0620', [abs, from === undefined ? '' : ` (from ${from})`]);
     }
     visiting.add(abs);
     const text = await read(abs);
-    if (utf8Length(text) > LIMITS.maxSourceBytes)
-      throw new A0Error(`${abs}: source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-        code: 'limit',
-      });
+    if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0621', [abs, LIMITS.maxSourceBytes]);
     const parsed = parse(text);
     for (const use of parsed.uses ?? []) {
       const target = await canonical(resolve(dirname(abs), use));
-      if (!target.endsWith('.a0') || !inside(target))
-        throw new A0Error(
-          `use "${use}" in ${abs}: target ${target} is not an .a0 file inside ${root}`,
-          undefined,
-          {
-            code: 'structure',
-            fix: 'use only .a0 files inside the project root',
-          },
-        );
+      if (!target.endsWith('.a0') || !inside(target)) throw diag('A0622', [use, abs, target, root]);
       await visit(target, abs);
     }
     visiting.delete(abs);
@@ -123,14 +98,7 @@ export async function link(
     for (const fn of parse(text).functions) {
       const prev = owner.get(fn.name);
       if (prev !== undefined && prev !== path) {
-        throw new A0Error(
-          `function '${fn.name}' is defined in both ${prev} and ${path}`,
-          undefined,
-          {
-            code: 'structure',
-            fix: `rename one of the two '${fn.name}' definitions; a linked program has one namespace`,
-          },
-        );
+        throw diag('A0022', [fn.name, prev, path]);
       }
       owner.set(fn.name, path);
     }
@@ -148,20 +116,11 @@ export async function link(
     line += lineCount;
   }
   const combined = parts.join('\n');
-  if (utf8Length(combined) > LIMITS.maxSourceBytes)
-    throw new A0Error(`linked program exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-      code: 'limit',
-    });
+  if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
   try {
     return { program: validate(parse(combined)), text: combined, sources };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
-    const detail: DiagnosticDetail = {
-      code: e.code,
-      ...(e.fix === undefined ? {} : { fix: e.fix }),
-      ...(e.expected === undefined ? {} : { expected: e.expected }),
-      ...(e.actual === undefined ? {} : { actual: e.actual }),
-    };
     // Parse errors carry a line in the combined text; validator errors name `fn.node` or
     // `fn`. Both are mapped to the owning file, and the node to its line in that file.
     if (e.line !== undefined) {
@@ -170,11 +129,7 @@ export async function link(
       );
       if (src !== undefined) {
         const local = e.line - src.startLine + 1;
-        throw new A0Error(
-          `${src.path}:${local}: ${e.message.replace(/^line \d+: /, '')}`,
-          undefined,
-          detail,
-        );
+        throw e.rewrite(`${src.path}:${local}: ${e.detail}`);
       }
       throw e;
     }
@@ -188,6 +143,6 @@ export async function link(
       const node = fileLines.findIndex((l, i) => i > line && new RegExp(`^\\s*${m[2]}\\s`).test(l));
       if (node >= 0) line = node;
     }
-    throw new A0Error(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`, undefined, detail);
+    throw e.rewrite(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`);
   }
 }

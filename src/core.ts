@@ -22,6 +22,16 @@
  * All operations are pure and total on validated input.
  */
 
+import {
+  A0Error,
+  type DiagnosticCode,
+  diag,
+  type FixEdit,
+  spellingSuggestion,
+  type Trap,
+  type TrapKind,
+} from './diagnostics.js';
+
 export const LANGUAGE_VERSION = 'a0-0.1';
 
 /**
@@ -83,10 +93,7 @@ export function formatType(t: Type): string {
 export function bitWidth(t: Type): number {
   if (t === 'u32') return 32;
   if (t === 'bool') return 1;
-  if (t === 'io')
-    throw new A0Error(
-      'io has no bit-level representation (sequential hardware state is not implemented)',
-    );
+  if (t === 'io') throw diag('A0708');
   if (t.kind === 'arr') return t.length * bitWidth(t.elem);
   return t.fields.reduce((n, f) => n + bitWidth(f), 0);
 }
@@ -106,14 +113,7 @@ export function assertVectorSized(fn: TypedFunc, target: string): void {
   const types = [...fn.params, fn.result, ...fn.types.values()];
   const longest = types.reduce((n, t) => Math.max(n, longestArray(t)), 0);
   if (longest > LIMITS.maxVectorArrayLength) {
-    throw new A0Error(
-      `${fn.name}: array length ${longest} exceeds the ${target} limit ${LIMITS.maxVectorArrayLength}`,
-      undefined,
-      {
-        code: 'limit',
-        fix: `keep arrays at most ${LIMITS.maxVectorArrayLength} long for ${target}, or compile to a native target`,
-      },
-    );
+    throw diag('A0707', [fn.name, longest, target, LIMITS.maxVectorArrayLength]);
   }
 }
 
@@ -282,7 +282,7 @@ function decodeText(raw: string, line?: number): string {
     if (c === 'n') return '\n';
     if (c === 't') return '\t';
     if (c === '"' || c === '\\') return c;
-    throw new A0Error(`unknown escape \\${c} in text literal`, line);
+    throw diag('A0008', [c], line === undefined ? {} : { line });
   });
 }
 
@@ -378,120 +378,18 @@ export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: b
   return false;
 }
 
-/**
- * Stable diagnostic classes. A model repairing a rejected edit keys on `code` and `fix`,
- * never on message text: `parse` (source line does not follow the grammar), `type`
- * (operand or result type mismatch), `structure` (identifiers, arity, io token use),
- * `limit` (a hostile-input bound), `edit` (a session edit body), `patch` (a standalone
- * patch header), `revision` (the target changed since the view was opened), `handle`
- * (unknown, consumed, or exhausted view handle), `runtime` (evaluation), `cli`.
- */
-export type DiagnosticCode =
-  | 'parse'
-  | 'type'
-  | 'structure'
-  | 'limit'
-  | 'edit'
-  | 'patch'
-  | 'revision'
-  | 'handle'
-  | 'runtime'
-  | 'cli';
-
-/**
- * Why a run stopped before returning: the budget that ran out (`fuel`: node evaluations,
- * `iter`: the total fold/loop trip cap, `io`: the io output cap), where, and how it got there.
- */
-export type TrapKind = 'fuel' | 'iter' | 'io';
-
-export interface Trap {
-  readonly kind: TrapKind;
-  /** The function that was executing when the budget ran out. */
-  readonly fn: string;
-  /** The innermost running fold/loop as `function.node`, or null outside any iteration. */
-  readonly at: string | null;
-  /** Index of the trip that was refused or running, or null outside any iteration. */
-  readonly trip: number | null;
-  /** Call chain from the entry function down to `fn`. */
-  readonly chain: readonly string[];
-}
-
-export const TRAP_FIX: Record<TrapKind, string> = {
-  fuel: 'raise the fuel budget or lower the fold/loop counts on the chain',
-  iter: 'raise the trip cap or lower the fold/loop counts on the chain',
-  io: 'write fewer words, or return the output in smaller pieces',
-};
-
-/**
- * The one-line trap code, the same `code: message fix: fix` shape as every other diagnostic:
- * `limit: trap fuel fn=step at=main.n3 trip=412 chain=main>step fix: ...`. The C backend's
- * trap runtime (CompileOptions.cTrap) prints exactly this line for an iteration-cap stop.
- */
-export function formatTrap(t: Trap): string {
-  return `limit: trap ${t.kind} fn=${t.fn} at=${t.at ?? '-'} trip=${t.trip ?? '-'} chain=${t.chain.join('>')} fix: ${TRAP_FIX[t.kind]}`;
-}
-
-export interface DiagnosticDetail {
-  readonly code?: DiagnosticCode;
-  /** Set when the run stopped on a budget (fuel, iteration cap, io output cap). */
-  readonly trap?: Trap;
-  /** What the checker required, when it is a single thing (a type, a count, a token). */
-  readonly expected?: string;
-  /** What it found instead. */
-  readonly actual?: string;
-  /** The one action that resolves this diagnostic, stated for the editor, not a human. */
-  readonly fix?: string;
-}
-
-export interface Diagnostic {
-  readonly code: DiagnosticCode;
-  readonly message: string;
-  readonly line: number | null;
-  readonly expected: string | null;
-  readonly actual: string | null;
-  readonly fix: string | null;
-}
-
-export class A0Error extends Error {
-  override readonly name = 'A0Error';
-  readonly code: DiagnosticCode;
-  readonly expected: string | undefined;
-  readonly actual: string | undefined;
-  readonly fix: string | undefined;
-  readonly trap: Trap | undefined;
-  constructor(
-    message: string,
-    readonly line?: number,
-    detail: DiagnosticDetail = {},
-  ) {
-    super(line === undefined ? message : `line ${line}: ${message}`);
-    this.code = detail.code ?? 'structure';
-    this.expected = detail.expected;
-    this.actual = detail.actual;
-    this.fix = detail.fix;
-    this.trap = detail.trap;
-  }
-
-  /** Machine-readable form; every field is present (null when absent). */
-  toJSON(): Diagnostic {
-    return {
-      code: this.code,
-      message: this.message,
-      line: this.line ?? null,
-      expected: this.expected ?? null,
-      actual: this.actual ?? null,
-      fix: this.fix ?? null,
-    };
-  }
-}
-
-/** One-line diagnostic for a model: `code: message` plus the fix when there is one. */
-export function formatDiagnostic(e: unknown): string {
-  if (e instanceof A0Error && e.trap !== undefined) return formatTrap(e.trap);
-  if (e instanceof A0Error)
-    return `${e.code}: ${e.message}${e.fix === undefined ? '' : ` fix: ${e.fix}`}`;
-  return e instanceof Error ? e.message : String(e);
-}
+export {
+  A0Error,
+  type Diagnostic,
+  type DiagnosticCode,
+  type DiagnosticDetail,
+  type FixEdit,
+  formatDiagnostic,
+  formatTrap,
+  TRAP_FIX,
+  type Trap,
+  type TrapKind,
+} from './diagnostics.js';
 
 // ---------------------------------------------------------------------------
 // Limits (hostile-input bounds)
@@ -541,10 +439,64 @@ export function isValidFunctionName(name: string): boolean {
   return IDENT.test(name) && !RESERVED.has(name);
 }
 
-export function parseType(text: string, line?: number): Type {
+/** A line of source as the checker compares it: comment removed, whitespace normalised. */
+export function normalizeLine(raw: string): string {
+  return stripComment(raw).trim().split(/\s+/).join(' ');
+}
+
+/** An exact or maybe edit replacing the failing line (matched by its normalised text). */
+function lineEdit(rule: string, text: string, to: string, line?: number): FixEdit {
+  return {
+    op: 'lines',
+    rule,
+    text: normalizeLine(text),
+    to,
+    ...(line === undefined ? {} : { line }),
+  };
+}
+
+/** `lineText` with the first whole word after the first equal to `from` replaced by `to`. */
+function replaceWord(lineText: string, from: string, to: string): string {
+  const words = normalizeLine(lineText).split(' ');
+  const at = words.findIndex((w, i) => i > 0 && w === from);
+  if (at >= 0) words[at] = to;
+  return words.join(' ');
+}
+
+/** `newMin` as `new_min`: the lowercase spelling of a name, or undefined when none exists. */
+function lowerName(name: string): string | undefined {
+  const out = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_');
+  return /^[a-z]/.test(out) && out !== name ? out : undefined;
+}
+
+/** The types an unknown type word can be a misspelling of. */
+const TYPE_WORDS: readonly string[] = ['u32', 'bool', 'io'];
+
+/**
+ * Parse a type. `header` (the whole `fn` line) lets a misspelt type word carry a did-you-mean
+ * edit that rewrites it.
+ */
+export function parseType(text: string, line?: number, header?: string): Type {
   let pos = 0;
-  const fail = (msg: string): never => {
-    throw new A0Error(`type '${text}': ${msg}`, line, { code: 'parse' });
+  const fail = (msg: string, word?: string): never => {
+    let fix: string | undefined;
+    let edits: FixEdit[] | undefined;
+    if (word !== undefined && word === text) {
+      const guess = spellingSuggestion(word, TYPE_WORDS);
+      if (guess !== undefined) {
+        fix = `did you mean '${guess}'? types are u32, bool, io, arrays u32x4, records (u32,bool)`;
+        if (header !== undefined)
+          edits = [lineEdit('typo', header, replaceWord(header, word, guess), line)];
+      }
+    }
+    throw diag('A0001', [text, msg], {
+      ...(line === undefined ? {} : { line }),
+      ...(fix === undefined ? {} : { fix }),
+      ...(edits === undefined ? {} : { edits }),
+    });
   };
   const parseOne = (): Type => {
     let base: Type;
@@ -568,7 +520,10 @@ export function parseType(text: string, line?: number): Type {
       pos += 1;
       base = { kind: 'rec', fields };
     } else {
-      return fail(`unexpected '${text[pos] ?? 'end'}'`);
+      return fail(
+        `unexpected '${text[pos] ?? 'end'}'`,
+        /^[A-Za-z0-9_]+/.exec(text.slice(pos))?.[0],
+      );
     }
     while (text[pos] === 'x') {
       const m = /^x([1-9][0-9]*)/.exec(text.slice(pos));
@@ -588,17 +543,66 @@ export function parseType(text: string, line?: number): Type {
   return t;
 }
 
-export function parseOperand(text: string, line?: number): Operand {
+/**
+ * Parse one operand. `lineText` (the whole source line it came from, when known) lets a
+ * rewritable spelling carry the edit that fixes it: commas, hexadecimal, uppercase and negative
+ * literals.
+ */
+export function parseOperand(text: string, line?: number, lineText?: string): Operand {
   if (text === 'true') return { kind: 'bool', value: true };
   if (text === 'false') return { kind: 'bool', value: false };
   if (PARAM.test(text)) return { kind: 'param', index: Number(text.slice(1)) };
   if (U32_LITERAL.test(text)) {
     const value = Number(text);
-    if (value > U32_MAX) throw new A0Error(`literal ${text} exceeds u32`, line, { code: 'limit' });
+    if (value > U32_MAX) throw diag('A0004', [text], line === undefined ? {} : { line });
     return { kind: 'u32', value };
   }
   if (isValidIdentifier(text)) return { kind: 'node', id: text };
-  throw new A0Error(`invalid operand '${text}'`, line, { code: 'parse' });
+  const at = line === undefined ? {} : { line };
+  if (lineText !== undefined) {
+    const edit = (rule: string, to: string): FixEdit => lineEdit(rule, lineText, to, line);
+    const lower = text.toLowerCase();
+    if (text.includes(',') && !text.includes('(')) {
+      const to = normalizeLine(lineText.replaceAll(',', ' '));
+      throw diag('A0003', [text], {
+        ...at,
+        fix: `write \`${to}\`: operands are separated by spaces, not commas`,
+        applicability: 'exact',
+        edits: [edit('comma', to)],
+      });
+    }
+    const hex = /^0x([0-9a-f]+)$/i.exec(text);
+    if (hex !== null && Number.parseInt(hex[1] as string, 16) <= U32_MAX) {
+      const value = String(Number.parseInt(hex[1] as string, 16));
+      throw diag('A0003', [text], {
+        ...at,
+        fix: `write ${value}: literals are decimal`,
+        applicability: 'exact',
+        edits: [edit('hex', replaceWord(lineText, text, value))],
+      });
+    }
+    if (
+      lower !== text &&
+      (lower === 'true' || lower === 'false' || PARAM.test(lower) || isValidIdentifier(lower))
+    ) {
+      throw diag('A0003', [text], {
+        ...at,
+        fix: `write '${lower}': operands are lowercase`,
+        applicability: 'exact',
+        edits: [edit('case', replaceWord(lineText, text, lower))],
+      });
+    }
+    const negative = /^-([0-9]+)$/.exec(text);
+    if (negative !== null && Number(negative[1]) >= 1 && Number(negative[1]) <= 2 ** 32) {
+      const wrapped = String(2 ** 32 - Number(negative[1]));
+      throw diag('A0003', [text], {
+        ...at,
+        fix: `literals are unsigned: ${text} wraps to ${wrapped} (or use sub); check that is what you meant`,
+        edits: [edit('negative', replaceWord(lineText, text, wrapped))],
+      });
+    }
+  }
+  throw diag('A0003', [text], at);
 }
 
 function isOp(text: string): text is Op {
@@ -626,11 +630,16 @@ export function isDirectCallee(word: string): boolean {
 }
 
 /**
- * Fix hint for a line with a parenthesised operand, which A0 does not have (one op per line):
- * the inner op on its own line above, then the line using that node. `ret (a, b)` builds a
- * record.
+ * Fix for a line with a parenthesised operand, which A0 does not have (one op per line): the
+ * inner op on its own line above, then the line using that node. `ret (a, b)` builds a record.
+ * `to` is the rewritten text (one or two lines); `exact` when the line has one pair of
+ * parentheses, so the rewrite leaves nothing nested.
  */
-function nestedFix(id: string, head: readonly string[], rest: readonly string[]): string {
+function nestedFix(
+  id: string,
+  head: readonly string[],
+  rest: readonly string[],
+): { fix: string; to: string; exact: boolean } {
   const text = rest.join(' ');
   const open = text.indexOf('(');
   const close = text.indexOf(')', open);
@@ -645,55 +654,111 @@ function nestedFix(id: string, head: readonly string[], rest: readonly string[])
     text.slice(open, close < 0 ? undefined : close).includes(',') ||
     (opOf(innerOp) === undefined && !(isDirectCallee(innerOp) && inner.length > 1));
   if (tuple) inner.unshift('rec');
-  if (id === 'ret' && text.startsWith('(') && (close < 0 || close === text.length - 1))
-    return `write \`ret ${inner.join(' ')}\``;
+  const pairs = text.split('(').length - 1 === 1 && text.split(')').length - 1 === 1;
+  if (id === 'ret' && text.startsWith('(') && (close < 0 || close === text.length - 1)) {
+    const to = `ret ${inner.join(' ')}`;
+    return { fix: `write \`${to}\``, to, exact: pairs };
+  }
   const t = `${id === 'ret' ? 'r' : id}1`;
   const outer = `${text.slice(0, open)}${t}${close < 0 ? '' : text.slice(close + 1)}`
     .trim()
     .replace(/\s+/g, ' ');
-  return `one op per line: write \`${t} ${inner.join(' ')}\` above, then \`${[...head, outer].join(' ')}\``;
+  const first = `${t} ${inner.join(' ')}`;
+  const second = [...head, outer].join(' ');
+  return {
+    fix: `one op per line: write \`${first}\` above, then \`${second}\``,
+    to: `${first}\n${second}`,
+    exact: pairs && close >= 0,
+  };
+}
+
+/** The error for a line with a parenthesised operand. */
+function nestedError(
+  id: string,
+  head: readonly string[],
+  rest: readonly string[],
+  lineText: string,
+  line: number | undefined,
+  cls: DiagnosticCode,
+): A0Error {
+  const { fix, to, exact } = nestedFix(id, head, rest);
+  const e = diag('A0010', [], {
+    ...(line === undefined ? {} : { line }),
+    fix,
+    ...(exact ? { applicability: 'exact' as const } : {}),
+    edits: [lineEdit('nested', lineText, to, line)],
+  });
+  return cls === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code: cls });
 }
 
 /** Parse one instruction line `id op operand...` (no validation of references). */
 export function parseNode(lineText: string, line?: number): Node {
+  const at = line === undefined ? {} : { line };
   const textMatch = TEXT_LINE.exec(lineText.trim());
   if (textMatch !== null) {
     // `id text "..."` desugars to `arr` of UTF-8 byte words; the source form is retained.
     const [, id, raw] = textMatch;
     if (id === undefined || !isValidIdentifier(id)) {
-      throw new A0Error(`invalid node identifier '${id ?? ''}'`, line, { code: 'parse' });
+      throw diag('A0005', [id ?? ''], at);
     }
     const text = decodeText(raw ?? '', line);
     const bytes = new TextEncoder().encode(text);
-    if (bytes.length === 0)
-      throw new A0Error('text literal must not be empty', line, { code: 'parse' });
+    if (bytes.length === 0) throw diag('A0006', [], at);
     if (bytes.length > LIMITS.maxArrayLength) {
-      throw new A0Error(`text literal exceeds ${LIMITS.maxArrayLength} bytes`, line, {
-        code: 'limit',
-      });
+      throw diag('A0007', [LIMITS.maxArrayLength], at);
     }
     return { id, op: 'arr', args: [...bytes].map((value) => ({ kind: 'u32', value })), text };
   }
   const parts = lineText.trim().split(/\s+/);
   const [id, word, ...rest] = parts;
-  if (id === undefined || word === undefined)
-    throw new A0Error('expected `id op operands`', line, { code: 'parse' });
-  if (!isValidIdentifier(id))
-    throw new A0Error(`invalid node identifier '${id}'`, line, { code: 'parse' });
+  if (id === undefined || word === undefined) throw diag('A0009', [], at);
+  const operand = (r: string): Operand => parseOperand(r, line, lineText);
+  if (!isValidIdentifier(id)) {
+    const colon = id.endsWith(':') && isValidIdentifier(id.slice(0, -1));
+    const snake = lowerName(id);
+    throw diag('A0005', [id], {
+      ...at,
+      ...(colon
+        ? {
+            fix: `write '${id.slice(0, -1)}': a node id has no colon`,
+            applicability: 'exact' as const,
+            edits: [lineEdit('colon', lineText, [id.slice(0, -1), word, ...rest].join(' '), line)],
+          }
+        : snake !== undefined && isValidIdentifier(snake)
+          ? {
+              fix: `write '${snake}' and use it everywhere: ids are lowercase letters, numbers and _`,
+            }
+          : {}),
+    });
+  }
   if (rest.some((r) => r.startsWith('(') || r.endsWith(')')))
-    throw new A0Error('nested operand: A0 has one op per line', line, {
-      code: 'parse',
-      fix: nestedFix(id, [id, word], rest),
-    });
+    throw nestedError(id, [id, word], rest, lineText, line, 'parse');
   // `id F args…` with F a function name (not an op) is the direct form of `id call F args…`.
-  if (isDirectCallee(word))
-    return { id, op: 'call', callee: word, args: rest.map((r) => parseOperand(r, line)) };
+  if (isDirectCallee(word)) return { id, op: 'call', callee: word, args: rest.map(operand) };
   const op = opOf(word);
-  if (op === undefined)
-    throw new A0Error(`unknown operation '${word}'`, line, {
-      code: 'parse',
-      fix: `use one of ${OPS.join(' ')}, or call a function F defined above: \`${id} F args…\``,
+  if (op === undefined) {
+    const lower = word.toLowerCase();
+    const assign = word === '=' && rest.length > 0;
+    const caseFix = lower !== word && (opOf(lower) !== undefined || isDirectCallee(lower));
+    throw diag('A0011', [word], {
+      ...at,
+      ...(assign
+        ? {
+            fix: `write \`${[id, ...rest].join(' ')}\`: there is no \`=\`, the op follows the id`,
+            applicability: 'exact' as const,
+            edits: [lineEdit('assign', lineText, [id, ...rest].join(' '), line)],
+          }
+        : caseFix
+          ? {
+              fix: `write '${lower}': ops and function names are lowercase`,
+              applicability: 'exact' as const,
+              edits: [lineEdit('case', lineText, replaceWord(lineText, word, lower), line)],
+            }
+          : {
+              fix: `use one of ${OPS.join(' ')}, or call a function F defined above: \`${id} F args…\``,
+            }),
     });
+  }
   if (op === 'loop') {
     const [pred, callee, ...args] = rest;
     if (
@@ -702,32 +767,37 @@ export function parseNode(lineText: string, line?: number): Node {
       callee === undefined ||
       !isValidFunctionName(callee)
     ) {
-      throw new A0Error('loop expects a predicate and a body function name', line, {
-        code: 'parse',
-      });
+      throw diag('A0012', [], at);
     }
-    return { id, op, pred, callee, args: args.map((r) => parseOperand(r, line)) };
+    return { id, op, pred, callee, args: args.map(operand) };
   }
   if (op === 'call' || op === 'fold') {
     const [callee, ...args] = rest;
     if (callee === undefined || !isValidFunctionName(callee)) {
-      throw new A0Error(`${op} expects a function name, got '${callee ?? ''}'`, line, {
-        code: 'parse',
+      const lower = (callee ?? '').toLowerCase();
+      const caseFix = callee !== undefined && lower !== callee && isValidFunctionName(lower);
+      throw diag('A0013', [op, callee ?? ''], {
+        ...at,
+        ...(caseFix
+          ? {
+              fix: `write '${lower}': function names are lowercase`,
+              applicability: 'exact' as const,
+              edits: [lineEdit('case', lineText, replaceWord(lineText, callee, lower), line)],
+            }
+          : {}),
       });
     }
-    return { id, op, callee, args: args.map((r) => parseOperand(r, line)) };
+    return { id, op, callee, args: args.map(operand) };
   }
   if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
-    throw new A0Error(`${op} expects ${OP_ARITY[op]} operands, got ${rest.length}`, line, {
-      code: 'parse',
+    throw diag('A0014', [op, OP_ARITY[op], rest.length], {
+      ...at,
       expected: String(OP_ARITY[op]),
       actual: String(rest.length),
-      fix: `write exactly ${OP_ARITY[op]} operands after ${op}`,
     });
   }
-  if (OP_ARITY[op] < 0 && rest.length === 0)
-    throw new A0Error(`${op} expects at least one operand`, line, { code: 'parse' });
-  return { id, op, args: rest.map((r) => parseOperand(r, line)) };
+  if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], at);
+  return { id, op, args: rest.map(operand) };
 }
 
 // ---------------------------------------------------------------------------
@@ -762,18 +832,14 @@ export function retOperandError(
 ): A0Error {
   const rest = parts.slice(1);
   const nested = rest.some((r) => r.includes('('));
-  return new A0Error(
-    nested ? 'nested operand: A0 has one op per line' : 'ret expects one operand',
-    line,
-    { code, fix: nested ? nestedFix('ret', ['ret'], rest) : 'write `ret ID` or `ret OP ARGS…`' },
-  );
+  if (nested) return nestedError('ret', ['ret'], rest, parts.join(' '), line, code);
+  const e = diag('A0030', [], line === undefined ? {} : { line });
+  return code === e.code ? e : new A0Error(e.detail, e.line, { ...e.detailOf(), code });
 }
 
 export function parse(source: string): Program {
   if (utf8Length(source) > LIMITS.maxSourceBytes) {
-    throw new A0Error(`source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-      code: 'limit',
-    });
+    throw diag('A0016', [LIMITS.maxSourceBytes]);
   }
   const lines = source.split(/\r?\n/);
   const functions: Func[] = [];
@@ -804,34 +870,32 @@ export function parse(source: string): Program {
     const head = cur.text.split(/\s+/);
     if (head[0] === 'use') {
       const m = /^use\s+"([^"\\]+)"$/.exec(cur.text);
-      if (m === null || functions.length > 0)
-        throw new A0Error('use expects `use "path.a0"` before the first fn', cur.line, {
-          code: 'parse',
-          fix: 'write use "relative/path.a0" as its own line at the top of the file',
-        });
+      if (m === null || functions.length > 0) throw diag('A0017', [], { line: cur.line });
       uses.push(m[1] as string);
       useComments.push(cur.comments);
       continue;
     }
-    if (head[0] !== 'fn')
-      throw new A0Error(`expected 'fn', got '${head[0]}'`, cur.line, {
-        code: 'parse',
-        fix: 'instruction lines belong inside a function: start it with `fn NAME T... -> T` and close it with `ret X` and `end`',
-      });
+    if (head[0] !== 'fn') throw diag('A0018', [head[0] ?? ''], { line: cur.line });
     const name = head[1];
     if (name === undefined || !isValidFunctionName(name)) {
-      throw new A0Error(`invalid function name '${name ?? ''}'`, cur.line, { code: 'parse' });
+      const snake = lowerName(name ?? '');
+      throw diag('A0019', [name ?? ''], {
+        line: cur.line,
+        ...(snake !== undefined && isValidFunctionName(snake)
+          ? {
+              fix: `write '${snake}' and use it everywhere: names are lowercase letters, numbers and _`,
+            }
+          : {}),
+      });
     }
-    if (names.has(name))
-      throw new A0Error(`duplicate function '${name}'`, cur.line, { code: 'parse' });
+    if (names.has(name)) throw diag('A0020', [name], { line: cur.line });
     const arrow = head.indexOf('->');
     if (arrow < 2 || arrow !== head.length - 2) {
-      throw new A0Error("expected 'fn name types... -> type'", cur.line, { code: 'parse' });
+      throw diag('A0023', [], { line: cur.line });
     }
-    const params = head.slice(2, arrow).map((t) => parseType(t, cur.line));
-    if (params.length > LIMITS.maxParams)
-      throw new A0Error('too many parameters', cur.line, { code: 'limit' });
-    const result = parseType(head[arrow + 1] ?? '', cur.line);
+    const params = head.slice(2, arrow).map((t) => parseType(t, cur.line, cur.text));
+    if (params.length > LIMITS.maxParams) throw diag('A0024', [], { line: cur.line });
+    const result = parseType(head[arrow + 1] ?? '', cur.line, cur.text);
 
     const header = cur.comments;
     const nodes: Node[] = [];
@@ -847,16 +911,31 @@ export function parse(source: string): Program {
         if (isRetNodeForm(parts)) {
           // `ret OP ARGS…` is sugar for a fresh node followed by `ret` of it.
           const id = freshRetId(nodes);
-          nodes.push(parseNode(`${id} ${parts.slice(1).join(' ')}`, body.line));
+          try {
+            nodes.push(parseNode(`${id} ${parts.slice(1).join(' ')}`, body.line));
+          } catch (e) {
+            // The failing line is the synthesised `retval OP …`, not the source line: no edits.
+            throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
+          }
           ret = { kind: 'node', id };
         } else {
           if (parts.length !== 2) throw retOperandError(parts, body.line, 'parse');
-          ret = parseOperand(parts[1] ?? '', body.line);
+          ret = parseOperand(parts[1] ?? '', body.line, body.text);
         }
         const endLine = next();
         if (endLine === undefined || endLine.text !== 'end') {
-          throw new A0Error("expected 'end' after ret", endLine?.line ?? body.line, {
-            code: 'parse',
+          // A missing `end` before the next function (or the end of the file) is added.
+          const addable = endLine === undefined || endLine.text.split(/\s+/)[0] === 'fn';
+          throw diag('A0025', [], {
+            line: endLine?.line ?? body.line,
+            ...(addable
+              ? {
+                  applicability: 'exact' as const,
+                  edits: [
+                    lineEdit('end', body.text, `${normalizeLine(body.text)}\nend`, body.line),
+                  ],
+                }
+              : {}),
           });
         }
         endComments = endLine.comments;
@@ -864,18 +943,16 @@ export function parse(source: string): Program {
         break;
       }
       if (first === 'end' || first === 'fn') {
-        throw new A0Error(`unexpected '${first}' before ret`, body.line, { code: 'parse' });
+        throw diag('A0026', [first], { line: body.line });
       }
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
-        throw new A0Error('too many nodes in function', body.line, { code: 'limit' });
+        throw diag('A0027', [], { line: body.line });
       }
       const node = parseNode(body.text, body.line);
       nodes.push(body.comments === undefined ? node : { ...node, comments: body.comments });
     }
-    if (!closed || ret === undefined)
-      throw new A0Error(`function '${name}' not terminated`, undefined, { code: 'parse' });
-    if (functions.length >= LIMITS.maxFunctions)
-      throw new A0Error('too many functions', undefined, { code: 'limit' });
+    if (!closed || ret === undefined) throw diag('A0028', [name]);
+    if (functions.length >= LIMITS.maxFunctions) throw diag('A0029');
     names.add(name);
     functions.push({
       name,
@@ -930,26 +1007,40 @@ function operandType(
       return 'bool';
     case 'param': {
       const t = fn.params[operand.index];
-      if (t === undefined)
-        throw new A0Error(`${where}: parameter p${operand.index} out of range`, undefined, {
-          code: 'type',
+      if (t === undefined) {
+        const n = fn.params.length;
+        const sig = `a \`fn ${fn.name} ...\` block with the parameter in its signature`;
+        throw diag('A0105', [where, operand.index], {
+          fix:
+            n === 0
+              ? `${fn.name} has no parameters: add them with ${sig}`
+              : `${fn.name} has ${n} parameter${n === 1 ? '' : 's'} (p0..p${n - 1}): use one of them, or add the parameter with ${sig}`,
         });
+      }
       return t;
     }
     case 'node': {
       if (!defined.has(operand.id)) {
-        throw new A0Error(
-          `${where}: reference to undefined or later node '${operand.id}'`,
-          undefined,
-          {
-            code: 'structure',
-            fix: `define '${operand.id}' on an earlier line of this function, or reference a node defined above ${where}`,
-          },
-        );
+        const node = where.slice(fn.name.length + 1);
+        const later = fn.nodes.some((n) => n.id === operand.id);
+        const guess = later ? undefined : spellingSuggestion(operand.id, defined);
+        throw diag('A0101', [where, operand.id], {
+          ...(later
+            ? {
+                fix: `'${operand.id}' is defined on a later line of ${fn.name}: move it above ${where}`,
+              }
+            : guess === undefined
+              ? {}
+              : {
+                  fix: `did you mean '${guess}'?`,
+                  edits: [
+                    { op: 'rename', rule: 'typo', fn: fn.name, node, from: operand.id, to: guess },
+                  ],
+                }),
+        });
       }
       const t = types.get(operand.id);
-      if (t === undefined)
-        throw new A0Error(`${where}: untyped node '${operand.id}'`, undefined, { code: 'type' });
+      if (t === undefined) throw diag('A0792', [where, operand.id]);
       return t;
     }
   }
@@ -985,17 +1076,26 @@ function foldBodyFix(
 
 function expect(actual: Type, wanted: Type, where: string): void {
   if (!typeEquals(actual, wanted)) {
-    throw new A0Error(
-      `${where}: expected ${formatType(wanted)}, got ${formatType(actual)}`,
-      undefined,
-      {
-        code: 'type',
-        expected: formatType(wanted),
-        actual: formatType(actual),
-        fix: `replace the operand at ${where} with a value of type ${formatType(wanted)}`,
-      },
-    );
+    throw diag('A0201', [where, formatType(wanted), formatType(actual)], {
+      expected: formatType(wanted),
+      actual: formatType(actual),
+    });
   }
+}
+
+/** The declared result type disagrees with what `ret` returns: change the value or the signature. */
+function expectResult(fn: Func, actual: Type): void {
+  if (typeEquals(actual, fn.result)) return;
+  const wanted = formatType(fn.result);
+  const got = formatType(actual);
+  const sig = `fn ${[fn.name, ...fn.params.map(formatType)].join(' ')} -> ${got}`;
+  const bool =
+    actual === 'bool' && fn.result === 'u32' ? ' (`select c 1 0` turns a bool c into a u32)' : '';
+  throw diag('A0201', [`${fn.name}.ret`, wanted, got], {
+    expected: wanted,
+    actual: got,
+    fix: `return a ${wanted} value${bool}, or change the declared result: send the function with its header as \`${sig}\``,
+  });
 }
 
 /** Infer the result type of an operation given operand types; throws on mismatch. */
@@ -1003,7 +1103,7 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
   const a = argTypes[0];
   const b = argTypes[1];
   const c = argTypes[2];
-  if (a === undefined) throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+  if (a === undefined) throw diag('A0202', [where]);
   switch (op) {
     case 'mov':
       return a;
@@ -1011,8 +1111,7 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'or':
     case 'xor':
       // Bitwise on u32, logical on bool: both operands must share the type.
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       if (a === 'bool') {
         expect(b, 'bool', where);
         return 'bool';
@@ -1027,15 +1126,13 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'shr':
     case 'div':
     case 'rem':
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       expect(a, 'u32', where);
       expect(b, 'u32', where);
       return 'u32';
     case 'eq':
     case 'ne':
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       if (a === 'bool') {
         expect(b, 'bool', where);
         return 'bool';
@@ -1047,71 +1144,50 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'le':
     case 'gt':
     case 'ge':
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       expect(a, 'u32', where);
       expect(b, 'u32', where);
       return 'bool';
     case 'select':
-      if (b === undefined || c === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined || c === undefined) throw diag('A0202', [where]);
       expect(a, 'bool', where);
       if (!typeEquals(b, c)) {
-        throw new A0Error(
-          `${where}: select branches differ (${formatType(b)} vs ${formatType(c)})`,
-          undefined,
-          { code: 'type' },
-        );
+        throw diag('A0203', [where, formatType(b), formatType(c)]);
       }
-      if (containsIo(b))
-        throw new A0Error(`${where}: select cannot choose between io tokens`, undefined, {
-          code: 'type',
-        });
+      if (containsIo(b)) throw diag('A0204', [where]);
       return b;
     case 'arr': {
       for (const [i, t] of argTypes.entries()) expect(t, a, `${where} element ${i}`);
-      if (containsIo(a))
-        throw new A0Error(`${where}: arrays cannot hold io tokens`, undefined, { code: 'type' });
+      if (containsIo(a)) throw diag('A0205', [where]);
       const t: Type = { kind: 'arr', length: argTypes.length, elem: a };
-      if (bitWidth(t) > LIMITS.maxAggregateBits)
-        throw new A0Error(`${where}: aggregate too large`, undefined, { code: 'limit' });
+      if (bitWidth(t) > LIMITS.maxAggregateBits) throw diag('A0206', [where]);
       return t;
     }
     case 'rec': {
       const t: Type = { kind: 'rec', fields: [...argTypes] };
-      if (argTypes.filter(containsIo).length > 1)
-        throw new A0Error(`${where}: a record holds at most one io token`, undefined, {
-          code: 'type',
-        });
-      if (!containsIo(t) && bitWidth(t) > LIMITS.maxAggregateBits)
-        throw new A0Error(`${where}: aggregate too large`, undefined, { code: 'limit' });
+      if (argTypes.filter(containsIo).length > 1) throw diag('A0207', [where]);
+      if (!containsIo(t) && bitWidth(t) > LIMITS.maxAggregateBits) throw diag('A0206', [where]);
       return t;
     }
     case 'read':
       expect(a, 'io', `${where} token`);
       return { kind: 'rec', fields: ['u32', 'io'] };
     case 'write':
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       expect(a, 'io', `${where} token`);
       expect(b, 'u32', `${where} value`);
       return 'io';
     case 'puts':
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       expect(a, 'io', `${where} token`);
       if (isPrimitive(b) || b.kind !== 'arr' || b.elem !== 'u32') {
-        throw new A0Error(`${where}: puts expects a u32 array, got ${formatType(b)}`, undefined, {
-          code: 'type',
-        });
+        throw diag('A0208', [where, formatType(b)]);
       }
       return 'io';
     case 'get':
-      if (b === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined) throw diag('A0202', [where]);
       if (isPrimitive(a) || a.kind !== 'arr')
-        throw new A0Error(`${where}: get expects an array, got ${formatType(a)}`, undefined, {
-          code: 'type',
+        throw diag('A0209', [where, formatType(a)], {
           ...(!isPrimitive(a) && a.kind === 'rec'
             ? { fix: 'records use at with a literal field index: `at R K` (get is for arrays)' }
             : {}),
@@ -1119,11 +1195,9 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       expect(b, 'u32', `${where} index`);
       return a.elem;
     case 'set':
-      if (b === undefined || c === undefined)
-        throw new A0Error(`${where}: missing operand`, undefined, { code: 'type' });
+      if (b === undefined || c === undefined) throw diag('A0202', [where]);
       if (isPrimitive(a) || a.kind !== 'arr')
-        throw new A0Error(`${where}: set expects an array, got ${formatType(a)}`, undefined, {
-          code: 'type',
+        throw diag('A0210', [where, formatType(a)], {
           ...(!isPrimitive(a) && a.kind === 'rec'
             ? { fix: 'records use put with a literal field index: `put R K V` (set is for arrays)' }
             : {}),
@@ -1133,30 +1207,58 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       return a;
     case 'at':
     case 'put':
-      throw new A0Error(`${where}: ${op} is typed with its literal field index`, undefined, {
-        code: 'type',
-      });
+      throw diag('A0211', [where, op]);
     case 'call':
     case 'fold':
     case 'loop':
-      throw new A0Error(`${where}: ${op} is typed against its callee`, undefined, { code: 'type' });
+      throw diag('A0212', [where, op]);
   }
+}
+
+/** The error for a fold body or loop predicate naming a function that is not defined above. */
+function unknownFunction(
+  id: 'A0103' | 'A0104',
+  where: string,
+  fn: Func,
+  node: Node,
+  name: string,
+  scope: ReadonlyMap<string, TypedFunc>,
+  later: ReadonlySet<string> | undefined,
+  args: readonly (string | number)[],
+): A0Error {
+  const guess = spellingSuggestion(name, scope.keys());
+  const below = later?.has(name) === true;
+  return diag(id, [where, ...args], {
+    ...(below
+      ? {
+          fix: `'${name}' is defined below ${fn.name}: callees must be defined above their callers, so move '${name}' above ${fn.name}`,
+        }
+      : guess === undefined
+        ? {
+            fix: `'${name}' is no function defined above ${fn.name}: add a \`fn ${name} ...\` block that defines it (callees come first; a fold or loop body takes the state and the u32 step index), or name an existing function`,
+          }
+        : {
+            fix: `did you mean '${guess}'?`,
+            edits: [
+              { op: 'rename', rule: 'typo', fn: fn.name, node: node.id, from: name, to: guess },
+            ],
+          }),
+  });
 }
 
 /**
  * Validate one function. `scope` holds the functions defined earlier in the program
- * (the only legal call targets); a function cannot call itself or a later function.
+ * (the only legal call targets); a function cannot call itself or a later function. `later`
+ * (the names defined after it) only sharpens the fix of an unknown callee.
  */
 export function validateFunction(
   fn: Func,
   scope: ReadonlyMap<string, TypedFunc> = new Map(),
+  later?: ReadonlySet<string>,
 ): TypedFunc {
-  if (!isValidFunctionName(fn.name))
-    throw new A0Error(`invalid function name '${fn.name}'`, undefined, { code: 'structure' });
-  if (fn.params.length > LIMITS.maxParams)
-    throw new A0Error(`${fn.name}: too many parameters`, undefined, { code: 'limit' });
-  if (fn.nodes.length > LIMITS.maxNodesPerFunction)
-    throw new A0Error(`${fn.name}: too many nodes`, undefined, { code: 'limit' });
+  if (!isValidFunctionName(fn.name)) throw diag('A0301', [fn.name]);
+  if (fn.params.length > LIMITS.maxParams) throw diag('A0315', [fn.name]);
+  if (fn.nodes.length > LIMITS.maxNodesPerFunction) throw diag('A0316', [fn.name]);
   const types = new Map<string, Type>();
   const defined = new Set<string>();
   const calls = new Map<string, TypedFunc>();
@@ -1166,34 +1268,24 @@ export function validateFunction(
   let staticIterations = 1;
   let literalIterations = 1;
   if (fn.params.filter(containsIo).length > 1) {
-    throw new A0Error(`${fn.name}: at most one parameter may carry an io token`, undefined, {
-      code: 'structure',
-    });
+    throw diag('A0309', [fn.name]);
   }
   for (const node of fn.nodes) {
     const where = `${fn.name}.${node.id}`;
-    if (!isValidIdentifier(node.id))
-      throw new A0Error(`${where}: invalid identifier`, undefined, { code: 'structure' });
-    if (defined.has(node.id))
-      throw new A0Error(`${where}: duplicate definition`, undefined, { code: 'structure' });
+    if (!isValidIdentifier(node.id)) throw diag('A0302', [where]);
+    if (defined.has(node.id)) throw diag('A0303', [where]);
     const hasCallee = node.op === 'call' || node.op === 'fold' || node.op === 'loop';
     if (hasCallee !== (node.callee !== undefined)) {
-      throw new A0Error(`${where}: callee present iff op is call, fold, or loop`, undefined, {
-        code: 'structure',
-      });
+      throw diag('A0304', [where]);
     }
     if ((node.op === 'loop') !== (node.pred !== undefined)) {
-      throw new A0Error(`${where}: predicate present iff op is loop`, undefined, {
-        code: 'structure',
-      });
+      throw diag('A0305', [where]);
     }
     if (!hasCallee && OP_ARITY[node.op] >= 0 && node.args.length !== OP_ARITY[node.op]) {
-      throw new A0Error(`${where}: wrong arity`, undefined, { code: 'structure' });
+      throw diag('A0306', [where]);
     }
     if (OP_ARITY[node.op] < 0 && !hasCallee && node.args.length === 0) {
-      throw new A0Error(`${where}: ${node.op} expects at least one operand`, undefined, {
-        code: 'structure',
-      });
+      throw diag('A0307', [where, node.op]);
     }
     const argTypes = node.args.map((arg) => operandType(arg, fn, types, defined, where));
     for (const arg of node.args) {
@@ -1201,7 +1293,7 @@ export function validateFunction(
         arg.kind === 'u32' &&
         (!Number.isInteger(arg.value) || arg.value < 0 || arg.value > U32_MAX)
       ) {
-        throw new A0Error(`${where}: literal out of u32 range`, undefined, { code: 'structure' });
+        throw diag('A0308', [where]);
       }
     }
     // Linearity: an io-carrying value is consumed at most once. `at` of a field without io
@@ -1216,89 +1308,75 @@ export function validateFunction(
       if (node.op === 'at' && k === 0) {
         const ft = !isPrimitive(t) && t.kind === 'rec' ? t.fields[field] : undefined;
         if (ft === undefined || !containsIo(ft)) continue;
-        if (consumed.has(key))
-          throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
-            code: 'structure',
-          });
+        if (consumed.has(key)) throw diag('A0310', [where, key]);
         if (taken.has(key))
-          throw new A0Error(
-            `${where}: the io field ${taken.get(key)} of '${key}' was already taken by \`at\``,
-            undefined,
-            {
-              code: 'structure',
-              fix: `use the value that \`at\` returned, or put a token back first with \`put ${key} ${taken.get(key)} <io>\``,
-            },
-          );
+          throw diag('A0311', [where, taken.get(key) as number, key], {
+            fix: `use the value that \`at\` returned, or put a token back first with \`put ${key} ${taken.get(key)} <io>\``,
+          });
         taken.set(key, field);
         continue;
       }
-      if (consumed.has(key))
-        throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
-          code: 'structure',
-        });
+      if (consumed.has(key)) throw diag('A0310', [where, key]);
       const out = taken.get(key);
       if (out !== undefined && !(node.op === 'put' && k === 0 && field === out))
-        throw new A0Error(
-          `${where}: '${key}' is used after \`at\` took its io field ${out}; its token would be used twice`,
-          undefined,
-          {
-            code: 'structure',
-            fix: `read the other fields first, or put the token back with \`put ${key} ${out} <io>\` and use that record`,
-          },
-        );
+        throw diag('A0312', [where, key, out], {
+          fix: `read the other fields first, or put the token back with \`put ${key} ${out} <io>\` and use that record`,
+        });
       consumed.add(key);
     }
     if (node.op === 'at' || node.op === 'put') {
       const [recT, idx] = argTypes;
       const index = node.args[1];
       if (recT === undefined || isPrimitive(recT) || recT.kind !== 'rec') {
-        throw new A0Error(
-          `${where}: ${node.op} expects a record, got ${recT === undefined ? 'nothing' : formatType(recT)}`,
-          undefined,
-          {
-            code: 'structure',
-            ...(recT !== undefined && !isPrimitive(recT) && recT.kind === 'arr'
-              ? {
-                  fix: `arrays use ${node.op === 'at' ? 'get: `get A I`' : 'set: `set A I V`'} (${node.op} is for records)`,
-                }
-              : {}),
-          },
-        );
-      }
-      if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
-        throw new A0Error(`${where}: ${node.op} field index must be a u32 literal`, undefined, {
-          code: 'structure',
+        throw diag('A0220', [where, node.op, recT === undefined ? 'nothing' : formatType(recT)], {
+          ...(recT !== undefined && !isPrimitive(recT) && recT.kind === 'arr'
+            ? {
+                fix: `arrays use ${node.op === 'at' ? 'get: `get A I`' : 'set: `set A I V`'} (${node.op} is for records)`,
+              }
+            : {}),
         });
       }
+      if (index === undefined || index.kind !== 'u32' || idx !== 'u32') {
+        throw diag('A0221', [where, node.op]);
+      }
       const field = recT.fields[index.value];
-      if (field === undefined)
-        throw new A0Error(
-          `${where}: field ${index.value} out of range for ${formatType(recT)}`,
-          undefined,
-          {
-            code: 'structure',
-          },
-        );
+      if (field === undefined) throw diag('A0222', [where, index.value, formatType(recT)]);
       if (node.op === 'put') expect(argTypes[2] as Type, field, `${where} field value`);
       types.set(node.id, node.op === 'at' ? field : recT);
     } else if (node.op === 'call') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
-        throw new A0Error(
-          `${where}: unknown callee '${node.callee ?? ''}' (callees must be defined earlier; recursion is unsupported)`,
-          undefined,
-          {
-            code: 'structure',
-            fix: `'${node.callee ?? ''}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}`,
-          },
-        );
+        const name = node.callee ?? '';
+        const guess = spellingSuggestion(name, [
+          ...OPS,
+          ...Object.keys(OP_ALIASES),
+          ...scope.keys(),
+        ]);
+        throw diag('A0102', [where, name], {
+          fix:
+            later?.has(name) === true
+              ? `'${name}' is defined below ${fn.name}: callees must be defined above their callers, so move '${name}' above ${fn.name}`
+              : guess !== undefined
+                ? `did you mean '${guess}'?`
+                : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}`,
+          ...(guess === undefined || later?.has(name) === true
+            ? {}
+            : {
+                edits: [
+                  {
+                    op: 'rename',
+                    rule: 'typo',
+                    fn: fn.name,
+                    node: node.id,
+                    from: name,
+                    to: guess,
+                  },
+                ],
+              }),
+        });
       }
       if (argTypes.length !== callee.params.length) {
-        throw new A0Error(
-          `${where}: ${callee.name} expects ${callee.params.length} arguments, got ${argTypes.length}`,
-          undefined,
-          { code: 'structure' },
-        );
+        throw diag('A0219', [where, callee.name, callee.params.length, argTypes.length]);
       }
       for (const [i, t] of callee.params.entries()) {
         expect(argTypes[i] as Type, t, `${where} argument ${i}`);
@@ -1310,69 +1388,48 @@ export function validateFunction(
     } else if (node.op === 'fold' || node.op === 'loop') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
-        throw new A0Error(
-          `${where}: unknown ${node.op} body '${node.callee ?? ''}' (must be defined earlier)`,
-          undefined,
-          { code: 'structure' },
-        );
+        const name = node.callee ?? '';
+        throw unknownFunction('A0103', where, fn, node, name, scope, later, [node.op, name]);
       }
       // fold f n s a...  with f : (T, u32, A...) -> T
       // loop p f n s a... additionally p : (T, u32, A...) -> bool with identical parameters
       const [count, init, ...extra] = argTypes;
       if (count === undefined || init === undefined) {
-        throw new A0Error(`${where}: fold expects a trip count and an initial state`, undefined, {
-          code: 'structure',
-        });
+        throw diag('A0216', [where]);
       }
       expect(count, 'u32', `${where} trip count`);
       // Every body mismatch names the step's expected header and the call shape it implies.
       const bodyFix = foldBodyFix(node.op, callee, init, extra);
-      const bodyError = (message: string, types?: { expected: Type; actual: Type }): A0Error =>
-        new A0Error(`${where}: ${message}`, undefined, {
-          code: types === undefined ? 'structure' : 'type',
-          ...(types === undefined
-            ? {}
-            : { expected: formatType(types.expected), actual: formatType(types.actual) }),
-          fix: bodyFix,
-        });
       const expectBody = (actual: Type, wanted: Type, what: string): void => {
         if (!typeEquals(actual, wanted))
-          throw bodyError(`${what}: expected ${formatType(wanted)}, got ${formatType(actual)}`, {
-            expected: wanted,
-            actual,
+          throw diag('A0213', [where, what, formatType(wanted), formatType(actual)], {
+            expected: formatType(wanted),
+            actual: formatType(actual),
+            fix: bodyFix,
           });
       };
       const [stateT, indexT, ...extraT] = callee.params;
       if (stateT === undefined || indexT === undefined)
-        throw bodyError(`fold body ${callee.name} needs (state, index, ...) parameters`);
+        throw diag('A0214', [where, callee.name], { fix: bodyFix });
       expectBody(indexT, 'u32', 'body index parameter');
       expectBody(init, stateT, 'initial state');
       expectBody(callee.result, stateT, 'body result');
       if (extra.length !== extraT.length)
-        throw bodyError(
-          `${callee.name} expects ${extraT.length} extra arguments, got ${extra.length}`,
-        );
+        throw diag('A0215', [where, callee.name, extraT.length, extra.length], { fix: bodyFix });
       for (const [i, t] of extraT.entries()) expectBody(extra[i] as Type, t, `extra argument ${i}`);
       calls.set(callee.name, callee);
       if (node.op === 'loop') {
         const pred = scope.get(node.pred ?? '');
         if (pred === undefined) {
-          throw new A0Error(
-            `${where}: unknown loop predicate '${node.pred ?? ''}' (must be defined earlier)`,
-            undefined,
-            { code: 'structure' },
-          );
+          const name = node.pred ?? '';
+          throw unknownFunction('A0104', where, fn, node, name, scope, later, [name]);
         }
         expect(pred.result, 'bool', `${where} predicate result`);
         if (
           pred.params.length !== callee.params.length ||
           pred.params.some((t, i) => !typeEquals(t, callee.params[i] as Type))
         ) {
-          throw new A0Error(
-            `${where}: predicate ${pred.name} must take the same parameters as body ${callee.name}`,
-            undefined,
-            { code: 'structure' },
-          );
+          throw diag('A0217', [where, pred.name, callee.name]);
         }
         calls.set(pred.name, pred);
       }
@@ -1382,11 +1439,7 @@ export function validateFunction(
       if (countOp?.kind === 'u32') {
         literalIterations = Math.max(literalIterations, trips * callee.literalIterations);
         if (literalIterations > LIMITS.maxStaticIterations) {
-          throw new A0Error(
-            `${where}: literal iteration count ${literalIterations} exceeds the compute bound ${LIMITS.maxStaticIterations}`,
-            undefined,
-            { code: 'structure' },
-          );
+          throw diag('A0218', [where, literalIterations, LIMITS.maxStaticIterations]);
         }
       } else {
         literalIterations = Math.max(literalIterations, callee.literalIterations);
@@ -1398,36 +1451,27 @@ export function validateFunction(
     defined.add(node.id);
   }
   const retType = operandType(fn.ret, fn, types, defined, `${fn.name}.ret`);
-  expect(retType, fn.result, `${fn.name}.ret`);
+  expectResult(fn, retType);
   if (containsIo(retType)) {
     const key =
       fn.ret.kind === 'param' ? `p${fn.ret.index}` : fn.ret.kind === 'node' ? fn.ret.id : '';
-    if (consumed.has(key))
-      throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`, undefined, {
-        code: 'structure',
-      });
+    if (consumed.has(key)) throw diag('A0314', [fn.name, key]);
     if (taken.has(key))
-      throw new A0Error(
-        `${fn.name}.ret: '${key}' is returned after \`at\` took its io field ${taken.get(key)}`,
-        undefined,
-        {
-          code: 'structure',
-          fix: `return the record with the token put back: \`put ${key} ${taken.get(key)} <io>\``,
-        },
-      );
+      throw diag('A0313', [fn.name, key, taken.get(key) as number], {
+        fix: `return the record with the token put back: \`put ${key} ${taken.get(key)} <io>\``,
+      });
   }
   return { ...fn, types, calls, staticIterations, literalIterations };
 }
 
 export function validate(program: Program): TypedProgram {
-  if (program.functions.length > LIMITS.maxFunctions)
-    throw new A0Error('too many functions', undefined, { code: 'limit' });
+  if (program.functions.length > LIMITS.maxFunctions) throw diag('A0029');
   const byName = new Map<string, TypedFunc>();
   const functions: TypedFunc[] = [];
-  for (const fn of program.functions) {
-    if (byName.has(fn.name))
-      throw new A0Error(`duplicate function '${fn.name}'`, undefined, { code: 'structure' });
-    const typed = validateFunction(fn, byName);
+  const names = program.functions.map((f) => f.name);
+  for (const [k, fn] of program.functions.entries()) {
+    if (byName.has(fn.name)) throw diag('A0021', [fn.name]);
+    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)));
     byName.set(fn.name, typed);
     functions.push(typed);
   }
@@ -1522,9 +1566,7 @@ export function makeIo(input: readonly number[] = []): IoState {
 /** Append one output word, bounded so a runaway program cannot exhaust memory. */
 function emit(state: IoState, word: number): void {
   if (state.output.length >= LIMITS.maxIoOutput) {
-    throw new A0Error(`io output exceeds ${LIMITS.maxIoOutput} words`, undefined, {
-      code: 'limit',
-    });
+    throw diag('A0702', [LIMITS.maxIoOutput]);
   }
   state.output.push(word);
 }
@@ -1553,14 +1595,12 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
   const b = args[1];
   const c = args[2];
   const num = (v: Value | undefined): number => {
-    if (typeof v !== 'number')
-      throw new A0Error(`${op}: expected u32 value`, undefined, { code: 'structure' });
+    if (typeof v !== 'number') throw diag('A0790', [`${op}: expected u32 value`]);
     return v;
   };
   switch (op) {
     case 'mov':
-      if (a === undefined)
-        throw new A0Error('mov: missing operand', undefined, { code: 'structure' });
+      if (a === undefined) throw diag('A0790', ['mov: missing operand']);
       return a;
     case 'add':
       return (num(a) + num(b)) >>> 0;
@@ -1602,57 +1642,52 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
       return num(a) >= num(b);
     case 'select':
       if (typeof a !== 'boolean' || b === undefined || c === undefined) {
-        throw new A0Error('select: expected bool and two values', undefined, { code: 'structure' });
+        throw diag('A0790', ['select: expected bool and two values']);
       }
       return a ? b : c;
     case 'arr':
     case 'rec':
       return [...args];
     case 'get': {
-      if (!Array.isArray(a) || a.length === 0)
-        throw new A0Error('get: expected array', undefined, { code: 'structure' });
+      if (!Array.isArray(a) || a.length === 0) throw diag('A0790', ['get: expected array']);
       return a[num(b) % a.length] as Value;
     }
     case 'set': {
       if (!Array.isArray(a) || a.length === 0 || c === undefined)
-        throw new A0Error('set: expected array', undefined, { code: 'structure' });
+        throw diag('A0790', ['set: expected array']);
       const copy = [...a];
       copy[num(b) % a.length] = c;
       return copy;
     }
     case 'at': {
-      if (!Array.isArray(a))
-        throw new A0Error('at: expected record', undefined, { code: 'structure' });
+      if (!Array.isArray(a)) throw diag('A0790', ['at: expected record']);
       const v = a[num(b)];
-      if (v === undefined)
-        throw new A0Error('at: field out of range', undefined, { code: 'structure' });
+      if (v === undefined) throw diag('A0790', ['at: field out of range']);
       return v;
     }
     case 'put': {
       if (!Array.isArray(a) || c === undefined || num(b) >= a.length)
-        throw new A0Error('put: bad field', undefined, { code: 'structure' });
+        throw diag('A0790', ['put: bad field']);
       const copy = [...a];
       copy[num(b)] = c;
       return copy;
     }
     case 'read': {
       // Exhausted input reads as 0; the token identity is the state itself.
-      if (a === undefined || !isIoState(a))
-        throw new A0Error('read: expected io token', undefined, { code: 'structure' });
+      if (a === undefined || !isIoState(a)) throw diag('A0790', ['read: expected io token']);
       const v = a.input[a.position] ?? 0;
       if (a.position < a.input.length) a.position += 1;
       return [v, a];
     }
     case 'write': {
-      if (a === undefined || !isIoState(a))
-        throw new A0Error('write: expected io token', undefined, { code: 'structure' });
+      if (a === undefined || !isIoState(a)) throw diag('A0790', ['write: expected io token']);
       emit(a, num(b));
       return a;
     }
     case 'puts': {
       // Length word, then every element, in order.
       if (a === undefined || !isIoState(a) || !Array.isArray(b))
-        throw new A0Error('puts: expected io token and array', undefined, { code: 'structure' });
+        throw diag('A0790', ['puts: expected io token and array']);
       emit(a, b.length);
       for (const v of b) emit(a, num(v));
       return a;
@@ -1660,41 +1695,32 @@ export function evalOp(op: Op, args: readonly Value[]): Value {
     case 'call':
     case 'fold':
     case 'loop':
-      throw new A0Error(`${op} is evaluated by run, not evalOp`, undefined, { code: 'structure' });
+      throw diag('A0790', [`${op} is evaluated by run, not evalOp`]);
   }
 }
 
 export function checkArgument(type: Type, value: Value, where: string): void {
   if (type === 'bool') {
-    if (typeof value !== 'boolean')
-      throw new A0Error(`${where}: expected bool`, undefined, { code: 'structure' });
+    if (typeof value !== 'boolean') throw diag('A0704', [where, 'bool']);
     return;
   }
   if (type === 'u32') {
     if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > U32_MAX) {
-      throw new A0Error(`${where}: expected u32`, undefined, { code: 'structure' });
+      throw diag('A0704', [where, 'u32']);
     }
     return;
   }
   if (type === 'io') {
-    if (!isIoState(value))
-      throw new A0Error(`${where}: expected io token`, undefined, { code: 'structure' });
+    if (!isIoState(value)) throw diag('A0704', [where, 'io token']);
     return;
   }
-  if (!Array.isArray(value))
-    throw new A0Error(`${where}: expected ${formatType(type)}`, undefined, { code: 'structure' });
+  if (!Array.isArray(value)) throw diag('A0704', [where, formatType(type)]);
   if (type.kind === 'arr') {
-    if (value.length !== type.length)
-      throw new A0Error(`${where}: expected ${type.length} elements`, undefined, {
-        code: 'structure',
-      });
+    if (value.length !== type.length) throw diag('A0705', [where, type.length]);
     for (const [i, v] of value.entries()) checkArgument(type.elem, v, `${where}[${i}]`);
     return;
   }
-  if (value.length !== type.fields.length)
-    throw new A0Error(`${where}: expected ${type.fields.length} fields`, undefined, {
-      code: 'structure',
-    });
+  if (value.length !== type.fields.length) throw diag('A0706', [where, type.fields.length]);
   for (const [i, f] of type.fields.entries()) checkArgument(f, value[i] as Value, `${where}.${i}`);
 }
 
@@ -1745,13 +1771,7 @@ export function run(
   options: RunOptions = { fuel: LIMITS.defaultFuel },
 ): Value {
   if (args.length !== fn.params.length) {
-    throw new A0Error(
-      `${fn.name}: expected ${fn.params.length} arguments, got ${args.length}`,
-      undefined,
-      {
-        code: 'runtime',
-      },
-    );
+    throw diag('A0703', [fn.name, fn.params.length, args.length]);
   }
   for (const [index, type] of fn.params.entries()) {
     checkArgument(type, args[index] as Value, `${fn.name} p${index}`);
@@ -1763,27 +1783,13 @@ export function run(
 /** Charge `units` of fuel; exhaustion throws a `limit` A0Error. */
 function charge(fn: TypedFunc, options: RunOptions, units: number): void {
   options.fuel -= units;
-  if (options.fuel < 0) {
-    const trap = trapOf('fuel', options);
-    throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`, undefined, {
-      code: 'limit',
-      trap,
-      fix: TRAP_FIX.fuel,
-    });
-  }
+  if (options.fuel < 0) throw diag('A0701', [fn.name], { trap: trapOf('fuel', options) });
 }
 
 /** Take one trip from the iteration cap, when there is one. */
 function takeTrip(fn: TypedFunc, options: RunOptions): void {
   if (options.maxTrips === undefined) return;
-  if (options.maxTrips <= 0) {
-    const trap = trapOf('iter', options);
-    throw new A0Error(`${fn.name}: iteration cap reached`, undefined, {
-      code: 'limit',
-      trap,
-      fix: TRAP_FIX.iter,
-    });
-  }
+  if (options.maxTrips <= 0) throw diag('A0709', [fn.name], { trap: trapOf('iter', options) });
   options.maxTrips -= 1;
 }
 
@@ -1810,10 +1816,7 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
         return args[operand.index] as Value;
       case 'node': {
         const v = env.get(operand.id);
-        if (v === undefined)
-          throw new A0Error(`${fn.name}: unbound node '${operand.id}'`, undefined, {
-            code: 'runtime',
-          });
+        if (v === undefined) throw diag('A0791', [`${fn.name}: unbound node '${operand.id}'`]);
         return v;
       }
     }
@@ -1823,16 +1826,12 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
     if (node.op === 'call') {
       const callee = fn.calls.get(node.callee ?? '');
       if (callee === undefined)
-        throw new A0Error(`${fn.name}: unresolved callee '${node.callee ?? ''}'`, undefined, {
-          code: 'runtime',
-        });
+        throw diag('A0791', [`${fn.name}: unresolved callee '${node.callee ?? ''}'`]);
       env.set(node.id, exec(callee, node.args.map(read), options));
     } else if (node.op === 'fold') {
       const body = fn.calls.get(node.callee ?? '');
       if (body === undefined)
-        throw new A0Error(`${fn.name}: unresolved fold body '${node.callee ?? ''}'`, undefined, {
-          code: 'runtime',
-        });
+        throw diag('A0791', [`${fn.name}: unresolved fold body '${node.callee ?? ''}'`]);
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
@@ -1849,7 +1848,7 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
       const body = fn.calls.get(node.callee ?? '');
       const pred = fn.calls.get(node.pred ?? '');
       if (body === undefined || pred === undefined)
-        throw new A0Error(`${fn.name}: unresolved loop functions`, undefined, { code: 'runtime' });
+        throw diag('A0791', [`${fn.name}: unresolved loop functions`]);
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
@@ -1886,12 +1885,8 @@ function ioOp(node: Node, operands: readonly Value[], options: RunOptions): Valu
   try {
     return evalOp(node.op, operands);
   } catch (e) {
-    if (e instanceof A0Error && e.code === 'limit' && e.trap === undefined)
-      throw new A0Error(e.message, undefined, {
-        code: 'limit',
-        trap: trapOf('io', options),
-        fix: TRAP_FIX.io,
-      });
+    if (e instanceof A0Error && e.code === 'limit' && e.trap === undefined && e.id === 'A0702')
+      throw diag('A0702', [LIMITS.maxIoOutput], { trap: trapOf('io', options) });
     throw e;
   }
 }

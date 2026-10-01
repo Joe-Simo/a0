@@ -1,0 +1,627 @@
+# A0 spelling suggestions for unknown names, written in A0. Fifth module of the self-hosted front
+# end (DESIGN.md 7a). It is the rule of TypeScript's getSpellingSuggestion, the same one
+# src/diagnostics.ts spellingSuggestion implements: a candidate counts when its length differs from
+# the name's by at most max(2, 34% of the name's length), it is not the name itself, it is at least
+# three bytes long unless it differs from the name by case alone, and its edit distance (insertion
+# and deletion 1, substitution 2, a case-only substitution 0.1; here in tenths, exactly) is below
+# 40% of the name's length plus one; the closest wins and the first of equals wins.
+#
+# Input (io front `suggestio`): the source (n, then n bytes, as every front) and one more word, the
+# index of a token the parser rejected. Output: rule, mode, len, the start and length of the token in
+# the source, then 64 bytes (the first len are the suggested name). rule is the number of the diagnostics table row the token is an unknown name for:
+# 1 type (A0001), 101 node (A0101), 102 callee or op (A0102), 103 fold or loop body (A0103), 104 loop
+# predicate (A0104), 0 when the token is not an unknown name (it is known, or not a name). mode 1: a
+# suggestion; 2: the name is defined later (a callee must come first, a node must come above); 0:
+# none. The candidates are the ops and aliases then the functions defined above the token's function
+# (rules 102 to 104), the nodes above its line in the function (101), or the types (1), in that order.
+#
+# The context of the token is read from the token stream alone: its line, the function header above
+# it and its position in the line. Names are at most 64 bytes (a longer one is not an identifier).
+# Every loop is a fold whose count is the data's own size, so a candidate that cannot count costs
+# almost nothing.
+
+use "lex.a0"
+
+fn sg_umin u32 u32 -> u32
+c lt p0 p1
+r select c p0 p1
+ret r
+end
+fn sg_umax u32 u32 -> u32
+c gt p0 p1
+r select c p0 p1
+ret r
+end
+fn sg_lower u32 -> u32
+a ge p0 65
+b le p0 90
+up and a b
+l add p0 32
+r select up l p0
+ret r
+end
+fn sg_z64 -> u32x64
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn sg_z65 -> u32x65
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn sg_srcb u32x128x128 u32 -> u32
+h shr p1 7
+l and p1 127
+g get p0 h
+v get g l
+ret v
+end
+# token p1 of a token table: (kind start length)
+fn sg_tokat u32x128x384 u32 -> (u32,u32,u32)
+w mul p1 3
+h0 shr w 7
+l0 and w 127
+g0 get p0 h0
+k get g0 l0
+w1 add w 1
+h1 shr w1 7
+l1 and w1 127
+g1 get p0 h1
+s get g1 l1
+w2 add w 2
+h2 shr w2 7
+l2 and w2 127
+g2 get p0 h2
+n get g2 l2
+r rec k s n
+ret r
+end
+# bytes src[start..start+len) in a 64-byte buffer, zero past len (len at most 64)
+fn sg_cpstep u32x64 u32 u32x128x128 u32 u32 -> u32x64
+i0 add p3 p1
+v call sg_srcb p2 i0
+inr lt p1 p4
+x select inr v 0
+r set p0 p1 x
+ret r
+end
+fn sg_copy64 u32x128x128 u32 u32 -> u32x64
+z call sg_z64
+r fold sg_cpstep 64 z p0 p1 p2
+ret r
+end
+# the 8-byte name p1 of the names table (space padded) as (buffer, length)
+fn sg_entstep (u32x64,u32,bool) u32 u32x328 u32 -> (u32x64,u32,bool)
+buf at p0 0
+len at p0 1
+stop at p0 2
+i0 add p3 p1
+v get p2 i0
+sp eq v 32
+stop2 or stop sp
+nstop select stop2 false true
+live and nstop true
+x select live v 0
+buf2 set buf p1 x
+len1 add len 1
+len2 select live len1 len
+r rec buf2 len2 stop2
+ret r
+end
+fn sg_entry u32x328 u32 -> (u32x64,u32)
+z call sg_z64
+s0 rec z 0 false
+off mul p1 8
+s fold sg_entstep 8 s0 p0 off
+buf at s 0
+len at s 1
+r rec buf len
+ret r
+end
+# the table of names: ops and aliases (rows 0..31), the types (rows 32..34), the
+# reserved words (rows 35..40)
+fn sg_names -> u32x328
+t text "mov     add     sub     mul     and     or      xor     shl     shr     eq      ne      lt      le      gt      ge      select  call    fold    loop    arr     rec     get     set     at      put     read    write   div     rem     puts    udiv    urem    u32     bool    io      fn      ret     end     patch   true    false   "
+ret t
+end
+fn sg_eqstep bool u32 u32x64 u32x64 u32 -> bool
+a get p2 p1
+b get p3 p1
+inr lt p1 p4
+e eq a b
+ok select inr e true
+r and p0 ok
+ret r
+end
+# the same bytes and the same length
+fn sg_eqbuf u32x64 u32 u32x64 u32 -> bool
+same eq p1 p3
+f fold sg_eqstep 64 true p0 p2 p1
+r and same f
+ret r
+end
+fn sg_cistep bool u32 u32x64 u32x64 u32 -> bool
+a get p2 p1
+b get p3 p1
+la call sg_lower a
+lb call sg_lower b
+inr lt p1 p4
+e eq la lb
+ok select inr e true
+r and p0 ok
+ret r
+end
+# the same bytes up to case
+fn sg_cieq u32x64 u32 u32x64 u32 -> bool
+same eq p1 p3
+f fold sg_cistep 64 true p0 p2 p1
+r and same f
+ret r
+end
+# edit distance in tenths of the first p1 bytes of a and the first p3 of b: row 0 holds j * 10, then
+# one fold step per row and one per cell
+fn sg_initstep u32x65 u32 -> u32x65
+v mul p1 10
+r set p0 p1 v
+ret r
+end
+# cell j = p1 + 1 of the row being built: state (row, left cell); p2 the previous row, p3 the
+# bytes of b, p4 the byte of a
+fn sg_levcell (u32x65,u32) u32 u32x65 u32x64 u32 -> (u32x65,u32)
+row at p0 0
+left at p0 1
+j add p1 1
+cb get p3 p1
+pj get p2 j
+pd get p2 p1
+eq eq p4 cb
+la call sg_lower p4
+lb call sg_lower cb
+leq eq la lb
+c1 select leq 1 20
+subc add pd c1
+del add pj 10
+ins add left 10
+m1 call sg_umin del ins
+m2 call sg_umin m1 subc
+d select eq pd m2
+row2 set row j d
+r rec row2 d
+ret r
+end
+# row i = p1 + 1: state the previous row; p2 the bytes of a, p3 the bytes of b, p4 the length of b
+fn sg_levrow u32x65 u32 u32x64 u32x64 u32 -> u32x65
+i1 add p1 1
+ca get p2 p1
+v0 mul i1 10
+row0 set p0 0 v0
+s0 rec row0 v0
+s fold sg_levcell p4 s0 p0 p3 ca
+r at s 0
+ret r
+end
+fn sg_lev u32x64 u32 u32x64 u32 -> u32
+z call sg_z65
+init fold sg_initstep 65 z
+row fold sg_levrow p1 init p0 p2 p3
+d get row p3
+ret d
+end
+# state (best distance in tenths, best bytes, best length, the name itself was met, a definition
+# of the name was met later, stopped); p1 p2 a candidate and its length; p3 whether it counts; p4 p5
+# the name
+fn sg_consider (u32,u32x64,u32,bool,bool,bool) u32x64 u32 bool u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+bestd at p0 0
+bestb at p0 1
+bestl at p0 2
+exact at p0 3
+later at p0 4
+stop at p0 5
+same call sg_eqbuf p1 p2 p4 p5
+hit and p3 same
+exact2 or exact hit
+big gt p2 p5
+d1 sub p2 p5
+d2 sub p5 p2
+diff select big d1 d2
+n34 mul p5 34
+n34d div n34 100
+maxd call sg_umax 2 n34d
+ok1 le diff maxd
+nsame select same false true
+short lt p2 3
+ci call sg_cieq p1 p2 p4 p5
+nsh select short false true
+ok3 or nsh ci
+cnt and p3 ok1
+cnt1 and cnt nsame
+cnt2 and cnt1 ok3
+rows select cnt2 p5 0
+dist call sg_lev p4 rows p1 p2
+better lt dist bestd
+take and cnt2 better
+d3 select take dist bestd
+b3 select take p1 bestb
+l3 select take p2 bestl
+r rec d3 b3 l3 exact2 later stop
+ret r
+end
+# row p1 + p2 of the names table as a candidate: the fold step of `rows`; p3 the first row, p4 p5
+# the name
+fn sg_rowstep (u32,u32x64,u32,bool,bool,bool) u32 u32x328 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+k add p1 p3
+e call sg_entry p2 k
+buf at e 0
+len at e 1
+r call sg_consider p0 buf len true p4 p5
+ret r
+end
+# rows p1 .. p1 + p2 - 1 of the names table in order
+fn sg_rows (u32,u32x64,u32,bool,bool,bool) u32 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+t call sg_names
+r fold sg_rowstep p2 p0 t p1 p3 p4
+ret r
+end
+# the name p3 (a buffer of p4 bytes) equals a row of the names table in rows p1 .. p1 + p2 - 1
+fn sg_anystep bool u32 u32x328 u32 u32x64 u32 -> bool
+k add p1 p3
+e call sg_entry p2 k
+buf at e 0
+len at e 1
+q call sg_eqbuf buf len p4 p5
+r or p0 q
+ret r
+end
+fn sg_inrows u32 u32 u32x64 u32 -> bool
+t call sg_names
+r fold sg_anystep p1 false t p0 p2 p3
+ret r
+end
+# the name starts with a row of the names table in rows p1 .. p1 + p2 - 1 (a type word, so the
+# type parser would not call it unexpected)
+fn sg_pfxbyte bool u32 u32x64 u32x64 u32 -> bool
+a get p2 p1
+b get p3 p1
+inr lt p1 p4
+e eq a b
+ok select inr e true
+r and p0 ok
+ret r
+end
+fn sg_pfxeq u32x64 u32 u32x64 -> bool
+f fold sg_pfxbyte 64 true p0 p2 p1
+pos gt p1 0
+r and f pos
+ret r
+end
+fn sg_pfxstep bool u32 u32x328 u32 u32x64 -> bool
+k add p1 p3
+e call sg_entry p2 k
+buf at e 0
+len at e 1
+q call sg_pfxeq buf len p4
+r or p0 q
+ret r
+end
+fn sg_startsrow u32 u32 u32x64 -> bool
+t call sg_names
+r fold sg_pfxstep p1 false t p0 p2
+ret r
+end
+fn sg_isw2 u32x128x128 u32 u32 u32 u32 -> bool
+l eq p2 2
+a call sg_srcb p0 p1
+s1 add p1 1
+b call sg_srcb p0 s1
+ea eq a p3
+eb eq b p4
+r0 and l ea
+r and r0 eb
+ret r
+end
+fn sg_isw3 u32x128x128 u32 u32 u32 u32 u32 -> bool
+l eq p2 3
+a call sg_srcb p0 p1
+s1 add p1 1
+b call sg_srcb p0 s1
+s2 add p1 2
+c call sg_srcb p0 s2
+ea eq a p3
+eb eq b p4
+ec eq c p5
+r0 and l ea
+r1 and r0 eb
+r and r1 ec
+ret r
+end
+fn sg_isw4 u32x128x128 u32 u32 u32 u32 u32 u32 -> bool
+l eq p2 4
+a call sg_srcb p0 p1
+s1 add p1 1
+b call sg_srcb p0 s1
+s2 add p1 2
+c call sg_srcb p0 s2
+s3 add p1 3
+d call sg_srcb p0 s3
+ea eq a p3
+eb eq b p4
+ec eq c p5
+ed eq d p6
+r0 and l ea
+r1 and r0 eb
+r2 and r1 ec
+r and r2 ed
+ret r
+end
+# a parameter name: p, then at least one decimal digit, nothing else
+fn sg_dgstep bool u32 u32x128x128 u32 u32 -> bool
+i0 add p3 p1
+c call sg_srcb p2 i0
+ge0 ge c 48
+le9 le c 57
+dg and ge0 le9
+k0 eq p1 0
+nk0 select k0 false true
+inr lt p1 p4
+chk and inr nk0
+ok select chk dg true
+r and p0 ok
+ret r
+end
+fn sg_isparam u32x128x128 u32 u32 -> bool
+f call sg_srcb p0 p1
+isp eq f 112
+one gt p2 1
+dg fold sg_dgstep 64 true p0 p1 p2
+r0 and isp one
+r and r0 dg
+ret r
+end
+# the context of a token: (line start, header token of its function); state of the fold over the
+# tokens before it
+fn sg_ctxstep (u32,u32) u32 u32x128x384 u32x128x128 -> (u32,u32)
+ls at p0 0
+fs at p0 1
+tk call sg_tokat p2 p1
+kind at tk 0
+st at tk 1
+len at tk 2
+isnl eq kind 5
+ni add p1 1
+ls2 select isnl ni ls
+bol eq p1 ls
+one eq kind 1
+isfn call sg_isw2 p3 st len 102 110
+w0 and bol one
+w1 and w0 isfn
+fs2 select w1 p1 fs
+r rec ls2 fs2
+ret r
+end
+# one pass over the tokens for a name; p0 the search state, p1 the token, p2 toks, p3 src, p4 the
+# header token of the function the name is in, p5 the line start of the name, p6 the pass (0 the
+# functions, 1 the nodes), p7 p8 the name
+fn sg_tokstep (u32,u32x64,u32,bool,bool,bool) u32 u32x128x384 u32x128x128 u32 u32 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+tk call sg_tokat p2 p1
+kind at tk 0
+st at tk 1
+len at tk 2
+im1 sub p1 1
+pk call sg_tokat p2 im1
+pkind at pk 0
+first eq p1 0
+prevnl eq pkind 5
+bol or first prevnl
+one eq kind 1
+isfn call sg_isw2 p3 st len 102 110
+isret call sg_isw3 p3 st len 114 101 116
+isend call sg_isw3 p3 st len 101 110 100
+ni add p1 1
+nt call sg_tokat p2 ni
+nkind at nt 0
+nst at nt 1
+nlen at nt 2
+nid eq nkind 1
+nfit le nlen 64
+nname0 and nid nfit
+fit le len 64
+isfun eq p6 0
+isnode eq p6 1
+above lt p1 p4
+below gt p1 p4
+afterl gt p1 p5
+beforel lt p1 p5
+# the function pass: the name after `fn` on a line starting with `fn`
+fh0 and bol isfn
+fh1 and fh0 nname0
+fcand and fh1 above
+flater0 and fh1 below
+# the node pass: the id first on a line that is not fn, ret or end
+nr1 select isfn false true
+nr2 select isret false true
+nr3 select isend false true
+nl0 and bol one
+nl1 and nl0 fit
+nl2 and nl1 nr1
+nl3 and nl2 nr2
+nl4 and nl3 nr3
+nafter and nl4 afterl
+nbelow and nl4 below
+ncand and nbelow beforel
+cbf call sg_copy64 p3 nst nlen
+cbn call sg_copy64 p3 st len
+cb select isfun cbf cbn
+cl select isfun nlen len
+f0 and isfun fcand
+n0 and isnode ncand
+cand or f0 n0
+stop at p0 5
+nstop select stop false true
+st1 call sg_consider p0 cb cl cand p7 p8
+same call sg_eqbuf cb cl p7 p8
+lf0 and isfun flater0
+lf and lf0 same
+ln0 and isnode nafter
+ln1 and ln0 nstop
+ln and ln1 same
+lh or lf ln
+later at st1 4
+later2 or later lh
+st2 put st1 4 later2
+ends0 or isret isend
+ends1 or ends0 isfn
+ends2 and bol ends1
+ends3 and ends2 afterl
+ends4 and ends3 isnode
+stop2 or stop ends4
+st3 put st2 5 stop2
+ret st3
+end
+# the rule of the table row an unknown name at token p4 belongs to, from the context in the token
+# stream; p5 p6 the line start and the header of the function. 0: not a name this module knows
+fn sg_rulefor u32x128x128 u32x128x384 u32 u32 u32 -> u32
+ls mov p3
+pos sub p2 ls
+tk0 call sg_tokat p1 ls
+st0 at tk0 1
+len0 at tk0 2
+l1 add ls 1
+tk1 call sg_tokat p1 l1
+st1 at tk1 1
+len1 at tk1 2
+l2 add ls 2
+tk2 call sg_tokat p1 l2
+k2 at tk2 0
+is0fn call sg_isw2 p0 st0 len0 102 110
+is0ret call sg_isw3 p0 st0 len0 114 101 116
+is0end call sg_isw3 p0 st0 len0 101 110 100
+is0use call sg_isw3 p0 st0 len0 117 115 101
+is1call call sg_isw4 p0 st1 len1 99 97 108 108
+is1fold call sg_isw4 p0 st1 len1 102 111 108 100
+is1loop call sg_isw4 p0 st1 len1 108 111 111 112
+has3a ne k2 0
+has3b ne k2 5
+has3 and has3a has3b
+pos1 eq pos 1
+pos2 eq pos 2
+pos3 eq pos 3
+posge2 ge pos 2
+# fn header: a type word
+rh and is0fn posge2
+# ret line: the operand of `ret x`, or the op / operand of `ret OP ...`
+rr1 select has3 102 101
+rret select pos1 rr1 101
+# node line
+rn2a select is1loop 104 101
+rn2b select is1fold 103 rn2a
+rn2 select is1call 102 rn2b
+rn3 select is1loop 103 101
+rn0 select pos1 102 101
+rn1 select pos2 rn2 rn0
+rn select pos3 rn3 rn1
+r0 select is0ret rret rn
+r1 select rh 1 r0
+skip0 or is0end is0use
+r2 select skip0 0 r1
+ret r2
+end
+# the suggestion for the name at token p4: (rule, mode, length, bytes)
+fn sg_sugg u32x128x128 u32 u32x128x384 u32 u32 -> (u32,u32,u32,u32x64,u32,u32)
+c0 rec 0 0
+c fold sg_ctxstep p4 c0 p2 p0
+ls at c 0
+fs at c 1
+tkt call sg_tokat p2 p4
+kt at tkt 0
+st at tkt 1
+nl at tkt 2
+nm call sg_copy64 p0 st nl
+nid eq kt 1
+nfit0 le nl 64
+nfit1 gt nl 0
+nfit and nfit0 nfit1
+rule0 call sg_rulefor p0 p2 p4 ls fs
+c1 and nid nfit
+rulea select c1 rule0 0
+tsec call sg_names
+rsv call sg_inrows 35 6 nm nl
+param call sg_isparam p0 st nl
+r101 eq rulea 101
+pm and r101 param
+nrs select rsv false true
+npm select pm false true
+oknm and nrs npm
+rule1 select oknm rulea 0
+typed call sg_startsrow 32 3 nm
+r1t eq rule1 1
+tyx and r1t typed
+ntyx select tyx false true
+rule select ntyx rule1 0
+r102 eq rule 102
+r103 eq rule 103
+r104 eq rule 104
+r101b eq rule 101
+r1b eq rule 1
+fnuse0 or r102 r103
+fnuse or fnuse0 r104
+ntk0 select fnuse p3 0
+ntk1 select r101b p3 0
+four0 mul nl 4
+four1 div four0 10
+four2 add four1 1
+bd mul four2 10
+z call sg_z64
+s0 rec bd z 0 false false false
+sops0 call sg_rows s0 0 32 nm nl
+sops select r102 sops0 s0
+sf fold sg_tokstep ntk0 sops p2 p0 fs ls 0 nm nl
+sn fold sg_tokstep ntk1 s0 p2 p0 fs ls 1 nm nl
+styp0 call sg_rows s0 32 3 nm nl
+styp select r1b styp0 s0
+s1 select r1b styp sf
+s2 select r101b sn s1
+bestb at s2 1
+bestl at s2 2
+exact at s2 3
+later at s2 4
+known select exact 0 rule
+none eq bestl 0
+mode0 select none 0 1
+mode1 select later 2 mode0
+mode select r1b mode0 mode1
+r rec known mode bestl bestb st nl
+ret r
+end
+fn sg_wbyte io u32 u32x64 -> io
+v get p2 p1
+w write p0 v
+ret w
+end
+# io front: the source as every front reads it, then the index of the rejected token; writes
+# rule, mode, length and 64 bytes. The result is the rule.
+fn suggestio io -> u32
+rs call readsrc p0
+src at rs 0
+n at rs 1
+t1 at rs 2
+r1 read t1
+tk at r1 0
+t2 at r1 1
+lx call lexsrc src n
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+sg call sg_sugg src n toks ntok tk
+rule at sg 0
+mode at sg 1
+len at sg 2
+buf at sg 3
+nst at sg 4
+nln at sg 5
+w1 write t2 rule
+w2 write w1 mode
+w3 write w2 len
+w4 write w3 nst
+w5 write w4 nln
+w6 fold sg_wbyte 64 w5 buf
+ret rule
+end
