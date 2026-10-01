@@ -3,7 +3,10 @@
 import { C } from './c.js';
 import { CHICKEN } from './chicken.js';
 import { CLOJURE } from './clojure.js';
+import { COBOL } from './cobol.js';
 import { COMMONLISP } from './commonlisp.js';
+import { CRYSTAL } from './crystal.js';
+import { D } from './d.js';
 import { DART } from './dart.js';
 import { ELIXIR } from './elixir.js';
 import { ERLANG } from './erlang.js';
@@ -33,6 +36,7 @@ import { SMALLTALK } from './smalltalk.js';
 import type { LangSpec } from './spec.js';
 import { SWIFT } from './swift.js';
 import { TCL } from './tcl.js';
+import { V } from './v.js';
 import { VB } from './vb.js';
 import { ZIG } from './zig.js';
 
@@ -71,6 +75,10 @@ export const SPEC_LANGS = [
   'julia',
   'haxe',
   'chicken',
+  'crystal',
+  'd',
+  'cobol',
+  'v',
 ] as const;
 export type SpecLang = (typeof SPEC_LANGS)[number];
 
@@ -83,6 +91,10 @@ export const SPECS: Readonly<Record<SpecLang, LangSpec>> = {
   ocaml: OCAML,
   elixir: ELIXIR,
   zig: ZIG,
+  v: V,
+  cobol: COBOL,
+  d: D,
+  crystal: CRYSTAL,
   chicken: CHICKEN,
   haxe: HAXE,
   julia: JULIA,
