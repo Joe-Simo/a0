@@ -758,7 +758,7 @@ x735 write x734 2
 x736 text "d"
 x737 puts x735 x736
 x738 write x737 2
-x739 text "fewer tokens per edit than TypeScript in a 4000-function program, 100% accepted (Sonnet). On a one-function file A0 costs more."
+x739 text "fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, 100% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more."
 x740 puts x738 x739
 x741 call close x740 
 x742 call close x741 
@@ -10176,12 +10176,12 @@ x10105 write x10104 2
 x10106 text "take"
 x10107 puts x10105 x10106
 x10108 write x10107 2
-x10109 text "At 4000 functions an A0 edit costs 706 tokens against 143854 for TypeScript, which is 203.8x fewer than TypeScript. At 1 function A0 costs 2.42x TypeScript's tokens and 2.29x Rust's. Sonnet, cache-adjusted."
+x10109 text "At 4000 functions an A0 edit costs 706 tokens against 143854 for TypeScript, which is 203.8x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs 2.42x TypeScript's tokens and 2.29x Rust's. Sonnet, cache-adjusted."
 x10110 puts x10108 x10109
 x10111 call close x10110 
 x10112 call open x10111 2
 x10113 write x10112 2
-x10114 text "Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so A0's advantage grows with program size and reverses on a one-function file, where the primer dominates."
+x10114 text "Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so against a whole-file workflow A0's advantage grows with program size and reverses on a one-function file, where the primer dominates. That is an advantage of the workflow, not of the language: when TypeScript, Rust, Python, Go, Java, C and Ruby are given an equal view (a parse-derived function and its callees, numbered line edits), pooled over the four program sizes (96 trials per cell) A0 canonical costs 318 tokens for one cold task and 176 in an unbounded session, against 386 and 138 for TypeScript and 375 and 115 for Ruby, so it is cheaper cold and dearer once the primer is cached; A0 dense costs 273 and 99. results/ai-edit-scoped.json."
 x10115 puts x10113 x10114
 x10116 call close x10115 
 ret x10116
@@ -25323,7 +25323,7 @@ x16660 write x16659 2
 x16661 text "cap"
 x16662 puts x16660 x16661
 x16663 write x16662 2
-x16664 text "Tasks are the same edits in every language; sets 400 and 4000 are one shared program grown to that size. Subjects are fresh Sonnet and Haiku contexts that see only the primer. Numbers: results/ai-edit-experiment.{b,c,c400,c4000}.*.json."
+x16664 text "Tasks are the same edits in every language; sets 400 and 4000 are one shared program grown to that size. Subjects are fresh Sonnet and Haiku contexts that see only the primer. In the 400 and 4000 rows the other languages read the whole numbered file and A0 its scoped view (a workflow comparison); the equal-context comparison is results/ai-edit-scoped.json. Numbers: results/ai-edit-experiment.{b,c,c400,c4000}.*.json."
 x16665 puts x16663 x16664
 x16666 call close x16665 
 x16668 call endsec16666 x16666

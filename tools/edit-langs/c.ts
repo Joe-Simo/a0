@@ -8,6 +8,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Type, Value } from '../../src/core.js';
 import { runTool } from '../../src/toolchain.js';
+import type { FillerFunction } from '../ai-edit-tasks-c.js';
 import {
   BUILD_MS,
   failure,
@@ -133,12 +134,159 @@ const B: LangSpec['b'] = {
   },
 };
 
+/** Set-A originals and set-C extras that fill the project program (the C++ text, with C types). */
+const FILLER = `uint32_t affine(uint32_t x, uint32_t scale, uint32_t offset) {
+  return x * scale + offset;
+}
+uint32_t clamp(uint32_t x, uint32_t hi) {
+  return hi < x ? hi : x;
+}
+uint32_t rotl(uint32_t x, uint32_t n) {
+  return (x << (n & 31)) | (x << ((32 - n) & 31));
+}
+uint32_t sq(uint32_t x) {
+  return x * x;
+}
+uint32_t quad(uint32_t x) {
+  return sq(x);
+}
+uint32_t absdiff(uint32_t a, uint32_t b) {
+  return a - b;
+}
+uint32_t combine4(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
+  return a + b + c + d;
+}
+uint32_t min2(uint32_t a, uint32_t b) {
+  return b < a ? b : a;
+}
+uint32_t sumto(uint32_t n) {
+  uint32_t s = 0;
+  for (uint32_t i = 0; i < n; i++) {
+    s += i;
+  }
+  return s;
+}
+uint32_t countup(uint32_t limit, uint32_t cap) {
+  uint32_t s = 0;
+  for (uint32_t i = 0; i < cap; i++) {
+    if (!(s < limit)) {
+      break;
+    }
+    s += 1;
+  }
+  return s;
+}
+uint32_t pick(rec2_t r) {
+  return r.f0;
+}
+uint32_t byte1(uint32_t x) {
+  return (x >> 8) & 0xFF;
+}
+uint32_t sadd(uint32_t a, uint32_t b) {
+  return a + b;
+}
+bool is_even(uint32_t x) {
+  return (x & 1) == 0;
+}
+uint32_t addi(uint32_t acc, uint32_t i) {
+  return acc + i;
+}
+uint32_t inc(uint32_t s, uint32_t i, uint32_t limit) {
+  return s + 1;
+}
+bool below(uint32_t s, uint32_t i, uint32_t limit) {
+  return s < limit;
+}
+uint32_t addel(uint32_t acc, uint32_t i, const uint32_t *a) {
+  return acc + a[i % 4];
+}
+rec2_t minmax(rec2_t acc, uint32_t i, const uint32_t *a) {
+  uint32_t lo = acc.f0;
+  uint32_t hi = acc.f1;
+  uint32_t x = a[i % 4];
+  uint32_t nlo = x < lo ? x : lo;
+  uint32_t nhi = x < hi ? x : hi;
+  return (rec2_t){nlo, nhi};
+}
+uint32_t mixel(uint32_t acc, uint32_t i, const uint32_t *a) {
+  return acc ^ a[i % 4];
+}
+uint32_t dstep(uint32_t acc, uint32_t i, const uint32_t *a, const uint32_t *b) {
+  return acc + a[i % 4] * b[i % 4];
+}
+uint32_t pstep(uint32_t acc, uint32_t i, uint32_t x) {
+  return acc + ((x >> (i & 31)) & 1);
+}
+uint32_t nb(const uint32_t *grid, uint32_t r, uint32_t c) {
+  uint32_t row = grid[r % 32];
+  return (row >> (c & 31)) & 1;
+}
+uint32_t count(const uint32_t *grid, uint32_t r, uint32_t c) {
+  uint32_t ru = r - 1;
+  uint32_t rd = r + 1;
+  uint32_t cl = c - 1;
+  uint32_t cr = c + 1;
+  uint32_t s = nb(grid, ru, cl);
+  s += nb(grid, ru, c);
+  s += nb(grid, ru, cr);
+  s += nb(grid, r, cl);
+  s += nb(grid, r, cr);
+  s += nb(grid, rd, cl);
+  s += nb(grid, rd, c);
+  s += nb(grid, rd, cr);
+  return s;
+}
+uint32_t bitstep(uint32_t acc, uint32_t i, uint32_t x) {
+  return acc + ((x >> (i & 31)) & 1);
+}
+uint32_t popcount(uint32_t x) {
+  uint32_t n = 0;
+  for (uint32_t i = 0; i < 32; i++) {
+    n = bitstep(n, i, x);
+  }
+  return n;
+}
+uint32_t rowpop(uint32_t acc, uint32_t i, const uint32_t *grid) {
+  return acc + popcount(grid[i % 32]);
+}
+uint32_t population(const uint32_t *grid) {
+  uint32_t n = 0;
+  for (uint32_t i = 0; i < 32; i++) {
+    n = rowpop(n, i, grid);
+  }
+  return n;
+}
+`;
+
+/** One generated filler helper (tools/ai-edit-tasks-c.ts generateFiller) as C. */
+function fillerText(f: FillerFunction): string {
+  const s = f.spec;
+  const fn = (params: string, e: string): string =>
+    `uint32_t ${f.name}(${params}) {\n  return ${e};\n}\n`;
+  switch (s.template) {
+    case 'lin':
+      return fn('uint32_t x', `x * ${s.m}u + ${s.c}u`);
+    case 'xs':
+      return fn('uint32_t x', `x ^ (x >> ${s.s})`);
+    case 'cap':
+      return fn('uint32_t x', `x < ${s.c}u ? x : ${s.c}u`);
+    case 'pair':
+      return fn('uint32_t a, uint32_t b', `(a + b) ^ ${s.c}u`);
+    case 'sum':
+      return fn('uint32_t x', `${s.g}(x) + ${s.h}(x)`);
+    case 'mixin':
+      return fn('uint32_t a, uint32_t b', `${s.g}(a) ^ b`);
+  }
+}
+
 export const C: LangSpec = {
   semantics:
     'Integers are uint32_t (stdint.h) with wrapping unsigned arithmetic; mask shift counts to 5 bits (& 31); comparisons are unsigned; booleans are bool; records are the rec2_t struct (fields f0, f1) and u32x4 values are const uint32_t * to four elements. Division by zero gives 4294967295; remainder by zero gives the dividend. The file is mod.c with the header shown, compiled with clang -O2 separately from the driver and linked (functions must be non-static with external linkage).',
   head: /^[A-Za-z_][A-Za-z0-9_ ]*[ *]([a-z_][A-Za-z0-9_]*)\(/,
   file: (body) => `${HEADER}\n${body}`,
   b: B,
+  filler: FILLER,
+  fillerText,
   driver,
   compileLabel: 'clang',
   async buildAndRun(dir, source, drv) {

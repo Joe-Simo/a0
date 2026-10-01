@@ -73,6 +73,14 @@ import { buildTasksC } from './ai-edit-tasks-c.js';
 import { TASKS_D } from './ai-edit-tasks-d.js';
 import { TASKS_E } from './ai-edit-tasks-e.js';
 import { TASKS_F } from './ai-edit-tasks-f.js';
+import {
+  applyScoped,
+  SCOPED_LANGS,
+  type ScopedArm,
+  type ScopedLang,
+  type ScopedView,
+  scopedView,
+} from './scoped-view.js';
 
 type Representation = 'a0' | 'ts' | 'rust' | Lang;
 
@@ -128,6 +136,30 @@ const A0_LEAN_VIEW =
 const A0_BODIES_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bodies';
 // 'bare' also drops the callee signature lines (scope function instead of deps).
 const A0_BARE_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bare';
+// A0_EXPERIMENT_SCOPED=signatures|bodies: the TypeScript, Rust, Python, Go, Java, C and Ruby
+// structured cells are shown the dependency-scoped view of the target function (tools/scoped-view.ts:
+// its body plus its direct callees as signatures, or as bodies) instead of the whole numbered
+// file, with the same numbered line edits applied to that view. Workflow comparison -> equal
+// context selection comparison.
+const SCOPED_ARM: ScopedArm | undefined = ['signatures', 'bodies'].includes(
+  process.env.A0_EXPERIMENT_SCOPED ?? '',
+)
+  ? (process.env.A0_EXPERIMENT_SCOPED as ScopedArm)
+  : undefined;
+const isScopedLang = (r: Representation): r is ScopedLang =>
+  (SCOPED_LANGS as readonly string[]).includes(r);
+/**
+ * The function a scoped view opens in a language file: the task's target, except where the A0
+ * program factors the edit into a fold helper that the other languages' loops inline (the
+ * function the instruction names is then the one to open).
+ */
+const SCOPED_TARGET: Readonly<Record<string, string>> = { 'sumsq-array': 'sumsq' };
+function scopedTarget(task: Task): string {
+  const key = task.id.replace(/^[bc][0-9]*-/, '');
+  return (
+    SCOPED_TARGET[key] ?? task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? ''
+  );
+}
 const withoutHandle = (view: string): string => view.slice(view.indexOf('\n') + 1);
 const PROTOCOL_STRUCTURED_A0 = `The view starts with edit handles. Reply with only the edit lines the guide describes (${A0_NUMBERED_VIEW ? 'numbered or ' : ''}instruction lines edit the shown function; \`fn\` blocks or \`-fn name\` edit the program), bare: no code fence, no handle line.`;
 // Primer-free A0 structured protocol (A0_EXPERIMENT_PRIMER=none|lazy): the edit rules of the
@@ -395,7 +427,7 @@ async function buildCell(
   programScope: 'all' | 'deps' = 'all',
   layout: SystemLayout = 'separate',
   primerMode: PrimerMode = 'always',
-): Promise<{ cell: Cell; session?: EditSession; handle: string }> {
+): Promise<{ cell: Cell; session?: EditSession; handle: string; scoped?: ScopedView }> {
   const handle = 'e0';
   if (representation === 'a0') {
     if (primerMode === 'rules-merged' && protocol !== 'structured')
@@ -458,6 +490,21 @@ async function buildCell(
   const structured = representation === 'rust' ? PROTOCOL_STRUCTURED_RUST : PROTOCOL_STRUCTURED_TS;
   const protocolText = protocol === 'conventional' ? PROTOCOL_CONVENTIONAL : structured;
   const system = `${semantics}\n\n${protocolText}`;
+  if (SCOPED_ARM !== undefined && protocol === 'structured' && isScopedLang(representation)) {
+    const scoped = await scopedView(representation, src, scopedTarget(task), SCOPED_ARM, handle);
+    return {
+      cell: {
+        representation,
+        protocol,
+        languagePrimer: semantics,
+        workflowPrimer: protocolText,
+        system,
+        view: scoped.text,
+      },
+      handle,
+      scoped,
+    };
+  }
   const view = protocol === 'conventional' ? src : `${handle}\n${numbered(src)}`;
   return {
     cell: {
@@ -565,6 +612,7 @@ async function runTrial(
   session: EditSession | undefined,
   handle: string,
   maxRepairs: number,
+  scoped: ScopedView | undefined,
   count: (text: string) => Record<string, number>,
   ask: (messages: Anthropic.MessageParam[]) => Promise<ReplyResult | undefined>,
   lazyPrimer?: string,
@@ -617,7 +665,9 @@ async function runTrial(
     const applied =
       representation === 'a0'
         ? applyA0(representation, protocol, source, res.reply, session)
-        : applyTs(protocol, source, res.reply, handle);
+        : scoped !== undefined
+          ? applyScoped(source, scoped, res.reply, handle)
+          : applyTs(protocol, source, res.reply, handle);
     failures =
       applied.error !== undefined
         ? [applied.error]
@@ -861,7 +911,7 @@ async function main(): Promise<void> {
     for (const representation of reps) {
       for (const protocol of protocols) {
         for (let t = 0; t < (live ? trialsPerCell : 1); t += 1) {
-          const { cell, session, handle } = await buildCell(
+          const { cell, session, handle, scoped } = await buildCell(
             task,
             representation,
             protocol,
@@ -892,6 +942,7 @@ async function main(): Promise<void> {
               session,
               handle,
               maxRepairs,
+              scoped,
               count,
               async () => {
                 const reply = answers.shift();
@@ -926,6 +977,7 @@ async function main(): Promise<void> {
             session,
             handle,
             maxRepairs,
+            scoped,
             count,
             async (messages) => {
               const res = await client.messages.create({

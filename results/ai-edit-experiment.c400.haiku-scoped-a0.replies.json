@@ -1,0 +1,40 @@
+{
+ "c400-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "c400-sumfrom-eight/a0/structured": [
+  "r fold addi 8 p0"
+ ],
+ "c400-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "c400-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "c400-avgfloor-nowrap/a0/structured": [
+  "a and p0 p1\nb xor p0 p1\nc shr b 1\nd add a c\nret d"
+ ],
+ "c400-sumsq-array/a0/structured": [
+  "a get p2 p1\nb mul a a\nc add p0 b\nret c"
+ ],
+ "c400-inrange-inclusive/a0/structured": [
+  "a ge p0 p1\nb le p0 p2"
+ ],
+ "c400-bounds-largest/a0/structured": [
+  "s rec 0 4294967295",
+  "s rec 4294967295 0"
+ ],
+ "c400-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0",
+  "fn mixel u32 u32 u32x4 -> u32\nx get p2 p1\nt mul p0 31\nr add t x\nret r\nend"
+ ],
+ "c400-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nret call dot p0 p0\nend"
+ ],
+ "c400-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\na mul p0 100\nb div a p1\nret call limit b 0 100\nend"
+ ],
+ "c400-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\na xor p0 p1\nret call popcnt a\nend"
+ ]
+}
