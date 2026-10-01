@@ -2973,3 +2973,19 @@ Two general limits found by an agent writing a large A0 program (a site generato
   (play types rendering) returned a record after taking its io field and now reads field 0.
   New ILL_TYPED cases io-taken-{call,ret,twice,put-other,node}; tests `io linearity: ...`,
   `optimizer: a variable loop count stays a value ...`, and the play program's put-back case.
+
+## Session 2026-09-30 (AI-edit set B in more languages: covered and uncovered)
+
+Goal: compare every exec-bench language on AI-edit acceptance and cost. Each language needs a faithful hand translation of task set B (tools/ai-edit-tasks-b.ts) and a harness (build or static check, then a generated driver whose output is compared with the A0 expected values). One module per language in `tools/edit-langs/<lang>.ts` (contract in `tools/edit-langs/spec.ts`), registered in `tools/edit-langs/index.ts`. No model replies were collected; that is a separate run. `filler`/`fillerText` (set C) are optional in the contract: the languages added in this session are set B only (`FILLER_LANGS` in tools/ai-edit-langs.ts lists those with set C).
+
+Self-check (every reference accepted, every original rejected by a wrong result, a deliberately broken file reported with the language's compile label), run by the author of each module and rerun once per module by the coordinator, one at a time: all pass.
+
+| status | languages |
+|---|---|
+| covered before (set B and C) | TypeScript, Rust, Python, Go, Java, C#, C++ |
+| covered, set B and C | Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig |
+| covered, set B only (this batch) | C, JavaScript, Lua, Perl, Tcl, Objective-C, Fortran, Dart, Nim, Groovy, Clojure, VB.NET, F#, Scala |
+| not yet done (toolchain installed; deferred because of machine load) | Erlang, Julia, R, Crystal, D, Pascal, Racket, Common Lisp, COBOL, Prolog, Guile, Chicken, Smalltalk, Forth, Haxe, V, Odin, Vala, Gleam |
+| failed or impossible | none so far |
+
+Representation notes: C, Objective-C, F#, VB.NET use native uint32 (VB with integer checks removed); Fortran, Dart, Lua, Perl, Tcl, Clojure, Groovy, Scala, Nim-free languages use a wider integer masked with 0xFFFFFFFF after each operation that can leave the range (Fortran multiplies through an exact 16-bit-split helper, because a 32x32 product overflows int64; Clojure uses unchecked-multiply); Nim uses uint32. Objective-C selectors have unlabeled extra parts because the driver only knows A0 parameter types.

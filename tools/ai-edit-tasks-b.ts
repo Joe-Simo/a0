@@ -24,7 +24,7 @@ export interface Task {
   readonly tests: readonly AcceptanceCase[];
   /** Reference solutions, used only to validate the harness itself. */
   readonly reference: { readonly a0: string; readonly ts: string; readonly rust: string };
-  /** Whole files (original and reference) in the five further languages, when translated. */
+  /** Whole files (original and reference) in the further languages, when translated. */
   readonly langs?: Readonly<Record<Lang, { readonly source: string; readonly reference: string }>>;
 }
 
