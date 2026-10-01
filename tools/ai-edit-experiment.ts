@@ -120,6 +120,13 @@ const A0_NUMBERED_VIEW = process.env.A0_EXPERIMENT_A0_VIEW === 'numbered';
 // handles) and its replies are dense text; the program, the acceptance tests and the checker
 // are the same.
 const A0_DENSE_VIEW = process.env.A0_EXPERIMENT_DENSE === '1';
+// A0_EXPERIMENT_DENSE_VIEW=lean: with the dense view, show only the function view (no handle line,
+// no program handle): the reply is applied to the one open handle, which is implied.
+const A0_LEAN_VIEW =
+  A0_DENSE_VIEW && ['lean', 'bare'].includes(process.env.A0_EXPERIMENT_DENSE_VIEW ?? '');
+// 'bare' also drops the callee signature lines (scope function instead of deps).
+const A0_BARE_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bare';
+const withoutHandle = (view: string): string => view.slice(view.indexOf('\n') + 1);
 const PROTOCOL_STRUCTURED_A0 = `The view starts with edit handles. Reply with only the edit lines the guide describes (${A0_NUMBERED_VIEW ? 'numbered or ' : ''}instruction lines edit the shown function; \`fn\` blocks or \`-fn name\` edit the program), bare: no code fence, no handle line.`;
 // Primer-free A0 structured protocol (A0_EXPERIMENT_PRIMER=none|lazy): the edit rules of the
 // guide's EDIT line, stated on their own, so the system text is the edit protocol only and the
@@ -418,10 +425,16 @@ async function buildCell(
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
       const fnView = session.open(fnName, {
-        scope: 'deps',
+        scope: A0_BARE_VIEW ? 'function' : 'deps',
         numbered: A0_NUMBERED_VIEW,
         dense: A0_DENSE_VIEW,
       }).text; // e0
+      if (A0_LEAN_VIEW)
+        return {
+          cell: { representation, protocol, ...primers, system, view: withoutHandle(fnView) },
+          session,
+          handle,
+        };
       const progView = session.openProgram({
         scope: programScope,
         target: fnName,
@@ -639,7 +652,9 @@ async function runTrial(
       applied.error === undefined
     ) {
       // Handles are stable: show the current text under the same e0 / g0.
-      nextView = `${session.view('e0')}\n${session.view('g0')}`;
+      nextView = A0_LEAN_VIEW
+        ? withoutHandle(session.view('e0'))
+        : `${session.view('e0')}\n${session.view('g0')}`;
     }
     const rejection = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
     // Lazy primer: sent once, with the first repair after a reply the checker could not accept

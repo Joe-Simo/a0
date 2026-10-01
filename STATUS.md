@@ -3358,3 +3358,28 @@ Rank among the 49 subjects (48 languages plus the subject), W/T/L against the 48
 | cost, unbounded | 30 | 8 (138 against Ruby 115) | 39 / 2 / 7 |
 
 Losses, recorded and not hidden: acceptance after the repair is 23/24 for dense, as for canonical, and 33 languages reach 24/24 (one trial, a wrong output by Haiku, stays unresolved); Ruby is ahead of dense on 10 tasks and, with Kotlin, OCaml, JavaScript, Common Lisp, Crystal and D, on unbounded sessions (Ruby reads 85 and writes 19 tokens per task against dense 99 and 23, with a 217-token primer that a long session amortizes). Dense cuts reading from 119 to 99 tokens and writing from 35 to 23 against canonical, which is what moves the 10-task rank from 23 to 2 and the unbounded rank from 30 to 8. Sample: 24 trials per cell, so a difference of one or two trials in acceptance is within noise; the canonical cell here is the b48 collection, a second fresh canonical collection on the same set (this session) costs 321 / 194 / 180 against its 326 / 199 / 185.
+
+### Dense session-cost levers (set b first, then a, d, e, f)
+
+Aim: the rows where dense A0 still lost in the 49-language set-B table (10 tasks 156 against Ruby 141, unbounded 138 against 115). Method as before: fresh Haiku and Sonnet subagents, one shot plus one retry by a fresh subagent given the rejection, o200k tokens, system text 1.25x on the first call and 0.05x after. Results: `results/ai-edit-experiment.{a,b,d,e,f}.{haiku,sonnet}-dense-{lean,lean2,lean3,lean4,bare}*.json`, `results/ai-edit-b48-dense.json`, `results/dense-experiment.json`.
+
+Found first: `b-sumfrom-eight` had no `target`, so the A0 view showed its helper `addi`, not `sumfrom`, which holds the bug (models rewrote `sumfrom` from the instruction). The task now names its target (`tools/ai-edit-tasks-b.ts`); the earlier canonical and dense cells of that table were collected with the old view, so the table's canonical A0 row is not re-collected.
+
+| lever | what | result (a-f, both models, 124 trials unless stated) |
+|---|---|---|
+| 1 read: lean view | function view only: no handle line (the reply applies to the one open function), no program handle with its signature lines | adopted. Read per task 74 to 54 tokens; one shot 114/124 (dense 111, canonical 111), after retry 122/124 (dense 114, canonical 120); cost 272 / 115 / 98 for 1 task / 10 tasks / unbounded against dense 299 / 142 / 125 and canonical 285 / 158 / 144 |
+| 1b read: bare view | also drop the callee signature lines | not adopted: set b only, 3.5 fewer tokens per task (54 to 50), one shot 22/24 as lean, Haiku fails the same two tasks; callee arities are what fold and call replies need |
+| 2 write: edit-line replies | `ret EXPR` and `ID EXPR` replies instead of whole functions | rejected: set b one shot 15/24 against 22/24 (Haiku 6/12 against 10/12, Sonnet 9/12 against 12/12); models mixed bare lines with `fn` blocks, and the system text is 21 tokens longer; replies shrink to 14 tokens only because they fail. This is the earlier numbered-edit failure in another form |
+| 3 primer 145 to 124 (`MODEL_GUIDE.dense3.txt`, op list cut) | | not adopted: one shot 107/124, after retry 115/124 (Haiku f 6/13 one shot); cost 256 / 123 / 108, worse than lean at 10 tasks and unbounded. 108 tokens (`MODEL_GUIDE.dense4.txt`): set b one shot 20/24 |
+| 4 inline fold and loop bodies | done earlier (arrfill 31, loop64 29 tokens) | nothing further |
+
+Ranks in the 49-language set-B table (`results/ai-edit-b48-dense.json`, proto2; the subject against the 48 languages; W/T/L against the 48 with a 1% cost band; 24 trials per cell, set b only). The earlier dense cell is `a0-dense`; the lean cell is `a0-dense-lean`; `a0-dense-lean3` is the 124-token primer:
+
+| subject | 1 task | 10 tasks | unbounded | one shot | after repair |
+|---|---|---|---|---|---|
+| canonical A0 | 326, rank 1 | 199, rank 23 | 185, rank 30 | 21/24 | 23/24 |
+| a0-dense (before) | 312, rank 1 (48/0/0) | 156, rank 2 (46/1/1) | 138, rank 8 (39/2/7) | 23/24 | 23/24, rank 34 |
+| a0-dense-lean | 297, rank 1 (48/0/0) | 141, rank 1 (47/1/0, a tie with Ruby 141) | 123, rank 2 (47/0/1) | 22/24, rank 21 | 24/24, rank 1 (33 ties) |
+| a0-dense-lean3 | 284, rank 1 | 150, rank 2 | 135, rank 4 | 22/24 | 22/24, rank 48 |
+
+Remaining loss: unbounded sessions, 123 against Ruby 115. Ruby reads 85 and writes 19 tokens per task; the lean cell reads 77 and writes 26 (the write mean includes the retried replies of the two Haiku tasks that fail first, `b-bounds-largest` and `b-checksum-poly`, which every form fails once). One fewer retry in twelve tasks is about 8 tokens, so that row is within the noise of 24 trials and not yet won. The harness variable is `A0_EXPERIMENT_DENSE_VIEW=lean|bare`; the MCP tool `a0_open` takes `lean: true` for the same view (test/mcp.test.ts).

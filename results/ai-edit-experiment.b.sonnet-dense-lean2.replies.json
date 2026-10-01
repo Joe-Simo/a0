@@ -1,0 +1,38 @@
+{
+  "b-fits-inclusive/a0/structured": [
+    "ret le A B"
+  ],
+  "b-sumfrom-eight/a0/structured": [
+    "r fold addi 8 A"
+  ],
+  "b-rot8-constant/a0/structured": [
+    "fn rot8 or << A 8 >> A 24"
+  ],
+  "b-onlyone-xor/a0/structured": [
+    "ret xor A B"
+  ],
+  "b-avgfloor-nowrap/a0/structured": [
+    "fn avgfloor add and A B >> xor A B 1"
+  ],
+  "b-sumsq-array/a0/structured": [
+    "fn addel u32 u32 u32x4 -> u32\nx get C B\nmul x x A"
+  ],
+  "b-inrange-inclusive/a0/structured": [
+    "fn inrange -> bool and ge A B le A C"
+  ],
+  "b-bounds-largest/a0/structured": [
+    "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get C B\nlo at A 0\nhi at A 1\n(select lt x lo x lo select gt x hi x hi)"
+  ],
+  "b-checksum-poly/a0/structured": [
+    "r fold mixel 4 7 A\nfn mixel u32 u32 u32x4 -> u32\nmul A 31 get C B"
+  ],
+  "b-norm2-dot/a0/structured": [
+    "fn norm2 u32x4 -> u32\ndot A A"
+  ],
+  "b-pctof-limit/a0/structured": [
+    "fn pctof\np mul A 100 0\nv div p B\nlimit v 0 100"
+  ],
+  "b-hamming-popcnt/a0/structured": [
+    "fn hamming\npopcnt xor A B"
+  ]
+}
