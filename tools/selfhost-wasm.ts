@@ -644,6 +644,8 @@ export function a0OptimizeProgram(
   exe: string,
   program: TypedProgram,
   reference?: readonly Body[],
+  /** Bodies to use for functions that do not fit a run (a check only: the result is then not A0's). */
+  fallback?: readonly Body[],
 ): OptimizedProgram {
   const fns = program.functions;
   const index = new Map(fns.map((f, i) => [f.name, i] as const));
@@ -669,13 +671,16 @@ export function a0OptimizeProgram(
             : { g: f, body: lib(f), supplied: supplied.has(f) },
       );
       const enc = encodeSpace(entries, g);
-      if (!enc.fits) throw new Error(`${(fns[g] as Func).name}: callee closure does not fit`);
+      if (!enc.fits) {
+        if (fallback === undefined)
+          throw new Error(`${(fns[g] as Func).name}: callee closure does not fit`);
+        bodies.push(fallback[g] as Body);
+        break;
+      }
       const r = runTool32(exe, [MODE.optimize, ...enc.words]);
       runs += 1;
       if (r.code === 0) {
-        bodies.push(
-          decodeBody(r.out, decodeTypes(enc.tb.types, enc.tb.tlist), space, orig),
-        );
+        bodies.push(decodeBody(r.out, decodeTypes(enc.tb.types, enc.tb.tlist), space, orig));
         break;
       }
       if (r.code !== NEEDS_BODIES)
