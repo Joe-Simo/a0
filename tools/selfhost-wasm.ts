@@ -34,7 +34,6 @@
  *   results/selfhost-wasm.json.
  */
 
-import { spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -59,7 +58,7 @@ import {
 } from '../src/core.js';
 import { link } from '../src/link.js';
 import { optimizeFunction } from '../src/optimize.js';
-import { findClang, runTool, type ToolInfo } from '../src/toolchain.js';
+import { findClang, runTool, spawnWithInput, type ToolInfo } from '../src/toolchain.js';
 import { type WasmLayout, wasmModuleBytes } from '../src/wasm.js';
 import {
   BUILD_DIR,
@@ -181,7 +180,7 @@ export async function buildWasmTool(clang: ToolInfo): Promise<WasmTool> {
 function runTool32(exe: string, words: readonly number[]): { code: number; out: Uint32Array } {
   const input = Buffer.alloc(words.length * 4);
   for (const [i, w] of words.entries()) input.writeUInt32LE(w >>> 0, i * 4);
-  const r = spawnSync(exe, [], { input, timeout: 600_000, maxBuffer: 1 << 28 });
+  const r = spawnWithInput(exe, input, { timeout: 600_000, maxBuffer: 1 << 28 });
   if (r.status === null || r.status > NEEDS_BODIES)
     throw new Error(`${exe} failed (${r.status ?? r.signal}): ${r.stderr?.toString() ?? ''}`);
   const out = new Uint32Array(r.stdout.length / 4);

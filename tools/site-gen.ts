@@ -9,13 +9,12 @@
  * per io word.
  */
 
-import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
-import { findClang, runTool } from '../src/toolchain.js';
+import { findClang, runTool, spawnWithInput } from '../src/toolchain.js';
 import { checkOperandBudget } from './site-budget.js';
 
 export const GENERATOR = join('site', 'gen', 'sitegen.a0');
@@ -121,8 +120,7 @@ export async function generate(
   template: string,
   options: { readonly budget?: boolean } = {},
 ): Promise<string> {
-  const r = spawnSync(binary, [], {
-    input: await generatorInput(template),
+  const r = spawnWithInput(binary, await generatorInput(template), {
     maxBuffer: 64 << 20,
     timeout: 600_000,
   });
