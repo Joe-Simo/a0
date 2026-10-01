@@ -1032,6 +1032,10 @@ c putnum %a
 >
 >
 ]
+}
+# The edit-cost chart is two section functions: one function holds at most 2816 nodes in the A0 toolchain
+# (tools/site-budget.ts) and each row loop expands to a node per language.
+{chart_ec2
 .details more
 <summary
 "Show all $ecrows$ rows ($n_langs1$ languages, A0 in two forms)

@@ -1,6 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
-#define A0_IO_INPUT_CAPACITY 17412u
+#define A0_IO_INPUT_CAPACITY 132100u
 #define A0_IO_OUTPUT_CAPACITY 4194304u
 #include "emitter.c"
 static a0_io io;

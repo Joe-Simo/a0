@@ -6,7 +6,12 @@ import { test } from 'node:test';
 import { makeIo, run, type TypedFunc } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang } from '../src/toolchain.js';
-import { checkOperandBudget, functionBudgets, OPERAND_LIMIT } from '../tools/site-budget.js';
+import {
+  checkOperandBudget,
+  functionBudgets,
+  NODE_LIMIT,
+  OPERAND_LIMIT,
+} from '../tools/site-budget.js';
 import { buildGenerator, generate } from '../tools/site-gen.js';
 import { prerender, renderWords } from '../tools/site-render.js';
 
@@ -129,6 +134,18 @@ test('the generator refuses a function above 75% of the operand table, naming it
   );
   checkOperandBudget(
     `fn session io -> u32\nx text "${'a'.repeat(1000)}"\nret 0\nend\n`,
+    'page.tpl',
+  );
+});
+
+test('the generator refuses a function above the node table, naming it', () => {
+  const lines = Array.from({ length: NODE_LIMIT + 1 }, (_, i) => `x${i} add p0 1`).join('\n');
+  assert.throws(
+    () => checkOperandBudget(`fn session io -> u32\n${lines}\nret x0\nend\n`, 'page.tpl'),
+    /page\.tpl: session has 2777 nodes, above 2776/,
+  );
+  checkOperandBudget(
+    `fn session io -> u32\n${lines.split('\n').slice(0, 100).join('\n')}\nret x0\nend\n`,
     'page.tpl',
   );
 });

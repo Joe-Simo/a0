@@ -1,0 +1,651 @@
+# The reference evaluator of the A0 optimizer (compiler/optimize.a0): src/core.ts `run` and `exec`
+# on the checked paged IR (functions u32x128x45, nodes u32x128x132, operands u32x128x512), for
+# constant folding of calls and folds with literal operands; `ozop` is src/core.ts `evalOp` on
+# scalars. Hand-written (not generated).
+
+use "emit_wasm.a0"
+
+# ---------------------------------------------------------------------------------------------
+# Scalar operations (src/core.ts `evalOp` on u32 and bool, bools as 0/1): op p0 on p1 p2 p3.
+# A0's own div/rem (a zero divisor gives all ones / the dividend) and shifts (low five bits)
+# are evalOp's.
+
+fn ozop u32 u32 u32 u32 -> u32
+v2 add p1 p2
+v3 sub p1 p2
+v4 mul p1 p2
+v5 and p1 p2
+v6 or p1 p2
+v7 xor p1 p2
+v8 shl p1 p2
+v9 shr p1 p2
+v10 div p1 p2
+v11 rem p1 p2
+b12 eq p1 p2
+b13 ne p1 p2
+b14 lt p1 p2
+b15 le p1 p2
+b16 gt p1 p2
+b17 ge p1 p2
+v12 select b12 1 0
+v13 select b13 1 0
+v14 select b14 1 0
+v15 select b15 1 0
+v16 select b16 1 0
+v17 select b17 1 0
+c ne p1 0
+v18 select c p2 p3
+o2 eq p0 2
+o3 eq p0 3
+o4 eq p0 4
+o5 eq p0 5
+o6 eq p0 6
+o7 eq p0 7
+o8 eq p0 8
+o9 eq p0 9
+o10 eq p0 10
+o11 eq p0 11
+o12 eq p0 12
+o13 eq p0 13
+o14 eq p0 14
+o15 eq p0 15
+o16 eq p0 16
+o17 eq p0 17
+o18 eq p0 18
+r2 select o2 v2 p1
+r3 select o3 v3 r2
+r4 select o4 v4 r3
+r5 select o5 v5 r4
+r6 select o6 v6 r5
+r7 select o7 v7 r6
+r8 select o8 v8 r7
+r9 select o9 v9 r8
+r10 select o10 v10 r9
+r11 select o11 v11 r10
+r12 select o12 v12 r11
+r13 select o13 v13 r12
+r14 select o14 v14 r13
+r15 select o15 v15 r14
+r16 select o16 v16 r15
+r17 select o17 v17 r16
+r18 select o18 v18 r17
+ret r18
+end
+
+# ---------------------------------------------------------------------------------------------
+# The evaluator (src/core.ts `exec`). Machine table u32x128x512: scalars 0 status (0 running,
+# 1 done, 2 fuel exhausted, 3 a capacity below is full, 4 an io operation), 1 fuel, 2 frames,
+# 3 env top, 4 heap top, 5 result, 6 a frame has just returned (its value in 5), 7-14 the
+# root (op, operand count, body or callee, predicate, trip, count, state, phase: 0 start,
+# 1 awaiting the predicate, 2 the body, 3 the callee); 64-127 the root's operand values;
+# frames from 128, 8 words each (function, env base, next node, phase: 0 idle, 1 awaiting
+# the predicate, 2 the body, 3 the callee, 4 iterating; trip, count, state, parameter count),
+# at most 1024 (the word above the top frame is scratch); env 8336-24703 (per frame its
+# parameters, then its node values); heap 24704-65535: an array or record is a block (length,
+# elements) and its value the block's index. Values are immutable, so blocks are shared.
+
+# copy word p1 of a block or a parameter list to p3 + p1: mode p4 0 operand p5 + p1 of the
+# frame with env base p6 and p7 parameters, 1 root operand p1, 2 word p8 + p1 (word p9 is p10);
+# the first p13 words are p11, p12
+fn evcp u32x128x512 u32 u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+pi add p5 p1
+o_x mul pi 2
+o_k_p shr o_x 7
+o_k_g get p2 o_k_p
+o_k_w and o_x 127
+o_k get o_k_g o_k_w
+o_w1 add o_k_w 1
+o_v get o_k_g o_w1
+o_r rec o_k o_v
+o mov o_r
+ok at o 0
+ov at o 1
+isn eq ok 1
+s1 add p6 p7
+s2 add s1 ov
+s3 add p6 ov
+os select isn s2 s3
+os_p shr os 7
+os_g get p0 os_p
+os_w and os 127
+om get os_g os_w
+lit ge ok 3
+opv select lit ov om
+ri add 64 p1
+ri_p shr ri 7
+ri_g get p0 ri_p
+ri_w and ri 127
+rv get ri_g ri_w
+bi add p8 p1
+bi_p shr bi 7
+bi_g get p0 bi_p
+bi_w and bi 127
+bv get bi_g bi_w
+isr eq p1 p9
+blk select isr p10 bv
+m0 eq p4 0
+m1 eq p4 1
+v1 select m1 rv blk
+v2 select m0 opv v1
+spc lt p1 p13
+k0 eq p1 0
+xv select k0 p11 p12
+val select spc xv v2
+di add p3 p1
+d_p shr di 7
+d_g get p0 d_p
+d_w and di 127
+d_h set d_g d_w val
+r set p0 d_p d_h
+ret r
+end
+# root operand p1 from the list p2
+fn evarg u32x128x512 u32 u32x64 -> u32x128x512
+v get p2 p1
+di add 64 p1
+d_p shr di 7
+d_g get p0 d_p
+d_w and di 127
+d_h set d_g d_w v
+r set p0 d_p d_h
+ret r
+end
+fn evgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 -> bool
+s_g get p0 0
+s get s_g 0
+r eq s 0
+ret r
+end
+# One machine step. Cases: a frame has returned (deliver its value to the top frame or the
+# root), the root starts a call or a trip, or the top frame returns (its nodes are done),
+# executes its next node, or starts its fold/loop's next trip. At most one frame is pushed
+# (its parameters copied by the trailing `evcp` fold) or one block allocated per step.
+fn evstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 -> u32x128x512
+s0 get p0 0
+fuel get s0 1
+nfr get s0 2
+etop get s0 3
+htop get s0 4
+res get s0 5
+rtd get s0 6
+rop get s0 7
+rcal get s0 9
+rprd get s0 10
+ri get s0 11
+rcnt get s0 12
+rst get s0 13
+rph get s0 14
+hasf ne nfr 0
+dm sub nfr 1
+dd select hasf dm 0
+d8 mul dd 8
+fb add 128 d8
+fb_p shr fb 7
+fpg get p0 fb_p
+fo and fb 127
+fe get fpg fo
+fo1 add fo 1
+fbase get fpg fo1
+fo2 add fo 2
+fcur get fpg fo2
+fo3 add fo 3
+fph get fpg fo3
+fo4 add fo 4
+fi get fpg fo4
+fo5 add fo 5
+fcnt get fpg fo5
+fo6 add fo 6
+fst get fpg fo6
+fo7 add fo 7
+fnp get fpg fo7
+fe7 mul fe 7
+ffirst_w add fe7 4
+ffirst_wp shr ffirst_w 7
+ffirst_wg get p2 ffirst_wp
+ffirst_wl and ffirst_w 127
+ffirst_v get ffirst_wg ffirst_wl
+ffirst mov ffirst_v
+fnn_w add fe7 5
+fnn_wp shr fnn_w 7
+fnn_wg get p2 fnn_wp
+fnn_wl and fnn_w 127
+fnn_v get fnn_wg fnn_wl
+fnn mov fnn_v
+fret_w add fe7 6
+fret_wp shr fret_w 7
+fret_wg get p2 fret_wp
+fret_wl and fret_w 127
+fret_v get fret_wg fret_wl
+fret mov fret_v
+atend ge fcur fnn
+gn add ffirst fcur
+op_r6 mul gn 6
+op_i add op_r6 1
+op_v_p shr op_i 7
+op_v_g get p3 op_v_p
+op_v_w and op_i 127
+op_v get op_v_g op_v_w
+op mov op_v
+na_r6 mul gn 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p3 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul gn 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p3 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+cal_r6 mul gn 6
+cal_i add cal_r6 4
+cal_v_p shr cal_i 7
+cal_v_g get p3 cal_v_p
+cal_v_w and cal_i 127
+cal_v get cal_v_g cal_v_w
+cal mov cal_v
+prd_r6 mul gn 6
+prd_i add prd_r6 5
+prd_v_p shr prd_i 7
+prd_v_g get p3 prd_v_p
+prd_v_w and prd_i 127
+prd_v get prd_v_g prd_v_w
+prd mov prd_v
+vb add fbase fnp
+# the values of operands 0 1 2 in the frame
+ao_x mul fa 2
+ao_k_p shr ao_x 7
+ao_k_g get p4 ao_k_p
+ao_k_w and ao_x 127
+ao_k get ao_k_g ao_k_w
+ao_w1 add ao_k_w 1
+ao_v get ao_k_g ao_w1
+ao_r rec ao_k ao_v
+ao mov ao_r
+ak at ao 0
+aw at ao 1
+an eq ak 1
+as1 add vb aw
+as2 add fbase aw
+as select an as1 as2
+as_p shr as 7
+as_g get p0 as_p
+as_w and as 127
+am get as_g as_w
+al ge ak 3
+av select al aw am
+fa1 add fa 1
+bo_x mul fa1 2
+bo_k_p shr bo_x 7
+bo_k_g get p4 bo_k_p
+bo_k_w and bo_x 127
+bo_k get bo_k_g bo_k_w
+bo_w1 add bo_k_w 1
+bo_v get bo_k_g bo_w1
+bo_r rec bo_k bo_v
+bo mov bo_r
+bk at bo 0
+bw at bo 1
+bn eq bk 1
+bs1 add vb bw
+bs2 add fbase bw
+bs select bn bs1 bs2
+bs_p shr bs 7
+bs_g get p0 bs_p
+bs_w and bs 127
+bm get bs_g bs_w
+bl ge bk 3
+bv select bl bw bm
+fa2 add fa 2
+co_x mul fa2 2
+co_k_p shr co_x 7
+co_k_g get p4 co_k_p
+co_k_w and co_x 127
+co_k get co_k_g co_k_w
+co_w1 add co_k_w 1
+co_v get co_k_g co_w1
+co_r rec co_k co_v
+co mov co_r
+ck at co 0
+cw at co 1
+cn eq ck 1
+cs1 add vb cw
+cs2 add fbase cw
+cs select cn cs1 cs2
+cs_p shr cs 7
+cs_g get p0 cs_p
+cs_w and cs 127
+cm get cs_g cs_w
+cl ge ck 3
+cv select cl cw cm
+# the value of the frame's ret operand (kind 5: the operand at args pair value)
+rk0 shr fret 28
+rv0 and fret 268435455
+rk5 eq rk0 5
+r5_x mul rv0 2
+r5_k_p shr r5_x 7
+r5_k_g get p4 r5_k_p
+r5_k_w and r5_x 127
+r5_k get r5_k_g r5_k_w
+r5_w1 add r5_k_w 1
+r5_v get r5_k_g r5_w1
+r5_r rec r5_k r5_v
+r5 mov r5_r
+r5k at r5 0
+r5v at r5 1
+rk select rk5 r5k rk0
+rvv select rk5 r5v rv0
+rn eq rk 1
+rs1 add vb rvv
+rs2 add fbase rvv
+rsl select rn rs1 rs2
+rsl_p shr rsl 7
+rsl_g get p0 rsl_p
+rsl_w and rsl 127
+rm get rsl_g rsl_w
+rl ge rk 3
+retf select rl rvv rm
+# the node's value slot
+sl add vb fcur
+sl_p shr sl 7
+sl_g get p0 sl_p
+sl_w and sl 127
+slo get sl_g sl_w
+# the block of operand 0 (get at set put): its length and the element read
+bl_p shr av 7
+bl_g get p0 bl_p
+bl_w and av 127
+blen get bl_g bl_w
+gidx rem bv blen
+isget eq op 25
+isset eq op 26
+eidx select isget gidx bv
+jidx select isset gidx bv
+ea1 add av 1
+ea add ea1 eidx
+ea_p shr ea 7
+ea_g get p0 ea_p
+ea_w and ea 127
+gv get ea_g ea_w
+# the case
+rt ne rtd 0
+nrt select rt false true
+nhf select hasf false true
+isa and rt hasf
+isb and rt nhf
+isc and nrt nhf
+isd and nrt hasf
+nae select atend false true
+isd1 and isd atend
+isdn and isd nae
+ph0 eq fph 0
+ph4 eq fph 4
+isd2 and isdn ph0
+isd3 and isdn ph4
+iscall eq op 19
+isfo eq op 20
+islp eq op 21
+isfl or isfo islp
+o22 eq op 22
+o23 eq op 23
+o24 eq op 24
+agg1 or o22 o23
+isagg or agg1 o24
+isput eq op 28
+isup or isset isput
+isio ge op 29
+issc le op 18
+isnew or isagg isup
+pv0 call ozop op av bv cv
+pv1 select issc pv0 gv
+pv select isnew htop pv1
+np1 or iscall isfl
+np2 or np1 isio
+plain select np2 false true
+d2p and isd2 plain
+d2c and isd2 iscall
+d2f and isd2 isfl
+d2io and isd2 isio
+more lt fi fcnt
+nmore select more false true
+d3m and isd3 more
+d3e and isd3 nmore
+fph1 eq fph 1
+fph2 eq fph 2
+fph3 eq fph 3
+rtrue eq res 1
+nrtrue select rtrue false true
+a3 and isa fph3
+a1 and isa fph1
+a1t and a1 rtrue
+a1f and a1 nrtrue
+a2 and isa fph2
+rph1 eq rph 1
+rph2 eq rph 2
+rph3 eq rph 3
+b3 and isb rph3
+b1 and isb rph1
+b1t and b1 rtrue
+b1f and b1 nrtrue
+b2 and isb rph2
+rcall eq rop 19
+rlp eq rop 21
+nrcall select rcall false true
+rmore lt ri rcnt
+nrmore select rmore false true
+c1 and isc rcall
+cfl and isc nrcall
+c2 and cfl rmore
+c3 and cfl nrmore
+# the pushed frame: from the top frame (its node's operands) or from the root
+pf1 or d2c d3m
+pframe or pf1 a1t
+pr1 or b1t c1
+proot or pr1 c2
+push or pframe proot
+ed3 select islp prd cal
+ef1 select d3m ed3 cal
+ec2 select rlp rprd rcal
+er1 select c2 ec2 rcal
+pe select pframe ef1 er1
+pe7 mul pe 7
+pnp_w add pe7 1
+pnp_wp shr pnp_w 7
+pnp_wg get p2 pnp_wp
+pnp_wl and pnp_w 127
+pnp_v get pnp_wg pnp_wl
+pnp mov pnp_v
+pnn_w add pe7 5
+pnn_wp shr pnn_w 7
+pnn_wg get p2 pnn_wp
+pnn_wl and pnn_w 127
+pnn_v get pnn_wg pnn_wl
+pnn mov pnn_v
+nsp0 or d2c c1
+pnsp select nsp0 0 2
+px0 select pframe fst rst
+px1 select pframe fi ri
+# fuel: the node, a callee's entry, a trip and its entry, the copy of an aggregate
+lenc select isup blen 0
+nac select isagg na 0
+cc select iscall 1 0
+u2a add 1 cc
+u2b add u2a nac
+u2 add u2b lenc
+ud2 select isd2 u2 0
+ud3 select d3m 2 0
+up1 or a1t b1t
+up2 or up1 c1
+up3 or up2 c2
+ua select up3 1 0
+u1 add ud2 ud3
+u add u1 ua
+exh gt u fuel
+fuel2 sub fuel u
+# capacities: 1024 frames, the env, the heap
+pfull ge nfr 1024
+ptop1 add etop pnp
+ptop add ptop1 pnn
+pover gt ptop 24704
+pc1 or pfull pover
+pcap and push pc1
+alloc and isd2 isnew
+ncnt select isagg na blen
+ncopy add ncnt 1
+htop2 add htop ncopy
+aover gt htop2 65536
+acap and alloc aover
+cap or pcap acap
+dn1 or b3 b1f
+done or dn1 c3
+st1 select done 1 0
+st2 select d2io 4 st1
+st3 select cap 3 st2
+st4 select exh 2 st3
+ok1 or exh cap
+ok select ok1 false true
+# the top frame
+av1 or d2p d3e
+av2 or av1 a3
+adv or av2 a1f
+cur1 add fcur 1
+cur2 select adv cur1 fcur
+ph1a select islp 1 2
+phx1 select a2 4 fph
+phx2 select a1f 0 phx1
+phx3 select a1t 2 phx2
+phx4 select a3 0 phx3
+phx5 select d3e 0 phx4
+phx6 select d3m ph1a phx5
+phx7 select d2f 4 phx6
+phx8 select d2c 3 phx7
+fi1 add fi 1
+fix1 select a2 fi1 fi
+fix2 select d2f 0 fix1
+cnt2 select d2f av fcnt
+stx1 select a2 res fst
+stx2 select d2f bv stx1
+sv1 select a3 res fst
+slv select d2p pv sv1
+slx select adv slv slo
+# the root and the scalars
+nfr1 add nfr 1
+nfr2 sub nfr 1
+nfx1 select isd1 nfr2 nfr
+nfx2 select push nfr1 nfx1
+etx1 select isd1 fbase etop
+etx2 select push ptop etx1
+htx select alloc htop2 htop
+rr1 or b1f c3
+rsx1 select rr1 rst res
+rsx2 select isd1 retf rsx1
+rab or isa isb
+rtx1 select rab 0 rtd
+rtx2 select isd1 1 rtx1
+ri1 add ri 1
+rix select b2 ri1 ri
+rstx select b2 res rst
+rpc select rlp 1 2
+rpx1 select b2 0 rph
+rpx2 select b1t 2 rpx1
+rpx3 select c2 rpc rpx2
+rpx4 select c1 3 rpx3
+# writes: the slot, the top frame, the pushed frame (above the top: scratch when none), the
+# scalars (page 0 rewritten from its value on entry)
+sl_h set sl_g sl_w slx
+t1 set p0 sl_p sl_h
+tf_g get t1 fb_p
+tf1 set tf_g fo2 cur2
+tf2 set tf1 fo3 phx8
+tf3 set tf2 fo4 fix2
+tf4 set tf3 fo5 cnt2
+tf5 set tf4 fo6 stx2
+t2 set t1 fb_p tf5
+n8 mul nfr 8
+nb add 128 n8
+nb_p shr nb 7
+nb_o and nb 127
+nf_g get t2 nb_p
+nf1 set nf_g nb_o pe
+nb1 add nb_o 1
+nf2 set nf1 nb1 etop
+nb2 add nb_o 2
+nf3 set nf2 nb2 0
+nb3 add nb_o 3
+nf4 set nf3 nb3 0
+nb4 add nb_o 4
+nf5 set nf4 nb4 0
+nb5 add nb_o 5
+nf6 set nf5 nb5 0
+nb6 add nb_o 6
+nf7 set nf6 nb6 0
+nb7 add nb_o 7
+nf8 set nf7 nb7 pnp
+t3 set t2 nb_p nf8
+g1 set s0 0 st4
+g2 set g1 1 fuel2
+g3 set g2 2 nfx2
+g4 set g3 3 etx2
+g5 set g4 4 htx
+g6 set g5 5 rsx2
+g7 set g6 6 rtx2
+g8 set g7 11 rix
+g9 set g8 13 rstx
+g10 set g9 14 rpx4
+t4 set t3 0 g10
+# the copy: the pushed frame's parameters, or the new block (arr rec text: the operand
+# count, then the operands; set put: the old block with the element replaced)
+pc select push pnp ncopy
+pa select alloc ncopy 0
+nc0 select push pc pa
+nc select ok nc0 0
+dst select push etop htop
+md1 select pframe 0 1
+md2 select isagg 0 2
+md select alloc md2 md1
+fam sub fa 1
+aga and alloc isagg
+fa3 select aga fam fa
+ns1 select isagg 1 0
+ns select alloc ns1 pnsp
+x0 select alloc na px0
+j1 add jidx 1
+t5 fold evcp nc t4 p4 dst md fa3 fbase fnp av j1 cv x0 px1 ns
+ret t5
+end
+# Evaluate op p4 (19 call, 20 fold, 21 loop) of the eval function p5 (predicate p6) on the p7
+# literal operands p3 with fuel p8: (status, value), status 1 done, 2 fuel exhausted, 3 a
+# capacity is full, 4 an io operation
+fn evrun u32x128x45 u32x128x132 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
+z call z512
+c0 get p3 0
+c1 get p3 1
+s0 get z 0
+s1 set s0 1 p8
+s2 set s1 3 8336
+s3 set s2 4 24704
+s4 set s3 7 p4
+s5 set s4 8 p7
+s6 set s5 9 p5
+s7 set s6 10 p6
+s8 set s7 12 c0
+s9 set s8 13 c1
+m0 set z 0 s9
+m1 fold evarg 64 m0 p3
+f3 mul p8 3
+bound add f3 8
+m2 loop evgo evstep bound m1 p0 p1 p2
+g get m2 0
+st get g 0
+v get g 5
+r rec st v
+ret r
+end
+# as a fold body run once when needed
+fn evonce (u32,u32) u32 u32x128x45 u32x128x132 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
+r call evrun p2 p3 p4 p5 p6 p7 p8 p9 p10
+ret r
+end

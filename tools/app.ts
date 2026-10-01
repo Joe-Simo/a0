@@ -337,7 +337,7 @@ export async function buildEmitCCases(
     ...ILL_TYPED.slice(0, 4),
   ];
   const sources = all.filter(([, src]) => Buffer.byteLength(src) <= EMITCIO_SOURCE_LIMIT);
-  // The emitter's tables are the 16384-byte front end's: `count` pages of 128 words (types 384).
+  // The emitter's tables are the front end's: `count` pages of 128 words (types 384).
   const paged = (t: readonly number[], count: number, size = 128): number[][] =>
     Array.from({ length: count }, (_, p) => {
       const page = t.slice(p * size, p * size + size);
@@ -362,9 +362,9 @@ export async function buildEmitCCases(
         paged(r.tlist, 65),
         paged(ir.fns, 45),
         paged(ir.nodes, 128),
-        paged(ir.args, 256),
+        paged(ir.args, 512),
         paged(r.nodeTypes, 24),
-        paged(ir.pool, 129),
+        paged(ir.pool, 400),
         paged(fnm, 16),
         r.types.length / 3,
         3,

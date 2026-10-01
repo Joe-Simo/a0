@@ -2,8 +2,8 @@
 # Input: the word IR of compiler/parse.a0 (pool fns nodes args) with the checker's tables
 # (types tlist extended by the bodies, ntys: the type index of every node) and fnm, the pool
 # start and length of each function's name (words 2i, 2i+1). The tables are the paged ones of
-# the 16384-byte front end (types u32x384x65, tlist u32x128x65, fns u32x128x45, nodes
-# u32x128x128, args u32x128x256, ntys u32x128x24, pool u32x128x129, fnm u32x128x16; word w at
+# the front end (types u32x384x65, tlist u32x128x65, fns u32x128x45, nodes
+# u32x128x128, args u32x128x512, ntys u32x128x24, pool u32x128x400, fnm u32x128x16; word w at
 # page w>>7, a type's triple at page t>>7), read inline; an operand list is walked a page (64
 # operands) at a time. Output: C source bytes, one byte per io word. Scalars are
 # uint32_t/bool, arrays and records are structs by value (`a0t<type index>` with `e[N]` /
@@ -31,7 +31,7 @@
 # operands, S the node's name, L0 L1 the array lengths, V1 the literal of B, NA the count.
 # `emitc` emits types [tfrom, ntypes) and functions [from, to) (plus the prelude when head is
 # 1), so a large program is emitted in chunks; `cunit` runs lex, parse and check (lex.a0,
-# parse.a0, check.a0 `checkir`) and builds fnm; `emitcio` runs it on up to 16384 source bytes
+# parse.a0, check.a0 `checkir`) and builds fnm; `emitcio` runs it on up to 131072 source bytes
 # and writes the C bytes (nothing on an error); its result is the diagnostic code.
 
 use "check.a0"
@@ -259,7 +259,7 @@ r fold cwtst n p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p1
 ret r
 end
 # "a0_" is written by the caller; the name bytes pool[start..start+len) when p1
-fn cnmst io u32 u32x128x129 u32 -> io
+fn cnmst io u32 u32x128x400 u32 -> io
 j add p3 p1
 jp shr j 7
 pg get p2 jp
@@ -268,7 +268,7 @@ b get pg jl
 w write p0 b
 ret w
 end
-fn cwnm io bool u32x128x129 u32 u32 -> io
+fn cwnm io bool u32x128x400 u32 u32 -> io
 n select p1 p4 0
 r fold cnmst n p0 p2 p3
 ret r
@@ -350,7 +350,7 @@ o call cws6c m agg 59 0 0 0 0 0
 ret o
 end
 # args page p7 + p1 (64 operands) of the operand list [p5, p6) (p5: its first operand)
-fn clpg io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32 u32 u32 u32 u32x128x24 u32 -> io
+fn clpg io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32 u32 u32 u32 u32x128x24 u32 -> io
 pi add p7 p1
 pg get p3 pi
 b mul pi 64
@@ -362,7 +362,7 @@ r fold clst cnt p0 p2 pg p4 lo p5 p8 p9
 ret r
 end
 # the operand list from index p5 of the node, a page at a time (roots p6, variant p7)
-fn cwlist io bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32 u32 u32x128x24 u32 -> io
+fn cwlist io bool (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32 u32 u32x128x24 u32 -> io
 fa at p2 10
 na at p2 11
 lo add fa p5
@@ -415,7 +415,7 @@ r and p0 lz
 ret r
 end
 # args page p5 + p1 of the operands [p3, p4)
-fn czpg bool u32 u32x128x256 u32 u32 u32 -> bool
+fn czpg bool u32 u32x128x512 u32 u32 u32 -> bool
 pi add p5 p1
 pg get p2 pi
 b mul pi 64
@@ -430,7 +430,7 @@ end
 # types tlist pool fnm); a table word w is read from page w>>7 (types: triple t from page t>>7);
 # in variant p12 with the roots p11 (crt): a node that updates its operand in place declares no
 # local of its own
-fn cnode io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32 u32 u32x128x24 u32 -> io
+fn cnode io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32 u32 u32x128x24 u32 -> io
 g add p9 p1
 b6 mul g 6
 b1 add b6 1
@@ -833,7 +833,7 @@ r set p0 sp pg2
 ret r
 end
 # args page p5 + p1 (64 operands) of the operands [p3, p4) of node p6 (p7: get or at)
-fn cuspg u32x128x64 u32 u32x128x256 u32 u32 u32 u32 bool -> u32x128x64
+fn cuspg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 bool -> u32x128x64
 pi add p5 p1
 pg get p2 pi
 b mul pi 64
@@ -845,7 +845,7 @@ r fold cusa cnt p0 pg lo p3 p6 p7
 ret r
 end
 # the operands of node p1 of the function whose first node is p4, a page at a time
-fn cusn u32x128x64 u32 u32x128x128 u32x128x256 u32 -> u32x128x64
+fn cusn u32x128x64 u32 u32x128x128 u32x128x512 u32 -> u32x128x64
 g add p4 p1
 b6 mul g 6
 b1 add b6 1
@@ -911,7 +911,7 @@ r set p0 cp cg2
 ret r
 end
 # args page p5 + p1 (64 operands) of the operands [p3, p4) of node p6
-fn cbrpg u32x128x64 u32 u32x128x256 u32 u32 u32 u32 -> u32x128x64
+fn cbrpg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x64
 pi add p5 p1
 pg get p2 pi
 b mul pi 64
@@ -924,7 +924,7 @@ ret r
 end
 # node p1 of the function whose first node is p6 (tables nodes args ntys types): its borrow
 # reads, then whether it is a borrow itself
-fn cbrn u32x128x64 u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32 -> u32x128x64
+fn cbrn u32x128x64 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32 -> u32x128x64
 g add p6 p1
 b6 mul g 6
 b1 add b6 1
@@ -1022,7 +1022,7 @@ end
 # borrow table p11; a set/put may read one itself). A borrowed read's root is `(*n<j>)`
 # (6 * 2^28 + j). Node p1 of the function with first node p7, variant p8 (0 value, 1 owned,
 # 2 ref), use statistics p6, ret operand (p9 p10); tables nodes args ntys types.
-fn crt u32x128x24 u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x64 u32 u32 u32 u32 u32x128x64 -> u32x128x24
+fn crt u32x128x24 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x64 u32 u32 u32 u32 u32x128x64 -> u32x128x24
 g add p7 p1
 b6 mul g 6
 b1 add b6 1
@@ -1141,7 +1141,7 @@ end
 # variant p11 (0 value `a0_f`, 1 owned `void a0o_f(T *p0, ...)` updating the state through
 # the pointer, 2 ref `bool a0r_f(const T *p0, ...)`) of function p9 with use statistics p10
 # and borrow table p12 (tables p1-p8: nodes args ntys types tlist pool fnm fns)
-fn cvar io u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
+fn cvar io u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
 b mul p9 7
 np call cfw p8 b 1
 fp call cfw p8 b 2
@@ -1224,7 +1224,7 @@ m1 call cws6c m emit 2619 0 0 0 0 0
 o call cws6 m1 658045 0 0 0 0 0
 ret o
 end
-fn cvarst io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
+fn cvarst io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
 r call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13
 ret r
 end
@@ -1232,7 +1232,7 @@ end
 # then the owned variant when p0 is an array or record, p1 is u32 and the result is p0's type
 # (a fold or loop body over aggregate state), and the ref variant when the result is bool
 # instead (a loop predicate)
-fn cfn io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x129 u32x128x16 u32x128x45 u32 -> io
+fn cfn io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 -> io
 f add p10 p1
 b mul f 7
 np call cfw p9 b 1
@@ -1450,7 +1450,7 @@ ret a
 end
 # (io types tlist fns nodes args ntys pool fnm ntypes tfrom from to head): the prelude when
 # head is 1, typedefs of types [tfrom, ntypes), functions [from, to)
-fn emitc io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 u32 -> io
+fn emitc io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 u32 -> io
 a fold cpre p13 p0
 nt sub p9 p10
 b fold ctd nt a p1 p2 p10
@@ -1458,7 +1458,7 @@ nf sub p12 p11
 c fold cfn nf b p4 p5 p6 p1 p2 p7 p8 p3 p11
 ret c
 end
-fn cemit io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 u32 -> io
+fn cemit io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 u32 -> io
 r call emitc p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14
 ret r
 end
@@ -1509,12 +1509,12 @@ pg2 set pg1 w1 len
 r set p0 wp pg2
 ret r
 end
-# lex, parse and check the source p1 of p2 bytes (at most 16384), checking functions
+# lex, parse and check the source p1 of p2 bytes (at most 131072), checking functions
 # [p4, nfns) given the iteration bounds p3 of the earlier ones (p5: a body that builds a type no
 # header names is code 5), and write their C to p0 when there is no diagnostic (the prelude and
 # every typedef when p6, otherwise no typedef). (io code fstat nfns): the diagnostic code, the
 # checker's iteration bounds and the function count.
-fn cunit io u32x128x128 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+fn cunit io u32x512x64 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
 lx call lexsrc p1 p2
 toks at lx 0
 nw at lx 1
@@ -1554,11 +1554,22 @@ dtok at s4 3
 dup ne derr 0
 e4 select dup derr e3
 et4 select dup dtok et3
-s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4 0
 fns at s5 0
 nodes at s5 1
-args at s5 2
-pcode at s5 8
+alo at s5 2
+narg at s5 5
+args call bodyargs alo narg fns0 names p1 toks ta tv ntok e4 et4
+fcs at s1 7
+fcu at s1 8
+fcp at s2 1
+fch at s3 19
+fct at s3 5
+fcl at s3 6
+fcn at s5 4
+ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn narg
+pcode0 at s5 8
+pcode select ovr 4 pcode0
 # after a parse error the function count may be below p4: nothing is checked then
 cfrom call cumin p4 nhc
 ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
@@ -1591,7 +1602,7 @@ t fold cemit go p0 types2 tlist2 fns nodes args ntys pool fnm ntypes2 tfrom p4 n
 r rec t code fstat nhc
 ret r
 end
-# io front: read n then n source bytes (n is clamped to 16384); write the C bytes when lex,
+# io front: read n then n source bytes (n is clamped to 131072); write the C bytes when lex,
 # parse and check succeed. The result is the diagnostic code (0 when the C was written).
 fn emitcio io -> u32
 rs call readsrc p0

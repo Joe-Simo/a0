@@ -35,7 +35,15 @@ import { findClang, rosettaStuck } from '../src/toolchain.js';
 import { generateFiller } from '../tools/ai-edit-tasks-c.js';
 import { generateCorpus } from '../tools/corpus.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
-import { FRONT_END_SOURCE_LIMIT, IR_OPS, irOp, refParse, type WordIr } from '../tools/ref-parse.js';
+import {
+  FRONT_END_CAPACITY,
+  FRONT_END_SOURCE_LIMIT,
+  frontEndFits,
+  IR_OPS,
+  irOp,
+  refParse,
+  type WordIr,
+} from '../tools/ref-parse.js';
 
 const AFFINE = `fn affine u32 u32 u32 -> u32
 a mul p0 p1
@@ -3053,7 +3061,17 @@ test('self-hosted lexer (compiler/lex.a0) agrees with a reference tokenizer on A
   for (const src of sources) {
     const bytes = [...Buffer.from(src)];
     assert.ok(bytes.length <= FRONT_END_SOURCE_LIMIT, src.slice(0, 40));
-    const r = run(lex, [pagesOf(bytes, 128, 128), bytes.length]) as [number[][], number];
+    // the source packed four bytes a word, low byte first, in 64 pages of 512 words
+    const packed = Array.from(
+      { length: Math.ceil(bytes.length / 4) },
+      (_, w) =>
+        ((bytes[w * 4] ?? 0) |
+          ((bytes[w * 4 + 1] ?? 0) << 8) |
+          ((bytes[w * 4 + 2] ?? 0) << 16) |
+          ((bytes[w * 4 + 3] ?? 0) << 24)) >>>
+        0,
+    );
+    const r = run(lex, [pagesOf(packed, 512, 64), bytes.length]) as [number[][], number];
     const words = r[0].flat();
     const got: number[][] = [];
     for (let i = 0; i < r[1]; i += 3) got.push(words.slice(i, i + 3));
@@ -3149,6 +3167,29 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
   // nested array types: u32x4x2 is the array of 2 of u32x4
   const nested = a0Parse('fn f u32x4x2 u32x4 -> u32x4x2\nret p0\nend\n');
   assert.deepEqual(nested.types.slice(9), [4, 4, 0, 4, 2, 3]);
+  // header arrays over bool and over records (the corpus's g23 g27 g40 g47 headers), nested
+  // in records and as results; an array of a record holding io and a suffix not written right
+  // after its ')' are parse errors at the suffix, as parse() rejects them
+  const arrays =
+    'fn g23 u32 (u32,bool)x2 -> bool\nret true\nend\nfn g27 u32 boolx4 -> u32\nret p0\nend\nfn h (u32,bool)x2x3 ((u32,bool)x2,u32) -> (bool,u32)x5\nret 0\nend\n';
+  check(refParse(arrays), arrays, 'ref arrays');
+  assert.deepEqual(a0Parse(arrays), refParse(arrays));
+  check(a0Parse(arrays), arrays, 'a0 arrays');
+  assert.deepEqual(
+    a0Parse(arrays).types.slice(9),
+    [5, 0, 2, 4, 2, 3, 4, 4, 1, 4, 3, 4, 5, 6, 2, 5, 10, 2, 4, 5, 8],
+  );
+  for (const [src, tok] of [
+    ['fn g (u32,io)x2 -> u32\nret 0\nend\n', 7],
+    ['fn g (u32,(io,u32))x2 -> u32\nret 0\nend\n', 11],
+    ['fn g (u32,bool) x2 -> u32\nret 0\nend\n', 7],
+    ['fn g u32 x2 -> u32\nret 0\nend\n', 3],
+    ['fn g boolx -> u32\nret 0\nend\n', 2],
+  ] as const) {
+    assert.deepEqual(a0ParseCode(src), [1, tok], src);
+    assert.deepEqual([refParse(src).code, refParse(src).tok], [1, tok], src);
+    assert.throws(() => parse(src), src);
+  }
   // an unknown callee is a structure error at its token
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\na call g p0\nret a\nend\n'), [2, 8]);
   // direct calls `id F ARGS`, `ret F ARGS`, and the udiv/urem spellings give call, div and rem
@@ -3179,7 +3220,7 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     tlist: [128, 65],
     fns: [128, 45],
     nodes: [128, 128],
-    args: [128, 256],
+    args: [128, 512],
     fstat: [128, 8],
   } as const;
   const words = (t: keyof typeof SHAPES): number => SHAPES[t][0] * SHAPES[t][1];
@@ -3407,27 +3448,26 @@ test('self-hosted checker (compiler/check.a0) agrees with validate() on the corp
     assert.equal(run(checkio, [io]), 0, f);
     assert.deepEqual(io.output, refCheckWords(text), f);
   }
-  // The most one-line functions a 16384-byte source holds: validate() accepts them (the
-  // function cap is 65536), so the A0 checker must too, with no limit diagnostic.
+  // The most functions the front end's function table holds: validate() accepts them (the
+  // function cap is 65536), so the A0 checker must too; one more is its limit diagnostic 4.
   {
     const letters = 'abcdefghijklmnopqrstuvwxyz';
     const names = [...letters];
     for (const x of letters)
       for (const y of `${letters}0123456789`) if (x + y !== 'fn') names.push(x + y);
-    let many = '';
-    let n = 0;
-    for (const name of names) {
-      const f = `fn ${name} -> u32\nret 0\nend\n`;
-      if (Buffer.byteLength(many + f) > FRONT_END_SOURCE_LIMIT) break;
-      many += f;
-      n += 1;
-    }
-    assert.equal(n, 713);
-    assert.equal(parseAndValidate(many).functions.length, n);
+    const cap = FRONT_END_CAPACITY.functions;
+    const many = names
+      .slice(0, cap)
+      .map((name) => `fn ${name} -> u32\nret 0\nend\n`)
+      .join('');
+    assert.equal(parseAndValidate(many).functions.length, cap);
     const io = makeIo([Buffer.byteLength(many), ...Buffer.from(many)]);
     assert.equal(run(checkio, [io]), 0);
     assert.deepEqual(io.output.slice(0, 4), [1, 0, 0, 0]);
     assert.deepEqual(io.output, refCheckWords(many));
+    const over = `${many}fn ${names[cap]} -> u32\nret 0\nend\n`;
+    assert.equal(frontEndFits(over), false);
+    assert.equal(run(checkio, [makeIo([Buffer.byteLength(over), ...Buffer.from(over)])]), 4);
   }
   // A well-typed source through the front: every node type agrees with validate().
   const src =

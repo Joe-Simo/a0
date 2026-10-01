@@ -1,0 +1,1563 @@
+raw # A0 optimizer, written in A0 (DESIGN.md 7a): the port of src/optimize.ts `optimizeFunction`
+raw # (expand, pass, forwardAggregates, schedule, literal iterations), node for node what the
+raw # TypeScript optimizer gives: same nodes in the same order, same operands, same ret, tools/
+raw # selfhost-wasm.ts `a0IrCheck` compares them (and the literal iteration bound) on every function.
+raw #
+raw # One run optimizes ONE function (`ozone`, mode 7 of `emitwasmio`): a single A0 value, a fold
+raw # state included, is at most 65536 words, and a function's operand table alone can fill that, so
+raw # no run can hold a loop over functions. The driver runs the functions of a program in program
+raw # order and feeds each run the optimized bodies it needs (src/optimize.ts `optimizedCallee`: an
+raw # optimized body is a function of the callee's original body and its callees' optimized
+raw # bodies). The driver only does bookkeeping: encoding, ordering, supplying requested bodies.
+raw #
+raw # Input words after the mode, in the layout of the checked tables of mode 2 (paged u32x128xN;
+raw # word w at page w>>7): types (count, triples), tlist, functions (count, 7 words each: word 0
+raw # is bit 0 "has a body" and literalIterations * 2, 1 the parameter count, 2 the first
+raw # parameter in tlist, 3 the result type, 4 the first node, 5 the node count, 6 the packed ret
+raw # kind * 2^28 + value, kind 5: the pair at operand slot value), nodes (count, 6 words each: 0,
+raw # op, operand count, first operand slot, callee, predicate; callee and predicate are function
+raw # indices), the node types, operand pairs (count, kind and value, kinds 1 node 2 parameter 3
+raw # u32 4 bool), then for every function two summary words (node count; bit 0 all parameters
+raw # scalar, 1 result scalar, 2 all node types scalar, 3 some type holds io, 4 every type at most
+raw # 64 words), the index of the function to optimize (its original body; every other function
+raw # has a body only when the run needs it) and a stage (0; 1.. stops after a phase, for the
+raw # comparison with the TypeScript phases). Output words with code 0: the node count, per node
+raw # op, operand count, callee, predicate, type, the operand pairs (node references renumbered to
+raw # positions), then the ret pair and the literal iteration bound. Code 7: the functions whose
+raw # body the run needs (to inline a call or unroll a fold, or to evaluate a call or a fold with
+raw # literal operands, on the optimized body as src/optimize.ts does), then their count; the driver
+raw # supplies them and everything they reach and repeats the run. Code 4: a limit (4096 nodes,
+raw # 32768 operand slots, 256 stacked nodes) was reached; src/optimize.ts has none of these.
+raw #
+raw # The work is a sequence of phases on separate tables, since no state can hold them all:
+raw # arena node table CL (a column per field, node ids are arena indices, AN = 4096), sequence SQ of
+raw # the body's nodes, operand pairs OA (the input operand table, rewritten in place; new operand
+raw # lists are appended after the input's), type facts TI. A phase decides (a fold over the nodes
+raw # whose state is a table of per-node columns, one trip a node, each step a fold of 0 or 1 trips
+raw # so that no function is larger than the chunk limits) and then materializes (one fold a
+raw # table). Table reads are written out inline in the steps (a table passed to a call is copied by
+raw # the C emitter); the macros `rdp`, `karg`, ... are expanded here by the generator.
+raw #
+raw # - expand (`edstep`): small pure scalar calls (INLINE_CALL_NODES 16) are inlined and folds of 1
+raw #   to 8 literal trips unrolled (at most 256 body nodes, 2048 nodes in all, no io, at most 64
+raw #   words a type): rename table RN, output sequence, instances (copies of a callee body).
+raw # - pass (`passa`..`passd`): per node, in order, operands resolved through the substitutions;
+raw #   a variable trip count that propagation would make a literal beyond the static compute bound
+raw #   (2^24 trips times the callee's literal iterations) is kept as a `mov` of that literal;
+raw #   effectful nodes (read write puts; call fold loop holding io) are kept and anchored;
+raw #   constant evaluation (the evaluator of compiler/evalrun.a0, on the optimized bodies, fuel as
+raw #   src/core.ts);
+raw #   algebraic identities; reassociation of literal chains; strength reduction (div and rem by a
+raw #   power of two); common-subexpression elimination (hash table, not arr rec; commutative ops
+raw #   as a multiset); dead-code elimination from the ret and the anchored nodes.
+raw # - forwardAggregates (`fwda`..`fwdo`) and up to eight more passes while it changes something.
+raw # - schedule (`schstep`): the demand-driven order when nothing is effectful and no set/put
+raw #   remains; literal iterations (`listep`); output (`ozwnode`).
+raw #
+raw # The evaluator (compiler/evalrun.a0; src/core.ts `exec`) is a machine with an explicit frame stack: `evstep`,
+raw # charging 1 per function entry, 1 per node, 1 per fold/loop trip inside a body and
+raw # max(1, length) for arr rec text set put; a call with literal operands runs on fuel 4096 (its
+raw # exhaustion is a compile error in TypeScript: code 4), a fold/loop with at most 4096 trips on
+raw # fuel 4096 * 64 (exhaustion keeps the node).
+raw #
+raw # `ozopt1` is the same optimizer as a function of the tables of a chunk, for compiler/shape.a0
+raw # (the fused bodies it appends are optimized as src/optimize.ts `finishBody` does): see its
+raw # comment below; mode 8 of `emitwasmio` runs it on the input of mode 7 (without the summaries
+raw # and the stage; it computes the summaries itself and asks for every callee body).
+raw #
+raw # Known differences from src/optimize.ts: the limits above, and the evaluator's capacities
+raw # (1024 frames, 16368 environment words, 40832 heap words): a call that exhausts them is code
+raw # 4, a fold that does so is kept as a loop, where TypeScript has no capacity.
+raw #
+raw # compiler/optimize.a0 is generated from compiler/optimize.a0s by tools/a0s.ts (an expression
+raw # language that compiles to one-node-per-line A0; see its header): edit the source, not this
+raw # file.
+raw
+raw use "evalrun.a0"
+raw
+extern zpage() -> u32x128
+extern wardw(io) -> (u32,io)
+extern warnty(io, u32) -> (u32x384x65,io)
+extern warn65(io, u32) -> (u32x128x65,io)
+extern warn45(io, u32) -> (u32x128x45,io)
+extern warn132(io, u32) -> (u32x128x132,io)
+extern warn24(io, u32) -> (u32x128x24,io)
+extern warn16(io, u32) -> (u32x128x16,io)
+extern warn512(io, u32) -> (u32x128x512,io)
+extern ozop(u32, u32, u32, u32) -> u32
+extern evrun(u32x128x45, u32x128x132, u32x128x512, u32x64, u32, u32, u32, u32, u32) -> (u32,u32)
+
+# ---------------------------------------------------------------------------------------------
+# Tables. Operand pairs (kind, value): kind 1 node, 2 parameter, 3 u32 literal, 4 bool literal.
+# The arena holds the nodes of the function being optimized; ids are arena indices (the
+# function's own nodes first, then the nodes the passes create), AN of them at most.
+const AN = 4096
+const NSL = 32768
+# the node table CL (u32x128x193), one column per field: op, operand count, first operand slot,
+# callee, predicate, type
+const C_OP = 0
+const C_NA = 4096
+const C_AS = 8192
+const C_CA = 12288
+const C_PR = 16384
+const C_TY = 20480
+const C_SC = 24576
+const C_NSLOT = 0
+# the type facts TI (u32x128x195): scalar, io, words (saturating at 65), by type index
+const T_SC = 0
+const T_IO = 8320
+const T_WD = 16640
+
+# ---- macros: pair reads and writes, kept inline (a table passed to a call is copied)
+def rdp(oa: u32x128x512, s: u32) -> (u32, u32)
+  return (oa[s * 2], oa[s * 2 + 1])
+end
+def wrp(oa: u32x128x512, s: u32, k: u32, v: u32) -> u32x128x512
+  oa[s * 2] = k
+  oa[s * 2 + 1] = v
+  return oa
+end
+def tyw(ty: u32x384x65, t: u32, k: u32) -> u32
+  let pg = get(ty, t >> 7)
+  return pg[(t & 127) * 3 + k]
+end
+
+# ---- type facts
+fn tifld(s: (u32,u32), i: u32, start: u32, tl: u32x128x65, ti: u32x128x195) -> (u32,u32)
+  let (io, wd) = s
+  let f = tl[start + i]
+  let w = wd + ti[T_WD + f]
+  return (io | ti[T_IO + f], w > 65 ? 65 : w)
+end
+fn tistep(ti: u32x128x195, t: u32, ty: u32x384x65, tl: u32x128x65) -> u32x128x195
+  let tag = tyw(ty, t, 0)
+  let a = tyw(ty, t, 1)
+  let b = tyw(ty, t, 2)
+  let isarr = tag == 4
+  let isrec = tag == 5
+  let r = fold(tifld, isrec ? b : 0, (0, 0), a, tl, ti)
+  let (rio, rwd) = r
+  let aw = a * ti[T_WD + b]
+  let sc = (tag == 1) | (tag == 2)
+  let io = tag == 3 ? 1 : isarr ? ti[T_IO + b] : isrec ? rio : 0
+  let wd = isarr ? (aw > 65 ? 65 : aw) : isrec ? rwd : 1
+  ti[T_SC + t] = bit(sc)
+  ti[T_IO + t] = io
+  ti[T_WD + t] = wd
+  return ti
+end
+
+# ---- arena initialization
+fn inistep(cl: u32x128x193, k: u32, nd: u32x128x132, nt: u32x128x24, first: u32) -> u32x128x193
+  let r = first + k
+  let b = r * 6
+  cl[C_OP + k] = nd[b + 1]
+  cl[C_NA + k] = nd[b + 2]
+  cl[C_AS + k] = nd[b + 3]
+  cl[C_CA + k] = nd[b + 4]
+  cl[C_PR + k] = nd[b + 5]
+  cl[C_TY + k] = nt[r]
+  return cl
+end
+fn seqstep(sq: u32x128x32, k: u32) -> u32x128x32
+  sq[k] = k
+  return sq
+end
+# position of the id at sequence index k
+fn posstep(pos: u32x128x32, k: u32, sq: u32x128x32) -> u32x128x32
+  pos[sq[k]] = k
+  return pos
+end
+
+# ---------------------------------------------------------------------------------------------
+# Expansion (src/optimize.ts `expand`): small pure scalar calls are inlined and short folds
+# unrolled. Decisions go into the table ED (u32x128x393): rename RN (operand kind, value) of
+# replaced nodes, the output sequence OUT, per new node its instance INST and operand slot ASL,
+# per instance (copy of a callee body) its base id, callee, host node, mode (0 call, 1 fold),
+# trip index, state operand. Scalars at E_SC.
+const E_RNK = 0
+const E_RNV = 4096
+const E_OUT = 8192
+const E_INST = 12288
+const E_ASL = 16384
+const E_IBS = 20480
+const E_ICA = 24576
+const E_IHO = 28672
+const E_IMO = 32768
+const E_IK = 36864
+const E_IB0K = 40960
+const E_IB0V = 45056
+const E_RQ = 49152
+const E_SC = 50176
+const E_NEXT = 0
+const E_OUTN = 1
+const E_SLOT = 2
+const E_NI = 3
+const E_CHG = 4
+const E_ERR = 5
+const E_B0K = 6
+const E_B0V = 7
+const E_RK = 8
+const E_RV = 9
+
+# one rename step of operand (k, v)
+def rn(ed: u32x128x393, k: u32, v: u32) -> (u32, u32)
+  let rk = ed[E_RNK + v]
+  let hit = (k == 1) & (rk != 0)
+  return (hit ? rk : k, hit ? ed[E_RNV + v] : v)
+end
+# operand i of the host node whose operands start at slot ash, renamed
+def harg(oa: u32x128x512, ed: u32x128x393, ash: u32, i: u32) -> (u32, u32)
+  let (k, v) = rdp(oa, ash + i)
+  return rn(ed, k, v)
+end
+# parameter i of an instance: mode 1 (fold) binds the state and the trip index
+def mparam(oa: u32x128x512, ed: u32x128x393, mode: u32, k: u32, b0k: u32, b0v: u32, ash: u32, i: u32) -> (u32, u32)
+  let (hk, hv) = harg(oa, ed, ash, i)
+  let isf = mode == 1
+  let s0 = isf & (i == 0)
+  let s1 = isf & (i == 1)
+  return (s0 ? b0k : s1 ? 3 : hk, s0 ? b0v : s1 ? k : hv)
+end
+
+# node j of the callee being copied: id and operand slot reserved
+fn edcopy(ed: u32x128x393, j: u32, first: u32, nd: u32x128x132) -> u32x128x393
+  let base = ed[E_SC + E_NEXT]
+  let outn = ed[E_SC + E_OUTN]
+  let slot = ed[E_SC + E_SLOT]
+  let id = base + j
+  ed[E_OUT + outn + j] = id
+  ed[E_INST + id] = ed[E_SC + E_NI]
+  ed[E_ASL + id] = slot
+  ed[E_SC + E_SLOT] = slot + nd[(first + j) * 6 + 2]
+  return ed
+end
+
+# one copy of callee c for the host node (mode 0 call, 1 fold trip k); the state operand is
+# in E_B0K/E_B0V; leaves the result operand in E_RK/E_RV
+fn edinst(ed: u32x128x393, i: u32, mode: u32, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512) -> u32x128x393
+  let nc = fnt[c * 7 + 5]
+  let first = fnt[c * 7 + 4]
+  let base = ed[E_SC + E_NEXT]
+  let outn = ed[E_SC + E_OUTN]
+  let ni = ed[E_SC + E_NI]
+  let b0k = ed[E_SC + E_B0K]
+  let b0v = ed[E_SC + E_B0V]
+  let ok = ((base + nc) <= AN) & ((outn + nc) <= AN) & (ni < AN)
+  ed[E_SC + E_ERR] = ed[E_SC + E_ERR] | (ok ? 0 : 1)
+  ed[E_IBS + ni] = base if ok
+  ed[E_ICA + ni] = c if ok
+  ed[E_IHO + ni] = host if ok
+  ed[E_IMO + ni] = mode if ok
+  ed[E_IK + ni] = k if ok
+  ed[E_IB0K + ni] = b0k if ok
+  ed[E_IB0V + ni] = b0v if ok
+  let ed1 = fold(edcopy, ok ? nc : 0, ed, first, nd)
+  let w = fnt[c * 7 + 6]
+  let kind = w >> 28
+  let v = w & 0xfffffff
+  let (pk, pv) = rdp(oa, v)
+  let rk = kind == 5 ? pk : kind
+  let rv = kind == 5 ? pv : v
+  let (mk, mv) = mparam(oa, ed1, mode, k, b0k, b0v, ash, rv)
+  let isp = rk == 2
+  let isn = rk == 1
+  ed1[E_SC + E_RK] = isp ? mk : rk
+  ed1[E_SC + E_RV] = isp ? mv : isn ? base + rv : rv
+  ed1[E_SC + E_NEXT] = base + (ok ? nc : 0)
+  ed1[E_SC + E_OUTN] = outn + (ok ? nc : 0)
+  ed1[E_SC + E_NI] = ni + (ok ? 1 : 0)
+  ed1[E_SC + E_CHG] = 1
+  return ed1
+end
+
+# one trip of an unrolled fold: the result becomes the next state operand
+fn edunr(ed: u32x128x393, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512) -> u32x128x393
+  let ed1 = fold(edinst, 1, ed, 1, k, c, host, ash, fnt, nd, oa)
+  ed1[E_SC + E_B0K] = ed1[E_SC + E_RK]
+  ed1[E_SC + E_B0V] = ed1[E_SC + E_RV]
+  return ed1
+end
+
+# the node at sequence index i
+fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, rqall: u32) -> u32x128x393
+  let x = sq[i]
+  let o = cl[C_OP + x]
+  let na = cl[C_NA + x]
+  let ash = cl[C_AS + x]
+  let c = cl[C_CA + x]
+  let n = sm[c * 2]
+  let fl = sm[c * 2 + 1]
+  let has = (fnt[c * 7] & 1) != 0
+  let (c0k, c0v) = harg(oa, ed, ash, 0)
+  let (i1k, i1v) = harg(oa, ed, ash, 1)
+  let inl = (o == 19) & (n <= 16) & ((fl & 7) == 7)
+  let unr = (o == 20) & (c0k == 3) & (c0v >= 1) & (c0v <= 8) & (na >= 2) & (n <= 256) & ((n * c0v) <= 2048) & ((fl & 8) == 0) & ((fl & 16) != 0)
+  let want = inl | unr
+  let need = ((rqall == 1) ? ((o == 19) | (o == 20)) : want) & !has
+  let doit = want & has
+  let outn = ed[E_SC + E_OUTN]
+  ed[E_OUT + outn] = x if !doit
+  ed[E_SC + E_OUTN] = outn + (doit ? 0 : 1)
+  ed[E_RQ + c] = 1 if need
+  ed[E_SC + E_B0K] = i1k if unr
+  ed[E_SC + E_B0V] = i1v if unr
+  let ed1 = fold(edinst, bit(inl & has), ed, 0, 0, c, x, ash, fnt, nd, oa)
+  let ed2 = fold(edunr, (unr & has) ? c0v : 0, ed1, c, x, ash, fnt, nd, oa)
+  ed2[E_RNK + x] = unr ? ed2[E_SC + E_B0K] : ed2[E_SC + E_RK] if doit
+  ed2[E_RNV + x] = unr ? ed2[E_SC + E_B0V] : ed2[E_SC + E_RV] if doit
+  return ed2
+end
+
+# the output sequence into the body's sequence
+fn cpout(sq: u32x128x32, i: u32, ed: u32x128x393) -> u32x128x32
+  sq[i] = ed[E_OUT + i]
+  return sq
+end
+# the row of new node ng + i: a copy of a callee node
+fn clnew(cl: u32x128x193, i: u32, ed: u32x128x393, ng: u32, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24) -> u32x128x193
+  let id = ng + i
+  let ins = ed[E_INST + id]
+  let c = ed[E_ICA + ins]
+  let sr = fnt[c * 7 + 4] + (id - ed[E_IBS + ins])
+  let b = sr * 6
+  cl[C_OP + id] = nd[b + 1]
+  cl[C_NA + id] = nd[b + 2]
+  cl[C_AS + id] = ed[E_ASL + id]
+  cl[C_CA + id] = nd[b + 4]
+  cl[C_PR + id] = nd[b + 5]
+  cl[C_TY + id] = nt[sr]
+  return cl
+end
+fn oaorig(oa: u32x128x512, j: u32, ed: u32x128x393, ash: u32) -> u32x128x512
+  let (k, v) = rdp(oa, ash + j)
+  let (rk, rv) = rn(ed, k, v)
+  return wrp(oa, ash + j, rk, rv)
+end
+fn oanew(oa: u32x128x512, j: u32, ed: u32x128x393, cl: u32x128x193, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45, id: u32) -> u32x128x512
+  let ins = ed[E_INST + id]
+  let c = ed[E_ICA + ins]
+  let base = ed[E_IBS + ins]
+  let sr = fnt[c * 7 + 4] + (id - base)
+  let (k, v) = rdp(op, nd[sr * 6 + 3] + j)
+  let mode = ed[E_IMO + ins]
+  let host = ed[E_IHO + ins]
+  let (mk, mv) = mparam(oa, ed, mode, ed[E_IK + ins], ed[E_IB0K + ins], ed[E_IB0V + ins], cl[C_AS + host], v)
+  let isp = k == 2
+  let isn = k == 1
+  return wrp(oa, cl[C_AS + id] + j, isp ? mk : k, isp ? mv : isn ? base + v : v)
+end
+# the operands of the node at output index i: renamed, or the callee's mapped
+fn oawr(oa: u32x128x512, i: u32, ed: u32x128x393, cl: u32x128x193, ng: u32, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45) -> u32x128x512
+  let id = ed[E_OUT + i]
+  let isn = id >= ng
+  let na = cl[C_NA + id]
+  let oa1 = fold(oaorig, isn ? 0 : na, oa, ed, cl[C_AS + id])
+  return fold(oanew, isn ? na : 0, oa1, ed, cl, op, nd, fnt, id)
+end
+
+# ---------------------------------------------------------------------------------------------
+# Output: nodes in sequence order with node references renumbered (op, operand count, callee,
+# predicate, type, operand pairs).
+fn ozwop(o: io, j: u32, oa: u32x128x512, pos: u32x128x32, as_: u32) -> io
+  let (k, v) = rdp(oa, as_ + j)
+  let o1 = write(o, k)
+  return write(o1, k == 1 ? pos[v] : v)
+end
+fn ozwnode(o: io, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, pos: u32x128x32) -> io
+  let x = sq[i]
+  let na = cl[C_NA + x]
+  let o1 = write(o, cl[C_OP + x])
+  let o2 = write(o1, na)
+  let o3 = write(o2, cl[C_CA + x])
+  let o4 = write(o3, cl[C_PR + x])
+  let o5 = write(o4, cl[C_TY + x])
+  return fold(ozwop, na, o5, oa, pos, cl[C_AS + x])
+end
+
+fn ozwr(o: io, i: u32, v: u32) -> io
+  return write(o, v)
+end
+fn rqor(rq: u32x128x7, f: u32, ed: u32x128x393) -> u32x128x7
+  rq[f] = rq[f] | ed[E_RQ + f]
+  return rq
+end
+fn rqcnt(s: u32, f: u32, rq: u32x128x7) -> u32
+  return s + bit(rq[f] != 0)
+end
+fn rqw(o: io, f: u32, rq: u32x128x7) -> io
+  return fold(ozwr, bit(rq[f] != 0), o, f)
+end
+
+# ---------------------------------------------------------------------------------------------
+# One folding / reassociation / CSE / dead-code pass (src/optimize.ts `pass`). The decisions
+# of a pass go into the table FW (u32x128x426), one column per field, indexed by node id:
+# the substitution SK/SV (operand kind and value, kind 0 for none), flags FL (2 anchored, 4 the
+# node is described by the columns below instead of the node table, 8 operand 0 is kept as
+# written (a variable trip count kept as a value), 16 a `mov` of its literal was kept), the
+# description DOP/A0K/A0V/A1K/A1V of a node the pass created or rewrote, the kept sequence
+# KEPT, the CSE hash table HT (node + 1), a stack of pending nodes STK, the bodies requested
+# RQ, and the scalars at F_SC. A trip handles one node: pick it (an input node or the top of
+# the stack), load and resolve its operands, keep-count, effectful, evaluate, simplify,
+# reassociate, strength-reduce + CSE + keep; each is a fold of 0 or 1 trips on FW so that no
+# function is larger than the chunk limits.
+const F_SK = 0
+const F_SV = 4096
+const F_FL = 8192
+const F_DOP = 12288
+const F_A0K = 16384
+const F_A0V = 20480
+const F_A1K = 24576
+const F_A1V = 28672
+const F_KEPT = 32768
+const F_HT = 36864
+const F_STK = 45056
+const F_RQ = 45312
+const F_LV = 46208
+const F_SQO = 50304
+const F_SC = 54400
+const P_CUR = 0
+const P_STKN = 1
+const P_KN = 2
+const P_NEXT = 3
+const P_ERR = 4
+const P_ACT = 5
+const P_X = 6
+const P_SRC = 7
+const P_OP = 8
+const P_NA = 9
+const P_DESC = 10
+const P_AS = 11
+const P_A0K = 12
+const P_A0V = 13
+const P_A1K = 14
+const P_A1V = 15
+const P_A2K = 16
+const P_A2V = 17
+const P_ALLC = 18
+const P_LIVE = 19
+const P_CTY = 20
+const P_NBASE = 21
+const P_SIK = 22
+const P_SIV = 23
+const P_NOALG = 24
+
+def reg(fw: u32x128x426, r: u32) -> u32
+  return fw[F_SC + r]
+end
+# an operand resolved through the substitutions of this pass
+def pres(fw: u32x128x426, k: u32, v: u32) -> (u32, u32)
+  let sk = fw[F_SK + v]
+  let hit = (k == 1) & (sk != 0)
+  return (hit ? sk : k, hit ? fw[F_SV + v] : v)
+end
+# operand j of the kept version of node x
+def karg(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, j: u32) -> (u32, u32)
+  let fl = fw[F_FL + x]
+  let desc = (fl & 4) != 0
+  let kc = ((fl & 8) != 0) & (j == 0)
+  let (rk, rv) = rdp(oa, cl[C_AS + x] + j)
+  let (qk, qv) = pres(fw, rk, rv)
+  let (dk, dv) = pres(fw, j == 0 ? fw[F_A0K + x] : fw[F_A1K + x], j == 0 ? fw[F_A0V + x] : fw[F_A1V + x])
+  return (desc ? dk : kc ? rk : qk, desc ? dv : kc ? rv : qv)
+end
+def kop(fw: u32x128x426, cl: u32x128x193, x: u32) -> u32
+  return (fw[F_FL + x] & 4) != 0 ? fw[F_DOP + x] : cl[C_OP + x]
+end
+def kna(fw: u32x128x426, cl: u32x128x193, x: u32) -> u32
+  let d = (fw[F_FL + x] & 4) != 0
+  return d ? (fw[F_DOP + x] == 1 ? 1 : 2) : cl[C_NA + x]
+end
+# (xk, xv) if c else (yk, yv)
+def pc(c: bool, xk: u32, xv: u32, yk: u32, yv: u32) -> (u32, u32)
+  return (c ? xk : yk, c ? xv : yv)
+end
+
+# pick the next node: the top of the stack, else the next input node
+fn pk(fw: u32x128x426, i: u32, sq: u32x128x32, n: u32) -> u32x128x426
+  let stkn = reg(fw, P_STKN)
+  let cur = reg(fw, P_CUR)
+  let hs = stkn > 0
+  let hi = cur < n
+  let act = hs | hi
+  fw[F_SC + P_X] = hs ? fw[F_STK + stkn - 1] : sq[cur]
+  fw[F_SC + P_ACT] = bit(act)
+  fw[F_SC + P_LIVE] = bit(act)
+  fw[F_SC + P_SRC] = bit(hs)
+  fw[F_SC + P_STKN] = stkn - bit(hs)
+  fw[F_SC + P_CUR] = cur + bit(hi & !hs)
+  fw[F_SC + P_NOALG] = 0
+  fw[F_SC + P_SIK] = 0
+  return fw
+end
+
+# literal operands of the node: counts the others
+fn nlstep(s: u32, j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32
+  let (k, v) = karg(fw, cl, oa, x, j)
+  return s + bit(k < 3)
+end
+# load the node: op, operand count, resolved operands 0..2, all-literal flag
+fn ld(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
+  let x = reg(fw, P_X)
+  let o = kop(fw, cl, x)
+  let na = kna(fw, cl, x)
+  let (a0k, a0v) = karg(fw, cl, oa, x, 0)
+  let (a1k, a1v) = karg(fw, cl, oa, x, 1)
+  let (a2k, a2v) = karg(fw, cl, oa, x, 2)
+  let nl = fold(nlstep, na, 0, fw, cl, oa, x)
+  fw[F_SC + P_OP] = o
+  fw[F_SC + P_NA] = na
+  fw[F_SC + P_DESC] = bit((fw[F_FL + x] & 4) != 0)
+  fw[F_SC + P_AS] = cl[C_AS + x]
+  fw[F_SC + P_CTY] = cl[C_TY + x]
+  fw[F_SC + P_A0K] = na > 0 ? a0k : 0
+  fw[F_SC + P_A0V] = a0v
+  fw[F_SC + P_A1K] = na > 1 ? a1k : 0
+  fw[F_SC + P_A1V] = a1v
+  fw[F_SC + P_A2K] = na > 2 ? a2k : 0
+  fw[F_SC + P_A2V] = a2v
+  fw[F_SC + P_ALLC] = bit(nl == 0)
+  return fw
+end
+
+# a variable trip count that constant propagation turned into a literal stays a value (a `mov`
+# of the literal) when the literal would put the loop over the static compute bound
+fn kcst(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, fnt: u32x128x45, dir: u32x128x7) -> u32x128x426
+  let x = reg(fw, P_X)
+  let o = reg(fw, P_OP)
+  let c = cl[C_CA + x]
+  let (rk, rv) = rdp(oa, cl[C_AS + x])
+  let a0k = reg(fw, P_A0K)
+  let a0v = reg(fw, P_A0V)
+  let lim = 16777216 / (fnt[c * 7] >> 1)
+  let cond = ((o == 20) | (o == 21)) & (reg(fw, P_DESC) == 0) & (rk == 1) & (a0k == 3) & (dir[c] != 0) & (a0v > lim)
+  let had = (fw[F_FL + rv] & 16) != 0
+  let add = cond & !had
+  fw[F_FL + x] = fw[F_FL + x] | 8 if cond
+  fw[F_FL + rv] = fw[F_FL + rv] | 20 if add
+  fw[F_DOP + rv] = 1 if add
+  fw[F_A0K + rv] = 3 if add
+  fw[F_A0V + rv] = a0v if add
+  let kn = reg(fw, P_KN)
+  fw[F_KEPT + kn] = rv if add
+  fw[F_SC + P_KN] = kn + bit(add)
+  fw[F_SC + P_A0K] = 1 if cond
+  fw[F_SC + P_A0V] = rv if cond
+  return fw
+end
+
+# an original operand holding io
+fn effarg(s: u32, j: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, pio: u32x128, as_: u32) -> u32
+  let (k, v) = rdp(oa, as_ + j)
+  let io = k == 1 ? ti[T_IO + cl[C_TY + v]] : k == 2 ? pio[v] : 0
+  return s | io
+end
+# effectful nodes are kept and anchored: never folded, merged or removed
+fn effst(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, pio: u32x128) -> u32x128x426
+  let x = reg(fw, P_X)
+  let o = reg(fw, P_OP)
+  let callish = (o == 19) | (o == 20) | (o == 21)
+  let rw = (o == 29) | (o == 30) | (o == 31)
+  let ior = ti[T_IO + reg(fw, P_CTY)] != 0
+  let anyio = fold(effarg, callish ? reg(fw, P_NA) : 0, 0, cl, oa, ti, pio, reg(fw, P_AS))
+  let e = rw | (callish & (ior | (anyio != 0)))
+  let kn = reg(fw, P_KN)
+  fw[F_KEPT + kn] = x if e
+  fw[F_SC + P_KN] = kn + bit(e)
+  fw[F_FL + x] = fw[F_FL + x] | 2 if e
+  fw[F_SC + P_LIVE] = bit(!e)
+  return fw
+end
+
+# the literal values of the node's operands
+fn gatstep(l: u32x64, j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32x64
+  let (k, v) = karg(fw, cl, oa, x, j)
+  l[j] = v
+  return l
+end
+# constant evaluation: a node whose operands are all literals
+fn simc(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
+  let x = reg(fw, P_X)
+  let o = reg(fw, P_OP)
+  let na = reg(fw, P_NA)
+  let cty = reg(fw, P_CTY)
+  let a0v = reg(fw, P_A0V)
+  let a1v = reg(fw, P_A1V)
+  let a2v = reg(fw, P_A2V)
+  let c = cl[C_CA + x]
+  let pr = cl[C_PR + x]
+  let isc = o == 19
+  let isf = (o == 20) | (o == 21)
+  let isl = o == 21
+  let scal = ti[T_SC + cty] != 0
+  let hasc = (fnt[c * 7] & 1) != 0
+  let hasp = (fnt[pr * 7] & 1) != 0
+  let evcall = isc & scal
+  let evfold = isf & scal & (a0v <= 4096) & (reg(fw, P_NA) >= 2)
+  let needc = (evcall | evfold) & !hasc
+  let needp = evfold & isl & !hasp
+  fw[F_RQ + c] = 1 if needc
+  fw[F_RQ + pr] = 1 if needp
+  let go = (evcall & hasc) | (evfold & hasc & (isl ? hasp : true))
+  let lst = fold(gatstep, na, zlist(), fw, cl, oa, x)
+  let ev = fold(evonce, bit(go), (0, 0), fnt, nd, op, lst, o, c, pr, na, isc ? 4096 : 262144)
+  let (st, val) = ev
+  let isop = scal & (o <= 18)
+  let pv = ozop(o, a0v, a1v, a2v)
+  let have = go ? (st == 1) : isop
+  let rv = go ? val : pv
+  let err = go & isc & (st != 1)
+  fw[F_SC + P_ERR] = reg(fw, P_ERR) | bit(err)
+  fw[F_SC + P_NOALG] = 1
+  fw[F_SC + P_SIK] = have ? (cty == 1 ? 4 : 3) : 0
+  fw[F_SC + P_SIV] = rv
+  return fw
+end
+
+# algebraic identities (all operands not literal)
+fn sima(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
+  let o = reg(fw, P_OP)
+  let na = reg(fw, P_NA)
+  let isb = reg(fw, P_CTY) == 1
+  let ak = reg(fw, P_A0K)
+  let av = reg(fw, P_A0V)
+  let bk = reg(fw, P_A1K)
+  let bv = reg(fw, P_A1V)
+  let ck = reg(fw, P_A2K)
+  let cv = reg(fw, P_A2V)
+  let hb = na >= 2
+  let hc = na >= 3
+  let a0 = (ak == 3) & (av == 0)
+  let b0 = (bk == 3) & (bv == 0)
+  let a1 = (ak == 3) & (av == 1)
+  let b1 = (bk == 3) & (bv == 1)
+  let aM = (ak == 3) & (av == 4294967295)
+  let bM = (bk == 3) & (bv == 4294967295)
+  let at = (ak == 4) & (av == 1)
+  let af = (ak == 4) & (av == 0)
+  let bt = (bk == 4) & (bv == 1)
+  let bf = (bk == 4) & (bv == 0)
+  let sab = (ak == bk) & (av == bv)
+  let sbc = (bk == ck) & (bv == cv)
+  # add or xor (2 6 7)
+  let b5 = pc((o == 6) & sab, ak, av, 0, 0)
+  let b4 = pc((o == 7) & sab, 4, 0, b5#0, b5#1)
+  let b3 = pc((o == 6) & (at | bt), 4, 1, b4#0, b4#1)
+  let b2 = pc(af, bk, bv, b3#0, b3#1)
+  let b1r = pc(bf, ak, av, b2#0, b2#1)
+  let u4 = pc((o == 6) & sab, ak, av, 0, 0)
+  let u3 = pc((o == 7) & sab, 3, 0, u4#0, u4#1)
+  let u2 = pc(a0, bk, bv, u3#0, u3#1)
+  let u1 = pc(b0, ak, av, u2#0, u2#1)
+  let radd = pc(isb, b1r#0, b1r#1, u1#0, u1#1)
+  # sub (3)
+  let s2 = pc(sab, 3, 0, 0, 0)
+  let rsub = pc(b0, ak, av, s2#0, s2#1)
+  # mul (4)
+  let m3 = pc(a0 | b0, 3, 0, 0, 0)
+  let m2 = pc(a1, bk, bv, m3#0, m3#1)
+  let rmul = pc(b1, ak, av, m2#0, m2#1)
+  # and (5)
+  let n4 = pc(sab, ak, av, 0, 0)
+  let n3 = pc(at, bk, bv, n4#0, n4#1)
+  let n2 = pc(bt, ak, av, n3#0, n3#1)
+  let nb = pc(af | bf, 4, 0, n2#0, n2#1)
+  let w4 = pc(sab, ak, av, 0, 0)
+  let w3 = pc(aM, bk, bv, w4#0, w4#1)
+  let w2 = pc(bM, ak, av, w3#0, w3#1)
+  let nu = pc(a0 | b0, 3, 0, w2#0, w2#1)
+  let rand = pc(isb, nb#0, nb#1, nu#0, nu#1)
+  # shl shr (8 9)
+  let h2 = pc(a0, 3, 0, 0, 0)
+  let rsh = pc((bk == 3) & ((bv & 31) == 0), ak, av, h2#0, h2#1)
+  # div rem (10 11)
+  let rdiv = pc(b1, ak, av, 0, 0)
+  let rrem = pc(b1, 3, 0, 0, 0)
+  # comparisons
+  let req = pc(sab, 4, 1, 0, 0)
+  let rne = pc(sab, 4, 0, 0, 0)
+  let l3 = pc(aM, 4, 0, 0, 0)
+  let l2 = pc(b0, 4, 0, l3#0, l3#1)
+  let rlt = pc(sab, 4, 0, l2#0, l2#1)
+  let g3 = pc(bM, 4, 0, 0, 0)
+  let g2 = pc(a0, 4, 0, g3#0, g3#1)
+  let rgt = pc(sab, 4, 0, g2#0, g2#1)
+  let e3 = pc(bM, 4, 1, 0, 0)
+  let e2 = pc(a0, 4, 1, e3#0, e3#1)
+  let rle = pc(sab, 4, 1, e2#0, e2#1)
+  let f3 = pc(aM, 4, 1, 0, 0)
+  let f2 = pc(b0, 4, 1, f3#0, f3#1)
+  let rge = pc(sab, 4, 1, f2#0, f2#1)
+  # select (18)
+  let t3 = pc(sbc, bk, bv, 0, 0)
+  let t2 = pc(af, ck, cv, t3#0, t3#1)
+  let rsel = pc(at, bk, bv, t2#0, t2#1)
+  # fold loop (20 21)
+  let rfold = pc(a0, bk, bv, 0, 0)
+  # get at (25 27)
+  let dop = kop(fw, cl, av)
+  let dna = kna(fw, cl, av)
+  let isn = ak == 1
+  let gidx = bv % dna
+  let (gk, gv) = karg(fw, cl, oa, av, gidx)
+  let rget = pc(isn & (dop == 22) & (bk == 3), gk, gv, 0, 0)
+  let (tk, tv) = karg(fw, cl, oa, av, bv)
+  let rat = pc(isn & (dop == 23) & (bk == 3) & (bv < dna), tk, tv, 0, 0)
+  # by op
+  let isadd = (o == 2) | (o == 6) | (o == 7)
+  let r1 = pc(o == 25, rget#0, rget#1, 0, 0)
+  let r2 = pc(o == 27, rat#0, rat#1, r1#0, r1#1)
+  let r3 = pc((o == 20) | (o == 21), rfold#0, rfold#1, r2#0, r2#1)
+  let r4 = pc(o == 18, rsel#0, rsel#1, r3#0, r3#1)
+  let r5 = pc(o == 17, rge#0, rge#1, r4#0, r4#1)
+  let r6 = pc(o == 15, rle#0, rle#1, r5#0, r5#1)
+  let r7 = pc(o == 16, rgt#0, rgt#1, r6#0, r6#1)
+  let r8 = pc(o == 14, rlt#0, rlt#1, r7#0, r7#1)
+  let r9 = pc(o == 13, rne#0, rne#1, r8#0, r8#1)
+  let r10 = pc(o == 12, req#0, req#1, r9#0, r9#1)
+  let r11 = pc(o == 11, rrem#0, rrem#1, r10#0, r10#1)
+  let r12 = pc(o == 10, rdiv#0, rdiv#1, r11#0, r11#1)
+  let r13 = pc((o == 8) | (o == 9), rsh#0, rsh#1, r12#0, r12#1)
+  let r14 = pc(o == 5, rand#0, rand#1, r13#0, r13#1)
+  let r15 = pc(o == 4, rmul#0, rmul#1, r14#0, r14#1)
+  let r16 = pc(o == 3, rsub#0, rsub#1, r15#0, r15#1)
+  let r17 = pc(isadd, radd#0, radd#1, r16#0, r16#1)
+  let r18 = pc(o == 1, ak, av, r17#0, r17#1)
+  # the binary ops need operand 1, select needs operand 2, mov needs operand 0
+  let need2 = (o == 2) | (o == 3) | (o == 4) | (o == 5) | (o == 6) | (o == 7) | (o == 8) | (o == 9) | (o == 10) | (o == 11) | (o == 12) | (o == 13) | (o == 14) | (o == 15) | (o == 16) | (o == 17) | (o == 20) | (o == 21)
+  let okn = (na >= 1) & (o != 19) & (o != 22) & (o != 23) & (o != 26) & (o != 28) & (o != 31) & (!need2 | hb) & ((o != 18) | hc) & ((o != 25) | hb) & ((o != 27) | hb)
+  let fk = okn ? r18#0 : 0
+  let fv = r18#1
+  fw[F_SC + P_SIK] = fk
+  fw[F_SC + P_SIV] = fv
+  return fw
+end
+
+# a node is substituted by an operand
+fn subst(fw: u32x128x426, i: u32) -> u32x128x426
+  let x = reg(fw, P_X)
+  fw[F_SK + x] = reg(fw, P_SIK)
+  fw[F_SV + x] = reg(fw, P_SIV)
+  fw[F_SC + P_LIVE] = 0
+  return fw
+end
+
+# `mov`-free operand j of the kept node v if it has a literal in one position: used by
+# reassociation. (k, x kind, x value, literal, defining op), valid when the use count is n.
+def wl(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, nbase: u32, ok: u32, ov: u32, n: u32) -> (bool, u32, u32, u32, u32)
+  let fresh = ov >= nbase
+  let uses = fresh ? 1 : us[ov]
+  let ty = fresh ? 0 : cl[C_TY + ov]
+  let dop = kop(fw, cl, ov)
+  let dna = kna(fw, cl, ov)
+  let (xk, xv) = karg(fw, cl, oa, ov, 0)
+  let (yk, yv) = karg(fw, cl, oa, ov, 1)
+  let base = (ok == 1) & (uses == n) & (ty == 0) & (dna >= 2)
+  let yl = (yk == 3) & (xk != 3)
+  let xl = (xk == 3) & (yk != 3)
+  let valid = base & (yl | xl)
+  return (valid, yl ? xk : yk, yl ? xv : yv, yl ? yv : xv, dop)
+end
+
+# reassociation of u32 chains with literals
+fn reas(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32) -> u32x128x426
+  let x = reg(fw, P_X)
+  let o = reg(fw, P_OP)
+  let nb = reg(fw, P_NBASE)
+  let ak = reg(fw, P_A0K)
+  let av = reg(fw, P_A0V)
+  let bk = reg(fw, P_A1K)
+  let bv = reg(fw, P_A1V)
+  let assoc = (o == 2) | (o == 4) | (o == 5) | (o == 6) | (o == 7)
+  let g = assoc & (reg(fw, P_CTY) == 0) & (reg(fw, P_NA) >= 2)
+  let blit = bk == 3
+  let alit = ak == 3
+  let haslit = blit | alit
+  let lv = blit ? bv : av
+  let ok = blit ? ak : bk
+  let ov = blit ? av : bv
+  let (d1ok, d1xk, d1xv, d1k, d1op) = wl(fw, cl, oa, us, nb, ok, ov, 1)
+  let comb = o == 2 ? d1k + lv : o == 4 ? d1k * lv : o == 5 ? (d1k & lv) : o == 6 ? (d1k | lv) : (d1k ^ lv)
+  let (d2ok, d2xk, d2xv, d2k, d2op) = wl(fw, cl, oa, us, nb, ak, av, 2)
+  let (d3ok, d3xk, d3xv, d3k, d3op) = wl(fw, cl, oa, us, nb, ak, av, 1)
+  let (d4ok, d4xk, d4xv, d4k, d4op) = wl(fw, cl, oa, us, nb, bk, bv, 1)
+  let sameab = (ak == 1) & (bk == 1) & (av == bv)
+  # branch A: a literal operand
+  let rA1 = g & haslit & d1ok & (d1op == o)
+  let rA2 = g & haslit & d1ok & (o == 4) & (d1op == 2)
+  # branch B: no literal, add
+  let nolit = g & !haslit & (o == 2)
+  let rB1 = nolit & sameab & d2ok & (d2op == 2)
+  let rB2 = nolit & !sameab & d3ok & (d3op == 2)
+  let rB3 = nolit & !sameab & !(d3ok & (d3op == 2)) & d4ok & (d4op == 2)
+  let re = rA1 | rA2 | rB1 | rB2 | rB3
+  let haspre = re & !rA1
+  # the replaced node and the pre node (op, operand 0, operand 1)
+  let nop = rA2 | rB1 | rB2 | rB3 ? 2 : o
+  let n0k = rA1 ? d1xk : 1
+  let n0v = rA1 ? d1xv : reg(fw, P_NEXT)
+  let n1v = rA1 ? comb : rA2 ? d1k * lv : rB1 ? 2 * d2k : rB2 ? d3k : d4k
+  let pop = rA2 ? 4 : 2
+  let p0k = rA2 ? d1xk : rB1 ? d2xk : rB2 ? d3xk : d4xk
+  let p0v = rA2 ? d1xv : rB1 ? d2xv : rB2 ? d3xv : d4xv
+  let p1k = rA2 ? 3 : rB1 ? d2xk : rB2 ? bk : ak
+  let p1v = rA2 ? lv : rB1 ? d2xv : rB2 ? bv : av
+  let nid = reg(fw, P_NEXT)
+  let stkn = reg(fw, P_STKN)
+  let room = (nid < AN) & (stkn < 250)
+  let doit = re & room
+  fw[F_SC + P_ERR] = reg(fw, P_ERR) | bit(re & !room)
+  fw[F_FL + x] = (fw[F_FL + x] | 4) & 4294967287 if doit
+  fw[F_DOP + x] = nop if doit
+  fw[F_A0K + x] = n0k if doit
+  fw[F_A0V + x] = n0v if doit
+  fw[F_A1K + x] = 3 if doit
+  fw[F_A1V + x] = n1v if doit
+  let dp = doit & haspre
+  fw[F_FL + nid] = 4 if dp
+  fw[F_DOP + nid] = pop if dp
+  fw[F_A0K + nid] = p0k if dp
+  fw[F_A0V + nid] = p0v if dp
+  fw[F_A1K + nid] = p1k if dp
+  fw[F_A1V + nid] = p1v if dp
+  fw[F_STK + stkn] = x if doit
+  fw[F_STK + stkn + 1] = nid if dp
+  fw[F_SC + P_STKN] = stkn + (dp ? 2 : doit ? 1 : 0)
+  fw[F_SC + P_NEXT] = nid + bit(dp)
+  fw[F_SC + P_LIVE] = bit(!doit)
+  return fw
+end
+
+# floor(log2 v) by counting how often a shift is still nonzero
+fn lgstep(s: u32, i: u32, v: u32) -> u32
+  return s + bit((v >> (i + 1)) != 0)
+end
+
+# the hash of a node's operands: (sum, rotate-xor)
+fn hstep(s: (u32,u32), j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32) -> (u32,u32)
+  let (a, q) = s
+  let (k, v) = karg(fw, cl, oa, x, j)
+  let h = k * 2654435761 ^ v * 2246822519
+  let rot = (q << 5) | (q >> 27)
+  return (a + h, rot ^ h)
+end
+# operands differ from node p's: (in order, swapped)
+fn cmpstep(s: (u32,u32), j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32) -> (u32,u32)
+  let (d0, d1) = s
+  let (k, v) = karg(fw, cl, oa, x, j)
+  let (pk, pv) = karg(fw, cl, oa, p, j)
+  let (sk, sv) = karg(fw, cl, oa, p, 1 - j)
+  return (d0 + bit((k != pk) | (v != pv)), d1 + bit((k != sk) | (v != sv)))
+end
+# is node p the same expression as node x
+def samenode(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32, o: u32, na: u32, comm: bool) -> bool
+  let po = kop(fw, cl, p)
+  let pna = kna(fw, cl, p)
+  let cs = fold(cmpstep, na, (0, 0), fw, cl, oa, x, p)
+  let eqo = cs#0 == 0
+  let eqs = comm & (na == 2) & (cs#1 == 0)
+  let cal = (o < 19) | (o > 21) | (cl[C_CA + x] == cl[C_CA + p])
+  let prd = (o != 21) | (cl[C_PR + x] == cl[C_PR + p])
+  return (po == o) & (pna == na) & cal & prd & (eqo | eqs)
+end
+# CSE probe: (slot, found prior + 1, stop)
+fn prbgo(s: (u32,u32,u32), i: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, o: u32, na: u32, comm: bool) -> bool
+  return s#2 == 0
+end
+fn prbst(s: (u32,u32,u32), i: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, o: u32, na: u32, comm: bool) -> (u32,u32,u32)
+  let (slot, hit, stop) = s
+  let e = fw[F_HT + slot]
+  let empty = e == 0
+  let same = !empty & samenode(fw, cl, oa, x, e - 1, o, na, comm)
+  let done = empty | same
+  return (done ? slot : (slot + 1) & 8191, same ? e : 0, bit(done))
+end
+
+# strength reduction, common-subexpression elimination, and keeping the node
+fn fin(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
+  let x = reg(fw, P_X)
+  let o = reg(fw, P_OP)
+  let na = reg(fw, P_NA)
+  let a0k = reg(fw, P_A0K)
+  let a0v = reg(fw, P_A0V)
+  let b0k = reg(fw, P_A1K)
+  let b0v = reg(fw, P_A1V)
+  let isdr = (o == 10) | (o == 11)
+  let pow2 = (b0k == 3) & (b0v != 0) & ((b0v & (b0v - 1)) == 0)
+  let red = isdr & pow2 & (na == 2)
+  let lg = fold(lgstep, 31, 0, b0v)
+  let nop = o == 10 ? 9 : 5
+  let nbv = o == 10 ? lg : b0v - 1
+  fw[F_FL + x] = fw[F_FL + x] | 4 if red
+  fw[F_DOP + x] = nop if red
+  fw[F_A0K + x] = a0k if red
+  fw[F_A0V + x] = a0v if red
+  fw[F_A1K + x] = 3 if red
+  fw[F_A1V + x] = nbv if red
+  let o2 = red ? nop : o
+  let comm = (o2 == 2) | (o2 == 4) | (o2 == 5) | (o2 == 6) | (o2 == 7) | (o2 == 12)
+  let cse = (o2 != 22) & (o2 != 23)
+  # hash
+  let hs = fold(hstep, na, (0, 0), fw, cl, oa, x)
+  let base = comm ? hs#0 : hs#1
+  let hc = (o2 >= 19) & (o2 <= 21)
+  let cf = hc ? cl[C_CA + x] : 0
+  let pf = o2 == 21 ? cl[C_PR + x] : 0
+  let h1 = base ^ (o2 * 40503) ^ (cf * 2654435769) ^ (pf * 97) ^ (na * 7919)
+  let slot0 = (h1 ^ (h1 >> 12)) & 8191
+  let pr = loop(prbgo, prbst, 256, (slot0, 0, 0), fw, cl, oa, x, o2, na, comm)
+  let (slot, hit, stop) = pr
+  let found = cse & (hit != 0)
+  let ins = cse & (hit == 0) & (stop == 1)
+  fw[F_SC + P_ERR] = reg(fw, P_ERR) | bit(cse & (stop == 0))
+  fw[F_SK + x] = 1 if found
+  fw[F_SV + x] = hit - 1 if found
+  fw[F_HT + slot] = x + 1 if ins
+  let keep = !found
+  let kn = reg(fw, P_KN)
+  fw[F_KEPT + kn] = x if keep
+  fw[F_SC + P_KN] = kn + bit(keep)
+  fw[F_SC + P_LIVE] = 0
+  return fw
+end
+
+fn tripgo(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> bool
+  return (reg(fw, P_STKN) > 0) | (reg(fw, P_CUR) < n)
+end
+fn trip(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
+  let s1 = fold(pk, 1, fw, sq, n)
+  let s2 = fold(ld, reg(s1, P_ACT), s1, cl, oa)
+  let s3 = fold(kcst, reg(s2, P_ACT), s2, cl, oa, fnt, dir)
+  let s4 = fold(effst, reg(s3, P_LIVE), s3, cl, oa, ti, pio)
+  let s5 = fold(simc, reg(s4, P_LIVE) & reg(s4, P_ALLC), s4, cl, oa, ti, fnt, nd, op)
+  let s6 = fold(sima, reg(s5, P_LIVE) & (1 - reg(s5, P_NOALG)), s5, cl, oa)
+  let s7 = fold(subst, bit((reg(s6, P_LIVE) != 0) & (reg(s6, P_SIK) != 0)), s6)
+  let s8 = fold(reas, reg(s7, P_LIVE), s7, cl, oa, us)
+  return fold(fin, reg(s8, P_LIVE), s8, cl, oa)
+end
+
+# ---- the rest of a pass: uses, dead-code elimination, compaction, and the new tables
+# uses of each node among the operands of the body's nodes
+fn usarg(us: u32x128x32, j: u32, oa: u32x128x512, as_: u32) -> u32x128x32
+  let (k, v) = rdp(oa, as_ + j)
+  us[v] = us[v] + 1 if k == 1
+  return us
+end
+fn usestep(us: u32x128x32, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512) -> u32x128x32
+  let x = sq[i]
+  return fold(usarg, cl[C_NA + x], us, oa, cl[C_AS + x])
+end
+fn dcemark(fw: u32x128x426, k: u32, cl: u32x128x193, oa: u32x128x512, x: u32, live: bool) -> u32x128x426
+  let (rk, rv) = karg(fw, cl, oa, x, k)
+  fw[F_LV + rv] = 1 if live & (rk == 1)
+  return fw
+end
+# kept nodes from the last: live nodes keep their operands live (anchored nodes are live)
+fn dcest(fw: u32x128x426, j: u32, cl: u32x128x193, oa: u32x128x512, kn: u32) -> u32x128x426
+  let x = fw[F_KEPT + kn - 1 - j]
+  let live = (fw[F_LV + x] != 0) | ((fw[F_FL + x] & 2) != 0)
+  fw[F_LV + x] = 1 if live
+  return fold(dcemark, live ? kna(fw, cl, x) : 0, fw, cl, oa, x, live)
+end
+# kept and live nodes in order into the sequence column (its last word counts them)
+fn cmpst(fw: u32x128x426, j: u32) -> u32x128x426
+  let x = fw[F_KEPT + j]
+  let l = fw[F_LV + x] != 0
+  let cnt = fw[F_SQO + 4095]
+  fw[F_SQO + cnt] = x if l
+  fw[F_SQO + 4095] = cnt + bit(l)
+  return fw
+end
+fn cpcol(sq: u32x128x32, p: u32, fw: u32x128x426) -> u32x128x32
+  return set(sq, p, get(fw, 393 + p))
+end
+# node rows of described nodes, with fresh operand slots (the counter is the last page of CL)
+fn clmat(cl: u32x128x193, j: u32, sq: u32x128x32, fw: u32x128x426) -> u32x128x193
+  let x = sq[j]
+  let desc = (fw[F_FL + x] & 4) != 0
+  let o = fw[F_DOP + x]
+  let na = o == 1 ? 1 : 2
+  let slot = cl[C_SC + C_NSLOT]
+  cl[C_OP + x] = o if desc
+  cl[C_NA + x] = na if desc
+  cl[C_AS + x] = slot if desc
+  cl[C_CA + x] = 0 if desc
+  cl[C_PR + x] = 0 if desc
+  cl[C_SC + C_NSLOT] = slot + (desc ? na : 0)
+  return cl
+end
+fn oaw1(oa: u32x128x512, k: u32, fw: u32x128x426, as_: u32, x: u32, desc: bool, kc: bool) -> u32x128x512
+  let (rk, rv) = rdp(oa, as_ + k)
+  let (qk, qv) = pres(fw, rk, rv)
+  let (dk, dv) = pres(fw, k == 0 ? fw[F_A0K + x] : fw[F_A1K + x], k == 0 ? fw[F_A0V + x] : fw[F_A1V + x])
+  let keep = kc & (k == 0)
+  return wrp(oa, as_ + k, desc ? dk : keep ? rk : qk, desc ? dv : keep ? rv : qv)
+end
+fn oamat(oa: u32x128x512, j: u32, sq: u32x128x32, cl: u32x128x193, fw: u32x128x426) -> u32x128x512
+  let x = sq[j]
+  let fl = fw[F_FL + x]
+  return fold(oaw1, cl[C_NA + x], oa, fw, cl[C_AS + x], x, (fl & 4) != 0, (fl & 8) != 0)
+end
+
+# one pass over the body (sequence sq of n nodes, result (retk, retv)); gate 0 leaves it
+# unchanged. passa decides (FW), passb is the new sequence (its last word counts it), passc
+# the node table, passd the operands.
+fn passa(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, retk: u32, retv: u32, nid: u32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
+  let us0 = zeros(32)
+  let us1 = fold(usestep, n * gate, us0, sq, cl, oa)
+  us1[retv] = us1[retv] + 1 if (retk == 1) & (gate == 1)
+  let fw0 = zeros(426)
+  fw0[F_SC + P_NEXT] = nid
+  fw0[F_SC + P_NBASE] = nid
+  return loop(tripgo, trip, (n * 6 + 64) * gate, fw0, n, sq, cl, oa, us1, ti, pio, dir, fnt, nd, op)
+end
+fn passb(fw: u32x128x426, gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, retk: u32, retv: u32) -> u32x128x32
+  let kn = fw[F_SC + P_KN]
+  let (rk, rv) = pres(fw, retk, retv)
+  fw[F_LV + rv] = 1 if rk == 1
+  let fw1 = fold(dcest, kn * gate, fw, cl, oa, kn)
+  let fw2 = fold(cmpst, kn * gate, fw1)
+  let sqn = sq
+  return fold(cpcol, 32 * gate, sqn, fw2)
+end
+fn passc(fw: u32x128x426, gate: u32, sq1: u32x128x32, cl: u32x128x193, nslot: u32) -> u32x128x193
+  let cln = cl
+  cln[C_SC + C_NSLOT] = nslot
+  return fold(clmat, sq1[4095] * gate, cln, sq1, fw)
+end
+fn passd(fw: u32x128x426, gate: u32, sq1: u32x128x32, cl1: u32x128x193, oa: u32x128x512) -> u32x128x512
+  return fold(oamat, sq1[4095] * gate, oa, sq1, cl1, fw)
+end
+# ---------------------------------------------------------------------------------------------
+# Scalar replacement of small aggregates (src/optimize.ts `forwardAggregates`): a `set` / `put`
+# with a literal index on an `arr` / `rec` that nothing else uses is that literal with one
+# operand replaced. Decisions in FD (u32x128x225), one column per field by node id: forwarded
+# flag, new op, operand count of the version, the aggregate it updates, the position replaced,
+# the value operand; the changed flag at D_SC.
+const D_FL = 0
+const D_OP = 4096
+const D_NA = 8192
+const D_DEF = 12288
+const D_K = 16384
+const D_VK = 20480
+const D_VV = 24576
+const D_SC = 28672
+
+fn fwst(fd: u32x128x225, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32) -> u32x128x225
+  let x = sq[i]
+  let o = cl[C_OP + x]
+  let na = cl[C_NA + x]
+  let (tk, tv) = rdp(oa, cl[C_AS + x])
+  let (ik, iv) = rdp(oa, cl[C_AS + x] + 1)
+  let (vk, vv) = rdp(oa, cl[C_AS + x] + 2)
+  let isset = o == 26
+  let isput = o == 28
+  let tf = fd[D_FL + tv] != 0
+  let dop = tf ? fd[D_OP + tv] : cl[C_OP + tv]
+  let dna = tf ? fd[D_NA + tv] : cl[C_NA + tv]
+  let ok = (isset | isput) & (tk == 1) & (ik == 3) & (na >= 3) & (us[tv] == 1) & (isset ? dop == 22 : dop == 23)
+  fd[D_FL + x] = 1 if ok
+  fd[D_OP + x] = dop if ok
+  fd[D_NA + x] = dna if ok
+  fd[D_DEF + x] = tv if ok
+  fd[D_K + x] = (isset ? iv % dna : iv) if ok
+  fd[D_VK + x] = vk if ok
+  fd[D_VV + x] = vv if ok
+  fd[D_SC] = fd[D_SC] | bit(ok)
+  return fd
+end
+fn clfw(cl: u32x128x193, i: u32, sq: u32x128x32, fd: u32x128x225) -> u32x128x193
+  let x = sq[i]
+  let f = fd[D_FL + x] != 0
+  let slot = cl[C_SC + C_NSLOT]
+  let na = fd[D_NA + x]
+  cl[C_OP + x] = fd[D_OP + x] if f
+  cl[C_NA + x] = na if f
+  cl[C_AS + x] = slot if f
+  cl[C_SC + C_NSLOT] = slot + (f ? na : 0)
+  return cl
+end
+fn oafw1(oa: u32x128x512, j: u32, fd: u32x128x225, cl: u32x128x193, x: u32) -> u32x128x512
+  let (sk, sv) = rdp(oa, cl[C_AS + fd[D_DEF + x]] + j)
+  let hit = j == fd[D_K + x]
+  return wrp(oa, cl[C_AS + x] + j, hit ? fd[D_VK + x] : sk, hit ? fd[D_VV + x] : sv)
+end
+fn oafw(oa: u32x128x512, i: u32, sq: u32x128x32, cl: u32x128x193, fd: u32x128x225) -> u32x128x512
+  let x = sq[i]
+  let f = fd[D_FL + x] != 0
+  return fold(oafw1, f ? fd[D_NA + x] : 0, oa, fd, cl, x)
+end
+fn fwda(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, retk: u32, retv: u32) -> u32x128x225
+  let us0 = zeros(32)
+  let us1 = fold(usestep, n * gate, us0, sq, cl, oa)
+  us1[retv] = us1[retv] + 1 if (retk == 1) & (gate == 1)
+  return fold(fwst, n * gate, zeros(225), sq, cl, oa, us1)
+end
+fn fwdc(fd: u32x128x225, gate: u32, sq: u32x128x32, cl: u32x128x193, n: u32, nslot: u32) -> u32x128x193
+  let cln = cl
+  cln[C_SC + C_NSLOT] = nslot
+  return fold(clfw, n * fd[D_SC] * gate, cln, sq, fd)
+end
+fn fwdo(fd: u32x128x225, gate: u32, sq: u32x128x32, cl1: u32x128x193, oa: u32x128x512, n: u32) -> u32x128x512
+  return fold(oafw, n * fd[D_SC] * gate, oa, sq, cl1, fd)
+end
+
+# ---------------------------------------------------------------------------------------------
+# The demand-driven order (src/optimize.ts `schedule`): each node just before its first
+# consumer, by a post-order walk from the result and then from each node. Applies when nothing
+# is effectful and no `set` / `put` remains. State SD (u32x128x129): placed PL, stack node STN,
+# its next operand STK, the output OUT, scalars at S_SC.
+const S_PL = 0
+const S_STN = 4096
+const S_STK = 8192
+const S_OUT = 12288
+const S_SC = 16384
+const S_SP = 0
+const S_OUTN = 1
+const S_RC = 2
+
+# does the node make the function effectful (src/optimize.ts `isEffectful`) or is it a set/put
+fn effall(s: u32, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, pio: u32x128) -> u32
+  let x = sq[i]
+  let o = cl[C_OP + x]
+  let callish = (o == 19) | (o == 20) | (o == 21)
+  let rw = (o == 29) | (o == 30) | (o == 31)
+  let ior = ti[T_IO + cl[C_TY + x]] != 0
+  let anyio = fold(effarg, callish ? cl[C_NA + x] : 0, 0, cl, oa, ti, pio, cl[C_AS + x])
+  let e = rw | (callish & (ior | (anyio != 0)))
+  let sp = (o == 26) | (o == 28)
+  return s | bit(e) | (bit(sp) * 2)
+end
+fn schstep(sd: u32x128x129, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512) -> u32x128x129
+  let sp = sd[S_SC + S_SP]
+  let outn = sd[S_SC + S_OUTN]
+  let rc = sd[S_SC + S_RC]
+  let hs = sp > 0
+  let t = sd[S_STN + sp - 1]
+  let k = sd[S_STK + sp - 1]
+  let na = cl[C_NA + t]
+  let more = hs & (k < na)
+  let fin = hs & (k >= na)
+  let (ak, av) = rdp(oa, cl[C_AS + t] + k)
+  let take = more & (ak == 1) & (sd[S_PL + av] == 0)
+  # an operand: bump the position, push the operand's node when new
+  sd[S_STK + sp - 1] = k + 1 if more
+  sd[S_PL + av] = 1 if take
+  sd[S_STN + sp] = av if take
+  sd[S_STK + sp] = 0 if take
+  # a finished node: output it and pop
+  sd[S_OUT + outn] = t if fin
+  # no stack: the next root
+  let root = sq[rc]
+  let nr = !hs & (rc < n) & (sd[S_PL + root] == 0)
+  sd[S_PL + root] = 1 if nr
+  sd[S_STN + 0] = root if nr
+  sd[S_STK + 0] = 0 if nr
+  sd[S_SC + S_SP] = sp + bit(take) - bit(fin) + bit(nr)
+  sd[S_SC + S_OUTN] = outn + bit(fin)
+  sd[S_SC + S_RC] = rc + bit(!hs)
+  return sd
+end
+fn schgo(sd: u32x128x129, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512) -> bool
+  return (sd[S_SC + S_SP] > 0) | (sd[S_SC + S_RC] < n)
+end
+fn cnta(s: u32, i: u32, sq: u32x128x32, cl: u32x128x193) -> u32
+  return s + cl[C_NA + sq[i]]
+end
+
+# literal iteration bound of the function (src/core.ts validateFunction): largest product of
+# literal trip counts along a nesting path
+fn listep(s: u32, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, fnt: u32x128x45) -> u32
+  let x = sq[i]
+  let o = cl[C_OP + x]
+  let cli = fnt[cl[C_CA + x] * 7] >> 1
+  let (ck, cv) = rdp(oa, cl[C_AS + x])
+  let lit = ck == 3
+  let big = (cli != 0) & (cv > 33554432 / cli)
+  let prod = big ? 33554433 : cv * cli
+  let isc = o == 19
+  let isf = (o == 20) | (o == 21)
+  let t = isc ? cli : isf ? (lit ? prod : cli) : 1
+  return s > t ? s : t
+end
+fn rqorf(rq: u32x128x7, f: u32, fw: u32x128x426) -> u32x128x7
+  rq[f] = rq[f] | fw[F_RQ + f]
+  return rq
+end
+fn piostep(p: u32x128, i: u32, tl: u32x128x65, ti: u32x128x195, first: u32) -> u32x128
+  p[i] = ti[T_IO + tl[first + i]]
+  return p
+end
+fn dirstep(d: u32x128x7, j: u32, cl: u32x128x193) -> u32x128x7
+  let o = cl[C_OP + j]
+  d[cl[C_CA + j]] = 1 if (o >= 19) & (o <= 21)
+  d[cl[C_PR + j]] = 1 if o == 21
+  return d
+end
+
+fn cpsd(sq: u32x128x32, i: u32, sd: u32x128x129) -> u32x128x32
+  sq[i] = sd[S_OUT + i]
+  return sq
+end
+
+def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, sm: u32x128x16, ti: u32x128x195, g: u32, stage: u32, rqall: u32, nf: u32, no: u32) -> (u32x128x32, u32x128x193, u32x128x512, u32, u32, u32, u32, u32, u32x128x7, u32)
+  let ng = fnt[g * 7 + 5]
+  let first = fnt[g * 7 + 4]
+  let cl0 = zeros(193)
+  let cl1 = fold(inistep, ng, cl0, nd, nt, first)
+  let sq0 = zeros(32)
+  let sq1 = fold(seqstep, ng, sq0)
+  let rw = fnt[g * 7 + 6]
+  let rkind = rw >> 28
+  let rval = rw & 0xfffffff
+  let big = rkind == 5
+  let (bk, bv) = rdp(op, rval)
+  let retk = big ? bk : rkind
+  let retv = big ? bv : rval
+
+  # expansion
+  let ed0 = zeros(393)
+  ed0[E_SC + E_NEXT] = ng
+  ed0[E_SC + E_SLOT] = no
+  let run1 = (stage == 0) | (stage >= 1)
+  let ed1 = fold(edstep, bit(run1) * ng, ed0, sq1, cl1, op, sm, fnt, nd, rqall)
+  let chg = ed1[E_SC + E_CHG]
+  let outn = ed1[E_SC + E_OUTN]
+  let next = ed1[E_SC + E_NEXT]
+  let sq2 = fold(cpout, outn * chg, sq1, ed1)
+  let n2 = chg == 1 ? outn : ng
+  let cl2 = fold(clnew, (next - ng) * chg, cl1, ed1, ng, fnt, nd, nt)
+  let oa2 = fold(oawr, outn * chg, op, ed1, cl2, ng, op, nd, fnt)
+  let (rrk, rrv) = rn(ed1, retk, retv)
+  let r2k = chg == 1 ? rrk : retk
+  let r2v = chg == 1 ? rrv : retv
+
+  # the direct callees and the parameters holding io
+  let dir = fold(dirstep, ng, zeros(7), cl1)
+  let pio = fold(piostep, fnt[g * 7 + 1], zpage(), tl, ti, fnt[g * 7 + 2])
+
+  # a pass
+  let nid2 = chg == 1 ? next : ng
+  let nslot2 = chg == 1 ? ed1[E_SC + E_SLOT] : no
+  let run2 = bit((stage == 0) | (stage >= 2))
+  let fwA = passa(run2, sq2, cl2, oa2, n2, r2k, r2v, nid2, ti, pio, dir, fnt, nd, op)
+  let sqA = passb(fwA, run2, sq2, cl2, oa2, r2k, r2v)
+  let clA = passc(fwA, run2, sqA, cl2, nslot2)
+  let oaA = passd(fwA, run2, sqA, clA, oa2)
+  let nA = run2 == 1 ? sqA[4095] : n2
+  let (rAk, rAv) = pres(fwA, r2k, r2v)
+  let rAk2 = run2 == 1 ? rAk : r2k
+  let rAv2 = run2 == 1 ? rAv : r2v
+  let nidA = run2 == 1 ? fwA[F_SC + P_NEXT] : nid2
+  let nslotA = run2 == 1 ? clA[C_SC + C_NSLOT] : nslot2
+  let rq1 = fold(rqor, nf, zeros(7), ed1)
+  let rqA = fold(rqorf, nf, rq1, fwA)
+  # round 0: forward, then a pass
+  let gf0 = run2 * bit((stage == 0) | (stage >= 3))
+  let fd0 = fwda(gf0, sqA, clA, oaA, nA, rAk2, rAv2)
+  let clf0 = fwdc(fd0, gf0, sqA, clA, nA, nslotA)
+  let oaf0 = fwdo(fd0, gf0, sqA, clf0, oaA, nA)
+  let ch0 = fd0[D_SC] * gf0
+  let nsf0 = ch0 == 1 ? clf0[C_SC + C_NSLOT] : nslotA
+  let gp0 = ch0 * bit((stage == 0) | (stage >= 4))
+  let fwR0 = passa(gp0, sqA, clf0, oaf0, nA, rAk2, rAv2, nidA, ti, pio, dir, fnt, nd, op)
+  let sqR0 = passb(fwR0, gp0, sqA, clf0, oaf0, rAk2, rAv2)
+  let clR0 = passc(fwR0, gp0, sqR0, clf0, nsf0)
+  let oaR0 = passd(fwR0, gp0, sqR0, clR0, oaf0)
+  let nR0 = gp0 == 1 ? sqR0[4095] : nA
+  let (rR0k, rR0v) = pres(fwR0, rAk2, rAv2)
+  let rR0k2 = gp0 == 1 ? rR0k : rAk2
+  let rR0v2 = gp0 == 1 ? rR0v : rAv2
+  let nidR0 = gp0 == 1 ? fwR0[F_SC + P_NEXT] : nidA
+  let nslotR0 = gp0 == 1 ? clR0[C_SC + C_NSLOT] : nsf0
+  let rqR0 = fold(rqorf, nf, rqA, fwR0)
+  # round 1: forward, then a pass
+  let gf1 = gp0 * bit((stage == 0) | (stage >= 5))
+  let fd1 = fwda(gf1, sqR0, clR0, oaR0, nR0, rR0k2, rR0v2)
+  let clf1 = fwdc(fd1, gf1, sqR0, clR0, nR0, nslotR0)
+  let oaf1 = fwdo(fd1, gf1, sqR0, clf1, oaR0, nR0)
+  let ch1 = fd1[D_SC] * gf1
+  let nsf1 = ch1 == 1 ? clf1[C_SC + C_NSLOT] : nslotR0
+  let gp1 = ch1 * bit((stage == 0) | (stage >= 6))
+  let fwR1 = passa(gp1, sqR0, clf1, oaf1, nR0, rR0k2, rR0v2, nidR0, ti, pio, dir, fnt, nd, op)
+  let sqR1 = passb(fwR1, gp1, sqR0, clf1, oaf1, rR0k2, rR0v2)
+  let clR1 = passc(fwR1, gp1, sqR1, clf1, nsf1)
+  let oaR1 = passd(fwR1, gp1, sqR1, clR1, oaf1)
+  let nR1 = gp1 == 1 ? sqR1[4095] : nR0
+  let (rR1k, rR1v) = pres(fwR1, rR0k2, rR0v2)
+  let rR1k2 = gp1 == 1 ? rR1k : rR0k2
+  let rR1v2 = gp1 == 1 ? rR1v : rR0v2
+  let nidR1 = gp1 == 1 ? fwR1[F_SC + P_NEXT] : nidR0
+  let nslotR1 = gp1 == 1 ? clR1[C_SC + C_NSLOT] : nsf1
+  let rqR1 = fold(rqorf, nf, rqR0, fwR1)
+  # round 2: forward, then a pass
+  let gf2 = gp1 * bit((stage == 0) | (stage >= 7))
+  let fd2 = fwda(gf2, sqR1, clR1, oaR1, nR1, rR1k2, rR1v2)
+  let clf2 = fwdc(fd2, gf2, sqR1, clR1, nR1, nslotR1)
+  let oaf2 = fwdo(fd2, gf2, sqR1, clf2, oaR1, nR1)
+  let ch2 = fd2[D_SC] * gf2
+  let nsf2 = ch2 == 1 ? clf2[C_SC + C_NSLOT] : nslotR1
+  let gp2 = ch2 * bit((stage == 0) | (stage >= 8))
+  let fwR2 = passa(gp2, sqR1, clf2, oaf2, nR1, rR1k2, rR1v2, nidR1, ti, pio, dir, fnt, nd, op)
+  let sqR2 = passb(fwR2, gp2, sqR1, clf2, oaf2, rR1k2, rR1v2)
+  let clR2 = passc(fwR2, gp2, sqR2, clf2, nsf2)
+  let oaR2 = passd(fwR2, gp2, sqR2, clR2, oaf2)
+  let nR2 = gp2 == 1 ? sqR2[4095] : nR1
+  let (rR2k, rR2v) = pres(fwR2, rR1k2, rR1v2)
+  let rR2k2 = gp2 == 1 ? rR2k : rR1k2
+  let rR2v2 = gp2 == 1 ? rR2v : rR1v2
+  let nidR2 = gp2 == 1 ? fwR2[F_SC + P_NEXT] : nidR1
+  let nslotR2 = gp2 == 1 ? clR2[C_SC + C_NSLOT] : nsf2
+  let rqR2 = fold(rqorf, nf, rqR1, fwR2)
+  # round 3: forward, then a pass
+  let gf3 = gp2 * bit((stage == 0) | (stage >= 9))
+  let fd3 = fwda(gf3, sqR2, clR2, oaR2, nR2, rR2k2, rR2v2)
+  let clf3 = fwdc(fd3, gf3, sqR2, clR2, nR2, nslotR2)
+  let oaf3 = fwdo(fd3, gf3, sqR2, clf3, oaR2, nR2)
+  let ch3 = fd3[D_SC] * gf3
+  let nsf3 = ch3 == 1 ? clf3[C_SC + C_NSLOT] : nslotR2
+  let gp3 = ch3 * bit((stage == 0) | (stage >= 10))
+  let fwR3 = passa(gp3, sqR2, clf3, oaf3, nR2, rR2k2, rR2v2, nidR2, ti, pio, dir, fnt, nd, op)
+  let sqR3 = passb(fwR3, gp3, sqR2, clf3, oaf3, rR2k2, rR2v2)
+  let clR3 = passc(fwR3, gp3, sqR3, clf3, nsf3)
+  let oaR3 = passd(fwR3, gp3, sqR3, clR3, oaf3)
+  let nR3 = gp3 == 1 ? sqR3[4095] : nR2
+  let (rR3k, rR3v) = pres(fwR3, rR2k2, rR2v2)
+  let rR3k2 = gp3 == 1 ? rR3k : rR2k2
+  let rR3v2 = gp3 == 1 ? rR3v : rR2v2
+  let nidR3 = gp3 == 1 ? fwR3[F_SC + P_NEXT] : nidR2
+  let nslotR3 = gp3 == 1 ? clR3[C_SC + C_NSLOT] : nsf3
+  let rqR3 = fold(rqorf, nf, rqR2, fwR3)
+  # round 4: forward, then a pass
+  let gf4 = gp3 * bit((stage == 0) | (stage >= 11))
+  let fd4 = fwda(gf4, sqR3, clR3, oaR3, nR3, rR3k2, rR3v2)
+  let clf4 = fwdc(fd4, gf4, sqR3, clR3, nR3, nslotR3)
+  let oaf4 = fwdo(fd4, gf4, sqR3, clf4, oaR3, nR3)
+  let ch4 = fd4[D_SC] * gf4
+  let nsf4 = ch4 == 1 ? clf4[C_SC + C_NSLOT] : nslotR3
+  let gp4 = ch4 * bit((stage == 0) | (stage >= 12))
+  let fwR4 = passa(gp4, sqR3, clf4, oaf4, nR3, rR3k2, rR3v2, nidR3, ti, pio, dir, fnt, nd, op)
+  let sqR4 = passb(fwR4, gp4, sqR3, clf4, oaf4, rR3k2, rR3v2)
+  let clR4 = passc(fwR4, gp4, sqR4, clf4, nsf4)
+  let oaR4 = passd(fwR4, gp4, sqR4, clR4, oaf4)
+  let nR4 = gp4 == 1 ? sqR4[4095] : nR3
+  let (rR4k, rR4v) = pres(fwR4, rR3k2, rR3v2)
+  let rR4k2 = gp4 == 1 ? rR4k : rR3k2
+  let rR4v2 = gp4 == 1 ? rR4v : rR3v2
+  let nidR4 = gp4 == 1 ? fwR4[F_SC + P_NEXT] : nidR3
+  let nslotR4 = gp4 == 1 ? clR4[C_SC + C_NSLOT] : nsf4
+  let rqR4 = fold(rqorf, nf, rqR3, fwR4)
+  # round 5: forward, then a pass
+  let gf5 = gp4 * bit((stage == 0) | (stage >= 13))
+  let fd5 = fwda(gf5, sqR4, clR4, oaR4, nR4, rR4k2, rR4v2)
+  let clf5 = fwdc(fd5, gf5, sqR4, clR4, nR4, nslotR4)
+  let oaf5 = fwdo(fd5, gf5, sqR4, clf5, oaR4, nR4)
+  let ch5 = fd5[D_SC] * gf5
+  let nsf5 = ch5 == 1 ? clf5[C_SC + C_NSLOT] : nslotR4
+  let gp5 = ch5 * bit((stage == 0) | (stage >= 14))
+  let fwR5 = passa(gp5, sqR4, clf5, oaf5, nR4, rR4k2, rR4v2, nidR4, ti, pio, dir, fnt, nd, op)
+  let sqR5 = passb(fwR5, gp5, sqR4, clf5, oaf5, rR4k2, rR4v2)
+  let clR5 = passc(fwR5, gp5, sqR5, clf5, nsf5)
+  let oaR5 = passd(fwR5, gp5, sqR5, clR5, oaf5)
+  let nR5 = gp5 == 1 ? sqR5[4095] : nR4
+  let (rR5k, rR5v) = pres(fwR5, rR4k2, rR4v2)
+  let rR5k2 = gp5 == 1 ? rR5k : rR4k2
+  let rR5v2 = gp5 == 1 ? rR5v : rR4v2
+  let nidR5 = gp5 == 1 ? fwR5[F_SC + P_NEXT] : nidR4
+  let nslotR5 = gp5 == 1 ? clR5[C_SC + C_NSLOT] : nsf5
+  let rqR5 = fold(rqorf, nf, rqR4, fwR5)
+  # round 6: forward, then a pass
+  let gf6 = gp5 * bit((stage == 0) | (stage >= 15))
+  let fd6 = fwda(gf6, sqR5, clR5, oaR5, nR5, rR5k2, rR5v2)
+  let clf6 = fwdc(fd6, gf6, sqR5, clR5, nR5, nslotR5)
+  let oaf6 = fwdo(fd6, gf6, sqR5, clf6, oaR5, nR5)
+  let ch6 = fd6[D_SC] * gf6
+  let nsf6 = ch6 == 1 ? clf6[C_SC + C_NSLOT] : nslotR5
+  let gp6 = ch6 * bit((stage == 0) | (stage >= 16))
+  let fwR6 = passa(gp6, sqR5, clf6, oaf6, nR5, rR5k2, rR5v2, nidR5, ti, pio, dir, fnt, nd, op)
+  let sqR6 = passb(fwR6, gp6, sqR5, clf6, oaf6, rR5k2, rR5v2)
+  let clR6 = passc(fwR6, gp6, sqR6, clf6, nsf6)
+  let oaR6 = passd(fwR6, gp6, sqR6, clR6, oaf6)
+  let nR6 = gp6 == 1 ? sqR6[4095] : nR5
+  let (rR6k, rR6v) = pres(fwR6, rR5k2, rR5v2)
+  let rR6k2 = gp6 == 1 ? rR6k : rR5k2
+  let rR6v2 = gp6 == 1 ? rR6v : rR5v2
+  let nidR6 = gp6 == 1 ? fwR6[F_SC + P_NEXT] : nidR5
+  let nslotR6 = gp6 == 1 ? clR6[C_SC + C_NSLOT] : nsf6
+  let rqR6 = fold(rqorf, nf, rqR5, fwR6)
+  # round 7: forward, then a pass
+  let gf7 = gp6 * bit((stage == 0) | (stage >= 17))
+  let fd7 = fwda(gf7, sqR6, clR6, oaR6, nR6, rR6k2, rR6v2)
+  let clf7 = fwdc(fd7, gf7, sqR6, clR6, nR6, nslotR6)
+  let oaf7 = fwdo(fd7, gf7, sqR6, clf7, oaR6, nR6)
+  let ch7 = fd7[D_SC] * gf7
+  let nsf7 = ch7 == 1 ? clf7[C_SC + C_NSLOT] : nslotR6
+  let gp7 = ch7 * bit((stage == 0) | (stage >= 18))
+  let fwR7 = passa(gp7, sqR6, clf7, oaf7, nR6, rR6k2, rR6v2, nidR6, ti, pio, dir, fnt, nd, op)
+  let sqR7 = passb(fwR7, gp7, sqR6, clf7, oaf7, rR6k2, rR6v2)
+  let clR7 = passc(fwR7, gp7, sqR7, clf7, nsf7)
+  let oaR7 = passd(fwR7, gp7, sqR7, clR7, oaf7)
+  let nR7 = gp7 == 1 ? sqR7[4095] : nR6
+  let (rR7k, rR7v) = pres(fwR7, rR6k2, rR6v2)
+  let rR7k2 = gp7 == 1 ? rR7k : rR6k2
+  let rR7v2 = gp7 == 1 ? rR7v : rR6v2
+  let nidR7 = gp7 == 1 ? fwR7[F_SC + P_NEXT] : nidR6
+  let nslotR7 = gp7 == 1 ? clR7[C_SC + C_NSLOT] : nsf7
+  let rqR7 = fold(rqorf, nf, rqR6, fwR7)
+
+  # the demand-driven order, the literal iteration bound
+  let eff = fold(effall, nR7, 0, sqR7, clR7, oaR7, ti, pio)
+  let sched = bit((eff == 0) & ((stage == 0) | (stage >= 19)))
+  let nsch = sched == 1 ? nR7 : 0
+  let sd0 = zeros(129)
+  sd0[S_PL + rR7v2] = 1 if (rR7k2 == 1) & (sched == 1)
+  sd0[S_STN] = rR7v2 if (rR7k2 == 1) & (sched == 1)
+  sd0[S_SC + S_SP] = bit((rR7k2 == 1) & (sched == 1))
+  let tot = fold(cnta, nsch, 0, sqR7, clR7)
+  let sd1 = loop(schgo, schstep, nsch + tot + nsch + 16, sd0, nsch, sqR7, clR7, oaR7)
+  let sqs = fold(cpsd, nsch, sqR7, sd1)
+  let li = fold(listep, nR7, 1, sqs, clR7, oaR7, fnt)
+  let nreq = fold(rqcnt, nf, 0, rqR7)
+  let err = ed1[E_SC + E_ERR] | fwA[F_SC + P_ERR] | fwR0[F_SC + P_ERR] | fwR1[F_SC + P_ERR] | fwR2[F_SC + P_ERR] | fwR3[F_SC + P_ERR] | fwR4[F_SC + P_ERR] | fwR5[F_SC + P_ERR] | fwR6[F_SC + P_ERR] | fwR7[F_SC + P_ERR] | bit(nR7 >= 4095)
+  let ok = (nreq == 0) & (err == 0)
+
+  return (sqs, clR7, oaR7, nR7, rR7k2, rR7v2, li, nreq, rqR7, err)
+end
+
+fn ozone(io: io) -> (io, u32)
+  let (nty, i1) = wardw(io)
+  let (ty, i2) = warnty(i1, nty * 3)
+  let (ntl, i3) = wardw(i2)
+  let (tl, i4) = warn65(i3, ntl)
+  let (nf, i5) = wardw(i4)
+  let (fnt, i6) = warn45(i5, nf * 7)
+  let (nn, i7) = wardw(i6)
+  let (nd, i8) = warn132(i7, nn * 6)
+  let (nt, i9) = warn24(i8, nn)
+  let (no, i10) = wardw(i9)
+  let (op, i11) = warn512(i10, no * 2)
+  let (sm, i12) = warn16(i11, nf * 2)
+  let (g, i13) = wardw(i12)
+  let (stage, i14) = wardw(i13)
+  let ti = fold(tistep, nty, zeros(195), ty, tl)
+  let (sqs, cl, oa, n, rk, rv, li, nreq, rq, err) = optcore(ty, tl, fnt, nd, nt, op, sm, ti, g, stage, 0, nf, no)
+  let ok = (nreq == 0) & (err == 0)
+
+  # dump
+  let pos0 = zeros(32)
+  let pos = fold(posstep, n, pos0, sqs)
+  let w0 = fold(ozwr, bit(ok), i14, n)
+  let w1 = fold(ozwnode, ok ? n : 0, w0, sqs, cl, oa, pos)
+  let w2 = fold(ozwr, bit(ok), w1, rk)
+  let w3 = fold(ozwr, bit(ok), w2, rk == 1 ? pos[rv] : rv)
+  let w4 = fold(ozwr, bit(ok), w3, li)
+  let w5 = fold(rqw, nf * bit(nreq != 0), w4, rq)
+  let w6 = fold(ozwr, bit(nreq != 0), w5, nreq)
+  return (w6, err != 0 ? 4 : bit(nreq != 0) * 7)
+end
+
+# ---------------------------------------------------------------------------------------------
+# The optimizer as a function of the tables of a chunk (for compiler/shape.a0: it optimizes the
+# fused bodies it appends): `ozopt1 ty tl fns nodes ntys args g nty nf no` is the optimized
+# body of function g, in an image IM (u32x128x512): [0] code (0, 4 a limit, 7 bodies needed),
+# [1] node count (code 7: the count of bodies needed), [2] [3] the ret kind and value, [4] the
+# literal iteration bound, [5] the number of operand pairs, [6] the count of bodies needed;
+# code 0: from word 8 the nodes, 5 words each (op, operand count, callee, predicate, type),
+# then the operand pairs (kind, value; node references are positions); code 7: from word 7 the
+# function indices whose bodies are needed. The tables are the chunk layout: nty types, nf
+# functions (word 0 of a row: bit 0 has a body, literalIterations * 2 above it, so every
+# function that can be a callee needs its literal iterations there), no operand pairs used; g
+# is optimized from its (original) body, its callees must be optimized and present when the
+# optimizer inlines, unrolls or evaluates them, otherwise they are requested.
+fn smpa(s: (u32,u32), j: u32, tl: u32x128x65, ti: u32x128x195, pf: u32) -> (u32,u32)
+  let (all, io) = s
+  let t = tl[pf + j]
+  return (all & ti[T_SC + t], io | ti[T_IO + t])
+end
+fn smnd(s: (u32,u32,u32), j: u32, nt: u32x128x24, ti: u32x128x195, first: u32) -> (u32,u32,u32)
+  let (all, io, wok) = s
+  let t = nt[first + j]
+  return (all & ti[T_SC + t], io | ti[T_IO + t], wok & bit(ti[T_WD + t] <= 64))
+end
+# the summary words of function f: node count and the type facts
+fn smstep(sm: u32x128x16, f: u32, fnt: u32x128x45, nt: u32x128x24, tl: u32x128x65, ti: u32x128x195) -> u32x128x16
+  let has = (fnt[f * 7] & 1) != 0
+  let pf = fnt[f * 7 + 2]
+  let res = fnt[f * 7 + 3]
+  let cnt = fnt[f * 7 + 5]
+  let ps = fold(smpa, fnt[f * 7 + 1], (1, 0), tl, ti, pf)
+  let ns = fold(smnd, cnt, (1, 0, bit(ti[T_WD + res] <= 64)), nt, ti, fnt[f * 7 + 4])
+  let flags = ps#0 | (ti[T_SC + res] * 2) | (ns#0 * 4) | (bit((ps#1 | ti[T_IO + res] | ns#1) != 0) * 8) | (ns#2 * 16)
+  sm[f * 2] = cnt if has
+  sm[f * 2 + 1] = flags if has
+  return sm
+end
+fn imwop(im: u32x128x512, j: u32, oa: u32x128x512, pos: u32x128x32, as_: u32, base: u32) -> u32x128x512
+  let (k, v) = rdp(oa, as_ + j)
+  im[base + j * 2] = k
+  im[base + j * 2 + 1] = k == 1 ? pos[v] : v
+  return im
+end
+fn imnode(im: u32x128x512, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, pos: u32x128x32) -> u32x128x512
+  let x = sq[i]
+  let na = cl[C_NA + x]
+  let cnt = im[5]
+  let b = 8 + i * 5
+  im[b] = cl[C_OP + x]
+  im[b + 1] = na
+  im[b + 2] = cl[C_CA + x]
+  im[b + 3] = cl[C_PR + x]
+  im[b + 4] = cl[C_TY + x]
+  im[5] = cnt + na
+  return fold(imwop, na, im, oa, pos, cl[C_AS + x], 8 + n * 5 + cnt * 2)
+end
+fn imrq(im: u32x128x512, f: u32, rq: u32x128x7) -> u32x128x512
+  let c = im[6]
+  im[7 + c] = f if rq[f] != 0
+  im[6] = c + bit(rq[f] != 0)
+  return im
+end
+fn ozopt1(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, g: u32, nty: u32, nf: u32, no: u32) -> u32x128x512
+  let ti = fold(tistep, nty, zeros(195), ty, tl)
+  let sm = fold(smstep, nf, zeros(16), fnt, nt, tl, ti)
+  let (sqs, cl, oa, n, rk, rv, li, nreq, rq, err) = optcore(ty, tl, fnt, nd, nt, op, sm, ti, g, 0, 1, nf, no)
+  let tot = fold(cnta, n, 0, sqs, cl)
+  let fits = (8 + n * 5 + tot * 2) <= 65536
+  let ok = (nreq == 0) & (err == 0) & fits
+  let pos = fold(posstep, n, zeros(32), sqs)
+  let im0 = zeros(512)
+  let im1 = fold(imnode, ok ? n : 0, im0, n, sqs, cl, oa, pos)
+  im1[1] = n if ok
+  im1[2] = rk if ok
+  im1[3] = (rk == 1 ? pos[rv] : rv) if ok
+  im1[4] = li if ok
+  let im2 = fold(imrq, nf * bit((nreq != 0) & (err == 0)), im1, rq)
+  im2[1] = nreq if (nreq != 0) & (err == 0)
+  im2[0] = ((err != 0) | !fits) ? 4 : bit(nreq != 0) * 7
+  return im2
+end
+
+# mode 8: `ozopt1` on the tables of mode 7 (without the summaries and the stage): the image prefix
+# (code 0: 8 + 5 nodes + 2 pairs words; code 7: 7 + the bodies needed; code 4: 1), the code is
+# the result
+fn imw(o: io, i: u32, im: u32x128x512) -> io
+  return write(o, im[i])
+end
+fn ozimg(io: io) -> (io, u32)
+  let (nty, i1) = wardw(io)
+  let (ty, i2) = warnty(i1, nty * 3)
+  let (ntl, i3) = wardw(i2)
+  let (tl, i4) = warn65(i3, ntl)
+  let (nf, i5) = wardw(i4)
+  let (fnt, i6) = warn45(i5, nf * 7)
+  let (nn, i7) = wardw(i6)
+  let (nd, i8) = warn132(i7, nn * 6)
+  let (nt, i9) = warn24(i8, nn)
+  let (no, i10) = wardw(i9)
+  let (op, i11) = warn512(i10, no * 2)
+  let (g, i12) = wardw(i11)
+  let im = ozopt1(ty, tl, fnt, nd, nt, op, g, nty, nf, no)
+  let code = im[0]
+  let len = code == 0 ? 8 + im[1] * 5 + im[5] * 2 : code == 7 ? 7 + im[6] : 1
+  return (fold(imw, len, i12, im), code)
+end

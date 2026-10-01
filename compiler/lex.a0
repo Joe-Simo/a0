@@ -1,8 +1,9 @@
 # A0 lexer, written in A0. First module of the self-hosted compiler.
-# Input: source bytes src[0..n), n <= 16384, in a u32x128x128 table (128 pages of 128 words;
-# element i is at page i>>7, word i&127). Output: tokens as word triples (kind start length)
-# in a u32x128x384 table (16384 tokens, one per byte at most, so it cannot overflow), and the
-# number of words written.
+# Input: source bytes src[0..n), n <= 131072, packed four bytes a word in a u32x512x64 table
+# (`readsrc`); every reader takes it a 128-byte page at a time through `srcpg`. Output: tokens
+# as word triples (kind start length) in a u32x128x384 table (16384 tokens), and the number of
+# words written; a source with more tokens is a limit diagnostic of the front end (the words
+# past the table are not stored, the count is exact).
 # kinds: 1 ident (a-z 0-9 _) 2 number (starts with a digit) 3 string (bytes between quotes,
 #        escapes kept raw) 4 arrow (->) 5 newline 6 minus 7 at 9 error (one byte)
 # Comments (# to end of line) and spaces are dropped; the newline of a comment line is kept.
@@ -37,6 +38,273 @@ tb eq p0 9
 cr eq p0 13
 a or sp tb
 r or a cr
+ret r
+end
+# the source bytes [128*p1, 128*p1 + 128) of the packed source p0, one byte per word (the
+# page view every reader of the source takes; 128-byte page p1 is words (p1&15)*32.. of
+# packed page p1>>4)
+fn srcpg u32x512x64 u32 -> u32x128
+ph shr p1 4
+pk get p0 ph
+pl and p1 15
+off mul pl 32
+i0 add off 0
+w0 get pk i0
+a0 and w0 255
+s0b shr w0 8
+b0 and s0b 255
+s0c shr w0 16
+c0 and s0c 255
+d0 shr w0 24
+i1 add off 1
+w1 get pk i1
+a1 and w1 255
+s1b shr w1 8
+b1 and s1b 255
+s1c shr w1 16
+c1 and s1c 255
+d1 shr w1 24
+i2 add off 2
+w2 get pk i2
+a2 and w2 255
+s2b shr w2 8
+b2 and s2b 255
+s2c shr w2 16
+c2 and s2c 255
+d2 shr w2 24
+i3 add off 3
+w3 get pk i3
+a3 and w3 255
+s3b shr w3 8
+b3 and s3b 255
+s3c shr w3 16
+c3 and s3c 255
+d3 shr w3 24
+i4 add off 4
+w4 get pk i4
+a4 and w4 255
+s4b shr w4 8
+b4 and s4b 255
+s4c shr w4 16
+c4 and s4c 255
+d4 shr w4 24
+i5 add off 5
+w5 get pk i5
+a5 and w5 255
+s5b shr w5 8
+b5 and s5b 255
+s5c shr w5 16
+c5 and s5c 255
+d5 shr w5 24
+i6 add off 6
+w6 get pk i6
+a6 and w6 255
+s6b shr w6 8
+b6 and s6b 255
+s6c shr w6 16
+c6 and s6c 255
+d6 shr w6 24
+i7 add off 7
+w7 get pk i7
+a7 and w7 255
+s7b shr w7 8
+b7 and s7b 255
+s7c shr w7 16
+c7 and s7c 255
+d7 shr w7 24
+i8 add off 8
+w8 get pk i8
+a8 and w8 255
+s8b shr w8 8
+b8 and s8b 255
+s8c shr w8 16
+c8 and s8c 255
+d8 shr w8 24
+i9 add off 9
+w9 get pk i9
+a9 and w9 255
+s9b shr w9 8
+b9 and s9b 255
+s9c shr w9 16
+c9 and s9c 255
+d9 shr w9 24
+i10 add off 10
+w10 get pk i10
+a10 and w10 255
+s10b shr w10 8
+b10 and s10b 255
+s10c shr w10 16
+c10 and s10c 255
+d10 shr w10 24
+i11 add off 11
+w11 get pk i11
+a11 and w11 255
+s11b shr w11 8
+b11 and s11b 255
+s11c shr w11 16
+c11 and s11c 255
+d11 shr w11 24
+i12 add off 12
+w12 get pk i12
+a12 and w12 255
+s12b shr w12 8
+b12 and s12b 255
+s12c shr w12 16
+c12 and s12c 255
+d12 shr w12 24
+i13 add off 13
+w13 get pk i13
+a13 and w13 255
+s13b shr w13 8
+b13 and s13b 255
+s13c shr w13 16
+c13 and s13c 255
+d13 shr w13 24
+i14 add off 14
+w14 get pk i14
+a14 and w14 255
+s14b shr w14 8
+b14 and s14b 255
+s14c shr w14 16
+c14 and s14c 255
+d14 shr w14 24
+i15 add off 15
+w15 get pk i15
+a15 and w15 255
+s15b shr w15 8
+b15 and s15b 255
+s15c shr w15 16
+c15 and s15c 255
+d15 shr w15 24
+i16 add off 16
+w16 get pk i16
+a16 and w16 255
+s16b shr w16 8
+b16 and s16b 255
+s16c shr w16 16
+c16 and s16c 255
+d16 shr w16 24
+i17 add off 17
+w17 get pk i17
+a17 and w17 255
+s17b shr w17 8
+b17 and s17b 255
+s17c shr w17 16
+c17 and s17c 255
+d17 shr w17 24
+i18 add off 18
+w18 get pk i18
+a18 and w18 255
+s18b shr w18 8
+b18 and s18b 255
+s18c shr w18 16
+c18 and s18c 255
+d18 shr w18 24
+i19 add off 19
+w19 get pk i19
+a19 and w19 255
+s19b shr w19 8
+b19 and s19b 255
+s19c shr w19 16
+c19 and s19c 255
+d19 shr w19 24
+i20 add off 20
+w20 get pk i20
+a20 and w20 255
+s20b shr w20 8
+b20 and s20b 255
+s20c shr w20 16
+c20 and s20c 255
+d20 shr w20 24
+i21 add off 21
+w21 get pk i21
+a21 and w21 255
+s21b shr w21 8
+b21 and s21b 255
+s21c shr w21 16
+c21 and s21c 255
+d21 shr w21 24
+i22 add off 22
+w22 get pk i22
+a22 and w22 255
+s22b shr w22 8
+b22 and s22b 255
+s22c shr w22 16
+c22 and s22c 255
+d22 shr w22 24
+i23 add off 23
+w23 get pk i23
+a23 and w23 255
+s23b shr w23 8
+b23 and s23b 255
+s23c shr w23 16
+c23 and s23c 255
+d23 shr w23 24
+i24 add off 24
+w24 get pk i24
+a24 and w24 255
+s24b shr w24 8
+b24 and s24b 255
+s24c shr w24 16
+c24 and s24c 255
+d24 shr w24 24
+i25 add off 25
+w25 get pk i25
+a25 and w25 255
+s25b shr w25 8
+b25 and s25b 255
+s25c shr w25 16
+c25 and s25c 255
+d25 shr w25 24
+i26 add off 26
+w26 get pk i26
+a26 and w26 255
+s26b shr w26 8
+b26 and s26b 255
+s26c shr w26 16
+c26 and s26c 255
+d26 shr w26 24
+i27 add off 27
+w27 get pk i27
+a27 and w27 255
+s27b shr w27 8
+b27 and s27b 255
+s27c shr w27 16
+c27 and s27c 255
+d27 shr w27 24
+i28 add off 28
+w28 get pk i28
+a28 and w28 255
+s28b shr w28 8
+b28 and s28b 255
+s28c shr w28 16
+c28 and s28c 255
+d28 shr w28 24
+i29 add off 29
+w29 get pk i29
+a29 and w29 255
+s29b shr w29 8
+b29 and s29b 255
+s29c shr w29 16
+c29 and s29c 255
+d29 shr w29 24
+i30 add off 30
+w30 get pk i30
+a30 and w30 255
+s30b shr w30 8
+b30 and s30b 255
+s30c shr w30 16
+c30 and s30c 255
+d30 shr w30 24
+i31 add off 31
+w31 get pk i31
+a31 and w31 255
+s31b shr w31 8
+b31 and s31b 255
+s31c shr w31 16
+c31 and s31c 255
+d31 shr w31 24
+r arr a0 b0 c0 d0 a1 b1 c1 d1 a2 b2 c2 d2 a3 b3 c3 d3 a4 b4 c4 d4 a5 b5 c5 d5 a6 b6 c6 d6 a7 b7 c7 d7 a8 b8 c8 d8 a9 b9 c9 d9 a10 b10 c10 d10 a11 b11 c11 d11 a12 b12 c12 d12 a13 b13 c13 d13 a14 b14 c14 d14 a15 b15 c15 d15 a16 b16 c16 d16 a17 b17 c17 d17 a18 b18 c18 d18 a19 b19 c19 d19 a20 b20 c20 d20 a21 b21 c21 d21 a22 b22 c22 d22 a23 b23 c23 d23 a24 b24 c24 d24 a25 b25 c25 d25 a26 b26 c26 d26 a27 b27 c27 d27 a28 b28 c28 d28 a29 b29 c29 d29 a30 b30 c30 d30 a31 b31 c31 d31
 ret r
 end
 # the pending token and what byte p1 at position p2 does to it (p3: the previous byte was a
@@ -157,10 +425,10 @@ r rec w3 fn1 nk ns ne
 ret r
 end
 # one source page p1 of n = p3 bytes: state (out nout kind start esc), p2 the source
-fn lexpage (u32x128x384,u32,u32,u32,u32) u32 u32x128x128 u32 -> (u32x128x384,u32,u32,u32,u32)
+fn lexpage (u32x128x384,u32,u32,u32,u32) u32 u32x512x64 u32 -> (u32x128x384,u32,u32,u32,u32)
 out at p0 0
 nout at p0 1
-pg get p2 p1
+pg call srcpg p2 p1
 base mul p1 128
 rest sub p3 base
 big gt rest 128
@@ -176,26 +444,34 @@ s0 rec w0 f0 pk ps esc
 s fold lexbyte cnt s0 pg base
 w at s 0
 f at s 1
-c0 gt f 0
+c0f gt f 0
 i0 add hi 0
+c0t lt i0 384
+c0 and c0f c0t
 v0 get w 0
 o0 get out i0
 x0 select c0 v0 o0
 out0 set out i0 x0
-c1 gt f 128
+c1f gt f 128
 i1 add hi 1
+c1t lt i1 384
+c1 and c1f c1t
 v1 get w 1
 o1 get out0 i1
 x1 select c1 v1 o1
 out1 set out0 i1 x1
-c2 gt f 256
+c2f gt f 256
 i2 add hi 2
+c2t lt i2 384
+c2 and c2f c2t
 v2 get w 2
 o2 get out1 i2
 x2 select c2 v2 o2
 out2 set out1 i2 x2
-c3 gt f 384
+c3f gt f 384
 i3 add hi 3
+c3t lt i3 384
+c3 and c3f c3t
 v3 get w 3
 o3 get out2 i3
 x3 select c3 v3 o3
@@ -208,13 +484,15 @@ ne at s 4
 r rec out3 nout2 nk ns ne
 ret r
 end
-# write word p1 = p2 of a table when p3 (the index is in range: at most 3n words exist)
+# write word p1 = p2 of the token table when p3 and the word is within it
 fn tokput u32x128x384 u32 u32 bool -> u32x128x384
 h shr p1 7
 l and p1 127
 g get p0 h
 o get g l
-v select p3 p2 o
+in lt h 384
+w and p3 in
+v select w p2 o
 g2 set g l v
 t set p0 h g2
 ret t
@@ -262,7 +540,7 @@ t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z 
 ret t
 end
 # the pages, then the pending token at end of input (an unterminated string is dropped)
-fn lexsrc u32x128x128 u32 -> (u32x128x384,u32)
+fn lexsrc u32x512x64 u32 -> (u32x128x384,u32)
 zero call ztok
 n127 add p1 127
 np shr n127 7
@@ -291,7 +569,7 @@ nf select pend n3 nout
 r rec c nf
 ret r
 end
-# io front: read n then n source bytes (n is clamped to 16384; the remaining input is not
+# io front: read n then n source bytes (n is clamped to 131072; the remaining input is not
 # read), write nout then the token words
 fn rbyte (u32x128,io) u32 -> (u32x128,io)
 buf at p0 0
@@ -303,15 +581,61 @@ nb set buf p1 v
 out rec nb t
 ret out
 end
-fn readpage (u32x128x128,io) u32 u32 u32x128 -> (u32x128x128,io)
+# the source is packed four bytes a word, low byte first, in 64 pages of 512 words (2048
+# bytes): byte i is byte i&3 of word (i>>2)&511 of page i>>11
+fn zpk -> u32x512
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn zsrcp -> u32x512x64
+z call zpk
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+# one byte into the word being packed: state (word shift io)
+fn rpkb (u32,u32,io) u32 -> (u32,u32,io)
+w at p0 0
+sh at p0 1
+tk at p0 2
+r read tk
+v at r 0
+t at r 1
+x shl v sh
+w2 or w x
+sh2 add sh 8
+o rec w2 sh2 t
+ret o
+end
+# word p1 of the packed page from byte p2 on, n = p3: the bytes of it below n
+fn rpkw (u32x512,io) u32 u32 u32 -> (u32x512,io)
+pg at p0 0
+tk at p0 1
+b4 mul p1 4
+b add p2 b4
+has lt b p3
+rest0 sub p3 b
+rest select has rest0 0
+big gt rest 4
+cnt select big 4 rest
+s0 rec 0 0 tk
+s fold rpkb cnt s0
+w at s 0
+t at s 2
+pg2 set pg p1 w
+r rec pg2 t
+ret r
+end
+fn readpage (u32x512x64,io) u32 u32 u32x512 -> (u32x512x64,io)
 src at p0 0
 tk at p0 1
-base mul p1 128
+base mul p1 2048
 rest sub p2 base
-big gt rest 128
-cnt select big 128 rest
+r3 add rest 3
+nw0 shr r3 2
+big gt nw0 512
+nw select big 512 nw0
 s0 rec p3 tk
-s fold rbyte cnt s0
+s fold rpkw nw s0 base p2
 pg at s 0
 t at s 1
 src2 set src p1 pg
@@ -319,16 +643,16 @@ r rec src2 t
 ret r
 end
 # the source of an io stream: (src n io)
-fn readsrc io -> (u32x128x128,u32,io)
+fn readsrc io -> (u32x512x64,u32,io)
 r0 read p0
 n0 at r0 0
 t0 at r0 1
-big lt 16384 n0
-n select big 16384 n0
-z call zsrc
-zp call zpage
-n127 add n 127
-np shr n127 7
+big lt 131072 n0
+n select big 131072 n0
+z call zsrcp
+zp call zpk
+n2047 add n 2047
+np shr n2047 11
 s0 rec z t0
 s fold readpage np s0 n zp
 src at s 0

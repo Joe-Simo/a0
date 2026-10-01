@@ -48,10 +48,10 @@ fn sg_z65 -> u32x65
 z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ret z
 end
-fn sg_srcb u32x128x128 u32 -> u32
+fn sg_srcb u32x512x64 u32 -> u32
 h shr p1 7
 l and p1 127
-g get p0 h
+g call srcpg p0 h
 v get g l
 ret v
 end
@@ -76,7 +76,7 @@ r rec k s n
 ret r
 end
 # bytes src[start..start+len) in a 64-byte buffer, zero past len (len at most 64)
-fn sg_cpstep u32x64 u32 u32x128x128 u32 u32 -> u32x64
+fn sg_cpstep u32x64 u32 u32x512x64 u32 u32 -> u32x64
 i0 add p3 p1
 v call sg_srcb p2 i0
 inr lt p1 p4
@@ -84,7 +84,7 @@ x select inr v 0
 r set p0 p1 x
 ret r
 end
-fn sg_copy64 u32x128x128 u32 u32 -> u32x64
+fn sg_copy64 u32x512x64 u32 u32 -> u32x64
 z call sg_z64
 r fold sg_cpstep 64 z p0 p1 p2
 ret r
@@ -307,7 +307,7 @@ t call sg_names
 r fold sg_pfxstep p1 false t p0 p2
 ret r
 end
-fn sg_isw2 u32x128x128 u32 u32 u32 u32 -> bool
+fn sg_isw2 u32x512x64 u32 u32 u32 u32 -> bool
 l eq p2 2
 a call sg_srcb p0 p1
 s1 add p1 1
@@ -318,7 +318,7 @@ r0 and l ea
 r and r0 eb
 ret r
 end
-fn sg_isw3 u32x128x128 u32 u32 u32 u32 u32 -> bool
+fn sg_isw3 u32x512x64 u32 u32 u32 u32 u32 -> bool
 l eq p2 3
 a call sg_srcb p0 p1
 s1 add p1 1
@@ -333,7 +333,7 @@ r1 and r0 eb
 r and r1 ec
 ret r
 end
-fn sg_isw4 u32x128x128 u32 u32 u32 u32 u32 u32 -> bool
+fn sg_isw4 u32x512x64 u32 u32 u32 u32 u32 u32 -> bool
 l eq p2 4
 a call sg_srcb p0 p1
 s1 add p1 1
@@ -353,7 +353,7 @@ r and r2 ed
 ret r
 end
 # a parameter name: p, then at least one decimal digit, nothing else
-fn sg_dgstep bool u32 u32x128x128 u32 u32 -> bool
+fn sg_dgstep bool u32 u32x512x64 u32 u32 -> bool
 i0 add p3 p1
 c call sg_srcb p2 i0
 ge0 ge c 48
@@ -367,7 +367,7 @@ ok select chk dg true
 r and p0 ok
 ret r
 end
-fn sg_isparam u32x128x128 u32 u32 -> bool
+fn sg_isparam u32x512x64 u32 u32 -> bool
 f call sg_srcb p0 p1
 isp eq f 112
 one gt p2 1
@@ -378,7 +378,7 @@ ret r
 end
 # the context of a token: (line start, header token of its function); state of the fold over the
 # tokens before it
-fn sg_ctxstep (u32,u32) u32 u32x128x384 u32x128x128 -> (u32,u32)
+fn sg_ctxstep (u32,u32) u32 u32x128x384 u32x512x64 -> (u32,u32)
 ls at p0 0
 fs at p0 1
 tk call sg_tokat p2 p1
@@ -400,7 +400,7 @@ end
 # one pass over the tokens for a name; p0 the search state, p1 the token, p2 toks, p3 src, p4 the
 # header token of the function the name is in, p5 the line start of the name, p6 the pass (0 the
 # functions, 1 the nodes), p7 p8 the name
-fn sg_tokstep (u32,u32x64,u32,bool,bool,bool) u32 u32x128x384 u32x128x128 u32 u32 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
+fn sg_tokstep (u32,u32x64,u32,bool,bool,bool) u32 u32x128x384 u32x512x64 u32 u32 u32 u32x64 u32 -> (u32,u32x64,u32,bool,bool,bool)
 tk call sg_tokat p2 p1
 kind at tk 0
 st at tk 1
@@ -478,7 +478,7 @@ ret st3
 end
 # the rule of the table row an unknown name at token p4 belongs to, from the context in the token
 # stream; p5 p6 the line start and the header of the function. 0: not a name this module knows
-fn sg_rulefor u32x128x128 u32x128x384 u32 u32 u32 -> u32
+fn sg_rulefor u32x512x64 u32x128x384 u32 u32 u32 -> u32
 ls mov p3
 pos sub p2 ls
 tk0 call sg_tokat p1 ls
@@ -525,7 +525,7 @@ r2 select skip0 0 r1
 ret r2
 end
 # the suggestion for the name at token p4: (rule, mode, length, bytes)
-fn sg_sugg u32x128x128 u32 u32x128x384 u32 u32 -> (u32,u32,u32,u32x64,u32,u32)
+fn sg_sugg u32x512x64 u32 u32x128x384 u32 u32 -> (u32,u32,u32,u32x64,u32,u32)
 c0 rec 0 0
 c fold sg_ctxstep p4 c0 p2 p0
 ls at c 0

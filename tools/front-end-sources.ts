@@ -5,10 +5,10 @@
  */
 
 import { readdir, readFile } from 'node:fs/promises';
-import { FRONT_END_SOURCE_LIMIT } from './ref-parse.js';
+import { FRONT_END_CAPACITY, FRONT_END_SOURCE_LIMIT } from './ref-parse.js';
 
 /**
- * Whole A0 files within the front end's 16384-byte source limit: the examples, the lexer's own
+ * Whole A0 files within the front end's source limit: the examples, the lexer's own
  * source, and the site's UI program (text literals, non-ASCII bytes in strings).
  */
 export async function wholeFiles(): Promise<[string, string][]> {
@@ -46,21 +46,19 @@ export async function frontEndSources(): Promise<[string, string][]> {
 }
 
 /**
- * The most one-line functions a source within the front end's limit holds (713, under the old
- * 1024 function cap; src/core.ts allows 65536): names a..z, then two characters, skipping `fn`.
+ * The most one-line functions the front end's function table holds (820; src/core.ts allows
+ * 65536): names a..z, then two characters, skipping `fn`.
  */
 function manyFunctions(): [string, string] {
   const letters = 'abcdefghijklmnopqrstuvwxyz';
   const names = [...letters];
   for (const x of letters) for (const y of `${letters}0123456789`) names.push(x + y);
-  let src = '';
-  let n = 0;
-  for (const name of names.filter((m) => m !== 'fn')) {
-    const f = `fn ${name} -> u32\nret 0\nend\n`;
-    if (Buffer.byteLength(src + f) > FRONT_END_SOURCE_LIMIT) break;
-    src += f;
-    n += 1;
-  }
+  const n = FRONT_END_CAPACITY.functions;
+  const src = names
+    .filter((m) => m !== 'fn')
+    .slice(0, n)
+    .map((name) => `fn ${name} -> u32\nret 0\nend\n`)
+    .join('');
   return [`fns${n}`, src];
 }
 

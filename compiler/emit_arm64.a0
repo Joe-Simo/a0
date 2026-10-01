@@ -3237,7 +3237,7 @@ ret code
 end
 
 # ---------------------------------------------------------------------------------------------
-# Whole-language emitter (stage 6b, the q functions): the checked paged IR of the 16384-byte
+# Whole-language emitter (stage 6b, the q functions): the checked paged IR of the A0
 # front end (the tables emit_c.a0 `cunit` builds) to Darwin arm64 assembly text, one byte per io
 # word, for every construct: u32 bool io, arrays and records at any nesting, call fold loop, arr rec text get set
 # at put, read write puts. `qunit` is `cunit` with this emitter; boot.a0 `emitachunkio` is its
@@ -3293,7 +3293,7 @@ wi and p1 127
 v get pg wi
 ret v
 end
-fn qw256 u32x128x256 u32 -> u32
+fn qw512 u32x128x512 u32 -> u32
 pi shr p1 7
 pg get p0 pi
 wi and p1 127
@@ -3530,15 +3530,15 @@ end
 # cell offset.
 # argument p1 of a call (mode 0: operand p1) or of a fold/loop body (mode 1: the state, the
 # counter, then operand p1) into its register or stack slot; the callee's list is tlist p6 from p7
-fn qarg io u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x384x65 u32x128x65 u32 -> io
+fn qarg io u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x384x65 u32x128x65 u32 -> io
 j at p3 0
 np at p3 1
 fa at p3 4
 o add fa p1
 w mul o 2
-kind call qw256 p4 w
+kind call qw512 p4 w
 w1 add w 1
-val call qw256 p4 w1
+val call qw512 p4 w1
 m1 eq p2 1
 z eq p1 0
 one eq p1 1
@@ -3578,7 +3578,7 @@ e call cws6c e_2 t3 2653 0 0 0 0 0
 ret e
 end
 # the arguments (mode p2), `bl` to function p10 and the stack arguments released
-fn qinvoke io u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x384x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 -> io
+fn qinvoke io u32 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x384x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 -> io
 cb mul p10 7
 cnp call cfw p7 cb 1
 cfp call cfw p7 cb 2
@@ -3605,7 +3605,7 @@ end
 # The node groups, each run once for its ops (p2 the context; tables args ntys types tlist szt
 # fns fnm pool; p11 the first node, p12 the first parameter).
 # mov (op 1) and select (18)
-fn qgmov io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgmov io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 op at p2 2
 k0 at p2 10
@@ -3632,7 +3632,7 @@ f call cws6 f_2 2653 0 0 0 0 0
 ret f
 end
 # ops 2-17
-fn qgalu io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgalu io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 op at p2 2
 k0 at p2 10
@@ -3703,7 +3703,7 @@ z call cws6 z_2 2653 0 0 0 0 0
 ret z
 end
 # call (op 19)
-fn qgcall io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgcall io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 ce at p2 5
 tag at p2 8
 size at p2 9
@@ -3725,7 +3725,7 @@ d call cws6c d_3 sc 2653 0 0 0 0 0
 ret d
 end
 # fold (op 20) and loop (21)
-fn qgfold io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgfold io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 j at p2 0
 np at p2 1
 op at p2 2
@@ -3804,14 +3804,14 @@ u call cws6 u_8 670309 0 0 0 0 0
 ret u
 end
 # element p1 of an array literal (element bytes p4, aggregate p5) at x12
-fn qael io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32 bool -> io
+fn qael io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32 bool -> io
 np at p2 1
 fa at p2 4
 o add fa p1
 w mul o 2
-kind call qw256 p3 w
+kind call qw512 p3 w
 w1 add w 1
-val call qw256 p3 w1
+val call qw512 p3 w1
 eo mul p1 p4
 a call qmovx p0 0 13 eo
 # t b a - "\tadd x13, x12, x13\n"
@@ -3831,7 +3831,7 @@ h call cws6c g p5 543973897 1915773279 1868783476 686448 0 0
 ret h
 end
 # arr (op 22) and text (24); all-zero literals are one `_a0rt_zero`
-fn qgarr io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgarr io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 na at p2 3
 fa at p2 4
 t at p2 7
@@ -3866,7 +3866,7 @@ f call cws6 f_2 2653 0 0 0 0 0
 ret f
 end
 # field p1 of a record literal at x12 (fields tlist p5 from p7; state: io, the field's offset)
-fn qrfl (io,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x384x65 u32x128x65 u32x128x65 u32 -> (io,u32)
+fn qrfl (io,u32) u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x384x65 u32x128x65 u32x128x65 u32 -> (io,u32)
 t0 at p0 0
 o at p0 1
 np at p2 1
@@ -3877,9 +3877,9 @@ fsz call qw65 p6 ft
 ftag call qtw p4 ft 0
 x add fa p1
 w mul x 2
-kind call qw256 p3 w
+kind call qw512 p3 w
 w1 add w 1
-val call qw256 p3 w1
+val call qw512 p3 w1
 fagg ge ftag 4
 fsc lt ftag 3
 ns select fsc 1 0
@@ -3901,7 +3901,7 @@ r rec h o2
 ret r
 end
 # rec (op 23)
-fn qgrec io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgrec io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 na at p2 3
 t at p2 7
 size at p2 9
@@ -3918,7 +3918,7 @@ c call cws6 c_2 2653 0 0 0 0 0
 ret c
 end
 # get (op 25): a scalar element is loaded, an aggregate one aliased
-fn qgget io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgget io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 k0 at p2 10
 v0 at p2 11
@@ -3946,7 +3946,7 @@ f call cws6 f_2 2653 0 0 0 0 0
 ret f
 end
 # set (op 26): a copy with one element replaced
-fn qgset io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgset io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 t at p2 7
 size at p2 9
@@ -3991,7 +3991,7 @@ r call cws6 r_2 2653 0 0 0 0 0
 ret r
 end
 # at (op 27): field V1 at its offset, loaded or aliased
-fn qgat io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgat io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 k0 at p2 10
 v0 at p2 11
@@ -4020,7 +4020,7 @@ f call cws6 f_2 2653 0 0 0 0 0
 ret f
 end
 # put (op 28): a copy with field V1 replaced
-fn qgput io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgput io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 t at p2 7
 size at p2 9
@@ -4067,7 +4067,7 @@ r call cws6 r_2 2653 0 0 0 0 0
 ret r
 end
 # read (op 29), write (30), puts (31) through the runtime
-fn qgio io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 -> io
+fn qgio io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 -> io
 np at p2 1
 op at p2 2
 k1 at p2 12
@@ -4102,7 +4102,7 @@ ret g
 end
 # node p1 of the function with first node p11, first parameter p12, p13 parameters and the
 # name (p14 p15); tables nodes args ntys types tlist szt fns fnm pool
-fn qnode io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 u32 u32 u32 u32 -> io
+fn qnode io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 u32 u32 u32 u32 -> io
 g add p11 p1
 b6 mul g 6
 b1 add b6 1
@@ -4119,17 +4119,17 @@ t call qw24 p4 g
 tag call qtw p5 t 0
 size call qw65 p7 t
 x0 mul fa 2
-k0 call qw256 p3 x0
+k0 call qw512 p3 x0
 x1 add x0 1
-v0 call qw256 p3 x1
+v0 call qw512 p3 x1
 x2 add x0 2
-k1 call qw256 p3 x2
+k1 call qw512 p3 x2
 x3 add x0 3
-v1 call qw256 p3 x3
+v1 call qw512 p3 x3
 x4 add x0 4
-k2 call qw256 p3 x4
+k2 call qw512 p3 x4
 x5 add x0 5
-v2 call qw256 p3 x5
+v2 call qw512 p3 x5
 cell add p13 p1
 off mul cell 8
 nc rec p1 p13 op na fa ce pr t tag size k0 v0 k1 v1 k2 v2 p14 p15 off
@@ -4223,7 +4223,7 @@ f call cws6c f_2 nio 2653 0 0 0 0 0
 ret f
 end
 # function p11 + p1 (tables nodes args ntys types tlist szt fns fnm pool)
-fn qfn io u32 u32x128x128 u32x128x256 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x129 u32 -> io
+fn qfn io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x45 u32x128x16 u32x128x400 u32 -> io
 f add p11 p1
 fb mul f 7
 np call cfw p8 fb 1
@@ -4305,14 +4305,14 @@ ret a
 end
 # (io types tlist fns nodes args ntys pool fnm ntypes from to head): the prelude when head is 1,
 # then functions [from, to)
-fn qemit io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 -> io
+fn qemit io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 -> io
 szt call qszt p1 p2 p9
 a fold qpre p12 p0
 nf sub p11 p10
 c fold qfn nf a p4 p5 p6 p1 p2 szt p3 p8 p7 p10
 ret c
 end
-fn qemst io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x256 u32x128x24 u32x128x129 u32x128x16 u32 u32 u32 u32 -> io
+fn qemst io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32 u32 u32 u32 -> io
 r call qemit p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13
 ret r
 end
@@ -4321,7 +4321,7 @@ end
 # there is no diagnostic (the prelude when p6). (io code fstat nfns). The front end is repeated
 # here, not shared: its tables together are over the 2^21-bit bound of one aggregate, so they
 # cannot be returned from a common function.
-fn qunit io u32x128x128 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
+fn qunit io u32x512x64 u32 u32x128x8 u32 bool bool -> (io,u32,u32x128x8,u32)
 lx call lexsrc p1 p2
 toks at lx 0
 nw at lx 1
@@ -4361,11 +4361,22 @@ dtok at s4 3
 dup ne derr 0
 e4 select dup derr e3
 et4 select dup dtok et3
-s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4 0
 fns at s5 0
 nodes at s5 1
-args at s5 2
-pcode at s5 8
+alo at s5 2
+narg at s5 5
+args call bodyargs alo narg fns0 names p1 toks ta tv ntok e4 et4
+fcs at s1 7
+fcu at s1 8
+fcp at s2 1
+fch at s3 19
+fct at s3 5
+fcl at s3 6
+fcn at s5 4
+ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn narg
+pcode0 at s5 8
+pcode select ovr 4 pcode0
 # after a parse error the function count may be below p4: nothing is checked then
 cfrom call cumin p4 nhc
 ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom

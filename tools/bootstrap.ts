@@ -49,12 +49,13 @@ import { link } from '../src/link.js';
 import { findClang, runTool, type ToolInfo, withTempDir } from '../src/toolchain.js';
 import { closure, closures, generateCases, generateCorpus } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
+import { FRONT_END_SOURCE_LIMIT, frontEndFits } from './ref-parse.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
 export { closure, closures };
 
-/** The front end's source limit (compiler/lex.a0 `readsrc`). */
-export const FRONT_END_BYTES = 16384;
+/** The front end's source limit (compiler/lex.a0 `readsrc`); tools/ref-parse.ts has its other capacities. */
+export const FRONT_END_BYTES = FRONT_END_SOURCE_LIMIT;
 /** Name of the header-prelude function of a chunk (must not name a program function). */
 export const PRELUDE = 'a0boottypes';
 /** io capacities of every stage: n, the bytes, head, strict, from and up to 1024 bounds in. */
@@ -179,7 +180,7 @@ function headerTypes(line: string): string[] {
 /**
  * The chunks of a program source. A source that fits one chunk is one chunk as written; a
  * program over the limits is split at function boundaries (consecutive functions in program
- * order, each chunk within the front end's source limit).
+ * order, each chunk within every capacity of the front end: tools/ref-parse.ts `frontEndFits`).
  */
 export function planChunks(src: string): Chunk[] {
   let program: Program | undefined;
@@ -189,8 +190,8 @@ export function planChunks(src: string): Chunk[] {
     program = undefined;
   }
   const whole = [{ source: src, head: true, strict: false, before: [], own: [] }];
-  // The front end's tables hold any source within its limit, so the limit is the only bound.
-  if (program === undefined || Buffer.byteLength(src) <= FRONT_END_BYTES) return whole;
+  // A source within every capacity of the front end is one chunk, as written.
+  if (program === undefined || frontEndFits(src)) return whole;
   const fns = program.functions;
   if ((program.uses?.length ?? 0) > 0) throw new Error('chunked mode needs a linked source');
   if (fns.some((f) => f.name === PRELUDE)) throw new Error(`a function is named ${PRELUDE}`);
@@ -218,7 +219,7 @@ export function planChunks(src: string): Chunk[] {
       strict: true,
       before: [PRELUDE, ...stubs.map((f) => f.name)],
       own: own.map((f) => f.name),
-      fits: Buffer.byteLength(source) <= FRONT_END_BYTES,
+      fits: frontEndFits(source),
     };
   };
   const chunks: Chunk[] = [];
