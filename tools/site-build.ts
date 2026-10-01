@@ -1,6 +1,6 @@
 /**
  * Build a0lang.com: site/page.a0 and site/docs.a0 (generated first by the A0 site generator,
- * tools/site-gen.ts) and site/play.a0, each with what it `use`s -> wasm32
+ * tools/site-gen.ts), each with what it `use`s -> C -> wasm32
  * (clang + wasm-ld), the generic runtime (site/app.ts -> site/dist/app.js via tsc), the HTML
  * shells, and the self-hosted Geist fonts. Output: site/dist/. Nothing is deployed by this script.
  */
@@ -27,7 +27,7 @@ interface Built {
 
 async function buildProgram(entry: string, outName: string): Promise<Built> {
   // The io buffers are widened because a page writes its stylesheet and every string as words;
-  // the input holds the play page's source text (480 bytes) and the state that echoes it.
+  // the input holds an event, a text field and the page state.
   // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
   const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'), { root: '.' }))
     .program;
@@ -88,7 +88,6 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[
       'https://a0lang.com/',
       'https://a0lang.com/docs/',
-      'https://a0lang.com/play/',
       'https://a0lang.com/llms.txt',
       'https://a0lang.com/primer.txt',
     ]
@@ -108,7 +107,7 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
 }
 
 /**
- * The site's Content-Security-Policy. It allows only same-origin scripts (theme.js and app.js;
+ * The site's Content-Security-Policy. It allows only same-origin scripts (app.js;
  * the ld+json block is data and never runs), wasm compilation, the runtime's generated <style>
  * and computed bar widths, self-hosted fonts, and same-origin fetches. No framing.
  */
@@ -127,6 +126,11 @@ export const SITE_CSP = [
 /** Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers. */
 export const VERCEL = {
   cleanUrls: true,
+  // The playground page was removed; old links land on the home page.
+  redirects: [
+    { source: '/play', destination: '/', permanent: true },
+    { source: '/play/:path*', destination: '/', permanent: true },
+  ],
   headers: [
     {
       source: '/(.*)',
@@ -177,11 +181,9 @@ async function main(): Promise<void> {
     'utf8',
   );
   await mkdir(join(out, 'docs'), { recursive: true });
-  await mkdir(join(out, 'play'), { recursive: true });
   const page = await buildProgram('page.a0', 'page');
   const docs = await buildProgram('docs.a0', 'docs');
-  const play = await buildProgram('play.a0', 'play');
-  const sizes = [page.size, docs.size, play.size];
+  const sizes = [page.size, docs.size];
   const tsc = join('node_modules', '.bin', 'tsc');
   const r = runTool(tsc, [
     '--strict',
@@ -198,7 +200,6 @@ async function main(): Promise<void> {
     '--outDir',
     out,
     join('site', 'app.ts'),
-    join('site', 'theme.ts'),
   ]);
   if (!r.ok) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
   await writeFile(
@@ -212,16 +213,11 @@ async function main(): Promise<void> {
     fillShell(await readFile(join('site', 'docs.html'), 'utf8'), docs),
     'utf8',
   );
-  await writeFile(
-    join(out, 'play', 'index.html'),
-    fillShell(await readFile(join('site', 'play.html'), 'utf8'), play),
-    'utf8',
-  );
   await writeAgentFiles(page, docs);
   await copyFonts();
   await writeFile(join(out, 'vercel.json'), `${JSON.stringify(VERCEL, null, 2)}\n`, 'utf8');
   process.stdout.write(
-    `site/dist: ${sizes.join(', ')}, app.js, index.html, docs/index.html, play/index.html (prerendered), llms.txt, fonts/\n`,
+    `site/dist: ${sizes.join(', ')}, app.js, index.html, docs/index.html (prerendered), llms.txt, fonts/\n`,
   );
 }
 
