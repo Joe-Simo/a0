@@ -1,0 +1,353 @@
+{
+ "c400-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "c400-sumfrom-eight/a0/structured": [
+  "r fold addi 8 p0 p0",
+  "r fold addi 8 p0"
+ ],
+ "c400-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "c400-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "c400-avgfloor-nowrap/a0/structured": [
+  "a and p0 p1\nx xor p0 p1\nb shr x 1\nc add a b\nret c"
+ ],
+ "c400-sumsq-array/a0/structured": [
+  "a get p2 p1\nm mul a a\nb add p0 m\nret b"
+ ],
+ "c400-inrange-inclusive/a0/structured": [
+  "a ge p0 p1\nb le p0 p2\nc and a b\nret c"
+ ],
+ "c400-bounds-largest/a0/structured": [
+  "s rec 4294967295 0\nr fold minmax 4 s p0\nret r",
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nelem get p2 p1\ncur_min at p0 0\ncur_max at p0 1\nis_smaller lt elem cur_min\nnew_min select is_smaller elem cur_min\nis_larger gt elem cur_max\nnew_max select is_larger elem cur_max\nresult rec new_min new_max\nret result\nend"
+ ],
+ "c400-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0\nret r",
+  "fn mixel u32 u32 u32x4 -> u32\nelem get p2 p1\nprod mul p0 31\nresult add prod elem\nret result\nend"
+ ],
+ "c400-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nr call dot p0 p0\nret r\nend"
+ ],
+ "c400-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\np mul p0 100\nq div p 100\nr call limit q 0 100\nret r\nend",
+  "fn pctof u32 u32 -> u32\np mul p0 100\nq div p p1\nr call limit q 0 100\nret r\nend"
+ ],
+ "c400-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\nx xor p0 p1\nr call popcnt x\nret r\nend"
+ ],
+ "c400-fits-inclusive/kotlin/structured": [
+  "89     return a <= b"
+ ],
+ "c400-sumfrom-eight/kotlin/structured": [
+  "180     for (i in 0u until 8u) {"
+ ],
+ "c400-rot8-constant/kotlin/structured": [
+  "243     return (x shl 8) or (x shr 24)"
+ ],
+ "c400-onlyone-xor/kotlin/structured": [
+  "333     return a xor b"
+ ],
+ "c400-avgfloor-nowrap/kotlin/structured": [
+  "466     return (a & b) + ((a ^ b) shr 1)",
+  "466 return (a and b) + ((a xor b) shr 1)"
+ ],
+ "c400-sumsq-array/kotlin/structured": [
+  "558         s += sq(a[i])"
+ ],
+ "c400-inrange-inclusive/kotlin/structured": [
+  "654     return x >= lo && x <= hi"
+ ],
+ "c400-bounds-largest/kotlin/structured": [
+  "818         if (x > hi) hi = x"
+ ],
+ "c400-checksum-poly/kotlin/structured": [
+  "974     var h = 7u\n976         h = h * 31u + a[i]"
+ ],
+ "c400-norm2-dot/kotlin/structured": [
+  "+1073 fun norm2(a: List<UInt>): UInt {\n+1074     return dot(a, a)\n+1075 }",
+  "+1073 fun norm2(a: List<UInt>): UInt = dot(a, a)"
+ ],
+ "c400-pctof-limit/kotlin/structured": [
+  "+1198 fun pctof(part: UInt, whole: UInt): UInt {\n+1199     return limit((part * 100u) / whole, 0u, 100u)\n+1200 }",
+  "+1198 fun pctof(part: UInt, whole: UInt): UInt = limit((part * 100u) / whole, 0u, 100u)"
+ ],
+ "c400-hamming-popcnt/kotlin/structured": [
+  "+1262 fun hamming(a: UInt, b: UInt): UInt {\n+1263     return popcnt(a xor b)\n+1264 }"
+ ],
+ "c400-fits-inclusive/swift/structured": [
+  "89 return a <= b"
+ ],
+ "c400-sumfrom-eight/swift/structured": [
+  "180 for i: UInt32 in 0..<8 {"
+ ],
+ "c400-rot8-constant/swift/structured": [
+  "243 return (x << 8) | (x >> 24)"
+ ],
+ "c400-onlyone-xor/swift/structured": [
+  "333 return a != b"
+ ],
+ "c400-avgfloor-nowrap/swift/structured": [
+  "466 return (a & b) &+ ((a ^ b) &>> 1)"
+ ],
+ "c400-sumsq-array/swift/structured": [
+  "558 s = s &+ a[i] &* a[i]"
+ ],
+ "c400-inrange-inclusive/swift/structured": [
+  "654 return x >= lo && x <= hi"
+ ],
+ "c400-bounds-largest/swift/structured": [
+  "904 if x > hi {",
+  "822 if x > hi {"
+ ],
+ "c400-checksum-poly/swift/structured": [
+  "980 var h: UInt32 = 7",
+  "980 var h: UInt32 = 7"
+ ],
+ "c400-norm2-dot/swift/structured": [
+  "+1078 func norm2(_ a: [UInt32]) -> UInt32 {",
+  "+1078 func norm2(_ a: [UInt32]) -> UInt32 {\n  return dot(a, a)\n}"
+ ],
+ "c400-pctof-limit/swift/structured": [
+  "+1203 func pctof(_ part: UInt32, _ whole: UInt32) -> UInt32 {",
+  "+1203 func pctof(_ part: UInt32, _ whole: UInt32) -> UInt32 {\n  return limit(part &* 100 / whole, 0, 100)\n}"
+ ],
+ "c400-hamming-popcnt/swift/structured": [
+  "+1267 func hamming(_ a: UInt32, _ b: UInt32) -> UInt32 {",
+  "+1267 func hamming(_ a: UInt32, _ b: UInt32) -> UInt32 {\n  return popcnt(a ^ b)\n}"
+ ],
+ "c400-fits-inclusive/ruby/structured": [
+  "89 a <= b"
+ ],
+ "c400-sumfrom-eight/ruby/structured": [
+  "180 (0...8).each do |i|"
+ ],
+ "c400-rot8-constant/ruby/structured": [
+  "243 ((x << 8) | (x >> 24)) & 0xFFFFFFFF"
+ ],
+ "c400-onlyone-xor/ruby/structured": [
+  "333 a ^ b"
+ ],
+ "c400-avgfloor-nowrap/ruby/structured": [
+  "466 (a & b) + ((a ^ b) >> 1)"
+ ],
+ "c400-sumsq-array/ruby/structured": [
+  "558 s = (s + a[i] * a[i]) & 0xFFFFFFFF"
+ ],
+ "c400-inrange-inclusive/ruby/structured": [
+  "654 x >= lo && x <= hi"
+ ],
+ "c400-bounds-largest/ruby/structured": [
+  "818 hi = x if x > hi"
+ ],
+ "c400-checksum-poly/ruby/structured": [
+  "974 h = 7\n976 h = ((h * 31) + a[i]) & 0xFFFFFFFF"
+ ],
+ "c400-norm2-dot/ruby/structured": [
+  "+1073 def norm2(a)\n+1074   dot(a, a)\n+1075 end",
+  "+1073 def norm2(a)\n+1074   dot(a, a)\n+1075 end"
+ ],
+ "c400-pctof-limit/ruby/structured": [
+  "+1076 def pctof(part, whole)\n+1077   numerator = (part * 100) & 0xFFFFFFFF\n+1078   result = whole == 0 ? 4294967295 : (numerator / whole) & 0xFFFFFFFF\n+1079   limit(result, 0, 100)\n+1080 end",
+  "+1076 def pctof(part, whole)\n+1077   numerator = (part * 100) & 0xFFFFFFFF\n+1078   val = whole == 0 ? 4294967295 : (numerator / whole) & 0xFFFFFFFF\n+1079   limit(val, 0, 100)\n+1080 end"
+ ],
+ "c400-hamming-popcnt/ruby/structured": [
+  "+1081 def hamming(a, b)\n+1082   popcnt(a ^ b)\n+1083 end",
+  "+1339 def hamming(a, b)\n+1340   popcnt(a ^ b)\n+1341 end"
+ ],
+ "c400-fits-inclusive/php/structured": [
+  "121 return $a <= $b;"
+ ],
+ "c400-sumfrom-eight/php/structured": [
+  "242   for ($i = 0; $i < 8; $i++) {"
+ ],
+ "c400-rot8-constant/php/structured": [
+  "325   return (($x << 8) | ($x >> 24)) & 0xFFFFFFFF;"
+ ],
+ "c400-onlyone-xor/php/structured": [
+  "445   return $a ^ $b;",
+  "445 return $a xor $b;"
+ ],
+ "c400-avgfloor-nowrap/php/structured": [
+  "618   return ((($a & $b) + (($a ^ $b) >> 1)) & 0xFFFFFFFF);"
+ ],
+ "c400-sumsq-array/php/structured": [
+  "740     $s = ($s + mul32($a[$i], $a[$i])) & 0xFFFFFFFF;"
+ ],
+ "c400-inrange-inclusive/php/structured": [
+  "866   return $x >= $lo && $x <= $hi;"
+ ],
+ "c400-bounds-largest/php/structured": [
+  "1084     if ($x > $hi) {"
+ ],
+ "c400-checksum-poly/php/structured": [
+  "1292   $h = 7;\n1293   for ($i = 0; $i < 4; $i++) {\n1294     $h = (mul32($h, 31) + $a[$i]) & 0xFFFFFFFF;\n1295   }\n1296   return $h;"
+ ],
+ "c400-norm2-dot/php/structured": [
+  "+1503 function norm2(array $a): int\n+1504 {\n+1505   return dot($a, $a);\n+1506 }",
+  "+1670 function norm2(array $a): int\n+1671 {\n+1672   return dot($a, $a);\n+1673 }"
+ ],
+ "c400-pctof-limit/php/structured": [
+  "+1504 function pctof(int $part, int $whole): int\n+1505 {\n+1506   $result = intdiv(mul32($part, 100), $whole);\n+1507   return limit($result, 0, 100);\n+1508 }",
+  "+1670 function pctof(int $part, int $whole): int\n+1671 {\n+1672   $result = intdiv(mul32($part, 100), $whole);\n+1673   return limit($result, 0, 100);\n+1674 }"
+ ],
+ "c400-hamming-popcnt/php/structured": [
+  "+1509 function hamming(int $a, int $b): int\n+1510 {\n+1511   return popcnt($a ^ $b);\n+1512 }",
+  "+1670 function hamming(int $a, int $b): int\n+1671 {\n+1672   return popcnt($a ^ $b);\n+1673 }"
+ ],
+ "c400-fits-inclusive/haskell/structured": [
+  "65 fits a b = a <= b"
+ ],
+ "c400-sumfrom-eight/haskell/structured": [
+  "125 sumfrom x = foldl (\\s i -> s + i) x [0 .. 7]"
+ ],
+ "c400-rot8-constant/haskell/structured": [
+  "165 rot8 x = shiftL x 8 .|. shiftR x 24"
+ ],
+ "c400-onlyone-xor/haskell/structured": [
+  "225 onlyone a b = a /= b"
+ ],
+ "c400-avgfloor-nowrap/haskell/structured": [
+  "313 avgfloor a b = (a .&. b) + (shiftR (xor a b) 1)"
+ ],
+ "c400-sumsq-array/haskell/structured": [
+  "373 sumsq a = foldl (\\s i -> s + sq (a !! i)) 0 [0 .. 3]"
+ ],
+ "c400-inrange-inclusive/haskell/structured": [
+  "433 inrange x lo hi = x >= lo && x <= hi"
+ ],
+ "c400-bounds-largest/haskell/structured": [
+  "543       in (if x < lo then x else lo, if x > hi then x else hi)"
+ ],
+ "c400-checksum-poly/haskell/structured": [
+  "643 checksum a = foldl (\\h i -> h * 31 + a !! i) 7 [0 .. 3]"
+ ],
+ "c400-norm2-dot/haskell/structured": [
+  "+703 norm2 :: [Word32] -> Word32\n+704 norm2 a = dot a a"
+ ],
+ "c400-pctof-limit/haskell/structured": [
+  "+785 pctof :: Word32 -> Word32 -> Word32\n+786 pctof part whole = limit ((part * 100) / whole) 0 100",
+  "+836 pctof :: Word32 -> Word32 -> Word32\n+837 pctof part whole = limit (if whole == 0 then 4294967295 else (part * 100) `div` whole) 0 100"
+ ],
+ "c400-hamming-popcnt/haskell/structured": [
+  "+825 hamming :: Word32 -> Word32 -> Word32\n+826 hamming a b = popcnt (xor a b)"
+ ],
+ "c400-fits-inclusive/ocaml/structured": [
+  "60   a <= b"
+ ],
+ "c400-sumfrom-eight/ocaml/structured": [
+  "121   for i = 0 to 7 do"
+ ],
+ "c400-rot8-constant/ocaml/structured": [
+  "164   ((x lsl 8) lor (x lsr 24)) land 0xFFFFFFFF"
+ ],
+ "c400-onlyone-xor/ocaml/structured": [
+  "224   a <> b"
+ ],
+ "c400-avgfloor-nowrap/ocaml/structured": [
+  "317   (a land b) + ((a lxor b) lsr 1)"
+ ],
+ "c400-sumsq-array/ocaml/structured": [
+  "379     s := (!s + sq a.(i)) land 0xFFFFFFFF"
+ ],
+ "c400-inrange-inclusive/ocaml/structured": [
+  "445   x >= lo && x <= hi"
+ ],
+ "c400-bounds-largest/ocaml/structured": [
+  "560     if x > !hi then hi := x"
+ ],
+ "c400-checksum-poly/ocaml/structured": [
+  "666   let h = ref 7 in\n668     h := ((!h * 31 + a.(i)) land 0xFFFFFFFF)"
+ ],
+ "c400-norm2-dot/ocaml/structured": [
+  "+816 let norm2 a = dot a a"
+ ],
+ "c400-pctof-limit/ocaml/structured": [
+  "+902 let pctof part whole = limit (((part * 100) land 0xFFFFFFFF) / whole) 0 100",
+  "+863 let pctof part whole =\n+864   let numerator = (part * 100) land 0xFFFFFFFF in\n+865   let quotient = if whole = 0 then 4294967295 else numerator / whole in\n+866   limit quotient 0 100"
+ ],
+ "c400-hamming-popcnt/ocaml/structured": [
+  "+863 let hamming a b = popcnt (a lxor b)"
+ ],
+ "c400-fits-inclusive/elixir/structured": [
+  "92 a <= b"
+ ],
+ "c400-sumfrom-eight/elixir/structured": [
+  "182     Enum.reduce(0..7, x, fn i, s ->"
+ ],
+ "c400-rot8-constant/elixir/structured": [
+  "244     band(bor(bsl(x, 8), bsr(x, 24)), 0xFFFFFFFF)"
+ ],
+ "c400-onlyone-xor/elixir/structured": [
+  "334     bxor(a, b)",
+  "334   a != b"
+ ],
+ "c400-avgfloor-nowrap/elixir/structured": [
+  "467     band(band(a, b) + bsr(bxor(a, b), 1), 0xFFFFFFFF)"
+ ],
+ "c400-sumsq-array/elixir/structured": [
+  "559       band(s + sq(elem(a, i)), 0xFFFFFFFF)"
+ ],
+ "c400-inrange-inclusive/elixir/structured": [
+  "652     x >= lo and x <= hi"
+ ],
+ "c400-bounds-largest/elixir/structured": [
+  "811       hi = if x > hi, do: x, else: hi"
+ ],
+ "c400-checksum-poly/elixir/structured": [
+  "963     Enum.reduce(0..3, 7, fn i, h ->\n964       band(h * 31 + elem(a, i), 0xFFFFFFFF)"
+ ],
+ "c400-norm2-dot/elixir/structured": [
+  "+1059   def norm2(a) do\n+1060     dot(a, a)\n+1061   end",
+  "+1059 def norm2(a) do\n+1060   dot(a, a)\n+1061 end"
+ ],
+ "c400-pctof-limit/elixir/structured": [
+  "+1062   def pctof(part, whole) do\n+1063     result = if whole == 0 do\n+1064       4294967295\n+1065     else\n+1066       band(div(band(part * 100, 0xFFFFFFFF), whole), 0xFFFFFFFF)\n+1067     end\n+1068     limit(result, 0, 100)\n+1069   end",
+  "+1062 def pctof(part, whole) do\n+1063   result = if whole == 0 do\n+1064     4294967295\n+1065   else\n+1066     band(div(band(part * 100, 0xFFFFFFFF), whole), 0xFFFFFFFF)\n+1067   end\n+1068   limit(result, 0, 100)\n+1069 end"
+ ],
+ "c400-hamming-popcnt/elixir/structured": [
+  "+1070   def hamming(a, b) do\n+1071     popcnt(bxor(a, b))\n+1072   end",
+  "+1342 def hamming(a, b) do\n+1343   popcnt(bxor(a, b))\n+1344 end"
+ ],
+ "c400-fits-inclusive/zig/structured": [
+  "89 return a <= b;"
+ ],
+ "c400-sumfrom-eight/zig/structured": [
+  "181 while (i < 8) : (i += 1) {"
+ ],
+ "c400-rot8-constant/zig/structured": [
+  "244 return (x << 8) | (x >> 24);"
+ ],
+ "c400-onlyone-xor/zig/structured": [
+  "334 return a != b;"
+ ],
+ "c400-avgfloor-nowrap/zig/structured": [
+  "467 return (a & b) +% ((a ^ b) >> 1);"
+ ],
+ "c400-sumsq-array/zig/structured": [
+  "559 s +%= x *% x;"
+ ],
+ "c400-inrange-inclusive/zig/structured": [
+  "656 return x >= lo and x <= hi;"
+ ],
+ "c400-bounds-largest/zig/structured": [
+  "824 if (x > hi) hi = x;"
+ ],
+ "c400-checksum-poly/zig/structured": [
+  "981 var h: u32 = 7;\n983 h = h *% 31 +% x;"
+ ],
+ "c400-norm2-dot/zig/structured": [
+  "+1080 pub fn norm2(v: [4]u32) u32 {\n+1081     return dot(v, v);\n+1082 }",
+  "+1080 pub fn norm2(v: [4]u32) u32 {\n+1081     return dot(v, v);\n+1082 }"
+ ],
+ "c400-pctof-limit/zig/structured": [
+  "+1288 pub fn pctof(part: u32, whole: u32) u32 {\n+1289     return limit(part *% 100 / whole, 0, 100);\n+1290 }",
+  "+1288 pub fn pctof(part: u32, whole: u32) u32 {\n+1289     const result = if (whole == 0) 0xFFFFFFFF else (part *% 100) / whole;\n+1290     return limit(result, 0, 100);\n+1291 }"
+ ],
+ "c400-hamming-popcnt/zig/structured": [
+  "+1353 pub fn hamming(a: u32, b: u32) u32 {\n+1354     return popcnt(a ^ b);\n+1355 }"
+ ]
+}

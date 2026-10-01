@@ -31,11 +31,15 @@ import {
   formatSource,
   formatType,
   LIMITS,
+  parseAndValidate,
   run,
   type TypedProgram,
   type Value,
 } from './core.js';
+import { diag } from './diagnostics.js';
 import { applyPatch, parsePatch, revision, scopedView } from './edit.js';
+import { explain, explainIndex, verifyExamples } from './explain.js';
+import { diagnosticLine, fixAll } from './fix.js';
 import { link } from './link.js';
 import { serveLsp } from './lsp.js';
 import { serveStdio } from './mcp.js';
@@ -47,7 +51,8 @@ function usage(): never {
   process.stderr.write(
     [
       'usage:',
-      '  a0 check <file.a0>...',
+      '  a0 check <file.a0>... [--json] [--fix] [--hints]    # --json: diagnostics as fields; --fix: apply the exact fixes',
+      '  a0 explain [A0nnnn|--verify]           # what a diagnostic means, a failing and a fixed example',
       '  a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
       '  a0 emit c --parallel[=auto|gpu] <file.a0> [out]   # threads (+ Metal when built as ObjC)',
@@ -69,8 +74,7 @@ function usage(): never {
 
 async function readSource(path: string): Promise<string> {
   const text = await readFile(path, 'utf8');
-  if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes)
-    throw new A0Error('source too large');
+  if (Buffer.byteLength(text, 'utf8') > LIMITS.maxSourceBytes) throw diag('A0810');
   return text;
 }
 
@@ -79,10 +83,32 @@ async function loadProgram(path: string): Promise<TypedProgram> {
   return (await link(path, (p) => readFile(p, 'utf8'))).program;
 }
 
+/**
+ * `a0 check --fix`: apply every exact fix to a single file, and write it only when the result is
+ * accepted (a diagnostic with no exact fix leaves the file untouched and is reported by the check
+ * that follows).
+ */
+async function fixFile(path: string): Promise<void> {
+  const source = await readSource(path);
+  if (/^\s*use\s/m.test(source)) return;
+  const out = fixAll(source, (t) => {
+    parseAndValidate(t);
+  });
+  if (out.applied.length === 0) return;
+  if (out.error === undefined) {
+    await writeFile(path, out.text, 'utf8');
+    process.stderr.write(`fixed ${out.applied.length} exact edit(s) in ${path}\n`);
+  } else {
+    process.stderr.write(
+      `not written: ${out.applied.length} exact edit(s) apply, then ${formatDiagnostic(out.error, false)}\n`,
+    );
+  }
+}
+
 function parseValue(text: string): Value {
   if (text === 'true') return true;
   if (text === 'false') return false;
-  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw new A0Error(`invalid argument '${text}'`);
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw diag('A0811', [text]);
   return Number(text);
 }
 
@@ -91,7 +117,7 @@ function flagNumber(args: readonly string[], name: string): number | undefined {
   const a = args.find((x) => x.startsWith(`${name}=`));
   if (a === undefined) return undefined;
   const text = a.slice(name.length + 1);
-  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw new A0Error(`invalid ${name} '${text}'`);
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw diag('A0814', [name, text]);
   return Number(text);
 }
 
@@ -99,22 +125,64 @@ async function main(argv: readonly string[]): Promise<void> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
     case 'check': {
-      if (rest.length === 0) usage();
+      const flags = rest.filter((a) => a.startsWith('--'));
+      const files = rest.filter((a) => !a.startsWith('--'));
+      if (
+        files.length === 0 ||
+        flags.some((f) => f !== '--json' && f !== '--fix' && f !== '--hints')
+      )
+        usage();
+      const json = flags.includes('--json');
+      const hints = flags.includes('--hints') ? '`a0 check --fix`' : false;
       let failed = 0;
-      for (const file of rest) {
+      for (const file of files) {
+        if (flags.includes('--fix')) await fixFile(file);
+        let program: TypedProgram;
         try {
-          const program = await loadProgram(file);
-          for (const fn of program.functions) {
-            process.stdout.write(
-              `${rest.length > 1 ? `${file}: ` : ''}${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}\n`,
-            );
-          }
-        } catch (err) {
+          program = await loadProgram(file);
+        } catch (e) {
           failed++;
-          process.stderr.write(`${file}: error: ${formatDiagnostic(err)}\n`);
+          if (json && e instanceof A0Error) {
+            const source = await readFile(file, 'utf8').catch(() => '');
+            const line = diagnosticLine(source, e) ?? e.line ?? null;
+            process.stdout.write(
+              `${JSON.stringify({ ok: false, file, diagnostics: [{ ...e.toJSON(), line }] })}\n`,
+            );
+          } else {
+            process.stderr.write(`${file}: error: ${formatDiagnostic(e, hints)}\n`);
+          }
+          continue;
         }
+        const lines = program.functions.map(
+          (fn) =>
+            `${files.length > 1 ? `${file}: ` : ''}${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}`,
+        );
+        process.stdout.write(
+          json
+            ? `${JSON.stringify({ ok: true, file, functions: lines })}\n`
+            : `${lines.join('\n')}\n`,
+        );
       }
       if (failed > 0) process.exitCode = 1;
+      return;
+    }
+    case 'explain': {
+      const [what] = rest;
+      if (what === undefined) {
+        process.stdout.write(explainIndex());
+        return;
+      }
+      if (what === '--verify') {
+        const problems = verifyExamples();
+        process.stdout.write(
+          problems.length === 0 ? 'every example holds\n' : `${problems.join('\n')}\n`,
+        );
+        if (problems.length > 0) process.exitCode = 1;
+        return;
+      }
+      const text = explain(what);
+      if (text === undefined) throw diag('A0813', [what]);
+      process.stdout.write(text);
       return;
     }
     case 'init': {
@@ -136,7 +204,7 @@ async function main(argv: readonly string[]): Promise<void> {
       if (file === undefined || name === undefined) usage();
       const program = await loadProgram(file);
       const fn = program.byName.get(name);
-      if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
+      if (fn === undefined) throw diag('A0812', [name]);
       const values = args.map(parseValue);
       for (const [i, t] of fn.params.entries()) checkArgument(t, values[i] as Value, `p${i}`);
       const fuel = flagNumber(flags, '--fuel');
@@ -218,7 +286,7 @@ async function main(argv: readonly string[]): Promise<void> {
       if (file === undefined || name === undefined) usage();
       const program = await loadProgram(file);
       const fn = program.byName.get(name);
-      if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
+      if (fn === undefined) throw diag('A0812', [name]);
       process.stdout.write(`${scopedView(fn)}\n`);
       return;
     }
@@ -227,7 +295,7 @@ async function main(argv: readonly string[]): Promise<void> {
       if (file === undefined || name === undefined) usage();
       const program = await loadProgram(file);
       const fn = program.byName.get(name);
-      if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
+      if (fn === undefined) throw diag('A0812', [name]);
       process.stdout.write(`${revision(fn)}\n`);
       return;
     }
@@ -249,6 +317,8 @@ async function main(argv: readonly string[]): Promise<void> {
 }
 
 main(process.argv.slice(2)).catch((err: unknown) => {
-  process.stderr.write(`error: ${formatDiagnostic(err)}\n`);
+  process.stderr.write(
+    `error: ${formatDiagnostic(err, process.argv[2] === 'check' && process.argv.includes('--hints') ? '`a0 check --fix`' : false)}\n`,
+  );
   process.exit(1);
 });

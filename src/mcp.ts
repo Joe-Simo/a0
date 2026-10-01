@@ -27,6 +27,7 @@ import {
   type TypedProgram,
   type Value,
 } from './core.js';
+import { diag } from './diagnostics.js';
 import { EditSession, revision } from './edit.js';
 import { link } from './link.js';
 
@@ -47,29 +48,22 @@ const within = (root: string, path: string): boolean => {
   return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
 };
 
-const denied = (path: string): A0Error =>
-  new A0Error(`path '${path}' is outside the server root`, undefined, {
-    code: 'limit',
-    fix: 'use a path inside the directory the server was launched with',
-  });
+const denied = (path: string): A0Error => diag('A0801', [path]);
 
 /** Resolve `path` inside `root`; the real path (symlinks followed) must stay inside too. */
 export async function confine(root: string, path: string, mustExist: boolean): Promise<string> {
   const abs = resolve(root, path);
   if (!within(root, abs) || !abs.endsWith('.a0'))
-    throw within(root, abs)
-      ? new A0Error(`'${path}' is not an .a0 file`, undefined, { code: 'limit' })
-      : denied(path);
+    throw within(root, abs) ? diag('A0802', [path]) : denied(path);
   try {
     const real = await realpath(abs);
     if (!within(root, real)) throw denied(path);
     // The name alone is not enough: `x.a0 -> .env` would expose (and a save overwrite) it.
-    if (!real.endsWith('.a0'))
-      throw new A0Error(`'${path}' is not an .a0 file`, undefined, { code: 'limit' });
+    if (!real.endsWith('.a0')) throw diag('A0802', [path]);
     return real;
   } catch (e) {
     if (e instanceof A0Error) throw e;
-    if (mustExist) throw new A0Error(`no such file '${path}'`, undefined, { code: 'handle' });
+    if (mustExist) throw diag('A0803', [path]);
     // A dangling symlink would let a write follow it anywhere: only plain new files.
     if (
       await lstat(abs).then(
@@ -94,23 +88,13 @@ export async function confine(root: string, path: string, mustExist: boolean): P
 const failure = (root: string, e: unknown): CallToolResult => {
   const code = (e as { code?: unknown } | undefined)?.code;
   const err =
-    e instanceof A0Error
-      ? e
-      : new A0Error(
-          typeof code === 'string' ? `file system error ${code}` : 'internal error',
-          undefined,
-          { code: 'structure' },
-        );
+    e instanceof A0Error ? e : typeof code === 'string' ? diag('A0808', [code]) : diag('A0809');
   const body = JSON.stringify(err.toJSON()).split(JSON.stringify(`${root}${sep}`).slice(1, -1));
   return { isError: true, content: [{ type: 'text', text: body.join('') }] };
 };
 
 const text = (root: string, body: string): CallToolResult => {
-  if (body.length > MAX_OUTPUT)
-    return failure(
-      root,
-      new A0Error(`output exceeds ${MAX_OUTPUT} characters`, undefined, { code: 'limit' }),
-    );
+  if (body.length > MAX_OUTPUT) return failure(root, diag('A0804', [MAX_OUTPUT]));
   return { content: [{ type: 'text', text: body }] };
 };
 
@@ -137,11 +121,7 @@ export async function createServer(launch: string): Promise<McpServer> {
 
   const fileOf = async (file: string | undefined): Promise<string> => {
     if (file !== undefined) return confine(root, file, true);
-    if (defaultFile === undefined)
-      throw new A0Error('file is required when the server root is a directory', undefined, {
-        code: 'handle',
-        fix: 'pass file: a path relative to the server root',
-      });
+    if (defaultFile === undefined) throw diag('A0805');
     return defaultFile;
   };
 
@@ -203,7 +183,7 @@ export async function createServer(launch: string): Promise<McpServer> {
     'a0_apply',
     {
       description:
-        'Apply an edit (first line: an open handle). Returns the new view, or a JSON diagnostic with code/expected/actual/fix; a failed edit changes nothing.',
+        'Apply an edit (first line: an open handle). Returns the new view, or a JSON diagnostic with code (class), id (A0nnnn, see a0 explain), message, expected/actual, fix and applicability (exact or maybe); a failed edit changes nothing. The reply `fix all` applies every exact fix of the last rejected edit, atomically.',
       inputSchema: { file: fileField, edit: z.string().max(LIMITS.maxSourceBytes) },
     },
     tool(async ({ file, edit }) => {
@@ -252,8 +232,7 @@ export async function createServer(launch: string): Promise<McpServer> {
     },
     tool(async ({ file, function: name, args, fuel }) => {
       const fn = (await program(file)).byName.get(name);
-      if (fn === undefined)
-        throw new A0Error(`unknown function '${name}'`, undefined, { code: 'handle' });
+      if (fn === undefined) throw diag('A0610', [name]);
       for (const [i, t] of fn.params.entries()) checkArgument(t, args[i] as Value, `p${i}`);
       return JSON.stringify(run(fn, args, { fuel: fuel ?? MAX_FUEL }));
     }),
@@ -280,17 +259,9 @@ export async function createServer(launch: string): Promise<McpServer> {
     },
     tool(async ({ file, path }) => {
       const entry = await sessionFor(file);
-      if (!entry.dirty)
-        throw new A0Error('nothing to save: no edit has been applied', undefined, {
-          code: 'edit',
-          fix: 'call a0_apply first',
-        });
+      if (!entry.dirty) throw diag('A0806');
       const out = path === undefined ? await fileOf(file) : await confine(root, path, false);
-      if (path === undefined && entry.sources.length > 1)
-        throw new A0Error('program spans several files (use); save to a new path', undefined, {
-          code: 'edit',
-          fix: 'pass path: a new .a0 file inside the root',
-        });
+      if (path === undefined && entry.sources.length > 1) throw diag('A0807');
       await writeFile(out, formatSource(entry.session.program), 'utf8');
       entry.dirty = false;
       return relative(root, out);

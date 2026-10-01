@@ -215,13 +215,46 @@ static void load(const char *entry) {
   io.noutput = 0;
 }
 
+/* An unknown name: ask suggestio about the rejected token and print its table row and the guess
+   (the line of src/diagnostics.ts: `A0102 unknown callee 'mull': did you mean 'mul'?`). */
+static void suggest(uint32_t tok) {
+  static const struct { unsigned rule; const char *text; } rules[] = {
+      {1u, "unknown type"}, {101u, "undefined node"}, {102u, "unknown callee"},
+      {103u, "unknown fold or loop body"}, {104u, "unknown loop predicate"}};
+  uint32_t n = io.input[0];
+  io.input[n + 1] = tok;
+  io.ninput = n + 2u;
+  io.position = 0u;
+  io.noutput = 0u;
+  a0_suggestio(&io);
+  uint32_t rule = io.output[0], mode = io.output[1], len = io.output[2];
+  uint32_t start = io.output[3], nlen = io.output[4];
+  if (rule == 0u) return;
+  const char *text = "unknown name";
+  for (size_t k = 0; k < sizeof rules / sizeof rules[0]; k++)
+    if (rules[k].rule == rule) text = rules[k].text;
+  fprintf(stderr, "A%04u %s '", rule, text);
+  for (uint32_t k = 0; k < nlen; k++) fputc((int)io.input[1u + start + k], stderr);
+  fputc('\'', stderr);
+  if (mode == 1u) {
+    fputs(": did you mean '", stderr);
+    for (uint32_t k = 0; k < len; k++) fputc((int)io.output[5 + k], stderr);
+    fputs("'?", stderr);
+  } else if (mode == 2u) {
+    fputs(": defined later, so move it above", stderr);
+  }
+  fputc('\n', stderr);
+}
+
 /* Report the front end's diagnostic (output words 1..3) and return its code. */
 static int diagnose(const char *file, uint32_t code) {
   if (code == 0) return 0;
   const char *kind = code < 5u ? KINDS[code] : "unknown";
-  if (io.output[2] == 0xffffffffu)
-    fprintf(stderr, "%s: %s error %u at token %u\n", file, kind, code, io.output[3]);
-  else
+  if (io.output[2] == 0xffffffffu) {
+    uint32_t tok = io.output[3];
+    fprintf(stderr, "%s: %s error %u at token %u\n", file, kind, code, tok);
+    if (code == 1u || code == 2u) suggest(tok);
+  } else
     fprintf(stderr, "%s: %s error %u in function %u at node %u\n", file, kind, code,
             io.output[2], io.output[3]);
   return (int)code;

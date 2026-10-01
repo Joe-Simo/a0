@@ -15,6 +15,8 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  type CodeAction,
+  CodeActionKind,
   type CompletionItem,
   CompletionItemKind,
   type Connection,
@@ -31,7 +33,17 @@ import {
   type TextEdit,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { A0Error, formatSource, OP_ALIASES, OPS, type Op, parse, stripComment } from './core.js';
+import {
+  A0Error,
+  type FixEdit,
+  formatSource,
+  OP_ALIASES,
+  OPS,
+  type Op,
+  parse,
+  stripComment,
+} from './core.js';
+import { applyEdit } from './fix.js';
 import { link } from './link.js';
 import { confine } from './mcp.js';
 
@@ -104,6 +116,33 @@ function definitions(path: string, text: string): FnDef[] {
     });
   }
   return out;
+}
+
+/** The smallest whole-line replacement that turns `before` into `after`. */
+function changedLines(before: string, after: string): TextEdit {
+  const a = before.split(/\r?\n/);
+  const b = after.split(/\r?\n/);
+  let head = 0;
+  while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
+  let tail = 0;
+  while (
+    tail < a.length - head &&
+    tail < b.length - head &&
+    a[a.length - 1 - tail] === b[b.length - 1 - tail]
+  )
+    tail += 1;
+  const end = a.length - tail;
+  const insert = b.slice(head, b.length - tail).join('\n');
+  return {
+    range: {
+      start: { line: head, character: 0 },
+      end:
+        end < a.length
+          ? { line: end, character: 0 }
+          : { line: a.length - 1, character: (a[a.length - 1] ?? '').length },
+    },
+    newText: end < a.length && insert !== '' ? `${insert}\n` : insert,
+  };
 }
 
 const lineRange = (text: string, line: number): Range => {
@@ -217,9 +256,18 @@ export async function startServer(connection: Connection, launch: string): Promi
         {
           range: lineRange(text, line),
           severity: DiagnosticSeverity.Error,
+          // The coarse class stays the LSP code; the table code, the fix and its applicability
+          // travel as data (and drive the quick fix below).
           code: err.code,
           source: 'a0',
           message: err.fix === undefined ? detail : `${err.fix}\n${detail}`,
+          data: {
+            id: err.id ?? null,
+            code: err.code,
+            fix: err.fix === undefined ? null : scrub(err.fix),
+            applicability: err.applicability ?? null,
+            edits: err.edits,
+          },
         },
       ];
     }
@@ -237,6 +285,7 @@ export async function startServer(connection: Connection, launch: string): Promi
       documentSymbolProvider: true,
       completionProvider: {},
       documentFormattingProvider: true,
+      codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
     },
     serverInfo: { name: 'a0', version: '0.1.0' },
   }));
@@ -330,6 +379,31 @@ export async function startServer(connection: Connection, launch: string): Promi
     if (formatted === text) return [];
     const end = doc.positionAt(text.length);
     return [{ range: { start: { line: 0, character: 0 }, end }, newText: formatted }];
+  });
+
+  // A diagnostic that carries edits is a quick fix; an exact one is the preferred fix.
+  connection.onCodeAction(({ textDocument, context }): CodeAction[] => {
+    const doc = documents.get(textDocument.uri);
+    if (doc === undefined || !paths.has(doc.uri)) return [];
+    const text = doc.getText();
+    const actions: CodeAction[] = [];
+    for (const d of context.diagnostics) {
+      const data = d.data as
+        | { edits?: FixEdit[]; fix?: string | null; applicability?: string }
+        | undefined;
+      const edit = data?.edits?.[0];
+      if (edit === undefined) continue;
+      const next = applyEdit(text, edit);
+      if (next === undefined || next === text) continue;
+      actions.push({
+        title: `${data?.applicability === 'exact' ? 'Apply exact fix' : 'Quick fix'}: ${data?.fix ?? 'rewrite the line'}`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics: [d],
+        isPreferred: data?.applicability === 'exact',
+        edit: { changes: { [doc.uri]: [changedLines(text, next)] } },
+      });
+    }
+    return actions;
   });
 
   documents.listen(connection);
