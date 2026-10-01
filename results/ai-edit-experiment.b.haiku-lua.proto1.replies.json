@@ -1,0 +1,40 @@
+{
+ "b-fits-inclusive/lua/structured": [
+  "2 return a <= b"
+ ],
+ "b-sumfrom-eight/lua/structured": [
+  "3 for i = 0, 7 do"
+ ],
+ "b-rot8-constant/lua/structured": [
+  "2 return ((x << 8) | (x >> 24)) & 0xFFFFFFFF"
+ ],
+ "b-onlyone-xor/lua/structured": [
+  "2 return a ~= b"
+ ],
+ "b-avgfloor-nowrap/lua/structured": [
+  "2 return (a & b) + ((a ^ b) >> 1)",
+  "2 return ((a & b) + ((a ^ b) >> 1)) & 0xFFFFFFFF"
+ ],
+ "b-sumsq-array/lua/structured": [
+  "4 s = (s + a[i] * a[i]) & 0xFFFFFFFF"
+ ],
+ "b-inrange-inclusive/lua/structured": [
+  "2 return x >= lo and x <= hi"
+ ],
+ "b-bounds-largest/lua/structured": [
+  "7 if x > hi then hi = x end"
+ ],
+ "b-checksum-poly/lua/structured": [
+  "2 local h = 7\n4 h = (h * 31 + a[i]) & 0xFFFFFFFF"
+ ],
+ "b-norm2-dot/lua/structured": [
+  "+7 function norm2(a)\n+8   return dot(a, a)\n+9 end"
+ ],
+ "b-pctof-limit/lua/structured": [
+  "+6 function pctof(part, whole)\n+7   local result = whole == 0 and 0xFFFFFFFF or ((part * 100) & 0xFFFFFFFF) / whole\n+8   return limit(result, 0, 100)\n+9 end",
+  "+6 function pctof(part, whole)\n+7   local numerator = (part * 100) & 0xFFFFFFFF\n+8   local result = whole == 0 and 0xFFFFFFFF or math.floor(numerator / whole)\n+9   return limit(result, 0, 100)\n+10 end"
+ ],
+ "b-hamming-popcnt/lua/structured": [
+  "+7 function hamming(a, b)\n+8   return popcnt(a ~ b)\n+9 end"
+ ]
+}

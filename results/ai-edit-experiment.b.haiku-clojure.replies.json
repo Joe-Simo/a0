@@ -1,0 +1,40 @@
+{
+ "b-fits-inclusive/clojure/structured": [
+  "4   (<= a b))"
+ ],
+ "b-sumfrom-eight/clojure/structured": [
+  "5     (if (< i 8)"
+ ],
+ "b-rot8-constant/clojure/structured": [
+  "4   (bit-and (bit-or (bit-shift-left x 8) (bit-shift-right x 24)) 0xFFFFFFFF))"
+ ],
+ "b-onlyone-xor/clojure/structured": [
+  "4   (xor a b))",
+  "4   (bit-xor a b))"
+ ],
+ "b-avgfloor-nowrap/clojure/structured": [
+  "3 (defn avgfloor [a b]\n4   (bit-and (+ (bit-and a b) (bit-shift-right (bit-xor a b) 1)) 0xFFFFFFFF))"
+ ],
+ "b-sumsq-array/clojure/structured": [
+  "6       (recur (inc i) (bit-and (+ s (unchecked-multiply (nth a i) (nth a i))) 0xFFFFFFFF))"
+ ],
+ "b-inrange-inclusive/clojure/structured": [
+  "4   (and (>= x lo) (<= x hi)))"
+ ],
+ "b-bounds-largest/clojure/structured": [
+  "7         (recur (inc i) (if (< x lo) x lo) (if (> x hi) x hi)))"
+ ],
+ "b-checksum-poly/clojure/structured": [
+  "4   (loop [i 0 h 7]\n6       (recur (inc i) (bit-and (+ (unchecked-multiply h 31) (nth a i)) 0xFFFFFFFF))"
+ ],
+ "b-norm2-dot/clojure/structured": [
+  "+7\n+7 (defn norm2 [a]\n+7   (dot a a))"
+ ],
+ "b-pctof-limit/clojure/structured": [
+  "+5\n+5 (defn pctof [part whole]\n+5   (let [product (bit-and (unchecked-multiply part 100) 0xFFFFFFFF)]\n+5     (limit (if (= whole 0) 4294967295 (/ product whole)) 0 100)))",
+  "+5\n+5 (defn pctof [part whole]\n+5   (let [product (bit-and (unchecked-multiply part 100) 0xFFFFFFFF)]\n+5     (limit (if (= whole 0) 4294967295 (quot product whole)) 0 100)))"
+ ],
+ "b-hamming-popcnt/clojure/structured": [
+  "+7\n+7 (defn hamming [a b]\n+7   (popcnt (bit-xor a b)))"
+ ]
+}

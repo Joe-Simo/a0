@@ -1,0 +1,39 @@
+{
+ "b-fits-inclusive/forth/structured": [
+  "4 a b u<="
+ ],
+ "b-sumfrom-eight/forth/structured": [
+  "5 8 0 do"
+ ],
+ "b-rot8-constant/forth/structured": [
+  "4 x 8 lshift x 24 rshift or M and"
+ ],
+ "b-onlyone-xor/forth/structured": [
+  "4 a b xor"
+ ],
+ "b-avgfloor-nowrap/forth/structured": [
+  "4 a b and a b xor 1 rshift + M and"
+ ],
+ "b-sumsq-array/forth/structured": [
+  "6 s a i cells + @ dup * + M and to s"
+ ],
+ "b-inrange-inclusive/forth/structured": [
+  "4 x lo u>= x hi u<= and"
+ ],
+ "b-bounds-largest/forth/structured": [
+  "9 x hi u> if x to hi then"
+ ],
+ "b-checksum-poly/forth/structured": [
+  "4 7 to h\n6 h 31 * a i cells + @ + M and to h"
+ ],
+ "b-norm2-dot/forth/structured": [
+  "+9 : norm2 ( a -- s )\n+9   dup dot\n+9 ;"
+ ],
+ "b-pctof-limit/forth/structured": [
+  "+6 : pctof ( part whole -- r )\n+6   { part whole }\n+6   part 100 * M and whole / 0 100 limit\n+6 ;",
+  "+6 : pctof ( part whole -- r )\n+6   { part whole }\n+6   whole 0= if\n+6     4294967295\n+6   else\n+6     part 100 * M and whole /\n+6   then\n+6   0 100 limit\n+6 ;"
+ ],
+ "b-hamming-popcnt/forth/structured": [
+  "+9 : hamming ( a b -- d )\n+9   xor popcnt\n+9 ;"
+ ]
+}

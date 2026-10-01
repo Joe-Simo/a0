@@ -1,0 +1,41 @@
+{
+ "b-fits-inclusive/tcl/structured": [
+  "2 expr {$a <= $b}"
+ ],
+ "b-sumfrom-eight/tcl/structured": [
+  "3 for {set i 0} {$i < 8} {incr i}",
+  "3   for {set i 0} {$i < 8} {incr i} {"
+ ],
+ "b-rot8-constant/tcl/structured": [
+  "2 expr {(($x << 8) | ($x >> 24)) & 0xFFFFFFFF}"
+ ],
+ "b-onlyone-xor/tcl/structured": [
+  "2 expr {$a ^ $b}"
+ ],
+ "b-avgfloor-nowrap/tcl/structured": [
+  "2 expr {(($a & $b) + (($a ^ $b) >> 1)) & 0xFFFFFFFF}"
+ ],
+ "b-sumsq-array/tcl/structured": [
+  "4 set s [expr {($s + [lindex $a $i] * [lindex $a $i]) & 0xFFFFFFFF}]"
+ ],
+ "b-inrange-inclusive/tcl/structured": [
+  "2 expr {$x >= $lo && $x <= $hi}"
+ ],
+ "b-bounds-largest/tcl/structured": [
+  "7 if {$x > $hi} {set hi $x}"
+ ],
+ "b-checksum-poly/tcl/structured": [
+  "2 set h 7\n4 set h [expr {($h * 31 + [lindex $a $i]) & 0xFFFFFFFF}]"
+ ],
+ "b-norm2-dot/tcl/structured": [
+  "+6 proc norm2 {a} {\n+6   dot $a $a\n+6 }",
+  "+7 proc norm2 {a} {\n+7   return [dot $a $a]\n+7 }"
+ ],
+ "b-pctof-limit/tcl/structured": [
+  "+4 proc pctof {part whole} {\n+4   set pct [expr {(($part * 100) / $whole) & 0xFFFFFFFF}]\n+4   limit $pct 0 100\n+4 }",
+  "+4 proc pctof {part whole} {\n+4   set product [expr {($part * 100) & 0xFFFFFFFF}]\n+4   if {$whole == 0} {\n+4     set pct 4294967295\n+4   } else {\n+4     set pct [expr {$product / $whole}]\n+4   }\n+4   return [limit $pct 0 100]\n+4 }"
+ ],
+ "b-hamming-popcnt/tcl/structured": [
+  "+7 proc hamming {a b} {\n+7   popcnt [expr {$a ^ $b}]\n+7 }"
+ ]
+}

@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/elixir/structured": [
+  "5     a <= b"
+ ],
+ "b-sumfrom-eight/elixir/structured": [
+  "5     Enum.reduce(0..7, x, fn i, s ->"
+ ],
+ "b-rot8-constant/elixir/structured": [
+  "5     band(bor(bsl(x, 8), bsr(x, 24)), 0xFFFFFFFF)"
+ ],
+ "b-onlyone-xor/elixir/structured": [
+  "5     a != b"
+ ],
+ "b-avgfloor-nowrap/elixir/structured": [
+  "5     band(band(a, b) + bsr(bxor(a, b), 1), 0xFFFFFFFF)"
+ ],
+ "b-sumsq-array/elixir/structured": [
+  "7       band(s + band(elem(a, i) * elem(a, i), 0xFFFFFFFF), 0xFFFFFFFF)"
+ ],
+ "b-inrange-inclusive/elixir/structured": [
+  "5     x >= lo and x <= hi"
+ ],
+ "b-bounds-largest/elixir/structured": [
+  "8       hi = if x > hi, do: x, else: hi"
+ ],
+ "b-checksum-poly/elixir/structured": [
+  "5     Enum.reduce(0..3, 7, fn i, h ->\n6       band(h * 31 + elem(a, i), 0xFFFFFFFF)"
+ ],
+ "b-norm2-dot/elixir/structured": [
+  "+9\n+9   def norm2(a) do\n+9     dot(a, a)\n+9   end"
+ ],
+ "b-pctof-limit/elixir/structured": [
+  "+7\n+7   def pctof(part, whole) do\n+7     q = if whole == 0, do: 0xFFFFFFFF, else: div(band(part * 100, 0xFFFFFFFF), whole)\n+7     limit(q, 0, 100)\n+7   end"
+ ],
+ "b-hamming-popcnt/elixir/structured": [
+  "+8\n+8   def hamming(a, b) do\n+8     popcnt(bxor(a, b))\n+8   end"
+ ]
+}

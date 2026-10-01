@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/erlang/structured": [
+  "5     A =< B."
+ ],
+ "b-sumfrom-eight/erlang/structured": [
+  "5     lists:foldl(fun(I, S) -> (S + I) band 16#FFFFFFFF end, X, lists:seq(0, 7))."
+ ],
+ "b-rot8-constant/erlang/structured": [
+  "5     ((X bsl 8) bor (X bsr 24)) band 16#FFFFFFFF."
+ ],
+ "b-onlyone-xor/erlang/structured": [
+  "5     A xor B."
+ ],
+ "b-avgfloor-nowrap/erlang/structured": [
+  "5     (A band B) + ((A bxor B) bsr 1)."
+ ],
+ "b-sumsq-array/erlang/structured": [
+  "5     lists:foldl(fun(I, S) -> (S + lists:nth(I + 1, A) * lists:nth(I + 1, A)) band 16#FFFFFFFF end, 0, lists:seq(0, 3))."
+ ],
+ "b-inrange-inclusive/erlang/structured": [
+  "5     X >= Lo andalso X =< Hi."
+ ],
+ "b-bounds-largest/erlang/structured": [
+  "7         {if X < Lo -> X; true -> Lo end, if X > Hi -> X; true -> Hi end}"
+ ],
+ "b-checksum-poly/erlang/structured": [
+  "5     lists:foldl(fun(I, H) -> (H * 31 + lists:nth(I + 1, A)) band 16#FFFFFFFF end, 7, lists:seq(0, 3))."
+ ],
+ "b-norm2-dot/erlang/structured": [
+  "+5\n+5 norm2(A) ->\n+5     dot(A, A)."
+ ],
+ "b-pctof-limit/erlang/structured": [
+  "+6\n+6 pctof(Part, Whole) ->\n+6     P = (Part * 100) band 16#FFFFFFFF,\n+6     Q = if Whole =:= 0 -> 16#FFFFFFFF; true -> (P div Whole) band 16#FFFFFFFF end,\n+6     limit(Q, 0, 100)."
+ ],
+ "b-hamming-popcnt/erlang/structured": [
+  "+5\n+5 hamming(A, B) ->\n+5     popcnt(A bxor B)."
+ ]
+}

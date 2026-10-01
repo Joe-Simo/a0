@@ -3000,3 +3000,163 @@ Public dev tools only (`tools/dev/`, `docs/DEVELOPMENT.md` section "Gate speed")
 - **Re-measure with a one-line change** (same machine, cold cache first): cold full gate 541 s; docs-only line 1 s (lint only); one backend file (`src/riscv64.ts`) 83 s (lint, typecheck, test, verify); shared-core file (`src/optimize.ts`) 466 s (all 13 steps, everything invalidated). Against the 760 s serial baseline these are `results/dev-loop.json` rows `gate:*`.
 - **Fixes found on the way**: `claim-check --since` now diffs from the merge base (a moving base made unrelated template lines look new); `tools/site-build.ts` resolves `tsc` from its own package instead of `./node_modules/.bin`, which failed in a worktree.
 - Not done: per-backend verify (a backend change still runs all of verify); caching `site` across runs (its key includes `results/*.json`, which a gate rewrites); the key does not cover installed toolchain versions (`--no-cache` after upgrading clang or java).
+
+## Session 2026-10-01 (AI edits: A0 against 48 languages, set b, fresh Haiku and Sonnet subjects)
+
+Runs the project's measurement protocol on set b for every registered language and for A0 (current parser, rules-merged primer, structured protocol, relaxed edit format) and records wins, ties and losses as they fall.
+
+Method (no author-written replies, no old reply rescored):
+- One group file per language and model (the 12 set-b tasks, the system text printed once), one fresh Haiku and one fresh Sonnet Agent-tool subagent per file, each reading only its file, one shot. Replies are written as plain text in a delimited file (`==== REPLY <task key> ====`, then the reply verbatim), so no JSON escaping can alter a reply. Every failed first attempt then goes to a fresh subagent of the same model, per model and language, with the system text, the request, its first reply and the harness's exact rejection (`Rejected: ... Try again.`; the A0 cell with the current view): one repair round.
+- Cells: A0 structured (rules-merged primer, 118 tokens) and the 48 other languages in the numbered line-edit structured protocol (`PROTOCOL_LINE_EDIT` in tools/ai-edit-apply.ts), which is the protocol the TS and Rust cells use in the rules-merged run. No language is run in the whole-file protocol here. Languages: TypeScript, Rust, Python, Go, Java, C#, C++, Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig, C, JavaScript, Lua, Perl, Tcl, Objective-C, Fortran, Dart, Nim, Groovy, Clojure, Visual Basic, F#, Scala, Prolog, Forth, Guile, Smalltalk, Racket, Erlang, Common Lisp, Pascal, R, Julia, Haxe, Chicken, Crystal, D, COBOL, V, Odin, Vala, Gleam. Acceptance is each language's own toolchain plus a generated driver; self-check ok in every scoring run (every reference passes, every original fails).
+- Scoring ran at most 2 processes at a time and not while the 1-minute load was above 25 (other agents shared the 8 cores).
+- Cost per task as in "No primer and lazy primer": o200k tokens, system text 1.25x on the first call and 0.05x later, task + view (retry: + reply + repair) and replies 1x. "1 task" is a cold session, "10 tasks" spreads one primer write over ten, "unbounded" has the primer fully cached. Tokens per task: primer (system text, per call), code read (task, view, repair messages), write (replies). Each cell is 24 trials (12 tasks x Haiku and Sonnet).
+
+Two collections (the first exposed an ambiguity in the harness text; it was fixed generally and all 48 languages were collected again):
+- proto1, the line-edit text of the earlier runs (`+<number> <new text>` inserts after line <number>; "a number may be given once"). A0 and 40 languages were collected here (82 first-shot subjects, 45 repair subjects). Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir and Zig are the existing fresh collection `b.{haiku,sonnet}-langs8` of the langs8 branch, reused unchanged: this harness produces the same `langTaskSetSha256` (`bcce8fde...`) and `taskSetSha256` and the same system and view token counts for all 96 of its trials. The one difference is the Elixir compile message (that branch cut it to start at the first error; this harness reports it in full), which can only touch Elixir repairs. Results `results/ai-edit-experiment.b.<model>-<lang>.proto1.json` (+ `.replies.json`) for the 40 and the langs8 files for the 8.
+- proto2, `PROTOCOL_LINE_EDIT`, which states what cost proto1 most first attempts. Of 157 first-attempt failures, 56 (55 Haiku) wrote a multi-line insertion with consecutive numbers (`+8 a`, `+9 b`: this anchors `b` after line 9, not after `a`) because the text said a number may be given once, and 33 of the 59 trials still failing after the repair were that. The new text says to repeat the same number once per new line (inserted in order), that the text after the single space following the number is the whole line including its indentation, that a line may be replaced or deleted once, and that every edit line starts with a view line number. The parser is unchanged; test/ai-edit-apply.test.ts (5 tests) pins its semantics: indentation kept verbatim, repeated `+n` in order, consecutive `+n` anchoring different lines, delete, replace once, optional handle, bad line, and that the system text states these. All 48 languages were collected again with fresh subjects (96 first-shot subjects, 51 repair subjects); A0 was not (its prompts and parser did not change). The longer text adds about 61 primer tokens per call to every non-A0 cell (TypeScript 155 -> 216; A0's 133 is unchanged). Results `results/ai-edit-experiment.b.<model>-<lang>.json` (+ `.replies.json`: first reply and repair), A0 `...-a0.json`.
+- Pilot before the full collection (Haiku on Python, Java, Nim): multi-line insertions repeated the number; Python (3/12) and Nim (3/12) stayed at their proto1 first-shot level, because Haiku still wrote replacement text without the indentation in the indentation-significant languages, so that one is a model slip rather than text the harness can state better. (F# improved from 9 indentation slips to none.)
+
+Summary files: `results/ai-edit-b48.json` (every cell: pooled and per model, tokens, cost, first-attempt status, A0 against the language, both protocols) and `results/ai-edit-b48.failures.json` (every first-attempt failure with its class and the classification rules).
+
+### Result: proto2 (clarified protocol); A0 first, then by acceptance after repair
+
+From `results/ai-edit-b48.json` (`proto2`): acceptance pooled over Haiku and Sonnet (24 trials) one shot and after one repair; the two models (one-shot>repaired, of 12 each); tokens per task primer / code read / write = total; model calls per task; cost for 1 task, 10 tasks and an unbounded session. Last column: A0 against that language on (one-shot, repaired, 1 task, 10, unbounded): W = A0 better, T = tie (acceptance equal, cost within 1%), L = A0 worse.
+
+| language | one-shot | after repair | Haiku / Sonnet (one-shot>repair, of 12) | tokens/task primer / read / write = total | calls | 1 task | 10 tasks | unbounded | A0 vs it (1-shot, repair, 1, 10, unb.) |
+|---|---|---|---|---|---|---|---|---|---|
+| A0 | 21/24 | 23/24 | 9>11 / 12>12 | 133 / 119 / 35 = 287 | 1.12 | 326 | 199 | 185 | - |
+| Ruby | 24/24 | 24/24 | 12>12 / 12>12 | 217 / 85 / 19 = 321 | 1.00 | 375 | 141 | 115 | LLWLL |
+| Erlang | 24/24 | 24/24 | 12>12 / 12>12 | 244 / 104 / 28 = 376 | 1.00 | 436 | 173 | 144 | LLWLL |
+| Perl | 24/24 | 24/24 | 12>12 / 12>12 | 266 / 119 / 28 = 413 | 1.00 | 479 | 192 | 160 | LLWLL |
+| Crystal | 24/24 | 24/24 | 12>12 / 12>12 | 304 / 92 / 21 = 416 | 1.00 | 492 | 164 | 128 | LLWLL |
+| R | 24/24 | 24/24 | 12>12 / 12>12 | 272 / 346 / 19 = 636 | 1.00 | 704 | 411 | 378 | LLWWW |
+| TypeScript | 23/24 | 24/24 | 11>12 / 12>12 | 216 / 99 / 25 = 340 | 1.04 | 388 | 165 | 140 | LLWLL |
+| JavaScript | 23/24 | 24/24 | 11>12 / 12>12 | 232 / 95 / 24 = 352 | 1.04 | 401 | 161 | 134 | LLWLL |
+| Go | 23/24 | 24/24 | 11>12 / 12>12 | 232 / 108 / 23 = 364 | 1.04 | 418 | 177 | 150 | LLWLL |
+| C++ | 23/24 | 24/24 | 11>12 / 12>12 | 229 / 122 / 23 = 374 | 1.04 | 428 | 190 | 164 | LLWLL |
+| Common Lisp | 23/24 | 24/24 | 11>12 / 12>12 | 256 / 96 / 25 = 377 | 1.04 | 431 | 165 | 136 | LLWLL |
+| OCaml | 23/24 | 24/24 | 11>12 / 12>12 | 267 / 86 / 21 = 374 | 1.04 | 433 | 156 | 125 | LLWLL |
+| Forth | 23/24 | 24/24 | 11>12 / 12>12 | 274 / 100 / 19 = 393 | 1.04 | 455 | 171 | 139 | LLWLL |
+| Elixir | 23/24 | 24/24 | 11>12 / 12>12 | 259 / 114 / 28 = 401 | 1.04 | 462 | 193 | 163 | LLWLL |
+| Kotlin | 23/24 | 24/24 | 11>12 / 12>12 | 290 / 94 / 22 = 405 | 1.04 | 470 | 169 | 136 | LLWLL |
+| D | 23/24 | 24/24 | 11>12 / 12>12 | 291 / 93 / 22 = 405 | 1.04 | 470 | 169 | 135 | LLWLL |
+| Haskell | 23/24 | 24/24 | 11>12 / 12>12 | 315 / 122 / 25 = 462 | 1.04 | 533 | 207 | 171 | LLWWL |
+| Objective-C | 23/24 | 24/24 | 11>12 / 12>12 | 328 / 142 / 24 = 494 | 1.04 | 569 | 229 | 191 | LLWWW |
+| Julia | 22/24 | 24/24 | 10>12 / 12>12 | 270 / 106 / 25 = 401 | 1.08 | 455 | 186 | 156 | LLWLL |
+| Smalltalk | 22/24 | 24/24 | 10>12 / 12>12 | 266 / 110 / 33 = 410 | 1.08 | 466 | 200 | 171 | LLWTL |
+| F# | 22/24 | 24/24 | 10>12 / 12>12 | 285 / 108 / 23 = 416 | 1.08 | 473 | 189 | 157 | LLWLL |
+| Vala | 22/24 | 24/24 | 11>12 / 11>12 | 304 / 110 / 23 = 437 | 1.08 | 498 | 194 | 160 | LLWLL |
+| Zig | 22/24 | 24/24 | 10>12 / 12>12 | 342 / 108 / 24 = 474 | 1.08 | 541 | 199 | 162 | LLWTL |
+| Prolog | 22/24 | 24/24 | 10>12 / 12>12 | 299 / 139 / 40 = 478 | 1.08 | 542 | 244 | 210 | LLWWW |
+| Scala | 22/24 | 24/24 | 10>12 / 12>12 | 330 / 129 / 26 = 486 | 1.08 | 553 | 224 | 187 | LLWWW |
+| PHP | 22/24 | 24/24 | 10>12 / 12>12 | 341 / 187 / 29 = 557 | 1.08 | 627 | 287 | 249 | LLWWW |
+| Fortran | 22/24 | 24/24 | 10>12 / 12>12 | 344 / 267 / 38 = 649 | 1.08 | 735 | 391 | 353 | LLWWW |
+| Rust | 21/24 | 24/24 | 12>12 / 9>12 | 250 / 113 / 27 = 389 | 1.12 | 438 | 199 | 172 | TLWTL |
+| Tcl | 21/24 | 24/24 | 9>12 / 12>12 | 279 / 113 / 30 = 422 | 1.12 | 472 | 204 | 174 | TLWWL |
+| Swift | 21/24 | 24/24 | 9>12 / 12>12 | 327 / 112 / 25 = 464 | 1.12 | 518 | 204 | 169 | TLWWL |
+| V | 20/24 | 24/24 | 10>12 / 10>12 | 320 / 120 / 26 = 465 | 1.17 | 512 | 216 | 183 | WLWWT |
+| Visual Basic | 19/24 | 24/24 | 10>12 / 9>12 | 332 / 164 / 32 = 529 | 1.21 | 582 | 285 | 252 | WLWWW |
+| Python | 15/24 | 24/24 | 3>12 / 12>12 | 300 / 100 / 25 = 424 | 1.38 | 438 | 202 | 176 | WLWWL |
+| Nim | 14/24 | 24/24 | 3>12 / 11>12 | 368 / 131 / 24 = 523 | 1.42 | 527 | 246 | 215 | WLWWW |
+| Racket | 23/24 | 23/24 | 11>11 / 12>12 | 261 / 121 / 24 = 406 | 1.04 | 466 | 195 | 165 | LTWLL |
+| Dart | 23/24 | 23/24 | 11>11 / 12>12 | 283 / 99 / 26 = 408 | 1.04 | 478 | 184 | 151 | LTWLL |
+| C | 23/24 | 23/24 | 11>11 / 12>12 | 286 / 145 / 23 = 455 | 1.04 | 522 | 225 | 192 | LTWWW |
+| Clojure | 22/24 | 23/24 | 10>11 / 12>12 | 275 / 104 / 30 = 409 | 1.08 | 466 | 192 | 161 | LTWLL |
+| Odin | 22/24 | 23/24 | 10>11 / 12>12 | 309 / 108 / 23 = 439 | 1.08 | 500 | 192 | 158 | LTWLL |
+| Groovy | 22/24 | 23/24 | 11>11 / 11>12 | 351 / 156 / 24 = 531 | 1.08 | 606 | 257 | 218 | LTWWW |
+| Haxe | 22/24 | 23/24 | 10>11 / 12>12 | 353 / 243 / 21 = 618 | 1.08 | 697 | 345 | 306 | LTWWW |
+| Lua | 21/24 | 23/24 | 9>11 / 12>12 | 267 / 101 / 25 = 393 | 1.12 | 445 | 189 | 160 | TTWLL |
+| Chicken Scheme | 20/24 | 23/24 | 8>11 / 12>12 | 336 / 133 / 26 = 495 | 1.17 | 543 | 232 | 197 | WTWWW |
+| Gleam | 20/24 | 23/24 | 8>11 / 12>12 | 356 / 355 / 27 = 738 | 1.17 | 828 | 499 | 462 | WTWWW |
+| Java | 19/24 | 23/24 | 8>11 / 11>12 | 272 / 137 / 26 = 435 | 1.21 | 479 | 236 | 209 | WTWWW |
+| C# | 19/24 | 23/24 | 9>11 / 10>12 | 260 / 156 / 28 = 443 | 1.21 | 492 | 259 | 234 | WTWWW |
+| Pascal | 18/24 | 23/24 | 9>11 / 9>12 | 349 / 205 / 40 = 594 | 1.25 | 664 | 363 | 329 | WTWWW |
+| Guile | 17/24 | 23/24 | 5>11 / 12>12 | 307 / 119 / 26 = 452 | 1.29 | 480 | 223 | 194 | WTWWW |
+| COBOL | 20/24 | 22/24 | 8>10 / 12>12 | 441 / 229 / 71 = 741 | 1.17 | 831 | 423 | 377 | WWWWW |
+
+A0's rank among the 49 (1 = best): one-shot 34 of 49 (4 others tied), after repair 34 of 49 (14 others tied), 1 task 1 of 49 (0 others tied), 10 tasks 23 of 49 (3 others tied), unbounded 30 of 49 (1 others tied). Against the 48: one-shot 11 W / 4 T / 33 L, after repair 1 W / 14 T / 33 L, 1 task 48 W, 10 tasks 23 W / 3 T / 22 L, unbounded 18 W / 1 T / 29 L. By model, Sonnet: A0 12/12 one shot and 12/12 after repair; 39 languages also reach 12/12 one shot and all 48 after repair, none is better. Haiku: A0 9 -> 11 of 12 against a mean of 9.9 -> 11.7 over the other 48 (one-shot 36 languages ahead of A0, 5 level, 7 behind; after repair 33 ahead, 14 level, 1 behind).
+
+Every loss (A0 worse than the language, pooled counts):
+- One-shot acceptance (33 languages, each 22 to 24 of 24 against A0's 21): Crystal, Erlang, Perl, R, Ruby, Common Lisp, C++, D, Elixir, Forth, Go, Haskell, JavaScript, Kotlin, Objective-C, OCaml, TypeScript, Fortran, F#, Julia, PHP, Prolog, Scala, Smalltalk, Vala, Zig, C, Dart, Racket, Clojure, Groovy, Haxe, Odin. Level: Rust, Swift, Tcl, Lua.
+- Acceptance after the repair (33 languages, each 24/24 against A0's 23/24): Crystal, Erlang, Perl, R, Ruby, Common Lisp, C++, D, Elixir, Forth, Go, Haskell, JavaScript, Kotlin, Objective-C, OCaml, TypeScript, Fortran, F#, Julia, PHP, Prolog, Scala, Smalltalk, Vala, Zig, Rust, Swift, Tcl, V, Visual Basic, Python, Nim. A0 beats COBOL (22/24) and is level with 14 languages at 23/24 (Java, C#, C, Lua, Dart, Groovy, Clojure, Guile, Racket, Pascal, Haxe, Chicken, Odin, Gleam). A0's one open trial is Haiku `b-sumfrom-eight`: the first reply `r fold addi 8 p0 p0` was applied to the function the view opens (`addi`, the first function) and rejected (`unknown fold body 'addi'`); the repair wrote a fold with an extra operand (`addi expects 0 extra arguments, got 1`), the fold-contract error of the rules-merged run, and was not corrected. Its other two Haiku misses were repaired (`bounds-largest`: a nested operand; `checksum-poly`: the step function left unchanged, result 7).
+- 10-task session cost (22 languages): Crystal, Erlang, Perl, Ruby, Common Lisp, C++, D, Elixir, Forth, Go, JavaScript, Kotlin, OCaml, TypeScript, F#, Julia, Vala, Dart, Racket, Clojure, Odin, Lua. Level: Smalltalk, Zig, Rust.
+- Unbounded session cost (29 languages): Crystal, Erlang, Perl, Ruby, Common Lisp, C++, D, Elixir, Forth, Go, Haskell, JavaScript, Kotlin, OCaml, TypeScript, F#, Julia, Smalltalk, Vala, Zig, Rust, Swift, Tcl, Python, Dart, Racket, Clojure, Odin, Lua. Level: V.
+- 1 task: no loss; A0 is the cheapest cold task at 326 (Ruby 375, TypeScript 388, JavaScript 401, Go 418). With the proto1 text it was third (Ruby 293, TypeScript 319, A0 326, Rust 328), so the proto2 surcharge is part of the 1-task win; the proto1 table below is the same comparison without it.
+- Cheapest sessions: 10 tasks Ruby 141, OCaml 156, JavaScript 161, Crystal 164 (A0 199); unbounded Ruby 115, OCaml 125, Crystal 128, JavaScript 134 (A0 185). Once the primer is cached, replies and code read decide: A0 reads 119 and writes 35 tokens per task against Ruby's 85 and 19 (R, Forth and Ruby write 19). A0's primer is the lowest of all (133, TypeScript 216, Ruby 217).
+
+Failure taxonomy of the first attempts (class from the reply and the rejection by the rules in the failures file; every reply was complete, so truncation never occurred; the A0 misses, 3 trials, are in both columns):
+
+| class | proto1 (157 failures; Haiku 146, Sonnet 11) | proto2 (119 failures; Haiku 102, Sonnet 17) |
+|---|---|---|
+| protocol ambiguity (consecutive `+` numbers for a multi-line insert; the proto1 text left the reading open) | 56 | 0 (fixed) |
+| format slip | 37: indentation dropped (Python 9, Nim 9, F# 9, COBOL 2, Haskell 1), lines without a number or an omitted reply 7 | 30: indentation dropped (Python 9, Nim 9, COBOL 3, Fortran 1), consecutive numbers again 8 (Haiku: C# 3, Pascal 3, Haskell 1, C 1) |
+| genuine model error | 64 (compile 45, runtime 9, wrong output 8, A0 checker 2) | 89 (compile 50, runtime 20, wrong output 17, A0 checker 2) |
+| truncation | 0 | 0 |
+
+Genuine errors are wrong code and wrong placement (a new function inserted after the closing brace or `end` of the module or class, so the file does not build), a missing wrap or division-by-zero rule, `>>` for `>>>`, `^` on booleans, a missing closing parenthesis on a replaced Lisp line, a wrong library name. They were left alone. After the repair 17 of 1176 proto2 trials stay open (59 in proto1): 13 genuine, 4 format slips, all Haiku: `pctof-limit` 9 (placement or numbering of the new function in Java, C#, C, Pascal; the wrap or division rule or a wrong result in Dart, Chicken, COBOL, Odin; Float division in Haxe), `onlyone-xor` 3 (Clojure, Guile, Racket: no boolean xor), `avgfloor-nowrap` 2 (Lua, Groovy), COBOL `checksum-poly`, Gleam `rot8-constant`, and A0's `sumfrom-eight`. Sonnet misses 17 first attempts in 9 languages (Rust 3, Visual Basic 3, Pascal 3, C# 2, V 2, Java, Nim, Groovy, Vala) and repairs all of them.
+
+### Result: proto1 (earlier line-edit text), same comparison
+
+A0's rank among the 49: one-shot 24 of 49 (8 others tied), after repair 23 of 49 (14 others tied), 1 task 3 of 49 (1 others tied), 10 tasks 23 of 49 (0 others tied), unbounded 25 of 49 (0 others tied). Against the 48: one-shot 17 W / 8 T / 23 L, after repair 12 W / 14 T / 22 L (A0 wins over Java, Perl, Groovy, Visual Basic, Smalltalk, Pascal, Haxe, Chicken, COBOL, Odin, Vala, Elixir, which stood at 17 to 22 of 24), 1 task 45 W / 1 T / 2 L (Ruby 293 and TypeScript 319 against A0's 326; Rust 328 level), 10 tasks 26 W / 22 L, unbounded 24 W / 24 L.
+
+| language | one-shot | after repair | 1 task | 10 tasks | unbounded |
+|---|---|---|---|---|---|
+| A0 | 21/24 | 23/24 | 326 | 199 | 185 |
+| Ruby | 24/24 | 24/24 | 293 | 128 | 109 |
+| OCaml | 24/24 | 24/24 | 343 | 135 | 112 |
+| Tcl | 24/24 | 24/24 | 354 | 155 | 133 |
+| Rust | 23/24 | 24/24 | 328 | 157 | 138 |
+| C++ | 23/24 | 24/24 | 345 | 177 | 158 |
+| Clojure | 23/24 | 24/24 | 371 | 166 | 143 |
+| Erlang | 23/24 | 24/24 | 373 | 179 | 157 |
+| Dart | 23/24 | 24/24 | 386 | 161 | 136 |
+| Kotlin | 23/24 | 24/24 | 388 | 157 | 131 |
+| Crystal | 23/24 | 24/24 | 428 | 169 | 140 |
+| Scala | 23/24 | 24/24 | 447 | 186 | 157 |
+| Zig | 23/24 | 24/24 | 452 | 180 | 150 |
+| Gleam | 23/24 | 24/24 | 671 | 411 | 382 |
+| TypeScript | 22/24 | 24/24 | 319 | 164 | 147 |
+| JavaScript | 22/24 | 24/24 | 332 | 160 | 141 |
+| Go | 22/24 | 24/24 | 341 | 169 | 150 |
+| D | 22/24 | 24/24 | 406 | 174 | 148 |
+| Julia | 21/24 | 24/24 | 379 | 180 | 157 |
+| C | 21/24 | 24/24 | 461 | 233 | 208 |
+| V | 20/24 | 24/24 | 434 | 207 | 182 |
+| Python | 15/24 | 24/24 | 357 | 191 | 172 |
+| Nim | 14/24 | 24/24 | 449 | 238 | 214 |
+| Common Lisp | 23/24 | 23/24 | 364 | 168 | 146 |
+| Forth | 23/24 | 23/24 | 375 | 160 | 136 |
+| Lua | 22/24 | 23/24 | 351 | 164 | 144 |
+| Prolog | 22/24 | 23/24 | 469 | 240 | 214 |
+| R | 22/24 | 23/24 | 639 | 414 | 389 |
+| C# | 21/24 | 23/24 | 377 | 214 | 195 |
+| Objective-C | 21/24 | 23/24 | 523 | 252 | 222 |
+| Fortran | 21/24 | 23/24 | 669 | 394 | 364 |
+| Swift | 19/24 | 23/24 | 454 | 209 | 182 |
+| Haskell | 19/24 | 23/24 | 497 | 240 | 211 |
+| PHP | 19/24 | 23/24 | 584 | 312 | 282 |
+| Guile | 18/24 | 23/24 | 404 | 216 | 195 |
+| Racket | 18/24 | 23/24 | 451 | 249 | 226 |
+| F# | 14/24 | 23/24 | 507 | 292 | 268 |
+| Odin | 22/24 | 22/24 | 431 | 193 | 166 |
+| COBOL | 20/24 | 22/24 | 727 | 388 | 350 |
+| Perl | 21/24 | 21/24 | 451 | 233 | 209 |
+| Vala | 21/24 | 21/24 | 454 | 220 | 194 |
+| Pascal | 21/24 | 21/24 | 516 | 284 | 258 |
+| Java | 20/24 | 21/24 | 396 | 222 | 203 |
+| Smalltalk | 20/24 | 21/24 | 415 | 219 | 197 |
+| Elixir | 20/24 | 21/24 | 470 | 270 | 248 |
+| Haxe | 19/24 | 21/24 | 671 | 388 | 356 |
+| Groovy | 17/24 | 18/24 | 636 | 355 | 324 |
+| Visual Basic | 17/24 | 18/24 | 639 | 411 | 386 |
+| Chicken Scheme | 17/24 | 17/24 | 586 | 344 | 317 |
+
+### Findings
+
+- A0 is the cheapest cold task and the cheapest reader of its own language, but it is not ahead on acceptance: 21/24 one shot and 23/24 after repair, 33 languages one to three trials ahead on either measure, all of it Haiku; Sonnet is level everywhere. The only A0 trial open after the repair is the fold-with-an-extra-operand error that the checker's message names and that Haiku did not fix on the repair round.
+- In a long session the primer stops mattering and A0 loses cost to the 22 to 29 languages whose replies and views are shorter (Ruby, OCaml, JavaScript, Crystal, Go, TypeScript, Erlang, Common Lisp, D, Kotlin, Perl ...); A0's primer saving is 83 tokens per call against TypeScript, which is about 4 tokens once cached.
+- The line-edit protocol is where most other languages lose: Haiku drops the indentation in Python and Nim (9 of 12 tasks each, with and without the clarified text) and misplaces new functions (after the module's closing brace, or inside another function) in the module-wrapped languages (Java, C#, Visual Basic, Pascal, Vala, Haxe in proto1, mostly through the numbering ambiguity); the repair fixes most of it, so they end at 23 or 24 of 24 after the repair against 14 to 22 one shot (Nim 14, Python 15). A0's protocol has neither failure.
+- One subject per cell, 12 tasks and one hand translation per language: a one-trial gap (23 against 24 of 24) is inside the swing of a single Haiku subject, so the 33 acceptance losses bound the comparison, they do not rank the languages.
+- Not measured: whole-file replies for these languages (the structured cells here use the numbered line edits).
+
+Gate: lint and typecheck pass. `bun run test` could not finish on this machine: the x86-64 test binaries (compiled drivers run under Rosetta) hung in an uninterruptible state for every agent sharing it (more than 20 `driver` processes older than 20 minutes, not killable with SIGKILL), which stalls test/core and test/behavior. Run file by file with a timeout, every test file passes (ai-edit-apply 5, agents 3, dev-tools 26, edit 11, core 45, parallel 5, security 10, behavior 3, trap 6, seed 4, loss-ledger 7, mcp 3, macho 3, others) and the only non-passing entries are the two tests (one in core, one in behavior) cancelled by the hung x86-64 binaries; nothing this session changed touches them.
