@@ -100,6 +100,7 @@ const ATTRS: Record<number, string> = {
   4: 'type',
   5: 'placeholder',
   6: 'aria-label',
+  7: 'title',
 };
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
