@@ -19,6 +19,7 @@ import {
   hasIoParam,
   isDriverCallable,
 } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 import { ioCaps, type TargetReport } from './verify.js';
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
@@ -189,7 +190,7 @@ async function main(): Promise<void> {
     ...(r.elapsedMs === undefined ? {} : { elapsedMs: r.elapsedMs }),
   };
   await mkdir('results', { recursive: true });
-  await writeFile(join('results', 'dotnet.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(join('results', 'dotnet.json'), report);
   process.stdout.write(
     `${JSON.stringify({ status: report.status, tool: report.tool, detail: String(report.detail).slice(0, 1200), failures: (report.failures as string[] | undefined)?.slice(0, 5) }, null, 2)}\n`,
   );

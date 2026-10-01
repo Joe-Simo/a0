@@ -52,6 +52,7 @@ import { BEHAVIOR_TABLE } from './behavior-table.js';
 import { type Case, oracleRun, oracleToValue } from './corpus.js';
 import { checkDotnet } from './dotnet-verify.js';
 import { checkMetal } from './gpu-verify.js';
+import { writeReport } from './scrub-results.js';
 import { selfHostedC } from './selfhost-c.js';
 import { checkSelfHostedArm64 } from './selfhost-verify.js';
 import {
@@ -672,11 +673,7 @@ async function main(): Promise<void> {
   const report = buildReport(results);
   if (!args.includes('--no-write') && only === undefined) {
     await mkdir('results', { recursive: true });
-    await writeFile(
-      join('results', 'behavior.json'),
-      `${JSON.stringify(report, null, 2)}\n`,
-      'utf8',
-    );
+    await writeReport(join('results', 'behavior.json'), report);
   }
   process.stdout.write(
     `behavior: ${report.summary.passed} passed, ${report.summary.failed} failed, ${report.summary.blocked} blocked, ${report.summary.skipped} skipped; ${SKIPS.length} skip entries in the ledger\n`,

@@ -1,7 +1,9 @@
 /**
- * claim-check: numeric or comparative claims in STATUS.md and site/gen/*.tpl need a nearby
- * results/*.json reference or a recorded value, and a speed claim recorded at a machine load above
- * 10 is flagged (the repo's rule: performance claims only from quiet or interleaved runs).
+ * claim-check: numeric or comparative claims in STATUS.md, docs/history/*.md and site/gen/*.tpl
+ * need a nearby results/*.json reference or a recorded value, and a speed claim recorded at a
+ * machine load above 10 is flagged (the repo's rule: performance claims only from quiet or
+ * interleaved runs). A history file marked `claim-check: archive` in its first lines is a dated
+ * record: it is scanned and counted, but only a reference to a missing results file is flagged.
  *
  *   bun tools/dev/claim-check.ts [--since=<ref>] [--strict] [--files=a.md,b.tpl] [--json]
  *
@@ -105,7 +107,14 @@ function sectionBounds(lines: string[], at: number, md: boolean): [number, numbe
   return [Math.max(s, at - 40), Math.min(e - 1, at + 40)];
 }
 
-export function checkClaim(root: string, claim: Claim, lines: string[]): Finding {
+/** A history file says so in its first lines: its claims are dated records, not current claims. */
+export const ARCHIVE_MARK = /^claim-check:\s*archive\b/m;
+
+export function isArchive(text: string): boolean {
+  return ARCHIVE_MARK.test(text.split('\n').slice(0, 12).join('\n'));
+}
+
+export function checkClaim(root: string, claim: Claim, lines: string[], archive = false): Finding {
   const md = claim.file.endsWith('.md');
   const idx = claim.line - 1;
   const [s, e] = sectionBounds(lines, idx, md);
@@ -114,7 +123,9 @@ export function checkClaim(root: string, claim: Claim, lines: string[]): Finding
   const refs = [...new Set(near.match(RESULT_REF) ?? [])];
   const existing = refs.filter((r) => resultsExist(root, r));
   const problems: string[] = [];
-  const waived = WAIVER.test(near);
+  // An archived record (docs/history) is not a current claim: it needs no results reference and a
+  // timing taken under load is part of the record, but a reference it does make must still resolve.
+  const waived = archive || WAIVER.test(near);
   // Templates: a placeholder on the line, or the page header's `f ... results/x.json` lines, mean
   // the number comes from a results file at generation time.
   const dataDriven = !md && (/\$[a-z_0-9]+\$|%[a-z]/i.test(own) || /^c\s+\w+/m.test(near));
@@ -129,7 +140,7 @@ export function checkClaim(root: string, claim: Claim, lines: string[]): Finding
       `reference to a missing results file: ${refs.filter((r) => !existing.includes(r)).join(', ')}`,
     );
   }
-  if (claim.speed) {
+  if (claim.speed && !archive) {
     const loads = loadsIn(near);
     const worst = loads.length ? Math.max(...loads) : 0;
     if (worst > LOAD_THRESHOLD) {
@@ -143,7 +154,8 @@ export function checkClaim(root: string, claim: Claim, lines: string[]): Finding
 
 export function checkFile(root: string, file: string, text: string): Finding[] {
   const scan = file.endsWith('.tpl') ? scanTemplate(file, text) : scanMarkdown(file, text);
-  return scan.claims.map((c) => checkClaim(root, c, scan.lines));
+  const archive = file.endsWith('.md') && isArchive(text);
+  return scan.claims.map((c) => checkClaim(root, c, scan.lines, archive));
 }
 
 /** Line numbers added or changed in `file` since `ref` (working tree included). */
@@ -167,6 +179,12 @@ function arg(args: readonly string[], name: string): string | undefined {
 
 export const CLAIM_FILES = (root: string): string[] => [
   'STATUS.md',
+  ...(existsSync(join(root, 'docs', 'history'))
+    ? readdirSync(join(root, 'docs', 'history'))
+        .filter((f) => f.endsWith('.md'))
+        .sort()
+        .map((f) => `docs/history/${f}`)
+    : []),
   ...(existsSync(join(root, 'site', 'gen'))
     ? readdirSync(join(root, 'site', 'gen'))
         .filter((f) => f.endsWith('.tpl'))

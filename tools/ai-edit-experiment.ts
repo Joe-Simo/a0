@@ -81,6 +81,7 @@ import {
   type ScopedView,
   scopedView,
 } from './scoped-view.js';
+import { writeReport } from './scrub-results.js';
 
 type Representation = 'a0' | 'ts' | 'rust' | Lang;
 
@@ -121,7 +122,7 @@ function sourceOf(task: Task, rep: Representation): string {
 const PROTOCOL_CONVENTIONAL =
   'Reply with the complete updated source file and nothing else, inside one ```code block.';
 // A0_EXPERIMENT_A0_VIEW=numbered numbers the body lines of the e0 view so replies can address
-// them (`N line`, `N-`, `N+ line`); measured 2026-09-30 with MODEL_GUIDE.lines.txt, it raised
+// them (`N line`, `N-`, `N+ line`); measured 2026-09-30 with experiments/primers/MODEL_GUIDE.lines.txt, it raised
 // output per edit and lowered acceptance, so the default view stays unnumbered.
 const A0_NUMBERED_VIEW = process.env.A0_EXPERIMENT_A0_VIEW === 'numbered';
 // A0_EXPERIMENT_DENSE=1: the structured A0 cell is shown the dense view (function and program
@@ -399,11 +400,11 @@ async function acceptTs(source: string, tests: readonly AcceptanceCase[]): Promi
 /**
  * A0 language primer policy: 'always' (default) sends the guide in every call's system text;
  * 'none' sends only the edit protocol; 'lazy' sends no primer on the first attempt and the
- * lazy primer (MODEL_GUIDE.tiny.txt) with the repair message after an invalid reply;
- * 'rules' sends the guide (A0_EXPERIMENT_GUIDE, e.g. MODEL_GUIDE.rules.txt: only the language
+ * lazy primer (experiments/primers/MODEL_GUIDE.tiny.txt) with the repair message after an invalid reply;
+ * 'rules' sends the guide (A0_EXPERIMENT_GUIDE, e.g. experiments/primers/MODEL_GUIDE.rules.txt: only the language
  * rules models get wrong without a primer) followed by the self-contained edit protocol of
  * 'none', so the protocol is stated once and the guide carries no EDIT line;
- * 'rules-merged' sends the guide alone (e.g. MODEL_GUIDE.rules-merged.txt: the rules and the
+ * 'rules-merged' sends the guide alone (e.g. experiments/primers/MODEL_GUIDE.rules-merged.txt: the rules and the
  * edit protocol in one text), structured cells only.
  */
 type PrimerMode = 'always' | 'none' | 'lazy' | 'rules' | 'rules-merged';
@@ -852,7 +853,8 @@ async function main(): Promise<void> {
   };
   const guidePath = process.env.A0_EXPERIMENT_GUIDE ?? 'MODEL_GUIDE.min.txt';
   const guide = await readFile(guidePath, 'utf8');
-  const lazyPrimerPath = process.env.A0_EXPERIMENT_LAZY_GUIDE ?? 'MODEL_GUIDE.tiny.txt';
+  const lazyPrimerPath =
+    process.env.A0_EXPERIMENT_LAZY_GUIDE ?? 'experiments/primers/MODEL_GUIDE.tiny.txt';
   const lazyPrimer =
     primerMode === 'lazy' ? (await readFile(lazyPrimerPath, 'utf8')).trimEnd() : undefined;
   const encoders = {
@@ -1007,8 +1009,7 @@ async function main(): Promise<void> {
     }
   }
 
-  if (dumpPath !== undefined)
-    await writeFile(dumpPath, `${JSON.stringify(dump, null, 2)}\n`, 'utf8');
+  if (dumpPath !== undefined) await writeReport(dumpPath, dump);
   // Mean context per cell (o200k): the view alone (always available) and the whole tool
   // context of the first attempt (task text + view + repairs; scripted or live runs only).
   const contextTokensByCell = Object.fromEntries(
@@ -1105,7 +1106,7 @@ async function main(): Promise<void> {
   // A0_EXPERIMENT_OUT names the report file (default results/ai-edit-experiment.json).
   const outPath = process.env.A0_EXPERIMENT_OUT ?? join('results', 'ai-edit-experiment.json');
   await mkdir(dirname(outPath), { recursive: true });
-  await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(outPath, report);
   process.stdout.write(`status: ${report.status}\nself-check: ${selfCheckOk ? 'ok' : 'FAILED'}\n`);
   for (const tr of trials) {
     process.stdout.write(

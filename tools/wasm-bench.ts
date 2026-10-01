@@ -27,6 +27,7 @@ import { parseAndValidate } from '../src/core.js';
 import { findWasmClang, runTool, withTempDir } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import { KERNELS, type Kernel } from './exec-bench-kernels.js';
+import { writeReport } from './scrub-results.js';
 
 const ARGS = new Map(
   process.argv
@@ -207,7 +208,7 @@ async function main(): Promise<void> {
     rows,
   };
   await mkdir(dirname(OUT), { recursive: true });
-  await writeFile(OUT, `${JSON.stringify(report, null, 2)}\n`);
+  await writeReport(OUT, report);
   console.log(`wrote ${OUT}`);
 }
 

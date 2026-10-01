@@ -39,6 +39,7 @@ import {
 } from './bootstrap.js';
 import { closure, closures, generateCorpus, ioFreeSubset } from './corpus.js';
 import { ILL_TYPED } from './ref-check.js';
+import { writeReport } from './scrub-results.js';
 
 const RELOC_KIND: Readonly<Record<number, string>> = { 2: 'branch26', 3: 'page21', 4: 'pageoff12' };
 
@@ -224,11 +225,7 @@ async function main(): Promise<void> {
     },
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'bootstrap-macho.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'bootstrap-macho.json'), report);
   process.exit(ok ? 0 : 1);
 }
 

@@ -15,7 +15,7 @@
  * machinery as the corpus verification. Writes results/app.json.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   formatProgram,
@@ -31,6 +31,7 @@ import { type Case, makeRng } from './corpus.js';
 import { frontEndSources, UNKNOWN_NAMES, wholeFiles } from './front-end-sources.js';
 import { ILL_TYPED, refCheck, refCheckWords } from './ref-check.js';
 import { irWords, refLex, refParse, refSuggest } from './ref-parse.js';
+import { writeReport } from './scrub-results.js';
 import {
   checkInterpreter,
   checkJs,
@@ -518,7 +519,7 @@ async function main(): Promise<void> {
       'The Wasm build is also driven by the DOM adapter in site/ (built by `bun run site`); browser execution is checked manually or with the in-app browser, not by this script.',
   };
   await mkdir('results', { recursive: true });
-  await writeFile(join('results', 'app.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(join('results', 'app.json'), report);
   process.stdout.write(`reference self-check: ${referenceSelfCheck ? 'ok' : 'FAILED'}\n`);
   for (const [name, t] of Object.entries(targets)) {
     process.stdout.write(

@@ -19,6 +19,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { scrubText } from '../scrub-results.js';
 
 export type Side = 'ours' | 'theirs';
 
@@ -144,5 +145,5 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     );
     process.exit(1);
   }
-  writeFileSync(oursPath, merged, 'utf8');
+  writeFileSync(oursPath, scrubText(merged), 'utf8');
 }

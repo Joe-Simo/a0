@@ -25,6 +25,7 @@ import {
   hasIoParam,
   isDriverCallable,
 } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 
 const hex = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : v.toString(16));
 
@@ -318,7 +319,7 @@ async function main(): Promise<void> {
   });
 
   await mkdir('results', { recursive: true });
-  await writeFile(join('results', 'hardware.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(join('results', 'hardware.json'), report);
   process.stdout.write(
     `${JSON.stringify({ simulation: report.simulation, synthesisStatus: (report.synthesis as { status: string }).status, stagesRun }, null, 2)}\n`,
   );

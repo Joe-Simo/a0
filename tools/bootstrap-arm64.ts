@@ -52,6 +52,7 @@ import {
 } from './bootstrap.js';
 import { closure, closures, generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
+import { writeReport } from './scrub-results.js';
 import { checkArm64Assembly, type TargetReport } from './verify.js';
 
 /** Assemble `asm` and the runtime and link them: the arm64 stage `name` (`<name>/a0c`). */
@@ -345,11 +346,7 @@ async function main(): Promise<void> {
     sources: reports,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'bootstrap-arm64.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'bootstrap-arm64.json'), report);
   process.stdout.write(
     `total ${passed.length} sources passed, ${report.tests.cases} cases; ${failed} failed; arm64 fixed point ${fixedPoint ? 'reached' : 'NOT reached'}\n`,
   );

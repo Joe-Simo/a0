@@ -4,7 +4,7 @@
  * runtime evidence against other languages or compilers.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { compile, FunctionCache, TARGETS, type Target } from '../src/backends.js';
@@ -12,6 +12,7 @@ import { formatProgram, parseAndValidate, type TypedFunc } from '../src/core.js'
 import { EditSession, formatPatch } from '../src/edit.js';
 import { optimize } from '../src/optimize.js';
 import { generateCorpus } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 
 interface Sample {
   readonly medianMs: number;
@@ -170,11 +171,7 @@ async function main(): Promise<void> {
       'In-process prototype timings (median of runs) covering parse, optimization, emission, and session edit validation. Excludes model work, native compilation/linking, and process startup. Not superiority evidence.',
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'benchmark.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'benchmark.json'), report);
   process.stdout.write(
     `parse+validate ${parse.medianMs.toFixed(3)} ms, optimize ${opt.medianMs.toFixed(3)} ms\n`,
   );

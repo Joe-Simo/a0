@@ -56,6 +56,7 @@ import {
 import { MORE_LANGUAGES } from './exec-bench-languages-more.js';
 import { buildNativeCheck, NATIVE_A0 } from './native-check.js';
 import { loadGate, waitQuiet } from './quiet.js';
+import { writeReport } from './scrub-results.js';
 
 const TABLE: readonly Language[] = [...CORE_LANGUAGES, ...MORE_LANGUAGES];
 /** The kernels results/exec-benchmark.json reports, the set every chart uses. */
@@ -610,7 +611,7 @@ async function tokensOnly(): Promise<void> {
   const report = JSON.parse(await readFile(CLI.out, 'utf8')) as Record<string, unknown>;
   report.tokens = tokenAxis(subjects);
   report.tokensGeneratedAt = new Date().toISOString();
-  await writeFile(CLI.out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(CLI.out, report);
   process.stderr.write(`merged tokens into ${CLI.out}\n`);
 }
 
@@ -762,7 +763,7 @@ async function main(): Promise<void> {
     validation,
   };
   await mkdir(dirname(CLI.out), { recursive: true });
-  await writeFile(CLI.out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeReport(CLI.out, report);
   process.stderr.write(`wrote ${CLI.out}\n`);
 }
 

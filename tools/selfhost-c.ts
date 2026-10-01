@@ -8,7 +8,7 @@
  * result on every case. Writes results/selfhost-c.json.
  */
 
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
@@ -27,6 +27,7 @@ import { link } from '../src/link.js';
 import { findClang } from '../src/toolchain.js';
 import { generateCases, generateCorpus } from './corpus.js';
 import { irOp } from './ref-parse.js';
+import { writeReport } from './scrub-results.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
 
 /** Table sizes of compiler/check.a0 and compiler/emit_c.a0 (pool and sym are the parser's). */
@@ -316,11 +317,7 @@ async function main(): Promise<void> {
     ),
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'selfhost-c.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'selfhost-c.json'), report);
   process.stdout.write(`total ${report.passedCases}/${report.totalCases} cases\n`);
   process.exit(reports.every((r) => r.native_c_clang.status === 'passed') ? 0 : 1);
 }

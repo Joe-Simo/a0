@@ -76,6 +76,7 @@ import {
 } from './bootstrap.js';
 import { generateCorpus } from './corpus.js';
 import { frontEndFits, IR_OPS, irOp } from './ref-parse.js';
+import { writeReport } from './scrub-results.js';
 
 /** io capacities of `a0w` in words (a chunk's tables, the linker's whole input; the module). */
 export const WASM_TOOL_INPUT = 1 << 21;
@@ -1357,11 +1358,7 @@ async function main(): Promise<void> {
     failed: failed.length,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'selfhost-wasm.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'selfhost-wasm.json'), report);
   process.stdout.write(`${reports.length - failed.length}/${reports.length} programs identical\n`);
   process.exit(failed.length === 0 ? 0 : 1);
 }

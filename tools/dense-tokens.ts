@@ -22,6 +22,7 @@ import { type Arities, type DenseStyle, formatDense, normalizeProgram } from '..
 import { parseFile } from '../src/link.js';
 import { generateCorpus } from './corpus.js';
 import { KERNELS } from './exec-bench-kernels.js';
+import { reportJson } from './scrub-results.js';
 
 const enc = getEncoding('o200k_base');
 export const tokens = (s: string): number => enc.encode(s).length;
@@ -244,7 +245,7 @@ async function main(): Promise<void> {
     attribution,
     ablation,
   };
-  writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeFileSync(out, reportJson(report), 'utf8');
   process.stderr.write(`wrote ${out}\n`);
 }
 

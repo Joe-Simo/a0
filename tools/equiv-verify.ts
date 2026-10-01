@@ -29,13 +29,14 @@
  * every input prefix of at most IO_WORDS words; longer inputs are outside the bound.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { init } from 'z3-solver';
 import type { Operand, Type, TypedFunc, TypedProgram } from '../src/core.js';
 import { optimize } from '../src/optimize.js';
 import { CORPUS_SEED, corpusSha256, generateCorpus } from './corpus.js';
+import { writeReport } from './scrub-results.js';
 
 const UNROLL_CAP = 64;
 /** Bound on the modelled input stream (words). */
@@ -517,11 +518,7 @@ async function main(): Promise<void> {
     results,
   };
   await mkdir('results', { recursive: true });
-  await writeFile(
-    join('results', 'equivalence.json'),
-    `${JSON.stringify(report, null, 2)}\n`,
-    'utf8',
-  );
+  await writeReport(join('results', 'equivalence.json'), report);
   for (const r of results)
     process.stdout.write(
       `${r.fn.padEnd(6)} ${r.status.padEnd(15)} ${r.ms.toFixed(0).padStart(6)} ms${r.detail === null ? '' : `  ${r.detail}`}\n`,
