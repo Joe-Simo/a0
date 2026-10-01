@@ -28,65 +28,69 @@ static inline bool a0_ge(uint32_t a, uint32_t b) { return a >= b; }
 static inline uint32_t a0_div(uint32_t a, uint32_t b) { return b == 0u ? 0xffffffffu : a / b; }
 static inline uint32_t a0_rem(uint32_t a, uint32_t b) { return b == 0u ? a : a % b; }
 
-typedef struct { bool f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; } a0t3;
-typedef struct { uint32_t e[128]; } a0t4;
-typedef struct { a0t4 e[4]; } a0t5;
-typedef struct { a0t5 f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; } a0t6;
-typedef struct { a0t4 e[384]; } a0t7;
+typedef struct { uint32_t e[512]; } a0t3;
+typedef struct { a0t3 e[64]; } a0t4;
+typedef struct { uint32_t e[128]; } a0t5;
+typedef struct { bool f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; } a0t6;
+typedef struct { a0t5 e[4]; } a0t7;
 typedef struct { a0t7 f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; } a0t8;
-typedef struct { a0t4 e[128]; } a0t9;
-typedef struct { a0t7 f0; uint32_t f1; } a0t10;
-typedef struct { a0t4 f0; a0_io * f1; } a0t11;
-typedef struct { a0t9 f0; a0_io * f1; } a0t12;
-typedef struct { a0t9 f0; uint32_t f1; a0_io * f2; } a0t13;
-typedef struct { a0t4 e[16]; } a0t14;
-typedef struct { a0t4 e[32]; } a0t15;
-typedef struct { a0t4 e[33]; } a0t16;
-typedef struct { a0t4 e[45]; } a0t17;
-typedef struct { a0t4 e[64]; } a0t18;
-typedef struct { a0t4 e[65]; } a0t19;
-typedef struct { a0t4 e[129]; } a0t20;
-typedef struct { a0t4 e[256]; } a0t21;
-typedef struct { uint32_t e[384]; } a0t22;
-typedef struct { a0t22 e[65]; } a0t23;
-typedef struct { uint32_t f0; uint32_t f1; uint32_t f2; uint32_t f3; bool f4; bool f5; uint32_t f6; uint32_t f7; bool f8; } a0t24;
-typedef struct { uint32_t f0; bool f1; uint32_t f2; } a0t25;
-typedef struct { a0t4 e[2]; } a0t26;
-typedef struct { a0t4 e[3]; } a0t27;
-typedef struct { a0t9 f0; a0t26 f1; a0t4 f2; a0t4 f3; a0t26 f4; a0t27 f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; } a0t28;
-typedef struct { a0t9 f0; a0t18 f1; a0t9 f2; a0t9 f3; a0t15 f4; a0t14 f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; } a0t29;
-typedef struct { a0t20 f0; uint32_t f1; } a0t30;
-typedef struct { a0t23 f0; uint32_t f1; } a0t31;
-typedef struct { a0t23 f0; uint32_t f1; uint32_t f2; } a0t32;
-typedef struct { uint32_t e[64]; } a0t33;
-typedef struct { a0t33 f0; uint32_t f1; uint32_t f2; bool f3; bool f4; } a0t34;
-typedef struct { a0t23 f0; uint32_t f1; uint32_t f2; uint32_t f3; bool f4; bool f5; } a0t35;
-typedef struct { a0t23 f0; uint32_t f1; bool f2; uint32_t f3; } a0t36;
-typedef struct { uint32_t f0; uint32_t f1; bool f2; } a0t37;
-typedef struct { a0t19 f0; uint32_t f1; } a0t38;
-typedef struct { a0t23 f0; a0t19 f1; a0t19 f2; a0t9 f3; a0t16 f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; uint32_t f19; } a0t39;
-typedef struct { a0t17 f0; a0t18 f1; uint32_t f2; uint32_t f3; } a0t40;
-typedef struct { a0t26 f0; uint32_t f1; uint32_t f2; } a0t41;
-typedef struct { a0t21 f0; uint32_t f1; uint32_t f2; } a0t42;
-typedef struct { a0t4 e[5]; } a0t43;
-typedef struct { a0t17 f0; a0t43 f1; a0t27 f2; a0t18 f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; uint32_t f19; uint32_t f20; uint32_t f21; uint32_t f22; uint32_t f23; } a0t44;
-typedef struct { a0t17 f0; a0t9 f1; a0t21 f2; a0t18 f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; uint32_t f19; bool f20; } a0t45;
-typedef struct { a0t4 e[8]; } a0t46;
-typedef struct { a0t4 e[24]; } a0t47;
-typedef struct { uint32_t f0; uint32_t f1; uint32_t f2; } a0t48;
-typedef struct { a0t19 f0; a0t19 f1; } a0t49;
-typedef struct { a0t26 f0; a0t47 f1; a0t33 f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; } a0t50;
-typedef struct { a0t19 f0; a0t47 f1; a0t33 f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; } a0t51;
-typedef struct { a0t23 f0; a0t19 f1; a0t19 f2; a0t19 f3; a0t47 f4; a0t47 f5; a0t33 f6; a0t46 f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; } a0t52;
-typedef struct { uint32_t e[10]; } a0t53;
-typedef struct { uint32_t f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; } a0t54;
-typedef struct { uint32_t f0; uint32_t f1; } a0t55;
-typedef struct { a0t4 f0; uint32_t f1; } a0t56;
-typedef struct { a0t18 f0; uint32_t f1; } a0t57;
-typedef struct { a0_io * f0; uint32_t f1; a0t46 f2; uint32_t f3; } a0t58;
-typedef struct { uint32_t f0; a0_io * f1; } a0t59;
-typedef struct { a0t46 f0; a0_io * f1; } a0t60;
-typedef struct { a0t9 f0; uint32_t f1; a0t46 f2; uint32_t f3; bool f4; bool f5; a0_io * f6; } a0t61;
+typedef struct { a0t5 e[384]; } a0t9;
+typedef struct { a0t9 f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; } a0t10;
+typedef struct { a0t5 e[128]; } a0t11;
+typedef struct { a0t9 f0; uint32_t f1; } a0t12;
+typedef struct { uint32_t f0; uint32_t f1; a0_io * f2; } a0t13;
+typedef struct { a0t3 f0; a0_io * f1; } a0t14;
+typedef struct { a0t4 f0; a0_io * f1; } a0t15;
+typedef struct { a0t4 f0; uint32_t f1; a0_io * f2; } a0t16;
+typedef struct { a0t5 e[16]; } a0t17;
+typedef struct { a0t5 e[32]; } a0t18;
+typedef struct { a0t5 e[33]; } a0t19;
+typedef struct { a0t5 e[45]; } a0t20;
+typedef struct { a0t5 e[64]; } a0t21;
+typedef struct { a0t5 e[65]; } a0t22;
+typedef struct { a0t5 e[400]; } a0t23;
+typedef struct { a0t5 e[256]; } a0t24;
+typedef struct { uint32_t e[384]; } a0t25;
+typedef struct { a0t25 e[65]; } a0t26;
+typedef struct { uint32_t f0; uint32_t f1; uint32_t f2; uint32_t f3; bool f4; bool f5; uint32_t f6; uint32_t f7; bool f8; bool f9; } a0t27;
+typedef struct { uint32_t f0; bool f1; uint32_t f2; } a0t28;
+typedef struct { a0t5 e[2]; } a0t29;
+typedef struct { a0t5 e[3]; } a0t30;
+typedef struct { a0t11 f0; a0t29 f1; a0t5 f2; a0t5 f3; a0t29 f4; a0t30 f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; } a0t31;
+typedef struct { a0t11 f0; a0t21 f1; a0t11 f2; a0t11 f3; a0t18 f4; a0t17 f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; } a0t32;
+typedef struct { a0t23 f0; uint32_t f1; } a0t33;
+typedef struct { a0t26 f0; uint32_t f1; } a0t34;
+typedef struct { a0t26 f0; uint32_t f1; uint32_t f2; } a0t35;
+typedef struct { uint32_t e[64]; } a0t36;
+typedef struct { a0t36 f0; uint32_t f1; uint32_t f2; bool f3; bool f4; } a0t37;
+typedef struct { a0t26 f0; uint32_t f1; uint32_t f2; uint32_t f3; bool f4; bool f5; } a0t38;
+typedef struct { a0t26 f0; uint32_t f1; bool f2; uint32_t f3; } a0t39;
+typedef struct { uint32_t f0; uint32_t f1; bool f2; } a0t40;
+typedef struct { a0t22 f0; uint32_t f1; uint32_t f2; } a0t41;
+typedef struct { a0t26 f0; a0t22 f1; a0t22 f2; a0t11 f3; a0t19 f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; uint32_t f19; uint32_t f20; uint32_t f21; } a0t42;
+typedef struct { a0t20 f0; a0t21 f1; uint32_t f2; uint32_t f3; } a0t43;
+typedef struct { a0t29 f0; uint32_t f1; uint32_t f2; } a0t44;
+typedef struct { a0t24 f0; uint32_t f1; uint32_t f2; } a0t45;
+typedef struct { a0t5 e[5]; } a0t46;
+typedef struct { a0t20 f0; a0t46 f1; a0t30 f2; a0t21 f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; uint32_t f19; uint32_t f20; uint32_t f21; uint32_t f22; uint32_t f23; } a0t47;
+typedef struct { a0t20 f0; a0t11 f1; a0t24 f2; a0t21 f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; uint32_t f18; uint32_t f19; bool f20; } a0t48;
+typedef struct { a0t5 e[512]; } a0t49;
+typedef struct { a0t5 e[8]; } a0t50;
+typedef struct { a0t5 e[24]; } a0t51;
+typedef struct { uint32_t f0; uint32_t f1; uint32_t f2; } a0t52;
+typedef struct { a0t22 f0; a0t22 f1; } a0t53;
+typedef struct { a0t29 f0; a0t51 f1; a0t36 f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; } a0t54;
+typedef struct { a0t22 f0; a0t51 f1; a0t36 f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; } a0t55;
+typedef struct { a0t26 f0; a0t22 f1; a0t22 f2; a0t22 f3; a0t51 f4; a0t51 f5; a0t36 f6; a0t50 f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; } a0t56;
+typedef struct { uint32_t e[10]; } a0t57;
+typedef struct { uint32_t f0; uint32_t f1; uint32_t f2; uint32_t f3; uint32_t f4; uint32_t f5; uint32_t f6; uint32_t f7; uint32_t f8; uint32_t f9; uint32_t f10; uint32_t f11; uint32_t f12; uint32_t f13; uint32_t f14; uint32_t f15; uint32_t f16; uint32_t f17; } a0t58;
+typedef struct { uint32_t f0; uint32_t f1; } a0t59;
+typedef struct { a0t5 f0; uint32_t f1; } a0t60;
+typedef struct { a0t21 f0; uint32_t f1; } a0t61;
+typedef struct { a0_io * f0; uint32_t f1; a0t50 f2; uint32_t f3; } a0t62;
+typedef struct { uint32_t f0; a0_io * f1; } a0t63;
+typedef struct { a0t50 f0; a0_io * f1; } a0t64;
+typedef struct { a0t4 f0; uint32_t f1; a0t50 f2; uint32_t f3; bool f4; bool f5; a0_io * f6; } a0t65;
 bool a0_isalpha(uint32_t p0) {
   bool n0 = a0_ge(p0, 97u); (void)n0;
   bool n1 = a0_le(p0, 122u); (void)n1;
@@ -119,7 +123,272 @@ bool a0_isspace(uint32_t p0) {
   return n4;
 }
 
-a0t3 a0_lexstep(uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4) {
+a0t5 a0_srcpg(a0t4 p0, uint32_t p1) {
+  uint32_t n0 = a0_shr(p1, 4u); (void)n0;
+  const a0t3 *const n1 = &p0.e[n0 % 64u]; (void)n1;
+  uint32_t n2 = a0_and(p1, 15u); (void)n2;
+  uint32_t n3 = a0_mul(n2, 32u); (void)n3;
+  uint32_t n4 = a0_add(n3, 0u); (void)n4;
+  uint32_t n5 = (*n1).e[n4 % 512u]; (void)n5;
+  uint32_t n6 = a0_and(n5, 255u); (void)n6;
+  uint32_t n7 = a0_shr(n5, 8u); (void)n7;
+  uint32_t n8 = a0_and(n7, 255u); (void)n8;
+  uint32_t n9 = a0_shr(n5, 16u); (void)n9;
+  uint32_t n10 = a0_and(n9, 255u); (void)n10;
+  uint32_t n11 = a0_shr(n5, 24u); (void)n11;
+  uint32_t n12 = a0_add(n3, 1u); (void)n12;
+  uint32_t n13 = (*n1).e[n12 % 512u]; (void)n13;
+  uint32_t n14 = a0_and(n13, 255u); (void)n14;
+  uint32_t n15 = a0_shr(n13, 8u); (void)n15;
+  uint32_t n16 = a0_and(n15, 255u); (void)n16;
+  uint32_t n17 = a0_shr(n13, 16u); (void)n17;
+  uint32_t n18 = a0_and(n17, 255u); (void)n18;
+  uint32_t n19 = a0_shr(n13, 24u); (void)n19;
+  uint32_t n20 = a0_add(n3, 2u); (void)n20;
+  uint32_t n21 = (*n1).e[n20 % 512u]; (void)n21;
+  uint32_t n22 = a0_and(n21, 255u); (void)n22;
+  uint32_t n23 = a0_shr(n21, 8u); (void)n23;
+  uint32_t n24 = a0_and(n23, 255u); (void)n24;
+  uint32_t n25 = a0_shr(n21, 16u); (void)n25;
+  uint32_t n26 = a0_and(n25, 255u); (void)n26;
+  uint32_t n27 = a0_shr(n21, 24u); (void)n27;
+  uint32_t n28 = a0_add(n3, 3u); (void)n28;
+  uint32_t n29 = (*n1).e[n28 % 512u]; (void)n29;
+  uint32_t n30 = a0_and(n29, 255u); (void)n30;
+  uint32_t n31 = a0_shr(n29, 8u); (void)n31;
+  uint32_t n32 = a0_and(n31, 255u); (void)n32;
+  uint32_t n33 = a0_shr(n29, 16u); (void)n33;
+  uint32_t n34 = a0_and(n33, 255u); (void)n34;
+  uint32_t n35 = a0_shr(n29, 24u); (void)n35;
+  uint32_t n36 = a0_add(n3, 4u); (void)n36;
+  uint32_t n37 = (*n1).e[n36 % 512u]; (void)n37;
+  uint32_t n38 = a0_and(n37, 255u); (void)n38;
+  uint32_t n39 = a0_shr(n37, 8u); (void)n39;
+  uint32_t n40 = a0_and(n39, 255u); (void)n40;
+  uint32_t n41 = a0_shr(n37, 16u); (void)n41;
+  uint32_t n42 = a0_and(n41, 255u); (void)n42;
+  uint32_t n43 = a0_shr(n37, 24u); (void)n43;
+  uint32_t n44 = a0_add(n3, 5u); (void)n44;
+  uint32_t n45 = (*n1).e[n44 % 512u]; (void)n45;
+  uint32_t n46 = a0_and(n45, 255u); (void)n46;
+  uint32_t n47 = a0_shr(n45, 8u); (void)n47;
+  uint32_t n48 = a0_and(n47, 255u); (void)n48;
+  uint32_t n49 = a0_shr(n45, 16u); (void)n49;
+  uint32_t n50 = a0_and(n49, 255u); (void)n50;
+  uint32_t n51 = a0_shr(n45, 24u); (void)n51;
+  uint32_t n52 = a0_add(n3, 6u); (void)n52;
+  uint32_t n53 = (*n1).e[n52 % 512u]; (void)n53;
+  uint32_t n54 = a0_and(n53, 255u); (void)n54;
+  uint32_t n55 = a0_shr(n53, 8u); (void)n55;
+  uint32_t n56 = a0_and(n55, 255u); (void)n56;
+  uint32_t n57 = a0_shr(n53, 16u); (void)n57;
+  uint32_t n58 = a0_and(n57, 255u); (void)n58;
+  uint32_t n59 = a0_shr(n53, 24u); (void)n59;
+  uint32_t n60 = a0_add(n3, 7u); (void)n60;
+  uint32_t n61 = (*n1).e[n60 % 512u]; (void)n61;
+  uint32_t n62 = a0_and(n61, 255u); (void)n62;
+  uint32_t n63 = a0_shr(n61, 8u); (void)n63;
+  uint32_t n64 = a0_and(n63, 255u); (void)n64;
+  uint32_t n65 = a0_shr(n61, 16u); (void)n65;
+  uint32_t n66 = a0_and(n65, 255u); (void)n66;
+  uint32_t n67 = a0_shr(n61, 24u); (void)n67;
+  uint32_t n68 = a0_add(n3, 8u); (void)n68;
+  uint32_t n69 = (*n1).e[n68 % 512u]; (void)n69;
+  uint32_t n70 = a0_and(n69, 255u); (void)n70;
+  uint32_t n71 = a0_shr(n69, 8u); (void)n71;
+  uint32_t n72 = a0_and(n71, 255u); (void)n72;
+  uint32_t n73 = a0_shr(n69, 16u); (void)n73;
+  uint32_t n74 = a0_and(n73, 255u); (void)n74;
+  uint32_t n75 = a0_shr(n69, 24u); (void)n75;
+  uint32_t n76 = a0_add(n3, 9u); (void)n76;
+  uint32_t n77 = (*n1).e[n76 % 512u]; (void)n77;
+  uint32_t n78 = a0_and(n77, 255u); (void)n78;
+  uint32_t n79 = a0_shr(n77, 8u); (void)n79;
+  uint32_t n80 = a0_and(n79, 255u); (void)n80;
+  uint32_t n81 = a0_shr(n77, 16u); (void)n81;
+  uint32_t n82 = a0_and(n81, 255u); (void)n82;
+  uint32_t n83 = a0_shr(n77, 24u); (void)n83;
+  uint32_t n84 = a0_add(n3, 10u); (void)n84;
+  uint32_t n85 = (*n1).e[n84 % 512u]; (void)n85;
+  uint32_t n86 = a0_and(n85, 255u); (void)n86;
+  uint32_t n87 = a0_shr(n85, 8u); (void)n87;
+  uint32_t n88 = a0_and(n87, 255u); (void)n88;
+  uint32_t n89 = a0_shr(n85, 16u); (void)n89;
+  uint32_t n90 = a0_and(n89, 255u); (void)n90;
+  uint32_t n91 = a0_shr(n85, 24u); (void)n91;
+  uint32_t n92 = a0_add(n3, 11u); (void)n92;
+  uint32_t n93 = (*n1).e[n92 % 512u]; (void)n93;
+  uint32_t n94 = a0_and(n93, 255u); (void)n94;
+  uint32_t n95 = a0_shr(n93, 8u); (void)n95;
+  uint32_t n96 = a0_and(n95, 255u); (void)n96;
+  uint32_t n97 = a0_shr(n93, 16u); (void)n97;
+  uint32_t n98 = a0_and(n97, 255u); (void)n98;
+  uint32_t n99 = a0_shr(n93, 24u); (void)n99;
+  uint32_t n100 = a0_add(n3, 12u); (void)n100;
+  uint32_t n101 = (*n1).e[n100 % 512u]; (void)n101;
+  uint32_t n102 = a0_and(n101, 255u); (void)n102;
+  uint32_t n103 = a0_shr(n101, 8u); (void)n103;
+  uint32_t n104 = a0_and(n103, 255u); (void)n104;
+  uint32_t n105 = a0_shr(n101, 16u); (void)n105;
+  uint32_t n106 = a0_and(n105, 255u); (void)n106;
+  uint32_t n107 = a0_shr(n101, 24u); (void)n107;
+  uint32_t n108 = a0_add(n3, 13u); (void)n108;
+  uint32_t n109 = (*n1).e[n108 % 512u]; (void)n109;
+  uint32_t n110 = a0_and(n109, 255u); (void)n110;
+  uint32_t n111 = a0_shr(n109, 8u); (void)n111;
+  uint32_t n112 = a0_and(n111, 255u); (void)n112;
+  uint32_t n113 = a0_shr(n109, 16u); (void)n113;
+  uint32_t n114 = a0_and(n113, 255u); (void)n114;
+  uint32_t n115 = a0_shr(n109, 24u); (void)n115;
+  uint32_t n116 = a0_add(n3, 14u); (void)n116;
+  uint32_t n117 = (*n1).e[n116 % 512u]; (void)n117;
+  uint32_t n118 = a0_and(n117, 255u); (void)n118;
+  uint32_t n119 = a0_shr(n117, 8u); (void)n119;
+  uint32_t n120 = a0_and(n119, 255u); (void)n120;
+  uint32_t n121 = a0_shr(n117, 16u); (void)n121;
+  uint32_t n122 = a0_and(n121, 255u); (void)n122;
+  uint32_t n123 = a0_shr(n117, 24u); (void)n123;
+  uint32_t n124 = a0_add(n3, 15u); (void)n124;
+  uint32_t n125 = (*n1).e[n124 % 512u]; (void)n125;
+  uint32_t n126 = a0_and(n125, 255u); (void)n126;
+  uint32_t n127 = a0_shr(n125, 8u); (void)n127;
+  uint32_t n128 = a0_and(n127, 255u); (void)n128;
+  uint32_t n129 = a0_shr(n125, 16u); (void)n129;
+  uint32_t n130 = a0_and(n129, 255u); (void)n130;
+  uint32_t n131 = a0_shr(n125, 24u); (void)n131;
+  uint32_t n132 = a0_add(n3, 16u); (void)n132;
+  uint32_t n133 = (*n1).e[n132 % 512u]; (void)n133;
+  uint32_t n134 = a0_and(n133, 255u); (void)n134;
+  uint32_t n135 = a0_shr(n133, 8u); (void)n135;
+  uint32_t n136 = a0_and(n135, 255u); (void)n136;
+  uint32_t n137 = a0_shr(n133, 16u); (void)n137;
+  uint32_t n138 = a0_and(n137, 255u); (void)n138;
+  uint32_t n139 = a0_shr(n133, 24u); (void)n139;
+  uint32_t n140 = a0_add(n3, 17u); (void)n140;
+  uint32_t n141 = (*n1).e[n140 % 512u]; (void)n141;
+  uint32_t n142 = a0_and(n141, 255u); (void)n142;
+  uint32_t n143 = a0_shr(n141, 8u); (void)n143;
+  uint32_t n144 = a0_and(n143, 255u); (void)n144;
+  uint32_t n145 = a0_shr(n141, 16u); (void)n145;
+  uint32_t n146 = a0_and(n145, 255u); (void)n146;
+  uint32_t n147 = a0_shr(n141, 24u); (void)n147;
+  uint32_t n148 = a0_add(n3, 18u); (void)n148;
+  uint32_t n149 = (*n1).e[n148 % 512u]; (void)n149;
+  uint32_t n150 = a0_and(n149, 255u); (void)n150;
+  uint32_t n151 = a0_shr(n149, 8u); (void)n151;
+  uint32_t n152 = a0_and(n151, 255u); (void)n152;
+  uint32_t n153 = a0_shr(n149, 16u); (void)n153;
+  uint32_t n154 = a0_and(n153, 255u); (void)n154;
+  uint32_t n155 = a0_shr(n149, 24u); (void)n155;
+  uint32_t n156 = a0_add(n3, 19u); (void)n156;
+  uint32_t n157 = (*n1).e[n156 % 512u]; (void)n157;
+  uint32_t n158 = a0_and(n157, 255u); (void)n158;
+  uint32_t n159 = a0_shr(n157, 8u); (void)n159;
+  uint32_t n160 = a0_and(n159, 255u); (void)n160;
+  uint32_t n161 = a0_shr(n157, 16u); (void)n161;
+  uint32_t n162 = a0_and(n161, 255u); (void)n162;
+  uint32_t n163 = a0_shr(n157, 24u); (void)n163;
+  uint32_t n164 = a0_add(n3, 20u); (void)n164;
+  uint32_t n165 = (*n1).e[n164 % 512u]; (void)n165;
+  uint32_t n166 = a0_and(n165, 255u); (void)n166;
+  uint32_t n167 = a0_shr(n165, 8u); (void)n167;
+  uint32_t n168 = a0_and(n167, 255u); (void)n168;
+  uint32_t n169 = a0_shr(n165, 16u); (void)n169;
+  uint32_t n170 = a0_and(n169, 255u); (void)n170;
+  uint32_t n171 = a0_shr(n165, 24u); (void)n171;
+  uint32_t n172 = a0_add(n3, 21u); (void)n172;
+  uint32_t n173 = (*n1).e[n172 % 512u]; (void)n173;
+  uint32_t n174 = a0_and(n173, 255u); (void)n174;
+  uint32_t n175 = a0_shr(n173, 8u); (void)n175;
+  uint32_t n176 = a0_and(n175, 255u); (void)n176;
+  uint32_t n177 = a0_shr(n173, 16u); (void)n177;
+  uint32_t n178 = a0_and(n177, 255u); (void)n178;
+  uint32_t n179 = a0_shr(n173, 24u); (void)n179;
+  uint32_t n180 = a0_add(n3, 22u); (void)n180;
+  uint32_t n181 = (*n1).e[n180 % 512u]; (void)n181;
+  uint32_t n182 = a0_and(n181, 255u); (void)n182;
+  uint32_t n183 = a0_shr(n181, 8u); (void)n183;
+  uint32_t n184 = a0_and(n183, 255u); (void)n184;
+  uint32_t n185 = a0_shr(n181, 16u); (void)n185;
+  uint32_t n186 = a0_and(n185, 255u); (void)n186;
+  uint32_t n187 = a0_shr(n181, 24u); (void)n187;
+  uint32_t n188 = a0_add(n3, 23u); (void)n188;
+  uint32_t n189 = (*n1).e[n188 % 512u]; (void)n189;
+  uint32_t n190 = a0_and(n189, 255u); (void)n190;
+  uint32_t n191 = a0_shr(n189, 8u); (void)n191;
+  uint32_t n192 = a0_and(n191, 255u); (void)n192;
+  uint32_t n193 = a0_shr(n189, 16u); (void)n193;
+  uint32_t n194 = a0_and(n193, 255u); (void)n194;
+  uint32_t n195 = a0_shr(n189, 24u); (void)n195;
+  uint32_t n196 = a0_add(n3, 24u); (void)n196;
+  uint32_t n197 = (*n1).e[n196 % 512u]; (void)n197;
+  uint32_t n198 = a0_and(n197, 255u); (void)n198;
+  uint32_t n199 = a0_shr(n197, 8u); (void)n199;
+  uint32_t n200 = a0_and(n199, 255u); (void)n200;
+  uint32_t n201 = a0_shr(n197, 16u); (void)n201;
+  uint32_t n202 = a0_and(n201, 255u); (void)n202;
+  uint32_t n203 = a0_shr(n197, 24u); (void)n203;
+  uint32_t n204 = a0_add(n3, 25u); (void)n204;
+  uint32_t n205 = (*n1).e[n204 % 512u]; (void)n205;
+  uint32_t n206 = a0_and(n205, 255u); (void)n206;
+  uint32_t n207 = a0_shr(n205, 8u); (void)n207;
+  uint32_t n208 = a0_and(n207, 255u); (void)n208;
+  uint32_t n209 = a0_shr(n205, 16u); (void)n209;
+  uint32_t n210 = a0_and(n209, 255u); (void)n210;
+  uint32_t n211 = a0_shr(n205, 24u); (void)n211;
+  uint32_t n212 = a0_add(n3, 26u); (void)n212;
+  uint32_t n213 = (*n1).e[n212 % 512u]; (void)n213;
+  uint32_t n214 = a0_and(n213, 255u); (void)n214;
+  uint32_t n215 = a0_shr(n213, 8u); (void)n215;
+  uint32_t n216 = a0_and(n215, 255u); (void)n216;
+  uint32_t n217 = a0_shr(n213, 16u); (void)n217;
+  uint32_t n218 = a0_and(n217, 255u); (void)n218;
+  uint32_t n219 = a0_shr(n213, 24u); (void)n219;
+  uint32_t n220 = a0_add(n3, 27u); (void)n220;
+  uint32_t n221 = (*n1).e[n220 % 512u]; (void)n221;
+  uint32_t n222 = a0_and(n221, 255u); (void)n222;
+  uint32_t n223 = a0_shr(n221, 8u); (void)n223;
+  uint32_t n224 = a0_and(n223, 255u); (void)n224;
+  uint32_t n225 = a0_shr(n221, 16u); (void)n225;
+  uint32_t n226 = a0_and(n225, 255u); (void)n226;
+  uint32_t n227 = a0_shr(n221, 24u); (void)n227;
+  uint32_t n228 = a0_add(n3, 28u); (void)n228;
+  uint32_t n229 = (*n1).e[n228 % 512u]; (void)n229;
+  uint32_t n230 = a0_and(n229, 255u); (void)n230;
+  uint32_t n231 = a0_shr(n229, 8u); (void)n231;
+  uint32_t n232 = a0_and(n231, 255u); (void)n232;
+  uint32_t n233 = a0_shr(n229, 16u); (void)n233;
+  uint32_t n234 = a0_and(n233, 255u); (void)n234;
+  uint32_t n235 = a0_shr(n229, 24u); (void)n235;
+  uint32_t n236 = a0_add(n3, 29u); (void)n236;
+  uint32_t n237 = (*n1).e[n236 % 512u]; (void)n237;
+  uint32_t n238 = a0_and(n237, 255u); (void)n238;
+  uint32_t n239 = a0_shr(n237, 8u); (void)n239;
+  uint32_t n240 = a0_and(n239, 255u); (void)n240;
+  uint32_t n241 = a0_shr(n237, 16u); (void)n241;
+  uint32_t n242 = a0_and(n241, 255u); (void)n242;
+  uint32_t n243 = a0_shr(n237, 24u); (void)n243;
+  uint32_t n244 = a0_add(n3, 30u); (void)n244;
+  uint32_t n245 = (*n1).e[n244 % 512u]; (void)n245;
+  uint32_t n246 = a0_and(n245, 255u); (void)n246;
+  uint32_t n247 = a0_shr(n245, 8u); (void)n247;
+  uint32_t n248 = a0_and(n247, 255u); (void)n248;
+  uint32_t n249 = a0_shr(n245, 16u); (void)n249;
+  uint32_t n250 = a0_and(n249, 255u); (void)n250;
+  uint32_t n251 = a0_shr(n245, 24u); (void)n251;
+  uint32_t n252 = a0_add(n3, 31u); (void)n252;
+  uint32_t n253 = (*n1).e[n252 % 512u]; (void)n253;
+  uint32_t n254 = a0_and(n253, 255u); (void)n254;
+  uint32_t n255 = a0_shr(n253, 8u); (void)n255;
+  uint32_t n256 = a0_and(n255, 255u); (void)n256;
+  uint32_t n257 = a0_shr(n253, 16u); (void)n257;
+  uint32_t n258 = a0_and(n257, 255u); (void)n258;
+  uint32_t n259 = a0_shr(n253, 24u); (void)n259;
+  a0t5 n260; n260.e[0] = n6; n260.e[1] = n8; n260.e[2] = n10; n260.e[3] = n11; n260.e[4] = n14; n260.e[5] = n16; n260.e[6] = n18; n260.e[7] = n19; n260.e[8] = n22; n260.e[9] = n24; n260.e[10] = n26; n260.e[11] = n27; n260.e[12] = n30; n260.e[13] = n32; n260.e[14] = n34; n260.e[15] = n35; n260.e[16] = n38; n260.e[17] = n40; n260.e[18] = n42; n260.e[19] = n43; n260.e[20] = n46; n260.e[21] = n48; n260.e[22] = n50; n260.e[23] = n51; n260.e[24] = n54; n260.e[25] = n56; n260.e[26] = n58; n260.e[27] = n59; n260.e[28] = n62; n260.e[29] = n64; n260.e[30] = n66; n260.e[31] = n67; n260.e[32] = n70; n260.e[33] = n72; n260.e[34] = n74; n260.e[35] = n75; n260.e[36] = n78; n260.e[37] = n80; n260.e[38] = n82; n260.e[39] = n83; n260.e[40] = n86; n260.e[41] = n88; n260.e[42] = n90; n260.e[43] = n91; n260.e[44] = n94; n260.e[45] = n96; n260.e[46] = n98; n260.e[47] = n99; n260.e[48] = n102; n260.e[49] = n104; n260.e[50] = n106; n260.e[51] = n107; n260.e[52] = n110; n260.e[53] = n112; n260.e[54] = n114; n260.e[55] = n115; n260.e[56] = n118; n260.e[57] = n120; n260.e[58] = n122; n260.e[59] = n123; n260.e[60] = n126; n260.e[61] = n128; n260.e[62] = n130; n260.e[63] = n131; n260.e[64] = n134; n260.e[65] = n136; n260.e[66] = n138; n260.e[67] = n139; n260.e[68] = n142; n260.e[69] = n144; n260.e[70] = n146; n260.e[71] = n147; n260.e[72] = n150; n260.e[73] = n152; n260.e[74] = n154; n260.e[75] = n155; n260.e[76] = n158; n260.e[77] = n160; n260.e[78] = n162; n260.e[79] = n163; n260.e[80] = n166; n260.e[81] = n168; n260.e[82] = n170; n260.e[83] = n171; n260.e[84] = n174; n260.e[85] = n176; n260.e[86] = n178; n260.e[87] = n179; n260.e[88] = n182; n260.e[89] = n184; n260.e[90] = n186; n260.e[91] = n187; n260.e[92] = n190; n260.e[93] = n192; n260.e[94] = n194; n260.e[95] = n195; n260.e[96] = n198; n260.e[97] = n200; n260.e[98] = n202; n260.e[99] = n203; n260.e[100] = n206; n260.e[101] = n208; n260.e[102] = n210; n260.e[103] = n211; n260.e[104] = n214; n260.e[105] = n216; n260.e[106] = n218; n260.e[107] = n219; n260.e[108] = n222; n260.e[109] = n224; n260.e[110] = n226; n260.e[111] = n227; n260.e[112] = n230; n260.e[113] = n232; n260.e[114] = n234; n260.e[115] = n235; n260.e[116] = n238; n260.e[117] = n240; n260.e[118] = n242; n260.e[119] = n243; n260.e[120] = n246; n260.e[121] = n248; n260.e[122] = n250; n260.e[123] = n251; n260.e[124] = n254; n260.e[125] = n256; n260.e[126] = n258; n260.e[127] = n259; (void)n260;
+  return n260;
+}
+
+a0t6 a0_lexstep(uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4) {
   uint32_t n0 = p2; (void)n0;
   bool n1 = a0_isword(n0); (void)n1;
   bool n2 = a0_eq(n0, 10u); (void)n2;
@@ -185,237 +454,257 @@ a0t3 a0_lexstep(uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4)
   uint32_t n62 = (n4 ? 1u : 0u); (void)n62;
   uint32_t n63 = (n21 ? 0u : n62); (void)n63;
   uint32_t n64 = (n12 ? n63 : 0u); (void)n64;
-  a0t3 n65; n65.f0 = n31; n65.f1 = n38; n65.f2 = n40; n65.f3 = n45; n65.f4 = n60; n65.f5 = n61; n65.f6 = n64; (void)n65;
+  a0t6 n65; n65.f0 = n31; n65.f1 = n38; n65.f2 = n40; n65.f3 = n45; n65.f4 = n60; n65.f5 = n61; n65.f6 = n64; (void)n65;
   return n65;
 }
 
-a0t6 a0_lexbyte(a0t6 p0, uint32_t p1, a0t4 p2, uint32_t p3) {
-  const a0t5 *const n0 = &p0.f0; (void)n0;
+a0t8 a0_lexbyte(a0t8 p0, uint32_t p1, a0t5 p2, uint32_t p3) {
+  const a0t7 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = p0.f3; (void)n3;
   uint32_t n4 = p0.f4; (void)n4;
   uint32_t n5 = p2.e[p1 % 128u]; (void)n5;
   uint32_t n6 = a0_add(p3, p1); (void)n6;
-  a0t3 n7 = a0_lexstep(n2, n3, n5, n6, n4); (void)n7;
+  a0t6 n7 = a0_lexstep(n2, n3, n5, n6, n4); (void)n7;
   bool n8 = n7.f0; (void)n8;
   uint32_t n9 = n7.f1; (void)n9;
   uint32_t n10 = n7.f2; (void)n10;
   uint32_t n11 = n7.f3; (void)n11;
   uint32_t n12 = a0_shr(n1, 7u); (void)n12;
   uint32_t n13 = a0_and(n1, 127u); (void)n13;
-  const a0t4 *const n14 = &(*n0).e[n12 % 4u]; (void)n14;
-  a0t4 n15 = (*n14); n15.e[n13 % 128u] = n9; (void)n15;
-  a0t5 n16 = (*n0); n16.e[n12 % 4u] = n15; (void)n16;
+  const a0t5 *const n14 = &(*n0).e[n12 % 4u]; (void)n14;
+  a0t5 n15 = (*n14); n15.e[n13 % 128u] = n9; (void)n15;
+  a0t7 n16 = (*n0); n16.e[n12 % 4u] = n15; (void)n16;
   uint32_t n17 = a0_add(n1, 1u); (void)n17;
   uint32_t n18 = a0_shr(n17, 7u); (void)n18;
   uint32_t n19 = a0_and(n17, 127u); (void)n19;
-  const a0t4 *const n20 = &n16.e[n18 % 4u]; (void)n20;
-  a0t4 n21 = (*n20); n21.e[n19 % 128u] = n10; (void)n21;
+  const a0t5 *const n20 = &n16.e[n18 % 4u]; (void)n20;
+  a0t5 n21 = (*n20); n21.e[n19 % 128u] = n10; (void)n21;
   n16.e[n18 % 4u] = n21;
   uint32_t n23 = a0_add(n1, 2u); (void)n23;
   uint32_t n24 = a0_shr(n23, 7u); (void)n24;
   uint32_t n25 = a0_and(n23, 127u); (void)n25;
-  const a0t4 *const n26 = &n16.e[n24 % 4u]; (void)n26;
-  a0t4 n27 = (*n26); n27.e[n25 % 128u] = n11; (void)n27;
+  const a0t5 *const n26 = &n16.e[n24 % 4u]; (void)n26;
+  a0t5 n27 = (*n26); n27.e[n25 % 128u] = n11; (void)n27;
   n16.e[n24 % 4u] = n27;
   uint32_t n29 = a0_add(n1, 3u); (void)n29;
   uint32_t n30 = (n8 ? n29 : n1); (void)n30;
   uint32_t n31 = n7.f4; (void)n31;
   uint32_t n32 = n7.f5; (void)n32;
   uint32_t n33 = n7.f6; (void)n33;
-  a0t6 n34; n34.f0 = n16; n34.f1 = n30; n34.f2 = n31; n34.f3 = n32; n34.f4 = n33; (void)n34;
+  a0t8 n34; n34.f0 = n16; n34.f1 = n30; n34.f2 = n31; n34.f3 = n32; n34.f4 = n33; (void)n34;
   return n34;
 }
 
-static inline void a0o_lexbyte(a0t6 *p0, uint32_t p1, a0t4 p2, uint32_t p3) {
-  const a0t5 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_lexbyte(a0t8 *p0, uint32_t p1, a0t5 p2, uint32_t p3) {
+  const a0t7 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = (*p0).f3; (void)n3;
   uint32_t n4 = (*p0).f4; (void)n4;
   uint32_t n5 = p2.e[p1 % 128u]; (void)n5;
   uint32_t n6 = a0_add(p3, p1); (void)n6;
-  a0t3 n7 = a0_lexstep(n2, n3, n5, n6, n4); (void)n7;
+  a0t6 n7 = a0_lexstep(n2, n3, n5, n6, n4); (void)n7;
   bool n8 = n7.f0; (void)n8;
   uint32_t n9 = n7.f1; (void)n9;
   uint32_t n10 = n7.f2; (void)n10;
   uint32_t n11 = n7.f3; (void)n11;
   uint32_t n12 = a0_shr(n1, 7u); (void)n12;
   uint32_t n13 = a0_and(n1, 127u); (void)n13;
-  const a0t4 *const n14 = &(*n0).e[n12 % 4u]; (void)n14;
-  a0t4 n15 = (*n14); n15.e[n13 % 128u] = n9; (void)n15;
-  a0t5 n16 = (*n0); n16.e[n12 % 4u] = n15; (void)n16;
+  const a0t5 *const n14 = &(*n0).e[n12 % 4u]; (void)n14;
+  a0t5 n15 = (*n14); n15.e[n13 % 128u] = n9; (void)n15;
+  a0t7 n16 = (*n0); n16.e[n12 % 4u] = n15; (void)n16;
   uint32_t n17 = a0_add(n1, 1u); (void)n17;
   uint32_t n18 = a0_shr(n17, 7u); (void)n18;
   uint32_t n19 = a0_and(n17, 127u); (void)n19;
-  const a0t4 *const n20 = &n16.e[n18 % 4u]; (void)n20;
-  a0t4 n21 = (*n20); n21.e[n19 % 128u] = n10; (void)n21;
+  const a0t5 *const n20 = &n16.e[n18 % 4u]; (void)n20;
+  a0t5 n21 = (*n20); n21.e[n19 % 128u] = n10; (void)n21;
   n16.e[n18 % 4u] = n21;
   uint32_t n23 = a0_add(n1, 2u); (void)n23;
   uint32_t n24 = a0_shr(n23, 7u); (void)n24;
   uint32_t n25 = a0_and(n23, 127u); (void)n25;
-  const a0t4 *const n26 = &n16.e[n24 % 4u]; (void)n26;
-  a0t4 n27 = (*n26); n27.e[n25 % 128u] = n11; (void)n27;
+  const a0t5 *const n26 = &n16.e[n24 % 4u]; (void)n26;
+  a0t5 n27 = (*n26); n27.e[n25 % 128u] = n11; (void)n27;
   n16.e[n24 % 4u] = n27;
   uint32_t n29 = a0_add(n1, 3u); (void)n29;
   uint32_t n30 = (n8 ? n29 : n1); (void)n30;
   uint32_t n31 = n7.f4; (void)n31;
   uint32_t n32 = n7.f5; (void)n32;
   uint32_t n33 = n7.f6; (void)n33;
-  a0t6 n34; n34.f0 = n16; n34.f1 = n30; n34.f2 = n31; n34.f3 = n32; n34.f4 = n33; (void)n34;
+  a0t8 n34; n34.f0 = n16; n34.f1 = n30; n34.f2 = n31; n34.f3 = n32; n34.f4 = n33; (void)n34;
   *p0 = n34;
 }
 
-a0t8 a0_lexpage(a0t8 p0, uint32_t p1, a0t9 p2, uint32_t p3) {
-  const a0t7 *const n0 = &p0.f0; (void)n0;
+a0t10 a0_lexpage(a0t10 p0, uint32_t p1, a0t4 p2, uint32_t p3) {
+  const a0t9 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
-  const a0t4 *const n2 = &p2.e[p1 % 128u]; (void)n2;
+  a0t5 n2 = a0_srcpg(p2, p1); (void)n2;
   uint32_t n3 = a0_mul(p1, 128u); (void)n3;
   uint32_t n4 = a0_sub(p3, n3); (void)n4;
   bool n5 = a0_gt(n4, 128u); (void)n5;
   uint32_t n6 = (n5 ? 128u : n4); (void)n6;
   uint32_t n7 = a0_shr(n1, 7u); (void)n7;
   uint32_t n8 = a0_and(n1, 127u); (void)n8;
-  const a0t4 *const n9 = &(*n0).e[n7 % 384u]; (void)n9;
-  a0t5 n10; n10.e[0] = (*n9); n10.e[1] = (*n9); n10.e[2] = (*n9); n10.e[3] = (*n9); (void)n10;
+  const a0t5 *const n9 = &(*n0).e[n7 % 384u]; (void)n9;
+  a0t7 n10; n10.e[0] = (*n9); n10.e[1] = (*n9); n10.e[2] = (*n9); n10.e[3] = (*n9); (void)n10;
   uint32_t n11 = p0.f2; (void)n11;
   uint32_t n12 = p0.f3; (void)n12;
   uint32_t n13 = p0.f4; (void)n13;
-  a0t6 n14; n14.f0 = n10; n14.f1 = n8; n14.f2 = n11; n14.f3 = n12; n14.f4 = n13; (void)n14;
-  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_lexbyte(&n14, a0i, (*n2), n3); }
-  const a0t5 *const n16 = &n14.f0; (void)n16;
+  a0t8 n14; n14.f0 = n10; n14.f1 = n8; n14.f2 = n11; n14.f3 = n12; n14.f4 = n13; (void)n14;
+  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_lexbyte(&n14, a0i, n2, n3); }
+  const a0t7 *const n16 = &n14.f0; (void)n16;
   uint32_t n17 = n14.f1; (void)n17;
   bool n18 = a0_gt(n17, 0u); (void)n18;
   uint32_t n19 = a0_add(n7, 0u); (void)n19;
-  const a0t4 *const n20 = &(*n16).e[0u % 4u]; (void)n20;
-  const a0t4 *const n21 = &(*n0).e[n19 % 384u]; (void)n21;
-  a0t4 n22 = (n18 ? (*n20) : (*n21)); (void)n22;
-  a0t7 n23 = (*n0); n23.e[n19 % 384u] = n22; (void)n23;
-  bool n24 = a0_gt(n17, 128u); (void)n24;
-  uint32_t n25 = a0_add(n7, 1u); (void)n25;
-  const a0t4 *const n26 = &(*n16).e[1u % 4u]; (void)n26;
-  const a0t4 *const n27 = &n23.e[n25 % 384u]; (void)n27;
-  a0t4 n28 = (n24 ? (*n26) : (*n27)); (void)n28;
-  n23.e[n25 % 384u] = n28;
-  bool n30 = a0_gt(n17, 256u); (void)n30;
-  uint32_t n31 = a0_add(n7, 2u); (void)n31;
-  const a0t4 *const n32 = &(*n16).e[2u % 4u]; (void)n32;
-  const a0t4 *const n33 = &n23.e[n31 % 384u]; (void)n33;
-  a0t4 n34 = (n30 ? (*n32) : (*n33)); (void)n34;
-  n23.e[n31 % 384u] = n34;
-  bool n36 = a0_gt(n17, 384u); (void)n36;
-  uint32_t n37 = a0_add(n7, 3u); (void)n37;
-  const a0t4 *const n38 = &(*n16).e[3u % 4u]; (void)n38;
-  const a0t4 *const n39 = &n23.e[n37 % 384u]; (void)n39;
-  a0t4 n40 = (n36 ? (*n38) : (*n39)); (void)n40;
-  n23.e[n37 % 384u] = n40;
-  uint32_t n42 = a0_sub(n1, n8); (void)n42;
-  uint32_t n43 = a0_add(n42, n17); (void)n43;
-  uint32_t n44 = n14.f2; (void)n44;
-  uint32_t n45 = n14.f3; (void)n45;
-  uint32_t n46 = n14.f4; (void)n46;
-  a0t8 n47; n47.f0 = n23; n47.f1 = n43; n47.f2 = n44; n47.f3 = n45; n47.f4 = n46; (void)n47;
-  return n47;
+  bool n20 = a0_lt(n19, 384u); (void)n20;
+  bool n21 = (n18 && n20); (void)n21;
+  const a0t5 *const n22 = &(*n16).e[0u % 4u]; (void)n22;
+  const a0t5 *const n23 = &(*n0).e[n19 % 384u]; (void)n23;
+  a0t5 n24 = (n21 ? (*n22) : (*n23)); (void)n24;
+  a0t9 n25 = (*n0); n25.e[n19 % 384u] = n24; (void)n25;
+  bool n26 = a0_gt(n17, 128u); (void)n26;
+  uint32_t n27 = a0_add(n7, 1u); (void)n27;
+  bool n28 = a0_lt(n27, 384u); (void)n28;
+  bool n29 = (n26 && n28); (void)n29;
+  const a0t5 *const n30 = &(*n16).e[1u % 4u]; (void)n30;
+  const a0t5 *const n31 = &n25.e[n27 % 384u]; (void)n31;
+  a0t5 n32 = (n29 ? (*n30) : (*n31)); (void)n32;
+  n25.e[n27 % 384u] = n32;
+  bool n34 = a0_gt(n17, 256u); (void)n34;
+  uint32_t n35 = a0_add(n7, 2u); (void)n35;
+  bool n36 = a0_lt(n35, 384u); (void)n36;
+  bool n37 = (n34 && n36); (void)n37;
+  const a0t5 *const n38 = &(*n16).e[2u % 4u]; (void)n38;
+  const a0t5 *const n39 = &n25.e[n35 % 384u]; (void)n39;
+  a0t5 n40 = (n37 ? (*n38) : (*n39)); (void)n40;
+  n25.e[n35 % 384u] = n40;
+  bool n42 = a0_gt(n17, 384u); (void)n42;
+  uint32_t n43 = a0_add(n7, 3u); (void)n43;
+  bool n44 = a0_lt(n43, 384u); (void)n44;
+  bool n45 = (n42 && n44); (void)n45;
+  const a0t5 *const n46 = &(*n16).e[3u % 4u]; (void)n46;
+  const a0t5 *const n47 = &n25.e[n43 % 384u]; (void)n47;
+  a0t5 n48 = (n45 ? (*n46) : (*n47)); (void)n48;
+  n25.e[n43 % 384u] = n48;
+  uint32_t n50 = a0_sub(n1, n8); (void)n50;
+  uint32_t n51 = a0_add(n50, n17); (void)n51;
+  uint32_t n52 = n14.f2; (void)n52;
+  uint32_t n53 = n14.f3; (void)n53;
+  uint32_t n54 = n14.f4; (void)n54;
+  a0t10 n55; n55.f0 = n25; n55.f1 = n51; n55.f2 = n52; n55.f3 = n53; n55.f4 = n54; (void)n55;
+  return n55;
 }
 
-static inline void a0o_lexpage(a0t8 *p0, uint32_t p1, a0t9 p2, uint32_t p3) {
-  const a0t7 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_lexpage(a0t10 *p0, uint32_t p1, a0t4 p2, uint32_t p3) {
+  const a0t9 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
-  const a0t4 *const n2 = &p2.e[p1 % 128u]; (void)n2;
+  a0t5 n2 = a0_srcpg(p2, p1); (void)n2;
   uint32_t n3 = a0_mul(p1, 128u); (void)n3;
   uint32_t n4 = a0_sub(p3, n3); (void)n4;
   bool n5 = a0_gt(n4, 128u); (void)n5;
   uint32_t n6 = (n5 ? 128u : n4); (void)n6;
   uint32_t n7 = a0_shr(n1, 7u); (void)n7;
   uint32_t n8 = a0_and(n1, 127u); (void)n8;
-  const a0t4 *const n9 = &(*n0).e[n7 % 384u]; (void)n9;
-  a0t5 n10; n10.e[0] = (*n9); n10.e[1] = (*n9); n10.e[2] = (*n9); n10.e[3] = (*n9); (void)n10;
+  const a0t5 *const n9 = &(*n0).e[n7 % 384u]; (void)n9;
+  a0t7 n10; n10.e[0] = (*n9); n10.e[1] = (*n9); n10.e[2] = (*n9); n10.e[3] = (*n9); (void)n10;
   uint32_t n11 = (*p0).f2; (void)n11;
   uint32_t n12 = (*p0).f3; (void)n12;
   uint32_t n13 = (*p0).f4; (void)n13;
-  a0t6 n14; n14.f0 = n10; n14.f1 = n8; n14.f2 = n11; n14.f3 = n12; n14.f4 = n13; (void)n14;
-  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_lexbyte(&n14, a0i, (*n2), n3); }
-  const a0t5 *const n16 = &n14.f0; (void)n16;
+  a0t8 n14; n14.f0 = n10; n14.f1 = n8; n14.f2 = n11; n14.f3 = n12; n14.f4 = n13; (void)n14;
+  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_lexbyte(&n14, a0i, n2, n3); }
+  const a0t7 *const n16 = &n14.f0; (void)n16;
   uint32_t n17 = n14.f1; (void)n17;
   bool n18 = a0_gt(n17, 0u); (void)n18;
   uint32_t n19 = a0_add(n7, 0u); (void)n19;
-  const a0t4 *const n20 = &(*n16).e[0u % 4u]; (void)n20;
-  const a0t4 *const n21 = &(*n0).e[n19 % 384u]; (void)n21;
-  a0t4 n22 = (n18 ? (*n20) : (*n21)); (void)n22;
-  a0t7 n23 = (*n0); n23.e[n19 % 384u] = n22; (void)n23;
-  bool n24 = a0_gt(n17, 128u); (void)n24;
-  uint32_t n25 = a0_add(n7, 1u); (void)n25;
-  const a0t4 *const n26 = &(*n16).e[1u % 4u]; (void)n26;
-  const a0t4 *const n27 = &n23.e[n25 % 384u]; (void)n27;
-  a0t4 n28 = (n24 ? (*n26) : (*n27)); (void)n28;
-  n23.e[n25 % 384u] = n28;
-  bool n30 = a0_gt(n17, 256u); (void)n30;
-  uint32_t n31 = a0_add(n7, 2u); (void)n31;
-  const a0t4 *const n32 = &(*n16).e[2u % 4u]; (void)n32;
-  const a0t4 *const n33 = &n23.e[n31 % 384u]; (void)n33;
-  a0t4 n34 = (n30 ? (*n32) : (*n33)); (void)n34;
-  n23.e[n31 % 384u] = n34;
-  bool n36 = a0_gt(n17, 384u); (void)n36;
-  uint32_t n37 = a0_add(n7, 3u); (void)n37;
-  const a0t4 *const n38 = &(*n16).e[3u % 4u]; (void)n38;
-  const a0t4 *const n39 = &n23.e[n37 % 384u]; (void)n39;
-  a0t4 n40 = (n36 ? (*n38) : (*n39)); (void)n40;
-  n23.e[n37 % 384u] = n40;
-  uint32_t n42 = a0_sub(n1, n8); (void)n42;
-  uint32_t n43 = a0_add(n42, n17); (void)n43;
-  uint32_t n44 = n14.f2; (void)n44;
-  uint32_t n45 = n14.f3; (void)n45;
-  uint32_t n46 = n14.f4; (void)n46;
-  a0t8 n47; n47.f0 = n23; n47.f1 = n43; n47.f2 = n44; n47.f3 = n45; n47.f4 = n46; (void)n47;
-  *p0 = n47;
+  bool n20 = a0_lt(n19, 384u); (void)n20;
+  bool n21 = (n18 && n20); (void)n21;
+  const a0t5 *const n22 = &(*n16).e[0u % 4u]; (void)n22;
+  const a0t5 *const n23 = &(*n0).e[n19 % 384u]; (void)n23;
+  a0t5 n24 = (n21 ? (*n22) : (*n23)); (void)n24;
+  a0t9 n25 = (*n0); n25.e[n19 % 384u] = n24; (void)n25;
+  bool n26 = a0_gt(n17, 128u); (void)n26;
+  uint32_t n27 = a0_add(n7, 1u); (void)n27;
+  bool n28 = a0_lt(n27, 384u); (void)n28;
+  bool n29 = (n26 && n28); (void)n29;
+  const a0t5 *const n30 = &(*n16).e[1u % 4u]; (void)n30;
+  const a0t5 *const n31 = &n25.e[n27 % 384u]; (void)n31;
+  a0t5 n32 = (n29 ? (*n30) : (*n31)); (void)n32;
+  n25.e[n27 % 384u] = n32;
+  bool n34 = a0_gt(n17, 256u); (void)n34;
+  uint32_t n35 = a0_add(n7, 2u); (void)n35;
+  bool n36 = a0_lt(n35, 384u); (void)n36;
+  bool n37 = (n34 && n36); (void)n37;
+  const a0t5 *const n38 = &(*n16).e[2u % 4u]; (void)n38;
+  const a0t5 *const n39 = &n25.e[n35 % 384u]; (void)n39;
+  a0t5 n40 = (n37 ? (*n38) : (*n39)); (void)n40;
+  n25.e[n35 % 384u] = n40;
+  bool n42 = a0_gt(n17, 384u); (void)n42;
+  uint32_t n43 = a0_add(n7, 3u); (void)n43;
+  bool n44 = a0_lt(n43, 384u); (void)n44;
+  bool n45 = (n42 && n44); (void)n45;
+  const a0t5 *const n46 = &(*n16).e[3u % 4u]; (void)n46;
+  const a0t5 *const n47 = &n25.e[n43 % 384u]; (void)n47;
+  a0t5 n48 = (n45 ? (*n46) : (*n47)); (void)n48;
+  n25.e[n43 % 384u] = n48;
+  uint32_t n50 = a0_sub(n1, n8); (void)n50;
+  uint32_t n51 = a0_add(n50, n17); (void)n51;
+  uint32_t n52 = n14.f2; (void)n52;
+  uint32_t n53 = n14.f3; (void)n53;
+  uint32_t n54 = n14.f4; (void)n54;
+  a0t10 n55; n55.f0 = n25; n55.f1 = n51; n55.f2 = n52; n55.f3 = n53; n55.f4 = n54; (void)n55;
+  *p0 = n55;
 }
 
-a0t7 a0_tokput(a0t7 p0, uint32_t p1, uint32_t p2, bool p3) {
+a0t9 a0_tokput(a0t9 p0, uint32_t p1, uint32_t p2, bool p3) {
   uint32_t n0 = a0_shr(p1, 7u); (void)n0;
   uint32_t n1 = a0_and(p1, 127u); (void)n1;
-  const a0t4 *const n2 = &p0.e[n0 % 384u]; (void)n2;
+  const a0t5 *const n2 = &p0.e[n0 % 384u]; (void)n2;
   uint32_t n3 = (*n2).e[n1 % 128u]; (void)n3;
-  uint32_t n4 = (p3 ? p2 : n3); (void)n4;
-  a0t4 n5 = (*n2); n5.e[n1 % 128u] = n4; (void)n5;
-  p0.e[n0 % 384u] = n5;
+  bool n4 = a0_lt(n0, 384u); (void)n4;
+  bool n5 = (p3 && n4); (void)n5;
+  uint32_t n6 = (n5 ? p2 : n3); (void)n6;
+  a0t5 n7 = (*n2); n7.e[n1 % 128u] = n6; (void)n7;
+  p0.e[n0 % 384u] = n7;
   return p0;
 }
 
-static inline void a0o_tokput(a0t7 *p0, uint32_t p1, uint32_t p2, bool p3) {
+static inline void a0o_tokput(a0t9 *p0, uint32_t p1, uint32_t p2, bool p3) {
   uint32_t n0 = a0_shr(p1, 7u); (void)n0;
   uint32_t n1 = a0_and(p1, 127u); (void)n1;
-  const a0t4 *const n2 = &(*p0).e[n0 % 384u]; (void)n2;
+  const a0t5 *const n2 = &(*p0).e[n0 % 384u]; (void)n2;
   uint32_t n3 = (*n2).e[n1 % 128u]; (void)n3;
-  uint32_t n4 = (p3 ? p2 : n3); (void)n4;
-  a0t4 n5 = (*n2); n5.e[n1 % 128u] = n4; (void)n5;
-  (*p0).e[n0 % 384u] = n5;
+  bool n4 = a0_lt(n0, 384u); (void)n4;
+  bool n5 = (p3 && n4); (void)n5;
+  uint32_t n6 = (n5 ? p2 : n3); (void)n6;
+  a0t5 n7 = (*n2); n7.e[n1 % 128u] = n6; (void)n7;
+  (*p0).e[n0 % 384u] = n7;
 }
 
-a0t4 a0_zpage(void) {
-  a0t4 n0; for (uint32_t a0i = 0; a0i < 128u; a0i++) n0.e[a0i] = 0; (void)n0;
+a0t5 a0_zpage(void) {
+  a0t5 n0; for (uint32_t a0i = 0; a0i < 128u; a0i++) n0.e[a0i] = 0; (void)n0;
   return n0;
 }
 
-a0t9 a0_zsrc(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t9 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; (void)n1;
+a0t11 a0_zsrc(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t11 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; (void)n1;
   return n1;
 }
 
-a0t7 a0_ztok(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t7 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; n1.e[128] = n0; n1.e[129] = n0; n1.e[130] = n0; n1.e[131] = n0; n1.e[132] = n0; n1.e[133] = n0; n1.e[134] = n0; n1.e[135] = n0; n1.e[136] = n0; n1.e[137] = n0; n1.e[138] = n0; n1.e[139] = n0; n1.e[140] = n0; n1.e[141] = n0; n1.e[142] = n0; n1.e[143] = n0; n1.e[144] = n0; n1.e[145] = n0; n1.e[146] = n0; n1.e[147] = n0; n1.e[148] = n0; n1.e[149] = n0; n1.e[150] = n0; n1.e[151] = n0; n1.e[152] = n0; n1.e[153] = n0; n1.e[154] = n0; n1.e[155] = n0; n1.e[156] = n0; n1.e[157] = n0; n1.e[158] = n0; n1.e[159] = n0; n1.e[160] = n0; n1.e[161] = n0; n1.e[162] = n0; n1.e[163] = n0; n1.e[164] = n0; n1.e[165] = n0; n1.e[166] = n0; n1.e[167] = n0; n1.e[168] = n0; n1.e[169] = n0; n1.e[170] = n0; n1.e[171] = n0; n1.e[172] = n0; n1.e[173] = n0; n1.e[174] = n0; n1.e[175] = n0; n1.e[176] = n0; n1.e[177] = n0; n1.e[178] = n0; n1.e[179] = n0; n1.e[180] = n0; n1.e[181] = n0; n1.e[182] = n0; n1.e[183] = n0; n1.e[184] = n0; n1.e[185] = n0; n1.e[186] = n0; n1.e[187] = n0; n1.e[188] = n0; n1.e[189] = n0; n1.e[190] = n0; n1.e[191] = n0; n1.e[192] = n0; n1.e[193] = n0; n1.e[194] = n0; n1.e[195] = n0; n1.e[196] = n0; n1.e[197] = n0; n1.e[198] = n0; n1.e[199] = n0; n1.e[200] = n0; n1.e[201] = n0; n1.e[202] = n0; n1.e[203] = n0; n1.e[204] = n0; n1.e[205] = n0; n1.e[206] = n0; n1.e[207] = n0; n1.e[208] = n0; n1.e[209] = n0; n1.e[210] = n0; n1.e[211] = n0; n1.e[212] = n0; n1.e[213] = n0; n1.e[214] = n0; n1.e[215] = n0; n1.e[216] = n0; n1.e[217] = n0; n1.e[218] = n0; n1.e[219] = n0; n1.e[220] = n0; n1.e[221] = n0; n1.e[222] = n0; n1.e[223] = n0; n1.e[224] = n0; n1.e[225] = n0; n1.e[226] = n0; n1.e[227] = n0; n1.e[228] = n0; n1.e[229] = n0; n1.e[230] = n0; n1.e[231] = n0; n1.e[232] = n0; n1.e[233] = n0; n1.e[234] = n0; n1.e[235] = n0; n1.e[236] = n0; n1.e[237] = n0; n1.e[238] = n0; n1.e[239] = n0; n1.e[240] = n0; n1.e[241] = n0; n1.e[242] = n0; n1.e[243] = n0; n1.e[244] = n0; n1.e[245] = n0; n1.e[246] = n0; n1.e[247] = n0; n1.e[248] = n0; n1.e[249] = n0; n1.e[250] = n0; n1.e[251] = n0; n1.e[252] = n0; n1.e[253] = n0; n1.e[254] = n0; n1.e[255] = n0; n1.e[256] = n0; n1.e[257] = n0; n1.e[258] = n0; n1.e[259] = n0; n1.e[260] = n0; n1.e[261] = n0; n1.e[262] = n0; n1.e[263] = n0; n1.e[264] = n0; n1.e[265] = n0; n1.e[266] = n0; n1.e[267] = n0; n1.e[268] = n0; n1.e[269] = n0; n1.e[270] = n0; n1.e[271] = n0; n1.e[272] = n0; n1.e[273] = n0; n1.e[274] = n0; n1.e[275] = n0; n1.e[276] = n0; n1.e[277] = n0; n1.e[278] = n0; n1.e[279] = n0; n1.e[280] = n0; n1.e[281] = n0; n1.e[282] = n0; n1.e[283] = n0; n1.e[284] = n0; n1.e[285] = n0; n1.e[286] = n0; n1.e[287] = n0; n1.e[288] = n0; n1.e[289] = n0; n1.e[290] = n0; n1.e[291] = n0; n1.e[292] = n0; n1.e[293] = n0; n1.e[294] = n0; n1.e[295] = n0; n1.e[296] = n0; n1.e[297] = n0; n1.e[298] = n0; n1.e[299] = n0; n1.e[300] = n0; n1.e[301] = n0; n1.e[302] = n0; n1.e[303] = n0; n1.e[304] = n0; n1.e[305] = n0; n1.e[306] = n0; n1.e[307] = n0; n1.e[308] = n0; n1.e[309] = n0; n1.e[310] = n0; n1.e[311] = n0; n1.e[312] = n0; n1.e[313] = n0; n1.e[314] = n0; n1.e[315] = n0; n1.e[316] = n0; n1.e[317] = n0; n1.e[318] = n0; n1.e[319] = n0; n1.e[320] = n0; n1.e[321] = n0; n1.e[322] = n0; n1.e[323] = n0; n1.e[324] = n0; n1.e[325] = n0; n1.e[326] = n0; n1.e[327] = n0; n1.e[328] = n0; n1.e[329] = n0; n1.e[330] = n0; n1.e[331] = n0; n1.e[332] = n0; n1.e[333] = n0; n1.e[334] = n0; n1.e[335] = n0; n1.e[336] = n0; n1.e[337] = n0; n1.e[338] = n0; n1.e[339] = n0; n1.e[340] = n0; n1.e[341] = n0; n1.e[342] = n0; n1.e[343] = n0; n1.e[344] = n0; n1.e[345] = n0; n1.e[346] = n0; n1.e[347] = n0; n1.e[348] = n0; n1.e[349] = n0; n1.e[350] = n0; n1.e[351] = n0; n1.e[352] = n0; n1.e[353] = n0; n1.e[354] = n0; n1.e[355] = n0; n1.e[356] = n0; n1.e[357] = n0; n1.e[358] = n0; n1.e[359] = n0; n1.e[360] = n0; n1.e[361] = n0; n1.e[362] = n0; n1.e[363] = n0; n1.e[364] = n0; n1.e[365] = n0; n1.e[366] = n0; n1.e[367] = n0; n1.e[368] = n0; n1.e[369] = n0; n1.e[370] = n0; n1.e[371] = n0; n1.e[372] = n0; n1.e[373] = n0; n1.e[374] = n0; n1.e[375] = n0; n1.e[376] = n0; n1.e[377] = n0; n1.e[378] = n0; n1.e[379] = n0; n1.e[380] = n0; n1.e[381] = n0; n1.e[382] = n0; n1.e[383] = n0; (void)n1;
+a0t9 a0_ztok(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t9 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; n1.e[128] = n0; n1.e[129] = n0; n1.e[130] = n0; n1.e[131] = n0; n1.e[132] = n0; n1.e[133] = n0; n1.e[134] = n0; n1.e[135] = n0; n1.e[136] = n0; n1.e[137] = n0; n1.e[138] = n0; n1.e[139] = n0; n1.e[140] = n0; n1.e[141] = n0; n1.e[142] = n0; n1.e[143] = n0; n1.e[144] = n0; n1.e[145] = n0; n1.e[146] = n0; n1.e[147] = n0; n1.e[148] = n0; n1.e[149] = n0; n1.e[150] = n0; n1.e[151] = n0; n1.e[152] = n0; n1.e[153] = n0; n1.e[154] = n0; n1.e[155] = n0; n1.e[156] = n0; n1.e[157] = n0; n1.e[158] = n0; n1.e[159] = n0; n1.e[160] = n0; n1.e[161] = n0; n1.e[162] = n0; n1.e[163] = n0; n1.e[164] = n0; n1.e[165] = n0; n1.e[166] = n0; n1.e[167] = n0; n1.e[168] = n0; n1.e[169] = n0; n1.e[170] = n0; n1.e[171] = n0; n1.e[172] = n0; n1.e[173] = n0; n1.e[174] = n0; n1.e[175] = n0; n1.e[176] = n0; n1.e[177] = n0; n1.e[178] = n0; n1.e[179] = n0; n1.e[180] = n0; n1.e[181] = n0; n1.e[182] = n0; n1.e[183] = n0; n1.e[184] = n0; n1.e[185] = n0; n1.e[186] = n0; n1.e[187] = n0; n1.e[188] = n0; n1.e[189] = n0; n1.e[190] = n0; n1.e[191] = n0; n1.e[192] = n0; n1.e[193] = n0; n1.e[194] = n0; n1.e[195] = n0; n1.e[196] = n0; n1.e[197] = n0; n1.e[198] = n0; n1.e[199] = n0; n1.e[200] = n0; n1.e[201] = n0; n1.e[202] = n0; n1.e[203] = n0; n1.e[204] = n0; n1.e[205] = n0; n1.e[206] = n0; n1.e[207] = n0; n1.e[208] = n0; n1.e[209] = n0; n1.e[210] = n0; n1.e[211] = n0; n1.e[212] = n0; n1.e[213] = n0; n1.e[214] = n0; n1.e[215] = n0; n1.e[216] = n0; n1.e[217] = n0; n1.e[218] = n0; n1.e[219] = n0; n1.e[220] = n0; n1.e[221] = n0; n1.e[222] = n0; n1.e[223] = n0; n1.e[224] = n0; n1.e[225] = n0; n1.e[226] = n0; n1.e[227] = n0; n1.e[228] = n0; n1.e[229] = n0; n1.e[230] = n0; n1.e[231] = n0; n1.e[232] = n0; n1.e[233] = n0; n1.e[234] = n0; n1.e[235] = n0; n1.e[236] = n0; n1.e[237] = n0; n1.e[238] = n0; n1.e[239] = n0; n1.e[240] = n0; n1.e[241] = n0; n1.e[242] = n0; n1.e[243] = n0; n1.e[244] = n0; n1.e[245] = n0; n1.e[246] = n0; n1.e[247] = n0; n1.e[248] = n0; n1.e[249] = n0; n1.e[250] = n0; n1.e[251] = n0; n1.e[252] = n0; n1.e[253] = n0; n1.e[254] = n0; n1.e[255] = n0; n1.e[256] = n0; n1.e[257] = n0; n1.e[258] = n0; n1.e[259] = n0; n1.e[260] = n0; n1.e[261] = n0; n1.e[262] = n0; n1.e[263] = n0; n1.e[264] = n0; n1.e[265] = n0; n1.e[266] = n0; n1.e[267] = n0; n1.e[268] = n0; n1.e[269] = n0; n1.e[270] = n0; n1.e[271] = n0; n1.e[272] = n0; n1.e[273] = n0; n1.e[274] = n0; n1.e[275] = n0; n1.e[276] = n0; n1.e[277] = n0; n1.e[278] = n0; n1.e[279] = n0; n1.e[280] = n0; n1.e[281] = n0; n1.e[282] = n0; n1.e[283] = n0; n1.e[284] = n0; n1.e[285] = n0; n1.e[286] = n0; n1.e[287] = n0; n1.e[288] = n0; n1.e[289] = n0; n1.e[290] = n0; n1.e[291] = n0; n1.e[292] = n0; n1.e[293] = n0; n1.e[294] = n0; n1.e[295] = n0; n1.e[296] = n0; n1.e[297] = n0; n1.e[298] = n0; n1.e[299] = n0; n1.e[300] = n0; n1.e[301] = n0; n1.e[302] = n0; n1.e[303] = n0; n1.e[304] = n0; n1.e[305] = n0; n1.e[306] = n0; n1.e[307] = n0; n1.e[308] = n0; n1.e[309] = n0; n1.e[310] = n0; n1.e[311] = n0; n1.e[312] = n0; n1.e[313] = n0; n1.e[314] = n0; n1.e[315] = n0; n1.e[316] = n0; n1.e[317] = n0; n1.e[318] = n0; n1.e[319] = n0; n1.e[320] = n0; n1.e[321] = n0; n1.e[322] = n0; n1.e[323] = n0; n1.e[324] = n0; n1.e[325] = n0; n1.e[326] = n0; n1.e[327] = n0; n1.e[328] = n0; n1.e[329] = n0; n1.e[330] = n0; n1.e[331] = n0; n1.e[332] = n0; n1.e[333] = n0; n1.e[334] = n0; n1.e[335] = n0; n1.e[336] = n0; n1.e[337] = n0; n1.e[338] = n0; n1.e[339] = n0; n1.e[340] = n0; n1.e[341] = n0; n1.e[342] = n0; n1.e[343] = n0; n1.e[344] = n0; n1.e[345] = n0; n1.e[346] = n0; n1.e[347] = n0; n1.e[348] = n0; n1.e[349] = n0; n1.e[350] = n0; n1.e[351] = n0; n1.e[352] = n0; n1.e[353] = n0; n1.e[354] = n0; n1.e[355] = n0; n1.e[356] = n0; n1.e[357] = n0; n1.e[358] = n0; n1.e[359] = n0; n1.e[360] = n0; n1.e[361] = n0; n1.e[362] = n0; n1.e[363] = n0; n1.e[364] = n0; n1.e[365] = n0; n1.e[366] = n0; n1.e[367] = n0; n1.e[368] = n0; n1.e[369] = n0; n1.e[370] = n0; n1.e[371] = n0; n1.e[372] = n0; n1.e[373] = n0; n1.e[374] = n0; n1.e[375] = n0; n1.e[376] = n0; n1.e[377] = n0; n1.e[378] = n0; n1.e[379] = n0; n1.e[380] = n0; n1.e[381] = n0; n1.e[382] = n0; n1.e[383] = n0; (void)n1;
   return n1;
 }
 
-a0t10 a0_lexsrc(a0t9 p0, uint32_t p1) {
-  a0t7 n0 = a0_ztok(); (void)n0;
+a0t12 a0_lexsrc(a0t4 p0, uint32_t p1) {
+  a0t9 n0 = a0_ztok(); (void)n0;
   uint32_t n1 = a0_add(p1, 127u); (void)n1;
   uint32_t n2 = a0_shr(n1, 7u); (void)n2;
-  a0t8 n3; n3.f0 = n0; n3.f1 = 0u; n3.f2 = 0u; n3.f3 = 0u; n3.f4 = 0u; (void)n3;
+  a0t10 n3; n3.f0 = n0; n3.f1 = 0u; n3.f2 = 0u; n3.f3 = 0u; n3.f4 = 0u; (void)n3;
   for (uint32_t a0i = 0; a0i < n2; a0i++) { a0o_lexpage(&n3, a0i, p0, p1); }
-  const a0t7 *const n5 = &n3.f0; (void)n5;
+  const a0t9 *const n5 = &n3.f0; (void)n5;
   uint32_t n6 = n3.f1; (void)n6;
   uint32_t n7 = n3.f2; (void)n7;
   uint32_t n8 = n3.f3; (void)n8;
@@ -432,145 +721,204 @@ a0t10 a0_lexsrc(a0t9 p0, uint32_t p1) {
   bool n19 = (n15 || n18); (void)n19;
   uint32_t n20 = a0_sub(p1, n8); (void)n20;
   uint32_t n21 = (n15 ? n20 : 1u); (void)n21;
-  a0t7 n22 = a0_tokput((*n5), n6, n7, n19); (void)n22;
+  a0t9 n22 = a0_tokput((*n5), n6, n7, n19); (void)n22;
   uint32_t n23 = a0_add(n6, 1u); (void)n23;
-  a0t7 n24 = a0_tokput(n22, n23, n8, n19); (void)n24;
+  a0t9 n24 = a0_tokput(n22, n23, n8, n19); (void)n24;
   uint32_t n25 = a0_add(n6, 2u); (void)n25;
-  a0t7 n26 = a0_tokput(n24, n25, n21, n19); (void)n26;
+  a0t9 n26 = a0_tokput(n24, n25, n21, n19); (void)n26;
   uint32_t n27 = a0_add(n6, 3u); (void)n27;
   uint32_t n28 = (n19 ? n27 : n6); (void)n28;
-  a0t10 n29; n29.f0 = n26; n29.f1 = n28; (void)n29;
+  a0t12 n29; n29.f0 = n26; n29.f1 = n28; (void)n29;
   return n29;
 }
 
-a0t11 a0_rbyte(a0t11 p0, uint32_t p1) {
-  const a0t4 *const n0 = &p0.f0; (void)n0;
-  a0_io * n1 = p0.f1; (void)n1;
-  a0t59 n2; n2.f0 = n1->position < n1->ninput ? n1->input[n1->position++] : 0u; n2.f1 = n1; (void)n2;
-  uint32_t n3 = n2.f0; (void)n3;
-  a0_io * n4 = n2.f1; (void)n4;
-  a0t4 n5 = (*n0); n5.e[p1 % 128u] = n3; (void)n5;
-  a0t11 n6; n6.f0 = n5; n6.f1 = n4; (void)n6;
-  return n6;
-}
-
-static inline void a0o_rbyte(a0t11 *p0, uint32_t p1) {
-  const a0t4 *const n0 = &(*p0).f0; (void)n0;
-  a0_io * n1 = (*p0).f1; (void)n1;
-  a0t59 n2; n2.f0 = n1->position < n1->ninput ? n1->input[n1->position++] : 0u; n2.f1 = n1; (void)n2;
-  uint32_t n3 = n2.f0; (void)n3;
-  a0_io * n4 = n2.f1; (void)n4;
-  a0t4 n5 = (*n0); n5.e[p1 % 128u] = n3; (void)n5;
-  a0t11 n6; n6.f0 = n5; n6.f1 = n4; (void)n6;
-  *p0 = n6;
-}
-
-a0t12 a0_readpage(a0t12 p0, uint32_t p1, uint32_t p2, a0t4 p3) {
-  const a0t9 *const n0 = &p0.f0; (void)n0;
-  a0_io * n1 = p0.f1; (void)n1;
-  uint32_t n2 = a0_mul(p1, 128u); (void)n2;
-  uint32_t n3 = a0_sub(p2, n2); (void)n3;
-  bool n4 = a0_gt(n3, 128u); (void)n4;
-  uint32_t n5 = (n4 ? 128u : n3); (void)n5;
-  a0t11 n6; n6.f0 = p3; n6.f1 = n1; (void)n6;
-  for (uint32_t a0i = 0; a0i < n5; a0i++) { a0o_rbyte(&n6, a0i); }
-  const a0t4 *const n8 = &n6.f0; (void)n8;
-  a0_io * n9 = n6.f1; (void)n9;
-  a0t9 n10 = (*n0); n10.e[p1 % 128u] = (*n8); (void)n10;
-  a0t12 n11; n11.f0 = n10; n11.f1 = n9; (void)n11;
-  return n11;
-}
-
-static inline void a0o_readpage(a0t12 *p0, uint32_t p1, uint32_t p2, a0t4 p3) {
-  const a0t9 *const n0 = &(*p0).f0; (void)n0;
-  a0_io * n1 = (*p0).f1; (void)n1;
-  uint32_t n2 = a0_mul(p1, 128u); (void)n2;
-  uint32_t n3 = a0_sub(p2, n2); (void)n3;
-  bool n4 = a0_gt(n3, 128u); (void)n4;
-  uint32_t n5 = (n4 ? 128u : n3); (void)n5;
-  a0t11 n6; n6.f0 = p3; n6.f1 = n1; (void)n6;
-  for (uint32_t a0i = 0; a0i < n5; a0i++) { a0o_rbyte(&n6, a0i); }
-  const a0t4 *const n8 = &n6.f0; (void)n8;
-  a0_io * n9 = n6.f1; (void)n9;
-  a0t9 n10 = (*n0); n10.e[p1 % 128u] = (*n8); (void)n10;
-  a0t12 n11; n11.f0 = n10; n11.f1 = n9; (void)n11;
-  *p0 = n11;
-}
-
-a0t13 a0_readsrc(a0_io * p0) {
-  a0t59 n0; n0.f0 = p0->position < p0->ninput ? p0->input[p0->position++] : 0u; n0.f1 = p0; (void)n0;
-  uint32_t n1 = n0.f0; (void)n1;
-  a0_io * n2 = n0.f1; (void)n2;
-  bool n3 = a0_lt(16384u, n1); (void)n3;
-  uint32_t n4 = (n3 ? 16384u : n1); (void)n4;
-  a0t9 n5 = a0_zsrc(); (void)n5;
-  a0t4 n6 = a0_zpage(); (void)n6;
-  uint32_t n7 = a0_add(n4, 127u); (void)n7;
-  uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  a0t12 n9; n9.f0 = n5; n9.f1 = n2; (void)n9;
-  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_readpage(&n9, a0i, n4, n6); }
-  const a0t9 *const n11 = &n9.f0; (void)n11;
-  a0_io * n12 = n9.f1; (void)n12;
-  a0t13 n13; n13.f0 = (*n11); n13.f1 = n4; n13.f2 = n12; (void)n13;
-  return n13;
-}
-
-a0t14 a0_z16(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t14 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; (void)n1;
-  return n1;
-}
-
-a0t15 a0_z32(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t15 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; (void)n1;
-  return n1;
-}
-
-a0t16 a0_z33(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t16 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; (void)n1;
-  return n1;
-}
-
-a0t17 a0_z45(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t17 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; (void)n1;
-  return n1;
-}
-
-a0t18 a0_z64(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t18 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; (void)n1;
-  return n1;
-}
-
-a0t19 a0_z65(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t19 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; (void)n1;
-  return n1;
-}
-
-a0t20 a0_z129(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t20 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; n1.e[128] = n0; (void)n1;
-  return n1;
-}
-
-a0t21 a0_z256(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t21 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; n1.e[128] = n0; n1.e[129] = n0; n1.e[130] = n0; n1.e[131] = n0; n1.e[132] = n0; n1.e[133] = n0; n1.e[134] = n0; n1.e[135] = n0; n1.e[136] = n0; n1.e[137] = n0; n1.e[138] = n0; n1.e[139] = n0; n1.e[140] = n0; n1.e[141] = n0; n1.e[142] = n0; n1.e[143] = n0; n1.e[144] = n0; n1.e[145] = n0; n1.e[146] = n0; n1.e[147] = n0; n1.e[148] = n0; n1.e[149] = n0; n1.e[150] = n0; n1.e[151] = n0; n1.e[152] = n0; n1.e[153] = n0; n1.e[154] = n0; n1.e[155] = n0; n1.e[156] = n0; n1.e[157] = n0; n1.e[158] = n0; n1.e[159] = n0; n1.e[160] = n0; n1.e[161] = n0; n1.e[162] = n0; n1.e[163] = n0; n1.e[164] = n0; n1.e[165] = n0; n1.e[166] = n0; n1.e[167] = n0; n1.e[168] = n0; n1.e[169] = n0; n1.e[170] = n0; n1.e[171] = n0; n1.e[172] = n0; n1.e[173] = n0; n1.e[174] = n0; n1.e[175] = n0; n1.e[176] = n0; n1.e[177] = n0; n1.e[178] = n0; n1.e[179] = n0; n1.e[180] = n0; n1.e[181] = n0; n1.e[182] = n0; n1.e[183] = n0; n1.e[184] = n0; n1.e[185] = n0; n1.e[186] = n0; n1.e[187] = n0; n1.e[188] = n0; n1.e[189] = n0; n1.e[190] = n0; n1.e[191] = n0; n1.e[192] = n0; n1.e[193] = n0; n1.e[194] = n0; n1.e[195] = n0; n1.e[196] = n0; n1.e[197] = n0; n1.e[198] = n0; n1.e[199] = n0; n1.e[200] = n0; n1.e[201] = n0; n1.e[202] = n0; n1.e[203] = n0; n1.e[204] = n0; n1.e[205] = n0; n1.e[206] = n0; n1.e[207] = n0; n1.e[208] = n0; n1.e[209] = n0; n1.e[210] = n0; n1.e[211] = n0; n1.e[212] = n0; n1.e[213] = n0; n1.e[214] = n0; n1.e[215] = n0; n1.e[216] = n0; n1.e[217] = n0; n1.e[218] = n0; n1.e[219] = n0; n1.e[220] = n0; n1.e[221] = n0; n1.e[222] = n0; n1.e[223] = n0; n1.e[224] = n0; n1.e[225] = n0; n1.e[226] = n0; n1.e[227] = n0; n1.e[228] = n0; n1.e[229] = n0; n1.e[230] = n0; n1.e[231] = n0; n1.e[232] = n0; n1.e[233] = n0; n1.e[234] = n0; n1.e[235] = n0; n1.e[236] = n0; n1.e[237] = n0; n1.e[238] = n0; n1.e[239] = n0; n1.e[240] = n0; n1.e[241] = n0; n1.e[242] = n0; n1.e[243] = n0; n1.e[244] = n0; n1.e[245] = n0; n1.e[246] = n0; n1.e[247] = n0; n1.e[248] = n0; n1.e[249] = n0; n1.e[250] = n0; n1.e[251] = n0; n1.e[252] = n0; n1.e[253] = n0; n1.e[254] = n0; n1.e[255] = n0; (void)n1;
-  return n1;
-}
-
-a0t22 a0_z384(void) {
-  a0t22 n0; for (uint32_t a0i = 0; a0i < 384u; a0i++) n0.e[a0i] = 0; (void)n0;
+a0t3 a0_zpk(void) {
+  a0t3 n0; for (uint32_t a0i = 0; a0i < 512u; a0i++) n0.e[a0i] = 0; (void)n0;
   return n0;
 }
 
-a0t23 a0_zty(void) {
-  a0t22 n0 = a0_z384(); (void)n0;
-  a0t23 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; (void)n1;
+a0t4 a0_zsrcp(void) {
+  a0t3 n0 = a0_zpk(); (void)n0;
+  a0t4 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; (void)n1;
+  return n1;
+}
+
+a0t13 a0_rpkb(a0t13 p0, uint32_t p1) {
+  uint32_t n0 = p0.f0; (void)n0;
+  uint32_t n1 = p0.f1; (void)n1;
+  a0_io * n2 = p0.f2; (void)n2;
+  a0t63 n3; n3.f0 = n2->position < n2->ninput ? n2->input[n2->position++] : 0u; n3.f1 = n2; (void)n3;
+  uint32_t n4 = n3.f0; (void)n4;
+  a0_io * n5 = n3.f1; (void)n5;
+  uint32_t n6 = a0_shl(n4, n1); (void)n6;
+  uint32_t n7 = a0_or(n0, n6); (void)n7;
+  uint32_t n8 = a0_add(n1, 8u); (void)n8;
+  a0t13 n9; n9.f0 = n7; n9.f1 = n8; n9.f2 = n5; (void)n9;
+  return n9;
+}
+
+static inline void a0o_rpkb(a0t13 *p0, uint32_t p1) {
+  uint32_t n0 = (*p0).f0; (void)n0;
+  uint32_t n1 = (*p0).f1; (void)n1;
+  a0_io * n2 = (*p0).f2; (void)n2;
+  a0t63 n3; n3.f0 = n2->position < n2->ninput ? n2->input[n2->position++] : 0u; n3.f1 = n2; (void)n3;
+  uint32_t n4 = n3.f0; (void)n4;
+  a0_io * n5 = n3.f1; (void)n5;
+  uint32_t n6 = a0_shl(n4, n1); (void)n6;
+  uint32_t n7 = a0_or(n0, n6); (void)n7;
+  uint32_t n8 = a0_add(n1, 8u); (void)n8;
+  a0t13 n9; n9.f0 = n7; n9.f1 = n8; n9.f2 = n5; (void)n9;
+  *p0 = n9;
+}
+
+a0t14 a0_rpkw(a0t14 p0, uint32_t p1, uint32_t p2, uint32_t p3) {
+  const a0t3 *const n0 = &p0.f0; (void)n0;
+  a0_io * n1 = p0.f1; (void)n1;
+  uint32_t n2 = a0_mul(p1, 4u); (void)n2;
+  uint32_t n3 = a0_add(p2, n2); (void)n3;
+  bool n4 = a0_lt(n3, p3); (void)n4;
+  uint32_t n5 = a0_sub(p3, n3); (void)n5;
+  uint32_t n6 = (n4 ? n5 : 0u); (void)n6;
+  bool n7 = a0_gt(n6, 4u); (void)n7;
+  uint32_t n8 = (n7 ? 4u : n6); (void)n8;
+  a0t13 n9; n9.f0 = 0u; n9.f1 = 0u; n9.f2 = n1; (void)n9;
+  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_rpkb(&n9, a0i); }
+  uint32_t n11 = n9.f0; (void)n11;
+  a0_io * n12 = n9.f2; (void)n12;
+  a0t3 n13 = (*n0); n13.e[p1 % 512u] = n11; (void)n13;
+  a0t14 n14; n14.f0 = n13; n14.f1 = n12; (void)n14;
+  return n14;
+}
+
+static inline void a0o_rpkw(a0t14 *p0, uint32_t p1, uint32_t p2, uint32_t p3) {
+  const a0t3 *const n0 = &(*p0).f0; (void)n0;
+  a0_io * n1 = (*p0).f1; (void)n1;
+  uint32_t n2 = a0_mul(p1, 4u); (void)n2;
+  uint32_t n3 = a0_add(p2, n2); (void)n3;
+  bool n4 = a0_lt(n3, p3); (void)n4;
+  uint32_t n5 = a0_sub(p3, n3); (void)n5;
+  uint32_t n6 = (n4 ? n5 : 0u); (void)n6;
+  bool n7 = a0_gt(n6, 4u); (void)n7;
+  uint32_t n8 = (n7 ? 4u : n6); (void)n8;
+  a0t13 n9; n9.f0 = 0u; n9.f1 = 0u; n9.f2 = n1; (void)n9;
+  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_rpkb(&n9, a0i); }
+  uint32_t n11 = n9.f0; (void)n11;
+  a0_io * n12 = n9.f2; (void)n12;
+  a0t3 n13 = (*n0); n13.e[p1 % 512u] = n11; (void)n13;
+  a0t14 n14; n14.f0 = n13; n14.f1 = n12; (void)n14;
+  *p0 = n14;
+}
+
+a0t15 a0_readpage(a0t15 p0, uint32_t p1, uint32_t p2, a0t3 p3) {
+  const a0t4 *const n0 = &p0.f0; (void)n0;
+  a0_io * n1 = p0.f1; (void)n1;
+  uint32_t n2 = a0_mul(p1, 2048u); (void)n2;
+  uint32_t n3 = a0_sub(p2, n2); (void)n3;
+  uint32_t n4 = a0_add(n3, 3u); (void)n4;
+  uint32_t n5 = a0_shr(n4, 2u); (void)n5;
+  bool n6 = a0_gt(n5, 512u); (void)n6;
+  uint32_t n7 = (n6 ? 512u : n5); (void)n7;
+  a0t14 n8; n8.f0 = p3; n8.f1 = n1; (void)n8;
+  for (uint32_t a0i = 0; a0i < n7; a0i++) { a0o_rpkw(&n8, a0i, n2, p2); }
+  const a0t3 *const n10 = &n8.f0; (void)n10;
+  a0_io * n11 = n8.f1; (void)n11;
+  a0t4 n12 = (*n0); n12.e[p1 % 64u] = (*n10); (void)n12;
+  a0t15 n13; n13.f0 = n12; n13.f1 = n11; (void)n13;
+  return n13;
+}
+
+static inline void a0o_readpage(a0t15 *p0, uint32_t p1, uint32_t p2, a0t3 p3) {
+  const a0t4 *const n0 = &(*p0).f0; (void)n0;
+  a0_io * n1 = (*p0).f1; (void)n1;
+  uint32_t n2 = a0_mul(p1, 2048u); (void)n2;
+  uint32_t n3 = a0_sub(p2, n2); (void)n3;
+  uint32_t n4 = a0_add(n3, 3u); (void)n4;
+  uint32_t n5 = a0_shr(n4, 2u); (void)n5;
+  bool n6 = a0_gt(n5, 512u); (void)n6;
+  uint32_t n7 = (n6 ? 512u : n5); (void)n7;
+  a0t14 n8; n8.f0 = p3; n8.f1 = n1; (void)n8;
+  for (uint32_t a0i = 0; a0i < n7; a0i++) { a0o_rpkw(&n8, a0i, n2, p2); }
+  const a0t3 *const n10 = &n8.f0; (void)n10;
+  a0_io * n11 = n8.f1; (void)n11;
+  a0t4 n12 = (*n0); n12.e[p1 % 64u] = (*n10); (void)n12;
+  a0t15 n13; n13.f0 = n12; n13.f1 = n11; (void)n13;
+  *p0 = n13;
+}
+
+a0t16 a0_readsrc(a0_io * p0) {
+  a0t63 n0; n0.f0 = p0->position < p0->ninput ? p0->input[p0->position++] : 0u; n0.f1 = p0; (void)n0;
+  uint32_t n1 = n0.f0; (void)n1;
+  a0_io * n2 = n0.f1; (void)n2;
+  bool n3 = a0_lt(131072u, n1); (void)n3;
+  uint32_t n4 = (n3 ? 131072u : n1); (void)n4;
+  a0t4 n5 = a0_zsrcp(); (void)n5;
+  a0t3 n6 = a0_zpk(); (void)n6;
+  uint32_t n7 = a0_add(n4, 2047u); (void)n7;
+  uint32_t n8 = a0_shr(n7, 11u); (void)n8;
+  a0t15 n9; n9.f0 = n5; n9.f1 = n2; (void)n9;
+  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_readpage(&n9, a0i, n4, n6); }
+  const a0t4 *const n11 = &n9.f0; (void)n11;
+  a0_io * n12 = n9.f1; (void)n12;
+  a0t16 n13; n13.f0 = (*n11); n13.f1 = n4; n13.f2 = n12; (void)n13;
+  return n13;
+}
+
+a0t17 a0_z16(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t17 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; (void)n1;
+  return n1;
+}
+
+a0t18 a0_z32(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t18 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; (void)n1;
+  return n1;
+}
+
+a0t19 a0_z33(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t19 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; (void)n1;
+  return n1;
+}
+
+a0t20 a0_z45(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t20 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; (void)n1;
+  return n1;
+}
+
+a0t21 a0_z64(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t21 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; (void)n1;
+  return n1;
+}
+
+a0t22 a0_z65(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t22 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; (void)n1;
+  return n1;
+}
+
+a0t23 a0_z400(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t23 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; n1.e[128] = n0; n1.e[129] = n0; n1.e[130] = n0; n1.e[131] = n0; n1.e[132] = n0; n1.e[133] = n0; n1.e[134] = n0; n1.e[135] = n0; n1.e[136] = n0; n1.e[137] = n0; n1.e[138] = n0; n1.e[139] = n0; n1.e[140] = n0; n1.e[141] = n0; n1.e[142] = n0; n1.e[143] = n0; n1.e[144] = n0; n1.e[145] = n0; n1.e[146] = n0; n1.e[147] = n0; n1.e[148] = n0; n1.e[149] = n0; n1.e[150] = n0; n1.e[151] = n0; n1.e[152] = n0; n1.e[153] = n0; n1.e[154] = n0; n1.e[155] = n0; n1.e[156] = n0; n1.e[157] = n0; n1.e[158] = n0; n1.e[159] = n0; n1.e[160] = n0; n1.e[161] = n0; n1.e[162] = n0; n1.e[163] = n0; n1.e[164] = n0; n1.e[165] = n0; n1.e[166] = n0; n1.e[167] = n0; n1.e[168] = n0; n1.e[169] = n0; n1.e[170] = n0; n1.e[171] = n0; n1.e[172] = n0; n1.e[173] = n0; n1.e[174] = n0; n1.e[175] = n0; n1.e[176] = n0; n1.e[177] = n0; n1.e[178] = n0; n1.e[179] = n0; n1.e[180] = n0; n1.e[181] = n0; n1.e[182] = n0; n1.e[183] = n0; n1.e[184] = n0; n1.e[185] = n0; n1.e[186] = n0; n1.e[187] = n0; n1.e[188] = n0; n1.e[189] = n0; n1.e[190] = n0; n1.e[191] = n0; n1.e[192] = n0; n1.e[193] = n0; n1.e[194] = n0; n1.e[195] = n0; n1.e[196] = n0; n1.e[197] = n0; n1.e[198] = n0; n1.e[199] = n0; n1.e[200] = n0; n1.e[201] = n0; n1.e[202] = n0; n1.e[203] = n0; n1.e[204] = n0; n1.e[205] = n0; n1.e[206] = n0; n1.e[207] = n0; n1.e[208] = n0; n1.e[209] = n0; n1.e[210] = n0; n1.e[211] = n0; n1.e[212] = n0; n1.e[213] = n0; n1.e[214] = n0; n1.e[215] = n0; n1.e[216] = n0; n1.e[217] = n0; n1.e[218] = n0; n1.e[219] = n0; n1.e[220] = n0; n1.e[221] = n0; n1.e[222] = n0; n1.e[223] = n0; n1.e[224] = n0; n1.e[225] = n0; n1.e[226] = n0; n1.e[227] = n0; n1.e[228] = n0; n1.e[229] = n0; n1.e[230] = n0; n1.e[231] = n0; n1.e[232] = n0; n1.e[233] = n0; n1.e[234] = n0; n1.e[235] = n0; n1.e[236] = n0; n1.e[237] = n0; n1.e[238] = n0; n1.e[239] = n0; n1.e[240] = n0; n1.e[241] = n0; n1.e[242] = n0; n1.e[243] = n0; n1.e[244] = n0; n1.e[245] = n0; n1.e[246] = n0; n1.e[247] = n0; n1.e[248] = n0; n1.e[249] = n0; n1.e[250] = n0; n1.e[251] = n0; n1.e[252] = n0; n1.e[253] = n0; n1.e[254] = n0; n1.e[255] = n0; n1.e[256] = n0; n1.e[257] = n0; n1.e[258] = n0; n1.e[259] = n0; n1.e[260] = n0; n1.e[261] = n0; n1.e[262] = n0; n1.e[263] = n0; n1.e[264] = n0; n1.e[265] = n0; n1.e[266] = n0; n1.e[267] = n0; n1.e[268] = n0; n1.e[269] = n0; n1.e[270] = n0; n1.e[271] = n0; n1.e[272] = n0; n1.e[273] = n0; n1.e[274] = n0; n1.e[275] = n0; n1.e[276] = n0; n1.e[277] = n0; n1.e[278] = n0; n1.e[279] = n0; n1.e[280] = n0; n1.e[281] = n0; n1.e[282] = n0; n1.e[283] = n0; n1.e[284] = n0; n1.e[285] = n0; n1.e[286] = n0; n1.e[287] = n0; n1.e[288] = n0; n1.e[289] = n0; n1.e[290] = n0; n1.e[291] = n0; n1.e[292] = n0; n1.e[293] = n0; n1.e[294] = n0; n1.e[295] = n0; n1.e[296] = n0; n1.e[297] = n0; n1.e[298] = n0; n1.e[299] = n0; n1.e[300] = n0; n1.e[301] = n0; n1.e[302] = n0; n1.e[303] = n0; n1.e[304] = n0; n1.e[305] = n0; n1.e[306] = n0; n1.e[307] = n0; n1.e[308] = n0; n1.e[309] = n0; n1.e[310] = n0; n1.e[311] = n0; n1.e[312] = n0; n1.e[313] = n0; n1.e[314] = n0; n1.e[315] = n0; n1.e[316] = n0; n1.e[317] = n0; n1.e[318] = n0; n1.e[319] = n0; n1.e[320] = n0; n1.e[321] = n0; n1.e[322] = n0; n1.e[323] = n0; n1.e[324] = n0; n1.e[325] = n0; n1.e[326] = n0; n1.e[327] = n0; n1.e[328] = n0; n1.e[329] = n0; n1.e[330] = n0; n1.e[331] = n0; n1.e[332] = n0; n1.e[333] = n0; n1.e[334] = n0; n1.e[335] = n0; n1.e[336] = n0; n1.e[337] = n0; n1.e[338] = n0; n1.e[339] = n0; n1.e[340] = n0; n1.e[341] = n0; n1.e[342] = n0; n1.e[343] = n0; n1.e[344] = n0; n1.e[345] = n0; n1.e[346] = n0; n1.e[347] = n0; n1.e[348] = n0; n1.e[349] = n0; n1.e[350] = n0; n1.e[351] = n0; n1.e[352] = n0; n1.e[353] = n0; n1.e[354] = n0; n1.e[355] = n0; n1.e[356] = n0; n1.e[357] = n0; n1.e[358] = n0; n1.e[359] = n0; n1.e[360] = n0; n1.e[361] = n0; n1.e[362] = n0; n1.e[363] = n0; n1.e[364] = n0; n1.e[365] = n0; n1.e[366] = n0; n1.e[367] = n0; n1.e[368] = n0; n1.e[369] = n0; n1.e[370] = n0; n1.e[371] = n0; n1.e[372] = n0; n1.e[373] = n0; n1.e[374] = n0; n1.e[375] = n0; n1.e[376] = n0; n1.e[377] = n0; n1.e[378] = n0; n1.e[379] = n0; n1.e[380] = n0; n1.e[381] = n0; n1.e[382] = n0; n1.e[383] = n0; n1.e[384] = n0; n1.e[385] = n0; n1.e[386] = n0; n1.e[387] = n0; n1.e[388] = n0; n1.e[389] = n0; n1.e[390] = n0; n1.e[391] = n0; n1.e[392] = n0; n1.e[393] = n0; n1.e[394] = n0; n1.e[395] = n0; n1.e[396] = n0; n1.e[397] = n0; n1.e[398] = n0; n1.e[399] = n0; (void)n1;
+  return n1;
+}
+
+a0t24 a0_z256(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t24 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; n1.e[65] = n0; n1.e[66] = n0; n1.e[67] = n0; n1.e[68] = n0; n1.e[69] = n0; n1.e[70] = n0; n1.e[71] = n0; n1.e[72] = n0; n1.e[73] = n0; n1.e[74] = n0; n1.e[75] = n0; n1.e[76] = n0; n1.e[77] = n0; n1.e[78] = n0; n1.e[79] = n0; n1.e[80] = n0; n1.e[81] = n0; n1.e[82] = n0; n1.e[83] = n0; n1.e[84] = n0; n1.e[85] = n0; n1.e[86] = n0; n1.e[87] = n0; n1.e[88] = n0; n1.e[89] = n0; n1.e[90] = n0; n1.e[91] = n0; n1.e[92] = n0; n1.e[93] = n0; n1.e[94] = n0; n1.e[95] = n0; n1.e[96] = n0; n1.e[97] = n0; n1.e[98] = n0; n1.e[99] = n0; n1.e[100] = n0; n1.e[101] = n0; n1.e[102] = n0; n1.e[103] = n0; n1.e[104] = n0; n1.e[105] = n0; n1.e[106] = n0; n1.e[107] = n0; n1.e[108] = n0; n1.e[109] = n0; n1.e[110] = n0; n1.e[111] = n0; n1.e[112] = n0; n1.e[113] = n0; n1.e[114] = n0; n1.e[115] = n0; n1.e[116] = n0; n1.e[117] = n0; n1.e[118] = n0; n1.e[119] = n0; n1.e[120] = n0; n1.e[121] = n0; n1.e[122] = n0; n1.e[123] = n0; n1.e[124] = n0; n1.e[125] = n0; n1.e[126] = n0; n1.e[127] = n0; n1.e[128] = n0; n1.e[129] = n0; n1.e[130] = n0; n1.e[131] = n0; n1.e[132] = n0; n1.e[133] = n0; n1.e[134] = n0; n1.e[135] = n0; n1.e[136] = n0; n1.e[137] = n0; n1.e[138] = n0; n1.e[139] = n0; n1.e[140] = n0; n1.e[141] = n0; n1.e[142] = n0; n1.e[143] = n0; n1.e[144] = n0; n1.e[145] = n0; n1.e[146] = n0; n1.e[147] = n0; n1.e[148] = n0; n1.e[149] = n0; n1.e[150] = n0; n1.e[151] = n0; n1.e[152] = n0; n1.e[153] = n0; n1.e[154] = n0; n1.e[155] = n0; n1.e[156] = n0; n1.e[157] = n0; n1.e[158] = n0; n1.e[159] = n0; n1.e[160] = n0; n1.e[161] = n0; n1.e[162] = n0; n1.e[163] = n0; n1.e[164] = n0; n1.e[165] = n0; n1.e[166] = n0; n1.e[167] = n0; n1.e[168] = n0; n1.e[169] = n0; n1.e[170] = n0; n1.e[171] = n0; n1.e[172] = n0; n1.e[173] = n0; n1.e[174] = n0; n1.e[175] = n0; n1.e[176] = n0; n1.e[177] = n0; n1.e[178] = n0; n1.e[179] = n0; n1.e[180] = n0; n1.e[181] = n0; n1.e[182] = n0; n1.e[183] = n0; n1.e[184] = n0; n1.e[185] = n0; n1.e[186] = n0; n1.e[187] = n0; n1.e[188] = n0; n1.e[189] = n0; n1.e[190] = n0; n1.e[191] = n0; n1.e[192] = n0; n1.e[193] = n0; n1.e[194] = n0; n1.e[195] = n0; n1.e[196] = n0; n1.e[197] = n0; n1.e[198] = n0; n1.e[199] = n0; n1.e[200] = n0; n1.e[201] = n0; n1.e[202] = n0; n1.e[203] = n0; n1.e[204] = n0; n1.e[205] = n0; n1.e[206] = n0; n1.e[207] = n0; n1.e[208] = n0; n1.e[209] = n0; n1.e[210] = n0; n1.e[211] = n0; n1.e[212] = n0; n1.e[213] = n0; n1.e[214] = n0; n1.e[215] = n0; n1.e[216] = n0; n1.e[217] = n0; n1.e[218] = n0; n1.e[219] = n0; n1.e[220] = n0; n1.e[221] = n0; n1.e[222] = n0; n1.e[223] = n0; n1.e[224] = n0; n1.e[225] = n0; n1.e[226] = n0; n1.e[227] = n0; n1.e[228] = n0; n1.e[229] = n0; n1.e[230] = n0; n1.e[231] = n0; n1.e[232] = n0; n1.e[233] = n0; n1.e[234] = n0; n1.e[235] = n0; n1.e[236] = n0; n1.e[237] = n0; n1.e[238] = n0; n1.e[239] = n0; n1.e[240] = n0; n1.e[241] = n0; n1.e[242] = n0; n1.e[243] = n0; n1.e[244] = n0; n1.e[245] = n0; n1.e[246] = n0; n1.e[247] = n0; n1.e[248] = n0; n1.e[249] = n0; n1.e[250] = n0; n1.e[251] = n0; n1.e[252] = n0; n1.e[253] = n0; n1.e[254] = n0; n1.e[255] = n0; (void)n1;
+  return n1;
+}
+
+a0t25 a0_z384(void) {
+  a0t25 n0; for (uint32_t a0i = 0; a0i < 384u; a0i++) n0.e[a0i] = 0; (void)n0;
+  return n0;
+}
+
+a0t26 a0_zty(void) {
+  a0t25 n0 = a0_z384(); (void)n0;
+  a0t26 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; n1.e[24] = n0; n1.e[25] = n0; n1.e[26] = n0; n1.e[27] = n0; n1.e[28] = n0; n1.e[29] = n0; n1.e[30] = n0; n1.e[31] = n0; n1.e[32] = n0; n1.e[33] = n0; n1.e[34] = n0; n1.e[35] = n0; n1.e[36] = n0; n1.e[37] = n0; n1.e[38] = n0; n1.e[39] = n0; n1.e[40] = n0; n1.e[41] = n0; n1.e[42] = n0; n1.e[43] = n0; n1.e[44] = n0; n1.e[45] = n0; n1.e[46] = n0; n1.e[47] = n0; n1.e[48] = n0; n1.e[49] = n0; n1.e[50] = n0; n1.e[51] = n0; n1.e[52] = n0; n1.e[53] = n0; n1.e[54] = n0; n1.e[55] = n0; n1.e[56] = n0; n1.e[57] = n0; n1.e[58] = n0; n1.e[59] = n0; n1.e[60] = n0; n1.e[61] = n0; n1.e[62] = n0; n1.e[63] = n0; n1.e[64] = n0; (void)n1;
   return n1;
 }
 
@@ -662,7 +1010,7 @@ uint32_t a0_opcode(uint32_t p0) {
   return n65;
 }
 
-a0t24 a0_scanb(a0t24 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, bool p5, uint32_t p6) {
+a0t27 a0_scanb(a0t27 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, bool p5, uint32_t p6) {
   uint32_t n0 = p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
@@ -672,60 +1020,70 @@ a0t24 a0_scanb(a0t24 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, bool p5, ui
   uint32_t n6 = p0.f6; (void)n6;
   uint32_t n7 = p0.f7; (void)n7;
   bool n8 = p0.f8; (void)n8;
-  uint32_t n9 = a0_add(p4, p1); (void)n9;
-  uint32_t n10 = a0_shr(n9, 7u); (void)n10;
-  uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  bool n12 = a0_eq(n10, 0u); (void)n12;
-  uint32_t n13 = p2.e[n11 % 128u]; (void)n13;
-  uint32_t n14 = p3.e[n11 % 128u]; (void)n14;
-  uint32_t n15 = (n12 ? n13 : n14); (void)n15;
-  uint32_t n16 = a0_add(p6, p1); (void)n16;
-  bool n17 = a0_ge(n15, 97u); (void)n17;
-  bool n18 = a0_eq(n15, 95u); (void)n18;
-  uint32_t n19 = a0_sub(n15, 96u); (void)n19;
-  uint32_t n20 = a0_sub(n15, 21u); (void)n20;
-  uint32_t n21 = (n17 ? n19 : n20); (void)n21;
-  uint32_t n22 = (n18 ? 37u : n21); (void)n22;
-  bool n23 = a0_lt(n16, 6u); (void)n23;
-  uint32_t n24 = a0_mul(n22, n1); (void)n24;
-  uint32_t n25 = a0_add(n0, n24); (void)n25;
-  uint32_t n26 = (n23 ? n25 : n0); (void)n26;
-  uint32_t n27 = a0_mul(n1, 37u); (void)n27;
-  uint32_t n28 = (n23 ? n27 : n1); (void)n28;
-  uint32_t n29 = a0_xor(n2, n15); (void)n29;
-  uint32_t n30 = a0_mul(n29, 16777619u); (void)n30;
-  bool n31 = a0_eq(n16, 0u); (void)n31;
-  bool n32 = (p5 && n31); (void)n32;
-  bool n33 = a0_isdigit(n15); (void)n33;
-  uint32_t n34 = a0_mul(n3, 10u); (void)n34;
-  uint32_t n35 = a0_add(n34, n15); (void)n35;
-  uint32_t n36 = a0_sub(n35, 48u); (void)n36;
-  uint32_t n37 = (n32 ? n3 : n36); (void)n37;
-  bool n38 = (n4 && n33); (void)n38;
-  bool n39 = (n32 ? n4 : n38); (void)n39;
-  bool n40 = a0_isword(n15); (void)n40;
-  bool n41 = (n5 && n40); (void)n41;
-  bool n42 = a0_eq(n15, 92u); (void)n42;
-  bool n43 = a0_eq(n6, 1u); (void)n43;
-  uint32_t n44 = a0_add(n7, 1u); (void)n44;
-  uint32_t n45 = (n43 ? n7 : n44); (void)n45;
-  uint32_t n46 = (n42 ? 1u : 0u); (void)n46;
-  uint32_t n47 = (n43 ? 0u : n46); (void)n47;
-  bool n48 = a0_eq(n16, 1u); (void)n48;
-  bool n49 = a0_eq(n16, 2u); (void)n49;
-  bool n50 = a0_eq(n16, 3u); (void)n50;
-  uint32_t n51 = (n48 ? 51u : 117u); (void)n51;
-  uint32_t n52 = (n49 ? 50u : n51); (void)n52;
-  uint32_t n53 = (n50 ? 120u : n52); (void)n53;
-  bool n54 = a0_lt(n16, 4u); (void)n54;
-  bool n55 = a0_eq(n15, n53); (void)n55;
-  bool n56 = (n8 && n55); (void)n56;
-  bool n57 = (n54 ? n56 : n8); (void)n57;
-  a0t24 n58; n58.f0 = n26; n58.f1 = n28; n58.f2 = n30; n58.f3 = n37; n58.f4 = n39; n58.f5 = n41; n58.f6 = n47; n58.f7 = n45; n58.f8 = n57; (void)n58;
-  return n58;
+  bool n9 = p0.f9; (void)n9;
+  uint32_t n10 = a0_add(p4, p1); (void)n10;
+  uint32_t n11 = a0_shr(n10, 7u); (void)n11;
+  uint32_t n12 = a0_and(n10, 127u); (void)n12;
+  bool n13 = a0_eq(n11, 0u); (void)n13;
+  uint32_t n14 = p2.e[n12 % 128u]; (void)n14;
+  uint32_t n15 = p3.e[n12 % 128u]; (void)n15;
+  uint32_t n16 = (n13 ? n14 : n15); (void)n16;
+  uint32_t n17 = a0_add(p6, p1); (void)n17;
+  bool n18 = a0_ge(n16, 97u); (void)n18;
+  bool n19 = a0_eq(n16, 95u); (void)n19;
+  uint32_t n20 = a0_sub(n16, 96u); (void)n20;
+  uint32_t n21 = a0_sub(n16, 21u); (void)n21;
+  uint32_t n22 = (n18 ? n20 : n21); (void)n22;
+  uint32_t n23 = (n19 ? 37u : n22); (void)n23;
+  bool n24 = a0_lt(n17, 6u); (void)n24;
+  uint32_t n25 = a0_mul(n23, n1); (void)n25;
+  uint32_t n26 = a0_add(n0, n25); (void)n26;
+  uint32_t n27 = (n24 ? n26 : n0); (void)n27;
+  uint32_t n28 = a0_mul(n1, 37u); (void)n28;
+  uint32_t n29 = (n24 ? n28 : n1); (void)n29;
+  uint32_t n30 = a0_xor(n2, n16); (void)n30;
+  uint32_t n31 = a0_mul(n30, 16777619u); (void)n31;
+  bool n32 = a0_eq(n17, 0u); (void)n32;
+  bool n33 = (p5 && n32); (void)n33;
+  bool n34 = a0_isdigit(n16); (void)n34;
+  uint32_t n35 = a0_mul(n3, 10u); (void)n35;
+  uint32_t n36 = a0_add(n35, n16); (void)n36;
+  uint32_t n37 = a0_sub(n36, 48u); (void)n37;
+  uint32_t n38 = (n33 ? n3 : n37); (void)n38;
+  bool n39 = (n4 && n34); (void)n39;
+  bool n40 = (n33 ? n4 : n39); (void)n40;
+  bool n41 = a0_isword(n16); (void)n41;
+  bool n42 = (n5 && n41); (void)n42;
+  bool n43 = a0_eq(n16, 92u); (void)n43;
+  bool n44 = a0_eq(n6, 1u); (void)n44;
+  uint32_t n45 = a0_add(n7, 1u); (void)n45;
+  uint32_t n46 = (n44 ? n7 : n45); (void)n46;
+  uint32_t n47 = (n43 ? 1u : 0u); (void)n47;
+  uint32_t n48 = (n44 ? 0u : n47); (void)n48;
+  bool n49 = a0_eq(n17, 1u); (void)n49;
+  bool n50 = a0_eq(n17, 2u); (void)n50;
+  bool n51 = a0_eq(n17, 3u); (void)n51;
+  uint32_t n52 = (n49 ? 51u : 117u); (void)n52;
+  uint32_t n53 = (n50 ? 50u : n52); (void)n53;
+  uint32_t n54 = (n51 ? 120u : n53); (void)n54;
+  bool n55 = a0_lt(n17, 4u); (void)n55;
+  bool n56 = a0_eq(n16, n54); (void)n56;
+  bool n57 = (n8 && n56); (void)n57;
+  bool n58 = (n55 ? n57 : n8); (void)n58;
+  bool n59 = a0_eq(n17, 4u); (void)n59;
+  uint32_t n60 = (n49 ? 111u : 98u); (void)n60;
+  uint32_t n61 = (n50 ? 111u : n60); (void)n61;
+  uint32_t n62 = (n51 ? 108u : n61); (void)n62;
+  uint32_t n63 = (n59 ? 120u : n62); (void)n63;
+  bool n64 = a0_lt(n17, 5u); (void)n64;
+  bool n65 = a0_eq(n16, n63); (void)n65;
+  bool n66 = (n9 && n65); (void)n66;
+  bool n67 = (n64 ? n66 : n9); (void)n67;
+  a0t27 n68; n68.f0 = n27; n68.f1 = n29; n68.f2 = n31; n68.f3 = n38; n68.f4 = n40; n68.f5 = n42; n68.f6 = n48; n68.f7 = n46; n68.f8 = n58; n68.f9 = n67; (void)n68;
+  return n68;
 }
 
-static inline void a0o_scanb(a0t24 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, bool p5, uint32_t p6) {
+static inline void a0o_scanb(a0t27 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, bool p5, uint32_t p6) {
   uint32_t n0 = (*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
@@ -735,91 +1093,101 @@ static inline void a0o_scanb(a0t24 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t 
   uint32_t n6 = (*p0).f6; (void)n6;
   uint32_t n7 = (*p0).f7; (void)n7;
   bool n8 = (*p0).f8; (void)n8;
-  uint32_t n9 = a0_add(p4, p1); (void)n9;
-  uint32_t n10 = a0_shr(n9, 7u); (void)n10;
-  uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  bool n12 = a0_eq(n10, 0u); (void)n12;
-  uint32_t n13 = p2.e[n11 % 128u]; (void)n13;
-  uint32_t n14 = p3.e[n11 % 128u]; (void)n14;
-  uint32_t n15 = (n12 ? n13 : n14); (void)n15;
-  uint32_t n16 = a0_add(p6, p1); (void)n16;
-  bool n17 = a0_ge(n15, 97u); (void)n17;
-  bool n18 = a0_eq(n15, 95u); (void)n18;
-  uint32_t n19 = a0_sub(n15, 96u); (void)n19;
-  uint32_t n20 = a0_sub(n15, 21u); (void)n20;
-  uint32_t n21 = (n17 ? n19 : n20); (void)n21;
-  uint32_t n22 = (n18 ? 37u : n21); (void)n22;
-  bool n23 = a0_lt(n16, 6u); (void)n23;
-  uint32_t n24 = a0_mul(n22, n1); (void)n24;
-  uint32_t n25 = a0_add(n0, n24); (void)n25;
-  uint32_t n26 = (n23 ? n25 : n0); (void)n26;
-  uint32_t n27 = a0_mul(n1, 37u); (void)n27;
-  uint32_t n28 = (n23 ? n27 : n1); (void)n28;
-  uint32_t n29 = a0_xor(n2, n15); (void)n29;
-  uint32_t n30 = a0_mul(n29, 16777619u); (void)n30;
-  bool n31 = a0_eq(n16, 0u); (void)n31;
-  bool n32 = (p5 && n31); (void)n32;
-  bool n33 = a0_isdigit(n15); (void)n33;
-  uint32_t n34 = a0_mul(n3, 10u); (void)n34;
-  uint32_t n35 = a0_add(n34, n15); (void)n35;
-  uint32_t n36 = a0_sub(n35, 48u); (void)n36;
-  uint32_t n37 = (n32 ? n3 : n36); (void)n37;
-  bool n38 = (n4 && n33); (void)n38;
-  bool n39 = (n32 ? n4 : n38); (void)n39;
-  bool n40 = a0_isword(n15); (void)n40;
-  bool n41 = (n5 && n40); (void)n41;
-  bool n42 = a0_eq(n15, 92u); (void)n42;
-  bool n43 = a0_eq(n6, 1u); (void)n43;
-  uint32_t n44 = a0_add(n7, 1u); (void)n44;
-  uint32_t n45 = (n43 ? n7 : n44); (void)n45;
-  uint32_t n46 = (n42 ? 1u : 0u); (void)n46;
-  uint32_t n47 = (n43 ? 0u : n46); (void)n47;
-  bool n48 = a0_eq(n16, 1u); (void)n48;
-  bool n49 = a0_eq(n16, 2u); (void)n49;
-  bool n50 = a0_eq(n16, 3u); (void)n50;
-  uint32_t n51 = (n48 ? 51u : 117u); (void)n51;
-  uint32_t n52 = (n49 ? 50u : n51); (void)n52;
-  uint32_t n53 = (n50 ? 120u : n52); (void)n53;
-  bool n54 = a0_lt(n16, 4u); (void)n54;
-  bool n55 = a0_eq(n15, n53); (void)n55;
-  bool n56 = (n8 && n55); (void)n56;
-  bool n57 = (n54 ? n56 : n8); (void)n57;
-  a0t24 n58; n58.f0 = n26; n58.f1 = n28; n58.f2 = n30; n58.f3 = n37; n58.f4 = n39; n58.f5 = n41; n58.f6 = n47; n58.f7 = n45; n58.f8 = n57; (void)n58;
-  *p0 = n58;
+  bool n9 = (*p0).f9; (void)n9;
+  uint32_t n10 = a0_add(p4, p1); (void)n10;
+  uint32_t n11 = a0_shr(n10, 7u); (void)n11;
+  uint32_t n12 = a0_and(n10, 127u); (void)n12;
+  bool n13 = a0_eq(n11, 0u); (void)n13;
+  uint32_t n14 = p2.e[n12 % 128u]; (void)n14;
+  uint32_t n15 = p3.e[n12 % 128u]; (void)n15;
+  uint32_t n16 = (n13 ? n14 : n15); (void)n16;
+  uint32_t n17 = a0_add(p6, p1); (void)n17;
+  bool n18 = a0_ge(n16, 97u); (void)n18;
+  bool n19 = a0_eq(n16, 95u); (void)n19;
+  uint32_t n20 = a0_sub(n16, 96u); (void)n20;
+  uint32_t n21 = a0_sub(n16, 21u); (void)n21;
+  uint32_t n22 = (n18 ? n20 : n21); (void)n22;
+  uint32_t n23 = (n19 ? 37u : n22); (void)n23;
+  bool n24 = a0_lt(n17, 6u); (void)n24;
+  uint32_t n25 = a0_mul(n23, n1); (void)n25;
+  uint32_t n26 = a0_add(n0, n25); (void)n26;
+  uint32_t n27 = (n24 ? n26 : n0); (void)n27;
+  uint32_t n28 = a0_mul(n1, 37u); (void)n28;
+  uint32_t n29 = (n24 ? n28 : n1); (void)n29;
+  uint32_t n30 = a0_xor(n2, n16); (void)n30;
+  uint32_t n31 = a0_mul(n30, 16777619u); (void)n31;
+  bool n32 = a0_eq(n17, 0u); (void)n32;
+  bool n33 = (p5 && n32); (void)n33;
+  bool n34 = a0_isdigit(n16); (void)n34;
+  uint32_t n35 = a0_mul(n3, 10u); (void)n35;
+  uint32_t n36 = a0_add(n35, n16); (void)n36;
+  uint32_t n37 = a0_sub(n36, 48u); (void)n37;
+  uint32_t n38 = (n33 ? n3 : n37); (void)n38;
+  bool n39 = (n4 && n34); (void)n39;
+  bool n40 = (n33 ? n4 : n39); (void)n40;
+  bool n41 = a0_isword(n16); (void)n41;
+  bool n42 = (n5 && n41); (void)n42;
+  bool n43 = a0_eq(n16, 92u); (void)n43;
+  bool n44 = a0_eq(n6, 1u); (void)n44;
+  uint32_t n45 = a0_add(n7, 1u); (void)n45;
+  uint32_t n46 = (n44 ? n7 : n45); (void)n46;
+  uint32_t n47 = (n43 ? 1u : 0u); (void)n47;
+  uint32_t n48 = (n44 ? 0u : n47); (void)n48;
+  bool n49 = a0_eq(n17, 1u); (void)n49;
+  bool n50 = a0_eq(n17, 2u); (void)n50;
+  bool n51 = a0_eq(n17, 3u); (void)n51;
+  uint32_t n52 = (n49 ? 51u : 117u); (void)n52;
+  uint32_t n53 = (n50 ? 50u : n52); (void)n53;
+  uint32_t n54 = (n51 ? 120u : n53); (void)n54;
+  bool n55 = a0_lt(n17, 4u); (void)n55;
+  bool n56 = a0_eq(n16, n54); (void)n56;
+  bool n57 = (n8 && n56); (void)n57;
+  bool n58 = (n55 ? n57 : n8); (void)n58;
+  bool n59 = a0_eq(n17, 4u); (void)n59;
+  uint32_t n60 = (n49 ? 111u : 98u); (void)n60;
+  uint32_t n61 = (n50 ? 111u : n60); (void)n61;
+  uint32_t n62 = (n51 ? 108u : n61); (void)n62;
+  uint32_t n63 = (n59 ? 120u : n62); (void)n63;
+  bool n64 = a0_lt(n17, 5u); (void)n64;
+  bool n65 = a0_eq(n16, n63); (void)n65;
+  bool n66 = (n9 && n65); (void)n66;
+  bool n67 = (n64 ? n66 : n9); (void)n67;
+  a0t27 n68; n68.f0 = n27; n68.f1 = n29; n68.f2 = n31; n68.f3 = n38; n68.f4 = n40; n68.f5 = n42; n68.f6 = n48; n68.f7 = n46; n68.f8 = n58; n68.f9 = n67; (void)n68;
+  *p0 = n68;
 }
 
-a0t24 a0_scanseg(a0t24 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4, bool p5, uint32_t p6) {
+a0t27 a0_scanseg(a0t27 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, bool p5, uint32_t p6) {
   uint32_t n0 = a0_add(p1, p6); (void)n0;
   uint32_t n1 = a0_mul(n0, 128u); (void)n1;
   uint32_t n2 = a0_add(p3, n1); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
   uint32_t n4 = a0_and(n2, 127u); (void)n4;
-  const a0t4 *const n5 = &p2.e[n3 % 128u]; (void)n5;
+  a0t5 n5 = a0_srcpg(p2, n3); (void)n5;
   uint32_t n6 = a0_add(n3, 1u); (void)n6;
-  const a0t4 *const n7 = &p2.e[n6 % 128u]; (void)n7;
+  a0t5 n7 = a0_srcpg(p2, n6); (void)n7;
   uint32_t n8 = a0_sub(p4, n1); (void)n8;
   bool n9 = a0_gt(n8, 128u); (void)n9;
   uint32_t n10 = (n9 ? 128u : n8); (void)n10;
-  for (uint32_t a0i = 0; a0i < n10; a0i++) { a0o_scanb(&p0, a0i, (*n5), (*n7), n4, p5, n1); }
+  for (uint32_t a0i = 0; a0i < n10; a0i++) { a0o_scanb(&p0, a0i, n5, n7, n4, p5, n1); }
   return p0;
 }
 
-static inline void a0o_scanseg(a0t24 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4, bool p5, uint32_t p6) {
+static inline void a0o_scanseg(a0t27 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, bool p5, uint32_t p6) {
   uint32_t n0 = a0_add(p1, p6); (void)n0;
   uint32_t n1 = a0_mul(n0, 128u); (void)n1;
   uint32_t n2 = a0_add(p3, n1); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
   uint32_t n4 = a0_and(n2, 127u); (void)n4;
-  const a0t4 *const n5 = &p2.e[n3 % 128u]; (void)n5;
+  a0t5 n5 = a0_srcpg(p2, n3); (void)n5;
   uint32_t n6 = a0_add(n3, 1u); (void)n6;
-  const a0t4 *const n7 = &p2.e[n6 % 128u]; (void)n7;
+  a0t5 n7 = a0_srcpg(p2, n6); (void)n7;
   uint32_t n8 = a0_sub(p4, n1); (void)n8;
   bool n9 = a0_gt(n8, 128u); (void)n9;
   uint32_t n10 = (n9 ? 128u : n8); (void)n10;
-  for (uint32_t a0i = 0; a0i < n10; a0i++) { a0o_scanb(&(*p0), a0i, (*n5), (*n7), n4, p5, n1); }
+  for (uint32_t a0i = 0; a0i < n10; a0i++) { a0o_scanb(&(*p0), a0i, n5, n7, n4, p5, n1); }
 }
 
-bool a0_cmpb(bool p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t4 p5, a0t4 p6, uint32_t p7) {
+bool a0_cmpb(bool p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, a0t5 p5, a0t5 p6, uint32_t p7) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
@@ -839,36 +1207,36 @@ bool a0_cmpb(bool p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t4 p5, a0t4 
   return n15;
 }
 
-bool a0_cmpseg(bool p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+bool a0_cmpseg(bool p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   uint32_t n0 = a0_add(p1, p6); (void)n0;
   uint32_t n1 = a0_mul(n0, 128u); (void)n1;
   uint32_t n2 = a0_add(p3, n1); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
   uint32_t n4 = a0_and(n2, 127u); (void)n4;
-  const a0t4 *const n5 = &p2.e[n3 % 128u]; (void)n5;
+  a0t5 n5 = a0_srcpg(p2, n3); (void)n5;
   uint32_t n6 = a0_add(n3, 1u); (void)n6;
-  const a0t4 *const n7 = &p2.e[n6 % 128u]; (void)n7;
+  a0t5 n7 = a0_srcpg(p2, n6); (void)n7;
   uint32_t n8 = a0_add(p4, n1); (void)n8;
   uint32_t n9 = a0_shr(n8, 7u); (void)n9;
   uint32_t n10 = a0_and(n8, 127u); (void)n10;
-  const a0t4 *const n11 = &p2.e[n9 % 128u]; (void)n11;
+  a0t5 n11 = a0_srcpg(p2, n9); (void)n11;
   uint32_t n12 = a0_add(n9, 1u); (void)n12;
-  const a0t4 *const n13 = &p2.e[n12 % 128u]; (void)n13;
+  a0t5 n13 = a0_srcpg(p2, n12); (void)n13;
   uint32_t n14 = a0_sub(p5, n1); (void)n14;
   bool n15 = a0_gt(n14, 128u); (void)n15;
   uint32_t n16 = (n15 ? 128u : n14); (void)n16;
-  bool n17 = p0; for (uint32_t a0i = 0; a0i < n16; a0i++) { n17 = a0_cmpb(n17, a0i, (*n5), (*n7), n4, (*n11), (*n13), n10); } (void)n17;
+  bool n17 = p0; for (uint32_t a0i = 0; a0i < n16; a0i++) { n17 = a0_cmpb(n17, a0i, n5, n7, n4, n11, n13, n10); } (void)n17;
   return n17;
 }
 
-a0t25 a0_prstep(a0t25 p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+a0t28 a0_prstep(a0t28 p0, uint32_t p1, a0t11 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   uint32_t n0 = p0.f0; (void)n0;
   uint32_t n1 = a0_add(n0, 1u); (void)n1;
   uint32_t n2 = a0_and(n1, 8191u); (void)n2;
   uint32_t n3 = a0_mul(n2, 2u); (void)n3;
   uint32_t n4 = a0_shr(n3, 7u); (void)n4;
   uint32_t n5 = a0_and(n3, 127u); (void)n5;
-  const a0t4 *const n6 = &p2.e[n4 % 128u]; (void)n6;
+  const a0t5 *const n6 = &p2.e[n4 % 128u]; (void)n6;
   uint32_t n7 = (*n6).e[n5 % 128u]; (void)n7;
   uint32_t n8 = a0_add(n5, 1u); (void)n8;
   uint32_t n9 = (*n6).e[n8 % 128u]; (void)n9;
@@ -877,9 +1245,9 @@ a0t25 a0_prstep(a0t25 p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t p4, uint32_t p
   uint32_t n12 = a0_and(n9, 8191u); (void)n12;
   uint32_t n13 = a0_sub(n12, 1u); (void)n13;
   uint32_t n14 = a0_shr(n9, 13u); (void)n14;
-  uint32_t n15 = a0_and(n7, 16383u); (void)n15;
-  uint32_t n16 = a0_and(n7, 4294950912u); (void)n16;
-  uint32_t n17 = a0_and(p4, 4294950912u); (void)n17;
+  uint32_t n15 = a0_and(n7, 131071u); (void)n15;
+  uint32_t n16 = a0_and(n7, 4294836224u); (void)n16;
+  uint32_t n17 = a0_and(p4, 4294836224u); (void)n17;
   bool n18 = a0_eq(n16, n17); (void)n18;
   bool n19 = a0_eq(n14, p6); (void)n19;
   bool n20 = (n11 && n18); (void)n20;
@@ -891,18 +1259,18 @@ a0t25 a0_prstep(a0t25 p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t p4, uint32_t p
   bool n26 = (n21 && n25); (void)n26;
   bool n27 = (n10 || n26); (void)n27;
   uint32_t n28 = (n26 ? n13 : 4294967295u); (void)n28;
-  a0t25 n29; n29.f0 = n2; n29.f1 = n27; n29.f2 = n28; (void)n29;
+  a0t28 n29; n29.f0 = n2; n29.f1 = n27; n29.f2 = n28; (void)n29;
   return n29;
 }
 
-static inline void a0o_prstep(a0t25 *p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+static inline void a0o_prstep(a0t28 *p0, uint32_t p1, a0t11 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   uint32_t n0 = (*p0).f0; (void)n0;
   uint32_t n1 = a0_add(n0, 1u); (void)n1;
   uint32_t n2 = a0_and(n1, 8191u); (void)n2;
   uint32_t n3 = a0_mul(n2, 2u); (void)n3;
   uint32_t n4 = a0_shr(n3, 7u); (void)n4;
   uint32_t n5 = a0_and(n3, 127u); (void)n5;
-  const a0t4 *const n6 = &p2.e[n4 % 128u]; (void)n6;
+  const a0t5 *const n6 = &p2.e[n4 % 128u]; (void)n6;
   uint32_t n7 = (*n6).e[n5 % 128u]; (void)n7;
   uint32_t n8 = a0_add(n5, 1u); (void)n8;
   uint32_t n9 = (*n6).e[n8 % 128u]; (void)n9;
@@ -911,9 +1279,9 @@ static inline void a0o_prstep(a0t25 *p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t
   uint32_t n12 = a0_and(n9, 8191u); (void)n12;
   uint32_t n13 = a0_sub(n12, 1u); (void)n13;
   uint32_t n14 = a0_shr(n9, 13u); (void)n14;
-  uint32_t n15 = a0_and(n7, 16383u); (void)n15;
-  uint32_t n16 = a0_and(n7, 4294950912u); (void)n16;
-  uint32_t n17 = a0_and(p4, 4294950912u); (void)n17;
+  uint32_t n15 = a0_and(n7, 131071u); (void)n15;
+  uint32_t n16 = a0_and(n7, 4294836224u); (void)n16;
+  uint32_t n17 = a0_and(p4, 4294836224u); (void)n17;
   bool n18 = a0_eq(n16, n17); (void)n18;
   bool n19 = a0_eq(n14, p6); (void)n19;
   bool n20 = (n11 && n18); (void)n20;
@@ -925,29 +1293,29 @@ static inline void a0o_prstep(a0t25 *p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t
   bool n26 = (n21 && n25); (void)n26;
   bool n27 = (n10 || n26); (void)n27;
   uint32_t n28 = (n26 ? n13 : 4294967295u); (void)n28;
-  a0t25 n29; n29.f0 = n2; n29.f1 = n27; n29.f2 = n28; (void)n29;
+  a0t28 n29; n29.f0 = n2; n29.f1 = n27; n29.f2 = n28; (void)n29;
   *p0 = n29;
 }
 
-bool a0_prok(a0t25 p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+bool a0_prok(a0t28 p0, uint32_t p1, a0t11 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   bool n0 = p0.f1; (void)n0;
   bool n1 = (n0 ? false : true); (void)n1;
   return n1;
 }
 
-static inline bool a0r_prok(const a0t25 *p0, uint32_t p1, a0t9 p2, a0t9 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+static inline bool a0r_prok(const a0t28 *p0, uint32_t p1, a0t11 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   bool n0 = (*p0).f1; (void)n0;
   bool n1 = (n0 ? false : true); (void)n1;
   return n1;
 }
 
-a0t28 a0_p1tok(a0t28 p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t p4) {
-  const a0t9 *const n0 = &p0.f0; (void)n0;
-  const a0t26 *const n1 = &p0.f1; (void)n1;
-  const a0t4 *const n2 = &p0.f2; (void)n2;
-  const a0t4 *const n3 = &p0.f3; (void)n3;
-  const a0t26 *const n4 = &p0.f4; (void)n4;
-  const a0t27 *const n5 = &p0.f5; (void)n5;
+a0t31 a0_p1tok(a0t31 p0, uint32_t p1, a0t4 p2, a0t30 p3, uint32_t p4) {
+  const a0t11 *const n0 = &p0.f0; (void)n0;
+  const a0t29 *const n1 = &p0.f1; (void)n1;
+  const a0t5 *const n2 = &p0.f2; (void)n2;
+  const a0t5 *const n3 = &p0.f3; (void)n3;
+  const a0t29 *const n4 = &p0.f4; (void)n4;
+  const a0t30 *const n5 = &p0.f5; (void)n5;
   uint32_t n6 = p0.f6; (void)n6;
   uint32_t n7 = p0.f7; (void)n7;
   uint32_t n8 = p0.f8; (void)n8;
@@ -965,17 +1333,17 @@ a0t28 a0_p1tok(a0t28 p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t p4) {
   uint32_t n20 = a0_mul(p1, 3u); (void)n20;
   uint32_t n21 = a0_shr(n20, 7u); (void)n21;
   uint32_t n22 = a0_and(n20, 127u); (void)n22;
-  const a0t4 *const n23 = &p3.e[n21 % 3u]; (void)n23;
+  const a0t5 *const n23 = &p3.e[n21 % 3u]; (void)n23;
   uint32_t n24 = (*n23).e[n22 % 128u]; (void)n24;
   uint32_t n25 = a0_add(n20, 1u); (void)n25;
   uint32_t n26 = a0_shr(n25, 7u); (void)n26;
   uint32_t n27 = a0_and(n25, 127u); (void)n27;
-  const a0t4 *const n28 = &p3.e[n26 % 3u]; (void)n28;
+  const a0t5 *const n28 = &p3.e[n26 % 3u]; (void)n28;
   uint32_t n29 = (*n28).e[n27 % 128u]; (void)n29;
   uint32_t n30 = a0_add(n20, 2u); (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
   uint32_t n32 = a0_and(n30, 127u); (void)n32;
-  const a0t4 *const n33 = &p3.e[n31 % 3u]; (void)n33;
+  const a0t5 *const n33 = &p3.e[n31 % 3u]; (void)n33;
   uint32_t n34 = (*n33).e[n32 % 128u]; (void)n34;
   bool n35 = a0_eq(n24, 1u); (void)n35;
   bool n36 = a0_eq(n24, 2u); (void)n36;
@@ -987,23 +1355,23 @@ a0t28 a0_p1tok(a0t28 p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t p4) {
   bool n42 = (n40 || n41); (void)n42;
   uint32_t n43 = a0_shr(n29, 7u); (void)n43;
   uint32_t n44 = a0_and(n29, 127u); (void)n44;
-  const a0t4 *const n45 = &p2.e[n43 % 128u]; (void)n45;
+  a0t5 n45 = a0_srcpg(p2, n43); (void)n45;
   uint32_t n46 = a0_add(n43, 1u); (void)n46;
-  const a0t4 *const n47 = &p2.e[n46 % 128u]; (void)n47;
-  uint32_t n48 = (*n45).e[n44 % 128u]; (void)n48;
+  a0t5 n47 = a0_srcpg(p2, n46); (void)n47;
+  uint32_t n48 = n45.e[n44 % 128u]; (void)n48;
   bool n49 = a0_isdigit(n48); (void)n49;
   bool n50 = (n49 ? false : true); (void)n50;
   bool n51 = a0_gt(n34, 128u); (void)n51;
   uint32_t n52 = (n51 ? 128u : n34); (void)n52;
   uint32_t n53 = (n42 ? n52 : 0u); (void)n53;
-  a0t24 n54; n54.f0 = 0u; n54.f1 = 1u; n54.f2 = 2166136261u; n54.f3 = 0u; n54.f4 = true; n54.f5 = true; n54.f6 = 0u; n54.f7 = 0u; n54.f8 = true; (void)n54;
-  for (uint32_t a0i = 0; a0i < n53; a0i++) { a0o_scanb(&n54, a0i, (*n45), (*n47), n44, n50, 0u); }
+  a0t27 n54; n54.f0 = 0u; n54.f1 = 1u; n54.f2 = 2166136261u; n54.f3 = 0u; n54.f4 = true; n54.f5 = true; n54.f6 = 0u; n54.f7 = 0u; n54.f8 = true; n54.f9 = true; (void)n54;
+  for (uint32_t a0i = 0; a0i < n53; a0i++) { a0o_scanb(&n54, a0i, n45, n47, n44, n50, 0u); }
   uint32_t n56 = a0_add(n34, 127u); (void)n56;
   uint32_t n57 = a0_shr(n56, 7u); (void)n57;
   uint32_t n58 = a0_sub(n57, 1u); (void)n58;
   uint32_t n59 = (n51 ? n58 : 0u); (void)n59;
   uint32_t n60 = (n42 ? n59 : 0u); (void)n60;
-  a0t24 n61 = n54; for (uint32_t a0i = 0; a0i < n60; a0i++) { a0o_scanseg(&n61, a0i, p2, n29, n34, n50, 1u); } (void)n61;
+  a0t27 n61 = n54; for (uint32_t a0i = 0; a0i < n60; a0i++) { a0o_scanseg(&n61, a0i, p2, n29, n34, n50, 1u); } (void)n61;
   uint32_t n62 = n61.f0; (void)n62;
   uint32_t n63 = n61.f2; (void)n63;
   uint32_t n64 = n61.f3; (void)n64;
@@ -1011,222 +1379,233 @@ a0t28 a0_p1tok(a0t28 p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t p4) {
   bool n66 = n61.f5; (void)n66;
   uint32_t n67 = n61.f7; (void)n67;
   bool n68 = n61.f8; (void)n68;
-  bool n69 = a0_le(n34, 6u); (void)n69;
-  uint32_t n70 = (n69 ? n62 : 0u); (void)n70;
-  uint32_t n71 = a0_kwcode(n70); (void)n71;
-  uint32_t n72 = (n35 ? n71 : 0u); (void)n72;
-  uint32_t n73 = a0_opcode(n70); (void)n73;
-  uint32_t n74 = (n35 ? n73 : 0u); (void)n74;
-  bool n75 = a0_eq(n70, 40832u); (void)n75;
-  bool n76 = a0_eq(n70, 628928u); (void)n76;
-  bool n77 = a0_eq(n70, 564u); (void)n77;
-  uint32_t n78 = (n75 ? 1u : 0u); (void)n78;
-  uint32_t n79 = (n76 ? 2u : n78); (void)n79;
-  uint32_t n80 = (n77 ? 3u : n79); (void)n80;
-  uint32_t n81 = (n35 ? n80 : 0u); (void)n81;
+  bool n69 = n61.f9; (void)n69;
+  bool n70 = a0_le(n34, 6u); (void)n70;
+  uint32_t n71 = (n70 ? n62 : 0u); (void)n71;
+  uint32_t n72 = a0_kwcode(n71); (void)n72;
+  uint32_t n73 = (n35 ? n72 : 0u); (void)n73;
+  uint32_t n74 = a0_opcode(n71); (void)n74;
+  uint32_t n75 = (n35 ? n74 : 0u); (void)n75;
+  bool n76 = a0_eq(n71, 40832u); (void)n76;
+  bool n77 = a0_eq(n71, 628928u); (void)n77;
+  bool n78 = a0_eq(n71, 564u); (void)n78;
+  uint32_t n79 = (n76 ? 1u : 0u); (void)n79;
+  uint32_t n80 = (n77 ? 2u : n79); (void)n80;
+  uint32_t n81 = (n78 ? 3u : n80); (void)n81;
   bool n82 = a0_ge(n34, 4u); (void)n82;
   bool n83 = (n68 && n82); (void)n83;
-  bool n84 = (n83 && n35); (void)n84;
-  bool n85 = a0_eq(n48, 112u); (void)n85;
-  bool n86 = a0_ge(n34, 2u); (void)n86;
-  bool n87 = (n85 && n86); (void)n87;
-  bool n88 = (n87 && n65); (void)n88;
-  bool n89 = (n88 && n35); (void)n89;
-  bool n90 = a0_eq(n48, 40u); (void)n90;
-  bool n91 = a0_eq(n48, 44u); (void)n91;
-  bool n92 = a0_eq(n48, 41u); (void)n92;
-  uint32_t n93 = (n90 ? 1u : 0u); (void)n93;
-  uint32_t n94 = (n91 ? 2u : n93); (void)n94;
-  uint32_t n95 = (n92 ? 3u : n94); (void)n95;
-  uint32_t n96 = (n39 ? n95 : 0u); (void)n96;
-  bool n97 = (n35 || n37); (void)n97;
-  bool n98 = a0_eq(n70, 835143594u); (void)n98;
-  bool n99 = (n98 && n66); (void)n99;
-  bool n100 = (n99 && n97); (void)n100;
-  uint32_t n101 = a0_mul(n63, 2654435769u); (void)n101;
-  uint32_t n102 = a0_shr(n101, 19u); (void)n102;
-  uint32_t n103 = a0_mul(n102, 2u); (void)n103;
-  uint32_t n104 = a0_shr(n103, 7u); (void)n104;
-  uint32_t n105 = a0_and(n103, 127u); (void)n105;
-  const a0t4 *const n106 = &(*n0).e[n104 % 128u]; (void)n106;
-  uint32_t n107 = (*n106).e[n105 % 128u]; (void)n107;
-  uint32_t n108 = a0_add(n105, 1u); (void)n108;
-  uint32_t n109 = (*n106).e[n108 % 128u]; (void)n109;
-  bool n110 = a0_eq(n109, 0u); (void)n110;
-  bool n111 = (n110 ? false : true); (void)n111;
-  uint32_t n112 = a0_and(n109, 8191u); (void)n112;
-  uint32_t n113 = a0_sub(n112, 1u); (void)n113;
-  uint32_t n114 = a0_shr(n109, 13u); (void)n114;
-  uint32_t n115 = a0_and(n107, 16383u); (void)n115;
-  uint32_t n116 = a0_and(n107, 4294950912u); (void)n116;
-  uint32_t n117 = a0_and(n63, 4294950912u); (void)n117;
-  bool n118 = a0_eq(n116, n117); (void)n118;
-  bool n119 = a0_eq(n114, n34); (void)n119;
-  bool n120 = (n111 && n118); (void)n120;
-  bool n121 = (n120 && n119); (void)n121;
-  uint32_t n122 = a0_shr(n115, 7u); (void)n122;
-  uint32_t n123 = a0_and(n115, 127u); (void)n123;
-  const a0t4 *const n124 = &p2.e[n122 % 128u]; (void)n124;
-  uint32_t n125 = a0_add(n122, 1u); (void)n125;
-  const a0t4 *const n126 = &p2.e[n125 % 128u]; (void)n126;
-  uint32_t n127 = (n121 ? n52 : 0u); (void)n127;
-  bool n128 = true; for (uint32_t a0i = 0; a0i < n127; a0i++) { n128 = a0_cmpb(n128, a0i, (*n45), (*n47), n44, (*n124), (*n126), n123); } (void)n128;
-  uint32_t n129 = (n121 ? n59 : 0u); (void)n129;
-  bool n130 = n128; for (uint32_t a0i = 0; a0i < n129; a0i++) { n130 = a0_cmpseg(n130, a0i, p2, n29, n115, n34, 1u); } (void)n130;
-  bool n131 = (n121 && n130); (void)n131;
-  bool n132 = (n110 || n131); (void)n132;
-  bool n133 = (n132 || n100); (void)n133;
-  bool n134 = (n133 ? false : true); (void)n134;
-  bool n135 = (n134 && n97); (void)n135;
-  uint32_t n136 = (n135 ? 8191u : 0u); (void)n136;
-  a0t25 n137; n137.f0 = n102; n137.f1 = false; n137.f2 = 4294967295u; (void)n137;
-  for (uint32_t a0i = 0; a0i < n136; a0i++) { if (!a0r_prok(&n137, a0i, (*n0), p2, n63, n29, n34)) break; a0o_prstep(&n137, a0i, (*n0), p2, n63, n29, n34); }
-  uint32_t n139 = n137.f0; (void)n139;
-  uint32_t n140 = n137.f2; (void)n140;
-  uint32_t n141 = (n132 ? n102 : n139); (void)n141;
-  uint32_t n142 = (n131 ? n113 : n140); (void)n142;
-  uint32_t n143 = (n100 ? 0u : n142); (void)n143;
-  bool n144 = a0_ne(n143, 4294967295u); (void)n144;
+  bool n84 = a0_ge(n34, 5u); (void)n84;
+  bool n85 = (n69 && n84); (void)n85;
+  bool n86 = a0_eq(n48, 120u); (void)n86;
+  bool n87 = a0_ge(n34, 2u); (void)n87;
+  bool n88 = (n86 && n87); (void)n88;
+  bool n89 = (n83 || n85); (void)n89;
+  bool n90 = (n89 || n88); (void)n90;
+  bool n91 = (n90 && n35); (void)n91;
+  uint32_t n92 = (n85 ? 2u : 0u); (void)n92;
+  uint32_t n93 = (n88 ? 3u : n92); (void)n93;
+  uint32_t n94 = (n91 ? n93 : n81); (void)n94;
+  uint32_t n95 = (n35 ? n94 : 0u); (void)n95;
+  bool n96 = a0_eq(n48, 112u); (void)n96;
+  bool n97 = a0_ge(n34, 2u); (void)n97;
+  bool n98 = (n96 && n97); (void)n98;
+  bool n99 = (n98 && n65); (void)n99;
+  bool n100 = (n99 && n35); (void)n100;
+  bool n101 = a0_eq(n48, 40u); (void)n101;
+  bool n102 = a0_eq(n48, 44u); (void)n102;
+  bool n103 = a0_eq(n48, 41u); (void)n103;
+  uint32_t n104 = (n101 ? 1u : 0u); (void)n104;
+  uint32_t n105 = (n102 ? 2u : n104); (void)n105;
+  uint32_t n106 = (n103 ? 3u : n105); (void)n106;
+  uint32_t n107 = (n39 ? n106 : 0u); (void)n107;
+  bool n108 = (n35 || n37); (void)n108;
+  bool n109 = a0_eq(n71, 835143594u); (void)n109;
+  bool n110 = (n109 && n66); (void)n110;
+  bool n111 = (n110 && n108); (void)n111;
+  uint32_t n112 = a0_mul(n63, 2654435769u); (void)n112;
+  uint32_t n113 = a0_shr(n112, 19u); (void)n113;
+  uint32_t n114 = a0_mul(n113, 2u); (void)n114;
+  uint32_t n115 = a0_shr(n114, 7u); (void)n115;
+  uint32_t n116 = a0_and(n114, 127u); (void)n116;
+  const a0t5 *const n117 = &(*n0).e[n115 % 128u]; (void)n117;
+  uint32_t n118 = (*n117).e[n116 % 128u]; (void)n118;
+  uint32_t n119 = a0_add(n116, 1u); (void)n119;
+  uint32_t n120 = (*n117).e[n119 % 128u]; (void)n120;
+  bool n121 = a0_eq(n120, 0u); (void)n121;
+  bool n122 = (n121 ? false : true); (void)n122;
+  uint32_t n123 = a0_and(n120, 8191u); (void)n123;
+  uint32_t n124 = a0_sub(n123, 1u); (void)n124;
+  uint32_t n125 = a0_shr(n120, 13u); (void)n125;
+  uint32_t n126 = a0_and(n118, 131071u); (void)n126;
+  uint32_t n127 = a0_and(n118, 4294836224u); (void)n127;
+  uint32_t n128 = a0_and(n63, 4294836224u); (void)n128;
+  bool n129 = a0_eq(n127, n128); (void)n129;
+  bool n130 = a0_eq(n125, n34); (void)n130;
+  bool n131 = (n122 && n129); (void)n131;
+  bool n132 = (n131 && n130); (void)n132;
+  uint32_t n133 = a0_shr(n126, 7u); (void)n133;
+  uint32_t n134 = a0_and(n126, 127u); (void)n134;
+  a0t5 n135 = a0_srcpg(p2, n133); (void)n135;
+  uint32_t n136 = a0_add(n133, 1u); (void)n136;
+  a0t5 n137 = a0_srcpg(p2, n136); (void)n137;
+  uint32_t n138 = (n132 ? n52 : 0u); (void)n138;
+  bool n139 = true; for (uint32_t a0i = 0; a0i < n138; a0i++) { n139 = a0_cmpb(n139, a0i, n45, n47, n44, n135, n137, n134); } (void)n139;
+  uint32_t n140 = (n132 ? n59 : 0u); (void)n140;
+  bool n141 = n139; for (uint32_t a0i = 0; a0i < n140; a0i++) { n141 = a0_cmpseg(n141, a0i, p2, n29, n126, n34, 1u); } (void)n141;
+  bool n142 = (n132 && n141); (void)n142;
+  bool n143 = (n121 || n142); (void)n143;
+  bool n144 = (n143 || n111); (void)n144;
   bool n145 = (n144 ? false : true); (void)n145;
-  bool n146 = (n97 && n145); (void)n146;
-  uint32_t n147 = (n144 ? n143 : n7); (void)n147;
-  uint32_t n148 = a0_mul(n141, 2u); (void)n148;
-  uint32_t n149 = a0_shr(n148, 7u); (void)n149;
-  uint32_t n150 = a0_and(n148, 127u); (void)n150;
-  const a0t4 *const n151 = &(*n0).e[n149 % 128u]; (void)n151;
-  uint32_t n152 = (*n151).e[n150 % 128u]; (void)n152;
-  uint32_t n153 = a0_add(n150, 1u); (void)n153;
-  uint32_t n154 = (*n151).e[n153 % 128u]; (void)n154;
-  uint32_t n155 = a0_or(n117, n29); (void)n155;
-  uint32_t n156 = a0_add(n7, 1u); (void)n156;
-  uint32_t n157 = a0_mul(n34, 8192u); (void)n157;
-  uint32_t n158 = a0_add(n157, n156); (void)n158;
-  uint32_t n159 = (n146 ? n155 : n152); (void)n159;
-  uint32_t n160 = (n146 ? n158 : n154); (void)n160;
-  a0t4 n161 = (*n151); n161.e[n150 % 128u] = n159; (void)n161;
-  n161.e[n153 % 128u] = n160;
-  a0t9 n163 = (*n0); n163.e[n149 % 128u] = n161; (void)n163;
-  uint32_t n164 = a0_mul(n29, 32768u); (void)n164;
-  uint32_t n165 = a0_add(n164, n34); (void)n165;
-  uint32_t n166 = a0_sub(n7, n16); (void)n166;
-  uint32_t n167 = a0_shr(n166, 7u); (void)n167;
-  uint32_t n168 = a0_and(n166, 127u); (void)n168;
-  const a0t4 *const n169 = &(*n1).e[n167 % 2u]; (void)n169;
-  uint32_t n170 = (*n169).e[n168 % 128u]; (void)n170;
-  uint32_t n171 = (n146 ? n165 : n170); (void)n171;
-  a0t4 n172 = (*n169); n172.e[n168 % 128u] = n171; (void)n172;
-  a0t26 n173 = (*n1); n173.e[n167 % 2u] = n172; (void)n173;
-  uint32_t n174 = a0_add(n6, n34); (void)n174;
-  uint32_t n175 = (n146 ? n174 : n6); (void)n175;
-  uint32_t n176 = (n146 ? n156 : n7); (void)n176;
-  uint32_t n177 = (n97 ? n147 : 0u); (void)n177;
-  uint32_t n178 = a0_shl(n72, 4u); (void)n178;
-  uint32_t n179 = a0_shl(n74, 7u); (void)n179;
-  uint32_t n180 = (n89 ? 4096u : 0u); (void)n180;
-  uint32_t n181 = (n65 ? 8192u : 0u); (void)n181;
-  uint32_t n182 = a0_shl(n81, 14u); (void)n182;
-  uint32_t n183 = (n84 ? 65536u : 0u); (void)n183;
-  uint32_t n184 = a0_shl(n96, 17u); (void)n184;
-  uint32_t n185 = a0_shl(n177, 19u); (void)n185;
-  uint32_t n186 = a0_or(n24, n178); (void)n186;
-  uint32_t n187 = a0_or(n186, n179); (void)n187;
-  uint32_t n188 = a0_or(n187, n180); (void)n188;
-  uint32_t n189 = a0_or(n188, n181); (void)n189;
-  uint32_t n190 = a0_or(n189, n182); (void)n190;
-  uint32_t n191 = a0_or(n190, n183); (void)n191;
-  uint32_t n192 = a0_or(n191, n184); (void)n192;
-  uint32_t n193 = a0_or(n192, n185); (void)n193;
-  uint32_t n194 = (n37 ? n67 : n64); (void)n194;
-  a0t4 n195 = (*n2); n195.e[p1 % 128u] = n193; (void)n195;
-  a0t4 n196 = (*n3); n196.e[p1 % 128u] = n194; (void)n196;
-  bool n197 = a0_eq(n13, 5u); (void)n197;
-  bool n198 = a0_eq(n10, 0u); (void)n198;
-  bool n199 = a0_eq(n10, 1u); (void)n199;
-  bool n200 = a0_eq(n10, 2u); (void)n200;
-  bool n201 = a0_eq(n72, 4u); (void)n201;
-  bool n202 = a0_eq(n72, 1u); (void)n202;
-  bool n203 = (n197 && n35); (void)n203;
-  bool n204 = (n198 && n203); (void)n204;
-  bool n205 = (n204 && n201); (void)n205;
-  bool n206 = (n204 && n202); (void)n206;
-  bool n207 = a0_eq(n9, 1u); (void)n207;
-  bool n208 = (n205 && n207); (void)n208;
-  bool n209 = (n199 && n37); (void)n209;
-  bool n210 = (n37 ? false : true); (void)n210;
-  bool n211 = (n199 && n210); (void)n211;
-  bool n212 = (n200 && n38); (void)n212;
-  bool n213 = (n38 ? false : true); (void)n213;
-  bool n214 = (n200 && n213); (void)n214;
-  uint32_t n215 = a0_sub(n8, n17); (void)n215;
-  uint32_t n216 = a0_shr(n215, 7u); (void)n216;
-  uint32_t n217 = a0_and(n215, 127u); (void)n217;
-  const a0t4 *const n218 = &(*n4).e[n216 % 2u]; (void)n218;
-  uint32_t n219 = (*n218).e[n217 % 128u]; (void)n219;
-  bool n220 = a0_eq(n11, 0u); (void)n220;
-  bool n221 = (n209 && n220); (void)n221;
-  uint32_t n222 = (n221 ? n177 : n219); (void)n222;
-  a0t4 n223 = (*n218); n223.e[n217 % 128u] = n222; (void)n223;
-  a0t26 n224 = (*n4); n224.e[n216 % 2u] = n223; (void)n224;
-  uint32_t n225 = a0_add(n8, 1u); (void)n225;
-  uint32_t n226 = (n221 ? n225 : n8); (void)n226;
-  uint32_t n227 = (n206 ? 1u : n9); (void)n227;
-  uint32_t n228 = (n205 ? 1u : n10); (void)n228;
-  uint32_t n229 = (n209 ? 2u : n228); (void)n229;
-  uint32_t n230 = (n212 ? 0u : n229); (void)n230;
-  bool n231 = (n208 || n211); (void)n231;
-  bool n232 = (n231 || n214); (void)n232;
-  bool n233 = (n232 && n220); (void)n233;
-  uint32_t n234 = (n233 ? 1u : n11); (void)n234;
-  uint32_t n235 = (n233 ? n19 : n12); (void)n235;
-  bool n236 = (n197 && n35); (void)n236;
-  bool n237 = (n236 && n202); (void)n237;
-  bool n238 = a0_eq(n14, 1u); (void)n238;
-  bool n239 = (n237 || n238); (void)n239;
-  bool n240 = a0_eq(p1, 0u); (void)n240;
-  bool n241 = (n238 && n240); (void)n241;
-  bool n242 = (n237 || n241); (void)n242;
-  uint32_t n243 = a0_mul(n15, 2u); (void)n243;
-  uint32_t n244 = a0_sub(n243, n18); (void)n244;
-  uint32_t n245 = a0_shr(n244, 7u); (void)n245;
-  uint32_t n246 = a0_and(n244, 127u); (void)n246;
-  const a0t4 *const n247 = &(*n5).e[n245 % 3u]; (void)n247;
-  uint32_t n248 = (*n247).e[n246 % 128u]; (void)n248;
-  uint32_t n249 = a0_add(n246, 1u); (void)n249;
-  uint32_t n250 = (*n247).e[n249 % 128u]; (void)n250;
-  uint32_t n251 = (n242 ? n19 : n248); (void)n251;
-  uint32_t n252 = a0_sub(n244, 2u); (void)n252;
-  uint32_t n253 = a0_shr(n252, 7u); (void)n253;
-  uint32_t n254 = a0_and(n252, 127u); (void)n254;
-  const a0t4 *const n255 = &(*n5).e[n253 % 3u]; (void)n255;
-  uint32_t n256 = a0_add(n254, 1u); (void)n256;
-  uint32_t n257 = (*n255).e[n256 % 128u]; (void)n257;
-  uint32_t n258 = a0_add(n257, 1u); (void)n258;
-  a0t4 n259 = (*n247); n259.e[n246 % 128u] = n251; (void)n259;
-  uint32_t n260 = (n242 ? 1u : n250); (void)n260;
-  n259.e[n249 % 128u] = n260;
-  a0t27 n262 = (*n5); n262.e[n245 % 3u] = n259; (void)n262;
-  bool n263 = (n242 ? false : n239); (void)n263;
-  const a0t4 *const n264 = &n262.e[n253 % 3u]; (void)n264;
-  uint32_t n265 = (*n264).e[n256 % 128u]; (void)n265;
-  uint32_t n266 = (n263 ? n258 : n265); (void)n266;
-  a0t4 n267 = (*n264); n267.e[n256 % 128u] = n266; (void)n267;
-  n262.e[n253 % 3u] = n267;
-  uint32_t n269 = a0_add(n15, 1u); (void)n269;
-  uint32_t n270 = (n242 ? n269 : n15); (void)n270;
-  bool n271 = (n38 ? false : true); (void)n271;
-  bool n272 = (n239 && n271); (void)n272;
-  uint32_t n273 = (n272 ? 1u : 0u); (void)n273;
-  a0t28 n274; n274.f0 = n163; n274.f1 = n173; n274.f2 = n195; n274.f3 = n196; n274.f4 = n224; n274.f5 = n262; n274.f6 = n175; n274.f7 = n176; n274.f8 = n226; n274.f9 = n227; n274.f10 = n230; n274.f11 = n234; n274.f12 = n235; n274.f13 = n24; n274.f14 = n273; n274.f15 = n270; n274.f16 = n16; n274.f17 = n17; n274.f18 = n18; (void)n274;
-  return n274;
+  bool n146 = (n145 && n108); (void)n146;
+  uint32_t n147 = (n146 ? 8191u : 0u); (void)n147;
+  a0t28 n148; n148.f0 = n113; n148.f1 = false; n148.f2 = 4294967295u; (void)n148;
+  for (uint32_t a0i = 0; a0i < n147; a0i++) { if (!a0r_prok(&n148, a0i, (*n0), p2, n63, n29, n34)) break; a0o_prstep(&n148, a0i, (*n0), p2, n63, n29, n34); }
+  uint32_t n150 = n148.f0; (void)n150;
+  uint32_t n151 = n148.f2; (void)n151;
+  uint32_t n152 = (n143 ? n113 : n150); (void)n152;
+  uint32_t n153 = (n142 ? n124 : n151); (void)n153;
+  uint32_t n154 = (n111 ? 0u : n153); (void)n154;
+  bool n155 = a0_ne(n154, 4294967295u); (void)n155;
+  bool n156 = (n155 ? false : true); (void)n156;
+  bool n157 = (n108 && n156); (void)n157;
+  uint32_t n158 = (n155 ? n154 : n7); (void)n158;
+  uint32_t n159 = a0_mul(n152, 2u); (void)n159;
+  uint32_t n160 = a0_shr(n159, 7u); (void)n160;
+  uint32_t n161 = a0_and(n159, 127u); (void)n161;
+  const a0t5 *const n162 = &(*n0).e[n160 % 128u]; (void)n162;
+  uint32_t n163 = (*n162).e[n161 % 128u]; (void)n163;
+  uint32_t n164 = a0_add(n161, 1u); (void)n164;
+  uint32_t n165 = (*n162).e[n164 % 128u]; (void)n165;
+  uint32_t n166 = a0_or(n128, n29); (void)n166;
+  uint32_t n167 = a0_add(n7, 1u); (void)n167;
+  uint32_t n168 = a0_mul(n34, 8192u); (void)n168;
+  uint32_t n169 = a0_add(n168, n167); (void)n169;
+  uint32_t n170 = (n157 ? n166 : n163); (void)n170;
+  uint32_t n171 = (n157 ? n169 : n165); (void)n171;
+  a0t5 n172 = (*n162); n172.e[n161 % 128u] = n170; (void)n172;
+  n172.e[n164 % 128u] = n171;
+  a0t11 n174 = (*n0); n174.e[n160 % 128u] = n172; (void)n174;
+  uint32_t n175 = a0_mul(n29, 32768u); (void)n175;
+  uint32_t n176 = a0_add(n175, n34); (void)n176;
+  uint32_t n177 = a0_sub(n7, n16); (void)n177;
+  uint32_t n178 = a0_shr(n177, 7u); (void)n178;
+  uint32_t n179 = a0_and(n177, 127u); (void)n179;
+  const a0t5 *const n180 = &(*n1).e[n178 % 2u]; (void)n180;
+  uint32_t n181 = (*n180).e[n179 % 128u]; (void)n181;
+  uint32_t n182 = (n157 ? n176 : n181); (void)n182;
+  a0t5 n183 = (*n180); n183.e[n179 % 128u] = n182; (void)n183;
+  a0t29 n184 = (*n1); n184.e[n178 % 2u] = n183; (void)n184;
+  uint32_t n185 = a0_add(n6, n34); (void)n185;
+  uint32_t n186 = (n157 ? n185 : n6); (void)n186;
+  uint32_t n187 = (n157 ? n167 : n7); (void)n187;
+  uint32_t n188 = (n108 ? n158 : 0u); (void)n188;
+  uint32_t n189 = a0_shl(n73, 4u); (void)n189;
+  uint32_t n190 = a0_shl(n75, 7u); (void)n190;
+  uint32_t n191 = (n100 ? 4096u : 0u); (void)n191;
+  uint32_t n192 = (n65 ? 8192u : 0u); (void)n192;
+  uint32_t n193 = a0_shl(n95, 14u); (void)n193;
+  uint32_t n194 = (n91 ? 65536u : 0u); (void)n194;
+  uint32_t n195 = a0_shl(n107, 17u); (void)n195;
+  uint32_t n196 = a0_shl(n188, 19u); (void)n196;
+  uint32_t n197 = a0_or(n24, n189); (void)n197;
+  uint32_t n198 = a0_or(n197, n190); (void)n198;
+  uint32_t n199 = a0_or(n198, n191); (void)n199;
+  uint32_t n200 = a0_or(n199, n192); (void)n200;
+  uint32_t n201 = a0_or(n200, n193); (void)n201;
+  uint32_t n202 = a0_or(n201, n194); (void)n202;
+  uint32_t n203 = a0_or(n202, n195); (void)n203;
+  uint32_t n204 = a0_or(n203, n196); (void)n204;
+  uint32_t n205 = (n37 ? n67 : n64); (void)n205;
+  a0t5 n206 = (*n2); n206.e[p1 % 128u] = n204; (void)n206;
+  a0t5 n207 = (*n3); n207.e[p1 % 128u] = n205; (void)n207;
+  bool n208 = a0_eq(n13, 5u); (void)n208;
+  bool n209 = a0_eq(n10, 0u); (void)n209;
+  bool n210 = a0_eq(n10, 1u); (void)n210;
+  bool n211 = a0_eq(n10, 2u); (void)n211;
+  bool n212 = a0_eq(n73, 4u); (void)n212;
+  bool n213 = a0_eq(n73, 1u); (void)n213;
+  bool n214 = (n208 && n35); (void)n214;
+  bool n215 = (n209 && n214); (void)n215;
+  bool n216 = (n215 && n212); (void)n216;
+  bool n217 = (n215 && n213); (void)n217;
+  bool n218 = a0_eq(n9, 1u); (void)n218;
+  bool n219 = (n216 && n218); (void)n219;
+  bool n220 = (n210 && n37); (void)n220;
+  bool n221 = (n37 ? false : true); (void)n221;
+  bool n222 = (n210 && n221); (void)n222;
+  bool n223 = (n211 && n38); (void)n223;
+  bool n224 = (n38 ? false : true); (void)n224;
+  bool n225 = (n211 && n224); (void)n225;
+  uint32_t n226 = a0_sub(n8, n17); (void)n226;
+  uint32_t n227 = a0_shr(n226, 7u); (void)n227;
+  uint32_t n228 = a0_and(n226, 127u); (void)n228;
+  const a0t5 *const n229 = &(*n4).e[n227 % 2u]; (void)n229;
+  uint32_t n230 = (*n229).e[n228 % 128u]; (void)n230;
+  bool n231 = a0_eq(n11, 0u); (void)n231;
+  bool n232 = (n220 && n231); (void)n232;
+  uint32_t n233 = (n232 ? n188 : n230); (void)n233;
+  a0t5 n234 = (*n229); n234.e[n228 % 128u] = n233; (void)n234;
+  a0t29 n235 = (*n4); n235.e[n227 % 2u] = n234; (void)n235;
+  uint32_t n236 = a0_add(n8, 1u); (void)n236;
+  uint32_t n237 = (n232 ? n236 : n8); (void)n237;
+  uint32_t n238 = (n217 ? 1u : n9); (void)n238;
+  uint32_t n239 = (n216 ? 1u : n10); (void)n239;
+  uint32_t n240 = (n220 ? 2u : n239); (void)n240;
+  uint32_t n241 = (n223 ? 0u : n240); (void)n241;
+  bool n242 = (n219 || n222); (void)n242;
+  bool n243 = (n242 || n225); (void)n243;
+  bool n244 = (n243 && n231); (void)n244;
+  uint32_t n245 = (n244 ? 1u : n11); (void)n245;
+  uint32_t n246 = (n244 ? n19 : n12); (void)n246;
+  bool n247 = (n208 && n35); (void)n247;
+  bool n248 = (n247 && n213); (void)n248;
+  bool n249 = a0_eq(n14, 1u); (void)n249;
+  bool n250 = (n248 || n249); (void)n250;
+  bool n251 = a0_eq(p1, 0u); (void)n251;
+  bool n252 = (n249 && n251); (void)n252;
+  bool n253 = (n248 || n252); (void)n253;
+  uint32_t n254 = a0_mul(n15, 2u); (void)n254;
+  uint32_t n255 = a0_sub(n254, n18); (void)n255;
+  uint32_t n256 = a0_shr(n255, 7u); (void)n256;
+  uint32_t n257 = a0_and(n255, 127u); (void)n257;
+  const a0t5 *const n258 = &(*n5).e[n256 % 3u]; (void)n258;
+  uint32_t n259 = (*n258).e[n257 % 128u]; (void)n259;
+  uint32_t n260 = a0_add(n257, 1u); (void)n260;
+  uint32_t n261 = (*n258).e[n260 % 128u]; (void)n261;
+  uint32_t n262 = (n253 ? n19 : n259); (void)n262;
+  uint32_t n263 = a0_sub(n255, 2u); (void)n263;
+  uint32_t n264 = a0_shr(n263, 7u); (void)n264;
+  uint32_t n265 = a0_and(n263, 127u); (void)n265;
+  const a0t5 *const n266 = &(*n5).e[n264 % 3u]; (void)n266;
+  uint32_t n267 = a0_add(n265, 1u); (void)n267;
+  uint32_t n268 = (*n266).e[n267 % 128u]; (void)n268;
+  uint32_t n269 = a0_add(n268, 1u); (void)n269;
+  a0t5 n270 = (*n258); n270.e[n257 % 128u] = n262; (void)n270;
+  uint32_t n271 = (n253 ? 1u : n261); (void)n271;
+  n270.e[n260 % 128u] = n271;
+  a0t30 n273 = (*n5); n273.e[n256 % 3u] = n270; (void)n273;
+  bool n274 = (n253 ? false : n250); (void)n274;
+  const a0t5 *const n275 = &n273.e[n264 % 3u]; (void)n275;
+  uint32_t n276 = (*n275).e[n267 % 128u]; (void)n276;
+  uint32_t n277 = (n274 ? n269 : n276); (void)n277;
+  a0t5 n278 = (*n275); n278.e[n267 % 128u] = n277; (void)n278;
+  n273.e[n264 % 3u] = n278;
+  uint32_t n280 = a0_add(n15, 1u); (void)n280;
+  uint32_t n281 = (n253 ? n280 : n15); (void)n281;
+  bool n282 = (n38 ? false : true); (void)n282;
+  bool n283 = (n250 && n282); (void)n283;
+  uint32_t n284 = (n283 ? 1u : 0u); (void)n284;
+  a0t31 n285; n285.f0 = n174; n285.f1 = n184; n285.f2 = n206; n285.f3 = n207; n285.f4 = n235; n285.f5 = n273; n285.f6 = n186; n285.f7 = n187; n285.f8 = n237; n285.f9 = n238; n285.f10 = n241; n285.f11 = n245; n285.f12 = n246; n285.f13 = n24; n285.f14 = n284; n285.f15 = n281; n285.f16 = n16; n285.f17 = n17; n285.f18 = n18; (void)n285;
+  return n285;
 }
 
-static inline void a0o_p1tok(a0t28 *p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t p4) {
-  const a0t9 *const n0 = &(*p0).f0; (void)n0;
-  const a0t26 *const n1 = &(*p0).f1; (void)n1;
-  const a0t4 *const n2 = &(*p0).f2; (void)n2;
-  const a0t4 *const n3 = &(*p0).f3; (void)n3;
-  const a0t26 *const n4 = &(*p0).f4; (void)n4;
-  const a0t27 *const n5 = &(*p0).f5; (void)n5;
+static inline void a0o_p1tok(a0t31 *p0, uint32_t p1, a0t4 p2, a0t30 p3, uint32_t p4) {
+  const a0t11 *const n0 = &(*p0).f0; (void)n0;
+  const a0t29 *const n1 = &(*p0).f1; (void)n1;
+  const a0t5 *const n2 = &(*p0).f2; (void)n2;
+  const a0t5 *const n3 = &(*p0).f3; (void)n3;
+  const a0t29 *const n4 = &(*p0).f4; (void)n4;
+  const a0t30 *const n5 = &(*p0).f5; (void)n5;
   uint32_t n6 = (*p0).f6; (void)n6;
   uint32_t n7 = (*p0).f7; (void)n7;
   uint32_t n8 = (*p0).f8; (void)n8;
@@ -1244,17 +1623,17 @@ static inline void a0o_p1tok(a0t28 *p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t
   uint32_t n20 = a0_mul(p1, 3u); (void)n20;
   uint32_t n21 = a0_shr(n20, 7u); (void)n21;
   uint32_t n22 = a0_and(n20, 127u); (void)n22;
-  const a0t4 *const n23 = &p3.e[n21 % 3u]; (void)n23;
+  const a0t5 *const n23 = &p3.e[n21 % 3u]; (void)n23;
   uint32_t n24 = (*n23).e[n22 % 128u]; (void)n24;
   uint32_t n25 = a0_add(n20, 1u); (void)n25;
   uint32_t n26 = a0_shr(n25, 7u); (void)n26;
   uint32_t n27 = a0_and(n25, 127u); (void)n27;
-  const a0t4 *const n28 = &p3.e[n26 % 3u]; (void)n28;
+  const a0t5 *const n28 = &p3.e[n26 % 3u]; (void)n28;
   uint32_t n29 = (*n28).e[n27 % 128u]; (void)n29;
   uint32_t n30 = a0_add(n20, 2u); (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
   uint32_t n32 = a0_and(n30, 127u); (void)n32;
-  const a0t4 *const n33 = &p3.e[n31 % 3u]; (void)n33;
+  const a0t5 *const n33 = &p3.e[n31 % 3u]; (void)n33;
   uint32_t n34 = (*n33).e[n32 % 128u]; (void)n34;
   bool n35 = a0_eq(n24, 1u); (void)n35;
   bool n36 = a0_eq(n24, 2u); (void)n36;
@@ -1266,23 +1645,23 @@ static inline void a0o_p1tok(a0t28 *p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t
   bool n42 = (n40 || n41); (void)n42;
   uint32_t n43 = a0_shr(n29, 7u); (void)n43;
   uint32_t n44 = a0_and(n29, 127u); (void)n44;
-  const a0t4 *const n45 = &p2.e[n43 % 128u]; (void)n45;
+  a0t5 n45 = a0_srcpg(p2, n43); (void)n45;
   uint32_t n46 = a0_add(n43, 1u); (void)n46;
-  const a0t4 *const n47 = &p2.e[n46 % 128u]; (void)n47;
-  uint32_t n48 = (*n45).e[n44 % 128u]; (void)n48;
+  a0t5 n47 = a0_srcpg(p2, n46); (void)n47;
+  uint32_t n48 = n45.e[n44 % 128u]; (void)n48;
   bool n49 = a0_isdigit(n48); (void)n49;
   bool n50 = (n49 ? false : true); (void)n50;
   bool n51 = a0_gt(n34, 128u); (void)n51;
   uint32_t n52 = (n51 ? 128u : n34); (void)n52;
   uint32_t n53 = (n42 ? n52 : 0u); (void)n53;
-  a0t24 n54; n54.f0 = 0u; n54.f1 = 1u; n54.f2 = 2166136261u; n54.f3 = 0u; n54.f4 = true; n54.f5 = true; n54.f6 = 0u; n54.f7 = 0u; n54.f8 = true; (void)n54;
-  for (uint32_t a0i = 0; a0i < n53; a0i++) { a0o_scanb(&n54, a0i, (*n45), (*n47), n44, n50, 0u); }
+  a0t27 n54; n54.f0 = 0u; n54.f1 = 1u; n54.f2 = 2166136261u; n54.f3 = 0u; n54.f4 = true; n54.f5 = true; n54.f6 = 0u; n54.f7 = 0u; n54.f8 = true; n54.f9 = true; (void)n54;
+  for (uint32_t a0i = 0; a0i < n53; a0i++) { a0o_scanb(&n54, a0i, n45, n47, n44, n50, 0u); }
   uint32_t n56 = a0_add(n34, 127u); (void)n56;
   uint32_t n57 = a0_shr(n56, 7u); (void)n57;
   uint32_t n58 = a0_sub(n57, 1u); (void)n58;
   uint32_t n59 = (n51 ? n58 : 0u); (void)n59;
   uint32_t n60 = (n42 ? n59 : 0u); (void)n60;
-  a0t24 n61 = n54; for (uint32_t a0i = 0; a0i < n60; a0i++) { a0o_scanseg(&n61, a0i, p2, n29, n34, n50, 1u); } (void)n61;
+  a0t27 n61 = n54; for (uint32_t a0i = 0; a0i < n60; a0i++) { a0o_scanseg(&n61, a0i, p2, n29, n34, n50, 1u); } (void)n61;
   uint32_t n62 = n61.f0; (void)n62;
   uint32_t n63 = n61.f2; (void)n63;
   uint32_t n64 = n61.f3; (void)n64;
@@ -1290,222 +1669,233 @@ static inline void a0o_p1tok(a0t28 *p0, uint32_t p1, a0t9 p2, a0t27 p3, uint32_t
   bool n66 = n61.f5; (void)n66;
   uint32_t n67 = n61.f7; (void)n67;
   bool n68 = n61.f8; (void)n68;
-  bool n69 = a0_le(n34, 6u); (void)n69;
-  uint32_t n70 = (n69 ? n62 : 0u); (void)n70;
-  uint32_t n71 = a0_kwcode(n70); (void)n71;
-  uint32_t n72 = (n35 ? n71 : 0u); (void)n72;
-  uint32_t n73 = a0_opcode(n70); (void)n73;
-  uint32_t n74 = (n35 ? n73 : 0u); (void)n74;
-  bool n75 = a0_eq(n70, 40832u); (void)n75;
-  bool n76 = a0_eq(n70, 628928u); (void)n76;
-  bool n77 = a0_eq(n70, 564u); (void)n77;
-  uint32_t n78 = (n75 ? 1u : 0u); (void)n78;
-  uint32_t n79 = (n76 ? 2u : n78); (void)n79;
-  uint32_t n80 = (n77 ? 3u : n79); (void)n80;
-  uint32_t n81 = (n35 ? n80 : 0u); (void)n81;
+  bool n69 = n61.f9; (void)n69;
+  bool n70 = a0_le(n34, 6u); (void)n70;
+  uint32_t n71 = (n70 ? n62 : 0u); (void)n71;
+  uint32_t n72 = a0_kwcode(n71); (void)n72;
+  uint32_t n73 = (n35 ? n72 : 0u); (void)n73;
+  uint32_t n74 = a0_opcode(n71); (void)n74;
+  uint32_t n75 = (n35 ? n74 : 0u); (void)n75;
+  bool n76 = a0_eq(n71, 40832u); (void)n76;
+  bool n77 = a0_eq(n71, 628928u); (void)n77;
+  bool n78 = a0_eq(n71, 564u); (void)n78;
+  uint32_t n79 = (n76 ? 1u : 0u); (void)n79;
+  uint32_t n80 = (n77 ? 2u : n79); (void)n80;
+  uint32_t n81 = (n78 ? 3u : n80); (void)n81;
   bool n82 = a0_ge(n34, 4u); (void)n82;
   bool n83 = (n68 && n82); (void)n83;
-  bool n84 = (n83 && n35); (void)n84;
-  bool n85 = a0_eq(n48, 112u); (void)n85;
-  bool n86 = a0_ge(n34, 2u); (void)n86;
-  bool n87 = (n85 && n86); (void)n87;
-  bool n88 = (n87 && n65); (void)n88;
-  bool n89 = (n88 && n35); (void)n89;
-  bool n90 = a0_eq(n48, 40u); (void)n90;
-  bool n91 = a0_eq(n48, 44u); (void)n91;
-  bool n92 = a0_eq(n48, 41u); (void)n92;
-  uint32_t n93 = (n90 ? 1u : 0u); (void)n93;
-  uint32_t n94 = (n91 ? 2u : n93); (void)n94;
-  uint32_t n95 = (n92 ? 3u : n94); (void)n95;
-  uint32_t n96 = (n39 ? n95 : 0u); (void)n96;
-  bool n97 = (n35 || n37); (void)n97;
-  bool n98 = a0_eq(n70, 835143594u); (void)n98;
-  bool n99 = (n98 && n66); (void)n99;
-  bool n100 = (n99 && n97); (void)n100;
-  uint32_t n101 = a0_mul(n63, 2654435769u); (void)n101;
-  uint32_t n102 = a0_shr(n101, 19u); (void)n102;
-  uint32_t n103 = a0_mul(n102, 2u); (void)n103;
-  uint32_t n104 = a0_shr(n103, 7u); (void)n104;
-  uint32_t n105 = a0_and(n103, 127u); (void)n105;
-  const a0t4 *const n106 = &(*n0).e[n104 % 128u]; (void)n106;
-  uint32_t n107 = (*n106).e[n105 % 128u]; (void)n107;
-  uint32_t n108 = a0_add(n105, 1u); (void)n108;
-  uint32_t n109 = (*n106).e[n108 % 128u]; (void)n109;
-  bool n110 = a0_eq(n109, 0u); (void)n110;
-  bool n111 = (n110 ? false : true); (void)n111;
-  uint32_t n112 = a0_and(n109, 8191u); (void)n112;
-  uint32_t n113 = a0_sub(n112, 1u); (void)n113;
-  uint32_t n114 = a0_shr(n109, 13u); (void)n114;
-  uint32_t n115 = a0_and(n107, 16383u); (void)n115;
-  uint32_t n116 = a0_and(n107, 4294950912u); (void)n116;
-  uint32_t n117 = a0_and(n63, 4294950912u); (void)n117;
-  bool n118 = a0_eq(n116, n117); (void)n118;
-  bool n119 = a0_eq(n114, n34); (void)n119;
-  bool n120 = (n111 && n118); (void)n120;
-  bool n121 = (n120 && n119); (void)n121;
-  uint32_t n122 = a0_shr(n115, 7u); (void)n122;
-  uint32_t n123 = a0_and(n115, 127u); (void)n123;
-  const a0t4 *const n124 = &p2.e[n122 % 128u]; (void)n124;
-  uint32_t n125 = a0_add(n122, 1u); (void)n125;
-  const a0t4 *const n126 = &p2.e[n125 % 128u]; (void)n126;
-  uint32_t n127 = (n121 ? n52 : 0u); (void)n127;
-  bool n128 = true; for (uint32_t a0i = 0; a0i < n127; a0i++) { n128 = a0_cmpb(n128, a0i, (*n45), (*n47), n44, (*n124), (*n126), n123); } (void)n128;
-  uint32_t n129 = (n121 ? n59 : 0u); (void)n129;
-  bool n130 = n128; for (uint32_t a0i = 0; a0i < n129; a0i++) { n130 = a0_cmpseg(n130, a0i, p2, n29, n115, n34, 1u); } (void)n130;
-  bool n131 = (n121 && n130); (void)n131;
-  bool n132 = (n110 || n131); (void)n132;
-  bool n133 = (n132 || n100); (void)n133;
-  bool n134 = (n133 ? false : true); (void)n134;
-  bool n135 = (n134 && n97); (void)n135;
-  uint32_t n136 = (n135 ? 8191u : 0u); (void)n136;
-  a0t25 n137; n137.f0 = n102; n137.f1 = false; n137.f2 = 4294967295u; (void)n137;
-  for (uint32_t a0i = 0; a0i < n136; a0i++) { if (!a0r_prok(&n137, a0i, (*n0), p2, n63, n29, n34)) break; a0o_prstep(&n137, a0i, (*n0), p2, n63, n29, n34); }
-  uint32_t n139 = n137.f0; (void)n139;
-  uint32_t n140 = n137.f2; (void)n140;
-  uint32_t n141 = (n132 ? n102 : n139); (void)n141;
-  uint32_t n142 = (n131 ? n113 : n140); (void)n142;
-  uint32_t n143 = (n100 ? 0u : n142); (void)n143;
-  bool n144 = a0_ne(n143, 4294967295u); (void)n144;
+  bool n84 = a0_ge(n34, 5u); (void)n84;
+  bool n85 = (n69 && n84); (void)n85;
+  bool n86 = a0_eq(n48, 120u); (void)n86;
+  bool n87 = a0_ge(n34, 2u); (void)n87;
+  bool n88 = (n86 && n87); (void)n88;
+  bool n89 = (n83 || n85); (void)n89;
+  bool n90 = (n89 || n88); (void)n90;
+  bool n91 = (n90 && n35); (void)n91;
+  uint32_t n92 = (n85 ? 2u : 0u); (void)n92;
+  uint32_t n93 = (n88 ? 3u : n92); (void)n93;
+  uint32_t n94 = (n91 ? n93 : n81); (void)n94;
+  uint32_t n95 = (n35 ? n94 : 0u); (void)n95;
+  bool n96 = a0_eq(n48, 112u); (void)n96;
+  bool n97 = a0_ge(n34, 2u); (void)n97;
+  bool n98 = (n96 && n97); (void)n98;
+  bool n99 = (n98 && n65); (void)n99;
+  bool n100 = (n99 && n35); (void)n100;
+  bool n101 = a0_eq(n48, 40u); (void)n101;
+  bool n102 = a0_eq(n48, 44u); (void)n102;
+  bool n103 = a0_eq(n48, 41u); (void)n103;
+  uint32_t n104 = (n101 ? 1u : 0u); (void)n104;
+  uint32_t n105 = (n102 ? 2u : n104); (void)n105;
+  uint32_t n106 = (n103 ? 3u : n105); (void)n106;
+  uint32_t n107 = (n39 ? n106 : 0u); (void)n107;
+  bool n108 = (n35 || n37); (void)n108;
+  bool n109 = a0_eq(n71, 835143594u); (void)n109;
+  bool n110 = (n109 && n66); (void)n110;
+  bool n111 = (n110 && n108); (void)n111;
+  uint32_t n112 = a0_mul(n63, 2654435769u); (void)n112;
+  uint32_t n113 = a0_shr(n112, 19u); (void)n113;
+  uint32_t n114 = a0_mul(n113, 2u); (void)n114;
+  uint32_t n115 = a0_shr(n114, 7u); (void)n115;
+  uint32_t n116 = a0_and(n114, 127u); (void)n116;
+  const a0t5 *const n117 = &(*n0).e[n115 % 128u]; (void)n117;
+  uint32_t n118 = (*n117).e[n116 % 128u]; (void)n118;
+  uint32_t n119 = a0_add(n116, 1u); (void)n119;
+  uint32_t n120 = (*n117).e[n119 % 128u]; (void)n120;
+  bool n121 = a0_eq(n120, 0u); (void)n121;
+  bool n122 = (n121 ? false : true); (void)n122;
+  uint32_t n123 = a0_and(n120, 8191u); (void)n123;
+  uint32_t n124 = a0_sub(n123, 1u); (void)n124;
+  uint32_t n125 = a0_shr(n120, 13u); (void)n125;
+  uint32_t n126 = a0_and(n118, 131071u); (void)n126;
+  uint32_t n127 = a0_and(n118, 4294836224u); (void)n127;
+  uint32_t n128 = a0_and(n63, 4294836224u); (void)n128;
+  bool n129 = a0_eq(n127, n128); (void)n129;
+  bool n130 = a0_eq(n125, n34); (void)n130;
+  bool n131 = (n122 && n129); (void)n131;
+  bool n132 = (n131 && n130); (void)n132;
+  uint32_t n133 = a0_shr(n126, 7u); (void)n133;
+  uint32_t n134 = a0_and(n126, 127u); (void)n134;
+  a0t5 n135 = a0_srcpg(p2, n133); (void)n135;
+  uint32_t n136 = a0_add(n133, 1u); (void)n136;
+  a0t5 n137 = a0_srcpg(p2, n136); (void)n137;
+  uint32_t n138 = (n132 ? n52 : 0u); (void)n138;
+  bool n139 = true; for (uint32_t a0i = 0; a0i < n138; a0i++) { n139 = a0_cmpb(n139, a0i, n45, n47, n44, n135, n137, n134); } (void)n139;
+  uint32_t n140 = (n132 ? n59 : 0u); (void)n140;
+  bool n141 = n139; for (uint32_t a0i = 0; a0i < n140; a0i++) { n141 = a0_cmpseg(n141, a0i, p2, n29, n126, n34, 1u); } (void)n141;
+  bool n142 = (n132 && n141); (void)n142;
+  bool n143 = (n121 || n142); (void)n143;
+  bool n144 = (n143 || n111); (void)n144;
   bool n145 = (n144 ? false : true); (void)n145;
-  bool n146 = (n97 && n145); (void)n146;
-  uint32_t n147 = (n144 ? n143 : n7); (void)n147;
-  uint32_t n148 = a0_mul(n141, 2u); (void)n148;
-  uint32_t n149 = a0_shr(n148, 7u); (void)n149;
-  uint32_t n150 = a0_and(n148, 127u); (void)n150;
-  const a0t4 *const n151 = &(*n0).e[n149 % 128u]; (void)n151;
-  uint32_t n152 = (*n151).e[n150 % 128u]; (void)n152;
-  uint32_t n153 = a0_add(n150, 1u); (void)n153;
-  uint32_t n154 = (*n151).e[n153 % 128u]; (void)n154;
-  uint32_t n155 = a0_or(n117, n29); (void)n155;
-  uint32_t n156 = a0_add(n7, 1u); (void)n156;
-  uint32_t n157 = a0_mul(n34, 8192u); (void)n157;
-  uint32_t n158 = a0_add(n157, n156); (void)n158;
-  uint32_t n159 = (n146 ? n155 : n152); (void)n159;
-  uint32_t n160 = (n146 ? n158 : n154); (void)n160;
-  a0t4 n161 = (*n151); n161.e[n150 % 128u] = n159; (void)n161;
-  n161.e[n153 % 128u] = n160;
-  a0t9 n163 = (*n0); n163.e[n149 % 128u] = n161; (void)n163;
-  uint32_t n164 = a0_mul(n29, 32768u); (void)n164;
-  uint32_t n165 = a0_add(n164, n34); (void)n165;
-  uint32_t n166 = a0_sub(n7, n16); (void)n166;
-  uint32_t n167 = a0_shr(n166, 7u); (void)n167;
-  uint32_t n168 = a0_and(n166, 127u); (void)n168;
-  const a0t4 *const n169 = &(*n1).e[n167 % 2u]; (void)n169;
-  uint32_t n170 = (*n169).e[n168 % 128u]; (void)n170;
-  uint32_t n171 = (n146 ? n165 : n170); (void)n171;
-  a0t4 n172 = (*n169); n172.e[n168 % 128u] = n171; (void)n172;
-  a0t26 n173 = (*n1); n173.e[n167 % 2u] = n172; (void)n173;
-  uint32_t n174 = a0_add(n6, n34); (void)n174;
-  uint32_t n175 = (n146 ? n174 : n6); (void)n175;
-  uint32_t n176 = (n146 ? n156 : n7); (void)n176;
-  uint32_t n177 = (n97 ? n147 : 0u); (void)n177;
-  uint32_t n178 = a0_shl(n72, 4u); (void)n178;
-  uint32_t n179 = a0_shl(n74, 7u); (void)n179;
-  uint32_t n180 = (n89 ? 4096u : 0u); (void)n180;
-  uint32_t n181 = (n65 ? 8192u : 0u); (void)n181;
-  uint32_t n182 = a0_shl(n81, 14u); (void)n182;
-  uint32_t n183 = (n84 ? 65536u : 0u); (void)n183;
-  uint32_t n184 = a0_shl(n96, 17u); (void)n184;
-  uint32_t n185 = a0_shl(n177, 19u); (void)n185;
-  uint32_t n186 = a0_or(n24, n178); (void)n186;
-  uint32_t n187 = a0_or(n186, n179); (void)n187;
-  uint32_t n188 = a0_or(n187, n180); (void)n188;
-  uint32_t n189 = a0_or(n188, n181); (void)n189;
-  uint32_t n190 = a0_or(n189, n182); (void)n190;
-  uint32_t n191 = a0_or(n190, n183); (void)n191;
-  uint32_t n192 = a0_or(n191, n184); (void)n192;
-  uint32_t n193 = a0_or(n192, n185); (void)n193;
-  uint32_t n194 = (n37 ? n67 : n64); (void)n194;
-  a0t4 n195 = (*n2); n195.e[p1 % 128u] = n193; (void)n195;
-  a0t4 n196 = (*n3); n196.e[p1 % 128u] = n194; (void)n196;
-  bool n197 = a0_eq(n13, 5u); (void)n197;
-  bool n198 = a0_eq(n10, 0u); (void)n198;
-  bool n199 = a0_eq(n10, 1u); (void)n199;
-  bool n200 = a0_eq(n10, 2u); (void)n200;
-  bool n201 = a0_eq(n72, 4u); (void)n201;
-  bool n202 = a0_eq(n72, 1u); (void)n202;
-  bool n203 = (n197 && n35); (void)n203;
-  bool n204 = (n198 && n203); (void)n204;
-  bool n205 = (n204 && n201); (void)n205;
-  bool n206 = (n204 && n202); (void)n206;
-  bool n207 = a0_eq(n9, 1u); (void)n207;
-  bool n208 = (n205 && n207); (void)n208;
-  bool n209 = (n199 && n37); (void)n209;
-  bool n210 = (n37 ? false : true); (void)n210;
-  bool n211 = (n199 && n210); (void)n211;
-  bool n212 = (n200 && n38); (void)n212;
-  bool n213 = (n38 ? false : true); (void)n213;
-  bool n214 = (n200 && n213); (void)n214;
-  uint32_t n215 = a0_sub(n8, n17); (void)n215;
-  uint32_t n216 = a0_shr(n215, 7u); (void)n216;
-  uint32_t n217 = a0_and(n215, 127u); (void)n217;
-  const a0t4 *const n218 = &(*n4).e[n216 % 2u]; (void)n218;
-  uint32_t n219 = (*n218).e[n217 % 128u]; (void)n219;
-  bool n220 = a0_eq(n11, 0u); (void)n220;
-  bool n221 = (n209 && n220); (void)n221;
-  uint32_t n222 = (n221 ? n177 : n219); (void)n222;
-  a0t4 n223 = (*n218); n223.e[n217 % 128u] = n222; (void)n223;
-  a0t26 n224 = (*n4); n224.e[n216 % 2u] = n223; (void)n224;
-  uint32_t n225 = a0_add(n8, 1u); (void)n225;
-  uint32_t n226 = (n221 ? n225 : n8); (void)n226;
-  uint32_t n227 = (n206 ? 1u : n9); (void)n227;
-  uint32_t n228 = (n205 ? 1u : n10); (void)n228;
-  uint32_t n229 = (n209 ? 2u : n228); (void)n229;
-  uint32_t n230 = (n212 ? 0u : n229); (void)n230;
-  bool n231 = (n208 || n211); (void)n231;
-  bool n232 = (n231 || n214); (void)n232;
-  bool n233 = (n232 && n220); (void)n233;
-  uint32_t n234 = (n233 ? 1u : n11); (void)n234;
-  uint32_t n235 = (n233 ? n19 : n12); (void)n235;
-  bool n236 = (n197 && n35); (void)n236;
-  bool n237 = (n236 && n202); (void)n237;
-  bool n238 = a0_eq(n14, 1u); (void)n238;
-  bool n239 = (n237 || n238); (void)n239;
-  bool n240 = a0_eq(p1, 0u); (void)n240;
-  bool n241 = (n238 && n240); (void)n241;
-  bool n242 = (n237 || n241); (void)n242;
-  uint32_t n243 = a0_mul(n15, 2u); (void)n243;
-  uint32_t n244 = a0_sub(n243, n18); (void)n244;
-  uint32_t n245 = a0_shr(n244, 7u); (void)n245;
-  uint32_t n246 = a0_and(n244, 127u); (void)n246;
-  const a0t4 *const n247 = &(*n5).e[n245 % 3u]; (void)n247;
-  uint32_t n248 = (*n247).e[n246 % 128u]; (void)n248;
-  uint32_t n249 = a0_add(n246, 1u); (void)n249;
-  uint32_t n250 = (*n247).e[n249 % 128u]; (void)n250;
-  uint32_t n251 = (n242 ? n19 : n248); (void)n251;
-  uint32_t n252 = a0_sub(n244, 2u); (void)n252;
-  uint32_t n253 = a0_shr(n252, 7u); (void)n253;
-  uint32_t n254 = a0_and(n252, 127u); (void)n254;
-  const a0t4 *const n255 = &(*n5).e[n253 % 3u]; (void)n255;
-  uint32_t n256 = a0_add(n254, 1u); (void)n256;
-  uint32_t n257 = (*n255).e[n256 % 128u]; (void)n257;
-  uint32_t n258 = a0_add(n257, 1u); (void)n258;
-  a0t4 n259 = (*n247); n259.e[n246 % 128u] = n251; (void)n259;
-  uint32_t n260 = (n242 ? 1u : n250); (void)n260;
-  n259.e[n249 % 128u] = n260;
-  a0t27 n262 = (*n5); n262.e[n245 % 3u] = n259; (void)n262;
-  bool n263 = (n242 ? false : n239); (void)n263;
-  const a0t4 *const n264 = &n262.e[n253 % 3u]; (void)n264;
-  uint32_t n265 = (*n264).e[n256 % 128u]; (void)n265;
-  uint32_t n266 = (n263 ? n258 : n265); (void)n266;
-  a0t4 n267 = (*n264); n267.e[n256 % 128u] = n266; (void)n267;
-  n262.e[n253 % 3u] = n267;
-  uint32_t n269 = a0_add(n15, 1u); (void)n269;
-  uint32_t n270 = (n242 ? n269 : n15); (void)n270;
-  bool n271 = (n38 ? false : true); (void)n271;
-  bool n272 = (n239 && n271); (void)n272;
-  uint32_t n273 = (n272 ? 1u : 0u); (void)n273;
-  a0t28 n274; n274.f0 = n163; n274.f1 = n173; n274.f2 = n195; n274.f3 = n196; n274.f4 = n224; n274.f5 = n262; n274.f6 = n175; n274.f7 = n176; n274.f8 = n226; n274.f9 = n227; n274.f10 = n230; n274.f11 = n234; n274.f12 = n235; n274.f13 = n24; n274.f14 = n273; n274.f15 = n270; n274.f16 = n16; n274.f17 = n17; n274.f18 = n18; (void)n274;
-  *p0 = n274;
+  bool n146 = (n145 && n108); (void)n146;
+  uint32_t n147 = (n146 ? 8191u : 0u); (void)n147;
+  a0t28 n148; n148.f0 = n113; n148.f1 = false; n148.f2 = 4294967295u; (void)n148;
+  for (uint32_t a0i = 0; a0i < n147; a0i++) { if (!a0r_prok(&n148, a0i, (*n0), p2, n63, n29, n34)) break; a0o_prstep(&n148, a0i, (*n0), p2, n63, n29, n34); }
+  uint32_t n150 = n148.f0; (void)n150;
+  uint32_t n151 = n148.f2; (void)n151;
+  uint32_t n152 = (n143 ? n113 : n150); (void)n152;
+  uint32_t n153 = (n142 ? n124 : n151); (void)n153;
+  uint32_t n154 = (n111 ? 0u : n153); (void)n154;
+  bool n155 = a0_ne(n154, 4294967295u); (void)n155;
+  bool n156 = (n155 ? false : true); (void)n156;
+  bool n157 = (n108 && n156); (void)n157;
+  uint32_t n158 = (n155 ? n154 : n7); (void)n158;
+  uint32_t n159 = a0_mul(n152, 2u); (void)n159;
+  uint32_t n160 = a0_shr(n159, 7u); (void)n160;
+  uint32_t n161 = a0_and(n159, 127u); (void)n161;
+  const a0t5 *const n162 = &(*n0).e[n160 % 128u]; (void)n162;
+  uint32_t n163 = (*n162).e[n161 % 128u]; (void)n163;
+  uint32_t n164 = a0_add(n161, 1u); (void)n164;
+  uint32_t n165 = (*n162).e[n164 % 128u]; (void)n165;
+  uint32_t n166 = a0_or(n128, n29); (void)n166;
+  uint32_t n167 = a0_add(n7, 1u); (void)n167;
+  uint32_t n168 = a0_mul(n34, 8192u); (void)n168;
+  uint32_t n169 = a0_add(n168, n167); (void)n169;
+  uint32_t n170 = (n157 ? n166 : n163); (void)n170;
+  uint32_t n171 = (n157 ? n169 : n165); (void)n171;
+  a0t5 n172 = (*n162); n172.e[n161 % 128u] = n170; (void)n172;
+  n172.e[n164 % 128u] = n171;
+  a0t11 n174 = (*n0); n174.e[n160 % 128u] = n172; (void)n174;
+  uint32_t n175 = a0_mul(n29, 32768u); (void)n175;
+  uint32_t n176 = a0_add(n175, n34); (void)n176;
+  uint32_t n177 = a0_sub(n7, n16); (void)n177;
+  uint32_t n178 = a0_shr(n177, 7u); (void)n178;
+  uint32_t n179 = a0_and(n177, 127u); (void)n179;
+  const a0t5 *const n180 = &(*n1).e[n178 % 2u]; (void)n180;
+  uint32_t n181 = (*n180).e[n179 % 128u]; (void)n181;
+  uint32_t n182 = (n157 ? n176 : n181); (void)n182;
+  a0t5 n183 = (*n180); n183.e[n179 % 128u] = n182; (void)n183;
+  a0t29 n184 = (*n1); n184.e[n178 % 2u] = n183; (void)n184;
+  uint32_t n185 = a0_add(n6, n34); (void)n185;
+  uint32_t n186 = (n157 ? n185 : n6); (void)n186;
+  uint32_t n187 = (n157 ? n167 : n7); (void)n187;
+  uint32_t n188 = (n108 ? n158 : 0u); (void)n188;
+  uint32_t n189 = a0_shl(n73, 4u); (void)n189;
+  uint32_t n190 = a0_shl(n75, 7u); (void)n190;
+  uint32_t n191 = (n100 ? 4096u : 0u); (void)n191;
+  uint32_t n192 = (n65 ? 8192u : 0u); (void)n192;
+  uint32_t n193 = a0_shl(n95, 14u); (void)n193;
+  uint32_t n194 = (n91 ? 65536u : 0u); (void)n194;
+  uint32_t n195 = a0_shl(n107, 17u); (void)n195;
+  uint32_t n196 = a0_shl(n188, 19u); (void)n196;
+  uint32_t n197 = a0_or(n24, n189); (void)n197;
+  uint32_t n198 = a0_or(n197, n190); (void)n198;
+  uint32_t n199 = a0_or(n198, n191); (void)n199;
+  uint32_t n200 = a0_or(n199, n192); (void)n200;
+  uint32_t n201 = a0_or(n200, n193); (void)n201;
+  uint32_t n202 = a0_or(n201, n194); (void)n202;
+  uint32_t n203 = a0_or(n202, n195); (void)n203;
+  uint32_t n204 = a0_or(n203, n196); (void)n204;
+  uint32_t n205 = (n37 ? n67 : n64); (void)n205;
+  a0t5 n206 = (*n2); n206.e[p1 % 128u] = n204; (void)n206;
+  a0t5 n207 = (*n3); n207.e[p1 % 128u] = n205; (void)n207;
+  bool n208 = a0_eq(n13, 5u); (void)n208;
+  bool n209 = a0_eq(n10, 0u); (void)n209;
+  bool n210 = a0_eq(n10, 1u); (void)n210;
+  bool n211 = a0_eq(n10, 2u); (void)n211;
+  bool n212 = a0_eq(n73, 4u); (void)n212;
+  bool n213 = a0_eq(n73, 1u); (void)n213;
+  bool n214 = (n208 && n35); (void)n214;
+  bool n215 = (n209 && n214); (void)n215;
+  bool n216 = (n215 && n212); (void)n216;
+  bool n217 = (n215 && n213); (void)n217;
+  bool n218 = a0_eq(n9, 1u); (void)n218;
+  bool n219 = (n216 && n218); (void)n219;
+  bool n220 = (n210 && n37); (void)n220;
+  bool n221 = (n37 ? false : true); (void)n221;
+  bool n222 = (n210 && n221); (void)n222;
+  bool n223 = (n211 && n38); (void)n223;
+  bool n224 = (n38 ? false : true); (void)n224;
+  bool n225 = (n211 && n224); (void)n225;
+  uint32_t n226 = a0_sub(n8, n17); (void)n226;
+  uint32_t n227 = a0_shr(n226, 7u); (void)n227;
+  uint32_t n228 = a0_and(n226, 127u); (void)n228;
+  const a0t5 *const n229 = &(*n4).e[n227 % 2u]; (void)n229;
+  uint32_t n230 = (*n229).e[n228 % 128u]; (void)n230;
+  bool n231 = a0_eq(n11, 0u); (void)n231;
+  bool n232 = (n220 && n231); (void)n232;
+  uint32_t n233 = (n232 ? n188 : n230); (void)n233;
+  a0t5 n234 = (*n229); n234.e[n228 % 128u] = n233; (void)n234;
+  a0t29 n235 = (*n4); n235.e[n227 % 2u] = n234; (void)n235;
+  uint32_t n236 = a0_add(n8, 1u); (void)n236;
+  uint32_t n237 = (n232 ? n236 : n8); (void)n237;
+  uint32_t n238 = (n217 ? 1u : n9); (void)n238;
+  uint32_t n239 = (n216 ? 1u : n10); (void)n239;
+  uint32_t n240 = (n220 ? 2u : n239); (void)n240;
+  uint32_t n241 = (n223 ? 0u : n240); (void)n241;
+  bool n242 = (n219 || n222); (void)n242;
+  bool n243 = (n242 || n225); (void)n243;
+  bool n244 = (n243 && n231); (void)n244;
+  uint32_t n245 = (n244 ? 1u : n11); (void)n245;
+  uint32_t n246 = (n244 ? n19 : n12); (void)n246;
+  bool n247 = (n208 && n35); (void)n247;
+  bool n248 = (n247 && n213); (void)n248;
+  bool n249 = a0_eq(n14, 1u); (void)n249;
+  bool n250 = (n248 || n249); (void)n250;
+  bool n251 = a0_eq(p1, 0u); (void)n251;
+  bool n252 = (n249 && n251); (void)n252;
+  bool n253 = (n248 || n252); (void)n253;
+  uint32_t n254 = a0_mul(n15, 2u); (void)n254;
+  uint32_t n255 = a0_sub(n254, n18); (void)n255;
+  uint32_t n256 = a0_shr(n255, 7u); (void)n256;
+  uint32_t n257 = a0_and(n255, 127u); (void)n257;
+  const a0t5 *const n258 = &(*n5).e[n256 % 3u]; (void)n258;
+  uint32_t n259 = (*n258).e[n257 % 128u]; (void)n259;
+  uint32_t n260 = a0_add(n257, 1u); (void)n260;
+  uint32_t n261 = (*n258).e[n260 % 128u]; (void)n261;
+  uint32_t n262 = (n253 ? n19 : n259); (void)n262;
+  uint32_t n263 = a0_sub(n255, 2u); (void)n263;
+  uint32_t n264 = a0_shr(n263, 7u); (void)n264;
+  uint32_t n265 = a0_and(n263, 127u); (void)n265;
+  const a0t5 *const n266 = &(*n5).e[n264 % 3u]; (void)n266;
+  uint32_t n267 = a0_add(n265, 1u); (void)n267;
+  uint32_t n268 = (*n266).e[n267 % 128u]; (void)n268;
+  uint32_t n269 = a0_add(n268, 1u); (void)n269;
+  a0t5 n270 = (*n258); n270.e[n257 % 128u] = n262; (void)n270;
+  uint32_t n271 = (n253 ? 1u : n261); (void)n271;
+  n270.e[n260 % 128u] = n271;
+  a0t30 n273 = (*n5); n273.e[n256 % 3u] = n270; (void)n273;
+  bool n274 = (n253 ? false : n250); (void)n274;
+  const a0t5 *const n275 = &n273.e[n264 % 3u]; (void)n275;
+  uint32_t n276 = (*n275).e[n267 % 128u]; (void)n276;
+  uint32_t n277 = (n274 ? n269 : n276); (void)n277;
+  a0t5 n278 = (*n275); n278.e[n267 % 128u] = n277; (void)n278;
+  n273.e[n264 % 3u] = n278;
+  uint32_t n280 = a0_add(n15, 1u); (void)n280;
+  uint32_t n281 = (n253 ? n280 : n15); (void)n281;
+  bool n282 = (n38 ? false : true); (void)n282;
+  bool n283 = (n250 && n282); (void)n283;
+  uint32_t n284 = (n283 ? 1u : 0u); (void)n284;
+  a0t31 n285; n285.f0 = n174; n285.f1 = n184; n285.f2 = n206; n285.f3 = n207; n285.f4 = n235; n285.f5 = n273; n285.f6 = n186; n285.f7 = n187; n285.f8 = n237; n285.f9 = n238; n285.f10 = n241; n285.f11 = n245; n285.f12 = n246; n285.f13 = n24; n285.f14 = n284; n285.f15 = n281; n285.f16 = n16; n285.f17 = n17; n285.f18 = n18; (void)n285;
+  *p0 = n285;
 }
 
-a0t29 a0_p1page(a0t29 p0, uint32_t p1, a0t9 p2, a0t7 p3, uint32_t p4) {
-  const a0t9 *const n0 = &p0.f0; (void)n0;
-  const a0t18 *const n1 = &p0.f1; (void)n1;
-  const a0t9 *const n2 = &p0.f2; (void)n2;
-  const a0t9 *const n3 = &p0.f3; (void)n3;
-  const a0t15 *const n4 = &p0.f4; (void)n4;
-  const a0t14 *const n5 = &p0.f5; (void)n5;
+a0t32 a0_p1page(a0t32 p0, uint32_t p1, a0t4 p2, a0t9 p3, uint32_t p4) {
+  const a0t11 *const n0 = &p0.f0; (void)n0;
+  const a0t21 *const n1 = &p0.f1; (void)n1;
+  const a0t11 *const n2 = &p0.f2; (void)n2;
+  const a0t11 *const n3 = &p0.f3; (void)n3;
+  const a0t18 *const n4 = &p0.f4; (void)n4;
+  const a0t17 *const n5 = &p0.f5; (void)n5;
   uint32_t n6 = p0.f6; (void)n6;
   uint32_t n7 = p0.f7; (void)n7;
   uint32_t n8 = p0.f8; (void)n8;
@@ -1521,71 +1911,71 @@ a0t29 a0_p1page(a0t29 p0, uint32_t p1, a0t9 p2, a0t7 p3, uint32_t p4) {
   bool n18 = a0_gt(n17, 128u); (void)n18;
   uint32_t n19 = (n18 ? 128u : n17); (void)n19;
   uint32_t n20 = a0_mul(p1, 3u); (void)n20;
-  const a0t4 *const n21 = &p3.e[n20 % 384u]; (void)n21;
+  const a0t5 *const n21 = &p3.e[n20 % 384u]; (void)n21;
   uint32_t n22 = a0_add(n20, 1u); (void)n22;
-  const a0t4 *const n23 = &p3.e[n22 % 384u]; (void)n23;
+  const a0t5 *const n23 = &p3.e[n22 % 384u]; (void)n23;
   uint32_t n24 = a0_add(n20, 2u); (void)n24;
-  const a0t4 *const n25 = &p3.e[n24 % 384u]; (void)n25;
-  a0t27 n26; n26.e[0] = (*n21); n26.e[1] = (*n23); n26.e[2] = (*n25); (void)n26;
-  const a0t4 *const n27 = &(*n2).e[p1 % 128u]; (void)n27;
-  const a0t4 *const n28 = &(*n3).e[p1 % 128u]; (void)n28;
+  const a0t5 *const n25 = &p3.e[n24 % 384u]; (void)n25;
+  a0t30 n26; n26.e[0] = (*n21); n26.e[1] = (*n23); n26.e[2] = (*n25); (void)n26;
+  const a0t5 *const n27 = &(*n2).e[p1 % 128u]; (void)n27;
+  const a0t5 *const n28 = &(*n3).e[p1 % 128u]; (void)n28;
   uint32_t n29 = a0_shr(n7, 7u); (void)n29;
   uint32_t n30 = a0_add(n29, 1u); (void)n30;
   uint32_t n31 = a0_mul(n29, 128u); (void)n31;
-  const a0t4 *const n32 = &(*n1).e[n29 % 64u]; (void)n32;
-  const a0t4 *const n33 = &(*n1).e[n30 % 64u]; (void)n33;
-  a0t26 n34; n34.e[0] = (*n32); n34.e[1] = (*n33); (void)n34;
+  const a0t5 *const n32 = &(*n1).e[n29 % 64u]; (void)n32;
+  const a0t5 *const n33 = &(*n1).e[n30 % 64u]; (void)n33;
+  a0t29 n34; n34.e[0] = (*n32); n34.e[1] = (*n33); (void)n34;
   uint32_t n35 = a0_shr(n8, 7u); (void)n35;
   uint32_t n36 = a0_add(n35, 1u); (void)n36;
   uint32_t n37 = a0_mul(n35, 128u); (void)n37;
-  const a0t4 *const n38 = &(*n4).e[n35 % 32u]; (void)n38;
-  const a0t4 *const n39 = &(*n4).e[n36 % 32u]; (void)n39;
-  a0t26 n40; n40.e[0] = (*n38); n40.e[1] = (*n39); (void)n40;
+  const a0t5 *const n38 = &(*n4).e[n35 % 32u]; (void)n38;
+  const a0t5 *const n39 = &(*n4).e[n36 % 32u]; (void)n39;
+  a0t29 n40; n40.e[0] = (*n38); n40.e[1] = (*n39); (void)n40;
   uint32_t n41 = a0_mul(n15, 2u); (void)n41;
   uint32_t n42 = a0_shr(n41, 7u); (void)n42;
   uint32_t n43 = a0_add(n42, 1u); (void)n43;
   uint32_t n44 = a0_add(n42, 2u); (void)n44;
   uint32_t n45 = a0_mul(n42, 128u); (void)n45;
-  const a0t4 *const n46 = &(*n5).e[n42 % 16u]; (void)n46;
-  const a0t4 *const n47 = &(*n5).e[n43 % 16u]; (void)n47;
-  const a0t4 *const n48 = &(*n5).e[n44 % 16u]; (void)n48;
-  a0t27 n49; n49.e[0] = (*n46); n49.e[1] = (*n47); n49.e[2] = (*n48); (void)n49;
-  a0t28 n50; n50.f0 = (*n0); n50.f1 = n34; n50.f2 = (*n27); n50.f3 = (*n28); n50.f4 = n40; n50.f5 = n49; n50.f6 = n6; n50.f7 = n7; n50.f8 = n8; n50.f9 = n9; n50.f10 = n10; n50.f11 = n11; n50.f12 = n12; n50.f13 = n13; n50.f14 = n14; n50.f15 = n15; n50.f16 = n31; n50.f17 = n37; n50.f18 = n45; (void)n50;
+  const a0t5 *const n46 = &(*n5).e[n42 % 16u]; (void)n46;
+  const a0t5 *const n47 = &(*n5).e[n43 % 16u]; (void)n47;
+  const a0t5 *const n48 = &(*n5).e[n44 % 16u]; (void)n48;
+  a0t30 n49; n49.e[0] = (*n46); n49.e[1] = (*n47); n49.e[2] = (*n48); (void)n49;
+  a0t31 n50; n50.f0 = (*n0); n50.f1 = n34; n50.f2 = (*n27); n50.f3 = (*n28); n50.f4 = n40; n50.f5 = n49; n50.f6 = n6; n50.f7 = n7; n50.f8 = n8; n50.f9 = n9; n50.f10 = n10; n50.f11 = n11; n50.f12 = n12; n50.f13 = n13; n50.f14 = n14; n50.f15 = n15; n50.f16 = n31; n50.f17 = n37; n50.f18 = n45; (void)n50;
   for (uint32_t a0i = 0; a0i < n19; a0i++) { a0o_p1tok(&n50, a0i, p2, n26, n16); }
-  const a0t26 *const n52 = &n50.f1; (void)n52;
-  const a0t4 *const n53 = &(*n52).e[0u % 2u]; (void)n53;
-  const a0t4 *const n54 = &(*n52).e[1u % 2u]; (void)n54;
-  a0t18 n55 = (*n1); n55.e[n29 % 64u] = (*n53); (void)n55;
+  const a0t29 *const n52 = &n50.f1; (void)n52;
+  const a0t5 *const n53 = &(*n52).e[0u % 2u]; (void)n53;
+  const a0t5 *const n54 = &(*n52).e[1u % 2u]; (void)n54;
+  a0t21 n55 = (*n1); n55.e[n29 % 64u] = (*n53); (void)n55;
   bool n56 = a0_lt(n30, 64u); (void)n56;
-  const a0t4 *const n57 = &n55.e[n30 % 64u]; (void)n57;
-  a0t4 n58 = (n56 ? (*n54) : (*n57)); (void)n58;
+  const a0t5 *const n57 = &n55.e[n30 % 64u]; (void)n57;
+  a0t5 n58 = (n56 ? (*n54) : (*n57)); (void)n58;
   n55.e[n30 % 64u] = n58;
-  const a0t26 *const n60 = &n50.f4; (void)n60;
-  const a0t4 *const n61 = &(*n60).e[0u % 2u]; (void)n61;
-  const a0t4 *const n62 = &(*n60).e[1u % 2u]; (void)n62;
-  a0t15 n63 = (*n4); n63.e[n35 % 32u] = (*n61); (void)n63;
+  const a0t29 *const n60 = &n50.f4; (void)n60;
+  const a0t5 *const n61 = &(*n60).e[0u % 2u]; (void)n61;
+  const a0t5 *const n62 = &(*n60).e[1u % 2u]; (void)n62;
+  a0t18 n63 = (*n4); n63.e[n35 % 32u] = (*n61); (void)n63;
   bool n64 = a0_lt(n36, 32u); (void)n64;
-  const a0t4 *const n65 = &n63.e[n36 % 32u]; (void)n65;
-  a0t4 n66 = (n64 ? (*n62) : (*n65)); (void)n66;
+  const a0t5 *const n65 = &n63.e[n36 % 32u]; (void)n65;
+  a0t5 n66 = (n64 ? (*n62) : (*n65)); (void)n66;
   n63.e[n36 % 32u] = n66;
-  const a0t27 *const n68 = &n50.f5; (void)n68;
-  const a0t4 *const n69 = &(*n68).e[0u % 3u]; (void)n69;
-  const a0t4 *const n70 = &(*n68).e[1u % 3u]; (void)n70;
-  const a0t4 *const n71 = &(*n68).e[2u % 3u]; (void)n71;
-  a0t14 n72 = (*n5); n72.e[n42 % 16u] = (*n69); (void)n72;
+  const a0t30 *const n68 = &n50.f5; (void)n68;
+  const a0t5 *const n69 = &(*n68).e[0u % 3u]; (void)n69;
+  const a0t5 *const n70 = &(*n68).e[1u % 3u]; (void)n70;
+  const a0t5 *const n71 = &(*n68).e[2u % 3u]; (void)n71;
+  a0t17 n72 = (*n5); n72.e[n42 % 16u] = (*n69); (void)n72;
   bool n73 = a0_lt(n43, 16u); (void)n73;
-  const a0t4 *const n74 = &n72.e[n43 % 16u]; (void)n74;
-  a0t4 n75 = (n73 ? (*n70) : (*n74)); (void)n75;
+  const a0t5 *const n74 = &n72.e[n43 % 16u]; (void)n74;
+  a0t5 n75 = (n73 ? (*n70) : (*n74)); (void)n75;
   n72.e[n43 % 16u] = n75;
   bool n77 = a0_lt(n44, 16u); (void)n77;
-  const a0t4 *const n78 = &n72.e[n44 % 16u]; (void)n78;
-  a0t4 n79 = (n77 ? (*n71) : (*n78)); (void)n79;
+  const a0t5 *const n78 = &n72.e[n44 % 16u]; (void)n78;
+  a0t5 n79 = (n77 ? (*n71) : (*n78)); (void)n79;
   n72.e[n44 % 16u] = n79;
-  const a0t4 *const n81 = &n50.f2; (void)n81;
-  const a0t4 *const n82 = &n50.f3; (void)n82;
-  a0t9 n83 = (*n2); n83.e[p1 % 128u] = (*n81); (void)n83;
-  a0t9 n84 = (*n3); n84.e[p1 % 128u] = (*n82); (void)n84;
-  const a0t9 *const n85 = &n50.f0; (void)n85;
+  const a0t5 *const n81 = &n50.f2; (void)n81;
+  const a0t5 *const n82 = &n50.f3; (void)n82;
+  a0t11 n83 = (*n2); n83.e[p1 % 128u] = (*n81); (void)n83;
+  a0t11 n84 = (*n3); n84.e[p1 % 128u] = (*n82); (void)n84;
+  const a0t11 *const n85 = &n50.f0; (void)n85;
   uint32_t n86 = n50.f6; (void)n86;
   uint32_t n87 = n50.f7; (void)n87;
   uint32_t n88 = n50.f8; (void)n88;
@@ -1596,17 +1986,17 @@ a0t29 a0_p1page(a0t29 p0, uint32_t p1, a0t9 p2, a0t7 p3, uint32_t p4) {
   uint32_t n93 = n50.f13; (void)n93;
   uint32_t n94 = n50.f14; (void)n94;
   uint32_t n95 = n50.f15; (void)n95;
-  a0t29 n96; n96.f0 = (*n85); n96.f1 = n55; n96.f2 = n83; n96.f3 = n84; n96.f4 = n63; n96.f5 = n72; n96.f6 = n86; n96.f7 = n87; n96.f8 = n88; n96.f9 = n89; n96.f10 = n90; n96.f11 = n91; n96.f12 = n92; n96.f13 = n93; n96.f14 = n94; n96.f15 = n95; (void)n96;
+  a0t32 n96; n96.f0 = (*n85); n96.f1 = n55; n96.f2 = n83; n96.f3 = n84; n96.f4 = n63; n96.f5 = n72; n96.f6 = n86; n96.f7 = n87; n96.f8 = n88; n96.f9 = n89; n96.f10 = n90; n96.f11 = n91; n96.f12 = n92; n96.f13 = n93; n96.f14 = n94; n96.f15 = n95; (void)n96;
   return n96;
 }
 
-static inline void a0o_p1page(a0t29 *p0, uint32_t p1, a0t9 p2, a0t7 p3, uint32_t p4) {
-  const a0t9 *const n0 = &(*p0).f0; (void)n0;
-  const a0t18 *const n1 = &(*p0).f1; (void)n1;
-  const a0t9 *const n2 = &(*p0).f2; (void)n2;
-  const a0t9 *const n3 = &(*p0).f3; (void)n3;
-  const a0t15 *const n4 = &(*p0).f4; (void)n4;
-  const a0t14 *const n5 = &(*p0).f5; (void)n5;
+static inline void a0o_p1page(a0t32 *p0, uint32_t p1, a0t4 p2, a0t9 p3, uint32_t p4) {
+  const a0t11 *const n0 = &(*p0).f0; (void)n0;
+  const a0t21 *const n1 = &(*p0).f1; (void)n1;
+  const a0t11 *const n2 = &(*p0).f2; (void)n2;
+  const a0t11 *const n3 = &(*p0).f3; (void)n3;
+  const a0t18 *const n4 = &(*p0).f4; (void)n4;
+  const a0t17 *const n5 = &(*p0).f5; (void)n5;
   uint32_t n6 = (*p0).f6; (void)n6;
   uint32_t n7 = (*p0).f7; (void)n7;
   uint32_t n8 = (*p0).f8; (void)n8;
@@ -1622,71 +2012,71 @@ static inline void a0o_p1page(a0t29 *p0, uint32_t p1, a0t9 p2, a0t7 p3, uint32_t
   bool n18 = a0_gt(n17, 128u); (void)n18;
   uint32_t n19 = (n18 ? 128u : n17); (void)n19;
   uint32_t n20 = a0_mul(p1, 3u); (void)n20;
-  const a0t4 *const n21 = &p3.e[n20 % 384u]; (void)n21;
+  const a0t5 *const n21 = &p3.e[n20 % 384u]; (void)n21;
   uint32_t n22 = a0_add(n20, 1u); (void)n22;
-  const a0t4 *const n23 = &p3.e[n22 % 384u]; (void)n23;
+  const a0t5 *const n23 = &p3.e[n22 % 384u]; (void)n23;
   uint32_t n24 = a0_add(n20, 2u); (void)n24;
-  const a0t4 *const n25 = &p3.e[n24 % 384u]; (void)n25;
-  a0t27 n26; n26.e[0] = (*n21); n26.e[1] = (*n23); n26.e[2] = (*n25); (void)n26;
-  const a0t4 *const n27 = &(*n2).e[p1 % 128u]; (void)n27;
-  const a0t4 *const n28 = &(*n3).e[p1 % 128u]; (void)n28;
+  const a0t5 *const n25 = &p3.e[n24 % 384u]; (void)n25;
+  a0t30 n26; n26.e[0] = (*n21); n26.e[1] = (*n23); n26.e[2] = (*n25); (void)n26;
+  const a0t5 *const n27 = &(*n2).e[p1 % 128u]; (void)n27;
+  const a0t5 *const n28 = &(*n3).e[p1 % 128u]; (void)n28;
   uint32_t n29 = a0_shr(n7, 7u); (void)n29;
   uint32_t n30 = a0_add(n29, 1u); (void)n30;
   uint32_t n31 = a0_mul(n29, 128u); (void)n31;
-  const a0t4 *const n32 = &(*n1).e[n29 % 64u]; (void)n32;
-  const a0t4 *const n33 = &(*n1).e[n30 % 64u]; (void)n33;
-  a0t26 n34; n34.e[0] = (*n32); n34.e[1] = (*n33); (void)n34;
+  const a0t5 *const n32 = &(*n1).e[n29 % 64u]; (void)n32;
+  const a0t5 *const n33 = &(*n1).e[n30 % 64u]; (void)n33;
+  a0t29 n34; n34.e[0] = (*n32); n34.e[1] = (*n33); (void)n34;
   uint32_t n35 = a0_shr(n8, 7u); (void)n35;
   uint32_t n36 = a0_add(n35, 1u); (void)n36;
   uint32_t n37 = a0_mul(n35, 128u); (void)n37;
-  const a0t4 *const n38 = &(*n4).e[n35 % 32u]; (void)n38;
-  const a0t4 *const n39 = &(*n4).e[n36 % 32u]; (void)n39;
-  a0t26 n40; n40.e[0] = (*n38); n40.e[1] = (*n39); (void)n40;
+  const a0t5 *const n38 = &(*n4).e[n35 % 32u]; (void)n38;
+  const a0t5 *const n39 = &(*n4).e[n36 % 32u]; (void)n39;
+  a0t29 n40; n40.e[0] = (*n38); n40.e[1] = (*n39); (void)n40;
   uint32_t n41 = a0_mul(n15, 2u); (void)n41;
   uint32_t n42 = a0_shr(n41, 7u); (void)n42;
   uint32_t n43 = a0_add(n42, 1u); (void)n43;
   uint32_t n44 = a0_add(n42, 2u); (void)n44;
   uint32_t n45 = a0_mul(n42, 128u); (void)n45;
-  const a0t4 *const n46 = &(*n5).e[n42 % 16u]; (void)n46;
-  const a0t4 *const n47 = &(*n5).e[n43 % 16u]; (void)n47;
-  const a0t4 *const n48 = &(*n5).e[n44 % 16u]; (void)n48;
-  a0t27 n49; n49.e[0] = (*n46); n49.e[1] = (*n47); n49.e[2] = (*n48); (void)n49;
-  a0t28 n50; n50.f0 = (*n0); n50.f1 = n34; n50.f2 = (*n27); n50.f3 = (*n28); n50.f4 = n40; n50.f5 = n49; n50.f6 = n6; n50.f7 = n7; n50.f8 = n8; n50.f9 = n9; n50.f10 = n10; n50.f11 = n11; n50.f12 = n12; n50.f13 = n13; n50.f14 = n14; n50.f15 = n15; n50.f16 = n31; n50.f17 = n37; n50.f18 = n45; (void)n50;
+  const a0t5 *const n46 = &(*n5).e[n42 % 16u]; (void)n46;
+  const a0t5 *const n47 = &(*n5).e[n43 % 16u]; (void)n47;
+  const a0t5 *const n48 = &(*n5).e[n44 % 16u]; (void)n48;
+  a0t30 n49; n49.e[0] = (*n46); n49.e[1] = (*n47); n49.e[2] = (*n48); (void)n49;
+  a0t31 n50; n50.f0 = (*n0); n50.f1 = n34; n50.f2 = (*n27); n50.f3 = (*n28); n50.f4 = n40; n50.f5 = n49; n50.f6 = n6; n50.f7 = n7; n50.f8 = n8; n50.f9 = n9; n50.f10 = n10; n50.f11 = n11; n50.f12 = n12; n50.f13 = n13; n50.f14 = n14; n50.f15 = n15; n50.f16 = n31; n50.f17 = n37; n50.f18 = n45; (void)n50;
   for (uint32_t a0i = 0; a0i < n19; a0i++) { a0o_p1tok(&n50, a0i, p2, n26, n16); }
-  const a0t26 *const n52 = &n50.f1; (void)n52;
-  const a0t4 *const n53 = &(*n52).e[0u % 2u]; (void)n53;
-  const a0t4 *const n54 = &(*n52).e[1u % 2u]; (void)n54;
-  a0t18 n55 = (*n1); n55.e[n29 % 64u] = (*n53); (void)n55;
+  const a0t29 *const n52 = &n50.f1; (void)n52;
+  const a0t5 *const n53 = &(*n52).e[0u % 2u]; (void)n53;
+  const a0t5 *const n54 = &(*n52).e[1u % 2u]; (void)n54;
+  a0t21 n55 = (*n1); n55.e[n29 % 64u] = (*n53); (void)n55;
   bool n56 = a0_lt(n30, 64u); (void)n56;
-  const a0t4 *const n57 = &n55.e[n30 % 64u]; (void)n57;
-  a0t4 n58 = (n56 ? (*n54) : (*n57)); (void)n58;
+  const a0t5 *const n57 = &n55.e[n30 % 64u]; (void)n57;
+  a0t5 n58 = (n56 ? (*n54) : (*n57)); (void)n58;
   n55.e[n30 % 64u] = n58;
-  const a0t26 *const n60 = &n50.f4; (void)n60;
-  const a0t4 *const n61 = &(*n60).e[0u % 2u]; (void)n61;
-  const a0t4 *const n62 = &(*n60).e[1u % 2u]; (void)n62;
-  a0t15 n63 = (*n4); n63.e[n35 % 32u] = (*n61); (void)n63;
+  const a0t29 *const n60 = &n50.f4; (void)n60;
+  const a0t5 *const n61 = &(*n60).e[0u % 2u]; (void)n61;
+  const a0t5 *const n62 = &(*n60).e[1u % 2u]; (void)n62;
+  a0t18 n63 = (*n4); n63.e[n35 % 32u] = (*n61); (void)n63;
   bool n64 = a0_lt(n36, 32u); (void)n64;
-  const a0t4 *const n65 = &n63.e[n36 % 32u]; (void)n65;
-  a0t4 n66 = (n64 ? (*n62) : (*n65)); (void)n66;
+  const a0t5 *const n65 = &n63.e[n36 % 32u]; (void)n65;
+  a0t5 n66 = (n64 ? (*n62) : (*n65)); (void)n66;
   n63.e[n36 % 32u] = n66;
-  const a0t27 *const n68 = &n50.f5; (void)n68;
-  const a0t4 *const n69 = &(*n68).e[0u % 3u]; (void)n69;
-  const a0t4 *const n70 = &(*n68).e[1u % 3u]; (void)n70;
-  const a0t4 *const n71 = &(*n68).e[2u % 3u]; (void)n71;
-  a0t14 n72 = (*n5); n72.e[n42 % 16u] = (*n69); (void)n72;
+  const a0t30 *const n68 = &n50.f5; (void)n68;
+  const a0t5 *const n69 = &(*n68).e[0u % 3u]; (void)n69;
+  const a0t5 *const n70 = &(*n68).e[1u % 3u]; (void)n70;
+  const a0t5 *const n71 = &(*n68).e[2u % 3u]; (void)n71;
+  a0t17 n72 = (*n5); n72.e[n42 % 16u] = (*n69); (void)n72;
   bool n73 = a0_lt(n43, 16u); (void)n73;
-  const a0t4 *const n74 = &n72.e[n43 % 16u]; (void)n74;
-  a0t4 n75 = (n73 ? (*n70) : (*n74)); (void)n75;
+  const a0t5 *const n74 = &n72.e[n43 % 16u]; (void)n74;
+  a0t5 n75 = (n73 ? (*n70) : (*n74)); (void)n75;
   n72.e[n43 % 16u] = n75;
   bool n77 = a0_lt(n44, 16u); (void)n77;
-  const a0t4 *const n78 = &n72.e[n44 % 16u]; (void)n78;
-  a0t4 n79 = (n77 ? (*n71) : (*n78)); (void)n79;
+  const a0t5 *const n78 = &n72.e[n44 % 16u]; (void)n78;
+  a0t5 n79 = (n77 ? (*n71) : (*n78)); (void)n79;
   n72.e[n44 % 16u] = n79;
-  const a0t4 *const n81 = &n50.f2; (void)n81;
-  const a0t4 *const n82 = &n50.f3; (void)n82;
-  a0t9 n83 = (*n2); n83.e[p1 % 128u] = (*n81); (void)n83;
-  a0t9 n84 = (*n3); n84.e[p1 % 128u] = (*n82); (void)n84;
-  const a0t9 *const n85 = &n50.f0; (void)n85;
+  const a0t5 *const n81 = &n50.f2; (void)n81;
+  const a0t5 *const n82 = &n50.f3; (void)n82;
+  a0t11 n83 = (*n2); n83.e[p1 % 128u] = (*n81); (void)n83;
+  a0t11 n84 = (*n3); n84.e[p1 % 128u] = (*n82); (void)n84;
+  const a0t11 *const n85 = &n50.f0; (void)n85;
   uint32_t n86 = n50.f6; (void)n86;
   uint32_t n87 = n50.f7; (void)n87;
   uint32_t n88 = n50.f8; (void)n88;
@@ -1697,26 +2087,26 @@ static inline void a0o_p1page(a0t29 *p0, uint32_t p1, a0t9 p2, a0t7 p3, uint32_t
   uint32_t n93 = n50.f13; (void)n93;
   uint32_t n94 = n50.f14; (void)n94;
   uint32_t n95 = n50.f15; (void)n95;
-  a0t29 n96; n96.f0 = (*n85); n96.f1 = n55; n96.f2 = n83; n96.f3 = n84; n96.f4 = n63; n96.f5 = n72; n96.f6 = n86; n96.f7 = n87; n96.f8 = n88; n96.f9 = n89; n96.f10 = n90; n96.f11 = n91; n96.f12 = n92; n96.f13 = n93; n96.f14 = n94; n96.f15 = n95; (void)n96;
+  a0t32 n96; n96.f0 = (*n85); n96.f1 = n55; n96.f2 = n83; n96.f3 = n84; n96.f4 = n63; n96.f5 = n72; n96.f6 = n86; n96.f7 = n87; n96.f8 = n88; n96.f9 = n89; n96.f10 = n90; n96.f11 = n91; n96.f12 = n92; n96.f13 = n93; n96.f14 = n94; n96.f15 = n95; (void)n96;
   *p0 = n96;
 }
 
-a0t29 a0_pass1(a0t9 p0, a0t7 p1, uint32_t p2) {
-  a0t9 n0 = a0_zsrc(); (void)n0;
-  a0t18 n1 = a0_z64(); (void)n1;
-  a0t15 n2 = a0_z32(); (void)n2;
-  a0t14 n3 = a0_z16(); (void)n3;
-  a0t4 n4 = a0_zpage(); (void)n4;
-  a0t4 n5 = n4; n5.e[0u % 128u] = 6u; (void)n5;
-  a0t18 n6 = n1; n6.e[0u % 64u] = n5; (void)n6;
+a0t32 a0_pass1(a0t4 p0, a0t9 p1, uint32_t p2) {
+  a0t11 n0 = a0_zsrc(); (void)n0;
+  a0t21 n1 = a0_z64(); (void)n1;
+  a0t18 n2 = a0_z32(); (void)n2;
+  a0t17 n3 = a0_z16(); (void)n3;
+  a0t5 n4 = a0_zpage(); (void)n4;
+  a0t5 n5 = n4; n5.e[0u % 128u] = 6u; (void)n5;
+  a0t21 n6 = n1; n6.e[0u % 64u] = n5; (void)n6;
   uint32_t n7 = a0_add(p2, 127u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  a0t29 n9; n9.f0 = n0; n9.f1 = n6; n9.f2 = n0; n9.f3 = n0; n9.f4 = n2; n9.f5 = n3; n9.f6 = 6u; n9.f7 = 1u; n9.f8 = 0u; n9.f9 = 0u; n9.f10 = 0u; n9.f11 = 0u; n9.f12 = 0u; n9.f13 = 5u; n9.f14 = 0u; n9.f15 = 0u; (void)n9;
+  a0t32 n9; n9.f0 = n0; n9.f1 = n6; n9.f2 = n0; n9.f3 = n0; n9.f4 = n2; n9.f5 = n3; n9.f6 = 6u; n9.f7 = 1u; n9.f8 = 0u; n9.f9 = 0u; n9.f10 = 0u; n9.f11 = 0u; n9.f12 = 0u; n9.f13 = 5u; n9.f14 = 0u; n9.f15 = 0u; (void)n9;
   for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_p1page(&n9, a0i, p0, p1, p2); }
   return n9;
 }
 
-a0t26 a0_pcopyb(a0t26 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, uint32_t p5) {
+a0t29 a0_pcopyb(a0t29 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, uint32_t p5) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
@@ -1727,13 +2117,13 @@ a0t26 a0_pcopyb(a0t26 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, uint32_t p
   uint32_t n7 = a0_add(p5, p1); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p0.e[n8 % 2u]; (void)n10;
-  a0t4 n11 = (*n10); n11.e[n9 % 128u] = n6; (void)n11;
+  const a0t5 *const n10 = &p0.e[n8 % 2u]; (void)n10;
+  a0t5 n11 = (*n10); n11.e[n9 % 128u] = n6; (void)n11;
   p0.e[n8 % 2u] = n11;
   return p0;
 }
 
-static inline void a0o_pcopyb(a0t26 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, uint32_t p5) {
+static inline void a0o_pcopyb(a0t29 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, uint32_t p5) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
@@ -1744,13 +2134,13 @@ static inline void a0o_pcopyb(a0t26 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t
   uint32_t n7 = a0_add(p5, p1); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &(*p0).e[n8 % 2u]; (void)n10;
-  a0t4 n11 = (*n10); n11.e[n9 % 128u] = n6; (void)n11;
+  const a0t5 *const n10 = &(*p0).e[n8 % 2u]; (void)n10;
+  a0t5 n11 = (*n10); n11.e[n9 % 128u] = n6; (void)n11;
   (*p0).e[n8 % 2u] = n11;
 }
 
-a0t30 a0_poolseg(a0t30 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
-  const a0t20 *const n0 = &p0.f0; (void)n0;
+a0t33 a0_poolseg(a0t33 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+  const a0t23 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = a0_add(p1, p5); (void)n2;
   uint32_t n3 = a0_mul(n2, 128u); (void)n3;
@@ -1760,30 +2150,30 @@ a0t30 a0_poolseg(a0t30 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4, uint3
   uint32_t n7 = a0_add(p3, n3); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p2.e[n8 % 128u]; (void)n10;
+  a0t5 n10 = a0_srcpg(p2, n8); (void)n10;
   uint32_t n11 = a0_add(n8, 1u); (void)n11;
-  const a0t4 *const n12 = &p2.e[n11 % 128u]; (void)n12;
+  a0t5 n12 = a0_srcpg(p2, n11); (void)n12;
   uint32_t n13 = a0_shr(n1, 7u); (void)n13;
   uint32_t n14 = a0_and(n1, 127u); (void)n14;
   uint32_t n15 = a0_add(n13, 1u); (void)n15;
-  const a0t4 *const n16 = &(*n0).e[n13 % 129u]; (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n15 % 129u]; (void)n17;
-  a0t26 n18; n18.e[0] = (*n16); n18.e[1] = (*n17); (void)n18;
-  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_pcopyb(&n18, a0i, (*n10), (*n12), n9, n14); }
-  const a0t4 *const n20 = &n18.e[0u % 2u]; (void)n20;
-  const a0t4 *const n21 = &n18.e[1u % 2u]; (void)n21;
-  a0t20 n22 = (*n0); n22.e[n13 % 129u] = (*n20); (void)n22;
-  bool n23 = a0_lt(n15, 129u); (void)n23;
-  const a0t4 *const n24 = &n22.e[n15 % 129u]; (void)n24;
-  a0t4 n25 = (n23 ? (*n21) : (*n24)); (void)n25;
-  n22.e[n15 % 129u] = n25;
+  const a0t5 *const n16 = &(*n0).e[n13 % 400u]; (void)n16;
+  const a0t5 *const n17 = &(*n0).e[n15 % 400u]; (void)n17;
+  a0t29 n18; n18.e[0] = (*n16); n18.e[1] = (*n17); (void)n18;
+  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_pcopyb(&n18, a0i, n10, n12, n9, n14); }
+  const a0t5 *const n20 = &n18.e[0u % 2u]; (void)n20;
+  const a0t5 *const n21 = &n18.e[1u % 2u]; (void)n21;
+  a0t23 n22 = (*n0); n22.e[n13 % 400u] = (*n20); (void)n22;
+  bool n23 = a0_lt(n15, 400u); (void)n23;
+  const a0t5 *const n24 = &n22.e[n15 % 400u]; (void)n24;
+  a0t5 n25 = (n23 ? (*n21) : (*n24)); (void)n25;
+  n22.e[n15 % 400u] = n25;
   uint32_t n27 = a0_add(n1, n6); (void)n27;
-  a0t30 n28; n28.f0 = n22; n28.f1 = n27; (void)n28;
+  a0t33 n28; n28.f0 = n22; n28.f1 = n27; (void)n28;
   return n28;
 }
 
-static inline void a0o_poolseg(a0t30 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
-  const a0t20 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_poolseg(a0t33 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+  const a0t23 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = a0_add(p1, p5); (void)n2;
   uint32_t n3 = a0_mul(n2, 128u); (void)n3;
@@ -1793,30 +2183,30 @@ static inline void a0o_poolseg(a0t30 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uin
   uint32_t n7 = a0_add(p3, n3); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p2.e[n8 % 128u]; (void)n10;
+  a0t5 n10 = a0_srcpg(p2, n8); (void)n10;
   uint32_t n11 = a0_add(n8, 1u); (void)n11;
-  const a0t4 *const n12 = &p2.e[n11 % 128u]; (void)n12;
+  a0t5 n12 = a0_srcpg(p2, n11); (void)n12;
   uint32_t n13 = a0_shr(n1, 7u); (void)n13;
   uint32_t n14 = a0_and(n1, 127u); (void)n14;
   uint32_t n15 = a0_add(n13, 1u); (void)n15;
-  const a0t4 *const n16 = &(*n0).e[n13 % 129u]; (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n15 % 129u]; (void)n17;
-  a0t26 n18; n18.e[0] = (*n16); n18.e[1] = (*n17); (void)n18;
-  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_pcopyb(&n18, a0i, (*n10), (*n12), n9, n14); }
-  const a0t4 *const n20 = &n18.e[0u % 2u]; (void)n20;
-  const a0t4 *const n21 = &n18.e[1u % 2u]; (void)n21;
-  a0t20 n22 = (*n0); n22.e[n13 % 129u] = (*n20); (void)n22;
-  bool n23 = a0_lt(n15, 129u); (void)n23;
-  const a0t4 *const n24 = &n22.e[n15 % 129u]; (void)n24;
-  a0t4 n25 = (n23 ? (*n21) : (*n24)); (void)n25;
-  n22.e[n15 % 129u] = n25;
+  const a0t5 *const n16 = &(*n0).e[n13 % 400u]; (void)n16;
+  const a0t5 *const n17 = &(*n0).e[n15 % 400u]; (void)n17;
+  a0t29 n18; n18.e[0] = (*n16); n18.e[1] = (*n17); (void)n18;
+  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_pcopyb(&n18, a0i, n10, n12, n9, n14); }
+  const a0t5 *const n20 = &n18.e[0u % 2u]; (void)n20;
+  const a0t5 *const n21 = &n18.e[1u % 2u]; (void)n21;
+  a0t23 n22 = (*n0); n22.e[n13 % 400u] = (*n20); (void)n22;
+  bool n23 = a0_lt(n15, 400u); (void)n23;
+  const a0t5 *const n24 = &n22.e[n15 % 400u]; (void)n24;
+  a0t5 n25 = (n23 ? (*n21) : (*n24)); (void)n25;
+  n22.e[n15 % 400u] = n25;
   uint32_t n27 = a0_add(n1, n6); (void)n27;
-  a0t30 n28; n28.f0 = n22; n28.f1 = n27; (void)n28;
+  a0t33 n28; n28.f0 = n22; n28.f1 = n27; (void)n28;
   *p0 = n28;
 }
 
-a0t30 a0_poolsym(a0t30 p0, uint32_t p1, a0t9 p2, uint32_t p3, a0t4 p4) {
-  const a0t20 *const n0 = &p0.f0; (void)n0;
+a0t33 a0_poolsym(a0t33 p0, uint32_t p1, a0t4 p2, uint32_t p3, a0t5 p4) {
+  const a0t23 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = a0_add(p3, p1); (void)n2;
   uint32_t n3 = a0_and(n2, 127u); (void)n3;
@@ -1827,25 +2217,25 @@ a0t30 a0_poolsym(a0t30 p0, uint32_t p1, a0t9 p2, uint32_t p3, a0t4 p4) {
   uint32_t n8 = (n7 ? 128u : n6); (void)n8;
   uint32_t n9 = a0_shr(n5, 7u); (void)n9;
   uint32_t n10 = a0_and(n5, 127u); (void)n10;
-  const a0t4 *const n11 = &p2.e[n9 % 128u]; (void)n11;
+  a0t5 n11 = a0_srcpg(p2, n9); (void)n11;
   uint32_t n12 = a0_add(n9, 1u); (void)n12;
-  const a0t4 *const n13 = &p2.e[n12 % 128u]; (void)n13;
+  a0t5 n13 = a0_srcpg(p2, n12); (void)n13;
   uint32_t n14 = a0_shr(n1, 7u); (void)n14;
   uint32_t n15 = a0_and(n1, 127u); (void)n15;
   uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n14 % 129u]; (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 129u]; (void)n18;
-  a0t26 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
-  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_pcopyb(&n19, a0i, (*n11), (*n13), n10, n15); }
-  const a0t4 *const n21 = &n19.e[0u % 2u]; (void)n21;
-  const a0t4 *const n22 = &n19.e[1u % 2u]; (void)n22;
-  a0t20 n23 = (*n0); n23.e[n14 % 129u] = (*n21); (void)n23;
-  bool n24 = a0_lt(n16, 129u); (void)n24;
-  const a0t4 *const n25 = &n23.e[n16 % 129u]; (void)n25;
-  a0t4 n26 = (n24 ? (*n22) : (*n25)); (void)n26;
-  n23.e[n16 % 129u] = n26;
+  const a0t5 *const n17 = &(*n0).e[n14 % 400u]; (void)n17;
+  const a0t5 *const n18 = &(*n0).e[n16 % 400u]; (void)n18;
+  a0t29 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
+  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_pcopyb(&n19, a0i, n11, n13, n10, n15); }
+  const a0t5 *const n21 = &n19.e[0u % 2u]; (void)n21;
+  const a0t5 *const n22 = &n19.e[1u % 2u]; (void)n22;
+  a0t23 n23 = (*n0); n23.e[n14 % 400u] = (*n21); (void)n23;
+  bool n24 = a0_lt(n16, 400u); (void)n24;
+  const a0t5 *const n25 = &n23.e[n16 % 400u]; (void)n25;
+  a0t5 n26 = (n24 ? (*n22) : (*n25)); (void)n26;
+  n23.e[n16 % 400u] = n26;
   uint32_t n28 = a0_add(n1, n8); (void)n28;
-  a0t30 n29; n29.f0 = n23; n29.f1 = n28; (void)n29;
+  a0t33 n29; n29.f0 = n23; n29.f1 = n28; (void)n29;
   uint32_t n30 = a0_add(n6, 127u); (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
   uint32_t n32 = a0_sub(n31, 1u); (void)n32;
@@ -1854,8 +2244,8 @@ a0t30 a0_poolsym(a0t30 p0, uint32_t p1, a0t9 p2, uint32_t p3, a0t4 p4) {
   return n29;
 }
 
-static inline void a0o_poolsym(a0t30 *p0, uint32_t p1, a0t9 p2, uint32_t p3, a0t4 p4) {
-  const a0t20 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_poolsym(a0t33 *p0, uint32_t p1, a0t4 p2, uint32_t p3, a0t5 p4) {
+  const a0t23 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = a0_add(p3, p1); (void)n2;
   uint32_t n3 = a0_and(n2, 127u); (void)n3;
@@ -1866,25 +2256,25 @@ static inline void a0o_poolsym(a0t30 *p0, uint32_t p1, a0t9 p2, uint32_t p3, a0t
   uint32_t n8 = (n7 ? 128u : n6); (void)n8;
   uint32_t n9 = a0_shr(n5, 7u); (void)n9;
   uint32_t n10 = a0_and(n5, 127u); (void)n10;
-  const a0t4 *const n11 = &p2.e[n9 % 128u]; (void)n11;
+  a0t5 n11 = a0_srcpg(p2, n9); (void)n11;
   uint32_t n12 = a0_add(n9, 1u); (void)n12;
-  const a0t4 *const n13 = &p2.e[n12 % 128u]; (void)n13;
+  a0t5 n13 = a0_srcpg(p2, n12); (void)n13;
   uint32_t n14 = a0_shr(n1, 7u); (void)n14;
   uint32_t n15 = a0_and(n1, 127u); (void)n15;
   uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n14 % 129u]; (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 129u]; (void)n18;
-  a0t26 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
-  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_pcopyb(&n19, a0i, (*n11), (*n13), n10, n15); }
-  const a0t4 *const n21 = &n19.e[0u % 2u]; (void)n21;
-  const a0t4 *const n22 = &n19.e[1u % 2u]; (void)n22;
-  a0t20 n23 = (*n0); n23.e[n14 % 129u] = (*n21); (void)n23;
-  bool n24 = a0_lt(n16, 129u); (void)n24;
-  const a0t4 *const n25 = &n23.e[n16 % 129u]; (void)n25;
-  a0t4 n26 = (n24 ? (*n22) : (*n25)); (void)n26;
-  n23.e[n16 % 129u] = n26;
+  const a0t5 *const n17 = &(*n0).e[n14 % 400u]; (void)n17;
+  const a0t5 *const n18 = &(*n0).e[n16 % 400u]; (void)n18;
+  a0t29 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
+  for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_pcopyb(&n19, a0i, n11, n13, n10, n15); }
+  const a0t5 *const n21 = &n19.e[0u % 2u]; (void)n21;
+  const a0t5 *const n22 = &n19.e[1u % 2u]; (void)n22;
+  a0t23 n23 = (*n0); n23.e[n14 % 400u] = (*n21); (void)n23;
+  bool n24 = a0_lt(n16, 400u); (void)n24;
+  const a0t5 *const n25 = &n23.e[n16 % 400u]; (void)n25;
+  a0t5 n26 = (n24 ? (*n22) : (*n25)); (void)n26;
+  n23.e[n16 % 400u] = n26;
   uint32_t n28 = a0_add(n1, n8); (void)n28;
-  a0t30 n29; n29.f0 = n23; n29.f1 = n28; (void)n29;
+  a0t33 n29; n29.f0 = n23; n29.f1 = n28; (void)n29;
   uint32_t n30 = a0_add(n6, 127u); (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
   uint32_t n32 = a0_sub(n31, 1u); (void)n32;
@@ -1893,8 +2283,8 @@ static inline void a0o_poolsym(a0t30 *p0, uint32_t p1, a0t9 p2, uint32_t p3, a0t
   *p0 = n29;
 }
 
-a0t30 a0_poolpage(a0t30 p0, uint32_t p1, a0t9 p2, a0t18 p3, uint32_t p4) {
-  const a0t4 *const n0 = &p3.e[p1 % 64u]; (void)n0;
+a0t33 a0_poolpage(a0t33 p0, uint32_t p1, a0t4 p2, a0t21 p3, uint32_t p4) {
+  const a0t5 *const n0 = &p3.e[p1 % 64u]; (void)n0;
   uint32_t n1 = a0_mul(p1, 128u); (void)n1;
   bool n2 = a0_eq(p1, 0u); (void)n2;
   uint32_t n3 = (n2 ? 1u : n1); (void)n3;
@@ -1907,8 +2297,8 @@ a0t30 a0_poolpage(a0t30 p0, uint32_t p1, a0t9 p2, a0t18 p3, uint32_t p4) {
   return p0;
 }
 
-static inline void a0o_poolpage(a0t30 *p0, uint32_t p1, a0t9 p2, a0t18 p3, uint32_t p4) {
-  const a0t4 *const n0 = &p3.e[p1 % 64u]; (void)n0;
+static inline void a0o_poolpage(a0t33 *p0, uint32_t p1, a0t4 p2, a0t21 p3, uint32_t p4) {
+  const a0t5 *const n0 = &p3.e[p1 % 64u]; (void)n0;
   uint32_t n1 = a0_mul(p1, 128u); (void)n1;
   bool n2 = a0_eq(p1, 0u); (void)n2;
   uint32_t n3 = (n2 ? 1u : n1); (void)n3;
@@ -1920,24 +2310,24 @@ static inline void a0o_poolpage(a0t30 *p0, uint32_t p1, a0t9 p2, a0t18 p3, uint3
   for (uint32_t a0i = 0; a0i < n8; a0i++) { a0o_poolsym(&(*p0), a0i, p2, n3, (*n0)); }
 }
 
-a0t30 a0_pass2(a0t9 p0, a0t18 p1, uint32_t p2) {
-  a0t20 n0 = a0_z129(); (void)n0;
-  a0t4 n1 = a0_zpage(); (void)n1;
-  a0t4 n2 = n1; n2.e[0u % 128u] = 114u; (void)n2;
+a0t33 a0_pass2(a0t4 p0, a0t21 p1, uint32_t p2) {
+  a0t23 n0 = a0_z400(); (void)n0;
+  a0t5 n1 = a0_zpage(); (void)n1;
+  a0t5 n2 = n1; n2.e[0u % 128u] = 114u; (void)n2;
   n2.e[1u % 128u] = 101u;
   n2.e[2u % 128u] = 116u;
   n2.e[3u % 128u] = 118u;
   n2.e[4u % 128u] = 97u;
   n2.e[5u % 128u] = 108u;
-  a0t20 n8 = n0; n8.e[0u % 129u] = n2; (void)n8;
-  a0t30 n9; n9.f0 = n8; n9.f1 = 6u; (void)n9;
+  a0t23 n8 = n0; n8.e[0u % 400u] = n2; (void)n8;
+  a0t33 n9; n9.f0 = n8; n9.f1 = 6u; (void)n9;
   uint32_t n10 = a0_add(p2, 127u); (void)n10;
   uint32_t n11 = a0_shr(n10, 7u); (void)n11;
   for (uint32_t a0i = 0; a0i < n11; a0i++) { a0o_poolpage(&n9, a0i, p0, p1, p2); }
   return n9;
 }
 
-uint32_t a0_farst(uint32_t p0, uint32_t p1, a0t22 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+uint32_t a0_farst(uint32_t p0, uint32_t p1, a0t25 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_mul(p1, 3u); (void)n1;
   uint32_t n2 = p2.e[n1 % 384u]; (void)n2;
@@ -1956,8 +2346,8 @@ uint32_t a0_farst(uint32_t p0, uint32_t p1, a0t22 p2, uint32_t p3, uint32_t p4, 
   return n14;
 }
 
-uint32_t a0_farpage(uint32_t p0, uint32_t p1, a0t23 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
-  const a0t22 *const n0 = &p2.e[p1 % 65u]; (void)n0;
+uint32_t a0_farpage(uint32_t p0, uint32_t p1, a0t26 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+  const a0t25 *const n0 = &p2.e[p1 % 65u]; (void)n0;
   uint32_t n1 = a0_mul(p1, 128u); (void)n1;
   uint32_t n2 = a0_sub(p3, n1); (void)n2;
   bool n3 = a0_gt(n2, 128u); (void)n3;
@@ -1966,8 +2356,8 @@ uint32_t a0_farpage(uint32_t p0, uint32_t p1, a0t23 p2, uint32_t p3, uint32_t p4
   return n5;
 }
 
-a0t32 a0_internarr(a0t31 p0, uint32_t p1, uint32_t p2) {
-  const a0t23 *const n0 = &p0.f0; (void)n0;
+a0t35 a0_internarr(a0t34 p0, uint32_t p1, uint32_t p2) {
+  const a0t26 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = a0_add(n1, 127u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
@@ -1976,7 +2366,7 @@ a0t32 a0_internarr(a0t31 p0, uint32_t p1, uint32_t p2) {
   uint32_t n6 = a0_shr(n1, 7u); (void)n6;
   uint32_t n7 = a0_and(n1, 127u); (void)n7;
   uint32_t n8 = a0_mul(n7, 3u); (void)n8;
-  const a0t22 *const n9 = &(*n0).e[n6 % 65u]; (void)n9;
+  const a0t25 *const n9 = &(*n0).e[n6 % 65u]; (void)n9;
   uint32_t n10 = (*n9).e[n8 % 384u]; (void)n10;
   uint32_t n11 = a0_add(n8, 1u); (void)n11;
   uint32_t n12 = (*n9).e[n11 % 384u]; (void)n12;
@@ -1985,19 +2375,19 @@ a0t32 a0_internarr(a0t31 p0, uint32_t p1, uint32_t p2) {
   uint32_t n15 = (n5 ? 4u : n10); (void)n15;
   uint32_t n16 = (n5 ? p1 : n12); (void)n16;
   uint32_t n17 = (n5 ? p2 : n14); (void)n17;
-  a0t22 n18 = (*n9); n18.e[n8 % 384u] = n15; (void)n18;
+  a0t25 n18 = (*n9); n18.e[n8 % 384u] = n15; (void)n18;
   n18.e[n11 % 384u] = n16;
   n18.e[n13 % 384u] = n17;
-  a0t23 n21 = (*n0); n21.e[n6 % 65u] = n18; (void)n21;
+  a0t26 n21 = (*n0); n21.e[n6 % 65u] = n18; (void)n21;
   uint32_t n22 = a0_add(n1, 1u); (void)n22;
   uint32_t n23 = (n5 ? n22 : n1); (void)n23;
   uint32_t n24 = (n5 ? n1 : n4); (void)n24;
-  a0t32 n25; n25.f0 = n21; n25.f1 = n23; n25.f2 = n24; (void)n25;
+  a0t35 n25; n25.f0 = n21; n25.f1 = n23; n25.f2 = n24; (void)n25;
   return n25;
 }
 
-a0t34 a0_grpb(a0t34 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4) {
-  const a0t33 *const n0 = &p0.f0; (void)n0;
+a0t37 a0_grpb(a0t37 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4) {
+  const a0t36 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   bool n3 = p0.f3; (void)n3;
@@ -2022,19 +2412,19 @@ a0t34 a0_grpb(a0t34 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4) {
   bool n22 = (n21 ? false : true); (void)n22;
   bool n23 = (n13 ? n20 : n4); (void)n23;
   bool n24 = (n22 ? false : n23); (void)n24;
-  a0t33 n25 = (*n0); n25.e[n1 % 64u] = n2; (void)n25;
-  a0t33 n26 = (n13 ? n25 : (*n0)); (void)n26;
+  a0t36 n25 = (*n0); n25.e[n1 % 64u] = n2; (void)n25;
+  a0t36 n26 = (n13 ? n25 : (*n0)); (void)n26;
   uint32_t n27 = a0_add(n1, 1u); (void)n27;
   uint32_t n28 = (n13 ? n27 : n1); (void)n28;
   uint32_t n29 = (n13 ? 0u : n17); (void)n29;
   bool n30 = (n12 ? true : n3); (void)n30;
   bool n31 = (n13 ? false : n30); (void)n31;
-  a0t34 n32; n32.f0 = n26; n32.f1 = n28; n32.f2 = n29; n32.f3 = n31; n32.f4 = n24; (void)n32;
+  a0t37 n32; n32.f0 = n26; n32.f1 = n28; n32.f2 = n29; n32.f3 = n31; n32.f4 = n24; (void)n32;
   return n32;
 }
 
-static inline void a0o_grpb(a0t34 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4) {
-  const a0t33 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_grpb(a0t37 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4) {
+  const a0t36 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   bool n3 = (*p0).f3; (void)n3;
@@ -2059,39 +2449,39 @@ static inline void a0o_grpb(a0t34 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   bool n22 = (n21 ? false : true); (void)n22;
   bool n23 = (n13 ? n20 : n4); (void)n23;
   bool n24 = (n22 ? false : n23); (void)n24;
-  a0t33 n25 = (*n0); n25.e[n1 % 64u] = n2; (void)n25;
-  a0t33 n26 = (n13 ? n25 : (*n0)); (void)n26;
+  a0t36 n25 = (*n0); n25.e[n1 % 64u] = n2; (void)n25;
+  a0t36 n26 = (n13 ? n25 : (*n0)); (void)n26;
   uint32_t n27 = a0_add(n1, 1u); (void)n27;
   uint32_t n28 = (n13 ? n27 : n1); (void)n28;
   uint32_t n29 = (n13 ? 0u : n17); (void)n29;
   bool n30 = (n12 ? true : n3); (void)n30;
   bool n31 = (n13 ? false : n30); (void)n31;
-  a0t34 n32; n32.f0 = n26; n32.f1 = n28; n32.f2 = n29; n32.f3 = n31; n32.f4 = n24; (void)n32;
+  a0t37 n32; n32.f0 = n26; n32.f1 = n28; n32.f2 = n29; n32.f3 = n31; n32.f4 = n24; (void)n32;
   *p0 = n32;
 }
 
-a0t32 a0_gstep(a0t32 p0, uint32_t p1, a0t33 p2) {
-  const a0t23 *const n0 = &p0.f0; (void)n0;
+a0t35 a0_gstep(a0t35 p0, uint32_t p1, a0t36 p2) {
+  const a0t26 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = p2.e[p1 % 64u]; (void)n3;
-  a0t31 n4; n4.f0 = (*n0); n4.f1 = n1; (void)n4;
-  a0t32 n5 = a0_internarr(n4, n3, n2); (void)n5;
+  a0t34 n4; n4.f0 = (*n0); n4.f1 = n1; (void)n4;
+  a0t35 n5 = a0_internarr(n4, n3, n2); (void)n5;
   return n5;
 }
 
-static inline void a0o_gstep(a0t32 *p0, uint32_t p1, a0t33 p2) {
-  const a0t23 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_gstep(a0t35 *p0, uint32_t p1, a0t36 p2) {
+  const a0t26 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = p2.e[p1 % 64u]; (void)n3;
-  a0t31 n4; n4.f0 = (*n0); n4.f1 = n1; (void)n4;
-  a0t32 n5 = a0_internarr(n4, n3, n2); (void)n5;
+  a0t34 n4; n4.f0 = (*n0); n4.f1 = n1; (void)n4;
+  a0t35 n5 = a0_internarr(n4, n3, n2); (void)n5;
   *p0 = n5;
 }
 
-a0t35 a0_arrseg(a0t35 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t23 *const n0 = &p0.f0; (void)n0;
+a0t38 a0_arrseg(a0t38 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4) {
+  const a0t26 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = p0.f3; (void)n3;
@@ -2104,28 +2494,28 @@ a0t35 a0_arrseg(a0t35 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
   uint32_t n10 = a0_add(p3, n6); (void)n10;
   uint32_t n11 = a0_shr(n10, 7u); (void)n11;
   uint32_t n12 = a0_and(n10, 127u); (void)n12;
-  const a0t4 *const n13 = &p2.e[n11 % 128u]; (void)n13;
+  a0t5 n13 = a0_srcpg(p2, n11); (void)n13;
   uint32_t n14 = a0_add(n11, 1u); (void)n14;
-  const a0t4 *const n15 = &p2.e[n14 % 128u]; (void)n15;
-  a0t33 n16; for (uint32_t a0i = 0; a0i < 64u; a0i++) n16.e[a0i] = 0; (void)n16;
-  a0t34 n17; n17.f0 = n16; n17.f1 = 0u; n17.f2 = n3; n17.f3 = n4; n17.f4 = n5; (void)n17;
-  for (uint32_t a0i = 0; a0i < n9; a0i++) { a0o_grpb(&n17, a0i, (*n13), (*n15), n12); }
-  const a0t33 *const n19 = &n17.f0; (void)n19;
+  a0t5 n15 = a0_srcpg(p2, n14); (void)n15;
+  a0t36 n16; for (uint32_t a0i = 0; a0i < 64u; a0i++) n16.e[a0i] = 0; (void)n16;
+  a0t37 n17; n17.f0 = n16; n17.f1 = 0u; n17.f2 = n3; n17.f3 = n4; n17.f4 = n5; (void)n17;
+  for (uint32_t a0i = 0; a0i < n9; a0i++) { a0o_grpb(&n17, a0i, n13, n15, n12); }
+  const a0t36 *const n19 = &n17.f0; (void)n19;
   uint32_t n20 = n17.f1; (void)n20;
-  a0t32 n21; n21.f0 = (*n0); n21.f1 = n1; n21.f2 = n2; (void)n21;
+  a0t35 n21; n21.f0 = (*n0); n21.f1 = n1; n21.f2 = n2; (void)n21;
   for (uint32_t a0i = 0; a0i < n20; a0i++) { a0o_gstep(&n21, a0i, (*n19)); }
-  const a0t23 *const n23 = &n21.f0; (void)n23;
+  const a0t26 *const n23 = &n21.f0; (void)n23;
   uint32_t n24 = n21.f1; (void)n24;
   uint32_t n25 = n21.f2; (void)n25;
   uint32_t n26 = n17.f2; (void)n26;
   bool n27 = n17.f3; (void)n27;
   bool n28 = n17.f4; (void)n28;
-  a0t35 n29; n29.f0 = (*n23); n29.f1 = n24; n29.f2 = n25; n29.f3 = n26; n29.f4 = n27; n29.f5 = n28; (void)n29;
+  a0t38 n29; n29.f0 = (*n23); n29.f1 = n24; n29.f2 = n25; n29.f3 = n26; n29.f4 = n27; n29.f5 = n28; (void)n29;
   return n29;
 }
 
-static inline void a0o_arrseg(a0t35 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t23 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_arrseg(a0t38 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4) {
+  const a0t26 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = (*p0).f3; (void)n3;
@@ -2138,34 +2528,34 @@ static inline void a0o_arrseg(a0t35 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint
   uint32_t n10 = a0_add(p3, n6); (void)n10;
   uint32_t n11 = a0_shr(n10, 7u); (void)n11;
   uint32_t n12 = a0_and(n10, 127u); (void)n12;
-  const a0t4 *const n13 = &p2.e[n11 % 128u]; (void)n13;
+  a0t5 n13 = a0_srcpg(p2, n11); (void)n13;
   uint32_t n14 = a0_add(n11, 1u); (void)n14;
-  const a0t4 *const n15 = &p2.e[n14 % 128u]; (void)n15;
-  a0t33 n16; for (uint32_t a0i = 0; a0i < 64u; a0i++) n16.e[a0i] = 0; (void)n16;
-  a0t34 n17; n17.f0 = n16; n17.f1 = 0u; n17.f2 = n3; n17.f3 = n4; n17.f4 = n5; (void)n17;
-  for (uint32_t a0i = 0; a0i < n9; a0i++) { a0o_grpb(&n17, a0i, (*n13), (*n15), n12); }
-  const a0t33 *const n19 = &n17.f0; (void)n19;
+  a0t5 n15 = a0_srcpg(p2, n14); (void)n15;
+  a0t36 n16; for (uint32_t a0i = 0; a0i < 64u; a0i++) n16.e[a0i] = 0; (void)n16;
+  a0t37 n17; n17.f0 = n16; n17.f1 = 0u; n17.f2 = n3; n17.f3 = n4; n17.f4 = n5; (void)n17;
+  for (uint32_t a0i = 0; a0i < n9; a0i++) { a0o_grpb(&n17, a0i, n13, n15, n12); }
+  const a0t36 *const n19 = &n17.f0; (void)n19;
   uint32_t n20 = n17.f1; (void)n20;
-  a0t32 n21; n21.f0 = (*n0); n21.f1 = n1; n21.f2 = n2; (void)n21;
+  a0t35 n21; n21.f0 = (*n0); n21.f1 = n1; n21.f2 = n2; (void)n21;
   for (uint32_t a0i = 0; a0i < n20; a0i++) { a0o_gstep(&n21, a0i, (*n19)); }
-  const a0t23 *const n23 = &n21.f0; (void)n23;
+  const a0t26 *const n23 = &n21.f0; (void)n23;
   uint32_t n24 = n21.f1; (void)n24;
   uint32_t n25 = n21.f2; (void)n25;
   uint32_t n26 = n17.f2; (void)n26;
   bool n27 = n17.f3; (void)n27;
   bool n28 = n17.f4; (void)n28;
-  a0t35 n29; n29.f0 = (*n23); n29.f1 = n24; n29.f2 = n25; n29.f3 = n26; n29.f4 = n27; n29.f5 = n28; (void)n29;
+  a0t38 n29; n29.f0 = (*n23); n29.f1 = n24; n29.f2 = n25; n29.f3 = n26; n29.f4 = n27; n29.f5 = n28; (void)n29;
   *p0 = n29;
 }
 
-a0t36 a0_arrword(a0t23 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  uint32_t n0 = a0_add(p3, 4u); (void)n0;
-  uint32_t n1 = a0_sub(p4, 4u); (void)n1;
+a0t39 a0_arrword(a0t26 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+  uint32_t n0 = a0_add(p3, p5); (void)n0;
+  uint32_t n1 = a0_sub(p4, p5); (void)n1;
   uint32_t n2 = a0_add(n1, 127u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  a0t35 n4; n4.f0 = p0; n4.f1 = p1; n4.f2 = 0u; n4.f3 = 0u; n4.f4 = false; n4.f5 = true; (void)n4;
+  a0t38 n4; n4.f0 = p0; n4.f1 = p1; n4.f2 = p6; n4.f3 = 0u; n4.f4 = false; n4.f5 = true; (void)n4;
   for (uint32_t a0i = 0; a0i < n3; a0i++) { a0o_arrseg(&n4, a0i, p2, n0, n1); }
-  const a0t23 *const n6 = &n4.f0; (void)n6;
+  const a0t26 *const n6 = &n4.f0; (void)n6;
   uint32_t n7 = n4.f1; (void)n7;
   uint32_t n8 = n4.f2; (void)n8;
   uint32_t n9 = n4.f3; (void)n9;
@@ -2175,50 +2565,50 @@ a0t36 a0_arrword(a0t23 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
   bool n13 = (n10 && n12); (void)n13;
   bool n14 = (n11 && n13); (void)n14;
   uint32_t n15 = (n14 ? 1u : 0u); (void)n15;
-  a0t32 n16; n16.f0 = (*n6); n16.f1 = n7; n16.f2 = n8; (void)n16;
-  a0t33 n17; for (uint32_t a0i = 0; a0i < 64u; a0i++) n17.e[a0i] = 0; (void)n17;
+  a0t35 n16; n16.f0 = (*n6); n16.f1 = n7; n16.f2 = n8; (void)n16;
+  a0t36 n17; for (uint32_t a0i = 0; a0i < 64u; a0i++) n17.e[a0i] = 0; (void)n17;
   n17.e[0u % 64u] = n9;
   for (uint32_t a0i = 0; a0i < n15; a0i++) { a0o_gstep(&n16, a0i, n17); }
-  const a0t23 *const n20 = &n16.f0; (void)n20;
+  const a0t26 *const n20 = &n16.f0; (void)n20;
   uint32_t n21 = n16.f1; (void)n21;
   uint32_t n22 = n16.f2; (void)n22;
-  a0t36 n23; n23.f0 = (*n20); n23.f1 = n21; n23.f2 = n14; n23.f3 = n22; (void)n23;
+  a0t39 n23; n23.f0 = (*n20); n23.f1 = n21; n23.f2 = n14; n23.f3 = n22; (void)n23;
   return n23;
 }
 
-a0t25 a0_arrinfo(a0t25 p0, uint32_t p1, a0t23 p2, a0t9 p3, uint32_t p4, uint32_t p5) {
+a0t28 a0_arrinfo(a0t28 p0, uint32_t p1, a0t26 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
   uint32_t n0 = p0.f0; (void)n0;
-  a0t36 n1 = a0_arrword(p2, n0, p3, p4, p5); (void)n1;
+  a0t39 n1 = a0_arrword(p2, n0, p3, p4, p5, p6, p7); (void)n1;
   uint32_t n2 = n1.f1; (void)n2;
   bool n3 = n1.f2; (void)n3;
   uint32_t n4 = n1.f3; (void)n4;
-  a0t25 n5; n5.f0 = n2; n5.f1 = n3; n5.f2 = n4; (void)n5;
+  a0t28 n5; n5.f0 = n2; n5.f1 = n3; n5.f2 = n4; (void)n5;
   return n5;
 }
 
-static inline void a0o_arrinfo(a0t25 *p0, uint32_t p1, a0t23 p2, a0t9 p3, uint32_t p4, uint32_t p5) {
+static inline void a0o_arrinfo(a0t28 *p0, uint32_t p1, a0t26 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
   uint32_t n0 = (*p0).f0; (void)n0;
-  a0t36 n1 = a0_arrword(p2, n0, p3, p4, p5); (void)n1;
+  a0t39 n1 = a0_arrword(p2, n0, p3, p4, p5, p6, p7); (void)n1;
   uint32_t n2 = n1.f1; (void)n2;
   bool n3 = n1.f2; (void)n3;
   uint32_t n4 = n1.f3; (void)n4;
-  a0t25 n5; n5.f0 = n2; n5.f1 = n3; n5.f2 = n4; (void)n5;
+  a0t28 n5; n5.f0 = n2; n5.f1 = n3; n5.f2 = n4; (void)n5;
   *p0 = n5;
 }
 
-a0t23 a0_arrapply(a0t23 p0, uint32_t p1, uint32_t p2, a0t9 p3, uint32_t p4, uint32_t p5) {
-  a0t36 n0 = a0_arrword(p0, p2, p3, p4, p5); (void)n0;
-  const a0t23 *const n1 = &n0.f0; (void)n1;
+a0t26 a0_arrapply(a0t26 p0, uint32_t p1, uint32_t p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
+  a0t39 n0 = a0_arrword(p0, p2, p3, p4, p5, p6, p7); (void)n0;
+  const a0t26 *const n1 = &n0.f0; (void)n1;
   return (*n1);
 }
 
-static inline void a0o_arrapply(a0t23 *p0, uint32_t p1, uint32_t p2, a0t9 p3, uint32_t p4, uint32_t p5) {
-  a0t36 n0 = a0_arrword((*p0), p2, p3, p4, p5); (void)n0;
-  const a0t23 *const n1 = &n0.f0; (void)n1;
+static inline void a0o_arrapply(a0t26 *p0, uint32_t p1, uint32_t p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
+  a0t39 n0 = a0_arrword((*p0), p2, p3, p4, p5, p6, p7); (void)n0;
+  const a0t26 *const n1 = &n0.f0; (void)n1;
   *p0 = (*n1);
 }
 
-uint32_t a0_frst(uint32_t p0, uint32_t p1, a0t22 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
+uint32_t a0_frst(uint32_t p0, uint32_t p1, a0t25 p2, a0t5 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_mul(p1, 3u); (void)n1;
   uint32_t n2 = p2.e[n1 % 384u]; (void)n2;
@@ -2238,9 +2628,9 @@ uint32_t a0_frst(uint32_t p0, uint32_t p1, a0t22 p2, a0t4 p3, uint32_t p4, uint3
   return n15;
 }
 
-uint32_t a0_frpage(uint32_t p0, uint32_t p1, a0t23 p2, a0t19 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
-  const a0t22 *const n0 = &p2.e[p1 % 65u]; (void)n0;
-  const a0t4 *const n1 = &p3.e[p1 % 65u]; (void)n1;
+uint32_t a0_frpage(uint32_t p0, uint32_t p1, a0t26 p2, a0t22 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
+  const a0t25 *const n0 = &p2.e[p1 % 65u]; (void)n0;
+  const a0t5 *const n1 = &p3.e[p1 % 65u]; (void)n1;
   uint32_t n2 = a0_mul(p1, 128u); (void)n2;
   uint32_t n3 = a0_sub(p4, n2); (void)n3;
   bool n4 = a0_gt(n3, 128u); (void)n4;
@@ -2249,23 +2639,23 @@ uint32_t a0_frpage(uint32_t p0, uint32_t p1, a0t23 p2, a0t19 p3, uint32_t p4, ui
   return n6;
 }
 
-bool a0_fleq(bool p0, uint32_t p1, a0t19 p2, uint32_t p3, uint32_t p4) {
+bool a0_fleq(bool p0, uint32_t p1, a0t22 p2, uint32_t p3, uint32_t p4) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p2.e[n1 % 65u]; (void)n3;
+  const a0t5 *const n3 = &p2.e[n1 % 65u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   uint32_t n5 = a0_add(p4, p1); (void)n5;
   uint32_t n6 = a0_shr(n5, 7u); (void)n6;
   uint32_t n7 = a0_and(n5, 127u); (void)n7;
-  const a0t4 *const n8 = &p2.e[n6 % 65u]; (void)n8;
+  const a0t5 *const n8 = &p2.e[n6 % 65u]; (void)n8;
   uint32_t n9 = (*n8).e[n7 % 128u]; (void)n9;
   bool n10 = a0_eq(n4, n9); (void)n10;
   bool n11 = (p0 && n10); (void)n11;
   return n11;
 }
 
-a0t37 a0_rsstep(a0t37 p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
+a0t40 a0_rsstep(a0t40 p0, uint32_t p1, a0t26 p2, a0t22 p3, a0t22 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
   uint32_t n0 = p0.f0; (void)n0;
   uint32_t n1 = a0_add(p5, 127u); (void)n1;
   uint32_t n2 = a0_shr(n1, 7u); (void)n2;
@@ -2274,7 +2664,7 @@ a0t37 a0_rsstep(a0t37 p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5
   uint32_t n5 = a0_shr(n3, 7u); (void)n5;
   uint32_t n6 = a0_and(n3, 127u); (void)n6;
   uint32_t n7 = a0_mul(n6, 3u); (void)n7;
-  const a0t22 *const n8 = &p2.e[n5 % 65u]; (void)n8;
+  const a0t25 *const n8 = &p2.e[n5 % 65u]; (void)n8;
   uint32_t n9 = a0_add(n7, 1u); (void)n9;
   uint32_t n10 = (*n8).e[n9 % 384u]; (void)n10;
   uint32_t n11 = (n4 ? 0u : p7); (void)n11;
@@ -2284,11 +2674,11 @@ a0t37 a0_rsstep(a0t37 p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5
   bool n15 = (n4 || n14); (void)n15;
   uint32_t n16 = (n14 ? n3 : 4294967295u); (void)n16;
   uint32_t n17 = a0_add(n3, 1u); (void)n17;
-  a0t37 n18; n18.f0 = n17; n18.f1 = n16; n18.f2 = n15; (void)n18;
+  a0t40 n18; n18.f0 = n17; n18.f1 = n16; n18.f2 = n15; (void)n18;
   return n18;
 }
 
-static inline void a0o_rsstep(a0t37 *p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
+static inline void a0o_rsstep(a0t40 *p0, uint32_t p1, a0t26 p2, a0t22 p3, a0t22 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
   uint32_t n0 = (*p0).f0; (void)n0;
   uint32_t n1 = a0_add(p5, 127u); (void)n1;
   uint32_t n2 = a0_shr(n1, 7u); (void)n2;
@@ -2297,7 +2687,7 @@ static inline void a0o_rsstep(a0t37 *p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 
   uint32_t n5 = a0_shr(n3, 7u); (void)n5;
   uint32_t n6 = a0_and(n3, 127u); (void)n6;
   uint32_t n7 = a0_mul(n6, 3u); (void)n7;
-  const a0t22 *const n8 = &p2.e[n5 % 65u]; (void)n8;
+  const a0t25 *const n8 = &p2.e[n5 % 65u]; (void)n8;
   uint32_t n9 = a0_add(n7, 1u); (void)n9;
   uint32_t n10 = (*n8).e[n9 % 384u]; (void)n10;
   uint32_t n11 = (n4 ? 0u : p7); (void)n11;
@@ -2307,76 +2697,94 @@ static inline void a0o_rsstep(a0t37 *p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 
   bool n15 = (n4 || n14); (void)n15;
   uint32_t n16 = (n14 ? n3 : 4294967295u); (void)n16;
   uint32_t n17 = a0_add(n3, 1u); (void)n17;
-  a0t37 n18; n18.f0 = n17; n18.f1 = n16; n18.f2 = n15; (void)n18;
+  a0t40 n18; n18.f0 = n17; n18.f1 = n16; n18.f2 = n15; (void)n18;
   *p0 = n18;
 }
 
-bool a0_rsok(a0t37 p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
+bool a0_rsok(a0t40 p0, uint32_t p1, a0t26 p2, a0t22 p3, a0t22 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
   bool n0 = p0.f2; (void)n0;
   bool n1 = (n0 ? false : true); (void)n1;
   return n1;
 }
 
-static inline bool a0r_rsok(const a0t37 *p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
+static inline bool a0r_rsok(const a0t40 *p0, uint32_t p1, a0t26 p2, a0t22 p3, a0t22 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
   bool n0 = (*p0).f2; (void)n0;
   bool n1 = (n0 ? false : true); (void)n1;
   return n1;
 }
 
-uint32_t a0_recone(uint32_t p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t19 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
-  a0t37 n0; n0.f0 = 0u; n0.f1 = 4294967295u; n0.f2 = false; (void)n0;
+uint32_t a0_recone(uint32_t p0, uint32_t p1, a0t26 p2, a0t22 p3, a0t22 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
+  a0t40 n0; n0.f0 = 0u; n0.f1 = 4294967295u; n0.f2 = false; (void)n0;
   uint32_t n1 = a0_add(p5, 1u); (void)n1;
   for (uint32_t a0i = 0; a0i < n1; a0i++) { if (!a0r_rsok(&n0, a0i, p2, p3, p4, p5, p6, p7, p8)) break; a0o_rsstep(&n0, a0i, p2, p3, p4, p5, p6, p7, p8); }
   uint32_t n3 = n0.f1; (void)n3;
   return n3;
 }
 
-a0t38 a0_frcopy(a0t38 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t19 *const n0 = &p0.f0; (void)n0;
+a0t41 a0_frcopy(a0t41 p0, uint32_t p1, a0t11 p2, uint32_t p3, uint32_t p4, a0t22 p5) {
+  const a0t22 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
-  uint32_t n2 = a0_add(p3, p1); (void)n2;
-  uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  uint32_t n4 = a0_and(n2, 127u); (void)n4;
-  const a0t4 *const n5 = &p2.e[n3 % 128u]; (void)n5;
-  uint32_t n6 = (*n5).e[n4 % 128u]; (void)n6;
-  uint32_t n7 = a0_add(p4, p1); (void)n7;
-  uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &(*n0).e[n8 % 65u]; (void)n10;
-  a0t4 n11 = (*n10); n11.e[n9 % 128u] = n6; (void)n11;
-  a0t19 n12 = (*n0); n12.e[n8 % 65u] = n11; (void)n12;
-  uint32_t n13 = a0_xor(n1, n6); (void)n13;
-  uint32_t n14 = a0_mul(n13, 16777619u); (void)n14;
-  a0t38 n15; n15.f0 = n12; n15.f1 = n14; (void)n15;
-  return n15;
+  uint32_t n2 = p0.f2; (void)n2;
+  uint32_t n3 = a0_add(p3, p1); (void)n3;
+  uint32_t n4 = a0_shr(n3, 7u); (void)n4;
+  uint32_t n5 = a0_and(n3, 127u); (void)n5;
+  const a0t5 *const n6 = &p2.e[n4 % 128u]; (void)n6;
+  uint32_t n7 = (*n6).e[n5 % 128u]; (void)n7;
+  uint32_t n8 = a0_add(p4, p1); (void)n8;
+  uint32_t n9 = a0_shr(n8, 7u); (void)n9;
+  uint32_t n10 = a0_and(n8, 127u); (void)n10;
+  const a0t5 *const n11 = &(*n0).e[n9 % 65u]; (void)n11;
+  a0t5 n12 = (*n11); n12.e[n10 % 128u] = n7; (void)n12;
+  a0t22 n13 = (*n0); n13.e[n9 % 65u] = n12; (void)n13;
+  uint32_t n14 = a0_xor(n1, n7); (void)n14;
+  uint32_t n15 = a0_mul(n14, 16777619u); (void)n15;
+  uint32_t n16 = a0_shr(n7, 7u); (void)n16;
+  uint32_t n17 = a0_and(n7, 127u); (void)n17;
+  const a0t5 *const n18 = &p5.e[n16 % 65u]; (void)n18;
+  uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
+  uint32_t n20 = a0_shr(n19, 31u); (void)n20;
+  bool n21 = a0_eq(n7, 2u); (void)n21;
+  uint32_t n22 = (n21 ? 1u : n20); (void)n22;
+  uint32_t n23 = a0_or(n2, n22); (void)n23;
+  a0t41 n24; n24.f0 = n13; n24.f1 = n15; n24.f2 = n23; (void)n24;
+  return n24;
 }
 
-static inline void a0o_frcopy(a0t38 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t19 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_frcopy(a0t41 *p0, uint32_t p1, a0t11 p2, uint32_t p3, uint32_t p4, a0t22 p5) {
+  const a0t22 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
-  uint32_t n2 = a0_add(p3, p1); (void)n2;
-  uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  uint32_t n4 = a0_and(n2, 127u); (void)n4;
-  const a0t4 *const n5 = &p2.e[n3 % 128u]; (void)n5;
-  uint32_t n6 = (*n5).e[n4 % 128u]; (void)n6;
-  uint32_t n7 = a0_add(p4, p1); (void)n7;
-  uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &(*n0).e[n8 % 65u]; (void)n10;
-  a0t4 n11 = (*n10); n11.e[n9 % 128u] = n6; (void)n11;
-  a0t19 n12 = (*n0); n12.e[n8 % 65u] = n11; (void)n12;
-  uint32_t n13 = a0_xor(n1, n6); (void)n13;
-  uint32_t n14 = a0_mul(n13, 16777619u); (void)n14;
-  a0t38 n15; n15.f0 = n12; n15.f1 = n14; (void)n15;
-  *p0 = n15;
+  uint32_t n2 = (*p0).f2; (void)n2;
+  uint32_t n3 = a0_add(p3, p1); (void)n3;
+  uint32_t n4 = a0_shr(n3, 7u); (void)n4;
+  uint32_t n5 = a0_and(n3, 127u); (void)n5;
+  const a0t5 *const n6 = &p2.e[n4 % 128u]; (void)n6;
+  uint32_t n7 = (*n6).e[n5 % 128u]; (void)n7;
+  uint32_t n8 = a0_add(p4, p1); (void)n8;
+  uint32_t n9 = a0_shr(n8, 7u); (void)n9;
+  uint32_t n10 = a0_and(n8, 127u); (void)n10;
+  const a0t5 *const n11 = &(*n0).e[n9 % 65u]; (void)n11;
+  a0t5 n12 = (*n11); n12.e[n10 % 128u] = n7; (void)n12;
+  a0t22 n13 = (*n0); n13.e[n9 % 65u] = n12; (void)n13;
+  uint32_t n14 = a0_xor(n1, n7); (void)n14;
+  uint32_t n15 = a0_mul(n14, 16777619u); (void)n15;
+  uint32_t n16 = a0_shr(n7, 7u); (void)n16;
+  uint32_t n17 = a0_and(n7, 127u); (void)n17;
+  const a0t5 *const n18 = &p5.e[n16 % 65u]; (void)n18;
+  uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
+  uint32_t n20 = a0_shr(n19, 31u); (void)n20;
+  bool n21 = a0_eq(n7, 2u); (void)n21;
+  uint32_t n22 = (n21 ? 1u : n20); (void)n22;
+  uint32_t n23 = a0_or(n2, n22); (void)n23;
+  a0t41 n24; n24.f0 = n13; n24.f1 = n15; n24.f2 = n23; (void)n24;
+  *p0 = n24;
 }
 
-a0t39 a0_p3tok(a0t39 p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, uint32_t p6) {
-  const a0t23 *const n0 = &p0.f0; (void)n0;
-  const a0t19 *const n1 = &p0.f1; (void)n1;
-  const a0t19 *const n2 = &p0.f2; (void)n2;
-  const a0t9 *const n3 = &p0.f3; (void)n3;
-  const a0t16 *const n4 = &p0.f4; (void)n4;
+a0t42 a0_p3tok(a0t42 p0, uint32_t p1, a0t4 p2, a0t30 p3, a0t5 p4, uint32_t p5, uint32_t p6) {
+  const a0t26 *const n0 = &p0.f0; (void)n0;
+  const a0t22 *const n1 = &p0.f1; (void)n1;
+  const a0t22 *const n2 = &p0.f2; (void)n2;
+  const a0t11 *const n3 = &p0.f3; (void)n3;
+  const a0t19 *const n4 = &p0.f4; (void)n4;
   uint32_t n5 = p0.f5; (void)n5;
   uint32_t n6 = p0.f6; (void)n6;
   uint32_t n7 = p0.f7; (void)n7;
@@ -2392,265 +2800,315 @@ a0t39 a0_p3tok(a0t39 p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, u
   uint32_t n17 = p0.f17; (void)n17;
   uint32_t n18 = p0.f18; (void)n18;
   uint32_t n19 = p0.f19; (void)n19;
-  uint32_t n20 = a0_add(p5, p1); (void)n20;
-  uint32_t n21 = a0_add(p6, n20); (void)n21;
-  uint32_t n22 = a0_mul(n20, 3u); (void)n22;
-  uint32_t n23 = a0_shr(n22, 7u); (void)n23;
-  uint32_t n24 = a0_and(n22, 127u); (void)n24;
-  const a0t4 *const n25 = &p3.e[n23 % 3u]; (void)n25;
-  uint32_t n26 = (*n25).e[n24 % 128u]; (void)n26;
-  uint32_t n27 = a0_add(n22, 1u); (void)n27;
-  uint32_t n28 = a0_shr(n27, 7u); (void)n28;
-  uint32_t n29 = a0_and(n27, 127u); (void)n29;
-  const a0t4 *const n30 = &p3.e[n28 % 3u]; (void)n30;
-  uint32_t n31 = (*n30).e[n29 % 128u]; (void)n31;
-  uint32_t n32 = a0_add(n22, 2u); (void)n32;
-  uint32_t n33 = a0_shr(n32, 7u); (void)n33;
-  uint32_t n34 = a0_and(n32, 127u); (void)n34;
-  const a0t4 *const n35 = &p3.e[n33 % 3u]; (void)n35;
-  uint32_t n36 = (*n35).e[n34 % 128u]; (void)n36;
-  uint32_t n37 = p4.e[n20 % 128u]; (void)n37;
-  uint32_t n38 = a0_shr(n37, 19u); (void)n38;
-  uint32_t n39 = a0_shr(n37, 4u); (void)n39;
-  uint32_t n40 = a0_and(n39, 7u); (void)n40;
-  uint32_t n41 = a0_shr(n37, 14u); (void)n41;
-  uint32_t n42 = a0_and(n41, 3u); (void)n42;
-  uint32_t n43 = a0_shr(n37, 16u); (void)n43;
-  uint32_t n44 = a0_and(n43, 1u); (void)n44;
-  bool n45 = a0_eq(n44, 1u); (void)n45;
-  uint32_t n46 = a0_shr(n37, 17u); (void)n46;
-  uint32_t n47 = a0_and(n46, 3u); (void)n47;
-  bool n48 = a0_eq(n26, 1u); (void)n48;
-  bool n49 = a0_eq(n26, 4u); (void)n49;
-  bool n50 = a0_eq(n26, 5u); (void)n50;
-  bool n51 = a0_eq(n26, 9u); (void)n51;
-  bool n52 = a0_eq(n10, 0u); (void)n52;
-  bool n53 = a0_eq(n10, 1u); (void)n53;
-  bool n54 = a0_eq(n10, 2u); (void)n54;
-  bool n55 = a0_eq(n10, 3u); (void)n55;
-  bool n56 = (n53 || n54); (void)n56;
-  bool n57 = a0_eq(n9, 0u); (void)n57;
-  bool n58 = a0_eq(n11, 0u); (void)n58;
-  bool n59 = a0_eq(n40, 1u); (void)n59;
-  bool n60 = (n52 && n59); (void)n60;
-  bool n61 = a0_eq(n40, 4u); (void)n61;
-  bool n62 = a0_eq(n40, 0u); (void)n62;
-  bool n63 = (n62 || n61); (void)n63;
-  bool n64 = (n48 && n63); (void)n64;
-  bool n65 = (n55 && n64); (void)n65;
-  bool n66 = (n64 ? false : true); (void)n66;
-  bool n67 = (n55 && n66); (void)n67;
-  bool n68 = a0_eq(n42, 1u); (void)n68;
-  bool n69 = a0_eq(n42, 2u); (void)n69;
-  bool n70 = a0_eq(n42, 3u); (void)n70;
-  bool n71 = (n56 && n48); (void)n71;
-  bool n72 = (n71 && n45); (void)n72;
-  uint32_t n73 = (n72 ? 1u : 0u); (void)n73;
-  a0t25 n74; n74.f0 = n5; n74.f1 = false; n74.f2 = 0u; (void)n74;
-  for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrinfo(&n74, a0i, (*n0), p2, n31, n36); }
-  a0t23 n76 = (*n0); for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrapply(&n76, a0i, n5, p2, n31, n36); } (void)n76;
-  uint32_t n77 = n74.f0; (void)n77;
-  bool n78 = n74.f1; (void)n78;
-  bool n79 = (n72 && n78); (void)n79;
-  uint32_t n80 = n74.f2; (void)n80;
-  bool n81 = (n68 || n69); (void)n81;
-  bool n82 = (n81 || n70); (void)n82;
-  bool n83 = (n82 || n79); (void)n83;
-  uint32_t n84 = (n69 ? 1u : 0u); (void)n84;
-  uint32_t n85 = (n70 ? 2u : n84); (void)n85;
-  uint32_t n86 = (n79 ? n80 : n85); (void)n86;
-  bool n87 = (n71 && n83); (void)n87;
-  bool n88 = (n83 ? false : true); (void)n88;
-  bool n89 = (n71 && n88); (void)n89;
-  bool n90 = a0_eq(n47, 1u); (void)n90;
-  bool n91 = a0_eq(n47, 2u); (void)n91;
-  bool n92 = a0_eq(n47, 3u); (void)n92;
-  bool n93 = (n56 && n51); (void)n93;
-  bool n94 = (n93 && n90); (void)n94;
-  bool n95 = (n93 && n91); (void)n95;
-  bool n96 = (n93 && n92); (void)n96;
-  bool n97 = (n57 ? false : true); (void)n97;
-  bool n98 = (n96 && n97); (void)n98;
-  bool n99 = (n96 && n57); (void)n99;
-  bool n100 = (n95 && n57); (void)n100;
-  bool n101 = (n56 && n49); (void)n101;
-  bool n102 = (n53 && n57); (void)n102;
-  bool n103 = (n101 && n102); (void)n103;
-  bool n104 = (n102 ? false : true); (void)n104;
-  bool n105 = (n101 && n104); (void)n105;
-  bool n106 = (n56 && n50); (void)n106;
-  bool n107 = (n54 && n57); (void)n107;
-  bool n108 = a0_eq(n15, 1u); (void)n108;
-  bool n109 = (n107 && n108); (void)n109;
-  bool n110 = (n106 && n109); (void)n110;
-  bool n111 = (n109 ? false : true); (void)n111;
-  bool n112 = (n106 && n111); (void)n112;
-  bool n113 = (n90 || n91); (void)n113;
-  bool n114 = (n113 || n92); (void)n114;
-  bool n115 = (n51 && n114); (void)n115;
-  bool n116 = (n48 || n115); (void)n116;
-  bool n117 = (n116 || n49); (void)n117;
-  bool n118 = (n117 || n50); (void)n118;
-  bool n119 = (n118 ? false : true); (void)n119;
-  bool n120 = (n56 && n119); (void)n120;
-  uint32_t n121 = a0_add(n8, 1u); (void)n121;
-  bool n122 = a0_gt(n7, n8); (void)n122;
-  uint32_t n123 = a0_sub(n7, n121); (void)n123;
-  uint32_t n124 = (n122 ? n123 : 0u); (void)n124;
-  bool n125 = (n98 || n103); (void)n125;
-  uint32_t n126 = (n125 ? n124 : 0u); (void)n126;
-  a0t38 n127; n127.f0 = (*n2); n127.f1 = 0u; (void)n127;
-  for (uint32_t a0i = 0; a0i < n126; a0i++) { a0o_frcopy(&n127, a0i, (*n3), n121, n6); }
-  const a0t19 *const n129 = &n127.f0; (void)n129;
-  uint32_t n130 = n127.f1; (void)n130;
-  uint32_t n131 = a0_xor(n130, n126); (void)n131;
-  uint32_t n132 = a0_mul(n131, 16777619u); (void)n132;
-  uint32_t n133 = (n98 ? 1u : 0u); (void)n133;
-  uint32_t n134 = 4294967295u; for (uint32_t a0i = 0; a0i < n133; a0i++) { n134 = a0_recone(n134, a0i, n76, (*n1), (*n129), n77, n6, n126, n132); } (void)n134;
-  bool n135 = a0_ne(n134, 4294967295u); (void)n135;
-  bool n136 = (n135 ? false : true); (void)n136;
-  uint32_t n137 = (n135 ? n134 : n77); (void)n137;
-  bool n138 = (n98 && n136); (void)n138;
-  uint32_t n139 = (n98 ? n137 : n86); (void)n139;
-  bool n140 = (n87 || n98); (void)n140;
-  uint32_t n141 = a0_sub(n9, 1u); (void)n141;
-  uint32_t n142 = (n98 ? n141 : n9); (void)n142;
-  bool n143 = a0_eq(n142, 0u); (void)n143;
-  bool n144 = (n54 && n143); (void)n144;
-  bool n145 = (n140 && n144); (void)n145;
-  bool n146 = (n145 && n108); (void)n146;
-  bool n147 = (n144 ? false : true); (void)n147;
-  bool n148 = (n140 && n147); (void)n148;
-  uint32_t n149 = a0_shr(n8, 7u); (void)n149;
-  uint32_t n150 = a0_and(n8, 127u); (void)n150;
-  const a0t4 *const n151 = &(*n3).e[n149 % 128u]; (void)n151;
-  uint32_t n152 = (*n151).e[n150 % 128u]; (void)n152;
-  uint32_t n153 = a0_sub(n152, 2147483648u); (void)n153;
-  uint32_t n154 = (n98 ? n8 : n7); (void)n154;
-  uint32_t n155 = a0_add(2147483648u, n8); (void)n155;
-  uint32_t n156 = (n148 ? n154 : 0u); (void)n156;
-  uint32_t n157 = (n94 ? n7 : n156); (void)n157;
-  uint32_t n158 = (n148 ? n139 : 2147483648u); (void)n158;
-  uint32_t n159 = (n94 ? n155 : n158); (void)n159;
-  bool n160 = (n148 || n94); (void)n160;
-  bool n161 = (n160 || n65); (void)n161;
-  bool n162 = (n161 && n58); (void)n162;
-  uint32_t n163 = a0_shr(n157, 7u); (void)n163;
-  uint32_t n164 = a0_and(n157, 127u); (void)n164;
-  const a0t4 *const n165 = &(*n3).e[n163 % 128u]; (void)n165;
-  uint32_t n166 = (*n165).e[n164 % 128u]; (void)n166;
-  uint32_t n167 = (n162 ? n159 : n166); (void)n167;
-  a0t4 n168 = (*n165); n168.e[n164 % 128u] = n167; (void)n168;
-  a0t9 n169 = (*n3); n169.e[n163 % 128u] = n168; (void)n169;
-  uint32_t n170 = a0_add(n154, 1u); (void)n170;
-  uint32_t n171 = (n148 ? n170 : n154); (void)n171;
-  uint32_t n172 = a0_add(n7, 1u); (void)n172;
-  uint32_t n173 = (n94 ? n172 : n171); (void)n173;
-  uint32_t n174 = (n103 ? 0u : n173); (void)n174;
-  uint32_t n175 = (n65 ? 1u : n174); (void)n175;
-  uint32_t n176 = (n98 ? n153 : n8); (void)n176;
-  uint32_t n177 = (n94 ? n7 : n176); (void)n177;
-  uint32_t n178 = (n103 ? 0u : n177); (void)n178;
-  uint32_t n179 = (n65 ? 0u : n178); (void)n179;
-  uint32_t n180 = a0_add(n9, 1u); (void)n180;
-  uint32_t n181 = (n94 ? n180 : n142); (void)n181;
-  uint32_t n182 = (n65 ? 0u : n181); (void)n182;
-  bool n183 = (n138 || n103); (void)n183;
-  uint32_t n184 = a0_add(n6, n126); (void)n184;
-  uint32_t n185 = (n183 ? n184 : n6); (void)n185;
-  a0t19 n186 = (n183 ? (*n129) : (*n2)); (void)n186;
-  uint32_t n187 = a0_shr(n77, 7u); (void)n187;
-  uint32_t n188 = a0_and(n77, 127u); (void)n188;
-  uint32_t n189 = a0_mul(n188, 3u); (void)n189;
-  const a0t22 *const n190 = &n76.e[n187 % 65u]; (void)n190;
-  uint32_t n191 = (*n190).e[n189 % 384u]; (void)n191;
-  uint32_t n192 = a0_add(n189, 1u); (void)n192;
-  uint32_t n193 = (*n190).e[n192 % 384u]; (void)n193;
-  uint32_t n194 = a0_add(n189, 2u); (void)n194;
-  uint32_t n195 = (*n190).e[n194 % 384u]; (void)n195;
-  uint32_t n196 = (n138 ? 5u : n191); (void)n196;
-  uint32_t n197 = (n138 ? n6 : n193); (void)n197;
-  uint32_t n198 = (n138 ? n126 : n195); (void)n198;
-  a0t22 n199 = (*n190); n199.e[n189 % 384u] = n196; (void)n199;
-  n199.e[n192 % 384u] = n197;
-  n199.e[n194 % 384u] = n198;
-  a0t23 n202 = n76; n202.e[n187 % 65u] = n199; (void)n202;
-  const a0t4 *const n203 = &(*n1).e[n187 % 65u]; (void)n203;
-  uint32_t n204 = (*n203).e[n188 % 128u]; (void)n204;
-  uint32_t n205 = (n138 ? n132 : n204); (void)n205;
-  a0t4 n206 = (*n203); n206.e[n188 % 128u] = n205; (void)n206;
-  a0t19 n207 = (*n1); n207.e[n187 % 65u] = n206; (void)n207;
-  uint32_t n208 = a0_add(n77, 1u); (void)n208;
-  uint32_t n209 = (n138 ? n208 : n77); (void)n209;
-  uint32_t n210 = (n145 ? n139 : n14); (void)n210;
-  uint32_t n211 = (n145 ? 1u : n15); (void)n211;
-  uint32_t n212 = (n65 ? 0u : n211); (void)n212;
-  uint32_t n213 = (n103 ? n6 : n16); (void)n213;
-  uint32_t n214 = (n103 ? n126 : n17); (void)n214;
-  uint32_t n215 = (n65 ? n38 : n13); (void)n215;
-  uint32_t n216 = a0_mul(n19, 5u); (void)n216;
-  uint32_t n217 = a0_add(n216, 1u); (void)n217;
-  bool n218 = (n65 && n58); (void)n218;
-  bool n219 = (n110 && n58); (void)n219;
-  uint32_t n220 = a0_sub(n19, 1u); (void)n220;
-  uint32_t n221 = a0_mul(n220, 5u); (void)n221;
-  uint32_t n222 = a0_add(n221, 2u); (void)n222;
-  uint32_t n223 = a0_add(n221, 3u); (void)n223;
-  uint32_t n224 = a0_add(n221, 4u); (void)n224;
-  uint32_t n225 = (n218 ? n216 : n222); (void)n225;
-  uint32_t n226 = (n218 ? n21 : n17); (void)n226;
-  bool n227 = (n218 || n219); (void)n227;
-  uint32_t n228 = a0_shr(n225, 7u); (void)n228;
-  uint32_t n229 = a0_and(n225, 127u); (void)n229;
-  const a0t4 *const n230 = &(*n4).e[n228 % 33u]; (void)n230;
-  uint32_t n231 = (*n230).e[n229 % 128u]; (void)n231;
-  uint32_t n232 = (n227 ? n226 : n231); (void)n232;
-  a0t4 n233 = (*n230); n233.e[n229 % 128u] = n232; (void)n233;
-  a0t16 n234 = (*n4); n234.e[n228 % 33u] = n233; (void)n234;
-  uint32_t n235 = (n218 ? n217 : n223); (void)n235;
-  uint32_t n236 = (n218 ? n38 : n16); (void)n236;
-  uint32_t n237 = a0_shr(n235, 7u); (void)n237;
-  uint32_t n238 = a0_and(n235, 127u); (void)n238;
-  const a0t4 *const n239 = &n234.e[n237 % 33u]; (void)n239;
-  uint32_t n240 = (*n239).e[n238 % 128u]; (void)n240;
-  uint32_t n241 = (n227 ? n236 : n240); (void)n241;
-  a0t4 n242 = (*n239); n242.e[n238 % 128u] = n241; (void)n242;
-  n234.e[n237 % 33u] = n242;
-  uint32_t n244 = a0_shr(n224, 7u); (void)n244;
-  uint32_t n245 = a0_and(n224, 127u); (void)n245;
-  const a0t4 *const n246 = &n234.e[n244 % 33u]; (void)n246;
-  uint32_t n247 = (*n246).e[n245 % 128u]; (void)n247;
-  uint32_t n248 = (n219 ? n14 : n247); (void)n248;
-  a0t4 n249 = (*n246); n249.e[n245 % 128u] = n248; (void)n249;
-  n234.e[n244 % 33u] = n249;
-  uint32_t n251 = a0_add(n19, 1u); (void)n251;
-  uint32_t n252 = (n218 ? n251 : n19); (void)n252;
-  uint32_t n253 = a0_add(n18, 1u); (void)n253;
-  uint32_t n254 = (n219 ? n253 : n18); (void)n254;
-  uint32_t n255 = (n60 ? 3u : n10); (void)n255;
-  uint32_t n256 = (n65 ? 1u : n255); (void)n256;
-  uint32_t n257 = (n103 ? 2u : n256); (void)n257;
-  uint32_t n258 = (n110 ? 0u : n257); (void)n258;
-  bool n259 = (n67 || n89); (void)n259;
-  bool n260 = (n259 || n99); (void)n260;
-  bool n261 = (n260 || n100); (void)n261;
-  bool n262 = (n261 || n105); (void)n262;
-  bool n263 = (n262 || n112); (void)n263;
-  bool n264 = (n263 || n120); (void)n264;
-  bool n265 = (n264 || n146); (void)n265;
-  bool n266 = (n265 && n58); (void)n266;
-  uint32_t n267 = (n266 ? 1u : n11); (void)n267;
-  uint32_t n268 = (n266 ? n21 : n12); (void)n268;
-  a0t39 n269; n269.f0 = n202; n269.f1 = n207; n269.f2 = n186; n269.f3 = n169; n269.f4 = n234; n269.f5 = n209; n269.f6 = n185; n269.f7 = n175; n269.f8 = n179; n269.f9 = n182; n269.f10 = n258; n269.f11 = n267; n269.f12 = n268; n269.f13 = n215; n269.f14 = n210; n269.f15 = n212; n269.f16 = n213; n269.f17 = n214; n269.f18 = n254; n269.f19 = n252; (void)n269;
-  return n269;
+  uint32_t n20 = p0.f20; (void)n20;
+  uint32_t n21 = p0.f21; (void)n21;
+  uint32_t n22 = a0_add(p5, p1); (void)n22;
+  uint32_t n23 = a0_add(p6, n22); (void)n23;
+  uint32_t n24 = a0_mul(n22, 3u); (void)n24;
+  uint32_t n25 = a0_shr(n24, 7u); (void)n25;
+  uint32_t n26 = a0_and(n24, 127u); (void)n26;
+  const a0t5 *const n27 = &p3.e[n25 % 3u]; (void)n27;
+  uint32_t n28 = (*n27).e[n26 % 128u]; (void)n28;
+  uint32_t n29 = a0_add(n24, 1u); (void)n29;
+  uint32_t n30 = a0_shr(n29, 7u); (void)n30;
+  uint32_t n31 = a0_and(n29, 127u); (void)n31;
+  const a0t5 *const n32 = &p3.e[n30 % 3u]; (void)n32;
+  uint32_t n33 = (*n32).e[n31 % 128u]; (void)n33;
+  uint32_t n34 = a0_add(n24, 2u); (void)n34;
+  uint32_t n35 = a0_shr(n34, 7u); (void)n35;
+  uint32_t n36 = a0_and(n34, 127u); (void)n36;
+  const a0t5 *const n37 = &p3.e[n35 % 3u]; (void)n37;
+  uint32_t n38 = (*n37).e[n36 % 128u]; (void)n38;
+  uint32_t n39 = p4.e[n22 % 128u]; (void)n39;
+  uint32_t n40 = a0_shr(n39, 19u); (void)n40;
+  uint32_t n41 = a0_shr(n39, 4u); (void)n41;
+  uint32_t n42 = a0_and(n41, 7u); (void)n42;
+  uint32_t n43 = a0_shr(n39, 14u); (void)n43;
+  uint32_t n44 = a0_and(n43, 3u); (void)n44;
+  uint32_t n45 = a0_shr(n39, 16u); (void)n45;
+  uint32_t n46 = a0_and(n45, 1u); (void)n46;
+  bool n47 = a0_eq(n46, 1u); (void)n47;
+  uint32_t n48 = a0_shr(n39, 17u); (void)n48;
+  uint32_t n49 = a0_and(n48, 3u); (void)n49;
+  bool n50 = a0_eq(n28, 1u); (void)n50;
+  bool n51 = a0_eq(n28, 4u); (void)n51;
+  bool n52 = a0_eq(n28, 5u); (void)n52;
+  bool n53 = a0_eq(n28, 9u); (void)n53;
+  bool n54 = a0_eq(n10, 0u); (void)n54;
+  bool n55 = a0_eq(n10, 1u); (void)n55;
+  bool n56 = a0_eq(n10, 2u); (void)n56;
+  bool n57 = a0_eq(n10, 3u); (void)n57;
+  bool n58 = (n55 || n56); (void)n58;
+  bool n59 = a0_eq(n9, 0u); (void)n59;
+  bool n60 = a0_eq(n11, 0u); (void)n60;
+  bool n61 = a0_eq(n42, 1u); (void)n61;
+  bool n62 = (n54 && n61); (void)n62;
+  bool n63 = a0_eq(n42, 4u); (void)n63;
+  bool n64 = a0_eq(n42, 0u); (void)n64;
+  bool n65 = (n64 || n63); (void)n65;
+  bool n66 = (n50 && n65); (void)n66;
+  bool n67 = (n57 && n66); (void)n67;
+  bool n68 = (n66 ? false : true); (void)n68;
+  bool n69 = (n57 && n68); (void)n69;
+  bool n70 = (n47 ? false : true); (void)n70;
+  bool n71 = a0_eq(n44, 1u); (void)n71;
+  bool n72 = a0_eq(n44, 2u); (void)n72;
+  bool n73 = a0_eq(n44, 3u); (void)n73;
+  bool n74 = (n71 && n70); (void)n74;
+  bool n75 = (n72 && n70); (void)n75;
+  bool n76 = (n73 && n70); (void)n76;
+  bool n77 = (n73 && n47); (void)n77;
+  bool n78 = (n72 && n47); (void)n78;
+  bool n79 = (n58 && n50); (void)n79;
+  bool n80 = (n77 ? false : true); (void)n80;
+  bool n81 = (n79 && n47); (void)n81;
+  bool n82 = (n81 && n80); (void)n82;
+  bool n83 = a0_eq(n33, n20); (void)n83;
+  bool n84 = (n79 && n77); (void)n84;
+  bool n85 = (n84 && n83); (void)n85;
+  bool n86 = a0_eq(n21, 1u); (void)n86;
+  uint32_t n87 = a0_sub(n7, 1u); (void)n87;
+  uint32_t n88 = a0_shr(n87, 7u); (void)n88;
+  uint32_t n89 = a0_and(n87, 127u); (void)n89;
+  const a0t5 *const n90 = &(*n3).e[n88 % 128u]; (void)n90;
+  uint32_t n91 = (*n90).e[n89 % 128u]; (void)n91;
+  uint32_t n92 = (n86 ? n91 : n14); (void)n92;
+  uint32_t n93 = a0_shr(n92, 7u); (void)n93;
+  uint32_t n94 = a0_and(n92, 127u); (void)n94;
+  const a0t5 *const n95 = &(*n1).e[n93 % 65u]; (void)n95;
+  uint32_t n96 = (*n95).e[n94 % 128u]; (void)n96;
+  uint32_t n97 = a0_shr(n96, 31u); (void)n97;
+  bool n98 = a0_eq(n97, 0u); (void)n98;
+  bool n99 = (n82 || n85); (void)n99;
+  uint32_t n100 = (n99 ? 1u : 0u); (void)n100;
+  uint32_t n101 = (n78 ? 5u : 4u); (void)n101;
+  uint32_t n102 = (n85 ? 1u : n101); (void)n102;
+  uint32_t n103 = (n78 ? 1u : 0u); (void)n103;
+  uint32_t n104 = (n85 ? n92 : n103); (void)n104;
+  a0t28 n105; n105.f0 = n5; n105.f1 = false; n105.f2 = 0u; (void)n105;
+  for (uint32_t a0i = 0; a0i < n100; a0i++) { a0o_arrinfo(&n105, a0i, (*n0), p2, n33, n38, n102, n104); }
+  a0t26 n107 = (*n0); for (uint32_t a0i = 0; a0i < n100; a0i++) { a0o_arrapply(&n107, a0i, n5, p2, n33, n38, n102, n104); } (void)n107;
+  uint32_t n108 = n105.f0; (void)n108;
+  bool n109 = n105.f1; (void)n109;
+  bool n110 = (n82 && n109); (void)n110;
+  bool n111 = (n85 && n109); (void)n111;
+  bool n112 = (n111 && n98); (void)n112;
+  uint32_t n113 = n105.f2; (void)n113;
+  bool n114 = (n74 || n75); (void)n114;
+  bool n115 = (n114 || n76); (void)n115;
+  bool n116 = (n115 || n110); (void)n116;
+  bool n117 = (n116 || n112); (void)n117;
+  uint32_t n118 = (n75 ? 1u : 0u); (void)n118;
+  uint32_t n119 = (n76 ? 2u : n118); (void)n119;
+  uint32_t n120 = (n110 ? n113 : n119); (void)n120;
+  bool n121 = (n79 && n117); (void)n121;
+  bool n122 = (n121 && n80); (void)n122;
+  bool n123 = (n117 ? false : true); (void)n123;
+  bool n124 = (n79 && n123); (void)n124;
+  bool n125 = (n112 && n86); (void)n125;
+  bool n126 = a0_eq(n21, 2u); (void)n126;
+  bool n127 = (n112 && n126); (void)n127;
+  bool n128 = a0_eq(n49, 1u); (void)n128;
+  bool n129 = a0_eq(n49, 2u); (void)n129;
+  bool n130 = a0_eq(n49, 3u); (void)n130;
+  bool n131 = (n58 && n53); (void)n131;
+  bool n132 = (n131 && n128); (void)n132;
+  bool n133 = (n131 && n129); (void)n133;
+  bool n134 = (n131 && n130); (void)n134;
+  bool n135 = (n59 ? false : true); (void)n135;
+  bool n136 = (n134 && n135); (void)n136;
+  bool n137 = (n134 && n59); (void)n137;
+  bool n138 = (n133 && n59); (void)n138;
+  bool n139 = (n58 && n51); (void)n139;
+  bool n140 = (n55 && n59); (void)n140;
+  bool n141 = (n139 && n140); (void)n141;
+  bool n142 = (n140 ? false : true); (void)n142;
+  bool n143 = (n139 && n142); (void)n143;
+  bool n144 = (n58 && n52); (void)n144;
+  bool n145 = (n56 && n59); (void)n145;
+  bool n146 = a0_eq(n15, 1u); (void)n146;
+  bool n147 = (n145 && n146); (void)n147;
+  bool n148 = (n144 && n147); (void)n148;
+  bool n149 = (n147 ? false : true); (void)n149;
+  bool n150 = (n144 && n149); (void)n150;
+  bool n151 = (n128 || n129); (void)n151;
+  bool n152 = (n151 || n130); (void)n152;
+  bool n153 = (n53 && n152); (void)n153;
+  bool n154 = (n50 || n153); (void)n154;
+  bool n155 = (n154 || n51); (void)n155;
+  bool n156 = (n155 || n52); (void)n156;
+  bool n157 = (n156 ? false : true); (void)n157;
+  bool n158 = (n58 && n157); (void)n158;
+  uint32_t n159 = a0_add(n8, 1u); (void)n159;
+  bool n160 = a0_gt(n7, n8); (void)n160;
+  uint32_t n161 = a0_sub(n7, n159); (void)n161;
+  uint32_t n162 = (n160 ? n161 : 0u); (void)n162;
+  bool n163 = (n136 || n141); (void)n163;
+  uint32_t n164 = (n163 ? n162 : 0u); (void)n164;
+  a0t41 n165; n165.f0 = (*n2); n165.f1 = 0u; n165.f2 = 0u; (void)n165;
+  for (uint32_t a0i = 0; a0i < n164; a0i++) { a0o_frcopy(&n165, a0i, (*n3), n159, n6, (*n1)); }
+  const a0t22 *const n167 = &n165.f0; (void)n167;
+  uint32_t n168 = n165.f1; (void)n168;
+  uint32_t n169 = n165.f2; (void)n169;
+  uint32_t n170 = a0_xor(n168, n164); (void)n170;
+  uint32_t n171 = a0_mul(n170, 16777619u); (void)n171;
+  uint32_t n172 = a0_and(n171, 2147483647u); (void)n172;
+  uint32_t n173 = a0_mul(n169, 2147483648u); (void)n173;
+  uint32_t n174 = a0_or(n172, n173); (void)n174;
+  uint32_t n175 = (n136 ? 1u : 0u); (void)n175;
+  uint32_t n176 = 4294967295u; for (uint32_t a0i = 0; a0i < n175; a0i++) { n176 = a0_recone(n176, a0i, n107, (*n1), (*n167), n108, n6, n164, n174); } (void)n176;
+  bool n177 = a0_ne(n176, 4294967295u); (void)n177;
+  bool n178 = (n177 ? false : true); (void)n178;
+  uint32_t n179 = (n177 ? n176 : n108); (void)n179;
+  bool n180 = (n136 && n178); (void)n180;
+  uint32_t n181 = (n136 ? n179 : n120); (void)n181;
+  bool n182 = (n122 || n136); (void)n182;
+  uint32_t n183 = a0_sub(n9, 1u); (void)n183;
+  uint32_t n184 = (n136 ? n183 : n9); (void)n184;
+  bool n185 = a0_eq(n184, 0u); (void)n185;
+  bool n186 = (n56 && n185); (void)n186;
+  bool n187 = (n182 && n186); (void)n187;
+  bool n188 = (n187 && n146); (void)n188;
+  bool n189 = (n186 ? false : true); (void)n189;
+  bool n190 = (n182 && n189); (void)n190;
+  uint32_t n191 = a0_shr(n8, 7u); (void)n191;
+  uint32_t n192 = a0_and(n8, 127u); (void)n192;
+  const a0t5 *const n193 = &(*n3).e[n191 % 128u]; (void)n193;
+  uint32_t n194 = (*n193).e[n192 % 128u]; (void)n194;
+  uint32_t n195 = a0_sub(n194, 2147483648u); (void)n195;
+  uint32_t n196 = (n136 ? n8 : n7); (void)n196;
+  uint32_t n197 = a0_add(2147483648u, n8); (void)n197;
+  uint32_t n198 = (n190 ? n196 : 0u); (void)n198;
+  uint32_t n199 = (n132 ? n7 : n198); (void)n199;
+  uint32_t n200 = (n125 ? n87 : n199); (void)n200;
+  uint32_t n201 = (n190 ? n181 : 2147483648u); (void)n201;
+  uint32_t n202 = (n132 ? n197 : n201); (void)n202;
+  uint32_t n203 = (n125 ? n113 : n202); (void)n203;
+  bool n204 = (n190 || n132); (void)n204;
+  bool n205 = (n204 || n125); (void)n205;
+  bool n206 = (n205 || n67); (void)n206;
+  bool n207 = (n206 && n60); (void)n207;
+  uint32_t n208 = a0_shr(n200, 7u); (void)n208;
+  uint32_t n209 = a0_and(n200, 127u); (void)n209;
+  const a0t5 *const n210 = &(*n3).e[n208 % 128u]; (void)n210;
+  uint32_t n211 = (*n210).e[n209 % 128u]; (void)n211;
+  uint32_t n212 = (n207 ? n203 : n211); (void)n212;
+  a0t5 n213 = (*n210); n213.e[n209 % 128u] = n212; (void)n213;
+  a0t11 n214 = (*n3); n214.e[n208 % 128u] = n213; (void)n214;
+  uint32_t n215 = a0_add(n196, 1u); (void)n215;
+  uint32_t n216 = (n190 ? n215 : n196); (void)n216;
+  uint32_t n217 = a0_add(n7, 1u); (void)n217;
+  uint32_t n218 = (n132 ? n217 : n216); (void)n218;
+  uint32_t n219 = (n141 ? 0u : n218); (void)n219;
+  uint32_t n220 = (n67 ? 1u : n219); (void)n220;
+  uint32_t n221 = (n136 ? n195 : n8); (void)n221;
+  uint32_t n222 = (n132 ? n7 : n221); (void)n222;
+  uint32_t n223 = (n141 ? 0u : n222); (void)n223;
+  uint32_t n224 = (n67 ? 0u : n223); (void)n224;
+  uint32_t n225 = a0_add(n9, 1u); (void)n225;
+  uint32_t n226 = (n132 ? n225 : n184); (void)n226;
+  uint32_t n227 = (n67 ? 0u : n226); (void)n227;
+  bool n228 = (n180 || n141); (void)n228;
+  uint32_t n229 = a0_add(n6, n164); (void)n229;
+  uint32_t n230 = (n228 ? n229 : n6); (void)n230;
+  a0t22 n231 = (n228 ? (*n167) : (*n2)); (void)n231;
+  uint32_t n232 = a0_shr(n108, 7u); (void)n232;
+  uint32_t n233 = a0_and(n108, 127u); (void)n233;
+  uint32_t n234 = a0_mul(n233, 3u); (void)n234;
+  const a0t25 *const n235 = &n107.e[n232 % 65u]; (void)n235;
+  uint32_t n236 = (*n235).e[n234 % 384u]; (void)n236;
+  uint32_t n237 = a0_add(n234, 1u); (void)n237;
+  uint32_t n238 = (*n235).e[n237 % 384u]; (void)n238;
+  uint32_t n239 = a0_add(n234, 2u); (void)n239;
+  uint32_t n240 = (*n235).e[n239 % 384u]; (void)n240;
+  uint32_t n241 = (n180 ? 5u : n236); (void)n241;
+  uint32_t n242 = (n180 ? n6 : n238); (void)n242;
+  uint32_t n243 = (n180 ? n164 : n240); (void)n243;
+  a0t25 n244 = (*n235); n244.e[n234 % 384u] = n241; (void)n244;
+  n244.e[n237 % 384u] = n242;
+  n244.e[n239 % 384u] = n243;
+  a0t26 n247 = n107; n247.e[n232 % 65u] = n244; (void)n247;
+  const a0t5 *const n248 = &(*n1).e[n232 % 65u]; (void)n248;
+  uint32_t n249 = (*n248).e[n233 % 128u]; (void)n249;
+  uint32_t n250 = (n180 ? n174 : n249); (void)n250;
+  a0t5 n251 = (*n248); n251.e[n233 % 128u] = n250; (void)n251;
+  a0t22 n252 = (*n1); n252.e[n232 % 65u] = n251; (void)n252;
+  uint32_t n253 = a0_add(n108, 1u); (void)n253;
+  uint32_t n254 = (n180 ? n253 : n108); (void)n254;
+  uint32_t n255 = (n187 ? n181 : n14); (void)n255;
+  uint32_t n256 = (n127 ? n113 : n255); (void)n256;
+  uint32_t n257 = a0_add(n33, 1u); (void)n257;
+  uint32_t n258 = (n136 ? n257 : 4294967295u); (void)n258;
+  uint32_t n259 = (n187 ? 2u : 1u); (void)n259;
+  uint32_t n260 = (n136 ? n259 : 0u); (void)n260;
+  uint32_t n261 = (n187 ? 1u : n15); (void)n261;
+  uint32_t n262 = (n67 ? 0u : n261); (void)n262;
+  uint32_t n263 = (n141 ? n6 : n16); (void)n263;
+  uint32_t n264 = (n141 ? n164 : n17); (void)n264;
+  uint32_t n265 = (n67 ? n40 : n13); (void)n265;
+  uint32_t n266 = a0_mul(n19, 5u); (void)n266;
+  uint32_t n267 = a0_add(n266, 1u); (void)n267;
+  bool n268 = (n67 && n60); (void)n268;
+  bool n269 = (n148 && n60); (void)n269;
+  uint32_t n270 = a0_sub(n19, 1u); (void)n270;
+  uint32_t n271 = a0_mul(n270, 5u); (void)n271;
+  uint32_t n272 = a0_add(n271, 2u); (void)n272;
+  uint32_t n273 = a0_add(n271, 3u); (void)n273;
+  uint32_t n274 = a0_add(n271, 4u); (void)n274;
+  uint32_t n275 = (n268 ? n266 : n272); (void)n275;
+  uint32_t n276 = (n268 ? n23 : n17); (void)n276;
+  bool n277 = (n268 || n269); (void)n277;
+  uint32_t n278 = a0_shr(n275, 7u); (void)n278;
+  uint32_t n279 = a0_and(n275, 127u); (void)n279;
+  const a0t5 *const n280 = &(*n4).e[n278 % 33u]; (void)n280;
+  uint32_t n281 = (*n280).e[n279 % 128u]; (void)n281;
+  uint32_t n282 = (n277 ? n276 : n281); (void)n282;
+  a0t5 n283 = (*n280); n283.e[n279 % 128u] = n282; (void)n283;
+  a0t19 n284 = (*n4); n284.e[n278 % 33u] = n283; (void)n284;
+  uint32_t n285 = (n268 ? n267 : n273); (void)n285;
+  uint32_t n286 = (n268 ? n40 : n16); (void)n286;
+  uint32_t n287 = a0_shr(n285, 7u); (void)n287;
+  uint32_t n288 = a0_and(n285, 127u); (void)n288;
+  const a0t5 *const n289 = &n284.e[n287 % 33u]; (void)n289;
+  uint32_t n290 = (*n289).e[n288 % 128u]; (void)n290;
+  uint32_t n291 = (n277 ? n286 : n290); (void)n291;
+  a0t5 n292 = (*n289); n292.e[n288 % 128u] = n291; (void)n292;
+  n284.e[n287 % 33u] = n292;
+  uint32_t n294 = a0_shr(n274, 7u); (void)n294;
+  uint32_t n295 = a0_and(n274, 127u); (void)n295;
+  const a0t5 *const n296 = &n284.e[n294 % 33u]; (void)n296;
+  uint32_t n297 = (*n296).e[n295 % 128u]; (void)n297;
+  uint32_t n298 = (n269 ? n14 : n297); (void)n298;
+  a0t5 n299 = (*n296); n299.e[n295 % 128u] = n298; (void)n299;
+  n284.e[n294 % 33u] = n299;
+  uint32_t n301 = a0_add(n19, 1u); (void)n301;
+  uint32_t n302 = (n268 ? n301 : n19); (void)n302;
+  uint32_t n303 = a0_add(n18, 1u); (void)n303;
+  uint32_t n304 = (n269 ? n303 : n18); (void)n304;
+  uint32_t n305 = (n62 ? 3u : n10); (void)n305;
+  uint32_t n306 = (n67 ? 1u : n305); (void)n306;
+  uint32_t n307 = (n141 ? 2u : n306); (void)n307;
+  uint32_t n308 = (n148 ? 0u : n307); (void)n308;
+  bool n309 = (n69 || n124); (void)n309;
+  bool n310 = (n309 || n137); (void)n310;
+  bool n311 = (n310 || n138); (void)n311;
+  bool n312 = (n311 || n143); (void)n312;
+  bool n313 = (n312 || n150); (void)n313;
+  bool n314 = (n313 || n158); (void)n314;
+  bool n315 = (n314 || n188); (void)n315;
+  bool n316 = (n315 && n60); (void)n316;
+  uint32_t n317 = (n316 ? 1u : n11); (void)n317;
+  uint32_t n318 = (n316 ? n23 : n12); (void)n318;
+  a0t42 n319; n319.f0 = n247; n319.f1 = n252; n319.f2 = n231; n319.f3 = n214; n319.f4 = n284; n319.f5 = n254; n319.f6 = n230; n319.f7 = n220; n319.f8 = n224; n319.f9 = n227; n319.f10 = n308; n319.f11 = n317; n319.f12 = n318; n319.f13 = n265; n319.f14 = n256; n319.f15 = n262; n319.f16 = n263; n319.f17 = n264; n319.f18 = n304; n319.f19 = n302; n319.f20 = n258; n319.f21 = n260; (void)n319;
+  return n319;
 }
 
-static inline void a0o_p3tok(a0t39 *p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, uint32_t p6) {
-  const a0t23 *const n0 = &(*p0).f0; (void)n0;
-  const a0t19 *const n1 = &(*p0).f1; (void)n1;
-  const a0t19 *const n2 = &(*p0).f2; (void)n2;
-  const a0t9 *const n3 = &(*p0).f3; (void)n3;
-  const a0t16 *const n4 = &(*p0).f4; (void)n4;
+static inline void a0o_p3tok(a0t42 *p0, uint32_t p1, a0t4 p2, a0t30 p3, a0t5 p4, uint32_t p5, uint32_t p6) {
+  const a0t26 *const n0 = &(*p0).f0; (void)n0;
+  const a0t22 *const n1 = &(*p0).f1; (void)n1;
+  const a0t22 *const n2 = &(*p0).f2; (void)n2;
+  const a0t11 *const n3 = &(*p0).f3; (void)n3;
+  const a0t19 *const n4 = &(*p0).f4; (void)n4;
   uint32_t n5 = (*p0).f5; (void)n5;
   uint32_t n6 = (*p0).f6; (void)n6;
   uint32_t n7 = (*p0).f7; (void)n7;
@@ -2666,264 +3124,314 @@ static inline void a0o_p3tok(a0t39 *p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4,
   uint32_t n17 = (*p0).f17; (void)n17;
   uint32_t n18 = (*p0).f18; (void)n18;
   uint32_t n19 = (*p0).f19; (void)n19;
-  uint32_t n20 = a0_add(p5, p1); (void)n20;
-  uint32_t n21 = a0_add(p6, n20); (void)n21;
-  uint32_t n22 = a0_mul(n20, 3u); (void)n22;
-  uint32_t n23 = a0_shr(n22, 7u); (void)n23;
-  uint32_t n24 = a0_and(n22, 127u); (void)n24;
-  const a0t4 *const n25 = &p3.e[n23 % 3u]; (void)n25;
-  uint32_t n26 = (*n25).e[n24 % 128u]; (void)n26;
-  uint32_t n27 = a0_add(n22, 1u); (void)n27;
-  uint32_t n28 = a0_shr(n27, 7u); (void)n28;
-  uint32_t n29 = a0_and(n27, 127u); (void)n29;
-  const a0t4 *const n30 = &p3.e[n28 % 3u]; (void)n30;
-  uint32_t n31 = (*n30).e[n29 % 128u]; (void)n31;
-  uint32_t n32 = a0_add(n22, 2u); (void)n32;
-  uint32_t n33 = a0_shr(n32, 7u); (void)n33;
-  uint32_t n34 = a0_and(n32, 127u); (void)n34;
-  const a0t4 *const n35 = &p3.e[n33 % 3u]; (void)n35;
-  uint32_t n36 = (*n35).e[n34 % 128u]; (void)n36;
-  uint32_t n37 = p4.e[n20 % 128u]; (void)n37;
-  uint32_t n38 = a0_shr(n37, 19u); (void)n38;
-  uint32_t n39 = a0_shr(n37, 4u); (void)n39;
-  uint32_t n40 = a0_and(n39, 7u); (void)n40;
-  uint32_t n41 = a0_shr(n37, 14u); (void)n41;
-  uint32_t n42 = a0_and(n41, 3u); (void)n42;
-  uint32_t n43 = a0_shr(n37, 16u); (void)n43;
-  uint32_t n44 = a0_and(n43, 1u); (void)n44;
-  bool n45 = a0_eq(n44, 1u); (void)n45;
-  uint32_t n46 = a0_shr(n37, 17u); (void)n46;
-  uint32_t n47 = a0_and(n46, 3u); (void)n47;
-  bool n48 = a0_eq(n26, 1u); (void)n48;
-  bool n49 = a0_eq(n26, 4u); (void)n49;
-  bool n50 = a0_eq(n26, 5u); (void)n50;
-  bool n51 = a0_eq(n26, 9u); (void)n51;
-  bool n52 = a0_eq(n10, 0u); (void)n52;
-  bool n53 = a0_eq(n10, 1u); (void)n53;
-  bool n54 = a0_eq(n10, 2u); (void)n54;
-  bool n55 = a0_eq(n10, 3u); (void)n55;
-  bool n56 = (n53 || n54); (void)n56;
-  bool n57 = a0_eq(n9, 0u); (void)n57;
-  bool n58 = a0_eq(n11, 0u); (void)n58;
-  bool n59 = a0_eq(n40, 1u); (void)n59;
-  bool n60 = (n52 && n59); (void)n60;
-  bool n61 = a0_eq(n40, 4u); (void)n61;
-  bool n62 = a0_eq(n40, 0u); (void)n62;
-  bool n63 = (n62 || n61); (void)n63;
-  bool n64 = (n48 && n63); (void)n64;
-  bool n65 = (n55 && n64); (void)n65;
-  bool n66 = (n64 ? false : true); (void)n66;
-  bool n67 = (n55 && n66); (void)n67;
-  bool n68 = a0_eq(n42, 1u); (void)n68;
-  bool n69 = a0_eq(n42, 2u); (void)n69;
-  bool n70 = a0_eq(n42, 3u); (void)n70;
-  bool n71 = (n56 && n48); (void)n71;
-  bool n72 = (n71 && n45); (void)n72;
-  uint32_t n73 = (n72 ? 1u : 0u); (void)n73;
-  a0t25 n74; n74.f0 = n5; n74.f1 = false; n74.f2 = 0u; (void)n74;
-  for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrinfo(&n74, a0i, (*n0), p2, n31, n36); }
-  a0t23 n76 = (*n0); for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrapply(&n76, a0i, n5, p2, n31, n36); } (void)n76;
-  uint32_t n77 = n74.f0; (void)n77;
-  bool n78 = n74.f1; (void)n78;
-  bool n79 = (n72 && n78); (void)n79;
-  uint32_t n80 = n74.f2; (void)n80;
-  bool n81 = (n68 || n69); (void)n81;
-  bool n82 = (n81 || n70); (void)n82;
-  bool n83 = (n82 || n79); (void)n83;
-  uint32_t n84 = (n69 ? 1u : 0u); (void)n84;
-  uint32_t n85 = (n70 ? 2u : n84); (void)n85;
-  uint32_t n86 = (n79 ? n80 : n85); (void)n86;
-  bool n87 = (n71 && n83); (void)n87;
-  bool n88 = (n83 ? false : true); (void)n88;
-  bool n89 = (n71 && n88); (void)n89;
-  bool n90 = a0_eq(n47, 1u); (void)n90;
-  bool n91 = a0_eq(n47, 2u); (void)n91;
-  bool n92 = a0_eq(n47, 3u); (void)n92;
-  bool n93 = (n56 && n51); (void)n93;
-  bool n94 = (n93 && n90); (void)n94;
-  bool n95 = (n93 && n91); (void)n95;
-  bool n96 = (n93 && n92); (void)n96;
-  bool n97 = (n57 ? false : true); (void)n97;
-  bool n98 = (n96 && n97); (void)n98;
-  bool n99 = (n96 && n57); (void)n99;
-  bool n100 = (n95 && n57); (void)n100;
-  bool n101 = (n56 && n49); (void)n101;
-  bool n102 = (n53 && n57); (void)n102;
-  bool n103 = (n101 && n102); (void)n103;
-  bool n104 = (n102 ? false : true); (void)n104;
-  bool n105 = (n101 && n104); (void)n105;
-  bool n106 = (n56 && n50); (void)n106;
-  bool n107 = (n54 && n57); (void)n107;
-  bool n108 = a0_eq(n15, 1u); (void)n108;
-  bool n109 = (n107 && n108); (void)n109;
-  bool n110 = (n106 && n109); (void)n110;
-  bool n111 = (n109 ? false : true); (void)n111;
-  bool n112 = (n106 && n111); (void)n112;
-  bool n113 = (n90 || n91); (void)n113;
-  bool n114 = (n113 || n92); (void)n114;
-  bool n115 = (n51 && n114); (void)n115;
-  bool n116 = (n48 || n115); (void)n116;
-  bool n117 = (n116 || n49); (void)n117;
-  bool n118 = (n117 || n50); (void)n118;
-  bool n119 = (n118 ? false : true); (void)n119;
-  bool n120 = (n56 && n119); (void)n120;
-  uint32_t n121 = a0_add(n8, 1u); (void)n121;
-  bool n122 = a0_gt(n7, n8); (void)n122;
-  uint32_t n123 = a0_sub(n7, n121); (void)n123;
-  uint32_t n124 = (n122 ? n123 : 0u); (void)n124;
-  bool n125 = (n98 || n103); (void)n125;
-  uint32_t n126 = (n125 ? n124 : 0u); (void)n126;
-  a0t38 n127; n127.f0 = (*n2); n127.f1 = 0u; (void)n127;
-  for (uint32_t a0i = 0; a0i < n126; a0i++) { a0o_frcopy(&n127, a0i, (*n3), n121, n6); }
-  const a0t19 *const n129 = &n127.f0; (void)n129;
-  uint32_t n130 = n127.f1; (void)n130;
-  uint32_t n131 = a0_xor(n130, n126); (void)n131;
-  uint32_t n132 = a0_mul(n131, 16777619u); (void)n132;
-  uint32_t n133 = (n98 ? 1u : 0u); (void)n133;
-  uint32_t n134 = 4294967295u; for (uint32_t a0i = 0; a0i < n133; a0i++) { n134 = a0_recone(n134, a0i, n76, (*n1), (*n129), n77, n6, n126, n132); } (void)n134;
-  bool n135 = a0_ne(n134, 4294967295u); (void)n135;
-  bool n136 = (n135 ? false : true); (void)n136;
-  uint32_t n137 = (n135 ? n134 : n77); (void)n137;
-  bool n138 = (n98 && n136); (void)n138;
-  uint32_t n139 = (n98 ? n137 : n86); (void)n139;
-  bool n140 = (n87 || n98); (void)n140;
-  uint32_t n141 = a0_sub(n9, 1u); (void)n141;
-  uint32_t n142 = (n98 ? n141 : n9); (void)n142;
-  bool n143 = a0_eq(n142, 0u); (void)n143;
-  bool n144 = (n54 && n143); (void)n144;
-  bool n145 = (n140 && n144); (void)n145;
-  bool n146 = (n145 && n108); (void)n146;
-  bool n147 = (n144 ? false : true); (void)n147;
-  bool n148 = (n140 && n147); (void)n148;
-  uint32_t n149 = a0_shr(n8, 7u); (void)n149;
-  uint32_t n150 = a0_and(n8, 127u); (void)n150;
-  const a0t4 *const n151 = &(*n3).e[n149 % 128u]; (void)n151;
-  uint32_t n152 = (*n151).e[n150 % 128u]; (void)n152;
-  uint32_t n153 = a0_sub(n152, 2147483648u); (void)n153;
-  uint32_t n154 = (n98 ? n8 : n7); (void)n154;
-  uint32_t n155 = a0_add(2147483648u, n8); (void)n155;
-  uint32_t n156 = (n148 ? n154 : 0u); (void)n156;
-  uint32_t n157 = (n94 ? n7 : n156); (void)n157;
-  uint32_t n158 = (n148 ? n139 : 2147483648u); (void)n158;
-  uint32_t n159 = (n94 ? n155 : n158); (void)n159;
-  bool n160 = (n148 || n94); (void)n160;
-  bool n161 = (n160 || n65); (void)n161;
-  bool n162 = (n161 && n58); (void)n162;
-  uint32_t n163 = a0_shr(n157, 7u); (void)n163;
-  uint32_t n164 = a0_and(n157, 127u); (void)n164;
-  const a0t4 *const n165 = &(*n3).e[n163 % 128u]; (void)n165;
-  uint32_t n166 = (*n165).e[n164 % 128u]; (void)n166;
-  uint32_t n167 = (n162 ? n159 : n166); (void)n167;
-  a0t4 n168 = (*n165); n168.e[n164 % 128u] = n167; (void)n168;
-  a0t9 n169 = (*n3); n169.e[n163 % 128u] = n168; (void)n169;
-  uint32_t n170 = a0_add(n154, 1u); (void)n170;
-  uint32_t n171 = (n148 ? n170 : n154); (void)n171;
-  uint32_t n172 = a0_add(n7, 1u); (void)n172;
-  uint32_t n173 = (n94 ? n172 : n171); (void)n173;
-  uint32_t n174 = (n103 ? 0u : n173); (void)n174;
-  uint32_t n175 = (n65 ? 1u : n174); (void)n175;
-  uint32_t n176 = (n98 ? n153 : n8); (void)n176;
-  uint32_t n177 = (n94 ? n7 : n176); (void)n177;
-  uint32_t n178 = (n103 ? 0u : n177); (void)n178;
-  uint32_t n179 = (n65 ? 0u : n178); (void)n179;
-  uint32_t n180 = a0_add(n9, 1u); (void)n180;
-  uint32_t n181 = (n94 ? n180 : n142); (void)n181;
-  uint32_t n182 = (n65 ? 0u : n181); (void)n182;
-  bool n183 = (n138 || n103); (void)n183;
-  uint32_t n184 = a0_add(n6, n126); (void)n184;
-  uint32_t n185 = (n183 ? n184 : n6); (void)n185;
-  a0t19 n186 = (n183 ? (*n129) : (*n2)); (void)n186;
-  uint32_t n187 = a0_shr(n77, 7u); (void)n187;
-  uint32_t n188 = a0_and(n77, 127u); (void)n188;
-  uint32_t n189 = a0_mul(n188, 3u); (void)n189;
-  const a0t22 *const n190 = &n76.e[n187 % 65u]; (void)n190;
-  uint32_t n191 = (*n190).e[n189 % 384u]; (void)n191;
-  uint32_t n192 = a0_add(n189, 1u); (void)n192;
-  uint32_t n193 = (*n190).e[n192 % 384u]; (void)n193;
-  uint32_t n194 = a0_add(n189, 2u); (void)n194;
-  uint32_t n195 = (*n190).e[n194 % 384u]; (void)n195;
-  uint32_t n196 = (n138 ? 5u : n191); (void)n196;
-  uint32_t n197 = (n138 ? n6 : n193); (void)n197;
-  uint32_t n198 = (n138 ? n126 : n195); (void)n198;
-  a0t22 n199 = (*n190); n199.e[n189 % 384u] = n196; (void)n199;
-  n199.e[n192 % 384u] = n197;
-  n199.e[n194 % 384u] = n198;
-  a0t23 n202 = n76; n202.e[n187 % 65u] = n199; (void)n202;
-  const a0t4 *const n203 = &(*n1).e[n187 % 65u]; (void)n203;
-  uint32_t n204 = (*n203).e[n188 % 128u]; (void)n204;
-  uint32_t n205 = (n138 ? n132 : n204); (void)n205;
-  a0t4 n206 = (*n203); n206.e[n188 % 128u] = n205; (void)n206;
-  a0t19 n207 = (*n1); n207.e[n187 % 65u] = n206; (void)n207;
-  uint32_t n208 = a0_add(n77, 1u); (void)n208;
-  uint32_t n209 = (n138 ? n208 : n77); (void)n209;
-  uint32_t n210 = (n145 ? n139 : n14); (void)n210;
-  uint32_t n211 = (n145 ? 1u : n15); (void)n211;
-  uint32_t n212 = (n65 ? 0u : n211); (void)n212;
-  uint32_t n213 = (n103 ? n6 : n16); (void)n213;
-  uint32_t n214 = (n103 ? n126 : n17); (void)n214;
-  uint32_t n215 = (n65 ? n38 : n13); (void)n215;
-  uint32_t n216 = a0_mul(n19, 5u); (void)n216;
-  uint32_t n217 = a0_add(n216, 1u); (void)n217;
-  bool n218 = (n65 && n58); (void)n218;
-  bool n219 = (n110 && n58); (void)n219;
-  uint32_t n220 = a0_sub(n19, 1u); (void)n220;
-  uint32_t n221 = a0_mul(n220, 5u); (void)n221;
-  uint32_t n222 = a0_add(n221, 2u); (void)n222;
-  uint32_t n223 = a0_add(n221, 3u); (void)n223;
-  uint32_t n224 = a0_add(n221, 4u); (void)n224;
-  uint32_t n225 = (n218 ? n216 : n222); (void)n225;
-  uint32_t n226 = (n218 ? n21 : n17); (void)n226;
-  bool n227 = (n218 || n219); (void)n227;
-  uint32_t n228 = a0_shr(n225, 7u); (void)n228;
-  uint32_t n229 = a0_and(n225, 127u); (void)n229;
-  const a0t4 *const n230 = &(*n4).e[n228 % 33u]; (void)n230;
-  uint32_t n231 = (*n230).e[n229 % 128u]; (void)n231;
-  uint32_t n232 = (n227 ? n226 : n231); (void)n232;
-  a0t4 n233 = (*n230); n233.e[n229 % 128u] = n232; (void)n233;
-  a0t16 n234 = (*n4); n234.e[n228 % 33u] = n233; (void)n234;
-  uint32_t n235 = (n218 ? n217 : n223); (void)n235;
-  uint32_t n236 = (n218 ? n38 : n16); (void)n236;
-  uint32_t n237 = a0_shr(n235, 7u); (void)n237;
-  uint32_t n238 = a0_and(n235, 127u); (void)n238;
-  const a0t4 *const n239 = &n234.e[n237 % 33u]; (void)n239;
-  uint32_t n240 = (*n239).e[n238 % 128u]; (void)n240;
-  uint32_t n241 = (n227 ? n236 : n240); (void)n241;
-  a0t4 n242 = (*n239); n242.e[n238 % 128u] = n241; (void)n242;
-  n234.e[n237 % 33u] = n242;
-  uint32_t n244 = a0_shr(n224, 7u); (void)n244;
-  uint32_t n245 = a0_and(n224, 127u); (void)n245;
-  const a0t4 *const n246 = &n234.e[n244 % 33u]; (void)n246;
-  uint32_t n247 = (*n246).e[n245 % 128u]; (void)n247;
-  uint32_t n248 = (n219 ? n14 : n247); (void)n248;
-  a0t4 n249 = (*n246); n249.e[n245 % 128u] = n248; (void)n249;
-  n234.e[n244 % 33u] = n249;
-  uint32_t n251 = a0_add(n19, 1u); (void)n251;
-  uint32_t n252 = (n218 ? n251 : n19); (void)n252;
-  uint32_t n253 = a0_add(n18, 1u); (void)n253;
-  uint32_t n254 = (n219 ? n253 : n18); (void)n254;
-  uint32_t n255 = (n60 ? 3u : n10); (void)n255;
-  uint32_t n256 = (n65 ? 1u : n255); (void)n256;
-  uint32_t n257 = (n103 ? 2u : n256); (void)n257;
-  uint32_t n258 = (n110 ? 0u : n257); (void)n258;
-  bool n259 = (n67 || n89); (void)n259;
-  bool n260 = (n259 || n99); (void)n260;
-  bool n261 = (n260 || n100); (void)n261;
-  bool n262 = (n261 || n105); (void)n262;
-  bool n263 = (n262 || n112); (void)n263;
-  bool n264 = (n263 || n120); (void)n264;
-  bool n265 = (n264 || n146); (void)n265;
-  bool n266 = (n265 && n58); (void)n266;
-  uint32_t n267 = (n266 ? 1u : n11); (void)n267;
-  uint32_t n268 = (n266 ? n21 : n12); (void)n268;
-  a0t39 n269; n269.f0 = n202; n269.f1 = n207; n269.f2 = n186; n269.f3 = n169; n269.f4 = n234; n269.f5 = n209; n269.f6 = n185; n269.f7 = n175; n269.f8 = n179; n269.f9 = n182; n269.f10 = n258; n269.f11 = n267; n269.f12 = n268; n269.f13 = n215; n269.f14 = n210; n269.f15 = n212; n269.f16 = n213; n269.f17 = n214; n269.f18 = n254; n269.f19 = n252; (void)n269;
-  *p0 = n269;
+  uint32_t n20 = (*p0).f20; (void)n20;
+  uint32_t n21 = (*p0).f21; (void)n21;
+  uint32_t n22 = a0_add(p5, p1); (void)n22;
+  uint32_t n23 = a0_add(p6, n22); (void)n23;
+  uint32_t n24 = a0_mul(n22, 3u); (void)n24;
+  uint32_t n25 = a0_shr(n24, 7u); (void)n25;
+  uint32_t n26 = a0_and(n24, 127u); (void)n26;
+  const a0t5 *const n27 = &p3.e[n25 % 3u]; (void)n27;
+  uint32_t n28 = (*n27).e[n26 % 128u]; (void)n28;
+  uint32_t n29 = a0_add(n24, 1u); (void)n29;
+  uint32_t n30 = a0_shr(n29, 7u); (void)n30;
+  uint32_t n31 = a0_and(n29, 127u); (void)n31;
+  const a0t5 *const n32 = &p3.e[n30 % 3u]; (void)n32;
+  uint32_t n33 = (*n32).e[n31 % 128u]; (void)n33;
+  uint32_t n34 = a0_add(n24, 2u); (void)n34;
+  uint32_t n35 = a0_shr(n34, 7u); (void)n35;
+  uint32_t n36 = a0_and(n34, 127u); (void)n36;
+  const a0t5 *const n37 = &p3.e[n35 % 3u]; (void)n37;
+  uint32_t n38 = (*n37).e[n36 % 128u]; (void)n38;
+  uint32_t n39 = p4.e[n22 % 128u]; (void)n39;
+  uint32_t n40 = a0_shr(n39, 19u); (void)n40;
+  uint32_t n41 = a0_shr(n39, 4u); (void)n41;
+  uint32_t n42 = a0_and(n41, 7u); (void)n42;
+  uint32_t n43 = a0_shr(n39, 14u); (void)n43;
+  uint32_t n44 = a0_and(n43, 3u); (void)n44;
+  uint32_t n45 = a0_shr(n39, 16u); (void)n45;
+  uint32_t n46 = a0_and(n45, 1u); (void)n46;
+  bool n47 = a0_eq(n46, 1u); (void)n47;
+  uint32_t n48 = a0_shr(n39, 17u); (void)n48;
+  uint32_t n49 = a0_and(n48, 3u); (void)n49;
+  bool n50 = a0_eq(n28, 1u); (void)n50;
+  bool n51 = a0_eq(n28, 4u); (void)n51;
+  bool n52 = a0_eq(n28, 5u); (void)n52;
+  bool n53 = a0_eq(n28, 9u); (void)n53;
+  bool n54 = a0_eq(n10, 0u); (void)n54;
+  bool n55 = a0_eq(n10, 1u); (void)n55;
+  bool n56 = a0_eq(n10, 2u); (void)n56;
+  bool n57 = a0_eq(n10, 3u); (void)n57;
+  bool n58 = (n55 || n56); (void)n58;
+  bool n59 = a0_eq(n9, 0u); (void)n59;
+  bool n60 = a0_eq(n11, 0u); (void)n60;
+  bool n61 = a0_eq(n42, 1u); (void)n61;
+  bool n62 = (n54 && n61); (void)n62;
+  bool n63 = a0_eq(n42, 4u); (void)n63;
+  bool n64 = a0_eq(n42, 0u); (void)n64;
+  bool n65 = (n64 || n63); (void)n65;
+  bool n66 = (n50 && n65); (void)n66;
+  bool n67 = (n57 && n66); (void)n67;
+  bool n68 = (n66 ? false : true); (void)n68;
+  bool n69 = (n57 && n68); (void)n69;
+  bool n70 = (n47 ? false : true); (void)n70;
+  bool n71 = a0_eq(n44, 1u); (void)n71;
+  bool n72 = a0_eq(n44, 2u); (void)n72;
+  bool n73 = a0_eq(n44, 3u); (void)n73;
+  bool n74 = (n71 && n70); (void)n74;
+  bool n75 = (n72 && n70); (void)n75;
+  bool n76 = (n73 && n70); (void)n76;
+  bool n77 = (n73 && n47); (void)n77;
+  bool n78 = (n72 && n47); (void)n78;
+  bool n79 = (n58 && n50); (void)n79;
+  bool n80 = (n77 ? false : true); (void)n80;
+  bool n81 = (n79 && n47); (void)n81;
+  bool n82 = (n81 && n80); (void)n82;
+  bool n83 = a0_eq(n33, n20); (void)n83;
+  bool n84 = (n79 && n77); (void)n84;
+  bool n85 = (n84 && n83); (void)n85;
+  bool n86 = a0_eq(n21, 1u); (void)n86;
+  uint32_t n87 = a0_sub(n7, 1u); (void)n87;
+  uint32_t n88 = a0_shr(n87, 7u); (void)n88;
+  uint32_t n89 = a0_and(n87, 127u); (void)n89;
+  const a0t5 *const n90 = &(*n3).e[n88 % 128u]; (void)n90;
+  uint32_t n91 = (*n90).e[n89 % 128u]; (void)n91;
+  uint32_t n92 = (n86 ? n91 : n14); (void)n92;
+  uint32_t n93 = a0_shr(n92, 7u); (void)n93;
+  uint32_t n94 = a0_and(n92, 127u); (void)n94;
+  const a0t5 *const n95 = &(*n1).e[n93 % 65u]; (void)n95;
+  uint32_t n96 = (*n95).e[n94 % 128u]; (void)n96;
+  uint32_t n97 = a0_shr(n96, 31u); (void)n97;
+  bool n98 = a0_eq(n97, 0u); (void)n98;
+  bool n99 = (n82 || n85); (void)n99;
+  uint32_t n100 = (n99 ? 1u : 0u); (void)n100;
+  uint32_t n101 = (n78 ? 5u : 4u); (void)n101;
+  uint32_t n102 = (n85 ? 1u : n101); (void)n102;
+  uint32_t n103 = (n78 ? 1u : 0u); (void)n103;
+  uint32_t n104 = (n85 ? n92 : n103); (void)n104;
+  a0t28 n105; n105.f0 = n5; n105.f1 = false; n105.f2 = 0u; (void)n105;
+  for (uint32_t a0i = 0; a0i < n100; a0i++) { a0o_arrinfo(&n105, a0i, (*n0), p2, n33, n38, n102, n104); }
+  a0t26 n107 = (*n0); for (uint32_t a0i = 0; a0i < n100; a0i++) { a0o_arrapply(&n107, a0i, n5, p2, n33, n38, n102, n104); } (void)n107;
+  uint32_t n108 = n105.f0; (void)n108;
+  bool n109 = n105.f1; (void)n109;
+  bool n110 = (n82 && n109); (void)n110;
+  bool n111 = (n85 && n109); (void)n111;
+  bool n112 = (n111 && n98); (void)n112;
+  uint32_t n113 = n105.f2; (void)n113;
+  bool n114 = (n74 || n75); (void)n114;
+  bool n115 = (n114 || n76); (void)n115;
+  bool n116 = (n115 || n110); (void)n116;
+  bool n117 = (n116 || n112); (void)n117;
+  uint32_t n118 = (n75 ? 1u : 0u); (void)n118;
+  uint32_t n119 = (n76 ? 2u : n118); (void)n119;
+  uint32_t n120 = (n110 ? n113 : n119); (void)n120;
+  bool n121 = (n79 && n117); (void)n121;
+  bool n122 = (n121 && n80); (void)n122;
+  bool n123 = (n117 ? false : true); (void)n123;
+  bool n124 = (n79 && n123); (void)n124;
+  bool n125 = (n112 && n86); (void)n125;
+  bool n126 = a0_eq(n21, 2u); (void)n126;
+  bool n127 = (n112 && n126); (void)n127;
+  bool n128 = a0_eq(n49, 1u); (void)n128;
+  bool n129 = a0_eq(n49, 2u); (void)n129;
+  bool n130 = a0_eq(n49, 3u); (void)n130;
+  bool n131 = (n58 && n53); (void)n131;
+  bool n132 = (n131 && n128); (void)n132;
+  bool n133 = (n131 && n129); (void)n133;
+  bool n134 = (n131 && n130); (void)n134;
+  bool n135 = (n59 ? false : true); (void)n135;
+  bool n136 = (n134 && n135); (void)n136;
+  bool n137 = (n134 && n59); (void)n137;
+  bool n138 = (n133 && n59); (void)n138;
+  bool n139 = (n58 && n51); (void)n139;
+  bool n140 = (n55 && n59); (void)n140;
+  bool n141 = (n139 && n140); (void)n141;
+  bool n142 = (n140 ? false : true); (void)n142;
+  bool n143 = (n139 && n142); (void)n143;
+  bool n144 = (n58 && n52); (void)n144;
+  bool n145 = (n56 && n59); (void)n145;
+  bool n146 = a0_eq(n15, 1u); (void)n146;
+  bool n147 = (n145 && n146); (void)n147;
+  bool n148 = (n144 && n147); (void)n148;
+  bool n149 = (n147 ? false : true); (void)n149;
+  bool n150 = (n144 && n149); (void)n150;
+  bool n151 = (n128 || n129); (void)n151;
+  bool n152 = (n151 || n130); (void)n152;
+  bool n153 = (n53 && n152); (void)n153;
+  bool n154 = (n50 || n153); (void)n154;
+  bool n155 = (n154 || n51); (void)n155;
+  bool n156 = (n155 || n52); (void)n156;
+  bool n157 = (n156 ? false : true); (void)n157;
+  bool n158 = (n58 && n157); (void)n158;
+  uint32_t n159 = a0_add(n8, 1u); (void)n159;
+  bool n160 = a0_gt(n7, n8); (void)n160;
+  uint32_t n161 = a0_sub(n7, n159); (void)n161;
+  uint32_t n162 = (n160 ? n161 : 0u); (void)n162;
+  bool n163 = (n136 || n141); (void)n163;
+  uint32_t n164 = (n163 ? n162 : 0u); (void)n164;
+  a0t41 n165; n165.f0 = (*n2); n165.f1 = 0u; n165.f2 = 0u; (void)n165;
+  for (uint32_t a0i = 0; a0i < n164; a0i++) { a0o_frcopy(&n165, a0i, (*n3), n159, n6, (*n1)); }
+  const a0t22 *const n167 = &n165.f0; (void)n167;
+  uint32_t n168 = n165.f1; (void)n168;
+  uint32_t n169 = n165.f2; (void)n169;
+  uint32_t n170 = a0_xor(n168, n164); (void)n170;
+  uint32_t n171 = a0_mul(n170, 16777619u); (void)n171;
+  uint32_t n172 = a0_and(n171, 2147483647u); (void)n172;
+  uint32_t n173 = a0_mul(n169, 2147483648u); (void)n173;
+  uint32_t n174 = a0_or(n172, n173); (void)n174;
+  uint32_t n175 = (n136 ? 1u : 0u); (void)n175;
+  uint32_t n176 = 4294967295u; for (uint32_t a0i = 0; a0i < n175; a0i++) { n176 = a0_recone(n176, a0i, n107, (*n1), (*n167), n108, n6, n164, n174); } (void)n176;
+  bool n177 = a0_ne(n176, 4294967295u); (void)n177;
+  bool n178 = (n177 ? false : true); (void)n178;
+  uint32_t n179 = (n177 ? n176 : n108); (void)n179;
+  bool n180 = (n136 && n178); (void)n180;
+  uint32_t n181 = (n136 ? n179 : n120); (void)n181;
+  bool n182 = (n122 || n136); (void)n182;
+  uint32_t n183 = a0_sub(n9, 1u); (void)n183;
+  uint32_t n184 = (n136 ? n183 : n9); (void)n184;
+  bool n185 = a0_eq(n184, 0u); (void)n185;
+  bool n186 = (n56 && n185); (void)n186;
+  bool n187 = (n182 && n186); (void)n187;
+  bool n188 = (n187 && n146); (void)n188;
+  bool n189 = (n186 ? false : true); (void)n189;
+  bool n190 = (n182 && n189); (void)n190;
+  uint32_t n191 = a0_shr(n8, 7u); (void)n191;
+  uint32_t n192 = a0_and(n8, 127u); (void)n192;
+  const a0t5 *const n193 = &(*n3).e[n191 % 128u]; (void)n193;
+  uint32_t n194 = (*n193).e[n192 % 128u]; (void)n194;
+  uint32_t n195 = a0_sub(n194, 2147483648u); (void)n195;
+  uint32_t n196 = (n136 ? n8 : n7); (void)n196;
+  uint32_t n197 = a0_add(2147483648u, n8); (void)n197;
+  uint32_t n198 = (n190 ? n196 : 0u); (void)n198;
+  uint32_t n199 = (n132 ? n7 : n198); (void)n199;
+  uint32_t n200 = (n125 ? n87 : n199); (void)n200;
+  uint32_t n201 = (n190 ? n181 : 2147483648u); (void)n201;
+  uint32_t n202 = (n132 ? n197 : n201); (void)n202;
+  uint32_t n203 = (n125 ? n113 : n202); (void)n203;
+  bool n204 = (n190 || n132); (void)n204;
+  bool n205 = (n204 || n125); (void)n205;
+  bool n206 = (n205 || n67); (void)n206;
+  bool n207 = (n206 && n60); (void)n207;
+  uint32_t n208 = a0_shr(n200, 7u); (void)n208;
+  uint32_t n209 = a0_and(n200, 127u); (void)n209;
+  const a0t5 *const n210 = &(*n3).e[n208 % 128u]; (void)n210;
+  uint32_t n211 = (*n210).e[n209 % 128u]; (void)n211;
+  uint32_t n212 = (n207 ? n203 : n211); (void)n212;
+  a0t5 n213 = (*n210); n213.e[n209 % 128u] = n212; (void)n213;
+  a0t11 n214 = (*n3); n214.e[n208 % 128u] = n213; (void)n214;
+  uint32_t n215 = a0_add(n196, 1u); (void)n215;
+  uint32_t n216 = (n190 ? n215 : n196); (void)n216;
+  uint32_t n217 = a0_add(n7, 1u); (void)n217;
+  uint32_t n218 = (n132 ? n217 : n216); (void)n218;
+  uint32_t n219 = (n141 ? 0u : n218); (void)n219;
+  uint32_t n220 = (n67 ? 1u : n219); (void)n220;
+  uint32_t n221 = (n136 ? n195 : n8); (void)n221;
+  uint32_t n222 = (n132 ? n7 : n221); (void)n222;
+  uint32_t n223 = (n141 ? 0u : n222); (void)n223;
+  uint32_t n224 = (n67 ? 0u : n223); (void)n224;
+  uint32_t n225 = a0_add(n9, 1u); (void)n225;
+  uint32_t n226 = (n132 ? n225 : n184); (void)n226;
+  uint32_t n227 = (n67 ? 0u : n226); (void)n227;
+  bool n228 = (n180 || n141); (void)n228;
+  uint32_t n229 = a0_add(n6, n164); (void)n229;
+  uint32_t n230 = (n228 ? n229 : n6); (void)n230;
+  a0t22 n231 = (n228 ? (*n167) : (*n2)); (void)n231;
+  uint32_t n232 = a0_shr(n108, 7u); (void)n232;
+  uint32_t n233 = a0_and(n108, 127u); (void)n233;
+  uint32_t n234 = a0_mul(n233, 3u); (void)n234;
+  const a0t25 *const n235 = &n107.e[n232 % 65u]; (void)n235;
+  uint32_t n236 = (*n235).e[n234 % 384u]; (void)n236;
+  uint32_t n237 = a0_add(n234, 1u); (void)n237;
+  uint32_t n238 = (*n235).e[n237 % 384u]; (void)n238;
+  uint32_t n239 = a0_add(n234, 2u); (void)n239;
+  uint32_t n240 = (*n235).e[n239 % 384u]; (void)n240;
+  uint32_t n241 = (n180 ? 5u : n236); (void)n241;
+  uint32_t n242 = (n180 ? n6 : n238); (void)n242;
+  uint32_t n243 = (n180 ? n164 : n240); (void)n243;
+  a0t25 n244 = (*n235); n244.e[n234 % 384u] = n241; (void)n244;
+  n244.e[n237 % 384u] = n242;
+  n244.e[n239 % 384u] = n243;
+  a0t26 n247 = n107; n247.e[n232 % 65u] = n244; (void)n247;
+  const a0t5 *const n248 = &(*n1).e[n232 % 65u]; (void)n248;
+  uint32_t n249 = (*n248).e[n233 % 128u]; (void)n249;
+  uint32_t n250 = (n180 ? n174 : n249); (void)n250;
+  a0t5 n251 = (*n248); n251.e[n233 % 128u] = n250; (void)n251;
+  a0t22 n252 = (*n1); n252.e[n232 % 65u] = n251; (void)n252;
+  uint32_t n253 = a0_add(n108, 1u); (void)n253;
+  uint32_t n254 = (n180 ? n253 : n108); (void)n254;
+  uint32_t n255 = (n187 ? n181 : n14); (void)n255;
+  uint32_t n256 = (n127 ? n113 : n255); (void)n256;
+  uint32_t n257 = a0_add(n33, 1u); (void)n257;
+  uint32_t n258 = (n136 ? n257 : 4294967295u); (void)n258;
+  uint32_t n259 = (n187 ? 2u : 1u); (void)n259;
+  uint32_t n260 = (n136 ? n259 : 0u); (void)n260;
+  uint32_t n261 = (n187 ? 1u : n15); (void)n261;
+  uint32_t n262 = (n67 ? 0u : n261); (void)n262;
+  uint32_t n263 = (n141 ? n6 : n16); (void)n263;
+  uint32_t n264 = (n141 ? n164 : n17); (void)n264;
+  uint32_t n265 = (n67 ? n40 : n13); (void)n265;
+  uint32_t n266 = a0_mul(n19, 5u); (void)n266;
+  uint32_t n267 = a0_add(n266, 1u); (void)n267;
+  bool n268 = (n67 && n60); (void)n268;
+  bool n269 = (n148 && n60); (void)n269;
+  uint32_t n270 = a0_sub(n19, 1u); (void)n270;
+  uint32_t n271 = a0_mul(n270, 5u); (void)n271;
+  uint32_t n272 = a0_add(n271, 2u); (void)n272;
+  uint32_t n273 = a0_add(n271, 3u); (void)n273;
+  uint32_t n274 = a0_add(n271, 4u); (void)n274;
+  uint32_t n275 = (n268 ? n266 : n272); (void)n275;
+  uint32_t n276 = (n268 ? n23 : n17); (void)n276;
+  bool n277 = (n268 || n269); (void)n277;
+  uint32_t n278 = a0_shr(n275, 7u); (void)n278;
+  uint32_t n279 = a0_and(n275, 127u); (void)n279;
+  const a0t5 *const n280 = &(*n4).e[n278 % 33u]; (void)n280;
+  uint32_t n281 = (*n280).e[n279 % 128u]; (void)n281;
+  uint32_t n282 = (n277 ? n276 : n281); (void)n282;
+  a0t5 n283 = (*n280); n283.e[n279 % 128u] = n282; (void)n283;
+  a0t19 n284 = (*n4); n284.e[n278 % 33u] = n283; (void)n284;
+  uint32_t n285 = (n268 ? n267 : n273); (void)n285;
+  uint32_t n286 = (n268 ? n40 : n16); (void)n286;
+  uint32_t n287 = a0_shr(n285, 7u); (void)n287;
+  uint32_t n288 = a0_and(n285, 127u); (void)n288;
+  const a0t5 *const n289 = &n284.e[n287 % 33u]; (void)n289;
+  uint32_t n290 = (*n289).e[n288 % 128u]; (void)n290;
+  uint32_t n291 = (n277 ? n286 : n290); (void)n291;
+  a0t5 n292 = (*n289); n292.e[n288 % 128u] = n291; (void)n292;
+  n284.e[n287 % 33u] = n292;
+  uint32_t n294 = a0_shr(n274, 7u); (void)n294;
+  uint32_t n295 = a0_and(n274, 127u); (void)n295;
+  const a0t5 *const n296 = &n284.e[n294 % 33u]; (void)n296;
+  uint32_t n297 = (*n296).e[n295 % 128u]; (void)n297;
+  uint32_t n298 = (n269 ? n14 : n297); (void)n298;
+  a0t5 n299 = (*n296); n299.e[n295 % 128u] = n298; (void)n299;
+  n284.e[n294 % 33u] = n299;
+  uint32_t n301 = a0_add(n19, 1u); (void)n301;
+  uint32_t n302 = (n268 ? n301 : n19); (void)n302;
+  uint32_t n303 = a0_add(n18, 1u); (void)n303;
+  uint32_t n304 = (n269 ? n303 : n18); (void)n304;
+  uint32_t n305 = (n62 ? 3u : n10); (void)n305;
+  uint32_t n306 = (n67 ? 1u : n305); (void)n306;
+  uint32_t n307 = (n141 ? 2u : n306); (void)n307;
+  uint32_t n308 = (n148 ? 0u : n307); (void)n308;
+  bool n309 = (n69 || n124); (void)n309;
+  bool n310 = (n309 || n137); (void)n310;
+  bool n311 = (n310 || n138); (void)n311;
+  bool n312 = (n311 || n143); (void)n312;
+  bool n313 = (n312 || n150); (void)n313;
+  bool n314 = (n313 || n158); (void)n314;
+  bool n315 = (n314 || n188); (void)n315;
+  bool n316 = (n315 && n60); (void)n316;
+  uint32_t n317 = (n316 ? 1u : n11); (void)n317;
+  uint32_t n318 = (n316 ? n23 : n12); (void)n318;
+  a0t42 n319; n319.f0 = n247; n319.f1 = n252; n319.f2 = n231; n319.f3 = n214; n319.f4 = n284; n319.f5 = n254; n319.f6 = n230; n319.f7 = n220; n319.f8 = n224; n319.f9 = n227; n319.f10 = n308; n319.f11 = n317; n319.f12 = n318; n319.f13 = n265; n319.f14 = n256; n319.f15 = n262; n319.f16 = n263; n319.f17 = n264; n319.f18 = n304; n319.f19 = n302; n319.f20 = n258; n319.f21 = n260; (void)n319;
+  *p0 = n319;
 }
 
-a0t39 a0_p3chunk(a0t39 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t14 p5) {
+a0t42 a0_p3chunk(a0t42 p0, uint32_t p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t17 p5) {
   uint32_t n0 = a0_mul(p1, 2u); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p5.e[n1 % 16u]; (void)n3;
+  const a0t5 *const n3 = &p5.e[n1 % 16u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   uint32_t n5 = a0_add(n2, 1u); (void)n5;
   uint32_t n6 = (*n3).e[n5 % 128u]; (void)n6;
@@ -2931,13 +3439,13 @@ a0t39 a0_p3chunk(a0t39 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t14 p5) {
   uint32_t n8 = a0_and(n4, 127u); (void)n8;
   uint32_t n9 = a0_mul(n7, 128u); (void)n9;
   uint32_t n10 = a0_mul(n7, 3u); (void)n10;
-  const a0t4 *const n11 = &p3.e[n10 % 384u]; (void)n11;
+  const a0t5 *const n11 = &p3.e[n10 % 384u]; (void)n11;
   uint32_t n12 = a0_add(n10, 1u); (void)n12;
-  const a0t4 *const n13 = &p3.e[n12 % 384u]; (void)n13;
+  const a0t5 *const n13 = &p3.e[n12 % 384u]; (void)n13;
   uint32_t n14 = a0_add(n10, 2u); (void)n14;
-  const a0t4 *const n15 = &p3.e[n14 % 384u]; (void)n15;
-  a0t27 n16; n16.e[0] = (*n11); n16.e[1] = (*n13); n16.e[2] = (*n15); (void)n16;
-  const a0t4 *const n17 = &p4.e[n7 % 128u]; (void)n17;
+  const a0t5 *const n15 = &p3.e[n14 % 384u]; (void)n15;
+  a0t30 n16; n16.e[0] = (*n11); n16.e[1] = (*n13); n16.e[2] = (*n15); (void)n16;
+  const a0t5 *const n17 = &p4.e[n7 % 128u]; (void)n17;
   uint32_t n18 = p0.f11; (void)n18;
   bool n19 = a0_eq(n18, 0u); (void)n19;
   uint32_t n20 = (n19 ? n6 : 0u); (void)n20;
@@ -2945,11 +3453,11 @@ a0t39 a0_p3chunk(a0t39 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t14 p5) {
   return p0;
 }
 
-static inline void a0o_p3chunk(a0t39 *p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t14 p5) {
+static inline void a0o_p3chunk(a0t42 *p0, uint32_t p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t17 p5) {
   uint32_t n0 = a0_mul(p1, 2u); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p5.e[n1 % 16u]; (void)n3;
+  const a0t5 *const n3 = &p5.e[n1 % 16u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   uint32_t n5 = a0_add(n2, 1u); (void)n5;
   uint32_t n6 = (*n3).e[n5 % 128u]; (void)n6;
@@ -2957,30 +3465,30 @@ static inline void a0o_p3chunk(a0t39 *p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4
   uint32_t n8 = a0_and(n4, 127u); (void)n8;
   uint32_t n9 = a0_mul(n7, 128u); (void)n9;
   uint32_t n10 = a0_mul(n7, 3u); (void)n10;
-  const a0t4 *const n11 = &p3.e[n10 % 384u]; (void)n11;
+  const a0t5 *const n11 = &p3.e[n10 % 384u]; (void)n11;
   uint32_t n12 = a0_add(n10, 1u); (void)n12;
-  const a0t4 *const n13 = &p3.e[n12 % 384u]; (void)n13;
+  const a0t5 *const n13 = &p3.e[n12 % 384u]; (void)n13;
   uint32_t n14 = a0_add(n10, 2u); (void)n14;
-  const a0t4 *const n15 = &p3.e[n14 % 384u]; (void)n15;
-  a0t27 n16; n16.e[0] = (*n11); n16.e[1] = (*n13); n16.e[2] = (*n15); (void)n16;
-  const a0t4 *const n17 = &p4.e[n7 % 128u]; (void)n17;
+  const a0t5 *const n15 = &p3.e[n14 % 384u]; (void)n15;
+  a0t30 n16; n16.e[0] = (*n11); n16.e[1] = (*n13); n16.e[2] = (*n15); (void)n16;
+  const a0t5 *const n17 = &p4.e[n7 % 128u]; (void)n17;
   uint32_t n18 = (*p0).f11; (void)n18;
   bool n19 = a0_eq(n18, 0u); (void)n19;
   uint32_t n20 = (n19 ? n6 : 0u); (void)n20;
   for (uint32_t a0i = 0; a0i < n20; a0i++) { a0o_p3tok(&(*p0), a0i, p2, n16, (*n17), n8, n9); }
 }
 
-a0t39 a0_pass3(a0t9 p0, a0t7 p1, a0t9 p2, a0t14 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
-  a0t23 n0 = a0_zty(); (void)n0;
-  a0t22 n1 = a0_z384(); (void)n1;
-  a0t22 n2 = n1; n2.e[0u % 384u] = 1u; (void)n2;
+a0t42 a0_pass3(a0t4 p0, a0t9 p1, a0t11 p2, a0t17 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
+  a0t26 n0 = a0_zty(); (void)n0;
+  a0t25 n1 = a0_z384(); (void)n1;
+  a0t25 n2 = n1; n2.e[0u % 384u] = 1u; (void)n2;
   n2.e[3u % 384u] = 2u;
   n2.e[6u % 384u] = 3u;
-  a0t23 n5 = n0; n5.e[0u % 65u] = n2; (void)n5;
-  a0t19 n6 = a0_z65(); (void)n6;
-  a0t9 n7 = a0_zsrc(); (void)n7;
-  a0t16 n8 = a0_z33(); (void)n8;
-  a0t39 n9; n9.f0 = n5; n9.f1 = n6; n9.f2 = n6; n9.f3 = n7; n9.f4 = n8; n9.f5 = 3u; n9.f6 = 0u; n9.f7 = 0u; n9.f8 = 0u; n9.f9 = 0u; n9.f10 = 0u; n9.f11 = p5; n9.f12 = p6; n9.f13 = 0u; n9.f14 = 0u; n9.f15 = 0u; n9.f16 = 0u; n9.f17 = 0u; n9.f18 = 0u; n9.f19 = 0u; (void)n9;
+  a0t26 n5 = n0; n5.e[0u % 65u] = n2; (void)n5;
+  a0t22 n6 = a0_z65(); (void)n6;
+  a0t11 n7 = a0_zsrc(); (void)n7;
+  a0t19 n8 = a0_z33(); (void)n8;
+  a0t42 n9; n9.f0 = n5; n9.f1 = n6; n9.f2 = n6; n9.f3 = n7; n9.f4 = n8; n9.f5 = 3u; n9.f6 = 0u; n9.f7 = 0u; n9.f8 = 0u; n9.f9 = 0u; n9.f10 = 0u; n9.f11 = p5; n9.f12 = p6; n9.f13 = 0u; n9.f14 = 0u; n9.f15 = 0u; n9.f16 = 0u; n9.f17 = 0u; n9.f18 = 0u; n9.f19 = 0u; n9.f20 = 4294967295u; n9.f21 = 0u; (void)n9;
   bool n10 = a0_eq(p5, 0u); (void)n10;
   uint32_t n11 = (n10 ? p4 : 0u); (void)n11;
   for (uint32_t a0i = 0; a0i < n11; a0i++) { a0o_p3chunk(&n9, a0i, p0, p1, p2, p3); }
@@ -2992,44 +3500,44 @@ a0t39 a0_pass3(a0t9 p0, a0t7 p1, a0t9 p2, a0t14 p3, uint32_t p4, uint32_t p5, ui
   uint32_t n18 = (n17 ? 1u : n14); (void)n18;
   uint32_t n19 = n9.f12; (void)n19;
   uint32_t n20 = (n17 ? p7 : n19); (void)n20;
-  a0t39 n21 = n9; n21.f11 = n18; (void)n21;
+  a0t42 n21 = n9; n21.f11 = n18; (void)n21;
   n21.f12 = n20;
   return n21;
 }
 
-a0t40 a0_p4hdr(a0t40 p0, uint32_t p1, a0t16 p2, uint32_t p3) {
-  const a0t17 *const n0 = &p0.f0; (void)n0;
-  const a0t18 *const n1 = &p0.f1; (void)n1;
+a0t43 a0_p4hdr(a0t43 p0, uint32_t p1, a0t19 p2, uint32_t p3) {
+  const a0t20 *const n0 = &p0.f0; (void)n0;
+  const a0t21 *const n1 = &p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = p0.f3; (void)n3;
   uint32_t n4 = a0_mul(p1, 5u); (void)n4;
   uint32_t n5 = a0_shr(n4, 7u); (void)n5;
   uint32_t n6 = a0_and(n4, 127u); (void)n6;
-  const a0t4 *const n7 = &p2.e[n5 % 33u]; (void)n7;
+  const a0t5 *const n7 = &p2.e[n5 % 33u]; (void)n7;
   uint32_t n8 = (*n7).e[n6 % 128u]; (void)n8;
   uint32_t n9 = a0_add(n4, 1u); (void)n9;
   uint32_t n10 = a0_shr(n9, 7u); (void)n10;
   uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  const a0t4 *const n12 = &p2.e[n10 % 33u]; (void)n12;
+  const a0t5 *const n12 = &p2.e[n10 % 33u]; (void)n12;
   uint32_t n13 = (*n12).e[n11 % 128u]; (void)n13;
   uint32_t n14 = a0_add(n4, 2u); (void)n14;
   uint32_t n15 = a0_shr(n14, 7u); (void)n15;
   uint32_t n16 = a0_and(n14, 127u); (void)n16;
-  const a0t4 *const n17 = &p2.e[n15 % 33u]; (void)n17;
+  const a0t5 *const n17 = &p2.e[n15 % 33u]; (void)n17;
   uint32_t n18 = (*n17).e[n16 % 128u]; (void)n18;
   uint32_t n19 = a0_add(n4, 3u); (void)n19;
   uint32_t n20 = a0_shr(n19, 7u); (void)n20;
   uint32_t n21 = a0_and(n19, 127u); (void)n21;
-  const a0t4 *const n22 = &p2.e[n20 % 33u]; (void)n22;
+  const a0t5 *const n22 = &p2.e[n20 % 33u]; (void)n22;
   uint32_t n23 = (*n22).e[n21 % 128u]; (void)n23;
   uint32_t n24 = a0_add(n4, 4u); (void)n24;
   uint32_t n25 = a0_shr(n24, 7u); (void)n25;
   uint32_t n26 = a0_and(n24, 127u); (void)n26;
-  const a0t4 *const n27 = &p2.e[n25 % 33u]; (void)n27;
+  const a0t5 *const n27 = &p2.e[n25 % 33u]; (void)n27;
   uint32_t n28 = (*n27).e[n26 % 128u]; (void)n28;
   uint32_t n29 = a0_shr(n13, 7u); (void)n29;
   uint32_t n30 = a0_and(n13, 127u); (void)n30;
-  const a0t4 *const n31 = &(*n1).e[n29 % 64u]; (void)n31;
+  const a0t5 *const n31 = &(*n1).e[n29 % 64u]; (void)n31;
   uint32_t n32 = (*n31).e[n30 % 128u]; (void)n32;
   uint32_t n33 = a0_shr(n32, 12u); (void)n33;
   bool n34 = a0_ne(n33, 0u); (void)n34;
@@ -3045,77 +3553,77 @@ a0t40 a0_p4hdr(a0t40 p0, uint32_t p1, a0t16 p2, uint32_t p3) {
   uint32_t n44 = a0_shl(n43, 12u); (void)n44;
   uint32_t n45 = a0_or(n32, n44); (void)n45;
   uint32_t n46 = (n42 ? n45 : n32); (void)n46;
-  a0t4 n47 = (*n31); n47.e[n30 % 128u] = n46; (void)n47;
-  a0t18 n48 = (*n1); n48.e[n29 % 64u] = n47; (void)n48;
+  a0t5 n47 = (*n31); n47.e[n30 % 128u] = n46; (void)n47;
+  a0t21 n48 = (*n1); n48.e[n29 % 64u] = n47; (void)n48;
   uint32_t n49 = a0_mul(p1, 7u); (void)n49;
   uint32_t n50 = a0_shr(n49, 7u); (void)n50;
   uint32_t n51 = a0_and(n49, 127u); (void)n51;
-  const a0t4 *const n52 = &(*n0).e[n50 % 45u]; (void)n52;
+  const a0t5 *const n52 = &(*n0).e[n50 % 45u]; (void)n52;
   uint32_t n53 = (*n52).e[n51 % 128u]; (void)n53;
   uint32_t n54 = (n42 ? n13 : n53); (void)n54;
-  a0t4 n55 = (*n52); n55.e[n51 % 128u] = n54; (void)n55;
-  a0t17 n56 = (*n0); n56.e[n50 % 45u] = n55; (void)n56;
+  a0t5 n55 = (*n52); n55.e[n51 % 128u] = n54; (void)n55;
+  a0t20 n56 = (*n0); n56.e[n50 % 45u] = n55; (void)n56;
   uint32_t n57 = a0_add(n49, 1u); (void)n57;
   uint32_t n58 = a0_shr(n57, 7u); (void)n58;
   uint32_t n59 = a0_and(n57, 127u); (void)n59;
-  const a0t4 *const n60 = &n56.e[n58 % 45u]; (void)n60;
+  const a0t5 *const n60 = &n56.e[n58 % 45u]; (void)n60;
   uint32_t n61 = (*n60).e[n59 % 128u]; (void)n61;
   uint32_t n62 = (n42 ? n18 : n61); (void)n62;
-  a0t4 n63 = (*n60); n63.e[n59 % 128u] = n62; (void)n63;
+  a0t5 n63 = (*n60); n63.e[n59 % 128u] = n62; (void)n63;
   n56.e[n58 % 45u] = n63;
   uint32_t n65 = a0_add(n49, 2u); (void)n65;
   uint32_t n66 = a0_shr(n65, 7u); (void)n66;
   uint32_t n67 = a0_and(n65, 127u); (void)n67;
-  const a0t4 *const n68 = &n56.e[n66 % 45u]; (void)n68;
+  const a0t5 *const n68 = &n56.e[n66 % 45u]; (void)n68;
   uint32_t n69 = (*n68).e[n67 % 128u]; (void)n69;
   uint32_t n70 = (n42 ? n23 : n69); (void)n70;
-  a0t4 n71 = (*n68); n71.e[n67 % 128u] = n70; (void)n71;
+  a0t5 n71 = (*n68); n71.e[n67 % 128u] = n70; (void)n71;
   n56.e[n66 % 45u] = n71;
   uint32_t n73 = a0_add(n49, 3u); (void)n73;
   uint32_t n74 = a0_shr(n73, 7u); (void)n74;
   uint32_t n75 = a0_and(n73, 127u); (void)n75;
-  const a0t4 *const n76 = &n56.e[n74 % 45u]; (void)n76;
+  const a0t5 *const n76 = &n56.e[n74 % 45u]; (void)n76;
   uint32_t n77 = (*n76).e[n75 % 128u]; (void)n77;
   uint32_t n78 = (n42 ? n28 : n77); (void)n78;
-  a0t4 n79 = (*n76); n79.e[n75 % 128u] = n78; (void)n79;
+  a0t5 n79 = (*n76); n79.e[n75 % 128u] = n78; (void)n79;
   n56.e[n74 % 45u] = n79;
-  a0t40 n81; n81.f0 = n56; n81.f1 = n48; n81.f2 = n37; n81.f3 = n38; (void)n81;
+  a0t43 n81; n81.f0 = n56; n81.f1 = n48; n81.f2 = n37; n81.f3 = n38; (void)n81;
   return n81;
 }
 
-static inline void a0o_p4hdr(a0t40 *p0, uint32_t p1, a0t16 p2, uint32_t p3) {
-  const a0t17 *const n0 = &(*p0).f0; (void)n0;
-  const a0t18 *const n1 = &(*p0).f1; (void)n1;
+static inline void a0o_p4hdr(a0t43 *p0, uint32_t p1, a0t19 p2, uint32_t p3) {
+  const a0t20 *const n0 = &(*p0).f0; (void)n0;
+  const a0t21 *const n1 = &(*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = (*p0).f3; (void)n3;
   uint32_t n4 = a0_mul(p1, 5u); (void)n4;
   uint32_t n5 = a0_shr(n4, 7u); (void)n5;
   uint32_t n6 = a0_and(n4, 127u); (void)n6;
-  const a0t4 *const n7 = &p2.e[n5 % 33u]; (void)n7;
+  const a0t5 *const n7 = &p2.e[n5 % 33u]; (void)n7;
   uint32_t n8 = (*n7).e[n6 % 128u]; (void)n8;
   uint32_t n9 = a0_add(n4, 1u); (void)n9;
   uint32_t n10 = a0_shr(n9, 7u); (void)n10;
   uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  const a0t4 *const n12 = &p2.e[n10 % 33u]; (void)n12;
+  const a0t5 *const n12 = &p2.e[n10 % 33u]; (void)n12;
   uint32_t n13 = (*n12).e[n11 % 128u]; (void)n13;
   uint32_t n14 = a0_add(n4, 2u); (void)n14;
   uint32_t n15 = a0_shr(n14, 7u); (void)n15;
   uint32_t n16 = a0_and(n14, 127u); (void)n16;
-  const a0t4 *const n17 = &p2.e[n15 % 33u]; (void)n17;
+  const a0t5 *const n17 = &p2.e[n15 % 33u]; (void)n17;
   uint32_t n18 = (*n17).e[n16 % 128u]; (void)n18;
   uint32_t n19 = a0_add(n4, 3u); (void)n19;
   uint32_t n20 = a0_shr(n19, 7u); (void)n20;
   uint32_t n21 = a0_and(n19, 127u); (void)n21;
-  const a0t4 *const n22 = &p2.e[n20 % 33u]; (void)n22;
+  const a0t5 *const n22 = &p2.e[n20 % 33u]; (void)n22;
   uint32_t n23 = (*n22).e[n21 % 128u]; (void)n23;
   uint32_t n24 = a0_add(n4, 4u); (void)n24;
   uint32_t n25 = a0_shr(n24, 7u); (void)n25;
   uint32_t n26 = a0_and(n24, 127u); (void)n26;
-  const a0t4 *const n27 = &p2.e[n25 % 33u]; (void)n27;
+  const a0t5 *const n27 = &p2.e[n25 % 33u]; (void)n27;
   uint32_t n28 = (*n27).e[n26 % 128u]; (void)n28;
   uint32_t n29 = a0_shr(n13, 7u); (void)n29;
   uint32_t n30 = a0_and(n13, 127u); (void)n30;
-  const a0t4 *const n31 = &(*n1).e[n29 % 64u]; (void)n31;
+  const a0t5 *const n31 = &(*n1).e[n29 % 64u]; (void)n31;
   uint32_t n32 = (*n31).e[n30 % 128u]; (void)n32;
   uint32_t n33 = a0_shr(n32, 12u); (void)n33;
   bool n34 = a0_ne(n33, 0u); (void)n34;
@@ -3131,54 +3639,54 @@ static inline void a0o_p4hdr(a0t40 *p0, uint32_t p1, a0t16 p2, uint32_t p3) {
   uint32_t n44 = a0_shl(n43, 12u); (void)n44;
   uint32_t n45 = a0_or(n32, n44); (void)n45;
   uint32_t n46 = (n42 ? n45 : n32); (void)n46;
-  a0t4 n47 = (*n31); n47.e[n30 % 128u] = n46; (void)n47;
-  a0t18 n48 = (*n1); n48.e[n29 % 64u] = n47; (void)n48;
+  a0t5 n47 = (*n31); n47.e[n30 % 128u] = n46; (void)n47;
+  a0t21 n48 = (*n1); n48.e[n29 % 64u] = n47; (void)n48;
   uint32_t n49 = a0_mul(p1, 7u); (void)n49;
   uint32_t n50 = a0_shr(n49, 7u); (void)n50;
   uint32_t n51 = a0_and(n49, 127u); (void)n51;
-  const a0t4 *const n52 = &(*n0).e[n50 % 45u]; (void)n52;
+  const a0t5 *const n52 = &(*n0).e[n50 % 45u]; (void)n52;
   uint32_t n53 = (*n52).e[n51 % 128u]; (void)n53;
   uint32_t n54 = (n42 ? n13 : n53); (void)n54;
-  a0t4 n55 = (*n52); n55.e[n51 % 128u] = n54; (void)n55;
-  a0t17 n56 = (*n0); n56.e[n50 % 45u] = n55; (void)n56;
+  a0t5 n55 = (*n52); n55.e[n51 % 128u] = n54; (void)n55;
+  a0t20 n56 = (*n0); n56.e[n50 % 45u] = n55; (void)n56;
   uint32_t n57 = a0_add(n49, 1u); (void)n57;
   uint32_t n58 = a0_shr(n57, 7u); (void)n58;
   uint32_t n59 = a0_and(n57, 127u); (void)n59;
-  const a0t4 *const n60 = &n56.e[n58 % 45u]; (void)n60;
+  const a0t5 *const n60 = &n56.e[n58 % 45u]; (void)n60;
   uint32_t n61 = (*n60).e[n59 % 128u]; (void)n61;
   uint32_t n62 = (n42 ? n18 : n61); (void)n62;
-  a0t4 n63 = (*n60); n63.e[n59 % 128u] = n62; (void)n63;
+  a0t5 n63 = (*n60); n63.e[n59 % 128u] = n62; (void)n63;
   n56.e[n58 % 45u] = n63;
   uint32_t n65 = a0_add(n49, 2u); (void)n65;
   uint32_t n66 = a0_shr(n65, 7u); (void)n66;
   uint32_t n67 = a0_and(n65, 127u); (void)n67;
-  const a0t4 *const n68 = &n56.e[n66 % 45u]; (void)n68;
+  const a0t5 *const n68 = &n56.e[n66 % 45u]; (void)n68;
   uint32_t n69 = (*n68).e[n67 % 128u]; (void)n69;
   uint32_t n70 = (n42 ? n23 : n69); (void)n70;
-  a0t4 n71 = (*n68); n71.e[n67 % 128u] = n70; (void)n71;
+  a0t5 n71 = (*n68); n71.e[n67 % 128u] = n70; (void)n71;
   n56.e[n66 % 45u] = n71;
   uint32_t n73 = a0_add(n49, 3u); (void)n73;
   uint32_t n74 = a0_shr(n73, 7u); (void)n74;
   uint32_t n75 = a0_and(n73, 127u); (void)n75;
-  const a0t4 *const n76 = &n56.e[n74 % 45u]; (void)n76;
+  const a0t5 *const n76 = &n56.e[n74 % 45u]; (void)n76;
   uint32_t n77 = (*n76).e[n75 % 128u]; (void)n77;
   uint32_t n78 = (n42 ? n28 : n77); (void)n78;
-  a0t4 n79 = (*n76); n79.e[n75 % 128u] = n78; (void)n79;
+  a0t5 n79 = (*n76); n79.e[n75 % 128u] = n78; (void)n79;
   n56.e[n74 % 45u] = n79;
-  a0t40 n81; n81.f0 = n56; n81.f1 = n48; n81.f2 = n37; n81.f3 = n38; (void)n81;
+  a0t43 n81; n81.f0 = n56; n81.f1 = n48; n81.f2 = n37; n81.f3 = n38; (void)n81;
   *p0 = n81;
 }
 
-a0t40 a0_pass4(a0t16 p0, uint32_t p1, uint32_t p2) {
-  a0t17 n0 = a0_z45(); (void)n0;
-  a0t18 n1 = a0_z64(); (void)n1;
-  a0t40 n2; n2.f0 = n0; n2.f1 = n1; n2.f2 = 0u; n2.f3 = 0u; (void)n2;
+a0t43 a0_pass4(a0t19 p0, uint32_t p1, uint32_t p2) {
+  a0t20 n0 = a0_z45(); (void)n0;
+  a0t21 n1 = a0_z64(); (void)n1;
+  a0t43 n2; n2.f0 = n0; n2.f1 = n1; n2.f2 = 0u; n2.f3 = 0u; (void)n2;
   for (uint32_t a0i = 0; a0i < p1; a0i++) { a0o_p4hdr(&n2, a0i, p0, p2); }
   return n2;
 }
 
-a0t41 a0_txtb(a0t41 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4) {
-  const a0t26 *const n0 = &p0.f0; (void)n0;
+a0t44 a0_txtb(a0t44 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+  const a0t29 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = a0_add(p4, p1); (void)n3;
@@ -3196,27 +3704,36 @@ a0t41 a0_txtb(a0t41 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4) {
   uint32_t n15 = (n13 ? 9u : n14); (void)n15;
   uint32_t n16 = (n11 ? n15 : n9); (void)n16;
   bool n17 = (n11 ? false : n10); (void)n17;
-  uint32_t n18 = a0_shr(n1, 7u); (void)n18;
-  uint32_t n19 = a0_and(n1, 127u); (void)n19;
-  const a0t4 *const n20 = &(*n0).e[n18 % 2u]; (void)n20;
-  a0t4 n21 = (*n20); n21.e[n19 % 128u] = 3u; (void)n21;
-  a0t26 n22 = (*n0); n22.e[n18 % 2u] = n21; (void)n22;
-  uint32_t n23 = a0_add(n1, 1u); (void)n23;
-  uint32_t n24 = a0_shr(n23, 7u); (void)n24;
-  uint32_t n25 = a0_and(n23, 127u); (void)n25;
-  const a0t4 *const n26 = &n22.e[n24 % 2u]; (void)n26;
-  a0t4 n27 = (*n26); n27.e[n25 % 128u] = n16; (void)n27;
-  n22.e[n24 % 2u] = n27;
-  uint32_t n29 = a0_add(n1, 2u); (void)n29;
-  uint32_t n30 = (n17 ? n1 : n29); (void)n30;
-  uint32_t n31 = (n10 ? 1u : 0u); (void)n31;
-  uint32_t n32 = (n11 ? 0u : n31); (void)n32;
-  a0t41 n33; n33.f0 = n22; n33.f1 = n30; n33.f2 = n32; (void)n33;
-  return n33;
+  uint32_t n18 = a0_add(p5, n1); (void)n18;
+  bool n19 = a0_lt(n18, 16384u); (void)n19;
+  bool n20 = (n17 ? false : n19); (void)n20;
+  uint32_t n21 = a0_sub(n18, p6); (void)n21;
+  uint32_t n22 = a0_mul(n21, 2u); (void)n22;
+  uint32_t n23 = a0_shr(n22, 7u); (void)n23;
+  uint32_t n24 = a0_and(n22, 127u); (void)n24;
+  const a0t5 *const n25 = &(*n0).e[n23 % 2u]; (void)n25;
+  uint32_t n26 = (*n25).e[n24 % 128u]; (void)n26;
+  uint32_t n27 = (n20 ? 3u : n26); (void)n27;
+  a0t5 n28 = (*n25); n28.e[n24 % 128u] = n27; (void)n28;
+  a0t29 n29 = (*n0); n29.e[n23 % 2u] = n28; (void)n29;
+  uint32_t n30 = a0_add(n22, 1u); (void)n30;
+  uint32_t n31 = a0_shr(n30, 7u); (void)n31;
+  uint32_t n32 = a0_and(n30, 127u); (void)n32;
+  const a0t5 *const n33 = &n29.e[n31 % 2u]; (void)n33;
+  uint32_t n34 = (*n33).e[n32 % 128u]; (void)n34;
+  uint32_t n35 = (n20 ? n16 : n34); (void)n35;
+  a0t5 n36 = (*n33); n36.e[n32 % 128u] = n35; (void)n36;
+  n29.e[n31 % 2u] = n36;
+  uint32_t n38 = a0_add(n1, 1u); (void)n38;
+  uint32_t n39 = (n17 ? n1 : n38); (void)n39;
+  uint32_t n40 = (n10 ? 1u : 0u); (void)n40;
+  uint32_t n41 = (n11 ? 0u : n40); (void)n41;
+  a0t44 n42; n42.f0 = n29; n42.f1 = n39; n42.f2 = n41; (void)n42;
+  return n42;
 }
 
-static inline void a0o_txtb(a0t41 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4) {
-  const a0t26 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_txtb(a0t44 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+  const a0t29 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = a0_add(p4, p1); (void)n3;
@@ -3234,27 +3751,36 @@ static inline void a0o_txtb(a0t41 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   uint32_t n15 = (n13 ? 9u : n14); (void)n15;
   uint32_t n16 = (n11 ? n15 : n9); (void)n16;
   bool n17 = (n11 ? false : n10); (void)n17;
-  uint32_t n18 = a0_shr(n1, 7u); (void)n18;
-  uint32_t n19 = a0_and(n1, 127u); (void)n19;
-  const a0t4 *const n20 = &(*n0).e[n18 % 2u]; (void)n20;
-  a0t4 n21 = (*n20); n21.e[n19 % 128u] = 3u; (void)n21;
-  a0t26 n22 = (*n0); n22.e[n18 % 2u] = n21; (void)n22;
-  uint32_t n23 = a0_add(n1, 1u); (void)n23;
-  uint32_t n24 = a0_shr(n23, 7u); (void)n24;
-  uint32_t n25 = a0_and(n23, 127u); (void)n25;
-  const a0t4 *const n26 = &n22.e[n24 % 2u]; (void)n26;
-  a0t4 n27 = (*n26); n27.e[n25 % 128u] = n16; (void)n27;
-  n22.e[n24 % 2u] = n27;
-  uint32_t n29 = a0_add(n1, 2u); (void)n29;
-  uint32_t n30 = (n17 ? n1 : n29); (void)n30;
-  uint32_t n31 = (n10 ? 1u : 0u); (void)n31;
-  uint32_t n32 = (n11 ? 0u : n31); (void)n32;
-  a0t41 n33; n33.f0 = n22; n33.f1 = n30; n33.f2 = n32; (void)n33;
-  *p0 = n33;
+  uint32_t n18 = a0_add(p5, n1); (void)n18;
+  bool n19 = a0_lt(n18, 16384u); (void)n19;
+  bool n20 = (n17 ? false : n19); (void)n20;
+  uint32_t n21 = a0_sub(n18, p6); (void)n21;
+  uint32_t n22 = a0_mul(n21, 2u); (void)n22;
+  uint32_t n23 = a0_shr(n22, 7u); (void)n23;
+  uint32_t n24 = a0_and(n22, 127u); (void)n24;
+  const a0t5 *const n25 = &(*n0).e[n23 % 2u]; (void)n25;
+  uint32_t n26 = (*n25).e[n24 % 128u]; (void)n26;
+  uint32_t n27 = (n20 ? 3u : n26); (void)n27;
+  a0t5 n28 = (*n25); n28.e[n24 % 128u] = n27; (void)n28;
+  a0t29 n29 = (*n0); n29.e[n23 % 2u] = n28; (void)n29;
+  uint32_t n30 = a0_add(n22, 1u); (void)n30;
+  uint32_t n31 = a0_shr(n30, 7u); (void)n31;
+  uint32_t n32 = a0_and(n30, 127u); (void)n32;
+  const a0t5 *const n33 = &n29.e[n31 % 2u]; (void)n33;
+  uint32_t n34 = (*n33).e[n32 % 128u]; (void)n34;
+  uint32_t n35 = (n20 ? n16 : n34); (void)n35;
+  a0t5 n36 = (*n33); n36.e[n32 % 128u] = n35; (void)n36;
+  n29.e[n31 % 2u] = n36;
+  uint32_t n38 = a0_add(n1, 1u); (void)n38;
+  uint32_t n39 = (n17 ? n1 : n38); (void)n39;
+  uint32_t n40 = (n10 ? 1u : 0u); (void)n40;
+  uint32_t n41 = (n11 ? 0u : n40); (void)n41;
+  a0t44 n42; n42.f0 = n29; n42.f1 = n39; n42.f2 = n41; (void)n42;
+  *p0 = n42;
 }
 
-a0t42 a0_txtseg(a0t42 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t21 *const n0 = &p0.f0; (void)n0;
+a0t45 a0_txtseg(a0t45 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+  const a0t24 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = a0_mul(p1, 64u); (void)n3;
@@ -3264,37 +3790,37 @@ a0t42 a0_txtseg(a0t42 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
   uint32_t n7 = a0_add(p3, n3); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p2.e[n8 % 128u]; (void)n10;
+  a0t5 n10 = a0_srcpg(p2, n8); (void)n10;
   uint32_t n11 = a0_add(n8, 1u); (void)n11;
-  const a0t4 *const n12 = &p2.e[n11 % 128u]; (void)n12;
-  uint32_t n13 = a0_mul(n1, 2u); (void)n13;
-  uint32_t n14 = a0_shr(n13, 7u); (void)n14;
-  uint32_t n15 = a0_and(n13, 127u); (void)n15;
-  uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n14 % 256u]; (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 256u]; (void)n18;
-  a0t26 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
-  a0t41 n20; n20.f0 = n19; n20.f1 = n15; n20.f2 = n2; (void)n20;
-  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_txtb(&n20, a0i, (*n10), (*n12), n9); }
-  const a0t26 *const n22 = &n20.f0; (void)n22;
-  uint32_t n23 = n20.f1; (void)n23;
-  uint32_t n24 = n20.f2; (void)n24;
-  const a0t4 *const n25 = &(*n22).e[0u % 2u]; (void)n25;
-  const a0t4 *const n26 = &(*n22).e[1u % 2u]; (void)n26;
-  a0t21 n27 = (*n0); n27.e[n14 % 256u] = (*n25); (void)n27;
-  bool n28 = a0_lt(n16, 256u); (void)n28;
-  const a0t4 *const n29 = &n27.e[n16 % 256u]; (void)n29;
-  a0t4 n30 = (n28 ? (*n26) : (*n29)); (void)n30;
-  n27.e[n16 % 256u] = n30;
-  uint32_t n32 = a0_sub(n23, n15); (void)n32;
-  uint32_t n33 = a0_shr(n32, 1u); (void)n33;
-  uint32_t n34 = a0_add(n1, n33); (void)n34;
-  a0t42 n35; n35.f0 = n27; n35.f1 = n34; n35.f2 = n24; (void)n35;
+  a0t5 n12 = a0_srcpg(p2, n11); (void)n12;
+  uint32_t n13 = a0_sub(n1, p5); (void)n13;
+  bool n14 = a0_lt(n1, p5); (void)n14;
+  uint32_t n15 = (n14 ? 0u : n13); (void)n15;
+  uint32_t n16 = a0_mul(n15, 2u); (void)n16;
+  uint32_t n17 = a0_shr(n16, 7u); (void)n17;
+  bool n18 = a0_gt(n17, 254u); (void)n18;
+  uint32_t n19 = (n18 ? 254u : n17); (void)n19;
+  uint32_t n20 = a0_mul(n19, 64u); (void)n20;
+  uint32_t n21 = a0_add(n19, 1u); (void)n21;
+  const a0t5 *const n22 = &(*n0).e[n19 % 256u]; (void)n22;
+  const a0t5 *const n23 = &(*n0).e[n21 % 256u]; (void)n23;
+  a0t29 n24; n24.e[0] = (*n22); n24.e[1] = (*n23); (void)n24;
+  a0t44 n25; n25.f0 = n24; n25.f1 = 0u; n25.f2 = n2; (void)n25;
+  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_txtb(&n25, a0i, n10, n12, n9, n13, n20); }
+  const a0t29 *const n27 = &n25.f0; (void)n27;
+  uint32_t n28 = n25.f1; (void)n28;
+  uint32_t n29 = n25.f2; (void)n29;
+  const a0t5 *const n30 = &(*n27).e[0u % 2u]; (void)n30;
+  const a0t5 *const n31 = &(*n27).e[1u % 2u]; (void)n31;
+  a0t24 n32 = (*n0); n32.e[n19 % 256u] = (*n30); (void)n32;
+  n32.e[n21 % 256u] = (*n31);
+  uint32_t n34 = a0_add(n1, n28); (void)n34;
+  a0t45 n35; n35.f0 = n32; n35.f1 = n34; n35.f2 = n29; (void)n35;
   return n35;
 }
 
-static inline void a0o_txtseg(a0t42 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t21 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_txtseg(a0t45 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+  const a0t24 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = a0_mul(p1, 64u); (void)n3;
@@ -3304,40 +3830,40 @@ static inline void a0o_txtseg(a0t42 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint
   uint32_t n7 = a0_add(p3, n3); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p2.e[n8 % 128u]; (void)n10;
+  a0t5 n10 = a0_srcpg(p2, n8); (void)n10;
   uint32_t n11 = a0_add(n8, 1u); (void)n11;
-  const a0t4 *const n12 = &p2.e[n11 % 128u]; (void)n12;
-  uint32_t n13 = a0_mul(n1, 2u); (void)n13;
-  uint32_t n14 = a0_shr(n13, 7u); (void)n14;
-  uint32_t n15 = a0_and(n13, 127u); (void)n15;
-  uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n14 % 256u]; (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 256u]; (void)n18;
-  a0t26 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
-  a0t41 n20; n20.f0 = n19; n20.f1 = n15; n20.f2 = n2; (void)n20;
-  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_txtb(&n20, a0i, (*n10), (*n12), n9); }
-  const a0t26 *const n22 = &n20.f0; (void)n22;
-  uint32_t n23 = n20.f1; (void)n23;
-  uint32_t n24 = n20.f2; (void)n24;
-  const a0t4 *const n25 = &(*n22).e[0u % 2u]; (void)n25;
-  const a0t4 *const n26 = &(*n22).e[1u % 2u]; (void)n26;
-  a0t21 n27 = (*n0); n27.e[n14 % 256u] = (*n25); (void)n27;
-  bool n28 = a0_lt(n16, 256u); (void)n28;
-  const a0t4 *const n29 = &n27.e[n16 % 256u]; (void)n29;
-  a0t4 n30 = (n28 ? (*n26) : (*n29)); (void)n30;
-  n27.e[n16 % 256u] = n30;
-  uint32_t n32 = a0_sub(n23, n15); (void)n32;
-  uint32_t n33 = a0_shr(n32, 1u); (void)n33;
-  uint32_t n34 = a0_add(n1, n33); (void)n34;
-  a0t42 n35; n35.f0 = n27; n35.f1 = n34; n35.f2 = n24; (void)n35;
+  a0t5 n12 = a0_srcpg(p2, n11); (void)n12;
+  uint32_t n13 = a0_sub(n1, p5); (void)n13;
+  bool n14 = a0_lt(n1, p5); (void)n14;
+  uint32_t n15 = (n14 ? 0u : n13); (void)n15;
+  uint32_t n16 = a0_mul(n15, 2u); (void)n16;
+  uint32_t n17 = a0_shr(n16, 7u); (void)n17;
+  bool n18 = a0_gt(n17, 254u); (void)n18;
+  uint32_t n19 = (n18 ? 254u : n17); (void)n19;
+  uint32_t n20 = a0_mul(n19, 64u); (void)n20;
+  uint32_t n21 = a0_add(n19, 1u); (void)n21;
+  const a0t5 *const n22 = &(*n0).e[n19 % 256u]; (void)n22;
+  const a0t5 *const n23 = &(*n0).e[n21 % 256u]; (void)n23;
+  a0t29 n24; n24.e[0] = (*n22); n24.e[1] = (*n23); (void)n24;
+  a0t44 n25; n25.f0 = n24; n25.f1 = 0u; n25.f2 = n2; (void)n25;
+  for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_txtb(&n25, a0i, n10, n12, n9, n13, n20); }
+  const a0t29 *const n27 = &n25.f0; (void)n27;
+  uint32_t n28 = n25.f1; (void)n28;
+  uint32_t n29 = n25.f2; (void)n29;
+  const a0t5 *const n30 = &(*n27).e[0u % 2u]; (void)n30;
+  const a0t5 *const n31 = &(*n27).e[1u % 2u]; (void)n31;
+  a0t24 n32 = (*n0); n32.e[n19 % 256u] = (*n30); (void)n32;
+  n32.e[n21 % 256u] = (*n31);
+  uint32_t n34 = a0_add(n1, n28); (void)n34;
+  a0t45 n35; n35.f0 = n32; n35.f1 = n34; n35.f2 = n29; (void)n35;
   *p0 = n35;
 }
 
-a0t44 a0_p5tok(a0t44 p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
-  const a0t17 *const n0 = &p0.f0; (void)n0;
-  const a0t43 *const n1 = &p0.f1; (void)n1;
-  const a0t27 *const n2 = &p0.f2; (void)n2;
-  const a0t18 *const n3 = &p0.f3; (void)n3;
+a0t47 a0_p5tok(a0t47 p0, uint32_t p1, a0t30 p2, a0t5 p3, a0t5 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
+  const a0t20 *const n0 = &p0.f0; (void)n0;
+  const a0t46 *const n1 = &p0.f1; (void)n1;
+  const a0t30 *const n2 = &p0.f2; (void)n2;
+  const a0t21 *const n3 = &p0.f3; (void)n3;
   uint32_t n4 = p0.f4; (void)n4;
   uint32_t n5 = p0.f5; (void)n5;
   uint32_t n6 = p0.f6; (void)n6;
@@ -3360,17 +3886,17 @@ a0t44 a0_p5tok(a0t44 p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4, uint32_t p5, u
   uint32_t n23 = a0_mul(n21, 3u); (void)n23;
   uint32_t n24 = a0_shr(n23, 7u); (void)n24;
   uint32_t n25 = a0_and(n23, 127u); (void)n25;
-  const a0t4 *const n26 = &p2.e[n24 % 3u]; (void)n26;
+  const a0t5 *const n26 = &p2.e[n24 % 3u]; (void)n26;
   uint32_t n27 = (*n26).e[n25 % 128u]; (void)n27;
   uint32_t n28 = a0_add(n23, 1u); (void)n28;
   uint32_t n29 = a0_shr(n28, 7u); (void)n29;
   uint32_t n30 = a0_and(n28, 127u); (void)n30;
-  const a0t4 *const n31 = &p2.e[n29 % 3u]; (void)n31;
+  const a0t5 *const n31 = &p2.e[n29 % 3u]; (void)n31;
   uint32_t n32 = (*n31).e[n30 % 128u]; (void)n32;
   uint32_t n33 = a0_add(n23, 2u); (void)n33;
   uint32_t n34 = a0_shr(n33, 7u); (void)n34;
   uint32_t n35 = a0_and(n33, 127u); (void)n35;
-  const a0t4 *const n36 = &p2.e[n34 % 3u]; (void)n36;
+  const a0t5 *const n36 = &p2.e[n34 % 3u]; (void)n36;
   uint32_t n37 = (*n36).e[n35 % 128u]; (void)n37;
   uint32_t n38 = p3.e[n21 % 128u]; (void)n38;
   uint32_t n39 = p4.e[n21 % 128u]; (void)n39;
@@ -3429,7 +3955,7 @@ a0t44 a0_p5tok(a0t44 p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4, uint32_t p5, u
   uint32_t n92 = a0_sub(n4, 1u); (void)n92;
   uint32_t n93 = a0_shr(n54, 7u); (void)n93;
   uint32_t n94 = a0_and(n54, 127u); (void)n94;
-  const a0t4 *const n95 = &(*n3).e[n93 % 64u]; (void)n95;
+  const a0t5 *const n95 = &(*n3).e[n93 % 64u]; (void)n95;
   uint32_t n96 = (*n95).e[n94 % 128u]; (void)n96;
   uint32_t n97 = a0_and(n96, 4095u); (void)n97;
   uint32_t n98 = a0_shr(n96, 12u); (void)n98;
@@ -3530,14 +4056,14 @@ a0t44 a0_p5tok(a0t44 p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4, uint32_t p5, u
   uint32_t n193 = (n176 ? 0u : n18); (void)n193;
   uint32_t n194 = a0_shr(n11, 7u); (void)n194;
   uint32_t n195 = a0_and(n11, 127u); (void)n195;
-  const a0t4 *const n196 = &(*n3).e[n194 % 64u]; (void)n196;
+  const a0t5 *const n196 = &(*n3).e[n194 % 64u]; (void)n196;
   uint32_t n197 = (*n196).e[n195 % 128u]; (void)n197;
   uint32_t n198 = a0_and(n197, 4294963200u); (void)n198;
   uint32_t n199 = a0_or(n198, n185); (void)n199;
   bool n200 = (n174 && n90); (void)n200;
   uint32_t n201 = (n200 ? n199 : n197); (void)n201;
-  a0t4 n202 = (*n196); n202.e[n195 % 128u] = n201; (void)n202;
-  a0t18 n203 = (*n3); n203.e[n194 % 64u] = n202; (void)n203;
+  a0t5 n202 = (*n196); n202.e[n195 % 128u] = n201; (void)n202;
+  a0t21 n203 = (*n3); n203.e[n194 % 64u] = n202; (void)n203;
   uint32_t n204 = a0_add(268435456u, n91); (void)n204;
   uint32_t n205 = a0_add(805306368u, n39); (void)n205;
   uint32_t n206 = a0_add(1073741824u, n85); (void)n206;
@@ -3593,152 +4119,155 @@ a0t44 a0_p5tok(a0t44 p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4, uint32_t p5, u
   bool n256 = (n255 || n238); (void)n256;
   bool n257 = (n256 || n241); (void)n257;
   bool n258 = (n257 && n90); (void)n258;
-  uint32_t n259 = a0_mul(n5, 2u); (void)n259;
-  uint32_t n260 = a0_sub(n259, n20); (void)n260;
-  uint32_t n261 = a0_shr(n260, 7u); (void)n261;
-  uint32_t n262 = a0_and(n260, 127u); (void)n262;
-  const a0t4 *const n263 = &(*n2).e[n261 % 3u]; (void)n263;
-  uint32_t n264 = (*n263).e[n262 % 128u]; (void)n264;
-  uint32_t n265 = a0_add(n262, 1u); (void)n265;
-  uint32_t n266 = (*n263).e[n265 % 128u]; (void)n266;
-  uint32_t n267 = (n258 ? n251 : n264); (void)n267;
-  uint32_t n268 = (n258 ? n254 : n266); (void)n268;
-  a0t4 n269 = (*n263); n269.e[n262 % 128u] = n267; (void)n269;
-  n269.e[n265 % 128u] = n268;
-  a0t27 n271 = (*n2); n271.e[n261 % 3u] = n269; (void)n271;
-  uint32_t n272 = a0_add(n5, 1u); (void)n272;
-  uint32_t n273 = (n258 ? n272 : n5); (void)n273;
-  uint32_t n274 = a0_add(n189, 1u); (void)n274;
-  uint32_t n275 = (n258 ? n274 : n189); (void)n275;
-  bool n276 = (n232 && n90); (void)n276;
-  uint32_t n277 = (n276 ? 1u : 0u); (void)n277;
-  bool n278 = (n225 && n90); (void)n278;
-  uint32_t n279 = a0_mul(n92, 6u); (void)n279;
-  uint32_t n280 = a0_sub(n279, n19); (void)n280;
-  uint32_t n281 = a0_shr(n280, 7u); (void)n281;
-  uint32_t n282 = a0_and(n280, 127u); (void)n282;
-  const a0t4 *const n283 = &(*n1).e[n281 % 5u]; (void)n283;
-  uint32_t n284 = (*n283).e[n282 % 128u]; (void)n284;
-  uint32_t n285 = (n278 ? n187 : n284); (void)n285;
-  a0t4 n286 = (*n283); n286.e[n282 % 128u] = n285; (void)n286;
-  a0t43 n287 = (*n1); n287.e[n281 % 5u] = n286; (void)n287;
-  uint32_t n288 = a0_add(n280, 1u); (void)n288;
-  uint32_t n289 = a0_shr(n288, 7u); (void)n289;
-  uint32_t n290 = a0_and(n288, 127u); (void)n290;
-  const a0t4 *const n291 = &n287.e[n289 % 5u]; (void)n291;
-  uint32_t n292 = (*n291).e[n290 % 128u]; (void)n292;
-  uint32_t n293 = (n278 ? n188 : n292); (void)n293;
-  a0t4 n294 = (*n291); n294.e[n290 % 128u] = n293; (void)n294;
-  n287.e[n289 % 5u] = n294;
-  uint32_t n296 = a0_add(n280, 2u); (void)n296;
-  uint32_t n297 = a0_shr(n296, 7u); (void)n297;
-  uint32_t n298 = a0_and(n296, 127u); (void)n298;
-  const a0t4 *const n299 = &n287.e[n297 % 5u]; (void)n299;
-  uint32_t n300 = (*n299).e[n298 % 128u]; (void)n300;
-  uint32_t n301 = (n278 ? n275 : n300); (void)n301;
-  a0t4 n302 = (*n299); n302.e[n298 % 128u] = n301; (void)n302;
-  n287.e[n297 % 5u] = n302;
-  uint32_t n304 = a0_add(n280, 3u); (void)n304;
-  uint32_t n305 = a0_shr(n304, 7u); (void)n305;
-  uint32_t n306 = a0_and(n304, 127u); (void)n306;
-  const a0t4 *const n307 = &n287.e[n305 % 5u]; (void)n307;
-  uint32_t n308 = (*n307).e[n306 % 128u]; (void)n308;
-  uint32_t n309 = (n278 ? n190 : n308); (void)n309;
-  a0t4 n310 = (*n307); n310.e[n306 % 128u] = n309; (void)n310;
-  n287.e[n305 % 5u] = n310;
-  uint32_t n312 = a0_add(n280, 4u); (void)n312;
-  uint32_t n313 = a0_shr(n312, 7u); (void)n313;
-  uint32_t n314 = a0_and(n312, 127u); (void)n314;
-  const a0t4 *const n315 = &n287.e[n313 % 5u]; (void)n315;
-  uint32_t n316 = (*n315).e[n314 % 128u]; (void)n316;
-  uint32_t n317 = (n278 ? n222 : n316); (void)n317;
-  a0t4 n318 = (*n315); n318.e[n314 % 128u] = n317; (void)n318;
-  n287.e[n313 % 5u] = n318;
-  uint32_t n320 = a0_add(n280, 5u); (void)n320;
-  uint32_t n321 = a0_shr(n320, 7u); (void)n321;
-  uint32_t n322 = a0_and(n320, 127u); (void)n322;
-  const a0t4 *const n323 = &n287.e[n321 % 5u]; (void)n323;
-  uint32_t n324 = (*n323).e[n322 % 128u]; (void)n324;
-  uint32_t n325 = (n278 ? n223 : n324); (void)n325;
-  a0t4 n326 = (*n323); n326.e[n322 % 128u] = n325; (void)n326;
-  n287.e[n321 % 5u] = n326;
-  bool n328 = (n72 && n64); (void)n328;
-  bool n329 = (n72 && n89); (void)n329;
-  bool n330 = (n73 && n61); (void)n330;
-  bool n331 = (n330 && n80); (void)n331;
-  bool n332 = (n64 || n331); (void)n332;
-  bool n333 = (n332 ? false : true); (void)n333;
-  bool n334 = (n73 && n333); (void)n334;
-  bool n335 = (n74 && n64); (void)n335;
-  bool n336 = (n74 && n89); (void)n336;
-  uint32_t n337 = a0_mul(n6, 7u); (void)n337;
-  uint32_t n338 = a0_add(n337, 4u); (void)n338;
-  uint32_t n339 = a0_mul(n106, 7u); (void)n339;
-  uint32_t n340 = a0_add(n339, 5u); (void)n340;
-  uint32_t n341 = a0_add(n339, 6u); (void)n341;
-  uint32_t n342 = (n331 ? n340 : n341); (void)n342;
-  uint32_t n343 = (n113 ? n338 : n342); (void)n343;
-  uint32_t n344 = (n331 ? n91 : n212); (void)n344;
-  uint32_t n345 = (n113 ? n4 : n344); (void)n345;
-  bool n346 = (n113 || n331); (void)n346;
-  bool n347 = (n346 || n214); (void)n347;
-  bool n348 = (n347 && n90); (void)n348;
-  uint32_t n349 = a0_shr(n343, 7u); (void)n349;
-  uint32_t n350 = a0_and(n343, 127u); (void)n350;
-  const a0t4 *const n351 = &(*n0).e[n349 % 45u]; (void)n351;
-  uint32_t n352 = (*n351).e[n350 % 128u]; (void)n352;
-  uint32_t n353 = (n348 ? n345 : n352); (void)n353;
-  a0t4 n354 = (*n351); n354.e[n350 % 128u] = n353; (void)n354;
-  a0t17 n355 = (*n0); n355.e[n349 % 45u] = n354; (void)n355;
-  uint32_t n356 = (n113 ? n4 : n12); (void)n356;
-  uint32_t n357 = a0_add(n6, 1u); (void)n357;
-  uint32_t n358 = (n113 ? n357 : n6); (void)n358;
-  uint32_t n359 = (n122 ? 1u : n10); (void)n359;
-  uint32_t n360 = (n129 ? 0u : n359); (void)n360;
-  uint32_t n361 = (n129 ? n54 : n11); (void)n361;
-  uint32_t n362 = (n113 ? 1u : n7); (void)n362;
-  uint32_t n363 = (n114 ? 10u : n362); (void)n363;
-  uint32_t n364 = (n119 ? 2u : n363); (void)n364;
-  uint32_t n365 = (n120 ? 0u : n364); (void)n365;
-  uint32_t n366 = (n122 ? 5u : n365); (void)n366;
-  uint32_t n367 = (n129 ? 3u : n366); (void)n367;
-  uint32_t n368 = (n176 ? n184 : n367); (void)n368;
-  uint32_t n369 = (n217 ? n224 : n368); (void)n369;
-  uint32_t n370 = (n225 ? n227 : n369); (void)n370;
-  uint32_t n371 = (n172 ? 7u : n370); (void)n371;
-  uint32_t n372 = (n328 ? 8u : n371); (void)n372;
-  uint32_t n373 = (n331 ? 9u : n372); (void)n373;
-  uint32_t n374 = (n335 ? 0u : n373); (void)n374;
-  bool n375 = (n118 || n134); (void)n375;
-  bool n376 = (n375 || n143); (void)n376;
-  bool n377 = (n376 || n219); (void)n377;
-  bool n378 = (n377 || n234); (void)n378;
-  bool n379 = (n378 || n248); (void)n379;
-  bool n380 = (n379 || n169); (void)n380;
-  bool n381 = (n380 || n329); (void)n381;
-  bool n382 = (n381 || n334); (void)n382;
-  bool n383 = (n382 || n336); (void)n383;
-  bool n384 = (n383 || n229); (void)n384;
-  bool n385 = (n384 || n156); (void)n385;
-  bool n386 = (n130 || n218); (void)n386;
-  bool n387 = (n386 || n243); (void)n387;
-  bool n388 = (n387 || n141); (void)n388;
-  bool n389 = (n388 || n152); (void)n389;
-  bool n390 = (n389 || n165); (void)n390;
-  bool n391 = (n385 || n390); (void)n391;
-  bool n392 = (n391 && n90); (void)n392;
-  uint32_t n393 = (n390 ? 2u : 1u); (void)n393;
-  uint32_t n394 = (n392 ? n393 : n8); (void)n394;
-  uint32_t n395 = (n392 ? n22 : n9); (void)n395;
-  a0t44 n396; n396.f0 = n355; n396.f1 = n287; n396.f2 = n271; n396.f3 = n203; n396.f4 = n186; n396.f5 = n273; n396.f6 = n358; n396.f7 = n374; n396.f8 = n394; n396.f9 = n395; n396.f10 = n360; n396.f11 = n361; n396.f12 = n356; n396.f13 = n187; n396.f14 = n188; n396.f15 = n275; n396.f16 = n190; n396.f17 = n222; n396.f18 = n223; n396.f19 = n19; n396.f20 = n20; n396.f21 = n277; n396.f22 = n32; n396.f23 = n37; (void)n396;
-  return n396;
+  uint32_t n259 = a0_sub(n5, p9); (void)n259;
+  bool n260 = a0_lt(n259, 16384u); (void)n260;
+  bool n261 = (n258 && n260); (void)n261;
+  uint32_t n262 = a0_mul(n259, 2u); (void)n262;
+  uint32_t n263 = a0_sub(n262, n20); (void)n263;
+  uint32_t n264 = a0_shr(n263, 7u); (void)n264;
+  uint32_t n265 = a0_and(n263, 127u); (void)n265;
+  const a0t5 *const n266 = &(*n2).e[n264 % 3u]; (void)n266;
+  uint32_t n267 = (*n266).e[n265 % 128u]; (void)n267;
+  uint32_t n268 = a0_add(n265, 1u); (void)n268;
+  uint32_t n269 = (*n266).e[n268 % 128u]; (void)n269;
+  uint32_t n270 = (n261 ? n251 : n267); (void)n270;
+  uint32_t n271 = (n261 ? n254 : n269); (void)n271;
+  a0t5 n272 = (*n266); n272.e[n265 % 128u] = n270; (void)n272;
+  n272.e[n268 % 128u] = n271;
+  a0t30 n274 = (*n2); n274.e[n264 % 3u] = n272; (void)n274;
+  uint32_t n275 = a0_add(n5, 1u); (void)n275;
+  uint32_t n276 = (n258 ? n275 : n5); (void)n276;
+  uint32_t n277 = a0_add(n189, 1u); (void)n277;
+  uint32_t n278 = (n258 ? n277 : n189); (void)n278;
+  bool n279 = (n232 && n90); (void)n279;
+  uint32_t n280 = (n279 ? 1u : 0u); (void)n280;
+  bool n281 = (n225 && n90); (void)n281;
+  uint32_t n282 = a0_mul(n92, 6u); (void)n282;
+  uint32_t n283 = a0_sub(n282, n19); (void)n283;
+  uint32_t n284 = a0_shr(n283, 7u); (void)n284;
+  uint32_t n285 = a0_and(n283, 127u); (void)n285;
+  const a0t5 *const n286 = &(*n1).e[n284 % 5u]; (void)n286;
+  uint32_t n287 = (*n286).e[n285 % 128u]; (void)n287;
+  uint32_t n288 = (n281 ? n187 : n287); (void)n288;
+  a0t5 n289 = (*n286); n289.e[n285 % 128u] = n288; (void)n289;
+  a0t46 n290 = (*n1); n290.e[n284 % 5u] = n289; (void)n290;
+  uint32_t n291 = a0_add(n283, 1u); (void)n291;
+  uint32_t n292 = a0_shr(n291, 7u); (void)n292;
+  uint32_t n293 = a0_and(n291, 127u); (void)n293;
+  const a0t5 *const n294 = &n290.e[n292 % 5u]; (void)n294;
+  uint32_t n295 = (*n294).e[n293 % 128u]; (void)n295;
+  uint32_t n296 = (n281 ? n188 : n295); (void)n296;
+  a0t5 n297 = (*n294); n297.e[n293 % 128u] = n296; (void)n297;
+  n290.e[n292 % 5u] = n297;
+  uint32_t n299 = a0_add(n283, 2u); (void)n299;
+  uint32_t n300 = a0_shr(n299, 7u); (void)n300;
+  uint32_t n301 = a0_and(n299, 127u); (void)n301;
+  const a0t5 *const n302 = &n290.e[n300 % 5u]; (void)n302;
+  uint32_t n303 = (*n302).e[n301 % 128u]; (void)n303;
+  uint32_t n304 = (n281 ? n278 : n303); (void)n304;
+  a0t5 n305 = (*n302); n305.e[n301 % 128u] = n304; (void)n305;
+  n290.e[n300 % 5u] = n305;
+  uint32_t n307 = a0_add(n283, 3u); (void)n307;
+  uint32_t n308 = a0_shr(n307, 7u); (void)n308;
+  uint32_t n309 = a0_and(n307, 127u); (void)n309;
+  const a0t5 *const n310 = &n290.e[n308 % 5u]; (void)n310;
+  uint32_t n311 = (*n310).e[n309 % 128u]; (void)n311;
+  uint32_t n312 = (n281 ? n190 : n311); (void)n312;
+  a0t5 n313 = (*n310); n313.e[n309 % 128u] = n312; (void)n313;
+  n290.e[n308 % 5u] = n313;
+  uint32_t n315 = a0_add(n283, 4u); (void)n315;
+  uint32_t n316 = a0_shr(n315, 7u); (void)n316;
+  uint32_t n317 = a0_and(n315, 127u); (void)n317;
+  const a0t5 *const n318 = &n290.e[n316 % 5u]; (void)n318;
+  uint32_t n319 = (*n318).e[n317 % 128u]; (void)n319;
+  uint32_t n320 = (n281 ? n222 : n319); (void)n320;
+  a0t5 n321 = (*n318); n321.e[n317 % 128u] = n320; (void)n321;
+  n290.e[n316 % 5u] = n321;
+  uint32_t n323 = a0_add(n283, 5u); (void)n323;
+  uint32_t n324 = a0_shr(n323, 7u); (void)n324;
+  uint32_t n325 = a0_and(n323, 127u); (void)n325;
+  const a0t5 *const n326 = &n290.e[n324 % 5u]; (void)n326;
+  uint32_t n327 = (*n326).e[n325 % 128u]; (void)n327;
+  uint32_t n328 = (n281 ? n223 : n327); (void)n328;
+  a0t5 n329 = (*n326); n329.e[n325 % 128u] = n328; (void)n329;
+  n290.e[n324 % 5u] = n329;
+  bool n331 = (n72 && n64); (void)n331;
+  bool n332 = (n72 && n89); (void)n332;
+  bool n333 = (n73 && n61); (void)n333;
+  bool n334 = (n333 && n80); (void)n334;
+  bool n335 = (n64 || n334); (void)n335;
+  bool n336 = (n335 ? false : true); (void)n336;
+  bool n337 = (n73 && n336); (void)n337;
+  bool n338 = (n74 && n64); (void)n338;
+  bool n339 = (n74 && n89); (void)n339;
+  uint32_t n340 = a0_mul(n6, 7u); (void)n340;
+  uint32_t n341 = a0_add(n340, 4u); (void)n341;
+  uint32_t n342 = a0_mul(n106, 7u); (void)n342;
+  uint32_t n343 = a0_add(n342, 5u); (void)n343;
+  uint32_t n344 = a0_add(n342, 6u); (void)n344;
+  uint32_t n345 = (n334 ? n343 : n344); (void)n345;
+  uint32_t n346 = (n113 ? n341 : n345); (void)n346;
+  uint32_t n347 = (n334 ? n91 : n212); (void)n347;
+  uint32_t n348 = (n113 ? n4 : n347); (void)n348;
+  bool n349 = (n113 || n334); (void)n349;
+  bool n350 = (n349 || n214); (void)n350;
+  bool n351 = (n350 && n90); (void)n351;
+  uint32_t n352 = a0_shr(n346, 7u); (void)n352;
+  uint32_t n353 = a0_and(n346, 127u); (void)n353;
+  const a0t5 *const n354 = &(*n0).e[n352 % 45u]; (void)n354;
+  uint32_t n355 = (*n354).e[n353 % 128u]; (void)n355;
+  uint32_t n356 = (n351 ? n348 : n355); (void)n356;
+  a0t5 n357 = (*n354); n357.e[n353 % 128u] = n356; (void)n357;
+  a0t20 n358 = (*n0); n358.e[n352 % 45u] = n357; (void)n358;
+  uint32_t n359 = (n113 ? n4 : n12); (void)n359;
+  uint32_t n360 = a0_add(n6, 1u); (void)n360;
+  uint32_t n361 = (n113 ? n360 : n6); (void)n361;
+  uint32_t n362 = (n122 ? 1u : n10); (void)n362;
+  uint32_t n363 = (n129 ? 0u : n362); (void)n363;
+  uint32_t n364 = (n129 ? n54 : n11); (void)n364;
+  uint32_t n365 = (n113 ? 1u : n7); (void)n365;
+  uint32_t n366 = (n114 ? 10u : n365); (void)n366;
+  uint32_t n367 = (n119 ? 2u : n366); (void)n367;
+  uint32_t n368 = (n120 ? 0u : n367); (void)n368;
+  uint32_t n369 = (n122 ? 5u : n368); (void)n369;
+  uint32_t n370 = (n129 ? 3u : n369); (void)n370;
+  uint32_t n371 = (n176 ? n184 : n370); (void)n371;
+  uint32_t n372 = (n217 ? n224 : n371); (void)n372;
+  uint32_t n373 = (n225 ? n227 : n372); (void)n373;
+  uint32_t n374 = (n172 ? 7u : n373); (void)n374;
+  uint32_t n375 = (n331 ? 8u : n374); (void)n375;
+  uint32_t n376 = (n334 ? 9u : n375); (void)n376;
+  uint32_t n377 = (n338 ? 0u : n376); (void)n377;
+  bool n378 = (n118 || n134); (void)n378;
+  bool n379 = (n378 || n143); (void)n379;
+  bool n380 = (n379 || n219); (void)n380;
+  bool n381 = (n380 || n234); (void)n381;
+  bool n382 = (n381 || n248); (void)n382;
+  bool n383 = (n382 || n169); (void)n383;
+  bool n384 = (n383 || n332); (void)n384;
+  bool n385 = (n384 || n337); (void)n385;
+  bool n386 = (n385 || n339); (void)n386;
+  bool n387 = (n386 || n229); (void)n387;
+  bool n388 = (n387 || n156); (void)n388;
+  bool n389 = (n130 || n218); (void)n389;
+  bool n390 = (n389 || n243); (void)n390;
+  bool n391 = (n390 || n141); (void)n391;
+  bool n392 = (n391 || n152); (void)n392;
+  bool n393 = (n392 || n165); (void)n393;
+  bool n394 = (n388 || n393); (void)n394;
+  bool n395 = (n394 && n90); (void)n395;
+  uint32_t n396 = (n393 ? 2u : 1u); (void)n396;
+  uint32_t n397 = (n395 ? n396 : n8); (void)n397;
+  uint32_t n398 = (n395 ? n22 : n9); (void)n398;
+  a0t47 n399; n399.f0 = n358; n399.f1 = n290; n399.f2 = n274; n399.f3 = n203; n399.f4 = n186; n399.f5 = n276; n399.f6 = n361; n399.f7 = n377; n399.f8 = n397; n399.f9 = n398; n399.f10 = n363; n399.f11 = n364; n399.f12 = n359; n399.f13 = n187; n399.f14 = n188; n399.f15 = n278; n399.f16 = n190; n399.f17 = n222; n399.f18 = n223; n399.f19 = n19; n399.f20 = n20; n399.f21 = n280; n399.f22 = n32; n399.f23 = n37; (void)n399;
+  return n399;
 }
 
-static inline void a0o_p5tok(a0t44 *p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8) {
-  const a0t17 *const n0 = &(*p0).f0; (void)n0;
-  const a0t43 *const n1 = &(*p0).f1; (void)n1;
-  const a0t27 *const n2 = &(*p0).f2; (void)n2;
-  const a0t18 *const n3 = &(*p0).f3; (void)n3;
+static inline void a0o_p5tok(a0t47 *p0, uint32_t p1, a0t30 p2, a0t5 p3, a0t5 p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
+  const a0t20 *const n0 = &(*p0).f0; (void)n0;
+  const a0t46 *const n1 = &(*p0).f1; (void)n1;
+  const a0t30 *const n2 = &(*p0).f2; (void)n2;
+  const a0t21 *const n3 = &(*p0).f3; (void)n3;
   uint32_t n4 = (*p0).f4; (void)n4;
   uint32_t n5 = (*p0).f5; (void)n5;
   uint32_t n6 = (*p0).f6; (void)n6;
@@ -3761,17 +4290,17 @@ static inline void a0o_p5tok(a0t44 *p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4,
   uint32_t n23 = a0_mul(n21, 3u); (void)n23;
   uint32_t n24 = a0_shr(n23, 7u); (void)n24;
   uint32_t n25 = a0_and(n23, 127u); (void)n25;
-  const a0t4 *const n26 = &p2.e[n24 % 3u]; (void)n26;
+  const a0t5 *const n26 = &p2.e[n24 % 3u]; (void)n26;
   uint32_t n27 = (*n26).e[n25 % 128u]; (void)n27;
   uint32_t n28 = a0_add(n23, 1u); (void)n28;
   uint32_t n29 = a0_shr(n28, 7u); (void)n29;
   uint32_t n30 = a0_and(n28, 127u); (void)n30;
-  const a0t4 *const n31 = &p2.e[n29 % 3u]; (void)n31;
+  const a0t5 *const n31 = &p2.e[n29 % 3u]; (void)n31;
   uint32_t n32 = (*n31).e[n30 % 128u]; (void)n32;
   uint32_t n33 = a0_add(n23, 2u); (void)n33;
   uint32_t n34 = a0_shr(n33, 7u); (void)n34;
   uint32_t n35 = a0_and(n33, 127u); (void)n35;
-  const a0t4 *const n36 = &p2.e[n34 % 3u]; (void)n36;
+  const a0t5 *const n36 = &p2.e[n34 % 3u]; (void)n36;
   uint32_t n37 = (*n36).e[n35 % 128u]; (void)n37;
   uint32_t n38 = p3.e[n21 % 128u]; (void)n38;
   uint32_t n39 = p4.e[n21 % 128u]; (void)n39;
@@ -3830,7 +4359,7 @@ static inline void a0o_p5tok(a0t44 *p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4,
   uint32_t n92 = a0_sub(n4, 1u); (void)n92;
   uint32_t n93 = a0_shr(n54, 7u); (void)n93;
   uint32_t n94 = a0_and(n54, 127u); (void)n94;
-  const a0t4 *const n95 = &(*n3).e[n93 % 64u]; (void)n95;
+  const a0t5 *const n95 = &(*n3).e[n93 % 64u]; (void)n95;
   uint32_t n96 = (*n95).e[n94 % 128u]; (void)n96;
   uint32_t n97 = a0_and(n96, 4095u); (void)n97;
   uint32_t n98 = a0_shr(n96, 12u); (void)n98;
@@ -3931,14 +4460,14 @@ static inline void a0o_p5tok(a0t44 *p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4,
   uint32_t n193 = (n176 ? 0u : n18); (void)n193;
   uint32_t n194 = a0_shr(n11, 7u); (void)n194;
   uint32_t n195 = a0_and(n11, 127u); (void)n195;
-  const a0t4 *const n196 = &(*n3).e[n194 % 64u]; (void)n196;
+  const a0t5 *const n196 = &(*n3).e[n194 % 64u]; (void)n196;
   uint32_t n197 = (*n196).e[n195 % 128u]; (void)n197;
   uint32_t n198 = a0_and(n197, 4294963200u); (void)n198;
   uint32_t n199 = a0_or(n198, n185); (void)n199;
   bool n200 = (n174 && n90); (void)n200;
   uint32_t n201 = (n200 ? n199 : n197); (void)n201;
-  a0t4 n202 = (*n196); n202.e[n195 % 128u] = n201; (void)n202;
-  a0t18 n203 = (*n3); n203.e[n194 % 64u] = n202; (void)n203;
+  a0t5 n202 = (*n196); n202.e[n195 % 128u] = n201; (void)n202;
+  a0t21 n203 = (*n3); n203.e[n194 % 64u] = n202; (void)n203;
   uint32_t n204 = a0_add(268435456u, n91); (void)n204;
   uint32_t n205 = a0_add(805306368u, n39); (void)n205;
   uint32_t n206 = a0_add(1073741824u, n85); (void)n206;
@@ -3994,148 +4523,151 @@ static inline void a0o_p5tok(a0t44 *p0, uint32_t p1, a0t27 p2, a0t4 p3, a0t4 p4,
   bool n256 = (n255 || n238); (void)n256;
   bool n257 = (n256 || n241); (void)n257;
   bool n258 = (n257 && n90); (void)n258;
-  uint32_t n259 = a0_mul(n5, 2u); (void)n259;
-  uint32_t n260 = a0_sub(n259, n20); (void)n260;
-  uint32_t n261 = a0_shr(n260, 7u); (void)n261;
-  uint32_t n262 = a0_and(n260, 127u); (void)n262;
-  const a0t4 *const n263 = &(*n2).e[n261 % 3u]; (void)n263;
-  uint32_t n264 = (*n263).e[n262 % 128u]; (void)n264;
-  uint32_t n265 = a0_add(n262, 1u); (void)n265;
-  uint32_t n266 = (*n263).e[n265 % 128u]; (void)n266;
-  uint32_t n267 = (n258 ? n251 : n264); (void)n267;
-  uint32_t n268 = (n258 ? n254 : n266); (void)n268;
-  a0t4 n269 = (*n263); n269.e[n262 % 128u] = n267; (void)n269;
-  n269.e[n265 % 128u] = n268;
-  a0t27 n271 = (*n2); n271.e[n261 % 3u] = n269; (void)n271;
-  uint32_t n272 = a0_add(n5, 1u); (void)n272;
-  uint32_t n273 = (n258 ? n272 : n5); (void)n273;
-  uint32_t n274 = a0_add(n189, 1u); (void)n274;
-  uint32_t n275 = (n258 ? n274 : n189); (void)n275;
-  bool n276 = (n232 && n90); (void)n276;
-  uint32_t n277 = (n276 ? 1u : 0u); (void)n277;
-  bool n278 = (n225 && n90); (void)n278;
-  uint32_t n279 = a0_mul(n92, 6u); (void)n279;
-  uint32_t n280 = a0_sub(n279, n19); (void)n280;
-  uint32_t n281 = a0_shr(n280, 7u); (void)n281;
-  uint32_t n282 = a0_and(n280, 127u); (void)n282;
-  const a0t4 *const n283 = &(*n1).e[n281 % 5u]; (void)n283;
-  uint32_t n284 = (*n283).e[n282 % 128u]; (void)n284;
-  uint32_t n285 = (n278 ? n187 : n284); (void)n285;
-  a0t4 n286 = (*n283); n286.e[n282 % 128u] = n285; (void)n286;
-  a0t43 n287 = (*n1); n287.e[n281 % 5u] = n286; (void)n287;
-  uint32_t n288 = a0_add(n280, 1u); (void)n288;
-  uint32_t n289 = a0_shr(n288, 7u); (void)n289;
-  uint32_t n290 = a0_and(n288, 127u); (void)n290;
-  const a0t4 *const n291 = &n287.e[n289 % 5u]; (void)n291;
-  uint32_t n292 = (*n291).e[n290 % 128u]; (void)n292;
-  uint32_t n293 = (n278 ? n188 : n292); (void)n293;
-  a0t4 n294 = (*n291); n294.e[n290 % 128u] = n293; (void)n294;
-  n287.e[n289 % 5u] = n294;
-  uint32_t n296 = a0_add(n280, 2u); (void)n296;
-  uint32_t n297 = a0_shr(n296, 7u); (void)n297;
-  uint32_t n298 = a0_and(n296, 127u); (void)n298;
-  const a0t4 *const n299 = &n287.e[n297 % 5u]; (void)n299;
-  uint32_t n300 = (*n299).e[n298 % 128u]; (void)n300;
-  uint32_t n301 = (n278 ? n275 : n300); (void)n301;
-  a0t4 n302 = (*n299); n302.e[n298 % 128u] = n301; (void)n302;
-  n287.e[n297 % 5u] = n302;
-  uint32_t n304 = a0_add(n280, 3u); (void)n304;
-  uint32_t n305 = a0_shr(n304, 7u); (void)n305;
-  uint32_t n306 = a0_and(n304, 127u); (void)n306;
-  const a0t4 *const n307 = &n287.e[n305 % 5u]; (void)n307;
-  uint32_t n308 = (*n307).e[n306 % 128u]; (void)n308;
-  uint32_t n309 = (n278 ? n190 : n308); (void)n309;
-  a0t4 n310 = (*n307); n310.e[n306 % 128u] = n309; (void)n310;
-  n287.e[n305 % 5u] = n310;
-  uint32_t n312 = a0_add(n280, 4u); (void)n312;
-  uint32_t n313 = a0_shr(n312, 7u); (void)n313;
-  uint32_t n314 = a0_and(n312, 127u); (void)n314;
-  const a0t4 *const n315 = &n287.e[n313 % 5u]; (void)n315;
-  uint32_t n316 = (*n315).e[n314 % 128u]; (void)n316;
-  uint32_t n317 = (n278 ? n222 : n316); (void)n317;
-  a0t4 n318 = (*n315); n318.e[n314 % 128u] = n317; (void)n318;
-  n287.e[n313 % 5u] = n318;
-  uint32_t n320 = a0_add(n280, 5u); (void)n320;
-  uint32_t n321 = a0_shr(n320, 7u); (void)n321;
-  uint32_t n322 = a0_and(n320, 127u); (void)n322;
-  const a0t4 *const n323 = &n287.e[n321 % 5u]; (void)n323;
-  uint32_t n324 = (*n323).e[n322 % 128u]; (void)n324;
-  uint32_t n325 = (n278 ? n223 : n324); (void)n325;
-  a0t4 n326 = (*n323); n326.e[n322 % 128u] = n325; (void)n326;
-  n287.e[n321 % 5u] = n326;
-  bool n328 = (n72 && n64); (void)n328;
-  bool n329 = (n72 && n89); (void)n329;
-  bool n330 = (n73 && n61); (void)n330;
-  bool n331 = (n330 && n80); (void)n331;
-  bool n332 = (n64 || n331); (void)n332;
-  bool n333 = (n332 ? false : true); (void)n333;
-  bool n334 = (n73 && n333); (void)n334;
-  bool n335 = (n74 && n64); (void)n335;
-  bool n336 = (n74 && n89); (void)n336;
-  uint32_t n337 = a0_mul(n6, 7u); (void)n337;
-  uint32_t n338 = a0_add(n337, 4u); (void)n338;
-  uint32_t n339 = a0_mul(n106, 7u); (void)n339;
-  uint32_t n340 = a0_add(n339, 5u); (void)n340;
-  uint32_t n341 = a0_add(n339, 6u); (void)n341;
-  uint32_t n342 = (n331 ? n340 : n341); (void)n342;
-  uint32_t n343 = (n113 ? n338 : n342); (void)n343;
-  uint32_t n344 = (n331 ? n91 : n212); (void)n344;
-  uint32_t n345 = (n113 ? n4 : n344); (void)n345;
-  bool n346 = (n113 || n331); (void)n346;
-  bool n347 = (n346 || n214); (void)n347;
-  bool n348 = (n347 && n90); (void)n348;
-  uint32_t n349 = a0_shr(n343, 7u); (void)n349;
-  uint32_t n350 = a0_and(n343, 127u); (void)n350;
-  const a0t4 *const n351 = &(*n0).e[n349 % 45u]; (void)n351;
-  uint32_t n352 = (*n351).e[n350 % 128u]; (void)n352;
-  uint32_t n353 = (n348 ? n345 : n352); (void)n353;
-  a0t4 n354 = (*n351); n354.e[n350 % 128u] = n353; (void)n354;
-  a0t17 n355 = (*n0); n355.e[n349 % 45u] = n354; (void)n355;
-  uint32_t n356 = (n113 ? n4 : n12); (void)n356;
-  uint32_t n357 = a0_add(n6, 1u); (void)n357;
-  uint32_t n358 = (n113 ? n357 : n6); (void)n358;
-  uint32_t n359 = (n122 ? 1u : n10); (void)n359;
-  uint32_t n360 = (n129 ? 0u : n359); (void)n360;
-  uint32_t n361 = (n129 ? n54 : n11); (void)n361;
-  uint32_t n362 = (n113 ? 1u : n7); (void)n362;
-  uint32_t n363 = (n114 ? 10u : n362); (void)n363;
-  uint32_t n364 = (n119 ? 2u : n363); (void)n364;
-  uint32_t n365 = (n120 ? 0u : n364); (void)n365;
-  uint32_t n366 = (n122 ? 5u : n365); (void)n366;
-  uint32_t n367 = (n129 ? 3u : n366); (void)n367;
-  uint32_t n368 = (n176 ? n184 : n367); (void)n368;
-  uint32_t n369 = (n217 ? n224 : n368); (void)n369;
-  uint32_t n370 = (n225 ? n227 : n369); (void)n370;
-  uint32_t n371 = (n172 ? 7u : n370); (void)n371;
-  uint32_t n372 = (n328 ? 8u : n371); (void)n372;
-  uint32_t n373 = (n331 ? 9u : n372); (void)n373;
-  uint32_t n374 = (n335 ? 0u : n373); (void)n374;
-  bool n375 = (n118 || n134); (void)n375;
-  bool n376 = (n375 || n143); (void)n376;
-  bool n377 = (n376 || n219); (void)n377;
-  bool n378 = (n377 || n234); (void)n378;
-  bool n379 = (n378 || n248); (void)n379;
-  bool n380 = (n379 || n169); (void)n380;
-  bool n381 = (n380 || n329); (void)n381;
-  bool n382 = (n381 || n334); (void)n382;
-  bool n383 = (n382 || n336); (void)n383;
-  bool n384 = (n383 || n229); (void)n384;
-  bool n385 = (n384 || n156); (void)n385;
-  bool n386 = (n130 || n218); (void)n386;
-  bool n387 = (n386 || n243); (void)n387;
-  bool n388 = (n387 || n141); (void)n388;
-  bool n389 = (n388 || n152); (void)n389;
-  bool n390 = (n389 || n165); (void)n390;
-  bool n391 = (n385 || n390); (void)n391;
-  bool n392 = (n391 && n90); (void)n392;
-  uint32_t n393 = (n390 ? 2u : 1u); (void)n393;
-  uint32_t n394 = (n392 ? n393 : n8); (void)n394;
-  uint32_t n395 = (n392 ? n22 : n9); (void)n395;
-  a0t44 n396; n396.f0 = n355; n396.f1 = n287; n396.f2 = n271; n396.f3 = n203; n396.f4 = n186; n396.f5 = n273; n396.f6 = n358; n396.f7 = n374; n396.f8 = n394; n396.f9 = n395; n396.f10 = n360; n396.f11 = n361; n396.f12 = n356; n396.f13 = n187; n396.f14 = n188; n396.f15 = n275; n396.f16 = n190; n396.f17 = n222; n396.f18 = n223; n396.f19 = n19; n396.f20 = n20; n396.f21 = n277; n396.f22 = n32; n396.f23 = n37; (void)n396;
-  *p0 = n396;
+  uint32_t n259 = a0_sub(n5, p9); (void)n259;
+  bool n260 = a0_lt(n259, 16384u); (void)n260;
+  bool n261 = (n258 && n260); (void)n261;
+  uint32_t n262 = a0_mul(n259, 2u); (void)n262;
+  uint32_t n263 = a0_sub(n262, n20); (void)n263;
+  uint32_t n264 = a0_shr(n263, 7u); (void)n264;
+  uint32_t n265 = a0_and(n263, 127u); (void)n265;
+  const a0t5 *const n266 = &(*n2).e[n264 % 3u]; (void)n266;
+  uint32_t n267 = (*n266).e[n265 % 128u]; (void)n267;
+  uint32_t n268 = a0_add(n265, 1u); (void)n268;
+  uint32_t n269 = (*n266).e[n268 % 128u]; (void)n269;
+  uint32_t n270 = (n261 ? n251 : n267); (void)n270;
+  uint32_t n271 = (n261 ? n254 : n269); (void)n271;
+  a0t5 n272 = (*n266); n272.e[n265 % 128u] = n270; (void)n272;
+  n272.e[n268 % 128u] = n271;
+  a0t30 n274 = (*n2); n274.e[n264 % 3u] = n272; (void)n274;
+  uint32_t n275 = a0_add(n5, 1u); (void)n275;
+  uint32_t n276 = (n258 ? n275 : n5); (void)n276;
+  uint32_t n277 = a0_add(n189, 1u); (void)n277;
+  uint32_t n278 = (n258 ? n277 : n189); (void)n278;
+  bool n279 = (n232 && n90); (void)n279;
+  uint32_t n280 = (n279 ? 1u : 0u); (void)n280;
+  bool n281 = (n225 && n90); (void)n281;
+  uint32_t n282 = a0_mul(n92, 6u); (void)n282;
+  uint32_t n283 = a0_sub(n282, n19); (void)n283;
+  uint32_t n284 = a0_shr(n283, 7u); (void)n284;
+  uint32_t n285 = a0_and(n283, 127u); (void)n285;
+  const a0t5 *const n286 = &(*n1).e[n284 % 5u]; (void)n286;
+  uint32_t n287 = (*n286).e[n285 % 128u]; (void)n287;
+  uint32_t n288 = (n281 ? n187 : n287); (void)n288;
+  a0t5 n289 = (*n286); n289.e[n285 % 128u] = n288; (void)n289;
+  a0t46 n290 = (*n1); n290.e[n284 % 5u] = n289; (void)n290;
+  uint32_t n291 = a0_add(n283, 1u); (void)n291;
+  uint32_t n292 = a0_shr(n291, 7u); (void)n292;
+  uint32_t n293 = a0_and(n291, 127u); (void)n293;
+  const a0t5 *const n294 = &n290.e[n292 % 5u]; (void)n294;
+  uint32_t n295 = (*n294).e[n293 % 128u]; (void)n295;
+  uint32_t n296 = (n281 ? n188 : n295); (void)n296;
+  a0t5 n297 = (*n294); n297.e[n293 % 128u] = n296; (void)n297;
+  n290.e[n292 % 5u] = n297;
+  uint32_t n299 = a0_add(n283, 2u); (void)n299;
+  uint32_t n300 = a0_shr(n299, 7u); (void)n300;
+  uint32_t n301 = a0_and(n299, 127u); (void)n301;
+  const a0t5 *const n302 = &n290.e[n300 % 5u]; (void)n302;
+  uint32_t n303 = (*n302).e[n301 % 128u]; (void)n303;
+  uint32_t n304 = (n281 ? n278 : n303); (void)n304;
+  a0t5 n305 = (*n302); n305.e[n301 % 128u] = n304; (void)n305;
+  n290.e[n300 % 5u] = n305;
+  uint32_t n307 = a0_add(n283, 3u); (void)n307;
+  uint32_t n308 = a0_shr(n307, 7u); (void)n308;
+  uint32_t n309 = a0_and(n307, 127u); (void)n309;
+  const a0t5 *const n310 = &n290.e[n308 % 5u]; (void)n310;
+  uint32_t n311 = (*n310).e[n309 % 128u]; (void)n311;
+  uint32_t n312 = (n281 ? n190 : n311); (void)n312;
+  a0t5 n313 = (*n310); n313.e[n309 % 128u] = n312; (void)n313;
+  n290.e[n308 % 5u] = n313;
+  uint32_t n315 = a0_add(n283, 4u); (void)n315;
+  uint32_t n316 = a0_shr(n315, 7u); (void)n316;
+  uint32_t n317 = a0_and(n315, 127u); (void)n317;
+  const a0t5 *const n318 = &n290.e[n316 % 5u]; (void)n318;
+  uint32_t n319 = (*n318).e[n317 % 128u]; (void)n319;
+  uint32_t n320 = (n281 ? n222 : n319); (void)n320;
+  a0t5 n321 = (*n318); n321.e[n317 % 128u] = n320; (void)n321;
+  n290.e[n316 % 5u] = n321;
+  uint32_t n323 = a0_add(n283, 5u); (void)n323;
+  uint32_t n324 = a0_shr(n323, 7u); (void)n324;
+  uint32_t n325 = a0_and(n323, 127u); (void)n325;
+  const a0t5 *const n326 = &n290.e[n324 % 5u]; (void)n326;
+  uint32_t n327 = (*n326).e[n325 % 128u]; (void)n327;
+  uint32_t n328 = (n281 ? n223 : n327); (void)n328;
+  a0t5 n329 = (*n326); n329.e[n325 % 128u] = n328; (void)n329;
+  n290.e[n324 % 5u] = n329;
+  bool n331 = (n72 && n64); (void)n331;
+  bool n332 = (n72 && n89); (void)n332;
+  bool n333 = (n73 && n61); (void)n333;
+  bool n334 = (n333 && n80); (void)n334;
+  bool n335 = (n64 || n334); (void)n335;
+  bool n336 = (n335 ? false : true); (void)n336;
+  bool n337 = (n73 && n336); (void)n337;
+  bool n338 = (n74 && n64); (void)n338;
+  bool n339 = (n74 && n89); (void)n339;
+  uint32_t n340 = a0_mul(n6, 7u); (void)n340;
+  uint32_t n341 = a0_add(n340, 4u); (void)n341;
+  uint32_t n342 = a0_mul(n106, 7u); (void)n342;
+  uint32_t n343 = a0_add(n342, 5u); (void)n343;
+  uint32_t n344 = a0_add(n342, 6u); (void)n344;
+  uint32_t n345 = (n334 ? n343 : n344); (void)n345;
+  uint32_t n346 = (n113 ? n341 : n345); (void)n346;
+  uint32_t n347 = (n334 ? n91 : n212); (void)n347;
+  uint32_t n348 = (n113 ? n4 : n347); (void)n348;
+  bool n349 = (n113 || n334); (void)n349;
+  bool n350 = (n349 || n214); (void)n350;
+  bool n351 = (n350 && n90); (void)n351;
+  uint32_t n352 = a0_shr(n346, 7u); (void)n352;
+  uint32_t n353 = a0_and(n346, 127u); (void)n353;
+  const a0t5 *const n354 = &(*n0).e[n352 % 45u]; (void)n354;
+  uint32_t n355 = (*n354).e[n353 % 128u]; (void)n355;
+  uint32_t n356 = (n351 ? n348 : n355); (void)n356;
+  a0t5 n357 = (*n354); n357.e[n353 % 128u] = n356; (void)n357;
+  a0t20 n358 = (*n0); n358.e[n352 % 45u] = n357; (void)n358;
+  uint32_t n359 = (n113 ? n4 : n12); (void)n359;
+  uint32_t n360 = a0_add(n6, 1u); (void)n360;
+  uint32_t n361 = (n113 ? n360 : n6); (void)n361;
+  uint32_t n362 = (n122 ? 1u : n10); (void)n362;
+  uint32_t n363 = (n129 ? 0u : n362); (void)n363;
+  uint32_t n364 = (n129 ? n54 : n11); (void)n364;
+  uint32_t n365 = (n113 ? 1u : n7); (void)n365;
+  uint32_t n366 = (n114 ? 10u : n365); (void)n366;
+  uint32_t n367 = (n119 ? 2u : n366); (void)n367;
+  uint32_t n368 = (n120 ? 0u : n367); (void)n368;
+  uint32_t n369 = (n122 ? 5u : n368); (void)n369;
+  uint32_t n370 = (n129 ? 3u : n369); (void)n370;
+  uint32_t n371 = (n176 ? n184 : n370); (void)n371;
+  uint32_t n372 = (n217 ? n224 : n371); (void)n372;
+  uint32_t n373 = (n225 ? n227 : n372); (void)n373;
+  uint32_t n374 = (n172 ? 7u : n373); (void)n374;
+  uint32_t n375 = (n331 ? 8u : n374); (void)n375;
+  uint32_t n376 = (n334 ? 9u : n375); (void)n376;
+  uint32_t n377 = (n338 ? 0u : n376); (void)n377;
+  bool n378 = (n118 || n134); (void)n378;
+  bool n379 = (n378 || n143); (void)n379;
+  bool n380 = (n379 || n219); (void)n380;
+  bool n381 = (n380 || n234); (void)n381;
+  bool n382 = (n381 || n248); (void)n382;
+  bool n383 = (n382 || n169); (void)n383;
+  bool n384 = (n383 || n332); (void)n384;
+  bool n385 = (n384 || n337); (void)n385;
+  bool n386 = (n385 || n339); (void)n386;
+  bool n387 = (n386 || n229); (void)n387;
+  bool n388 = (n387 || n156); (void)n388;
+  bool n389 = (n130 || n218); (void)n389;
+  bool n390 = (n389 || n243); (void)n390;
+  bool n391 = (n390 || n141); (void)n391;
+  bool n392 = (n391 || n152); (void)n392;
+  bool n393 = (n392 || n165); (void)n393;
+  bool n394 = (n388 || n393); (void)n394;
+  bool n395 = (n394 && n90); (void)n395;
+  uint32_t n396 = (n393 ? 2u : 1u); (void)n396;
+  uint32_t n397 = (n395 ? n396 : n8); (void)n397;
+  uint32_t n398 = (n395 ? n22 : n9); (void)n398;
+  a0t47 n399; n399.f0 = n358; n399.f1 = n290; n399.f2 = n274; n399.f3 = n203; n399.f4 = n186; n399.f5 = n276; n399.f6 = n361; n399.f7 = n377; n399.f8 = n397; n399.f9 = n398; n399.f10 = n363; n399.f11 = n364; n399.f12 = n359; n399.f13 = n187; n399.f14 = n188; n399.f15 = n278; n399.f16 = n190; n399.f17 = n222; n399.f18 = n223; n399.f19 = n19; n399.f20 = n20; n399.f21 = n280; n399.f22 = n32; n399.f23 = n37; (void)n399;
+  *p0 = n399;
 }
 
-uint32_t a0_strfind(uint32_t p0, uint32_t p1, a0t4 p2, uint32_t p3) {
+uint32_t a0_strfind(uint32_t p0, uint32_t p1, a0t5 p2, uint32_t p3) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = p2.e[n0 % 128u]; (void)n1;
   uint32_t n2 = a0_and(n1, 15u); (void)n2;
@@ -4146,11 +4678,11 @@ uint32_t a0_strfind(uint32_t p0, uint32_t p1, a0t4 p2, uint32_t p3) {
   return n6;
 }
 
-a0t45 a0_p5seg(a0t45 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32_t p6) {
-  const a0t17 *const n0 = &p0.f0; (void)n0;
-  const a0t9 *const n1 = &p0.f1; (void)n1;
-  const a0t21 *const n2 = &p0.f2; (void)n2;
-  const a0t18 *const n3 = &p0.f3; (void)n3;
+a0t48 a0_p5seg(a0t48 p0, uint32_t p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t11 p5, uint32_t p6, uint32_t p7) {
+  const a0t20 *const n0 = &p0.f0; (void)n0;
+  const a0t11 *const n1 = &p0.f1; (void)n1;
+  const a0t24 *const n2 = &p0.f2; (void)n2;
+  const a0t21 *const n3 = &p0.f3; (void)n3;
   uint32_t n4 = p0.f4; (void)n4;
   uint32_t n5 = p0.f5; (void)n5;
   uint32_t n6 = p0.f19; (void)n6;
@@ -4162,16 +4694,16 @@ a0t45 a0_p5seg(a0t45 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32
   uint32_t n12 = (n11 ? 128u : n10); (void)n12;
   uint32_t n13 = a0_sub(n12, n8); (void)n13;
   uint32_t n14 = a0_mul(n7, 3u); (void)n14;
-  const a0t4 *const n15 = &p3.e[n14 % 384u]; (void)n15;
+  const a0t5 *const n15 = &p3.e[n14 % 384u]; (void)n15;
   uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &p3.e[n16 % 384u]; (void)n17;
+  const a0t5 *const n17 = &p3.e[n16 % 384u]; (void)n17;
   uint32_t n18 = a0_add(n14, 2u); (void)n18;
-  const a0t4 *const n19 = &p3.e[n18 % 384u]; (void)n19;
-  a0t27 n20; n20.e[0] = (*n15); n20.e[1] = (*n17); n20.e[2] = (*n19); (void)n20;
-  const a0t4 *const n21 = &p4.e[n7 % 128u]; (void)n21;
-  const a0t4 *const n22 = &p5.e[n7 % 128u]; (void)n22;
+  const a0t5 *const n19 = &p3.e[n18 % 384u]; (void)n19;
+  a0t30 n20; n20.e[0] = (*n15); n20.e[1] = (*n17); n20.e[2] = (*n19); (void)n20;
+  const a0t5 *const n21 = &p4.e[n7 % 128u]; (void)n21;
+  const a0t5 *const n22 = &p5.e[n7 % 128u]; (void)n22;
   uint32_t n23 = a0_add(n7, 1u); (void)n23;
-  const a0t4 *const n24 = &p4.e[n23 % 128u]; (void)n24;
+  const a0t5 *const n24 = &p4.e[n23 % 128u]; (void)n24;
   uint32_t n25 = (*n24).e[0u % 128u]; (void)n25;
   uint32_t n26 = a0_and(n25, 15u); (void)n26;
   uint32_t n27 = 4294967295u; for (uint32_t a0i = 0; a0i < n13; a0i++) { n27 = a0_strfind(n27, a0i, (*n21), n8); } (void)n27;
@@ -4188,115 +4720,116 @@ a0t45 a0_p5seg(a0t45 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32
   uint32_t n38 = a0_add(n35, 2u); (void)n38;
   uint32_t n39 = a0_add(n35, 3u); (void)n39;
   uint32_t n40 = a0_add(n35, 4u); (void)n40;
-  const a0t4 *const n41 = &(*n1).e[n35 % 128u]; (void)n41;
-  const a0t4 *const n42 = &(*n1).e[n37 % 128u]; (void)n42;
-  const a0t4 *const n43 = &(*n1).e[n38 % 128u]; (void)n43;
-  const a0t4 *const n44 = &(*n1).e[n39 % 128u]; (void)n44;
-  const a0t4 *const n45 = &(*n1).e[n40 % 128u]; (void)n45;
-  a0t43 n46; n46.e[0] = (*n41); n46.e[1] = (*n42); n46.e[2] = (*n43); n46.e[3] = (*n44); n46.e[4] = (*n45); (void)n46;
-  uint32_t n47 = a0_mul(n5, 2u); (void)n47;
-  uint32_t n48 = a0_shr(n47, 7u); (void)n48;
-  uint32_t n49 = a0_mul(n48, 128u); (void)n49;
-  uint32_t n50 = a0_add(n48, 1u); (void)n50;
-  uint32_t n51 = a0_add(n48, 2u); (void)n51;
-  const a0t4 *const n52 = &(*n2).e[n48 % 256u]; (void)n52;
-  const a0t4 *const n53 = &(*n2).e[n50 % 256u]; (void)n53;
-  const a0t4 *const n54 = &(*n2).e[n51 % 256u]; (void)n54;
-  a0t27 n55; n55.e[0] = (*n52); n55.e[1] = (*n53); n55.e[2] = (*n54); (void)n55;
-  uint32_t n56 = p0.f6; (void)n56;
-  uint32_t n57 = p0.f7; (void)n57;
-  uint32_t n58 = p0.f8; (void)n58;
-  uint32_t n59 = p0.f9; (void)n59;
-  uint32_t n60 = p0.f10; (void)n60;
-  uint32_t n61 = p0.f11; (void)n61;
-  uint32_t n62 = p0.f12; (void)n62;
-  uint32_t n63 = p0.f13; (void)n63;
-  uint32_t n64 = p0.f14; (void)n64;
-  uint32_t n65 = p0.f15; (void)n65;
-  uint32_t n66 = p0.f16; (void)n66;
-  uint32_t n67 = p0.f17; (void)n67;
-  uint32_t n68 = p0.f18; (void)n68;
-  a0t44 n69; n69.f0 = (*n0); n69.f1 = n46; n69.f2 = n55; n69.f3 = (*n3); n69.f4 = n4; n69.f5 = n5; n69.f6 = n56; n69.f7 = n57; n69.f8 = n58; n69.f9 = n59; n69.f10 = n60; n69.f11 = n61; n69.f12 = n62; n69.f13 = n63; n69.f14 = n64; n69.f15 = n65; n69.f16 = n66; n69.f17 = n67; n69.f18 = n68; n69.f19 = n36; n69.f20 = n49; n69.f21 = 0u; n69.f22 = 0u; n69.f23 = 0u; (void)n69;
-  for (uint32_t a0i = 0; a0i < n30; a0i++) { a0o_p5tok(&n69, a0i, n20, (*n21), (*n22), n9, n26, p6, n8); }
-  const a0t43 *const n71 = &n69.f1; (void)n71;
-  const a0t27 *const n72 = &n69.f2; (void)n72;
-  const a0t4 *const n73 = &(*n71).e[0u % 5u]; (void)n73;
-  const a0t4 *const n74 = &(*n71).e[1u % 5u]; (void)n74;
-  const a0t4 *const n75 = &(*n71).e[2u % 5u]; (void)n75;
-  const a0t4 *const n76 = &(*n71).e[3u % 5u]; (void)n76;
-  const a0t4 *const n77 = &(*n71).e[4u % 5u]; (void)n77;
-  a0t9 n78 = (*n1); n78.e[n35 % 128u] = (*n73); (void)n78;
-  bool n79 = a0_lt(n37, 128u); (void)n79;
-  const a0t4 *const n80 = &n78.e[n37 % 128u]; (void)n80;
-  a0t4 n81 = (n79 ? (*n74) : (*n80)); (void)n81;
-  n78.e[n37 % 128u] = n81;
-  bool n83 = a0_lt(n38, 128u); (void)n83;
-  const a0t4 *const n84 = &n78.e[n38 % 128u]; (void)n84;
-  a0t4 n85 = (n83 ? (*n75) : (*n84)); (void)n85;
-  n78.e[n38 % 128u] = n85;
-  bool n87 = a0_lt(n39, 128u); (void)n87;
-  const a0t4 *const n88 = &n78.e[n39 % 128u]; (void)n88;
-  a0t4 n89 = (n87 ? (*n76) : (*n88)); (void)n89;
-  n78.e[n39 % 128u] = n89;
-  bool n91 = a0_lt(n40, 128u); (void)n91;
-  const a0t4 *const n92 = &n78.e[n40 % 128u]; (void)n92;
-  a0t4 n93 = (n91 ? (*n77) : (*n92)); (void)n93;
-  n78.e[n40 % 128u] = n93;
-  const a0t4 *const n95 = &(*n72).e[0u % 3u]; (void)n95;
-  const a0t4 *const n96 = &(*n72).e[1u % 3u]; (void)n96;
-  const a0t4 *const n97 = &(*n72).e[2u % 3u]; (void)n97;
-  a0t21 n98 = (*n2); n98.e[n48 % 256u] = (*n95); (void)n98;
-  bool n99 = a0_lt(n50, 256u); (void)n99;
-  const a0t4 *const n100 = &n98.e[n50 % 256u]; (void)n100;
-  a0t4 n101 = (n99 ? (*n96) : (*n100)); (void)n101;
-  n98.e[n50 % 256u] = n101;
-  bool n103 = a0_lt(n51, 256u); (void)n103;
-  const a0t4 *const n104 = &n98.e[n51 % 256u]; (void)n104;
-  a0t4 n105 = (n103 ? (*n97) : (*n104)); (void)n105;
-  n98.e[n51 % 256u] = n105;
-  uint32_t n107 = n69.f5; (void)n107;
-  uint32_t n108 = n69.f21; (void)n108;
-  uint32_t n109 = n69.f22; (void)n109;
-  uint32_t n110 = n69.f23; (void)n110;
-  bool n111 = a0_eq(n108, 1u); (void)n111;
-  uint32_t n112 = a0_add(n110, 63u); (void)n112;
-  uint32_t n113 = a0_shr(n112, 6u); (void)n113;
-  uint32_t n114 = (n111 ? n113 : 0u); (void)n114;
-  a0t42 n115; n115.f0 = n98; n115.f1 = n107; n115.f2 = 0u; (void)n115;
-  for (uint32_t a0i = 0; a0i < n114; a0i++) { a0o_txtseg(&n115, a0i, p2, n109, n110); }
-  const a0t21 *const n117 = &n115.f0; (void)n117;
-  uint32_t n118 = n115.f1; (void)n118;
-  uint32_t n119 = a0_sub(n118, n107); (void)n119;
-  uint32_t n120 = n69.f15; (void)n120;
-  uint32_t n121 = a0_add(n120, n119); (void)n121;
-  uint32_t n122 = a0_add(n6, n30); (void)n122;
-  bool n123 = a0_ge(n122, p6); (void)n123;
-  uint32_t n124 = n69.f8; (void)n124;
-  bool n125 = a0_ne(n124, 0u); (void)n125;
-  bool n126 = (n123 || n125); (void)n126;
-  const a0t17 *const n127 = &n69.f0; (void)n127;
-  const a0t18 *const n128 = &n69.f3; (void)n128;
-  uint32_t n129 = n69.f4; (void)n129;
-  uint32_t n130 = n69.f6; (void)n130;
-  uint32_t n131 = n69.f7; (void)n131;
-  uint32_t n132 = n69.f9; (void)n132;
-  uint32_t n133 = n69.f10; (void)n133;
-  uint32_t n134 = n69.f11; (void)n134;
-  uint32_t n135 = n69.f12; (void)n135;
-  uint32_t n136 = n69.f13; (void)n136;
-  uint32_t n137 = n69.f14; (void)n137;
-  uint32_t n138 = n69.f16; (void)n138;
-  uint32_t n139 = n69.f17; (void)n139;
-  uint32_t n140 = n69.f18; (void)n140;
-  a0t45 n141; n141.f0 = (*n127); n141.f1 = n78; n141.f2 = (*n117); n141.f3 = (*n128); n141.f4 = n129; n141.f5 = n118; n141.f6 = n130; n141.f7 = n131; n141.f8 = n124; n141.f9 = n132; n141.f10 = n133; n141.f11 = n134; n141.f12 = n135; n141.f13 = n136; n141.f14 = n137; n141.f15 = n121; n141.f16 = n138; n141.f17 = n139; n141.f18 = n140; n141.f19 = n122; n141.f20 = n126; (void)n141;
-  return n141;
+  const a0t5 *const n41 = &(*n1).e[n35 % 128u]; (void)n41;
+  const a0t5 *const n42 = &(*n1).e[n37 % 128u]; (void)n42;
+  const a0t5 *const n43 = &(*n1).e[n38 % 128u]; (void)n43;
+  const a0t5 *const n44 = &(*n1).e[n39 % 128u]; (void)n44;
+  const a0t5 *const n45 = &(*n1).e[n40 % 128u]; (void)n45;
+  a0t46 n46; n46.e[0] = (*n41); n46.e[1] = (*n42); n46.e[2] = (*n43); n46.e[3] = (*n44); n46.e[4] = (*n45); (void)n46;
+  uint32_t n47 = a0_sub(n5, p7); (void)n47;
+  uint32_t n48 = a0_mul(n47, 2u); (void)n48;
+  uint32_t n49 = a0_shr(n48, 7u); (void)n49;
+  uint32_t n50 = a0_mul(n49, 128u); (void)n50;
+  uint32_t n51 = a0_add(n49, 1u); (void)n51;
+  uint32_t n52 = a0_add(n49, 2u); (void)n52;
+  const a0t5 *const n53 = &(*n2).e[n49 % 256u]; (void)n53;
+  const a0t5 *const n54 = &(*n2).e[n51 % 256u]; (void)n54;
+  const a0t5 *const n55 = &(*n2).e[n52 % 256u]; (void)n55;
+  a0t30 n56; n56.e[0] = (*n53); n56.e[1] = (*n54); n56.e[2] = (*n55); (void)n56;
+  uint32_t n57 = p0.f6; (void)n57;
+  uint32_t n58 = p0.f7; (void)n58;
+  uint32_t n59 = p0.f8; (void)n59;
+  uint32_t n60 = p0.f9; (void)n60;
+  uint32_t n61 = p0.f10; (void)n61;
+  uint32_t n62 = p0.f11; (void)n62;
+  uint32_t n63 = p0.f12; (void)n63;
+  uint32_t n64 = p0.f13; (void)n64;
+  uint32_t n65 = p0.f14; (void)n65;
+  uint32_t n66 = p0.f15; (void)n66;
+  uint32_t n67 = p0.f16; (void)n67;
+  uint32_t n68 = p0.f17; (void)n68;
+  uint32_t n69 = p0.f18; (void)n69;
+  a0t47 n70; n70.f0 = (*n0); n70.f1 = n46; n70.f2 = n56; n70.f3 = (*n3); n70.f4 = n4; n70.f5 = n5; n70.f6 = n57; n70.f7 = n58; n70.f8 = n59; n70.f9 = n60; n70.f10 = n61; n70.f11 = n62; n70.f12 = n63; n70.f13 = n64; n70.f14 = n65; n70.f15 = n66; n70.f16 = n67; n70.f17 = n68; n70.f18 = n69; n70.f19 = n36; n70.f20 = n50; n70.f21 = 0u; n70.f22 = 0u; n70.f23 = 0u; (void)n70;
+  for (uint32_t a0i = 0; a0i < n30; a0i++) { a0o_p5tok(&n70, a0i, n20, (*n21), (*n22), n9, n26, p6, n8, p7); }
+  const a0t46 *const n72 = &n70.f1; (void)n72;
+  const a0t30 *const n73 = &n70.f2; (void)n73;
+  const a0t5 *const n74 = &(*n72).e[0u % 5u]; (void)n74;
+  const a0t5 *const n75 = &(*n72).e[1u % 5u]; (void)n75;
+  const a0t5 *const n76 = &(*n72).e[2u % 5u]; (void)n76;
+  const a0t5 *const n77 = &(*n72).e[3u % 5u]; (void)n77;
+  const a0t5 *const n78 = &(*n72).e[4u % 5u]; (void)n78;
+  a0t11 n79 = (*n1); n79.e[n35 % 128u] = (*n74); (void)n79;
+  bool n80 = a0_lt(n37, 128u); (void)n80;
+  const a0t5 *const n81 = &n79.e[n37 % 128u]; (void)n81;
+  a0t5 n82 = (n80 ? (*n75) : (*n81)); (void)n82;
+  n79.e[n37 % 128u] = n82;
+  bool n84 = a0_lt(n38, 128u); (void)n84;
+  const a0t5 *const n85 = &n79.e[n38 % 128u]; (void)n85;
+  a0t5 n86 = (n84 ? (*n76) : (*n85)); (void)n86;
+  n79.e[n38 % 128u] = n86;
+  bool n88 = a0_lt(n39, 128u); (void)n88;
+  const a0t5 *const n89 = &n79.e[n39 % 128u]; (void)n89;
+  a0t5 n90 = (n88 ? (*n77) : (*n89)); (void)n90;
+  n79.e[n39 % 128u] = n90;
+  bool n92 = a0_lt(n40, 128u); (void)n92;
+  const a0t5 *const n93 = &n79.e[n40 % 128u]; (void)n93;
+  a0t5 n94 = (n92 ? (*n78) : (*n93)); (void)n94;
+  n79.e[n40 % 128u] = n94;
+  const a0t5 *const n96 = &(*n73).e[0u % 3u]; (void)n96;
+  const a0t5 *const n97 = &(*n73).e[1u % 3u]; (void)n97;
+  const a0t5 *const n98 = &(*n73).e[2u % 3u]; (void)n98;
+  a0t24 n99 = (*n2); n99.e[n49 % 256u] = (*n96); (void)n99;
+  bool n100 = a0_lt(n51, 256u); (void)n100;
+  const a0t5 *const n101 = &n99.e[n51 % 256u]; (void)n101;
+  a0t5 n102 = (n100 ? (*n97) : (*n101)); (void)n102;
+  n99.e[n51 % 256u] = n102;
+  bool n104 = a0_lt(n52, 256u); (void)n104;
+  const a0t5 *const n105 = &n99.e[n52 % 256u]; (void)n105;
+  a0t5 n106 = (n104 ? (*n98) : (*n105)); (void)n106;
+  n99.e[n52 % 256u] = n106;
+  uint32_t n108 = n70.f5; (void)n108;
+  uint32_t n109 = n70.f21; (void)n109;
+  uint32_t n110 = n70.f22; (void)n110;
+  uint32_t n111 = n70.f23; (void)n111;
+  bool n112 = a0_eq(n109, 1u); (void)n112;
+  uint32_t n113 = a0_add(n111, 63u); (void)n113;
+  uint32_t n114 = a0_shr(n113, 6u); (void)n114;
+  uint32_t n115 = (n112 ? n114 : 0u); (void)n115;
+  a0t45 n116; n116.f0 = n99; n116.f1 = n108; n116.f2 = 0u; (void)n116;
+  for (uint32_t a0i = 0; a0i < n115; a0i++) { a0o_txtseg(&n116, a0i, p2, n110, n111, p7); }
+  const a0t24 *const n118 = &n116.f0; (void)n118;
+  uint32_t n119 = n116.f1; (void)n119;
+  uint32_t n120 = a0_sub(n119, n108); (void)n120;
+  uint32_t n121 = n70.f15; (void)n121;
+  uint32_t n122 = a0_add(n121, n120); (void)n122;
+  uint32_t n123 = a0_add(n6, n30); (void)n123;
+  bool n124 = a0_ge(n123, p6); (void)n124;
+  uint32_t n125 = n70.f8; (void)n125;
+  bool n126 = a0_ne(n125, 0u); (void)n126;
+  bool n127 = (n124 || n126); (void)n127;
+  const a0t20 *const n128 = &n70.f0; (void)n128;
+  const a0t21 *const n129 = &n70.f3; (void)n129;
+  uint32_t n130 = n70.f4; (void)n130;
+  uint32_t n131 = n70.f6; (void)n131;
+  uint32_t n132 = n70.f7; (void)n132;
+  uint32_t n133 = n70.f9; (void)n133;
+  uint32_t n134 = n70.f10; (void)n134;
+  uint32_t n135 = n70.f11; (void)n135;
+  uint32_t n136 = n70.f12; (void)n136;
+  uint32_t n137 = n70.f13; (void)n137;
+  uint32_t n138 = n70.f14; (void)n138;
+  uint32_t n139 = n70.f16; (void)n139;
+  uint32_t n140 = n70.f17; (void)n140;
+  uint32_t n141 = n70.f18; (void)n141;
+  a0t48 n142; n142.f0 = (*n128); n142.f1 = n79; n142.f2 = (*n118); n142.f3 = (*n129); n142.f4 = n130; n142.f5 = n119; n142.f6 = n131; n142.f7 = n132; n142.f8 = n125; n142.f9 = n133; n142.f10 = n134; n142.f11 = n135; n142.f12 = n136; n142.f13 = n137; n142.f14 = n138; n142.f15 = n122; n142.f16 = n139; n142.f17 = n140; n142.f18 = n141; n142.f19 = n123; n142.f20 = n127; (void)n142;
+  return n142;
 }
 
-static inline void a0o_p5seg(a0t45 *p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32_t p6) {
-  const a0t17 *const n0 = &(*p0).f0; (void)n0;
-  const a0t9 *const n1 = &(*p0).f1; (void)n1;
-  const a0t21 *const n2 = &(*p0).f2; (void)n2;
-  const a0t18 *const n3 = &(*p0).f3; (void)n3;
+static inline void a0o_p5seg(a0t48 *p0, uint32_t p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t11 p5, uint32_t p6, uint32_t p7) {
+  const a0t20 *const n0 = &(*p0).f0; (void)n0;
+  const a0t11 *const n1 = &(*p0).f1; (void)n1;
+  const a0t24 *const n2 = &(*p0).f2; (void)n2;
+  const a0t21 *const n3 = &(*p0).f3; (void)n3;
   uint32_t n4 = (*p0).f4; (void)n4;
   uint32_t n5 = (*p0).f5; (void)n5;
   uint32_t n6 = (*p0).f19; (void)n6;
@@ -4308,16 +4841,16 @@ static inline void a0o_p5seg(a0t45 *p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, 
   uint32_t n12 = (n11 ? 128u : n10); (void)n12;
   uint32_t n13 = a0_sub(n12, n8); (void)n13;
   uint32_t n14 = a0_mul(n7, 3u); (void)n14;
-  const a0t4 *const n15 = &p3.e[n14 % 384u]; (void)n15;
+  const a0t5 *const n15 = &p3.e[n14 % 384u]; (void)n15;
   uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &p3.e[n16 % 384u]; (void)n17;
+  const a0t5 *const n17 = &p3.e[n16 % 384u]; (void)n17;
   uint32_t n18 = a0_add(n14, 2u); (void)n18;
-  const a0t4 *const n19 = &p3.e[n18 % 384u]; (void)n19;
-  a0t27 n20; n20.e[0] = (*n15); n20.e[1] = (*n17); n20.e[2] = (*n19); (void)n20;
-  const a0t4 *const n21 = &p4.e[n7 % 128u]; (void)n21;
-  const a0t4 *const n22 = &p5.e[n7 % 128u]; (void)n22;
+  const a0t5 *const n19 = &p3.e[n18 % 384u]; (void)n19;
+  a0t30 n20; n20.e[0] = (*n15); n20.e[1] = (*n17); n20.e[2] = (*n19); (void)n20;
+  const a0t5 *const n21 = &p4.e[n7 % 128u]; (void)n21;
+  const a0t5 *const n22 = &p5.e[n7 % 128u]; (void)n22;
   uint32_t n23 = a0_add(n7, 1u); (void)n23;
-  const a0t4 *const n24 = &p4.e[n23 % 128u]; (void)n24;
+  const a0t5 *const n24 = &p4.e[n23 % 128u]; (void)n24;
   uint32_t n25 = (*n24).e[0u % 128u]; (void)n25;
   uint32_t n26 = a0_and(n25, 15u); (void)n26;
   uint32_t n27 = 4294967295u; for (uint32_t a0i = 0; a0i < n13; a0i++) { n27 = a0_strfind(n27, a0i, (*n21), n8); } (void)n27;
@@ -4334,130 +4867,131 @@ static inline void a0o_p5seg(a0t45 *p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, 
   uint32_t n38 = a0_add(n35, 2u); (void)n38;
   uint32_t n39 = a0_add(n35, 3u); (void)n39;
   uint32_t n40 = a0_add(n35, 4u); (void)n40;
-  const a0t4 *const n41 = &(*n1).e[n35 % 128u]; (void)n41;
-  const a0t4 *const n42 = &(*n1).e[n37 % 128u]; (void)n42;
-  const a0t4 *const n43 = &(*n1).e[n38 % 128u]; (void)n43;
-  const a0t4 *const n44 = &(*n1).e[n39 % 128u]; (void)n44;
-  const a0t4 *const n45 = &(*n1).e[n40 % 128u]; (void)n45;
-  a0t43 n46; n46.e[0] = (*n41); n46.e[1] = (*n42); n46.e[2] = (*n43); n46.e[3] = (*n44); n46.e[4] = (*n45); (void)n46;
-  uint32_t n47 = a0_mul(n5, 2u); (void)n47;
-  uint32_t n48 = a0_shr(n47, 7u); (void)n48;
-  uint32_t n49 = a0_mul(n48, 128u); (void)n49;
-  uint32_t n50 = a0_add(n48, 1u); (void)n50;
-  uint32_t n51 = a0_add(n48, 2u); (void)n51;
-  const a0t4 *const n52 = &(*n2).e[n48 % 256u]; (void)n52;
-  const a0t4 *const n53 = &(*n2).e[n50 % 256u]; (void)n53;
-  const a0t4 *const n54 = &(*n2).e[n51 % 256u]; (void)n54;
-  a0t27 n55; n55.e[0] = (*n52); n55.e[1] = (*n53); n55.e[2] = (*n54); (void)n55;
-  uint32_t n56 = (*p0).f6; (void)n56;
-  uint32_t n57 = (*p0).f7; (void)n57;
-  uint32_t n58 = (*p0).f8; (void)n58;
-  uint32_t n59 = (*p0).f9; (void)n59;
-  uint32_t n60 = (*p0).f10; (void)n60;
-  uint32_t n61 = (*p0).f11; (void)n61;
-  uint32_t n62 = (*p0).f12; (void)n62;
-  uint32_t n63 = (*p0).f13; (void)n63;
-  uint32_t n64 = (*p0).f14; (void)n64;
-  uint32_t n65 = (*p0).f15; (void)n65;
-  uint32_t n66 = (*p0).f16; (void)n66;
-  uint32_t n67 = (*p0).f17; (void)n67;
-  uint32_t n68 = (*p0).f18; (void)n68;
-  a0t44 n69; n69.f0 = (*n0); n69.f1 = n46; n69.f2 = n55; n69.f3 = (*n3); n69.f4 = n4; n69.f5 = n5; n69.f6 = n56; n69.f7 = n57; n69.f8 = n58; n69.f9 = n59; n69.f10 = n60; n69.f11 = n61; n69.f12 = n62; n69.f13 = n63; n69.f14 = n64; n69.f15 = n65; n69.f16 = n66; n69.f17 = n67; n69.f18 = n68; n69.f19 = n36; n69.f20 = n49; n69.f21 = 0u; n69.f22 = 0u; n69.f23 = 0u; (void)n69;
-  for (uint32_t a0i = 0; a0i < n30; a0i++) { a0o_p5tok(&n69, a0i, n20, (*n21), (*n22), n9, n26, p6, n8); }
-  const a0t43 *const n71 = &n69.f1; (void)n71;
-  const a0t27 *const n72 = &n69.f2; (void)n72;
-  const a0t4 *const n73 = &(*n71).e[0u % 5u]; (void)n73;
-  const a0t4 *const n74 = &(*n71).e[1u % 5u]; (void)n74;
-  const a0t4 *const n75 = &(*n71).e[2u % 5u]; (void)n75;
-  const a0t4 *const n76 = &(*n71).e[3u % 5u]; (void)n76;
-  const a0t4 *const n77 = &(*n71).e[4u % 5u]; (void)n77;
-  a0t9 n78 = (*n1); n78.e[n35 % 128u] = (*n73); (void)n78;
-  bool n79 = a0_lt(n37, 128u); (void)n79;
-  const a0t4 *const n80 = &n78.e[n37 % 128u]; (void)n80;
-  a0t4 n81 = (n79 ? (*n74) : (*n80)); (void)n81;
-  n78.e[n37 % 128u] = n81;
-  bool n83 = a0_lt(n38, 128u); (void)n83;
-  const a0t4 *const n84 = &n78.e[n38 % 128u]; (void)n84;
-  a0t4 n85 = (n83 ? (*n75) : (*n84)); (void)n85;
-  n78.e[n38 % 128u] = n85;
-  bool n87 = a0_lt(n39, 128u); (void)n87;
-  const a0t4 *const n88 = &n78.e[n39 % 128u]; (void)n88;
-  a0t4 n89 = (n87 ? (*n76) : (*n88)); (void)n89;
-  n78.e[n39 % 128u] = n89;
-  bool n91 = a0_lt(n40, 128u); (void)n91;
-  const a0t4 *const n92 = &n78.e[n40 % 128u]; (void)n92;
-  a0t4 n93 = (n91 ? (*n77) : (*n92)); (void)n93;
-  n78.e[n40 % 128u] = n93;
-  const a0t4 *const n95 = &(*n72).e[0u % 3u]; (void)n95;
-  const a0t4 *const n96 = &(*n72).e[1u % 3u]; (void)n96;
-  const a0t4 *const n97 = &(*n72).e[2u % 3u]; (void)n97;
-  a0t21 n98 = (*n2); n98.e[n48 % 256u] = (*n95); (void)n98;
-  bool n99 = a0_lt(n50, 256u); (void)n99;
-  const a0t4 *const n100 = &n98.e[n50 % 256u]; (void)n100;
-  a0t4 n101 = (n99 ? (*n96) : (*n100)); (void)n101;
-  n98.e[n50 % 256u] = n101;
-  bool n103 = a0_lt(n51, 256u); (void)n103;
-  const a0t4 *const n104 = &n98.e[n51 % 256u]; (void)n104;
-  a0t4 n105 = (n103 ? (*n97) : (*n104)); (void)n105;
-  n98.e[n51 % 256u] = n105;
-  uint32_t n107 = n69.f5; (void)n107;
-  uint32_t n108 = n69.f21; (void)n108;
-  uint32_t n109 = n69.f22; (void)n109;
-  uint32_t n110 = n69.f23; (void)n110;
-  bool n111 = a0_eq(n108, 1u); (void)n111;
-  uint32_t n112 = a0_add(n110, 63u); (void)n112;
-  uint32_t n113 = a0_shr(n112, 6u); (void)n113;
-  uint32_t n114 = (n111 ? n113 : 0u); (void)n114;
-  a0t42 n115; n115.f0 = n98; n115.f1 = n107; n115.f2 = 0u; (void)n115;
-  for (uint32_t a0i = 0; a0i < n114; a0i++) { a0o_txtseg(&n115, a0i, p2, n109, n110); }
-  const a0t21 *const n117 = &n115.f0; (void)n117;
-  uint32_t n118 = n115.f1; (void)n118;
-  uint32_t n119 = a0_sub(n118, n107); (void)n119;
-  uint32_t n120 = n69.f15; (void)n120;
-  uint32_t n121 = a0_add(n120, n119); (void)n121;
-  uint32_t n122 = a0_add(n6, n30); (void)n122;
-  bool n123 = a0_ge(n122, p6); (void)n123;
-  uint32_t n124 = n69.f8; (void)n124;
-  bool n125 = a0_ne(n124, 0u); (void)n125;
-  bool n126 = (n123 || n125); (void)n126;
-  const a0t17 *const n127 = &n69.f0; (void)n127;
-  const a0t18 *const n128 = &n69.f3; (void)n128;
-  uint32_t n129 = n69.f4; (void)n129;
-  uint32_t n130 = n69.f6; (void)n130;
-  uint32_t n131 = n69.f7; (void)n131;
-  uint32_t n132 = n69.f9; (void)n132;
-  uint32_t n133 = n69.f10; (void)n133;
-  uint32_t n134 = n69.f11; (void)n134;
-  uint32_t n135 = n69.f12; (void)n135;
-  uint32_t n136 = n69.f13; (void)n136;
-  uint32_t n137 = n69.f14; (void)n137;
-  uint32_t n138 = n69.f16; (void)n138;
-  uint32_t n139 = n69.f17; (void)n139;
-  uint32_t n140 = n69.f18; (void)n140;
-  a0t45 n141; n141.f0 = (*n127); n141.f1 = n78; n141.f2 = (*n117); n141.f3 = (*n128); n141.f4 = n129; n141.f5 = n118; n141.f6 = n130; n141.f7 = n131; n141.f8 = n124; n141.f9 = n132; n141.f10 = n133; n141.f11 = n134; n141.f12 = n135; n141.f13 = n136; n141.f14 = n137; n141.f15 = n121; n141.f16 = n138; n141.f17 = n139; n141.f18 = n140; n141.f19 = n122; n141.f20 = n126; (void)n141;
-  *p0 = n141;
+  const a0t5 *const n41 = &(*n1).e[n35 % 128u]; (void)n41;
+  const a0t5 *const n42 = &(*n1).e[n37 % 128u]; (void)n42;
+  const a0t5 *const n43 = &(*n1).e[n38 % 128u]; (void)n43;
+  const a0t5 *const n44 = &(*n1).e[n39 % 128u]; (void)n44;
+  const a0t5 *const n45 = &(*n1).e[n40 % 128u]; (void)n45;
+  a0t46 n46; n46.e[0] = (*n41); n46.e[1] = (*n42); n46.e[2] = (*n43); n46.e[3] = (*n44); n46.e[4] = (*n45); (void)n46;
+  uint32_t n47 = a0_sub(n5, p7); (void)n47;
+  uint32_t n48 = a0_mul(n47, 2u); (void)n48;
+  uint32_t n49 = a0_shr(n48, 7u); (void)n49;
+  uint32_t n50 = a0_mul(n49, 128u); (void)n50;
+  uint32_t n51 = a0_add(n49, 1u); (void)n51;
+  uint32_t n52 = a0_add(n49, 2u); (void)n52;
+  const a0t5 *const n53 = &(*n2).e[n49 % 256u]; (void)n53;
+  const a0t5 *const n54 = &(*n2).e[n51 % 256u]; (void)n54;
+  const a0t5 *const n55 = &(*n2).e[n52 % 256u]; (void)n55;
+  a0t30 n56; n56.e[0] = (*n53); n56.e[1] = (*n54); n56.e[2] = (*n55); (void)n56;
+  uint32_t n57 = (*p0).f6; (void)n57;
+  uint32_t n58 = (*p0).f7; (void)n58;
+  uint32_t n59 = (*p0).f8; (void)n59;
+  uint32_t n60 = (*p0).f9; (void)n60;
+  uint32_t n61 = (*p0).f10; (void)n61;
+  uint32_t n62 = (*p0).f11; (void)n62;
+  uint32_t n63 = (*p0).f12; (void)n63;
+  uint32_t n64 = (*p0).f13; (void)n64;
+  uint32_t n65 = (*p0).f14; (void)n65;
+  uint32_t n66 = (*p0).f15; (void)n66;
+  uint32_t n67 = (*p0).f16; (void)n67;
+  uint32_t n68 = (*p0).f17; (void)n68;
+  uint32_t n69 = (*p0).f18; (void)n69;
+  a0t47 n70; n70.f0 = (*n0); n70.f1 = n46; n70.f2 = n56; n70.f3 = (*n3); n70.f4 = n4; n70.f5 = n5; n70.f6 = n57; n70.f7 = n58; n70.f8 = n59; n70.f9 = n60; n70.f10 = n61; n70.f11 = n62; n70.f12 = n63; n70.f13 = n64; n70.f14 = n65; n70.f15 = n66; n70.f16 = n67; n70.f17 = n68; n70.f18 = n69; n70.f19 = n36; n70.f20 = n50; n70.f21 = 0u; n70.f22 = 0u; n70.f23 = 0u; (void)n70;
+  for (uint32_t a0i = 0; a0i < n30; a0i++) { a0o_p5tok(&n70, a0i, n20, (*n21), (*n22), n9, n26, p6, n8, p7); }
+  const a0t46 *const n72 = &n70.f1; (void)n72;
+  const a0t30 *const n73 = &n70.f2; (void)n73;
+  const a0t5 *const n74 = &(*n72).e[0u % 5u]; (void)n74;
+  const a0t5 *const n75 = &(*n72).e[1u % 5u]; (void)n75;
+  const a0t5 *const n76 = &(*n72).e[2u % 5u]; (void)n76;
+  const a0t5 *const n77 = &(*n72).e[3u % 5u]; (void)n77;
+  const a0t5 *const n78 = &(*n72).e[4u % 5u]; (void)n78;
+  a0t11 n79 = (*n1); n79.e[n35 % 128u] = (*n74); (void)n79;
+  bool n80 = a0_lt(n37, 128u); (void)n80;
+  const a0t5 *const n81 = &n79.e[n37 % 128u]; (void)n81;
+  a0t5 n82 = (n80 ? (*n75) : (*n81)); (void)n82;
+  n79.e[n37 % 128u] = n82;
+  bool n84 = a0_lt(n38, 128u); (void)n84;
+  const a0t5 *const n85 = &n79.e[n38 % 128u]; (void)n85;
+  a0t5 n86 = (n84 ? (*n76) : (*n85)); (void)n86;
+  n79.e[n38 % 128u] = n86;
+  bool n88 = a0_lt(n39, 128u); (void)n88;
+  const a0t5 *const n89 = &n79.e[n39 % 128u]; (void)n89;
+  a0t5 n90 = (n88 ? (*n77) : (*n89)); (void)n90;
+  n79.e[n39 % 128u] = n90;
+  bool n92 = a0_lt(n40, 128u); (void)n92;
+  const a0t5 *const n93 = &n79.e[n40 % 128u]; (void)n93;
+  a0t5 n94 = (n92 ? (*n78) : (*n93)); (void)n94;
+  n79.e[n40 % 128u] = n94;
+  const a0t5 *const n96 = &(*n73).e[0u % 3u]; (void)n96;
+  const a0t5 *const n97 = &(*n73).e[1u % 3u]; (void)n97;
+  const a0t5 *const n98 = &(*n73).e[2u % 3u]; (void)n98;
+  a0t24 n99 = (*n2); n99.e[n49 % 256u] = (*n96); (void)n99;
+  bool n100 = a0_lt(n51, 256u); (void)n100;
+  const a0t5 *const n101 = &n99.e[n51 % 256u]; (void)n101;
+  a0t5 n102 = (n100 ? (*n97) : (*n101)); (void)n102;
+  n99.e[n51 % 256u] = n102;
+  bool n104 = a0_lt(n52, 256u); (void)n104;
+  const a0t5 *const n105 = &n99.e[n52 % 256u]; (void)n105;
+  a0t5 n106 = (n104 ? (*n98) : (*n105)); (void)n106;
+  n99.e[n52 % 256u] = n106;
+  uint32_t n108 = n70.f5; (void)n108;
+  uint32_t n109 = n70.f21; (void)n109;
+  uint32_t n110 = n70.f22; (void)n110;
+  uint32_t n111 = n70.f23; (void)n111;
+  bool n112 = a0_eq(n109, 1u); (void)n112;
+  uint32_t n113 = a0_add(n111, 63u); (void)n113;
+  uint32_t n114 = a0_shr(n113, 6u); (void)n114;
+  uint32_t n115 = (n112 ? n114 : 0u); (void)n115;
+  a0t45 n116; n116.f0 = n99; n116.f1 = n108; n116.f2 = 0u; (void)n116;
+  for (uint32_t a0i = 0; a0i < n115; a0i++) { a0o_txtseg(&n116, a0i, p2, n110, n111, p7); }
+  const a0t24 *const n118 = &n116.f0; (void)n118;
+  uint32_t n119 = n116.f1; (void)n119;
+  uint32_t n120 = a0_sub(n119, n108); (void)n120;
+  uint32_t n121 = n70.f15; (void)n121;
+  uint32_t n122 = a0_add(n121, n120); (void)n122;
+  uint32_t n123 = a0_add(n6, n30); (void)n123;
+  bool n124 = a0_ge(n123, p6); (void)n124;
+  uint32_t n125 = n70.f8; (void)n125;
+  bool n126 = a0_ne(n125, 0u); (void)n126;
+  bool n127 = (n124 || n126); (void)n127;
+  const a0t20 *const n128 = &n70.f0; (void)n128;
+  const a0t21 *const n129 = &n70.f3; (void)n129;
+  uint32_t n130 = n70.f4; (void)n130;
+  uint32_t n131 = n70.f6; (void)n131;
+  uint32_t n132 = n70.f7; (void)n132;
+  uint32_t n133 = n70.f9; (void)n133;
+  uint32_t n134 = n70.f10; (void)n134;
+  uint32_t n135 = n70.f11; (void)n135;
+  uint32_t n136 = n70.f12; (void)n136;
+  uint32_t n137 = n70.f13; (void)n137;
+  uint32_t n138 = n70.f14; (void)n138;
+  uint32_t n139 = n70.f16; (void)n139;
+  uint32_t n140 = n70.f17; (void)n140;
+  uint32_t n141 = n70.f18; (void)n141;
+  a0t48 n142; n142.f0 = (*n128); n142.f1 = n79; n142.f2 = (*n118); n142.f3 = (*n129); n142.f4 = n130; n142.f5 = n119; n142.f6 = n131; n142.f7 = n132; n142.f8 = n125; n142.f9 = n133; n142.f10 = n134; n142.f11 = n135; n142.f12 = n136; n142.f13 = n137; n142.f14 = n138; n142.f15 = n122; n142.f16 = n139; n142.f17 = n140; n142.f18 = n141; n142.f19 = n123; n142.f20 = n127; (void)n142;
+  *p0 = n142;
 }
 
-bool a0_p5more(a0t45 p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32_t p6) {
+bool a0_p5more(a0t48 p0, uint32_t p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t11 p5, uint32_t p6, uint32_t p7) {
   bool n0 = p0.f20; (void)n0;
   bool n1 = (n0 ? false : true); (void)n1;
   return n1;
 }
 
-static inline bool a0r_p5more(const a0t45 *p0, uint32_t p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32_t p6) {
+static inline bool a0r_p5more(const a0t48 *p0, uint32_t p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t11 p5, uint32_t p6, uint32_t p7) {
   bool n0 = (*p0).f20; (void)n0;
   bool n1 = (n0 ? false : true); (void)n1;
   return n1;
 }
 
-a0t45 a0_pass5(a0t17 p0, a0t18 p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32_t p6, uint32_t p7, uint32_t p8) {
-  a0t9 n0 = a0_zsrc(); (void)n0;
-  a0t21 n1 = a0_z256(); (void)n1;
+a0t48 a0_pass5(a0t20 p0, a0t21 p1, a0t4 p2, a0t9 p3, a0t11 p4, a0t11 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
+  a0t11 n0 = a0_zsrc(); (void)n0;
+  a0t24 n1 = a0_z256(); (void)n1;
   bool n2 = a0_ne(p7, 0u); (void)n2;
   bool n3 = a0_eq(p6, 0u); (void)n3;
   bool n4 = (n2 || n3); (void)n4;
-  a0t45 n5; n5.f0 = p0; n5.f1 = n0; n5.f2 = n1; n5.f3 = p1; n5.f4 = 0u; n5.f5 = 0u; n5.f6 = 0u; n5.f7 = 0u; n5.f8 = p7; n5.f9 = p8; n5.f10 = 0u; n5.f11 = 0u; n5.f12 = 0u; n5.f13 = 0u; n5.f14 = 0u; n5.f15 = 0u; n5.f16 = 0u; n5.f17 = 0u; n5.f18 = 0u; n5.f19 = 0u; n5.f20 = n4; (void)n5;
-  for (uint32_t a0i = 0; a0i < p6; a0i++) { if (!a0r_p5more(&n5, a0i, p2, p3, p4, p5, p6)) break; a0o_p5seg(&n5, a0i, p2, p3, p4, p5, p6); }
+  a0t48 n5; n5.f0 = p0; n5.f1 = n0; n5.f2 = n1; n5.f3 = p1; n5.f4 = 0u; n5.f5 = 0u; n5.f6 = 0u; n5.f7 = 0u; n5.f8 = p7; n5.f9 = p8; n5.f10 = 0u; n5.f11 = 0u; n5.f12 = 0u; n5.f13 = 0u; n5.f14 = 0u; n5.f15 = 0u; n5.f16 = 0u; n5.f17 = 0u; n5.f18 = 0u; n5.f19 = 0u; n5.f20 = n4; (void)n5;
+  for (uint32_t a0i = 0; a0i < p6; a0i++) { if (!a0r_p5more(&n5, a0i, p2, p3, p4, p5, p6, p9)) break; a0o_p5seg(&n5, a0i, p2, p3, p4, p5, p6, p9); }
   uint32_t n7 = n5.f7; (void)n7;
   uint32_t n8 = n5.f8; (void)n8;
   bool n9 = a0_eq(n7, 0u); (void)n9;
@@ -4469,25 +5003,647 @@ a0t45 a0_pass5(a0t17 p0, a0t18 p1, a0t9 p2, a0t7 p3, a0t9 p4, a0t9 p5, uint32_t 
   uint32_t n15 = (n14 ? 1u : n8); (void)n15;
   uint32_t n16 = n5.f9; (void)n16;
   uint32_t n17 = (n14 ? p6 : n16); (void)n17;
-  a0t45 n18 = n5; n18.f8 = n15; (void)n18;
+  a0t48 n18 = n5; n18.f8 = n15; (void)n18;
   n18.f9 = n17;
   return n18;
 }
 
-a0t46 a0_z8(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t46 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; (void)n1;
+a0t24 a0_p5hi(a0t24 p0, uint32_t p1, a0t20 p2, a0t21 p3, a0t4 p4, a0t9 p5, a0t11 p6, a0t11 p7, uint32_t p8, uint32_t p9, uint32_t p10) {
+  a0t48 n0 = a0_pass5(p2, p3, p4, p5, p6, p7, p8, p9, p10, 16384u); (void)n0;
+  const a0t24 *const n1 = &n0.f2; (void)n1;
+  return (*n1);
+}
+
+static inline void a0o_p5hi(a0t24 *p0, uint32_t p1, a0t20 p2, a0t21 p3, a0t4 p4, a0t9 p5, a0t11 p6, a0t11 p7, uint32_t p8, uint32_t p9, uint32_t p10) {
+  a0t48 n0 = a0_pass5(p2, p3, p4, p5, p6, p7, p8, p9, p10, 16384u); (void)n0;
+  const a0t24 *const n1 = &n0.f2; (void)n1;
+  *p0 = (*n1);
+}
+
+a0t49 a0_argcat(a0t24 p0, a0t24 p1) {
+  const a0t5 *const n0 = &p0.e[0u % 256u]; (void)n0;
+  const a0t5 *const n1 = &p0.e[1u % 256u]; (void)n1;
+  const a0t5 *const n2 = &p0.e[2u % 256u]; (void)n2;
+  const a0t5 *const n3 = &p0.e[3u % 256u]; (void)n3;
+  const a0t5 *const n4 = &p0.e[4u % 256u]; (void)n4;
+  const a0t5 *const n5 = &p0.e[5u % 256u]; (void)n5;
+  const a0t5 *const n6 = &p0.e[6u % 256u]; (void)n6;
+  const a0t5 *const n7 = &p0.e[7u % 256u]; (void)n7;
+  const a0t5 *const n8 = &p0.e[8u % 256u]; (void)n8;
+  const a0t5 *const n9 = &p0.e[9u % 256u]; (void)n9;
+  const a0t5 *const n10 = &p0.e[10u % 256u]; (void)n10;
+  const a0t5 *const n11 = &p0.e[11u % 256u]; (void)n11;
+  const a0t5 *const n12 = &p0.e[12u % 256u]; (void)n12;
+  const a0t5 *const n13 = &p0.e[13u % 256u]; (void)n13;
+  const a0t5 *const n14 = &p0.e[14u % 256u]; (void)n14;
+  const a0t5 *const n15 = &p0.e[15u % 256u]; (void)n15;
+  const a0t5 *const n16 = &p0.e[16u % 256u]; (void)n16;
+  const a0t5 *const n17 = &p0.e[17u % 256u]; (void)n17;
+  const a0t5 *const n18 = &p0.e[18u % 256u]; (void)n18;
+  const a0t5 *const n19 = &p0.e[19u % 256u]; (void)n19;
+  const a0t5 *const n20 = &p0.e[20u % 256u]; (void)n20;
+  const a0t5 *const n21 = &p0.e[21u % 256u]; (void)n21;
+  const a0t5 *const n22 = &p0.e[22u % 256u]; (void)n22;
+  const a0t5 *const n23 = &p0.e[23u % 256u]; (void)n23;
+  const a0t5 *const n24 = &p0.e[24u % 256u]; (void)n24;
+  const a0t5 *const n25 = &p0.e[25u % 256u]; (void)n25;
+  const a0t5 *const n26 = &p0.e[26u % 256u]; (void)n26;
+  const a0t5 *const n27 = &p0.e[27u % 256u]; (void)n27;
+  const a0t5 *const n28 = &p0.e[28u % 256u]; (void)n28;
+  const a0t5 *const n29 = &p0.e[29u % 256u]; (void)n29;
+  const a0t5 *const n30 = &p0.e[30u % 256u]; (void)n30;
+  const a0t5 *const n31 = &p0.e[31u % 256u]; (void)n31;
+  const a0t5 *const n32 = &p0.e[32u % 256u]; (void)n32;
+  const a0t5 *const n33 = &p0.e[33u % 256u]; (void)n33;
+  const a0t5 *const n34 = &p0.e[34u % 256u]; (void)n34;
+  const a0t5 *const n35 = &p0.e[35u % 256u]; (void)n35;
+  const a0t5 *const n36 = &p0.e[36u % 256u]; (void)n36;
+  const a0t5 *const n37 = &p0.e[37u % 256u]; (void)n37;
+  const a0t5 *const n38 = &p0.e[38u % 256u]; (void)n38;
+  const a0t5 *const n39 = &p0.e[39u % 256u]; (void)n39;
+  const a0t5 *const n40 = &p0.e[40u % 256u]; (void)n40;
+  const a0t5 *const n41 = &p0.e[41u % 256u]; (void)n41;
+  const a0t5 *const n42 = &p0.e[42u % 256u]; (void)n42;
+  const a0t5 *const n43 = &p0.e[43u % 256u]; (void)n43;
+  const a0t5 *const n44 = &p0.e[44u % 256u]; (void)n44;
+  const a0t5 *const n45 = &p0.e[45u % 256u]; (void)n45;
+  const a0t5 *const n46 = &p0.e[46u % 256u]; (void)n46;
+  const a0t5 *const n47 = &p0.e[47u % 256u]; (void)n47;
+  const a0t5 *const n48 = &p0.e[48u % 256u]; (void)n48;
+  const a0t5 *const n49 = &p0.e[49u % 256u]; (void)n49;
+  const a0t5 *const n50 = &p0.e[50u % 256u]; (void)n50;
+  const a0t5 *const n51 = &p0.e[51u % 256u]; (void)n51;
+  const a0t5 *const n52 = &p0.e[52u % 256u]; (void)n52;
+  const a0t5 *const n53 = &p0.e[53u % 256u]; (void)n53;
+  const a0t5 *const n54 = &p0.e[54u % 256u]; (void)n54;
+  const a0t5 *const n55 = &p0.e[55u % 256u]; (void)n55;
+  const a0t5 *const n56 = &p0.e[56u % 256u]; (void)n56;
+  const a0t5 *const n57 = &p0.e[57u % 256u]; (void)n57;
+  const a0t5 *const n58 = &p0.e[58u % 256u]; (void)n58;
+  const a0t5 *const n59 = &p0.e[59u % 256u]; (void)n59;
+  const a0t5 *const n60 = &p0.e[60u % 256u]; (void)n60;
+  const a0t5 *const n61 = &p0.e[61u % 256u]; (void)n61;
+  const a0t5 *const n62 = &p0.e[62u % 256u]; (void)n62;
+  const a0t5 *const n63 = &p0.e[63u % 256u]; (void)n63;
+  const a0t5 *const n64 = &p0.e[64u % 256u]; (void)n64;
+  const a0t5 *const n65 = &p0.e[65u % 256u]; (void)n65;
+  const a0t5 *const n66 = &p0.e[66u % 256u]; (void)n66;
+  const a0t5 *const n67 = &p0.e[67u % 256u]; (void)n67;
+  const a0t5 *const n68 = &p0.e[68u % 256u]; (void)n68;
+  const a0t5 *const n69 = &p0.e[69u % 256u]; (void)n69;
+  const a0t5 *const n70 = &p0.e[70u % 256u]; (void)n70;
+  const a0t5 *const n71 = &p0.e[71u % 256u]; (void)n71;
+  const a0t5 *const n72 = &p0.e[72u % 256u]; (void)n72;
+  const a0t5 *const n73 = &p0.e[73u % 256u]; (void)n73;
+  const a0t5 *const n74 = &p0.e[74u % 256u]; (void)n74;
+  const a0t5 *const n75 = &p0.e[75u % 256u]; (void)n75;
+  const a0t5 *const n76 = &p0.e[76u % 256u]; (void)n76;
+  const a0t5 *const n77 = &p0.e[77u % 256u]; (void)n77;
+  const a0t5 *const n78 = &p0.e[78u % 256u]; (void)n78;
+  const a0t5 *const n79 = &p0.e[79u % 256u]; (void)n79;
+  const a0t5 *const n80 = &p0.e[80u % 256u]; (void)n80;
+  const a0t5 *const n81 = &p0.e[81u % 256u]; (void)n81;
+  const a0t5 *const n82 = &p0.e[82u % 256u]; (void)n82;
+  const a0t5 *const n83 = &p0.e[83u % 256u]; (void)n83;
+  const a0t5 *const n84 = &p0.e[84u % 256u]; (void)n84;
+  const a0t5 *const n85 = &p0.e[85u % 256u]; (void)n85;
+  const a0t5 *const n86 = &p0.e[86u % 256u]; (void)n86;
+  const a0t5 *const n87 = &p0.e[87u % 256u]; (void)n87;
+  const a0t5 *const n88 = &p0.e[88u % 256u]; (void)n88;
+  const a0t5 *const n89 = &p0.e[89u % 256u]; (void)n89;
+  const a0t5 *const n90 = &p0.e[90u % 256u]; (void)n90;
+  const a0t5 *const n91 = &p0.e[91u % 256u]; (void)n91;
+  const a0t5 *const n92 = &p0.e[92u % 256u]; (void)n92;
+  const a0t5 *const n93 = &p0.e[93u % 256u]; (void)n93;
+  const a0t5 *const n94 = &p0.e[94u % 256u]; (void)n94;
+  const a0t5 *const n95 = &p0.e[95u % 256u]; (void)n95;
+  const a0t5 *const n96 = &p0.e[96u % 256u]; (void)n96;
+  const a0t5 *const n97 = &p0.e[97u % 256u]; (void)n97;
+  const a0t5 *const n98 = &p0.e[98u % 256u]; (void)n98;
+  const a0t5 *const n99 = &p0.e[99u % 256u]; (void)n99;
+  const a0t5 *const n100 = &p0.e[100u % 256u]; (void)n100;
+  const a0t5 *const n101 = &p0.e[101u % 256u]; (void)n101;
+  const a0t5 *const n102 = &p0.e[102u % 256u]; (void)n102;
+  const a0t5 *const n103 = &p0.e[103u % 256u]; (void)n103;
+  const a0t5 *const n104 = &p0.e[104u % 256u]; (void)n104;
+  const a0t5 *const n105 = &p0.e[105u % 256u]; (void)n105;
+  const a0t5 *const n106 = &p0.e[106u % 256u]; (void)n106;
+  const a0t5 *const n107 = &p0.e[107u % 256u]; (void)n107;
+  const a0t5 *const n108 = &p0.e[108u % 256u]; (void)n108;
+  const a0t5 *const n109 = &p0.e[109u % 256u]; (void)n109;
+  const a0t5 *const n110 = &p0.e[110u % 256u]; (void)n110;
+  const a0t5 *const n111 = &p0.e[111u % 256u]; (void)n111;
+  const a0t5 *const n112 = &p0.e[112u % 256u]; (void)n112;
+  const a0t5 *const n113 = &p0.e[113u % 256u]; (void)n113;
+  const a0t5 *const n114 = &p0.e[114u % 256u]; (void)n114;
+  const a0t5 *const n115 = &p0.e[115u % 256u]; (void)n115;
+  const a0t5 *const n116 = &p0.e[116u % 256u]; (void)n116;
+  const a0t5 *const n117 = &p0.e[117u % 256u]; (void)n117;
+  const a0t5 *const n118 = &p0.e[118u % 256u]; (void)n118;
+  const a0t5 *const n119 = &p0.e[119u % 256u]; (void)n119;
+  const a0t5 *const n120 = &p0.e[120u % 256u]; (void)n120;
+  const a0t5 *const n121 = &p0.e[121u % 256u]; (void)n121;
+  const a0t5 *const n122 = &p0.e[122u % 256u]; (void)n122;
+  const a0t5 *const n123 = &p0.e[123u % 256u]; (void)n123;
+  const a0t5 *const n124 = &p0.e[124u % 256u]; (void)n124;
+  const a0t5 *const n125 = &p0.e[125u % 256u]; (void)n125;
+  const a0t5 *const n126 = &p0.e[126u % 256u]; (void)n126;
+  const a0t5 *const n127 = &p0.e[127u % 256u]; (void)n127;
+  const a0t5 *const n128 = &p0.e[128u % 256u]; (void)n128;
+  const a0t5 *const n129 = &p0.e[129u % 256u]; (void)n129;
+  const a0t5 *const n130 = &p0.e[130u % 256u]; (void)n130;
+  const a0t5 *const n131 = &p0.e[131u % 256u]; (void)n131;
+  const a0t5 *const n132 = &p0.e[132u % 256u]; (void)n132;
+  const a0t5 *const n133 = &p0.e[133u % 256u]; (void)n133;
+  const a0t5 *const n134 = &p0.e[134u % 256u]; (void)n134;
+  const a0t5 *const n135 = &p0.e[135u % 256u]; (void)n135;
+  const a0t5 *const n136 = &p0.e[136u % 256u]; (void)n136;
+  const a0t5 *const n137 = &p0.e[137u % 256u]; (void)n137;
+  const a0t5 *const n138 = &p0.e[138u % 256u]; (void)n138;
+  const a0t5 *const n139 = &p0.e[139u % 256u]; (void)n139;
+  const a0t5 *const n140 = &p0.e[140u % 256u]; (void)n140;
+  const a0t5 *const n141 = &p0.e[141u % 256u]; (void)n141;
+  const a0t5 *const n142 = &p0.e[142u % 256u]; (void)n142;
+  const a0t5 *const n143 = &p0.e[143u % 256u]; (void)n143;
+  const a0t5 *const n144 = &p0.e[144u % 256u]; (void)n144;
+  const a0t5 *const n145 = &p0.e[145u % 256u]; (void)n145;
+  const a0t5 *const n146 = &p0.e[146u % 256u]; (void)n146;
+  const a0t5 *const n147 = &p0.e[147u % 256u]; (void)n147;
+  const a0t5 *const n148 = &p0.e[148u % 256u]; (void)n148;
+  const a0t5 *const n149 = &p0.e[149u % 256u]; (void)n149;
+  const a0t5 *const n150 = &p0.e[150u % 256u]; (void)n150;
+  const a0t5 *const n151 = &p0.e[151u % 256u]; (void)n151;
+  const a0t5 *const n152 = &p0.e[152u % 256u]; (void)n152;
+  const a0t5 *const n153 = &p0.e[153u % 256u]; (void)n153;
+  const a0t5 *const n154 = &p0.e[154u % 256u]; (void)n154;
+  const a0t5 *const n155 = &p0.e[155u % 256u]; (void)n155;
+  const a0t5 *const n156 = &p0.e[156u % 256u]; (void)n156;
+  const a0t5 *const n157 = &p0.e[157u % 256u]; (void)n157;
+  const a0t5 *const n158 = &p0.e[158u % 256u]; (void)n158;
+  const a0t5 *const n159 = &p0.e[159u % 256u]; (void)n159;
+  const a0t5 *const n160 = &p0.e[160u % 256u]; (void)n160;
+  const a0t5 *const n161 = &p0.e[161u % 256u]; (void)n161;
+  const a0t5 *const n162 = &p0.e[162u % 256u]; (void)n162;
+  const a0t5 *const n163 = &p0.e[163u % 256u]; (void)n163;
+  const a0t5 *const n164 = &p0.e[164u % 256u]; (void)n164;
+  const a0t5 *const n165 = &p0.e[165u % 256u]; (void)n165;
+  const a0t5 *const n166 = &p0.e[166u % 256u]; (void)n166;
+  const a0t5 *const n167 = &p0.e[167u % 256u]; (void)n167;
+  const a0t5 *const n168 = &p0.e[168u % 256u]; (void)n168;
+  const a0t5 *const n169 = &p0.e[169u % 256u]; (void)n169;
+  const a0t5 *const n170 = &p0.e[170u % 256u]; (void)n170;
+  const a0t5 *const n171 = &p0.e[171u % 256u]; (void)n171;
+  const a0t5 *const n172 = &p0.e[172u % 256u]; (void)n172;
+  const a0t5 *const n173 = &p0.e[173u % 256u]; (void)n173;
+  const a0t5 *const n174 = &p0.e[174u % 256u]; (void)n174;
+  const a0t5 *const n175 = &p0.e[175u % 256u]; (void)n175;
+  const a0t5 *const n176 = &p0.e[176u % 256u]; (void)n176;
+  const a0t5 *const n177 = &p0.e[177u % 256u]; (void)n177;
+  const a0t5 *const n178 = &p0.e[178u % 256u]; (void)n178;
+  const a0t5 *const n179 = &p0.e[179u % 256u]; (void)n179;
+  const a0t5 *const n180 = &p0.e[180u % 256u]; (void)n180;
+  const a0t5 *const n181 = &p0.e[181u % 256u]; (void)n181;
+  const a0t5 *const n182 = &p0.e[182u % 256u]; (void)n182;
+  const a0t5 *const n183 = &p0.e[183u % 256u]; (void)n183;
+  const a0t5 *const n184 = &p0.e[184u % 256u]; (void)n184;
+  const a0t5 *const n185 = &p0.e[185u % 256u]; (void)n185;
+  const a0t5 *const n186 = &p0.e[186u % 256u]; (void)n186;
+  const a0t5 *const n187 = &p0.e[187u % 256u]; (void)n187;
+  const a0t5 *const n188 = &p0.e[188u % 256u]; (void)n188;
+  const a0t5 *const n189 = &p0.e[189u % 256u]; (void)n189;
+  const a0t5 *const n190 = &p0.e[190u % 256u]; (void)n190;
+  const a0t5 *const n191 = &p0.e[191u % 256u]; (void)n191;
+  const a0t5 *const n192 = &p0.e[192u % 256u]; (void)n192;
+  const a0t5 *const n193 = &p0.e[193u % 256u]; (void)n193;
+  const a0t5 *const n194 = &p0.e[194u % 256u]; (void)n194;
+  const a0t5 *const n195 = &p0.e[195u % 256u]; (void)n195;
+  const a0t5 *const n196 = &p0.e[196u % 256u]; (void)n196;
+  const a0t5 *const n197 = &p0.e[197u % 256u]; (void)n197;
+  const a0t5 *const n198 = &p0.e[198u % 256u]; (void)n198;
+  const a0t5 *const n199 = &p0.e[199u % 256u]; (void)n199;
+  const a0t5 *const n200 = &p0.e[200u % 256u]; (void)n200;
+  const a0t5 *const n201 = &p0.e[201u % 256u]; (void)n201;
+  const a0t5 *const n202 = &p0.e[202u % 256u]; (void)n202;
+  const a0t5 *const n203 = &p0.e[203u % 256u]; (void)n203;
+  const a0t5 *const n204 = &p0.e[204u % 256u]; (void)n204;
+  const a0t5 *const n205 = &p0.e[205u % 256u]; (void)n205;
+  const a0t5 *const n206 = &p0.e[206u % 256u]; (void)n206;
+  const a0t5 *const n207 = &p0.e[207u % 256u]; (void)n207;
+  const a0t5 *const n208 = &p0.e[208u % 256u]; (void)n208;
+  const a0t5 *const n209 = &p0.e[209u % 256u]; (void)n209;
+  const a0t5 *const n210 = &p0.e[210u % 256u]; (void)n210;
+  const a0t5 *const n211 = &p0.e[211u % 256u]; (void)n211;
+  const a0t5 *const n212 = &p0.e[212u % 256u]; (void)n212;
+  const a0t5 *const n213 = &p0.e[213u % 256u]; (void)n213;
+  const a0t5 *const n214 = &p0.e[214u % 256u]; (void)n214;
+  const a0t5 *const n215 = &p0.e[215u % 256u]; (void)n215;
+  const a0t5 *const n216 = &p0.e[216u % 256u]; (void)n216;
+  const a0t5 *const n217 = &p0.e[217u % 256u]; (void)n217;
+  const a0t5 *const n218 = &p0.e[218u % 256u]; (void)n218;
+  const a0t5 *const n219 = &p0.e[219u % 256u]; (void)n219;
+  const a0t5 *const n220 = &p0.e[220u % 256u]; (void)n220;
+  const a0t5 *const n221 = &p0.e[221u % 256u]; (void)n221;
+  const a0t5 *const n222 = &p0.e[222u % 256u]; (void)n222;
+  const a0t5 *const n223 = &p0.e[223u % 256u]; (void)n223;
+  const a0t5 *const n224 = &p0.e[224u % 256u]; (void)n224;
+  const a0t5 *const n225 = &p0.e[225u % 256u]; (void)n225;
+  const a0t5 *const n226 = &p0.e[226u % 256u]; (void)n226;
+  const a0t5 *const n227 = &p0.e[227u % 256u]; (void)n227;
+  const a0t5 *const n228 = &p0.e[228u % 256u]; (void)n228;
+  const a0t5 *const n229 = &p0.e[229u % 256u]; (void)n229;
+  const a0t5 *const n230 = &p0.e[230u % 256u]; (void)n230;
+  const a0t5 *const n231 = &p0.e[231u % 256u]; (void)n231;
+  const a0t5 *const n232 = &p0.e[232u % 256u]; (void)n232;
+  const a0t5 *const n233 = &p0.e[233u % 256u]; (void)n233;
+  const a0t5 *const n234 = &p0.e[234u % 256u]; (void)n234;
+  const a0t5 *const n235 = &p0.e[235u % 256u]; (void)n235;
+  const a0t5 *const n236 = &p0.e[236u % 256u]; (void)n236;
+  const a0t5 *const n237 = &p0.e[237u % 256u]; (void)n237;
+  const a0t5 *const n238 = &p0.e[238u % 256u]; (void)n238;
+  const a0t5 *const n239 = &p0.e[239u % 256u]; (void)n239;
+  const a0t5 *const n240 = &p0.e[240u % 256u]; (void)n240;
+  const a0t5 *const n241 = &p0.e[241u % 256u]; (void)n241;
+  const a0t5 *const n242 = &p0.e[242u % 256u]; (void)n242;
+  const a0t5 *const n243 = &p0.e[243u % 256u]; (void)n243;
+  const a0t5 *const n244 = &p0.e[244u % 256u]; (void)n244;
+  const a0t5 *const n245 = &p0.e[245u % 256u]; (void)n245;
+  const a0t5 *const n246 = &p0.e[246u % 256u]; (void)n246;
+  const a0t5 *const n247 = &p0.e[247u % 256u]; (void)n247;
+  const a0t5 *const n248 = &p0.e[248u % 256u]; (void)n248;
+  const a0t5 *const n249 = &p0.e[249u % 256u]; (void)n249;
+  const a0t5 *const n250 = &p0.e[250u % 256u]; (void)n250;
+  const a0t5 *const n251 = &p0.e[251u % 256u]; (void)n251;
+  const a0t5 *const n252 = &p0.e[252u % 256u]; (void)n252;
+  const a0t5 *const n253 = &p0.e[253u % 256u]; (void)n253;
+  const a0t5 *const n254 = &p0.e[254u % 256u]; (void)n254;
+  const a0t5 *const n255 = &p0.e[255u % 256u]; (void)n255;
+  const a0t5 *const n256 = &p1.e[0u % 256u]; (void)n256;
+  const a0t5 *const n257 = &p1.e[1u % 256u]; (void)n257;
+  const a0t5 *const n258 = &p1.e[2u % 256u]; (void)n258;
+  const a0t5 *const n259 = &p1.e[3u % 256u]; (void)n259;
+  const a0t5 *const n260 = &p1.e[4u % 256u]; (void)n260;
+  const a0t5 *const n261 = &p1.e[5u % 256u]; (void)n261;
+  const a0t5 *const n262 = &p1.e[6u % 256u]; (void)n262;
+  const a0t5 *const n263 = &p1.e[7u % 256u]; (void)n263;
+  const a0t5 *const n264 = &p1.e[8u % 256u]; (void)n264;
+  const a0t5 *const n265 = &p1.e[9u % 256u]; (void)n265;
+  const a0t5 *const n266 = &p1.e[10u % 256u]; (void)n266;
+  const a0t5 *const n267 = &p1.e[11u % 256u]; (void)n267;
+  const a0t5 *const n268 = &p1.e[12u % 256u]; (void)n268;
+  const a0t5 *const n269 = &p1.e[13u % 256u]; (void)n269;
+  const a0t5 *const n270 = &p1.e[14u % 256u]; (void)n270;
+  const a0t5 *const n271 = &p1.e[15u % 256u]; (void)n271;
+  const a0t5 *const n272 = &p1.e[16u % 256u]; (void)n272;
+  const a0t5 *const n273 = &p1.e[17u % 256u]; (void)n273;
+  const a0t5 *const n274 = &p1.e[18u % 256u]; (void)n274;
+  const a0t5 *const n275 = &p1.e[19u % 256u]; (void)n275;
+  const a0t5 *const n276 = &p1.e[20u % 256u]; (void)n276;
+  const a0t5 *const n277 = &p1.e[21u % 256u]; (void)n277;
+  const a0t5 *const n278 = &p1.e[22u % 256u]; (void)n278;
+  const a0t5 *const n279 = &p1.e[23u % 256u]; (void)n279;
+  const a0t5 *const n280 = &p1.e[24u % 256u]; (void)n280;
+  const a0t5 *const n281 = &p1.e[25u % 256u]; (void)n281;
+  const a0t5 *const n282 = &p1.e[26u % 256u]; (void)n282;
+  const a0t5 *const n283 = &p1.e[27u % 256u]; (void)n283;
+  const a0t5 *const n284 = &p1.e[28u % 256u]; (void)n284;
+  const a0t5 *const n285 = &p1.e[29u % 256u]; (void)n285;
+  const a0t5 *const n286 = &p1.e[30u % 256u]; (void)n286;
+  const a0t5 *const n287 = &p1.e[31u % 256u]; (void)n287;
+  const a0t5 *const n288 = &p1.e[32u % 256u]; (void)n288;
+  const a0t5 *const n289 = &p1.e[33u % 256u]; (void)n289;
+  const a0t5 *const n290 = &p1.e[34u % 256u]; (void)n290;
+  const a0t5 *const n291 = &p1.e[35u % 256u]; (void)n291;
+  const a0t5 *const n292 = &p1.e[36u % 256u]; (void)n292;
+  const a0t5 *const n293 = &p1.e[37u % 256u]; (void)n293;
+  const a0t5 *const n294 = &p1.e[38u % 256u]; (void)n294;
+  const a0t5 *const n295 = &p1.e[39u % 256u]; (void)n295;
+  const a0t5 *const n296 = &p1.e[40u % 256u]; (void)n296;
+  const a0t5 *const n297 = &p1.e[41u % 256u]; (void)n297;
+  const a0t5 *const n298 = &p1.e[42u % 256u]; (void)n298;
+  const a0t5 *const n299 = &p1.e[43u % 256u]; (void)n299;
+  const a0t5 *const n300 = &p1.e[44u % 256u]; (void)n300;
+  const a0t5 *const n301 = &p1.e[45u % 256u]; (void)n301;
+  const a0t5 *const n302 = &p1.e[46u % 256u]; (void)n302;
+  const a0t5 *const n303 = &p1.e[47u % 256u]; (void)n303;
+  const a0t5 *const n304 = &p1.e[48u % 256u]; (void)n304;
+  const a0t5 *const n305 = &p1.e[49u % 256u]; (void)n305;
+  const a0t5 *const n306 = &p1.e[50u % 256u]; (void)n306;
+  const a0t5 *const n307 = &p1.e[51u % 256u]; (void)n307;
+  const a0t5 *const n308 = &p1.e[52u % 256u]; (void)n308;
+  const a0t5 *const n309 = &p1.e[53u % 256u]; (void)n309;
+  const a0t5 *const n310 = &p1.e[54u % 256u]; (void)n310;
+  const a0t5 *const n311 = &p1.e[55u % 256u]; (void)n311;
+  const a0t5 *const n312 = &p1.e[56u % 256u]; (void)n312;
+  const a0t5 *const n313 = &p1.e[57u % 256u]; (void)n313;
+  const a0t5 *const n314 = &p1.e[58u % 256u]; (void)n314;
+  const a0t5 *const n315 = &p1.e[59u % 256u]; (void)n315;
+  const a0t5 *const n316 = &p1.e[60u % 256u]; (void)n316;
+  const a0t5 *const n317 = &p1.e[61u % 256u]; (void)n317;
+  const a0t5 *const n318 = &p1.e[62u % 256u]; (void)n318;
+  const a0t5 *const n319 = &p1.e[63u % 256u]; (void)n319;
+  const a0t5 *const n320 = &p1.e[64u % 256u]; (void)n320;
+  const a0t5 *const n321 = &p1.e[65u % 256u]; (void)n321;
+  const a0t5 *const n322 = &p1.e[66u % 256u]; (void)n322;
+  const a0t5 *const n323 = &p1.e[67u % 256u]; (void)n323;
+  const a0t5 *const n324 = &p1.e[68u % 256u]; (void)n324;
+  const a0t5 *const n325 = &p1.e[69u % 256u]; (void)n325;
+  const a0t5 *const n326 = &p1.e[70u % 256u]; (void)n326;
+  const a0t5 *const n327 = &p1.e[71u % 256u]; (void)n327;
+  const a0t5 *const n328 = &p1.e[72u % 256u]; (void)n328;
+  const a0t5 *const n329 = &p1.e[73u % 256u]; (void)n329;
+  const a0t5 *const n330 = &p1.e[74u % 256u]; (void)n330;
+  const a0t5 *const n331 = &p1.e[75u % 256u]; (void)n331;
+  const a0t5 *const n332 = &p1.e[76u % 256u]; (void)n332;
+  const a0t5 *const n333 = &p1.e[77u % 256u]; (void)n333;
+  const a0t5 *const n334 = &p1.e[78u % 256u]; (void)n334;
+  const a0t5 *const n335 = &p1.e[79u % 256u]; (void)n335;
+  const a0t5 *const n336 = &p1.e[80u % 256u]; (void)n336;
+  const a0t5 *const n337 = &p1.e[81u % 256u]; (void)n337;
+  const a0t5 *const n338 = &p1.e[82u % 256u]; (void)n338;
+  const a0t5 *const n339 = &p1.e[83u % 256u]; (void)n339;
+  const a0t5 *const n340 = &p1.e[84u % 256u]; (void)n340;
+  const a0t5 *const n341 = &p1.e[85u % 256u]; (void)n341;
+  const a0t5 *const n342 = &p1.e[86u % 256u]; (void)n342;
+  const a0t5 *const n343 = &p1.e[87u % 256u]; (void)n343;
+  const a0t5 *const n344 = &p1.e[88u % 256u]; (void)n344;
+  const a0t5 *const n345 = &p1.e[89u % 256u]; (void)n345;
+  const a0t5 *const n346 = &p1.e[90u % 256u]; (void)n346;
+  const a0t5 *const n347 = &p1.e[91u % 256u]; (void)n347;
+  const a0t5 *const n348 = &p1.e[92u % 256u]; (void)n348;
+  const a0t5 *const n349 = &p1.e[93u % 256u]; (void)n349;
+  const a0t5 *const n350 = &p1.e[94u % 256u]; (void)n350;
+  const a0t5 *const n351 = &p1.e[95u % 256u]; (void)n351;
+  const a0t5 *const n352 = &p1.e[96u % 256u]; (void)n352;
+  const a0t5 *const n353 = &p1.e[97u % 256u]; (void)n353;
+  const a0t5 *const n354 = &p1.e[98u % 256u]; (void)n354;
+  const a0t5 *const n355 = &p1.e[99u % 256u]; (void)n355;
+  const a0t5 *const n356 = &p1.e[100u % 256u]; (void)n356;
+  const a0t5 *const n357 = &p1.e[101u % 256u]; (void)n357;
+  const a0t5 *const n358 = &p1.e[102u % 256u]; (void)n358;
+  const a0t5 *const n359 = &p1.e[103u % 256u]; (void)n359;
+  const a0t5 *const n360 = &p1.e[104u % 256u]; (void)n360;
+  const a0t5 *const n361 = &p1.e[105u % 256u]; (void)n361;
+  const a0t5 *const n362 = &p1.e[106u % 256u]; (void)n362;
+  const a0t5 *const n363 = &p1.e[107u % 256u]; (void)n363;
+  const a0t5 *const n364 = &p1.e[108u % 256u]; (void)n364;
+  const a0t5 *const n365 = &p1.e[109u % 256u]; (void)n365;
+  const a0t5 *const n366 = &p1.e[110u % 256u]; (void)n366;
+  const a0t5 *const n367 = &p1.e[111u % 256u]; (void)n367;
+  const a0t5 *const n368 = &p1.e[112u % 256u]; (void)n368;
+  const a0t5 *const n369 = &p1.e[113u % 256u]; (void)n369;
+  const a0t5 *const n370 = &p1.e[114u % 256u]; (void)n370;
+  const a0t5 *const n371 = &p1.e[115u % 256u]; (void)n371;
+  const a0t5 *const n372 = &p1.e[116u % 256u]; (void)n372;
+  const a0t5 *const n373 = &p1.e[117u % 256u]; (void)n373;
+  const a0t5 *const n374 = &p1.e[118u % 256u]; (void)n374;
+  const a0t5 *const n375 = &p1.e[119u % 256u]; (void)n375;
+  const a0t5 *const n376 = &p1.e[120u % 256u]; (void)n376;
+  const a0t5 *const n377 = &p1.e[121u % 256u]; (void)n377;
+  const a0t5 *const n378 = &p1.e[122u % 256u]; (void)n378;
+  const a0t5 *const n379 = &p1.e[123u % 256u]; (void)n379;
+  const a0t5 *const n380 = &p1.e[124u % 256u]; (void)n380;
+  const a0t5 *const n381 = &p1.e[125u % 256u]; (void)n381;
+  const a0t5 *const n382 = &p1.e[126u % 256u]; (void)n382;
+  const a0t5 *const n383 = &p1.e[127u % 256u]; (void)n383;
+  const a0t5 *const n384 = &p1.e[128u % 256u]; (void)n384;
+  const a0t5 *const n385 = &p1.e[129u % 256u]; (void)n385;
+  const a0t5 *const n386 = &p1.e[130u % 256u]; (void)n386;
+  const a0t5 *const n387 = &p1.e[131u % 256u]; (void)n387;
+  const a0t5 *const n388 = &p1.e[132u % 256u]; (void)n388;
+  const a0t5 *const n389 = &p1.e[133u % 256u]; (void)n389;
+  const a0t5 *const n390 = &p1.e[134u % 256u]; (void)n390;
+  const a0t5 *const n391 = &p1.e[135u % 256u]; (void)n391;
+  const a0t5 *const n392 = &p1.e[136u % 256u]; (void)n392;
+  const a0t5 *const n393 = &p1.e[137u % 256u]; (void)n393;
+  const a0t5 *const n394 = &p1.e[138u % 256u]; (void)n394;
+  const a0t5 *const n395 = &p1.e[139u % 256u]; (void)n395;
+  const a0t5 *const n396 = &p1.e[140u % 256u]; (void)n396;
+  const a0t5 *const n397 = &p1.e[141u % 256u]; (void)n397;
+  const a0t5 *const n398 = &p1.e[142u % 256u]; (void)n398;
+  const a0t5 *const n399 = &p1.e[143u % 256u]; (void)n399;
+  const a0t5 *const n400 = &p1.e[144u % 256u]; (void)n400;
+  const a0t5 *const n401 = &p1.e[145u % 256u]; (void)n401;
+  const a0t5 *const n402 = &p1.e[146u % 256u]; (void)n402;
+  const a0t5 *const n403 = &p1.e[147u % 256u]; (void)n403;
+  const a0t5 *const n404 = &p1.e[148u % 256u]; (void)n404;
+  const a0t5 *const n405 = &p1.e[149u % 256u]; (void)n405;
+  const a0t5 *const n406 = &p1.e[150u % 256u]; (void)n406;
+  const a0t5 *const n407 = &p1.e[151u % 256u]; (void)n407;
+  const a0t5 *const n408 = &p1.e[152u % 256u]; (void)n408;
+  const a0t5 *const n409 = &p1.e[153u % 256u]; (void)n409;
+  const a0t5 *const n410 = &p1.e[154u % 256u]; (void)n410;
+  const a0t5 *const n411 = &p1.e[155u % 256u]; (void)n411;
+  const a0t5 *const n412 = &p1.e[156u % 256u]; (void)n412;
+  const a0t5 *const n413 = &p1.e[157u % 256u]; (void)n413;
+  const a0t5 *const n414 = &p1.e[158u % 256u]; (void)n414;
+  const a0t5 *const n415 = &p1.e[159u % 256u]; (void)n415;
+  const a0t5 *const n416 = &p1.e[160u % 256u]; (void)n416;
+  const a0t5 *const n417 = &p1.e[161u % 256u]; (void)n417;
+  const a0t5 *const n418 = &p1.e[162u % 256u]; (void)n418;
+  const a0t5 *const n419 = &p1.e[163u % 256u]; (void)n419;
+  const a0t5 *const n420 = &p1.e[164u % 256u]; (void)n420;
+  const a0t5 *const n421 = &p1.e[165u % 256u]; (void)n421;
+  const a0t5 *const n422 = &p1.e[166u % 256u]; (void)n422;
+  const a0t5 *const n423 = &p1.e[167u % 256u]; (void)n423;
+  const a0t5 *const n424 = &p1.e[168u % 256u]; (void)n424;
+  const a0t5 *const n425 = &p1.e[169u % 256u]; (void)n425;
+  const a0t5 *const n426 = &p1.e[170u % 256u]; (void)n426;
+  const a0t5 *const n427 = &p1.e[171u % 256u]; (void)n427;
+  const a0t5 *const n428 = &p1.e[172u % 256u]; (void)n428;
+  const a0t5 *const n429 = &p1.e[173u % 256u]; (void)n429;
+  const a0t5 *const n430 = &p1.e[174u % 256u]; (void)n430;
+  const a0t5 *const n431 = &p1.e[175u % 256u]; (void)n431;
+  const a0t5 *const n432 = &p1.e[176u % 256u]; (void)n432;
+  const a0t5 *const n433 = &p1.e[177u % 256u]; (void)n433;
+  const a0t5 *const n434 = &p1.e[178u % 256u]; (void)n434;
+  const a0t5 *const n435 = &p1.e[179u % 256u]; (void)n435;
+  const a0t5 *const n436 = &p1.e[180u % 256u]; (void)n436;
+  const a0t5 *const n437 = &p1.e[181u % 256u]; (void)n437;
+  const a0t5 *const n438 = &p1.e[182u % 256u]; (void)n438;
+  const a0t5 *const n439 = &p1.e[183u % 256u]; (void)n439;
+  const a0t5 *const n440 = &p1.e[184u % 256u]; (void)n440;
+  const a0t5 *const n441 = &p1.e[185u % 256u]; (void)n441;
+  const a0t5 *const n442 = &p1.e[186u % 256u]; (void)n442;
+  const a0t5 *const n443 = &p1.e[187u % 256u]; (void)n443;
+  const a0t5 *const n444 = &p1.e[188u % 256u]; (void)n444;
+  const a0t5 *const n445 = &p1.e[189u % 256u]; (void)n445;
+  const a0t5 *const n446 = &p1.e[190u % 256u]; (void)n446;
+  const a0t5 *const n447 = &p1.e[191u % 256u]; (void)n447;
+  const a0t5 *const n448 = &p1.e[192u % 256u]; (void)n448;
+  const a0t5 *const n449 = &p1.e[193u % 256u]; (void)n449;
+  const a0t5 *const n450 = &p1.e[194u % 256u]; (void)n450;
+  const a0t5 *const n451 = &p1.e[195u % 256u]; (void)n451;
+  const a0t5 *const n452 = &p1.e[196u % 256u]; (void)n452;
+  const a0t5 *const n453 = &p1.e[197u % 256u]; (void)n453;
+  const a0t5 *const n454 = &p1.e[198u % 256u]; (void)n454;
+  const a0t5 *const n455 = &p1.e[199u % 256u]; (void)n455;
+  const a0t5 *const n456 = &p1.e[200u % 256u]; (void)n456;
+  const a0t5 *const n457 = &p1.e[201u % 256u]; (void)n457;
+  const a0t5 *const n458 = &p1.e[202u % 256u]; (void)n458;
+  const a0t5 *const n459 = &p1.e[203u % 256u]; (void)n459;
+  const a0t5 *const n460 = &p1.e[204u % 256u]; (void)n460;
+  const a0t5 *const n461 = &p1.e[205u % 256u]; (void)n461;
+  const a0t5 *const n462 = &p1.e[206u % 256u]; (void)n462;
+  const a0t5 *const n463 = &p1.e[207u % 256u]; (void)n463;
+  const a0t5 *const n464 = &p1.e[208u % 256u]; (void)n464;
+  const a0t5 *const n465 = &p1.e[209u % 256u]; (void)n465;
+  const a0t5 *const n466 = &p1.e[210u % 256u]; (void)n466;
+  const a0t5 *const n467 = &p1.e[211u % 256u]; (void)n467;
+  const a0t5 *const n468 = &p1.e[212u % 256u]; (void)n468;
+  const a0t5 *const n469 = &p1.e[213u % 256u]; (void)n469;
+  const a0t5 *const n470 = &p1.e[214u % 256u]; (void)n470;
+  const a0t5 *const n471 = &p1.e[215u % 256u]; (void)n471;
+  const a0t5 *const n472 = &p1.e[216u % 256u]; (void)n472;
+  const a0t5 *const n473 = &p1.e[217u % 256u]; (void)n473;
+  const a0t5 *const n474 = &p1.e[218u % 256u]; (void)n474;
+  const a0t5 *const n475 = &p1.e[219u % 256u]; (void)n475;
+  const a0t5 *const n476 = &p1.e[220u % 256u]; (void)n476;
+  const a0t5 *const n477 = &p1.e[221u % 256u]; (void)n477;
+  const a0t5 *const n478 = &p1.e[222u % 256u]; (void)n478;
+  const a0t5 *const n479 = &p1.e[223u % 256u]; (void)n479;
+  const a0t5 *const n480 = &p1.e[224u % 256u]; (void)n480;
+  const a0t5 *const n481 = &p1.e[225u % 256u]; (void)n481;
+  const a0t5 *const n482 = &p1.e[226u % 256u]; (void)n482;
+  const a0t5 *const n483 = &p1.e[227u % 256u]; (void)n483;
+  const a0t5 *const n484 = &p1.e[228u % 256u]; (void)n484;
+  const a0t5 *const n485 = &p1.e[229u % 256u]; (void)n485;
+  const a0t5 *const n486 = &p1.e[230u % 256u]; (void)n486;
+  const a0t5 *const n487 = &p1.e[231u % 256u]; (void)n487;
+  const a0t5 *const n488 = &p1.e[232u % 256u]; (void)n488;
+  const a0t5 *const n489 = &p1.e[233u % 256u]; (void)n489;
+  const a0t5 *const n490 = &p1.e[234u % 256u]; (void)n490;
+  const a0t5 *const n491 = &p1.e[235u % 256u]; (void)n491;
+  const a0t5 *const n492 = &p1.e[236u % 256u]; (void)n492;
+  const a0t5 *const n493 = &p1.e[237u % 256u]; (void)n493;
+  const a0t5 *const n494 = &p1.e[238u % 256u]; (void)n494;
+  const a0t5 *const n495 = &p1.e[239u % 256u]; (void)n495;
+  const a0t5 *const n496 = &p1.e[240u % 256u]; (void)n496;
+  const a0t5 *const n497 = &p1.e[241u % 256u]; (void)n497;
+  const a0t5 *const n498 = &p1.e[242u % 256u]; (void)n498;
+  const a0t5 *const n499 = &p1.e[243u % 256u]; (void)n499;
+  const a0t5 *const n500 = &p1.e[244u % 256u]; (void)n500;
+  const a0t5 *const n501 = &p1.e[245u % 256u]; (void)n501;
+  const a0t5 *const n502 = &p1.e[246u % 256u]; (void)n502;
+  const a0t5 *const n503 = &p1.e[247u % 256u]; (void)n503;
+  const a0t5 *const n504 = &p1.e[248u % 256u]; (void)n504;
+  const a0t5 *const n505 = &p1.e[249u % 256u]; (void)n505;
+  const a0t5 *const n506 = &p1.e[250u % 256u]; (void)n506;
+  const a0t5 *const n507 = &p1.e[251u % 256u]; (void)n507;
+  const a0t5 *const n508 = &p1.e[252u % 256u]; (void)n508;
+  const a0t5 *const n509 = &p1.e[253u % 256u]; (void)n509;
+  const a0t5 *const n510 = &p1.e[254u % 256u]; (void)n510;
+  const a0t5 *const n511 = &p1.e[255u % 256u]; (void)n511;
+  a0t49 n512; n512.e[0] = (*n0); n512.e[1] = (*n1); n512.e[2] = (*n2); n512.e[3] = (*n3); n512.e[4] = (*n4); n512.e[5] = (*n5); n512.e[6] = (*n6); n512.e[7] = (*n7); n512.e[8] = (*n8); n512.e[9] = (*n9); n512.e[10] = (*n10); n512.e[11] = (*n11); n512.e[12] = (*n12); n512.e[13] = (*n13); n512.e[14] = (*n14); n512.e[15] = (*n15); n512.e[16] = (*n16); n512.e[17] = (*n17); n512.e[18] = (*n18); n512.e[19] = (*n19); n512.e[20] = (*n20); n512.e[21] = (*n21); n512.e[22] = (*n22); n512.e[23] = (*n23); n512.e[24] = (*n24); n512.e[25] = (*n25); n512.e[26] = (*n26); n512.e[27] = (*n27); n512.e[28] = (*n28); n512.e[29] = (*n29); n512.e[30] = (*n30); n512.e[31] = (*n31); n512.e[32] = (*n32); n512.e[33] = (*n33); n512.e[34] = (*n34); n512.e[35] = (*n35); n512.e[36] = (*n36); n512.e[37] = (*n37); n512.e[38] = (*n38); n512.e[39] = (*n39); n512.e[40] = (*n40); n512.e[41] = (*n41); n512.e[42] = (*n42); n512.e[43] = (*n43); n512.e[44] = (*n44); n512.e[45] = (*n45); n512.e[46] = (*n46); n512.e[47] = (*n47); n512.e[48] = (*n48); n512.e[49] = (*n49); n512.e[50] = (*n50); n512.e[51] = (*n51); n512.e[52] = (*n52); n512.e[53] = (*n53); n512.e[54] = (*n54); n512.e[55] = (*n55); n512.e[56] = (*n56); n512.e[57] = (*n57); n512.e[58] = (*n58); n512.e[59] = (*n59); n512.e[60] = (*n60); n512.e[61] = (*n61); n512.e[62] = (*n62); n512.e[63] = (*n63); n512.e[64] = (*n64); n512.e[65] = (*n65); n512.e[66] = (*n66); n512.e[67] = (*n67); n512.e[68] = (*n68); n512.e[69] = (*n69); n512.e[70] = (*n70); n512.e[71] = (*n71); n512.e[72] = (*n72); n512.e[73] = (*n73); n512.e[74] = (*n74); n512.e[75] = (*n75); n512.e[76] = (*n76); n512.e[77] = (*n77); n512.e[78] = (*n78); n512.e[79] = (*n79); n512.e[80] = (*n80); n512.e[81] = (*n81); n512.e[82] = (*n82); n512.e[83] = (*n83); n512.e[84] = (*n84); n512.e[85] = (*n85); n512.e[86] = (*n86); n512.e[87] = (*n87); n512.e[88] = (*n88); n512.e[89] = (*n89); n512.e[90] = (*n90); n512.e[91] = (*n91); n512.e[92] = (*n92); n512.e[93] = (*n93); n512.e[94] = (*n94); n512.e[95] = (*n95); n512.e[96] = (*n96); n512.e[97] = (*n97); n512.e[98] = (*n98); n512.e[99] = (*n99); n512.e[100] = (*n100); n512.e[101] = (*n101); n512.e[102] = (*n102); n512.e[103] = (*n103); n512.e[104] = (*n104); n512.e[105] = (*n105); n512.e[106] = (*n106); n512.e[107] = (*n107); n512.e[108] = (*n108); n512.e[109] = (*n109); n512.e[110] = (*n110); n512.e[111] = (*n111); n512.e[112] = (*n112); n512.e[113] = (*n113); n512.e[114] = (*n114); n512.e[115] = (*n115); n512.e[116] = (*n116); n512.e[117] = (*n117); n512.e[118] = (*n118); n512.e[119] = (*n119); n512.e[120] = (*n120); n512.e[121] = (*n121); n512.e[122] = (*n122); n512.e[123] = (*n123); n512.e[124] = (*n124); n512.e[125] = (*n125); n512.e[126] = (*n126); n512.e[127] = (*n127); n512.e[128] = (*n128); n512.e[129] = (*n129); n512.e[130] = (*n130); n512.e[131] = (*n131); n512.e[132] = (*n132); n512.e[133] = (*n133); n512.e[134] = (*n134); n512.e[135] = (*n135); n512.e[136] = (*n136); n512.e[137] = (*n137); n512.e[138] = (*n138); n512.e[139] = (*n139); n512.e[140] = (*n140); n512.e[141] = (*n141); n512.e[142] = (*n142); n512.e[143] = (*n143); n512.e[144] = (*n144); n512.e[145] = (*n145); n512.e[146] = (*n146); n512.e[147] = (*n147); n512.e[148] = (*n148); n512.e[149] = (*n149); n512.e[150] = (*n150); n512.e[151] = (*n151); n512.e[152] = (*n152); n512.e[153] = (*n153); n512.e[154] = (*n154); n512.e[155] = (*n155); n512.e[156] = (*n156); n512.e[157] = (*n157); n512.e[158] = (*n158); n512.e[159] = (*n159); n512.e[160] = (*n160); n512.e[161] = (*n161); n512.e[162] = (*n162); n512.e[163] = (*n163); n512.e[164] = (*n164); n512.e[165] = (*n165); n512.e[166] = (*n166); n512.e[167] = (*n167); n512.e[168] = (*n168); n512.e[169] = (*n169); n512.e[170] = (*n170); n512.e[171] = (*n171); n512.e[172] = (*n172); n512.e[173] = (*n173); n512.e[174] = (*n174); n512.e[175] = (*n175); n512.e[176] = (*n176); n512.e[177] = (*n177); n512.e[178] = (*n178); n512.e[179] = (*n179); n512.e[180] = (*n180); n512.e[181] = (*n181); n512.e[182] = (*n182); n512.e[183] = (*n183); n512.e[184] = (*n184); n512.e[185] = (*n185); n512.e[186] = (*n186); n512.e[187] = (*n187); n512.e[188] = (*n188); n512.e[189] = (*n189); n512.e[190] = (*n190); n512.e[191] = (*n191); n512.e[192] = (*n192); n512.e[193] = (*n193); n512.e[194] = (*n194); n512.e[195] = (*n195); n512.e[196] = (*n196); n512.e[197] = (*n197); n512.e[198] = (*n198); n512.e[199] = (*n199); n512.e[200] = (*n200); n512.e[201] = (*n201); n512.e[202] = (*n202); n512.e[203] = (*n203); n512.e[204] = (*n204); n512.e[205] = (*n205); n512.e[206] = (*n206); n512.e[207] = (*n207); n512.e[208] = (*n208); n512.e[209] = (*n209); n512.e[210] = (*n210); n512.e[211] = (*n211); n512.e[212] = (*n212); n512.e[213] = (*n213); n512.e[214] = (*n214); n512.e[215] = (*n215); n512.e[216] = (*n216); n512.e[217] = (*n217); n512.e[218] = (*n218); n512.e[219] = (*n219); n512.e[220] = (*n220); n512.e[221] = (*n221); n512.e[222] = (*n222); n512.e[223] = (*n223); n512.e[224] = (*n224); n512.e[225] = (*n225); n512.e[226] = (*n226); n512.e[227] = (*n227); n512.e[228] = (*n228); n512.e[229] = (*n229); n512.e[230] = (*n230); n512.e[231] = (*n231); n512.e[232] = (*n232); n512.e[233] = (*n233); n512.e[234] = (*n234); n512.e[235] = (*n235); n512.e[236] = (*n236); n512.e[237] = (*n237); n512.e[238] = (*n238); n512.e[239] = (*n239); n512.e[240] = (*n240); n512.e[241] = (*n241); n512.e[242] = (*n242); n512.e[243] = (*n243); n512.e[244] = (*n244); n512.e[245] = (*n245); n512.e[246] = (*n246); n512.e[247] = (*n247); n512.e[248] = (*n248); n512.e[249] = (*n249); n512.e[250] = (*n250); n512.e[251] = (*n251); n512.e[252] = (*n252); n512.e[253] = (*n253); n512.e[254] = (*n254); n512.e[255] = (*n255); n512.e[256] = (*n256); n512.e[257] = (*n257); n512.e[258] = (*n258); n512.e[259] = (*n259); n512.e[260] = (*n260); n512.e[261] = (*n261); n512.e[262] = (*n262); n512.e[263] = (*n263); n512.e[264] = (*n264); n512.e[265] = (*n265); n512.e[266] = (*n266); n512.e[267] = (*n267); n512.e[268] = (*n268); n512.e[269] = (*n269); n512.e[270] = (*n270); n512.e[271] = (*n271); n512.e[272] = (*n272); n512.e[273] = (*n273); n512.e[274] = (*n274); n512.e[275] = (*n275); n512.e[276] = (*n276); n512.e[277] = (*n277); n512.e[278] = (*n278); n512.e[279] = (*n279); n512.e[280] = (*n280); n512.e[281] = (*n281); n512.e[282] = (*n282); n512.e[283] = (*n283); n512.e[284] = (*n284); n512.e[285] = (*n285); n512.e[286] = (*n286); n512.e[287] = (*n287); n512.e[288] = (*n288); n512.e[289] = (*n289); n512.e[290] = (*n290); n512.e[291] = (*n291); n512.e[292] = (*n292); n512.e[293] = (*n293); n512.e[294] = (*n294); n512.e[295] = (*n295); n512.e[296] = (*n296); n512.e[297] = (*n297); n512.e[298] = (*n298); n512.e[299] = (*n299); n512.e[300] = (*n300); n512.e[301] = (*n301); n512.e[302] = (*n302); n512.e[303] = (*n303); n512.e[304] = (*n304); n512.e[305] = (*n305); n512.e[306] = (*n306); n512.e[307] = (*n307); n512.e[308] = (*n308); n512.e[309] = (*n309); n512.e[310] = (*n310); n512.e[311] = (*n311); n512.e[312] = (*n312); n512.e[313] = (*n313); n512.e[314] = (*n314); n512.e[315] = (*n315); n512.e[316] = (*n316); n512.e[317] = (*n317); n512.e[318] = (*n318); n512.e[319] = (*n319); n512.e[320] = (*n320); n512.e[321] = (*n321); n512.e[322] = (*n322); n512.e[323] = (*n323); n512.e[324] = (*n324); n512.e[325] = (*n325); n512.e[326] = (*n326); n512.e[327] = (*n327); n512.e[328] = (*n328); n512.e[329] = (*n329); n512.e[330] = (*n330); n512.e[331] = (*n331); n512.e[332] = (*n332); n512.e[333] = (*n333); n512.e[334] = (*n334); n512.e[335] = (*n335); n512.e[336] = (*n336); n512.e[337] = (*n337); n512.e[338] = (*n338); n512.e[339] = (*n339); n512.e[340] = (*n340); n512.e[341] = (*n341); n512.e[342] = (*n342); n512.e[343] = (*n343); n512.e[344] = (*n344); n512.e[345] = (*n345); n512.e[346] = (*n346); n512.e[347] = (*n347); n512.e[348] = (*n348); n512.e[349] = (*n349); n512.e[350] = (*n350); n512.e[351] = (*n351); n512.e[352] = (*n352); n512.e[353] = (*n353); n512.e[354] = (*n354); n512.e[355] = (*n355); n512.e[356] = (*n356); n512.e[357] = (*n357); n512.e[358] = (*n358); n512.e[359] = (*n359); n512.e[360] = (*n360); n512.e[361] = (*n361); n512.e[362] = (*n362); n512.e[363] = (*n363); n512.e[364] = (*n364); n512.e[365] = (*n365); n512.e[366] = (*n366); n512.e[367] = (*n367); n512.e[368] = (*n368); n512.e[369] = (*n369); n512.e[370] = (*n370); n512.e[371] = (*n371); n512.e[372] = (*n372); n512.e[373] = (*n373); n512.e[374] = (*n374); n512.e[375] = (*n375); n512.e[376] = (*n376); n512.e[377] = (*n377); n512.e[378] = (*n378); n512.e[379] = (*n379); n512.e[380] = (*n380); n512.e[381] = (*n381); n512.e[382] = (*n382); n512.e[383] = (*n383); n512.e[384] = (*n384); n512.e[385] = (*n385); n512.e[386] = (*n386); n512.e[387] = (*n387); n512.e[388] = (*n388); n512.e[389] = (*n389); n512.e[390] = (*n390); n512.e[391] = (*n391); n512.e[392] = (*n392); n512.e[393] = (*n393); n512.e[394] = (*n394); n512.e[395] = (*n395); n512.e[396] = (*n396); n512.e[397] = (*n397); n512.e[398] = (*n398); n512.e[399] = (*n399); n512.e[400] = (*n400); n512.e[401] = (*n401); n512.e[402] = (*n402); n512.e[403] = (*n403); n512.e[404] = (*n404); n512.e[405] = (*n405); n512.e[406] = (*n406); n512.e[407] = (*n407); n512.e[408] = (*n408); n512.e[409] = (*n409); n512.e[410] = (*n410); n512.e[411] = (*n411); n512.e[412] = (*n412); n512.e[413] = (*n413); n512.e[414] = (*n414); n512.e[415] = (*n415); n512.e[416] = (*n416); n512.e[417] = (*n417); n512.e[418] = (*n418); n512.e[419] = (*n419); n512.e[420] = (*n420); n512.e[421] = (*n421); n512.e[422] = (*n422); n512.e[423] = (*n423); n512.e[424] = (*n424); n512.e[425] = (*n425); n512.e[426] = (*n426); n512.e[427] = (*n427); n512.e[428] = (*n428); n512.e[429] = (*n429); n512.e[430] = (*n430); n512.e[431] = (*n431); n512.e[432] = (*n432); n512.e[433] = (*n433); n512.e[434] = (*n434); n512.e[435] = (*n435); n512.e[436] = (*n436); n512.e[437] = (*n437); n512.e[438] = (*n438); n512.e[439] = (*n439); n512.e[440] = (*n440); n512.e[441] = (*n441); n512.e[442] = (*n442); n512.e[443] = (*n443); n512.e[444] = (*n444); n512.e[445] = (*n445); n512.e[446] = (*n446); n512.e[447] = (*n447); n512.e[448] = (*n448); n512.e[449] = (*n449); n512.e[450] = (*n450); n512.e[451] = (*n451); n512.e[452] = (*n452); n512.e[453] = (*n453); n512.e[454] = (*n454); n512.e[455] = (*n455); n512.e[456] = (*n456); n512.e[457] = (*n457); n512.e[458] = (*n458); n512.e[459] = (*n459); n512.e[460] = (*n460); n512.e[461] = (*n461); n512.e[462] = (*n462); n512.e[463] = (*n463); n512.e[464] = (*n464); n512.e[465] = (*n465); n512.e[466] = (*n466); n512.e[467] = (*n467); n512.e[468] = (*n468); n512.e[469] = (*n469); n512.e[470] = (*n470); n512.e[471] = (*n471); n512.e[472] = (*n472); n512.e[473] = (*n473); n512.e[474] = (*n474); n512.e[475] = (*n475); n512.e[476] = (*n476); n512.e[477] = (*n477); n512.e[478] = (*n478); n512.e[479] = (*n479); n512.e[480] = (*n480); n512.e[481] = (*n481); n512.e[482] = (*n482); n512.e[483] = (*n483); n512.e[484] = (*n484); n512.e[485] = (*n485); n512.e[486] = (*n486); n512.e[487] = (*n487); n512.e[488] = (*n488); n512.e[489] = (*n489); n512.e[490] = (*n490); n512.e[491] = (*n491); n512.e[492] = (*n492); n512.e[493] = (*n493); n512.e[494] = (*n494); n512.e[495] = (*n495); n512.e[496] = (*n496); n512.e[497] = (*n497); n512.e[498] = (*n498); n512.e[499] = (*n499); n512.e[500] = (*n500); n512.e[501] = (*n501); n512.e[502] = (*n502); n512.e[503] = (*n503); n512.e[504] = (*n504); n512.e[505] = (*n505); n512.e[506] = (*n506); n512.e[507] = (*n507); n512.e[508] = (*n508); n512.e[509] = (*n509); n512.e[510] = (*n510); n512.e[511] = (*n511); (void)n512;
+  return n512;
+}
+
+a0t49 a0_bodyargs(a0t24 p0, uint32_t p1, a0t20 p2, a0t21 p3, a0t4 p4, a0t9 p5, a0t11 p6, a0t11 p7, uint32_t p8, uint32_t p9, uint32_t p10) {
+  bool n0 = a0_gt(p1, 16384u); (void)n0;
+  uint32_t n1 = (n0 ? 1u : 0u); (void)n1;
+  a0t24 n2 = a0_z256(); (void)n2;
+  a0t24 n3 = n2; for (uint32_t a0i = 0; a0i < n1; a0i++) { a0o_p5hi(&n3, a0i, p2, p3, p4, p5, p6, p7, p8, p9, p10); } (void)n3;
+  a0t49 n4 = a0_argcat(p0, n3); (void)n4;
+  return n4;
+}
+
+uint32_t a0_toklen(uint32_t p0, uint32_t p1, a0t30 p2) {
+  uint32_t n0 = a0_mul(p1, 3u); (void)n0;
+  uint32_t n1 = a0_add(n0, 2u); (void)n1;
+  uint32_t n2 = a0_shr(n1, 7u); (void)n2;
+  uint32_t n3 = a0_and(n1, 127u); (void)n3;
+  const a0t5 *const n4 = &p2.e[n2 % 3u]; (void)n4;
+  uint32_t n5 = (*n4).e[n3 % 128u]; (void)n5;
+  bool n6 = a0_gt(n5, p0); (void)n6;
+  uint32_t n7 = (n6 ? n5 : p0); (void)n7;
+  return n7;
+}
+
+uint32_t a0_toklpg(uint32_t p0, uint32_t p1, a0t9 p2, uint32_t p3) {
+  uint32_t n0 = a0_mul(p1, 128u); (void)n0;
+  uint32_t n1 = a0_sub(p3, n0); (void)n1;
+  bool n2 = a0_gt(n1, 128u); (void)n2;
+  uint32_t n3 = (n2 ? 128u : n1); (void)n3;
+  uint32_t n4 = a0_mul(p1, 3u); (void)n4;
+  const a0t5 *const n5 = &p2.e[n4 % 384u]; (void)n5;
+  uint32_t n6 = a0_add(n4, 1u); (void)n6;
+  const a0t5 *const n7 = &p2.e[n6 % 384u]; (void)n7;
+  uint32_t n8 = a0_add(n4, 2u); (void)n8;
+  const a0t5 *const n9 = &p2.e[n8 % 384u]; (void)n9;
+  a0t30 n10; n10.e[0] = (*n5); n10.e[1] = (*n7); n10.e[2] = (*n9); (void)n10;
+  uint32_t n11 = p0; for (uint32_t a0i = 0; a0i < n3; a0i++) { n11 = a0_toklen(n11, a0i, n10); } (void)n11;
+  return n11;
+}
+
+bool a0_fecap(a0t9 p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
+  bool n0 = a0_gt(p1, 16384u); (void)n0;
+  uint32_t n1 = (n0 ? 16384u : p1); (void)n1;
+  uint32_t n2 = a0_add(n1, 127u); (void)n2;
+  uint32_t n3 = a0_shr(n2, 7u); (void)n3;
+  uint32_t n4 = 0u; for (uint32_t a0i = 0; a0i < n3; a0i++) { n4 = a0_toklpg(n4, a0i, p0, n1); } (void)n4;
+  bool n5 = a0_gt(n4, 32767u); (void)n5;
+  bool n6 = a0_gt(p2, 8192u); (void)n6;
+  bool n7 = a0_gt(p3, 51200u); (void)n7;
+  bool n8 = a0_gt(p4, 4096u); (void)n8;
+  bool n9 = a0_gt(p5, 820u); (void)n9;
+  uint32_t n10 = a0_add(p6, p8); (void)n10;
+  bool n11 = a0_gt(n10, 8320u); (void)n11;
+  bool n12 = a0_gt(p7, 8320u); (void)n12;
+  bool n13 = a0_gt(p8, 2730u); (void)n13;
+  bool n14 = a0_gt(p9, 32768u); (void)n14;
+  bool n15 = (n0 || n5); (void)n15;
+  bool n16 = (n15 || n6); (void)n16;
+  bool n17 = (n16 || n7); (void)n17;
+  bool n18 = (n17 || n8); (void)n18;
+  bool n19 = (n18 || n9); (void)n19;
+  bool n20 = (n19 || n11); (void)n20;
+  bool n21 = (n20 || n12); (void)n21;
+  bool n22 = (n21 || n13); (void)n22;
+  bool n23 = (n22 || n14); (void)n23;
+  return n23;
+}
+
+static inline bool a0r_fecap(const a0t9 *p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
+  bool n0 = a0_gt(p1, 16384u); (void)n0;
+  uint32_t n1 = (n0 ? 16384u : p1); (void)n1;
+  uint32_t n2 = a0_add(n1, 127u); (void)n2;
+  uint32_t n3 = a0_shr(n2, 7u); (void)n3;
+  uint32_t n4 = 0u; for (uint32_t a0i = 0; a0i < n3; a0i++) { n4 = a0_toklpg(n4, a0i, (*p0), n1); } (void)n4;
+  bool n5 = a0_gt(n4, 32767u); (void)n5;
+  bool n6 = a0_gt(p2, 8192u); (void)n6;
+  bool n7 = a0_gt(p3, 51200u); (void)n7;
+  bool n8 = a0_gt(p4, 4096u); (void)n8;
+  bool n9 = a0_gt(p5, 820u); (void)n9;
+  uint32_t n10 = a0_add(p6, p8); (void)n10;
+  bool n11 = a0_gt(n10, 8320u); (void)n11;
+  bool n12 = a0_gt(p7, 8320u); (void)n12;
+  bool n13 = a0_gt(p8, 2730u); (void)n13;
+  bool n14 = a0_gt(p9, 32768u); (void)n14;
+  bool n15 = (n0 || n5); (void)n15;
+  bool n16 = (n15 || n6); (void)n16;
+  bool n17 = (n16 || n7); (void)n17;
+  bool n18 = (n17 || n8); (void)n18;
+  bool n19 = (n18 || n9); (void)n19;
+  bool n20 = (n19 || n11); (void)n20;
+  bool n21 = (n20 || n12); (void)n21;
+  bool n22 = (n21 || n13); (void)n22;
+  bool n23 = (n22 || n14); (void)n23;
+  return n23;
+}
+
+a0t50 a0_z8(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t50 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; (void)n1;
   return n1;
 }
 
-a0t47 a0_z24(void) {
-  a0t4 n0 = a0_zpage(); (void)n0;
-  a0t47 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; (void)n1;
+a0t51 a0_z24(void) {
+  a0t5 n0 = a0_zpage(); (void)n0;
+  a0t51 n1; n1.e[0] = n0; n1.e[1] = n0; n1.e[2] = n0; n1.e[3] = n0; n1.e[4] = n0; n1.e[5] = n0; n1.e[6] = n0; n1.e[7] = n0; n1.e[8] = n0; n1.e[9] = n0; n1.e[10] = n0; n1.e[11] = n0; n1.e[12] = n0; n1.e[13] = n0; n1.e[14] = n0; n1.e[15] = n0; n1.e[16] = n0; n1.e[17] = n0; n1.e[18] = n0; n1.e[19] = n0; n1.e[20] = n0; n1.e[21] = n0; n1.e[22] = n0; n1.e[23] = n0; (void)n1;
   return n1;
 }
 
-a0t33 a0_zl64(void) {
-  a0t33 n0; for (uint32_t a0i = 0; a0i < 64u; a0i++) n0.e[a0i] = 0; (void)n0;
+a0t36 a0_zl64(void) {
+  a0t36 n0; for (uint32_t a0i = 0; a0i < 64u; a0i++) n0.e[a0i] = 0; (void)n0;
   return n0;
 }
 
@@ -4542,18 +5698,18 @@ uint32_t a0_arity(uint32_t p0) {
   return n21;
 }
 
-a0t48 a0_recinfo(a0t48 p0, uint32_t p1, a0t19 p2, a0t19 p3, uint32_t p4) {
+a0t52 a0_recinfo(a0t52 p0, uint32_t p1, a0t22 p2, a0t22 p3, uint32_t p4) {
   uint32_t n0 = p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p0.f2; (void)n2;
   uint32_t n3 = a0_add(p4, p1); (void)n3;
   uint32_t n4 = a0_shr(n3, 7u); (void)n4;
   uint32_t n5 = a0_and(n3, 127u); (void)n5;
-  const a0t4 *const n6 = &p2.e[n4 % 65u]; (void)n6;
+  const a0t5 *const n6 = &p2.e[n4 % 65u]; (void)n6;
   uint32_t n7 = (*n6).e[n5 % 128u]; (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p3.e[n8 % 65u]; (void)n10;
+  const a0t5 *const n10 = &p3.e[n8 % 65u]; (void)n10;
   uint32_t n11 = (*n10).e[n9 % 128u]; (void)n11;
   uint32_t n12 = a0_shr(n11, 31u); (void)n12;
   uint32_t n13 = a0_and(n11, 2147483647u); (void)n13;
@@ -4561,22 +5717,22 @@ a0t48 a0_recinfo(a0t48 p0, uint32_t p1, a0t19 p2, a0t19 p3, uint32_t p4) {
   uint32_t n15 = a0_satadd(n1, n13, 2097152u); (void)n15;
   uint32_t n16 = a0_xor(n2, n7); (void)n16;
   uint32_t n17 = a0_mul(n16, 16777619u); (void)n17;
-  a0t48 n18; n18.f0 = n14; n18.f1 = n15; n18.f2 = n17; (void)n18;
+  a0t52 n18; n18.f0 = n14; n18.f1 = n15; n18.f2 = n17; (void)n18;
   return n18;
 }
 
-static inline void a0o_recinfo(a0t48 *p0, uint32_t p1, a0t19 p2, a0t19 p3, uint32_t p4) {
+static inline void a0o_recinfo(a0t52 *p0, uint32_t p1, a0t22 p2, a0t22 p3, uint32_t p4) {
   uint32_t n0 = (*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = (*p0).f2; (void)n2;
   uint32_t n3 = a0_add(p4, p1); (void)n3;
   uint32_t n4 = a0_shr(n3, 7u); (void)n4;
   uint32_t n5 = a0_and(n3, 127u); (void)n5;
-  const a0t4 *const n6 = &p2.e[n4 % 65u]; (void)n6;
+  const a0t5 *const n6 = &p2.e[n4 % 65u]; (void)n6;
   uint32_t n7 = (*n6).e[n5 % 128u]; (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
-  const a0t4 *const n10 = &p3.e[n8 % 65u]; (void)n10;
+  const a0t5 *const n10 = &p3.e[n8 % 65u]; (void)n10;
   uint32_t n11 = (*n10).e[n9 % 128u]; (void)n11;
   uint32_t n12 = a0_shr(n11, 31u); (void)n12;
   uint32_t n13 = a0_and(n11, 2147483647u); (void)n13;
@@ -4584,17 +5740,17 @@ static inline void a0o_recinfo(a0t48 *p0, uint32_t p1, a0t19 p2, a0t19 p3, uint3
   uint32_t n15 = a0_satadd(n1, n13, 2097152u); (void)n15;
   uint32_t n16 = a0_xor(n2, n7); (void)n16;
   uint32_t n17 = a0_mul(n16, 16777619u); (void)n17;
-  a0t48 n18; n18.f0 = n14; n18.f1 = n15; n18.f2 = n17; (void)n18;
+  a0t52 n18; n18.f0 = n14; n18.f1 = n15; n18.f2 = n17; (void)n18;
   *p0 = n18;
 }
 
-a0t49 a0_infostep(a0t49 p0, uint32_t p1, a0t23 p2, a0t19 p3) {
-  const a0t19 *const n0 = &p0.f0; (void)n0;
-  const a0t19 *const n1 = &p0.f1; (void)n1;
+a0t53 a0_infostep(a0t53 p0, uint32_t p1, a0t26 p2, a0t22 p3) {
+  const a0t22 *const n0 = &p0.f0; (void)n0;
+  const a0t22 *const n1 = &p0.f1; (void)n1;
   uint32_t n2 = a0_shr(p1, 7u); (void)n2;
   uint32_t n3 = a0_and(p1, 127u); (void)n3;
   uint32_t n4 = a0_mul(n3, 3u); (void)n4;
-  const a0t22 *const n5 = &p2.e[n2 % 65u]; (void)n5;
+  const a0t25 *const n5 = &p2.e[n2 % 65u]; (void)n5;
   uint32_t n6 = (*n5).e[n4 % 384u]; (void)n6;
   uint32_t n7 = a0_add(n4, 1u); (void)n7;
   uint32_t n8 = (*n5).e[n7 % 384u]; (void)n8;
@@ -4607,13 +5763,13 @@ a0t49 a0_infostep(a0t49 p0, uint32_t p1, a0t23 p2, a0t19 p3) {
   bool n15 = a0_eq(n6, 5u); (void)n15;
   uint32_t n16 = a0_shr(n10, 7u); (void)n16;
   uint32_t n17 = a0_and(n10, 127u); (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
+  const a0t5 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
   uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
   uint32_t n20 = a0_shr(n19, 31u); (void)n20;
   uint32_t n21 = a0_and(n19, 2147483647u); (void)n21;
   uint32_t n22 = a0_satmul(n8, n21, 2097152u); (void)n22;
   uint32_t n23 = (n15 ? n10 : 0u); (void)n23;
-  a0t48 n24; n24.f0 = 0u; n24.f1 = 0u; n24.f2 = 2166136261u; (void)n24;
+  a0t52 n24; n24.f0 = 0u; n24.f1 = 0u; n24.f2 = 2166136261u; (void)n24;
   for (uint32_t a0i = 0; a0i < n23; a0i++) { a0o_recinfo(&n24, a0i, p3, (*n0), n8); }
   uint32_t n26 = n24.f0; (void)n26;
   uint32_t n27 = n24.f1; (void)n27;
@@ -4628,26 +5784,26 @@ a0t49 a0_infostep(a0t49 p0, uint32_t p1, a0t23 p2, a0t19 p3) {
   uint32_t n36 = (n11 ? 32u : n35); (void)n36;
   uint32_t n37 = a0_mul(n32, 2147483648u); (void)n37;
   uint32_t n38 = a0_add(n37, n36); (void)n38;
-  const a0t4 *const n39 = &(*n0).e[n2 % 65u]; (void)n39;
-  a0t4 n40 = (*n39); n40.e[n3 % 128u] = n38; (void)n40;
-  a0t19 n41 = (*n0); n41.e[n2 % 65u] = n40; (void)n41;
+  const a0t5 *const n39 = &(*n0).e[n2 % 65u]; (void)n39;
+  a0t5 n40 = (*n39); n40.e[n3 % 128u] = n38; (void)n40;
+  a0t22 n41 = (*n0); n41.e[n2 % 65u] = n40; (void)n41;
   uint32_t n42 = a0_xor(n28, n10); (void)n42;
   uint32_t n43 = a0_mul(n42, 16777619u); (void)n43;
   uint32_t n44 = (n15 ? n43 : 0u); (void)n44;
-  const a0t4 *const n45 = &(*n1).e[n2 % 65u]; (void)n45;
-  a0t4 n46 = (*n45); n46.e[n3 % 128u] = n44; (void)n46;
-  a0t19 n47 = (*n1); n47.e[n2 % 65u] = n46; (void)n47;
-  a0t49 n48; n48.f0 = n41; n48.f1 = n47; (void)n48;
+  const a0t5 *const n45 = &(*n1).e[n2 % 65u]; (void)n45;
+  a0t5 n46 = (*n45); n46.e[n3 % 128u] = n44; (void)n46;
+  a0t22 n47 = (*n1); n47.e[n2 % 65u] = n46; (void)n47;
+  a0t53 n48; n48.f0 = n41; n48.f1 = n47; (void)n48;
   return n48;
 }
 
-static inline void a0o_infostep(a0t49 *p0, uint32_t p1, a0t23 p2, a0t19 p3) {
-  const a0t19 *const n0 = &(*p0).f0; (void)n0;
-  const a0t19 *const n1 = &(*p0).f1; (void)n1;
+static inline void a0o_infostep(a0t53 *p0, uint32_t p1, a0t26 p2, a0t22 p3) {
+  const a0t22 *const n0 = &(*p0).f0; (void)n0;
+  const a0t22 *const n1 = &(*p0).f1; (void)n1;
   uint32_t n2 = a0_shr(p1, 7u); (void)n2;
   uint32_t n3 = a0_and(p1, 127u); (void)n3;
   uint32_t n4 = a0_mul(n3, 3u); (void)n4;
-  const a0t22 *const n5 = &p2.e[n2 % 65u]; (void)n5;
+  const a0t25 *const n5 = &p2.e[n2 % 65u]; (void)n5;
   uint32_t n6 = (*n5).e[n4 % 384u]; (void)n6;
   uint32_t n7 = a0_add(n4, 1u); (void)n7;
   uint32_t n8 = (*n5).e[n7 % 384u]; (void)n8;
@@ -4660,13 +5816,13 @@ static inline void a0o_infostep(a0t49 *p0, uint32_t p1, a0t23 p2, a0t19 p3) {
   bool n15 = a0_eq(n6, 5u); (void)n15;
   uint32_t n16 = a0_shr(n10, 7u); (void)n16;
   uint32_t n17 = a0_and(n10, 127u); (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
+  const a0t5 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
   uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
   uint32_t n20 = a0_shr(n19, 31u); (void)n20;
   uint32_t n21 = a0_and(n19, 2147483647u); (void)n21;
   uint32_t n22 = a0_satmul(n8, n21, 2097152u); (void)n22;
   uint32_t n23 = (n15 ? n10 : 0u); (void)n23;
-  a0t48 n24; n24.f0 = 0u; n24.f1 = 0u; n24.f2 = 2166136261u; (void)n24;
+  a0t52 n24; n24.f0 = 0u; n24.f1 = 0u; n24.f2 = 2166136261u; (void)n24;
   for (uint32_t a0i = 0; a0i < n23; a0i++) { a0o_recinfo(&n24, a0i, p3, (*n0), n8); }
   uint32_t n26 = n24.f0; (void)n26;
   uint32_t n27 = n24.f1; (void)n27;
@@ -4681,23 +5837,23 @@ static inline void a0o_infostep(a0t49 *p0, uint32_t p1, a0t23 p2, a0t19 p3) {
   uint32_t n36 = (n11 ? 32u : n35); (void)n36;
   uint32_t n37 = a0_mul(n32, 2147483648u); (void)n37;
   uint32_t n38 = a0_add(n37, n36); (void)n38;
-  const a0t4 *const n39 = &(*n0).e[n2 % 65u]; (void)n39;
-  a0t4 n40 = (*n39); n40.e[n3 % 128u] = n38; (void)n40;
-  a0t19 n41 = (*n0); n41.e[n2 % 65u] = n40; (void)n41;
+  const a0t5 *const n39 = &(*n0).e[n2 % 65u]; (void)n39;
+  a0t5 n40 = (*n39); n40.e[n3 % 128u] = n38; (void)n40;
+  a0t22 n41 = (*n0); n41.e[n2 % 65u] = n40; (void)n41;
   uint32_t n42 = a0_xor(n28, n10); (void)n42;
   uint32_t n43 = a0_mul(n42, 16777619u); (void)n43;
   uint32_t n44 = (n15 ? n43 : 0u); (void)n44;
-  const a0t4 *const n45 = &(*n1).e[n2 % 65u]; (void)n45;
-  a0t4 n46 = (*n45); n46.e[n3 % 128u] = n44; (void)n46;
-  a0t19 n47 = (*n1); n47.e[n2 % 65u] = n46; (void)n47;
-  a0t49 n48; n48.f0 = n41; n48.f1 = n47; (void)n48;
+  const a0t5 *const n45 = &(*n1).e[n2 % 65u]; (void)n45;
+  a0t5 n46 = (*n45); n46.e[n3 % 128u] = n44; (void)n46;
+  a0t22 n47 = (*n1); n47.e[n2 % 65u] = n46; (void)n47;
+  a0t53 n48; n48.f0 = n41; n48.f1 = n47; (void)n48;
   *p0 = n48;
 }
 
-a0t50 a0_argb(a0t50 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0t33 p6, a0t19 p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, a0t4 p13, a0t4 p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, bool p19, bool p20, bool p21, bool p22, uint32_t p23) {
-  const a0t26 *const n0 = &p0.f0; (void)n0;
-  const a0t47 *const n1 = &p0.f1; (void)n1;
-  const a0t33 *const n2 = &p0.f2; (void)n2;
+a0t54 a0_argb(a0t54 p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, a0t51 p5, a0t36 p6, a0t22 p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, a0t5 p13, a0t5 p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, bool p19, bool p20, bool p21, bool p22, uint32_t p23) {
+  const a0t29 *const n0 = &p0.f0; (void)n0;
+  const a0t51 *const n1 = &p0.f1; (void)n1;
+  const a0t36 *const n2 = &p0.f2; (void)n2;
   uint32_t n3 = p0.f3; (void)n3;
   uint32_t n4 = p0.f4; (void)n4;
   uint32_t n5 = p0.f5; (void)n5;
@@ -4727,7 +5883,7 @@ a0t50 a0_argb(a0t50 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0
   uint32_t n29 = a0_add(p8, n25); (void)n29;
   uint32_t n30 = a0_shr(n29, 7u); (void)n30;
   uint32_t n31 = a0_and(n29, 127u); (void)n31;
-  const a0t4 *const n32 = &p5.e[n30 % 24u]; (void)n32;
+  const a0t5 *const n32 = &p5.e[n30 % 24u]; (void)n32;
   uint32_t n33 = (*n32).e[n31 % 128u]; (void)n33;
   bool n34 = a0_lt(n25, p9); (void)n34;
   uint32_t n35 = p6.e[n25 % 64u]; (void)n35;
@@ -4737,7 +5893,7 @@ a0t50 a0_argb(a0t50 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0
   uint32_t n39 = (n26 ? n33 : n38); (void)n39;
   uint32_t n40 = a0_shr(n39, 7u); (void)n40;
   uint32_t n41 = a0_and(n39, 127u); (void)n41;
-  const a0t4 *const n42 = &p7.e[n40 % 65u]; (void)n42;
+  const a0t5 *const n42 = &p7.e[n40 % 65u]; (void)n42;
   uint32_t n43 = (*n42).e[n41 % 128u]; (void)n43;
   uint32_t n44 = a0_shr(n43, 31u); (void)n44;
   uint32_t n45 = a0_and(n43, 2147483647u); (void)n45;
@@ -4746,7 +5902,7 @@ a0t50 a0_argb(a0t50 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0
   bool n48 = (p11 && n47); (void)n48;
   bool n49 = (n48 ? false : true); (void)n49;
   bool n50 = (n46 && n49); (void)n50;
-  const a0t4 *const n51 = &(*n1).e[n30 % 24u]; (void)n51;
+  const a0t5 *const n51 = &(*n1).e[n30 % 24u]; (void)n51;
   uint32_t n52 = (*n51).e[n31 % 128u]; (void)n52;
   uint32_t n53 = (*n2).e[n25 % 64u]; (void)n53;
   bool n54 = a0_eq(n52, 1u); (void)n54;
@@ -4781,10 +5937,10 @@ a0t50 a0_argb(a0t50 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0
   bool n83 = (n50 && n26); (void)n83;
   bool n84 = (n50 && n27); (void)n84;
   uint32_t n85 = (n83 ? 1u : n52); (void)n85;
-  a0t4 n86 = (*n51); n86.e[n31 % 128u] = n85; (void)n86;
-  a0t47 n87 = (*n1); n87.e[n30 % 24u] = n86; (void)n87;
+  a0t5 n86 = (*n51); n86.e[n31 % 128u] = n85; (void)n86;
+  a0t51 n87 = (*n1); n87.e[n30 % 24u] = n86; (void)n87;
   uint32_t n88 = (n84 ? p10 : n53); (void)n88;
-  a0t33 n89 = (*n2); n89.e[n25 % 64u] = n88; (void)n89;
+  a0t36 n89 = (*n2); n89.e[n25 % 64u] = n88; (void)n89;
   bool n90 = a0_ne(n39, p12); (void)n90;
   bool n91 = a0_eq(n5, 4294967295u); (void)n91;
   bool n92 = (p21 && n90); (void)n92;
@@ -4807,21 +5963,21 @@ a0t50 a0_argb(a0t50 p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0
   uint32_t n109 = a0_add(p17, p1); (void)n109;
   uint32_t n110 = a0_shr(n109, 7u); (void)n110;
   uint32_t n111 = a0_and(n109, 127u); (void)n111;
-  const a0t4 *const n112 = &(*n0).e[n110 % 2u]; (void)n112;
-  a0t4 n113 = (*n112); n113.e[n111 % 128u] = n39; (void)n113;
-  a0t26 n114 = (*n0); n114.e[n110 % 2u] = n113; (void)n114;
+  const a0t5 *const n112 = &(*n0).e[n110 % 2u]; (void)n112;
+  a0t5 n113 = (*n112); n113.e[n111 % 128u] = n39; (void)n113;
+  a0t29 n114 = (*n0); n114.e[n110 % 2u] = n113; (void)n114;
   uint32_t n115 = a0_add(n7, n44); (void)n115;
   uint32_t n116 = a0_satadd(n8, n45, 2097152u); (void)n116;
   uint32_t n117 = a0_xor(n9, n39); (void)n117;
   uint32_t n118 = a0_mul(n117, 16777619u); (void)n118;
-  a0t50 n119; n119.f0 = n114; n119.f1 = n87; n119.f2 = n89; n119.f3 = n78; n119.f4 = n82; n119.f5 = n94; n119.f6 = n108; n119.f7 = n115; n119.f8 = n116; n119.f9 = n118; (void)n119;
+  a0t54 n119; n119.f0 = n114; n119.f1 = n87; n119.f2 = n89; n119.f3 = n78; n119.f4 = n82; n119.f5 = n94; n119.f6 = n108; n119.f7 = n115; n119.f8 = n116; n119.f9 = n118; (void)n119;
   return n119;
 }
 
-static inline void a0o_argb(a0t50 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p4, a0t47 p5, a0t33 p6, a0t19 p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, a0t4 p13, a0t4 p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, bool p19, bool p20, bool p21, bool p22, uint32_t p23) {
-  const a0t26 *const n0 = &(*p0).f0; (void)n0;
-  const a0t47 *const n1 = &(*p0).f1; (void)n1;
-  const a0t33 *const n2 = &(*p0).f2; (void)n2;
+static inline void a0o_argb(a0t54 *p0, uint32_t p1, a0t5 p2, a0t5 p3, uint32_t p4, a0t51 p5, a0t36 p6, a0t22 p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, a0t5 p13, a0t5 p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, bool p19, bool p20, bool p21, bool p22, uint32_t p23) {
+  const a0t29 *const n0 = &(*p0).f0; (void)n0;
+  const a0t51 *const n1 = &(*p0).f1; (void)n1;
+  const a0t36 *const n2 = &(*p0).f2; (void)n2;
   uint32_t n3 = (*p0).f3; (void)n3;
   uint32_t n4 = (*p0).f4; (void)n4;
   uint32_t n5 = (*p0).f5; (void)n5;
@@ -4851,7 +6007,7 @@ static inline void a0o_argb(a0t50 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   uint32_t n29 = a0_add(p8, n25); (void)n29;
   uint32_t n30 = a0_shr(n29, 7u); (void)n30;
   uint32_t n31 = a0_and(n29, 127u); (void)n31;
-  const a0t4 *const n32 = &p5.e[n30 % 24u]; (void)n32;
+  const a0t5 *const n32 = &p5.e[n30 % 24u]; (void)n32;
   uint32_t n33 = (*n32).e[n31 % 128u]; (void)n33;
   bool n34 = a0_lt(n25, p9); (void)n34;
   uint32_t n35 = p6.e[n25 % 64u]; (void)n35;
@@ -4861,7 +6017,7 @@ static inline void a0o_argb(a0t50 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   uint32_t n39 = (n26 ? n33 : n38); (void)n39;
   uint32_t n40 = a0_shr(n39, 7u); (void)n40;
   uint32_t n41 = a0_and(n39, 127u); (void)n41;
-  const a0t4 *const n42 = &p7.e[n40 % 65u]; (void)n42;
+  const a0t5 *const n42 = &p7.e[n40 % 65u]; (void)n42;
   uint32_t n43 = (*n42).e[n41 % 128u]; (void)n43;
   uint32_t n44 = a0_shr(n43, 31u); (void)n44;
   uint32_t n45 = a0_and(n43, 2147483647u); (void)n45;
@@ -4870,7 +6026,7 @@ static inline void a0o_argb(a0t50 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   bool n48 = (p11 && n47); (void)n48;
   bool n49 = (n48 ? false : true); (void)n49;
   bool n50 = (n46 && n49); (void)n50;
-  const a0t4 *const n51 = &(*n1).e[n30 % 24u]; (void)n51;
+  const a0t5 *const n51 = &(*n1).e[n30 % 24u]; (void)n51;
   uint32_t n52 = (*n51).e[n31 % 128u]; (void)n52;
   uint32_t n53 = (*n2).e[n25 % 64u]; (void)n53;
   bool n54 = a0_eq(n52, 1u); (void)n54;
@@ -4905,10 +6061,10 @@ static inline void a0o_argb(a0t50 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   bool n83 = (n50 && n26); (void)n83;
   bool n84 = (n50 && n27); (void)n84;
   uint32_t n85 = (n83 ? 1u : n52); (void)n85;
-  a0t4 n86 = (*n51); n86.e[n31 % 128u] = n85; (void)n86;
-  a0t47 n87 = (*n1); n87.e[n30 % 24u] = n86; (void)n87;
+  a0t5 n86 = (*n51); n86.e[n31 % 128u] = n85; (void)n86;
+  a0t51 n87 = (*n1); n87.e[n30 % 24u] = n86; (void)n87;
   uint32_t n88 = (n84 ? p10 : n53); (void)n88;
-  a0t33 n89 = (*n2); n89.e[n25 % 64u] = n88; (void)n89;
+  a0t36 n89 = (*n2); n89.e[n25 % 64u] = n88; (void)n89;
   bool n90 = a0_ne(n39, p12); (void)n90;
   bool n91 = a0_eq(n5, 4294967295u); (void)n91;
   bool n92 = (p21 && n90); (void)n92;
@@ -4931,19 +6087,19 @@ static inline void a0o_argb(a0t50 *p0, uint32_t p1, a0t4 p2, a0t4 p3, uint32_t p
   uint32_t n109 = a0_add(p17, p1); (void)n109;
   uint32_t n110 = a0_shr(n109, 7u); (void)n110;
   uint32_t n111 = a0_and(n109, 127u); (void)n111;
-  const a0t4 *const n112 = &(*n0).e[n110 % 2u]; (void)n112;
-  a0t4 n113 = (*n112); n113.e[n111 % 128u] = n39; (void)n113;
-  a0t26 n114 = (*n0); n114.e[n110 % 2u] = n113; (void)n114;
+  const a0t5 *const n112 = &(*n0).e[n110 % 2u]; (void)n112;
+  a0t5 n113 = (*n112); n113.e[n111 % 128u] = n39; (void)n113;
+  a0t29 n114 = (*n0); n114.e[n110 % 2u] = n113; (void)n114;
   uint32_t n115 = a0_add(n7, n44); (void)n115;
   uint32_t n116 = a0_satadd(n8, n45, 2097152u); (void)n116;
   uint32_t n117 = a0_xor(n9, n39); (void)n117;
   uint32_t n118 = a0_mul(n117, 16777619u); (void)n118;
-  a0t50 n119; n119.f0 = n114; n119.f1 = n87; n119.f2 = n89; n119.f3 = n78; n119.f4 = n82; n119.f5 = n94; n119.f6 = n108; n119.f7 = n115; n119.f8 = n116; n119.f9 = n118; (void)n119;
+  a0t54 n119; n119.f0 = n114; n119.f1 = n87; n119.f2 = n89; n119.f3 = n78; n119.f4 = n82; n119.f5 = n94; n119.f6 = n108; n119.f7 = n115; n119.f8 = n116; n119.f9 = n118; (void)n119;
   *p0 = n119;
 }
 
-a0t51 a0_argseg(a0t51 p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 p4, a0t19 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, bool p16, bool p17, bool p18, uint32_t p19) {
-  const a0t19 *const n0 = &p0.f0; (void)n0;
+a0t55 a0_argseg(a0t55 p0, uint32_t p1, a0t49 p2, a0t51 p3, a0t36 p4, a0t22 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, bool p16, bool p17, bool p18, uint32_t p19) {
+  const a0t22 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = a0_add(p1, p19); (void)n1;
   uint32_t n2 = a0_mul(n1, 64u); (void)n2;
   uint32_t n3 = a0_sub(p7, n2); (void)n3;
@@ -4954,23 +6110,23 @@ a0t51 a0_argseg(a0t51 p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 p4, a0t19 p5, u
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
   uint32_t n10 = a0_add(n8, 1u); (void)n10;
-  const a0t4 *const n11 = &p2.e[n8 % 256u]; (void)n11;
-  const a0t4 *const n12 = &p2.e[n10 % 256u]; (void)n12;
+  const a0t5 *const n11 = &p2.e[n8 % 512u]; (void)n11;
+  const a0t5 *const n12 = &p2.e[n10 % 512u]; (void)n12;
   uint32_t n13 = a0_add(p15, n2); (void)n13;
   uint32_t n14 = a0_shr(n13, 7u); (void)n14;
   uint32_t n15 = a0_and(n13, 127u); (void)n15;
   uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n14 % 65u]; (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
-  a0t26 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
+  const a0t5 *const n17 = &(*n0).e[n14 % 65u]; (void)n17;
+  const a0t5 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
+  a0t29 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
   uint32_t n20 = a0_add(p13, n2); (void)n20;
   uint32_t n21 = a0_shr(n20, 7u); (void)n21;
   uint32_t n22 = a0_and(n20, 127u); (void)n22;
   uint32_t n23 = a0_add(n21, 1u); (void)n23;
-  const a0t4 *const n24 = &(*n0).e[n21 % 65u]; (void)n24;
-  const a0t4 *const n25 = &(*n0).e[n23 % 65u]; (void)n25;
-  const a0t47 *const n26 = &p0.f1; (void)n26;
-  const a0t33 *const n27 = &p0.f2; (void)n27;
+  const a0t5 *const n24 = &(*n0).e[n21 % 65u]; (void)n24;
+  const a0t5 *const n25 = &(*n0).e[n23 % 65u]; (void)n25;
+  const a0t51 *const n26 = &p0.f1; (void)n26;
+  const a0t36 *const n27 = &p0.f2; (void)n27;
   uint32_t n28 = p0.f3; (void)n28;
   uint32_t n29 = p0.f4; (void)n29;
   uint32_t n30 = p0.f5; (void)n30;
@@ -4978,23 +6134,23 @@ a0t51 a0_argseg(a0t51 p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 p4, a0t19 p5, u
   uint32_t n32 = p0.f7; (void)n32;
   uint32_t n33 = p0.f8; (void)n33;
   uint32_t n34 = p0.f9; (void)n34;
-  a0t50 n35; n35.f0 = n19; n35.f1 = (*n26); n35.f2 = (*n27); n35.f3 = n28; n35.f4 = n29; n35.f5 = n30; n35.f6 = n31; n35.f7 = n32; n35.f8 = n33; n35.f9 = n34; (void)n35;
+  a0t54 n35; n35.f0 = n19; n35.f1 = (*n26); n35.f2 = (*n27); n35.f3 = n28; n35.f4 = n29; n35.f5 = n30; n35.f6 = n31; n35.f7 = n32; n35.f8 = n33; n35.f9 = n34; (void)n35;
   for (uint32_t a0i = 0; a0i < n5; a0i++) { a0o_argb(&n35, a0i, (*n11), (*n12), n9, p3, p4, p5, p8, p9, p10, p11, p12, (*n24), (*n25), n22, p14, n15, n2, p16, p17, p18, false, 0u); }
-  const a0t26 *const n37 = &n35.f0; (void)n37;
-  const a0t4 *const n38 = &(*n37).e[0u % 2u]; (void)n38;
-  const a0t4 *const n39 = &(*n37).e[1u % 2u]; (void)n39;
+  const a0t29 *const n37 = &n35.f0; (void)n37;
+  const a0t5 *const n38 = &(*n37).e[0u % 2u]; (void)n38;
+  const a0t5 *const n39 = &(*n37).e[1u % 2u]; (void)n39;
   bool n40 = a0_lt(n14, 65u); (void)n40;
   bool n41 = (p16 && n40); (void)n41;
-  const a0t4 *const n42 = &(*n0).e[n14 % 65u]; (void)n42;
-  a0t4 n43 = (n41 ? (*n38) : (*n42)); (void)n43;
-  a0t19 n44 = (*n0); n44.e[n14 % 65u] = n43; (void)n44;
+  const a0t5 *const n42 = &(*n0).e[n14 % 65u]; (void)n42;
+  a0t5 n43 = (n41 ? (*n38) : (*n42)); (void)n43;
+  a0t22 n44 = (*n0); n44.e[n14 % 65u] = n43; (void)n44;
   bool n45 = a0_lt(n16, 65u); (void)n45;
   bool n46 = (p16 && n45); (void)n46;
-  const a0t4 *const n47 = &n44.e[n16 % 65u]; (void)n47;
-  a0t4 n48 = (n46 ? (*n39) : (*n47)); (void)n48;
+  const a0t5 *const n47 = &n44.e[n16 % 65u]; (void)n47;
+  a0t5 n48 = (n46 ? (*n39) : (*n47)); (void)n48;
   n44.e[n16 % 65u] = n48;
-  const a0t47 *const n50 = &n35.f1; (void)n50;
-  const a0t33 *const n51 = &n35.f2; (void)n51;
+  const a0t51 *const n50 = &n35.f1; (void)n50;
+  const a0t36 *const n51 = &n35.f2; (void)n51;
   uint32_t n52 = n35.f3; (void)n52;
   uint32_t n53 = n35.f4; (void)n53;
   uint32_t n54 = n35.f5; (void)n54;
@@ -5002,12 +6158,12 @@ a0t51 a0_argseg(a0t51 p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 p4, a0t19 p5, u
   uint32_t n56 = n35.f7; (void)n56;
   uint32_t n57 = n35.f8; (void)n57;
   uint32_t n58 = n35.f9; (void)n58;
-  a0t51 n59; n59.f0 = n44; n59.f1 = (*n50); n59.f2 = (*n51); n59.f3 = n52; n59.f4 = n53; n59.f5 = n54; n59.f6 = n55; n59.f7 = n56; n59.f8 = n57; n59.f9 = n58; (void)n59;
+  a0t55 n59; n59.f0 = n44; n59.f1 = (*n50); n59.f2 = (*n51); n59.f3 = n52; n59.f4 = n53; n59.f5 = n54; n59.f6 = n55; n59.f7 = n56; n59.f8 = n57; n59.f9 = n58; (void)n59;
   return n59;
 }
 
-static inline void a0o_argseg(a0t51 *p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 p4, a0t19 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, bool p16, bool p17, bool p18, uint32_t p19) {
-  const a0t19 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_argseg(a0t55 *p0, uint32_t p1, a0t49 p2, a0t51 p3, a0t36 p4, a0t22 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, bool p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, bool p16, bool p17, bool p18, uint32_t p19) {
+  const a0t22 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = a0_add(p1, p19); (void)n1;
   uint32_t n2 = a0_mul(n1, 64u); (void)n2;
   uint32_t n3 = a0_sub(p7, n2); (void)n3;
@@ -5018,23 +6174,23 @@ static inline void a0o_argseg(a0t51 *p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
   uint32_t n9 = a0_and(n7, 127u); (void)n9;
   uint32_t n10 = a0_add(n8, 1u); (void)n10;
-  const a0t4 *const n11 = &p2.e[n8 % 256u]; (void)n11;
-  const a0t4 *const n12 = &p2.e[n10 % 256u]; (void)n12;
+  const a0t5 *const n11 = &p2.e[n8 % 512u]; (void)n11;
+  const a0t5 *const n12 = &p2.e[n10 % 512u]; (void)n12;
   uint32_t n13 = a0_add(p15, n2); (void)n13;
   uint32_t n14 = a0_shr(n13, 7u); (void)n14;
   uint32_t n15 = a0_and(n13, 127u); (void)n15;
   uint32_t n16 = a0_add(n14, 1u); (void)n16;
-  const a0t4 *const n17 = &(*n0).e[n14 % 65u]; (void)n17;
-  const a0t4 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
-  a0t26 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
+  const a0t5 *const n17 = &(*n0).e[n14 % 65u]; (void)n17;
+  const a0t5 *const n18 = &(*n0).e[n16 % 65u]; (void)n18;
+  a0t29 n19; n19.e[0] = (*n17); n19.e[1] = (*n18); (void)n19;
   uint32_t n20 = a0_add(p13, n2); (void)n20;
   uint32_t n21 = a0_shr(n20, 7u); (void)n21;
   uint32_t n22 = a0_and(n20, 127u); (void)n22;
   uint32_t n23 = a0_add(n21, 1u); (void)n23;
-  const a0t4 *const n24 = &(*n0).e[n21 % 65u]; (void)n24;
-  const a0t4 *const n25 = &(*n0).e[n23 % 65u]; (void)n25;
-  const a0t47 *const n26 = &(*p0).f1; (void)n26;
-  const a0t33 *const n27 = &(*p0).f2; (void)n27;
+  const a0t5 *const n24 = &(*n0).e[n21 % 65u]; (void)n24;
+  const a0t5 *const n25 = &(*n0).e[n23 % 65u]; (void)n25;
+  const a0t51 *const n26 = &(*p0).f1; (void)n26;
+  const a0t36 *const n27 = &(*p0).f2; (void)n27;
   uint32_t n28 = (*p0).f3; (void)n28;
   uint32_t n29 = (*p0).f4; (void)n29;
   uint32_t n30 = (*p0).f5; (void)n30;
@@ -5042,23 +6198,23 @@ static inline void a0o_argseg(a0t51 *p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 
   uint32_t n32 = (*p0).f7; (void)n32;
   uint32_t n33 = (*p0).f8; (void)n33;
   uint32_t n34 = (*p0).f9; (void)n34;
-  a0t50 n35; n35.f0 = n19; n35.f1 = (*n26); n35.f2 = (*n27); n35.f3 = n28; n35.f4 = n29; n35.f5 = n30; n35.f6 = n31; n35.f7 = n32; n35.f8 = n33; n35.f9 = n34; (void)n35;
+  a0t54 n35; n35.f0 = n19; n35.f1 = (*n26); n35.f2 = (*n27); n35.f3 = n28; n35.f4 = n29; n35.f5 = n30; n35.f6 = n31; n35.f7 = n32; n35.f8 = n33; n35.f9 = n34; (void)n35;
   for (uint32_t a0i = 0; a0i < n5; a0i++) { a0o_argb(&n35, a0i, (*n11), (*n12), n9, p3, p4, p5, p8, p9, p10, p11, p12, (*n24), (*n25), n22, p14, n15, n2, p16, p17, p18, false, 0u); }
-  const a0t26 *const n37 = &n35.f0; (void)n37;
-  const a0t4 *const n38 = &(*n37).e[0u % 2u]; (void)n38;
-  const a0t4 *const n39 = &(*n37).e[1u % 2u]; (void)n39;
+  const a0t29 *const n37 = &n35.f0; (void)n37;
+  const a0t5 *const n38 = &(*n37).e[0u % 2u]; (void)n38;
+  const a0t5 *const n39 = &(*n37).e[1u % 2u]; (void)n39;
   bool n40 = a0_lt(n14, 65u); (void)n40;
   bool n41 = (p16 && n40); (void)n41;
-  const a0t4 *const n42 = &(*n0).e[n14 % 65u]; (void)n42;
-  a0t4 n43 = (n41 ? (*n38) : (*n42)); (void)n43;
-  a0t19 n44 = (*n0); n44.e[n14 % 65u] = n43; (void)n44;
+  const a0t5 *const n42 = &(*n0).e[n14 % 65u]; (void)n42;
+  a0t5 n43 = (n41 ? (*n38) : (*n42)); (void)n43;
+  a0t22 n44 = (*n0); n44.e[n14 % 65u] = n43; (void)n44;
   bool n45 = a0_lt(n16, 65u); (void)n45;
   bool n46 = (p16 && n45); (void)n46;
-  const a0t4 *const n47 = &n44.e[n16 % 65u]; (void)n47;
-  a0t4 n48 = (n46 ? (*n39) : (*n47)); (void)n48;
+  const a0t5 *const n47 = &n44.e[n16 % 65u]; (void)n47;
+  a0t5 n48 = (n46 ? (*n39) : (*n47)); (void)n48;
   n44.e[n16 % 65u] = n48;
-  const a0t47 *const n50 = &n35.f1; (void)n50;
-  const a0t33 *const n51 = &n35.f2; (void)n51;
+  const a0t51 *const n50 = &n35.f1; (void)n50;
+  const a0t36 *const n51 = &n35.f2; (void)n51;
   uint32_t n52 = n35.f3; (void)n52;
   uint32_t n53 = n35.f4; (void)n53;
   uint32_t n54 = n35.f5; (void)n54;
@@ -5066,19 +6222,19 @@ static inline void a0o_argseg(a0t51 *p0, uint32_t p1, a0t21 p2, a0t47 p3, a0t33 
   uint32_t n56 = n35.f7; (void)n56;
   uint32_t n57 = n35.f8; (void)n57;
   uint32_t n58 = n35.f9; (void)n58;
-  a0t51 n59; n59.f0 = n44; n59.f1 = (*n50); n59.f2 = (*n51); n59.f3 = n52; n59.f4 = n53; n59.f5 = n54; n59.f6 = n55; n59.f7 = n56; n59.f8 = n57; n59.f9 = n58; (void)n59;
+  a0t55 n59; n59.f0 = n44; n59.f1 = (*n50); n59.f2 = (*n51); n59.f3 = n52; n59.f4 = n53; n59.f5 = n54; n59.f6 = n55; n59.f7 = n56; n59.f8 = n57; n59.f9 = n58; (void)n59;
   *p0 = n59;
 }
 
-a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5, a0t33 p6, uint32_t p7, uint32_t p8) {
-  const a0t23 *const n0 = &p0.f0; (void)n0;
-  const a0t19 *const n1 = &p0.f1; (void)n1;
-  const a0t19 *const n2 = &p0.f2; (void)n2;
-  const a0t19 *const n3 = &p0.f3; (void)n3;
-  const a0t47 *const n4 = &p0.f4; (void)n4;
-  const a0t47 *const n5 = &p0.f5; (void)n5;
-  const a0t33 *const n6 = &p0.f6; (void)n6;
-  const a0t46 *const n7 = &p0.f7; (void)n7;
+a0t56 a0_nodestep(a0t56 p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t20 p4, uint32_t p5, a0t36 p6, uint32_t p7, uint32_t p8) {
+  const a0t26 *const n0 = &p0.f0; (void)n0;
+  const a0t22 *const n1 = &p0.f1; (void)n1;
+  const a0t22 *const n2 = &p0.f2; (void)n2;
+  const a0t22 *const n3 = &p0.f3; (void)n3;
+  const a0t51 *const n4 = &p0.f4; (void)n4;
+  const a0t51 *const n5 = &p0.f5; (void)n5;
+  const a0t36 *const n6 = &p0.f6; (void)n6;
+  const a0t50 *const n7 = &p0.f7; (void)n7;
   uint32_t n8 = p0.f8; (void)n8;
   uint32_t n9 = p0.f9; (void)n9;
   uint32_t n10 = p0.f10; (void)n10;
@@ -5091,27 +6247,27 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n17 = a0_add(n16, 1u); (void)n17;
   uint32_t n18 = a0_shr(n17, 7u); (void)n18;
   uint32_t n19 = a0_and(n17, 127u); (void)n19;
-  const a0t4 *const n20 = &p2.e[n18 % 128u]; (void)n20;
+  const a0t5 *const n20 = &p2.e[n18 % 128u]; (void)n20;
   uint32_t n21 = (*n20).e[n19 % 128u]; (void)n21;
   uint32_t n22 = a0_add(n16, 2u); (void)n22;
   uint32_t n23 = a0_shr(n22, 7u); (void)n23;
   uint32_t n24 = a0_and(n22, 127u); (void)n24;
-  const a0t4 *const n25 = &p2.e[n23 % 128u]; (void)n25;
+  const a0t5 *const n25 = &p2.e[n23 % 128u]; (void)n25;
   uint32_t n26 = (*n25).e[n24 % 128u]; (void)n26;
   uint32_t n27 = a0_add(n16, 3u); (void)n27;
   uint32_t n28 = a0_shr(n27, 7u); (void)n28;
   uint32_t n29 = a0_and(n27, 127u); (void)n29;
-  const a0t4 *const n30 = &p2.e[n28 % 128u]; (void)n30;
+  const a0t5 *const n30 = &p2.e[n28 % 128u]; (void)n30;
   uint32_t n31 = (*n30).e[n29 % 128u]; (void)n31;
   uint32_t n32 = a0_add(n16, 4u); (void)n32;
   uint32_t n33 = a0_shr(n32, 7u); (void)n33;
   uint32_t n34 = a0_and(n32, 127u); (void)n34;
-  const a0t4 *const n35 = &p2.e[n33 % 128u]; (void)n35;
+  const a0t5 *const n35 = &p2.e[n33 % 128u]; (void)n35;
   uint32_t n36 = (*n35).e[n34 % 128u]; (void)n36;
   uint32_t n37 = a0_add(n16, 5u); (void)n37;
   uint32_t n38 = a0_shr(n37, 7u); (void)n38;
   uint32_t n39 = a0_and(n37, 127u); (void)n39;
-  const a0t4 *const n40 = &p2.e[n38 % 128u]; (void)n40;
+  const a0t5 *const n40 = &p2.e[n38 % 128u]; (void)n40;
   uint32_t n41 = (*n40).e[n39 % 128u]; (void)n41;
   bool n42 = a0_eq(n21, 1u); (void)n42;
   bool n43 = a0_ge(n21, 2u); (void)n43;
@@ -5158,32 +6314,32 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n84 = a0_mul(n31, 2u); (void)n84;
   uint32_t n85 = a0_shr(n84, 7u); (void)n85;
   uint32_t n86 = a0_and(n84, 127u); (void)n86;
-  const a0t4 *const n87 = &p3.e[n85 % 256u]; (void)n87;
+  const a0t5 *const n87 = &p3.e[n85 % 512u]; (void)n87;
   uint32_t n88 = (*n87).e[n86 % 128u]; (void)n88;
   uint32_t n89 = a0_add(n84, 1u); (void)n89;
   uint32_t n90 = a0_shr(n89, 7u); (void)n90;
   uint32_t n91 = a0_and(n89, 127u); (void)n91;
-  const a0t4 *const n92 = &p3.e[n90 % 256u]; (void)n92;
+  const a0t5 *const n92 = &p3.e[n90 % 512u]; (void)n92;
   uint32_t n93 = (*n92).e[n91 % 128u]; (void)n93;
   uint32_t n94 = a0_add(n84, 2u); (void)n94;
   uint32_t n95 = a0_shr(n94, 7u); (void)n95;
   uint32_t n96 = a0_and(n94, 127u); (void)n96;
-  const a0t4 *const n97 = &p3.e[n95 % 256u]; (void)n97;
+  const a0t5 *const n97 = &p3.e[n95 % 512u]; (void)n97;
   uint32_t n98 = (*n97).e[n96 % 128u]; (void)n98;
   uint32_t n99 = a0_add(n84, 3u); (void)n99;
   uint32_t n100 = a0_shr(n99, 7u); (void)n100;
   uint32_t n101 = a0_and(n99, 127u); (void)n101;
-  const a0t4 *const n102 = &p3.e[n100 % 256u]; (void)n102;
+  const a0t5 *const n102 = &p3.e[n100 % 512u]; (void)n102;
   uint32_t n103 = (*n102).e[n101 % 128u]; (void)n103;
   uint32_t n104 = a0_add(n84, 4u); (void)n104;
   uint32_t n105 = a0_shr(n104, 7u); (void)n105;
   uint32_t n106 = a0_and(n104, 127u); (void)n106;
-  const a0t4 *const n107 = &p3.e[n105 % 256u]; (void)n107;
+  const a0t5 *const n107 = &p3.e[n105 % 512u]; (void)n107;
   uint32_t n108 = (*n107).e[n106 % 128u]; (void)n108;
   uint32_t n109 = a0_add(n84, 5u); (void)n109;
   uint32_t n110 = a0_shr(n109, 7u); (void)n110;
   uint32_t n111 = a0_and(n109, 127u); (void)n111;
-  const a0t4 *const n112 = &p3.e[n110 % 256u]; (void)n112;
+  const a0t5 *const n112 = &p3.e[n110 % 512u]; (void)n112;
   uint32_t n113 = (*n112).e[n111 % 128u]; (void)n113;
   bool n114 = a0_eq(n88, 1u); (void)n114;
   bool n115 = a0_eq(n88, 2u); (void)n115;
@@ -5191,7 +6347,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n117 = a0_add(p8, n93); (void)n117;
   uint32_t n118 = a0_shr(n117, 7u); (void)n118;
   uint32_t n119 = a0_and(n117, 127u); (void)n119;
-  const a0t4 *const n120 = &(*n4).e[n118 % 24u]; (void)n120;
+  const a0t5 *const n120 = &(*n4).e[n118 % 24u]; (void)n120;
   uint32_t n121 = (*n120).e[n119 % 128u]; (void)n121;
   bool n122 = a0_lt(n93, p7); (void)n122;
   uint32_t n123 = p6.e[n93 % 64u]; (void)n123;
@@ -5205,7 +6361,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n131 = a0_add(p8, n103); (void)n131;
   uint32_t n132 = a0_shr(n131, 7u); (void)n132;
   uint32_t n133 = a0_and(n131, 127u); (void)n133;
-  const a0t4 *const n134 = &(*n4).e[n132 % 24u]; (void)n134;
+  const a0t5 *const n134 = &(*n4).e[n132 % 24u]; (void)n134;
   uint32_t n135 = (*n134).e[n133 % 128u]; (void)n135;
   bool n136 = a0_lt(n103, p7); (void)n136;
   uint32_t n137 = p6.e[n103 % 64u]; (void)n137;
@@ -5219,7 +6375,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n145 = a0_add(p8, n113); (void)n145;
   uint32_t n146 = a0_shr(n145, 7u); (void)n146;
   uint32_t n147 = a0_and(n145, 127u); (void)n147;
-  const a0t4 *const n148 = &(*n4).e[n146 % 24u]; (void)n148;
+  const a0t5 *const n148 = &(*n4).e[n146 % 24u]; (void)n148;
   uint32_t n149 = (*n148).e[n147 % 128u]; (void)n149;
   bool n150 = a0_lt(n113, p7); (void)n150;
   uint32_t n151 = p6.e[n113 % 64u]; (void)n151;
@@ -5231,37 +6387,37 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n157 = a0_add(n156, 1u); (void)n157;
   uint32_t n158 = a0_shr(n157, 7u); (void)n158;
   uint32_t n159 = a0_and(n157, 127u); (void)n159;
-  const a0t4 *const n160 = &p4.e[n158 % 45u]; (void)n160;
+  const a0t5 *const n160 = &p4.e[n158 % 45u]; (void)n160;
   uint32_t n161 = (*n160).e[n159 % 128u]; (void)n161;
   uint32_t n162 = a0_add(n156, 2u); (void)n162;
   uint32_t n163 = a0_shr(n162, 7u); (void)n163;
   uint32_t n164 = a0_and(n162, 127u); (void)n164;
-  const a0t4 *const n165 = &p4.e[n163 % 45u]; (void)n165;
+  const a0t5 *const n165 = &p4.e[n163 % 45u]; (void)n165;
   uint32_t n166 = (*n165).e[n164 % 128u]; (void)n166;
   uint32_t n167 = a0_add(n156, 3u); (void)n167;
   uint32_t n168 = a0_shr(n167, 7u); (void)n168;
   uint32_t n169 = a0_and(n167, 127u); (void)n169;
-  const a0t4 *const n170 = &p4.e[n168 % 45u]; (void)n170;
+  const a0t5 *const n170 = &p4.e[n168 % 45u]; (void)n170;
   uint32_t n171 = (*n170).e[n169 % 128u]; (void)n171;
   uint32_t n172 = a0_shr(n36, 7u); (void)n172;
   uint32_t n173 = a0_and(n36, 127u); (void)n173;
-  const a0t4 *const n174 = &(*n7).e[n172 % 8u]; (void)n174;
+  const a0t5 *const n174 = &(*n7).e[n172 % 8u]; (void)n174;
   uint32_t n175 = (*n174).e[n173 % 128u]; (void)n175;
   uint32_t n176 = a0_mul(n41, 7u); (void)n176;
   uint32_t n177 = a0_add(n176, 1u); (void)n177;
   uint32_t n178 = a0_shr(n177, 7u); (void)n178;
   uint32_t n179 = a0_and(n177, 127u); (void)n179;
-  const a0t4 *const n180 = &p4.e[n178 % 45u]; (void)n180;
+  const a0t5 *const n180 = &p4.e[n178 % 45u]; (void)n180;
   uint32_t n181 = (*n180).e[n179 % 128u]; (void)n181;
   uint32_t n182 = a0_add(n176, 2u); (void)n182;
   uint32_t n183 = a0_shr(n182, 7u); (void)n183;
   uint32_t n184 = a0_and(n182, 127u); (void)n184;
-  const a0t4 *const n185 = &p4.e[n183 % 45u]; (void)n185;
+  const a0t5 *const n185 = &p4.e[n183 % 45u]; (void)n185;
   uint32_t n186 = (*n185).e[n184 % 128u]; (void)n186;
   uint32_t n187 = a0_add(n176, 3u); (void)n187;
   uint32_t n188 = a0_shr(n187, 7u); (void)n188;
   uint32_t n189 = a0_and(n187, 127u); (void)n189;
-  const a0t4 *const n190 = &p4.e[n188 % 45u]; (void)n190;
+  const a0t5 *const n190 = &p4.e[n188 % 45u]; (void)n190;
   uint32_t n191 = (*n190).e[n189 % 128u]; (void)n191;
   bool n192 = (n60 || n63); (void)n192;
   uint32_t n193 = (n60 ? 0u : 2u); (void)n193;
@@ -5270,38 +6426,38 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n196 = a0_shr(n195, 7u); (void)n196;
   uint32_t n197 = a0_and(n195, 127u); (void)n197;
   uint32_t n198 = a0_add(n196, 1u); (void)n198;
-  const a0t4 *const n199 = &p3.e[n196 % 256u]; (void)n199;
-  const a0t4 *const n200 = &p3.e[n198 % 256u]; (void)n200;
+  const a0t5 *const n199 = &p3.e[n196 % 512u]; (void)n199;
+  const a0t5 *const n200 = &p3.e[n198 % 512u]; (void)n200;
   uint32_t n201 = a0_shr(n9, 7u); (void)n201;
   uint32_t n202 = a0_and(n9, 127u); (void)n202;
   uint32_t n203 = a0_add(n201, 1u); (void)n203;
-  const a0t4 *const n204 = &(*n2).e[n201 % 65u]; (void)n204;
-  const a0t4 *const n205 = &(*n2).e[n203 % 65u]; (void)n205;
-  a0t26 n206; n206.e[0] = (*n204); n206.e[1] = (*n205); (void)n206;
+  const a0t5 *const n204 = &(*n2).e[n201 % 65u]; (void)n204;
+  const a0t5 *const n205 = &(*n2).e[n203 % 65u]; (void)n205;
+  a0t29 n206; n206.e[0] = (*n204); n206.e[1] = (*n205); (void)n206;
   uint32_t n207 = a0_shr(n166, 7u); (void)n207;
   uint32_t n208 = a0_and(n166, 127u); (void)n208;
   uint32_t n209 = a0_add(n207, 1u); (void)n209;
-  const a0t4 *const n210 = &(*n2).e[n207 % 65u]; (void)n210;
-  const a0t4 *const n211 = &(*n2).e[n209 % 65u]; (void)n211;
+  const a0t5 *const n210 = &(*n2).e[n207 % 65u]; (void)n210;
+  const a0t5 *const n211 = &(*n2).e[n209 % 65u]; (void)n211;
   bool n212 = a0_gt(n26, 64u); (void)n212;
   uint32_t n213 = (n212 ? 64u : n26); (void)n213;
-  a0t50 n214; n214.f0 = n206; n214.f1 = (*n5); n214.f2 = (*n6); n214.f3 = 4294967295u; n214.f4 = 4294967295u; n214.f5 = 4294967295u; n214.f6 = 4294967295u; n214.f7 = 0u; n214.f8 = 0u; n214.f9 = 2166136261u; (void)n214;
+  a0t54 n214; n214.f0 = n206; n214.f1 = (*n5); n214.f2 = (*n6); n214.f3 = 4294967295u; n214.f4 = 4294967295u; n214.f5 = 4294967295u; n214.f6 = 4294967295u; n214.f7 = 0u; n214.f8 = 0u; n214.f9 = 2166136261u; (void)n214;
   for (uint32_t a0i = 0; a0i < n213; a0i++) { a0o_argb(&n214, a0i, (*n199), (*n200), n197, (*n4), p6, (*n3), p8, p7, n194, n70, n127, (*n210), (*n211), n208, n193, n202, 0u, n65, n192, n67, n71, n103); }
-  const a0t26 *const n216 = &n214.f0; (void)n216;
-  const a0t4 *const n217 = &(*n216).e[0u % 2u]; (void)n217;
-  const a0t4 *const n218 = &(*n216).e[1u % 2u]; (void)n218;
+  const a0t29 *const n216 = &n214.f0; (void)n216;
+  const a0t5 *const n217 = &(*n216).e[0u % 2u]; (void)n217;
+  const a0t5 *const n218 = &(*n216).e[1u % 2u]; (void)n218;
   bool n219 = a0_lt(n201, 65u); (void)n219;
   bool n220 = (n65 && n219); (void)n220;
-  const a0t4 *const n221 = &(*n2).e[n201 % 65u]; (void)n221;
-  a0t4 n222 = (n220 ? (*n217) : (*n221)); (void)n222;
-  a0t19 n223 = (*n2); n223.e[n201 % 65u] = n222; (void)n223;
+  const a0t5 *const n221 = &(*n2).e[n201 % 65u]; (void)n221;
+  a0t5 n222 = (n220 ? (*n217) : (*n221)); (void)n222;
+  a0t22 n223 = (*n2); n223.e[n201 % 65u] = n222; (void)n223;
   bool n224 = a0_lt(n203, 65u); (void)n224;
   bool n225 = (n65 && n224); (void)n225;
-  const a0t4 *const n226 = &n223.e[n203 % 65u]; (void)n226;
-  a0t4 n227 = (n225 ? (*n218) : (*n226)); (void)n227;
+  const a0t5 *const n226 = &n223.e[n203 % 65u]; (void)n226;
+  a0t5 n227 = (n225 ? (*n218) : (*n226)); (void)n227;
   n223.e[n203 % 65u] = n227;
-  const a0t47 *const n229 = &n214.f1; (void)n229;
-  const a0t33 *const n230 = &n214.f2; (void)n230;
+  const a0t51 *const n229 = &n214.f1; (void)n229;
+  const a0t36 *const n230 = &n214.f2; (void)n230;
   uint32_t n231 = n214.f3; (void)n231;
   uint32_t n232 = n214.f4; (void)n232;
   uint32_t n233 = n214.f5; (void)n233;
@@ -5313,16 +6469,16 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n239 = a0_shr(n238, 6u); (void)n239;
   uint32_t n240 = a0_sub(n239, 1u); (void)n240;
   uint32_t n241 = (n212 ? n240 : 0u); (void)n241;
-  a0t51 n242; n242.f0 = n223; n242.f1 = (*n229); n242.f2 = (*n230); n242.f3 = n231; n242.f4 = n232; n242.f5 = n233; n242.f6 = n234; n242.f7 = n235; n242.f8 = n236; n242.f9 = n237; (void)n242;
+  a0t55 n242; n242.f0 = n223; n242.f1 = (*n229); n242.f2 = (*n230); n242.f3 = n231; n242.f4 = n232; n242.f5 = n233; n242.f6 = n234; n242.f7 = n235; n242.f8 = n236; n242.f9 = n237; (void)n242;
   for (uint32_t a0i = 0; a0i < n241; a0i++) { a0o_argseg(&n242, a0i, p3, (*n4), p6, (*n3), n31, n26, p8, p7, n194, n70, n127, n166, n193, n9, n65, n192, n67, 1u); }
-  const a0t19 *const n244 = &n242.f0; (void)n244;
-  const a0t47 *const n245 = &n242.f1; (void)n245;
-  const a0t33 *const n246 = &n242.f2; (void)n246;
+  const a0t22 *const n244 = &n242.f0; (void)n244;
+  const a0t51 *const n245 = &n242.f1; (void)n245;
+  const a0t36 *const n246 = &n242.f2; (void)n246;
   uint32_t n247 = n242.f3; (void)n247;
   uint32_t n248 = a0_shr(n127, 7u); (void)n248;
   uint32_t n249 = a0_and(n127, 127u); (void)n249;
   uint32_t n250 = a0_mul(n249, 3u); (void)n250;
-  const a0t22 *const n251 = &(*n0).e[n248 % 65u]; (void)n251;
+  const a0t25 *const n251 = &(*n0).e[n248 % 65u]; (void)n251;
   uint32_t n252 = (*n251).e[n250 % 384u]; (void)n252;
   uint32_t n253 = a0_add(n250, 1u); (void)n253;
   uint32_t n254 = (*n251).e[n253 % 384u]; (void)n254;
@@ -5334,11 +6490,11 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n260 = a0_add(n254, n103); (void)n260;
   uint32_t n261 = a0_shr(n260, 7u); (void)n261;
   uint32_t n262 = a0_and(n260, 127u); (void)n262;
-  const a0t4 *const n263 = &(*n2).e[n261 % 65u]; (void)n263;
+  const a0t5 *const n263 = &(*n2).e[n261 % 65u]; (void)n263;
   uint32_t n264 = (*n263).e[n262 % 128u]; (void)n264;
   uint32_t n265 = a0_shr(n264, 7u); (void)n265;
   uint32_t n266 = a0_and(n264, 127u); (void)n266;
-  const a0t4 *const n267 = &(*n3).e[n265 % 65u]; (void)n267;
+  const a0t5 *const n267 = &(*n3).e[n265 % 65u]; (void)n267;
   uint32_t n268 = (*n267).e[n266 % 128u]; (void)n268;
   uint32_t n269 = a0_shr(n268, 31u); (void)n269;
   bool n270 = a0_eq(n269, 1u); (void)n270;
@@ -5351,7 +6507,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n277 = a0_add(p8, n93); (void)n277;
   uint32_t n278 = a0_shr(n277, 7u); (void)n278;
   uint32_t n279 = a0_and(n277, 127u); (void)n279;
-  const a0t4 *const n280 = &(*n245).e[n278 % 24u]; (void)n280;
+  const a0t5 *const n280 = &(*n245).e[n278 % 24u]; (void)n280;
   uint32_t n281 = (*n280).e[n279 % 128u]; (void)n281;
   uint32_t n282 = (*n246).e[n93 % 64u]; (void)n282;
   bool n283 = a0_ne(n281, 0u); (void)n283;
@@ -5365,13 +6521,13 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   bool n291 = (n289 && n115); (void)n291;
   uint32_t n292 = a0_add(n103, 2u); (void)n292;
   uint32_t n293 = (n290 ? n292 : n281); (void)n293;
-  a0t4 n294 = (*n280); n294.e[n279 % 128u] = n293; (void)n294;
-  a0t47 n295 = (*n245); n295.e[n278 % 24u] = n294; (void)n295;
+  a0t5 n294 = (*n280); n294.e[n279 % 128u] = n293; (void)n294;
+  a0t51 n295 = (*n245); n295.e[n278 % 24u] = n294; (void)n295;
   uint32_t n296 = a0_add(n103, 1u); (void)n296;
   uint32_t n297 = a0_shl(n296, 20u); (void)n297;
   uint32_t n298 = a0_add(n297, n194); (void)n298;
   uint32_t n299 = (n291 ? n298 : n282); (void)n299;
-  a0t33 n300 = (*n246); n300.e[n93 % 64u] = n299; (void)n300;
+  a0t36 n300 = (*n246); n300.e[n93 % 64u] = n299; (void)n300;
   uint32_t n301 = (n288 ? 0u : n247); (void)n301;
   uint32_t n302 = n242.f4; (void)n302;
   uint32_t n303 = n242.f5; (void)n303;
@@ -5384,7 +6540,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n310 = a0_shr(n127, 7u); (void)n310;
   uint32_t n311 = a0_and(n127, 127u); (void)n311;
   uint32_t n312 = a0_mul(n311, 3u); (void)n312;
-  const a0t22 *const n313 = &(*n0).e[n310 % 65u]; (void)n313;
+  const a0t25 *const n313 = &(*n0).e[n310 % 65u]; (void)n313;
   uint32_t n314 = (*n313).e[n312 % 384u]; (void)n314;
   uint32_t n315 = a0_add(n312, 1u); (void)n315;
   uint32_t n316 = (*n313).e[n315 % 384u]; (void)n316;
@@ -5393,7 +6549,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n319 = a0_shr(n141, 7u); (void)n319;
   uint32_t n320 = a0_and(n141, 127u); (void)n320;
   uint32_t n321 = a0_mul(n320, 3u); (void)n321;
-  const a0t22 *const n322 = &(*n0).e[n319 % 65u]; (void)n322;
+  const a0t25 *const n322 = &(*n0).e[n319 % 65u]; (void)n322;
   uint32_t n323 = (*n322).e[n321 % 384u]; (void)n323;
   uint32_t n324 = a0_add(n321, 2u); (void)n324;
   uint32_t n325 = (*n322).e[n324 % 384u]; (void)n325;
@@ -5416,7 +6572,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   bool n342 = (n328 ? n333 : n332); (void)n342;
   bool n343 = (n341 && n342); (void)n343;
   bool n344 = (n58 && n332); (void)n344;
-  const a0t4 *const n345 = &(*n3).e[n319 % 65u]; (void)n345;
+  const a0t5 *const n345 = &(*n3).e[n319 % 65u]; (void)n345;
   uint32_t n346 = (*n345).e[n320 % 128u]; (void)n346;
   uint32_t n347 = a0_shr(n346, 31u); (void)n347;
   bool n348 = a0_eq(n347, 1u); (void)n348;
@@ -5444,7 +6600,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n370 = a0_add(n316, n103); (void)n370;
   uint32_t n371 = a0_shr(n370, 7u); (void)n371;
   uint32_t n372 = a0_and(n370, 127u); (void)n372;
-  const a0t4 *const n373 = &(*n2).e[n371 % 65u]; (void)n373;
+  const a0t5 *const n373 = &(*n2).e[n371 % 65u]; (void)n373;
   uint32_t n374 = (*n373).e[n372 % 128u]; (void)n374;
   bool n375 = (n339 || n368); (void)n375;
   bool n376 = (n375 || n369); (void)n376;
@@ -5454,7 +6610,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   bool n380 = (n376 ? false : true); (void)n380;
   bool n381 = (n379 && n380); (void)n381;
   bool n382 = a0_ne(n303, 4294967295u); (void)n382;
-  const a0t4 *const n383 = &(*n3).e[n310 % 65u]; (void)n383;
+  const a0t5 *const n383 = &(*n3).e[n310 % 65u]; (void)n383;
   uint32_t n384 = (*n383).e[n311 % 128u]; (void)n384;
   uint32_t n385 = a0_shr(n384, 31u); (void)n385;
   bool n386 = a0_eq(n385, 1u); (void)n386;
@@ -5475,17 +6631,17 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n401 = a0_add(n9, 1u); (void)n401;
   uint32_t n402 = a0_shr(n9, 7u); (void)n402;
   uint32_t n403 = a0_and(n9, 127u); (void)n403;
-  const a0t4 *const n404 = &(*n244).e[n402 % 65u]; (void)n404;
+  const a0t5 *const n404 = &(*n244).e[n402 % 65u]; (void)n404;
   uint32_t n405 = (*n404).e[n403 % 128u]; (void)n405;
   uint32_t n406 = (n73 ? 0u : n405); (void)n406;
-  a0t4 n407 = (*n404); n407.e[n403 % 128u] = n406; (void)n407;
-  a0t19 n408 = (*n244); n408.e[n402 % 65u] = n407; (void)n408;
+  a0t5 n407 = (*n404); n407.e[n403 % 128u] = n406; (void)n407;
+  a0t22 n408 = (*n244); n408.e[n402 % 65u] = n407; (void)n408;
   uint32_t n409 = a0_shr(n401, 7u); (void)n409;
   uint32_t n410 = a0_and(n401, 127u); (void)n410;
-  const a0t4 *const n411 = &n408.e[n409 % 65u]; (void)n411;
+  const a0t5 *const n411 = &n408.e[n409 % 65u]; (void)n411;
   uint32_t n412 = (*n411).e[n410 % 128u]; (void)n412;
   uint32_t n413 = (n73 ? 2u : n412); (void)n413;
-  a0t4 n414 = (*n411); n414.e[n410 % 128u] = n413; (void)n414;
+  a0t5 n414 = (*n411); n414.e[n410 % 128u] = n413; (void)n414;
   n408.e[n409 % 65u] = n414;
   uint32_t n416 = (n73 ? 2u : n26); (void)n416;
   uint32_t n417 = a0_xor(2166136261u, 0u); (void)n417;
@@ -5514,7 +6670,7 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n440 = a0_shr(n8, 7u); (void)n440;
   uint32_t n441 = a0_and(n8, 127u); (void)n441;
   uint32_t n442 = a0_mul(n441, 3u); (void)n442;
-  const a0t22 *const n443 = &(*n0).e[n440 % 65u]; (void)n443;
+  const a0t25 *const n443 = &(*n0).e[n440 % 65u]; (void)n443;
   uint32_t n444 = (*n443).e[n442 % 384u]; (void)n444;
   uint32_t n445 = a0_add(n442, 1u); (void)n445;
   uint32_t n446 = (*n443).e[n445 % 384u]; (void)n446;
@@ -5523,10 +6679,10 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n449 = (n435 ? n437 : n444); (void)n449;
   uint32_t n450 = (n435 ? n438 : n446); (void)n450;
   uint32_t n451 = (n435 ? n439 : n448); (void)n451;
-  a0t22 n452 = (*n443); n452.e[n442 % 384u] = n449; (void)n452;
+  a0t25 n452 = (*n443); n452.e[n442 % 384u] = n449; (void)n452;
   n452.e[n445 % 384u] = n450;
   n452.e[n447 % 384u] = n451;
-  a0t23 n455 = (*n0); n455.e[n440 % 65u] = n452; (void)n455;
+  a0t26 n455 = (*n0); n455.e[n440 % 65u] = n452; (void)n455;
   uint32_t n456 = a0_add(n8, 1u); (void)n456;
   uint32_t n457 = (n435 ? n456 : n8); (void)n457;
   bool n458 = (n435 && n424); (void)n458;
@@ -5540,16 +6696,16 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n466 = (n424 ? n464 : n388); (void)n466;
   uint32_t n467 = a0_mul(n465, 2147483648u); (void)n467;
   uint32_t n468 = a0_add(n467, n466); (void)n468;
-  const a0t4 *const n469 = &(*n3).e[n440 % 65u]; (void)n469;
+  const a0t5 *const n469 = &(*n3).e[n440 % 65u]; (void)n469;
   uint32_t n470 = (*n469).e[n441 % 128u]; (void)n470;
   uint32_t n471 = (n435 ? n468 : n470); (void)n471;
-  a0t4 n472 = (*n469); n472.e[n441 % 128u] = n471; (void)n472;
-  a0t19 n473 = (*n3); n473.e[n440 % 65u] = n472; (void)n473;
-  const a0t4 *const n474 = &(*n1).e[n440 % 65u]; (void)n474;
+  a0t5 n472 = (*n469); n472.e[n441 % 128u] = n471; (void)n472;
+  a0t22 n473 = (*n3); n473.e[n440 % 65u] = n472; (void)n473;
+  const a0t5 *const n474 = &(*n1).e[n440 % 65u]; (void)n474;
   uint32_t n475 = (*n474).e[n441 % 128u]; (void)n475;
   uint32_t n476 = (n458 ? n423 : n475); (void)n476;
-  a0t4 n477 = (*n474); n477.e[n441 % 128u] = n476; (void)n477;
-  a0t19 n478 = (*n1); n478.e[n440 % 65u] = n477; (void)n478;
+  a0t5 n477 = (*n474); n477.e[n441 % 128u] = n476; (void)n477;
+  a0t22 n478 = (*n1); n478.e[n440 % 65u] = n477; (void)n478;
   bool n479 = a0_ne(n26, n161); (void)n479;
   bool n480 = (n60 && n479); (void)n480;
   bool n481 = a0_ne(n304, 4294967295u); (void)n481;
@@ -5563,12 +6719,12 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   bool n489 = (n488 ? false : true); (void)n489;
   uint32_t n490 = a0_shr(n166, 7u); (void)n490;
   uint32_t n491 = a0_and(n166, 127u); (void)n491;
-  const a0t4 *const n492 = &(*n2).e[n490 % 65u]; (void)n492;
+  const a0t5 *const n492 = &(*n2).e[n490 % 65u]; (void)n492;
   uint32_t n493 = (*n492).e[n491 % 128u]; (void)n493;
   uint32_t n494 = a0_add(n166, 1u); (void)n494;
   uint32_t n495 = a0_shr(n494, 7u); (void)n495;
   uint32_t n496 = a0_and(n494, 127u); (void)n496;
-  const a0t4 *const n497 = &(*n2).e[n495 % 65u]; (void)n497;
+  const a0t5 *const n497 = &(*n2).e[n495 % 65u]; (void)n497;
   uint32_t n498 = (*n497).e[n496 % 128u]; (void)n498;
   bool n499 = a0_ne(n498, 0u); (void)n499;
   bool n500 = a0_ne(n141, n493); (void)n500;
@@ -5648,28 +6804,28 @@ a0t52 a0_nodestep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p
   uint32_t n574 = (n63 ? n493 : n573); (void)n574;
   uint32_t n575 = a0_shr(n15, 7u); (void)n575;
   uint32_t n576 = a0_and(n15, 127u); (void)n576;
-  const a0t4 *const n577 = &(*n4).e[n575 % 24u]; (void)n577;
-  a0t4 n578 = (*n577); n578.e[n576 % 128u] = n574; (void)n578;
-  a0t47 n579 = (*n4); n579.e[n575 % 24u] = n578; (void)n579;
+  const a0t5 *const n577 = &(*n4).e[n575 % 24u]; (void)n577;
+  a0t5 n578 = (*n577); n578.e[n576 % 128u] = n574; (void)n578;
+  a0t51 n579 = (*n4); n579.e[n575 % 24u] = n578; (void)n579;
   bool n580 = a0_ne(n559, 0u); (void)n580;
   bool n581 = a0_eq(n10, 0u); (void)n581;
   bool n582 = (n580 && n581); (void)n582;
   uint32_t n583 = (n582 ? n559 : n10); (void)n583;
   uint32_t n584 = (n582 ? p5 : n11); (void)n584;
   uint32_t n585 = (n582 ? p1 : n12); (void)n585;
-  a0t52 n586; n586.f0 = n455; n586.f1 = n478; n586.f2 = n408; n586.f3 = n473; n586.f4 = n579; n586.f5 = n295; n586.f6 = n300; n586.f7 = (*n7); n586.f8 = n457; n586.f9 = n460; n586.f10 = n583; n586.f11 = n584; n586.f12 = n585; n586.f13 = n533; n586.f14 = n538; (void)n586;
+  a0t56 n586; n586.f0 = n455; n586.f1 = n478; n586.f2 = n408; n586.f3 = n473; n586.f4 = n579; n586.f5 = n295; n586.f6 = n300; n586.f7 = (*n7); n586.f8 = n457; n586.f9 = n460; n586.f10 = n583; n586.f11 = n584; n586.f12 = n585; n586.f13 = n533; n586.f14 = n538; (void)n586;
   return n586;
 }
 
-static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5, a0t33 p6, uint32_t p7, uint32_t p8) {
-  const a0t23 *const n0 = &(*p0).f0; (void)n0;
-  const a0t19 *const n1 = &(*p0).f1; (void)n1;
-  const a0t19 *const n2 = &(*p0).f2; (void)n2;
-  const a0t19 *const n3 = &(*p0).f3; (void)n3;
-  const a0t47 *const n4 = &(*p0).f4; (void)n4;
-  const a0t47 *const n5 = &(*p0).f5; (void)n5;
-  const a0t33 *const n6 = &(*p0).f6; (void)n6;
-  const a0t46 *const n7 = &(*p0).f7; (void)n7;
+static inline void a0o_nodestep(a0t56 *p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t20 p4, uint32_t p5, a0t36 p6, uint32_t p7, uint32_t p8) {
+  const a0t26 *const n0 = &(*p0).f0; (void)n0;
+  const a0t22 *const n1 = &(*p0).f1; (void)n1;
+  const a0t22 *const n2 = &(*p0).f2; (void)n2;
+  const a0t22 *const n3 = &(*p0).f3; (void)n3;
+  const a0t51 *const n4 = &(*p0).f4; (void)n4;
+  const a0t51 *const n5 = &(*p0).f5; (void)n5;
+  const a0t36 *const n6 = &(*p0).f6; (void)n6;
+  const a0t50 *const n7 = &(*p0).f7; (void)n7;
   uint32_t n8 = (*p0).f8; (void)n8;
   uint32_t n9 = (*p0).f9; (void)n9;
   uint32_t n10 = (*p0).f10; (void)n10;
@@ -5682,27 +6838,27 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n17 = a0_add(n16, 1u); (void)n17;
   uint32_t n18 = a0_shr(n17, 7u); (void)n18;
   uint32_t n19 = a0_and(n17, 127u); (void)n19;
-  const a0t4 *const n20 = &p2.e[n18 % 128u]; (void)n20;
+  const a0t5 *const n20 = &p2.e[n18 % 128u]; (void)n20;
   uint32_t n21 = (*n20).e[n19 % 128u]; (void)n21;
   uint32_t n22 = a0_add(n16, 2u); (void)n22;
   uint32_t n23 = a0_shr(n22, 7u); (void)n23;
   uint32_t n24 = a0_and(n22, 127u); (void)n24;
-  const a0t4 *const n25 = &p2.e[n23 % 128u]; (void)n25;
+  const a0t5 *const n25 = &p2.e[n23 % 128u]; (void)n25;
   uint32_t n26 = (*n25).e[n24 % 128u]; (void)n26;
   uint32_t n27 = a0_add(n16, 3u); (void)n27;
   uint32_t n28 = a0_shr(n27, 7u); (void)n28;
   uint32_t n29 = a0_and(n27, 127u); (void)n29;
-  const a0t4 *const n30 = &p2.e[n28 % 128u]; (void)n30;
+  const a0t5 *const n30 = &p2.e[n28 % 128u]; (void)n30;
   uint32_t n31 = (*n30).e[n29 % 128u]; (void)n31;
   uint32_t n32 = a0_add(n16, 4u); (void)n32;
   uint32_t n33 = a0_shr(n32, 7u); (void)n33;
   uint32_t n34 = a0_and(n32, 127u); (void)n34;
-  const a0t4 *const n35 = &p2.e[n33 % 128u]; (void)n35;
+  const a0t5 *const n35 = &p2.e[n33 % 128u]; (void)n35;
   uint32_t n36 = (*n35).e[n34 % 128u]; (void)n36;
   uint32_t n37 = a0_add(n16, 5u); (void)n37;
   uint32_t n38 = a0_shr(n37, 7u); (void)n38;
   uint32_t n39 = a0_and(n37, 127u); (void)n39;
-  const a0t4 *const n40 = &p2.e[n38 % 128u]; (void)n40;
+  const a0t5 *const n40 = &p2.e[n38 % 128u]; (void)n40;
   uint32_t n41 = (*n40).e[n39 % 128u]; (void)n41;
   bool n42 = a0_eq(n21, 1u); (void)n42;
   bool n43 = a0_ge(n21, 2u); (void)n43;
@@ -5749,32 +6905,32 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n84 = a0_mul(n31, 2u); (void)n84;
   uint32_t n85 = a0_shr(n84, 7u); (void)n85;
   uint32_t n86 = a0_and(n84, 127u); (void)n86;
-  const a0t4 *const n87 = &p3.e[n85 % 256u]; (void)n87;
+  const a0t5 *const n87 = &p3.e[n85 % 512u]; (void)n87;
   uint32_t n88 = (*n87).e[n86 % 128u]; (void)n88;
   uint32_t n89 = a0_add(n84, 1u); (void)n89;
   uint32_t n90 = a0_shr(n89, 7u); (void)n90;
   uint32_t n91 = a0_and(n89, 127u); (void)n91;
-  const a0t4 *const n92 = &p3.e[n90 % 256u]; (void)n92;
+  const a0t5 *const n92 = &p3.e[n90 % 512u]; (void)n92;
   uint32_t n93 = (*n92).e[n91 % 128u]; (void)n93;
   uint32_t n94 = a0_add(n84, 2u); (void)n94;
   uint32_t n95 = a0_shr(n94, 7u); (void)n95;
   uint32_t n96 = a0_and(n94, 127u); (void)n96;
-  const a0t4 *const n97 = &p3.e[n95 % 256u]; (void)n97;
+  const a0t5 *const n97 = &p3.e[n95 % 512u]; (void)n97;
   uint32_t n98 = (*n97).e[n96 % 128u]; (void)n98;
   uint32_t n99 = a0_add(n84, 3u); (void)n99;
   uint32_t n100 = a0_shr(n99, 7u); (void)n100;
   uint32_t n101 = a0_and(n99, 127u); (void)n101;
-  const a0t4 *const n102 = &p3.e[n100 % 256u]; (void)n102;
+  const a0t5 *const n102 = &p3.e[n100 % 512u]; (void)n102;
   uint32_t n103 = (*n102).e[n101 % 128u]; (void)n103;
   uint32_t n104 = a0_add(n84, 4u); (void)n104;
   uint32_t n105 = a0_shr(n104, 7u); (void)n105;
   uint32_t n106 = a0_and(n104, 127u); (void)n106;
-  const a0t4 *const n107 = &p3.e[n105 % 256u]; (void)n107;
+  const a0t5 *const n107 = &p3.e[n105 % 512u]; (void)n107;
   uint32_t n108 = (*n107).e[n106 % 128u]; (void)n108;
   uint32_t n109 = a0_add(n84, 5u); (void)n109;
   uint32_t n110 = a0_shr(n109, 7u); (void)n110;
   uint32_t n111 = a0_and(n109, 127u); (void)n111;
-  const a0t4 *const n112 = &p3.e[n110 % 256u]; (void)n112;
+  const a0t5 *const n112 = &p3.e[n110 % 512u]; (void)n112;
   uint32_t n113 = (*n112).e[n111 % 128u]; (void)n113;
   bool n114 = a0_eq(n88, 1u); (void)n114;
   bool n115 = a0_eq(n88, 2u); (void)n115;
@@ -5782,7 +6938,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n117 = a0_add(p8, n93); (void)n117;
   uint32_t n118 = a0_shr(n117, 7u); (void)n118;
   uint32_t n119 = a0_and(n117, 127u); (void)n119;
-  const a0t4 *const n120 = &(*n4).e[n118 % 24u]; (void)n120;
+  const a0t5 *const n120 = &(*n4).e[n118 % 24u]; (void)n120;
   uint32_t n121 = (*n120).e[n119 % 128u]; (void)n121;
   bool n122 = a0_lt(n93, p7); (void)n122;
   uint32_t n123 = p6.e[n93 % 64u]; (void)n123;
@@ -5796,7 +6952,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n131 = a0_add(p8, n103); (void)n131;
   uint32_t n132 = a0_shr(n131, 7u); (void)n132;
   uint32_t n133 = a0_and(n131, 127u); (void)n133;
-  const a0t4 *const n134 = &(*n4).e[n132 % 24u]; (void)n134;
+  const a0t5 *const n134 = &(*n4).e[n132 % 24u]; (void)n134;
   uint32_t n135 = (*n134).e[n133 % 128u]; (void)n135;
   bool n136 = a0_lt(n103, p7); (void)n136;
   uint32_t n137 = p6.e[n103 % 64u]; (void)n137;
@@ -5810,7 +6966,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n145 = a0_add(p8, n113); (void)n145;
   uint32_t n146 = a0_shr(n145, 7u); (void)n146;
   uint32_t n147 = a0_and(n145, 127u); (void)n147;
-  const a0t4 *const n148 = &(*n4).e[n146 % 24u]; (void)n148;
+  const a0t5 *const n148 = &(*n4).e[n146 % 24u]; (void)n148;
   uint32_t n149 = (*n148).e[n147 % 128u]; (void)n149;
   bool n150 = a0_lt(n113, p7); (void)n150;
   uint32_t n151 = p6.e[n113 % 64u]; (void)n151;
@@ -5822,37 +6978,37 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n157 = a0_add(n156, 1u); (void)n157;
   uint32_t n158 = a0_shr(n157, 7u); (void)n158;
   uint32_t n159 = a0_and(n157, 127u); (void)n159;
-  const a0t4 *const n160 = &p4.e[n158 % 45u]; (void)n160;
+  const a0t5 *const n160 = &p4.e[n158 % 45u]; (void)n160;
   uint32_t n161 = (*n160).e[n159 % 128u]; (void)n161;
   uint32_t n162 = a0_add(n156, 2u); (void)n162;
   uint32_t n163 = a0_shr(n162, 7u); (void)n163;
   uint32_t n164 = a0_and(n162, 127u); (void)n164;
-  const a0t4 *const n165 = &p4.e[n163 % 45u]; (void)n165;
+  const a0t5 *const n165 = &p4.e[n163 % 45u]; (void)n165;
   uint32_t n166 = (*n165).e[n164 % 128u]; (void)n166;
   uint32_t n167 = a0_add(n156, 3u); (void)n167;
   uint32_t n168 = a0_shr(n167, 7u); (void)n168;
   uint32_t n169 = a0_and(n167, 127u); (void)n169;
-  const a0t4 *const n170 = &p4.e[n168 % 45u]; (void)n170;
+  const a0t5 *const n170 = &p4.e[n168 % 45u]; (void)n170;
   uint32_t n171 = (*n170).e[n169 % 128u]; (void)n171;
   uint32_t n172 = a0_shr(n36, 7u); (void)n172;
   uint32_t n173 = a0_and(n36, 127u); (void)n173;
-  const a0t4 *const n174 = &(*n7).e[n172 % 8u]; (void)n174;
+  const a0t5 *const n174 = &(*n7).e[n172 % 8u]; (void)n174;
   uint32_t n175 = (*n174).e[n173 % 128u]; (void)n175;
   uint32_t n176 = a0_mul(n41, 7u); (void)n176;
   uint32_t n177 = a0_add(n176, 1u); (void)n177;
   uint32_t n178 = a0_shr(n177, 7u); (void)n178;
   uint32_t n179 = a0_and(n177, 127u); (void)n179;
-  const a0t4 *const n180 = &p4.e[n178 % 45u]; (void)n180;
+  const a0t5 *const n180 = &p4.e[n178 % 45u]; (void)n180;
   uint32_t n181 = (*n180).e[n179 % 128u]; (void)n181;
   uint32_t n182 = a0_add(n176, 2u); (void)n182;
   uint32_t n183 = a0_shr(n182, 7u); (void)n183;
   uint32_t n184 = a0_and(n182, 127u); (void)n184;
-  const a0t4 *const n185 = &p4.e[n183 % 45u]; (void)n185;
+  const a0t5 *const n185 = &p4.e[n183 % 45u]; (void)n185;
   uint32_t n186 = (*n185).e[n184 % 128u]; (void)n186;
   uint32_t n187 = a0_add(n176, 3u); (void)n187;
   uint32_t n188 = a0_shr(n187, 7u); (void)n188;
   uint32_t n189 = a0_and(n187, 127u); (void)n189;
-  const a0t4 *const n190 = &p4.e[n188 % 45u]; (void)n190;
+  const a0t5 *const n190 = &p4.e[n188 % 45u]; (void)n190;
   uint32_t n191 = (*n190).e[n189 % 128u]; (void)n191;
   bool n192 = (n60 || n63); (void)n192;
   uint32_t n193 = (n60 ? 0u : 2u); (void)n193;
@@ -5861,38 +7017,38 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n196 = a0_shr(n195, 7u); (void)n196;
   uint32_t n197 = a0_and(n195, 127u); (void)n197;
   uint32_t n198 = a0_add(n196, 1u); (void)n198;
-  const a0t4 *const n199 = &p3.e[n196 % 256u]; (void)n199;
-  const a0t4 *const n200 = &p3.e[n198 % 256u]; (void)n200;
+  const a0t5 *const n199 = &p3.e[n196 % 512u]; (void)n199;
+  const a0t5 *const n200 = &p3.e[n198 % 512u]; (void)n200;
   uint32_t n201 = a0_shr(n9, 7u); (void)n201;
   uint32_t n202 = a0_and(n9, 127u); (void)n202;
   uint32_t n203 = a0_add(n201, 1u); (void)n203;
-  const a0t4 *const n204 = &(*n2).e[n201 % 65u]; (void)n204;
-  const a0t4 *const n205 = &(*n2).e[n203 % 65u]; (void)n205;
-  a0t26 n206; n206.e[0] = (*n204); n206.e[1] = (*n205); (void)n206;
+  const a0t5 *const n204 = &(*n2).e[n201 % 65u]; (void)n204;
+  const a0t5 *const n205 = &(*n2).e[n203 % 65u]; (void)n205;
+  a0t29 n206; n206.e[0] = (*n204); n206.e[1] = (*n205); (void)n206;
   uint32_t n207 = a0_shr(n166, 7u); (void)n207;
   uint32_t n208 = a0_and(n166, 127u); (void)n208;
   uint32_t n209 = a0_add(n207, 1u); (void)n209;
-  const a0t4 *const n210 = &(*n2).e[n207 % 65u]; (void)n210;
-  const a0t4 *const n211 = &(*n2).e[n209 % 65u]; (void)n211;
+  const a0t5 *const n210 = &(*n2).e[n207 % 65u]; (void)n210;
+  const a0t5 *const n211 = &(*n2).e[n209 % 65u]; (void)n211;
   bool n212 = a0_gt(n26, 64u); (void)n212;
   uint32_t n213 = (n212 ? 64u : n26); (void)n213;
-  a0t50 n214; n214.f0 = n206; n214.f1 = (*n5); n214.f2 = (*n6); n214.f3 = 4294967295u; n214.f4 = 4294967295u; n214.f5 = 4294967295u; n214.f6 = 4294967295u; n214.f7 = 0u; n214.f8 = 0u; n214.f9 = 2166136261u; (void)n214;
+  a0t54 n214; n214.f0 = n206; n214.f1 = (*n5); n214.f2 = (*n6); n214.f3 = 4294967295u; n214.f4 = 4294967295u; n214.f5 = 4294967295u; n214.f6 = 4294967295u; n214.f7 = 0u; n214.f8 = 0u; n214.f9 = 2166136261u; (void)n214;
   for (uint32_t a0i = 0; a0i < n213; a0i++) { a0o_argb(&n214, a0i, (*n199), (*n200), n197, (*n4), p6, (*n3), p8, p7, n194, n70, n127, (*n210), (*n211), n208, n193, n202, 0u, n65, n192, n67, n71, n103); }
-  const a0t26 *const n216 = &n214.f0; (void)n216;
-  const a0t4 *const n217 = &(*n216).e[0u % 2u]; (void)n217;
-  const a0t4 *const n218 = &(*n216).e[1u % 2u]; (void)n218;
+  const a0t29 *const n216 = &n214.f0; (void)n216;
+  const a0t5 *const n217 = &(*n216).e[0u % 2u]; (void)n217;
+  const a0t5 *const n218 = &(*n216).e[1u % 2u]; (void)n218;
   bool n219 = a0_lt(n201, 65u); (void)n219;
   bool n220 = (n65 && n219); (void)n220;
-  const a0t4 *const n221 = &(*n2).e[n201 % 65u]; (void)n221;
-  a0t4 n222 = (n220 ? (*n217) : (*n221)); (void)n222;
-  a0t19 n223 = (*n2); n223.e[n201 % 65u] = n222; (void)n223;
+  const a0t5 *const n221 = &(*n2).e[n201 % 65u]; (void)n221;
+  a0t5 n222 = (n220 ? (*n217) : (*n221)); (void)n222;
+  a0t22 n223 = (*n2); n223.e[n201 % 65u] = n222; (void)n223;
   bool n224 = a0_lt(n203, 65u); (void)n224;
   bool n225 = (n65 && n224); (void)n225;
-  const a0t4 *const n226 = &n223.e[n203 % 65u]; (void)n226;
-  a0t4 n227 = (n225 ? (*n218) : (*n226)); (void)n227;
+  const a0t5 *const n226 = &n223.e[n203 % 65u]; (void)n226;
+  a0t5 n227 = (n225 ? (*n218) : (*n226)); (void)n227;
   n223.e[n203 % 65u] = n227;
-  const a0t47 *const n229 = &n214.f1; (void)n229;
-  const a0t33 *const n230 = &n214.f2; (void)n230;
+  const a0t51 *const n229 = &n214.f1; (void)n229;
+  const a0t36 *const n230 = &n214.f2; (void)n230;
   uint32_t n231 = n214.f3; (void)n231;
   uint32_t n232 = n214.f4; (void)n232;
   uint32_t n233 = n214.f5; (void)n233;
@@ -5904,16 +7060,16 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n239 = a0_shr(n238, 6u); (void)n239;
   uint32_t n240 = a0_sub(n239, 1u); (void)n240;
   uint32_t n241 = (n212 ? n240 : 0u); (void)n241;
-  a0t51 n242; n242.f0 = n223; n242.f1 = (*n229); n242.f2 = (*n230); n242.f3 = n231; n242.f4 = n232; n242.f5 = n233; n242.f6 = n234; n242.f7 = n235; n242.f8 = n236; n242.f9 = n237; (void)n242;
+  a0t55 n242; n242.f0 = n223; n242.f1 = (*n229); n242.f2 = (*n230); n242.f3 = n231; n242.f4 = n232; n242.f5 = n233; n242.f6 = n234; n242.f7 = n235; n242.f8 = n236; n242.f9 = n237; (void)n242;
   for (uint32_t a0i = 0; a0i < n241; a0i++) { a0o_argseg(&n242, a0i, p3, (*n4), p6, (*n3), n31, n26, p8, p7, n194, n70, n127, n166, n193, n9, n65, n192, n67, 1u); }
-  const a0t19 *const n244 = &n242.f0; (void)n244;
-  const a0t47 *const n245 = &n242.f1; (void)n245;
-  const a0t33 *const n246 = &n242.f2; (void)n246;
+  const a0t22 *const n244 = &n242.f0; (void)n244;
+  const a0t51 *const n245 = &n242.f1; (void)n245;
+  const a0t36 *const n246 = &n242.f2; (void)n246;
   uint32_t n247 = n242.f3; (void)n247;
   uint32_t n248 = a0_shr(n127, 7u); (void)n248;
   uint32_t n249 = a0_and(n127, 127u); (void)n249;
   uint32_t n250 = a0_mul(n249, 3u); (void)n250;
-  const a0t22 *const n251 = &(*n0).e[n248 % 65u]; (void)n251;
+  const a0t25 *const n251 = &(*n0).e[n248 % 65u]; (void)n251;
   uint32_t n252 = (*n251).e[n250 % 384u]; (void)n252;
   uint32_t n253 = a0_add(n250, 1u); (void)n253;
   uint32_t n254 = (*n251).e[n253 % 384u]; (void)n254;
@@ -5925,11 +7081,11 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n260 = a0_add(n254, n103); (void)n260;
   uint32_t n261 = a0_shr(n260, 7u); (void)n261;
   uint32_t n262 = a0_and(n260, 127u); (void)n262;
-  const a0t4 *const n263 = &(*n2).e[n261 % 65u]; (void)n263;
+  const a0t5 *const n263 = &(*n2).e[n261 % 65u]; (void)n263;
   uint32_t n264 = (*n263).e[n262 % 128u]; (void)n264;
   uint32_t n265 = a0_shr(n264, 7u); (void)n265;
   uint32_t n266 = a0_and(n264, 127u); (void)n266;
-  const a0t4 *const n267 = &(*n3).e[n265 % 65u]; (void)n267;
+  const a0t5 *const n267 = &(*n3).e[n265 % 65u]; (void)n267;
   uint32_t n268 = (*n267).e[n266 % 128u]; (void)n268;
   uint32_t n269 = a0_shr(n268, 31u); (void)n269;
   bool n270 = a0_eq(n269, 1u); (void)n270;
@@ -5942,7 +7098,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n277 = a0_add(p8, n93); (void)n277;
   uint32_t n278 = a0_shr(n277, 7u); (void)n278;
   uint32_t n279 = a0_and(n277, 127u); (void)n279;
-  const a0t4 *const n280 = &(*n245).e[n278 % 24u]; (void)n280;
+  const a0t5 *const n280 = &(*n245).e[n278 % 24u]; (void)n280;
   uint32_t n281 = (*n280).e[n279 % 128u]; (void)n281;
   uint32_t n282 = (*n246).e[n93 % 64u]; (void)n282;
   bool n283 = a0_ne(n281, 0u); (void)n283;
@@ -5956,13 +7112,13 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   bool n291 = (n289 && n115); (void)n291;
   uint32_t n292 = a0_add(n103, 2u); (void)n292;
   uint32_t n293 = (n290 ? n292 : n281); (void)n293;
-  a0t4 n294 = (*n280); n294.e[n279 % 128u] = n293; (void)n294;
-  a0t47 n295 = (*n245); n295.e[n278 % 24u] = n294; (void)n295;
+  a0t5 n294 = (*n280); n294.e[n279 % 128u] = n293; (void)n294;
+  a0t51 n295 = (*n245); n295.e[n278 % 24u] = n294; (void)n295;
   uint32_t n296 = a0_add(n103, 1u); (void)n296;
   uint32_t n297 = a0_shl(n296, 20u); (void)n297;
   uint32_t n298 = a0_add(n297, n194); (void)n298;
   uint32_t n299 = (n291 ? n298 : n282); (void)n299;
-  a0t33 n300 = (*n246); n300.e[n93 % 64u] = n299; (void)n300;
+  a0t36 n300 = (*n246); n300.e[n93 % 64u] = n299; (void)n300;
   uint32_t n301 = (n288 ? 0u : n247); (void)n301;
   uint32_t n302 = n242.f4; (void)n302;
   uint32_t n303 = n242.f5; (void)n303;
@@ -5975,7 +7131,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n310 = a0_shr(n127, 7u); (void)n310;
   uint32_t n311 = a0_and(n127, 127u); (void)n311;
   uint32_t n312 = a0_mul(n311, 3u); (void)n312;
-  const a0t22 *const n313 = &(*n0).e[n310 % 65u]; (void)n313;
+  const a0t25 *const n313 = &(*n0).e[n310 % 65u]; (void)n313;
   uint32_t n314 = (*n313).e[n312 % 384u]; (void)n314;
   uint32_t n315 = a0_add(n312, 1u); (void)n315;
   uint32_t n316 = (*n313).e[n315 % 384u]; (void)n316;
@@ -5984,7 +7140,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n319 = a0_shr(n141, 7u); (void)n319;
   uint32_t n320 = a0_and(n141, 127u); (void)n320;
   uint32_t n321 = a0_mul(n320, 3u); (void)n321;
-  const a0t22 *const n322 = &(*n0).e[n319 % 65u]; (void)n322;
+  const a0t25 *const n322 = &(*n0).e[n319 % 65u]; (void)n322;
   uint32_t n323 = (*n322).e[n321 % 384u]; (void)n323;
   uint32_t n324 = a0_add(n321, 2u); (void)n324;
   uint32_t n325 = (*n322).e[n324 % 384u]; (void)n325;
@@ -6007,7 +7163,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   bool n342 = (n328 ? n333 : n332); (void)n342;
   bool n343 = (n341 && n342); (void)n343;
   bool n344 = (n58 && n332); (void)n344;
-  const a0t4 *const n345 = &(*n3).e[n319 % 65u]; (void)n345;
+  const a0t5 *const n345 = &(*n3).e[n319 % 65u]; (void)n345;
   uint32_t n346 = (*n345).e[n320 % 128u]; (void)n346;
   uint32_t n347 = a0_shr(n346, 31u); (void)n347;
   bool n348 = a0_eq(n347, 1u); (void)n348;
@@ -6035,7 +7191,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n370 = a0_add(n316, n103); (void)n370;
   uint32_t n371 = a0_shr(n370, 7u); (void)n371;
   uint32_t n372 = a0_and(n370, 127u); (void)n372;
-  const a0t4 *const n373 = &(*n2).e[n371 % 65u]; (void)n373;
+  const a0t5 *const n373 = &(*n2).e[n371 % 65u]; (void)n373;
   uint32_t n374 = (*n373).e[n372 % 128u]; (void)n374;
   bool n375 = (n339 || n368); (void)n375;
   bool n376 = (n375 || n369); (void)n376;
@@ -6045,7 +7201,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   bool n380 = (n376 ? false : true); (void)n380;
   bool n381 = (n379 && n380); (void)n381;
   bool n382 = a0_ne(n303, 4294967295u); (void)n382;
-  const a0t4 *const n383 = &(*n3).e[n310 % 65u]; (void)n383;
+  const a0t5 *const n383 = &(*n3).e[n310 % 65u]; (void)n383;
   uint32_t n384 = (*n383).e[n311 % 128u]; (void)n384;
   uint32_t n385 = a0_shr(n384, 31u); (void)n385;
   bool n386 = a0_eq(n385, 1u); (void)n386;
@@ -6066,17 +7222,17 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n401 = a0_add(n9, 1u); (void)n401;
   uint32_t n402 = a0_shr(n9, 7u); (void)n402;
   uint32_t n403 = a0_and(n9, 127u); (void)n403;
-  const a0t4 *const n404 = &(*n244).e[n402 % 65u]; (void)n404;
+  const a0t5 *const n404 = &(*n244).e[n402 % 65u]; (void)n404;
   uint32_t n405 = (*n404).e[n403 % 128u]; (void)n405;
   uint32_t n406 = (n73 ? 0u : n405); (void)n406;
-  a0t4 n407 = (*n404); n407.e[n403 % 128u] = n406; (void)n407;
-  a0t19 n408 = (*n244); n408.e[n402 % 65u] = n407; (void)n408;
+  a0t5 n407 = (*n404); n407.e[n403 % 128u] = n406; (void)n407;
+  a0t22 n408 = (*n244); n408.e[n402 % 65u] = n407; (void)n408;
   uint32_t n409 = a0_shr(n401, 7u); (void)n409;
   uint32_t n410 = a0_and(n401, 127u); (void)n410;
-  const a0t4 *const n411 = &n408.e[n409 % 65u]; (void)n411;
+  const a0t5 *const n411 = &n408.e[n409 % 65u]; (void)n411;
   uint32_t n412 = (*n411).e[n410 % 128u]; (void)n412;
   uint32_t n413 = (n73 ? 2u : n412); (void)n413;
-  a0t4 n414 = (*n411); n414.e[n410 % 128u] = n413; (void)n414;
+  a0t5 n414 = (*n411); n414.e[n410 % 128u] = n413; (void)n414;
   n408.e[n409 % 65u] = n414;
   uint32_t n416 = (n73 ? 2u : n26); (void)n416;
   uint32_t n417 = a0_xor(2166136261u, 0u); (void)n417;
@@ -6105,7 +7261,7 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n440 = a0_shr(n8, 7u); (void)n440;
   uint32_t n441 = a0_and(n8, 127u); (void)n441;
   uint32_t n442 = a0_mul(n441, 3u); (void)n442;
-  const a0t22 *const n443 = &(*n0).e[n440 % 65u]; (void)n443;
+  const a0t25 *const n443 = &(*n0).e[n440 % 65u]; (void)n443;
   uint32_t n444 = (*n443).e[n442 % 384u]; (void)n444;
   uint32_t n445 = a0_add(n442, 1u); (void)n445;
   uint32_t n446 = (*n443).e[n445 % 384u]; (void)n446;
@@ -6114,10 +7270,10 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n449 = (n435 ? n437 : n444); (void)n449;
   uint32_t n450 = (n435 ? n438 : n446); (void)n450;
   uint32_t n451 = (n435 ? n439 : n448); (void)n451;
-  a0t22 n452 = (*n443); n452.e[n442 % 384u] = n449; (void)n452;
+  a0t25 n452 = (*n443); n452.e[n442 % 384u] = n449; (void)n452;
   n452.e[n445 % 384u] = n450;
   n452.e[n447 % 384u] = n451;
-  a0t23 n455 = (*n0); n455.e[n440 % 65u] = n452; (void)n455;
+  a0t26 n455 = (*n0); n455.e[n440 % 65u] = n452; (void)n455;
   uint32_t n456 = a0_add(n8, 1u); (void)n456;
   uint32_t n457 = (n435 ? n456 : n8); (void)n457;
   bool n458 = (n435 && n424); (void)n458;
@@ -6131,16 +7287,16 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n466 = (n424 ? n464 : n388); (void)n466;
   uint32_t n467 = a0_mul(n465, 2147483648u); (void)n467;
   uint32_t n468 = a0_add(n467, n466); (void)n468;
-  const a0t4 *const n469 = &(*n3).e[n440 % 65u]; (void)n469;
+  const a0t5 *const n469 = &(*n3).e[n440 % 65u]; (void)n469;
   uint32_t n470 = (*n469).e[n441 % 128u]; (void)n470;
   uint32_t n471 = (n435 ? n468 : n470); (void)n471;
-  a0t4 n472 = (*n469); n472.e[n441 % 128u] = n471; (void)n472;
-  a0t19 n473 = (*n3); n473.e[n440 % 65u] = n472; (void)n473;
-  const a0t4 *const n474 = &(*n1).e[n440 % 65u]; (void)n474;
+  a0t5 n472 = (*n469); n472.e[n441 % 128u] = n471; (void)n472;
+  a0t22 n473 = (*n3); n473.e[n440 % 65u] = n472; (void)n473;
+  const a0t5 *const n474 = &(*n1).e[n440 % 65u]; (void)n474;
   uint32_t n475 = (*n474).e[n441 % 128u]; (void)n475;
   uint32_t n476 = (n458 ? n423 : n475); (void)n476;
-  a0t4 n477 = (*n474); n477.e[n441 % 128u] = n476; (void)n477;
-  a0t19 n478 = (*n1); n478.e[n440 % 65u] = n477; (void)n478;
+  a0t5 n477 = (*n474); n477.e[n441 % 128u] = n476; (void)n477;
+  a0t22 n478 = (*n1); n478.e[n440 % 65u] = n477; (void)n478;
   bool n479 = a0_ne(n26, n161); (void)n479;
   bool n480 = (n60 && n479); (void)n480;
   bool n481 = a0_ne(n304, 4294967295u); (void)n481;
@@ -6154,12 +7310,12 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   bool n489 = (n488 ? false : true); (void)n489;
   uint32_t n490 = a0_shr(n166, 7u); (void)n490;
   uint32_t n491 = a0_and(n166, 127u); (void)n491;
-  const a0t4 *const n492 = &(*n2).e[n490 % 65u]; (void)n492;
+  const a0t5 *const n492 = &(*n2).e[n490 % 65u]; (void)n492;
   uint32_t n493 = (*n492).e[n491 % 128u]; (void)n493;
   uint32_t n494 = a0_add(n166, 1u); (void)n494;
   uint32_t n495 = a0_shr(n494, 7u); (void)n495;
   uint32_t n496 = a0_and(n494, 127u); (void)n496;
-  const a0t4 *const n497 = &(*n2).e[n495 % 65u]; (void)n497;
+  const a0t5 *const n497 = &(*n2).e[n495 % 65u]; (void)n497;
   uint32_t n498 = (*n497).e[n496 % 128u]; (void)n498;
   bool n499 = a0_ne(n498, 0u); (void)n499;
   bool n500 = a0_ne(n141, n493); (void)n500;
@@ -6239,90 +7395,90 @@ static inline void a0o_nodestep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17
   uint32_t n574 = (n63 ? n493 : n573); (void)n574;
   uint32_t n575 = a0_shr(n15, 7u); (void)n575;
   uint32_t n576 = a0_and(n15, 127u); (void)n576;
-  const a0t4 *const n577 = &(*n4).e[n575 % 24u]; (void)n577;
-  a0t4 n578 = (*n577); n578.e[n576 % 128u] = n574; (void)n578;
-  a0t47 n579 = (*n4); n579.e[n575 % 24u] = n578; (void)n579;
+  const a0t5 *const n577 = &(*n4).e[n575 % 24u]; (void)n577;
+  a0t5 n578 = (*n577); n578.e[n576 % 128u] = n574; (void)n578;
+  a0t51 n579 = (*n4); n579.e[n575 % 24u] = n578; (void)n579;
   bool n580 = a0_ne(n559, 0u); (void)n580;
   bool n581 = a0_eq(n10, 0u); (void)n581;
   bool n582 = (n580 && n581); (void)n582;
   uint32_t n583 = (n582 ? n559 : n10); (void)n583;
   uint32_t n584 = (n582 ? p5 : n11); (void)n584;
   uint32_t n585 = (n582 ? p1 : n12); (void)n585;
-  a0t52 n586; n586.f0 = n455; n586.f1 = n478; n586.f2 = n408; n586.f3 = n473; n586.f4 = n579; n586.f5 = n295; n586.f6 = n300; n586.f7 = (*n7); n586.f8 = n457; n586.f9 = n460; n586.f10 = n583; n586.f11 = n584; n586.f12 = n585; n586.f13 = n533; n586.f14 = n538; (void)n586;
+  a0t56 n586; n586.f0 = n455; n586.f1 = n478; n586.f2 = n408; n586.f3 = n473; n586.f4 = n579; n586.f5 = n295; n586.f6 = n300; n586.f7 = (*n7); n586.f8 = n457; n586.f9 = n460; n586.f10 = n583; n586.f11 = n584; n586.f12 = n585; n586.f13 = n533; n586.f14 = n538; (void)n586;
   *p0 = n586;
 }
 
-a0t33 a0_plstep(a0t33 p0, uint32_t p1, a0t19 p2, uint32_t p3) {
+a0t36 a0_plstep(a0t36 p0, uint32_t p1, a0t22 p2, uint32_t p3) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p2.e[n1 % 65u]; (void)n3;
+  const a0t5 *const n3 = &p2.e[n1 % 65u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   p0.e[p1 % 64u] = n4;
   return p0;
 }
 
-static inline void a0o_plstep(a0t33 *p0, uint32_t p1, a0t19 p2, uint32_t p3) {
+static inline void a0o_plstep(a0t36 *p0, uint32_t p1, a0t22 p2, uint32_t p3) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p2.e[n1 % 65u]; (void)n3;
+  const a0t5 *const n3 = &p2.e[n1 % 65u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   (*p0).e[p1 % 64u] = n4;
 }
 
-uint32_t a0_ioparam(uint32_t p0, uint32_t p1, a0t33 p2, a0t19 p3) {
+uint32_t a0_ioparam(uint32_t p0, uint32_t p1, a0t36 p2, a0t22 p3) {
   uint32_t n0 = p2.e[p1 % 64u]; (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p3.e[n1 % 65u]; (void)n3;
+  const a0t5 *const n3 = &p3.e[n1 % 65u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   uint32_t n5 = a0_shr(n4, 31u); (void)n5;
   uint32_t n6 = a0_add(p0, n5); (void)n6;
   return n6;
 }
 
-a0t52 a0_fnstep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5) {
+a0t56 a0_fnstep(a0t56 p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t20 p4, uint32_t p5) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t19 *const n1 = &p0.f2; (void)n1;
-  const a0t19 *const n2 = &p0.f3; (void)n2;
+  const a0t22 *const n1 = &p0.f2; (void)n1;
+  const a0t22 *const n2 = &p0.f3; (void)n2;
   uint32_t n3 = p0.f10; (void)n3;
   uint32_t n4 = a0_mul(n0, 7u); (void)n4;
   uint32_t n5 = a0_add(n4, 1u); (void)n5;
   uint32_t n6 = a0_shr(n5, 7u); (void)n6;
   uint32_t n7 = a0_and(n5, 127u); (void)n7;
-  const a0t4 *const n8 = &p4.e[n6 % 45u]; (void)n8;
+  const a0t5 *const n8 = &p4.e[n6 % 45u]; (void)n8;
   uint32_t n9 = (*n8).e[n7 % 128u]; (void)n9;
   uint32_t n10 = a0_add(n4, 2u); (void)n10;
   uint32_t n11 = a0_shr(n10, 7u); (void)n11;
   uint32_t n12 = a0_and(n10, 127u); (void)n12;
-  const a0t4 *const n13 = &p4.e[n11 % 45u]; (void)n13;
+  const a0t5 *const n13 = &p4.e[n11 % 45u]; (void)n13;
   uint32_t n14 = (*n13).e[n12 % 128u]; (void)n14;
   uint32_t n15 = a0_add(n4, 3u); (void)n15;
   uint32_t n16 = a0_shr(n15, 7u); (void)n16;
   uint32_t n17 = a0_and(n15, 127u); (void)n17;
-  const a0t4 *const n18 = &p4.e[n16 % 45u]; (void)n18;
+  const a0t5 *const n18 = &p4.e[n16 % 45u]; (void)n18;
   uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
   uint32_t n20 = a0_add(n4, 4u); (void)n20;
   uint32_t n21 = a0_shr(n20, 7u); (void)n21;
   uint32_t n22 = a0_and(n20, 127u); (void)n22;
-  const a0t4 *const n23 = &p4.e[n21 % 45u]; (void)n23;
+  const a0t5 *const n23 = &p4.e[n21 % 45u]; (void)n23;
   uint32_t n24 = (*n23).e[n22 % 128u]; (void)n24;
   uint32_t n25 = a0_add(n4, 5u); (void)n25;
   uint32_t n26 = a0_shr(n25, 7u); (void)n26;
   uint32_t n27 = a0_and(n25, 127u); (void)n27;
-  const a0t4 *const n28 = &p4.e[n26 % 45u]; (void)n28;
+  const a0t5 *const n28 = &p4.e[n26 % 45u]; (void)n28;
   uint32_t n29 = (*n28).e[n27 % 128u]; (void)n29;
   uint32_t n30 = a0_add(n4, 6u); (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
   uint32_t n32 = a0_and(n30, 127u); (void)n32;
-  const a0t4 *const n33 = &p4.e[n31 % 45u]; (void)n33;
+  const a0t5 *const n33 = &p4.e[n31 % 45u]; (void)n33;
   uint32_t n34 = (*n33).e[n32 % 128u]; (void)n34;
   bool n35 = a0_gt(n9, 64u); (void)n35;
   bool n36 = a0_gt(n29, 4096u); (void)n36;
   uint32_t n37 = (n35 ? 64u : n9); (void)n37;
-  a0t33 n38 = a0_zl64(); (void)n38;
-  a0t33 n39 = n38; for (uint32_t a0i = 0; a0i < n37; a0i++) { a0o_plstep(&n39, a0i, (*n1), n14); } (void)n39;
+  a0t36 n38 = a0_zl64(); (void)n38;
+  a0t36 n39 = n38; for (uint32_t a0i = 0; a0i < n37; a0i++) { a0o_plstep(&n39, a0i, (*n1), n14); } (void)n39;
   uint32_t n40 = 0u; for (uint32_t a0i = 0; a0i < n37; a0i++) { n40 = a0_ioparam(n40, a0i, n39, (*n2)); } (void)n40;
   bool n41 = a0_gt(n40, 1u); (void)n41;
   uint32_t n42 = (n41 ? 2u : 0u); (void)n42;
@@ -6339,7 +7495,7 @@ a0t52 a0_fnstep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5)
   uint32_t n53 = p0.f11; (void)n53;
   uint32_t n54 = (n50 ? n0 : n53); (void)n54;
   uint32_t n55 = (n50 ? 4294967295u : n52); (void)n55;
-  a0t52 n56 = p0; n56.f13 = 1u; (void)n56;
+  a0t56 n56 = p0; n56.f13 = 1u; (void)n56;
   n56.f14 = 1u;
   n56.f10 = n51;
   n56.f11 = n54;
@@ -6347,11 +7503,11 @@ a0t52 a0_fnstep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5)
   uint32_t n61 = (n47 ? n29 : 0u); (void)n61;
   for (uint32_t a0i = 0; a0i < n61; a0i++) { a0o_nodestep(&n56, a0i, p2, p3, p4, n0, n39, n37, n24); }
   uint32_t n63 = n56.f10; (void)n63;
-  const a0t47 *const n64 = &n56.f4; (void)n64;
-  const a0t47 *const n65 = &n56.f5; (void)n65;
-  const a0t33 *const n66 = &n56.f6; (void)n66;
-  const a0t19 *const n67 = &n56.f3; (void)n67;
-  const a0t46 *const n68 = &n56.f7; (void)n68;
+  const a0t51 *const n64 = &n56.f4; (void)n64;
+  const a0t51 *const n65 = &n56.f5; (void)n65;
+  const a0t36 *const n66 = &n56.f6; (void)n66;
+  const a0t22 *const n67 = &n56.f3; (void)n67;
+  const a0t50 *const n68 = &n56.f7; (void)n68;
   uint32_t n69 = n56.f12; (void)n69;
   uint32_t n70 = n56.f13; (void)n70;
   uint32_t n71 = a0_shr(n34, 28u); (void)n71;
@@ -6362,7 +7518,7 @@ a0t52 a0_fnstep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5)
   uint32_t n76 = a0_add(n24, n72); (void)n76;
   uint32_t n77 = a0_shr(n76, 7u); (void)n77;
   uint32_t n78 = a0_and(n76, 127u); (void)n78;
-  const a0t4 *const n79 = &(*n64).e[n77 % 24u]; (void)n79;
+  const a0t5 *const n79 = &(*n64).e[n77 % 24u]; (void)n79;
   uint32_t n80 = (*n79).e[n78 % 128u]; (void)n80;
   bool n81 = a0_lt(n72, n37); (void)n81;
   uint32_t n82 = n39.e[n72 % 64u]; (void)n82;
@@ -6374,10 +7530,10 @@ a0t52 a0_fnstep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5)
   bool n88 = a0_ne(n86, n19); (void)n88;
   uint32_t n89 = a0_shr(n86, 7u); (void)n89;
   uint32_t n90 = a0_and(n86, 127u); (void)n90;
-  const a0t4 *const n91 = &(*n67).e[n89 % 65u]; (void)n91;
+  const a0t5 *const n91 = &(*n67).e[n89 % 65u]; (void)n91;
   uint32_t n92 = (*n91).e[n90 % 128u]; (void)n92;
   uint32_t n93 = a0_shr(n92, 31u); (void)n93;
-  const a0t4 *const n94 = &(*n65).e[n77 % 24u]; (void)n94;
+  const a0t5 *const n94 = &(*n65).e[n77 % 24u]; (void)n94;
   uint32_t n95 = (*n94).e[n78 % 128u]; (void)n95;
   uint32_t n96 = (*n66).e[n72 % 64u]; (void)n96;
   uint32_t n97 = a0_add(n0, 1u); (void)n97;
@@ -6409,60 +7565,60 @@ a0t52 a0_fnstep(a0t52 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5)
   uint32_t n123 = (n119 ? n0 : n122); (void)n123;
   uint32_t n124 = a0_shr(n0, 7u); (void)n124;
   uint32_t n125 = a0_and(n0, 127u); (void)n125;
-  const a0t4 *const n126 = &(*n68).e[n124 % 8u]; (void)n126;
+  const a0t5 *const n126 = &(*n68).e[n124 % 8u]; (void)n126;
   uint32_t n127 = (*n126).e[n125 % 128u]; (void)n127;
   uint32_t n128 = (n45 ? n70 : n127); (void)n128;
-  a0t4 n129 = (*n126); n129.e[n125 % 128u] = n128; (void)n129;
-  a0t46 n130 = (*n68); n130.e[n124 % 8u] = n129; (void)n130;
-  a0t52 n131 = n56; n131.f10 = n120; (void)n131;
+  a0t5 n129 = (*n126); n129.e[n125 % 128u] = n128; (void)n129;
+  a0t50 n130 = (*n68); n130.e[n124 % 8u] = n129; (void)n130;
+  a0t56 n131 = n56; n131.f10 = n120; (void)n131;
   n131.f12 = n121;
   n131.f11 = n123;
   n131.f7 = n130;
-  a0t52 n135 = (n45 ? n131 : p0); (void)n135;
+  a0t56 n135 = (n45 ? n131 : p0); (void)n135;
   return n135;
 }
 
-static inline void a0o_fnstep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p4, uint32_t p5) {
+static inline void a0o_fnstep(a0t56 *p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t20 p4, uint32_t p5) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t19 *const n1 = &(*p0).f2; (void)n1;
-  const a0t19 *const n2 = &(*p0).f3; (void)n2;
+  const a0t22 *const n1 = &(*p0).f2; (void)n1;
+  const a0t22 *const n2 = &(*p0).f3; (void)n2;
   uint32_t n3 = (*p0).f10; (void)n3;
   uint32_t n4 = a0_mul(n0, 7u); (void)n4;
   uint32_t n5 = a0_add(n4, 1u); (void)n5;
   uint32_t n6 = a0_shr(n5, 7u); (void)n6;
   uint32_t n7 = a0_and(n5, 127u); (void)n7;
-  const a0t4 *const n8 = &p4.e[n6 % 45u]; (void)n8;
+  const a0t5 *const n8 = &p4.e[n6 % 45u]; (void)n8;
   uint32_t n9 = (*n8).e[n7 % 128u]; (void)n9;
   uint32_t n10 = a0_add(n4, 2u); (void)n10;
   uint32_t n11 = a0_shr(n10, 7u); (void)n11;
   uint32_t n12 = a0_and(n10, 127u); (void)n12;
-  const a0t4 *const n13 = &p4.e[n11 % 45u]; (void)n13;
+  const a0t5 *const n13 = &p4.e[n11 % 45u]; (void)n13;
   uint32_t n14 = (*n13).e[n12 % 128u]; (void)n14;
   uint32_t n15 = a0_add(n4, 3u); (void)n15;
   uint32_t n16 = a0_shr(n15, 7u); (void)n16;
   uint32_t n17 = a0_and(n15, 127u); (void)n17;
-  const a0t4 *const n18 = &p4.e[n16 % 45u]; (void)n18;
+  const a0t5 *const n18 = &p4.e[n16 % 45u]; (void)n18;
   uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
   uint32_t n20 = a0_add(n4, 4u); (void)n20;
   uint32_t n21 = a0_shr(n20, 7u); (void)n21;
   uint32_t n22 = a0_and(n20, 127u); (void)n22;
-  const a0t4 *const n23 = &p4.e[n21 % 45u]; (void)n23;
+  const a0t5 *const n23 = &p4.e[n21 % 45u]; (void)n23;
   uint32_t n24 = (*n23).e[n22 % 128u]; (void)n24;
   uint32_t n25 = a0_add(n4, 5u); (void)n25;
   uint32_t n26 = a0_shr(n25, 7u); (void)n26;
   uint32_t n27 = a0_and(n25, 127u); (void)n27;
-  const a0t4 *const n28 = &p4.e[n26 % 45u]; (void)n28;
+  const a0t5 *const n28 = &p4.e[n26 % 45u]; (void)n28;
   uint32_t n29 = (*n28).e[n27 % 128u]; (void)n29;
   uint32_t n30 = a0_add(n4, 6u); (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
   uint32_t n32 = a0_and(n30, 127u); (void)n32;
-  const a0t4 *const n33 = &p4.e[n31 % 45u]; (void)n33;
+  const a0t5 *const n33 = &p4.e[n31 % 45u]; (void)n33;
   uint32_t n34 = (*n33).e[n32 % 128u]; (void)n34;
   bool n35 = a0_gt(n9, 64u); (void)n35;
   bool n36 = a0_gt(n29, 4096u); (void)n36;
   uint32_t n37 = (n35 ? 64u : n9); (void)n37;
-  a0t33 n38 = a0_zl64(); (void)n38;
-  a0t33 n39 = n38; for (uint32_t a0i = 0; a0i < n37; a0i++) { a0o_plstep(&n39, a0i, (*n1), n14); } (void)n39;
+  a0t36 n38 = a0_zl64(); (void)n38;
+  a0t36 n39 = n38; for (uint32_t a0i = 0; a0i < n37; a0i++) { a0o_plstep(&n39, a0i, (*n1), n14); } (void)n39;
   uint32_t n40 = 0u; for (uint32_t a0i = 0; a0i < n37; a0i++) { n40 = a0_ioparam(n40, a0i, n39, (*n2)); } (void)n40;
   bool n41 = a0_gt(n40, 1u); (void)n41;
   uint32_t n42 = (n41 ? 2u : 0u); (void)n42;
@@ -6479,7 +7635,7 @@ static inline void a0o_fnstep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p
   uint32_t n53 = (*p0).f11; (void)n53;
   uint32_t n54 = (n50 ? n0 : n53); (void)n54;
   uint32_t n55 = (n50 ? 4294967295u : n52); (void)n55;
-  a0t52 n56 = (*p0); n56.f13 = 1u; (void)n56;
+  a0t56 n56 = (*p0); n56.f13 = 1u; (void)n56;
   n56.f14 = 1u;
   n56.f10 = n51;
   n56.f11 = n54;
@@ -6487,11 +7643,11 @@ static inline void a0o_fnstep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p
   uint32_t n61 = (n47 ? n29 : 0u); (void)n61;
   for (uint32_t a0i = 0; a0i < n61; a0i++) { a0o_nodestep(&n56, a0i, p2, p3, p4, n0, n39, n37, n24); }
   uint32_t n63 = n56.f10; (void)n63;
-  const a0t47 *const n64 = &n56.f4; (void)n64;
-  const a0t47 *const n65 = &n56.f5; (void)n65;
-  const a0t33 *const n66 = &n56.f6; (void)n66;
-  const a0t19 *const n67 = &n56.f3; (void)n67;
-  const a0t46 *const n68 = &n56.f7; (void)n68;
+  const a0t51 *const n64 = &n56.f4; (void)n64;
+  const a0t51 *const n65 = &n56.f5; (void)n65;
+  const a0t36 *const n66 = &n56.f6; (void)n66;
+  const a0t22 *const n67 = &n56.f3; (void)n67;
+  const a0t50 *const n68 = &n56.f7; (void)n68;
   uint32_t n69 = n56.f12; (void)n69;
   uint32_t n70 = n56.f13; (void)n70;
   uint32_t n71 = a0_shr(n34, 28u); (void)n71;
@@ -6502,7 +7658,7 @@ static inline void a0o_fnstep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p
   uint32_t n76 = a0_add(n24, n72); (void)n76;
   uint32_t n77 = a0_shr(n76, 7u); (void)n77;
   uint32_t n78 = a0_and(n76, 127u); (void)n78;
-  const a0t4 *const n79 = &(*n64).e[n77 % 24u]; (void)n79;
+  const a0t5 *const n79 = &(*n64).e[n77 % 24u]; (void)n79;
   uint32_t n80 = (*n79).e[n78 % 128u]; (void)n80;
   bool n81 = a0_lt(n72, n37); (void)n81;
   uint32_t n82 = n39.e[n72 % 64u]; (void)n82;
@@ -6514,10 +7670,10 @@ static inline void a0o_fnstep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p
   bool n88 = a0_ne(n86, n19); (void)n88;
   uint32_t n89 = a0_shr(n86, 7u); (void)n89;
   uint32_t n90 = a0_and(n86, 127u); (void)n90;
-  const a0t4 *const n91 = &(*n67).e[n89 % 65u]; (void)n91;
+  const a0t5 *const n91 = &(*n67).e[n89 % 65u]; (void)n91;
   uint32_t n92 = (*n91).e[n90 % 128u]; (void)n92;
   uint32_t n93 = a0_shr(n92, 31u); (void)n93;
-  const a0t4 *const n94 = &(*n65).e[n77 % 24u]; (void)n94;
+  const a0t5 *const n94 = &(*n65).e[n77 % 24u]; (void)n94;
   uint32_t n95 = (*n94).e[n78 % 128u]; (void)n95;
   uint32_t n96 = (*n66).e[n72 % 64u]; (void)n96;
   uint32_t n97 = a0_add(n0, 1u); (void)n97;
@@ -6549,30 +7705,30 @@ static inline void a0o_fnstep(a0t52 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t17 p
   uint32_t n123 = (n119 ? n0 : n122); (void)n123;
   uint32_t n124 = a0_shr(n0, 7u); (void)n124;
   uint32_t n125 = a0_and(n0, 127u); (void)n125;
-  const a0t4 *const n126 = &(*n68).e[n124 % 8u]; (void)n126;
+  const a0t5 *const n126 = &(*n68).e[n124 % 8u]; (void)n126;
   uint32_t n127 = (*n126).e[n125 % 128u]; (void)n127;
   uint32_t n128 = (n45 ? n70 : n127); (void)n128;
-  a0t4 n129 = (*n126); n129.e[n125 % 128u] = n128; (void)n129;
-  a0t46 n130 = (*n68); n130.e[n124 % 8u] = n129; (void)n130;
-  a0t52 n131 = n56; n131.f10 = n120; (void)n131;
+  a0t5 n129 = (*n126); n129.e[n125 % 128u] = n128; (void)n129;
+  a0t50 n130 = (*n68); n130.e[n124 % 8u] = n129; (void)n130;
+  a0t56 n131 = n56; n131.f10 = n120; (void)n131;
   n131.f12 = n121;
   n131.f11 = n123;
   n131.f7 = n130;
-  a0t52 n135 = (n45 ? n131 : (*p0)); (void)n135;
+  a0t56 n135 = (n45 ? n131 : (*p0)); (void)n135;
   *p0 = n135;
 }
 
-a0t52 a0_checkir(a0t23 p0, a0t19 p1, a0t17 p2, a0t9 p3, a0t21 p4, a0t46 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
-  a0t19 n0 = a0_z65(); (void)n0;
-  a0t49 n1; n1.f0 = n0; n1.f1 = n0; (void)n1;
+a0t56 a0_checkir(a0t26 p0, a0t22 p1, a0t20 p2, a0t11 p3, a0t49 p4, a0t50 p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9) {
+  a0t22 n0 = a0_z65(); (void)n0;
+  a0t53 n1; n1.f0 = n0; n1.f1 = n0; (void)n1;
   for (uint32_t a0i = 0; a0i < p6; a0i++) { a0o_infostep(&n1, a0i, p0, p1); }
-  const a0t19 *const n3 = &n1.f0; (void)n3;
-  const a0t19 *const n4 = &n1.f1; (void)n4;
+  const a0t22 *const n3 = &n1.f0; (void)n3;
+  const a0t22 *const n4 = &n1.f1; (void)n4;
   bool n5 = a0_gt(p8, 65536u); (void)n5;
   uint32_t n6 = (n5 ? 4u : 0u); (void)n6;
-  a0t47 n7 = a0_z24(); (void)n7;
-  a0t33 n8 = a0_zl64(); (void)n8;
-  a0t52 n9; n9.f0 = p0; n9.f1 = (*n4); n9.f2 = p1; n9.f3 = (*n3); n9.f4 = n7; n9.f5 = n7; n9.f6 = n8; n9.f7 = p5; n9.f8 = p6; n9.f9 = p7; n9.f10 = n6; n9.f11 = 4294967295u; n9.f12 = 4294967295u; n9.f13 = 1u; n9.f14 = 1u; (void)n9;
+  a0t51 n7 = a0_z24(); (void)n7;
+  a0t36 n8 = a0_zl64(); (void)n8;
+  a0t56 n9; n9.f0 = p0; n9.f1 = (*n4); n9.f2 = p1; n9.f3 = (*n3); n9.f4 = n7; n9.f5 = n7; n9.f6 = n8; n9.f7 = p5; n9.f8 = p6; n9.f9 = p7; n9.f10 = n6; n9.f11 = 4294967295u; n9.f12 = 4294967295u; n9.f13 = 1u; n9.f14 = 1u; (void)n9;
   uint32_t n10 = a0_sub(p8, p9); (void)n10;
   uint32_t n11 = (n5 ? 0u : n10); (void)n11;
   for (uint32_t a0i = 0; a0i < n11; a0i++) { a0o_fnstep(&n9, a0i, p3, p4, p2, p9); }
@@ -6624,12 +7780,12 @@ a0_io * a0_cws6c(a0_io * p0, bool p1, uint32_t p2, uint32_t p3, uint32_t p4, uin
   return n1;
 }
 
-a0t53 a0_cpow10(void) {
-  a0t53 n0; n0.e[0] = 1u; n0.e[1] = 10u; n0.e[2] = 100u; n0.e[3] = 1000u; n0.e[4] = 10000u; n0.e[5] = 100000u; n0.e[6] = 1000000u; n0.e[7] = 10000000u; n0.e[8] = 100000000u; n0.e[9] = 1000000000u; (void)n0;
+a0t57 a0_cpow10(void) {
+  a0t57 n0; n0.e[0] = 1u; n0.e[1] = 10u; n0.e[2] = 100u; n0.e[3] = 1000u; n0.e[4] = 10000u; n0.e[5] = 100000u; n0.e[6] = 1000000u; n0.e[7] = 10000000u; n0.e[8] = 100000000u; n0.e[9] = 1000000000u; (void)n0;
   return n0;
 }
 
-a0_io * a0_cdecst(a0_io * p0, uint32_t p1, uint32_t p2, uint32_t p3, a0t53 p4) {
+a0_io * a0_cdecst(a0_io * p0, uint32_t p1, uint32_t p2, uint32_t p3, a0t57 p4) {
   uint32_t n0 = a0_sub(p3, 1u); (void)n0;
   uint32_t n1 = a0_sub(n0, p1); (void)n1;
   uint32_t n2 = p4.e[n1 % 10u]; (void)n2;
@@ -6668,7 +7824,7 @@ a0_io * a0_cwdec(a0_io * p0, uint32_t p1) {
   uint32_t n24 = a0_add(n23, n15); (void)n24;
   uint32_t n25 = a0_add(n24, n16); (void)n25;
   uint32_t n26 = a0_add(n25, n17); (void)n26;
-  a0t53 n27 = a0_cpow10(); (void)n27;
+  a0t57 n27 = a0_cpow10(); (void)n27;
   a0_io * n28 = p0; for (uint32_t a0i = 0; a0i < n26; a0i++) { n28 = a0_cdecst(n28, a0i, p1, n26, n27); } (void)n28;
   return n28;
 }
@@ -6745,7 +7901,7 @@ a0_io * a0_cwtyc(a0_io * p0, bool p1, uint32_t p2, uint32_t p3) {
   return n1;
 }
 
-a0_io * a0_cwsel(a0_io * p0, a0t54 p1, uint32_t p2) {
+a0_io * a0_cwsel(a0_io * p0, a0t58 p1, uint32_t p2) {
   uint32_t n0 = p1.f1; (void)n0;
   uint32_t n1 = p1.f2; (void)n1;
   uint32_t n2 = p1.f3; (void)n2;
@@ -6776,7 +7932,7 @@ a0_io * a0_cwsel(a0_io * p0, a0t54 p1, uint32_t p2) {
   return n26;
 }
 
-a0_io * a0_cwtst(a0_io * p0, uint32_t p1, a0t54 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, uint32_t p19, uint32_t p20, uint32_t p21, uint32_t p22, uint32_t p23, uint32_t p24, uint32_t p25, uint32_t p26, uint32_t p27, uint32_t p28, uint32_t p29, uint32_t p30, uint32_t p31, uint32_t p32, uint32_t p33, uint32_t p34, uint32_t p35, uint32_t p36, uint32_t p37, uint32_t p38, uint32_t p39, uint32_t p40, uint32_t p41, uint32_t p42, uint32_t p43) {
+a0_io * a0_cwtst(a0_io * p0, uint32_t p1, a0t58 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, uint32_t p19, uint32_t p20, uint32_t p21, uint32_t p22, uint32_t p23, uint32_t p24, uint32_t p25, uint32_t p26, uint32_t p27, uint32_t p28, uint32_t p29, uint32_t p30, uint32_t p31, uint32_t p32, uint32_t p33, uint32_t p34, uint32_t p35, uint32_t p36, uint32_t p37, uint32_t p38, uint32_t p39, uint32_t p40, uint32_t p41, uint32_t p42, uint32_t p43) {
   a0_io * n0 = a0_cws6(p0, p3, p4, p5, p6, p7, p8); (void)n0;
   a0_io * n1 = a0_cwsel(n0, p2, p9); (void)n1;
   a0_io * n2 = a0_cws6(n1, p10, p11, p12, p13, p14, p15); (void)n2;
@@ -6791,23 +7947,23 @@ a0_io * a0_cwtst(a0_io * p0, uint32_t p1, a0t54 p2, uint32_t p3, uint32_t p4, ui
   return n10;
 }
 
-a0_io * a0_cwt(a0_io * p0, bool p1, a0t54 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, uint32_t p19, uint32_t p20, uint32_t p21, uint32_t p22, uint32_t p23, uint32_t p24, uint32_t p25, uint32_t p26, uint32_t p27, uint32_t p28, uint32_t p29, uint32_t p30, uint32_t p31, uint32_t p32, uint32_t p33, uint32_t p34, uint32_t p35, uint32_t p36, uint32_t p37, uint32_t p38, uint32_t p39, uint32_t p40, uint32_t p41, uint32_t p42, uint32_t p43) {
+a0_io * a0_cwt(a0_io * p0, bool p1, a0t58 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13, uint32_t p14, uint32_t p15, uint32_t p16, uint32_t p17, uint32_t p18, uint32_t p19, uint32_t p20, uint32_t p21, uint32_t p22, uint32_t p23, uint32_t p24, uint32_t p25, uint32_t p26, uint32_t p27, uint32_t p28, uint32_t p29, uint32_t p30, uint32_t p31, uint32_t p32, uint32_t p33, uint32_t p34, uint32_t p35, uint32_t p36, uint32_t p37, uint32_t p38, uint32_t p39, uint32_t p40, uint32_t p41, uint32_t p42, uint32_t p43) {
   uint32_t n0 = (p1 ? 1u : 0u); (void)n0;
   a0_io * n1 = p0; for (uint32_t a0i = 0; a0i < n0; a0i++) { n1 = a0_cwtst(n1, a0i, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, p21, p22, p23, p24, p25, p26, p27, p28, p29, p30, p31, p32, p33, p34, p35, p36, p37, p38, p39, p40, p41, p42, p43); } (void)n1;
   return n1;
 }
 
-a0_io * a0_cnmst(a0_io * p0, uint32_t p1, a0t20 p2, uint32_t p3) {
+a0_io * a0_cnmst(a0_io * p0, uint32_t p1, a0t23 p2, uint32_t p3) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
-  const a0t4 *const n2 = &p2.e[n1 % 129u]; (void)n2;
+  const a0t5 *const n2 = &p2.e[n1 % 400u]; (void)n2;
   uint32_t n3 = a0_and(n0, 127u); (void)n3;
   uint32_t n4 = (*n2).e[n3 % 128u]; (void)n4;
   a0_io * n5 = a0_write(p0, n4); (void)n5;
   return n5;
 }
 
-a0_io * a0_cwnm(a0_io * p0, bool p1, a0t20 p2, uint32_t p3, uint32_t p4) {
+a0_io * a0_cwnm(a0_io * p0, bool p1, a0t23 p2, uint32_t p3, uint32_t p4) {
   uint32_t n0 = (p1 ? p4 : 0u); (void)n0;
   a0_io * n1 = p0; for (uint32_t a0i = 0; a0i < n0; a0i++) { n1 = a0_cnmst(n1, a0i, p2, p3); } (void)n1;
   return n1;
@@ -6819,7 +7975,7 @@ uint32_t a0_cumin(uint32_t p0, uint32_t p1) {
   return n1;
 }
 
-a0t55 a0_cres(uint32_t p0, uint32_t p1, a0t47 p2, uint32_t p3) {
+a0t59 a0_cres(uint32_t p0, uint32_t p1, a0t51 p2, uint32_t p3) {
   bool n0 = a0_eq(p0, 1u); (void)n0;
   bool n1 = a0_eq(p0, 2u); (void)n1;
   bool n2 = a0_eq(p1, 0u); (void)n2;
@@ -6827,7 +7983,7 @@ a0t55 a0_cres(uint32_t p0, uint32_t p1, a0t47 p2, uint32_t p3) {
   bool n4 = (n1 && n2); (void)n4;
   bool n5 = (n4 && n3); (void)n5;
   uint32_t n6 = a0_shr(p1, 7u); (void)n6;
-  const a0t4 *const n7 = &p2.e[n6 % 24u]; (void)n7;
+  const a0t5 *const n7 = &p2.e[n6 % 24u]; (void)n7;
   uint32_t n8 = a0_and(p1, 127u); (void)n8;
   uint32_t n9 = (*n7).e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_shr(n9, 28u); (void)n10;
@@ -6836,11 +7992,11 @@ a0t55 a0_cres(uint32_t p0, uint32_t p1, a0t47 p2, uint32_t p3) {
   uint32_t n13 = (n5 ? 0u : p1); (void)n13;
   uint32_t n14 = (n0 ? n10 : n12); (void)n14;
   uint32_t n15 = (n0 ? n11 : n13); (void)n15;
-  a0t55 n16; n16.f0 = n14; n16.f1 = n15; (void)n16;
+  a0t59 n16; n16.f0 = n14; n16.f1 = n15; (void)n16;
   return n16;
 }
 
-a0_io * a0_clst(a0_io * p0, uint32_t p1, a0t54 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, a0t47 p7, uint32_t p8) {
+a0_io * a0_clst(a0_io * p0, uint32_t p1, a0t58 p2, a0t5 p3, uint32_t p4, uint32_t p5, uint32_t p6, a0t51 p7, uint32_t p8) {
   uint32_t n0 = p2.f0; (void)n0;
   uint32_t n1 = p2.f10; (void)n1;
   uint32_t n2 = a0_add(p5, p1); (void)n2;
@@ -6868,7 +8024,7 @@ a0_io * a0_clst(a0_io * p0, uint32_t p1, a0t54 p2, a0t4 p3, uint32_t p4, uint32_
   a0_io * n24 = a0_cws6c(n23, n12, 26158u, 0u, 0u, 0u, 0u, 0u); (void)n24;
   a0_io * n25 = a0_cwdecc(n24, n12, n3); (void)n25;
   a0_io * n26 = a0_cws6c(n25, n12, 2112800u, 0u, 0u, 0u, 0u, 0u); (void)n26;
-  a0t55 n27 = a0_cres(n6, n8, p7, p8); (void)n27;
+  a0t59 n27 = a0_cres(n6, n8, p7, p8); (void)n27;
   uint32_t n28 = n27.f0; (void)n28;
   uint32_t n29 = n27.f1; (void)n29;
   a0_io * n30 = a0_cwop(n26, n28, n29); (void)n30;
@@ -6877,9 +8033,9 @@ a0_io * a0_clst(a0_io * p0, uint32_t p1, a0t54 p2, a0t4 p3, uint32_t p4, uint32_
   return n32;
 }
 
-a0_io * a0_clpg(a0_io * p0, uint32_t p1, a0t54 p2, a0t21 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, a0t47 p8, uint32_t p9) {
+a0_io * a0_clpg(a0_io * p0, uint32_t p1, a0t58 p2, a0t49 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7, a0t51 p8, uint32_t p9) {
   uint32_t n0 = a0_add(p7, p1); (void)n0;
-  const a0t4 *const n1 = &p3.e[n0 % 256u]; (void)n1;
+  const a0t5 *const n1 = &p3.e[n0 % 512u]; (void)n1;
   uint32_t n2 = a0_mul(n0, 64u); (void)n2;
   uint32_t n3 = a0_add(n2, 64u); (void)n3;
   uint32_t n4 = a0_umax(p5, n2); (void)n4;
@@ -6889,7 +8045,7 @@ a0_io * a0_clpg(a0_io * p0, uint32_t p1, a0t54 p2, a0t21 p3, uint32_t p4, uint32
   return n7;
 }
 
-a0_io * a0_cwlist(a0_io * p0, bool p1, a0t54 p2, a0t21 p3, uint32_t p4, uint32_t p5, a0t47 p6, uint32_t p7) {
+a0_io * a0_cwlist(a0_io * p0, bool p1, a0t58 p2, a0t49 p3, uint32_t p4, uint32_t p5, a0t51 p6, uint32_t p7) {
   uint32_t n0 = p2.f10; (void)n0;
   uint32_t n1 = p2.f11; (void)n1;
   uint32_t n2 = a0_add(n0, p5); (void)n2;
@@ -6906,15 +8062,15 @@ a0_io * a0_cwlist(a0_io * p0, bool p1, a0t54 p2, a0t21 p3, uint32_t p4, uint32_t
   return n12;
 }
 
-uint32_t a0_cotype(uint32_t p0, uint32_t p1, a0t47 p2, a0t19 p3, uint32_t p4, uint32_t p5) {
+uint32_t a0_cotype(uint32_t p0, uint32_t p1, a0t51 p2, a0t22 p3, uint32_t p4, uint32_t p5) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
-  const a0t4 *const n2 = &p2.e[n1 % 24u]; (void)n2;
+  const a0t5 *const n2 = &p2.e[n1 % 24u]; (void)n2;
   uint32_t n3 = a0_and(n0, 127u); (void)n3;
   uint32_t n4 = (*n2).e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_add(p5, p1); (void)n5;
   uint32_t n6 = a0_shr(n5, 7u); (void)n6;
-  const a0t4 *const n7 = &p3.e[n6 % 65u]; (void)n7;
+  const a0t5 *const n7 = &p3.e[n6 % 65u]; (void)n7;
   uint32_t n8 = a0_and(n5, 127u); (void)n8;
   uint32_t n9 = (*n7).e[n8 % 128u]; (void)n9;
   bool n10 = a0_eq(p0, 1u); (void)n10;
@@ -6926,7 +8082,7 @@ uint32_t a0_cotype(uint32_t p0, uint32_t p1, a0t47 p2, a0t19 p3, uint32_t p4, ui
   return n15;
 }
 
-bool a0_czst(bool p0, uint32_t p1, a0t4 p2, uint32_t p3) {
+bool a0_czst(bool p0, uint32_t p1, a0t5 p2, uint32_t p3) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 2u); (void)n1;
   uint32_t n2 = a0_and(n1, 127u); (void)n2;
@@ -6942,9 +8098,9 @@ bool a0_czst(bool p0, uint32_t p1, a0t4 p2, uint32_t p3) {
   return n11;
 }
 
-bool a0_czpg(bool p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
+bool a0_czpg(bool p0, uint32_t p1, a0t49 p2, uint32_t p3, uint32_t p4, uint32_t p5) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t4 *const n1 = &p2.e[n0 % 256u]; (void)n1;
+  const a0t5 *const n1 = &p2.e[n0 % 512u]; (void)n1;
   uint32_t n2 = a0_mul(n0, 64u); (void)n2;
   uint32_t n3 = a0_add(n2, 64u); (void)n3;
   uint32_t n4 = a0_umax(p3, n2); (void)n4;
@@ -6954,67 +8110,67 @@ bool a0_czpg(bool p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32_t 
   return n7;
 }
 
-a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t19 p6, a0t20 p7, a0t14 p8, uint32_t p9, uint32_t p10, a0t47 p11, uint32_t p12) {
+a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, a0t22 p6, a0t23 p7, a0t17 p8, uint32_t p9, uint32_t p10, a0t51 p11, uint32_t p12) {
   uint32_t n0 = a0_add(p9, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 2u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_add(n1, 3u); (void)n12;
   uint32_t n13 = a0_shr(n12, 7u); (void)n13;
-  const a0t4 *const n14 = &p2.e[n13 % 128u]; (void)n14;
+  const a0t5 *const n14 = &p2.e[n13 % 128u]; (void)n14;
   uint32_t n15 = a0_and(n12, 127u); (void)n15;
   uint32_t n16 = (*n14).e[n15 % 128u]; (void)n16;
   uint32_t n17 = a0_add(n1, 4u); (void)n17;
   uint32_t n18 = a0_shr(n17, 7u); (void)n18;
-  const a0t4 *const n19 = &p2.e[n18 % 128u]; (void)n19;
+  const a0t5 *const n19 = &p2.e[n18 % 128u]; (void)n19;
   uint32_t n20 = a0_and(n17, 127u); (void)n20;
   uint32_t n21 = (*n19).e[n20 % 128u]; (void)n21;
   uint32_t n22 = a0_add(n1, 5u); (void)n22;
   uint32_t n23 = a0_shr(n22, 7u); (void)n23;
-  const a0t4 *const n24 = &p2.e[n23 % 128u]; (void)n24;
+  const a0t5 *const n24 = &p2.e[n23 % 128u]; (void)n24;
   uint32_t n25 = a0_and(n22, 127u); (void)n25;
   uint32_t n26 = (*n24).e[n25 % 128u]; (void)n26;
   uint32_t n27 = a0_shr(n0, 7u); (void)n27;
-  const a0t4 *const n28 = &p4.e[n27 % 24u]; (void)n28;
+  const a0t5 *const n28 = &p4.e[n27 % 24u]; (void)n28;
   uint32_t n29 = a0_and(n0, 127u); (void)n29;
   uint32_t n30 = (*n28).e[n29 % 128u]; (void)n30;
   uint32_t n31 = a0_shr(n30, 7u); (void)n31;
-  const a0t22 *const n32 = &p5.e[n31 % 65u]; (void)n32;
+  const a0t25 *const n32 = &p5.e[n31 % 65u]; (void)n32;
   uint32_t n33 = a0_and(n30, 127u); (void)n33;
   uint32_t n34 = a0_mul(n33, 3u); (void)n34;
   uint32_t n35 = (*n32).e[n34 % 384u]; (void)n35;
   uint32_t n36 = a0_add(n34, 2u); (void)n36;
   uint32_t n37 = (*n32).e[n36 % 384u]; (void)n37;
   uint32_t n38 = a0_shr(n37, 7u); (void)n38;
-  const a0t22 *const n39 = &p5.e[n38 % 65u]; (void)n39;
+  const a0t25 *const n39 = &p5.e[n38 % 65u]; (void)n39;
   uint32_t n40 = a0_and(n37, 127u); (void)n40;
   uint32_t n41 = a0_mul(n40, 3u); (void)n41;
   uint32_t n42 = (*n39).e[n41 % 384u]; (void)n42;
   uint32_t n43 = a0_mul(n16, 2u); (void)n43;
   uint32_t n44 = a0_shr(n43, 7u); (void)n44;
-  const a0t4 *const n45 = &p3.e[n44 % 256u]; (void)n45;
+  const a0t5 *const n45 = &p3.e[n44 % 512u]; (void)n45;
   uint32_t n46 = a0_and(n43, 127u); (void)n46;
   uint32_t n47 = (*n45).e[n46 % 128u]; (void)n47;
   uint32_t n48 = a0_add(n46, 1u); (void)n48;
   uint32_t n49 = (*n45).e[n48 % 128u]; (void)n49;
   uint32_t n50 = a0_add(n43, 2u); (void)n50;
   uint32_t n51 = a0_shr(n50, 7u); (void)n51;
-  const a0t4 *const n52 = &p3.e[n51 % 256u]; (void)n52;
+  const a0t5 *const n52 = &p3.e[n51 % 512u]; (void)n52;
   uint32_t n53 = a0_and(n50, 127u); (void)n53;
   uint32_t n54 = (*n52).e[n53 % 128u]; (void)n54;
   uint32_t n55 = a0_add(n53, 1u); (void)n55;
   uint32_t n56 = (*n52).e[n55 % 128u]; (void)n56;
   uint32_t n57 = a0_add(n43, 4u); (void)n57;
   uint32_t n58 = a0_shr(n57, 7u); (void)n58;
-  const a0t4 *const n59 = &p3.e[n58 % 256u]; (void)n59;
+  const a0t5 *const n59 = &p3.e[n58 % 512u]; (void)n59;
   uint32_t n60 = a0_and(n57, 127u); (void)n60;
   uint32_t n61 = (*n59).e[n60 % 128u]; (void)n61;
   uint32_t n62 = a0_add(n60, 1u); (void)n62;
@@ -7022,42 +8178,42 @@ a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5,
   uint32_t n64 = a0_cotype(n47, n49, p4, p6, p9, p10); (void)n64;
   uint32_t n65 = a0_cotype(n54, n56, p4, p6, p9, p10); (void)n65;
   uint32_t n66 = a0_shr(n64, 7u); (void)n66;
-  const a0t22 *const n67 = &p5.e[n66 % 65u]; (void)n67;
+  const a0t25 *const n67 = &p5.e[n66 % 65u]; (void)n67;
   uint32_t n68 = a0_and(n64, 127u); (void)n68;
   uint32_t n69 = a0_mul(n68, 3u); (void)n69;
   uint32_t n70 = a0_add(n69, 1u); (void)n70;
   uint32_t n71 = (*n67).e[n70 % 384u]; (void)n71;
   uint32_t n72 = a0_shr(n65, 7u); (void)n72;
-  const a0t22 *const n73 = &p5.e[n72 % 65u]; (void)n73;
+  const a0t25 *const n73 = &p5.e[n72 % 65u]; (void)n73;
   uint32_t n74 = a0_and(n65, 127u); (void)n74;
   uint32_t n75 = a0_mul(n74, 3u); (void)n75;
   uint32_t n76 = a0_add(n75, 1u); (void)n76;
   uint32_t n77 = (*n73).e[n76 % 384u]; (void)n77;
   uint32_t n78 = a0_mul(n21, 2u); (void)n78;
   uint32_t n79 = a0_shr(n78, 7u); (void)n79;
-  const a0t4 *const n80 = &p8.e[n79 % 16u]; (void)n80;
+  const a0t5 *const n80 = &p8.e[n79 % 16u]; (void)n80;
   uint32_t n81 = a0_and(n78, 127u); (void)n81;
   uint32_t n82 = (*n80).e[n81 % 128u]; (void)n82;
   uint32_t n83 = a0_add(n81, 1u); (void)n83;
   uint32_t n84 = (*n80).e[n83 % 128u]; (void)n84;
   uint32_t n85 = a0_mul(n26, 2u); (void)n85;
   uint32_t n86 = a0_shr(n85, 7u); (void)n86;
-  const a0t4 *const n87 = &p8.e[n86 % 16u]; (void)n87;
+  const a0t5 *const n87 = &p8.e[n86 % 16u]; (void)n87;
   uint32_t n88 = a0_and(n85, 127u); (void)n88;
   uint32_t n89 = (*n87).e[n88 % 128u]; (void)n89;
   uint32_t n90 = a0_add(n88, 1u); (void)n90;
   uint32_t n91 = (*n87).e[n90 % 128u]; (void)n91;
-  a0t55 n92 = a0_cres(n47, n49, p11, p12); (void)n92;
+  a0t59 n92 = a0_cres(n47, n49, p11, p12); (void)n92;
   uint32_t n93 = n92.f0; (void)n93;
   uint32_t n94 = n92.f1; (void)n94;
-  a0t55 n95 = a0_cres(n54, n56, p11, p12); (void)n95;
+  a0t59 n95 = a0_cres(n54, n56, p11, p12); (void)n95;
   uint32_t n96 = n95.f0; (void)n96;
   uint32_t n97 = n95.f1; (void)n97;
-  a0t55 n98 = a0_cres(n61, n63, p11, p12); (void)n98;
+  a0t59 n98 = a0_cres(n61, n63, p11, p12); (void)n98;
   uint32_t n99 = n98.f0; (void)n99;
   uint32_t n100 = n98.f1; (void)n100;
   uint32_t n101 = a0_shr(p1, 7u); (void)n101;
-  const a0t4 *const n102 = &p11.e[n101 % 24u]; (void)n102;
+  const a0t5 *const n102 = &p11.e[n101 % 24u]; (void)n102;
   uint32_t n103 = a0_and(p1, 127u); (void)n103;
   uint32_t n104 = (*n102).e[n103 % 128u]; (void)n104;
   uint32_t n105 = a0_shr(n104, 28u); (void)n105;
@@ -7075,7 +8231,7 @@ a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5,
   bool n117 = a0_ne(n104, n107); (void)n117;
   bool n118 = (n117 && n116); (void)n118;
   bool n119 = (n118 ? false : true); (void)n119;
-  a0t54 n120; n120.f0 = p1; n120.f1 = n93; n120.f2 = n94; n120.f3 = n96; n120.f4 = n97; n120.f5 = n99; n120.f6 = n100; n120.f7 = n30; n120.f8 = n71; n120.f9 = n77; n120.f10 = n16; n120.f11 = n11; n120.f12 = n82; n120.f13 = n84; n120.f14 = n89; n120.f15 = n91; n120.f16 = n105; n120.f17 = n106; (void)n120;
+  a0t58 n120; n120.f0 = p1; n120.f1 = n93; n120.f2 = n94; n120.f3 = n96; n120.f4 = n97; n120.f5 = n99; n120.f6 = n100; n120.f7 = n30; n120.f8 = n71; n120.f9 = n77; n120.f10 = n16; n120.f11 = n11; n120.f12 = n82; n120.f13 = n84; n120.f14 = n89; n120.f15 = n91; n120.f16 = n105; n120.f17 = n106; (void)n120;
   a0_io * n121 = a0_cws6(p0, 8224u, 0u, 0u, 0u, 0u, 0u); (void)n121;
   a0_io * n122 = a0_cws6c(n121, n115, 1936617315u, 8308u, 0u, 0u, 0u, 0u); (void)n122;
   a0_io * n123 = a0_cwtyc(n122, n119, n35, n30); (void)n123;
@@ -7223,14 +8379,14 @@ a0_io * a0_cnode(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5,
   return n264;
 }
 
-a0_io * a0_cprm(a0_io * p0, uint32_t p1, a0t19 p2, a0t23 p3, uint32_t p4) {
+a0_io * a0_cprm(a0_io * p0, uint32_t p1, a0t22 p2, a0t26 p3, uint32_t p4) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
-  const a0t4 *const n2 = &p2.e[n1 % 65u]; (void)n2;
+  const a0t5 *const n2 = &p2.e[n1 % 65u]; (void)n2;
   uint32_t n3 = a0_and(n0, 127u); (void)n3;
   uint32_t n4 = (*n2).e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_shr(n4, 7u); (void)n5;
-  const a0t22 *const n6 = &p3.e[n5 % 65u]; (void)n6;
+  const a0t25 *const n6 = &p3.e[n5 % 65u]; (void)n6;
   uint32_t n7 = a0_and(n4, 127u); (void)n7;
   uint32_t n8 = a0_mul(n7, 3u); (void)n8;
   uint32_t n9 = (*n6).e[n8 % 384u]; (void)n9;
@@ -7242,22 +8398,22 @@ a0_io * a0_cprm(a0_io * p0, uint32_t p1, a0t19 p2, a0t23 p3, uint32_t p4) {
   return n14;
 }
 
-uint32_t a0_cfw(a0t17 p0, uint32_t p1, uint32_t p2) {
+uint32_t a0_cfw(a0t20 p0, uint32_t p1, uint32_t p2) {
   uint32_t n0 = a0_add(p1, p2); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
-  const a0t4 *const n2 = &p0.e[n1 % 45u]; (void)n2;
+  const a0t5 *const n2 = &p0.e[n1 % 45u]; (void)n2;
   uint32_t n3 = a0_and(n0, 127u); (void)n3;
   uint32_t n4 = (*n2).e[n3 % 128u]; (void)n4;
   return n4;
 }
 
-a0_io * a0_cprm1(a0_io * p0, uint32_t p1, a0t19 p2, a0t23 p3, uint32_t p4) {
+a0_io * a0_cprm1(a0_io * p0, uint32_t p1, a0t22 p2, a0t26 p3, uint32_t p4) {
   uint32_t n0 = a0_add(p1, 1u); (void)n0;
   a0_io * n1 = a0_cprm(p0, n0, p2, p3, p4); (void)n1;
   return n1;
 }
 
-a0t18 a0_cusa(a0t18 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5, bool p6) {
+a0t21 a0_cusa(a0t21 p0, uint32_t p1, a0t5 p2, uint32_t p3, uint32_t p4, uint32_t p5, bool p6) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 2u); (void)n1;
   uint32_t n2 = a0_and(n1, 127u); (void)n2;
@@ -7270,7 +8426,7 @@ a0t18 a0_cusa(a0t18 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t
   uint32_t n9 = (n7 ? n8 : n5); (void)n9;
   uint32_t n10 = a0_shr(n9, 7u); (void)n10;
   uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  const a0t4 *const n12 = &p0.e[n10 % 64u]; (void)n12;
+  const a0t5 *const n12 = &p0.e[n10 % 64u]; (void)n12;
   uint32_t n13 = (*n12).e[n11 % 128u]; (void)n13;
   uint32_t n14 = a0_shr(n13, 16u); (void)n14;
   bool n15 = a0_eq(n0, p4); (void)n15;
@@ -7282,12 +8438,12 @@ a0t18 a0_cusa(a0t18 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t
   uint32_t n21 = a0_or(n19, n20); (void)n21;
   bool n22 = (n6 || n7); (void)n22;
   uint32_t n23 = (n22 ? n21 : n13); (void)n23;
-  a0t4 n24 = (*n12); n24.e[n11 % 128u] = n23; (void)n24;
+  a0t5 n24 = (*n12); n24.e[n11 % 128u] = n23; (void)n24;
   p0.e[n10 % 64u] = n24;
   return p0;
 }
 
-static inline void a0o_cusa(a0t18 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4, uint32_t p5, bool p6) {
+static inline void a0o_cusa(a0t21 *p0, uint32_t p1, a0t5 p2, uint32_t p3, uint32_t p4, uint32_t p5, bool p6) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 2u); (void)n1;
   uint32_t n2 = a0_and(n1, 127u); (void)n2;
@@ -7300,7 +8456,7 @@ static inline void a0o_cusa(a0t18 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32
   uint32_t n9 = (n7 ? n8 : n5); (void)n9;
   uint32_t n10 = a0_shr(n9, 7u); (void)n10;
   uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  const a0t4 *const n12 = &(*p0).e[n10 % 64u]; (void)n12;
+  const a0t5 *const n12 = &(*p0).e[n10 % 64u]; (void)n12;
   uint32_t n13 = (*n12).e[n11 % 128u]; (void)n13;
   uint32_t n14 = a0_shr(n13, 16u); (void)n14;
   bool n15 = a0_eq(n0, p4); (void)n15;
@@ -7312,13 +8468,13 @@ static inline void a0o_cusa(a0t18 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32
   uint32_t n21 = a0_or(n19, n20); (void)n21;
   bool n22 = (n6 || n7); (void)n22;
   uint32_t n23 = (n22 ? n21 : n13); (void)n23;
-  a0t4 n24 = (*n12); n24.e[n11 % 128u] = n23; (void)n24;
+  a0t5 n24 = (*n12); n24.e[n11 % 128u] = n23; (void)n24;
   (*p0).e[n10 % 64u] = n24;
 }
 
-a0t18 a0_cuspg(a0t18 p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, bool p7) {
+a0t21 a0_cuspg(a0t21 p0, uint32_t p1, a0t49 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, bool p7) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t4 *const n1 = &p2.e[n0 % 256u]; (void)n1;
+  const a0t5 *const n1 = &p2.e[n0 % 512u]; (void)n1;
   uint32_t n2 = a0_mul(n0, 64u); (void)n2;
   uint32_t n3 = a0_add(n2, 64u); (void)n3;
   uint32_t n4 = a0_umax(p3, n2); (void)n4;
@@ -7328,9 +8484,9 @@ a0t18 a0_cuspg(a0t18 p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32
   return p0;
 }
 
-static inline void a0o_cuspg(a0t18 *p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, bool p7) {
+static inline void a0o_cuspg(a0t21 *p0, uint32_t p1, a0t49 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6, bool p7) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t4 *const n1 = &p2.e[n0 % 256u]; (void)n1;
+  const a0t5 *const n1 = &p2.e[n0 % 512u]; (void)n1;
   uint32_t n2 = a0_mul(n0, 64u); (void)n2;
   uint32_t n3 = a0_add(n2, 64u); (void)n3;
   uint32_t n4 = a0_umax(p3, n2); (void)n4;
@@ -7339,22 +8495,22 @@ static inline void a0o_cuspg(a0t18 *p0, uint32_t p1, a0t21 p2, uint32_t p3, uint
   for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_cusa(&(*p0), a0i, (*n1), n4, p3, p6, p7); }
 }
 
-a0t18 a0_cusn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, uint32_t p4) {
+a0t21 a0_cusn(a0t21 p0, uint32_t p1, a0t11 p2, a0t49 p3, uint32_t p4) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 2u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_add(n1, 3u); (void)n12;
   uint32_t n13 = a0_shr(n12, 7u); (void)n13;
-  const a0t4 *const n14 = &p2.e[n13 % 128u]; (void)n14;
+  const a0t5 *const n14 = &p2.e[n13 % 128u]; (void)n14;
   uint32_t n15 = a0_and(n12, 127u); (void)n15;
   uint32_t n16 = (*n14).e[n15 % 128u]; (void)n16;
   bool n17 = a0_eq(n6, 25u); (void)n17;
@@ -7372,22 +8528,22 @@ a0t18 a0_cusn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, uint32_t p4) {
   return p0;
 }
 
-static inline void a0o_cusn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, uint32_t p4) {
+static inline void a0o_cusn(a0t21 *p0, uint32_t p1, a0t11 p2, a0t49 p3, uint32_t p4) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 2u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_add(n1, 3u); (void)n12;
   uint32_t n13 = a0_shr(n12, 7u); (void)n13;
-  const a0t4 *const n14 = &p2.e[n13 % 128u]; (void)n14;
+  const a0t5 *const n14 = &p2.e[n13 % 128u]; (void)n14;
   uint32_t n15 = a0_and(n12, 127u); (void)n15;
   uint32_t n16 = (*n14).e[n15 % 128u]; (void)n16;
   bool n17 = a0_eq(n6, 25u); (void)n17;
@@ -7404,7 +8560,7 @@ static inline void a0o_cusn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, uint32_t 
   for (uint32_t a0i = 0; a0i < n27; a0i++) { a0o_cuspg(&(*p0), a0i, p3, n16, n20, n22, p1, n19); }
 }
 
-a0t18 a0_cbra(a0t18 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4) {
+a0t21 a0_cbra(a0t21 p0, uint32_t p1, a0t5 p2, uint32_t p3, uint32_t p4) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 2u); (void)n1;
   uint32_t n2 = a0_and(n1, 127u); (void)n2;
@@ -7414,7 +8570,7 @@ a0t18 a0_cbra(a0t18 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4) {
   bool n6 = a0_eq(n3, 1u); (void)n6;
   uint32_t n7 = a0_shr(n5, 7u); (void)n7;
   uint32_t n8 = a0_and(n5, 127u); (void)n8;
-  const a0t4 *const n9 = &p0.e[n7 % 64u]; (void)n9;
+  const a0t5 *const n9 = &p0.e[n7 % 64u]; (void)n9;
   uint32_t n10 = (*n9).e[n8 % 128u]; (void)n10;
   uint32_t n11 = a0_shr(n10, 31u); (void)n11;
   bool n12 = a0_eq(n11, 1u); (void)n12;
@@ -7422,16 +8578,16 @@ a0t18 a0_cbra(a0t18 p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4) {
   uint32_t n14 = a0_and(n10, 2147483647u); (void)n14;
   uint32_t n15 = a0_shr(n14, 7u); (void)n15;
   uint32_t n16 = a0_and(n14, 127u); (void)n16;
-  const a0t4 *const n17 = &p0.e[n15 % 64u]; (void)n17;
+  const a0t5 *const n17 = &p0.e[n15 % 64u]; (void)n17;
   uint32_t n18 = a0_add(p4, 1u); (void)n18;
   uint32_t n19 = (*n17).e[n16 % 128u]; (void)n19;
   uint32_t n20 = (n13 ? n18 : n19); (void)n20;
-  a0t4 n21 = (*n17); n21.e[n16 % 128u] = n20; (void)n21;
+  a0t5 n21 = (*n17); n21.e[n16 % 128u] = n20; (void)n21;
   p0.e[n15 % 64u] = n21;
   return p0;
 }
 
-static inline void a0o_cbra(a0t18 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32_t p4) {
+static inline void a0o_cbra(a0t21 *p0, uint32_t p1, a0t5 p2, uint32_t p3, uint32_t p4) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 2u); (void)n1;
   uint32_t n2 = a0_and(n1, 127u); (void)n2;
@@ -7441,7 +8597,7 @@ static inline void a0o_cbra(a0t18 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32
   bool n6 = a0_eq(n3, 1u); (void)n6;
   uint32_t n7 = a0_shr(n5, 7u); (void)n7;
   uint32_t n8 = a0_and(n5, 127u); (void)n8;
-  const a0t4 *const n9 = &(*p0).e[n7 % 64u]; (void)n9;
+  const a0t5 *const n9 = &(*p0).e[n7 % 64u]; (void)n9;
   uint32_t n10 = (*n9).e[n8 % 128u]; (void)n10;
   uint32_t n11 = a0_shr(n10, 31u); (void)n11;
   bool n12 = a0_eq(n11, 1u); (void)n12;
@@ -7449,17 +8605,17 @@ static inline void a0o_cbra(a0t18 *p0, uint32_t p1, a0t4 p2, uint32_t p3, uint32
   uint32_t n14 = a0_and(n10, 2147483647u); (void)n14;
   uint32_t n15 = a0_shr(n14, 7u); (void)n15;
   uint32_t n16 = a0_and(n14, 127u); (void)n16;
-  const a0t4 *const n17 = &(*p0).e[n15 % 64u]; (void)n17;
+  const a0t5 *const n17 = &(*p0).e[n15 % 64u]; (void)n17;
   uint32_t n18 = a0_add(p4, 1u); (void)n18;
   uint32_t n19 = (*n17).e[n16 % 128u]; (void)n19;
   uint32_t n20 = (n13 ? n18 : n19); (void)n20;
-  a0t4 n21 = (*n17); n21.e[n16 % 128u] = n20; (void)n21;
+  a0t5 n21 = (*n17); n21.e[n16 % 128u] = n20; (void)n21;
   (*p0).e[n15 % 64u] = n21;
 }
 
-a0t18 a0_cbrpg(a0t18 p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+a0t21 a0_cbrpg(a0t21 p0, uint32_t p1, a0t49 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t4 *const n1 = &p2.e[n0 % 256u]; (void)n1;
+  const a0t5 *const n1 = &p2.e[n0 % 512u]; (void)n1;
   uint32_t n2 = a0_mul(n0, 64u); (void)n2;
   uint32_t n3 = a0_add(n2, 64u); (void)n3;
   uint32_t n4 = a0_umax(p3, n2); (void)n4;
@@ -7469,9 +8625,9 @@ a0t18 a0_cbrpg(a0t18 p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32
   return p0;
 }
 
-static inline void a0o_cbrpg(a0t18 *p0, uint32_t p1, a0t21 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
+static inline void a0o_cbrpg(a0t21 *p0, uint32_t p1, a0t49 p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t p6) {
   uint32_t n0 = a0_add(p5, p1); (void)n0;
-  const a0t4 *const n1 = &p2.e[n0 % 256u]; (void)n1;
+  const a0t5 *const n1 = &p2.e[n0 % 512u]; (void)n1;
   uint32_t n2 = a0_mul(n0, 64u); (void)n2;
   uint32_t n3 = a0_add(n2, 64u); (void)n3;
   uint32_t n4 = a0_umax(p3, n2); (void)n4;
@@ -7480,22 +8636,22 @@ static inline void a0o_cbrpg(a0t18 *p0, uint32_t p1, a0t21 p2, uint32_t p3, uint
   for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_cbra(&(*p0), a0i, (*n1), n4, p6); }
 }
 
-a0t18 a0_cbrn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, uint32_t p6) {
+a0t21 a0_cbrn(a0t21 p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, uint32_t p6) {
   uint32_t n0 = a0_add(p6, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 2u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_add(n1, 3u); (void)n12;
   uint32_t n13 = a0_shr(n12, 7u); (void)n13;
-  const a0t4 *const n14 = &p2.e[n13 % 128u]; (void)n14;
+  const a0t5 *const n14 = &p2.e[n13 % 128u]; (void)n14;
   uint32_t n15 = a0_and(n12, 127u); (void)n15;
   uint32_t n16 = (*n14).e[n15 % 128u]; (void)n16;
   uint32_t n17 = a0_add(n16, n11); (void)n17;
@@ -7508,11 +8664,11 @@ a0t18 a0_cbrn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, uint
   uint32_t n24 = (n18 ? n23 : 0u); (void)n24;
   for (uint32_t a0i = 0; a0i < n24; a0i++) { a0o_cbrpg(&p0, a0i, p3, n16, n17, n19, p1); }
   uint32_t n26 = a0_shr(n0, 7u); (void)n26;
-  const a0t4 *const n27 = &p4.e[n26 % 24u]; (void)n27;
+  const a0t5 *const n27 = &p4.e[n26 % 24u]; (void)n27;
   uint32_t n28 = a0_and(n0, 127u); (void)n28;
   uint32_t n29 = (*n27).e[n28 % 128u]; (void)n29;
   uint32_t n30 = a0_shr(n29, 7u); (void)n30;
-  const a0t22 *const n31 = &p5.e[n30 % 65u]; (void)n31;
+  const a0t25 *const n31 = &p5.e[n30 % 65u]; (void)n31;
   uint32_t n32 = a0_and(n29, 127u); (void)n32;
   uint32_t n33 = a0_mul(n32, 3u); (void)n33;
   uint32_t n34 = (*n31).e[n33 % 384u]; (void)n34;
@@ -7525,7 +8681,7 @@ a0t18 a0_cbrn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, uint
   bool n41 = (n40 && n37); (void)n41;
   uint32_t n42 = a0_mul(n16, 2u); (void)n42;
   uint32_t n43 = a0_shr(n42, 7u); (void)n43;
-  const a0t4 *const n44 = &p3.e[n43 % 256u]; (void)n44;
+  const a0t5 *const n44 = &p3.e[n43 % 512u]; (void)n44;
   uint32_t n45 = a0_and(n42, 127u); (void)n45;
   uint32_t n46 = (*n44).e[n45 % 128u]; (void)n46;
   uint32_t n47 = a0_add(n45, 1u); (void)n47;
@@ -7535,7 +8691,7 @@ a0t18 a0_cbrn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, uint
   uint32_t n51 = (n49 ? n50 : n48); (void)n51;
   uint32_t n52 = a0_shr(n51, 7u); (void)n52;
   uint32_t n53 = a0_and(n51, 127u); (void)n53;
-  const a0t4 *const n54 = &p0.e[n52 % 64u]; (void)n54;
+  const a0t5 *const n54 = &p0.e[n52 % 64u]; (void)n54;
   uint32_t n55 = (*n54).e[n53 % 128u]; (void)n55;
   uint32_t n56 = a0_shr(n55, 31u); (void)n56;
   bool n57 = a0_eq(n56, 1u); (void)n57;
@@ -7546,29 +8702,29 @@ a0t18 a0_cbrn(a0t18 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, uint
   uint32_t n62 = a0_add(2147483648u, n61); (void)n62;
   uint32_t n63 = a0_shr(p1, 7u); (void)n63;
   uint32_t n64 = a0_and(p1, 127u); (void)n64;
-  const a0t4 *const n65 = &p0.e[n63 % 64u]; (void)n65;
-  a0t4 n66 = (*n65); n66.e[n64 % 128u] = n62; (void)n66;
-  a0t18 n67 = p0; n67.e[n63 % 64u] = n66; (void)n67;
-  a0t18 n68 = (n41 ? n67 : p0); (void)n68;
+  const a0t5 *const n65 = &p0.e[n63 % 64u]; (void)n65;
+  a0t5 n66 = (*n65); n66.e[n64 % 128u] = n62; (void)n66;
+  a0t21 n67 = p0; n67.e[n63 % 64u] = n66; (void)n67;
+  a0t21 n68 = (n41 ? n67 : p0); (void)n68;
   return n68;
 }
 
-static inline void a0o_cbrn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, uint32_t p6) {
+static inline void a0o_cbrn(a0t21 *p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, uint32_t p6) {
   uint32_t n0 = a0_add(p6, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 2u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_add(n1, 3u); (void)n12;
   uint32_t n13 = a0_shr(n12, 7u); (void)n13;
-  const a0t4 *const n14 = &p2.e[n13 % 128u]; (void)n14;
+  const a0t5 *const n14 = &p2.e[n13 % 128u]; (void)n14;
   uint32_t n15 = a0_and(n12, 127u); (void)n15;
   uint32_t n16 = (*n14).e[n15 % 128u]; (void)n16;
   uint32_t n17 = a0_add(n16, n11); (void)n17;
@@ -7581,11 +8737,11 @@ static inline void a0o_cbrn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4,
   uint32_t n24 = (n18 ? n23 : 0u); (void)n24;
   for (uint32_t a0i = 0; a0i < n24; a0i++) { a0o_cbrpg(&(*p0), a0i, p3, n16, n17, n19, p1); }
   uint32_t n26 = a0_shr(n0, 7u); (void)n26;
-  const a0t4 *const n27 = &p4.e[n26 % 24u]; (void)n27;
+  const a0t5 *const n27 = &p4.e[n26 % 24u]; (void)n27;
   uint32_t n28 = a0_and(n0, 127u); (void)n28;
   uint32_t n29 = (*n27).e[n28 % 128u]; (void)n29;
   uint32_t n30 = a0_shr(n29, 7u); (void)n30;
-  const a0t22 *const n31 = &p5.e[n30 % 65u]; (void)n31;
+  const a0t25 *const n31 = &p5.e[n30 % 65u]; (void)n31;
   uint32_t n32 = a0_and(n29, 127u); (void)n32;
   uint32_t n33 = a0_mul(n32, 3u); (void)n33;
   uint32_t n34 = (*n31).e[n33 % 384u]; (void)n34;
@@ -7598,7 +8754,7 @@ static inline void a0o_cbrn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4,
   bool n41 = (n40 && n37); (void)n41;
   uint32_t n42 = a0_mul(n16, 2u); (void)n42;
   uint32_t n43 = a0_shr(n42, 7u); (void)n43;
-  const a0t4 *const n44 = &p3.e[n43 % 256u]; (void)n44;
+  const a0t5 *const n44 = &p3.e[n43 % 512u]; (void)n44;
   uint32_t n45 = a0_and(n42, 127u); (void)n45;
   uint32_t n46 = (*n44).e[n45 % 128u]; (void)n46;
   uint32_t n47 = a0_add(n45, 1u); (void)n47;
@@ -7608,7 +8764,7 @@ static inline void a0o_cbrn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4,
   uint32_t n51 = (n49 ? n50 : n48); (void)n51;
   uint32_t n52 = a0_shr(n51, 7u); (void)n52;
   uint32_t n53 = a0_and(n51, 127u); (void)n53;
-  const a0t4 *const n54 = &(*p0).e[n52 % 64u]; (void)n54;
+  const a0t5 *const n54 = &(*p0).e[n52 % 64u]; (void)n54;
   uint32_t n55 = (*n54).e[n53 % 128u]; (void)n55;
   uint32_t n56 = a0_shr(n55, 31u); (void)n56;
   bool n57 = a0_eq(n56, 1u); (void)n57;
@@ -7619,18 +8775,18 @@ static inline void a0o_cbrn(a0t18 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4,
   uint32_t n62 = a0_add(2147483648u, n61); (void)n62;
   uint32_t n63 = a0_shr(p1, 7u); (void)n63;
   uint32_t n64 = a0_and(p1, 127u); (void)n64;
-  const a0t4 *const n65 = &(*p0).e[n63 % 64u]; (void)n65;
-  a0t4 n66 = (*n65); n66.e[n64 % 128u] = n62; (void)n66;
-  a0t18 n67 = (*p0); n67.e[n63 % 64u] = n66; (void)n67;
-  a0t18 n68 = (n41 ? n67 : (*p0)); (void)n68;
+  const a0t5 *const n65 = &(*p0).e[n63 % 64u]; (void)n65;
+  a0t5 n66 = (*n65); n66.e[n64 % 128u] = n62; (void)n66;
+  a0t21 n67 = (*p0); n67.e[n63 % 64u] = n66; (void)n67;
+  a0t21 n68 = (n41 ? n67 : (*p0)); (void)n68;
   *p0 = n68;
 }
 
-a0t18 a0_cbrret(a0t18 p0, uint32_t p1, uint32_t p2) {
+a0t21 a0_cbrret(a0t21 p0, uint32_t p1, uint32_t p2) {
   bool n0 = a0_eq(p1, 1u); (void)n0;
   uint32_t n1 = a0_shr(p2, 7u); (void)n1;
   uint32_t n2 = a0_and(p2, 127u); (void)n2;
-  const a0t4 *const n3 = &p0.e[n1 % 64u]; (void)n3;
+  const a0t5 *const n3 = &p0.e[n1 % 64u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   uint32_t n5 = a0_shr(n4, 31u); (void)n5;
   bool n6 = a0_eq(n5, 1u); (void)n6;
@@ -7638,19 +8794,19 @@ a0t18 a0_cbrret(a0t18 p0, uint32_t p1, uint32_t p2) {
   uint32_t n8 = a0_and(n4, 2147483647u); (void)n8;
   uint32_t n9 = a0_shr(n8, 7u); (void)n9;
   uint32_t n10 = a0_and(n8, 127u); (void)n10;
-  const a0t4 *const n11 = &p0.e[n9 % 64u]; (void)n11;
+  const a0t5 *const n11 = &p0.e[n9 % 64u]; (void)n11;
   uint32_t n12 = (*n11).e[n10 % 128u]; (void)n12;
   uint32_t n13 = (n7 ? 65535u : n12); (void)n13;
-  a0t4 n14 = (*n11); n14.e[n10 % 128u] = n13; (void)n14;
+  a0t5 n14 = (*n11); n14.e[n10 % 128u] = n13; (void)n14;
   p0.e[n9 % 64u] = n14;
   return p0;
 }
 
-static inline void a0o_cbrret(a0t18 *p0, uint32_t p1, uint32_t p2) {
+static inline void a0o_cbrret(a0t21 *p0, uint32_t p1, uint32_t p2) {
   bool n0 = a0_eq(p1, 1u); (void)n0;
   uint32_t n1 = a0_shr(p2, 7u); (void)n1;
   uint32_t n2 = a0_and(p2, 127u); (void)n2;
-  const a0t4 *const n3 = &(*p0).e[n1 % 64u]; (void)n3;
+  const a0t5 *const n3 = &(*p0).e[n1 % 64u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   uint32_t n5 = a0_shr(n4, 31u); (void)n5;
   bool n6 = a0_eq(n5, 1u); (void)n6;
@@ -7658,32 +8814,32 @@ static inline void a0o_cbrret(a0t18 *p0, uint32_t p1, uint32_t p2) {
   uint32_t n8 = a0_and(n4, 2147483647u); (void)n8;
   uint32_t n9 = a0_shr(n8, 7u); (void)n9;
   uint32_t n10 = a0_and(n8, 127u); (void)n10;
-  const a0t4 *const n11 = &(*p0).e[n9 % 64u]; (void)n11;
+  const a0t5 *const n11 = &(*p0).e[n9 % 64u]; (void)n11;
   uint32_t n12 = (*n11).e[n10 % 128u]; (void)n12;
   uint32_t n13 = (n7 ? 65535u : n12); (void)n13;
-  a0t4 n14 = (*n11); n14.e[n10 % 128u] = n13; (void)n14;
+  a0t5 n14 = (*n11); n14.e[n10 % 128u] = n13; (void)n14;
   (*p0).e[n9 % 64u] = n14;
 }
 
-a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18 p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, a0t18 p11) {
+a0t51 a0_crt(a0t51 p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, a0t21 p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, a0t21 p11) {
   uint32_t n0 = a0_add(p7, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 3u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_shr(n0, 7u); (void)n12;
-  const a0t4 *const n13 = &p4.e[n12 % 24u]; (void)n13;
+  const a0t5 *const n13 = &p4.e[n12 % 24u]; (void)n13;
   uint32_t n14 = a0_and(n0, 127u); (void)n14;
   uint32_t n15 = (*n13).e[n14 % 128u]; (void)n15;
   uint32_t n16 = a0_shr(n15, 7u); (void)n16;
-  const a0t22 *const n17 = &p5.e[n16 % 65u]; (void)n17;
+  const a0t25 *const n17 = &p5.e[n16 % 65u]; (void)n17;
   uint32_t n18 = a0_and(n15, 127u); (void)n18;
   uint32_t n19 = a0_mul(n18, 3u); (void)n19;
   uint32_t n20 = (*n17).e[n19 % 384u]; (void)n20;
@@ -7701,7 +8857,7 @@ a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18
   uint32_t n32 = a0_add(n11, n31); (void)n32;
   uint32_t n33 = a0_mul(n32, 2u); (void)n33;
   uint32_t n34 = a0_shr(n33, 7u); (void)n34;
-  const a0t4 *const n35 = &p3.e[n34 % 256u]; (void)n35;
+  const a0t5 *const n35 = &p3.e[n34 % 512u]; (void)n35;
   uint32_t n36 = a0_and(n33, 127u); (void)n36;
   uint32_t n37 = (*n35).e[n36 % 128u]; (void)n37;
   uint32_t n38 = a0_add(n36, 1u); (void)n38;
@@ -7712,7 +8868,7 @@ a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18
   uint32_t n43 = a0_mul(n42, 6u); (void)n43;
   uint32_t n44 = a0_add(n43, 1u); (void)n44;
   uint32_t n45 = a0_shr(n44, 7u); (void)n45;
-  const a0t4 *const n46 = &p2.e[n45 % 128u]; (void)n46;
+  const a0t5 *const n46 = &p2.e[n45 % 128u]; (void)n46;
   uint32_t n47 = a0_and(n44, 127u); (void)n47;
   uint32_t n48 = (*n46).e[n47 % 128u]; (void)n48;
   bool n49 = a0_eq(n48, 22u); (void)n49;
@@ -7738,7 +8894,7 @@ a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18
   uint32_t n69 = a0_add(n39, 4096u); (void)n69;
   uint32_t n70 = (n41 ? n69 : n39); (void)n70;
   uint32_t n71 = a0_shr(n70, 7u); (void)n71;
-  const a0t4 *const n72 = &p6.e[n71 % 64u]; (void)n72;
+  const a0t5 *const n72 = &p6.e[n71 % 64u]; (void)n72;
   uint32_t n73 = a0_and(n70, 127u); (void)n73;
   uint32_t n74 = (*n72).e[n73 % 128u]; (void)n74;
   uint32_t n75 = a0_shr(n74, 16u); (void)n75;
@@ -7746,7 +8902,7 @@ a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18
   bool n77 = a0_eq(n75, 1u); (void)n77;
   uint32_t n78 = a0_add(p1, 1u); (void)n78;
   bool n79 = a0_eq(n76, n78); (void)n79;
-  const a0t4 *const n80 = &p11.e[n71 % 64u]; (void)n80;
+  const a0t5 *const n80 = &p11.e[n71 % 64u]; (void)n80;
   uint32_t n81 = (*n80).e[n73 % 128u]; (void)n81;
   bool n82 = a0_le(n81, n78); (void)n82;
   bool n83 = a0_le(n81, p1); (void)n83;
@@ -7758,7 +8914,7 @@ a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18
   bool n89 = (n88 && n79); (void)n89;
   bool n90 = (n89 && n84); (void)n90;
   uint32_t n91 = a0_shr(n39, 7u); (void)n91;
-  const a0t4 *const n92 = &p0.e[n91 % 24u]; (void)n92;
+  const a0t5 *const n92 = &p0.e[n91 % 24u]; (void)n92;
   uint32_t n93 = a0_and(n39, 127u); (void)n93;
   uint32_t n94 = (*n92).e[n93 % 128u]; (void)n94;
   bool n95 = a0_ne(p8, 0u); (void)n95;
@@ -7775,32 +8931,32 @@ a0t47 a0_crt(a0t47 p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18
   uint32_t n106 = (n90 ? n99 : n100); (void)n106;
   uint32_t n107 = (n104 ? n105 : n106); (void)n107;
   uint32_t n108 = a0_shr(p1, 7u); (void)n108;
-  const a0t4 *const n109 = &p0.e[n108 % 24u]; (void)n109;
+  const a0t5 *const n109 = &p0.e[n108 % 24u]; (void)n109;
   uint32_t n110 = a0_and(p1, 127u); (void)n110;
-  a0t4 n111 = (*n109); n111.e[n110 % 128u] = n107; (void)n111;
+  a0t5 n111 = (*n109); n111.e[n110 % 128u] = n107; (void)n111;
   p0.e[n108 % 24u] = n111;
   return p0;
 }
 
-static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t18 p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, a0t18 p11) {
+static inline void a0o_crt(a0t51 *p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, a0t21 p6, uint32_t p7, uint32_t p8, uint32_t p9, uint32_t p10, a0t21 p11) {
   uint32_t n0 = a0_add(p7, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 6u); (void)n1;
   uint32_t n2 = a0_add(n1, 1u); (void)n2;
   uint32_t n3 = a0_shr(n2, 7u); (void)n3;
-  const a0t4 *const n4 = &p2.e[n3 % 128u]; (void)n4;
+  const a0t5 *const n4 = &p2.e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_and(n2, 127u); (void)n5;
   uint32_t n6 = (*n4).e[n5 % 128u]; (void)n6;
   uint32_t n7 = a0_add(n1, 3u); (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t4 *const n9 = &p2.e[n8 % 128u]; (void)n9;
+  const a0t5 *const n9 = &p2.e[n8 % 128u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = (*n9).e[n10 % 128u]; (void)n11;
   uint32_t n12 = a0_shr(n0, 7u); (void)n12;
-  const a0t4 *const n13 = &p4.e[n12 % 24u]; (void)n13;
+  const a0t5 *const n13 = &p4.e[n12 % 24u]; (void)n13;
   uint32_t n14 = a0_and(n0, 127u); (void)n14;
   uint32_t n15 = (*n13).e[n14 % 128u]; (void)n15;
   uint32_t n16 = a0_shr(n15, 7u); (void)n16;
-  const a0t22 *const n17 = &p5.e[n16 % 65u]; (void)n17;
+  const a0t25 *const n17 = &p5.e[n16 % 65u]; (void)n17;
   uint32_t n18 = a0_and(n15, 127u); (void)n18;
   uint32_t n19 = a0_mul(n18, 3u); (void)n19;
   uint32_t n20 = (*n17).e[n19 % 384u]; (void)n20;
@@ -7818,7 +8974,7 @@ static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, 
   uint32_t n32 = a0_add(n11, n31); (void)n32;
   uint32_t n33 = a0_mul(n32, 2u); (void)n33;
   uint32_t n34 = a0_shr(n33, 7u); (void)n34;
-  const a0t4 *const n35 = &p3.e[n34 % 256u]; (void)n35;
+  const a0t5 *const n35 = &p3.e[n34 % 512u]; (void)n35;
   uint32_t n36 = a0_and(n33, 127u); (void)n36;
   uint32_t n37 = (*n35).e[n36 % 128u]; (void)n37;
   uint32_t n38 = a0_add(n36, 1u); (void)n38;
@@ -7829,7 +8985,7 @@ static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, 
   uint32_t n43 = a0_mul(n42, 6u); (void)n43;
   uint32_t n44 = a0_add(n43, 1u); (void)n44;
   uint32_t n45 = a0_shr(n44, 7u); (void)n45;
-  const a0t4 *const n46 = &p2.e[n45 % 128u]; (void)n46;
+  const a0t5 *const n46 = &p2.e[n45 % 128u]; (void)n46;
   uint32_t n47 = a0_and(n44, 127u); (void)n47;
   uint32_t n48 = (*n46).e[n47 % 128u]; (void)n48;
   bool n49 = a0_eq(n48, 22u); (void)n49;
@@ -7855,7 +9011,7 @@ static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, 
   uint32_t n69 = a0_add(n39, 4096u); (void)n69;
   uint32_t n70 = (n41 ? n69 : n39); (void)n70;
   uint32_t n71 = a0_shr(n70, 7u); (void)n71;
-  const a0t4 *const n72 = &p6.e[n71 % 64u]; (void)n72;
+  const a0t5 *const n72 = &p6.e[n71 % 64u]; (void)n72;
   uint32_t n73 = a0_and(n70, 127u); (void)n73;
   uint32_t n74 = (*n72).e[n73 % 128u]; (void)n74;
   uint32_t n75 = a0_shr(n74, 16u); (void)n75;
@@ -7863,7 +9019,7 @@ static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, 
   bool n77 = a0_eq(n75, 1u); (void)n77;
   uint32_t n78 = a0_add(p1, 1u); (void)n78;
   bool n79 = a0_eq(n76, n78); (void)n79;
-  const a0t4 *const n80 = &p11.e[n71 % 64u]; (void)n80;
+  const a0t5 *const n80 = &p11.e[n71 % 64u]; (void)n80;
   uint32_t n81 = (*n80).e[n73 % 128u]; (void)n81;
   bool n82 = a0_le(n81, n78); (void)n82;
   bool n83 = a0_le(n81, p1); (void)n83;
@@ -7875,7 +9031,7 @@ static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, 
   bool n89 = (n88 && n79); (void)n89;
   bool n90 = (n89 && n84); (void)n90;
   uint32_t n91 = a0_shr(n39, 7u); (void)n91;
-  const a0t4 *const n92 = &(*p0).e[n91 % 24u]; (void)n92;
+  const a0t5 *const n92 = &(*p0).e[n91 % 24u]; (void)n92;
   uint32_t n93 = a0_and(n39, 127u); (void)n93;
   uint32_t n94 = (*n92).e[n93 % 128u]; (void)n94;
   bool n95 = a0_ne(p8, 0u); (void)n95;
@@ -7892,13 +9048,13 @@ static inline void a0o_crt(a0t47 *p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, 
   uint32_t n106 = (n90 ? n99 : n100); (void)n106;
   uint32_t n107 = (n104 ? n105 : n106); (void)n107;
   uint32_t n108 = a0_shr(p1, 7u); (void)n108;
-  const a0t4 *const n109 = &(*p0).e[n108 % 24u]; (void)n109;
+  const a0t5 *const n109 = &(*p0).e[n108 % 24u]; (void)n109;
   uint32_t n110 = a0_and(p1, 127u); (void)n110;
-  a0t4 n111 = (*n109); n111.e[n110 % 128u] = n107; (void)n111;
+  a0t5 n111 = (*n109); n111.e[n110 % 128u] = n107; (void)n111;
   (*p0).e[n108 % 24u] = n111;
 }
 
-a0_io * a0_cvar(a0_io * p0, a0t9 p1, a0t21 p2, a0t47 p3, a0t23 p4, a0t19 p5, a0t20 p6, a0t14 p7, a0t17 p8, uint32_t p9, a0t18 p10, uint32_t p11, a0t18 p12) {
+a0_io * a0_cvar(a0_io * p0, a0t11 p1, a0t49 p2, a0t51 p3, a0t26 p4, a0t22 p5, a0t23 p6, a0t17 p7, a0t20 p8, uint32_t p9, a0t21 p10, uint32_t p11, a0t21 p12) {
   uint32_t n0 = a0_mul(p9, 7u); (void)n0;
   uint32_t n1 = a0_cfw(p8, n0, 1u); (void)n1;
   uint32_t n2 = a0_cfw(p8, n0, 2u); (void)n2;
@@ -7907,16 +9063,16 @@ a0_io * a0_cvar(a0_io * p0, a0t9 p1, a0t21 p2, a0t47 p3, a0t23 p4, a0t19 p5, a0t
   uint32_t n5 = a0_cfw(p8, n0, 5u); (void)n5;
   uint32_t n6 = a0_cfw(p8, n0, 6u); (void)n6;
   uint32_t n7 = a0_shr(n3, 7u); (void)n7;
-  const a0t22 *const n8 = &p4.e[n7 % 65u]; (void)n8;
+  const a0t25 *const n8 = &p4.e[n7 % 65u]; (void)n8;
   uint32_t n9 = a0_and(n3, 127u); (void)n9;
   uint32_t n10 = a0_mul(n9, 3u); (void)n10;
   uint32_t n11 = (*n8).e[n10 % 384u]; (void)n11;
   uint32_t n12 = a0_shr(n2, 7u); (void)n12;
-  const a0t4 *const n13 = &p5.e[n12 % 65u]; (void)n13;
+  const a0t5 *const n13 = &p5.e[n12 % 65u]; (void)n13;
   uint32_t n14 = a0_and(n2, 127u); (void)n14;
   uint32_t n15 = (*n13).e[n14 % 128u]; (void)n15;
   uint32_t n16 = a0_shr(n15, 7u); (void)n16;
-  const a0t22 *const n17 = &p4.e[n16 % 65u]; (void)n17;
+  const a0t25 *const n17 = &p4.e[n16 % 65u]; (void)n17;
   uint32_t n18 = a0_and(n15, 127u); (void)n18;
   uint32_t n19 = a0_mul(n18, 3u); (void)n19;
   uint32_t n20 = (*n17).e[n19 % 384u]; (void)n20;
@@ -7930,7 +9086,7 @@ a0_io * a0_cvar(a0_io * p0, a0t9 p1, a0t21 p2, a0t47 p3, a0t23 p4, a0t19 p5, a0t
   a0_io * n28 = a0_cws6c(n27, n21, 1597006112u, 0u, 0u, 0u, 0u, 0u); (void)n28;
   uint32_t n29 = a0_mul(p9, 2u); (void)n29;
   uint32_t n30 = a0_shr(n29, 7u); (void)n30;
-  const a0t4 *const n31 = &p7.e[n30 % 16u]; (void)n31;
+  const a0t5 *const n31 = &p7.e[n30 % 16u]; (void)n31;
   uint32_t n32 = a0_and(n29, 127u); (void)n32;
   uint32_t n33 = (*n31).e[n32 % 128u]; (void)n33;
   uint32_t n34 = a0_add(n32, 1u); (void)n34;
@@ -7951,10 +9107,10 @@ a0_io * a0_cvar(a0_io * p0, a0t9 p1, a0t21 p2, a0t47 p3, a0t23 p4, a0t19 p5, a0t
   a0_io * n49 = a0_cws6(n48, 175841321u, 0u, 0u, 0u, 0u, 0u); (void)n49;
   uint32_t n50 = a0_shr(n6, 28u); (void)n50;
   uint32_t n51 = a0_and(n6, 268435455u); (void)n51;
-  a0t47 n52 = a0_z24(); (void)n52;
-  a0t47 n53 = n52; for (uint32_t a0i = 0; a0i < n5; a0i++) { a0o_crt(&n53, a0i, p1, p2, p3, p4, p10, n4, p11, n50, n51, p12); } (void)n53;
+  a0t51 n52 = a0_z24(); (void)n52;
+  a0t51 n53 = n52; for (uint32_t a0i = 0; a0i < n5; a0i++) { a0o_crt(&n53, a0i, p1, p2, p3, p4, p10, n4, p11, n50, n51, p12); } (void)n53;
   a0_io * n54 = n49; for (uint32_t a0i = 0; a0i < n5; a0i++) { n54 = a0_cnode(n54, a0i, p1, p2, p3, p4, p5, p6, p7, n4, n2, n53, p11); } (void)n54;
-  a0t55 n55 = a0_cres(n50, n51, n53, p11); (void)n55;
+  a0t59 n55 = a0_cres(n50, n51, n53, p11); (void)n55;
   uint32_t n56 = n55.f0; (void)n56;
   uint32_t n57 = n55.f1; (void)n57;
   bool n58 = a0_eq(n56, 5u); (void)n58;
@@ -7970,12 +9126,12 @@ a0_io * a0_cvar(a0_io * p0, a0t9 p1, a0t21 p2, a0t47 p3, a0t23 p4, a0t19 p5, a0t
   return n67;
 }
 
-a0_io * a0_cvarst(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t19 p6, a0t20 p7, a0t14 p8, a0t17 p9, uint32_t p10, a0t18 p11, uint32_t p12, a0t18 p13) {
+a0_io * a0_cvarst(a0_io * p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, a0t22 p6, a0t23 p7, a0t17 p8, a0t20 p9, uint32_t p10, a0t21 p11, uint32_t p12, a0t21 p13) {
   a0_io * n0 = a0_cvar(p0, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13); (void)n0;
   return n0;
 }
 
-a0_io * a0_cfn(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a0t19 p6, a0t20 p7, a0t14 p8, a0t17 p9, uint32_t p10) {
+a0_io * a0_cfn(a0_io * p0, uint32_t p1, a0t11 p2, a0t49 p3, a0t51 p4, a0t26 p5, a0t22 p6, a0t23 p7, a0t17 p8, a0t20 p9, uint32_t p10) {
   uint32_t n0 = a0_add(p10, p1); (void)n0;
   uint32_t n1 = a0_mul(n0, 7u); (void)n1;
   uint32_t n2 = a0_cfw(p9, n1, 1u); (void)n2;
@@ -7983,25 +9139,25 @@ a0_io * a0_cfn(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a
   uint32_t n4 = a0_cfw(p9, n1, 3u); (void)n4;
   uint32_t n5 = a0_cfw(p9, n1, 4u); (void)n5;
   uint32_t n6 = a0_cfw(p9, n1, 5u); (void)n6;
-  a0t18 n7 = a0_z64(); (void)n7;
-  a0t18 n8 = n7; for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_cusn(&n8, a0i, p2, p3, n5); } (void)n8;
-  a0t18 n9 = n7; for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_cbrn(&n9, a0i, p2, p3, p4, p5, n5); } (void)n9;
+  a0t21 n7 = a0_z64(); (void)n7;
+  a0t21 n8 = n7; for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_cusn(&n8, a0i, p2, p3, n5); } (void)n8;
+  a0t21 n9 = n7; for (uint32_t a0i = 0; a0i < n6; a0i++) { a0o_cbrn(&n9, a0i, p2, p3, p4, p5, n5); } (void)n9;
   uint32_t n10 = a0_cfw(p9, n1, 6u); (void)n10;
   uint32_t n11 = a0_shr(n10, 28u); (void)n11;
   uint32_t n12 = a0_and(n10, 268435455u); (void)n12;
-  a0t18 n13 = a0_cbrret(n9, n11, n12); (void)n13;
+  a0t21 n13 = a0_cbrret(n9, n11, n12); (void)n13;
   a0_io * n14 = a0_cvar(p0, p2, p3, p4, p5, p6, p7, p8, p9, n0, n8, 0u, n13); (void)n14;
   uint32_t n15 = a0_shr(n3, 7u); (void)n15;
-  const a0t4 *const n16 = &p6.e[n15 % 65u]; (void)n16;
+  const a0t5 *const n16 = &p6.e[n15 % 65u]; (void)n16;
   uint32_t n17 = a0_and(n3, 127u); (void)n17;
   uint32_t n18 = (*n16).e[n17 % 128u]; (void)n18;
   uint32_t n19 = a0_add(n3, 1u); (void)n19;
   uint32_t n20 = a0_shr(n19, 7u); (void)n20;
-  const a0t4 *const n21 = &p6.e[n20 % 65u]; (void)n21;
+  const a0t5 *const n21 = &p6.e[n20 % 65u]; (void)n21;
   uint32_t n22 = a0_and(n19, 127u); (void)n22;
   uint32_t n23 = (*n21).e[n22 % 128u]; (void)n23;
   uint32_t n24 = a0_shr(n18, 7u); (void)n24;
-  const a0t22 *const n25 = &p5.e[n24 % 65u]; (void)n25;
+  const a0t25 *const n25 = &p5.e[n24 % 65u]; (void)n25;
   uint32_t n26 = a0_and(n18, 127u); (void)n26;
   uint32_t n27 = a0_mul(n26, 3u); (void)n27;
   uint32_t n28 = (*n25).e[n27 % 384u]; (void)n28;
@@ -8023,14 +9179,14 @@ a0_io * a0_cfn(a0_io * p0, uint32_t p1, a0t9 p2, a0t21 p3, a0t47 p4, a0t23 p5, a
   return n43;
 }
 
-a0_io * a0_cfld(a0_io * p0, uint32_t p1, a0t19 p2, a0t23 p3, uint32_t p4) {
+a0_io * a0_cfld(a0_io * p0, uint32_t p1, a0t22 p2, a0t26 p3, uint32_t p4) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
-  const a0t4 *const n2 = &p2.e[n1 % 65u]; (void)n2;
+  const a0t5 *const n2 = &p2.e[n1 % 65u]; (void)n2;
   uint32_t n3 = a0_and(n0, 127u); (void)n3;
   uint32_t n4 = (*n2).e[n3 % 128u]; (void)n4;
   uint32_t n5 = a0_shr(n4, 7u); (void)n5;
-  const a0t22 *const n6 = &p3.e[n5 % 65u]; (void)n6;
+  const a0t25 *const n6 = &p3.e[n5 % 65u]; (void)n6;
   uint32_t n7 = a0_and(n4, 127u); (void)n7;
   uint32_t n8 = a0_mul(n7, 3u); (void)n8;
   uint32_t n9 = (*n6).e[n8 % 384u]; (void)n9;
@@ -8042,9 +9198,9 @@ a0_io * a0_cfld(a0_io * p0, uint32_t p1, a0t19 p2, a0t23 p3, uint32_t p4) {
   return n14;
 }
 
-a0_io * a0_ctarr(a0_io * p0, uint32_t p1, a0t23 p2, uint32_t p3) {
+a0_io * a0_ctarr(a0_io * p0, uint32_t p1, a0t26 p2, uint32_t p3) {
   uint32_t n0 = a0_shr(p3, 7u); (void)n0;
-  const a0t22 *const n1 = &p2.e[n0 % 65u]; (void)n1;
+  const a0t25 *const n1 = &p2.e[n0 % 65u]; (void)n1;
   uint32_t n2 = a0_and(p3, 127u); (void)n2;
   uint32_t n3 = a0_mul(n2, 3u); (void)n3;
   uint32_t n4 = a0_add(n3, 1u); (void)n4;
@@ -8052,7 +9208,7 @@ a0_io * a0_ctarr(a0_io * p0, uint32_t p1, a0t23 p2, uint32_t p3) {
   uint32_t n6 = a0_add(n3, 2u); (void)n6;
   uint32_t n7 = (*n1).e[n6 % 384u]; (void)n7;
   uint32_t n8 = a0_shr(n7, 7u); (void)n8;
-  const a0t22 *const n9 = &p2.e[n8 % 65u]; (void)n9;
+  const a0t25 *const n9 = &p2.e[n8 % 65u]; (void)n9;
   uint32_t n10 = a0_and(n7, 127u); (void)n10;
   uint32_t n11 = a0_mul(n10, 3u); (void)n11;
   uint32_t n12 = (*n9).e[n11 % 384u]; (void)n12;
@@ -8066,9 +9222,9 @@ a0_io * a0_ctarr(a0_io * p0, uint32_t p1, a0t23 p2, uint32_t p3) {
   return n19;
 }
 
-a0_io * a0_ctrec(a0_io * p0, uint32_t p1, a0t23 p2, a0t19 p3, uint32_t p4) {
+a0_io * a0_ctrec(a0_io * p0, uint32_t p1, a0t26 p2, a0t22 p3, uint32_t p4) {
   uint32_t n0 = a0_shr(p4, 7u); (void)n0;
-  const a0t22 *const n1 = &p2.e[n0 % 65u]; (void)n1;
+  const a0t25 *const n1 = &p2.e[n0 % 65u]; (void)n1;
   uint32_t n2 = a0_and(p4, 127u); (void)n2;
   uint32_t n3 = a0_mul(n2, 3u); (void)n3;
   uint32_t n4 = a0_add(n3, 1u); (void)n4;
@@ -8083,10 +9239,10 @@ a0_io * a0_ctrec(a0_io * p0, uint32_t p1, a0t23 p2, a0t19 p3, uint32_t p4) {
   return n12;
 }
 
-a0_io * a0_ctd(a0_io * p0, uint32_t p1, a0t23 p2, a0t19 p3, uint32_t p4) {
+a0_io * a0_ctd(a0_io * p0, uint32_t p1, a0t26 p2, a0t22 p3, uint32_t p4) {
   uint32_t n0 = a0_add(p4, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
-  const a0t22 *const n2 = &p2.e[n1 % 65u]; (void)n2;
+  const a0t25 *const n2 = &p2.e[n1 % 65u]; (void)n2;
   uint32_t n3 = a0_and(n0, 127u); (void)n3;
   uint32_t n4 = a0_mul(n3, 3u); (void)n4;
   uint32_t n5 = (*n2).e[n4 % 384u]; (void)n5;
@@ -8184,7 +9340,7 @@ a0_io * a0_cpre(a0_io * p0, uint32_t p1) {
   return n80;
 }
 
-a0_io * a0_emitc(a0_io * p0, a0t23 p1, a0t19 p2, a0t17 p3, a0t9 p4, a0t21 p5, a0t47 p6, a0t20 p7, a0t14 p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13) {
+a0_io * a0_emitc(a0_io * p0, a0t26 p1, a0t22 p2, a0t20 p3, a0t11 p4, a0t49 p5, a0t51 p6, a0t23 p7, a0t17 p8, uint32_t p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13) {
   a0_io * n0 = p0; for (uint32_t a0i = 0; a0i < p13; a0i++) { n0 = a0_cpre(n0, a0i); } (void)n0;
   uint32_t n1 = a0_sub(p9, p10); (void)n1;
   a0_io * n2 = n0; for (uint32_t a0i = 0; a0i < n1; a0i++) { n2 = a0_ctd(n2, a0i, p1, p2, p10); } (void)n2;
@@ -8193,112 +9349,112 @@ a0_io * a0_emitc(a0_io * p0, a0t23 p1, a0t19 p2, a0t17 p3, a0t9 p4, a0t21 p5, a0
   return n4;
 }
 
-a0_io * a0_cemit(a0_io * p0, uint32_t p1, a0t23 p2, a0t19 p3, a0t17 p4, a0t9 p5, a0t21 p6, a0t47 p7, a0t20 p8, a0t14 p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13, uint32_t p14) {
+a0_io * a0_cemit(a0_io * p0, uint32_t p1, a0t26 p2, a0t22 p3, a0t20 p4, a0t11 p5, a0t49 p6, a0t51 p7, a0t23 p8, a0t17 p9, uint32_t p10, uint32_t p11, uint32_t p12, uint32_t p13, uint32_t p14) {
   a0_io * n0 = a0_emitc(p0, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14); (void)n0;
   return n0;
 }
 
-a0t56 a0_cstw(a0t56 p0, uint32_t p1, a0t4 p2) {
-  const a0t4 *const n0 = &p0.f0; (void)n0;
+a0t60 a0_cstw(a0t60 p0, uint32_t p1, a0t5 p2) {
+  const a0t5 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
   uint32_t n2 = p2.e[p1 % 128u]; (void)n2;
   uint32_t n3 = a0_and(n2, 32767u); (void)n3;
-  a0t4 n4 = (*n0); n4.e[p1 % 128u] = n1; (void)n4;
+  a0t5 n4 = (*n0); n4.e[p1 % 128u] = n1; (void)n4;
   uint32_t n5 = a0_add(n1, n3); (void)n5;
-  a0t56 n6; n6.f0 = n4; n6.f1 = n5; (void)n6;
+  a0t60 n6; n6.f0 = n4; n6.f1 = n5; (void)n6;
   return n6;
 }
 
-static inline void a0o_cstw(a0t56 *p0, uint32_t p1, a0t4 p2) {
-  const a0t4 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_cstw(a0t60 *p0, uint32_t p1, a0t5 p2) {
+  const a0t5 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
   uint32_t n2 = p2.e[p1 % 128u]; (void)n2;
   uint32_t n3 = a0_and(n2, 32767u); (void)n3;
-  a0t4 n4 = (*n0); n4.e[p1 % 128u] = n1; (void)n4;
+  a0t5 n4 = (*n0); n4.e[p1 % 128u] = n1; (void)n4;
   uint32_t n5 = a0_add(n1, n3); (void)n5;
-  a0t56 n6; n6.f0 = n4; n6.f1 = n5; (void)n6;
+  a0t60 n6; n6.f0 = n4; n6.f1 = n5; (void)n6;
   *p0 = n6;
 }
 
-a0t57 a0_cstpg(a0t57 p0, uint32_t p1, a0t18 p2) {
-  const a0t18 *const n0 = &p0.f0; (void)n0;
+a0t61 a0_cstpg(a0t61 p0, uint32_t p1, a0t21 p2) {
+  const a0t21 *const n0 = &p0.f0; (void)n0;
   uint32_t n1 = p0.f1; (void)n1;
-  const a0t4 *const n2 = &p2.e[p1 % 64u]; (void)n2;
-  a0t4 n3 = a0_zpage(); (void)n3;
-  a0t56 n4; n4.f0 = n3; n4.f1 = n1; (void)n4;
+  const a0t5 *const n2 = &p2.e[p1 % 64u]; (void)n2;
+  a0t5 n3 = a0_zpage(); (void)n3;
+  a0t60 n4; n4.f0 = n3; n4.f1 = n1; (void)n4;
   for (uint32_t a0i = 0; a0i < 128u; a0i++) { a0o_cstw(&n4, a0i, (*n2)); }
-  const a0t4 *const n6 = &n4.f0; (void)n6;
+  const a0t5 *const n6 = &n4.f0; (void)n6;
   uint32_t n7 = n4.f1; (void)n7;
-  a0t18 n8 = (*n0); n8.e[p1 % 64u] = (*n6); (void)n8;
-  a0t57 n9; n9.f0 = n8; n9.f1 = n7; (void)n9;
+  a0t21 n8 = (*n0); n8.e[p1 % 64u] = (*n6); (void)n8;
+  a0t61 n9; n9.f0 = n8; n9.f1 = n7; (void)n9;
   return n9;
 }
 
-static inline void a0o_cstpg(a0t57 *p0, uint32_t p1, a0t18 p2) {
-  const a0t18 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_cstpg(a0t61 *p0, uint32_t p1, a0t21 p2) {
+  const a0t21 *const n0 = &(*p0).f0; (void)n0;
   uint32_t n1 = (*p0).f1; (void)n1;
-  const a0t4 *const n2 = &p2.e[p1 % 64u]; (void)n2;
-  a0t4 n3 = a0_zpage(); (void)n3;
-  a0t56 n4; n4.f0 = n3; n4.f1 = n1; (void)n4;
+  const a0t5 *const n2 = &p2.e[p1 % 64u]; (void)n2;
+  a0t5 n3 = a0_zpage(); (void)n3;
+  a0t60 n4; n4.f0 = n3; n4.f1 = n1; (void)n4;
   for (uint32_t a0i = 0; a0i < 128u; a0i++) { a0o_cstw(&n4, a0i, (*n2)); }
-  const a0t4 *const n6 = &n4.f0; (void)n6;
+  const a0t5 *const n6 = &n4.f0; (void)n6;
   uint32_t n7 = n4.f1; (void)n7;
-  a0t18 n8 = (*n0); n8.e[p1 % 64u] = (*n6); (void)n8;
-  a0t57 n9; n9.f0 = n8; n9.f1 = n7; (void)n9;
+  a0t21 n8 = (*n0); n8.e[p1 % 64u] = (*n6); (void)n8;
+  a0t61 n9; n9.f0 = n8; n9.f1 = n7; (void)n9;
   *p0 = n9;
 }
 
-a0t14 a0_cfnm(a0t14 p0, uint32_t p1, a0t17 p2, a0t18 p3, a0t18 p4) {
+a0t17 a0_cfnm(a0t17 p0, uint32_t p1, a0t20 p2, a0t21 p3, a0t21 p4) {
   uint32_t n0 = a0_mul(p1, 7u); (void)n0;
   uint32_t n1 = a0_cfw(p2, n0, 0u); (void)n1;
   uint32_t n2 = a0_shr(n1, 7u); (void)n2;
   uint32_t n3 = a0_and(n1, 127u); (void)n3;
-  const a0t4 *const n4 = &p4.e[n2 % 64u]; (void)n4;
+  const a0t5 *const n4 = &p4.e[n2 % 64u]; (void)n4;
   uint32_t n5 = (*n4).e[n3 % 128u]; (void)n5;
-  const a0t4 *const n6 = &p3.e[n2 % 64u]; (void)n6;
+  const a0t5 *const n6 = &p3.e[n2 % 64u]; (void)n6;
   uint32_t n7 = (*n6).e[n3 % 128u]; (void)n7;
   uint32_t n8 = a0_and(n7, 32767u); (void)n8;
   uint32_t n9 = a0_mul(p1, 2u); (void)n9;
   uint32_t n10 = a0_shr(n9, 7u); (void)n10;
   uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  const a0t4 *const n12 = &p0.e[n10 % 16u]; (void)n12;
-  a0t4 n13 = (*n12); n13.e[n11 % 128u] = n5; (void)n13;
+  const a0t5 *const n12 = &p0.e[n10 % 16u]; (void)n12;
+  a0t5 n13 = (*n12); n13.e[n11 % 128u] = n5; (void)n13;
   uint32_t n14 = a0_add(n11, 1u); (void)n14;
   n13.e[n14 % 128u] = n8;
   p0.e[n10 % 16u] = n13;
   return p0;
 }
 
-static inline void a0o_cfnm(a0t14 *p0, uint32_t p1, a0t17 p2, a0t18 p3, a0t18 p4) {
+static inline void a0o_cfnm(a0t17 *p0, uint32_t p1, a0t20 p2, a0t21 p3, a0t21 p4) {
   uint32_t n0 = a0_mul(p1, 7u); (void)n0;
   uint32_t n1 = a0_cfw(p2, n0, 0u); (void)n1;
   uint32_t n2 = a0_shr(n1, 7u); (void)n2;
   uint32_t n3 = a0_and(n1, 127u); (void)n3;
-  const a0t4 *const n4 = &p4.e[n2 % 64u]; (void)n4;
+  const a0t5 *const n4 = &p4.e[n2 % 64u]; (void)n4;
   uint32_t n5 = (*n4).e[n3 % 128u]; (void)n5;
-  const a0t4 *const n6 = &p3.e[n2 % 64u]; (void)n6;
+  const a0t5 *const n6 = &p3.e[n2 % 64u]; (void)n6;
   uint32_t n7 = (*n6).e[n3 % 128u]; (void)n7;
   uint32_t n8 = a0_and(n7, 32767u); (void)n8;
   uint32_t n9 = a0_mul(p1, 2u); (void)n9;
   uint32_t n10 = a0_shr(n9, 7u); (void)n10;
   uint32_t n11 = a0_and(n9, 127u); (void)n11;
-  const a0t4 *const n12 = &(*p0).e[n10 % 16u]; (void)n12;
-  a0t4 n13 = (*n12); n13.e[n11 % 128u] = n5; (void)n13;
+  const a0t5 *const n12 = &(*p0).e[n10 % 16u]; (void)n12;
+  a0t5 n13 = (*n12); n13.e[n11 % 128u] = n5; (void)n13;
   uint32_t n14 = a0_add(n11, 1u); (void)n14;
   n13.e[n14 % 128u] = n8;
   (*p0).e[n10 % 16u] = n13;
 }
 
-a0t58 a0_cunit(a0_io * p0, a0t9 p1, uint32_t p2, a0t46 p3, uint32_t p4, bool p5, bool p6) {
-  a0t10 n0 = a0_lexsrc(p1, p2); (void)n0;
-  const a0t7 *const n1 = &n0.f0; (void)n1;
+a0t62 a0_cunit(a0_io * p0, a0t4 p1, uint32_t p2, a0t50 p3, uint32_t p4, bool p5, bool p6) {
+  a0t12 n0 = a0_lexsrc(p1, p2); (void)n0;
+  const a0t9 *const n1 = &n0.f0; (void)n1;
   uint32_t n2 = n0.f1; (void)n2;
   uint32_t n3 = a0_div(n2, 3u); (void)n3;
-  a0t29 n4 = a0_pass1(p1, (*n1), n3); (void)n4;
-  const a0t18 *const n5 = &n4.f1; (void)n5;
-  const a0t9 *const n6 = &n4.f2; (void)n6;
-  const a0t9 *const n7 = &n4.f3; (void)n7;
-  const a0t14 *const n8 = &n4.f5; (void)n8;
+  a0t32 n4 = a0_pass1(p1, (*n1), n3); (void)n4;
+  const a0t21 *const n5 = &n4.f1; (void)n5;
+  const a0t11 *const n6 = &n4.f2; (void)n6;
+  const a0t11 *const n7 = &n4.f3; (void)n7;
+  const a0t17 *const n8 = &n4.f5; (void)n8;
   uint32_t n9 = n4.f7; (void)n9;
   uint32_t n10 = n4.f10; (void)n10;
   uint32_t n11 = n4.f11; (void)n11;
@@ -8309,153 +9465,164 @@ a0t58 a0_cunit(a0_io * p0, a0t9 p1, uint32_t p2, a0t46 p3, uint32_t p4, bool p5,
   bool n16 = (n15 && n14); (void)n16;
   uint32_t n17 = (n16 ? 1u : n11); (void)n17;
   uint32_t n18 = (n16 ? n3 : n12); (void)n18;
-  a0t30 n19 = a0_pass2(p1, (*n5), n9); (void)n19;
-  const a0t20 *const n20 = &n19.f0; (void)n20;
-  a0t39 n21 = a0_pass3(p1, (*n1), (*n6), (*n8), n13, n17, n18, n3); (void)n21;
-  const a0t23 *const n22 = &n21.f0; (void)n22;
-  const a0t19 *const n23 = &n21.f2; (void)n23;
-  const a0t16 *const n24 = &n21.f4; (void)n24;
+  a0t33 n19 = a0_pass2(p1, (*n5), n9); (void)n19;
+  const a0t23 *const n20 = &n19.f0; (void)n20;
+  a0t42 n21 = a0_pass3(p1, (*n1), (*n6), (*n8), n13, n17, n18, n3); (void)n21;
+  const a0t26 *const n22 = &n21.f0; (void)n22;
+  const a0t22 *const n23 = &n21.f2; (void)n23;
+  const a0t19 *const n24 = &n21.f4; (void)n24;
   uint32_t n25 = n21.f5; (void)n25;
   uint32_t n26 = n21.f6; (void)n26;
   uint32_t n27 = n21.f11; (void)n27;
   uint32_t n28 = n21.f12; (void)n28;
   uint32_t n29 = n21.f18; (void)n29;
   uint32_t n30 = n21.f19; (void)n30;
-  a0t40 n31 = a0_pass4((*n24), n30, n29); (void)n31;
-  const a0t17 *const n32 = &n31.f0; (void)n32;
-  const a0t18 *const n33 = &n31.f1; (void)n33;
+  a0t43 n31 = a0_pass4((*n24), n30, n29); (void)n31;
+  const a0t20 *const n32 = &n31.f0; (void)n32;
+  const a0t21 *const n33 = &n31.f1; (void)n33;
   uint32_t n34 = n31.f2; (void)n34;
   uint32_t n35 = n31.f3; (void)n35;
   bool n36 = a0_ne(n34, 0u); (void)n36;
   uint32_t n37 = (n36 ? n34 : n27); (void)n37;
   uint32_t n38 = (n36 ? n35 : n28); (void)n38;
-  a0t45 n39 = a0_pass5((*n32), (*n33), p1, (*n1), (*n6), (*n7), n3, n37, n38); (void)n39;
-  const a0t17 *const n40 = &n39.f0; (void)n40;
-  const a0t9 *const n41 = &n39.f1; (void)n41;
-  const a0t21 *const n42 = &n39.f2; (void)n42;
-  uint32_t n43 = n39.f8; (void)n43;
-  uint32_t n44 = a0_cumin(p4, n29); (void)n44;
-  a0t52 n45 = a0_checkir((*n22), (*n23), (*n40), (*n41), (*n42), p3, n25, n26, n29, n44); (void)n45;
-  const a0t23 *const n46 = &n45.f0; (void)n46;
-  const a0t19 *const n47 = &n45.f2; (void)n47;
-  const a0t47 *const n48 = &n45.f4; (void)n48;
-  const a0t46 *const n49 = &n45.f7; (void)n49;
-  uint32_t n50 = n45.f8; (void)n50;
-  uint32_t n51 = n45.f10; (void)n51;
-  uint32_t n52 = a0_add(n9, 127u); (void)n52;
-  uint32_t n53 = a0_shr(n52, 7u); (void)n53;
-  a0t18 n54 = a0_z64(); (void)n54;
-  a0t57 n55; n55.f0 = n54; n55.f1 = 0u; (void)n55;
-  for (uint32_t a0i = 0; a0i < n53; a0i++) { a0o_cstpg(&n55, a0i, (*n5)); }
-  const a0t18 *const n57 = &n55.f0; (void)n57;
-  a0t14 n58 = a0_z16(); (void)n58;
-  a0t14 n59 = n58; for (uint32_t a0i = 0; a0i < n29; a0i++) { a0o_cfnm(&n59, a0i, (*n40), (*n5), (*n57)); } (void)n59;
-  bool n60 = a0_ne(n50, n25); (void)n60;
-  bool n61 = (n60 && p5); (void)n61;
-  bool n62 = a0_eq(n43, 0u); (void)n62;
-  uint32_t n63 = (n61 ? 5u : 0u); (void)n63;
-  bool n64 = a0_eq(n51, 0u); (void)n64;
-  uint32_t n65 = (n64 ? n63 : n51); (void)n65;
-  uint32_t n66 = (n62 ? n65 : n43); (void)n66;
-  bool n67 = a0_eq(n66, 0u); (void)n67;
-  uint32_t n68 = (n67 ? 1u : 0u); (void)n68;
-  uint32_t n69 = (p6 ? 1u : 0u); (void)n69;
-  uint32_t n70 = (p6 ? 3u : n50); (void)n70;
-  a0_io * n71 = p0; for (uint32_t a0i = 0; a0i < n68; a0i++) { n71 = a0_cemit(n71, a0i, (*n46), (*n47), (*n40), (*n41), (*n42), (*n48), (*n20), n59, n50, n70, p4, n29, n69); } (void)n71;
-  a0t58 n72; n72.f0 = n71; n72.f1 = n66; n72.f2 = (*n49); n72.f3 = n29; (void)n72;
-  return n72;
+  a0t48 n39 = a0_pass5((*n32), (*n33), p1, (*n1), (*n6), (*n7), n3, n37, n38, 0u); (void)n39;
+  const a0t20 *const n40 = &n39.f0; (void)n40;
+  const a0t11 *const n41 = &n39.f1; (void)n41;
+  const a0t24 *const n42 = &n39.f2; (void)n42;
+  uint32_t n43 = n39.f5; (void)n43;
+  a0t49 n44 = a0_bodyargs((*n42), n43, (*n32), (*n33), p1, (*n1), (*n6), (*n7), n3, n37, n38); (void)n44;
+  uint32_t n45 = n4.f7; (void)n45;
+  uint32_t n46 = n4.f8; (void)n46;
+  uint32_t n47 = n19.f1; (void)n47;
+  uint32_t n48 = n21.f19; (void)n48;
+  uint32_t n49 = n21.f5; (void)n49;
+  uint32_t n50 = n21.f6; (void)n50;
+  uint32_t n51 = n39.f4; (void)n51;
+  bool n52 = a0_fecap((*n1), n3, n45, n47, n46, n48, n49, n50, n51, n43); (void)n52;
+  uint32_t n53 = n39.f8; (void)n53;
+  uint32_t n54 = (n52 ? 4u : n53); (void)n54;
+  uint32_t n55 = a0_cumin(p4, n29); (void)n55;
+  a0t56 n56 = a0_checkir((*n22), (*n23), (*n40), (*n41), n44, p3, n25, n26, n29, n55); (void)n56;
+  const a0t26 *const n57 = &n56.f0; (void)n57;
+  const a0t22 *const n58 = &n56.f2; (void)n58;
+  const a0t51 *const n59 = &n56.f4; (void)n59;
+  const a0t50 *const n60 = &n56.f7; (void)n60;
+  uint32_t n61 = n56.f8; (void)n61;
+  uint32_t n62 = n56.f10; (void)n62;
+  uint32_t n63 = a0_add(n9, 127u); (void)n63;
+  uint32_t n64 = a0_shr(n63, 7u); (void)n64;
+  a0t21 n65 = a0_z64(); (void)n65;
+  a0t61 n66; n66.f0 = n65; n66.f1 = 0u; (void)n66;
+  for (uint32_t a0i = 0; a0i < n64; a0i++) { a0o_cstpg(&n66, a0i, (*n5)); }
+  const a0t21 *const n68 = &n66.f0; (void)n68;
+  a0t17 n69 = a0_z16(); (void)n69;
+  a0t17 n70 = n69; for (uint32_t a0i = 0; a0i < n29; a0i++) { a0o_cfnm(&n70, a0i, (*n40), (*n5), (*n68)); } (void)n70;
+  bool n71 = a0_ne(n61, n25); (void)n71;
+  bool n72 = (n71 && p5); (void)n72;
+  bool n73 = a0_eq(n54, 0u); (void)n73;
+  uint32_t n74 = (n72 ? 5u : 0u); (void)n74;
+  bool n75 = a0_eq(n62, 0u); (void)n75;
+  uint32_t n76 = (n75 ? n74 : n62); (void)n76;
+  uint32_t n77 = (n73 ? n76 : n54); (void)n77;
+  bool n78 = a0_eq(n77, 0u); (void)n78;
+  uint32_t n79 = (n78 ? 1u : 0u); (void)n79;
+  uint32_t n80 = (p6 ? 1u : 0u); (void)n80;
+  uint32_t n81 = (p6 ? 3u : n61); (void)n81;
+  a0_io * n82 = p0; for (uint32_t a0i = 0; a0i < n79; a0i++) { n82 = a0_cemit(n82, a0i, (*n57), (*n58), (*n40), (*n41), n44, (*n59), (*n20), n70, n61, n81, p4, n29, n80); } (void)n82;
+  a0t62 n83; n83.f0 = n82; n83.f1 = n77; n83.f2 = (*n60); n83.f3 = n29; (void)n83;
+  return n83;
 }
 
-a0t59 a0_rdword(a0_io * p0) {
-  a0t59 n0; n0.f0 = p0->position < p0->ninput ? p0->input[p0->position++] : 0u; n0.f1 = p0; (void)n0;
+a0t63 a0_rdword(a0_io * p0) {
+  a0t63 n0; n0.f0 = p0->position < p0->ninput ? p0->input[p0->position++] : 0u; n0.f1 = p0; (void)n0;
   return n0;
 }
 
-a0t60 a0_rdfst(a0t60 p0, uint32_t p1) {
-  const a0t46 *const n0 = &p0.f0; (void)n0;
+a0t64 a0_rdfst(a0t64 p0, uint32_t p1) {
+  const a0t50 *const n0 = &p0.f0; (void)n0;
   a0_io * n1 = p0.f1; (void)n1;
-  a0t59 n2 = a0_rdword(n1); (void)n2;
+  a0t63 n2 = a0_rdword(n1); (void)n2;
   uint32_t n3 = n2.f0; (void)n3;
   a0_io * n4 = n2.f1; (void)n4;
   uint32_t n5 = a0_shr(p1, 7u); (void)n5;
   uint32_t n6 = a0_and(p1, 127u); (void)n6;
-  const a0t4 *const n7 = &(*n0).e[n5 % 8u]; (void)n7;
-  a0t4 n8 = (*n7); n8.e[n6 % 128u] = n3; (void)n8;
-  a0t46 n9 = (*n0); n9.e[n5 % 8u] = n8; (void)n9;
-  a0t60 n10; n10.f0 = n9; n10.f1 = n4; (void)n10;
+  const a0t5 *const n7 = &(*n0).e[n5 % 8u]; (void)n7;
+  a0t5 n8 = (*n7); n8.e[n6 % 128u] = n3; (void)n8;
+  a0t50 n9 = (*n0); n9.e[n5 % 8u] = n8; (void)n9;
+  a0t64 n10; n10.f0 = n9; n10.f1 = n4; (void)n10;
   return n10;
 }
 
-static inline void a0o_rdfst(a0t60 *p0, uint32_t p1) {
-  const a0t46 *const n0 = &(*p0).f0; (void)n0;
+static inline void a0o_rdfst(a0t64 *p0, uint32_t p1) {
+  const a0t50 *const n0 = &(*p0).f0; (void)n0;
   a0_io * n1 = (*p0).f1; (void)n1;
-  a0t59 n2 = a0_rdword(n1); (void)n2;
+  a0t63 n2 = a0_rdword(n1); (void)n2;
   uint32_t n3 = n2.f0; (void)n3;
   a0_io * n4 = n2.f1; (void)n4;
   uint32_t n5 = a0_shr(p1, 7u); (void)n5;
   uint32_t n6 = a0_and(p1, 127u); (void)n6;
-  const a0t4 *const n7 = &(*n0).e[n5 % 8u]; (void)n7;
-  a0t4 n8 = (*n7); n8.e[n6 % 128u] = n3; (void)n8;
-  a0t46 n9 = (*n0); n9.e[n5 % 8u] = n8; (void)n9;
-  a0t60 n10; n10.f0 = n9; n10.f1 = n4; (void)n10;
+  const a0t5 *const n7 = &(*n0).e[n5 % 8u]; (void)n7;
+  a0t5 n8 = (*n7); n8.e[n6 % 128u] = n3; (void)n8;
+  a0t50 n9 = (*n0); n9.e[n5 % 8u] = n8; (void)n9;
+  a0t64 n10; n10.f0 = n9; n10.f1 = n4; (void)n10;
   *p0 = n10;
 }
 
-a0_io * a0_wfst(a0_io * p0, uint32_t p1, a0t46 p2, uint32_t p3) {
+a0_io * a0_wfst(a0_io * p0, uint32_t p1, a0t50 p2, uint32_t p3) {
   uint32_t n0 = a0_add(p3, p1); (void)n0;
   uint32_t n1 = a0_shr(n0, 7u); (void)n1;
   uint32_t n2 = a0_and(n0, 127u); (void)n2;
-  const a0t4 *const n3 = &p2.e[n1 % 8u]; (void)n3;
+  const a0t5 *const n3 = &p2.e[n1 % 8u]; (void)n3;
   uint32_t n4 = (*n3).e[n2 % 128u]; (void)n4;
   a0_io * n5 = a0_write(p0, n4); (void)n5;
   return n5;
 }
 
-a0_io * a0_wtrail(a0_io * p0, uint32_t p1, a0t46 p2, uint32_t p3, uint32_t p4) {
+a0_io * a0_wtrail(a0_io * p0, uint32_t p1, a0t50 p2, uint32_t p3, uint32_t p4) {
   uint32_t n0 = a0_sub(p4, p3); (void)n0;
   a0_io * n1 = p0; for (uint32_t a0i = 0; a0i < n0; a0i++) { n1 = a0_wfst(n1, a0i, p2, p3); } (void)n1;
   a0_io * n2 = a0_write(n1, n0); (void)n2;
   return n2;
 }
 
-a0t61 a0_rdchunk(a0_io * p0) {
-  a0t13 n0 = a0_readsrc(p0); (void)n0;
-  const a0t9 *const n1 = &n0.f0; (void)n1;
+a0t65 a0_rdchunk(a0_io * p0) {
+  a0t16 n0 = a0_readsrc(p0); (void)n0;
+  const a0t4 *const n1 = &n0.f0; (void)n1;
   uint32_t n2 = n0.f1; (void)n2;
   a0_io * n3 = n0.f2; (void)n3;
-  a0t59 n4 = a0_rdword(n3); (void)n4;
+  a0t63 n4 = a0_rdword(n3); (void)n4;
   uint32_t n5 = n4.f0; (void)n5;
   a0_io * n6 = n4.f1; (void)n6;
-  a0t59 n7 = a0_rdword(n6); (void)n7;
+  a0t63 n7 = a0_rdword(n6); (void)n7;
   uint32_t n8 = n7.f0; (void)n8;
   a0_io * n9 = n7.f1; (void)n9;
-  a0t59 n10 = a0_rdword(n9); (void)n10;
+  a0t63 n10 = a0_rdword(n9); (void)n10;
   uint32_t n11 = n10.f0; (void)n11;
   a0_io * n12 = n10.f1; (void)n12;
-  a0t46 n13 = a0_z8(); (void)n13;
-  a0t60 n14; n14.f0 = n13; n14.f1 = n12; (void)n14;
+  a0t50 n13 = a0_z8(); (void)n13;
+  a0t64 n14; n14.f0 = n13; n14.f1 = n12; (void)n14;
   for (uint32_t a0i = 0; a0i < n11; a0i++) { a0o_rdfst(&n14, a0i); }
-  const a0t46 *const n16 = &n14.f0; (void)n16;
+  const a0t50 *const n16 = &n14.f0; (void)n16;
   a0_io * n17 = n14.f1; (void)n17;
   bool n18 = a0_ne(n8, 0u); (void)n18;
   bool n19 = a0_ne(n5, 0u); (void)n19;
-  a0t61 n20; n20.f0 = (*n1); n20.f1 = n2; n20.f2 = (*n16); n20.f3 = n11; n20.f4 = n18; n20.f5 = n19; n20.f6 = n17; (void)n20;
+  a0t65 n20; n20.f0 = (*n1); n20.f1 = n2; n20.f2 = (*n16); n20.f3 = n11; n20.f4 = n18; n20.f5 = n19; n20.f6 = n17; (void)n20;
   return n20;
 }
 
 uint32_t a0_emitchunkio(a0_io * p0) {
-  a0t61 n0 = a0_rdchunk(p0); (void)n0;
-  const a0t9 *const n1 = &n0.f0; (void)n1;
+  a0t65 n0 = a0_rdchunk(p0); (void)n0;
+  const a0t4 *const n1 = &n0.f0; (void)n1;
   uint32_t n2 = n0.f1; (void)n2;
-  const a0t46 *const n3 = &n0.f2; (void)n3;
+  const a0t50 *const n3 = &n0.f2; (void)n3;
   uint32_t n4 = n0.f3; (void)n4;
   bool n5 = n0.f4; (void)n5;
   bool n6 = n0.f5; (void)n6;
   a0_io * n7 = n0.f6; (void)n7;
-  a0t58 n8 = a0_cunit(n7, (*n1), n2, (*n3), n4, n5, n6); (void)n8;
+  a0t62 n8 = a0_cunit(n7, (*n1), n2, (*n3), n4, n5, n6); (void)n8;
   a0_io * n9 = n8.f0; (void)n9;
   uint32_t n10 = n8.f1; (void)n10;
-  const a0t46 *const n11 = &n8.f2; (void)n11;
+  const a0t50 *const n11 = &n8.f2; (void)n11;
   uint32_t n12 = n8.f3; (void)n12;
   bool n13 = a0_eq(n10, 0u); (void)n13;
   uint32_t n14 = (n13 ? 1u : 0u); (void)n14;
