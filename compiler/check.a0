@@ -60,7 +60,7 @@ g gt p0 p1
 r select g p0 p1
 ret r
 end
-# arity of an operation, 4294967295 for call fold loop arr rec text
+# arity of an operation (the checked operations 32 to 37 take two), 4294967295 for call fold loop arr rec text
 fn arity u32 -> u32
 o1 eq p0 1
 o29 eq p0 29
@@ -75,7 +75,11 @@ o31 eq p0 31
 two1 or two0 o25
 two2 or two1 o27
 two3 or two2 o30
-two or two3 o31
+two4 or two3 o31
+o32 ge p0 32
+o37 le p0 37
+chk and o32 o37
+two or two4 chk
 o18 eq p0 18
 o26 eq p0 26
 o28 eq p0 28
@@ -411,7 +415,11 @@ a24 and o2 o4
 o8 ge op 8
 o11 le op 11
 a811 and o8 o11
-isarith or a24 a811
+isarith0 or a24 a811
+o32 ge op 32
+o36 le op 36
+ischka and o32 o36
+isarith or isarith0 ischka
 o5 ge op 5
 o7 le op 7
 islog and o5 o7
@@ -438,6 +446,8 @@ isatp or isat isput
 isread eq op 29
 iswrite eq op 30
 isputs eq op 31
+iscget eq op 37
+ischk or ischka iscget
 # arity
 ar call arity op
 var eq ar 4294967295
@@ -730,6 +740,10 @@ getbad and isget getbad0
 t2ne0 ne t2 tb0
 setbad0 or getbad0 t2ne0
 setbad and isset setbad0
+# cget: an array of u32 (the element type 0) and a u32 index
+cgb0 ne tb0 0
+cgb1 or getbad0 cgb0
+cgetbad and iscget cgb1
 readbad and isread notio0
 writebad0 or notio0 notu1
 writebad and iswrite writebad0
@@ -775,31 +789,37 @@ rwide gt rbits 2097152
 recio eq nio 0
 reclim0 and rwide recio
 reclim and isrec reclim0
-# read yields (u32,io)
+# read yields (u32,io), the checked operations (u32,bool)
 nt1r add ntlist 1
 rdh shr ntlist 7
 rdl and ntlist 127
 rdg get tlistr rdh
 rdo get rdg rdl
-rdx select isread 0 rdo
+istwo or isread ischk
+rdx select istwo 0 rdo
 rdg2 set rdg rdl rdx
 tlr0 set tlistr rdh rdg2
 rdh1 shr nt1r 7
 rdl1 and nt1r 127
 rdg1 get tlr0 rdh1
 rdo1 get rdg1 rdl1
-rdx1 select isread 2 rdo1
+rdx1c select ischk 1 rdo1
+rdx1 select isread 2 rdx1c
 rdg12 set rdg1 rdl1 rdx1
 tlists set tlr0 rdh1 rdg12
-cnt select isread 2 nargs
+cnt select istwo 2 nargs
 rdhash0 xor 2166136261 0
 rdhash1 mul rdhash0 16777619
 rdhash2 xor rdhash1 2
 rdhash3 mul rdhash2 16777619
-rhash select isread rdhash3 rhs
+chash2 xor rdhash1 1
+chash3 mul chash2 16777619
+rhash0 select isread rdhash3 rhs
+rhash select ischk chash3 rhash0
 sgx xor rhash cnt
 sig mul sgx 16777619
-wantrec or isrec isread
+wantrec0 or isrec isread
+wantrec or wantrec0 ischk
 rn select wantrec 1 0
 ridx fold recone rn 4294967295 types tsig tlists ntypes ntlist cnt sig
 n127 add ntypes 127
@@ -839,7 +859,8 @@ ntlist2 select addrec ntl2 ntlist
 recio1 gt nio 0
 recio2 select recio1 1 0
 ior select isread 1 recio2
-bitsr select isread 32 rbits
+bitsc select ischk 33 rbits
+bitsr select isread 32 bitsc
 newio select wantrec ior elemio
 newbits select wantrec bitsr abits
 niw mul newio 2147483648
@@ -922,7 +943,8 @@ tybad0 or arithbad logbad
 tybad1 or tybad0 cmpbad
 tybad2 or tybad1 selbad
 tybad3 or tybad2 getbad
-tybad4 or tybad3 setbad
+tybad4a or tybad3 setbad
+tybad4 or tybad4a cgetbad
 tybad5 or tybad4 readbad
 tybad6 or tybad5 writebad
 tybad7 or tybad6 putsbad

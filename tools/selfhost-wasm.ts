@@ -44,6 +44,7 @@ import {
   compile,
 } from '../src/backends.js';
 import {
+  assertTargetSupports,
   type Func,
   formatFunction,
   formatProgram,
@@ -949,6 +950,8 @@ export function a0WasmFromTables(
   optimize = false,
   options: EmitOptions = {},
 ): ModuleRun {
+  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  assertTargetSupports('a0w', source);
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
   const fns = program.functions;
@@ -1066,6 +1069,8 @@ export function a0WasmFromSource(
   optimize = false,
   options: EmitOptions = {},
 ): { bytes?: Uint8Array; code: number; chunks: number; runs: number; failed?: Chunk } {
+  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  assertTargetSupports('a0w', source);
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
   const fns = program.functions;

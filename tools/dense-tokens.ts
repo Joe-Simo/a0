@@ -17,7 +17,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getEncoding } from 'js-tiktoken';
-import { formatProgram, OPS, type Program, parse } from '../src/core.js';
+import { ALL_OPS, formatProgram, type Program, parse } from '../src/core.js';
 import { type Arities, type DenseStyle, formatDense, normalizeProgram } from '../src/dense.js';
 import { parseFile } from '../src/link.js';
 import { generateCorpus } from './corpus.js';
@@ -41,13 +41,14 @@ export const TOKEN_KERNELS: readonly string[] = [
   'loop64',
 ];
 
-const OPSET = new Set<string>([...OPS, 'udiv', 'urem', '<<', '>>']);
+const OPSET = new Set<string>([...ALL_OPS, 'udiv', 'urem', '<<', '>>']);
 const NUMBER = /^(0|[1-9][0-9]*)$/;
 
 function classify(
   word: string,
-  c: { afterFn: boolean; first: boolean; canonical: boolean },
+  c: { afterFn: boolean; first: boolean; canonical: boolean; directive: boolean },
 ): string {
+  if (c.directive) return 'directive';
   if (c.afterFn) return 'fn name';
   if (word === 'fn') return 'fn keyword';
   if (word === 'end') return 'end';
@@ -74,6 +75,8 @@ export function attribute(text: string, canonical: boolean): Record<string, numb
         afterFn: wi === 1 && words[0]?.w === 'fn',
         first: wi === 0,
         canonical,
+        // the whole line `profile strict` (the strict profile's directive, first line of a file)
+        directive: words.length === 2 && words[0]?.w === 'profile' && words[1]?.w === 'strict',
       });
       const before = words[wi - 1]?.w;
       if (

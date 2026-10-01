@@ -93,6 +93,7 @@ export function refLex(src: string): number[] {
 /** The word IR of DESIGN.md 7a as produced by compiler/parse.a0. */
 export interface WordIr {
   readonly code: number;
+  /** The token of the diagnostic when `code` is not 0; otherwise the profile: 1 for `profile strict`, 0 canonical. */
   readonly tok: number;
   readonly pool: number[];
   readonly sym: number[];
@@ -136,6 +137,12 @@ export const IR_OPS = [
   'read',
   'write',
   'puts',
+  'cadd',
+  'csub',
+  'cmul',
+  'cdiv',
+  'crem',
+  'cget',
 ] as const;
 
 /** Accepted op spellings: udiv is div, urem is rem. */
@@ -185,7 +192,10 @@ export function refParse(src: string): WordIr {
   const b = [...Buffer.from(src)];
   const t = refLex(src);
   const ntok = t.length / 3;
-  const kind = (i: number): number => (i >= 0 && i < ntok ? (t[i * 3] as number) : 5);
+  /** The tokens of a valid `profile strict` first line: blank lines to the passes after it. */
+  const blank = new Set<number>();
+  const kind = (i: number): number =>
+    i >= 0 && i < ntok && !blank.has(i) ? (t[i * 3] as number) : 5;
   const start = (i: number): number => t[i * 3 + 1] as number;
   const len = (i: number): number => t[i * 3 + 2] as number;
   const bytes = (i: number): number[] => b.slice(start(i), start(i) + len(i));
@@ -230,6 +240,25 @@ export function refParse(src: string): WordIr {
     tsym[i] = found;
   }
   const symAt = (i: number): number => tsym[i] as number;
+
+  // the profile directive: the first token that is not a newline is the word `profile`, then
+  // the word `strict`, then the end of the line; anything else after `profile` is a parse error
+  // at the first token that is not as expected (the lexer's kinds: a newline is 5)
+  let strict = false;
+  {
+    let ft = 0;
+    while (ft < ntok && kind(ft) === 5) ft += 1;
+    const word = (i: number): string => (kind(i) === 1 ? String.fromCharCode(...bytes(i)) : '');
+    if (word(ft) === 'profile') {
+      if (word(ft + 1) !== 'strict') fail(1, ft + 1);
+      else if (kind(ft + 2) !== 5) fail(1, ft + 2);
+      else {
+        strict = true;
+        blank.add(ft);
+        blank.add(ft + 1);
+      }
+    }
+  }
 
   // pass 2: use lines
   const uses: number[] = [];
@@ -560,7 +589,7 @@ export function refParse(src: string): WordIr {
     if (err === undefined && mode !== 0 && mode !== 9) fail(1, ntok);
   }
 
-  const [code, tok] = err ?? [0, 0];
+  const [code, tok] = err ?? [0, strict ? 1 : 0];
   return { code, tok, pool, sym, types, tlist, fns, nodes, args, uses };
 }
 
@@ -568,7 +597,7 @@ export function refParse(src: string): WordIr {
 export function irWords(ir: WordIr): number[] {
   const tables = [ir.pool, ir.sym, ir.types, ir.tlist, ir.fns, ir.nodes, ir.args, ir.uses];
   if (ir.code !== 0) return [ir.code, ir.tok, ...tables.map(() => 0)];
-  return [0, 0, ...tables.flatMap((t) => [t.length, ...t])];
+  return [0, ir.tok, ...tables.flatMap((t) => [t.length, ...t])];
 }
 
 /** Well-formed prefix of an A0 source: at most `limit` bytes, cut after the last `end` line. */
@@ -684,6 +713,10 @@ export function refSuggest(src: string, tok: number): number[] {
   else if (pos === 3) rule = w1 === 'loop' ? 103 : 101;
   else rule = 101;
   if (RESERVED_WORDS.includes(name) || (rule === 101 && /^p[0-9]+$/.test(name))) rule = 0;
+  // the tokens after `profile` on the first line of the file are the directive's, not names
+  let ft = 0;
+  while (ft < ntok && kind(ft) === 5) ft += 1;
+  if (w0 === 'profile' && ls === ft && tok > ls) rule = 0;
   // typed words are not "unexpected": a type word the parser already starts reading
   if (rule === 1 && SUGGEST_NAMES.slice(SUGGEST_OPS).some((w) => name.startsWith(w))) rule = 0;
   if (rule === 0) return none;

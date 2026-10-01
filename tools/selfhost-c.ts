@@ -14,6 +14,7 @@ import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import { C_IO_INPUT_CAPACITY, C_IO_OUTPUT_CAPACITY, compile } from '../src/backends.js';
 import {
+  assertTargetSupports,
   type Func,
   makeIo,
   type Operand,
@@ -194,6 +195,8 @@ export function selfHostedC(
   emitter: TypedProgram,
   program: TypedProgram,
 ): { text: string; chunks: number } {
+  // the A0 emitter implements the canonical profile and no checked op (as its drivers refuse)
+  assertTargetSupports('a0c', program);
   const check = emitter.byName.get('check') as TypedFunc;
   const emitc = emitter.byName.get('emitc') as TypedFunc;
   const fns = program.functions;

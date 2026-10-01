@@ -631,7 +631,13 @@ bh at bg 0
 bi call z16
 bj fold cfnm ad bi ao f bh
 bk eq a3 0
-bl select bk bb a3
+rf0 select bk bb a3
+# a strict program or a checked op: no emitter implements them (structure, A0713)
+rfp at e 16
+rfu call refuse rfp ap a0
+rfz eq rf0 0
+rfr and rfz rfu
+bl select rfr 2 rf0
 bm eq bl 0
 bn select bm 1 0
 afix fold wsstub p7 ao p8

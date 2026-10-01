@@ -333,6 +333,38 @@ r1 and r0 eb
 r and r1 ec
 ret r
 end
+# the word `profile` of 7 bytes at p1
+fn sg_isprofile u32x512x64 u32 u32 -> bool
+l eq p2 7
+a call sg_srcb p0 p1
+s1 add p1 1
+b call sg_srcb p0 s1
+s2 add p1 2
+c call sg_srcb p0 s2
+s3 add p1 3
+d call sg_srcb p0 s3
+s4 add p1 4
+e call sg_srcb p0 s4
+s5 add p1 5
+f call sg_srcb p0 s5
+s6 add p1 6
+g call sg_srcb p0 s6
+ea eq a 112
+eb eq b 114
+ec eq c 111
+ed eq d 102
+ee eq e 105
+ef eq f 108
+eg eq g 101
+r0 and l ea
+r1 and r0 eb
+r2 and r1 ec
+r3 and r2 ed
+r4 and r3 ee
+r5 and r4 ef
+r and r5 eg
+ret r
+end
 fn sg_isw4 u32x512x64 u32 u32 u32 u32 u32 u32 -> bool
 l eq p2 4
 a call sg_srcb p0 p1
@@ -376,11 +408,12 @@ r0 and isp one
 r and r0 dg
 ret r
 end
-# the context of a token: (line start, header token of its function); state of the fold over the
-# tokens before it
-fn sg_ctxstep (u32,u32) u32 u32x128x384 u32x512x64 -> (u32,u32)
+# the context of a token: (line start, header token of its function, first token that is not a
+# newline); state of the fold over the tokens before it
+fn sg_ctxstep (u32,u32,u32) u32 u32x128x384 u32x512x64 -> (u32,u32,u32)
 ls at p0 0
 fs at p0 1
+ft at p0 2
 tk call sg_tokat p2 p1
 kind at tk 0
 st at tk 1
@@ -394,7 +427,11 @@ isfn call sg_isw2 p3 st len 102 110
 w0 and bol one
 w1 and w0 isfn
 fs2 select w1 p1 fs
-r rec ls2 fs2
+noft eq ft 4294967295
+notnl select isnl false true
+firstft and noft notnl
+ft2 select firstft p1 ft
+r rec ls2 fs2 ft2
 ret r
 end
 # one pass over the tokens for a name; p0 the search state, p1 the token, p2 toks, p3 src, p4 the
@@ -526,10 +563,11 @@ ret r2
 end
 # the suggestion for the name at token p4: (rule, mode, length, bytes)
 fn sg_sugg u32x512x64 u32 u32x128x384 u32 u32 -> (u32,u32,u32,u32x64,u32,u32)
-c0 rec 0 0
+c0 rec 0 0 4294967295
 c fold sg_ctxstep p4 c0 p2 p0
 ls at c 0
 fs at c 1
+ft at c 2
 tkt call sg_tokat p2 p4
 kt at tkt 0
 st at tkt 1
@@ -541,7 +579,18 @@ nfit1 gt nl 0
 nfit and nfit0 nfit1
 rule0 call sg_rulefor p0 p2 p4 ls fs
 c1 and nid nfit
-rulea select c1 rule0 0
+rulea0 select c1 rule0 0
+# a token of the line `profile strict` (the first line of the file) is not an unknown name: its
+# errors are the directive's own
+lst call sg_tokat p2 ls
+lsst at lst 1
+lsln at lst 2
+pdir call sg_isprofile p0 lsst lsln
+onft eq ls ft
+after gt p4 ls
+pl0 and pdir onft
+pline and pl0 after
+rulea select pline 0 rulea0
 tsec call sg_names
 rsv call sg_inrows 35 6 nm nl
 param call sg_isparam p0 st nl

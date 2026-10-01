@@ -1616,7 +1616,13 @@ pok eq pcode 0
 c1 select added 5 0
 cok eq cerr 0
 c2 select cok c1 cerr
-code select pok c2 pcode
+code0 select pok c2 pcode
+# a strict program or a checked op: no emitter implements them (structure, A0713)
+prof at s1 16
+unsup call refuse prof nodes fcn
+ok0 eq code0 0
+ref and ok0 unsup
+code select ref 2 code0
 ok eq code 0
 go select ok 1 0
 hw select p6 1 0

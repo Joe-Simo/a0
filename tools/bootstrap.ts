@@ -199,6 +199,9 @@ export function planChunks(src: string): Chunk[] {
   // A source within every capacity of the front end is one chunk, as written.
   if (program === undefined || frontEndFits(src)) return whole;
   const fns = program.functions;
+  // every chunk of a strict program is itself strict, so that the compiler refuses it (code 2)
+  // as it refuses the whole program, instead of compiling the chunk as canonical
+  const directive = program.profile === 'strict' ? 'profile strict\n' : '';
   if ((program.uses?.length ?? 0) > 0) throw new Error('chunked mode needs a linked source');
   if (fns.some((f) => f.name === PRELUDE)) throw new Error(`a function is named ${PRELUDE}`);
   const types: string[] = [];
@@ -218,7 +221,7 @@ export function planChunks(src: string): Chunk[] {
           if (i !== undefined && (i < from || i >= to)) called.add(i);
         }
     const stubs = [...called].sort((a, b) => a - b).map((i) => fns[i] as Func);
-    const source = [prelude, ...stubs.map(stubOf), ...text.slice(from, to)].join('');
+    const source = [directive, prelude, ...stubs.map(stubOf), ...text.slice(from, to)].join('');
     return {
       source,
       head: from === 0,

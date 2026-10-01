@@ -23,8 +23,8 @@
 #   3 headers: types, tlist and one entry per header (name token, name, nparams, first, result)
 #   4 functions: fns and the name map, duplicate names
 #   5 bodies: nodes and args, operands and callees resolved through the name map
-# Per token: ta = kind | kw<<4 | op<<7 | isparam<<12 | digits<<13 | tyword<<14 | arrword<<16 |
-# punct<<17 | sym<<19 and tv = the value of a number (all bytes) or parameter (after the p), or
+# Per token: ta = kind | wc<<4 | isparam<<10 | digits<<11 | tyword<<12 | arrword<<14 | punct<<15 |
+# sym<<17 (wc the word class: a keyword 1..7, or 7 + the operation code, 1..37) and tv = the value of a number (all bytes) or parameter (after the p), or
 # the decoded length of a string. Words of at most six bytes [a-z0-9_] are recognized by an
 # exact packing (base 37, code 1..37 per byte), so a keyword is one comparison.
 
@@ -166,7 +166,21 @@ k32 eq p0 1126856
 r32 select k32 10 r31
 k33 eq p0 666021
 r33 select k33 11 r32
-ret r33
+# the checked operations (cadd csub cmul cdiv crem cget), 32 to 37: valid in both profiles, never
+# trapping, a (u32,bool) result; no emitter implements them (the drivers refuse them)
+k34 eq p0 208128
+r34 select k34 32 r33
+k35 eq p0 130761
+r35 select k35 33 r34
+k36 eq p0 637069
+r36 select k36 34 r35
+k37 eq p0 1126838
+r37 select k37 35 r36
+k38 eq p0 666003
+r38 select k38 36 r37
+k39 eq p0 1020167
+r39 select k39 37 r38
+ret r39
 end
 # --- pass 1: tokens ------------------------------------------------------------------
 # one byte of a token: (key pow hash value digits wordlike esc decoded arrprefix boolprefix)
@@ -350,7 +364,7 @@ end
 # (hash swin tapg tvpg uwin hwin npool nsym nuses seenfn umode err errtok prevk inhdr nhdr
 #  sbase ubase hbase); swin uwin hwin are windows over sinfo (srcstart*32768 + len per
 # symbol), uses and hdrs (first token, count) from words sbase ubase hbase
-fn p1tok (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x3 u32 -> (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+fn p1tok (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x3 u32 -> (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 hash at p0 0
 swin at p0 1
 tapg at p0 2
@@ -370,6 +384,7 @@ nhdr at p0 15
 sbase at p0 16
 ubase at p0 17
 hbase at p0 18
+ft at p0 19
 i add p4 p1
 w0 mul p1 3
 wh0 shr w0 7
@@ -547,22 +562,24 @@ npool2 select new np2 npool
 nsym2 select new ns1 nsym
 tsym select isw fsym 0
 # ta and tv
-t4 shl kw 4
-t7 shl op 7
-pb select par 4096 0
-db select dig 8192 0
-t14 shl ty 14
-ab select arrw 65536 0
-t17 shl pu 17
-t19 shl tsym 19
+isopw gt op 0
+op7 add op 7
+opw select isopw op7 0
+wc add kw opw
+t4 shl wc 4
+pb select par 1024 0
+db select dig 2048 0
+t12 shl ty 12
+ab select arrw 16384 0
+t15 shl pu 15
+t17 shl tsym 17
 ta0 or kind t4
-ta1 or ta0 t7
-ta2 or ta1 pb
-ta3 or ta2 db
-ta4 or ta3 t14
-ta5 or ta4 ab
-ta6 or ta5 t17
-ta or ta6 t19
+ta1 or ta0 pb
+ta2 or ta1 db
+ta3 or ta2 t12
+ta4 or ta3 ab
+ta5 or ta4 t15
+ta or ta5 t17
 tv select k3 dc val
 tapg2 set tapg p1 ta
 tvpg2 set tvpg p1 tv
@@ -646,12 +663,17 @@ nhdr2 select newc nhdr1 nhdr
 notnl select k5 false true
 inh3 and inh2 notnl
 inhdr2 select inh3 1 0
-r rec hash2 swin2 tapg2 tvpg2 uwin2 hwin2 npool2 nsym2 nuses2 seen2 mo3 err2 et2 kind inhdr2 nhdr2 sbase ubase hbase
+# the index of the first token that is not a newline (the line of a `profile` directive)
+noft eq ft 4294967295
+notk5ft select k5 false true
+firstft and noft notk5ft
+ft2 select firstft i ft
+r rec hash2 swin2 tapg2 tvpg2 uwin2 hwin2 npool2 nsym2 nuses2 seen2 mo3 err2 et2 kind inhdr2 nhdr2 sbase ubase hbase ft2
 ret r
 end
 # one page of tokens: state (hash sinfo ta tv uses hdrs npool nsym nuses seenfn umode err
 # errtok prevk inhdr nhdr)
-fn p1page (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+fn p1page (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 hash at p0 0
 sinfo at p0 1
 ta at p0 2
@@ -668,6 +690,7 @@ errtok at p0 12
 prevk at p0 13
 inhdr at p0 14
 nhdr at p0 15
+ft at p0 16
 base mul p1 128
 rest sub p4 base
 big gt rest 128
@@ -702,7 +725,7 @@ hw0 get hdrs hp
 hw1 get hdrs hp1
 hw2 get hdrs hp2
 hwin arr hw0 hw1 hw2
-s0 rec hash swin tapg tvpg uwin hwin npool nsym nuses seenfn umode err errtok prevk inhdr nhdr sbase ubase hbase
+s0 rec hash swin tapg tvpg uwin hwin npool nsym nuses seenfn umode err errtok prevk inhdr nhdr sbase ubase hbase ft
 s fold p1tok cnt s0 p2 grp base
 swin2 at s 1
 v0 get swin2 0
@@ -748,10 +771,160 @@ x12 at s 12
 x13 at s 13
 x14 at s 14
 x15 at s 15
-r rec x0 sinfo2 ta2 tv2 uses2 hdrs3 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
+x16 at s 19
+r rec x0 sinfo2 ta2 tv2 uses2 hdrs3 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
 ret r
 end
-fn pass1 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+# the byte p3 of the word at offset p2 of the page p0 (p1 the next page)
+fn dirbyte u32x128 u32x128 u32 u32 -> u32
+q add p2 p3
+ql and q 127
+qh shr q 7
+a get p0 ql
+b get p1 ql
+first eq qh 0
+r select first a b
+ret r
+end
+# the word "profile" (7 bytes) or "strict" (6) at offset p2 of the page p0 (p1 the next page)
+fn isprofile u32x128 u32x128 u32 -> bool
+b0 call dirbyte p0 p1 p2 0
+b1 call dirbyte p0 p1 p2 1
+b2 call dirbyte p0 p1 p2 2
+b3 call dirbyte p0 p1 p2 3
+b4 call dirbyte p0 p1 p2 4
+b5 call dirbyte p0 p1 p2 5
+b6 call dirbyte p0 p1 p2 6
+e0 eq b0 112
+e1 eq b1 114
+e2 eq b2 111
+e3 eq b3 102
+e4 eq b4 105
+e5 eq b5 108
+e6 eq b6 101
+a0 and e0 e1
+a1 and a0 e2
+a2 and a1 e3
+a3 and a2 e4
+a4 and a3 e5
+r and a4 e6
+ret r
+end
+fn isstrict u32x128 u32x128 u32 -> bool
+b0 call dirbyte p0 p1 p2 0
+b1 call dirbyte p0 p1 p2 1
+b2 call dirbyte p0 p1 p2 2
+b3 call dirbyte p0 p1 p2 3
+b4 call dirbyte p0 p1 p2 4
+b5 call dirbyte p0 p1 p2 5
+e0 eq b0 115
+e1 eq b1 116
+e2 eq b2 114
+e3 eq b3 105
+e4 eq b4 99
+e5 eq b5 116
+a0 and e0 e1
+a1 and a0 e2
+a2 and a1 e3
+a3 and a2 e4
+r and a3 e5
+ret r
+end
+# token p1 of the table p0: (kind start length); a newline (5 0 0) at or past the token count p2
+fn dirtok u32x128x384 u32 u32 -> (u32,u32,u32)
+w0 mul p1 3
+h0 shr w0 7
+l0 and w0 127
+g0 get p0 h0
+k0 get g0 l0
+w1 add w0 1
+h1 shr w1 7
+l1 and w1 127
+g1 get p0 h1
+s0 get g1 l1
+w2 add w0 2
+h2 shr w2 7
+l2 and w2 127
+g2 get p0 h2
+n0 get g2 l2
+inr lt p1 p2
+k select inr k0 5
+s select inr s0 0
+n select inr n0 0
+r rec k s n
+ret r
+end
+# the token word of the table p0 at token p1 becomes a newline when p2
+fn dirblank u32x128x128 u32 bool -> u32x128x128
+h shr p1 7
+l and p1 127
+g get p0 h
+old get g l
+w select p2 5 old
+g2 set g l w
+r set p0 h g2
+ret r
+end
+# The profile directive: the first token that is not a newline (p3, 4294967295 when there is
+# none) is the word `profile`, then the word `strict`, then the end of the line (the TypeScript
+# parser: the first line of the file is exactly `profile strict`, and the word is nothing else at
+# the top level of a file). p0 the source, p1 the tokens (p4 of them), p2 their words (kind in the
+# low four bits), p5 p6 the error so far. (words with the directive blanked, error, error token,
+# profile): the directive's two tokens read as newlines to the passes after the first; a
+# `profile` first token without `strict` right after it, or with more on the line, is a parse
+# error at the first token that is not as expected (before any error of the use lines, which come
+# later in the file)
+fn dirfix u32x512x64 u32x128x384 u32x128x128 u32 u32 u32 u32 -> (u32x128x128,u32,u32,u32)
+t0 call dirtok p1 p3 p4
+k0 at t0 0
+s0 at t0 1
+n0 at t0 2
+f1 add p3 1
+t1 call dirtok p1 f1 p4
+k1 at t1 0
+s1 at t1 1
+n1 at t1 2
+f2 add p3 2
+t2 call dirtok p1 f2 p4
+k2 at t2 0
+sh0 shr s0 7
+so0 and s0 127
+lo0 call srcpg p0 sh0
+sh0n add sh0 1
+hi0 call srcpg p0 sh0n
+sh1 shr s1 7
+so1 and s1 127
+lo1 call srcpg p0 sh1
+sh1n add sh1 1
+hi1 call srcpg p0 sh1n
+pf call isprofile lo0 hi0 so0
+st call isstrict lo1 hi1 so1
+w0k eq k0 1
+w0n eq n0 7
+w0 and w0k w0n
+isdir and w0 pf
+w1k eq k1 1
+w1n eq n1 6
+w1 and w1k w1n
+hasst and w1 st
+nost select hasst false true
+eol eq k2 5
+noeol select eol false true
+ea and isdir nost
+eb0 and isdir hasst
+eb and eb0 noeol
+okd and eb0 eol
+bad or ea eb
+etk select ea f1 f2
+err2 select bad 1 p5
+et2 select bad etk p6
+ta1 call dirblank p2 p3 okd
+ta2 call dirblank ta1 f1 okd
+prof select okd 1 0
+r rec ta2 err2 et2 prof
+ret r
+end
+fn pass1 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 z128 call zsrc
 z64 call z64
 z32 call z32
@@ -762,9 +935,35 @@ sp set zp 0 6
 sinfo set z64 0 sp
 n127 add p2 127
 np shr n127 7
-s0 rec z128 sinfo z128 z128 z32 z16 6 1 0 0 0 0 0 5 0 0
+s0 rec z128 sinfo z128 z128 z32 z16 6 1 0 0 0 0 0 5 0 0 4294967295
 s fold p1page np s0 p0 p1 p2
-ret s
+x0 at s 0
+x1 at s 1
+x2 at s 2
+x3 at s 3
+x4 at s 4
+x5 at s 5
+x6 at s 6
+x7 at s 7
+x8 at s 8
+x9 at s 9
+x10 at s 10
+x11 at s 11
+x12 at s 12
+x13 at s 13
+x14 at s 14
+x15 at s 15
+x16 at s 16
+# the `profile strict` directive on the first line: its two tokens become blank lines for the
+# later passes, a malformed directive is the first error (a parse error at the token that is not
+# as expected), and the last word is the profile (1 strict)
+d call dirfix p0 p1 x2 x16 p2 x11 x12
+ta2 at d 0
+err2 at d 1
+et2 at d 2
+prof at d 3
+r rec x0 x1 ta2 x3 x4 x5 x6 x7 x8 x9 x10 err2 et2 x13 x14 x15 prof
+ret r
 end
 # --- pass 2: the pool ------------------------------------------------------------------
 # byte p1 of a copy: p2 p3 source pages, p4 offset, p5 offset in the two-page window
@@ -1239,15 +1438,17 @@ wl2 and w2 127
 wg2 get p3 wh2
 len get wg2 wl2
 ta get p4 j
-sym shr ta 19
-kw0 shr ta 4
-kw and kw0 7
-ty0 shr ta 14
+sym shr ta 17
+wc0 shr ta 4
+wc and wc0 63
+iskw lt wc 8
+kw select iskw wc 0
+ty0 shr ta 12
 ty and ty0 3
-aw0 shr ta 16
+aw0 shr ta 14
 aw1 and aw0 1
 aw eq aw1 1
-pu0 shr ta 17
+pu0 shr ta 15
 pu and pu0 3
 k1 eq kind 1
 k4 eq kind 4
@@ -1814,10 +2015,6 @@ abase at p0 20
 j add p8 p1
 i add p5 j
 w0 mul j 3
-wh0 shr w0 7
-wl0 and w0 127
-wg0 get p2 wh0
-kind get wg0 wl0
 w1 add w0 1
 wh1 shr w1 7
 wl1 and w1 127
@@ -1830,6 +2027,8 @@ wg2 get p2 wh2
 len get wg2 wl2
 ta get p3 j
 tv get p4 j
+# the kind is the token word's: the `profile strict` directive's two tokens are newlines there
+kind and ta 15
 # the next token's kind (a newline past the end)
 j1 add j 1
 jl and j1 127
@@ -1841,15 +2040,18 @@ i1 add i 1
 inr lt i1 p7
 nk select inr nk1 5
 nextnl eq nk 5
-kw0 shr ta 4
-kw and kw0 7
-op0 shr ta 7
-op and op0 31
-sym shr ta 19
-pr0 shr ta 12
+wc0 shr ta 4
+wc and wc0 63
+iskw lt wc 8
+kw select iskw wc 0
+isop0 ge wc 8
+op1 sub wc 7
+op select isop0 op1 0
+sym shr ta 17
+pr0 shr ta 10
 pr1 and pr0 1
 isparam eq pr1 1
-dg0 shr ta 13
+dg0 shr ta 11
 dg1 and dg0 1
 dig eq dg1 1
 k1 eq kind 1
@@ -3005,6 +3207,47 @@ b7 or b6 d0
 r or b7 a0
 ret r
 end
+# --- what no emitter implements ---------------------------------------------------------
+# A program in the strict profile, or with a checked operation (cadd csub cmul cdiv crem cget,
+# 32 to 37), parses and checks as the TypeScript front end does, but no emitter of the compiler
+# implements either: the drivers give the structure diagnostic 2 (src/core.ts A0713) for it.
+# found or an operation of the node slot p1 of the page p2 (p3 its first word, p4 the node words)
+fn chkslot u32 u32 u32x128 u32 u32 -> u32
+k0a add p3 4
+k0 div k0a 6
+k add k0 p1
+a0 mul k 6
+a add a0 1
+loc sub a p3
+inpg lt loc 128
+inlim lt a p4
+ok and inpg inlim
+op get p2 loc
+ge32 ge op 32
+le37 le op 37
+c0 and ge32 le37
+c and ok c0
+f select c 1 p0
+ret f
+end
+# page p1 of the nodes p2: the operation word of node k is word 6k+1
+fn chkpage u32 u32 u32x128x128 u32 -> u32
+base mul p1 128
+pg get p2 p1
+r fold chkslot 22 p0 pg base p3
+ret r
+end
+# whether the profile p0 is strict (1) or one of the first p2 nodes of the table p1 is a checked op
+fn refuse u32 u32x128x128 u32 -> bool
+w mul p2 6
+w127 add w 127
+np shr w127 7
+r fold chkpage np 0 p1 w
+chk ne r 0
+st eq p0 1
+res or chk st
+ret res
+end
 # --- writers: page p1 of a table holding p3 words ------------------------------------------
 fn wstep384 io u32 u32x384 -> io
 v get p2 p1
@@ -3173,8 +3416,11 @@ code0 at s5 8
 code select ovr 4 code0
 etok at s5 9
 ok eq code 0
+# the second word: the token of the diagnostic, or the profile (1 strict) when there is none
+prof at s1 16
+etw select ok prof etok
 w0 write t1 code
-w1 write w0 etok
+w1 write w0 etw
 npoolw select ok npool 0
 nsymw0 mul nsym 2
 nsymw select ok nsymw0 0

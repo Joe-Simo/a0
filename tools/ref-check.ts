@@ -39,6 +39,9 @@ const ARITH = ['add', 'sub', 'mul', 'shl', 'shr', 'div', 'rem'].map(irOp);
 const LOGIC = ['and', 'or', 'xor'].map(irOp);
 const EQUAL = ['eq', 'ne'].map(irOp);
 const COMPARE = ['lt', 'le', 'gt', 'ge'].map(irOp);
+/** The checked operations on two u32 (every one but `cget`): a (u32,bool) result, never a trap. */
+const CHECKED_ARITH = ['cadd', 'csub', 'cmul', 'cdiv', 'crem'].map(irOp);
+const CGET = irOp('cget');
 const VARIADIC = [OP.call, OP.fold, OP.loop, OP.arr, OP.rec, OP.text];
 
 /** Operand count of a fixed-arity operation; undefined for the variadic ones. */
@@ -108,6 +111,12 @@ export const ILL_TYPED: readonly [string, string][] = [
   ['put-field-type', 'fn f (u32,bool) -> (u32,bool)\na put p0 1 3\nret a\nend\n'],
   ['puts-scalar', 'fn f io u32 -> io\na puts p0 p1\nret a\nend\n'],
   ['aggregate-limit', 'fn f u32x65536 -> u32\na arr p0 p0\nret 1\nend\n'],
+  ['checked-operand-type', 'fn f u32 bool -> (u32,bool)\na cadd p0 p1\nret a\nend\n'],
+  ['checked-arity', 'fn f u32 -> (u32,bool)\na cdiv p0\nret a\nend\n'],
+  ['checked-result', 'fn f u32 u32 -> u32\na cmul p0 p1\nret a\nend\n'],
+  ['cget-scalar', 'fn f u32 u32 -> (u32,bool)\na cget p0 p1\nret a\nend\n'],
+  ['cget-element', 'fn f u32x4x2 u32 -> (u32,bool)\na cget p0 p1\nret a\nend\n'],
+  ['cget-index', 'fn f u32x4 bool -> (u32,bool)\na cget p0 p1\nret a\nend\n'],
 ];
 
 export type IrTables = Pick<WordIr, 'types' | 'tlist' | 'fns' | 'nodes' | 'args'>;
@@ -360,6 +369,15 @@ export function refCheck(
           const bits = at.reduce((n, t) => satAdd(n, tbits[t] as number, MAX_BITS), 0);
           if (io === 0 && bits > MAX_BITS) fail(4, i);
           rt = internRec(at);
+        } else if (CHECKED_ARITH.includes(op)) {
+          expect(a, 0, i);
+          expect(b, 0, i);
+          rt = internRec([0, 1]);
+        } else if (op === CGET) {
+          // an array of u32 (not of anything else) and a u32 index: (value, in range)
+          if (tag(a) !== 4 || types[a * 3 + 2] !== 0) fail(3, i);
+          expect(b, 0, i);
+          rt = internRec([0, 1]);
         } else if (op === OP.read) {
           expect(a, 2, i);
           rt = internRec([0, 2]);
