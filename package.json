@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "biome check .",
+    "lint": "biome check . && bun tools/dev/claim-check.ts --since=origin/main",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun run build && node --test dist/test/*.test.js",
@@ -34,7 +34,13 @@
     "site": "bun run build && node dist/tools/site-build.js",
     "gpu": "bun run build && node dist/tools/gpu-verify.js",
     "dotnet": "bun run build && node dist/tools/dotnet-verify.js",
-    "release": "sh tools/release.sh"
+    "release": "sh tools/release.sh",
+    "claims": "bun tools/dev/claim-check.ts",
+    "a0-dev": "bun run build && node dist/tools/dev/a0-dev.js",
+    "gate-scope": "bun run build && node dist/tools/dev/gate-scope.js",
+    "merge-plan": "bun run build && node dist/tools/dev/merge-plan.js",
+    "dev-gate": "bun run build && node dist/tools/dev/dev-gate.js",
+    "drive": "bun run build && node dist/tools/dev/drive.js"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
