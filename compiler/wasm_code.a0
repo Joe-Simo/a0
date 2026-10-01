@@ -63,72 +63,72 @@ use "emit_c.a0"
 
 # word p1 of the table p0
 fn wfzg u32x128x512 u32 -> u32
-pi shr p1 7
-pg get p0 pi
-w and p1 127
-v get pg w
-ret v
+a shr p1 7
+b get p0 a
+c and p1 127
+d get b c
+ret d
 end
 # word p1 of the input list
 fn wfzgi u32x128x352 u32 -> u32
-pi shr p1 7
-pg get p0 pi
-w and p1 127
-v get pg w
-ret v
+a shr p1 7
+b get p0 a
+c and p1 127
+d get b c
+ret d
 end
 # the state with word p2 set to p3 (a fold of one trip: p1 is the trip)
 fn wfzp1 u32x128x512 u32 u32 u32 -> u32x128x512
-pi shr p2 7
-pg get p0 pi
-w and p2 127
-pg2 set pg w p3
-t set p0 pi pg2
-ret t
+a shr p2 7
+b get p0 a
+c and p2 127
+d set b c p3
+e set p0 a d
+ret e
 end
 # the state with the words p2 and p2 + 1 (same page) set to p3 and p4
 fn wfzp2 u32x128x512 u32 u32 u32 u32 -> u32x128x512
-pi shr p2 7
-pg get p0 pi
-w and p2 127
-pg2 set pg w p3
-w1 add w 1
-pg3 set pg2 w1 p4
-t set p0 pi pg3
-ret t
+a shr p2 7
+b get p0 a
+c and p2 127
+d set b c p3
+e add c 1
+f set d e p4
+g set p0 a f
+ret g
 end
 # the state with the words p2 .. p2 + 3 (p2 a multiple of 4) set to p3 .. p6
 fn wfzp4 u32x128x512 u32 u32 u32 u32 u32 u32 -> u32x128x512
-pi shr p2 7
-pg get p0 pi
-w and p2 127
-pg2 set pg w p3
-w1 add w 1
-pg3 set pg2 w1 p4
-w2 add w 2
-pg4 set pg3 w2 p5
-w3 add w 3
-pg5 set pg4 w3 p6
-t set p0 pi pg5
-ret t
+a shr p2 7
+b get p0 a
+c and p2 127
+d set b c p3
+e add c 1
+f set d e p4
+g add c 2
+h set f g p5
+i add c 3
+j set h i p6
+k set p0 a j
+ret k
 end
 # the zero table
 fn wfzz -> u32x128x512
-z call zpage
-t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
-ret t
+a call zpage
+b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+ret b
 end
 # the zero input list
 fn wfzzi -> u32x128x352
-z call zpage
-t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
-ret t
+a call zpage
+b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+ret b
 end
 # page p1 of the input list p2 copied into the state (a fold of 352 trips)
 fn wfzcp u32x128x512 u32 u32x128x352 -> u32x128x512
-pg get p2 p1
-t set p0 p1 pg
-ret t
+a get p2 p1
+b set p0 p1 a
+ret b
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -136,53 +136,53 @@ end
 
 # 1 for a local access kind (3 get, 4 set, 5 tee)
 fn wfzisl u32 -> bool
-d sub p0 3
-r lt d 3
-ret r
+a sub p0 3
+b lt a 3
+ret b
 end
 # the compact index of local id p0: i32 ids below 8192 as they are, VBASE + k (k < 128) as 8192 + k,
 # 0 for an id out of range
 fn wfzcidx u32 -> u32
-lo lt p0 8192
-vv sub p0 1048576
-vl lt vv 128
-vi add vv 8192
-a select vl vi 0
-c select lo p0 a
-ret c
+a lt p0 8192
+b sub p0 1048576
+c lt b 128
+d add b 8192
+e select c d 0
+f select a p0 e
+ret f
 end
 # is local id p0 in range
 fn wfzvok u32 -> bool
-lo lt p0 8192
-vv sub p0 1048576
-vl lt vv 128
-r or lo vl
-ret r
+a lt p0 8192
+b sub p0 1048576
+c lt b 128
+d or a c
+ret d
 end
 # the final index of local id p0 (slot table p0, parameters p1, i32 locals p2): parameters stay,
 # an i32 local is np + slot, a v128 local np + nl + slot
 fn wfzmap u32x128x512 u32 u32 u32 -> u32
-c call wfzcidx p3
-a_gp shr c 7
-a_gw and c 127
-a_gg get p0 a_gp
-a get a_gg a_gw
-lo lt p3 8192
-isp lt p3 p1
-q add p1 a
-nl add p1 p2
-qv add nl a
-r0 select lo q qv
-r select isp p3 r0
-ret r
+a call wfzcidx p3
+b shr a 7
+c and a 127
+d get p0 b
+e get d c
+f lt p3 8192
+g lt p3 p1
+h add p1 e
+i add p1 p2
+j add i e
+k select f h j
+l select g p3 k
+ret l
 end
 # the operand of an instruction after renumbering: the final index for a local access (kind p3,
 # value p4), else p4
 fn wfzuse u32x128x512 u32 u32 u32 u32 -> u32
-isl call wfzisl p3
-m call wfzmap p0 p1 p2 p4
-r select isl m p4
-ret r
+a call wfzisl p3
+b call wfzmap p0 p1 p2 p4
+c select a b p4
+ret c
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -194,272 +194,272 @@ a ge p0 128
 b ge p0 16384
 c ge p0 2097152
 d ge p0 268435456
-ai select a 1 0
-bi select b 1 0
-ci select c 1 0
-di select d 1 0
-s1 add ai bi
-s2 add s1 ci
-s3 add s2 di
-r add s3 1
-ret r
+e select a 1 0
+f select b 1 0
+g select c 1 0
+h select d 1 0
+i add e f
+j add i g
+k add j h
+l add k 1
+ret l
 end
 # bytes of the sleb128 form of the int32 with the bit pattern p0 (1..5)
 fn wfzsl u32 -> u32
-x1 add p0 64
-x2 add p0 8192
-x3 add p0 1048576
-x4 add p0 134217728
-a ge x1 128
-b ge x2 16384
-c ge x3 2097152
-d ge x4 268435456
-ai select a 1 0
-bi select b 1 0
-ci select c 1 0
-di select d 1 0
-s1 add ai bi
-s2 add s1 ci
-s3 add s2 di
-r add s3 1
-ret r
+a add p0 64
+b add p0 8192
+c add p0 1048576
+d add p0 134217728
+e ge a 128
+f ge b 16384
+g ge c 2097152
+h ge d 268435456
+i select e 1 0
+j select f 1 0
+k select g 1 0
+l select h 1 0
+m add i j
+n add m k
+o add n l
+p add o 1
+ret p
 end
 # byte p1 of the uleb128 form of p0
 fn wfzuleb u32 u32 -> u32
-len call wfzul p0
-m1 add p1 1
-cont lt m1 len
-sh mul p1 7
-x shr p0 sh
-b and x 127
-b8 or b 128
-r select cont b8 b
-ret r
+a call wfzul p0
+b add p1 1
+c lt b a
+d mul p1 7
+e shr p0 d
+f and e 127
+g or f 128
+h select c g f
+ret h
 end
 # byte p1 of the sleb128 form of the int32 with the bit pattern p0
 fn wfzsleb u32 u32 -> u32
-len call wfzsl p0
-m1 add p1 1
-cont lt m1 len
-sh mul p1 7
-x shr p0 sh
-sg shr p0 31
-neg eq sg 1
-shp gt sh 0
-ng and neg shp
-rs sub 32 sh
-ones shl 4294967295 rs
-ext select ng ones 0
-y or x ext
-b and y 127
-b8 or b 128
-r select cont b8 b
-ret r
+a call wfzsl p0
+b add p1 1
+c lt b a
+d mul p1 7
+e shr p0 d
+f shr p0 31
+g eq f 1
+h gt d 0
+i and g h
+j sub 32 d
+k shl 4294967295 j
+l select i k 0
+m or e l
+n and m 127
+o or n 128
+p select c o n
+ret p
 end
 # length of the fixed prefix of kind p0
 fn wfzplen u32 -> u32
-qd mov 0
-qe2 eq p0 2
-qr2 select qe2 1 qd
-qe3 eq p0 3
-qr3 select qe3 1 qr2
-qe4 eq p0 4
-qr4 select qe4 1 qr3
-qe5 eq p0 5
-qr5 select qe5 1 qr4
-qe8 eq p0 8
-qr8 select qe8 2 qr5
-qe9 eq p0 9
-qr9 select qe9 1 qr8
-qe10 eq p0 10
-qr10 select qe10 2 qr9
-qe11 eq p0 11
-qr11 select qe11 2 qr10
-qe12 eq p0 12
-qr12 select qe12 1 qr11
-qe13 eq p0 13
-qr13 select qe13 1 qr12
-qe14 eq p0 14
-qr14 select qe14 1 qr13
-qe15 eq p0 15
-qr15 select qe15 1 qr14
-qe16 eq p0 16
-qr16 select qe16 4 qr15
-qe17 eq p0 17
-qr17 select qe17 3 qr16
-qe18 eq p0 18
-qr18 select qe18 1 qr17
-qe19 eq p0 19
-qr19 select qe19 4 qr18
-qe20 eq p0 20
-qr20 select qe20 2 qr19
-qe21 eq p0 21
-qr21 select qe21 2 qr20
-qe22 eq p0 22
-qr22 select qe22 1 qr21
-qe23 eq p0 23
-qr23 select qe23 1 qr22
-ret qr23
+a mov 0
+b eq p0 2
+c select b 1 a
+d eq p0 3
+e select d 1 c
+f eq p0 4
+g select f 1 e
+h eq p0 5
+i select h 1 g
+j eq p0 8
+k select j 2 i
+l eq p0 9
+m select l 1 k
+n eq p0 10
+o select n 2 m
+p eq p0 11
+q select p 2 o
+r eq p0 12
+s select r 1 q
+t eq p0 13
+u select t 1 s
+v eq p0 14
+w select v 1 u
+x eq p0 15
+y select x 1 w
+z eq p0 16
+aa select z 4 y
+ab eq p0 17
+ac select ab 3 aa
+ad eq p0 18
+ae select ad 1 ac
+af eq p0 19
+ag select af 4 ae
+ah eq p0 20
+ai select ah 2 ag
+aj eq p0 21
+ak select aj 2 ai
+al eq p0 22
+am select al 1 ak
+an eq p0 23
+ao select an 1 am
+ret ao
 end
 # the fixed prefix bytes of kind p0, packed little endian
 fn wfzpack u32 -> u32
-qd mov 0
-qe2 eq p0 2
-qr2 select qe2 65 qd
-qe3 eq p0 3
-qr3 select qe3 32 qr2
-qe4 eq p0 4
-qr4 select qe4 33 qr3
-qe5 eq p0 5
-qr5 select qe5 34 qr4
-qe8 eq p0 8
-qr8 select qe8 16387 qr5
-qe9 eq p0 9
-qr9 select qe9 11 qr8
-qe10 eq p0 10
-qr10 select qe10 552 qr9
-qe11 eq p0 11
-qr11 select qe11 566 qr10
-qe12 eq p0 12
-qr12 select qe12 13 qr11
-qe13 eq p0 13
-qr13 select qe13 12 qr12
-qe14 eq p0 14
-qr14 select qe14 2 qr13
-qe15 eq p0 15
-qr15 select qe15 4 qr14
-qe16 eq p0 16
-qr16 select qe16 2812 qr15
-qe17 eq p0 17
-qr17 select qe17 3068 qr16
-qe18 eq p0 18
-qr18 select qe18 253 qr17
-qe19 eq p0 19
-qr19 select qe19 134141 qr18
-qe20 eq p0 20
-qr20 select qe20 3325 qr19
-qe21 eq p0 21
-qr21 select qe21 3325 qr20
-qe22 eq p0 22
-qr22 select qe22 35 qr21
-qe23 eq p0 23
-qr23 select qe23 36 qr22
-ret qr23
+a mov 0
+b eq p0 2
+c select b 65 a
+d eq p0 3
+e select d 32 c
+f eq p0 4
+g select f 33 e
+h eq p0 5
+i select h 34 g
+j eq p0 8
+k select j 16387 i
+l eq p0 9
+m select l 11 k
+n eq p0 10
+o select n 552 m
+p eq p0 11
+q select p 566 o
+r eq p0 12
+s select r 13 q
+t eq p0 13
+u select t 12 s
+v eq p0 14
+w select v 2 u
+x eq p0 15
+y select x 4 w
+z eq p0 16
+aa select z 2812 y
+ab eq p0 17
+ac select ab 3068 aa
+ad eq p0 18
+ae select ad 253 ac
+af eq p0 19
+ag select af 134141 ae
+ah eq p0 20
+ai select ah 3325 ag
+aj eq p0 21
+ak select aj 3325 ai
+al eq p0 22
+am select al 35 ak
+an eq p0 23
+ao select an 36 am
+ret ao
 end
 # length of the variable part of kind p0 whose operand is p1
 fn wfzvlen u32 u32 -> u32
-ul call wfzul p1
-sl call wfzsl p1
-qd mov 0
-qe1 eq p0 1
-qr1 select qe1 1 qd
-qe2 eq p0 2
-qr2 select qe2 sl qr1
-qe3 eq p0 3
-qr3 select qe3 ul qr2
-qe4 eq p0 4
-qr4 select qe4 ul qr3
-qe5 eq p0 5
-qr5 select qe5 ul qr4
-qe6 eq p0 6
-qr6 select qe6 1 qr5
-qe7 eq p0 7
-qr7 select qe7 1 qr6
-qe10 eq p0 10
-qr10 select qe10 ul qr7
-qe11 eq p0 11
-qr11 select qe11 ul qr10
-qe12 eq p0 12
-qr12 select qe12 ul qr11
-qe13 eq p0 13
-qr13 select qe13 ul qr12
-qe14 eq p0 14
-qr14 select qe14 1 qr13
-qe15 eq p0 15
-qr15 select qe15 1 qr14
-qe18 eq p0 18
-qr18 select qe18 ul qr15
-qe20 eq p0 20
-qr20 select qe20 16 qr18
-qe21 eq p0 21
-qr21 select qe21 16 qr20
-qe22 eq p0 22
-qr22 select qe22 1 qr21
-qe23 eq p0 23
-qr23 select qe23 1 qr22
-ret qr23
+a call wfzul p1
+b call wfzsl p1
+c mov 0
+d eq p0 1
+e select d 1 c
+f eq p0 2
+g select f b e
+h eq p0 3
+i select h a g
+j eq p0 4
+k select j a i
+l eq p0 5
+m select l a k
+n eq p0 6
+o select n 1 m
+p eq p0 7
+q select p 1 o
+r eq p0 10
+s select r a q
+t eq p0 11
+u select t a s
+v eq p0 12
+w select v a u
+x eq p0 13
+y select x a w
+z eq p0 14
+aa select z 1 y
+ab eq p0 15
+ac select ab 1 aa
+ad eq p0 18
+ae select ad a ac
+af eq p0 20
+ag select af 16 ae
+ah eq p0 21
+ai select ah 16 ag
+aj eq p0 22
+ak select aj 1 ai
+al eq p0 23
+am select al 1 ak
+ret am
 end
 # words of the instruction of kind p0 with operand p1 (a local access: its final index)
 fn wfzlen u32 u32 -> u32
 a call wfzplen p0
 b call wfzvlen p0 p1
-r add a b
-ret r
+c add a b
+ret c
 end
 # the variable byte p2 of kind p0 with operand p1 (the index counts from the end of the prefix)
 fn wfzvar u32 u32 u32 -> u32
-ulb call wfzuleb p1 p2
-slb call wfzsleb p1 p2
-u8 and p1 255
-m3 and p2 3
-sh mul m3 8
-xs shr p1 sh
-bv and xs 255
-l0 eq m3 0
-ln shr p2 2
-lane select l0 ln 0
-mk add p1 2147483648
-qd mov 0
-qe1 eq p0 1
-qr1 select qe1 u8 qd
-qe2 eq p0 2
-qr2 select qe2 slb qr1
-qe3 eq p0 3
-qr3 select qe3 ulb qr2
-qe4 eq p0 4
-qr4 select qe4 ulb qr3
-qe5 eq p0 5
-qr5 select qe5 ulb qr4
-qe6 eq p0 6
-qr6 select qe6 p1 qr5
-qe7 eq p0 7
-qr7 select qe7 mk qr6
-qe10 eq p0 10
-qr10 select qe10 ulb qr7
-qe11 eq p0 11
-qr11 select qe11 ulb qr10
-qe12 eq p0 12
-qr12 select qe12 ulb qr11
-qe13 eq p0 13
-qr13 select qe13 ulb qr12
-qe14 eq p0 14
-qr14 select qe14 u8 qr13
-qe15 eq p0 15
-qr15 select qe15 u8 qr14
-qe18 eq p0 18
-qr18 select qe18 ulb qr15
-qe20 eq p0 20
-qr20 select qe20 lane qr18
-qe21 eq p0 21
-qr21 select qe21 bv qr20
-qe22 eq p0 22
-qr22 select qe22 u8 qr21
-qe23 eq p0 23
-qr23 select qe23 u8 qr22
-ret qr23
+a call wfzuleb p1 p2
+b call wfzsleb p1 p2
+c and p1 255
+d and p2 3
+e mul d 8
+f shr p1 e
+g and f 255
+h eq d 0
+i shr p2 2
+j select h i 0
+k add p1 2147483648
+l mov 0
+m eq p0 1
+n select m c l
+o eq p0 2
+p select o b n
+q eq p0 3
+r select q a p
+s eq p0 4
+t select s a r
+u eq p0 5
+v select u a t
+w eq p0 6
+x select w p1 v
+y eq p0 7
+z select y k x
+aa eq p0 10
+ab select aa a z
+ac eq p0 11
+ad select ac a ab
+ae eq p0 12
+af select ae a ad
+ag eq p0 13
+ah select ag a af
+ai eq p0 14
+aj select ai c ah
+ak eq p0 15
+al select ak c aj
+am eq p0 18
+an select am a al
+ao eq p0 20
+ap select ao j an
+aq eq p0 21
+ar select aq g ap
+as eq p0 22
+au select as c ar
+av eq p0 23
+aw select av c au
+ret aw
 end
 # word p2 of the instruction of kind p0 with operand p1: a byte, or a marker for a call or a pool address
 fn wfzbyte u32 u32 u32 -> u32
-pl call wfzplen p0
-pk call wfzpack p0
-inp lt p2 pl
-j8 mul p2 8
-x shr pk j8
-pb and x 255
-m sub p2 pl
-v call wfzvar p0 p1 m
-r select inp pb v
-ret r
+a call wfzplen p0
+b call wfzpack p0
+c lt p2 a
+d mul p2 8
+e shr b d
+f and e 255
+g sub p2 a
+h call wfzvar p0 p1 g
+i select c f h
+ret i
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -467,41 +467,41 @@ end
 
 # a get of a local adds one to its gets, a set or tee to its sets
 fn wfzcnt u32x128x512 u32 u32x128x352 u32 u32 -> u32x128x512
-w2 shl p1 1
-k call wfzgi p2 w2
-w3 add w2 1
-v call wfzgi p2 w3
-isl call wfzisl k
-big ge v p3
-inr lt p1 p4
-a0 and isl big
-act and a0 inr
-c call wfzcidx v
-ok call wfzvok v
-is3 eq k 3
-c8 add c 8320
-slot select is3 c c8
-good and act ok
-inc select good 1 0
-old_gp shr slot 7
-old_gw and slot 127
-old_gg get p0 old_gp
-old get old_gg old_gw
-new add old inc
-nok eq ok false
-bad and act nok
-ft select bad 16640 16641
-t1__pi shr slot 7
-t1__pg get p0 t1__pi
-t1__w and slot 127
-t1__pg2 set t1__pg t1__w new
-t1__t set p0 t1__pi t1__pg2
-t2__pi shr ft 7
-t2__pg get t1__t t2__pi
-t2__w and ft 127
-t2__pg2 set t2__pg t2__w 1
-t2__t set t1__t t2__pi t2__pg2
-ret t2__t
+a shl p1 1
+b call wfzgi p2 a
+c add a 1
+d call wfzgi p2 c
+e call wfzisl b
+f ge d p3
+g lt p1 p4
+h and e f
+i and h g
+j call wfzcidx d
+k call wfzvok d
+l eq b 3
+m add j 8320
+n select l j m
+o and i k
+p select o 1 0
+q shr n 7
+r and n 127
+s get p0 q
+t get s r
+u add t p
+v eq k false
+w and i v
+x select w 16640 16641
+y shr n 7
+z get p0 y
+aa and n 127
+ab set z aa u
+ac set p0 y ab
+ad shr x 7
+ae get ac ad
+af and x 127
+ag set ae af 1
+ah set ac ad ag
+ret ah
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -512,80 +512,80 @@ end
 # local is never read is OP 0x1a (drop); a tee whose local is never read vanishes. Parameters
 # are untouched. A removed instruction is kind 0.
 fn wfzstk u32x128x512 u32 u32x128x512 u32 u32 -> u32x128x512
-w2 shl p1 1
-k_gp shr w2 7
-k_gw and w2 127
-k_gg get p0 k_gp
-k get k_gg k_gw
-w3 add w2 1
-v_gp shr w3 7
-v_gw and w3 127
-v_gg get p0 v_gp
-v get v_gg v_gw
-w4 add w2 2
-nk_gp shr w4 7
-nk_gw and w4 127
-nk_gg get p0 nk_gp
-nk get nk_gg nk_gw
-w5 add w2 3
-nv_gp shr w5 7
-nv_gw and w5 127
-nv_gg get p0 nv_gp
-nv get nv_gg nv_gw
-isl call wfzisl k
-big ge v p3
-inr lt p1 p4
-a0 and isl big
-act and a0 inr
-c call wfzcidx v
-c8 add c 8320
-rd_gp shr c 7
-rd_gw and c 127
-rd_gg get p2 rd_gp
-rd get rd_gg rd_gw
-st_gp shr c8 7
-st_gw and c8 127
-st_gg get p2 st_gp
-st get st_gg st_gw
-i1 add p1 1
-inr1 lt i1 p4
-n3 eq nk 3
-nvs eq nv v
-f0 and n3 nvs
-fol and f0 inr1
-is4 eq k 4
-is5 eq k 5
-rd1 eq rd 1
-st1 eq st 1
-b1 and rd1 st1
-rd0 eq rd 0
-k4f select b1 0 5
-k4n select rd0 1 4
-k4 select fol k4f k4n
-vd select rd0 26 v
-v4 select fol v vd
-k5 select rd0 0 5
-k50 select is5 k5 k
-nk0 select is4 k4 k50
-nv0 select is4 v4 v
-newk select act nk0 k
-newv select act nv0 v
-kl0 and act is4
-kill and kl0 fol
-kv select kill 0 nk
-t1__pi shr w2 7
-t1__pg get p0 t1__pi
-t1__w and w2 127
-t1__pg2 set t1__pg t1__w newk
-t1__w1 add t1__w 1
-t1__pg3 set t1__pg2 t1__w1 newv
-t1__t set p0 t1__pi t1__pg3
-t2__pi shr w4 7
-t2__pg get t1__t t2__pi
-t2__w and w4 127
-t2__pg2 set t2__pg t2__w kv
-t2__t set t1__t t2__pi t2__pg2
-ret t2__t
+a shl p1 1
+b shr a 7
+c and a 127
+d get p0 b
+e get d c
+f add a 1
+g shr f 7
+h and f 127
+i get p0 g
+j get i h
+k add a 2
+l shr k 7
+m and k 127
+n get p0 l
+o get n m
+p add a 3
+q shr p 7
+r and p 127
+s get p0 q
+t get s r
+u call wfzisl e
+v ge j p3
+w lt p1 p4
+x and u v
+y and x w
+z call wfzcidx j
+aa add z 8320
+ab shr z 7
+ac and z 127
+ad get p2 ab
+ae get ad ac
+af shr aa 7
+ag and aa 127
+ah get p2 af
+ai get ah ag
+aj add p1 1
+ak lt aj p4
+al eq o 3
+am eq t j
+an and al am
+ao and an ak
+ap eq e 4
+aq eq e 5
+ar eq ae 1
+as eq ai 1
+au and ar as
+av eq ae 0
+aw select au 0 5
+ax select av 1 4
+ay select ao aw ax
+az select av 26 j
+a0 select ao j az
+a1 select av 0 5
+a2 select aq a1 e
+a3 select ap ay a2
+a4 select ap a0 j
+a5 select y a3 e
+a6 select y a4 j
+a7 and y ap
+a8 and a7 ao
+a9 select a8 0 o
+ba shr a 7
+bb get p0 ba
+bc and a 127
+bd set bb bc a5
+be add bc 1
+bf set bd be a6
+bg set p0 ba bf
+bh shr k 7
+bi get bg bh
+bj and k 127
+bk set bi bj a9
+bl set bg bh bk
+ret bl
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -593,91 +593,91 @@ end
 
 # instruction p1: loop depth and top-level loops; first and last access of a local
 fn wfzrng u32x128x512 u32 u32x128x512 u32 -> u32x128x512
-w2 shl p1 1
-k_gp shr w2 7
-k_gw and w2 127
-k_gg get p2 k_gp
-k get k_gg k_gw
-w3 add w2 1
-v_gp shr w3 7
-v_gw and w3 127
-v_gg get p2 v_gp
-v get v_gg v_gw
-d_gp shr 0 7
-d_gw and 0 127
-d_gg get p0 d_gp
-d get d_gg d_gw
-lc_gp shr 1 7
-lc_gw and 1 127
-lc_gg get p0 lc_gp
-lc get lc_gg lc_gw
-isop eq k 8
-iscl eq k 9
-d0 eq d 0
-topop and isop d0
-topi select topop 1 0
-lc2 add lc topi
-d1 eq d 1
-topcl and iscl d1
-dinc add d 1
-ddec sub d 1
-dcl select iscl ddec d
-d2 select isop dinc dcl
-dpos gt d 0
-cur select dpos lc2 0
-isl call wfzisl k
-big ge v p3
-act and isl big
-c call wfzcidx v
-c4 mul c 4
-b4 add c4 128
-f_gp shr b4 7
-f_gw and b4 127
-f_gg get p0 f_gp
-f get f_gg f_gw
-b41 add b4 1
-tf0_gp shr b41 7
-tf0_gw and b41 127
-tf0_gg get p0 tf0_gp
-tf0 get tf0_gg tf0_gw
-isf eq f 0
-ip1 add p1 1
-a0w select isf ip1 f
-a1w select isf cur tf0
-tg4 select act b4 16
-lsi add lc2 33408
-lst select topop lsi 8
-lei add lc 44928
-lex select topcl lei 9
-t1__pi shr tg4 7
-t1__pg get p0 t1__pi
-t1__w and tg4 127
-t1__pg2 set t1__pg t1__w a0w
-t1__w1 add t1__w 1
-t1__pg3 set t1__pg2 t1__w1 a1w
-t1__w2 add t1__w 2
-t1__pg4 set t1__pg3 t1__w2 p1
-t1__w3 add t1__w 3
-t1__pg5 set t1__pg4 t1__w3 cur
-t1__t set p0 t1__pi t1__pg5
-t2__pi shr 0 7
-t2__pg get t1__t t2__pi
-t2__w and 0 127
-t2__pg2 set t2__pg t2__w d2
-t2__w1 add t2__w 1
-t2__pg3 set t2__pg2 t2__w1 lc2
-t2__t set t1__t t2__pi t2__pg3
-t3__pi shr lst 7
-t3__pg get t2__t t3__pi
-t3__w and lst 127
-t3__pg2 set t3__pg t3__w p1
-t3__t set t2__t t3__pi t3__pg2
-t4__pi shr lex 7
-t4__pg get t3__t t4__pi
-t4__w and lex 127
-t4__pg2 set t4__pg t4__w p1
-t4__t set t3__t t4__pi t4__pg2
-ret t4__t
+a shl p1 1
+b shr a 7
+c and a 127
+d get p2 b
+e get d c
+f add a 1
+g shr f 7
+h and f 127
+i get p2 g
+j get i h
+k shr 0 7
+l and 0 127
+m get p0 k
+n get m l
+o shr 1 7
+p and 1 127
+q get p0 o
+r get q p
+s eq e 8
+t eq e 9
+u eq n 0
+v and s u
+w select v 1 0
+x add r w
+y eq n 1
+z and t y
+aa add n 1
+ab sub n 1
+ac select t ab n
+ad select s aa ac
+ae gt n 0
+af select ae x 0
+ag call wfzisl e
+ah ge j p3
+ai and ag ah
+aj call wfzcidx j
+ak mul aj 4
+al add ak 128
+am shr al 7
+an and al 127
+ao get p0 am
+ap get ao an
+aq add al 1
+ar shr aq 7
+as and aq 127
+au get p0 ar
+av get au as
+aw eq ap 0
+ax add p1 1
+ay select aw ax ap
+az select aw af av
+a0 select ai al 16
+a1 add x 33408
+a2 select v a1 8
+a3 add r 44928
+a4 select z a3 9
+a5 shr a0 7
+a6 get p0 a5
+a7 and a0 127
+a8 set a6 a7 ay
+a9 add a7 1
+ba set a8 a9 az
+bb add a7 2
+bc set ba bb p1
+bd add a7 3
+be set bc bd af
+bf set p0 a5 be
+bg shr 0 7
+bh get bf bg
+bi and 0 127
+bj set bh bi ad
+bk add bi 1
+bl set bj bk x
+bm set bf bg bl
+bn shr a2 7
+bo get bm bn
+bp and a2 127
+bq set bo bp p1
+br set bm bn bq
+bs shr a4 7
+bt get br bs
+bu and a4 127
+bv set bt bu p1
+bw set br bs bv
+ret bw
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -686,103 +686,103 @@ end
 # slot candidate p0 after slot p1 of the slot table p2 (slot ends from p3 on): the first slot whose
 # end is below the start p4, 4294967295 for none yet
 fn wfzfit u32 u32 u32x128x512 u32 u32 -> u32
-ix add p3 p1
-e_gp shr ix 7
-e_gw and ix 127
-e_gg get p2 e_gp
-e get e_gg e_gw
-fr lt e p4
-nf eq p0 4294967295
-tk and fr nf
-r select tk p1 p0
-ret r
+a add p3 p1
+b shr a 7
+c and a 127
+d get p2 b
+e get d c
+f lt e p4
+g eq p0 4294967295
+h and f g
+i select h p1 p0
+ret i
 end
 # instruction p1: at the first access of a local, give it the first free slot of its kind
 fn wfzalc u32x128x512 u32 u32x128x512 u32x128x512 u32 -> u32x128x512
-w2 shl p1 1
-k_gp shr w2 7
-k_gw and w2 127
-k_gg get p2 k_gp
-k get k_gg k_gw
-w3 add w2 1
-v_gp shr w3 7
-v_gw and w3 127
-v_gg get p2 v_gp
-v get v_gg v_gw
-isl call wfzisl k
-big ge v p4
-act and isl big
-c call wfzcidx v
-c4 mul c 4
-b4 add c4 128
-f_gp shr b4 7
-f_gw and b4 127
-f_gg get p3 f_gp
-f get f_gg f_gw
-b41 add b4 1
-tlf_gp shr b41 7
-tlf_gw and b41 127
-tlf_gg get p3 tlf_gp
-tlf get tlf_gg tlf_gw
-b42 add b4 2
-last_gp shr b42 7
-last_gw and b42 127
-last_gg get p3 last_gp
-last get last_gg last_gw
-b43 add b4 3
-tll_gp shr b43 7
-tll_gw and b43 127
-tll_gg get p3 tll_gp
-tll get tll_gg tll_gw
-ip1 add p1 1
-fe eq f ip1
-isf and act fe
-tz eq tlf 0
-lsi add tlf 33408
-lsv_gp shr lsi 7
-lsv_gw and lsi 127
-lsv_gg get p3 lsv_gp
-lsv get lsv_gg lsv_gw
-st select tz p1 lsv
-ez eq tll 0
-lei add tll 44928
-lev_gp shr lei 7
-lev_gw and lei 127
-lev_gg get p3 lev_gp
-lev get lev_gg lev_gw
-en select ez last lev
-lo lt v 8192
-sbase select lo 8320 16512
-cnti select lo 16640 16641
-cnt_gp shr cnti 7
-cnt_gw and cnti 127
-cnt_gg get p0 cnt_gp
-cnt get cnt_gg cnt_gw
-fit fold wfzfit cnt 4294967295 p0 sbase st
-nf eq fit 4294967295
-slot select nf cnt fit
-inc select nf 1 0
-cnt2 add cnt inc
-cnt3 select isf cnt2 cnt
-ta select isf c 16650
-sl2 add sbase slot
-te select isf sl2 16651
-t1__pi shr ta 7
-t1__pg get p0 t1__pi
-t1__w and ta 127
-t1__pg2 set t1__pg t1__w slot
-t1__t set p0 t1__pi t1__pg2
-t2__pi shr te 7
-t2__pg get t1__t t2__pi
-t2__w and te 127
-t2__pg2 set t2__pg t2__w en
-t2__t set t1__t t2__pi t2__pg2
-t3__pi shr cnti 7
-t3__pg get t2__t t3__pi
-t3__w and cnti 127
-t3__pg2 set t3__pg t3__w cnt3
-t3__t set t2__t t3__pi t3__pg2
-ret t3__t
+a shl p1 1
+b shr a 7
+c and a 127
+d get p2 b
+e get d c
+f add a 1
+g shr f 7
+h and f 127
+i get p2 g
+j get i h
+k call wfzisl e
+l ge j p4
+m and k l
+n call wfzcidx j
+o mul n 4
+p add o 128
+q shr p 7
+r and p 127
+s get p3 q
+t get s r
+u add p 1
+v shr u 7
+w and u 127
+x get p3 v
+y get x w
+z add p 2
+aa shr z 7
+ab and z 127
+ac get p3 aa
+ad get ac ab
+ae add p 3
+af shr ae 7
+ag and ae 127
+ah get p3 af
+ai get ah ag
+aj add p1 1
+ak eq t aj
+al and m ak
+am eq y 0
+an add y 33408
+ao shr an 7
+ap and an 127
+aq get p3 ao
+ar get aq ap
+as select am p1 ar
+au eq ai 0
+av add ai 44928
+aw shr av 7
+ax and av 127
+ay get p3 aw
+az get ay ax
+a0 select au ad az
+a1 lt j 8192
+a2 select a1 8320 16512
+a3 select a1 16640 16641
+a4 shr a3 7
+a5 and a3 127
+a6 get p0 a4
+a7 get a6 a5
+a8 fold wfzfit a7 4294967295 p0 a2 as
+a9 eq a8 4294967295
+ba select a9 a7 a8
+bb select a9 1 0
+bc add a7 bb
+bd select al bc a7
+be select al n 16650
+bf add a2 ba
+bg select al bf 16651
+bh shr be 7
+bi get p0 bh
+bj and be 127
+bk set bi bj ba
+bl set p0 bh bk
+bm shr bg 7
+bn get bl bm
+bo and bg 127
+bp set bn bo a0
+bq set bl bm bp
+br shr a3 7
+bs get bq br
+bt and a3 127
+bu set bs bt bd
+bv set bq br bu
+ret bv
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -791,71 +791,71 @@ end
 # state: the offset table; instruction p1 of the stackified list p2 starts at word p1 of the
 # state, the next at the sum with its length (slot table p3, np p4, i32 locals p5)
 fn wfzoff u32x128x512 u32 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
-w2 shl p1 1
-k_gp shr w2 7
-k_gw and w2 127
-k_gg get p2 k_gp
-k get k_gg k_gw
-w3 add w2 1
-v_gp shr w3 7
-v_gw and w3 127
-v_gg get p2 v_gp
-v get v_gg v_gw
-u call wfzuse p3 p4 p5 k v
-ln call wfzlen k u
-o_gp shr p1 7
-o_gw and p1 127
-o_gg get p0 o_gp
-o get o_gg o_gw
-no add o ln
-ip1 add p1 1
-t__pi shr ip1 7
-t__pg get p0 t__pi
-t__w and ip1 127
-t__pg2 set t__pg t__w no
-t__t set p0 t__pi t__pg2
-ret t__t
+a shl p1 1
+b shr a 7
+c and a 127
+d get p2 b
+e get d c
+f add a 1
+g shr f 7
+h and f 127
+i get p2 g
+j get i h
+k call wfzuse p3 p4 p5 e j
+l call wfzlen e k
+m shr p1 7
+n and p1 127
+o get p0 m
+p get o n
+q add p l
+r add p1 1
+s shr r 7
+t get p0 s
+u and r 127
+v set t u q
+w set p0 s v
+ret w
 end
 # state: the code table; trip p1 writes word p2 + p1 (the instruction starts at word p2) when p1 is
 # below the length p5 of the instruction of kind p3 and operand p4 (a fold of 18 trips: the longest
 # instruction is 18 words)
 fn wfzbw u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
-ix add p2 p1
-old_gp shr ix 7
-old_gw and ix 127
-old_gg get p0 old_gp
-old get old_gg old_gw
-b call wfzbyte p3 p4 p1
-act lt p1 p5
-val select act b old
-t__pi shr ix 7
-t__pg get p0 t__pi
-t__w and ix 127
-t__pg2 set t__pg t__w val
-t__t set p0 t__pi t__pg2
-ret t__t
+a add p2 p1
+b shr a 7
+c and a 127
+d get p0 b
+e get d c
+f call wfzbyte p3 p4 p1
+g lt p1 p5
+h select g f e
+i shr a 7
+j get p0 i
+k and a 127
+l set j k h
+m set p0 i l
+ret m
 end
 # state: the code table; instruction p1 of the stackified list p2 (slot table p3, offsets p4, np
 # p5, i32 locals p6) written at its offset
 fn wfzcode u32x128x512 u32 u32x128x512 u32x128x512 u32x128x512 u32 u32 -> u32x128x512
-w2 shl p1 1
-k_gp shr w2 7
-k_gw and w2 127
-k_gg get p2 k_gp
-k get k_gg k_gw
-w3 add w2 1
-v_gp shr w3 7
-v_gw and w3 127
-v_gg get p2 v_gp
-v get v_gg v_gw
-u call wfzuse p3 p5 p6 k v
-ln call wfzlen k u
-base_gp shr p1 7
-base_gw and p1 127
-base_gg get p4 base_gp
-base get base_gg base_gw
-t fold wfzbw 18 p0 base k u ln
-ret t
+a shl p1 1
+b shr a 7
+c and a 127
+d get p2 b
+e get d c
+f add a 1
+g shr f 7
+h and f 127
+i get p2 g
+j get i h
+k call wfzuse p3 p5 p6 e j
+l call wfzlen e k
+m shr p1 7
+n and p1 127
+o get p4 m
+p get o n
+q fold wfzbw 18 p0 p e k l
+ret q
 end
 
 # ---------------------------------------------------------------------------------------------
@@ -864,47 +864,47 @@ end
 # `Code.finish(np)` of the list p0 of p1 instructions: the code table, whose last three words
 # 65533, 65534, 65535 are the words written (4294967295 on failure), the i32 locals and the v128 locals
 fn wfzfin u32x128x352 u32 u32 -> u32x128x512
-over gt p1 22528
-nn select over 22528 p1
-z0 call wfzz
-stk fold wfzcp 352 z0 p0
-zc call wfzz
-cnt fold wfzcnt nn zc p0 p2 nn
-zr call wfzz
-stk2 fold wfzstk nn stk cnt p2 nn
-rng fold wfzrng nn zr stk2 p2
-zs call wfzz
-sa fold wfzalc nn zs stk2 rng p2
-nl_gp shr 16640 7
-nl_gw and 16640 127
-nl_gg get sa nl_gp
-nl get nl_gg nl_gw
-nv_gp shr 16641 7
-nv_gw and 16641 127
-nv_gg get sa nv_gp
-nv get nv_gg nv_gw
-zo call wfzz
-off fold wfzoff nn zo stk2 sa p2 nl
-zout call wfzz
-cod fold wfzcode nn zout stk2 sa off p2 nl
-total_gp shr nn 7
-total_gw and nn 127
-total_gg get off total_gp
-total get total_gg total_gw
-flag_gp shr 16640 7
-flag_gw and 16640 127
-flag_gg get cnt flag_gp
-flag get flag_gg flag_gw
-f0 eq flag 0
-fits le total 65533
-g1 and f0 fits
-nover eq over false
-ok and g1 nover
-nw select ok total 4294967295
-nl2 select ok nl 0
-nv2 select ok nv 0
-r1 fold wfzp1 1 cod 65533 nw
-r2 fold wfzp1 1 r1 65534 nl2
-r3 fold wfzp1 1 r2 65535 nv2
-ret r3
+a gt p1 22528
+b select a 22528 p1
+c call wfzz
+d fold wfzcp 352 c p0
+e call wfzz
+f fold wfzcnt b e p0 p2 b
+g call wfzz
+h fold wfzstk b d f p2 b
+i fold wfzrng b g h p2
+j call wfzz
+k fold wfzalc b j h i p2
+l shr 16640 7
+m and 16640 127
+n get k l
+o get n m
+p shr 16641 7
+q and 16641 127
+r get k p
+s get r q
+t call wfzz
+u fold wfzoff b t h k p2 o
+v call wfzz
+w fold wfzcode b v h k u p2 o
+x shr b 7
+y and b 127
+z get u x
+aa get z y
+ab shr 16640 7
+ac and 16640 127
+ad get f ab
+ae get ad ac
+af eq ae 0
+ag le aa 65533
+ah and af ag
+ai eq a false
+aj and ah ai
+ak select aj aa 4294967295
+al select aj o 0
+am select aj s 0
+an fold wfzp1 1 w 65533 ak
+ao fold wfzp1 1 an 65534 al
+ap fold wfzp1 1 ao 65535 am
+ret ap
 end
