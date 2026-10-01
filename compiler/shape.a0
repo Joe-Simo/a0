@@ -247,8 +247,9 @@ end
 
 # ---------------------------------------------------------------------------------------------
 # producerShape / guardedPrevReads of body p3. Result: the guarded previous-element reads
-# (word j of the column is 1 for body node j) and the status: 0 undefined, 1 a producer with
-# previous-element reads (a recurrence), 2 a pure producer.
+# (word j of the column is 1 for body node j), the status (0 undefined, 1 a producer with
+# previous-element reads (a recurrence), 2 a pure producer), 1 when guardedPrevReads is defined,
+# 1 when the ret node is `set p0 p1 v`, and the ret node.
 
 # operand k of node ju (first node p4): is the use of its node operand bad (not a select in
 # the allowed arm of a zero test of the counter)? Marks the used node in the column.
@@ -578,7 +579,7 @@ af get af_b af_c
 r fold shpb4a na p0 p3 af p5 p1 p6
 ret r
 end
-fn shprod u32x128x128 u32x128x512 u32x128x45 u32 -> (u32x128x24,u32)
+fn shprod u32x128x128 u32x128x512 u32x128x45 u32 -> (u32x128x24,u32,u32,u32,u32)
 fst_m mul p3 7
 fst_i add fst_m 4
 fst_a shr fst_i 7
@@ -664,7 +665,9 @@ okall and o1 ng
 pure eq cnt 0
 st0 select pure 2 1
 st select okall st0 0
-r rec prev st
+gdef select ng 1 0
+sokv select sok 1 0
+r rec prev st gdef sokv setj
 ret r
 end
 
@@ -1774,5 +1777,7892 @@ eff fold shefj nfn z2 p4 p5 p6 fst p2 pf p0
 s1 fold shpn nfn p0 p1 p2 p3 p4 p5 p6 fst retk retv nfn
 s2 fold shlz nfn s1 p4 p5 p6 fst retk retv uc eff
 ret s2
+end
+# ---------------------------------------------------------------------------------------------
+# Fusion helpers (src/optimize.ts): funcHasIo, readByGetOnly, gets of a parameter, bodyCost,
+# the state-consumer shape checks, use counts.
+
+fn zbld -> u32x128x128
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn zmap -> u32x128x48
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn zcache -> u32x128x96
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+
+fn shhip u32 u32 u32x128x200 u32x128x65 u32 -> u32
+pi add p4 p1
+t_a shr pi 7
+t_b get p3 t_a
+t_c and pi 127
+t get t_b t_c
+io_x add 17152 t
+io_a shr io_x 7
+io_b get p2 io_a
+io_c and io_x 127
+io get io_b io_c
+r or p0 io
+ret r
+end
+fn shhin u32 u32 u32x128x200 u32x128x24 u32 -> u32
+g add p4 p1
+t_a shr g 7
+t_b get p3 t_a
+t_c and g 127
+t get t_b t_c
+io_x add 17152 t
+io_a shr io_x 7
+io_b get p2 io_a
+io_c and io_x 127
+io get io_b io_c
+r or p0 io
+ret r
+end
+# 1 when function b = p4 has an io token in its result, parameters or node types
+fn shhasio u32x128x200 u32x128x65 u32x128x45 u32x128x24 u32 -> u32
+b_f_m mul p4 7
+b_f_i add b_f_m 4
+b_f_a shr b_f_i 7
+b_f_b get p2 b_f_a
+b_f_c and b_f_i 127
+b_f get b_f_b b_f_c
+b_n_m mul p4 7
+b_n_i add b_n_m 5
+b_n_a shr b_n_i 7
+b_n_b get p2 b_n_a
+b_n_c and b_n_i 127
+b_n get b_n_b b_n_c
+b_rw_m mul p4 7
+b_rw_i add b_rw_m 6
+b_rw_a shr b_rw_i 7
+b_rw_b get p2 b_rw_a
+b_rw_c and b_rw_i 127
+b_rw get b_rw_b b_rw_c
+b_pf_m mul p4 7
+b_pf_i add b_pf_m 2
+b_pf_a shr b_pf_i 7
+b_pf_b get p2 b_pf_a
+b_pf_c and b_pf_i 127
+b_pf get b_pf_b b_pf_c
+b_np_m mul p4 7
+b_np_i add b_np_m 1
+b_np_a shr b_np_i 7
+b_np_b get p2 b_np_a
+b_np_c and b_np_i 127
+b_np get b_np_b b_np_c
+b_rs_m mul p4 7
+b_rs_i add b_rs_m 3
+b_rs_a shr b_rs_i 7
+b_rs_b get p2 b_rs_a
+b_rs_c and b_rs_i 127
+b_rs get b_rs_b b_rs_c
+rio_x add 17152 b_rs
+rio_a shr rio_x 7
+rio_b get p0 rio_a
+rio_c and rio_x 127
+rio get rio_b rio_c
+a fold shhip b_np rio p0 p1 b_pf
+r fold shhin b_n a p0 p3 b_f
+ret r
+end
+
+# readByGetOnly: is parameter k = p4 of function b = p3 read only as the array of get nodes (and
+# not returned)? 1 or 0
+fn shrga u32 u32 u32x128x512 u32 u32 bool -> u32
+s add p3 p1
+a_k_m mul s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p2 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p2 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+isk_a eq a_k 2
+isk_b eq a_v p4
+isk and isk_a isk_b
+i0 eq p1 0
+g0 and p5 i0
+ng select g0 false true
+bd and isk ng
+b select bd 1 0
+r or p0 b
+ret r
+end
+fn shrgj u32 u32 u32x128x128 u32x128x512 u32 u32 -> u32
+g add p4 p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+isg eq n_op 25
+r fold shrga n_na p0 p3 n_af p5 isg
+ret r
+end
+fn shrdg u32x128x128 u32x128x512 u32x128x45 u32 u32 -> u32
+b_f_m mul p3 7
+b_f_i add b_f_m 4
+b_f_a shr b_f_i 7
+b_f_b get p2 b_f_a
+b_f_c and b_f_i 127
+b_f get b_f_b b_f_c
+b_n_m mul p3 7
+b_n_i add b_n_m 5
+b_n_a shr b_n_i 7
+b_n_b get p2 b_n_a
+b_n_c and b_n_i 127
+b_n get b_n_b b_n_c
+b_rw_m mul p3 7
+b_rw_i add b_rw_m 6
+b_rw_a shr b_rw_i 7
+b_rw_b get p2 b_rw_a
+b_rw_c and b_rw_i 127
+b_rw get b_rw_b b_rw_c
+b_pf_m mul p3 7
+b_pf_i add b_pf_m 2
+b_pf_a shr b_pf_i 7
+b_pf_b get p2 b_pf_a
+b_pf_c and b_pf_i 127
+b_pf get b_pf_b b_pf_c
+b_np_m mul p3 7
+b_np_i add b_np_m 1
+b_np_a shr b_np_i 7
+b_np_b get p2 b_np_a
+b_np_c and b_np_i 127
+b_np get b_np_b b_np_c
+b_rs_m mul p3 7
+b_rs_i add b_rs_m 3
+b_rs_a shr b_rs_i 7
+b_rs_b get p2 b_rs_a
+b_rs_c and b_rs_i 127
+b_rs get b_rs_b b_rs_c
+r_k0 shr b_rw 28
+r_v0 and b_rw 268435455
+r_i5 eq r_k0 5
+r_sl select r_i5 r_v0 0
+r_q_k_m mul r_sl 2
+r_q_k_i add r_q_k_m 0
+r_q_k_a shr r_q_k_i 7
+r_q_k_b get p1 r_q_k_a
+r_q_k_c and r_q_k_i 127
+r_q_k get r_q_k_b r_q_k_c
+r_q_v_m mul r_sl 2
+r_q_v_i add r_q_v_m 1
+r_q_v_a shr r_q_v_i 7
+r_q_v_b get p1 r_q_v_a
+r_q_v_c and r_q_v_i 127
+r_q_v get r_q_v_b r_q_v_c
+r_k select r_i5 r_q_k r_k0
+r_v select r_i5 r_q_v r_v0
+rp_a eq r_k 2
+rp_b eq r_v p4
+rp and rp_a rp_b
+bad fold shrgj b_n 0 p0 p1 b_f p4
+nb eq bad 0
+nrp select rp false true
+o and nb nrp
+r2 select o 1 0
+ret r2
+end
+
+# the gets `get p_k x` of function b = p3 whose index x is not p1: how many, and how many distinct
+# operands x (by kind and value). Result (count, distinct).
+fn shgd2 u32 u32 u32x128x128 u32x128x512 u32 u32 u32 u32 -> u32
+g add p4 p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+isg eq n_op 25
+a0_s add n_af 0
+a0_k_m mul a0_s 2
+a0_k_i add a0_k_m 0
+a0_k_a shr a0_k_i 7
+a0_k_b get p3 a0_k_a
+a0_k_c and a0_k_i 127
+a0_k get a0_k_b a0_k_c
+a0_v_m mul a0_s 2
+a0_v_i add a0_v_m 1
+a0_v_a shr a0_v_i 7
+a0_v_b get p3 a0_v_a
+a0_v_c and a0_v_i 127
+a0_v get a0_v_b a0_v_c
+is0_a eq a0_k 2
+is0_b eq a0_v p5
+is0 and is0_a is0_b
+a1_s add n_af 1
+a1_k_m mul a1_s 2
+a1_k_i add a1_k_m 0
+a1_k_a shr a1_k_i 7
+a1_k_b get p3 a1_k_a
+a1_k_c and a1_k_i 127
+a1_k get a1_k_b a1_k_c
+a1_v_m mul a1_s 2
+a1_v_i add a1_v_m 1
+a1_v_a shr a1_v_i 7
+a1_v_b get p3 a1_v_a
+a1_v_c and a1_v_i 127
+a1_v get a1_v_b a1_v_c
+same_a eq a1_k p6
+same_b eq a1_v p7
+same and same_a same_b
+notc_a eq a1_k 2
+notc_b eq a1_v 1
+notc and notc_a notc_b
+nc select notc false true
+c1 and isg is0
+c2 and c1 nc
+d and c2 same
+b select d 1 0
+r or p0 b
+ret r
+end
+fn shgd1 u32 u32 u32x128x128 u32x128x512 u32 u32 -> u32
+g add p4 p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+isg eq n_op 25
+a0_s add n_af 0
+a0_k_m mul a0_s 2
+a0_k_i add a0_k_m 0
+a0_k_a shr a0_k_i 7
+a0_k_b get p3 a0_k_a
+a0_k_c and a0_k_i 127
+a0_k get a0_k_b a0_k_c
+a0_v_m mul a0_s 2
+a0_v_i add a0_v_m 1
+a0_v_a shr a0_v_i 7
+a0_v_b get p3 a0_v_a
+a0_v_c and a0_v_i 127
+a0_v get a0_v_b a0_v_c
+is0_a eq a0_k 2
+is0_b eq a0_v p5
+is0 and is0_a is0_b
+a1_s add n_af 1
+a1_k_m mul a1_s 2
+a1_k_i add a1_k_m 0
+a1_k_a shr a1_k_i 7
+a1_k_b get p3 a1_k_a
+a1_k_c and a1_k_i 127
+a1_k get a1_k_b a1_k_c
+a1_v_m mul a1_s 2
+a1_v_i add a1_v_m 1
+a1_v_a shr a1_v_i 7
+a1_v_b get p3 a1_v_a
+a1_v_c and a1_v_i 127
+a1_v get a1_v_b a1_v_c
+notc_a eq a1_k 2
+notc_b eq a1_v 1
+notc and notc_a notc_b
+nc select notc false true
+c1 and isg is0
+cand and c1 nc
+dup fold shgd2 p1 0 p2 p3 p4 p5 a1_k a1_v
+nd eq dup 0
+inc and cand nd
+x select inc 1 0
+r add p0 x
+ret r
+end
+fn shgc u32 u32 u32x128x128 u32x128x512 u32 u32 -> u32
+g add p4 p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+isg eq n_op 25
+a0_s add n_af 0
+a0_k_m mul a0_s 2
+a0_k_i add a0_k_m 0
+a0_k_a shr a0_k_i 7
+a0_k_b get p3 a0_k_a
+a0_k_c and a0_k_i 127
+a0_k get a0_k_b a0_k_c
+a0_v_m mul a0_s 2
+a0_v_i add a0_v_m 1
+a0_v_a shr a0_v_i 7
+a0_v_b get p3 a0_v_a
+a0_v_c and a0_v_i 127
+a0_v get a0_v_b a0_v_c
+is0_a eq a0_k 2
+is0_b eq a0_v p5
+is0 and is0_a is0_b
+a1_s add n_af 1
+a1_k_m mul a1_s 2
+a1_k_i add a1_k_m 0
+a1_k_a shr a1_k_i 7
+a1_k_b get p3 a1_k_a
+a1_k_c and a1_k_i 127
+a1_k get a1_k_b a1_k_c
+a1_v_m mul a1_s 2
+a1_v_i add a1_v_m 1
+a1_v_a shr a1_v_i 7
+a1_v_b get p3 a1_v_a
+a1_v_c and a1_v_i 127
+a1_v get a1_v_b a1_v_c
+notc_a eq a1_k 2
+notc_b eq a1_v 1
+notc and notc_a notc_b
+nc select notc false true
+c1 and isg is0
+cand and c1 nc
+x select cand 1 0
+r add p0 x
+ret r
+end
+fn shgets u32x128x128 u32x128x512 u32x128x45 u32 u32 -> (u32,u32)
+b_f_m mul p3 7
+b_f_i add b_f_m 4
+b_f_a shr b_f_i 7
+b_f_b get p2 b_f_a
+b_f_c and b_f_i 127
+b_f get b_f_b b_f_c
+b_n_m mul p3 7
+b_n_i add b_n_m 5
+b_n_a shr b_n_i 7
+b_n_b get p2 b_n_a
+b_n_c and b_n_i 127
+b_n get b_n_b b_n_c
+b_rw_m mul p3 7
+b_rw_i add b_rw_m 6
+b_rw_a shr b_rw_i 7
+b_rw_b get p2 b_rw_a
+b_rw_c and b_rw_i 127
+b_rw get b_rw_b b_rw_c
+b_pf_m mul p3 7
+b_pf_i add b_pf_m 2
+b_pf_a shr b_pf_i 7
+b_pf_b get p2 b_pf_a
+b_pf_c and b_pf_i 127
+b_pf get b_pf_b b_pf_c
+b_np_m mul p3 7
+b_np_i add b_np_m 1
+b_np_a shr b_np_i 7
+b_np_b get p2 b_np_a
+b_np_c and b_np_i 127
+b_np get b_np_b b_np_c
+b_rs_m mul p3 7
+b_rs_i add b_rs_m 3
+b_rs_a shr b_rs_i 7
+b_rs_b get p2 b_rs_a
+b_rs_c and b_rs_i 127
+b_rs get b_rs_b b_rs_c
+nc fold shgc b_n 0 p0 p1 b_f p4
+dc fold shgd1 b_n 0 p0 p1 b_f p4
+r rec nc dc
+ret r
+end
+
+# bodyCost of function b = p2 without node p3
+fn shbcs u32 u32 u32x128x128 u32 u32 -> u32
+g add p3 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+c call shcost op
+isj eq p1 p4
+x select isj 0 c
+r add p0 x
+ret r
+end
+fn shbcost u32x128x128 u32x128x45 u32 u32 -> u32
+b_f_m mul p2 7
+b_f_i add b_f_m 4
+b_f_a shr b_f_i 7
+b_f_b get p1 b_f_a
+b_f_c and b_f_i 127
+b_f get b_f_b b_f_c
+b_n_m mul p2 7
+b_n_i add b_n_m 5
+b_n_a shr b_n_i 7
+b_n_b get p1 b_n_a
+b_n_c and b_n_i 127
+b_n get b_n_b b_n_c
+b_rw_m mul p2 7
+b_rw_i add b_rw_m 6
+b_rw_a shr b_rw_i 7
+b_rw_b get p1 b_rw_a
+b_rw_c and b_rw_i 127
+b_rw get b_rw_b b_rw_c
+b_pf_m mul p2 7
+b_pf_i add b_pf_m 2
+b_pf_a shr b_pf_i 7
+b_pf_b get p1 b_pf_a
+b_pf_c and b_pf_i 127
+b_pf get b_pf_b b_pf_c
+b_np_m mul p2 7
+b_np_i add b_np_m 1
+b_np_a shr b_np_i 7
+b_np_b get p1 b_np_a
+b_np_c and b_np_i 127
+b_np get b_np_b b_np_c
+b_rs_m mul p2 7
+b_rs_i add b_rs_m 3
+b_rs_a shr b_rs_i 7
+b_rs_b get p1 b_rs_a
+b_rs_c and b_rs_i 127
+b_rs get b_rs_b b_rs_c
+r fold shbcs b_n 0 p0 b_f p3
+ret r
+end
+
+# fuseIntoState: parameter 0 of function b = p3 used other than as the target of its ret set
+# p5, of a guarded previous read (p4 the column) or of `get p0 p1`: (bad, some get p0 p1)
+fn shfsa u32 u32 u32x128x512 u32 u32 u32 u32x128x24 bool -> u32
+s add p3 p1
+a_k_m mul s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p2 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p2 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+isp0_a eq a_k 2
+isp0_b eq a_v 0
+isp0 and isp0_a isp0_b
+k0 eq p1 0
+isset eq p4 p5
+pv_a shr p4 7
+pv_b get p6 pv_a
+pv_c and p4 127
+pv get pv_b pv_c
+ispv eq pv 1
+o1 or isset ispv
+o2 or o1 p7
+good and k0 o2
+bad1 select good false isp0
+b select bad1 1 0
+r or p0 b
+ret r
+end
+fn shfsj (u32,u32) u32 u32x128x128 u32x128x512 u32 u32 u32x128x24 -> (u32,u32)
+g add p4 p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+isg eq n_op 25
+a0_s add n_af 0
+a0_k_m mul a0_s 2
+a0_k_i add a0_k_m 0
+a0_k_a shr a0_k_i 7
+a0_k_b get p3 a0_k_a
+a0_k_c and a0_k_i 127
+a0_k get a0_k_b a0_k_c
+a0_v_m mul a0_s 2
+a0_v_i add a0_v_m 1
+a0_v_a shr a0_v_i 7
+a0_v_b get p3 a0_v_a
+a0_v_c and a0_v_i 127
+a0_v get a0_v_b a0_v_c
+a1_s add n_af 1
+a1_k_m mul a1_s 2
+a1_k_i add a1_k_m 0
+a1_k_a shr a1_k_i 7
+a1_k_b get p3 a1_k_a
+a1_k_c and a1_k_i 127
+a1_k get a1_k_b a1_k_c
+a1_v_m mul a1_s 2
+a1_v_i add a1_v_m 1
+a1_v_a shr a1_v_i 7
+a1_v_b get p3 a1_v_a
+a1_v_c and a1_v_i 127
+a1_v get a1_v_b a1_v_c
+z0_a eq a0_k 2
+z0_b eq a0_v 0
+z0 and z0_a z0_b
+z1_a eq a1_k 2
+z1_b eq a1_v 1
+z1 and z1_a z1_b
+t1 and isg z0
+atc and t1 z1
+bad at p0 0
+has at p0 1
+bad2 fold shfsa n_na bad p3 n_af p1 p5 p6 atc
+hx select atc 1 0
+has2 or has hx
+r rec bad2 has2
+ret r
+end
+fn shfs u32x128x128 u32x128x512 u32x128x45 u32 u32x128x24 u32 -> (u32,u32)
+b_f_m mul p3 7
+b_f_i add b_f_m 4
+b_f_a shr b_f_i 7
+b_f_b get p2 b_f_a
+b_f_c and b_f_i 127
+b_f get b_f_b b_f_c
+b_n_m mul p3 7
+b_n_i add b_n_m 5
+b_n_a shr b_n_i 7
+b_n_b get p2 b_n_a
+b_n_c and b_n_i 127
+b_n get b_n_b b_n_c
+b_rw_m mul p3 7
+b_rw_i add b_rw_m 6
+b_rw_a shr b_rw_i 7
+b_rw_b get p2 b_rw_a
+b_rw_c and b_rw_i 127
+b_rw get b_rw_b b_rw_c
+b_pf_m mul p3 7
+b_pf_i add b_pf_m 2
+b_pf_a shr b_pf_i 7
+b_pf_b get p2 b_pf_a
+b_pf_c and b_pf_i 127
+b_pf get b_pf_b b_pf_c
+b_np_m mul p3 7
+b_np_i add b_np_m 1
+b_np_a shr b_np_i 7
+b_np_b get p2 b_np_a
+b_np_c and b_np_i 127
+b_np get b_np_b b_np_c
+b_rs_m mul p3 7
+b_rs_i add b_rs_m 3
+b_rs_a shr b_rs_i 7
+b_rs_b get p2 b_rs_a
+b_rs_c and b_rs_i 127
+b_rs get b_rs_b b_rs_c
+s0 rec 0 0
+r fold shfsj b_n s0 p0 p1 b_f p5 p4
+ret r
+end
+
+# the use counts of function f = p3 (nodes' operands and the ret)
+fn shuses u32x128x128 u32x128x512 u32x128x45 u32 -> u32x128x24
+b_f_m mul p3 7
+b_f_i add b_f_m 4
+b_f_a shr b_f_i 7
+b_f_b get p2 b_f_a
+b_f_c and b_f_i 127
+b_f get b_f_b b_f_c
+b_n_m mul p3 7
+b_n_i add b_n_m 5
+b_n_a shr b_n_i 7
+b_n_b get p2 b_n_a
+b_n_c and b_n_i 127
+b_n get b_n_b b_n_c
+b_rw_m mul p3 7
+b_rw_i add b_rw_m 6
+b_rw_a shr b_rw_i 7
+b_rw_b get p2 b_rw_a
+b_rw_c and b_rw_i 127
+b_rw get b_rw_b b_rw_c
+b_pf_m mul p3 7
+b_pf_i add b_pf_m 2
+b_pf_a shr b_pf_i 7
+b_pf_b get p2 b_pf_a
+b_pf_c and b_pf_i 127
+b_pf get b_pf_b b_pf_c
+b_np_m mul p3 7
+b_np_i add b_np_m 1
+b_np_a shr b_np_i 7
+b_np_b get p2 b_np_a
+b_np_c and b_np_i 127
+b_np get b_np_b b_np_c
+b_rs_m mul p3 7
+b_rs_i add b_rs_m 3
+b_rs_a shr b_rs_i 7
+b_rs_b get p2 b_rs_a
+b_rs_c and b_rs_i 127
+b_rs get b_rs_b b_rs_c
+z call zcol
+u fold shucj b_n z p0 p1 b_f
+r_k0 shr b_rw 28
+r_v0 and b_rw 268435455
+r_i5 eq r_k0 5
+r_sl select r_i5 r_v0 0
+r_q_k_m mul r_sl 2
+r_q_k_i add r_q_k_m 0
+r_q_k_a shr r_q_k_i 7
+r_q_k_b get p1 r_q_k_a
+r_q_k_c and r_q_k_i 127
+r_q_k get r_q_k_b r_q_k_c
+r_q_v_m mul r_sl 2
+r_q_v_i add r_q_v_m 1
+r_q_v_a shr r_q_v_i 7
+r_q_v_b get p1 r_q_v_a
+r_q_v_c and r_q_v_i 127
+r_q_v get r_q_v_b r_q_v_c
+r_k select r_i5 r_q_k r_k0
+r_v select r_i5 r_q_v r_v0
+isn eq r_k 1
+widx select isn r_v 3071
+old_a shr widx 7
+old_b get u old_a
+old_c and widx 127
+old get old_b old_c
+inc select isn 1 0
+nw add old inc
+x_a shr widx 7
+x_b get u x_a
+x_c and widx 127
+x_d set x_b x_c nw
+x set u x_a x_d
+ret x
+end
+# ---------------------------------------------------------------------------------------------
+# BodyBuilder (src/optimize.ts). The builder BLD (u32x128x128): word 0 node count, 1 overflow
+# (more than 64 nodes or 7936 operand pairs: the attempt is refused), 2 operand pair count, 3 4
+# ret kind and value (set by the caller); node j at 16 + 6 j: op, operand count, callee, pred,
+# type, first operand pair; operand pair s at 512 + 2 s. The copy context cx (u32x128):
+#   0 first node of the copied body, 1 mode (0 copy, 1 a get of parameter kswap becomes the
+#   producer's element at the mapped index, 2 it becomes the fixed operand, 3 `get p0 p1` becomes
+#   the element at p1, 4 a guarded previous-element read becomes the fixed operand), 2 kswap,
+#   3 the skipped node, 4 5 operand of parameter 0, 6 7 operand of parameter 1, 8 9 (kk, off2):
+#   parameter i >= 2 becomes (2, i) if i < kk else (2, i + off2), 10 11 the fixed operand,
+#   12 map selector (0 MAP2, 1 MAP1), 16 first node of the producer body, 17 its node count,
+#   18 its ret set node, 19 its array length, 20 the first parameter of the fused body that
+#   takes the producer's extras (minus 2: off2 of the producer copy).
+# The copy state RS = (BLD, MAP2, MAP1, CACHE): MAP* (u32x128x48) the operand each copied node
+# became (2 words a node), CACHE (u32x128x96) the element cache: count, then 4 words an entry
+# (index kind, index value, element kind, element value).
+
+# a node row (op p1, operand count p2, callee p3, pred p4, type p5) when p6; its position
+fn shbadd u32x128x128 u32 u32 u32 u32 u32 bool -> (u32x128x128,u32)
+n_a shr 0 7
+n_b get p0 n_a
+n_c and 0 127
+n get n_b n_c
+ov_a shr 1 7
+ov_b get p0 ov_a
+ov_c and 1 127
+ov get ov_b ov_c
+pr_a shr 2 7
+pr_b get p0 pr_a
+pr_c and 2 127
+pr get pr_b pr_c
+full ge n 64
+ovn ne ov 0
+bad0 or full ovn
+gn select p6 false true
+bad or bad0 gn
+nbad select bad false true
+bm mul n 6
+r0 add 16 bm
+w0_a shr r0 7
+w0_b get p0 w0_a
+w0_c and r0 127
+w0_d set w0_b w0_c p1
+w0 set p0 w0_a w0_d
+r1 add r0 1
+w1_a shr r1 7
+w1_b get w0 w1_a
+w1_c and r1 127
+w1_d set w1_b w1_c p2
+w1 set w0 w1_a w1_d
+r2 add r0 2
+w2_a shr r2 7
+w2_b get w1 w2_a
+w2_c and r2 127
+w2_d set w2_b w2_c p3
+w2 set w1 w2_a w2_d
+r3 add r0 3
+w3_a shr r3 7
+w3_b get w2 w3_a
+w3_c and r3 127
+w3_d set w3_b w3_c p4
+w3 set w2 w3_a w3_d
+r4 add r0 4
+w4_a shr r4 7
+w4_b get w3 w4_a
+w4_c and r4 127
+w4_d set w4_b w4_c p5
+w4 set w3 w4_a w4_d
+r5 add r0 5
+w5_a shr r5 7
+w5_b get w4 w5_a
+w5_c and r5 127
+w5_d set w5_b w5_c pr
+w5 set w4 w5_a w5_d
+n1 add n 1
+nn select nbad n1 n
+ovf or full ovn
+ov1 select ovf 1 ov
+w6_a shr 0 7
+w6_b get w5 w6_a
+w6_c and 0 127
+w6_d set w6_b w6_c nn
+w6 set w5 w6_a w6_d
+w7_a shr 1 7
+w7_b get w6 w7_a
+w7_c and 1 127
+w7_d set w7_b w7_c ov1
+w7 set w6 w7_a w7_d
+o rec w7 n
+ret o
+end
+# an operand pair (p1 p2) of the node just added, when p3
+fn shbpair u32x128x128 u32 u32 bool -> u32x128x128
+ov_a shr 1 7
+ov_b get p0 ov_a
+ov_c and 1 127
+ov get ov_b ov_c
+pr_a shr 2 7
+pr_b get p0 pr_a
+pr_c and 2 127
+pr get pr_b pr_c
+full ge pr 7936
+ovn ne ov 0
+bad0 or full ovn
+gn select p3 false true
+bad or bad0 gn
+nbad select bad false true
+sl mul pr 2
+i0 add 512 sl
+i0s select nbad i0 8
+i1 add i0 1
+i1s select nbad i1 9
+w0_a shr i0s 7
+w0_b get p0 w0_a
+w0_c and i0s 127
+w0_d set w0_b w0_c p1
+w0 set p0 w0_a w0_d
+w1_a shr i1s 7
+w1_b get w0 w1_a
+w1_c and i1s 127
+w1_d set w1_b w1_c p2
+w1 set w0 w1_a w1_d
+pr1 add pr 1
+npr select nbad pr1 pr
+ovf or full ovn
+ov1 select ovf 1 ov
+w2_a shr 2 7
+w2_b get w1 w2_a
+w2_c and 2 127
+w2_d set w2_b w2_c npr
+w2 set w1 w2_a w2_d
+w3_a shr 1 7
+w3_b get w2 w3_a
+w3_c and 1 127
+w3_d set w3_b w3_c ov1
+w3 set w2 w3_a w3_d
+ret w3
+end
+# the operand (p0 p1) of a copied body under the copy context p2 and map p3
+fn shmapo u32 u32 u32x128 u32x128x48 -> (u32,u32)
+z0k get p2 4
+z0v get p2 5
+z1k get p2 6
+z1v get p2 7
+kk get p2 8
+off2 get p2 9
+isp eq p0 2
+isn eq p0 1
+i0 eq p1 0
+i1 eq p1 1
+lt lt p1 kk
+v2 add p1 off2
+pv select lt p1 v2
+pk1 select i1 z1k 2
+pk select i0 z0k pk1
+pv1 select i1 z1v pv
+pvv select i0 z0v pv1
+mi mul p1 2
+mk_a shr mi 7
+mk_b get p3 mk_a
+mk_c and mi 127
+mk get mk_b mk_c
+mi1 add mi 1
+mv_a shr mi1 7
+mv_b get p3 mv_a
+mv_c and mi1 127
+mv get mv_b mv_c
+nk0 select isn mk p0
+nv0 select isn mv p1
+nk select isp pk nk0
+nv select isp pvv nv0
+r rec nk nv
+ret r
+end
+# operand step k of a copied node: map it and add it (p0 BLD; args, first operand, cx, map)
+fn shcpa u32x128x128 u32 u32x128x512 u32 u32x128 u32x128x48 bool -> u32x128x128
+a_s add p3 p1
+a_k_m mul a_s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p2 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul a_s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p2 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+m call shmapo a_k a_v p4 p5
+mk at m 0
+mv at m 1
+r call shbpair p0 mk mv p6
+ret r
+end
+# the element cache: entry p1 matches the index (p3 p4)? State: the match + 1 or 0
+fn shelc u32 u32 u32x128x96 u32 u32 -> u32
+e mul p1 4
+i0 add 4 e
+k_a shr i0 7
+k_b get p2 k_a
+k_c and i0 127
+k get k_b k_c
+i1 add i0 1
+v_a shr i1 7
+v_b get p2 v_a
+v_c and i1 127
+v get v_b v_c
+m_a eq k p3
+m_b eq v p4
+m and m_a m_b
+z eq p0 0
+t and m z
+n1 add p1 1
+r select t n1 p0
+ret r
+end
+
+fn shcp1 (u32x128x128,u32x128x48,u32x128x48,u32x128x96) u32 u32x128x128 u32x128x512 u32x128x24 u32x128 u32x128x24 -> (u32x128x128,u32x128x48,u32x128x48,u32x128x96)
+bf get p5 0
+mode get p5 1
+kswap get p5 2
+skipj get p5 3
+mapsel get p5 12
+fk get p5 10
+fv get p5 11
+g add bf p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+a0_s add n_af 0
+a0_k_m mul a0_s 2
+a0_k_i add a0_k_m 0
+a0_k_a shr a0_k_i 7
+a0_k_b get p3 a0_k_a
+a0_k_c and a0_k_i 127
+a0_k get a0_k_b a0_k_c
+a0_v_m mul a0_s 2
+a0_v_i add a0_v_m 1
+a0_v_a shr a0_v_i 7
+a0_v_b get p3 a0_v_a
+a0_v_c and a0_v_i 127
+a0_v get a0_v_b a0_v_c
+a1_s add n_af 1
+a1_k_m mul a1_s 2
+a1_k_i add a1_k_m 0
+a1_k_a shr a1_k_i 7
+a1_k_b get p3 a1_k_a
+a1_k_c and a1_k_i 127
+a1_k get a1_k_b a1_k_c
+a1_v_m mul a1_s 2
+a1_v_i add a1_v_m 1
+a1_v_a shr a1_v_i 7
+a1_v_b get p3 a1_v_a
+a1_v_c and a1_v_i 127
+a1_v get a1_v_b a1_v_c
+isget eq n_op 25
+a0k_a eq a0_k 2
+a0k_b eq a0_v kswap
+a0k and a0k_a a0k_b
+a0z_a eq a0_k 2
+a0z_b eq a0_v 0
+a0z and a0z_a a0z_b
+a1o_a eq a1_k 2
+a1o_b eq a1_v 1
+a1o and a1o_a a1o_b
+gk and isget a0k
+gz and isget a0z
+atc and gz a1o
+isskip eq p1 skipj
+pv_a shr p1 7
+pv_b get p6 pv_a
+pv_c and p1 127
+pv get pv_b pv_c
+ispv eq pv 1
+m1 eq mode 1
+m2 eq mode 2
+m3 eq mode 3
+m4 eq mode 4
+f2 and m2 gk
+f4 and m4 ispv
+fixed or f2 f4
+e1 and m1 gk
+e3 and m3 atc
+elem or e1 e3
+use0 eq mapsel 0
+mp2 at p0 1
+mp1 at p0 2
+mcur select use0 mp2 mp1
+bld1 at p0 0
+mp21 mov mp2
+mp11 mov mp1
+cache1 at p0 3
+erk mov 0
+erv mov 0
+mcur1 select use0 mp21 mp11
+sk1 select isskip true fixed
+sk2 select sk1 true elem
+doadd select sk2 false true
+ad call shbadd bld1 n_op n_na n_ce n_pd nty doadd
+bld2 at ad 0
+pos at ad 1
+na1 select doadd n_na 0
+bld3 fold shcpa na1 bld2 p3 n_af p5 mcur1 doadd
+nk select fixed fk 1
+nk2 select elem erk nk
+nv select fixed fv pos
+nv2 select elem erv nv
+nk3 select isskip 0 nk2
+nv3 select isskip 0 nv2
+mi mul p1 2
+mi1 add mi 1
+mw0_a shr mi 7
+mw0_b get mcur1 mw0_a
+mw0_c and mi 127
+mw0_d set mw0_b mw0_c nk3
+mw0 set mcur1 mw0_a mw0_d
+mw1_a shr mi1 7
+mw1_b get mw0 mw1_a
+mw1_c and mi1 127
+mw1_d set mw1_b mw1_c nv3
+mw1 set mw0 mw1_a mw1_d
+mp2n select use0 mw1 mp21
+mp1n select use0 mp11 mw1
+r rec bld3 mp2n mp1n cache1
+ret r
+end
+# the producer's element at the operand (p1 p2) when p3 (the elementBuilder of src/optimize.ts):
+# the cached one, else the reduction of the index to the array length and a copy of the producer
+# body (p4 nodes, p5 args, p6 ntys, p7 cx). Result (RS, element kind, element value).
+fn shelem (u32x128x128,u32x128x48,u32x128x48,u32x128x96) u32 u32 bool u32x128x128 u32x128x512 u32x128x24 u32x128 -> (u32x128x128,u32x128x48,u32x128x48,u32x128x96,u32,u32)
+bld at p0 0
+mp2 at p0 1
+mp1 at p0 2
+cache at p0 3
+cnt_a shr 0 7
+cnt_b get cache cnt_a
+cnt_c and 0 127
+cnt get cnt_b cnt_c
+fnd fold shelc cnt 0 cache p1 p2
+found ne fnd 0
+nf select found false true
+need and p3 nf
+isp1_a eq p1 2
+isp1_b eq p2 1
+isp1 and isp1_a isp1_b
+len get p7 19
+l1 eq len 1
+lm1 sub len 1
+lan and len lm1
+pow2 eq lan 0
+nisp select isp1 false true
+needred and need nisp
+nl1 select l1 false true
+needn and needred nl1
+opc select pow2 5 11
+lit select pow2 lm1 len
+ad call shbadd bld opc 2 0 0 0 needn
+b1 at ad 0
+pos at ad 1
+b2 call shbpair b1 p1 p2 needn
+b3 call shbpair b2 3 lit needn
+ik0 select l1 3 1
+ik select isp1 2 ik0
+iv0 select l1 0 pos
+iv select isp1 1 iv0
+b1f get p7 16
+b1n get p7 17
+b1s get p7 18
+base get p7 20
+z call zpage
+c0 set z 0 b1f
+c3 set c0 3 b1s
+c6 set c3 6 ik
+c7 set c6 7 iv
+off1 sub base 2
+c9 set c7 9 off1
+c12 set c9 12 1
+trips select need b1n 0
+st0 rec b3 mp2 mp1 cache
+zc call zcol
+st1 fold shcp1 trips st0 p4 p5 p6 c12 zc
+bld4 at st1 0
+mp24 at st1 1
+mp14 at st1 2
+cache4 at st1 3
+g add b1f b1s
+saf_m mul g 6
+saf_i add saf_m 3
+saf_a shr saf_i 7
+saf_b get p4 saf_a
+saf_c and saf_i 127
+saf get saf_b saf_c
+s2 add saf 2
+sv_k_m mul s2 2
+sv_k_i add sv_k_m 0
+sv_k_a shr sv_k_i 7
+sv_k_b get p5 sv_k_a
+sv_k_c and sv_k_i 127
+sv_k get sv_k_b sv_k_c
+sv_v_m mul s2 2
+sv_v_i add sv_v_m 1
+sv_v_a shr sv_v_i 7
+sv_v_b get p5 sv_v_a
+sv_v_c and sv_v_i 127
+sv_v get sv_v_b sv_v_c
+mv call shmapo sv_k sv_v c12 mp14
+mvk at mv 0
+mvv at mv 1
+ei mul cnt 4
+e0 add 4 ei
+e1 add e0 1
+e2 add e0 2
+e3 add e0 3
+e0s select need e0 1
+e1s select need e1 1
+e2s select need e2 1
+e3s select need e3 1
+q0_a shr e0s 7
+q0_b get cache4 q0_a
+q0_c and e0s 127
+q0_d set q0_b q0_c p1
+q0 set cache4 q0_a q0_d
+q1_a shr e1s 7
+q1_b get q0 q1_a
+q1_c and e1s 127
+q1_d set q1_b q1_c p2
+q1 set q0 q1_a q1_d
+q2_a shr e2s 7
+q2_b get q1 q2_a
+q2_c and e2s 127
+q2_d set q2_b q2_c mvk
+q2 set q1 q2_a q2_d
+q3_a shr e3s 7
+q3_b get q2 q3_a
+q3_c and e3s 127
+q3_d set q3_b q3_c mvv
+q3 set q2 q3_a q3_d
+cnt1 add cnt 1
+ncnt select need cnt1 cnt
+q4_a shr 0 7
+q4_b get q3 q4_a
+q4_c and 0 127
+q4_d set q4_b q4_c ncnt
+q4 set q3 q4_a q4_d
+fi sub fnd 1
+fe mul fi 4
+fb add 4 fe
+fr2 add fb 2
+fr3 add fb 3
+ck_a shr fr2 7
+ck_b get cache ck_a
+ck_c and fr2 127
+ck get ck_b ck_c
+cv_a shr fr3 7
+cv_b get cache cv_a
+cv_c and fr3 127
+cv get cv_b cv_c
+rk select found ck mvk
+rv select found cv mvv
+r rec bld4 mp24 mp14 q4 rk rv
+ret r
+end
+fn shcps (u32x128x128,u32x128x48,u32x128x48,u32x128x96) u32 u32x128x128 u32x128x512 u32x128x24 u32x128 u32x128x24 -> (u32x128x128,u32x128x48,u32x128x48,u32x128x96)
+bf get p5 0
+mode get p5 1
+kswap get p5 2
+skipj get p5 3
+mapsel get p5 12
+fk get p5 10
+fv get p5 11
+g add bf p1
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+a0_s add n_af 0
+a0_k_m mul a0_s 2
+a0_k_i add a0_k_m 0
+a0_k_a shr a0_k_i 7
+a0_k_b get p3 a0_k_a
+a0_k_c and a0_k_i 127
+a0_k get a0_k_b a0_k_c
+a0_v_m mul a0_s 2
+a0_v_i add a0_v_m 1
+a0_v_a shr a0_v_i 7
+a0_v_b get p3 a0_v_a
+a0_v_c and a0_v_i 127
+a0_v get a0_v_b a0_v_c
+a1_s add n_af 1
+a1_k_m mul a1_s 2
+a1_k_i add a1_k_m 0
+a1_k_a shr a1_k_i 7
+a1_k_b get p3 a1_k_a
+a1_k_c and a1_k_i 127
+a1_k get a1_k_b a1_k_c
+a1_v_m mul a1_s 2
+a1_v_i add a1_v_m 1
+a1_v_a shr a1_v_i 7
+a1_v_b get p3 a1_v_a
+a1_v_c and a1_v_i 127
+a1_v get a1_v_b a1_v_c
+isget eq n_op 25
+a0k_a eq a0_k 2
+a0k_b eq a0_v kswap
+a0k and a0k_a a0k_b
+a0z_a eq a0_k 2
+a0z_b eq a0_v 0
+a0z and a0z_a a0z_b
+a1o_a eq a1_k 2
+a1o_b eq a1_v 1
+a1o and a1o_a a1o_b
+gk and isget a0k
+gz and isget a0z
+atc and gz a1o
+isskip eq p1 skipj
+pv_a shr p1 7
+pv_b get p6 pv_a
+pv_c and p1 127
+pv get pv_b pv_c
+ispv eq pv 1
+m1 eq mode 1
+m2 eq mode 2
+m3 eq mode 3
+m4 eq mode 4
+f2 and m2 gk
+f4 and m4 ispv
+fixed or f2 f4
+e1 and m1 gk
+e3 and m3 atc
+elem or e1 e3
+use0 eq mapsel 0
+mp2 at p0 1
+mp1 at p0 2
+mcur select use0 mp2 mp1
+ix call shmapo a1_k a1_v p5 mcur
+ixk at ix 0
+ixv at ix 1
+ek select e3 2 ixk
+ev select e3 1 ixv
+el call shelem p0 ek ev elem p2 p3 p4 p5
+bld1 at el 0
+mp21 at el 1
+mp11 at el 2
+cache1 at el 3
+erk at el 4
+erv at el 5
+mcur1 select use0 mp21 mp11
+sk1 select isskip true fixed
+sk2 select sk1 true elem
+doadd select sk2 false true
+ad call shbadd bld1 n_op n_na n_ce n_pd nty doadd
+bld2 at ad 0
+pos at ad 1
+na1 select doadd n_na 0
+bld3 fold shcpa na1 bld2 p3 n_af p5 mcur1 doadd
+nk select fixed fk 1
+nk2 select elem erk nk
+nv select fixed fv pos
+nv2 select elem erv nv
+nk3 select isskip 0 nk2
+nv3 select isskip 0 nv2
+mi mul p1 2
+mi1 add mi 1
+mw0_a shr mi 7
+mw0_b get mcur1 mw0_a
+mw0_c and mi 127
+mw0_d set mw0_b mw0_c nk3
+mw0 set mcur1 mw0_a mw0_d
+mw1_a shr mi1 7
+mw1_b get mw0 mw1_a
+mw1_c and mi1 127
+mw1_d set mw1_b mw1_c nv3
+mw1 set mw0 mw1_a mw1_d
+mp2n select use0 mw1 mp21
+mp1n select use0 mp11 mw1
+r rec bld3 mp2n mp1n cache1
+ret r
+end
+# ---------------------------------------------------------------------------------------------
+# The three fusions (fuseExtra, fuseIntoState, fuseRecurrence) as attempts at a site. The site
+# page st (u32x128): 0 first node of the function, 1 producer body, 2 consumer body, 3 k,
+# 4 producer node, 5 consumer node, 6 n1, 7 n2, 8 array length, 11 consumer operand count,
+# 12 its first operand, 13 the producer's first operand, 14 the producer's operand count,
+# 15 recordState, 16 the consumer's type. An attempt gives (BLD, INF): INF (u32x128x2) word 0 ok,
+# 1 kind (1 extra, 2 state, 3 recurrence), 2 parameter count of the fused body, 3 its result
+# type, 4 operand count of the replacement fold, 5 consumer node, 6 producer node, 7 k, 8 the
+# consumer's type, 9 1 when the type of the (state, previous) record is to be interned (the
+# placeholder 4294967280 is used for it), 10 the state type; 16.. its parameter types; 128..
+# the replacement fold's operand pairs (kind 9: a replacement node of the recurrence, value its
+# index).
+
+fn zinf -> u32x128x2
+z call zpage
+t arr z z
+ret t
+end
+
+# parameter types of the fused body: body2's (except k, and parameter 0 when p5), then
+fn shpa u32x128x2 u32 u32x128x65 u32 u32 bool -> u32x128x2
+pi add p3 p1
+t_a shr pi 7
+t_b get p2 t_a
+t_c and pi 127
+t get t_b t_c
+isk eq p1 p4
+lt lt p1 p4
+im1 sub p1 1
+pos select lt p1 im1
+i0 eq p1 0
+sk0 and p5 i0
+skip or isk sk0
+idx0 add 16 pos
+idx select skip 15 idx0
+r_a shr idx 7
+r_b get p0 r_a
+r_c and idx 127
+r_d set r_b r_c t
+r set p0 r_a r_d
+ret r
+end
+fn shpb u32x128x2 u32 u32x128x65 u32 u32 -> u32x128x2
+a add p3 2
+pi add a p1
+t_a shr pi 7
+t_b get p2 t_a
+t_c and pi 127
+t get t_b t_c
+bi add p4 p1
+idx add 16 bi
+r_a shr idx 7
+r_b get p0 r_a
+r_c and idx 127
+r_d set r_b r_c t
+r set p0 r_a r_d
+ret r
+end
+fn shpc u32x128x2 u32 u32x128x65 u32 -> u32x128x2
+pi add p3 p1
+t_a shr pi 7
+t_b get p2 t_a
+t_c and pi 127
+t get t_b t_c
+idx add 16 p1
+r_a shr idx 7
+r_b get p0 r_a
+r_c and idx 127
+r_d set r_b r_c t
+r set p0 r_a r_d
+ret r
+end
+# consumer operand i (of p4 = k removed): lo = p6, position base0 = p5 + i - lo - (i > k)
+fn shpf u32x128x2 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x2
+s add p3 p1
+a_k_m mul s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p2 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p2 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+ge ge p1 p6
+isk eq p1 p4
+nk select isk false true
+el and ge nk
+gk gt p1 p4
+d select gk 1 0
+b1 sub p1 p6
+b2 add p5 b1
+pos sub b2 d
+i0 mul pos 2
+ix add 128 i0
+ix1 add ix 1
+ixa select el ix 14
+ixb select el ix1 15
+w0_a shr ixa 7
+w0_b get p0 w0_a
+w0_c and ixa 127
+w0_d set w0_b w0_c a_k
+w0 set p0 w0_a w0_d
+w1_a shr ixb 7
+w1_b get w0 w1_a
+w1_c and ixb 127
+w1_d set w1_b w1_c a_v
+w1 set w0 w1_a w1_d
+ret w1
+end
+# producer extra i: operand 2 + i of the producer, at position p4 + i
+fn shpg u32x128x2 u32 u32x128x512 u32 u32 -> u32x128x2
+a add p3 2
+s add a p1
+x_k_m mul s 2
+x_k_i add x_k_m 0
+x_k_a shr x_k_i 7
+x_k_b get p2 x_k_a
+x_k_c and x_k_i 127
+x_k get x_k_b x_k_c
+x_v_m mul s 2
+x_v_i add x_v_m 1
+x_v_a shr x_v_i 7
+x_v_b get p2 x_v_a
+x_v_c and x_v_i 127
+x_v get x_v_b x_v_c
+q add p4 p1
+q2 mul q 2
+ix add 128 q2
+ix1 add ix 1
+w0_a shr ix 7
+w0_b get p0 w0_a
+w0_c and ix 127
+w0_d set w0_b w0_c x_k
+w0 set p0 w0_a w0_d
+w1_a shr ix1 7
+w1_b get w0 w1_a
+w1_c and ix1 127
+w1_d set w1_b w1_c x_v
+w1 set w0 w1_a w1_d
+ret w1
+end
+# does consumer extra operand i equal operand 1 (p4 p5)?
+fn shsq u32 u32 u32x128x512 u32 u32 u32 -> u32
+a add p3 2
+s add a p1
+x_k_m mul s 2
+x_k_i add x_k_m 0
+x_k_a shr x_k_i 7
+x_k_b get p2 x_k_a
+x_k_c and x_k_i 127
+x_k get x_k_b x_k_c
+x_v_m mul s 2
+x_v_i add x_v_m 1
+x_v_a shr x_v_i 7
+x_v_b get p2 x_v_a
+x_v_c and x_v_i 127
+x_v get x_v_b x_v_c
+m_a eq x_k p4
+m_b eq x_v p5
+m and m_a m_b
+b select m 1 0
+r or p0 b
+ret r
+end
+
+# fuseExtra: p0 nodes p1 args p2 fns p3 tl p4 nt p5 st p6 go
+fn shatx u32x128x128 u32x128x512 u32x128x45 u32x128x65 u32x128x24 u32x128 bool -> (u32x128x128,u32x128x2)
+ff get p5 0
+b1 get p5 1
+b2 get p5 2
+k get p5 3
+pi get p5 4
+ci get p5 5
+n1 get p5 6
+n2 get p5 7
+len get p5 8
+nc get p5 11
+caf get p5 12
+paf get p5 13
+np get p5 14
+cty get p5 16
+d1_f_m mul b1 7
+d1_f_i add d1_f_m 4
+d1_f_a shr d1_f_i 7
+d1_f_b get p2 d1_f_a
+d1_f_c and d1_f_i 127
+d1_f get d1_f_b d1_f_c
+d1_n_m mul b1 7
+d1_n_i add d1_n_m 5
+d1_n_a shr d1_n_i 7
+d1_n_b get p2 d1_n_a
+d1_n_c and d1_n_i 127
+d1_n get d1_n_b d1_n_c
+d1_rw_m mul b1 7
+d1_rw_i add d1_rw_m 6
+d1_rw_a shr d1_rw_i 7
+d1_rw_b get p2 d1_rw_a
+d1_rw_c and d1_rw_i 127
+d1_rw get d1_rw_b d1_rw_c
+d1_pf_m mul b1 7
+d1_pf_i add d1_pf_m 2
+d1_pf_a shr d1_pf_i 7
+d1_pf_b get p2 d1_pf_a
+d1_pf_c and d1_pf_i 127
+d1_pf get d1_pf_b d1_pf_c
+d1_np_m mul b1 7
+d1_np_i add d1_np_m 1
+d1_np_a shr d1_np_i 7
+d1_np_b get p2 d1_np_a
+d1_np_c and d1_np_i 127
+d1_np get d1_np_b d1_np_c
+d1_rs_m mul b1 7
+d1_rs_i add d1_rs_m 3
+d1_rs_a shr d1_rs_i 7
+d1_rs_b get p2 d1_rs_a
+d1_rs_c and d1_rs_i 127
+d1_rs get d1_rs_b d1_rs_c
+d2_f_m mul b2 7
+d2_f_i add d2_f_m 4
+d2_f_a shr d2_f_i 7
+d2_f_b get p2 d2_f_a
+d2_f_c and d2_f_i 127
+d2_f get d2_f_b d2_f_c
+d2_n_m mul b2 7
+d2_n_i add d2_n_m 5
+d2_n_a shr d2_n_i 7
+d2_n_b get p2 d2_n_a
+d2_n_c and d2_n_i 127
+d2_n get d2_n_b d2_n_c
+d2_rw_m mul b2 7
+d2_rw_i add d2_rw_m 6
+d2_rw_a shr d2_rw_i 7
+d2_rw_b get p2 d2_rw_a
+d2_rw_c and d2_rw_i 127
+d2_rw get d2_rw_b d2_rw_c
+d2_pf_m mul b2 7
+d2_pf_i add d2_pf_m 2
+d2_pf_a shr d2_pf_i 7
+d2_pf_b get p2 d2_pf_a
+d2_pf_c and d2_pf_i 127
+d2_pf get d2_pf_b d2_pf_c
+d2_np_m mul b2 7
+d2_np_i add d2_np_m 1
+d2_np_a shr d2_np_i 7
+d2_np_b get p2 d2_np_a
+d2_np_c and d2_np_i 127
+d2_np get d2_np_b d2_np_c
+d2_rs_m mul b2 7
+d2_rs_i add d2_rs_m 3
+d2_rs_a shr d2_rs_i 7
+d2_rs_b get p2 d2_rs_a
+d2_rs_c and d2_rs_i 127
+d2_rs get d2_rs_b d2_rs_c
+sp call shprod p0 p1 p2 b1
+st1 at sp 1
+setj1 at sp 4
+pure eq st1 2
+rdg call shrdg p0 p1 p2 b2 k
+rdgb eq rdg 1
+gt call shgets p0 p1 p2 b2 k
+nct at gt 0
+dct at gt 1
+atc eq nct 0
+lel le n2 n1
+eql eq n1 len
+c1 select atc lel eql
+cost call shbcost p0 p2 b1 setj1
+prod mul dct cost
+c2 le prod 4
+kge ge k 2
+a0 and pure c1
+a1 and a0 c2
+a2 and a1 rdgb
+a3 and a2 kge
+ok0 and a3 p6
+z call zbld
+zm call zmap
+zm2 call zmap
+zca call zcache
+rs0 rec z zm zm2 zca
+zp call zpage
+x0 set zp 0 d2_f
+x1 set x0 1 1
+x2 set x1 2 k
+x3 set x2 3 4294967295
+x4 set x3 4 2
+x6 set x4 6 2
+x7 set x6 7 1
+x8 set x7 8 k
+x9 set x8 9 4294967295
+x16 set x9 16 d1_f
+x17 set x16 17 d1_n
+x18 set x17 18 setj1
+x19 set x18 19 len
+npm1 sub d2_np 1
+cx set x19 20 npm1
+trips select ok0 d2_n 0
+zc call zcol
+rs1 fold shcps trips rs0 p0 p1 p4 cx zc
+bld1 at rs1 0
+mp2 at rs1 1
+rr_k0 shr d2_rw 28
+rr_v0 and d2_rw 268435455
+rr_i5 eq rr_k0 5
+rr_sl select rr_i5 rr_v0 0
+rr_q_k_m mul rr_sl 2
+rr_q_k_i add rr_q_k_m 0
+rr_q_k_a shr rr_q_k_i 7
+rr_q_k_b get p1 rr_q_k_a
+rr_q_k_c and rr_q_k_i 127
+rr_q_k get rr_q_k_b rr_q_k_c
+rr_q_v_m mul rr_sl 2
+rr_q_v_i add rr_q_v_m 1
+rr_q_v_a shr rr_q_v_i 7
+rr_q_v_b get p1 rr_q_v_a
+rr_q_v_c and rr_q_v_i 127
+rr_q_v get rr_q_v_b rr_q_v_c
+rr_k select rr_i5 rr_q_k rr_k0
+rr_v select rr_i5 rr_q_v rr_v0
+rm call shmapo rr_k rr_v cx mp2
+rk at rm 0
+rv at rm 1
+b3_a shr 3 7
+b3_b get bld1 b3_a
+b3_c and 3 127
+b3_d set b3_b b3_c rk
+b3 set bld1 b3_a b3_d
+b4_a shr 4 7
+b4_b get b3 b4_a
+b4_c and 4 127
+b4_d set b4_b b4_c rv
+b4 set b3 b4_a b4_d
+bn_a shr 0 7
+bn_b get b4 bn_a
+bn_c and 0 127
+bn get bn_b bn_c
+bo_a shr 1 7
+bo_b get b4 bo_a
+bo_c and 1 127
+bo get bo_b bo_c
+nsm le bn 48
+nov eq bo 0
+szok and nsm nov
+ok and ok0 szok
+oki select ok 1 0
+inf0 call zinf
+i0_a shr 0 7
+i0_b get inf0 i0_a
+i0_c and 0 127
+i0_d set i0_b i0_c oki
+i0 set inf0 i0_a i0_d
+i1_a shr 1 7
+i1_b get i0 i1_a
+i1_c and 1 127
+i1_d set i1_b i1_c 1
+i1 set i0 i1_a i1_d
+np1b sub d1_np 2
+npr add npm1 np1b
+i2_a shr 2 7
+i2_b get i1 i2_a
+i2_c and 2 127
+i2_d set i2_b i2_c npr
+i2 set i1 i2_a i2_d
+i3_a shr 3 7
+i3_b get i2 i3_a
+i3_c and 3 127
+i3_d set i3_b i3_c d2_rs
+i3 set i2 i3_a i3_d
+nm1 sub nc 1
+npp sub np 2
+nra add nm1 npp
+i4_a shr 4 7
+i4_b get i3 i4_a
+i4_c and 4 127
+i4_d set i4_b i4_c nra
+i4 set i3 i4_a i4_d
+i5_a shr 5 7
+i5_b get i4 i5_a
+i5_c and 5 127
+i5_d set i5_b i5_c ci
+i5 set i4 i5_a i5_d
+i6_a shr 6 7
+i6_b get i5 i6_a
+i6_c and 6 127
+i6_d set i6_b i6_c pi
+i6 set i5 i6_a i6_d
+i7_a shr 7 7
+i7_b get i6 i7_a
+i7_c and 7 127
+i7_d set i7_b i7_c k
+i7 set i6 i7_a i7_d
+i8_a shr 8 7
+i8_b get i7 i8_a
+i8_c and 8 127
+i8_d set i8_b i8_c cty
+i8 set i7 i8_a i8_d
+pa fold shpa d2_np i8 p3 d2_pf k false
+pb fold shpb np1b pa p3 d1_pf npm1
+pf fold shpf nc pb p1 caf k 0 0
+pg fold shpg npp pf p1 paf nm1
+r rec b4 pg
+ret r
+end
+
+# fuseIntoState (k == 1)
+fn shats u32x128x128 u32x128x512 u32x128x45 u32x128x65 u32x128x24 u32x128 bool -> (u32x128x128,u32x128x2)
+ff get p5 0
+b1 get p5 1
+b2 get p5 2
+k get p5 3
+pi get p5 4
+ci get p5 5
+n1 get p5 6
+n2 get p5 7
+len get p5 8
+nc get p5 11
+caf get p5 12
+paf get p5 13
+np get p5 14
+cty get p5 16
+d1_f_m mul b1 7
+d1_f_i add d1_f_m 4
+d1_f_a shr d1_f_i 7
+d1_f_b get p2 d1_f_a
+d1_f_c and d1_f_i 127
+d1_f get d1_f_b d1_f_c
+d1_n_m mul b1 7
+d1_n_i add d1_n_m 5
+d1_n_a shr d1_n_i 7
+d1_n_b get p2 d1_n_a
+d1_n_c and d1_n_i 127
+d1_n get d1_n_b d1_n_c
+d1_rw_m mul b1 7
+d1_rw_i add d1_rw_m 6
+d1_rw_a shr d1_rw_i 7
+d1_rw_b get p2 d1_rw_a
+d1_rw_c and d1_rw_i 127
+d1_rw get d1_rw_b d1_rw_c
+d1_pf_m mul b1 7
+d1_pf_i add d1_pf_m 2
+d1_pf_a shr d1_pf_i 7
+d1_pf_b get p2 d1_pf_a
+d1_pf_c and d1_pf_i 127
+d1_pf get d1_pf_b d1_pf_c
+d1_np_m mul b1 7
+d1_np_i add d1_np_m 1
+d1_np_a shr d1_np_i 7
+d1_np_b get p2 d1_np_a
+d1_np_c and d1_np_i 127
+d1_np get d1_np_b d1_np_c
+d1_rs_m mul b1 7
+d1_rs_i add d1_rs_m 3
+d1_rs_a shr d1_rs_i 7
+d1_rs_b get p2 d1_rs_a
+d1_rs_c and d1_rs_i 127
+d1_rs get d1_rs_b d1_rs_c
+d2_f_m mul b2 7
+d2_f_i add d2_f_m 4
+d2_f_a shr d2_f_i 7
+d2_f_b get p2 d2_f_a
+d2_f_c and d2_f_i 127
+d2_f get d2_f_b d2_f_c
+d2_n_m mul b2 7
+d2_n_i add d2_n_m 5
+d2_n_a shr d2_n_i 7
+d2_n_b get p2 d2_n_a
+d2_n_c and d2_n_i 127
+d2_n get d2_n_b d2_n_c
+d2_rw_m mul b2 7
+d2_rw_i add d2_rw_m 6
+d2_rw_a shr d2_rw_i 7
+d2_rw_b get p2 d2_rw_a
+d2_rw_c and d2_rw_i 127
+d2_rw get d2_rw_b d2_rw_c
+d2_pf_m mul b2 7
+d2_pf_i add d2_pf_m 2
+d2_pf_a shr d2_pf_i 7
+d2_pf_b get p2 d2_pf_a
+d2_pf_c and d2_pf_i 127
+d2_pf get d2_pf_b d2_pf_c
+d2_np_m mul b2 7
+d2_np_i add d2_np_m 1
+d2_np_a shr d2_np_i 7
+d2_np_b get p2 d2_np_a
+d2_np_c and d2_np_i 127
+d2_np get d2_np_b d2_np_c
+d2_rs_m mul b2 7
+d2_rs_i add d2_rs_m 3
+d2_rs_a shr d2_rs_i 7
+d2_rs_b get p2 d2_rs_a
+d2_rs_c and d2_rs_i 127
+d2_rs get d2_rs_b d2_rs_c
+sp call shprod p0 p1 p2 b1
+st1 at sp 1
+setj1 at sp 4
+pure eq st1 2
+sp2 call shprod p0 p1 p2 b2
+prev2 at sp2 0
+gdef2 at sp2 2
+sok2 at sp2 3
+setj2 at sp2 4
+fsr call shfs p0 p1 p2 b2 prev2 setj2
+fbad at fsr 0
+fhas at fsr 1
+caf1 add caf 1
+c1_k_m mul caf1 2
+c1_k_i add c1_k_m 0
+c1_k_a shr c1_k_i 7
+c1_k_b get p1 c1_k_a
+c1_k_c and c1_k_i 127
+c1_k get c1_k_b c1_k_c
+c1_v_m mul caf1 2
+c1_v_i add c1_v_m 1
+c1_v_a shr c1_v_i 7
+c1_v_b get p1 c1_v_a
+c1_v_c and c1_v_i 127
+c1_v get c1_v_b c1_v_c
+nex sub nc 2
+dq fold shsq nex 0 p1 caf c1_k c1_v
+noeq eq dq 0
+isk1 eq k 1
+n1l eq n1 len
+n2l eq n2 len
+gd eq gdef2 1
+so eq sok2 1
+fb0 eq fbad 0
+fh eq fhas 1
+a0 and pure isk1
+a1 and a0 n1l
+a2 and a1 n2l
+a3 and a2 noeq
+a4 and a3 gd
+a5 and a4 so
+a6 and a5 fb0
+a7 and a6 fh
+ok0 and a7 p6
+z call zbld
+zm call zmap
+zm2 call zmap
+zca call zcache
+rs0 rec z zm zm2 zca
+zp call zpage
+x0 set zp 0 d2_f
+x1 set x0 1 3
+x2 set x1 3 4294967295
+x4 set x2 4 2
+x6 set x4 6 2
+x7 set x6 7 1
+x16 set x7 16 d1_f
+x17 set x16 17 d1_n
+x18 set x17 18 setj1
+x19 set x18 19 len
+cx set x19 20 d2_np
+trips select ok0 d2_n 0
+zc call zcol
+rs1 fold shcps trips rs0 p0 p1 p4 cx zc
+bld1 at rs1 0
+mp2 at rs1 1
+rr_k0 shr d2_rw 28
+rr_v0 and d2_rw 268435455
+rr_i5 eq rr_k0 5
+rr_sl select rr_i5 rr_v0 0
+rr_q_k_m mul rr_sl 2
+rr_q_k_i add rr_q_k_m 0
+rr_q_k_a shr rr_q_k_i 7
+rr_q_k_b get p1 rr_q_k_a
+rr_q_k_c and rr_q_k_i 127
+rr_q_k get rr_q_k_b rr_q_k_c
+rr_q_v_m mul rr_sl 2
+rr_q_v_i add rr_q_v_m 1
+rr_q_v_a shr rr_q_v_i 7
+rr_q_v_b get p1 rr_q_v_a
+rr_q_v_c and rr_q_v_i 127
+rr_q_v get rr_q_v_b rr_q_v_c
+rr_k select rr_i5 rr_q_k rr_k0
+rr_v select rr_i5 rr_q_v rr_v0
+rm call shmapo rr_k rr_v cx mp2
+rk at rm 0
+rv at rm 1
+b3_a shr 3 7
+b3_b get bld1 b3_a
+b3_c and 3 127
+b3_d set b3_b b3_c rk
+b3 set bld1 b3_a b3_d
+b4_a shr 4 7
+b4_b get b3 b4_a
+b4_c and 4 127
+b4_d set b4_b b4_c rv
+b4 set b3 b4_a b4_d
+bn_a shr 0 7
+bn_b get b4 bn_a
+bn_c and 0 127
+bn get bn_b bn_c
+bo_a shr 1 7
+bo_b get b4 bo_a
+bo_c and 1 127
+bo get bo_b bo_c
+nsm le bn 48
+nov eq bo 0
+szok and nsm nov
+ok and ok0 szok
+oki select ok 1 0
+inf0 call zinf
+i0_a shr 0 7
+i0_b get inf0 i0_a
+i0_c and 0 127
+i0_d set i0_b i0_c oki
+i0 set inf0 i0_a i0_d
+i1_a shr 1 7
+i1_b get i0 i1_a
+i1_c and 1 127
+i1_d set i1_b i1_c 2
+i1 set i0 i1_a i1_d
+np1b sub d1_np 2
+npr add d2_np np1b
+i2_a shr 2 7
+i2_b get i1 i2_a
+i2_c and 2 127
+i2_d set i2_b i2_c npr
+i2 set i1 i2_a i2_d
+i3_a shr 3 7
+i3_b get i2 i3_a
+i3_c and 3 127
+i3_d set i3_b i3_c d2_rs
+i3 set i2 i3_a i3_d
+npp sub np 2
+nra add nc npp
+i4_a shr 4 7
+i4_b get i3 i4_a
+i4_c and 4 127
+i4_d set i4_b i4_c nra
+i4 set i3 i4_a i4_d
+i5_a shr 5 7
+i5_b get i4 i5_a
+i5_c and 5 127
+i5_d set i5_b i5_c ci
+i5 set i4 i5_a i5_d
+i6_a shr 6 7
+i6_b get i5 i6_a
+i6_c and 6 127
+i6_d set i6_b i6_c pi
+i6 set i5 i6_a i6_d
+i7_a shr 7 7
+i7_b get i6 i7_a
+i7_c and 7 127
+i7_d set i7_b i7_c k
+i7 set i6 i7_a i7_d
+i8_a shr 8 7
+i8_b get i7 i8_a
+i8_c and 8 127
+i8_d set i8_b i8_c cty
+i8 set i7 i8_a i8_d
+pa fold shpc d2_np i8 p3 d2_pf
+pb fold shpb np1b pa p3 d1_pf d2_np
+q0_k_m mul caf 2
+q0_k_i add q0_k_m 0
+q0_k_a shr q0_k_i 7
+q0_k_b get p1 q0_k_a
+q0_k_c and q0_k_i 127
+q0_k get q0_k_b q0_k_c
+q0_v_m mul caf 2
+q0_v_i add q0_v_m 1
+q0_v_a shr q0_v_i 7
+q0_v_b get p1 q0_v_a
+q0_v_c and q0_v_i 127
+q0_v get q0_v_b q0_v_c
+paf1 add paf 1
+q1_k_m mul paf1 2
+q1_k_i add q1_k_m 0
+q1_k_a shr q1_k_i 7
+q1_k_b get p1 q1_k_a
+q1_k_c and q1_k_i 127
+q1_k get q1_k_b q1_k_c
+q1_v_m mul paf1 2
+q1_v_i add q1_v_m 1
+q1_v_a shr q1_v_i 7
+q1_v_b get p1 q1_v_a
+q1_v_c and q1_v_i 127
+q1_v get q1_v_b q1_v_c
+h0_a shr 128 7
+h0_b get pb h0_a
+h0_c and 128 127
+h0_d set h0_b h0_c q0_k
+h0 set pb h0_a h0_d
+h1_a shr 129 7
+h1_b get h0 h1_a
+h1_c and 129 127
+h1_d set h1_b h1_c q0_v
+h1 set h0 h1_a h1_d
+h2_a shr 130 7
+h2_b get h1 h2_a
+h2_c and 130 127
+h2_d set h2_b h2_c q1_k
+h2 set h1 h2_a h2_d
+h3_a shr 131 7
+h3_b get h2 h3_a
+h3_c and 131 127
+h3_d set h3_b h3_c q1_v
+h3 set h2 h3_a h3_d
+pf fold shpf nc h3 p1 caf 4294967295 2 2
+pg fold shpg npp pf p1 paf nc
+r rec b4 pg
+ret r
+end
+
+# fuseRecurrence (k >= 2, recordState): the record type is interned by the caller
+fn shatr u32x128x128 u32x128x512 u32x128x45 u32x128x65 u32x128x24 u32x128 bool -> (u32x128x128,u32x128x2)
+ff get p5 0
+b1 get p5 1
+b2 get p5 2
+k get p5 3
+pi get p5 4
+ci get p5 5
+n1 get p5 6
+n2 get p5 7
+len get p5 8
+nc get p5 11
+caf get p5 12
+paf get p5 13
+np get p5 14
+rsf get p5 15
+cty get p5 16
+d1_f_m mul b1 7
+d1_f_i add d1_f_m 4
+d1_f_a shr d1_f_i 7
+d1_f_b get p2 d1_f_a
+d1_f_c and d1_f_i 127
+d1_f get d1_f_b d1_f_c
+d1_n_m mul b1 7
+d1_n_i add d1_n_m 5
+d1_n_a shr d1_n_i 7
+d1_n_b get p2 d1_n_a
+d1_n_c and d1_n_i 127
+d1_n get d1_n_b d1_n_c
+d1_rw_m mul b1 7
+d1_rw_i add d1_rw_m 6
+d1_rw_a shr d1_rw_i 7
+d1_rw_b get p2 d1_rw_a
+d1_rw_c and d1_rw_i 127
+d1_rw get d1_rw_b d1_rw_c
+d1_pf_m mul b1 7
+d1_pf_i add d1_pf_m 2
+d1_pf_a shr d1_pf_i 7
+d1_pf_b get p2 d1_pf_a
+d1_pf_c and d1_pf_i 127
+d1_pf get d1_pf_b d1_pf_c
+d1_np_m mul b1 7
+d1_np_i add d1_np_m 1
+d1_np_a shr d1_np_i 7
+d1_np_b get p2 d1_np_a
+d1_np_c and d1_np_i 127
+d1_np get d1_np_b d1_np_c
+d1_rs_m mul b1 7
+d1_rs_i add d1_rs_m 3
+d1_rs_a shr d1_rs_i 7
+d1_rs_b get p2 d1_rs_a
+d1_rs_c and d1_rs_i 127
+d1_rs get d1_rs_b d1_rs_c
+d2_f_m mul b2 7
+d2_f_i add d2_f_m 4
+d2_f_a shr d2_f_i 7
+d2_f_b get p2 d2_f_a
+d2_f_c and d2_f_i 127
+d2_f get d2_f_b d2_f_c
+d2_n_m mul b2 7
+d2_n_i add d2_n_m 5
+d2_n_a shr d2_n_i 7
+d2_n_b get p2 d2_n_a
+d2_n_c and d2_n_i 127
+d2_n get d2_n_b d2_n_c
+d2_rw_m mul b2 7
+d2_rw_i add d2_rw_m 6
+d2_rw_a shr d2_rw_i 7
+d2_rw_b get p2 d2_rw_a
+d2_rw_c and d2_rw_i 127
+d2_rw get d2_rw_b d2_rw_c
+d2_pf_m mul b2 7
+d2_pf_i add d2_pf_m 2
+d2_pf_a shr d2_pf_i 7
+d2_pf_b get p2 d2_pf_a
+d2_pf_c and d2_pf_i 127
+d2_pf get d2_pf_b d2_pf_c
+d2_np_m mul b2 7
+d2_np_i add d2_np_m 1
+d2_np_a shr d2_np_i 7
+d2_np_b get p2 d2_np_a
+d2_np_c and d2_np_i 127
+d2_np get d2_np_b d2_np_c
+d2_rs_m mul b2 7
+d2_rs_i add d2_rs_m 3
+d2_rs_a shr d2_rs_i 7
+d2_rs_b get p2 d2_rs_a
+d2_rs_c and d2_rs_i 127
+d2_rs get d2_rs_b d2_rs_c
+sp call shprod p0 p1 p2 b1
+prev1 at sp 0
+st1 at sp 1
+setj1 at sp 4
+imp eq st1 1
+rdg call shrdg p0 p1 p2 b2 k
+rdgb eq rdg 1
+gt call shgets p0 p1 p2 b2 k
+nct at gt 0
+atc eq nct 0
+s2_a shr d2_pf 7
+s2_b get p3 s2_a
+s2_c and d2_pf 127
+s2 get s2_b s2_c
+s2sc lt s2 2
+n21 le n2 n1
+kge ge k 2
+rsb eq rsf 1
+a0 and imp rdgb
+a1 and a0 atc
+a2 and a1 s2sc
+a3 and a2 n21
+a4 and a3 kge
+a5 and a4 rsb
+ok0 and a5 p6
+z call zbld
+bs1 call shbadd z 27 2 0 0 s2 true
+bs1b at bs1 0
+bs2 call shbpair bs1b 2 0 true
+bs3 call shbpair bs2 3 0 true
+bs4 call shbadd bs3 27 2 0 0 0 true
+bs4b at bs4 0
+bs5 call shbpair bs4b 2 0 true
+bs6 call shbpair bs5 3 1 true
+zm call zmap
+zm2 call zmap
+zca call zcache
+rs0 rec bs6 zm zm2 zca
+zp call zpage
+y0 set zp 0 d1_f
+y1 set y0 1 4
+y3 set y1 3 setj1
+y4 set y3 4 2
+y6 set y4 6 2
+y7 set y6 7 1
+y10 set y7 10 1
+y11 set y10 11 1
+y12 set y11 12 1
+np3 sub d2_np 3
+cx1 set y12 9 np3
+t1 select ok0 d1_n 0
+rs1 fold shcp1 t1 rs0 p0 p1 p4 cx1 prev1
+mp1 at rs1 2
+gsn add d1_f setj1
+ssf_m mul gsn 6
+ssf_i add ssf_m 3
+ssf_a shr ssf_i 7
+ssf_b get p0 ssf_a
+ssf_c and ssf_i 127
+ssf get ssf_b ssf_c
+s2x add ssf 2
+sv_k_m mul s2x 2
+sv_k_i add sv_k_m 0
+sv_k_a shr sv_k_i 7
+sv_k_b get p1 sv_k_a
+sv_k_c and sv_k_i 127
+sv_k get sv_k_b sv_k_c
+sv_v_m mul s2x 2
+sv_v_i add sv_v_m 1
+sv_v_a shr sv_v_i 7
+sv_v_b get p1 sv_v_a
+sv_v_c and sv_v_i 127
+sv_v get sv_v_b sv_v_c
+em call shmapo sv_k sv_v cx1 mp1
+ek at em 0
+ev at em 1
+w0 set zp 0 d2_f
+w1 set w0 1 2
+w2 set w1 2 k
+w3 set w2 3 4294967295
+w4 set w3 4 1
+w5 set w4 5 0
+w6 set w5 6 2
+w7 set w6 7 1
+w8 set w7 8 k
+w9 set w8 9 4294967295
+w10 set w9 10 ek
+w11 set w10 11 ev
+t2 select ok0 d2_n 0
+zc call zcol
+rs2 fold shcp1 t2 rs1 p0 p1 p4 w11 zc
+bld2 at rs2 0
+mp2 at rs2 1
+rr_k0 shr d2_rw 28
+rr_v0 and d2_rw 268435455
+rr_i5 eq rr_k0 5
+rr_sl select rr_i5 rr_v0 0
+rr_q_k_m mul rr_sl 2
+rr_q_k_i add rr_q_k_m 0
+rr_q_k_a shr rr_q_k_i 7
+rr_q_k_b get p1 rr_q_k_a
+rr_q_k_c and rr_q_k_i 127
+rr_q_k get rr_q_k_b rr_q_k_c
+rr_q_v_m mul rr_sl 2
+rr_q_v_i add rr_q_v_m 1
+rr_q_v_a shr rr_q_v_i 7
+rr_q_v_b get p1 rr_q_v_a
+rr_q_v_c and rr_q_v_i 127
+rr_q_v get rr_q_v_b rr_q_v_c
+rr_k select rr_i5 rr_q_k rr_k0
+rr_v select rr_i5 rr_q_v rr_v0
+rm call shmapo rr_k rr_v w11 mp2
+rk at rm 0
+rv at rm 1
+pr1 call shbadd bld2 23 2 0 0 4294967280 true
+pr1b at pr1 0
+prpos at pr1 1
+pr2 call shbpair pr1b rk rv true
+pr3 call shbpair pr2 ek ev true
+b3_a shr 3 7
+b3_b get pr3 b3_a
+b3_c and 3 127
+b3_d set b3_b b3_c 1
+b3 set pr3 b3_a b3_d
+b4_a shr 4 7
+b4_b get b3 b4_a
+b4_c and 4 127
+b4_d set b4_b b4_c prpos
+b4 set b3 b4_a b4_d
+bn_a shr 0 7
+bn_b get b4 bn_a
+bn_c and 0 127
+bn get bn_b bn_c
+bo_a shr 1 7
+bo_b get b4 bo_a
+bo_c and 1 127
+bo get bo_b bo_c
+nsm le bn 48
+nov eq bo 0
+szok and nsm nov
+ok and ok0 szok
+oki select ok 1 0
+inf0 call zinf
+i0_a shr 0 7
+i0_b get inf0 i0_a
+i0_c and 0 127
+i0_d set i0_b i0_c oki
+i0 set inf0 i0_a i0_d
+i1_a shr 1 7
+i1_b get i0 i1_a
+i1_c and 1 127
+i1_d set i1_b i1_c 3
+i1 set i0 i1_a i1_d
+np1b sub d1_np 2
+npm1 sub d2_np 1
+npr add npm1 np1b
+i2_a shr 2 7
+i2_b get i1 i2_a
+i2_c and 2 127
+i2_d set i2_b i2_c npr
+i2 set i1 i2_a i2_d
+i3_a shr 3 7
+i3_b get i2 i3_a
+i3_c and 3 127
+i3_d set i3_b i3_c 4294967280
+i3 set i2 i3_a i3_d
+npp sub np 2
+nra0 add nc npp
+nra sub nra0 1
+i4_a shr 4 7
+i4_b get i3 i4_a
+i4_c and 4 127
+i4_d set i4_b i4_c nra
+i4 set i3 i4_a i4_d
+i5_a shr 5 7
+i5_b get i4 i5_a
+i5_c and 5 127
+i5_d set i5_b i5_c ci
+i5 set i4 i5_a i5_d
+i6_a shr 6 7
+i6_b get i5 i6_a
+i6_c and 6 127
+i6_d set i6_b i6_c pi
+i6 set i5 i6_a i6_d
+i7_a shr 7 7
+i7_b get i6 i7_a
+i7_c and 7 127
+i7_d set i7_b i7_c k
+i7 set i6 i7_a i7_d
+i8_a shr 8 7
+i8_b get i7 i8_a
+i8_c and 8 127
+i8_d set i8_b i8_c cty
+i8 set i7 i8_a i8_d
+i9_a shr 9 7
+i9_b get i8 i9_a
+i9_c and 9 127
+i9_d set i9_b i9_c 1
+i9 set i8 i9_a i9_d
+i10_a shr 10 7
+i10_b get i9 i10_a
+i10_c and 10 127
+i10_d set i10_b i10_c s2
+i10 set i9 i10_a i10_d
+i16_a shr 16 7
+i16_b get i10 i16_a
+i16_c and 16 127
+i16_d set i16_b i16_c 4294967280
+i16 set i10 i16_a i16_d
+pa fold shpa d2_np i16 p3 d2_pf k true
+pb fold shpb np1b pa p3 d1_pf npm1
+q0_k_m mul caf 2
+q0_k_i add q0_k_m 0
+q0_k_a shr q0_k_i 7
+q0_k_b get p1 q0_k_a
+q0_k_c and q0_k_i 127
+q0_k get q0_k_b q0_k_c
+q0_v_m mul caf 2
+q0_v_i add q0_v_m 1
+q0_v_a shr q0_v_i 7
+q0_v_b get p1 q0_v_a
+q0_v_c and q0_v_i 127
+q0_v get q0_v_b q0_v_c
+h0_a shr 128 7
+h0_b get pb h0_a
+h0_c and 128 127
+h0_d set h0_b h0_c q0_k
+h0 set pb h0_a h0_d
+h1_a shr 129 7
+h1_b get h0 h1_a
+h1_c and 129 127
+h1_d set h1_b h1_c q0_v
+h1 set h0 h1_a h1_d
+h2_a shr 130 7
+h2_b get h1 h2_a
+h2_c and 130 127
+h2_d set h2_b h2_c 9
+h2 set h1 h2_a h2_d
+h3_a shr 131 7
+h3_b get h2 h3_a
+h3_c and 131 127
+h3_d set h3_b h3_c 0
+h3 set h2 h3_a h3_d
+pf fold shpf nc h3 p1 caf k 2 2
+nm1 sub nc 1
+pg fold shpg npp pf p1 paf nm1
+r rec b4 pg
+ret r
+end
+# ---------------------------------------------------------------------------------------------
+# fuseOnce: the first site (consumer node in order, then its operand k) at which an attempt
+# succeeds. SR = (found, BLD, INF, missing): the first body that was needed and is absent.
+
+# operand k of consumer ci (p10), first node p11, recordState p12; uses p9
+fn shfk (u32,u32x128x128,u32x128x2,u32) u32 u32x128x128 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x200 u32x128x24 u32 u32 u32 -> (u32,u32x128x128,u32x128x2,u32)
+found at p0 0
+bld at p0 1
+inf at p0 2
+miss at p0 3
+nf eq found 0
+gc add p11 p10
+c_op_m mul gc 6
+c_op_i add c_op_m 1
+c_op_a shr c_op_i 7
+c_op_b get p2 c_op_a
+c_op_c and c_op_i 127
+c_op get c_op_b c_op_c
+c_na_m mul gc 6
+c_na_i add c_na_m 2
+c_na_a shr c_na_i 7
+c_na_b get p2 c_na_a
+c_na_c and c_na_i 127
+c_na get c_na_b c_na_c
+c_af_m mul gc 6
+c_af_i add c_af_m 3
+c_af_a shr c_af_i 7
+c_af_b get p2 c_af_a
+c_af_c and c_af_i 127
+c_af get c_af_b c_af_c
+c_ce_m mul gc 6
+c_ce_i add c_ce_m 4
+c_ce_a shr c_ce_i 7
+c_ce_b get p2 c_ce_a
+c_ce_c and c_ce_i 127
+c_ce get c_ce_b c_ce_c
+c_pd_m mul gc 6
+c_pd_i add c_pd_m 5
+c_pd_a shr c_pd_i 7
+c_pd_b get p2 c_pd_a
+c_pd_c and c_pd_i 127
+c_pd get c_pd_b c_pd_c
+cty_a shr gc 7
+cty_b get p7 cty_a
+cty_c and gc 127
+cty get cty_b cty_c
+n2a_s add c_af 0
+n2a_k_m mul n2a_s 2
+n2a_k_i add n2a_k_m 0
+n2a_k_a shr n2a_k_i 7
+n2a_k_b get p3 n2a_k_a
+n2a_k_c and n2a_k_i 127
+n2a_k get n2a_k_b n2a_k_c
+n2a_v_m mul n2a_s 2
+n2a_v_i add n2a_v_m 1
+n2a_v_a shr n2a_v_i 7
+n2a_v_b get p3 n2a_v_a
+n2a_v_c and n2a_v_i 127
+n2a_v get n2a_v_b n2a_v_c
+isfold eq c_op 20
+n2l eq n2a_k 3
+rw2_m mul c_ce 7
+rw2_i add rw2_m 6
+rw2_a shr rw2_i 7
+rw2_b get p4 rw2_a
+rw2_c and rw2_i 127
+rw2 get rw2_b rw2_c
+has2 ne rw2 0
+a_s add c_af p1
+a_k_m mul a_s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p3 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul a_s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p3 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+isn eq a_k 1
+u_x add 0 a_v
+u_a shr u_x 7
+u_b get p9 u_a
+u_c and u_x 127
+u get u_b u_c
+one eq u 1
+pi select isn a_v 0
+gp add p11 pi
+pr_op_m mul gp 6
+pr_op_i add pr_op_m 1
+pr_op_a shr pr_op_i 7
+pr_op_b get p2 pr_op_a
+pr_op_c and pr_op_i 127
+pr_op get pr_op_b pr_op_c
+pr_na_m mul gp 6
+pr_na_i add pr_na_m 2
+pr_na_a shr pr_na_i 7
+pr_na_b get p2 pr_na_a
+pr_na_c and pr_na_i 127
+pr_na get pr_na_b pr_na_c
+pr_af_m mul gp 6
+pr_af_i add pr_af_m 3
+pr_af_a shr pr_af_i 7
+pr_af_b get p2 pr_af_a
+pr_af_c and pr_af_i 127
+pr_af get pr_af_b pr_af_c
+pr_ce_m mul gp 6
+pr_ce_i add pr_ce_m 4
+pr_ce_a shr pr_ce_i 7
+pr_ce_b get p2 pr_ce_a
+pr_ce_c and pr_ce_i 127
+pr_ce get pr_ce_b pr_ce_c
+pr_pd_m mul gp 6
+pr_pd_i add pr_pd_m 5
+pr_pd_a shr pr_pd_i 7
+pr_pd_b get p2 pr_pd_a
+pr_pd_c and pr_pd_i 127
+pr_pd get pr_pd_b pr_pd_c
+pty_a shr gp 7
+pty_b get p7 pty_a
+pty_c and gp 127
+pty get pty_b pty_c
+isf eq pr_op 20
+kpos gt p1 0
+n1a_s add pr_af 0
+n1a_k_m mul n1a_s 2
+n1a_k_i add n1a_k_m 0
+n1a_k_a shr n1a_k_i 7
+n1a_k_b get p3 n1a_k_a
+n1a_k_c and n1a_k_i 127
+n1a_k get n1a_k_b n1a_k_c
+n1a_v_m mul n1a_s 2
+n1a_v_i add n1a_v_m 1
+n1a_v_a shr n1a_v_i 7
+n1a_v_b get p3 n1a_v_a
+n1a_v_c and n1a_v_i 127
+n1a_v get n1a_v_b n1a_v_c
+n1l eq n1a_k 3
+ptag_a shr pty 7
+ptag_b get p5 ptag_a
+ptag_l and pty 127
+ptag_m mul ptag_l 3
+ptag_i add ptag_m 0
+ptag get ptag_b ptag_i
+plen_a shr pty 7
+plen_b get p5 plen_a
+plen_l and pty 127
+plen_m mul plen_l 3
+plen_i add plen_m 1
+plen get plen_b plen_i
+pel_a shr pty 7
+pel_b get p5 pel_a
+pel_l and pty 127
+pel_m mul pel_l 3
+pel_i add pel_m 2
+pel get pel_b pel_i
+isarr eq ptag 4
+eu eq pel 0
+rw1_m mul pr_ce 7
+rw1_i add rw1_m 6
+rw1_a shr rw1_i 7
+rw1_b get p4 rw1_a
+rw1_c and rw1_i 127
+rw1 get rw1_b rw1_c
+has1 ne rw1 0
+n1le le n1a_v plen
+hio2 call shhasio p8 p6 p4 p7 c_ce
+hio1 call shhasio p8 p6 p4 p7 pr_ce
+nio2 eq hio2 0
+nio1 eq hio1 0
+sp call shprod p2 p3 p4 pr_ce
+st1 at sp 1
+sok ne st1 0
+c0 and nf isfold
+c1 and c0 n2l
+c2 and c1 kpos
+c3 and c2 isn
+c4 and c3 one
+cand0 and c4 isf
+nh2 select has2 false true
+miss2 and cand0 nh2
+p1a and n1l isarr
+p1b and p1a eu
+p1c and p1b n1le
+nh1 select has1 false true
+m1a and cand0 has2
+m1b and m1a p1c
+miss1 and m1b nh1
+mid0 select miss1 pr_ce 4294967295
+mid select miss2 c_ce mid0
+nomiss eq miss 4294967295
+nm0 ne mid 4294967295
+newm and nomiss nm0
+miss2v select newm mid miss
+d1 and cand0 has2
+d2 and d1 nio2
+d3 and d2 p1c
+d4 and d3 has1
+d5 and d4 nio1
+cond and d5 sok
+zp call zpage
+t0 set zp 0 p11
+t1 set t0 1 pr_ce
+t2 set t1 2 c_ce
+t3 set t2 3 p1
+t4 set t3 4 pi
+t5 set t4 5 p10
+t6 set t5 6 n1a_v
+t7 set t6 7 n2a_v
+t8 set t7 8 plen
+t11 set t8 11 c_na
+t12 set t11 12 c_af
+t13 set t12 13 pr_af
+t14 set t13 14 pr_na
+t15 set t14 15 p12
+st set t15 16 cty
+rx call shatx p2 p3 p4 p6 p7 st cond
+rs call shats p2 p3 p4 p6 p7 st cond
+rr call shatr p2 p3 p4 p6 p7 st cond
+bx at rx 0
+ix at rx 1
+bs at rs 0
+is at rs 1
+br at rr 0
+ir at rr 1
+okx_a shr 0 7
+okx_b get ix okx_a
+okx_c and 0 127
+okx get okx_b okx_c
+oks_a shr 0 7
+oks_b get is oks_a
+oks_c and 0 127
+oks get oks_b oks_c
+okr_a shr 0 7
+okr_b get ir okr_a
+okr_c and 0 127
+okr get okr_b okr_c
+ux eq okx 1
+nux select ux false true
+us0 eq oks 1
+us and nux us0
+nus select us false true
+ur0 eq okr 1
+ur1 and nux nus
+ur and ur1 ur0
+any0 or ux us
+any or any0 ur
+bsel0 select ur br bld
+bsel1 select us bs bsel0
+bsel select ux bx bsel1
+isel0 select ur ir inf
+isel1 select us is isel0
+isel select ux ix isel1
+nfb eq found 0
+take and nfb any
+nbld select take bsel bld
+ninf select take isel inf
+fnn select take 1 found
+r rec fnn nbld ninf miss2v
+ret r
+end
+# consumer node ci
+fn shfc (u32,u32x128x128,u32x128x2,u32) u32 u32x128x128 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x200 u32x128x24 u32 u32 -> (u32,u32x128x128,u32x128x2,u32)
+found at p0 0
+gc add p10 p1
+c_op_m mul gc 6
+c_op_i add c_op_m 1
+c_op_a shr c_op_i 7
+c_op_b get p2 c_op_a
+c_op_c and c_op_i 127
+c_op get c_op_b c_op_c
+c_na_m mul gc 6
+c_na_i add c_na_m 2
+c_na_a shr c_na_i 7
+c_na_b get p2 c_na_a
+c_na_c and c_na_i 127
+c_na get c_na_b c_na_c
+c_af_m mul gc 6
+c_af_i add c_af_m 3
+c_af_a shr c_af_i 7
+c_af_b get p2 c_af_a
+c_af_c and c_af_i 127
+c_af get c_af_b c_af_c
+c_ce_m mul gc 6
+c_ce_i add c_ce_m 4
+c_ce_a shr c_ce_i 7
+c_ce_b get p2 c_ce_a
+c_ce_c and c_ce_i 127
+c_ce get c_ce_b c_ce_c
+c_pd_m mul gc 6
+c_pd_i add c_pd_m 5
+c_pd_a shr c_pd_i 7
+c_pd_b get p2 c_pd_a
+c_pd_c and c_pd_i 127
+c_pd get c_pd_b c_pd_c
+isfold eq c_op 20
+nf eq found 0
+go and isfold nf
+n select go c_na 0
+r fold shfk n p0 p2 p3 p4 p5 p6 p7 p8 p9 p1 p10 p11
+ret r
+end
+fn shfsearch u32x128x128 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x200 u32 u32 -> (u32,u32x128x128,u32x128x2,u32)
+d_f_m mul p7 7
+d_f_i add d_f_m 4
+d_f_a shr d_f_i 7
+d_f_b get p2 d_f_a
+d_f_c and d_f_i 127
+d_f get d_f_b d_f_c
+d_n_m mul p7 7
+d_n_i add d_n_m 5
+d_n_a shr d_n_i 7
+d_n_b get p2 d_n_a
+d_n_c and d_n_i 127
+d_n get d_n_b d_n_c
+d_rw_m mul p7 7
+d_rw_i add d_rw_m 6
+d_rw_a shr d_rw_i 7
+d_rw_b get p2 d_rw_a
+d_rw_c and d_rw_i 127
+d_rw get d_rw_b d_rw_c
+d_pf_m mul p7 7
+d_pf_i add d_pf_m 2
+d_pf_a shr d_pf_i 7
+d_pf_b get p2 d_pf_a
+d_pf_c and d_pf_i 127
+d_pf get d_pf_b d_pf_c
+d_np_m mul p7 7
+d_np_i add d_np_m 1
+d_np_a shr d_np_i 7
+d_np_b get p2 d_np_a
+d_np_c and d_np_i 127
+d_np get d_np_b d_np_c
+d_rs_m mul p7 7
+d_rs_i add d_rs_m 3
+d_rs_a shr d_rs_i 7
+d_rs_b get p2 d_rs_a
+d_rs_c and d_rs_i 127
+d_rs get d_rs_b d_rs_c
+uses call shuses p0 p1 p2 p7
+hio call shhasio p6 p4 p2 p5 p7
+nh eq hio 0
+n select nh d_n 0
+z call zbld
+zi call zinf
+sr0 rec 0 z zi 4294967295
+r fold shfc n sr0 p0 p1 p2 p3 p4 p5 p6 uses d_f p8
+ret r
+end
+# ---------------------------------------------------------------------------------------------
+# The record type of fuseRecurrence (state p4, u32): found in the types table or appended.
+# (ty tl nty ntl s2 go) -> (ty, tl, type index, nty, ntl)
+
+fn shtyf u32 u32 u32x384x65 u32x128x65 u32 -> u32
+tag_a shr p1 7
+tag_b get p2 tag_a
+tag_l and p1 127
+tag_m mul tag_l 3
+tag_i add tag_m 0
+tag get tag_b tag_i
+ta_a shr p1 7
+ta_b get p2 ta_a
+ta_l and p1 127
+ta_m mul ta_l 3
+ta_i add ta_m 1
+ta get ta_b ta_i
+tb_a shr p1 7
+tb_b get p2 tb_a
+tb_l and p1 127
+tb_m mul tb_l 3
+tb_i add tb_m 2
+tb get tb_b tb_i
+isr eq tag 5
+two eq tb 2
+f0_a shr ta 7
+f0_b get p3 f0_a
+f0_c and ta 127
+f0 get f0_b f0_c
+ta1 add ta 1
+f1_a shr ta1 7
+f1_b get p3 f1_a
+f1_c and ta1 127
+f1 get f1_b f1_c
+e0 eq f0 p4
+e1 eq f1 0
+m1 and isr two
+m2 and m1 e0
+m and m2 e1
+z eq p0 0
+t and m z
+i1 add p1 1
+r select t i1 p0
+ret r
+end
+fn shtyrec u32x384x65 u32x128x65 u32 u32 u32 bool -> (u32x384x65,u32x128x65,u32,u32,u32)
+fnd fold shtyf p2 0 p0 p1 p4
+found ne fnd 0
+nf select found false true
+app and p5 nf
+a_a shr p2 7
+a_b get p0 a_a
+a_l and p2 127
+a_m mul a_l 3
+a_i add a_m 0
+a_d set a_b a_i 5
+a set p0 a_a a_d
+b_a shr p2 7
+b_b get a b_a
+b_l and p2 127
+b_m mul b_l 3
+b_i add b_m 1
+b_d set b_b b_i p3
+b set a b_a b_d
+c_a shr p2 7
+c_b get b c_a
+c_l and p2 127
+c_m mul c_l 3
+c_i add c_m 2
+c_d set c_b c_i 2
+c set b c_a c_d
+l0_a shr p3 7
+l0_b get p1 l0_a
+l0_c and p3 127
+l0_d set l0_b l0_c p4
+l0 set p1 l0_a l0_d
+t1 add p3 1
+l1_a shr t1 7
+l1_b get l0 l1_a
+l1_c and t1 127
+l1_d set l1_b l1_c 0
+l1 set l0 l1_a l1_d
+fm1 sub fnd 1
+idx select found fm1 p2
+n1 add p2 1
+n2 add p3 2
+nty select app n1 p2
+ntl select app n2 p3
+r rec c l1 idx nty ntl
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Function images (the format of the optimizer's single-function result): u32x128x512, word 0
+# code, 1 node count n, 2 3 ret kind and value, 4 literalIterations, 5 operand pair count; node j
+# at 8 + 5 j: op, operand count, callee, pred, type; operand pair s at 8 + 5 n + 2 s. Node
+# operand values are positions. The builder BLD as an image:
+
+fn shbr u32x128x512 u32 u32x128x128 -> u32x128x512
+b mul p1 6
+s add 16 b
+d mul p1 5
+t add 8 d
+v0_a shr s 7
+v0_b get p2 v0_a
+v0_c and s 127
+v0 get v0_b v0_c
+s1 add s 1
+v1_a shr s1 7
+v1_b get p2 v1_a
+v1_c and s1 127
+v1 get v1_b v1_c
+s2 add s 2
+v2_a shr s2 7
+v2_b get p2 v2_a
+v2_c and s2 127
+v2 get v2_b v2_c
+s3 add s 3
+v3_a shr s3 7
+v3_b get p2 v3_a
+v3_c and s3 127
+v3 get v3_b v3_c
+s4 add s 4
+v4_a shr s4 7
+v4_b get p2 v4_a
+v4_c and s4 127
+v4 get v4_b v4_c
+w0_a shr t 7
+w0_b get p0 w0_a
+w0_c and t 127
+w0_d set w0_b w0_c v0
+w0 set p0 w0_a w0_d
+t1 add t 1
+w1_a shr t1 7
+w1_b get w0 w1_a
+w1_c and t1 127
+w1_d set w1_b w1_c v1
+w1 set w0 w1_a w1_d
+t2 add t 2
+w2_a shr t2 7
+w2_b get w1 w2_a
+w2_c and t2 127
+w2_d set w2_b w2_c v2
+w2 set w1 w2_a w2_d
+t3 add t 3
+w3_a shr t3 7
+w3_b get w2 w3_a
+w3_c and t3 127
+w3_d set w3_b w3_c v3
+w3 set w2 w3_a w3_d
+t4 add t 4
+w4_a shr t4 7
+w4_b get w3 w4_a
+w4_c and t4 127
+w4_d set w4_b w4_c v4
+w4 set w3 w4_a w4_d
+ret w4
+end
+fn shbp u32x128x512 u32 u32x128x128 u32 -> u32x128x512
+a mul p1 2
+s add 512 a
+k_a shr s 7
+k_b get p2 k_a
+k_c and s 127
+k get k_b k_c
+s1 add s 1
+v_a shr s1 7
+v_b get p2 v_a
+v_c and s1 127
+v get v_b v_c
+d mul p3 5
+base add 8 d
+o add base a
+w0_a shr o 7
+w0_b get p0 w0_a
+w0_c and o 127
+w0_d set w0_b w0_c k
+w0 set p0 w0_a w0_d
+o1 add o 1
+w1_a shr o1 7
+w1_b get w0 w1_a
+w1_c and o1 127
+w1_d set w1_b w1_c v
+w1 set w0 w1_a w1_d
+ret w1
+end
+fn shb2im u32x128x128 -> u32x128x512
+n_a shr 0 7
+n_b get p0 n_a
+n_c and 0 127
+n get n_b n_c
+pairs_a shr 2 7
+pairs_b get p0 pairs_a
+pairs_c and 2 127
+pairs get pairs_b pairs_c
+rk_a shr 3 7
+rk_b get p0 rk_a
+rk_c and 3 127
+rk get rk_b rk_c
+rv_a shr 4 7
+rv_b get p0 rv_a
+rv_c and 4 127
+rv get rv_b rv_c
+z call z512
+h1_a shr 1 7
+h1_b get z h1_a
+h1_c and 1 127
+h1_d set h1_b h1_c n
+h1 set z h1_a h1_d
+h2_a shr 2 7
+h2_b get h1 h2_a
+h2_c and 2 127
+h2_d set h2_b h2_c rk
+h2 set h1 h2_a h2_d
+h3_a shr 3 7
+h3_b get h2 h3_a
+h3_c and 3 127
+h3_d set h3_b h3_c rv
+h3 set h2 h3_a h3_d
+h5_a shr 5 7
+h5_b get h3 h5_a
+h5_c and 5 127
+h5_d set h5_b h5_c pairs
+h5 set h3 h5_a h5_d
+a fold shbr n h5 p0
+r fold shbp pairs a p0 n
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Installers: the image p1 as the body of a function, written at node row nd, operand slot ad.
+# All of them do nothing when go is false.
+
+# nodes: rows nd + j (state: nodes, running operand slot)
+fn shinn1 (u32x128x128,u32) u32 u32x128x512 u32 u32 -> (u32x128x128,u32)
+nodes at p0 0
+run at p0 1
+n_a shr 1 7
+n_b get p2 n_a
+n_c and 1 127
+n get n_b n_c
+d mul p1 5
+t add 8 d
+op_a shr t 7
+op_b get p2 op_a
+op_c and t 127
+op get op_b op_c
+t1 add t 1
+na_a shr t1 7
+na_b get p2 na_a
+na_c and t1 127
+na get na_b na_c
+t2 add t 2
+ce_a shr t2 7
+ce_b get p2 ce_a
+ce_c and t2 127
+ce get ce_b ce_c
+t3 add t 3
+pd_a shr t3 7
+pd_b get p2 pd_a
+pd_c and t3 127
+pd get pd_b pd_c
+g add p3 p1
+gm mul g 6
+i0 add gm 1
+w1_a shr i0 7
+w1_b get nodes w1_a
+w1_c and i0 127
+w1_d set w1_b w1_c op
+w1 set nodes w1_a w1_d
+i1 add gm 2
+w2_a shr i1 7
+w2_b get w1 w2_a
+w2_c and i1 127
+w2_d set w2_b w2_c na
+w2 set w1 w2_a w2_d
+i2 add gm 3
+sl add run p4
+w3_a shr i2 7
+w3_b get w2 w3_a
+w3_c and i2 127
+w3_d set w3_b w3_c sl
+w3 set w2 w3_a w3_d
+i3 add gm 4
+w4_a shr i3 7
+w4_b get w3 w4_a
+w4_c and i3 127
+w4_d set w4_b w4_c ce
+w4 set w3 w4_a w4_d
+i4 add gm 5
+w5_a shr i4 7
+w5_b get w4 w5_a
+w5_c and i4 127
+w5_d set w5_b w5_c pd
+w5 set w4 w5_a w5_d
+i5 add gm 0
+w6_a shr i5 7
+w6_b get w5 w6_a
+w6_c and i5 127
+w6_d set w6_b w6_c 0
+w6 set w5 w6_a w6_d
+nrun add run na
+r rec w6 nrun
+ret r
+end
+fn shinn u32x128x128 u32x128x512 u32 u32 bool -> u32x128x128
+n_a shr 1 7
+n_b get p1 n_a
+n_c and 1 127
+n get n_b n_c
+c select p4 n 0
+s0 rec p0 0
+r fold shinn1 c s0 p1 p2 p3
+x at r 0
+ret x
+end
+# operand pairs at ad + s; a ret literal of 2^28 or more takes the slot after them
+fn shina1 u32x128x512 u32 u32x128x512 u32 -> u32x128x512
+n_a shr 1 7
+n_b get p2 n_a
+n_c and 1 127
+n get n_b n_c
+d mul n 5
+base add 8 d
+a mul p1 2
+o add base a
+k_a shr o 7
+k_b get p2 k_a
+k_c and o 127
+k get k_b k_c
+o1 add o 1
+v_a shr o1 7
+v_b get p2 v_a
+v_c and o1 127
+v get v_b v_c
+sl add p3 p1
+sa mul sl 2
+sb add sa 1
+w0_a shr sa 7
+w0_b get p0 w0_a
+w0_c and sa 127
+w0_d set w0_b w0_c k
+w0 set p0 w0_a w0_d
+w1_a shr sb 7
+w1_b get w0 w1_a
+w1_c and sb 127
+w1_d set w1_b w1_c v
+w1 set w0 w1_a w1_d
+ret w1
+end
+fn shina u32x128x512 u32x128x512 u32 bool -> u32x128x512
+pairs_a shr 5 7
+pairs_b get p1 pairs_a
+pairs_c and 5 127
+pairs get pairs_b pairs_c
+rk_a shr 2 7
+rk_b get p1 rk_a
+rk_c and 2 127
+rk get rk_b rk_c
+rv_a shr 3 7
+rv_b get p1 rv_a
+rv_c and 3 127
+rv get rv_b rv_c
+c select p3 pairs 0
+a fold shina1 c p0 p1 p2
+big ge rv 268435456
+lit and big p3
+sl add p2 pairs
+sa mul sl 2
+sb add sa 1
+w0_o_a shr sa 7
+w0_o_b get a w0_o_a
+w0_o_c and sa 127
+w0_o get w0_o_b w0_o_c
+w0_v select lit rk w0_o
+w0_a shr sa 7
+w0_b get a w0_a
+w0_c and sa 127
+w0_d set w0_b w0_c w0_v
+w0 set a w0_a w0_d
+w1_o_a shr sb 7
+w1_o_b get w0 w1_o_a
+w1_o_c and sb 127
+w1_o get w1_o_b w1_o_c
+w1_v select lit rv w1_o
+w1_a shr sb 7
+w1_b get w0 w1_a
+w1_c and sb 127
+w1_d set w1_b w1_c w1_v
+w1 set w0 w1_a w1_d
+ret w1
+end
+fn shint1 u32x128x24 u32 u32x128x512 u32 -> u32x128x24
+d mul p1 5
+t add 8 d
+t4 add t 4
+ty_a shr t4 7
+ty_b get p2 ty_a
+ty_c and t4 127
+ty get ty_b ty_c
+g add p3 p1
+r_a shr g 7
+r_b get p0 r_a
+r_c and g 127
+r_d set r_b r_c ty
+r set p0 r_a r_d
+ret r
+end
+fn shint u32x128x24 u32x128x512 u32 bool -> u32x128x24
+n_a shr 1 7
+n_b get p1 n_a
+n_c and 1 127
+n get n_b n_c
+c select p3 n 0
+r fold shint1 c p0 p1 p2
+ret r
+end
+# the row of function p1 set up from the image p2 (parameters p4 at tlist p3, result p5, first
+# node p6, first operand p7): all seven words
+fn shinf u32x128x45 u32 u32x128x512 u32 u32 u32 u32 u32 bool -> u32x128x45
+n_a shr 1 7
+n_b get p2 n_a
+n_c and 1 127
+n get n_b n_c
+pairs_a shr 5 7
+pairs_b get p2 pairs_a
+pairs_c and 5 127
+pairs get pairs_b pairs_c
+rk_a shr 2 7
+rk_b get p2 rk_a
+rk_c and 2 127
+rk get rk_b rk_c
+rv_a shr 3 7
+rv_b get p2 rv_a
+rv_c and 3 127
+rv get rv_b rv_c
+big ge rv 268435456
+sl add p7 pairs
+k5 mul 5 268435456
+v5 add k5 sl
+kk mul rk 268435456
+v0 add kk rv
+ret6 select big v5 v0
+f7 mul p1 7
+w0_o_a shr f7 7
+w0_o_b get p0 w0_o_a
+w0_o_c and f7 127
+w0_o get w0_o_b w0_o_c
+w0_v select p8 1 w0_o
+w0_a shr f7 7
+w0_b get p0 w0_a
+w0_c and f7 127
+w0_d set w0_b w0_c w0_v
+w0 set p0 w0_a w0_d
+a1 add f7 1
+w1_o_a shr a1 7
+w1_o_b get w0 w1_o_a
+w1_o_c and a1 127
+w1_o get w1_o_b w1_o_c
+w1_v select p8 p4 w1_o
+w1_a shr a1 7
+w1_b get w0 w1_a
+w1_c and a1 127
+w1_d set w1_b w1_c w1_v
+w1 set w0 w1_a w1_d
+a2 add f7 2
+w2_o_a shr a2 7
+w2_o_b get w1 w2_o_a
+w2_o_c and a2 127
+w2_o get w2_o_b w2_o_c
+w2_v select p8 p3 w2_o
+w2_a shr a2 7
+w2_b get w1 w2_a
+w2_c and a2 127
+w2_d set w2_b w2_c w2_v
+w2 set w1 w2_a w2_d
+a3 add f7 3
+w3_o_a shr a3 7
+w3_o_b get w2 w3_o_a
+w3_o_c and a3 127
+w3_o get w3_o_b w3_o_c
+w3_v select p8 p5 w3_o
+w3_a shr a3 7
+w3_b get w2 w3_a
+w3_c and a3 127
+w3_d set w3_b w3_c w3_v
+w3 set w2 w3_a w3_d
+a4 add f7 4
+w4_o_a shr a4 7
+w4_o_b get w3 w4_o_a
+w4_o_c and a4 127
+w4_o get w4_o_b w4_o_c
+w4_v select p8 p6 w4_o
+w4_a shr a4 7
+w4_b get w3 w4_a
+w4_c and a4 127
+w4_d set w4_b w4_c w4_v
+w4 set w3 w4_a w4_d
+a5 add f7 5
+w5_o_a shr a5 7
+w5_o_b get w4 w5_o_a
+w5_o_c and a5 127
+w5_o get w5_o_b w5_o_c
+w5_v select p8 n w5_o
+w5_a shr a5 7
+w5_b get w4 w5_a
+w5_c and a5 127
+w5_d set w5_b w5_c w5_v
+w5 set w4 w5_a w5_d
+a6 add f7 6
+w6_o_a shr a6 7
+w6_o_b get w5 w6_o_a
+w6_o_c and a6 127
+w6_o get w6_o_b w6_o_c
+w6_v select p8 ret6 w6_o
+w6_a shr a6 7
+w6_b get w5 w6_a
+w6_c and a6 127
+w6_d set w6_b w6_c w6_v
+w6 set w5 w6_a w6_d
+ret w6
+end
+# only the node range and ret of function p1 (words 4 5 6) from the image p2 (first node p3, first operand p4)
+fn shinf2 u32x128x45 u32 u32x128x512 u32 u32 bool -> u32x128x45
+n_a shr 1 7
+n_b get p2 n_a
+n_c and 1 127
+n get n_b n_c
+pairs_a shr 5 7
+pairs_b get p2 pairs_a
+pairs_c and 5 127
+pairs get pairs_b pairs_c
+rk_a shr 2 7
+rk_b get p2 rk_a
+rk_c and 2 127
+rk get rk_b rk_c
+rv_a shr 3 7
+rv_b get p2 rv_a
+rv_c and 3 127
+rv get rv_b rv_c
+big ge rv 268435456
+sl add p4 pairs
+k5 mul 5 268435456
+v5 add k5 sl
+kk mul rk 268435456
+v0 add kk rv
+ret6 select big v5 v0
+f7 mul p1 7
+a4 add f7 4
+w4_o_a shr a4 7
+w4_o_b get p0 w4_o_a
+w4_o_c and a4 127
+w4_o get w4_o_b w4_o_c
+w4_v select p5 p3 w4_o
+w4_a shr a4 7
+w4_b get p0 w4_a
+w4_c and a4 127
+w4_d set w4_b w4_c w4_v
+w4 set p0 w4_a w4_d
+a5 add f7 5
+w5_o_a shr a5 7
+w5_o_b get w4 w5_o_a
+w5_o_c and a5 127
+w5_o get w5_o_b w5_o_c
+w5_v select p5 n w5_o
+w5_a shr a5 7
+w5_b get w4 w5_a
+w5_c and a5 127
+w5_d set w5_b w5_c w5_v
+w5 set w4 w5_a w5_d
+a6 add f7 6
+w6_o_a shr a6 7
+w6_o_b get w5 w6_o_a
+w6_o_c and a6 127
+w6_o get w6_o_b w6_o_c
+w6_v select p5 ret6 w6_o
+w6_a shr a6 7
+w6_b get w5 w6_a
+w6_c and a6 127
+w6_d set w6_b w6_c w6_v
+w6 set w5 w6_a w6_d
+ret w6
+end
+# parameter types of the new function (INF word 16 + i) at tlist p2 + i
+fn shinl1 u32x128x65 u32 u32x128x2 u32 -> u32x128x65
+i add 16 p1
+t_a shr i 7
+t_b get p2 t_a
+t_c and i 127
+t get t_b t_c
+d add p3 p1
+r_a shr d 7
+r_b get p0 r_a
+r_c and d 127
+r_d set r_b r_c t
+r set p0 r_a r_d
+ret r
+end
+fn shinl u32x128x65 u32x128x2 u32 bool -> u32x128x65
+np_a shr 2 7
+np_b get p1 np_a
+np_c and 2 127
+np get np_b np_c
+c select p3 np 0
+r fold shinl1 c p0 p1 p2
+ret r
+end
+# ---------------------------------------------------------------------------------------------
+# rewriteTop: function f without the producer (node pi), the consumer (node ci) replaced by the
+# fused fold (kind 1 2) or by the three nodes rec, fold, at (kind 3), and without what only
+# the producer used, as an image. Positions are of the combined list: old nodes in order
+# without pi, and the replacement nodes at ci - 1 + r; the old consumer stands for the last
+# replacement. INF (see shatx): word 11 the function index of the fused body.
+
+# combined index of old node q (consumer ci, producer pi, R replacement nodes)
+fn shoc u32 u32 u32 u32 -> u32
+lt lt p0 p1
+gt gt p0 p2
+d select gt 1 0
+a sub p0 d
+b2 add p0 p3
+b sub b2 2
+r select lt a b
+ret r
+end
+# operand j of replacement node r (kind p2; consumer first operand p5): (kind, value), kind 9 a
+# replacement node
+fn shrwo u32x128x2 u32x128x512 u32 u32 u32 u32 -> (u32,u32)
+a mul p4 2
+ix add 128 a
+ix1 add ix 1
+rak_a shr ix 7
+rak_b get p0 rak_a
+rak_c and ix 127
+rak get rak_b rak_c
+rav_a shr ix1 7
+rav_b get p0 rav_a
+rav_c and ix1 127
+rav get rav_b rav_c
+is3 eq p2 3
+r0 eq p3 0
+r1 eq p3 1
+j0 eq p4 0
+c1s add p5 1
+c1_k_m mul c1s 2
+c1_k_i add c1_k_m 0
+c1_k_a shr c1_k_i 7
+c1_k_b get p1 c1_k_a
+c1_k_c and c1_k_i 127
+c1_k get c1_k_b c1_k_c
+c1_v_m mul c1s 2
+c1_v_i add c1_v_m 1
+c1_v_a shr c1_v_i 7
+c1_v_b get p1 c1_v_a
+c1_v_c and c1_v_i 127
+c1_v get c1_v_b c1_v_c
+q0k select j0 c1_k 3
+q0v select j0 c1_v 0
+q2k select j0 9 3
+q2v select j0 1 0
+k02 select r0 q0k q2k
+v02 select r0 q0v q2v
+kk3 select r1 rak k02
+vv3 select r1 rav v02
+k select is3 kk3 rak
+v select is3 vv3 rav
+r rec k v
+ret r
+end
+fn shrwm1 u32x128x24 u32 u32x128x512 u32x128x2 u32 u32 u32 u32 u32 u32 -> u32x128x24
+o call shrwo p3 p2 p4 p5 p1 p6
+ok at o 0
+ov at o 1
+isn eq ok 1
+isr eq ok 9
+oc call shoc ov p7 p8 p9
+ca sub p7 1
+rc add ca ov
+idx0 select isn oc rc
+act or isn isr
+idx select act idx0 3071
+r_o_a shr idx 7
+r_o_b get p0 r_o_a
+r_o_c and idx 127
+r_o get r_o_b r_o_c
+r_v select act 1 r_o
+r_a shr idx 7
+r_b get p0 r_a
+r_c and idx 127
+r_d set r_b r_c r_v
+r set p0 r_a r_d
+ret r
+end
+fn shrwm2 u32x128x24 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x24
+s add p3 p1
+a_k_m mul s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p2 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p2 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+isn eq a_k 1
+oc call shoc a_v p4 p5 p6
+idx select isn oc 3071
+r_o_a shr idx 7
+r_o_b get p0 r_o_a
+r_o_c and idx 127
+r_o get r_o_b r_o_c
+r_v select isn 1 r_o
+r_a shr idx 7
+r_b get p0 r_a
+r_c and idx 127
+r_d set r_b r_c r_v
+r set p0 r_a r_d
+ret r
+end
+# liveness, trip t = M - 1 - c: p2 nodes p3 args p4 inf p5 first node p6 M p7 ci p8 pi p9 R
+# p10 kind p11 consumer first operand p12 replacement operand count
+fn shrwl u32x128x24 u32 u32x128x128 u32x128x512 u32x128x2 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x24
+tt add p1 1
+c sub p6 tt
+ca sub p7 1
+live_a shr c 7
+live_b get p0 live_a
+live_c and c 127
+live get live_b live_c
+lv eq live 1
+ge ge c ca
+cr add ca p9
+lt2 lt c cr
+isrepl and ge lt2
+cltca lt c ca
+cpi ge c p8
+dpi select cpi 1 0
+jlo add c dpi
+jhi0 sub c p9
+jhi add jhi0 2
+jold select cltca jlo jhi
+nrepl select isrepl false true
+g add p5 jold
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+doold and lv nrepl
+no select doold n_na 0
+lv2 fold shrwm2 no p0 p3 n_af p7 p8 p9
+r sub c ca
+is3 eq p10 3
+r1 eq r 1
+nr3 select r1 p12 2
+nrk select is3 nr3 p12
+dorep and lv isrepl
+nn select dorep nrk 0
+lv3 fold shrwm1 nn lv2 p3 p4 p10 r p11 p7 p8 p9
+ret lv3
+end
+# new positions: state (RK, count)
+fn shrwr (u32x128x24,u32) u32 u32x128x24 -> (u32x128x24,u32)
+rk at p0 0
+run at p0 1
+w_a shr p1 7
+w_b get rk w_a
+w_c and p1 127
+w_d set w_b w_c run
+w set rk w_a w_d
+l_a shr p1 7
+l_b get p2 l_a
+l_c and p1 127
+l get l_b l_c
+n add run l
+r rec w n
+ret r
+end
+# operand i of the node of combined index c as its image operand (p0 image state)
+# p2 args p3 inf p4 isrepl p5 kind p6 r p7 consumer first operand p8 node first operand
+# p9 ci p10 pi p11 R p12 RK p13 n'
+fn shrwe1 u32x128x512 u32 u32x128x512 u32x128x2 bool u32 u32 u32 u32 u32 u32 u32 u32x128x24 u32 -> u32x128x512
+s add p8 p1
+a_k_m mul s 2
+a_k_i add a_k_m 0
+a_k_a shr a_k_i 7
+a_k_b get p2 a_k_a
+a_k_c and a_k_i 127
+a_k get a_k_b a_k_c
+a_v_m mul s 2
+a_v_i add a_v_m 1
+a_v_a shr a_v_i 7
+a_v_b get p2 a_v_a
+a_v_c and a_v_i 127
+a_v get a_v_b a_v_c
+o call shrwo p3 p2 p5 p6 p1 p7
+ok at o 0
+ov at o 1
+k select p4 ok a_k
+v select p4 ov a_v
+isn eq k 1
+isr eq k 9
+oc call shoc v p9 p10 p11
+ca sub p9 1
+rc add ca v
+ci0 select isn oc rc
+act or isn isr
+ci1 select act ci0 3071
+np_a shr ci1 7
+np_b get p12 np_a
+np_c and ci1 127
+np get np_b np_c
+nk select act 1 k
+nv select act np v
+cnt_a shr 5 7
+cnt_b get p0 cnt_a
+cnt_c and 5 127
+cnt get cnt_b cnt_c
+d mul p13 5
+base add 8 d
+a2 mul cnt 2
+o2 add base a2
+w0_a shr o2 7
+w0_b get p0 w0_a
+w0_c and o2 127
+w0_d set w0_b w0_c nk
+w0 set p0 w0_a w0_d
+o3 add o2 1
+w1_a shr o3 7
+w1_b get w0 w1_a
+w1_c and o3 127
+w1_d set w1_b w1_c nv
+w1 set w0 w1_a w1_d
+cnt1 add cnt 1
+w2_a shr 5 7
+w2_b get w1 w2_a
+w2_c and 5 127
+w2_d set w2_b w2_c cnt1
+w2 set w1 w2_a w2_d
+ret w2
+end
+fn shrwe u32x128x512 u32 u32x128x128 u32x128x512 u32x128x24 u32x128x2 u32 u32 u32 u32 u32 u32 u32 u32x128x24 u32x128x24 u32 u32 u32 u32 -> u32x128x512
+# p0 IM p1 c p2 nodes p3 args p4 nt p5 inf p6 first node p7 ci p8 pi p9 R p10 kind p11 caf
+# p12 nra p13 LV p14 RK p15 g p16 rect p17 cty p18 n'
+live_a shr p1 7
+live_b get p13 live_a
+live_c and p1 127
+live get live_b live_c
+lv eq live 1
+ca sub p7 1
+ge ge p1 ca
+cr add ca p9
+lt2 lt p1 cr
+isrepl and ge lt2
+cltca lt p1 ca
+cpi ge p1 p8
+dpi select cpi 1 0
+jlo add p1 dpi
+jhi0 sub p1 p9
+jhi add jhi0 2
+jold select cltca jlo jhi
+g add p6 jold
+n_op_m mul g 6
+n_op_i add n_op_m 1
+n_op_a shr n_op_i 7
+n_op_b get p2 n_op_a
+n_op_c and n_op_i 127
+n_op get n_op_b n_op_c
+n_na_m mul g 6
+n_na_i add n_na_m 2
+n_na_a shr n_na_i 7
+n_na_b get p2 n_na_a
+n_na_c and n_na_i 127
+n_na get n_na_b n_na_c
+n_af_m mul g 6
+n_af_i add n_af_m 3
+n_af_a shr n_af_i 7
+n_af_b get p2 n_af_a
+n_af_c and n_af_i 127
+n_af get n_af_b n_af_c
+n_ce_m mul g 6
+n_ce_i add n_ce_m 4
+n_ce_a shr n_ce_i 7
+n_ce_b get p2 n_ce_a
+n_ce_c and n_ce_i 127
+n_ce get n_ce_b n_ce_c
+n_pd_m mul g 6
+n_pd_i add n_pd_m 5
+n_pd_a shr n_pd_i 7
+n_pd_b get p2 n_pd_a
+n_pd_c and n_pd_i 127
+n_pd get n_pd_b n_pd_c
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+r sub p1 ca
+is3 eq p10 3
+r0 eq r 0
+r1 eq r 1
+rop3 select r1 20 27
+rop30 select r0 23 rop3
+rop select is3 rop30 20
+rna3 select r1 p12 2
+rna select is3 rna3 p12
+rce3 select r1 p15 0
+rcef select is3 rce3 p15
+rty3 select r1 p16 p17
+rty30 select r0 p16 rty3
+rty select is3 rty30 p17
+op select isrepl rop n_op
+na select isrepl rna n_na
+ce select isrepl rcef n_ce
+pd select isrepl 0 n_pd
+ty select isrepl rty nty
+pos_a shr p1 7
+pos_b get p14 pos_a
+pos_c and p1 127
+pos get pos_b pos_c
+d mul pos 5
+t add 8 d
+w0_o_a shr t 7
+w0_o_b get p0 w0_o_a
+w0_o_c and t 127
+w0_o get w0_o_b w0_o_c
+w0_v select lv op w0_o
+w0_a shr t 7
+w0_b get p0 w0_a
+w0_c and t 127
+w0_d set w0_b w0_c w0_v
+w0 set p0 w0_a w0_d
+t1 add t 1
+w1_o_a shr t1 7
+w1_o_b get w0 w1_o_a
+w1_o_c and t1 127
+w1_o get w1_o_b w1_o_c
+w1_v select lv na w1_o
+w1_a shr t1 7
+w1_b get w0 w1_a
+w1_c and t1 127
+w1_d set w1_b w1_c w1_v
+w1 set w0 w1_a w1_d
+t2 add t 2
+w2_o_a shr t2 7
+w2_o_b get w1 w2_o_a
+w2_o_c and t2 127
+w2_o get w2_o_b w2_o_c
+w2_v select lv ce w2_o
+w2_a shr t2 7
+w2_b get w1 w2_a
+w2_c and t2 127
+w2_d set w2_b w2_c w2_v
+w2 set w1 w2_a w2_d
+t3 add t 3
+w3_o_a shr t3 7
+w3_o_b get w2 w3_o_a
+w3_o_c and t3 127
+w3_o get w3_o_b w3_o_c
+w3_v select lv pd w3_o
+w3_a shr t3 7
+w3_b get w2 w3_a
+w3_c and t3 127
+w3_d set w3_b w3_c w3_v
+w3 set w2 w3_a w3_d
+t4 add t 4
+w4_o_a shr t4 7
+w4_o_b get w3 w4_o_a
+w4_o_c and t4 127
+w4_o get w4_o_b w4_o_c
+w4_v select lv ty w4_o
+w4_a shr t4 7
+w4_b get w3 w4_a
+w4_c and t4 127
+w4_d set w4_b w4_c w4_v
+w4 set w3 w4_a w4_d
+cn select lv na 0
+r2 fold shrwe1 cn w4 p3 p5 isrepl p10 r p11 n_af p7 p8 p9 p14 p18
+ret r2
+end
+fn shrw u32x128x128 u32x128x512 u32x128x45 u32x128x24 u32x128x2 u32 -> u32x128x512
+d_f_m mul p5 7
+d_f_i add d_f_m 4
+d_f_a shr d_f_i 7
+d_f_b get p2 d_f_a
+d_f_c and d_f_i 127
+d_f get d_f_b d_f_c
+d_n_m mul p5 7
+d_n_i add d_n_m 5
+d_n_a shr d_n_i 7
+d_n_b get p2 d_n_a
+d_n_c and d_n_i 127
+d_n get d_n_b d_n_c
+d_rw_m mul p5 7
+d_rw_i add d_rw_m 6
+d_rw_a shr d_rw_i 7
+d_rw_b get p2 d_rw_a
+d_rw_c and d_rw_i 127
+d_rw get d_rw_b d_rw_c
+d_pf_m mul p5 7
+d_pf_i add d_pf_m 2
+d_pf_a shr d_pf_i 7
+d_pf_b get p2 d_pf_a
+d_pf_c and d_pf_i 127
+d_pf get d_pf_b d_pf_c
+d_np_m mul p5 7
+d_np_i add d_np_m 1
+d_np_a shr d_np_i 7
+d_np_b get p2 d_np_a
+d_np_c and d_np_i 127
+d_np get d_np_b d_np_c
+d_rs_m mul p5 7
+d_rs_i add d_rs_m 3
+d_rs_a shr d_rs_i 7
+d_rs_b get p2 d_rs_a
+d_rs_c and d_rs_i 127
+d_rs get d_rs_b d_rs_c
+ci_a shr 5 7
+ci_b get p4 ci_a
+ci_c and 5 127
+ci get ci_b ci_c
+pi_a shr 6 7
+pi_b get p4 pi_a
+pi_c and 6 127
+pi get pi_b pi_c
+kind_a shr 1 7
+kind_b get p4 kind_a
+kind_c and 1 127
+kind get kind_b kind_c
+cty_a shr 8 7
+cty_b get p4 cty_a
+cty_c and 8 127
+cty get cty_b cty_c
+nra_a shr 4 7
+nra_b get p4 nra_a
+nra_c and 4 127
+nra get nra_b nra_c
+gidx_a shr 11 7
+gidx_b get p4 gidx_a
+gidx_c and 11 127
+gidx get gidx_b gidx_c
+rect_a shr 3 7
+rect_b get p4 rect_a
+rect_c and 3 127
+rect get rect_b rect_c
+is3 eq kind 3
+rr select is3 3 1
+t1 add d_n rr
+mm sub t1 2
+gc add d_f ci
+caf_m mul gc 6
+caf_i add caf_m 3
+caf_a shr caf_i 7
+caf_b get p0 caf_a
+caf_c and caf_i 127
+caf get caf_b caf_c
+rt_k0 shr d_rw 28
+rt_v0 and d_rw 268435455
+rt_i5 eq rt_k0 5
+rt_sl select rt_i5 rt_v0 0
+rt_q_k_m mul rt_sl 2
+rt_q_k_i add rt_q_k_m 0
+rt_q_k_a shr rt_q_k_i 7
+rt_q_k_b get p1 rt_q_k_a
+rt_q_k_c and rt_q_k_i 127
+rt_q_k get rt_q_k_b rt_q_k_c
+rt_q_v_m mul rt_sl 2
+rt_q_v_i add rt_q_v_m 1
+rt_q_v_a shr rt_q_v_i 7
+rt_q_v_b get p1 rt_q_v_a
+rt_q_v_c and rt_q_v_i 127
+rt_q_v get rt_q_v_b rt_q_v_c
+rt_k select rt_i5 rt_q_k rt_k0
+rt_v select rt_i5 rt_q_v rt_v0
+z call zcol
+isn eq rt_k 1
+oc0 call shoc rt_v ci pi rr
+ix select isn oc0 3071
+lv0_o_a shr ix 7
+lv0_o_b get z lv0_o_a
+lv0_o_c and ix 127
+lv0_o get lv0_o_b lv0_o_c
+lv0_v select isn 1 lv0_o
+lv0_a shr ix 7
+lv0_b get z lv0_a
+lv0_c and ix 127
+lv0_d set lv0_b lv0_c lv0_v
+lv0 set z lv0_a lv0_d
+lv fold shrwl mm lv0 p0 p1 p4 d_f mm ci pi rr kind caf nra
+z2 call zcol
+rk0 rec z2 0
+rkr fold shrwr mm rk0 lv
+rk at rkr 0
+np at rkr 1
+im0 call z512
+h1_a shr 1 7
+h1_b get im0 h1_a
+h1_c and 1 127
+h1_d set h1_b h1_c np
+h1 set im0 h1_a h1_d
+imf fold shrwe mm h1 p0 p1 p3 p4 d_f ci pi rr kind caf nra lv rk gidx rect cty np
+pairs_a shr 5 7
+pairs_b get imf pairs_a
+pairs_c and 5 127
+pairs get pairs_b pairs_c
+rpos_a shr oc0 7
+rpos_b get rk rpos_a
+rpos_c and oc0 127
+rpos get rpos_b rpos_c
+rk1 select isn 1 rt_k
+rv1 select isn rpos rt_v
+h2_a shr 2 7
+h2_b get imf h2_a
+h2_c and 2 127
+h2_d set h2_b h2_c rk1
+h2 set imf h2_a h2_d
+h3_a shr 3 7
+h3_b get h2 h3_a
+h3_c and 3 127
+h3_d set h3_b h3_c rv1
+h3 set h2 h3_a h3_d
+d5 mul np 5
+b8 add 8 d5
+room0 sub 65536 b8
+room shr room0 1
+over gt pairs room
+cd select over 4 0
+h4_a shr 0 7
+h4_b get h3 h4_a
+h4_c and 0 127
+h4_d set h4_b h4_c cd
+h4 set h3 h4_a h4_d
+ret h4
+end
+# ---------------------------------------------------------------------------------------------
+# fuseLoops: up to 8 rounds of fuseOnce on function f. A round finds a site (shfsearch), builds
+# the fused body, installs it as a new function at the end of the tables, cleans it up, and
+# rewrites f (in place when the new body fits the old rows, else at the end).
+
+fn shsum1 u32 u32 u32x128x128 u32 -> u32
+g add p3 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+r add p0 na
+ret r
+end
+# the operand pairs of function f = p2 (and 1 for a ret literal slot)
+fn shsum u32x128x128 u32x128x45 u32 -> u32
+d_f_m mul p2 7
+d_f_i add d_f_m 4
+d_f_a shr d_f_i 7
+d_f_b get p1 d_f_a
+d_f_c and d_f_i 127
+d_f get d_f_b d_f_c
+d_n_m mul p2 7
+d_n_i add d_n_m 5
+d_n_a shr d_n_i 7
+d_n_b get p1 d_n_a
+d_n_c and d_n_i 127
+d_n get d_n_b d_n_c
+d_rw_m mul p2 7
+d_rw_i add d_rw_m 6
+d_rw_a shr d_rw_i 7
+d_rw_b get p1 d_rw_a
+d_rw_c and d_rw_i 127
+d_rw get d_rw_b d_rw_c
+d_pf_m mul p2 7
+d_pf_i add d_pf_m 2
+d_pf_a shr d_pf_i 7
+d_pf_b get p1 d_pf_a
+d_pf_c and d_pf_i 127
+d_pf get d_pf_b d_pf_c
+d_np_m mul p2 7
+d_np_i add d_np_m 1
+d_np_a shr d_np_i 7
+d_np_b get p1 d_np_a
+d_np_c and d_np_i 127
+d_np get d_np_b d_np_c
+d_rs_m mul p2 7
+d_rs_i add d_rs_m 3
+d_rs_a shr d_rs_i 7
+d_rs_b get p1 d_rs_a
+d_rs_c and d_rs_i 127
+d_rs get d_rs_b d_rs_c
+t fold shsum1 d_n 0 p0 d_f
+k shr d_rw 28
+k5 eq k 5
+x select k5 1 0
+r add t x
+ret r
+end
+
+
+# fuseLoops of function p7 under recordState p8 (p6 the shape table, whose scalars hold the
+# counts): (status, missing, function count, ty, tl, fns, nodes, ntys) or, as shfargs, the
+# operands. status 0 nothing fuses, 1 fused, 4 a table is full, 7 a body is needed (missing).
+fn shfuse u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x200 u32 bool -> (u32,u32,u32,u32x384x65,u32x128x65,u32x128x45,u32x128x128,u32x128x24)
+nn0_a shr 25472 7
+nn0_b get p6 nn0_a
+nn0_c and 25472 127
+nn0 get nn0_b nn0_c
+na0_a shr 25473 7
+na0_b get p6 na0_a
+na0_c and 25473 127
+na0 get na0_b na0_c
+nf0_a shr 25474 7
+nf0_b get p6 nf0_a
+nf0_c and 25474 127
+nf0 get nf0_b nf0_c
+nty0_a shr 25475 7
+nty0_b get p6 nty0_a
+nty0_c and 25475 127
+nty0 get nty0_b nty0_c
+ntl0_a shr 25476 7
+ntl0_b get p6 ntl0_a
+ntl0_c and 25476 127
+ntl0 get ntl0_b ntl0_c
+ty0 mov p0
+tl0 mov p1
+fns0 mov p2
+nodes0 mov p3
+args0 mov p4
+nt0 mov p5
+cnt0 mov 0
+mis0 mov 4294967295
+lim0 mov 0
+rsn select p8 1 0
+sra1 call shfsearch nodes0 args0 fns0 ty0 tl0 nt0 p6 p7 rsn
+fda1 at sra1 0
+bla1 at sra1 1
+ina1 at sra1 2
+msa1 at sra1 3
+goa1 ne fda1 0
+gona1 select goa1 1 0
+kda1_a shr 1 7
+kda1_b get ina1 kda1_a
+kda1_c and 1 127
+kda1 get kda1_b kda1_c
+s2a1_a shr 10 7
+s2a1_b get ina1 s2a1_a
+s2a1_c and 10 127
+s2a1 get s2a1_b s2a1_c
+is3a1 eq kda1 3
+g3a1 and goa1 is3a1
+tra1 call shtyrec ty0 tl0 nty0 ntl0 s2a1 g3a1
+tya1 at tra1 0
+tlra1 at tra1 1
+rta1 at tra1 2
+ntya1 at tra1 3
+ntlra1 at tra1 4
+rva1_a shr 4 7
+rva1_b get bla1 rva1_a
+rva1_c and 4 127
+rva1 get rva1_b rva1_c
+rm6a1 mul rva1 6
+rra1 add rm6a1 20
+bpa1_o_a shr rra1 7
+bpa1_o_b get bla1 bpa1_o_a
+bpa1_o_c and rra1 127
+bpa1_o get bpa1_o_b bpa1_o_c
+bpa1_v select g3a1 rta1 bpa1_o
+bpa1_a shr rra1 7
+bpa1_b get bla1 bpa1_a
+bpa1_c and rra1 127
+bpa1_d set bpa1_b bpa1_c bpa1_v
+bpa1 set bla1 bpa1_a bpa1_d
+i3a1_o_a shr 3 7
+i3a1_o_b get ina1 i3a1_o_a
+i3a1_o_c and 3 127
+i3a1_o get i3a1_o_b i3a1_o_c
+i3a1_v select g3a1 rta1 i3a1_o
+i3a1_a shr 3 7
+i3a1_b get ina1 i3a1_a
+i3a1_c and 3 127
+i3a1_d set i3a1_b i3a1_c i3a1_v
+i3a1 set ina1 i3a1_a i3a1_d
+i16a1_o_a shr 16 7
+i16a1_o_b get i3a1 i16a1_o_a
+i16a1_o_c and 16 127
+i16a1_o get i16a1_o_b i16a1_o_c
+i16a1_v select g3a1 rta1 i16a1_o
+i16a1_a shr 16 7
+i16a1_b get i3a1 i16a1_a
+i16a1_c and 16 127
+i16a1_d set i16a1_b i16a1_c i16a1_v
+i16a1 set i3a1 i16a1_a i16a1_d
+i11a1_a shr 11 7
+i11a1_b get i16a1 i11a1_a
+i11a1_c and 11 127
+i11a1_d set i11a1_b i11a1_c nf0
+i11a1 set i16a1 i11a1_a i11a1_d
+imaa1 call shb2im bpa1
+imna1_a shr 1 7
+imna1_b get imaa1 imna1_a
+imna1_c and 1 127
+imna1 get imna1_b imna1_c
+impa1_a shr 5 7
+impa1_b get imaa1 impa1_a
+impa1_c and 5 127
+impa1 get impa1_b impa1_c
+imrva1_a shr 3 7
+imrva1_b get imaa1 imrva1_a
+imrva1_c and 3 127
+imrva1 get imrva1_b imrva1_c
+npara1_a shr 2 7
+npara1_b get i11a1 npara1_a
+npara1_c and 2 127
+npara1 get npara1_b npara1_c
+resa1_a shr 3 7
+resa1_b get i11a1 resa1_a
+resa1_c and 3 127
+resa1 get resa1_b resa1_c
+nodesaa1 call shinn nodes0 imaa1 nn0 na0 goa1
+argsaa1 call shina args0 imaa1 na0 goa1
+ntaa1 call shint nt0 imaa1 nn0 goa1
+tlaa1 call shinl tlra1 i11a1 ntlra1 goa1
+fnsaa1 call shinf fns0 nf0 imaa1 ntlra1 npara1 resa1 nn0 na0 goa1
+bigxa1 ge imrva1 268435456
+bigxna1 select bigxa1 1 0
+imnsa1 select goa1 imna1 0
+impaa1 add impa1 bigxna1
+impasa1 select goa1 impaa1 0
+nparsa1 select goa1 npara1 0
+nnxa1 add nn0 imnsa1
+naxa1 add na0 impasa1
+nfxa1 add nf0 gona1
+ntlxa1 add ntlra1 nparsa1
+imba1 mov imaa1
+nodesba1 call shinn nodesaa1 imba1 nnxa1 naxa1 goa1
+argsba1 call shina argsaa1 imba1 naxa1 goa1
+ntba1 call shint ntaa1 imba1 nnxa1 goa1
+fnsba1 call shinf2 fnsaa1 nf0 imba1 nnxa1 naxa1 goa1
+imbna1_a shr 1 7
+imbna1_b get imba1 imbna1_a
+imbna1_c and 1 127
+imbna1 get imbna1_b imbna1_c
+imbpa1_a shr 5 7
+imbpa1_b get imba1 imbpa1_a
+imbpa1_c and 5 127
+imbpa1 get imbpa1_b imbpa1_c
+imbrva1_a shr 3 7
+imbrva1_b get imba1 imbrva1_a
+imbrva1_c and 3 127
+imbrva1 get imbrva1_b imbrva1_c
+bigya1 ge imbrva1 268435456
+bigyna1 select bigya1 1 0
+imbnsa1 select goa1 imbna1 0
+impba1 add imbpa1 bigyna1
+impbsa1 select goa1 impba1 0
+nnya1 add nnxa1 imbnsa1
+naya1 add naxa1 impbsa1
+imfa1 call shrw nodesba1 argsba1 fnsba1 ntba1 i11a1 p7
+fcodea1_a shr 0 7
+fcodea1_b get imfa1 fcodea1_a
+fcodea1_c and 0 127
+fcodea1 get fcodea1_b fcodea1_c
+fna1_a shr 1 7
+fna1_b get imfa1 fna1_a
+fna1_c and 1 127
+fna1 get fna1_b fna1_c
+fpa1_a shr 5 7
+fpa1_b get imfa1 fpa1_a
+fpa1_c and 5 127
+fpa1 get fpa1_b fpa1_c
+frva1_a shr 3 7
+frva1_b get imfa1 frva1_a
+frva1_c and 3 127
+frva1 get frva1_b frva1_c
+dfa1_f_m mul p7 7
+dfa1_f_i add dfa1_f_m 4
+dfa1_f_a shr dfa1_f_i 7
+dfa1_f_b get fnsba1 dfa1_f_a
+dfa1_f_c and dfa1_f_i 127
+dfa1_f get dfa1_f_b dfa1_f_c
+dfa1_n_m mul p7 7
+dfa1_n_i add dfa1_n_m 5
+dfa1_n_a shr dfa1_n_i 7
+dfa1_n_b get fnsba1 dfa1_n_a
+dfa1_n_c and dfa1_n_i 127
+dfa1_n get dfa1_n_b dfa1_n_c
+dfa1_rw_m mul p7 7
+dfa1_rw_i add dfa1_rw_m 6
+dfa1_rw_a shr dfa1_rw_i 7
+dfa1_rw_b get fnsba1 dfa1_rw_a
+dfa1_rw_c and dfa1_rw_i 127
+dfa1_rw get dfa1_rw_b dfa1_rw_c
+dfa1_pf_m mul p7 7
+dfa1_pf_i add dfa1_pf_m 2
+dfa1_pf_a shr dfa1_pf_i 7
+dfa1_pf_b get fnsba1 dfa1_pf_a
+dfa1_pf_c and dfa1_pf_i 127
+dfa1_pf get dfa1_pf_b dfa1_pf_c
+dfa1_np_m mul p7 7
+dfa1_np_i add dfa1_np_m 1
+dfa1_np_a shr dfa1_np_i 7
+dfa1_np_b get fnsba1 dfa1_np_a
+dfa1_np_c and dfa1_np_i 127
+dfa1_np get dfa1_np_b dfa1_np_c
+dfa1_rs_m mul p7 7
+dfa1_rs_i add dfa1_rs_m 3
+dfa1_rs_a shr dfa1_rs_i 7
+dfa1_rs_b get fnsba1 dfa1_rs_a
+dfa1_rs_c and dfa1_rs_i 127
+dfa1_rs get dfa1_rs_b dfa1_rs_c
+s0a1_m mul dfa1_f 6
+s0a1_i add s0a1_m 3
+s0a1_a shr s0a1_i 7
+s0a1_b get nodesba1 s0a1_a
+s0a1_c and s0a1_i 127
+s0a1 get s0a1_b s0a1_c
+tota1 call shsum nodesba1 fnsba1 p7
+dka1 shr dfa1_rw 28
+dk5a1 eq dka1 5
+dk5na1 select dk5a1 1 0
+availa1 add tota1 dk5na1
+bigza1 ge frva1 268435456
+bigzna1 select bigza1 1 0
+needa1 add fpa1 bigzna1
+fitna1 le fna1 dfa1_n
+fitaa1 le needa1 availa1
+inpla1 and fitna1 fitaa1
+ok0a1 eq fcodea1 0
+go2a1 and goa1 ok0a1
+nda1 select inpla1 dfa1_f nnya1
+ada1 select inpla1 s0a1 naya1
+nodesca1 call shinn nodesba1 imfa1 nda1 ada1 go2a1
+argsca1 call shina argsba1 imfa1 ada1 go2a1
+ntca1 call shint ntba1 imfa1 nda1 go2a1
+fnsca1 call shinf2 fnsba1 p7 imfa1 nda1 ada1 go2a1
+nfna1 select inpla1 0 fna1
+nfnsa1 select go2a1 nfna1 0
+needna1 select inpla1 0 needa1
+neednsa1 select go2a1 needna1 0
+nna1 add nnya1 nfnsa1
+naa1 add naya1 neednsa1
+nfa1 mov nfxa1
+ntla1 mov ntlxa1
+bad1a1 gt nna1 2730
+bad2a1 gt naa1 32768
+bad3a1 gt nfa1 822
+bad4a1 gt ntla1 8320
+bad5a1 gt ntya1 8320
+bad6a1 ne fcodea1 0
+bb1a1 or bad1a1 bad2a1
+bb2a1 or bb1a1 bad3a1
+bb3a1 or bb2a1 bad4a1
+bb4a1 or bb3a1 bad5a1
+bb5a1 or bb4a1 bad6a1
+bba1 and goa1 bb5a1
+limna1 select bba1 1 0
+lima1 or lim0 limna1
+nfda1 eq fda1 0
+nmna1 ne msa1 4294967295
+mqa1 eq mis0 4294967295
+mm1a1 and nfda1 nmna1
+mm2a1 and mm1a1 mqa1
+misa1 select mm2a1 msa1 mis0
+cnta1 add cnt0 gona1
+tla1 mov tlaa1
+fnsa1 mov fnsca1
+nodesa1 mov nodesca1
+argsa1 mov argsca1
+nta1 mov ntca1
+sra2 call shfsearch nodesa1 argsa1 fnsa1 tya1 tla1 nta1 p6 p7 rsn
+fda2 at sra2 0
+bla2 at sra2 1
+ina2 at sra2 2
+msa2 at sra2 3
+goa2 ne fda2 0
+gona2 select goa2 1 0
+kda2_a shr 1 7
+kda2_b get ina2 kda2_a
+kda2_c and 1 127
+kda2 get kda2_b kda2_c
+s2a2_a shr 10 7
+s2a2_b get ina2 s2a2_a
+s2a2_c and 10 127
+s2a2 get s2a2_b s2a2_c
+is3a2 eq kda2 3
+g3a2 and goa2 is3a2
+tra2 call shtyrec tya1 tla1 ntya1 ntla1 s2a2 g3a2
+tya2 at tra2 0
+tlra2 at tra2 1
+rta2 at tra2 2
+ntya2 at tra2 3
+ntlra2 at tra2 4
+rva2_a shr 4 7
+rva2_b get bla2 rva2_a
+rva2_c and 4 127
+rva2 get rva2_b rva2_c
+rm6a2 mul rva2 6
+rra2 add rm6a2 20
+bpa2_o_a shr rra2 7
+bpa2_o_b get bla2 bpa2_o_a
+bpa2_o_c and rra2 127
+bpa2_o get bpa2_o_b bpa2_o_c
+bpa2_v select g3a2 rta2 bpa2_o
+bpa2_a shr rra2 7
+bpa2_b get bla2 bpa2_a
+bpa2_c and rra2 127
+bpa2_d set bpa2_b bpa2_c bpa2_v
+bpa2 set bla2 bpa2_a bpa2_d
+i3a2_o_a shr 3 7
+i3a2_o_b get ina2 i3a2_o_a
+i3a2_o_c and 3 127
+i3a2_o get i3a2_o_b i3a2_o_c
+i3a2_v select g3a2 rta2 i3a2_o
+i3a2_a shr 3 7
+i3a2_b get ina2 i3a2_a
+i3a2_c and 3 127
+i3a2_d set i3a2_b i3a2_c i3a2_v
+i3a2 set ina2 i3a2_a i3a2_d
+i16a2_o_a shr 16 7
+i16a2_o_b get i3a2 i16a2_o_a
+i16a2_o_c and 16 127
+i16a2_o get i16a2_o_b i16a2_o_c
+i16a2_v select g3a2 rta2 i16a2_o
+i16a2_a shr 16 7
+i16a2_b get i3a2 i16a2_a
+i16a2_c and 16 127
+i16a2_d set i16a2_b i16a2_c i16a2_v
+i16a2 set i3a2 i16a2_a i16a2_d
+i11a2_a shr 11 7
+i11a2_b get i16a2 i11a2_a
+i11a2_c and 11 127
+i11a2_d set i11a2_b i11a2_c nfa1
+i11a2 set i16a2 i11a2_a i11a2_d
+imaa2 call shb2im bpa2
+imna2_a shr 1 7
+imna2_b get imaa2 imna2_a
+imna2_c and 1 127
+imna2 get imna2_b imna2_c
+impa2_a shr 5 7
+impa2_b get imaa2 impa2_a
+impa2_c and 5 127
+impa2 get impa2_b impa2_c
+imrva2_a shr 3 7
+imrva2_b get imaa2 imrva2_a
+imrva2_c and 3 127
+imrva2 get imrva2_b imrva2_c
+npara2_a shr 2 7
+npara2_b get i11a2 npara2_a
+npara2_c and 2 127
+npara2 get npara2_b npara2_c
+resa2_a shr 3 7
+resa2_b get i11a2 resa2_a
+resa2_c and 3 127
+resa2 get resa2_b resa2_c
+nodesaa2 call shinn nodesa1 imaa2 nna1 naa1 goa2
+argsaa2 call shina argsa1 imaa2 naa1 goa2
+ntaa2 call shint nta1 imaa2 nna1 goa2
+tlaa2 call shinl tlra2 i11a2 ntlra2 goa2
+fnsaa2 call shinf fnsa1 nfa1 imaa2 ntlra2 npara2 resa2 nna1 naa1 goa2
+bigxa2 ge imrva2 268435456
+bigxna2 select bigxa2 1 0
+imnsa2 select goa2 imna2 0
+impaa2 add impa2 bigxna2
+impasa2 select goa2 impaa2 0
+nparsa2 select goa2 npara2 0
+nnxa2 add nna1 imnsa2
+naxa2 add naa1 impasa2
+nfxa2 add nfa1 gona2
+ntlxa2 add ntlra2 nparsa2
+imba2 mov imaa2
+nodesba2 call shinn nodesaa2 imba2 nnxa2 naxa2 goa2
+argsba2 call shina argsaa2 imba2 naxa2 goa2
+ntba2 call shint ntaa2 imba2 nnxa2 goa2
+fnsba2 call shinf2 fnsaa2 nfa1 imba2 nnxa2 naxa2 goa2
+imbna2_a shr 1 7
+imbna2_b get imba2 imbna2_a
+imbna2_c and 1 127
+imbna2 get imbna2_b imbna2_c
+imbpa2_a shr 5 7
+imbpa2_b get imba2 imbpa2_a
+imbpa2_c and 5 127
+imbpa2 get imbpa2_b imbpa2_c
+imbrva2_a shr 3 7
+imbrva2_b get imba2 imbrva2_a
+imbrva2_c and 3 127
+imbrva2 get imbrva2_b imbrva2_c
+bigya2 ge imbrva2 268435456
+bigyna2 select bigya2 1 0
+imbnsa2 select goa2 imbna2 0
+impba2 add imbpa2 bigyna2
+impbsa2 select goa2 impba2 0
+nnya2 add nnxa2 imbnsa2
+naya2 add naxa2 impbsa2
+imfa2 call shrw nodesba2 argsba2 fnsba2 ntba2 i11a2 p7
+fcodea2_a shr 0 7
+fcodea2_b get imfa2 fcodea2_a
+fcodea2_c and 0 127
+fcodea2 get fcodea2_b fcodea2_c
+fna2_a shr 1 7
+fna2_b get imfa2 fna2_a
+fna2_c and 1 127
+fna2 get fna2_b fna2_c
+fpa2_a shr 5 7
+fpa2_b get imfa2 fpa2_a
+fpa2_c and 5 127
+fpa2 get fpa2_b fpa2_c
+frva2_a shr 3 7
+frva2_b get imfa2 frva2_a
+frva2_c and 3 127
+frva2 get frva2_b frva2_c
+dfa2_f_m mul p7 7
+dfa2_f_i add dfa2_f_m 4
+dfa2_f_a shr dfa2_f_i 7
+dfa2_f_b get fnsba2 dfa2_f_a
+dfa2_f_c and dfa2_f_i 127
+dfa2_f get dfa2_f_b dfa2_f_c
+dfa2_n_m mul p7 7
+dfa2_n_i add dfa2_n_m 5
+dfa2_n_a shr dfa2_n_i 7
+dfa2_n_b get fnsba2 dfa2_n_a
+dfa2_n_c and dfa2_n_i 127
+dfa2_n get dfa2_n_b dfa2_n_c
+dfa2_rw_m mul p7 7
+dfa2_rw_i add dfa2_rw_m 6
+dfa2_rw_a shr dfa2_rw_i 7
+dfa2_rw_b get fnsba2 dfa2_rw_a
+dfa2_rw_c and dfa2_rw_i 127
+dfa2_rw get dfa2_rw_b dfa2_rw_c
+dfa2_pf_m mul p7 7
+dfa2_pf_i add dfa2_pf_m 2
+dfa2_pf_a shr dfa2_pf_i 7
+dfa2_pf_b get fnsba2 dfa2_pf_a
+dfa2_pf_c and dfa2_pf_i 127
+dfa2_pf get dfa2_pf_b dfa2_pf_c
+dfa2_np_m mul p7 7
+dfa2_np_i add dfa2_np_m 1
+dfa2_np_a shr dfa2_np_i 7
+dfa2_np_b get fnsba2 dfa2_np_a
+dfa2_np_c and dfa2_np_i 127
+dfa2_np get dfa2_np_b dfa2_np_c
+dfa2_rs_m mul p7 7
+dfa2_rs_i add dfa2_rs_m 3
+dfa2_rs_a shr dfa2_rs_i 7
+dfa2_rs_b get fnsba2 dfa2_rs_a
+dfa2_rs_c and dfa2_rs_i 127
+dfa2_rs get dfa2_rs_b dfa2_rs_c
+s0a2_m mul dfa2_f 6
+s0a2_i add s0a2_m 3
+s0a2_a shr s0a2_i 7
+s0a2_b get nodesba2 s0a2_a
+s0a2_c and s0a2_i 127
+s0a2 get s0a2_b s0a2_c
+tota2 call shsum nodesba2 fnsba2 p7
+dka2 shr dfa2_rw 28
+dk5a2 eq dka2 5
+dk5na2 select dk5a2 1 0
+availa2 add tota2 dk5na2
+bigza2 ge frva2 268435456
+bigzna2 select bigza2 1 0
+needa2 add fpa2 bigzna2
+fitna2 le fna2 dfa2_n
+fitaa2 le needa2 availa2
+inpla2 and fitna2 fitaa2
+ok0a2 eq fcodea2 0
+go2a2 and goa2 ok0a2
+nda2 select inpla2 dfa2_f nnya2
+ada2 select inpla2 s0a2 naya2
+nodesca2 call shinn nodesba2 imfa2 nda2 ada2 go2a2
+argsca2 call shina argsba2 imfa2 ada2 go2a2
+ntca2 call shint ntba2 imfa2 nda2 go2a2
+fnsca2 call shinf2 fnsba2 p7 imfa2 nda2 ada2 go2a2
+nfna2 select inpla2 0 fna2
+nfnsa2 select go2a2 nfna2 0
+needna2 select inpla2 0 needa2
+neednsa2 select go2a2 needna2 0
+nna2 add nnya2 nfnsa2
+naa2 add naya2 neednsa2
+nfa2 mov nfxa2
+ntla2 mov ntlxa2
+bad1a2 gt nna2 2730
+bad2a2 gt naa2 32768
+bad3a2 gt nfa2 822
+bad4a2 gt ntla2 8320
+bad5a2 gt ntya2 8320
+bad6a2 ne fcodea2 0
+bb1a2 or bad1a2 bad2a2
+bb2a2 or bb1a2 bad3a2
+bb3a2 or bb2a2 bad4a2
+bb4a2 or bb3a2 bad5a2
+bb5a2 or bb4a2 bad6a2
+bba2 and goa2 bb5a2
+limna2 select bba2 1 0
+lima2 or lima1 limna2
+nfda2 eq fda2 0
+nmna2 ne msa2 4294967295
+mqa2 eq misa1 4294967295
+mm1a2 and nfda2 nmna2
+mm2a2 and mm1a2 mqa2
+misa2 select mm2a2 msa2 misa1
+cnta2 add cnta1 gona2
+tla2 mov tlaa2
+fnsa2 mov fnsca2
+nodesa2 mov nodesca2
+argsa2 mov argsca2
+nta2 mov ntca2
+sra3 call shfsearch nodesa2 argsa2 fnsa2 tya2 tla2 nta2 p6 p7 rsn
+fda3 at sra3 0
+bla3 at sra3 1
+ina3 at sra3 2
+msa3 at sra3 3
+goa3 ne fda3 0
+gona3 select goa3 1 0
+kda3_a shr 1 7
+kda3_b get ina3 kda3_a
+kda3_c and 1 127
+kda3 get kda3_b kda3_c
+s2a3_a shr 10 7
+s2a3_b get ina3 s2a3_a
+s2a3_c and 10 127
+s2a3 get s2a3_b s2a3_c
+is3a3 eq kda3 3
+g3a3 and goa3 is3a3
+tra3 call shtyrec tya2 tla2 ntya2 ntla2 s2a3 g3a3
+tya3 at tra3 0
+tlra3 at tra3 1
+rta3 at tra3 2
+ntya3 at tra3 3
+ntlra3 at tra3 4
+rva3_a shr 4 7
+rva3_b get bla3 rva3_a
+rva3_c and 4 127
+rva3 get rva3_b rva3_c
+rm6a3 mul rva3 6
+rra3 add rm6a3 20
+bpa3_o_a shr rra3 7
+bpa3_o_b get bla3 bpa3_o_a
+bpa3_o_c and rra3 127
+bpa3_o get bpa3_o_b bpa3_o_c
+bpa3_v select g3a3 rta3 bpa3_o
+bpa3_a shr rra3 7
+bpa3_b get bla3 bpa3_a
+bpa3_c and rra3 127
+bpa3_d set bpa3_b bpa3_c bpa3_v
+bpa3 set bla3 bpa3_a bpa3_d
+i3a3_o_a shr 3 7
+i3a3_o_b get ina3 i3a3_o_a
+i3a3_o_c and 3 127
+i3a3_o get i3a3_o_b i3a3_o_c
+i3a3_v select g3a3 rta3 i3a3_o
+i3a3_a shr 3 7
+i3a3_b get ina3 i3a3_a
+i3a3_c and 3 127
+i3a3_d set i3a3_b i3a3_c i3a3_v
+i3a3 set ina3 i3a3_a i3a3_d
+i16a3_o_a shr 16 7
+i16a3_o_b get i3a3 i16a3_o_a
+i16a3_o_c and 16 127
+i16a3_o get i16a3_o_b i16a3_o_c
+i16a3_v select g3a3 rta3 i16a3_o
+i16a3_a shr 16 7
+i16a3_b get i3a3 i16a3_a
+i16a3_c and 16 127
+i16a3_d set i16a3_b i16a3_c i16a3_v
+i16a3 set i3a3 i16a3_a i16a3_d
+i11a3_a shr 11 7
+i11a3_b get i16a3 i11a3_a
+i11a3_c and 11 127
+i11a3_d set i11a3_b i11a3_c nfa2
+i11a3 set i16a3 i11a3_a i11a3_d
+imaa3 call shb2im bpa3
+imna3_a shr 1 7
+imna3_b get imaa3 imna3_a
+imna3_c and 1 127
+imna3 get imna3_b imna3_c
+impa3_a shr 5 7
+impa3_b get imaa3 impa3_a
+impa3_c and 5 127
+impa3 get impa3_b impa3_c
+imrva3_a shr 3 7
+imrva3_b get imaa3 imrva3_a
+imrva3_c and 3 127
+imrva3 get imrva3_b imrva3_c
+npara3_a shr 2 7
+npara3_b get i11a3 npara3_a
+npara3_c and 2 127
+npara3 get npara3_b npara3_c
+resa3_a shr 3 7
+resa3_b get i11a3 resa3_a
+resa3_c and 3 127
+resa3 get resa3_b resa3_c
+nodesaa3 call shinn nodesa2 imaa3 nna2 naa2 goa3
+argsaa3 call shina argsa2 imaa3 naa2 goa3
+ntaa3 call shint nta2 imaa3 nna2 goa3
+tlaa3 call shinl tlra3 i11a3 ntlra3 goa3
+fnsaa3 call shinf fnsa2 nfa2 imaa3 ntlra3 npara3 resa3 nna2 naa2 goa3
+bigxa3 ge imrva3 268435456
+bigxna3 select bigxa3 1 0
+imnsa3 select goa3 imna3 0
+impaa3 add impa3 bigxna3
+impasa3 select goa3 impaa3 0
+nparsa3 select goa3 npara3 0
+nnxa3 add nna2 imnsa3
+naxa3 add naa2 impasa3
+nfxa3 add nfa2 gona3
+ntlxa3 add ntlra3 nparsa3
+imba3 mov imaa3
+nodesba3 call shinn nodesaa3 imba3 nnxa3 naxa3 goa3
+argsba3 call shina argsaa3 imba3 naxa3 goa3
+ntba3 call shint ntaa3 imba3 nnxa3 goa3
+fnsba3 call shinf2 fnsaa3 nfa2 imba3 nnxa3 naxa3 goa3
+imbna3_a shr 1 7
+imbna3_b get imba3 imbna3_a
+imbna3_c and 1 127
+imbna3 get imbna3_b imbna3_c
+imbpa3_a shr 5 7
+imbpa3_b get imba3 imbpa3_a
+imbpa3_c and 5 127
+imbpa3 get imbpa3_b imbpa3_c
+imbrva3_a shr 3 7
+imbrva3_b get imba3 imbrva3_a
+imbrva3_c and 3 127
+imbrva3 get imbrva3_b imbrva3_c
+bigya3 ge imbrva3 268435456
+bigyna3 select bigya3 1 0
+imbnsa3 select goa3 imbna3 0
+impba3 add imbpa3 bigyna3
+impbsa3 select goa3 impba3 0
+nnya3 add nnxa3 imbnsa3
+naya3 add naxa3 impbsa3
+imfa3 call shrw nodesba3 argsba3 fnsba3 ntba3 i11a3 p7
+fcodea3_a shr 0 7
+fcodea3_b get imfa3 fcodea3_a
+fcodea3_c and 0 127
+fcodea3 get fcodea3_b fcodea3_c
+fna3_a shr 1 7
+fna3_b get imfa3 fna3_a
+fna3_c and 1 127
+fna3 get fna3_b fna3_c
+fpa3_a shr 5 7
+fpa3_b get imfa3 fpa3_a
+fpa3_c and 5 127
+fpa3 get fpa3_b fpa3_c
+frva3_a shr 3 7
+frva3_b get imfa3 frva3_a
+frva3_c and 3 127
+frva3 get frva3_b frva3_c
+dfa3_f_m mul p7 7
+dfa3_f_i add dfa3_f_m 4
+dfa3_f_a shr dfa3_f_i 7
+dfa3_f_b get fnsba3 dfa3_f_a
+dfa3_f_c and dfa3_f_i 127
+dfa3_f get dfa3_f_b dfa3_f_c
+dfa3_n_m mul p7 7
+dfa3_n_i add dfa3_n_m 5
+dfa3_n_a shr dfa3_n_i 7
+dfa3_n_b get fnsba3 dfa3_n_a
+dfa3_n_c and dfa3_n_i 127
+dfa3_n get dfa3_n_b dfa3_n_c
+dfa3_rw_m mul p7 7
+dfa3_rw_i add dfa3_rw_m 6
+dfa3_rw_a shr dfa3_rw_i 7
+dfa3_rw_b get fnsba3 dfa3_rw_a
+dfa3_rw_c and dfa3_rw_i 127
+dfa3_rw get dfa3_rw_b dfa3_rw_c
+dfa3_pf_m mul p7 7
+dfa3_pf_i add dfa3_pf_m 2
+dfa3_pf_a shr dfa3_pf_i 7
+dfa3_pf_b get fnsba3 dfa3_pf_a
+dfa3_pf_c and dfa3_pf_i 127
+dfa3_pf get dfa3_pf_b dfa3_pf_c
+dfa3_np_m mul p7 7
+dfa3_np_i add dfa3_np_m 1
+dfa3_np_a shr dfa3_np_i 7
+dfa3_np_b get fnsba3 dfa3_np_a
+dfa3_np_c and dfa3_np_i 127
+dfa3_np get dfa3_np_b dfa3_np_c
+dfa3_rs_m mul p7 7
+dfa3_rs_i add dfa3_rs_m 3
+dfa3_rs_a shr dfa3_rs_i 7
+dfa3_rs_b get fnsba3 dfa3_rs_a
+dfa3_rs_c and dfa3_rs_i 127
+dfa3_rs get dfa3_rs_b dfa3_rs_c
+s0a3_m mul dfa3_f 6
+s0a3_i add s0a3_m 3
+s0a3_a shr s0a3_i 7
+s0a3_b get nodesba3 s0a3_a
+s0a3_c and s0a3_i 127
+s0a3 get s0a3_b s0a3_c
+tota3 call shsum nodesba3 fnsba3 p7
+dka3 shr dfa3_rw 28
+dk5a3 eq dka3 5
+dk5na3 select dk5a3 1 0
+availa3 add tota3 dk5na3
+bigza3 ge frva3 268435456
+bigzna3 select bigza3 1 0
+needa3 add fpa3 bigzna3
+fitna3 le fna3 dfa3_n
+fitaa3 le needa3 availa3
+inpla3 and fitna3 fitaa3
+ok0a3 eq fcodea3 0
+go2a3 and goa3 ok0a3
+nda3 select inpla3 dfa3_f nnya3
+ada3 select inpla3 s0a3 naya3
+nodesca3 call shinn nodesba3 imfa3 nda3 ada3 go2a3
+argsca3 call shina argsba3 imfa3 ada3 go2a3
+ntca3 call shint ntba3 imfa3 nda3 go2a3
+fnsca3 call shinf2 fnsba3 p7 imfa3 nda3 ada3 go2a3
+nfna3 select inpla3 0 fna3
+nfnsa3 select go2a3 nfna3 0
+needna3 select inpla3 0 needa3
+neednsa3 select go2a3 needna3 0
+nna3 add nnya3 nfnsa3
+naa3 add naya3 neednsa3
+nfa3 mov nfxa3
+ntla3 mov ntlxa3
+bad1a3 gt nna3 2730
+bad2a3 gt naa3 32768
+bad3a3 gt nfa3 822
+bad4a3 gt ntla3 8320
+bad5a3 gt ntya3 8320
+bad6a3 ne fcodea3 0
+bb1a3 or bad1a3 bad2a3
+bb2a3 or bb1a3 bad3a3
+bb3a3 or bb2a3 bad4a3
+bb4a3 or bb3a3 bad5a3
+bb5a3 or bb4a3 bad6a3
+bba3 and goa3 bb5a3
+limna3 select bba3 1 0
+lima3 or lima2 limna3
+nfda3 eq fda3 0
+nmna3 ne msa3 4294967295
+mqa3 eq misa2 4294967295
+mm1a3 and nfda3 nmna3
+mm2a3 and mm1a3 mqa3
+misa3 select mm2a3 msa3 misa2
+cnta3 add cnta2 gona3
+tla3 mov tlaa3
+fnsa3 mov fnsca3
+nodesa3 mov nodesca3
+argsa3 mov argsca3
+nta3 mov ntca3
+sra4 call shfsearch nodesa3 argsa3 fnsa3 tya3 tla3 nta3 p6 p7 rsn
+fda4 at sra4 0
+bla4 at sra4 1
+ina4 at sra4 2
+msa4 at sra4 3
+goa4 ne fda4 0
+gona4 select goa4 1 0
+kda4_a shr 1 7
+kda4_b get ina4 kda4_a
+kda4_c and 1 127
+kda4 get kda4_b kda4_c
+s2a4_a shr 10 7
+s2a4_b get ina4 s2a4_a
+s2a4_c and 10 127
+s2a4 get s2a4_b s2a4_c
+is3a4 eq kda4 3
+g3a4 and goa4 is3a4
+tra4 call shtyrec tya3 tla3 ntya3 ntla3 s2a4 g3a4
+tya4 at tra4 0
+tlra4 at tra4 1
+rta4 at tra4 2
+ntya4 at tra4 3
+ntlra4 at tra4 4
+rva4_a shr 4 7
+rva4_b get bla4 rva4_a
+rva4_c and 4 127
+rva4 get rva4_b rva4_c
+rm6a4 mul rva4 6
+rra4 add rm6a4 20
+bpa4_o_a shr rra4 7
+bpa4_o_b get bla4 bpa4_o_a
+bpa4_o_c and rra4 127
+bpa4_o get bpa4_o_b bpa4_o_c
+bpa4_v select g3a4 rta4 bpa4_o
+bpa4_a shr rra4 7
+bpa4_b get bla4 bpa4_a
+bpa4_c and rra4 127
+bpa4_d set bpa4_b bpa4_c bpa4_v
+bpa4 set bla4 bpa4_a bpa4_d
+i3a4_o_a shr 3 7
+i3a4_o_b get ina4 i3a4_o_a
+i3a4_o_c and 3 127
+i3a4_o get i3a4_o_b i3a4_o_c
+i3a4_v select g3a4 rta4 i3a4_o
+i3a4_a shr 3 7
+i3a4_b get ina4 i3a4_a
+i3a4_c and 3 127
+i3a4_d set i3a4_b i3a4_c i3a4_v
+i3a4 set ina4 i3a4_a i3a4_d
+i16a4_o_a shr 16 7
+i16a4_o_b get i3a4 i16a4_o_a
+i16a4_o_c and 16 127
+i16a4_o get i16a4_o_b i16a4_o_c
+i16a4_v select g3a4 rta4 i16a4_o
+i16a4_a shr 16 7
+i16a4_b get i3a4 i16a4_a
+i16a4_c and 16 127
+i16a4_d set i16a4_b i16a4_c i16a4_v
+i16a4 set i3a4 i16a4_a i16a4_d
+i11a4_a shr 11 7
+i11a4_b get i16a4 i11a4_a
+i11a4_c and 11 127
+i11a4_d set i11a4_b i11a4_c nfa3
+i11a4 set i16a4 i11a4_a i11a4_d
+imaa4 call shb2im bpa4
+imna4_a shr 1 7
+imna4_b get imaa4 imna4_a
+imna4_c and 1 127
+imna4 get imna4_b imna4_c
+impa4_a shr 5 7
+impa4_b get imaa4 impa4_a
+impa4_c and 5 127
+impa4 get impa4_b impa4_c
+imrva4_a shr 3 7
+imrva4_b get imaa4 imrva4_a
+imrva4_c and 3 127
+imrva4 get imrva4_b imrva4_c
+npara4_a shr 2 7
+npara4_b get i11a4 npara4_a
+npara4_c and 2 127
+npara4 get npara4_b npara4_c
+resa4_a shr 3 7
+resa4_b get i11a4 resa4_a
+resa4_c and 3 127
+resa4 get resa4_b resa4_c
+nodesaa4 call shinn nodesa3 imaa4 nna3 naa3 goa4
+argsaa4 call shina argsa3 imaa4 naa3 goa4
+ntaa4 call shint nta3 imaa4 nna3 goa4
+tlaa4 call shinl tlra4 i11a4 ntlra4 goa4
+fnsaa4 call shinf fnsa3 nfa3 imaa4 ntlra4 npara4 resa4 nna3 naa3 goa4
+bigxa4 ge imrva4 268435456
+bigxna4 select bigxa4 1 0
+imnsa4 select goa4 imna4 0
+impaa4 add impa4 bigxna4
+impasa4 select goa4 impaa4 0
+nparsa4 select goa4 npara4 0
+nnxa4 add nna3 imnsa4
+naxa4 add naa3 impasa4
+nfxa4 add nfa3 gona4
+ntlxa4 add ntlra4 nparsa4
+imba4 mov imaa4
+nodesba4 call shinn nodesaa4 imba4 nnxa4 naxa4 goa4
+argsba4 call shina argsaa4 imba4 naxa4 goa4
+ntba4 call shint ntaa4 imba4 nnxa4 goa4
+fnsba4 call shinf2 fnsaa4 nfa3 imba4 nnxa4 naxa4 goa4
+imbna4_a shr 1 7
+imbna4_b get imba4 imbna4_a
+imbna4_c and 1 127
+imbna4 get imbna4_b imbna4_c
+imbpa4_a shr 5 7
+imbpa4_b get imba4 imbpa4_a
+imbpa4_c and 5 127
+imbpa4 get imbpa4_b imbpa4_c
+imbrva4_a shr 3 7
+imbrva4_b get imba4 imbrva4_a
+imbrva4_c and 3 127
+imbrva4 get imbrva4_b imbrva4_c
+bigya4 ge imbrva4 268435456
+bigyna4 select bigya4 1 0
+imbnsa4 select goa4 imbna4 0
+impba4 add imbpa4 bigyna4
+impbsa4 select goa4 impba4 0
+nnya4 add nnxa4 imbnsa4
+naya4 add naxa4 impbsa4
+imfa4 call shrw nodesba4 argsba4 fnsba4 ntba4 i11a4 p7
+fcodea4_a shr 0 7
+fcodea4_b get imfa4 fcodea4_a
+fcodea4_c and 0 127
+fcodea4 get fcodea4_b fcodea4_c
+fna4_a shr 1 7
+fna4_b get imfa4 fna4_a
+fna4_c and 1 127
+fna4 get fna4_b fna4_c
+fpa4_a shr 5 7
+fpa4_b get imfa4 fpa4_a
+fpa4_c and 5 127
+fpa4 get fpa4_b fpa4_c
+frva4_a shr 3 7
+frva4_b get imfa4 frva4_a
+frva4_c and 3 127
+frva4 get frva4_b frva4_c
+dfa4_f_m mul p7 7
+dfa4_f_i add dfa4_f_m 4
+dfa4_f_a shr dfa4_f_i 7
+dfa4_f_b get fnsba4 dfa4_f_a
+dfa4_f_c and dfa4_f_i 127
+dfa4_f get dfa4_f_b dfa4_f_c
+dfa4_n_m mul p7 7
+dfa4_n_i add dfa4_n_m 5
+dfa4_n_a shr dfa4_n_i 7
+dfa4_n_b get fnsba4 dfa4_n_a
+dfa4_n_c and dfa4_n_i 127
+dfa4_n get dfa4_n_b dfa4_n_c
+dfa4_rw_m mul p7 7
+dfa4_rw_i add dfa4_rw_m 6
+dfa4_rw_a shr dfa4_rw_i 7
+dfa4_rw_b get fnsba4 dfa4_rw_a
+dfa4_rw_c and dfa4_rw_i 127
+dfa4_rw get dfa4_rw_b dfa4_rw_c
+dfa4_pf_m mul p7 7
+dfa4_pf_i add dfa4_pf_m 2
+dfa4_pf_a shr dfa4_pf_i 7
+dfa4_pf_b get fnsba4 dfa4_pf_a
+dfa4_pf_c and dfa4_pf_i 127
+dfa4_pf get dfa4_pf_b dfa4_pf_c
+dfa4_np_m mul p7 7
+dfa4_np_i add dfa4_np_m 1
+dfa4_np_a shr dfa4_np_i 7
+dfa4_np_b get fnsba4 dfa4_np_a
+dfa4_np_c and dfa4_np_i 127
+dfa4_np get dfa4_np_b dfa4_np_c
+dfa4_rs_m mul p7 7
+dfa4_rs_i add dfa4_rs_m 3
+dfa4_rs_a shr dfa4_rs_i 7
+dfa4_rs_b get fnsba4 dfa4_rs_a
+dfa4_rs_c and dfa4_rs_i 127
+dfa4_rs get dfa4_rs_b dfa4_rs_c
+s0a4_m mul dfa4_f 6
+s0a4_i add s0a4_m 3
+s0a4_a shr s0a4_i 7
+s0a4_b get nodesba4 s0a4_a
+s0a4_c and s0a4_i 127
+s0a4 get s0a4_b s0a4_c
+tota4 call shsum nodesba4 fnsba4 p7
+dka4 shr dfa4_rw 28
+dk5a4 eq dka4 5
+dk5na4 select dk5a4 1 0
+availa4 add tota4 dk5na4
+bigza4 ge frva4 268435456
+bigzna4 select bigza4 1 0
+needa4 add fpa4 bigzna4
+fitna4 le fna4 dfa4_n
+fitaa4 le needa4 availa4
+inpla4 and fitna4 fitaa4
+ok0a4 eq fcodea4 0
+go2a4 and goa4 ok0a4
+nda4 select inpla4 dfa4_f nnya4
+ada4 select inpla4 s0a4 naya4
+nodesca4 call shinn nodesba4 imfa4 nda4 ada4 go2a4
+argsca4 call shina argsba4 imfa4 ada4 go2a4
+ntca4 call shint ntba4 imfa4 nda4 go2a4
+fnsca4 call shinf2 fnsba4 p7 imfa4 nda4 ada4 go2a4
+nfna4 select inpla4 0 fna4
+nfnsa4 select go2a4 nfna4 0
+needna4 select inpla4 0 needa4
+neednsa4 select go2a4 needna4 0
+nna4 add nnya4 nfnsa4
+naa4 add naya4 neednsa4
+nfa4 mov nfxa4
+ntla4 mov ntlxa4
+bad1a4 gt nna4 2730
+bad2a4 gt naa4 32768
+bad3a4 gt nfa4 822
+bad4a4 gt ntla4 8320
+bad5a4 gt ntya4 8320
+bad6a4 ne fcodea4 0
+bb1a4 or bad1a4 bad2a4
+bb2a4 or bb1a4 bad3a4
+bb3a4 or bb2a4 bad4a4
+bb4a4 or bb3a4 bad5a4
+bb5a4 or bb4a4 bad6a4
+bba4 and goa4 bb5a4
+limna4 select bba4 1 0
+lima4 or lima3 limna4
+nfda4 eq fda4 0
+nmna4 ne msa4 4294967295
+mqa4 eq misa3 4294967295
+mm1a4 and nfda4 nmna4
+mm2a4 and mm1a4 mqa4
+misa4 select mm2a4 msa4 misa3
+cnta4 add cnta3 gona4
+tla4 mov tlaa4
+fnsa4 mov fnsca4
+nodesa4 mov nodesca4
+argsa4 mov argsca4
+nta4 mov ntca4
+sra5 call shfsearch nodesa4 argsa4 fnsa4 tya4 tla4 nta4 p6 p7 rsn
+fda5 at sra5 0
+bla5 at sra5 1
+ina5 at sra5 2
+msa5 at sra5 3
+goa5 ne fda5 0
+gona5 select goa5 1 0
+kda5_a shr 1 7
+kda5_b get ina5 kda5_a
+kda5_c and 1 127
+kda5 get kda5_b kda5_c
+s2a5_a shr 10 7
+s2a5_b get ina5 s2a5_a
+s2a5_c and 10 127
+s2a5 get s2a5_b s2a5_c
+is3a5 eq kda5 3
+g3a5 and goa5 is3a5
+tra5 call shtyrec tya4 tla4 ntya4 ntla4 s2a5 g3a5
+tya5 at tra5 0
+tlra5 at tra5 1
+rta5 at tra5 2
+ntya5 at tra5 3
+ntlra5 at tra5 4
+rva5_a shr 4 7
+rva5_b get bla5 rva5_a
+rva5_c and 4 127
+rva5 get rva5_b rva5_c
+rm6a5 mul rva5 6
+rra5 add rm6a5 20
+bpa5_o_a shr rra5 7
+bpa5_o_b get bla5 bpa5_o_a
+bpa5_o_c and rra5 127
+bpa5_o get bpa5_o_b bpa5_o_c
+bpa5_v select g3a5 rta5 bpa5_o
+bpa5_a shr rra5 7
+bpa5_b get bla5 bpa5_a
+bpa5_c and rra5 127
+bpa5_d set bpa5_b bpa5_c bpa5_v
+bpa5 set bla5 bpa5_a bpa5_d
+i3a5_o_a shr 3 7
+i3a5_o_b get ina5 i3a5_o_a
+i3a5_o_c and 3 127
+i3a5_o get i3a5_o_b i3a5_o_c
+i3a5_v select g3a5 rta5 i3a5_o
+i3a5_a shr 3 7
+i3a5_b get ina5 i3a5_a
+i3a5_c and 3 127
+i3a5_d set i3a5_b i3a5_c i3a5_v
+i3a5 set ina5 i3a5_a i3a5_d
+i16a5_o_a shr 16 7
+i16a5_o_b get i3a5 i16a5_o_a
+i16a5_o_c and 16 127
+i16a5_o get i16a5_o_b i16a5_o_c
+i16a5_v select g3a5 rta5 i16a5_o
+i16a5_a shr 16 7
+i16a5_b get i3a5 i16a5_a
+i16a5_c and 16 127
+i16a5_d set i16a5_b i16a5_c i16a5_v
+i16a5 set i3a5 i16a5_a i16a5_d
+i11a5_a shr 11 7
+i11a5_b get i16a5 i11a5_a
+i11a5_c and 11 127
+i11a5_d set i11a5_b i11a5_c nfa4
+i11a5 set i16a5 i11a5_a i11a5_d
+imaa5 call shb2im bpa5
+imna5_a shr 1 7
+imna5_b get imaa5 imna5_a
+imna5_c and 1 127
+imna5 get imna5_b imna5_c
+impa5_a shr 5 7
+impa5_b get imaa5 impa5_a
+impa5_c and 5 127
+impa5 get impa5_b impa5_c
+imrva5_a shr 3 7
+imrva5_b get imaa5 imrva5_a
+imrva5_c and 3 127
+imrva5 get imrva5_b imrva5_c
+npara5_a shr 2 7
+npara5_b get i11a5 npara5_a
+npara5_c and 2 127
+npara5 get npara5_b npara5_c
+resa5_a shr 3 7
+resa5_b get i11a5 resa5_a
+resa5_c and 3 127
+resa5 get resa5_b resa5_c
+nodesaa5 call shinn nodesa4 imaa5 nna4 naa4 goa5
+argsaa5 call shina argsa4 imaa5 naa4 goa5
+ntaa5 call shint nta4 imaa5 nna4 goa5
+tlaa5 call shinl tlra5 i11a5 ntlra5 goa5
+fnsaa5 call shinf fnsa4 nfa4 imaa5 ntlra5 npara5 resa5 nna4 naa4 goa5
+bigxa5 ge imrva5 268435456
+bigxna5 select bigxa5 1 0
+imnsa5 select goa5 imna5 0
+impaa5 add impa5 bigxna5
+impasa5 select goa5 impaa5 0
+nparsa5 select goa5 npara5 0
+nnxa5 add nna4 imnsa5
+naxa5 add naa4 impasa5
+nfxa5 add nfa4 gona5
+ntlxa5 add ntlra5 nparsa5
+imba5 mov imaa5
+nodesba5 call shinn nodesaa5 imba5 nnxa5 naxa5 goa5
+argsba5 call shina argsaa5 imba5 naxa5 goa5
+ntba5 call shint ntaa5 imba5 nnxa5 goa5
+fnsba5 call shinf2 fnsaa5 nfa4 imba5 nnxa5 naxa5 goa5
+imbna5_a shr 1 7
+imbna5_b get imba5 imbna5_a
+imbna5_c and 1 127
+imbna5 get imbna5_b imbna5_c
+imbpa5_a shr 5 7
+imbpa5_b get imba5 imbpa5_a
+imbpa5_c and 5 127
+imbpa5 get imbpa5_b imbpa5_c
+imbrva5_a shr 3 7
+imbrva5_b get imba5 imbrva5_a
+imbrva5_c and 3 127
+imbrva5 get imbrva5_b imbrva5_c
+bigya5 ge imbrva5 268435456
+bigyna5 select bigya5 1 0
+imbnsa5 select goa5 imbna5 0
+impba5 add imbpa5 bigyna5
+impbsa5 select goa5 impba5 0
+nnya5 add nnxa5 imbnsa5
+naya5 add naxa5 impbsa5
+imfa5 call shrw nodesba5 argsba5 fnsba5 ntba5 i11a5 p7
+fcodea5_a shr 0 7
+fcodea5_b get imfa5 fcodea5_a
+fcodea5_c and 0 127
+fcodea5 get fcodea5_b fcodea5_c
+fna5_a shr 1 7
+fna5_b get imfa5 fna5_a
+fna5_c and 1 127
+fna5 get fna5_b fna5_c
+fpa5_a shr 5 7
+fpa5_b get imfa5 fpa5_a
+fpa5_c and 5 127
+fpa5 get fpa5_b fpa5_c
+frva5_a shr 3 7
+frva5_b get imfa5 frva5_a
+frva5_c and 3 127
+frva5 get frva5_b frva5_c
+dfa5_f_m mul p7 7
+dfa5_f_i add dfa5_f_m 4
+dfa5_f_a shr dfa5_f_i 7
+dfa5_f_b get fnsba5 dfa5_f_a
+dfa5_f_c and dfa5_f_i 127
+dfa5_f get dfa5_f_b dfa5_f_c
+dfa5_n_m mul p7 7
+dfa5_n_i add dfa5_n_m 5
+dfa5_n_a shr dfa5_n_i 7
+dfa5_n_b get fnsba5 dfa5_n_a
+dfa5_n_c and dfa5_n_i 127
+dfa5_n get dfa5_n_b dfa5_n_c
+dfa5_rw_m mul p7 7
+dfa5_rw_i add dfa5_rw_m 6
+dfa5_rw_a shr dfa5_rw_i 7
+dfa5_rw_b get fnsba5 dfa5_rw_a
+dfa5_rw_c and dfa5_rw_i 127
+dfa5_rw get dfa5_rw_b dfa5_rw_c
+dfa5_pf_m mul p7 7
+dfa5_pf_i add dfa5_pf_m 2
+dfa5_pf_a shr dfa5_pf_i 7
+dfa5_pf_b get fnsba5 dfa5_pf_a
+dfa5_pf_c and dfa5_pf_i 127
+dfa5_pf get dfa5_pf_b dfa5_pf_c
+dfa5_np_m mul p7 7
+dfa5_np_i add dfa5_np_m 1
+dfa5_np_a shr dfa5_np_i 7
+dfa5_np_b get fnsba5 dfa5_np_a
+dfa5_np_c and dfa5_np_i 127
+dfa5_np get dfa5_np_b dfa5_np_c
+dfa5_rs_m mul p7 7
+dfa5_rs_i add dfa5_rs_m 3
+dfa5_rs_a shr dfa5_rs_i 7
+dfa5_rs_b get fnsba5 dfa5_rs_a
+dfa5_rs_c and dfa5_rs_i 127
+dfa5_rs get dfa5_rs_b dfa5_rs_c
+s0a5_m mul dfa5_f 6
+s0a5_i add s0a5_m 3
+s0a5_a shr s0a5_i 7
+s0a5_b get nodesba5 s0a5_a
+s0a5_c and s0a5_i 127
+s0a5 get s0a5_b s0a5_c
+tota5 call shsum nodesba5 fnsba5 p7
+dka5 shr dfa5_rw 28
+dk5a5 eq dka5 5
+dk5na5 select dk5a5 1 0
+availa5 add tota5 dk5na5
+bigza5 ge frva5 268435456
+bigzna5 select bigza5 1 0
+needa5 add fpa5 bigzna5
+fitna5 le fna5 dfa5_n
+fitaa5 le needa5 availa5
+inpla5 and fitna5 fitaa5
+ok0a5 eq fcodea5 0
+go2a5 and goa5 ok0a5
+nda5 select inpla5 dfa5_f nnya5
+ada5 select inpla5 s0a5 naya5
+nodesca5 call shinn nodesba5 imfa5 nda5 ada5 go2a5
+argsca5 call shina argsba5 imfa5 ada5 go2a5
+ntca5 call shint ntba5 imfa5 nda5 go2a5
+fnsca5 call shinf2 fnsba5 p7 imfa5 nda5 ada5 go2a5
+nfna5 select inpla5 0 fna5
+nfnsa5 select go2a5 nfna5 0
+needna5 select inpla5 0 needa5
+neednsa5 select go2a5 needna5 0
+nna5 add nnya5 nfnsa5
+naa5 add naya5 neednsa5
+nfa5 mov nfxa5
+ntla5 mov ntlxa5
+bad1a5 gt nna5 2730
+bad2a5 gt naa5 32768
+bad3a5 gt nfa5 822
+bad4a5 gt ntla5 8320
+bad5a5 gt ntya5 8320
+bad6a5 ne fcodea5 0
+bb1a5 or bad1a5 bad2a5
+bb2a5 or bb1a5 bad3a5
+bb3a5 or bb2a5 bad4a5
+bb4a5 or bb3a5 bad5a5
+bb5a5 or bb4a5 bad6a5
+bba5 and goa5 bb5a5
+limna5 select bba5 1 0
+lima5 or lima4 limna5
+nfda5 eq fda5 0
+nmna5 ne msa5 4294967295
+mqa5 eq misa4 4294967295
+mm1a5 and nfda5 nmna5
+mm2a5 and mm1a5 mqa5
+misa5 select mm2a5 msa5 misa4
+cnta5 add cnta4 gona5
+tla5 mov tlaa5
+fnsa5 mov fnsca5
+nodesa5 mov nodesca5
+argsa5 mov argsca5
+nta5 mov ntca5
+sra6 call shfsearch nodesa5 argsa5 fnsa5 tya5 tla5 nta5 p6 p7 rsn
+fda6 at sra6 0
+bla6 at sra6 1
+ina6 at sra6 2
+msa6 at sra6 3
+goa6 ne fda6 0
+gona6 select goa6 1 0
+kda6_a shr 1 7
+kda6_b get ina6 kda6_a
+kda6_c and 1 127
+kda6 get kda6_b kda6_c
+s2a6_a shr 10 7
+s2a6_b get ina6 s2a6_a
+s2a6_c and 10 127
+s2a6 get s2a6_b s2a6_c
+is3a6 eq kda6 3
+g3a6 and goa6 is3a6
+tra6 call shtyrec tya5 tla5 ntya5 ntla5 s2a6 g3a6
+tya6 at tra6 0
+tlra6 at tra6 1
+rta6 at tra6 2
+ntya6 at tra6 3
+ntlra6 at tra6 4
+rva6_a shr 4 7
+rva6_b get bla6 rva6_a
+rva6_c and 4 127
+rva6 get rva6_b rva6_c
+rm6a6 mul rva6 6
+rra6 add rm6a6 20
+bpa6_o_a shr rra6 7
+bpa6_o_b get bla6 bpa6_o_a
+bpa6_o_c and rra6 127
+bpa6_o get bpa6_o_b bpa6_o_c
+bpa6_v select g3a6 rta6 bpa6_o
+bpa6_a shr rra6 7
+bpa6_b get bla6 bpa6_a
+bpa6_c and rra6 127
+bpa6_d set bpa6_b bpa6_c bpa6_v
+bpa6 set bla6 bpa6_a bpa6_d
+i3a6_o_a shr 3 7
+i3a6_o_b get ina6 i3a6_o_a
+i3a6_o_c and 3 127
+i3a6_o get i3a6_o_b i3a6_o_c
+i3a6_v select g3a6 rta6 i3a6_o
+i3a6_a shr 3 7
+i3a6_b get ina6 i3a6_a
+i3a6_c and 3 127
+i3a6_d set i3a6_b i3a6_c i3a6_v
+i3a6 set ina6 i3a6_a i3a6_d
+i16a6_o_a shr 16 7
+i16a6_o_b get i3a6 i16a6_o_a
+i16a6_o_c and 16 127
+i16a6_o get i16a6_o_b i16a6_o_c
+i16a6_v select g3a6 rta6 i16a6_o
+i16a6_a shr 16 7
+i16a6_b get i3a6 i16a6_a
+i16a6_c and 16 127
+i16a6_d set i16a6_b i16a6_c i16a6_v
+i16a6 set i3a6 i16a6_a i16a6_d
+i11a6_a shr 11 7
+i11a6_b get i16a6 i11a6_a
+i11a6_c and 11 127
+i11a6_d set i11a6_b i11a6_c nfa5
+i11a6 set i16a6 i11a6_a i11a6_d
+imaa6 call shb2im bpa6
+imna6_a shr 1 7
+imna6_b get imaa6 imna6_a
+imna6_c and 1 127
+imna6 get imna6_b imna6_c
+impa6_a shr 5 7
+impa6_b get imaa6 impa6_a
+impa6_c and 5 127
+impa6 get impa6_b impa6_c
+imrva6_a shr 3 7
+imrva6_b get imaa6 imrva6_a
+imrva6_c and 3 127
+imrva6 get imrva6_b imrva6_c
+npara6_a shr 2 7
+npara6_b get i11a6 npara6_a
+npara6_c and 2 127
+npara6 get npara6_b npara6_c
+resa6_a shr 3 7
+resa6_b get i11a6 resa6_a
+resa6_c and 3 127
+resa6 get resa6_b resa6_c
+nodesaa6 call shinn nodesa5 imaa6 nna5 naa5 goa6
+argsaa6 call shina argsa5 imaa6 naa5 goa6
+ntaa6 call shint nta5 imaa6 nna5 goa6
+tlaa6 call shinl tlra6 i11a6 ntlra6 goa6
+fnsaa6 call shinf fnsa5 nfa5 imaa6 ntlra6 npara6 resa6 nna5 naa5 goa6
+bigxa6 ge imrva6 268435456
+bigxna6 select bigxa6 1 0
+imnsa6 select goa6 imna6 0
+impaa6 add impa6 bigxna6
+impasa6 select goa6 impaa6 0
+nparsa6 select goa6 npara6 0
+nnxa6 add nna5 imnsa6
+naxa6 add naa5 impasa6
+nfxa6 add nfa5 gona6
+ntlxa6 add ntlra6 nparsa6
+imba6 mov imaa6
+nodesba6 call shinn nodesaa6 imba6 nnxa6 naxa6 goa6
+argsba6 call shina argsaa6 imba6 naxa6 goa6
+ntba6 call shint ntaa6 imba6 nnxa6 goa6
+fnsba6 call shinf2 fnsaa6 nfa5 imba6 nnxa6 naxa6 goa6
+imbna6_a shr 1 7
+imbna6_b get imba6 imbna6_a
+imbna6_c and 1 127
+imbna6 get imbna6_b imbna6_c
+imbpa6_a shr 5 7
+imbpa6_b get imba6 imbpa6_a
+imbpa6_c and 5 127
+imbpa6 get imbpa6_b imbpa6_c
+imbrva6_a shr 3 7
+imbrva6_b get imba6 imbrva6_a
+imbrva6_c and 3 127
+imbrva6 get imbrva6_b imbrva6_c
+bigya6 ge imbrva6 268435456
+bigyna6 select bigya6 1 0
+imbnsa6 select goa6 imbna6 0
+impba6 add imbpa6 bigyna6
+impbsa6 select goa6 impba6 0
+nnya6 add nnxa6 imbnsa6
+naya6 add naxa6 impbsa6
+imfa6 call shrw nodesba6 argsba6 fnsba6 ntba6 i11a6 p7
+fcodea6_a shr 0 7
+fcodea6_b get imfa6 fcodea6_a
+fcodea6_c and 0 127
+fcodea6 get fcodea6_b fcodea6_c
+fna6_a shr 1 7
+fna6_b get imfa6 fna6_a
+fna6_c and 1 127
+fna6 get fna6_b fna6_c
+fpa6_a shr 5 7
+fpa6_b get imfa6 fpa6_a
+fpa6_c and 5 127
+fpa6 get fpa6_b fpa6_c
+frva6_a shr 3 7
+frva6_b get imfa6 frva6_a
+frva6_c and 3 127
+frva6 get frva6_b frva6_c
+dfa6_f_m mul p7 7
+dfa6_f_i add dfa6_f_m 4
+dfa6_f_a shr dfa6_f_i 7
+dfa6_f_b get fnsba6 dfa6_f_a
+dfa6_f_c and dfa6_f_i 127
+dfa6_f get dfa6_f_b dfa6_f_c
+dfa6_n_m mul p7 7
+dfa6_n_i add dfa6_n_m 5
+dfa6_n_a shr dfa6_n_i 7
+dfa6_n_b get fnsba6 dfa6_n_a
+dfa6_n_c and dfa6_n_i 127
+dfa6_n get dfa6_n_b dfa6_n_c
+dfa6_rw_m mul p7 7
+dfa6_rw_i add dfa6_rw_m 6
+dfa6_rw_a shr dfa6_rw_i 7
+dfa6_rw_b get fnsba6 dfa6_rw_a
+dfa6_rw_c and dfa6_rw_i 127
+dfa6_rw get dfa6_rw_b dfa6_rw_c
+dfa6_pf_m mul p7 7
+dfa6_pf_i add dfa6_pf_m 2
+dfa6_pf_a shr dfa6_pf_i 7
+dfa6_pf_b get fnsba6 dfa6_pf_a
+dfa6_pf_c and dfa6_pf_i 127
+dfa6_pf get dfa6_pf_b dfa6_pf_c
+dfa6_np_m mul p7 7
+dfa6_np_i add dfa6_np_m 1
+dfa6_np_a shr dfa6_np_i 7
+dfa6_np_b get fnsba6 dfa6_np_a
+dfa6_np_c and dfa6_np_i 127
+dfa6_np get dfa6_np_b dfa6_np_c
+dfa6_rs_m mul p7 7
+dfa6_rs_i add dfa6_rs_m 3
+dfa6_rs_a shr dfa6_rs_i 7
+dfa6_rs_b get fnsba6 dfa6_rs_a
+dfa6_rs_c and dfa6_rs_i 127
+dfa6_rs get dfa6_rs_b dfa6_rs_c
+s0a6_m mul dfa6_f 6
+s0a6_i add s0a6_m 3
+s0a6_a shr s0a6_i 7
+s0a6_b get nodesba6 s0a6_a
+s0a6_c and s0a6_i 127
+s0a6 get s0a6_b s0a6_c
+tota6 call shsum nodesba6 fnsba6 p7
+dka6 shr dfa6_rw 28
+dk5a6 eq dka6 5
+dk5na6 select dk5a6 1 0
+availa6 add tota6 dk5na6
+bigza6 ge frva6 268435456
+bigzna6 select bigza6 1 0
+needa6 add fpa6 bigzna6
+fitna6 le fna6 dfa6_n
+fitaa6 le needa6 availa6
+inpla6 and fitna6 fitaa6
+ok0a6 eq fcodea6 0
+go2a6 and goa6 ok0a6
+nda6 select inpla6 dfa6_f nnya6
+ada6 select inpla6 s0a6 naya6
+nodesca6 call shinn nodesba6 imfa6 nda6 ada6 go2a6
+argsca6 call shina argsba6 imfa6 ada6 go2a6
+ntca6 call shint ntba6 imfa6 nda6 go2a6
+fnsca6 call shinf2 fnsba6 p7 imfa6 nda6 ada6 go2a6
+nfna6 select inpla6 0 fna6
+nfnsa6 select go2a6 nfna6 0
+needna6 select inpla6 0 needa6
+neednsa6 select go2a6 needna6 0
+nna6 add nnya6 nfnsa6
+naa6 add naya6 neednsa6
+nfa6 mov nfxa6
+ntla6 mov ntlxa6
+bad1a6 gt nna6 2730
+bad2a6 gt naa6 32768
+bad3a6 gt nfa6 822
+bad4a6 gt ntla6 8320
+bad5a6 gt ntya6 8320
+bad6a6 ne fcodea6 0
+bb1a6 or bad1a6 bad2a6
+bb2a6 or bb1a6 bad3a6
+bb3a6 or bb2a6 bad4a6
+bb4a6 or bb3a6 bad5a6
+bb5a6 or bb4a6 bad6a6
+bba6 and goa6 bb5a6
+limna6 select bba6 1 0
+lima6 or lima5 limna6
+nfda6 eq fda6 0
+nmna6 ne msa6 4294967295
+mqa6 eq misa5 4294967295
+mm1a6 and nfda6 nmna6
+mm2a6 and mm1a6 mqa6
+misa6 select mm2a6 msa6 misa5
+cnta6 add cnta5 gona6
+tla6 mov tlaa6
+fnsa6 mov fnsca6
+nodesa6 mov nodesca6
+argsa6 mov argsca6
+nta6 mov ntca6
+sra7 call shfsearch nodesa6 argsa6 fnsa6 tya6 tla6 nta6 p6 p7 rsn
+fda7 at sra7 0
+bla7 at sra7 1
+ina7 at sra7 2
+msa7 at sra7 3
+goa7 ne fda7 0
+gona7 select goa7 1 0
+kda7_a shr 1 7
+kda7_b get ina7 kda7_a
+kda7_c and 1 127
+kda7 get kda7_b kda7_c
+s2a7_a shr 10 7
+s2a7_b get ina7 s2a7_a
+s2a7_c and 10 127
+s2a7 get s2a7_b s2a7_c
+is3a7 eq kda7 3
+g3a7 and goa7 is3a7
+tra7 call shtyrec tya6 tla6 ntya6 ntla6 s2a7 g3a7
+tya7 at tra7 0
+tlra7 at tra7 1
+rta7 at tra7 2
+ntya7 at tra7 3
+ntlra7 at tra7 4
+rva7_a shr 4 7
+rva7_b get bla7 rva7_a
+rva7_c and 4 127
+rva7 get rva7_b rva7_c
+rm6a7 mul rva7 6
+rra7 add rm6a7 20
+bpa7_o_a shr rra7 7
+bpa7_o_b get bla7 bpa7_o_a
+bpa7_o_c and rra7 127
+bpa7_o get bpa7_o_b bpa7_o_c
+bpa7_v select g3a7 rta7 bpa7_o
+bpa7_a shr rra7 7
+bpa7_b get bla7 bpa7_a
+bpa7_c and rra7 127
+bpa7_d set bpa7_b bpa7_c bpa7_v
+bpa7 set bla7 bpa7_a bpa7_d
+i3a7_o_a shr 3 7
+i3a7_o_b get ina7 i3a7_o_a
+i3a7_o_c and 3 127
+i3a7_o get i3a7_o_b i3a7_o_c
+i3a7_v select g3a7 rta7 i3a7_o
+i3a7_a shr 3 7
+i3a7_b get ina7 i3a7_a
+i3a7_c and 3 127
+i3a7_d set i3a7_b i3a7_c i3a7_v
+i3a7 set ina7 i3a7_a i3a7_d
+i16a7_o_a shr 16 7
+i16a7_o_b get i3a7 i16a7_o_a
+i16a7_o_c and 16 127
+i16a7_o get i16a7_o_b i16a7_o_c
+i16a7_v select g3a7 rta7 i16a7_o
+i16a7_a shr 16 7
+i16a7_b get i3a7 i16a7_a
+i16a7_c and 16 127
+i16a7_d set i16a7_b i16a7_c i16a7_v
+i16a7 set i3a7 i16a7_a i16a7_d
+i11a7_a shr 11 7
+i11a7_b get i16a7 i11a7_a
+i11a7_c and 11 127
+i11a7_d set i11a7_b i11a7_c nfa6
+i11a7 set i16a7 i11a7_a i11a7_d
+imaa7 call shb2im bpa7
+imna7_a shr 1 7
+imna7_b get imaa7 imna7_a
+imna7_c and 1 127
+imna7 get imna7_b imna7_c
+impa7_a shr 5 7
+impa7_b get imaa7 impa7_a
+impa7_c and 5 127
+impa7 get impa7_b impa7_c
+imrva7_a shr 3 7
+imrva7_b get imaa7 imrva7_a
+imrva7_c and 3 127
+imrva7 get imrva7_b imrva7_c
+npara7_a shr 2 7
+npara7_b get i11a7 npara7_a
+npara7_c and 2 127
+npara7 get npara7_b npara7_c
+resa7_a shr 3 7
+resa7_b get i11a7 resa7_a
+resa7_c and 3 127
+resa7 get resa7_b resa7_c
+nodesaa7 call shinn nodesa6 imaa7 nna6 naa6 goa7
+argsaa7 call shina argsa6 imaa7 naa6 goa7
+ntaa7 call shint nta6 imaa7 nna6 goa7
+tlaa7 call shinl tlra7 i11a7 ntlra7 goa7
+fnsaa7 call shinf fnsa6 nfa6 imaa7 ntlra7 npara7 resa7 nna6 naa6 goa7
+bigxa7 ge imrva7 268435456
+bigxna7 select bigxa7 1 0
+imnsa7 select goa7 imna7 0
+impaa7 add impa7 bigxna7
+impasa7 select goa7 impaa7 0
+nparsa7 select goa7 npara7 0
+nnxa7 add nna6 imnsa7
+naxa7 add naa6 impasa7
+nfxa7 add nfa6 gona7
+ntlxa7 add ntlra7 nparsa7
+imba7 mov imaa7
+nodesba7 call shinn nodesaa7 imba7 nnxa7 naxa7 goa7
+argsba7 call shina argsaa7 imba7 naxa7 goa7
+ntba7 call shint ntaa7 imba7 nnxa7 goa7
+fnsba7 call shinf2 fnsaa7 nfa6 imba7 nnxa7 naxa7 goa7
+imbna7_a shr 1 7
+imbna7_b get imba7 imbna7_a
+imbna7_c and 1 127
+imbna7 get imbna7_b imbna7_c
+imbpa7_a shr 5 7
+imbpa7_b get imba7 imbpa7_a
+imbpa7_c and 5 127
+imbpa7 get imbpa7_b imbpa7_c
+imbrva7_a shr 3 7
+imbrva7_b get imba7 imbrva7_a
+imbrva7_c and 3 127
+imbrva7 get imbrva7_b imbrva7_c
+bigya7 ge imbrva7 268435456
+bigyna7 select bigya7 1 0
+imbnsa7 select goa7 imbna7 0
+impba7 add imbpa7 bigyna7
+impbsa7 select goa7 impba7 0
+nnya7 add nnxa7 imbnsa7
+naya7 add naxa7 impbsa7
+imfa7 call shrw nodesba7 argsba7 fnsba7 ntba7 i11a7 p7
+fcodea7_a shr 0 7
+fcodea7_b get imfa7 fcodea7_a
+fcodea7_c and 0 127
+fcodea7 get fcodea7_b fcodea7_c
+fna7_a shr 1 7
+fna7_b get imfa7 fna7_a
+fna7_c and 1 127
+fna7 get fna7_b fna7_c
+fpa7_a shr 5 7
+fpa7_b get imfa7 fpa7_a
+fpa7_c and 5 127
+fpa7 get fpa7_b fpa7_c
+frva7_a shr 3 7
+frva7_b get imfa7 frva7_a
+frva7_c and 3 127
+frva7 get frva7_b frva7_c
+dfa7_f_m mul p7 7
+dfa7_f_i add dfa7_f_m 4
+dfa7_f_a shr dfa7_f_i 7
+dfa7_f_b get fnsba7 dfa7_f_a
+dfa7_f_c and dfa7_f_i 127
+dfa7_f get dfa7_f_b dfa7_f_c
+dfa7_n_m mul p7 7
+dfa7_n_i add dfa7_n_m 5
+dfa7_n_a shr dfa7_n_i 7
+dfa7_n_b get fnsba7 dfa7_n_a
+dfa7_n_c and dfa7_n_i 127
+dfa7_n get dfa7_n_b dfa7_n_c
+dfa7_rw_m mul p7 7
+dfa7_rw_i add dfa7_rw_m 6
+dfa7_rw_a shr dfa7_rw_i 7
+dfa7_rw_b get fnsba7 dfa7_rw_a
+dfa7_rw_c and dfa7_rw_i 127
+dfa7_rw get dfa7_rw_b dfa7_rw_c
+dfa7_pf_m mul p7 7
+dfa7_pf_i add dfa7_pf_m 2
+dfa7_pf_a shr dfa7_pf_i 7
+dfa7_pf_b get fnsba7 dfa7_pf_a
+dfa7_pf_c and dfa7_pf_i 127
+dfa7_pf get dfa7_pf_b dfa7_pf_c
+dfa7_np_m mul p7 7
+dfa7_np_i add dfa7_np_m 1
+dfa7_np_a shr dfa7_np_i 7
+dfa7_np_b get fnsba7 dfa7_np_a
+dfa7_np_c and dfa7_np_i 127
+dfa7_np get dfa7_np_b dfa7_np_c
+dfa7_rs_m mul p7 7
+dfa7_rs_i add dfa7_rs_m 3
+dfa7_rs_a shr dfa7_rs_i 7
+dfa7_rs_b get fnsba7 dfa7_rs_a
+dfa7_rs_c and dfa7_rs_i 127
+dfa7_rs get dfa7_rs_b dfa7_rs_c
+s0a7_m mul dfa7_f 6
+s0a7_i add s0a7_m 3
+s0a7_a shr s0a7_i 7
+s0a7_b get nodesba7 s0a7_a
+s0a7_c and s0a7_i 127
+s0a7 get s0a7_b s0a7_c
+tota7 call shsum nodesba7 fnsba7 p7
+dka7 shr dfa7_rw 28
+dk5a7 eq dka7 5
+dk5na7 select dk5a7 1 0
+availa7 add tota7 dk5na7
+bigza7 ge frva7 268435456
+bigzna7 select bigza7 1 0
+needa7 add fpa7 bigzna7
+fitna7 le fna7 dfa7_n
+fitaa7 le needa7 availa7
+inpla7 and fitna7 fitaa7
+ok0a7 eq fcodea7 0
+go2a7 and goa7 ok0a7
+nda7 select inpla7 dfa7_f nnya7
+ada7 select inpla7 s0a7 naya7
+nodesca7 call shinn nodesba7 imfa7 nda7 ada7 go2a7
+argsca7 call shina argsba7 imfa7 ada7 go2a7
+ntca7 call shint ntba7 imfa7 nda7 go2a7
+fnsca7 call shinf2 fnsba7 p7 imfa7 nda7 ada7 go2a7
+nfna7 select inpla7 0 fna7
+nfnsa7 select go2a7 nfna7 0
+needna7 select inpla7 0 needa7
+neednsa7 select go2a7 needna7 0
+nna7 add nnya7 nfnsa7
+naa7 add naya7 neednsa7
+nfa7 mov nfxa7
+ntla7 mov ntlxa7
+bad1a7 gt nna7 2730
+bad2a7 gt naa7 32768
+bad3a7 gt nfa7 822
+bad4a7 gt ntla7 8320
+bad5a7 gt ntya7 8320
+bad6a7 ne fcodea7 0
+bb1a7 or bad1a7 bad2a7
+bb2a7 or bb1a7 bad3a7
+bb3a7 or bb2a7 bad4a7
+bb4a7 or bb3a7 bad5a7
+bb5a7 or bb4a7 bad6a7
+bba7 and goa7 bb5a7
+limna7 select bba7 1 0
+lima7 or lima6 limna7
+nfda7 eq fda7 0
+nmna7 ne msa7 4294967295
+mqa7 eq misa6 4294967295
+mm1a7 and nfda7 nmna7
+mm2a7 and mm1a7 mqa7
+misa7 select mm2a7 msa7 misa6
+cnta7 add cnta6 gona7
+tla7 mov tlaa7
+fnsa7 mov fnsca7
+nodesa7 mov nodesca7
+argsa7 mov argsca7
+nta7 mov ntca7
+sra8 call shfsearch nodesa7 argsa7 fnsa7 tya7 tla7 nta7 p6 p7 rsn
+fda8 at sra8 0
+bla8 at sra8 1
+ina8 at sra8 2
+msa8 at sra8 3
+goa8 ne fda8 0
+gona8 select goa8 1 0
+kda8_a shr 1 7
+kda8_b get ina8 kda8_a
+kda8_c and 1 127
+kda8 get kda8_b kda8_c
+s2a8_a shr 10 7
+s2a8_b get ina8 s2a8_a
+s2a8_c and 10 127
+s2a8 get s2a8_b s2a8_c
+is3a8 eq kda8 3
+g3a8 and goa8 is3a8
+tra8 call shtyrec tya7 tla7 ntya7 ntla7 s2a8 g3a8
+tya8 at tra8 0
+tlra8 at tra8 1
+rta8 at tra8 2
+ntya8 at tra8 3
+ntlra8 at tra8 4
+rva8_a shr 4 7
+rva8_b get bla8 rva8_a
+rva8_c and 4 127
+rva8 get rva8_b rva8_c
+rm6a8 mul rva8 6
+rra8 add rm6a8 20
+bpa8_o_a shr rra8 7
+bpa8_o_b get bla8 bpa8_o_a
+bpa8_o_c and rra8 127
+bpa8_o get bpa8_o_b bpa8_o_c
+bpa8_v select g3a8 rta8 bpa8_o
+bpa8_a shr rra8 7
+bpa8_b get bla8 bpa8_a
+bpa8_c and rra8 127
+bpa8_d set bpa8_b bpa8_c bpa8_v
+bpa8 set bla8 bpa8_a bpa8_d
+i3a8_o_a shr 3 7
+i3a8_o_b get ina8 i3a8_o_a
+i3a8_o_c and 3 127
+i3a8_o get i3a8_o_b i3a8_o_c
+i3a8_v select g3a8 rta8 i3a8_o
+i3a8_a shr 3 7
+i3a8_b get ina8 i3a8_a
+i3a8_c and 3 127
+i3a8_d set i3a8_b i3a8_c i3a8_v
+i3a8 set ina8 i3a8_a i3a8_d
+i16a8_o_a shr 16 7
+i16a8_o_b get i3a8 i16a8_o_a
+i16a8_o_c and 16 127
+i16a8_o get i16a8_o_b i16a8_o_c
+i16a8_v select g3a8 rta8 i16a8_o
+i16a8_a shr 16 7
+i16a8_b get i3a8 i16a8_a
+i16a8_c and 16 127
+i16a8_d set i16a8_b i16a8_c i16a8_v
+i16a8 set i3a8 i16a8_a i16a8_d
+i11a8_a shr 11 7
+i11a8_b get i16a8 i11a8_a
+i11a8_c and 11 127
+i11a8_d set i11a8_b i11a8_c nfa7
+i11a8 set i16a8 i11a8_a i11a8_d
+imaa8 call shb2im bpa8
+imna8_a shr 1 7
+imna8_b get imaa8 imna8_a
+imna8_c and 1 127
+imna8 get imna8_b imna8_c
+impa8_a shr 5 7
+impa8_b get imaa8 impa8_a
+impa8_c and 5 127
+impa8 get impa8_b impa8_c
+imrva8_a shr 3 7
+imrva8_b get imaa8 imrva8_a
+imrva8_c and 3 127
+imrva8 get imrva8_b imrva8_c
+npara8_a shr 2 7
+npara8_b get i11a8 npara8_a
+npara8_c and 2 127
+npara8 get npara8_b npara8_c
+resa8_a shr 3 7
+resa8_b get i11a8 resa8_a
+resa8_c and 3 127
+resa8 get resa8_b resa8_c
+nodesaa8 call shinn nodesa7 imaa8 nna7 naa7 goa8
+argsaa8 call shina argsa7 imaa8 naa7 goa8
+ntaa8 call shint nta7 imaa8 nna7 goa8
+tlaa8 call shinl tlra8 i11a8 ntlra8 goa8
+fnsaa8 call shinf fnsa7 nfa7 imaa8 ntlra8 npara8 resa8 nna7 naa7 goa8
+bigxa8 ge imrva8 268435456
+bigxna8 select bigxa8 1 0
+imnsa8 select goa8 imna8 0
+impaa8 add impa8 bigxna8
+impasa8 select goa8 impaa8 0
+nparsa8 select goa8 npara8 0
+nnxa8 add nna7 imnsa8
+naxa8 add naa7 impasa8
+nfxa8 add nfa7 gona8
+ntlxa8 add ntlra8 nparsa8
+imba8 mov imaa8
+nodesba8 call shinn nodesaa8 imba8 nnxa8 naxa8 goa8
+argsba8 call shina argsaa8 imba8 naxa8 goa8
+ntba8 call shint ntaa8 imba8 nnxa8 goa8
+fnsba8 call shinf2 fnsaa8 nfa7 imba8 nnxa8 naxa8 goa8
+imbna8_a shr 1 7
+imbna8_b get imba8 imbna8_a
+imbna8_c and 1 127
+imbna8 get imbna8_b imbna8_c
+imbpa8_a shr 5 7
+imbpa8_b get imba8 imbpa8_a
+imbpa8_c and 5 127
+imbpa8 get imbpa8_b imbpa8_c
+imbrva8_a shr 3 7
+imbrva8_b get imba8 imbrva8_a
+imbrva8_c and 3 127
+imbrva8 get imbrva8_b imbrva8_c
+bigya8 ge imbrva8 268435456
+bigyna8 select bigya8 1 0
+imbnsa8 select goa8 imbna8 0
+impba8 add imbpa8 bigyna8
+impbsa8 select goa8 impba8 0
+nnya8 add nnxa8 imbnsa8
+naya8 add naxa8 impbsa8
+imfa8 call shrw nodesba8 argsba8 fnsba8 ntba8 i11a8 p7
+fcodea8_a shr 0 7
+fcodea8_b get imfa8 fcodea8_a
+fcodea8_c and 0 127
+fcodea8 get fcodea8_b fcodea8_c
+fna8_a shr 1 7
+fna8_b get imfa8 fna8_a
+fna8_c and 1 127
+fna8 get fna8_b fna8_c
+fpa8_a shr 5 7
+fpa8_b get imfa8 fpa8_a
+fpa8_c and 5 127
+fpa8 get fpa8_b fpa8_c
+frva8_a shr 3 7
+frva8_b get imfa8 frva8_a
+frva8_c and 3 127
+frva8 get frva8_b frva8_c
+dfa8_f_m mul p7 7
+dfa8_f_i add dfa8_f_m 4
+dfa8_f_a shr dfa8_f_i 7
+dfa8_f_b get fnsba8 dfa8_f_a
+dfa8_f_c and dfa8_f_i 127
+dfa8_f get dfa8_f_b dfa8_f_c
+dfa8_n_m mul p7 7
+dfa8_n_i add dfa8_n_m 5
+dfa8_n_a shr dfa8_n_i 7
+dfa8_n_b get fnsba8 dfa8_n_a
+dfa8_n_c and dfa8_n_i 127
+dfa8_n get dfa8_n_b dfa8_n_c
+dfa8_rw_m mul p7 7
+dfa8_rw_i add dfa8_rw_m 6
+dfa8_rw_a shr dfa8_rw_i 7
+dfa8_rw_b get fnsba8 dfa8_rw_a
+dfa8_rw_c and dfa8_rw_i 127
+dfa8_rw get dfa8_rw_b dfa8_rw_c
+dfa8_pf_m mul p7 7
+dfa8_pf_i add dfa8_pf_m 2
+dfa8_pf_a shr dfa8_pf_i 7
+dfa8_pf_b get fnsba8 dfa8_pf_a
+dfa8_pf_c and dfa8_pf_i 127
+dfa8_pf get dfa8_pf_b dfa8_pf_c
+dfa8_np_m mul p7 7
+dfa8_np_i add dfa8_np_m 1
+dfa8_np_a shr dfa8_np_i 7
+dfa8_np_b get fnsba8 dfa8_np_a
+dfa8_np_c and dfa8_np_i 127
+dfa8_np get dfa8_np_b dfa8_np_c
+dfa8_rs_m mul p7 7
+dfa8_rs_i add dfa8_rs_m 3
+dfa8_rs_a shr dfa8_rs_i 7
+dfa8_rs_b get fnsba8 dfa8_rs_a
+dfa8_rs_c and dfa8_rs_i 127
+dfa8_rs get dfa8_rs_b dfa8_rs_c
+s0a8_m mul dfa8_f 6
+s0a8_i add s0a8_m 3
+s0a8_a shr s0a8_i 7
+s0a8_b get nodesba8 s0a8_a
+s0a8_c and s0a8_i 127
+s0a8 get s0a8_b s0a8_c
+tota8 call shsum nodesba8 fnsba8 p7
+dka8 shr dfa8_rw 28
+dk5a8 eq dka8 5
+dk5na8 select dk5a8 1 0
+availa8 add tota8 dk5na8
+bigza8 ge frva8 268435456
+bigzna8 select bigza8 1 0
+needa8 add fpa8 bigzna8
+fitna8 le fna8 dfa8_n
+fitaa8 le needa8 availa8
+inpla8 and fitna8 fitaa8
+ok0a8 eq fcodea8 0
+go2a8 and goa8 ok0a8
+nda8 select inpla8 dfa8_f nnya8
+ada8 select inpla8 s0a8 naya8
+nodesca8 call shinn nodesba8 imfa8 nda8 ada8 go2a8
+argsca8 call shina argsba8 imfa8 ada8 go2a8
+ntca8 call shint ntba8 imfa8 nda8 go2a8
+fnsca8 call shinf2 fnsba8 p7 imfa8 nda8 ada8 go2a8
+nfna8 select inpla8 0 fna8
+nfnsa8 select go2a8 nfna8 0
+needna8 select inpla8 0 needa8
+neednsa8 select go2a8 needna8 0
+nna8 add nnya8 nfnsa8
+naa8 add naya8 neednsa8
+nfa8 mov nfxa8
+ntla8 mov ntlxa8
+bad1a8 gt nna8 2730
+bad2a8 gt naa8 32768
+bad3a8 gt nfa8 822
+bad4a8 gt ntla8 8320
+bad5a8 gt ntya8 8320
+bad6a8 ne fcodea8 0
+bb1a8 or bad1a8 bad2a8
+bb2a8 or bb1a8 bad3a8
+bb3a8 or bb2a8 bad4a8
+bb4a8 or bb3a8 bad5a8
+bb5a8 or bb4a8 bad6a8
+bba8 and goa8 bb5a8
+limna8 select bba8 1 0
+lima8 or lima7 limna8
+nfda8 eq fda8 0
+nmna8 ne msa8 4294967295
+mqa8 eq misa7 4294967295
+mm1a8 and nfda8 nmna8
+mm2a8 and mm1a8 mqa8
+misa8 select mm2a8 msa8 misa7
+cnta8 add cnta7 gona8
+tla8 mov tlaa8
+fnsa8 mov fnsca8
+nodesa8 mov nodesca8
+argsa8 mov argsca8
+nta8 mov ntca8
+mne ne misa8 4294967295
+pos gt cnta8 0
+st1 select pos 1 0
+st2 select mne 7 st1
+limb ne lima8 0
+st select limb 4 st2
+r rec st misa8 nfa8 tya8 tla8 fnsa8 nodesa8 nta8
+ret r
+end
+fn shfargs u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x200 u32 bool -> u32x128x512
+nn0_a shr 25472 7
+nn0_b get p6 nn0_a
+nn0_c and 25472 127
+nn0 get nn0_b nn0_c
+na0_a shr 25473 7
+na0_b get p6 na0_a
+na0_c and 25473 127
+na0 get na0_b na0_c
+nf0_a shr 25474 7
+nf0_b get p6 nf0_a
+nf0_c and 25474 127
+nf0 get nf0_b nf0_c
+nty0_a shr 25475 7
+nty0_b get p6 nty0_a
+nty0_c and 25475 127
+nty0 get nty0_b nty0_c
+ntl0_a shr 25476 7
+ntl0_b get p6 ntl0_a
+ntl0_c and 25476 127
+ntl0 get ntl0_b ntl0_c
+ty0 mov p0
+tl0 mov p1
+fns0 mov p2
+nodes0 mov p3
+args0 mov p4
+nt0 mov p5
+cnt0 mov 0
+mis0 mov 4294967295
+lim0 mov 0
+rsn select p8 1 0
+sra1 call shfsearch nodes0 args0 fns0 ty0 tl0 nt0 p6 p7 rsn
+fda1 at sra1 0
+bla1 at sra1 1
+ina1 at sra1 2
+msa1 at sra1 3
+goa1 ne fda1 0
+gona1 select goa1 1 0
+kda1_a shr 1 7
+kda1_b get ina1 kda1_a
+kda1_c and 1 127
+kda1 get kda1_b kda1_c
+s2a1_a shr 10 7
+s2a1_b get ina1 s2a1_a
+s2a1_c and 10 127
+s2a1 get s2a1_b s2a1_c
+is3a1 eq kda1 3
+g3a1 and goa1 is3a1
+tra1 call shtyrec ty0 tl0 nty0 ntl0 s2a1 g3a1
+tya1 at tra1 0
+tlra1 at tra1 1
+rta1 at tra1 2
+ntya1 at tra1 3
+ntlra1 at tra1 4
+rva1_a shr 4 7
+rva1_b get bla1 rva1_a
+rva1_c and 4 127
+rva1 get rva1_b rva1_c
+rm6a1 mul rva1 6
+rra1 add rm6a1 20
+bpa1_o_a shr rra1 7
+bpa1_o_b get bla1 bpa1_o_a
+bpa1_o_c and rra1 127
+bpa1_o get bpa1_o_b bpa1_o_c
+bpa1_v select g3a1 rta1 bpa1_o
+bpa1_a shr rra1 7
+bpa1_b get bla1 bpa1_a
+bpa1_c and rra1 127
+bpa1_d set bpa1_b bpa1_c bpa1_v
+bpa1 set bla1 bpa1_a bpa1_d
+i3a1_o_a shr 3 7
+i3a1_o_b get ina1 i3a1_o_a
+i3a1_o_c and 3 127
+i3a1_o get i3a1_o_b i3a1_o_c
+i3a1_v select g3a1 rta1 i3a1_o
+i3a1_a shr 3 7
+i3a1_b get ina1 i3a1_a
+i3a1_c and 3 127
+i3a1_d set i3a1_b i3a1_c i3a1_v
+i3a1 set ina1 i3a1_a i3a1_d
+i16a1_o_a shr 16 7
+i16a1_o_b get i3a1 i16a1_o_a
+i16a1_o_c and 16 127
+i16a1_o get i16a1_o_b i16a1_o_c
+i16a1_v select g3a1 rta1 i16a1_o
+i16a1_a shr 16 7
+i16a1_b get i3a1 i16a1_a
+i16a1_c and 16 127
+i16a1_d set i16a1_b i16a1_c i16a1_v
+i16a1 set i3a1 i16a1_a i16a1_d
+i11a1_a shr 11 7
+i11a1_b get i16a1 i11a1_a
+i11a1_c and 11 127
+i11a1_d set i11a1_b i11a1_c nf0
+i11a1 set i16a1 i11a1_a i11a1_d
+imaa1 call shb2im bpa1
+imna1_a shr 1 7
+imna1_b get imaa1 imna1_a
+imna1_c and 1 127
+imna1 get imna1_b imna1_c
+impa1_a shr 5 7
+impa1_b get imaa1 impa1_a
+impa1_c and 5 127
+impa1 get impa1_b impa1_c
+imrva1_a shr 3 7
+imrva1_b get imaa1 imrva1_a
+imrva1_c and 3 127
+imrva1 get imrva1_b imrva1_c
+npara1_a shr 2 7
+npara1_b get i11a1 npara1_a
+npara1_c and 2 127
+npara1 get npara1_b npara1_c
+resa1_a shr 3 7
+resa1_b get i11a1 resa1_a
+resa1_c and 3 127
+resa1 get resa1_b resa1_c
+nodesaa1 call shinn nodes0 imaa1 nn0 na0 goa1
+argsaa1 call shina args0 imaa1 na0 goa1
+ntaa1 call shint nt0 imaa1 nn0 goa1
+tlaa1 call shinl tlra1 i11a1 ntlra1 goa1
+fnsaa1 call shinf fns0 nf0 imaa1 ntlra1 npara1 resa1 nn0 na0 goa1
+bigxa1 ge imrva1 268435456
+bigxna1 select bigxa1 1 0
+imnsa1 select goa1 imna1 0
+impaa1 add impa1 bigxna1
+impasa1 select goa1 impaa1 0
+nparsa1 select goa1 npara1 0
+nnxa1 add nn0 imnsa1
+naxa1 add na0 impasa1
+nfxa1 add nf0 gona1
+ntlxa1 add ntlra1 nparsa1
+imba1 mov imaa1
+nodesba1 call shinn nodesaa1 imba1 nnxa1 naxa1 goa1
+argsba1 call shina argsaa1 imba1 naxa1 goa1
+ntba1 call shint ntaa1 imba1 nnxa1 goa1
+fnsba1 call shinf2 fnsaa1 nf0 imba1 nnxa1 naxa1 goa1
+imbna1_a shr 1 7
+imbna1_b get imba1 imbna1_a
+imbna1_c and 1 127
+imbna1 get imbna1_b imbna1_c
+imbpa1_a shr 5 7
+imbpa1_b get imba1 imbpa1_a
+imbpa1_c and 5 127
+imbpa1 get imbpa1_b imbpa1_c
+imbrva1_a shr 3 7
+imbrva1_b get imba1 imbrva1_a
+imbrva1_c and 3 127
+imbrva1 get imbrva1_b imbrva1_c
+bigya1 ge imbrva1 268435456
+bigyna1 select bigya1 1 0
+imbnsa1 select goa1 imbna1 0
+impba1 add imbpa1 bigyna1
+impbsa1 select goa1 impba1 0
+nnya1 add nnxa1 imbnsa1
+naya1 add naxa1 impbsa1
+imfa1 call shrw nodesba1 argsba1 fnsba1 ntba1 i11a1 p7
+fcodea1_a shr 0 7
+fcodea1_b get imfa1 fcodea1_a
+fcodea1_c and 0 127
+fcodea1 get fcodea1_b fcodea1_c
+fna1_a shr 1 7
+fna1_b get imfa1 fna1_a
+fna1_c and 1 127
+fna1 get fna1_b fna1_c
+fpa1_a shr 5 7
+fpa1_b get imfa1 fpa1_a
+fpa1_c and 5 127
+fpa1 get fpa1_b fpa1_c
+frva1_a shr 3 7
+frva1_b get imfa1 frva1_a
+frva1_c and 3 127
+frva1 get frva1_b frva1_c
+dfa1_f_m mul p7 7
+dfa1_f_i add dfa1_f_m 4
+dfa1_f_a shr dfa1_f_i 7
+dfa1_f_b get fnsba1 dfa1_f_a
+dfa1_f_c and dfa1_f_i 127
+dfa1_f get dfa1_f_b dfa1_f_c
+dfa1_n_m mul p7 7
+dfa1_n_i add dfa1_n_m 5
+dfa1_n_a shr dfa1_n_i 7
+dfa1_n_b get fnsba1 dfa1_n_a
+dfa1_n_c and dfa1_n_i 127
+dfa1_n get dfa1_n_b dfa1_n_c
+dfa1_rw_m mul p7 7
+dfa1_rw_i add dfa1_rw_m 6
+dfa1_rw_a shr dfa1_rw_i 7
+dfa1_rw_b get fnsba1 dfa1_rw_a
+dfa1_rw_c and dfa1_rw_i 127
+dfa1_rw get dfa1_rw_b dfa1_rw_c
+dfa1_pf_m mul p7 7
+dfa1_pf_i add dfa1_pf_m 2
+dfa1_pf_a shr dfa1_pf_i 7
+dfa1_pf_b get fnsba1 dfa1_pf_a
+dfa1_pf_c and dfa1_pf_i 127
+dfa1_pf get dfa1_pf_b dfa1_pf_c
+dfa1_np_m mul p7 7
+dfa1_np_i add dfa1_np_m 1
+dfa1_np_a shr dfa1_np_i 7
+dfa1_np_b get fnsba1 dfa1_np_a
+dfa1_np_c and dfa1_np_i 127
+dfa1_np get dfa1_np_b dfa1_np_c
+dfa1_rs_m mul p7 7
+dfa1_rs_i add dfa1_rs_m 3
+dfa1_rs_a shr dfa1_rs_i 7
+dfa1_rs_b get fnsba1 dfa1_rs_a
+dfa1_rs_c and dfa1_rs_i 127
+dfa1_rs get dfa1_rs_b dfa1_rs_c
+s0a1_m mul dfa1_f 6
+s0a1_i add s0a1_m 3
+s0a1_a shr s0a1_i 7
+s0a1_b get nodesba1 s0a1_a
+s0a1_c and s0a1_i 127
+s0a1 get s0a1_b s0a1_c
+tota1 call shsum nodesba1 fnsba1 p7
+dka1 shr dfa1_rw 28
+dk5a1 eq dka1 5
+dk5na1 select dk5a1 1 0
+availa1 add tota1 dk5na1
+bigza1 ge frva1 268435456
+bigzna1 select bigza1 1 0
+needa1 add fpa1 bigzna1
+fitna1 le fna1 dfa1_n
+fitaa1 le needa1 availa1
+inpla1 and fitna1 fitaa1
+ok0a1 eq fcodea1 0
+go2a1 and goa1 ok0a1
+nda1 select inpla1 dfa1_f nnya1
+ada1 select inpla1 s0a1 naya1
+nodesca1 call shinn nodesba1 imfa1 nda1 ada1 go2a1
+argsca1 call shina argsba1 imfa1 ada1 go2a1
+ntca1 call shint ntba1 imfa1 nda1 go2a1
+fnsca1 call shinf2 fnsba1 p7 imfa1 nda1 ada1 go2a1
+nfna1 select inpla1 0 fna1
+nfnsa1 select go2a1 nfna1 0
+needna1 select inpla1 0 needa1
+neednsa1 select go2a1 needna1 0
+nna1 add nnya1 nfnsa1
+naa1 add naya1 neednsa1
+nfa1 mov nfxa1
+ntla1 mov ntlxa1
+bad1a1 gt nna1 2730
+bad2a1 gt naa1 32768
+bad3a1 gt nfa1 822
+bad4a1 gt ntla1 8320
+bad5a1 gt ntya1 8320
+bad6a1 ne fcodea1 0
+bb1a1 or bad1a1 bad2a1
+bb2a1 or bb1a1 bad3a1
+bb3a1 or bb2a1 bad4a1
+bb4a1 or bb3a1 bad5a1
+bb5a1 or bb4a1 bad6a1
+bba1 and goa1 bb5a1
+limna1 select bba1 1 0
+lima1 or lim0 limna1
+nfda1 eq fda1 0
+nmna1 ne msa1 4294967295
+mqa1 eq mis0 4294967295
+mm1a1 and nfda1 nmna1
+mm2a1 and mm1a1 mqa1
+misa1 select mm2a1 msa1 mis0
+cnta1 add cnt0 gona1
+tla1 mov tlaa1
+fnsa1 mov fnsca1
+nodesa1 mov nodesca1
+argsa1 mov argsca1
+nta1 mov ntca1
+sra2 call shfsearch nodesa1 argsa1 fnsa1 tya1 tla1 nta1 p6 p7 rsn
+fda2 at sra2 0
+bla2 at sra2 1
+ina2 at sra2 2
+msa2 at sra2 3
+goa2 ne fda2 0
+gona2 select goa2 1 0
+kda2_a shr 1 7
+kda2_b get ina2 kda2_a
+kda2_c and 1 127
+kda2 get kda2_b kda2_c
+s2a2_a shr 10 7
+s2a2_b get ina2 s2a2_a
+s2a2_c and 10 127
+s2a2 get s2a2_b s2a2_c
+is3a2 eq kda2 3
+g3a2 and goa2 is3a2
+tra2 call shtyrec tya1 tla1 ntya1 ntla1 s2a2 g3a2
+tya2 at tra2 0
+tlra2 at tra2 1
+rta2 at tra2 2
+ntya2 at tra2 3
+ntlra2 at tra2 4
+rva2_a shr 4 7
+rva2_b get bla2 rva2_a
+rva2_c and 4 127
+rva2 get rva2_b rva2_c
+rm6a2 mul rva2 6
+rra2 add rm6a2 20
+bpa2_o_a shr rra2 7
+bpa2_o_b get bla2 bpa2_o_a
+bpa2_o_c and rra2 127
+bpa2_o get bpa2_o_b bpa2_o_c
+bpa2_v select g3a2 rta2 bpa2_o
+bpa2_a shr rra2 7
+bpa2_b get bla2 bpa2_a
+bpa2_c and rra2 127
+bpa2_d set bpa2_b bpa2_c bpa2_v
+bpa2 set bla2 bpa2_a bpa2_d
+i3a2_o_a shr 3 7
+i3a2_o_b get ina2 i3a2_o_a
+i3a2_o_c and 3 127
+i3a2_o get i3a2_o_b i3a2_o_c
+i3a2_v select g3a2 rta2 i3a2_o
+i3a2_a shr 3 7
+i3a2_b get ina2 i3a2_a
+i3a2_c and 3 127
+i3a2_d set i3a2_b i3a2_c i3a2_v
+i3a2 set ina2 i3a2_a i3a2_d
+i16a2_o_a shr 16 7
+i16a2_o_b get i3a2 i16a2_o_a
+i16a2_o_c and 16 127
+i16a2_o get i16a2_o_b i16a2_o_c
+i16a2_v select g3a2 rta2 i16a2_o
+i16a2_a shr 16 7
+i16a2_b get i3a2 i16a2_a
+i16a2_c and 16 127
+i16a2_d set i16a2_b i16a2_c i16a2_v
+i16a2 set i3a2 i16a2_a i16a2_d
+i11a2_a shr 11 7
+i11a2_b get i16a2 i11a2_a
+i11a2_c and 11 127
+i11a2_d set i11a2_b i11a2_c nfa1
+i11a2 set i16a2 i11a2_a i11a2_d
+imaa2 call shb2im bpa2
+imna2_a shr 1 7
+imna2_b get imaa2 imna2_a
+imna2_c and 1 127
+imna2 get imna2_b imna2_c
+impa2_a shr 5 7
+impa2_b get imaa2 impa2_a
+impa2_c and 5 127
+impa2 get impa2_b impa2_c
+imrva2_a shr 3 7
+imrva2_b get imaa2 imrva2_a
+imrva2_c and 3 127
+imrva2 get imrva2_b imrva2_c
+npara2_a shr 2 7
+npara2_b get i11a2 npara2_a
+npara2_c and 2 127
+npara2 get npara2_b npara2_c
+resa2_a shr 3 7
+resa2_b get i11a2 resa2_a
+resa2_c and 3 127
+resa2 get resa2_b resa2_c
+nodesaa2 call shinn nodesa1 imaa2 nna1 naa1 goa2
+argsaa2 call shina argsa1 imaa2 naa1 goa2
+ntaa2 call shint nta1 imaa2 nna1 goa2
+tlaa2 call shinl tlra2 i11a2 ntlra2 goa2
+fnsaa2 call shinf fnsa1 nfa1 imaa2 ntlra2 npara2 resa2 nna1 naa1 goa2
+bigxa2 ge imrva2 268435456
+bigxna2 select bigxa2 1 0
+imnsa2 select goa2 imna2 0
+impaa2 add impa2 bigxna2
+impasa2 select goa2 impaa2 0
+nparsa2 select goa2 npara2 0
+nnxa2 add nna1 imnsa2
+naxa2 add naa1 impasa2
+nfxa2 add nfa1 gona2
+ntlxa2 add ntlra2 nparsa2
+imba2 mov imaa2
+nodesba2 call shinn nodesaa2 imba2 nnxa2 naxa2 goa2
+argsba2 call shina argsaa2 imba2 naxa2 goa2
+ntba2 call shint ntaa2 imba2 nnxa2 goa2
+fnsba2 call shinf2 fnsaa2 nfa1 imba2 nnxa2 naxa2 goa2
+imbna2_a shr 1 7
+imbna2_b get imba2 imbna2_a
+imbna2_c and 1 127
+imbna2 get imbna2_b imbna2_c
+imbpa2_a shr 5 7
+imbpa2_b get imba2 imbpa2_a
+imbpa2_c and 5 127
+imbpa2 get imbpa2_b imbpa2_c
+imbrva2_a shr 3 7
+imbrva2_b get imba2 imbrva2_a
+imbrva2_c and 3 127
+imbrva2 get imbrva2_b imbrva2_c
+bigya2 ge imbrva2 268435456
+bigyna2 select bigya2 1 0
+imbnsa2 select goa2 imbna2 0
+impba2 add imbpa2 bigyna2
+impbsa2 select goa2 impba2 0
+nnya2 add nnxa2 imbnsa2
+naya2 add naxa2 impbsa2
+imfa2 call shrw nodesba2 argsba2 fnsba2 ntba2 i11a2 p7
+fcodea2_a shr 0 7
+fcodea2_b get imfa2 fcodea2_a
+fcodea2_c and 0 127
+fcodea2 get fcodea2_b fcodea2_c
+fna2_a shr 1 7
+fna2_b get imfa2 fna2_a
+fna2_c and 1 127
+fna2 get fna2_b fna2_c
+fpa2_a shr 5 7
+fpa2_b get imfa2 fpa2_a
+fpa2_c and 5 127
+fpa2 get fpa2_b fpa2_c
+frva2_a shr 3 7
+frva2_b get imfa2 frva2_a
+frva2_c and 3 127
+frva2 get frva2_b frva2_c
+dfa2_f_m mul p7 7
+dfa2_f_i add dfa2_f_m 4
+dfa2_f_a shr dfa2_f_i 7
+dfa2_f_b get fnsba2 dfa2_f_a
+dfa2_f_c and dfa2_f_i 127
+dfa2_f get dfa2_f_b dfa2_f_c
+dfa2_n_m mul p7 7
+dfa2_n_i add dfa2_n_m 5
+dfa2_n_a shr dfa2_n_i 7
+dfa2_n_b get fnsba2 dfa2_n_a
+dfa2_n_c and dfa2_n_i 127
+dfa2_n get dfa2_n_b dfa2_n_c
+dfa2_rw_m mul p7 7
+dfa2_rw_i add dfa2_rw_m 6
+dfa2_rw_a shr dfa2_rw_i 7
+dfa2_rw_b get fnsba2 dfa2_rw_a
+dfa2_rw_c and dfa2_rw_i 127
+dfa2_rw get dfa2_rw_b dfa2_rw_c
+dfa2_pf_m mul p7 7
+dfa2_pf_i add dfa2_pf_m 2
+dfa2_pf_a shr dfa2_pf_i 7
+dfa2_pf_b get fnsba2 dfa2_pf_a
+dfa2_pf_c and dfa2_pf_i 127
+dfa2_pf get dfa2_pf_b dfa2_pf_c
+dfa2_np_m mul p7 7
+dfa2_np_i add dfa2_np_m 1
+dfa2_np_a shr dfa2_np_i 7
+dfa2_np_b get fnsba2 dfa2_np_a
+dfa2_np_c and dfa2_np_i 127
+dfa2_np get dfa2_np_b dfa2_np_c
+dfa2_rs_m mul p7 7
+dfa2_rs_i add dfa2_rs_m 3
+dfa2_rs_a shr dfa2_rs_i 7
+dfa2_rs_b get fnsba2 dfa2_rs_a
+dfa2_rs_c and dfa2_rs_i 127
+dfa2_rs get dfa2_rs_b dfa2_rs_c
+s0a2_m mul dfa2_f 6
+s0a2_i add s0a2_m 3
+s0a2_a shr s0a2_i 7
+s0a2_b get nodesba2 s0a2_a
+s0a2_c and s0a2_i 127
+s0a2 get s0a2_b s0a2_c
+tota2 call shsum nodesba2 fnsba2 p7
+dka2 shr dfa2_rw 28
+dk5a2 eq dka2 5
+dk5na2 select dk5a2 1 0
+availa2 add tota2 dk5na2
+bigza2 ge frva2 268435456
+bigzna2 select bigza2 1 0
+needa2 add fpa2 bigzna2
+fitna2 le fna2 dfa2_n
+fitaa2 le needa2 availa2
+inpla2 and fitna2 fitaa2
+ok0a2 eq fcodea2 0
+go2a2 and goa2 ok0a2
+nda2 select inpla2 dfa2_f nnya2
+ada2 select inpla2 s0a2 naya2
+nodesca2 call shinn nodesba2 imfa2 nda2 ada2 go2a2
+argsca2 call shina argsba2 imfa2 ada2 go2a2
+ntca2 call shint ntba2 imfa2 nda2 go2a2
+fnsca2 call shinf2 fnsba2 p7 imfa2 nda2 ada2 go2a2
+nfna2 select inpla2 0 fna2
+nfnsa2 select go2a2 nfna2 0
+needna2 select inpla2 0 needa2
+neednsa2 select go2a2 needna2 0
+nna2 add nnya2 nfnsa2
+naa2 add naya2 neednsa2
+nfa2 mov nfxa2
+ntla2 mov ntlxa2
+bad1a2 gt nna2 2730
+bad2a2 gt naa2 32768
+bad3a2 gt nfa2 822
+bad4a2 gt ntla2 8320
+bad5a2 gt ntya2 8320
+bad6a2 ne fcodea2 0
+bb1a2 or bad1a2 bad2a2
+bb2a2 or bb1a2 bad3a2
+bb3a2 or bb2a2 bad4a2
+bb4a2 or bb3a2 bad5a2
+bb5a2 or bb4a2 bad6a2
+bba2 and goa2 bb5a2
+limna2 select bba2 1 0
+lima2 or lima1 limna2
+nfda2 eq fda2 0
+nmna2 ne msa2 4294967295
+mqa2 eq misa1 4294967295
+mm1a2 and nfda2 nmna2
+mm2a2 and mm1a2 mqa2
+misa2 select mm2a2 msa2 misa1
+cnta2 add cnta1 gona2
+tla2 mov tlaa2
+fnsa2 mov fnsca2
+nodesa2 mov nodesca2
+argsa2 mov argsca2
+nta2 mov ntca2
+sra3 call shfsearch nodesa2 argsa2 fnsa2 tya2 tla2 nta2 p6 p7 rsn
+fda3 at sra3 0
+bla3 at sra3 1
+ina3 at sra3 2
+msa3 at sra3 3
+goa3 ne fda3 0
+gona3 select goa3 1 0
+kda3_a shr 1 7
+kda3_b get ina3 kda3_a
+kda3_c and 1 127
+kda3 get kda3_b kda3_c
+s2a3_a shr 10 7
+s2a3_b get ina3 s2a3_a
+s2a3_c and 10 127
+s2a3 get s2a3_b s2a3_c
+is3a3 eq kda3 3
+g3a3 and goa3 is3a3
+tra3 call shtyrec tya2 tla2 ntya2 ntla2 s2a3 g3a3
+tya3 at tra3 0
+tlra3 at tra3 1
+rta3 at tra3 2
+ntya3 at tra3 3
+ntlra3 at tra3 4
+rva3_a shr 4 7
+rva3_b get bla3 rva3_a
+rva3_c and 4 127
+rva3 get rva3_b rva3_c
+rm6a3 mul rva3 6
+rra3 add rm6a3 20
+bpa3_o_a shr rra3 7
+bpa3_o_b get bla3 bpa3_o_a
+bpa3_o_c and rra3 127
+bpa3_o get bpa3_o_b bpa3_o_c
+bpa3_v select g3a3 rta3 bpa3_o
+bpa3_a shr rra3 7
+bpa3_b get bla3 bpa3_a
+bpa3_c and rra3 127
+bpa3_d set bpa3_b bpa3_c bpa3_v
+bpa3 set bla3 bpa3_a bpa3_d
+i3a3_o_a shr 3 7
+i3a3_o_b get ina3 i3a3_o_a
+i3a3_o_c and 3 127
+i3a3_o get i3a3_o_b i3a3_o_c
+i3a3_v select g3a3 rta3 i3a3_o
+i3a3_a shr 3 7
+i3a3_b get ina3 i3a3_a
+i3a3_c and 3 127
+i3a3_d set i3a3_b i3a3_c i3a3_v
+i3a3 set ina3 i3a3_a i3a3_d
+i16a3_o_a shr 16 7
+i16a3_o_b get i3a3 i16a3_o_a
+i16a3_o_c and 16 127
+i16a3_o get i16a3_o_b i16a3_o_c
+i16a3_v select g3a3 rta3 i16a3_o
+i16a3_a shr 16 7
+i16a3_b get i3a3 i16a3_a
+i16a3_c and 16 127
+i16a3_d set i16a3_b i16a3_c i16a3_v
+i16a3 set i3a3 i16a3_a i16a3_d
+i11a3_a shr 11 7
+i11a3_b get i16a3 i11a3_a
+i11a3_c and 11 127
+i11a3_d set i11a3_b i11a3_c nfa2
+i11a3 set i16a3 i11a3_a i11a3_d
+imaa3 call shb2im bpa3
+imna3_a shr 1 7
+imna3_b get imaa3 imna3_a
+imna3_c and 1 127
+imna3 get imna3_b imna3_c
+impa3_a shr 5 7
+impa3_b get imaa3 impa3_a
+impa3_c and 5 127
+impa3 get impa3_b impa3_c
+imrva3_a shr 3 7
+imrva3_b get imaa3 imrva3_a
+imrva3_c and 3 127
+imrva3 get imrva3_b imrva3_c
+npara3_a shr 2 7
+npara3_b get i11a3 npara3_a
+npara3_c and 2 127
+npara3 get npara3_b npara3_c
+resa3_a shr 3 7
+resa3_b get i11a3 resa3_a
+resa3_c and 3 127
+resa3 get resa3_b resa3_c
+nodesaa3 call shinn nodesa2 imaa3 nna2 naa2 goa3
+argsaa3 call shina argsa2 imaa3 naa2 goa3
+ntaa3 call shint nta2 imaa3 nna2 goa3
+tlaa3 call shinl tlra3 i11a3 ntlra3 goa3
+fnsaa3 call shinf fnsa2 nfa2 imaa3 ntlra3 npara3 resa3 nna2 naa2 goa3
+bigxa3 ge imrva3 268435456
+bigxna3 select bigxa3 1 0
+imnsa3 select goa3 imna3 0
+impaa3 add impa3 bigxna3
+impasa3 select goa3 impaa3 0
+nparsa3 select goa3 npara3 0
+nnxa3 add nna2 imnsa3
+naxa3 add naa2 impasa3
+nfxa3 add nfa2 gona3
+ntlxa3 add ntlra3 nparsa3
+imba3 mov imaa3
+nodesba3 call shinn nodesaa3 imba3 nnxa3 naxa3 goa3
+argsba3 call shina argsaa3 imba3 naxa3 goa3
+ntba3 call shint ntaa3 imba3 nnxa3 goa3
+fnsba3 call shinf2 fnsaa3 nfa2 imba3 nnxa3 naxa3 goa3
+imbna3_a shr 1 7
+imbna3_b get imba3 imbna3_a
+imbna3_c and 1 127
+imbna3 get imbna3_b imbna3_c
+imbpa3_a shr 5 7
+imbpa3_b get imba3 imbpa3_a
+imbpa3_c and 5 127
+imbpa3 get imbpa3_b imbpa3_c
+imbrva3_a shr 3 7
+imbrva3_b get imba3 imbrva3_a
+imbrva3_c and 3 127
+imbrva3 get imbrva3_b imbrva3_c
+bigya3 ge imbrva3 268435456
+bigyna3 select bigya3 1 0
+imbnsa3 select goa3 imbna3 0
+impba3 add imbpa3 bigyna3
+impbsa3 select goa3 impba3 0
+nnya3 add nnxa3 imbnsa3
+naya3 add naxa3 impbsa3
+imfa3 call shrw nodesba3 argsba3 fnsba3 ntba3 i11a3 p7
+fcodea3_a shr 0 7
+fcodea3_b get imfa3 fcodea3_a
+fcodea3_c and 0 127
+fcodea3 get fcodea3_b fcodea3_c
+fna3_a shr 1 7
+fna3_b get imfa3 fna3_a
+fna3_c and 1 127
+fna3 get fna3_b fna3_c
+fpa3_a shr 5 7
+fpa3_b get imfa3 fpa3_a
+fpa3_c and 5 127
+fpa3 get fpa3_b fpa3_c
+frva3_a shr 3 7
+frva3_b get imfa3 frva3_a
+frva3_c and 3 127
+frva3 get frva3_b frva3_c
+dfa3_f_m mul p7 7
+dfa3_f_i add dfa3_f_m 4
+dfa3_f_a shr dfa3_f_i 7
+dfa3_f_b get fnsba3 dfa3_f_a
+dfa3_f_c and dfa3_f_i 127
+dfa3_f get dfa3_f_b dfa3_f_c
+dfa3_n_m mul p7 7
+dfa3_n_i add dfa3_n_m 5
+dfa3_n_a shr dfa3_n_i 7
+dfa3_n_b get fnsba3 dfa3_n_a
+dfa3_n_c and dfa3_n_i 127
+dfa3_n get dfa3_n_b dfa3_n_c
+dfa3_rw_m mul p7 7
+dfa3_rw_i add dfa3_rw_m 6
+dfa3_rw_a shr dfa3_rw_i 7
+dfa3_rw_b get fnsba3 dfa3_rw_a
+dfa3_rw_c and dfa3_rw_i 127
+dfa3_rw get dfa3_rw_b dfa3_rw_c
+dfa3_pf_m mul p7 7
+dfa3_pf_i add dfa3_pf_m 2
+dfa3_pf_a shr dfa3_pf_i 7
+dfa3_pf_b get fnsba3 dfa3_pf_a
+dfa3_pf_c and dfa3_pf_i 127
+dfa3_pf get dfa3_pf_b dfa3_pf_c
+dfa3_np_m mul p7 7
+dfa3_np_i add dfa3_np_m 1
+dfa3_np_a shr dfa3_np_i 7
+dfa3_np_b get fnsba3 dfa3_np_a
+dfa3_np_c and dfa3_np_i 127
+dfa3_np get dfa3_np_b dfa3_np_c
+dfa3_rs_m mul p7 7
+dfa3_rs_i add dfa3_rs_m 3
+dfa3_rs_a shr dfa3_rs_i 7
+dfa3_rs_b get fnsba3 dfa3_rs_a
+dfa3_rs_c and dfa3_rs_i 127
+dfa3_rs get dfa3_rs_b dfa3_rs_c
+s0a3_m mul dfa3_f 6
+s0a3_i add s0a3_m 3
+s0a3_a shr s0a3_i 7
+s0a3_b get nodesba3 s0a3_a
+s0a3_c and s0a3_i 127
+s0a3 get s0a3_b s0a3_c
+tota3 call shsum nodesba3 fnsba3 p7
+dka3 shr dfa3_rw 28
+dk5a3 eq dka3 5
+dk5na3 select dk5a3 1 0
+availa3 add tota3 dk5na3
+bigza3 ge frva3 268435456
+bigzna3 select bigza3 1 0
+needa3 add fpa3 bigzna3
+fitna3 le fna3 dfa3_n
+fitaa3 le needa3 availa3
+inpla3 and fitna3 fitaa3
+ok0a3 eq fcodea3 0
+go2a3 and goa3 ok0a3
+nda3 select inpla3 dfa3_f nnya3
+ada3 select inpla3 s0a3 naya3
+nodesca3 call shinn nodesba3 imfa3 nda3 ada3 go2a3
+argsca3 call shina argsba3 imfa3 ada3 go2a3
+ntca3 call shint ntba3 imfa3 nda3 go2a3
+fnsca3 call shinf2 fnsba3 p7 imfa3 nda3 ada3 go2a3
+nfna3 select inpla3 0 fna3
+nfnsa3 select go2a3 nfna3 0
+needna3 select inpla3 0 needa3
+neednsa3 select go2a3 needna3 0
+nna3 add nnya3 nfnsa3
+naa3 add naya3 neednsa3
+nfa3 mov nfxa3
+ntla3 mov ntlxa3
+bad1a3 gt nna3 2730
+bad2a3 gt naa3 32768
+bad3a3 gt nfa3 822
+bad4a3 gt ntla3 8320
+bad5a3 gt ntya3 8320
+bad6a3 ne fcodea3 0
+bb1a3 or bad1a3 bad2a3
+bb2a3 or bb1a3 bad3a3
+bb3a3 or bb2a3 bad4a3
+bb4a3 or bb3a3 bad5a3
+bb5a3 or bb4a3 bad6a3
+bba3 and goa3 bb5a3
+limna3 select bba3 1 0
+lima3 or lima2 limna3
+nfda3 eq fda3 0
+nmna3 ne msa3 4294967295
+mqa3 eq misa2 4294967295
+mm1a3 and nfda3 nmna3
+mm2a3 and mm1a3 mqa3
+misa3 select mm2a3 msa3 misa2
+cnta3 add cnta2 gona3
+tla3 mov tlaa3
+fnsa3 mov fnsca3
+nodesa3 mov nodesca3
+argsa3 mov argsca3
+nta3 mov ntca3
+sra4 call shfsearch nodesa3 argsa3 fnsa3 tya3 tla3 nta3 p6 p7 rsn
+fda4 at sra4 0
+bla4 at sra4 1
+ina4 at sra4 2
+msa4 at sra4 3
+goa4 ne fda4 0
+gona4 select goa4 1 0
+kda4_a shr 1 7
+kda4_b get ina4 kda4_a
+kda4_c and 1 127
+kda4 get kda4_b kda4_c
+s2a4_a shr 10 7
+s2a4_b get ina4 s2a4_a
+s2a4_c and 10 127
+s2a4 get s2a4_b s2a4_c
+is3a4 eq kda4 3
+g3a4 and goa4 is3a4
+tra4 call shtyrec tya3 tla3 ntya3 ntla3 s2a4 g3a4
+tya4 at tra4 0
+tlra4 at tra4 1
+rta4 at tra4 2
+ntya4 at tra4 3
+ntlra4 at tra4 4
+rva4_a shr 4 7
+rva4_b get bla4 rva4_a
+rva4_c and 4 127
+rva4 get rva4_b rva4_c
+rm6a4 mul rva4 6
+rra4 add rm6a4 20
+bpa4_o_a shr rra4 7
+bpa4_o_b get bla4 bpa4_o_a
+bpa4_o_c and rra4 127
+bpa4_o get bpa4_o_b bpa4_o_c
+bpa4_v select g3a4 rta4 bpa4_o
+bpa4_a shr rra4 7
+bpa4_b get bla4 bpa4_a
+bpa4_c and rra4 127
+bpa4_d set bpa4_b bpa4_c bpa4_v
+bpa4 set bla4 bpa4_a bpa4_d
+i3a4_o_a shr 3 7
+i3a4_o_b get ina4 i3a4_o_a
+i3a4_o_c and 3 127
+i3a4_o get i3a4_o_b i3a4_o_c
+i3a4_v select g3a4 rta4 i3a4_o
+i3a4_a shr 3 7
+i3a4_b get ina4 i3a4_a
+i3a4_c and 3 127
+i3a4_d set i3a4_b i3a4_c i3a4_v
+i3a4 set ina4 i3a4_a i3a4_d
+i16a4_o_a shr 16 7
+i16a4_o_b get i3a4 i16a4_o_a
+i16a4_o_c and 16 127
+i16a4_o get i16a4_o_b i16a4_o_c
+i16a4_v select g3a4 rta4 i16a4_o
+i16a4_a shr 16 7
+i16a4_b get i3a4 i16a4_a
+i16a4_c and 16 127
+i16a4_d set i16a4_b i16a4_c i16a4_v
+i16a4 set i3a4 i16a4_a i16a4_d
+i11a4_a shr 11 7
+i11a4_b get i16a4 i11a4_a
+i11a4_c and 11 127
+i11a4_d set i11a4_b i11a4_c nfa3
+i11a4 set i16a4 i11a4_a i11a4_d
+imaa4 call shb2im bpa4
+imna4_a shr 1 7
+imna4_b get imaa4 imna4_a
+imna4_c and 1 127
+imna4 get imna4_b imna4_c
+impa4_a shr 5 7
+impa4_b get imaa4 impa4_a
+impa4_c and 5 127
+impa4 get impa4_b impa4_c
+imrva4_a shr 3 7
+imrva4_b get imaa4 imrva4_a
+imrva4_c and 3 127
+imrva4 get imrva4_b imrva4_c
+npara4_a shr 2 7
+npara4_b get i11a4 npara4_a
+npara4_c and 2 127
+npara4 get npara4_b npara4_c
+resa4_a shr 3 7
+resa4_b get i11a4 resa4_a
+resa4_c and 3 127
+resa4 get resa4_b resa4_c
+nodesaa4 call shinn nodesa3 imaa4 nna3 naa3 goa4
+argsaa4 call shina argsa3 imaa4 naa3 goa4
+ntaa4 call shint nta3 imaa4 nna3 goa4
+tlaa4 call shinl tlra4 i11a4 ntlra4 goa4
+fnsaa4 call shinf fnsa3 nfa3 imaa4 ntlra4 npara4 resa4 nna3 naa3 goa4
+bigxa4 ge imrva4 268435456
+bigxna4 select bigxa4 1 0
+imnsa4 select goa4 imna4 0
+impaa4 add impa4 bigxna4
+impasa4 select goa4 impaa4 0
+nparsa4 select goa4 npara4 0
+nnxa4 add nna3 imnsa4
+naxa4 add naa3 impasa4
+nfxa4 add nfa3 gona4
+ntlxa4 add ntlra4 nparsa4
+imba4 mov imaa4
+nodesba4 call shinn nodesaa4 imba4 nnxa4 naxa4 goa4
+argsba4 call shina argsaa4 imba4 naxa4 goa4
+ntba4 call shint ntaa4 imba4 nnxa4 goa4
+fnsba4 call shinf2 fnsaa4 nfa3 imba4 nnxa4 naxa4 goa4
+imbna4_a shr 1 7
+imbna4_b get imba4 imbna4_a
+imbna4_c and 1 127
+imbna4 get imbna4_b imbna4_c
+imbpa4_a shr 5 7
+imbpa4_b get imba4 imbpa4_a
+imbpa4_c and 5 127
+imbpa4 get imbpa4_b imbpa4_c
+imbrva4_a shr 3 7
+imbrva4_b get imba4 imbrva4_a
+imbrva4_c and 3 127
+imbrva4 get imbrva4_b imbrva4_c
+bigya4 ge imbrva4 268435456
+bigyna4 select bigya4 1 0
+imbnsa4 select goa4 imbna4 0
+impba4 add imbpa4 bigyna4
+impbsa4 select goa4 impba4 0
+nnya4 add nnxa4 imbnsa4
+naya4 add naxa4 impbsa4
+imfa4 call shrw nodesba4 argsba4 fnsba4 ntba4 i11a4 p7
+fcodea4_a shr 0 7
+fcodea4_b get imfa4 fcodea4_a
+fcodea4_c and 0 127
+fcodea4 get fcodea4_b fcodea4_c
+fna4_a shr 1 7
+fna4_b get imfa4 fna4_a
+fna4_c and 1 127
+fna4 get fna4_b fna4_c
+fpa4_a shr 5 7
+fpa4_b get imfa4 fpa4_a
+fpa4_c and 5 127
+fpa4 get fpa4_b fpa4_c
+frva4_a shr 3 7
+frva4_b get imfa4 frva4_a
+frva4_c and 3 127
+frva4 get frva4_b frva4_c
+dfa4_f_m mul p7 7
+dfa4_f_i add dfa4_f_m 4
+dfa4_f_a shr dfa4_f_i 7
+dfa4_f_b get fnsba4 dfa4_f_a
+dfa4_f_c and dfa4_f_i 127
+dfa4_f get dfa4_f_b dfa4_f_c
+dfa4_n_m mul p7 7
+dfa4_n_i add dfa4_n_m 5
+dfa4_n_a shr dfa4_n_i 7
+dfa4_n_b get fnsba4 dfa4_n_a
+dfa4_n_c and dfa4_n_i 127
+dfa4_n get dfa4_n_b dfa4_n_c
+dfa4_rw_m mul p7 7
+dfa4_rw_i add dfa4_rw_m 6
+dfa4_rw_a shr dfa4_rw_i 7
+dfa4_rw_b get fnsba4 dfa4_rw_a
+dfa4_rw_c and dfa4_rw_i 127
+dfa4_rw get dfa4_rw_b dfa4_rw_c
+dfa4_pf_m mul p7 7
+dfa4_pf_i add dfa4_pf_m 2
+dfa4_pf_a shr dfa4_pf_i 7
+dfa4_pf_b get fnsba4 dfa4_pf_a
+dfa4_pf_c and dfa4_pf_i 127
+dfa4_pf get dfa4_pf_b dfa4_pf_c
+dfa4_np_m mul p7 7
+dfa4_np_i add dfa4_np_m 1
+dfa4_np_a shr dfa4_np_i 7
+dfa4_np_b get fnsba4 dfa4_np_a
+dfa4_np_c and dfa4_np_i 127
+dfa4_np get dfa4_np_b dfa4_np_c
+dfa4_rs_m mul p7 7
+dfa4_rs_i add dfa4_rs_m 3
+dfa4_rs_a shr dfa4_rs_i 7
+dfa4_rs_b get fnsba4 dfa4_rs_a
+dfa4_rs_c and dfa4_rs_i 127
+dfa4_rs get dfa4_rs_b dfa4_rs_c
+s0a4_m mul dfa4_f 6
+s0a4_i add s0a4_m 3
+s0a4_a shr s0a4_i 7
+s0a4_b get nodesba4 s0a4_a
+s0a4_c and s0a4_i 127
+s0a4 get s0a4_b s0a4_c
+tota4 call shsum nodesba4 fnsba4 p7
+dka4 shr dfa4_rw 28
+dk5a4 eq dka4 5
+dk5na4 select dk5a4 1 0
+availa4 add tota4 dk5na4
+bigza4 ge frva4 268435456
+bigzna4 select bigza4 1 0
+needa4 add fpa4 bigzna4
+fitna4 le fna4 dfa4_n
+fitaa4 le needa4 availa4
+inpla4 and fitna4 fitaa4
+ok0a4 eq fcodea4 0
+go2a4 and goa4 ok0a4
+nda4 select inpla4 dfa4_f nnya4
+ada4 select inpla4 s0a4 naya4
+nodesca4 call shinn nodesba4 imfa4 nda4 ada4 go2a4
+argsca4 call shina argsba4 imfa4 ada4 go2a4
+ntca4 call shint ntba4 imfa4 nda4 go2a4
+fnsca4 call shinf2 fnsba4 p7 imfa4 nda4 ada4 go2a4
+nfna4 select inpla4 0 fna4
+nfnsa4 select go2a4 nfna4 0
+needna4 select inpla4 0 needa4
+neednsa4 select go2a4 needna4 0
+nna4 add nnya4 nfnsa4
+naa4 add naya4 neednsa4
+nfa4 mov nfxa4
+ntla4 mov ntlxa4
+bad1a4 gt nna4 2730
+bad2a4 gt naa4 32768
+bad3a4 gt nfa4 822
+bad4a4 gt ntla4 8320
+bad5a4 gt ntya4 8320
+bad6a4 ne fcodea4 0
+bb1a4 or bad1a4 bad2a4
+bb2a4 or bb1a4 bad3a4
+bb3a4 or bb2a4 bad4a4
+bb4a4 or bb3a4 bad5a4
+bb5a4 or bb4a4 bad6a4
+bba4 and goa4 bb5a4
+limna4 select bba4 1 0
+lima4 or lima3 limna4
+nfda4 eq fda4 0
+nmna4 ne msa4 4294967295
+mqa4 eq misa3 4294967295
+mm1a4 and nfda4 nmna4
+mm2a4 and mm1a4 mqa4
+misa4 select mm2a4 msa4 misa3
+cnta4 add cnta3 gona4
+tla4 mov tlaa4
+fnsa4 mov fnsca4
+nodesa4 mov nodesca4
+argsa4 mov argsca4
+nta4 mov ntca4
+sra5 call shfsearch nodesa4 argsa4 fnsa4 tya4 tla4 nta4 p6 p7 rsn
+fda5 at sra5 0
+bla5 at sra5 1
+ina5 at sra5 2
+msa5 at sra5 3
+goa5 ne fda5 0
+gona5 select goa5 1 0
+kda5_a shr 1 7
+kda5_b get ina5 kda5_a
+kda5_c and 1 127
+kda5 get kda5_b kda5_c
+s2a5_a shr 10 7
+s2a5_b get ina5 s2a5_a
+s2a5_c and 10 127
+s2a5 get s2a5_b s2a5_c
+is3a5 eq kda5 3
+g3a5 and goa5 is3a5
+tra5 call shtyrec tya4 tla4 ntya4 ntla4 s2a5 g3a5
+tya5 at tra5 0
+tlra5 at tra5 1
+rta5 at tra5 2
+ntya5 at tra5 3
+ntlra5 at tra5 4
+rva5_a shr 4 7
+rva5_b get bla5 rva5_a
+rva5_c and 4 127
+rva5 get rva5_b rva5_c
+rm6a5 mul rva5 6
+rra5 add rm6a5 20
+bpa5_o_a shr rra5 7
+bpa5_o_b get bla5 bpa5_o_a
+bpa5_o_c and rra5 127
+bpa5_o get bpa5_o_b bpa5_o_c
+bpa5_v select g3a5 rta5 bpa5_o
+bpa5_a shr rra5 7
+bpa5_b get bla5 bpa5_a
+bpa5_c and rra5 127
+bpa5_d set bpa5_b bpa5_c bpa5_v
+bpa5 set bla5 bpa5_a bpa5_d
+i3a5_o_a shr 3 7
+i3a5_o_b get ina5 i3a5_o_a
+i3a5_o_c and 3 127
+i3a5_o get i3a5_o_b i3a5_o_c
+i3a5_v select g3a5 rta5 i3a5_o
+i3a5_a shr 3 7
+i3a5_b get ina5 i3a5_a
+i3a5_c and 3 127
+i3a5_d set i3a5_b i3a5_c i3a5_v
+i3a5 set ina5 i3a5_a i3a5_d
+i16a5_o_a shr 16 7
+i16a5_o_b get i3a5 i16a5_o_a
+i16a5_o_c and 16 127
+i16a5_o get i16a5_o_b i16a5_o_c
+i16a5_v select g3a5 rta5 i16a5_o
+i16a5_a shr 16 7
+i16a5_b get i3a5 i16a5_a
+i16a5_c and 16 127
+i16a5_d set i16a5_b i16a5_c i16a5_v
+i16a5 set i3a5 i16a5_a i16a5_d
+i11a5_a shr 11 7
+i11a5_b get i16a5 i11a5_a
+i11a5_c and 11 127
+i11a5_d set i11a5_b i11a5_c nfa4
+i11a5 set i16a5 i11a5_a i11a5_d
+imaa5 call shb2im bpa5
+imna5_a shr 1 7
+imna5_b get imaa5 imna5_a
+imna5_c and 1 127
+imna5 get imna5_b imna5_c
+impa5_a shr 5 7
+impa5_b get imaa5 impa5_a
+impa5_c and 5 127
+impa5 get impa5_b impa5_c
+imrva5_a shr 3 7
+imrva5_b get imaa5 imrva5_a
+imrva5_c and 3 127
+imrva5 get imrva5_b imrva5_c
+npara5_a shr 2 7
+npara5_b get i11a5 npara5_a
+npara5_c and 2 127
+npara5 get npara5_b npara5_c
+resa5_a shr 3 7
+resa5_b get i11a5 resa5_a
+resa5_c and 3 127
+resa5 get resa5_b resa5_c
+nodesaa5 call shinn nodesa4 imaa5 nna4 naa4 goa5
+argsaa5 call shina argsa4 imaa5 naa4 goa5
+ntaa5 call shint nta4 imaa5 nna4 goa5
+tlaa5 call shinl tlra5 i11a5 ntlra5 goa5
+fnsaa5 call shinf fnsa4 nfa4 imaa5 ntlra5 npara5 resa5 nna4 naa4 goa5
+bigxa5 ge imrva5 268435456
+bigxna5 select bigxa5 1 0
+imnsa5 select goa5 imna5 0
+impaa5 add impa5 bigxna5
+impasa5 select goa5 impaa5 0
+nparsa5 select goa5 npara5 0
+nnxa5 add nna4 imnsa5
+naxa5 add naa4 impasa5
+nfxa5 add nfa4 gona5
+ntlxa5 add ntlra5 nparsa5
+imba5 mov imaa5
+nodesba5 call shinn nodesaa5 imba5 nnxa5 naxa5 goa5
+argsba5 call shina argsaa5 imba5 naxa5 goa5
+ntba5 call shint ntaa5 imba5 nnxa5 goa5
+fnsba5 call shinf2 fnsaa5 nfa4 imba5 nnxa5 naxa5 goa5
+imbna5_a shr 1 7
+imbna5_b get imba5 imbna5_a
+imbna5_c and 1 127
+imbna5 get imbna5_b imbna5_c
+imbpa5_a shr 5 7
+imbpa5_b get imba5 imbpa5_a
+imbpa5_c and 5 127
+imbpa5 get imbpa5_b imbpa5_c
+imbrva5_a shr 3 7
+imbrva5_b get imba5 imbrva5_a
+imbrva5_c and 3 127
+imbrva5 get imbrva5_b imbrva5_c
+bigya5 ge imbrva5 268435456
+bigyna5 select bigya5 1 0
+imbnsa5 select goa5 imbna5 0
+impba5 add imbpa5 bigyna5
+impbsa5 select goa5 impba5 0
+nnya5 add nnxa5 imbnsa5
+naya5 add naxa5 impbsa5
+imfa5 call shrw nodesba5 argsba5 fnsba5 ntba5 i11a5 p7
+fcodea5_a shr 0 7
+fcodea5_b get imfa5 fcodea5_a
+fcodea5_c and 0 127
+fcodea5 get fcodea5_b fcodea5_c
+fna5_a shr 1 7
+fna5_b get imfa5 fna5_a
+fna5_c and 1 127
+fna5 get fna5_b fna5_c
+fpa5_a shr 5 7
+fpa5_b get imfa5 fpa5_a
+fpa5_c and 5 127
+fpa5 get fpa5_b fpa5_c
+frva5_a shr 3 7
+frva5_b get imfa5 frva5_a
+frva5_c and 3 127
+frva5 get frva5_b frva5_c
+dfa5_f_m mul p7 7
+dfa5_f_i add dfa5_f_m 4
+dfa5_f_a shr dfa5_f_i 7
+dfa5_f_b get fnsba5 dfa5_f_a
+dfa5_f_c and dfa5_f_i 127
+dfa5_f get dfa5_f_b dfa5_f_c
+dfa5_n_m mul p7 7
+dfa5_n_i add dfa5_n_m 5
+dfa5_n_a shr dfa5_n_i 7
+dfa5_n_b get fnsba5 dfa5_n_a
+dfa5_n_c and dfa5_n_i 127
+dfa5_n get dfa5_n_b dfa5_n_c
+dfa5_rw_m mul p7 7
+dfa5_rw_i add dfa5_rw_m 6
+dfa5_rw_a shr dfa5_rw_i 7
+dfa5_rw_b get fnsba5 dfa5_rw_a
+dfa5_rw_c and dfa5_rw_i 127
+dfa5_rw get dfa5_rw_b dfa5_rw_c
+dfa5_pf_m mul p7 7
+dfa5_pf_i add dfa5_pf_m 2
+dfa5_pf_a shr dfa5_pf_i 7
+dfa5_pf_b get fnsba5 dfa5_pf_a
+dfa5_pf_c and dfa5_pf_i 127
+dfa5_pf get dfa5_pf_b dfa5_pf_c
+dfa5_np_m mul p7 7
+dfa5_np_i add dfa5_np_m 1
+dfa5_np_a shr dfa5_np_i 7
+dfa5_np_b get fnsba5 dfa5_np_a
+dfa5_np_c and dfa5_np_i 127
+dfa5_np get dfa5_np_b dfa5_np_c
+dfa5_rs_m mul p7 7
+dfa5_rs_i add dfa5_rs_m 3
+dfa5_rs_a shr dfa5_rs_i 7
+dfa5_rs_b get fnsba5 dfa5_rs_a
+dfa5_rs_c and dfa5_rs_i 127
+dfa5_rs get dfa5_rs_b dfa5_rs_c
+s0a5_m mul dfa5_f 6
+s0a5_i add s0a5_m 3
+s0a5_a shr s0a5_i 7
+s0a5_b get nodesba5 s0a5_a
+s0a5_c and s0a5_i 127
+s0a5 get s0a5_b s0a5_c
+tota5 call shsum nodesba5 fnsba5 p7
+dka5 shr dfa5_rw 28
+dk5a5 eq dka5 5
+dk5na5 select dk5a5 1 0
+availa5 add tota5 dk5na5
+bigza5 ge frva5 268435456
+bigzna5 select bigza5 1 0
+needa5 add fpa5 bigzna5
+fitna5 le fna5 dfa5_n
+fitaa5 le needa5 availa5
+inpla5 and fitna5 fitaa5
+ok0a5 eq fcodea5 0
+go2a5 and goa5 ok0a5
+nda5 select inpla5 dfa5_f nnya5
+ada5 select inpla5 s0a5 naya5
+nodesca5 call shinn nodesba5 imfa5 nda5 ada5 go2a5
+argsca5 call shina argsba5 imfa5 ada5 go2a5
+ntca5 call shint ntba5 imfa5 nda5 go2a5
+fnsca5 call shinf2 fnsba5 p7 imfa5 nda5 ada5 go2a5
+nfna5 select inpla5 0 fna5
+nfnsa5 select go2a5 nfna5 0
+needna5 select inpla5 0 needa5
+neednsa5 select go2a5 needna5 0
+nna5 add nnya5 nfnsa5
+naa5 add naya5 neednsa5
+nfa5 mov nfxa5
+ntla5 mov ntlxa5
+bad1a5 gt nna5 2730
+bad2a5 gt naa5 32768
+bad3a5 gt nfa5 822
+bad4a5 gt ntla5 8320
+bad5a5 gt ntya5 8320
+bad6a5 ne fcodea5 0
+bb1a5 or bad1a5 bad2a5
+bb2a5 or bb1a5 bad3a5
+bb3a5 or bb2a5 bad4a5
+bb4a5 or bb3a5 bad5a5
+bb5a5 or bb4a5 bad6a5
+bba5 and goa5 bb5a5
+limna5 select bba5 1 0
+lima5 or lima4 limna5
+nfda5 eq fda5 0
+nmna5 ne msa5 4294967295
+mqa5 eq misa4 4294967295
+mm1a5 and nfda5 nmna5
+mm2a5 and mm1a5 mqa5
+misa5 select mm2a5 msa5 misa4
+cnta5 add cnta4 gona5
+tla5 mov tlaa5
+fnsa5 mov fnsca5
+nodesa5 mov nodesca5
+argsa5 mov argsca5
+nta5 mov ntca5
+sra6 call shfsearch nodesa5 argsa5 fnsa5 tya5 tla5 nta5 p6 p7 rsn
+fda6 at sra6 0
+bla6 at sra6 1
+ina6 at sra6 2
+msa6 at sra6 3
+goa6 ne fda6 0
+gona6 select goa6 1 0
+kda6_a shr 1 7
+kda6_b get ina6 kda6_a
+kda6_c and 1 127
+kda6 get kda6_b kda6_c
+s2a6_a shr 10 7
+s2a6_b get ina6 s2a6_a
+s2a6_c and 10 127
+s2a6 get s2a6_b s2a6_c
+is3a6 eq kda6 3
+g3a6 and goa6 is3a6
+tra6 call shtyrec tya5 tla5 ntya5 ntla5 s2a6 g3a6
+tya6 at tra6 0
+tlra6 at tra6 1
+rta6 at tra6 2
+ntya6 at tra6 3
+ntlra6 at tra6 4
+rva6_a shr 4 7
+rva6_b get bla6 rva6_a
+rva6_c and 4 127
+rva6 get rva6_b rva6_c
+rm6a6 mul rva6 6
+rra6 add rm6a6 20
+bpa6_o_a shr rra6 7
+bpa6_o_b get bla6 bpa6_o_a
+bpa6_o_c and rra6 127
+bpa6_o get bpa6_o_b bpa6_o_c
+bpa6_v select g3a6 rta6 bpa6_o
+bpa6_a shr rra6 7
+bpa6_b get bla6 bpa6_a
+bpa6_c and rra6 127
+bpa6_d set bpa6_b bpa6_c bpa6_v
+bpa6 set bla6 bpa6_a bpa6_d
+i3a6_o_a shr 3 7
+i3a6_o_b get ina6 i3a6_o_a
+i3a6_o_c and 3 127
+i3a6_o get i3a6_o_b i3a6_o_c
+i3a6_v select g3a6 rta6 i3a6_o
+i3a6_a shr 3 7
+i3a6_b get ina6 i3a6_a
+i3a6_c and 3 127
+i3a6_d set i3a6_b i3a6_c i3a6_v
+i3a6 set ina6 i3a6_a i3a6_d
+i16a6_o_a shr 16 7
+i16a6_o_b get i3a6 i16a6_o_a
+i16a6_o_c and 16 127
+i16a6_o get i16a6_o_b i16a6_o_c
+i16a6_v select g3a6 rta6 i16a6_o
+i16a6_a shr 16 7
+i16a6_b get i3a6 i16a6_a
+i16a6_c and 16 127
+i16a6_d set i16a6_b i16a6_c i16a6_v
+i16a6 set i3a6 i16a6_a i16a6_d
+i11a6_a shr 11 7
+i11a6_b get i16a6 i11a6_a
+i11a6_c and 11 127
+i11a6_d set i11a6_b i11a6_c nfa5
+i11a6 set i16a6 i11a6_a i11a6_d
+imaa6 call shb2im bpa6
+imna6_a shr 1 7
+imna6_b get imaa6 imna6_a
+imna6_c and 1 127
+imna6 get imna6_b imna6_c
+impa6_a shr 5 7
+impa6_b get imaa6 impa6_a
+impa6_c and 5 127
+impa6 get impa6_b impa6_c
+imrva6_a shr 3 7
+imrva6_b get imaa6 imrva6_a
+imrva6_c and 3 127
+imrva6 get imrva6_b imrva6_c
+npara6_a shr 2 7
+npara6_b get i11a6 npara6_a
+npara6_c and 2 127
+npara6 get npara6_b npara6_c
+resa6_a shr 3 7
+resa6_b get i11a6 resa6_a
+resa6_c and 3 127
+resa6 get resa6_b resa6_c
+nodesaa6 call shinn nodesa5 imaa6 nna5 naa5 goa6
+argsaa6 call shina argsa5 imaa6 naa5 goa6
+ntaa6 call shint nta5 imaa6 nna5 goa6
+tlaa6 call shinl tlra6 i11a6 ntlra6 goa6
+fnsaa6 call shinf fnsa5 nfa5 imaa6 ntlra6 npara6 resa6 nna5 naa5 goa6
+bigxa6 ge imrva6 268435456
+bigxna6 select bigxa6 1 0
+imnsa6 select goa6 imna6 0
+impaa6 add impa6 bigxna6
+impasa6 select goa6 impaa6 0
+nparsa6 select goa6 npara6 0
+nnxa6 add nna5 imnsa6
+naxa6 add naa5 impasa6
+nfxa6 add nfa5 gona6
+ntlxa6 add ntlra6 nparsa6
+imba6 mov imaa6
+nodesba6 call shinn nodesaa6 imba6 nnxa6 naxa6 goa6
+argsba6 call shina argsaa6 imba6 naxa6 goa6
+ntba6 call shint ntaa6 imba6 nnxa6 goa6
+fnsba6 call shinf2 fnsaa6 nfa5 imba6 nnxa6 naxa6 goa6
+imbna6_a shr 1 7
+imbna6_b get imba6 imbna6_a
+imbna6_c and 1 127
+imbna6 get imbna6_b imbna6_c
+imbpa6_a shr 5 7
+imbpa6_b get imba6 imbpa6_a
+imbpa6_c and 5 127
+imbpa6 get imbpa6_b imbpa6_c
+imbrva6_a shr 3 7
+imbrva6_b get imba6 imbrva6_a
+imbrva6_c and 3 127
+imbrva6 get imbrva6_b imbrva6_c
+bigya6 ge imbrva6 268435456
+bigyna6 select bigya6 1 0
+imbnsa6 select goa6 imbna6 0
+impba6 add imbpa6 bigyna6
+impbsa6 select goa6 impba6 0
+nnya6 add nnxa6 imbnsa6
+naya6 add naxa6 impbsa6
+imfa6 call shrw nodesba6 argsba6 fnsba6 ntba6 i11a6 p7
+fcodea6_a shr 0 7
+fcodea6_b get imfa6 fcodea6_a
+fcodea6_c and 0 127
+fcodea6 get fcodea6_b fcodea6_c
+fna6_a shr 1 7
+fna6_b get imfa6 fna6_a
+fna6_c and 1 127
+fna6 get fna6_b fna6_c
+fpa6_a shr 5 7
+fpa6_b get imfa6 fpa6_a
+fpa6_c and 5 127
+fpa6 get fpa6_b fpa6_c
+frva6_a shr 3 7
+frva6_b get imfa6 frva6_a
+frva6_c and 3 127
+frva6 get frva6_b frva6_c
+dfa6_f_m mul p7 7
+dfa6_f_i add dfa6_f_m 4
+dfa6_f_a shr dfa6_f_i 7
+dfa6_f_b get fnsba6 dfa6_f_a
+dfa6_f_c and dfa6_f_i 127
+dfa6_f get dfa6_f_b dfa6_f_c
+dfa6_n_m mul p7 7
+dfa6_n_i add dfa6_n_m 5
+dfa6_n_a shr dfa6_n_i 7
+dfa6_n_b get fnsba6 dfa6_n_a
+dfa6_n_c and dfa6_n_i 127
+dfa6_n get dfa6_n_b dfa6_n_c
+dfa6_rw_m mul p7 7
+dfa6_rw_i add dfa6_rw_m 6
+dfa6_rw_a shr dfa6_rw_i 7
+dfa6_rw_b get fnsba6 dfa6_rw_a
+dfa6_rw_c and dfa6_rw_i 127
+dfa6_rw get dfa6_rw_b dfa6_rw_c
+dfa6_pf_m mul p7 7
+dfa6_pf_i add dfa6_pf_m 2
+dfa6_pf_a shr dfa6_pf_i 7
+dfa6_pf_b get fnsba6 dfa6_pf_a
+dfa6_pf_c and dfa6_pf_i 127
+dfa6_pf get dfa6_pf_b dfa6_pf_c
+dfa6_np_m mul p7 7
+dfa6_np_i add dfa6_np_m 1
+dfa6_np_a shr dfa6_np_i 7
+dfa6_np_b get fnsba6 dfa6_np_a
+dfa6_np_c and dfa6_np_i 127
+dfa6_np get dfa6_np_b dfa6_np_c
+dfa6_rs_m mul p7 7
+dfa6_rs_i add dfa6_rs_m 3
+dfa6_rs_a shr dfa6_rs_i 7
+dfa6_rs_b get fnsba6 dfa6_rs_a
+dfa6_rs_c and dfa6_rs_i 127
+dfa6_rs get dfa6_rs_b dfa6_rs_c
+s0a6_m mul dfa6_f 6
+s0a6_i add s0a6_m 3
+s0a6_a shr s0a6_i 7
+s0a6_b get nodesba6 s0a6_a
+s0a6_c and s0a6_i 127
+s0a6 get s0a6_b s0a6_c
+tota6 call shsum nodesba6 fnsba6 p7
+dka6 shr dfa6_rw 28
+dk5a6 eq dka6 5
+dk5na6 select dk5a6 1 0
+availa6 add tota6 dk5na6
+bigza6 ge frva6 268435456
+bigzna6 select bigza6 1 0
+needa6 add fpa6 bigzna6
+fitna6 le fna6 dfa6_n
+fitaa6 le needa6 availa6
+inpla6 and fitna6 fitaa6
+ok0a6 eq fcodea6 0
+go2a6 and goa6 ok0a6
+nda6 select inpla6 dfa6_f nnya6
+ada6 select inpla6 s0a6 naya6
+nodesca6 call shinn nodesba6 imfa6 nda6 ada6 go2a6
+argsca6 call shina argsba6 imfa6 ada6 go2a6
+ntca6 call shint ntba6 imfa6 nda6 go2a6
+fnsca6 call shinf2 fnsba6 p7 imfa6 nda6 ada6 go2a6
+nfna6 select inpla6 0 fna6
+nfnsa6 select go2a6 nfna6 0
+needna6 select inpla6 0 needa6
+neednsa6 select go2a6 needna6 0
+nna6 add nnya6 nfnsa6
+naa6 add naya6 neednsa6
+nfa6 mov nfxa6
+ntla6 mov ntlxa6
+bad1a6 gt nna6 2730
+bad2a6 gt naa6 32768
+bad3a6 gt nfa6 822
+bad4a6 gt ntla6 8320
+bad5a6 gt ntya6 8320
+bad6a6 ne fcodea6 0
+bb1a6 or bad1a6 bad2a6
+bb2a6 or bb1a6 bad3a6
+bb3a6 or bb2a6 bad4a6
+bb4a6 or bb3a6 bad5a6
+bb5a6 or bb4a6 bad6a6
+bba6 and goa6 bb5a6
+limna6 select bba6 1 0
+lima6 or lima5 limna6
+nfda6 eq fda6 0
+nmna6 ne msa6 4294967295
+mqa6 eq misa5 4294967295
+mm1a6 and nfda6 nmna6
+mm2a6 and mm1a6 mqa6
+misa6 select mm2a6 msa6 misa5
+cnta6 add cnta5 gona6
+tla6 mov tlaa6
+fnsa6 mov fnsca6
+nodesa6 mov nodesca6
+argsa6 mov argsca6
+nta6 mov ntca6
+sra7 call shfsearch nodesa6 argsa6 fnsa6 tya6 tla6 nta6 p6 p7 rsn
+fda7 at sra7 0
+bla7 at sra7 1
+ina7 at sra7 2
+msa7 at sra7 3
+goa7 ne fda7 0
+gona7 select goa7 1 0
+kda7_a shr 1 7
+kda7_b get ina7 kda7_a
+kda7_c and 1 127
+kda7 get kda7_b kda7_c
+s2a7_a shr 10 7
+s2a7_b get ina7 s2a7_a
+s2a7_c and 10 127
+s2a7 get s2a7_b s2a7_c
+is3a7 eq kda7 3
+g3a7 and goa7 is3a7
+tra7 call shtyrec tya6 tla6 ntya6 ntla6 s2a7 g3a7
+tya7 at tra7 0
+tlra7 at tra7 1
+rta7 at tra7 2
+ntya7 at tra7 3
+ntlra7 at tra7 4
+rva7_a shr 4 7
+rva7_b get bla7 rva7_a
+rva7_c and 4 127
+rva7 get rva7_b rva7_c
+rm6a7 mul rva7 6
+rra7 add rm6a7 20
+bpa7_o_a shr rra7 7
+bpa7_o_b get bla7 bpa7_o_a
+bpa7_o_c and rra7 127
+bpa7_o get bpa7_o_b bpa7_o_c
+bpa7_v select g3a7 rta7 bpa7_o
+bpa7_a shr rra7 7
+bpa7_b get bla7 bpa7_a
+bpa7_c and rra7 127
+bpa7_d set bpa7_b bpa7_c bpa7_v
+bpa7 set bla7 bpa7_a bpa7_d
+i3a7_o_a shr 3 7
+i3a7_o_b get ina7 i3a7_o_a
+i3a7_o_c and 3 127
+i3a7_o get i3a7_o_b i3a7_o_c
+i3a7_v select g3a7 rta7 i3a7_o
+i3a7_a shr 3 7
+i3a7_b get ina7 i3a7_a
+i3a7_c and 3 127
+i3a7_d set i3a7_b i3a7_c i3a7_v
+i3a7 set ina7 i3a7_a i3a7_d
+i16a7_o_a shr 16 7
+i16a7_o_b get i3a7 i16a7_o_a
+i16a7_o_c and 16 127
+i16a7_o get i16a7_o_b i16a7_o_c
+i16a7_v select g3a7 rta7 i16a7_o
+i16a7_a shr 16 7
+i16a7_b get i3a7 i16a7_a
+i16a7_c and 16 127
+i16a7_d set i16a7_b i16a7_c i16a7_v
+i16a7 set i3a7 i16a7_a i16a7_d
+i11a7_a shr 11 7
+i11a7_b get i16a7 i11a7_a
+i11a7_c and 11 127
+i11a7_d set i11a7_b i11a7_c nfa6
+i11a7 set i16a7 i11a7_a i11a7_d
+imaa7 call shb2im bpa7
+imna7_a shr 1 7
+imna7_b get imaa7 imna7_a
+imna7_c and 1 127
+imna7 get imna7_b imna7_c
+impa7_a shr 5 7
+impa7_b get imaa7 impa7_a
+impa7_c and 5 127
+impa7 get impa7_b impa7_c
+imrva7_a shr 3 7
+imrva7_b get imaa7 imrva7_a
+imrva7_c and 3 127
+imrva7 get imrva7_b imrva7_c
+npara7_a shr 2 7
+npara7_b get i11a7 npara7_a
+npara7_c and 2 127
+npara7 get npara7_b npara7_c
+resa7_a shr 3 7
+resa7_b get i11a7 resa7_a
+resa7_c and 3 127
+resa7 get resa7_b resa7_c
+nodesaa7 call shinn nodesa6 imaa7 nna6 naa6 goa7
+argsaa7 call shina argsa6 imaa7 naa6 goa7
+ntaa7 call shint nta6 imaa7 nna6 goa7
+tlaa7 call shinl tlra7 i11a7 ntlra7 goa7
+fnsaa7 call shinf fnsa6 nfa6 imaa7 ntlra7 npara7 resa7 nna6 naa6 goa7
+bigxa7 ge imrva7 268435456
+bigxna7 select bigxa7 1 0
+imnsa7 select goa7 imna7 0
+impaa7 add impa7 bigxna7
+impasa7 select goa7 impaa7 0
+nparsa7 select goa7 npara7 0
+nnxa7 add nna6 imnsa7
+naxa7 add naa6 impasa7
+nfxa7 add nfa6 gona7
+ntlxa7 add ntlra7 nparsa7
+imba7 mov imaa7
+nodesba7 call shinn nodesaa7 imba7 nnxa7 naxa7 goa7
+argsba7 call shina argsaa7 imba7 naxa7 goa7
+ntba7 call shint ntaa7 imba7 nnxa7 goa7
+fnsba7 call shinf2 fnsaa7 nfa6 imba7 nnxa7 naxa7 goa7
+imbna7_a shr 1 7
+imbna7_b get imba7 imbna7_a
+imbna7_c and 1 127
+imbna7 get imbna7_b imbna7_c
+imbpa7_a shr 5 7
+imbpa7_b get imba7 imbpa7_a
+imbpa7_c and 5 127
+imbpa7 get imbpa7_b imbpa7_c
+imbrva7_a shr 3 7
+imbrva7_b get imba7 imbrva7_a
+imbrva7_c and 3 127
+imbrva7 get imbrva7_b imbrva7_c
+bigya7 ge imbrva7 268435456
+bigyna7 select bigya7 1 0
+imbnsa7 select goa7 imbna7 0
+impba7 add imbpa7 bigyna7
+impbsa7 select goa7 impba7 0
+nnya7 add nnxa7 imbnsa7
+naya7 add naxa7 impbsa7
+imfa7 call shrw nodesba7 argsba7 fnsba7 ntba7 i11a7 p7
+fcodea7_a shr 0 7
+fcodea7_b get imfa7 fcodea7_a
+fcodea7_c and 0 127
+fcodea7 get fcodea7_b fcodea7_c
+fna7_a shr 1 7
+fna7_b get imfa7 fna7_a
+fna7_c and 1 127
+fna7 get fna7_b fna7_c
+fpa7_a shr 5 7
+fpa7_b get imfa7 fpa7_a
+fpa7_c and 5 127
+fpa7 get fpa7_b fpa7_c
+frva7_a shr 3 7
+frva7_b get imfa7 frva7_a
+frva7_c and 3 127
+frva7 get frva7_b frva7_c
+dfa7_f_m mul p7 7
+dfa7_f_i add dfa7_f_m 4
+dfa7_f_a shr dfa7_f_i 7
+dfa7_f_b get fnsba7 dfa7_f_a
+dfa7_f_c and dfa7_f_i 127
+dfa7_f get dfa7_f_b dfa7_f_c
+dfa7_n_m mul p7 7
+dfa7_n_i add dfa7_n_m 5
+dfa7_n_a shr dfa7_n_i 7
+dfa7_n_b get fnsba7 dfa7_n_a
+dfa7_n_c and dfa7_n_i 127
+dfa7_n get dfa7_n_b dfa7_n_c
+dfa7_rw_m mul p7 7
+dfa7_rw_i add dfa7_rw_m 6
+dfa7_rw_a shr dfa7_rw_i 7
+dfa7_rw_b get fnsba7 dfa7_rw_a
+dfa7_rw_c and dfa7_rw_i 127
+dfa7_rw get dfa7_rw_b dfa7_rw_c
+dfa7_pf_m mul p7 7
+dfa7_pf_i add dfa7_pf_m 2
+dfa7_pf_a shr dfa7_pf_i 7
+dfa7_pf_b get fnsba7 dfa7_pf_a
+dfa7_pf_c and dfa7_pf_i 127
+dfa7_pf get dfa7_pf_b dfa7_pf_c
+dfa7_np_m mul p7 7
+dfa7_np_i add dfa7_np_m 1
+dfa7_np_a shr dfa7_np_i 7
+dfa7_np_b get fnsba7 dfa7_np_a
+dfa7_np_c and dfa7_np_i 127
+dfa7_np get dfa7_np_b dfa7_np_c
+dfa7_rs_m mul p7 7
+dfa7_rs_i add dfa7_rs_m 3
+dfa7_rs_a shr dfa7_rs_i 7
+dfa7_rs_b get fnsba7 dfa7_rs_a
+dfa7_rs_c and dfa7_rs_i 127
+dfa7_rs get dfa7_rs_b dfa7_rs_c
+s0a7_m mul dfa7_f 6
+s0a7_i add s0a7_m 3
+s0a7_a shr s0a7_i 7
+s0a7_b get nodesba7 s0a7_a
+s0a7_c and s0a7_i 127
+s0a7 get s0a7_b s0a7_c
+tota7 call shsum nodesba7 fnsba7 p7
+dka7 shr dfa7_rw 28
+dk5a7 eq dka7 5
+dk5na7 select dk5a7 1 0
+availa7 add tota7 dk5na7
+bigza7 ge frva7 268435456
+bigzna7 select bigza7 1 0
+needa7 add fpa7 bigzna7
+fitna7 le fna7 dfa7_n
+fitaa7 le needa7 availa7
+inpla7 and fitna7 fitaa7
+ok0a7 eq fcodea7 0
+go2a7 and goa7 ok0a7
+nda7 select inpla7 dfa7_f nnya7
+ada7 select inpla7 s0a7 naya7
+nodesca7 call shinn nodesba7 imfa7 nda7 ada7 go2a7
+argsca7 call shina argsba7 imfa7 ada7 go2a7
+ntca7 call shint ntba7 imfa7 nda7 go2a7
+fnsca7 call shinf2 fnsba7 p7 imfa7 nda7 ada7 go2a7
+nfna7 select inpla7 0 fna7
+nfnsa7 select go2a7 nfna7 0
+needna7 select inpla7 0 needa7
+neednsa7 select go2a7 needna7 0
+nna7 add nnya7 nfnsa7
+naa7 add naya7 neednsa7
+nfa7 mov nfxa7
+ntla7 mov ntlxa7
+bad1a7 gt nna7 2730
+bad2a7 gt naa7 32768
+bad3a7 gt nfa7 822
+bad4a7 gt ntla7 8320
+bad5a7 gt ntya7 8320
+bad6a7 ne fcodea7 0
+bb1a7 or bad1a7 bad2a7
+bb2a7 or bb1a7 bad3a7
+bb3a7 or bb2a7 bad4a7
+bb4a7 or bb3a7 bad5a7
+bb5a7 or bb4a7 bad6a7
+bba7 and goa7 bb5a7
+limna7 select bba7 1 0
+lima7 or lima6 limna7
+nfda7 eq fda7 0
+nmna7 ne msa7 4294967295
+mqa7 eq misa6 4294967295
+mm1a7 and nfda7 nmna7
+mm2a7 and mm1a7 mqa7
+misa7 select mm2a7 msa7 misa6
+cnta7 add cnta6 gona7
+tla7 mov tlaa7
+fnsa7 mov fnsca7
+nodesa7 mov nodesca7
+argsa7 mov argsca7
+nta7 mov ntca7
+sra8 call shfsearch nodesa7 argsa7 fnsa7 tya7 tla7 nta7 p6 p7 rsn
+fda8 at sra8 0
+bla8 at sra8 1
+ina8 at sra8 2
+msa8 at sra8 3
+goa8 ne fda8 0
+gona8 select goa8 1 0
+kda8_a shr 1 7
+kda8_b get ina8 kda8_a
+kda8_c and 1 127
+kda8 get kda8_b kda8_c
+s2a8_a shr 10 7
+s2a8_b get ina8 s2a8_a
+s2a8_c and 10 127
+s2a8 get s2a8_b s2a8_c
+is3a8 eq kda8 3
+g3a8 and goa8 is3a8
+tra8 call shtyrec tya7 tla7 ntya7 ntla7 s2a8 g3a8
+tya8 at tra8 0
+tlra8 at tra8 1
+rta8 at tra8 2
+ntya8 at tra8 3
+ntlra8 at tra8 4
+rva8_a shr 4 7
+rva8_b get bla8 rva8_a
+rva8_c and 4 127
+rva8 get rva8_b rva8_c
+rm6a8 mul rva8 6
+rra8 add rm6a8 20
+bpa8_o_a shr rra8 7
+bpa8_o_b get bla8 bpa8_o_a
+bpa8_o_c and rra8 127
+bpa8_o get bpa8_o_b bpa8_o_c
+bpa8_v select g3a8 rta8 bpa8_o
+bpa8_a shr rra8 7
+bpa8_b get bla8 bpa8_a
+bpa8_c and rra8 127
+bpa8_d set bpa8_b bpa8_c bpa8_v
+bpa8 set bla8 bpa8_a bpa8_d
+i3a8_o_a shr 3 7
+i3a8_o_b get ina8 i3a8_o_a
+i3a8_o_c and 3 127
+i3a8_o get i3a8_o_b i3a8_o_c
+i3a8_v select g3a8 rta8 i3a8_o
+i3a8_a shr 3 7
+i3a8_b get ina8 i3a8_a
+i3a8_c and 3 127
+i3a8_d set i3a8_b i3a8_c i3a8_v
+i3a8 set ina8 i3a8_a i3a8_d
+i16a8_o_a shr 16 7
+i16a8_o_b get i3a8 i16a8_o_a
+i16a8_o_c and 16 127
+i16a8_o get i16a8_o_b i16a8_o_c
+i16a8_v select g3a8 rta8 i16a8_o
+i16a8_a shr 16 7
+i16a8_b get i3a8 i16a8_a
+i16a8_c and 16 127
+i16a8_d set i16a8_b i16a8_c i16a8_v
+i16a8 set i3a8 i16a8_a i16a8_d
+i11a8_a shr 11 7
+i11a8_b get i16a8 i11a8_a
+i11a8_c and 11 127
+i11a8_d set i11a8_b i11a8_c nfa7
+i11a8 set i16a8 i11a8_a i11a8_d
+imaa8 call shb2im bpa8
+imna8_a shr 1 7
+imna8_b get imaa8 imna8_a
+imna8_c and 1 127
+imna8 get imna8_b imna8_c
+impa8_a shr 5 7
+impa8_b get imaa8 impa8_a
+impa8_c and 5 127
+impa8 get impa8_b impa8_c
+imrva8_a shr 3 7
+imrva8_b get imaa8 imrva8_a
+imrva8_c and 3 127
+imrva8 get imrva8_b imrva8_c
+npara8_a shr 2 7
+npara8_b get i11a8 npara8_a
+npara8_c and 2 127
+npara8 get npara8_b npara8_c
+resa8_a shr 3 7
+resa8_b get i11a8 resa8_a
+resa8_c and 3 127
+resa8 get resa8_b resa8_c
+nodesaa8 call shinn nodesa7 imaa8 nna7 naa7 goa8
+argsaa8 call shina argsa7 imaa8 naa7 goa8
+ntaa8 call shint nta7 imaa8 nna7 goa8
+tlaa8 call shinl tlra8 i11a8 ntlra8 goa8
+fnsaa8 call shinf fnsa7 nfa7 imaa8 ntlra8 npara8 resa8 nna7 naa7 goa8
+bigxa8 ge imrva8 268435456
+bigxna8 select bigxa8 1 0
+imnsa8 select goa8 imna8 0
+impaa8 add impa8 bigxna8
+impasa8 select goa8 impaa8 0
+nparsa8 select goa8 npara8 0
+nnxa8 add nna7 imnsa8
+naxa8 add naa7 impasa8
+nfxa8 add nfa7 gona8
+ntlxa8 add ntlra8 nparsa8
+imba8 mov imaa8
+nodesba8 call shinn nodesaa8 imba8 nnxa8 naxa8 goa8
+argsba8 call shina argsaa8 imba8 naxa8 goa8
+ntba8 call shint ntaa8 imba8 nnxa8 goa8
+fnsba8 call shinf2 fnsaa8 nfa7 imba8 nnxa8 naxa8 goa8
+imbna8_a shr 1 7
+imbna8_b get imba8 imbna8_a
+imbna8_c and 1 127
+imbna8 get imbna8_b imbna8_c
+imbpa8_a shr 5 7
+imbpa8_b get imba8 imbpa8_a
+imbpa8_c and 5 127
+imbpa8 get imbpa8_b imbpa8_c
+imbrva8_a shr 3 7
+imbrva8_b get imba8 imbrva8_a
+imbrva8_c and 3 127
+imbrva8 get imbrva8_b imbrva8_c
+bigya8 ge imbrva8 268435456
+bigyna8 select bigya8 1 0
+imbnsa8 select goa8 imbna8 0
+impba8 add imbpa8 bigyna8
+impbsa8 select goa8 impba8 0
+nnya8 add nnxa8 imbnsa8
+naya8 add naxa8 impbsa8
+imfa8 call shrw nodesba8 argsba8 fnsba8 ntba8 i11a8 p7
+fcodea8_a shr 0 7
+fcodea8_b get imfa8 fcodea8_a
+fcodea8_c and 0 127
+fcodea8 get fcodea8_b fcodea8_c
+fna8_a shr 1 7
+fna8_b get imfa8 fna8_a
+fna8_c and 1 127
+fna8 get fna8_b fna8_c
+fpa8_a shr 5 7
+fpa8_b get imfa8 fpa8_a
+fpa8_c and 5 127
+fpa8 get fpa8_b fpa8_c
+frva8_a shr 3 7
+frva8_b get imfa8 frva8_a
+frva8_c and 3 127
+frva8 get frva8_b frva8_c
+dfa8_f_m mul p7 7
+dfa8_f_i add dfa8_f_m 4
+dfa8_f_a shr dfa8_f_i 7
+dfa8_f_b get fnsba8 dfa8_f_a
+dfa8_f_c and dfa8_f_i 127
+dfa8_f get dfa8_f_b dfa8_f_c
+dfa8_n_m mul p7 7
+dfa8_n_i add dfa8_n_m 5
+dfa8_n_a shr dfa8_n_i 7
+dfa8_n_b get fnsba8 dfa8_n_a
+dfa8_n_c and dfa8_n_i 127
+dfa8_n get dfa8_n_b dfa8_n_c
+dfa8_rw_m mul p7 7
+dfa8_rw_i add dfa8_rw_m 6
+dfa8_rw_a shr dfa8_rw_i 7
+dfa8_rw_b get fnsba8 dfa8_rw_a
+dfa8_rw_c and dfa8_rw_i 127
+dfa8_rw get dfa8_rw_b dfa8_rw_c
+dfa8_pf_m mul p7 7
+dfa8_pf_i add dfa8_pf_m 2
+dfa8_pf_a shr dfa8_pf_i 7
+dfa8_pf_b get fnsba8 dfa8_pf_a
+dfa8_pf_c and dfa8_pf_i 127
+dfa8_pf get dfa8_pf_b dfa8_pf_c
+dfa8_np_m mul p7 7
+dfa8_np_i add dfa8_np_m 1
+dfa8_np_a shr dfa8_np_i 7
+dfa8_np_b get fnsba8 dfa8_np_a
+dfa8_np_c and dfa8_np_i 127
+dfa8_np get dfa8_np_b dfa8_np_c
+dfa8_rs_m mul p7 7
+dfa8_rs_i add dfa8_rs_m 3
+dfa8_rs_a shr dfa8_rs_i 7
+dfa8_rs_b get fnsba8 dfa8_rs_a
+dfa8_rs_c and dfa8_rs_i 127
+dfa8_rs get dfa8_rs_b dfa8_rs_c
+s0a8_m mul dfa8_f 6
+s0a8_i add s0a8_m 3
+s0a8_a shr s0a8_i 7
+s0a8_b get nodesba8 s0a8_a
+s0a8_c and s0a8_i 127
+s0a8 get s0a8_b s0a8_c
+tota8 call shsum nodesba8 fnsba8 p7
+dka8 shr dfa8_rw 28
+dk5a8 eq dka8 5
+dk5na8 select dk5a8 1 0
+availa8 add tota8 dk5na8
+bigza8 ge frva8 268435456
+bigzna8 select bigza8 1 0
+needa8 add fpa8 bigzna8
+fitna8 le fna8 dfa8_n
+fitaa8 le needa8 availa8
+inpla8 and fitna8 fitaa8
+ok0a8 eq fcodea8 0
+go2a8 and goa8 ok0a8
+nda8 select inpla8 dfa8_f nnya8
+ada8 select inpla8 s0a8 naya8
+nodesca8 call shinn nodesba8 imfa8 nda8 ada8 go2a8
+argsca8 call shina argsba8 imfa8 ada8 go2a8
+ntca8 call shint ntba8 imfa8 nda8 go2a8
+fnsca8 call shinf2 fnsba8 p7 imfa8 nda8 ada8 go2a8
+nfna8 select inpla8 0 fna8
+nfnsa8 select go2a8 nfna8 0
+needna8 select inpla8 0 needa8
+neednsa8 select go2a8 needna8 0
+nna8 add nnya8 nfnsa8
+naa8 add naya8 neednsa8
+nfa8 mov nfxa8
+ntla8 mov ntlxa8
+bad1a8 gt nna8 2730
+bad2a8 gt naa8 32768
+bad3a8 gt nfa8 822
+bad4a8 gt ntla8 8320
+bad5a8 gt ntya8 8320
+bad6a8 ne fcodea8 0
+bb1a8 or bad1a8 bad2a8
+bb2a8 or bb1a8 bad3a8
+bb3a8 or bb2a8 bad4a8
+bb4a8 or bb3a8 bad5a8
+bb5a8 or bb4a8 bad6a8
+bba8 and goa8 bb5a8
+limna8 select bba8 1 0
+lima8 or lima7 limna8
+nfda8 eq fda8 0
+nmna8 ne msa8 4294967295
+mqa8 eq misa7 4294967295
+mm1a8 and nfda8 nmna8
+mm2a8 and mm1a8 mqa8
+misa8 select mm2a8 msa8 misa7
+cnta8 add cnta7 gona8
+tla8 mov tlaa8
+fnsa8 mov fnsca8
+nodesa8 mov nodesca8
+argsa8 mov argsca8
+nta8 mov ntca8
+ret argsa8
 end
 
