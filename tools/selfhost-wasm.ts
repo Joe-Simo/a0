@@ -1,33 +1,31 @@
 /**
- * The wasm32 emitter written in A0 (compiler/emit_wasm.a0, entry `emitwasmio` of
- * compiler/boot.a0): the port of src/wasm.ts, with the optimizer written in A0
- * (compiler/optimize.a0, the port of src/optimize.ts) in front of it. Unoptimized, its module
- * must be byte-identical to `compile(program, 'wasm', { optimize: false })`; optimized, to
- * `compile(program, 'wasm')` with the default options, and the optimized IR to
- * `optimizeFunction` node for node.
+ * The wasm32 emitter and the optimizer written in A0 (compiler/emit_wasm.a0, compiler/optimize.a0,
+ * entry `emitwasmio` of compiler/boot.a0): the ports of src/wasm.ts and src/optimize.ts. The
+ * optimized IR must equal `optimizeFunction` node for node (`a0IrCheck`), and the module
+ * `compile(program, 'wasm')` byte for byte (optimized, the default) or with `{ optimize: false }`
+ * (unoptimized tables).
  *
  * - Build (`buildWasmTool`): the bootstrap's C seed a0c-stage1 (tools/bootstrap.ts: the A0
  *   compiler through the TypeScript C backend) compiles the closure of `emitwasmio` in chunks;
- *   clang builds that C into `a0w`. So the emitter that runs is A0 compiled by A0.
- * - A program is emitted a chunk of functions at a time. This file only orders, splits and
- *   supplies bodies: a chunk is either formatted source through the A0 front end (mode 1, or 4
- *   optimized: the chunks of tools/bootstrap.ts `planChunks`) or the checked tables of the
- *   TypeScript front end in the A0 front end's layout (mode 2, or 5 optimized, used for
- *   sources over the A0 front end's 16384-byte limit: site/page.a0 has functions of 64 KB).
- *   Each chunk returns its POOL, META and CODE words and a trailer with the index, stack depth
- *   and iteration bound of its functions, which are passed back, unread here, with the later
- *   chunks that call them. The linker (mode 3) gets every POOL, then every META, then every
- *   CODE, and writes the module.
- * - The optimizer evaluates calls and folds with literal operands on the original bodies, which
- *   a chunk does not hold (its external callees are stubs or empty entries): it gets a
- *   separate eval program (the functions it has asked for, with every function they reach, in
- *   program order) and the map of chunk functions to it. It starts empty; when a body it needs
- *   is absent the chunk ends with code 7 and the chunk functions it needs, and the chunk is run
- *   again with their closures added. Mode 6 writes the optimized IR of a table chunk, compared
- *   here with `optimizeFunction` (same nodes in the same order, same operands, same ret).
+ *   clang builds that C into `a0w`. So the tool that runs is A0 compiled by A0.
+ * - The optimizer runs a function a time (mode 7, `a0OptimizeProgram`): a single A0 value (a
+ *   fold state included) is at most 65536 words, so a run cannot loop over functions holding
+ *   their tables. The functions are optimized in program order; each run gets the function and
+ *   the facts about its callees, and when it needs a body (to inline, unroll or evaluate) it
+ *   stops with code 7 and the function indices, and the run is repeated with those optimized
+ *   bodies (and what they reach) supplied. This file only encodes, orders, splits and supplies
+ *   bodies; the optimized bodies replace the program's functions before the emitter.
+ * - A program is emitted a chunk of functions at a time, from the (optimized) program as the
+ *   checked tables of the TypeScript front end in the A0 front end's layout (mode 2), or as
+ *   formatted source through the A0 front end (mode 1; the chunks of tools/bootstrap.ts
+ *   `planChunks`). Each chunk returns its POOL, META and CODE words and a trailer with the
+ *   index, stack depth and iteration bound of its functions, which are passed back, unread
+ *   here, with the later chunks that call them. The linker (mode 3) gets every POOL, then
+ *   every META, then every CODE, and writes the module.
  * - The check (`bun run selfhost:wasm`): the corpus, the examples and site/page.a0 and docs.a0,
  *   unoptimized and optimized, as tables and, wherever the A0 front end accepts the chunks, as
- *   source, each compared byte for byte with src/wasm.ts. Writes results/selfhost-wasm.json.
+ *   source, each compared byte for byte with src/wasm.ts, and the optimized IR of every
+ *   function against src/optimize.ts. Writes results/selfhost-wasm.json.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -44,6 +42,8 @@ import {
 import {
   type Func,
   formatProgram,
+  formatType,
+  type Node,
   type Operand,
   parseAndValidate,
   type Type,
@@ -61,7 +61,6 @@ import {
   CLANG_BUILD,
   closure,
   emitChunked,
-  FRONT_END_BYTES,
   PRELUDE,
   planChunks,
   runStageChunk,
@@ -69,7 +68,7 @@ import {
   STAGE_OUTPUT,
 } from './bootstrap.js';
 import { generateCorpus } from './corpus.js';
-import { irOp } from './ref-parse.js';
+import { IR_OPS, irOp } from './ref-parse.js';
 
 /** io capacities of `a0w` in words (a chunk's tables, the linker's whole input; the module). */
 export const WASM_TOOL_INPUT = 1 << 21;
@@ -77,7 +76,7 @@ export const WASM_TOOL_OUTPUT = 1 << 22;
 /** Table capacities of compiler/emit_wasm.a0 for one chunk (and of an eval program). */
 const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
 /** `emitwasmio` modes. */
-const MODE = { source: 1, tables: 2, link: 3, sourceOpt: 4, tablesOpt: 5, ir: 6 } as const;
+const MODE = { source: 1, tables: 2, link: 3, optimize: 7, image: 8 } as const;
 /** The result code of an optimized chunk that needs more bodies. */
 const NEEDS_BODIES = 7;
 
@@ -308,16 +307,29 @@ interface ChunkTables {
 /**
  * The tables of functions [from, to) of `fns` (mode 2 after the call table): the chunk's
  * function space is its callees outside the chunk (program order), then its own functions.
+ * An external function has a row with its body only when the emitter asked for it (`supplied`,
+ * code 7: program indices); its own callees outside the chunk are then external too.
  */
-function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): ChunkTables {
+function encodeChunk(
+  fns: readonly TypedFunc[],
+  from: number,
+  to: number,
+  supplied: ReadonlySet<number> = new Set(),
+): ChunkTables {
   const index = new Map(fns.map((f, i) => [f.name, i] as const));
   const external = new Set<number>();
-  for (const fn of fns.slice(from, to))
+  const reach = (fn: TypedFunc): void => {
     for (const n of fn.nodes)
       for (const c of [n.callee, n.pred]) {
         const i = c === undefined ? undefined : (index.get(c) as number);
         if (i !== undefined && (i < from || i >= to)) external.add(i);
       }
+  };
+  for (const fn of fns.slice(from, to)) reach(fn);
+  for (const g of [...supplied].sort((a, b) => b - a)) {
+    external.add(g);
+    reach(fns[g] as TypedFunc);
+  }
   const before = [...external].sort((a, b) => a - b);
   const space = [...before, ...Array.from({ length: to - from }, (_, i) => from + i)];
   const local = new Map(space.map((g, i) => [g, i] as const));
@@ -330,9 +342,10 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
     ]),
     tlist: [],
   };
-  const own = fns.slice(from, to);
-  const body = encodeBodies(own, (name) =>
-    name === undefined ? 0 : (local.get(index.get(name) as number) ?? 0),
+  const withBody = space.filter((g) => (g >= from && g < to) || supplied.has(g));
+  const body = encodeBodies(
+    withBody.map((g) => fns[g] as TypedFunc),
+    (name) => (name === undefined ? 0 : (local.get(index.get(name) as number) ?? 0)),
   );
   const table: number[] = [];
   const ntys: number[] = [];
@@ -345,7 +358,7 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
     names.push(...name);
     const row = body.rows.get(fn);
     if (row === undefined) {
-      table.push(0, 0, 0, 0, 0, 0, 0);
+      table.push(fn.literalIterations * 2, 0, 0, 0, 0, 0, 0);
       continue;
     }
     const params = fn.params.map((t) => intern(tb, t));
@@ -353,7 +366,7 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
     tb.tlist.push(...params);
     const result = intern(tb, fn.result);
     for (const n of fn.nodes) ntys.push(intern(tb, fn.types.get(n.id) ?? 'u32'));
-    table.push(0, params.length, first, result, ...row);
+    table.push(1 + fn.literalIterations * 2, params.length, first, result, ...row);
   }
   const { nodes, args } = body;
   const fits =
@@ -382,47 +395,274 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
   return { before, space, local, tb, words, fits };
 }
 
-// --- the eval program of the optimizer ---------------------------------------------------
+// --- the optimizer: one a0w run per function (mode 7) ----------------------------------------
 
-/** Add program function `g` and every function it reaches (calls, bodies, predicates). */
-function addClosure(fns: readonly TypedFunc[], g: number, into: Set<number>): void {
-  const index = new Map(fns.map((f, i) => [f.name, i] as const));
-  const stack = [g];
-  while (stack.length > 0) {
-    const i = stack.pop() as number;
-    if (into.has(i)) continue;
-    into.add(i);
-    for (const n of (fns[i] as TypedFunc).nodes)
-      for (const c of [n.callee, n.pred]) if (c !== undefined) stack.push(index.get(c) as number);
-  }
+/**
+ * A function body as the driver keeps it between runs: operands as (kind, value) pairs with
+ * node references as positions, callees as program indices (-1 for none). The optimized body
+ * of a function is all a later function needs of it (src/optimize.ts `optimizedCallee`).
+ */
+export interface BNode {
+  readonly op: number;
+  readonly callee: number;
+  readonly pred: number;
+  readonly type: Type;
+  readonly args: readonly (readonly [number, number])[];
+}
+export interface Body {
+  readonly params: readonly Type[];
+  readonly result: Type;
+  readonly nodes: readonly BNode[];
+  readonly ret: readonly [number, number];
+  /** `literalIterations` of the function (src/core.ts validateFunction). */
+  readonly li: number;
 }
 
-/** The eval program of the functions `members` (program order): tables and eval indices. */
-function encodeEval(fns: readonly TypedFunc[], members: ReadonlySet<number>) {
-  const order = [...members].sort((a, b) => a - b);
-  const evalIndex = new Map(order.map((g, i) => [g, i] as const));
-  const index = new Map(fns.map((f, i) => [f.name, i] as const));
-  const body = encodeBodies(
-    order.map((g) => fns[g] as TypedFunc),
-    (name) => (name === undefined ? 0 : (evalIndex.get(index.get(name) as number) as number)),
-  );
-  const efn = order.flatMap((g) => {
-    const fn = fns[g] as TypedFunc;
-    return [0, fn.params.length, 0, 0, ...(body.rows.get(fn) as [number, number, number])];
-  });
+/** A checked function as a body (callees as program indices). */
+function bodyOf(fn: TypedFunc, index: ReadonlyMap<string, number>): Body {
+  const ids = new Map(fn.nodes.map((n, i) => [n.id, i] as const));
+  const at = (name: string | undefined): number =>
+    name === undefined ? -1 : (index.get(name) as number);
+  return {
+    params: fn.params,
+    result: fn.result,
+    li: fn.literalIterations,
+    nodes: fn.nodes.map((n) => ({
+      op: irOp(n.op),
+      callee: at(n.callee),
+      pred: at(n.pred),
+      type: fn.types.get(n.id) as Type,
+      args: n.args.map((a) => operandPair(ids, a)),
+    })),
+    ret: operandPair(ids, fn.ret),
+  };
+}
+
+/** A body as a checked-function-shaped record, for the table and source encoders. */
+function funcOf(body: Body, name: string, names: readonly string[]): TypedFunc {
+  const operand = ([k, v]: readonly [number, number]): Operand =>
+    k === 1
+      ? { kind: 'node', id: `n${v}` }
+      : k === 2
+        ? { kind: 'param', index: v }
+        : k === 3
+          ? { kind: 'u32', value: v }
+          : { kind: 'bool', value: v !== 0 };
+  const nodes = body.nodes.map((n, i) => ({
+    id: `n${i}`,
+    op: IR_OPS[n.op - 1] as Node['op'],
+    args: n.args.map(operand),
+    ...(n.callee >= 0 && (n.op === 19 || n.op === 20 || n.op === 21)
+      ? { callee: names[n.callee] as string }
+      : {}),
+    ...(n.op === 21 ? { pred: names[n.pred] as string } : {}),
+  }));
+  return {
+    name,
+    params: body.params,
+    result: body.result,
+    nodes,
+    ret: operand(body.ret),
+    types: new Map(body.nodes.map((n, i) => [`n${i}`, n.type] as const)),
+    staticIterations: 1,
+    literalIterations: body.li,
+    calls: new Map(),
+  };
+}
+
+/** The types of a type table (triples and the field list), in index order. */
+function decodeTypes(types: readonly number[], tlist: readonly number[]): Type[] {
+  const out: Type[] = [];
+  for (let i = 0; i < types.length; i += 3) {
+    const [tag, a, b] = [types[i] as number, types[i + 1] as number, types[i + 2] as number];
+    out.push(
+      tag === 1
+        ? 'u32'
+        : tag === 2
+          ? 'bool'
+          : tag === 3
+            ? 'io'
+            : tag === 4
+              ? { kind: 'arr', length: a, elem: out[b] as Type }
+              : { kind: 'rec', fields: tlist.slice(a, a + b).map((f) => out[f] as Type) },
+    );
+  }
+  return out;
+}
+
+/**
+ * One function of a run's space: its body (always known here), and whether the run gets it
+ * (otherwise the run sees only the facts of `summary`, and asks for the body when it needs it).
+ */
+interface Entry {
+  readonly g: number;
+  readonly body: Body;
+  readonly supplied: boolean;
+}
+
+const wordsOf = (t: Type): number =>
+  typeof t === 'string'
+    ? 1
+    : t.kind === 'arr'
+      ? Math.min(65, t.length * wordsOf(t.elem))
+      : Math.min(
+          65,
+          t.fields.reduce((n, f) => n + wordsOf(f), 0),
+        );
+const hasIo = (t: Type): boolean =>
+  t === 'io' ||
+  (typeof t !== 'string' && (t.kind === 'arr' ? hasIo(t.elem) : t.fields.some(hasIo)));
+const isScalarType = (t: Type): boolean => t === 'u32' || t === 'bool';
+
+/**
+ * The facts about a function's types the optimizer's inlining and unrolling decisions read
+ * (node count; bit 0 all parameters scalar, 1 result scalar, 2 all node types scalar, 3 some
+ * type holds io, 4 result and node types at most 64 words each): data, not decisions.
+ */
+function summary(b: Body): [number, number] {
+  const all = [b.result, ...b.nodes.map((n) => n.type)];
+  const flags =
+    (b.params.every(isScalarType) ? 1 : 0) |
+    (isScalarType(b.result) ? 2 : 0) |
+    (b.nodes.every((n) => isScalarType(n.type)) ? 4 : 0) |
+    ([...b.params, ...all].some(hasIo) ? 8 : 0) |
+    (all.every((t) => wordsOf(t) <= 64) ? 16 : 0);
+  return [b.nodes.length, flags];
+}
+
+/** The words of mode 7 after the mode: the tables of the space, the summaries, the function. */
+function encodeSpace(entries: readonly Entry[], own: number, image: boolean) {
+  const local = new Map(entries.map((e, i) => [e.g, i] as const));
+  const tb: Tables = {
+    types: [1, 0, 0, 2, 0, 0, 3, 0, 0],
+    typeIndex: new Map([
+      ['u32', 0],
+      ['bool', 1],
+      ['io', 2],
+    ]),
+    tlist: [],
+  };
+  const table: number[] = [];
+  const nodes: number[] = [];
+  const ntys: number[] = [];
+  const args: number[] = [];
+  const sums: number[] = [];
+  for (const e of entries) {
+    const b = e.body;
+    sums.push(...summary(b));
+    if (!e.supplied) {
+      table.push(b.li * 2, 0, 0, 0, 0, 0, 0);
+      continue;
+    }
+    const params = b.params.map((t) => intern(tb, t));
+    const first = tb.tlist.length;
+    tb.tlist.push(...params);
+    const result = intern(tb, b.result);
+    const firstNode = nodes.length / 6;
+    for (const n of b.nodes) {
+      ntys.push(intern(tb, n.type));
+      nodes.push(
+        0,
+        n.op,
+        n.args.length,
+        args.length / 2,
+        n.callee < 0 ? 0 : (local.get(n.callee) as number),
+        n.pred < 0 ? 0 : (local.get(n.pred) as number),
+      );
+      for (const [k, v] of n.args) args.push(k, v);
+    }
+    const ret = packRet([b.ret[0], b.ret[1]], args);
+    table.push(1 + b.li * 2, params.length, first, result, firstNode, b.nodes.length, ret);
+  }
   const fits =
-    order.length <= CAP.fns &&
-    body.nodes.length / 6 <= CAP.nodes &&
-    body.args.length / 2 <= CAP.operands;
+    nodes.length / 6 <= CAP.nodes &&
+    args.length / 2 <= CAP.operands &&
+    entries.length <= CAP.fns &&
+    tb.types.length / 3 <= CAP.types &&
+    tb.tlist.length <= CAP.tlist;
   const words = [
-    order.length,
-    ...efn,
-    body.nodes.length / 6,
-    ...body.nodes,
-    body.args.length / 2,
-    ...body.args,
+    tb.types.length / 3,
+    ...tb.types,
+    tb.tlist.length,
+    ...tb.tlist,
+    entries.length,
+    ...table,
+    nodes.length / 6,
+    ...nodes,
+    ...ntys,
+    args.length / 2,
+    ...args,
+    ...(image ? [] : sums),
+    local.get(own) as number,
+    ...(image ? [] : [Number(process.env.A0OPT_STAGE ?? 0)]),
   ];
-  return { words, evalIndex, order, fits };
+  return { words, tb, fits };
+}
+
+/** The optimized body in a run's output words (code 0): nodes, ret, literal iterations. */
+function decodeBody(
+  out: Uint32Array,
+  types: readonly Type[],
+  space: readonly number[],
+  orig: Body,
+): Body {
+  let at = 0;
+  const n = out[at++] as number;
+  const nodes: BNode[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const op = out[at++] as number;
+    const na = out[at++] as number;
+    const callee = out[at++] as number;
+    const pred = out[at++] as number;
+    const type = types[out[at++] as number] as Type;
+    const args: [number, number][] = [];
+    for (let j = 0; j < na; j += 1) {
+      args.push([out[at] as number, out[at + 1] as number]);
+      at += 2;
+    }
+    nodes.push({
+      op,
+      callee: op === 19 || op === 20 || op === 21 ? (space[callee] as number) : -1,
+      pred: op === 21 ? (space[pred] as number) : -1,
+      type,
+      args,
+    });
+  }
+  const ret: [number, number] = [out[at] as number, out[at + 1] as number];
+  return { params: orig.params, result: orig.result, nodes, ret, li: out[at + 2] as number };
+}
+
+/** The optimized body in the image of mode 8 (compiler/optimize.a0 `ozopt1`). */
+function decodeImage(
+  out: Uint32Array,
+  types: readonly Type[],
+  space: readonly number[],
+  orig: Body,
+): Body {
+  const n = out[1] as number;
+  const nodes: BNode[] = [];
+  let pair = 8 + 5 * n;
+  for (let i = 0; i < n; i += 1) {
+    const at = 8 + 5 * i;
+    const op = out[at] as number;
+    const args: [number, number][] = [];
+    for (let j = 0; j < (out[at + 1] as number); j += 1, pair += 2)
+      args.push([out[pair] as number, out[pair + 1] as number]);
+    nodes.push({
+      op,
+      callee: op === 19 || op === 20 || op === 21 ? (space[out[at + 2] as number] as number) : -1,
+      pred: op === 21 ? (space[out[at + 3] as number] as number) : -1,
+      type: types[out[at + 4] as number] as Type,
+      args,
+    });
+  }
+  return {
+    params: orig.params,
+    result: orig.result,
+    nodes,
+    ret: [out[2] as number, out[3] as number],
+    li: out[4] as number,
+  };
 }
 
 /** The requested chunk functions of a code-7 output (indices, then their count). */
@@ -431,43 +671,161 @@ function requested(out: Uint32Array): number[] {
   return [...out.subarray(out.length - 1 - k, out.length - 1)];
 }
 
-/**
- * Run an optimized chunk (the words before and after its eval program and map), supplying
- * the bodies it asks for: the eval program starts empty and grows by the closures of the
- * requested functions (`space` maps chunk functions to program indices, -1 for none).
- */
-function runOptimized(
-  exe: string,
-  fns: readonly TypedFunc[],
-  space: readonly number[],
-  encode: (members: ReadonlySet<number>, evalIndex: ReadonlyMap<number, number>) => number[],
-): { code: number; out: Uint32Array; rounds: number; members: Set<number> } {
-  const members = new Set<number>();
-  for (let rounds = 1; ; rounds += 1) {
-    const ev = encodeEval(fns, members);
-    const r = runTool32(exe, encode(members, ev.evalIndex));
-    if (r.code !== NEEDS_BODIES) return { ...r, rounds, members };
-    const before = members.size;
-    for (const c of requested(r.out)) {
-      const g = space[c];
-      if (g === undefined || g < 0) throw new Error(`a0w requested chunk function ${c}`);
-      addClosure(fns, g, members);
-    }
-    if (members.size === before) throw new Error('a0w requested bodies it already has');
-    if (!encodeEval(fns, members).fits)
-      throw new Error(`the eval program of ${members.size} functions does not fit its tables`);
-  }
+export interface OptimizedProgram {
+  readonly bodies: readonly Body[];
+  /** a0w runs, including the reruns that supplied more callee bodies. */
+  readonly runs: number;
 }
 
-/** The eval program's words and the map, for mode 5/6 after the chunk's tables. */
-function evalWords(
-  fns: readonly TypedFunc[],
-  space: readonly number[],
-  members: ReadonlySet<number>,
-  evalIndex: ReadonlyMap<number, number>,
-): number[] {
-  const ev = encodeEval(fns, members);
-  return [...ev.words, ...space.map((g) => (evalIndex.get(g) ?? -1) + 1)];
+const OPTIMIZED = new WeakMap<TypedProgram, OptimizedProgram>();
+
+/**
+ * The optimizer written in A0, function by function in program order: each run gets the
+ * function (original body) and the optimized bodies of its callees; when it needs another
+ * body (to evaluate a call with literal operands) it stops with code 7 and the indices, and
+ * the run is repeated with those bodies and everything they reach. With `reference` the
+ * callee bodies are those of src/optimize.ts instead of the A0 results (each function is then
+ * checked on its own); with `image` the runs are mode 8 (the table entry `ozopt1`, which
+ * computes the summaries itself and asks for every callee body).
+ */
+export function a0OptimizeProgram(
+  exe: string,
+  program: TypedProgram,
+  reference?: readonly Body[],
+  /** Bodies to use for functions that do not fit a run (a check only: the result is then not A0's). */
+  fallback?: readonly Body[],
+  image = false,
+): OptimizedProgram {
+  const plain = reference === undefined && fallback === undefined && !image;
+  const known = plain ? OPTIMIZED.get(program) : undefined;
+  if (known !== undefined) return known;
+  const done = optimizeProgram(exe, program, reference, fallback, image);
+  if (plain) OPTIMIZED.set(program, done);
+  return done;
+}
+
+function optimizeProgram(
+  exe: string,
+  program: TypedProgram,
+  reference: readonly Body[] | undefined,
+  fallback: readonly Body[] | undefined,
+  image: boolean,
+): OptimizedProgram {
+  const fns = program.functions;
+  const index = new Map(fns.map((f, i) => [f.name, i] as const));
+  const bodies: Body[] = [];
+  let runs = 0;
+  for (let g = 0; g < fns.length; g += 1) {
+    const orig = bodyOf(fns[g] as TypedFunc, index);
+    const lib = (f: number): Body => (reference ?? bodies)[f] as Body;
+    const refs = (b: Body): number[] =>
+      b.nodes.flatMap((n) => [n.callee, n.pred]).filter((c) => c >= 0);
+    const supplied = new Set<number>();
+    for (;;) {
+      const all = new Set<number>([g, ...refs(orig)]);
+      for (const f of supplied) {
+        all.add(f);
+        for (const c of refs(lib(f))) all.add(c);
+      }
+      const space = [...all].sort((a, b) => a - b);
+      const entries = space.map(
+        (f): Entry =>
+          f === g
+            ? { g, body: orig, supplied: true }
+            : { g: f, body: lib(f), supplied: supplied.has(f) },
+      );
+      const enc = encodeSpace(entries, g, image);
+      if (!enc.fits) {
+        if (fallback === undefined)
+          throw new Error(`${(fns[g] as Func).name}: callee closure does not fit`);
+        bodies.push(fallback[g] as Body);
+        break;
+      }
+      const r = runTool32(exe, [image ? MODE.image : MODE.optimize, ...enc.words]);
+      runs += 1;
+      if (r.code === 0) {
+        const types = decodeTypes(enc.tb.types, enc.tb.tlist);
+        bodies.push((image ? decodeImage : decodeBody)(r.out, types, space, orig));
+        break;
+      }
+      if (r.code !== NEEDS_BODIES)
+        throw new Error(`a0w optimizer: code ${r.code} on ${(fns[g] as Func).name}`);
+      const before = supplied.size;
+      const wanted = image ? [...r.out.subarray(7, 7 + (r.out[6] as number))] : requested(r.out);
+      const stack = wanted.map((c) => space[c] as number);
+      while (stack.length > 0) {
+        const f = stack.pop() as number;
+        if (f === g || supplied.has(f)) continue;
+        supplied.add(f);
+        stack.push(...refs(lib(f)));
+      }
+      if (supplied.size === before)
+        throw new Error(`a0w requested bodies it already has on ${(fns[g] as Func).name}`);
+    }
+  }
+  return { bodies, runs };
+}
+
+/** src/optimize.ts on every function, as bodies. */
+export function typescriptBodies(program: TypedProgram): Body[] {
+  const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
+  return program.functions.map((f) => bodyOf(optimizeFunction(f).fn, index));
+}
+
+/** The checked program an optimized run stands for (for the emitters). */
+export function optimizedProgram(program: TypedProgram, bodies: readonly Body[]): TypedProgram {
+  const names = program.functions.map((f) => f.name);
+  const functions = bodies.map((b, i) => funcOf(b, names[i] as string, names));
+  return { functions, byName: new Map(functions.map((f) => [f.name, f] as const)) };
+}
+
+const bodyKey = (b: Body): string =>
+  JSON.stringify([
+    b.nodes.map((n) => [n.op, n.callee, n.pred, formatType(n.type), n.args]),
+    b.ret,
+    b.li,
+  ]);
+
+export interface IrCheck {
+  readonly functions: number;
+  readonly identical: number;
+  readonly runs: number;
+  /** The first function whose optimized IR differs. */
+  readonly firstDifference?: string;
+  /** Functions no run can take (over the table capacities); not counted identical. */
+  readonly notRun: readonly string[];
+}
+
+/**
+ * The A0 optimizer's IR against src/optimize.ts: every function on its own (with the
+ * reference callee bodies) and the whole chain (A0 results feeding later runs).
+ */
+export function a0IrCheck(exe: string, program: TypedProgram): IrCheck {
+  const fns = program.functions;
+  const want = typescriptBodies(program);
+  const notRun: string[] = [];
+  let chain: OptimizedProgram;
+  try {
+    chain = a0OptimizeProgram(exe, program);
+  } catch {
+    // A function does not fit a run: the rest is checked with its reference body in its place.
+    chain = a0OptimizeProgram(exe, program, undefined, want);
+    for (const [g, f] of fns.entries()) if (chain.bodies[g] === want[g]) notRun.push(f.name);
+  }
+  let identical = 0;
+  let firstDifference: string | undefined;
+  for (const [g, f] of fns.entries()) {
+    if (notRun.includes(f.name)) continue;
+    if (bodyKey(chain.bodies[g] as Body) === bodyKey(want[g] as Body)) identical += 1;
+    else firstDifference ??= f.name;
+  }
+  return {
+    functions: fns.length,
+    identical,
+    runs: chain.runs,
+    notRun,
+    ...(firstDifference === undefined ? {} : { firstDifference }),
+  };
 }
 
 /** The largest chunk of table encodings from `from` on. */
@@ -497,28 +855,38 @@ export interface ModuleRun {
  */
 export function a0WasmFromTables(
   exe: string,
-  program: TypedProgram,
+  source: TypedProgram,
   layout: WasmLayout,
   optimize = false,
 ): ModuleRun {
+  const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
+  const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
   const fns = program.functions;
   const calls = new Map<number, [number, number]>();
   const outputs: ChunkOutput[] = [];
   let base = 0;
   let from = 0;
-  let runs = 0;
+  let runs = opt?.runs ?? 0;
   while (from < fns.length) {
-    const { to, chunk } = nextChunk(fns, from);
-    const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
-    const head = [base, chunk.before.length, ...table, ...chunk.words];
-    const r = optimize
-      ? runOptimized(exe, fns, chunk.space, (members, evalIndex) => [
-          MODE.tablesOpt,
-          ...head,
-          ...evalWords(fns, chunk.space, members, evalIndex),
-        ])
-      : { ...runTool32(exe, [MODE.tables, ...head]), rounds: 1 };
-    runs += r.rounds;
+    const first = nextChunk(fns, from);
+    const to = first.to;
+    // The emitter asks (code 7) for the bodies of external functions it needs; the run is
+    // repeated with their rows and bodies in the tables.
+    const supplied = new Set<number>();
+    let r: { code: number; out: Uint32Array };
+    let chunk = first.chunk;
+    for (;;) {
+      const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
+      r = runTool32(exe, [MODE.tables, base, chunk.before.length, ...table, ...chunk.words]);
+      runs += 1;
+      if (r.code !== NEEDS_BODIES) break;
+      const before = supplied.size;
+      for (const c of requested(r.out)) supplied.add(chunk.space[c] as number);
+      if (supplied.size === before)
+        throw new Error(`a0w requested bodies it already has on functions ${from}..${to}`);
+      chunk = encodeChunk(fns, from, to, supplied);
+      if (!chunk.fits) throw new Error(`functions ${from}..${to} and their callees do not fit`);
+    }
     if (r.code !== 0) throw new Error(`a0w: code ${r.code} on functions ${from}..${to}`);
     const out = splitChunk(r.out);
     for (const [i, [idx, depth]] of out.calls.entries()) calls.set(from + i, [idx, depth]);
@@ -529,85 +897,7 @@ export function a0WasmFromTables(
   return { bytes: linkChunks(exe, outputs, layout), chunks: outputs.length, runs };
 }
 
-/** src/optimize.ts on a chunk's own functions, in the words of mode 6. */
-function typescriptIr(fns: readonly TypedFunc[], from: number, chunk: ChunkTables): number[] {
-  const index = new Map(fns.map((f, i) => [f.name, i] as const));
-  const callee = (name: string | undefined): number =>
-    name === undefined ? 0 : (chunk.local.get(index.get(name) as number) ?? 0);
-  const words: number[] = [];
-  for (let g = from; g < from + chunk.space.length - chunk.before.length; g += 1) {
-    const fn = optimizeFunction(fns[g] as TypedFunc).fn;
-    const ids = new Map(fn.nodes.map((n, i) => [n.id, i] as const));
-    words.push(fn.nodes.length);
-    for (const n of fn.nodes) {
-      words.push(irOp(n.op), n.args.length, callee(n.callee), callee(n.pred));
-      words.push(intern(chunk.tb, fn.types.get(n.id) ?? 'u32'));
-      for (const a of n.args) words.push(...operandPair(ids, a));
-    }
-    words.push(...operandPair(ids, fn.ret));
-  }
-  return words;
-}
-
-export interface IrCheck {
-  readonly functions: number;
-  readonly identical: number;
-  /** The first function whose optimized IR differs. */
-  readonly firstDifference?: string;
-}
-
-/** The A0 optimizer's IR (mode 6) against src/optimize.ts, chunk by chunk as tables. */
-export function a0IrCheck(exe: string, program: TypedProgram): IrCheck {
-  const fns = program.functions;
-  let from = 0;
-  let identical = 0;
-  let firstDifference: string | undefined;
-  while (from < fns.length) {
-    const { to, chunk } = nextChunk(fns, from);
-    const head = [0, chunk.before.length, ...chunk.before.flatMap(() => [0, 0]), ...chunk.words];
-    const r = runOptimized(exe, fns, chunk.space, (members, evalIndex) => [
-      MODE.ir,
-      ...head,
-      ...evalWords(fns, chunk.space, members, evalIndex),
-    ]);
-    if (r.code !== 0) throw new Error(`a0w: code ${r.code} on functions ${from}..${to} (IR)`);
-    const want = typescriptIr(fns, from, chunk);
-    // Per function: its words are the node count, then per node 5 + 2 * operands, then 2.
-    let a = 0;
-    let b = 0;
-    for (let g = from; g < to; g += 1) {
-      const span = (w: ArrayLike<number>, at: number): number => {
-        let end = at + 1;
-        for (let k = 0; k < (w[at] as number); k += 1) end += 5 + 2 * (w[end + 1] as number);
-        return end + 2 - at;
-      };
-      const la = span(r.out, a);
-      const lb = span(want, b);
-      const same =
-        la === lb &&
-        Array.from({ length: la }, (_, i) => r.out[a + i] === want[b + i]).every(Boolean);
-      if (same) identical += 1;
-      else firstDifference ??= (fns[g] as TypedFunc).name;
-      a += la;
-      b += lb;
-    }
-    from = to;
-  }
-  return {
-    functions: fns.length,
-    identical,
-    ...(firstDifference === undefined ? {} : { firstDifference }),
-  };
-}
-
 // --- mode 1: source through the A0 front end --------------------------------------------
-
-/** The functions of a planned chunk in its function order (the whole program for one chunk). */
-function chunkNames(chunk: Chunk, program: TypedProgram): string[] {
-  return chunk.before.length + chunk.own.length === 0
-    ? program.functions.map((f) => f.name)
-    : [...chunk.before, ...chunk.own];
-}
 
 /**
  * The A0 emitter's module for a program source through the A0 front end (mode 1; mode 4 with
@@ -615,17 +905,18 @@ function chunkNames(chunk: Chunk, program: TypedProgram): string[] {
  */
 export function a0WasmFromSource(
   exe: string,
-  program: TypedProgram,
+  source: TypedProgram,
   layout: WasmLayout,
   optimize = false,
 ): { bytes?: Uint8Array; code: number; chunks: number; runs: number; failed?: Chunk } {
+  const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
+  const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
   const fns = program.functions;
-  const index = new Map(fns.map((f, i) => [f.name, i] as const));
   const chunks = planChunks(formatProgram(program));
   const calls = new Map<string, [number, number, number]>();
   const outputs: ChunkOutput[] = [];
   let base = 0;
-  let runs = 0;
+  let runs = opt?.runs ?? 0;
   for (const chunk of chunks) {
     const bytes = [...Buffer.from(chunk.source)];
     const none: [number, number, number] = [0, 0, 0];
@@ -635,22 +926,8 @@ export function a0WasmFromSource(
     const words = [bytes.length, ...bytes, chunk.head ? 1 : 0, 0, before.length];
     words.push(...before.map(([, , bound]) => bound), base);
     for (const [idx, depth] of before) words.push(idx, depth);
-    const space = chunkNames(chunk, program).map((name) => index.get(name) ?? -1);
-    const r = optimize
-      ? runOptimized(exe, fns, space, (members, evalIndex) => {
-          const order = [...members].sort((a, b) => a - b);
-          const text = [
-            ...Buffer.from(formatProgram({ functions: order.map((g) => fns[g] as Func) })),
-          ];
-          if (text.length > FRONT_END_BYTES)
-            throw new Error(
-              `the eval program of ${order.length} functions is over the source limit`,
-            );
-          const map = space.map((g) => (evalIndex.get(g) ?? -1) + 1);
-          return [MODE.sourceOpt, ...words, text.length, ...text, map.length, ...map];
-        })
-      : { ...runTool32(exe, [MODE.source, ...words]), rounds: 1 };
-    runs += r.rounds;
+    const r = runTool32(exe, [MODE.source, ...words]);
+    runs += 1;
     if (r.code !== 0) return { code: r.code, chunks: chunks.length, runs, failed: chunk };
     const out = splitChunk(r.out);
     for (const [i, name] of chunk.own.entries())
@@ -658,6 +935,7 @@ export function a0WasmFromSource(
     outputs.push(out);
     base += out.variants;
   }
+  void fns;
   return { bytes: linkChunks(exe, outputs, layout), code: 0, chunks: chunks.length, runs };
 }
 
@@ -690,6 +968,7 @@ interface PathReport {
     readonly ms: number;
     readonly identical: boolean;
     readonly firstDifference?: number;
+    readonly error?: string;
   };
   readonly source?: {
     readonly chunks: number;
@@ -721,7 +1000,22 @@ function checkPath(
 ): PathReport {
   const reference = typescriptWasm(program, layout, optimize);
   const t0 = performance.now();
-  const tables = a0WasmFromTables(tool.exe, program, layout, optimize);
+  let tables: ModuleRun;
+  try {
+    tables = a0WasmFromTables(tool.exe, program, layout, optimize);
+  } catch (err) {
+    // A function over the table capacities (site/page.a0 `session`): reported, not fatal.
+    return {
+      moduleBytes: reference.length,
+      tables: {
+        chunks: 0,
+        runs: 0,
+        ms: Math.round(performance.now() - t0),
+        identical: false,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    };
+  }
   const tablesMs = Math.round(performance.now() - t0);
   const tablesSame = same(tables.bytes, reference);
   let source: PathReport['source'];
@@ -769,7 +1063,7 @@ const pathFailed = (r: PathReport): boolean =>
 
 const describe = (r: PathReport): string => {
   const t = r.tables;
-  const tables = `tables: ${t.identical ? 'identical' : `DIFFERS at byte ${t.firstDifference}`} (${t.chunks} chunk(s), ${t.runs} run(s), ${t.ms} ms)`;
+  const tables = `tables: ${t.identical ? 'identical' : t.error !== undefined ? `ERROR ${t.error}` : `DIFFERS at byte ${t.firstDifference}`} (${t.chunks} chunk(s), ${t.runs} run(s), ${t.ms} ms)`;
   const s = r.source;
   const source =
     s === undefined
@@ -812,7 +1106,7 @@ async function main(): Promise<void> {
     const t0 = performance.now();
     const ir = { ...a0IrCheck(tool.exe, program), ms: Math.round(performance.now() - t0) };
     process.stdout.write(
-      `${label.padEnd(14)} IR ${ir.identical}/${ir.functions} functions identical to src/optimize.ts${ir.firstDifference === undefined ? '' : ` (first difference: ${ir.firstDifference})`} (${ir.ms} ms)\n`,
+      `${label.padEnd(14)} IR ${ir.identical}/${ir.functions} functions identical to src/optimize.ts${ir.firstDifference === undefined ? '' : ` (first difference: ${ir.firstDifference})`}${ir.notRun.length > 0 ? ` (not run, over the table capacities: ${ir.notRun.join(' ')})` : ''} (${ir.ms} ms)\n`,
     );
     reports.push({ label, functions: program.functions.length, unoptimized, optimized, ir });
   }
