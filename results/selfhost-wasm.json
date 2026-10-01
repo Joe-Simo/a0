@@ -1,50 +1,50 @@
 {
-  "generatedAt": "2026-10-01T01:01:04.346Z",
-  "compilerVersion": "a0c-0.1.32",
-  "stage": "wasm32 emitter written in A0 (compiler/emit_wasm.a0; entry emitwasmio in compiler/boot.a0), the port of src/wasm.ts, with the optimizer written in A0 (compiler/optimize.a0), the port of src/optimize.ts",
-  "method": "a0c-stage1 (the bootstrap C seed) compiles the closure of emitwasmio in chunks; clang builds that C into a0w. Each program is emitted a chunk of functions at a time, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2; 5 optimized) and, where every chunk fits the A0 front end (16384 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1; 4 optimized); a0w links the chunks into the module (mode 3). Unoptimized modules are compared byte for byte with src/wasm.ts on the unoptimized program, optimized ones with compile(program, wasm) (default options: src/optimize.ts). The optimizer evaluates on an eval program of the bodies it requests (code 7, then rerun). Mode 6 writes the optimized IR of each table chunk, compared function by function with optimizeFunction (nodes in order, ops, operands, callee, predicate, node type, ret).",
+  "generatedAt": "2026-10-01T08:38:23.270Z",
+  "compilerVersion": "a0c-0.1.34",
+  "stage": "wasm32 emitter written in A0 (compiler/emit_wasm.a0; entry emitwasmio in compiler/boot.a0), the port of src/wasm.ts, with the optimizer written in A0 (compiler/optimize.a0, generated from compiler/optimize.a0s by tools/a0s.ts), the port of src/optimize.ts",
+  "method": "a0c-stage1 (the bootstrap C seed) compiles the closure of emitwasmio in chunks; clang builds that C into a0w. The optimizer runs one function a run (mode 7), in program order, each run given the optimized bodies of the callees it asks for (code 7, then rerun); its output is compared function by function with optimizeFunction (nodes in order, ops, operands, callee, predicate, node type, ret, literal iterations). Each program is then emitted a chunk of functions at a time from the optimized (or the original) program, as the checked tables of the TypeScript front end in the A0 front end layout (mode 2) and, where every chunk fits the A0 front end (131072 source bytes a chunk), as formatted source through the A0 lexer, parser and checker (mode 1); a0w links the chunks into the module (mode 3). Unoptimized modules are compared byte for byte with src/wasm.ts on the unoptimized program, optimized ones with compile(program, wasm) (default options: src/optimize.ts).",
   "tool": {
     "exe": "dist/bootstrap/a0w/a0w",
     "stage1": "dist/bootstrap/a0c-stage1/a0c-stage1",
-    "functions": 353,
-    "sourceBytes": 225991,
-    "cBytes": 909548,
-    "chunks": 5,
-    "emitMs": 9788,
-    "buildMs": 11150
+    "functions": 656,
+    "sourceBytes": 662024,
+    "cBytes": 2875806,
+    "chunks": 16,
+    "emitMs": 5610,
+    "buildMs": 8151
   },
   "programs": [
     {
       "label": "corpus",
       "functions": 48,
       "unoptimized": {
-        "moduleBytes": 31250,
+        "moduleBytes": 28793,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 1257,
+          "ms": 8344,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 1535,
+          "ms": 7805,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 5821,
+        "moduleBytes": 5629,
         "tables": {
           "chunks": 1,
-          "runs": 2,
-          "ms": 606,
+          "runs": 58,
+          "ms": 1342,
           "identical": true
         },
         "source": {
           "chunks": 1,
-          "runs": 2,
-          "ms": 1773,
+          "runs": 58,
+          "ms": 886,
           "identical": true,
           "code": 0
         }
@@ -52,40 +52,42 @@
       "ir": {
         "functions": 48,
         "identical": 48,
-        "ms": 615
+        "runs": 57,
+        "notRun": [],
+        "ms": 5
       }
     },
     {
       "label": "kernels.a0",
       "functions": 5,
       "unoptimized": {
-        "moduleBytes": 286,
+        "moduleBytes": 252,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 17,
+          "ms": 51,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 25,
+          "ms": 52,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 286,
+        "moduleBytes": 252,
         "tables": {
           "chunks": 1,
-          "runs": 1,
-          "ms": 19,
+          "runs": 6,
+          "ms": 73,
           "identical": true
         },
         "source": {
           "chunks": 1,
-          "runs": 1,
-          "ms": 27,
+          "runs": 6,
+          "ms": 54,
           "identical": true,
           "code": 0
         }
@@ -93,40 +95,42 @@
       "ir": {
         "functions": 5,
         "identical": 5,
-        "ms": 8
+        "runs": 5,
+        "notRun": [],
+        "ms": 0
       }
     },
     {
       "label": "life.a0",
       "functions": 14,
       "unoptimized": {
-        "moduleBytes": 2719,
+        "moduleBytes": 2891,
         "tables": {
           "chunks": 1,
           "runs": 1,
-          "ms": 65,
+          "ms": 381,
           "identical": true
         },
         "source": {
           "chunks": 1,
           "runs": 1,
-          "ms": 134,
+          "ms": 406,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 2707,
+        "moduleBytes": 2900,
         "tables": {
           "chunks": 1,
-          "runs": 1,
-          "ms": 102,
+          "runs": 16,
+          "ms": 425,
           "identical": true
         },
         "source": {
           "chunks": 1,
-          "runs": 1,
-          "ms": 172,
+          "runs": 16,
+          "ms": 382,
           "identical": true,
           "code": 0
         }
@@ -134,89 +138,95 @@
       "ir": {
         "functions": 14,
         "identical": 14,
-        "ms": 50
+        "runs": 15,
+        "notRun": [],
+        "ms": 1
       }
     },
     {
       "label": "site/page.a0",
-      "functions": 54,
+      "functions": 61,
       "unoptimized": {
-        "moduleBytes": 350457,
+        "moduleBytes": 425488,
         "tables": {
-          "chunks": 8,
-          "runs": 8,
-          "ms": 4227,
+          "chunks": 12,
+          "runs": 23,
+          "ms": 99550,
           "identical": true
         },
         "source": {
-          "chunks": 8,
-          "runs": 8,
-          "ms": 8398,
+          "chunks": 12,
+          "runs": 23,
+          "ms": 87898,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 348102,
+        "moduleBytes": 420784,
         "tables": {
-          "chunks": 8,
-          "runs": 10,
-          "ms": 13730,
+          "chunks": 12,
+          "runs": 90,
+          "ms": 67401,
           "identical": true
         },
         "source": {
-          "chunks": 8,
-          "runs": 10,
-          "ms": 13587,
+          "chunks": 14,
+          "runs": 92,
+          "ms": 44467,
           "identical": true,
           "code": 0
         }
       },
       "ir": {
-        "functions": 54,
-        "identical": 54,
-        "ms": 4854
+        "functions": 61,
+        "identical": 61,
+        "runs": 67,
+        "notRun": [],
+        "ms": 59
       }
     },
     {
       "label": "site/docs.a0",
-      "functions": 24,
+      "functions": 28,
       "unoptimized": {
-        "moduleBytes": 172067,
+        "moduleBytes": 177732,
         "tables": {
           "chunks": 2,
-          "runs": 2,
-          "ms": 408,
+          "runs": 3,
+          "ms": 14936,
           "identical": true
         },
         "source": {
           "chunks": 2,
-          "runs": 2,
-          "ms": 888,
+          "runs": 3,
+          "ms": 6351,
           "identical": true,
           "code": 0
         }
       },
       "optimized": {
-        "moduleBytes": 172067,
+        "moduleBytes": 177713,
         "tables": {
           "chunks": 2,
-          "runs": 2,
-          "ms": 2287,
+          "runs": 34,
+          "ms": 16810,
           "identical": true
         },
         "source": {
-          "chunks": 2,
-          "runs": 2,
-          "ms": 5140,
+          "chunks": 4,
+          "runs": 36,
+          "ms": 3808,
           "identical": true,
           "code": 0
         }
       },
       "ir": {
-        "functions": 24,
-        "identical": 24,
-        "ms": 4603
+        "functions": 28,
+        "identical": 28,
+        "runs": 31,
+        "notRun": [],
+        "ms": 14
       }
     }
   ],
