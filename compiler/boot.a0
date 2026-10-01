@@ -20,17 +20,18 @@
 # Nothing is written otherwise. The result is the diagnostic code (1 parse, 2 structure,
 # 3 type, 4 limit, 5 above).
 
-# `emitwasmio` is the entry of the A0 wasm32 emitter (compiler/emit_wasm.a0; driven by
-# tools/selfhost-wasm.ts): its first input word is the mode, 1 a source chunk (the input of
-# `emitchunkio`, then the variant count before the chunk and the call table (index, depth) of
-# the chunk's first `from` functions), 2 a chunk as checked tables, 3 the module linker; 4, 5
-# and 6 run the optimizer (compiler/optimize.a0) before the emitter: 4 is mode 1's input, then
-# the eval program source (byte count, bytes) and its map (word count, then one word per chunk
-# function: eval index + 1, 0 for none); 5 is mode 2's input, then the eval program as tables
-# (function count, 7 words each; node count, 6 words each; operand count, pairs) and its map
-# (one word per chunk function); 6 is mode 5 writing the optimized IR instead of the chunk. The
-# result is the diagnostic code (6 for an unknown mode; 7: the optimizer needs the bodies of
-# the chunk functions it wrote, followed by their count).
+# `emitwasmio` is the entry of the A0 wasm32 emitter (compiler/emit_wasm.a0) and of the A0
+# optimizer (compiler/optimize.a0), driven by tools/selfhost-wasm.ts: its first input word is the
+# mode, 1 a source chunk (the input of `emitchunkio`, then the variant count before the chunk and
+# the call table (index, depth) of the chunk's first `from` functions), 2 a chunk as checked
+# tables, 3 the module linker, 8 the table entry of the optimizer (`ozopt1`, for compiler/shape.a0;
+# the same function as 7), 7 the optimizer on ONE function (`ozone`; one run a function so
+# that no value of the run holds more than a function and its callees: a single A0 value, a
+# fold state included, is at most 65536 words). The wasm modes run on optimized tables: the
+# driver optimizes the functions of a program in program order, feeding each run the optimized
+# bodies of the callees it asks for. The result is the diagnostic code (6 for an unknown mode;
+# for mode 7: 7 when the optimizer needs the bodies of the functions it wrote after its input,
+# followed by their count; 4 when a limit of the optimizer was reached).
 
 use "emit_arm64.a0"
 use "optimize.a0"
@@ -170,6 +171,13 @@ t at p0 0
 r call ozone t
 ret r
 end
+# mode 8: the image of `ozopt1` (the table entry of the optimizer), same input as mode 7 without
+# the summaries and the stage
+fn wam8 (io,u32) u32 -> (io,u32)
+t at p0 0
+r call ozimg t
+ret r
+end
 fn emitwasmio io -> u32
 r call rdword p0
 m at r 0
@@ -179,14 +187,17 @@ m1 eq m 1
 m2 eq m 2
 m3 eq m 3
 m7 eq m 7
+m8 eq m 8
 c1 select m1 1 0
 c2 select m2 1 0
 c3 select m3 1 0
 c7 select m7 1 0
+c8 select m8 1 0
 a fold wam1 c1 s0
 b fold wam2 c2 a
 c fold wam3 c3 b
 d fold wam7 c7 c
-code at d 1
+e fold wam8 c8 d
+code at e 1
 ret code
 end

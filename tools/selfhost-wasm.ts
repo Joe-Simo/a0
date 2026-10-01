@@ -1,33 +1,31 @@
 /**
- * The wasm32 emitter written in A0 (compiler/emit_wasm.a0, entry `emitwasmio` of
- * compiler/boot.a0): the port of src/wasm.ts, with the optimizer written in A0
- * (compiler/optimize.a0, the port of src/optimize.ts) in front of it. Unoptimized, its module
- * must be byte-identical to `compile(program, 'wasm', { optimize: false })`; optimized, to
- * `compile(program, 'wasm')` with the default options, and the optimized IR to
- * `optimizeFunction` node for node.
+ * The wasm32 emitter and the optimizer written in A0 (compiler/emit_wasm.a0, compiler/optimize.a0,
+ * entry `emitwasmio` of compiler/boot.a0): the ports of src/wasm.ts and src/optimize.ts. The
+ * optimized IR must equal `optimizeFunction` node for node (`a0IrCheck`), and the module
+ * `compile(program, 'wasm')` byte for byte (optimized, the default) or with `{ optimize: false }`
+ * (unoptimized tables).
  *
  * - Build (`buildWasmTool`): the bootstrap's C seed a0c-stage1 (tools/bootstrap.ts: the A0
  *   compiler through the TypeScript C backend) compiles the closure of `emitwasmio` in chunks;
- *   clang builds that C into `a0w`. So the emitter that runs is A0 compiled by A0.
- * - A program is emitted a chunk of functions at a time. This file only orders, splits and
- *   supplies bodies: a chunk is either formatted source through the A0 front end (mode 1, or 4
- *   optimized: the chunks of tools/bootstrap.ts `planChunks`) or the checked tables of the
- *   TypeScript front end in the A0 front end's layout (mode 2, or 5 optimized, used for
- *   sources over the A0 front end's 16384-byte limit: site/page.a0 has functions of 64 KB).
- *   Each chunk returns its POOL, META and CODE words and a trailer with the index, stack depth
- *   and iteration bound of its functions, which are passed back, unread here, with the later
- *   chunks that call them. The linker (mode 3) gets every POOL, then every META, then every
- *   CODE, and writes the module.
- * - The optimizer evaluates calls and folds with literal operands on the original bodies, which
- *   a chunk does not hold (its external callees are stubs or empty entries): it gets a
- *   separate eval program (the functions it has asked for, with every function they reach, in
- *   program order) and the map of chunk functions to it. It starts empty; when a body it needs
- *   is absent the chunk ends with code 7 and the chunk functions it needs, and the chunk is run
- *   again with their closures added. Mode 6 writes the optimized IR of a table chunk, compared
- *   here with `optimizeFunction` (same nodes in the same order, same operands, same ret).
+ *   clang builds that C into `a0w`. So the tool that runs is A0 compiled by A0.
+ * - The optimizer runs a function a time (mode 7, `a0OptimizeProgram`): a single A0 value (a
+ *   fold state included) is at most 65536 words, so a run cannot loop over functions holding
+ *   their tables. The functions are optimized in program order; each run gets the function and
+ *   the facts about its callees, and when it needs a body (to inline, unroll or evaluate) it
+ *   stops with code 7 and the function indices, and the run is repeated with those optimized
+ *   bodies (and what they reach) supplied. This file only encodes, orders, splits and supplies
+ *   bodies; the optimized bodies replace the program's functions before the emitter.
+ * - A program is emitted a chunk of functions at a time, from the (optimized) program as the
+ *   checked tables of the TypeScript front end in the A0 front end's layout (mode 2), or as
+ *   formatted source through the A0 front end (mode 1; the chunks of tools/bootstrap.ts
+ *   `planChunks`). Each chunk returns its POOL, META and CODE words and a trailer with the
+ *   index, stack depth and iteration bound of its functions, which are passed back, unread
+ *   here, with the later chunks that call them. The linker (mode 3) gets every POOL, then
+ *   every META, then every CODE, and writes the module.
  * - The check (`bun run selfhost:wasm`): the corpus, the examples and site/page.a0 and docs.a0,
  *   unoptimized and optimized, as tables and, wherever the A0 front end accepts the chunks, as
- *   source, each compared byte for byte with src/wasm.ts. Writes results/selfhost-wasm.json.
+ *   source, each compared byte for byte with src/wasm.ts, and the optimized IR of every
+ *   function against src/optimize.ts. Writes results/selfhost-wasm.json.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -78,7 +76,7 @@ export const WASM_TOOL_OUTPUT = 1 << 22;
 /** Table capacities of compiler/emit_wasm.a0 for one chunk (and of an eval program). */
 const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
 /** `emitwasmio` modes. */
-const MODE = { source: 1, tables: 2, link: 3, optimize: 7 } as const;
+const MODE = { source: 1, tables: 2, link: 3, optimize: 7, image: 8 } as const;
 /** The result code of an optimized chunk that needs more bodies. */
 const NEEDS_BODIES = 7;
 
@@ -519,7 +517,7 @@ function summary(b: Body): [number, number] {
 }
 
 /** The words of mode 7 after the mode: the tables of the space, the summaries, the function. */
-function encodeSpace(entries: readonly Entry[], own: number) {
+function encodeSpace(entries: readonly Entry[], own: number, image: boolean) {
   const local = new Map(entries.map((e, i) => [e.g, i] as const));
   const tb: Tables = {
     types: [1, 0, 0, 2, 0, 0, 3, 0, 0],
@@ -580,9 +578,9 @@ function encodeSpace(entries: readonly Entry[], own: number) {
     ...ntys,
     args.length / 2,
     ...args,
-    ...sums,
+    ...(image ? [] : sums),
     local.get(own) as number,
-    Number(process.env.A0OPT_STAGE ?? 0),
+    ...(image ? [] : [Number(process.env.A0OPT_STAGE ?? 0)]),
   ];
   return { words, tb, fits };
 }
@@ -620,6 +618,39 @@ function decodeBody(
   return { params: orig.params, result: orig.result, nodes, ret, li: out[at + 2] as number };
 }
 
+/** The optimized body in the image of mode 8 (compiler/optimize.a0 `ozopt1`). */
+function decodeImage(
+  out: Uint32Array,
+  types: readonly Type[],
+  space: readonly number[],
+  orig: Body,
+): Body {
+  const n = out[1] as number;
+  const nodes: BNode[] = [];
+  let pair = 8 + 5 * n;
+  for (let i = 0; i < n; i += 1) {
+    const at = 8 + 5 * i;
+    const op = out[at] as number;
+    const args: [number, number][] = [];
+    for (let j = 0; j < (out[at + 1] as number); j += 1, pair += 2)
+      args.push([out[pair] as number, out[pair + 1] as number]);
+    nodes.push({
+      op,
+      callee: op === 19 || op === 20 || op === 21 ? (space[out[at + 2] as number] as number) : -1,
+      pred: op === 21 ? (space[out[at + 3] as number] as number) : -1,
+      type: types[out[at + 4] as number] as Type,
+      args,
+    });
+  }
+  return {
+    params: orig.params,
+    result: orig.result,
+    nodes,
+    ret: [out[2] as number, out[3] as number],
+    li: out[4] as number,
+  };
+}
+
 /** The requested chunk functions of a code-7 output (indices, then their count). */
 function requested(out: Uint32Array): number[] {
   const k = out[out.length - 1] as number;
@@ -632,13 +663,16 @@ export interface OptimizedProgram {
   readonly runs: number;
 }
 
+const OPTIMIZED = new WeakMap<TypedProgram, OptimizedProgram>();
+
 /**
  * The optimizer written in A0, function by function in program order: each run gets the
  * function (original body) and the optimized bodies of its callees; when it needs another
  * body (to evaluate a call with literal operands) it stops with code 7 and the indices, and
  * the run is repeated with those bodies and everything they reach. With `reference` the
  * callee bodies are those of src/optimize.ts instead of the A0 results (each function is then
- * checked on its own).
+ * checked on its own); with `image` the runs are mode 8 (the table entry `ozopt1`, which
+ * computes the summaries itself and asks for every callee body).
  */
 export function a0OptimizeProgram(
   exe: string,
@@ -646,6 +680,22 @@ export function a0OptimizeProgram(
   reference?: readonly Body[],
   /** Bodies to use for functions that do not fit a run (a check only: the result is then not A0's). */
   fallback?: readonly Body[],
+  image = false,
+): OptimizedProgram {
+  const plain = reference === undefined && fallback === undefined && !image;
+  const known = plain ? OPTIMIZED.get(program) : undefined;
+  if (known !== undefined) return known;
+  const done = optimizeProgram(exe, program, reference, fallback, image);
+  if (plain) OPTIMIZED.set(program, done);
+  return done;
+}
+
+function optimizeProgram(
+  exe: string,
+  program: TypedProgram,
+  reference: readonly Body[] | undefined,
+  fallback: readonly Body[] | undefined,
+  image: boolean,
 ): OptimizedProgram {
   const fns = program.functions;
   const index = new Map(fns.map((f, i) => [f.name, i] as const));
@@ -670,23 +720,27 @@ export function a0OptimizeProgram(
             ? { g, body: orig, supplied: true }
             : { g: f, body: lib(f), supplied: supplied.has(f) },
       );
-      const enc = encodeSpace(entries, g);
+      const enc = encodeSpace(entries, g, image);
       if (!enc.fits) {
         if (fallback === undefined)
           throw new Error(`${(fns[g] as Func).name}: callee closure does not fit`);
         bodies.push(fallback[g] as Body);
         break;
       }
-      const r = runTool32(exe, [MODE.optimize, ...enc.words]);
+      const r = runTool32(exe, [image ? MODE.image : MODE.optimize, ...enc.words]);
       runs += 1;
       if (r.code === 0) {
-        bodies.push(decodeBody(r.out, decodeTypes(enc.tb.types, enc.tb.tlist), space, orig));
+        const types = decodeTypes(enc.tb.types, enc.tb.tlist);
+        bodies.push((image ? decodeImage : decodeBody)(r.out, types, space, orig));
         break;
       }
       if (r.code !== NEEDS_BODIES)
         throw new Error(`a0w optimizer: code ${r.code} on ${(fns[g] as Func).name}`);
       const before = supplied.size;
-      const stack = requested(r.out).map((c) => space[c] as number);
+      const wanted = image
+        ? [...r.out.subarray(7, 7 + (r.out[6] as number))]
+        : requested(r.out);
+      const stack = wanted.map((c) => space[c] as number);
       while (stack.length > 0) {
         const f = stack.pop() as number;
         if (f === g || supplied.has(f)) continue;
