@@ -1,0 +1,40 @@
+{
+ "b-fits-inclusive/prolog/structured": [
+  "6 ( A =< B -> R = true ; R = false )."
+ ],
+ "b-sumfrom-eight/prolog/structured": [
+  "6     numlist(0, 7, Is),"
+ ],
+ "b-rot8-constant/prolog/structured": [
+  "5     R is ((X << 8) \\/ (X >> 24)) /\\ 0xFFFFFFFF.",
+  "5 rot8(X, R) :-\n6     R is ((X << 8) \\/ (X >> 24)) /\\ 0xFFFFFFFF."
+ ],
+ "b-onlyone-xor/prolog/structured": [
+  "6     ( A \\== B -> R = true ; R = false )."
+ ],
+ "b-avgfloor-nowrap/prolog/structured": [
+  "6     R is ((A /\\ B) + ((A xor B) >> 1))."
+ ],
+ "b-sumsq-array/prolog/structured": [
+  "7     foldl([I, v(A)-S0, v(A)-S]>>(nth0(I, A, X), S is (S0 + X * X) /\\ 0xFFFFFFFF), Is, v(A)-0, v(_)-R)."
+ ],
+ "b-inrange-inclusive/prolog/structured": [
+  "6     ( X >= Lo, X =< Hi -> R = true ; R = false )."
+ ],
+ "b-bounds-largest/prolog/structured": [
+  "7     foldl([I, v(A)-Lo0-Hi0, v(A)-Lo-Hi]>>(nth0(I, A, X), ( X < Lo0 -> Lo = X ; Lo = Lo0 ), ( X > Hi0 -> Hi = X ; Hi = Hi0 )), Is, v(A)-0xFFFFFFFF-0, v(_)-Lo1-Hi1),"
+ ],
+ "b-checksum-poly/prolog/structured": [
+  "6     foldl([I, v(A)-S0, v(A)-S]>>(nth0(I, A, X), S is (S0 * 31 + X) /\\ 0xFFFFFFFF), Is, v(A)-7, v(_)-R).",
+  "7     foldl([I, S0, S]>>(nth0(I, A, X), S is (S0 * 31 + X) /\\ 0xFFFFFFFF), Is, 7, R)."
+ ],
+ "b-norm2-dot/prolog/structured": [
+  "+7 norm2(A, R) :- dot(A, A, R)."
+ ],
+ "b-pctof-limit/prolog/structured": [
+  "+7 pctof(Part, Whole, R) :- Value is ((Part * 100) /\\ 0xFFFFFFFF), ( Whole =:= 0 -> Q = 4294967295 ; Q is Value // Whole ), limit(Q, 0, 100, R)."
+ ],
+ "b-hamming-popcnt/prolog/structured": [
+  "+7 hamming(A, B, R) :- XorValue is A xor B, popcnt(XorValue, R)."
+ ]
+}

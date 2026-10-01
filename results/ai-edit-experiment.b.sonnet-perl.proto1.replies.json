@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/perl/structured": [
+  "6   return $a <= $b;"
+ ],
+ "b-sumfrom-eight/perl/structured": [
+  "7   for my $i (0 .. 7) {"
+ ],
+ "b-rot8-constant/perl/structured": [
+  "6   return (($x << 8) | ($x >> 24)) & 0xFFFFFFFF;"
+ ],
+ "b-onlyone-xor/perl/structured": [
+  "6   return (!$a) != (!$b);"
+ ],
+ "b-avgfloor-nowrap/perl/structured": [
+  "6   return (($a & $b) + (($a ^ $b) >> 1)) & 0xFFFFFFFF;"
+ ],
+ "b-sumsq-array/perl/structured": [
+  "8     $s = ($s + (($a->[$i % 4] * $a->[$i % 4]) & 0xFFFFFFFF)) & 0xFFFFFFFF;"
+ ],
+ "b-inrange-inclusive/perl/structured": [
+  "6   return $x >= $lo && $x <= $hi;"
+ ],
+ "b-bounds-largest/perl/structured": [
+  "11     if ($x > $hi) { $hi = $x; }"
+ ],
+ "b-checksum-poly/perl/structured": [
+  "6   my $h = 7;\n8     $h = ((($h * 31) & 0xFFFFFFFF) + $a->[$i % 4]) & 0xFFFFFFFF;"
+ ],
+ "b-norm2-dot/perl/structured": [
+  "+12 sub norm2 { my ($a) = @_; return dot($a, $a); }"
+ ],
+ "b-pctof-limit/perl/structured": [
+  "+9 sub pctof { my ($part, $whole) = @_; my $p = ($part * 100) & 0xFFFFFFFF; my $q = $whole == 0 ? 0xFFFFFFFF : int($p / $whole); return limit($q, 0, 100); }"
+ ],
+ "b-hamming-popcnt/perl/structured": [
+  "+12 sub hamming { my ($a, $b) = @_; return popcnt(($a ^ $b) & 0xFFFFFFFF); }"
+ ]
+}

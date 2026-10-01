@@ -1,0 +1,44 @@
+{
+ "b-fits-inclusive/guile/structured": [
+  "3 (<= a b)",
+  "3   (<= a b))"
+ ],
+ "b-sumfrom-eight/guile/structured": [
+  "4 (do ((i 0 (+ i 1))) ((>= i 8))"
+ ],
+ "b-rot8-constant/guile/structured": [
+  "3 (logand (logior (ash x 8) (ash x -24)) M))"
+ ],
+ "b-onlyone-xor/guile/structured": [
+  "3 (logxor a b)",
+  "3   (logxor a b))"
+ ],
+ "b-avgfloor-nowrap/guile/structured": [
+  "3 (logand (+ (logand a b) (ash (logxor a b) -1)) M))"
+ ],
+ "b-sumsq-array/guile/structured": [
+  "5 (set! s (logand (+ s (* (vector-ref a (modulo i 4)) (vector-ref a (modulo i 4)))) M)))"
+ ],
+ "b-inrange-inclusive/guile/structured": [
+  "3 (and (>= x lo) (<= x hi))",
+  "3   (and (>= x lo) (<= x hi)))"
+ ],
+ "b-bounds-largest/guile/structured": [
+  "7 (if (> x hi) (set! hi x))",
+  "7         (if (> x hi) (set! hi x))))"
+ ],
+ "b-checksum-poly/guile/structured": [
+  "3 (let ((h 7))\n5 (set! h (logand (+ (* h 31) (vector-ref a (modulo i 4))) M)))"
+ ],
+ "b-norm2-dot/guile/structured": [
+  "+5 (define (norm2 a)\n+6   (dot a a))",
+  "+6 (define (norm2 a)\n+7   (dot a a))"
+ ],
+ "b-pctof-limit/guile/structured": [
+  "+5 (define (pctof part whole)\n+6   (limit (if (= whole 0) M (logand (/ (logand (* part 100) M) whole) M)) 0 100))",
+  "+5 (define (pctof part whole)\n+6   (limit (if (= whole 0) M (logand (floor (/ (logand (* part 100) M) whole)) M)) 0 100))"
+ ],
+ "b-hamming-popcnt/guile/structured": [
+  "+6 (define (hamming a b)\n+7   (popcnt (logxor a b)))"
+ ]
+}

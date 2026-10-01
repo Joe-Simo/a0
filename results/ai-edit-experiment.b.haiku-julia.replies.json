@@ -1,0 +1,40 @@
+{
+ "b-fits-inclusive/julia/structured": [
+  "2 return a <= b"
+ ],
+ "b-sumfrom-eight/julia/structured": [
+  "3     for i in 0:7"
+ ],
+ "b-rot8-constant/julia/structured": [
+  "2     return (x << 8) | (x >> 24)"
+ ],
+ "b-onlyone-xor/julia/structured": [
+  "2     return xor(a, b)"
+ ],
+ "b-avgfloor-nowrap/julia/structured": [
+  "2     return (a & b) + ((a ^ b) >> 1)",
+  "2     return (a >> 1) + (b >> 1) + (a & b & UInt32(1))"
+ ],
+ "b-sumsq-array/julia/structured": [
+  "4         s = s + a[i % 4 + 1] * a[i % 4 + 1]"
+ ],
+ "b-inrange-inclusive/julia/structured": [
+  "2     return x >= lo && x <= hi"
+ ],
+ "b-bounds-largest/julia/structured": [
+  "9         if x > hi"
+ ],
+ "b-checksum-poly/julia/structured": [
+  "2     h = UInt32(7)\n4         h = h * UInt32(31) + a[i % 4 + 1]"
+ ],
+ "b-norm2-dot/julia/structured": [
+  "+7 function norm2(a::Vector{UInt32})::UInt32\n+7     return dot(a, a)\n+7 end"
+ ],
+ "b-pctof-limit/julia/structured": [
+  "+5 function pctof(part::UInt32, whole::UInt32)::UInt32\n+5     return limit(div(part * UInt32(100), whole), UInt32(0), UInt32(100))\n+5 end",
+  "+4 function pctof(part::UInt32, whole::UInt32)::UInt32\n+4     quotient = whole == UInt32(0) ? UInt32(4294967295) : div(part * UInt32(100), whole)\n+4     return limit(quotient, UInt32(0), UInt32(100))\n+4 end"
+ ],
+ "b-hamming-popcnt/julia/structured": [
+  "+8 function hamming(a::UInt32, b::UInt32)::UInt32\n+8     return popcnt(xor(a, b))\n+8 end"
+ ]
+}

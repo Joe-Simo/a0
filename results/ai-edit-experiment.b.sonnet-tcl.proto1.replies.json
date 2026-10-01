@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/tcl/structured": [
+  "2   expr {$a <= $b}"
+ ],
+ "b-sumfrom-eight/tcl/structured": [
+  "3   for {set i 0} {$i < 8} {incr i} {"
+ ],
+ "b-rot8-constant/tcl/structured": [
+  "2   expr {(($x << 8) | ($x >> 24)) & 0xFFFFFFFF}"
+ ],
+ "b-onlyone-xor/tcl/structured": [
+  "2   expr {$a ^ $b}"
+ ],
+ "b-avgfloor-nowrap/tcl/structured": [
+  "2   expr {($a & $b) + (($a ^ $b) >> 1)}"
+ ],
+ "b-sumsq-array/tcl/structured": [
+  "4     set s [expr {($s + [lindex $a $i] * [lindex $a $i]) & 0xFFFFFFFF}]"
+ ],
+ "b-inrange-inclusive/tcl/structured": [
+  "2   expr {$x >= $lo && $x <= $hi}"
+ ],
+ "b-bounds-largest/tcl/structured": [
+  "7     if {$x > $hi} {set hi $x}"
+ ],
+ "b-checksum-poly/tcl/structured": [
+  "2   set h 7\n4     set h [expr {($h * 31 + [lindex $a $i]) & 0xFFFFFFFF}]"
+ ],
+ "b-norm2-dot/tcl/structured": [
+  "+7 proc norm2 {a} {\n+8   dot $a $a\n+9 }"
+ ],
+ "b-pctof-limit/tcl/structured": [
+  "+4 proc pctof {part whole} {\n+5   set p [expr {($part * 100) & 0xFFFFFFFF}]\n+6   set q [expr {$whole == 0 ? 4294967295 : $p / $whole}]\n+7   limit $q 0 100\n+8 }"
+ ],
+ "b-hamming-popcnt/tcl/structured": [
+  "+7 proc hamming {a b} {\n+8   popcnt [expr {$a ^ $b}]\n+9 }"
+ ]
+}

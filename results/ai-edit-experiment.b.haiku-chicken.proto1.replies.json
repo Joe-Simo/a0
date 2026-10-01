@@ -1,0 +1,45 @@
+{
+ "b-fits-inclusive/chicken/structured": [
+  "4 (<= a b)",
+  "3 (define (fits a b) (<= a b))"
+ ],
+ "b-sumfrom-eight/chicken/structured": [
+  "6 ((= i 8))"
+ ],
+ "b-rot8-constant/chicken/structured": [
+  "4 (bitwise-and (bitwise-ior (arithmetic-shift x 8) (arithmetic-shift x -24)) #xFFFFFFFF)",
+  "3 (define (rot8 x) (bitwise-and (bitwise-ior (arithmetic-shift x 8) (arithmetic-shift x -24)) #xFFFFFFFF))"
+ ],
+ "b-onlyone-xor/chicken/structured": [
+  "4 (bitwise-xor a b)",
+  "3 (define (onlyone a b) (bitwise-xor a b))"
+ ],
+ "b-avgfloor-nowrap/chicken/structured": [
+  "3 (bitwise-and (+ (bitwise-and a b) (arithmetic-shift (bitwise-xor a b) -1)) #xFFFFFFFF))",
+  "4   (bitwise-and (+ (bitwise-and a b) (arithmetic-shift (bitwise-xor a b) -1)) #xFFFFFFFF)"
+ ],
+ "b-sumsq-array/chicken/structured": [
+  "7 (set! s (bitwise-and (+ s (* (vector-ref a i) (vector-ref a i))) #xFFFFFFFF))",
+  "7       (set! s (bitwise-and (+ s (* (vector-ref a i) (vector-ref a i))) #xFFFFFFFF))"
+ ],
+ "b-inrange-inclusive/chicken/structured": [
+  "3 (and (>= x lo) (<= x hi))",
+  "3 (define (inrange x lo hi) (and (>= x lo) (<= x hi)))"
+ ],
+ "b-bounds-largest/chicken/structured": [
+  "9 (if (> x hi) (set! hi x))",
+  "9         (if (> x hi) (set! hi x))"
+ ],
+ "b-checksum-poly/chicken/structured": [
+  "4 (let ((h 7))\n7 (set! h (bitwise-and (+ (* h 31) (vector-ref a i)) #xFFFFFFFF)))"
+ ],
+ "b-norm2-dot/chicken/structured": [
+  "+8 (define (norm2 a)\n+9   (dot a a))"
+ ],
+ "b-pctof-limit/chicken/structured": [
+  "+5 (define (pctof part whole)\n+6   (limit (if (= whole 0)\n+7            #xFFFFFFFF\n+8            (quotient (bitwise-and (* part 100) #xFFFFFFFF) whole))\n+9          0 100))"
+ ],
+ "b-hamming-popcnt/chicken/structured": [
+  "+8 (define (hamming a b)\n+9   (popcnt (bitwise-xor a b)))"
+ ]
+}
