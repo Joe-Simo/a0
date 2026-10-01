@@ -57,7 +57,7 @@ ret b
 end
 ```
 
-The function computes `(p0 * p1 + p2) modulo 2^32`. Here the interface meaning is x, scale, offset. Positional references minimize repeated names in the experiment. Production interfaces must retain names, units, constraints, and intent where useful; v0.1 has no separate intent store and discards source comments during parsing.
+The function computes `(p0 * p1 + p2) modulo 2^32`. Here the interface meaning is x, scale, offset. Positional references minimize repeated names in the experiment. Production interfaces must retain names, units, constraints, and intent where useful; v0.1 has no separate intent store. Source `#` comments are kept on the line they belong to (leading whole-line comments and the trailing comment of each `use`, `fn`, instruction, `ret`, and `end` line; comments after the last `end` travel with the last function) so `a0 lsp` formatting, `a0 patch`, and MCP saves print them back in place (`formatSource`); they carry no meaning, so the canonical form (`formatFunction`/`formatProgram`), every revision and hash, views, and emitted code exclude them, and the self-hosted parser keeps ignoring them. A replaced instruction keeps its comments unless the edit line brings its own.
 
 ### Grammar
 

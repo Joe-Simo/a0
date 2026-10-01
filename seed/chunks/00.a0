@@ -1,0 +1,578 @@
+fn a0boottypes u32 bool (bool,u32,u32,u32,u32,u32,u32) (u32x128x4,u32,u32,u32,u32) u32x128 (u32x128x384,u32,u32,u32,u32) u32x128x128 u32x128x384 (u32x128x384,u32) (u32x128,io) (u32x128x128,io) io (u32x128x128,u32,io) u32x128x16 u32x128x32 u32x128x33 u32x128x45 u32x128x64 u32x128x65 u32x128x129 u32x128x256 u32x384 u32x384x65 (u32,u32,u32,u32,bool,bool,u32,u32,bool) (u32,bool,u32) (u32x128x128,u32x128x2,u32x128,u32x128,u32x128x2,u32x128x3,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x3 (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x2 (u32x128x129,u32) (u32x384x65,u32) (u32x384x65,u32,u32) (u32x64,u32,u32,bool,bool) u32x64 (u32x384x65,u32,u32,u32,bool,bool) (u32x384x65,u32,bool,u32) (u32,u32,bool) (u32x128x65,u32) (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32x128x45,u32x128x64,u32,u32) (u32x128x2,u32,u32) (u32x128x256,u32,u32) (u32x128x45,u32x128x5,u32x128x3,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32x128x45,u32x128x128,u32x128x256,u32x128x64,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,bool) u32x128x8 u32x128x24 (u32,u32,u32) (u32x128x65,u32x128x65) (u32x128x2,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32) (u32x128x65,u32x128x24,u32x64,u32,u32,u32,u32,u32,u32,u32) (u32x384x65,u32x128x65,u32x128x65,u32x128x65,u32x128x24,u32x128x24,u32x64,u32x128x8,u32,u32,u32,u32,u32,u32,u32) u32x10 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32) (u32x128,u32) (u32x128x64,u32) (io,u32,u32x128x8,u32) (u32,io) (u32x128x8,io) (u32x128x128,u32,u32x128x8,u32,bool,bool,io) -> u32
+ret 0
+end
+fn isalpha u32 -> bool
+lo ge p0 97
+hi le p0 122
+a and lo hi
+us eq p0 95
+r or a us
+ret r
+end
+fn isdigit u32 -> bool
+lo ge p0 48
+hi le p0 57
+r and lo hi
+ret r
+end
+fn isword u32 -> bool
+a call isalpha p0
+d call isdigit p0
+r or a d
+ret r
+end
+fn isspace u32 -> bool
+sp eq p0 32
+tb eq p0 9
+cr eq p0 13
+a or sp tb
+r or a cr
+ret r
+end
+fn lexstep u32 u32 u32 u32 u32 -> (bool,u32,u32,u32,u32,u32,u32)
+c mov p2
+isw call isword c
+isnl eq c 10
+isq eq c 34
+isbs eq c 92
+ishash eq c 35
+isminus eq c 45
+isgt eq c 62
+isat eq c 64
+issp call isspace c
+k1 eq p0 1
+k2 eq p0 2
+k3 eq p0 3
+k6 eq p0 6
+k8 eq p0 8
+k5 eq p0 5
+k7 eq p0 7
+k9 eq p0 9
+inw or k1 k2
+notw select isw false true
+wclose and inw notw
+escd eq p4 1
+notesc select escd false true
+sq and k3 isq
+sclose and sq notesc
+cclose and k8 isnl
+s57 or k5 k7
+single or s57 k9
+arrow and k6 isgt
+e0 or wclose sclose
+e1 or e0 single
+emit or e1 k6
+c0 or e0 cclose
+c1 or c0 single
+closed or c1 k6
+consumed or sclose arrow
+ek0 select k6 6 p0
+ek1 select arrow 4 ek0
+ek select sclose 3 ek1
+s1 add p1 1
+es select sclose s1 p1
+wl sub p3 p1
+sl sub wl 1
+l0 select arrow 2 1
+l1 select sclose sl l0
+el select wclose wl l1
+k0 eq p0 0
+none or k0 closed
+notcons select consumed false true
+free and none notcons
+isd call isdigit c
+wk select isd 2 1
+n0 select issp 0 9
+n1 select isat 7 n0
+n2 select isminus 6 n1
+n3 select isnl 5 n2
+n4 select ishash 8 n3
+n5 select isq 3 n4
+n6 select isw wk n5
+cont select closed 0 p0
+nk select free n6 cont
+ns select free p3 p1
+e2 select isbs 1 0
+e3 select escd 0 e2
+esc select k3 e3 0
+r rec emit ek es el nk ns esc
+ret r
+end
+fn lexbyte (u32x128x4,u32,u32,u32,u32) u32 u32x128 u32 -> (u32x128x4,u32,u32,u32,u32)
+w at p0 0
+f at p0 1
+pk at p0 2
+ps at p0 3
+esc at p0 4
+c get p2 p1
+i add p3 p1
+d call lexstep pk ps c i esc
+emit at d 0
+ek at d 1
+es at d 2
+el at d 3
+h0 shr f 7
+l0 and f 127
+g0 get w h0
+g0b set g0 l0 ek
+w1 set w h0 g0b
+f1 add f 1
+h1 shr f1 7
+l1 and f1 127
+g1 get w1 h1
+g1b set g1 l1 es
+w2 set w1 h1 g1b
+f2 add f 2
+h2 shr f2 7
+l2 and f2 127
+g2 get w2 h2
+g2b set g2 l2 el
+w3 set w2 h2 g2b
+f3 add f 3
+fn1 select emit f3 f
+nk at d 4
+ns at d 5
+ne at d 6
+r rec w3 fn1 nk ns ne
+ret r
+end
+fn lexpage (u32x128x384,u32,u32,u32,u32) u32 u32x128x128 u32 -> (u32x128x384,u32,u32,u32,u32)
+out at p0 0
+nout at p0 1
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+hi shr nout 7
+f0 and nout 127
+last get out hi
+w0 arr last last last last
+pk at p0 2
+ps at p0 3
+esc at p0 4
+s0 rec w0 f0 pk ps esc
+s fold lexbyte cnt s0 pg base
+w at s 0
+f at s 1
+c0 gt f 0
+i0 add hi 0
+v0 get w 0
+o0 get out i0
+x0 select c0 v0 o0
+out0 set out i0 x0
+c1 gt f 128
+i1 add hi 1
+v1 get w 1
+o1 get out0 i1
+x1 select c1 v1 o1
+out1 set out0 i1 x1
+c2 gt f 256
+i2 add hi 2
+v2 get w 2
+o2 get out1 i2
+x2 select c2 v2 o2
+out2 set out1 i2 x2
+c3 gt f 384
+i3 add hi 3
+v3 get w 3
+o3 get out2 i3
+x3 select c3 v3 o3
+out3 set out2 i3 x3
+lo sub nout f0
+nout2 add lo f
+nk at s 2
+ns at s 3
+ne at s 4
+r rec out3 nout2 nk ns ne
+ret r
+end
+fn tokput u32x128x384 u32 u32 bool -> u32x128x384
+h shr p1 7
+l and p1 127
+g get p0 h
+o get g l
+v select p3 p2 o
+g2 set g l v
+t set p0 h g2
+ret t
+end
+fn zpage -> u32x128
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn zsrc -> u32x128x128
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn ztok -> u32x128x384
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn lexsrc u32x128x128 u32 -> (u32x128x384,u32)
+zero call ztok
+n127 add p1 127
+np shr n127 7
+s0 rec zero 0 0 0 0
+s fold lexpage np s0 p0 p1
+out at s 0
+nout at s 1
+pk at s 2
+ps at s 3
+k1 eq pk 1
+k2 eq pk 2
+k5 eq pk 5
+k6 eq pk 6
+k7 eq pk 7
+k9 eq pk 9
+w or k1 k2
+o0 or k5 k6
+o1 or o0 k7
+one or o1 k9
+pend or w one
+wlen sub p1 ps
+len select w wlen 1
+a call tokput out nout pk pend
+n1 add nout 1
+b call tokput a n1 ps pend
+n2 add nout 2
+c call tokput b n2 len pend
+n3 add nout 3
+nf select pend n3 nout
+r rec c nf
+ret r
+end
+fn rbyte (u32x128,io) u32 -> (u32x128,io)
+buf at p0 0
+tk at p0 1
+r read tk
+v at r 0
+t at r 1
+nb set buf p1 v
+out rec nb t
+ret out
+end
+fn readpage (u32x128x128,io) u32 u32 u32x128 -> (u32x128x128,io)
+src at p0 0
+tk at p0 1
+base mul p1 128
+rest sub p2 base
+big gt rest 128
+cnt select big 128 rest
+s0 rec p3 tk
+s fold rbyte cnt s0
+pg at s 0
+t at s 1
+src2 set src p1 pg
+r rec src2 t
+ret r
+end
+fn readsrc io -> (u32x128x128,u32,io)
+r0 read p0
+n0 at r0 0
+t0 at r0 1
+big lt 16384 n0
+n select big 16384 n0
+z call zsrc
+zp call zpage
+n127 add n 127
+np shr n127 7
+s0 rec z t0
+s fold readpage np s0 n zp
+src at s 0
+t1 at s 1
+r rec src n t1
+ret r
+end
+fn z16 -> u32x128x16
+z call zpage
+t arr z z z z z z z z z z z z z z z z
+ret t
+end
+fn z32 -> u32x128x32
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z33 -> u32x128x33
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z45 -> u32x128x45
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z64 -> u32x128x64
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z65 -> u32x128x65
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z129 -> u32x128x129
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z256 -> u32x128x256
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn z384 -> u32x384
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn zty -> u32x384x65
+z call z384
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn kwcode u32 -> u32
+k1 eq p0 524
+r1 select k1 1 0
+k2 eq p0 27583
+r2 select k2 2 r1
+k3 eq p0 5999
+r3 select k3 3 r2
+k4 eq p0 7569
+r4 select k4 4 r3
+k5 eq p0 282700
+r5 select k5 5 r4
+k6 eq p0 10349683
+r6 select k6 6 r5
+k7 eq p0 15172680
+r7 select k7 7 r6
+ret r7
+end
+fn opcode u32 -> u32
+k1 eq p0 30686
+r1 select k1 1 0
+k2 eq p0 5625
+r2 select k2 2 r1
+k3 eq p0 3534
+r3 select k3 3 r2
+k4 eq p0 17218
+r4 select k4 4 r3
+k5 eq p0 5995
+r5 select k5 5 r4
+k6 eq p0 681
+r6 select k6 6 r5
+k7 eq p0 25221
+r7 select k7 7 r6
+k8 eq p0 16743
+r8 select k8 8 r7
+k9 eq p0 24957
+r9 select k9 9 r8
+k10 eq p0 30455
+r10 select k10 10 r9
+k11 eq p0 18000
+r11 select k11 11 r10
+k12 eq p0 634
+r12 select k12 12 r11
+k13 eq p0 199
+r13 select k13 13 r12
+k14 eq p0 752
+r14 select k14 14 r13
+k15 eq p0 197
+r15 select k15 15 r14
+k16 eq p0 747
+r16 select k16 16 r15
+k17 eq p0 192
+r17 select k17 17 r16
+k18 eq p0 1392771520
+r18 select k18 18 r17
+k19 eq p0 624304
+r19 select k19 19 r18
+k20 eq p0 219601
+r20 select k20 20 r19
+k21 eq p0 831550
+r21 select k21 21 r20
+k22 eq p0 25309
+r22 select k22 22 r21
+k23 eq p0 4310
+r23 select k23 23 r22
+k24 eq p0 1046121
+r24 select k24 24 r23
+k25 eq p0 27572
+r25 select k25 25 r24
+k26 eq p0 27584
+r26 select k26 26 r25
+k27 eq p0 741
+r27 select k27 27 r26
+k28 eq p0 28173
+r28 select k28 28 r27
+k29 eq p0 204184
+r29 select k29 29 r28
+k30 eq p0 10396875
+r30 select k30 30 r29
+k31 eq p0 990580
+r31 select k31 31 r30
+k32 eq p0 1126856
+r32 select k32 10 r31
+k33 eq p0 666021
+r33 select k33 11 r32
+ret r33
+end
+fn scanb (u32,u32,u32,u32,bool,bool,u32,u32,bool) u32 u32x128 u32x128 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool)
+key at p0 0
+pow at p0 1
+h at p0 2
+v at p0 3
+dig at p0 4
+wl at p0 5
+esc at p0 6
+dc at p0 7
+arr at p0 8
+q add p4 p1
+qh shr q 7
+ql and q 127
+isl eq qh 0
+cl get p2 ql
+ch get p3 ql
+c select isl cl ch
+gk add p6 p1
+isa ge c 97
+isu eq c 95
+ca sub c 96
+cd sub c 21
+code0 select isa ca cd
+code select isu 37 code0
+f6 lt gk 6
+t mul code pow
+key1 add key t
+key2 select f6 key1 key
+pow1 mul pow 37
+pow2 select f6 pow1 pow
+hx xor h c
+h2 mul hx 16777619
+first eq gk 0
+skip and p5 first
+isd call isdigit c
+v10 mul v 10
+vd add v10 c
+vd2 sub vd 48
+v2 select skip v vd2
+dig1 and dig isd
+dig2 select skip dig dig1
+isw call isword c
+wl2 and wl isw
+isbs eq c 92
+e1 eq esc 1
+dc1 add dc 1
+dc2 select e1 dc dc1
+esc1 select isbs 1 0
+esc2 select e1 0 esc1
+g1 eq gk 1
+g2 eq gk 2
+g3 eq gk 3
+w1 select g1 51 117
+w2 select g2 50 w1
+want select g3 120 w2
+f4 lt gk 4
+okc eq c want
+arr1 and arr okc
+arr2 select f4 arr1 arr
+r rec key2 pow2 h2 v2 dig2 wl2 esc2 dc2 arr2
+ret r
+end
+fn scanseg (u32,u32,u32,u32,bool,bool,u32,u32,bool) u32 u32x128x128 u32 u32 bool u32 -> (u32,u32,u32,u32,bool,bool,u32,u32,bool)
+s add p1 p6
+kb mul s 128
+pos add p3 kb
+ph shr pos 7
+off and pos 127
+lo get p2 ph
+ph1 add ph 1
+hi get p2 ph1
+rest sub p4 kb
+big gt rest 128
+cnt select big 128 rest
+r fold scanb cnt p0 lo hi off p5 kb
+ret r
+end
+fn cmpb bool u32 u32x128 u32x128 u32 u32x128 u32x128 u32 -> bool
+qa add p4 p1
+ha shr qa 7
+la and qa 127
+ia eq ha 0
+a0 get p2 la
+a1 get p3 la
+a select ia a0 a1
+qb add p7 p1
+hb shr qb 7
+lb and qb 127
+ib eq hb 0
+b0 get p5 lb
+b1 get p6 lb
+b select ib b0 b1
+e eq a b
+r and p0 e
+ret r
+end
+fn cmpseg bool u32 u32x128x128 u32 u32 u32 u32 -> bool
+s add p1 p6
+kb mul s 128
+pa add p3 kb
+ha shr pa 7
+oa and pa 127
+alo get p2 ha
+ha1 add ha 1
+ahi get p2 ha1
+pb add p4 kb
+hb shr pb 7
+ob and pb 127
+blo get p2 hb
+hb1 add hb 1
+bhi get p2 hb1
+rest sub p5 kb
+big gt rest 128
+cnt select big 128 rest
+r fold cmpb cnt p0 alo ahi oa blo bhi ob
+ret r
+end
+fn prstep (u32,bool,u32) u32 u32x128x128 u32x128x128 u32 u32 u32 -> (u32,bool,u32)
+slot at p0 0
+s1 add slot 1
+s and s1 8191
+a mul s 2
+ah shr a 7
+al and a 127
+pg get p2 ah
+x get pg al
+al1 add al 1
+y get pg al1
+e eq y 0
+ne select e false true
+ry and y 8191
+rs sub ry 1
+rlen shr y 13
+rst and x 16383
+hx and x 4294950912
+hy and p4 4294950912
+hm eq hx hy
+lm eq rlen p6
+c0 and ne hm
+cand and c0 lm
+n127 add p6 127
+nseg shr n127 7
+cn select cand nseg 0
+eq fold cmpseg cn true p3 p5 rst p6 0
+m and cand eq
+done or e m
+sym select m rs 4294967295
+r rec s done sym
+ret r
+end
+fn prok (u32,bool,u32) u32 u32x128x128 u32x128x128 u32 u32 u32 -> bool
+d at p0 1
+r select d false true
+ret r
+end

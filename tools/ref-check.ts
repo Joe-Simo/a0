@@ -72,9 +72,27 @@ export const ILL_TYPED: readonly [string, string][] = [
     'iterations',
     'fn step u32 u32 -> u32\nret add p0 p1\nend\nfn mid u32 u32 -> u32\na fold step 65536 p0\nret a\nend\nfn top u32 -> u32\na fold mid 4096 p0\nret a\nend\n',
   ],
+  [
+    // a variable count between two literal ones does not hide their product
+    'iterations-through-variable',
+    'fn step u32 u32 -> u32\nret add p0 p1\nend\nfn mid u32 u32 -> u32\na fold step 65536 p0\nret a\nend\nfn spin u32 u32 -> u32\na fold mid p0 p0\nret a\nend\nfn top u32 -> u32\na fold spin 4096 p0\nret a\nend\n',
+  ],
   ['call-arity', 'fn g u32 -> u32\nret p0\nend\nfn f u32 -> u32\na call g p0 p0\nret a\nend\n'],
   ['io-twice', 'fn f io -> io\na write p0 1\nb write p0 2\nret b\nend\n'],
   ['io-consumed-ret', 'fn f io -> io\na write p0 1\nret p0\nend\n'],
+  // `at` of the io field takes the token: the record may not be passed on, returned, have the
+  // field taken again, or have another field put
+  [
+    'io-taken-call',
+    'fn g (io,u32) -> (io,u32)\nret p0\nend\nfn f (io,u32) -> (io,u32)\nt at p0 0\nw write t 1\nr call g p0\nret r\nend\n',
+  ],
+  ['io-taken-ret', 'fn f (io,u32) -> (io,u32)\nt at p0 0\nw write t 1\nret p0\nend\n'],
+  ['io-taken-twice', 'fn f (io,u32) -> io\nt at p0 0\nu at p0 0\nw write t 1\nret u\nend\n'],
+  [
+    'io-taken-put-other',
+    'fn f (io,u32) -> (io,u32)\nt at p0 0\nw write t 1\nr put p0 1 5\nret r\nend\n',
+  ],
+  ['io-taken-node', 'fn f io -> (io,u32)\nr rec p0 3\nt at r 0\nw write t 1\nret r\nend\n'],
   ['io-two-params', 'fn f io io -> io\nret p0\nend\n'],
   ['io-in-array', 'fn f io -> io\na arr p0\nret p0\nend\n'],
   [
@@ -103,7 +121,10 @@ export interface CheckResult {
   readonly tlist: number[];
   /** Type index per node, in node-table order. */
   readonly nodeTypes: number[];
-  /** Saturated iteration bound per function (2^24+1 means "over the limit"). */
+  /**
+   * Saturated literal iteration bound per function: the largest product of literal trip counts
+   * along any nesting path, a variable count being a factor of 1 (2^24+1 means "over the limit").
+   */
   readonly fstat: number[];
 }
 
@@ -188,8 +209,9 @@ export function refCheck(
     ) as [number, number, number, number, number, number];
     const params = tlist.slice(firstParam, firstParam + nparams);
     const consumed = new Set<string>();
+    /** Records whose io field was taken by `at`: the field. */
+    const taken = new Map<string, number>();
     let lit = 1;
-    let stat = 1;
     const fail = (code: number, node: number): never => {
       throw new Fail(code, node);
     };
@@ -228,11 +250,26 @@ export function refCheck(
         const at: number[] = [];
         for (let k = 0; k < nargs; k += 1) at.push(operandType(...arg(k), i));
         for (let k = 0; k < nargs; k += 1) {
-          if (tio[at[k] as number] !== 1) continue;
-          if (op === OP.at && k === 0) continue;
+          const t = at[k] as number;
+          if (tio[t] !== 1) continue;
           const [kind, value] = arg(k);
           const key = kind === 2 ? `p${value}` : kind === 1 ? `n${value}` : '';
+          const [fk, field] = nargs > 1 ? arg(1) : [0, 0];
+          if (op === OP.at && k === 0) {
+            const takesIo =
+              types[t * 3] === 5 &&
+              fk === 3 &&
+              field < (types[t * 3 + 2] as number) &&
+              tio[tlist[(types[t * 3 + 1] as number) + field] as number] === 1;
+            if (!takesIo) continue;
+            if (consumed.has(key) || taken.has(key)) fail(2, i);
+            taken.set(key, field);
+            continue;
+          }
           if (consumed.has(key)) fail(2, i);
+          const out = taken.get(key);
+          if (out !== undefined && !(op === OP.put && k === 0 && fk === 3 && field === out))
+            fail(2, i);
           consumed.add(key);
         }
         const [a, b, c] = at as [number, number, number];
@@ -256,7 +293,6 @@ export function refCheck(
           if (nargs !== cn) fail(2, i);
           for (let k = 0; k < cn; k += 1) expect(at[k] as number, tlist[cfirst + k] as number, i);
           const cs = fstat[callee] as number;
-          stat = Math.max(stat, cs);
           lit = Math.max(lit, cs);
           rt = cres;
         } else if (op === OP.fold || op === OP.loop) {
@@ -290,9 +326,8 @@ export function refCheck(
           if (kind === 3) {
             const product = satMul(trips, cs, MAX_ITERATIONS);
             lit = Math.max(lit, product);
-            stat = Math.max(stat, product);
             if (lit > MAX_ITERATIONS) fail(2, i);
-          } else stat = MAX_ITERATIONS + 1;
+          } else lit = Math.max(lit, cs); // a variable count is bounded by fuel, not statically
           rt = stateT;
         } else if (op === OP.mov) rt = a;
         else if (ARITH.includes(op)) {
@@ -352,9 +387,9 @@ export function refCheck(
       const rv = retWord % 2 ** 28;
       const rt = operandType(rk, rv, count);
       expect(rt, result, count);
-      if (tio[rt] === 1 && consumed.has(rk === 2 ? `p${rv}` : rk === 1 ? `n${rv}` : ''))
-        fail(2, count);
-      fstat[f] = stat;
+      const rkey = rk === 2 ? `p${rv}` : rk === 1 ? `n${rv}` : '';
+      if (tio[rt] === 1 && (consumed.has(rkey) || taken.has(rkey))) fail(2, count);
+      fstat[f] = lit;
     } catch (e) {
       if (!(e instanceof Fail)) throw e;
       return { code: e.code, fn: f, node: e.node, types, tlist, nodeTypes, fstat };

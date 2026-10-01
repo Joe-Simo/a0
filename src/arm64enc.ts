@@ -322,13 +322,17 @@ function pair(mn: string, xs: Item[]): number {
   const load = mn === 'ldp';
   const r1 = xs[0];
   const r2 = xs[1];
-  if (r1?.k !== 'R' || r2?.k !== 'R' || r1.cls !== r2.cls) fail(`${mn}: bad registers`);
-  if (r1.cls !== 'x' && r1.cls !== 'w' && r1.cls !== 'q') fail(`${mn}: bad registers`);
+  // The zero register is register 31 in Rt/Rt2 (stp wzr, wzr stores two zero words).
+  const cls = (r: Item | undefined): RegClass | undefined =>
+    r?.k !== 'R' ? undefined : r.cls === 'wzr' ? 'w' : r.cls === 'xzr' ? 'x' : r.cls;
+  if (r1?.k !== 'R' || r2?.k !== 'R' || cls(r1) !== cls(r2)) fail(`${mn}: bad registers`);
+  const c1 = cls(r1);
+  if (c1 !== 'x' && c1 !== 'w' && c1 !== 'q') fail(`${mn}: bad registers`);
   const rn = gp(xs[3], mn);
   if (!isX(rn) || rn.cls === 'xzr') fail(`${mn}: bad base register`);
-  const scale = r1.cls === 'q' ? 4 : r1.cls === 'x' ? 3 : 2;
-  const opc = r1.cls === 'w' ? 0 : 2;
-  const v = r1.cls === 'q' ? 1 : 0;
+  const scale = c1 === 'q' ? 4 : c1 === 'x' ? 3 : 2;
+  const opc = c1 === 'w' ? 0 : 2;
+  const v = c1 === 'q' ? 1 : 0;
   const s = shape(xs);
   let mode: number;
   let off: bigint;
@@ -406,14 +410,22 @@ function shiftCode(op: string): number {
   return c;
 }
 
-/** add sub adds subs; cmp / cmn are subs / adds with the zero register as destination. */
+/**
+ * add sub adds subs; cmp / cmn are subs / adds with the zero register as destination; neg / negs
+ * are sub / subs with the zero register as first source (shifted-register form only).
+ */
 function addSub(mn: string, xs0: Item[]): Encoded {
-  let op = mn.startsWith('sub') || mn === 'cmp' ? 1 : 0;
-  const flags = mn === 'adds' || mn === 'subs' || mn === 'cmp' || mn === 'cmn' ? 1 : 0;
+  let op = mn.startsWith('sub') || mn === 'cmp' || mn.startsWith('neg') ? 1 : 0;
+  const flags =
+    mn === 'adds' || mn === 'subs' || mn === 'cmp' || mn === 'cmn' || mn === 'negs' ? 1 : 0;
+  const zr = (): Item => ({ k: 'R', cls: sf(gp(xs0[0], mn)) === 1 ? 'xzr' : 'wzr', n: 31 }) as Item;
+  if ((mn === 'neg' || mn === 'negs') && xs0[1]?.k !== 'R') fail(`${mn}: needs a register`);
   const xs =
     mn === 'cmp' || mn === 'cmn'
-      ? [{ k: 'R', cls: sf(gp(xs0[0], mn)) === 1 ? 'xzr' : 'wzr', n: 31 } as Item, ...xs0]
-      : xs0;
+      ? [zr(), ...xs0]
+      : mn === 'neg' || mn === 'negs'
+        ? [xs0[0] as Item, zr(), ...xs0.slice(1)]
+        : xs0;
   const rd = gp(xs[0], mn);
   const rn = gp(xs[1], mn);
   sameWidth(rd, rn);
@@ -531,12 +543,23 @@ function shift(mn: string, xs: Item[]): number {
   if (s === 'RRR') {
     const rm = gp(xs[2], mn);
     sameWidth(rd, rm);
-    const op2 = ({ lsl: 0, lsr: 1, asr: 2 } as Record<string, number>)[mn] as number;
+    const op2 = ({ lsl: 0, lsr: 1, asr: 2, ror: 3 } as Record<string, number>)[mn] as number;
     return ((sf(rd) << 31) | 0x1ac02000 | (rm.n << 16) | (op2 << 10) | (rn.n << 5) | rd.n) >>> 0;
   }
   if (s === 'RRI') {
     const width = isX(rd) ? 64 : 32;
     const a = inRange(imm(xs[2]), 0n, BigInt(width - 1), `${mn} amount`);
+    // ror by an immediate is extr Rd, Rn, Rn, #a.
+    if (mn === 'ror')
+      return (
+        ((isX(rd) ? (1 << 31) | (1 << 22) : 0) |
+          0x13800000 |
+          (rn.n << 16) |
+          (a << 10) |
+          (rn.n << 5) |
+          rd.n) >>>
+        0
+      );
     const base = mn === 'asr' ? 0x13000000 : 0x53000000;
     const n = isX(rd) ? (1 << 31) | (1 << 22) : 0;
     const [immr, imms] = mn === 'lsl' ? [(width - a) % width, width - 1 - a] : [a, width - 1];
@@ -637,6 +660,8 @@ function encode(mn: string, xs: Item[]): Encoded {
     case 'subs':
     case 'cmp':
     case 'cmn':
+    case 'neg':
+    case 'negs':
       return addSub(mn, xs);
     case 'and':
     case 'orr':
@@ -647,6 +672,7 @@ function encode(mn: string, xs: Item[]): Encoded {
     case 'lsl':
     case 'lsr':
     case 'asr':
+    case 'ror':
       return { word: shift(mn, xs) };
     case 'mul':
     case 'madd':

@@ -1,0 +1,17 @@
+{
+  "description": "After an Edit or Write of a *.a0 file, run a0 check and hand the exact diagnostic and fix back to the agent",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${A0_BIN:-a0}\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

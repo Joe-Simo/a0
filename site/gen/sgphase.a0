@@ -1,0 +1,113 @@
+# Site generator, module 7: phase B, the JSON files of the template's `f` lines after the text
+# files, each streamed into the data table by its role (sgjson.a0); the files of the roles axes, hw
+# and tokfx (lang-axes.json, hardware.json, tokens.json) go into a second table of their own.
+use "sgjson.a0"
+
+# hash of field 3 of the line at p1 (the key of an `m` line)
+fn field3 u32x128x512 u32 -> u32
+a add p1 2
+e call fieldend p0 a
+b add e 1
+e2 call fieldend p0 b
+n sub e2 b
+r call shash p0 b n
+ret r
+end
+# the key of `m` line p1 appended to the list at p3 (count p4) when the map is word p5 (fold body)
+fn mkey u32x128x64 u32 u32x128 u32x128x512 u32 u32 u32 -> u32x128x64
+pos get p2 p1
+nm call field2 p3 pos
+w call whash p3 p6
+is eq nm w
+c select is 1 0
+k call field3 p3 pos
+n call g p0 p5
+d add p4 n
+s1 fold wr64 c p0 d k
+n1 add n 1
+s2 fold wr64 c s1 p5 n1
+ret s2
+end
+fn role u32x128x512 u32 -> u32
+ex call whash p0 61
+co call whash p0 62
+eq call whash p0 63
+ed call whash p0 64
+pa call whash p0 65
+ax call whash p0 226
+hw call whash p0 293
+tk call whash p0 294
+a eq p1 ex
+b eq p1 co
+c eq p1 eq
+d eq p1 ed
+e eq p1 pa
+f eq p1 ax
+g eq p1 hw
+h eq p1 tk
+r000 select h 8 0
+r001 select g 7 r000
+r00 select f 6 r001
+r0 select e 4 r00
+r1 select d 3 r0
+r2 select c 5 r1
+r3 select b 2 r2
+r select a 1 r3
+ret r
+end
+# the next JSON file read into one table: fold body over (table, io)
+fn jf1 (u32x128x64,io) u32 u32 u32 u32x128x512 -> (u32x128x64,io)
+pa at p0 0
+t at p0 1
+r call jfile pa t p2 p3 p4
+ret r
+end
+# one JSON file (fold body over the remaining `f` lines; state: table, axes table, io, next cost
+# slot); a file with a role of 6 or more (axes, hw, tokfx) goes into the axes table, any other into the first
+fn pbstep (u32x128x64,u32x128x64,io,u32) u32 u32x128 u32 u32x128x512 -> (u32x128x64,u32x128x64,io,u32)
+pa at p0 0
+px at p0 1
+t at p0 2
+slot at p0 3
+i add p3 p1
+pos get p2 i
+h call field2 p4 pos
+code call role p4 h
+isx ge code 6
+cn select isx 0 1
+cx select isx 1 0
+sa rec pa t
+ra fold jf1 cn sa code slot p4
+pa2 at ra 0
+t2 at ra 1
+sx rec px t2
+rx fold jf1 cx sx code slot p4
+px2 at rx 0
+t3 at rx 1
+isc eq code 2
+s1 add slot 1
+sn select isc s1 slot
+o rec pa2 px2 t3 sn
+ret o
+end
+# phase B: the data table and the axes table (after the first p2 `f` lines were read by phase A)
+fn phaseb u32x128x512 io u32 -> (u32x128x64,u32x128x64,io)
+z call z64
+zx call z64
+ml call lines p0 109
+l at ml 0
+c at ml 1
+s1 fold mkey c z l p0 8100 8108 62
+s2 fold mkey c s1 l p0 8110 8119 65
+fl call lines p0 102
+f at fl 0
+fc at fl 1
+n sub fc p2
+st rec s2 zx p1 0
+r fold pbstep n st f p2 p0
+pa at r 0
+px at r 1
+t at r 2
+o rec pa px t
+ret o
+end

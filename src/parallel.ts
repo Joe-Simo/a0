@@ -772,7 +772,7 @@ ${plan.kind === 'reduce' ? '    uint32_t r;\n' : ''}    if (a0gpu_run(msl, prm, 
       : `a0_${body.name}(${['acc', 'i', ...xs].join(', ')})`;
     helper = `typedef struct { uint32_t n; ${fields.join(' ')} } ${ctxType};
 static void a0pw_${name}(const void *v, uint32_t lo, uint32_t hi, uint32_t *out) {
-  const ${ctxType} *c = (const ${ctxType} *)v;
+  const ${ctxType} *c = (const ${ctxType} *)v;${extraTypes.length === 0 ? '\n  (void)c;' : ''}
   uint32_t acc = ${id};
   for (uint32_t i = lo; i < hi; i++) acc = ${step};
   *out = acc;

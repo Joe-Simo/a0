@@ -201,7 +201,12 @@ export function replaceNodes(
         });
       nodes.splice(anchor + 1, 0, op.node);
     } else if (at >= 0) {
-      nodes[at] = op.node;
+      // A replaced line keeps its comments unless the edit line brings its own.
+      const kept = (nodes[at] as Node).comments;
+      nodes[at] =
+        op.node.comments === undefined && kept !== undefined
+          ? { ...op.node, comments: kept }
+          : op.node;
     } else {
       nodes.push(op.node);
     }
@@ -482,6 +487,86 @@ export function lineEditBlocks(
     });
     return [src[0] ?? '', ...out, 'end'].join('\n');
   });
+}
+
+/**
+ * Deletion-based minimal failing subset: drop items one at a time, keeping each drop after
+ * which `fails` still holds, and repeat passes until one pass drops nothing (the result is
+ * then 1-minimal: removing any single item makes `fails` false). `fails(items)` is assumed
+ * true. At most `budget` calls to `fails`; when the budget runs out first, `minimal` is false
+ * and `core` is the smallest failing subset found so far.
+ */
+export function minimalFailingSubset<T>(
+  items: readonly T[],
+  fails: (subset: readonly T[]) => boolean,
+  budget: number,
+): { core: T[]; minimal: boolean; checks: number } {
+  let core = [...items];
+  let checks = 0;
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let i = 0; i < core.length; ) {
+      if (checks >= budget) return { core, minimal: false, checks };
+      const candidate = [...core.slice(0, i), ...core.slice(i + 1)];
+      checks += 1;
+      if (fails(candidate)) {
+        core = candidate;
+        changed = true;
+      } else i += 1;
+    }
+  }
+  return { core, minimal: true, checks };
+}
+
+/** Default number of validations a rejection diagnosis may run. */
+export const DIAGNOSE_BUDGET = 64;
+
+export interface RejectedLine {
+  /** 1-based line number in the reply as sent. */
+  readonly line: number;
+  readonly text: string;
+}
+
+/** Why a reply was rejected, narrowed to the lines that cause the failure. */
+export interface Rejection {
+  readonly error: A0Error;
+  /** The smallest set of reply lines found that still fails with the same diagnostic. */
+  readonly lines: readonly RejectedLine[];
+  /** Candidate lines in the reply (non-blank, not handle lines). */
+  readonly of: number;
+  /** True when the set is 1-minimal (the budget sufficed). */
+  readonly minimal: boolean;
+  /** True when the reply without these lines is accepted. */
+  readonly restValid: boolean;
+  /** Validations run. */
+  readonly checks: number;
+}
+
+const LINE_PREFIX = /^line [0-9]+: /;
+
+/**
+ * Same failure: code, message and fix, ignoring the line prefix (line numbers move as lines
+ * drop). The fix names the offending operands, so a second line with the same kind of error
+ * does not stand in for the first.
+ */
+function failureKey(e: A0Error): string {
+  return `${e.code} ${e.message.replace(LINE_PREFIX, '')} ${e.fix ?? ''}`;
+}
+
+/** A rejection narrowed to its lines, each with the diagnostic's fix, as sent back to a model. */
+export function formatRejection(r: Rejection): string {
+  const e = r.error;
+  const hint = e.fix ?? e.message.replace(LINE_PREFIX, '');
+  const head =
+    r.lines.length === 1
+      ? `This line of ${r.of} causes the rejection`
+      : `These ${r.lines.length} of ${r.of} lines are the smallest part of the reply that still fails this way`;
+  const rest = r.restValid
+    ? 'the rest of the reply is valid on its own; keep it'
+    : 'no other line is involved in this error';
+  const budget = r.minimal ? '' : ' (check budget reached; the set may not be minimal)';
+  const listed = r.lines.map((l) => `line ${l.line}: ${l.text}`).join('\n');
+  return `${head}; ${rest}${budget}:\n${listed}\nfix: ${hint}`;
 }
 
 interface OpenHandle {
@@ -787,6 +872,68 @@ export class EditSession {
       if (fn === undefined) this.#handles.delete(handle);
       else this.#handles.set(handle, { ...bound, revision: revision(fn) });
     }
+  }
+
+  /**
+   * Validate `text` exactly as `apply` would, without committing: the rejection, or
+   * undefined when the reply would be accepted.
+   */
+  #attempt(text: string): A0Error | undefined {
+    const savedProgram = this.#program;
+    const savedHandles = new Map(this.#handles);
+    try {
+      this.apply(text);
+      return undefined;
+    } catch (e) {
+      if (e instanceof A0Error) return e;
+      throw e;
+    } finally {
+      this.#program = savedProgram;
+      this.#handles.clear();
+      for (const [h, b] of savedHandles) this.#handles.set(h, b);
+    }
+  }
+
+  /**
+   * Explain a rejected reply: the minimal subset of its lines (handle lines stay as context)
+   * that still fails with the same diagnostic, found by deletion within `budget` validations.
+   * Nothing is committed. Undefined when the reply would be accepted.
+   */
+  diagnose(text: string, budget = DIAGNOSE_BUDGET): Rejection | undefined {
+    const error = this.#attempt(text);
+    if (error === undefined) return undefined;
+    const lines = text.split(/\r?\n/);
+    const items = lines
+      .map((l, i) => [stripComment(l).trim(), i] as const)
+      .filter(([t]) => t !== '' && !HANDLE.test(t) && !PROGRAM_HANDLE.test(t))
+      .map(([, i]) => i);
+    const itemSet = new Set(items);
+    const keep = (subset: readonly number[]): string => {
+      const chosen = new Set(subset);
+      return lines.filter((_, i) => !itemSet.has(i) || chosen.has(i)).join('\n');
+    };
+    const key = failureKey(error);
+    const { core, minimal, checks } = minimalFailingSubset(
+      items,
+      (subset) => {
+        const e = this.#attempt(keep(subset));
+        return e !== undefined && failureKey(e) === key;
+      },
+      budget,
+    );
+    const inCore = new Set(core);
+    const rest = items.filter((i) => !inCore.has(i));
+    // Only a rest that still carries an edit (not just a closing `end`) counts as valid work.
+    const carries = rest.some((i) => stripComment(lines[i] ?? '').trim() !== 'end');
+    const restValid = carries && this.#attempt(keep(rest)) === undefined;
+    return {
+      error,
+      lines: core.map((i) => ({ line: i + 1, text: (lines[i] ?? '').trim() })),
+      of: items.length,
+      minimal,
+      restValid,
+      checks: checks + (carries ? 2 : 1),
+    };
   }
 
   close(handle: string): boolean {

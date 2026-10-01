@@ -11,6 +11,7 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { pathToFileURL } from 'node:url';
 import { C_IO_INPUT_CAPACITY, C_IO_OUTPUT_CAPACITY, compile } from '../src/backends.js';
 import {
   type Func,
@@ -324,7 +325,8 @@ async function main(): Promise<void> {
   process.exit(reports.every((r) => r.native_c_clang.status === 'passed') ? 0 : 1);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href)
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });

@@ -135,18 +135,22 @@ r fold cdecst2 n p0 p2
 ret r
 end
 # an operand (kind value): node, parameter, u32 literal, bool literal, 5 the state `(*p0)` of
-# an owned or ref variant
+# an owned or ref variant, 6 the value `(*n<j>)` a borrowed read of node j points at
 fn cwop io u32 u32 -> io
 k1 eq p1 1
 k2 eq p1 2
 k3 eq p1 3
 k4 eq p1 4
+k6 eq p1 6
 # sc a p0 k1 "n"
 a call cws6c p0 k1 110 0 0 0 0 0
 # sc b a k2 "p"
-b call cws6c a k2 112 0 0 0 0 0
+b0 call cws6c a k2 112 0 0 0 0 0
+# sc b b0 k6 "(*n"
+b call cws6c b0 k6 7219752 0 0 0 0 0
 x or k1 k2
-num or x k3
+x6 or x k6
+num or x6 k3
 c call cwdecc b num p2
 # sc d c k3 "u"
 d call cws6c c k3 117 0 0 0 0 0
@@ -161,7 +165,9 @@ f call cws6c e fa 1936482662 101 0 0 0 0
 k5 eq p1 5
 # sc f0 f k5 "(*p0)"
 f0 call cws6c f k5 812657192 41 0 0 0 0
-ret f0
+# sc f1 f0 k6 ")"
+f1 call cws6c f0 k6 41 0 0 0 0 0
+ret f1
 end
 fn cwopst io u32 u32 u32 -> io
 r call cwop p0 p2 p3
@@ -274,7 +280,7 @@ r select b p0 p1
 ret r
 end
 # the storage of operand (p0 p1) in variant p3 with the roots p2 (kind * 2^28 + value: 1 node,
-# 2 parameter, 5 `(*p0)`; node j at page j>>7): a node resolves to the root it aliases, p0 of
+# 2 parameter, 5 `(*p0)`, 6 `(*n<j>)`; node j at page j>>7): a node resolves to the root it aliases, p0 of
 # the owned and ref variants is `(*p0)`, anything else is itself
 fn cres u32 u32 u32x128x24 u32 -> (u32,u32)
 isn eq p0 1
@@ -533,18 +539,31 @@ sr get srg srl
 sk shr sr 28
 sv and sr 268435455
 sw add 268435456 p1
-al ne sr sw
-nal select al false true
-nc rec p1 q0 u0 q1 u1 q2 u2 t l0 l1 fa na cs cl ps pl sk sv
 g4 eq tag 4
 g5 eq tag 5
 agg or g4 g5
 nagg select agg false true
+# a borrowed read (a get or at of an aggregate) declares `const T *const n<j>` (its root is
+# `(*n<j>)`, see crt)
+rg25 eq op 25
+rg27 eq op 27
+rga or rg25 rg27
+bor and rga agg
+nbor select bor false true
+al0 ne sr sw
+al and al0 nbor
+nal select al false true
+nc rec p1 q0 u0 q1 u1 q2 u2 t l0 l1 fa na cs cl ps pl sk sv
 # s w0 p0 "  "
 w0 call cws6 p0 8224 0 0 0 0 0
-w1 call cwtyc w0 nal tag t
-# sc w2 w1 nal " n"
-w2 call cws6c w1 nal 28192 0 0 0 0 0
+# sc wb w0 bor "const "
+wb call cws6c w0 bor 1936617315 8308 0 0 0 0
+w1 call cwtyc wb nal tag t
+nnm and nal nbor
+# sc w2 wb nnm " n"
+w2a call cws6c w1 nnm 28192 0 0 0 0 0
+# sc w2 w2a bor " *const n"
+w2 call cws6c w2a bor 1868769824 544502638 110 0 0 0
 w3 call cwdecc w2 nal p1
 is1 eq op 1
 is2 eq op 2
@@ -702,15 +721,23 @@ f22 call cwlist e22 lst nc p3 3 0 p11 p12
 # t d23 f22 is23 nc ";"
 d23 call cwt f22 is23 nc 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 e23 call cwlist d23 is23 nc p3 4 0 p11 p12
-# t d25 e23 is25 nc " = " A ".e[" B " % " L0 "u];"
-d25 call cwt e23 is25 nc 2112800 0 0 0 0 0 1 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 3890549 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+v25 and is25 nbor
+b25 and is25 bor
+# t c25 e23 v25 nc " = " A ".e[" B " % " L0 "u];"
+c25 call cwt e23 v25 nc 2112800 0 0 0 0 0 1 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 3890549 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# t d25 c25 b25 nc " = &" A ".e[" B " % " L0 "u];"
+d25 call cwt c25 b25 nc 639647008 0 0 0 0 0 1 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 3890549 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 s26n and is26 nal
 # t d26 d25 s26n " = " A "; "
 d26 call cwt d25 s26n nc 2112800 0 0 0 0 0 1 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # t e26 d26 is26 S ".e[" B " % " L0 "u] = " C ";"
 e26 call cwt d26 is26 nc 0 0 0 0 0 0 4 5989678 0 0 0 0 0 2 2106656 0 0 0 0 0 5 1025531253 32 0 0 0 0 3 59 0 0 0 0 0 0 0 0 0 0 0 0
-# t d27 e26 is27 nc " = " A ".f" V1 ";"
-d27 call cwt e26 is27 nc 2112800 0 0 0 0 0 1 26158 0 0 0 0 0 7 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+v27 and is27 nbor
+b27 and is27 bor
+# t c27 e26 v27 nc " = " A ".f" V1 ";"
+c27 call cwt e26 v27 nc 2112800 0 0 0 0 0 1 26158 0 0 0 0 0 7 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# t d27 c27 b27 nc " = &" A ".f" V1 ";"
+d27 call cwt c27 b27 nc 639647008 0 0 0 0 0 1 26158 0 0 0 0 0 7 59 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 s28n and is28 nal
 # t d28 d27 s28n " = " A "; "
 d28 call cwt d27 s28n nc 2112800 0 0 0 0 0 1 8251 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
@@ -850,11 +877,152 @@ n select has np 0
 r fold cuspg n p0 p3 fa hi lp p1 ga
 ret r
 end
+# Borrowed reads (src/core.ts `borrowLive`): a get or at of an aggregate is a pointer into its
+# container, so the container is updated in place only when no borrow of it is read after the
+# update. Borrow table per function, paged like the use statistics: a borrow node j holds
+# 2^31 + its container's slot (node v, parameter v at 4096 + v; a borrow of a borrow has the
+# first one's container), a container 1 + the last node that reads one of its borrows (65535
+# when one is returned).
+# operand p3 + p1 (in args page p2) of node p4: a borrow read there marks its container
+fn cbra u32x128x64 u32 u32x128 u32 u32 -> u32x128x64
+oi add p3 p1
+xw mul oi 2
+x2 and xw 127
+kd get p2 x2
+x3 add x2 1
+vd get p2 x3
+isn eq kd 1
+sp shr vd 7
+sl and vd 127
+pg get p0 sp
+w get pg sl
+fl shr w 31
+isb eq fl 1
+mk and isn isb
+c and w 2147483647
+cp shr c 7
+cl and c 127
+cg get p0 cp
+j1 add p4 1
+cw get cg cl
+nw select mk j1 cw
+cg2 set cg cl nw
+r set p0 cp cg2
+ret r
+end
+# args page p5 + p1 (64 operands) of the operands [p3, p4) of node p6
+fn cbrpg u32x128x64 u32 u32x128x512 u32 u32 u32 u32 -> u32x128x64
+pi add p5 p1
+pg get p2 pi
+b mul pi 64
+e add b 64
+lo call umax p3 b
+hi call cumin p4 e
+cnt sub hi lo
+r fold cbra cnt p0 pg lo p6
+ret r
+end
+# node p1 of the function whose first node is p6 (tables nodes args ntys types): its borrow
+# reads, then whether it is a borrow itself
+fn cbrn u32x128x64 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32 -> u32x128x64
+g add p6 p1
+b6 mul g 6
+b1 add b6 1
+b1p shr b1 7
+b1g get p2 b1p
+b1l and b1 127
+op get b1g b1l
+b2 add b6 2
+b2p shr b2 7
+b2g get p2 b2p
+b2l and b2 127
+na get b2g b2l
+b3 add b6 3
+b3p shr b3 7
+b3g get p2 b3p
+b3l and b3 127
+fa get b3g b3l
+hi add fa na
+has lt fa hi
+lp shr fa 6
+h1 sub hi 1
+hp shr h1 6
+d sub hp lp
+np add d 1
+n select has np 0
+s1 fold cbrpg n p0 p3 fa hi lp p1
+gp shr g 7
+gpg get p4 gp
+gl and g 127
+t get gpg gl
+tp shr t 7
+tpg get p5 tp
+tl and t 127
+t3 mul tl 3
+tag get tpg t3
+g4 eq tag 4
+g5 eq tag 5
+agg or g4 g5
+isg eq op 25
+isa eq op 27
+ga or isg isa
+bor and ga agg
+x0 mul fa 2
+x0p shr x0 7
+x0g get p3 x0p
+x0l and x0 127
+k0 get x0g x0l
+x1 add x0l 1
+v0 get x0g x1
+isp eq k0 2
+q add v0 4096
+slot select isp q v0
+sp shr slot 7
+sl and slot 127
+spg get s1 sp
+sw get spg sl
+fl shr sw 31
+isb eq fl 1
+isn eq k0 1
+bb and isn isb
+cb and sw 2147483647
+own select bb cb slot
+tw add 2147483648 own
+jp shr p1 7
+jl and p1 127
+jg get s1 jp
+jg2 set jg jl tw
+s2 set s1 jp jg2
+r select bor s2 s1
+ret r
+end
+# the ret operand (kind p1, value p2): a returned borrow keeps its container shared
+fn cbrret u32x128x64 u32 u32 -> u32x128x64
+isn eq p1 1
+sp shr p2 7
+sl and p2 127
+pg get p0 sp
+w get pg sl
+fl shr w 31
+isb eq fl 1
+mk and isn isb
+c and w 2147483647
+cp shr c 7
+cl and c 127
+cg get p0 cp
+cw get cg cl
+nw select mk 65535 cw
+cg2 set cg cl nw
+r set p0 cp cg2
+ret r
+end
 # Roots, per node: its own storage `n<j>` (2^28 + j) or, when it updates its target in place,
 # the target's root. Targets: operand 0 of set/put, the initial state (operand 1) of a
-# fold/loop with aggregate state. Node p1 of the function with first node p7, variant p8 (0
-# value, 1 owned, 2 ref), use statistics p6, ret operand (p9 p10); tables nodes args ntys types.
-fn crt u32x128x24 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x64 u32 u32 u32 u32 -> u32x128x24
+# fold/loop with aggregate state, when no borrow of the target is read after the update (the
+# borrow table p11; a set/put may read one itself). A borrowed read's root is `(*n<j>)`
+# (6 * 2^28 + j). Node p1 of the function with first node p7, variant p8 (0 value, 1 owned,
+# 2 ref), use statistics p6, ret operand (p9 p10); tables nodes args ntys types.
+fn crt u32x128x24 u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x64 u32 u32 u32 u32 u32x128x64 -> u32x128x24
 g add p7 p1
 b6 mul g 6
 b1 add b6 1
@@ -935,11 +1103,17 @@ lu and w 65535
 c1 eq nb 1
 j1 add p1 1
 c2 eq lu j1
+bsg get p11 usp
+lb get bsg usl
+bst le lb j1
+bfl le lb p1
+bok select isst bst bfl
 cand or isst isfl
 i1 and cand okk
 i2 and i1 nrs
 i3 and i2 c1
-inp and i3 c2
+i4 and i3 c2
+inp and i4 bok
 rp shr vd 7
 rg get p0 rp
 rl and vd 127
@@ -950,7 +1124,13 @@ pw add 536870912 vd
 pp select dp 1342177280 pw
 res select isn rr pp
 self add 268435456 p1
-nw select inp res self
+g25 eq op 25
+g27 eq op 27
+gat or g25 g27
+bor and gat agg
+bself add 1610612736 p1
+nw0 select inp res self
+nw select bor bself nw0
 op1 shr p1 7
 opg get p0 op1
 ol and p1 127
@@ -960,8 +1140,8 @@ ret r
 end
 # variant p11 (0 value `a0_f`, 1 owned `void a0o_f(T *p0, ...)` updating the state through
 # the pointer, 2 ref `bool a0r_f(const T *p0, ...)`) of function p9 with use statistics p10
-# (tables p1-p8: nodes args ntys types tlist pool fnm fns)
-fn cvar io u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 -> io
+# and borrow table p12 (tables p1-p8: nodes args ntys types tlist pool fnm fns)
+fn cvar io u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
 b mul p9 7
 np call cfw p8 b 1
 fp call cfw p8 b 2
@@ -1023,7 +1203,7 @@ j call cws6 h1 175841321 0 0 0 0 0
 rk shr rw 28
 rv and rw 268435455
 z24 call z24
-ro fold crt cnt z24 p1 p2 p3 p4 p10 fn0 p11 rk rv
+ro fold crt cnt z24 p1 p2 p3 p4 p10 fn0 p11 rk rv p12
 k fold cnode cnt j p1 p2 p3 p4 p5 p6 p7 fn0 fp ro p11
 rr call cres rk rv ro p11
 rrk at rr 0
@@ -1044,8 +1224,8 @@ m1 call cws6c m emit 2619 0 0 0 0 0
 o call cws6 m1 658045 0 0 0 0 0
 ret o
 end
-fn cvarst io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 -> io
-r call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12
+fn cvarst io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32x128x45 u32 u32x128x64 u32 u32x128x64 -> io
+r call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13
 ret r
 end
 # function p10 + p1 (tables: nodes args ntys types tlist pool fnm fns): the value variant,
@@ -1062,7 +1242,12 @@ fn0 call cfw p9 b 4
 cnt call cfw p9 b 5
 z64 call z64
 us fold cusn cnt z64 p2 p3 fn0
-a call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 f us 0
+bs0 fold cbrn cnt z64 p2 p3 p4 p5 fn0
+rw call cfw p9 b 6
+rk shr rw 28
+rv and rw 268435455
+bs call cbrret bs0 rk rv
+a call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 f us 0 bs
 tq0p shr fp 7
 tq0g get p6 tq0p
 tq0l and fp 127
@@ -1089,9 +1274,9 @@ sb eq rt 1
 ho and sh so
 hr and sh sb
 no select ho 1 0
-bo fold cvarst no a p2 p3 p4 p5 p6 p7 p8 p9 f us 1
+bo fold cvarst no a p2 p3 p4 p5 p6 p7 p8 p9 f us 1 bs
 nr select hr 1 0
-br fold cvarst nr bo p2 p3 p4 p5 p6 p7 p8 p9 f us 2
+br fold cvarst nr bo p2 p3 p4 p5 p6 p7 p8 p9 f us 2 bs
 ret br
 end
 # field p1 of the record whose fields are tlist[p4..]

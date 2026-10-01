@@ -8,10 +8,12 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { pathToFileURL } from 'node:url';
 import type { TypedProgram, Value } from '../src/core.js';
 import { emitMetal, isKernelCallable, kernelName } from '../src/metal.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
-import { generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
+import { type Case, generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
+import type { TargetReport } from './verify.js';
 
 const fmt = (v: Value): string => (typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
 
@@ -79,22 +81,24 @@ print("A0GPU device=\\(device.name)")
 `;
 }
 
-async function main(): Promise<void> {
-  const program = ioFreeSubset(generateCorpus());
-  const cases = generateCases(program).filter((c) => {
+/** Metal Shading Language on the local GPU: one thread per case, io-free kernel-callable functions only. */
+export async function checkMetal(
+  program: TypedProgram,
+  allCases: readonly Case[],
+): Promise<TargetReport & { device?: string; kernels: number }> {
+  const cases = allCases.filter((c) => {
     const fn = program.byName.get(c.functionName);
     return fn !== undefined && isKernelCallable(fn);
   });
+  const kernels = program.functions.filter(isKernelCallable).length;
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
   const metal = emitMetal(program);
   const start = performance.now();
-  const report: Record<string, unknown> = {
-    generatedAt: new Date().toISOString(),
-    functions: program.functions.length,
-    kernels: program.functions.filter(isKernelCallable).length,
-    inputCases: cases.length,
-    scope:
-      'io-free corpus mapped to Metal Shading Language, executed on the local GPU one thread per case; exact u32/bool semantics compared with the BigInt oracle. Not a GPU performance claim; no memory-space or scheduling model beyond elementwise dispatch.',
+  let report: TargetReport & { device?: string; kernels: number } = {
+    status: 'failed',
+    cases: 0,
+    detail: 'not run',
+    kernels,
   };
   await withTempDir(async (dir) => {
     await writeFile(join(dir, 'module.metal'), metal, 'utf8');
@@ -115,14 +119,22 @@ async function main(): Promise<void> {
       { cwd: dir, timeoutMs: 300_000 },
     );
     if (!build.ok) {
-      report.status = 'failed';
-      report.detail = `swiftc failed: ${build.stderr.slice(0, 2000)}`;
+      report = {
+        status: 'failed',
+        cases: 0,
+        detail: `swiftc failed: ${build.stderr.slice(0, 2000)}`,
+        kernels,
+      };
       return;
     }
     const run = runTool(join(dir, 'host'), [], { cwd: dir, timeoutMs: 300_000 });
     if (!run.ok) {
-      report.status = 'failed';
-      report.detail = `host failed (${run.status}): ${run.stdout.slice(0, 1500)} ${run.stderr.slice(0, 1500)}`;
+      report = {
+        status: 'failed',
+        cases: 0,
+        detail: `host failed (${run.status}): ${run.stdout.slice(0, 1500)} ${run.stderr.slice(0, 1500)}`,
+        kernels,
+      };
       return;
     }
     const got = new Map<string, string>();
@@ -145,12 +157,36 @@ async function main(): Promise<void> {
         );
       }
     }
-    report.device = device;
-    report.status = failures.length === 0 ? 'passed' : 'failed';
-    report.failures = failures.slice(0, 20);
-    report.elapsedMs = performance.now() - start;
-    report.detail = `Swift host + Metal runtime compile of generated MSL; ${cases.length} cases dispatched one thread each on ${device}.`;
+    report = {
+      status: failures.length === 0 ? 'passed' : 'failed',
+      cases: cases.length,
+      detail: `Swift host + Metal runtime compile of generated MSL; ${cases.length} cases dispatched one thread each on ${device}.`,
+      device,
+      kernels,
+      elapsedMs: performance.now() - start,
+      failures: failures.slice(0, 20),
+    };
   });
+  return report;
+}
+
+async function main(): Promise<void> {
+  const program = ioFreeSubset(generateCorpus());
+  const allCases = generateCases(program);
+  const r = await checkMetal(program, allCases);
+  const report: Record<string, unknown> = {
+    generatedAt: new Date().toISOString(),
+    functions: program.functions.length,
+    kernels: r.kernels,
+    inputCases: r.cases,
+    scope:
+      'io-free corpus mapped to Metal Shading Language, executed on the local GPU one thread per case; exact u32/bool semantics compared with the BigInt oracle. Not a GPU performance claim; no memory-space or scheduling model beyond elementwise dispatch.',
+    status: r.status,
+    ...(r.device === undefined ? {} : { device: r.device }),
+    ...(r.failures === undefined ? {} : { failures: r.failures }),
+    ...(r.elapsedMs === undefined ? {} : { elapsedMs: r.elapsedMs }),
+    detail: r.detail,
+  };
   await mkdir('results', { recursive: true });
   await writeFile(join('results', 'gpu.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   process.stdout.write(
@@ -159,7 +195,10 @@ async function main(): Promise<void> {
   process.exit(report.status === 'passed' ? 0 : 1);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly)
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });

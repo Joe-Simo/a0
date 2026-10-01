@@ -44,14 +44,15 @@ import {
   parseAndValidate,
   run,
   type TypedFunc,
-  type TypedProgram,
 } from '../src/core.js';
 import { link } from '../src/link.js';
 import { findClang, runTool, type ToolInfo, withTempDir } from '../src/toolchain.js';
-import { generateCases, generateCorpus } from './corpus.js';
+import { closure, closures, generateCases, generateCorpus } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { FRONT_END_SOURCE_LIMIT, frontEndFits } from './ref-parse.js';
 import { checkNative, ioCaps, type TargetReport } from './verify.js';
+
+export { closure, closures };
 
 /** The front end's source limit (compiler/lex.a0 `readsrc`); tools/ref-parse.ts has its other capacities. */
 export const FRONT_END_BYTES = FRONT_END_SOURCE_LIMIT;
@@ -347,32 +348,6 @@ export async function buildStage(
   });
   if (!r.ok) throw new Error(`${name} build failed:\n${r.stderr.slice(0, 4000)}`);
   return [join(dir, name), Math.round(performance.now() - start)];
-}
-
-/** Function `name` with every function it reaches (calls, fold/loop bodies and predicates). */
-export function closure(fns: readonly Func[], root: string): string {
-  const byName = new Map(fns.map((f) => [f.name, f] as const));
-  const seen = new Set<string>();
-  const visit = (name: string): void => {
-    if (seen.has(name)) return;
-    seen.add(name);
-    for (const n of byName.get(name)?.nodes ?? []) {
-      if (n.callee !== undefined) visit(n.callee);
-      if (n.pred !== undefined) visit(n.pred);
-    }
-  };
-  visit(root);
-  return formatProgram({ functions: fns.filter((f) => seen.has(f.name)) });
-}
-
-/** Distinct callee closures of every function of `program`, labelled `prefix/name`. */
-export function closures(prefix: string, program: TypedProgram): [string, string][] {
-  const out = new Map<string, string>();
-  for (const f of program.functions) {
-    const src = closure(program.functions, f.name);
-    if (![...out.values()].includes(src)) out.set(`${prefix}/${f.name}`, src);
-  }
-  return [...out];
 }
 
 interface SourceReport {

@@ -1,11 +1,11 @@
-# Shared UI helpers for a0lang.com programs (site/page.a0, site/docs.a0, site/play.a0). Protocol words:
+# Shared UI helpers for a0lang.com programs (site/page.a0, site/docs.a0). Protocol words:
 #   1 OPEN tag | 2 TEXT n bytes | 3 CLOSE | 4 ATTR key n bytes | 5 ONCLICK event | 6 STATE n words
 #   8 ONSUBMIT event (Enter in an input, Ctrl/Cmd+Enter in a textarea; the field's bytes travel as input)
 #   9 STYLE n bytes | 12 SIZE prop percent (1 width 2 height 3 left 4 bottom)
 #   tags: 1 h1 2 p 3 button 4 code 5 div 6 span 7 ul 8 li 9 a 10 pre 11 h2 12 input 13 section
 #         14 nav 15 h3 16 strong 17 footer 18 header 19 table 20 tr 21 td 22 th 23 small 24 h6
-#         25 b 26 i 27 textarea
-#   attr keys: 1 id 2 class 3 href 4 type 5 placeholder 6 aria-label
+#         25 b 26 i 27 textarea 28 details 29 summary
+#   attr keys: 1 id 2 class 3 href 4 type 5 placeholder 6 aria-label 7 title
 # The site header (nav) and footer (foot) are shared by every page program.
 fn open io u32 -> io
 a write p0 1
@@ -140,7 +140,7 @@ ab lt p0 p1
 m select ab p1 p0
 ret m
 end
-# site header: brand, links (Docs, Benchmarks, Play), GitHub pill
+# site header: brand, links (Docs, Benchmarks, Sponsor, X), GitHub pill
 fn nav io -> io
 x73 call open p0 18
 x74 write x73 4
@@ -188,43 +188,59 @@ x115 write x114 2
 x116 text "Benchmarks"
 x117 puts x115 x116
 x118 call close x117 
-n1 call open x118 9
-n2 write n1 4
-n3 write n2 3
-n4 text "/play/"
-n5 puts n3 n4
-n6 write n5 2
-n7 text "Play"
-n8 puts n6 n7
-n9 call close n8
-x119 call close n9
-t1 call open x119 3
-t2 write t1 4
-t3 write t2 2
-t4 text "theme-toggle"
-t5 puts t3 t4
-t6 write t5 4
-t7 write t6 6
-t8 text "Switch light or dark"
-t9 puts t7 t8
-t10 write t9 2
-t11 text "◐"
-t12 puts t10 t11
-t13 call close t12
-x120 call open t13 9
-x121 write x120 4
-x122 write x121 2
-x123 text "pill"
-x124 puts x122 x123
-x125 write x124 4
-x126 write x125 3
-x127 text "https://github.com/Joe-Simo/a0"
-x128 puts x126 x127
-x129 write x128 2
-x130 text "GitHub"
-x131 puts x129 x130
-x132 call close x131 
-x133 call close x132 
+x119 call close x118
+r1 call open x119 5
+r2 write r1 4
+r3 write r2 2
+r4 text "hright"
+r5 puts r3 r4
+s1 call open r5 9
+s2 write s1 4
+s3 write s2 3
+s4 text "https://github.com/sponsors/Joe-Simo"
+s5 puts s3 s4
+s6 write s5 2
+s7 text "Sponsor"
+s8 puts s6 s7
+s9 call close s8
+ix1 call open s9 9
+ix2 write ix1 4
+ix3 write ix2 2
+ix4 text "ico ico-x"
+ix5 puts ix3 ix4
+ix6 write ix5 4
+ix7 write ix6 3
+ix8 text "https://x.com/joesimo"
+ix9 puts ix7 ix8
+ixa write ix9 4
+ixb write ixa 6
+ixc text "@JoeSimo on X"
+ixd puts ixb ixc
+ixe write ixd 4
+ixf write ixe 7
+ixg text "@JoeSimo on X"
+ixh puts ixf ixg
+ixi call close ixh
+ig1 call open ixi 9
+ig2 write ig1 4
+ig3 write ig2 2
+ig4 text "ico ico-gh"
+ig5 puts ig3 ig4
+ig6 write ig5 4
+ig7 write ig6 3
+ig8 text "https://github.com/Joe-Simo/a0"
+ig9 puts ig7 ig8
+iga write ig9 4
+igb write iga 6
+igc text "GitHub"
+igd puts igb igc
+ige write igd 4
+igf write ige 7
+igg text "GitHub"
+igh puts igf igg
+igi call close igh
+rz call close igi
+x133 call close rz 
 x134 call close x133 
 ret x134
 end
@@ -265,7 +281,19 @@ x939 write x938 2
 x940 text "GitHub"
 x941 puts x939 x940
 x942 call close x941 
-x943 write x942 2
+sp1 write x942 2
+sp2 text " · "
+sp3 puts sp1 sp2
+sp4 call open sp3 9
+sp5 write sp4 4
+sp6 write sp5 3
+sp7 text "https://github.com/sponsors/Joe-Simo"
+sp8 puts sp6 sp7
+sp9 write sp8 2
+sp10 text "Sponsor"
+sp11 puts sp9 sp10
+sp12 call close sp11
+x943 write sp12 2
 x944 text " · MIT · 2026"
 x945 puts x943 x944
 x946 call close x945 

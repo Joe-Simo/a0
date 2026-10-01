@@ -101,15 +101,15 @@ async function main(): Promise<void> {
     'ts session edit (line replace)': TS_SESSION_EDIT,
     'c unified diff': C_UNIFIED_DIFF,
   };
-  // Dependency-scoped retrieval on the Life program: editing `session` needs its callees'
-  // signatures, not their bodies, nor the rest of the program.
+  // Dependency-scoped retrieval on the Life program: editing its entry `life` (the io session
+  // the site links) needs its callees' signatures, not their bodies, nor the rest of the program.
   const life = parseAndValidate(await readFile('examples/life.a0', 'utf8'));
-  const lifeSession = life.byName.get('session');
-  if (lifeSession === undefined) throw new Error('life.a0 has no session');
+  const lifeSession = life.byName.get('life');
+  if (lifeSession === undefined) throw new Error('life.a0 has no life entry');
   const views: Record<string, string> = {
     'life.a0 whole program (what a conventional edit must read)': formatProgram(life),
-    'life.a0 session function only': formatFunction(lifeSession),
-    'life.a0 session + callee signatures (scoped view)': scopedView(lifeSession),
+    'life.a0 life function only': formatFunction(lifeSession),
+    'life.a0 life + callee signatures (scoped view)': scopedView(lifeSession),
   };
   const corpora: Record<string, string> = {
     'corpus.a0 (48 generated functions)': corpusA0,
