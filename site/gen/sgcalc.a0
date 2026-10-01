@@ -1953,6 +1953,15 @@ x call rdiv a10 vb
 s14 fold vfix1 1 s13 p2 337 0 x
 ret s14
 end
+# the mean cycles of simulated module p1 (none: the largest u32), as a sort key (fold body)
+fn cyst u32x64 u32 u32x128x64 -> u32x64
+a add p1 1600
+v call rd64 p2 a
+pos gt v 0
+k0 select pos v 4294967295
+k set p0 p1 k0
+ret k
+end
 fn chw u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
 a call rd64 p3 1400
 b call rd64 p3 1401
@@ -1964,5 +1973,22 @@ s2 fold vnum 1 s1 p2 304 0 b
 s3 fold vnum 1 s2 p2 305 0 c
 s4 fold vnum 1 s3 p2 306 0 d
 s5 fold vnum 1 s4 p2 307 0 e
-ret s5
+ns call rd64 p3 1560
+z call z64l
+ks fold cyst ns z p3
+nv fold vldstep ns 0 ks
+pm call sortperm ks ns
+f0 get pm 0
+mn get ks f0
+l1 sub nv 1
+li get pm l1
+mx get ks li
+sv call applyp pm ks ns
+md call median sv nv
+s6 fold vnum 1 s5 p2 342 0 ns
+s7 fold vnum 1 s6 p2 343 0 nv
+s8 fold vfix2 1 s7 p2 344 0 mn
+s9 fold vfix2 1 s8 p2 345 0 md
+s10 fold vfix2 1 s9 p2 346 0 mx
+ret s10
 end

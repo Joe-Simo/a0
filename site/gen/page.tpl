@@ -1446,6 +1446,38 @@ c putratio %a
 >
 >
 >
+.p take
+"Of the $hw_sim$ modules simulated, $hw_clk$ are clocked: they take a median of $hw_cmed$ clock cycles per case, from $hw_cmin$ to $hw_cmax$. The rest are combinational and answer within the same cycle.
+>
+<p
+"A cycle count is how many clock ticks a module needs from receiving its inputs (start) to raising its done signal, averaged over the simulated oracle cases. Division, remainder and loops make a module clocked, because they run over several cycles.
+>
+.div tiles
+.div tile
+.div n
+"$hw_cmin$
+>
+.p
+"fewest mean cycles, any clocked module
+>
+>
+.div tile
+.div n
+"$hw_cmed$
+>
+.p
+"median mean cycles across clocked modules
+>
+>
+.div tile
+.div n
+"$hw_cmax$
+>
+.p
+"most mean cycles, any clocked module
+>
+>
+>
 }
 {endsec$k$
 >

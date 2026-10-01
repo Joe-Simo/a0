@@ -625,7 +625,8 @@ ret s9
 end
 
 # ---- hw: results/hardware.json, into the axes table. 1400 modules synthesized, 1401 their cells in
-# all, 1402 the cells of the largest, 1403 functions, 1404 input cases.
+# all, 1402 the cells of the largest, 1403 functions, 1404 input cases, 1560 modules simulated,
+# 1600 + i mean cycles x 100 of simulated module i.
 fn hhw u32x128x64 u32 u32x128x512 -> u32x128x64
 t call g p0 15
 d call g p0 16
@@ -665,7 +666,27 @@ cf select zf 1 0
 ci select zi 1 0
 s4 fold wr64 cf s3 1403 v
 s5 fold wr64 ci s4 1404 v
-ret s5
+ksim call kis s5 1 p2 339
+kcy call kis s5 2 p2 340
+kmc call kis s5 4 p2 341
+q1 and iskey d3
+q2 and q1 ksim
+q3 and q2 kcy
+cq select q3 1 0
+nc call g s5 1560
+nc1 add nc 1
+s6 fold wr64 cq s5 1560 nc1
+r0 and isnum d4
+r1 and r0 ksim
+r2 and r1 kcy
+r3 and r2 kmc
+cr select r3 1 0
+nn call g s6 1560
+li sub nn 1
+wi add li 1600
+mv call num s6 100
+s7 fold wr64 cr s6 wi mv
+ret s7
 end
 
 # ---- tokfx: results/tokens.json, into the axes table: the o200k tokens of each fixture and view.
