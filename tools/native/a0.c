@@ -64,6 +64,8 @@ static int nfiles;
 static char visiting[MAX_FILES][PATH_MAX];
 static int nvisiting;
 static char root[PATH_MAX];
+static char entry_abs[PATH_MAX];
+static bool root_ready;
 
 static char *read_all(const char *path, size_t *len) {
   FILE *f = fopen(path, "rb");
@@ -114,6 +116,11 @@ static void project_root(const char *entry_abs) {
 }
 
 static bool inside_root(const char *abs) {
+  /* Found on the first `use` only: a file without one never looks for the project root. */
+  if (!root_ready) {
+    project_root(entry_abs);
+    root_ready = true;
+  }
   size_t n = strlen(root);
   if (strcmp(root, "/") == 0) return true;
   return strncmp(abs, root, n) == 0 && (abs[n] == '/' || abs[n] == '\0');
@@ -134,8 +141,7 @@ static void clean_line(const char *s, const char *end, const char **b, const cha
 }
 
 static void visit(const char *path, const char *from) {
-  char abs[PATH_MAX];
-  if (realpath(path, abs) == NULL) die(64, "cannot read %s", path);
+  const char *abs = path; /* canonical: the entry and every use target went through realpath */
   for (int i = 0; i < nfiles; i++)
     if (strcmp(files[i].path, abs) == 0) return;
   for (int i = 0; i < nvisiting; i++)
@@ -191,7 +197,7 @@ static void visit(const char *path, const char *from) {
 static void load(const char *entry) {
   char abs[PATH_MAX];
   if (realpath(entry, abs) == NULL) die(64, "cannot read %s", entry);
-  project_root(abs);
+  strcpy(entry_abs, abs);
   visit(abs, entry);
   size_t n = 0;
   for (int i = 0; i < nfiles; i++) n += files[i].len + (i > 0 ? 1 : 0);
@@ -603,10 +609,25 @@ static void exec(uint32_t fi) {
 
 /* ------------------------------------------------------------------ commands */
 
+#ifdef A0_PROFILE
+static double now_us(void) {
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return t.tv_sec * 1e6 + t.tv_nsec / 1e3;
+}
+#define MARK(name) do { double n_ = now_us(); fprintf(stderr, "  %-10s %8.1f us\n", name, n_ - last_); last_ = n_; } while (0)
+static double last_;
+#else
+#define MARK(name) ((void)0)
+#endif
+
 static uint32_t front(const char *file, bool ir) {
   load(file);
+  MARK("load");
   uint32_t code = ir ? a0_irio(&io) : a0_checkio(&io);
+  MARK("frontend");
   if (code == 0 && ir) build();
+  MARK("build");
   return code;
 }
 
@@ -678,6 +699,7 @@ static int cmd_run(const char *file, const char *name, int argc, char **argv) {
   for (uint32_t k = 0; k < f->nparams; k++)
     f->frame[f->poff[k]] = parse_arg(argv[k], tlist[f->tfirst + k], k);
   exec(fi);
+  MARK("exec");
   bool first = true;
   print_value(f->result, result_of(f), &first);
   putchar('\n');
@@ -774,6 +796,9 @@ static void usage(void) {
 }
 
 int main(int argc, char **argv) {
+#ifdef A0_PROFILE
+  last_ = now_us();
+#endif
   if (argc < 3) usage();
   const char *cmd = argv[1], *file = argv[2];
   if (strcmp(cmd, "check") == 0 && argc == 3) {

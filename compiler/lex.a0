@@ -219,6 +219,34 @@ g2 set g l v
 t set p0 h g2
 ret t
 end
+# the three words of a token (kind start length) at p1, p1+1, p1+2 in one call: the table is
+# copied once (the first write) instead of once per word
+fn tokput3 u32x128x384 u32 u32 u32 u32 bool -> u32x128x384
+h0 shr p1 7
+l0 and p1 127
+g0 get p0 h0
+o0 get g0 l0
+v0 select p5 p2 o0
+g0b set g0 l0 v0
+t0 set p0 h0 g0b
+n1 add p1 1
+h1 shr n1 7
+l1 and n1 127
+g1 get t0 h1
+o1 get g1 l1
+v1 select p5 p3 o1
+g1b set g1 l1 v1
+t1 set t0 h1 g1b
+n2 add p1 2
+h2 shr n2 7
+l2 and n2 127
+g2 get t1 h2
+o2 get g2 l2
+v2 select p5 p4 o2
+g2b set g2 l2 v2
+t2 set t1 h2 g2b
+ret t2
+end
 fn zpage -> u32x128
 z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ret z
@@ -257,11 +285,7 @@ one or o1 k9
 pend or w one
 wlen sub p1 ps
 len select w wlen 1
-a call tokput out nout pk pend
-n1 add nout 1
-b call tokput a n1 ps pend
-n2 add nout 2
-c call tokput b n2 len pend
+c call tokput3 out nout pk ps len pend
 n3 add nout 3
 nf select pend n3 nout
 r rec c nf

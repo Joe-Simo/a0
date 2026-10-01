@@ -125,6 +125,10 @@ export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; 
       '-Wextra',
       '-Wno-unused-parameter',
       `-DA0_FRONT_END_LIMIT=${FRONT_END_SOURCE_LIMIT}u`,
+      // Less for dyld to map and for the process to page in (the binary halves).
+      ...(process.platform === 'darwin'
+        ? ['-Wl,-dead_strip', '-Wl,-no_function_starts', '-Wl,-no_data_in_code_info']
+        : []),
       '-o',
       'a0',
       'main.c',

@@ -371,25 +371,57 @@ static inline void a0o_lexpage(a0t8 *p0, uint32_t p1, a0t9 p2, uint32_t p3) {
   *p0 = n47;
 }
 
-a0t7 a0_tokput(a0t7 p0, uint32_t p1, uint32_t p2, bool p3) {
+a0t7 a0_tokput3(a0t7 p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, bool p5) {
   uint32_t n0 = a0_shr(p1, 7u); (void)n0;
   uint32_t n1 = a0_and(p1, 127u); (void)n1;
   const a0t4 *const n2 = &p0.e[n0 % 384u]; (void)n2;
   uint32_t n3 = (*n2).e[n1 % 128u]; (void)n3;
-  uint32_t n4 = (p3 ? p2 : n3); (void)n4;
+  uint32_t n4 = (p5 ? p2 : n3); (void)n4;
   a0t4 n5 = (*n2); n5.e[n1 % 128u] = n4; (void)n5;
   p0.e[n0 % 384u] = n5;
+  uint32_t n7 = a0_add(p1, 1u); (void)n7;
+  uint32_t n8 = a0_shr(n7, 7u); (void)n8;
+  uint32_t n9 = a0_and(n7, 127u); (void)n9;
+  const a0t4 *const n10 = &p0.e[n8 % 384u]; (void)n10;
+  uint32_t n11 = (*n10).e[n9 % 128u]; (void)n11;
+  uint32_t n12 = (p5 ? p3 : n11); (void)n12;
+  a0t4 n13 = (*n10); n13.e[n9 % 128u] = n12; (void)n13;
+  p0.e[n8 % 384u] = n13;
+  uint32_t n15 = a0_add(p1, 2u); (void)n15;
+  uint32_t n16 = a0_shr(n15, 7u); (void)n16;
+  uint32_t n17 = a0_and(n15, 127u); (void)n17;
+  const a0t4 *const n18 = &p0.e[n16 % 384u]; (void)n18;
+  uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
+  uint32_t n20 = (p5 ? p4 : n19); (void)n20;
+  a0t4 n21 = (*n18); n21.e[n17 % 128u] = n20; (void)n21;
+  p0.e[n16 % 384u] = n21;
   return p0;
 }
 
-static inline void a0o_tokput(a0t7 *p0, uint32_t p1, uint32_t p2, bool p3) {
+static inline void a0o_tokput3(a0t7 *p0, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, bool p5) {
   uint32_t n0 = a0_shr(p1, 7u); (void)n0;
   uint32_t n1 = a0_and(p1, 127u); (void)n1;
   const a0t4 *const n2 = &(*p0).e[n0 % 384u]; (void)n2;
   uint32_t n3 = (*n2).e[n1 % 128u]; (void)n3;
-  uint32_t n4 = (p3 ? p2 : n3); (void)n4;
+  uint32_t n4 = (p5 ? p2 : n3); (void)n4;
   a0t4 n5 = (*n2); n5.e[n1 % 128u] = n4; (void)n5;
   (*p0).e[n0 % 384u] = n5;
+  uint32_t n7 = a0_add(p1, 1u); (void)n7;
+  uint32_t n8 = a0_shr(n7, 7u); (void)n8;
+  uint32_t n9 = a0_and(n7, 127u); (void)n9;
+  const a0t4 *const n10 = &(*p0).e[n8 % 384u]; (void)n10;
+  uint32_t n11 = (*n10).e[n9 % 128u]; (void)n11;
+  uint32_t n12 = (p5 ? p3 : n11); (void)n12;
+  a0t4 n13 = (*n10); n13.e[n9 % 128u] = n12; (void)n13;
+  (*p0).e[n8 % 384u] = n13;
+  uint32_t n15 = a0_add(p1, 2u); (void)n15;
+  uint32_t n16 = a0_shr(n15, 7u); (void)n16;
+  uint32_t n17 = a0_and(n15, 127u); (void)n17;
+  const a0t4 *const n18 = &(*p0).e[n16 % 384u]; (void)n18;
+  uint32_t n19 = (*n18).e[n17 % 128u]; (void)n19;
+  uint32_t n20 = (p5 ? p4 : n19); (void)n20;
+  a0t4 n21 = (*n18); n21.e[n17 % 128u] = n20; (void)n21;
+  (*p0).e[n16 % 384u] = n21;
 }
 
 a0t4 a0_zpage(void) {
@@ -432,15 +464,11 @@ a0t10 a0_lexsrc(a0t9 p0, uint32_t p1) {
   bool n19 = (n15 || n18); (void)n19;
   uint32_t n20 = a0_sub(p1, n8); (void)n20;
   uint32_t n21 = (n15 ? n20 : 1u); (void)n21;
-  a0t7 n22 = a0_tokput((*n5), n6, n7, n19); (void)n22;
-  uint32_t n23 = a0_add(n6, 1u); (void)n23;
-  a0t7 n24 = a0_tokput(n22, n23, n8, n19); (void)n24;
-  uint32_t n25 = a0_add(n6, 2u); (void)n25;
-  a0t7 n26 = a0_tokput(n24, n25, n21, n19); (void)n26;
-  uint32_t n27 = a0_add(n6, 3u); (void)n27;
-  uint32_t n28 = (n19 ? n27 : n6); (void)n28;
-  a0t10 n29; n29.f0 = n26; n29.f1 = n28; (void)n29;
-  return n29;
+  a0t7 n22 = a0_tokput3((*n5), n6, n7, n8, n21, n19); (void)n22;
+  uint32_t n23 = a0_add(n6, 3u); (void)n23;
+  uint32_t n24 = (n19 ? n23 : n6); (void)n24;
+  a0t10 n25; n25.f0 = n22; n25.f1 = n24; (void)n25;
+  return n25;
 }
 
 a0t11 a0_rbyte(a0t11 p0, uint32_t p1) {
