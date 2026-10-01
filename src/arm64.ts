@@ -111,7 +111,7 @@ import {
   type Type,
   type TypedFunc,
 } from './core.js';
-import { emitFused, fillRun, overwritesState } from './optimize.js';
+import { FUSED_PREFIX, fillRun, fuseLoops, overwritesState } from './optimize.js';
 
 function refuse(message: string): never {
   throw new A0Error(`arm64: ${message}`, undefined, {
@@ -1901,7 +1901,14 @@ class FunctionEmitter {
   #leaf = true;
   #saved: string[] = [];
 
-  constructor(readonly fn: TypedFunc) {}
+  /**
+   * `fuseCallees`: an inlined callee has its own loops fused (producer into consumer, see
+   * `fuseLoops`) before it is emitted, as the callee's own function is when it stands alone.
+   */
+  constructor(
+    readonly fn: TypedFunc,
+    readonly fuseCallees = false,
+  ) {}
 
   #emit(...lines: string[]): void {
     if (this.#dry) return;
@@ -2303,6 +2310,7 @@ class FunctionEmitter {
     sink: 'bind' | 'store',
     carry?: Carry,
   ): void {
+    callee = this.fuseCallees ? fusedCallee(callee) : callee;
     const base: Env = {
       fn: callee,
       prefix: `${env.prefix}${tag}.`,
@@ -4077,7 +4085,36 @@ function pairMemory(lines: readonly string[]): string[] {
 
 /** Emit one function as Darwin AArch64 assembly (a `.globl _a0_<name>` block). */
 export function emitArm64Function(fn: TypedFunc): string {
-  return emitFused(fn, (f) => new FunctionEmitter(f).emit());
+  // Loops fused in the function itself and in its inlined callees; an emission that still names a
+  // fused body (one that was not inlined) is discarded for a less fused one.
+  const fused = fuseLoops(fn);
+  const tries: [TypedFunc, boolean][] =
+    fused === undefined
+      ? [
+          [fn, true],
+          [fn, false],
+        ]
+      : [
+          [fused, true],
+          [fused, false],
+          [fn, true],
+        ];
+  for (const [f, callees] of tries) {
+    const out = new FunctionEmitter(f, callees).emit();
+    if (!out.includes(FUSED_PREFIX)) return out;
+  }
+  return new FunctionEmitter(fn, false).emit();
+}
+
+const FUSED_CALLEES = new WeakMap<TypedFunc, TypedFunc>();
+
+/** `callee` with its loops fused when they can be (cached; synthetic bodies are left alone). */
+function fusedCallee(callee: TypedFunc): TypedFunc {
+  const known = FUSED_CALLEES.get(callee);
+  if (known !== undefined) return known;
+  const fused = callee.name.includes('#') ? undefined : fuseLoops(callee);
+  FUSED_CALLEES.set(callee, fused ?? callee);
+  return fused ?? callee;
 }
 
 /** Assemble function blocks into one .s module for `clang -x assembler` / `as`. */
