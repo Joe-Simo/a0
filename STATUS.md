@@ -2963,3 +2963,17 @@ Free, local, deterministic tools under `tools/dev/` (entry `a0-dev`; rules in `A
 - Not done: a per-backend verify flag (`tools/verify.ts` runs every backend, so a backend change runs the whole verify step); the measured loop timings; the claims already in the ledger that lack a results reference.
 
 #
+
+## Session 2026-09-30 (minimal failing subset of a rejected edit)
+
+- **Diagnostic.** `EditSession.diagnose(text, budget = 64)` (src/edit.ts) validates a reply exactly as `apply` does, without committing, and when it is rejected narrows it to a minimal subset of its lines that still fails with the same diagnostic (same code, message and fix; the `line N:` prefix is ignored since numbers move as lines drop). Deletion-based (idea from another project's unsat core, written independently as `minimalFailingSubset`): drop one line at a time, keep each drop that still fails, repeat passes until one drops nothing (1-minimal), at most `budget` validations; handle lines stay as context. One more check tells whether the reply without those lines is accepted (`restValid`). `formatRejection` renders it: `This line of N causes the rejection; …` or `These K of N lines are the smallest part of the reply that still fails this way; …`, the lines with their reply line numbers, then the fix. Tests in test/edit.test.ts (conflict of two items, budget cut-off, single bad line, duplicate-edit pair, two same-kind errors resolve to the named line, whole block, no commit).
+- **Limit.** Inside a `fn` block the core keeps the lines the failure depends on (the header, the node an erroneous line uses, `ret`), so a one-line type error in a block is often reported as 2-5 lines. Of the 22 rejected replies measured, 12 cores were a single line; 3 had `restValid`.
+- **Experiment.** `A0_EXPERIMENT_DIAGNOSE=core` appends `formatRejection` to the A0 structured rejection (tools/ai-edit-experiment.ts). Replayed the recorded first A0 structured replies of all 22 `results/*rules-merged.json` and `results/*primer-none*.json` configs under the current parser: 22 are still rejected by the edit protocol (the 5 other recorded protocol failures, all from the older primer-none runs, are now accepted by the guessable-spelling parser; wrong-output first attempts get no new message and are excluded). Fresh repair replies to the new messages, one Haiku subagent and one Sonnet subagent answering all their items from one file (system prompt, task and view, first reply, new rejection), were scored by the harness. Baseline = the recorded repair outcome of the same trial (answered with the old message).
+
+| subject | trials | repaired, recorded | repaired, with core |
+|---|---|---|---|
+| Haiku | 19 | 15 | 15 |
+| Sonnet | 3 | 3 | 3 |
+
+  Haiku flips: +2 (b-bounds-largest primer-none, e-popcount-fold), -2 (b-bounds-largest rules-merged and f-countabove-gt: both new replies used an out-of-range parameter, a different error from the first). No measurable effect on repair rate at this size; with one sample per trial, ±2 flips is within noise. Sonnet repairs everything either way. Records: `results/ai-edit-repair-core.json` (messages, replies, outcomes).
+- Gate (this worktree): lint pass; typecheck pass; test 94/94; verify, hw, app, equiv, bench exit 0; tokens fails before and after this change (`life.a0 has no session`: examples/life.a0 lost `fn session` in eb796f0, unrelated); exec-bench was still running on a shared, loaded machine at commit time (not a result).

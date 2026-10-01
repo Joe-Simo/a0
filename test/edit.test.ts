@@ -11,7 +11,15 @@ import {
   stripComment,
   type TypedFunc,
 } from '../src/core.js';
-import { EditSession, programRevision, revision } from '../src/edit.js';
+import {
+  DIAGNOSE_BUDGET,
+  EditSession,
+  formatRejection,
+  minimalFailingSubset,
+  programRevision,
+  type Rejection,
+  revision,
+} from '../src/edit.js';
 
 const SRC = [
   'fn sq u32 -> u32\na mul p0 p0\nret a\nend',
@@ -214,4 +222,62 @@ test('comments survive formatting and edits but never change a revision', () => 
     formatSource(session.program),
     formatted.replace('y add x 1 # keep', 'y add x 2 # keep'),
   );
+});
+
+test('minimalFailingSubset: deletion finds a 1-minimal core within the budget', () => {
+  // Fails while it holds both 3 and 7 (a conflict between two items).
+  const fails = (s: readonly number[]): boolean => s.includes(3) && s.includes(7);
+  const r = minimalFailingSubset([1, 2, 3, 4, 5, 6, 7, 8], fails, 64);
+  assert.deepEqual(r.core, [3, 7]);
+  assert.equal(r.minimal, true);
+  // A budget too small stops early and says so; the partial core still fails.
+  const cut = minimalFailingSubset([1, 2, 3, 4, 5, 6, 7, 8], fails, 3);
+  assert.equal(cut.minimal, false);
+  assert.equal(cut.checks, 3);
+  assert.equal(fails(cut.core), true);
+});
+
+test('diagnose narrows a rejected reply to the lines that cause it, without committing', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  const before = session.program;
+  // Line 2 calls an unknown function; the other lines are fine on their own.
+  const reply = 'y add x 1\nz call nosuch x\nret y';
+  assert.throws(() => session.apply(reply), A0Error);
+  const r = session.diagnose(reply);
+  assert.ok(r !== undefined);
+  assert.deepEqual(r.lines, [{ line: 2, text: 'z call nosuch x' }]);
+  assert.equal(r.minimal, true);
+  assert.equal(r.restValid, true);
+  assert.ok(r.checks <= DIAGNOSE_BUDGET + 2);
+  assert.match(
+    formatRejection(r),
+    /^This line of 3 causes the rejection; the rest .*\nline 2: z call/,
+  );
+  assert.equal(session.program, before);
+  // A conflict needs both lines: a duplicate edit of one id.
+  const dup = session.diagnose('y add x 1\nq add x 2\ny add x 3');
+  assert.deepEqual(
+    dup?.lines.map((l) => l.line),
+    [1, 3],
+  );
+  // Two lines with the same kind of error: the core is the line the diagnostic names.
+  const two = session.diagnose('y add (mul x x) 1\nz add (sub x 1) 2');
+  assert.deepEqual(
+    two?.lines.map((l) => l.line),
+    [1],
+  );
+  // An accepted reply has nothing to diagnose, and diagnosing does not apply it.
+  assert.equal(session.diagnose('y add x 1'), undefined);
+  assert.equal(call(session, 'twice', 3), 18);
+  // Handle lines are context, not candidates. A block keeps the lines the failure depends on
+  // (header, the node `c` uses, `ret`) and drops the rest, here `end` and the unrelated edit.
+  const blk = session.diagnose(
+    'e0\ny add x 1\nfn cube u32 -> u32\ns call sq p0\nc mul s p9\nret c\nend',
+  );
+  assert.deepEqual(
+    blk?.lines.map((l) => l.line),
+    [3, 4, 5, 6],
+  );
+  assert.match(formatRejection(blk as Rejection), /^These 4 of 6 lines/);
 });

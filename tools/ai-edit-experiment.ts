@@ -45,7 +45,7 @@ import {
   type TypedProgram,
   type Value,
 } from '../src/core.js';
-import { EditSession } from '../src/edit.js';
+import { EditSession, formatRejection } from '../src/edit.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import {
   type AppliedEdit,
@@ -161,6 +161,8 @@ function mergedA0System(
 
 // --- Views and edit application -----------------------------------------------
 
+const A0_DIAGNOSE_CORE = process.env.A0_EXPERIMENT_DIAGNOSE === 'core';
+
 function applyA0(
   rep: Representation,
   protocol: Protocol,
@@ -183,7 +185,11 @@ function applyA0(
     const next = session.apply(body);
     return { source: formatProgram(next) };
   } catch (e) {
-    return { source, error: formatDiagnostic(e) };
+    // A0_EXPERIMENT_DIAGNOSE=core: the rejection also lists the minimal failing subset of the
+    // reply's lines, each with its fix (EditSession.diagnose).
+    const rejection = A0_DIAGNOSE_CORE ? session.diagnose(body) : undefined;
+    const core = rejection === undefined ? '' : `\n${formatRejection(rejection)}`;
+    return { source, error: `${formatDiagnostic(e)}${core}` };
   }
 }
 
