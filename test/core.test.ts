@@ -1894,7 +1894,9 @@ test('arm64 optimizer: vectorized, fused, carried, and min/max folds equal the i
     // (the fill costs more than fusion may recompute at the second index, so it is stored)
     'fn f16 u32x16 u32 u32 u32 -> u32x16\nv mul p1 p2\nw xor v p3\nx mul w p2\nn set p0 p1 x\nret n\nend',
     'fn sm u32x16 u32 u32x16 -> u32x16\nj add 3 p1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend',
-    `fn shifted u32 u32 -> u32\nz arr ${zeros(16)}\na fold f16 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sm 16 z2 a\nq and p1 15\nr get b q\nw get b 15\ns add r w\nret s\nend`,
+    // `b` is also summed by a fold, so it is stored (an array read only by a few gets is not)
+    'fn rd16 u32 u32 u32x16 -> u32\ne get p2 p1\nh add p0 e\nret h\nend',
+    `fn shifted u32 u32 -> u32\nz arr ${zeros(16)}\na fold f16 16 z p0 p1\nz2 arr ${zeros(16)}\nb fold sm 16 z2 a\nq and p1 15\nr get b q\nw get b 15\ns add r w\nt fold rd16 16 s b\nret t\nend`,
     // sixteen products feeding a record literal (written through, no register each)
     'fn wide u32 u32 -> u32\na mul p0 3\nb mul p1 5\nc mul a b\nd add a b\ne xor c d\nf mul e 7\ng sub f a\nh shr g 3\nr arr a b c d e f g h a b c d e f g h\nk and p0 15\nx get r k\ny get r 7\nz add x y\nret z\nend',
   ].join('\n\n');

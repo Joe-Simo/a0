@@ -151,6 +151,32 @@ test('arm64 carried recurrences start at the guard value instead of selecting it
   assert.doesNotMatch(body, /csel/);
 });
 
+test('arm64 element-wise pipelines read by a few gets are evaluated at the indices read', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const stage = (n: number): string =>
+    `fn pf${n} u32x${n} u32 u32 u32 -> u32x${n}\nv mul p1 p2\nw xor v p3\nn set p0 p1 w\nret n\nend\nfn ps${n} u32x${n} u32 u32x${n} -> u32x${n}\nj add p1 1\nu get p2 p1\nv get p2 j\nw add u v\ns shr w 1\nn set p0 p1 s\nret n\nend\nfn pg${n} u32x${n} u32 u32x${n} u32 -> u32x${n}\nu get p2 p1\nv mul u p3\nc lt u p3\nw select c p3 u\nx add v w\nn set p0 p1 x\nret n\nend\nfn rd${n} u32 u32 u32x${n} -> u32\ne get p2 p1\nh add p0 e\nret h\nend`;
+  const chain = (name: string, n: number, tailOps: string): string =>
+    `fn ${name} u32 u32 -> u32\nz arr ${zeros(n)}\na fold pf${n} ${n} z p0 p1\nz2 arr ${zeros(n)}\nb fold ps${n} ${n} z2 a\nz3 arr ${zeros(n)}\nc fold pg${n} ${n} z3 b p1\nq and p1 ${n - 1}\nr get c q\nw get c ${n - 1}\nx get c 0\ns add r w\nt xor s x\n${tailOps}\nend`;
+  const src = [
+    stage(16),
+    stage(12),
+    chain('pipe16', 16, 'ret t'),
+    // the middle array is read directly as well as by the next stage
+    chain('pipe12', 12, 'y get b p0\nu add t y\nret u'),
+    // the first array is summed by a fold, so it is stored; the stages after it are not
+    chain('pipe16s', 16, 'y fold rd16 16 t a\nret y'),
+    // the last array is summed too: nothing is lazy beyond it
+    chain('pipe16t', 16, 'y fold rd16 16 t c\nret y'),
+  ].join('\n\n');
+  const asm = await checkAgainstInterpreter(src, ['pipe16', 'pipe12', 'pipe16s', 'pipe16t'], clang);
+  const lazy = /_a0_pipe16:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.doesNotMatch(lazy, /La0_pipe16_\d+:/);
+  assert.doesNotMatch(lazy, /sub sp/);
+});
+
 test('arm64 fills that are only indexed are never stored', {
   skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
 }, async () => {

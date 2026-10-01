@@ -58,6 +58,22 @@
  *   never stored. Array accesses use scaled register offsets, and a counter known to be in
  *   range needs no mask. A leaf with a small frame keeps no frame record.
  *
+ * - Vector loops (fourth version): the four-lane loop is unrolled by 4 or 2 (when the trip count
+ *   allows and registers are free) with one accumulator per copy, copies' loads and stores paired
+ *   as `ldp`/`stp`, and `mul index c` (+ `y`) strength-reduced to a register stepped by an add;
+ *   `acc += a * b` is one `mla`. Three more shapes are vectorized: an inclusive prefix scan
+ *   (`set p0 p1 (op (select (eq p1 0) seed (get p0 (p1 - 1))) e)` with op add or xor: per-vector
+ *   `ext`/add scan plus a running carry), an indexed read-modify-write (`set p0 K (op (get p0 K) w)`,
+ *   a histogram: K and w four at a time, the updates sequential per lane), and fills that are only
+ *   indexed afterwards (never stored: each `get` evaluates the fill body at its index). A scan or
+ *   an add/xor indexed update from zeros that only a few `get`s read is answered as point queries
+ *   inside one vector loop (a masked reduction per `get`), so the array is never stored; the
+ *   scalar nodes that compute the indices are emitted ahead of their position for that.
+ * - A previous-element read guarded at trip 0 by a seed (`select (eq p1 0) seed (get p0 (p1 - 1))`)
+ *   starts the carried register at the seed, so the loop has no compare and select; a carried
+ *   element is computed straight into its register (no copy on the recurrence). An index that a
+ *   shift or mask bounds below the array length is not masked again.
+ *
  * Calling convention (compatible with AAPCS64/Darwin for scalar signatures, so C can call
  * `_a0_<name>` directly):
  * - Each parameter takes the next of x0..x7: a scalar as its value in the w register (bool
@@ -366,6 +382,61 @@ const HOISTABLE: ReadonlySet<Op> = new Set<Op>([
   'rem',
 ]);
 
+/** Ops of an element-wise map body: scalar arithmetic over the index and extras, and reads of extra arrays. */
+const MAP_OPS: ReadonlySet<Op> = new Set<Op>([
+  'mov',
+  'add',
+  'sub',
+  'mul',
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+  'eq',
+  'ne',
+  'lt',
+  'le',
+  'gt',
+  'ge',
+  'select',
+  'div',
+  'rem',
+  'get',
+]);
+
+/**
+ * A fold body that writes element i from the index, scalars and reads of its extra arrays
+ * (`set p0 p1 v`, p0 read nowhere else, no calls or loops): its value at any index can be
+ * evaluated alone. Returns a function whose result is that value, or undefined.
+ */
+function mapBody(callee: TypedFunc): TypedFunc | undefined {
+  const ret = callee.ret;
+  const state = callee.params[0];
+  if (ret.kind !== 'node' || state === undefined || isPrimitive(state)) return undefined;
+  if (state.kind !== 'arr' || state.elem !== 'u32') return undefined;
+  const last = callee.nodes.find((n) => n.id === ret.id);
+  if (last === undefined || last.op !== 'set') return undefined;
+  const [target, index, value] = last.args;
+  if (!isParam(target, 0) || !isParam(index, 1) || value === undefined) return undefined;
+  const others = callee.nodes.filter((n) => n !== last);
+  for (const n of others) {
+    const t = callee.types.get(n.id);
+    if (!MAP_OPS.has(n.op) || t === undefined || !isPrimitive(t)) return undefined;
+    for (const [k, o] of n.args.entries()) {
+      if (isParam(o, 0)) return undefined;
+      if (n.op === 'get' && k === 0 && !(o.kind === 'param' && o.index >= 2)) return undefined;
+    }
+  }
+  if (value.kind === 'bool') return undefined;
+  if (value.kind === 'node' && callee.types.get(value.id) !== 'u32') return undefined;
+  if (value.kind === 'param' && callee.params[value.index] !== 'u32') return undefined;
+  return { ...callee, name: `${callee.name}#map`, result: 'u32', nodes: others, ret: value };
+}
+
+/** A lazy array is evaluated at most this many body nodes per `get` (summed over what it reads). */
+const LAZY_NODE_BUDGET = 400;
+
 const SELECTIONS = new WeakMap<TypedFunc, Selection>();
 
 function selection(fn: TypedFunc): Selection {
@@ -506,30 +577,75 @@ function selection(fn: TypedFunc): Selection {
     )
       deadInit.add(n.id);
   }
-  const lazyFill = new Map<string, { fn: TypedFunc; length: number }>();
+  // Element-wise pipelines read only by a few `get`s are never stored: a `get` evaluates the body
+  // at its index (and, through the extras that are themselves such arrays, theirs).
+  const mapFns = new Map<string, TypedFunc>();
   for (const n of fn.nodes) {
     if (n.op !== 'fold') continue;
     const t = fn.types.get(n.id);
-    const list = uses.get(n.id) ?? [];
-    if (t === undefined || isPrimitive(t) || t.kind !== 'arr' || list.length === 0) continue;
-    if (!list.every((u) => u.consumer?.op === 'get' && u.position === 0)) continue;
-    const run = fillRun(fn, n);
+    const count = n.args[0];
+    const body = n.callee === undefined ? undefined : fn.calls.get(n.callee);
+    if (t === undefined || isPrimitive(t) || t.kind !== 'arr' || t.elem !== 'u32') continue;
     // Every element is written (count == length), so the initial array is dead.
-    if (run === undefined || run.count !== t.length) continue;
-    const fillFn: TypedFunc = {
-      ...run.body,
-      name: `${run.body.name}#fill`,
-      result: 'u32',
-      nodes: run.nodes,
-      ret: run.value,
-    };
-    lazyFill.set(n.id, { fn: fillFn, length: t.length });
+    if (count?.kind !== 'u32' || count.value !== t.length || body === undefined) continue;
+    const m = mapBody(body);
+    if (m !== undefined) mapFns.set(n.id, m);
   }
-  // The initial array of a lazy fill is never read or stored: it needs no slot.
+  const lazy = new Set(mapFns.keys());
+  const direct = (id: string): number =>
+    (uses.get(id) ?? []).filter((u) => u.consumer?.op === 'get').length;
+  const lazyCost = new Map<string, number>();
+  const costOf = (id: string): number => {
+    const known = lazyCost.get(id);
+    if (known !== undefined) return known;
+    const fold = byId.get(id) as Node;
+    const m = mapFns.get(id) as TypedFunc;
+    let c = m.nodes.length;
+    for (const g of m.nodes) {
+      const arr = g.op === 'get' ? g.args[0] : undefined;
+      const arg = arr?.kind === 'param' ? fold.args[arr.index] : undefined;
+      c += arg?.kind === 'node' && lazy.has(arg.id) ? costOf(arg.id) : 1;
+    }
+    lazyCost.set(id, c);
+    return c;
+  };
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const id of [...lazy]) {
+      const list = uses.get(id) ?? [];
+      const ok =
+        list.length > 0 &&
+        list.every(
+          (u) =>
+            (u.consumer?.op === 'get' && u.position === 0) ||
+            (u.consumer?.op === 'fold' && u.position >= 2 && lazy.has(u.consumer.id)),
+        );
+      if (!ok) {
+        lazy.delete(id);
+        changed = true;
+      }
+    }
+    lazyCost.clear();
+    for (const id of [...lazy]) {
+      const t = fn.types.get(id) as { length: number };
+      const m = mapFns.get(id) as TypedFunc;
+      const c = costOf(id);
+      // Cheaper to evaluate at each read than to build the array, and bounded code growth.
+      if (c > LAZY_NODE_BUDGET || direct(id) * c > t.length * Math.max(1, m.nodes.length)) {
+        lazy.delete(id);
+        changed = true;
+      }
+    }
+  }
+  const lazyFill = new Map<string, { fn: TypedFunc; length: number }>();
   const elided = new Set<string>();
-  for (const id of deadInit) {
-    const fold = uses.get(id)?.[0]?.consumer;
-    if (fold !== undefined && lazyFill.has(fold.id)) elided.add(id);
+  for (const id of lazy) {
+    const t = fn.types.get(id) as { length: number };
+    lazyFill.set(id, { fn: mapFns.get(id) as TypedFunc, length: t.length });
+    // The initial array of a lazy fill is never read or stored: it needs no slot.
+    const init = (byId.get(id) as Node).args[1];
+    if (init?.kind === 'node' && byId.get(init.id)?.op === 'arr' && uses.get(init.id)?.length === 1)
+      elided.add(init.id);
   }
   const order = new Map(fn.nodes.map((m, i) => [m.id, i]));
   const lazyQuery = new Map<string, QueryGroup>();
@@ -1687,6 +1803,8 @@ class FunctionEmitter {
   readonly #ready = new Set<string>();
   /** Largest value a scalar key can hold (a literal-count loop counter). */
   readonly #bound = new Map<string, number>();
+  /** Arrays that are never stored (see `lazyFill`): the body to evaluate and the extras it reads. */
+  readonly #lazyOf = new Map<string, { fn: TypedFunc; length: number; extras: readonly Val[] }>();
   /** Nodes already emitted ahead of their position by a query group (skipped there). */
   readonly #hoisted = new Set<string>();
   /** Register hints: key -> key whose register it takes (a loop body result onto its state). */
@@ -1839,12 +1957,16 @@ class FunctionEmitter {
         return { kind: 'lit', value: o.value ? 1 : 0, type: 'bool' };
       case 'param':
         return env.params[o.index] ?? refuse(`unknown parameter p${o.index}`);
-      case 'node':
-        return {
-          kind: 'key',
-          key: `${env.prefix}n_${o.id}`,
-          type: env.fn.types.get(o.id) ?? refuse(`unknown node ${o.id}`),
-        };
+      case 'node': {
+        const key = `${env.prefix}n_${o.id}`;
+        const lazy = selection(env.fn).lazyFill.get(o.id);
+        if (lazy !== undefined && !this.#lazyOf.has(key)) {
+          const fold = selection(env.fn).byId.get(o.id) as Node;
+          const extras = fold.args.slice(2).map((e) => this.#resolve(env, e));
+          this.#lazyOf.set(key, { ...lazy, extras });
+        }
+        return { kind: 'key', key, type: env.fn.types.get(o.id) ?? refuse(`unknown node ${o.id}`) };
+      }
     }
   }
 
@@ -3079,12 +3201,8 @@ class FunctionEmitter {
           return;
         }
         const lazy =
-          (n.args[0] as Operand).kind === 'node'
-            ? sel.lazyFill.get((n.args[0] as { id: string }).id)
-            : undefined;
+          (a as Val).kind === 'key' ? this.#lazyOf.get((a as { key: string }).key) : undefined;
         if (lazy !== undefined) {
-          const fold = env.fn.nodes.find((m) => m.id === (n.args[0] as { id: string }).id) as Node;
-          const extras = fold.args.slice(2).map((o) => this.#val(env, o));
           let at: Val;
           if ((b as Val).kind === 'lit')
             at = { kind: 'lit', value: (b as { value: number }).value % lazy.length, type: 'u32' };
@@ -3100,7 +3218,7 @@ class FunctionEmitter {
           this.#inline(
             env,
             lazy.fn,
-            [{ kind: 'lit', value: 0, type: 'u32' }, at, ...extras],
+            [{ kind: 'lit', value: 0, type: 'u32' }, at, ...lazy.extras],
             false,
             fkey,
             'u32',
