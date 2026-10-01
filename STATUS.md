@@ -3443,3 +3443,38 @@ Limits found while doing this:
 - site/gen can hold 16 kernels (its tables are strided by 16 in site/gen/sgjson.a0 and sgcalc.a0); the tool now produces 19, and the generator overruns its output ("output capacity reached") at 17. results/exec-benchmark.json is therefore left at the committed 10-kernel file the site was built from, and the full run is stored beside it as results/exec-benchmark-full.json. Raising the generator's kernel capacity (re-striding about 30 tables) is the next step before the full file can become the page's source.
 - results/loss-ledger.json is unchanged: it reads exec-benchmark.json, so the 56 new losses in the full run are not in it yet.
 - The first exec-bench run of this session was not interrupted; a second copy I started by mistake was killed before it wrote anything.
+
+## IR optimizer: matrix power, select at equality, cost model (a0c-0.1.35)
+
+What changed in src/optimize.ts (shared by every backend):
+- A `fold` whose step is one n x n u32 matrix product (state times an invariant matrix from an extra
+  parameter, on either side, recognized from the body dataflow) becomes S x M^trips: squaring plus one
+  product per set bit, log2+popcount products instead of `trips`, exact in wrapping u32 arithmetic.
+  mat4 (8 trips) goes from 8 products to 4 (arm64 text: 607 to 333 mul/madd). 1320 randomized
+  comparisons against the interpreter (n 2..4, both sides, 3..1000 trips) found no difference.
+- `select (x == y) K v` (and the `ne` mirror) is `v` when `v` evaluates to the literal K at x == y
+  (abstract evaluation through sub/xor/compare/select, depth 6). branchy loses one eq and one select
+  on every backend (arm64 8 to 7 instructions).
+- Inline and unroll gates are expressed in Rust's cost units (instruction 5, call or loop 25), at the
+  same thresholds as before for call-free bodies. No one-call bonus: every backend emits every
+  function, so inlining a single call site removes no code.
+- Tests: two new in test/core.test.ts. Gate run with A0_SKIP_X86=1 (Rosetta wedged, x86-64 steps not
+  run): lint, typecheck, test, verify, equiv, hw, app, selfhost, selfhost-c, bootstrap, dotnet, gpu,
+  tokens, site all pass.
+
+Measured (machine load 5 to 25 from other agents, so only the first run is near the gate; ns, A0
+arm64 vs best of C -O3, Rust, Zig):
+- mat4: 138.7 before; 72.7 vs 34.8 (0.48x, was 0.23x) in a run at load 6 to 7; a later run at higher
+  load gave 139 vs 53 (0.38x). Still a loss: the best C/Rust/Zig vectorize the matrix product with
+  NEON; the remaining gap is SIMD (SLP) and register allocation in src/arm64.ts (about 800
+  instructions, ~100 spill ld/st), not the IR.
+- affine, clamp: not an optimizer matter. A0 emits the same instructions as clang -O3 (madd;
+  cmp/csel x2) and ties clang -O3 out of line (6.75 vs 6.75, 7.20 vs 7.18). The recorded 0.63 and
+  0.69 come from Zig's inlined driver loop running faster than every other row.
+- branchy: 4.60 vs 4.46 to 4.39 (0.91x); clang emits 6 instructions (fused subs, tst), A0 now 7.
+  The rest needs arm64.ts peepholes (fused subs, tst, cneg for abs-diff).
+- Other kernels unchanged within noise (rotl, mix, ident, noop, chain3, arrfill, loop64 tie). Only
+  15 of 19 kernels finished in the timed run; results/exec-benchmark*.json were not rewritten, so the
+  loss ledger is unchanged.
+- Handoff to the arm64.ts owner: NEON SLP for straight-line 4x4 products (mla by element),
+  tst/subs/cneg fusion, spill reduction.
