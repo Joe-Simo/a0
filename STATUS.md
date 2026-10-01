@@ -3462,10 +3462,10 @@ What changed in src/optimize.ts (shared by every backend):
   run): lint, typecheck, test, verify, equiv, hw, app, selfhost, selfhost-c, bootstrap, dotnet, gpu,
   tokens, site all pass.
 
-Measured (machine load 5 to 25 from other agents, so only the first run is near the gate; ns, A0
-arm64 vs best of C -O3, Rust, Zig):
-- mat4: 138.7 before; 72.7 vs 34.8 (0.48x, was 0.23x) in a run at load 6 to 7; a later run at higher
-  load gave 139 vs 53 (0.38x). Still a loss: the best C/Rust/Zig vectorize the matrix product with
+Development measurements while other agents were running, not a timing claim (the recorded timings
+are in results/exec-benchmark.json, taken at clean load; ns, A0 arm64 vs best of C -O3, Rust, Zig):
+- mat4: 138.7 before; 72.7 vs 34.8 (0.48x, was 0.23x) in the quietest run; a later run, with other
+  agents busy, gave 139 vs 53 ns (0.38x). Still a loss: the best C/Rust/Zig vectorize the matrix product with
   NEON; the remaining gap is SIMD (SLP) and register allocation in src/arm64.ts (about 800
   instructions, ~100 spill ld/st), not the IR.
 - affine, clamp: not an optimizer matter. A0 emits the same instructions as clang -O3 (madd;
