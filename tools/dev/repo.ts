@@ -67,16 +67,35 @@ export function branchFiles(repo: string, base: string, branch: string): string[
 export { lines };
 
 /**
- * results/*.json are regenerate-only (the attributes file names the `a0-results` merge driver). A merge
- * driver must be configured per clone; this sets it to "keep the current side", so merges never
- * conflict in a results file and the gate's results step regenerates and commits them.
+ * Two merge drivers for results/*.json (the attributes file maps each file to one):
+ *   `a0-results`      the gate-regenerated pass/fail files (verification, equivalence, hardware,
+ *                     behavior, selfhost, bootstrap, app, dotnet, gpu): keep the current side; the
+ *                     gate regenerates them after the merge.
+ *   `a0-measurements` every other results file, which records a timing or a measurement: chosen by
+ *                     tools/dev/merge-results.ts (a load-gated run is never dropped for an ungated
+ *                     one; see that file). It runs the built script next to this one (dist/tools/dev); without
+ *                     the build the merge conflicts instead of dropping a side silently.
+ * A merge driver must be configured per clone; `a0-dev setup` does it.
  */
-export function ensureMergeDriver(repo: string): boolean {
+export function ensureMergeDriver(
+  repo: string,
+  measurementScript = join(dirname(fileURLToPath(import.meta.url)), 'merge-results.js'),
+): boolean {
   const a = vcs(repo, [
     'config',
     'merge.a0-results.name',
     'A0 results: regenerate, keep ours on merge',
   ]);
   const b = vcs(repo, ['config', 'merge.a0-results.driver', 'true']);
-  return a.ok && b.ok;
+  const c = vcs(repo, [
+    'config',
+    'merge.a0-measurements.name',
+    'A0 measurements: keep the load-gated, quieter, newer run',
+  ]);
+  const d = vcs(repo, [
+    'config',
+    'merge.a0-measurements.driver',
+    `node ${measurementScript} %O %A %B %P`,
+  ]);
+  return a.ok && b.ok && c.ok && d.ok;
 }

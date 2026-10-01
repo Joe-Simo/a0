@@ -241,15 +241,32 @@ export interface StageRun {
   readonly text: string;
 }
 
+/** How long one chunk of a stage executable may run, and how many times a hung run is tried. */
+const STAGE_CHUNK_MS = 120_000;
+const STAGE_CHUNK_TRIES = 3;
+
 export function runStageChunk(exe: string, chunk: Chunk, bounds: readonly number[]): StageRun {
   const bytes = [...Buffer.from(chunk.source)];
   const words = [bytes.length, ...bytes, chunk.head ? 1 : 0, chunk.strict ? 1 : 0];
   words.push(bounds.length, ...bounds);
   const input = Buffer.alloc(words.length * 4);
   for (const [i, w] of words.entries()) input.writeUInt32LE(w, i * 4);
-  const r = spawnSync(exe, [], { input, timeout: 600_000, maxBuffer: 1 << 28 });
+  // A chunk runs in seconds. On this macOS (a beta) a freshly built stage executable sometimes sits
+  // in its first `read` of stdin with the parent in spawnSync and no data moving either way (seen
+  // in about one gate run in three; `sample` shows main blocked in read, 0% CPU on both sides, and
+  // it never reproduces in isolation). The chunk is a pure function of its input, so a run that
+  // outlives STAGE_CHUNK_MS is killed and repeated; only a chunk that hangs every time fails.
+  let r = spawnSync(exe, [], { input, timeout: STAGE_CHUNK_MS, maxBuffer: 1 << 28 });
+  for (
+    let attempt = 1;
+    attempt < STAGE_CHUNK_TRIES && r.status === null && r.signal !== null;
+    attempt++
+  )
+    r = spawnSync(exe, [], { input, timeout: STAGE_CHUNK_MS, maxBuffer: 1 << 28 });
   if (r.status === null || r.status > 6)
-    throw new Error(`${exe} failed (${r.status ?? r.signal}): ${r.stderr?.toString() ?? ''}`);
+    throw new Error(
+      `${exe} failed (${r.status ?? r.signal}${r.status === null ? ` after ${STAGE_CHUNK_TRIES} tries of ${STAGE_CHUNK_MS} ms` : ''}): ${r.stderr?.toString() ?? ''}`,
+    );
   const out = r.stdout;
   if (r.status !== 0) return { code: r.status, bounds: [], text: out.toString('latin1') };
   const k = out.readUInt32LE(out.length - 4);

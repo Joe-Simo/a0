@@ -66,7 +66,7 @@ if (tool) {
   const ok = ensureMergeDriver(defaultRepo());
   process.stdout.write(
     ok
-      ? 'merge driver a0-results configured: results/*.json keep the current side on merge; the gate regenerates them\n'
+      ? 'merge drivers configured: a0-results (gate pass/fail files keep the current side; the gate regenerates them) and a0-measurements (tools/dev/merge-results.ts: never drops a load-gated run for an ungated one)\n'
       : 'could not configure the merge driver\n',
   );
   process.exit(ok ? 0 : 1);

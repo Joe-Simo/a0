@@ -41,6 +41,7 @@ import {
   type Pair,
   planBatches,
 } from '../tools/dev/merge-plan.js';
+import { chooseMeasurement, mergeMeasurementText } from '../tools/dev/merge-results.js';
 import { orderIds, sentinels } from '../tools/dev/order.js';
 import { reviewDiff } from '../tools/dev/prereview.js';
 import { buildQueue } from '../tools/dev/queue.js';
@@ -718,4 +719,85 @@ test('public tree: no tracked file names a decision-service vendor, model or key
     if (rx.test(text) || rx.test(f)) hits.push(f);
   }
   assert.deepEqual(hits, []);
+});
+
+// --- measurement results merge policy ---------------------------------------------------------
+
+test('measurement merge policy: a load-gated run is never dropped for an ungated one', () => {
+  const gated = {
+    generatedAt: '2026-10-01T06:49:00Z',
+    loadGate: { highestLoadAtSampleStart: 9.8 },
+  };
+  const ungated = { generatedAt: '2026-09-30T22:31:00Z', load: [40, 60] };
+  const newerUngated = { generatedAt: '2026-10-02T01:00:00Z', load: [3, 4] };
+  const quieter = {
+    generatedAt: '2026-09-30T01:00:00Z',
+    loadGate: { highestLoadAtSampleStart: 2 },
+  };
+  const base = { generatedAt: '2026-09-01T00:00:00Z' };
+  const pick = (o: unknown, t: unknown): string => chooseMeasurement(base, o, t).side;
+  // the gated run wins from either side, even against a newer and quieter ungated one
+  assert.equal(pick(ungated, gated), 'theirs');
+  assert.equal(pick(gated, ungated), 'ours');
+  assert.equal(pick(newerUngated, gated), 'theirs');
+  // both gated: the lower recorded load, then the newer run
+  assert.equal(pick(gated, quieter), 'theirs');
+  assert.equal(pick(quieter, gated), 'ours');
+  assert.equal(pick(gated, { ...gated, generatedAt: '2026-10-02T00:00:00Z' }), 'theirs');
+  // neither gated: the lower load, then the newer run; no load and no date is a conflict
+  assert.equal(pick(ungated, newerUngated), 'theirs');
+  assert.equal(pick({ a: 1 }, { a: 2 }), 'conflict');
+  // a side that only one branch changed is taken as is
+  assert.equal(chooseMeasurement(gated, gated, ungated).side, 'theirs');
+  assert.equal(chooseMeasurement(gated, ungated, gated).side, 'ours');
+  // logs are unioned in time order
+  const merged = JSON.parse(
+    mergeMeasurementText(
+      '{"entries":[]}',
+      '{"entries":[{"at":"b","v":1}]}',
+      '{"entries":[{"at":"a","v":2},{"at":"b","v":1}]}',
+    ) ?? 'null',
+  );
+  assert.deepEqual(
+    merged.entries.map((e: { at: string }) => e.at),
+    ['a', 'b'],
+  );
+  assert.equal(mergeMeasurementText('{}', '{', '{}'), undefined);
+});
+
+test('measurement merge driver: git keeps the gated run of two branches, gate files keep ours', () => {
+  const repo = tempRepo();
+  try {
+    mkdirSync(join(repo, 'results'));
+    const here = dirname(fileURLToPath(import.meta.url));
+    writeFileSync(join(repo, 'results', 'lang-axes.json'), '{"v":0}\n');
+    writeFileSync(join(repo, 'results', 'verification.json'), '{"v":0}\n');
+    writeFileSync(
+      join(repo, '.gitattributes'),
+      'results/*.json merge=a0-measurements\nresults/verification.json merge=a0-results\n',
+    );
+    sh(repo, 'add', '-A');
+    sh(repo, 'commit', '-q', '-m', 'results');
+    const gated =
+      '{"generatedAt":"2026-10-01T06:49:00Z","loadGate":{"highestLoadAtSampleStart":9.8}}\n';
+    const loaded = '{"generatedAt":"2026-10-02T06:49:00Z","load":[80]}\n';
+    branch(repo, 'clean', 'results/lang-axes.json', gated);
+    branch(repo, 'loaded', 'results/lang-axes.json', loaded);
+    branch(repo, 'v1', 'results/verification.json', '{"v":1}\n');
+    branch(repo, 'v2', 'results/verification.json', '{"v":2}\n');
+    assert.equal(
+      ensureMergeDriver(repo, join(here, '..', 'tools', 'dev', 'merge-results.js')),
+      true,
+    );
+    // main takes the loaded run first, then merges the gated one: the gated run must win
+    sh(repo, 'merge', '-q', '--no-edit', 'loaded');
+    sh(repo, 'merge', '-q', '--no-edit', 'clean');
+    assert.equal(readFileSync(join(repo, 'results', 'lang-axes.json'), 'utf8'), gated);
+    // a gate-regenerated pass/fail file keeps the current side
+    sh(repo, 'merge', '-q', '--no-edit', 'v1');
+    sh(repo, 'merge', '-q', '--no-edit', 'v2');
+    assert.equal(readFileSync(join(repo, 'results', 'verification.json'), 'utf8'), '{"v":1}\n');
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
