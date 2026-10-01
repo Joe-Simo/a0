@@ -1,0 +1,415 @@
+{
+ "method": "A0 structured first attempts from results/*rules-merged.json and results/*primer-none*.json that the current edit protocol rejects; repair message = recorded rejection plus EditSession.diagnose (A0_EXPERIMENT_DIAGNOSE=core); repair replies by one fresh Claude Haiku and one fresh Claude Sonnet subagent per model (all items in one file); baseline = the recorded repair outcome of the same trial.",
+ "trials": [
+  {
+   "config": "b.haiku-primer-none-guessable",
+   "task": "b-fits-inclusive",
+   "subject": "haiku",
+   "firstReply": "retval lte p0 p1",
+   "repairMessage": "Rejected:\nstructure: fits.retval: unknown callee 'lte' (callees must be defined earlier; recursion is unsupported) fix: 'lte' is neither an op nor a function defined above fits: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\nThis line of 1 causes the rejection; no other line is involved in this error:\nline 1: retval lte p0 p1\nfix: 'lte' is neither an op nor a function defined above fits: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again.",
+   "repairReply": "retval le p0 p1",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 6,
+     "cl100k_base": 6
+    }
+   }
+  },
+  {
+   "config": "b.haiku-primer-none-guessable",
+   "task": "b-inrange-inclusive",
+   "subject": "haiku",
+   "firstReply": "a gte p0 p1\nb lte p0 p2",
+   "repairMessage": "Rejected:\nstructure: inrange.a: unknown callee 'gte' (callees must be defined earlier; recursion is unsupported) fix: 'gte' is neither an op nor a function defined above inrange: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\nThis line of 2 causes the rejection; no other line is involved in this error:\nline 1: a gte p0 p1\nfix: 'gte' is neither an op nor a function defined above inrange: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again.",
+   "repairReply": "a ge p0 p1\nb le p0 p2",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 13,
+     "cl100k_base": 13
+    }
+   }
+  },
+  {
+   "config": "b.haiku-primer-none-guessable",
+   "task": "b-bounds-largest",
+   "subject": "haiku",
+   "firstReply": "s rec 0 4294967295\nfn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nm get p0 0\nM get p0 1\ne get p2 p1\nlt_em lt e m\nm_new select lt_em e m\ngt_eM gt e M\nM_new select gt_eM e M\nr rec m_new M_new\nret r\nend",
+   "repairMessage": "Rejected:\nparse: line 3: invalid node identifier 'M'\nThis line of 12 causes the rejection; no other line is involved in this error:\nline 4: M get p0 1\nfix: invalid node identifier 'M'\n\nTry again.",
+   "repairReply": "s rec 0 4294967295\nfn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nmin at p0 0\nmax at p0 1\nelem get p2 p1\ncmin lt elem min\nnew_min select cmin elem min\ncmax gt elem max\nnew_max select cmax elem max\nret rec new_min new_max\nend",
+   "baselineRepaired": false,
+   "repaired": false,
+   "secondAttempt": {
+    "status": "wrong-output",
+    "failures": [
+     "bounds(3,9,1,7) = 0,4294967295, expected 1,9",
+     "bounds(5,5,5,5) = 0,4294967295, expected 5,5",
+     "bounds(8,6,4,2) = 0,4294967295, expected 2,8"
+    ],
+    "outputTokensLocal": {
+     "o200k_base": 89,
+     "cl100k_base": 89
+    },
+    "repair": "Rejected:\nbounds(3,9,1,7) = 0,4294967295, expected 1,9\nbounds(5,5,5,5) = 0,4294967295, expected 5,5\nbounds(8,6,4,2) = 0,4294967295, expected 2,8\n\nCurrent view:\ne0\nfn bounds u32x4 -> (u32,u32)\ns rec 0 4294967295\nr fold minmax 4 s p0\nret r\nend\nfn minmax (u32,u32) u32 u32x4 -> (u32,u32) end\ng0\nfn minmax (u32,u32) u32 u32x4 -> (u32,u32) end\nfn bounds u32x4 -> (u32,u32) end\nTry again."
+   }
+  },
+  {
+   "config": "b.haiku-primer-none",
+   "task": "b-bounds-largest",
+   "subject": "haiku",
+   "firstReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nmin_v extract p0 0\nmax_v extract p0 1\nnm select (lt p1 min_v) p1 min_v\nnmx select (gt p1 max_v) p1 max_v\nret (nm, nmx)\nend",
+   "repairMessage": "Rejected:\nparse: line 4: nested operand: A0 has one op per line fix: one op per line: write `nm1 lt p1 min_v` above, then `nm select nm1 p1 min_v`\nThis line of 7 causes the rejection; no other line is involved in this error:\nline 4: nm select (lt p1 min_v) p1 min_v\nfix: one op per line: write `nm1 lt p1 min_v` above, then `nm select nm1 p1 min_v`\n\nTry again.",
+   "repairReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nmin at p0 0\nmax at p0 1\nelem get p2 p1\ncmin lt elem min\nnew_min select cmin elem min\ncmax gt elem max\nnew_max select cmax elem max\nret rec new_min new_max\nend",
+   "baselineRepaired": false,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 79,
+     "cl100k_base": 79
+    }
+   }
+  },
+  {
+   "config": "b.haiku-rules-merged",
+   "task": "b-bounds-largest",
+   "subject": "haiku",
+   "firstReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nmin at p0 0\nmax at p0 1\nelem get p3 p2\ncmin lt elem min\nnew_min select cmin elem min\ncmax gt elem max\nnew_max select cmax elem max\nret rec new_min new_max\nend",
+   "repairMessage": "Rejected:\ntype: minmax.elem: parameter p3 out of range\nThese 3 of 10 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nline 4: elem get p3 p2\nline 9: ret rec new_min new_max\nfix: minmax.elem: parameter p3 out of range\n\nTry again.",
+   "repairReply": "elem get p2 p1\ncmin lt elem min\nnew_min select cmin elem min\ncmax gt elem max\nnew_max select cmax elem max\nret rec new_min new_max",
+   "baselineRepaired": true,
+   "repaired": false,
+   "secondAttempt": {
+    "status": "protocol",
+    "failures": [
+     "type: bounds.elem: parameter p2 out of range\nThis line of 6 causes the rejection; no other line is involved in this error:\nline 1: elem get p2 p1\nfix: bounds.elem: parameter p2 out of range"
+    ],
+    "outputTokensLocal": {
+     "o200k_base": 41,
+     "cl100k_base": 41
+    },
+    "repair": "Rejected:\ntype: bounds.elem: parameter p2 out of range\nThis line of 6 causes the rejection; no other line is involved in this error:\nline 1: elem get p2 p1\nfix: bounds.elem: parameter p2 out of range\n\nTry again."
+   }
+  },
+  {
+   "config": "d.haiku-primer-none-guessable",
+   "task": "d-total-six",
+   "subject": "haiku",
+   "firstReply": "fn total u32 -> u32\nr fold addtwice 6 0 p0\nret r\nend",
+   "repairMessage": "Rejected:\nstructure: total.r: addtwice expects 0 extra arguments, got 1 fix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras\nThese 3 of 4 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn total u32 -> u32\nline 2: r fold addtwice 6 0 p0\nline 3: ret r\nfix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras\n\nTry again.",
+   "repairReply": "fn total u32 -> u32\nr fold addtwice 6 p0\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 22,
+     "cl100k_base": 22
+    }
+   }
+  },
+  {
+   "config": "d.haiku-primer-none-guessable",
+   "task": "d-isdiv-bool",
+   "subject": "haiku",
+   "firstReply": "fn isdiv u32 u32 -> u32\nr rem p0 p1\ne eq r 0\nret e\nend",
+   "repairMessage": "Rejected:\ntype: isdiv.ret: expected u32, got bool fix: replace the operand at isdiv.ret with a value of type u32\nThese 2 of 5 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 3: e eq r 0\nline 4: ret e\nfix: replace the operand at isdiv.ret with a value of type u32\n\nTry again.",
+   "repairReply": "r rem p0 p1\ne eq r 0\nres select e 1 0\nret res",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 23,
+     "cl100k_base": 23
+    }
+   }
+  },
+  {
+   "config": "d.haiku-primer-none-guessable",
+   "task": "d-prod4-seed",
+   "subject": "haiku",
+   "firstReply": "fn mulel u32 u32 u32x4 -> u32\na at p2 p1\nr mul p0 a\nret r\nend\nfn prod4 u32x4 -> u32\nr fold mulel 4 1 p0\nret r\nend",
+   "repairMessage": "Rejected:\nstructure: mulel.a: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)\nThese 5 of 9 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn mulel u32 u32 u32x4 -> u32\nline 2: a at p2 p1\nline 4: ret r\nline 6: fn prod4 u32x4 -> u32\nline 8: ret r\nfix: arrays use get: `get A I` (at is for records)\n\nTry again.",
+   "repairReply": "fn mulel u32 u32 u32x4 -> u32\na get p2 p1\nr mul p0 a\nret r\nend\nfn prod4 u32x4 -> u32\nres fold mulel 4 1 p0\nret res\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 59,
+     "cl100k_base": 61
+    }
+   }
+  },
+  {
+   "config": "d.haiku-primer-none",
+   "task": "d-total-six",
+   "subject": "haiku",
+   "firstReply": "fn total u32 -> u32\nr fold addtwice 6 p0 p0\nret r\nend",
+   "repairMessage": "Rejected:\nstructure: total.r: addtwice expects 0 extra arguments, got 1 fix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras\nThese 3 of 4 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn total u32 -> u32\nline 2: r fold addtwice 6 p0 p0\nline 3: ret r\nfix: each step runs state = addtwice(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addtwice u32 u32 u32 -> u32`; addtwice is `fn addtwice u32 u32 -> u32`; as declared, write `fold addtwice N S` with S a u32 and no extras\n\nTry again.",
+   "repairReply": "fn total u32 -> u32\nr fold addtwice 6 p0\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 22,
+     "cl100k_base": 22
+    }
+   }
+  },
+  {
+   "config": "d.haiku-primer-none",
+   "task": "d-isdiv-bool",
+   "subject": "haiku",
+   "firstReply": "fn isdiv u32 u32 -> u32\nr rem p0 p1\nc eq r 0\nret c\nend",
+   "repairMessage": "Rejected:\ntype: isdiv.ret: expected u32, got bool fix: replace the operand at isdiv.ret with a value of type u32\nThese 2 of 5 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 3: c eq r 0\nline 4: ret c\nfix: replace the operand at isdiv.ret with a value of type u32\n\nTry again.",
+   "repairReply": "r rem p0 p1\ne eq r 0\nres select e 1 0\nret res",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 23,
+     "cl100k_base": 23
+    }
+   }
+  },
+  {
+   "config": "d.haiku-rules-merged",
+   "task": "d-total-six",
+   "subject": "haiku",
+   "firstReply": "r fold addtwice 6 0 p0",
+   "repairMessage": "Rejected:\nstructure: addtwice.r: unknown fold body 'addtwice' (must be defined earlier)\nThis line of 1 causes the rejection; no other line is involved in this error:\nline 1: r fold addtwice 6 0 p0\nfix: addtwice.r: unknown fold body 'addtwice' (must be defined earlier)\n\nTry again.",
+   "repairReply": "fn total u32 -> u32\nr fold addtwice 6 p0\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 22,
+     "cl100k_base": 22
+    }
+   }
+  },
+  {
+   "config": "d.haiku-rules-merged",
+   "task": "d-isdiv-bool",
+   "subject": "haiku",
+   "firstReply": "r rem p0 p1\ne eq r 0\nret e",
+   "repairMessage": "Rejected:\ntype: isdiv.ret: expected u32, got bool fix: replace the operand at isdiv.ret with a value of type u32\nThese 2 of 3 lines are the smallest part of the reply that still fails this way; the rest of the reply is valid on its own; keep it:\nline 2: e eq r 0\nline 3: ret e\nfix: replace the operand at isdiv.ret with a value of type u32\n\nTry again.",
+   "repairReply": "r rem p0 p1\ne eq r 0\nres select e 1 0\nret res",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 23,
+     "cl100k_base": 23
+    }
+   }
+  },
+  {
+   "config": "e.haiku-rules-merged",
+   "task": "e-popcount-fold",
+   "subject": "haiku",
+   "firstReply": "fn bitcount u32 u32 -> u32 end\nr fold bitcount 32 0 p0\nret r",
+   "repairMessage": "Rejected:\nparse: line 1: expected 'fn name types... -> type'\nThis line of 3 causes the rejection; no other line is involved in this error:\nline 1: fn bitcount u32 u32 -> u32 end\nfix: expected 'fn name types... -> type'\n\nTry again.",
+   "repairReply": "fn bitcount u32 u32 u32 -> u32\nshifted shr p2 p1\nbit and shifted 1\nres add p0 bit\nret res\nend\nr fold bitcount 32 0 p0\nret r",
+   "baselineRepaired": false,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 51,
+     "cl100k_base": 51
+    }
+   }
+  },
+  {
+   "config": "e.haiku-rules-merged",
+   "task": "e-thread-param",
+   "subject": "haiku",
+   "firstReply": "a call addk p0 p1\nb call addk a p1",
+   "repairMessage": "Rejected:\ntype: apply.a: parameter p1 out of range\nThis line of 2 causes the rejection; no other line is involved in this error:\nline 1: a call addk p0 p1\nfix: apply.a: parameter p1 out of range\n\nTry again.",
+   "repairReply": "fn addk u32 u32 -> u32\nr add p0 p1\nret r\nend\nfn apply u32 u32 -> u32\na call addk p0 p1\nb call addk a p1\nret b\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 54,
+     "cl100k_base": 54
+    }
+   }
+  },
+  {
+   "config": "f.haiku-rules-merged",
+   "task": "f-divrem-pair",
+   "subject": "haiku",
+   "firstReply": "q div p0 p1\nm rem p0 p1\nr rec q m\nret r",
+   "repairMessage": "Rejected:\ntype: divrem.ret: expected u32, got (u32,u32) fix: replace the operand at divrem.ret with a value of type u32\nThese 3 of 4 lines are the smallest part of the reply that still fails this way; the rest of the reply is valid on its own; keep it:\nline 2: m rem p0 p1\nline 3: r rec q m\nline 4: ret r\nfix: replace the operand at divrem.ret with a value of type u32\n\nTry again.",
+   "repairReply": "fn divrem u32 u32 -> (u32,u32)\nq div p0 p1\nm rem p0 p1\nr rec q m\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 37,
+     "cl100k_base": 37
+    }
+   }
+  },
+  {
+   "config": "f.haiku-rules-merged",
+   "task": "f-countabove-gt",
+   "subject": "haiku",
+   "firstReply": "el get p2 p1\ncmp gt el p3\nres select cmp (add p0 1) p0\nret res",
+   "repairMessage": "Rejected:\nparse: line 4: nested operand: A0 has one op per line fix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0`\nThis line of 4 causes the rejection; no other line is involved in this error:\nline 3: res select cmp (add p0 1) p0\nfix: one op per line: write `res1 add p0 1` above, then `res select cmp res1 p0`\n\nTry again.",
+   "repairReply": "el get p2 p1\ncmp gt el p3\ninc add p0 1\nres select cmp inc p0\nret res",
+   "baselineRepaired": true,
+   "repaired": false,
+   "secondAttempt": {
+    "status": "protocol",
+    "failures": [
+     "type: countabove.el: parameter p2 out of range\nThis line of 5 causes the rejection; no other line is involved in this error:\nline 1: el get p2 p1\nfix: countabove.el: parameter p2 out of range"
+    ],
+    "outputTokensLocal": {
+     "o200k_base": 29,
+     "cl100k_base": 29
+    },
+    "repair": "Rejected:\ntype: countabove.el: parameter p2 out of range\nThis line of 5 causes the rejection; no other line is involved in this error:\nline 1: el get p2 p1\nfix: countabove.el: parameter p2 out of range\n\nTry again."
+   }
+  },
+  {
+   "config": "f.haiku-rules-merged",
+   "task": "f-addover-bool",
+   "subject": "haiku",
+   "firstReply": "s add p0 p1\noverflow lt s p0\nret overflow",
+   "repairMessage": "Rejected:\ntype: addover.ret: expected u32, got bool fix: replace the operand at addover.ret with a value of type u32\nThese 2 of 3 lines are the smallest part of the reply that still fails this way; the rest of the reply is valid on its own; keep it:\nline 2: overflow lt s p0\nline 3: ret overflow\nfix: replace the operand at addover.ret with a value of type u32\n\nTry again.",
+   "repairReply": "s add p0 p1\noverflow lt s p0\nres select overflow 1 0\nret res",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 23,
+     "cl100k_base": 23
+    }
+   }
+  },
+  {
+   "config": "haiku-primer-none-guessable",
+   "task": "sum-squares",
+   "subject": "haiku",
+   "firstReply": "fn sumto u32 -> u32\nsum li 0\ni li 0\nloop:\ncond lt i p0\nif cond\nsq call addi i i\nsum add sum sq\ni add i 1\ngoto loop\nendif\nret sum\nend",
+   "repairMessage": "Rejected:\nparse: line 4: expected `id op operands`\nThis line of 13 causes the rejection; no other line is involved in this error:\nline 4: loop:\nfix: expected `id op operands`\n\nTry again.",
+   "repairReply": "fn addsq u32 u32 -> u32\nsq mul p1 p1\nres add p0 sq\nret res\nend\nfn sumto u32 -> u32\nr fold addsq p0 0\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 51,
+     "cl100k_base": 51
+    }
+   }
+  },
+  {
+   "config": "haiku-primer-none",
+   "task": "sum-squares",
+   "subject": "haiku",
+   "firstReply": "fn sumto u32 -> u32\nc lt p0 1\nrec call sumto (sub p0 1)\nsq mul p0 p0\nrest select c 0 rec\nresult add sq rest\nret result\nend",
+   "repairMessage": "Rejected:\nparse: line 3: nested operand: A0 has one op per line fix: one op per line: write `rec1 sub p0 1` above, then `rec call sumto rec1`\nThis line of 8 causes the rejection; no other line is involved in this error:\nline 3: rec call sumto (sub p0 1)\nfix: one op per line: write `rec1 sub p0 1` above, then `rec call sumto rec1`\n\nTry again.",
+   "repairReply": "fn sumto u32 -> u32\none sub p0 1\nrec call sumto one\nsq mul p0 p0\nc lt p0 1\nrest select c 0 rec\nresult add sq rest\nret result\nend",
+   "baselineRepaired": false,
+   "repaired": false,
+   "secondAttempt": {
+    "status": "protocol",
+    "failures": [
+     "structure: sumto.rec: unknown callee 'sumto' (callees must be defined earlier; recursion is unsupported) fix: 'sumto' is neither an op nor a function defined above sumto: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\nThese 4 of 9 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn sumto u32 -> u32\nline 2: one sub p0 1\nline 3: rec call sumto one\nline 8: ret result\nfix: 'sumto' is neither an op nor a function defined above sumto: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+    ],
+    "outputTokensLocal": {
+     "o200k_base": 52,
+     "cl100k_base": 52
+    },
+    "repair": "Rejected:\nstructure: sumto.rec: unknown callee 'sumto' (callees must be defined earlier; recursion is unsupported) fix: 'sumto' is neither an op nor a function defined above sumto: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\nThese 4 of 9 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn sumto u32 -> u32\nline 2: one sub p0 1\nline 3: rec call sumto one\nline 8: ret result\nfix: 'sumto' is neither an op nor a function defined above sumto: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+   }
+  },
+  {
+   "config": "b.sonnet-primer-none-guessable",
+   "task": "b-bounds-largest",
+   "subject": "sonnet",
+   "firstReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get p2 p1\nlo get p0 0\nhi get p0 1\nc lt x lo\nnlo select c x lo\nd gt x hi\nnhi select d x hi\nr rec nlo nhi\nret r\nend",
+   "repairMessage": "Rejected:\ntype: minmax.lo: get expects an array, got (u32,u32) fix: records use at with a literal field index: `at R K` (get is for arrays)\nThese 3 of 11 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nline 3: lo get p0 0\nline 10: ret r\nfix: records use at with a literal field index: `at R K` (get is for arrays)\n\nTry again.",
+   "repairReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get p2 p1\nlo at p0 0\nhi at p0 1\nc lt x lo\nnlo select c x lo\nd gt x hi\nnhi select d x hi\nr rec nlo nhi\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 77,
+     "cl100k_base": 78
+    }
+   }
+  },
+  {
+   "config": "b.sonnet-primer-none",
+   "task": "b-bounds-largest",
+   "subject": "sonnet",
+   "firstReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get p2 p1\nlo get p0 0\nhi get p0 1\nl lt x lo\nnl select l x lo\ng gt x hi\nnh select g x hi\nr rec nl nh\nret r\nend",
+   "repairMessage": "Rejected:\ntype: minmax.lo: get expects an array, got (u32,u32) fix: records use at with a literal field index: `at R K` (get is for arrays)\nThese 3 of 11 lines are the smallest part of the reply that still fails this way; no other line is involved in this error:\nline 1: fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nline 3: lo get p0 0\nline 10: ret r\nfix: records use at with a literal field index: `at R K` (get is for arrays)\n\nTry again.",
+   "repairReply": "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get p2 p1\nlo at p0 0\nhi at p0 1\nl lt x lo\nnl select l x lo\ng gt x hi\nnh select g x hi\nr rec nl nh\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 74,
+     "cl100k_base": 74
+    }
+   }
+  },
+  {
+   "config": "d.sonnet-primer-none-guessable",
+   "task": "d-total-six",
+   "subject": "sonnet",
+   "firstReply": "fn total u32 -> u32\nr loop addtwice 6 p0\nret r\nend",
+   "repairMessage": "Rejected:\nparse: line 2: loop expects a predicate and a body function name\nThis line of 4 causes the rejection; no other line is involved in this error:\nline 2: r loop addtwice 6 p0\nfix: loop expects a predicate and a body function name\n\nTry again.",
+   "repairReply": "fn total u32 -> u32\nr fold addtwice 6 p0\nret r\nend",
+   "baselineRepaired": true,
+   "repaired": true,
+   "secondAttempt": {
+    "status": "ok",
+    "failures": [],
+    "outputTokensLocal": {
+     "o200k_base": 22,
+     "cl100k_base": 22
+    }
+   }
+  }
+ ]
+}
