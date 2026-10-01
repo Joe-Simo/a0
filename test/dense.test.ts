@@ -32,6 +32,8 @@ function files(dir: string, out: string[] = []): string[] {
   for (const f of readdirSync(dir)) {
     if (f === 'node_modules' || f === 'dist' || f === '.git' || f === 'results') continue;
     const p = join(dir, f);
+    // corpus/reject holds files the checker must reject; they have no dense form to round-trip
+    if (p.endsWith(join('corpus', 'reject'))) continue;
     if (statSync(p).isDirectory()) files(p, out);
     else if (p.endsWith('.a0')) out.push(p);
   }

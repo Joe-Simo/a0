@@ -202,3 +202,32 @@ test('mcp: dense views, dense replies, and a dense file saved as dense', () =>
     assert.match(await readFile(join(base, 'root', 'm.a0'), 'utf8'), /^fn sq u32 -> u32\n/);
     await client.close();
   }));
+
+test('mcp: a rejected edit carries id, fix and applicability, and `fix all` applies the exact fixes', () =>
+  withRoot(async (base) => {
+    const client = await connect(join(base, 'root', 'm.a0'));
+    const view = await call(client, 'a0_open', { function: 'f' });
+    const handle = view.text.split('\n')[0] ?? '';
+    const bad = await call(client, 'a0_apply', { edit: `${handle}\nc ADD b, 0x2` });
+    assert.ok(bad.error);
+    const diag = JSON.parse(bad.text) as Record<string, unknown>;
+    assert.equal(diag.code, 'parse', 'the coarse class is unchanged');
+    assert.equal(diag.id, 'A0011');
+    assert.equal(diag.applicability, 'exact');
+    assert.ok(Array.isArray(diag.edits) && diag.edits.length === 1);
+    assert.match(String(diag.fix), /add/);
+    // The next reply is `fix all`: both exact fixes land, atomically, and the program runs.
+    const fixed = await call(client, 'a0_apply', { edit: `${handle}\nfix all` });
+    assert.ok(!fixed.error, fixed.text);
+    assert.equal((await call(client, 'a0_run', { function: 'f', args: [3] })).text, '11');
+    // With nothing rejected, `fix all` is itself a diagnostic.
+    const again = await call(client, 'a0_apply', { edit: 'fix all' });
+    assert.ok(again.error);
+    assert.equal((JSON.parse(again.text) as { id: string }).id, 'A0521');
+    // A suggestion is `maybe` and names the candidate.
+    const typo = await call(client, 'a0_apply', { edit: `${handle}\nc mull b 2` });
+    const t = JSON.parse(typo.text) as { id: string; applicability: string; fix: string };
+    assert.deepEqual([t.id, t.applicability], ['A0102', 'maybe']);
+    assert.equal(t.fix, "did you mean 'mul'?");
+    await client.close();
+  }));

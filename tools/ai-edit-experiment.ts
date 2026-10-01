@@ -183,7 +183,7 @@ function applyA0(
       parseAndValidate(body);
       return { source: body };
     } catch (e) {
-      return { source, error: formatDiagnostic(e) };
+      return { source, error: formatDiagnostic(e, false) };
     }
   }
   if (session === undefined) return { source, error: 'no session' };
@@ -195,7 +195,10 @@ function applyA0(
     // reply's lines, each with its fix (EditSession.diagnose).
     const rejection = A0_DIAGNOSE_CORE ? session.diagnose(body) : undefined;
     const core = rejection === undefined ? '' : `\n${formatRejection(rejection)}`;
-    return { source, error: `${formatDiagnostic(e)}${core}` };
+    return {
+      source,
+      error: `${formatDiagnostic(e, process.env.A0_EXPERIMENT_HINTS === '1' ? '`fix all`' : false)}${core}`,
+    };
   }
 }
 
@@ -225,7 +228,7 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
   try {
     program = parseAndValidate(source);
   } catch (e) {
-    return [`invalid A0: ${formatDiagnostic(e)}`];
+    return [`invalid A0: ${formatDiagnostic(e, false)}`];
   }
   for (const t of tests) {
     const fn = program.byName.get(t.fn) as TypedFunc | undefined;

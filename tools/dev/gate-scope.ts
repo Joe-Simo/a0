@@ -343,6 +343,10 @@ function classify(
     add('test', `${file} is part of the bootstrap seed, checked by test/seed.test.ts`);
     return 'code';
   }
+  if (file.startsWith('corpus/reject/')) {
+    add('test', `${file} is a reject-corpus case, read only by test/reject.test.ts`);
+    return 'code';
+  }
   let hit = false;
   for (const [step, set] of map.closures) {
     if (set.has(file)) {

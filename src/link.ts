@@ -13,7 +13,6 @@ import { realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
-  type DiagnosticDetail,
   formatSource,
   LIMITS,
   type Program,
@@ -24,6 +23,7 @@ import {
   validate,
 } from './core.js';
 import { type Arities, parseDense } from './dense.js';
+import { diag } from './diagnostics.js';
 
 /** Dense files use this extension; any other file is read as canonical unless `dense` is set. */
 export const DENSE_EXTENSION = '.a0d';
@@ -112,35 +112,19 @@ export async function link(
     const abs = resolve(path);
     if (done.has(abs)) return;
     if (visiting.has(abs)) {
-      throw new A0Error(
-        `use cycle: ${abs} is already being linked${from === undefined ? '' : ` (from ${from})`}`,
-        undefined,
-        {
-          code: 'structure',
-          fix: 'remove one direction of the use between these files',
-        },
-      );
+      throw diag('A0620', [abs, from === undefined ? '' : ` (from ${from})`]);
     }
     visiting.add(abs);
     const shown = await read(abs);
     if (utf8Length(shown) > LIMITS.maxSourceBytes)
-      throw new A0Error(`${abs}: source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-        code: 'limit',
-      });
+      throw diag('A0621', [abs, LIMITS.maxSourceBytes]);
     const isDense = options.dense === true || isDensePath(abs);
     const uses = isDense ? denseUses(shown) : (parse(shown).uses ?? []);
     const known = new Map<string, number>();
     for (const use of uses) {
       const target = await canonical(resolve(dirname(abs), use));
       if (!(target.endsWith('.a0') || isDensePath(target)) || !inside(target))
-        throw new A0Error(
-          `use "${use}" in ${abs}: target ${target} is not an .a0 file inside ${root}`,
-          undefined,
-          {
-            code: 'structure',
-            fix: 'use only .a0 files inside the project root',
-          },
-        );
+        throw diag('A0622', [use, abs, target, root]);
       await visit(target, abs);
       for (const [name, n] of closureOf.get(target) ?? []) known.set(name, n);
     }
@@ -152,10 +136,7 @@ export async function link(
         parsed = parseDense(shown, { known });
       } catch (e) {
         if (!(e instanceof A0Error) || e.line === undefined) throw e;
-        throw new A0Error(`${abs}:${e.line}: ${e.message.replace(/^line \d+: /, '')}`, undefined, {
-          code: e.code,
-          ...(e.fix === undefined ? {} : { fix: e.fix }),
-        });
+        throw e.rewrite(`${abs}:${e.line}: ${e.message.replace(/^line \d+: /, '')}`);
       }
       text = formatSource(parsed);
       functions = parsed.functions;
@@ -177,10 +158,7 @@ export async function link(
     for (const name of fns) {
       const prev = owner.get(name);
       if (prev !== undefined && prev !== path) {
-        throw new A0Error(`function '${name}' is defined in both ${prev} and ${path}`, undefined, {
-          code: 'structure',
-          fix: `rename one of the two '${name}' definitions; a linked program has one namespace`,
-        });
+        throw diag('A0022', [name, prev, path]);
       }
       owner.set(name, path);
     }
@@ -198,20 +176,11 @@ export async function link(
     line += lineCount;
   }
   const combined = parts.join('\n');
-  if (utf8Length(combined) > LIMITS.maxSourceBytes)
-    throw new A0Error(`linked program exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-      code: 'limit',
-    });
+  if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
   try {
     return { program: validate(parse(combined)), text: combined, sources };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
-    const detail: DiagnosticDetail = {
-      code: e.code,
-      ...(e.fix === undefined ? {} : { fix: e.fix }),
-      ...(e.expected === undefined ? {} : { expected: e.expected }),
-      ...(e.actual === undefined ? {} : { actual: e.actual }),
-    };
     // Parse errors carry a line in the combined text; validator errors name `fn.node` or
     // `fn`. Both are mapped to the owning file, and the node to its line in that file.
     if (e.line !== undefined) {
@@ -220,11 +189,7 @@ export async function link(
       );
       if (src !== undefined) {
         const local = e.line - src.startLine + 1;
-        throw new A0Error(
-          `${src.path}:${local}: ${e.message.replace(/^line \d+: /, '')}`,
-          undefined,
-          detail,
-        );
+        throw e.rewrite(`${src.path}:${local}: ${e.detail}`);
       }
       throw e;
     }
@@ -238,7 +203,7 @@ export async function link(
       const node = fileLines.findIndex((l, i) => i > line && new RegExp(`^\\s*${m[2]}\\s`).test(l));
       if (node >= 0) line = node;
     }
-    throw new A0Error(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`, undefined, detail);
+    throw e.rewrite(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`);
   }
 }
 
