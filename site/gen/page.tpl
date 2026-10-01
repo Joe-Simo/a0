@@ -1071,20 +1071,21 @@ c putnum %a
 .td mono
 "$em_name$
 >
-.td mono
+.td mono first
 "$em_cr$ of $n_langs1$ ($em_ct$ tied)
 >
-.td mono
+.td mono first
 "$em_cw$, $em_cx$, $em_cl$
 >
-.td mono
+.td mono first
 "$em_dr$ of $n_langs1$ ($em_dt$ tied)
 >
-.td mono
+.td mono first
 "$em_dw$, $em_dx$, $em_dl$
 >
 >
 ]
+>
 >
 .div tblwrap
 .table ops rank
