@@ -20,18 +20,26 @@
 # Nothing is written otherwise. The result is the diagnostic code (1 parse, 2 structure,
 # 3 type, 4 limit, 5 above).
 
-# `emitwasmio` is the entry of the A0 wasm32 emitter (compiler/emit_wasm.a0) and of the A0
-# optimizer (compiler/optimize.a0), driven by tools/selfhost-wasm.ts: its first input word is the
-# mode, 1 a source chunk (the input of `emitchunkio`, then the variant count before the chunk and
-# the call table (index, depth) of the chunk's first `from` functions), 2 a chunk as checked
-# tables, 3 the module linker, 8 the table entry of the optimizer (`ozopt1`, for compiler/shape.a0;
-# the same function as 7), 7 the optimizer on ONE function (`ozone`; one run a function so
-# that no value of the run holds more than a function and its callees: a single A0 value, a
-# fold state included, is at most 65536 words). The wasm modes run on optimized tables: the
-# driver optimizes the functions of a program in program order, feeding each run the optimized
-# bodies of the callees it asks for. The result is the diagnostic code (6 for an unknown mode;
-# for mode 7: 7 when the optimizer needs the bodies of the functions it wrote after its input,
-# followed by their count; 4 when a limit of the optimizer was reached).
+# `emitwasmio` is the entry of the A0 wasm32 tool (`a0w`, driven by tools/selfhost-wasm.ts): the
+# wasm emitter (compiler/emit_wasm.a0), the optimizer (compiler/optimize.a0) and the shape
+# analyses and loop fusion (compiler/shape.a0). Its first input word is the mode:
+#   1 a source chunk through the A0 front end (the input of `emitchunkio`, then the variant count
+#     before the chunk, the call table (index, depth) of the chunk's first `from` functions, the
+#     first checked function cfrom and the node counts of the functions before it: those are
+#     stubs, the ones between cfrom and `from` are callee bodies the emitter asked for);
+#   2 a chunk as checked tables (`wam2` below: the tables, then the simd and unroll options);
+#   3 the module linker; 7 the optimizer on ONE function (`ozone`; one run a function so that no
+#     value holds more than a function and its callees: a single A0 value, a fold state included,
+#     is at most 65536 words); 8 the table entry of the optimizer (`ozopt1`, used by shape.a0).
+# The pipeline of a program: the driver runs mode 7 per function in program order (feeding each
+# run the optimized bodies of the callees it asks for), encodes the optimized program as chunks
+# of functions, and runs mode 1 or 2 per chunk (`wxorch`: shape table, loop fusion, emission);
+# the linker (mode 3) gets the chunks' POOL, META and CODE words. A run that needs the body of a
+# function it was not given (the optimizer, the shape analyses, fusion or the emitter) ends with
+# result code 7 and the chunk-function indices wanted, then their count; the driver adds those
+# bodies and runs again. Code 4 is a full table (the driver cuts the chunk), 5 an unsupported
+# shape, 6 an unknown mode. Options of mode 2: simd word 0/1 on, 2 off, 3 and 4 dump the
+# instruction list or machine state of the first function and 5 the shape table (tests only).
 
 use "emit_arm64.a0"
 use "optimize.a0"

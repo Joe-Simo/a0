@@ -1,31 +1,37 @@
 /**
- * The wasm32 emitter and the optimizer written in A0 (compiler/emit_wasm.a0, compiler/optimize.a0,
- * entry `emitwasmio` of compiler/boot.a0): the ports of src/wasm.ts and src/optimize.ts. The
- * optimized IR must equal `optimizeFunction` node for node (`a0IrCheck`), and the module
- * `compile(program, 'wasm')` byte for byte (optimized, the default) or with `{ optimize: false }`
- * (unoptimized tables).
+ * The wasm32 pipeline written in A0, driven from here: the optimizer (compiler/optimize.a0, from
+ * compiler/optimize.a0s by tools/a0s.ts), the shape analyses and loop fusion (compiler/shape.a0,
+ * from compiler/shape.a0m by tools/a0m.ts) and the wasm emitter (compiler/emit_wasm.a0), entry
+ * `emitwasmio` of compiler/boot.a0 (read its header for the modes and result codes). They port
+ * src/optimize.ts and src/wasm.ts: the module must equal `compile(program, 'wasm')` byte for byte
+ * with the default options (optimizer, fusion, simd) and with `{ optimize: false }`.
  *
  * - Build (`buildWasmTool`): the bootstrap's C seed a0c-stage1 (tools/bootstrap.ts: the A0
  *   compiler through the TypeScript C backend) compiles the closure of `emitwasmio` in chunks;
  *   clang builds that C into `a0w`. So the tool that runs is A0 compiled by A0.
+ * - This file only encodes, orders, splits and supplies bodies; it holds no A0 semantics.
  * - The optimizer runs a function a time (mode 7, `a0OptimizeProgram`): a single A0 value (a
  *   fold state included) is at most 65536 words, so a run cannot loop over functions holding
  *   their tables. The functions are optimized in program order; each run gets the function and
  *   the facts about its callees, and when it needs a body (to inline, unroll or evaluate) it
  *   stops with code 7 and the function indices, and the run is repeated with those optimized
- *   bodies (and what they reach) supplied. This file only encodes, orders, splits and supplies
- *   bodies; the optimized bodies replace the program's functions before the emitter.
- * - A program is emitted a chunk of functions at a time, from the (optimized) program as the
- *   checked tables of the TypeScript front end in the A0 front end's layout (mode 2), or as
- *   formatted source through the A0 front end (mode 1; the chunks of tools/bootstrap.ts
- *   `planChunks`). Each chunk returns its POOL, META and CODE words and a trailer with the
- *   index, stack depth and iteration bound of its functions, which are passed back, unread
- *   here, with the later chunks that call them. The linker (mode 3) gets every POOL, then
- *   every META, then every CODE, and writes the module.
+ *   bodies (and what they reach) supplied. The optimized bodies replace the program's functions.
+ * - The (optimized) program is emitted a chunk of functions at a time, as the checked tables in
+ *   the A0 front end's layout (mode 2, `a0WasmFromTables`) or as formatted source through the A0
+ *   front end (mode 1, `a0WasmFromSource`; a ret of a literal of 2^28 or more is bound to a node
+ *   first, the front end cannot pack it). A chunk is the most functions that fit one run; one
+ *   that turns out too big (code 4: the room fusion needs, the bodies supplied) is cut in two.
+ *   Per function the shape analyses, loop fusion and the emitter run inside the chunk run
+ *   (compiler/boot.a0 `wxorch`); when any of them needs the body of a function outside the chunk
+ *   the run ends with code 7 and the indices, and is repeated with those bodies supplied (an
+ *   opaque external row carries only its node count). Each chunk returns a record (POOL, META,
+ *   CODE words) per function and a trailer with the index, stack depth and iteration bound of its
+ *   functions, which are passed back with later chunks that call them. The linker (mode 3) gets
+ *   every POOL, then every META, then every CODE, and writes the module.
  * - The check (`bun run selfhost:wasm`): the corpus, the examples and site/page.a0 and docs.a0,
- *   unoptimized and optimized, as tables and, wherever the A0 front end accepts the chunks, as
- *   source, each compared byte for byte with src/wasm.ts, and the optimized IR of every
- *   function against src/optimize.ts. Writes results/selfhost-wasm.json.
+ *   unoptimized and optimized, as tables and as source, each compared byte for byte with
+ *   src/wasm.ts, and the optimized IR of every function against src/optimize.ts. Writes
+ *   results/selfhost-wasm.json.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -863,7 +869,10 @@ export interface EmitOptions {
 }
 
 /** The trailing words of mode 2: the simd option (2: off) and the unroll option (0: 1). */
-const optionWords = (o: EmitOptions): number[] => [o.simd === false ? 2 : 1, o.unroll === 1 ? 0 : (o.unroll ?? 0)];
+const optionWords = (o: EmitOptions): number[] => [
+  o.simd === false ? 2 : 1,
+  o.unroll === 1 ? 0 : (o.unroll ?? 0),
+];
 
 /** What a chunk of the emitter adds to the module: its output and the runs it took. */
 interface Emitted {
@@ -894,7 +903,14 @@ function emitTables(
   for (;;) {
     if (!chunk.fits) return undefined;
     const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
-    const r = runTool32(exe, [MODE.tables, base, chunk.before.length, ...table, ...chunk.words, ...tail]);
+    const r = runTool32(exe, [
+      MODE.tables,
+      base,
+      chunk.before.length,
+      ...table,
+      ...chunk.words,
+      ...tail,
+    ]);
     runs += 1;
     if (r.code === 0) return { out: splitChunk(r.out), runs, to };
     if (r.code === CAPACITY) return undefined;
@@ -998,7 +1014,11 @@ function sourceChunk(
     source,
     head: from === 0,
     strict: false,
-    before: [PRELUDE, ...stubs.map((i) => (fns[i] as Func).name), ...bodies.map((i) => (fns[i] as Func).name)],
+    before: [
+      PRELUDE,
+      ...stubs.map((i) => (fns[i] as Func).name),
+      ...bodies.map((i) => (fns[i] as Func).name),
+    ],
     own: fns.slice(from, to).map((f) => f.name),
     cfrom: 1 + stubs.length,
     counts: [1, ...stubs.map((i) => (fns[i] as TypedFunc).nodes.length)],
@@ -1056,7 +1076,10 @@ export function a0WasmFromSource(
   const text = formatProgram({ functions: forms });
   // the chunks of tools/bootstrap.ts planChunks are the first guess of where to cut
   const plan = planChunks(text);
-  const planned = plan[0] !== undefined && plan[0].own.length === 0 ? [fns.length] : plan.map((c) => c.own.length);
+  const planned =
+    plan[0] !== undefined && plan[0].own.length === 0
+      ? [fns.length]
+      : plan.map((c) => c.own.length);
   const ends = planned.map((_, i) => planned.slice(0, i + 1).reduce((a, b) => a + b, 0));
   let runs = opt?.runs ?? 0;
   let base = 0;
@@ -1068,7 +1091,17 @@ export function a0WasmFromSource(
     const whole = plan[0] !== undefined && plan[0].own.length === 0;
     for (;;) {
       const chunk: SourceChunk = whole
-        ? { source: text, head: true, strict: false, before: [], own: [], cfrom: 0, counts: [], ownStart: from, ownEnd: to }
+        ? {
+            source: text,
+            head: true,
+            strict: false,
+            before: [],
+            own: [],
+            cfrom: 0,
+            counts: [],
+            ownStart: from,
+            ownEnd: to,
+          }
         : sourceChunk(fns, forms, from, to, supplied, prelude);
       if (!whole && !frontEndFits(chunk.source)) return undefined;
       const bytes = [...Buffer.from(chunk.source)];
@@ -1105,7 +1138,8 @@ export function a0WasmFromSource(
       to = from + Math.ceil((to - from) / 2);
       out = run(from, to);
     }
-    if (out === undefined) return { code, chunks: outputs.length + 1, runs, failed: failed as Chunk };
+    if (out === undefined)
+      return { code, chunks: outputs.length + 1, runs, failed: failed as Chunk };
     for (const [i, name] of fns.slice(from, to).entries())
       calls.set(name.name, out.calls[i] as [number, number, number]);
     outputs.push(out);

@@ -19,6 +19,9 @@
 # the chunk's variant count and its function count; the driver concatenates every record's POOL,
 # then every META, then every CODE for the linker (`walink`, mode 3). Result code 7: bodies of the
 # chunk functions it writes (followed by their count) are needed, run again with them.
+# The orchestration around `wachunk` (reading the tables, the shape table, loop fusion: the
+# emitter emits a fused function from its fused tables, `emitFused`) is in compiler/boot.a0
+# (`wxorch`, `wxfunf`), which also folds `wxfun` itself; this file has `wachunkend` for the end.
 use "emit_c.a0"
 use "wasm_code.a0"
 # ---------------------------------------------------------------------------------------------
@@ -9541,10 +9544,9 @@ r call wachunkend e b p10 p12 p14
 ret r
 end
 # ---------------------------------------------------------------------------------------------
-# Chunk input. Mode 1: source through the A0 front end (`wasunit`, called by compiler/boot.a0);
-# mode 2 (`wairchunk`): the tables themselves, each preceded by its count: base, from, the
-# call table (2 from words), types (triples), tlist, fns (7 words each), nodes (6 words each),
-# the node types, operands (pairs), name bytes, fnm (2 words per function). A table is read a
+# Chunk input. The readers of the tables (`warn*`), used by compiler/boot.a0 for mode 1 (source
+# through the A0 front end, `wsunit`) and mode 2 (the tables themselves, `wam2`).
+# Mode 2 input: each table preceded by its count (see compiler/boot.a0 `wam2`). A table is read a
 # page at a time into a page, then stored.
 
 fn wardw io -> (u32,io)
