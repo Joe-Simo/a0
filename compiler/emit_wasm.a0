@@ -9827,10 +9827,13 @@ end
 # chunk's POOL then a 0, every chunk's META, every chunk's CODE. Output: the module, one byte
 # per word; the result is 0, 4 when a table below is full, or 6 when an exported name is no
 # function of the program.
-# The pool table u32x128x500: the address of every literal occurrence (words 0-4095), a hash table of
-# the distinct literals (2048 slots of hash, start, length from 4096), the distinct literals'
-# words (from 10240; 53632 words), a scratch word (63999) for writes that do not apply.
-
+# Two pool tables u32x128x512. The first (bank A) holds the address of every literal occurrence
+# (words 0-4095), a hash table of the distinct literals (2048 slots of hash, start, length, from 4096),
+# the first distinct literals' words (from 10240 to 65534) and a scratch word (65535) for writes that
+# do not apply; the second (bank B) the words of the literals that did not fit bank A (from 0). A
+# literal is stored whole in one bank. The virtual address of a literal word is its word in A, or
+# the number of words of A plus its word in B, so the pool is one run of words (131,000 in all;
+# the pool of a program is a data segment of its words).
 fn z500 -> u32x128x500
 a call zpage
 b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
@@ -9856,7 +9859,7 @@ k rec h f j
 ret k
 end
 # page p4 + p1 of the words [p2, p3) of the table
-fn wkrdpg (u32x128x500,io,u32) u32 u32 u32 u32 -> (u32x128x500,io,u32)
+fn wkrdpg (u32x128x512,io,u32) u32 u32 u32 u32 -> (u32x128x512,io,u32)
 a at p0 0
 b at p0 1
 c at p0 2
@@ -9877,7 +9880,7 @@ q set a d n
 r rec q o p
 ret r
 end
-fn wkrdlit (u32x128x500,io,u32) u32 u32 u32 -> (u32x128x500,io,u32)
+fn wkrdlit (u32x128x512,io,u32) u32 u32 u32 -> (u32x128x512,io,u32)
 a add p2 p3
 b shr p2 7
 c sub a 1
@@ -9887,58 +9890,49 @@ f add e 1
 g fold wkrdpg f p0 p2 a b
 ret g
 end
-# the words of a stored literal (start p3 relative to 10240) equal the new one at p4, p5 words
-fn wkcmpw bool u32 u32x128 u32x128 u32x128 u32 u32 u32 -> bool
-a add p5 p1
-b get p2 a
-c add p6 p1
-d sub c p7
-e ge d 128
-f and d 127
-g get p3 f
-h get p4 f
-i select e h g
-j eq b i
-k and p0 j
-ret k
+# the word at virtual pool address p3: below the boundary p2 in bank A (table p0, from word 10240), else
+# in bank B (table p1, from word p2); every pool word is read through here
+# the words of the stored literal at virtual address p5 equal the p7 words of the new one at p6: word p1
+fn wkcwv bool u32 u32x128x512 u32x128x512 u32 u32 u32 -> bool
+sv add p5 p1
+nv add p6 p1
+sin lt sv p4
+nin lt nv p4
+sa add 10240 sv
+sb sub sv p4
+si select sin sa sb
+sp shr si 7
+sq and si 127
+ga get p2 sp
+gb get p3 sp
+gs select sin ga gb
+a get gs sq
+na add 10240 nv
+nb sub nv p4
+ni select nin na nb
+np shr ni 7
+nq and ni 127
+ha get p2 np
+hb get p3 np
+hs select nin ha hb
+b get hs nq
+e eq a b
+r and p0 e
+ret r
 end
-fn wkcmppg bool u32 u32x128x500 u32 u32 u32 u32 -> bool
-a add p5 p1
-b mul a 128
-c call umax p3 b
-d add b 128
-e call cumin p4 d
-f sub e c
-g get p2 a
-h sub c p3
-i add p6 h
-j shr i 7
-k add j 1
-l get p2 j
-m get p2 k
-n mul j 128
-o sub c b
-p fold wkcmpw f p0 g l m o i n
-ret p
+# the words of the stored literal at p5 equal the new one at p6, p7 words (A p2, B p3, bank boundary p4)
+fn wkcmpst bool u32 u32x128x512 u32x128x512 u32 u32 u32 u32 -> bool
+r fold wkcwv p7 p0 p2 p3 p4 p5 p6
+ret r
 end
-fn wkcmpst bool u32 u32x128x500 u32 u32 u32 -> bool
-a add 10240 p3
-b add a p5
-c shr a 7
-d sub b 1
-e shr d 7
-f sub e c
-g add f 1
-h fold wkcmppg g p0 p2 a b c p4
-ret h
-end
-# probe state (slot, found, start of the match, stop) for the literal (hash p3, p4 words at p5)
-fn wkprgo (u32,bool,u32,bool) u32 u32x128x500 u32 u32 u32 -> bool
+# probe state (slot, found, start of the match, stop) for the literal (hash p3, p4 words at virtual p5;
+# A p2, B p6, bank boundary p7)
+fn wkprgo (u32,bool,u32,bool) u32 u32x128x512 u32 u32 u32 u32x128x512 u32 -> bool
 a at p0 3
 b select a false true
 ret b
 end
-fn wkprobe (u32,bool,u32,bool) u32 u32x128x500 u32 u32 u32 -> (u32,bool,u32,bool)
+fn wkprobe (u32,bool,u32,bool) u32 u32x128x512 u32 u32 u32 u32x128x512 u32 -> (u32,bool,u32,bool)
 a at p0 0
 b mul a 3
 c add 4096 b
@@ -9961,7 +9955,7 @@ s eq g p3
 t eq q p4
 u and s t
 v select u 1 0
-w fold wkcmpst v true p2 l p5 p4
+w fold wkcmpst v true p2 p6 p7 l p5 p4
 x and u w
 y or r x
 z add a 1
@@ -9970,45 +9964,71 @@ ab select y a aa
 ac rec ab x l y
 ret ac
 end
-# one literal occurrence: (table io words occurrences distinct done code)
-fn wkpgo (u32x128x500,io,u32,u32,u32,bool,u32) u32 -> bool
+# one literal occurrence: (A io words occurrences distinct done code B boundary wordsB). The words of
+# bank A are from table word 10240 (up to 65534; 65535 is the scratch word), the words of bank B from
+# its word 0; a literal is stored whole in the bank A until one does not fit, then only in the bank B,
+# whose virtual addresses follow the boundary (the words of A). A literal address is 1024 + 4 times
+# its virtual address
+fn wkpgo (u32x128x512,io,u32,u32,u32,bool,u32,u32x128x512,u32,u32) u32 -> bool
 a at p0 5
 b select a false true
 ret b
 end
-fn wkpst (u32x128x500,io,u32,u32,u32,bool,u32) u32 -> (u32x128x500,io,u32,u32,u32,bool,u32)
+fn wkpst (u32x128x512,io,u32,u32,u32,bool,u32,u32x128x512,u32,u32) u32 -> (u32x128x512,io,u32,u32,u32,bool,u32,u32x128x512,u32,u32)
 a at p0 0
 b at p0 1
 c at p0 2
 d at p0 3
 e at p0 4
 f at p0 6
+tb at p0 7
+c0 at p0 8
+cb at p0 9
 g call wardw b
 h at g 0
 i at g 1
 j eq h 0
-k add c h
-l gt k 53632
+q select j false true
+sw gt cb 0
+nsw select sw false true
+cf add c h
+fit le cf 55295
+fit0 and nsw fit
+nfit0 select fit0 false true
+cbh add cb h
+bfull gt cbh 65536
+l and nfit0 bfull
 m ge d 4096
 n ge e 2046
 o or l m
 p or o n
-q select j false true
+np select p false true
 r and q p
 s select r 4 f
-t select p false true
-u and q t
-v select u 1 0
-w add 10240 c
+u and q np
+bd0 select sw c0 c
+bd select fit0 1073741824 bd0
+nvb add bd cb
+nv select fit0 c nvb
+ua and u fit0
+ub and u nfit0
+cnta select ua 1 0
+cntb select ub 1 0
+wa add 10240 c
 x rec a i 0
-y fold wkrdlit v x w h
+y fold wkrdlit cnta x wa h
 z at y 0
 aa at y 1
 ab at y 2
-ac and ab 2047
+xb rec tb aa ab
+yb fold wkrdlit cntb xb cb h
+zb at yb 0
+io2 at yb 1
+hs at yb 2
+ac and hs 2047
 ad rec ac false 0 false
 ae select u 2048 0
-af loop wkprgo wkprobe ae ad z ab h w
+af loop wkprgo wkprobe ae ad z hs h nv zb bd
 ag at af 0
 ah at af 1
 ai at af 2
@@ -10016,48 +10036,54 @@ aj select ah false true
 ak and u aj
 al mul ag 3
 am add 4096 al
-an select ak am 63999
+an select ak am 65535
 ao shr an 7
 ap get z ao
 aq and an 127
-ar set ap aq ab
+ar set ap aq hs
 as set z ao ar
 au add am 1
-av select ak au 63999
+av select ak au 65535
 aw shr av 7
 ax get as aw
 ay and av 127
-az set ax ay c
+az set ax ay nv
 a0 set as aw az
 a1 add am 2
-a2 select ak a1 63999
+a2 select ak a1 65535
 a3 shr a2 7
 a4 get a0 a3
 a5 and a2 127
 a6 set a4 a5 h
 a7 set a0 a3 a6
-a8 mul c 4
+a8 mul nv 4
 a9 add 1024 a8
 ba mul ai 4
 bb add 1024 ba
 bc select ah bb a9
-bd select u d 63999
-be shr bd 7
+bd2 select u d 65535
+be shr bd2 7
 bf get a7 be
-bg and bd 127
+bg and bd2 127
 bh set bf bg bc
 bi set a7 be bh
+ka and ak fit0
+kb and ak nfit0
+kc and kb nsw
 bj add c h
-bk select ak bj c
+bk select ka bj c
 bl add e 1
 bm select ak bl e
 bn add d 1
 bo select u bn d
 bp or j p
-bq rec bi aa bk bo bm bp s
-ret bq
+bq add cb h
+br select kb bq cb
+bs select kc c c0
+bt rec bi io2 bk bo bm bp s zb bs br
+ret bt
 end
-fn wkocc u32x128x32 u32 u32x128x500 -> u32x128x32
+fn wkocc u32x128x32 u32 u32x128x512 -> u32x128x32
 a get p2 p1
 b set p0 p1 a
 ret b
@@ -10958,30 +10984,38 @@ r add m f
 s rec o p r q
 ret s
 end
-# the pool: the words of page 80 + p1 as bytes
-fn wkdw (io,u32,u32,u32) u32 u32x128 bool -> (io,u32,u32,u32)
-a get p2 p1
+# the pool: word p1 of the page starting at virtual word p6 (A p2, B p3, bank boundary p4) as bytes
+fn wkdw (io,u32,u32,u32) u32 u32x128x512 u32x128x512 u32 bool u32 -> (io,u32,u32,u32)
+v add p6 p1
+sin lt v p4
+sa add 10240 v
+sb sub v p4
+si select sin sa sb
+sp shr si 7
+sq and si 127
+ga get p2 sp
+gb get p3 sp
+gs select sin ga gb
+a get gs sq
 b and a 255
 c shr a 8
 d and c 255
 e shr a 16
 f and e 255
 g shr a 24
-h call wab2 p0 b d p3
-i call wab2 h f g p3
+h call wab2 p0 b d p5
+i call wab2 h f g p5
 ret i
 end
-fn wkdpg (io,u32,u32,u32) u32 u32x128x500 u32 bool -> (io,u32,u32,u32)
-a add 80 p1
-b get p2 a
+fn wkdpg (io,u32,u32,u32) u32 u32x128x512 u32 bool u32x128x512 u32 -> (io,u32,u32,u32)
 c mul p1 128
 d sub p3 c
 e gt d 128
 f select e 128 d
-g fold wkdw f p0 b p4
+g fold wkdw f p0 p2 p5 p6 p4 c
 ret g
 end
-fn wkdata (io,u32,u32,u32) u32 u32x128x500 u32 bool -> (io,u32,u32,u32)
+fn wkdata (io,u32,u32,u32) u32 u32x128x512 u32 bool u32x128x512 u32 -> (io,u32,u32,u32)
 a mul p3 4
 b call wab p0 11 true
 c call wauln a
@@ -10994,7 +11028,7 @@ i call wab h 11 true
 j call waul i a true
 k add p3 127
 l shr k 7
-m fold wkdpg l j p2 p3 true
+m fold wkdpg l j p2 p3 true p5 p6
 ret m
 end
 fn wkhsumst (io,u32) u32 u32 u32 u32 u32 u32 -> (io,u32)
@@ -11006,12 +11040,12 @@ fn wkhelpst (io,u32,u32,u32) u32 u32 u32 u32 u32 u32 -> (io,u32,u32,u32)
 a call wkhelp p0 0 p2 p3 true p4 p5 p6
 ret a
 end
-fn wkdatast (io,u32,u32,u32) u32 u32x128x500 u32 -> (io,u32,u32,u32)
-a call wkdata p0 0 p2 p3 true
+fn wkdatast (io,u32,u32,u32) u32 u32x128x512 u32 u32x128x512 u32 -> (io,u32,u32,u32)
+a call wkdata p0 0 p2 p3 true p4 p5
 ret a
 end
 # the module (io lv lf ln occ lt version vlen incap outcap functions variants depth io words)
-fn wkmod io u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x500 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 -> io
+fn wkmod io u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x512 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 u32x128x512 u32 -> io
 ph0 call wk64g p15 0
 ph1 call wk64g p15 1
 ph2 call wk64g p15 2
@@ -11120,12 +11154,12 @@ b7 rec b5 b6 0 0
 b8 fold wkcfn p10 b7 p1 p2 p4 p15
 b9 ne p14 0
 ca select b9 1 0
-cb fold wkdatast ca b8 p5 p14
+cb fold wkdatast ca b8 p5 p14 p19 p20
 cc at cb 0
 ret cc
 end
-fn wkmodst io u32 u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x500 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 -> io
-a call wkmod p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19
+fn wkmodst io u32 u32x128x256 u32x128x64 u32x128x64 u32x128x32 u32x128x512 u32x128 u32 u32 u32 u32 u32 u32 u32 u32 u32x128x64 u32x128x16 u32 u32 u32x128x512 u32 -> io
+a call wkmod p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21
 ret a
 end
 # ---------------------------------------------------------------------------------------------
@@ -11492,14 +11526,22 @@ xx at xf 0
 xy at xf 1
 q3 at xf 2
 xoff at xf 3
-r call z500
-s rec r q3 0 0 0 false 0
+r call z512
+pb9 call z512
+s rec r q3 0 0 0 false 0 pb9 0 0
 t add 4096 1
 u loop wkpgo wkpst t s
 v at u 0
 w at u 1
-x at u 2
+xc9 at u 2
 y at u 6
+pbk9 at u 7
+pc09 at u 8
+pcb9 at u 9
+sw9 gt pcb9 0
+xt9 add pc09 pcb9
+x select sw9 xt9 xc9
+bd9 select sw9 pc09 1073741824
 z call z32
 aa fold wkocc 32 z v
 ab call z256
@@ -11531,7 +11573,7 @@ nk at pl 4
 cd at pl 5
 ao eq cd 0
 ap select ao 1 0
-aq fold wkmodst ap aj vv ah ai aa v g b j m p ak al am x tt rr nr nk
+aq fold wkmodst ap aj vv ah ai aa v g b j m p ak al am x tt rr nr nk pbk9 bd9
 ar rec aq cd
 ret ar
 end
