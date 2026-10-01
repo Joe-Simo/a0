@@ -91,7 +91,7 @@ interface Task {
   readonly tests: readonly AcceptanceCase[];
   /** Reference solutions, used only to validate the harness itself. */
   readonly reference: { readonly a0: string; readonly ts: string; readonly rust: string };
-  /** Whole files in the five further languages (sets B and C only). */
+  /** Whole files in the further languages (sets B and C only). */
   readonly langs?: Readonly<Record<Lang, { readonly source: string; readonly reference: string }>>;
 }
 
@@ -695,7 +695,7 @@ async function main(): Promise<void> {
   // target, its transitive callees, and its direct callers (EditSession.openProgram scope).
   const programScope = process.env.A0_EXPERIMENT_PROGRAM_VIEW === 'deps' ? 'deps' : 'all';
   // Representations to run (A0_EXPERIMENT_REPS, comma-separated; default a0,ts,rust). The
-  // five further languages (python, go, java, csharp, cpp) exist for sets b and c*.
+  // further languages (LANGS in ai-edit-langs.ts) exist for sets b and c*.
   const reps = (process.env.A0_EXPERIMENT_REPS ?? 'a0,ts,rust').split(',').map((r) => {
     if (r === 'a0' || r === 'ts' || r === 'rust' || isLang(r)) return r as Representation;
     throw new Error(`unknown representation ${r}`);
@@ -973,7 +973,7 @@ async function main(): Promise<void> {
         'system prompt caching',
       ],
       setupCounted:
-        'A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; Python, Go, Java, C# and C++ cells carry their own u32 semantics note and are accepted by python3, go build, javac, dotnet build and clang++ with a generated driver (tools/ai-edit-langs.ts).',
+        'A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; the further languages (Python, Go, Java, C#, C++, Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig) carry their own u32 semantics note and are accepted by their own toolchain (build or static check, then a generated driver run; tools/ai-edit-langs.ts, tools/edit-langs/).',
       unknowns: 'Hidden reasoning tokens are not reported by the API and are recorded as null.',
     },
     // Task-set manifest: SHA-256 over every task's sources, instruction, and tests, so a
@@ -985,7 +985,7 @@ async function main(): Promise<void> {
         ),
       )
       .digest('hex'),
-    // The same over the five further languages' original files, when they are run.
+    // The same over the further languages' original files, when they are run.
     ...(reps.some(isLang)
       ? {
           langTaskSetSha256: createHash('sha256')

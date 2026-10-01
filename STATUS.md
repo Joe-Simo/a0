@@ -2961,3 +2961,5 @@ Free, local, deterministic tools under `tools/dev/` (entry `a0-dev`; rules in `A
 - **Timing**: `gate --mode=baseline|assisted` appends step wall-clock and load to `results/dev-loop.json` (empty so far). `a0-dev loop` reports a speedup only from quiet entries with three or more per mode.
 - Extension points: only additions (`--add-steps`, `--couple`), `--json` everywhere. Nothing in the repository depends on a particular wrapper.
 - Not done: a per-backend verify flag (`tools/verify.ts` runs every backend, so a backend change runs the whole verify step); the measured loop timings; the claims already in the ledger that lack a results reference.
+
+#
