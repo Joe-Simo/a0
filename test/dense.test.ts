@@ -30,7 +30,8 @@ const ROOT = resolve(import.meta.dirname, '..', '..');
 
 function files(dir: string, out: string[] = []): string[] {
   for (const f of readdirSync(dir)) {
-    if (f === 'node_modules' || f === 'dist' || f === '.git' || f === 'results') continue;
+    // Dot directories (.git, .claude/worktrees: other checkouts of the repository) are not part of this tree.
+    if (f === 'node_modules' || f === 'dist' || f === 'results' || f.startsWith('.')) continue;
     const p = join(dir, f);
     // corpus/reject holds files the checker must reject; they have no dense form to round-trip
     if (p.endsWith(join('corpus', 'reject'))) continue;

@@ -1326,7 +1326,8 @@ async function buildAndRun(
   drv: string,
 ): Promise<{ stdout: string } | { error: string }> {
   const fail = (label: string, r: { stdout: string; stderr: string }): { error: string } => ({
-    error: `${label}: ${(r.stderr || r.stdout).slice(0, 500)}`,
+    // The random temp directory name varies per run and is noise in a recorded result.
+    error: `${label}: ${(r.stderr || r.stdout).replace(/\/a0-[A-Za-z0-9]{6}\//g, '/a0-tmp/').slice(0, 500)}`,
   });
   switch (lang) {
     case 'python': {
