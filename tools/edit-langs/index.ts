@@ -4,9 +4,11 @@ import { C } from './c.js';
 import { CLOJURE } from './clojure.js';
 import { DART } from './dart.js';
 import { ELIXIR } from './elixir.js';
+import { FORTH } from './forth.js';
 import { FORTRAN } from './fortran.js';
 import { FSHARP } from './fsharp.js';
 import { GROOVY } from './groovy.js';
+import { GUILE } from './guile.js';
 import { HASKELL } from './haskell.js';
 import { JS } from './js.js';
 import { KOTLIN } from './kotlin.js';
@@ -16,8 +18,10 @@ import { OBJC } from './objc.js';
 import { OCAML } from './ocaml.js';
 import { PERL } from './perl.js';
 import { PHP } from './php.js';
+import { PROLOG } from './prolog.js';
 import { RUBY } from './ruby.js';
 import { SCALA } from './scala.js';
+import { SMALLTALK } from './smalltalk.js';
 import type { LangSpec } from './spec.js';
 import { SWIFT } from './swift.js';
 import { TCL } from './tcl.js';
@@ -47,6 +51,10 @@ export const SPEC_LANGS = [
   'vb',
   'fsharp',
   'scala',
+  'prolog',
+  'forth',
+  'guile',
+  'smalltalk',
 ] as const;
 export type SpecLang = (typeof SPEC_LANGS)[number];
 
@@ -59,6 +67,10 @@ export const SPECS: Readonly<Record<SpecLang, LangSpec>> = {
   ocaml: OCAML,
   elixir: ELIXIR,
   zig: ZIG,
+  smalltalk: SMALLTALK,
+  guile: GUILE,
+  forth: FORTH,
+  prolog: PROLOG,
   c: C,
   js: JS,
   lua: LUA,
