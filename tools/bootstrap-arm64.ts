@@ -37,8 +37,6 @@ import { ENTRY, runtime, STACK_GIB } from './arm64-runtime.js';
 import {
   BUILD_DIR,
   buildStage,
-  closure,
-  closures,
   type Emission,
   emitChunked,
   FRONT_END_BYTES,
@@ -52,7 +50,7 @@ import {
   STAGE_INPUT,
   STAGE_OUTPUT,
 } from './bootstrap.js';
-import { generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
+import { closure, closures, generateCases, generateCorpus, ioFreeSubset } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { checkArm64Assembly, type TargetReport } from './verify.js';
 

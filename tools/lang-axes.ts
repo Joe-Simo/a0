@@ -34,7 +34,7 @@
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { cpus, loadavg, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { getEncoding } from 'js-tiktoken';
 import { compile } from '../src/backends.js';
@@ -158,6 +158,11 @@ interface Subject {
   readonly env: NodeJS.ProcessEnv;
   readonly output: 'stdout' | 'stderr';
   readonly missing?: string;
+  /**
+   * The run step also checks (one process: front end, then the run), so checkRunMs is that
+   * step alone; checkMs is the separate static step.
+   */
+  readonly fused?: boolean;
 }
 
 const node = process.execPath;
@@ -189,27 +194,20 @@ function baselines(clang: string | undefined, rustc: string | undefined): Subjec
       id: 'a0',
       label: 'A0',
       family: 'a0',
-      toolchain: `native a0 (dist/native/a0: the self-hosted checker compiled by A0's C backend and clang); emit via the a0 CLI on ${nodeVersion}; clang for the native run`,
+      toolchain:
+        "native a0 (dist/native/a0: the self-hosted front end compiled by A0's C backend, with the host driver tools/native/a0.c evaluating the checked IR); no Node and no C compiler at run time",
       file: 'kernel.a0',
       kernelSource: (k) => k.a0,
       program: (_k, src) => `${src}\n`,
       check: (dir) => [{ cmd: A0_NATIVE, args: ['check', join(dir, 'kernel.a0')] }],
       checkKind: 'a0 check (native self-hosted lexer, parser and checker; cold process, no Node)',
-      toRun: (dir) =>
-        clang === undefined
-          ? []
-          : [
-              {
-                cmd: node,
-                args: [A0_CLI, 'emit', 'c', join(dir, 'kernel.a0'), join(dir, 'kernel.c')],
-              },
-              {
-                cmd: clang,
-                args: ['-std=c11', '-O2', '-o', join(dir, 'bench'), join(dir, 'main.c')],
-              },
-            ],
-      run: (dir) => ({ cmd: join(dir, 'bench'), args: ['1'] }),
-      ...(clang === undefined ? { missing: 'clang not found (needed for the native run)' } : {}),
+      toRun: () => [],
+      // One process checks, then runs: `a0 bench` runs the front end before the call.
+      run: (dir) => ({
+        cmd: A0_NATIVE,
+        args: ['bench', join(dir, 'kernel.a0'), basename(dir), '1'],
+      }),
+      fused: true,
     },
     {
       ...common,
@@ -453,13 +451,14 @@ async function sample(job: Job, n: number): Promise<string | null> {
   const e2 = runSteps(job.s.toRun(job.dir), job);
   if (e2 !== null) return e2;
   const run = job.s.run(job.dir);
+  const tRun = performance.now();
   const r = runTool(run.cmd, run.args, { cwd: job.dir, env: job.s.env, timeoutMs: 600_000 });
   const t2 = performance.now();
   if (!r.ok) return `run: ${(r.stderr || r.stdout).slice(-1200)}`;
   const got = readChecksum(job.s, r);
   if (got !== job.expected) return `checksum ${got ?? '(none)'} != A0 ${job.expected}`;
   if (job.s.check !== null) job.check.push(t1 - t0);
-  job.checkRun.push(t2 - t0);
+  job.checkRun.push(job.s.fused === true ? t2 - tRun : t2 - t0);
   return null;
 }
 
@@ -624,7 +623,7 @@ async function main(): Promise<void> {
     cpus: cpus().length,
     node: process.version,
     meaning:
-      'Deterministic axes over the exec-bench language set on the exec-bench kernel programs. tokens: o200k_base (js-tiktoken) tokens of each kernel source as written in the exec-bench tables (kernel) and of the whole runnable program file including its driver (program); A0 kernel and program are the same text. validation: per edit on a warm project directory, the edited file gets one appended comment line; checkMs is the static step (build, or the toolchain checker for a language with no build step; null when none exists), checkRunMs is the static step plus what running needs (A0: emit C and clang) plus a one-iteration run whose checksum must equal the A0 result. Medians per kernel over the rounds, then the median over kernels. Wall-clock under the recorded load; samples interleaved across all (language, kernel) pairs, order rotated per round. Startup is not re-measured here (results/exec-benchmark.json). Cold processes throughout: no language server or daemon is kept running (A0 included).',
+      'Deterministic axes over the exec-bench language set on the exec-bench kernel programs. tokens: o200k_base (js-tiktoken) tokens of each kernel source as written in the exec-bench tables (kernel) and of the whole runnable program file including its driver (program); A0 kernel and program are the same text. validation: per edit on a warm project directory, the edited file gets one appended comment line; checkMs is the static step (build, or the toolchain checker for a language with no build step; null when none exists), checkRunMs is the static step plus what running needs plus a one-iteration run whose checksum must equal the A0 result (A0 native: one `a0 bench FILE K 1` process that runs the front end and then evaluates the checked IR; a0node: the Node CLI check, `emit c` and clang). Medians per kernel over the rounds, then the median over kernels. Wall-clock under the recorded load; samples interleaved across all (language, kernel) pairs, order rotated per round. Startup is not re-measured here (results/exec-benchmark.json). Cold processes throughout: no language server or daemon is kept running (A0 included).',
     load: {
       perRound: load,
       note: 'os.loadavg() at the start of each round and after the last; a 1-minute value above the CPU count means the timings were taken on a loaded machine and are comparable only within this run.',

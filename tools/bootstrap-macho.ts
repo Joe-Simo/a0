@@ -30,8 +30,6 @@ import { ENTRY, runtime } from './arm64-runtime.js';
 import {
   BUILD_DIR,
   buildStage,
-  closure,
-  closures,
   emitChunked,
   rejected,
   runStageChunk,
@@ -39,7 +37,7 @@ import {
   STAGE_INPUT,
   STAGE_OUTPUT,
 } from './bootstrap.js';
-import { generateCorpus, ioFreeSubset } from './corpus.js';
+import { closure, closures, generateCorpus, ioFreeSubset } from './corpus.js';
 import { ILL_TYPED } from './ref-check.js';
 
 const RELOC_KIND: Readonly<Record<number, string>> = { 2: 'branch26', 3: 'page21', 4: 'pageoff12' };

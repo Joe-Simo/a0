@@ -2784,6 +2784,42 @@ lang-axes re-run (5 rounds, interleaved across all 49 subjects + `a0node`, the o
 Gate: lint, typecheck, test 86/86, verify, app, equiv, hw, dotnet, gpu, selfhost, selfhost:c, bootstrap and native-check all exit 0 (lint re-run after a formatter fix to lang-axes.ts).
 
 Tcl exec-bench re-run (`--langs=tcl`, load 18.6/35.8/46.1). All 10 checksums equal the stored ones, so the signed-checksum bug was only in lang-axes' 1-iteration driver, and results/exec-benchmark.json was not changed. The re-run's times are 1.0-2.8x slower (tclsh 9.0.4 now vs 8.5.9 recorded, plus load), geomean 532 vs 475 stored.
+
+## Session 2026-09-30 (native check + run: one A0 process, no Node, no clang)
+
+Merged worktree-agent-ad9f20b9b1e9ad5a2 (46d71dc, native `a0 check`). Conflicts were in the generated results, STATUS.md (both sections kept) and tools/bootstrap.ts (`closure`/`closures` now live in tools/corpus.ts; bootstrap-arm64/macho import them from there).
+
+Route chosen, measured. `dist/native/a0` now has `run`, `bench` and `calls` next to `check`. One process links the `use` files, runs the self-hosted front end, and evaluates the checked word IR.
+- (a) JIT through the self-hosted arm64 emitter, rejected. A native build of `emitachunkio` (boot.a0, the front end plus the q emitter, C backend + clang -O2) takes 18.7 / 20.8 / 22.4 ms per process on affine / branchy / arrfill just to write the assembly text. That is before any encoding: the in-process encoder (src/arm64enc.ts) is TypeScript, and running it would need Node. The same machine and load ran the evaluator route at 6-10 ms per process.
+- (b) Evaluator over the self-hosted IR, chosen. A new entry, `irio` in compiler/check.a0, is checkio plus the whole IR: types, tlist, node types, pool, sym, fns, nodes, args. The host driver tools/native/a0.c lays out one static frame per function, which is safe because A0 calls only functions above, so no function is ever active twice. Values are flat words. A `set`/`put` whose operand dies there writes in place, and fold state lives in the body's p0. There is no codegen at run time.
+- `a0 bench FILE FN N` is the exec-bench driver: xorshift32 inputs, an xor checksum, and a "ns checksum" line. lang-axes uses it with the `fused` flag: checkRunMs is that one process, which checks first. checkMs is still the separate `a0 check`.
+
+Source-size slowdown. The cause was linear, not quadratic. The C backend copied the paged front-end tables (64-100 KB each) on every token: an `at p0 k` of the fold state, a `set` on that copy, then a whole-record store back to `*p0`.
+- src/backends.ts, owned fold variant: aggregate field projections of the state point at the field (`stateProjections`). A `set`/`put` on them, or on nodes already updated in place, writes in place when `mutableHere` allows. C counts call arguments, fold extras and aggregate operands as reads (`cRead`). The final `rec` stores only the changed fields (`cStateStores`). Field projections of large local records do the same (`localProjections`).
+- compiler/parse.a0 p3tok: the 100 KB types table was wrapped into a record on every token for the 0/1 `arrone` fold. `arrinfo` and `arrapply` replace it: (ntypes ok id) with the table read by pointer, and the table as its own fold state.
+- `a0 check` on the 713-function source, from the 2 KB prefix to the full 16 KB: 5.3 / 8.2 / 12.6 / 21.7 ms wall (results/native-check.json). Before this session it was 367 ms at 16 KB (previous section); user time at the start of this session was 0.05 / 0.11 / 0.23 / 0.51 s. The 8 KB compiler/lex.a0 dropped from 100 ms to under 10 ms of user time. Per small kernel: 21.1M -> 17.7M instructions retired (Lua `print(1)`: 18.5M), and RSS 5.1 -> 3.9 MB.
+- COMPILER_VERSION a0c-0.1.31 -> a0c-0.1.32 (C emission changed).
+
+Linking. `use` lines are resolved natively, as src/link.ts resolves them: relative paths, realpath, project root = the nearest package.json, each file once, dependencies first, cycles rejected. The joined text must fit the front end's 16384 bytes: over that it exits 65, where the TypeScript linker allows 1 MiB. Not lifted: the chunked check that the bootstrap does in TypeScript (planChunks) has no native port. A name defined in two files is the front end's duplicate-name parse error (exit 1); src/link.ts reports it as structure.
+
+Verification, `bun run native-check` (results/native-check.json):
+- Diagnostics: 105/105 equal refCheckWords on the TypeScript-linked text.
+- Evaluator: 60 programs and 6528 cases equal the BigInt oracle, io included. The programs are every corpus function with what it reaches, the kernels without iterScale, and examples/kernels.a0 and life.a0. 4 corpus closures with bool-array headers are outside the self-hosted front end's language; both checkers reject them, so they are skipped. The iteration-scaled kernels are not run in the evaluator check, because their oracle takes minutes.
+- Commands: `run` matches src/cli.ts output and `bench` matches the reference checksum, 40/40.
+- Linking: 6/6 (diamond, cycle, outside root, missing file, duplicate, over-limit).
+- The evaluator has no fuel limit. The TypeScript `run` stops at 1e8 node evaluations.
+
+lang-axes (results/lang-axes.json, re-run after merging main 731ee63, 5 rounds interleaved). The 1-minute load per round was 14.7 / 12.6 / 17.4 / 8.9 / 7.8, then 10.8 after the last round, on 8 CPUs. Three of five rounds were above 10, so this is NOT a clean-load run and the numbers below are provisional; a run with every round under 10 is still owed.
+- Check + run per edit: A0 4.7 ms, Lua 5.8, Forth 6.1, Smalltalk 13.5, Tcl 21.0, Perl 24.4, Common Lisp 29.1, Prolog 30.2. A0 first, but by about 20% over Lua at this load, which is within the spread between rounds.
+- Static check: A0 4.0 ms, Perl 12.5, JS 40.7, Python 80.2.
+- Earlier runs of the same design at load 13-60 and 17-33 gave A0 first once and Lua first once (7.4 vs 8.9 ms); treat the ranking against Lua as unresolved.
+- Coverage unchanged: tokens 48/48, check+run 48/48, check 33/48, none failed or missing.
+
+Merge with main (a0c-0.1.33, fix-borrow-fuel). One C in-place analysis remains, main's: `mutableHereC` plus `borrowLive`, with `cBorrow` holding aggregate `get`/`at` as const pointers. My earlier cRead, state projections, local projections and cStateStores were dropped and re-expressed on top of it, because main's analysis alone left the size slowdown: with it, `a0 check` on 16 KB took 125.8 ms (2 KB 17.5, 4 KB 32.4, 8 KB 62.8). A const borrow of `at p0 k` can never be updated in place, so every token still copied the 64-100 KB table.
+- Added: `cProjections` marks the one `at` of an aggregate field (of the owned loop state p0, or of a large local record) as an owned non-const pointer, which `mutableHereC` accepts through its new `ownedNodes` argument. `borrowLive` still guards every in-place update. `cStateStores` stores only the changed fields of the final `rec`.
+- Result: 6.2 / 6.3 / 13.8 / 18.8 ms for 2 / 4 / 8 / 16 KB (results/native-check.json). COMPILER_VERSION a0c-0.1.34.
+- native-check after the merge: 111/111 diagnostics (main added 6 sources), 6528 evaluator cases, 40/40 commands, 6/6 linking.
+
 ## Session 2026-09-30 (general optimizations for direct wasm32, shared IR, a0c-0.1.26)
 
 Merged `wasm-vs-clang` first (conflict in tools/exec-bench.ts: its kernel table moved to tools/exec-bench-kernels.ts, which now also holds the 8 newer kernels, so wasm-bench runs 19 kernels, not 11).
