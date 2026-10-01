@@ -5,7 +5,7 @@
  * step is missing, skipped, timed out or failed.
  *
  *   node dist/tools/dev/dev-gate.js [--repo=/abs/path] [--base=<ref>] [--light] [--steps=a,b]
- *       [--add-steps=a,b] [--keep-going] [--dry-run] [--json] [--mode=baseline|assisted]
+ *       [--add-steps=a,b] [--keep-going] [--dry-run] [--json] [--mode=baseline|assisted|fast]
  *       [--push=<remote>] [--scratch=/abs/dir] [--no-note] [--no-cache] [--commit-results] [--max-parallel=N]
  *
  * The repo is given by absolute path (default: the repo this tool was built in) and every step runs
@@ -182,7 +182,7 @@ export interface GateOptions {
   readonly light: boolean;
   readonly keepGoing: boolean;
   readonly scratch: string;
-  readonly mode?: 'baseline' | 'assisted';
+  readonly mode?: 'baseline' | 'assisted' | 'fast';
   /** Write the gate note on pass (default true). */
   readonly note?: boolean;
   /** Skip steps whose content key matches a previous pass (default false; the CLI turns it on). */
@@ -374,7 +374,8 @@ async function main(): Promise<void> {
   const scratch =
     arg(args, 'scratch') ?? process.env.A0_GATE_SCRATCH ?? join(tmpdir(), 'a0-dev-gate');
   const modeArg = arg(args, 'mode');
-  const mode = modeArg === 'baseline' || modeArg === 'assisted' ? modeArg : undefined;
+  const mode =
+    modeArg === 'baseline' || modeArg === 'assisted' || modeArg === 'fast' ? modeArg : undefined;
   const report = await runGate({
     repo,
     runs,
