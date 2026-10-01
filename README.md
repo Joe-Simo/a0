@@ -41,6 +41,10 @@ Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, 
 
 `a0 mcp <file-or-dir>` serves A0 to AI agents over stdio (Model Context Protocol), so they edit through tools instead of text files: `a0_open` (function view with a handle), `a0_program` (program handle, optionally scoped to a target), `a0_apply` (edit under a handle; returns the new view or a diagnostic with code/expected/actual/fix), `a0_check`, `a0_run` (reference interpreter, fuel-bounded), `a0_emit` (any target), `a0_save` (only after a successful apply). Paths are confined to the launch root (symlink escapes and `use` escapes rejected); no shell is run; output is bounded.
 
+## Language server
+
+`a0 lsp [root]` is a Language Server Protocol server over stdio (built on `vscode-languageserver`; `--stdio` is accepted and ignored). Point any LSP client at it for `.a0` files: diagnostics on open and change from the linker and checker (the diagnostic `code` is the A0 code, the message leads with the fix), hover (function signatures, op docs), go-to-definition across `use` files, document symbols, completion of ops and in-scope functions, and formatting through the canonical printer. Files are confined to `root` (default: the working directory) exactly as in the MCP server; a document outside it gets one `limit` diagnostic and nothing else.
+
 ## Contributing to the compiler
 
 The compiler is being rewritten in A0 (see `compiler/` and DESIGN.md section 7a). Until that lands, the compiler itself is TypeScript, and working on it needs Bun or Node 22+. Users of A0 never need this: the released `a0` binary is self-contained.

@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { A0Error, parseAndValidate, run, type TypedFunc } from '../src/core.js';
-import { EditSession } from '../src/edit.js';
+import {
+  A0Error,
+  type Func,
+  formatProgram,
+  formatSource,
+  parse,
+  parseAndValidate,
+  run,
+  stripComment,
+  type TypedFunc,
+} from '../src/core.js';
+import { EditSession, programRevision, revision } from '../src/edit.js';
 
 const SRC = [
   'fn sq u32 -> u32\na mul p0 p0\nret a\nend',
@@ -164,4 +174,44 @@ test('-fn f with a new fn f block in one reply replaces f in place', () => {
   // -fn alone still removes, and callers of the removed function fail the edit atomically.
   assert.throws(() => session.apply('-fn sq'), /unknown callee 'sq'/);
   assert.equal(session.program.functions.length, 2);
+});
+
+test('comments survive formatting and edits but never change a revision', () => {
+  const src = [
+    '# helpers',
+    'fn sq u32 -> u32 # square',
+    '# multiply',
+    'a mul p0 p0 # a*a',
+    'ret a',
+    'end',
+    '',
+    'fn f u32 -> u32',
+    'x call sq p0',
+    '# plus one',
+    'y add x 1 # keep',
+    't text "a # not a comment"',
+    'ret y # result',
+    '# closing',
+    'end # f',
+    '# eof',
+    '',
+  ].join('\n');
+  const parsed = parse(src);
+  const formatted = formatSource(parsed);
+  assert.equal(formatted, src.replace('end # f\n# eof', 'end # f\n\n# eof'));
+  assert.equal(formatSource(parse(formatted)), formatted, 'round trip is a fixed point');
+  const bare = parse(src.split('\n').map(stripComment).join('\n'));
+  assert.equal(formatProgram(parsed), formatProgram(bare), 'canonical form has no comments');
+  assert.equal(programRevision(parsed), programRevision(bare));
+  for (const [k, fn] of parsed.functions.entries())
+    assert.equal(revision(fn), revision(bare.functions[k] as Func));
+
+  // An edit to f keeps sq's comments and the comments of f's untouched and replaced lines.
+  const session = new EditSession(parseAndValidate(src));
+  session.open('f');
+  session.apply('y add x 2');
+  assert.equal(
+    formatSource(session.program),
+    formatted.replace('y add x 1 # keep', 'y add x 2 # keep'),
+  );
 });
