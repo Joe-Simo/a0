@@ -65,6 +65,7 @@ export const COMMANDS: Readonly<Record<StepId, StepRun>> = {
     cmd: `${node('bootstrap')} && ${node('bootstrap-arm64')} && ${node('bootstrap-macho')}`,
     timeoutMs: 90 * MIN,
   },
+  tokens: { id: 'tokens', cmd: node('token-bench'), timeoutMs: 30 * MIN },
   site: { id: 'site', cmd: node('site-build'), timeoutMs: 30 * MIN },
 };
 

@@ -28,6 +28,7 @@ export const WEIGHT: Readonly<Record<string, number>> = {
   selfhost: 3,
   'selfhost-c': 3,
   bootstrap: 4,
+  tokens: 1,
   site: 2,
 };
 

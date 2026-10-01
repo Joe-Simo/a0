@@ -90,7 +90,7 @@ test('gate-scope: every chosen step carries a reason; callers can only add steps
 });
 
 test('gate-scope: strict results re-runs the step that writes a changed results file', () => {
-  const strict = computeScope(REPO, ['results/app.json', 'results/tokens.json'], {
+  const strict = computeScope(REPO, ['results/app.json', 'results/exec-benchmark.json'], {
     strictResults: true,
   });
   assert.deepEqual(

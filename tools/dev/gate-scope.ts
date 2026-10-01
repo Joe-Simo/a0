@@ -31,6 +31,7 @@ export type StepId =
   | 'selfhost'
   | 'selfhost-c'
   | 'bootstrap'
+  | 'tokens'
   | 'site';
 
 export interface StepInfo {
@@ -96,6 +97,12 @@ export const STEPS: readonly StepInfo[] = [
     id: 'bootstrap',
     what: 'stage 1 to 3 fixed point (C, arm64, Mach-O)',
     entries: ['tools/bootstrap.ts', 'tools/bootstrap-arm64.ts', 'tools/bootstrap-macho.ts'],
+    light: false,
+  },
+  {
+    id: 'tokens',
+    what: 'token counts of sources and emissions (tools/token-bench.ts; no timing)',
+    entries: ['tools/token-bench.ts'],
     light: false,
   },
   {
@@ -213,6 +220,7 @@ function dataDeps(root: string): Map<StepId, string[]> {
     ['selfhost', [...examples, 'compiler/emit_arm64.a0']],
     ['selfhost-c', [...examples, 'compiler/emit_c.a0']],
     ['bootstrap', [...examples, 'compiler/boot.a0', 'compiler/front512.a0']],
+    ['tokens', [...examples, 'MODEL_GUIDE.min.txt']],
     [
       'site',
       [
@@ -271,6 +279,7 @@ export const RESULT_STEP: Readonly<Record<string, StepId>> = {
   'results/bootstrap.json': 'bootstrap',
   'results/bootstrap-arm64.json': 'bootstrap',
   'results/bootstrap-macho.json': 'bootstrap',
+  'results/tokens.json': 'tokens',
 };
 
 function classify(
