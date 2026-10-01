@@ -52,6 +52,7 @@ import {
 } from './exec-bench-languages.js';
 import { MORE_LANGUAGES } from './exec-bench-languages-more.js';
 import { buildNativeCheck, NATIVE_A0 } from './native-check.js';
+import { loadGate, waitQuiet } from './quiet.js';
 
 const TABLE: readonly Language[] = [...CORE_LANGUAGES, ...MORE_LANGUAGES];
 /** The kernels results/exec-benchmark.json reports, the set every chart uses. */
@@ -546,6 +547,7 @@ async function main(): Promise<void> {
   const failedJobs = new Set<Job>();
   const failures = new Map<Job, string>();
   for (let round = 1; round <= CLI.rounds; round += 1) {
+    waitQuiet();
     load.push({ round, loadavg: loadavg() });
     const live = jobs.filter((j) => !failedJobs.has(j));
     const shift = live.length === 0 ? 0 : ((round - 1) * 7) % live.length;
@@ -629,6 +631,7 @@ async function main(): Promise<void> {
       note: 'os.loadavg() at the start of each round and after the last; a 1-minute value above the CPU count means the timings were taken on a loaded machine and are comparable only within this run.',
     },
     rounds: CLI.rounds,
+    loadGate: loadGate(),
     timedKernels: kernels.map((k) => k.name),
     tokenKernels: EXEC_KERNELS,
     coverage: {

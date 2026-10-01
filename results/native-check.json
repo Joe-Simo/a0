@@ -2,18 +2,24 @@
   "tool": "bun run native-check (tools/native-check.ts)",
   "executable": "dist/native/a0",
   "build": {
-    "method": "compiler/check.a0 linked with parse.a0 and lex.a0 (entries checkio and irio) compiled by the A0 C backend (src/backends.ts), with the host driver tools/native/a0.c (linking, commands, IR evaluator), by clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node and no C compiler at run time",
-    "functions": 184,
-    "cBytes": 682821,
-    "ms": 2797,
+    "method": "compiler/native.a0 (compiler/check.a0 and compiler/suggest.a0 linked with parse.a0 and lex.a0; entries checkio, irio and suggestio) compiled by the A0 C backend (src/backends.ts), with the host driver tools/native/a0.c (linking, commands, IR evaluator), by clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node and no C compiler at run time",
+    "functions": 225,
+    "cBytes": 740350,
+    "ms": 1998,
     "clang": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
   },
   "verification": {
     "method": "each source is written to a file and checked by a separate `dist/native/a0 check FILE` process; its (code, function, node) must equal refCheckWords of tools/ref-check.ts on the text src/link.ts links (code 0: accepted)",
-    "sources": 111,
-    "agree": 111,
-    "rejectedByReference": 39,
-    "failed": 0
+    "sources": 124,
+    "agree": 124,
+    "rejectedByReference": 52,
+    "failed": 0,
+    "suggestions": {
+      "method": "for a token error (code 1 or 2) the executable also prints `A0nnnn ...` (compiler/suggest.a0 suggestio on the rejected token); that line must equal the one built from refSuggest (tools/ref-parse.ts)",
+      "checked": 22,
+      "printed": 19,
+      "agree": 22
+    }
   },
   "evaluator": {
     "method": "the IR evaluator of tools/native/a0.c through `a0 calls FILE` (the tools/verify.ts driver protocol): every corpus function with the functions it reaches, the exec-bench kernels and the examples; each result and io output must equal the BigInt oracle of tools/corpus.ts generateCases",
@@ -675,19 +681,19 @@
     "rows": [
       {
         "bytes": 1998,
-        "ms": 5.9
+        "ms": 3.7
       },
       {
         "bytes": 4022,
-        "ms": 7.7
+        "ms": 4.6
       },
       {
         "bytes": 8139,
-        "ms": 10.9
+        "ms": 7.6
       },
       {
         "bytes": 16373,
-        "ms": 19.3
+        "ms": 12.9
       }
     ]
   },
@@ -705,8 +711,9 @@
         0,
         0
       ],
-      "ms": 75.8,
-      "ok": true
+      "ms": 116.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "retop",
@@ -721,8 +728,9 @@
         0,
         0
       ],
-      "ms": 4,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "text",
@@ -737,8 +745,9 @@
         0,
         1
       ],
-      "ms": 3.6,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "types",
@@ -753,8 +762,9 @@
         0,
         0
       ],
-      "ms": 12.3,
-      "ok": true
+      "ms": 7.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "calls",
@@ -769,8 +779,9 @@
         0,
         0
       ],
-      "ms": 5,
-      "ok": true
+      "ms": 3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "unknown-callee",
@@ -785,8 +796,12 @@
         4294967295,
         8
       ],
-      "ms": 5.4,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'g'",
+        "got": "A0102 unknown callee 'g'"
+      }
     },
     {
       "label": "later-node",
@@ -801,8 +816,12 @@
         4294967295,
         8
       ],
-      "ms": 4.5,
-      "ok": true
+      "ms": 2.5,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0101 undefined node 'b': defined later, so move it above",
+        "got": "A0101 undefined node 'b': defined later, so move it above"
+      }
     },
     {
       "label": "bad-op",
@@ -817,8 +836,12 @@
         4294967295,
         7
       ],
-      "ms": 3.9,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'plus'",
+        "got": "A0102 unknown callee 'plus'"
+      }
     },
     {
       "label": "unterminated",
@@ -833,8 +856,12 @@
         4294967295,
         11
       ],
-      "ms": 3.5,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": {
+        "expected": null,
+        "got": null
+      }
     },
     {
       "label": "fns713",
@@ -849,8 +876,9 @@
         0,
         0
       ],
-      "ms": 28.2,
-      "ok": true
+      "ms": 15,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernels.a0",
@@ -865,8 +893,9 @@
         0,
         0
       ],
-      "ms": 5.6,
-      "ok": true
+      "ms": 3.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "life.a0",
@@ -881,8 +910,9 @@
         0,
         0
       ],
-      "ms": 11.8,
-      "ok": true
+      "ms": 5.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "lex.a0",
@@ -897,8 +927,9 @@
         0,
         0
       ],
-      "ms": 10.8,
-      "ok": true
+      "ms": 7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ui.a0",
@@ -913,8 +944,9 @@
         0,
         0
       ],
-      "ms": 8.8,
-      "ok": true
+      "ms": 5.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/operand-type",
@@ -929,8 +961,9 @@
         0,
         0
       ],
-      "ms": 3.8,
-      "ok": true
+      "ms": 2.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/mixed-bool-u32",
@@ -945,8 +978,9 @@
         0,
         0
       ],
-      "ms": 3.6,
-      "ok": true
+      "ms": 2.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/eq-mixed",
@@ -961,8 +995,9 @@
         0,
         0
       ],
-      "ms": 6.6,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/arity",
@@ -977,8 +1012,9 @@
         0,
         0
       ],
-      "ms": 3.7,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/param-range",
@@ -993,8 +1029,9 @@
         0,
         0
       ],
-      "ms": 3.4,
-      "ok": true
+      "ms": 2.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/fold-state",
@@ -1009,8 +1046,9 @@
         1,
         0
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/fold-count",
@@ -1025,8 +1063,9 @@
         1,
         0
       ],
-      "ms": 3.6,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/loop-predicate",
@@ -1041,8 +1080,9 @@
         2,
         0
       ],
-      "ms": 3.1,
-      "ok": true
+      "ms": 2.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/iterations",
@@ -1057,8 +1097,9 @@
         2,
         0
       ],
-      "ms": 2.9,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/iterations-through-variable",
@@ -1073,8 +1114,9 @@
         3,
         0
       ],
-      "ms": 4.2,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/call-arity",
@@ -1089,8 +1131,9 @@
         1,
         0
       ],
-      "ms": 3,
-      "ok": true
+      "ms": 2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-twice",
@@ -1105,8 +1148,9 @@
         0,
         1
       ],
-      "ms": 3.1,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-consumed-ret",
@@ -1121,8 +1165,9 @@
         0,
         1
       ],
-      "ms": 3.3,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-taken-call",
@@ -1137,8 +1182,9 @@
         1,
         2
       ],
-      "ms": 4.6,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-taken-ret",
@@ -1153,8 +1199,9 @@
         0,
         2
       ],
-      "ms": 3.3,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-taken-twice",
@@ -1169,8 +1216,9 @@
         0,
         1
       ],
-      "ms": 3.5,
-      "ok": true
+      "ms": 2.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-taken-put-other",
@@ -1185,8 +1233,9 @@
         0,
         2
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-taken-node",
@@ -1201,8 +1250,9 @@
         0,
         3
       ],
-      "ms": 4.7,
-      "ok": true
+      "ms": 2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-two-params",
@@ -1217,8 +1267,9 @@
         0,
         4294967295
       ],
-      "ms": 3.8,
-      "ok": true
+      "ms": 2.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/io-in-array",
@@ -1233,8 +1284,9 @@
         0,
         0
       ],
-      "ms": 4.3,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/select-tokens",
@@ -1249,8 +1301,9 @@
         0,
         2
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/rec-two-tokens",
@@ -1265,8 +1318,9 @@
         0,
         2
       ],
-      "ms": 4,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/ret-type",
@@ -1281,8 +1335,9 @@
         0,
         0
       ],
-      "ms": 3.3,
-      "ok": true
+      "ms": 2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/unknown-node",
@@ -1297,8 +1352,12 @@
         4294967295,
         8
       ],
-      "ms": 4.7,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0101 undefined node 'b'",
+        "got": "A0101 undefined node 'b'"
+      }
     },
     {
       "label": "ill-typed/array-index",
@@ -1313,8 +1372,9 @@
         0,
         0
       ],
-      "ms": 5,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/get-scalar",
@@ -1329,8 +1389,9 @@
         0,
         0
       ],
-      "ms": 3.8,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/field-range",
@@ -1345,8 +1406,9 @@
         0,
         0
       ],
-      "ms": 3.4,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/put-field-type",
@@ -1361,8 +1423,9 @@
         0,
         0
       ],
-      "ms": 3.7,
-      "ok": true
+      "ms": 2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/puts-scalar",
@@ -1377,8 +1440,9 @@
         0,
         0
       ],
-      "ms": 3.2,
-      "ok": true
+      "ms": 2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "ill-typed/aggregate-limit",
@@ -1393,8 +1457,269 @@
         0,
         0
       ],
-      "ms": 3.3,
-      "ok": true
+      "ms": 2,
+      "ok": true,
+      "suggestion": null
+    },
+    {
+      "label": "unknown-name/A0102-0",
+      "bytes": 38,
+      "expected": [
+        2,
+        4294967295,
+        7
+      ],
+      "got": [
+        2,
+        4294967295,
+        7
+      ],
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'mull': did you mean 'mul'?",
+        "got": "A0102 unknown callee 'mull': did you mean 'mul'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0102-1",
+      "bytes": 85,
+      "expected": [
+        2,
+        4294967295,
+        24
+      ],
+      "got": [
+        2,
+        4294967295,
+        24
+      ],
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'squar': did you mean 'square'?",
+        "got": "A0102 unknown callee 'squar': did you mean 'square'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0102-2",
+      "bytes": 80,
+      "expected": [
+        2,
+        4294967295,
+        23
+      ],
+      "got": [
+        2,
+        4294967295,
+        23
+      ],
+      "ms": 2.3,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'squar': did you mean 'square'?",
+        "got": "A0102 unknown callee 'squar': did you mean 'square'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0102-3",
+      "bytes": 76,
+      "expected": [
+        2,
+        4294967295,
+        23
+      ],
+      "got": [
+        2,
+        4294967295,
+        23
+      ],
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'squar': did you mean 'square'?",
+        "got": "A0102 unknown callee 'squar': did you mean 'square'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0102-4",
+      "bytes": 75,
+      "expected": [
+        2,
+        4294967295,
+        8
+      ],
+      "got": [
+        2,
+        4294967295,
+        8
+      ],
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'g': defined later, so move it above",
+        "got": "A0102 unknown callee 'g': defined later, so move it above"
+      }
+    },
+    {
+      "label": "unknown-name/A0102-5",
+      "bytes": 42,
+      "expected": [
+        2,
+        4294967295,
+        7
+      ],
+      "got": [
+        2,
+        4294967295,
+        7
+      ],
+      "ms": 2,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0102 unknown callee 'frobnicate'",
+        "got": "A0102 unknown callee 'frobnicate'"
+      }
+    },
+    {
+      "label": "unknown-name/A0101-6",
+      "bytes": 54,
+      "expected": [
+        2,
+        4294967295,
+        13
+      ],
+      "got": [
+        2,
+        4294967295,
+        13
+      ],
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0101 undefined node 'acum': did you mean 'accum'?",
+        "got": "A0101 undefined node 'acum': did you mean 'accum'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0101-7",
+      "bytes": 47,
+      "expected": [
+        2,
+        4294967295,
+        8
+      ],
+      "got": [
+        2,
+        4294967295,
+        8
+      ],
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0101 undefined node 'b': defined later, so move it above",
+        "got": "A0101 undefined node 'b': defined later, so move it above"
+      }
+    },
+    {
+      "label": "unknown-name/A0101-8",
+      "bytes": 38,
+      "expected": [
+        2,
+        4294967295,
+        12
+      ],
+      "got": [
+        2,
+        4294967295,
+        12
+      ],
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0101 undefined node 'aa'",
+        "got": "A0101 undefined node 'aa'"
+      }
+    },
+    {
+      "label": "unknown-name/A0103-9",
+      "bytes": 84,
+      "expected": [
+        2,
+        4294967295,
+        24
+      ],
+      "got": [
+        2,
+        4294967295,
+        24
+      ],
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0103 unknown fold or loop body 'stepp': did you mean 'step'?",
+        "got": "A0103 unknown fold or loop body 'stepp': did you mean 'step'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0104-10",
+      "bytes": 133,
+      "expected": [
+        2,
+        4294967295,
+        41
+      ],
+      "got": [
+        2,
+        4294967295,
+        41
+      ],
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0104 unknown loop predicate 'belw': did you mean 'below'?",
+        "got": "A0104 unknown loop predicate 'belw': did you mean 'below'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0103-11",
+      "bytes": 135,
+      "expected": [
+        2,
+        4294967295,
+        42
+      ],
+      "got": [
+        2,
+        4294967295,
+        42
+      ],
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0103 unknown fold or loop body 'stepp': did you mean 'step'?",
+        "got": "A0103 unknown fold or loop body 'stepp': did you mean 'step'?"
+      }
+    },
+    {
+      "label": "unknown-name/A0001-12",
+      "bytes": 36,
+      "expected": [
+        1,
+        4294967295,
+        2
+      ],
+      "got": [
+        1,
+        4294967295,
+        2
+      ],
+      "ms": 2,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0001 unknown type 'bol': did you mean 'bool'?",
+        "got": "A0001 unknown type 'bol': did you mean 'bool'?"
+      }
     },
     {
       "label": "corpus/g0",
@@ -1409,8 +1734,9 @@
         0,
         0
       ],
-      "ms": 5.3,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g1",
@@ -1425,8 +1751,9 @@
         0,
         0
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g2",
@@ -1441,8 +1768,9 @@
         0,
         0
       ],
-      "ms": 3.8,
-      "ok": true
+      "ms": 3.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g3",
@@ -1457,8 +1785,9 @@
         0,
         0
       ],
-      "ms": 7.8,
-      "ok": true
+      "ms": 4.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g4",
@@ -1473,8 +1802,9 @@
         0,
         0
       ],
-      "ms": 9.7,
-      "ok": true
+      "ms": 2.9,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g5",
@@ -1489,8 +1819,9 @@
         0,
         0
       ],
-      "ms": 5.2,
-      "ok": true
+      "ms": 2.9,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g6",
@@ -1505,8 +1836,9 @@
         0,
         0
       ],
-      "ms": 4,
-      "ok": true
+      "ms": 3.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g7",
@@ -1521,8 +1853,9 @@
         0,
         0
       ],
-      "ms": 6.2,
-      "ok": true
+      "ms": 3.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g8",
@@ -1537,8 +1870,9 @@
         0,
         0
       ],
-      "ms": 4.9,
-      "ok": true
+      "ms": 3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g9",
@@ -1553,8 +1887,9 @@
         0,
         0
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g10",
@@ -1569,8 +1904,9 @@
         0,
         0
       ],
-      "ms": 6.6,
-      "ok": true
+      "ms": 4.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g11",
@@ -1585,8 +1921,9 @@
         0,
         0
       ],
-      "ms": 5,
-      "ok": true
+      "ms": 3.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g12",
@@ -1601,8 +1938,9 @@
         0,
         0
       ],
-      "ms": 5.4,
-      "ok": true
+      "ms": 3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g13",
@@ -1617,8 +1955,9 @@
         0,
         0
       ],
-      "ms": 5.1,
-      "ok": true
+      "ms": 3.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g14",
@@ -1633,8 +1972,9 @@
         0,
         0
       ],
-      "ms": 6.7,
-      "ok": true
+      "ms": 2.9,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g15",
@@ -1649,8 +1989,9 @@
         0,
         0
       ],
-      "ms": 5.2,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g16",
@@ -1665,8 +2006,9 @@
         0,
         0
       ],
-      "ms": 6.6,
-      "ok": true
+      "ms": 3.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g17",
@@ -1681,8 +2023,9 @@
         0,
         0
       ],
-      "ms": 7.3,
-      "ok": true
+      "ms": 3.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g18",
@@ -1697,8 +2040,9 @@
         0,
         0
       ],
-      "ms": 5.3,
-      "ok": true
+      "ms": 4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g19",
@@ -1713,8 +2057,9 @@
         0,
         0
       ],
-      "ms": 4.1,
-      "ok": true
+      "ms": 2.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g20",
@@ -1729,8 +2074,9 @@
         0,
         0
       ],
-      "ms": 3.4,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g21",
@@ -1745,8 +2091,9 @@
         0,
         0
       ],
-      "ms": 4.2,
-      "ok": true
+      "ms": 2.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g22",
@@ -1761,8 +2108,9 @@
         0,
         0
       ],
-      "ms": 4.9,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g23",
@@ -1777,8 +2125,12 @@
         4294967295,
         11
       ],
-      "ms": 5.7,
-      "ok": true
+      "ms": 2.3,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0001 unknown type 'x2'",
+        "got": "A0001 unknown type 'x2'"
+      }
     },
     {
       "label": "corpus/g24",
@@ -1793,8 +2145,9 @@
         0,
         0
       ],
-      "ms": 5.8,
-      "ok": true
+      "ms": 2.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g25",
@@ -1809,8 +2162,9 @@
         0,
         0
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g26",
@@ -1825,8 +2179,9 @@
         0,
         0
       ],
-      "ms": 4.1,
-      "ok": true
+      "ms": 2.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g27",
@@ -1841,8 +2196,12 @@
         4294967295,
         5
       ],
-      "ms": 3.3,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": {
+        "expected": null,
+        "got": null
+      }
     },
     {
       "label": "corpus/g28",
@@ -1857,8 +2216,9 @@
         0,
         0
       ],
-      "ms": 4.6,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g29",
@@ -1873,8 +2233,9 @@
         0,
         0
       ],
-      "ms": 4,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g30",
@@ -1889,8 +2250,9 @@
         0,
         0
       ],
-      "ms": 7.3,
-      "ok": true
+      "ms": 4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g31",
@@ -1905,8 +2267,9 @@
         0,
         0
       ],
-      "ms": 4.1,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g32",
@@ -1921,8 +2284,9 @@
         0,
         0
       ],
-      "ms": 3.3,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g33",
@@ -1937,8 +2301,9 @@
         0,
         0
       ],
-      "ms": 4.9,
-      "ok": true
+      "ms": 3.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g34",
@@ -1953,8 +2318,9 @@
         0,
         0
       ],
-      "ms": 5.5,
-      "ok": true
+      "ms": 3.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g35",
@@ -1969,8 +2335,9 @@
         0,
         0
       ],
-      "ms": 3.6,
-      "ok": true
+      "ms": 2.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g36",
@@ -1985,8 +2352,9 @@
         0,
         0
       ],
-      "ms": 4.9,
-      "ok": true
+      "ms": 2.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g37",
@@ -2001,8 +2369,9 @@
         0,
         0
       ],
-      "ms": 4.4,
-      "ok": true
+      "ms": 2.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g38",
@@ -2017,8 +2386,9 @@
         0,
         0
       ],
-      "ms": 3.4,
-      "ok": true
+      "ms": 2.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g39",
@@ -2033,8 +2403,9 @@
         0,
         0
       ],
-      "ms": 5.9,
-      "ok": true
+      "ms": 3.9,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g40",
@@ -2049,8 +2420,12 @@
         4294967295,
         829
       ],
-      "ms": 4.8,
-      "ok": true
+      "ms": 2.9,
+      "ok": true,
+      "suggestion": {
+        "expected": null,
+        "got": null
+      }
     },
     {
       "label": "corpus/g41",
@@ -2065,8 +2440,9 @@
         0,
         0
       ],
-      "ms": 4.7,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g42",
@@ -2081,8 +2457,9 @@
         0,
         0
       ],
-      "ms": 6,
-      "ok": true
+      "ms": 3.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g43",
@@ -2097,8 +2474,9 @@
         0,
         0
       ],
-      "ms": 12.9,
-      "ok": true
+      "ms": 6.4,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g44",
@@ -2113,8 +2491,9 @@
         0,
         0
       ],
-      "ms": 6,
-      "ok": true
+      "ms": 3.6,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g45",
@@ -2129,8 +2508,9 @@
         0,
         0
       ],
-      "ms": 7.3,
-      "ok": true
+      "ms": 3.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g46",
@@ -2145,8 +2525,9 @@
         0,
         0
       ],
-      "ms": 5.9,
-      "ok": true
+      "ms": 3.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "corpus/g47",
@@ -2161,8 +2542,12 @@
         4294967295,
         10
       ],
-      "ms": 5.4,
-      "ok": true
+      "ms": 2.5,
+      "ok": true,
+      "suggestion": {
+        "expected": "A0001 unknown type 'x2'",
+        "got": "A0001 unknown type 'x2'"
+      }
     },
     {
       "label": "kernel/affine",
@@ -2177,8 +2562,9 @@
         0,
         0
       ],
-      "ms": 3.7,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/rotl",
@@ -2193,8 +2579,9 @@
         0,
         0
       ],
-      "ms": 3.2,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/clamp",
@@ -2209,8 +2596,9 @@
         0,
         0
       ],
-      "ms": 3.1,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/mix",
@@ -2225,8 +2613,9 @@
         0,
         0
       ],
-      "ms": 3.5,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/ident",
@@ -2241,8 +2630,9 @@
         0,
         0
       ],
-      "ms": 4,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/noop",
@@ -2257,8 +2647,9 @@
         0,
         0
       ],
-      "ms": 6.3,
-      "ok": true
+      "ms": 2.1,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/chain3",
@@ -2273,8 +2664,9 @@
         0,
         0
       ],
-      "ms": 3.8,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/branchy",
@@ -2289,8 +2681,9 @@
         0,
         0
       ],
-      "ms": 7.1,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/arrfill",
@@ -2305,8 +2698,9 @@
         0,
         0
       ],
-      "ms": 4.2,
-      "ok": true
+      "ms": 2.7,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/arrfill4k",
@@ -2321,8 +2715,9 @@
         0,
         0
       ],
-      "ms": 9.6,
-      "ok": true
+      "ms": 5.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/loop64",
@@ -2337,8 +2732,9 @@
         0,
         0
       ],
-      "ms": 4.7,
-      "ok": true
+      "ms": 2.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/dot1k",
@@ -2353,8 +2749,9 @@
         0,
         0
       ],
-      "ms": 9.5,
-      "ok": true
+      "ms": 4.2,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/prefix1k",
@@ -2369,8 +2766,9 @@
         0,
         0
       ],
-      "ms": 9.8,
-      "ok": true
+      "ms": 4.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/hist256",
@@ -2385,8 +2783,9 @@
         0,
         0
       ],
-      "ms": 10.8,
-      "ok": true
+      "ms": 5.8,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/mat4",
@@ -2401,8 +2800,9 @@
         0,
         0
       ],
-      "ms": 7.9,
-      "ok": true
+      "ms": 4.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/fnv4k",
@@ -2417,8 +2817,9 @@
         0,
         0
       ],
-      "ms": 8.7,
-      "ok": true
+      "ms": 5.5,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/xs4k",
@@ -2433,8 +2834,9 @@
         0,
         0
       ],
-      "ms": 8.2,
-      "ok": true
+      "ms": 5.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/minmax1k",
@@ -2449,8 +2851,9 @@
         0,
         0
       ],
-      "ms": 7.6,
-      "ok": true
+      "ms": 3.3,
+      "ok": true,
+      "suggestion": null
     },
     {
       "label": "kernel/filter2",
@@ -2465,8 +2868,9 @@
         0,
         0
       ],
-      "ms": 7.2,
-      "ok": true
+      "ms": 4.8,
+      "ok": true,
+      "suggestion": null
     }
   ]
 }
