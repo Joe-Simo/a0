@@ -1927,7 +1927,8 @@ s8 fold vnum 1 s7 p2 390 0 ld
 s9 fold vnum 1 s8 p2 391 0 dv
 s10 fold vnum 1 s9 p2 392 0 p7
 s11 fold vnum 1 s10 p2 393 0 xr
-ret s11
+s12 fold vnum 1 s11 p2 442 0 cv
+ret s12
 end
 # the session cost of 10 tasks per slot (the largest u32 when the slot has none): set b, proto2
 # (fold body: state list, slot p1, table p2, token values p3, subject hash of the dense slot p4)
@@ -2072,7 +2073,23 @@ tr call rdiv 1000 nn
 s13 fold vfix1 1 s12 p2 440 0 tr
 s14 fold vnum 1 s13 p2 408 0 5
 s15 fold emrow 5 s14 p2 p4
-ret s15
+r1 call rd64 p4 1809
+r2 call rd64 p4 1810
+r3 call rd64 p4 1869
+r4 call rd64 p4 1871
+r5 call rd64 p4 1829
+r6 call rd64 p4 1830
+r7 call rd64 p4 1849
+r8 call rd64 p4 1851
+s16 fold vnum 1 s15 p2 443 0 r1
+s17 fold vnum 1 s16 p2 444 0 r2
+s18 fold vnum 1 s17 p2 445 0 r3
+s19 fold vnum 1 s18 p2 446 0 r4
+s20 fold vnum 1 s19 p2 447 0 r5
+s21 fold vnum 1 s20 p2 448 0 r6
+s22 fold vnum 1 s21 p2 449 0 r7
+s23 fold vnum 1 s22 p2 450 0 r8
+ret s23
 end
 # ---- tokens.json fixtures and hardware.json totals (the axes table p3)
 # the o200k tokens of the fixture whose name is word p4 into variable word p5 (fold body)
