@@ -38,7 +38,12 @@ test('the home page explains every benchmark in plain words', { timeout: 600_000
   const program = (await link('site/page.a0', (f) => readFile(f, 'utf8'), { root: '.' })).program;
   const { html, text } = prerender(program);
   const takeaways: readonly RegExp[] = [
-    /A0 takes \d+\.\d\dx as long as hand-written C, a geometric mean over \d+ test programs/,
+    /The slowest test program is \d+\.\d\dx slower on \w+ against baselines with the same calling convention, and \d+\.\d\dx slower on \w+ against each language's own inlined driver\. Same calling convention \(A0 and the best of C, Rust and Zig, both called out of line\): \d+ wins, \d+ ties, \d+ losses of \d+\. Inlined drivers: \d+ wins, \d+ ties, \d+ losses\. Against hand-written C alone, A0 takes \d+\.\d\dx as long/,
+    /Same calling convention: \d+ wins, \d+ ties, \d+ losses of \d+, slowest \d+\.\d\dx on \w+\. Each language's own inlined driver: \d+ wins, \d+ ties, \d+ losses, slowest \d+\.\d\dx on \w+/,
+    /Baseline: each language's own driver, inlined\./,
+    /Baseline: same calling convention, both called out of line\./,
+    /Speedup = the best other time divided by A0's time: above 1\.00x A0 is faster, below 1\.00x A0 is slower/,
+    /A0's code is called out of line from a C driver, so each iteration pays a real call; the other languages' drivers are inlined/,
     /Fastest on \d+ of \d+ test programs; on every one, A0 takes at most \d+\.\d\dx as long as the fastest language/,
     /of the other \d+ languages are more than 5% faster than A0/,
     /A0 takes \d+\.\d\d ms from launch to first result: place \d+ of \d+ languages \(1 = fastest\)/,
@@ -46,8 +51,8 @@ test('the home page explains every benchmark in plain words', { timeout: 600_000
     /Over a session of 10 edits, A0 \(canonical\) costs \d+ tokens per task: place \d+ of \d+ \(1 = fewest\), cheaper than \d+ of the other \d+ languages, equal to \d+, dearer than \d+\. A0 \(dense, lean view with callee bodies\) costs \d+: place \d+, cheaper than \d+, equal to \d+, dearer than \d+/,
     /the dense primer is larger \(\d+ tokens against \d+ for canonical\)/,
     /At 4000 functions an A0 edit costs \d+ tokens against \d+ for TypeScript, which is \d+\.\dx fewer than TypeScript/,
-    /A0's checker takes \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)/,
-    /Checking and running takes A0 \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)/,
+    /A0 \(native\) checks in \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)\..*A0 \(Node CLI\), the previous path, took \d+\.\d\d ms/,
+    /Checking and running takes A0 \(native\) \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)/,
     /A0 --parallel is the fastest implementation on \d+ of \d+ test programs/,
     /A0's scoped view is \d+\.\dx fewer tokens than reading the whole life\.a0 file in A0/,
   ];

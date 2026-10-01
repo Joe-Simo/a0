@@ -3,7 +3,7 @@
 f tags site/gen/tags.tpl
 f css site/gen/style.css
 f glsl site/gen/scene.glsl
-f exec results/exec-benchmark.json
+f exec results/exec-benchmark-full.json
 f cost 1 sonnet min results/ai-edit-experiment.b.sonnet-min.json
 f cost 1 sonnet langs results/ai-edit-experiment.b.sonnet-langs.json
 f cost 1 haiku min results/ai-edit-experiment.b.haiku-min.json
@@ -77,6 +77,10 @@ m top JavaScript
 m top TypeScript
 m top Python
 m top Ruby
+# The best of the three optimized baselines per test program, as named by arm64VsBestFlags in results/exec-benchmark-full.json.
+m bestflag cO3Native C -O3 native
+m bestflag rustO3Native Rust -O3 native
+m bestflag zigReleaseFast Zig ReleaseFast
 1# a0lang.com home page, authored in A0. An io program speaking the A0 UI protocol (see ui.a0):
 1#   input : event x y ntext text[ntext] nstate state[nstate]   (this page keeps no state)
 1#   tags: 1 h1 2 p 3 button 4 code 5 div 6 span 7 ul 8 li 9 a 10 pre 11 h2 12 input 13 section
@@ -337,7 +341,7 @@ s 13 glsl
 "$py_geomean$x
 >
 .p d
-"faster than Python and $js_geomean$x faster than JavaScript: geometric mean of time per call over $n_k$ test programs, measured against $n_langs$ other languages. Machine code from A0's own code generator.
+"faster than Python and $js_geomean$x faster than JavaScript: geometric mean of time per call over the test programs each language ran, measured against $n_langs$ other languages. Machine code from A0's own code generator.
 >
 >
 .div tcard edits reveal
@@ -429,10 +433,91 @@ s 13 glsl
 +id native
 =h2 Native speed
 .p take
-"A0 takes $c_ratio$x as long as hand-written C, a geometric mean over $n_k$ test programs; 1.00x would be equal.
+"The slowest test program is $bk_slow$x slower on $bk_slowk$ against baselines with the same calling convention, and $rk_max$x slower on $rk_maxk$ against each language's own inlined driver. Same calling convention (A0 and the best of C, Rust and Zig, both called out of line): $bk_nwin$ wins, $bk_ntie$ ties, $bk_nloss$ losses of $bk_n$. Inlined drivers: $rk_nw2$ wins, $rk_nt2$ ties, $rk_nl2$ losses. Against hand-written C alone, A0 takes $c_ratio$x as long, a geometric mean over the test programs; 1.00x would be equal.
 >
 <p
-"Every speed result below uses the same $n_k$ test programs. A test program is one small function (benchmark authors call it a kernel), written by hand in every language and timed on the same inputs; each result is checked against a checksum before it is timed. A0 here is machine code from A0's own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between.
+"Every speed result below uses the same test programs, $bk_n$ in all. A test program is one small function (benchmark authors call it a kernel), written by hand in every language and timed on the same inputs; each result is checked against a checksum before it is timed. A0 here is machine code from A0's own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between. Measured with a load gate: the 1-minute load average stayed at or below 10 (highest at a sample start: $bk_load$).
+>
+}
+{chart_both
+.div chart reveal
+.p ct
+"A0 under both baselines, per test program
+>
+.p take
+"Same calling convention: $bk_nwin$ wins, $bk_ntie$ ties, $bk_nloss$ losses of $bk_n$, slowest $bk_slow$x on $bk_slowk$. Each language's own inlined driver: $rk_nw2$ wins, $rk_nt2$ ties, $rk_nl2$ losses, slowest $rk_max$x on $rk_maxk$.
+>
+.p sub
+"Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Inlined: each language's fastest result with its own driver, which the compiler can inline. Speedup = the baseline's time divided by A0's: below 1.00x A0 is slower. Win = at least 1.2x faster; loss = more than 10% slower; the file gives verdicts only for the first baseline, the second uses the same win rule and a 10% tie band (results/exec-benchmark-full.json).
+>
+.div tblwrap
+.table ops rank fit
+<tr
+=th Test program
+=th Same calling convention: speedup, verdict
+=th Own inlined driver: speedup, verdict
+>
+[bkrows
+<tr
+.td mono
+"$bk_name$
+>
+.td mono{bk_win| first}{bk_loss| loss}
+"$bk_sp$x {bk_win|win}{bk_tie|tie}{bk_loss|loss}
+>
+.td mono{rk_w2| first}{rk_l2| loss}
+"$rk_sp2$x {rk_w2|win}{rk_t2|tie}{rk_l2|loss}
+>
+>
+]
+>
+>
+.p cap
+"Every loss under either baseline is in bold. A0's code is called out of line from a C driver while the other languages' drivers are inlined, so the second baseline is the harder one for A0.
+>
+>
+}
+{chart_bk
+.div chart reveal
+.p ct
+"A0 against the best of C, Rust and Zig, per test program
+>
+.p take
+"$bk_nwin$ wins, $bk_ntie$ ties and $bk_nloss$ losses of $bk_n$; the slowest is $bk_slow$x slower on $bk_slowk$. A win needs A0 at least 1.2x faster; a loss is slower beyond the tie band.
+>
+.p sub
+"Baseline: same calling convention, both called out of line. Speedup = the best other time divided by A0's time: above 1.00x A0 is faster, below 1.00x A0 is slower. The best other is the fastest of C -O3 with the native CPU, Rust opt-level 3 with the native CPU and Zig ReleaseFast. Median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
+>
+.div tblwrap
+.table ops rank fit
+<tr
+=th Test program
+=th A0 time per call
+=th Best of C, Rust, Zig
+# claim-ok: column label defining the scale; the cells are arm64VsBestFlags.speedup of results/exec-benchmark-full.json
+=th Speedup, verdict (below 1.00x = A0 slower)
+>
+[bkrows
+<tr
+.td mono
+"$bk_name$
+>
+.td mono
+"$bk_a0$ ns
+>
+.td mono
+"$bk_best$, $bk_bns$ ns
+>
+.td mono{bk_win| first}{bk_loss| loss}
+"$bk_sp$x {bk_win|win}{bk_tie|tie}{bk_loss|loss}
+>
+>
+]
+>
+>
+.p cap
+"A0's code is called out of line from a C driver, so each iteration pays a real call; the other languages' drivers are inlined. That favours the baselines, and the losses above include it. results/exec-benchmark-full.json.
+>
 >
 }
 {rank_table
@@ -444,7 +529,7 @@ s 13 glsl
 "Fastest on $rk_nwin$ of $rk_nk$ test programs; on every one, A0 takes at most $rk_max$x as long as the fastest language.
 >
 .p sub
-"Place 1 = fastest of all $n_langs1$ languages. Time per call, median of 7 interleaved runs, every result checksum-verified.
+"Baseline: each language's own driver, inlined. Place 1 = fastest of the languages that ran that test program (every language ran the first ten; later ones only some). Time per call, median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
 >
 .p cov mono{cov_langs_part| part}
 "measured: $cov_langs$ of $n_all$ languages
@@ -493,7 +578,7 @@ c putratio %a
 "$n_ahead$ of the other $n_langs$ languages are more than 5% faster than A0{ahead| ($ahead$)}; $n_ties$ are within 5% of A0; the rest are slower.
 >
 <p
-"The same $n_k$ test programs, hand-written in each language and checksum-verified before they are timed. Each bar below is one language: its time per call divided by A0's, as a geometric mean over the test programs.
+"The same test programs, hand-written in each language and checksum-verified before they are timed; a language is timed on the programs it has source for. Each bar below is one language: its time per call divided by A0's on those programs, as a geometric mean.
 >
 }
 {chart_langs
@@ -1347,7 +1432,7 @@ c putratio %a
 "Time to check one edited test program
 >
 .p take
-"A0's checker takes $ck_a0$ ms: place $ck_rank$ of $ckrows$ (1 = fastest). Fastest: $ck_bestl$, $ck_best$ ms. Median language: $ck_med$ ms. A0's earlier Node-based checker took $ck_node$ ms.
+"A0 (native) checks in $ck_a0$ ms: place $ck_rank$ of $ckrows$ (1 = fastest). Fastest: $ck_bestl$, $ck_best$ ms. Median language: $ck_med$ ms. A0 (Node CLI), the previous path, took $ck_node$ ms.
 >
 .p sub
 "Median milliseconds over the test programs, shorter bar = faster. Bar length is logarithmic.
@@ -1413,7 +1498,7 @@ c putfix %a
 ]
 >
 .p cap
-"Languages with no separate check step (they run the file directly) are only in the next chart. A0 here is the self-compiled native checker, run as a cold process. Shown first: A0 and the best-known languages; all $ckrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+"Languages with no separate check step (they run the file directly) are only in the next chart. A0 here is the native self-hosted checker, run as a cold process with no Node (A0 (Node CLI) is the previous path). Shown first: A0 and the best-known languages; all $ckrows$ are behind the disclosure, in the same order. results/lang-axes.json.
 >
 >
 }
@@ -1423,7 +1508,7 @@ c putfix %a
 "Time to check and run one edited test program
 >
 .p take
-"Checking and running takes A0 $cr_a0$ ms: place $cr_rank$ of $crrows$ (1 = fastest). Fastest: $cr_bestl$, $cr_best$ ms. Median language: $cr_med$ ms. A0's Node-based path took $cr_node$ ms.
+"Checking and running takes A0 (native) $cr_a0$ ms: place $cr_rank$ of $crrows$ (1 = fastest). Fastest: $cr_bestl$, $cr_best$ ms. Median language: $cr_med$ ms. A0 (Node CLI), the previous path (check, emit C, clang), took $cr_node$ ms.
 >
 .p sub
 "Median milliseconds over the test programs, shorter bar = faster. Bar length is logarithmic. The run must reproduce A0's checksum.
@@ -1489,7 +1574,7 @@ c putfix %a
 ]
 >
 .p cap
-"A0's check and run emits C and compiles it with clang, which is why it is slower than its check alone. Timings are wall-clock under a heavy machine load (1-minute load average up to $ax_load$ on $ax_cpus$ cores), so absolute values will move on a quiet machine; the order is what to read. Shown first: A0 and the best-known languages; all $crrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+"A0's native check and run is one process that checks the program and then evaluates the checked IR, with no C compiler; the previous path emitted C and compiled it with clang. Timings are wall-clock with a load gate (the 1-minute load average stayed at or below $ax_load$ on $ax_cpus$ cores). Shown first: A0 and the best-known languages; all $crrows$ are behind the disclosure, in the same order. results/lang-axes.json.
 >
 >
 }

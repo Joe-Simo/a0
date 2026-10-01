@@ -3,26 +3,40 @@
 # table (sgjson.a0) is read; the variables table is the state of every fold.
 use "sgvars.a0"
 
+# p0 / p1 x 100 rounded, without overflowing when both are above 40000000 (times in ns x 10^4)
+fn ratio100 u32 u32 -> u32
+m call max p0 p1
+big gt m 40000000
+a1 call rdiv p0 1000
+b0 call rdiv p1 1000
+b1 call max b0 1
+a select big a1 p0
+b select big b1 p1
+a100 mul a 100
+r call rdiv a100 b
+ret r
+end
 fn kf u32x128x64 u32 u32 -> u32
 a shl p1 4
-b add a 400
+b add a 2884
 c add b p2
 r call rd64 p0 c
 ret r
 end
 fn med u32x128x64 u32 u32 -> u32
-a shl p1 4
+a mul p1 20
 b add a p2
-c add b 1424
-r call rd64 p0 c
+c add b 3972
+v call rd64 p0 c
+r sub v 1
 ret r
 end
 fn ranon u32x128x64 u32 u32 -> bool
-a shl p1 4
+a mul p1 20
 b add a p2
-c add b 2448
+c add b 3972
 v call rd64 p0 c
-r eq v 1
+r gt v 0
 ret r
 end
 fn cref u32x128x128 u32 -> u32
@@ -144,14 +158,14 @@ fn strings u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 s1 fold cword 18 p0 p2 73 2
 s2 fold vconst 1 s1 p2 46 20
 s3 fold vconst 1 s2 p2 47 21
-nl call rd64 p3 129
-s4 fold cpstr nl s3 p3 912 8 848 1 32
-nk call rd64 p3 128
-s5 fold cpstr nk s4 p3 256 8 384 1 96
-n0 call rd64 p3 130
-s6 fold cpstr n0 s5 p3 3728 8 3600 1 112
-n1 call rd64 p3 131
-s7 fold cpstr n1 s6 p3 4240 8 3664 1 176
+nl call rd64 p4 2701
+s4 fold cpstr nl s3 p4 3460 8 3396 1 32
+nk call rd64 p4 2700
+s5 fold cpstr nk s4 p4 2704 8 2864 1 96
+n0 call rd64 p4 2702
+s6 fold cpstr n0 s5 p4 5380 8 5316 1 128
+n1 call rd64 p4 2703
+s7 fold cpstr n1 s6 p4 5636 8 5348 1 160
 ne call rd64 p3 7768
 s8 fold cpstr ne s7 p3 7774 11 7773 11 240
 np call rd64 p3 7952
@@ -260,9 +274,10 @@ ret s2
 end
 
 # ---- exec
-fn gmstep (u32,u32) u32 u32x128x64 u32 u32 -> (u32,u32)
-s at p0 0
-c at p0 1
+fn gmstep (u32,u32,u32) u32 u32x128x64 u32 u32 -> (u32,u32,u32)
+sp at p0 0
+sn at p0 1
+c at p0 2
 k mov p1
 ha call kf p2 k 0
 has eq ha 1
@@ -281,30 +296,54 @@ rn call ranon p2 lm k
 all eq p4 0
 ok0 or all rn
 ok1 or isk ok0
-ok and has ok1
+ok2 and has ok1
 d1 call kf p2 k 1
 d2 call kf p2 k 2
 den select inv d2 d1
+nzn gt num 0
+nzd gt den 0
+nzb and nzn nzd
+ok and ok2 nzb
 d call ldiff num den
-s2 add s d
+bi call bias
+pos ge d bi
+pe sub d bi
+ne sub bi d
+spa add sp pe
+sna add sn ne
+sp1 select pos spa sp
+sn1 select pos sn sna
+sp2 select ok sp1 sp
+sn2 select ok sn1 sn
 c1 add c 1
-sn select ok s2 s
 cn select ok c1 c
-r rec sn cn
+r rec sp2 sn2 cn
 ret r
 end
 # biased log geomean over the kernels with arm64 of kernel field p2 (p2 < 4096) or of
 # language p2 - 4096 (on the kernels where it ran when p3): (log, count)
 fn gm u32x128x64 u32 u32 -> (u32,u32)
-nk call rd64 p0 128
-s0 rec 0 0
+nk call rd64 p0 2700
+s0 rec 0 0 0
 s fold gmstep nk s0 p0 p1 p2
-t at s 0
-c at s 1
+sp at s 0
+sn at s 1
+c at s 2
 z eq c 0
 c1 select z 1 c
-q div t c1
-r rec q c
+bi call bias
+ge ge sp sn
+dp sub sp sn
+dn sub sn sp
+qp div dp c1
+dn1 add dn c1
+dn2 sub dn1 1
+qn div dn2 c1
+rp add bi qp
+rn sub bi qn
+t0 select ge rp rn
+t select z 0 t0
+r rec t c
 ret r
 end
 # the language rows: (label ref, family 0 a0 1 compiled 2 interpreted 3 other, log, label hash)
@@ -314,7 +353,7 @@ fm at p0 1
 lg at p0 2
 hs at p0 3
 n at p0 4
-ri add p1 784
+ri add p1 3332
 ran call rd64 p2 ri
 l4 add p1 4096
 g call gm p2 l4 1
@@ -325,7 +364,7 @@ ok1 gt gc 0
 ok and ok0 ok1
 ra add p1 32
 ref call rd128 p3 ra
-fi add p1 720
+fi add p1 3268
 fa call rd64 p2 fi
 h call vhash p3 ref
 rf2 set rf n ref
@@ -369,7 +408,7 @@ jh call vhash p1 js
 g4 call gm p0 4 0
 l4 at g4 0
 s3 fold addrow 1 s2 js 3 l4 jh
-nl call rd64 p0 129
+nl call rd64 p0 2701
 s4 fold lgstep nl s3 p0 p1
 a0 call cref p1 2
 ah call vhash p1 a0
@@ -450,7 +489,7 @@ end
 fn allstep (u32x64,u32) u32 u32x128x64 u32x128x128 -> (u32x64,u32)
 l at p0 0
 n at p0 1
-ri add p1 784
+ri add p1 3332
 ran call rd64 p2 ri
 ok eq ran 1
 ra add p1 32
@@ -477,7 +516,7 @@ z2 set z1 1 hb
 z3 set z2 2 hc
 z4 set z3 3 hd0
 s0 rec z4 4
-nl call rd64 p0 129
+nl call rd64 p0 2701
 r fold allstep nl s0 p0 p1
 ret r
 end
@@ -517,11 +556,11 @@ r fold dblstep p1 z p0 p2
 ret r
 end
 fn cexec u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
-nl call rd64 p3 129
+nl call rd64 p3 2701
 pyh call whash p2 49
-py call lookup p3 656 nl pyh
+py call lookup p3 3204 nl pyh
 py4 add py 4096
-gp call gm p3 py4 0
+gp call gm p3 py4 1
 gpl at gp 0
 pyg call ex gpl 1
 s1 fold vnum 1 p0 p2 91 0 pyg
@@ -618,14 +657,18 @@ s2 fold rkone 1 s1 ru rr arm
 js call kf p1 p2 4
 jr call cref p0 5
 s3 fold rkone 1 s2 js jr arm
-nl call rd64 p1 129
+nl call rd64 p1 2701
 s4 fold rklang nl s3 p1 p0 p2 arm
 ret s4
 end
 # kernels A0 is first on, and the largest ratio x 100 of A0 to the fastest other (at least 100) (fold body)
-fn rkst (u32,u32) u32 u32x128x128 u32x128x64 -> (u32,u32)
+fn rkst (u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x64 -> (u32,u32,u32,u32,u32,u32)
 w at p0 0
 m at p0 1
+mk at p0 2
+a2 at p0 3
+t2 at p0 4
+l2 at p0 5
 h call kf p3 p1 0
 has eq h 1
 arm call kf p3 p1 1
@@ -635,13 +678,29 @@ bv at r 2
 first eq fa 0
 w1 add w 1
 w2 select first w1 w
-a100 mul arm 100
-ra call rdiv a100 bv
+ra call ratio100 arm bv
 big gt ra m
 m1 select big ra m
+mk1 select big p1 mk
+win2 le ra 83
+los2 gt ra 110
+tie0 or win2 los2
+tie2 select tie0 0 1
+a21 add a2 1
+t21 add t2 tie2
+l21 select los2 1 0
+l22 add l2 l21
+aw select win2 1 0
+a22 add a2 aw
+tw add t2 tie2
+lw add l2 l21
 wn select has w2 w
 mn select has m1 m
-o rec wn mn
+kn select has mk1 mk
+an select has a22 a2
+tn select has tw t2
+ln select has lw l2
+o rec wn mn kn an tn ln
 ret o
 end
 fn rkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
@@ -667,8 +726,7 @@ v4 fold vnum ch v3 p2 112 k n
 v5 fold vref ch v4 p2 113 k br
 b100 call rdiv bv 100
 v6 fold vfix2 ch v5 p2 114 k b100
-a100 mul arm 100
-ra call rdiv a100 bv
+ra call ratio100 arm bv
 v7 fold vnum ch v6 p2 115 k ra
 win le arm bv
 v8 fold vflag ch v7 p2 116 k win
@@ -678,21 +736,41 @@ slow gt ra 100
 v9 fold vflag ch v8 p2 308 k same
 v10 fold vflag ch v9 p2 309 k fast
 v11 fold vflag ch v10 p2 310 k slow
-ret v11
+w2 le ra 83
+l2 gt ra 110
+t0 or w2 l2
+t2 select t0 false true
+v12 fold vflag ch v11 p2 475 k w2
+v13 fold vflag ch v12 p2 476 k t2
+v14 fold vflag ch v13 p2 477 k l2
+ra1 call max ra 1
+sp2 call rdiv 10000 ra1
+v15 fold vfix2 ch v14 p2 482 k sp2
+ret v15
 end
 fn cranks u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
-nk call rd64 p3 128
+nk call rd64 p3 2700
 nr fold hasstep nk 0 p3
 s1 fold vnum 1 p0 p2 108 0 nr
 s2 fold rkrow nk s1 p2 p3
-st0 rec 0 100
+st0 rec 0 100 0 0 0 0
 st fold rkst nk st0 s2 p3
 wn at st 0
 mr at st 1
+mk at st 2
+nw2 at st 3
+nt2 at st 4
+nl2 at st 5
 s3 fold vnum 1 s2 p2 235 0 nr
 s4 fold vnum 1 s3 p2 236 0 wn
 s5 fold vfix2 1 s4 p2 237 0 mr
-ret s5
+s6 fold vnum 1 s5 p2 478 0 nw2
+s7 fold vnum 1 s6 p2 479 0 nt2
+s8 fold vnum 1 s7 p2 480 0 nl2
+kr add mk 96
+nm call rd128 s8 kr
+s9 fold vref 1 s8 p2 481 0 nm
+ret s9
 end
 
 # ---- startup: rows (label ref, family, median ms x 10^6, label hash)
@@ -725,14 +803,14 @@ r rec l2 nn
 ret r
 end
 fn strow (u32x64,u32x64,u32x64,u32x64,u32) u32 u32x128x64 u32x128x128 u32x128x512 u32 -> (u32x64,u32x64,u32x64,u32x64,u32)
-e0 shl p5 6
+e0 shl p5 5
 e add e0 p1
-hi add e 3472
+hi add e 5252
 lid call rd64 p2 hi
-e16 shl e 4
-vb add e16 4752
+e16 mul e 20
+vb add e16 5892
 z call z64l
-nk call rd64 p2 128
+nk call rd64 p2 2700
 s0 rec z 0
 vs fold svals nk s0 p2 vb
 vl at vs 0
@@ -740,17 +818,17 @@ vn at vs 1
 m call median vl vn
 nh call whash p4 50
 isnode eq lid nh
-nl call rd64 p2 129
-li call lookup p2 656 nl lid
+nl call rd64 p2 2701
+li call lookup p2 3204 nl lid
 inl lt li nl
 lr0 add li 32
 lr call rd128 p3 lr0
-sr0 add e 112
+sr0 add e 128
 sr call rd128 p3 sr0
 jr call cref p3 5
 ref0 select inl lr sr
 ref select isnode jr ref0
-lf0 add li 720
+lf0 add li 3268
 lf call rd64 p2 lf0
 f0 select isnode 3 2
 fam select inl lf f0
@@ -806,7 +884,7 @@ ret r
 end
 fn cstart u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
 z call z64l
-nk call rd64 p3 128
+nk call rd64 p3 2700
 s0 rec z 0
 a fold kvals nk s0 p3 7
 b fold kvals nk s0 p3 8
@@ -823,9 +901,9 @@ t1 fold addrow 1 t0 ar 0 am ah
 cr call cref p0 3
 ch call vhash p0 cr
 t2 fold addrow 1 t1 cr 1 bm ch
-g0 call rd64 p3 130
+g0 call rd64 p3 2702
 t3 fold strow g0 t2 p3 p0 p2 0
-g1 call rd64 p3 131
+g1 call rd64 p3 2703
 t4 fold strow g1 t3 p3 p0 p2 1
 rf at t4 0
 fm at t4 1
@@ -1277,7 +1355,7 @@ s8 fold vnum 1 s7 p2 159 k n
 s9 fold ctrow n s8 p2 p1 rs a
 ret s9
 end
-fn ccost u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn ccost u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 nr call mcount p2 62
 s0 fold clab nr p0 p2
 sz call sizes p2
@@ -1302,7 +1380,7 @@ hr call vhash s2 fr
 z1 set z 0 ha
 z2 set z1 1 ht
 z3 set z2 2 hr
-al call alllangs p3 s2
+al call alllangs p4 s2
 alh at al 0
 na at al 1
 cv call cover alh na z3 3
@@ -1417,7 +1495,7 @@ h call shash p3 a n
 r set p0 p1 h
 ret r
 end
-fn cedit u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn cedit u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 a0h call whash p2 52
 tsh call whash p2 53
 ia call elfind p3 a0h
@@ -1451,7 +1529,7 @@ ld call rd64 p3 7769
 l100 call rdiv ld 100
 s7 fold vnum 1 s6 p2 178 0 l100
 hs fold elcov n z s7 p2
-al call alllangs p3 s7
+al call alllangs p4 s7
 alh at al 0
 na at al 1
 cv call cover alh na hs n
@@ -1654,7 +1732,7 @@ a add p0 1
 r select z a p0
 ret r
 end
-fn cpar u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+fn cpar u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 nj call rd64 p3 8119
 s0 fold plab nj p0 p2
 nk call rd64 p3 7952
@@ -1689,7 +1767,7 @@ z call z64l
 h0 rec z 0
 hs fold pcovh nj h0 p2 s8
 hl at hs 0
-al call alllangs p3 s8
+al call alllangs p4 s8
 alh at al 0
 na at al 1
 cv call cover alh na hl nj
@@ -2024,12 +2102,14 @@ ha call whash p2 47
 ia call lookup p4 192 nax ha
 da add ia 288
 dd add nax 288
+orig call rd128 p0 da
 o1 fold vconst 1 p0 p2 381 da
 o2 fold vconst 1 o1 p2 382 dd
-al call alllangs p3 o2
+al call alllangs p4 o2
 na at al 1
 s1 fold axaxis 1 o2 p2 vt fm nax1 240 0 na 1
-s2 fold axaxis 1 s1 p2 vc fm nax1 254 1 na 0
+rs1 fold wr128 1 s1 da orig
+s2 fold axaxis 1 rs1 p2 vc fm nax1 254 1 na 0
 s3 fold axaxis 1 s2 p2 vr fm nax1 268 1 na 0
 dx call rd64 p4 2601
 s3a fold tkx 1 s3 p2 vt fm ia nax dx nax1
@@ -2060,7 +2140,8 @@ s9 fold vref 1 s8 p2 284 0 ar
 dh call whash p2 371
 z3 call z64l
 ke fold ecstep nax1 z3 p4 vt dh p2
-s10 fold axaxis 1 s9 p2 ke fm nax1 394 0 na 1
+rs2 fold vconst 1 s9 p2 381 da
+s10 fold axaxis 1 rs2 p2 ke fm nax1 394 0 na 1
 nb call rd64 p4 1899
 cbi call lookup p4 1900 nb ha
 dbi call lookup p4 1900 nb dh
@@ -2170,4 +2251,75 @@ s8 fold vfix2 1 s7 p2 344 0 mn
 s9 fold vfix2 1 s8 p2 345 0 md
 s10 fold vfix2 1 s9 p2 346 0 mx
 ret s10
+end
+
+# ---- A0 against the best of C, Rust and Zig (arm64VsBestFlags of the exec file, the table p3)
+# row of kernel p1 (fold body): name, A0's time, the best flags and time, A0's speedup, the verdict
+fn bkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+k call key1 p1
+kr add p1 96
+nm call rd128 p0 kr
+s1 fold vref 1 p0 p2 460 k nm
+a0v call kf p3 p1 1
+a0h call rdiv a0v 100
+s2 fold vfix2 1 s1 p2 461 k a0h
+bi add p1 7172
+bh call rd64 p3 bi
+s3 fold vmapv 1 s2 p2 458 bh 351 351
+lb call rd128 s3 351
+s4 fold vref 1 s3 p2 462 k lb
+bn add p1 7212
+bv call rd64 p3 bn
+s5 fold vfix2 1 s4 p2 463 k bv
+spi add p1 7192
+spv call rd64 p3 spi
+sph call rdiv spv 10
+s6 fold vfix2 1 s5 p2 464 k sph
+vi add p1 7232
+vd call rd64 p3 vi
+w eq vd 1
+t eq vd 2
+l eq vd 3
+s7 fold vflag 1 s6 p2 465 k w
+s8 fold vflag 1 s7 p2 466 k t
+s9 fold vflag 1 s8 p2 467 k l
+ret s9
+end
+# the smallest speedup and its kernel (fold body)
+fn bkmin (u32,u32) u32 u32x128x64 -> (u32,u32)
+m at p0 0
+k at p0 1
+a add p1 7192
+v call rd64 p2 a
+pos gt v 0
+lo lt v m
+c and pos lo
+m2 select c v m
+k2 select c p1 k
+r rec m2 k2
+ret r
+end
+fn cbk u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+nk call rd64 p3 2700
+s1 fold vnum 1 p0 p2 459 0 nk
+s2 fold vnum 1 s1 p2 474 0 nk
+s3 fold bkrow nk s2 p2 p3
+mi0 rec 4294967295 0
+mr fold bkmin nk mi0 p3
+msp at mr 0
+mk at mr 1
+sl call rdiv 100000 msp
+s4 fold vfix2 1 s3 p2 471 0 sl
+kr add mk 96
+nm call rd128 s4 kr
+s5 fold vref 1 s4 p2 472 0 nm
+w call rd64 p3 7260
+t call rd64 p3 7261
+l call rd64 p3 7262
+s6 fold vnum 1 s5 p2 468 0 w
+s7 fold vnum 1 s6 p2 469 0 t
+s8 fold vnum 1 s7 p2 470 0 l
+ld call rd64 p3 7263
+s9 fold vfix2 1 s8 p2 473 0 ld
+ret s9
 end
