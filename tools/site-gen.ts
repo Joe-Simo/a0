@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
+import { checkOperandBudget } from './site-budget.js';
 
 export const GENERATOR = join('site', 'gen', 'sitegen.a0');
 const BUILD_DIR = join('dist', 'sitegen');
@@ -114,8 +115,12 @@ export async function generatorInput(template: string): Promise<Buffer> {
   return buf;
 }
 
-/** Run the built generator on `template`; returns the generated A0 source. */
-export async function generate(binary: string, template: string): Promise<string> {
+/** Run the built generator on `template`; returns the generated A0 source (checked against the operand budget of tools/site-budget.ts unless `budget` is false). */
+export async function generate(
+  binary: string,
+  template: string,
+  options: { readonly budget?: boolean } = {},
+): Promise<string> {
   const r = spawnSync(binary, [], {
     input: await generatorInput(template),
     maxBuffer: 64 << 20,
@@ -123,5 +128,8 @@ export async function generate(binary: string, template: string): Promise<string
   });
   if (r.status !== 0)
     throw new Error(`sitegen failed on ${template} (status ${r.status}): ${String(r.stderr)}`);
-  return r.stdout.toString('utf8');
+  const source = r.stdout.toString('utf8');
+  // Every function of the page must fit the A0 toolchain's operand table with room to grow.
+  if (options.budget !== false) checkOperandBudget(source, template);
+  return source;
 }
