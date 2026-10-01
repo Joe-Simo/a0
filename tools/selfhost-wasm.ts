@@ -792,6 +792,8 @@ export interface IrCheck {
   readonly runs: number;
   /** The first function whose optimized IR differs. */
   readonly firstDifference?: string;
+  /** Functions no run can take (over the table capacities); not counted identical. */
+  readonly notRun: readonly string[];
 }
 
 /**
@@ -801,10 +803,19 @@ export interface IrCheck {
 export function a0IrCheck(exe: string, program: TypedProgram): IrCheck {
   const fns = program.functions;
   const want = typescriptBodies(program);
-  const chain = a0OptimizeProgram(exe, program);
+  const notRun: string[] = [];
+  let chain: OptimizedProgram;
+  try {
+    chain = a0OptimizeProgram(exe, program);
+  } catch {
+    // A function does not fit a run: the rest is checked with its reference body in its place.
+    chain = a0OptimizeProgram(exe, program, undefined, want);
+    for (const [g, f] of fns.entries()) if (chain.bodies[g] === want[g]) notRun.push(f.name);
+  }
   let identical = 0;
   let firstDifference: string | undefined;
   for (const [g, f] of fns.entries()) {
+    if (notRun.includes(f.name)) continue;
     if (bodyKey(chain.bodies[g] as Body) === bodyKey(want[g] as Body)) identical += 1;
     else firstDifference ??= f.name;
   }
@@ -812,6 +823,7 @@ export function a0IrCheck(exe: string, program: TypedProgram): IrCheck {
     functions: fns.length,
     identical,
     runs: chain.runs,
+    notRun,
     ...(firstDifference === undefined ? {} : { firstDifference }),
   };
 }
@@ -956,6 +968,7 @@ interface PathReport {
     readonly ms: number;
     readonly identical: boolean;
     readonly firstDifference?: number;
+    readonly error?: string;
   };
   readonly source?: {
     readonly chunks: number;
@@ -987,7 +1000,22 @@ function checkPath(
 ): PathReport {
   const reference = typescriptWasm(program, layout, optimize);
   const t0 = performance.now();
-  const tables = a0WasmFromTables(tool.exe, program, layout, optimize);
+  let tables: ModuleRun;
+  try {
+    tables = a0WasmFromTables(tool.exe, program, layout, optimize);
+  } catch (err) {
+    // A function over the table capacities (site/page.a0 `session`): reported, not fatal.
+    return {
+      moduleBytes: reference.length,
+      tables: {
+        chunks: 0,
+        runs: 0,
+        ms: Math.round(performance.now() - t0),
+        identical: false,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    };
+  }
   const tablesMs = Math.round(performance.now() - t0);
   const tablesSame = same(tables.bytes, reference);
   let source: PathReport['source'];
@@ -1035,7 +1063,7 @@ const pathFailed = (r: PathReport): boolean =>
 
 const describe = (r: PathReport): string => {
   const t = r.tables;
-  const tables = `tables: ${t.identical ? 'identical' : `DIFFERS at byte ${t.firstDifference}`} (${t.chunks} chunk(s), ${t.runs} run(s), ${t.ms} ms)`;
+  const tables = `tables: ${t.identical ? 'identical' : t.error !== undefined ? `ERROR ${t.error}` : `DIFFERS at byte ${t.firstDifference}`} (${t.chunks} chunk(s), ${t.runs} run(s), ${t.ms} ms)`;
   const s = r.source;
   const source =
     s === undefined
@@ -1078,7 +1106,7 @@ async function main(): Promise<void> {
     const t0 = performance.now();
     const ir = { ...a0IrCheck(tool.exe, program), ms: Math.round(performance.now() - t0) };
     process.stdout.write(
-      `${label.padEnd(14)} IR ${ir.identical}/${ir.functions} functions identical to src/optimize.ts${ir.firstDifference === undefined ? '' : ` (first difference: ${ir.firstDifference})`} (${ir.ms} ms)\n`,
+      `${label.padEnd(14)} IR ${ir.identical}/${ir.functions} functions identical to src/optimize.ts${ir.firstDifference === undefined ? '' : ` (first difference: ${ir.firstDifference})`}${ir.notRun.length > 0 ? ` (not run, over the table capacities: ${ir.notRun.join(' ')})` : ''} (${ir.ms} ms)\n`,
     );
     reports.push({ label, functions: program.functions.length, unoptimized, optimized, ir });
   }
