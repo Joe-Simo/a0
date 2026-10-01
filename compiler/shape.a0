@@ -35,12 +35,42 @@
 #   TIO   17152  type column (8320 types): 1 when the type contains an io token
 #   25472..      scalars: node, operand pair, function, type and tlist counts (used by fusion)
 #
-# Calls (pure; the shape table is threaded through folds as state):
+# Calls (pure; the shape table is threaded through folds as state). Tables: ty tl fns nodes args
+# nt in the order of compiler/emit_wasm.a0 `wachunk` (types, tlist, fns, nodes, args, ntys).
 #   shinit ty tl nty -> sh
 #       the table with only TIO filled
-#   shpass sh ty tl fns nodes args ntys f -> sh
+#   shcounts sh nn na nf nty ntl -> sh
+#       the free positions of the OPTIMIZED chunk tables (nodes, operand pairs, functions, types,
+#       tlist words), kept in the scalars: fusion appends there (the optimizer leaves holes, so
+#       these are the ends of the used regions, including its next free operand)
+#   shpass sh ty tl fns nodes args nt f -> sh
 #       FILL OWN ARM OVER BORR (and MISS) of function f; run it for every function that has a body
 #       and may be emitted or inlined
+#
+# Loop fusion (src/optimize.ts fuseLoops with recordState, 8 rounds), per function f, stateless:
+# the tables of the chunk stay as they are; the fused view is a modified COPY of them.
+#   shfcheck ty tl fns nodes args nt sh f rs -> (found, missing)
+#       cheap: is there a fusion site in f (rs: recordState, true for wasm), or the chunk function
+#       whose body is needed and absent (4294967295 for none): call shfuse only when found
+#   shfuse ty tl fns nodes args nt sh f rs -> (status, missing, nf1, ty, tl, fns, nodes, nt)
+#   shfargs ty tl fns nodes args nt sh f rs -> args
+#       the fused view in the tables' layout (two calls because one A0 value is at most 65536
+#       words): function f is replaced IN PLACE (its rows, nodes and operands are overwritten, or
+#       appended at the end when the fused body is larger), and each fusion appends a synthetic
+#       function (fns rows nf0 .. nf1 - 1, nf0 = the nf given to shcounts: parameters at the
+#       end of tlist, nodes and operands after the counts; fns word 0 = 1 + 2 literalIterations)
+#       and, for a recurrence, its (state, previous element) record type. The synthetic bodies
+#       are optimized with ozopt1 (compiler/optimize.a0), as src/optimize.ts finishBody does.
+#       status 0 nothing fuses (the tables are f as it was), 1 fused, 4 a table is full (the
+#       capacities of one chunk: 2730 nodes, 32768 operand pairs, 822 functions, 8320 types and
+#       tlist words: the driver must leave headroom, about 64 nodes and 1024 pairs a fused
+#       function plus the size of f when its body grows), 7 a body is needed (missing).
+#   shfsh sh ty tl fns nodes args nt f nf0 nf1 -> sh
+#       with the fused tables: shpass of f and of every synthetic function, SYN[f] = 2, SYN[g] = 1
+#       for g in nf0 .. nf1 - 1, FUSED[f] = f + 1
+# The emitter emits f from the fused view; if its code then calls a function with SYN = 1 out of
+# line (a synthetic body that was not inlined: src/optimize.ts emitFused) it emits f from the
+# original tables instead. Synthetic functions are never emitted by themselves.
 #
 use "optimize.a0"
 
@@ -10083,5 +10113,79 @@ nodesa8 mov nodesca8
 argsa8 mov argsca8
 nta8 mov ntca8
 ret argsa8
+end
+# ---------------------------------------------------------------------------------------------
+# Entries around fusion.
+
+# the counts of the chunk's tables (the free node, operand pair, function, type and tlist
+# positions) into the shape table: fusion appends from there
+fn shcounts u32x128x200 u32 u32 u32 u32 u32 -> u32x128x200
+a_a shr 25472 7
+a_b get p0 a_a
+a_c and 25472 127
+a_d set a_b a_c p1
+a set p0 a_a a_d
+b_a shr 25473 7
+b_b get a b_a
+b_c and 25473 127
+b_d set b_b b_c p2
+b set a b_a b_d
+c_a shr 25474 7
+c_b get b c_a
+c_c and 25474 127
+c_d set c_b c_c p3
+c set b c_a c_d
+d_a shr 25475 7
+d_b get c d_a
+d_c and 25475 127
+d_d set d_b d_c p4
+d set c d_a d_d
+e_a shr 25476 7
+e_b get d e_a
+e_c and 25476 127
+e_d set e_b e_c p5
+e set d e_a e_d
+ret e
+end
+# is there a fusion site in function f = p7? (found, a body that is needed and absent or 4294967295)
+fn shfcheck u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x200 u32 bool -> (u32,u32)
+rsn select p8 1 0
+sr call shfsearch p3 p4 p2 p0 p1 p5 p6 p7 rsn
+fd at sr 0
+ms at sr 3
+r rec fd ms
+ret r
+end
+# the shape columns of the fused function f and of the synthetic functions nf0 .. nf1 - 1 of the
+# fused tables: SYN 1 for a synthetic body, 2 for f, FUSED[f] = f + 1
+fn shfsh1 u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32 -> u32x128x200
+g add p8 p1
+r call shpass p0 p2 p3 p4 p5 p6 p7 g
+s1_x add 15104 g
+s1_a shr s1_x 7
+s1_b get r s1_a
+s1_c and s1_x 127
+s1_d set s1_b s1_c 1
+s1 set r s1_a s1_d
+ret s1
+end
+fn shfsh u32x128x200 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 -> u32x128x200
+n sub p9 p8
+a fold shfsh1 n p0 p1 p2 p3 p4 p5 p6 p8
+b call shpass a p1 p2 p3 p4 p5 p6 p7
+c_x add 15104 p7
+c_a shr c_x 7
+c_b get b c_a
+c_c and c_x 127
+c_d set c_b c_c 2
+c set b c_a c_d
+f1 add p7 1
+d_x add 14080 p7
+d_a shr d_x 7
+d_b get c d_a
+d_c and d_x 127
+d_d set d_b d_c f1
+d set c d_a d_d
+ret d
 end
 
