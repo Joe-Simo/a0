@@ -662,9 +662,13 @@ s4 fold rklang nl s3 p1 p0 p2 arm
 ret s4
 end
 # kernels A0 is first on, and the largest ratio x 100 of A0 to the fastest other (at least 100) (fold body)
-fn rkst (u32,u32) u32 u32x128x128 u32x128x64 -> (u32,u32)
+fn rkst (u32,u32,u32,u32,u32,u32) u32 u32x128x128 u32x128x64 -> (u32,u32,u32,u32,u32,u32)
 w at p0 0
 m at p0 1
+mk at p0 2
+a2 at p0 3
+t2 at p0 4
+l2 at p0 5
 h call kf p3 p1 0
 has eq h 1
 arm call kf p3 p1 1
@@ -677,9 +681,26 @@ w2 select first w1 w
 ra call ratio100 arm bv
 big gt ra m
 m1 select big ra m
+mk1 select big p1 mk
+win2 le ra 83
+los2 gt ra 110
+tie0 or win2 los2
+tie2 select tie0 0 1
+a21 add a2 1
+t21 add t2 tie2
+l21 select los2 1 0
+l22 add l2 l21
+aw select win2 1 0
+a22 add a2 aw
+tw add t2 tie2
+lw add l2 l21
 wn select has w2 w
 mn select has m1 m
-o rec wn mn
+kn select has mk1 mk
+an select has a22 a2
+tn select has tw t2
+ln select has lw l2
+o rec wn mn kn an tn ln
 ret o
 end
 fn rkrow u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
@@ -715,21 +736,41 @@ slow gt ra 100
 v9 fold vflag ch v8 p2 308 k same
 v10 fold vflag ch v9 p2 309 k fast
 v11 fold vflag ch v10 p2 310 k slow
-ret v11
+w2 le ra 83
+l2 gt ra 110
+t0 or w2 l2
+t2 select t0 false true
+v12 fold vflag ch v11 p2 475 k w2
+v13 fold vflag ch v12 p2 476 k t2
+v14 fold vflag ch v13 p2 477 k l2
+ra1 call max ra 1
+sp2 call rdiv 10000 ra1
+v15 fold vfix2 ch v14 p2 482 k sp2
+ret v15
 end
 fn cranks u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
 nk call rd64 p3 2700
 nr fold hasstep nk 0 p3
 s1 fold vnum 1 p0 p2 108 0 nr
 s2 fold rkrow nk s1 p2 p3
-st0 rec 0 100
+st0 rec 0 100 0 0 0 0
 st fold rkst nk st0 s2 p3
 wn at st 0
 mr at st 1
+mk at st 2
+nw2 at st 3
+nt2 at st 4
+nl2 at st 5
 s3 fold vnum 1 s2 p2 235 0 nr
 s4 fold vnum 1 s3 p2 236 0 wn
 s5 fold vfix2 1 s4 p2 237 0 mr
-ret s5
+s6 fold vnum 1 s5 p2 478 0 nw2
+s7 fold vnum 1 s6 p2 479 0 nt2
+s8 fold vnum 1 s7 p2 480 0 nl2
+kr add mk 96
+nm call rd128 s8 kr
+s9 fold vref 1 s8 p2 481 0 nm
+ret s9
 end
 
 # ---- startup: rows (label ref, family, median ms x 10^6, label hash)

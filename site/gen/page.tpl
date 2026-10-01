@@ -433,10 +433,48 @@ s 13 glsl
 +id native
 =h2 Native speed
 .p take
-"Against the best of C (-O3, native CPU), Rust and Zig on each of $bk_n$ test programs, A0 wins $bk_nwin$, ties $bk_ntie$ and loses $bk_nloss$; the slowest is $bk_slow$x slower on $bk_slowk$. Against hand-written C alone, A0 takes $c_ratio$x as long, a geometric mean over the test programs; 1.00x would be equal.
+"The slowest test program is $bk_slow$x slower on $bk_slowk$ against baselines with the same calling convention, and $rk_max$x slower on $rk_maxk$ against each language's own inlined driver. Same calling convention (A0 and the best of C, Rust and Zig, both called out of line): $bk_nwin$ wins, $bk_ntie$ ties, $bk_nloss$ losses of $bk_n$. Inlined drivers: $rk_nw2$ wins, $rk_nt2$ ties, $rk_nl2$ losses. Against hand-written C alone, A0 takes $c_ratio$x as long, a geometric mean over the test programs; 1.00x would be equal.
 >
 <p
 "Every speed result below uses the same test programs, $bk_n$ in all. A test program is one small function (benchmark authors call it a kernel), written by hand in every language and timed on the same inputs; each result is checked against a checksum before it is timed. A0 here is machine code from A0's own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between. Measured with a load gate: the 1-minute load average stayed at or below 10 (highest at a sample start: $bk_load$).
+>
+}
+{chart_both
+.div chart reveal
+.p ct
+"A0 under both baselines, per test program
+>
+.p take
+"Same calling convention: $bk_nwin$ wins, $bk_ntie$ ties, $bk_nloss$ losses of $bk_n$, slowest $bk_slow$x on $bk_slowk$. Each language's own inlined driver: $rk_nw2$ wins, $rk_nt2$ ties, $rk_nl2$ losses, slowest $rk_max$x on $rk_maxk$.
+>
+.p sub
+"Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Inlined: each language's fastest result with its own driver, which the compiler can inline. Speedup = the baseline's time divided by A0's: below 1.00x A0 is slower. Win = at least 1.2x faster; loss = more than 10% slower; the file gives verdicts only for the first baseline, the second uses the same win rule and a 10% tie band (results/exec-benchmark-full.json).
+>
+.div tblwrap
+.table ops rank fit
+<tr
+=th Test program
+=th Same calling convention: speedup, verdict
+=th Own inlined driver: speedup, verdict
+>
+[bkrows
+<tr
+.td mono
+"$bk_name$
+>
+.td mono{bk_win| first}{bk_loss| loss}
+"$bk_sp$x {bk_win|win}{bk_tie|tie}{bk_loss|loss}
+>
+.td mono{rk_w2| first}{rk_l2| loss}
+"$rk_sp2$x {rk_w2|win}{rk_t2|tie}{rk_l2|loss}
+>
+>
+]
+>
+>
+.p cap
+"Every loss under either baseline is in bold. A0's code is called out of line from a C driver while the other languages' drivers are inlined, so the second baseline is the harder one for A0.
+>
 >
 }
 {chart_bk
@@ -448,7 +486,7 @@ s 13 glsl
 "$bk_nwin$ wins, $bk_ntie$ ties and $bk_nloss$ losses of $bk_n$; the slowest is $bk_slow$x slower on $bk_slowk$. A win needs A0 at least 1.2x faster; a loss is slower beyond the tie band.
 >
 .p sub
-"Speedup = the best other time divided by A0's time: above 1.00x A0 is faster, below 1.00x A0 is slower. The best other is the fastest of C -O3 with the native CPU, Rust opt-level 3 with the native CPU and Zig ReleaseFast. Median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
+"Baseline: same calling convention, both called out of line. Speedup = the best other time divided by A0's time: above 1.00x A0 is faster, below 1.00x A0 is slower. The best other is the fastest of C -O3 with the native CPU, Rust opt-level 3 with the native CPU and Zig ReleaseFast. Median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
 >
 .div tblwrap
 .table ops rank fit
@@ -491,7 +529,7 @@ s 13 glsl
 "Fastest on $rk_nwin$ of $rk_nk$ test programs; on every one, A0 takes at most $rk_max$x as long as the fastest language.
 >
 .p sub
-"Place 1 = fastest of the languages that ran that test program (every language ran the first ten; later ones only some). Time per call, median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
+"Baseline: each language's own driver, inlined. Place 1 = fastest of the languages that ran that test program (every language ran the first ten; later ones only some). Time per call, median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
 >
 .p cov mono{cov_langs_part| part}
 "measured: $cov_langs$ of $n_all$ languages
