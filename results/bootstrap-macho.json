@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-01T00:52:44.889Z",
-  "compilerVersion": "a0c-0.1.32",
+  "generatedAt": "2026-10-01T01:10:53.142Z",
+  "compilerVersion": "a0c-0.1.33",
   "stage": "arm64 bootstrap to a signed Mach-O executable without the system assembler and linker",
   "toolchain": "Stage 1 is the C seed (TypeScript C backend + clang). Stages 2 and 3: A0-emitted assembly plus the runtime of tools/arm64-runtime.ts, encoded by src/arm64enc.ts and linked and ad-hoc signed by src/macho.ts (SHA-256 code directory written in TypeScript); dyld binds libSystem _mmap/_read/_write. clang, ld and codesign produce no byte of stages 2 and 3; clang is the reference of the encoder check and codesign -v checks the signature.",
   "stage1": {
-    "cBytes": 492924,
-    "buildMs": 6098
+    "cBytes": 494503,
+    "buildMs": 3707
   },
   "stage2": {
-    "asmBytes": 786048,
+    "asmBytes": 795255,
     "executableBytes": 198400,
-    "linkMs": 313
+    "linkMs": 193
   },
   "stage3": {
-    "asmBytes": 786048,
+    "asmBytes": 795255,
     "executableBytes": 198400,
-    "emitMs": 4172,
+    "emitMs": 3110,
     "reproduces": true
   },
   "fixedPoint": {
@@ -26,9 +26,9 @@
   "encoder": {
     "method": "arm64enc words equal clang -c -x assembler __text words one by one, and the relocation offsets and kinds are equal",
     "texts": 224,
-    "sources": 248,
+    "sources": 254,
     "stage2DiffersFromStage1": 0,
-    "instructions": 293199,
+    "instructions": 295649,
     "failed": 0,
     "checks": [
       {
@@ -909,19 +909,19 @@
       },
       {
         "label": "boot.a0/argb",
-        "instructions": 799,
+        "instructions": 880,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/argseg",
-        "instructions": 1362,
+        "instructions": 1447,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/nodestep",
-        "instructions": 5898,
+        "instructions": 6320,
         "relocations": 0,
         "mismatches": []
       },
@@ -939,13 +939,13 @@
       },
       {
         "label": "boot.a0/fnstep",
-        "instructions": 6999,
+        "instructions": 7465,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/checkir",
-        "instructions": 8403,
+        "instructions": 8869,
         "relocations": 0,
         "mismatches": []
       },
@@ -1311,7 +1311,7 @@
       },
       {
         "label": "boot.a0/qunit",
-        "instructions": 41621,
+        "instructions": 42087,
         "relocations": 3,
         "mismatches": []
       },
@@ -1347,7 +1347,7 @@
       },
       {
         "label": "compiler (whole)",
-        "instructions": 42566,
+        "instructions": 43032,
         "relocations": 8,
         "mismatches": []
       },
@@ -1359,7 +1359,7 @@
       },
       {
         "label": "src/arm64.ts corpus",
-        "instructions": 468,
+        "instructions": 466,
         "relocations": 0,
         "mismatches": []
       },
