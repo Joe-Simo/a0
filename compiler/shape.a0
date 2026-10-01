@@ -1,0 +1,1778 @@
+# Shape analyses and loop fusion, written in A0 (DESIGN.md 7a): the port of src/optimize.ts
+# lines 716-1343 (storeOnly, overwritesState, fillRun, lazyArms, producerShape, fuseLoops) and of
+# `borrowLive` of src/core.ts. The wasm emitter (compiler/emit_wasm.a0) does not `use` this file:
+# compiler/boot.a0 runs it between the optimizer and the emitter, and the emitter reads the
+# results from the SHAPE TABLE, one table `sh` (u32x128x200) that is an extra input of its chunk.
+#
+# Inputs: the OPTIMIZED chunk tables of compiler/emit_wasm.a0: types u32x384x65, tlist u32x128x65,
+# fns u32x128x45 (7 words: 0 body flag, 1 parameter count, 2 first tlist word, 3 result type, 4
+# first node, 5 node count, 6 packed ret; word 6 is 0 for a function without a body), nodes
+# u32x128x128 (6 words a node: 0, op, operand count, first operand, callee, pred), args
+# u32x128x512 (operand pairs), ntys u32x128x24 (node types). A node's index in its function is its
+# position; the global node index g of node j is (first node of the function) + j. Type indices
+# 0 1 2 are u32 bool io; an aggregate has an index of 3 or more.
+#
+# THE SHAPE TABLE (columns of 2816 words indexed by global node index g, function columns of 1024):
+#   FILL  0      fold node: the fillRun trip count (> 0) or 0. The body is the node's callee, the
+#                stored value operand 2 of the callee's ret `set` node, the fill's nodes all callee
+#                nodes except that ret node, in order.
+#   OWN   2816   lazyArms: the position (in its function) + 1 of the select a node is private to,
+#                else 0
+#   ARM   5632   1 / 2: the node belongs to the select's first / second arm (arm lists: the nodes
+#                with OWN = that select, in node order)
+#   OVER  8448   fold node: overwritesState 0 / 1
+#   BORR  11264  set / put node (target operand 0) and fold / loop node (state operand 1) of an
+#                aggregate type whose target operand is a parameter or a node defined by
+#                arr rec set put: borrowLive(fn, that operand, j, selfRead) with selfRead set for
+#                set / put, else 0. Every other node is 0: only these are queried (the rest of
+#                mutableHere is the emitter's).
+#   FUSED 14080  function column: 1 + the function that is the fused form of this function, else 0
+#   SYN   15104  function column: 1 a synthetic fused body (never emitted by itself, only
+#                inlined), 2 a fused function
+#   MISS  16128  the count n, then n chunk function indices (16129..) whose rows have no body
+#                (fns word 6 = 0) and whose body an analysis needed: end the chunk with code 7 and
+#                these indices (the emitter appends its own requests to its own list)
+#   TIO   17152  type column (8320 types): 1 when the type contains an io token
+#   25472..      scalars: node, operand pair, function, type and tlist counts (used by fusion)
+#
+# Calls (pure; the shape table is threaded through folds as state):
+#   shinit ty tl nty -> sh
+#       the table with only TIO filled
+#   shpass sh ty tl fns nodes args ntys f -> sh
+#       FILL OWN ARM OVER BORR (and MISS) of function f; run it for every function that has a body
+#       and may be emitted or inlined
+#
+use "emit_wasm.a0"
+
+fn zsh -> u32x128x200
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn zcol -> u32x128x24
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+# ---------------------------------------------------------------------------------------------
+# Types: which type indices contain an io token (column TIO of the shape table, 17152 + type)
+
+fn shtiof u32 u32 u32x128x200 u32x128x65 u32 -> u32
+i add p4 p1
+f_a shr i 7
+f_b get p3 f_a
+f_c and i 127
+f get f_b f_c
+fi add f 17152
+t_a shr fi 7
+t_b get p2 t_a
+t_c and fi 127
+t get t_b t_c
+r or p0 t
+ret r
+end
+fn shtios u32x128x200 u32 u32x384x65 u32x128x65 -> u32x128x200
+tag_a shr p1 7
+tag_b get p2 tag_a
+tag_l and p1 127
+tag_m mul tag_l 3
+tag_i add tag_m 0
+tag get tag_b tag_i
+ta_a shr p1 7
+ta_b get p2 ta_a
+ta_l and p1 127
+ta_m mul ta_l 3
+ta_i add ta_m 1
+ta get ta_b ta_i
+tb_a shr p1 7
+tb_b get p2 tb_a
+tb_l and p1 127
+tb_m mul tb_l 3
+tb_i add tb_m 2
+tb get tb_b tb_i
+isio eq p1 2
+isarr eq tag 4
+isrec eq tag 5
+eidx select isarr tb 0
+ei add eidx 17152
+ev_a shr ei 7
+ev_b get p0 ev_a
+ev_c and ei 127
+ev get ev_b ev_c
+ev1 select isarr ev 0
+nf select isrec tb 0
+f0 fold shtiof nf 0 p0 p3 ta
+r1 select isio 1 0
+a1 or r1 ev1
+b1 or a1 f0
+ix add p1 17152
+w_a shr ix 7
+w_b get p0 w_a
+w_c and ix 127
+w_d set w_b w_c b1
+w set p0 w_a w_d
+ret w
+end
+# the shape table of a chunk with p2 types: only the io column is filled (shinit); the node
+# columns are written by shpass
+fn shinit u32x384x65 u32x128x65 u32 -> u32x128x200
+z call zsh
+r fold shtios p2 z p0 p1
+ret r
+end
+# ---------------------------------------------------------------------------------------------
+# storeOnly (src/optimize.ts): the ret node of function p3 when it is `set p0 p1 v` and p0 is
+# otherwise unused, else 4294967295
+
+# operand k of a node (args first p3): is it p0 where it is not the target of the set at jr?
+fn shsoa u32 u32 u32x128x512 u32 u32 u32 -> u32
+s add p3 p1
+kd_m mul s 2
+kd_i add kd_m 0
+kd_a shr kd_i 7
+kd_b get p2 kd_a
+kd_c and kd_i 127
+kd get kd_b kd_c
+vl_m mul s 2
+vl_i add vl_m 1
+vl_a shr vl_i 7
+vl_b get p2 vl_a
+vl_c and vl_i 127
+vl get vl_b vl_c
+isp_a eq kd 2
+isp_b eq vl 0
+isp and isp_a isp_b
+jj eq p4 p5
+kk eq p1 0
+tg and jj kk
+b1 select tg false isp
+b select b1 1 0
+r or p0 b
+ret r
+end
+fn shsoj u32 u32 u32x128x128 u32x128x512 u32 u32 -> u32
+g add p4 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+r fold shsoa na p0 p3 af p1 p5
+ret r
+end
+fn shstore u32x128x128 u32x128x512 u32x128x45 u32 -> u32
+fst_m mul p3 7
+fst_i add fst_m 4
+fst_a shr fst_i 7
+fst_b get p2 fst_a
+fst_c and fst_i 127
+fst get fst_b fst_c
+nfn_m mul p3 7
+nfn_i add nfn_m 5
+nfn_a shr nfn_i 7
+nfn_b get p2 nfn_a
+nfn_c and nfn_i 127
+nfn get nfn_b nfn_c
+rw_m mul p3 7
+rw_i add rw_m 6
+rw_a shr rw_i 7
+rw_b get p2 rw_a
+rw_c and rw_i 127
+rw get rw_b rw_c
+retk shr rw 28
+retv and rw 268435455
+isn eq retk 1
+jr select isn retv 0
+g add fst jr
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p0 op_a
+op_c and op_i 127
+op get op_b op_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p0 af_a
+af_c and af_i 127
+af get af_b af_c
+k0_m mul af 2
+k0_i add k0_m 0
+k0_a shr k0_i 7
+k0_b get p1 k0_a
+k0_c and k0_i 127
+k0 get k0_b k0_c
+v0_m mul af 2
+v0_i add v0_m 1
+v0_a shr v0_i 7
+v0_b get p1 v0_a
+v0_c and v0_i 127
+v0 get v0_b v0_c
+af1 add af 1
+k1_m mul af1 2
+k1_i add k1_m 0
+k1_a shr k1_i 7
+k1_b get p1 k1_a
+k1_c and k1_i 127
+k1 get k1_b k1_c
+v1_m mul af1 2
+v1_i add v1_m 1
+v1_a shr v1_i 7
+v1_b get p1 v1_a
+v1_c and v1_i 127
+v1 get v1_b v1_c
+isset eq op 26
+a0ok_a eq k0 2
+a0ok_b eq v0 0
+a0ok and a0ok_a a0ok_b
+a1ok_a eq k1 2
+a1ok_b eq v1 1
+a1ok and a1ok_a a1ok_b
+c1 and isn isset
+c2 and a0ok a1ok
+good and c1 c2
+bad fold shsoj nfn 0 p0 p1 fst jr
+nobad eq bad 0
+ok and good nobad
+r select ok jr 4294967295
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# producerShape / guardedPrevReads of body p3. Result: the guarded previous-element reads
+# (word j of the column is 1 for body node j) and the status: 0 undefined, 1 a producer with
+# previous-element reads (a recurrence), 2 a pure producer.
+
+# operand k of node ju (first node p4): is the use of its node operand bad (not a select in
+# the allowed arm of a zero test of the counter)? Marks the used node in the column.
+fn shpb1 u32x128x24 u32 u32x128x128 u32x128x512 u32 u32 -> u32x128x24
+gu add p4 p5
+opu_m mul gu 6
+opu_i add opu_m 1
+opu_a shr opu_i 7
+opu_b get p2 opu_a
+opu_c and opu_i 127
+opu get opu_b opu_c
+af_m mul gu 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+s add af p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p3 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p3 av_a
+av_c and av_i 127
+av get av_b av_c
+c0k_m mul af 2
+c0k_i add c0k_m 0
+c0k_a shr c0k_i 7
+c0k_b get p3 c0k_a
+c0k_c and c0k_i 127
+c0k get c0k_b c0k_c
+c0v_m mul af 2
+c0v_i add c0v_m 1
+c0v_a shr c0v_i 7
+c0v_b get p3 c0v_a
+c0v_c and c0v_i 127
+c0v get c0v_b c0v_c
+gd add p4 c0v
+dop_m mul gd 6
+dop_i add dop_m 1
+dop_a shr dop_i 7
+dop_b get p2 dop_a
+dop_c and dop_i 127
+dop get dop_b dop_c
+daf_m mul gd 6
+daf_i add daf_m 3
+daf_a shr daf_i 7
+daf_b get p2 daf_a
+daf_c and daf_i 127
+daf get daf_b daf_c
+daf1 add daf 1
+xk_m mul daf 2
+xk_i add xk_m 0
+xk_a shr xk_i 7
+xk_b get p3 xk_a
+xk_c and xk_i 127
+xk get xk_b xk_c
+xv_m mul daf 2
+xv_i add xv_m 1
+xv_a shr xv_i 7
+xv_b get p3 xv_a
+xv_c and xv_i 127
+xv get xv_b xv_c
+yk_m mul daf1 2
+yk_i add yk_m 0
+yk_a shr yk_i 7
+yk_b get p3 yk_a
+yk_c and yk_i 127
+yk get yk_b yk_c
+yv_m mul daf1 2
+yv_i add yv_m 1
+yv_a shr yv_i 7
+yv_b get p3 yv_a
+yv_c and yv_i 127
+yv get yv_b yv_c
+xp_a eq xk 2
+xp_b eq xv 1
+xp and xp_a xp_b
+x0_a eq xk 3
+x0_b eq xv 0
+x0 and x0_a x0_b
+yp_a eq yk 2
+yp_b eq yv 1
+yp and yp_a yp_b
+y0_a eq yk 3
+y0_b eq yv 0
+y0 and y0_a y0_b
+za and xp y0
+zb and yp x0
+zt0 or za zb
+c0n eq c0k 1
+iseq eq dop 12
+isne eq dop 13
+isel eq opu 18
+k2 eq p1 2
+k1 eq p1 1
+e1 and iseq zt0
+n1 and isne zt0
+e2 and k2 e1
+n2 and k1 n1
+v1 or e2 n2
+v2 and c0n v1
+ok and isel v2
+isnode eq ak 1
+bad1 select ok false isnode
+b select bad1 1 0
+widx select isnode av 3071
+old_a shr widx 7
+old_b get p0 old_a
+old_c and widx 127
+old get old_b old_c
+nw or old b
+r_a shr widx 7
+r_b get p0 r_a
+r_c and widx 127
+r_d set r_b r_c nw
+r set p0 r_a r_d
+ret r
+end
+fn shpb2 u32x128x24 u32 u32x128x128 u32x128x512 u32 -> u32x128x24
+g add p4 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+r fold shpb1 na p0 p2 p3 p4 p1
+ret r
+end
+# node j (first node p4): a guarded previous-element read? State (prev column, failed, count).
+fn shpb3 (u32x128x24,u32,u32) u32 u32x128x128 u32x128x512 u32 u32 u32 u32x128x24 -> (u32x128x24,u32,u32)
+prev at p0 0
+fail at p0 1
+cnt at p0 2
+g add p4 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+k0_m mul af 2
+k0_i add k0_m 0
+k0_a shr k0_i 7
+k0_b get p3 k0_a
+k0_c and k0_i 127
+k0 get k0_b k0_c
+v0_m mul af 2
+v0_i add v0_m 1
+v0_a shr v0_i 7
+v0_b get p3 v0_a
+v0_c and v0_i 127
+v0 get v0_b v0_c
+af1 add af 1
+k1_m mul af1 2
+k1_i add k1_m 0
+k1_a shr k1_i 7
+k1_b get p3 k1_a
+k1_c and k1_i 127
+k1 get k1_b k1_c
+v1_m mul af1 2
+v1_i add v1_m 1
+v1_a shr v1_i 7
+v1_b get p3 v1_a
+v1_c and v1_i 127
+v1 get v1_b v1_c
+isget eq op 25
+a0p_a eq k0 2
+a0p_b eq v0 0
+a0p and a0p_a a0p_b
+a1c_a eq k1 2
+a1c_b eq v1 1
+a1c and a1c_a a1c_b
+isg0 and isget a0p
+nc select a1c false isg0
+cand mov nc
+isnode eq k1 1
+d select isnode v1 0
+gd add p4 d
+dop_m mul gd 6
+dop_i add dop_m 1
+dop_a shr dop_i 7
+dop_b get p2 dop_a
+dop_c and dop_i 127
+dop get dop_b dop_c
+daf_m mul gd 6
+daf_i add daf_m 3
+daf_a shr daf_i 7
+daf_b get p2 daf_a
+daf_c and daf_i 127
+daf get daf_b daf_c
+daf1 add daf 1
+xk_m mul daf 2
+xk_i add xk_m 0
+xk_a shr xk_i 7
+xk_b get p3 xk_a
+xk_c and xk_i 127
+xk get xk_b xk_c
+xv_m mul daf 2
+xv_i add xv_m 1
+xv_a shr xv_i 7
+xv_b get p3 xv_a
+xv_c and xv_i 127
+xv get xv_b xv_c
+yk_m mul daf1 2
+yk_i add yk_m 0
+yk_a shr yk_i 7
+yk_b get p3 yk_a
+yk_c and yk_i 127
+yk get yk_b yk_c
+yv_m mul daf1 2
+yv_i add yv_m 1
+yv_a shr yv_i 7
+yv_b get p3 yv_a
+yv_c and yv_i 127
+yv get yv_b yv_c
+xp_a eq xk 2
+xp_b eq xv 1
+xp and xp_a xp_b
+yp_a eq yk 2
+yp_b eq yv 1
+yp and yp_a yp_b
+y1_a eq yk 3
+y1_b eq yv 1
+y1 and y1_a y1_b
+yf_a eq yk 3
+yf_b eq yv 4294967295
+yf and yf_a yf_b
+xf_a eq xk 3
+xf_b eq xv 4294967295
+xf and xf_a xf_b
+isub eq dop 3
+iadd eq dop 2
+sa and xp y1
+sb and xp yf
+sc and yp xf
+sbc or sb sc
+s1 and isub sa
+s2 and iadd sbc
+isprev or s1 s2
+retn1 eq p5 1
+retn2 eq p6 p1
+retn and retn1 retn2
+bu_a shr p1 7
+bu_b get p7 bu_a
+bu_c and p1 127
+bu get bu_b bu_c
+bu0 eq bu 0
+nr select retn false true
+p1a and isnode isprev
+p1b and p1a nr
+p1c and p1b bu0
+okp mov p1c
+pv select cand okp false
+f1 select cand okp true
+failnow select f1 0 1
+npv select pv 1 0
+prev2_a shr p1 7
+prev2_b get prev prev2_a
+prev2_c and p1 127
+prev2_d set prev2_b prev2_c npv
+prev2 set prev prev2_a prev2_d
+cnt2 add cnt npv
+fail2 or fail failnow
+r rec prev2 fail2 cnt2
+ret r
+end
+# operand k of node j (first node p4, args first p3): p0 used other than as a set target or by a
+# previous-element read? State: failed.
+fn shpb4a u32 u32 u32x128x512 u32 u32x128x24 u32 u32 -> u32
+s add p3 p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p2 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p2 av_a
+av_c and av_i 127
+av get av_b av_c
+isp0_a eq ak 2
+isp0_b eq av 0
+isp0 and isp0_a isp0_b
+k0 eq p1 0
+isset eq p5 p6
+pv_a shr p5 7
+pv_b get p4 pv_a
+pv_c and p5 127
+pv get pv_b pv_c
+ispv eq pv 1
+okn or isset ispv
+good and k0 okn
+bad1 select good false isp0
+b select bad1 1 0
+r or p0 b
+ret r
+end
+fn shpb4 u32 u32 u32x128x128 u32x128x512 u32 u32x128x24 u32 -> u32
+g add p4 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+r fold shpb4a na p0 p3 af p5 p1 p6
+ret r
+end
+fn shprod u32x128x128 u32x128x512 u32x128x45 u32 -> (u32x128x24,u32)
+fst_m mul p3 7
+fst_i add fst_m 4
+fst_a shr fst_i 7
+fst_b get p2 fst_a
+fst_c and fst_i 127
+fst get fst_b fst_c
+nfn_m mul p3 7
+nfn_i add nfn_m 5
+nfn_a shr nfn_i 7
+nfn_b get p2 nfn_a
+nfn_c and nfn_i 127
+nfn get nfn_b nfn_c
+rw_m mul p3 7
+rw_i add rw_m 6
+rw_a shr rw_i 7
+rw_b get p2 rw_a
+rw_c and rw_i 127
+rw get rw_b rw_c
+retk shr rw 28
+retv and rw 268435455
+z call zcol
+badu fold shpb2 nfn z p0 p1 fst
+s0 rec z 0 0
+s1 fold shpb3 nfn s0 p0 p1 fst retk retv badu
+prev at s1 0
+gfail at s1 1
+cnt at s1 2
+isn eq retk 1
+setj select isn retv 0
+gs add fst setj
+op_m mul gs 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p0 op_a
+op_c and op_i 127
+op get op_b op_c
+af_m mul gs 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p0 af_a
+af_c and af_i 127
+af get af_b af_c
+k0_m mul af 2
+k0_i add k0_m 0
+k0_a shr k0_i 7
+k0_b get p1 k0_a
+k0_c and k0_i 127
+k0 get k0_b k0_c
+v0_m mul af 2
+v0_i add v0_m 1
+v0_a shr v0_i 7
+v0_b get p1 v0_a
+v0_c and v0_i 127
+v0 get v0_b v0_c
+af1 add af 1
+k1_m mul af1 2
+k1_i add k1_m 0
+k1_a shr k1_i 7
+k1_b get p1 k1_a
+k1_c and k1_i 127
+k1 get k1_b k1_c
+v1_m mul af1 2
+v1_i add v1_m 1
+v1_a shr v1_i 7
+v1_b get p1 v1_a
+v1_c and v1_i 127
+v1 get v1_b v1_c
+isset eq op 26
+a0ok_a eq k0 2
+a0ok_b eq v0 0
+a0ok and a0ok_a a0ok_b
+a1ok_a eq k1 2
+a1ok_b eq v1 1
+a1ok and a1ok_a a1ok_b
+c1 and isn isset
+c2 and a0ok a1ok
+sok and c1 c2
+f4 fold shpb4 nfn 0 p0 p1 fst prev setj
+nf4 eq f4 0
+ng eq gfail 0
+o1 and sok nf4
+okall and o1 ng
+pure eq cnt 0
+st0 select pure 2 1
+st select okall st0 0
+r rec prev st
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# fillRun and overwritesState of the fold node at global index p6 (tables: nodes args fns
+# types tlist ntys). Result (count, missing): count the fill's trip count (0 for none; 1 or 0
+# for overwritesState), missing the index of a callee whose body the answer needs and the chunk
+# does not hold (4294967295 for none).
+
+# operand k of a body node: scalar parameters only (p0 flag, k, args, af, tl, pf, shift)
+fn shfa u32 u32 u32x128x512 u32 u32x128x65 u32 bool -> u32
+s add p3 p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p2 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p2 av_a
+av_c and av_i 127
+av get av_b av_c
+isb eq ak 4
+isp eq ak 2
+pi add p5 av
+pt_a shr pi 7
+pt_b get p4 pt_a
+pt_c and pi 127
+pt get pt_b pt_c
+pu eq pt 0
+ige1 ge av 1
+sc and ige1 pu
+nsc select sc false true
+pbad and isp nsc
+k1 eq p1 1
+isl eq ak 3
+ige2 ge av 2
+sc2 and ige2 sc
+iu or isl sc2
+uni mov iu
+nuni select uni false true
+sh1 and p6 k1
+shbad and sh1 nuni
+bad1 or isb pbad
+bad2 or bad1 shbad
+b select bad2 1 0
+r or p0 b
+ret r
+end
+fn shfb u32 u32 u32x128x128 u32x128x512 u32x128x65 u32x128x24 u32 u32 u32 -> u32
+# p0 bad, p1 j, nodes, args, tl, nt, fst, jr, pf
+g add p6 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+nty_a shr g 7
+nty_b get p5 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+ge2 ge op 2
+le9 le op 9
+lane and ge2 le9
+nl select lane false true
+nu ne nty 0
+nb1 or nl nu
+isj eq p1 p7
+nj select isj false true
+shift ge op 8
+sft and shift lane
+ab fold shfa na 0 p3 af p4 p8 sft
+nab ne ab 0
+nb2 or nb1 nab
+nb and nj nb2
+b select nb 1 0
+r or p0 b
+ret r
+end
+fn shfill u32x128x128 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32 -> (u32,u32)
+op_m mul p6 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p0 op_a
+op_c and op_i 127
+op get op_b op_c
+c_m mul p6 6
+c_i add c_m 4
+c_a shr c_i 7
+c_b get p0 c_a
+c_c and c_i 127
+c get c_b c_c
+af_m mul p6 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p0 af_a
+af_c and af_i 127
+af get af_b af_c
+ck_m mul af 2
+ck_i add ck_m 0
+ck_a shr ck_i 7
+ck_b get p1 ck_a
+ck_c and ck_i 127
+ck get ck_b ck_c
+cv_m mul af 2
+cv_i add cv_m 1
+cv_a shr cv_i 7
+cv_b get p1 cv_a
+cv_c and cv_i 127
+cv get cv_b cv_c
+tt_a shr p6 7
+tt_b get p5 tt_a
+tt_c and p6 127
+tt get tt_b tt_c
+tag_a shr tt 7
+tag_b get p3 tag_a
+tag_l and tt 127
+tag_m mul tag_l 3
+tag_i add tag_m 0
+tag get tag_b tag_i
+tlen_a shr tt 7
+tlen_b get p3 tlen_a
+tlen_l and tt 127
+tlen_m mul tlen_l 3
+tlen_i add tlen_m 1
+tlen get tlen_b tlen_i
+telem_a shr tt 7
+telem_b get p3 telem_a
+telem_l and tt 127
+telem_m mul telem_l 3
+telem_i add telem_m 2
+telem get telem_b telem_i
+isfold eq op 20
+isarr eq tag 4
+eu eq telem 0
+ck3 eq ck 3
+nz ne cv 0
+lel le cv tlen
+q1 and isfold isarr
+q2 and q1 eu
+q3 and q2 ck3
+q4 and q3 nz
+pre and q4 lel
+rw_m mul c 7
+rw_i add rw_m 6
+rw_a shr rw_i 7
+rw_b get p2 rw_a
+rw_c and rw_i 127
+rw get rw_b rw_c
+opaque eq rw 0
+pop and pre opaque
+miss select pop c 4294967295
+fst2_m mul c 7
+fst2_i add fst2_m 4
+fst2_a shr fst2_i 7
+fst2_b get p2 fst2_a
+fst2_c and fst2_i 127
+fst2 get fst2_b fst2_c
+nfn2_m mul c 7
+nfn2_i add nfn2_m 5
+nfn2_a shr nfn2_i 7
+nfn2_b get p2 nfn2_a
+nfn2_c and nfn2_i 127
+nfn2 get nfn2_b nfn2_c
+pf_m mul c 7
+pf_i add pf_m 2
+pf_a shr pf_i 7
+pf_b get p2 pf_a
+pf_c and pf_i 127
+pf get pf_b pf_c
+jr call shstore p0 p1 p2 c
+hasset ne jr 4294967295
+jrs select hasset jr 0
+bad fold shfb nfn2 0 p0 p1 p4 p5 fst2 jrs pf
+gs add fst2 jrs
+sa_m mul gs 6
+sa_i add sa_m 3
+sa_a shr sa_i 7
+sa_b get p0 sa_a
+sa_c and sa_i 127
+sa get sa_b sa_c
+s2 add sa 2
+vk_m mul s2 2
+vk_i add vk_m 0
+vk_a shr vk_i 7
+vk_b get p1 vk_a
+vk_c and vk_i 127
+vk get vk_b vk_c
+vv_m mul s2 2
+vv_i add vv_m 1
+vv_a shr vv_i 7
+vv_b get p1 vv_a
+vv_c and vv_i 127
+vv get vv_b vv_c
+vb eq vk 4
+visp eq vk 2
+vpi add pf vv
+vpt_a shr vpi 7
+vpt_b get p4 vpt_a
+vpt_c and vpi 127
+vpt get vpt_b vpt_c
+vpu eq vpt 0
+vge ge vv 1
+vsc and vge vpu
+nvsc select vsc false true
+vpb and visp nvsc
+vbad or vb vpb
+nvbad select vbad false true
+nopq select opaque false true
+g1 and pre nopq
+g2 and g1 hasset
+nb eq bad 0
+g3 and g2 nb
+ok and g3 nvbad
+count select ok cv 0
+r rec count miss
+ret r
+end
+fn shover u32x128x128 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32 -> (u32,u32)
+op_m mul p6 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p0 op_a
+op_c and op_i 127
+op get op_b op_c
+c_m mul p6 6
+c_i add c_m 4
+c_a shr c_i 7
+c_b get p0 c_a
+c_c and c_i 127
+c get c_b c_c
+af_m mul p6 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p0 af_a
+af_c and af_i 127
+af get af_b af_c
+ck_m mul af 2
+ck_i add ck_m 0
+ck_a shr ck_i 7
+ck_b get p1 ck_a
+ck_c and ck_i 127
+ck get ck_b ck_c
+cv_m mul af 2
+cv_i add cv_m 1
+cv_a shr cv_i 7
+cv_b get p1 cv_a
+cv_c and cv_i 127
+cv get cv_b cv_c
+tt_a shr p6 7
+tt_b get p5 tt_a
+tt_c and p6 127
+tt get tt_b tt_c
+tag_a shr tt 7
+tag_b get p3 tag_a
+tag_l and tt 127
+tag_m mul tag_l 3
+tag_i add tag_m 0
+tag get tag_b tag_i
+tlen_a shr tt 7
+tlen_b get p3 tlen_a
+tlen_l and tt 127
+tlen_m mul tlen_l 3
+tlen_i add tlen_m 1
+tlen get tlen_b tlen_i
+isfold eq op 20
+isarr eq tag 4
+ck3 eq ck 3
+gel ge cv tlen
+q1 and isfold isarr
+q2 and q1 ck3
+pre and q2 gel
+rw_m mul c 7
+rw_i add rw_m 6
+rw_a shr rw_i 7
+rw_b get p2 rw_a
+rw_c and rw_i 127
+rw get rw_b rw_c
+opaque eq rw 0
+pop and pre opaque
+miss select pop c 4294967295
+pr call shprod p0 p1 p2 c
+st at pr 1
+hs ne st 0
+nopq select opaque false true
+o1 and pre nopq
+o2 and o1 hs
+count select o2 1 0
+r rec count miss
+ret r
+end
+# ---------------------------------------------------------------------------------------------
+# borrowLive (src/core.ts) of the aggregate operand (p6 p7) of the node jq = p8 of the function
+# with first node p4, ret (p5 = kind, p9 = value): 1 when some borrow of it is read at or after
+# the node (at the node itself only when p10 is 0), or returned.
+
+# node j: a borrow of the operand? State (borrows column, any)
+fn shbp1 (u32x128x24,u32) u32 u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 -> (u32x128x24,u32)
+bor at p0 0
+any at p0 1
+g add p5 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+k0_m mul af 2
+k0_i add k0_m 0
+k0_a shr k0_i 7
+k0_b get p3 k0_a
+k0_c and k0_i 127
+k0 get k0_b k0_c
+v0_m mul af 2
+v0_i add v0_m 1
+v0_a shr v0_i 7
+v0_b get p3 v0_a
+v0_c and v0_i 127
+v0 get v0_b v0_c
+af1 add af 1
+k1_m mul af1 2
+k1_i add k1_m 0
+k1_a shr k1_i 7
+k1_b get p3 k1_a
+k1_c and k1_i 127
+k1 get k1_b k1_c
+v1_m mul af1 2
+v1_i add v1_m 1
+v1_a shr v1_i 7
+v1_b get p3 v1_a
+v1_c and v1_i 127
+v1 get v1_b v1_c
+af2 add af 2
+k2_m mul af2 2
+k2_i add k2_m 0
+k2_a shr k2_i 7
+k2_b get p3 k2_a
+k2_c and k2_i 127
+k2 get k2_b k2_c
+v2_m mul af2 2
+v2_i add v2_m 1
+v2_a shr v2_i 7
+v2_b get p3 v2_a
+v2_c and v2_i 127
+v2 get v2_b v2_c
+nonprim ge nty 3
+s0_a eq k0 p6
+s0_b eq v0 p7
+s0 and s0_a s0_b
+n0 eq k0 1
+bv0_a shr v0 7
+bv0_b get bor bv0_a
+bv0_c and v0 127
+bv0 get bv0_b bv0_c
+b0 eq bv0 1
+t0 and n0 b0
+f0 or s0 t0
+s1_a eq k1 p6
+s1_b eq v1 p7
+s1 and s1_a s1_b
+n1 eq k1 1
+bv1_a shr v1 7
+bv1_b get bor bv1_a
+bv1_c and v1 127
+bv1 get bv1_b bv1_c
+b1 eq bv1 1
+t1 and n1 b1
+f1 or s1 t1
+s2_a eq k2 p6
+s2_b eq v2 p7
+s2 and s2_a s2_b
+n2 eq k2 1
+bv2_a shr v2 7
+bv2_b get bor bv2_a
+bv2_c and v2 127
+bv2 get bv2_b bv2_c
+b2 eq bv2 1
+t2 and n2 b2
+f2 or s2 t2
+isget eq op 25
+isat eq op 27
+ismov eq op 1
+issel eq op 18
+ga or isget isat
+gm or ga ismov
+d0 and gm f0
+f12 or f1 f2
+d1 and issel f12
+d2 or d0 d1
+d3 and nonprim d2
+nb select d3 1 0
+bor2_a shr p1 7
+bor2_b get bor bor2_a
+bor2_c and p1 127
+bor2_d set bor2_b bor2_c nb
+bor2 set bor bor2_a bor2_d
+any2 or any nb
+r rec bor2 any2
+ret r
+end
+# use after: node j reads a borrow (inner step: operand k)
+fn shbp2a u32 u32 u32x128x512 u32 u32x128x24 -> u32
+s add p3 p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p2 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p2 av_a
+av_c and av_i 127
+av get av_b av_c
+isn eq ak 1
+bv_a shr av 7
+bv_b get p4 bv_a
+bv_c and av 127
+bv get bv_b bv_c
+b eq bv 1
+u and isn b
+x select u 1 0
+r or p0 x
+ret r
+end
+fn shbp2 u32 u32 u32x128x128 u32x128x512 u32 u32x128x24 u32 u32 -> u32
+# p0 found, p1 j, nodes, args, fst, bor, jq, selfRead
+gt gt p1 p6
+eqj eq p1 p6
+ns eq p7 0
+e1 and eqj ns
+act or gt e1
+g add p4 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+n select act na 0
+r fold shbp2a n p0 p3 af p5
+ret r
+end
+fn shborr u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 u32 u32 u32 u32 u32 -> u32
+# nodes args nt nfn fst retk ok ov jq retv selfRead
+z call zcol
+s0 rec z 0
+s1 fold shbp1 p3 s0 p0 p1 p2 p4 p6 p7
+bor at s1 0
+any at s1 1
+isn eq p5 1
+rb_a shr p9 7
+rb_b get bor rb_a
+rb_c and p9 127
+rb get rb_b rb_c
+rbb eq rb 1
+rr and isn rbb
+anyb ne any 0
+n select anyb p3 0
+f fold shbp2 n 0 p0 p1 p4 bor p8 p10
+nf ne f 0
+u or rr nf
+r2 and anyb u
+r select r2 1 0
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# lazyArms (src/optimize.ts). Per-function columns: UC the number of operand uses of node j
+# among the nodes, EFF effectful (isEffectful) nodes.
+
+fn shuck u32x128x24 u32 u32x128x512 u32 -> u32x128x24
+s add p3 p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p2 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p2 av_a
+av_c and av_i 127
+av get av_b av_c
+isn eq ak 1
+widx select isn av 3071
+old_a shr widx 7
+old_b get p0 old_a
+old_c and widx 127
+old get old_b old_c
+inc select isn 1 0
+nw add old inc
+r_a shr widx 7
+r_b get p0 r_a
+r_c and widx 127
+r_d set r_b r_c nw
+r set p0 r_a r_d
+ret r
+end
+fn shucj u32x128x24 u32 u32x128x128 u32x128x512 u32 -> u32x128x24
+g add p4 p1
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+r fold shuck na p0 p3 af
+ret r
+end
+# effectful: operand k of node j (p0 flag, k, args, af, nt, fst, tl, pf, sh)
+fn shefa u32 u32 u32x128x512 u32 u32x128x24 u32 u32x128x65 u32 u32x128x200 -> u32
+s add p3 p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p2 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p2 av_a
+av_c and av_i 127
+av get av_b av_c
+isp eq ak 2
+isn eq ak 1
+pi add p7 av
+pt_a shr pi 7
+pt_b get p6 pt_a
+pt_c and pi 127
+pt get pt_b pt_c
+pidx select isp pt 0
+pio_x add 17152 pidx
+pio_a shr pio_x 7
+pio_b get p8 pio_a
+pio_c and pio_x 127
+pio get pio_b pio_c
+pio1 select isp pio 0
+ng add p5 av
+nt_a shr ng 7
+nt_b get p4 nt_a
+nt_c and ng 127
+nt get nt_b nt_c
+nidx select isn nt 0
+nio_x add 17152 nidx
+nio_a shr nio_x 7
+nio_b get p8 nio_a
+nio_c and nio_x 127
+nio get nio_b nio_c
+nio1 select isn nio 0
+x or pio1 nio1
+r or p0 x
+ret r
+end
+fn shefj u32x128x24 u32 u32x128x128 u32x128x512 u32x128x24 u32 u32x128x65 u32 u32x128x200 -> u32x128x24
+g add p5 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+tio_x add 17152 nty
+tio_a shr tio_x 7
+tio_b get p8 tio_a
+tio_c and tio_x 127
+tio get tio_b tio_c
+isrw ge op 29
+iscf1 ge op 19
+iscf2 le op 21
+iscf and iscf1 iscf2
+a fold shefa na 0 p3 af p4 p5 p6 p7 p8
+ae ne a 0
+ti eq tio 1
+c1 or ti ae
+c2 and iscf c1
+e1 or isrw c2
+e select e1 1 0
+r_a shr p1 7
+r_b get p0 r_a
+r_c and p1 127
+r_d set r_b r_c e
+r set p0 r_a r_d
+ret r
+end
+# nodeCost of op p0
+fn shcost u32 -> u32
+iscf1 ge p0 19
+iscf2 le p0 21
+iscf and iscf1 iscf2
+isdv1 eq p0 10
+isdv2 eq p0 11
+isdv or isdv1 isdv2
+ism eq p0 4
+a select ism 3 1
+b select isdv 8 a
+r select iscf 16 b
+ret r
+end
+# add node i to the cone state (members, counts of uses from members, cost)
+fn shaddc u32x128x24 u32 u32x128x512 u32 -> u32x128x24
+s add p3 p1
+ak_m mul s 2
+ak_i add ak_m 0
+ak_a shr ak_i 7
+ak_b get p2 ak_a
+ak_c and ak_i 127
+ak get ak_b ak_c
+av_m mul s 2
+av_i add av_m 1
+av_a shr av_i 7
+av_b get p2 av_a
+av_c and av_i 127
+av get av_b av_c
+isn eq ak 1
+widx select isn av 3071
+old_a shr widx 7
+old_b get p0 old_a
+old_c and widx 127
+old get old_b old_c
+inc select isn 1 0
+nw add old inc
+r_a shr widx 7
+r_b get p0 r_a
+r_c and widx 127
+r_d set r_b r_c nw
+r set p0 r_a r_d
+ret r
+end
+fn shadd (u32x128x24,u32x128x24,u32) u32 u32x128x128 u32x128x512 u32 -> (u32x128x24,u32x128x24,u32)
+mem at p0 0
+cnt at p0 1
+cost at p0 2
+g add p4 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+na_m mul g 6
+na_i add na_m 2
+na_a shr na_i 7
+na_b get p2 na_a
+na_c and na_i 127
+na get na_b na_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+mem2_a shr p1 7
+mem2_b get mem mem2_a
+mem2_c and p1 127
+mem2_d set mem2_b mem2_c 1
+mem2 set mem mem2_a mem2_d
+cnt2 fold shaddc na cnt p3 af
+c call shcost op
+cost2 add cost c
+r rec mem2 cnt2 cost2
+ret r
+end
+# the cone walk, trip t: node i = root - 1 - t joins when eligible and every use is a member.
+# State as shadd; extras: nodes args nt fst retk retv uc eff sh root
+fn shcw (u32x128x24,u32x128x24,u32) u32 u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32x128x200 u32 -> (u32x128x24,u32x128x24,u32)
+mem at p0 0
+cnt at p0 1
+t1 add p1 1
+i sub p11 t1
+g add p5 i
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+sc lt nty 2
+ef_a shr i 7
+ef_b get p9 ef_a
+ef_c and i 127
+ef get ef_b ef_c
+nef eq ef 0
+retn1 eq p6 1
+retn2 eq p7 i
+retn and retn1 retn2
+nret select retn false true
+ow_x add 2816 g
+ow_a shr ow_x 7
+ow_b get p10 ow_a
+ow_c and ow_x 127
+ow get ow_b ow_c
+nown eq ow 0
+uc_a shr i 7
+uc_b get p8 uc_a
+uc_c and i 127
+uc get uc_b uc_c
+hasu gt uc 0
+cn_a shr i 7
+cn_b get cnt cn_a
+cn_c and i 127
+cn get cn_b cn_c
+same eq cn uc
+a1 and sc nef
+a2 and a1 nret
+a3 and a2 nown
+a4 and a3 hasu
+join and a4 same
+step call shadd p0 i p2 p3 p5
+r select join step p0
+ret r
+end
+# The cone of the select arm (p9 p10) against the other arm (p11 p12) and the condition
+# (p13 p14): (members column, cost); empty when the arm is not an eligible private root.
+fn shcone u32x128x200 u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32 u32 u32 u32 u32 u32 -> (u32x128x24,u32)
+isn eq p9 1
+rv select isn p10 0
+gr add p4 rv
+n1 eq p11 1
+n1s eq p12 rv
+sameo and n1 n1s
+c1 eq p13 1
+c1s eq p13 1
+c1e eq p14 rv
+samec and c1 c1e
+nso select sameo false true
+nsc select samec false true
+nty_a shr gr 7
+nty_b get p3 nty_a
+nty_c and gr 127
+nty get nty_b nty_c
+isc lt nty 2
+ef_a shr rv 7
+ef_b get p8 ef_a
+ef_c and rv 127
+ef get ef_b ef_c
+nef eq ef 0
+retn1 eq p5 1
+retn2 eq p6 rv
+retn and retn1 retn2
+nret select retn false true
+ow_x add 2816 gr
+ow_a shr ow_x 7
+ow_b get p0 ow_a
+ow_c and ow_x 127
+ow get ow_b ow_c
+nown eq ow 0
+uc_a shr rv 7
+uc_b get p7 uc_a
+uc_c and rv 127
+uc get uc_b uc_c
+one eq uc 1
+a1 and isn nso
+a2 and a1 nsc
+a3 and a2 isc
+a4 and a3 nef
+a5 and a4 nret
+a6 and a5 nown
+valid and a6 one
+z call zcol
+z2 call zcol
+s0 rec z z2 0
+sa call shadd s0 rv p1 p2 p4
+st0 select valid sa s0
+steps select valid rv 0
+st fold shcw steps st0 p1 p2 p3 p4 p5 p6 p7 p8 p0 rv
+mem at st 0
+cost at st 2
+r rec mem cost
+ret r
+end
+# trip i of the member writes: node i of the function (first node p4) gets owner js + 1 and arm 1 or 2
+fn shlw u32x128x200 u32 u32x128x24 u32x128x24 u32 u32 -> u32x128x200
+g add p4 p1
+ma_a shr p1 7
+ma_b get p2 ma_a
+ma_c and p1 127
+ma get ma_b ma_c
+mb_a shr p1 7
+mb_b get p3 mb_a
+mb_c and p1 127
+mb get mb_b mb_c
+ina eq ma 1
+inb eq mb 1
+any or ina inb
+oo_x add 2816 g
+oo_a shr oo_x 7
+oo_b get p0 oo_a
+oo_c and oo_x 127
+oo get oo_b oo_c
+oa_x add 5632 g
+oa_a shr oa_x 7
+oa_b get p0 oa_a
+oa_c and oa_x 127
+oa get oa_b oa_c
+js1 add p5 1
+nwo select any js1 oo
+armv select ina 1 2
+nwa select any armv oa
+s1_x add 2816 g
+s1_a shr s1_x 7
+s1_b get p0 s1_a
+s1_c and s1_x 127
+s1_d set s1_b s1_c nwo
+s1 set p0 s1_a s1_d
+s2_x add 5632 g
+s2_a shr s2_x 7
+s2_b get s1 s2_a
+s2_c and s2_x 127
+s2_d set s2_b s2_c nwa
+s2 set s1 s2_a s2_d
+ret s2
+end
+# select nodes: the lazy arms
+fn shlz u32x128x200 u32 u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 -> u32x128x200
+g add p5 p1
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p2 op_a
+op_c and op_i 127
+op get op_b op_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p2 af_a
+af_c and af_i 127
+af get af_b af_c
+nty_a shr g 7
+nty_b get p4 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+ck_m mul af 2
+ck_i add ck_m 0
+ck_a shr ck_i 7
+ck_b get p3 ck_a
+ck_c and ck_i 127
+ck get ck_b ck_c
+cv_m mul af 2
+cv_i add cv_m 1
+cv_a shr cv_i 7
+cv_b get p3 cv_a
+cv_c and cv_i 127
+cv get cv_b cv_c
+af1 add af 1
+xk_m mul af1 2
+xk_i add xk_m 0
+xk_a shr xk_i 7
+xk_b get p3 xk_a
+xk_c and xk_i 127
+xk get xk_b xk_c
+xv_m mul af1 2
+xv_i add xv_m 1
+xv_a shr xv_i 7
+xv_b get p3 xv_a
+xv_c and xv_i 127
+xv get xv_b xv_c
+af2 add af 2
+yk_m mul af2 2
+yk_i add yk_m 0
+yk_a shr yk_i 7
+yk_b get p3 yk_a
+yk_c and yk_i 127
+yk get yk_b yk_c
+yv_m mul af2 2
+yv_i add yv_m 1
+yv_a shr yv_i 7
+yv_b get p3 yv_a
+yv_c and yv_i 127
+yv get yv_b yv_c
+issel eq op 18
+sc lt nty 2
+isl and issel sc
+ra call shcone p0 p2 p3 p4 p5 p6 p7 p8 p9 xk xv yk yv ck cv
+rb call shcone p0 p2 p3 p4 p5 p6 p7 p8 p9 yk yv xk xv ck cv
+mema at ra 0
+ca at ra 1
+memb at rb 0
+cb at rb 1
+cgt gt ca cb
+cmx select cgt ca cb
+big ge cmx 8
+go and isl big
+n select go p1 0
+r fold shlw n p0 mema memb p5 p1
+ret r
+end
+# a missing body: chunk function p1 is added to the list of the shape table (once)
+fn shmq u32 u32 u32x128x200 u32 -> u32
+ki add p1 16129
+v_a shr ki 7
+v_b get p2 v_a
+v_c and ki 127
+v get v_b v_c
+e eq v p3
+x select e 1 0
+r or p0 x
+ret r
+end
+fn shmiss u32x128x200 u32 -> u32x128x200
+n_a shr 16128 7
+n_b get p0 n_a
+n_c and 16128 127
+n get n_b n_c
+isn ne p1 4294967295
+d fold shmq n 0 p0 p1
+nd eq d 0
+add1 and isn nd
+li add n 16129
+nl1 add n 1
+old_a shr li 7
+old_b get p0 old_a
+old_c and li 127
+old get old_b old_c
+wv select add1 p1 old
+a_a shr li 7
+a_b get p0 a_a
+a_c and li 127
+a_d set a_b a_c wv
+a set p0 a_a a_d
+nn select add1 nl1 n
+b_a shr 16128 7
+b_b get a b_a
+b_c and 16128 127
+b_d set b_b b_c nn
+b set a b_a b_d
+ret b
+end
+# node j of a function: fillRun, overwritesState, borrowLive
+fn shpn u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32 u32 u32 u32 -> u32x128x200
+g add p8 p1
+fr call shfill p5 p6 p4 p2 p3 p7 g
+fc at fr 0
+fm at fr 1
+orr call shover p5 p6 p4 p2 p3 p7 g
+oc at orr 0
+om at orr 1
+s1_x add 0 g
+s1_a shr s1_x 7
+s1_b get p0 s1_a
+s1_c and s1_x 127
+s1_d set s1_b s1_c fc
+s1 set p0 s1_a s1_d
+s2_x add 8448 g
+s2_a shr s2_x 7
+s2_b get s1 s2_a
+s2_c and s2_x 127
+s2_d set s2_b s2_c oc
+s2 set s1 s2_a s2_d
+op_m mul g 6
+op_i add op_m 1
+op_a shr op_i 7
+op_b get p5 op_a
+op_c and op_i 127
+op get op_b op_c
+af_m mul g 6
+af_i add af_m 3
+af_a shr af_i 7
+af_b get p5 af_a
+af_c and af_i 127
+af get af_b af_c
+nty_a shr g 7
+nty_b get p7 nty_a
+nty_c and g 127
+nty get nty_b nty_c
+isset eq op 26
+isput eq op 28
+isfold eq op 20
+isloop eq op 21
+sp or isset isput
+fl or isfold isloop
+sf or sp fl
+pos select sp 0 1
+slot add af pos
+ok_m mul slot 2
+ok_i add ok_m 0
+ok_a shr ok_i 7
+ok_b get p6 ok_a
+ok_c and ok_i 127
+ok get ok_b ok_c
+ov_m mul slot 2
+ov_i add ov_m 1
+ov_a shr ov_i 7
+ov_b get p6 ov_a
+ov_c and ov_i 127
+ov get ov_b ov_c
+isagg ge nty 3
+c1 and isagg sf
+isp eq ok 2
+isn eq ok 1
+ds select isn ov 0
+gd add p8 ds
+dop_m mul gd 6
+dop_i add dop_m 1
+dop_a shr dop_i 7
+dop_b get p5 dop_a
+dop_c and dop_i 127
+dop get dop_b dop_c
+d22 eq dop 22
+d23 eq dop 23
+d26 eq dop 26
+d28 eq dop 28
+da or d22 d23
+db or d26 d28
+dc or da db
+fn1 and isn dc
+fresh or isp fn1
+c2 and c1 fresh
+nn select c2 p11 0
+self select sp 1 0
+bq call shborr p5 p6 p7 nn p8 p9 ok ov p1 p10 self
+s3_x add 11264 g
+s3_a shr s3_x 7
+s3_b get s2 s3_a
+s3_c and s3_x 127
+s3_d set s3_b s3_c bq
+s3 set s2 s3_a s3_d
+s4 call shmiss s3 fm
+s5 call shmiss s4 om
+ret s5
+end
+fn shpass u32x128x200 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32 -> u32x128x200
+fst_m mul p7 7
+fst_i add fst_m 4
+fst_a shr fst_i 7
+fst_b get p3 fst_a
+fst_c and fst_i 127
+fst get fst_b fst_c
+nfn_m mul p7 7
+nfn_i add nfn_m 5
+nfn_a shr nfn_i 7
+nfn_b get p3 nfn_a
+nfn_c and nfn_i 127
+nfn get nfn_b nfn_c
+rw_m mul p7 7
+rw_i add rw_m 6
+rw_a shr rw_i 7
+rw_b get p3 rw_a
+rw_c and rw_i 127
+rw get rw_b rw_c
+pf_m mul p7 7
+pf_i add pf_m 2
+pf_a shr pf_i 7
+pf_b get p3 pf_a
+pf_c and pf_i 127
+pf get pf_b pf_c
+retk shr rw 28
+retv and rw 268435455
+z call zcol
+z2 call zcol
+uc fold shucj nfn z p4 p5 fst
+eff fold shefj nfn z2 p4 p5 p6 fst p2 pf p0
+s1 fold shpn nfn p0 p1 p2 p3 p4 p5 p6 fst retk retv nfn
+s2 fold shlz nfn s1 p4 p5 p6 fst retk retv uc eff
+ret s2
+end
+
