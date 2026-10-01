@@ -29,7 +29,13 @@ import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
 import { ILL_TYPED, refCheck, refCheckWords } from './ref-check.js';
-import { FRONT_END_SOURCE_LIMIT, irWords, refLex, refParse } from './ref-parse.js';
+import {
+  FRONT_END_CAPACITY,
+  FRONT_END_SOURCE_LIMIT,
+  irWords,
+  refLex,
+  refParse,
+} from './ref-parse.js';
 import {
   checkInterpreter,
   checkJs,
@@ -179,7 +185,7 @@ export async function buildLexCases(): Promise<(Case & { readonly label: string 
 }
 
 /**
- * Whole A0 files within the front end's 16384-byte source limit: the examples, the lexer's own
+ * Whole A0 files within the front end's source limit: the examples, the lexer's own
  * source, and the site's UI program (text literals, non-ASCII bytes in strings).
  */
 async function wholeFiles(): Promise<[string, string][]> {
@@ -218,21 +224,19 @@ async function frontEndSources(): Promise<[string, string][]> {
 }
 
 /**
- * The most one-line functions a source within the front end's limit holds (713, under the old
- * 1024 function cap; src/core.ts allows 65536): names a..z, then two characters, skipping `fn`.
+ * The most one-line functions the front end's function table holds (820; src/core.ts allows
+ * 65536): names a..z, then two characters, skipping `fn`.
  */
 function manyFunctions(): [string, string] {
   const letters = 'abcdefghijklmnopqrstuvwxyz';
   const names = [...letters];
   for (const x of letters) for (const y of `${letters}0123456789`) names.push(x + y);
-  let src = '';
-  let n = 0;
-  for (const name of names.filter((m) => m !== 'fn')) {
-    const f = `fn ${name} -> u32\nret 0\nend\n`;
-    if (Buffer.byteLength(src + f) > FRONT_END_SOURCE_LIMIT) break;
-    src += f;
-    n += 1;
-  }
+  const n = FRONT_END_CAPACITY.functions;
+  const src = names
+    .filter((m) => m !== 'fn')
+    .slice(0, n)
+    .map((name) => `fn ${name} -> u32\nret 0\nend\n`)
+    .join('');
   return [`fns${n}`, src];
 }
 
@@ -372,7 +376,7 @@ export async function buildEmitCCases(
     ...ILL_TYPED.slice(0, 4),
   ];
   const sources = all.filter(([, src]) => Buffer.byteLength(src) <= EMITCIO_SOURCE_LIMIT);
-  // The emitter's tables are the 16384-byte front end's: `count` pages of 128 words (types 384).
+  // The emitter's tables are the front end's: `count` pages of 128 words (types 384).
   const paged = (t: readonly number[], count: number, size = 128): number[][] =>
     Array.from({ length: count }, (_, p) => {
       const page = t.slice(p * size, p * size + size);
@@ -397,9 +401,9 @@ export async function buildEmitCCases(
         paged(r.tlist, 65),
         paged(ir.fns, 45),
         paged(ir.nodes, 128),
-        paged(ir.args, 256),
+        paged(ir.args, 512),
         paged(r.nodeTypes, 24),
-        paged(ir.pool, 129),
+        paged(ir.pool, 400),
         paged(fnm, 16),
         r.types.length / 3,
         3,

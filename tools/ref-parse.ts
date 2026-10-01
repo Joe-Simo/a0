@@ -9,10 +9,49 @@
 // --- Self-hosted lexer reference ---------------------------------------------------
 
 /**
- * Source bytes the self-hosted front end reads (lexio, parseio, checkio clamp to it); its tables
- * are sized so that no source within the limit overflows them (DESIGN.md 7a).
+ * Source bytes the self-hosted front end reads (lexio, parseio, checkio clamp to it: the source
+ * is held packed four bytes a word, compiler/lex.a0 `readsrc`).
  */
-export const FRONT_END_SOURCE_LIMIT = 16384;
+export const FRONT_END_SOURCE_LIMIT = 131072;
+
+/**
+ * The capacities of the self-hosted front end's tables (compiler/parse.a0 `fecap`): a source
+ * over one of them is its limit diagnostic 4. The checker adds at most one type per node, so
+ * the parser's types plus the nodes must fit the type table.
+ */
+export const FRONT_END_CAPACITY = {
+  bytes: FRONT_END_SOURCE_LIMIT,
+  tokens: 16384,
+  tokenBytes: 32767,
+  symbols: 8192,
+  poolBytes: 51200,
+  uses: 4096,
+  functions: 820,
+  nodes: 2730,
+  operands: 32768,
+  types: 8320,
+  tlist: 8320,
+} as const;
+
+/** Whether a source is within every capacity of the self-hosted front end. */
+export function frontEndFits(src: string): boolean {
+  const c = FRONT_END_CAPACITY;
+  if (Buffer.byteLength(src) > c.bytes) return false;
+  const t = refLex(src);
+  if (t.length / 3 > c.tokens) return false;
+  for (let i = 2; i < t.length; i += 3) if ((t[i] as number) > c.tokenBytes) return false;
+  const ir = refParse(src);
+  return (
+    ir.sym.length / 2 <= c.symbols &&
+    ir.pool.length <= c.poolBytes &&
+    ir.uses.length <= c.uses &&
+    ir.fns.length / 7 <= c.functions &&
+    ir.nodes.length / 6 <= c.nodes &&
+    ir.args.length / 2 <= c.operands &&
+    ir.types.length / 3 + ir.nodes.length / 6 <= c.types &&
+    ir.tlist.length <= c.tlist
+  );
+}
 
 /** The token grammar of compiler/lex.a0, written directly: (kind start length) triples. */
 export function refLex(src: string): number[] {
@@ -177,15 +216,14 @@ export function refParse(src: string): WordIr {
   const pool = [...Buffer.from('retval')];
   const sym = [0, 6];
   const tsym: number[] = new Array(ntok).fill(0);
+  const symOf = new Map<string, number>([['retval', 0]]);
   for (let i = 0; i < ntok; i += 1) {
     if (kind(i) !== 1 && kind(i) !== 3) continue;
     const w = bytes(i);
-    let found = sym.length / 2;
-    for (let j = 0; j < sym.length / 2; j += 1) {
-      const s = sym[j * 2] as number;
-      if (sym[j * 2 + 1] === w.length && w.every((c, k) => pool[s + k] === c)) found = j;
-    }
+    const text = String.fromCharCode(...w);
+    const found = symOf.get(text) ?? sym.length / 2;
     if (found === sym.length / 2) {
+      symOf.set(text, found);
       sym.push(pool.length, w.length);
       pool.push(...w);
     }
@@ -221,9 +259,11 @@ export function refParse(src: string): WordIr {
   const types = [1, 0, 0, 2, 0, 0, 3, 0, 0];
   const tlist: number[] = [];
   const fns: number[] = [];
+  /** The first function named s among the first n, or n. */
+  const fnOf = new Map<number, number>();
   const findFn = (s: number, n: number): number => {
-    for (let j = 0; j < n; j += 1) if (fns[j * 7] === s) return j;
-    return n;
+    const j = fnOf.get(s);
+    return j !== undefined && j < n ? j : n;
   };
   {
     const stk: number[] = [];
@@ -356,6 +396,7 @@ export function refParse(src: string): WordIr {
         }
       } else if (k === 5) {
         if (mode === 2 && haveRes && depth === 0) {
+          if (!fnOf.has(name)) fnOf.set(name, fns.length / 7);
           fns.push(name, nparams, first, res, 0, 0, 0);
           mode = 0;
         } else fail(1, i);
@@ -375,7 +416,10 @@ export function refParse(src: string): WordIr {
     let pendId = 0;
     const cur = (): number => nodes.length / 6 - 1;
     const nin = (): number => nodes.length / 6 - firstNode;
+    /** The first node of the current function with each id. */
+    let nodeOf = new Map<number, number>();
     const emit = (id: number, op: number): void => {
+      if (!nodeOf.has(id)) nodeOf.set(id, nodes.length / 6 - firstNode);
       nodes.push(id, op, 0, args.length / 2, 0, 0);
       mode = op === 19 || op === 20 ? 41 : op === 21 ? 42 : 4;
     };
@@ -392,8 +436,8 @@ export function refParse(src: string): WordIr {
       return true;
     };
     const findNode = (s: number, n: number): number => {
-      for (let j = 0; j < n; j += 1) if (nodes[(firstNode + j) * 6] === s) return j;
-      return n;
+      const j = nodeOf.get(s);
+      return j !== undefined && j < n ? j : n;
     };
     const pushArg = (k: number, v: number): void => {
       args.push(k, v);
@@ -422,6 +466,7 @@ export function refParse(src: string): WordIr {
         if (k === 5) continue;
         if (kk === KW.fn) {
           firstNode = nodes.length / 6;
+          nodeOf = new Map();
           fns[fi * 7 + 4] = firstNode;
           fi += 1;
           mode = 1;

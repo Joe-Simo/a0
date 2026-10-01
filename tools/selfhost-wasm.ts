@@ -63,7 +63,7 @@ import { irOp } from './ref-parse.js';
 export const WASM_TOOL_INPUT = 1 << 21;
 export const WASM_TOOL_OUTPUT = 1 << 22;
 /** Table capacities of compiler/emit_wasm.a0 for one chunk. */
-const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 16512 };
+const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
 
 /** The C main of `a0w`: stdin words (little-endian) are the io input, stdout the output words. */
 export const toolMain = `#include <pthread.h>

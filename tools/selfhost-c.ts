@@ -42,15 +42,15 @@ const SIZES = {
 };
 const FUEL = { fuel: 1e12 };
 
-/** Page counts of the emitter's tables (the 16384-byte front end's: 128 words a page, types 384). */
+/** Page counts of the emitter's tables (the front end's: 128 words a page, types 384). */
 const EMIT_PAGES = {
   types: 65,
   tlist: 65,
   fns: 45,
   nodes: 128,
-  args: 256,
+  args: 512,
   ntys: 24,
-  pool: 129,
+  pool: 400,
   fnm: 16,
 };
 
