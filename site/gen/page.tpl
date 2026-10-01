@@ -78,8 +78,8 @@ m top TypeScript
 m top Python
 m top Ruby
 # The best of the three optimized baselines per test program, as named by arm64VsBestFlags in results/exec-benchmark-full.json.
-m bestflag cO3Native C -O3 -march=native
-m bestflag rustO3Native Rust opt-level 3, native CPU
+m bestflag cO3Native C -O3 native
+m bestflag rustO3Native Rust -O3 native
 m bestflag zigReleaseFast Zig ReleaseFast
 1# a0lang.com home page, authored in A0. An io program speaking the A0 UI protocol (see ui.a0):
 1#   input : event x y ntext text[ntext] nstate state[nstate]   (this page keeps no state)
@@ -457,8 +457,7 @@ s 13 glsl
 =th A0 time per call
 =th Best of C, Rust, Zig
 # claim-ok: column label defining the scale; the cells are arm64VsBestFlags.speedup of results/exec-benchmark-full.json
-=th Speedup (below 1.00x = A0 slower)
-=th Verdict
+=th Speedup, verdict (below 1.00x = A0 slower)
 >
 [bkrows
 <tr
@@ -472,10 +471,7 @@ s 13 glsl
 "$bk_best$, $bk_bns$ ns
 >
 .td mono{bk_win| first}{bk_loss| loss}
-"$bk_sp$x
->
-.td mono{bk_win| first}{bk_loss| loss}
-"{bk_win|win}{bk_tie|tie}{bk_loss|loss}
+"$bk_sp$x {bk_win|win}{bk_tie|tie}{bk_loss|loss}
 >
 >
 ]
