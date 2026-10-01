@@ -118,6 +118,12 @@ function encodeHeaders(fns: readonly Func[]): Headers {
   return { types, tlist, pool, sym, heads };
 }
 
+/** The ret word of a literal that needs the args table: kind 5 and the index of its pair. */
+function retPair(args: number[], kind: number, value: number): number {
+  args.push(kind, value);
+  return 5 * 2 ** 28 + (args.length / 2 - 1);
+}
+
 /** Node and argument tables of functions [from, to); the fns table with their bodies' ranges. */
 function encodeBodies(
   fns: readonly Func[],
@@ -146,11 +152,12 @@ function encodeBodies(
         nodes.push(0, irOp(n.op), n.args.length, args.length / 2, callee, pred);
         for (const a of n.args) args.push(...operand(a));
       }
+    // a u32 literal of 2^28 or more does not fit the ret word: kind 5, the pair appended to args
     const [rk, rv] = operand(fn.ret);
-    if (rv >= 2 ** 28) throw new Error(`${fn.name}: ret literal does not fit the IR's 28 bits`);
+    const retWord = rv < 2 ** 28 ? rk * 2 ** 28 + rv : retPair(args, rk, rv);
     const [name, nparams, first, result] = heads[fi] as [number, number, number, number];
     table.push(name, nparams, first, result, firstNode, inChunk ? fn.nodes.length : 0);
-    table.push(rk * 2 ** 28 + rv);
+    table.push(retWord);
   });
   return { fns: table, nodes, args };
 }
@@ -158,6 +165,8 @@ function encodeBodies(
 /** Chunks [from, to) whose bodies fit the node and argument tables. */
 function chunks(fns: readonly Func[]): [number, number][] {
   const out: [number, number][] = [];
+  // every function's record is encoded in every chunk: a big ret literal takes an args pair there
+  const bigRets = fns.filter((f) => f.ret.kind === 'u32' && f.ret.value >= 2 ** 28).length;
   let from = 0;
   while (from < fns.length) {
     let to = from;
@@ -166,7 +175,7 @@ function chunks(fns: readonly Func[]): [number, number][] {
     while (to < fns.length) {
       const fn = fns[to] as Func;
       const a = fn.nodes.reduce((n, x) => n + x.args.length, 0);
-      if (nn + fn.nodes.length > SIZES.nodes / 6 || na + a > SIZES.args / 2) break;
+      if (nn + fn.nodes.length > SIZES.nodes / 6 || na + a + bigRets > SIZES.args / 2) break;
       nn += fn.nodes.length;
       na += a;
       to += 1;

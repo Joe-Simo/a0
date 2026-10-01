@@ -1063,8 +1063,22 @@ tinfo6 at s6 3
 fstat6 at s6 7
 errnode6 at s6 12
 lit6 at s6 13
-rk shr retw 28
-rv and retw 268435455
+rk0 shr retw 28
+rv0 and retw 268435455
+# kind 5: the operand is the pair of args at rv0 (a u32 literal of 2^28 or more)
+rbig eq rk0 5
+rai mul rv0 2
+rah shr rai 7
+rao and rai 127
+rai1 add rai 1
+rah1 shr rai1 7
+rao1 and rai1 127
+rapg get p3 rah
+rapg1 get p3 rah1
+rak get rapg rao
+rav get rapg1 rao1
+rk select rbig rak rk0
+rv select rbig rav rv0
 isn eq rk 1
 isp eq rk 2
 isb eq rk 4

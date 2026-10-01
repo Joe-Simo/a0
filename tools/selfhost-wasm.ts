@@ -18,8 +18,7 @@
  *   bodies (and what they reach) supplied. The optimized bodies replace the program's functions.
  * - The (optimized) program is emitted a chunk of functions at a time, as the checked tables in
  *   the A0 front end's layout (mode 2, `a0WasmFromTables`) or as formatted source through the A0
- *   front end (mode 1, `a0WasmFromSource`; a ret of a literal of 2^28 or more is bound to a node
- *   first, the front end cannot pack it). A chunk is the most functions that fit one run; one
+ *   front end (mode 1, `a0WasmFromSource`; a ret of a literal of 2^28 or more is a kind-5 operand). A chunk is the most functions that fit one run; one
  *   that turns out too big (code 4: the room fusion needs, the bodies supplied) is cut in two.
  *   Per function the shape analyses, loop fusion and the emitter run inside the chunk run
  *   (compiler/boot.a0 `wxorch`); when any of them needs the body of a function outside the chunk
@@ -60,6 +59,7 @@ import { link } from '../src/link.js';
 import { optimizeFunction } from '../src/optimize.js';
 import { findClang, runTool, spawnWithInput, type ToolInfo } from '../src/toolchain.js';
 import { type WasmLayout, wasmModuleBytes } from '../src/wasm.js';
+import { BEHAVIOR_SPEC } from './behavior-spec.js';
 import {
   BUILD_DIR,
   buildStage,
@@ -1309,6 +1309,10 @@ async function main(): Promise<void> {
   const programs: [string, TypedProgram, WasmLayout][] = [['corpus', generateCorpus(), small]];
   for (const f of (await readdir('examples')).filter((f) => f.endsWith('.a0')).sort())
     programs.push([f, parseAndValidate(await readFile(`examples/${f}`, 'utf8')), small]);
+  // u32 literals of 2^28 or more as a ret operand: kind-5 operands of the ret word (tools/behavior-spec.ts)
+  const bigret = BEHAVIOR_SPEC.find((b) => b.name === 'bigret');
+  if (bigret === undefined) throw new Error('behavior program bigret is missing');
+  programs.push(['behavior/bigret', parseAndValidate(bigret.source), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,

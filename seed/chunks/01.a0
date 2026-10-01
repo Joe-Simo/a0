@@ -2203,8 +2203,21 @@ tinfo6 at s6 3
 fstat6 at s6 7
 errnode6 at s6 12
 lit6 at s6 13
-rk shr retw 28
-rv and retw 268435455
+rk0 shr retw 28
+rv0 and retw 268435455
+rbig eq rk0 5
+rai mul rv0 2
+rah shr rai 7
+rao and rai 127
+rai1 add rai 1
+rah1 shr rai1 7
+rao1 and rai1 127
+rapg get p3 rah
+rapg1 get p3 rah1
+rak get rapg rao
+rav get rapg1 rao1
+rk select rbig rak rk0
+rv select rbig rav rv0
 isn eq rk 1
 isp eq rk 2
 isb eq rk 4
@@ -2504,6 +2517,25 @@ b lt p0 p1
 r select b p0 p1
 ret r
 end
+fn cretop u32 u32x128x512 -> (u32,u32)
+k0 shr p0 28
+v0 and p0 268435455
+big eq k0 5
+a2 mul v0 2
+ah shr a2 7
+al and a2 127
+a3 add a2 1
+bh shr a3 7
+bl and a3 127
+pg get p1 ah
+pg1 get p1 bh
+ak get pg al
+av get pg1 bl
+k select big ak k0
+v select big av v0
+o rec k v
+ret o
+end
 fn cres u32 u32 u32x128x24 u32 -> (u32,u32)
 isn eq p0 1
 isp eq p0 2
@@ -2619,16 +2651,5 @@ lit or k3 k4
 z eq v 0
 lz and lit z
 r and p0 lz
-ret r
-end
-fn czpg bool u32 u32x128x512 u32 u32 u32 -> bool
-pi add p5 p1
-pg get p2 pi
-b mul pi 64
-e add b 64
-lo call umax p3 b
-hi call cumin p4 e
-cnt sub hi lo
-r fold czst cnt p0 pg lo
 ret r
 end

@@ -984,6 +984,9 @@ e5fn and e5fn0 ffound
 e5fnnf and e5fn0 notff
 e5opfn or e5op e5fn0
 e5num and m5 k2
+# a number of 2^28 or more does not fit the packed ret word: it goes to args, ret is kind 5
+e4big0 gt dval 268435455
+e5big and e5num e4big0
 e5id0 and m5 k1
 e5id1 select e5opfn false e5id0
 e5tf and e5id1 istf
@@ -1032,7 +1035,9 @@ me0 select cf 41 4
 me select isloop 42 me0
 # the ret operand, packed kind*2^28 | value
 rv5op add 268435456 nin
-rv5num add 805306368 dval
+rv5num0 add 805306368 dval
+rv5big add 1342177280 nargs
+rv5num select e5big rv5big rv5num0
 rv5tf add 1073741824 tfv
 rv5par add 536870912 pval
 rv5nd add 268435456 jall
@@ -1082,10 +1087,11 @@ e4ok1 or e4ok0 k3
 e4ok or e4ok1 k1
 e4bad0 select e4ok false true
 e4bad and m4 e4bad0
-ak0 select e4num 3 1
+e4n or e4num e5big
+ak0 select e4n 3 1
 ak1 select e4tf 4 ak0
 ak select e4par 2 ak1
-av0 select e4num dval jprev
+av0 select e4n dval jprev
 av1 select e4tf tfv av0
 av select e4par pval av1
 doarg0 or e4num e4tf
@@ -1095,9 +1101,10 @@ na2 mul nargs 2
 na21 add na2 1
 arga set args na2 ak
 argb set arga na21 av
-args2 select doarg argb args
+doargw or doarg e5big
+args2 select doargw argb args
 na1 add nargs 1
-nargs2 select doarg na1 nargs
+nargs2 select doargw na1 nargs
 tcnt select e4txt len 0
 ts0 rec args2 nargs2 0
 ts fold v1txtstep tcnt ts0 p2 start
@@ -2006,8 +2013,16 @@ pcons6 at s6 8
 fstat6 at s6 9
 errnode6 at s6 12
 lit6 at s6 13
-rk shr retw 28
-rv and retw 268435455
+rk0 shr retw 28
+rv0 and retw 268435455
+# kind 5: the operand is the pair of args at rv0 (a u32 literal of 2^28 or more)
+rbig eq rk0 5
+rai mul rv0 2
+rai1 add rai 1
+rak get p3 rai
+rav get p3 rai1
+rk select rbig rak rk0
+rv select rbig rav rv0
 rt call v1opndty rk rv tlist6 ntys6 fp np first
 rbad eq rt 4294967295
 rne ne rt res

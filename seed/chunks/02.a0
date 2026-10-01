@@ -79,6 +79,9 @@ end
 fn cumin u32 u32 -> u32
 ret 0
 end
+fn cretop u32 u32x128x512 -> (u32,u32)
+ret 0
+end
 fn cres u32 u32 u32x128x24 u32 -> (u32,u32)
 ret 0
 end
@@ -88,8 +91,19 @@ end
 fn cotype u32 u32 u32x128x24 u32x128x65 u32 u32 -> u32
 ret 0
 end
-fn czpg bool u32 u32x128x512 u32 u32 u32 -> bool
+fn czst bool u32 u32x128 u32 -> bool
 ret 0
+end
+fn czpg bool u32 u32x128x512 u32 u32 u32 -> bool
+pi add p5 p1
+pg get p2 pi
+b mul pi 64
+e add b 64
+lo call umax p3 b
+hi call cumin p4 e
+cnt sub hi lo
+r fold czst cnt p0 pg lo
+ret r
 end
 fn cnode io u32 u32x128x128 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x400 u32x128x16 u32 u32 u32x128x24 u32 -> io
 g add p9 p1
@@ -757,8 +771,9 @@ np1 sub np 1
 n1 select nv np1 0
 h1 fold cprm1 n1 h0 p5 p4 fp
 j call cws6 h1 175841321 0 0 0 0 0
-rk shr rw 28
-rv and rw 268435455
+rop call cretop rw p2
+rk at rop 0
+rv at rop 1
 z24 call z24
 ro fold crt cnt z24 p1 p2 p3 p4 p10 fn0 p11 rk rv p12
 k fold cnode cnt j p1 p2 p3 p4 p5 p6 p7 fn0 fp ro p11
@@ -793,8 +808,9 @@ z64 call z64
 us fold cusn cnt z64 p2 p3 fn0
 bs0 fold cbrn cnt z64 p2 p3 p4 p5 fn0
 rw call cfw p9 b 6
-rk shr rw 28
-rv and rw 268435455
+rop call cretop rw p3
+rk at rop 0
+rv at rop 1
 bs call cbrret bs0 rk rv
 a call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 f us 0 bs
 tq0p shr fp 7

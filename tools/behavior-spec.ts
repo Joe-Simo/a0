@@ -361,6 +361,45 @@ end
     ],
   },
   {
+    name: 'bigret',
+    about:
+      'a u32 literal of 2^28 or more as the ret operand (the IR ret word packs 28 bits; larger literals are a kind-5 operand), alone and through callers',
+    io: false,
+    source: `fn lit27 -> u32
+ret 268435455
+end
+fn lit28 -> u32
+ret 268435456
+end
+fn lit31 -> u32
+ret 2147483648
+end
+fn lit32 -> u32
+ret 4294967295
+end
+fn via u32 -> u32
+a call lit31
+b add a p0
+ret b
+end
+fn pass u32 -> u32
+a call lit28
+b call lit32
+c add a b
+d add c p0
+ret d
+end
+`,
+    calls: [
+      { fn: 'lit27', rows: [{ args: [] }] },
+      { fn: 'lit28', rows: [{ args: [] }] },
+      { fn: 'lit31', rows: [{ args: [] }] },
+      { fn: 'lit32', rows: [{ args: [] }] },
+      { fn: 'via', rows: one(WORDS) },
+      { fn: 'pass', rows: one(WORDS) },
+    ],
+  },
+  {
     name: 'text',
     about: 'text literals are arrays of UTF-8 bytes with escapes',
     io: false,

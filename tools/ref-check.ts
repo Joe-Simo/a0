@@ -383,8 +383,11 @@ export function refCheck(
         } else rt = fail(2, i);
         nodeTypes[g] = rt;
       }
-      const rk = Math.floor(retWord / 2 ** 28);
-      const rv = retWord % 2 ** 28;
+      // kind 5: the ret operand is the pair of args at that index (a u32 literal of 2^28 or more)
+      const big = Math.floor(retWord / 2 ** 28) === 5;
+      const at = (retWord % 2 ** 28) * 2;
+      const rk = big ? (args[at] as number) : Math.floor(retWord / 2 ** 28);
+      const rv = big ? (args[at + 1] as number) : retWord % 2 ** 28;
       const rt = operandType(rk, rv, count);
       expect(rt, result, count);
       const rkey = rk === 2 ? `p${rv}` : rk === 1 ? `n${rv}` : '';

@@ -3023,6 +3023,40 @@ s39 call lldef s38 p11 p1 100 isfl
 r call flush p0 s39 true
 ret r
 end
+# the ret operand (kind, value) of the packed ret word p0: kind 5 is the pair of args at its
+# value (a u32 literal of 2^28 or more does not fit the word); p1 the flat args, aretq the paged
+fn aretop u32 u32x8192 -> (u32,u32)
+k0 shr p0 28
+v0 and p0 268435455
+big eq k0 5
+a2 mul v0 2
+a3 add a2 1
+ak get p1 a2
+av get p1 a3
+k select big ak k0
+v select big av v0
+o rec k v
+ret o
+end
+fn aretq u32 u32x128x512 -> (u32,u32)
+k0 shr p0 28
+v0 and p0 268435455
+big eq k0 5
+a2 mul v0 2
+ah shr a2 7
+al and a2 127
+a3 add a2 1
+bh shr a3 7
+bl and a3 127
+pg get p1 ah
+pg1 get p1 bh
+ak get pg al
+av get pg1 bl
+k select big ak k0
+v select big av v0
+o rec k v
+ret o
+end
 # --- one function: symbol, prologue, frame, parameters, nodes, result, epilogue
 # p2 pool p3 sym p4 fns p5 nodes p6 args p7 tlist
 fn efnstep (u32x4096,u32) u32 u32x512 u32x512 u32x1024 u32x4096 u32x8192 u32x1024 -> (u32x4096,u32)
@@ -3071,8 +3105,9 @@ s1 call flush p0 h13 true
 s2 fold paramstep np s1 p7 fp o
 s3 fold enodestep cnt s2 p5 p6 p4 p7 p2 p3 first o np p1
 # the result to w0, then "\tmov sp, x29\n\tldp x29, x30, [sp], #16\n\tret\n\n"
-rk shr retw 28
-rv and retw 268435455
+rop call aretop retw p6
+rk at rop 0
+rv at rop 1
 e1 call lload l0 rk rv 12407 o np true
 e2 call lp e1 1987013897 745567008 959608864 1684801802 true
 e3 call lp e2 846733424 2015374393 539766835 1567650651 true
@@ -4255,8 +4290,9 @@ c_1 call cws6 b 1651864329 745567008 745567008 909211680 1869416714 846733430
 c call cws6 c_1 1931488305 1829309040 2015393391 539767346 669816 0
 d fold qprm np c p6 p5 fp
 e fold qnode cnt d p2 p3 p4 p5 p6 p7 p8 p9 p10 fn0 fp np ns nl
-rk shr rw 28
-rv and rw 268435455
+rop call aretq rw p3
+rk at rop 0
+rv at rop 1
 rtag call qtw p5 rt 0
 ragg ge rtag 4
 rsc lt rtag 3

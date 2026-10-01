@@ -279,6 +279,27 @@ b lt p0 p1
 r select b p0 p1
 ret r
 end
+# the ret operand (kind, value) of the packed ret word p0: kind 5 is the pair of args p1 at
+# its value (a u32 literal of 2^28 or more does not fit the word)
+fn cretop u32 u32x128x512 -> (u32,u32)
+k0 shr p0 28
+v0 and p0 268435455
+big eq k0 5
+a2 mul v0 2
+ah shr a2 7
+al and a2 127
+a3 add a2 1
+bh shr a3 7
+bl and a3 127
+pg get p1 ah
+pg1 get p1 bh
+ak get pg al
+av get pg1 bl
+k select big ak k0
+v select big av v0
+o rec k v
+ret o
+end
 # the storage of operand (p0 p1) in variant p3 with the roots p2 (kind * 2^28 + value: 1 node,
 # 2 parameter, 5 `(*p0)`, 6 `(*n<j>)`; node j at page j>>7): a node resolves to the root it aliases, p0 of
 # the owned and ref variants is `(*p0)`, anything else is itself
@@ -1200,8 +1221,9 @@ n1 select nv np1 0
 h1 fold cprm1 n1 h0 p5 p4 fp
 # s j h1 ") {\n"
 j call cws6 h1 175841321 0 0 0 0 0
-rk shr rw 28
-rv and rw 268435455
+rop call cretop rw p2
+rk at rop 0
+rv at rop 1
 z24 call z24
 ro fold crt cnt z24 p1 p2 p3 p4 p10 fn0 p11 rk rv p12
 k fold cnode cnt j p1 p2 p3 p4 p5 p6 p7 fn0 fp ro p11
@@ -1244,8 +1266,9 @@ z64 call z64
 us fold cusn cnt z64 p2 p3 fn0
 bs0 fold cbrn cnt z64 p2 p3 p4 p5 fn0
 rw call cfw p9 b 6
-rk shr rw 28
-rv and rw 268435455
+rop call cretop rw p3
+rk at rop 0
+rv at rop 1
 bs call cbrret bs0 rk rv
 a call cvar p0 p2 p3 p4 p5 p6 p7 p8 p9 f us 0 bs
 tq0p shr fp 7
