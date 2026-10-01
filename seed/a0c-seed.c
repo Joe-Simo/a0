@@ -2186,18 +2186,36 @@ a0t36 a0_arrword(a0t23 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
   return n23;
 }
 
-a0t36 a0_arrone(a0t36 p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t23 *const n0 = &p0.f0; (void)n0;
-  uint32_t n1 = p0.f1; (void)n1;
-  a0t36 n2 = a0_arrword((*n0), n1, p2, p3, p4); (void)n2;
-  return n2;
+a0t25 a0_arrinfo(a0t25 p0, uint32_t p1, a0t23 p2, a0t9 p3, uint32_t p4, uint32_t p5) {
+  uint32_t n0 = p0.f0; (void)n0;
+  a0t36 n1 = a0_arrword(p2, n0, p3, p4, p5); (void)n1;
+  uint32_t n2 = n1.f1; (void)n2;
+  bool n3 = n1.f2; (void)n3;
+  uint32_t n4 = n1.f3; (void)n4;
+  a0t25 n5; n5.f0 = n2; n5.f1 = n3; n5.f2 = n4; (void)n5;
+  return n5;
 }
 
-static inline void a0o_arrone(a0t36 *p0, uint32_t p1, a0t9 p2, uint32_t p3, uint32_t p4) {
-  const a0t23 *const n0 = &(*p0).f0; (void)n0;
-  uint32_t n1 = (*p0).f1; (void)n1;
-  a0t36 n2 = a0_arrword((*n0), n1, p2, p3, p4); (void)n2;
-  *p0 = n2;
+static inline void a0o_arrinfo(a0t25 *p0, uint32_t p1, a0t23 p2, a0t9 p3, uint32_t p4, uint32_t p5) {
+  uint32_t n0 = (*p0).f0; (void)n0;
+  a0t36 n1 = a0_arrword(p2, n0, p3, p4, p5); (void)n1;
+  uint32_t n2 = n1.f1; (void)n2;
+  bool n3 = n1.f2; (void)n3;
+  uint32_t n4 = n1.f3; (void)n4;
+  a0t25 n5; n5.f0 = n2; n5.f1 = n3; n5.f2 = n4; (void)n5;
+  *p0 = n5;
+}
+
+a0t23 a0_arrapply(a0t23 p0, uint32_t p1, uint32_t p2, a0t9 p3, uint32_t p4, uint32_t p5) {
+  a0t36 n0 = a0_arrword(p0, p2, p3, p4, p5); (void)n0;
+  const a0t23 *const n1 = &n0.f0; (void)n1;
+  return (*n1);
+}
+
+static inline void a0o_arrapply(a0t23 *p0, uint32_t p1, uint32_t p2, a0t9 p3, uint32_t p4, uint32_t p5) {
+  a0t36 n0 = a0_arrword((*p0), p2, p3, p4, p5); (void)n0;
+  const a0t23 *const n1 = &n0.f0; (void)n1;
+  *p0 = (*n1);
 }
 
 uint32_t a0_frst(uint32_t p0, uint32_t p1, a0t22 p2, a0t4 p3, uint32_t p4, uint32_t p5, uint32_t p6, uint32_t p7) {
@@ -2428,13 +2446,13 @@ a0t39 a0_p3tok(a0t39 p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, u
   bool n71 = (n56 && n48); (void)n71;
   bool n72 = (n71 && n45); (void)n72;
   uint32_t n73 = (n72 ? 1u : 0u); (void)n73;
-  a0t36 n74; n74.f0 = (*n0); n74.f1 = n5; n74.f2 = false; n74.f3 = 0u; (void)n74;
-  for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrone(&n74, a0i, p2, n31, n36); }
-  const a0t23 *const n76 = &n74.f0; (void)n76;
-  uint32_t n77 = n74.f1; (void)n77;
-  bool n78 = n74.f2; (void)n78;
+  a0t25 n74; n74.f0 = n5; n74.f1 = false; n74.f2 = 0u; (void)n74;
+  for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrinfo(&n74, a0i, (*n0), p2, n31, n36); }
+  a0t23 n76 = (*n0); for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrapply(&n76, a0i, n5, p2, n31, n36); } (void)n76;
+  uint32_t n77 = n74.f0; (void)n77;
+  bool n78 = n74.f1; (void)n78;
   bool n79 = (n72 && n78); (void)n79;
-  uint32_t n80 = n74.f3; (void)n80;
+  uint32_t n80 = n74.f2; (void)n80;
   bool n81 = (n68 || n69); (void)n81;
   bool n82 = (n81 || n70); (void)n82;
   bool n83 = (n82 || n79); (void)n83;
@@ -2488,7 +2506,7 @@ a0t39 a0_p3tok(a0t39 p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, u
   uint32_t n131 = a0_xor(n130, n126); (void)n131;
   uint32_t n132 = a0_mul(n131, 16777619u); (void)n132;
   uint32_t n133 = (n98 ? 1u : 0u); (void)n133;
-  uint32_t n134 = 4294967295u; for (uint32_t a0i = 0; a0i < n133; a0i++) { n134 = a0_recone(n134, a0i, (*n76), (*n1), (*n129), n77, n6, n126, n132); } (void)n134;
+  uint32_t n134 = 4294967295u; for (uint32_t a0i = 0; a0i < n133; a0i++) { n134 = a0_recone(n134, a0i, n76, (*n1), (*n129), n77, n6, n126, n132); } (void)n134;
   bool n135 = a0_ne(n134, 4294967295u); (void)n135;
   bool n136 = (n135 ? false : true); (void)n136;
   uint32_t n137 = (n135 ? n134 : n77); (void)n137;
@@ -2544,7 +2562,7 @@ a0t39 a0_p3tok(a0t39 p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, u
   uint32_t n187 = a0_shr(n77, 7u); (void)n187;
   uint32_t n188 = a0_and(n77, 127u); (void)n188;
   uint32_t n189 = a0_mul(n188, 3u); (void)n189;
-  const a0t22 *const n190 = &(*n76).e[n187 % 65u]; (void)n190;
+  const a0t22 *const n190 = &n76.e[n187 % 65u]; (void)n190;
   uint32_t n191 = (*n190).e[n189 % 384u]; (void)n191;
   uint32_t n192 = a0_add(n189, 1u); (void)n192;
   uint32_t n193 = (*n190).e[n192 % 384u]; (void)n193;
@@ -2556,7 +2574,7 @@ a0t39 a0_p3tok(a0t39 p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4, uint32_t p5, u
   a0t22 n199 = (*n190); n199.e[n189 % 384u] = n196; (void)n199;
   n199.e[n192 % 384u] = n197;
   n199.e[n194 % 384u] = n198;
-  a0t23 n202 = (*n76); n202.e[n187 % 65u] = n199; (void)n202;
+  a0t23 n202 = n76; n202.e[n187 % 65u] = n199; (void)n202;
   const a0t4 *const n203 = &(*n1).e[n187 % 65u]; (void)n203;
   uint32_t n204 = (*n203).e[n188 % 128u]; (void)n204;
   uint32_t n205 = (n138 ? n132 : n204); (void)n205;
@@ -2702,13 +2720,13 @@ static inline void a0o_p3tok(a0t39 *p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4,
   bool n71 = (n56 && n48); (void)n71;
   bool n72 = (n71 && n45); (void)n72;
   uint32_t n73 = (n72 ? 1u : 0u); (void)n73;
-  a0t36 n74; n74.f0 = (*n0); n74.f1 = n5; n74.f2 = false; n74.f3 = 0u; (void)n74;
-  for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrone(&n74, a0i, p2, n31, n36); }
-  const a0t23 *const n76 = &n74.f0; (void)n76;
-  uint32_t n77 = n74.f1; (void)n77;
-  bool n78 = n74.f2; (void)n78;
+  a0t25 n74; n74.f0 = n5; n74.f1 = false; n74.f2 = 0u; (void)n74;
+  for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrinfo(&n74, a0i, (*n0), p2, n31, n36); }
+  a0t23 n76 = (*n0); for (uint32_t a0i = 0; a0i < n73; a0i++) { a0o_arrapply(&n76, a0i, n5, p2, n31, n36); } (void)n76;
+  uint32_t n77 = n74.f0; (void)n77;
+  bool n78 = n74.f1; (void)n78;
   bool n79 = (n72 && n78); (void)n79;
-  uint32_t n80 = n74.f3; (void)n80;
+  uint32_t n80 = n74.f2; (void)n80;
   bool n81 = (n68 || n69); (void)n81;
   bool n82 = (n81 || n70); (void)n82;
   bool n83 = (n82 || n79); (void)n83;
@@ -2762,7 +2780,7 @@ static inline void a0o_p3tok(a0t39 *p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4,
   uint32_t n131 = a0_xor(n130, n126); (void)n131;
   uint32_t n132 = a0_mul(n131, 16777619u); (void)n132;
   uint32_t n133 = (n98 ? 1u : 0u); (void)n133;
-  uint32_t n134 = 4294967295u; for (uint32_t a0i = 0; a0i < n133; a0i++) { n134 = a0_recone(n134, a0i, (*n76), (*n1), (*n129), n77, n6, n126, n132); } (void)n134;
+  uint32_t n134 = 4294967295u; for (uint32_t a0i = 0; a0i < n133; a0i++) { n134 = a0_recone(n134, a0i, n76, (*n1), (*n129), n77, n6, n126, n132); } (void)n134;
   bool n135 = a0_ne(n134, 4294967295u); (void)n135;
   bool n136 = (n135 ? false : true); (void)n136;
   uint32_t n137 = (n135 ? n134 : n77); (void)n137;
@@ -2818,7 +2836,7 @@ static inline void a0o_p3tok(a0t39 *p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4,
   uint32_t n187 = a0_shr(n77, 7u); (void)n187;
   uint32_t n188 = a0_and(n77, 127u); (void)n188;
   uint32_t n189 = a0_mul(n188, 3u); (void)n189;
-  const a0t22 *const n190 = &(*n76).e[n187 % 65u]; (void)n190;
+  const a0t22 *const n190 = &n76.e[n187 % 65u]; (void)n190;
   uint32_t n191 = (*n190).e[n189 % 384u]; (void)n191;
   uint32_t n192 = a0_add(n189, 1u); (void)n192;
   uint32_t n193 = (*n190).e[n192 % 384u]; (void)n193;
@@ -2830,7 +2848,7 @@ static inline void a0o_p3tok(a0t39 *p0, uint32_t p1, a0t9 p2, a0t27 p3, a0t4 p4,
   a0t22 n199 = (*n190); n199.e[n189 % 384u] = n196; (void)n199;
   n199.e[n192 % 384u] = n197;
   n199.e[n194 % 384u] = n198;
-  a0t23 n202 = (*n76); n202.e[n187 % 65u] = n199; (void)n202;
+  a0t23 n202 = n76; n202.e[n187 % 65u] = n199; (void)n202;
   const a0t4 *const n203 = &(*n1).e[n187 % 65u]; (void)n203;
   uint32_t n204 = (*n203).e[n188 % 128u]; (void)n204;
   uint32_t n205 = (n138 ? n132 : n204); (void)n205;

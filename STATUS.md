@@ -2809,16 +2809,17 @@ Verification, `bun run native-check` (results/native-check.json):
 - Linking: 6/6 (diamond, cycle, outside root, missing file, duplicate, over-limit).
 - The evaluator has no fuel limit. The TypeScript `run` stops at 1e8 node evaluations.
 
-lang-axes (results/lang-axes.json, 5 rounds interleaved, 1-minute load per round 27.9 / 26.5 / 26.7 / 32.6 / 19.1, then 16.7 after the last round, on 8 CPUs).
-- **Check + run per edit: A0 is fastest of 49 subjects.** A0 takes 6.2 ms (affine 6.2, branchy 6.4, arrfill 5.8). Next are Forth 10.5, Lua 14.0, Smalltalk 25.6, Common Lisp 53.5, Prolog 55.2, Tcl 62.5, Perl 64.9, Guile 68.6, JS 116.6 and C 235.2. A0 is fastest on each of the 3 kernels. The old path (`a0node`: Node check + `emit c` + clang) took 785.6 ms.
-- **Static check: A0 6.7 ms, fastest of 33** (Perl 31.5, JS 53.3, C 135.2).
-- Caveats:
-  - The load was above 10 throughout, so absolute times hold only within this run. Lua's median spread is wide (10.0 to 17.7 across kernels), and an earlier run of the same code before the last two copy fixes, under load 13-60, had Lua 7.4 ahead of A0 8.9.
-  - The recorded run used the binary from just before the last one-line fix: local projections now exclude the function result, a value-variant bug that the gate's -Werror build caught. The fix changes no kernel path except one extra 100 KB copy for an array type word (arrfill's `u32x8`).
-  - A confirmation run was started but stopped by the coordinator at load 190. It should be re-run when the load is under 10.
-- Coverage unchanged: tokens 48/48, check+run 48/48, check 33/48, none failed.
+lang-axes (results/lang-axes.json, re-run after merging main 731ee63, 5 rounds interleaved). The 1-minute load per round was 14.7 / 12.6 / 17.4 / 8.9 / 7.8, then 10.8 after the last round, on 8 CPUs. Three of five rounds were above 10, so this is NOT a clean-load run and the numbers below are provisional; a run with every round under 10 is still owed.
+- Check + run per edit: A0 4.7 ms, Lua 5.8, Forth 6.1, Smalltalk 13.5, Tcl 21.0, Perl 24.4, Common Lisp 29.1, Prolog 30.2. A0 first, but by about 20% over Lua at this load, which is within the spread between rounds.
+- Static check: A0 4.0 ms, Perl 12.5, JS 40.7, Python 80.2.
+- Earlier runs of the same design at load 13-60 and 17-33 gave A0 first once and Lua first once (7.4 vs 8.9 ms); treat the ranking against Lua as unresolved.
+- Coverage unchanged: tokens 48/48, check+run 48/48, check 33/48, none failed or missing.
 
-Gate (this worktree, after the fix): typecheck, test 92/92, verify (all 15 paths passed), app, equiv, hw, dotnet, gpu, selfhost, selfhost:c, bootstrap and native-check all exit 0. lint failed once on formatting of the fix, was re-run after `biome --write`, and exits 0.
+Merge with main (a0c-0.1.33, fix-borrow-fuel). One C in-place analysis remains, main's: `mutableHereC` plus `borrowLive`, with `cBorrow` holding aggregate `get`/`at` as const pointers. My earlier cRead, state projections, local projections and cStateStores were dropped and re-expressed on top of it, because main's analysis alone left the size slowdown: with it, `a0 check` on 16 KB took 125.8 ms (2 KB 17.5, 4 KB 32.4, 8 KB 62.8). A const borrow of `at p0 k` can never be updated in place, so every token still copied the 64-100 KB table.
+- Added: `cProjections` marks the one `at` of an aggregate field (of the owned loop state p0, or of a large local record) as an owned non-const pointer, which `mutableHereC` accepts through its new `ownedNodes` argument. `borrowLive` still guards every in-place update. `cStateStores` stores only the changed fields of the final `rec`.
+- Result: 6.2 / 6.3 / 13.8 / 18.8 ms for 2 / 4 / 8 / 16 KB (results/native-check.json). COMPILER_VERSION a0c-0.1.34.
+- native-check after the merge: 111/111 diagnostics (main added 6 sources), 6528 evaluator cases, 40/40 commands, 6/6 linking.
+
 ## Session 2026-09-30 (general optimizations for direct wasm32, shared IR, a0c-0.1.26)
 
 Merged `wasm-vs-clang` first (conflict in tools/exec-bench.ts: its kernel table moved to tools/exec-bench-kernels.ts, which now also holds the 8 newer kernels, so wasm-bench runs 19 kernels, not 11).
