@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --incremental --tsBuildInfoFile dist/.tsbuildinfo",
-    "lint": "biome check . && bun tools/dev/claim-check.ts --since=origin/main && bun tools/loss-ledger.ts && bun tools/scrub-results.ts --check",
+    "lint": "biome check . && bun tools/dev/claim-check.ts --since=origin/main && bun tools/loss-ledger.ts && bun tools/scrub-results.ts --check && bun tools/sync-skill.ts --check",
     "scrub-results": "bun tools/scrub-results.ts",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -40,6 +40,7 @@
     "gpu": "bun run build && node dist/tools/gpu-verify.js",
     "dotnet": "bun run build && node dist/tools/dotnet-verify.js",
     "release": "sh tools/release.sh",
+    "sync-skill": "bun tools/sync-skill.ts",
     "claims": "bun tools/dev/claim-check.ts",
     "a0-dev": "bun run build && node dist/tools/dev/a0-dev.js",
     "gate-scope": "bun run build && node dist/tools/dev/gate-scope.js",

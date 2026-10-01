@@ -58,6 +58,10 @@ brew tap Joe-Simo/a0 https://github.com/Joe-Simo/a0 && brew install a0 && a0 --v
 curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | A0_VERSION=vX.Y.Z sh
 ```
 
+`npx skills add Joe-Simo/a0 --list` should list the `a0` skill (skills.sh discovers `skills/a0/`, the source of truth;
+`plugin/skills/a0/` is a copy kept identical by `bun tools/sync-skill.ts`, checked in lint). skills.sh ranks by install telemetry; there is no
+submission step.
+
 The MCP registry entry is published from the release's `server.json`.
 
 ## Verify locally
