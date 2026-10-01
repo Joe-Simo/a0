@@ -41,6 +41,7 @@ import {
 } from '../src/backends.js';
 import {
   type Func,
+  formatFunction,
   formatProgram,
   formatType,
   type Node,
@@ -68,17 +69,19 @@ import {
   STAGE_OUTPUT,
 } from './bootstrap.js';
 import { generateCorpus } from './corpus.js';
-import { IR_OPS, irOp } from './ref-parse.js';
+import { frontEndFits, IR_OPS, irOp } from './ref-parse.js';
 
 /** io capacities of `a0w` in words (a chunk's tables, the linker's whole input; the module). */
 export const WASM_TOOL_INPUT = 1 << 21;
 export const WASM_TOOL_OUTPUT = 1 << 22;
 /** Table capacities of compiler/emit_wasm.a0 for one chunk (and of an eval program). */
-const CAP = { nodes: 2730, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
+const CAP = { nodes: 2816, operands: 32768, fns: 822, types: 8320, tlist: 8320, names: 51200 };
 /** `emitwasmio` modes. */
 const MODE = { source: 1, tables: 2, link: 3, optimize: 7, image: 8 } as const;
 /** The result code of an optimized chunk that needs more bodies. */
 const NEEDS_BODIES = 7;
+/** The result code of a chunk that does not fit a table. */
+const CAPACITY = 4;
 
 /** The C main of `a0w`: stdin words (little-endian) are the io input, stdout the output words. */
 export const toolMain = `#include <pthread.h>
@@ -180,15 +183,18 @@ function runTool32(exe: string, words: readonly number[]): { code: number; out: 
   return { code: r.status, out };
 }
 
-/** One chunk's output: POOL META CODE, then (index, depth, bound) per function. */
+/** One chunk's output: per function its POOL, META and CODE words, then (index, depth, bound). */
 interface ChunkOutput {
-  readonly pool: Uint32Array;
-  readonly meta: Uint32Array;
-  readonly code: Uint32Array;
+  readonly records: readonly { pool: Uint32Array; meta: Uint32Array; code: Uint32Array }[];
   readonly calls: [number, number, number][];
   readonly variants: number;
 }
 
+/**
+ * The output of `wachunk` (code 0): per function a record (the word counts of its POOL, META and
+ * CODE, then those words), then (index, depth, bound) per function, the chunk's variant count
+ * and its function count.
+ */
 function splitChunk(out: Uint32Array): ChunkOutput {
   const k = out[out.length - 1] as number;
   const variants = out[out.length - 2] as number;
@@ -198,27 +204,31 @@ function splitChunk(out: Uint32Array): ChunkOutput {
     out[t + 3 * i + 1] as number,
     out[t + 3 * i + 2] as number,
   ]);
-  const p = out[t - 2] as number;
-  const m = out[t - 1] as number;
-  return {
-    pool: out.subarray(0, p),
-    meta: out.subarray(p, p + m),
-    code: out.subarray(p + m, t - 2),
-    calls,
-    variants,
-  };
+  const records: ChunkOutput['records'][number][] = [];
+  let at = 0;
+  for (let i = 0; i < k; i += 1) {
+    const [np, nm, nc] = [out[at] as number, out[at + 1] as number, out[at + 2] as number];
+    at += 3;
+    records.push({
+      pool: out.subarray(at, at + np),
+      meta: out.subarray(at + np, at + np + nm),
+      code: out.subarray(at + np + nm, at + np + nm + nc),
+    });
+    at += np + nm + nc;
+  }
+  return { records, calls, variants };
 }
 
-/** The module from the chunks' outputs (mode 3). */
+/** The module from the chunks' outputs (mode 3): every POOL, then every META, then every CODE. */
 function linkChunks(exe: string, chunks: readonly ChunkOutput[], layout: WasmLayout): Uint8Array {
   const version = [...Buffer.from(COMPILER_VERSION, 'utf8')];
   const functions = chunks.reduce((n, c) => n + c.calls.length, 0);
   const words: number[] = [3, version.length, ...version];
   words.push(layout.ioInputCapacity, layout.ioOutputCapacity, functions);
-  for (const c of chunks) for (const w of c.pool) words.push(w);
+  for (const c of chunks) for (const r of c.records) for (const w of r.pool) words.push(w);
   words.push(0);
-  for (const c of chunks) for (const w of c.meta) words.push(w);
-  for (const c of chunks) for (const w of c.code) words.push(w);
+  for (const c of chunks) for (const r of c.records) for (const w of r.meta) words.push(w);
+  for (const c of chunks) for (const r of c.records) for (const w of r.code) words.push(w);
   const r = runTool32(exe, words);
   if (r.code !== 0) throw new Error(`a0w linker: code ${r.code} (a table is full)`);
   return Uint8Array.from(r.out, (w) => w & 255);
@@ -358,7 +368,8 @@ function encodeChunk(
     names.push(...name);
     const row = body.rows.get(fn);
     if (row === undefined) {
-      table.push(fn.literalIterations * 2, 0, 0, 0, 0, 0, 0);
+      // opaque: the emitter reads only its node count (word 5) and asks for small bodies
+      table.push(fn.literalIterations * 2, 0, 0, 0, 0, fn.nodes.length, 0);
       continue;
     }
     const params = fn.params.map((t) => intern(tb, t));
@@ -594,7 +605,8 @@ function encodeSpace(entries: readonly Entry[], own: number, image: boolean) {
     ...args,
     ...(image ? [] : sums),
     local.get(own) as number,
-    ...(image ? [] : [Number(process.env.A0OPT_STAGE ?? 0)]),
+    // the stage word: 0 runs every pass of the optimizer (compiler/optimize.a0s `ozone`)
+    ...(image ? [] : [0]),
   ];
   return { words, tb, fits };
 }
@@ -829,17 +841,12 @@ export function a0IrCheck(exe: string, program: TypedProgram): IrCheck {
 }
 
 /** The largest chunk of table encodings from `from` on. */
-function nextChunk(fns: readonly TypedFunc[], from: number): { to: number; chunk: ChunkTables } {
+function nextChunk(fns: readonly TypedFunc[], from: number): number {
   let to = from + 1;
-  let chunk = encodeChunk(fns, from, to);
-  if (!chunk.fits) throw new Error(`${(fns[from] as Func).name} does not fit the tables`);
-  while (to < fns.length) {
-    const next = encodeChunk(fns, from, to + 1);
-    if (!next.fits) break;
-    chunk = next;
-    to += 1;
-  }
-  return { to, chunk };
+  if (!encodeChunk(fns, from, to).fits)
+    throw new Error(`${(fns[from] as Func).name} does not fit the tables`);
+  while (to < fns.length && encodeChunk(fns, from, to + 1).fits) to += 1;
+  return to;
 }
 
 export interface ModuleRun {
@@ -849,49 +856,91 @@ export interface ModuleRun {
   readonly runs: number;
 }
 
+/** Options of the emitters that tests vary (src/wasm.ts `WasmEmitOptions`; defaults: simd on, 1). */
+export interface EmitOptions {
+  readonly simd?: boolean;
+  readonly unroll?: 1 | 2 | 4;
+}
+
+/** The trailing words of mode 2: the simd option (2: off) and the unroll option (0: 1). */
+const optionWords = (o: EmitOptions): number[] => [o.simd === false ? 2 : 1, o.unroll === 1 ? 0 : (o.unroll ?? 0)];
+
+/** What a chunk of the emitter adds to the module: its output and the runs it took. */
+interface Emitted {
+  readonly out: ChunkOutput;
+  readonly runs: number;
+  /** The functions the chunk covers: [from, to). */
+  readonly to: number;
+}
+
 /**
- * The A0 emitter's module for a checked program, chunk by chunk as tables (mode 2; mode 5
- * with the optimizer in front of it when `optimize`).
+ * Functions [from, to) as one run of mode 2. The emitter asks (code 7) for the bodies of external
+ * functions it needs (its own requests, the shape analyses', the fusion's): the run is repeated
+ * with their rows and bodies in the tables. Undefined when a table of the chunk is full (the
+ * chunk is too big, also with the room loop fusion needs): the caller cuts it.
+ */
+function emitTables(
+  exe: string,
+  fns: readonly TypedFunc[],
+  from: number,
+  to: number,
+  base: number,
+  calls: ReadonlyMap<number, [number, number]>,
+  tail: readonly number[],
+): Emitted | undefined {
+  const supplied = new Set<number>();
+  let chunk = encodeChunk(fns, from, to);
+  let runs = 0;
+  for (;;) {
+    if (!chunk.fits) return undefined;
+    const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
+    const r = runTool32(exe, [MODE.tables, base, chunk.before.length, ...table, ...chunk.words, ...tail]);
+    runs += 1;
+    if (r.code === 0) return { out: splitChunk(r.out), runs, to };
+    if (r.code === CAPACITY) return undefined;
+    if (r.code !== NEEDS_BODIES) throw new Error(`a0w: code ${r.code} on functions ${from}..${to}`);
+    const before = supplied.size;
+    for (const c of requested(r.out)) supplied.add(chunk.space[c] as number);
+    if (supplied.size === before)
+      throw new Error(`a0w requested bodies it already has on functions ${from}..${to}`);
+    chunk = encodeChunk(fns, from, to, supplied);
+  }
+}
+
+/**
+ * The A0 emitter's module for a checked program, chunk by chunk as tables (mode 2), after the
+ * optimizer written in A0 when `optimize`. A chunk is the most functions that fit the tables of
+ * one run; one that turns out too big (loop fusion, or the bodies the emitter asked for, need
+ * room) is cut in two.
  */
 export function a0WasmFromTables(
   exe: string,
   source: TypedProgram,
   layout: WasmLayout,
   optimize = false,
+  options: EmitOptions = {},
 ): ModuleRun {
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
   const fns = program.functions;
   const calls = new Map<number, [number, number]>();
   const outputs: ChunkOutput[] = [];
+  const tail = optionWords(options);
   let base = 0;
   let from = 0;
   let runs = opt?.runs ?? 0;
   while (from < fns.length) {
-    const first = nextChunk(fns, from);
-    const to = first.to;
-    // The emitter asks (code 7) for the bodies of external functions it needs; the run is
-    // repeated with their rows and bodies in the tables.
-    const supplied = new Set<number>();
-    let r: { code: number; out: Uint32Array };
-    let chunk = first.chunk;
-    for (;;) {
-      const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
-      r = runTool32(exe, [MODE.tables, base, chunk.before.length, ...table, ...chunk.words]);
-      runs += 1;
-      if (r.code !== NEEDS_BODIES) break;
-      const before = supplied.size;
-      for (const c of requested(r.out)) supplied.add(chunk.space[c] as number);
-      if (supplied.size === before)
-        throw new Error(`a0w requested bodies it already has on functions ${from}..${to}`);
-      chunk = encodeChunk(fns, from, to, supplied);
-      if (!chunk.fits) throw new Error(`functions ${from}..${to} and their callees do not fit`);
+    let to = nextChunk(fns, from);
+    let done = emitTables(exe, fns, from, to, base, calls, tail);
+    while (done === undefined) {
+      if (to - from < 2) throw new Error(`${(fns[from] as Func).name} and its callees do not fit`);
+      to = from + Math.ceil((to - from) / 2);
+      done = emitTables(exe, fns, from, to, base, calls, tail);
     }
-    if (r.code !== 0) throw new Error(`a0w: code ${r.code} on functions ${from}..${to}`);
-    const out = splitChunk(r.out);
-    for (const [i, [idx, depth]] of out.calls.entries()) calls.set(from + i, [idx, depth]);
-    outputs.push(out);
-    base += out.variants;
+    runs += done.runs;
+    for (const [i, [idx, depth]] of done.out.calls.entries()) calls.set(from + i, [idx, depth]);
+    outputs.push(done.out);
+    base += done.out.variants;
     from = to;
   }
   return { bytes: linkChunks(exe, outputs, layout), chunks: outputs.length, runs };
@@ -899,44 +948,158 @@ export function a0WasmFromTables(
 
 // --- mode 1: source through the A0 front end --------------------------------------------
 
+/** A chunk of source for mode 1 (see `sourceChunk`). */
+interface SourceChunk extends Chunk {
+  /** Functions before `cfrom` are stubs, [cfrom, own) bodies supplied for the emitter. */
+  readonly cfrom: number;
+  /** The node counts of the functions before `cfrom` (the optimized callees' sizes). */
+  readonly counts: readonly number[];
+  readonly ownStart: number;
+  readonly ownEnd: number;
+}
+
+const signatureOf = (f: Func): string => formatFunction(f).split('\n')[0] as string;
+
 /**
- * The A0 emitter's module for a program source through the A0 front end (mode 1; mode 4 with
- * the optimizer when `optimize`, its eval program as formatted source).
+ * Functions [from, to) of the (optimized) program as the source of one chunk of mode 1: a
+ * prelude function naming every header type of the program, a stub for each callee outside the
+ * chunk, the full bodies of the callees in `supplied` (what the emitter asked for), then the
+ * chunk's functions. A program within the capacities of the front end is one chunk as written.
+ */
+function sourceChunk(
+  fns: readonly TypedFunc[],
+  from: number,
+  to: number,
+  supplied: ReadonlySet<number>,
+  prelude: string,
+): SourceChunk {
+  const index = new Map(fns.map((f, i) => [f.name, i] as const));
+  const callees = (f: Func): number[] =>
+    f.nodes.flatMap((n) =>
+      [n.callee, n.pred].flatMap((c) => {
+        const i = c === undefined ? undefined : index.get(c);
+        return i !== undefined && (i < from || i >= to) ? [i] : [];
+      }),
+    );
+  const bodies = [...supplied].sort((a, b) => a - b);
+  const called = new Set<number>();
+  for (const f of fns.slice(from, to)) for (const i of callees(f)) called.add(i);
+  for (const g of bodies) for (const i of callees(fns[g] as Func)) called.add(i);
+  const stubs = [...called].filter((i) => !supplied.has(i)).sort((a, b) => a - b);
+  const text = (i: number): string => `${formatFunction(fns[i] as Func)}\n`;
+  const source = [
+    prelude,
+    ...stubs.map((i) => `${signatureOf(fns[i] as Func)}\nret 0\nend\n`),
+    ...bodies.map(text),
+    ...Array.from({ length: to - from }, (_, k) => text(from + k)),
+  ].join('');
+  return {
+    source,
+    head: from === 0,
+    strict: false,
+    before: [PRELUDE, ...stubs.map((i) => (fns[i] as Func).name), ...bodies.map((i) => (fns[i] as Func).name)],
+    own: fns.slice(from, to).map((f) => f.name),
+    cfrom: 1 + stubs.length,
+    counts: [1, ...stubs.map((i) => (fns[i] as TypedFunc).nodes.length)],
+    ownStart: from,
+    ownEnd: to,
+  };
+}
+
+/** The header types of a program, in a fixed order, as the prelude function of its chunks. */
+function preludeOf(fns: readonly Func[]): string {
+  const types: string[] = [];
+  for (const f of fns)
+    for (const t of signatureOf(f)
+      .split(' ')
+      .slice(2)
+      .filter((w) => w !== '->'))
+      if (!types.includes(t)) types.push(t);
+  return `fn ${PRELUDE} ${types.join(' ')} -> u32\nret 0\nend\n`;
+}
+
+/**
+ * The A0 emitter's module for a program source through the A0 front end (mode 1), after the
+ * optimizer written in A0 when `optimize`. A program within the capacities of the front end is
+ * one chunk as written; a larger one is cut at function boundaries: each chunk has stubs for
+ * its callees outside it, and the bodies of the callees the emitter asks for (code 7) as checked
+ * functions that are not emitted; a chunk that is too big (front end capacity, tables of the
+ * emitter) is cut in two.
  */
 export function a0WasmFromSource(
   exe: string,
   source: TypedProgram,
   layout: WasmLayout,
   optimize = false,
+  options: EmitOptions = {},
 ): { bytes?: Uint8Array; code: number; chunks: number; runs: number; failed?: Chunk } {
   const opt = optimize ? a0OptimizeProgram(exe, source) : undefined;
   const program = opt === undefined ? source : optimizedProgram(source, opt.bodies);
   const fns = program.functions;
-  const chunks = planChunks(formatProgram(program));
+  const tail = optionWords(options);
   const calls = new Map<string, [number, number, number]>();
   const outputs: ChunkOutput[] = [];
-  let base = 0;
+  const prelude = preludeOf(fns);
+  const text = formatProgram(program);
+  // the chunks of tools/bootstrap.ts planChunks are the first guess of where to cut
+  const plan = planChunks(text);
+  const planned = plan[0] !== undefined && plan[0].own.length === 0 ? [fns.length] : plan.map((c) => c.own.length);
+  const ends = planned.map((_, i) => planned.slice(0, i + 1).reduce((a, b) => a + b, 0));
   let runs = opt?.runs ?? 0;
-  for (const chunk of chunks) {
-    const bytes = [...Buffer.from(chunk.source)];
-    const none: [number, number, number] = [0, 0, 0];
-    const before = chunk.before.map((name): [number, number, number] =>
-      name === PRELUDE ? none : (calls.get(name) ?? none),
-    );
-    const words = [bytes.length, ...bytes, chunk.head ? 1 : 0, 0, before.length];
-    words.push(...before.map(([, , bound]) => bound), base);
-    for (const [idx, depth] of before) words.push(idx, depth);
-    const r = runTool32(exe, [MODE.source, ...words]);
-    runs += 1;
-    if (r.code !== 0) return { code: r.code, chunks: chunks.length, runs, failed: chunk };
-    const out = splitChunk(r.out);
-    for (const [i, name] of chunk.own.entries())
-      calls.set(name, out.calls[i] as [number, number, number]);
+  let base = 0;
+  let failed: SourceChunk | undefined;
+  let code = 0;
+  /** One chunk through the A0 front end and the emitter: its output, or undefined when too big. */
+  const run = (from: number, to: number): ChunkOutput | undefined => {
+    const supplied = new Set<number>();
+    const whole = plan[0] !== undefined && plan[0].own.length === 0;
+    for (;;) {
+      const chunk: SourceChunk = whole
+        ? { source: text, head: true, strict: false, before: [], own: [], cfrom: 0, counts: [], ownStart: from, ownEnd: to }
+        : sourceChunk(fns, from, to, supplied, prelude);
+      if (!whole && !frontEndFits(chunk.source)) return undefined;
+      const bytes = [...Buffer.from(chunk.source)];
+      const none: [number, number, number] = [0, 0, 0];
+      const before = chunk.before.map((name): [number, number, number] =>
+        name === PRELUDE ? none : (calls.get(name) ?? none),
+      );
+      const words = [bytes.length, ...bytes, chunk.head ? 1 : 0, 0, before.length];
+      words.push(...before.map(([, , bound]) => bound), base);
+      for (const [idx, depth] of before) words.push(idx, depth);
+      words.push(chunk.cfrom, ...chunk.counts);
+      const r = runTool32(exe, [MODE.source, ...words, ...tail]);
+      runs += 1;
+      if (r.code === 0) return splitChunk(r.out);
+      if (r.code === CAPACITY) return undefined;
+      if (r.code === NEEDS_BODIES) {
+        const space = [...chunk.before, ...chunk.own];
+        const index = new Map(fns.map((f, i) => [f.name, i] as const));
+        const before = supplied.size;
+        for (const c of requested(r.out)) supplied.add(index.get(space[c] as string) as number);
+        if (supplied.size > before) continue;
+      }
+      failed = chunk;
+      code = r.code;
+      return undefined;
+    }
+  };
+  let from = 0;
+  while (from < fns.length) {
+    let to = ends.find((e) => e > from) ?? fns.length;
+    let out = run(from, to);
+    while (out === undefined && failed === undefined) {
+      if (to - from < 2) throw new Error(`${(fns[from] as Func).name} does not fit a chunk`);
+      to = from + Math.ceil((to - from) / 2);
+      out = run(from, to);
+    }
+    if (out === undefined) return { code, chunks: outputs.length + 1, runs, failed: failed as Chunk };
+    for (const [i, name] of fns.slice(from, to).entries())
+      calls.set(name.name, out.calls[i] as [number, number, number]);
     outputs.push(out);
     base += out.variants;
+    from = to;
   }
-  void fns;
-  return { bytes: linkChunks(exe, outputs, layout), code: 0, chunks: chunks.length, runs };
+  return { bytes: linkChunks(exe, outputs, layout), code: 0, chunks: outputs.length, runs };
 }
 
 /** The reference: src/wasm.ts on the program, unoptimized or with the default optimization. */
@@ -944,9 +1107,15 @@ export function typescriptWasm(
   program: TypedProgram,
   layout: WasmLayout,
   optimize = false,
+  options: EmitOptions = {},
 ): Uint8Array {
   return wasmModuleBytes(
-    compile(program, 'wasm', optimize ? layout : { optimize: false, ...layout }).text,
+    compile(program, 'wasm', {
+      ...(optimize ? {} : { optimize: false }),
+      ...layout,
+      ...(options.simd === false ? { wasmSimd: false } : {}),
+      ...(options.unroll === undefined ? {} : { wasmUnroll: options.unroll }),
+    }).text,
   );
 }
 

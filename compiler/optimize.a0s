@@ -80,12 +80,12 @@ extern wardw(io) -> (u32,io)
 extern warnty(io, u32) -> (u32x384x65,io)
 extern warn65(io, u32) -> (u32x128x65,io)
 extern warn45(io, u32) -> (u32x128x45,io)
-extern warn128(io, u32) -> (u32x128x128,io)
+extern warn132(io, u32) -> (u32x128x132,io)
 extern warn24(io, u32) -> (u32x128x24,io)
 extern warn16(io, u32) -> (u32x128x16,io)
 extern warn512(io, u32) -> (u32x128x512,io)
 extern ozop(u32, u32, u32, u32) -> u32
-extern evrun(u32x128x45, u32x128x128, u32x128x512, u32x64, u32, u32, u32, u32, u32) -> (u32,u32)
+extern evrun(u32x128x45, u32x128x132, u32x128x512, u32x64, u32, u32, u32, u32, u32) -> (u32,u32)
 
 # ---------------------------------------------------------------------------------------------
 # Tables. Operand pairs (kind, value): kind 1 node, 2 parameter, 3 u32 literal, 4 bool literal.
@@ -148,7 +148,7 @@ fn tistep(ti: u32x128x195, t: u32, ty: u32x384x65, tl: u32x128x65) -> u32x128x19
 end
 
 # ---- arena initialization
-fn inistep(cl: u32x128x193, k: u32, nd: u32x128x128, nt: u32x128x24, first: u32) -> u32x128x193
+fn inistep(cl: u32x128x193, k: u32, nd: u32x128x132, nt: u32x128x24, first: u32) -> u32x128x193
   let r = first + k
   let b = r * 6
   cl[C_OP + k] = nd[b + 1]
@@ -221,7 +221,7 @@ def mparam(oa: u32x128x512, ed: u32x128x393, mode: u32, k: u32, b0k: u32, b0v: u
 end
 
 # node j of the callee being copied: id and operand slot reserved
-fn edcopy(ed: u32x128x393, j: u32, first: u32, nd: u32x128x128) -> u32x128x393
+fn edcopy(ed: u32x128x393, j: u32, first: u32, nd: u32x128x132) -> u32x128x393
   let base = ed[E_SC + E_NEXT]
   let outn = ed[E_SC + E_OUTN]
   let slot = ed[E_SC + E_SLOT]
@@ -235,7 +235,7 @@ end
 
 # one copy of callee c for the host node (mode 0 call, 1 fold trip k); the state operand is
 # in E_B0K/E_B0V; leaves the result operand in E_RK/E_RV
-fn edinst(ed: u32x128x393, i: u32, mode: u32, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x128, oa: u32x128x512) -> u32x128x393
+fn edinst(ed: u32x128x393, i: u32, mode: u32, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512) -> u32x128x393
   let nc = fnt[c * 7 + 5]
   let first = fnt[c * 7 + 4]
   let base = ed[E_SC + E_NEXT]
@@ -272,7 +272,7 @@ fn edinst(ed: u32x128x393, i: u32, mode: u32, k: u32, c: u32, host: u32, ash: u3
 end
 
 # one trip of an unrolled fold: the result becomes the next state operand
-fn edunr(ed: u32x128x393, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x128, oa: u32x128x512) -> u32x128x393
+fn edunr(ed: u32x128x393, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, nd: u32x128x132, oa: u32x128x512) -> u32x128x393
   let ed1 = fold(edinst, 1, ed, 1, k, c, host, ash, fnt, nd, oa)
   ed1[E_SC + E_B0K] = ed1[E_SC + E_RK]
   ed1[E_SC + E_B0V] = ed1[E_SC + E_RV]
@@ -280,7 +280,7 @@ fn edunr(ed: u32x128x393, k: u32, c: u32, host: u32, ash: u32, fnt: u32x128x45, 
 end
 
 # the node at sequence index i
-fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x128, rqall: u32) -> u32x128x393
+fn edstep(ed: u32x128x393, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, sm: u32x128x16, fnt: u32x128x45, nd: u32x128x132, rqall: u32) -> u32x128x393
   let x = sq[i]
   let o = cl[C_OP + x]
   let na = cl[C_NA + x]
@@ -315,7 +315,7 @@ fn cpout(sq: u32x128x32, i: u32, ed: u32x128x393) -> u32x128x32
   return sq
 end
 # the row of new node ng + i: a copy of a callee node
-fn clnew(cl: u32x128x193, i: u32, ed: u32x128x393, ng: u32, fnt: u32x128x45, nd: u32x128x128, nt: u32x128x24) -> u32x128x193
+fn clnew(cl: u32x128x193, i: u32, ed: u32x128x393, ng: u32, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24) -> u32x128x193
   let id = ng + i
   let ins = ed[E_INST + id]
   let c = ed[E_ICA + ins]
@@ -334,7 +334,7 @@ fn oaorig(oa: u32x128x512, j: u32, ed: u32x128x393, ash: u32) -> u32x128x512
   let (rk, rv) = rn(ed, k, v)
   return wrp(oa, ash + j, rk, rv)
 end
-fn oanew(oa: u32x128x512, j: u32, ed: u32x128x393, cl: u32x128x193, op: u32x128x512, nd: u32x128x128, fnt: u32x128x45, id: u32) -> u32x128x512
+fn oanew(oa: u32x128x512, j: u32, ed: u32x128x393, cl: u32x128x193, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45, id: u32) -> u32x128x512
   let ins = ed[E_INST + id]
   let c = ed[E_ICA + ins]
   let base = ed[E_IBS + ins]
@@ -348,7 +348,7 @@ fn oanew(oa: u32x128x512, j: u32, ed: u32x128x393, cl: u32x128x193, op: u32x128x
   return wrp(oa, cl[C_AS + id] + j, isp ? mk : k, isp ? mv : isn ? base + v : v)
 end
 # the operands of the node at output index i: renamed, or the callee's mapped
-fn oawr(oa: u32x128x512, i: u32, ed: u32x128x393, cl: u32x128x193, ng: u32, op: u32x128x512, nd: u32x128x128, fnt: u32x128x45) -> u32x128x512
+fn oawr(oa: u32x128x512, i: u32, ed: u32x128x393, cl: u32x128x193, ng: u32, op: u32x128x512, nd: u32x128x132, fnt: u32x128x45) -> u32x128x512
   let id = ed[E_OUT + i]
   let isn = id >= ng
   let na = cl[C_NA + id]
@@ -576,7 +576,7 @@ fn gatstep(l: u32x64, j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512,
   return l
 end
 # constant evaluation: a node whose operands are all literals
-fn simc(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, fnt: u32x128x45, nd: u32x128x128, op: u32x128x512) -> u32x128x426
+fn simc(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
   let x = reg(fw, P_X)
   let o = reg(fw, P_OP)
   let na = reg(fw, P_NA)
@@ -921,10 +921,10 @@ fn fin(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
   return fw
 end
 
-fn tripgo(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x128, op: u32x128x512) -> bool
+fn tripgo(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> bool
   return (reg(fw, P_STKN) > 0) | (reg(fw, P_CUR) < n)
 end
-fn trip(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x128, op: u32x128x512) -> u32x128x426
+fn trip(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
   let s1 = fold(pk, 1, fw, sq, n)
   let s2 = fold(ld, reg(s1, P_ACT), s1, cl, oa)
   let s3 = fold(kcst, reg(s2, P_ACT), s2, cl, oa, fnt, dir)
@@ -1002,7 +1002,7 @@ end
 # one pass over the body (sequence sq of n nodes, result (retk, retv)); gate 0 leaves it
 # unchanged. passa decides (FW), passb is the new sequence (its last word counts it), passc
 # the node table, passd the operands.
-fn passa(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, retk: u32, retv: u32, nid: u32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x128, op: u32x128x512) -> u32x128x426
+fn passa(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, retk: u32, retv: u32, nid: u32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
   let us0 = zeros(32)
   let us1 = fold(usestep, n * gate, us0, sq, cl, oa)
   us1[retv] = us1[retv] + 1 if (retk == 1) & (gate == 1)
@@ -1200,7 +1200,7 @@ fn cpsd(sq: u32x128x32, i: u32, sd: u32x128x129) -> u32x128x32
   return sq
 end
 
-def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x128, nt: u32x128x24, op: u32x128x512, sm: u32x128x16, ti: u32x128x195, g: u32, stage: u32, rqall: u32, nf: u32, no: u32) -> (u32x128x32, u32x128x193, u32x128x512, u32, u32, u32, u32, u32, u32x128x7, u32)
+def optcore(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, sm: u32x128x16, ti: u32x128x195, g: u32, stage: u32, rqall: u32, nf: u32, no: u32) -> (u32x128x32, u32x128x193, u32x128x512, u32, u32, u32, u32, u32, u32x128x7, u32)
   let ng = fnt[g * 7 + 5]
   let first = fnt[g * 7 + 4]
   let cl0 = zeros(193)
@@ -1432,7 +1432,7 @@ fn ozone(io: io) -> (io, u32)
   let (nf, i5) = wardw(i4)
   let (fnt, i6) = warn45(i5, nf * 7)
   let (nn, i7) = wardw(i6)
-  let (nd, i8) = warn128(i7, nn * 6)
+  let (nd, i8) = warn132(i7, nn * 6)
   let (nt, i9) = warn24(i8, nn)
   let (no, i10) = wardw(i9)
   let (op, i11) = warn512(i10, no * 2)
@@ -1517,7 +1517,7 @@ fn imrq(im: u32x128x512, f: u32, rq: u32x128x7) -> u32x128x512
   im[6] = c + bit(rq[f] != 0)
   return im
 end
-fn ozopt1(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x128, nt: u32x128x24, op: u32x128x512, g: u32, nty: u32, nf: u32, no: u32) -> u32x128x512
+fn ozopt1(ty: u32x384x65, tl: u32x128x65, fnt: u32x128x45, nd: u32x128x132, nt: u32x128x24, op: u32x128x512, g: u32, nty: u32, nf: u32, no: u32) -> u32x128x512
   let ti = fold(tistep, nty, zeros(195), ty, tl)
   let sm = fold(smstep, nf, zeros(16), fnt, nt, tl, ti)
   let (sqs, cl, oa, n, rk, rv, li, nreq, rq, err) = optcore(ty, tl, fnt, nd, nt, op, sm, ti, g, 0, 1, nf, no)
@@ -1551,7 +1551,7 @@ fn ozimg(io: io) -> (io, u32)
   let (nf, i5) = wardw(i4)
   let (fnt, i6) = warn45(i5, nf * 7)
   let (nn, i7) = wardw(i6)
-  let (nd, i8) = warn128(i7, nn * 6)
+  let (nd, i8) = warn132(i7, nn * 6)
   let (nt, i9) = warn24(i8, nn)
   let (no, i10) = wardw(i9)
   let (op, i11) = warn512(i10, no * 2)

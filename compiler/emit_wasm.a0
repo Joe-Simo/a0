@@ -9489,19 +9489,13 @@ d get c b
 e write p0 d
 ret e
 end
-# The chunk: functions [p12, p13) of the checked tables (p1 types, p2 tlist, p3 fns, p4 nodes, p5
-# operands, p6 node types, p7 name bytes, p8 fnm, p9 the call table (given for the functions
-# before p12), p10 the iteration bounds, p11 the type count, p14 the variant count before the
-# chunk, p15 the shape table, p16 p17 the simd and unroll options). Writes the records of
-# `wxfun`, then (index, depth, bound) of each function, the chunk's variant count and its
-# function count; or, when a body is missing (code 7), the chunk functions wanted and their count;
-# or code 4 (a capacity) / 5 (an unsupported shape)
-fn wachunk io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32x128x200 u32 u32 -> (io,u32)
-a call wainfo p1 p2 p11
-b sub p13 p12
-c call z8
-d rec p0 p14 p9 0 c 0
-e fold wxfun b d p12 p16 p17 p3 p4 p5 p6 p1 p2 a p15 p7 p8
+# The end of a chunk (see `wachunk`): the state p0 after the p1 functions of the chunk (first
+# function p3, iteration bounds p2, variant count p4 before the chunk): the trailer, or the
+# requested bodies, and the result code. compiler/boot.a0 runs the same fold with its own body
+# (`wxfunf`, which emits a function from its fused form when loop fusion applies)
+fn wachunkend (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32x128x8 u32 u32 -> (io,u32)
+b mov p1
+e mov p0
 f at e 0
 g at e 1
 h at e 2
@@ -9519,8 +9513,8 @@ s select l i 0
 t select p b 0
 u fold wxwq s f j
 v fold wawr r u i
-w fold watrail t v h p10 p12
-x sub g p14
+w fold watrail t v h p2 p3
+x sub g p4
 y fold wawr q w x
 z fold wawr q y b
 aa eq k 1
@@ -9529,6 +9523,22 @@ ac select n ab 0
 ad select l 7 ac
 ae rec z ad
 ret ae
+end
+# The chunk: functions [p12, p13) of the checked tables (p1 types, p2 tlist, p3 fns, p4 nodes, p5
+# operands, p6 node types, p7 name bytes, p8 fnm, p9 the call table (given for the functions
+# before p12), p10 the iteration bounds, p11 the type count, p14 the variant count before the
+# chunk, p15 the shape table, p16 p17 the simd and unroll options). Writes the records of
+# `wxfun`, then (index, depth, bound) of each function, the chunk's variant count and its
+# function count; or, when a body is missing (code 7), the chunk functions wanted and their count;
+# or code 4 (a capacity) / 5 (an unsupported shape)
+fn wachunk io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32x128x200 u32 u32 -> (io,u32)
+a call wainfo p1 p2 p11
+b sub p13 p12
+c call z8
+d rec p0 p14 p9 0 c 0
+e fold wxfun b d p12 p16 p17 p3 p4 p5 p6 p1 p2 a p15 p7 p8
+r call wachunkend e b p10 p12 p14
+ret r
 end
 # ---------------------------------------------------------------------------------------------
 # Chunk input. Mode 1: source through the A0 front end (`wasunit`, called by compiler/boot.a0);
@@ -9800,188 +9810,6 @@ c shr b 7
 d rec a p0
 e fold wart200 c d p1
 ret e
-end
-# page p1 of the nodes table p2 (128 pages) into the 132-page table
-fn wxcvn u32x128x132 u32 u32x128x128 -> u32x128x132
-a get p2 p1
-b set p0 p1 a
-ret b
-end
-# the new chunk driver's wrapper in the shape the callers of compiler/optimize.a0 use: without
-# the shape table (all analyses empty: not exact), the default options
-fn wachunkst io u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 -> io
-a call z200
-b call z132
-c fold wxcvn 128 b p5
-d call wachunk p0 p2 p3 p4 c p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 a 1 1
-e at d 0
-ret e
-end
-# mode 2: a chunk as tables, then the shape table (count, words), then (for tests) the simd option
-# (2: off) and the unroll option (0: default 1)
-fn wairchunk io -> (io,u32)
-a call wardw p0
-b at a 0
-c at a 1
-d call wardw c
-e at d 0
-f at d 1
-g mul e 2
-h call warn16 f g
-i at h 0
-j at h 1
-k call wardw j
-l at k 0
-m at k 1
-n mul l 3
-o call warnty m n
-p at o 0
-q at o 1
-r call wardw q
-s at r 0
-t at r 1
-u call warn65 t s
-v at u 0
-w at u 1
-x call wardw w
-y at x 0
-z at x 1
-aa mul y 7
-ab call warn45 z aa
-ac at ab 0
-ad at ab 1
-ae call wardw ad
-af at ae 0
-ag at ae 1
-ah mul af 6
-ai call warn132 ag ah
-aj at ai 0
-ak at ai 1
-al call warn24 ak af
-am at al 0
-an at al 1
-ao call wardw an
-ap at ao 0
-aq at ao 1
-ar mul ap 2
-as call warn512 aq ar
-au at as 0
-av at as 1
-aw call wardw av
-ax at aw 0
-ay at aw 1
-az call warn400 ay ax
-a0 at az 0
-a1 at az 1
-a2 mul y 2
-a3 call warn16 a1 a2
-a4 at a3 0
-a5 at a3 1
-a6 call z8
-a7 call wardw a5
-a8 at a7 0
-a9 at a7 1
-ba call warn200 a9 a8
-bb at ba 0
-bc at ba 1
-bd call wardw bc
-be at bd 0
-bf at bd 1
-bg call wardw bf
-bh at bg 0
-bi at bg 1
-bj eq be 2
-bk eq be 3
-bl eq be 4
-bm or bk bl
-bn select bk 3 1
-bo select bl 4 bn
-bp select bj 0 bo
-bq eq bh 0
-br select bq 1 bh
-bs call wachunk bi p v ac aj au am a0 a4 i a6 l e y b bb bp br
-ret bs
-end
-fn wasunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 -> (io,u32)
-a call lexsrc p1 p2
-b at a 0
-c at a 1
-d div c 3
-e call pass1 p1 b d
-f at e 1
-g at e 2
-h at e 3
-i at e 5
-j at e 7
-k at e 10
-l at e 11
-m at e 12
-n at e 15
-o ne k 0
-p eq l 0
-q and p o
-r select q 1 l
-s select q d m
-t call pass2 p1 f j
-u at t 0
-v call pass3 p1 b g i n r s d
-w at v 0
-x at v 2
-y at v 4
-z at v 5
-aa at v 6
-ab at v 11
-ac at v 12
-ad at v 18
-ae at v 19
-af call pass4 y ae ad
-ag at af 0
-ah at af 1
-ai at af 2
-aj at af 3
-ak ne ai 0
-al select ak ai ab
-am select ak aj ac
-an call pass5 ag ah p1 b g h d al am 0
-ao at an 0
-ap at an 1
-aq at an 2
-ar at an 5
-as call bodyargs aq ar ag ah p1 b g h d al am
-au at e 7
-av at e 8
-aw at t 1
-ax at v 19
-ay at v 5
-az at v 6
-a0 at an 4
-a1 call fecap b d au aw av ax ay az a0 ar
-a2 at an 8
-a3 select a1 4 a2
-# after a parse error the function count may be below p4: nothing is checked then
-a4 call cumin p4 ad
-a5 call checkir w x ao ap as p3 z aa ad a4
-a6 at a5 0
-a7 at a5 2
-a8 at a5 4
-a9 at a5 7
-ba at a5 8
-bb at a5 10
-bc add j 127
-bd shr bc 7
-be call z64
-bf rec be 0
-bg fold cstpg bd bf f
-bh at bg 0
-bi call z16
-bj fold cfnm ad bi ao f bh
-bk eq a3 0
-bl select bk bb a3
-bm eq bl 0
-bn select bm 1 0
-bo fold wachunkst bn p0 a6 a7 ao ap as a8 u bj p5 a9 ba p4 ad p6
-bp rec bo bl
-ret bp
 end
 # ---------------------------------------------------------------------------------------------
 # The module linker (src/wasm.ts `assembleWasm`), mode 3. Input: the version (length, bytes),

@@ -1,5 +1,5 @@
 # The reference evaluator of the A0 optimizer (compiler/optimize.a0): src/core.ts `run` and `exec`
-# on the checked paged IR (functions u32x128x45, nodes u32x128x128, operands u32x128x512), for
+# on the checked paged IR (functions u32x128x45, nodes u32x128x132, operands u32x128x512), for
 # constant folding of calls and folds with literal operands; `ozop` is src/core.ts `evalOp` on
 # scalars. Hand-written (not generated).
 
@@ -150,7 +150,7 @@ d_h set d_g d_w v
 r set p0 d_p d_h
 ret r
 end
-fn evgo u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 -> bool
+fn evgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 -> bool
 s_g get p0 0
 s get s_g 0
 r eq s 0
@@ -160,7 +160,7 @@ end
 # root), the root starts a call or a trip, or the top frame returns (its nodes are done),
 # executes its next node, or starts its fold/loop's next trip. At most one frame is pushed
 # (its parameters copied by the trailing `evcp` fold) or one block allocated per step.
-fn evstep u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 -> u32x128x512
+fn evstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 -> u32x128x512
 s0 get p0 0
 fuel get s0 1
 nfr get s0 2
@@ -619,7 +619,7 @@ end
 # Evaluate op p4 (19 call, 20 fold, 21 loop) of the eval function p5 (predicate p6) on the p7
 # literal operands p3 with fuel p8: (status, value), status 1 done, 2 fuel exhausted, 3 a
 # capacity is full, 4 an io operation
-fn evrun u32x128x45 u32x128x128 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
+fn evrun u32x128x45 u32x128x132 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
 z call z512
 c0 get p3 0
 c1 get p3 1
@@ -645,7 +645,7 @@ r rec st v
 ret r
 end
 # as a fold body run once when needed
-fn evonce (u32,u32) u32 u32x128x45 u32x128x128 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
+fn evonce (u32,u32) u32 u32x128x45 u32x128x132 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
 r call evrun p2 p3 p4 p5 p6 p7 p8 p9 p10
 ret r
 end

@@ -35,6 +35,7 @@
 
 use "emit_arm64.a0"
 use "optimize.a0"
+use "shape.a0"
 
 # `read` as a function: its (u32,io) result is named by this header, so the prelude interns it
 fn rdword io -> (u32,io)
@@ -136,7 +137,495 @@ go select ok 1 0
 t7 fold wtrail go t6 fstat from nfns
 ret code
 end
-# wasm32, mode 1: a source chunk through the A0 front end
+# ---------------------------------------------------------------------------------------------
+# wasm32 chunks: shape analyses, loop fusion and emission (compiler/shape.a0, emit_wasm.a0).
+# The emitter does not `use` compiler/shape.a0 (shape.a0 uses the optimizer, which uses the
+# emitter's table readers), so the orchestration lives here: `wxorch` takes the checked tables of
+# a chunk (optimized by the driver, see tools/selfhost-wasm.ts) and runs, in order,
+#   1. shinit, shcounts, then shpass for every function with a body (own, or an external whose
+#      body the driver supplied): FILL OWN ARM OVER BORR of the shape table `sh`; a body an
+#      analysis needs and does not have is listed in sh's MISS column;
+#   2. when MISS is not empty the chunk is not emitted: result code 7, the chunk-function indices
+#      wanted and their count (the driver adds those bodies and runs the chunk again);
+#   3. else per own function (`wxfunf`, the fold body that replaces `wxfun`): shfcheck (is there a
+#      fusion site: src/optimize.ts fuseLoops with recordState); if so shfuse, shfargs, shfsh give
+#      the fused view of the tables, the function is emitted from it (`wxfus`), unless that code
+#      calls a synthetic fused body out of line (`wxbad`: src/optimize.ts emitFused), then from the
+#      unfused tables; the emitter's own requests for bodies are collected the same way;
+#   4. `wachunkend`: the trailer (see `wachunk`).
+# Tables: ty u32x384x65, tl u32x128x65, fns u32x128x45, nodes u32x128x132, args u32x128x512, nt
+# u32x128x24 (compiler/emit_wasm.a0 `wachunk`).
+
+# word p1 of the shape table p0
+fn wshw u32x128x200 u32 -> u32
+a shr p1 7
+b get p0 a
+c and p1 127
+d get b c
+ret d
+end
+# the shape table of the chunk p2 types: shape pass of function p8 (one trip when it has a body:
+# word 6 of its row of fns, the packed ret, is 0 for a function without a body)
+fn wshp1 u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x200
+r call shpass p0 p2 p3 p4 p5 p6 p7 p8
+ret r
+end
+fn wshp u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 -> u32x128x200
+a mul p1 7
+b add a 6
+c shr b 7
+d get p4 c
+e and b 127
+f get d e
+g ne f 0
+h select g 1 0
+i fold wshp1 h p0 p2 p3 p4 p5 p6 p7 p1
+ret i
+end
+# the chunk-function index p2 appended to the state's list of wanted bodies (count, list of 1024)
+fn wsmq (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+a at p0 0
+b at p0 1
+c at p0 2
+d at p0 3
+e at p0 4
+f at p0 5
+g shr d 7
+h and d 127
+i get e g
+j set i h p2
+k set e g j
+l add d 1
+m rec a b c l k f
+ret m
+end
+# the state with its error word set to 1 (a table of the chunk is full)
+fn wserr (io,u32,u32x128x16,u32,u32x128x8,u32) u32 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+a at p0 0
+b at p0 1
+c at p0 2
+d at p0 3
+e at p0 4
+m rec a b c d e 1
+ret m
+end
+# entry p1 of the shape table's list of missing bodies (MISS column, 16129..) appended to the
+# list (count, table of 1024) of the first state
+fn wmq (u32,u32x128x8) u32 u32x128x200 -> (u32,u32x128x8)
+a at p0 0
+b at p0 1
+c add p1 16129
+d shr c 7
+e get p2 d
+f and c 127
+g get e f
+h shr a 7
+i and a 127
+j get b h
+k set j i g
+l set b h k
+m add a 1
+n rec m l
+ret n
+end
+# the call table with the entry of function p2 + p1 marked as a synthetic function: its code
+# index is 2^24 (p3), which an emitted call would carry (`wxbad`)
+fn wsent u32x128x16 u32 u32 u32 -> u32x128x16
+a add p2 p1
+b mul a 2
+c call wxdts p0 0 b p3
+ret c
+end
+# one trip: 1 when instruction p1 of the machine table p2 is a call (kind 6) to a code index of
+# p3 or more
+fn wbad1 u32 u32 u32x128x512 u32 -> u32
+a mul p1 2
+b add a 20480
+c shr b 7
+d get p2 c
+e and b 127
+f get d e
+g add b 1
+h shr g 7
+i get p2 h
+j and g 127
+k get i j
+l eq f 6
+m ge k p3
+n and l m
+o select n 1 0
+q or p0 o
+ret q
+end
+# Does the code of function p0 (value variant, and the owned variant when it has one), emitted
+# from these tables (p1 simd, p2 unroll, p3 fns, p4 nodes, p5 args, p6 nt, p7 ty, p8 tl, p9 type
+# info, p10 shape, p11 call table with the synthetic functions marked), call a synthetic fused
+# function out of line? (src/optimize.ts emitFused: then the unfused function is emitted)
+fn wxbad u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> bool
+j call z512
+k fold wxemit 1 j p0 0 0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11
+n call wxg k 0
+b1 fold wbad1 n 0 k 16777216
+h call waown p3 p8 p7 p0
+i select h 1 0
+l call wxg k 5
+au call z512
+av fold wxemit i au p0 1 l p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11
+n2 call wxg av 0
+n3 select h n2 0
+b2 fold wbad1 n3 0 av 16777216
+b3 or b1 b2
+r ne b3 0
+ret r
+end
+# function p2 of the chunk emitted from its fused form (see the orchestration above): p0 the
+# emission state, p3 simd, p4 unroll, p5 fns, p6 nodes, p7 args, p8 nt, p9 ty, p10 tl, p11 type
+# info, p12 shape, p13 names, p14 fnm (the trip p1 is 0: the function is p2)
+fn wxfus (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+fu call shfuse p9 p10 p5 p6 p7 p8 p12 p2 true
+st at fu 0
+ms at fu 1
+nf1 at fu 2
+ty2 at fu 3
+tl2 at fu 4
+fns2 at fu 5
+nodes2 at fu 6
+nt2 at fu 7
+nty2 at fu 8
+ar2 call shfargs p9 p10 p5 p6 p7 p8 p12 p2 true
+nf0 call wshw p12 25474
+sh2 call shfsh p12 ty2 tl2 fns2 nodes2 ar2 nt2 p2 nf0 nf1
+a2 call wainfo ty2 tl2 nty2
+ct at p0 2
+nsyn sub nf1 nf0
+ct2 fold wsent nsyn ct nf0 16777216
+bad call wxbad p2 p3 p4 fns2 nodes2 ar2 nt2 ty2 tl2 a2 sh2 ct2
+st1 eq st 1
+nb select bad false true
+ok and st1 nb
+okc select ok 1 0
+nok select ok 0 1
+st7 eq st 7
+c7 select st7 1 0
+s0 fold wsmq c7 p0 ms
+st4 eq st 4
+c4 select st4 1 0
+s1 fold wserr c4 s0
+s2 fold wxfun okc s1 p2 p3 p4 fns2 nodes2 ar2 nt2 ty2 tl2 a2 sh2 p13 p14
+s3 fold wxfun nok s2 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14
+ret s3
+end
+# function p0 + p1 of the chunk (first function p2): `wxfun`, or `wxfus` when shfcheck finds a
+# fusion site (same parameters as `wxfun`)
+fn wxfunf (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+g add p2 p1
+fc call shfcheck p9 p10 p5 p6 p7 p8 p12 g true
+fd at fc 0
+ms at fc 1
+nm ne ms 4294967295
+nmc select nm 1 0
+s0 fold wsmq nmc p0 ms
+has ne fd 0
+hc select has 1 0
+nh select has 0 1
+s1 fold wxfus hc s0 g p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14
+s2 fold wxfun nh s1 g p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14
+ret s2
+end
+# A chunk of functions [p13, p14) of the checked tables (p1 ty, p2 tl, p3 fns, p4 nodes, p5 args,
+# p6 nt, p7 names, p8 fnm, p9 call table of the functions before p13, p10 their iteration bounds, p11
+# type count, p12 tlist words, p15 variant count before the chunk, p16 node count, p17 operand pair
+# count, p18 simd, p19 unroll options): the output of `wachunk`, or code 7 with the bodies wanted
+fn wxorch io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> (io,u32)
+a call shinit p1 p2 p11
+b call shcounts a p16 p17 p14 p11 p12
+c fold wshp p14 b p1 p2 p3 p4 p5 p6
+nown sub p14 p13
+miss call wshw c 16128
+z call z8
+m0 rec 0 z
+m1 fold wmq miss m0 c
+mc at m1 0
+ml at m1 1
+none eq miss 0
+cnt select none nown 0
+ai call wainfo p1 p2 p11
+st0 rec p0 p15 p9 mc ml 0
+st fold wxfunf cnt st0 p13 p18 p19 p3 p4 p5 p6 p1 p2 ai c p7 p8
+r call wachunkend st nown p10 p13 p15
+ret r
+end
+# wasm32, mode 2: a chunk as tables, each preceded by its count: base (variants before the
+# chunk), from (functions before the chunk's own: its callees outside it), the call table
+# (index, depth) of those, types (triples), tlist, fns (7 words each), nodes (6 words each), the
+# node types, operands (pairs), name bytes, fnm (2 words per function), then the simd option
+# (0 or 1 on, 2 off, 3 and 4 dump the instruction list / the machine state of the first function
+# instead of its code: tests only) and the unroll option (0: 1)
+fn wam2 (io,u32) u32 -> (io,u32)
+t at p0 0
+rb call wardw t
+base at rb 0
+t1 at rb 1
+rf call wardw t1
+nbef at rf 0
+t2 at rf 1
+nd mul nbef 2
+rd call warn16 t2 nd
+dt at rd 0
+t3 at rd 1
+rn call wardw t3
+nty at rn 0
+t4 at rn 1
+n3 mul nty 3
+rt call warnty t4 n3
+ty at rt 0
+t5 at rt 1
+rl call wardw t5
+ntl at rl 0
+t6 at rl 1
+rtl call warn65 t6 ntl
+tl at rtl 0
+t7 at rtl 1
+rm call wardw t7
+nfn at rm 0
+t8 at rm 1
+n7 mul nfn 7
+rfn call warn45 t8 n7
+fns at rfn 0
+t9 at rfn 1
+rk call wardw t9
+nnode at rk 0
+t10 at rk 1
+n6 mul nnode 6
+rnd call warn132 t10 n6
+nodes at rnd 0
+t11 at rnd 1
+rnt call warn24 t11 nnode
+nt at rnt 0
+t12 at rnt 1
+ro call wardw t12
+narg at ro 0
+t13 at ro 1
+n2 mul narg 2
+rar call warn512 t13 n2
+args at rar 0
+t14 at rar 1
+rnm call wardw t14
+nname at rnm 0
+t15 at rnm 1
+rnb call warn400 t15 nname
+names at rnb 0
+t16 at rnb 1
+nfm mul nfn 2
+rfm call warn16 t16 nfm
+fnm at rfm 0
+t17 at rfm 1
+fst call z8
+rsd call wardw t17
+sopt at rsd 0
+t18 at rsd 1
+ru call wardw t18
+uopt at ru 0
+t19 at ru 1
+sj eq sopt 2
+sk eq sopt 3
+sl eq sopt 4
+sm select sk 3 1
+sn select sl 4 sm
+simd select sj 0 sn
+uz eq uopt 0
+unroll select uz 1 uopt
+r call wxorch t19 ty tl fns nodes args nt names fnm dt fst nty ntl nbef nfn base nnode narg simd unroll
+ret r
+end
+# the end (first free word) of the tlist words in use, as the larger of the state and the first
+# parameter word + parameter count of function p1 of the table p2
+fn wcnf u32 u32 u32x128x45 -> u32
+a mul p1 7
+b add a 1
+c shr b 7
+d get p2 c
+e and b 127
+f get d e
+g add a 2
+h shr g 7
+i get p2 h
+j and g 127
+k get i j
+l add f k
+m gt l p0
+n select m l p0
+ret n
+end
+# the same for the record type p1 of the table p2: its fields are tlist[a .. a + b)
+fn wcnt u32 u32 u32x384x65 -> u32
+a call wat p2 p1 0
+b call wat p2 p1 1
+c call wat p2 p1 2
+d eq a 5
+e add b c
+f select d e 0
+g gt f p0
+h select g f p0
+ret h
+end
+# the node count of a chunk with p1 functions: the end of the last function's nodes
+fn wcnn u32x128x45 u32 -> u32
+z eq p1 0
+r sub p1 1
+r2 select z 0 r
+a mul r2 7
+b add a 4
+c shr b 7
+d get p0 c
+e and b 127
+f get d e
+g add a 5
+h shr g 7
+i get p0 h
+j and g 127
+k get i j
+l add f k
+m select z 0 l
+ret m
+end
+# word p1 of row p2 of the function table p0 := 0, but word 5 := p3 (a fold body over the 7 words
+# of a row: the row of an opaque function holds only its node count)
+fn wsw1 u32x128x45 u32 u32 u32 -> u32x128x45
+a mul p2 7
+b add a p1
+c shr b 7
+d and b 127
+e eq p1 5
+f select e p3 0
+g get p0 c
+h set g d f
+i set p0 c h
+ret i
+end
+# function p1, before the checked ones, becomes an opaque row: zeros but its node count (word
+# p1 of the table p2), as the driver encodes the externals of a chunk given as tables
+fn wsstub u32x128x45 u32 u32x128x16 -> u32x128x45
+a shr p1 7
+b get p2 a
+c and p1 127
+d get b c
+e fold wsw1 7 p0 p1 d
+ret e
+end
+# page p1 of the nodes table p2 (128 pages) into the 132-page table
+fn wxcvn u32x128x132 u32 u32x128x128 -> u32x128x132
+a get p2 p1
+b set p0 p1 a
+ret b
+end
+# wasm32 emission of the tables of a source chunk (the output of the A0 front end, nodes in
+# 128-page tables): the orchestration of `wxorch` with the default options; the result is
+# (io, code): 0, or 4 (a table is full), 5, 7 (bodies wanted)
+fn wsorch (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 -> (io,u32)
+io at p0 0
+z call z132
+n132 fold wxcvn 128 z p5
+nn call wcnn p4 p14
+ntl0 fold wcnf p14 0 p4
+ntl1 fold wcnt p12 ntl0 p2
+r call wxorch io p2 p3 p4 n132 p6 p7 p8 p9 p10 p11 p12 ntl1 p13 p14 p15 nn p16 1 1
+ret r
+end
+# mode 1 of the wasm tool: a source chunk through the A0 front end, then `wsorch`. Functions
+# [cfrom, nfns) are checked (from the first checked function p7: the functions before it are
+# stubs, whose rows become opaque rows with the node counts p8), functions [from, nfns) are
+# emitted; the ones between are callee bodies the emitter asked for.
+fn wsunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 u32 u32x128x16 -> (io,u32)
+a call lexsrc p1 p2
+b at a 0
+c at a 1
+d div c 3
+e call pass1 p1 b d
+f at e 1
+g at e 2
+h at e 3
+i at e 5
+j at e 7
+k at e 10
+l at e 11
+m at e 12
+n at e 15
+o ne k 0
+p eq l 0
+q and p o
+r select q 1 l
+s select q d m
+t call pass2 p1 f j
+u at t 0
+v call pass3 p1 b g i n r s d
+w at v 0
+x at v 2
+y at v 4
+z at v 5
+aa at v 6
+ab at v 11
+ac at v 12
+ad at v 18
+ae at v 19
+af call pass4 y ae ad
+ag at af 0
+ah at af 1
+ai at af 2
+aj at af 3
+ak ne ai 0
+al select ak ai ab
+am select ak aj ac
+an call pass5 ag ah p1 b g h d al am 0
+ao at an 0
+ap at an 1
+aq at an 2
+ar at an 5
+as call bodyargs aq ar ag ah p1 b g h d al am
+au at e 7
+av at e 8
+aw at t 1
+ax at v 19
+ay at v 5
+az at v 6
+a0 at an 4
+a1 call fecap b d au aw av ax ay az a0 ar
+a2 at an 8
+a3 select a1 4 a2
+# after a parse error the function count may be below p4: nothing is checked then
+a4 call cumin p7 ad
+a5 call checkir w x ao ap as p3 z aa ad a4
+a6 at a5 0
+a7 at a5 2
+a8 at a5 4
+a9 at a5 7
+ba at a5 8
+bb at a5 10
+bc add j 127
+bd shr bc 7
+be call z64
+bf rec be 0
+bg fold cstpg bd bf f
+bh at bg 0
+bi call z16
+bj fold cfnm ad bi ao f bh
+bk eq a3 0
+bl select bk bb a3
+bm eq bl 0
+bn select bm 1 0
+afix fold wsstub p7 ao p8
+st0 rec p0 0
+bo fold wsorch bn st0 a6 a7 afix ap as a8 u bj p5 a9 ba p4 ad p6 ar
+bio at bo 0
+bec at bo 1
+bok eq bl 0
+bcd select bok bec bl
+bp rec bio bcd
+ret bp
+end
+# wasm32, mode 1: a source chunk (the input of `emitchunkio`), then the variant count before the
+# chunk, the call table (index, depth) of the chunk's first `from` functions, the first checked
+# function cfrom (<= from) and the node counts of the functions before it
 fn wam1 (io,u32) u32 -> (io,u32)
 t at p0 0
 c call rdchunk t
@@ -152,13 +641,14 @@ nd mul from 2
 rd call warn16 t6 nd
 dt at rd 0
 t7 at rd 1
-u call wasunit t7 src n fst from dt base
+rc call rdword t7
+cfrom at rc 0
+t8 at rc 1
+rn call warn16 t8 cfrom
+cnt at rn 0
+t9 at rn 1
+u call wsunit t9 src n fst from dt base cfrom cnt
 ret u
-end
-fn wam2 (io,u32) u32 -> (io,u32)
-t at p0 0
-r call wairchunk t
-ret r
 end
 fn wam3 (io,u32) u32 -> (io,u32)
 t at p0 0
