@@ -2911,7 +2911,10 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
   check(refParse(arrays), arrays, 'ref arrays');
   assert.deepEqual(a0Parse(arrays), refParse(arrays));
   check(a0Parse(arrays), arrays, 'a0 arrays');
-  assert.deepEqual(a0Parse(arrays).types.slice(9), [5, 0, 2, 4, 2, 3, 4, 4, 1, 4, 3, 4, 5, 6, 2, 5, 10, 2, 4, 5, 8]);
+  assert.deepEqual(
+    a0Parse(arrays).types.slice(9),
+    [5, 0, 2, 4, 2, 3, 4, 4, 1, 4, 3, 4, 5, 6, 2, 5, 10, 2, 4, 5, 8],
+  );
   for (const [src, tok] of [
     ['fn g (u32,io)x2 -> u32\nret 0\nend\n', 7],
     ['fn g (u32,(io,u32))x2 -> u32\nret 0\nend\n', 11],

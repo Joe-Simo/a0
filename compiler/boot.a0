@@ -23,11 +23,17 @@
 # `emitwasmio` is the entry of the A0 wasm32 emitter (compiler/emit_wasm.a0; driven by
 # tools/selfhost-wasm.ts): its first input word is the mode, 1 a source chunk (the input of
 # `emitchunkio`, then the variant count before the chunk and the call table (index, depth) of
-# the chunk's first `from` functions), 2 a chunk as checked tables, 3 the module linker. The
-# result is the diagnostic code (6 for an unknown mode).
+# the chunk's first `from` functions), 2 a chunk as checked tables, 3 the module linker; 4, 5
+# and 6 run the optimizer (compiler/optimize.a0) before the emitter: 4 is mode 1's input, then
+# the eval program source (byte count, bytes) and its map (word count, then one word per chunk
+# function: eval index + 1, 0 for none); 5 is mode 2's input, then the eval program as tables
+# (function count, 7 words each; node count, 6 words each; operand count, pairs) and its map
+# (one word per chunk function); 6 is mode 5 writing the optimized IR instead of the chunk. The
+# result is the diagnostic code (6 for an unknown mode; 7: the optimizer needs the bodies of
+# the chunk functions it wrote, followed by their count).
 
 use "emit_arm64.a0"
-use "emit_wasm.a0"
+use "optimize.a0"
 
 # `read` as a function: its (u32,io) result is named by this header, so the prelude interns it
 fn rdword io -> (u32,io)
@@ -158,6 +164,45 @@ t at p0 0
 r call walink t
 ret r
 end
+# modes 4 5 6: the optimized chunk (4 source, 5 tables), the optimized IR of a table chunk (6)
+fn wam4 (io,u32) u32 -> (io,u32)
+t at p0 0
+c call rdchunk t
+src at c 0
+n at c 1
+fst at c 2
+from at c 3
+t5 at c 6
+rb call rdword t5
+base at rb 0
+t6 at rb 1
+nd mul from 2
+rd call warn16 t6 nd
+dt at rd 0
+t7 at rd 1
+re call readsrc t7
+esrc at re 0
+en at re 1
+t8 at re 2
+rm call rdword t8
+nm at rm 0
+t9 at rm 1
+rq call warn16 t9 nm
+emap at rq 0
+t10 at rq 1
+u call ozsunit t10 src n fst from dt base esrc en emap
+ret u
+end
+fn wam5 (io,u32) u32 -> (io,u32)
+t at p0 0
+r call ozirchunk t false
+ret r
+end
+fn wam6 (io,u32) u32 -> (io,u32)
+t at p0 0
+r call ozirchunk t true
+ret r
+end
 fn emitwasmio io -> u32
 r call rdword p0
 m at r 0
@@ -166,12 +211,21 @@ s0 rec t 6
 m1 eq m 1
 m2 eq m 2
 m3 eq m 3
+m4 eq m 4
+m5 eq m 5
+m6 eq m 6
 c1 select m1 1 0
 c2 select m2 1 0
 c3 select m3 1 0
+c4 select m4 1 0
+c5 select m5 1 0
+c6 select m6 1 0
 a fold wam1 c1 s0
 b fold wam2 c2 a
 c fold wam3 c3 b
-code at c 1
+d fold wam4 c4 c
+e fold wam5 c5 d
+f fold wam6 c6 e
+code at f 1
 ret code
 end

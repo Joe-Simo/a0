@@ -1,6 +1,8 @@
 # A0 wasm32 emitter and module linker, written in A0 (DESIGN.md 7a): the port of src/wasm.ts.
 # Its output for a program is byte-identical to `compile(program, 'wasm', { optimize: false })`
-# (the TypeScript emitter on the unoptimized program; tools/selfhost-wasm.ts checks it).
+# (the TypeScript emitter on the unoptimized program), and with compiler/optimize.a0 in front
+# of it to `compile(program, 'wasm')` (tools/selfhost-wasm.ts checks both). A function's packed
+# ret word is kind * 2^28 + value, or kind 5: the operand at args pair value (`waretop`).
 #
 # The work is split the way src/wasm.ts splits it (per-function emission, then assembly), so a
 # program of any size is compiled a chunk of functions at a time:
@@ -590,6 +592,24 @@ r_h set r_g r_w nw
 r set p0 r_p r_h
 ret r
 end
+# the ret operand of the packed word p1 (kind * 2^28 + value): kind 5 is the operand at args
+# pair value (a u32 literal of 2^28 or more, as compiler/optimize.a0 writes it)
+fn waretop u32x128x512 u32 -> (u32,u32)
+rk shr p1 28
+rv and p1 268435455
+k5 eq rk 5
+x mul rv 2
+x_p shr x 7
+x_g get p0 x_p
+x_w and x 127
+xk get x_g x_w
+x1 add x_w 1
+xv get x_g x1
+k select k5 xk rk
+v select k5 xv rv
+r rec k v
+ret r
+end
 # the result slot: the node the ret operand (p3 p4) resolves to, when p5 (the value variant of
 # a function with an aggregate result) and that node owns storage (not get at select mov)
 fn waret u32x128x100 u32x128x128 u32 u32 u32 bool -> u32
@@ -756,8 +776,9 @@ rt call cfw p6 fb 3
 fn0 call cfw p6 fb 4
 cnt call cfw p6 fb 5
 rw call cfw p6 fb 6
-rk shr rw 28
-rv and rw 268435455
+rop call waretop p1 rw
+rk at rop 0
+rv at rop 1
 rtag_p shr rt 7
 rtag_g get p3 rtag_p
 rtag_l and rt 127
@@ -1871,8 +1892,9 @@ v1 eq p11 1
 sret and v0 ragg
 pb select sret 1 0
 a fold wanode cnt p0 p1 p2 p3 p4 p5 p6 p7 p8 fn0 fpt pb p12
-rk shr rw 28
-rv and rw 268435455
+rop call waretop p2 rw
+rk at rop 0
+rv at rop 1
 rl call waloc rk rv p7 pb
 isn eq rk 1
 rn add 6144 rv

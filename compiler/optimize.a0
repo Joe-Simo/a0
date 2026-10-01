@@ -1,0 +1,3381 @@
+# A0 optimizer, written in A0 (DESIGN.md 7a): the port of src/optimize.ts `optimizeFunction`.
+# It rewrites a chunk's checked paged IR (the tables of compiler/emit_wasm.a0 `wachunk`: nodes
+# u32x128x128, operands widened to u32x128x512, ntys u32x128x24, fns u32x128x45) into the
+# optimized IR, node for node what the TypeScript optimizer gives (same nodes in the same order,
+# same operands, same ret), before the wasm emitter; tools/selfhost-wasm.ts checks the IR and
+# the module against `compile(program, 'wasm')` with its default (optimized) options.
+#
+# Per function, in node order (src/optimize.ts): operands resolved through the substitutions;
+# effectful nodes (read write puts; call fold loop whose result or original operand types hold
+# io) kept and anchored; `simplify` (all-literal operands: evaluation, else the algebraic
+# identities in the TypeScript order); strength reduction (div/rem by a power of two);
+# common-subexpression elimination (not arr rec text; commutative add mul and or xor eq by
+# operand multiset) with a hash table; then dead-code elimination from the ret and the anchored
+# nodes, and the demand-driven `schedule` when nothing is anchored and no set/put remains.
+# Op 24 (`text`, the TypeScript op arr with a text field) is treated exactly as arr (22).
+#
+# Tables (paged u32x128xN, word i at page i>>7):
+# - forward table u32x128x100, one word per chunk node g at: SK 0 and SV 2816 (the
+#   substitution: operand kind 1 node 2 param 3 u32 4 bool, 0 for none, and value), FL 5632
+#   (kept 1 | anchored 2 | reduced 4 | final op << 8), the CSE hash table HT 8448 (4096
+#   slots of node + 1; an entry of an earlier function counts as empty, so it is never
+#   cleared), LIM 12544 (a limit was reached), REQ 12545 (a body was missing) and RQ 12560 (a
+#   bit per chunk function whose body was requested).
+# - order table u32x128x144, per chunk node: LV 0 (live 1 | placed 2), PS 2816 (its new
+#   position in its function), OR 5632 (at first node + position: the node there), the
+#   schedule stack ST 8448 (node, next operand); per chunk function: NC 14080 (node count),
+#   RW 15104 (the packed ret), RL 16128 (a ret literal of kind 5), RS 17152 (its operand slot
+#   or 4294967295); scalars SP 18176, NOUT 18177, ROOT 18178, SETPUT 18179, NEXT 18180 (the
+#   next free operand), CODE 18181, ANCH 18182.
+# The rewritten operands are written in place at each kept node's own operand positions (the
+# operands of dropped nodes stay as holes: the emitter only walks a node's own range); the
+# kept nodes' rows and types are written at the function's first node plus their positions.
+# A ret literal of 2^28 or more is packed as kind 5: the operand at args pair (value), in a
+# slot after every operand (the input's own kind 5 slot is reused).
+#
+# Evaluation (src/core.ts `run`/`exec`, the fuel of `simplify`): a call with literal operands
+# is run on fresh fuel 4096 (exhaustion is a compile error in TypeScript: here the limit code
+# 4), a fold/loop with a literal count of at most 4096 on fuel 4096 * 64 shared by its trips
+# (exhaustion keeps the node). The evaluator is a machine with an explicit frame stack
+# (`evstep`), charging 1 per function entry, 1 per node, 1 per fold/loop trip inside a body
+# and max(1, length) for arr rec text set put. It runs the original bodies from a separate
+# eval program (efn u32x128x45, enode u32x128x128, earg u32x128x512; callees are eval
+# indices) with the map emap (chunk function -> eval index + 1, 0 when absent). A body that
+# is needed and absent is requested: the chunk then ends with code 7 and the requested chunk
+# function indices, and the driver reruns it with those functions' closures added.
+#
+# Table reads are written out inline in every step (the helpers ozr1 ozr2 ozn ozarg ozres
+# ozfin ozfop give each expansion once, with its node names prefixed by the result's): a table
+# passed to a call is copied by the C emitter, which made the evaluator and the per-node
+# passes several times slower.
+
+use "emit_wasm.a0"
+
+# ---------------------------------------------------------------------------------------------
+# Paged tables
+
+fn ozr1 u32x128x100 u32 -> u32
+v_p shr p1 7
+v_g get p0 v_p
+v_w and p1 127
+v get v_g v_w
+ret v
+end
+fn ozr2 u32x128x144 u32 -> u32
+v_p shr p1 7
+v_g get p0 v_p
+v_w and p1 127
+v get v_g v_w
+ret v
+end
+fn z144 -> u32x128x144
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+# word p2 of row p1 (6 words) of a node table
+fn ozn u32x128x128 u32 u32 -> u32
+r6 mul p1 6
+i add r6 p2
+v_p shr i 7
+v_g get p0 v_p
+v_w and i 127
+v get v_g v_w
+ret v
+end
+# operand pair p1: (kind, value)
+fn ozarg u32x128x512 u32 -> (u32,u32)
+x mul p1 2
+k_p shr x 7
+k_g get p0 k_p
+k_w and x 127
+k get k_g k_w
+w1 add k_w 1
+v get k_g w1
+r rec k v
+ret r
+end
+# floor(log2 p0): the highest set bit
+fn ozlgb u32 u32 u32 -> u32
+b shr p2 p1
+o and b 1
+s ne o 0
+r select s p1 p0
+ret r
+end
+fn ozlg2 u32 -> u32
+r fold ozlgb 32 0 p0
+ret r
+end
+# the operand (p2 p3) of a node of the function at first node p1 through the substitutions of
+# the forward table p0 (one step: a substitution's target is final)
+fn ozres u32x128x100 u32 u32 u32 -> (u32,u32)
+g add p1 p3
+sk call ozr1 p0 g
+vi add 2816 g
+sv call ozr1 p0 vi
+isn eq p2 1
+hs ne sk 0
+u and isn hs
+k select u sk p2
+v select u sv p3
+r rec k v
+ret r
+end
+# the final operand p4 (original (p2 p3)) of a node with flags p5: resolved, and operand 1 of
+# a reduced div/rem is the shift (op shr) or the mask (op and)
+fn ozfin u32x128x100 u32 u32 u32 u32 u32 -> (u32,u32)
+r call ozres p0 p1 p2 p3
+rk at r 0
+rv at r 1
+red and p5 4
+isr ne red 0
+k1 eq p4 1
+rep and isr k1
+nop shr p5 8
+sh eq nop 9
+lg call ozlg2 rv
+m1 sub rv 1
+lit select sh lg m1
+fk select rep 3 rk
+fv select rep lit rv
+res rec fk fv
+ret res
+end
+# the final operand p4 of the node whose operands start at p3 (flags p5, first node p2)
+fn ozfop u32x128x100 u32x128x512 u32 u32 u32 u32 -> (u32,u32)
+i add p3 p4
+o call ozarg p1 i
+ok at o 0
+ov at o 1
+r call ozfin p0 p2 ok ov p4 p5
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Scalar operations (src/core.ts `evalOp` on u32 and bool, bools as 0/1): op p0 on p1 p2 p3.
+# A0's own div/rem (a zero divisor gives all ones / the dividend) and shifts (low five bits)
+# are evalOp's.
+
+fn ozop u32 u32 u32 u32 -> u32
+v2 add p1 p2
+v3 sub p1 p2
+v4 mul p1 p2
+v5 and p1 p2
+v6 or p1 p2
+v7 xor p1 p2
+v8 shl p1 p2
+v9 shr p1 p2
+v10 div p1 p2
+v11 rem p1 p2
+b12 eq p1 p2
+b13 ne p1 p2
+b14 lt p1 p2
+b15 le p1 p2
+b16 gt p1 p2
+b17 ge p1 p2
+v12 select b12 1 0
+v13 select b13 1 0
+v14 select b14 1 0
+v15 select b15 1 0
+v16 select b16 1 0
+v17 select b17 1 0
+c ne p1 0
+v18 select c p2 p3
+o2 eq p0 2
+o3 eq p0 3
+o4 eq p0 4
+o5 eq p0 5
+o6 eq p0 6
+o7 eq p0 7
+o8 eq p0 8
+o9 eq p0 9
+o10 eq p0 10
+o11 eq p0 11
+o12 eq p0 12
+o13 eq p0 13
+o14 eq p0 14
+o15 eq p0 15
+o16 eq p0 16
+o17 eq p0 17
+o18 eq p0 18
+r2 select o2 v2 p1
+r3 select o3 v3 r2
+r4 select o4 v4 r3
+r5 select o5 v5 r4
+r6 select o6 v6 r5
+r7 select o7 v7 r6
+r8 select o8 v8 r7
+r9 select o9 v9 r8
+r10 select o10 v10 r9
+r11 select o11 v11 r10
+r12 select o12 v12 r11
+r13 select o13 v13 r12
+r14 select o14 v14 r13
+r15 select o15 v15 r14
+r16 select o16 v16 r15
+r17 select o17 v17 r16
+r18 select o18 v18 r17
+ret r18
+end
+
+# ---------------------------------------------------------------------------------------------
+# The evaluator (src/core.ts `exec`). Machine table u32x128x512: scalars 0 status (0 running,
+# 1 done, 2 fuel exhausted, 3 a capacity below is full, 4 an io operation), 1 fuel, 2 frames,
+# 3 env top, 4 heap top, 5 result, 6 a frame has just returned (its value in 5), 7-14 the
+# root (op, operand count, body or callee, predicate, trip, count, state, phase: 0 start,
+# 1 awaiting the predicate, 2 the body, 3 the callee); 64-127 the root's operand values;
+# frames from 128, 8 words each (function, env base, next node, phase: 0 idle, 1 awaiting
+# the predicate, 2 the body, 3 the callee, 4 iterating; trip, count, state, parameter count),
+# at most 1024 (the word above the top frame is scratch); env 8336-24703 (per frame its
+# parameters, then its node values); heap 24704-65535: an array or record is a block (length,
+# elements) and its value the block's index. Values are immutable, so blocks are shared.
+
+# copy word p1 of a block or a parameter list to p3 + p1: mode p4 0 operand p5 + p1 of the
+# frame with env base p6 and p7 parameters, 1 root operand p1, 2 word p8 + p1 (word p9 is p10);
+# the first p13 words are p11, p12
+fn evcp u32x128x512 u32 u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+pi add p5 p1
+o_x mul pi 2
+o_k_p shr o_x 7
+o_k_g get p2 o_k_p
+o_k_w and o_x 127
+o_k get o_k_g o_k_w
+o_w1 add o_k_w 1
+o_v get o_k_g o_w1
+o_r rec o_k o_v
+o mov o_r
+ok at o 0
+ov at o 1
+isn eq ok 1
+s1 add p6 p7
+s2 add s1 ov
+s3 add p6 ov
+os select isn s2 s3
+os_p shr os 7
+os_g get p0 os_p
+os_w and os 127
+om get os_g os_w
+lit ge ok 3
+opv select lit ov om
+ri add 64 p1
+ri_p shr ri 7
+ri_g get p0 ri_p
+ri_w and ri 127
+rv get ri_g ri_w
+bi add p8 p1
+bi_p shr bi 7
+bi_g get p0 bi_p
+bi_w and bi 127
+bv get bi_g bi_w
+isr eq p1 p9
+blk select isr p10 bv
+m0 eq p4 0
+m1 eq p4 1
+v1 select m1 rv blk
+v2 select m0 opv v1
+spc lt p1 p13
+k0 eq p1 0
+xv select k0 p11 p12
+val select spc xv v2
+di add p3 p1
+d_p shr di 7
+d_g get p0 d_p
+d_w and di 127
+d_h set d_g d_w val
+r set p0 d_p d_h
+ret r
+end
+# root operand p1 from the list p2
+fn evarg u32x128x512 u32 u32x64 -> u32x128x512
+v get p2 p1
+di add 64 p1
+d_p shr di 7
+d_g get p0 d_p
+d_w and di 127
+d_h set d_g d_w v
+r set p0 d_p d_h
+ret r
+end
+fn evgo u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 -> bool
+s_g get p0 0
+s get s_g 0
+r eq s 0
+ret r
+end
+# One machine step. Cases: a frame has returned (deliver its value to the top frame or the
+# root), the root starts a call or a trip, or the top frame returns (its nodes are done),
+# executes its next node, or starts its fold/loop's next trip. At most one frame is pushed
+# (its parameters copied by the trailing `evcp` fold) or one block allocated per step.
+fn evstep u32x128x512 u32 u32x128x45 u32x128x128 u32x128x512 -> u32x128x512
+s0 get p0 0
+fuel get s0 1
+nfr get s0 2
+etop get s0 3
+htop get s0 4
+res get s0 5
+rtd get s0 6
+rop get s0 7
+rcal get s0 9
+rprd get s0 10
+ri get s0 11
+rcnt get s0 12
+rst get s0 13
+rph get s0 14
+hasf ne nfr 0
+dm sub nfr 1
+dd select hasf dm 0
+d8 mul dd 8
+fb add 128 d8
+fb_p shr fb 7
+fpg get p0 fb_p
+fo and fb 127
+fe get fpg fo
+fo1 add fo 1
+fbase get fpg fo1
+fo2 add fo 2
+fcur get fpg fo2
+fo3 add fo 3
+fph get fpg fo3
+fo4 add fo 4
+fi get fpg fo4
+fo5 add fo 5
+fcnt get fpg fo5
+fo6 add fo 6
+fst get fpg fo6
+fo7 add fo 7
+fnp get fpg fo7
+fe7 mul fe 7
+ffirst_w add fe7 4
+ffirst_wp shr ffirst_w 7
+ffirst_wg get p2 ffirst_wp
+ffirst_wl and ffirst_w 127
+ffirst_v get ffirst_wg ffirst_wl
+ffirst mov ffirst_v
+fnn_w add fe7 5
+fnn_wp shr fnn_w 7
+fnn_wg get p2 fnn_wp
+fnn_wl and fnn_w 127
+fnn_v get fnn_wg fnn_wl
+fnn mov fnn_v
+fret_w add fe7 6
+fret_wp shr fret_w 7
+fret_wg get p2 fret_wp
+fret_wl and fret_w 127
+fret_v get fret_wg fret_wl
+fret mov fret_v
+atend ge fcur fnn
+gn add ffirst fcur
+op_r6 mul gn 6
+op_i add op_r6 1
+op_v_p shr op_i 7
+op_v_g get p3 op_v_p
+op_v_w and op_i 127
+op_v get op_v_g op_v_w
+op mov op_v
+na_r6 mul gn 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p3 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul gn 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p3 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+cal_r6 mul gn 6
+cal_i add cal_r6 4
+cal_v_p shr cal_i 7
+cal_v_g get p3 cal_v_p
+cal_v_w and cal_i 127
+cal_v get cal_v_g cal_v_w
+cal mov cal_v
+prd_r6 mul gn 6
+prd_i add prd_r6 5
+prd_v_p shr prd_i 7
+prd_v_g get p3 prd_v_p
+prd_v_w and prd_i 127
+prd_v get prd_v_g prd_v_w
+prd mov prd_v
+vb add fbase fnp
+# the values of operands 0 1 2 in the frame
+ao_x mul fa 2
+ao_k_p shr ao_x 7
+ao_k_g get p4 ao_k_p
+ao_k_w and ao_x 127
+ao_k get ao_k_g ao_k_w
+ao_w1 add ao_k_w 1
+ao_v get ao_k_g ao_w1
+ao_r rec ao_k ao_v
+ao mov ao_r
+ak at ao 0
+aw at ao 1
+an eq ak 1
+as1 add vb aw
+as2 add fbase aw
+as select an as1 as2
+as_p shr as 7
+as_g get p0 as_p
+as_w and as 127
+am get as_g as_w
+al ge ak 3
+av select al aw am
+fa1 add fa 1
+bo_x mul fa1 2
+bo_k_p shr bo_x 7
+bo_k_g get p4 bo_k_p
+bo_k_w and bo_x 127
+bo_k get bo_k_g bo_k_w
+bo_w1 add bo_k_w 1
+bo_v get bo_k_g bo_w1
+bo_r rec bo_k bo_v
+bo mov bo_r
+bk at bo 0
+bw at bo 1
+bn eq bk 1
+bs1 add vb bw
+bs2 add fbase bw
+bs select bn bs1 bs2
+bs_p shr bs 7
+bs_g get p0 bs_p
+bs_w and bs 127
+bm get bs_g bs_w
+bl ge bk 3
+bv select bl bw bm
+fa2 add fa 2
+co_x mul fa2 2
+co_k_p shr co_x 7
+co_k_g get p4 co_k_p
+co_k_w and co_x 127
+co_k get co_k_g co_k_w
+co_w1 add co_k_w 1
+co_v get co_k_g co_w1
+co_r rec co_k co_v
+co mov co_r
+ck at co 0
+cw at co 1
+cn eq ck 1
+cs1 add vb cw
+cs2 add fbase cw
+cs select cn cs1 cs2
+cs_p shr cs 7
+cs_g get p0 cs_p
+cs_w and cs 127
+cm get cs_g cs_w
+cl ge ck 3
+cv select cl cw cm
+# the value of the frame's ret operand (kind 5: the operand at args pair value)
+rk0 shr fret 28
+rv0 and fret 268435455
+rk5 eq rk0 5
+r5_x mul rv0 2
+r5_k_p shr r5_x 7
+r5_k_g get p4 r5_k_p
+r5_k_w and r5_x 127
+r5_k get r5_k_g r5_k_w
+r5_w1 add r5_k_w 1
+r5_v get r5_k_g r5_w1
+r5_r rec r5_k r5_v
+r5 mov r5_r
+r5k at r5 0
+r5v at r5 1
+rk select rk5 r5k rk0
+rvv select rk5 r5v rv0
+rn eq rk 1
+rs1 add vb rvv
+rs2 add fbase rvv
+rsl select rn rs1 rs2
+rsl_p shr rsl 7
+rsl_g get p0 rsl_p
+rsl_w and rsl 127
+rm get rsl_g rsl_w
+rl ge rk 3
+retf select rl rvv rm
+# the node's value slot
+sl add vb fcur
+sl_p shr sl 7
+sl_g get p0 sl_p
+sl_w and sl 127
+slo get sl_g sl_w
+# the block of operand 0 (get at set put): its length and the element read
+bl_p shr av 7
+bl_g get p0 bl_p
+bl_w and av 127
+blen get bl_g bl_w
+gidx rem bv blen
+isget eq op 25
+isset eq op 26
+eidx select isget gidx bv
+jidx select isset gidx bv
+ea1 add av 1
+ea add ea1 eidx
+ea_p shr ea 7
+ea_g get p0 ea_p
+ea_w and ea 127
+gv get ea_g ea_w
+# the case
+rt ne rtd 0
+nrt select rt false true
+nhf select hasf false true
+isa and rt hasf
+isb and rt nhf
+isc and nrt nhf
+isd and nrt hasf
+nae select atend false true
+isd1 and isd atend
+isdn and isd nae
+ph0 eq fph 0
+ph4 eq fph 4
+isd2 and isdn ph0
+isd3 and isdn ph4
+iscall eq op 19
+isfo eq op 20
+islp eq op 21
+isfl or isfo islp
+o22 eq op 22
+o23 eq op 23
+o24 eq op 24
+agg1 or o22 o23
+isagg or agg1 o24
+isput eq op 28
+isup or isset isput
+isio ge op 29
+issc le op 18
+isnew or isagg isup
+pv0 call ozop op av bv cv
+pv1 select issc pv0 gv
+pv select isnew htop pv1
+np1 or iscall isfl
+np2 or np1 isio
+plain select np2 false true
+d2p and isd2 plain
+d2c and isd2 iscall
+d2f and isd2 isfl
+d2io and isd2 isio
+more lt fi fcnt
+nmore select more false true
+d3m and isd3 more
+d3e and isd3 nmore
+fph1 eq fph 1
+fph2 eq fph 2
+fph3 eq fph 3
+rtrue eq res 1
+nrtrue select rtrue false true
+a3 and isa fph3
+a1 and isa fph1
+a1t and a1 rtrue
+a1f and a1 nrtrue
+a2 and isa fph2
+rph1 eq rph 1
+rph2 eq rph 2
+rph3 eq rph 3
+b3 and isb rph3
+b1 and isb rph1
+b1t and b1 rtrue
+b1f and b1 nrtrue
+b2 and isb rph2
+rcall eq rop 19
+rlp eq rop 21
+nrcall select rcall false true
+rmore lt ri rcnt
+nrmore select rmore false true
+c1 and isc rcall
+cfl and isc nrcall
+c2 and cfl rmore
+c3 and cfl nrmore
+# the pushed frame: from the top frame (its node's operands) or from the root
+pf1 or d2c d3m
+pframe or pf1 a1t
+pr1 or b1t c1
+proot or pr1 c2
+push or pframe proot
+ed3 select islp prd cal
+ef1 select d3m ed3 cal
+ec2 select rlp rprd rcal
+er1 select c2 ec2 rcal
+pe select pframe ef1 er1
+pe7 mul pe 7
+pnp_w add pe7 1
+pnp_wp shr pnp_w 7
+pnp_wg get p2 pnp_wp
+pnp_wl and pnp_w 127
+pnp_v get pnp_wg pnp_wl
+pnp mov pnp_v
+pnn_w add pe7 5
+pnn_wp shr pnn_w 7
+pnn_wg get p2 pnn_wp
+pnn_wl and pnn_w 127
+pnn_v get pnn_wg pnn_wl
+pnn mov pnn_v
+nsp0 or d2c c1
+pnsp select nsp0 0 2
+px0 select pframe fst rst
+px1 select pframe fi ri
+# fuel: the node, a callee's entry, a trip and its entry, the copy of an aggregate
+lenc select isup blen 0
+nac select isagg na 0
+cc select iscall 1 0
+u2a add 1 cc
+u2b add u2a nac
+u2 add u2b lenc
+ud2 select isd2 u2 0
+ud3 select d3m 2 0
+up1 or a1t b1t
+up2 or up1 c1
+up3 or up2 c2
+ua select up3 1 0
+u1 add ud2 ud3
+u add u1 ua
+exh gt u fuel
+fuel2 sub fuel u
+# capacities: 1024 frames, the env, the heap
+pfull ge nfr 1024
+ptop1 add etop pnp
+ptop add ptop1 pnn
+pover gt ptop 24704
+pc1 or pfull pover
+pcap and push pc1
+alloc and isd2 isnew
+ncnt select isagg na blen
+ncopy add ncnt 1
+htop2 add htop ncopy
+aover gt htop2 65536
+acap and alloc aover
+cap or pcap acap
+dn1 or b3 b1f
+done or dn1 c3
+st1 select done 1 0
+st2 select d2io 4 st1
+st3 select cap 3 st2
+st4 select exh 2 st3
+ok1 or exh cap
+ok select ok1 false true
+# the top frame
+av1 or d2p d3e
+av2 or av1 a3
+adv or av2 a1f
+cur1 add fcur 1
+cur2 select adv cur1 fcur
+ph1a select islp 1 2
+phx1 select a2 4 fph
+phx2 select a1f 0 phx1
+phx3 select a1t 2 phx2
+phx4 select a3 0 phx3
+phx5 select d3e 0 phx4
+phx6 select d3m ph1a phx5
+phx7 select d2f 4 phx6
+phx8 select d2c 3 phx7
+fi1 add fi 1
+fix1 select a2 fi1 fi
+fix2 select d2f 0 fix1
+cnt2 select d2f av fcnt
+stx1 select a2 res fst
+stx2 select d2f bv stx1
+sv1 select a3 res fst
+slv select d2p pv sv1
+slx select adv slv slo
+# the root and the scalars
+nfr1 add nfr 1
+nfr2 sub nfr 1
+nfx1 select isd1 nfr2 nfr
+nfx2 select push nfr1 nfx1
+etx1 select isd1 fbase etop
+etx2 select push ptop etx1
+htx select alloc htop2 htop
+rr1 or b1f c3
+rsx1 select rr1 rst res
+rsx2 select isd1 retf rsx1
+rab or isa isb
+rtx1 select rab 0 rtd
+rtx2 select isd1 1 rtx1
+ri1 add ri 1
+rix select b2 ri1 ri
+rstx select b2 res rst
+rpc select rlp 1 2
+rpx1 select b2 0 rph
+rpx2 select b1t 2 rpx1
+rpx3 select c2 rpc rpx2
+rpx4 select c1 3 rpx3
+# writes: the slot, the top frame, the pushed frame (above the top: scratch when none), the
+# scalars (page 0 rewritten from its value on entry)
+sl_h set sl_g sl_w slx
+t1 set p0 sl_p sl_h
+tf_g get t1 fb_p
+tf1 set tf_g fo2 cur2
+tf2 set tf1 fo3 phx8
+tf3 set tf2 fo4 fix2
+tf4 set tf3 fo5 cnt2
+tf5 set tf4 fo6 stx2
+t2 set t1 fb_p tf5
+n8 mul nfr 8
+nb add 128 n8
+nb_p shr nb 7
+nb_o and nb 127
+nf_g get t2 nb_p
+nf1 set nf_g nb_o pe
+nb1 add nb_o 1
+nf2 set nf1 nb1 etop
+nb2 add nb_o 2
+nf3 set nf2 nb2 0
+nb3 add nb_o 3
+nf4 set nf3 nb3 0
+nb4 add nb_o 4
+nf5 set nf4 nb4 0
+nb5 add nb_o 5
+nf6 set nf5 nb5 0
+nb6 add nb_o 6
+nf7 set nf6 nb6 0
+nb7 add nb_o 7
+nf8 set nf7 nb7 pnp
+t3 set t2 nb_p nf8
+g1 set s0 0 st4
+g2 set g1 1 fuel2
+g3 set g2 2 nfx2
+g4 set g3 3 etx2
+g5 set g4 4 htx
+g6 set g5 5 rsx2
+g7 set g6 6 rtx2
+g8 set g7 11 rix
+g9 set g8 13 rstx
+g10 set g9 14 rpx4
+t4 set t3 0 g10
+# the copy: the pushed frame's parameters, or the new block (arr rec text: the operand
+# count, then the operands; set put: the old block with the element replaced)
+pc select push pnp ncopy
+pa select alloc ncopy 0
+nc0 select push pc pa
+nc select ok nc0 0
+dst select push etop htop
+md1 select pframe 0 1
+md2 select isagg 0 2
+md select alloc md2 md1
+fam sub fa 1
+aga and alloc isagg
+fa3 select aga fam fa
+ns1 select isagg 1 0
+ns select alloc ns1 pnsp
+x0 select alloc na px0
+j1 add jidx 1
+t5 fold evcp nc t4 p4 dst md fa3 fbase fnp av j1 cv x0 px1 ns
+ret t5
+end
+# Evaluate op p4 (19 call, 20 fold, 21 loop) of the eval function p5 (predicate p6) on the p7
+# literal operands p3 with fuel p8: (status, value), status 1 done, 2 fuel exhausted, 3 a
+# capacity is full, 4 an io operation
+fn evrun u32x128x45 u32x128x128 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
+z call z512
+c0 get p3 0
+c1 get p3 1
+s0 get z 0
+s1 set s0 1 p8
+s2 set s1 3 8336
+s3 set s2 4 24704
+s4 set s3 7 p4
+s5 set s4 8 p7
+s6 set s5 9 p5
+s7 set s6 10 p6
+s8 set s7 12 c0
+s9 set s8 13 c1
+m0 set z 0 s9
+m1 fold evarg 64 m0 p3
+f3 mul p8 3
+bound add f3 8
+m2 loop evgo evstep bound m1 p0 p1 p2
+g get m2 0
+st get g 0
+v get g 5
+r rec st v
+ret r
+end
+# as a fold body run once when needed
+fn evonce (u32,u32) u32 u32x128x45 u32x128x128 u32x128x512 u32x64 u32 u32 u32 u32 u32 -> (u32,u32)
+r call evrun p2 p3 p4 p5 p6 p7 p8 p9 p10
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# The forward pass (src/optimize.ts `optimizeFunction` up to dead-code elimination)
+
+# operand p1 (of the node whose operands start at p4, first node p5) is still a literal
+fn ozlit bool u32 u32x128x100 u32x128x512 u32 u32 -> bool
+i add p4 p1
+o_x mul i 2
+o_k_p shr o_x 7
+o_k_g get p3 o_k_p
+o_k_w and o_x 127
+o_k get o_k_g o_k_w
+o_w1 add o_k_w 1
+o_v get o_k_g o_w1
+o_r rec o_k o_v
+o mov o_r
+ok at o 0
+ov at o 1
+r_g add p5 ov
+r_sk_v_p shr r_g 7
+r_sk_v_g get p2 r_sk_v_p
+r_sk_v_w and r_g 127
+r_sk_v get r_sk_v_g r_sk_v_w
+r_sk mov r_sk_v
+r_vi add 2816 r_g
+r_sv_v_p shr r_vi 7
+r_sv_v_g get p2 r_sv_v_p
+r_sv_v_w and r_vi 127
+r_sv_v get r_sv_v_g r_sv_v_w
+r_sv mov r_sv_v
+r_isn eq ok 1
+r_hs ne r_sk 0
+r_u and r_isn r_hs
+r_k select r_u r_sk ok
+r_v select r_u r_sv ov
+r_r rec r_k r_v
+r mov r_r
+rk at r 0
+l ge rk 3
+a and p0 l
+ret a
+end
+# original operand p1 has a type holding io (node types p3, parameter types tlist p4 from p8,
+# type info p5 with io in bit 31)
+fn ozio bool u32 u32x128x512 u32x128x24 u32x128x65 u32x128x65 u32 u32 u32 -> bool
+i add p6 p1
+o_x mul i 2
+o_k_p shr o_x 7
+o_k_g get p2 o_k_p
+o_k_w and o_x 127
+o_k get o_k_g o_k_w
+o_w1 add o_k_w 1
+o_v get o_k_g o_w1
+o_r rec o_k o_v
+o mov o_r
+ok at o 0
+ov at o 1
+g add p7 ov
+tn_v_p shr g 7
+tn_v_g get p3 tn_v_p
+tn_v_w and g 127
+tn_v get tn_v_g tn_v_w
+tn mov tn_v
+q add p8 ov
+tp_v_p shr q 7
+tp_v_g get p4 tp_v_p
+tp_v_w and q 127
+tp_v get tp_v_g tp_v_w
+tp mov tp_v
+isn eq ok 1
+isp eq ok 2
+t select isn tn tp
+w_v_p shr t 7
+w_v_g get p5 w_v_p
+w_v_w and t 127
+w_v get w_v_g w_v_w
+w mov w_v
+hi ge w 2147483648
+nod or isn isp
+x and hi nod
+r or p0 x
+ret r
+end
+# the literal value of operand p1 into the list
+fn ozgat u32x64 u32 u32x128x100 u32x128x512 u32 u32 -> u32x64
+i add p4 p1
+o_x mul i 2
+o_k_p shr o_x 7
+o_k_g get p3 o_k_p
+o_k_w and o_x 127
+o_k get o_k_g o_k_w
+o_w1 add o_k_w 1
+o_v get o_k_g o_w1
+o_r rec o_k o_v
+o mov o_r
+ok at o 0
+ov at o 1
+r_g add p5 ov
+r_sk_v_p shr r_g 7
+r_sk_v_g get p2 r_sk_v_p
+r_sk_v_w and r_g 127
+r_sk_v get r_sk_v_g r_sk_v_w
+r_sk mov r_sk_v
+r_vi add 2816 r_g
+r_sv_v_p shr r_vi 7
+r_sv_v_g get p2 r_sv_v_p
+r_sv_v_w and r_vi 127
+r_sv_v get r_sv_v_g r_sv_v_w
+r_sv mov r_sv_v
+r_isn eq ok 1
+r_hs ne r_sk 0
+r_u and r_isn r_hs
+r_k select r_u r_sk ok
+r_v select r_u r_sv ov
+r_r rec r_k r_v
+r mov r_r
+rv at r 1
+l set p0 p1 rv
+ret l
+end
+# hash of an operand
+fn ozhx u32 u32 -> u32
+a mul p0 2654435761
+b mul p1 2246822519
+h xor a b
+ret h
+end
+# the hash of final operand p1: (commutative sum, ordered rotate-xor)
+fn ozhop (u32,u32) u32 u32x128x100 u32x128x512 u32 u32 u32 -> (u32,u32)
+o_i add p4 p1
+o_o_x mul o_i 2
+o_o_k_p shr o_o_x 7
+o_o_k_g get p3 o_o_k_p
+o_o_k_w and o_o_x 127
+o_o_k get o_o_k_g o_o_k_w
+o_o_w1 add o_o_k_w 1
+o_o_v get o_o_k_g o_o_w1
+o_o_r rec o_o_k o_o_v
+o_o mov o_o_r
+o_ok at o_o 0
+o_ov at o_o 1
+o_r_r_g add p5 o_ov
+o_r_r_sk_v_p shr o_r_r_g 7
+o_r_r_sk_v_g get p2 o_r_r_sk_v_p
+o_r_r_sk_v_w and o_r_r_g 127
+o_r_r_sk_v get o_r_r_sk_v_g o_r_r_sk_v_w
+o_r_r_sk mov o_r_r_sk_v
+o_r_r_vi add 2816 o_r_r_g
+o_r_r_sv_v_p shr o_r_r_vi 7
+o_r_r_sv_v_g get p2 o_r_r_sv_v_p
+o_r_r_sv_v_w and o_r_r_vi 127
+o_r_r_sv_v get o_r_r_sv_v_g o_r_r_sv_v_w
+o_r_r_sv mov o_r_r_sv_v
+o_r_r_isn eq o_ok 1
+o_r_r_hs ne o_r_r_sk 0
+o_r_r_u and o_r_r_isn o_r_r_hs
+o_r_r_k select o_r_r_u o_r_r_sk o_ok
+o_r_r_v select o_r_r_u o_r_r_sv o_ov
+o_r_r_r rec o_r_r_k o_r_r_v
+o_r_r mov o_r_r_r
+o_r_rk at o_r_r 0
+o_r_rv at o_r_r 1
+o_r_red and p6 4
+o_r_isr ne o_r_red 0
+o_r_k1 eq p1 1
+o_r_rep and o_r_isr o_r_k1
+o_r_nop shr p6 8
+o_r_sh eq o_r_nop 9
+o_r_lg call ozlg2 o_r_rv
+o_r_m1 sub o_r_rv 1
+o_r_lit select o_r_sh o_r_lg o_r_m1
+o_r_fk select o_r_rep 3 o_r_rk
+o_r_fv select o_r_rep o_r_lit o_r_rv
+o_r_res rec o_r_fk o_r_fv
+o_r mov o_r_res
+o mov o_r
+ok at o 0
+ov at o 1
+x call ozhx ok ov
+s at p0 0
+q at p0 1
+s2 add s x
+ql shl q 5
+qr shr q 27
+qo or ql qr
+q2 xor qo x
+r rec s2 q2
+ret r
+end
+# the CSE slot of a node: op (flags p5), its p4 final operands from p3, callee p6, pred p7
+fn ozhash u32x128x100 u32x128x512 u32 u32 u32 u32 u32 u32 -> u32
+z rec 0 0
+hs fold ozhop p4 z p0 p1 p3 p2 p5
+s at hs 0
+q at hs 1
+op shr p5 8
+c2 eq op 2
+c4 eq op 4
+c5 eq op 5
+c6 eq op 6
+c7 eq op 7
+c12 eq op 12
+cm1 or c2 c4
+cm2 or cm1 c5
+cm3 or cm2 c6
+cm4 or cm3 c7
+comm or cm4 c12
+base select comm s q
+o19 eq op 19
+o20 eq op 20
+o21 eq op 21
+hc1 or o19 o20
+hc or hc1 o21
+cf select hc p6 0
+pf select o21 p7 0
+m1 mul op 40503
+m2 mul cf 2654435769
+m3 mul pf 97
+m4 mul p4 7919
+h1 xor base m1
+h2 xor h1 m2
+h3 xor h2 m3
+h4 xor h3 m4
+hh shr h4 12
+h5 xor h4 hh
+slot and h5 4095
+ret slot
+end
+# final operands p1 of two nodes (operands from p4 flags p5, from p6 flags p7) are equal
+fn ozeqo bool u32 u32x128x100 u32x128x512 u32 u32 u32 u32 u32 -> bool
+x_i add p4 p1
+x_o_x mul x_i 2
+x_o_k_p shr x_o_x 7
+x_o_k_g get p3 x_o_k_p
+x_o_k_w and x_o_x 127
+x_o_k get x_o_k_g x_o_k_w
+x_o_w1 add x_o_k_w 1
+x_o_v get x_o_k_g x_o_w1
+x_o_r rec x_o_k x_o_v
+x_o mov x_o_r
+x_ok at x_o 0
+x_ov at x_o 1
+x_r_r_g add p8 x_ov
+x_r_r_sk_v_p shr x_r_r_g 7
+x_r_r_sk_v_g get p2 x_r_r_sk_v_p
+x_r_r_sk_v_w and x_r_r_g 127
+x_r_r_sk_v get x_r_r_sk_v_g x_r_r_sk_v_w
+x_r_r_sk mov x_r_r_sk_v
+x_r_r_vi add 2816 x_r_r_g
+x_r_r_sv_v_p shr x_r_r_vi 7
+x_r_r_sv_v_g get p2 x_r_r_sv_v_p
+x_r_r_sv_v_w and x_r_r_vi 127
+x_r_r_sv_v get x_r_r_sv_v_g x_r_r_sv_v_w
+x_r_r_sv mov x_r_r_sv_v
+x_r_r_isn eq x_ok 1
+x_r_r_hs ne x_r_r_sk 0
+x_r_r_u and x_r_r_isn x_r_r_hs
+x_r_r_k select x_r_r_u x_r_r_sk x_ok
+x_r_r_v select x_r_r_u x_r_r_sv x_ov
+x_r_r_r rec x_r_r_k x_r_r_v
+x_r_r mov x_r_r_r
+x_r_rk at x_r_r 0
+x_r_rv at x_r_r 1
+x_r_red and p5 4
+x_r_isr ne x_r_red 0
+x_r_k1 eq p1 1
+x_r_rep and x_r_isr x_r_k1
+x_r_nop shr p5 8
+x_r_sh eq x_r_nop 9
+x_r_lg call ozlg2 x_r_rv
+x_r_m1 sub x_r_rv 1
+x_r_lit select x_r_sh x_r_lg x_r_m1
+x_r_fk select x_r_rep 3 x_r_rk
+x_r_fv select x_r_rep x_r_lit x_r_rv
+x_r_res rec x_r_fk x_r_fv
+x_r mov x_r_res
+x mov x_r
+y_i add p6 p1
+y_o_x mul y_i 2
+y_o_k_p shr y_o_x 7
+y_o_k_g get p3 y_o_k_p
+y_o_k_w and y_o_x 127
+y_o_k get y_o_k_g y_o_k_w
+y_o_w1 add y_o_k_w 1
+y_o_v get y_o_k_g y_o_w1
+y_o_r rec y_o_k y_o_v
+y_o mov y_o_r
+y_ok at y_o 0
+y_ov at y_o 1
+y_r_r_g add p8 y_ov
+y_r_r_sk_v_p shr y_r_r_g 7
+y_r_r_sk_v_g get p2 y_r_r_sk_v_p
+y_r_r_sk_v_w and y_r_r_g 127
+y_r_r_sk_v get y_r_r_sk_v_g y_r_r_sk_v_w
+y_r_r_sk mov y_r_r_sk_v
+y_r_r_vi add 2816 y_r_r_g
+y_r_r_sv_v_p shr y_r_r_vi 7
+y_r_r_sv_v_g get p2 y_r_r_sv_v_p
+y_r_r_sv_v_w and y_r_r_vi 127
+y_r_r_sv_v get y_r_r_sv_v_g y_r_r_sv_v_w
+y_r_r_sv mov y_r_r_sv_v
+y_r_r_isn eq y_ok 1
+y_r_r_hs ne y_r_r_sk 0
+y_r_r_u and y_r_r_isn y_r_r_hs
+y_r_r_k select y_r_r_u y_r_r_sk y_ok
+y_r_r_v select y_r_r_u y_r_r_sv y_ov
+y_r_r_r rec y_r_r_k y_r_r_v
+y_r_r mov y_r_r_r
+y_r_rk at y_r_r 0
+y_r_rv at y_r_r 1
+y_r_red and p7 4
+y_r_isr ne y_r_red 0
+y_r_k1 eq p1 1
+y_r_rep and y_r_isr y_r_k1
+y_r_nop shr p7 8
+y_r_sh eq y_r_nop 9
+y_r_lg call ozlg2 y_r_rv
+y_r_m1 sub y_r_rv 1
+y_r_lit select y_r_sh y_r_lg y_r_m1
+y_r_fk select y_r_rep 3 y_r_rk
+y_r_fv select y_r_rep y_r_lit y_r_rv
+y_r_res rec y_r_fk y_r_fv
+y_r mov y_r_res
+y mov y_r
+xk at x 0
+xv at x 1
+yk at y 0
+yv at y 1
+e1 eq xk yk
+e2 eq xv yv
+e and e1 e2
+r and p0 e
+ret r
+end
+# node p5 (flags p6; operands p7 of them from p8; callee p9, pred p10) is the same expression
+# as the earlier node p4 (first node p3): op, callee, pred, operands (commutative: as a
+# multiset of two)
+fn ozsame u32x128x100 u32x128x512 u32x128x128 u32 u32 u32 u32 u32 u32 u32 u32 -> bool
+fi5 add 5632 p4
+fl_v_p shr fi5 7
+fl_v_g get p0 fl_v_p
+fl_v_w and fi5 127
+fl_v get fl_v_g fl_v_w
+fl mov fl_v
+opj shr fl 8
+opi shr p6 8
+eop eq opj opi
+naj_r6 mul p4 6
+naj_i add naj_r6 2
+naj_v_p shr naj_i 7
+naj_v_g get p2 naj_v_p
+naj_v_w and naj_i 127
+naj_v get naj_v_g naj_v_w
+naj mov naj_v
+faj_r6 mul p4 6
+faj_i add faj_r6 3
+faj_v_p shr faj_i 7
+faj_v_g get p2 faj_v_p
+faj_v_w and faj_i 127
+faj_v get faj_v_g faj_v_w
+faj mov faj_v
+caj_r6 mul p4 6
+caj_i add caj_r6 4
+caj_v_p shr caj_i 7
+caj_v_g get p2 caj_v_p
+caj_v_w and caj_i 127
+caj_v get caj_v_g caj_v_w
+caj mov caj_v
+prj_r6 mul p4 6
+prj_i add prj_r6 5
+prj_v_p shr prj_i 7
+prj_v_g get p2 prj_v_p
+prj_v_w and prj_i 127
+prj_v get prj_v_g prj_v_w
+prj mov prj_v
+ena eq naj p7
+o19 eq opi 19
+o20 eq opi 20
+o21 eq opi 21
+hc1 or o19 o20
+hc or hc1 o21
+ec eq caj p9
+nhc select hc false true
+okc or nhc ec
+ep eq prj p10
+nlp select o21 false true
+okp or nlp ep
+h1 and eop ena
+h2 and h1 okc
+hd and h2 okp
+n select hd p7 0
+st fold ozeqo n true p0 p1 p8 p6 faj fl p3
+c2 eq opi 2
+c4 eq opi 4
+c5 eq opi 5
+c6 eq opi 6
+c7 eq opi 7
+c12 eq opi 12
+cm1 or c2 c4
+cm2 or cm1 c5
+cm3 or cm2 c6
+cm4 or cm3 c7
+comm or cm4 c12
+i0_i add p8 0
+i0_o_x mul i0_i 2
+i0_o_k_p shr i0_o_x 7
+i0_o_k_g get p1 i0_o_k_p
+i0_o_k_w and i0_o_x 127
+i0_o_k get i0_o_k_g i0_o_k_w
+i0_o_w1 add i0_o_k_w 1
+i0_o_v get i0_o_k_g i0_o_w1
+i0_o_r rec i0_o_k i0_o_v
+i0_o mov i0_o_r
+i0_ok at i0_o 0
+i0_ov at i0_o 1
+i0_r_r_g add p3 i0_ov
+i0_r_r_sk_v_p shr i0_r_r_g 7
+i0_r_r_sk_v_g get p0 i0_r_r_sk_v_p
+i0_r_r_sk_v_w and i0_r_r_g 127
+i0_r_r_sk_v get i0_r_r_sk_v_g i0_r_r_sk_v_w
+i0_r_r_sk mov i0_r_r_sk_v
+i0_r_r_vi add 2816 i0_r_r_g
+i0_r_r_sv_v_p shr i0_r_r_vi 7
+i0_r_r_sv_v_g get p0 i0_r_r_sv_v_p
+i0_r_r_sv_v_w and i0_r_r_vi 127
+i0_r_r_sv_v get i0_r_r_sv_v_g i0_r_r_sv_v_w
+i0_r_r_sv mov i0_r_r_sv_v
+i0_r_r_isn eq i0_ok 1
+i0_r_r_hs ne i0_r_r_sk 0
+i0_r_r_u and i0_r_r_isn i0_r_r_hs
+i0_r_r_k select i0_r_r_u i0_r_r_sk i0_ok
+i0_r_r_v select i0_r_r_u i0_r_r_sv i0_ov
+i0_r_r_r rec i0_r_r_k i0_r_r_v
+i0_r_r mov i0_r_r_r
+i0_r_rk at i0_r_r 0
+i0_r_rv at i0_r_r 1
+i0_r_red and p6 4
+i0_r_isr ne i0_r_red 0
+i0_r_k1 eq 0 1
+i0_r_rep and i0_r_isr i0_r_k1
+i0_r_nop shr p6 8
+i0_r_sh eq i0_r_nop 9
+i0_r_lg call ozlg2 i0_r_rv
+i0_r_m1 sub i0_r_rv 1
+i0_r_lit select i0_r_sh i0_r_lg i0_r_m1
+i0_r_fk select i0_r_rep 3 i0_r_rk
+i0_r_fv select i0_r_rep i0_r_lit i0_r_rv
+i0_r_res rec i0_r_fk i0_r_fv
+i0_r mov i0_r_res
+i0 mov i0_r
+i1_i add p8 1
+i1_o_x mul i1_i 2
+i1_o_k_p shr i1_o_x 7
+i1_o_k_g get p1 i1_o_k_p
+i1_o_k_w and i1_o_x 127
+i1_o_k get i1_o_k_g i1_o_k_w
+i1_o_w1 add i1_o_k_w 1
+i1_o_v get i1_o_k_g i1_o_w1
+i1_o_r rec i1_o_k i1_o_v
+i1_o mov i1_o_r
+i1_ok at i1_o 0
+i1_ov at i1_o 1
+i1_r_r_g add p3 i1_ov
+i1_r_r_sk_v_p shr i1_r_r_g 7
+i1_r_r_sk_v_g get p0 i1_r_r_sk_v_p
+i1_r_r_sk_v_w and i1_r_r_g 127
+i1_r_r_sk_v get i1_r_r_sk_v_g i1_r_r_sk_v_w
+i1_r_r_sk mov i1_r_r_sk_v
+i1_r_r_vi add 2816 i1_r_r_g
+i1_r_r_sv_v_p shr i1_r_r_vi 7
+i1_r_r_sv_v_g get p0 i1_r_r_sv_v_p
+i1_r_r_sv_v_w and i1_r_r_vi 127
+i1_r_r_sv_v get i1_r_r_sv_v_g i1_r_r_sv_v_w
+i1_r_r_sv mov i1_r_r_sv_v
+i1_r_r_isn eq i1_ok 1
+i1_r_r_hs ne i1_r_r_sk 0
+i1_r_r_u and i1_r_r_isn i1_r_r_hs
+i1_r_r_k select i1_r_r_u i1_r_r_sk i1_ok
+i1_r_r_v select i1_r_r_u i1_r_r_sv i1_ov
+i1_r_r_r rec i1_r_r_k i1_r_r_v
+i1_r_r mov i1_r_r_r
+i1_r_rk at i1_r_r 0
+i1_r_rv at i1_r_r 1
+i1_r_red and p6 4
+i1_r_isr ne i1_r_red 0
+i1_r_k1 eq 1 1
+i1_r_rep and i1_r_isr i1_r_k1
+i1_r_nop shr p6 8
+i1_r_sh eq i1_r_nop 9
+i1_r_lg call ozlg2 i1_r_rv
+i1_r_m1 sub i1_r_rv 1
+i1_r_lit select i1_r_sh i1_r_lg i1_r_m1
+i1_r_fk select i1_r_rep 3 i1_r_rk
+i1_r_fv select i1_r_rep i1_r_lit i1_r_rv
+i1_r_res rec i1_r_fk i1_r_fv
+i1_r mov i1_r_res
+i1 mov i1_r
+j0_i add faj 0
+j0_o_x mul j0_i 2
+j0_o_k_p shr j0_o_x 7
+j0_o_k_g get p1 j0_o_k_p
+j0_o_k_w and j0_o_x 127
+j0_o_k get j0_o_k_g j0_o_k_w
+j0_o_w1 add j0_o_k_w 1
+j0_o_v get j0_o_k_g j0_o_w1
+j0_o_r rec j0_o_k j0_o_v
+j0_o mov j0_o_r
+j0_ok at j0_o 0
+j0_ov at j0_o 1
+j0_r_r_g add p3 j0_ov
+j0_r_r_sk_v_p shr j0_r_r_g 7
+j0_r_r_sk_v_g get p0 j0_r_r_sk_v_p
+j0_r_r_sk_v_w and j0_r_r_g 127
+j0_r_r_sk_v get j0_r_r_sk_v_g j0_r_r_sk_v_w
+j0_r_r_sk mov j0_r_r_sk_v
+j0_r_r_vi add 2816 j0_r_r_g
+j0_r_r_sv_v_p shr j0_r_r_vi 7
+j0_r_r_sv_v_g get p0 j0_r_r_sv_v_p
+j0_r_r_sv_v_w and j0_r_r_vi 127
+j0_r_r_sv_v get j0_r_r_sv_v_g j0_r_r_sv_v_w
+j0_r_r_sv mov j0_r_r_sv_v
+j0_r_r_isn eq j0_ok 1
+j0_r_r_hs ne j0_r_r_sk 0
+j0_r_r_u and j0_r_r_isn j0_r_r_hs
+j0_r_r_k select j0_r_r_u j0_r_r_sk j0_ok
+j0_r_r_v select j0_r_r_u j0_r_r_sv j0_ov
+j0_r_r_r rec j0_r_r_k j0_r_r_v
+j0_r_r mov j0_r_r_r
+j0_r_rk at j0_r_r 0
+j0_r_rv at j0_r_r 1
+j0_r_red and fl 4
+j0_r_isr ne j0_r_red 0
+j0_r_k1 eq 0 1
+j0_r_rep and j0_r_isr j0_r_k1
+j0_r_nop shr fl 8
+j0_r_sh eq j0_r_nop 9
+j0_r_lg call ozlg2 j0_r_rv
+j0_r_m1 sub j0_r_rv 1
+j0_r_lit select j0_r_sh j0_r_lg j0_r_m1
+j0_r_fk select j0_r_rep 3 j0_r_rk
+j0_r_fv select j0_r_rep j0_r_lit j0_r_rv
+j0_r_res rec j0_r_fk j0_r_fv
+j0_r mov j0_r_res
+j0 mov j0_r
+j1_i add faj 1
+j1_o_x mul j1_i 2
+j1_o_k_p shr j1_o_x 7
+j1_o_k_g get p1 j1_o_k_p
+j1_o_k_w and j1_o_x 127
+j1_o_k get j1_o_k_g j1_o_k_w
+j1_o_w1 add j1_o_k_w 1
+j1_o_v get j1_o_k_g j1_o_w1
+j1_o_r rec j1_o_k j1_o_v
+j1_o mov j1_o_r
+j1_ok at j1_o 0
+j1_ov at j1_o 1
+j1_r_r_g add p3 j1_ov
+j1_r_r_sk_v_p shr j1_r_r_g 7
+j1_r_r_sk_v_g get p0 j1_r_r_sk_v_p
+j1_r_r_sk_v_w and j1_r_r_g 127
+j1_r_r_sk_v get j1_r_r_sk_v_g j1_r_r_sk_v_w
+j1_r_r_sk mov j1_r_r_sk_v
+j1_r_r_vi add 2816 j1_r_r_g
+j1_r_r_sv_v_p shr j1_r_r_vi 7
+j1_r_r_sv_v_g get p0 j1_r_r_sv_v_p
+j1_r_r_sv_v_w and j1_r_r_vi 127
+j1_r_r_sv_v get j1_r_r_sv_v_g j1_r_r_sv_v_w
+j1_r_r_sv mov j1_r_r_sv_v
+j1_r_r_isn eq j1_ok 1
+j1_r_r_hs ne j1_r_r_sk 0
+j1_r_r_u and j1_r_r_isn j1_r_r_hs
+j1_r_r_k select j1_r_r_u j1_r_r_sk j1_ok
+j1_r_r_v select j1_r_r_u j1_r_r_sv j1_ov
+j1_r_r_r rec j1_r_r_k j1_r_r_v
+j1_r_r mov j1_r_r_r
+j1_r_rk at j1_r_r 0
+j1_r_rv at j1_r_r 1
+j1_r_red and fl 4
+j1_r_isr ne j1_r_red 0
+j1_r_k1 eq 1 1
+j1_r_rep and j1_r_isr j1_r_k1
+j1_r_nop shr fl 8
+j1_r_sh eq j1_r_nop 9
+j1_r_lg call ozlg2 j1_r_rv
+j1_r_m1 sub j1_r_rv 1
+j1_r_lit select j1_r_sh j1_r_lg j1_r_m1
+j1_r_fk select j1_r_rep 3 j1_r_rk
+j1_r_fv select j1_r_rep j1_r_lit j1_r_rv
+j1_r_res rec j1_r_fk j1_r_fv
+j1_r mov j1_r_res
+j1 mov j1_r
+i0k at i0 0
+i0v at i0 1
+i1k at i1 0
+i1v at i1 1
+j0k at j0 0
+j0v at j0 1
+j1k at j1 0
+j1v at j1 1
+x1 eq i0k j1k
+x2 eq i0v j1v
+x3 eq i1k j0k
+x4 eq i1v j0v
+y1 and x1 x2
+y2 and y1 x3
+y3 and y2 x4
+sw and comm y3
+sw2 and hd sw
+st2 and hd st
+r or st2 sw2
+ret r
+end
+# probe state (slot, found, done, match): stop at an empty slot (or one of an earlier
+# function: node < p3) or at an equal node
+fn ozpgo (u32,bool,bool,u32) u32 u32x128x100 u32x128x512 u32x128x128 u32 u32 u32 u32 u32 u32 u32 -> bool
+d at p0 2
+r select d false true
+ret r
+end
+fn ozprb (u32,bool,bool,u32) u32 u32x128x100 u32x128x512 u32x128x128 u32 u32 u32 u32 u32 u32 u32 -> (u32,bool,bool,u32)
+sl at p0 0
+hi add 8448 sl
+e_v_p shr hi 7
+e_v_g get p2 e_v_p
+e_v_w and hi 127
+e_v get e_v_g e_v_w
+e mov e_v
+em eq e 0
+gj sub e 1
+old lt gj p5
+emp or em old
+nemp select emp false true
+eq call ozsame p2 p3 p4 p5 gj p6 p7 p8 p9 p10 p11
+m and nemp eq
+stop or emp m
+s1 add sl 1
+s2 and s1 4095
+nsl select stop sl s2
+r rec nsl m stop gj
+ret r
+end
+# The algebraic identities of `simplify` for op p0 (p1: bool result) on the resolved
+# operands a (p2 p3) b (p4 p5) c (p6 p7), p8 b present, p9 c present: (hit, kind, value)
+fn ozid u32 bool u32 u32 u32 u32 u32 u32 bool bool -> (bool,u32,u32)
+ak3 eq p2 3
+ak4 eq p2 4
+bk3 eq p4 3
+bk4 eq p4 4
+av0 eq p3 0
+av1 eq p3 1
+avm eq p3 4294967295
+bv0 eq p5 0
+bv1 eq p5 1
+bvm eq p5 4294967295
+a0 and ak3 av0
+a1 and ak3 av1
+am and ak3 avm
+b0 and bk3 bv0
+b1 and bk3 bv1
+bm and bk3 bvm
+at and ak4 av1
+af and ak4 av0
+bt and bk4 bv1
+bf and bk4 bv0
+s1 eq p2 p4
+s2 eq p3 p5
+sab and s1 s2
+s3 eq p4 p6
+s4 eq p5 p7
+sbc and s3 s4
+isor eq p0 6
+isxor eq p0 7
+xs and isxor sab
+os and isor sab
+# add or xor on bool
+ort or at bt
+ot and isor ort
+hb1 or bf af
+hb2 or hb1 ot
+hb3 or hb2 xs
+hb4 or hb3 os
+kb1 select xs 4 p2
+kb2 select ot 4 kb1
+kb3 select af p4 kb2
+kb4 select bf p2 kb3
+vb1 select xs 0 p3
+vb2 select ot 1 vb1
+vb3 select af p5 vb2
+vb4 select bf p3 vb3
+# add or xor on u32
+hu1 or b0 a0
+hu2 or hu1 xs
+hu3 or hu2 os
+ku1 select xs 3 p2
+ku2 select a0 p4 ku1
+ku3 select b0 p2 ku2
+vu1 select xs 0 p3
+vu2 select a0 p5 vu1
+vu3 select b0 p3 vu2
+hx1 select p1 hb4 hu3
+kx1 select p1 kb4 ku3
+vx1 select p1 vb4 vu3
+hx and hx1 p8
+# sub
+hs1 or b0 sab
+ks select b0 p2 3
+vs select b0 p3 0
+hs and hs1 p8
+# mul
+ab0 or a0 b0
+hm1 or b1 a1
+hm2 or hm1 ab0
+km1 select a1 p4 3
+km2 select b1 p2 km1
+vm1 select a1 p5 0
+vm2 select b1 p3 vm1
+hm and hm2 p8
+# and on bool, on u32
+abf or af bf
+ha1 or abf bt
+ha2 or ha1 at
+ha3 or ha2 sab
+ka1 select at p4 p2
+ka2 select bt p2 ka1
+ka3 select abf 4 ka2
+va1 select at p5 p3
+va2 select bt p3 va1
+va3 select abf 0 va2
+hn1 or ab0 bm
+hn2 or hn1 am
+hn3 or hn2 sab
+kn1 select am p4 p2
+kn2 select bm p2 kn1
+kn3 select ab0 3 kn2
+vn1 select am p5 p3
+vn2 select bm p3 vn1
+vn3 select ab0 0 vn2
+hy1 select p1 ha3 hn3
+ky1 select p1 ka3 kn3
+vy1 select p1 va3 vn3
+hy and hy1 p8
+# shl shr
+bl5 and p5 31
+bz eq bl5 0
+bs and bk3 bz
+hh1 or bs a0
+kh select bs p2 3
+vh select bs p3 0
+hh and hh1 p8
+# div rem
+hd and b1 p8
+# comparisons: a literal bool
+sge1 or sab b0
+sge or sge1 am
+sle1 or sab a0
+sle or sle1 bm
+# select
+ht1 or at af
+ht or ht1 sbc
+kt1 select af p6 p4
+kt select at p4 kt1
+vt1 select af p7 p5
+vt select at p5 vt1
+htt and p8 p9
+hts and ht htt
+# fold loop: a count of 0 yields the initial state
+hf and a0 p8
+o1 eq p0 1
+o2 eq p0 2
+o3 eq p0 3
+o4 eq p0 4
+o5 eq p0 5
+o8 eq p0 8
+o9 eq p0 9
+o10 eq p0 10
+o11 eq p0 11
+o12 eq p0 12
+o13 eq p0 13
+o14 eq p0 14
+o15 eq p0 15
+o16 eq p0 16
+o17 eq p0 17
+o18 eq p0 18
+o20 eq p0 20
+o21 eq p0 21
+g1 or o2 isor
+gx or g1 isxor
+gsh or o8 o9
+gfl or o20 o21
+gl1 or o14 o16
+gl2 or gl1 o13
+gge or o15 o17
+# the comparison hits and values (true for le ge eq, false for lt gt ne)
+ce and o12 sab
+cn and o13 sab
+clt1 or sab b0
+clt2 or clt1 am
+cl and o14 clt2
+cgt1 or sab a0
+cgt2 or cgt1 bm
+cg and o16 cgt2
+cle and o15 sle
+cge and o17 sge
+cf1 or cn cl
+cf or cf1 cg
+ct1 or ce cle
+ct or ct1 cge
+chit1 or cf ct
+chit and chit1 p8
+cval select ct 1 0
+r1h select o1 true false
+r1k select o1 p2 0
+r1v select o1 p3 0
+r2h select gx hx r1h
+r2k select gx kx1 r1k
+r2v select gx vx1 r1v
+r3h select o3 hs r2h
+r3k select o3 ks r2k
+r3v select o3 vs r2v
+r4h select o4 hm r3h
+r4k select o4 km2 r3k
+r4v select o4 vm2 r3v
+r5h select o5 hy r4h
+r5k select o5 ky1 r4k
+r5v select o5 vy1 r4v
+r6h select gsh hh r5h
+r6k select gsh kh r5k
+r6v select gsh vh r5v
+r7h select o10 hd r6h
+r7k select o10 p2 r6k
+r7v select o10 p3 r6v
+r8h select o11 hd r7h
+r8k select o11 3 r7k
+r8v select o11 0 r7v
+cmp1 or o12 gl2
+cmp or cmp1 gge
+r9h select cmp chit r8h
+r9k select cmp 4 r8k
+r9v select cmp cval r8v
+r10h select o18 hts r9h
+r10k select o18 kt r9k
+r10v select o18 vt r9v
+r11h select gfl hf r10h
+r11k select gfl p4 r10k
+r11v select gfl p5 r10v
+r rec r11h r11k r11v
+ret r
+end
+# Node p1 of the function at first node p11 (parameter types from tlist p12): resolve,
+# anchor or simplify (evaluate), reduce, merge; state: the forward table
+fn ozfwd u32x128x100 u32 u32x128x128 u32x128x512 u32x128x24 u32x128x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x16 u32 u32 -> u32x128x100
+g add p11 p1
+op_r6 mul g 6
+op_i add op_r6 1
+op_v_p shr op_i 7
+op_v_g get p2 op_v_p
+op_v_w and op_i 127
+op_v get op_v_g op_v_w
+op mov op_v
+na_r6 mul g 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p2 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul g 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p2 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+cal_r6 mul g 6
+cal_i add cal_r6 4
+cal_v_p shr cal_i 7
+cal_v_g get p2 cal_v_p
+cal_v_w and cal_i 127
+cal_v get cal_v_g cal_v_w
+cal mov cal_v
+prd_r6 mul g 6
+prd_i add prd_r6 5
+prd_v_p shr prd_i 7
+prd_v_g get p2 prd_v_p
+prd_v_w and prd_i 127
+prd_v get prd_v_g prd_v_w
+prd mov prd_v
+t_v_p shr g 7
+t_v_g get p4 t_v_p
+t_v_w and g 127
+t_v get t_v_g t_v_w
+t mov t_v
+ti_v_p shr t 7
+ti_v_g get p6 ti_v_p
+ti_v_w and t 127
+ti_v get ti_v_g ti_v_w
+ti mov ti_v
+tio ge ti 2147483648
+scal le t 1
+isb eq t 1
+ea ge na 1
+eb ge na 2
+ec ge na 3
+ao_x mul fa 2
+ao_k_p shr ao_x 7
+ao_k_g get p3 ao_k_p
+ao_k_w and ao_x 127
+ao_k get ao_k_g ao_k_w
+ao_w1 add ao_k_w 1
+ao_v get ao_k_g ao_w1
+ao_r rec ao_k ao_v
+ao mov ao_r
+aok at ao 0
+aov at ao 1
+ar_g add p11 aov
+ar_sk_v_p shr ar_g 7
+ar_sk_v_g get p0 ar_sk_v_p
+ar_sk_v_w and ar_g 127
+ar_sk_v get ar_sk_v_g ar_sk_v_w
+ar_sk mov ar_sk_v
+ar_vi add 2816 ar_g
+ar_sv_v_p shr ar_vi 7
+ar_sv_v_g get p0 ar_sv_v_p
+ar_sv_v_w and ar_vi 127
+ar_sv_v get ar_sv_v_g ar_sv_v_w
+ar_sv mov ar_sv_v
+ar_isn eq aok 1
+ar_hs ne ar_sk 0
+ar_u and ar_isn ar_hs
+ar_k select ar_u ar_sk aok
+ar_v select ar_u ar_sv aov
+ar_r rec ar_k ar_v
+ar mov ar_r
+ak0 at ar 0
+av at ar 1
+ak select ea ak0 0
+fa1 add fa 1
+bo_x mul fa1 2
+bo_k_p shr bo_x 7
+bo_k_g get p3 bo_k_p
+bo_k_w and bo_x 127
+bo_k get bo_k_g bo_k_w
+bo_w1 add bo_k_w 1
+bo_v get bo_k_g bo_w1
+bo_r rec bo_k bo_v
+bo mov bo_r
+bok at bo 0
+bov at bo 1
+br_g add p11 bov
+br_sk_v_p shr br_g 7
+br_sk_v_g get p0 br_sk_v_p
+br_sk_v_w and br_g 127
+br_sk_v get br_sk_v_g br_sk_v_w
+br_sk mov br_sk_v
+br_vi add 2816 br_g
+br_sv_v_p shr br_vi 7
+br_sv_v_g get p0 br_sv_v_p
+br_sv_v_w and br_vi 127
+br_sv_v get br_sv_v_g br_sv_v_w
+br_sv mov br_sv_v
+br_isn eq bok 1
+br_hs ne br_sk 0
+br_u and br_isn br_hs
+br_k select br_u br_sk bok
+br_v select br_u br_sv bov
+br_r rec br_k br_v
+br mov br_r
+bk0 at br 0
+bv at br 1
+bk select eb bk0 0
+fa2 add fa 2
+co_x mul fa2 2
+co_k_p shr co_x 7
+co_k_g get p3 co_k_p
+co_k_w and co_x 127
+co_k get co_k_g co_k_w
+co_w1 add co_k_w 1
+co_v get co_k_g co_w1
+co_r rec co_k co_v
+co mov co_r
+cok at co 0
+cov at co 1
+cr_g add p11 cov
+cr_sk_v_p shr cr_g 7
+cr_sk_v_g get p0 cr_sk_v_p
+cr_sk_v_w and cr_g 127
+cr_sk_v get cr_sk_v_g cr_sk_v_w
+cr_sk mov cr_sk_v
+cr_vi add 2816 cr_g
+cr_sv_v_p shr cr_vi 7
+cr_sv_v_g get p0 cr_sv_v_p
+cr_sv_v_w and cr_vi 127
+cr_sv_v get cr_sv_v_g cr_sv_v_w
+cr_sv mov cr_sv_v
+cr_isn eq cok 1
+cr_hs ne cr_sk 0
+cr_u and cr_isn cr_hs
+cr_k select cr_u cr_sk cok
+cr_v select cr_u cr_sv cov
+cr_r rec cr_k cr_v
+cr mov cr_r
+ck0 at cr 0
+cv at cr 1
+ck select ec ck0 0
+allc fold ozlit na true p0 p3 fa p11
+aio fold ozio na false p3 p4 p5 p6 fa p11 p12
+# effectful: read write puts; call fold loop with io in the result or an original operand
+o19 eq op 19
+o20 eq op 20
+o21 eq op 21
+fl1 or o20 o21
+it or o19 fl1
+rw ge op 29
+iot or tio aio
+ite and it iot
+eff or rw ite
+neff select eff false true
+# every operand a literal, a scalar result: evaluate a call, a fold/loop of at most 4096
+# trips (its body, and predicate, from the eval program), or the operation
+lsc and allc scal
+cnt4 le av 4096
+flok and fl1 cnt4
+evn or o19 flok
+lev and lsc evn
+nit select it false true
+lop1 and lsc nit
+lop and lop1 neff
+opv call ozop op av bv cv
+lk select isb 4 3
+emc_v_p shr cal 7
+emc_v_g get p10 emc_v_p
+emc_v_w and cal 127
+emc_v get emc_v_g emc_v_w
+emc mov emc_v
+emp_v_p shr prd 7
+emp_v_g get p10 emp_v_p
+emp_v_w and prd 127
+emp_v get emp_v_g emp_v_w
+emp mov emp_v
+hc ne emc 0
+hp ne emp 0
+nlp select o21 false true
+hpo or nlp hp
+have and hc hpo
+levn and lev neff
+go and levn have
+nhc select hc false true
+nhp select hp false true
+rqc and levn nhc
+rqp1 and levn o21
+rqp and rqp1 nhp
+ng select go na 0
+zv call zl64
+vals fold ozgat ng zv p0 p3 fa p11
+ecal sub emc 1
+eprd sub emp 1
+fuel select o19 4096 262144
+gon select go 1 0
+z2 rec 0 0
+er fold evonce gon z2 p7 p8 p9 vals op ecal eprd na fuel
+est at er 0
+evv at er 1
+e1 eq est 1
+sube and go e1
+ne1 select e1 false true
+e3 ge est 3
+lim1 select o19 ne1 e3
+lime and go lim1
+# not every operand a literal: the identities, and a get/at of a kept arr/text/rec with a
+# literal index is the def's (resolved) operand
+nallc select allc false true
+idr call ozid op isb ak av bk bv ck cv eb ec
+idh at idr 0
+idk at idr 1
+idv at idr 2
+isget eq op 25
+isat eq op 27
+an eq ak 1
+dg add p11 av
+dfi add 5632 dg
+dfl_v_p shr dfi 7
+dfl_v_g get p0 dfl_v_p
+dfl_v_w and dfi 127
+dfl_v get dfl_v_g dfl_v_w
+dfl mov dfl_v
+dop shr dfl 8
+dna_r6 mul dg 6
+dna_i add dna_r6 2
+dna_v_p shr dna_i 7
+dna_v_g get p2 dna_v_p
+dna_v_w and dna_i 127
+dna_v get dna_v_g dna_v_w
+dna mov dna_v
+dfa_r6 mul dg 6
+dfa_i add dfa_r6 3
+dfa_v_p shr dfa_i 7
+dfa_v_g get p2 dfa_v_p
+dfa_v_w and dfa_i 127
+dfa_v get dfa_v_g dfa_v_w
+dfa mov dfa_v
+d22 eq dop 22
+d24 eq dop 24
+d23 eq dop 23
+darr or d22 d24
+bk3 eq bk 3
+gix rem bv dna
+dix select isget gix bv
+dopd_i add dfa dix
+dopd_o_x mul dopd_i 2
+dopd_o_k_p shr dopd_o_x 7
+dopd_o_k_g get p3 dopd_o_k_p
+dopd_o_k_w and dopd_o_x 127
+dopd_o_k get dopd_o_k_g dopd_o_k_w
+dopd_o_w1 add dopd_o_k_w 1
+dopd_o_v get dopd_o_k_g dopd_o_w1
+dopd_o_r rec dopd_o_k dopd_o_v
+dopd_o mov dopd_o_r
+dopd_ok at dopd_o 0
+dopd_ov at dopd_o 1
+dopd_r_r_g add p11 dopd_ov
+dopd_r_r_sk_v_p shr dopd_r_r_g 7
+dopd_r_r_sk_v_g get p0 dopd_r_r_sk_v_p
+dopd_r_r_sk_v_w and dopd_r_r_g 127
+dopd_r_r_sk_v get dopd_r_r_sk_v_g dopd_r_r_sk_v_w
+dopd_r_r_sk mov dopd_r_r_sk_v
+dopd_r_r_vi add 2816 dopd_r_r_g
+dopd_r_r_sv_v_p shr dopd_r_r_vi 7
+dopd_r_r_sv_v_g get p0 dopd_r_r_sv_v_p
+dopd_r_r_sv_v_w and dopd_r_r_vi 127
+dopd_r_r_sv_v get dopd_r_r_sv_v_g dopd_r_r_sv_v_w
+dopd_r_r_sv mov dopd_r_r_sv_v
+dopd_r_r_isn eq dopd_ok 1
+dopd_r_r_hs ne dopd_r_r_sk 0
+dopd_r_r_u and dopd_r_r_isn dopd_r_r_hs
+dopd_r_r_k select dopd_r_r_u dopd_r_r_sk dopd_ok
+dopd_r_r_v select dopd_r_r_u dopd_r_r_sv dopd_ov
+dopd_r_r_r rec dopd_r_r_k dopd_r_r_v
+dopd_r_r mov dopd_r_r_r
+dopd_r_rk at dopd_r_r 0
+dopd_r_rv at dopd_r_r 1
+dopd_r_red and dfl 4
+dopd_r_isr ne dopd_r_red 0
+dopd_r_k1 eq dix 1
+dopd_r_rep and dopd_r_isr dopd_r_k1
+dopd_r_nop shr dfl 8
+dopd_r_sh eq dopd_r_nop 9
+dopd_r_lg call ozlg2 dopd_r_rv
+dopd_r_m1 sub dopd_r_rv 1
+dopd_r_lit select dopd_r_sh dopd_r_lg dopd_r_m1
+dopd_r_fk select dopd_r_rep 3 dopd_r_rk
+dopd_r_fv select dopd_r_rep dopd_r_lit dopd_r_rv
+dopd_r_res rec dopd_r_fk dopd_r_fv
+dopd_r mov dopd_r_res
+dopd mov dopd_r
+dk at dopd 0
+dv at dopd 1
+gh1 and isget an
+gh2 and gh1 darr
+gh and gh2 bk3
+ah1 and isat an
+ah2 and ah1 d23
+ah and ah2 bk3
+gah or gh ah
+ih1 or idh gah
+ih2 and ih1 nallc
+subi and ih2 neff
+ik select gah dk idk
+iv select gah dv idv
+# strength reduction (div/rem by a power of two), then CSE unless arr rec text
+o10 eq op 10
+o11 eq op 11
+dr or o10 o11
+bnz ne bv 0
+bm1 sub bv 1
+band and bv bm1
+bp2 eq band 0
+r1 and dr bk3
+r2 and r1 bnz
+red and r2 bp2
+rop select o10 9 5
+nop select red rop op
+sb1 or lop sube
+sb2 or sb1 subi
+nsb select sb2 false true
+keep and nsb neff
+n22 eq nop 22
+n23 eq nop 23
+n24 eq nop 24
+nn1 or n22 n23
+nn2 or nn1 n24
+nagg select nn2 false true
+docse and keep nagg
+rb select red 4 0
+ef2 select eff 2 0
+nop8 shl nop 8
+fx1 or 1 rb
+fx2 or fx1 ef2
+fli or fx2 nop8
+slot0 call ozhash p0 p3 p11 fa na fli cal prd
+pb select docse 4096 0
+ps0 rec slot0 false false 0
+pr loop ozpgo ozprb pb ps0 p0 p3 p2 p11 g fli na fa cal prd
+psl at pr 0
+pfd at pr 1
+phit at pr 3
+cfound and docse pfd
+npfd select pfd false true
+ins and docse npfd
+hl sub phit p11
+sub or sb2 cfound
+sk1 select cfound 1 0
+sk2 select subi ik sk1
+sk3 select sube lk sk2
+sk select lop lk sk3
+sv1 select cfound hl 0
+sv2 select subi iv sv1
+sv3 select sube evv sv2
+sv select lop opv sv3
+nsub select sub false true
+flw select nsub fli 0
+# writes: SK SV FL, the hash slot, LIM REQ, the request bits of the callee and predicate
+w1_p shr g 7
+w1_g get p0 w1_p
+w1_w and g 127
+skw select sub sk 0
+w1_h set w1_g w1_w skw
+t1 set p0 w1_p w1_h
+svi add 2816 g
+w2_p shr svi 7
+w2_g get t1 w2_p
+w2_w and svi 127
+svw select sub sv 0
+w2_h set w2_g w2_w svw
+t2 set t1 w2_p w2_h
+fwi add 5632 g
+w3_p shr fwi 7
+w3_g get t2 w3_p
+w3_w and fwi 127
+w3_h set w3_g w3_w flw
+t3 set t2 w3_p w3_h
+hti add 8448 psl
+w4_p shr hti 7
+w4_g get t3 w4_p
+w4_w and hti 127
+w4o get w4_g w4_w
+g1 add g 1
+htv select ins g1 w4o
+w4_h set w4_g w4_w htv
+t4 set t3 w4_p w4_h
+w5_g get t4 98
+lo get w5_g 0
+ro get w5_g 1
+lb select lime 1 0
+ln or lo lb
+rq or rqc rqp
+rbq select rq 1 0
+rn or ro rbq
+w5a set w5_g 0 ln
+w5b set w5a 1 rn
+t5 set t4 98 w5b
+qc shr cal 5
+qci add 12560 qc
+qcb and cal 31
+qcm shl 1 qcb
+w6_p shr qci 7
+w6_g get t5 w6_p
+w6_w and qci 127
+w6o get w6_g w6_w
+w6n or w6o qcm
+w6v select rqc w6n w6o
+w6_h set w6_g w6_w w6v
+t6 set t5 w6_p w6_h
+qp shr prd 5
+qpi add 12560 qp
+qpb and prd 31
+qpm shl 1 qpb
+w7_p shr qpi 7
+w7_g get t6 w7_p
+w7_w and qpi 127
+w7o get w7_g w7_w
+w7n or w7o qpm
+w7v select rqp w7n w7o
+w7_h set w7_g w7_w w7v
+t7 set t6 w7_p w7_h
+ret t7
+end
+# chunk function p12 + p1 (tables fns p7), every node in order
+fn ozfwdf u32x128x100 u32 u32x128x128 u32x128x512 u32x128x24 u32x128x65 u32x128x65 u32x128x45 u32x128x45 u32x128x128 u32x128x512 u32x128x16 u32 -> u32x128x100
+f add p12 p1
+fb mul f 7
+fp_w add fb 2
+fp_wp shr fp_w 7
+fp_wg get p7 fp_wp
+fp_wl and fp_w 127
+fp_v get fp_wg fp_wl
+fp mov fp_v
+fn0_w add fb 4
+fn0_wp shr fn0_w 7
+fn0_wg get p7 fn0_wp
+fn0_wl and fn0_w 127
+fn0_v get fn0_wg fn0_wl
+fn0 mov fn0_v
+cnt_w add fb 5
+cnt_wp shr cnt_w 7
+cnt_wg get p7 cnt_wp
+cnt_wl and cnt_w 127
+cnt_v get cnt_wg cnt_wl
+cnt mov cnt_v
+r fold ozfwd cnt p0 p2 p3 p4 p5 p6 p8 p9 p10 p11 fn0 fp
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Dead-code elimination, order, ret (the order table)
+
+# operand p1 of a live node (operands from p4, first node p5, flags p6) is live
+fn ozmark u32x128x144 u32 u32x128x100 u32x128x512 u32 u32 u32 -> u32x128x144
+o_i add p4 p1
+o_o_x mul o_i 2
+o_o_k_p shr o_o_x 7
+o_o_k_g get p3 o_o_k_p
+o_o_k_w and o_o_x 127
+o_o_k get o_o_k_g o_o_k_w
+o_o_w1 add o_o_k_w 1
+o_o_v get o_o_k_g o_o_w1
+o_o_r rec o_o_k o_o_v
+o_o mov o_o_r
+o_ok at o_o 0
+o_ov at o_o 1
+o_r_r_g add p5 o_ov
+o_r_r_sk_v_p shr o_r_r_g 7
+o_r_r_sk_v_g get p2 o_r_r_sk_v_p
+o_r_r_sk_v_w and o_r_r_g 127
+o_r_r_sk_v get o_r_r_sk_v_g o_r_r_sk_v_w
+o_r_r_sk mov o_r_r_sk_v
+o_r_r_vi add 2816 o_r_r_g
+o_r_r_sv_v_p shr o_r_r_vi 7
+o_r_r_sv_v_g get p2 o_r_r_sv_v_p
+o_r_r_sv_v_w and o_r_r_vi 127
+o_r_r_sv_v get o_r_r_sv_v_g o_r_r_sv_v_w
+o_r_r_sv mov o_r_r_sv_v
+o_r_r_isn eq o_ok 1
+o_r_r_hs ne o_r_r_sk 0
+o_r_r_u and o_r_r_isn o_r_r_hs
+o_r_r_k select o_r_r_u o_r_r_sk o_ok
+o_r_r_v select o_r_r_u o_r_r_sv o_ov
+o_r_r_r rec o_r_r_k o_r_r_v
+o_r_r mov o_r_r_r
+o_r_rk at o_r_r 0
+o_r_rv at o_r_r 1
+o_r_red and p6 4
+o_r_isr ne o_r_red 0
+o_r_k1 eq p1 1
+o_r_rep and o_r_isr o_r_k1
+o_r_nop shr p6 8
+o_r_sh eq o_r_nop 9
+o_r_lg call ozlg2 o_r_rv
+o_r_m1 sub o_r_rv 1
+o_r_lit select o_r_sh o_r_lg o_r_m1
+o_r_fk select o_r_rep 3 o_r_rk
+o_r_fv select o_r_rep o_r_lit o_r_rv
+o_r_res rec o_r_fk o_r_fv
+o_r mov o_r_res
+o mov o_r
+ok at o 0
+ov at o 1
+isn eq ok 1
+m add p5 ov
+m_p shr m 7
+m_g get p0 m_p
+m_w and m 127
+lv get m_g m_w
+lv1 or lv 1
+nv select isn lv1 lv
+m_h set m_g m_w nv
+r set p0 m_p m_h
+ret r
+end
+# node p6 - 1 - p1 of the function at p5, backwards: live when marked or anchored; a live
+# kept node marks its operands; counts the anchored nodes and notes a live set/put
+fn ozdce u32x128x144 u32 u32x128x100 u32x128x128 u32x128x512 u32 u32 -> u32x128x144
+i1 sub p6 1
+i sub i1 p1
+g add p5 i
+fi add 5632 g
+fl_v_p shr fi 7
+fl_v_g get p2 fl_v_p
+fl_v_w and fi 127
+fl_v get fl_v_g fl_v_w
+fl mov fl_v
+kp and fl 1
+kept ne kp 0
+an2 and fl 2
+anc ne an2 0
+g_p shr g 7
+g_g get p0 g_p
+g_w and g 127
+lv get g_g g_w
+lv1 and lv 1
+lvb ne lv1 0
+live or lvb anc
+act and kept live
+nop shr fl 8
+s26 eq nop 26
+s28 eq nop 28
+spp or s26 s28
+spa and act spp
+na_r6 mul g 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p3 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul g 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p3 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+lvo or lv 1
+lvn select act lvo lv
+g_h set g_g g_w lvn
+t1 set p0 g_p g_h
+s_g get t1 142
+so get s_g 3
+ao get s_g 6
+sb select spa 1 0
+sn or so sb
+ab select anc 1 0
+an add ao ab
+s1 set s_g 3 sn
+s2 set s1 6 an
+t2 set t1 142 s2
+nm select act na 0
+t3 fold ozmark nm t2 p2 p4 fa p5 fl
+ret t3
+end
+# node p1 of the function at p3 in source order (functions with an anchored node or a set/put)
+fn ozpos u32x128x144 u32 u32x128x100 u32 -> u32x128x144
+g add p3 p1
+fi add 5632 g
+fl_v_p shr fi 7
+fl_v_g get p2 fl_v_p
+fl_v_w and fi 127
+fl_v get fl_v_g fl_v_w
+fl mov fl_v
+kp and fl 1
+kept ne kp 0
+g_p shr g 7
+g_g get p0 g_p
+g_w and g 127
+lv get g_g g_w
+lv1 and lv 1
+live ne lv1 0
+reach and kept live
+s_g get p0 142
+nout get s_g 1
+oi1 add 5632 p3
+oi add oi1 nout
+o_p shr oi 7
+o_g get p0 o_p
+o_w and oi 127
+oo get o_g o_w
+ov select reach g oo
+o_h set o_g o_w ov
+t1 set p0 o_p o_h
+pi add 2816 g
+q_p shr pi 7
+q_g get t1 q_p
+q_w and pi 127
+qo get q_g q_w
+qv select reach nout qo
+q_h set q_g q_w qv
+t2 set t1 q_p q_h
+n1 add nout 1
+nn select reach n1 nout
+c_g get t2 142
+c1 set c_g 1 nn
+t3 set t2 142 c1
+ret t3
+end
+# `schedule`: an iterative post-order from the ret (p7 p8), then from each reachable node in
+# order, operands left to right; a node is placed at its first push
+fn ozsgo u32x128x144 u32 u32x128x100 u32x128x128 u32x128x512 u32 u32 u32 u32 -> bool
+s_g get p0 142
+sp get s_g 0
+root get s_g 2
+a ne sp 0
+b le root p6
+r or a b
+ret r
+end
+fn ozsst u32x128x144 u32 u32x128x100 u32x128x128 u32x128x512 u32 u32 u32 u32 -> u32x128x144
+s_g get p0 142
+sp get s_g 0
+nout get s_g 1
+root get s_g 2
+has ne sp 0
+nhas select has false true
+dm sub sp 1
+dd select has dm 0
+d2 mul dd 2
+si add 8448 d2
+si_p shr si 7
+si_g get p0 si_p
+si_w and si 127
+tg get si_g si_w
+si1 add si_w 1
+tk get si_g si1
+tna_r6 mul tg 6
+tna_i add tna_r6 2
+tna_v_p shr tna_i 7
+tna_v_g get p3 tna_v_p
+tna_v_w and tna_i 127
+tna_v get tna_v_g tna_v_w
+tna mov tna_v
+tfa_r6 mul tg 6
+tfa_i add tfa_r6 3
+tfa_v_p shr tfa_i 7
+tfa_v_g get p3 tfa_v_p
+tfa_v_w and tfa_i 127
+tfa_v get tfa_v_g tfa_v_w
+tfa mov tfa_v
+tfi add 5632 tg
+tfl_v_p shr tfi 7
+tfl_v_g get p2 tfl_v_p
+tfl_v_w and tfi 127
+tfl_v get tfl_v_g tfl_v_w
+tfl mov tfl_v
+fin ge tk tna
+nfin select fin false true
+o_i add tfa tk
+o_o_x mul o_i 2
+o_o_k_p shr o_o_x 7
+o_o_k_g get p4 o_o_k_p
+o_o_k_w and o_o_x 127
+o_o_k get o_o_k_g o_o_k_w
+o_o_w1 add o_o_k_w 1
+o_o_v get o_o_k_g o_o_w1
+o_o_r rec o_o_k o_o_v
+o_o mov o_o_r
+o_ok at o_o 0
+o_ov at o_o 1
+o_r_r_g add p5 o_ov
+o_r_r_sk_v_p shr o_r_r_g 7
+o_r_r_sk_v_g get p2 o_r_r_sk_v_p
+o_r_r_sk_v_w and o_r_r_g 127
+o_r_r_sk_v get o_r_r_sk_v_g o_r_r_sk_v_w
+o_r_r_sk mov o_r_r_sk_v
+o_r_r_vi add 2816 o_r_r_g
+o_r_r_sv_v_p shr o_r_r_vi 7
+o_r_r_sv_v_g get p2 o_r_r_sv_v_p
+o_r_r_sv_v_w and o_r_r_vi 127
+o_r_r_sv_v get o_r_r_sv_v_g o_r_r_sv_v_w
+o_r_r_sv mov o_r_r_sv_v
+o_r_r_isn eq o_ok 1
+o_r_r_hs ne o_r_r_sk 0
+o_r_r_u and o_r_r_isn o_r_r_hs
+o_r_r_k select o_r_r_u o_r_r_sk o_ok
+o_r_r_v select o_r_r_u o_r_r_sv o_ov
+o_r_r_r rec o_r_r_k o_r_r_v
+o_r_r mov o_r_r_r
+o_r_rk at o_r_r 0
+o_r_rv at o_r_r 1
+o_r_red and tfl 4
+o_r_isr ne o_r_red 0
+o_r_k1 eq tk 1
+o_r_rep and o_r_isr o_r_k1
+o_r_nop shr tfl 8
+o_r_sh eq o_r_nop 9
+o_r_lg call ozlg2 o_r_rv
+o_r_m1 sub o_r_rv 1
+o_r_lit select o_r_sh o_r_lg o_r_m1
+o_r_fk select o_r_rep 3 o_r_rk
+o_r_fv select o_r_rep o_r_lit o_r_rv
+o_r_res rec o_r_fk o_r_fv
+o_r mov o_r_res
+o mov o_r
+ok at o 0
+ov at o 1
+on eq ok 1
+om add p5 ov
+om_p shr om 7
+om_g get p0 om_p
+om_w and om 127
+olv get om_g om_w
+opl2 and olv 2
+opl ne opl2 0
+nopl select opl false true
+po1 and has nfin
+po2 and po1 on
+pusho and po2 nopl
+isret eq root 0
+nisret select isret false true
+rj sub root 1
+rg add p5 rj
+rfi add 5632 rg
+rfl_v_p shr rfi 7
+rfl_v_g get p2 rfl_v_p
+rfl_v_w and rfi 127
+rfl_v get rfl_v_g rfl_v_w
+rfl mov rfl_v
+rk1 and rfl 1
+rkept ne rk1 0
+rg_p shr rg 7
+rg_g get p0 rg_p
+rg_w and rg 127
+rlv get rg_g rg_w
+rl1 and rlv 1
+rlive ne rl1 0
+rl2 and rlv 2
+rpl ne rl2 0
+nrpl select rpl false true
+inr le root p6
+pr1a and nhas nisret
+pr1b and pr1a inr
+pr1c and pr1b rkept
+pr1d and pr1c rlive
+pr1 and pr1d nrpl
+retn eq p7 1
+retg add p5 p8
+re_p shr retg 7
+re_g get p0 re_p
+re_w and retg 127
+relv get re_g re_w
+re2 and relv 2
+repl ne re2 0
+nrepl select repl false true
+pr0a and nhas isret
+pr0b and pr0a retn
+pr0 and pr0b nrepl
+pu1 or pusho pr0
+push or pu1 pr1
+pga select pr0 retg rg
+pg select pusho om pga
+pop and has fin
+# the top's next operand
+k1 add tk 1
+kx select po1 k1 tk
+st1 set si_g si1 kx
+t1 set p0 si_p st1
+# a pop places the node
+oi1 add 5632 p5
+oi add oi1 nout
+o_p shr oi 7
+o_g get t1 o_p
+o_w and oi 127
+oo get o_g o_w
+ovv select pop tg oo
+o_h set o_g o_w ovv
+t2 set t1 o_p o_h
+pi add 2816 tg
+q_p shr pi 7
+q_g get t2 q_p
+q_w and pi 127
+qo get q_g q_w
+qv select pop nout qo
+q_h set q_g q_w qv
+t3 set t2 q_p q_h
+# a push marks the node placed and puts (node, 0) above the top
+v_p shr pg 7
+v_g get t3 v_p
+v_w and pg 127
+vo get v_g v_w
+vo2 or vo 2
+vv select push vo2 vo
+v_h set v_g v_w vv
+t4 set t3 v_p v_h
+s2 mul sp 2
+ni add 8448 s2
+n_p shr ni 7
+n_g get t4 n_p
+n_w and ni 127
+n1 set n_g n_w pg
+n_w1 add n_w 1
+n2 set n1 n_w1 0
+t5 set t4 n_p n2
+sp1 add sp 1
+spm sub sp 1
+spx1 select pop spm sp
+spx select push sp1 spx1
+no1 add nout 1
+nox select pop no1 nout
+ro1 add root 1
+rox select nhas ro1 root
+c_g get t5 142
+c1 set c_g 0 spx
+c2 set c1 1 nox
+c3 set c2 2 rox
+t6 set t5 142 c3
+ret t6
+end
+# chunk function p6 + p1: dead-code elimination, the order, the ret (a u32 literal of 2^28 or
+# more becomes kind 5 in the input's own slot or the next free one, at most 32768 operands)
+fn ozfn2 u32x128x144 u32 u32x128x100 u32x128x128 u32x128x512 u32x128x45 u32 -> u32x128x144
+f add p6 p1
+fb mul f 7
+fn0_w add fb 4
+fn0_wp shr fn0_w 7
+fn0_wg get p5 fn0_wp
+fn0_wl and fn0_w 127
+fn0_v get fn0_wg fn0_wl
+fn0 mov fn0_v
+cnt_w add fb 5
+cnt_wp shr cnt_w 7
+cnt_wg get p5 cnt_wp
+cnt_wl and cnt_w 127
+cnt_v get cnt_wg cnt_wl
+cnt mov cnt_v
+rw_w add fb 6
+rw_wp shr rw_w 7
+rw_wg get p5 rw_wp
+rw_wl and rw_w 127
+rw_v get rw_wg rw_wl
+rw mov rw_v
+rk0 shr rw 28
+rv0 and rw 268435455
+k5 eq rk0 5
+ro_x mul rv0 2
+ro_k_p shr ro_x 7
+ro_k_g get p4 ro_k_p
+ro_k_w and ro_x 127
+ro_k get ro_k_g ro_k_w
+ro_w1 add ro_k_w 1
+ro_v get ro_k_g ro_w1
+ro_r rec ro_k ro_v
+ro mov ro_r
+rok at ro 0
+rov at ro 1
+rk1 select k5 rok rk0
+rv1 select k5 rov rv0
+rr_g add fn0 rv1
+rr_sk_v_p shr rr_g 7
+rr_sk_v_g get p2 rr_sk_v_p
+rr_sk_v_w and rr_g 127
+rr_sk_v get rr_sk_v_g rr_sk_v_w
+rr_sk mov rr_sk_v
+rr_vi add 2816 rr_g
+rr_sv_v_p shr rr_vi 7
+rr_sv_v_g get p2 rr_sv_v_p
+rr_sv_v_w and rr_vi 127
+rr_sv_v get rr_sv_v_g rr_sv_v_w
+rr_sv mov rr_sv_v
+rr_isn eq rk1 1
+rr_hs ne rr_sk 0
+rr_u and rr_isn rr_hs
+rr_k select rr_u rr_sk rk1
+rr_v select rr_u rr_sv rv1
+rr_r rec rr_k rr_v
+rr mov rr_r
+rk at rr 0
+rv at rr 1
+s_g get p0 142
+s1 set s_g 0 0
+s2 set s1 1 0
+s3 set s2 2 0
+s4 set s3 3 0
+s5 set s4 6 0
+t0 set p0 142 s5
+rn eq rk 1
+rg add fn0 rv
+m_p shr rg 7
+m_g get t0 m_p
+m_w and rg 127
+mo get m_g m_w
+mo1 or mo 1
+mv select rn mo1 mo
+m_h set m_g m_w mv
+t1 set t0 m_p m_h
+t2 fold ozdce cnt t1 p2 p3 p4 fn0 cnt
+c_g get t2 142
+setput get c_g 3
+anch get c_g 6
+a0 eq anch 0
+sp0 eq setput 0
+sched and a0 sp0
+npos select sched 0 cnt
+t3 fold ozpos npos t2 p2 fn0
+c2 mul cnt 2
+sb1 add 65544 c2
+sb select sched sb1 0
+t4 loop ozsgo ozsst sb t3 p2 p3 p4 fn0 cnt rk rv
+e_g get t4 142
+nout get e_g 1
+next get e_g 4
+code get e_g 5
+pi1 add 2816 rg
+rpos_v_p shr pi1 7
+rpos_v_g get t4 rpos_v_p
+rpos_v_w and pi1 127
+rpos_v get rpos_v_g rpos_v_w
+rpos mov rpos_v
+fv select rn rpos rv
+k3 eq rk 3
+bigv ge rv 268435456
+big and k3 bigv
+nk5 select k5 false true
+fresh and big nk5
+slot select k5 rv0 next
+nx1 add next 1
+nnext select fresh nx1 next
+full ge next 32768
+over and fresh full
+rks shl rk 28
+pw1 or rks fv
+pw2 or 1342177280 slot
+pw select big pw2 pw1
+rsv select big slot 4294967295
+cx select over 4 code
+ni add 14080 f
+n_p shr ni 7
+n_g get t4 n_p
+n_w and ni 127
+n_h set n_g n_w nout
+u1 set t4 n_p n_h
+wi add 15104 f
+w_p shr wi 7
+w_g get u1 w_p
+w_w and wi 127
+w_h set w_g w_w pw
+u2 set u1 w_p w_h
+li add 16128 f
+l_p shr li 7
+l_g get u2 l_p
+l_w and li 127
+l_h set l_g l_w rv
+u3 set u2 l_p l_h
+si add 17152 f
+q_p shr si 7
+q_g get u3 q_p
+q_w and si 127
+q_h set q_g q_w rsv
+u4 set u3 q_p q_h
+x_g get u4 142
+x1 set x_g 4 nnext
+x2 set x1 5 cx
+u5 set u4 142 x2
+ret u5
+end
+
+# ---------------------------------------------------------------------------------------------
+# The optimized tables
+
+# operand p1 of a kept node (operands from p4, first node p5, flags p6), in place: final,
+# a node renumbered to its position
+fn ozargw u32x128x512 u32 u32x128x100 u32x128x144 u32 u32 u32 -> u32x128x512
+pi add p4 p1
+x mul pi 2
+x_p shr x 7
+x_g get p0 x_p
+x_w and x 127
+ok get x_g x_w
+x1 add x_w 1
+ov get x_g x1
+f_r_g add p5 ov
+f_r_sk_v_p shr f_r_g 7
+f_r_sk_v_g get p2 f_r_sk_v_p
+f_r_sk_v_w and f_r_g 127
+f_r_sk_v get f_r_sk_v_g f_r_sk_v_w
+f_r_sk mov f_r_sk_v
+f_r_vi add 2816 f_r_g
+f_r_sv_v_p shr f_r_vi 7
+f_r_sv_v_g get p2 f_r_sv_v_p
+f_r_sv_v_w and f_r_vi 127
+f_r_sv_v get f_r_sv_v_g f_r_sv_v_w
+f_r_sv mov f_r_sv_v
+f_r_isn eq ok 1
+f_r_hs ne f_r_sk 0
+f_r_u and f_r_isn f_r_hs
+f_r_k select f_r_u f_r_sk ok
+f_r_v select f_r_u f_r_sv ov
+f_r_r rec f_r_k f_r_v
+f_r mov f_r_r
+f_rk at f_r 0
+f_rv at f_r 1
+f_red and p6 4
+f_isr ne f_red 0
+f_k1 eq p1 1
+f_rep and f_isr f_k1
+f_nop shr p6 8
+f_sh eq f_nop 9
+f_lg call ozlg2 f_rv
+f_m1 sub f_rv 1
+f_lit select f_sh f_lg f_m1
+f_fk select f_rep 3 f_rk
+f_fv select f_rep f_lit f_rv
+f_res rec f_fk f_fv
+f mov f_res
+fk at f 0
+fv at f 1
+isn eq fk 1
+m add p5 fv
+psi add 2816 m
+ps_v_p shr psi 7
+ps_v_g get p3 ps_v_p
+ps_v_w and psi 127
+ps_v get ps_v_g ps_v_w
+ps mov ps_v
+nv select isn ps fv
+h1 set x_g x_w fk
+h2 set h1 x1 nv
+r set p0 x_p h2
+ret r
+end
+fn ozargn u32x128x512 u32 u32x128x100 u32x128x144 u32x128x128 u32 -> u32x128x512
+g add p5 p1
+fi add 5632 g
+fl_v_p shr fi 7
+fl_v_g get p2 fl_v_p
+fl_v_w and fi 127
+fl_v get fl_v_g fl_v_w
+fl mov fl_v
+kp and fl 1
+kept ne kp 0
+lv_v_p shr g 7
+lv_v_g get p3 lv_v_p
+lv_v_w and g 127
+lv_v get lv_v_g lv_v_w
+lv mov lv_v
+lv1 and lv 1
+live ne lv1 0
+reach and kept live
+na_r6 mul g 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p4 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul g 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p4 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+n select reach na 0
+r fold ozargw n p0 p2 p3 fa p5 fl
+ret r
+end
+fn ozargs u32x128x512 u32 u32x128x100 u32x128x144 u32x128x128 u32x128x45 u32 -> u32x128x512
+f add p6 p1
+fb mul f 7
+fn0_w add fb 4
+fn0_wp shr fn0_w 7
+fn0_wg get p5 fn0_wp
+fn0_wl and fn0_w 127
+fn0_v get fn0_wg fn0_wl
+fn0 mov fn0_v
+cnt_w add fb 5
+cnt_wp shr cnt_w 7
+cnt_wg get p5 cnt_wp
+cnt_wl and cnt_w 127
+cnt_v get cnt_wg cnt_wl
+cnt mov cnt_v
+r fold ozargn cnt p0 p2 p3 p4 fn0
+ret r
+end
+# the kind 5 ret operand of chunk function p3 + p1
+fn ozretw u32x128x512 u32 u32x128x144 u32 -> u32x128x512
+f add p3 p1
+si add 17152 f
+rs_v_p shr si 7
+rs_v_g get p2 rs_v_p
+rs_v_w and si 127
+rs_v get rs_v_g rs_v_w
+rs mov rs_v
+li add 16128 f
+rl_v_p shr li 7
+rl_v_g get p2 rl_v_p
+rl_v_w and li 127
+rl_v get rl_v_g rl_v_w
+rl mov rl_v
+has ne rs 4294967295
+x mul rs 2
+x_p shr x 7
+x_g get p0 x_p
+x_w and x 127
+ok get x_g x_w
+x1 add x_w 1
+ov get x_g x1
+nk select has 3 ok
+nv select has rl ov
+h1 set x_g x_w nk
+h2 set h1 x1 nv
+r set p0 x_p h2
+ret r
+end
+# position p1 of the function at p5: the row of the node placed there, with its final op
+fn ozwnr u32x128x128 u32 u32x128x128 u32x128x100 u32x128x144 u32 -> u32x128x128
+q add p5 p1
+oi add 5632 q
+g_v_p shr oi 7
+g_v_g get p4 g_v_p
+g_v_w and oi 127
+g_v get g_v_g g_v_w
+g mov g_v
+fi add 5632 g
+fl_v_p shr fi 7
+fl_v_g get p3 fl_v_p
+fl_v_w and fi 127
+fl_v get fl_v_g fl_v_w
+fl mov fl_v
+nop shr fl 8
+id_r6 mul g 6
+id_i add id_r6 0
+id_v_p shr id_i 7
+id_v_g get p2 id_v_p
+id_v_w and id_i 127
+id_v get id_v_g id_v_w
+id mov id_v
+na_r6 mul g 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p2 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul g 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p2 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+ca_r6 mul g 6
+ca_i add ca_r6 4
+ca_v_p shr ca_i 7
+ca_v_g get p2 ca_v_p
+ca_v_w and ca_i 127
+ca_v get ca_v_g ca_v_w
+ca mov ca_v
+pr_r6 mul g 6
+pr_i add pr_r6 5
+pr_v_p shr pr_i 7
+pr_v_g get p2 pr_v_p
+pr_v_w and pr_i 127
+pr_v get pr_v_g pr_v_w
+pr mov pr_v
+b mul q 6
+b_p shr b 7
+b_g get p0 b_p
+b_w and b 127
+b_h set b_g b_w id
+t1 set p0 b_p b_h
+b1 add b 1
+b1_p shr b1 7
+b1_g get t1 b1_p
+b1_w and b1 127
+b1_h set b1_g b1_w nop
+t2 set t1 b1_p b1_h
+b2 add b 2
+b2_p shr b2 7
+b2_g get t2 b2_p
+b2_w and b2 127
+b2_h set b2_g b2_w na
+t3 set t2 b2_p b2_h
+b3 add b 3
+b3_p shr b3 7
+b3_g get t3 b3_p
+b3_w and b3 127
+b3_h set b3_g b3_w fa
+t4 set t3 b3_p b3_h
+b4 add b 4
+b4_p shr b4 7
+b4_g get t4 b4_p
+b4_w and b4 127
+b4_h set b4_g b4_w ca
+t5 set t4 b4_p b4_h
+b5 add b 5
+b5_p shr b5 7
+b5_g get t5 b5_p
+b5_w and b5 127
+b5_h set b5_g b5_w pr
+t6 set t5 b5_p b5_h
+ret t6
+end
+fn ozwnf u32x128x128 u32 u32x128x128 u32x128x100 u32x128x144 u32x128x45 u32 -> u32x128x128
+f add p6 p1
+fb mul f 7
+fn0_w add fb 4
+fn0_wp shr fn0_w 7
+fn0_wg get p5 fn0_wp
+fn0_wl and fn0_w 127
+fn0_v get fn0_wg fn0_wl
+fn0 mov fn0_v
+ni add 14080 f
+nc_v_p shr ni 7
+nc_v_g get p4 nc_v_p
+nc_v_w and ni 127
+nc_v get nc_v_g nc_v_w
+nc mov nc_v
+r fold ozwnr nc p0 p2 p3 p4 fn0
+ret r
+end
+fn ozwty u32x128x24 u32 u32x128x24 u32x128x144 u32 -> u32x128x24
+q add p4 p1
+oi add 5632 q
+g_v_p shr oi 7
+g_v_g get p3 g_v_p
+g_v_w and oi 127
+g_v get g_v_g g_v_w
+g mov g_v
+t_v_p shr g 7
+t_v_g get p2 t_v_p
+t_v_w and g 127
+t_v get t_v_g t_v_w
+t mov t_v
+w_p shr q 7
+w_g get p0 w_p
+w_w and q 127
+w_h set w_g w_w t
+r set p0 w_p w_h
+ret r
+end
+fn ozwtf u32x128x24 u32 u32x128x24 u32x128x144 u32x128x45 u32 -> u32x128x24
+f add p5 p1
+fb mul f 7
+fn0_w add fb 4
+fn0_wp shr fn0_w 7
+fn0_wg get p4 fn0_wp
+fn0_wl and fn0_w 127
+fn0_v get fn0_wg fn0_wl
+fn0 mov fn0_v
+ni add 14080 f
+nc_v_p shr ni 7
+nc_v_g get p3 nc_v_p
+nc_v_w and ni 127
+nc_v get nc_v_g nc_v_w
+nc mov nc_v
+r fold ozwty nc p0 p2 p3 fn0
+ret r
+end
+fn ozwff u32x128x45 u32 u32x128x144 u32 -> u32x128x45
+f add p3 p1
+ni add 14080 f
+nc_v_p shr ni 7
+nc_v_g get p2 nc_v_p
+nc_v_w and ni 127
+nc_v get nc_v_g nc_v_w
+nc mov nc_v
+wi add 15104 f
+rw_v_p shr wi 7
+rw_v_g get p2 rw_v_p
+rw_v_w and wi 127
+rw_v get rw_v_g rw_v_w
+rw mov rw_v
+fb mul f 7
+a add fb 5
+a_p shr a 7
+a_g get p0 a_p
+a_w and a 127
+a_h set a_g a_w nc
+t1 set p0 a_p a_h
+b add fb 6
+b_p shr b 7
+b_g get t1 b_p
+b_w and b 127
+b_h set b_g b_w rw
+t2 set t1 b_p b_h
+ret t2
+end
+
+# ---------------------------------------------------------------------------------------------
+# Output: the chunk (compiler/emit_wasm.a0 `wachunk`), the optimized IR, or the requests
+
+# the optimized IR of a chunk function, for the check against src/optimize.ts: its node
+# count, per node op, operand count, callee, pred, type and the operand pairs, then the ret
+# operand (kind, value)
+fn ozdo io u32 u32x128x512 u32 -> io
+i add p3 p1
+o_x mul i 2
+o_k_p shr o_x 7
+o_k_g get p2 o_k_p
+o_k_w and o_x 127
+o_k get o_k_g o_k_w
+o_w1 add o_k_w 1
+o_v get o_k_g o_w1
+o_r rec o_k o_v
+o mov o_r
+k at o 0
+v at o 1
+w1 write p0 k
+w2 write w1 v
+ret w2
+end
+fn ozdn io u32 u32x128x128 u32x128x512 u32x128x24 u32 -> io
+g add p5 p1
+op_r6 mul g 6
+op_i add op_r6 1
+op_v_p shr op_i 7
+op_v_g get p2 op_v_p
+op_v_w and op_i 127
+op_v get op_v_g op_v_w
+op mov op_v
+na_r6 mul g 6
+na_i add na_r6 2
+na_v_p shr na_i 7
+na_v_g get p2 na_v_p
+na_v_w and na_i 127
+na_v get na_v_g na_v_w
+na mov na_v
+fa_r6 mul g 6
+fa_i add fa_r6 3
+fa_v_p shr fa_i 7
+fa_v_g get p2 fa_v_p
+fa_v_w and fa_i 127
+fa_v get fa_v_g fa_v_w
+fa mov fa_v
+ca_r6 mul g 6
+ca_i add ca_r6 4
+ca_v_p shr ca_i 7
+ca_v_g get p2 ca_v_p
+ca_v_w and ca_i 127
+ca_v get ca_v_g ca_v_w
+ca mov ca_v
+pr_r6 mul g 6
+pr_i add pr_r6 5
+pr_v_p shr pr_i 7
+pr_v_g get p2 pr_v_p
+pr_v_w and pr_i 127
+pr_v get pr_v_g pr_v_w
+pr mov pr_v
+t_v_p shr g 7
+t_v_g get p4 t_v_p
+t_v_w and g 127
+t_v get t_v_g t_v_w
+t mov t_v
+w1 write p0 op
+w2 write w1 na
+w3 write w2 ca
+w4 write w3 pr
+w5 write w4 t
+w6 fold ozdo na w5 p3 fa
+ret w6
+end
+fn ozdf io u32 u32x128x128 u32x128x512 u32x128x24 u32x128x45 u32 -> io
+f add p6 p1
+fb mul f 7
+fn0_w add fb 4
+fn0_wp shr fn0_w 7
+fn0_wg get p5 fn0_wp
+fn0_wl and fn0_w 127
+fn0_v get fn0_wg fn0_wl
+fn0 mov fn0_v
+cnt_w add fb 5
+cnt_wp shr cnt_w 7
+cnt_wg get p5 cnt_wp
+cnt_wl and cnt_w 127
+cnt_v get cnt_wg cnt_wl
+cnt mov cnt_v
+rw_w add fb 6
+rw_wp shr rw_w 7
+rw_wg get p5 rw_wp
+rw_wl and rw_w 127
+rw_v get rw_wg rw_wl
+rw mov rw_v
+w1 write p0 cnt
+w2 fold ozdn cnt w1 p2 p3 p4 fn0
+rr call waretop p3 rw
+k at rr 0
+v at rr 1
+w3 write w2 k
+w4 write w3 v
+ret w4
+end
+fn ozdump io u32 u32x128x128 u32x128x512 u32x128x24 u32x128x45 u32 u32 -> io
+k sub p7 p6
+r fold ozdf k p0 p2 p3 p4 p5 p6
+ret r
+end
+# the requested chunk functions (a bit each in the forward table), then their count
+fn ozrqc (io,u32) u32 u32x128x100 -> (io,u32)
+wi shr p1 5
+qi add 12560 wi
+w_v_p shr qi 7
+w_v_g get p2 w_v_p
+w_v_w and qi 127
+w_v get w_v_g w_v_w
+w mov w_v
+b and p1 31
+x shr w b
+y and x 1
+on ne y 0
+n select on 1 0
+t at p0 0
+c at p0 1
+t2 fold wawr n t p1
+c2 add c n
+r rec t2 c2
+ret r
+end
+fn ozrq io u32 u32x128x100 u32 -> io
+z rec p0 0
+s fold ozrqc p3 z p2
+t at s 0
+c at s 1
+w write t c
+ret w
+end
+# Optimize functions [p12, p13) of a chunk's checked tables (as `wachunk` takes them: types
+# p1, tlist p2, fns p3, nodes p4, operands p5 (p15 of them), ntys p6, pool p7, fnm p8, call
+# table p9, iteration bounds p10, p11 types, p14 variants before) with the eval program p16
+# p17 p18 and its map p19, then emit the chunk (p20 false) or write the optimized IR (p20).
+# Code 7: the requested chunk functions are written instead; 4: a limit (fuel of a call,
+# the evaluator's capacities, the operand slots).
+fn ozemit io u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x129 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x16 bool -> (io,u32)
+k sub p13 p12
+info call wainfo p1 p2 p11
+z1 call z100
+o1 fold ozfwdf k z1 p4 p5 p6 p2 info p3 p16 p17 p18 p19 p12
+lg get o1 98
+lim get lg 0
+req get lg 1
+c7 ne req 0
+c4 ne lim 0
+cd1 select c4 4 0
+code0 select c7 7 cd1
+ok0 eq code0 0
+k2 select ok0 k 0
+z2 call z144
+zg get z2 142
+zg1 set zg 4 p15
+z3 set z2 142 zg1
+o2 fold ozfn2 k2 z3 o1 p4 p5 p3 p12
+cg get o2 142
+c2 get cg 5
+c2n ne c2 0
+bad and ok0 c2n
+code select bad 4 code0
+ok eq code 0
+k3 select ok k 0
+a1 fold ozargs k3 p5 o1 o2 p4 p3 p12
+a2 fold ozretw k3 a1 o2 p12
+n2 fold ozwnf k3 p4 p4 o1 o2 p3 p12
+y2 fold ozwtf k3 p6 p6 o2 p3 p12
+f2 fold ozwff k3 p3 o2 p12
+nd select p20 false true
+em and ok nd
+dm and ok p20
+rq eq code 7
+gem select em 1 0
+gdm select dm 1 0
+grq select rq 1 0
+w1 fold wachunkst gem p0 p1 p2 f2 n2 a2 y2 p7 p8 p9 p10 p11 p12 p13 p14
+w2 fold ozdump gdm w1 n2 a2 y2 f2 p12 p13
+w3 fold ozrq grq w2 o1 p13
+r rec w3 code
+ret r
+end
+fn ozemitst (io,u32) u32 u32x384x65 u32x128x65 u32x128x45 u32x128x128 u32x128x512 u32x128x24 u32x128x129 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32 u32x128x45 u32x128x128 u32x128x512 u32x128x16 -> (io,u32)
+t at p0 0
+r call ozemit t p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 false
+ret r
+end
+
+# ---------------------------------------------------------------------------------------------
+# Input. Modes 5 and 6 (`ozirchunk`): the input of mode 2 (compiler/emit_wasm.a0 `wairchunk`),
+# then the eval program (function count, 7 words each; node count, 6 words each; operand
+# count, pairs) and its map (one word per chunk function: eval index + 1, 0 when absent).
+# Mode 4 (`ozsunit`): the input of mode 1, then the eval program as source (byte count,
+# bytes: formatted functions, parsed by the A0 front end and not checked) and its map (word
+# count, then the words).
+
+fn ozirchunk io bool -> (io,u32)
+r1 call wardw p0
+base at r1 0
+t1 at r1 1
+r2 call wardw t1
+from at r2 0
+t2 at r2 1
+nd mul from 2
+rd call warn16 t2 nd
+dt at rd 0
+t3 at rd 1
+r4 call wardw t3
+nty at r4 0
+t4 at r4 1
+ntw mul nty 3
+rt call warnty t4 ntw
+ty at rt 0
+t5 at rt 1
+r6 call wardw t5
+ntl at r6 0
+t6 at r6 1
+rl call warn65 t6 ntl
+tl at rl 0
+t7 at rl 1
+r8 call wardw t7
+nf at r8 0
+t8 at r8 1
+nfw mul nf 7
+rf call warn45 t8 nfw
+fs at rf 0
+t9 at rf 1
+r10 call wardw t9
+nn at r10 0
+t10 at r10 1
+nnw mul nn 6
+rn call warn128 t10 nnw
+nds at rn 0
+t11 at rn 1
+ry call warn24 t11 nn
+nty2 at ry 0
+t12 at ry 1
+r13 call wardw t12
+no at r13 0
+t13 at r13 1
+now mul no 2
+ra call warn512 t13 now
+ar at ra 0
+t14 at ra 1
+r15 call wardw t14
+npl at r15 0
+t15 at r15 1
+rp call warn129 t15 npl
+pl at rp 0
+t16 at rp 1
+nfm mul nf 2
+rm call warn16 t16 nfm
+fm at rm 0
+t17 at rm 1
+e1 call wardw t17
+nef at e1 0
+t18 at e1 1
+nefw mul nef 7
+ef call warn45 t18 nefw
+efn at ef 0
+t19 at ef 1
+e2 call wardw t19
+nen at e2 0
+t20 at e2 1
+nenw mul nen 6
+en call warn128 t20 nenw
+enode at en 0
+t21 at en 1
+e3 call wardw t21
+nea at e3 0
+t22 at e3 1
+neaw mul nea 2
+ea call warn512 t22 neaw
+earg at ea 0
+t23 at ea 1
+em call warn16 t23 nf
+emap at em 0
+t24 at em 1
+z8 call z8
+w call ozemit t24 ty tl fs nds ar nty2 pl fm dt z8 nty from nf base no efn enode earg emap p1
+ret w
+end
+# the functions, nodes and operands of a source through the A0 lexer and parser, and the
+# parse code
+fn ozparse u32x128x128 u32 -> (u32x128x45,u32x128x128,u32x128x256,u32)
+lx call lexsrc p0 p1
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 p0 toks ntok
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s3 call pass3 p0 toks ta hdrs nhdr e1 et1 ntok
+hout at s3 4
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names p0 toks ta tv ntok e4 et4
+fns at s5 0
+nodes at s5 1
+args at s5 2
+pcode at s5 8
+r rec fns nodes args pcode
+ret r
+end
+# mode 4: `wasunit` with the optimizer. Lex, parse and check the source p1 of p2 bytes,
+# functions [p4, nfns) given the iteration bounds p3; with no diagnostic, optimize the chunk
+# (call table p5, p6 variants before it) with the eval program source p7 (p8 bytes) and its
+# map p9, and emit it. (io code)
+fn ozsunit io u32x128x128 u32 u32x128x8 u32 u32x128x16 u32 u32x128x128 u32 u32x128x16 -> (io,u32)
+lx call lexsrc p1 p2
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 p1 toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+nsym at s1 7
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s2 call pass2 p1 sinfo nsym
+pool at s2 0
+s3 call pass3 p1 toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names p1 toks ta tv ntok e4 et4
+fns at s5 0
+nodes at s5 1
+args at s5 2
+nargs at s5 5
+pcode at s5 8
+cfrom call cumin p4 nhc
+ck call checkir types tlist fns nodes args p3 ntypes ntlist nhc cfrom
+types2 at ck 0
+tlist2 at ck 2
+ntys at ck 4
+fstat at ck 7
+ntypes2 at ck 8
+cerr at ck 10
+ns127 add nsym 127
+nsp shr ns127 7
+z64 call z64
+st0 rec z64 0
+st fold cstpg nsp st0 sinfo
+starts at st 0
+z16 call z16
+fnm fold cfnm nhc z16 fns sinfo starts
+pok eq pcode 0
+code1 select pok cerr pcode
+ep call ozparse p7 p8
+efn at ep 0
+enode at ep 1
+eargs at ep 2
+ecode at ep 3
+e0 eq code1 0
+enz ne ecode 0
+ebad and e0 enz
+code select ebad 1 code1
+ok eq code 0
+go select ok 1 0
+wide call wawide args
+earg call wawide eargs
+s0 rec p0 0
+t fold ozemitst go s0 types2 tlist2 fns nodes wide ntys pool fnm p5 fstat ntypes2 p4 nhc p6 nargs efn enode earg p9
+tk at t 0
+oc at t 1
+rc select ok oc code
+r rec tk rc
+ret r
+end

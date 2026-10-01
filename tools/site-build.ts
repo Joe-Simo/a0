@@ -1,7 +1,9 @@
 /**
  * Build a0lang.com: site/page.a0, site/docs.a0 and site/play.a0 (each with what it `use`s) -> wasm32
- * by the wasm emitter written in A0 (compiler/emit_wasm.a0, built by the bootstrap's C seed: see
- * tools/selfhost-wasm.ts; src/wasm.ts is kept only as the byte-for-byte reference), the generic runtime (site/app.ts -> site/dist/app.js via tsc), the HTML
+ * by the optimizer and the wasm emitter written in A0 (compiler/optimize.a0 and
+ * compiler/emit_wasm.a0, built by the bootstrap's C seed: see tools/selfhost-wasm.ts;
+ * src/optimize.ts and src/wasm.ts are kept only as the byte-for-byte reference), the generic
+ * runtime (site/app.ts -> site/dist/app.js via tsc), the HTML
  * shells, and the self-hosted Geist fonts. Output: site/dist/. Nothing is deployed by this script.
  */
 
@@ -29,18 +31,18 @@ async function buildProgram(a0w: string, entry: string, outName: string): Promis
   // site/app.ts (IN_CAP, OUT_CAP) must use the same capacities.
   const program = (await link(join('site', entry), (p) => readFile(p, 'utf8'), { root: '.' }))
     .program;
-  // The wasm emitter written in A0 writes the module; src/wasm.ts (on the same unoptimized
-  // program) must give the same bytes.
+  // The optimizer and the wasm emitter written in A0 write the module; `compile(program,
+  // 'wasm')` (src/optimize.ts, then src/wasm.ts) must give the same bytes.
   const layout = { ioInputCapacity: 1024, ioOutputCapacity: 131072 };
-  const wasm = a0WasmFromTables(a0w, program, layout).bytes;
-  if (Buffer.compare(Buffer.from(wasm), Buffer.from(typescriptWasm(program, layout))) !== 0)
-    throw new Error(`${entry}: the A0 wasm emitter differs from src/wasm.ts`);
+  const wasm = a0WasmFromTables(a0w, program, layout, true).bytes;
+  if (Buffer.compare(Buffer.from(wasm), Buffer.from(typescriptWasm(program, layout, true))) !== 0)
+    throw new Error(`${entry}: the A0 optimizer and wasm emitter differ from src/wasm.ts`);
   await writeFile(join(out, `${outName}.wasm`), wasm);
   // The same program, run once here through the reference interpreter: static HTML for
   // agents and crawlers that do not run JavaScript. The browser re-renders the same tree.
   const pre = prerender(program);
   return {
-    size: `${outName}.wasm ${wasm.length} bytes (compiler/emit_wasm.a0, equal to src/wasm.ts)`,
+    size: `${outName}.wasm ${wasm.length} bytes (compiler/optimize.a0 and emit_wasm.a0, equal to src/wasm.ts)`,
     ...pre,
   };
 }
