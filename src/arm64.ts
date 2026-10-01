@@ -756,6 +756,49 @@ const VECTOR_OPS = new Set<Op>(['mov', 'add', 'sub', 'mul', 'and', 'or', 'xor', 
 const VECTOR_FIRST = 19;
 const VECTOR_LAST = 31;
 
+/** A scalar op over literal values with A0's exact meaning (undefined for ops that are not scalar). */
+function foldOp(op: Op, v: readonly number[]): number | undefined {
+  const [a = 0, b = 0, c = 0] = v;
+  switch (op) {
+    case 'add':
+      return (a + b) >>> 0;
+    case 'sub':
+      return (a - b) >>> 0;
+    case 'mul':
+      return Math.imul(a, b) >>> 0;
+    case 'and':
+      return (a & b) >>> 0;
+    case 'or':
+      return (a | b) >>> 0;
+    case 'xor':
+      return (a ^ b) >>> 0;
+    case 'shl':
+      return (a << (b & 31)) >>> 0;
+    case 'shr':
+      return a >>> (b & 31);
+    case 'eq':
+      return a === b ? 1 : 0;
+    case 'ne':
+      return a !== b ? 1 : 0;
+    case 'lt':
+      return a < b ? 1 : 0;
+    case 'le':
+      return a <= b ? 1 : 0;
+    case 'gt':
+      return a > b ? 1 : 0;
+    case 'ge':
+      return a >= b ? 1 : 0;
+    case 'select':
+      return a !== 0 ? b : c;
+    case 'div':
+      return b === 0 ? 0xffffffff : Math.floor(a / b) >>> 0;
+    case 'rem':
+      return b === 0 ? a : a % b;
+    default:
+      return undefined;
+  }
+}
+
 /** Where each parameter travels: a register index, or a byte offset in the stack area. */
 interface ArgPlace {
   readonly reg?: number;
@@ -1805,6 +1848,8 @@ class FunctionEmitter {
   readonly #bound = new Map<string, number>();
   /** Arrays that are never stored (see `lazyFill`): the body to evaluate and the extras it reads. */
   readonly #lazyOf = new Map<string, { fn: TypedFunc; length: number; extras: readonly Val[] }>();
+  /** Nodes whose operands were all literals: folded at compile time (no code, no home). */
+  readonly #constOf = new Map<string, { value: number; type: 'u32' | 'bool' }>();
   /** Nodes already emitted ahead of their position by a query group (skipped there). */
   readonly #hoisted = new Set<string>();
   /** Register hints: key -> key whose register it takes (a loop body result onto its state). */
@@ -1959,6 +2004,8 @@ class FunctionEmitter {
         return env.params[o.index] ?? refuse(`unknown parameter p${o.index}`);
       case 'node': {
         const key = `${env.prefix}n_${o.id}`;
+        const folded = this.#constOf.get(key);
+        if (folded !== undefined) return { kind: 'lit', value: folded.value, type: folded.type };
         const lazy = selection(env.fn).lazyFill.get(o.id);
         if (lazy !== undefined && !this.#lazyOf.has(key)) {
           const fold = selection(env.fn).byId.get(o.id) as Node;
@@ -3117,6 +3164,17 @@ class FunctionEmitter {
       }
       scalar((d) => this.#into(d, cv), true);
       return;
+    }
+    // Every operand a literal (an index of a lazily evaluated array, say): computed here.
+    if (feed === undefined && vals.length > 0 && vals.every((v) => v.kind === 'lit')) {
+      const folded = foldOp(
+        n.op,
+        vals.map((v) => (v as { value: number }).value),
+      );
+      if (folded !== undefined && (t === 'u32' || t === 'bool')) {
+        this.#constOf.set(key, { value: folded, type: t });
+        return;
+      }
     }
     switch (n.op) {
       case 'mov': {
