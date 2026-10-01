@@ -1,0 +1,40 @@
+{
+ "b-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "b-sumfrom-eight/a0/structured": [
+  "r fold addi 8 p0"
+ ],
+ "b-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "b-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "b-avgfloor-nowrap/a0/structured": [
+  "and_part and p0 p1\nxor_part xor p0 p1\nshift_part shr xor_part 1\nretval add and_part shift_part\nret retval"
+ ],
+ "b-sumsq-array/a0/structured": [
+  "sq mul a a\nb add p0 sq"
+ ],
+ "b-inrange-inclusive/a0/structured": [
+  "a ge p0 p1\nb le p0 p2"
+ ],
+ "b-bounds-largest/a0/structured": [
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nm at p0 0\nM at p0 1\nclt lt p1 m\nm2 select clt p1 m\ncgt gt p1 M\nM2 select cgt p1 M\nret rec m2 M2\nend",
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nelem get p2 p1\nm at p0 0\nmx at p0 1\nc1 lt elem m\nm1 select c1 elem m\nc2 gt elem mx\nmx1 select c2 elem mx\nret rec m1 mx1\nend"
+ ],
+ "b-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0\nfn mixel u32 u32 u32x4 -> u32\nh_mul mul p0 31\nret add h_mul p1\nend",
+  "fn mixel u32 u32 u32x4 -> u32\nelem get p2 p1\nh_mul mul p0 31\nret add h_mul elem\nend"
+ ],
+ "b-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nret call dot p0 p0\nend"
+ ],
+ "b-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\nmul_result mul p0 100\ndiv_result div mul_result p1\nret call limit div_result 0 100\nend"
+ ],
+ "b-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\nxor_result xor p0 p1\nret call popcnt xor_result\nend"
+ ]
+}

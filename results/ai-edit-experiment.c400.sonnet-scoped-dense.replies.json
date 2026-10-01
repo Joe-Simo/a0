@@ -1,0 +1,38 @@
+{
+ "c400-fits-inclusive/a0/structured": [
+  "fn fits -> bool le A B"
+ ],
+ "c400-sumfrom-eight/a0/structured": [
+  "fn sumfrom fold addi 8 A"
+ ],
+ "c400-rot8-constant/a0/structured": [
+  "fn rot8 or << A 8 >> A 24"
+ ],
+ "c400-onlyone-xor/a0/structured": [
+  "fn onlyone bool bool -> bool xor A B"
+ ],
+ "c400-avgfloor-nowrap/a0/structured": [
+  "fn avgfloor add and A B >> xor A B 1"
+ ],
+ "c400-sumsq-array/a0/structured": [
+  "fn addel u32 u32 u32x4 -> u32 add A mul get C B get C B"
+ ],
+ "c400-inrange-inclusive/a0/structured": [
+  "fn inrange -> bool and ge A B le A C"
+ ],
+ "c400-bounds-largest/a0/structured": [
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nlo at A 0\nhi at A 1\nx get C B\nnlo select lt x lo x lo\nnhi select gt x hi x hi\n(nlo nhi)"
+ ],
+ "c400-checksum-poly/a0/structured": [
+  "fn checksum u32x4 -> u32 fold mixel 4 7 A\nfn mixel u32 u32 u32x4 -> u32 add mul A 31 get C B"
+ ],
+ "c400-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32 dot A A"
+ ],
+ "c400-pctof-limit/a0/structured": [
+  "fn pctof limit div mul A 100 B 0 100"
+ ],
+ "c400-hamming-popcnt/a0/structured": [
+  "fn hamming popcnt xor A B"
+ ]
+}

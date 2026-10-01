@@ -1,0 +1,4274 @@
+{
+  "generatedAt": "2026-10-01T11:36:43.364Z",
+  "status": "run with scripted replies from <tmp> (subject: fresh haiku subagent (one shot, one group file per representation, no author-written replies; scoring final))",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.min.txt",
+  "primerMode": "always",
+  "taskSet": "b",
+  "programView": "all",
+  "systemLayout": "separate",
+  "a0View": "plain",
+  "a0Syntax": "canonical",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "kotlin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "swift": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ruby": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "php": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haskell": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ocaml": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "elixir": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "zig": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "c": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "js": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "lua": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "perl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "tcl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "objc": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fortran": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "dart": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "nim": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "groovy": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "clojure": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vb": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fsharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "scala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "prolog": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "forth": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "guile": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "smalltalk": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "racket": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "erlang": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "commonlisp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "pascal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "r": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "julia": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haxe": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "chicken": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "crystal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "d": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cobol": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "v": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "odin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "gleam": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "ts/structured",
+      "rust/structured",
+      "python/structured",
+      "go/structured",
+      "java/structured",
+      "c/structured",
+      "ruby/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; the further languages (Python, Go, Java, C#, C++, Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig) carry their own u32 semantics note and are accepted by their own toolchain (build or static check, then a generated driver run; tools/ai-edit-langs.ts, tools/edit-langs/).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "21de5a342fb09f62ba0447eacad72346c10412bd98218651fe889b84b82b6862",
+  "langTaskSetSha256": "6d104b87beaccdf2e275391531235d758ed352b8a844077f7752f690120a3562",
+  "representations": [
+    "ts",
+    "rust",
+    "python",
+    "go",
+    "java",
+    "c",
+    "ruby"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-norm2-dot",
+      "kind": "create",
+      "tests": 5
+    },
+    {
+      "id": "b-pctof-limit",
+      "kind": "create",
+      "tests": 6
+    },
+    {
+      "id": "b-hamming-popcnt",
+      "kind": "create",
+      "tests": 5
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "b-fits-inclusive/python": [],
+      "b-fits-inclusive/python-original-must-fail": [],
+      "b-fits-inclusive/go": [],
+      "b-fits-inclusive/go-original-must-fail": [],
+      "b-fits-inclusive/java": [],
+      "b-fits-inclusive/java-original-must-fail": [],
+      "b-fits-inclusive/c": [],
+      "b-fits-inclusive/c-original-must-fail": [],
+      "b-fits-inclusive/ruby": [],
+      "b-fits-inclusive/ruby-original-must-fail": [],
+      "b-fits-inclusive/a0": [],
+      "b-fits-inclusive/a0-original-must-fail": [],
+      "b-fits-inclusive/ts": [],
+      "b-fits-inclusive/ts-original-must-fail": [],
+      "b-fits-inclusive/rust": [],
+      "b-fits-inclusive/rust-original-must-fail": [],
+      "b-sumfrom-eight/python": [],
+      "b-sumfrom-eight/python-original-must-fail": [],
+      "b-sumfrom-eight/go": [],
+      "b-sumfrom-eight/go-original-must-fail": [],
+      "b-sumfrom-eight/java": [],
+      "b-sumfrom-eight/java-original-must-fail": [],
+      "b-sumfrom-eight/c": [],
+      "b-sumfrom-eight/c-original-must-fail": [],
+      "b-sumfrom-eight/ruby": [],
+      "b-sumfrom-eight/ruby-original-must-fail": [],
+      "b-sumfrom-eight/a0": [],
+      "b-sumfrom-eight/a0-original-must-fail": [],
+      "b-sumfrom-eight/ts": [],
+      "b-sumfrom-eight/ts-original-must-fail": [],
+      "b-sumfrom-eight/rust": [],
+      "b-sumfrom-eight/rust-original-must-fail": [],
+      "b-rot8-constant/python": [],
+      "b-rot8-constant/python-original-must-fail": [],
+      "b-rot8-constant/go": [],
+      "b-rot8-constant/go-original-must-fail": [],
+      "b-rot8-constant/java": [],
+      "b-rot8-constant/java-original-must-fail": [],
+      "b-rot8-constant/c": [],
+      "b-rot8-constant/c-original-must-fail": [],
+      "b-rot8-constant/ruby": [],
+      "b-rot8-constant/ruby-original-must-fail": [],
+      "b-rot8-constant/a0": [],
+      "b-rot8-constant/a0-original-must-fail": [],
+      "b-rot8-constant/ts": [],
+      "b-rot8-constant/ts-original-must-fail": [],
+      "b-rot8-constant/rust": [],
+      "b-rot8-constant/rust-original-must-fail": [],
+      "b-onlyone-xor/python": [],
+      "b-onlyone-xor/python-original-must-fail": [],
+      "b-onlyone-xor/go": [],
+      "b-onlyone-xor/go-original-must-fail": [],
+      "b-onlyone-xor/java": [],
+      "b-onlyone-xor/java-original-must-fail": [],
+      "b-onlyone-xor/c": [],
+      "b-onlyone-xor/c-original-must-fail": [],
+      "b-onlyone-xor/ruby": [],
+      "b-onlyone-xor/ruby-original-must-fail": [],
+      "b-onlyone-xor/a0": [],
+      "b-onlyone-xor/a0-original-must-fail": [],
+      "b-onlyone-xor/ts": [],
+      "b-onlyone-xor/ts-original-must-fail": [],
+      "b-onlyone-xor/rust": [],
+      "b-onlyone-xor/rust-original-must-fail": [],
+      "b-avgfloor-nowrap/python": [],
+      "b-avgfloor-nowrap/python-original-must-fail": [],
+      "b-avgfloor-nowrap/go": [],
+      "b-avgfloor-nowrap/go-original-must-fail": [],
+      "b-avgfloor-nowrap/java": [],
+      "b-avgfloor-nowrap/java-original-must-fail": [],
+      "b-avgfloor-nowrap/c": [],
+      "b-avgfloor-nowrap/c-original-must-fail": [],
+      "b-avgfloor-nowrap/ruby": [],
+      "b-avgfloor-nowrap/ruby-original-must-fail": [],
+      "b-avgfloor-nowrap/a0": [],
+      "b-avgfloor-nowrap/a0-original-must-fail": [],
+      "b-avgfloor-nowrap/ts": [],
+      "b-avgfloor-nowrap/ts-original-must-fail": [],
+      "b-avgfloor-nowrap/rust": [],
+      "b-avgfloor-nowrap/rust-original-must-fail": [],
+      "b-sumsq-array/python": [],
+      "b-sumsq-array/python-original-must-fail": [],
+      "b-sumsq-array/go": [],
+      "b-sumsq-array/go-original-must-fail": [],
+      "b-sumsq-array/java": [],
+      "b-sumsq-array/java-original-must-fail": [],
+      "b-sumsq-array/c": [],
+      "b-sumsq-array/c-original-must-fail": [],
+      "b-sumsq-array/ruby": [],
+      "b-sumsq-array/ruby-original-must-fail": [],
+      "b-sumsq-array/a0": [],
+      "b-sumsq-array/a0-original-must-fail": [],
+      "b-sumsq-array/ts": [],
+      "b-sumsq-array/ts-original-must-fail": [],
+      "b-sumsq-array/rust": [],
+      "b-sumsq-array/rust-original-must-fail": [],
+      "b-inrange-inclusive/python": [],
+      "b-inrange-inclusive/python-original-must-fail": [],
+      "b-inrange-inclusive/go": [],
+      "b-inrange-inclusive/go-original-must-fail": [],
+      "b-inrange-inclusive/java": [],
+      "b-inrange-inclusive/java-original-must-fail": [],
+      "b-inrange-inclusive/c": [],
+      "b-inrange-inclusive/c-original-must-fail": [],
+      "b-inrange-inclusive/ruby": [],
+      "b-inrange-inclusive/ruby-original-must-fail": [],
+      "b-inrange-inclusive/a0": [],
+      "b-inrange-inclusive/a0-original-must-fail": [],
+      "b-inrange-inclusive/ts": [],
+      "b-inrange-inclusive/ts-original-must-fail": [],
+      "b-inrange-inclusive/rust": [],
+      "b-inrange-inclusive/rust-original-must-fail": [],
+      "b-bounds-largest/python": [],
+      "b-bounds-largest/python-original-must-fail": [],
+      "b-bounds-largest/go": [],
+      "b-bounds-largest/go-original-must-fail": [],
+      "b-bounds-largest/java": [],
+      "b-bounds-largest/java-original-must-fail": [],
+      "b-bounds-largest/c": [],
+      "b-bounds-largest/c-original-must-fail": [],
+      "b-bounds-largest/ruby": [],
+      "b-bounds-largest/ruby-original-must-fail": [],
+      "b-bounds-largest/a0": [],
+      "b-bounds-largest/a0-original-must-fail": [],
+      "b-bounds-largest/ts": [],
+      "b-bounds-largest/ts-original-must-fail": [],
+      "b-bounds-largest/rust": [],
+      "b-bounds-largest/rust-original-must-fail": [],
+      "b-checksum-poly/python": [],
+      "b-checksum-poly/python-original-must-fail": [],
+      "b-checksum-poly/go": [],
+      "b-checksum-poly/go-original-must-fail": [],
+      "b-checksum-poly/java": [],
+      "b-checksum-poly/java-original-must-fail": [],
+      "b-checksum-poly/c": [],
+      "b-checksum-poly/c-original-must-fail": [],
+      "b-checksum-poly/ruby": [],
+      "b-checksum-poly/ruby-original-must-fail": [],
+      "b-checksum-poly/a0": [],
+      "b-checksum-poly/a0-original-must-fail": [],
+      "b-checksum-poly/ts": [],
+      "b-checksum-poly/ts-original-must-fail": [],
+      "b-checksum-poly/rust": [],
+      "b-checksum-poly/rust-original-must-fail": [],
+      "b-norm2-dot/python": [],
+      "b-norm2-dot/python-original-must-fail": [],
+      "b-norm2-dot/go": [],
+      "b-norm2-dot/go-original-must-fail": [],
+      "b-norm2-dot/java": [],
+      "b-norm2-dot/java-original-must-fail": [],
+      "b-norm2-dot/c": [],
+      "b-norm2-dot/c-original-must-fail": [],
+      "b-norm2-dot/ruby": [],
+      "b-norm2-dot/ruby-original-must-fail": [],
+      "b-norm2-dot/a0": [],
+      "b-norm2-dot/a0-original-must-fail": [],
+      "b-norm2-dot/ts": [],
+      "b-norm2-dot/ts-original-must-fail": [],
+      "b-norm2-dot/rust": [],
+      "b-norm2-dot/rust-original-must-fail": [],
+      "b-pctof-limit/python": [],
+      "b-pctof-limit/python-original-must-fail": [],
+      "b-pctof-limit/go": [],
+      "b-pctof-limit/go-original-must-fail": [],
+      "b-pctof-limit/java": [],
+      "b-pctof-limit/java-original-must-fail": [],
+      "b-pctof-limit/c": [],
+      "b-pctof-limit/c-original-must-fail": [],
+      "b-pctof-limit/ruby": [],
+      "b-pctof-limit/ruby-original-must-fail": [],
+      "b-pctof-limit/a0": [],
+      "b-pctof-limit/a0-original-must-fail": [],
+      "b-pctof-limit/ts": [],
+      "b-pctof-limit/ts-original-must-fail": [],
+      "b-pctof-limit/rust": [],
+      "b-pctof-limit/rust-original-must-fail": [],
+      "b-hamming-popcnt/python": [],
+      "b-hamming-popcnt/python-original-must-fail": [],
+      "b-hamming-popcnt/go": [],
+      "b-hamming-popcnt/go-original-must-fail": [],
+      "b-hamming-popcnt/java": [],
+      "b-hamming-popcnt/java-original-must-fail": [],
+      "b-hamming-popcnt/c": [],
+      "b-hamming-popcnt/c-original-must-fail": [],
+      "b-hamming-popcnt/ruby": [],
+      "b-hamming-popcnt/ruby-original-must-fail": [],
+      "b-hamming-popcnt/a0": [],
+      "b-hamming-popcnt/a0-original-must-fail": [],
+      "b-hamming-popcnt/ts": [],
+      "b-hamming-popcnt/ts-original-must-fail": [],
+      "b-hamming-popcnt/rust": [],
+      "b-hamming-popcnt/rust-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "ts/structured": {
+      "trials": 12,
+      "meanView": 55,
+      "meanToolContext": 111
+    },
+    "rust/structured": {
+      "trials": 12,
+      "meanView": 55,
+      "meanToolContext": 105
+    },
+    "python/structured": {
+      "trials": 12,
+      "meanView": 44,
+      "meanToolContext": 112
+    },
+    "go/structured": {
+      "trials": 12,
+      "meanView": 53,
+      "meanToolContext": 105
+    },
+    "java/structured": {
+      "trials": 12,
+      "meanView": 55,
+      "meanToolContext": 105
+    },
+    "c/structured": {
+      "trials": 12,
+      "meanView": 56,
+      "meanToolContext": 101
+    },
+    "ruby/structured": {
+      "trials": 12,
+      "meanView": 42,
+      "meanToolContext": 85
+    }
+  },
+  "trials": [
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 58,
+        "output": 6,
+        "total": 271
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 309.9186249999984
+    },
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 28
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 60,
+        "output": 4,
+        "total": 286
+      },
+      "outputTokensLocal": {
+        "o200k_base": 4,
+        "cl100k_base": 4
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 4,
+            "cl100k_base": 4
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 264.5462499999994
+    },
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 89,
+        "output": 11,
+        "total": 536
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 176.377625000001
+    },
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 57,
+        "output": 6,
+        "total": 286
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 438.0394589999996
+    },
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 65,
+        "output": 13,
+        "total": 303
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 13,
+            "cl100k_base": 13
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1122.591790999999
+    },
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 26,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 58,
+        "output": 7,
+        "total": 340
+      },
+      "outputTokensLocal": {
+        "o200k_base": 7,
+        "cl100k_base": 7
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 7,
+            "cl100k_base": 7
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 320.49954199999047
+    },
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 50,
+        "output": 4,
+        "total": 271
+      },
+      "outputTokensLocal": {
+        "o200k_base": 4,
+        "cl100k_base": 4
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 4,
+            "cl100k_base": 4
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 247.06524999999965
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 65,
+        "cl100k_base": 65
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 104,
+        "output": 17,
+        "total": 328
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 420.2896660000115
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 56
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 96,
+        "output": 11,
+        "total": 329
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 308.846916999988
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 47
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 118,
+        "output": 17,
+        "total": 571
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 5)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 8,
+            "cl100k_base": 8
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 5)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 170.36229200000525
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 55,
+        "cl100k_base": 55
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 94,
+        "output": 18,
+        "total": 335
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 377.34408299998904
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 56
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 95,
+        "output": 17,
+        "total": 337
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 890.208666999999
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 62,
+        "cl100k_base": 62
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 101,
+        "output": 20,
+        "total": 396
+      },
+      "outputTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 20
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 235.69691600000078
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 52,
+        "cl100k_base": 51
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 91,
+        "output": 12,
+        "total": 320
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 231.26966599999287
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 36,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 65,
+        "output": 19,
+        "total": 291
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 388.421583000003
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 63,
+        "output": 14,
+        "total": 299
+      },
+      "outputTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 14,
+            "cl100k_base": 14
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 292.7883750000037
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 98,
+        "output": 41,
+        "total": 575
+      },
+      "outputTokensLocal": {
+        "o200k_base": 41,
+        "cl100k_base": 39
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 19
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 20
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 189.08662499999627
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 61,
+        "output": 16,
+        "total": 300
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 441.6382920000033
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 62,
+        "output": 15,
+        "total": 302
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1258.4057080000057
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 33,
+        "cl100k_base": 33
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 62,
+        "output": 16,
+        "total": 353
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 279.30583399999887
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 31
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 61,
+        "output": 20,
+        "total": 298
+      },
+      "outputTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 20,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 226.06895800000348
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 96,
+        "workflowPrimer": 318,
+        "toolContext": 198,
+        "output": 12,
+        "total": 624
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "tsc: ../../../../../../..<tmp>(2,1): error TS2322: Type 'number' is not assignable to type 'boolean'.\n../../../../../../..<tmp>(2,8): error TS2447: The '^' operator is not allowed for boolean types. Consider using '!==' instead.\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          },
+          "repair": "Rejected:\ntsc: ../../../../../../..<tmp>(2,1): error TS2322: Type 'number' is not assignable to type 'boolean'.\n../../../../../../..<tmp>(2,8): error TS2447: The '^' operator is not allowed for boolean types. Consider using '!==' instead.\n\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 656.3745409999974
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 66,
+        "output": 4,
+        "total": 292
+      },
+      "outputTokensLocal": {
+        "o200k_base": 4,
+        "cl100k_base": 4
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 4,
+            "cl100k_base": 4
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 228.546875
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 97,
+        "output": 11,
+        "total": 544
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 161.40962499998568
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 63,
+        "output": 6,
+        "total": 292
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 392.88933299999917
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 66,
+        "output": 6,
+        "total": 297
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1032.0699170000007
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 23,
+        "cl100k_base": 23
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 62,
+        "output": 7,
+        "total": 344
+      },
+      "outputTokensLocal": {
+        "o200k_base": 7,
+        "cl100k_base": 7
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 7,
+            "cl100k_base": 7
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 278.41729199999827
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 58,
+        "output": 5,
+        "total": 280
+      },
+      "outputTokensLocal": {
+        "o200k_base": 5,
+        "cl100k_base": 5
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 237.32624999999825
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 36,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 96,
+        "workflowPrimer": 318,
+        "toolContext": 126,
+        "output": 42,
+        "total": 582
+      },
+      "outputTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "avgfloor(4294967295,1) = 0, expected 2147483648"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          },
+          "repair": "Rejected:\navgfloor(4294967295,1) = 0, expected 2147483648\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 644.6767910000053
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 101,
+        "output": 16,
+        "total": 339
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 258.43179200000304
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 133,
+        "output": 35,
+        "total": 604
+      },
+      "outputTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 180.60616599999776
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 96,
+        "output": 18,
+        "total": 337
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 381.2415000000037
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 132,
+        "workflowPrimer": 318,
+        "toolContext": 122,
+        "output": 35,
+        "total": 607
+      },
+      "outputTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "avgfloor(4294967295,1) = 0, expected 2147483648"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          },
+          "repair": "Rejected:\navgfloor(4294967295,1) = 0, expected 2147483648\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1578.2695830000011
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 98,
+        "output": 18,
+        "total": 391
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 219.39945799999987
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 30,
+        "cl100k_base": 29
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 94,
+        "output": 17,
+        "total": 328
+      },
+      "outputTokensLocal": {
+        "o200k_base": 17,
+        "cl100k_base": 17
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 17,
+            "cl100k_base": 17
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 220.48670900000434
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 68
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 109,
+        "output": 27,
+        "total": 343
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 28
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 28
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 343.8120829999971
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 64,
+        "cl100k_base": 63
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 105,
+        "output": 18,
+        "total": 345
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 269.1603749999922
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 51,
+        "cl100k_base": 50
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 128,
+        "output": 37,
+        "total": 601
+      },
+      "outputTokensLocal": {
+        "o200k_base": 37,
+        "cl100k_base": 35
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after 'for' statement on line 3 (mod.py, line 4)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 17
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after 'for' statement on line 3 (mod.py, line 4)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 183.2460410000058
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 99,
+        "output": 11,
+        "total": 333
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 468.58724999999686
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 59
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 100,
+        "output": 10,
+        "total": 335
+      },
+      "outputTokensLocal": {
+        "o200k_base": 10,
+        "cl100k_base": 10
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10,
+            "cl100k_base": 10
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 752.684792
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 69,
+        "cl100k_base": 69
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 110,
+        "output": 19,
+        "total": 404
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 19
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 227.52345900000364
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 53
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 95,
+        "output": 19,
+        "total": 331
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 19,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 208.7870830000029
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 69,
+        "output": 10,
+        "total": 286
+      },
+      "outputTokensLocal": {
+        "o200k_base": 10,
+        "cl100k_base": 10
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10,
+            "cl100k_base": 10
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 318.5102079999924
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 38,
+        "cl100k_base": 38
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 72,
+        "output": 8,
+        "total": 302
+      },
+      "outputTokensLocal": {
+        "o200k_base": 8,
+        "cl100k_base": 8
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 8,
+            "cl100k_base": 8
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 258.3922920000041
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 100,
+        "output": 19,
+        "total": 555
+      },
+      "outputTokensLocal": {
+        "o200k_base": 19,
+        "cl100k_base": 19
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10,
+            "cl100k_base": 10
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 165.30587500000547
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 34,
+        "cl100k_base": 34
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 68,
+        "output": 10,
+        "total": 301
+      },
+      "outputTokensLocal": {
+        "o200k_base": 10,
+        "cl100k_base": 10
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10,
+            "cl100k_base": 10
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 555.1781250000058
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 82,
+        "output": 24,
+        "total": 331
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 751.3989999999903
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 36,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 70,
+        "output": 11,
+        "total": 356
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 247.41304200000013
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 59,
+        "output": 9,
+        "total": 285
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 248.43687499999942
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 101,
+        "cl100k_base": 101
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 143,
+        "output": 11,
+        "total": 361
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 323.0979159999988
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 109,
+        "cl100k_base": 109
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 151,
+        "output": 6,
+        "total": 379
+      },
+      "outputTokensLocal": {
+        "o200k_base": 6,
+        "cl100k_base": 6
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 297.9667080000072
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 83,
+        "cl100k_base": 82
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 156,
+        "output": 13,
+        "total": 605
+      },
+      "outputTokensLocal": {
+        "o200k_base": 13,
+        "cl100k_base": 13
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 10)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 6,
+            "cl100k_base": 6
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: unindent does not match any outer indentation level (mod.py, line 10)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 7,
+            "cl100k_base": 7
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 202.5235420000099
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 117,
+        "cl100k_base": 116
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 159,
+        "output": 7,
+        "total": 389
+      },
+      "outputTokensLocal": {
+        "o200k_base": 7,
+        "cl100k_base": 7
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 7,
+            "cl100k_base": 7
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 435.10179199998674
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 129,
+        "cl100k_base": 128
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 171,
+        "output": 15,
+        "total": 411
+      },
+      "outputTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 15,
+            "cl100k_base": 15
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 920.2986669999955
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 113,
+        "cl100k_base": 112
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 155,
+        "output": 12,
+        "total": 442
+      },
+      "outputTokensLocal": {
+        "o200k_base": 12,
+        "cl100k_base": 12
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 12,
+            "cl100k_base": 12
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 299.5022089999984
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 76,
+        "cl100k_base": 75
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 118,
+        "output": 9,
+        "total": 344
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 211.4142079999874
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 67,
+        "cl100k_base": 67
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 133,
+        "output": 31,
+        "total": 371
+      },
+      "outputTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 31,
+            "cl100k_base": 31
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 274.68562499999825
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 124,
+        "output": 28,
+        "total": 374
+      },
+      "outputTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 28,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 237.07945799999288
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 118,
+        "workflowPrimer": 318,
+        "toolContext": 143,
+        "output": 48,
+        "total": 627
+      },
+      "outputTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 46
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "compile",
+          "failures": [
+            "python3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 23,
+            "cl100k_base": 22
+          },
+          "repair": "Rejected:\npython3: Sorry: IndentationError: expected an indented block after function definition on line 1 (mod.py, line 2)\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 25,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 151.72708300000522
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 57
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 123,
+        "output": 21,
+        "total": 367
+      },
+      "outputTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 366.81674999999814
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 58,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 124,
+        "output": 18,
+        "total": 367
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 624.9720410000009
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 68
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 134,
+        "output": 25,
+        "total": 434
+      },
+      "outputTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 25,
+            "cl100k_base": 25
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 185.07074999999895
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 44,
+        "cl100k_base": 44
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 110,
+        "output": 25,
+        "total": 352
+      },
+      "outputTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 25,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 151.56166700000176
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 81,
+        "cl100k_base": 82
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 116,
+        "output": 24,
+        "total": 347
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 232.82870800000092
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 78,
+        "cl100k_base": 77
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 113,
+        "output": 30,
+        "total": 365
+      },
+      "outputTokensLocal": {
+        "o200k_base": 30,
+        "cl100k_base": 30
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 30,
+            "cl100k_base": 30
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 251.64074999999139
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 59,
+        "workflowPrimer": 159,
+        "toolContext": 94,
+        "output": 25,
+        "total": 337
+      },
+      "outputTokensLocal": {
+        "o200k_base": 25,
+        "cl100k_base": 25
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 25,
+            "cl100k_base": 25
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 81.28845900000306
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 68
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 103,
+        "output": 27,
+        "total": 353
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 362.06033300000126
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 66,
+        "cl100k_base": 66
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 101,
+        "output": 24,
+        "total": 350
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 24
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 24
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 608.119125000012
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 82,
+        "cl100k_base": 82
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 117,
+        "output": 27,
+        "total": 419
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 311.6101250000065
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 59,
+        "cl100k_base": 58
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 94,
+        "output": 18,
+        "total": 329
+      },
+      "outputTokensLocal": {
+        "o200k_base": 18,
+        "cl100k_base": 18
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 18,
+            "cl100k_base": 18
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 183.39333299999998
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 47,
+        "cl100k_base": 47
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 105,
+        "output": 74,
+        "total": 386
+      },
+      "outputTokensLocal": {
+        "o200k_base": 74,
+        "cl100k_base": 74
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 74,
+            "cl100k_base": 74
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 272.92354199998954
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 57
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 126,
+        "workflowPrimer": 318,
+        "toolContext": 200,
+        "output": 109,
+        "total": 753
+      },
+      "outputTokensLocal": {
+        "o200k_base": 109,
+        "cl100k_base": 107
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "runtime",
+          "failures": [
+            "run: \nthread 'main' (21279588) panicked at <tmp>:6:11:\nattempt to divide by zero\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 44,
+            "cl100k_base": 43
+          },
+          "repair": "Rejected:\nrun: \nthread 'main' (21279588) panicked at <tmp>:6:11:\nattempt to divide by zero\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 65,
+            "cl100k_base": 64
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 550.7340419999964
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 43,
+        "cl100k_base": 43
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 59,
+        "workflowPrimer": 159,
+        "toolContext": 101,
+        "output": 83,
+        "total": 402
+      },
+      "outputTokensLocal": {
+        "o200k_base": 83,
+        "cl100k_base": 82
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 83,
+            "cl100k_base": 82
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 87.72520899999654
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 67,
+        "cl100k_base": 67
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 128,
+        "workflowPrimer": 318,
+        "toolContext": 234,
+        "output": 105,
+        "total": 785
+      },
+      "outputTokensLocal": {
+        "o200k_base": 105,
+        "cl100k_base": 105
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "runtime",
+          "failures": [
+            "run: panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.pctof(...)\n\t<tmp>:14\nmain.main()\n\t<tmp>:11 +0x98\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 37,
+            "cl100k_base": 37
+          },
+          "repair": "Rejected:\nrun: panic: runtime error: integer divide by zero\n\ngoroutine 1 [running]:\nmain.pctof(...)\n\t<tmp>:14\nmain.main()\n\t<tmp>:11 +0x98\n\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 68,
+            "cl100k_base": 68
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 819.2833329999994
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 60
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 132,
+        "workflowPrimer": 318,
+        "toolContext": 175,
+        "output": 87,
+        "total": 712
+      },
+      "outputTokensLocal": {
+        "o200k_base": 87,
+        "cl100k_base": 87
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "runtime",
+          "failures": [
+            "run: Exception in thread \"main\" java.lang.ArithmeticException: / by zero\n\tat java.base/java.lang.Integer.divideUnsigned(Integer.java:1458)\n\tat Lib.pctof(Lib.java:7)\n\tat Driver.main(Driver.java:4)\n"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 38,
+            "cl100k_base": 38
+          },
+          "repair": "Rejected:\nrun: Exception in thread \"main\" java.lang.ArithmeticException: / by zero\n\tat java.base/java.lang.Integer.divideUnsigned(Integer.java:1458)\n\tat Lib.pctof(Lib.java:7)\n\tat Driver.main(Driver.java:4)\n\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 49,
+            "cl100k_base": 49
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 1262.1756250000035
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 52,
+        "cl100k_base": 52
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 232,
+        "workflowPrimer": 318,
+        "toolContext": 145,
+        "output": 113,
+        "total": 808
+      },
+      "outputTokensLocal": {
+        "o200k_base": 113,
+        "cl100k_base": 113
+      },
+      "providerUsage": null,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "wrong-output",
+          "failures": [
+            "pctof(5,0) = 0, expected 100",
+            "pctof(0,0) = 0, expected 100"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 51,
+            "cl100k_base": 51
+          },
+          "repair": "Rejected:\npctof(5,0) = 0, expected 100\npctof(0,0) = 0, expected 100\n\nTry again."
+        },
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 62,
+            "cl100k_base": 62
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 386.259750000012
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 36,
+        "cl100k_base": 36
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 94,
+        "output": 82,
+        "total": 393
+      },
+      "outputTokensLocal": {
+        "o200k_base": 82,
+        "cl100k_base": 80
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 82,
+            "cl100k_base": 80
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 138.16495900000155
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "ts",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 207,
+        "cl100k_base": 206
+      },
+      "viewTokensLocal": {
+        "o200k_base": 70,
+        "cl100k_base": 70
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 48,
+        "workflowPrimer": 159,
+        "toolContext": 105,
+        "output": 29,
+        "total": 341
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 228.96245900000213
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "rust",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 222,
+        "cl100k_base": 221
+      },
+      "viewTokensLocal": {
+        "o200k_base": 68,
+        "cl100k_base": 67
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 63,
+        "workflowPrimer": 159,
+        "toolContext": 103,
+        "output": 32,
+        "total": 357
+      },
+      "outputTokensLocal": {
+        "o200k_base": 32,
+        "cl100k_base": 32
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 32,
+            "cl100k_base": 32
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 211.9453749999957
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "python",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 218,
+        "cl100k_base": 216
+      },
+      "viewTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 55
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 59,
+        "workflowPrimer": 159,
+        "toolContext": 91,
+        "output": 29,
+        "total": 338
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 69.49187500000698
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "go",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 223,
+        "cl100k_base": 222
+      },
+      "viewTokensLocal": {
+        "o200k_base": 63,
+        "cl100k_base": 63
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 64,
+        "workflowPrimer": 159,
+        "toolContext": 98,
+        "output": 29,
+        "total": 350
+      },
+      "outputTokensLocal": {
+        "o200k_base": 29,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 29,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 323.8536250000034
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "java",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 225,
+        "cl100k_base": 224
+      },
+      "viewTokensLocal": {
+        "o200k_base": 64,
+        "cl100k_base": 64
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 66,
+        "workflowPrimer": 159,
+        "toolContext": 99,
+        "output": 27,
+        "total": 351
+      },
+      "outputTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 27
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 27,
+            "cl100k_base": 27
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 561.9212919999991
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "c",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 275,
+        "cl100k_base": 273
+      },
+      "viewTokensLocal": {
+        "o200k_base": 70,
+        "cl100k_base": 70
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 116,
+        "workflowPrimer": 159,
+        "toolContext": 105,
+        "output": 31,
+        "total": 411
+      },
+      "outputTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 31
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 31,
+            "cl100k_base": 31
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 196.16254099999787
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "ruby",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 217,
+        "cl100k_base": 215
+      },
+      "viewTokensLocal": {
+        "o200k_base": 60,
+        "cl100k_base": 59
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 58,
+        "workflowPrimer": 159,
+        "toolContext": 95,
+        "output": 21,
+        "total": 333
+      },
+      "outputTokensLocal": {
+        "o200k_base": 21,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 21,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 142.86824999999953
+    }
+  ]
+}

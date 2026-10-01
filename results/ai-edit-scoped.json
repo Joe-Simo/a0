@@ -1,0 +1,3101 @@
+{
+  "method": "o200k tokens per task; system text 1.25x on the first call of a 1-task session, 0.17x on the first call of a task in a 10-task session, 0.05x on later calls and unbounded; task+view, repair messages and replies 1x. Cost ties within 1%. Cells pool Haiku and Sonnet (12 tasks each) per set: 24 trials; \"all\" pools the four sets: 96 trials.",
+  "sets": [
+    "b",
+    "c",
+    "c400",
+    "c4000"
+  ],
+  "models": [
+    "haiku",
+    "sonnet"
+  ],
+  "forms": {
+    "a0": "A0 canonical, MODEL_GUIDE.rules-merged.txt, dependency-scoped function view + scoped program handle",
+    "dense": "A0 dense, MODEL_GUIDE.dense.txt, lean function view with callee bodies"
+  },
+  "languages": [
+    "ts",
+    "rust",
+    "python",
+    "go",
+    "java",
+    "c",
+    "ruby"
+  ],
+  "languageView": "tools/scoped-view.ts: target function body + direct callees (tree-sitter parse), numbered line edits (PROTOCOL_LINE_EDIT); all 12 tasks have an empty callee set in every language, so the signatures and bodies arms are the same prompt",
+  "notes": [],
+  "cells": {
+    "b": {
+      "a0": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 24,
+        "system": 118,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 127.83333333333333,
+          "workflowPrimer": 0,
+          "toolContext": 131.75,
+          "output": 31.041666666666668
+        },
+        "task1": 310.78333333333336,
+        "session10": 183.34333333333333,
+        "unbounded": 169.18333333333337
+      },
+      "dense": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 145,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 145,
+          "workflowPrimer": 0,
+          "toolContext": 69.66666666666667,
+          "output": 22.416666666666668
+        },
+        "task1": 273.3333333333333,
+        "session10": 116.73333333333339,
+        "unbounded": 99.33333333333333
+      },
+      "ts": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 24,
+        "system": 207,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 52,
+          "workflowPrimer": 172.25,
+          "toolContext": 104.33333333333333,
+          "output": 24.791666666666668
+        },
+        "task1": 388.7375,
+        "session10": 165.17750000000004,
+        "unbounded": 140.33749999999995
+      },
+      "rust": {
+        "n": 24,
+        "oneShot": 20,
+        "accepted": 24,
+        "system": 222,
+        "callsPerTask": 1.1666666666666667,
+        "buckets": {
+          "languagePrimer": 73.5,
+          "workflowPrimer": 185.5,
+          "toolContext": 116.29166666666667,
+          "output": 28.583333333333332
+        },
+        "task1": 424.2250000000001,
+        "session10": 184.46499999999995,
+        "unbounded": 157.82499999999996
+      },
+      "python": {
+        "n": 24,
+        "oneShot": 15,
+        "accepted": 24,
+        "system": 218,
+        "callsPerTask": 1.375,
+        "buckets": {
+          "languagePrimer": 81.125,
+          "workflowPrimer": 218.625,
+          "toolContext": 99.75,
+          "output": 25.708333333333332
+        },
+        "task1": 402.04583333333335,
+        "session10": 166.60583333333332,
+        "unbounded": 140.44583333333338
+      },
+      "go": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 223,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 66.66666666666667,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.04166666666667,
+          "output": 21.875
+        },
+        "task1": 401.13124999999997,
+        "session10": 160.29124999999993,
+        "unbounded": 133.53125000000003
+      },
+      "java": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 24,
+        "system": 225,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 71.5,
+          "workflowPrimer": 172.25,
+          "toolContext": 101.70833333333333,
+          "output": 23.25
+        },
+        "task1": 407.1458333333333,
+        "session10": 164.14583333333334,
+        "unbounded": 137.14583333333334
+      },
+      "c": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 275,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 120.83333333333333,
+          "workflowPrimer": 165.625,
+          "toolContext": 99.95833333333333,
+          "output": 23.458333333333332
+        },
+        "task1": 467.7395833333333,
+        "session10": 170.73958333333334,
+        "unbounded": 137.73958333333334
+      },
+      "ruby": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 217,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 58,
+          "workflowPrimer": 159,
+          "toolContext": 84.91666666666667,
+          "output": 19.583333333333332
+        },
+        "task1": 375.75,
+        "session10": 141.38999999999993,
+        "unbounded": 115.34999999999995
+      }
+    },
+    "c": {
+      "a0": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 22,
+        "system": 118,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 127.83333333333333,
+          "workflowPrimer": 0,
+          "toolContext": 157.16666666666666,
+          "output": 24.458333333333332
+        },
+        "task1": 329.6166666666667,
+        "session10": 202.1766666666667,
+        "unbounded": 188.01666666666665
+      },
+      "dense": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 145,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 145,
+          "workflowPrimer": 0,
+          "toolContext": 69.66666666666667,
+          "output": 21.833333333333332
+        },
+        "task1": 272.75,
+        "session10": 116.15000000000005,
+        "unbounded": 98.75
+      },
+      "ts": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 207,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 50,
+          "workflowPrimer": 165.625,
+          "toolContext": 103.08333333333333,
+          "output": 23.875
+        },
+        "task1": 386.13958333333335,
+        "session10": 162.57958333333337,
+        "unbounded": 137.7395833333333
+      },
+      "rust": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 222,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 63,
+          "workflowPrimer": 159,
+          "toolContext": 97.41666666666667,
+          "output": 20.541666666666668
+        },
+        "task1": 395.4583333333333,
+        "session10": 155.69833333333327,
+        "unbounded": 129.05833333333328
+      },
+      "python": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 218,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 61.458333333333336,
+          "workflowPrimer": 165.625,
+          "toolContext": 88.58333333333333,
+          "output": 21.333333333333332
+        },
+        "task1": 382.87083333333334,
+        "session10": 147.4308333333333,
+        "unbounded": 121.27083333333339
+      },
+      "go": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 223,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 66.66666666666667,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.04166666666667,
+          "output": 21.75
+        },
+        "task1": 401.00624999999997,
+        "session10": 160.16624999999993,
+        "unbounded": 133.40625000000003
+      },
+      "java": {
+        "n": 24,
+        "oneShot": 19,
+        "accepted": 21,
+        "system": 225,
+        "callsPerTask": 1.2083333333333333,
+        "buckets": {
+          "languagePrimer": 79.75,
+          "workflowPrimer": 192.125,
+          "toolContext": 127.45833333333333,
+          "output": 29.333333333333332
+        },
+        "task1": 440.3854166666667,
+        "session10": 197.38541666666666,
+        "unbounded": 170.38541666666666
+      },
+      "c": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 23,
+        "system": 275,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 120.83333333333333,
+          "workflowPrimer": 165.625,
+          "toolContext": 102.08333333333333,
+          "output": 23.333333333333332
+        },
+        "task1": 469.7395833333333,
+        "session10": 172.73958333333334,
+        "unbounded": 139.73958333333334
+      },
+      "ruby": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 217,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 58,
+          "workflowPrimer": 159,
+          "toolContext": 84.91666666666667,
+          "output": 19.208333333333332
+        },
+        "task1": 375.375,
+        "session10": 141.01499999999996,
+        "unbounded": 114.97499999999995
+      }
+    },
+    "c400": {
+      "a0": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 23,
+        "system": 118,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 127.83333333333333,
+          "workflowPrimer": 0,
+          "toolContext": 148.875,
+          "output": 21.708333333333332
+        },
+        "task1": 318.575,
+        "session10": 191.135,
+        "unbounded": 176.97500000000002
+      },
+      "dense": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 145,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 145,
+          "workflowPrimer": 0,
+          "toolContext": 69.66666666666667,
+          "output": 22.458333333333332
+        },
+        "task1": 273.375,
+        "session10": 116.77500000000005,
+        "unbounded": 99.375
+      },
+      "ts": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 207,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 50,
+          "workflowPrimer": 165.625,
+          "toolContext": 98.83333333333333,
+          "output": 24.291666666666668
+        },
+        "task1": 382.30625000000003,
+        "session10": 158.74625000000003,
+        "unbounded": 133.90624999999994
+      },
+      "rust": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 222,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 63,
+          "workflowPrimer": 159,
+          "toolContext": 97.41666666666667,
+          "output": 20.916666666666668
+        },
+        "task1": 395.8333333333333,
+        "session10": 156.07333333333327,
+        "unbounded": 129.43333333333328
+      },
+      "python": {
+        "n": 24,
+        "oneShot": 15,
+        "accepted": 24,
+        "system": 218,
+        "callsPerTask": 1.375,
+        "buckets": {
+          "languagePrimer": 81.125,
+          "workflowPrimer": 218.625,
+          "toolContext": 99.75,
+          "output": 25.708333333333332
+        },
+        "task1": 402.04583333333335,
+        "session10": 166.60583333333332,
+        "unbounded": 140.44583333333338
+      },
+      "go": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 223,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 66.66666666666667,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.08333333333333,
+          "output": 21.125
+        },
+        "task1": 400.42291666666665,
+        "session10": 159.5829166666666,
+        "unbounded": 132.8229166666667
+      },
+      "java": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 24,
+        "system": 225,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 71.5,
+          "workflowPrimer": 172.25,
+          "toolContext": 101.75,
+          "output": 23.75
+        },
+        "task1": 407.6875,
+        "session10": 164.6875,
+        "unbounded": 137.6875
+      },
+      "c": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 275,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 120.83333333333333,
+          "workflowPrimer": 165.625,
+          "toolContext": 99.95833333333333,
+          "output": 24.083333333333332
+        },
+        "task1": 468.3645833333333,
+        "session10": 171.36458333333334,
+        "unbounded": 138.36458333333334
+      },
+      "ruby": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 217,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 58,
+          "workflowPrimer": 159,
+          "toolContext": 84.91666666666667,
+          "output": 19.25
+        },
+        "task1": 375.4166666666667,
+        "session10": 141.05666666666662,
+        "unbounded": 115.01666666666661
+      }
+    },
+    "c4000": {
+      "a0": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 23,
+        "system": 118,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 122.91666666666667,
+          "workflowPrimer": 0,
+          "toolContext": 141.20833333333334,
+          "output": 23.375
+        },
+        "task1": 312.32916666666665,
+        "session10": 184.88916666666668,
+        "unbounded": 170.7291666666667
+      },
+      "dense": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 145,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 145,
+          "workflowPrimer": 0,
+          "toolContext": 69.66666666666667,
+          "output": 22.458333333333332
+        },
+        "task1": 273.375,
+        "session10": 116.77500000000005,
+        "unbounded": 99.375
+      },
+      "ts": {
+        "n": 24,
+        "oneShot": 22,
+        "accepted": 24,
+        "system": 207,
+        "callsPerTask": 1.0833333333333333,
+        "buckets": {
+          "languagePrimer": 52,
+          "workflowPrimer": 172.25,
+          "toolContext": 101.33333333333333,
+          "output": 27.5
+        },
+        "task1": 388.4458333333334,
+        "session10": 164.88583333333335,
+        "unbounded": 140.0458333333333
+      },
+      "rust": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 222,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 63,
+          "workflowPrimer": 159,
+          "toolContext": 97.41666666666667,
+          "output": 21.5
+        },
+        "task1": 396.4166666666667,
+        "session10": 156.6566666666666,
+        "unbounded": 130.01666666666662
+      },
+      "python": {
+        "n": 24,
+        "oneShot": 15,
+        "accepted": 24,
+        "system": 218,
+        "callsPerTask": 1.375,
+        "buckets": {
+          "languagePrimer": 81.125,
+          "workflowPrimer": 218.625,
+          "toolContext": 100.33333333333333,
+          "output": 25.541666666666668
+        },
+        "task1": 402.46250000000003,
+        "session10": 167.02249999999998,
+        "unbounded": 140.86250000000004
+      },
+      "go": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 223,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 66.66666666666667,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.08333333333333,
+          "output": 22.75
+        },
+        "task1": 402.04791666666665,
+        "session10": 161.2079166666666,
+        "unbounded": 134.4479166666667
+      },
+      "java": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 225,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 68.75,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.08333333333333,
+          "output": 23
+        },
+        "task1": 404.8020833333333,
+        "session10": 161.80208333333334,
+        "unbounded": 134.80208333333334
+      },
+      "c": {
+        "n": 24,
+        "oneShot": 23,
+        "accepted": 24,
+        "system": 275,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 120.83333333333333,
+          "workflowPrimer": 165.625,
+          "toolContext": 99.95833333333333,
+          "output": 22.541666666666668
+        },
+        "task1": 466.8229166666667,
+        "session10": 169.82291666666666,
+        "unbounded": 136.82291666666666
+      },
+      "ruby": {
+        "n": 24,
+        "oneShot": 24,
+        "accepted": 24,
+        "system": 217,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 58,
+          "workflowPrimer": 159,
+          "toolContext": 84.91666666666667,
+          "output": 18.083333333333332
+        },
+        "task1": 374.25,
+        "session10": 139.88999999999996,
+        "unbounded": 113.84999999999995
+      }
+    },
+    "all": {
+      "a0": {
+        "n": 96,
+        "oneShot": 89,
+        "accepted": 92,
+        "system": 118,
+        "callsPerTask": 1.0729166666666667,
+        "buckets": {
+          "languagePrimer": 126.60416666666667,
+          "workflowPrimer": 0,
+          "toolContext": 144.75,
+          "output": 25.145833333333332
+        },
+        "task1": 317.8260416666667,
+        "session10": 190.38604166666664,
+        "unbounded": 176.22604166666648
+      },
+      "dense": {
+        "n": 96,
+        "oneShot": 96,
+        "accepted": 96,
+        "system": 145,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 145,
+          "workflowPrimer": 0,
+          "toolContext": 69.66666666666667,
+          "output": 22.291666666666668
+        },
+        "task1": 273.2083333333333,
+        "session10": 116.60833333333312,
+        "unbounded": 99.20833333333333
+      },
+      "ts": {
+        "n": 96,
+        "oneShot": 90,
+        "accepted": 96,
+        "system": 207,
+        "callsPerTask": 1.0625,
+        "buckets": {
+          "languagePrimer": 51,
+          "workflowPrimer": 168.9375,
+          "toolContext": 101.89583333333333,
+          "output": 25.114583333333332
+        },
+        "task1": 386.40729166666665,
+        "session10": 162.84729166666685,
+        "unbounded": 138.0072916666669
+      },
+      "rust": {
+        "n": 96,
+        "oneShot": 92,
+        "accepted": 96,
+        "system": 222,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 65.625,
+          "workflowPrimer": 165.625,
+          "toolContext": 102.13541666666667,
+          "output": 22.885416666666668
+        },
+        "task1": 402.98333333333335,
+        "session10": 163.22333333333316,
+        "unbounded": 136.58333333333357
+      },
+      "python": {
+        "n": 96,
+        "oneShot": 68,
+        "accepted": 96,
+        "system": 218,
+        "callsPerTask": 1.2916666666666667,
+        "buckets": {
+          "languagePrimer": 76.20833333333333,
+          "workflowPrimer": 205.375,
+          "toolContext": 97.10416666666667,
+          "output": 24.572916666666668
+        },
+        "task1": 397.3562500000003,
+        "session10": 161.9162499999998,
+        "unbounded": 135.7562499999998
+      },
+      "go": {
+        "n": 96,
+        "oneShot": 92,
+        "accepted": 96,
+        "system": 223,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 66.66666666666667,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.0625,
+          "output": 21.875
+        },
+        "task1": 401.15208333333334,
+        "session10": 160.31208333333322,
+        "unbounded": 133.55208333333312
+      },
+      "java": {
+        "n": 96,
+        "oneShot": 86,
+        "accepted": 93,
+        "system": 225,
+        "callsPerTask": 1.1041666666666667,
+        "buckets": {
+          "languagePrimer": 72.875,
+          "workflowPrimer": 175.5625,
+          "toolContext": 107.75,
+          "output": 24.833333333333332
+        },
+        "task1": 415.0052083333333,
+        "session10": 172.00520833333334,
+        "unbounded": 145.00520833333334
+      },
+      "c": {
+        "n": 96,
+        "oneShot": 92,
+        "accepted": 95,
+        "system": 275,
+        "callsPerTask": 1.0416666666666667,
+        "buckets": {
+          "languagePrimer": 120.83333333333333,
+          "workflowPrimer": 165.625,
+          "toolContext": 100.48958333333333,
+          "output": 23.354166666666668
+        },
+        "task1": 468.1666666666667,
+        "session10": 171.16666666666666,
+        "unbounded": 138.16666666666666
+      },
+      "ruby": {
+        "n": 96,
+        "oneShot": 96,
+        "accepted": 96,
+        "system": 217,
+        "callsPerTask": 1,
+        "buckets": {
+          "languagePrimer": 58,
+          "workflowPrimer": 159,
+          "toolContext": 84.91666666666667,
+          "output": 19.03125
+        },
+        "task1": 375.1979166666667,
+        "session10": 140.83791666666653,
+        "unbounded": 114.79791666666686
+      }
+    }
+  },
+  "comparisons": {
+    "b": {
+      "a0": {
+        "ranks": {
+          "task1": 2,
+          "session10": 8,
+          "unbounded": 9,
+          "accepted": 1,
+          "oneShot": 5
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 388.7375,
+              "verdict": "win",
+              "ratio": 1.2508312329060973
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 165.17750000000004,
+              "verdict": "loss",
+              "ratio": 0.9009190407795941
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 140.33749999999995,
+              "verdict": "loss",
+              "ratio": 0.8294995566939213
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 424.2250000000001,
+              "verdict": "win",
+              "ratio": 1.365018501635652
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 184.46499999999995,
+              "verdict": "tie",
+              "ratio": 1.0061178481173751
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 157.82499999999996,
+              "verdict": "loss",
+              "ratio": 0.9328637572652937
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 20,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 402.04583333333335,
+              "verdict": "win",
+              "ratio": 1.2936531345524749
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 166.60583333333332,
+              "verdict": "loss",
+              "ratio": 0.9087095249350035
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 140.44583333333338,
+              "verdict": "loss",
+              "ratio": 0.8301398876957936
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 15,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 401.13124999999997,
+              "verdict": "win",
+              "ratio": 1.2907103019252424
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 160.29124999999993,
+              "verdict": "loss",
+              "ratio": 0.8742682217333596
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 133.53125000000003,
+              "verdict": "loss",
+              "ratio": 0.7892695300955571
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 407.1458333333333,
+              "verdict": "win",
+              "ratio": 1.310063280956722
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 164.14583333333334,
+              "verdict": "loss",
+              "ratio": 0.8952920749777286
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 137.14583333333334,
+              "verdict": "loss",
+              "ratio": 0.8106344202541621
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 467.7395833333333,
+              "verdict": "win",
+              "ratio": 1.5050343218748323
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 170.73958333333334,
+              "verdict": "loss",
+              "ratio": 0.9312560223987782
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 137.73958333333334,
+              "verdict": "loss",
+              "ratio": 0.8141439267067283
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 310.78333333333336,
+              "lang": 375.75,
+              "verdict": "win",
+              "ratio": 1.2090416689011636
+            },
+            "session10": {
+              "form": 183.34333333333333,
+              "lang": 141.38999999999993,
+              "verdict": "loss",
+              "ratio": 0.7711761176663087
+            },
+            "unbounded": {
+              "form": 169.18333333333337,
+              "lang": 115.34999999999995,
+              "verdict": "loss",
+              "ratio": 0.6818047483006596
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      },
+      "dense": {
+        "ranks": {
+          "task1": 1,
+          "session10": 1,
+          "unbounded": 1,
+          "accepted": 1,
+          "oneShot": 1
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 388.7375,
+              "verdict": "win",
+              "ratio": 1.4222103658536587
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 165.17750000000004,
+              "verdict": "win",
+              "ratio": 1.4149985722444314
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 140.33749999999995,
+              "verdict": "win",
+              "ratio": 1.4127936241610735
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 424.2250000000001,
+              "verdict": "win",
+              "ratio": 1.5520426829268297
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 184.46499999999995,
+              "verdict": "win",
+              "ratio": 1.5802255853797817
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 157.82499999999996,
+              "verdict": "win",
+              "ratio": 1.5888422818791943
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 20,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 402.04583333333335,
+              "verdict": "win",
+              "ratio": 1.4708993902439027
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 166.60583333333332,
+              "verdict": "win",
+              "ratio": 1.4272344374643053
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 140.44583333333338,
+              "verdict": "win",
+              "ratio": 1.41388422818792
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 15,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 401.13124999999997,
+              "verdict": "win",
+              "ratio": 1.4675533536585366
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 160.29124999999993,
+              "verdict": "win",
+              "ratio": 1.3731403483723574
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 133.53125000000003,
+              "verdict": "win",
+              "ratio": 1.3442743288590608
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 407.1458333333333,
+              "verdict": "win",
+              "ratio": 1.4895579268292682
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 164.14583333333334,
+              "verdict": "win",
+              "ratio": 1.4061607652769839
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 137.14583333333334,
+              "verdict": "win",
+              "ratio": 1.3806627516778525
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 467.7395833333333,
+              "verdict": "win",
+              "ratio": 1.7112423780487804
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 170.73958333333334,
+              "verdict": "win",
+              "ratio": 1.4626463449457447
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 137.73958333333334,
+              "verdict": "win",
+              "ratio": 1.386640100671141
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 273.3333333333333,
+              "lang": 375.75,
+              "verdict": "win",
+              "ratio": 1.3746951219512196
+            },
+            "session10": {
+              "form": 116.73333333333339,
+              "lang": 141.38999999999993,
+              "verdict": "win",
+              "ratio": 1.211222158766418
+            },
+            "unbounded": {
+              "form": 99.33333333333333,
+              "lang": 115.34999999999995,
+              "verdict": "win",
+              "ratio": 1.1612416107382546
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      }
+    },
+    "c": {
+      "a0": {
+        "ranks": {
+          "task1": 2,
+          "session10": 9,
+          "unbounded": 9,
+          "accepted": 8,
+          "oneShot": 8
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 386.13958333333335,
+              "verdict": "win",
+              "ratio": 1.1714807604793447
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 162.57958333333337,
+              "verdict": "loss",
+              "ratio": 0.8041461263251612
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 137.7395833333333,
+              "verdict": "loss",
+              "ratio": 0.7325924120202107
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 395.4583333333333,
+              "verdict": "win",
+              "ratio": 1.19975223744754
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 155.69833333333327,
+              "verdict": "loss",
+              "ratio": 0.7701102995729803
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 129.05833333333328,
+              "verdict": "loss",
+              "ratio": 0.6864196436486125
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 382.87083333333334,
+              "verdict": "win",
+              "ratio": 1.1615639379076705
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 147.4308333333333,
+              "verdict": "loss",
+              "ratio": 0.7292178457784444
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 121.27083333333339,
+              "verdict": "loss",
+              "ratio": 0.6450004432231189
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 401.00624999999997,
+              "verdict": "win",
+              "ratio": 1.2165836577842948
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 160.16624999999993,
+              "verdict": "loss",
+              "ratio": 0.7922093713418952
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 133.40625000000003,
+              "verdict": "loss",
+              "ratio": 0.7095448098572824
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 440.3854166666667,
+              "verdict": "win",
+              "ratio": 1.3360532436668857
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 197.38541666666666,
+              "verdict": "loss",
+              "ratio": 0.9763016668590174
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 170.38541666666666,
+              "verdict": "loss",
+              "ratio": 0.9062250686995834
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 19,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 21,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 469.7395833333333,
+              "verdict": "win",
+              "ratio": 1.425108712140365
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 172.73958333333334,
+              "verdict": "loss",
+              "ratio": 0.8543992053154831
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 139.73958333333334,
+              "verdict": "loss",
+              "ratio": 0.7432297668646398
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 329.6166666666667,
+              "lang": 375.375,
+              "verdict": "win",
+              "ratio": 1.1388228750568843
+            },
+            "session10": {
+              "form": 202.1766666666667,
+              "lang": 141.01499999999996,
+              "verdict": "loss",
+              "ratio": 0.6974840486043555
+            },
+            "unbounded": {
+              "form": 188.01666666666665,
+              "lang": 114.97499999999995,
+              "verdict": "loss",
+              "ratio": 0.6115149366190938
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      },
+      "dense": {
+        "ranks": {
+          "task1": 1,
+          "session10": 1,
+          "unbounded": 1,
+          "accepted": 1,
+          "oneShot": 1
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 272.75,
+              "lang": 386.13958333333335,
+              "verdict": "win",
+              "ratio": 1.4157271616254201
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 162.57958333333337,
+              "verdict": "win",
+              "ratio": 1.3997381259865114
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 137.7395833333333,
+              "verdict": "win",
+              "ratio": 1.3948312236286915
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 272.75,
+              "lang": 395.4583333333333,
+              "verdict": "win",
+              "ratio": 1.44989306446685
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 155.69833333333327,
+              "verdict": "win",
+              "ratio": 1.340493614578848
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 129.05833333333328,
+              "verdict": "win",
+              "ratio": 1.306919831223628
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 272.75,
+              "lang": 382.87083333333334,
+              "verdict": "win",
+              "ratio": 1.4037427436602505
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 147.4308333333333,
+              "verdict": "win",
+              "ratio": 1.269314105323575
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 121.27083333333339,
+              "verdict": "win",
+              "ratio": 1.2280590717299584
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 272.75,
+              "lang": 401.00624999999997,
+              "verdict": "win",
+              "ratio": 1.4702337305224564
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 160.16624999999993,
+              "verdict": "win",
+              "ratio": 1.3789603960396029
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 133.40625000000003,
+              "verdict": "win",
+              "ratio": 1.350949367088608
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 272.75,
+              "lang": 440.3854166666667,
+              "verdict": "win",
+              "ratio": 1.614611976779713
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 197.38541666666666,
+              "verdict": "win",
+              "ratio": 1.6994009183527041
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 170.38541666666666,
+              "verdict": "win",
+              "ratio": 1.7254219409282698
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 19,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 21,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 272.75,
+              "lang": 469.7395833333333,
+              "verdict": "win",
+              "ratio": 1.7222349526428353
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 172.73958333333334,
+              "verdict": "win",
+              "ratio": 1.4872112211221116
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 139.73958333333334,
+              "verdict": "win",
+              "ratio": 1.415084388185654
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 272.75,
+              "lang": 375.375,
+              "verdict": "win",
+              "ratio": 1.3762603116406966
+            },
+            "session10": {
+              "form": 116.15000000000005,
+              "lang": 141.01499999999996,
+              "verdict": "win",
+              "ratio": 1.2140766250538089
+            },
+            "unbounded": {
+              "form": 98.75,
+              "lang": 114.97499999999995,
+              "verdict": "win",
+              "ratio": 1.1643037974683539
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      }
+    },
+    "c400": {
+      "a0": {
+        "ranks": {
+          "task1": 2,
+          "session10": 9,
+          "unbounded": 9,
+          "accepted": 9,
+          "oneShot": 7
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 318.575,
+              "lang": 382.30625000000003,
+              "verdict": "win",
+              "ratio": 1.200051008396767
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 158.74625000000003,
+              "verdict": "loss",
+              "ratio": 0.8305451644125882
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 133.90624999999994,
+              "verdict": "loss",
+              "ratio": 0.7566393558412201
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 318.575,
+              "lang": 395.8333333333333,
+              "verdict": "win",
+              "ratio": 1.2425122289361479
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 156.07333333333327,
+              "verdict": "loss",
+              "ratio": 0.8165607206075982
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 129.43333333333328,
+              "verdict": "loss",
+              "ratio": 0.7313650703960066
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 318.575,
+              "lang": 402.04583333333335,
+              "verdict": "win",
+              "ratio": 1.2620131313923986
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 166.60583333333332,
+              "verdict": "loss",
+              "ratio": 0.8716657510834401
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 140.44583333333338,
+              "verdict": "loss",
+              "ratio": 0.7935913735461696
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 15,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 318.575,
+              "lang": 400.42291666666665,
+              "verdict": "win",
+              "ratio": 1.2569188312537602
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 159.5829166666666,
+              "verdict": "loss",
+              "ratio": 0.834922524219356
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 132.8229166666667,
+              "verdict": "loss",
+              "ratio": 0.7505179639308756
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 318.575,
+              "lang": 407.6875,
+              "verdict": "win",
+              "ratio": 1.279722200423762
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 164.6875,
+              "verdict": "loss",
+              "ratio": 0.8616292149527821
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 137.6875,
+              "verdict": "loss",
+              "ratio": 0.778005367989829
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 318.575,
+              "lang": 468.3645833333333,
+              "verdict": "win",
+              "ratio": 1.4701862460435795
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 171.36458333333334,
+              "verdict": "loss",
+              "ratio": 0.8965630749644667
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 138.36458333333334,
+              "verdict": "loss",
+              "ratio": 0.7818312379337947
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 318.575,
+              "lang": 375.4166666666667,
+              "verdict": "win",
+              "ratio": 1.178424756075231
+            },
+            "session10": {
+              "form": 191.135,
+              "lang": 141.05666666666662,
+              "verdict": "loss",
+              "ratio": 0.7379949599323338
+            },
+            "unbounded": {
+              "form": 176.97500000000002,
+              "lang": 115.01666666666661,
+              "verdict": "loss",
+              "ratio": 0.6499034703583365
+            },
+            "oneShot": {
+              "form": 22,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      },
+      "dense": {
+        "ranks": {
+          "task1": 1,
+          "session10": 1,
+          "unbounded": 1,
+          "accepted": 1,
+          "oneShot": 1
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 273.375,
+              "lang": 382.30625000000003,
+              "verdict": "win",
+              "ratio": 1.3984682213077275
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 158.74625000000003,
+              "verdict": "win",
+              "ratio": 1.3594198244487259
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 133.90624999999994,
+              "verdict": "win",
+              "ratio": 1.3474842767295592
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 273.375,
+              "lang": 395.8333333333333,
+              "verdict": "win",
+              "ratio": 1.4479500076207894
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 156.07333333333327,
+              "verdict": "win",
+              "ratio": 1.3365303646613846
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 129.43333333333328,
+              "verdict": "win",
+              "ratio": 1.3024737945492657
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 273.375,
+              "lang": 402.04583333333335,
+              "verdict": "win",
+              "ratio": 1.4706752019509222
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 166.60583333333332,
+              "verdict": "win",
+              "ratio": 1.4267251837579384
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 140.44583333333338,
+              "verdict": "win",
+              "ratio": 1.4132914046121599
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 15,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 273.375,
+              "lang": 400.42291666666665,
+              "verdict": "win",
+              "ratio": 1.4647386069196768
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 159.5829166666666,
+              "verdict": "win",
+              "ratio": 1.3665846000142712
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 132.8229166666667,
+              "verdict": "win",
+              "ratio": 1.336582809224319
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 273.375,
+              "lang": 407.6875,
+              "verdict": "win",
+              "ratio": 1.4913122999542752
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 164.6875,
+              "verdict": "win",
+              "ratio": 1.4102975808178115
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 137.6875,
+              "verdict": "win",
+              "ratio": 1.3855345911949686
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 273.375,
+              "lang": 468.3645833333333,
+              "verdict": "win",
+              "ratio": 1.7132677945435146
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 171.36458333333334,
+              "verdict": "win",
+              "ratio": 1.4674766288446437
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 138.36458333333334,
+              "verdict": "win",
+              "ratio": 1.3923480083857442
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 273.375,
+              "lang": 375.4166666666667,
+              "verdict": "win",
+              "ratio": 1.373266270385612
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 141.05666666666662,
+              "verdict": "win",
+              "ratio": 1.2079354884749867
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 115.01666666666661,
+              "verdict": "win",
+              "ratio": 1.1574004192872112
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      }
+    },
+    "c4000": {
+      "a0": {
+        "ranks": {
+          "task1": 2,
+          "session10": 9,
+          "unbounded": 9,
+          "accepted": 9,
+          "oneShot": 4
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 388.4458333333334,
+              "verdict": "win",
+              "ratio": 1.2437065595859071
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 164.88583333333335,
+              "verdict": "loss",
+              "ratio": 0.8918090567772585
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 140.0458333333333,
+              "verdict": "loss",
+              "ratio": 0.8202806589383765
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 396.4166666666667,
+              "verdict": "win",
+              "ratio": 1.2692271775237132
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 156.6566666666666,
+              "verdict": "loss",
+              "ratio": 0.8473004097049129
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 130.01666666666662,
+              "verdict": "loss",
+              "ratio": 0.7615375228798043
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 402.46250000000003,
+              "verdict": "win",
+              "ratio": 1.2885844261529638
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 167.02249999999998,
+              "verdict": "loss",
+              "ratio": 0.9033655297993841
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 140.86250000000004,
+              "verdict": "loss",
+              "ratio": 0.8250640634533252
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 15,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 402.04791666666665,
+              "verdict": "win",
+              "ratio": 1.2872570338451688
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 161.2079166666666,
+              "verdict": "loss",
+              "ratio": 0.8719165085388989
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 134.4479166666667,
+              "verdict": "loss",
+              "ratio": 0.7874923733984137
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 404.8020833333333,
+              "verdict": "win",
+              "ratio": 1.296075187769314
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 161.80208333333334,
+              "verdict": "loss",
+              "ratio": 0.8751301455376419
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 134.80208333333334,
+              "verdict": "loss",
+              "ratio": 0.7895668090298961
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 466.8229166666667,
+              "verdict": "win",
+              "ratio": 1.4946504088901935
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 169.82291666666666,
+              "verdict": "loss",
+              "ratio": 0.918511991418282
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 136.82291666666666,
+              "verdict": "loss",
+              "ratio": 0.801403294691885
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 312.32916666666665,
+              "lang": 374.25,
+              "verdict": "win",
+              "ratio": 1.1982550460918635
+            },
+            "session10": {
+              "form": 184.88916666666668,
+              "lang": 139.88999999999996,
+              "verdict": "loss",
+              "ratio": 0.7566154497964994
+            },
+            "unbounded": {
+              "form": 170.7291666666667,
+              "lang": 113.84999999999995,
+              "verdict": "loss",
+              "ratio": 0.6668456375838921
+            },
+            "oneShot": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 23,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      },
+      "dense": {
+        "ranks": {
+          "task1": 1,
+          "session10": 1,
+          "unbounded": 1,
+          "accepted": 1,
+          "oneShot": 1
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 273.375,
+              "lang": 388.4458333333334,
+              "verdict": "win",
+              "ratio": 1.4209266880048774
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 164.88583333333335,
+              "verdict": "win",
+              "ratio": 1.4119960037108394
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 140.0458333333333,
+              "verdict": "win",
+              "ratio": 1.4092662473794546
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 22,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 273.375,
+              "lang": 396.4166666666667,
+              "verdict": "win",
+              "ratio": 1.4500838286846518
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 156.6566666666666,
+              "verdict": "win",
+              "ratio": 1.3415257261114668
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 130.01666666666662,
+              "verdict": "win",
+              "ratio": 1.3083438155136264
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 273.375,
+              "lang": 402.46250000000003,
+              "verdict": "win",
+              "ratio": 1.4721993598536809
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 167.02249999999998,
+              "verdict": "win",
+              "ratio": 1.4302932990794255
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 140.86250000000004,
+              "verdict": "win",
+              "ratio": 1.4174842767295601
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 15,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 273.375,
+              "lang": 402.04791666666665,
+              "verdict": "win",
+              "ratio": 1.4706828227404358
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 161.2079166666666,
+              "verdict": "win",
+              "ratio": 1.3805002497680714
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 134.4479166666667,
+              "verdict": "win",
+              "ratio": 1.3529350104821807
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 273.375,
+              "lang": 404.8020833333333,
+              "verdict": "win",
+              "ratio": 1.480757506477671
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 161.80208333333334,
+              "verdict": "win",
+              "ratio": 1.3855883822165127
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 134.80208333333334,
+              "verdict": "win",
+              "ratio": 1.3564989517819708
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 273.375,
+              "lang": 466.8229166666667,
+              "verdict": "win",
+              "ratio": 1.7076284103033075
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 169.82291666666666,
+              "verdict": "win",
+              "ratio": 1.454274602155141
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 136.82291666666666,
+              "verdict": "win",
+              "ratio": 1.3768343815513626
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 23,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 273.375,
+              "lang": 374.25,
+              "verdict": "win",
+              "ratio": 1.3689986282578874
+            },
+            "session10": {
+              "form": 116.77500000000005,
+              "lang": 139.88999999999996,
+              "verdict": "win",
+              "ratio": 1.1979447655748225
+            },
+            "unbounded": {
+              "form": 99.375,
+              "lang": 113.84999999999995,
+              "verdict": "win",
+              "ratio": 1.1456603773584901
+            },
+            "oneShot": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            },
+            "accepted": {
+              "form": 24,
+              "lang": 24,
+              "n": 24
+            }
+          }
+        }
+      }
+    },
+    "all": {
+      "a0": {
+        "ranks": {
+          "task1": 2,
+          "session10": 9,
+          "unbounded": 9,
+          "accepted": 9,
+          "oneShot": 7
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 386.40729166666665,
+              "verdict": "win",
+              "ratio": 1.2157823494901887
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 162.84729166666685,
+              "verdict": "loss",
+              "ratio": 0.855353103836176
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 138.0072916666669,
+              "verdict": "loss",
+              "ratio": 0.7831265479350051
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 90,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 402.98333333333335,
+              "verdict": "win",
+              "ratio": 1.267936797186616
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 163.22333333333316,
+              "verdict": "loss",
+              "ratio": 0.8573282573893167
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 136.58333333333357,
+              "verdict": "loss",
+              "ratio": 0.7750462533323109
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 92,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 397.3562500000003,
+              "verdict": "win",
+              "ratio": 1.2502318813029933
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 161.9162499999998,
+              "verdict": "loss",
+              "ratio": 0.8504628206068143
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 135.7562499999998,
+              "verdict": "loss",
+              "ratio": 0.7703529439581027
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 68,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 401.15208333333334,
+              "verdict": "win",
+              "ratio": 1.2621749974599574
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 160.31208333333322,
+              "verdict": "loss",
+              "ratio": 0.8420369578039352
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 133.55208333333312,
+              "verdict": "loss",
+              "ratio": 0.7578453335855343
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 92,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 415.0052083333333,
+              "verdict": "win",
+              "ratio": 1.3057621274740832
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 172.00520833333334,
+              "verdict": "loss",
+              "ratio": 0.9034549320295497
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 145.00520833333334,
+              "verdict": "loss",
+              "ratio": 0.822836437577213
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 86,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 93,
+              "n": 96
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 468.1666666666667,
+              "verdict": "win",
+              "ratio": 1.473028025682288
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 171.16666666666666,
+              "verdict": "loss",
+              "ratio": 0.8990505037462262
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 138.16666666666666,
+              "verdict": "loss",
+              "ratio": 0.784030926189731
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 92,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 95,
+              "n": 96
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 317.8260416666667,
+              "lang": 375.1979166666667,
+              "verdict": "win",
+              "ratio": 1.1805134491155735
+            },
+            "session10": {
+              "form": 190.38604166666664,
+              "lang": 140.83791666666653,
+              "verdict": "loss",
+              "ratio": 0.7397491719127687
+            },
+            "unbounded": {
+              "form": 176.22604166666648,
+              "lang": 114.79791666666686,
+              "verdict": "loss",
+              "ratio": 0.6514242479769727
+            },
+            "oneShot": {
+              "form": 89,
+              "lang": 96,
+              "n": 96
+            },
+            "accepted": {
+              "form": 92,
+              "lang": 96,
+              "n": 96
+            }
+          }
+        }
+      },
+      "dense": {
+        "ranks": {
+          "task1": 1,
+          "session10": 1,
+          "unbounded": 1,
+          "accepted": 1,
+          "oneShot": 1
+        },
+        "against": {
+          "ts": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 386.40729166666665,
+              "verdict": "win",
+              "ratio": 1.4143320115906666
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 162.84729166666685,
+              "verdict": "win",
+              "ratio": 1.396532194668767
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 138.0072916666669,
+              "verdict": "win",
+              "ratio": 1.3910856782864367
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 90,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "rust": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 402.98333333333335,
+              "verdict": "win",
+              "ratio": 1.4750038127192315
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 163.22333333333316,
+              "verdict": "win",
+              "ratio": 1.3997570213678279
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 136.58333333333357,
+              "verdict": "win",
+              "ratio": 1.3767324653506954
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 92,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "python": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 397.3562500000003,
+              "verdict": "win",
+              "ratio": 1.4544075034314483
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 161.9162499999998,
+              "verdict": "win",
+              "ratio": 1.3885478453512479
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 135.7562499999998,
+              "verdict": "win",
+              "ratio": 1.3683956320873563
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 68,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "go": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 401.15208333333334,
+              "verdict": "win",
+              "ratio": 1.468301052310508
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 160.31208333333322,
+              "verdict": "win",
+              "ratio": 1.374790966912029
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 133.55208333333312,
+              "verdict": "win",
+              "ratio": 1.3461780764384692
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 92,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 96,
+              "n": 96
+            }
+          },
+          "java": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 415.0052083333333,
+              "verdict": "win",
+              "ratio": 1.5190064053683088
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 172.00520833333334,
+              "verdict": "win",
+              "ratio": 1.475067891088404
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 145.00520833333334,
+              "verdict": "win",
+              "ratio": 1.4616232675346494
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 86,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 93,
+              "n": 96
+            }
+          },
+          "c": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 468.1666666666667,
+              "verdict": "win",
+              "ratio": 1.7135885313405523
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 171.16666666666666,
+              "verdict": "win",
+              "ratio": 1.46787679554063
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 138.16666666666666,
+              "verdict": "win",
+              "ratio": 1.392692146157077
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 92,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 95,
+              "n": 96
+            }
+          },
+          "ruby": {
+            "task1": {
+              "form": 273.2083333333333,
+              "lang": 375.1979166666667,
+              "verdict": "win",
+              "ratio": 1.373303339942047
+            },
+            "session10": {
+              "form": 116.60833333333312,
+              "lang": 140.83791666666653,
+              "verdict": "win",
+              "ratio": 1.2077860358750814
+            },
+            "unbounded": {
+              "form": 99.20833333333333,
+              "lang": 114.79791666666686,
+              "verdict": "win",
+              "ratio": 1.157139857202858
+            },
+            "oneShot": {
+              "form": 96,
+              "lang": 96,
+              "n": 96
+            },
+            "accepted": {
+              "form": 96,
+              "lang": 96,
+              "n": 96
+            }
+          }
+        }
+      }
+    }
+  },
+  "losses": [
+    "b a0 vs ts: session10 183 against 165",
+    "b a0 vs ts: unbounded 169 against 140",
+    "b a0 vs rust: unbounded 169 against 158",
+    "b a0 vs python: session10 183 against 167",
+    "b a0 vs python: unbounded 169 against 140",
+    "b a0 vs go: session10 183 against 160",
+    "b a0 vs go: unbounded 169 against 134",
+    "b a0 vs go: one shot 22/24 against 23/24",
+    "b a0 vs java: session10 183 against 164",
+    "b a0 vs java: unbounded 169 against 137",
+    "b a0 vs c: session10 183 against 171",
+    "b a0 vs c: unbounded 169 against 138",
+    "b a0 vs c: one shot 22/24 against 23/24",
+    "b a0 vs ruby: session10 183 against 141",
+    "b a0 vs ruby: unbounded 169 against 115",
+    "b a0 vs ruby: one shot 22/24 against 24/24",
+    "c a0 vs ts: session10 202 against 163",
+    "c a0 vs ts: unbounded 188 against 138",
+    "c a0 vs ts: accepted 22/24 against 24/24",
+    "c a0 vs ts: one shot 22/24 against 23/24",
+    "c a0 vs rust: session10 202 against 156",
+    "c a0 vs rust: unbounded 188 against 129",
+    "c a0 vs rust: accepted 22/24 against 24/24",
+    "c a0 vs rust: one shot 22/24 against 24/24",
+    "c a0 vs python: session10 202 against 147",
+    "c a0 vs python: unbounded 188 against 121",
+    "c a0 vs python: accepted 22/24 against 24/24",
+    "c a0 vs python: one shot 22/24 against 23/24",
+    "c a0 vs go: session10 202 against 160",
+    "c a0 vs go: unbounded 188 against 133",
+    "c a0 vs go: accepted 22/24 against 24/24",
+    "c a0 vs go: one shot 22/24 against 23/24",
+    "c a0 vs java: session10 202 against 197",
+    "c a0 vs java: unbounded 188 against 170",
+    "c a0 vs c: session10 202 against 173",
+    "c a0 vs c: unbounded 188 against 140",
+    "c a0 vs c: accepted 22/24 against 23/24",
+    "c a0 vs c: one shot 22/24 against 23/24",
+    "c a0 vs ruby: session10 202 against 141",
+    "c a0 vs ruby: unbounded 188 against 115",
+    "c a0 vs ruby: accepted 22/24 against 24/24",
+    "c a0 vs ruby: one shot 22/24 against 24/24",
+    "c400 a0 vs ts: session10 191 against 159",
+    "c400 a0 vs ts: unbounded 177 against 134",
+    "c400 a0 vs ts: accepted 23/24 against 24/24",
+    "c400 a0 vs ts: one shot 22/24 against 23/24",
+    "c400 a0 vs rust: session10 191 against 156",
+    "c400 a0 vs rust: unbounded 177 against 129",
+    "c400 a0 vs rust: accepted 23/24 against 24/24",
+    "c400 a0 vs rust: one shot 22/24 against 24/24",
+    "c400 a0 vs python: session10 191 against 167",
+    "c400 a0 vs python: unbounded 177 against 140",
+    "c400 a0 vs python: accepted 23/24 against 24/24",
+    "c400 a0 vs go: session10 191 against 160",
+    "c400 a0 vs go: unbounded 177 against 133",
+    "c400 a0 vs go: accepted 23/24 against 24/24",
+    "c400 a0 vs go: one shot 22/24 against 23/24",
+    "c400 a0 vs java: session10 191 against 165",
+    "c400 a0 vs java: unbounded 177 against 138",
+    "c400 a0 vs java: accepted 23/24 against 24/24",
+    "c400 a0 vs c: session10 191 against 171",
+    "c400 a0 vs c: unbounded 177 against 138",
+    "c400 a0 vs c: accepted 23/24 against 24/24",
+    "c400 a0 vs c: one shot 22/24 against 23/24",
+    "c400 a0 vs ruby: session10 191 against 141",
+    "c400 a0 vs ruby: unbounded 177 against 115",
+    "c400 a0 vs ruby: accepted 23/24 against 24/24",
+    "c400 a0 vs ruby: one shot 22/24 against 24/24",
+    "c4000 a0 vs ts: session10 185 against 165",
+    "c4000 a0 vs ts: unbounded 171 against 140",
+    "c4000 a0 vs ts: accepted 23/24 against 24/24",
+    "c4000 a0 vs rust: session10 185 against 157",
+    "c4000 a0 vs rust: unbounded 171 against 130",
+    "c4000 a0 vs rust: accepted 23/24 against 24/24",
+    "c4000 a0 vs rust: one shot 23/24 against 24/24",
+    "c4000 a0 vs python: session10 185 against 167",
+    "c4000 a0 vs python: unbounded 171 against 141",
+    "c4000 a0 vs python: accepted 23/24 against 24/24",
+    "c4000 a0 vs go: session10 185 against 161",
+    "c4000 a0 vs go: unbounded 171 against 134",
+    "c4000 a0 vs go: accepted 23/24 against 24/24",
+    "c4000 a0 vs java: session10 185 against 162",
+    "c4000 a0 vs java: unbounded 171 against 135",
+    "c4000 a0 vs java: accepted 23/24 against 24/24",
+    "c4000 a0 vs c: session10 185 against 170",
+    "c4000 a0 vs c: unbounded 171 against 137",
+    "c4000 a0 vs c: accepted 23/24 against 24/24",
+    "c4000 a0 vs ruby: session10 185 against 140",
+    "c4000 a0 vs ruby: unbounded 171 against 114",
+    "c4000 a0 vs ruby: accepted 23/24 against 24/24",
+    "c4000 a0 vs ruby: one shot 23/24 against 24/24",
+    "all a0 vs ts: session10 190 against 163",
+    "all a0 vs ts: unbounded 176 against 138",
+    "all a0 vs ts: accepted 92/96 against 96/96",
+    "all a0 vs ts: one shot 89/96 against 90/96",
+    "all a0 vs rust: session10 190 against 163",
+    "all a0 vs rust: unbounded 176 against 137",
+    "all a0 vs rust: accepted 92/96 against 96/96",
+    "all a0 vs rust: one shot 89/96 against 92/96",
+    "all a0 vs python: session10 190 against 162",
+    "all a0 vs python: unbounded 176 against 136",
+    "all a0 vs python: accepted 92/96 against 96/96",
+    "all a0 vs go: session10 190 against 160",
+    "all a0 vs go: unbounded 176 against 134",
+    "all a0 vs go: accepted 92/96 against 96/96",
+    "all a0 vs go: one shot 89/96 against 92/96",
+    "all a0 vs java: session10 190 against 172",
+    "all a0 vs java: unbounded 176 against 145",
+    "all a0 vs java: accepted 92/96 against 93/96",
+    "all a0 vs c: session10 190 against 171",
+    "all a0 vs c: unbounded 176 against 138",
+    "all a0 vs c: accepted 92/96 against 95/96",
+    "all a0 vs c: one shot 89/96 against 92/96",
+    "all a0 vs ruby: session10 190 against 141",
+    "all a0 vs ruby: unbounded 176 against 115",
+    "all a0 vs ruby: accepted 92/96 against 96/96",
+    "all a0 vs ruby: one shot 89/96 against 96/96"
+  ]
+}

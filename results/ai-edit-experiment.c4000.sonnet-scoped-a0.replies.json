@@ -1,0 +1,38 @@
+{
+ "c4000-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "c4000-sumfrom-eight/a0/structured": [
+  "r fold addi 8 p0"
+ ],
+ "c4000-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "c4000-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "c4000-avgfloor-nowrap/a0/structured": [
+  "a and p0 p1\nb xor p0 p1\nc shr b 1\nd add a c\nret d"
+ ],
+ "c4000-sumsq-array/a0/structured": [
+  "fn addel u32 u32 u32x4 -> u32\na get p2 p1\nb mul a a\nc add p0 b\nret c\nend"
+ ],
+ "c4000-inrange-inclusive/a0/structured": [
+  "a ge p0 p1\nb le p0 p2"
+ ],
+ "c4000-bounds-largest/a0/structured": [
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get p2 p1\nlo at p0 0\nhi at p0 1\nc lt x lo\nnlo select c x lo\nd gt x hi\nnhi select d x hi\nr rec nlo nhi\nret r\nend"
+ ],
+ "c4000-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0\nfn mixel u32 u32 u32x4 -> u32\nx get p2 p1\nm mul p0 31\nh add m x\nret h\nend"
+ ],
+ "c4000-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nr call dot p0 p0\nret r\nend"
+ ],
+ "c4000-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\nm mul p0 100\nq div m p1\nr call limit q 0 100\nret r\nend"
+ ],
+ "c4000-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\nx xor p0 p1\nr call popcnt x\nret r\nend"
+ ]
+}

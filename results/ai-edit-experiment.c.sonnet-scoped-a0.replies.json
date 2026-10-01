@@ -1,0 +1,38 @@
+{
+ "c-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "c-sumfrom-eight/a0/structured": [
+  "r fold addi 8 p0"
+ ],
+ "c-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "c-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "c-avgfloor-nowrap/a0/structured": [
+  "a xor p0 p1\nc and p0 p1\nd add b c\nret d"
+ ],
+ "c-sumsq-array/a0/structured": [
+  "b mul a a\nc add p0 b\nret c"
+ ],
+ "c-inrange-inclusive/a0/structured": [
+  "a ge p0 p1\nb le p0 p2"
+ ],
+ "c-bounds-largest/a0/structured": [
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get p2 p1\nlo at p0 0\nhi at p0 1\nc lt x lo\nnl select c x lo\nd gt x hi\nnh select d x hi\nr rec nl nh\nret r\nend"
+ ],
+ "c-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0\nfn mixel u32 u32 u32x4 -> u32\nx get p2 p1\nm mul p0 31\nr add m x\nret r\nend"
+ ],
+ "c-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nr call dot p0 p0\nret r\nend"
+ ],
+ "c-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\na mul p0 100\nb div a p1\nr call limit b 0 100\nret r\nend"
+ ],
+ "c-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\nx xor p0 p1\nr call popcnt x\nret r\nend"
+ ]
+}
