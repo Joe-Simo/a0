@@ -5,8 +5,8 @@
  * step is missing, skipped, timed out or failed.
  *
  *   node dist/tools/dev/dev-gate.js [--repo=/abs/path] [--base=<ref>] [--light] [--steps=a,b]
- *       [--add-steps=a,b] [--keep-going] [--dry-run] [--json] [--mode=baseline|assisted]
- *       [--push=<remote>] [--scratch=/abs/dir] [--no-note]
+ *       [--add-steps=a,b] [--keep-going] [--dry-run] [--json] [--mode=baseline|assisted|fast]
+ *       [--push=<remote>] [--scratch=/abs/dir] [--no-note] [--no-cache] [--commit-results] [--max-parallel=N]
  *
  * The repo is given by absolute path (default: the repo this tool was built in) and every step runs
  * with that path as its working directory. Logs go to <scratch>/a0-gate-<random>/NN-<step>.log
@@ -19,11 +19,12 @@
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadavg, tmpdir } from 'node:os';
+import { cpus, loadavg, tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { dirtyTracked, writeNote } from './gate-note.js';
 import {
+  ALL_STEPS,
   addSteps,
   computeScope,
   parseSteps,
@@ -35,6 +36,7 @@ import { appendHistory, type HistoryRow, signature } from './history.js';
 import { record } from './loop-log.js';
 import { orderRuns } from './order.js';
 import { changedFiles, defaultBase, defaultRepo, vcs } from './repo.js';
+import { cachedKey, isCacheable, recordPass, stepKey } from './step-cache.js';
 
 export interface StepRun {
   readonly id: string;
@@ -69,13 +71,15 @@ export const COMMANDS: Readonly<Record<StepId, StepRun>> = {
   site: { id: 'site', cmd: node('site-build'), timeoutMs: 30 * MIN },
 };
 
-export type Outcome = 'pass' | 'fail' | 'timeout' | 'skipped' | 'not-run';
+export type Outcome = 'pass' | 'cached' | 'fail' | 'timeout' | 'skipped' | 'not-run';
 export interface StepResult {
   readonly id: string;
   readonly outcome: Outcome;
   readonly rc: number | null;
   readonly ms: number;
   readonly log: string | null;
+  /** Cache key when the step was skipped as cached or recorded as passing. */
+  readonly key?: string;
 }
 
 /** Steps that read dist/ and so need the build first. */
@@ -111,15 +115,21 @@ export function pushDecision(
   for (const id of required) {
     const r = results.find((x) => x.id === id);
     if (!r) why.push(`step ${id} is missing`);
-    else if (r.outcome !== 'pass') why.push(`step ${id} is ${r.outcome}`);
+    else if (!isOk(r)) why.push(`step ${id} is ${r.outcome}`);
   }
   for (const r of results)
-    if (r.outcome !== 'pass' && !required.includes(r.id)) why.push(`step ${r.id} is ${r.outcome}`);
+    if (!isOk(r) && !required.includes(r.id)) why.push(`step ${r.id} is ${r.outcome}`);
   return { allowed: why.length === 0, why };
 }
 
+const isOk = (r: StepResult): boolean => r.outcome === 'pass' || r.outcome === 'cached';
+
 export function resultLine(results: readonly StepResult[], pass: boolean): string {
-  const parts = results.map((r) => `${r.id}=${r.rc === null ? r.outcome : r.rc}`);
+  const parts = results.map((r) =>
+    r.outcome === 'cached'
+      ? `${r.id}=cached(${(r.key ?? '').slice(0, 12)})`
+      : `${r.id}=${r.rc === null ? r.outcome : r.rc}`,
+  );
   return `GATE RESULT: ${pass ? 'pass' : 'fail'} ${parts.join(' ')}`;
 }
 
@@ -173,9 +183,15 @@ export interface GateOptions {
   readonly light: boolean;
   readonly keepGoing: boolean;
   readonly scratch: string;
-  readonly mode?: 'baseline' | 'assisted';
+  readonly mode?: 'baseline' | 'assisted' | 'fast';
   /** Write the gate note on pass (default true). */
   readonly note?: boolean;
+  /** Skip steps whose content key matches a previous pass (default false; the CLI turns it on). */
+  readonly cache?: boolean;
+  /** After a pass, commit regenerated results/*.json as one commit, then note that commit. */
+  readonly commitResults?: boolean;
+  /** Most steps that may run at once (default: from load and core count). */
+  readonly maxParallel?: number;
   readonly log?: (line: string) => void;
 }
 
@@ -185,32 +201,58 @@ export interface GateReport {
   readonly pass: boolean;
   readonly line: string;
   readonly noted: boolean;
+  readonly wallMs: number;
+  readonly resultsCommitted: boolean;
+}
+
+/** Light steps may overlap; everything else runs alone. Above load 10 nothing overlaps. */
+export function parallelBudget(load1: number, cores: number): number {
+  if (load1 > 10) return 1;
+  return Math.max(1, Math.min(4, Math.floor(cores * 0.6 - load1)));
+}
+
+const PRE = ['lint', 'typecheck'];
+const LIGHT = ['test', 'site'];
+
+/** Phases in order: lint+typecheck together, the build, test+site together, then heavy steps one at a time. */
+export function phases(runs: readonly StepRun[]): StepRun[][] {
+  const pick = (ids: readonly string[]): StepRun[] => runs.filter((r) => ids.includes(r.id));
+  const build = pick(['build']);
+  const heavy = runs.filter((r) => ![...PRE, ...LIGHT, 'build'].includes(r.id));
+  return [pick(PRE), build, pick(LIGHT), ...heavy.map((r) => [r])].filter((g) => g.length > 0);
 }
 
 export async function runGate(o: GateOptions): Promise<GateReport> {
   if (!isAbsolute(o.repo)) throw new Error('repo must be an absolute path');
   mkdirSync(o.scratch, { recursive: true });
+  const started = Date.now();
   const dir = mkdtempSync(join(o.scratch, 'a0-gate-'));
   const say = o.log ?? ((l: string) => process.stdout.write(`${l}\n`));
   say(`run folder ${dir}`);
   const cleanAtStart = !dirtyTracked(o.repo);
   const tree = vcs(o.repo, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']).stdout.trim();
   const rows: HistoryRow[] = [];
-  const results: StepResult[] = [];
+  const done = new Map<string, StepResult>();
+  const order = new Map(o.runs.map((r, i) => [r.id, i]));
   let failed = false;
-  let n = 0;
-  for (const run of o.runs) {
-    n += 1;
-    if (failed && !o.keepGoing) {
-      results.push({ id: run.id, outcome: 'not-run', rc: null, ms: 0, log: null });
-      continue;
+  const one = async (run: StepRun): Promise<StepResult> => {
+    const log = join(dir, `${String((order.get(run.id) ?? 0) + 1).padStart(2, '0')}-${run.id}.log`);
+    let key: string | undefined;
+    if (
+      o.cache === true &&
+      isCacheable(run.id) &&
+      (ALL_STEPS as readonly string[]).includes(run.id)
+    ) {
+      key = stepKey(o.repo, run.id as StepId, run.cmd);
+      if (cachedKey(o.repo, run.id, key)) {
+        say(`step ${run.id}: cached (${key.slice(0, 12)}), unchanged since its last pass`);
+        return { id: run.id, outcome: 'cached', rc: 0, ms: 0, log: null, key };
+      }
     }
-    const log = join(dir, `${String(n).padStart(2, '0')}-${run.id}.log`);
     say(`step ${run.id}: ${run.cmd}`);
     const r = await runStep(o.repo, run, log);
     say(`step ${run.id}: ${r.outcome} rc=${r.rc} ${(r.ms / 1000).toFixed(1)}s log ${log}`);
-    results.push(r);
-    if (r.outcome !== 'pass') failed = true;
+    if (r.outcome === 'pass' && key) recordPass(o.repo, run.id, key);
     if (tree) {
       let sig = '';
       if (r.outcome !== 'pass') {
@@ -230,16 +272,58 @@ export async function runGate(o: GateOptions): Promise<GateReport> {
         base: false,
       });
     }
-    if (o.mode) record(o.repo, run.id, o.mode, r.ms);
+    if (o.mode && loadavg()[0] !== undefined && (loadavg()[0] as number) <= 10)
+      record(o.repo, run.id, o.mode, r.ms);
+    return key ? { ...r, key } : r;
+  };
+  for (const group of phases(o.runs)) {
+    if (failed && !o.keepGoing) {
+      for (const r of group)
+        done.set(r.id, { id: r.id, outcome: 'not-run', rc: null, ms: 0, log: null });
+      continue;
+    }
+    const width = Math.min(
+      group.length,
+      o.maxParallel ?? parallelBudget(loadavg()[0] ?? 0, cpus().length),
+    );
+    const queue = [...group];
+    await Promise.all(
+      Array.from({ length: Math.max(1, width) }, async () => {
+        for (let r = queue.shift(); r !== undefined; r = queue.shift()) {
+          const res = await one(r);
+          done.set(r.id, res);
+          if (!isOk(res)) failed = true;
+        }
+      }),
+    );
   }
+  const results = o.runs.map((r) => done.get(r.id) as StepResult);
   if (rows.length) appendHistory(o.repo, rows);
   const requiredPlusBuild = o.runs.some((r) => r.id === 'build')
     ? [...o.required, 'build']
     : o.required;
   const missing = requiredPlusBuild.filter((id) => !results.some((r) => r.id === id));
-  const pass = !failed && missing.length === 0 && results.every((r) => r.outcome === 'pass');
+  const pass = !failed && missing.length === 0 && results.every(isOk);
   const line = resultLine(results, pass);
   let noted = false;
+  let resultsCommitted = false;
+  if (pass && cleanAtStart && o.commitResults === true) {
+    const dirty = vcs(o.repo, ['status', '--porcelain', '--', 'results']).stdout.trim();
+    if (dirty) {
+      vcs(o.repo, ['add', 'results']);
+      resultsCommitted = vcs(o.repo, [
+        'commit',
+        '-q',
+        '-m',
+        'Regenerate results after the gate',
+      ]).ok;
+      say(
+        resultsCommitted
+          ? 'results regenerated and committed as one commit'
+          : 'results commit failed',
+      );
+    }
+  }
   if (pass && o.note !== false) {
     if (cleanAtStart) {
       const ids = results.map((r) => r.id).filter((id) => id !== 'build');
@@ -251,12 +335,14 @@ export async function runGate(o: GateOptions): Promise<GateReport> {
       say('gate note NOT written: tracked files had uncommitted changes when the gate started');
     }
   }
+  const wallMs = Date.now() - started;
   writeFileSync(
     join(dir, 'summary.json'),
-    `${JSON.stringify({ line, loadavg: loadavg(), results, missing, noted }, null, 2)}\n`,
+    `${JSON.stringify({ line, loadavg: loadavg(), wallMs, results, missing, noted, resultsCommitted }, null, 2)}\n`,
   );
+  say(`wall ${(wallMs / 1000).toFixed(1)}s at load ${(loadavg()[0] ?? 0).toFixed(1)}`);
   say(line);
-  return { dir, results, pass, line, noted };
+  return { dir, results, pass, line, noted, wallMs, resultsCommitted };
 }
 
 function arg(args: readonly string[], name: string): string | undefined {
@@ -289,7 +375,8 @@ async function main(): Promise<void> {
   const scratch =
     arg(args, 'scratch') ?? process.env.A0_GATE_SCRATCH ?? join(tmpdir(), 'a0-dev-gate');
   const modeArg = arg(args, 'mode');
-  const mode = modeArg === 'baseline' || modeArg === 'assisted' ? modeArg : undefined;
+  const mode =
+    modeArg === 'baseline' || modeArg === 'assisted' || modeArg === 'fast' ? modeArg : undefined;
   const report = await runGate({
     repo,
     runs,
@@ -298,6 +385,9 @@ async function main(): Promise<void> {
     keepGoing: args.includes('--keep-going'),
     scratch,
     note: !args.includes('--no-note'),
+    cache: !args.includes('--no-cache'),
+    commitResults: args.includes('--commit-results'),
+    ...(arg(args, 'max-parallel') ? { maxParallel: Number(arg(args, 'max-parallel')) } : {}),
     ...(mode ? { mode } : {}),
     ...(args.includes('--json') ? { log: () => undefined } : {}),
   });

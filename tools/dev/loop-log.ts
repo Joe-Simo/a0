@@ -9,7 +9,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { join } from 'node:path';
 
-export type LoopMode = 'baseline' | 'assisted';
+export type LoopMode = 'baseline' | 'assisted' | 'fast';
 export interface LoopEntry {
   readonly step: string;
   readonly mode: LoopMode;

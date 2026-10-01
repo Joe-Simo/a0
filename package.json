@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json --incremental --tsBuildInfoFile dist/.tsbuildinfo",
     "lint": "biome check . && bun tools/dev/claim-check.ts --since=origin/main && bun tools/loss-ledger.ts",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -44,7 +44,8 @@
     "merge-plan": "bun run build && node dist/tools/dev/merge-plan.js",
     "dev-gate": "bun run build && node dist/tools/dev/dev-gate.js",
     "drive": "bun run build && node dist/tools/dev/drive.js",
-    "mcpb": "bun run build && node dist/tools/mcpb.js"
+    "mcpb": "bun run build && node dist/tools/mcpb.js",
+    "setup:merge": "bun run build && node dist/tools/dev/a0-dev.js setup"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.1.2",

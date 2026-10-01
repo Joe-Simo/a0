@@ -29,7 +29,7 @@ import {
   renderPlan,
 } from './merge-plan.js';
 import { orderRuns } from './order.js';
-import { defaultBase, defaultRepo, refExists, vcs } from './repo.js';
+import { defaultBase, defaultRepo, ensureMergeDriver, refExists, vcs } from './repo.js';
 
 export interface DriveOptions {
   readonly repo: string;
@@ -37,6 +37,8 @@ export interface DriveOptions {
   readonly branches: readonly string[];
   readonly merge: boolean;
   readonly scratch: string;
+  /** Use the content-addressed step cache and commit regenerated results (the CLI turns both on). */
+  readonly fast?: boolean;
   /** Step commands (tests inject fakes). */
   readonly commands?: Readonly<Record<string, StepRun>>;
   readonly log?: (line: string) => void;
@@ -91,6 +93,7 @@ export async function drive(o: DriveOptions): Promise<DriveResult> {
   }
   if (dirtyTracked(o.repo))
     throw new Error('drive: the checkout has uncommitted changes to tracked files');
+  ensureMergeDriver(o.repo);
   const sh = (args: string[]) => vcs(o.repo, args);
   for (const batch of batches) {
     const before = sh(['rev-parse', 'HEAD']).stdout.trim();
@@ -123,6 +126,8 @@ export async function drive(o: DriveOptions): Promise<DriveResult> {
         keepGoing: true,
         scratch: o.scratch,
         note,
+        cache: o.fast === true,
+        commitResults: o.fast === true && note,
         log: () => undefined,
       });
     say(`combined gate for ${mergeCommits.map((m) => m.branch).join(' + ')}: ${stepIds.join(' ')}`);
@@ -194,7 +199,14 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const scratch = process.env.A0_GATE_SCRATCH ?? join(tmpdir(), 'a0-dev-gate');
-  const r = await drive({ repo, base, branches, merge: args.includes('--merge'), scratch });
+  const r = await drive({
+    repo,
+    base,
+    branches,
+    merge: args.includes('--merge'),
+    scratch,
+    fast: true,
+  });
   if (args.includes('--json')) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
   else {
     for (const x of r.refused) process.stdout.write(`REFUSED ${x.branch}: ${x.why}\n`);
