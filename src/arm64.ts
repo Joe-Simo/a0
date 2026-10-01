@@ -756,6 +756,39 @@ const VECTOR_OPS = new Set<Op>(['mov', 'add', 'sub', 'mul', 'and', 'or', 'xor', 
 const VECTOR_FIRST = 19;
 const VECTOR_LAST = 31;
 
+/**
+ * A fold body over a record of scalars whose only uses of the state are `at p0 k` reads and the
+ * `put` chain that is its result (`put (put p0 k0 v0) k1 v1 ...`, every field a literal): the
+ * fields can live in registers for the whole loop, written back once at the end.
+ */
+function scalarRecordBody(callee: TypedFunc): boolean {
+  const state = callee.params[0];
+  if (state === undefined || isPrimitive(state) || state.kind !== 'rec') return false;
+  if (state.fields.length > 8 || !state.fields.every((f) => f === 'u32' || f === 'bool'))
+    return false;
+  const defs = new Map(callee.nodes.map((n) => [n.id, n]));
+  const chain = new Set<string>();
+  let cur: Operand = callee.ret;
+  while (cur.kind === 'node') {
+    const d = defs.get(cur.id);
+    if (d === undefined || d.op !== 'put' || d.args[1]?.kind !== 'u32') return false;
+    chain.add(d.id);
+    cur = d.args[0] as Operand;
+  }
+  if (!isParam(cur, 0)) return false;
+  for (const n of callee.nodes)
+    for (const [k, o] of n.args.entries()) {
+      if (isParam(o, 0)) {
+        const reads = n.op === 'at' && k === 0 && n.args[1]?.kind === 'u32';
+        const writes = n.op === 'put' && k === 0 && chain.has(n.id);
+        if (!reads && !writes) return false;
+      }
+      if (o.kind === 'node' && chain.has(o.id) && !(n.op === 'put' && k === 0 && chain.has(n.id)))
+        return false;
+    }
+  return true;
+}
+
 /** A scalar op over literal values with A0's exact meaning (undefined for ops that are not scalar). */
 function foldOp(op: Op, v: readonly number[]): number | undefined {
   const [a = 0, b = 0, c = 0] = v;
@@ -1848,6 +1881,10 @@ class FunctionEmitter {
   readonly #bound = new Map<string, number>();
   /** Arrays that are never stored (see `lazyFill`): the body to evaluate and the extras it reads. */
   readonly #lazyOf = new Map<string, { fn: TypedFunc; length: number; extras: readonly Val[] }>();
+  /** Fold state records whose fields live in registers: the state key to its field keys. */
+  readonly #rec = new Map<string, string[]>();
+  /** The `put` values of the current trip, by state key and field: written after the body. */
+  readonly #recPending = new Map<string, (Val | undefined)[]>();
   /** Nodes whose operands were all literals: folded at compile time (no code, no home). */
   readonly #constOf = new Map<string, { value: number; type: 'u32' | 'bool' }>();
   /** Nodes already emitted ahead of their position by a query group (skipped there). */
@@ -2312,11 +2349,66 @@ class FunctionEmitter {
     }
     this.#use(ret);
     if (ret.kind !== 'key') refuse('an aggregate literal cannot be returned');
+    if (sink === 'store' && this.#rec.has(this.#canon(result))) {
+      this.#commitRecord(this.#canon(result));
+      return;
+    }
     if (sink === 'bind') {
       this.#defAlias(result, ret.key, type);
       return;
     }
     this.#copy('sp', this.#slot(result), 'sp', this.#slot(ret.key), words(type));
+  }
+
+  /**
+   * End of a trip over a register-resident state record: the fields the body `put` take their
+   * new values. A new value that is another field's current value is copied first (a swap).
+   */
+  #commitRecord(key: string): void {
+    const fields = this.#rec.get(key) as string[];
+    const pending = this.#recPending.get(key) ?? [];
+    this.#recPending.delete(key);
+    const canon = fields.map((f) => this.#canon(f));
+    const swap = pending.some(
+      (v, i) =>
+        v?.kind === 'key' && canon.includes(this.#canon(v.key)) && this.#canon(v.key) !== canon[i],
+    );
+    const type = (i: number): 'u32' | 'bool' =>
+      (this.#defs.get(fields[i] as string)?.type as 'u32' | 'bool' | undefined) ?? 'u32';
+    const values = pending.map((v, i): Val | undefined => {
+      if (v === undefined || !swap) return v;
+      const tmp = `${key}#c${i}`;
+      // Each copy defines at a position of its own and all are read after the last one.
+      this.#pos += 1;
+      this.#use(v);
+      this.#def(tmp, type(i));
+      this.#set(tmp, (d) => this.#into(d, v), true);
+      return { kind: 'key', key: tmp, type: type(i) };
+    });
+    if (swap) this.#pos += 1;
+    for (const [i, v] of values.entries()) {
+      if (v === undefined) continue;
+      if (v.kind === 'key' && this.#canon(v.key) === canon[i]) continue;
+      // The value is computed straight into the field's register when nothing reads the
+      // field after it is defined (no copy on the recurrence).
+      if (this.#dry && !swap && v.kind === 'key') {
+        const rk = this.#canon(v.key);
+        const def = this.#defs.get(rk);
+        const lastField = this.#last.get(canon[i] as string) ?? Number.POSITIVE_INFINITY;
+        const loop = this.#loops.at(-1);
+        if (
+          def !== undefined &&
+          !this.#consts.has(rk) &&
+          loop !== undefined &&
+          def.pos > loop.start &&
+          lastField <= def.pos &&
+          !this.#coalesce.has(rk)
+        )
+          this.#coalesce.set(rk, canon[i] as string);
+      }
+      this.#use(v);
+      this.#set(fields[i] as string, (d) => this.#into(d, v), true);
+    }
   }
 
   // --- vectorized folds ----------------------------------------------------------------------
@@ -2769,7 +2861,8 @@ class FunctionEmitter {
         if (plan.queries.seed !== undefined) {
           const sv = this.#resolve(sub, plan.queries.seed);
           this.#use(sv);
-          this.#emit(`${op === 'eor' ? 'eor' : 'add'} w9, w9, ${this.#read(sv, 'w10')}`);
+          if (!(sv.kind === 'lit' && sv.value === 0))
+            this.#emit(`${op === 'eor' ? 'eor' : 'add'} w9, w9, ${this.#read(sv, 'w10')}`);
         }
         this.#def(q.key, 'u32');
         this.#set(q.key, (d) => this.#emit(`mov ${d}, w9`), true);
@@ -3419,6 +3512,20 @@ class FunctionEmitter {
           refuse(`${n.op} needs a record and a literal field`);
         if (rt.fields[b.value] === undefined) refuse('field out of range');
         const off = 4 * rt.fields.slice(0, b.value).reduce((s, f) => s + words(f), 0);
+        const recKey = this.#canon(src.key);
+        const regs = this.#rec.get(recKey);
+        if (regs !== undefined) {
+          if (n.op === 'at') {
+            // The field's register as it was when the trip began (writes land after the body).
+            this.#defAlias(key, regs[b.value] as string, t);
+            return;
+          }
+          const pending = this.#recPending.get(recKey) ?? [];
+          pending[b.value] = c as Val;
+          this.#recPending.set(recKey, pending);
+          this.#defAlias(key, src.key, t);
+          return;
+        }
         if (n.op === 'at') {
           const from = this.#slot(src.key) + off;
           if (isPrimitive(t)) scalar((d) => this.#mem('ldr', d, 'sp', from), true);
@@ -3585,6 +3692,26 @@ class FunctionEmitter {
           carry = { ...carried, key: ckey, type: elem };
           hoisted.push({ kind: 'key', key: ckey, type: elem });
         }
+        // A state record of scalars lives in registers across the loop, stored back once at the end.
+        let recFields: string[] | undefined;
+        if (
+          n.op === 'fold' &&
+          pred === undefined &&
+          !isPrimitive(t) &&
+          t.kind === 'rec' &&
+          this.#inlinable(callee, env) &&
+          scalarRecordBody(callee) &&
+          callee.nodes.every((m) => !feedsOf(callee).has(m.id))
+        ) {
+          recFields = t.fields.map((ft, i) => {
+            const fk = `${env.prefix}f_${n.id}_${i}`;
+            this.#def(fk, ft as 'u32' | 'bool');
+            this.#set(fk, (d) => this.#mem('ldr', d, 'sp', this.#slot(key) + 4 * i), true);
+            hoisted.push({ kind: 'key', key: fk, type: ft as 'u32' | 'bool' });
+            return fk;
+          });
+          this.#rec.set(this.#canon(key), recFields);
+        }
         const countVal = this.#resolve(loopEnv, n.args[0] as Operand);
         this.#def(counter, 'u32');
         if (count.kind === 'lit' && count.value > 0) this.#bound.set(counter, count.value - 1);
@@ -3639,6 +3766,16 @@ class FunctionEmitter {
         this.#use(cval);
         for (const h of hoisted) this.#use(h);
         const region = this.#loops.pop();
+        if (recFields !== undefined) {
+          const regs = recFields;
+          this.#rec.delete(this.#canon(key));
+          this.#recPending.delete(this.#canon(key));
+          for (const [i, fk] of regs.entries()) {
+            const v: Val = { kind: 'key', key: fk, type: 'u32' };
+            this.#use(v);
+            this.#mem('str', this.#read(v, 'w9'), 'sp', this.#slot(key) + 4 * i);
+          }
+        }
         if (region !== undefined && this.#dry) {
           for (const k of region.used) {
             const def = this.#defs.get(k);

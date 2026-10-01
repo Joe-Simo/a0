@@ -165,6 +165,30 @@ test('arm64 carried recurrences start at the guard value instead of selecting it
   assert.doesNotMatch(body, /csel/);
 });
 
+test('arm64 fold state records of scalars live in registers and equal the interpreter', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const src = [
+    // new field 1 is the old field 0 (read before the put that overwrites field 0: a swap)
+    'fn rsa (u32,u32) u32 u32 -> (u32,u32)\na at p0 0\nb at p0 1\nc add a p2\nd xor b c\ne put p0 0 d\nf put e 1 a\nret f\nend',
+    // a bool field and a field the body never writes
+    'fn rsb (u32,bool,u32) u32 -> (u32,bool,u32)\na at p0 0\nf at p0 1\nk at p0 2\ng lt a p1\nh select f a k\nm add h p1\nn put p0 0 m\no put n 1 g\nret o\nend',
+    // every field rewritten from the others, in the opposite order of the reads
+    'fn rsc (u32,u32,u32) u32 -> (u32,u32,u32)\na at p0 0\nb at p0 1\nc at p0 2\nx add a b\ny xor b c\nz mul c 3\nn1 put p0 2 x\nn2 put n1 0 y\nn3 put n2 1 z\nret n3\nend',
+    'fn rs1 u32 u32 -> u32\nst rec p0 p1\nr fold rsa 33 st p1\nx at r 0\ny at r 1\ns add x y\nret s\nend',
+    'fn rs2 u32 u32 -> u32\nst rec p0 true p1\ncnt and p0 63\nr fold rsb cnt st\nx at r 0\ny at r 2\ns add x y\nret s\nend',
+    'fn rs3 u32 u32 -> u32\nst rec p0 p1 7\ncnt and p1 31\nr fold rsc cnt st\nx at r 0\ny at r 1\nz at r 2\ns add x y\nt xor s z\nret t\nend',
+  ].join('\n\n');
+  const asm = await checkAgainstInterpreter(src, ['rs1', 'rs2', 'rs3'], clang);
+  const body = /_a0_rs1:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  // the loop holds the fields in registers: no loads or stores between its label and branch
+  const loop = /La0_rs1_\d+:([\s\S]*?)b\.lo/.exec(body)?.[1] ?? '';
+  assert.ok(loop.length > 0);
+  assert.doesNotMatch(loop, /\[sp/);
+});
+
 test('arm64 element-wise pipelines read by a few gets are evaluated at the indices read', {
   skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
 }, async () => {
