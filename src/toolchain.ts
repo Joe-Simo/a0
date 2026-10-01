@@ -8,9 +8,18 @@
  * Tool discovery is explicit and reported; absence is a recorded blocker, not a pass.
  */
 
-import { spawnSync } from 'node:child_process';
+import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdtempSync,
+  openSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
@@ -35,6 +44,34 @@ function checkArgs(args: readonly string[]): void {
   for (const a of args) {
     if (!SAFE_ARG.test(a))
       throw new A0Error(`refusing unsafe process argument: ${JSON.stringify(a)}`);
+  }
+}
+
+/**
+ * `spawnSync` with `input` as the child's stdin, delivered as an open file, not through a pipe
+ * that Node writes. Node (libuv) gives a child's stdin as a socketpair it fills from the parent;
+ * on macOS 27 beta (Darwin 27.2) about one run in 300 under load never gets its data: the child
+ * sits in its first `read` (`sample`: main in read, 0% CPU) while the parent waits in kevent, and
+ * it happens with a 20-line C child (STATUS, 2026-10-01). A file descriptor has no such writer,
+ * and 16200 runs of the same child with it never stalled.
+ */
+export function spawnWithInput(
+  path: string,
+  input: Buffer,
+  options: { timeout?: number; maxBuffer?: number } = {},
+): SpawnSyncReturns<Buffer> {
+  const dir = mkdtempSync(join(tmpdir(), 'a0-stdin-'));
+  const file = join(dir, 'stdin');
+  try {
+    writeFileSync(file, input);
+    const fd = openSync(file, 'r');
+    try {
+      return spawnSync(path, [], { stdio: [fd, 'pipe', 'pipe'], ...options });
+    } finally {
+      closeSync(fd);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 }
 

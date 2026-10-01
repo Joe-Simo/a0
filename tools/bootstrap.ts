@@ -28,7 +28,6 @@
  *   its own. Writes results/bootstrap.json.
  */
 
-import { spawnSync } from 'node:child_process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -46,7 +45,13 @@ import {
   type TypedFunc,
 } from '../src/core.js';
 import { link } from '../src/link.js';
-import { findClang, runTool, type ToolInfo, withTempDir } from '../src/toolchain.js';
+import {
+  findClang,
+  runTool,
+  spawnWithInput,
+  type ToolInfo,
+  withTempDir,
+} from '../src/toolchain.js';
 import { closure, closures, generateCases, generateCorpus } from './corpus.js';
 import { ILL_TYPED, refCheckWords } from './ref-check.js';
 import { FRONT_END_SOURCE_LIMIT, frontEndFits } from './ref-parse.js';
@@ -252,18 +257,19 @@ export function runStageChunk(exe: string, chunk: Chunk, bounds: readonly number
   words.push(bounds.length, ...bounds);
   const input = Buffer.alloc(words.length * 4);
   for (const [i, w] of words.entries()) input.writeUInt32LE(w, i * 4);
-  // A chunk runs in seconds. On this macOS (a beta) a freshly built stage executable sometimes sits
-  // in its first `read` of stdin with the parent in spawnSync and no data moving either way (seen
-  // in about one gate run in three; `sample` shows main blocked in read, 0% CPU on both sides, and
-  // it never reproduces in isolation). The chunk is a pure function of its input, so a run that
-  // outlives STAGE_CHUNK_MS is killed and repeated; only a chunk that hangs every time fails.
-  let r = spawnSync(exe, [], { input, timeout: STAGE_CHUNK_MS, maxBuffer: 1 << 28 });
+  // A chunk runs in seconds. The input goes in as a file (`spawnWithInput`): with Node's own stdin
+  // pipe a child, any child, sometimes never receives its data on macOS 27 beta (see there). The
+  // chunk is a pure function of its input, so a run that outlives STAGE_CHUNK_MS is still killed
+  // and repeated, as a safety net; only a chunk that hangs every time fails.
+  const run = (): ReturnType<typeof spawnWithInput> =>
+    spawnWithInput(exe, input, { timeout: STAGE_CHUNK_MS, maxBuffer: 1 << 28 });
+  let r = run();
   for (
     let attempt = 1;
     attempt < STAGE_CHUNK_TRIES && r.status === null && r.signal !== null;
     attempt++
   )
-    r = spawnSync(exe, [], { input, timeout: STAGE_CHUNK_MS, maxBuffer: 1 << 28 });
+    r = run();
   if (r.status === null || r.status > 6)
     throw new Error(
       `${exe} failed (${r.status ?? r.signal}${r.status === null ? ` after ${STAGE_CHUNK_TRIES} tries of ${STAGE_CHUNK_MS} ms` : ''}): ${r.stderr?.toString() ?? ''}`,
