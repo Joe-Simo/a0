@@ -106,7 +106,7 @@ ${sel.filter((s) => s !== undefined).join('\n')}
   logic [31:0] expwords [0:255];
   logic [31:0] got;
   logic [31:0] expected;
-  integer fd, nargs, nin, nout, expnout, k, total, failures, rc, cycles, timeouts, rpos, running;
+  integer fd, nargs, nin, nout, expnout, k, total, failures, rc, cycles, timeouts, rpos, running, more;
   // Stream environment: exhausted input reads as 0; every transfer is sampled at the clock edge.
   assign tb_in_data = (rpos < nin) ? inwords[rpos] : 32'd0;
   always @(posedge clk) begin
@@ -122,9 +122,12 @@ ${sel.filter((s) => s !== undefined).join('\n')}
     #1 rst = 1'b0;
     fd = $fopen("cases.txt", "r");
     if (fd == 0) begin $display("cannot open cases.txt"); $finish; end
-    while (!$feof(fd)) begin
+    // No break statement: Icarus Verilog 12 (Ubuntu's package) does not support it in a testbench.
+    more = 1;
+    while (more && !$feof(fd)) begin
       rc = $fscanf(fd, "%d %d", idx, nargs);
-      if (rc != 2) break;
+      if (rc != 2) more = 0;
+      else begin
       for (k = 0; k < nargs; k = k + 1) rc = $fscanf(fd, "%h", args[k]);
       rc = $fscanf(fd, "%h", expected);
       rc = $fscanf(fd, "%d", nin);
@@ -146,6 +149,7 @@ ${drive.join('\n')}
           failures = failures + 1;
           if (failures <= 20) $display("FAIL fn=%0d out[%0d]=%h expected=%h", idx, k, outwords[k], expwords[k]);
         end
+      end
       end
     end
 ${cycReport.filter((s) => s !== undefined).join('\n')}
