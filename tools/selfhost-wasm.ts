@@ -307,16 +307,29 @@ interface ChunkTables {
 /**
  * The tables of functions [from, to) of `fns` (mode 2 after the call table): the chunk's
  * function space is its callees outside the chunk (program order), then its own functions.
+ * An external function has a row with its body only when the emitter asked for it (`supplied`,
+ * code 7: program indices); its own callees outside the chunk are then external too.
  */
-function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): ChunkTables {
+function encodeChunk(
+  fns: readonly TypedFunc[],
+  from: number,
+  to: number,
+  supplied: ReadonlySet<number> = new Set(),
+): ChunkTables {
   const index = new Map(fns.map((f, i) => [f.name, i] as const));
   const external = new Set<number>();
-  for (const fn of fns.slice(from, to))
+  const reach = (fn: TypedFunc): void => {
     for (const n of fn.nodes)
       for (const c of [n.callee, n.pred]) {
         const i = c === undefined ? undefined : (index.get(c) as number);
         if (i !== undefined && (i < from || i >= to)) external.add(i);
       }
+  };
+  for (const fn of fns.slice(from, to)) reach(fn);
+  for (const g of [...supplied].sort((a, b) => b - a)) {
+    external.add(g);
+    reach(fns[g] as TypedFunc);
+  }
   const before = [...external].sort((a, b) => a - b);
   const space = [...before, ...Array.from({ length: to - from }, (_, i) => from + i)];
   const local = new Map(space.map((g, i) => [g, i] as const));
@@ -329,9 +342,10 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
     ]),
     tlist: [],
   };
-  const own = fns.slice(from, to);
-  const body = encodeBodies(own, (name) =>
-    name === undefined ? 0 : (local.get(index.get(name) as number) ?? 0),
+  const withBody = space.filter((g) => (g >= from && g < to) || supplied.has(g));
+  const body = encodeBodies(
+    withBody.map((g) => fns[g] as TypedFunc),
+    (name) => (name === undefined ? 0 : (local.get(index.get(name) as number) ?? 0)),
   );
   const table: number[] = [];
   const ntys: number[] = [];
@@ -344,7 +358,7 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
     names.push(...name);
     const row = body.rows.get(fn);
     if (row === undefined) {
-      table.push(0, 0, 0, 0, 0, 0, 0);
+      table.push(fn.literalIterations * 2, 0, 0, 0, 0, 0, 0);
       continue;
     }
     const params = fn.params.map((t) => intern(tb, t));
@@ -352,7 +366,7 @@ function encodeChunk(fns: readonly TypedFunc[], from: number, to: number): Chunk
     tb.tlist.push(...params);
     const result = intern(tb, fn.result);
     for (const n of fn.nodes) ntys.push(intern(tb, fn.types.get(n.id) ?? 'u32'));
-    table.push(0, params.length, first, result, ...row);
+    table.push(1 + fn.literalIterations * 2, params.length, first, result, ...row);
   }
   const { nodes, args } = body;
   const fits =
@@ -737,9 +751,7 @@ function optimizeProgram(
       if (r.code !== NEEDS_BODIES)
         throw new Error(`a0w optimizer: code ${r.code} on ${(fns[g] as Func).name}`);
       const before = supplied.size;
-      const wanted = image
-        ? [...r.out.subarray(7, 7 + (r.out[6] as number))]
-        : requested(r.out);
+      const wanted = image ? [...r.out.subarray(7, 7 + (r.out[6] as number))] : requested(r.out);
       const stack = wanted.map((c) => space[c] as number);
       while (stack.length > 0) {
         const f = stack.pop() as number;
@@ -844,11 +856,25 @@ export function a0WasmFromTables(
   let from = 0;
   let runs = opt?.runs ?? 0;
   while (from < fns.length) {
-    const { to, chunk } = nextChunk(fns, from);
-    const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
-    const head = [base, chunk.before.length, ...table, ...chunk.words];
-    const r = runTool32(exe, [MODE.tables, ...head]);
-    runs += 1;
+    const first = nextChunk(fns, from);
+    const to = first.to;
+    // The emitter asks (code 7) for the bodies of external functions it needs; the run is
+    // repeated with their rows and bodies in the tables.
+    const supplied = new Set<number>();
+    let r: { code: number; out: Uint32Array };
+    let chunk = first.chunk;
+    for (;;) {
+      const table = chunk.before.flatMap((g) => calls.get(g) as [number, number]);
+      r = runTool32(exe, [MODE.tables, base, chunk.before.length, ...table, ...chunk.words]);
+      runs += 1;
+      if (r.code !== NEEDS_BODIES) break;
+      const before = supplied.size;
+      for (const c of requested(r.out)) supplied.add(chunk.space[c] as number);
+      if (supplied.size === before)
+        throw new Error(`a0w requested bodies it already has on functions ${from}..${to}`);
+      chunk = encodeChunk(fns, from, to, supplied);
+      if (!chunk.fits) throw new Error(`functions ${from}..${to} and their callees do not fit`);
+    }
     if (r.code !== 0) throw new Error(`a0w: code ${r.code} on functions ${from}..${to}`);
     const out = splitChunk(r.out);
     for (const [i, [idx, depth]] of out.calls.entries()) calls.set(from + i, [idx, depth]);
