@@ -48,14 +48,21 @@ async function checkAgainstInterpreter(
       assert.ok(ld.ok, ld.stderr);
       const exec = runTool(join(dir, 'driver'), [], { cwd: dir });
       assert.ok(exec.ok, exec.stderr);
-      assert.equal(exec.stdout.trim(), expected);
+      const got = exec.stdout.trim().split('\n');
+      const want = expected.split('\n');
+      const bad = want.findIndex((w, i) => w !== got[i]);
+      assert.equal(
+        bad,
+        -1,
+        `${names[bad % names.length]}${JSON.stringify(INPUTS[Math.floor(bad / names.length)])} (optimize ${optimize}): got ${got[bad]}, want ${want[bad]}`,
+      );
     });
   }
   return asm;
 }
 
-const tail = (name: string, state: number): string =>
-  `fn ${name} u32 u32 -> u32\nz arr ${zeros(state)}\na fold step${name} ${state} z p0 p1\nq and p1 ${state - 1}\nr get a q\nw get a ${state - 1}\ns add r w\nret s\nend`;
+const tail = (name: string, state: number, many = false): string =>
+  `fn ${name} u32 u32 -> u32\nz arr ${zeros(state)}\na fold step${name.replace(/m$/, '')} ${state} z p0 p1\nq and p1 ${state - 1}\nr get a q\nw get a ${state - 1}\ns add r w\n${many ? 'x get a 0\ny get a 1\nt add s x\ns2 add t y\nret s2' : 'ret s'}\nend`;
 
 test('arm64 prefix scans, indexed updates, induction variables and unrolled reductions equal the interpreter', {
   skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
@@ -77,18 +84,25 @@ test('arm64 prefix scans, indexed updates, induction variables and unrolled redu
     ['sd', '7', 'add', 'a mul p1 p1\nx xor a p3\ne shr x 3', 20],
     ['se', 'p2', 'add', 'e mul p1 p3', 8],
   ] as const) {
+    // `label` reads two elements (answered as queries); `label`m reads four (the scan is stored).
     add(
       label,
       `fn step${label} u32x${n} u32 u32 u32 -> u32x${n}\nc eq p1 0\nj sub p1 1\nt get p0 j\nu select c ${seed} t\n${e}\nv ${op} u e\nn set p0 p1 v\nret n\nend\n${tail(label, n)}`,
     );
+    add(`${label}m`, tail(`${label}m`, n, true));
   }
   // Histograms: an index bounded by a shift, one that needs the mask, a weighted update, and a
   // length that is not a power of two (so it stays scalar).
-  const hist = (label: string, len: number, count: number, k: string, upd: string): void =>
+  const hist = (label: string, len: number, count: number, k: string, upd: string): void => {
+    const top = (name: string, many: boolean): string =>
+      `fn ${name} u32 u32 -> u32\nz arr ${zeros(count)}\na fold hfill${label} ${count} z p0 p1\nhz arr ${zeros(len)}\nh fold hstep${label} ${count} hz a\nq and p1 ${len - 1}\nr get h q\nw and p0 ${len - 1}\nr2 get h w\ns mul r 65599\nt add s r2\n${many ? 'g0 get h 0\ng1 get h 1\nt2 add t g0\nt3 xor t2 g1\nret t3' : 'ret t'}\nend`;
     add(
       label,
-      `fn hfill${label} u32x${count} u32 u32 u32 -> u32x${count}\nw mul p1 p2\nx add w p3\ny xor x 2654435761\nn set p0 p1 y\nret n\nend\nfn hstep${label} u32x${len} u32 u32x${count} -> u32x${len}\nv get p2 p1\n${k}\nh get p0 k\n${upd}\nn set p0 k h1\nret n\nend\nfn ${label} u32 u32 -> u32\nz arr ${zeros(count)}\na fold hfill${label} ${count} z p0 p1\nhz arr ${zeros(len)}\nh fold hstep${label} ${count} hz a\nq and p1 ${len - 1}\nr get h q\nw and p0 ${len - 1}\nr2 get h w\ns mul r 65599\nt add s r2\nret t\nend`,
+      `fn hfill${label} u32x${count} u32 u32 u32 -> u32x${count}\nw mul p1 p2\nx add w p3\ny xor x 2654435761\nn set p0 p1 y\nret n\nend\nfn hstep${label} u32x${len} u32 u32x${count} -> u32x${len}\nv get p2 p1\n${k}\nh get p0 k\n${upd}\nn set p0 k h1\nret n\nend\n${top(label, false)}`,
     );
+    // four reads: the histogram is stored
+    add(`${label}m`, top(`${label}m`, true));
+  };
   hist('ha', 16, 64, 'k shr v 28', 'h1 add h 1');
   hist('hb', 16, 64, 'k mul v 1', 'h1 add h 1');
   hist('hc', 32, 128, 'k shr v 27', 'w shr v 3\nh1 add h w');
@@ -110,8 +124,12 @@ test('arm64 prefix scans, indexed updates, induction variables and unrolled redu
   const asm = await checkAgainstInterpreter(src, names, clang);
   // The scan is a NEON scan with a running carry, the histogram an indexed update per lane, the
   // dot product a multiply-accumulate on an induction variable.
-  assert.match(asm, /_a0_sa:[\s\S]*?ext v\d+\.16b, v\d+\.16b, v\d+\.16b, #12/);
-  assert.match(asm, /_a0_ha:[\s\S]*?umov w9, v\d+\.s\[3\][\s\S]*?str w10, \[x\d+, w9, uxtw #2\]/);
+  assert.match(asm, /_a0_sam:[\s\S]*?ext v\d+\.16b, v\d+\.16b, v\d+\.16b, #12/);
+  assert.match(asm, /_a0_ham:[\s\S]*?umov w9, v\d+\.s\[3\][\s\S]*?str w10, \[x\d+, w9, uxtw #2\]/);
+  // Two reads of a prefix scan or a histogram are answered by counting matches in the loop.
+  assert.match(asm, /_a0_sa:[\s\S]*?cmhs v\d+\.4s/);
+  assert.match(asm, /_a0_ha:[\s\S]*?cmeq v\d+\.4s/);
+  assert.doesNotMatch(/_a0_ha:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '', /uxtw #2/);
   assert.match(asm, /_a0_dot64:[\s\S]*?mla v\d+\.4s/);
 });
 
