@@ -13,6 +13,7 @@ import { ERLANG } from './erlang.js';
 import { FORTH } from './forth.js';
 import { FORTRAN } from './fortran.js';
 import { FSHARP } from './fsharp.js';
+import { GLEAM } from './gleam.js';
 import { GROOVY } from './groovy.js';
 import { GUILE } from './guile.js';
 import { HASKELL } from './haskell.js';
@@ -24,6 +25,7 @@ import { LUA } from './lua.js';
 import { NIM } from './nim.js';
 import { OBJC } from './objc.js';
 import { OCAML } from './ocaml.js';
+import { ODIN } from './odin.js';
 import { PASCAL } from './pascal.js';
 import { PERL } from './perl.js';
 import { PHP } from './php.js';
@@ -37,6 +39,7 @@ import type { LangSpec } from './spec.js';
 import { SWIFT } from './swift.js';
 import { TCL } from './tcl.js';
 import { V } from './v.js';
+import { VALA } from './vala.js';
 import { VB } from './vb.js';
 import { ZIG } from './zig.js';
 
@@ -79,6 +82,9 @@ export const SPEC_LANGS = [
   'd',
   'cobol',
   'v',
+  'odin',
+  'vala',
+  'gleam',
 ] as const;
 export type SpecLang = (typeof SPEC_LANGS)[number];
 
@@ -91,6 +97,9 @@ export const SPECS: Readonly<Record<SpecLang, LangSpec>> = {
   ocaml: OCAML,
   elixir: ELIXIR,
   zig: ZIG,
+  gleam: GLEAM,
+  vala: VALA,
+  odin: ODIN,
   v: V,
   cobol: COBOL,
   d: D,
