@@ -8,13 +8,14 @@ import { fileURLToPath } from 'node:url';
 // dist/test/editors.test.js -> repository root
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const grammarDir = join(root, 'editors', 'tree-sitter-a0');
-const cli = join(grammarDir, 'node_modules', '.bin', 'tree-sitter');
+// tree-sitter-cli is a root devDependency: the normal `bun install` provides it.
+const cli = join(root, 'node_modules', '.bin', 'tree-sitter');
 
 const treeSitter = (args: string[]) =>
   spawnSync(cli, args, { cwd: grammarDir, encoding: 'utf8', maxBuffer: 1 << 26 });
 
 test('tree-sitter grammar parses every .a0 file in the repository without errors', () => {
-  assert.ok(existsSync(cli), `missing ${cli}; run: pnpm --dir editors/tree-sitter-a0 install`);
+  assert.ok(existsSync(cli), `missing ${cli}; run: bun install`);
   const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
     cwd: root,
     encoding: 'utf8',
@@ -39,7 +40,7 @@ test('tree-sitter grammar parses every .a0 file in the repository without errors
 });
 
 test('tree-sitter corpus tests and highlight query pass', () => {
-  assert.ok(existsSync(cli), `missing ${cli}; run: pnpm --dir editors/tree-sitter-a0 install`);
+  assert.ok(existsSync(cli), `missing ${cli}; run: bun install`);
   const corpus = treeSitter(['test']);
   assert.equal(corpus.status, 0, `${corpus.stdout}${corpus.stderr}`);
   const query = treeSitter([
