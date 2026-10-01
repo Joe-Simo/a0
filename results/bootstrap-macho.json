@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-01T05:16:23.182Z",
-  "compilerVersion": "a0c-0.1.33",
+  "generatedAt": "2026-10-01T05:25:44.963Z",
+  "compilerVersion": "a0c-0.1.34",
   "stage": "arm64 bootstrap to a signed Mach-O executable without the system assembler and linker",
   "toolchain": "Stage 1 is the C seed (TypeScript C backend + clang). Stages 2 and 3: A0-emitted assembly plus the runtime of tools/arm64-runtime.ts, encoded by src/arm64enc.ts and linked and ad-hoc signed by src/macho.ts (SHA-256 code directory written in TypeScript); dyld binds libSystem _mmap/_read/_write. clang, ld and codesign produce no byte of stages 2 and 3; clang is the reference of the encoder check and codesign -v checks the signature.",
   "stage1": {
-    "cBytes": 494503,
-    "buildMs": 2211
+    "cBytes": 484864,
+    "buildMs": 1986
   },
   "stage2": {
-    "asmBytes": 795255,
+    "asmBytes": 796699,
     "executableBytes": 198400,
-    "linkMs": 115
+    "linkMs": 94
   },
   "stage3": {
-    "asmBytes": 795255,
+    "asmBytes": 796699,
     "executableBytes": 198400,
-    "emitMs": 1600,
+    "emitMs": 1818,
     "reproduces": true
   },
   "fixedPoint": {
@@ -25,10 +25,10 @@
   },
   "encoder": {
     "method": "arm64enc words equal clang -c -x assembler __text words one by one, and the relocation offsets and kinds are equal",
-    "texts": 224,
-    "sources": 254,
+    "texts": 225,
+    "sources": 255,
     "stage2DiffersFromStage1": 0,
-    "instructions": 295649,
+    "instructions": 297491,
     "failed": 0,
     "checks": [
       {
@@ -734,8 +734,14 @@
         "mismatches": []
       },
       {
-        "label": "boot.a0/arrone",
-        "instructions": 1412,
+        "label": "boot.a0/arrinfo",
+        "instructions": 1441,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
+        "label": "boot.a0/arrapply",
+        "instructions": 1408,
         "relocations": 0,
         "mismatches": []
       },
@@ -783,19 +789,19 @@
       },
       {
         "label": "boot.a0/p3tok",
-        "instructions": 4009,
+        "instructions": 4090,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/p3chunk",
-        "instructions": 4207,
+        "instructions": 4288,
         "relocations": 0,
         "mismatches": []
       },
       {
         "label": "boot.a0/pass3",
-        "instructions": 6501,
+        "instructions": 6582,
         "relocations": 0,
         "mismatches": []
       },
@@ -1311,7 +1317,7 @@
       },
       {
         "label": "boot.a0/qunit",
-        "instructions": 42087,
+        "instructions": 42168,
         "relocations": 3,
         "mismatches": []
       },
@@ -1347,7 +1353,7 @@
       },
       {
         "label": "compiler (whole)",
-        "instructions": 43032,
+        "instructions": 43113,
         "relocations": 8,
         "mismatches": []
       },

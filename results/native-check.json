@@ -2,14 +2,14 @@
   "tool": "bun run native-check (tools/native-check.ts)",
   "executable": "dist/native/a0",
   "build": {
-    "method": "compiler/native.a0 (compiler/check.a0 and compiler/suggest.a0 linked with parse.a0 and lex.a0), entries checkio and suggestio, compiled by the A0 C backend (src/backends.ts) and clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node at run time",
-    "functions": 222,
-    "cBytes": 741455,
-    "ms": 2642,
+    "method": "compiler/native.a0 (compiler/check.a0 and compiler/suggest.a0 linked with parse.a0 and lex.a0; entries checkio, irio and suggestio) compiled by the A0 C backend (src/backends.ts), with the host driver tools/native/a0.c (linking, commands, IR evaluator), by clang -std=c11 -O2 for the host (arm64 on Apple silicon); no Node and no C compiler at run time",
+    "functions": 224,
+    "cBytes": 738266,
+    "ms": 3664,
     "clang": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
   },
   "verification": {
-    "method": "each source is written to a file and checked by a separate `dist/native/a0 check FILE` process; its (code, function, node) must equal refCheckWords of tools/ref-check.ts (code 0: accepted)",
+    "method": "each source is written to a file and checked by a separate `dist/native/a0 check FILE` process; its (code, function, node) must equal refCheckWords of tools/ref-check.ts on the text src/link.ts links (code 0: accepted)",
     "sources": 124,
     "agree": 124,
     "rejectedByReference": 52,
@@ -20,6 +20,682 @@
       "printed": 19,
       "agree": 22
     }
+  },
+  "evaluator": {
+    "method": "the IR evaluator of tools/native/a0.c through `a0 calls FILE` (the tools/verify.ts driver protocol): every corpus function with the functions it reaches, the exec-bench kernels and the examples; each result and io output must equal the BigInt oracle of tools/corpus.ts generateCases",
+    "programs": 60,
+    "skippedOutsideFrontEnd": 4,
+    "cases": 6528,
+    "failedPrograms": 0,
+    "rows": [
+      {
+        "label": "corpus/g0",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g1",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g2",
+        "cases": 136,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g3",
+        "cases": 129,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g4",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g5",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g6",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g7",
+        "cases": 129,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g8",
+        "cases": 136,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g9",
+        "cases": 118,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g10",
+        "cases": 118,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g11",
+        "cases": 136,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g12",
+        "cases": 120,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g13",
+        "cases": 136,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g14",
+        "cases": 118,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g15",
+        "cases": 118,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g16",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g17",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g18",
+        "cases": 136,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g19",
+        "cases": 120,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g20",
+        "cases": 118,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g21",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g22",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g23",
+        "cases": 0,
+        "failures": [],
+        "skipped": true
+      },
+      {
+        "label": "corpus/g24",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g25",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g26",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g27",
+        "cases": 0,
+        "failures": [],
+        "skipped": true
+      },
+      {
+        "label": "corpus/g28",
+        "cases": 113,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g29",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g30",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g31",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g32",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g33",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g34",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g35",
+        "cases": 129,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g36",
+        "cases": 136,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g37",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g38",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g39",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g40",
+        "cases": 0,
+        "failures": [],
+        "skipped": true
+      },
+      {
+        "label": "corpus/g41",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g42",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g43",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g44",
+        "cases": 0,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g45",
+        "cases": 199,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g46",
+        "cases": 127,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "corpus/g47",
+        "cases": 0,
+        "failures": [],
+        "skipped": true
+      },
+      {
+        "label": "kernel/affine",
+        "cases": 37,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/rotl",
+        "cases": 109,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/clamp",
+        "cases": 37,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/mix",
+        "cases": 109,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/ident",
+        "cases": 28,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/noop",
+        "cases": 28,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/chain3",
+        "cases": 165,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/branchy",
+        "cases": 109,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/arrfill",
+        "cases": 109,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernel/loop64",
+        "cases": 146,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "kernels.a0",
+        "cases": 313,
+        "failures": [],
+        "skipped": false
+      },
+      {
+        "label": "life.a0",
+        "cases": 76,
+        "failures": [],
+        "skipped": false
+      }
+    ]
+  },
+  "commands": {
+    "method": "`a0 run` output must equal String() of the reference `run` (what src/cli.ts prints); the `a0 bench K N` checksum must equal the reference over the exec-bench xorshift32 inputs",
+    "rows": [
+      {
+        "label": "run affine 0 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run affine 1 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run affine 2 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "bench affine 1000",
+        "expected": "2366262815",
+        "got": "2366262815",
+        "ok": true
+      },
+      {
+        "label": "run rotl 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run rotl 1 0",
+        "expected": "1",
+        "got": "1",
+        "ok": true
+      },
+      {
+        "label": "run rotl 2 0",
+        "expected": "2",
+        "got": "2",
+        "ok": true
+      },
+      {
+        "label": "bench rotl 1000",
+        "expected": "136735973",
+        "got": "136735973",
+        "ok": true
+      },
+      {
+        "label": "run clamp 0 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run clamp 1 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run clamp 2 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "bench clamp 1000",
+        "expected": "3352935220",
+        "got": "3352935220",
+        "ok": true
+      },
+      {
+        "label": "run mix 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run mix 1 0",
+        "expected": "4013346615",
+        "got": "4013346615",
+        "ok": true
+      },
+      {
+        "label": "run mix 2 0",
+        "expected": "3731660398",
+        "got": "3731660398",
+        "ok": true
+      },
+      {
+        "label": "bench mix 1000",
+        "expected": "1236381947",
+        "got": "1236381947",
+        "ok": true
+      },
+      {
+        "label": "run ident 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run ident 1",
+        "expected": "1",
+        "got": "1",
+        "ok": true
+      },
+      {
+        "label": "run ident 2",
+        "expected": "2",
+        "got": "2",
+        "ok": true
+      },
+      {
+        "label": "bench ident 1000",
+        "expected": "2999512106",
+        "got": "2999512106",
+        "ok": true
+      },
+      {
+        "label": "run noop 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run noop 1",
+        "expected": "1",
+        "got": "1",
+        "ok": true
+      },
+      {
+        "label": "run noop 2",
+        "expected": "2",
+        "got": "2",
+        "ok": true
+      },
+      {
+        "label": "bench noop 1000",
+        "expected": "2999512106",
+        "got": "2999512106",
+        "ok": true
+      },
+      {
+        "label": "run chain3 0 0",
+        "expected": "3",
+        "got": "3",
+        "ok": true
+      },
+      {
+        "label": "run chain3 1 0",
+        "expected": "5",
+        "got": "5",
+        "ok": true
+      },
+      {
+        "label": "run chain3 2 0",
+        "expected": "7",
+        "got": "7",
+        "ok": true
+      },
+      {
+        "label": "bench chain3 1000",
+        "expected": "2523221491",
+        "got": "2523221491",
+        "ok": true
+      },
+      {
+        "label": "run branchy 0 0",
+        "expected": "0",
+        "got": "0",
+        "ok": true
+      },
+      {
+        "label": "run branchy 1 0",
+        "expected": "1",
+        "got": "1",
+        "ok": true
+      },
+      {
+        "label": "run branchy 2 0",
+        "expected": "2",
+        "got": "2",
+        "ok": true
+      },
+      {
+        "label": "bench branchy 1000",
+        "expected": "2598238754",
+        "got": "2598238754",
+        "ok": true
+      },
+      {
+        "label": "run arrfill 0 0",
+        "expected": "3",
+        "got": "3",
+        "ok": true
+      },
+      {
+        "label": "run arrfill 1 0",
+        "expected": "5",
+        "got": "5",
+        "ok": true
+      },
+      {
+        "label": "run arrfill 2 0",
+        "expected": "7",
+        "got": "7",
+        "ok": true
+      },
+      {
+        "label": "bench arrfill 1000",
+        "expected": "1896134339",
+        "got": "1896134339",
+        "ok": true
+      },
+      {
+        "label": "run loop64 0 0",
+        "expected": "1386749356",
+        "got": "1386749356",
+        "ok": true
+      },
+      {
+        "label": "run loop64 1 0",
+        "expected": "3109441888",
+        "got": "3109441888",
+        "ok": true
+      },
+      {
+        "label": "run loop64 2 0",
+        "expected": "2539241534",
+        "got": "2539241534",
+        "ok": true
+      },
+      {
+        "label": "bench loop64 1000",
+        "expected": "1005425863",
+        "got": "1005425863",
+        "ok": true
+      }
+    ]
+  },
+  "linking": {
+    "method": "small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit must be refused natively (exit 65: the 16384-byte front end) where the TypeScript linker accepts 1 MiB",
+    "rows": [
+      {
+        "label": "link diamond",
+        "expected": "48",
+        "got": "48",
+        "ok": true
+      },
+      {
+        "label": "link cycle",
+        "expected": "exit 2",
+        "got": "exit 2",
+        "ok": true
+      },
+      {
+        "label": "link outside-root",
+        "expected": "exit 2",
+        "got": "exit 2",
+        "ok": true
+      },
+      {
+        "label": "link missing",
+        "expected": "exit 64",
+        "got": "exit 64",
+        "ok": true
+      },
+      {
+        "label": "link duplicate",
+        "expected": "exit 1",
+        "got": "exit 1",
+        "ok": true
+      },
+      {
+        "label": "link over-limit",
+        "expected": "exit 65",
+        "got": "exit 65",
+        "ok": true
+      }
+    ]
+  },
+  "checkTimeBySize": {
+    "method": "median of 5 wall-clock `a0 check` processes on the first 88, 176, 355 and 713 functions of the most-functions source; machine load not controlled",
+    "rows": [
+      {
+        "bytes": 1998,
+        "ms": 6.9
+      },
+      {
+        "bytes": 4022,
+        "ms": 9.1
+      },
+      {
+        "bytes": 8139,
+        "ms": 13.1
+      },
+      {
+        "bytes": 16373,
+        "ms": 25
+      }
+    ]
   },
   "rows": [
     {
@@ -35,7 +711,7 @@
         0,
         0
       ],
-      "ms": 120.7,
+      "ms": 115.6,
       "ok": true,
       "suggestion": null
     },
@@ -52,7 +728,7 @@
         0,
         0
       ],
-      "ms": 5.6,
+      "ms": 3.5,
       "ok": true,
       "suggestion": null
     },
@@ -69,7 +745,7 @@
         0,
         1
       ],
-      "ms": 4.6,
+      "ms": 4.2,
       "ok": true,
       "suggestion": null
     },
@@ -86,7 +762,7 @@
         0,
         0
       ],
-      "ms": 5.2,
+      "ms": 11,
       "ok": true,
       "suggestion": null
     },
@@ -103,7 +779,7 @@
         0,
         0
       ],
-      "ms": 5.8,
+      "ms": 5.9,
       "ok": true,
       "suggestion": null
     },
@@ -120,7 +796,7 @@
         4294967295,
         8
       ],
-      "ms": 4.7,
+      "ms": 5,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'g'",
@@ -140,7 +816,7 @@
         4294967295,
         8
       ],
-      "ms": 4.1,
+      "ms": 4.4,
       "ok": true,
       "suggestion": {
         "expected": "A0101 undefined node 'b': defined later, so move it above",
@@ -160,7 +836,7 @@
         4294967295,
         7
       ],
-      "ms": 3.8,
+      "ms": 3.5,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'plus'",
@@ -180,7 +856,7 @@
         4294967295,
         11
       ],
-      "ms": 4.1,
+      "ms": 3.9,
       "ok": true,
       "suggestion": {
         "expected": null,
@@ -200,7 +876,7 @@
         0,
         0
       ],
-      "ms": 227.6,
+      "ms": 23.5,
       "ok": true,
       "suggestion": null
     },
@@ -217,7 +893,7 @@
         0,
         0
       ],
-      "ms": 11.4,
+      "ms": 4.9,
       "ok": true,
       "suggestion": null
     },
@@ -234,7 +910,7 @@
         0,
         0
       ],
-      "ms": 31.3,
+      "ms": 9.4,
       "ok": true,
       "suggestion": null
     },
@@ -251,7 +927,7 @@
         0,
         0
       ],
-      "ms": 53.7,
+      "ms": 9.9,
       "ok": true,
       "suggestion": null
     },
@@ -268,7 +944,7 @@
         0,
         0
       ],
-      "ms": 34.6,
+      "ms": 8.8,
       "ok": true,
       "suggestion": null
     },
@@ -285,7 +961,7 @@
         0,
         0
       ],
-      "ms": 4.9,
+      "ms": 4.1,
       "ok": true,
       "suggestion": null
     },
@@ -302,7 +978,7 @@
         0,
         0
       ],
-      "ms": 3.8,
+      "ms": 3.5,
       "ok": true,
       "suggestion": null
     },
@@ -319,7 +995,7 @@
         0,
         0
       ],
-      "ms": 4.7,
+      "ms": 3.3,
       "ok": true,
       "suggestion": null
     },
@@ -336,7 +1012,7 @@
         0,
         0
       ],
-      "ms": 4,
+      "ms": 3.6,
       "ok": true,
       "suggestion": null
     },
@@ -353,7 +1029,7 @@
         0,
         0
       ],
-      "ms": 4,
+      "ms": 3.4,
       "ok": true,
       "suggestion": null
     },
@@ -370,7 +1046,7 @@
         1,
         0
       ],
-      "ms": 4.6,
+      "ms": 3.5,
       "ok": true,
       "suggestion": null
     },
@@ -387,7 +1063,7 @@
         1,
         0
       ],
-      "ms": 10.9,
+      "ms": 3.3,
       "ok": true,
       "suggestion": null
     },
@@ -404,7 +1080,7 @@
         2,
         0
       ],
-      "ms": 5.8,
+      "ms": 4.6,
       "ok": true,
       "suggestion": null
     },
@@ -421,7 +1097,7 @@
         2,
         0
       ],
-      "ms": 4.6,
+      "ms": 8,
       "ok": true,
       "suggestion": null
     },
@@ -438,7 +1114,7 @@
         3,
         0
       ],
-      "ms": 6.5,
+      "ms": 4.6,
       "ok": true,
       "suggestion": null
     },
@@ -455,7 +1131,7 @@
         1,
         0
       ],
-      "ms": 5,
+      "ms": 6.2,
       "ok": true,
       "suggestion": null
     },
@@ -472,7 +1148,7 @@
         0,
         1
       ],
-      "ms": 5.4,
+      "ms": 6.8,
       "ok": true,
       "suggestion": null
     },
@@ -489,7 +1165,7 @@
         0,
         1
       ],
-      "ms": 6.4,
+      "ms": 5.5,
       "ok": true,
       "suggestion": null
     },
@@ -506,7 +1182,7 @@
         1,
         2
       ],
-      "ms": 10.2,
+      "ms": 6.9,
       "ok": true,
       "suggestion": null
     },
@@ -523,7 +1199,7 @@
         0,
         2
       ],
-      "ms": 7.5,
+      "ms": 5.8,
       "ok": true,
       "suggestion": null
     },
@@ -540,7 +1216,7 @@
         0,
         1
       ],
-      "ms": 5,
+      "ms": 9.5,
       "ok": true,
       "suggestion": null
     },
@@ -557,7 +1233,7 @@
         0,
         2
       ],
-      "ms": 9.5,
+      "ms": 6.9,
       "ok": true,
       "suggestion": null
     },
@@ -574,7 +1250,7 @@
         0,
         3
       ],
-      "ms": 12,
+      "ms": 5.8,
       "ok": true,
       "suggestion": null
     },
@@ -591,7 +1267,7 @@
         0,
         4294967295
       ],
-      "ms": 8.1,
+      "ms": 5.9,
       "ok": true,
       "suggestion": null
     },
@@ -608,7 +1284,7 @@
         0,
         0
       ],
-      "ms": 8.3,
+      "ms": 5.6,
       "ok": true,
       "suggestion": null
     },
@@ -625,7 +1301,7 @@
         0,
         2
       ],
-      "ms": 7.3,
+      "ms": 5.2,
       "ok": true,
       "suggestion": null
     },
@@ -642,7 +1318,7 @@
         0,
         2
       ],
-      "ms": 9.1,
+      "ms": 5.8,
       "ok": true,
       "suggestion": null
     },
@@ -659,7 +1335,7 @@
         0,
         0
       ],
-      "ms": 11.4,
+      "ms": 5.6,
       "ok": true,
       "suggestion": null
     },
@@ -676,7 +1352,7 @@
         4294967295,
         8
       ],
-      "ms": 8.9,
+      "ms": 6.4,
       "ok": true,
       "suggestion": {
         "expected": "A0101 undefined node 'b'",
@@ -696,7 +1372,7 @@
         0,
         0
       ],
-      "ms": 8.2,
+      "ms": 6.5,
       "ok": true,
       "suggestion": null
     },
@@ -713,7 +1389,7 @@
         0,
         0
       ],
-      "ms": 6.6,
+      "ms": 3.7,
       "ok": true,
       "suggestion": null
     },
@@ -730,7 +1406,7 @@
         0,
         0
       ],
-      "ms": 5.2,
+      "ms": 6.3,
       "ok": true,
       "suggestion": null
     },
@@ -747,7 +1423,7 @@
         0,
         0
       ],
-      "ms": 5.6,
+      "ms": 5,
       "ok": true,
       "suggestion": null
     },
@@ -764,7 +1440,7 @@
         0,
         0
       ],
-      "ms": 4.8,
+      "ms": 4.2,
       "ok": true,
       "suggestion": null
     },
@@ -781,7 +1457,7 @@
         0,
         0
       ],
-      "ms": 7,
+      "ms": 3.6,
       "ok": true,
       "suggestion": null
     },
@@ -798,7 +1474,7 @@
         4294967295,
         7
       ],
-      "ms": 10.4,
+      "ms": 3.5,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'mull': did you mean 'mul'?",
@@ -818,7 +1494,7 @@
         4294967295,
         24
       ],
-      "ms": 6.3,
+      "ms": 3.6,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'squar': did you mean 'square'?",
@@ -838,7 +1514,7 @@
         4294967295,
         23
       ],
-      "ms": 5.4,
+      "ms": 4.7,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'squar': did you mean 'square'?",
@@ -858,7 +1534,7 @@
         4294967295,
         23
       ],
-      "ms": 8,
+      "ms": 4.3,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'squar': did you mean 'square'?",
@@ -878,7 +1554,7 @@
         4294967295,
         8
       ],
-      "ms": 6.8,
+      "ms": 3.8,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'g': defined later, so move it above",
@@ -898,7 +1574,7 @@
         4294967295,
         7
       ],
-      "ms": 7.9,
+      "ms": 3.2,
       "ok": true,
       "suggestion": {
         "expected": "A0102 unknown callee 'frobnicate'",
@@ -918,7 +1594,7 @@
         4294967295,
         13
       ],
-      "ms": 4.2,
+      "ms": 3.6,
       "ok": true,
       "suggestion": {
         "expected": "A0101 undefined node 'acum': did you mean 'accum'?",
@@ -938,7 +1614,7 @@
         4294967295,
         8
       ],
-      "ms": 3.7,
+      "ms": 3.2,
       "ok": true,
       "suggestion": {
         "expected": "A0101 undefined node 'b': defined later, so move it above",
@@ -958,7 +1634,7 @@
         4294967295,
         12
       ],
-      "ms": 3.6,
+      "ms": 3.8,
       "ok": true,
       "suggestion": {
         "expected": "A0101 undefined node 'aa'",
@@ -978,7 +1654,7 @@
         4294967295,
         24
       ],
-      "ms": 5.2,
+      "ms": 3.4,
       "ok": true,
       "suggestion": {
         "expected": "A0103 unknown fold or loop body 'stepp': did you mean 'step'?",
@@ -998,7 +1674,7 @@
         4294967295,
         41
       ],
-      "ms": 4.6,
+      "ms": 3.5,
       "ok": true,
       "suggestion": {
         "expected": "A0104 unknown loop predicate 'belw': did you mean 'below'?",
@@ -1018,7 +1694,7 @@
         4294967295,
         42
       ],
-      "ms": 4.5,
+      "ms": 3.5,
       "ok": true,
       "suggestion": {
         "expected": "A0103 unknown fold or loop body 'stepp': did you mean 'step'?",
@@ -1038,7 +1714,7 @@
         4294967295,
         2
       ],
-      "ms": 3.5,
+      "ms": 3.2,
       "ok": true,
       "suggestion": {
         "expected": "A0001 unknown type 'bol': did you mean 'bool'?",
@@ -1058,7 +1734,7 @@
         0,
         0
       ],
-      "ms": 7.6,
+      "ms": 3.7,
       "ok": true,
       "suggestion": null
     },
@@ -1075,7 +1751,7 @@
         0,
         0
       ],
-      "ms": 13,
+      "ms": 4.1,
       "ok": true,
       "suggestion": null
     },
@@ -1092,7 +1768,7 @@
         0,
         0
       ],
-      "ms": 11.6,
+      "ms": 5.6,
       "ok": true,
       "suggestion": null
     },
@@ -1109,7 +1785,7 @@
         0,
         0
       ],
-      "ms": 30.2,
+      "ms": 7.6,
       "ok": true,
       "suggestion": null
     },
@@ -1126,7 +1802,7 @@
         0,
         0
       ],
-      "ms": 13.7,
+      "ms": 6.4,
       "ok": true,
       "suggestion": null
     },
@@ -1143,7 +1819,7 @@
         0,
         0
       ],
-      "ms": 10.8,
+      "ms": 6.1,
       "ok": true,
       "suggestion": null
     },
@@ -1160,7 +1836,7 @@
         0,
         0
       ],
-      "ms": 11.7,
+      "ms": 5.1,
       "ok": true,
       "suggestion": null
     },
@@ -1177,7 +1853,7 @@
         0,
         0
       ],
-      "ms": 17.8,
+      "ms": 5.1,
       "ok": true,
       "suggestion": null
     },
@@ -1194,7 +1870,7 @@
         0,
         0
       ],
-      "ms": 12.4,
+      "ms": 6.1,
       "ok": true,
       "suggestion": null
     },
@@ -1211,7 +1887,7 @@
         0,
         0
       ],
-      "ms": 10.7,
+      "ms": 4.2,
       "ok": true,
       "suggestion": null
     },
@@ -1228,7 +1904,7 @@
         0,
         0
       ],
-      "ms": 22.5,
+      "ms": 6.5,
       "ok": true,
       "suggestion": null
     },
@@ -1245,7 +1921,7 @@
         0,
         0
       ],
-      "ms": 17.4,
+      "ms": 5.3,
       "ok": true,
       "suggestion": null
     },
@@ -1262,7 +1938,7 @@
         0,
         0
       ],
-      "ms": 24,
+      "ms": 6.2,
       "ok": true,
       "suggestion": null
     },
@@ -1279,7 +1955,7 @@
         0,
         0
       ],
-      "ms": 21.5,
+      "ms": 5.5,
       "ok": true,
       "suggestion": null
     },
@@ -1296,7 +1972,7 @@
         0,
         0
       ],
-      "ms": 11.7,
+      "ms": 5.4,
       "ok": true,
       "suggestion": null
     },
@@ -1313,7 +1989,7 @@
         0,
         0
       ],
-      "ms": 11.7,
+      "ms": 9.2,
       "ok": true,
       "suggestion": null
     },
@@ -1330,7 +2006,7 @@
         0,
         0
       ],
-      "ms": 24.2,
+      "ms": 6.4,
       "ok": true,
       "suggestion": null
     },
@@ -1347,7 +2023,7 @@
         0,
         0
       ],
-      "ms": 27.8,
+      "ms": 5.2,
       "ok": true,
       "suggestion": null
     },
@@ -1364,7 +2040,7 @@
         0,
         0
       ],
-      "ms": 20.5,
+      "ms": 5.1,
       "ok": true,
       "suggestion": null
     },
@@ -1381,7 +2057,7 @@
         0,
         0
       ],
-      "ms": 7.7,
+      "ms": 4.2,
       "ok": true,
       "suggestion": null
     },
@@ -1398,7 +2074,7 @@
         0,
         0
       ],
-      "ms": 7.5,
+      "ms": 4.4,
       "ok": true,
       "suggestion": null
     },
@@ -1415,7 +2091,7 @@
         0,
         0
       ],
-      "ms": 10.8,
+      "ms": 4.8,
       "ok": true,
       "suggestion": null
     },
@@ -1432,7 +2108,7 @@
         0,
         0
       ],
-      "ms": 9.9,
+      "ms": 4.3,
       "ok": true,
       "suggestion": null
     },
@@ -1449,7 +2125,7 @@
         4294967295,
         11
       ],
-      "ms": 4.9,
+      "ms": 3.7,
       "ok": true,
       "suggestion": {
         "expected": "A0001 unknown type 'x2'",
@@ -1469,7 +2145,7 @@
         0,
         0
       ],
-      "ms": 8.6,
+      "ms": 3.6,
       "ok": true,
       "suggestion": null
     },
@@ -1486,7 +2162,7 @@
         0,
         0
       ],
-      "ms": 7,
+      "ms": 4.4,
       "ok": true,
       "suggestion": null
     },
@@ -1503,7 +2179,7 @@
         0,
         0
       ],
-      "ms": 9.5,
+      "ms": 3.7,
       "ok": true,
       "suggestion": null
     },
@@ -1520,7 +2196,7 @@
         4294967295,
         5
       ],
-      "ms": 6.6,
+      "ms": 3.3,
       "ok": true,
       "suggestion": {
         "expected": null,
@@ -1540,7 +2216,7 @@
         0,
         0
       ],
-      "ms": 12.7,
+      "ms": 4.8,
       "ok": true,
       "suggestion": null
     },
@@ -1557,7 +2233,7 @@
         0,
         0
       ],
-      "ms": 10.3,
+      "ms": 5,
       "ok": true,
       "suggestion": null
     },
@@ -1574,7 +2250,7 @@
         0,
         0
       ],
-      "ms": 31.8,
+      "ms": 7.4,
       "ok": true,
       "suggestion": null
     },
@@ -1591,7 +2267,7 @@
         0,
         0
       ],
-      "ms": 8.6,
+      "ms": 5.7,
       "ok": true,
       "suggestion": null
     },
@@ -1608,7 +2284,7 @@
         0,
         0
       ],
-      "ms": 7.3,
+      "ms": 6,
       "ok": true,
       "suggestion": null
     },
@@ -1625,7 +2301,7 @@
         0,
         0
       ],
-      "ms": 14.2,
+      "ms": 7.3,
       "ok": true,
       "suggestion": null
     },
@@ -1642,7 +2318,7 @@
         0,
         0
       ],
-      "ms": 20.2,
+      "ms": 8.2,
       "ok": true,
       "suggestion": null
     },
@@ -1659,7 +2335,7 @@
         0,
         0
       ],
-      "ms": 7.8,
+      "ms": 5.1,
       "ok": true,
       "suggestion": null
     },
@@ -1676,7 +2352,7 @@
         0,
         0
       ],
-      "ms": 10.9,
+      "ms": 6.3,
       "ok": true,
       "suggestion": null
     },
@@ -1693,7 +2369,7 @@
         0,
         0
       ],
-      "ms": 12.4,
+      "ms": 8.3,
       "ok": true,
       "suggestion": null
     },
@@ -1710,7 +2386,7 @@
         0,
         0
       ],
-      "ms": 9.7,
+      "ms": 4.5,
       "ok": true,
       "suggestion": null
     },
@@ -1727,7 +2403,7 @@
         0,
         0
       ],
-      "ms": 29.3,
+      "ms": 6.5,
       "ok": true,
       "suggestion": null
     },
@@ -1744,7 +2420,7 @@
         4294967295,
         829
       ],
-      "ms": 15,
+      "ms": 5.6,
       "ok": true,
       "suggestion": {
         "expected": null,
@@ -1764,7 +2440,7 @@
         0,
         0
       ],
-      "ms": 10.1,
+      "ms": 4.5,
       "ok": true,
       "suggestion": null
     },
@@ -1781,7 +2457,7 @@
         0,
         0
       ],
-      "ms": 17.8,
+      "ms": 6.9,
       "ok": true,
       "suggestion": null
     },
@@ -1798,7 +2474,7 @@
         0,
         0
       ],
-      "ms": 55.3,
+      "ms": 11.2,
       "ok": true,
       "suggestion": null
     },
@@ -1815,7 +2491,7 @@
         0,
         0
       ],
-      "ms": 12.2,
+      "ms": 4.9,
       "ok": true,
       "suggestion": null
     },
@@ -1832,7 +2508,7 @@
         0,
         0
       ],
-      "ms": 8.5,
+      "ms": 3.9,
       "ok": true,
       "suggestion": null
     },
@@ -1849,7 +2525,7 @@
         0,
         0
       ],
-      "ms": 15.9,
+      "ms": 5.8,
       "ok": true,
       "suggestion": null
     },
@@ -1866,7 +2542,7 @@
         4294967295,
         10
       ],
-      "ms": 6.2,
+      "ms": 3.8,
       "ok": true,
       "suggestion": {
         "expected": "A0001 unknown type 'x2'",
@@ -1886,7 +2562,7 @@
         0,
         0
       ],
-      "ms": 4.2,
+      "ms": 3.5,
       "ok": true,
       "suggestion": null
     },
@@ -1903,7 +2579,7 @@
         0,
         0
       ],
-      "ms": 4.6,
+      "ms": 3.4,
       "ok": true,
       "suggestion": null
     },
@@ -1937,7 +2613,7 @@
         0,
         0
       ],
-      "ms": 3.9,
+      "ms": 3.5,
       "ok": true,
       "suggestion": null
     },
@@ -1954,7 +2630,7 @@
         0,
         0
       ],
-      "ms": 3.2,
+      "ms": 3,
       "ok": true,
       "suggestion": null
     },
@@ -1971,7 +2647,7 @@
         0,
         0
       ],
-      "ms": 4.3,
+      "ms": 3.1,
       "ok": true,
       "suggestion": null
     },
@@ -1988,7 +2664,7 @@
         0,
         0
       ],
-      "ms": 7,
+      "ms": 4.8,
       "ok": true,
       "suggestion": null
     },
@@ -2005,7 +2681,7 @@
         0,
         0
       ],
-      "ms": 5.5,
+      "ms": 3.7,
       "ok": true,
       "suggestion": null
     },
@@ -2022,7 +2698,7 @@
         0,
         0
       ],
-      "ms": 5.5,
+      "ms": 3.6,
       "ok": true,
       "suggestion": null
     },
@@ -2039,7 +2715,7 @@
         0,
         0
       ],
-      "ms": 78.5,
+      "ms": 7.3,
       "ok": true,
       "suggestion": null
     },
@@ -2056,7 +2732,7 @@
         0,
         0
       ],
-      "ms": 6.4,
+      "ms": 3.9,
       "ok": true,
       "suggestion": null
     },
@@ -2073,7 +2749,7 @@
         0,
         0
       ],
-      "ms": 47.1,
+      "ms": 7.3,
       "ok": true,
       "suggestion": null
     },
@@ -2090,7 +2766,7 @@
         0,
         0
       ],
-      "ms": 29.3,
+      "ms": 5.4,
       "ok": true,
       "suggestion": null
     },
@@ -2107,7 +2783,7 @@
         0,
         0
       ],
-      "ms": 98.2,
+      "ms": 8.5,
       "ok": true,
       "suggestion": null
     },
@@ -2124,7 +2800,7 @@
         0,
         0
       ],
-      "ms": 40,
+      "ms": 6.5,
       "ok": true,
       "suggestion": null
     },
@@ -2141,7 +2817,7 @@
         0,
         0
       ],
-      "ms": 97.7,
+      "ms": 8.3,
       "ok": true,
       "suggestion": null
     },
@@ -2158,7 +2834,7 @@
         0,
         0
       ],
-      "ms": 88,
+      "ms": 7.8,
       "ok": true,
       "suggestion": null
     },
@@ -2175,7 +2851,7 @@
         0,
         0
       ],
-      "ms": 25,
+      "ms": 5.9,
       "ok": true,
       "suggestion": null
     },
@@ -2192,7 +2868,7 @@
         0,
         0
       ],
-      "ms": 60.4,
+      "ms": 7.3,
       "ok": true,
       "suggestion": null
     }
