@@ -9318,6 +9318,18 @@ v get g w
 r write p0 v
 ret r
 end
+# page p1 of machine table p2 into code table p0 (a dump of the machine state, for tests)
+fn wxdmq u32x128x512 u32 u32x128x512 -> u32x128x512
+pg get p2 p1
+r set p0 p1 pg
+ret r
+end
+# page p1 of instruction table p2 into code table p0 (a dump of the instruction list, for tests)
+fn wxdmp u32x128x512 u32 u32x128x352 -> u32x128x512
+pg get p2 p1
+r set p0 p1 pg
+ret r
+end
 # call table word p2 := p3 (u32x128x16: index and stack depth per function, words 2f and 2f + 1)
 fn wxdts u32x128x16 u32 u32 u32 -> u32x128x16
 pi shr p2 7
@@ -9377,7 +9389,18 @@ pb0 get pb0_gg pb0_gw
 pc0 add pb0 np0
 zi call z352
 i0 fold wxcpi 352 zi m0
-c0 call wfzfin i0 n0 pc0
+c0r call wfzfin i0 n0 pc0
+dm eq p3 3
+cdz0 call z512
+cd0 fold wxdmp 352 cdz0 i0
+n0x mul n0 2
+cd01 fold wxs 1 cd0 65533 n0x
+dq eq p3 4
+cdq0 call z512
+cdq fold wxdmq 160 cdq0 m0
+cdq1 fold wxs 1 cdq 65533 20480
+c0a select dm cd01 c0r
+c0 select dq cdq1 c0a
 npl0_gp shr 5 7
 npl0_gw and 5 127
 npl0_gg get m0 npl0_gp
@@ -9402,7 +9425,12 @@ pb1 get pb1_gg pb1_gw
 pc1 add pb1 np1
 zi1 call z352
 i1 fold wxcpi 352 zi1 m1
-c1 call wfzfin i1 n1 pc1
+c1r call wfzfin i1 n1 pc1
+cdz1 call z512
+cd1 fold wxdmp 352 cdz1 i1
+n1x mul n1 2
+cd11 fold wxs 1 cd1 65533 n1x
+c1 select dm cd11 c1r
 npl1_gp shr 5 7
 npl1_gw and 5 127
 npl1_gg get m1 npl1_gp
@@ -9850,7 +9878,8 @@ r call wachunk p0 p2 p3 p4 nd p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 z 1 1
 io at r 0
 ret io
 end
-# mode 2: a chunk as tables (and, from the driver, the shape table)
+# mode 2: a chunk as tables, then the shape table (count, words), then (for tests) the simd option
+# (2: off) and the unroll option (0: default 1)
 fn wairchunk io -> (io,u32)
 r1 call wardw p0
 base at r1 0
@@ -9916,7 +9945,22 @@ t18 at r18 1
 rs call warn200 t18 nsh
 sh at rs 0
 t19 at rs 1
-w call wachunk t19 ty tl fs nds ar nty2 pl fm dt z8 nty from nf base sh 1 1
+r19 call wardw t19
+osd at r19 0
+t20 at r19 1
+r20 call wardw t20
+ouw at r20 0
+t21 at r20 1
+simdoff eq osd 2
+dmp eq osd 3
+dmq eq osd 4
+dmx or dmp dmq
+sone0 select dmp 3 1
+sone select dmq 4 sone0
+simd select simdoff 0 sone
+uz eq ouw 0
+unroll select uz 1 ouw
+w call wachunk t21 ty tl fs nds ar nty2 pl fm dt z8 nty from nf base sh simd unroll
 ret w
 end
 fn wasunit io u32x512x64 u32 u32x128x8 u32 u32x128x16 u32 -> (io,u32)
