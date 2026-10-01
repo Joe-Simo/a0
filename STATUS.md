@@ -115,6 +115,13 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
 5. SIMD fills for the arm64 and x86-64 backends (the wasm32 path has them).
 6. Per-backend verify, so a change to one backend does not run the whole `verify` step.
 7. Libraries and platforms: FFI, browser API bindings, mobile packaging, memory regions beyond fixed arrays.
+8. Quiet-machine rerun of the arm64 loop kernels with Zig (`bun run exec-bench -- --langs=zig --kernels=<the fifteen lighter kernels>`),
+   then write `results/exec-benchmark-arm64.json`; until then the per-kernel arm64 loop table is not a result.
+9. Strict/checked operations profile: trap on out-of-bounds index, division by zero and exhausted input; checked operations return value and ok.
+10. One-line contracts and executable examples inside the views; an application-scale benchmark (A0 front end against the TypeScript reference, equal views).
+11. Finish verifying return literals of 2^28 or more (kind-5 operand, fixed in all consumers): `selfhost:wasm` was not run to completion on the `bigret` list, and `efnstep`, `qfn`, `evalrun.a0` and `shape.a0` were read but not run with a big literal.
+12. Port the assembler and linker (`src/arm64enc.ts`, `src/macho.ts`) to A0.
+13. Free directory submissions (Smithery, Cursor, Cline, Goose, Kilo, opencode, Hugging Face); the MCP Registry entry is published.
 
 ## History
 
