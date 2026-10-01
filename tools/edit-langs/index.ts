@@ -2,8 +2,10 @@
 
 import { C } from './c.js';
 import { CLOJURE } from './clojure.js';
+import { COMMONLISP } from './commonlisp.js';
 import { DART } from './dart.js';
 import { ELIXIR } from './elixir.js';
+import { ERLANG } from './erlang.js';
 import { FORTH } from './forth.js';
 import { FORTRAN } from './fortran.js';
 import { FSHARP } from './fsharp.js';
@@ -16,9 +18,11 @@ import { LUA } from './lua.js';
 import { NIM } from './nim.js';
 import { OBJC } from './objc.js';
 import { OCAML } from './ocaml.js';
+import { PASCAL } from './pascal.js';
 import { PERL } from './perl.js';
 import { PHP } from './php.js';
 import { PROLOG } from './prolog.js';
+import { RACKET } from './racket.js';
 import { RUBY } from './ruby.js';
 import { SCALA } from './scala.js';
 import { SMALLTALK } from './smalltalk.js';
@@ -55,6 +59,10 @@ export const SPEC_LANGS = [
   'forth',
   'guile',
   'smalltalk',
+  'racket',
+  'erlang',
+  'commonlisp',
+  'pascal',
 ] as const;
 export type SpecLang = (typeof SPEC_LANGS)[number];
 
@@ -67,6 +75,10 @@ export const SPECS: Readonly<Record<SpecLang, LangSpec>> = {
   ocaml: OCAML,
   elixir: ELIXIR,
   zig: ZIG,
+  pascal: PASCAL,
+  commonlisp: COMMONLISP,
+  erlang: ERLANG,
+  racket: RACKET,
   smalltalk: SMALLTALK,
   guile: GUILE,
   forth: FORTH,
