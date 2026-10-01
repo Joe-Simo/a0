@@ -97,21 +97,24 @@ r fold wr64 1 p0 p2 w
 ret r
 end
 
-# ---- exec: results/exec-benchmark.json
-# 128 kernels 129 languages; kernel k: name 256 + 8k, length 384 + k, fields 400 + 16k (0 has
-# arm64, 1 arm64 2 handwritten C 3 Rust 4 JavaScript ns x 10^4, 5 a0 build 6 rustc build ms x
-# 10^3, 7 emitted 8 handwritten startup ms x 10^6, 9 emitted binary bytes); language l: id hash
-# 656 + l, family 720 + l (1 compiled-native 2 interpreted 3 other), ran 784 + l, label length
-# 848 + l, label 912 + 8l; median of language l on kernel k 1424 + 16l + k, ran there 2448 + 16l + k;
-# startup group g entry e (e < 64): id hash 3472 + 64g + e, id length 3600 + ..., id 3728 +
-# 8(64g + e), counts 130 + g, value + 1 on kernel k 4752 + 16(64g + e) + k (ms x 10^6).
+# ---- exec: results/exec-benchmark-full.json, into the axes table (20 kernels, 64 languages)
+# 2700 kernels, 2701 languages, 2702 + g startup group counts; kernel k: name 2704 + 8k, length
+# 2864 + k, fields 2884 + 16k (0 has arm64, 1 arm64 2 handwritten C 3 Rust 4 JavaScript ns x 10^4,
+# 5 a0 build 6 rustc build ms x 10^3, 7 emitted 8 handwritten startup ms x 10^6, 9 emitted binary
+# bytes); language l: id hash 3204 + l, family 3268 + l (1 compiled-native 2 interpreted 3 other),
+# ran 3332 + l, label length 3396 + l, label 3460 + 8l; median ns x 10^4 + 1 of language l on kernel
+# k 3972 + 20l + k (0 where it did not run); startup group g entry e (e < 32): id hash 5252 + 32g + e,
+# id length 5316 + ..., id 5380 + 8(32g + e), value + 1 on kernel k 5892 + 20(32g + e) + k (ms x 10^6).
+# Per kernel, arm64VsBestFlags: hash of the best's name 7172 + k, speedup x 1000 7192 + k, best ns x 100
+# 7212 + k, verdict (1 win 2 tie 3 loss) 7232 + k; the file's win, tie, loss counts 7260 to 7262 and
+# the highest load at a sample start x 100 at 7263.
 fn hexec u32x128x64 u32 u32x128x512 -> u32x128x64
 t call g p0 15
 d call g p0 16
 kk call kis p0 1 p2 0
 kl call kis p0 1 p2 1
-nk call g p0 128
-nl call g p0 129
+nk call g p0 2700
+nl call g p0 2701
 ck sub nk 1
 cl sub nl 1
 iskey eq t 1
@@ -126,21 +129,21 @@ x0 and iskey d2
 nkx and x0 kk
 nlx and x0 kl
 kb shl nk 3
-kn add kb 256
-knl add nk 384
+kn add kb 2704
+knl add nk 2864
 s1 call savecap p0 nkx kn knl
 nk1 add nk 1
 c1 select nkx 1 0
-s2 fold wr64 c1 s1 128 nk1
+s2 fold wr64 c1 s1 2700 nk1
 lh call g s2 4
-lslot add nl 656
+lslot add nl 3204
 c2 select nlx 1 0
 s3 fold wr64 c2 s2 lslot lh
 nl1 add nl 1
-s4 fold wr64 c2 s3 129 nl1
+s4 fold wr64 c2 s3 2701 nl1
 # kernels.K.LID.medianNsPerCall / status
 lid call key s4 3
-li call lookup s4 656 nl lid
+li call lookup s4 3204 nl lid
 found lt li nl
 m4 call kis s4 4 p2 5
 st4 call kis s4 4 p2 4
@@ -148,19 +151,16 @@ y0 and kk d4
 y1 and y0 found
 ym0 and y1 isnum
 ym and ym0 m4
-lk shl li 4
+lk mul li 20
 lk2 add lk ck
-mi add lk2 1424
+mi add lk2 3972
 v4 call num s4 10000
+v4p add v4 1
 c3 select ym 1 0
-s5 fold wr64 c3 s4 mi v4
-ran call hashis s5 p2 42
-yr0 and y1 isstr
-yr1 and yr0 st4
-yr and yr1 ran
-ri add lk2 2448
-c4 select yr 1 0
-s6 fold wr64 c4 s5 ri 1
+s5 fold wr64 c3 s4 mi v4p
+rf3 add li 3332
+s5b fold wr64 c3 s5 rf3 1
+s6 fold wr64 0 s5b 0 0
 # kernels.K.startup*.LID
 gi call kis s6 3 p2 17
 gc call kis s6 3 p2 18
@@ -169,10 +169,10 @@ g1 select gc 1 0
 z0 and kk d4
 z1 and z0 isnum
 zs and z1 gs
-cntw add g1 130
+cntw add g1 2702
 cnt call g s6 cntw
-tb0 shl g1 6
-tb add tb0 3472
+tb0 shl g1 5
+tb add tb0 5252
 sh call key s6 4
 ei call lookup s6 tb cnt sh
 new eq ei cnt
@@ -181,17 +181,17 @@ c5 select zn 1 0
 hs add tb ei
 s7 fold wr64 c5 s6 hs sh
 en add tb0 ei
-enl add en 3600
+enl add en 5316
 en8 shl en 3
-ens add en8 3728
+ens add en8 5380
 s8 call savecap s7 zn ens enl
 cnt1 add cnt 1
 s9 fold wr64 c5 s8 cntw cnt1
 sv call num s9 1000000
 sv1 add sv 1
-e16 shl en 4
+e16 mul en 20
 e16k add e16 ck
-evi add e16k 4752
+evi add e16k 5892
 c6 select zs 1 0
 s10 fold wr64 c6 s9 evi sv1
 # kernels.K.c.X.Y and kernels.K.js.handwritten.medianNsPerCall
@@ -213,7 +213,7 @@ hw5 call kis s10 5 p2 8
 qc and q1 kc
 qm and qc med
 kf0 shl ck 4
-kf add kf0 400
+kf add kf0 2884
 ns call num s10 10000
 ms3 call num s10 1000
 ms6 call num s10 1000000
@@ -267,10 +267,11 @@ w1 and w0 isstr
 lab call kis s20 3 p2 2
 fam call kis s20 3 p2 3
 sta call kis s20 3 p2 4
+ran call hashis s20 p2 42
 wl and w1 lab
 l8 shl cl 3
-ldst add l8 912
-llen add cl 848
+ldst add l8 3460
+llen add cl 3396
 s21 call savecap s20 wl ldst llen
 cn call hashis s21 p2 44
 it call hashis s21 p2 45
@@ -278,14 +279,71 @@ fv0 select it 2 3
 fv select cn 1 fv0
 wf and w1 fam
 c12 select wf 1 0
-fslot add cl 720
+fslot add cl 3268
 s22 fold wr64 c12 s21 fslot fv
 ws0 and w1 sta
 wsr and ws0 ran
 c13 select wsr 1 0
-rslot add cl 784
+rslot add cl 3332
 s23 fold wr64 c13 s22 rslot 1
-ret s23
+# kernels.K.arm64VsBestFlags.best / bestNsPerCall / speedup / verdict
+bf call kis s23 3 p2 451
+bsk call kis s23 4 p2 454
+bnk call kis s23 4 p2 452
+spk call kis s23 4 p2 453
+vdk call kis s23 4 p2 455
+b0 and kk d4
+b1 and b0 bf
+bs0 and b1 isstr
+bsc and bs0 bsk
+vsc and bs0 vdk
+bsel select bsc 1 0
+bh call g s23 4
+bhi add 7172 ck
+s24 fold wr64 bsel s23 bhi bh
+iw2 call hashis s24 p2 365
+it2 call hashis s24 p2 366
+vt0 select it2 2 3
+vv select iw2 1 vt0
+vsel select vsc 1 0
+vi2 add 7232 ck
+s25 fold wr64 vsel s24 vi2 vv
+bn0 and b1 isnum
+bnc and bn0 bnk
+spc and bn0 spk
+bnsel select bnc 1 0
+spsel select spc 1 0
+bni add 7212 ck
+spi add 7192 ck
+bnv call num s25 100
+spv call num s25 1000
+s26 fold wr64 bnsel s25 bni bnv
+s27 fold wr64 spsel s26 spi spv
+# arm64VsBestFlags.win / tie / loss, loadGate.highestLoadAtSampleStart
+rb call kis s27 1 p2 451
+lg2 call kis s27 1 p2 456
+kw call kis s27 2 p2 365
+kt2 call kis s27 2 p2 366
+kl2 call kis s27 2 p2 367
+hl call kis s27 2 p2 457
+nr0 and isnum d2
+nr1 and nr0 rb
+cw2 and nr1 kw
+ct2 and nr1 kt2
+cl2 and nr1 kl2
+nl0 and nr0 lg2
+chl and nl0 hl
+wsel select cw2 1 0
+tsel select ct2 1 0
+lsel select cl2 1 0
+hsel select chl 1 0
+vsm call num s27 1
+v100 call num s27 100
+s28 fold wr64 wsel s27 7260 vsm
+s29 fold wr64 tsel s28 7261 vsm
+s30 fold wr64 lsel s29 7262 vsm
+s31 fold wr64 hsel s30 7263 v100
+ret s31
 end
 
 # ---- cost: results/ai-edit-experiment.*.json, slot p (14): per representation r (the `m cost`

@@ -1159,12 +1159,13 @@ ret t
 end
 fn calc u32x128x128 u32 u32x128x512 u32x128x64 u32x128x64 -> u32x128x128
 v1 fold strings 1 p0 p2 p3 p4
-v2 fold cexec 1 v1 p2 p3
-v3 fold cranks 1 v2 p2 p3
-v4 fold cstart 1 v3 p2 p3
-v5 fold ccost 1 v4 p2 p3
-v6 fold cedit 1 v5 p2 p3
-v7 fold cpar 1 v6 p2 p3
+v2 fold cexec 1 v1 p2 p4
+v2b fold cbk 1 v2 p2 p4
+v3 fold cranks 1 v2b p2 p4
+v4 fold cstart 1 v3 p2 p4
+v5 fold ccost 1 v4 p2 p3 p4
+v6 fold cedit 1 v5 p2 p3 p4
+v7 fold cpar 1 v6 p2 p3 p4
 v8 fold caxes 1 v7 p2 p3 p4
 v9 fold ctok 1 v8 p2 p4
 v10 fold chw 1 v9 p2 p4
@@ -1182,7 +1183,7 @@ px at b 1
 t2 at b 2
 z call z128
 v0 fold wr128 1 z 0 56000
-nk call rd64 pa 128
+nk call rd64 px 2700
 has gt nk 0
 c select has 1 0
 v fold calc c v0 st pa px

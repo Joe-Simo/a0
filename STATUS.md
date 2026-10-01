@@ -3478,3 +3478,8 @@ are in results/exec-benchmark.json, taken at clean load; ns, A0 arm64 vs best of
   loss ledger is unchanged.
 - Handoff to the arm64.ts owner: NEON SLP for straight-line 4x4 products (mla by element),
   tst/subs/cneg fusion, spill reduction.
+
+## Session 2026-10-01 (site: speed section from the clean full run)
+
+- The home page reads results/exec-benchmark-full.json (19 kernels, load gate) instead of results/exec-benchmark.json: a table of A0 against the best of C, Rust and Zig per test program (arm64VsBestFlags, win/tie/loss and the slowest ratio computed from the file), the rank table and the per-language chart from the same file (a language is timed on the programs it has source for), startup from it too. The A0 row is called out of line from a C driver; the page says so. results/lang-axes.json is the clean-load run (fb525d5) and the validation charts label A0 (native) with A0 (Node CLI) as the previous path.
+- Generator: the exec file now goes into the axes table from word 2700 (20 kernels, 64 languages, median stored plus one), geometric means keep separate positive and negative log sums (19 kernels overflowed one biased sum), ratios use ratio100 (no overflow above 4286 ns).
