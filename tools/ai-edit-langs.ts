@@ -1,5 +1,7 @@
 /**
- * Five more representations for the AI-edit experiment: Python, Go, Java, C#, C++.
+ * Further representations for the AI-edit experiment: Python, Go, Java, C#, C++ (below),
+ * and Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig (one LangSpec module each in
+ * tools/edit-langs/).
  *
  * Hand-written translations of every function in task set B and in the set-C / c400
  * project program (the set-B originals and references, the set-A originals that fill
@@ -16,22 +18,40 @@
  * compare against the expected values.
  */
 
-import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { delimiter, join } from 'node:path';
+import { join } from 'node:path';
 import type { Type, TypedProgram, Value } from '../src/core.js';
 import { findClangPlusPlus, findJava, findJavac, runTool, withTempDir } from '../src/toolchain.js';
 import type { FillerFunction } from './ai-edit-tasks-c.js';
+import { SPEC_LANGS, SPECS, type SpecLang } from './edit-langs/index.js';
+import {
+  type BTaskId,
+  BUILD_MS,
+  type LangCase,
+  type Pair,
+  RUN_MS,
+  tool,
+} from './edit-langs/spec.js';
 
-export const LANGS = ['python', 'go', 'java', 'csharp', 'cpp'] as const;
-export type Lang = (typeof LANGS)[number];
+export type { LangCase } from './edit-langs/spec.js';
+
+const BASE_LANGS = ['python', 'go', 'java', 'csharp', 'cpp'] as const;
+type BaseLang = (typeof BASE_LANGS)[number];
+export const LANGS = [...BASE_LANGS, ...SPEC_LANGS] as const;
+export type Lang = BaseLang | SpecLang;
 
 export function isLang(x: string): x is Lang {
   return (LANGS as readonly string[]).includes(x);
 }
 
+const isSpecLang = (l: Lang): l is SpecLang => (SPEC_LANGS as readonly string[]).includes(l);
+
+const fromSpecs = <T>(f: (l: SpecLang) => T): Record<SpecLang, T> =>
+  Object.fromEntries(SPEC_LANGS.map((l) => [l, f(l)])) as Record<SpecLang, T>;
+
 /** Language primers (bucket 1), the counterpart of TS_SEMANTICS and RUST_SEMANTICS. */
 export const LANG_SEMANTICS: Record<Lang, string> = {
+  ...fromSpecs((l) => SPECS[l].semantics),
   python:
     'Integers are unsigned 32-bit: mask every arithmetic result with & 0xFFFFFFFF, mask shift counts to 5 bits (& 31); comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must run with python3.',
   go: 'Integers are uint32 with wrapping arithmetic; mask shift counts to 5 bits (& 31), since Go shifts of 32 or more give 0; comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must build with go build (package main).',
@@ -45,6 +65,7 @@ export const LANG_SEMANTICS: Record<Lang, string> = {
 
 /** A top-level function's first line, by language (function texts are unindented). */
 const HEAD: Record<Lang, RegExp> = {
+  ...fromSpecs((l) => SPECS[l].head),
   python: /^def ([A-Za-z_][A-Za-z0-9_]*)\(/,
   go: /^func ([A-Za-z_][A-Za-z0-9_]*)\(/,
   java: /^public static .*? ([A-Za-z_][A-Za-z0-9_]*)\(/,
@@ -86,6 +107,7 @@ const indent = (text: string): string =>
  * Record types are declared only when a function uses them.
  */
 export function langFile(lang: Lang, body: string): string {
+  if (isSpecLang(lang)) return SPECS[lang].file(body);
   const pair = body.includes('U32U32');
   const flag = body.includes('U32Bool');
   switch (lang) {
@@ -115,15 +137,8 @@ export function langFile(lang: Lang, body: string): string {
 
 // --- Set B: originals and references ------------------------------------------------
 
-interface Pair {
-  readonly source: string;
-  readonly reference: string;
-}
-
-type PerLang = Record<Lang, Pair>;
-
-/** Unindented function texts for the twelve set-B tasks, by task id. */
-export const LANG_B: Record<string, PerLang> = {
+/** Unindented function texts for the twelve set-B tasks, by task id (base languages). */
+const BASE_B: Record<BTaskId, Record<BaseLang, Pair>> = {
   'b-fits-inclusive': {
     python: {
       source: 'def fits(a: int, b: int) -> bool:\n    return a < b\n',
@@ -481,7 +496,7 @@ export const LANG_B: Record<string, PerLang> = {
  * extras (fold helpers and the examples/ functions), each a translation of the
  * TypeScript/Rust text in tools/ai-edit-experiment.ts and tools/ai-edit-tasks-c.ts.
  */
-export const LANG_PROJECT_FILLER: Record<Lang, string> = {
+const BASE_FILLER: Record<BaseLang, string> = {
   python: `def affine(x: int, scale: int, offset: int) -> int:
     return (x * scale + offset) & 0xFFFFFFFF
 def clamp(x: int, hi: int) -> int:
@@ -1101,8 +1116,22 @@ uint32_t population(std::array<uint32_t, 32> grid) {
 `,
 };
 
+/** Set B in every language, by task id. */
+export const LANG_B: Record<string, Record<Lang, Pair>> = Object.fromEntries(
+  Object.entries(BASE_B).map(([id, base]) => [
+    id,
+    { ...base, ...fromSpecs((l) => SPECS[l].b[id as BTaskId]) },
+  ]),
+);
+
+export const LANG_PROJECT_FILLER: Record<Lang, string> = {
+  ...BASE_FILLER,
+  ...fromSpecs((l) => SPECS[l].filler),
+};
+
 /** One generated filler helper (tools/ai-edit-tasks-c.ts generateFiller) in `lang`. */
 export function fillerText(lang: Lang, f: FillerFunction): string {
+  if (isSpecLang(lang)) return SPECS[lang].fillerText(f);
   const s = f.spec;
   const n = f.name;
   const py = (sig: string, e: string): string => `def ${n}(${sig}) -> int:\n    return ${e}\n`;
@@ -1159,12 +1188,6 @@ export function fillerText(lang: Lang, f: FillerFunction): string {
 
 // --- Acceptance ---------------------------------------------------------------------
 
-export interface LangCase {
-  readonly fn: string;
-  readonly args: readonly Value[];
-  readonly expected: Value;
-}
-
 /** Canonical text of a value: u32 decimal, bool true/false, arrays and records [a,b]. */
 export function canonical(v: Value): string {
   if (typeof v === 'number') return String(v);
@@ -1174,7 +1197,7 @@ export function canonical(v: Value): string {
   return String(v);
 }
 
-function literal(lang: Lang, v: Value, t: Type | undefined): string {
+function literal(lang: BaseLang, v: Value, t: Type | undefined): string {
   if (typeof v === 'number') {
     if (lang === 'go') return `uint32(${v})`;
     if (lang === 'java') return `0x${v.toString(16)}`;
@@ -1216,7 +1239,7 @@ function literal(lang: Lang, v: Value, t: Type | undefined): string {
 }
 
 /** Expression that renders `expr` (of A0 type `t`) in canonical text. */
-function render(lang: Lang, expr: string, t: Type | undefined): string {
+function render(lang: BaseLang, expr: string, t: Type | undefined): string {
   if (t === 'bool')
     return {
       python: `fb(${expr})`,
@@ -1252,12 +1275,12 @@ function render(lang: Lang, expr: string, t: Type | undefined): string {
   }[lang];
 }
 
-function driver(lang: Lang, tests: readonly LangCase[], typed: TypedProgram): string {
+function driver(lang: BaseLang, tests: readonly LangCase[], typed: TypedProgram): string {
   const lines = tests.map((t, i) => {
     const fn = typed.byName.get(t.fn);
     const args = t.args.map((a, k) => literal(lang, a, fn?.params[k])).join(', ');
     const out = render(lang, 'v', fn?.result);
-    const call: Record<Lang, string> = {
+    const call: Record<BaseLang, string> = {
       python: `v = mod.${t.fn}(${args})\nprint("R${i}", ${out})`,
       go: `\t{\n\t\tv := ${t.fn}(${args})\n\t\tfmt.Println("R${i}", ${out})\n\t}`,
       java: `        { var v = Lib.${t.fn}(${args}); System.out.println("R${i} " + ${out}); }`,
@@ -1281,28 +1304,9 @@ function driver(lang: Lang, tests: readonly LangCase[], typed: TypedProgram): st
   }
 }
 
-function onPath(name: string): string | undefined {
-  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
-    const p = join(dir, name);
-    if (dir.length > 0 && existsSync(p)) return p;
-  }
-  return undefined;
-}
-
-function tool(name: string, env: string, extra: readonly string[] = []): string {
-  const path = [process.env[env], ...extra, onPath(name)].find(
-    (p): p is string => p !== undefined && p.length > 0 && existsSync(p),
-  );
-  if (path === undefined) throw new Error(`${name} not found (set ${env})`);
-  return path;
-}
-
-const BUILD_MS = 600_000;
-const RUN_MS = 60_000;
-
 /** Builds and runs; returns the driver's stdout or a failure line prefixed `<tool>:`. */
 async function buildAndRun(
-  lang: Lang,
+  lang: BaseLang,
   dir: string,
   source: string,
   drv: string,
@@ -1411,10 +1415,12 @@ async function buildAndRun(
 }
 
 /** Failure prefixes of a build step, for the harness's `compile` status class. */
-export const LANG_COMPILE_PREFIX = /^(python3|go|javac|dotnet|clang\+\+):/;
+export const LANG_COMPILE_PREFIX = new RegExp(
+  `^(python3|go|javac|dotnet|clang\\+\\+|${SPEC_LANGS.map((l) => SPECS[l].compileLabel).join('|')}):`,
+);
 
 /**
- * Acceptance for one of the five languages: compile the candidate file, run the
+ * Acceptance for one of the further languages: compile the candidate file, run the
  * generated driver, compare each printed result with the canonical expected value. The
  * A0 reference program supplies the value shapes (array vs record) of arguments/results.
  */
@@ -1424,10 +1430,12 @@ export async function acceptLang(
   tests: readonly LangCase[],
   typed: TypedProgram,
 ): Promise<string[]> {
-  const drv = driver(lang, tests, typed);
+  const drv = isSpecLang(lang) ? SPECS[lang].driver(tests, typed) : driver(lang, tests, typed);
   return withTempDir(async (dir) => {
     await mkdir(dir, { recursive: true });
-    const res = await buildAndRun(lang, dir, source, drv);
+    const res = isSpecLang(lang)
+      ? await SPECS[lang].buildAndRun(dir, source, drv)
+      : await buildAndRun(lang, dir, source, drv);
     if ('error' in res) return [res.error];
     const got = new Map<number, string>();
     for (const line of res.stdout.split('\n')) {

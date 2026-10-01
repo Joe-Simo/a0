@@ -2417,3 +2417,55 @@ Findings:
 - One subject per cell: Haiku swings of 2-4 tasks per set are within subject variance.
 
 Decision: A0 does not win or tie on acceptance and cost at all three lengths pooled, so the rules-merged primer is not proposed as the default. Defaults unchanged (`always`, MODEL_GUIDE.min.txt).
+
+## Session 2026-10-01 (AI edits: eight more languages, sets b and c400)
+
+Carries out the plan of "every chart on the full language set". Base: the merge of the rules-merged primer branch (a0c-0.1.26, relaxed structured protocol, `Division by zero gives 4294967295; remainder by zero gives the dividend.` in every language note).
+
+Harness:
+- Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir and Zig, one `LangSpec` module each in `tools/edit-langs/` (interface in `spec.ts`, wired through `tools/ai-edit-langs.ts`; `A0_EXPERIMENT_REPS=kotlin,...`). Each has a hand translation of the 12 set-B originals and references, of the project filler (set-A originals plus the fold-helper and examples extras) and of the six generated filler templates, with the same names, order, u32 semantics and quirks as the other languages.
+- Real acceptance: write the candidate, compile or statically check it with the installed toolchain (kotlinc + java, swiftc, `ruby -c`, `php -l`, ghc, ocamlopt, elixirc, `zig build-exe`), run a generated driver that prints every test result in one canonical form, compare. Self-check ok on b and c400 in all eight (every reference passes, every original fails; the 400-function files build). `langTaskSetSha256`: b `bcce8fde…`, c400 `2f20c7c0…` (eight languages); `taskSetSha256` unchanged (b `21de5a34…`, c400 `ad0f14cd…`).
+- Language rules a model has to be told (they are in each language's note, so the models saw them): PHP multiplies through a helper, because a u32 product can exceed int64 and silently become a float; Zig forbids a parameter that shadows a function, so `limit` is `lim` in `inc`, `below` and `countup` (no function is renamed), and every Zig parameter must be used or discarded.
+- Elixir compile failures now report from the first error on (warnings had filled the 500-character message).
+
+Method: relaxed structured protocol, A0 with the 118-token rules-merged primer (`MODEL_GUIDE.rules-merged.txt`), one group file per representation and set (b: 8 languages, 12 tasks each; c400: 8 languages + A0, each printing the shared numbered 400-function file once), one fresh Haiku and one fresh Sonnet Agent-tool subagent per file (34), one shot; then one retry of every failed trial by a fresh subagent per model, set and representation (16 groups), given system, request, reply and the exact rejection. No author-written replies. The A0 row on set b is the existing fresh rules-merged collection (`b.{haiku,sonnet}-rules-merged`: same prompts); A0 on c400 was collected here (c400 with the rules-merged primer did not exist). The Haiku Elixir and Zig c400 subjects wrote their reply keys without the `/lang/structured` suffix; I added the suffix, text untouched. Cost as in "No primer and lazy primer": o200k tokens per task, system text 1.25x on the first call and 0.05x later, task + view (retry: + reply + repair) and replies 1x. Results: `results/ai-edit-experiment.{b,c400}.{haiku,sonnet}-langs8.json` (+ `.replies.json`, first reply and retry), `results/ai-edit-langs8.json` (every cell's acceptance and cost).
+
+Set b (12 tasks per model, pooled over Haiku and Sonnet = 24 trials; one shot / after one retry; cost per task for 1 task / 10-task session / unbounded):
+
+| | one-shot | after retry | 1 task | 10-task | unbounded |
+|---|---|---|---|---|---|
+| A0 | 23/24 | 24/24 | 296 | 169 | 154 |
+| Kotlin | 23/24 | 24/24 | 388 | 157 | 131 |
+| Swift | 19/24 | 23/24 | 454 | 209 | 182 |
+| Ruby | 24/24 | 24/24 | 293 | 128 | 109 |
+| PHP | 19/24 | 23/24 | 584 | 312 | 282 |
+| Haskell | 19/24 | 23/24 | 497 | 240 | 211 |
+| OCaml | 24/24 | 24/24 | 343 | 135 | 112 |
+| Elixir | 20/24 | 21/24 | 470 | 270 | 248 |
+| Zig | 23/24 | 24/24 | 452 | 180 | 150 |
+
+Set c400 (one 400-function program; same columns):
+
+| | one-shot | after retry | 1 task | 10-task | unbounded |
+|---|---|---|---|---|---|
+| A0 (scoped view) | 20/24 | 23/24 | 357 | 230 | 216 |
+| Kotlin | 21/24 | 23/24 | 14163 | 13931 | 13906 |
+| Swift | 19/24 | 20/24 | 17326 | 17080 | 17053 |
+| Ruby | 21/24 | 22/24 | 12878 | 12713 | 12695 |
+| PHP | 20/24 | 23/24 | 18367 | 18096 | 18066 |
+| Haskell | 23/24 | 24/24 | 12814 | 12557 | 12529 |
+| OCaml | 23/24 | 24/24 | 10699 | 10491 | 10468 |
+| Elixir | 20/24 | 21/24 | 15933 | 15734 | 15711 |
+| Zig | 22/24 | 23/24 | 15230 | 14958 | 14928 |
+
+By model after the retry, set b: Haiku A0 12/12, Kotlin 12, Swift 11, Ruby 12, PHP 11, Haskell 11, OCaml 12, Elixir 9, Zig 12; Sonnet 12/12 in every cell (Haskell 9/12 one shot, three protocol rejections on new-function tasks). Set c400: Haiku A0 11/12, Kotlin 11, Swift 8, Ruby 10, PHP 11, Haskell 12, OCaml 12, Elixir 9, Zig 11; Sonnet 12/12 one shot in all nine cells.
+
+Where A0 loses:
+- Acceptance on c400: Haskell and OCaml are 24/24 after retry against A0's 23/24, and one shot Haskell and OCaml (23/24), Zig (22) and Kotlin and Ruby (21) are ahead of A0 (20). The loss is Haiku only (Sonnet is 12/12 one shot everywhere). Haiku's A0 first-attempt failures (4): `fold addi 8 p0 p0` (extra operand; still rejected after the retry), `bounds` and `checksum` rewritten without the helper they need, and `pctof` dividing by 100.
+- Acceptance on b: Ruby and OCaml are 24/24 one shot against A0's 23/24.
+- Cost on b: Ruby is at or below A0 at every length (1 task 293 vs 296, 10-task 128 vs 169, unbounded 109 vs 154), OCaml and Kotlin in sessions (135 / 112 and 157 / 131), Zig only unbounded (150 vs 154). Once the primer is cached, A0's replies and retries are what remain, as in the TS/Rust comparison. A0 still wins the cold single task against every language but Ruby, and every length against Swift, PHP, Haskell and Elixir.
+- c400: A0 is 27x (OCaml) to 51x (PHP) cheaper per task; the whole numbered file is 10.3k to 15.7k tokens in each language. Not a loss.
+
+What did not hold: no language beats A0 on cost at c400. On b only Ruby (tied at 1 task, ahead in sessions) and OCaml (ahead in sessions, equal after retry) match or beat A0 on both acceptance and cost at the lengths where they are not behind. One subject per cell: Haiku swings of 2-4 tasks per set are within subject variance, and each language is one hand translation, so the table says little about how well a language reads in general.
+
+Residual failures after the retry, all Haiku (19 of 204 trials; Sonnet none): Elixir inserts outside the module or calls a function the module cannot see (6); Swift inserts that break the line-edit rule (3), a wrong `checksum`, and a `pctof` that divides by zero; `pctof` division by zero in Kotlin, PHP and Zig, and an undefined variable in Ruby; wrong `checksum` in PHP; Ruby `norm2` returning a helper name; Zig `norm2` inserted inside a function; Haskell indentation; the A0 fold operand count.

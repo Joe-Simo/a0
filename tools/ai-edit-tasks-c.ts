@@ -501,7 +501,7 @@ export function buildTasksC(
   }
   const build = (rep: Representation, src: string): string =>
     assemble(order, filler[rep], splitFunctions(rep, src));
-  // The five further languages: set-B originals, then the set-A originals and extras.
+  // The further languages: set-B originals, then the set-A originals and extras.
   const langFiller = new Map<Lang, Map<string, string>>();
   for (const lang of LANGS) {
     const m = new Map<string, string>();
