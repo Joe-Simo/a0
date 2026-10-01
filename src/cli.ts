@@ -3,9 +3,10 @@
  * Local command-line interface.
  *
  *   a0 check <file.a0>
- *   a0 run <file.a0> <function> <args...>
+ *   a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]
  *   a0 emit <js|c|java|sv|arm64|x86_64|riscv64|avr|wasm|arm32> <file.a0> [out]
  *   a0 emit c --parallel[=auto|gpu] <file.a0> [out]   (automatic parallel folds, src/parallel.ts)
+ *   a0 emit c --traps=N <file.a0> [out]   (trap runtime: stops past N fold/loop trips with one code line)
  *   a0 wasm <file.a0> <out.wasm>
  *   a0 patch <file.a0> <patch-file> [out.a0]
  *   a0 revision <file.a0> <function>
@@ -42,9 +43,10 @@ function usage(): never {
     [
       'usage:',
       '  a0 check <file.a0>',
-      '  a0 run <file.a0> <function> <args...>',
+      '  a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
       '  a0 emit c --parallel[=auto|gpu] <file.a0> [out]   # threads (+ Metal when built as ObjC)',
+      '  a0 emit c --traps=N <file.a0> [out]       # trip cap N; the stop prints one trap line, exit 3',
       '  a0 wasm <file.a0> <out.wasm>             # C backend + Clang + wasm-ld (emit wasm: direct)',
       '  a0 patch <file.a0> <patch-file> [out.a0]',
       '  a0 revision <file.a0> <function>',
@@ -76,6 +78,15 @@ function parseValue(text: string): Value {
   return Number(text);
 }
 
+/** The value of a `--name=N` flag (a non-negative integer), or undefined when absent. */
+function flagNumber(args: readonly string[], name: string): number | undefined {
+  const a = args.find((x) => x.startsWith(`${name}=`));
+  if (a === undefined) return undefined;
+  const text = a.slice(name.length + 1);
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) throw new A0Error(`invalid ${name} '${text}'`);
+  return Number(text);
+}
+
 async function main(argv: readonly string[]): Promise<void> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
@@ -91,20 +102,30 @@ async function main(argv: readonly string[]): Promise<void> {
       return;
     }
     case 'run': {
-      const [file, name, ...args] = rest;
+      const flags = rest.filter((a) => a.startsWith('--'));
+      const [file, name, ...args] = rest.filter((a) => !a.startsWith('--'));
       if (file === undefined || name === undefined) usage();
       const program = await loadProgram(file);
       const fn = program.byName.get(name);
       if (fn === undefined) throw new A0Error(`unknown function '${name}'`);
       const values = args.map(parseValue);
       for (const [i, t] of fn.params.entries()) checkArgument(t, values[i] as Value, `p${i}`);
-
-      process.stdout.write(`${String(run(fn, values))}\n`);
+      const fuel = flagNumber(flags, '--fuel');
+      const maxTrips = flagNumber(flags, '--max-trips');
+      process.stdout.write(
+        `${String(
+          run(fn, values, {
+            fuel: fuel ?? LIMITS.defaultFuel,
+            ...(maxTrips === undefined ? {} : { maxTrips }),
+          }),
+        )}\n`,
+      );
       return;
     }
     case 'emit': {
       const flag = rest.find((a) => a.startsWith('--parallel'));
-      const [target, file, out] = rest.filter((a) => a !== flag);
+      const trips = flagNumber(rest, '--traps');
+      const [target, file, out] = rest.filter((a) => a !== flag && !a.startsWith('--traps'));
       if (target === undefined || file === undefined || !isTarget(target)) usage();
       const program = await loadProgram(file);
       if (flag !== undefined) {
@@ -112,6 +133,13 @@ async function main(argv: readonly string[]): Promise<void> {
         if (target !== 'c' || (mode !== 'auto' && mode !== 'gpu' && mode !== 'off')) usage();
         const cParallel = parallelC({ mode });
         const text = compile(program, 'c', cParallel === undefined ? {} : { cParallel }).text;
+        if (out === undefined) process.stdout.write(text);
+        else await writeFile(out, text, 'utf8');
+        return;
+      }
+      if (trips !== undefined) {
+        if (target !== 'c') usage();
+        const text = compile(program, 'c', { cTrap: { maxTrips: trips } }).text;
         if (out === undefined) process.stdout.write(text);
         else await writeFile(out, text, 'utf8');
         return;

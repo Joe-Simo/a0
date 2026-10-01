@@ -363,8 +363,43 @@ export type DiagnosticCode =
   | 'runtime'
   | 'cli';
 
+/**
+ * Why a run stopped before returning: the budget that ran out (`fuel`: node evaluations,
+ * `iter`: the total fold/loop trip cap, `io`: the io output cap), where, and how it got there.
+ */
+export type TrapKind = 'fuel' | 'iter' | 'io';
+
+export interface Trap {
+  readonly kind: TrapKind;
+  /** The function that was executing when the budget ran out. */
+  readonly fn: string;
+  /** The innermost running fold/loop as `function.node`, or null outside any iteration. */
+  readonly at: string | null;
+  /** Index of the trip that was refused or running, or null outside any iteration. */
+  readonly trip: number | null;
+  /** Call chain from the entry function down to `fn`. */
+  readonly chain: readonly string[];
+}
+
+export const TRAP_FIX: Record<TrapKind, string> = {
+  fuel: 'raise the fuel budget or lower the fold/loop counts on the chain',
+  iter: 'raise the trip cap or lower the fold/loop counts on the chain',
+  io: 'write fewer words, or return the output in smaller pieces',
+};
+
+/**
+ * The one-line trap code, the same `code: message fix: fix` shape as every other diagnostic:
+ * `limit: trap fuel fn=step at=main.n3 trip=412 chain=main>step fix: ...`. The C backend's
+ * trap runtime (CompileOptions.cTrap) prints exactly this line for an iteration-cap stop.
+ */
+export function formatTrap(t: Trap): string {
+  return `limit: trap ${t.kind} fn=${t.fn} at=${t.at ?? '-'} trip=${t.trip ?? '-'} chain=${t.chain.join('>')} fix: ${TRAP_FIX[t.kind]}`;
+}
+
 export interface DiagnosticDetail {
   readonly code?: DiagnosticCode;
+  /** Set when the run stopped on a budget (fuel, iteration cap, io output cap). */
+  readonly trap?: Trap;
   /** What the checker required, when it is a single thing (a type, a count, a token). */
   readonly expected?: string;
   /** What it found instead. */
@@ -388,6 +423,7 @@ export class A0Error extends Error {
   readonly expected: string | undefined;
   readonly actual: string | undefined;
   readonly fix: string | undefined;
+  readonly trap: Trap | undefined;
   constructor(
     message: string,
     readonly line?: number,
@@ -398,6 +434,7 @@ export class A0Error extends Error {
     this.expected = detail.expected;
     this.actual = detail.actual;
     this.fix = detail.fix;
+    this.trap = detail.trap;
   }
 
   /** Machine-readable form; every field is present (null when absent). */
@@ -415,6 +452,7 @@ export class A0Error extends Error {
 
 /** One-line diagnostic for a model: `code: message` plus the fix when there is one. */
 export function formatDiagnostic(e: unknown): string {
+  if (e instanceof A0Error && e.trap !== undefined) return formatTrap(e.trap);
   if (e instanceof A0Error)
     return `${e.code}: ${e.message}${e.fix === undefined ? '' : ` fix: ${e.fix}`}`;
   return e instanceof Error ? e.message : String(e);
@@ -1547,6 +1585,37 @@ export function checkArgument(type: Type, value: Value, where: string): void {
 export interface RunOptions {
   /** Remaining node evaluations; shared across nested calls. Exhaustion throws A0Error. */
   fuel: number;
+  /**
+   * Remaining fold/loop trips over the whole run (the iteration cap); absent means unbounded
+   * (fuel still applies). Each trip, counted before its predicate runs, takes one.
+   */
+  maxTrips?: number;
+  /** Internal: the running call chain, kept so a budget stop can name where it happened. */
+  frames?: Frame[];
+}
+
+interface Frame {
+  readonly fn: TypedFunc;
+  /** The fold/loop node this frame is iterating, or null. */
+  node: string | null;
+  trip: number;
+}
+
+/** The trap for a budget stop, read off the running call chain. */
+function trapOf(kind: TrapKind, options: RunOptions): Trap {
+  const frames = options.frames ?? [];
+  const top = frames[frames.length - 1];
+  let at: string | null = null;
+  let trip: number | null = null;
+  for (let i = frames.length - 1; i >= 0; i -= 1) {
+    const f = frames[i] as Frame;
+    if (f.node !== null) {
+      at = `${f.fn.name}.${f.node}`;
+      trip = f.trip;
+      break;
+    }
+  }
+  return { kind, fn: top?.fn.name ?? '-', at, trip, chain: frames.map((f) => f.fn.name) };
 }
 
 /**
@@ -1571,16 +1640,35 @@ export function run(
   for (const [index, type] of fn.params.entries()) {
     checkArgument(type, args[index] as Value, `${fn.name} p${index}`);
   }
+  options.frames = [];
   return exec(fn, args, options);
 }
 
 /** Charge `units` of fuel; exhaustion throws a `limit` A0Error. */
 function charge(fn: TypedFunc, options: RunOptions, units: number): void {
   options.fuel -= units;
-  if (options.fuel < 0)
+  if (options.fuel < 0) {
+    const trap = trapOf('fuel', options);
     throw new A0Error(`${fn.name}: fuel exhausted (execution budget exceeded)`, undefined, {
       code: 'limit',
+      trap,
+      fix: TRAP_FIX.fuel,
     });
+  }
+}
+
+/** Take one trip from the iteration cap, when there is one. */
+function takeTrip(fn: TypedFunc, options: RunOptions): void {
+  if (options.maxTrips === undefined) return;
+  if (options.maxTrips <= 0) {
+    const trap = trapOf('iter', options);
+    throw new A0Error(`${fn.name}: iteration cap reached`, undefined, {
+      code: 'limit',
+      trap,
+      fix: TRAP_FIX.iter,
+    });
+  }
+  options.maxTrips -= 1;
 }
 
 const AGGREGATE_OPS: ReadonlySet<Op> = new Set<Op>(['arr', 'rec', 'set', 'put']);
@@ -1591,6 +1679,10 @@ const AGGREGATE_OPS: ReadonlySet<Op> = new Set<Op>(['arr', 'rec', 'set', 'put'])
  * one, and each aggregate-producing node max(1, length) for the copy it makes.
  */
 function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value {
+  if (options.frames === undefined) options.frames = [];
+  const frames = options.frames;
+  const frame: Frame = { fn, node: null, trip: 0 };
+  frames.push(frame);
   charge(fn, options, 1);
   const env = new Map<string, Value>();
   const read = (operand: Operand): Value => {
@@ -1628,10 +1720,14 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
+      frame.node = node.id;
       for (let i = 0; i < n; i += 1) {
+        frame.trip = i;
         charge(fn, options, 1);
+        takeTrip(fn, options);
         state = exec(body, [state, i, ...extra], options);
       }
+      frame.node = null;
       env.set(node.id, state);
     } else if (node.op === 'loop') {
       const body = fn.calls.get(node.callee ?? '');
@@ -1641,11 +1737,15 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
       const [count, init, ...extra] = node.args.map(read);
       let state = init as Value;
       const n = count as number;
+      frame.node = node.id;
       for (let i = 0; i < n; i += 1) {
+        frame.trip = i;
         charge(fn, options, 1);
+        takeTrip(fn, options);
         if (exec(pred, [state, i, ...extra], options) !== true) break;
         state = exec(body, [state, i, ...extra], options);
       }
+      frame.node = null;
       env.set(node.id, state);
     } else {
       const operands = node.args.map(read);
@@ -1653,10 +1753,31 @@ function exec(fn: TypedFunc, args: readonly Value[], options: RunOptions): Value
         const source = node.op === 'set' || node.op === 'put' ? operands[0] : operands;
         charge(fn, options, Math.max(1, Array.isArray(source) ? source.length : 1));
       }
-      env.set(node.id, evalOp(node.op, operands));
+      env.set(
+        node.id,
+        node.op === 'write' || node.op === 'puts'
+          ? ioOp(node, operands, options)
+          : evalOp(node.op, operands),
+      );
     }
   }
+  frames.pop();
   return read(fn.ret);
+}
+
+/** An io-writing op; the output cap stops it with the same trap line as the other budgets. */
+function ioOp(node: Node, operands: readonly Value[], options: RunOptions): Value {
+  try {
+    return evalOp(node.op, operands);
+  } catch (e) {
+    if (e instanceof A0Error && e.code === 'limit' && e.trap === undefined)
+      throw new A0Error(e.message, undefined, {
+        code: 'limit',
+        trap: trapOf('io', options),
+        fix: TRAP_FIX.io,
+      });
+    throw e;
+  }
 }
 
 export function parseAndValidate(source: string): TypedProgram {

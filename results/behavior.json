@@ -1,0 +1,703 @@
+{
+  "generatedAt": "2026-10-01T04:07:17.312Z",
+  "node": "v24.14.0",
+  "platform": "darwin-arm64",
+  "table": {
+    "programs": 8,
+    "functions": 46,
+    "rows": 718,
+    "sha256": "7d19ec33ea7f899982182cbbac7ef94a907592acb70080b9e07e81cb6fbf69b7",
+    "oracle": "expected values: reference interpreter, confirmed by the independent BigInt oracle (tools/corpus.ts) when the table was generated"
+  },
+  "programs": [
+    {
+      "name": "arith",
+      "about": "u32 arithmetic wraps mod 2^32; div and rem are total; shifts use the low five bits",
+      "rows": 389
+    },
+    {
+      "name": "logic",
+      "about": "bool logic, comparisons (unsigned), select computes both arms",
+      "rows": 93
+    },
+    {
+      "name": "array",
+      "about": "array values: get reduces the index modulo the length, set returns a copy",
+      "rows": 55
+    },
+    {
+      "name": "record",
+      "about": "records: rec, at, put (a copy), records inside arrays and arrays inside records",
+      "rows": 24
+    },
+    {
+      "name": "iterate",
+      "about": "fold and loop: zero trips, extras, early stop by predicate, aggregate state, nesting",
+      "rows": 64
+    },
+    {
+      "name": "calls",
+      "about": "call chains and the call/ID shorthand, callee results feeding callers",
+      "rows": 70
+    },
+    {
+      "name": "text",
+      "about": "text literals are arrays of UTF-8 bytes with escapes",
+      "rows": 9
+    },
+    {
+      "name": "io",
+      "about": "io tokens order effects: read (0 when exhausted), write, puts, folds that thread the stream",
+      "rows": 14
+    }
+  ],
+  "summary": {
+    "passed": 19,
+    "failed": 0,
+    "blocked": 0,
+    "skipped": 1
+  },
+  "targets": [
+    {
+      "id": "interpreter",
+      "label": "reference interpreter",
+      "status": "passed",
+      "cases": 718,
+      "detail": "Reference interpreter vs BigInt oracle",
+      "elapsedMs": 40,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "optimizer",
+      "label": "optimized graph (src/optimize.ts)",
+      "status": "passed",
+      "cases": 718,
+      "detail": "Optimized graph vs BigInt oracle",
+      "elapsedMs": 45,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "js",
+      "label": "JavaScript (ES module in Node)",
+      "status": "passed",
+      "cases": 718,
+      "detail": "Executed emitted ES module in Node; public input guards retained.",
+      "elapsedMs": 13,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "c-clang",
+      "label": "C via clang (UBSan, -Werror)",
+      "status": "passed",
+      "cases": 718,
+      "detail": "native C via clang; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 451,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "c-gcc",
+      "label": "C via the gcc driver",
+      "status": "passed",
+      "cases": 718,
+      "detail": "native C via /usr/bin/gcc, which is Apple clang version 21.0.0 (clang-2100.3.34.2) (not GCC); undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 430,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "cpp",
+      "label": "C-compatible output as C++17 via clang++",
+      "status": "passed",
+      "cases": 718,
+      "detail": "C-compatible output compiled as C++17; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 425,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "c-parallel",
+      "label": "C with automatic parallel folds forced on",
+      "status": "passed",
+      "cases": 718,
+      "detail": "native C via clang with automatic parallel folds forced on; undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 401,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "java",
+      "label": "Java (javac, JVM)",
+      "status": "passed",
+      "cases": 718,
+      "detail": "Generated Java compiled with javac; bytecode executed on JVM.",
+      "tool": "javac 27; openjdk version \"27\" 2026-09-15",
+      "elapsedMs": 1093,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "dotnet",
+      "label": "C# (.NET SDK)",
+      "status": "passed",
+      "cases": 718,
+      "detail": "C# built with .NET SDK 10.0.401 (Release, warnings as errors) and executed; 718 cases incl. io streams.",
+      "tool": "10.0.401",
+      "elapsedMs": 2647,
+      "failures": [],
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "wasm-c",
+      "label": "WebAssembly via clang and wasm-ld",
+      "status": "passed",
+      "cases": 718,
+      "detail": "Emitted C compiled by Clang/wasm-ld to wasm32; executed in Node WebAssembly runtime.",
+      "tool": "Homebrew clang version 23.1.2; /opt/homebrew/bin/wasm-ld",
+      "elapsedMs": 542,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "wasm-direct",
+      "label": "WebAssembly from the direct backend",
+      "status": "passed",
+      "cases": 718,
+      "detail": "A0 wasm32 backend (src/wasm.ts): binary module emitted directly, no C/Clang/wasm-ld; executed in Node WebAssembly runtime with the C-derived harness; optimized and unoptimized emissions each executed on every case",
+      "tool": "node v24.14.0",
+      "elapsedMs": 23,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "arm64",
+      "label": "AArch64 assembly (direct backend)",
+      "status": "passed",
+      "cases": 704,
+      "detail": "native arm64 assembly (src/arm64.ts) via `clang -x assembler`, linked with the C test driver; 0 io functions (0 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 522,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "x86_64",
+      "label": "x86-64 assembly (direct backend)",
+      "status": "passed",
+      "cases": 704,
+      "detail": "native x86-64 assembly (src/x86_64.ts) via `clang -x assembler`, linked with the C test driver; 0 io functions (0 cases) skipped: io is out of scope for this backend; executed under Rosetta 2 (arch -x86_64); optimized and unoptimized emissions each executed on every case",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 886,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "riscv64",
+      "label": "RISC-V 64 (direct backend, qemu)",
+      "status": "passed",
+      "cases": 704,
+      "detail": "native RISC-V RV64 assembly (src/riscv64.ts) via `riscv64-elf-gcc -march=rv64gc -mabi=lp64`, linked with the C test driver over a bare-metal libc shim (UART out, embedded input), executed under qemu-system-riscv64 (virt board, no firmware); 0 io functions (0 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
+      "tool": "riscv64-elf-gcc (GCC) 16.2.0; QEMU emulator version 11.1.2",
+      "elapsedMs": 688,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "avr",
+      "label": "AVR (direct backend, simavr)",
+      "status": "passed",
+      "cases": 704,
+      "detail": "native AVR assembly for the ATmega328P (src/avr.ts) via avr-as, linked with an avr-gcc C driver per function (cases in program memory, results on UART0), executed under libsimavr; 0 io functions (0 cases) skipped: io is out of scope for this backend; every io-free function fits the part; optimized and unoptimized emissions each executed on every case run",
+      "tool": "avr-gcc (Homebrew AVR GCC 9.5.0) 9.5.0; simavr 1.7_1",
+      "elapsedMs": 5330,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "arm32",
+      "label": "32-bit ARM (direct backend, qemu-system-arm)",
+      "status": "passed",
+      "cases": 704,
+      "detail": "native 32-bit ARM assembly (src/arm32.ts, ARMv7-A ARM mode, AAPCS hard-float) assembled and linked with the C test driver by `arm-none-eabi-gcc` (newlib, semihosting), executed on an emulated Cortex-A7 (`qemu-system-arm -M virt`); 0 io functions (0 cases) skipped: io is out of scope for this backend; optimized and unoptimized emissions each executed on every case",
+      "tool": "arm-none-eabi-gcc (Arm GNU Toolchain 15.3.Rel1 (Build arm-15.149)) 15.3.1 20260627; QEMU emulator version 11.1.2",
+      "elapsedMs": 714,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "metal",
+      "label": "Metal Shading Language on the GPU",
+      "status": "passed",
+      "cases": 704,
+      "detail": "Swift host + Metal runtime compile of generated MSL; 704 cases dispatched one thread each on device=Apple M3.",
+      "elapsedMs": 2706,
+      "failures": [],
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "systemverilog",
+      "label": "SystemVerilog (see the skip ledger)",
+      "status": "skipped",
+      "cases": 0,
+      "detail": "every program is in the skip ledger",
+      "elapsedMs": 0,
+      "programs": {
+        "arith": "skipped",
+        "logic": "skipped",
+        "array": "skipped",
+        "record": "skipped",
+        "iterate": "skipped",
+        "calls": "skipped",
+        "text": "skipped",
+        "io": "skipped"
+      }
+    },
+    {
+      "id": "selfhost-c",
+      "label": "C written by compiler/emit_c.a0 (interpreter), built by clang",
+      "status": "passed",
+      "cases": 718,
+      "detail": "C from compiler/emit_c.a0 (1 chunk(s)); undefined-behavior sanitizer enabled; C++ path compiles the C-compatible output, not a C++ frontend.",
+      "tool": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "elapsedMs": 315,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "passed",
+        "record": "passed",
+        "iterate": "passed",
+        "calls": "passed",
+        "text": "passed",
+        "io": "passed"
+      }
+    },
+    {
+      "id": "selfhost-arm64",
+      "label": "AArch64 written by compiler/emit_arm64.a0 (interpreter), assembled by clang",
+      "status": "passed",
+      "cases": 611,
+      "detail": "A0-emitted arm64 (compiler/emit_arm64.a0 through the interpreter), 611 cases; 0 functions skipped",
+      "elapsedMs": 11684,
+      "programs": {
+        "arith": "passed",
+        "logic": "passed",
+        "array": "skipped",
+        "record": "skipped",
+        "iterate": "partial",
+        "calls": "passed",
+        "text": "skipped",
+        "io": "skipped"
+      }
+    }
+  ],
+  "skipLedger": [
+    {
+      "target": "systemverilog",
+      "program": "*",
+      "reason": "SystemVerilog is validated by `bun run hw` (results/hardware.json) with its own testbench harness; the behavior table is not fanned out to it yet"
+    },
+    {
+      "target": "arm64",
+      "program": "io",
+      "reason": "the direct AArch64 backend refuses io tokens (the backend has no io runtime; the check functions of tools/verify.ts exclude io the same way)"
+    },
+    {
+      "target": "x86_64",
+      "program": "io",
+      "reason": "the direct x86-64 backend refuses io tokens (the backend has no io runtime; the check functions of tools/verify.ts exclude io the same way)"
+    },
+    {
+      "target": "riscv64",
+      "program": "io",
+      "reason": "the direct RISC-V backend refuses io tokens (the backend has no io runtime; the check functions of tools/verify.ts exclude io the same way)"
+    },
+    {
+      "target": "avr",
+      "program": "io",
+      "reason": "the AVR backend refuses io tokens (the backend has no io runtime; the check functions of tools/verify.ts exclude io the same way)"
+    },
+    {
+      "target": "arm32",
+      "program": "io",
+      "reason": "the 32-bit ARM backend refuses io tokens (the backend has no io runtime; the check functions of tools/verify.ts exclude io the same way)"
+    },
+    {
+      "target": "metal",
+      "program": "io",
+      "reason": "Metal (a GPU kernel has no io stream) refuses io tokens (the backend has no io runtime; the check functions of tools/verify.ts exclude io the same way)"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "array",
+      "reason": "compiler/emit_arm64.a0 is scalar-only: every node of the function and its callees must be u32 or bool"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "record",
+      "reason": "compiler/emit_arm64.a0 is scalar-only: every node of the function and its callees must be u32 or bool"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "text",
+      "reason": "compiler/emit_arm64.a0 is scalar-only: every node of the function and its callees must be u32 or bool"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "io",
+      "reason": "compiler/emit_arm64.a0 is scalar-only: every node of the function and its callees must be u32 or bool"
+    },
+    {
+      "target": "selfhost-arm64",
+      "program": "iterate",
+      "fn": "fill_sum",
+      "reason": "compiler/emit_arm64.a0 is scalar-only: every node of the function and its callees must be u32 or bool"
+    }
+  ],
+  "coverage": {
+    "interpreter": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "optimizer": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "js": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "c-clang": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "c-gcc": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "cpp": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "c-parallel": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "java": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "dotnet": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "wasm-c": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "wasm-direct": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "arm64": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "skipped"
+    },
+    "x86_64": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "skipped"
+    },
+    "riscv64": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "skipped"
+    },
+    "avr": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "skipped"
+    },
+    "arm32": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "skipped"
+    },
+    "metal": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "skipped"
+    },
+    "systemverilog": {
+      "arith": "skipped",
+      "logic": "skipped",
+      "array": "skipped",
+      "record": "skipped",
+      "iterate": "skipped",
+      "calls": "skipped",
+      "text": "skipped",
+      "io": "skipped"
+    },
+    "selfhost-c": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "passed",
+      "record": "passed",
+      "iterate": "passed",
+      "calls": "passed",
+      "text": "passed",
+      "io": "passed"
+    },
+    "selfhost-arm64": {
+      "arith": "passed",
+      "logic": "passed",
+      "array": "skipped",
+      "record": "skipped",
+      "iterate": "partial",
+      "calls": "passed",
+      "text": "skipped",
+      "io": "skipped"
+    }
+  }
+}

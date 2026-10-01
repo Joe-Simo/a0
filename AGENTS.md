@@ -43,4 +43,10 @@ deterministic (no key, no network, nothing paid). Reference: `docs/DEVELOPMENT.m
 - **The floor is free.** Every tool in `tools/dev/` works with no key and no network. Contributors may
   wrap the tools with whatever they like through `--json` output and flags such as `--add-steps`;
   nothing in the repository depends on a particular wrapper.
+- **Trust layer.** A backend or compiler change keeps `bun run behavior` green (the table in
+  `tools/behavior-table.ts` is written once and run on every target; a gap goes in `SKIPS` with a
+  reason, never silently). `bun run loss-ledger` (part of `bun run lint`) fails on a new or worsened
+  loss; growing `results/loss-ledger.json` needs `--update --reason "..."`. A change to
+  `compiler/*.a0` needs `bun run seed` (the checked-in bootstrap seed in `seed/` is stale otherwise;
+  `test/seed.test.ts` fails).
 - **Push only a passing gate.** Never push a branch whose gate result is missing or failed.
