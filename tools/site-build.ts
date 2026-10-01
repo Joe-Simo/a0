@@ -126,9 +126,11 @@ export const SITE_CSP = [
 /** Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers. */
 export const VERCEL = {
   cleanUrls: true,
-  // The playground page was removed; old links land on the home page.
+  // The playground page was removed; old links land on the home page. `/play/` is listed on its
+  // own: with cleanUrls the bare `/play/:path*` pattern did not catch the trailing slash (404).
   redirects: [
     { source: '/play', destination: '/', permanent: true },
+    { source: '/play/', destination: '/', permanent: true },
     { source: '/play/:path*', destination: '/', permanent: true },
   ],
   headers: [

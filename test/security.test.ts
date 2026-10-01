@@ -215,3 +215,20 @@ test('verify C driver: ninput is clamped to the capacity and to the tokens prese
     assert.deepEqual(r.stdout.trim().split('\n'), ['12', '1', '?']);
   });
 });
+
+test('site header: Sponsor and X links sit in the nav next to GitHub with safe hrefs; /play and /play/ redirect', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const ui = await readFile('site/ui.a0', 'utf8');
+  const nav = ui.slice(ui.indexOf('fn nav io -> io'), ui.indexOf('fn foot io -> io'));
+  for (const href of [
+    'https://github.com/sponsors/Joe-Simo',
+    'https://x.com/joesimo',
+    'https://github.com/Joe-Simo/a0',
+  ]) {
+    assert.ok(nav.includes(`text "${href}"`), href);
+    assert.ok(safeHref(href), href);
+  }
+  const build = await readFile('tools/site-build.ts', 'utf8');
+  for (const source of ['/play', '/play/', '/play/:path*'])
+    assert.ok(build.includes(`{ source: '${source}', destination: '/', permanent: true }`), source);
+});

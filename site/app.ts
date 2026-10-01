@@ -435,6 +435,87 @@ async function main(): Promise<void> {
       pending = window.setTimeout(() => show(ev), ms);
     }
   };
+  // Scroll-spy for the left rail (`.rail a[href="#id"]`, on the home page and the docs): the link
+  // of the section being read gets `on`. The section is the last one (in rail order) that
+  // has started inside a band just under the fixed header; the first link is on above the first section, the
+  // last at the bottom of the page. A click or a hash change sets the link at once and holds the
+  // observer back until the smooth scroll has ended.
+  let spyOff: (() => void) | undefined;
+  let spyHold = 0;
+  const spy = (): void => {
+    spyOff?.();
+    const links = Array.from(root.querySelectorAll<HTMLAnchorElement>('.rail a[href^="#"]'));
+    const targets = links.map((a) => document.getElementById(a.getAttribute('href')?.slice(1) ?? ''));
+    if (links.length === 0) {
+      spyOff = undefined;
+      return;
+    }
+    // The band under the header (96px) down to 45% of the viewport. The observer wakes `pick`
+    // when a section crosses it; `pick` reads the geometry itself, so a late callback is harmless.
+    const inBand = (t: Element): boolean => {
+      const r = t.getBoundingClientRect();
+      return r.bottom > 96 && r.top < innerHeight * 0.45;
+    };
+    const mark = (i: number): void => {
+      links.forEach((a, j) => {
+        a.classList.toggle('on', j === i);
+        if (j === i) a.setAttribute('aria-current', 'location');
+        else a.removeAttribute('aria-current');
+      });
+    };
+    const pick = (): void => {
+      if (spyHold > 0) return;
+      const atEnd = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+      // Of the sections in the band, the last one that has started (its top is within 160px of
+      // the viewport top, just under the header) is the one being read; the previous section's tail is also in the band.
+      let i = atEnd ? links.length - 1 : -1;
+      if (!atEnd)
+        targets.forEach((t, j) => {
+          if (t !== null && inBand(t) && (i < 0 || t.getBoundingClientRect().top < 160))
+            i = j;
+        });
+      if (i < 0) {
+        // Between bands: the last section already passed, or the first above them all.
+        const passed = targets.map((t) => t !== null && t.getBoundingClientRect().top < 160);
+        i = Math.max(0, passed.lastIndexOf(true));
+      }
+      mark(i);
+    };
+    const io = new IntersectionObserver(
+      () => pick(),
+      { rootMargin: '-96px 0px -55% 0px' },
+    );
+    for (const t of targets) if (t !== null) io.observe(t);
+    const hold = (i: number): void => {
+      mark(i);
+      spyHold += 1;
+      const release = (): void => {
+        spyHold -= 1;
+        pick();
+      };
+      if ('onscrollend' in window) addEventListener('scrollend', release, { once: true });
+      window.setTimeout(release, 1200);
+    };
+    const onClick = (ev: Event): void => {
+      const i = links.indexOf((ev.target as Element).closest('a') as HTMLAnchorElement);
+      if (i >= 0) hold(i);
+    };
+    const onHash = (): void => {
+      const i = links.findIndex((a) => a.getAttribute('href') === location.hash);
+      if (i >= 0) hold(i);
+    };
+    const onScroll = (): void => pick();
+    root.addEventListener('click', onClick);
+    addEventListener('hashchange', onHash);
+    addEventListener('scroll', onScroll, { passive: true });
+    pick();
+    spyOff = () => {
+      io.disconnect();
+      root.removeEventListener('click', onClick);
+      removeEventListener('hashchange', onHash);
+      removeEventListener('scroll', onScroll);
+    };
+  };
   // Generic motion hooks: `.reveal` elements get `in` when scrolled into view, `.fill`
   // bars grow after layout, and `.count` numbers count up once. The program chooses the classes.
   const observer = new IntersectionObserver(
@@ -444,6 +525,7 @@ async function main(): Promise<void> {
     { threshold: 0.15 },
   );
   const animate = (): void => {
+    spy();
     // Anything already on screen is shown at once; only what scrolls into view later fades in.
     root.querySelectorAll('.reveal').forEach((el) => {
       if (el.getBoundingClientRect().top < innerHeight) el.classList.add('in');
@@ -475,6 +557,7 @@ async function main(): Promise<void> {
   animate();
   // The page exists only after the first render, so honor a fragment in the URL now.
   if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  spy();
   (window as unknown as { a0page: { show: EventSink; state: () => number[] } }).a0page = {
     show,
     state: () => state,
