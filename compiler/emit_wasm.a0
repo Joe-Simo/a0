@@ -2596,11 +2596,13 @@ base and b2 vok
 cnt select base nn 0
 cnp select base np 0
 need0 and dok opq
-need and need0 small
+need1 and need0 small
 cm_gp shr 15 7
 cm_gw and 15 127
 cm_gg get p0 cm_gp
 cm get cm_gg cm_gw
+cmok lt cm 32
+need and need1 cmok
 cn1_m0 select need 1 0
 m0__gcondb ne cn1_m0 0
 m0__pg shr 15 7
@@ -3837,21 +3839,34 @@ dolit and live lit
 doel and live nlit
 nz select az false true
 dozero and dolit az
-dopool and dolit nz
+dopool0 and dolit nz
 nbytes mul na 4
 cnt select doel na 0
 npl_gp shr 5 7
 npl_gw and 5 127
 npl_gg get m2 npl_gp
 npl get npl_gg npl_gw
-cn1_m3 select dolit 1 0
-m3 fold wxlg cn1_m3 m2 l
-cn2_m4 select dozero 1 0
-m4 fold wxkc cn2_m4 m3 0
-cn3_m5 select dozero 1 0
-m5 fold wxkc cn3_m5 m4 nbytes
-cn4_m6 select dozero 1 0
-m6__gcondb ne cn4_m6 0
+pfull ge npl 1024
+npok select pfull false true
+dopool and dopool0 npok
+pfl and dopool0 pfull
+cn1_m2e select pfl 1 0
+m2e__gcondb ne cn1_m2e 0
+m2e__pg shr 8 7
+m2e__w and 8 127
+m2e__g get m2 m2e__pg
+m2e__g2 set m2e__g m2e__w 1
+m2e__r_o get m2 m2e__pg
+m2e__r_s select m2e__gcondb m2e__g2 m2e__r_o
+m2e__r set m2 m2e__pg m2e__r_s
+cn2_m3 select dolit 1 0
+m3 fold wxlg cn2_m3 m2e__r l
+cn3_m4 select dozero 1 0
+m4 fold wxkc cn3_m4 m3 0
+cn4_m5 select dozero 1 0
+m5 fold wxkc cn4_m5 m4 nbytes
+cn5_m6 select dozero 1 0
+m6__gcondb ne cn5_m6 0
 m6__g0 get m5 0
 m6__n get m6__g0 0
 m6__e8 get m6__g0 8
@@ -3878,8 +3893,8 @@ m6__m2_o get m6__m1 m6__pg
 m6__m2_s select m6__gcondb m6__g3 m6__m2_o
 m6__m2 set m6__m1 m6__pg m6__m2_s
 pad add 3392 npl
-cn5_m8 select dopool 1 0
-m8__gcondb ne cn5_m8 0
+cn6_m8 select dopool 1 0
+m8__gcondb ne cn6_m8 0
 m8__pg shr pad 7
 m8__w and pad 127
 m8__g get m6__m2 m8__pg
@@ -3888,8 +3903,8 @@ m8__r_o get m6__m2 m8__pg
 m8__r_s select m8__gcondb m8__g2 m8__r_o
 m8__r set m6__m2 m8__pg m8__r_s
 npl1 add npl 1
-cn6_m9 select dopool 1 0
-m9__gcondb ne cn6_m9 0
+cn7_m9 select dopool 1 0
+m9__gcondb ne cn7_m9 0
 m9__pg shr 5 7
 m9__w and 5 127
 m9__g get m8__r m9__pg
@@ -3897,8 +3912,8 @@ m9__g2 set m9__g m9__w npl1
 m9__r_o get m8__r m9__pg
 m9__r_s select m9__gcondb m9__g2 m9__r_o
 m9__r set m8__r m9__pg m9__r_s
-cn7_m10 select dopool 1 0
-m10__gcondb ne cn7_m10 0
+cn8_m10 select dopool 1 0
+m10__gcondb ne cn8_m10 0
 m10__g0 get m9__r 0
 m10__n get m10__g0 0
 m10__e8 get m10__g0 8
@@ -3924,8 +3939,8 @@ m10__g3 select m10__okb m10__g2 m10__g
 m10__m2_o get m10__m1 m10__pg
 m10__m2_s select m10__gcondb m10__g3 m10__m2_o
 m10__m2 set m10__m1 m10__pg m10__m2_s
-cn8_m12 select dopool 1 0
-m12 fold wxcp cn8_m12 m10__m2 nbytes
+cn9_m12 select dopool 1 0
+m12 fold wxcp cn9_m12 m10__m2 nbytes
 r fold wxael cnt m12 d fa l etag esz p4
 ret r
 end
@@ -8660,97 +8675,14 @@ end
 # ---------------------------------------------------------------------------------------------
 # One variant of one function (src/wasm.ts `FunctionEmitter.emit`).
 
-# a debugging stop: the machine ran too many steps: its state is left in the miss list words
+# a runaway machine (too many steps) is an internal error
 fn wxdbg u32x128x512 u32 -> u32x128x512
-st_gp shr 95 7
-st_gw and 95 127
-st_gg get p0 st_gp
-st get st_gg st_gw
-sp_gp shr 7 7
-sp_gw and 7 127
-sp_gg get p0 sp_gp
-sp get sp_gg sp_gw
-k_gp shr 96 7
-k_gw and 96 127
-k_gg get p0 k_gp
-k get k_gg k_gw
-a_gp shr 97 7
-a_gw and 97 127
-a_gg get p0 a_gp
-a get a_gg a_gw
-b_gp shr 98 7
-b_gw and 98 127
-b_gg get p0 b_gp
-b get b_gg b_gw
-a1 add 1280 0
-sp1 sub sp 1
-t4 mul sp1 4
-ta add t4 1280
-tk_gp shr ta 7
-tk_gw and ta 127
-tk_gg get p0 tk_gp
-tk get tk_gg tk_gw
-ta1 add ta 1
-tx_gp shr ta1 7
-tx_gw and ta1 127
-tx_gg get p0 tx_gp
-tx get tx_gg tx_gw
-ta2 add ta 2
-ty_gp shr ta2 7
-ty_gw and ta2 127
-ty_gg get p0 ty_gp
-ty get ty_gg ty_gw
-m1__pg shr 8 7
-m1__w and 8 127
-m1__g get p0 m1__pg
-m1__g2 set m1__g m1__w 9
-m1__r set p0 m1__pg m1__g2
-m2__pg shr 15 7
-m2__w and 15 127
-m2__g get m1__r m2__pg
-m2__g2 set m2__g m2__w 8
-m2__r set m1__r m2__pg m2__g2
-m3__pg shr 32 7
-m3__w and 32 127
-m3__g get m2__r m3__pg
-m3__g2 set m3__g m3__w st
-m3__r set m2__r m3__pg m3__g2
-m4__pg shr 33 7
-m4__w and 33 127
-m4__g get m3__r m4__pg
-m4__g2 set m4__g m4__w sp
-m4__r set m3__r m4__pg m4__g2
-m5__pg shr 34 7
-m5__w and 34 127
-m5__g get m4__r m5__pg
-m5__g2 set m5__g m5__w k
-m5__r set m4__r m5__pg m5__g2
-m6__pg shr 35 7
-m6__w and 35 127
-m6__g get m5__r m6__pg
-m6__g2 set m6__g m6__w a
-m6__r set m5__r m6__pg m6__g2
-m7__pg shr 36 7
-m7__w and 36 127
-m7__g get m6__r m7__pg
-m7__g2 set m7__g m7__w b
-m7__r set m6__r m7__pg m7__g2
-m8__pg shr 37 7
-m8__w and 37 127
-m8__g get m7__r m8__pg
-m8__g2 set m8__g m8__w tk
-m8__r set m7__r m8__pg m8__g2
-m9__pg shr 38 7
-m9__w and 38 127
-m9__g get m8__r m9__pg
-m9__g2 set m9__g m9__w tx
-m9__r set m8__r m9__pg m9__g2
-m10__pg shr 39 7
-m10__w and 39 127
-m10__g get m9__r m10__pg
-m10__g2 set m10__g m10__w ty
-m10__r set m9__r m10__pg m10__g2
-ret m10__r
+r__pg shr 8 7
+r__w and 8 127
+r__g get p0 r__pg
+r__g2 set r__g r__w 9
+r__r set p0 r__pg r__g2
+ret r__r
 end
 # the result slot of the value variant of a function with an aggregate result: the node the ret
 # operand's root is, when that node owns storage (an `arr` `rec` `call` ... not get at select
@@ -9436,14 +9368,18 @@ npl1_gw and 5 127
 npl1_gg get m1 npl1_gp
 npl1 get npl1_gg npl1_gw
 plt select own npl1 npl0
-nw0_gp shr 65533 7
-nw0_gw and 65533 127
-nw0_gg get c0 nw0_gp
-nw0 get nw0_gg nw0_gw
-nw1x_gp shr 65533 7
-nw1x_gw and 65533 127
-nw1x_gg get c1 nw1x_gp
-nw1x get nw1x_gg nw1x_gw
+nw0r_gp shr 65533 7
+nw0r_gw and 65533 127
+nw0r_gg get c0 nw0r_gp
+nw0r get nw0r_gg nw0r_gw
+bad0 eq nw0r 4294967295
+nw0 select bad0 0 nw0r
+nw1r_gp shr 65533 7
+nw1r_gw and 65533 127
+nw1r_gg get c1 nw1r_gp
+nw1r get nw1r_gg nw1r_gw
+bad1 eq nw1r 4294967295
+nw1x select bad1 0 nw1r
 nw1 select own nw1x 0
 mk0 fold wxcm nw0 0 c0
 mk1x fold wxcm nw1 0 c1
@@ -9482,7 +9418,10 @@ e1_gw and 8 127
 e1_gg get m1 e1_gp
 e1 get e1_gg e1_gw
 e01 call umax e0 e1
-er2 call umax er e01
+er2a call umax er e01
+bad01 or bad0 bad1
+fe select bad01 1 0
+er2 call umax er2a fe
 fio call waio p5 p10 p8 p11 f
 fb mul f 2
 ns call wa16 p14 fb
