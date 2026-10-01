@@ -45,7 +45,8 @@
 #   a variable trip count that propagation would make a literal beyond the static compute bound
 #   (2^24 trips times the callee's literal iterations) is kept as a `mov` of that literal;
 #   effectful nodes (read write puts; call fold loop holding io) are kept and anchored;
-#   constant evaluation (the evaluator below, on the optimized bodies, fuel as src/core.ts);
+#   constant evaluation (the evaluator of compiler/evalrun.a0, on the optimized bodies, fuel as
+#   src/core.ts);
 #   algebraic identities; reassociation of literal chains; strength reduction (div and rem by a
 #   power of two); common-subexpression elimination (hash table, not arr rec; commutative ops
 #   as a multiset); dead-code elimination from the ret and the anchored nodes.
@@ -53,11 +54,20 @@
 # - schedule (`schstep`): the demand-driven order when nothing is effectful and no set/put
 #   remains; literal iterations (`listep`); output (`ozwnode`).
 #
-# The evaluator (src/core.ts `exec`) is a machine with an explicit frame stack: `evstep`,
+# The evaluator (compiler/evalrun.a0; src/core.ts `exec`) is a machine with an explicit frame stack: `evstep`,
 # charging 1 per function entry, 1 per node, 1 per fold/loop trip inside a body and
 # max(1, length) for arr rec text set put; a call with literal operands runs on fuel 4096 (its
 # exhaustion is a compile error in TypeScript: code 4), a fold/loop with at most 4096 trips on
 # fuel 4096 * 64 (exhaustion keeps the node).
+#
+# `ozopt1` is the same optimizer as a function of the tables of a chunk, for compiler/shape.a0
+# (the fused bodies it appends are optimized as src/optimize.ts `finishBody` does): see its
+# comment below; mode 8 of `emitwasmio` runs it on the input of mode 7 (without the summaries
+# and the stage; it computes the summaries itself and asks for every callee body).
+#
+# Known differences from src/optimize.ts: the limits above, and the evaluator's capacities
+# (1024 frames, 16368 environment words, 40832 heap words): a call that exhausts them is code
+# 4, a fold that does so is kept as a loop, where TypeScript has no capacity.
 #
 # compiler/optimize.a0 is generated from compiler/optimize.a0s by tools/a0s.ts (an expression
 # language that compiles to one-node-per-line A0; see its header): edit the source, not this
