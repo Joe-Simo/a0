@@ -1,5 +1,6 @@
 #!/bin/sh
-# Set the version and the four sha256 values of Formula/a0.rb from a release's checksums.txt.
+# Set the version (carried by the four release URLs; brew audit rejects a redundant `version` line)
+# and the four sha256 values of Formula/a0.rb from a release's checksums.txt.
 # Only those values change, plus one `a0 --version` assertion in the test block; the rest is edited by hand.
 # Usage: sh tools/homebrew-formula.sh <version-without-v> <checksums.txt> [formula]
 # Fails when a checksum is missing, or when the formula does not carry the expected stanzas.
@@ -35,15 +36,18 @@ awk -v version="$version" -v pairs="$pairs" -v hasver="$hasver" '
     n = split(pairs, kv, " ")
     for (i = 1; i <= n; i++) { split(kv[i], p, "="); sum[p[1]] = p[2] }
   }
-  /^  version "/ { print "  version \"" version "\""; v++; next }
-  /^ +url "/ { asset = $2; sub(/.*\//, "", asset); sub(/"$/, "", asset); print; next }
+  /^  version "/ { next } # the URL carries the version
+  /^ +url "/ {
+    asset = $2; sub(/.*\//, "", asset); sub(/"$/, "", asset)
+    sub(/\/download\/v[^\/]*\//, "/download/v" version "/"); print; u++; next
+  }
   /^ +sha256 "/ {
     if (!(asset in sum)) { print "formula: no checksum for asset " asset > "/dev/stderr"; bad = 1; exit 1 }
     sub(/"[0-9a-f]*"/, "\"" sum[asset] "\""); print; s++; asset = ""; next
   }
   /^    assert_equal "144"/ && !hasver { print "    assert_match version.to_s, shell_output(\"#{bin}/a0 --version\")"; hasver = 1 }
   { print }
-  END { if (!bad && (v != 1 || s != 4)) { print "formula: expected 1 version and 4 sha256 lines, found " v " and " s > "/dev/stderr"; exit 1 } }
+  END { if (!bad && (u != 4 || s != 4)) { print "formula: expected 4 url and 4 sha256 lines, found " u " and " s > "/dev/stderr"; exit 1 } }
 ' "$formula" > "$tmp"
 cat "$tmp" > "$formula"
 echo "updated $formula to v$version"

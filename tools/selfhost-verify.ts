@@ -93,6 +93,13 @@ export async function checkSelfHostedArm64(
   program: TypedProgram,
   cases: readonly Case[],
 ): Promise<TargetReport & { skipped: { fn: string; reason: string }[] }> {
+  if (process.platform !== 'darwin' || process.arch !== 'arm64')
+    return {
+      status: 'blocked',
+      cases: 0,
+      detail: `arm64: needs macOS on Apple silicon (the emitter writes Darwin arm64 assembly), found ${process.platform}-${process.arch}`,
+      skipped: [],
+    };
   const clang = findClang();
   const skipped: { fn: string; reason: string }[] = [];
   let ran = 0;

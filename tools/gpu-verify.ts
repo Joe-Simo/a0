@@ -5,6 +5,7 @@
  * other targets. Writes results/gpu.json. Requires macOS with Metal and swiftc.
  */
 
+import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -92,6 +93,14 @@ export async function checkMetal(
     return fn !== undefined && isKernelCallable(fn);
   });
   const kernels = program.functions.filter(isKernelCallable).length;
+  const swiftc = '/usr/bin/swiftc';
+  if (process.platform !== 'darwin' || !existsSync(swiftc))
+    return {
+      status: 'blocked',
+      cases: 0,
+      detail: `metal: needs macOS with Metal and swiftc, found ${process.platform}${existsSync(swiftc) ? '' : ' without /usr/bin/swiftc'}`,
+      kernels,
+    };
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
   const metal = emitMetal(program);
   const start = performance.now();
@@ -113,7 +122,6 @@ export async function checkMetal(
       `${grouped.map((c) => `${index.get(c.functionName)} ${c.args.map(fmt).join(' ')}`).join('\n')}\n`,
       'utf8',
     );
-    const swiftc = '/usr/bin/swiftc';
     const build = runTool(
       swiftc,
       ['-O', '-framework', 'Metal', '-framework', 'Foundation', '-o', 'host', 'host.swift'],

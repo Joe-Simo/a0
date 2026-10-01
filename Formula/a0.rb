@@ -1,31 +1,30 @@
 # Homebrew formula, served from this repository as a tap:
 #   brew tap Joe-Simo/a0 https://github.com/Joe-Simo/a0 && brew install a0
-# The release workflow sets `version` and the four sha256 values (tools/homebrew-formula.sh,
+# The release workflow sets the version in the four URLs and the four sha256 values (tools/homebrew-formula.sh,
 # from the release's checksums.txt); everything else is edited here.
 class A0 < Formula
   desc "Programming language built for AI, not for people"
   homepage "https://github.com/Joe-Simo/a0"
-  version "0.8.16"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/Joe-Simo/a0/releases/download/v#{version}/a0-darwin-arm64"
+      url "https://github.com/Joe-Simo/a0/releases/download/v0.8.16/a0-darwin-arm64"
       sha256 "b847338c79c09b1c61503c8177243929c7835bd9ddc1ef1e02d4f22ab035b7c8"
     end
     on_intel do
-      url "https://github.com/Joe-Simo/a0/releases/download/v#{version}/a0-darwin-x64"
+      url "https://github.com/Joe-Simo/a0/releases/download/v0.8.16/a0-darwin-x64"
       sha256 "c0d7253395d816e65f1f36d24ef61ea88c84c9c33f37e647d1998ca442035ddf"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/Joe-Simo/a0/releases/download/v#{version}/a0-linux-arm64"
+      url "https://github.com/Joe-Simo/a0/releases/download/v0.8.16/a0-linux-arm64"
       sha256 "c9975c6e30a155229d7ab2ffb8b07a14fe22729fa112831f00fd65a80fac7baf"
     end
     on_intel do
-      url "https://github.com/Joe-Simo/a0/releases/download/v#{version}/a0-linux-x64"
+      url "https://github.com/Joe-Simo/a0/releases/download/v0.8.16/a0-linux-x64"
       sha256 "bb8a3fc2edee971a2af2983a674c74b94766b6d9c5a483c53e8f20cf2d026233"
     end
   end

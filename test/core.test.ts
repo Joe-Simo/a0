@@ -2099,51 +2099,50 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   assert.doesNotMatch(linux, /_a0_/);
   // Division: DIV would trap on zero, so the zero divisor is branched around; A0 says all ones
   // for the quotient and the dividend for the remainder.
-  const div = emitX86_64Function(fn('fn d u32 u32 -> u32\nq div p0 p1\nret q\nend', 'd'));
+  // The sequences below are checked in the Mach-O naming (L labels); the host default would
+  // make them depend on the machine running the suite.
+  const emitDarwin = (f: TypedFunc): string => emitX86_64Function(f, 'darwin');
+  const div = emitDarwin(fn('fn d u32 u32 -> u32\nq div p0 p1\nret q\nend', 'd'));
   assert.match(
     div,
     /testl %esi, %esi\n\tje (La0_d_\d+)\n\txorl %edx, %edx\n\tdivl %esi\n\tjmp La0_d_\d+\n\1:\n\tmovl \$-1, %eax/,
   );
-  const rem = emitX86_64Function(fn('fn r u32 u32 -> u32\nq rem p0 p1\nret q\nend', 'r'));
+  const rem = emitDarwin(fn('fn r u32 u32 -> u32\nq rem p0 p1\nret q\nend', 'r'));
   assert.match(rem, /divl %esi\n\tmovl %edx, %eax\n\tjmp/);
   // Shifts: a literal distance is masked to five bits at compile time, a variable one runs
   // through cl (the hardware masks to five bits as well).
-  const shl = emitX86_64Function(
-    fn('fn s u32 u32 -> u32\na shl p0 33\nb shl a p1\nret b\nend', 's'),
-  );
+  const shl = emitDarwin(fn('fn s u32 u32 -> u32\na shl p0 33\nb shl a p1\nret b\nend', 's'));
   assert.match(shl, /shll \$1, %edi/);
   assert.match(shl, /movl %esi, %ecx\n\tmovl %edi, %eax\n\tshll %cl, %eax/);
   // Rotates: both halves of shl/shr by n and 32 - n (variable) or k and 32 - k (literal).
-  const rotv = emitX86_64Function(
+  const rotv = emitDarwin(
     fn('fn r u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nh shr p0 n\no or l h\nret o\nend', 'r'),
   );
   assert.match(rotv, /movl %esi, %ecx\n\tmovl %edi, %eax\n\troll %cl, %eax/);
   assert.doesNotMatch(rotv, /shll|shrl/);
-  const rotk = emitX86_64Function(
+  const rotk = emitDarwin(
     fn('fn r u32 -> u32\nl shl p0 13\nh shr p0 19\no xor h l\nret o\nend', 'r'),
   );
   assert.match(rotk, /roll \$13, %eax/);
   // A comparison that only feeds selects is flags plus cmov, never a 0/1 value; a single-bit
   // mask compared with 0 is a test.
-  const sel = emitX86_64Function(
-    fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'),
-  );
+  const sel = emitDarwin(fn('fn m u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend', 'm'));
   assert.match(sel, /cmpl %esi, %edi\n\tmovl %esi, %eax\n\tcmovbl %edi, %eax/);
   assert.doesNotMatch(sel, /set/);
-  const bit = emitX86_64Function(
+  const bit = emitDarwin(
     fn('fn t u32 u32 -> u32\nb and p0 4\nc eq b 0\nr select c p1 p0\nret r\nend', 't'),
   );
   assert.match(bit, /testl \$4, %edi\n\tmovl %edi, %eax\n\tcmovel %esi, %eax/);
   // A materialized comparison zeroes its destination first and writes only the low byte.
-  const lt = emitX86_64Function(fn('fn l u32 u32 -> bool\nc lt p0 p1\nret c\nend', 'l'));
+  const lt = emitDarwin(fn('fn l u32 u32 -> bool\nc lt p0 p1\nret c\nend', 'l'));
   assert.match(lt, /xorl %eax, %eax\n\tcmpl %esi, %edi\n\tsetb %al/);
   // Index modulo the length: a power of two is a mask, another length divides; the element
   // size is the SIB scale.
-  const get8 = emitX86_64Function(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
+  const get8 = emitDarwin(fn('fn g u32x8 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get8, /andl \$7, %r10d\n\tmovl 0\(%rsp,%r10,4\), %eax/);
   // Loops test at the bottom (a variable count gets one zero guard), and a fold counter below
   // the array length indexes it with no mask.
-  const loop = emitX86_64Function(
+  const loop = emitDarwin(
     fn(
       'fn st u32 u32 -> u32\na add p0 p1\nret a\nend\nfn f u32 u32 -> u32\nr fold st p1 p0\nret r\nend',
       'f',
@@ -2153,7 +2152,7 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
     loop,
     /testl %esi, %esi\n\tje (La0_f_\d+)\n(La0_f_\d+):[\s\S]*cmpl %esi, %r8d\n\tjb \2\n\1:/,
   );
-  const fill = emitX86_64Function(
+  const fill = emitDarwin(
     fn(
       'fn put u32x8 u32 u32 -> u32x8\nv add p1 p2\nn set p0 p1 v\nret n\nend\nfn a u32 -> u32\nz arr 0 0 0 0 0 0 0 0\nf fold put 8 z p0\nx get f 3\nret x\nend',
       'a',
@@ -2164,32 +2163,28 @@ test('x86_64 backend: emitted sequences carry the exact semantics', async () => 
   assert.doesNotMatch(fill, /xorps %xmm0, %xmm0/);
   assert.match(fill, /paddd %xmm3, %xmm4\n\tmovups %xmm4, \(%r10\)/);
   assert.doesNotMatch(fill, /andl \$7/);
-  const get5 = emitX86_64Function(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
+  const get5 = emitDarwin(fn('fn g u32x5 u32 -> u32\nv get p0 p1\nret v\nend', 'g'));
   assert.match(get5, /movl \$5, %r10d\n\tdivl %r10d\n\tmovl %edx, %r10d/);
   // An aggregate result comes back through the sret pointer in rdi, also returned in rax.
-  const pair = emitX86_64Function(
-    fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'),
-  );
+  const pair = emitDarwin(fn('fn p u32 -> (u32,bool)\nc lt p0 1\nr rec p0 c\nret r\nend', 'p'));
   assert.match(
     pair,
     /movq %rdi, (\d+\(%rsp\))[\s\S]*movq \1, %r11[\s\S]*movq \1, %rax\n\tmovq %rbp, %rsp/,
   );
   // Aggregates are copied 16 bytes at a time through xmm0 (a loop above 32 words), so a
   // parameter arriving in rcx stays there in a leaf.
-  const big = emitX86_64Function(
+  const big = emitDarwin(
     fn('fn b u32x32 u32 u32 u32 -> u32\nv get p0 p3\nw add v p2\nret w\nend', 'b'),
   );
   assert.match(big, /movups 112\(%rdi\), %xmm0\n\tmovups %xmm0, 112\(%rsp\)\n\tmovl %ecx, %r10d/);
-  const huge = emitX86_64Function(fn('fn h u32x40 -> u32\nv get p0 39\nret v\nend', 'h'));
+  const huge = emitDarwin(fn('fn h u32x40 -> u32\nv get p0 39\nret v\nend', 'h'));
   assert.match(
     huge,
     /movups \(%r10,%rax\), %xmm0\n\tmovups %xmm0, \(%r11,%rax\)\n\taddq \$16, %rax\n\tcmpq \$160, %rax/,
   );
   // Frames above a page are probed page by page.
   const zeros = Array.from({ length: 2048 }, () => '0').join(' ');
-  const probe = emitX86_64Function(
-    fn(`fn z u32 -> u32\na arr ${zeros}\nv get a p0\nret v\nend`, 'z'),
-  );
+  const probe = emitDarwin(fn(`fn z u32 -> u32\na arr ${zeros}\nv get a p0\nret v\nend`, 'z'));
   assert.match(probe, /subq \$4096, %rsp\n\tmovq \$0, \(%rsp\)\n\tdecl %eax\n\tjne/);
 });
 

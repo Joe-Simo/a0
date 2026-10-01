@@ -18,7 +18,7 @@ Nothing else is done by hand.
    git tag vX.Y.Z && git push origin vX.Y.Z
    ```
 
-`Formula/a0.rb` is not edited in step 1: the workflow sets its `version` and the four `sha256` values after the binaries exist.
+`Formula/a0.rb` is not edited in step 1: the workflow sets the version in its four URLs (there is no `version` line: brew audit rejects it as redundant) and the four `sha256` values after the binaries exist.
 
 ## What the workflow does
 

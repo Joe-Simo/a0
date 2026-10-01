@@ -85,7 +85,9 @@ test('release: Formula/a0.rb is the tap formula and tools/homebrew-formula.sh up
   const formula = read('Formula/a0.rb');
   assert.match(formula, /^class A0 < Formula$/m);
   assert.equal([...formula.matchAll(/^ {6}sha256 "[0-9a-f]{64}"$/gm)].length, 4);
-  assert.equal([...formula.matchAll(/^ {6}url ".*\/v#\{version\}\/a0-/gm)].length, 4);
+  assert.equal([...formula.matchAll(/^ {6}url ".*\/download\/v\d+\.\d+\.\d+\/a0-/gm)].length, 4);
+  // The URL carries the version; a separate `version` line is redundant and fails brew audit.
+  assert.doesNotMatch(formula, /^ {2}version "/m);
   const dir = mkdtempSync(join(tmpdir(), 'a0-release-'));
   try {
     const copy = join(dir, 'a0.rb');
@@ -101,7 +103,8 @@ test('release: Formula/a0.rb is the tap formula and tools/homebrew-formula.sh up
     writeFileSync(sums, assets.map((a, i) => `${String(i + 1).repeat(64)}  ${a}\n`).join(''));
     execFileSync('sh', [join(root, 'tools/homebrew-formula.sh'), '9.9.9', sums, copy]);
     const out = readFileSync(copy, 'utf8');
-    assert.match(out, /^ {2}version "9\.9\.9"$/m);
+    assert.equal([...out.matchAll(/\/download\/v9\.9\.9\/a0-/g)].length, 4);
+    assert.doesNotMatch(out, /^ {2}version "/m);
     assert.equal([...out.matchAll(/a0 --version/g)].length, 1);
     execFileSync('sh', [join(root, 'tools/homebrew-formula.sh'), '9.9.9', sums, copy]);
     assert.equal(readFileSync(copy, 'utf8'), out, 'a second run changes nothing');

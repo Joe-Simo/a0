@@ -326,6 +326,9 @@ export const WASM_FLAGS = [
   '--target=wasm32',
   '-O2',
   '-nostdlib',
+  // Struct copies and zero-fills lower to memory.copy/memory.fill instead of libc calls the
+  // freestanding module does not define (clang before 20 does not enable bulk memory by default).
+  '-mbulk-memory',
   '-fuse-ld=lld',
   '-Wl,--no-entry',
   '-Wl,--export-all',
