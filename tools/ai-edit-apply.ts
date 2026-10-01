@@ -2,6 +2,17 @@
 
 export type Protocol = 'conventional' | 'structured';
 
+/**
+ * System text of the numbered line-edit protocol (every non-A0 structured cell). Stated
+ * explicitly because two readings of the earlier text cost most first attempts of the 48-language
+ * collection: leading indentation was dropped from replacement text (the text after the number),
+ * and several new lines were inserted with consecutive numbers (`+8 a`, `+9 b`, which anchor
+ * `a` after line 8 and `b` after line 9) instead of repeating one number. `applyTs` below is the
+ * reference semantics; test/ai-edit-apply.test.ts pins both.
+ */
+export const PROTOCOL_LINE_EDIT =
+  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines, each starting with a line number of the view: `<number> <text>` replaces that line with <text>, `+<number> <text>` inserts <text> as a new line after that line (use +0 for the top; to insert several lines, repeat the same number once per new line, they are inserted in order), `-<number>` deletes that line. <text> is the whole line exactly as it should appear, after the single space following the number, including its leading indentation. A line may be replaced or deleted once. Nothing else, bare: no code fence, no handle line.';
+
 export function numbered(text: string): string {
   return text
     .trimEnd()

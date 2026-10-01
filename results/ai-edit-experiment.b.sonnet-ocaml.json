@@ -1,0 +1,718 @@
+{
+  "generatedAt": "2026-10-01T06:01:27.772Z",
+  "status": "run with scripted replies from scratchpad/b48/v2/out/set-1-sonnet-ocaml.json (subject: sonnet subagent (fresh context, one shot, one group file; retry by a fresh subagent of the same model given the exact rejection))",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.min.txt",
+  "primerMode": "always",
+  "taskSet": "b",
+  "programView": "all",
+  "systemLayout": "separate",
+  "a0View": "plain",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "kotlin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "swift": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ruby": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "php": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haskell": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ocaml": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "elixir": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "zig": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "c": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "js": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "lua": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "perl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "tcl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "objc": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fortran": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "dart": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "nim": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "groovy": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "clojure": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vb": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fsharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "scala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "prolog": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "forth": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "guile": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "smalltalk": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "racket": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "erlang": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "commonlisp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "pascal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "r": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "julia": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haxe": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "chicken": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "crystal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "d": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cobol": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "v": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "odin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "gleam": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (o200k_base and cl100k_base encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "ocaml/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; the further languages (Python, Go, Java, C#, C++, Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig) carry their own u32 semantics note and are accepted by their own toolchain (build or static check, then a generated driver run; tools/ai-edit-langs.ts, tools/edit-langs/).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "21de5a342fb09f62ba0447eacad72346c10412bd98218651fe889b84b82b6862",
+  "langTaskSetSha256": "9156e0b77bf1404dd882f3659b70fd4981e17a7374d93175fc1ccaf8bd8a1d65",
+  "representations": [
+    "ocaml"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "tests": 5
+    },
+    {
+      "id": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "tests": 6
+    },
+    {
+      "id": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "tests": 4
+    },
+    {
+      "id": "b-norm2-dot",
+      "kind": "create",
+      "tests": 5
+    },
+    {
+      "id": "b-pctof-limit",
+      "kind": "create",
+      "tests": 6
+    },
+    {
+      "id": "b-hamming-popcnt",
+      "kind": "create",
+      "tests": 5
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "b-fits-inclusive/ocaml": [],
+      "b-fits-inclusive/ocaml-original-must-fail": [],
+      "b-sumfrom-eight/ocaml": [],
+      "b-sumfrom-eight/ocaml-original-must-fail": [],
+      "b-rot8-constant/ocaml": [],
+      "b-rot8-constant/ocaml-original-must-fail": [],
+      "b-onlyone-xor/ocaml": [],
+      "b-onlyone-xor/ocaml-original-must-fail": [],
+      "b-avgfloor-nowrap/ocaml": [],
+      "b-avgfloor-nowrap/ocaml-original-must-fail": [],
+      "b-sumsq-array/ocaml": [],
+      "b-sumsq-array/ocaml-original-must-fail": [],
+      "b-inrange-inclusive/ocaml": [],
+      "b-inrange-inclusive/ocaml-original-must-fail": [],
+      "b-bounds-largest/ocaml": [],
+      "b-bounds-largest/ocaml-original-must-fail": [],
+      "b-checksum-poly/ocaml": [],
+      "b-checksum-poly/ocaml-original-must-fail": [],
+      "b-norm2-dot/ocaml": [],
+      "b-norm2-dot/ocaml-original-must-fail": [],
+      "b-pctof-limit/ocaml": [],
+      "b-pctof-limit/ocaml-original-must-fail": [],
+      "b-hamming-popcnt/ocaml": [],
+      "b-hamming-popcnt/ocaml-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "ocaml/structured": {
+      "trials": 12,
+      "meanView": 43,
+      "meanToolContext": 86
+    }
+  },
+  "trials": [
+    {
+      "task": "b-fits-inclusive",
+      "kind": "targeted-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 14,
+        "cl100k_base": 14
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 46,
+        "output": 5,
+        "total": 307
+      },
+      "outputTokensLocal": {
+        "o200k_base": 5,
+        "cl100k_base": 5
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 245.3139999999994
+    },
+    {
+      "task": "b-sumfrom-eight",
+      "kind": "targeted-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 53,
+        "cl100k_base": 52
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 92,
+        "output": 11,
+        "total": 359
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 252.0866249999999
+    },
+    {
+      "task": "b-rot8-constant",
+      "kind": "targeted-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 31,
+        "cl100k_base": 30
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 60,
+        "output": 22,
+        "total": 338
+      },
+      "outputTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 21
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 21
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 233.35683299999982
+    },
+    {
+      "task": "b-onlyone-xor",
+      "kind": "targeted-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 15,
+        "cl100k_base": 15
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 54,
+        "output": 5,
+        "total": 315
+      },
+      "outputTokensLocal": {
+        "o200k_base": 5,
+        "cl100k_base": 5
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 5,
+            "cl100k_base": 5
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 237.30116699999962
+    },
+    {
+      "task": "b-avgfloor-nowrap",
+      "kind": "multi-node-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 27,
+        "cl100k_base": 26
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 91,
+        "output": 24,
+        "total": 371
+      },
+      "outputTokensLocal": {
+        "o200k_base": 24,
+        "cl100k_base": 23
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 24,
+            "cl100k_base": 23
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 236.76808400000027
+    },
+    {
+      "task": "b-sumsq-array",
+      "kind": "multi-node-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 55
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 97,
+        "output": 28,
+        "total": 381
+      },
+      "outputTokensLocal": {
+        "o200k_base": 28,
+        "cl100k_base": 26
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 28,
+            "cl100k_base": 26
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 248.38033300000006
+    },
+    {
+      "task": "b-inrange-inclusive",
+      "kind": "multi-node-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 20,
+        "cl100k_base": 20
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 54,
+        "output": 9,
+        "total": 319
+      },
+      "outputTokensLocal": {
+        "o200k_base": 9,
+        "cl100k_base": 9
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 9,
+            "cl100k_base": 9
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 237.97949999999946
+    },
+    {
+      "task": "b-bounds-largest",
+      "kind": "comprehension-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 89,
+        "cl100k_base": 88
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 131,
+        "output": 11,
+        "total": 398
+      },
+      "outputTokensLocal": {
+        "o200k_base": 11,
+        "cl100k_base": 11
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11,
+            "cl100k_base": 11
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 244.84420799999953
+    },
+    {
+      "task": "b-checksum-poly",
+      "kind": "comprehension-edit",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 50,
+        "cl100k_base": 50
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 116,
+        "output": 30,
+        "total": 402
+      },
+      "outputTokensLocal": {
+        "o200k_base": 30,
+        "cl100k_base": 29
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 30,
+            "cl100k_base": 29
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 236.0599170000005
+    },
+    {
+      "task": "b-norm2-dot",
+      "kind": "create",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 61,
+        "cl100k_base": 60
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 96,
+        "output": 16,
+        "total": 368
+      },
+      "outputTokensLocal": {
+        "o200k_base": 16,
+        "cl100k_base": 16
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 16,
+            "cl100k_base": 16
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 236.50066600000082
+    },
+    {
+      "task": "b-pctof-limit",
+      "kind": "create",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 35,
+        "cl100k_base": 35
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 93,
+        "output": 53,
+        "total": 402
+      },
+      "outputTokensLocal": {
+        "o200k_base": 53,
+        "cl100k_base": 51
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 53,
+            "cl100k_base": 51
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 244.69983300000058
+    },
+    {
+      "task": "b-hamming-popcnt",
+      "kind": "create",
+      "representation": "ocaml",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 256,
+        "cl100k_base": 255
+      },
+      "viewTokensLocal": {
+        "o200k_base": 62,
+        "cl100k_base": 61
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": {
+        "languagePrimer": 97,
+        "workflowPrimer": 159,
+        "toolContext": 97,
+        "output": 22,
+        "total": 375
+      },
+      "outputTokensLocal": {
+        "o200k_base": 22,
+        "cl100k_base": 22
+      },
+      "providerUsage": null,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "attempts": [
+        {
+          "status": "ok",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 22,
+            "cl100k_base": 22
+          }
+        }
+      ],
+      "failures": [],
+      "wallMs": 241.19625000000087
+    }
+  ]
+}

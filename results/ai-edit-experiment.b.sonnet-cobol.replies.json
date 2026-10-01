@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/cobol/structured": [
+  "8     IF A <= B MOVE 1 TO R ELSE MOVE 0 TO R END-IF."
+ ],
+ "b-sumfrom-eight/cobol/structured": [
+  "11     PERFORM VARYING I FROM 0 BY 1 UNTIL I > 7"
+ ],
+ "b-rot8-constant/cobol/structured": [
+  "7     COMPUTE R = ((X B-SHIFT-L 8) B-AND 4294967295) B-OR (X B-SHIFT-R 24)."
+ ],
+ "b-onlyone-xor/cobol/structured": [
+  "8     IF A NOT = B MOVE 1 TO R ELSE MOVE 0 TO R END-IF."
+ ],
+ "b-avgfloor-nowrap/cobol/structured": [
+  "10     COMPUTE T = A B-AND B.\n11     COMPUTE R = A B-XOR B.\n+11     COMPUTE R = R B-SHIFT-R 1.\n+11     COMPUTE R = FUNCTION MOD(T + R, 4294967296)."
+ ],
+ "b-sumsq-array/cobol/structured": [
+  "13         COMPUTE S = FUNCTION MOD(S + A-E(I + 1) * A-E(I + 1), 4294967296)"
+ ],
+ "b-inrange-inclusive/cobol/structured": [
+  "9     IF X >= LO AND X <= HI MOVE 1 TO R ELSE MOVE 0 TO R END-IF."
+ ],
+ "b-bounds-largest/cobol/structured": [
+  "20         IF X > HI MOVE X TO HI END-IF"
+ ],
+ "b-checksum-poly/cobol/structured": [
+  "11     MOVE 7 TO H.\n13         COMPUTE H = FUNCTION MOD(H * 31, 4294967296)\n+13         COMPUTE H = FUNCTION MOD(H + A-E(I + 1), 4294967296)"
+ ],
+ "b-norm2-dot/cobol/structured": [
+  "+19 PROGRAM-ID. norm2.\n+19 DATA DIVISION.\n+19 LINKAGE SECTION.\n+19 01 A.\n+19    05 A-E PIC 9(10) COMP-5 OCCURS 4 TIMES.\n+19 01 R PIC 9(10) COMP-5.\n+19 PROCEDURE DIVISION USING A R.\n+19     CALL \"dot\" USING A A R.\n+19     GOBACK.\n+19 END PROGRAM norm2."
+ ],
+ "b-pctof-limit/cobol/structured": [
+  "+14 PROGRAM-ID. pctof.\n+14 DATA DIVISION.\n+14 WORKING-STORAGE SECTION.\n+14 01 P PIC 9(10) COMP-5.\n+14 01 Q PIC 9(10) COMP-5.\n+14 01 LO PIC 9(10) COMP-5.\n+14 01 HI PIC 9(10) COMP-5.\n+14 LINKAGE SECTION.\n+14 01 PART PIC 9(10) COMP-5.\n+14 01 WHOLE PIC 9(10) COMP-5.\n+14 01 R PIC 9(10) COMP-5.\n+14 PROCEDURE DIVISION USING PART WHOLE R.\n+14     COMPUTE P = FUNCTION MOD(PART * 100, 4294967296).\n+14     IF WHOLE = 0\n+14         MOVE 4294967295 TO Q\n+14     ELSE\n+14         DIVIDE P BY WHOLE GIVING Q\n+14     END-IF.\n+14     MOVE 0 TO LO.\n+14     MOVE 100 TO HI.\n+14     CALL \"limit\" USING Q LO HI R.\n+14     GOBACK.\n+14 END PROGRAM pctof."
+ ],
+ "b-hamming-popcnt/cobol/structured": [
+  "+18 PROGRAM-ID. hamming.\n+18 DATA DIVISION.\n+18 WORKING-STORAGE SECTION.\n+18 01 T PIC 9(10) COMP-5.\n+18 LINKAGE SECTION.\n+18 01 A PIC 9(10) COMP-5.\n+18 01 B PIC 9(10) COMP-5.\n+18 01 R PIC 9(10) COMP-5.\n+18 PROCEDURE DIVISION USING A B R.\n+18     COMPUTE T = A B-XOR B.\n+18     CALL \"popcnt\" USING T R.\n+18     GOBACK.\n+18 END PROGRAM hamming."
+ ]
+}

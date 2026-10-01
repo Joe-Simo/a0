@@ -1,0 +1,39 @@
+{
+ "b-fits-inclusive/commonlisp/structured": [
+  "2   (<= a b))"
+ ],
+ "b-sumfrom-eight/commonlisp/structured": [
+  "3     (dotimes (i 8)"
+ ],
+ "b-rot8-constant/commonlisp/structured": [
+  "2   (logand (logior (ash x 8) (ash x -24)) #xFFFFFFFF))"
+ ],
+ "b-onlyone-xor/commonlisp/structured": [
+  "2   (xor a b))",
+  "2   (and (or a b) (not (and a b)))"
+ ],
+ "b-avgfloor-nowrap/commonlisp/structured": [
+  "2   (logand (+ (logand a b) (ash (logxor a b) -1)) #xFFFFFFFF))"
+ ],
+ "b-sumsq-array/commonlisp/structured": [
+  "4       (setf s (logand (+ s (* (aref a (mod i 4)) (aref a (mod i 4)))) #xFFFFFFFF)))"
+ ],
+ "b-inrange-inclusive/commonlisp/structured": [
+  "2   (and (>= x lo) (<= x hi)))"
+ ],
+ "b-bounds-largest/commonlisp/structured": [
+  "6         (when (> x hi) (setf hi x))))"
+ ],
+ "b-checksum-poly/commonlisp/structured": [
+  "2   (let ((h 7))\n4       (setf h (logand (+ (* h 31) (aref a (mod i 4))) #xFFFFFFFF)))"
+ ],
+ "b-norm2-dot/commonlisp/structured": [
+  "+5 (defun norm2 (a)\n+6   (dot a a))"
+ ],
+ "b-pctof-limit/commonlisp/structured": [
+  "+4 (defun pctof (part whole)\n+5   (let ((div (logand (* part 100) #xFFFFFFFF)))\n+6     (limit (if (zerop whole) 4294967295 (logand (truncate div whole) #xFFFFFFFF)) 0 100)))"
+ ],
+ "b-hamming-popcnt/commonlisp/structured": [
+  "+5 (defun hamming (a b)\n+6   (popcnt (logxor a b)))"
+ ]
+}

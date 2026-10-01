@@ -1,0 +1,41 @@
+{
+ "b-fits-inclusive/fortran/structured": [
+  "14 r = a <= b"
+ ],
+ "b-sumfrom-eight/fortran/structured": [
+  "15 do i = 0, 7"
+ ],
+ "b-rot8-constant/fortran/structured": [
+  "14 r = iand(ior(ishft(x, 8), ishft(x, -24)), m32)"
+ ],
+ "b-onlyone-xor/fortran/structured": [
+  "14 r = a .neqv. b"
+ ],
+ "b-avgfloor-nowrap/fortran/structured": [
+  "14 r = iand(iand(a, b) + ishft(ieor(a, b), -1), m32)"
+ ],
+ "b-sumsq-array/fortran/structured": [
+  "17 s = iand(s + mul32(a(i), a(i)), m32)"
+ ],
+ "b-inrange-inclusive/fortran/structured": [
+  "14 r = x >= lo .and. x <= hi"
+ ],
+ "b-bounds-largest/fortran/structured": [
+  "20 if (x > hi) hi = x"
+ ],
+ "b-checksum-poly/fortran/structured": [
+  "15 h = 7\n17 h = iand(mul32(h, 31_int64) + a(i), m32)"
+ ],
+ "b-norm2-dot/fortran/structured": [
+  "+20 function norm2(a) result(r)\n+21   integer(int64), intent(in) :: a(4)\n+22   integer(int64) :: r\n+23   r = dot(a, a)\n+24 end function norm2",
+  "+20 function norm2(a) result(r)\n+20   integer(int64), intent(in) :: a(4)\n+20   integer(int64) :: r\n+20   r = dot(a, a)\n+20 end function norm2"
+ ],
+ "b-pctof-limit/fortran/structured": [
+  "+24 function pctof(part, whole) result(r)\n+25   integer(int64), intent(in) :: part, whole\n+26   integer(int64) :: r, prod\n+27   if (whole == 0_int64) then\n+28     prod = m32\n+29   else\n+30     prod = iand(mul32(part, 100_int64) / whole, m32)\n+31   end if\n+32   r = limit(prod, 0_int64, 100_int64)\n+33 end function pctof",
+  "+24 function pctof(part, whole) result(r)\n+24   integer(int64), intent(in) :: part, whole\n+24   integer(int64) :: r\n+24   r = limit(iand(mul32(part, 100_int64) / whole, m32), 0_int64, 100_int64)\n+24 end function pctof"
+ ],
+ "b-hamming-popcnt/fortran/structured": [
+  "+20 function hamming(a, b) result(r)\n+21   integer(int64), intent(in) :: a, b\n+22   integer(int64) :: r\n+23   r = popcnt(ieor(a, b))\n+24 end function hamming",
+  "+20 function hamming(a, b) result(r)\n+20   integer(int64), intent(in) :: a, b\n+20   integer(int64) :: r\n+20   r = popcnt(ieor(a, b))\n+20 end function hamming"
+ ]
+}

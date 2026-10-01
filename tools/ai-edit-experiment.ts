@@ -54,6 +54,7 @@ import {
   applyTs,
   extractBlock,
   numbered,
+  PROTOCOL_LINE_EDIT,
   type Protocol,
 } from './ai-edit-apply.js';
 import {
@@ -125,8 +126,7 @@ const PROTOCOL_STRUCTURED_A0 = `The view starts with edit handles. Reply with on
 // language itself must be inferred from the view.
 const PROTOCOL_STRUCTURED_A0_SELF =
   'The view starts with edit handles. Reply with only edit lines, bare: no code fence, no handle line. `id op ...` replaces or inserts before ret; `-id` deletes; `ret x`; a `fn ...` block adds or replaces a function; `-fn name` removes one.';
-const PROTOCOL_STRUCTURED_TS =
-  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, bare: no code fence, no handle line.';
+const PROTOCOL_STRUCTURED_TS = PROTOCOL_LINE_EDIT;
 const RUST_SEMANTICS =
   'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must compile with rustc, edition 2021.';
 const PROTOCOL_STRUCTURED_RUST = PROTOCOL_STRUCTURED_TS;
