@@ -1,0 +1,56 @@
+# select (18): a known condition picks its arm; an arm with nodes of its own (the shape table's
+# OWN and ARM columns: `lazyArms`) becomes an if/else around those nodes; else `select`
+# register 20 counts the nodes owned by select p3 (frame first node p2)
+fn wxown u32 u32 u32 u32 u32x128x200 -> u32
+g add p2 p1
+a add 2816 g
+own call wxsh p4 a
+j1 add p3 1
+hit eq own j1
+n select hit 1 0
+r add p0 n
+ret r
+end
+fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x200 -> u32x128x512
+d at p2 0
+j at p2 1
+k1 at p2 13
+v1 at p2 14
+k2 at p2 15
+v2 at p2 16
+c0 at p2 17
+s0 at p2 18
+c1 at p2 19
+s1 at p2 20
+c2 at p2 21
+s2 at p2 22
+isk eq c0 1
+nisk select isk false true
+tru ne s0 0
+ck select tru c1 c2
+sk select tru s1 s2
+m1 fold wxpr isk p0 ck sk
+m2 fold wxset isk m1 d j
+g0 call wxfg m2 d 2
+nn call wxfg m2 d 3
+nown fold wxown nn 0 g0 j p3
+lazy0 gt nown 0
+lazy and lazy0 nisk
+nlazy select lazy false true
+plain and nisk nlazy
+m5 fold wxpr plain m2 c1 s1
+m6 fold wxpr plain m5 c2 s2
+m7 fold wxpr plain m6 c0 s0
+m8 fold wxop plain m7 27
+m9 fold wxset plain m8 d j
+m10 fold wxpr lazy m9 c0 s0
+m11 fold wxe lazy m10 15 127
+m12 fold wxpu lazy m11 7 d j 0
+m13 fold wxpu lazy m12 4 1 11 0
+m14 fold wxpu lazy m13 3 d k2 v2
+m15 fold wxpu lazy m14 6 d j 1
+m16 fold wxpu lazy m15 4 1 5 0
+m17 fold wxpu lazy m16 3 d k1 v1
+m18 fold wxpu lazy m17 6 d j 0
+ret m18
+end

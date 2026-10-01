@@ -1,0 +1,100 @@
+# (scalar state in locals) the words of a chain node p3 of frame p2: operand p1 of a rec/arr
+# (operands p5, table p6) as a source (kind 0 local / 1 literal)
+fn wxwk u32x128x512 u32 u32 u32 u32 u32 u32x128x512 -> u32x128x512
+o add p5 p1
+k call wxok p6 o
+v call wxov p6 o
+m1 fold wxres 1 p0 p2 k v
+c call wxg m1 16
+s call wxg m1 17
+w0 mul p1 2
+w1 add w0 4
+w2 add w0 5
+a1 call wxbk p2 p3 w1
+a2 call wxbk p2 p3 w2
+m2 fold wxs 1 m1 a1 c
+m3 fold wxs 1 m2 a2 s
+ret m3
+end
+# word p1 of an update's words (frame p2, node p3): from the host's fields (p4 = 1) or the words of
+# node p5, with word p6 replaced by the source (p7 kind, p8 value)
+fn wxwu u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+w0 mul p1 2
+w1 add w0 4
+w2 add w0 5
+fi add p1 10
+fl call wxfg p0 p2 fi
+bk call wxbk p2 p5 w1
+bv call wxbk p2 p5 w2
+ak call wxg p0 bk
+av call wxg p0 bv
+ik eq p4 1
+fk0 select ik 0 ak
+fv0 select ik fl av
+at eq p1 p6
+vk select at p7 fk0
+vv select at p8 fv0
+a1 call wxbk p2 p3 w1
+a2 call wxbk p2 p3 w2
+m1 fold wxs 1 p0 a1 vk
+m2 fold wxs 1 m1 a2 vv
+ret m2
+end
+# (scalar state in locals) the chain node's words
+fn wxhwrd u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x512 -> u32x128x512
+d at p2 0
+j at p2 1
+op at p2 3
+na at p2 4
+fa at p2 5
+k0 at p2 11
+v0 at p2 12
+v1 at p2 14
+c2 at p2 21
+s2 at p2 22
+o22 eq op 22
+o23 eq op 23
+o24 eq op 24
+r1 or o22 o23
+isrec or r1 o24
+nrec select isrec 1 0
+nupd select isrec 0 1
+w call wxfg p0 d 9
+m1 fold wxwk nrec p0 d j 0 fa p3
+isp1 eq k0 2
+isp2 eq v0 0
+onp0 and isp1 isp2
+ik select onp0 1 0
+bn select onp0 0 v0
+at rem v1 w
+m2 fold wxwu nupd m1 d j ik bn at c2 s2
+ret m2
+end
+# set (26) and put (28) element store: element / field (operand p4 p5) of the target operand
+# (p2 p3 of frame p1) to the value operand (p6 p7); (M, trip, d, tk, tv, k1, v1, k2, v2, container
+# type p10, op p9, types, tlist, info)
+fn wxsto u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+issets eq p9 26
+isput eq p9 28
+len call wxty p11 p10 1
+et call wxty p11 p10 2
+etag call wxtag p11 et
+esz call wxbyt p13 et
+m1 fold wxea issets p0 p2 p3 p4 p5 p6 len esz
+offs call wxg m1 16
+fs call wxty p11 p10 1
+nf call wxty p11 p10 2
+lit3 eq p6 3
+kk select lit3 p7 0
+offp call wafo p12 p13 fs kk
+ft0 add fs kk
+ft call wa65 p12 ft0
+ftag call wxtag p11 ft
+fby call wxbyt p13 ft
+m2 fold wxpsh isput m1 p2 p3 p4
+off select issets offs offp
+tag select issets etag ftag
+by select issets esz fby
+r fold wxsa 1 m2 p2 p8 p9 tag by off
+ret r
+end

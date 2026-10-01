@@ -1,0 +1,234 @@
+# ---------------------------------------------------------------------------------------------
+# The node of frame p2 (index p3): `emitNode`. First the cases that bind a node without code: an
+# induction variable, the carried element, a read of scalar state in locals, a chain node's
+# words; then an aliasing set/put (one store), a fold/loop, and the ops by number.
+fn wxnode u32x128x512 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+g0 call wxfg p0 p2 2
+g add g0 p3
+fi call wxfg p0 p2 0
+fpt call wxfw p4 fi 2
+op call wxnw p5 g 1
+na call wxnw p5 g 2
+fa call wxnw p5 g 3
+ce call wxnw p5 g 4
+pr call wxnw p5 g 5
+t call wa24 p7 g
+tag call wxtag p8 t
+by call wxbyt p10 t
+fa1 add fa 1
+fa2 add fa 2
+k0 call wxok p6 fa
+v0 call wxov p6 fa
+k1 call wxok p6 fa1
+v1 call wxov p6 fa1
+k2 call wxok p6 fa2
+v2 call wxov p6 fa2
+n0 gt na 0
+n1 gt na 1
+n2 gt na 2
+m1 fold wxres n0 p0 p2 k0 v0
+c0r call wxg m1 16
+s0r call wxg m1 17
+c0 select n0 c0r 0
+s0 select n0 s0r 0
+m2 fold wxres n1 m1 p2 k1 v1
+c1r call wxg m2 16
+s1r call wxg m2 17
+c1 select n1 c1r 0
+s1 select n1 s1r 0
+m3 fold wxres n2 m2 p2 k2 v2
+c2r call wxg m3 16
+s2r call wxg m3 17
+c2 select n2 c2r 0
+s2 select n2 s2r 0
+ty0 call wxopty k0 v0 p7 p9 fpt g0
+ty1 call wxopty k1 v1 p7 p9 fpt g0
+rw call wxrg m3 p2 p3 3
+ali ne rw 0
+aliu select ali 1 0
+c rec p2 p3 g op na fa ce pr t tag by k0 v0 k1 v1 k2 v2 c0 s0 c1 s1 c2 s2 ty0 ty1 aliu 0 0
+dpos gt p2 0
+bk0 call wxbk p2 p3 0
+indv call wxg m3 bk0
+hi1 ne indv 0
+hasind and dpos hi1
+cf call wxfg m3 p2 18
+cg call wxfg m3 p2 19
+cf1 ne cf 0
+cg1 eq cg p3
+carryget and cf1 cg1
+wd call wxfg m3 p2 9
+hw gt wd 0
+o25 eq op 25
+o27 eq op 27
+isget or o25 o27
+isp1 eq k0 2
+isp2 eq v0 0
+isp0 and isp1 isp2
+l1 eq k1 3
+f1 and hw isget
+f2 and f1 isp0
+fldr0 and f2 l1
+fl call wxrg m3 p2 p3 2
+ch1 and fl 2
+ch2 ne ch1 0
+chn and hw ch2
+nota select hasind false true
+rcar and nota carryget
+notb select rcar false true
+notab and nota notb
+rfld and notab fldr0
+notc select rfld false true
+notabc and notab notc
+rwrd and notabc chn
+notd select rwrd false true
+rest and notabc notd
+o26 eq op 26
+o28 eq op 28
+upd or o26 o28
+o20 eq op 20
+o21 eq op 21
+it or o20 o21
+ra and rest ali
+rset and ra upd
+riter and rest it
+nal select ali false true
+rn and rest nal
+nit select it false true
+rs and rn nit
+isv eq op 1
+isc1 eq op 19
+isc2 eq op 18
+isar1 eq op 22
+isar2 eq op 24
+isar or isar1 isar2
+isrec eq op 23
+isdv1 eq op 10
+isdv2 eq op 11
+isdv or isdv1 isdv2
+b2a ge op 2
+b2b le op 9
+b12a ge op 12
+b12b le op 17
+bina and b2a b2b
+binb and b12a b12b
+isbin or bina binb
+isset eq op 26
+isput eq op 28
+sp or isset isput
+isat eq op 27
+isrd eq op 29
+iswr eq op 30
+ispu eq op 31
+hmov and rs isv
+hbin and rs isbin
+hdiv and rs isdv
+hsel and rs isc2
+hcall and rs isc1
+harr and rs isar
+hrec and rs isrec
+hget and rs o25
+hset and rs sp
+hat and rs isat
+hrd and rs isrd
+hwr and rs iswr
+hpu and rs ispu
+m4 fold wxhind hasind m3 c
+m5 fold wxhcar rcar m4 c
+m6 fold wxhfld rfld m5 c
+m7 fold wxhwrd rwrd m6 c p6
+m8 fold wxhali rset m7 c p8 p9 p10
+m9 fold wxiter riter m8 c p4 p5 p6 p7 p8 p9 p10 p11
+m10 fold wxhmov hmov m9 c
+m11 fold wxhbin hbin m10 c
+m12 fold wxhdiv hdiv m11 c
+m13 fold wxhsel hsel m12 c p11
+m14 fold wxhcall hcall m13 c p4 p5 p6 p7 p8 p9 p10 p11 p12
+m15 fold wxharr harr m14 c p5 p6 p11 p8 p10
+m16 fold wxhrec hrec m15 c p6 p8 p9 p10
+m17 fold wxhget hget m16 c p8 p10
+m18 fold wxhset hset m17 c p8 p9 p10
+m19 fold wxhat hat m18 c p8 p9 p10
+m20 fold wxhread hrd m19 c
+m21 fold wxhwrite hwr m20 c
+m22 fold wxhputs hpu m21 c p8
+ret m22
+end
+# ---------------------------------------------------------------------------------------------
+# The machine: pop an item of the work stack and run it. Items (kind, a, b, c): 1 nodes of frame
+# a from node b (the node, then the items of the rest), 2 node b of frame a alone, 3 push the
+# operand (kind b, value c) of frame a, 4 emit the instruction (kind a, value b), 5 the end of
+# frame a, 6 the next node of frame a owned by select b in arm c & 3 from node c >> 2, 7 bind
+# and set node b of frame a, 8 start phase b of loop a, 9 a trip of loop a, 10 its body, 11 its
+# end
+fn wxstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+m0 fold wxad 1 p0 95 1
+m1x fold wxpo 1 m0
+k call wxg m1x 16
+a call wxg m1x 17
+b call wxg m1x 18
+c call wxg m1x 19
+m1y fold wxs 1 m1x 96 k
+m1z fold wxs 1 m1y 97 a
+m1 fold wxs 1 m1z 98 b
+k1 eq k 1
+k2 eq k 2
+k3 eq k 3
+k4 eq k 4
+k5 eq k 5
+k6 eq k 6
+k7 eq k 7
+k8 eq k 8
+k9 eq k 9
+k10 eq k 10
+k11 eq k 11
+nn call wxfg m1 a 3
+g0 call wxfg m1 a 2
+b1 add b 1
+mor lt b1 nn
+rest1 and k1 mor
+m2 fold wxpu rest1 m1 1 a b1 0
+gg add g0 b
+oc add 2816 gg
+own call wxsh p9 oc
+nown eq own 0
+run1 and k1 nown
+runn or run1 k2
+m3 fold wxnode runn m2 a b p2 p3 p4 p5 p6 p7 p8 p9 p10
+m4 fold wxpsh k3 m3 a b c
+m5 fold wxe k4 m4 a b
+m6 fold wxend k5 m5 a p2 p8
+arm and c 3
+fr shr c 2
+arm1 add arm 1
+fg gt nn fr
+cnt0 sub nn fr
+cnt1 select fg cnt0 0
+cnt select k6 cnt1 0
+fnd fold wxfnd cnt 4294967295 g0 b arm1 fr p9
+has ne fnd 4294967295
+fm1 add fnd 1
+nxt shl fm1 2
+cc or arm nxt
+h6 and k6 has
+m9 fold wxpu h6 m6 6 a b cc
+m10 fold wxpu h6 m9 2 a fnd 0
+m11 fold wxset k7 m10 a b
+m12 fold wxlst k8 m11 a b
+m13 fold wxtrip k9 m12 a p2 p3 p4 p5 p6 p7 p8 p9 p10
+m14 fold wxtbod k10 m13 a p2 p3 p4 p5 p6 p7 p8 p9 p10
+m15 fold wxtend k11 m14 a
+ret m15
+end
+# keep stepping while items remain and no error was raised
+fn wxgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> bool
+sp call wxg p0 7
+er call wxg p0 8
+st call wxg p0 95
+a gt sp 0
+b eq er 0
+c lt st 400000
+ab and a b
+r and ab c
+ret r
+end

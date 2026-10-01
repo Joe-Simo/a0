@@ -1,0 +1,108 @@
+# ---------------------------------------------------------------------------------------------
+# Readers of the checked tables (the layout of compiler/emit_c.a0 / tools/selfhost-wasm.ts):
+# the nodes table has 6 words a node (0, op, operand count, first operand, callee, predicate),
+# the operand table (u32x128x512) holds (kind, value) pairs (kind 1 node, 2 parameter, 3 u32
+# literal, 4 bool literal), the fns table 7 words a function (0 opaque if no body, parameter
+# count, first parameter type in tlist, result type, first node, node count, packed ret word).
+# Types are triples (tag 1 u32, 2 bool, 3 io, 4 array (length, element), 5 record (first field
+# in tlist, count)) and `info` holds bytes | contains-io << 31 per type.
+
+# word p2 of node p1
+fn wxnw u32x128x132 u32 u32 -> u32
+b mul p1 6
+i add b p2
+pg shr i 7
+w and i 127
+g get p0 pg
+v get g w
+ret v
+end
+# kind / value of operand pair p1
+fn wxok u32x128x512 u32 -> u32
+x mul p1 2
+pg shr x 7
+w and x 127
+g get p0 pg
+v get g w
+ret v
+end
+fn wxov u32x128x512 u32 -> u32
+x mul p1 2
+y add x 1
+pg shr y 7
+w and y 127
+g get p0 pg
+v get g w
+ret v
+end
+# word p2 of function p1
+fn wxfw u32x128x45 u32 u32 -> u32
+b mul p1 7
+r call cfw p0 b p2
+ret r
+end
+# word p2 of type p1 (tag, a, b)
+fn wxty u32x384x65 u32 u32 -> u32
+r call wat p0 p1 p2
+ret r
+end
+# the tag of type p1
+fn wxtag u32x384x65 u32 -> u32
+r call wat p0 p1 0
+ret r
+end
+# the byte size of type p1
+fn wxbyt u32x128x65 u32 -> u32
+w call wa65 p0 p1
+r and w 2147483647
+ret r
+end
+# does type p1 contain io
+fn wxio u32x128x65 u32 -> u32
+w call wa65 p0 p1
+r shr w 31
+ret r
+end
+# word p1 of the shape table
+fn wxsh u32x128x200 u32 -> u32
+pg shr p1 7
+w and p1 127
+g get p0 pg
+v get g w
+ret v
+end
+# log2 of a power of two (the number of shifts down to 1)
+fn wxl2s u32 u32 u32 -> u32
+k add p1 1
+s shr p2 k
+nz ne s 0
+a select nz 1 0
+r add p0 a
+ret r
+end
+fn wxlog2 u32 -> u32
+r fold wxl2s 31 0 p0
+ret r
+end
+# is p0 a power of two (including 1)
+fn wxpow2 u32 -> bool
+m sub p0 1
+a and p0 m
+r eq a 0
+ret r
+end
+# the type of operand (kind p1, value p2) of the function with first parameter type p5 in tlist
+# and nodes starting at p6: a node's type (nty), a parameter's, a literal's
+fn wxopty u32 u32 u32x128x24 u32x128x65 u32 u32 -> u32
+isn eq p0 1
+isp eq p0 2
+isb eq p0 4
+g add p5 p1
+nt call wa24 p2 g
+pi add p4 p1
+pt call wa65 p3 pi
+bt select isb 1 0
+a select isp pt bt
+r select isn nt a
+ret r
+end

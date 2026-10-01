@@ -22,6 +22,15 @@
 # The orchestration around `wachunk` (reading the tables, the shape table, loop fusion: the
 # emitter emits a fused function from its fused tables, `emitFused`) is in compiler/boot.a0
 # (`wxorch`, `wxfunf`), which also folds `wxfun` itself; this file has `wachunkend` for the end.
+#
+# PROVENANCE. This file is the source of truth. It was first produced (a0wasm, commit 6e9fc52) by
+# tools/wasm-gen/assemble.py from the retained functions of this file as of commit 95a2a69 (the
+# line ranges named in that script) and the hand-written parts tools/wasm-gen/part*.a0,
+# tail_chunk.a0 and linker.a0, then post-processed by inline_reads.py, inline_prims.py,
+# shorten.py and fixcounts.py. Since then it was edited directly (the chunk orchestration moved
+# to compiler/boot.a0, `wachunkend`, the fill and record-state fixes, the export pruning in the
+# linker), so the parts are an archive of the method, not an input: do not regenerate over this
+# file. compiler/wasm_code.a0 comes from tools/wasm-gen/wfzgen.py likewise.
 use "emit_c.a0"
 use "wasm_code.a0"
 # ---------------------------------------------------------------------------------------------

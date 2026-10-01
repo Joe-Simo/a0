@@ -1,0 +1,86 @@
+# induction variable p1 of the body of loop p2 steps: local += step (when the body node has one)
+fn wxupd u32x128x512 u32 u32 -> u32x128x512
+a add 40 p1
+l1 call wxcg p0 p2 a
+b add 72 p1
+stp call wxcg p0 p2 b
+has ne l1 0
+l sub l1 1
+m1 fold wxlg has p0 l
+m2 fold wxkc has m1 stp
+m3 fold wxop has m2 106
+m4 fold wxls has m3 l
+ret m4
+end
+# state word p1 of loop p2 goes back to the state's storage after the loop
+fn wxfst u32x128x512 u32 u32 -> u32x128x512
+st call wxcg p0 p2 0
+a add 168 p1
+l call wxcg p0 p2 a
+off mul p1 4
+m1 fold wxlg 1 p0 st
+m2 fold wxlg 1 m1 l
+m3 fold wxst 1 m2 off
+ret m3
+end
+# the end of a trip of loop p2 (`trip` after the body): the state of a scalar fold is set, the
+# induction variables and the counter step; the next copy of the trip, or the end of the loop
+# (bound test, back edge) and the next phase, or the state words go back to the storage
+fn wxtend u32x128x512 u32 u32 -> u32x128x512
+ag call wxcg p0 p2 2
+st call wxcg p0 p2 0
+ic call wxcg p0 p2 1
+copy call wxcg p0 p2 22
+ph call wxcg p0 p2 21
+nph call wxcg p0 p2 23
+wd call wxcg p0 p2 12
+nnb call wxcg p0 p2 37
+pr call wxcg p0 p2 6
+b0 mul ph 5
+b1 add b0 24
+bc add b1 4
+copies call wxcg p0 p2 bc
+bl add b1 1
+litf call wxcg p0 p2 bl
+bll add b1 2
+lit call wxcg p0 p2 bll
+bf add b1 3
+from call wxcg p0 p2 bf
+isag ne ag 0
+nag select isag false true
+m1 fold wxls nag p0 st
+m2 fold wxupd nnb m1 p2
+m3 fold wxlg 1 m2 ic
+m4 fold wxkc 1 m3 1
+m5 fold wxop 1 m4 106
+m6 fold wxls 1 m5 ic
+copy1 add copy 1
+m7 fold wxcs 1 m6 p2 22 copy1
+more lt copy1 copies
+nmore select more false true
+m8 fold wxpu more m7 9 p2 0 0
+m9 fold wxlg nmore m8 ic
+m10 fold wxlim nmore m9 p2 ph
+m11 fold wxop nmore m10 73
+m12 fold wxe nmore m11 12 0
+m13 fold wxe nmore m12 9 0
+g1 ne litf 0
+g2 gt lit from
+g3 and g1 g2
+guard select g3 false true
+pq ne pr 0
+exit or guard pq
+ex and nmore exit
+m14 fold wxop ex m13 11
+ph1 add ph 1
+nxt lt ph1 nph
+dnx and nmore nxt
+fin and nmore nxt
+fl select nxt false true
+last and nmore fl
+m15 fold wxcs dnx m14 p2 21 ph1
+m16 fold wxpu dnx m15 8 p2 ph1 0
+wdl select last wd 0
+m17 fold wxfst wdl m16 p2
+ret m17
+end

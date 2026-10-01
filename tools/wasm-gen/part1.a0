@@ -1,0 +1,228 @@
+# ---------------------------------------------------------------------------------------------
+# The emission machine (src/wasm.ts `FunctionEmitter`). One variant of one function is emitted
+# into the machine table M (u32x128x512, the state of every mutating step: nothing else holds
+# mutable state, since one value is at most 65536 words). M's words:
+#   0-127 registers: 0 instruction count (starts at 5: slots 0-4 are the frame prologue, filled
+#     after the body), 1 next i32 local id, 2 next v128 local id, 3 frame bytes, 4 frame pointer
+#     local (4294967295: none), 5 pool occurrences, 6 frame depth, 7 work stack items, 8 error
+#     (1 capacity, 2 unsupported), 9 result address local (4294967295: none), 10 first parameter
+#     local, 11 node that is the result slot (4294967295: none), 12 deepest callee stack depth,
+#     13 simd option, 14 unroll option, 15 missing bodies, 16-31 results of the last step (T0..),
+#     32-63 the functions whose bodies are missing
+#   128-639 frames: frame d at 128 + 128 d (d 0..3, INLINE_DEPTH 3): 0 function, 1 variant (0
+#     value, 1 owned), 2 first node, 3 node count, 4 parameter count, 5 6 the ret operand (kind,
+#     value), 7 has a host (d > 0), 9 width of scalar-replaced state (0 none), 10-17 its locals,
+#     18 carry flag, 19 20 21 carry get node, set node, local, 22 23 index bound flag and value,
+#     32-95 the host's parameter sources (kind 0 local / 1 literal value, value) for 32 parameters
+#   640-1279 loop contexts: context d at 640 + 160 d (see `wxiter`)
+#   1280-3327 work stack: item i at 1280 + 4 i (kind, a, b, c), 512 items
+#   3328-5375 pool occurrences (global node index of each literal array emitted from the pool)
+#   5376-17023 node rows (4 words: local, constant value, flags bit0 known constant bit1 member
+#     of the scalar state chain, root: 0 itself, 2^28 + node, 2^29 + parameter): frame 0 from 5376 (2816 nodes), frame d from 16640 + 128 (d - 1)
+#   17024-18943 inline-frame node blocks (20 words per node: 0 induction local + 1, 4-19 the
+#     words of a chain node: 8 fields of (kind, value)), frame d from 17024 + 640 (d - 1)
+#   20480-65535 instructions: 22528 of 2 words (kind, value; the kinds of compiler/wasm_code.a0)
+# A step that mutates M is a fold body (M, trip, ...) -> M run with one trip (or 0: not run);
+# what it computes for its caller is left in registers 16.. (no function takes M but the tiny
+# readers below, so M is never copied).
+
+# word p1 of M
+fn wxg u32x128x512 u32 -> u32
+pg shr p1 7
+w and p1 127
+g get p0 pg
+v get g w
+ret v
+end
+# M[p2] := p3
+fn wxs u32x128x512 u32 u32 u32 -> u32x128x512
+pg shr p2 7
+w and p2 127
+g get p0 pg
+g2 set g w p3
+r set p0 pg g2
+ret r
+end
+# M[p2] := M[p2] + p3
+fn wxad u32x128x512 u32 u32 u32 -> u32x128x512
+v call wxg p0 p2
+n add v p3
+r fold wxs 1 p0 p2 n
+ret r
+end
+# the address of word p2 of frame p1 / of loop context p1 / of word p3 of node p2 in frame p1
+fn wxfr u32 u32 -> u32
+a mul p0 128
+b add a 128
+r add b p1
+ret r
+end
+fn wxcx u32 u32 -> u32
+a mul p0 176
+b add a 640
+r add b p1
+ret r
+end
+fn wxrw u32 u32 u32 -> u32
+top eq p0 0
+a mul p1 4
+t add a 5440
+d1 sub p0 1
+b mul d1 128
+c add b 16704
+i add c a
+ad select top t i
+r add ad p2
+ret r
+end
+# word p2 of the block of node p1 of inline frame p0
+fn wxbk u32 u32 u32 -> u32
+d1 sub p0 1
+a mul d1 640
+b mul p1 20
+c add a 17088
+d add c b
+r add d p2
+ret r
+end
+# frame p0's word p1 / loop context word / node row word of M
+fn wxfg u32x128x512 u32 u32 -> u32
+a call wxfr p1 p2
+r call wxg p0 a
+ret r
+end
+fn wxcg u32x128x512 u32 u32 -> u32
+a call wxcx p1 p2
+r call wxg p0 a
+ret r
+end
+fn wxrg u32x128x512 u32 u32 u32 -> u32
+a call wxrw p1 p2 p3
+r call wxg p0 a
+ret r
+end
+# frame d word k := v, loop context, node row: (M, trip, d, k, v) and (M, trip, d, j, k, v)
+fn wxfs u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a call wxfr p2 p3
+r fold wxs 1 p0 a p4
+ret r
+end
+fn wxcs u32x128x512 u32 u32 u32 u32 -> u32x128x512
+a call wxcx p2 p3
+r fold wxs 1 p0 a p4
+ret r
+end
+fn wxrs u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a call wxrw p2 p3 p4
+r fold wxs 1 p0 a p5
+ret r
+end
+fn wxbs u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a call wxbk p2 p3 p4
+r fold wxs 1 p0 a p5
+ret r
+end
+# the instruction (kind p2, value p3) appended (a fold of one trip); capacity 22528, then the
+# error register is set and nothing is written. The register page first, then the page of the
+# instruction: a chain of sets, each on the result of the previous one
+fn wxe u32x128x512 u32 u32 u32 -> u32x128x512
+g0 get p0 0
+n get g0 0
+e8 get g0 8
+full ge n 22528
+okn select full 0 1
+n1 add n okn
+e2 select full 1 e8
+g0a set g0 0 n1
+g0b set g0a 8 e2
+m1 set p0 0 g0b
+a mul n 2
+ad add a 20480
+pg shr ad 7
+w and ad 127
+g get m1 pg
+w1 add w 1
+g1 set g w p2
+g2 set g1 w1 p3
+okb eq full false
+g3 select okb g2 g
+m2 set m1 pg g3
+ret m2
+end
+# a fresh i32 local id into register 16 (ids from 8192 are a capacity error)
+fn wxnl u32x128x512 u32 -> u32x128x512
+n call wxg p0 1
+big ge n 8192
+m1 fold wxs 1 p0 16 n
+n1 add n 1
+m2 fold wxs 1 m1 1 n1
+m3 fold wxs big m2 8 1
+ret m3
+end
+# a fresh v128 local id (2^20 + k) into register 16
+fn wxnv u32x128x512 u32 -> u32x128x512
+n call wxg p0 2
+big ge n 128
+id add n 1048576
+m1 fold wxs 1 p0 16 id
+n1 add n 1
+m2 fold wxs 1 m1 2 n1
+m3 fold wxs big m2 8 1
+ret m3
+end
+# the frame pointer local into register 16, created on first use
+fn wxfp u32x128x512 u32 -> u32x128x512
+f call wxg p0 4
+none eq f 4294967295
+m1 fold wxnl none p0
+nl call wxg m1 16
+fp select none nl f
+m2 fold wxs none m1 4 fp
+m3 fold wxs 1 m2 16 fp
+ret m3
+end
+# push an item (kind p2, a p3, b p4, c p5) on the work stack (512 items)
+fn wxpu u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+sp call wxg p0 7
+full ge sp 512
+ok select full 0 1
+a mul sp 4
+ad add a 1344
+m1 fold wxs ok p0 ad p2
+ad1 add ad 1
+m2 fold wxs ok m1 ad1 p3
+ad2 add ad 2
+m3 fold wxs ok m2 ad2 p4
+ad3 add ad 3
+m4 fold wxs ok m3 ad3 p5
+sp1 add sp 1
+m5 fold wxs ok m4 7 sp1
+m6 fold wxs full m5 8 1
+ret m6
+end
+# pop the top item into registers 16 (kind) 17 18 19
+fn wxpo u32x128x512 u32 -> u32x128x512
+sp call wxg p0 7
+s1 sub sp 1
+a mul s1 4
+ad add a 1344
+k call wxg p0 ad
+ad1 add ad 1
+x call wxg p0 ad1
+ad2 add ad 2
+y call wxg p0 ad2
+ad3 add ad 3
+z call wxg p0 ad3
+m1 fold wxs 1 p0 16 k
+m2 fold wxs 1 m1 17 x
+m3 fold wxs 1 m2 18 y
+m4 fold wxs 1 m3 19 z
+m5 fold wxs 1 m4 7 s1
+ret m5
+end
+# a zero instruction table (352 pages)
+fn z352 -> u32x128x352
+z call zpage
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end

@@ -1,0 +1,192 @@
+# ---------------------------------------------------------------------------------------------
+# Node emission (src/wasm.ts `emitNode`). The node context (28 u32): 0 frame, 1 node (index in
+# its function), 2 global node, 3 op, 4 operand count, 5 first operand, 6 callee, 7 predicate,
+# 8 type, 9 its tag, 10 its bytes, 11-16 the kinds and values of operands 0-2, 17-22 for each of
+# them a known-constant flag and its value or local (`wxres`), 23 24 the types of operands 0
+# and 1, 25 1 when the node aliases storage, 26 27 unused.
+
+# a node's storage (`bindSlot`, node p3 of frame p2, byte size p4): the result address for the
+# result slot, else the frame pointer (the first slot) or the frame pointer plus the offset; its
+# local is left in register 16
+fn wxslot u32x128x512 u32 u32 u32 u32 -> u32x128x512
+rs call wxg p0 11
+isr eq rs p3
+d0 eq p2 0
+isr0 and isr d0
+sret call wxg p0 9
+off call wxg p0 3
+nrs select isr0 false true
+al add p4 3
+alg and al 4294967292
+fr2 add off alg
+m1 fold wxs nrs p0 3 fr2
+z eq off 0
+first and nrs z
+nfirst select first false true
+other and nrs nfirst
+m2 fold wxfp first m1
+fpl call wxg m2 16
+m3 fold wxnl other m2
+nl call wxg m3 16
+fp call wxg m3 4
+m4 fold wxlg other m3 fp
+m5 fold wxkc other m4 off
+m6 fold wxop other m5 106
+m7 fold wxls other m6 nl
+l1 select first fpl nl
+loc select isr0 sret l1
+m8 fold wxrs 1 m7 p2 p3 0 loc
+m9 fold wxs 1 m8 16 loc
+ret m9
+end
+# the binary operator byte of op p0 (add sub mul and or xor shl shr; eq ne lt le gt ge)
+fn wxbop u32 -> u32
+e2 eq p0 2
+e3 eq p0 3
+e4 eq p0 4
+e5 eq p0 5
+e6 eq p0 6
+e7 eq p0 7
+e8 eq p0 8
+e9 eq p0 9
+e12 eq p0 12
+e13 eq p0 13
+e14 eq p0 14
+e15 eq p0 15
+e16 eq p0 16
+e17 eq p0 17
+r0 mov 0
+r2 select e2 106 r0
+r3 select e3 107 r2
+r4 select e4 108 r3
+r5 select e5 113 r4
+r6 select e6 114 r5
+r7 select e7 115 r6
+r8 select e8 116 r7
+r9 select e9 118 r8
+r12 select e12 70 r9
+r13 select e13 71 r12
+r14 select e14 73 r13
+r15 select e15 77 r14
+r16 select e16 75 r15
+r17 select e17 79 r16
+ret r17
+end
+# the value of the binary op p0 on u32 p1 and p2 (`evalOp`; comparisons are 0 / 1)
+fn wxeval u32 u32 u32 -> u32
+a2 add p1 p2
+a3 sub p1 p2
+a4 mul p1 p2
+a5 and p1 p2
+a6 or p1 p2
+a7 xor p1 p2
+a8 shl p1 p2
+a9 shr p1 p2
+c12 eq p1 p2
+c13 ne p1 p2
+c14 lt p1 p2
+c15 le p1 p2
+c16 gt p1 p2
+c17 ge p1 p2
+b12 select c12 1 0
+b13 select c13 1 0
+b14 select c14 1 0
+b15 select c15 1 0
+b16 select c16 1 0
+b17 select c17 1 0
+e2 eq p0 2
+e3 eq p0 3
+e4 eq p0 4
+e5 eq p0 5
+e6 eq p0 6
+e7 eq p0 7
+e8 eq p0 8
+e9 eq p0 9
+e12 eq p0 12
+e13 eq p0 13
+e14 eq p0 14
+e15 eq p0 15
+e16 eq p0 16
+e17 eq p0 17
+r0 mov 0
+r2 select e2 a2 r0
+r3 select e3 a3 r2
+r4 select e4 a4 r3
+r5 select e5 a5 r4
+r6 select e6 a6 r5
+r7 select e7 a7 r6
+r8 select e8 a8 r7
+r9 select e9 a9 r8
+r12 select e12 b12 r9
+r13 select e13 b13 r12
+r14 select e14 b14 r13
+r15 select e15 b15 r14
+r16 select e16 b16 r15
+r17 select e17 b17 r16
+ret r17
+end
+# mov (op 1) of a scalar: push the operand, set
+fn wxhmov u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+j at p2 1
+c0 at p2 17
+s0 at p2 18
+m1 fold wxpr 1 p0 c0 s0
+m2 fold wxset 1 m1 d j
+ret m2
+end
+# the binary ops (2-9, 12-17): folded to a constant when both operands are known u32 constants
+fn wxhbin u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+j at p2 1
+op at p2 3
+c0 at p2 17
+s0 at p2 18
+c1 at p2 19
+s1 at p2 20
+ty0 at p2 23
+k0 eq c0 1
+k1 eq c1 1
+u0 eq ty0 0
+kk and k0 k1
+cf and kk u0
+ncf select cf false true
+v call wxeval op s0 s1
+bo call wxbop op
+m1 fold wxrs cf p0 d j 1 v
+m2 fold wxrs cf m1 d j 2 1
+m3 fold wxpr ncf m2 c0 s0
+m4 fold wxpr ncf m3 c1 s1
+m5 fold wxop ncf m4 bo
+m6 fold wxset ncf m5 d j
+ret m6
+end
+# div (10) and rem (11): a zero divisor becomes 1 and the total result is selected
+fn wxhdiv u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+j at p2 1
+op at p2 3
+c0 at p2 17
+s0 at p2 18
+c1 at p2 19
+s1 at p2 20
+m1 fold wxnl 1 p0
+zl call wxg m1 16
+m2 fold wxpr 1 m1 c1 s1
+m3 fold wxop 1 m2 69
+m4 fold wxls 1 m3 zl
+isd eq op 10
+nd select isd false true
+m5 fold wxkc isd m4 4294967295
+m6 fold wxpr nd m5 c0 s0
+m7 fold wxpr 1 m6 c0 s0
+m8 fold wxpr 1 m7 c1 s1
+m9 fold wxlg 1 m8 zl
+m10 fold wxop 1 m9 114
+dv select isd 110 112
+m11 fold wxop 1 m10 dv
+m12 fold wxlg 1 m11 zl
+m13 fold wxop 1 m12 27
+m14 fold wxset 1 m13 d j
+ret m14
+end

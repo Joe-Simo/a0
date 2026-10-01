@@ -1,0 +1,174 @@
+# get (25): the element's value is loaded, or (an aggregate) its address computed
+fn wxhget u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 -> u32x128x512
+d at p2 0
+j at p2 1
+k0 at p2 11
+v0 at p2 12
+k1 at p2 13
+v1 at p2 14
+ty0 at p2 23
+len call wxty p3 ty0 1
+et call wxty p3 ty0 2
+etag call wxtag p3 et
+esz call wxbyt p4 et
+m1 fold wxea 1 p0 d k0 v0 k1 v1 len esz
+off call wxg m1 16
+prim lt etag 4
+nprim select prim false true
+nz ne off 0
+ag and nprim nz
+m2 fold wxld prim m1 off
+m3 fold wxadd ag m2 off
+m4 fold wxset 1 m3 d j
+ret m4
+end
+# at (27): field (literal operand 1, else 0) of a record, loaded or its address
+fn wxhat u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 u32x128x65 u32x128x65 -> u32x128x512
+d at p2 0
+j at p2 1
+k0 at p2 11
+v0 at p2 12
+k1 at p2 13
+v1 at p2 14
+ty0 at p2 23
+fs call wxty p3 ty0 1
+lit eq k1 3
+kk select lit v1 0
+off call wafo p4 p5 fs kk
+ft0 add fs kk
+ft call wa65 p4 ft0
+ftag call wxtag p3 ft
+m1 fold wxpsh 1 p0 d k0 v0
+prim lt ftag 4
+nprim select prim false true
+nz ne off 0
+ag and nprim nz
+m2 fold wxld prim m1 off
+m3 fold wxadd ag m2 off
+m4 fold wxset 1 m3 d j
+ret m4
+end
+# read (29): a (u32, io) result in the node's storage
+fn wxhread u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+j at p2 1
+by at p2 10
+k0 at p2 11
+v0 at p2 12
+m1 fold wxslot 1 p0 d j by
+l call wxg m1 16
+m2 fold wxlg 1 m1 l
+m3 fold wxpsh 1 m2 d k0 v0
+m4 fold wxe 1 m3 6 256
+m5 fold wxst 1 m4 0
+m6 fold wxlg 1 m5 l
+m7 fold wxpsh 1 m6 d k0 v0
+m8 fold wxst 1 m7 4
+ret m8
+end
+# write (30): the token, the word, then the token again
+fn wxhwrite u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
+d at p2 0
+j at p2 1
+k0 at p2 11
+v0 at p2 12
+k1 at p2 13
+v1 at p2 14
+m1 fold wxpsh 1 p0 d k0 v0
+m2 fold wxpsh 1 m1 d k1 v1
+m3 fold wxe 1 m2 6 257
+m4 fold wxpsh 1 m3 d k0 v0
+m5 fold wxset 1 m4 d j
+ret m5
+end
+# puts (31): the token, the array, its length
+fn wxhputs u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x384x65 -> u32x128x512
+d at p2 0
+j at p2 1
+k0 at p2 11
+v0 at p2 12
+k1 at p2 13
+v1 at p2 14
+ty1 at p2 24
+len call wxty p3 ty1 1
+m1 fold wxpsh 1 p0 d k0 v0
+m2 fold wxpsh 1 m1 d k1 v1
+m3 fold wxkc 1 m2 len
+m4 fold wxe 1 m3 6 258
+m5 fold wxpsh 1 m4 d k0 v0
+m6 fold wxset 1 m5 d j
+ret m6
+end
+# operand p1 of a call (operands from p3, table p4) of frame p2 becomes parameter source p1 of
+# frame p2 + 1: kind 1 a known constant (value), kind 0 a local
+fn wxsrc u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+o add p3 p1
+k call wxok p4 o
+v call wxov p4 o
+m1 fold wxres 1 p0 p2 k v
+c call wxg m1 16
+s call wxg m1 17
+dn add p2 1
+w0 mul p1 2
+w1 add w0 32
+w2 add w0 33
+m2 fold wxfs 1 m1 dn w1 c
+m3 fold wxfs 1 m2 dn w2 s
+ret m3
+end
+# push operand p1 (operands from p3, table p4) of frame p2
+fn wxpa u32x128x512 u32 u32 u32 u32x128x512 -> u32x128x512
+o add p3 p1
+k call wxok p4 o
+v call wxov p4 o
+r fold wxpsh 1 p0 p2 k v
+ret r
+end
+# call (19): a scalar callee that is small and needs no frame is emitted in place (its operands
+# become its parameters' sources); otherwise a call (an aggregate result is written through the
+# node's storage, the address pushed first)
+fn wxhcall u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+d at p2 0
+j at p2 1
+na at p2 4
+fa at p2 5
+ce at p2 6
+tag at p2 9
+by at p2 10
+prim lt tag 4
+nprim select prim false true
+big gt na 32
+m0 fold wxs big p0 8 2
+cs select prim na 0
+m1 fold wxsrc cs m0 d fa p5
+m2 fold wxcan prim m1 d ce 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10
+okr call wxg m2 16
+ok1 eq okr 1
+ok and prim ok1
+nok select ok false true
+direct and prim nok
+dn add d 1
+m3 fold wxpu ok m2 7 d j 0
+m4 fold wxenter ok m3 dn
+cdir select direct na 0
+m5 fold wxpa cdir m4 d fa p5
+x mul ce 2
+x1 add x 1
+mk0 call wa16 p11 x
+mk add mk0 259
+dp call wa16 p11 x1
+md call wxg m5 12
+mx call umax md dp
+mkk select direct mk 0
+m6 fold wxe direct m5 6 mk
+m7 fold wxs direct m6 12 mx
+m8 fold wxset direct m7 d j
+m9 fold wxslot nprim m8 d j by
+l call wxg m9 16
+m10 fold wxlg nprim m9 l
+cagg select nprim na 0
+m11 fold wxpa cagg m10 d fa p5
+m12 fold wxe nprim m11 6 mk
+m13 fold wxs nprim m12 12 mx
+ret m13
+end

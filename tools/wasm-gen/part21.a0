@@ -1,0 +1,167 @@
+# page p1 of machine table p2 into code table p0 (a dump of the machine state, for tests)
+fn wxdmq u32x128x512 u32 u32x128x512 -> u32x128x512
+pg get p2 p1
+r set p0 p1 pg
+ret r
+end
+# page p1 of instruction table p2 into code table p0 (a dump of the instruction list, for tests)
+fn wxdmp u32x128x512 u32 u32x128x352 -> u32x128x512
+pg get p2 p1
+r set p0 p1 pg
+ret r
+end
+# call table word p2 := p3 (u32x128x16: index and stack depth per function, words 2f and 2f + 1)
+fn wxdts u32x128x16 u32 u32 u32 -> u32x128x16
+pi shr p2 7
+wi and p2 127
+pg get p0 pi
+pg2 set pg wi p3
+r set p0 pi pg2
+ret r
+end
+# miss entry p1 of machine table p2 appended to the chunk's list (count, table)
+fn wxmg (u32,u32x128x8) u32 u32x128x512 -> (u32,u32x128x8)
+n at p0 0
+t at p0 1
+a add 32 p1
+e call wxg p2 a
+pi shr n 7
+wi and n 127
+pg get t pi
+pg2 set pg wi e
+t2 set t pi pg2
+n1 add n 1
+r rec n1 t2
+ret r
+end
+# function p0 + p1 of the chunk (first function p2): the record of its variants (see above)
+# state (io, variants so far, call table, misses, miss list, error)
+fn wxfun (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+io at p0 0
+nvar at p0 1
+dt at p0 2
+nm at p0 3
+ml at p0 4
+er at p0 5
+f add p2 p1
+own call waown p5 p10 p9 f
+ownu select own 1 0
+z call z512
+m0 fold wxemit 1 z f 0 0 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 dt
+n0 call wxg m0 0
+np0 call wxfg m0 0 4
+pb0 call wxg m0 10
+pc0 add pb0 np0
+zi call z352
+i0 fold wxcpi 352 zi m0
+c0r call wfzfin i0 n0 pc0
+dm eq p3 3
+cdz0 call z512
+cd0 fold wxdmp 352 cdz0 i0
+n0x mul n0 2
+cd01 fold wxs 1 cd0 65533 n0x
+dq eq p3 4
+cdq0 call z512
+cdq fold wxdmq 160 cdq0 m0
+cdq1 fold wxs 1 cdq 65533 20480
+c0a select dm cd01 c0r
+c0 select dq cdq1 c0a
+npl0 call wxg m0 5
+z2 call z512
+m1 fold wxemit ownu z2 f 1 npl0 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 dt
+n1 call wxg m1 0
+np1 call wxfg m1 0 4
+pb1 call wxg m1 10
+pc1 add pb1 np1
+zi1 call z352
+i1 fold wxcpi 352 zi1 m1
+c1r call wfzfin i1 n1 pc1
+cdz1 call z512
+cd1 fold wxdmp 352 cdz1 i1
+n1x mul n1 2
+cd11 fold wxs 1 cd1 65533 n1x
+c1 select dm cd11 c1r
+npl1 call wxg m1 5
+plt select own npl1 npl0
+nw0r call wxg c0 65533
+bad0 eq nw0r 4294967295
+nw0 select bad0 0 nw0r
+nw1r call wxg c1 65533
+bad1 eq nw1r 4294967295
+nw1x select bad1 0 nw1r
+nw1 select own nw1x 0
+mk0 fold wxcm nw0 0 c0
+mk1x fold wxcm nw1 0 c1
+fr0 call wxg m0 3
+fr1x call wxg m1 3
+fr1 select own fr1x 0
+f0a add fr0 15
+f0 and f0a 4294967280
+f1a add fr1 15
+f1b and f1a 4294967280
+fz select own f1b 0
+fm call umax f0 fz
+md0 call wxg m0 12
+md1x call wxg m1 12
+md1 select own md1x 0
+md call umax md0 md1
+dep add fm md
+e0 call wxg m0 8
+e1 call wxg m1 8
+e01 call umax e0 e1
+er2a call umax er e01
+bad01 or bad0 bad1
+fe select bad01 1 0
+er2 call umax er2a fe
+fio call waio p5 p10 p8 p11 f
+fb mul f 2
+ns call wa16 p14 fb
+fb1 add fb 1
+nlen call wa16 p14 fb1
+ps0 fold wxpsz npl0 0 m0 p6 0
+nl1a sub npl1 npl0
+nl1 select own nl1a 0
+ps1x fold wxpsz nl1 0 m1 p6 npl0
+ps1 select own ps1x 0
+psz add ps0 ps1
+nmk0 add mk0 7
+nmk1x add mk1x 7
+nmk1 select own nmk1x 0
+mh0 add nlen 5
+mh1 add mh0 nmk0
+msz add mh1 nmk1
+csz add nw0 nw1
+ownn select own 1 0
+nv add ownn 1
+w1 write io psz
+w2 write w1 msz
+w3 write w2 csz
+w4 fold wxpoc npl0 w3 m0 p6 p7 0
+w5 fold wxpoc nl1 w4 m1 p6 p7 npl0
+w6 write w5 plt
+w7 write w6 fio
+w8 write w7 dep
+w9 write w8 nlen
+w10 fold wxnmb nlen w9 p13 ns
+w11 write w10 nv
+rt call wxfw p5 f 3
+rtag call wxtag p9 rt
+rprim lt rtag 4
+w12 call wxmv w11 m0 c0 rprim
+w13 fold wxmvf ownn w12 m1 c1
+w14 fold wxwc nw0 w13 c0
+w15 fold wxwc nw1 w14 c1
+mc0 call wxg m0 15
+mc1x call wxg m1 15
+mc1 select own mc1x 0
+ms0 rec nm ml
+ms1 fold wxmg mc0 ms0 m0
+ms2 fold wxmg mc1 ms1 m1
+nm2 at ms2 0
+ml2 at ms2 1
+dtn0 fold wxdts 1 dt fb nvar
+dtn1 fold wxdts 1 dtn0 fb1 dep
+nvar2 add nvar nv
+r rec w15 nvar2 dtn1 nm2 ml2 er2
+ret r
+end

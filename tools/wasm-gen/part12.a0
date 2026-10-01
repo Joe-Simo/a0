@@ -1,0 +1,121 @@
+# ---------------------------------------------------------------------------------------------
+# fold / loop (src/wasm.ts `#iteration`). The loop context of frame d (words from 640 + 176 d):
+# 0 state local, 1 counter local, 2 aggregate state, 3 literal count flag, 4 the literal, 5 first
+# trip (after a vector fill), 6 predicate (loop), 7 predicate function, 8 body function, 9 node,
+# 10 body inlined, 11 body variant, 12 width of the state kept in locals (0 none), 13-16 carried
+# previous element (flag, get node, set node, local), 17 extras, 18 19 the count operand, 20
+# unroll, 21 phase, 22 copy, 23 phases, 24-28 and 29-33 the two phases (limit kind: 0 the count
+# operand, 1 a constant, 2 the bound local; literal flag, literal or constant, first trip,
+# copies per back edge), 34 the bound local, 35 fold, 37 body node count, 40-71 the induction
+# locals + 1 by body node, 72-103 their steps, 104-167 the extras as (known constant, value or
+# local), 168-175 the state words' locals.
+
+# extra p1 of the loop of frame p2 becomes parameter source p1 + 2 of frame p2 + 1
+fn wxhx u32x128x512 u32 u32 -> u32x128x512
+dn add p2 1
+a0 mul p1 2
+a1 add a0 104
+a2 add a1 1
+c call wxcg p0 p2 a1
+v call wxcg p0 p2 a2
+w1 add a0 36
+w2 add a0 37
+m1 fold wxfs 1 p0 dn w1 c
+m2 fold wxfs 1 m1 dn w2 v
+ret m2
+end
+# state word p1 of the loop of frame p2 as word p1 of frame p2 + 1's fields
+fn wxhf u32x128x512 u32 u32 -> u32x128x512
+dn add p2 1
+a add 168 p1
+l call wxcg p0 p2 a
+f add p1 10
+r fold wxfs 1 p0 dn f l
+ret r
+end
+# the host words of frame p2 + 1 for the loop of frame p2: parameter sources (state, counter,
+# extras), the literal bound, and for p3 = 1 (the body) the state words in locals and the carried
+# element; p3 = 2: only the width (the probe of the body)
+fn wxhost u32x128x512 u32 u32 u32 -> u32x128x512
+dn add p2 1
+st call wxcg p0 p2 0
+ic call wxcg p0 p2 1
+ne call wxcg p0 p2 17
+lf call wxcg p0 p2 3
+lv call wxcg p0 p2 4
+wd call wxcg p0 p2 12
+cf call wxcg p0 p2 13
+cg call wxcg p0 p2 14
+cs call wxcg p0 p2 15
+cl call wxcg p0 p2 16
+isb eq p3 1
+isp eq p3 2
+bp or isb isp
+wdv select bp wd 0
+cfv select isb cf 0
+cgv select isb cg 0
+csv select isb cs 0
+clv select isb cl 0
+m1 fold wxfs 1 p0 dn 32 0
+m2 fold wxfs 1 m1 dn 33 st
+m3 fold wxfs 1 m2 dn 34 0
+m4 fold wxfs 1 m3 dn 35 ic
+m5 fold wxfs 1 m4 dn 9 wdv
+m6 fold wxfs 1 m5 dn 18 cfv
+m7 fold wxfs 1 m6 dn 19 cgv
+m8 fold wxfs 1 m7 dn 20 csv
+m9 fold wxfs 1 m8 dn 21 clv
+m10 fold wxfs 1 m9 dn 22 lf
+m11 fold wxfs 1 m10 dn 23 lv
+m12 fold wxhx ne m11 p2
+m13 fold wxhf wdv m12 p2
+ret m13
+end
+# the bound on the counter of phase p3 of loop p2: the count operand (limit kind 0), the constant
+# of the phase (1) or the bound local (2)
+fn wxlim u32x128x512 u32 u32 u32 -> u32x128x512
+b0 mul p3 5
+b1 add b0 24
+kd call wxcg p0 p2 b1
+b2 add b1 2
+lit call wxcg p0 p2 b2
+bl call wxcg p0 p2 34
+ck call wxcg p0 p2 18
+cv call wxcg p0 p2 19
+k0 eq kd 0
+k1 eq kd 1
+k2 eq kd 2
+m1 fold wxpsh k0 p0 p2 ck cv
+m2 fold wxkc k1 m1 lit
+m3 fold wxlg k2 m2 bl
+ret m3
+end
+# the loop of frame p2 starts phase p3 (`counted`): a block when it can be left (a guard on the
+# counter, or a predicate), the guard, the loop; the first trip follows
+fn wxlst u32x128x512 u32 u32 u32 -> u32x128x512
+b0 mul p3 5
+b1 add b0 24
+b2 add b1 1
+b3 add b1 2
+b4 add b1 3
+lf call wxcg p0 p2 b2
+lit call wxcg p0 p2 b3
+from call wxcg p0 p2 b4
+pr call wxcg p0 p2 6
+ic call wxcg p0 p2 1
+g1 ne lf 0
+g2 gt lit from
+g3 and g1 g2
+guard select g3 false true
+pq ne pr 0
+exit or guard pq
+m1 fold wxe exit p0 14 64
+m2 fold wxlg guard m1 ic
+m3 fold wxlim guard m2 p2 p3
+m4 fold wxop guard m3 79
+m5 fold wxe guard m4 12 0
+m6 fold wxe 1 m5 8 0
+m7 fold wxcs 1 m6 p2 22 0
+m8 fold wxpu 1 m7 9 p2 0 0
+ret m8
+end

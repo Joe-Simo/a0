@@ -1,0 +1,167 @@
+# can function p3 (variant p4) be inlined by frame p2 into frame p2 + 1 (`#canInline`): depth
+# below INLINE_DEPTH, at most p5 nodes, a scalar result for the value variant, no io, no frame
+# storage, and when p6 > 0 (the host keeps p6 words of state in locals) with its scalar state
+# chain; a body that is opaque is requested (register 15 counts, words 32.. list them);
+# register 16 := 1 when it can be; frame p2 + 1 is then set up (rows and roots; the host's words
+# are kept)
+fn wxcan u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 -> u32x128x512
+dn add p2 1
+nn call wxfw p7 p3 5
+rw call wxfw p7 p3 6
+fp call wxfw p7 p3 2
+np call wxfw p7 p3 1
+rt call wxfw p7 p3 3
+g0 call wxfw p7 p3 4
+opq eq rw 0
+nopq select opq false true
+dok lt p2 3
+small le nn p5
+rtag call wxtag p11 rt
+rprim lt rtag 4
+v1 eq p4 1
+vok or v1 rprim
+b1 and dok nopq
+b2 and b1 small
+base and b2 vok
+cnt select base nn 0
+cnp select base np 0
+need0 and dok opq
+need1 and need0 small
+cm call wxg p0 15
+cmok lt cm 32
+need and need1 cmok
+m0 fold wxs need p0 15 cm
+idx add 32 cm
+cm1 add cm 1
+m01 fold wxs need m0 idx p3
+m02 fold wxs need m01 15 cm1
+m1 fold wxfset base m02 dn p3 p4 p7 p9
+m2 fold wxclr cnt m1 dn
+m3 fold wxs 1 m2 22 1
+hasw gt p6 0
+dochain and base hasw
+m4 fold wxsmall dochain m3 dn p3 p7 p8 p9 p10 p11 p12
+m5 fold wxana base m4 dn p3 p4 p7 p8 p9 p10 p11 p14
+m6 fold wxs 1 m5 18 0
+m7 fold wxnf cnt m6 dn g0 p8 p10 p11
+m8 fold wxs 1 m7 19 0
+m9 fold wxiop cnp m8 fp p12 p13
+m10 fold wxion cnt m9 g0 p10 p13
+nf call wxg m10 18
+io call wxg m10 19
+cr call wxg m10 22
+nonf eq nf 0
+noio eq io 0
+chok1 eq cr 1
+nhasw select hasw false true
+chok or chok1 nhasw
+o1 and base nonf
+o2 and o1 noio
+ok and o2 chok
+okv select ok 1 0
+m11 fold wxs 1 m10 16 okv
+ret m11
+end
+# enter frame p2 (set up by `wxcan`): its nodes, then its end, are run next
+fn wxenter u32x128x512 u32 u32 -> u32x128x512
+nn call wxfg p0 p2 3
+has gt nn 0
+m1 fold wxpu 1 p0 5 p2 0 0
+m2 fold wxpu has m1 1 p2 0 0
+m3 fold wxs 1 m2 6 p2
+ret m3
+end
+# push item (kind p2) copies of the host's words: the parameter sources of frame p2 + 1 are
+# written by the callers; here the end of inline frame p2 (`emitInline` after its nodes): the
+# scalar state words go back to the host's locals, or the result is pushed (value variant) or
+# copied into the state (owned variant, unless it is the state's storage already)
+fn wxec1 u32x128x512 u32 u32 u32 -> u32x128x512
+wk0 mul p1 2
+wk1 add wk0 4
+wk2 add wk0 5
+wk call wxbk p2 p3 wk1
+wv call wxbk p2 p3 wk2
+kk call wxg p0 wk
+vv call wxg p0 wv
+fi add p1 10
+fl call wxfg p0 p2 fi
+isl eq kk 0
+sml eq vv fl
+same and isl sml
+chg select same false true
+isc eq kk 1
+c2 and chg isc
+nisc select isc false true
+c3 and chg nisc
+m1 fold wxkc c2 p0 vv
+m2 fold wxlg c3 m1 vv
+ret m2
+end
+fn wxec2 u32x128x512 u32 u32 u32 u32 -> u32x128x512
+w1 sub p4 1
+k sub w1 p1
+wk0 mul k 2
+wk1 add wk0 4
+wk2 add wk0 5
+wk call wxbk p2 p3 wk1
+wv call wxbk p2 p3 wk2
+kk call wxg p0 wk
+vv call wxg p0 wv
+fi add k 10
+fl call wxfg p0 p2 fi
+isl eq kk 0
+sml eq vv fl
+same and isl sml
+chg select same false true
+m1 fold wxls chg p0 fl
+ret m1
+end
+fn wxend u32x128x512 u32 u32 u32x128x45 u32x128x65 -> u32x128x512
+variant call wxfg p0 p2 1
+rk call wxfg p0 p2 5
+rv call wxfg p0 p2 6
+width call wxfg p0 p2 9
+fi call wxfg p0 p2 0
+isn eq rk 1
+rj select isn rv 0
+fl call wxrg p0 p2 rj 2
+cc1 and fl 2
+cc2 ne cc1 0
+chn and isn cc2
+hasw gt width 0
+chainmode and hasw chn
+nchm select chainmode false true
+pw1 select hasw width 0
+wd select chainmode width 0
+m1 fold wxec1 wd p0 p2 rj
+m2 fold wxec2 wd m1 p2 rj wd
+rr call wxrg m2 p2 rj 3
+rc call wxg m2 0
+rkk shr rr 28
+rvv and rr 268435455
+rz eq rr 0
+isn2 eq rk 2
+ispa eq rv 0
+rp0 and isn2 ispa
+rn1 eq rkk 2
+rn2 eq rvv 0
+rn3 and rn1 rn2
+rnn1 and isn rn3
+rp1 or rp0 rnn1
+nrp0 select rp1 false true
+own eq variant 1
+val select own false true
+cpy and own nrp0
+cpy2 and cpy nchm
+vp and val nchm
+ps call wxfg m2 p2 33
+m3 fold wxlg cpy2 m2 ps
+m4 fold wxpsh cpy2 m3 p2 rk rv
+rt call wxfw p3 fi 3
+by call wxbyt p4 rt
+m5 fold wxcp cpy2 m4 by
+m6 fold wxpsh vp m5 p2 rk rv
+dm1 sub p2 1
+m7 fold wxs 1 m6 6 dm1
+ret m7
+end
