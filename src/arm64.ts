@@ -2328,7 +2328,7 @@ class FunctionEmitter {
           this.#emit(`movz w9, #${lane}`, `ins v${c.reg}.s[${lane}], w9`);
       } else if (c.kind === 'step') this.#emit(`movi ${v(c.reg)}, #${4 * unroll}`);
       else if (c.kind === 'query') {
-        const index = (queries?.[c.which] as { index: Val }).index;
+        const index = (queries as readonly { index: Val }[])[c.which]?.index as Val;
         this.#use(index);
         const r = this.#read(index, 'w9');
         this.#emit(r === 'wzr' ? `movi ${v(c.reg)}, #0` : `dup ${v(c.reg)}, ${r}`);
