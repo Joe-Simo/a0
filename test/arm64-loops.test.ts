@@ -132,3 +132,27 @@ test('arm64 carried recurrences start at the guard value instead of selecting it
   const body = /_a0_xs:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
   assert.doesNotMatch(body, /csel/);
 });
+
+test('arm64 fills that are only indexed are never stored', {
+  skip: ARM64_HOST ? false : 'needs macOS on Apple silicon',
+}, async () => {
+  const clang = findClang().path;
+  assert.ok(clang, 'clang is required as the assembler/linker driver');
+  const fill = (name: string, n: number): string =>
+    `fn ${name} u32x${n} u32 u32 u32 -> u32x${n}\nv mul p1 p2\nw xor v p3\nx shr w 3\nn set p0 p1 x\nret n\nend`;
+  const src = [
+    fill('lf12', 12),
+    fill('lf16', 16),
+    // every element written, indexed by a variable, a literal, and out of range
+    `fn lazy12 u32 u32 -> u32\nz arr ${zeros(12)}\na fold lf12 12 z p0 p1\nx get a p1\ny get a 11\nw get a 3\nq add p0 p1\nu get a q\ns add x y\nt xor s w\nr add t u\nret r\nend`,
+    `fn lazy16 u32 u32 -> u32\nz arr ${zeros(16)}\na fold lf16 16 z p0 p1\nx get a p1\ny get a 15\ns add x y\nret s\nend`,
+    // fewer trips than elements: the tail still holds the initial zeros, so the array is stored
+    `fn part16 u32 u32 -> u32\nz arr ${zeros(16)}\na fold lf16 8 z p0 p1\nx get a p1\ny get a 15\nw get a 7\ns add x y\nt add s w\nret t\nend`,
+  ].join('\n\n');
+  const asm = await checkAgainstInterpreter(src, ['lazy12', 'lazy16', 'part16'], clang);
+  const lazy = /_a0_lazy16:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.doesNotMatch(lazy, /sub sp/);
+  assert.doesNotMatch(lazy, /La0_lazy16_\d+:/);
+  const part = /_a0_part16:[\s\S]*?\n\tret\n/.exec(asm)?.[0] ?? '';
+  assert.match(part, /sub sp/);
+});

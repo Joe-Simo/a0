@@ -305,6 +305,13 @@ interface Selection {
   readonly deferred: ReadonlySet<string>;
   /** `arr` nodes whose only use is as the state of a fill fold that overwrites every element. */
   readonly deadInit: ReadonlySet<string>;
+  /**
+   * Fill folds over a whole u32 array whose only uses are `get`s: the array is never stored; each
+   * `get` evaluates the fill body (`fn`, whose result is the element value) at its index.
+   */
+  readonly lazyFill: ReadonlyMap<string, { readonly fn: TypedFunc; readonly length: number }>;
+  /** `arr` nodes that feed only a lazy fill: no slot, no code. */
+  readonly elided: ReadonlySet<string>;
   readonly compare: ReadonlySet<string>;
   readonly rotate: ReadonlyMap<string, Rotate>;
   readonly madd: ReadonlyMap<string, { readonly mul: Node; readonly other: Operand }>;
@@ -459,7 +466,42 @@ function selection(fn: TypedFunc): Selection {
     )
       deadInit.add(n.id);
   }
-  const result: Selection = { byId, deferred, deadInit, compare, rotate, madd, shifted };
+  const lazyFill = new Map<string, { fn: TypedFunc; length: number }>();
+  for (const n of fn.nodes) {
+    if (n.op !== 'fold') continue;
+    const t = fn.types.get(n.id);
+    const list = uses.get(n.id) ?? [];
+    if (t === undefined || isPrimitive(t) || t.kind !== 'arr' || list.length === 0) continue;
+    if (!list.every((u) => u.consumer?.op === 'get' && u.position === 0)) continue;
+    const run = fillRun(fn, n);
+    // Every element is written (count == length), so the initial array is dead.
+    if (run === undefined || run.count !== t.length) continue;
+    const fillFn: TypedFunc = {
+      ...run.body,
+      name: `${run.body.name}#fill`,
+      result: 'u32',
+      nodes: run.nodes,
+      ret: run.value,
+    };
+    lazyFill.set(n.id, { fn: fillFn, length: t.length });
+  }
+  // The initial array of a lazy fill is never read or stored: it needs no slot.
+  const elided = new Set<string>();
+  for (const id of deadInit) {
+    const fold = uses.get(id)?.[0]?.consumer;
+    if (fold !== undefined && lazyFill.has(fold.id)) elided.add(id);
+  }
+  const result: Selection = {
+    byId,
+    deferred,
+    deadInit,
+    elided,
+    lazyFill,
+    compare,
+    rotate,
+    madd,
+    shifted,
+  };
   SELECTIONS.set(fn, result);
   return result;
 }
@@ -806,9 +848,7 @@ function scanOf(
   defs: ReadonlyMap<string, Node>,
   resolve: (o: Operand) => Operand,
   ret: Node,
-):
-  | { e: Operand; insn: 'add' | 'eor'; seed: Operand; plumbing: readonly string[] }
-  | undefined {
+): { e: Operand; insn: 'add' | 'eor'; seed: Operand; plumbing: readonly string[] } | undefined {
   const value = ret.args[2];
   const v = value === undefined ? undefined : resolve(value);
   const vn = v?.kind === 'node' ? defs.get(v.id) : undefined;
@@ -872,7 +912,13 @@ function scatterOf(
   resolve: (o: Operand) => Operand,
   ret: Node,
 ):
-  | { k: Operand; w: Operand; insn: 'add' | 'sub' | 'eor' | 'orr' | 'and'; swap: boolean; plumbing: readonly string[] }
+  | {
+      k: Operand;
+      w: Operand;
+      insn: 'add' | 'sub' | 'eor' | 'orr' | 'and';
+      swap: boolean;
+      plumbing: readonly string[];
+    }
   | undefined {
   const k = resolve(ret.args[1] as Operand);
   if (k.kind !== 'node') return undefined;
@@ -1358,7 +1404,9 @@ interface Carry {
  * element at (2^32 - 1) mod N. It is carried in a register instead of reloaded, which
  * takes the store-to-load round trip off the recurrence.
  */
-function carriedRead(body: TypedFunc):
+function carriedRead(
+  body: TypedFunc,
+):
   | { get: string; set: string; index?: string; seed?: { select: string; value: Operand } }
   | undefined {
   const ret = body.ret;
@@ -2035,8 +2083,8 @@ class FunctionEmitter {
     }
     for (const r of reds) {
       perCopy.add(r.acc);
-      perCopy.add(r.x);
-      if (r.fused !== undefined) {
+      if (r.fused === undefined) perCopy.add(r.x);
+      else {
         perCopy.add(r.fused.a);
         perCopy.add(r.fused.b);
       }
@@ -2045,17 +2093,21 @@ class FunctionEmitter {
     if (idxLive && idxReg !== undefined) perCopy.add(idxReg);
     for (const c of plan.consts) if (c.kind !== 'index') perCopy.delete(c.reg);
     for (const r of ivStep.values()) perCopy.delete(r);
+    // Registers the rewritten loop no longer touches are free for the extra copies.
+    const keep = new Set<VReg>([...perCopy, ...plan.consts.map((c) => c.reg), ...ivStep.values()]);
+    if (plan.scan !== undefined) keep.add(plan.scan.carry);
+    const spare = VECTOR_POOL.filter((r) => !keep.has(r));
     let unroll = 1;
     if (plain)
       for (const u of [4, 2])
-        if (trips % u === 0 && trips >= u && perCopy.size * (u - 1) <= free.length) {
+        if (trips % u === 0 && trips >= u && perCopy.size * (u - 1) <= spare.length) {
           unroll = u;
           break;
         }
     const maps: Map<VReg, VReg>[] = [new Map()];
     for (let k = 1; k < unroll; k += 1) {
       const m = new Map<VReg, VReg>();
-      for (const r of perCopy) m.set(r, free.shift() as VReg);
+      for (const r of perCopy) m.set(r, spare.shift() as VReg);
       maps.push(m);
     }
     const at = (k: number, r: VReg): VReg => maps[k]?.get(r) ?? r;
@@ -2124,7 +2176,9 @@ class FunctionEmitter {
       const seed = this.#resolve(sub, plan.scan.seed);
       this.#use(seed);
       const r = this.#read(seed, 'w9');
-      this.#emit(r === 'wzr' ? `movi ${v(plan.scan.carry)}, #0` : `dup ${v(plan.scan.carry)}, ${r}`);
+      this.#emit(
+        r === 'wzr' ? `movi ${v(plan.scan.carry)}, #0` : `dup ${v(plan.scan.carry)}, ${r}`,
+      );
     }
     plan.arrays.forEach((o, k) => {
       const val = this.#resolve(sub, o);
@@ -2246,8 +2300,7 @@ class FunctionEmitter {
           `add ${v(at(k, plan.index.reg))}, ${v(at(k, plan.index.reg))}, ${v(plan.index.step)}`,
         );
     if (plain)
-      for (const p of ptrs)
-        this.#emit(`add ${VECTOR_PTRS[p]}, ${VECTOR_PTRS[p]}, #${16 * unroll}`);
+      for (const p of ptrs) this.#emit(`add ${VECTOR_PTRS[p]}, ${VECTOR_PTRS[p]}, #${16 * unroll}`);
     else this.#emit('add x10, x10, #16');
     this.#emit(`subs w11, w11, #${4 * unroll}`, `b.ne ${top}`);
     for (const { op, acc, field } of reds) {
@@ -2707,6 +2760,7 @@ class FunctionEmitter {
       }
       case 'arr':
       case 'rec': {
+        if (sel.elided.has(n.id)) return;
         // A feed (see feedsOf) may already have defined the slot.
         if (!(this.#dry && this.#defs.has(key))) this.#def(key, t);
         if (sel.deadInit.has(n.id)) return;
@@ -2741,6 +2795,40 @@ class FunctionEmitter {
         return;
       }
       case 'get': {
+        const lazy =
+          (n.args[0] as Operand).kind === 'node'
+            ? sel.lazyFill.get((n.args[0] as { id: string }).id)
+            : undefined;
+        if (lazy !== undefined) {
+          const fold = env.fn.nodes.find((m) => m.id === (n.args[0] as { id: string }).id) as Node;
+          const extras = fold.args.slice(2).map((o) => this.#val(env, o));
+          let at: Val;
+          if ((b as Val).kind === 'lit')
+            at = { kind: 'lit', value: (b as { value: number }).value % lazy.length, type: 'u32' };
+          else {
+            const ri = this.#index(b as Val, lazy.length);
+            const ikey = `${key}#i`;
+            this.#def(ikey, 'u32');
+            this.#set(ikey, (d) => this.#emit(`mov ${d}, ${ri}`), true);
+            at = { kind: 'key', key: ikey, type: 'u32' };
+            this.#use(at);
+          }
+          const fkey = `${key}#f`;
+          this.#inline(
+            env,
+            lazy.fn,
+            [{ kind: 'lit', value: 0, type: 'u32' }, at, ...extras],
+            false,
+            fkey,
+            'u32',
+            `${n.id}.f`,
+            'bind',
+          );
+          const fv: Val = { kind: 'key', key: fkey, type: 'u32' };
+          this.#use(fv);
+          scalar((d) => this.#into(d, fv), true);
+          return;
+        }
         const src = aggregateOf(a as Val, 'an array');
         const at = src.type;
         if (isPrimitive(at) || at.kind !== 'arr') refuse('get needs an array');
@@ -2858,6 +2946,8 @@ class FunctionEmitter {
       }
       case 'fold':
       case 'loop': {
+        // A fill whose array is only ever indexed is never stored (see `lazyFill`).
+        if (sel.lazyFill.has(n.id)) return;
         const [count, init, ...extras] = vals as [Val, Val, ...Val[]];
         const name = n.callee as string;
         const callee = env.fn.calls.get(name) ?? refuse(`unknown callee ${name}`);
