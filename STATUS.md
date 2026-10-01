@@ -131,3 +131,4 @@ Dated records of the work, kept for the evidence trail (figures are as measured 
 - [2026-10-01 optimizer, clean-load benchmarks and the A0 wasm path](docs/history/2026-10-01-optimizer-and-benchmarks.md)
 - [2026-10-01 equal context (scoped views for every language) and the site charts](docs/history/2026-10-01-equal-context-and-site-charts.md)
 - [2026-10-01 the hung stage executable: Node's stdin pipe on macOS 27 beta](docs/history/2026-10-01-hung-stage-executable.md)
+- [2026-10-01 direct arm64 backend: loop kernels, A0-driver row, mat4, branchy](docs/history/2026-10-01-arm64-loop-kernels.md)

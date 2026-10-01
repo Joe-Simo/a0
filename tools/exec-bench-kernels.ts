@@ -283,6 +283,56 @@ int main(int argc, char **argv) {
 `;
 }
 
+/**
+ * A0 source of a whole-program driver around `kernel`: `a0drive(n)` folds the kernel over `n`
+ * iterations with the same xorshift32 inputs and xor-accumulated results as `cDriver` (a record
+ * state of the generator and the checksum), so the direct arm64 backend sees the loop and the call
+ * together, as every other language's own driver does. Append it to `kernel.a0`.
+ */
+export function a0DriverSource(kernel: Kernel): string {
+  const lines = ['s0 at p0 0', 'acc at p0 1'];
+  let prev = 's0';
+  const args: string[] = [];
+  for (let i = 0; i < kernel.arity; i += 1) {
+    lines.push(
+      `x${i}a shl ${prev} 13`,
+      `x${i}b xor ${prev} x${i}a`,
+      `x${i}c shr x${i}b 17`,
+      `x${i}d xor x${i}b x${i}c`,
+      `x${i}e shl x${i}d 5`,
+      `x${i}f xor x${i}d x${i}e`,
+    );
+    args.push(`x${i}f`);
+    prev = `x${i}f`;
+  }
+  lines.push(
+    `r call ${kernel.name} ${args.join(' ')}`,
+    'acc2 xor acc r',
+    `o1 put p0 0 ${prev}`,
+    'o2 put o1 1 acc2',
+    'ret o2',
+  );
+  return `fn a0drive_step (u32,u32) u32 -> (u32,u32)\n${lines.join('\n')}\nend\nfn a0drive u32 -> u32\nst rec 2654435769 0\nres fold a0drive_step p0 st\nout at res 1\nret out\nend`;
+}
+
+/** The C main that times `a0_a0drive(iters)` and prints "ns-per-call checksum" like `cDriver`. */
+export const A0_DRIVER_MAIN = `#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+extern uint32_t a0_a0drive(uint32_t);
+int main(int argc, char **argv) {
+  long iters = argc > 1 ? atol(argv[1]) : 1000000;
+  struct timespec t0, t1;
+  clock_gettime(CLOCK_MONOTONIC, &t0);
+  uint32_t r = a0_a0drive((uint32_t)iters);
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  double ns = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / (double)iters;
+  printf("%.4f %u\\n", ns, r);
+  return 0;
+}
+`;
+
 export function rustDriver(kernel: Kernel): string {
   const args = Array.from({ length: kernel.arity }, (_, i) => `a${i}`).join(', ');
   return `${kernel.rust}
