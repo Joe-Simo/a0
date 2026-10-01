@@ -37,7 +37,9 @@ test('the home page explains every benchmark in plain words', { timeout: 600_000
     /Fastest on \d+ of \d+ test programs; on every one, A0 takes at most \d+\.\d\dx as long as the fastest language/,
     /of the other \d+ languages are more than 5% faster than A0/,
     /A0 takes \d+\.\d\d ms from launch to first result: place \d+ of \d+ languages \(1 = fastest\)/,
-    /Writing the \d+ test programs takes A0 \d+ tokens: place \d+ of \d+ languages \(1 = fewest\)/,
+    /A0 \(canonical\) takes \d+ tokens: place \d+ of \d+ \(1 = fewest\), fewer than \d+ of the other \d+ languages, equal to \d+ and more than \d+\. A0 \(dense\) takes \d+: place \d+, fewer than \d+, equal to \d+, more than \d+; its lossless form, with the same ids and node order, takes \d+: place \d+/,
+    /Over a session of 10 edits, A0 \(canonical\) costs \d+ tokens per task: place \d+ of \d+ \(1 = fewest\), cheaper than \d+ of the other \d+ languages, equal to \d+, dearer than \d+\. A0 \(dense, lean view with callee bodies\) costs \d+: place \d+, cheaper than \d+, equal to \d+, dearer than \d+/,
+    /the dense primer is larger \(\d+ tokens against \d+ for canonical\)/,
     /At 4000 functions an A0 edit costs \d+ tokens against \d+ for TypeScript, which is \d+\.\dx fewer than TypeScript/,
     /A0's checker takes \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)/,
     /Checking and running takes A0 \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)/,
@@ -56,12 +58,26 @@ test('the home page explains every benchmark in plain words', { timeout: 600_000
     assert.ok(text.includes(needle), `missing: ${needle}`);
   for (const gone of ['A0 rank', 'A0 vs fastest other', 'fastest other\n'])
     assert.ok(!text.includes(gone), `unexplained label is back: ${gone}`);
-  // One disclosure per many-language chart (speed, startup, tokens, check, check and run), closed
+  // One disclosure per many-language chart (speed, startup, tokens, edit cost, check, check and run), closed
   // by default, and the fold hides no language: every row is still in the document.
   const disclosures = html.match(
-    /<details class="more"><summary>Show all \d+ languages<\/summary>/g,
+    /<details class="more"><summary>Show all \d+ (languages|rows \(\d+ languages, A0 in two forms\))<\/summary>/g,
   );
-  assert.equal(disclosures?.length, 5);
+  assert.equal(disclosures?.length, 6);
+  // A0 is plotted in both forms, never only the dense one: each token and edit-cost chart has the
+  // canonical and the dense subject as separate highlighted rows, and dense is defined in one line.
+  for (const label of ['A0 (canonical)', 'A0 (dense)'])
+    assert.ok(
+      (
+        html.match(
+          new RegExp(`lrow me"><span class="lbl">${label.replace(/[()]/g, '\\$&')}<`, 'g'),
+        ) ?? []
+      ).length >= 4,
+      `${label} is a highlighted subject in the token and edit-cost charts`,
+    );
+  assert.ok(
+    text.includes('Dense is the same program in a shorter surface form; it converts losslessly'),
+  );
   const speed =
     /<details class="more"><summary>Show all (\d+) languages<\/summary>(.*?)<\/details>/s.exec(
       html,

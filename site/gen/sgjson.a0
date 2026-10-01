@@ -725,6 +725,154 @@ s3 fold wr64 cy s2 vslot v
 ret s3
 end
 
+# ---- b48: results/ai-edit-b48-dense.json (set b, 49 languages, proto2), into the axes table.
+# 1899 subjects; subject s (< 60): id hash 1900 + s, field f of its pooled cell at 1960 + 60 f + s
+# (x 100; f: one, acc, n, S, primer, read, write, t1, t10, tinf); A0's rank (rank, ties, of) for metric
+# m at 1800 + 3m, the dense bodies subject's at 1820 + 3m, its wins, ties, losses at 1840 + 3m, and
+# A0's counted over the other languages' a0Versus at 1860 + 3m (m: one-shot, after repair, cost 1,
+# cost 10, cost inf).
+# the index of the key at depth p1 among the p4 consecutive words from p3 (9 when none)
+fn kwstep u32 u32 u32x128x512 u32 u32 -> u32
+w add p3 p1
+h call whash p2 w
+e eq h p4
+r select e p1 p0
+ret r
+end
+fn kwidx u32x128x64 u32 u32x128x512 u32 u32 -> u32
+k call key p0 p1
+r fold kwstep p4 99 p2 p3 k
+ret r
+end
+fn hb48 u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+iskey eq t 1
+isnum eq t 3
+isstr eq t 2
+d3 eq d 3
+d4 eq d 4
+d5 eq d 5
+pr call kis p0 1 p2 349
+lk call kis p0 2 p2 1
+ak call kis p0 2 p2 362
+rk call kis p0 2 p2 363
+tk call kis p0 2 p2 364
+# a new subject under proto2.languages
+x0 and iskey d3
+x1 and x0 pr
+x2 and x1 lk
+c1 select x2 1 0
+n call g p0 1899
+id call key p0 3
+iw add n 1900
+s1 fold wr64 c1 p0 iw id
+n1 add n 1
+s2 fold wr64 c1 s1 1899 n1
+# the pooled cell: proto2.languages.ID.pooled.F
+f call kwidx s2 5 p2 351 10
+fo ne f 99
+pk call kis s2 4 p2 350
+y0 and isnum d5
+y1 and y0 pr
+y2 and y1 lk
+y3 and y2 pk
+y4 and y3 fo
+cy select y4 1 0
+nn call g s2 1899
+last sub nn 1
+fb mul f 60
+fb1 add fb 1960
+slot add fb1 last
+v100 call num s2 100
+s3 fold wr64 cy s2 slot v100
+# a0Versus: proto2.languages.ID.a0Versus.METRIC = win | tie | loss, counted
+avk call kis s3 4 p2 361
+m5 call kwidx s3 5 p2 372 5
+iwn call hashis s3 p2 365
+itn call hashis s3 p2 366
+iln call hashis s3 p2 367
+jt select itn 1 99
+jl select iln 2 jt
+j select iwn 0 jl
+z0 and isstr d5
+z1 and z0 pr
+z2 and z1 lk
+z3 and z2 avk
+mo ne m5 99
+jo ne j 99
+z4 and z3 mo
+z5 and z4 jo
+cz select z5 1 0
+m3 mul m5 3
+zi0 add m3 1860
+zi add zi0 j
+s4 fold addw cz s3 zi 1
+# proto2.a0Rank.METRIC.(rank | ties | of)
+ma call kwidx s4 3 p2 372 5
+kaa call kwidx s4 4 p2 368 3
+q0 and isnum d4
+q1 and q0 pr
+q2 and q1 ak
+mao ne ma 99
+kao ne kaa 99
+q3 and q2 mao
+q4 and q3 kao
+cq select q4 1 0
+m3a mul ma 3
+qi0 add m3a 1800
+qi add qi0 kaa
+vq call num s4 1
+s5 fold wr64 cq s4 qi vq
+# proto2.denseRank.SUBJECT.METRIC.(rank | ties | of) and denseTotals.SUBJECT.METRIC.(win | tie | loss)
+sk call kis s5 3 p2 371
+md call kwidx s5 4 p2 372 5
+kdd call kwidx s5 5 p2 368 3
+ktt call kwidx s5 5 p2 365 3
+mdo ne md 99
+u0 and isnum d5
+u1 and u0 pr
+u2 and u1 sk
+u3 and u2 mdo
+ur and u3 rk
+ut and u3 tk
+kdo ne kdd 99
+kto ne ktt 99
+ur2 and ur kdo
+ut2 and ut kto
+cur select ur2 1 0
+cut select ut2 1 0
+m3d mul md 3
+ri0 add m3d 1820
+ri add ri0 kdd
+ti0 add m3d 1840
+ti add ti0 ktt
+vd call num s5 1
+s6 fold wr64 cur s5 ri vd
+s7 fold wr64 cut s6 ti vd
+ret s7
+end
+
+# ---- densetok: results/dense-tokens.json, into the axes table: kernelTotals.canonical, denseExact and
+# dense at 2600, 2601, 2602.
+fn hdt u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+isnum eq t 3
+d2 eq d 2
+kk call kis p0 1 p2 377
+k call kwidx p0 2 p2 378 3
+ko ne k 99
+a0 and isnum d2
+a1 and a0 kk
+a2 and a1 ko
+c select a2 1 0
+ix add k 2600
+v call num p0 1
+r fold wr64 c p0 ix v
+ret r
+end
+
 fn onev u32x128x64 u32 u32x128x512 -> u32x128x64
 role call g p0 13
 e eq role 1
@@ -734,6 +882,8 @@ p eq role 4
 x eq role 6
 h eq role 7
 k eq role 8
+b eq role 9
+q eq role 10
 ce select e 1 0
 cc select c 1 0
 cd select d 1 0
@@ -741,6 +891,8 @@ cp select p 1 0
 cx select x 1 0
 ch select h 1 0
 ck select k 1 0
+cb select b 1 0
+cq select q 1 0
 s1 fold hexec ce p0 p2
 s2 fold hcost cc s1 p2
 s3 fold hedit cd s2 p2
@@ -748,7 +900,9 @@ s4 fold hpar cp s3 p2
 s5 fold haxes cx s4 p2
 s6 fold hhw ch s5 p2
 s7 fold htok ck s6 p2
-ret s7
+s8 fold hb48 cb s7 p2
+s9 fold hdt cq s8 p2
+ret s9
 end
 # event p2 at depth p3, handled (fold body)
 fn event u32x128x64 u32 u32 u32 u32x128x512 -> u32x128x64

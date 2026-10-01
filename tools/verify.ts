@@ -43,6 +43,7 @@ import {
   findRiscv64Gcc,
   findSimavr,
   findWasmClang,
+  rosettaStuck,
   runTool,
   type ToolInfo,
   type ToolResult,
@@ -412,17 +413,16 @@ export async function checkArm64(
 
 /** How this host can build and run x86-64 code: natively, through Rosetta, or not at all. */
 function x86Host(clang: string): { arch: string[]; runner: string[] } | string {
+  if (process.env.A0_SKIP_X86 === '1')
+    return 'needs a working x86-64 host: A0_SKIP_X86=1 disables it (a Rosetta that cannot start new binaries)';
   if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
     return { arch: [], runner: [] };
   if (process.platform !== 'darwin' || process.arch !== 'arm64')
     return `needs macOS or Linux on x86-64, or macOS on Apple silicon with Rosetta; found ${process.platform}-${process.arch}`;
   if (!runTool('/usr/bin/arch', ['-x86_64', '/usr/bin/true']).ok)
     return 'Rosetta 2 is not installed (softwareupdate --install-rosetta)';
-  const probe = runTool(clang, ['-arch', 'x86_64', '-x', 'c', '-o', '/dev/null', '-'], {
-    input: 'int main(void) { return 0; }\n',
-  });
-  if (!probe.ok)
-    return `clang cannot build for x86_64 (no x86_64 SDK slice): ${probe.stderr.slice(0, 200)}`;
+  const stuck = rosettaStuck(clang);
+  if (stuck !== undefined) return stuck;
   return { arch: ['-arch', 'x86_64'], runner: ['/usr/bin/arch', '-x86_64'] };
 }
 

@@ -161,3 +161,19 @@ test('loss ledger: slowing a kernel in the recorded results is caught end to end
     assert.ok(after.added.some((e) => e.kernel === kernel && e.axis === 'ns-per-call'));
   });
 });
+
+test('loss ledger: canonical A0 and dense A0 are separate subjects on the tokens axes', () => {
+  const all = observations().filter((o) => o.axis === 'tokens-kernel');
+  const canonical = all.filter((o) => o.subject === undefined && isLoss(o));
+  const dense = all.filter((o) => o.subject === 'a0-dense' && isLoss(o));
+  // The canonical losses stay recorded: many kernels, many competitors.
+  assert.ok(canonical.length > 300, `canonical token losses: ${canonical.length}`);
+  // Dense is recorded on its own rows, never merged into the canonical ones.
+  assert.ok(dense.length > 0 && dense.every((o) => o.id.startsWith('lang-axes-dense|')));
+  assert.ok(new Set(all.map((o) => o.id)).size === all.length, 'ids are unique');
+  // The one kernel dense still loses is noop (the benchmark kernel is `add 0`, `mul 1`, `xor 0`).
+  assert.deepEqual([...new Set(dense.map((o) => o.kernel))], ['noop']);
+  const ledger = readLedger();
+  assert.ok(ledger.entries.some((e) => e.subject === 'a0-dense' && e.kernel === 'noop'));
+  assert.ok(ledger.entries.some((e) => e.axis === 'tokens-kernel' && e.subject === undefined));
+});

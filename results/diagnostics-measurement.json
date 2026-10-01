@@ -1,0 +1,201 @@
+{
+  "method": "tools/ai-edit-experiment.ts scripted replies, A0 structured, MODEL_GUIDE.rules-merged.txt, sets a b d e f; cost as STATUS held-out sets E and F (system 1.25x first call, 0.05x repair call; o200k tokens per task)",
+  "rows": {
+    "haiku baseline": {
+      "tasks": 62,
+      "oneShot": 51,
+      "afterRepair": 58,
+      "repairs": 11,
+      "primer": 149,
+      "codeRead": 138,
+      "write": 28,
+      "cacheAdjTotal": 314
+    },
+    "haiku fixes": {
+      "tasks": 62,
+      "oneShot": 55,
+      "afterRepair": 59,
+      "repairs": 7,
+      "primer": 148,
+      "codeRead": 128,
+      "write": 29,
+      "cacheAdjTotal": 305
+    },
+    "sonnet baseline": {
+      "tasks": 62,
+      "oneShot": 62,
+      "afterRepair": 62,
+      "repairs": 0,
+      "primer": 148,
+      "codeRead": 89,
+      "write": 24,
+      "cacheAdjTotal": 260
+    },
+    "sonnet fixes": {
+      "tasks": 62,
+      "oneShot": 62,
+      "afterRepair": 62,
+      "repairs": 0,
+      "primer": 148,
+      "codeRead": 89,
+      "write": 23,
+      "cacheAdjTotal": 259
+    }
+  },
+  "recordedTsRust": {
+    "haiku ts": {
+      "tasks": 62,
+      "oneShot": 53,
+      "accepted": 61,
+      "total": 326
+    },
+    "haiku rust": {
+      "tasks": 62,
+      "oneShot": 58,
+      "accepted": 59,
+      "total": 337
+    },
+    "sonnet ts": {
+      "tasks": 62,
+      "oneShot": 62,
+      "accepted": 62,
+      "total": 283
+    },
+    "sonnet rust": {
+      "tasks": 62,
+      "oneShot": 60,
+      "accepted": 62,
+      "total": 306
+    }
+  },
+  "pairedCheckerRejections": {
+    "tasks": 8,
+    "baselineRepaired": 7,
+    "newRepaired": 7,
+    "baselineMeanRejectionTokens": 30,
+    "newMeanRejectionTokens": 60,
+    "baselineMeanTotal": 505,
+    "newMeanTotal": 538
+  },
+  "paired": [
+    {
+      "task": "sum-squares",
+      "firstAttempt": "wrong output (no diagnostic)",
+      "baselineRejectionTokens": 105,
+      "baselineRepair": false,
+      "newRejectionTokens": 105,
+      "newRepair": true,
+      "baselineTotal": 596,
+      "newTotal": 549
+    },
+    {
+      "task": "b-bounds-largest",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 18,
+      "baselineRepair": true,
+      "newRejectionTokens": 57,
+      "newRepair": true,
+      "baselineTotal": 704,
+      "newTotal": 743
+    },
+    {
+      "task": "d-total-six",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 26,
+      "baselineRepair": true,
+      "newRejectionTokens": 82,
+      "newRepair": false,
+      "baselineTotal": 421,
+      "newTotal": 695
+    },
+    {
+      "task": "d-isdiv-bool",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 34,
+      "baselineRepair": true,
+      "newRejectionTokens": 65,
+      "newRepair": true,
+      "baselineTotal": 432,
+      "newTotal": 463
+    },
+    {
+      "task": "e-sum-range",
+      "firstAttempt": "wrong output (no diagnostic)",
+      "baselineRejectionTokens": 211,
+      "baselineRepair": false,
+      "newRejectionTokens": 211,
+      "newRepair": true,
+      "baselineTotal": 1034,
+      "newTotal": 707
+    },
+    {
+      "task": "e-popcount-fold",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 20,
+      "baselineRepair": false,
+      "newRejectionTokens": 49,
+      "newRepair": true,
+      "baselineTotal": 638,
+      "newTotal": 470
+    },
+    {
+      "task": "e-thread-param",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 17,
+      "baselineRepair": true,
+      "newRejectionTokens": 54,
+      "newRepair": true,
+      "baselineTotal": 456,
+      "newTotal": 493
+    },
+    {
+      "task": "f-divrem-pair",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 39,
+      "baselineRepair": true,
+      "newRejectionTokens": 59,
+      "newRepair": true,
+      "baselineTotal": 423,
+      "newTotal": 443
+    },
+    {
+      "task": "f-sumlow-bound",
+      "firstAttempt": "wrong output (no diagnostic)",
+      "baselineRejectionTokens": 139,
+      "baselineRepair": false,
+      "newRejectionTokens": 139,
+      "newRepair": false,
+      "baselineTotal": 840,
+      "newTotal": 720
+    },
+    {
+      "task": "f-countabove-gt",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 50,
+      "baselineRepair": true,
+      "newRejectionTokens": 50,
+      "newRepair": true,
+      "baselineTotal": 540,
+      "newTotal": 542
+    },
+    {
+      "task": "f-addover-bool",
+      "firstAttempt": "checker rejection",
+      "baselineRejectionTokens": 34,
+      "baselineRepair": true,
+      "newRejectionTokens": 65,
+      "newRepair": true,
+      "baselineTotal": 426,
+      "newTotal": 457
+    }
+  ],
+  "pairedWithHints": {
+    "note": "earlier build: rejection ended with [A0nnnn] and the fix all line",
+    "tasks": 8,
+    "baselineRepaired": 7,
+    "repaired": 6,
+    "meanRejectionTokens": 66,
+    "meanTotal": 555
+  },
+  "decision": "default rejection is compact (no id suffix, no fix all line); hints are opt-in"
+}

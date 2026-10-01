@@ -31,6 +31,7 @@ import {
 } from '../src/edit.js';
 import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
+import { findClang, rosettaStuck } from '../src/toolchain.js';
 import { generateFiller } from '../tools/ai-edit-tasks-c.js';
 import { generateCorpus } from '../tools/corpus.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
@@ -1173,12 +1174,17 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.match(typeErr.fix ?? '', /u32/);
   assert.deepEqual(Object.keys(typeErr.toJSON()).sort(), [
     'actual',
+    'applicability',
     'code',
+    'edits',
     'expected',
     'fix',
+    'id',
     'line',
     'message',
   ]);
+  // The coarse class stays `code`; the table code is `id`.
+  assert.equal(typeErr.id, 'A0201');
 
   const session = new EditSession(parseAndValidate('fn f u32 -> u32\na add p0 1\nret a\nend\n'));
   session.open('f');
@@ -1193,7 +1199,7 @@ test('diagnostics carry a stable code, expected/actual, and a fix the editor can
   assert.ok(unknown instanceof A0Error);
   assert.equal(unknown.code, 'handle');
   assert.match(unknown.fix ?? '', /exactly as shown/);
-  assert.match(formatDiagnostic(unknown), /^handle: .* fix: /);
+  assert.match(formatDiagnostic(unknown), /^handle: .* fix: [^[]*$/);
 });
 
 test('linker: use lines resolve relative paths once, reject cycles and duplicate names, map lines', async () => {
@@ -2330,10 +2336,14 @@ test('riscv64 backend: emitted sequences carry the exact semantics', async () =>
 });
 
 const X86_64_HOST = (() => {
+  if (process.env.A0_SKIP_X86 === '1') return undefined;
   if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
     return { arch: [] as string[], runner: [] as string[] };
   if (process.platform !== 'darwin' || process.arch !== 'arm64') return undefined;
   if (spawnSync('/usr/bin/arch', ['-x86_64', '/usr/bin/true']).status !== 0) return undefined;
+  // A fresh x86-64 binary must run: a wedged Rosetta leaves new binaries stuck for good.
+  const clang = findClang().path;
+  if (clang === undefined || rosettaStuck(clang) !== undefined) return undefined;
   return { arch: ['-arch', 'x86_64'], runner: ['/usr/bin/arch', '-x86_64'] };
 })();
 

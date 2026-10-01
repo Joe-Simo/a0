@@ -1,0 +1,13 @@
+# The native `a0 check` (tools/native-check.ts) is this program: the checker (io front `checkio`)
+# and the spelling suggestions (io front `suggestio`) in one module, so the executable can name
+# the table code of an unknown name and what it probably meant. The driver calls `checkio`, and
+# `suggestio` on the token a parse or structure error rejects.
+
+use "check.a0"
+use "suggest.a0"
+
+# the one front the driver starts with: the checker
+fn nativeio io -> u32
+r call checkio p0
+ret r
+end

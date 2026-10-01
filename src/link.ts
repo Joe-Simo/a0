@@ -13,13 +13,38 @@ import { realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import {
   A0Error,
-  type DiagnosticDetail,
+  formatSource,
   LIMITS,
+  type Program,
   parse,
+  stripComment,
   type TypedProgram,
   utf8Length,
   validate,
 } from './core.js';
+import { type Arities, parseDense } from './dense.js';
+import { diag } from './diagnostics.js';
+
+/** Dense files use this extension; any other file is read as canonical unless `dense` is set. */
+export const DENSE_EXTENSION = '.a0d';
+
+/** Whether a path names a dense-form source file. */
+export function isDensePath(path: string): boolean {
+  return path.endsWith(DENSE_EXTENSION);
+}
+
+const USE_PATH = /^use\s+"([^"\\]+)"$/;
+
+/** The `use` targets of a dense file, found before parsing it (its callee arities come from them). */
+function denseUses(text: string): string[] {
+  const out: string[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const m = USE_PATH.exec(stripComment(raw).trim());
+    if (m !== null) out.push(m[1] as string);
+    else if (/^fn(\s|$)/.test(stripComment(raw).trim())) break;
+  }
+  return out;
+}
 
 export interface LinkedSource {
   readonly path: string;
@@ -44,6 +69,8 @@ export interface LinkOptions {
    * else the entry's directory.
    */
   readonly root?: string;
+  /** Read every file as dense text (a file ending in `.a0d` is always dense). */
+  readonly dense?: boolean;
 }
 
 function projectRoot(entry: string): string {
@@ -75,64 +102,65 @@ export async function link(
     const rel = relative(root, abs);
     return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
   };
-  const order: { path: string; text: string }[] = [];
+  /** `text` is the canonical text the program is built from; `shown` the file as written. */
+  const order: { path: string; text: string; shown: string; fns: string[] }[] = [];
   const visiting = new Set<string>();
   const done = new Set<string>();
+  /** Parameter counts of every function a file defines or reaches through its uses. */
+  const closureOf = new Map<string, Map<string, number>>();
   const visit = async (path: string, from: string | undefined): Promise<void> => {
     const abs = resolve(path);
     if (done.has(abs)) return;
     if (visiting.has(abs)) {
-      throw new A0Error(
-        `use cycle: ${abs} is already being linked${from === undefined ? '' : ` (from ${from})`}`,
-        undefined,
-        {
-          code: 'structure',
-          fix: 'remove one direction of the use between these files',
-        },
-      );
+      throw diag('A0620', [abs, from === undefined ? '' : ` (from ${from})`]);
     }
     visiting.add(abs);
-    const text = await read(abs);
-    if (utf8Length(text) > LIMITS.maxSourceBytes)
-      throw new A0Error(`${abs}: source exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-        code: 'limit',
-      });
-    const parsed = parse(text);
-    for (const use of parsed.uses ?? []) {
+    const shown = await read(abs);
+    if (utf8Length(shown) > LIMITS.maxSourceBytes)
+      throw diag('A0621', [abs, LIMITS.maxSourceBytes]);
+    const isDense = options.dense === true || isDensePath(abs);
+    const uses = isDense ? denseUses(shown) : (parse(shown).uses ?? []);
+    const known = new Map<string, number>();
+    for (const use of uses) {
       const target = await canonical(resolve(dirname(abs), use));
-      if (!target.endsWith('.a0') || !inside(target))
-        throw new A0Error(
-          `use "${use}" in ${abs}: target ${target} is not an .a0 file inside ${root}`,
-          undefined,
-          {
-            code: 'structure',
-            fix: 'use only .a0 files inside the project root',
-          },
-        );
+      if (!(target.endsWith('.a0') || isDensePath(target)) || !inside(target))
+        throw diag('A0622', [use, abs, target, root]);
       await visit(target, abs);
+      for (const [name, n] of closureOf.get(target) ?? []) known.set(name, n);
     }
+    let text = shown;
+    let functions: readonly { name: string; params: readonly unknown[] }[];
+    if (isDense) {
+      let parsed: ReturnType<typeof parseDense>;
+      try {
+        parsed = parseDense(shown, { known });
+      } catch (e) {
+        if (!(e instanceof A0Error) || e.line === undefined) throw e;
+        throw e.rewrite(`${abs}:${e.line}: ${e.message.replace(/^line \d+: /, '')}`);
+      }
+      text = formatSource(parsed);
+      functions = parsed.functions;
+    } else {
+      functions = parse(shown).functions;
+    }
+    const own = new Map<string, number>();
+    for (const f of functions) own.set(f.name, f.params.length);
+    closureOf.set(abs, new Map([...known, ...own]));
     visiting.delete(abs);
     done.add(abs);
-    order.push({ path: abs, text });
+    order.push({ path: abs, text, shown, fns: functions.map((f) => f.name) });
   };
   await visit(entry, undefined);
 
   // Duplicate function names across files: report both definitions.
   const owner = new Map<string, string>();
-  for (const { path, text } of order) {
-    for (const fn of parse(text).functions) {
-      const prev = owner.get(fn.name);
+  for (const { path, fns } of order) {
+    for (const name of fns) {
+      const prev = owner.get(name);
       if (prev !== undefined && prev !== path) {
-        throw new A0Error(
-          `function '${fn.name}' is defined in both ${prev} and ${path}`,
-          undefined,
-          {
-            code: 'structure',
-            fix: `rename one of the two '${fn.name}' definitions; a linked program has one namespace`,
-          },
-        );
+        throw diag('A0022', [name, prev, path]);
       }
-      owner.set(fn.name, path);
+      owner.set(name, path);
     }
   }
 
@@ -148,20 +176,11 @@ export async function link(
     line += lineCount;
   }
   const combined = parts.join('\n');
-  if (utf8Length(combined) > LIMITS.maxSourceBytes)
-    throw new A0Error(`linked program exceeds ${LIMITS.maxSourceBytes} bytes`, undefined, {
-      code: 'limit',
-    });
+  if (utf8Length(combined) > LIMITS.maxSourceBytes) throw diag('A0623', [LIMITS.maxSourceBytes]);
   try {
     return { program: validate(parse(combined)), text: combined, sources };
   } catch (e) {
     if (!(e instanceof A0Error)) throw e;
-    const detail: DiagnosticDetail = {
-      code: e.code,
-      ...(e.fix === undefined ? {} : { fix: e.fix }),
-      ...(e.expected === undefined ? {} : { expected: e.expected }),
-      ...(e.actual === undefined ? {} : { actual: e.actual }),
-    };
     // Parse errors carry a line in the combined text; validator errors name `fn.node` or
     // `fn`. Both are mapped to the owning file, and the node to its line in that file.
     if (e.line !== undefined) {
@@ -170,24 +189,54 @@ export async function link(
       );
       if (src !== undefined) {
         const local = e.line - src.startLine + 1;
-        throw new A0Error(
-          `${src.path}:${local}: ${e.message.replace(/^line \d+: /, '')}`,
-          undefined,
-          detail,
-        );
+        throw e.rewrite(`${src.path}:${local}: ${e.detail}`);
       }
       throw e;
     }
     const m = /^([a-z][a-z0-9_]*)(?:\.([a-z][a-z0-9_]*))?[:.]/.exec(e.message);
     const path = m === null ? undefined : owner.get(m[1] as string);
     if (path === undefined) throw e;
-    const text = order.find((o) => o.path === path)?.text ?? '';
+    const text = order.find((o) => o.path === path)?.shown ?? '';
     const fileLines = text.split(/\r?\n/);
     let line = fileLines.findIndex((l) => new RegExp(`^\\s*fn\\s+${m?.[1]}\\b`).test(l));
     if (line >= 0 && m?.[2] !== undefined) {
       const node = fileLines.findIndex((l, i) => i > line && new RegExp(`^\\s*${m[2]}\\s`).test(l));
       if (node >= 0) line = node;
     }
-    throw new A0Error(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`, undefined, detail);
+    throw e.rewrite(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`);
   }
+}
+
+/**
+ * One file parsed on its own, canonical or dense, without validating or linking it, plus the
+ * parameter counts of the functions its `use`s bring in (what the dense converter needs).
+ */
+export async function parseFile(
+  entry: string,
+  read: ReadSource,
+  dense = false,
+): Promise<{ program: Program; known: Arities }> {
+  const seen = new Map<string, Map<string, number>>();
+  const load = async (path: string, asDense: boolean): Promise<Program> => {
+    const abs = resolve(path);
+    const text = await read(abs);
+    const isDense = asDense || isDensePath(abs);
+    const uses = isDense ? denseUses(text) : (parse(text).uses ?? []);
+    const known = new Map<string, number>();
+    for (const use of uses) {
+      const target = resolve(dirname(abs), use);
+      if (!seen.has(target)) await load(target, false);
+      for (const [name, n] of seen.get(target) ?? []) known.set(name, n);
+    }
+    const program = isDense ? parseDense(text, { known }) : parse(text);
+    const own = new Map(program.functions.map((f) => [f.name, f.params.length] as const));
+    seen.set(abs, new Map([...known, ...own]));
+    return program;
+  };
+  const program = await load(entry, dense);
+  const known = new Map<string, number>();
+  for (const use of program.uses ?? [])
+    for (const [name, n] of seen.get(resolve(dirname(resolve(entry)), use)) ?? [])
+      known.set(name, n);
+  return { program, known };
 }

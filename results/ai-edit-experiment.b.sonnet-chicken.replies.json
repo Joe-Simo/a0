@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/chicken/structured": [
+  "4   (<= a b))"
+ ],
+ "b-sumfrom-eight/chicken/structured": [
+  "6         ((= i 8))"
+ ],
+ "b-rot8-constant/chicken/structured": [
+  "4   (bitwise-and (bitwise-ior (arithmetic-shift x 8) (arithmetic-shift x -24)) #xFFFFFFFF))"
+ ],
+ "b-onlyone-xor/chicken/structured": [
+  "4   (not (eq? a b)))"
+ ],
+ "b-avgfloor-nowrap/chicken/structured": [
+  "4   (+ (bitwise-and a b) (arithmetic-shift (bitwise-xor a b) -1)))"
+ ],
+ "b-sumsq-array/chicken/structured": [
+  "7       (set! s (bitwise-and (+ s (* (vector-ref a i) (vector-ref a i))) #xFFFFFFFF)))"
+ ],
+ "b-inrange-inclusive/chicken/structured": [
+  "4   (and (>= x lo) (<= x hi)))"
+ ],
+ "b-bounds-largest/chicken/structured": [
+  "9         (if (> x hi) (set! hi x))))"
+ ],
+ "b-checksum-poly/chicken/structured": [
+  "4   (let ((h 7))\n7       (set! h (bitwise-and (+ (* h 31) (vector-ref a i)) #xFFFFFFFF)))"
+ ],
+ "b-norm2-dot/chicken/structured": [
+  "+8 (define (norm2 a)\n+8   (dot a a))"
+ ],
+ "b-pctof-limit/chicken/structured": [
+  "+5 (define (pctof part whole)\n+5   (let ((q (if (= whole 0)\n+5                4294967295\n+5                (quotient (bitwise-and (* part 100) #xFFFFFFFF) whole))))\n+5     (limit q 0 100)))"
+ ],
+ "b-hamming-popcnt/chicken/structured": [
+  "+8 (define (hamming a b)\n+8   (popcnt (bitwise-xor a b)))"
+ ]
+}

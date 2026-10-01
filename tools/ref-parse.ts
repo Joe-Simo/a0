@@ -572,3 +572,156 @@ export function wellFormedPrefix(text: string, limit: number): string {
   const m = /\nend\n(?![\s\S]*\nend\n)/.exec(head);
   return m === null ? '' : head.slice(0, m.index + 5);
 }
+
+// --- Self-hosted spelling suggestions reference --------------------------------------
+
+/**
+ * The names a suggestion can be drawn from, in candidate order: the ops, the accepted spellings
+ * `udiv` and `urem`, then the type words. compiler/suggest.a0 holds the same table as a text literal.
+ */
+export const SUGGEST_NAMES: readonly string[] = [
+  ...'mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts'.split(
+    ' ',
+  ),
+  'udiv',
+  'urem',
+  'u32',
+  'bool',
+  'io',
+];
+const SUGGEST_OPS = SUGGEST_NAMES.length - 3;
+const RESERVED_WORDS = ['fn', 'ret', 'end', 'patch', 'true', 'false'];
+
+/** Edit distance in tenths: insertion and deletion 10, substitution 20, a case-only substitution 1. */
+function tenths(a: string, b: string): number {
+  const low = (s: string): string => s.toLowerCase();
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j * 10);
+  for (let i = 1; i <= a.length; i += 1) {
+    const row = [i * 10];
+    for (let j = 1; j <= b.length; j += 1) {
+      const same = a[i - 1] === b[j - 1];
+      const sub =
+        (prev[j - 1] as number) + (low(a[i - 1] as string) === low(b[j - 1] as string) ? 1 : 20);
+      row.push(
+        same
+          ? (prev[j - 1] as number)
+          : Math.min((prev[j] as number) + 10, (row[j - 1] as number) + 10, sub),
+      );
+    }
+    prev = row;
+  }
+  return prev[b.length] as number;
+}
+
+/**
+ * The rule of TypeScript's getSpellingSuggestion with distances in tenths: a candidate counts when
+ * its length differs from the name's by at most max(2, 34% of it), it is not the name, it has three
+ * bytes unless it differs from the name by case alone, and its distance is below 40% of the name's
+ * length plus one; the closest wins, the first of equals.
+ */
+export function refSpelling(name: string, candidates: readonly string[]): string | undefined {
+  let best: string | undefined;
+  let bestD = (Math.floor((name.length * 4) / 10) + 1) * 10;
+  for (const c of candidates) {
+    if (Math.abs(c.length - name.length) > Math.max(2, Math.floor((name.length * 34) / 100)))
+      continue;
+    if (c === name) continue;
+    if (c.length < 3 && c.toLowerCase() !== name.toLowerCase()) continue;
+    const d = tenths(name, c);
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * The words written by compiler/suggest.a0 `suggestio` for the source and the index of a token the
+ * parser rejected: rule (1 type, 101 node, 102 callee or op, 103 fold or loop body, 104 loop
+ * predicate, 0 none), mode (1 suggestion, 2 defined later, 0 none), the length of the suggested name, the start and
+ * length of the token, and 64 bytes of the suggested name. Written from the rule of TypeScript's getSpellingSuggestion and the line
+ * grammar, with no use of src/.
+ */
+export function refSuggest(src: string, tok: number): number[] {
+  const t = refLex(src);
+  const ntok = t.length / 3;
+  const b = [...Buffer.from(src)];
+  const kind = (i: number): number => (i >= 0 && i < ntok ? (t[i * 3] as number) : 0);
+  const word = (i: number): string =>
+    i >= 0 && i < ntok
+      ? String.fromCharCode(
+          ...b.slice(t[i * 3 + 1] as number, (t[i * 3 + 1] as number) + (t[i * 3 + 2] as number)),
+        )
+      : '';
+  const at = tok >= 0 && tok < ntok ? [t[tok * 3 + 1] as number, t[tok * 3 + 2] as number] : [0, 0];
+  const none = [0, 0, 0, ...at, ...new Array<number>(64).fill(0)];
+  // the line the token is on, and the header of its function: from the tokens before it
+  let ls = 0;
+  let fs = 0;
+  for (let i = 0; i < tok; i += 1) {
+    if (i === ls && kind(i) === 1 && word(i) === 'fn') fs = i;
+    if (kind(i) === 5) ls = i + 1;
+  }
+  const first = (i: number): boolean => i === 0 || kind(i - 1) === 5;
+  const name = word(tok);
+  if (kind(tok) !== 1 || name.length === 0 || name.length > 64) return none;
+  const pos = tok - ls;
+  const w0 = word(ls);
+  const w1 = word(ls + 1);
+  const has3 = kind(ls + 2) !== 0 && kind(ls + 2) !== 5;
+  let rule: number;
+  if (w0 === 'fn' && pos >= 2) rule = 1;
+  else if (w0 === 'end' || w0 === 'use') rule = 0;
+  else if (w0 === 'ret') rule = pos === 1 ? (has3 ? 102 : 101) : 101;
+  else if (pos === 1) rule = 102;
+  else if (pos === 2) rule = w1 === 'call' ? 102 : w1 === 'fold' ? 103 : w1 === 'loop' ? 104 : 101;
+  else if (pos === 3) rule = w1 === 'loop' ? 103 : 101;
+  else rule = 101;
+  if (RESERVED_WORDS.includes(name) || (rule === 101 && /^p[0-9]+$/.test(name))) rule = 0;
+  // typed words are not "unexpected": a type word the parser already starts reading
+  if (rule === 1 && SUGGEST_NAMES.slice(SUGGEST_OPS).some((w) => name.startsWith(w))) rule = 0;
+  if (rule === 0) return none;
+  // candidates, in order
+  const candidates: string[] = [];
+  const laterOnes: string[] = [];
+  if (rule === 1) candidates.push(...SUGGEST_NAMES.slice(SUGGEST_OPS));
+  if (rule === 102) candidates.push(...SUGGEST_NAMES.slice(0, SUGGEST_OPS));
+  if (rule >= 102) {
+    for (let i = 0; i < ntok; i += 1) {
+      if (
+        !first(i) ||
+        kind(i) !== 1 ||
+        word(i) !== 'fn' ||
+        kind(i + 1) !== 1 ||
+        word(i + 1).length > 64
+      )
+        continue;
+      if (i < fs) candidates.push(word(i + 1));
+      else if (i > fs) laterOnes.push(word(i + 1));
+    }
+  }
+  if (rule === 101) {
+    let stopped = false;
+    for (let i = 0; i < ntok; i += 1) {
+      if (!first(i) || kind(i) !== 1 || word(i).length > 64) continue;
+      const w = word(i);
+      const isNode = w !== 'fn' && w !== 'ret' && w !== 'end';
+      if (isNode && i > fs && i < ls) candidates.push(w);
+      if (isNode && i > ls && !stopped) laterOnes.push(w);
+      if (i > ls && (w === 'ret' || w === 'end' || w === 'fn')) stopped = true;
+    }
+  }
+  if (candidates.includes(name)) return none;
+  const best = refSpelling(name, candidates) ?? '';
+  const later = laterOnes.includes(name);
+  const mode = rule === 1 ? (best === '' ? 0 : 1) : later ? 2 : best === '' ? 0 : 1;
+  return [
+    rule,
+    mode,
+    best.length,
+    ...at,
+    ...[...Buffer.from(best)],
+    ...new Array<number>(64 - best.length).fill(0),
+  ];
+}

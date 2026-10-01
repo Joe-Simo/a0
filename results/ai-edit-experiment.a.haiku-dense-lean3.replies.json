@@ -1,0 +1,41 @@
+{
+  "affine-sign/a0/structured": [
+    "fn affine sub mul A B C"
+  ],
+  "clamp-both/a0/structured": [
+    "fn clamp\nc1 lt A B\nr1 select c1 B A\nc2 lt C r1\nselect c2 C r1"
+  ],
+  "rotl-fix/a0/structured": [
+    "fn rotl\nl << A B\nn sub 32 B\nr >> A n\no or l r"
+  ],
+  "add-cube/a0/structured": [
+    "fn cube\ns sq A\nmul s A"
+  ],
+  "absdiff/a0/structured": [
+    "fn absdiff\nd sub A B\nr sub B A\nc lt A B\nselect c r d"
+  ],
+  "xor4/a0/structured": [
+    "fn combine4 xor xor xor A B C D"
+  ],
+  "min3/a0/structured": [
+    "fn min3\nc1 lt B A\nr1 select c1 B A\nc2 lt C r1\nselect c2 C r1"
+  ],
+  "sq-twice/a0/structured": [
+    "fn quad\nx sq A\nsq x"
+  ],
+  "sum-squares/a0/structured": [
+    "fn addi\nb_sq mul B B\nadd A b_sq"
+  ],
+  "loop-inclusive/a0/structured": [
+    "fn below -> bool\nc1 lt A C\nc2 eq A C\nor c1 c2"
+  ],
+  "record-flag/a0/structured": [
+    "fn pick (u32,bool) -> u32\nv at A 0\nf at A 1\nselect f (add v 1) v"
+  ],
+  "byte-select/a0/structured": [
+    "fn byte1\ns >> A 16\nand s 255"
+  ],
+  "saturating-add/a0/structured": [
+    "fn sadd\ns add A B\nm sub 0 1\nc lt s A\nselect c m s"
+  ]
+}

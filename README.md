@@ -46,18 +46,19 @@ Both scripts accept `A0_VERSION=v0.8.15` to pin a release and `A0_INSTALL_DIR` t
 printf 'fn sq u32 -> u32\na mul p0 p0\nret a\nend\n' > sq.a0
 a0 run sq.a0 sq 12            # 144
 a0 emit arm64 sq.a0           # A0's own machine code; or c, js, java, sv
-a0 check sq.a0                # diagnostics with codes
+a0 check sq.a0                # diagnostics with codes; --json for fields, --fix applies the exact fixes
+a0 explain A0102              # what a diagnostic means, with a failing and a fixed example
 ```
 
 Binaries: `a0-darwin-arm64`, `a0-darwin-x64`, `a0-linux-x64`, `a0-linux-arm64`, `a0-windows-x64.exe`. A C compiler (clang or gcc) is needed only to link native output on your machine.
 
 ## MCP server
 
-`a0 mcp <file-or-dir>` serves A0 to AI agents over stdio (Model Context Protocol), so they edit through tools instead of text files: `a0_open` (function view with a handle), `a0_program` (program handle, optionally scoped to a target), `a0_apply` (edit under a handle; returns the new view or a diagnostic with code/expected/actual/fix), `a0_check`, `a0_run` (reference interpreter, fuel-bounded), `a0_emit` (any target), `a0_save` (only after a successful apply). Paths are confined to the launch root (symlink escapes and `use` escapes rejected); no shell is run; output is bounded.
+`a0 mcp <file-or-dir>` serves A0 to AI agents over stdio (Model Context Protocol), so they edit through tools instead of text files: `a0_open` (function view with a handle), `a0_program` (program handle, optionally scoped to a target), `a0_apply` (edit under a handle; returns the new view or a diagnostic with code (class), id (A0nnnn), message, expected/actual, fix and applicability; the reply `fix all` applies every exact fix of the last rejected edit, atomically), `a0_check`, `a0_run` (reference interpreter, fuel-bounded), `a0_emit` (any target), `a0_save` (only after a successful apply). Paths are confined to the launch root (symlink escapes and `use` escapes rejected); no shell is run; output is bounded.
 
 ## Language server
 
-`a0 lsp [root]` is a Language Server Protocol server over stdio (built on `vscode-languageserver`; `--stdio` is accepted and ignored). Point any LSP client at it for `.a0` files: diagnostics on open and change from the linker and checker (the diagnostic `code` is the A0 code, the message leads with the fix), hover (function signatures, op docs), go-to-definition across `use` files, document symbols, completion of ops and in-scope functions, and formatting through the canonical printer. Files are confined to `root` (default: the working directory) exactly as in the MCP server; a document outside it gets one `limit` diagnostic and nothing else.
+`a0 lsp [root]` is a Language Server Protocol server over stdio (built on `vscode-languageserver`; `--stdio` is accepted and ignored). Point any LSP client at it for `.a0` files: diagnostics on open and change from the linker and checker (the diagnostic `code` is the class, `data` carries the table code `id`, the fix and its applicability, and an exact fix is a quick fix), hover (function signatures, op docs), go-to-definition across `use` files, document symbols, completion of ops and in-scope functions, and formatting through the canonical printer. Files are confined to `root` (default: the working directory) exactly as in the MCP server; a document outside it gets one `limit` diagnostic and nothing else.
 
 ## Use with AI agents
 
@@ -152,3 +153,7 @@ Layout: `src/core.ts` grammar/validation/interpreter, `src/edit.ts` revisions an
 edit sessions, `src/optimize.ts`, `src/backends.ts` JS/C/Java/SystemVerilog emission
 and emission cache, `src/toolchain.ts` installed-tool integration, `src/cli.ts`,
 `test/`, `tools/` (corpus + oracle, verify, hw-verify, bench, token-bench).
+
+## Errors built for agents
+
+Every diagnostic is one row of `src/diagnostics.ts`: a stable code (`A0nnnn`), a coarse class (`parse`, `type`, `structure`, `limit`, `edit`, `patch`, `revision`, `handle`, `runtime`, `cli`, unchanged), a message template, the fix, and `a0 explain` text with one failing and one fixed example. A diagnostic reaches an agent as `{code, id, message, line, expected, actual, fix, applicability, edits}` from `a0 check --json`, the edit protocol, the MCP server and the LSP. An unknown name (op, function, node, fold body, loop predicate, type) gets a did-you-mean by TypeScript's spelling rule. A fix is `exact` (safe to apply blindly, with `edits` that do it) or `maybe`. In the edit protocol the reply `fix all` applies every exact fix of the last rejected reply and validates the result before it commits. `test/diagnostics.test.ts` runs every explain example, and `corpus/reject/` holds rejected programs and replies with the diagnostic each must raise and the program its fix produces (`node dist/tools/reject-corpus.js [--bless] [--coverage]`).

@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/fortran/structured": [
+  "14   r = a <= b"
+ ],
+ "b-sumfrom-eight/fortran/structured": [
+  "15   do i = 0, 7"
+ ],
+ "b-rot8-constant/fortran/structured": [
+  "14   r = iand(ior(ishft(x, 8), ishft(x, -24)), m32)"
+ ],
+ "b-onlyone-xor/fortran/structured": [
+  "14   r = a .neqv. b"
+ ],
+ "b-avgfloor-nowrap/fortran/structured": [
+  "14   r = iand(iand(a, b) + ishft(ieor(a, b), -1), m32)"
+ ],
+ "b-sumsq-array/fortran/structured": [
+  "17     s = iand(s + mul32(a(i), a(i)), m32)"
+ ],
+ "b-inrange-inclusive/fortran/structured": [
+  "14   r = x >= lo .and. x <= hi"
+ ],
+ "b-bounds-largest/fortran/structured": [
+  "20     if (x > hi) hi = x"
+ ],
+ "b-checksum-poly/fortran/structured": [
+  "15   h = 7\n17     h = iand(mul32(h, 31_int64) + a(i), m32)"
+ ],
+ "b-norm2-dot/fortran/structured": [
+  "+20 function norm2(a) result(r); integer(int64), intent(in) :: a(4); integer(int64) :: r; r = dot(a, a); end function norm2"
+ ],
+ "b-pctof-limit/fortran/structured": [
+  "+24 function pctof(part, whole) result(r); integer(int64), intent(in) :: part, whole; integer(int64) :: r, q; if (whole == 0) then; q = m32; else; q = mul32(part, 100_int64) / whole; end if; r = limit(q, 0_int64, 100_int64); end function pctof"
+ ],
+ "b-hamming-popcnt/fortran/structured": [
+  "+20 function hamming(a, b) result(r); integer(int64), intent(in) :: a, b; integer(int64) :: r; r = popcnt(ieor(a, b)); end function hamming"
+ ]
+}

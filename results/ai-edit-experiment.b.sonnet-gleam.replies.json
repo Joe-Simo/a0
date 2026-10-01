@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/gleam/structured": [
+  "22   a <= b"
+ ],
+ "b-sumfrom-eight/gleam/structured": [
+  "25   case i < 8 {"
+ ],
+ "b-rot8-constant/gleam/structured": [
+  "22   band(bor(bsl(x, 8), bsr(x, 24)), m)"
+ ],
+ "b-onlyone-xor/gleam/structured": [
+  "22   a != b"
+ ],
+ "b-avgfloor-nowrap/gleam/structured": [
+  "22   band(band(a, b) + bsr(bxor(a, b), 1), m)"
+ ],
+ "b-sumsq-array/gleam/structured": [
+  "26     True -> sumsq_loop(a, i + 1, band(s + at(a, i % 4) * at(a, i % 4), m))"
+ ],
+ "b-inrange-inclusive/gleam/structured": [
+  "22   x >= lo && x <= hi"
+ ],
+ "b-bounds-largest/gleam/structured": [
+  "29       let hi = case x > hi { True -> x False -> hi }"
+ ],
+ "b-checksum-poly/gleam/structured": [
+  "22   checksum_loop(a, 0, 7)\n26     True -> checksum_loop(a, i + 1, band(h * 31 + at(a, i % 4), m))"
+ ],
+ "b-norm2-dot/gleam/structured": [
+  "+29\n+29 pub fn norm2(a: List(Int)) -> Int {\n+29   dot(a, a)\n+29 }"
+ ],
+ "b-pctof-limit/gleam/structured": [
+  "+24\n+24 pub fn pctof(part: Int, whole: Int) -> Int {\n+24   let p = band(part * 100, m)\n+24   let q = case whole == 0 {\n+24     True -> 4294967295\n+24     False -> p / whole\n+24   }\n+24   limit(q, 0, 100)\n+24 }"
+ ],
+ "b-hamming-popcnt/gleam/structured": [
+  "+29\n+29 pub fn hamming(a: Int, b: Int) -> Int {\n+29   popcnt(bxor(a, b))\n+29 }"
+ ]
+}

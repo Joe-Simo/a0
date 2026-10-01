@@ -1,0 +1,38 @@
+{
+ "b-fits-inclusive/smalltalk/structured": [
+  "3     ^a <= b"
+ ],
+ "b-sumfrom-eight/smalltalk/structured": [
+  "5     0 to: 7 do: [:i | s := (s + i) bitAnd: 16rFFFFFFFF]."
+ ],
+ "b-rot8-constant/smalltalk/structured": [
+  "3     ^((x bitShift: 8) bitOr: (x bitShift: -24)) bitAnd: 16rFFFFFFFF"
+ ],
+ "b-onlyone-xor/smalltalk/structured": [
+  "3     ^a xor: b"
+ ],
+ "b-avgfloor-nowrap/smalltalk/structured": [
+  "3     ^(a bitAnd: b) + ((a bitXor: b) bitShift: -1)"
+ ],
+ "b-sumsq-array/smalltalk/structured": [
+  "5     0 to: 3 do: [:i | s := (s + ((a at: i + 1) * (a at: i + 1))) bitAnd: 16rFFFFFFFF]."
+ ],
+ "b-inrange-inclusive/smalltalk/structured": [
+  "3     ^x >= lo and: [x <= hi]"
+ ],
+ "b-bounds-largest/smalltalk/structured": [
+  "9         x > hi ifTrue: [hi := x]]."
+ ],
+ "b-checksum-poly/smalltalk/structured": [
+  "4     h := 7.\n5     0 to: 3 do: [:i | h := ((h * 31) + (a at: i + 1)) bitAnd: 16rFFFFFFFF]."
+ ],
+ "b-norm2-dot/smalltalk/structured": [
+  "+7 Lib class >> norm2: a [ ^Lib dot: a with: a ]"
+ ],
+ "b-pctof-limit/smalltalk/structured": [
+  "+6 Lib class >> pctof: part with: whole [ ^Lib limit: (whole = 0 ifTrue: [4294967295] ifFalse: [((part * 100) bitAnd: 16rFFFFFFFF) // whole]) with: 0 with: 100 ]"
+ ],
+ "b-hamming-popcnt/smalltalk/structured": [
+  "+7 Lib class >> hamming: a with: b [ ^Lib popcnt: (a bitXor: b) ]"
+ ]
+}

@@ -1,0 +1,41 @@
+{
+  "affine-sign/a0/structured": [
+    "b sub a p2"
+  ],
+  "clamp-both/a0/structured": [
+    "fn clamp u32 u32 u32 -> u32\nc lt p0 p1\na select c p1 p0\nd gt a p2\nr select d p2 a\nret r\nend"
+  ],
+  "rotl-fix/a0/structured": [
+    "fn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 0 p1\nm and n 31\nr shr p0 m\no or l r\nret o\nend"
+  ],
+  "add-cube/a0/structured": [
+    "fn cube u32 -> u32\na call sq p0\nb mul a p0\nret b\nend"
+  ],
+  "absdiff/a0/structured": [
+    "c lt p0 p1\ne sub p1 p0\nr select c e d\nret r"
+  ],
+  "xor4/a0/structured": [
+    "a xor p0 p1\nb xor a p2\nc xor b p3"
+  ],
+  "min3/a0/structured": [
+    "-fn min2\nfn min3 u32 u32 u32 -> u32\nc lt p1 p0\nr select c p1 p0\nd lt p2 r\ns select d p2 r\nret s\nend"
+  ],
+  "sq-twice/a0/structured": [
+    "y call sq x\nret y"
+  ],
+  "sum-squares/a0/structured": [
+    "fn sqadd u32 u32 -> u32\nm mul p1 p1\ns add p0 m\nret s\nend\nfn sumto u32 -> u32\nr fold sqadd p0 0\nret r\nend"
+  ],
+  "loop-inclusive/a0/structured": [
+    "c le p0 p2"
+  ],
+  "record-flag/a0/structured": [
+    "f at p0 1\nw add v 1\nr select f w v\nret r"
+  ],
+  "byte-select/a0/structured": [
+    "s shr p0 16"
+  ],
+  "saturating-add/a0/structured": [
+    "c lt s p0\nr select c 4294967295 s\nret r"
+  ]
+}

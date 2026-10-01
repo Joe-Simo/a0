@@ -1,0 +1,38 @@
+{
+  "b-fits-inclusive/a0/structured": [
+    "fn fits -> bool ret le A B"
+  ],
+  "b-sumfrom-eight/a0/structured": [
+    "fn sumfrom\nr fold addi 8 A"
+  ],
+  "b-rot8-constant/a0/structured": [
+    "fn rot8 or << A 8 >> A 24"
+  ],
+  "b-onlyone-xor/a0/structured": [
+    "fn onlyone bool bool -> bool ret xor A B"
+  ],
+  "b-avgfloor-nowrap/a0/structured": [
+    "fn avgfloor add and A B >> xor A B 1"
+  ],
+  "b-sumsq-array/a0/structured": [
+    "fn addel u32 u32 u32x4 -> u32 add A mul get C B get C B"
+  ],
+  "b-inrange-inclusive/a0/structured": [
+    "fn inrange -> bool and ge A B le A C"
+  ],
+  "b-bounds-largest/a0/structured": [
+    "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nx get C B\nlo select lt x at A 0 x at A 0\nhi select gt x at A 1 x at A 1\n(lo hi)\nfn bounds u32x4 -> (u32,u32)\ns (4294967295 0)\nr fold minmax 4 s A"
+  ],
+  "b-checksum-poly/a0/structured": [
+    "fn mixel u32 u32 u32x4 -> u32 add mul A 31 get C B\nfn checksum u32x4 -> u32\nr fold mixel 4 7 A"
+  ],
+  "b-norm2-dot/a0/structured": [
+    "fn norm2 u32x4 -> u32 dot A A"
+  ],
+  "b-pctof-limit/a0/structured": [
+    "fn pctof limit div mul A 100 B 0 100"
+  ],
+  "b-hamming-popcnt/a0/structured": [
+    "fn hamming popcnt xor A B"
+  ]
+}

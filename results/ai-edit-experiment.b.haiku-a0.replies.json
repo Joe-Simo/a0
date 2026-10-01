@@ -1,0 +1,41 @@
+{
+ "b-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "b-sumfrom-eight/a0/structured": [
+  "r fold addi 8 p0 p0",
+  "fn addi u32 u32 -> u32\na add p0 p1\nret a\nend\nfn sumfrom u32 -> u32\nr fold addi 8 p0 p0\nret r\nend"
+ ],
+ "b-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "b-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "b-avgfloor-nowrap/a0/structured": [
+  "a and p0 p1\nb xor p0 p1\nc shr b 1\nret add a c"
+ ],
+ "b-sumsq-array/a0/structured": [
+  "fn addel u32 u32 u32x4 -> u32\na get p2 p1\nb mul a a\nc add p0 b\nret c\nend"
+ ],
+ "b-inrange-inclusive/a0/structured": [
+  "a ge p0 p1\nb le p0 p2\nc and a b\nret c"
+ ],
+ "b-bounds-largest/a0/structured": [
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nelem get p2 p1\nmin_val at p0 0\nmax_val at p0 1\nnew_min select (lt elem min_val) elem min_val\nnew_max select (lt max_val elem) elem max_val\nret rec new_min new_max\nend",
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nelem get p2 p1\nmin_val at p0 0\nmax_val at p0 1\nsmaller lt elem min_val\nnew_min select smaller elem min_val\nlarger lt max_val elem\nnew_max select larger elem max_val\nret rec new_min new_max\nend"
+ ],
+ "b-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0",
+  "fn mixel u32 u32 u32x4 -> u32\nelem get p2 p1\nh31 mul p0 31\nresult add h31 elem\nret result\nend"
+ ],
+ "b-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nret call dot p0 p0\nend"
+ ],
+ "b-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\ntemp mul p0 100\npct div temp p1\nret call limit pct 0 100\nend"
+ ],
+ "b-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\nxored xor p0 p1\nret call popcnt xored\nend"
+ ]
+}

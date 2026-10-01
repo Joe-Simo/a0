@@ -256,10 +256,15 @@ function mutableHereC(
   o: Operand,
   index: number,
   ownedParam: (paramIndex: number) => boolean,
+  ownedNodes: ReadonlySet<string> = NO_NODES,
 ): boolean {
   if (o.kind === 'node') {
     const def = fn.nodes.find((n) => n.id === o.id);
-    if (def === undefined || !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op))) return false;
+    if (
+      def === undefined ||
+      !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op) || ownedNodes.has(o.id))
+    )
+      return false;
   } else if (!(o.kind === 'param' && ownedParam(o.index))) {
     return false;
   }
@@ -278,6 +283,69 @@ function mutableHereC(
   return true;
 }
 const C_FRESH_OPS = new Set<Op>(['fold', 'loop', 'call']);
+const NO_NODES: ReadonlySet<string> = new Set();
+
+/**
+ * Field projections the C emitter owns (`mutableHereC`'s `ownedNodes`): an aggregate field read
+ * by exactly one `at` node, whose container is storage this function owns, is that node's own
+ * storage (`T *const n = &container.fk`, not a const borrow), so a `set`/`put` on it updates the
+ * field in place instead of copying it (the front end's paged tables are 64-100 KB each and
+ * every token copied them). Two shapes, both only when the container is read through `at`
+ * nodes with literal fields and is not the result:
+ *  - the owned loop state p0 of an iteration body whose last node is a `rec` (the new state):
+ *    `cStateStores` then stores only the fields that changed;
+ *  - a large local record built by `rec`/`put`/`call`/`fold`/`loop`.
+ * Every other read of the old field value precedes the update (`mutableHereC`), and no borrow of
+ * the projection is read after it (`borrowLive`), so value semantics hold.
+ */
+interface Projections {
+  /** Projection node id to its container operand and field. */
+  readonly of: ReadonlyMap<string, { readonly container: Operand; readonly field: number }>;
+}
+
+function cProjections(fn: TypedFunc, variant: CVariant): Projections {
+  const of = new Map<string, { container: Operand; field: number }>();
+  const last = fn.nodes[fn.nodes.length - 1];
+  const stateOk =
+    variant === 'owned' &&
+    last !== undefined &&
+    last.op === 'rec' &&
+    fn.ret.kind === 'node' &&
+    fn.ret.id === last.id;
+  const containers: Operand[] = [];
+  if (stateOk) containers.push({ kind: 'param', index: 0 });
+  for (const r of fn.nodes) {
+    const t = fn.types.get(r.id) ?? 'u32';
+    if (
+      !isPrimitive(t) &&
+      t.kind === 'rec' &&
+      isLargeC(t) &&
+      ['rec', 'put', 'call', 'fold', 'loop'].includes(r.op) &&
+      !(fn.ret.kind === 'node' && fn.ret.id === r.id)
+    )
+      containers.push({ kind: 'node', id: r.id });
+  }
+  for (const c of containers) {
+    const byField = new Map<number, string[]>();
+    let only = true;
+    for (const n of fn.nodes)
+      for (const [k, o] of n.args.entries()) {
+        if (!sameOp(o, c)) continue;
+        const field = n.args[1];
+        if (n.op === 'at' && k === 0 && field?.kind === 'u32')
+          byField.set(field.value, [...(byField.get(field.value) ?? []), n.id]);
+        else only = false;
+      }
+    if (!only) continue;
+    for (const [field, ids] of byField) {
+      const id = ids[0] as string;
+      const type = fn.types.get(id) ?? 'u32';
+      if (ids.length === 1 && !isPrimitive(type) && !sameOp(fn.ret, { kind: 'node', id }))
+        of.set(id, { container: c, field });
+    }
+  }
+  return { of };
+}
 
 /** JS ownership: only the p0 state of the owned iteration-body variant is private. */
 const jsOwned =
@@ -696,6 +764,8 @@ interface CContext {
   readonly aliases: Map<string, Operand>;
   /** Aggregate `get`/`at` nodes held as `const T *` into their container (borrowed reads). */
   readonly borrows: Set<string>;
+  /** Owned field projections (`cProjections`): non-const pointers into their container. */
+  readonly projections: Projections;
   /** The large node built directly in the caller's `out` storage (the result's root). */
   readonly retOut?: string | undefined;
   /** Arena allocations emitted so far (the body then saves and restores the arena top). */
@@ -769,14 +839,19 @@ function cMutableHere(
   index: number,
   owned: (i: number) => boolean,
   selfRead: boolean,
+  projections: Projections = { of: new Map() },
 ): boolean {
-  return mutableHereC(fn, o, index, owned) && !borrowLive(fn, o, index, selfRead);
+  return (
+    mutableHereC(fn, o, index, owned, new Set(projections.of.keys())) &&
+    !borrowLive(fn, o, index, selfRead)
+  );
 }
 
 /** Does the node at `index` update its first operand in place? Records the alias. */
 function cInPlace(ctx: CContext, node: Node, index: number): boolean {
   const target = node.args[0] as Operand;
-  if (!cMutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn), true)) return false;
+  if (!cMutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn), true, ctx.projections))
+    return false;
   ctx.aliases.set(node.id, cRoot(ctx, target));
   return true;
 }
@@ -789,7 +864,14 @@ export function ownedUpdateInPlace(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index];
   return (
     node !== undefined &&
-    cMutableHere(fn, node.args[0] as Operand, index, cOwned('owned', fn), true)
+    cMutableHere(
+      fn,
+      node.args[0] as Operand,
+      index,
+      cOwned('owned', fn),
+      true,
+      cProjections(fn, 'owned'),
+    )
   );
 }
 
@@ -1004,7 +1086,45 @@ function cBorrow(ctx: CContext, n: Node): string | undefined {
       ? `.e[${cVal(ctx, ob)} % ${arrayLength(ctx.fn, oa)}u]`
       : `.f${ob.kind === 'u32' ? ob.value : 0}`;
   ctx.borrows.add(n.id);
-  return `  const ${cType(t)} *const n_${n.id} = &${a}${part};`;
+  // An owned projection is not a const borrow: a `set`/`put` on it writes the field in place.
+  const kind = ctx.projections.of.has(n.id) ? '' : 'const ';
+  return `  ${kind}${cType(t)} *const n_${n.id} = &${a}${part};`;
+}
+
+/**
+ * The final `rec` of an owned body with state projections, written into the state itself: a
+ * field whose new value is its own projection (updated in place or unchanged) is not stored.
+ * Stores run in field order and must read no other field's storage, so a value that is, or as a
+ * `mov`/`select` pointer may be, another field's projection keeps the copying form.
+ */
+function cStateStores(ctx: CContext, rec: Node): string | undefined {
+  const stores: string[] = [];
+  const projectionOf = (x: Operand): number | undefined => {
+    const r = cRoot(ctx, x);
+    const p = r.kind === 'node' ? ctx.projections.of.get(r.id) : undefined;
+    return p !== undefined && p.container.kind === 'param' ? p.field : undefined;
+  };
+  for (const [m, o] of rec.args.entries()) {
+    const roots: Operand[] = [];
+    const reach = (x: Operand): void => {
+      const def = x.kind === 'node' ? ctx.fn.nodes.find((q) => q.id === x.id) : undefined;
+      if (
+        def !== undefined &&
+        (def.op === 'mov' || def.op === 'select') &&
+        isLargeC(operandTypeOf(ctx.fn, x))
+      )
+        for (const a of def.op === 'mov' ? def.args : def.args.slice(1)) reach(a);
+      else roots.push(x);
+    };
+    reach(o);
+    const fields = roots.map(projectionOf);
+    if (fields.every((f) => f === m)) continue;
+    if (fields.some((f) => f !== undefined && f !== m)) return undefined;
+    const self = fields.includes(m) ? `if (${cArg(ctx, o)} != &(*p0).f${m}) ` : '';
+    stores.push(`${self}(*p0).f${m} = ${cVal(ctx, o)};`);
+  }
+  ctx.aliases.set(rec.id, { kind: 'param', index: 0 });
+  return stores.length === 0 ? '' : `  ${stores.join(' ')}`;
 }
 
 function cBody(
@@ -1031,7 +1151,15 @@ function cBodyWith(
   helpers?: Map<string, string>,
   trap = false,
 ): { readonly text: string; readonly ctx: CContext } {
-  const ctx: CContext = { fn, variant, aliases: new Map(), borrows: new Set(), retOut, arena: 0 };
+  const ctx: CContext = {
+    fn,
+    variant,
+    aliases: new Map(),
+    borrows: new Set(),
+    projections: cProjections(fn, variant),
+    retOut,
+    arena: 0,
+  };
   const hooked = (site: CFoldSite): string => {
     // The arena is single-threaded: a fold touching large values keeps its sequential loop.
     const callees = [site.node.callee, site.node.pred].map((c) => fn.calls.get(c ?? ''));
@@ -1068,7 +1196,7 @@ function cBodyWith(
       // initial value passed again as an extra is read by every trip, so it is not unshared.
       const initOperand = n.args[1] as Operand;
       const owned =
-        cMutableHere(fn, initOperand, index, cOwned(variant, fn), false) &&
+        cMutableHere(fn, initOperand, index, cOwned(variant, fn), false, ctx.projections) &&
         !n.args.slice(2).some((o) => sameOp(o, initOperand));
       if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
       const large = isLargeC(fn.types.get(n.id) ?? 'u32');
@@ -1085,6 +1213,15 @@ function cBodyWith(
     }
     const borrow = cBorrow(ctx, n);
     if (borrow !== undefined) return borrow;
+    if (
+      variant === 'owned' &&
+      index === fn.nodes.length - 1 &&
+      n.op === 'rec' &&
+      [...ctx.projections.of.values()].some((p) => p.container.kind === 'param')
+    ) {
+      const stores = cStateStores(ctx, n);
+      if (stores !== undefined) return stores;
+    }
     if (isLargeC(fn.types.get(n.id) ?? 'u32')) return cLargeNode(ctx, n, index);
     const expr = cExpr(ctx, n, index);
     if (ctx.aliases.has(n.id)) return `  ${expr}`;

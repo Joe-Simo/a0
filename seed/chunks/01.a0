@@ -714,11 +714,19 @@ cur2 at g 2
 r rec types2 nt2 okf cur2
 ret r
 end
-fn arrone (u32x384x65,u32,bool,u32) u32 u32x128x128 u32 u32 -> (u32x384x65,u32,bool,u32)
-types at p0 0
-nt at p0 1
-r call arrword types nt p2 p3 p4
-ret r
+fn arrinfo (u32,bool,u32) u32 u32x384x65 u32x128x128 u32 u32 -> (u32,bool,u32)
+nt at p0 0
+r call arrword p2 nt p3 p4 p5
+n at r 1
+ok at r 2
+id at r 3
+s rec n ok id
+ret s
+end
+fn arrapply u32x384x65 u32 u32 u32x128x128 u32 u32 -> u32x384x65
+r call arrword p0 p2 p3 p4 p5
+t at r 0
+ret t
 end
 fn frst u32 u32 u32x384 u32x128 u32 u32 u32 u32 -> u32
 t add p4 p1

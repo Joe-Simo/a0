@@ -55,6 +55,7 @@ export const TASKS_B: readonly Task[] = [
   {
     id: 'b-sumfrom-eight',
     kind: 'targeted-edit',
+    target: 'sumfrom',
     instruction:
       'sumfrom(x) should return x plus the integers 0 through 7 (eight iterations, wrapping mod 2^32). It currently runs only five iterations. Change only the iteration count.',
     a0Source:

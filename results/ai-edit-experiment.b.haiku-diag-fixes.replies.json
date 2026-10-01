@@ -1,0 +1,39 @@
+{
+ "b-fits-inclusive/a0/structured": [
+  "retval le p0 p1"
+ ],
+ "b-sumfrom-eight/a0/structured": [
+  "fn sumfrom u32 -> u32\nr fold addi 8 p0\nret r\nend"
+ ],
+ "b-rot8-constant/a0/structured": [
+  "b shr p0 24"
+ ],
+ "b-onlyone-xor/a0/structured": [
+  "retval xor p0 p1"
+ ],
+ "b-avgfloor-nowrap/a0/structured": [
+  "fn avgfloor u32 u32 -> u32\na and p0 p1\nb xor p0 p1\nc shr b 1\nd add a c\nret d\nend"
+ ],
+ "b-sumsq-array/a0/structured": [
+  "fn addel u32 u32 u32x4 -> u32\na get p2 p1\nb mul a a\nc add p0 b\nret c\nend"
+ ],
+ "b-inrange-inclusive/a0/structured": [
+  "fn inrange u32 u32 u32 -> bool\na ge p0 p1\nb le p0 p2\nc and a b\nret c\nend"
+ ],
+ "b-bounds-largest/a0/structured": [
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nel get p2 p1\nmin at p0 0\nmax at p0 1\nnewmin select (lt el min) el min\nnewmax select (gt el max) el max\nret rec newmin newmax\nend",
+  "fn minmax (u32,u32) u32 u32x4 -> (u32,u32)\nel get p2 p1\nmin at p0 0\nmax at p0 1\nlt_cmp lt el min\nnewmin select lt_cmp el min\ngt_cmp gt el max\nnewmax select gt_cmp el max\nret rec newmin newmax\nend"
+ ],
+ "b-norm2-dot/a0/structured": [
+  "fn norm2 u32x4 -> u32\nr call dot p0 p0\nret r\nend"
+ ],
+ "b-pctof-limit/a0/structured": [
+  "fn pctof u32 u32 -> u32\na mul p0 100\nb div a p1\nr call limit b 0 100\nret r\nend"
+ ],
+ "b-hamming-popcnt/a0/structured": [
+  "fn hamming u32 u32 -> u32\nx xor p0 p1\nr call popcnt x\nret r\nend"
+ ],
+ "b-checksum-poly/a0/structured": [
+  "r fold mixel 4 7 p0\nfn mixel u32 u32 u32x4 -> u32\nx get p2 p1\nt mul p0 31\nr add t x\nret r\nend"
+ ]
+}

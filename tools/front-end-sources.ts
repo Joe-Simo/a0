@@ -61,3 +61,35 @@ function manyFunctions(): [string, string] {
     .join('');
   return [`fns${n}`, src];
 }
+
+const SQUARE = 'fn square u32 -> u32\na mul p0 p0\nret a\nend\n';
+
+/**
+ * Programs the TypeScript checker rejects because a name is unknown, with the row of the
+ * diagnostics table (src/diagnostics.ts) it names. The self-hosted spelling suggestions
+ * (compiler/suggest.a0) are verified on the token the parser rejects in each, and on every token.
+ */
+export const UNKNOWN_NAMES: readonly (readonly [string, string])[] = [
+  ['A0102', 'fn f u32 -> u32\na mull p0 2\nret a\nend\n'],
+  ['A0102', `${SQUARE}fn f u32 -> u32\nb call squar p0\nret b\nend\n`],
+  ['A0102', `${SQUARE}fn f u32 -> u32\nb squar p0\nret b\nend\n`],
+  ['A0102', `${SQUARE}fn f u32 -> u32\nret squar p0\nend\n`],
+  ['A0102', 'fn f u32 -> u32\na call g p0\nret a\nend\nfn g u32 -> u32\nb add p0 1\nret b\nend\n'],
+  ['A0102', 'fn f u32 -> u32\na frobnicate p0\nret a\nend\n'],
+  ['A0101', 'fn f u32 -> u32\naccum add p0 1\nb add acum 1\nret b\nend\n'],
+  ['A0101', 'fn f u32 -> u32\na add b 1\nb add p0 1\nret a\nend\n'],
+  ['A0101', 'fn f u32 -> u32\na add p0 1\nret aa\nend\n'],
+  [
+    'A0103',
+    'fn step u32 u32 -> u32\nr add p0 p1\nret r\nend\nfn f -> u32\na fold stepp 4 0\nret a\nend\n',
+  ],
+  [
+    'A0104',
+    'fn below u32 u32 -> bool\nb lt p0 5\nret b\nend\nfn step u32 u32 -> u32\nr add p0 1\nret r\nend\nfn f -> u32\na loop belw step 10 0\nret a\nend\n',
+  ],
+  [
+    'A0103',
+    'fn below u32 u32 -> bool\nb lt p0 5\nret b\nend\nfn step u32 u32 -> u32\nr add p0 1\nret r\nend\nfn f -> u32\na loop below stepp 10 0\nret a\nend\n',
+  ],
+  ['A0001', 'fn f bol -> bool\na mov p0\nret a\nend\n'],
+];

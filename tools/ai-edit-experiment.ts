@@ -7,7 +7,9 @@
  * in one 40-function program per representation, tools/ai-edit-tasks-c.ts); select with
  * A0_EXPERIMENT_TASKSET=a|b|c|all.
  *
- * A0 cell options: A0_EXPERIMENT_GUIDE (primer file),
+ * A0 cell options: A0_EXPERIMENT_DENSE=1 (the structured A0 cell shows the dense view and reads
+ * dense replies, src/dense.ts; use with a dense primer such as MODEL_GUIDE.dense.txt),
+ * A0_EXPERIMENT_GUIDE (primer file),
  * A0_EXPERIMENT_PRIMER=always|none|lazy|rules|rules-merged,
  * A0_EXPERIMENT_PROGRAM_VIEW=all|deps
  * (program handle scope), A0_EXPERIMENT_SYSTEM=separate|merged (protocol paragraph after the
@@ -52,6 +54,7 @@ import {
   applyTs,
   extractBlock,
   numbered,
+  PROTOCOL_LINE_EDIT,
   type Protocol,
 } from './ai-edit-apply.js';
 import {
@@ -113,14 +116,26 @@ const PROTOCOL_CONVENTIONAL =
 // them (`N line`, `N-`, `N+ line`); measured 2026-09-30 with MODEL_GUIDE.lines.txt, it raised
 // output per edit and lowered acceptance, so the default view stays unnumbered.
 const A0_NUMBERED_VIEW = process.env.A0_EXPERIMENT_A0_VIEW === 'numbered';
+// A0_EXPERIMENT_DENSE=1: the structured A0 cell is shown the dense view (function and program
+// handles) and its replies are dense text; the program, the acceptance tests and the checker
+// are the same.
+const A0_DENSE_VIEW = process.env.A0_EXPERIMENT_DENSE === '1';
+// A0_EXPERIMENT_DENSE_VIEW=lean: with the dense view, show only the function view (no handle line,
+// no program handle): the reply is applied to the one open handle, which is implied.
+const A0_LEAN_VIEW =
+  A0_DENSE_VIEW && ['lean', 'bare', 'bodies'].includes(process.env.A0_EXPERIMENT_DENSE_VIEW ?? '');
+// 'bodies' shows the direct callees' dense text instead of their signature lines.
+const A0_BODIES_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bodies';
+// 'bare' also drops the callee signature lines (scope function instead of deps).
+const A0_BARE_VIEW = A0_DENSE_VIEW && process.env.A0_EXPERIMENT_DENSE_VIEW === 'bare';
+const withoutHandle = (view: string): string => view.slice(view.indexOf('\n') + 1);
 const PROTOCOL_STRUCTURED_A0 = `The view starts with edit handles. Reply with only the edit lines the guide describes (${A0_NUMBERED_VIEW ? 'numbered or ' : ''}instruction lines edit the shown function; \`fn\` blocks or \`-fn name\` edit the program), bare: no code fence, no handle line.`;
 // Primer-free A0 structured protocol (A0_EXPERIMENT_PRIMER=none|lazy): the edit rules of the
 // guide's EDIT line, stated on their own, so the system text is the edit protocol only and the
 // language itself must be inferred from the view.
 const PROTOCOL_STRUCTURED_A0_SELF =
   'The view starts with edit handles. Reply with only edit lines, bare: no code fence, no handle line. `id op ...` replaces or inserts before ret; `-id` deletes; `ret x`; a `fn ...` block adds or replaces a function; `-fn name` removes one.';
-const PROTOCOL_STRUCTURED_TS =
-  'You are shown a view whose first line is an edit handle (e.g. e0) and whose remaining lines are numbered. Reply with only edit lines: `<number> <new text>` replaces a line, `+<number> <new text>` inserts a new line after it (use +0 for the top), `-<number>` deletes a line; a number may be given once. Nothing else, bare: no code fence, no handle line.';
+const PROTOCOL_STRUCTURED_TS = PROTOCOL_LINE_EDIT;
 const RUST_SEMANTICS =
   'Integers are u32 with wrapping arithmetic (use wrapping_add/wrapping_sub/wrapping_mul; shifts are masked to 5 bits); comparisons are unsigned. Division by zero gives 4294967295; remainder by zero gives the dividend. The file must compile with rustc, edition 2021.';
 const PROTOCOL_STRUCTURED_RUST = PROTOCOL_STRUCTURED_TS;
@@ -177,7 +192,7 @@ function applyA0(
       parseAndValidate(body);
       return { source: body };
     } catch (e) {
-      return { source, error: formatDiagnostic(e) };
+      return { source, error: formatDiagnostic(e, false) };
     }
   }
   if (session === undefined) return { source, error: 'no session' };
@@ -189,7 +204,10 @@ function applyA0(
     // reply's lines, each with its fix (EditSession.diagnose).
     const rejection = A0_DIAGNOSE_CORE ? session.diagnose(body) : undefined;
     const core = rejection === undefined ? '' : `\n${formatRejection(rejection)}`;
-    return { source, error: `${formatDiagnostic(e)}${core}` };
+    return {
+      source,
+      error: `${formatDiagnostic(e, process.env.A0_EXPERIMENT_HINTS === '1' ? '`fix all`' : false)}${core}`,
+    };
   }
 }
 
@@ -219,7 +237,7 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
   try {
     program = parseAndValidate(source);
   } catch (e) {
-    return [`invalid A0: ${formatDiagnostic(e)}`];
+    return [`invalid A0: ${formatDiagnostic(e, false)}`];
   }
   for (const t of tests) {
     const fn = program.byName.get(t.fn) as TypedFunc | undefined;
@@ -408,8 +426,22 @@ async function buildCell(
       // line selects which one is used.
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
-      const fnView = session.open(fnName, { scope: 'deps', numbered: A0_NUMBERED_VIEW }).text; // e0
-      const progView = session.openProgram({ scope: programScope, target: fnName }).text; // g0
+      const fnView = session.open(fnName, {
+        scope: A0_BARE_VIEW ? 'function' : A0_BODIES_VIEW ? 'bodies' : 'deps',
+        numbered: A0_NUMBERED_VIEW,
+        dense: A0_DENSE_VIEW,
+      }).text; // e0
+      if (A0_LEAN_VIEW)
+        return {
+          cell: { representation, protocol, ...primers, system, view: withoutHandle(fnView) },
+          session,
+          handle,
+        };
+      const progView = session.openProgram({
+        scope: programScope,
+        target: fnName,
+        dense: A0_DENSE_VIEW,
+      }).text; // g0
       const view = `${fnView}\n${progView}`;
       return { cell: { representation, protocol, ...primers, system, view }, session, handle };
     }
@@ -622,7 +654,9 @@ async function runTrial(
       applied.error === undefined
     ) {
       // Handles are stable: show the current text under the same e0 / g0.
-      nextView = `${session.view('e0')}\n${session.view('g0')}`;
+      nextView = A0_LEAN_VIEW
+        ? withoutHandle(session.view('e0'))
+        : `${session.view('e0')}\n${session.view('g0')}`;
     }
     const rejection = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
     // Lazy primer: sent once, with the first repair after a reply the checker could not accept
@@ -793,16 +827,21 @@ async function main(): Promise<void> {
     }
     if (!reps.includes('a0') && !reps.includes('ts') && !reps.includes('rust')) continue;
     selfCheck[`${task.id}/a0`] = await acceptA0(task.reference.a0, task.tests);
-    selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
     selfCheck[`${task.id}/a0-original-must-fail`] =
       (await acceptA0(task.a0Source, task.tests)).length > 0 ? [] : ['original already passes'];
-    selfCheck[`${task.id}/ts-original-must-fail`] =
-      (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
-    selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);
-    selfCheck[`${task.id}/rust-original-must-fail`] =
-      (await acceptRust(task.rustSource, task.tests, typedRef)).length > 0
-        ? []
-        : ['original already passes'];
+    // The TypeScript and Rust checks compile and run, so they only run for cells that use them.
+    if (reps.includes('ts')) {
+      selfCheck[`${task.id}/ts`] = await acceptTs(task.reference.ts, task.tests);
+      selfCheck[`${task.id}/ts-original-must-fail`] =
+        (await acceptTs(task.tsSource, task.tests)).length > 0 ? [] : ['original already passes'];
+    }
+    if (reps.includes('rust')) {
+      selfCheck[`${task.id}/rust`] = await acceptRust(task.reference.rust, task.tests, typedRef);
+      selfCheck[`${task.id}/rust-original-must-fail`] =
+        (await acceptRust(task.rustSource, task.tests, typedRef)).length > 0
+          ? []
+          : ['original already passes'];
+    }
   }
   const selfCheckOk = Object.values(selfCheck).every((f) => f.length === 0);
 
@@ -965,6 +1004,7 @@ async function main(): Promise<void> {
     programView: programScope,
     systemLayout,
     a0View: A0_NUMBERED_VIEW ? 'numbered' : 'plain',
+    a0Syntax: A0_DENSE_VIEW ? 'dense' : 'canonical',
     method,
     tokenizerNote:
       'setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.',

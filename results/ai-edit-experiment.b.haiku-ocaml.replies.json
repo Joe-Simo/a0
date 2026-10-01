@@ -1,0 +1,39 @@
+{
+ "b-fits-inclusive/ocaml/structured": [
+  "2 a <= b"
+ ],
+ "b-sumfrom-eight/ocaml/structured": [
+  "3 for i = 0 to 7 do"
+ ],
+ "b-rot8-constant/ocaml/structured": [
+  "2 ((x lsl 8) lor (x lsr 24)) land 0xFFFFFFFF"
+ ],
+ "b-onlyone-xor/ocaml/structured": [
+  "2 a <> b"
+ ],
+ "b-avgfloor-nowrap/ocaml/structured": [
+  "2 ((a land b) + ((a lxor b) lsr 1)) land 0xFFFFFFFF"
+ ],
+ "b-sumsq-array/ocaml/structured": [
+  "4 s := (!s + a.(i) * a.(i)) land 0xFFFFFFFF"
+ ],
+ "b-inrange-inclusive/ocaml/structured": [
+  "2 x >= lo && x <= hi"
+ ],
+ "b-bounds-largest/ocaml/structured": [
+  "7 if x > !hi then hi := x"
+ ],
+ "b-checksum-poly/ocaml/structured": [
+  "1 let checksum a =\n2   let h = ref 7 in\n3   for i = 0 to 3 do\n4     h := (!h * 31 + a.(i)) land 0xFFFFFFFF\n5   done;\n6   !h"
+ ],
+ "b-norm2-dot/ocaml/structured": [
+  "+12 let norm2 a =\n+12   dot a a"
+ ],
+ "b-pctof-limit/ocaml/structured": [
+  "+5 let pctof part whole =\n+5   limit (((part * 100) land 0xFFFFFFFF) / whole) 0 100",
+  "+5 let pctof part whole =\n+5   limit (if whole = 0 then 4294967295 else (((part * 100) land 0xFFFFFFFF) / whole)) 0 100"
+ ],
+ "b-hamming-popcnt/ocaml/structured": [
+  "+7 let hamming a b =\n+7   popcnt (a lxor b)"
+ ]
+}

@@ -1,0 +1,251 @@
+{
+  "generatedAt": "2026-10-01T06:44:56.503Z",
+  "tool": "tools/dense-tokens.ts",
+  "tokenizer": "o200k_base (js-tiktoken)",
+  "meaning": "canonical: today's text. denseExact: the dense text of the same program (lossless, same ids and node order). dense: the dense text after normalizeProgram (behavior unchanged; node order and ids chosen for the dense form), what a model writing dense text writes. attribution: tokens per construct summed over the set. ablation: tokens each dense feature saves (the same programs printed with that one feature off, minus the dense text).",
+  "kernels": [
+    {
+      "name": "affine",
+      "canonical": 29,
+      "denseExact": 7,
+      "dense": 7
+    },
+    {
+      "name": "rotl",
+      "canonical": 41,
+      "denseExact": 24,
+      "dense": 13
+    },
+    {
+      "name": "clamp",
+      "canonical": 44,
+      "denseExact": 24,
+      "dense": 17
+    },
+    {
+      "name": "mix",
+      "canonical": 65,
+      "denseExact": 33,
+      "dense": 33
+    },
+    {
+      "name": "ident",
+      "canonical": 13,
+      "denseExact": 3,
+      "dense": 3
+    },
+    {
+      "name": "noop",
+      "canonical": 31,
+      "denseExact": 12,
+      "dense": 12
+    },
+    {
+      "name": "chain3",
+      "canonical": 80,
+      "denseExact": 25,
+      "dense": 25
+    },
+    {
+      "name": "branchy",
+      "canonical": 81,
+      "denseExact": 60,
+      "dense": 32
+    },
+    {
+      "name": "arrfill",
+      "canonical": 98,
+      "denseExact": 62,
+      "dense": 31
+    },
+    {
+      "name": "loop64",
+      "canonical": 77,
+      "denseExact": 36,
+      "dense": 29
+    }
+  ],
+  "kernelTotals": {
+    "canonical": 559,
+    "denseExact": 286,
+    "dense": 202
+  },
+  "corpus": [
+    {
+      "name": "examples/life.a0",
+      "canonical": 1934,
+      "denseExact": 1502,
+      "dense": 860
+    },
+    {
+      "name": "compiler/lex.a0",
+      "canonical": 3750,
+      "denseExact": 2654,
+      "dense": 1792
+    },
+    {
+      "name": "site/ui.a0",
+      "canonical": 2428,
+      "denseExact": 1728,
+      "dense": 805
+    },
+    {
+      "name": "seed/chunks/00.a0",
+      "canonical": 7584,
+      "denseExact": 6186,
+      "dense": 4479
+    },
+    {
+      "name": "site/gen/sgcalc.a0",
+      "canonical": 19706,
+      "denseExact": 15621,
+      "dense": 10958
+    },
+    {
+      "name": "generated corpus (48 functions)",
+      "canonical": 22876,
+      "denseExact": 21613,
+      "dense": 12447
+    }
+  ],
+  "corpusTotals": {
+    "canonical": 58278,
+    "denseExact": 49304,
+    "dense": 31341
+  },
+  "attribution": {
+    "kernels": {
+      "canonical": {
+        "fn keyword": 14,
+        "fn name": 22,
+        "types": 88,
+        "arrow": 14,
+        "newline": 81,
+        "id definition": 52,
+        "operation": 51,
+        "parameter": 86,
+        "id reference": 67,
+        "ret": 14,
+        "end": 14,
+        "literal": 56
+      },
+      "denseExact": {
+        "fn keyword": 14,
+        "fn name": 22,
+        "operation": 45,
+        "parameter": 43,
+        "newline": 33,
+        "id reference": 67,
+        "literal": 40,
+        "types": 12,
+        "arrow": 1,
+        "punctuation": 5,
+        "callee name": 4
+      },
+      "dense": {
+        "fn keyword": 12,
+        "fn name": 18,
+        "operation": 43,
+        "parameter": 41,
+        "literal": 35,
+        "newline": 11,
+        "id reference": 22,
+        "punctuation": 20
+      }
+    },
+    "corpus": {
+      "canonical": {
+        "id definition": 8902,
+        "punctuation": 1290,
+        "id reference": 16925,
+        "callee name": 87,
+        "operation": 5267,
+        "literal": 8788,
+        "fn keyword": 257,
+        "fn name": 503,
+        "types": 5057,
+        "arrow": 259,
+        "newline": 5861,
+        "parameter": 4565,
+        "ret": 257,
+        "end": 260
+      },
+      "denseExact": {
+        "fn keyword": 257,
+        "fn name": 503,
+        "types": 4766,
+        "arrow": 233,
+        "newline": 5009,
+        "id reference": 22978,
+        "operation": 4210,
+        "parameter": 2147,
+        "literal": 7054,
+        "punctuation": 1481,
+        "callee name": 666
+      },
+      "dense": {
+        "fn keyword": 234,
+        "fn name": 465,
+        "types": 4493,
+        "arrow": 212,
+        "operation": 4073,
+        "parameter": 2107,
+        "literal": 6885,
+        "newline": 2292,
+        "id reference": 8254,
+        "punctuation": 1696,
+        "callee name": 630
+      }
+    }
+  },
+  "ablation": [
+    {
+      "name": "prefix nesting",
+      "what": "a value used once is its own statement, not nested",
+      "kernelsSaved": 91,
+      "corpusSaved": 7798
+    },
+    {
+      "name": "implicit ids",
+      "what": "every statement carries its id",
+      "kernelsSaved": 105,
+      "corpusSaved": 8994
+    },
+    {
+      "name": "implicit types",
+      "what": "every header lists its parameter types and `-> u32` (as canonical does)",
+      "kernelsSaved": 80,
+      "corpusSaved": 250
+    },
+    {
+      "name": "parameter letters",
+      "what": "p0, p1, p2 instead of A, B, C",
+      "kernelsSaved": 43,
+      "corpusSaved": 2214
+    },
+    {
+      "name": "shift symbols",
+      "what": "shl and shr instead of << and >>",
+      "kernelsSaved": 2,
+      "corpusSaved": 110
+    },
+    {
+      "name": "repeat arrays",
+      "what": "[0 0 0 0 0 0 0 0] instead of [0;8]",
+      "kernelsSaved": 12,
+      "corpusSaved": 1453
+    },
+    {
+      "name": "joined header",
+      "what": "a one-statement function on its fn line",
+      "kernelsSaved": 8,
+      "corpusSaved": 73
+    },
+    {
+      "name": "implicit result",
+      "what": "`ret` before the last statement and `end` after the function",
+      "kernelsSaved": 84,
+      "corpusSaved": 1616
+    }
+  ]
+}

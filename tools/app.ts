@@ -28,9 +28,9 @@ import {
 import { link } from '../src/link.js';
 import { findClang, findClangPlusPlus } from '../src/toolchain.js';
 import { type Case, makeRng } from './corpus.js';
-import { frontEndSources, wholeFiles } from './front-end-sources.js';
+import { frontEndSources, UNKNOWN_NAMES, wholeFiles } from './front-end-sources.js';
 import { ILL_TYPED, refCheck, refCheckWords } from './ref-check.js';
-import { irWords, refLex, refParse } from './ref-parse.js';
+import { irWords, refLex, refParse, refSuggest } from './ref-parse.js';
 import {
   checkInterpreter,
   checkJs,
@@ -193,6 +193,28 @@ export async function buildParseCases(): Promise<(Case & { readonly label: strin
       input: [bytes.length, ...bytes],
       expectedOutput: words,
     };
+  });
+}
+
+/**
+ * `suggestio` cases: every unknown-name program at the token the parser rejects (the row and the
+ * suggestion), and at its first token (not a name: rule 0). The expected words are refSuggest's.
+ */
+export function buildSuggestCases(): (Case & { readonly label: string })[] {
+  return UNKNOWN_NAMES.flatMap(([id, src], k) => {
+    const bytes = [...Buffer.from(src)];
+    const tokens = [refParse(src).tok, 0];
+    return tokens.map((tok) => {
+      const words = refSuggest(src, tok);
+      return {
+        label: `suggest/${id}-${k}-token${tok}`,
+        functionName: 'suggestio',
+        args: [],
+        expected: words[0] as number,
+        input: [bytes.length, ...bytes, tok],
+        expectedOutput: words,
+      };
+    });
   });
 }
 
@@ -403,6 +425,11 @@ async function main(): Promise<void> {
     .program;
   const checkCases = await buildCheckCases();
   const checkTargets = await frontEndTargets(checkProgram, checkCases, 8);
+  const suggestProgram = (
+    await link('compiler/suggest.a0', (p) => readFile(p, 'utf8'), { root: '.' })
+  ).program;
+  const suggestCases = buildSuggestCases();
+  const suggestTargets = await frontEndTargets(suggestProgram, suggestCases, 8);
   const emitProgram = (
     await link('compiler/emit_arm64.a0', (p) => readFile(p, 'utf8'), { root: '.' })
   ).program;
@@ -451,6 +478,15 @@ async function main(): Promise<void> {
       cases: checkCases.length,
       caseLabels: checkCases.map((c) => c.label),
       targets: checkTargets,
+    },
+    suggester: {
+      application:
+        'Self-hosted A0 spelling suggestions (compiler/suggest.a0 linked with lex.a0), io front suggestio',
+      reference:
+        'Independent TypeScript refSuggest in tools/ref-parse.ts (the rule of getSpellingSuggestion over the token stream)',
+      cases: suggestCases.length,
+      caseLabels: suggestCases.map((c) => c.label),
+      targets: suggestTargets,
     },
     emitter: {
       application:
@@ -515,6 +551,14 @@ async function main(): Promise<void> {
     if (t.failures)
       for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
   }
+  process.stdout.write('suggester (compiler/suggest.a0):\n');
+  for (const [name, t] of Object.entries(suggestTargets)) {
+    process.stdout.write(
+      `${name.padEnd(18)} ${t.status.padEnd(10)} ${String(t.cases).padStart(5)} cases  ${t.detail.slice(0, 80)}\n`,
+    );
+    if (t.failures)
+      for (const f of t.failures.slice(0, 5)) process.stdout.write(`    ${f.slice(0, 300)}\n`);
+  }
   process.stdout.write('emitter (compiler/emit_arm64.a0):\n');
   for (const [name, t] of Object.entries(emitTargets)) {
     process.stdout.write(
@@ -538,6 +582,7 @@ async function main(): Promise<void> {
     Object.values(targets).some((t) => t.status === 'failed') ||
     Object.values(lexTargets).some((t) => t.status === 'failed') ||
     Object.values(parseTargets).some((t) => t.status === 'failed') ||
+    Object.values(suggestTargets).some((t) => t.status === 'failed') ||
     Object.values(checkTargets).some((t) => t.status === 'failed');
   process.exit(bad ? 1 : 0);
 }

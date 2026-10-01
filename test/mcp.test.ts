@@ -162,3 +162,91 @@ test('mcp: diagnostics carry no host paths; an .a0 name must also resolve to an 
     assert.equal(await readFile(join(root, 'secret.env'), 'utf8'), 'TOKEN=abc\n');
     await client.close();
   }));
+
+test('mcp: dense views, dense replies, and a dense file saved as dense', () =>
+  withRoot(async (base) => {
+    await writeFile(join(base, 'root', 'd.a0d'), 'fn sq mul A A\n\nfn f add sq A 1\n');
+    const client = await connect(join(base, 'root'));
+    // A .a0d file is dense by default.
+    const view = await call(client, 'a0_open', { file: 'd.a0d', function: 'f' });
+    assert.ok(!view.error, view.text);
+    assert.equal(view.text.split('\n').slice(1).join('\n'), 'fn f add sq A 1\n# sq u32 -> u32');
+    const handle = view.text.split('\n')[0] ?? '';
+    const edit = await call(client, 'a0_apply', {
+      file: 'd.a0d',
+      edit: `${handle}\nfn f add sq A 2`,
+    });
+    assert.ok(!edit.error, edit.text);
+    assert.equal(
+      (await call(client, 'a0_run', { file: 'd.a0d', function: 'f', args: [3] })).text,
+      '11',
+    );
+    const prog = await call(client, 'a0_program', { file: 'd.a0d' });
+    assert.equal(prog.text.split('\n').slice(1).join('\n'), '# sq u32 -> u32\n# f u32 -> u32');
+    assert.equal((await call(client, 'a0_save', { file: 'd.a0d' })).text, 'd.a0d');
+    assert.equal(
+      await readFile(join(base, 'root', 'd.a0d'), 'utf8'),
+      'fn sq mul A A\n\nfn f add sq A 2\n',
+    );
+    // lean: no handle line; a reply without one edits the one open function
+    await writeFile(join(base, 'root', 'l.a0d'), 'fn sq mul A A\n\nfn f add sq A 1\n');
+    const lean = await call(client, 'a0_open', { file: 'l.a0d', function: 'f', lean: true });
+    assert.ok(!lean.error, lean.text);
+    assert.equal(lean.text, 'fn f add sq A 1\n# sq u32 -> u32');
+    const leanEdit = await call(client, 'a0_apply', { file: 'l.a0d', edit: 'fn f add sq A 3' });
+    assert.ok(!leanEdit.error, leanEdit.text);
+    assert.equal(
+      (await call(client, 'a0_run', { file: 'l.a0d', function: 'f', args: [3] })).text,
+      '12',
+    );
+    // scope bodies: the direct callees' dense text instead of their signature lines
+    const bodies = await call(client, 'a0_open', {
+      file: 'l.a0d',
+      function: 'f',
+      scope: 'bodies',
+      lean: true,
+    });
+    assert.equal(bodies.text, 'fn f add sq A 3\nfn sq mul A A');
+    // A canonical file can still be viewed and edited dense on request; it saves as canonical.
+    const v2 = await call(client, 'a0_open', { file: 'm.a0', function: 'f', dense: true });
+    assert.match(v2.text, /^e[0-9]+\nfn f\nb sq A\nc add b 1\n# sq u32 -> u32$/);
+    const h2 = v2.text.split('\n')[0] ?? '';
+    const e2 = await call(client, 'a0_apply', { file: 'm.a0', edit: `${h2}\nfn f add sq A 5` });
+    assert.ok(!e2.error, e2.text);
+    assert.equal(
+      (await call(client, 'a0_run', { file: 'm.a0', function: 'f', args: [2] })).text,
+      '9',
+    );
+    await call(client, 'a0_save', { file: 'm.a0' });
+    assert.match(await readFile(join(base, 'root', 'm.a0'), 'utf8'), /^fn sq u32 -> u32\n/);
+    await client.close();
+  }));
+
+test('mcp: a rejected edit carries id, fix and applicability, and `fix all` applies the exact fixes', () =>
+  withRoot(async (base) => {
+    const client = await connect(join(base, 'root', 'm.a0'));
+    const view = await call(client, 'a0_open', { function: 'f' });
+    const handle = view.text.split('\n')[0] ?? '';
+    const bad = await call(client, 'a0_apply', { edit: `${handle}\nc ADD b, 0x2` });
+    assert.ok(bad.error);
+    const diag = JSON.parse(bad.text) as Record<string, unknown>;
+    assert.equal(diag.code, 'parse', 'the coarse class is unchanged');
+    assert.equal(diag.id, 'A0011');
+    assert.equal(diag.applicability, 'exact');
+    assert.ok(Array.isArray(diag.edits) && diag.edits.length === 1);
+    assert.match(String(diag.fix), /add/);
+    // The next reply is `fix all`: both exact fixes land, atomically, and the program runs.
+    const fixed = await call(client, 'a0_apply', { edit: `${handle}\nfix all` });
+    assert.ok(!fixed.error, fixed.text);
+    assert.equal((await call(client, 'a0_run', { function: 'f', args: [3] })).text, '11');
+    // With nothing rejected, `fix all` is itself a diagnostic.
+    const again = await call(client, 'a0_apply', { edit: 'fix all' });
+    assert.ok(again.error);
+    assert.equal((JSON.parse(again.text) as { id: string }).id, 'A0521');
+    // A suggestion is `maybe` and names the candidate.
+    const typo = await call(client, 'a0_apply', { edit: `${handle}\nc mull b 2` });
+    const t = JSON.parse(typo.text) as { id: string; applicability: string; fix: string };
+    assert.deepEqual([t.id, t.applicability], ['A0102', 'maybe']);
+    assert.equal(t.fix, "did you mean 'mul'?");
+    await client.close();
+  }));

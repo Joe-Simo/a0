@@ -1,0 +1,38 @@
+{
+ "e-fold-count-fix/a0/structured": [
+  "r fold addi 5 p0"
+ ],
+ "e-swap-fields/a0/structured": [
+  "r rec d s"
+ ],
+ "e-guard-zero-div/a0/structured": [
+  "z eq p1 0\nr select z 0 q\nret r"
+ ],
+ "e-helper-sq-twice/a0/structured": [
+  "fn sq u32 -> u32\nr mul p0 p0\nret r\nend\nx call sq p0\ny call sq p1"
+ ],
+ "e-mask-widen/a0/structured": [
+  "a and p0 4095"
+ ],
+ "e-cmp-direction/a0/structured": [
+  "c gt p0 p1"
+ ],
+ "e-sum-range/a0/structured": [
+  "r fold stepadd 3 1 p0",
+  "fn stepadd u32 u32 u32x4 -> u32\nnext_idx add p1 1\nval get p2 next_idx\nres add p0 val\nret res\nend\nfn sum3 u32x4 -> u32\nr fold stepadd 3 0 p0\nret r\nend"
+ ],
+ "e-popcount-fold/a0/structured": [
+  "fn bitcount u32 u32 -> u32 end\nr fold bitcount 32 0 p0\nret r",
+  "fn bitcount u32 u32 u32 -> u32\nshifted shr p2 p1\nbit and shifted 1\nres add p0 bit\nret res\nend\nfn popcnt u32 -> u32\nc fold bitcount 32 0 p0\nret c\nend"
+ ],
+ "e-max3-helper/a0/structured": [
+  "x call max2 p0 p1\ny call max2 x p2\nret y"
+ ],
+ "e-hash-const/a0/structured": [
+  "m mul p0 33"
+ ],
+ "e-thread-param/a0/structured": [
+  "a call addk p0 p1\nb call addk a p1",
+  "fn addk u32 u32 -> u32\nres add p0 p1\nret res\nend\nfn apply u32 u32 -> u32\na call addk p0 p1\nb call addk a p1\nret b\nend"
+ ]
+}

@@ -1060,12 +1060,23 @@ cur2 at g 2
 r rec types2 nt2 okf cur2
 ret r
 end
-# arrword as a fold body, so that a count of 0 skips it
-fn arrone (u32x384x65,u32,bool,u32) u32 u32x512x64 u32 u32 u32 u32 -> (u32x384x65,u32,bool,u32)
-types at p0 0
-nt at p0 1
-r call arrword types nt p2 p3 p4 p5 p6
-ret r
+# arrword as fold bodies, so that a count of 0 skips it: arrinfo gives (ntypes ok index) with
+# the types read through p2; arrapply gives the types, the fold state itself, so the table is
+# never wrapped in a record (a per-token copy of the whole table on the C path otherwise); p6 p7
+# the digit-group skip and the element type (arrword)
+fn arrinfo (u32,bool,u32) u32 u32x384x65 u32x512x64 u32 u32 u32 u32 -> (u32,bool,u32)
+nt at p0 0
+r call arrword p2 nt p3 p4 p5 p6 p7
+n at r 1
+ok at r 2
+id at r 3
+s rec n ok id
+ret s
+end
+fn arrapply u32x384x65 u32 u32 u32x512x64 u32 u32 u32 u32 -> u32x384x65
+r call arrword p0 p2 p3 p4 p5 p6 p7
+t at r 0
+ret t
 end
 # a record: the first type at or after p7 of the page with tag 5, count p5 and hash p6
 fn frst u32 u32 u32x384 u32x128 u32 u32 u32 u32 -> u32
@@ -1298,15 +1309,15 @@ askip0 select isbw 5 4
 askip select dox 1 askip0
 abase0 select isbw 1 0
 abase select dox xbase abase0
-aws0 rec types ntypes false 0
-aws fold arrone an aws0 p2 start len askip abase
-typesa at aws 0
-ntypesa at aws 1
-arok0 at aws 2
+ai0 rec ntypes false 0
+ai fold arrinfo an ai0 types p2 start len askip abase
+typesa fold arrapply an types ntypes p2 start len askip abase
+ntypesa at ai 0
+arok0 at ai 1
 arok and doarr arok0
 xok0 and dox arok0
 xok and xok0 xnoio
-arid at aws 3
+arid at ai 2
 tyok0 or isu32 isbool
 tyok1 or tyok0 isio
 tyok2 or tyok1 arok
