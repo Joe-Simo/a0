@@ -26,6 +26,8 @@ f par results/parallel.json
 f axes results/lang-axes.json
 f hw results/hardware.json
 f tokfx results/tokens.json
+f b48 results/ai-edit-b48-dense.json
+f densetok results/dense-tokens.json
 # Cost rows, in order: representation -> results file kind and label.
 m cost a0 min A0
 m cost ts min TypeScript
@@ -662,10 +664,11 @@ c putfix %a
 +id tokens
 =h2 Tokens
 .p take
-"Writing the $n_k$ test programs takes A0 $tk_a0$ tokens: place $tk_rank$ of $tkrows$ languages (1 = fewest). The fewest is $tk_bestl$ with $tk_best$; the median language needs $tk_med$.
+"Writing the $n_k$ test programs, A0 (canonical) takes $tk_cv$ tokens: place $tk_cr$ of $n_langs1$ (1 = fewest), fewer than $tk_cw$ of the other $n_langs$ languages, equal to $tk_ct$ and more than $tk_cl$. A0 (dense) takes $tk_dv$: place $tk_dr$, fewer than $tk_dw$, equal to $tk_dt$, more than $tk_dl$; its lossless form, with the same ids and node order, takes $tk_dx$: place $tk_xr$.
 >
 <p
-"A token is the unit a model reads and writes. Fewer tokens for the same program means less to read, write and pay for. The count below is the source of the same test programs in each language, with the o200k tokenizer. How many tokens a whole edit costs, measured with real models, is in the Cost section.
+# claim-ok: a definition of why a token count matters, not a measured comparison; the counts are in results/lang-axes.json
+"A token is the unit a model reads and writes. Fewer tokens for the same program means less to read, write and pay for. The count below is the source of the same test programs in each language, with the o200k tokenizer. Both forms of A0 are plotted and highlighted. Dense is the same program in a shorter surface form; it converts losslessly to the canonical form. How many tokens a whole edit costs, measured with real models, is in the Cost section.
 >
 }
 {chart_tk
@@ -681,7 +684,7 @@ c putfix %a
 >
 .div legend
 .span la0
-"A0
+"A0 (canonical and dense)
 >
 .span lnat
 "compiled
@@ -714,7 +717,7 @@ c putnum %a
 ]
 .details more
 <summary
-"Show all $tkrows$ languages
+"Show all $tkrows$ rows ($n_langs1$ languages, A0 in two forms)
 >
 [tkrows
 .div lrow{tk_me| me}
@@ -737,7 +740,7 @@ c putnum %a
 ]
 >
 .p cap
-"Program length is one input; what a whole edit costs, measured with models, is in the Cost section. Shown first: A0 and the best-known languages; all $tkrows$ are behind the disclosure, in the same order. results/lang-axes.json.
+"Program length is one input; what a whole edit costs, measured with models, is in the Cost section. Shown first: A0 and the best-known languages; all $tkrows$ rows are behind the disclosure, in the same order. Source: results/lang-axes.json, and the dense totals in results/dense-tokens.json.
 >
 >
 }
@@ -979,6 +982,189 @@ c putratio %q
 "Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so A0's advantage grows with program size and reverses on a one-function file, where the primer dominates.
 >
 }
+{chart_ec
+.div chart langs reveal
+.p ct
+"Edit cost across $n_langs1$ languages, with A0 in two forms
+>
+.p take
+"Over a session of 10 edits, A0 (canonical) costs $ec_c_t10$ tokens per task: place $ec_cr10$ of $n_langs1$ (1 = fewest), cheaper than $ec_cw10$ of the other $n_langs$ languages, equal to $ec_ct10$, dearer than $ec_cl10$. A0 (dense, lean view with callee bodies) costs $ec_d_t10$: place $ec_dr10$, cheaper than $ec_dw10$, equal to $ec_dt10$, dearer than $ec_dl10$.
+>
+<p
+"Dense is the same program in a shorter surface form; it converts losslessly to the canonical form. A0 (dense) is shown with the lean view: only the function to edit, with its direct callees as dense text. Both A0 subjects are measured on the same twelve tasks of set b (one function to edit) as the other languages, one fresh Haiku and one fresh Sonnet subject per task, one shot and one repair. Losses first: the dense primer is larger ($ec_d_S$ tokens against $ec_c_S$ for canonical), so in a session of 1 task the two cost $ec_d_t1$ and $ec_c_t1$; each cell is $ec_c_n$ tasks, one task is $ec_trial$ points of acceptance, and differences of about one task are within noise. This chart is set b only.
+>
+.p sub
+"Tokens per task, session of 10 tasks (primer paid on the first call at 1.25x and on later calls at 0.05x; view and replies at 1x, as recorded in results/ai-edit-b48-dense.json); shorter bar = fewer tokens. Bar length is proportional.
+>
+.p cov mono{ec_covpart| part}
+"measured: $ec_cov$ of $n_all$ languages
+>
+.div legend
+.span la0
+"A0 (canonical and dense)
+>
+.span lnat
+"compiled
+>
+.span ljit
+"JIT or VM
+>
+.span lint
+"interpreted
+>
+>
+[ecrows ec_top
+.div lrow{ec_me| me}
+.span lbl
+"$ec_label$
+>
+.div track $ec_cls$
+.div fill
+w 12
+w 1
+w $ec_pct$
+>
+.span val
+n a mov $ec_val$
+c putnum %a
+" tok
+>
+>
+>
+]
+.details more
+<summary
+"Show all $ecrows$ rows ($n_langs1$ languages, A0 in two forms)
+>
+[ecrows
+.div lrow{ec_me| me}
+.span lbl
+"$ec_label$
+>
+.div track $ec_cls$
+.div fill
+w 12
+w 1
+w $ec_pct$
+>
+.span val
+n a mov $ec_val$
+c putnum %a
+" tok
+>
+>
+>
+]
+>
+.div tblwrap
+.table ops rank
+<tr
+=th Measure
+=th A0 (canonical): place
+# claim-ok: column labels; the cells are the win, tie and loss counts of results/ai-edit-b48-dense.json
+=th A0 (canonical): cheaper than, equal to, dearer than
+=th A0 (dense): place
+=th A0 (dense): cheaper than, equal to, dearer than
+>
+[emrows
+<tr
+.td mono
+"$em_name$
+>
+.td mono first
+"$em_cr$ of $n_langs1$ ($em_ct$ tied)
+>
+.td mono first
+"$em_cw$, $em_cx$, $em_cl$
+>
+.td mono first
+"$em_dr$ of $n_langs1$ ($em_dt$ tied)
+>
+.td mono first
+"$em_dw$, $em_dx$, $em_dl$
+>
+>
+]
+>
+>
+.div tblwrap
+.table ops rank
+<tr
+=th Subject
+=th Accepted first try
+=th Accepted after one repair
+=th Primer
+=th Tokens read
+=th Tokens written
+=th Session of 1 task
+=th Session of 10 tasks
+=th Long session
+>
+<tr
+.td first
+"A0 (canonical)
+>
+.td mono
+"$ec_c_one$ of $ec_c_n$
+>
+.td mono
+"$ec_c_acc$ of $ec_c_n$
+>
+.td mono
+"$ec_c_S$
+>
+.td mono
+"$ec_c_read$
+>
+.td mono
+"$ec_c_write$
+>
+.td mono
+"$ec_c_t1$
+>
+.td mono
+"$ec_c_t10$
+>
+.td mono
+"$ec_c_tinf$
+>
+>
+<tr
+.td first
+"A0 (dense)
+>
+.td mono
+"$ec_d_one$ of $ec_d_n$
+>
+.td mono
+"$ec_d_acc$ of $ec_d_n$
+>
+.td mono
+"$ec_d_S$
+>
+.td mono
+"$ec_d_read$
+>
+.td mono
+"$ec_d_write$
+>
+.td mono
+"$ec_d_t1$
+>
+.td mono
+"$ec_d_t10$
+>
+.td mono
+"$ec_d_tinf$
+>
+>
+>
+>
+.p cap
+"Measures: one-shot = accepted on the first try; after repair = accepted after one repair; cost 1, cost 10 and cost inf = tokens per task over a session of 1 task, of 10 tasks and of unbounded length (the primer's share vanishes). Place 1 = fewest tokens or most accepted; every rank is the subject against the same $n_langs$ other languages, and the three numbers beside it count the languages it beats, ties and loses to. Tokens in the second table are averages per task. The other dense variants measured (dense view with program view, lean view, lean view with a shorter primer) are in results/ai-edit-b48-dense.json. Numbers: results/ai-edit-b48-dense.json.
+>
+>
+}
 {chart2
 .div chart reveal
 .p ct
@@ -1042,7 +1228,7 @@ c putratio %q
 >
 ]
 .p cap
-"Bars are linear within each row. The per-size charts below add every other language that has data at that size. Languages with no model-edit data: $cost_missing$. Each needs a hand-written translation of every edit task, a build-and-run acceptance check and paid model calls; only the languages shown have them.
+"These size charts are A0 (canonical); A0 (dense) was measured at one function only, in the chart above. Bars are linear within each row. The per-size charts below add every other language that has data at that size. Languages with no model-edit data: $cost_missing$. Each needs a hand-written translation of every edit task, a build-and-run acceptance check and paid model calls; only the languages shown have them.
 >
 >
 }
