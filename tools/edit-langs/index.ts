@@ -1,6 +1,7 @@
 /** The further AI-edit languages defined by a LangSpec each (see spec.ts). */
 
 import { C } from './c.js';
+import { CHICKEN } from './chicken.js';
 import { CLOJURE } from './clojure.js';
 import { COMMONLISP } from './commonlisp.js';
 import { DART } from './dart.js';
@@ -12,7 +13,9 @@ import { FSHARP } from './fsharp.js';
 import { GROOVY } from './groovy.js';
 import { GUILE } from './guile.js';
 import { HASKELL } from './haskell.js';
+import { HAXE } from './haxe.js';
 import { JS } from './js.js';
+import { JULIA } from './julia.js';
 import { KOTLIN } from './kotlin.js';
 import { LUA } from './lua.js';
 import { NIM } from './nim.js';
@@ -22,6 +25,7 @@ import { PASCAL } from './pascal.js';
 import { PERL } from './perl.js';
 import { PHP } from './php.js';
 import { PROLOG } from './prolog.js';
+import { R } from './r.js';
 import { RACKET } from './racket.js';
 import { RUBY } from './ruby.js';
 import { SCALA } from './scala.js';
@@ -63,6 +67,10 @@ export const SPEC_LANGS = [
   'erlang',
   'commonlisp',
   'pascal',
+  'r',
+  'julia',
+  'haxe',
+  'chicken',
 ] as const;
 export type SpecLang = (typeof SPEC_LANGS)[number];
 
@@ -75,6 +83,10 @@ export const SPECS: Readonly<Record<SpecLang, LangSpec>> = {
   ocaml: OCAML,
   elixir: ELIXIR,
   zig: ZIG,
+  chicken: CHICKEN,
+  haxe: HAXE,
+  julia: JULIA,
+  r: R,
   pascal: PASCAL,
   commonlisp: COMMONLISP,
   erlang: ERLANG,
