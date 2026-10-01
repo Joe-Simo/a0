@@ -292,6 +292,12 @@ export interface TypedFunc extends Func {
    * exceeds LIMITS.maxStaticIterations; variable counts are reported, not rejected.
    */
   readonly staticIterations: number;
+  /**
+   * Largest product of literal trip counts along any nesting path through callees (a variable
+   * count contributes a factor of 1, since fuel bounds it at run time). This, not
+   * `staticIterations`, is what LIMITS.maxStaticIterations bounds.
+   */
+  readonly literalIterations: number;
   /** Resolved callees (each defined earlier in the same program). */
   readonly calls: ReadonlyMap<string, TypedFunc>;
 }
@@ -299,6 +305,42 @@ export interface TypedFunc extends Func {
 export interface TypedProgram {
   readonly functions: readonly TypedFunc[];
   readonly byName: ReadonlyMap<string, TypedFunc>;
+}
+
+/**
+ * Borrowed reads (backends with flat aggregate storage: C, the native targets, wasm). A `get`
+ * or `at` whose result is an aggregate names a part of its container's storage instead of
+ * copying it; `mov` and `select` of a borrow alias it too. Value semantics then require that
+ * the container is not updated in place while a borrow of it is still read. Is some borrow of
+ * `o` read after the node at `index` (or by that node itself, unless `selfRead`: a `set`/`put`
+ * reads its value operand before writing its target, whereas a fold's body keeps reading its
+ * extras while the state changes), or returned?
+ */
+export function borrowLive(fn: TypedFunc, o: Operand, index: number, selfRead: boolean): boolean {
+  const same = (x: Operand): boolean =>
+    (x.kind === 'node' && o.kind === 'node' && x.id === o.id) ||
+    (x.kind === 'param' && o.kind === 'param' && x.index === o.index);
+  const borrows = new Set<string>();
+  for (const n of fn.nodes) {
+    const t = fn.types.get(n.id);
+    if (t === undefined || isPrimitive(t)) continue;
+    const from = (x: Operand | undefined): boolean =>
+      x !== undefined && (same(x) || (x.kind === 'node' && borrows.has(x.id)));
+    const borrowed =
+      ((n.op === 'get' || n.op === 'at') && from(n.args[0])) ||
+      (n.op === 'mov' && from(n.args[0])) ||
+      (n.op === 'select' && (from(n.args[1]) || from(n.args[2])));
+    // From `o` itself or from an earlier borrow of it (nodes are in definition order).
+    if (borrowed) borrows.add(n.id);
+  }
+  if (borrows.size === 0) return false;
+  const isBorrow = (x: Operand): boolean => x.kind === 'node' && borrows.has(x.id);
+  if (isBorrow(fn.ret)) return true;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j < index || (j === index && selfRead)) continue;
+    if (n.args.some(isBorrow)) return true;
+  }
+  return false;
 }
 
 /**
@@ -999,6 +1041,8 @@ export function validateFunction(
   const defined = new Set<string>();
   const calls = new Map<string, TypedFunc>();
   const consumed = new Set<string>();
+  /** Records whose io-carrying field (the value) was taken out by `at`. */
+  const taken = new Map<string, number>();
   let staticIterations = 1;
   let literalIterations = 1;
   if (fn.params.filter(containsIo).length > 1) {
@@ -1040,16 +1084,48 @@ export function validateFunction(
         throw new A0Error(`${where}: literal out of u32 range`, undefined, { code: 'structure' });
       }
     }
-    // Linearity: an io-carrying value is consumed at most once; `at` reads do not consume.
+    // Linearity: an io-carrying value is consumed at most once. `at` of a field without io
+    // only reads; `at` of the io-carrying field takes the token out of the record, which may
+    // then only read its other fields or get that field back with `put` (anything else would
+    // use the token twice).
     for (const [k, arg] of node.args.entries()) {
       const t = argTypes[k] as Type;
       if (!containsIo(t)) continue;
-      if (node.op === 'at' && k === 0) continue;
       const key = arg.kind === 'param' ? `p${arg.index}` : arg.kind === 'node' ? arg.id : '';
+      const field = node.args[1]?.kind === 'u32' ? node.args[1].value : -1;
+      if (node.op === 'at' && k === 0) {
+        const ft = !isPrimitive(t) && t.kind === 'rec' ? t.fields[field] : undefined;
+        if (ft === undefined || !containsIo(ft)) continue;
+        if (consumed.has(key))
+          throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
+            code: 'structure',
+          });
+        if (taken.has(key))
+          throw new A0Error(
+            `${where}: the io field ${taken.get(key)} of '${key}' was already taken by \`at\``,
+            undefined,
+            {
+              code: 'structure',
+              fix: `use the value that \`at\` returned, or put a token back first with \`put ${key} ${taken.get(key)} <io>\``,
+            },
+          );
+        taken.set(key, field);
+        continue;
+      }
       if (consumed.has(key))
         throw new A0Error(`${where}: io token '${key}' was already consumed`, undefined, {
           code: 'structure',
         });
+      const out = taken.get(key);
+      if (out !== undefined && !(node.op === 'put' && k === 0 && field === out))
+        throw new A0Error(
+          `${where}: '${key}' is used after \`at\` took its io field ${out}; its token would be used twice`,
+          undefined,
+          {
+            code: 'structure',
+            fix: `read the other fields first, or put the token back with \`put ${key} ${out} <io>\` and use that record`,
+          },
+        );
       consumed.add(key);
     }
     if (node.op === 'at' || node.op === 'put') {
@@ -1110,7 +1186,7 @@ export function validateFunction(
       calls.set(callee.name, callee);
       types.set(node.id, callee.result);
       staticIterations = Math.max(staticIterations, callee.staticIterations);
-      literalIterations = Math.max(literalIterations, callee.staticIterations);
+      literalIterations = Math.max(literalIterations, callee.literalIterations);
     } else if (node.op === 'fold' || node.op === 'loop') {
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
@@ -1184,7 +1260,7 @@ export function validateFunction(
       const trips = countOp?.kind === 'u32' ? countOp.value : 2 ** 32;
       staticIterations = Math.max(staticIterations, trips * callee.staticIterations);
       if (countOp?.kind === 'u32') {
-        literalIterations = Math.max(literalIterations, trips * callee.staticIterations);
+        literalIterations = Math.max(literalIterations, trips * callee.literalIterations);
         if (literalIterations > LIMITS.maxStaticIterations) {
           throw new A0Error(
             `${where}: literal iteration count ${literalIterations} exceeds the compute bound ${LIMITS.maxStaticIterations}`,
@@ -1192,6 +1268,8 @@ export function validateFunction(
             { code: 'structure' },
           );
         }
+      } else {
+        literalIterations = Math.max(literalIterations, callee.literalIterations);
       }
       types.set(node.id, stateT);
     } else {
@@ -1208,8 +1286,17 @@ export function validateFunction(
       throw new A0Error(`${fn.name}.ret: io token '${key}' was already consumed`, undefined, {
         code: 'structure',
       });
+    if (taken.has(key))
+      throw new A0Error(
+        `${fn.name}.ret: '${key}' is returned after \`at\` took its io field ${taken.get(key)}`,
+        undefined,
+        {
+          code: 'structure',
+          fix: `return the record with the token put back: \`put ${key} ${taken.get(key)} <io>\``,
+        },
+      );
   }
-  return { ...fn, types, calls, staticIterations };
+  return { ...fn, types, calls, staticIterations, literalIterations };
 }
 
 export function validate(program: Program): TypedProgram {

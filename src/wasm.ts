@@ -29,8 +29,8 @@
  * pointer, so a fold over an array touches one element per trip instead of copying the state.
  *
  * In-place updates follow the other backends' `mutableHere` analysis: a `set`/`put` on a value
- * that is provably unshared (a fresh allocation or the owned state, read only by scalar `get`/`at`
- * before this node, never returned) stores one element and the node aliases the container; a
+ * that is provably unshared (a fresh allocation or the owned state, read only by `get`/`at`
+ * before this node and no aggregate one of them read after it, never returned) stores one element and the node aliases the container; a
  * fold or loop whose initial value is unshared runs in that value's storage. An aggregate
  * `get`/`at` result aliases into its container (no copy), which is why such reads count as
  * sharing for the analysis; `mov` aliases; `select` chooses an address at run time.
@@ -51,6 +51,7 @@
 
 import {
   A0Error,
+  borrowLive,
   containsIo,
   evalOp,
   formatType,
@@ -420,9 +421,9 @@ function sameOp(x: Operand, y: Operand): boolean {
 
 /**
  * May the aggregate operand `o` be updated in place by the node at `index`? The same analysis
- * as the JavaScript, C, and arm64 backends, with one refinement: since an aggregate-typed
- * `get`/`at` result aliases into its container here, only a scalar `get`/`at` counts as a
- * non-escaping read.
+ * as the C and native backends: an aggregate-typed `get`/`at` result aliases into its
+ * container here (a borrowed read), so the container is updated in place only when no such
+ * borrow is read after this node (`borrowLive`).
  */
 function mutableHere(
   fn: TypedFunc,
@@ -448,12 +449,11 @@ function mutableHere(
         continue;
       }
       if (j > index) return false;
-      const scalarRead =
-        (n.op === 'get' || n.op === 'at') && k === 0 && isPrimitive(fn.types.get(n.id) ?? 'u32');
-      if (!scalarRead) return false;
+      if (!((n.op === 'get' || n.op === 'at') && k === 0)) return false;
     }
   }
-  return true;
+  const writes = fn.nodes[index]?.op === 'set' || fn.nodes[index]?.op === 'put';
+  return !borrowLive(fn, o, index, writes);
 }
 
 // ---------------------------------------------------------------------------

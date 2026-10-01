@@ -1,0 +1,1127 @@
+# Site generator, module 11: phase D, the template interpreter. It runs the template twice: pass 1
+# writes the header lines (`1...`) and the section functions (`{name` ... `}`), pass 2 the session
+# lines (`2...`) and every line outside a section. Output lines of A0 are `x<k> OP ...` with k
+# counted over the whole template, so both passes number identically.
+# Template lines (first byte): `#` comment, `f` input file, `m` map entry, `1TEXT`/`2TEXT` a raw
+# line of pass 1/2, `<TAG` open, `.TAG CLASS` open with a class, `=TAG TEXT` a whole element,
+# `+KEY VALUE` attribute, `>` close, `"TEXT` text, `w WORD` a protocol word, `c FN ARGS` call,
+# `n R EXPR` a node named by register R (a-z, `%R` in later arguments), `s WORD ROLE` the text
+# file ROLE in chunks of at most 1000 bytes after protocol word WORD, `l ROLE` its lines as texts,
+# `{NAME` / `}` a section function, `[VAR` / `]` a loop VAR times (loops nest twice; variables
+# are read with the indices of the enclosing loops). In TEXT, VALUE, ARGS, EXPR and NAME:
+# `$var$` a variable (`$k$` the last node number), `{var|A|B}` A when var is not empty else B,
+# `\n` newline, `\s` space, `\x` the byte x. An empty text or attribute is not written.
+# The state S: 0 io, 1 k, 2 cur (0 tok, 1 p0, n + 2 node n), 3 in a section, 4 no line written yet
+# in this function, 5, 6 cur and 4 saved at a section, 7 sections written, 8, 9 the section's name,
+# 10 k at the section, 11 registers, 12 template position, 13 loop stack (3 words a level: body,
+# count, index), 14 loop depth, 15 pass.
+use "sgcalc.a0"
+
+fn son (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32) -> bool
+sec at p0 2
+ps at p0 14
+a eq ps 1
+b eq sec 1
+c eq ps 2
+d eq sec 0
+x and a b
+y and c d
+r or x y
+ret r
+end
+fn putw io bool u32x128x512 u32 -> io
+s call wstart p2 p3
+l call wlen p2 p3
+r call cpst p0 p1 false p2 s l
+ret r
+end
+fn putw1 io u32 bool u32x128x512 u32 -> io
+r call putw p0 p2 p3 p4
+ret r
+end
+fn putx1 io u32 bool u32 -> io
+a call putc p0 p2 120
+r call putd a p2 p3
+ret r
+end
+fn putcur io bool u32x128x512 u32 -> io
+t eq p3 0
+q eq p3 1
+x gt p3 1
+ct select t 1 0
+cq select q 1 0
+cx select x 1 0
+a fold putw1 ct p0 p1 p2 216
+b fold putw1 cq a p1 p2 217
+n sub p3 2
+c fold putx1 cx b p1 n
+ret c
+end
+# a new output line: the separator, then `x<k + 1>`; k := k + 1
+fn nline (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+k at p0r 0
+f at p0r 3
+on call son p0r
+nf eq f 0
+sep and on nf
+t1 call putc t sep 10
+k1 add k 1
+t2 call putc t1 on 120
+t3 call putd t2 on k1
+s1 rec t3 p0r
+s1t at s1 0
+s2r put p0r 0 k1
+s2 rec s1t s2r
+s2t at s2 0
+s3r put s2r 3 0
+s3 rec s2t s3r
+ret s3
+end
+# `x<k> write <cur> ` (the word follows); cur := k
+fn wpre (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call nline p0 p1
+t at s1 0
+s1r at s1 1
+on call son s1r
+cur at s1r 1
+t1 call putw t on p1 212
+t2 call putcur t1 on p1 cur
+t3 call putc t2 on 32
+k at s1r 0
+k2 add k 2
+s2 rec t3 s1r
+s2t at s2 0
+s3r put s1r 1 k2
+s3 rec s2t s3r
+ret s3
+end
+fn wnum (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call wpre p0 p1
+t at s1 0
+s1r at s1 1
+on call son s1r
+t1 call putd t on p2
+r rec t1 s1r
+ret r
+end
+# `x<k> call FN <cur> ` with FN the store range [p2, p2 + p3); cur := k
+fn cpre (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call nline p0 p1
+t at s1 0
+s1r at s1 1
+on call son s1r
+cur at s1r 1
+t1 call putw t on p1 213
+t2 call cpst t1 on false p1 p2 p3
+t3 call putc t2 on 32
+t4 call putcur t3 on p1 cur
+t5 call putc t4 on 32
+k at s1r 0
+k2 add k 2
+s2 rec t5 s1r
+s2t at s2 0
+s3r put s1r 1 k2
+s3 rec s2t s3r
+ret s3
+end
+fn cwrd (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s call wstart p1 p2
+l call wlen p1 p2
+r call cpre p0 p1 s l
+ret r
+end
+
+# ---- expansion of template text: state (io, bytes, position)
+fn vfmore u32 u32 u32x128x128 u32 u32 u32 u32 -> bool
+lt0 lt p0 p3
+e0 shl p0 2
+e add e0 288
+h call rd128 p2 e
+e1 add e 1
+ky call rd128 p2 e1
+d shr ky 28
+i0 shr ky 14
+i and i0 16383
+j and ky 16383
+he eq h p4
+d0 eq d 0
+d1 eq d 1
+d2 eq d 2
+ie eq i p5
+je eq j p6
+a1 and d1 ie
+a2a and d2 ie
+a2 and a2a je
+m0 or d0 a1
+m1 or m0 a2
+m and he m1
+nm select m false true
+r and lt0 nm
+ret r
+end
+fn vfstep u32 u32 u32x128x128 u32 u32 u32 u32 -> u32
+r add p0 1
+ret r
+end
+# the variable with name hash p1 at loop indices p2, p3: its entry, or the count when missing
+fn vfind u32x128x128 u32 u32 u32 -> u32
+n call rd128 p0 1
+r loop vfmore vfstep n 0 p0 n p1 p2 p3
+ret r
+end
+fn ventry u32x128x128 u32 u32 -> u32
+e0 shl p1 2
+e add e0 288
+f add e p2
+r call rd128 p0 f
+ret r
+end
+# the ref of a variable (0 when missing)
+fn vget u32x128x128 u32 u32 u32 -> u32
+e call vfind p0 p1 p2 p3
+n call rd128 p0 1
+has lt e n
+r0 call ventry p0 e 2
+r select has r0 0
+ret r
+end
+fn vcount u32x128x128 u32 u32 u32 -> u32
+e call vfind p0 p1 p2 p3
+n call rd128 p0 1
+has lt e n
+r0 call ventry p0 e 3
+r select has r0 0
+ret r
+end
+# write the byte p2 when p1 (escaped when p3) and count it: state (io, bytes, position)
+fn xout (io,u32,u32) bool bool u32 -> (io,u32,u32)
+t at p0 0
+c at p0 1
+p at p0 2
+t1 call putx t p1 p2 p3
+c1 add c 1
+r rec t1 c1 p
+ret r
+end
+fn xoutv (io,u32,u32) u32 bool bool u32x128x128 u32 -> (io,u32,u32)
+a add p5 p1
+b call vb p4 a
+r call xout p0 p2 p3 b
+ret r
+end
+fn xdig (io,u32,u32) u32 bool bool u32 u32 -> (io,u32,u32)
+ch call digit p1 p4 p5
+r call xout p0 p2 p3 ch
+ret r
+end
+fn xnum (io,u32,u32) bool bool u32 -> (io,u32,u32)
+nd call ndig p3
+r fold xdig nd p0 p1 p2 p3 nd
+ret r
+end
+fn xout1 (io,u32,u32) u32 bool bool u32 -> (io,u32,u32)
+r call xout p0 p2 p3 p4
+ret r
+end
+fn xnum1 (io,u32,u32) u32 bool bool u32 -> (io,u32,u32)
+r call xnum p0 p2 p3 p4
+ret r
+end
+# one unit that is not a condition: `\x`, `$var$`, `%r` (when p3), or a byte
+fn xunit (io,u32,u32) bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 -> (io,u32,u32)
+pos at p0 2
+c call sb p4 pos
+bs eq c 92
+dl eq c 36
+pc0 eq c 37
+pc and pc0 p3
+o0 or bs dl
+o1 or o0 pc
+plain select o1 false true
+p1a add pos 1
+d call sb p4 p1a
+dn eq d 110
+ds eq d 115
+e0 select ds 32 d
+esc select dn 10 e0
+cb select bs 1 0
+x1 fold xout1 cb p0 p1 p2 esc
+cp select plain 1 0
+x2 fold xout1 cp x1 p1 p2 c
+e call sfind p4 p1a p10 36
+nl sub e p1a
+h call shash p4 p1a nl
+kw call whash p4 72
+isk eq h kw
+nk select isk false true
+vd and dl nk
+kd and dl isk
+ref call vget p5 h p7 p8
+rs shr ref 16
+rl and ref 65535
+cv select vd rl 0
+x3 fold xoutv cv x2 p1 p2 p5 rs
+ck select kd 1 0
+x4 fold xnum1 ck x3 p1 p2 p9
+r0 call sb p4 p1a
+ri sub r0 97
+rn get p6 ri
+cr select pc 1 0
+x5 fold xout1 cr x4 p1 p2 120
+x6 fold xnum1 cr x5 p1 p2 rn
+e1 add e 1
+p2a add pos 2
+p1b add pos 1
+n0 select plain p1b p2a
+np select dl e1 n0
+t at x6 0
+cc at x6 1
+r rec t cc np
+ret r
+end
+fn ximore (io,u32,u32) u32 bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 -> bool
+p at p0 2
+r lt p p11
+ret r
+end
+fn xistep (io,u32,u32) u32 bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 -> (io,u32,u32)
+r call xunit p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11
+ret r
+end
+# a condition `{var|A|B}` at the position
+fn xcond (io,u32,u32) u32 bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 -> (io,u32,u32)
+pos at p0 2
+t at p0 0
+cc at p0 1
+bar call sfind p5 pos p11 124
+e call sfind p5 bar p11 125
+b1 add bar 1
+bar2 call sfind p5 b1 e 124
+a1 add pos 1
+nl sub bar a1
+h call shash p5 a1 nl
+ref call vget p6 h p8 p9
+rl and ref 65535
+ne gt rl 0
+b21 add bar2 1
+has2 lt bar2 e
+bs select has2 b21 e
+sa select ne b1 bs
+se select ne bar2 e
+n sub se sa
+s0 rec t cc sa
+x loop ximore xistep n s0 p2 p3 p4 p5 p6 p7 p8 p9 p10 se
+xt at x 0
+xc at x 1
+e1 add e 1
+r rec xt xc e1
+ret r
+end
+fn xomore (io,u32,u32) u32 bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 -> bool
+p at p0 2
+r lt p p11
+ret r
+end
+fn xostep (io,u32,u32) u32 bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 -> (io,u32,u32)
+pos at p0 2
+c call sb p5 pos
+br eq c 123
+nb select br false true
+cb select br 1 0
+cu select nb 1 0
+x1 fold xcond cb p0 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11
+x2 fold xistep cu x1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11
+ret x2
+end
+# expand the store range [p10, p11): (io, bytes written or counted) when p1 writes, p2 escapes,
+# p3 expands registers; p7, p8 the loop indices, p9 the value of $k$
+fn expand io bool bool bool u32x128x512 u32x128x128 u32x32 u32 u32 u32 u32 u32 -> (io,u32,u32)
+s0 rec p0 0 p10
+n sub p11 p10
+r loop xomore xostep n s0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p11
+ret r
+end
+fn loopij (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32) -> (u32,u32)
+st at p0 12
+i get st 2
+j get st 5
+r rec i j
+ret r
+end
+# expand into the output of S (written when p5 and S's pass is on), returning S and the count
+fn sexp (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 bool bool bool -> ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32)
+p0r at p0 1
+on0 call son p0r
+on and on0 p5
+rg at p0r 10
+ij call loopij p0r
+i at ij 0
+j at ij 1
+k at p0r 0
+t at p0 0
+x call expand t on p6 p7 p1 p2 rg i j k p3 p4
+t2 at x 0
+c at x 1
+s rec t2 p0r
+r rec s c
+ret r
+end
+fn scount (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 -> u32
+x call sexp p0 p1 p2 p3 p4 false true false
+r at x 1
+ret r
+end
+fn sput (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 bool bool -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+x call sexp p0 p1 p2 p3 p4 true p5 p6
+r at x 0
+ret r
+end
+fn sbyte (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+on call son p0r
+t1 call putc t on p1
+r rec t1 p0r
+ret r
+end
+fn sword (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+on call son p0r
+t1 call putw t on p1 p2
+r rec t1 p0r
+ret r
+end
+fn srange (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 bool -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+on call son p0r
+t1 call cpst t on p4 p1 p2 p3
+r rec t1 p0r
+ret r
+end
+# a text literal of the expansion of [p3, p4), then `puts` it: the TEXT command's bytes
+fn slit (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call nline p0 p1
+s1r at s1 1
+lit at s1r 0
+s2 call sword s1 p1 214
+s3 call sbyte s2 34
+s4 call sput s3 p1 p2 p3 p4 true false
+s5 call sbyte s4 34
+s6 call nline s5 p1
+s6r at s6 1
+n at s6r 0
+s7 call sword s6 p1 215
+s7r at s7 1
+cur at s7r 1
+t at s7 0
+on call son s7r
+t1 call putcur t on p1 cur
+t2 call putc t1 on 32
+t3 call putc t2 on 120
+t4 call putd t3 on lit
+n2 add n 2
+s8 rec t4 s7r
+s8t at s8 0
+s9r put s7r 1 n2
+s9 rec s8t s9r
+ret s9
+end
+fn dotext (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call wnum p0 p2 2
+s2 call slit s1 p2 p3 p4 p5
+ret s2
+end
+fn optext (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+x call sexp p0 p1 p2 p3 p4 false true false
+c at x 1
+sx at x 0
+ne gt c 0
+cn select ne 1 0
+r fold dotext cn sx p1 p2 p3 p4
+ret r
+end
+# the value of map word p3, key hash p4 in the lines [p1, p2) of the store: (start, length)
+fn mrmore (u32,u32,u32) u32 u32x128x512 u32 u32 u32 -> bool
+p at p0 0
+r lt p p4
+ret r
+end
+fn mval2 u32x128x512 u32 u32 -> (u32,u32)
+a call fstart p0 p1 4
+nl call sfind p0 a p2 10
+n sub nl a
+r rec a n
+ret r
+end
+fn mrstep (u32,u32,u32) u32 u32x128x512 u32 u32 u32 -> (u32,u32,u32)
+p at p0 0
+fs at p0 1
+fl at p0 2
+m call sbis p2 p 109
+nm call fhash p2 p 2
+w call whash p2 p3
+k call fhash p2 p 3
+a eq nm w
+b eq k p5
+c0 and a b
+c and c0 m
+mv call mval2 p2 p p4
+va at mv 0
+vl at mv 1
+fs2 select c va fs
+fl2 select c vl fl
+nl call sfind p2 p p4 10
+np add nl 1
+r rec np fs2 fl2
+ret r
+end
+fn mrange u32x128x512 u32 u32 u32 u32 -> (u32,u32)
+s0 rec p1 0 0
+n sub p2 p1
+r0 loop mrmore mrstep n s0 p0 p3 p2 p4
+a at r0 1
+l at r0 2
+r rec a l
+ret r
+end
+# the region (start, length) of the text file with role word p1
+fn rgstep (u32,u32) u32 u32x128x512 u32 -> (u32,u32)
+a0 shl p1 2
+a add a0 8
+h call rd512 p2 a
+e eq h p3
+a1 add a 1
+a2 add a 2
+s call rd512 p2 a1
+l call rd512 p2 a2
+s0 at p0 0
+l0 at p0 1
+rs select e s s0
+rl select e l l0
+r rec rs rl
+ret r
+end
+fn region u32x128x512 u32 -> (u32,u32)
+h call whash p0 p1
+n call hd p0 6
+s0 rec 0 0
+r fold rgstep n s0 p0 h
+ret r
+end
+# the protocol number of tag or attribute name [p2, p3) (map word p4) written as a word
+fn tagnum (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+n sub p3 p2
+h call shash p1 p2 n
+rg call region p1 57
+s at rg 0
+l at rg 1
+e add s l
+v call mrange p1 s e p4 h
+va at v 0
+vl at v 1
+r call srange p0 p1 va vl false
+ret r
+end
+fn opopen (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call cwrd p0 p1 222
+s2 call tagnum s1 p1 p2 p3 66
+ret s2
+end
+fn opclose (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+r call cwrd p0 p1 223
+ret r
+end
+# attribute [p3, p4) of value [p5, p6)
+fn doattr (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call wnum p0 p2 4
+s2 call wpre s1 p2
+s3 call tagnum s2 p2 p4 p5 67
+s4 call slit s3 p2 p3 p6 p7
+ret s4
+end
+fn opattr (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+x call sexp p0 p1 p2 p5 p6 false true false
+c at x 1
+sx at x 0
+ne gt c 0
+cn select ne 1 0
+r fold doattr cn sx p1 p2 p3 p4 p5 p6
+ret r
+end
+fn clsattr (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s call wstart p1 71
+l call wlen p1 71
+e add s l
+r call opattr p0 p1 p2 s e p3 p4
+ret r
+end
+# ---- chunks and lines of a text file
+# protocol word p3, then a text literal of the store bytes [p4, p4 + p5) and a newline when p6
+fn rawtext (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32 u32 u32 bool -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call wnum p0 p2 p3
+s2 call nline s1 p2
+s2r at s2 1
+lit at s2r 0
+s3 call sword s2 p2 214
+s4 call sbyte s3 34
+s5 call srange s4 p2 p4 p5 true
+t at s5 0
+s5r at s5 1
+on0 call son s5r
+on and on0 p6
+t1 call putesc t on 10
+s6 rec t1 s5r
+s7 call sbyte s6 34
+s8 call nline s7 p2
+s8r at s8 1
+n at s8r 0
+s9 call sword s8 p2 215
+s9r at s9 1
+cur at s9r 1
+t3 at s9 0
+on2 call son s9r
+t4 call putcur t3 on2 p2 cur
+t5 call putc t4 on2 32
+t6 call putc t5 on2 120
+t7 call putd t6 on2 lit
+n2 add n 2
+s10 rec t7 s9r
+s10t at s10 0
+s11r put s9r 1 n2
+s11 rec s10t s11r
+ret s11
+end
+# chunk state: (S, chunk start, chunk bytes, line start, done)
+fn chmore ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool) u32 u32x128x512 u32 u32 -> bool
+d at p0 4
+r select d false true
+ret r
+end
+fn chstep ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool) u32 u32x128x512 u32 u32 -> ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32,u32,u32,bool)
+s at p0 0
+cs at p0 1
+cl at p0 2
+ls at p0 3
+le call sfind p2 ls p4 10
+l0 sub le ls
+l add l0 1
+t add cl l
+over gt t 1000
+co select over 1 0
+ne gt cl 0
+c1 sub cl 1
+n select ne c1 0
+s1 fold rawtext co s p2 p3 cs n ne
+cs2 select over ls cs
+cl0 select over 0 cl
+cl2 add cl0 l
+np add le 1
+dn ge le p4
+r rec s1 cs2 cl2 np dn
+ret r
+end
+fn opchunks (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+e add p3 p4
+c0 rec p0 p3 0 p3 false
+n add p4 1
+c loop chmore chstep n c0 p1 p2 e
+s at c 0
+cs at c 1
+cl at c 2
+ne gt cl 0
+cn select ne 1 0
+c1 sub cl 1
+nn select ne c1 0
+r fold rawtext cn s p1 p2 cs nn ne
+ret r
+end
+fn tnmore u32 u32 u32x128x512 u32 -> bool
+a gt p0 p3
+b sub p0 1
+c call sbis p2 b 10
+r and a c
+ret r
+end
+fn tnstep u32 u32 u32x128x512 u32 -> u32
+r sub p0 1
+ret r
+end
+fn lnmore ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32) u32 u32x128x512 u32 -> bool
+p at p0 1
+r lt p p3
+ret r
+end
+fn lnstep ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32) u32 u32x128x512 u32 -> ((io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)),u32)
+s at p0 0
+ls at p0 1
+le call sfind p2 ls p3 10
+n sub le ls
+s1 fold rawtext 1 s p2 2 ls n true
+np add le 1
+r rec s1 np
+ret r
+end
+fn oplines (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+e0 add p2 p3
+e loop tnmore tnstep p3 e0 p1 p2
+c0 rec p0 p2
+n add p3 1
+c loop lnmore lnstep n c0 p1 e
+r at c 0
+ret r
+end
+# ---- the line operations; p2 the variables, [p3, p4) the line after its op byte (fold bodies)
+fn tagsplit u32x128x512 u32 u32 -> u32
+r call sfind p0 p1 p2 32
+ret r
+end
+fn oplt (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+r call opopen p0 p2 p4 p5
+ret r
+end
+fn opdot (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+sp call tagsplit p2 p4 p5
+s1 call opopen p0 p2 p4 sp
+lt0 lt sp p5
+c1 add sp 1
+cs select lt0 c1 p5
+r call clsattr s1 p2 p3 cs p5
+ret r
+end
+fn opeq (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+sp call tagsplit p2 p4 p5
+s1 call opopen p0 p2 p4 sp
+lt0 lt sp p5
+c1 add sp 1
+cs select lt0 c1 p5
+s2 call optext s1 p2 p3 cs p5
+s3 call opclose s2 p2
+ret s3
+end
+fn opplus (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+sp call tagsplit p2 p4 p5
+lt0 lt sp p5
+c1 add sp 1
+cs select lt0 c1 p5
+r call opattr p0 p2 p3 p4 sp cs p5
+ret r
+end
+fn opgt (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+r call opclose p0 p2
+ret r
+end
+fn opq (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+r call optext p0 p2 p3 p4 p5
+ret r
+end
+fn opw (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call wpre p0 p2
+a add p4 1
+r call sput s1 p2 p3 a p5 false true
+ret r
+end
+fn opc (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+a add p4 1
+sp call tagsplit p2 a p5
+n sub sp a
+s1 call cpre p0 p2 a n
+lt0 lt sp p5
+c1 add sp 1
+cs select lt0 c1 p5
+r call sput s1 p2 p3 cs p5 false true
+ret r
+end
+fn opn (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+a add p4 1
+rg call sb p2 a
+ri sub rg 97
+s1 call nline p0 p2
+s1r at s1 1
+k at s1r 0
+t at s1 0
+on call son s1r
+t1 call putc t on 32
+s2 rec t1 s1r
+e add p4 3
+s3 call sput s2 p2 p3 e p5 false true
+s3r at s3 1
+rs at s3r 10
+rs2 set rs ri k
+s3t at s3 0
+s4r put s3r 10 rs2
+s4 rec s3t s4r
+ret s4
+end
+fn rrstep (u32,u32) u32 u32x128x512 u32 -> (u32,u32)
+a0 shl p1 2
+a add a0 8
+h call rd512 p2 a
+e eq h p3
+a1 add a 1
+a2 add a 2
+s call rd512 p2 a1
+l call rd512 p2 a2
+s0 at p0 0
+l0 at p0 1
+rs select e s s0
+rl select e l l0
+r rec rs rl
+ret r
+end
+# the region (start, length) of the text file whose role has hash p1
+fn regrole u32x128x512 u32 -> (u32,u32)
+n call hd p0 6
+s0 rec 0 0
+r fold rrstep n s0 p0 p1
+ret r
+end
+fn ops (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+a add p4 1
+sp call tagsplit p2 a p5
+n sub sp a
+w fold decb n 0 p2 a
+c1 add sp 1
+rn sub p5 c1
+h call shash p2 c1 rn
+cw call whash p2 58
+iscss eq h cw
+cs call hd p2 4
+cl call hd p2 5
+fh call shash p2 c1 rn
+rg call regrole p2 fh
+rs at rg 0
+rl at rg 1
+st select iscss cs rs
+ln select iscss cl rl
+r call opchunks p0 p2 w st ln
+ret r
+end
+fn opl (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+a add p4 1
+n sub p5 a
+h call shash p2 a n
+rg call regrole p2 h
+rs at rg 0
+rl at rg 1
+r call oplines p0 p2 rs rl
+ret r
+end
+fn opraw (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+ps at p0r 14
+d sub p6 48
+on eq ps d
+n sub p5 p4
+t1 call cpst t on false p2 p4 n
+t2 call putc t1 on 10
+r rec t2 p0r
+ret r
+end
+# `{NAME`: pass 1 writes `fn NAME io -> io` (after a blank line from the second on)
+fn opbegin (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+ps at p0r 14
+p1s eq ps 1
+ns at p0r 6
+nz gt ns 0
+sep and p1s nz
+t1 call putc t sep 10
+t2 call putw t1 p1s p2 218
+k at p0r 0
+rg at p0r 10
+ij call loopij p0r
+i at ij 0
+j at ij 1
+x call expand t2 p1s false false p2 p3 rg i j k p4 p5
+t3 at x 0
+t4 call putw t3 p1s p2 219
+t5 call putc t4 p1s 10
+cur at p0r 1
+f at p0r 3
+ns1 add ns 1
+s1 rec t5 p0r
+s1t at s1 0
+s2r put p0r 4 cur
+s2 rec s1t s2r
+s2t at s2 0
+s3r put s2r 5 f
+s3 rec s2t s3r
+s3t at s3 0
+s4r put s3r 2 1
+s4 rec s3t s4r
+s4t at s4 0
+s5r put s4r 1 1
+s5 rec s4t s5r
+s5t at s5 0
+s6r put s5r 3 1
+s6 rec s5t s6r
+s6t at s6 0
+s7r put s6r 6 ns1
+s7 rec s6t s7r
+s7t at s7 0
+s8r put s7r 7 p4
+s8 rec s7t s8r
+s8t at s8 0
+s9r put s8r 8 p5
+s9 rec s8t s9r
+s9t at s9 0
+s10r put s9r 9 k
+s10 rec s9t s10r
+ret s10
+end
+# `}`: pass 1 ends the function; the enclosing code calls it
+fn opend (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+t at p0 0
+p0r at p0 1
+ps at p0r 14
+p1s eq ps 1
+cur at p0r 1
+t1 call putc t p1s 10
+t2 call putw t1 p1s p2 220
+t3 call putcur t2 p1s p2 cur
+t4 call putc t3 p1s 10
+t5 call putw t4 p1s p2 221
+t6 call putc t5 p1s 10
+sc at p0r 4
+sf at p0r 5
+s1 rec t6 p0r
+s1t at s1 0
+s2r put p0r 2 0
+s2 rec s1t s2r
+s2t at s2 0
+s3r put s2r 1 sc
+s3 rec s2t s3r
+s3t at s3 0
+s4r put s3r 3 sf
+s4 rec s3t s4r
+s5 call nline s4 p2
+t7 at s5 0
+s5r at s5 1
+on call son s5r
+t8 call putw t7 on p2 213
+a at s5r 7
+b at s5r 8
+kk at s5r 9
+rg at s5r 10
+ij call loopij s5r
+i at ij 0
+j at ij 1
+x call expand t8 on false false p2 p3 rg i j kk a b
+t9 at x 0
+t10 call putc t9 on 32
+cr at s5r 1
+t11 call putcur t10 on p2 cr
+k at s5r 0
+k2 add k 2
+s6 rec t11 s5r
+s6t at s6 0
+s7r put s5r 1 k2
+s7 rec s6t s7r
+ret s7
+end
+# ---- loops
+fn skmore (u32,u32) u32 u32x128x512 u32 -> bool
+d at p0 1
+p at p0 0
+a gt d 0
+b lt p p3
+r and a b
+ret r
+end
+fn skstep (u32,u32) u32 u32x128x512 u32 -> (u32,u32)
+p at p0 0
+d at p0 1
+o call sb p2 p
+op eq o 91
+cl eq o 93
+d1 add d 1
+d2 sub d 1
+da select op d1 d
+db select cl d2 da
+nl call sfind p2 p p3 10
+np add nl 1
+r rec np db
+ret r
+end
+fn oplb (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+n sub p5 p4
+h call shash p2 p4 n
+p0r at p0 1
+ij call loopij p0r
+i at ij 0
+j at ij 1
+cnt call vcount p3 h i j
+nxt add p5 1
+z eq cnt 0
+e call tplend p2
+s0 rec nxt 1
+sk loop skmore skstep e s0 p2 e
+skp at sk 0
+st at p0r 12
+d at p0r 13
+b0 mul d 3
+b1 add b0 1
+b2 add b0 2
+st1 set st b0 nxt
+st2 set st1 b1 cnt
+st3 set st2 b2 0
+d1 add d 1
+stn select z st st3
+dn select z d d1
+pcn select z skp nxt
+p0t at p0 0
+s1r put p0r 12 stn
+s1 rec p0t s1r
+s1t at s1 0
+s2r put s1r 13 dn
+s2 rec s1t s2r
+s2t at s2 0
+rr put s2r 11 pcn
+r rec s2t rr
+ret r
+end
+fn oprb (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+p0r at p0 1
+st at p0r 12
+d at p0r 13
+d0 sub d 1
+b0 mul d0 3
+b1 add b0 1
+b2 add b0 2
+body get st b0
+cnt get st b1
+ix get st b2
+ix1 add ix 1
+more lt ix1 cnt
+st2 set st b2 ix1
+nxt add p5 1
+stn select more st2 st
+dn select more d d0
+pcn select more body nxt
+p0t at p0 0
+s1r put p0r 12 stn
+s1 rec p0t s1r
+s1t at s1 0
+s2r put s1r 13 dn
+s2 rec s1t s2r
+s2t at s2 0
+rr put s2r 11 pcn
+r rec s2t rr
+ret r
+end
+# ---- one template line
+fn imore (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 -> bool
+p0r at p0 1
+pc at p0r 11
+e call tplend p2
+r lt pc e
+ret r
+end
+fn istep (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+p0r at p0 1
+pc at p0r 11
+e0 call tplend p2
+e call sfind p2 pc e0 10
+op call sb p2 pc
+a add pc 1
+e1 add e 1
+p0t at p0 0
+s0r put p0r 11 e1
+s0 rec p0t s0r
+c1 eq op 49
+c2 eq op 50
+raw or c1 c2
+cr select raw 1 0
+s1 fold opraw cr s0 p2 p3 a e op
+x60 eq op 60
+c60 select x60 1 0
+s2 fold oplt c60 s1 p2 p3 a e
+x46 eq op 46
+c46 select x46 1 0
+s3 fold opdot c46 s2 p2 p3 a e
+x61 eq op 61
+c61 select x61 1 0
+s4 fold opeq c61 s3 p2 p3 a e
+x43 eq op 43
+c43 select x43 1 0
+s5 fold opplus c43 s4 p2 p3 a e
+x62 eq op 62
+c62 select x62 1 0
+s6 fold opgt c62 s5 p2 p3 a e
+x34 eq op 34
+c34 select x34 1 0
+s7 fold opq c34 s6 p2 p3 a e
+x119 eq op 119
+c119 select x119 1 0
+s8 fold opw c119 s7 p2 p3 a e
+x99 eq op 99
+c99 select x99 1 0
+s9 fold opc c99 s8 p2 p3 a e
+x110 eq op 110
+c110 select x110 1 0
+s10 fold opn c110 s9 p2 p3 a e
+x115 eq op 115
+c115 select x115 1 0
+s11 fold ops c115 s10 p2 p3 a e
+x108 eq op 108
+c108 select x108 1 0
+s12 fold opl c108 s11 p2 p3 a e
+x123 eq op 123
+c123 select x123 1 0
+s13 fold opbegin c123 s12 p2 p3 a e
+x125 eq op 125
+c125 select x125 1 0
+s14 fold opend c125 s13 p2 p3 a e
+x91 eq op 91
+c91 select x91 1 0
+s15 fold oplb c91 s14 p2 p3 a e
+x93 eq op 93
+c93 select x93 1 0
+s16 fold oprb c93 s15 p2 p3 a e
+ret s16
+end
+fn interp io u32x128x512 u32x128x128 u32 -> io
+z32 arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+z16 arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s0r rec 0 0 0 1 0 0 0 0 0 0 z32 1024 z16 0 p3
+s0 rec p0 s0r
+n mov 4294967295
+s loop imore istep n s0 p1 p2
+t at s 0
+ret t
+end
+fn calc u32x128x128 u32 u32x128x512 u32x128x64 -> u32x128x128
+v1 fold strings 1 p0 p2 p3
+v2 fold cexec 1 v1 p2 p3
+v3 fold cranks 1 v2 p2 p3
+v4 fold cstart 1 v3 p2 p3
+v5 fold ccost 1 v4 p2 p3
+v6 fold cedit 1 v5 p2 p3
+v7 fold cpar 1 v6 p2 p3
+ret v7
+end
+# the generator: the template and its files in, the A0 program out
+fn sitegen io -> u32
+a call phasea p0
+st at a 0
+t at a 1
+k at a 2
+b call phaseb st t k
+pa at b 0
+t2 at b 1
+z call z128
+v0 fold wr128 1 z 0 33920
+nk call rd64 pa 128
+has gt nk 0
+c select has 1 0
+v fold calc c v0 st pa
+t3 call interp t2 st v 1
+t4 call interp t3 st v 2
+ret 0
+end

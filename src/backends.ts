@@ -20,6 +20,7 @@ import {
   A0Error,
   assertVectorSized,
   bitWidth,
+  borrowLive,
   containsIo,
   formatType,
   isPrimitive,
@@ -37,7 +38,7 @@ import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function } from './x86_64.js';
 
-export const COMPILER_VERSION = 'a0c-0.1.32';
+export const COMPILER_VERSION = 'a0c-0.1.33';
 
 export type Target =
   | 'js'
@@ -240,6 +241,42 @@ function mutableHere(
   }
   return true;
 }
+
+/**
+ * C only: `mutableHere` with two more facts of the C emitter. A `fold`/`loop`/`call` result is
+ * storage of this function (a fresh local, or the loop state aliasing an unshared initial value),
+ * so it is fresh like `arr`/`set`. And an earlier use that only reads the value is harmless: a
+ * callee or a loop body receives aggregates by const pointer and keeps nothing, so a `call`
+ * argument or a `fold`/`loop` extra before `index` does not share it. Uses that could mutate or
+ * alias it (a `set`/`put` target, a `fold`/`loop` initial state, a `select` operand) still do.
+ */
+function mutableHereC(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  ownedParam: (paramIndex: number) => boolean,
+): boolean {
+  if (o.kind === 'node') {
+    const def = fn.nodes.find((n) => n.id === o.id);
+    if (def === undefined || !(FRESH_OPS.has(def.op) || C_FRESH_OPS.has(def.op))) return false;
+  } else if (!(o.kind === 'param' && ownedParam(o.index))) {
+    return false;
+  }
+  if (sameOp(fn.ret, o)) return false;
+  for (const [j, n] of fn.nodes.entries()) {
+    if (j === index) continue;
+    for (const [k, arg] of n.args.entries()) {
+      if (!sameOp(arg, o)) continue;
+      if (j > index) return false;
+      if ((n.op === 'get' || n.op === 'at') && k === 0) continue;
+      if (n.op === 'call') continue;
+      if ((n.op === 'fold' || n.op === 'loop') && k >= 2) continue;
+      return false;
+    }
+  }
+  return true;
+}
+const C_FRESH_OPS = new Set<Op>(['fold', 'loop', 'call']);
 
 /** JS ownership: only the p0 state of the owned iteration-body variant is private. */
 const jsOwned =
@@ -635,6 +672,8 @@ interface CContext {
   readonly variant: CVariant;
   /** Nodes updated in place, mapped to the storage they alias (a value node or a parameter). */
   readonly aliases: Map<string, Operand>;
+  /** Aggregate `get`/`at` nodes held as `const T *` into their container (borrowed reads). */
+  readonly borrows: Set<string>;
   /** The large node built directly in the caller's `out` storage (the result's root). */
   readonly retOut?: string | undefined;
   /** Arena allocations emitted so far (the body then saves and restores the arena top). */
@@ -671,7 +710,9 @@ function cVal(ctx: CContext, o: Operand): string {
     return '(*p0)';
   if (root.kind === 'param' && isViewParam(ctx.fn, ctx.variant, root.index))
     return `(*p${root.index})`;
-  // Large values are pointers: to a borrowed parameter, arena storage, or `out`.
+  // Large values and borrowed reads are pointers: to a borrowed parameter, arena storage,
+  // `out`, or a part of another value.
+  if (root.kind === 'node' && ctx.borrows.has(root.id)) return `(*${cOperand(root)})`;
   if ((root.kind === 'param' || root.kind === 'node') && isLargeC(operandTypeOf(ctx.fn, root)))
     return `(*${cOperand(root)})`;
   return cOperand(root);
@@ -696,10 +737,24 @@ const cOwned =
     !(fn !== undefined && isViewParam(fn, variant, i)) &&
     !(fn !== undefined && isLargeC(fn.params[i] as Type) && !(variant === 'owned' && i === 0));
 
+/**
+ * The C in-place rule: `mutableHereC`, and no borrowed read of the target (an aggregate
+ * `get`/`at`, which C holds as a pointer into the target) is read after this update.
+ */
+function cMutableHere(
+  fn: TypedFunc,
+  o: Operand,
+  index: number,
+  owned: (i: number) => boolean,
+  selfRead: boolean,
+): boolean {
+  return mutableHereC(fn, o, index, owned) && !borrowLive(fn, o, index, selfRead);
+}
+
 /** Does the node at `index` update its first operand in place? Records the alias. */
 function cInPlace(ctx: CContext, node: Node, index: number): boolean {
   const target = node.args[0] as Operand;
-  if (!mutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn))) return false;
+  if (!cMutableHere(ctx.fn, target, index, cOwned(ctx.variant, ctx.fn), true)) return false;
   ctx.aliases.set(node.id, cRoot(ctx, target));
   return true;
 }
@@ -710,7 +765,10 @@ function cInPlace(ctx: CContext, node: Node, index: number): boolean {
  */
 export function ownedUpdateInPlace(fn: TypedFunc, index: number): boolean {
   const node = fn.nodes[index];
-  return node !== undefined && mutableHere(fn, node.args[0] as Operand, index, cOwned('owned', fn));
+  return (
+    node !== undefined &&
+    cMutableHere(fn, node.args[0] as Operand, index, cOwned('owned', fn), true)
+  );
 }
 
 /**
@@ -895,6 +953,7 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
     }
     case 'rec':
       return `  ${cLargeStorage(ctx, n)} ${n.args.map((o, k) => `${name}->f${k} = ${cVal(ctx, o)};`).join(' ')}`;
+    // Only the result's root in `out` is a copy; any other read borrows (see cBorrow).
     case 'get':
       return `  ${cLargeStorage(ctx, n)} *${name} = ${a}.e[${b} % ${arrayLength(fn, oa)}u];`;
     case 'at':
@@ -904,6 +963,26 @@ function cLargeNode(ctx: CContext, n: Node, index: number): string {
     default:
       throw new A0Error(`${n.op} has no large-aggregate form`);
   }
+}
+
+/**
+ * A read of an aggregate element or field borrows it: `const T *const n = &c.f;` instead of a
+ * copy of the element (a large one would take arena storage and a memcpy on every call). The
+ * container is never updated in place while a borrow is read (`cMutableHere`), and nothing
+ * writes through a borrow (only fresh values and owned parameters are updated in place), so
+ * the value read is the value a copy would hold. The result's root built in `out` stays a copy.
+ */
+function cBorrow(ctx: CContext, n: Node): string | undefined {
+  const t = ctx.fn.types.get(n.id) ?? 'u32';
+  if ((n.op !== 'get' && n.op !== 'at') || isPrimitive(t) || ctx.retOut === n.id) return undefined;
+  const [oa, ob] = n.args as [Operand, Operand];
+  const a = cVal(ctx, oa);
+  const part =
+    n.op === 'get'
+      ? `.e[${cVal(ctx, ob)} % ${arrayLength(ctx.fn, oa)}u]`
+      : `.f${ob.kind === 'u32' ? ob.value : 0}`;
+  ctx.borrows.add(n.id);
+  return `  const ${cType(t)} *const n_${n.id} = &${a}${part};`;
 }
 
 function cBody(
@@ -928,7 +1007,7 @@ function cBodyWith(
   parallel?: CParallel,
   helpers?: Map<string, string>,
 ): { readonly text: string; readonly ctx: CContext } {
-  const ctx: CContext = { fn, variant, aliases: new Map(), retOut, arena: 0 };
+  const ctx: CContext = { fn, variant, aliases: new Map(), borrows: new Set(), retOut, arena: 0 };
   const hooked = (site: CFoldSite): string => {
     // The arena is single-threaded: a fold touching large values keeps its sequential loop.
     const callees = [site.node.callee, site.node.pred].map((c) => fn.calls.get(c ?? ''));
@@ -965,7 +1044,7 @@ function cBodyWith(
       // initial value passed again as an extra is read by every trip, so it is not unshared.
       const initOperand = n.args[1] as Operand;
       const owned =
-        mutableHere(fn, initOperand, index, cOwned(variant, fn)) &&
+        cMutableHere(fn, initOperand, index, cOwned(variant, fn), false) &&
         !n.args.slice(2).some((o) => sameOp(o, initOperand));
       if (owned) ctx.aliases.set(n.id, cRoot(ctx, initOperand));
       const large = isLargeC(fn.types.get(n.id) ?? 'u32');
@@ -980,6 +1059,8 @@ function cBodyWith(
           : `${t} n_${n.id} = ${init};`;
       return hooked({ fn, node: n, count: `${count}`, extra, state, decl, loop });
     }
+    const borrow = cBorrow(ctx, n);
+    if (borrow !== undefined) return borrow;
     if (isLargeC(fn.types.get(n.id) ?? 'u32')) return cLargeNode(ctx, n, index);
     const expr = cExpr(ctx, n, index);
     if (ctx.aliases.has(n.id)) return `  ${expr}`;
