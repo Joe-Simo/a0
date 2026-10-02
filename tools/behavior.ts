@@ -129,8 +129,6 @@ export const SKIPS: readonly Skip[] = [
   { target: 'selfhost-arm64', program: 'text', reason: SELFHOST_SCALAR },
   { target: 'selfhost-arm64', program: 'io', reason: SELFHOST_SCALAR },
   { target: 'selfhost-arm64', program: 'iterate', fn: 'fill_sum', reason: SELFHOST_SCALAR },
-  ...NO_STRICT('arm64', ''),
-  ...NO_STRICT('x86_64', ''),
   ...NO_STRICT('riscv64', ''),
   ...NO_STRICT('avr', ''),
   ...NO_STRICT('arm32', ''),

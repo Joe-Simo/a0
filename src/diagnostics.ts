@@ -1680,11 +1680,11 @@ export const DIAGNOSTICS = {
   A0713: {
     cls: 'structure',
     message: 'target {0} cannot compile {1}',
-    fix: 'compile it for js, c, java, dotnet or wasm, or run it with the reference interpreter (`a0 run`), or remove the construct the target lacks',
+    fix: 'compile it for js, c, java, dotnet, wasm, arm64 or x86_64, or run it with the reference interpreter (`a0 run`), or remove the construct the target lacks',
     why: [
       'A program that declares `profile strict`, or uses a checked op (cadd csub cmul cdiv crem',
-      'cget), is refused by every target that does not implement it (js, c, java, dotnet and',
-      'wasm do; the others are listed in STRICT_TARGETS): a target must never silently run the canonical',
+      'cget), is refused by every target that does not implement it (js, c, java, dotnet, wasm,',
+      'arm64 and x86_64 do; the others are listed in STRICT_TARGETS): a target must never silently run the canonical',
       'semantics for a strict program. `--profile canonical`',
       'compiles a strict file under the canonical profile when that is what is wanted.',
     ],

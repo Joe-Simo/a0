@@ -201,9 +201,18 @@ export const ALL_OPS: readonly Op[] = [...OPS, ...CHECKED_OP_NAMES];
 
 /**
  * The targets that implement the strict profile and the checked ops: `js`, `c` (with its C++ and
- * parallel variants, and the wasm build through clang), `java`, `dotnet` and the direct `wasm` backend.
+ * parallel variants, and the wasm build through clang), `java`, `dotnet`, the direct `wasm` backend
+ * and the direct `arm64` and `x86_64` backends.
  */
-export const STRICT_TARGETS: ReadonlySet<string> = new Set(['js', 'c', 'java', 'dotnet', 'wasm']);
+export const STRICT_TARGETS: ReadonlySet<string> = new Set([
+  'js',
+  'c',
+  'java',
+  'dotnet',
+  'wasm',
+  'arm64',
+  'x86_64',
+]);
 
 /**
  * Refuse what a target cannot honour. Every target but the reference interpreter implements only

@@ -71,7 +71,23 @@ import {
   type Type,
   type TypedFunc,
 } from './core.js';
-import { emitFused, type FillRun, fillRun, overwritesState } from './optimize.js';
+import {
+  FRAME_BASE,
+  FRAME_BYTES,
+  type NativeTrapKind,
+  type TrapModule,
+  trapIndex,
+  x86TrapRuntime,
+} from './native-trap.js';
+import {
+  callTraps,
+  emitFused,
+  type FillRun,
+  fillRun,
+  mayTrapFn,
+  overwritesState,
+  siteOf,
+} from './optimize.js';
 
 export type X86Platform = 'darwin' | 'linux';
 
@@ -424,6 +440,9 @@ class FunctionEmitter {
   /** Whether the body needs ecx (variable shift or rotate) or edx (division) as scratch. */
   #needCx = false;
   #needDx = false;
+  /** Strict profile: the cold trap stubs this function uses, and the node-id strings it names. */
+  readonly #stubs = new Set<NativeTrapKind>();
+  readonly #nodeIds = new Set<string>();
 
   constructor(
     readonly fn: TypedFunc,
@@ -442,6 +461,74 @@ class FunctionEmitter {
   #label(): string {
     this.#labels += 1;
     return `${this.platform === 'darwin' ? 'L' : '.L'}a0_${this.fn.name}_${this.#labels}`;
+  }
+
+  /** A label unique to this function for a trap stub, a string or a frame name. */
+  #tag(tag: string): string {
+    return `${this.platform === 'darwin' ? 'L' : '.L'}a0t${this.fn.name.length}_${this.fn.name}_${tag}`;
+  }
+
+  /** The cold stub raising `kind`; emitted after the function. */
+  #stub(kind: NativeTrapKind): string {
+    this.#stubs.add(kind);
+    return this.#tag(kind === 'bounds' ? 'tb' : 'td');
+  }
+
+  /** The address of the shadow-stack state in `reg` (RIP-relative). */
+  #state(reg: string): void {
+    this.#emit(`leaq ${this.platform === 'darwin' ? '_a0_ts' : 'a0_ts'}(%rip), ${reg}`);
+  }
+
+  /** Push this function's frame on the shadow stack (uses rax, r10, r11 only). */
+  #enter(): void {
+    this.#state('%r10');
+    this.#emit(
+      'movq (%r10), %r11',
+      'addq %r10, %r11',
+      `leaq ${this.#tag('nm')}(%rip), %rax`,
+      `movq %rax, ${FRAME_BASE}(%r11)`,
+      `movq $0, ${FRAME_BASE + 8}(%r11)`,
+      `addq $${FRAME_BYTES}, (%r10)`,
+    );
+  }
+
+  /** Pop it (uses r10; the result registers are untouched). */
+  #leave(): void {
+    this.#state('%r10');
+    this.#emit(`subq $${FRAME_BYTES}, (%r10)`);
+  }
+
+  /** Name the fold or loop this frame is iterating (`id`), or none (uses rax, r10, r11). */
+  #markNode(id: string | undefined): void {
+    this.#state('%r10');
+    this.#emit('movq (%r10), %r11');
+    if (id === undefined) this.#emit(`movq $0, ${FRAME_BASE - FRAME_BYTES + 8}(%r10,%r11)`);
+    else {
+      this.#nodeIds.add(id);
+      this.#emit(
+        `leaq ${this.#tag(`i${id}`)}(%rip), %rax`,
+        `movq %rax, ${FRAME_BASE - FRAME_BYTES + 8}(%r10,%r11)`,
+      );
+    }
+  }
+
+  /** Record trip `reg` of the fold this frame is iterating (uses r10, r11). */
+  #markTrip(reg: string): void {
+    this.#state('%r10');
+    this.#emit('movq (%r10), %r11', `movl ${reg}, ${FRAME_BASE - FRAME_BYTES + 16}(%r10,%r11)`);
+  }
+
+  /**
+   * Strict: trap `bounds` unless idx < n. A literal index at or past n is an unconditional trap.
+   * Uses r10 (or the home register of idx).
+   */
+  #checkBounds(idx: Val, n: number): void {
+    const stub = this.#stub('bounds');
+    if (idx.kind === 'lit') {
+      this.#emit(`jmp ${stub}`);
+      return;
+    }
+    this.#emit(`cmpl ${imm(n)}, ${this.#read(idx, '%r10d')}`, `jae ${stub}`);
   }
 
   // --- values, keys, homes -------------------------------------------------------------
@@ -648,7 +735,7 @@ class FunctionEmitter {
    * written by a 32-bit instruction (upper half zero; incoming parameters are not). The mask
    * or division is dropped when the index is provably below n. Uses eax, edx, r10.
    */
-  #scaledIndex(idx: Val, n: number, elemBytes: number): string {
+  #scaledIndex(idx: Val, n: number, elemBytes: number, inRange = false): string {
     const sib = elemBytes === 2 || elemBytes === 4 || elemBytes === 8;
     const scale = sib ? `,${elemBytes}` : '';
     if (idx.kind === 'key' && (sib || elemBytes === 1) && this.#bound(idx) <= n) {
@@ -657,7 +744,7 @@ class FunctionEmitter {
     }
     if (n === 1 || (idx.kind === 'lit' && idx.value % n === 0)) this.#emit('xorl %r10d, %r10d');
     else if (idx.kind === 'lit') this.#emit(`movl ${imm(idx.value % n)}, %r10d`);
-    else if (this.#bound(idx) <= n) this.#into('%r10d', idx);
+    else if (inRange || this.#bound(idx) <= n) this.#into('%r10d', idx);
     else if ((n & (n - 1)) === 0) {
       this.#into('%r10d', idx);
       this.#emit(`andl ${imm(n - 1)}, %r10d`);
@@ -698,8 +785,11 @@ class FunctionEmitter {
 
   // --- calls and inlining ------------------------------------------------------------------
 
+  /** A callee that can trap (strict) keeps its own shadow-stack frame: it is always a real call. */
   #inlinable(callee: TypedFunc, env: Env): boolean {
-    return callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH;
+    return (
+      callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH && !mayTrapFn(callee)
+    );
   }
 
   /** Residual out-of-line call: arguments per the convention, result into `dst`. */
@@ -853,6 +943,13 @@ class FunctionEmitter {
       this.#needDx = true;
       const rb = this.#read(b as Val, '%r11d');
       this.#into('%eax', a as Val);
+      if (siteOf(env.fn, n) === 'divzero') {
+        // Strict: a zero divisor traps before the division.
+        this.#emit(`testl ${rb}, ${rb}`, `je ${this.#stub('divzero')}`, 'xorl %edx, %edx');
+        this.#emit(`divl ${rb}`, ...nonzero);
+        scalar((d) => this.#mov('%eax', d));
+        return;
+      }
       const z = this.#label();
       const done = this.#label();
       this.#emit(`testl ${rb}, ${rb}`, `je ${z}`, 'xorl %edx, %edx', `divl ${rb}`, ...nonzero);
@@ -1036,6 +1133,9 @@ class FunctionEmitter {
         if (isPrimitive(at) || at.kind !== 'arr') refuse('get needs an array');
         const ew = words(at.elem);
         const base = this.#slot(src.key);
+        // Strict: an index at or past the length traps instead of wrapping.
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#checkBounds(b as Val, at.length);
         if (b?.kind === 'lit') {
           const off = base + (b.value % at.length) * ew * 4;
           if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${this.#m('%rsp', off)}, ${d}`));
@@ -1045,7 +1145,7 @@ class FunctionEmitter {
           }
           return;
         }
-        const scale = this.#scaledIndex(b as Val, at.length, ew * 4);
+        const scale = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
         if (isPrimitive(t)) scalar((d) => this.#emit(`movl ${base}(%rsp,${scale}), ${d}`));
         else {
           this.#def(key, t);
@@ -1059,6 +1159,9 @@ class FunctionEmitter {
         const at = src.type;
         if (isPrimitive(at) || at.kind !== 'arr') refuse('set needs an array');
         const ew = words(at.elem);
+        // Strict: the index is checked before anything is copied or written.
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#checkBounds(b as Val, at.length);
         if (mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0))
           this.#defAlias(key, src.key, t);
         else {
@@ -1070,7 +1173,7 @@ class FunctionEmitter {
           this.#place(c as Val, '%rsp', dst + (b.value % at.length) * ew * 4);
           return;
         }
-        const scale = this.#scaledIndex(b as Val, at.length, ew * 4);
+        const scale = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
         const v = c as Val;
         if (v.kind === 'lit' || isPrimitive(v.type)) {
           const src = v.kind === 'lit' ? imm(v.value) : this.#read(v, '%eax');
@@ -1174,6 +1277,10 @@ class FunctionEmitter {
         this.#loops.push({ start: this.#pos, used: new Set() });
         const top = this.#label();
         const done = this.#label();
+        // Strict: a body that can trap runs under a marked frame, so a trap names this fold and
+        // its trip (`at=f.n trip=i`); the mark is cleared when the loop ends.
+        const marked = callTraps(env.fn, n);
+        if (marked) this.#markNode(n.id);
         // Rotated loop: one guard for a count that may be zero, then the test at the bottom
         // (one taken branch per trip).
         this.#use(count);
@@ -1186,6 +1293,7 @@ class FunctionEmitter {
           this.#emit(`je ${done}`);
         }
         this.#emit(`${top}:`);
+        if (marked) this.#markTrip(this.#read(cval, '%eax'));
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
@@ -1213,6 +1321,7 @@ class FunctionEmitter {
         const ci = this.#read(cval, '%r10d');
         const limit = count.kind === 'lit' ? imm(count.value) : this.#operand(count, '');
         this.#emit(`cmpl ${limit}, ${ci}`, `jb ${top}`, `${done}:`);
+        if (marked) this.#markNode(undefined);
         this.#pos += 1;
         this.#use(state);
         this.#use(cval);
@@ -1226,12 +1335,85 @@ class FunctionEmitter {
         }
         return;
       }
+      // The checked ops: the `(value, ok)` record, written into the node's slot. Nothing traps.
+      case 'cadd':
+      case 'csub':
+      case 'cmul':
+      case 'cdiv':
+      case 'crem':
+      case 'cget':
+        this.#checked(n, key, t, vals);
+        return;
       case 'read':
       case 'write':
       case 'puts':
         refuse(`${n.op} is an io operation`);
         return;
     }
+  }
+
+  /** `value` in eax and `ok` in r11d are stored as the two words of the record `key`. */
+  #storeRecord(key: string, t: Type): void {
+    this.#def(key, t);
+    const at = this.#slot(key);
+    this.#emit(`movl %eax, ${this.#m('%rsp', at)}`, `movl %r11d, ${this.#m('%rsp', at + 4)}`);
+  }
+
+  #checked(n: Node, key: string, t: Type, vals: readonly Val[]): void {
+    const [a, b] = vals as [Val, Val];
+    if (n.op === 'cget') {
+      const src = a.kind === 'key' && !isPrimitive(a.type) ? a : refuse('cget needs an array');
+      const at = src.type;
+      if (isPrimitive(at) || at.kind !== 'arr' || !isPrimitive(at.elem))
+        refuse('cget needs an array of scalars');
+      const base = this.#slot(src.key);
+      if (b.kind === 'lit') {
+        if (b.value < at.length) this.#emit(`movl ${this.#m('%rsp', base + 4 * b.value)}, %eax`);
+        else this.#emit('xorl %eax, %eax');
+        this.#emit(`movl $${b.value < at.length ? 1 : 0}, %r11d`);
+        this.#storeRecord(key, t);
+        return;
+      }
+      const out = this.#label();
+      const done = this.#label();
+      this.#emit(`cmpl ${imm(at.length)}, ${this.#read(b, '%r10d')}`, `jae ${out}`);
+      const scale = this.#scaledIndex(b, at.length, 4, true);
+      this.#emit(`movl ${base}(%rsp,${scale}), %eax`, 'movl $1, %r11d', `jmp ${done}`);
+      this.#emit(`${out}:`, 'xorl %eax, %eax', 'xorl %r11d, %r11d', `${done}:`);
+      this.#storeRecord(key, t);
+      return;
+    }
+    if (n.op === 'cdiv' || n.op === 'crem') {
+      this.#needDx = true;
+      const rb = this.#read(b, '%r11d');
+      this.#into('%eax', a);
+      const zero = this.#label();
+      const done = this.#label();
+      this.#emit(`testl ${rb}, ${rb}`, `je ${zero}`, 'xorl %edx, %edx', `divl ${rb}`);
+      if (n.op === 'crem') this.#emit('movl %edx, %eax');
+      this.#emit('movl $1, %r11d', `jmp ${done}`);
+      this.#emit(`${zero}:`, 'xorl %eax, %eax', 'xorl %r11d, %r11d', `${done}:`);
+      this.#storeRecord(key, t);
+      return;
+    }
+    if (n.op === 'cmul') {
+      this.#needDx = true;
+      const rb = b.kind === 'lit' ? '%r11d' : this.#operand(b, '%r11d');
+      if (b.kind === 'lit') this.#emit(`movl ${imm(b.value)}, %r11d`);
+      this.#into('%eax', a);
+      this.#emit(`mull ${rb}`, 'testl %edx, %edx', 'sete %r11b', 'movzbl %r11b, %r11d');
+      this.#storeRecord(key, t);
+      return;
+    }
+    // cadd, csub: the carry (or borrow) flag says the exact result did not fit.
+    const rb = b.kind === 'lit' ? imm(b.value) : this.#operand(b, '%r11d');
+    this.#into('%eax', a);
+    this.#emit(
+      `${n.op === 'cadd' ? 'addl' : 'subl'} ${rb}, %eax`,
+      'setae %r11b',
+      'movzbl %r11b, %r11d',
+    );
+    this.#storeRecord(key, t);
   }
 
   // --- SSE2 fill runs -----------------------------------------------------------------------
@@ -1444,6 +1626,23 @@ class FunctionEmitter {
     }
   }
 
+  /** After the function: its cold trap stubs, its name, and the ids of the folds it marks. */
+  #coldPaths(framed: boolean): void {
+    const trap = this.platform === 'darwin' ? '_a0_trap' : 'a0_trap';
+    for (const kind of ['bounds', 'divzero'] as const)
+      if (this.#stubs.has(kind))
+        this.out.push(
+          `${this.#tag(kind === 'bounds' ? 'tb' : 'td')}:`,
+          `\tmovl $${trapIndex(kind)}, %eax`,
+          `\tjmp ${trap}`,
+        );
+    const text = (tag: string, value: string): void => {
+      this.out.push(`${this.#tag(tag)}:`, `\t.asciz ${JSON.stringify(value)}`);
+    };
+    if (framed) text('nm', this.fn.name);
+    for (const id of this.#nodeIds) text(`i${id}`, id);
+  }
+
   // --- function -------------------------------------------------------------------------
 
   emit(): string {
@@ -1513,6 +1712,9 @@ class FunctionEmitter {
     for (const [k, r] of this.#saved.entries())
       this.#emit(`movq ${r}, ${this.#m('%rsp', this.#slot('save') + 8 * k)}`);
     if (sret) this.#emit(`movq %rdi, ${this.#m('%rsp', this.#slot('sret'))}`);
+    // Strict: a function that can trap keeps a frame on the shadow stack (rax, r10, r11 only).
+    const framed = mayTrapFn(fn);
+    if (framed) this.#enter();
     const incoming = (i: number): number => frame + 16 + (places[i]?.stack as number);
     // Incoming aggregates are copied first (the copy uses rax, r10, r11, xmm0 only, so the
     // argument registers survive), then scalars move to their homes.
@@ -1560,10 +1762,12 @@ class FunctionEmitter {
     }
     for (const [k, r] of this.#saved.entries())
       this.#emit(`movq ${this.#m('%rsp', this.#slot('save') + 8 * k)}, ${r}`);
+    if (framed) this.#leave();
     // rsp is unchanged when the frame is empty.
     if (frame > 0) this.#emit('movq %rbp, %rsp');
     this.#emit('popq %rbp', 'ret');
     if (this.platform === 'linux') this.out.push(`\t.size ${sym}, .-${sym}`);
+    this.#coldPaths(framed);
     return this.out.join('\n');
   }
 }
@@ -1581,10 +1785,12 @@ export function assembleX86_64(
   bodies: readonly string[],
   compilerVersion: string,
   platform: X86Platform = HOST_X86_PLATFORM,
+  trap?: TrapModule,
 ): string {
   const head =
     platform === 'darwin' ? '\t.section __TEXT,__text,regular,pure_instructions' : '\t.text';
   const tail =
     platform === 'darwin' ? '.subsections_via_symbols' : '\t.section .note.GNU-stack,"",@progbits';
-  return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${tail}\n`;
+  const runtime = trap === undefined ? '' : `${x86TrapRuntime(trap, platform)}\n\n`;
+  return `# Generated by A0 ${compilerVersion}. x86-64 (${platform}) assembly, System V AMD64 ABI, AT&T syntax; exact u32/bool semantics.\n${head}\n\n${bodies.join('\n\n')}\n\n${runtime}${tail}\n`;
 }

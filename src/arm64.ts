@@ -111,7 +111,23 @@ import {
   type Type,
   type TypedFunc,
 } from './core.js';
-import { FUSED_PREFIX, fillRun, fuseLoops, overwritesState } from './optimize.js';
+import {
+  arm64TrapRuntime,
+  FRAME_BASE,
+  FRAME_BYTES,
+  type NativeTrapKind,
+  type TrapModule,
+  trapIndex,
+} from './native-trap.js';
+import {
+  callTraps,
+  FUSED_PREFIX,
+  fillRun,
+  fuseLoops,
+  mayTrapFn,
+  overwritesState,
+  siteOf,
+} from './optimize.js';
 
 function refuse(message: string): never {
   throw new A0Error(`arm64: ${message}`, undefined, {
@@ -913,6 +929,8 @@ const MAP_OPS: ReadonlySet<Op> = new Set<Op>([
  * evaluated alone. Returns a function whose result is that value, or undefined.
  */
 function mapBody(callee: TypedFunc): TypedFunc | undefined {
+  // Strict: a body that can trap is never reordered, elided or vectorized.
+  if (mayTrapFn(callee)) return undefined;
   const ret = callee.ret;
   const state = callee.params[0];
   if (ret.kind !== 'node' || state === undefined || isPrimitive(state)) return undefined;
@@ -1214,8 +1232,11 @@ function selection(fn: TypedFunc): Selection {
   const order = new Map(fn.nodes.map((m, i) => [m.id, i]));
   const lazyQuery = new Map<string, QueryGroup>();
   const queryGet = new Map<string, QueryGroup>();
+  // Strict: a query group hoists the scalar nodes that compute its indices (a `div` or a `get`
+  // among them) ahead of their place, which a function that can trap must not allow.
+  const keepsOrder = mayTrapFn(fn);
   for (const n of fn.nodes) {
-    if (n.op !== 'fold' || lazyFill.has(n.id)) continue;
+    if (n.op !== 'fold' || lazyFill.has(n.id) || keepsOrder) continue;
     const t = fn.types.get(n.id);
     const list = uses.get(n.id) ?? [];
     if (t === undefined || isPrimitive(t) || t.kind !== 'arr' || t.elem !== 'u32') continue;
@@ -1293,6 +1314,8 @@ function selection(fn: TypedFunc): Selection {
  * array length every element is written, so the initial value is never observed.
  */
 function fillBody(callee: TypedFunc): { value: Operand; nodes: readonly Node[] } | undefined {
+  // Strict: a body that can trap is never reordered, elided or vectorized.
+  if (mayTrapFn(callee)) return undefined;
   const ret = callee.ret;
   if (ret.kind !== 'node') return undefined;
   const last = callee.nodes.find((n) => n.id === ret.id);
@@ -1329,6 +1352,8 @@ const VECTOR_LAST = 31;
  * fields can live in registers for the whole loop, written back once at the end.
  */
 function scalarRecordBody(callee: TypedFunc): boolean {
+  // Strict: a body that can trap is never reordered, elided or vectorized.
+  if (mayTrapFn(callee)) return false;
   const state = callee.params[0];
   if (state === undefined || isPrimitive(state) || state.kind !== 'rec') return false;
   if (state.fields.length > 8 || !state.fields.every((f) => f === 'u32' || f === 'bool'))
@@ -1841,6 +1866,8 @@ function laneBound(
 }
 
 function vectorPlan(body: TypedFunc, count: number): VecPlan | undefined {
+  // Strict: a body that can trap is never reordered, elided or vectorized.
+  if (mayTrapFn(body)) return undefined;
   if (count % 4 !== 0 || count < 8 || body.nodes.length > 64) return undefined;
   const state = body.params[0];
   if (state === undefined || body.params[1] !== 'u32') return undefined;
@@ -2467,6 +2494,9 @@ class FunctionEmitter {
   #outgoing = 0;
   #leaf = true;
   #saved: string[] = [];
+  /** Strict profile: the cold trap stubs this function uses, and the node-id strings it names. */
+  readonly #stubs = new Set<NativeTrapKind>();
+  readonly #nodeIds = new Set<string>();
 
   /**
    * `fuseCallees`: an inlined callee has its own loops fused (producer into consumer, see
@@ -2792,10 +2822,10 @@ class FunctionEmitter {
    * A w register holding (index operand mod n), n > 1: the index itself when its bound
    * proves it in range, else w10. Uses w10-w12.
    */
-  #index(idx: Val, n: number): string {
+  #index(idx: Val, n: number, inRange = false): string {
     const r = this.#read(idx, 'w10');
     const bound = idx.kind === 'key' ? this.#bound.get(this.#canon(idx.key)) : undefined;
-    if (bound !== undefined && bound < n) return r;
+    if (inRange || (bound !== undefined && bound < n)) return r;
     if ((n & (n - 1)) === 0) this.#emit(`and w10, ${r}, #${n - 1}`);
     else {
       const rn = this.#lit(n, 'w11');
@@ -2827,10 +2857,87 @@ class FunctionEmitter {
     return '[x16]';
   }
 
+  // --- strict profile: shadow-stack frames and cold trap stubs ----------------------------------
+
+  /** A label unique to this function for a trap stub, a string or a frame name. */
+  #tag(tag: string): string {
+    return `La0t${this.fn.name.length}_${this.fn.name}_${tag}`;
+  }
+
+  /** The cold stub raising `kind`; emitted after the function. */
+  #stub(kind: NativeTrapKind): string {
+    this.#stubs.add(kind);
+    return this.#tag(kind === 'bounds' ? 'tb' : 'td');
+  }
+
+  /** `reg` = the address of `symbol` (a page and a page offset). */
+  #adr(reg: string, symbol: string): void {
+    this.#emit(`adrp ${reg}, ${symbol}@PAGE`, `add ${reg}, ${reg}, ${symbol}@PAGEOFF`);
+  }
+
+  /** Push this function's frame on the shadow stack (x9-x12 only: the arguments are live). */
+  #enter(): void {
+    this.#adr('x9', '_a0_ts');
+    this.#emit('ldr x10, [x9]', 'add x11, x9, x10');
+    this.#adr('x12', this.#tag('nm'));
+    this.#emit(
+      `stp x12, xzr, [x11, #${FRAME_BASE}]`,
+      `add x10, x10, #${FRAME_BYTES}`,
+      'str x10, [x9]',
+    );
+  }
+
+  /** Pop it (x9, x10 only: the result registers are live). */
+  #leave(): void {
+    this.#adr('x9', '_a0_ts');
+    this.#emit('ldr x10, [x9]', `sub x10, x10, #${FRAME_BYTES}`, 'str x10, [x9]');
+  }
+
+  /** x10 = the address of the current frame's trip word (the frame's `{name, node, trip}` at -16). */
+  #topFrame(): void {
+    this.#adr('x10', '_a0_ts');
+    this.#emit('ldr x11, [x10]', 'add x10, x10, x11');
+  }
+
+  /** Name the fold or loop this frame is iterating (`id`), or none (x10, x11). */
+  #markNode(id: string | undefined): void {
+    this.#topFrame();
+    if (id === undefined) {
+      this.#emit('stur xzr, [x10, #-8]');
+      return;
+    }
+    this.#nodeIds.add(id);
+    this.#adr('x11', this.#tag(`i${id}`));
+    this.#emit('stur x11, [x10, #-8]');
+  }
+
+  /** Record trip `reg` of the fold this frame is iterating (x10, x11). */
+  #markTrip(reg: string): void {
+    this.#topFrame();
+    this.#emit(`str ${reg}, [x10]`);
+  }
+
+  /**
+   * Strict: trap `bounds` unless idx < n. A literal index at or past n is an unconditional trap
+   * (a literal below n is never checked: `siteOf` proves it).
+   */
+  #checkBounds(idx: Val, n: number): void {
+    const stub = this.#stub('bounds');
+    if (idx.kind === 'lit') {
+      this.#emit(`b ${stub}`);
+      return;
+    }
+    const r = this.#read(idx, 'w10');
+    this.#emit(`cmp ${r}, ${n <= 4095 ? `#${n}` : this.#lit(n, 'w11')}`, `b.hs ${stub}`);
+  }
+
   // --- calls and inlining ------------------------------------------------------------------
 
+  /** A callee that can trap (strict) keeps its own shadow-stack frame: it is always a real call. */
   #inlinable(callee: TypedFunc, env: Env): boolean {
-    return callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH;
+    return (
+      callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH && !mayTrapFn(callee)
+    );
   }
 
   /** Residual out-of-line call: arguments per the convention, result into `dst`. */
@@ -3900,7 +4007,13 @@ class FunctionEmitter {
       return;
     }
     // Every operand a literal (an index of a lazily evaluated array, say): computed here.
-    if (feed === undefined && vals.length > 0 && vals.every((v) => v.kind === 'lit')) {
+    // (Strict: a node that can trap is never folded to the canonical value.)
+    if (
+      feed === undefined &&
+      vals.length > 0 &&
+      vals.every((v) => v.kind === 'lit') &&
+      siteOf(env.fn, n) === undefined
+    ) {
       const folded = foldOp(
         n.op,
         vals.map((v) => (v as { value: number }).value),
@@ -3949,6 +4062,12 @@ class FunctionEmitter {
         // UDIV yields 0 for a zero divisor; A0 requires all ones.
         const ra = this.#read(a as Val, 'w10');
         const rb = this.#readRn(b as Val, 'w11');
+        if (siteOf(env.fn, n) === 'divzero') {
+          // Strict: a zero divisor traps before the division.
+          this.#emit(`cbz ${rb}, ${this.#stub('divzero')}`);
+          scalar((d) => this.#emit(`udiv ${d}, ${ra}, ${rb}`));
+          return;
+        }
         scalar((d) =>
           this.#emit(
             `udiv ${d}, ${ra}, ${rb}`,
@@ -3962,6 +4081,7 @@ class FunctionEmitter {
         // a - (a / b) * b; a zero divisor gives quotient 0, hence the dividend (A0's rule).
         const ra = this.#read(a as Val, 'w10');
         const rb = this.#read(b as Val, 'w11');
+        if (siteOf(env.fn, n) === 'divzero') this.#emit(`cbz ${rb}, ${this.#stub('divzero')}`);
         scalar((d) => this.#emit(`udiv ${d}, ${ra}, ${rb}`, `msub ${d}, ${d}, ${rb}, ${ra}`));
         return;
       }
@@ -4045,6 +4165,13 @@ class FunctionEmitter {
         return;
       }
       case 'get': {
+        // Strict: an index at or past the length traps instead of wrapping.
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) {
+          const ty = aggregateOf(a as Val, 'an array').type;
+          if (isPrimitive(ty) || ty.kind !== 'arr') refuse('get needs an array');
+          this.#checkBounds(b as Val, ty.length);
+        }
         const group = sel.queryGet.get(n.id);
         if (group !== undefined) {
           if (group.gets[0] === n) this.#queries(env, group, sel);
@@ -4057,7 +4184,7 @@ class FunctionEmitter {
           if ((b as Val).kind === 'lit')
             at = { kind: 'lit', value: (b as { value: number }).value % lazy.length, type: 'u32' };
           else {
-            const ri = this.#index(b as Val, lazy.length);
+            const ri = this.#index(b as Val, lazy.length, checked);
             const ikey = `${key}#i`;
             this.#def(ikey, 'u32');
             this.#set(ikey, (d) => this.#emit(`mov ${d}, ${ri}`), true);
@@ -4094,7 +4221,7 @@ class FunctionEmitter {
           }
           return;
         }
-        const ri = this.#index(b as Val, at.length);
+        const ri = this.#index(b as Val, at.length, checked);
         if (isPrimitive(t)) {
           const where = this.#element(base, ri, ew * 4, false);
           scalar((d) => this.#emit(`ldr ${d}, ${where}`), true);
@@ -4110,6 +4237,9 @@ class FunctionEmitter {
         const at = src.type;
         if (isPrimitive(at) || at.kind !== 'arr') refuse('set needs an array');
         const ew = words(at.elem);
+        // Strict: the index is checked before anything is copied or written.
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#checkBounds(b as Val, at.length);
         if (mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0))
           this.#defAlias(key, src.key, t);
         else {
@@ -4142,7 +4272,7 @@ class FunctionEmitter {
           this.#place(c as Val, 'sp', dst + k * ew * 4);
           return;
         }
-        const ri = this.#index(b as Val, at.length);
+        const ri = this.#index(b as Val, at.length, checked);
         const v = c as Val;
         if (v.kind === 'lit' || isPrimitive(v.type)) {
           const where = this.#element(dst, ri, ew * 4, false);
@@ -4374,6 +4504,10 @@ class FunctionEmitter {
             const reg = this.#regs.get(ck);
             if (reg !== undefined) this.#emit(...movImm(reg, this.#consts.get(ck) as number));
           }
+        // Strict: a body that can trap runs under a marked frame, so a trap names this fold and
+        // its trip (`at=f.n trip=i`); the mark is cleared when the loop ends.
+        const marked = callTraps(env.fn, n);
+        if (marked) this.#markNode(n.id);
         // Rotated loop: the trip test sits at the bottom; the entry test (counter = 0 < count)
         // is needed only when the count may be zero.
         this.#use(countVal);
@@ -4382,6 +4516,7 @@ class FunctionEmitter {
           if (count.value === 0) this.#emit(`b ${done}`);
         } else this.#emit(`cbz ${this.#read(countVal, 'w10')}, ${done}`);
         this.#emit(`${top}:`);
+        if (marked) this.#markTrip(this.#read(cval, 'w9'));
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
@@ -4409,6 +4544,7 @@ class FunctionEmitter {
             ? `#${count.value}`
             : this.#read(countVal, 'w10');
         this.#emit(`cmp ${ci}, ${limit}`, `b.lo ${top}`, `${done}:`);
+        if (marked) this.#markNode(undefined);
         // Loop end: values from outside that the body reads stay live to here; so do the state and counter.
         this.#pos += 1;
         this.#use(state);
@@ -4434,12 +4570,81 @@ class FunctionEmitter {
         }
         return;
       }
+      // The checked ops: the `(value, ok)` record, written into the node's slot. Nothing traps.
+      case 'cadd':
+      case 'csub':
+      case 'cmul':
+      case 'cdiv':
+      case 'crem':
+      case 'cget':
+        this.#checked(n, key, t, vals);
+        return;
       case 'read':
       case 'write':
       case 'puts':
         refuse(`${n.op} is an io operation`);
         return;
     }
+  }
+
+  /** The record `key` = (w12, w13): the value and the ok flag. */
+  #storeRecord(key: string, t: Type): void {
+    this.#def(key, t);
+    const at = this.#slot(key);
+    this.#mem('str', 'w12', 'sp', at);
+    this.#mem('str', 'w13', 'sp', at + 4);
+  }
+
+  #checked(n: Node, key: string, t: Type, vals: readonly Val[]): void {
+    const [a, b] = vals as [Val, Val];
+    if (n.op === 'cget') {
+      const src = a.kind === 'key' && !isPrimitive(a.type) ? a : refuse('cget needs an array');
+      const at = src.type;
+      if (isPrimitive(at) || at.kind !== 'arr' || !isPrimitive(at.elem))
+        refuse('cget needs an array of scalars');
+      const base = this.#slot(src.key);
+      if (b.kind === 'lit') {
+        if (b.value < at.length) this.#mem('ldr', 'w12', 'sp', base + 4 * b.value);
+        else this.#emit('movz w12, #0');
+        this.#emit(`movz w13, #${b.value < at.length ? 1 : 0}`);
+        this.#storeRecord(key, t);
+        return;
+      }
+      // The index is clamped to 0 when it is out of range; the flags of the one compare then
+      // pick the value and the flag after the load (a load and an address add leave them alone).
+      const r = this.#read(b, 'w10');
+      this.#emit(`cmp ${r}, ${at.length <= 4095 ? `#${at.length}` : this.#lit(at.length, 'w11')}`);
+      this.#emit(`csel w14, ${r}, wzr, lo`);
+      this.#emit(`ldr w12, ${this.#element(base, 'w14', 4, false)}`);
+      this.#emit('csel w12, w12, wzr, lo', 'cset w13, lo');
+      this.#storeRecord(key, t);
+      return;
+    }
+    const ra = this.#read(a, 'w10');
+    const rb = this.#read(b, 'w11');
+    switch (n.op) {
+      case 'cadd':
+        this.#emit(`adds w12, ${ra}, ${rb}`, 'cset w13, lo');
+        break;
+      case 'csub':
+        this.#emit(`subs w12, ${ra}, ${rb}`, 'cset w13, hs');
+        break;
+      case 'cmul':
+        this.#emit(`umull x12, ${ra}, ${rb}`, 'lsr x13, x12, #32', 'cmp x13, #0', 'cset w13, eq');
+        break;
+      case 'cdiv':
+        this.#emit(`udiv w12, ${ra}, ${rb}`, `cmp ${rb}, #0`, 'cset w13, ne');
+        break;
+      default:
+        this.#emit(
+          `udiv w12, ${ra}, ${rb}`,
+          `msub w12, w12, ${rb}, ${ra}`,
+          `cmp ${rb}, #0`,
+          'csel w12, w12, wzr, ne',
+          'cset w13, ne',
+        );
+    }
+    this.#storeRecord(key, t);
   }
 
   // --- register allocation ---------------------------------------------------------------
@@ -4498,6 +4703,23 @@ class FunctionEmitter {
     }
     const used = new Set([...this.#regs.values()].filter((r) => CALLEE_SAVED.includes(r)));
     this.#saved = CALLEE_SAVED.filter((r) => used.has(r)).map((r) => `x${r.slice(1)}`);
+  }
+
+  /** After the function: its cold trap stubs, its name, and the ids of the folds it marks. */
+  #coldPaths(framed: boolean): void {
+    for (const kind of ['bounds', 'divzero'] as const)
+      if (this.#stubs.has(kind))
+        this.out.push(
+          `${this.#tag(kind === 'bounds' ? 'tb' : 'td')}:`,
+          `\tmovz w16, #${trapIndex(kind)}`,
+          '\tb _a0_trap',
+        );
+    const text = (tag: string, value: string): void => {
+      this.out.push(`${this.#tag(tag)}:`, `\t.asciz ${JSON.stringify(value)}`);
+    };
+    if (framed) text('nm', this.fn.name);
+    for (const id of this.#nodeIds) text(`i${id}`, id);
+    if (framed || this.#nodeIds.size > 0) this.out.push('\t.p2align 2');
   }
 
   // --- function -------------------------------------------------------------------------
@@ -4561,6 +4783,9 @@ class FunctionEmitter {
     for (const [k, r] of this.#saved.entries())
       this.#mem('str', r, 'sp', this.#slot('save') + 8 * k);
     if (sretSlot) this.#mem('str', 'x8', 'sp', this.#slot('sret'));
+    // Strict: a function that can trap keeps a frame on the shadow stack (x9-x12 only).
+    const framed = mayTrapFn(fn);
+    if (framed) this.#enter();
     // Incoming parameters: aggregates copied first (their pointers are in x0-x7, which
     // scalar homes may then reuse in a leaf), then register scalars, then stack scalars.
     const { places } = argLayout(fn.params);
@@ -4608,11 +4833,13 @@ class FunctionEmitter {
       this.#mem('ldr', 'x12', 'sp', this.#slot('sret'));
       this.#place(ret, 'x12', 0);
     }
+    if (framed) this.#leave();
     for (const [k, r] of this.#saved.entries())
       this.#mem('ldr', r, 'sp', this.#slot('save') + 8 * k);
     if (record) this.#emit('mov sp, x29', 'ldp x29, x30, [sp], #16');
     else if (frame > 0) this.#emit(`add sp, sp, #${frame}`);
     this.#emit('ret');
+    this.#coldPaths(framed);
     return pairMemory(dropRepeatedCompares(this.out)).join('\n');
   }
 }
@@ -4759,6 +4986,11 @@ function fusedCallee(callee: TypedFunc): TypedFunc {
 }
 
 /** Assemble function blocks into one .s module for `clang -x assembler` / `as`. */
-export function assembleArm64(bodies: readonly string[], compilerVersion: string): string {
-  return `; Generated by A0 ${compilerVersion}. Darwin arm64 assembly; exact u32/bool semantics.\n\t.section __TEXT,__text,regular,pure_instructions\n\n${bodies.join('\n\n')}\n\n.subsections_via_symbols\n`;
+export function assembleArm64(
+  bodies: readonly string[],
+  compilerVersion: string,
+  trap?: TrapModule,
+): string {
+  const runtime = trap === undefined ? '' : `${arm64TrapRuntime(trap)}\n\n`;
+  return `; Generated by A0 ${compilerVersion}. Darwin arm64 assembly; exact u32/bool semantics.\n\t.section __TEXT,__text,regular,pure_instructions\n\n${bodies.join('\n\n')}\n\n${runtime}.subsections_via_symbols\n`;
 }

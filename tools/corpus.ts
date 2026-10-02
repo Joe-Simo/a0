@@ -735,7 +735,10 @@ export function ioFreeSubset(program: TypedProgram): TypedProgram {
       [...fn.types.values()].some(containsIo);
     if (!io && [...fn.calls.keys()].every((k) => keep.has(k))) keep.add(fn.name);
   }
-  return validate({ functions: program.functions.filter((f) => keep.has(f.name)) });
+  return validate({
+    ...(program.profile === 'strict' ? { profile: 'strict' as const } : {}),
+    functions: program.functions.filter((f) => keep.has(f.name)),
+  });
 }
 
 /** Function `name` with every function it reaches (calls, fold/loop bodies and predicates). */

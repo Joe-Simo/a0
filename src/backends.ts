@@ -37,6 +37,7 @@ import {
 import { DIAGNOSTICS, diag } from './diagnostics.js';
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
+import { trapModuleOf } from './native-trap.js';
 import { callTraps, mayTrapFn, optimizeFunction, siteOf } from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
@@ -2010,9 +2011,9 @@ export function assemble(
   }
   switch (target) {
     case 'arm64':
-      return assembleArm64(bodies, COMPILER_VERSION);
+      return assembleArm64(bodies, COMPILER_VERSION, trapModuleOf(program));
     case 'x86_64':
-      return assembleX86_64(bodies, COMPILER_VERSION, options.x86Platform);
+      return assembleX86_64(bodies, COMPILER_VERSION, options.x86Platform, trapModuleOf(program));
     case 'riscv64':
       return assembleRiscv64(bodies, COMPILER_VERSION);
     case 'avr':

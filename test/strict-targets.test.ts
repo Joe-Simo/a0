@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,12 +32,15 @@ import {
 } from '../tools/corpus.js';
 import { checkDotnet } from '../tools/dotnet-verify.js';
 import {
+  checkArm64,
   checkInterpreter,
   checkJvm,
   checkNative,
   checkWasm,
   checkWasmDirect,
+  checkX86_64,
   ioCaps,
+  x86Host,
 } from '../tools/verify.js';
 
 const STRICT = 'profile strict\n';
@@ -800,8 +803,16 @@ end
   );
 });
 
-test('targets: js, c, java, dotnet and wasm implement strict and the checked ops; every other target still refuses with A0713', () => {
-  assert.deepEqual([...STRICT_TARGETS].sort(), ['c', 'dotnet', 'java', 'js', 'wasm']);
+test('targets: js, c, java, dotnet, wasm, arm64 and x86_64 implement strict and the checked ops; every other target still refuses with A0713', () => {
+  assert.deepEqual([...STRICT_TARGETS].sort(), [
+    'arm64',
+    'c',
+    'dotnet',
+    'java',
+    'js',
+    'wasm',
+    'x86_64',
+  ]);
   const strict = parseAndValidate(`${STRICT}fn f u32 -> u32\na add p0 1\nret a\nend\n`);
   const checked = parseAndValidate('fn t u32 u32 -> (u32,bool)\na cadd p0 p1\nret a\nend\n');
   for (const target of TARGETS) {
@@ -846,7 +857,7 @@ end
     ['canonical', ''],
     ['strict', STRICT],
   ] as const)
-    for (const target of ['js', 'c', 'java'] as const)
+    for (const target of ['js', 'c', 'java', 'arm64', 'x86_64'] as const)
       sizes[`${name} ${target}`] = compile(parseAndValidate(head + body), target).text.length;
   for (const [name, head] of [
     ['canonical', ''],
@@ -859,5 +870,366 @@ end
   assert.ok((sizes['strict c'] as number) > (sizes['canonical c'] as number));
   assert.ok((sizes['strict js'] as number) > (sizes['canonical js'] as number));
   assert.ok((sizes['strict wasm'] as number) > (sizes['canonical wasm'] as number));
+  assert.ok((sizes['strict arm64'] as number) > (sizes['canonical arm64'] as number));
+  assert.ok((sizes['strict x86_64'] as number) > (sizes['canonical x86_64'] as number));
   process.stdout.write(`# size (bytes): ${JSON.stringify(sizes)}\n`);
+});
+
+// ---------------------------------------------------------------------------
+// The direct native backends: AArch64 (src/arm64.ts) and x86-64 (src/x86_64.ts)
+// ---------------------------------------------------------------------------
+
+/** Run `cases` on both direct backends (each in its optimized and unoptimized emission). */
+async function nativeBackends(
+  program: TypedProgram,
+  cases: readonly Case[],
+  label: string,
+): Promise<void> {
+  const clang = findClang();
+  for (const [name, check] of [
+    ['arm64', checkArm64],
+    ['x86_64', checkX86_64],
+  ] as const) {
+    const r = await check(program, cases, clang);
+    if (r.status === 'blocked') continue;
+    assert.equal(
+      r.status,
+      'passed',
+      `${label} ${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`,
+    );
+  }
+}
+
+test('native: every op at the boundaries equals the interpreter on arm64 and x86_64 in both profiles', async () => {
+  for (const { name, program } of programs()) {
+    const cases = opsCases(program);
+    assert.equal(
+      cases.some((c) => c.expectedTrap !== undefined),
+      name === 'strict',
+    );
+    await nativeBackends(program, cases, name);
+  }
+});
+
+test('native: the strict corpus equals the interpreter (value, or the exact trap line) on arm64 and x86_64', async () => {
+  const strict = validate({ profile: 'strict', functions: generateCorpus().functions });
+  const cases: Case[] = [];
+  for (const c of generateCases(strict)) {
+    if (c.input !== undefined) continue;
+    cases.push(caseFor(fnOf(strict, c.functionName), [...c.args]));
+  }
+  const traps = cases.filter((c) => c.expectedTrap !== undefined).length;
+  assert.ok(traps > 0 && traps < cases.length, `${traps} of ${cases.length} cases trap`);
+  await nativeBackends(strict, cases, 'corpus');
+});
+
+const LOOPS = `${STRICT}fn tstep u32 u32 -> u32
+a arr 1 2 3 4 5 6 7 8
+b get a p1
+c add p0 b
+ret c
+end
+fn tfold u32 -> u32
+r fold tstep p0 0
+ret r
+end
+fn tsmall u32 -> u32
+r fold tstep 8 p0
+ret r
+end
+fn tover u32 -> u32
+r fold tstep 16 p0
+ret r
+end
+fn fill u32x8 u32 -> u32x8
+a mul p1 p1
+b set p0 p1 a
+ret b
+end
+fn fillrun u32 -> u32
+z arr 0 0 0 0 0 0 0 0
+f fold fill p0 z
+g get f 7
+ret g
+end
+fn fillk u32x64 u32 u32 -> u32x64
+a mul p1 p2
+b set p0 p1 a
+ret b
+end
+fn fillfix u32 -> u32x64
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+f fold fillk 64 z p0
+ret f
+end
+fn below u32 u32 -> bool
+c lt p0 100
+ret c
+end
+fn lstep u32 u32 -> u32
+a arr 3 5 7 11
+b get a p1
+c add p0 b
+ret c
+end
+fn tloop u32 -> u32
+r loop below lstep p0 0
+ret r
+end
+fn pbad u32 u32 -> bool
+a arr 1 2 3
+b get a p1
+d add p0 b
+e lt d 1000
+ret e
+end
+fn sstep u32 u32 -> u32
+a add p0 3
+ret a
+end
+fn tpred u32 -> u32
+r loop pbad sstep p0 0
+ret r
+end
+fn stepc u32 u32 -> u32
+a arr 7 8 9
+r cget a p1
+v at r 0
+k at r 1
+s add p0 v
+t select k s p0
+ret t
+end
+fn csum u32 -> u32
+r fold stepc p0 0
+ret r
+end
+fn safe u32 -> u32
+a arr 1 2 3 4
+m and p0 3
+b get a m
+c add b 1
+ret c
+end
+`;
+
+test('native: folds, loops and a set whose bodies can trap give the interpreter result or its trap line at every trip count', async () => {
+  const p = parseAndValidate(LOOPS);
+  const cases: Case[] = [];
+  for (const name of ['tfold', 'fillrun', 'tloop', 'tpred', 'csum', 'safe'])
+    for (const n of [0, 1, 2, 3, 4, 5, 7, 8, 9, 16, 17, 100])
+      cases.push(caseFor(fnOf(p, name), [n]));
+  for (const name of ['tfold', 'fillrun', 'safe'])
+    cases.push(caseFor(fnOf(p, name), [0xffff_ffff]));
+  for (const name of ['tsmall', 'tover'])
+    for (const n of [0, 5]) cases.push(caseFor(fnOf(p, name), [n]));
+  const trapped = cases.filter((c) => c.expectedTrap !== undefined);
+  assert.ok(trapped.length > 10);
+  assert.ok(
+    trapped.some((c) =>
+      /fn=tstep at=tover\.r trip=8 chain=tover>tstep /.test(c.expectedTrap ?? ''),
+    ),
+  );
+  assert.ok(
+    trapped.some((c) =>
+      /fn=fill at=fillrun\.f trip=8 chain=fillrun>fill /.test(c.expectedTrap ?? ''),
+    ),
+  );
+  // A predicate that traps names the loop and its trip too.
+  assert.ok(
+    trapped.some((c) => /fn=pbad at=tpred\.r trip=3 chain=tpred>pbad /.test(c.expectedTrap ?? '')),
+  );
+  await nativeBackends(p, cases, 'loops');
+});
+
+test('native: a body that can trap is a real call under a marked frame; it is not inlined, unrolled or vectorized', () => {
+  const p = parseAndValidate(LOOPS);
+  for (const target of ['arm64', 'x86_64'] as const) {
+    const text = compile(p, target, { x86Platform: 'darwin' }).text;
+    const block = (name: string): string => {
+      const sym = `_a0_${name}:`;
+      const from = text.indexOf(sym);
+      assert.ok(from >= 0, `${target} ${name}`);
+      const end = text.indexOf('\n\n', from);
+      return text.slice(from, end < 0 ? text.length : end);
+    };
+    const call = target === 'arm64' ? /bl _a0_tstep/ : /call _a0_tstep/;
+    // tsmall (8 trips) would be unrolled and tfold inlined if the body could not trap.
+    assert.match(block('tsmall'), call, target);
+    assert.match(block('tfold'), call, target);
+    // The fill is a loop over calls, never a vector loop (the body can trap on the index).
+    assert.ok(!/\.4s|paddd|pshufd/.test(block('fillrun')), target);
+    assert.ok(!/\.4s|paddd|pshufd/.test(block('fillfix')), target);
+    // A callee that cannot trap still inlines.
+    assert.ok(!/bl _a0_|call _a0_/.test(block('safe')), target);
+  }
+  // The positive control: the same fill under the canonical profile is vectorized on arm64.
+  const canonical = compile(parseAndValidate(LOOPS.replace(STRICT, '')), 'arm64').text;
+  assert.match(canonical.slice(canonical.indexOf('_a0_fillfix:')), /\.4s/);
+});
+
+test('native: a strict function that cannot trap emits exactly the canonical code', () => {
+  const body = `fn f u32 -> u32
+a arr 1 2 3 4
+m and p0 3
+b get a m
+q div p0 8
+r rem p0 3
+c add b q
+d add c r
+ret d
+end
+`;
+  const strict = parseAndValidate(STRICT + body);
+  const canonical = parseAndValidate(body);
+  assert.equal(mayTrapFn(fnOf(strict, 'f')), false);
+  for (const target of ['arm64', 'x86_64'] as const)
+    assert.equal(compile(strict, target).text, compile(canonical, target).text, target);
+});
+
+test('native: the trap stubs are shared per function, and a program that cannot trap carries no runtime', () => {
+  const p = parseAndValidate(
+    `${STRICT}fn g u32 u32 -> u32
+a arr 1 2 3
+b get a p0
+c get a p1
+d div b p1
+e rem c p0
+f add d e
+ret f
+end
+`,
+  );
+  for (const target of ['arm64', 'x86_64'] as const) {
+    const text = compile(p, target, { x86Platform: 'darwin' }).text;
+    const trap = target === 'arm64' ? 'b _a0_trap' : 'jmp _a0_trap';
+    // One bounds stub and one divzero stub for the four trapping sites.
+    assert.equal(text.split(trap).length - 1, 2, `${target} stubs`);
+    assert.ok(text.includes('_a0_trap:') && text.includes('_a0_ts'), target);
+    const safe = compile(
+      parseAndValidate(`${STRICT}fn s u32 -> u32\na add p0 1\nret a\nend\n`),
+      target,
+      { x86Platform: 'darwin' },
+    ).text;
+    assert.ok(!safe.includes('_a0_trap'), `${target}: nothing can trap`);
+    const canonical = compile(
+      parseAndValidate('fn s u32 -> u32\na div p0 p0\nret a\nend\n'),
+      target,
+      { x86Platform: 'darwin' },
+    ).text;
+    assert.ok(!canonical.includes('_a0_trap'), `${target}: canonical has no runtime`);
+  }
+});
+
+const RUNTIME_SRC = `${STRICT}fn step u32 u32 -> u32
+a arr 1 2 3
+b get a p1
+c add p0 b
+ret c
+end
+fn top u32 -> u32
+r fold step p0 0
+ret r
+end
+fn outer u32 -> u32
+a call top p0
+b add a 1
+ret b
+end
+fn q u32 u32 -> u32
+r div p0 p1
+ret r
+end
+fn w u32 u32 -> u32
+a arr 4 5 6
+b set a p0 p1
+c get b 2
+ret c
+end
+`;
+
+test('native: the real runtime prints the interpreter trap line and exits 3 (arm64 and x86_64)', () => {
+  const clang = findClang();
+  if (clang.path === undefined) return;
+  const p = parseAndValidate(RUNTIME_SRC);
+  const main =
+    "#include <stdio.h>\n#include <stdlib.h>\n#include <stdint.h>\nextern uint32_t a0_outer(uint32_t), a0_q(uint32_t, uint32_t), a0_w(uint32_t, uint32_t);\nint main(int argc, char **argv) { (void)argc; unsigned a = (unsigned)atoi(argv[2]), b = (unsigned)atoi(argv[3]); printf(\"%u\\n\", argv[1][0] == 'o' ? a0_outer(a) : argv[1][0] == 'q' ? a0_q(a, b) : a0_w(a, b)); return 0; }\n";
+  const dir = mkdtempSync(join(tmpdir(), 'a0-native-strict-'));
+  try {
+    writeFileSync(join(dir, 'main.c'), main);
+    const hosts: { target: 'arm64' | 'x86_64'; arch: string[]; runner: string[] }[] = [];
+    if (process.platform === 'darwin' && process.arch === 'arm64')
+      hosts.push({ target: 'arm64', arch: [], runner: [] });
+    const x86 = x86Host(clang.path);
+    if (typeof x86 !== 'string')
+      hosts.push({ target: 'x86_64', arch: x86.arch, runner: x86.runner });
+    for (const h of hosts) {
+      const asm = join(dir, `m-${h.target}.s`);
+      writeFileSync(asm, compile(p, h.target).text);
+      const exe = join(dir, `main-${h.target}`);
+      const build: SpawnSyncReturns<string> = spawnSync(
+        clang.path,
+        [...h.arch, '-o', exe, join(dir, 'main.c'), asm],
+        { encoding: 'utf8' },
+      );
+      assert.equal(build.status, 0, `${h.target}: ${build.stderr}`);
+      const run1 = (...args: string[]): { status: number | null; stdout: string; stderr: string } =>
+        spawnSync(
+          h.runner[0] ?? exe,
+          [...h.runner.slice(1), ...(h.runner.length > 0 ? [exe] : []), ...args],
+          {
+            encoding: 'utf8',
+          },
+        );
+      const ok = run1('o', '3', '0');
+      assert.equal(ok.status, 0);
+      assert.equal(ok.stdout, '7\n');
+      for (const [which, a, b, fn, args] of [
+        ['o', '5', '0', 'outer', [5]],
+        ['q', '7', '0', 'q', [7, 0]],
+        ['w', '3', '9', 'w', [3, 9]],
+        ['w', '4294967295', '9', 'w', [0xffff_ffff, 9]],
+      ] as const) {
+        const got = run1(which, a, b);
+        let want = '';
+        try {
+          run(fnOf(p, fn), [...args]);
+        } catch (e) {
+          want = formatDiagnostic(e);
+        }
+        assert.ok(want.length > 0, fn);
+        assert.equal(got.status, 3, `${h.target} ${fn}`);
+        assert.equal(got.stdout, '', 'nothing is printed to stdout after the trap');
+        assert.equal(got.stderr, `${want}\n`, `${h.target} ${fn}`);
+      }
+      // An in-range set still works.
+      const inRange = run1('w', '1', '9');
+      assert.equal(inRange.status, 0);
+      assert.equal(inRange.stdout, '6\n');
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('native: the x86_64 Linux (ELF) output assembles with the strict runtime', () => {
+  const clang = findClang();
+  if (clang.path === undefined) return;
+  const dir = mkdtempSync(join(tmpdir(), 'a0-native-elf-'));
+  try {
+    const asm = join(dir, 'm.s');
+    writeFileSync(
+      asm,
+      compile(parseAndValidate(RUNTIME_SRC), 'x86_64', { x86Platform: 'linux' }).text,
+    );
+    const r = spawnSync(
+      clang.path,
+      ['--target=x86_64-unknown-linux-gnu', '-c', '-x', 'assembler', '-o', join(dir, 'm.o'), asm],
+      { encoding: 'utf8' },
+    );
+    if (r.status !== 0 && /unknown target|no available targets|unsupported/i.test(r.stderr)) return;
+    assert.equal(r.status, 0, r.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

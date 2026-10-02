@@ -206,10 +206,20 @@ export function ioCaps(cases: readonly Case[]): {
   return { ioInputCapacity: inCap, ioOutputCapacity: outCap };
 }
 
-export function cDriver(program: TypedProgram, header = '#include "module.c"'): string {
-  // A strict module reports a trap through A0_TRAP_EMIT / A0_TRAP_EXIT: the driver takes both
+export function cDriver(
+  program: TypedProgram,
+  header = '#include "module.c"',
+  /**
+   * A strict module of a direct native backend (arm64, x86-64) ends the process with status 3
+   * after writing the trap line to stderr, so each case runs in a child process: a status 3 and
+   * the line on its stderr are the `trap: <line>` result.
+   */
+  forkTraps = false,
+): string {
+  // A strict C module reports a trap through A0_TRAP_EMIT / A0_TRAP_EXIT: the driver takes both
   // over, so one process runs every case and a trap is a `trap: <line>` result like any other.
-  const strict = program.profile === 'strict';
+  const strict = program.profile === 'strict' && !forkTraps;
+  const forked = program.profile === 'strict' && forkTraps;
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `    case ${i}: printf("skip\\n"); break;`;
     const io = hasIoParam(fn);
@@ -231,11 +241,33 @@ export function cDriver(program: TypedProgram, header = '#include "module.c"'): 
     const guard = strict
       ? 'if (setjmp(a0_jmp) != 0) { printf("trap: %s\\n", a0_trapbuf); break; } '
       : '';
-    return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${guard}${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n"); break; }`;
+    const call = `${fn.result === 'u32' ? 'uint32_t' : 'bool'} r = a0_${fn.name}(${args}); ${print}${flush} printf("\\n");`;
+    if (forked)
+      return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } if (!a0_fork) { ${call} break; } fflush(stdout); int fd[2]; if (pipe(fd) != 0) exit(2); pid_t pid = fork(); if (pid == 0) { dup2(fd[1], 2); close(fd[0]); close(fd[1]); ${call} fflush(stdout); _exit(0); } close(fd[1]); a0_reap(pid, fd[0]); break; }`;
+    return `    case ${i}: { if (m < ${need}) { printf("?\\n"); break; } ${setup}${guard}${call} break; }`;
   });
   const hooks = strict
     ? '#include <setjmp.h>\nstatic jmp_buf a0_jmp;\n#define A0_TRAP_EMIT(line) ((void)(line))\n#define A0_TRAP_EXIT() longjmp(a0_jmp, 1)\n'
-    : '';
+    : forked
+      ? `#include <sys/wait.h>
+#include <unistd.h>
+/* A child that ends with status 3 trapped: the line it wrote to stderr is the result. */
+static void a0_reap(pid_t pid, int rd) {
+  static char buf[8192];
+  size_t k = 0;
+  ssize_t t;
+  while (k + 1 < sizeof buf && (t = read(rd, buf + k, sizeof buf - 1 - k)) > 0) k += (size_t)t;
+  close(rd);
+  int st = 0;
+  waitpid(pid, &st, 0);
+  if (WIFEXITED(st) && WEXITSTATUS(st) == 3) {
+    buf[k] = 0;
+    if (k > 0 && buf[k - 1] == '\\n') buf[k - 1] = 0;
+    printf("trap: %s\\n", buf);
+  } else if (!(WIFEXITED(st) && WEXITSTATUS(st) == 0)) printf("crash: status %d\\n", st);
+}
+`
+      : '';
   return `#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -246,7 +278,7 @@ ${usesIo(program) ? '  static a0_io io; (void)io;\n' : ''}  while (fgets(line, s
     static char *tok[1 << 18]; int n = 0;
     for (char *p = strtok(line, " \\n"); p && n < (1 << 18); p = strtok(NULL, " \\n")) tok[n++] = p;
     if (n < 1) continue;
-    int idx = atoi(tok[0]);
+${forked ? '    const int a0_fork = strchr(tok[0], 33) != NULL; /* "N!": a case that must trap runs in a child */\n' : ''}    int idx = atoi(tok[0]);
     memmove(tok, tok + 1, sizeof(char*) * (size_t)(n - 1));
     const int m = n - 1; (void)m;
     switch (idx) {
@@ -259,11 +291,13 @@ ${dispatch.join('\n')}
 `;
 }
 
-function caseInput(program: TypedProgram, cases: readonly Case[]): string {
+/** One case per line; with `marked`, a case that must trap has `!` after its function index. */
+function caseInput(program: TypedProgram, cases: readonly Case[], marked = false): string {
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
   return `${cases
     .map((c) => {
-      const tokens = [String(index.get(c.functionName)), ...c.args.map(fmt)];
+      const at = `${index.get(c.functionName)}${marked && c.expectedTrap !== undefined ? '!' : ''}`;
+      const tokens = [at, ...c.args.map(fmt)];
       if (c.input !== undefined) tokens.push(String(c.input.length), ...c.input.map(String));
       return tokens.join(' ');
     })
@@ -373,7 +407,7 @@ export async function checkArm64Assembly(
   });
   const report = await withTempDir(async (dir): Promise<TargetReport> => {
     await writeFile(join(dir, 'module.s'), asm, 'utf8');
-    await writeFile(join(dir, 'driver.c'), cDriver(program, protos), 'utf8');
+    await writeFile(join(dir, 'driver.c'), cDriver(program, protos, true), 'utf8');
     const as = runTool(
       tool.path as string,
       ['-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
@@ -388,7 +422,10 @@ export async function checkArm64Assembly(
       { cwd: dir },
     );
     if (!link.ok) return fail(`${label}: driver build/link failed`, link.stderr);
-    const exec = runTool(join(dir, 'driver'), [], { input: caseInput(program, cases), cwd: dir });
+    const exec = runTool(join(dir, 'driver'), [], {
+      input: caseInput(program, cases, true),
+      cwd: dir,
+    });
     if (!exec.ok) return fail(`${label}: execution failed`, exec.stderr);
     return compareAll(cases, exec.stdout.trim().split('\n'), label);
   });
@@ -442,7 +479,7 @@ export async function checkArm64(
 // --- native x86-64 (direct assembly; under Rosetta on Apple silicon) ------------
 
 /** How this host can build and run x86-64 code: natively, through Rosetta, or not at all. */
-function x86Host(clang: string): { arch: string[]; runner: string[] } | string {
+export function x86Host(clang: string): { arch: string[]; runner: string[] } | string {
   if (process.env.A0_SKIP_X86 === '1')
     return 'needs a working x86-64 host: A0_SKIP_X86=1 disables it (a Rosetta that cannot start new binaries)';
   if (process.arch === 'x64' && (process.platform === 'darwin' || process.platform === 'linux'))
@@ -495,7 +532,7 @@ export async function checkX86_64(
     const level = optimize ? 'optimized' : 'unoptimized';
     const r = await withTempDir(async (dir): Promise<TargetReport> => {
       await writeFile(join(dir, 'module.s'), asm, 'utf8');
-      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
+      await writeFile(join(dir, 'driver.c'), cDriver(subset, protos, true), 'utf8');
       const as = runTool(
         tool.path as string,
         [...host.arch, '-c', '-x', 'assembler', '-o', 'module.o', 'module.s'],
@@ -521,7 +558,7 @@ export async function checkX86_64(
       if (!link.ok) return fail(`${level}: driver build/link failed`, link.stderr);
       const [cmd, ...pre] =
         host.runner.length === 0 ? [join(dir, 'driver')] : [...host.runner, join(dir, 'driver')];
-      const exec = runTool(cmd as string, pre, { input: caseInput(subset, own), cwd: dir });
+      const exec = runTool(cmd as string, pre, { input: caseInput(subset, own, true), cwd: dir });
       if (!exec.ok) return fail(`${level}: execution failed`, exec.stderr);
       return compareAll(own, exec.stdout.trim().split('\n'), `${level}: ${label}`);
     });
