@@ -213,7 +213,7 @@ function a0_cget(a, i) { return i < a.length ? [a[i], true] : [0, false]; }
 `;
 
 /** The strict traps in the numbering the emitted runtimes use: 0 bounds, 1 divzero, 2 input. */
-const STRICT_TRAPS = [
+export const STRICT_TRAPS = [
   ['bounds', 'A0710'],
   ['divzero', 'A0711'],
   ['input', 'A0712'],
@@ -648,14 +648,31 @@ const cFrameRuntime = (
   const ids = Math.max(1, ...program.functions.flatMap((f) => f.nodes.map((n) => n.id.length)));
   const cap = 1024 + 3 * (names + depth * (ids + 2));
   const lines = [
+    '#ifndef __wasm__',
     '#include <stdio.h>',
     '#include <stdlib.h>',
-    `/* Frame runtime: a trap prints one line and exits 3 (A0_TRAP_EMIT / A0_TRAP_EXIT override both). */`,
-    `static const char *a0_chain[${depth}u];`,
-    `static const char *a0_node[${depth}u];`,
+    '#endif',
+    `/* Frame runtime: a trap prints one line and exits 3 (A0_TRAP_EMIT / A0_TRAP_EXIT override both).`,
+    ` * Freestanding wasm (__wasm__) has no stdio: a trap fills a0_trap_kind / a0_trap_n / a0_trap_at /`,
+    ` * a0_trap_trip and the exported a0_chain / a0_node, then executes \`unreachable\`; the host decodes the`,
+    ` * record into the same line. A trapped instance is discarded. */`,
+    '#ifdef __wasm__',
+    '#define A0_FRAME',
+    '#else',
+    '#define A0_FRAME static',
+    '#endif',
+    `A0_FRAME const char *a0_chain[${depth}u];`,
+    `A0_FRAME const char *a0_node[${depth}u];`,
     `static uint32_t a0_trp[${depth}u];`,
     'static uint32_t a0_depth;',
+    '#ifdef __wasm__',
+    'const char *a0_trap_kind;',
+    'uint32_t a0_trap_n;',
+    'uint32_t a0_trap_at;',
+    'uint32_t a0_trap_trip;',
+    '#else',
     `static char a0_trapbuf[${cap}];`,
+    '#endif',
     '#ifndef A0_TRAP_EMIT',
     '#define A0_TRAP_EMIT(line) fprintf(stderr, "%s\\n", (line))',
     '#endif',
@@ -668,6 +685,15 @@ const cFrameRuntime = (
     `static inline void a0_idx(uint32_t i) { if (a0_depth - 1u < ${depth}u) a0_trp[a0_depth - 1u] = i; }`,
     `static void a0_report(const char *cls, const char *kind, const char *fix) {`,
     `  const uint32_t n = a0_depth < ${depth}u ? a0_depth : ${depth}u;`,
+    '#ifdef __wasm__',
+    '  uint32_t at = 0xffffffffu, trip = 0u;',
+    '  (void)cls; (void)fix;',
+    '  for (uint32_t k = n; k-- > 0u;) if (a0_node[k]) { at = k; trip = a0_trp[k]; break; }',
+    '  a0_trap_kind = kind; a0_trap_n = n; a0_trap_at = at; a0_trap_trip = trip;',
+    '  a0_depth = 0u;',
+    '  __builtin_trap();',
+    '}',
+    '#else',
     '  const char *fn = n > 0u ? a0_chain[n - 1u] : "-";',
     '  const char *atfn = 0, *atnode = 0;',
     '  uint32_t trip = 0u;',
@@ -682,6 +708,7 @@ const cFrameRuntime = (
     '  A0_TRAP_EMIT(a0_trapbuf);',
     '  A0_TRAP_EXIT();',
     '}',
+    '#endif',
   ];
   if (maxTrips !== undefined)
     lines.push(
@@ -1548,8 +1575,70 @@ function javaOperand(o: Operand): string {
   }
 }
 
+const R_BOOL = 'R_r2_u_b';
+
+/** `index mod N` for a Java int index; under strict a site that can leave the array checks instead. */
+function javaIdx(fn: TypedFunc, node: Node): string {
+  const n = arrayLength(fn, node.args[0]);
+  const b = javaOperand(node.args[1] as Operand);
+  return siteOf(fn, node) === 'bounds'
+    ? `a0_ck(${b}, ${n})`
+    : `Integer.remainderUnsigned(${b}, ${n})`;
+}
+
+/** The Java runtime of the six checked ops: total `(value, ok)` records, the same in both profiles. */
+const JAVA_CHECKED = `  static ${R_BOOL} a0_cadd(int a, int b) { int s = a + b; return new ${R_BOOL}(s, Integer.compareUnsigned(s, a) >= 0); }
+  static ${R_BOOL} a0_csub(int a, int b) { return new ${R_BOOL}(a - b, Integer.compareUnsigned(a, b) >= 0); }
+  static ${R_BOOL} a0_cmul(int a, int b) { return new ${R_BOOL}(a * b, (((long) a & 0xffffffffL) * ((long) b & 0xffffffffL) >>> 32) == 0L); }
+  static ${R_BOOL} a0_cdiv(int a, int b) { return b == 0 ? new ${R_BOOL}(0, false) : new ${R_BOOL}(Integer.divideUnsigned(a, b), true); }
+  static ${R_BOOL} a0_crem(int a, int b) { return b == 0 ? new ${R_BOOL}(0, false) : new ${R_BOOL}(Integer.remainderUnsigned(a, b), true); }
+  static ${R_BOOL} a0_cget(int[] a, int i) { return Integer.compareUnsigned(i, a.length) < 0 ? new ${R_BOOL}(a[i], true) : new ${R_BOOL}(0, false); }`;
+
+/** A string-array literal of one field of the three strict traps (bounds, divzero, input). */
+const strictTable = (field: (k: (typeof STRICT_TRAPS)[number]) => string): string =>
+  STRICT_TRAPS.map((k) => JSON.stringify(field(k))).join(', ');
+
+/** The strict profile's runtime for Java: the shadow stack of frames and the trap raiser (`A0Trap.line()` is the interpreter's trap line). */
+const javaStrictRuntime = (program: TypedProgram): string => {
+  const depth = program.functions.length + 1;
+  return `  public static final class A0Trap extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+    public final String id; public final String kind; public final String fn; public final String at; public final String trip; public final String[] chain; public final String fix;
+    A0Trap(String id, String kind, String fn, String at, String trip, String[] chain, String fix, String message) {
+      super(message); this.id = id; this.kind = kind; this.fn = fn; this.at = at; this.trip = trip; this.chain = chain; this.fix = fix;
+    }
+    /** The reference interpreter's trap line (formatTrap). */
+    public String line() { return "runtime: trap " + kind + " fn=" + fn + " at=" + (at == null ? "-" : at) + " trip=" + (trip == null ? "-" : trip) + " chain=" + String.join(">", chain) + " fix: " + fix; }
+  }
+  private static final String[] a0_ch = new String[${depth}];
+  private static final String[] a0_nd = new String[${depth}];
+  private static final int[] a0_tr = new int[${depth}];
+  private static int a0_depth;
+  private static final String[] A0_ID = {${strictTable(([, id]) => id)}};
+  private static final String[] A0_KIND = {${strictTable(([k]) => k)}};
+  private static final String[] A0_MSG = {${strictTable(([, id]) => DIAGNOSTICS[id].message)}};
+  private static final String[] A0_FIX = {${strictTable(([k]) => TRAP_FIX[k])}};
+  private static void a0_enter(String fn) { a0_ch[a0_depth] = fn; a0_nd[a0_depth] = null; a0_depth++; }
+  private static int a0_strap(int k) {
+    int top = a0_depth - 1;
+    String at = null, trip = null;
+    for (int i = top; i >= 0; i--) if (a0_nd[i] != null) { at = a0_ch[i] + "." + a0_nd[i]; trip = Integer.toUnsignedString(a0_tr[i]); break; }
+    String fn = top >= 0 ? a0_ch[top] : "-";
+    String[] chain = java.util.Arrays.copyOf(a0_ch, a0_depth);
+    a0_depth = 0;
+    throw new A0Trap(A0_ID[k], A0_KIND[k], fn, at, trip, chain, A0_FIX[k], A0_MSG[k].replace("{0}", fn));
+  }
+  private static int a0_ck(int i, int n) { return Integer.compareUnsigned(i, n) < 0 ? i : a0_strap(0); }${
+    usesIo(program)
+      ? `
+  static R_r2_u_io a0_sread(A0Io t) { if (t.position >= t.ninput) a0_strap(2); int v = t.input[t.position++]; return new R_r2_u_io(v, t); }`
+      : ''
+  }`;
+};
+
 function javaExpr(node: Node, fn: TypedFunc): string {
   const [a, b, c] = node.args.map(javaOperand);
+  const site = siteOf(fn, node);
   switch (node.op) {
     case 'mov':
       return `${a}`;
@@ -1570,8 +1659,14 @@ function javaExpr(node: Node, fn: TypedFunc): string {
     case 'shr':
       return `${a} >>> (${b} & 31)`;
     case 'div':
+      if (site === 'divzero')
+        return `(${b} == 0 ? a0_strap(1) : Integer.divideUnsigned(${a}, ${b}))`;
+      if (fn.profile === 'strict') return `Integer.divideUnsigned(${a}, ${b})`;
       return `(${b} == 0 ? 0xffffffff : Integer.divideUnsigned(${a}, ${b}))`;
     case 'rem':
+      if (site === 'divzero')
+        return `(${b} == 0 ? a0_strap(1) : Integer.remainderUnsigned(${a}, ${b}))`;
+      if (fn.profile === 'strict') return `Integer.remainderUnsigned(${a}, ${b})`;
       return `(${b} == 0 ? ${a} : Integer.remainderUnsigned(${a}, ${b}))`;
     case 'eq':
       return `${a} == ${b}`;
@@ -1606,15 +1701,15 @@ function javaExpr(node: Node, fn: TypedFunc): string {
     case 'rec':
       return javaNew(fn.types.get(node.id) ?? 'u32', node.args.map(javaOperand));
     case 'get':
-      return `${a}[Integer.remainderUnsigned(${b}, ${arrayLength(fn, node.args[0])})]`;
+      return `${a}[${javaIdx(fn, node)}]`;
     case 'set':
-      return `set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${b}, ${c})`;
+      return `set_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}(${a}, ${site === 'bounds' ? javaIdx(fn, node) : b}, ${c})`;
     case 'at':
       return `${a}.f${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}()`;
     case 'put':
       return `put_${mangleType(operandTypeOf(fn, node.args[0] as Operand))}_${node.args[1]?.kind === 'u32' ? node.args[1].value : 0}(${a}, ${c})`;
     case 'read':
-      return `read(${a})`;
+      return fn.profile === 'strict' ? `a0_sread(${a})` : `read(${a})`;
     case 'write':
       return `write(${a}, ${b})`;
     case 'puts':
@@ -1625,7 +1720,7 @@ function javaExpr(node: Node, fn: TypedFunc): string {
     case 'cdiv':
     case 'crem':
     case 'cget':
-      throw diag('A0713', ['java', `the checked op ${node.op}`]);
+      return `a0_${node.op}(${a}, ${b})`;
     case 'fold':
     case 'loop':
       throw new A0Error(`${node.op} is emitted as a statement`);
@@ -1634,18 +1729,31 @@ function javaExpr(node: Node, fn: TypedFunc): string {
 
 const emitJavaFunction: Emitter = (fn) => {
   const params = fn.params.map((t, i) => `${javaType(t)} p${i}`).join(', ');
+  // Strict: a function that can trap keeps a frame (its name, and the fold it is iterating) on
+  // the shadow stack, so a trap names the same fn/at/trip/chain as the interpreter's.
+  const framed = mayTrapFn(fn);
   const body = fn.nodes.map((n) => {
     const t = javaType(fn.types.get(n.id) ?? 'u32');
     if (n.op !== 'fold' && n.op !== 'loop') return `    final ${t} n_${n.id} = ${javaExpr(n, fn)};`;
     const [count, init, ...extra] = n.args.map(javaOperand);
     const call = [`n_${n.id}`, 'i', ...extra].join(', ');
     const guard = n.op === 'loop' ? ` if (!${n.pred ?? ''}(${call})) break;` : '';
-    return `    ${t} n_${n.id} = ${init};\n    for (int i = 0; Integer.compareUnsigned(i, ${count}) < 0; i++) {${guard} n_${n.id} = ${n.callee ?? ''}(${call}); }`;
+    const marked = framed && callTraps(fn, n);
+    const trip = marked ? ' a0_tr[a0_depth - 1] = i;' : '';
+    return `    ${t} n_${n.id} = ${init};\n${marked ? `    a0_nd[a0_depth - 1] = ${JSON.stringify(n.id)};\n` : ''}    for (int i = 0; Integer.compareUnsigned(i, ${count}) < 0; i++) {${trip}${guard} n_${n.id} = ${n.callee ?? ''}(${call}); }${marked ? '\n    a0_nd[a0_depth - 1] = null;' : ''}`;
   });
+  const result = javaType(fn.result);
   return [
-    `  public static ${javaType(fn.result)} ${fn.name}(${params}) {`,
+    `  public static ${result} ${fn.name}(${params}) {`,
+    ...(framed ? [`    a0_enter(${JSON.stringify(fn.name)});`] : []),
     ...body,
-    `    return ${javaOperand(fn.ret)};`,
+    ...(framed
+      ? [
+          `    final ${result} a0_r = ${javaOperand(fn.ret)};`,
+          '    a0_depth--;',
+          '    return a0_r;',
+        ]
+      : [`    return ${javaOperand(fn.ret)};`]),
     '  }',
   ].join('\n');
 };
@@ -1967,6 +2075,9 @@ export function assemble(
             options.ioOutputCapacity ?? C_IO_OUTPUT_CAPACITY,
           ),
         );
+      if (program.functions.some((f) => f.nodes.some((n) => CHECKED_OPS.has(n.op))))
+        decls.push(JAVA_CHECKED);
+      if (program.functions.some(mayTrapFn)) decls.push(javaStrictRuntime(program));
       return `// Generated by A0 ${COMPILER_VERSION}. int carries the u32 bit pattern.\npublic final class ${JAVA_CLASS} {\n  private ${JAVA_CLASS}() {}\n\n${decls.length > 0 ? `${decls.join('\n')}\n\n` : ''}${bodies.join('\n\n')}\n}\n`;
     }
     case 'sv':

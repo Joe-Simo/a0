@@ -190,8 +190,8 @@ export const OPS: readonly Op[] = [
 
 /**
  * The total (checked) operations, valid in both profiles: each yields the `(value, ok)` record
- * `(u32,bool)` and never traps. The reference interpreter, JS and C evaluate them; every
- * target outside `STRICT_TARGETS` refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
+ * `(u32,bool)` and never traps. The reference interpreter and every target in
+ * `STRICT_TARGETS` evaluate them; every target outside `STRICT_TARGETS` refuses a program that uses one (A0713, `assertTargetSupports`). They are not in
  * `OPS`, the 30 operations the self-hosted front end (compiler/*.a0) knows by number and name;
  * `ALL_OPS` is what the TypeScript parser, the dense form and the editor tools accept.
  */
@@ -199,8 +199,11 @@ export const CHECKED_OP_NAMES = ['cadd', 'csub', 'cmul', 'cdiv', 'crem', 'cget']
 export const CHECKED_OPS: ReadonlySet<Op> = new Set<Op>(CHECKED_OP_NAMES);
 export const ALL_OPS: readonly Op[] = [...OPS, ...CHECKED_OP_NAMES];
 
-/** The targets that implement the strict profile and the checked ops (`js`, and `c` with its C++ and parallel variants). */
-export const STRICT_TARGETS: ReadonlySet<string> = new Set(['js', 'c']);
+/**
+ * The targets that implement the strict profile and the checked ops: `js`, `c` (with its C++ and
+ * parallel variants, and the wasm build through clang), `java`, `dotnet` and the direct `wasm` backend.
+ */
+export const STRICT_TARGETS: ReadonlySet<string> = new Set(['js', 'c', 'java', 'dotnet', 'wasm']);
 
 /**
  * Refuse what a target cannot honour. Every target but the reference interpreter implements only

@@ -9,8 +9,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
+import type { CompileOptions } from '../src/backends.js';
 import type { TypedProgram, Value } from '../src/core.js';
 import { CS_CLASS, emitCSharp } from '../src/dotnet.js';
+import { mayTrapFn } from '../src/optimize.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import {
   type Case,
@@ -38,6 +40,7 @@ function findDotnet(): string | undefined {
 }
 
 function driver(program: TypedProgram): string {
+  const strict = program.functions.some(mayTrapFn);
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `        case ${i}: sb.Append("skip\\n"); break;`;
     const io = hasIoParam(fn);
@@ -54,7 +57,10 @@ function driver(program: TypedProgram): string {
     const flush = io
       ? ` for (int k = 0; k < io.NOutput; k++) { sb.Append(' '); sb.Append(io.Output[k]); }`
       : '';
-    return `        case ${i}: { ${setup}${print}${flush} sb.Append('\\n'); break; }`;
+    // A strict trap is a result too: its line is what every target must print.
+    return strict
+      ? `        case ${i}: { ${setup}try { ${print}${flush} } catch (${CS_CLASS}.A0Trap t) { sb.Append("trap: ").Append(t.Line()); } sb.Append('\\n'); break; }`
+      : `        case ${i}: { ${setup}${print}${flush} sb.Append('\\n'); break; }`;
   });
   return `using System;
 using System.IO;
@@ -78,6 +84,7 @@ ${dispatch.join('\n')}
 }
 
 function expectedLine(c: Case): string {
+  if (c.expectedTrap !== undefined) return `trap: ${c.expectedTrap}`;
   return c.expectedOutput === undefined
     ? fmt(c.expected)
     : [fmt(c.expected), ...c.expectedOutput.map(String)].join(' ');
@@ -90,6 +97,7 @@ export type DotnetReport = TargetReport;
 export async function checkDotnet(
   program: TypedProgram,
   cases: readonly Case[],
+  options: Pick<CompileOptions, 'optimize'> = {},
 ): Promise<DotnetReport> {
   const index = new Map(program.functions.map((f, i) => [f.name, i] as const));
   const dotnet = findDotnet();
@@ -102,7 +110,11 @@ export async function checkDotnet(
   const start = performance.now();
   let report: DotnetReport = { status: 'failed', cases: 0, detail: 'not run' };
   await withTempDir(async (dir) => {
-    await writeFile(join(dir, `${CS_CLASS}.cs`), emitCSharp(program, ioCaps(cases)), 'utf8');
+    await writeFile(
+      join(dir, `${CS_CLASS}.cs`),
+      emitCSharp(program, { ...ioCaps(cases), ...options }),
+      'utf8',
+    );
     await writeFile(join(dir, 'Driver.cs'), driver(program), 'utf8');
     await writeFile(
       join(dir, 'a0.csproj'),

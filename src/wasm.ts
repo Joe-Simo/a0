@@ -42,6 +42,16 @@
  * `Code.finish`: adjacent set/get pairs stay on the operand stack or become `local.tee`, dead
  * stores are dropped, and locals with disjoint live ranges share an index.
  *
+ * Strict profile (`profile strict`): a node that can trap carries a check, and a trap is the wasm
+ * `unreachable` after the runtime has recorded what the interpreter's trap line is made of. The
+ * module keeps the C runtime's shadow stack in a static area (functions that can trap `enter`
+ * and `leave` a frame; a fold or loop that can trap names its node and trip), and exports the
+ * same record the C-derived module does: the immutable i32 globals `a0_trap_kind`, `a0_trap_n`,
+ * `a0_trap_at`, `a0_trap_trip` (addresses of u32 words: a pointer to a NUL-terminated kind, the
+ * frame count, the frame the innermost fold or loop is in, its trip) and `a0_chain`, `a0_node`
+ * (addresses of arrays of pointers to NUL-terminated names). A trapped instance is discarded. A
+ * canonical module has no such area and is byte for byte what it was.
+ *
  * Per-function emission (`emitWasmFunction`) is a JSON record of the function's variants with
  * their code as byte runs plus symbolic call and constant-pool references; `assembleWasm`
  * resolves them into function indices and data addresses, so the per-function cache holds
@@ -63,7 +73,16 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
-import { emitFused, type FillRun, fillRun, lazyArms, overwritesState } from './optimize.js';
+import {
+  callTraps,
+  emitFused,
+  type FillRun,
+  fillRun,
+  lazyArms,
+  mayTrapFn,
+  overwritesState,
+  siteOf,
+} from './optimize.js';
 
 const PAGE = 65536;
 /** Address of the constant pool (the first page's low KiB stays unused, as in wasm-ld's layout). */
@@ -141,6 +160,7 @@ const OP = {
   mul: 0x6c,
   div_u: 0x6e,
   rem_u: 0x70,
+  unreachable: 0x00,
   and: 0x71,
   or: 0x72,
   xor: 0x73,
@@ -148,6 +168,11 @@ const OP = {
   shr_u: 0x76,
 } as const;
 const VOID = 0x40;
+const I64_EXTEND_U = 0xad;
+const I64_MUL = 0x7e;
+const I64_CONST = 0x42;
+const I64_SHR_U = 0x88;
+const I64_EQZ = 0x50;
 const I32 = 0x7f;
 const V128 = 0x7b;
 /** simd128 opcodes (after the 0xfd prefix). */
@@ -173,8 +198,15 @@ const VBASE = 1 << 20;
 const MEMORY_COPY = [0xfc, 0x0a, 0x00, 0x00];
 const MEMORY_FILL = [0xfc, 0x0b, 0x00];
 
-/** A run of bytes, a call to a symbol, or the address of a constant-pool entry (an i32.const). */
-type Part = string | { readonly call: string } | { readonly pool: number };
+/**
+ * A run of bytes, a call to a symbol, the address of a constant-pool entry (an i32.const), or the
+ * address of a NUL-terminated name in the strict runtime's static area (an i32.const).
+ */
+type Part =
+  | string
+  | { readonly call: string }
+  | { readonly pool: number }
+  | { readonly str: string };
 
 interface VariantRecord {
   readonly symbol: string;
@@ -197,6 +229,14 @@ interface FnRecord {
 }
 
 const IO_READ = 'io:read';
+/** The strict profile's `read`: the same, but exhausted input traps. */
+const IO_SREAD = 'io:sread';
+/** Strict runtime helpers (see `strictRuntime`): frames, fold marks, and the trap itself. */
+const RT_ENTER = 'rt:enter';
+const RT_LEAVE = 'rt:leave';
+const RT_MARK = 'rt:mark';
+const RT_IDX = 'rt:idx';
+const RT_TRAP = 'rt:trap';
 const IO_WRITE = 'io:write';
 const IO_PUTS = 'io:puts';
 
@@ -214,6 +254,7 @@ type Ins =
   | { readonly local: 'get' | 'set' | 'tee'; readonly index: number }
   | { readonly call: string }
   | { readonly pool: number }
+  | { readonly str: string }
   | { readonly loop: 'open' | 'close' };
 
 const LOCAL_KIND: Readonly<Record<number, 'get' | 'set' | 'tee'>> = {
@@ -261,6 +302,11 @@ class Code {
 
   poolAddress(index: number): void {
     this.ins.push({ pool: index });
+  }
+
+  /** The address of the NUL-terminated name `text` in the strict runtime's area. */
+  str(text: string): void {
+    this.ins.push({ str: text });
   }
 
   loopOpen(): void {
@@ -879,6 +925,8 @@ class FunctionEmitter {
     fields?: readonly number[],
   ): boolean {
     if (this.depth >= INLINE_DEPTH || callee.nodes.length > limit) return false;
+    // A body that can trap keeps its frame (the trap line names it): it is called, never inlined.
+    if (mayTrapFn(callee)) return false;
     if (variant === 'value' && !isPrimitive(callee.result)) return false;
     if (callee.params.some(containsIo) || [...callee.types.values()].some(containsIo)) return false;
     const host: InlineHost = { parent: this, params, ...(fields === undefined ? {} : { fields }) };
@@ -955,11 +1003,20 @@ class FunctionEmitter {
    * Push the address of element `idx` of the array `arr` (base plus the dynamic part of the
    * index) and return the static byte offset to add (a literal index folds entirely).
    */
-  elementAddress(arr: Operand, idx: Operand | undefined, elemBytes: number): number {
+  elementAddress(
+    arr: Operand,
+    idx: Operand | undefined,
+    elemBytes: number,
+    checked = false,
+  ): number {
     const { length } = arrayType(this.fn, arr);
     this.push(arr);
     const lit = literalIndex(idx);
-    if (lit !== undefined) return (lit % length) * elemBytes;
+    if (lit !== undefined) {
+      // Strict: a literal index at or past the length is the trap (the access after it is dead).
+      if (checked && lit >= length) this.#trap(0);
+      return (lit % length) * elemBytes;
+    }
     if (idx === undefined) throw new A0Error('wasm: missing index');
     this.push(idx);
     const root = this.root(idx);
@@ -968,6 +1025,17 @@ class FunctionEmitter {
       root.kind === 'param' && root.index === 1 && bound !== undefined && bound <= length;
     if (inRange) {
       // The trip index never reaches the length: no wrap.
+    } else if (checked) {
+      // Strict: an index at or past the length traps before anything is read or written; an
+      // index that passes the test needs no wrap.
+      const t = this.newLocal();
+      this.code.local(OP.localTee, t);
+      this.code.i32(length);
+      this.code.op(OP.ge_u);
+      this.code.op(OP.if, VOID);
+      this.#trap(0);
+      this.code.op(OP.end);
+      this.code.local(OP.localGet, t);
     } else if ((length & (length - 1)) === 0) {
       this.code.i32(length - 1);
       this.code.op(OP.and);
@@ -982,6 +1050,12 @@ class FunctionEmitter {
     }
     this.code.op(OP.add);
     return 0;
+  }
+
+  /** Raise the strict trap `kind` (0 bounds, 1 divzero, 2 input): the runtime records it, then `unreachable`. */
+  #trap(kind: number): void {
+    this.code.i32(kind);
+    this.code.call(RT_TRAP);
   }
 
   /** Store the operand `v` of type `t` at the pushed address plus `offset`. */
@@ -1093,6 +1167,21 @@ class FunctionEmitter {
       }
       case 'div':
       case 'rem': {
+        if (fn.profile === 'strict') {
+          // Strict: a zero divisor is the trap; a divisor proved nonzero is a plain div_u.
+          if (siteOf(fn, node) === 'divzero') {
+            this.push(b as Operand);
+            c.op(OP.eqz);
+            c.op(OP.if, VOID);
+            this.#trap(1);
+            c.op(OP.end);
+          }
+          this.push(a as Operand);
+          this.push(b as Operand);
+          c.op(node.op === 'div' ? OP.div_u : OP.rem_u);
+          set();
+          return;
+        }
         // The divisor is replaced by 1 when zero so div_u never traps; the total result is selected.
         const zero = this.newLocal();
         this.push(b as Operand);
@@ -1195,7 +1284,12 @@ class FunctionEmitter {
       }
       case 'get': {
         const { elem } = arrayType(fn, a);
-        const offset = this.elementAddress(a as Operand, b, bytesOf(elem));
+        const offset = this.elementAddress(
+          a as Operand,
+          b,
+          bytesOf(elem),
+          siteOf(fn, node) === 'bounds',
+        );
         if (isPrimitive(elem)) {
           c.mem(OP.load, offset);
         } else if (offset !== 0) {
@@ -1229,12 +1323,104 @@ class FunctionEmitter {
         this.#storeElement(node, { kind: 'node', id: node.id });
         return;
       }
+      case 'cadd':
+      case 'csub': {
+        // (value, ok) into a record slot: the wrapped result, and no carry (borrow).
+        const slot = this.bindSlot(node.id, t);
+        const sum = this.newLocal();
+        this.push(a as Operand);
+        this.push(b as Operand);
+        c.op(node.op === 'cadd' ? OP.add : OP.sub);
+        c.local(OP.localSet, sum);
+        c.local(OP.localGet, slot);
+        c.local(OP.localGet, sum);
+        c.mem(OP.store, 0);
+        c.local(OP.localGet, slot);
+        if (node.op === 'cadd') {
+          c.local(OP.localGet, sum);
+          this.push(a as Operand);
+        } else {
+          this.push(a as Operand);
+          this.push(b as Operand);
+        }
+        c.op(OP.ge_u);
+        c.mem(OP.store, 4);
+        return;
+      }
+      case 'cmul': {
+        // ok: the exact 64-bit product has no bit above the low 32.
+        const slot = this.bindSlot(node.id, t);
+        c.local(OP.localGet, slot);
+        this.push(a as Operand);
+        this.push(b as Operand);
+        c.op(OP.mul);
+        c.mem(OP.store, 0);
+        c.local(OP.localGet, slot);
+        this.push(a as Operand);
+        c.op(I64_EXTEND_U);
+        this.push(b as Operand);
+        c.op(I64_EXTEND_U);
+        c.op(I64_MUL, I64_CONST, 32, I64_SHR_U, I64_EQZ);
+        c.mem(OP.store, 4);
+        return;
+      }
+      case 'cdiv':
+      case 'crem': {
+        // The divisor is replaced by 1 when zero so div_u never traps; (0, false) is selected.
+        const slot = this.bindSlot(node.id, t);
+        const zero = this.newLocal();
+        this.push(b as Operand);
+        c.op(OP.eqz);
+        c.local(OP.localSet, zero);
+        c.local(OP.localGet, slot);
+        c.i32(0);
+        this.push(a as Operand);
+        this.push(b as Operand);
+        c.local(OP.localGet, zero);
+        c.op(OP.or);
+        c.op(node.op === 'cdiv' ? OP.div_u : OP.rem_u);
+        c.local(OP.localGet, zero);
+        c.op(OP.select);
+        c.mem(OP.store, 0);
+        c.local(OP.localGet, slot);
+        c.local(OP.localGet, zero);
+        c.op(OP.eqz);
+        c.mem(OP.store, 4);
+        return;
+      }
+      case 'cget': {
+        // (a[i], true) when i is below the length, (0, false) otherwise.
+        const slot = this.bindSlot(node.id, t);
+        const { length } = arrayType(fn, a);
+        const ok = this.newLocal();
+        this.push(b as Operand);
+        c.i32(length);
+        c.op(OP.lt_u);
+        c.local(OP.localSet, ok);
+        c.local(OP.localGet, slot);
+        c.local(OP.localGet, ok);
+        c.op(OP.if, I32);
+        this.push(a as Operand);
+        this.push(b as Operand);
+        c.i32(2);
+        c.op(OP.shl);
+        c.op(OP.add);
+        c.mem(OP.load, 0);
+        c.op(OP.else);
+        c.i32(0);
+        c.op(OP.end);
+        c.mem(OP.store, 0);
+        c.local(OP.localGet, slot);
+        c.local(OP.localGet, ok);
+        c.mem(OP.store, 4);
+        return;
+      }
       case 'read': {
         // (u32, io): the word read, then the token.
         const local = this.bindSlot(node.id, t);
         c.local(OP.localGet, local);
         this.push(a as Operand);
-        c.call(IO_READ);
+        c.call(fn.profile === 'strict' ? IO_SREAD : IO_READ);
         c.mem(OP.store, 0);
         c.local(OP.localGet, local);
         this.push(a as Operand);
@@ -1282,7 +1468,12 @@ class FunctionEmitter {
     const value = node.args[2] as Operand;
     if (node.op === 'set') {
       const { elem } = arrayType(this.fn, node.args[0]);
-      const offset = this.elementAddress(target, node.args[1], bytesOf(elem));
+      const offset = this.elementAddress(
+        target,
+        node.args[1],
+        bytesOf(elem),
+        siteOf(this.fn, node) === 'bounds',
+      );
       this.storeAt(elem, value, offset);
     } else {
       const fields = recordType(this.fn, node.args[0]);
@@ -1293,8 +1484,25 @@ class FunctionEmitter {
     }
   }
 
-  /** fold/loop: a counted loop calling the body (owned variant for aggregate state). */
+  /**
+   * fold/loop: a counted loop calling the body (owned variant for aggregate state). Strict: a
+   * loop whose body can trap names its node and each trip in the frame, so a trap line has the
+   * interpreter's `at` and `trip`.
+   */
   #iteration(node: Node): void {
+    const marked = this.host === undefined && mayTrapFn(this.fn) && callTraps(this.fn, node);
+    if (marked) {
+      this.code.str(node.id);
+      this.code.call(RT_MARK);
+    }
+    this.#iterate(node, marked);
+    if (marked) {
+      this.code.i32(0);
+      this.code.call(RT_MARK);
+    }
+  }
+
+  #iterate(node: Node, marked: boolean): void {
     const fn = this.fn;
     const c = this.code;
     const t = fn.types.get(node.id) ?? 'u32';
@@ -1402,6 +1610,10 @@ class FunctionEmitter {
     };
     /** One trip: predicate exit (to the enclosing block, `depth` labels out), body, steps. */
     const trip = (depth: number): void => {
+      if (marked) {
+        c.local(OP.localGet, i);
+        c.call(RT_IDX);
+      }
       if (pred !== undefined) {
         const bound = lit === undefined ? {} : { indexBound: lit };
         if (!this.#tryInline(pred, 'value', sources(), INLINE_BODY_NODES, bound)) {
@@ -1596,6 +1808,12 @@ class FunctionEmitter {
     }
     const frame = align(this.frame, STACK_ALIGN);
     const all = new Code();
+    // Strict: a function that can trap keeps a frame on the runtime's shadow stack (its name).
+    const framed = mayTrapFn(fn);
+    if (framed) {
+      all.str(fn.name);
+      all.call(RT_ENTER);
+    }
     if (frame > 0) {
       const fp = this.fp();
       all.op(OP.globalGet, 0);
@@ -1605,6 +1823,7 @@ class FunctionEmitter {
       all.op(OP.globalSet, 0);
     }
     all.append(c);
+    if (framed) all.call(RT_LEAVE);
     if (frame > 0) {
       all.local(OP.localGet, this.fp());
       all.i32(frame);
@@ -1675,7 +1894,7 @@ interface Fn {
 }
 
 /** u32 a0_read(io t): input[position++] while position < min(ninput, IN), else 0. */
-function ioRead(inCap: number): Fn {
+function ioRead(inCap: number, strict: number | undefined = undefined): Fn {
   const c = new Code();
   const ninput = inCap * 4;
   const position = ninput + 4;
@@ -1705,9 +1924,20 @@ function ioRead(inCap: number): Fn {
   c.op(OP.add);
   c.mem(OP.store, position);
   c.op(OP.else);
+  // Strict: exhausted input is the trap (kind 2); the value after it is dead.
+  if (strict !== undefined) {
+    c.i32(strict);
+    c.call(RT_TRAP);
+  }
   c.i32(0);
   c.op(OP.end);
-  return { symbol: IO_READ, params: 1, result: true, locals: 0, code: c.finish().parts };
+  return {
+    symbol: strict === undefined ? IO_READ : IO_SREAD,
+    params: 1,
+    result: true,
+    locals: 0,
+    code: c.finish().parts,
+  };
 }
 
 /** void a0_write(io t, u32 v): output[noutput++] = v while noutput < OUT. */
@@ -1770,6 +2000,182 @@ function ioPuts(): Fn {
   return { symbol: IO_PUTS, params: 3, result: false, locals: 1, code: c.finish().parts };
 }
 
+/** Where the strict runtime's static area puts each thing (see `strictArea`). */
+interface Area {
+  readonly kind: number;
+  readonly n: number;
+  readonly at: number;
+  readonly trip: number;
+  readonly depth: number;
+  /** Three 8-byte slots: `bounds`, `divzero`, `input`, each NUL-padded. */
+  readonly kinds: number;
+  readonly chain: number;
+  readonly node: number;
+  readonly trp: number;
+  readonly names: Map<string, number>;
+  /** The names laid out from here (4-aligned), then the area ends. */
+  readonly stringsBase: number;
+  readonly strings: Uint8Array;
+  readonly end: number;
+}
+
+const STRICT_KINDS = ['bounds', 'divzero', 'input'] as const;
+
+/**
+ * The strict runtime's area at `base`: the record the host decodes (kind pointer, frame count,
+ * innermost marked frame, its trip), the depth, the three kind names, the shadow stack arrays
+ * (`chain`, `node`, `trp`, `frames` words each) and the NUL-terminated names the code refers to.
+ */
+function strictArea(base: number, frames: number, names: ReadonlySet<string>): Area {
+  const kind = base;
+  const kinds = base + 20;
+  const chain = align(kinds + 24, STACK_ALIGN);
+  const node = chain + 4 * frames;
+  const trp = node + 4 * frames;
+  const stringsBase = trp + 4 * frames;
+  const text: number[] = [];
+  const at = new Map<string, number>();
+  for (const name of [...names].sort()) {
+    at.set(name, stringsBase + text.length);
+    text.push(...Buffer.from(name, 'utf8'), 0);
+  }
+  while (text.length % 4 !== 0) text.push(0);
+  return {
+    kind,
+    n: base + 4,
+    at: base + 8,
+    trip: base + 12,
+    depth: base + 16,
+    kinds,
+    chain,
+    node,
+    trp,
+    names: at,
+    stringsBase,
+    strings: Uint8Array.from(text),
+    end: align(stringsBase + text.length, 4),
+  };
+}
+
+/** The strict runtime's helpers: frames (`enter`, `leave`), fold marks (`mark`, `idx`) and `trap`. */
+function strictRuntime(a: Area): Fn[] {
+  const word = (c: Code, local: number): void => {
+    // local << 2, the byte offset of word `local`
+    c.local(OP.localGet, local);
+    c.i32(2);
+    c.op(OP.shl);
+  };
+  // enter(name): chain[depth] = name; node[depth] = 0; depth += 1
+  const enter = new Code();
+  enter.i32(0);
+  enter.mem(OP.load, a.depth);
+  enter.local(OP.localSet, 1);
+  word(enter, 1);
+  enter.local(OP.localGet, 0);
+  enter.mem(OP.store, a.chain);
+  word(enter, 1);
+  enter.i32(0);
+  enter.mem(OP.store, a.node);
+  enter.i32(0);
+  enter.local(OP.localGet, 1);
+  enter.i32(1);
+  enter.op(OP.add);
+  enter.mem(OP.store, a.depth);
+  // leave(): depth -= 1
+  const leave = new Code();
+  leave.i32(0);
+  leave.i32(0);
+  leave.mem(OP.load, a.depth);
+  leave.i32(1);
+  leave.op(OP.sub);
+  leave.mem(OP.store, a.depth);
+  // mark(node) / idx(trip): the innermost frame's node pointer / trip
+  const frameStore = (offset: number): Code => {
+    const c = new Code();
+    c.i32(0);
+    c.mem(OP.load, a.depth);
+    c.i32(1);
+    c.op(OP.sub);
+    c.i32(2);
+    c.op(OP.shl);
+    c.local(OP.localGet, 0);
+    c.mem(OP.store, offset);
+    return c;
+  };
+  // trap(kind): find the innermost frame that marks a fold, record the line's fields, reset the stack, unreachable
+  const t = new Code();
+  t.i32(0);
+  t.mem(OP.load, a.depth);
+  t.local(OP.localSet, 1); // n
+  t.i32(-1);
+  t.local(OP.localSet, 2); // at
+  t.i32(0);
+  t.local(OP.localSet, 3); // trip
+  t.local(OP.localGet, 1);
+  t.local(OP.localSet, 4); // k
+  t.op(OP.block, VOID);
+  t.loopOpen();
+  t.local(OP.localGet, 4);
+  t.op(OP.eqz);
+  t.op(OP.br_if, 1);
+  t.local(OP.localGet, 4);
+  t.i32(1);
+  t.op(OP.sub);
+  t.local(OP.localSet, 4);
+  word(t, 4);
+  t.mem(OP.load, a.node);
+  t.op(OP.if, VOID);
+  t.local(OP.localGet, 4);
+  t.local(OP.localSet, 2);
+  word(t, 4);
+  t.mem(OP.load, a.trp);
+  t.local(OP.localSet, 3);
+  t.op(OP.br, 2);
+  t.op(OP.end);
+  t.op(OP.br, 0);
+  t.loopClose();
+  t.op(OP.end);
+  t.i32(0);
+  t.local(OP.localGet, 0);
+  t.i32(8);
+  t.op(OP.mul);
+  t.i32(a.kinds);
+  t.op(OP.add);
+  t.mem(OP.store, a.kind);
+  t.i32(0);
+  t.local(OP.localGet, 1);
+  t.mem(OP.store, a.n);
+  t.i32(0);
+  t.local(OP.localGet, 2);
+  t.mem(OP.store, a.at);
+  t.i32(0);
+  t.local(OP.localGet, 3);
+  t.mem(OP.store, a.trip);
+  t.i32(0);
+  t.i32(0);
+  t.mem(OP.store, a.depth);
+  t.op(OP.unreachable);
+  return [
+    { symbol: RT_ENTER, params: 1, result: false, locals: 1, code: enter.finish().parts },
+    { symbol: RT_LEAVE, params: 0, result: false, locals: 0, code: leave.finish().parts },
+    {
+      symbol: RT_MARK,
+      params: 1,
+      result: false,
+      locals: 0,
+      code: frameStore(a.node).finish().parts,
+    },
+    {
+      symbol: RT_IDX,
+      params: 1,
+      result: false,
+      locals: 0,
+      code: frameStore(a.trp).finish().parts,
+    },
+    { symbol: RT_TRAP, params: 1, result: false, locals: 4, code: t.finish().parts },
+  ];
+}
+
 function section(id: number, payload: readonly number[]): number[] {
   return [id, ...uleb(payload.length), ...payload];
 }
@@ -1813,6 +2219,22 @@ export function assembleWasm(
       [...fn.types.values()].some(containsIo),
   );
 
+  // Strict runtime: a static area before the constant pool, only in a module whose code uses it
+  // (a canonical module has none, so its layout is unchanged).
+  const names = new Set<string>();
+  for (const r of records)
+    for (const v of r.variants)
+      for (const p of v.code) if (typeof p === 'object' && 'str' in p) names.add(p.str);
+  const strictOn = records.some((r) =>
+    r.variants.some((v) =>
+      v.code.some(
+        (p) => typeof p === 'object' && 'call' in p && (p.call === RT_TRAP || p.call === IO_SREAD),
+      ),
+    ),
+  );
+  const area = strictOn ? strictArea(POOL_BASE, program.functions.length + 1, names) : undefined;
+  const poolBase = area === undefined ? POOL_BASE : area.end;
+
   // Constant pool: deduplicated across functions, 4-aligned.
   const poolAddress = new Map<string, number>();
   const poolBytes: number[] = [];
@@ -1820,7 +2242,7 @@ export function assembleWasm(
     for (const entry of r.pool) {
       if (poolAddress.has(entry)) continue;
       const data = Buffer.from(entry, 'base64');
-      poolAddress.set(entry, POOL_BASE + poolBytes.length);
+      poolAddress.set(entry, poolBase + poolBytes.length);
       poolBytes.push(...data);
       while (poolBytes.length % 4 !== 0) poolBytes.push(0);
     }
@@ -1834,6 +2256,10 @@ export function assembleWasm(
         ioPuts(),
       ]
     : [];
+  if (area !== undefined) {
+    if (io) fns.push(ioRead(layout.ioInputCapacity, 2));
+    fns.push(...strictRuntime(area));
+  }
   const frames = new Map<string, number>();
   const callees = new Map<string, Set<string>>();
   for (const r of records) {
@@ -1860,7 +2286,12 @@ export function assembleWasm(
                 OP.const,
                 ...sleb(poolAddress.get(r.pool[p.pool] as string) as number),
               ]).toString('base64')
-            : p,
+            : typeof p === 'object' && 'str' in p
+              ? Buffer.from([
+                  OP.const,
+                  ...sleb((area as Area).names.get(p.str) as number),
+                ]).toString('base64')
+              : p,
         ),
       });
     }
@@ -1908,7 +2339,7 @@ export function assembleWasm(
       STACK_ALIGN,
     ),
   );
-  const stackBase = align(POOL_BASE + poolBytes.length, STACK_ALIGN);
+  const stackBase = align(poolBase + poolBytes.length, STACK_ALIGN);
   const heapBase = stackBase + stackSize;
   const pages = Math.max(1, Math.ceil(heapBase / PAGE));
 
@@ -1949,13 +2380,51 @@ export function assembleWasm(
     return [...uleb(body.length), ...body];
   });
 
+  // The strict runtime's record as immutable i32 globals (their values are addresses), after
+  // __stack_pointer (0) and __heap_base (1).
+  const trapGlobals: [string, number][] =
+    area === undefined
+      ? []
+      : [
+          ['a0_trap_kind', area.kind],
+          ['a0_trap_n', area.n],
+          ['a0_trap_at', area.at],
+          ['a0_trap_trip', area.trip],
+          ['a0_chain', area.chain],
+          ['a0_node', area.node],
+        ];
   const exports: number[][] = [
     [...name('memory'), 0x02, 0],
     [...name('__heap_base'), 0x03, 1],
+    ...trapGlobals.map(([n], k) => [...name(n), 0x03, ...uleb(2 + k)]),
     ...fns.flatMap((f, i) =>
       f.exportAs === undefined ? [] : [[...name(f.exportAs), 0x00, ...uleb(i)]],
     ),
   ];
+
+  // Data: the constant pool, then the strict area's kind names and its NUL-terminated names.
+  const segment = (at: number, bytes: readonly number[]): number[] => [
+    0x00,
+    OP.const,
+    ...sleb(at),
+    OP.end,
+    ...uleb(bytes.length),
+    ...bytes,
+  ];
+  const segments: number[][] = [];
+  if (poolBytes.length > 0) segments.push(segment(poolBase, poolBytes));
+  if (area !== undefined) {
+    segments.push(
+      segment(
+        area.kinds,
+        STRICT_KINDS.flatMap((k) => [
+          ...Buffer.from(k, 'utf8'),
+          ...new Array<number>(8 - k.length).fill(0),
+        ]),
+      ),
+    );
+    if (area.strings.length > 0) segments.push(segment(area.stringsBase, [...area.strings]));
+  }
 
   const module: number[] = [
     0x00,
@@ -1976,18 +2445,12 @@ export function assembleWasm(
       vec([
         [I32, 0x01, OP.const, ...sleb(heapBase), OP.end],
         [I32, 0x00, OP.const, ...sleb(heapBase), OP.end],
+        ...trapGlobals.map(([, v]): number[] => [I32, 0x00, OP.const, ...sleb(v), OP.end]),
       ]),
     ),
     ...section(7, vec(exports)),
     ...section(10, vec(bodiesOut)),
-    ...(poolBytes.length > 0
-      ? section(
-          11,
-          vec([
-            [0x00, OP.const, ...sleb(POOL_BASE), OP.end, ...uleb(poolBytes.length), ...poolBytes],
-          ]),
-        )
-      : []),
+    ...(segments.length > 0 ? section(11, vec(segments)) : []),
   ];
   return Uint8Array.from(module);
 }

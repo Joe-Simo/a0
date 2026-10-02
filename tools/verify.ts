@@ -12,6 +12,7 @@ import { AVR_FLASH_BYTES, AVR_SRAM_BYTES, avrStackBytes } from '../src/avr.js';
 import {
   C_IO_INPUT_CAPACITY,
   C_IO_OUTPUT_CAPACITY,
+  type CompileOptions,
   type CParallel,
   compile,
   cSignature,
@@ -29,7 +30,7 @@ import {
   type Value,
 } from '../src/core.js';
 import { formatTrap, type Trap } from '../src/diagnostics.js';
-import { optimize } from '../src/optimize.js';
+import { mayTrapFn, optimize } from '../src/optimize.js';
 import { parallelC, planProgram } from '../src/parallel.js';
 import {
   compileWasm,
@@ -1231,28 +1232,88 @@ export async function checkArm32(
  * `__heap_base`) and run every case. io state lives in linear memory at __heap_base with the
  * C struct layout: input[IN], ninput, position, output[OUT], noutput (all u32).
  */
+/**
+ * The trap a trapped wasm instance recorded, as the interpreter's record. Both wasm paths (C
+ * through clang, and the direct emitter) leave the same exported layout: the globals `a0_trap_kind`,
+ * `a0_trap_n`, `a0_trap_at`, `a0_trap_trip` and the arrays `a0_chain`, `a0_node` are the addresses
+ * of the C objects (a u32 holding a pointer to a NUL-terminated name, or a u32 count); `unreachable`
+ * itself carries no data.
+ */
+export function wasmTrap(exports: Record<string, unknown>): Trap | undefined {
+  const memory = exports.memory as WebAssembly.Memory | undefined;
+  const at = (name: string): number | undefined => {
+    const g = exports[name] as WebAssembly.Global | undefined;
+    return g === undefined ? undefined : (g.value as number);
+  };
+  const kindAt = at('a0_trap_kind');
+  if (memory === undefined || kindAt === undefined) return undefined;
+  const u32 = new Uint32Array(memory.buffer);
+  const bytes = new Uint8Array(memory.buffer);
+  const word = (addr: number): number => u32[addr >>> 2] as number;
+  const cstr = (ptr: number): string => {
+    let end = ptr;
+    while (bytes[end] !== 0) end += 1;
+    return Buffer.from(bytes.subarray(ptr, end)).toString('utf8');
+  };
+  const n = word(at('a0_trap_n') as number);
+  const frame = word(at('a0_trap_at') as number);
+  const names = (sym: string): string[] =>
+    Array.from({ length: n }, (_, k) => {
+      const p = word((at(sym) as number) + 4 * k);
+      return p === 0 ? '' : cstr(p);
+    });
+  const chain = names('a0_chain');
+  const node = names('a0_node');
+  return {
+    kind: cstr(word(kindAt)) as Trap['kind'],
+    fn: n > 0 ? (chain[n - 1] as string) : '-',
+    at: frame === 0xffff_ffff ? null : `${chain[frame]}.${node[frame]}`,
+    trip: frame === 0xffff_ffff ? null : word(at('a0_trap_trip') as number),
+    chain,
+  };
+}
+
 export async function runWasmCases(
   program: TypedProgram,
   cases: readonly Case[],
   bytes: Uint8Array,
   caps: { ioInputCapacity: number; ioOutputCapacity: number },
 ): Promise<string[]> {
-  const { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
-  const exports = instance.exports as Record<string, unknown>;
-  const memory = exports.memory as WebAssembly.Memory | undefined;
-  const heapBase = (exports.__heap_base as WebAssembly.Global | undefined)?.value as
-    | number
-    | undefined;
+  let { instance } = await WebAssembly.instantiate(bytes as BufferSource, {});
   const IN = caps.ioInputCapacity;
   const OUT = caps.ioOutputCapacity;
   return cases.map((c) => {
+    const exports = instance.exports as Record<string, unknown>;
+    const memory = exports.memory as WebAssembly.Memory | undefined;
+    const heapBase = (exports.__heap_base as WebAssembly.Global | undefined)?.value as
+      | number
+      | undefined;
     const fn = exports[`a0_${c.functionName}`];
     if (typeof fn !== 'function') return '<missing>';
     const scalars = c.args.map((a) => (typeof a === 'boolean' ? (a ? 1 : 0) : (a as number) | 0));
     const type = (program.byName.get(c.functionName) as TypedFunc).result;
+    // A trap is `unreachable` plus the recorded fields; a trapped instance is not reused.
+    const trapped = (e: unknown): string => {
+      if (!(e instanceof WebAssembly.RuntimeError)) throw e;
+      const t = wasmTrap(exports);
+      if (t === undefined) throw e;
+      return trapLine(t);
+    };
+    const reset = (): void => {
+      instance = new WebAssembly.Instance(
+        new WebAssembly.Module(bytes as BufferSource),
+        {},
+      ) as WebAssembly.Instance;
+    };
     if (c.input === undefined) {
-      const raw = (fn as (...a: number[]) => number)(...scalars);
-      return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+      try {
+        const raw = (fn as (...a: number[]) => number)(...scalars);
+        return type === 'u32' ? String(raw >>> 0) : String(raw & 1);
+      } catch (e) {
+        const line = trapped(e);
+        reset();
+        return line;
+      }
     }
     if (memory === undefined || heapBase === undefined) return '<no memory>';
     const needed = heapBase + (IN + 2 + OUT + 1) * 4;
@@ -1264,7 +1325,14 @@ export async function runWasmCases(
       words[k] = w;
     });
     words[IN] = c.input.length;
-    const raw = (fn as (...a: number[]) => number)(...scalars, heapBase);
+    let raw: number;
+    try {
+      raw = (fn as (...a: number[]) => number)(...scalars, heapBase);
+    } catch (e) {
+      const line = trapped(e);
+      reset();
+      return line;
+    }
     const result = type === 'u32' ? String(raw >>> 0) : String(raw & 1);
     const nout = words[IN + 2 + OUT] as number;
     const out = Array.from(words.subarray(IN + 2, IN + 2 + nout), String);
@@ -1358,6 +1426,7 @@ export async function checkWasmDirect(
 // --- JVM ---------------------------------------------------------------------
 
 function javaDriver(program: TypedProgram): string {
+  const strict = program.functions.some(mayTrapFn);
   const dispatch = program.functions.map((fn, i) => {
     if (!isDriverCallable(fn)) return `        case ${i}: out.append("skip\\n"); break;`;
     const io = hasIoParam(fn);
@@ -1378,7 +1447,10 @@ function javaDriver(program: TypedProgram): string {
     const flush = io
       ? ` for (int k = 0; k < io.noutput; k++) out.append(' ').append(Integer.toUnsignedString(io.output[k]));`
       : '';
-    return `        case ${i}: { ${setup}out.append(${print});${flush} out.append('\\n'); break; }`;
+    // A strict trap is a result too: its line is what every target must print.
+    return strict
+      ? `        case ${i}: { ${setup}try { out.append(${print});${flush} } catch (${JAVA_CLASS}.A0Trap t) { out.append("trap: ").append(t.line()); } out.append('\\n'); break; }`
+      : `        case ${i}: { ${setup}out.append(${print});${flush} out.append('\\n'); break; }`;
   });
   return `import java.io.*;
 public final class Driver {
@@ -1403,6 +1475,7 @@ ${dispatch.join('\n')}
 export async function checkJvm(
   program: TypedProgram,
   cases: readonly Case[],
+  options: Pick<CompileOptions, 'optimize'> = {},
 ): Promise<TargetReport> {
   const javac = findJavac();
   const java = findJava();
@@ -1412,7 +1485,7 @@ export async function checkJvm(
   return withTempDir(async (dir) => {
     await writeFile(
       join(dir, `${JAVA_CLASS}.java`),
-      compile(program, 'java', ioCaps(cases)).text,
+      compile(program, 'java', { ...ioCaps(cases), ...options }).text,
       'utf8',
     );
     await writeFile(join(dir, 'Driver.java'), javaDriver(program), 'utf8');

@@ -18,9 +18,11 @@ import {
   validate,
 } from '../src/core.js';
 import { formatTrap, type Trap } from '../src/diagnostics.js';
+import { emitCSharp } from '../src/dotnet.js';
 import { mayTrapFn, optimize, optimizeFunction } from '../src/optimize.js';
 import { parallelC } from '../src/parallel.js';
 import { findClang, findClangPlusPlus, findGcc, type ToolInfo } from '../src/toolchain.js';
+import { wasmModuleBytes } from '../src/wasm.js';
 import {
   type Case,
   generateCases,
@@ -28,7 +30,15 @@ import {
   oracleRun,
   oracleToValue,
 } from '../tools/corpus.js';
-import { checkInterpreter, checkNative, ioCaps } from '../tools/verify.js';
+import { checkDotnet } from '../tools/dotnet-verify.js';
+import {
+  checkInterpreter,
+  checkJvm,
+  checkNative,
+  checkWasm,
+  checkWasmDirect,
+  ioCaps,
+} from '../tools/verify.js';
 
 const STRICT = 'profile strict\n';
 const EDGES = [0, 1, 2, 3, 7, 0x7fff_ffff, 0x8000_0000, 0xffff_fffe, 0xffff_ffff];
@@ -554,6 +564,205 @@ end
 });
 
 // ---------------------------------------------------------------------------
+// Java
+// ---------------------------------------------------------------------------
+
+test('java: every op at the boundaries equals the interpreter in both profiles (optimized and not)', async () => {
+  for (const { name, program } of programs()) {
+    const cases = opsCases(program);
+    for (const optimizeIt of [true, false]) {
+      const r = await checkJvm(program, cases, { optimize: optimizeIt });
+      if (r.status === 'blocked') continue;
+      assert.equal(
+        r.status,
+        'passed',
+        `${name} opt=${optimizeIt}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`,
+      );
+      assert.equal(r.cases, cases.length);
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// .NET
+// ---------------------------------------------------------------------------
+
+test('dotnet: every op at the boundaries equals the interpreter in both profiles (optimized and not)', async () => {
+  for (const { name, program } of programs()) {
+    const cases = opsCases(program);
+    for (const optimizeIt of [true, false]) {
+      const r = await checkDotnet(program, cases, { optimize: optimizeIt });
+      if (r.status === 'blocked') continue;
+      assert.equal(
+        r.status,
+        'passed',
+        `${name} opt=${optimizeIt}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`,
+      );
+      assert.equal(r.cases, cases.length);
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WebAssembly through C (clang, wasm-ld)
+// ---------------------------------------------------------------------------
+
+test('wasm-c: every op at the boundaries equals the interpreter in both profiles; a trap is unreachable plus a decoded record', async () => {
+  for (const { name, program } of programs()) {
+    const cases = opsCases(program);
+    const r = await checkWasm(program, cases);
+    if (r.status === 'blocked') continue;
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.equal(r.cases, cases.length);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WebAssembly from the direct backend
+// ---------------------------------------------------------------------------
+
+test('wasm-direct: every op at the boundaries equals the interpreter in both profiles (optimized and not)', async () => {
+  for (const { name, program } of programs()) {
+    const cases = opsCases(program);
+    const r = await checkWasmDirect(program, cases);
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.equal(r.cases, cases.length);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The trap line of the managed and wasm targets: fn, at, trip and chain as the interpreter has them
+// ---------------------------------------------------------------------------
+
+const CHAIN_SRC = `${STRICT}fn step u32 u32 -> u32
+a arr 1 2 3
+b get a p1
+c add p0 b
+ret c
+end
+fn top u32 -> u32
+r fold step p0 0
+ret r
+end
+fn outer u32 -> u32
+a call top p0
+b add a 1
+ret b
+end
+fn q u32 u32 -> u32
+r div p0 p1
+ret r
+end
+fn fill u32x4 u32 -> u32x4
+a mul p1 p1
+b set p0 p1 a
+ret b
+end
+fn run u32 -> u32
+z arr 0 0 0 0
+f fold fill p0 z
+r get f 3
+ret r
+end
+fn guard u32 -> u32
+a arr 1 2 3
+c cget a p0
+b get a p0
+v at c 0
+r add v b
+ret r
+end
+fn rd io -> u32
+a read p0
+v at a 0
+ret v
+end
+fn rd2 io -> u32
+a read p0
+v at a 0
+t at a 1
+b read t
+w at b 0
+s add v w
+ret s
+end
+`;
+
+function chainCases(program: TypedProgram): Case[] {
+  const out: Case[] = [];
+  const add = (name: string, args: Value[], input?: number[]): void => {
+    out.push(caseFor(fnOf(program, name), args, input));
+  };
+  for (const n of [0, 1, 3, 4, 5]) add('outer', [n]);
+  for (const n of [0, 3, 4]) add('top', [n]);
+  for (const [a, b] of [
+    [7, 0],
+    [7, 2],
+  ] as const)
+    add('q', [a, b]);
+  for (const n of [0, 4, 5]) add('run', [n]);
+  for (const n of [0, 2, 3, 9]) add('guard', [n]);
+  for (const input of [[], [5], [5, 6]]) {
+    add('rd', [], input);
+    add('rd2', [], input);
+  }
+  return out;
+}
+
+test('managed and wasm targets: the trap line names fn, at, trip and chain exactly as the interpreter does, and a trap in a set stops before the write', async () => {
+  const program = parseAndValidate(CHAIN_SRC);
+  const cases = chainCases(program);
+  const traps = cases.filter((c) => c.expectedTrap !== undefined);
+  assert.ok(traps.length >= 8, `${traps.length} trapping cases`);
+  assert.ok(traps.some((c) => c.expectedTrap?.includes('chain=outer>top>step')));
+  assert.ok(traps.some((c) => c.expectedTrap?.includes('at=run.f trip=4 chain=run>fill')));
+  const reports = [
+    ['java', await checkJvm(program, cases)],
+    ['dotnet', await checkDotnet(program, cases)],
+    ['wasm-c', await checkWasm(program, cases)],
+    ['wasm-direct', await checkWasmDirect(program, cases)],
+  ] as const;
+  for (const [name, r] of reports) {
+    if (r.status === 'blocked') continue;
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.equal(r.cases, cases.length, name);
+  }
+});
+
+test('managed and wasm targets: the runtime exists only where a program can trap, and canonical output carries none', () => {
+  const canonical = parseAndValidate(CHAIN_SRC.slice(STRICT.length));
+  const strict = parseAndValidate(CHAIN_SRC);
+  const safe = parseAndValidate(`${STRICT}fn f u32 -> u32\na add p0 1\nret a\nend\n`);
+  for (const target of ['java', 'dotnet'] as const) {
+    const text = (p: TypedProgram): string =>
+      target === 'java' ? compile(p, 'java').text : emitCSharp(p);
+    assert.ok(!text(canonical).includes('a0_strap'), target);
+    assert.ok(!text(safe).includes('a0_strap'), target);
+    assert.ok(text(strict).includes('A0Trap'), target);
+    // A store checks its index first: the check is the index of the update.
+    if (target === 'java')
+      assert.match(text(parseAndValidate(CHAIN_SRC)), /set_[a-z0-9_]+\(p0, a0_ck\(/);
+  }
+  const exportsOf = (p: TypedProgram): string[] =>
+    WebAssembly.Module.exports(
+      new WebAssembly.Module(wasmModuleBytes(compile(p, 'wasm').text) as BufferSource),
+    ).map((e) => e.name);
+  const withRecord = [
+    'a0_trap_kind',
+    'a0_trap_n',
+    'a0_trap_at',
+    'a0_trap_trip',
+    'a0_chain',
+    'a0_node',
+  ];
+  for (const name of withRecord) {
+    assert.ok(exportsOf(strict).includes(name), name);
+    assert.ok(!exportsOf(canonical).includes(name), name);
+    assert.ok(!exportsOf(safe).includes(name), name);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Mutation safety, targets, size
 // ---------------------------------------------------------------------------
 
@@ -591,8 +800,8 @@ end
   );
 });
 
-test('targets: js and c implement strict and the checked ops; every other target still refuses with A0713', () => {
-  assert.deepEqual([...STRICT_TARGETS].sort(), ['c', 'js']);
+test('targets: js, c, java, dotnet and wasm implement strict and the checked ops; every other target still refuses with A0713', () => {
+  assert.deepEqual([...STRICT_TARGETS].sort(), ['c', 'dotnet', 'java', 'js', 'wasm']);
   const strict = parseAndValidate(`${STRICT}fn f u32 -> u32\na add p0 1\nret a\nend\n`);
   const checked = parseAndValidate('fn t u32 u32 -> (u32,bool)\na cadd p0 p1\nret a\nend\n');
   for (const target of TARGETS) {
@@ -637,9 +846,18 @@ end
     ['canonical', ''],
     ['strict', STRICT],
   ] as const)
-    for (const target of ['js', 'c'] as const)
+    for (const target of ['js', 'c', 'java'] as const)
       sizes[`${name} ${target}`] = compile(parseAndValidate(head + body), target).text.length;
+  for (const [name, head] of [
+    ['canonical', ''],
+    ['strict', STRICT],
+  ] as const) {
+    const p = parseAndValidate(head + body);
+    sizes[`${name} dotnet`] = emitCSharp(p).length;
+    sizes[`${name} wasm`] = wasmModuleBytes(compile(p, 'wasm').text).length;
+  }
   assert.ok((sizes['strict c'] as number) > (sizes['canonical c'] as number));
   assert.ok((sizes['strict js'] as number) > (sizes['canonical js'] as number));
+  assert.ok((sizes['strict wasm'] as number) > (sizes['canonical wasm'] as number));
   process.stdout.write(`# size (bytes): ${JSON.stringify(sizes)}\n`);
 });

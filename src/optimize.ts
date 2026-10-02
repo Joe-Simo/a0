@@ -1313,8 +1313,14 @@ export function lazyArms(fn: TypedFunc): {
     for (const a of n.args)
       if (a.kind === 'node') users.set(a.id, [...(users.get(a.id) ?? []), n.id]);
   const isRet = (id: string): boolean => fn.ret.kind === 'node' && fn.ret.id === id;
+  const defs = nodeDefs(fn);
+  // Under strict a node that can trap is not total: a select still evaluates both arms.
   const eligible = (n: Node): boolean =>
-    isScalar(fn.types.get(n.id) ?? 'io') && !isEffectful(n, fn) && !isRet(n.id) && !owner.has(n.id);
+    isScalar(fn.types.get(n.id) ?? 'io') &&
+    !isEffectful(n, fn) &&
+    !mayTrapNode(fn, n, defs) &&
+    !isRet(n.id) &&
+    !owner.has(n.id);
   for (const s of fn.nodes) {
     if (s.op !== 'select' || !isScalar(fn.types.get(s.id) ?? 'io')) continue;
     const [c, x, y] = s.args;
