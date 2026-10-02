@@ -15,6 +15,21 @@ test('plugin skill is a byte-identical copy of skills/a0 (run bun tools/sync-ski
     assert.equal(read(`plugin/skills/a0/${f}`), read(`skills/a0/${f}`), f);
 });
 
+test('the edit protocol reference teaches the spec line edits, in both skill copies', () => {
+  for (const path of ['skills/a0', 'plugin/skills/a0']) {
+    const protocol = read(`${path}/references/edit-protocol.md`);
+    for (const word of [
+      '`+ex ARGS -> RESULT`',
+      '`-pre`',
+      '`-post`',
+      '`f:+ex ...`',
+      'A0715',
+      'specs: hide',
+    ])
+      assert.ok(protocol.includes(word), `${path}: ${word}`);
+  }
+});
+
 test('skill frontmatter follows the Agent Skills spec', () => {
   const front = /^---\nname: ([^\n]+)\ndescription: ([^\n]+)\n/.exec(read('skills/a0/SKILL.md'));
   assert.ok(front);

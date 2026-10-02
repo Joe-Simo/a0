@@ -26,6 +26,7 @@ import {
 } from './core.js';
 import { type Arities, parseDense } from './dense.js';
 import { diag } from './diagnostics.js';
+import { specLineOf } from './spec.js';
 
 /** Dense files use this extension; any other file is read as canonical unless `dense` is set. */
 export const DENSE_EXTENSION = '.a0d';
@@ -236,6 +237,8 @@ export async function link(
       const node = fileLines.findIndex((l, i) => i > line && new RegExp(`^\\s*${m[2]}\\s`).test(l));
       if (node >= 0) line = node;
     }
+    // A spec failure points at the spec line it is about (the example it broke).
+    if (line >= 0 && e.spec !== undefined) line = specLineOf(fileLines, line, e.spec) ?? line;
     throw e.rewrite(`${path}${line >= 0 ? `:${line + 1}` : ''}: ${e.message}`);
   }
 }

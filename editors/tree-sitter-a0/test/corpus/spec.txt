@@ -1,0 +1,118 @@
+================================================================================
+Spec lines: examples, a precondition and a postcondition
+================================================================================
+
+fn f u32 (u32x2,bool) -> u32
+ex 1 [2;3] -> 5
+ex 0 [0;0] -> 0 # trailing
+pre lt p0 100
+post call ok r
+a add p0 1
+ret a
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types
+      (primitive_type)
+      (tuple_type
+        (array_type)
+        (primitive_type)))
+    result: (primitive_type)
+    (example
+      (integer)
+      (array_literal
+        (integer)
+        (integer))
+      result: (integer))
+    (example
+      (integer)
+      (array_literal
+        (integer)
+        (integer))
+      result: (integer))
+    (comment)
+    (contract
+      (operation
+        operator: (operator)
+        argument: (parameter)
+        argument: (integer)))
+    (contract
+      (call_expression
+        function: (identifier)
+        argument: (identifier)))
+    (instruction
+      id: (identifier)
+      (operation
+        operator: (operator)
+        argument: (parameter)
+        argument: (integer)))
+    (return_statement
+      value: (identifier))))
+
+================================================================================
+Spec lines: no arguments and a record result
+================================================================================
+
+fn h -> (u32,bool)
+ex -> (1;true)
+r rec 1 true
+ret r
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    name: (identifier)
+    result: (tuple_type
+      (primitive_type)
+      (primitive_type))
+    (example
+      result: (record_literal
+        (integer)
+        (boolean)))
+    (instruction
+      id: (identifier)
+      (aggregate_expression
+        operator: (operator)
+        argument: (integer)
+        argument: (boolean)))
+    (return_statement
+      value: (identifier))))
+
+================================================================================
+Spec words are keywords by place; a node called ex stays a node
+================================================================================
+
+fn g u32 -> u32
+ex add p0 1
+pre add ex 1
+ret pre
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_types
+      (primitive_type))
+    result: (primitive_type)
+    (instruction
+      id: (identifier)
+      (operation
+        operator: (operator)
+        argument: (parameter)
+        argument: (integer)))
+    (instruction
+      id: (identifier)
+      (operation
+        operator: (operator)
+        argument: (identifier)
+        argument: (integer)))
+    (return_statement
+      value: (identifier))))

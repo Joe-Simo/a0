@@ -38,7 +38,7 @@ module.exports = grammar({
     // use = "use" quoted_relative_path NEWLINE
     use_declaration: ($) => seq('use', field('path', $.string)),
 
-    // function = "fn" name type* "->" type NEWLINE instruction* "ret" operand NEWLINE "end"
+    // function = "fn" name type* "->" type NEWLINE specline* instruction* "ret" operand NEWLINE "end"
     function_definition: ($) =>
       seq(
         'fn',
@@ -47,6 +47,7 @@ module.exports = grammar({
         '->',
         field('result', $._type),
         repeat1($._newline),
+        repeat(seq($._spec_line, repeat1($._newline))),
         repeat(seq($.instruction, repeat1($._newline))),
         $.return_statement,
         repeat1($._newline),
@@ -55,10 +56,29 @@ module.exports = grammar({
 
     parameter_types: ($) => repeat1($._type),
 
+    // Spec lines (src/spec.ts) stand between the header and the first node, by place: `pre` and
+    // `post` are keywords only there (the lexer takes a keyword only where the parser can use it),
+    // and an `ex` line is the one with the arrow, so a node called `ex` stays a node (see the id
+    // alias in `instruction`; the next token, an operation versus a literal or `->`, decides).
+    _spec_line: ($) => choice($.example, $.contract),
+
+    // specline = "ex" literal* "->" literal
+    example: ($) => seq('ex', repeat($._literal), '->', field('result', $._literal)),
+
+    // specline = ("pre" | "post") OP ARGS  (one operation; in `post` the operand `r` is the result)
+    contract: ($) => seq(field('kind', choice('pre', 'post')), $._expression),
+
+    // literal = u32 | "true" | "false" | "[" literal* "]" | "(" literal* ")"; the parser also takes
+    // `;` or `,` between elements, which is how the canonical text writes them.
+    _literal: ($) => choice($.integer, $.boolean, $.array_literal, $.record_literal),
+    array_literal: ($) => seq('[', repeat(choice($._literal, ';', ',')), ']'),
+    record_literal: ($) => seq('(', repeat(choice($._literal, ';', ',')), ')'),
+
     // "ret" operand, or the sugar "ret OP ARGS" for a fresh node followed by ret of it.
     return_statement: ($) => seq('ret', choice(field('value', $._operand), $._expression)),
 
-    instruction: ($) => seq(field('id', $.identifier), $._expression),
+    instruction: ($) =>
+      seq(field('id', choice($.identifier, alias('ex', $.identifier))), $._expression),
 
     _expression: ($) =>
       choice(

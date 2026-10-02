@@ -44,9 +44,11 @@ import {
   stripComment,
 } from './core.js';
 import { formatDense } from './dense.js';
+import type { SpecFault } from './diagnostics.js';
 import { applyEdit } from './fix.js';
 import { isDensePath, link, parseFile } from './link.js';
 import { confine } from './mcp.js';
+import { type SpecWord, specWordOf } from './spec.js';
 import { A0_VERSION } from './version.js';
 
 /** One-line reference for every op, shown on hover and in completion. */
@@ -87,6 +89,13 @@ export const OP_DOCS: Readonly<Record<Op, string>> = {
   cdiv: 'cdiv a b -> (u32,bool): a / b and true; (0,false) when b = 0',
   crem: 'crem a b -> (u32,bool): a mod b and true; (0,false) when b = 0',
   cget: 'cget a i -> (u32,bool): element i of a u32 array and true; (0,false) when i is out of range',
+};
+
+/** Hover text of the spec keywords (src/spec.ts). */
+export const SPEC_DOCS: Readonly<Record<SpecWord, string>> = {
+  ex: 'ex ARGS -> RESULT: an executable example, run on the reference interpreter when the program is checked (at most three)',
+  pre: 'pre OP ARGS: a precondition over p0..pN, one bool operation; every example must satisfy it',
+  post: 'post OP ARGS: a postcondition over p0..pN and r, the result, one bool operation; every example must satisfy it',
 };
 
 const FN_LINE = /^\s*fn\s+([a-z][a-z0-9_]*)\b/;
@@ -158,6 +167,50 @@ const lineRange = (text: string, line: number): Range => {
   const start = l.length - l.trimStart().length;
   return { start: { line, character: start }, end: { line, character: l.length } };
 };
+
+/** The spec word of line `line` when it is a spec line (after its `fn` header, before any node). */
+function specWordAtLine(lines: readonly string[], line: number): SpecWord | undefined {
+  const word = specWordOf(stripComment(lines[line] ?? '').trim());
+  if (word === undefined) return undefined;
+  // Spec lines are the lines between the header and the first node: walk up to the header.
+  for (let i = line - 1; i >= 0; i -= 1) {
+    const t = stripComment(lines[i] as string).trim();
+    if (FN_LINE.test(lines[i] as string)) return word;
+    if (t !== '' && specWordOf(t) === undefined) return undefined;
+  }
+  return undefined;
+}
+
+/**
+ * The spec words that may start `line`: only where a spec line may stand, that is right after a
+ * `fn` header or another spec line (an `ex` before any node, one of each `pre` and `post`).
+ */
+function specSlot(lines: readonly string[], line: number): SpecWord[] {
+  const above = lines.slice(0, line).map((l) => stripComment(l).trim());
+  let i = above.length - 1;
+  while (i >= 0 && above[i] === '') i -= 1;
+  if (i < 0) return [];
+  const prev = lines[i] as string;
+  if (!FN_LINE.test(prev) && specWordAtLine(lines, i) === undefined) return [];
+  const taken = new Set<SpecWord>();
+  for (let j = i; j >= 0; j -= 1) {
+    const w = specWordOf(above[j] as string);
+    if (w === undefined) break;
+    if (w !== 'ex') taken.add(w);
+  }
+  return (['ex', 'pre', 'post'] as const).filter((w) => w === 'ex' || !taken.has(w));
+}
+
+/** The text of the `ex` line at `line` with its expected value (after `->`) replaced. */
+function withExpected(raw: string, expected: string): string | undefined {
+  const code = stripComment(raw);
+  const arrow = code.lastIndexOf('->');
+  if (arrow < 0) return undefined;
+  return `${code.slice(0, arrow)}-> ${expected}${raw.slice(code.length)}`;
+}
+
+/** A literal as `formatLit` prints it: what an `ex` line can hold after the arrow. */
+const LITERAL = /^(?:0|[1-9][0-9]*|true|false|\[.*\]|\(.*\))$/;
 
 function wordAt(text: string, pos: Position): string | undefined {
   const l = text.split(/\r?\n/)[pos.line] ?? '';
@@ -275,6 +328,7 @@ export async function startServer(connection: Connection, launch: string): Promi
             fix: err.fix === undefined ? null : scrub(err.fix),
             applicability: err.applicability ?? null,
             edits: err.edits,
+            spec: err.spec ?? null,
           },
         },
       ];
@@ -319,8 +373,18 @@ export async function startServer(connection: Connection, launch: string): Promi
   connection.onHover(async ({ textDocument, position }) => {
     const doc = documents.get(textDocument.uri);
     if (doc === undefined || !paths.has(doc.uri)) return null;
-    const word = wordAt(doc.getText(), position);
+    const text = doc.getText();
+    const word = wordAt(text, position);
     if (word === undefined) return null;
+    const lines = text.split(/\r?\n/);
+    // `ex`, `pre` and `post` at the start of a spec line are keywords, not names.
+    const specWord = specWordAtLine(lines, position.line);
+    if (
+      specWord !== undefined &&
+      word === specWord &&
+      (lines[position.line] ?? '').trimStart().startsWith(word)
+    )
+      return { contents: { kind: 'markdown', value: SPEC_DOCS[specWord] } };
     const def = (await inScope(doc.uri)).find((d) => d.name === word);
     if (def !== undefined) return { contents: { kind: 'markdown', value: `\`${def.signature}\`` } };
     const op = (ALL_OPS as readonly string[]).includes(word) ? (word as Op) : OP_ALIASES[word];
@@ -356,8 +420,14 @@ export async function startServer(connection: Connection, launch: string): Promi
     }));
   });
 
-  connection.onCompletion(async ({ textDocument }): Promise<CompletionItem[]> => {
+  connection.onCompletion(async ({ textDocument, position }): Promise<CompletionItem[]> => {
     if (!paths.has(textDocument.uri)) return [];
+    const lines = (documents.get(textDocument.uri)?.getText() ?? '').split(/\r?\n/);
+    const specs: CompletionItem[] = specSlot(lines, position.line).map((word) => ({
+      label: word,
+      kind: CompletionItemKind.Keyword,
+      detail: SPEC_DOCS[word],
+    }));
     const ops: CompletionItem[] = [...ALL_OPS, ...Object.keys(OP_ALIASES)].map((name) => ({
       label: name,
       kind: CompletionItemKind.Operator,
@@ -371,7 +441,7 @@ export async function startServer(connection: Connection, launch: string): Promi
       kind: CompletionItemKind.Function,
       detail: d.signature,
     }));
-    return [...ops, ...fns];
+    return [...specs, ...ops, ...fns];
   });
 
   connection.onDocumentFormatting(async ({ textDocument }): Promise<TextEdit[] | null> => {
@@ -403,8 +473,47 @@ export async function startServer(connection: Connection, launch: string): Promi
     const actions: CodeAction[] = [];
     for (const d of context.diagnostics) {
       const data = d.data as
-        | { edits?: FixEdit[]; fix?: string | null; applicability?: string }
+        | {
+            edits?: FixEdit[];
+            fix?: string | null;
+            applicability?: string;
+            id?: string | null;
+            spec?: SpecFault | null;
+          }
         | undefined;
+      // A wrong example: rewrite the expected value to what the function returns. The edit is
+      // exact (one line, the text after the arrow); it is not the preferred fix, since the
+      // function may be the thing that is wrong.
+      const fault = data?.spec;
+      if (data?.id === 'A0715' && fault?.actual !== undefined && LITERAL.test(fault.actual)) {
+        const lines = text.split(/\r?\n/);
+        const at = d.range.start.line;
+        const raw = lines[at] ?? '';
+        const rewritten =
+          specWordOf(stripComment(raw).trim()) === 'ex'
+            ? withExpected(raw, fault.actual)
+            : undefined;
+        if (rewritten !== undefined && rewritten !== raw)
+          actions.push({
+            title: `Change the expected result to ${fault.actual}`,
+            kind: CodeActionKind.QuickFix,
+            diagnostics: [d],
+            isPreferred: false,
+            edit: {
+              changes: {
+                [doc.uri]: [
+                  {
+                    range: {
+                      start: { line: at, character: 0 },
+                      end: { line: at, character: raw.length },
+                    },
+                    newText: rewritten,
+                  },
+                ],
+              },
+            },
+          });
+      }
       const edit = data?.edits?.[0];
       if (edit === undefined) continue;
       const next = applyEdit(text, edit);

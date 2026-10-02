@@ -109,8 +109,24 @@ export function formatTrap(t: Trap): string {
   return `${PROGRAM_TRAPS.has(t.kind) ? 'runtime' : 'limit'}: trap ${t.kind} fn=${t.fn} at=${t.at ?? '-'} trip=${t.trip ?? '-'} chain=${t.chain.join('>')} fix: ${TRAP_FIX[t.kind]}`;
 }
 
+/**
+ * Which spec line (src/spec.ts) a diagnostic is about: the function, the 1-based example it broke
+ * (`ex`), the line kind, and for a wrong example the input, the written result and the actual one.
+ */
+export interface SpecFault {
+  readonly function: string;
+  readonly ex: number | null;
+  /** Absent when the diagnostic is about the function's spec as a whole (A0714). */
+  readonly line?: 'ex' | 'pre' | 'post';
+  readonly input?: string;
+  readonly expected?: string;
+  readonly actual?: string;
+}
+
 export interface DiagnosticDetail {
   readonly code?: DiagnosticCode;
+  /** The spec line the diagnostic is about (A0714, A0715, A0716, A0719). */
+  readonly spec?: SpecFault;
   /** Set when the run stopped on a budget (fuel, iteration cap, io output cap). */
   readonly trap?: Trap;
   /** What the checker required, when it is a single thing (a type, a count, a token). */
@@ -135,6 +151,8 @@ export interface Diagnostic {
   readonly fix: string | null;
   readonly applicability: Applicability | null;
   readonly edits: readonly FixEdit[];
+  /** Present only on the spec rows (A0715, A0716, A0719). */
+  readonly spec?: SpecFault;
 }
 
 export class A0Error extends Error {
@@ -147,6 +165,7 @@ export class A0Error extends Error {
   readonly applicability: Applicability | undefined;
   readonly edits: readonly FixEdit[];
   readonly trap: Trap | undefined;
+  readonly spec: SpecFault | undefined;
   /** The message without the `line N: ` prefix. */
   readonly detail: string;
   constructor(
@@ -165,6 +184,7 @@ export class A0Error extends Error {
       detail.fix === undefined && detail.edits === undefined ? undefined : detail.applicability;
     this.edits = detail.edits ?? [];
     this.trap = detail.trap;
+    this.spec = detail.spec;
   }
 
   /** The same diagnostic with another message and/or line (the linker maps lines to files). */
@@ -184,6 +204,7 @@ export class A0Error extends Error {
       ...(expected === undefined ? {} : { expected }),
       ...(actual === undefined ? {} : { actual }),
       ...(id === undefined ? {} : { id }),
+      ...(this.spec === undefined ? {} : { spec: this.spec }),
     });
   }
 
@@ -206,6 +227,7 @@ export class A0Error extends Error {
       ...(this.applicability === undefined ? {} : { applicability: this.applicability }),
       ...(this.edits.length === 0 ? {} : { edits: this.edits }),
       ...(this.trap === undefined ? {} : { trap: this.trap }),
+      ...(this.spec === undefined ? {} : { spec: this.spec }),
     };
   }
 
@@ -221,6 +243,7 @@ export class A0Error extends Error {
       fix: this.fix ?? null,
       applicability: this.applicability ?? null,
       edits: this.edits,
+      ...(this.spec === undefined ? {} : { spec: this.spec }),
     };
   }
 }
@@ -1955,6 +1978,8 @@ export interface DiagOptions {
   readonly edits?: readonly FixEdit[];
   /** The budget stop, for the limit rows of the interpreter. */
   readonly trap?: Trap;
+  /** The spec line the diagnostic is about. */
+  readonly spec?: SpecFault;
 }
 
 /** The error for row `id`: message and static fix from the table, the dynamic parts from `opts`. */
@@ -1977,6 +2002,7 @@ export function diag(
     ...(applicability === undefined ? {} : { applicability }),
     ...(edits.length === 0 ? {} : { edits }),
     ...(opts.trap === undefined ? {} : { trap: opts.trap }),
+    ...(opts.spec === undefined ? {} : { spec: opts.spec }),
   });
 }
 

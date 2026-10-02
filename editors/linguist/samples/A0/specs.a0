@@ -1,0 +1,27 @@
+# Spec lines: executable examples and contracts between the header and the first node.
+
+fn clamp_max u32 u32 -> u32
+ex 3 7 -> 3
+ex 9 7 -> 7
+pre lt p1 100
+post le r p1
+c lt p1 p0
+r select c p1 p0
+ret r
+end
+
+fn first_pair (u32,bool) -> u32
+ex (4;true) -> 4
+v at p0 0
+ret v
+end
+
+fn sum3 u32x3 -> u32
+ex [1;2;3] -> 6
+a get p0 0
+b get p0 1
+c get p0 2
+d add a b
+e add d c
+ret e
+end

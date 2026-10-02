@@ -170,6 +170,7 @@ export async function createServer(launch: string): Promise<McpServer> {
         function: z.string(),
         scope: z.enum(['deps', 'full', 'bodies']).optional(),
         dense: denseField,
+        specs: z.enum(['show', 'hide']).optional().describe('hide: omit ex/pre/post lines'),
         lean: z
           .boolean()
           .optional()
@@ -178,7 +179,7 @@ export async function createServer(launch: string): Promise<McpServer> {
           ),
       },
     },
-    tool(async ({ file, function: name, scope, dense, lean }) => {
+    tool(async ({ file, function: name, scope, dense, specs, lean }) => {
       const { session } = await sessionFor(file);
       const useDense = dense ?? isDensePath(await fileOf(file));
       const text = session.open(name, {
@@ -186,6 +187,7 @@ export async function createServer(launch: string): Promise<McpServer> {
           ? {}
           : { scope: scope === 'bodies' ? ('bodies' as const) : ('deps' as const) }),
         ...(useDense ? { dense: true } : {}),
+        ...(specs === undefined ? {} : { specs }),
       }).text;
       return useDense && lean === true ? text.slice(text.indexOf('\n') + 1) : text;
     }),
@@ -212,7 +214,7 @@ export async function createServer(launch: string): Promise<McpServer> {
     'a0_apply',
     {
       description:
-        'Apply an edit (first line: an open handle). Returns the new view, or a JSON diagnostic with code (class), id (A0nnnn, see a0 explain), message, expected/actual, fix and applicability (exact or maybe); a failed edit changes nothing. The reply `fix all` applies every exact fix of the last rejected edit, atomically.',
+        'Apply an edit (first line: an open handle). Returns the new view, or a JSON diagnostic with code (class), id (A0nnnn, see a0 explain), message, expected/actual, fix and applicability (exact or maybe); a failed edit changes nothing. The reply `fix all` applies every exact fix of the last rejected edit, atomically. Spec lines: `+ex ARGS -> R`, `+pre OP ARGS`, `+post OP ARGS`, and `-` for removal (program handle: `f:+ex ...`).',
       inputSchema: { file: fileField, edit: z.string().max(LIMITS.maxSourceBytes) },
     },
     tool(async ({ file, edit }) => {

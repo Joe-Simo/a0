@@ -28,6 +28,7 @@ interface Published {
       fix: string | null;
       applicability: string | null;
       edits: unknown[];
+      spec?: unknown;
     };
   }[];
 }
@@ -292,6 +293,117 @@ test('lsp: diagnostics carry the table code, fix and applicability, and an exact
         actions[0]?.edit.changes[uri]?.map((e) => e.newText),
         ['c add b 1\n'],
       );
+    } finally {
+      await stop(s);
+    }
+  }));
+
+// Spec lines sit between the header (line 2) and the first node (line 6): every position below
+// is one the spec lines shifted.
+const SPECMAIN =
+  'use "lib.a0"\n\nfn f u32 -> u32\nex 1 -> 2\nex 5 -> 26\npre lt p0 100\nb call sq p0\nc add b 1\nret c\nend\n';
+
+const change = async (s: Session, uri: string, version: number, text: string) => {
+  const pending = s.next(uri);
+  await s.conn.sendNotification('textDocument/didChange', {
+    textDocument: { uri, version },
+    contentChanges: [{ text }],
+  });
+  return pending;
+};
+
+test('lsp: spec lines shift positions, hover, completion, and a wrong example has an exact rewrite', () =>
+  withRoot(async (_base, root) => {
+    const s = await start(root);
+    try {
+      const uri = pathToFileURL(join(root, 'main.a0')).href;
+      const at = (line: number, character: number) => ({
+        textDocument: { uri },
+        position: { line, character },
+      });
+      assert.deepEqual((await open(s, uri, SPECMAIN)).diagnostics, []);
+
+      // A node error is on the node's own line, below the three spec lines.
+      const [typed] = (await change(s, uri, 2, SPECMAIN.replace('c add b 1', 'c add b true')))
+        .diagnostics;
+      assert.equal(typed?.code, 'type');
+      assert.equal(typed?.range.start.line, 7);
+
+      // A wrong example is reported on its own line, with the example it broke.
+      const wrongText = SPECMAIN.replace('ex 5 -> 26', 'ex 5 -> 27');
+      const [wrong] = (await change(s, uri, 3, wrongText)).diagnostics;
+      assert.equal(wrong?.data?.id, 'A0715');
+      assert.equal(wrong?.range.start.line, 4);
+      assert.deepEqual(wrong?.data?.spec, {
+        function: 'f',
+        ex: 2,
+        line: 'ex',
+        input: '5',
+        expected: '27',
+        actual: '26',
+      });
+      const actions = (await s.conn.sendRequest('textDocument/codeAction', {
+        textDocument: { uri },
+        range: wrong?.range,
+        context: { diagnostics: [wrong] },
+      })) as {
+        title: string;
+        isPreferred: boolean;
+        edit: {
+          changes: Record<string, { range: { start: { line: number } }; newText: string }[]>;
+        };
+      }[];
+      assert.equal(actions.length, 1);
+      assert.equal(actions[0]?.title, 'Change the expected result to 26');
+      assert.equal(actions[0]?.isPreferred, false, 'the function may be the wrong side');
+      assert.equal(actions[0]?.edit.changes[uri]?.[0]?.range.start.line, 4);
+      assert.equal(actions[0]?.edit.changes[uri]?.[0]?.newText, 'ex 5 -> 26');
+
+      // A broken precondition is on the pre line.
+      const [pre] = (await change(s, uri, 4, SPECMAIN.replace('pre lt p0 100', 'pre lt p0 3')))
+        .diagnostics;
+      assert.equal(pre?.data?.id, 'A0716');
+      assert.equal(pre?.range.start.line, 5);
+
+      await change(s, uri, 5, SPECMAIN);
+
+      // Hover: the keywords, an operation inside a spec line, and a callee below the spec lines.
+      const hover = async (line: number, character: number) =>
+        (await s.conn.sendRequest('textDocument/hover', at(line, character))) as {
+          contents: { value: string };
+        } | null;
+      assert.match((await hover(3, 0))?.contents.value ?? '', /^ex ARGS -> RESULT/);
+      assert.match((await hover(5, 1))?.contents.value ?? '', /^pre OP ARGS/);
+      assert.match((await hover(5, 5))?.contents.value ?? '', /^lt a b -> bool/);
+      assert.match((await hover(6, 8))?.contents.value ?? '', /fn sq u32 -> u32/);
+
+      // Completion offers the spec words only where a spec line may start.
+      const labels = async (line: number): Promise<string[]> =>
+        (
+          (await s.conn.sendRequest('textDocument/completion', at(line, 0))) as {
+            label: string;
+          }[]
+        ).map((i) => i.label);
+      assert.ok((await labels(3)).includes('ex') && (await labels(3)).includes('pre'));
+      const afterPre = await labels(6);
+      assert.ok(afterPre.includes('ex') && afterPre.includes('post') && !afterPre.includes('pre'));
+      assert.ok(!(await labels(8)).includes('ex'), 'not below the first node');
+
+      // The symbol range of f still runs from its header to its end.
+      const symbols = (await s.conn.sendRequest('textDocument/documentSymbol', {
+        textDocument: { uri },
+      })) as { name: string; range: { start: { line: number }; end: { line: number } } }[];
+      assert.deepEqual(
+        symbols.map((d) => [d.name, d.range.start.line, d.range.end.line]),
+        [['f', 2, 9]],
+      );
+
+      // Formatting a canonical file with spec lines changes nothing.
+      const fmt = (await s.conn.sendRequest('textDocument/formatting', {
+        textDocument: { uri },
+        options: { tabSize: 2, insertSpaces: true },
+      })) as unknown[];
+      assert.deepEqual(fmt, []);
     } finally {
       await stop(s);
     }

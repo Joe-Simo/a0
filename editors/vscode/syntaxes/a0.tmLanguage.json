@@ -2,14 +2,28 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "A0",
   "scopeName": "source.a0",
-  "fileTypes": ["a0"],
+  "fileTypes": [
+    "a0"
+  ],
   "patterns": [
-    { "include": "#comment" },
-    { "include": "#use" },
-    { "include": "#function-header" },
-    { "include": "#end" },
-    { "include": "#ret" },
-    { "include": "#instruction" }
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#use"
+    },
+    {
+      "include": "#function"
+    },
+    {
+      "include": "#end"
+    },
+    {
+      "include": "#ret"
+    },
+    {
+      "include": "#instruction"
+    }
   ],
   "repository": {
     "comment": {
@@ -20,86 +34,271 @@
       "name": "string.quoted.double.a0",
       "begin": "\"",
       "end": "\"|$",
-      "patterns": [{ "name": "constant.character.escape.a0", "match": "\\\\[nt\"\\\\]" }]
+      "patterns": [
+        {
+          "name": "constant.character.escape.a0",
+          "match": "\\\\[nt\"\\\\]"
+        }
+      ]
     },
     "use": {
       "match": "^\\s*(use)\\s+(\"[^\"]*\")",
       "captures": {
-        "1": { "name": "keyword.control.import.a0" },
-        "2": { "name": "string.quoted.double.path.a0" }
+        "1": {
+          "name": "keyword.control.import.a0"
+        },
+        "2": {
+          "name": "string.quoted.double.path.a0"
+        }
       }
-    },
-    "function-header": {
-      "begin": "^\\s*(fn)\\s+([a-z][a-z0-9_]*)",
-      "beginCaptures": {
-        "1": { "name": "storage.type.function.a0" },
-        "2": { "name": "entity.name.function.a0" }
-      },
-      "end": "$",
-      "patterns": [
-        { "include": "#comment" },
-        { "name": "keyword.operator.arrow.a0", "match": "->" },
-        { "include": "#type" }
-      ]
     },
     "type": {
       "patterns": [
-        { "name": "support.type.primitive.a0", "match": "\\b(u32|bool|io)(?=x[0-9]|[\\s,)]|$)" },
-        { "name": "constant.numeric.length.a0", "match": "(?<=[a-z0-9)])x[0-9]+" },
-        { "name": "punctuation.definition.tuple.a0", "match": "[(),]" }
+        {
+          "name": "support.type.primitive.a0",
+          "match": "\\b(u32|bool|io)(?=x[0-9]|[\\s,)]|$)"
+        },
+        {
+          "name": "constant.numeric.length.a0",
+          "match": "(?<=[a-z0-9)])x[0-9]+"
+        },
+        {
+          "name": "punctuation.definition.tuple.a0",
+          "match": "[(),]"
+        }
       ]
     },
     "end": {
       "match": "^\\s*(end)\\b",
-      "captures": { "1": { "name": "keyword.control.end.a0" } }
+      "captures": {
+        "1": {
+          "name": "keyword.control.end.a0"
+        }
+      }
     },
     "ret": {
       "begin": "^\\s*(ret)\\b",
-      "beginCaptures": { "1": { "name": "keyword.control.return.a0" } },
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.return.a0"
+        }
+      },
       "end": "$",
-      "patterns": [{ "include": "#expression" }]
+      "patterns": [
+        {
+          "include": "#expression"
+        }
+      ]
     },
     "instruction": {
       "begin": "^\\s*([a-z][a-z0-9_]*)\\b",
-      "beginCaptures": { "1": { "name": "variable.other.definition.a0" } },
+      "beginCaptures": {
+        "1": {
+          "name": "variable.other.definition.a0"
+        }
+      },
       "end": "$",
-      "patterns": [{ "include": "#expression" }]
+      "patterns": [
+        {
+          "include": "#expression"
+        }
+      ]
     },
     "expression": {
       "patterns": [
-        { "include": "#comment" },
-        { "include": "#string" },
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#string"
+        },
         {
           "match": "\\G\\s*(call|fold)\\s+([a-z][a-z0-9_]*)",
           "captures": {
-            "1": { "name": "keyword.other.call.a0" },
-            "2": { "name": "entity.name.function.call.a0" }
+            "1": {
+              "name": "keyword.other.call.a0"
+            },
+            "2": {
+              "name": "entity.name.function.call.a0"
+            }
           }
         },
         {
           "match": "\\G\\s*(loop)\\s+([a-z][a-z0-9_]*)\\s+([a-z][a-z0-9_]*)",
           "captures": {
-            "1": { "name": "keyword.other.call.a0" },
-            "2": { "name": "entity.name.function.call.a0" },
-            "3": { "name": "entity.name.function.call.a0" }
+            "1": {
+              "name": "keyword.other.call.a0"
+            },
+            "2": {
+              "name": "entity.name.function.call.a0"
+            },
+            "3": {
+              "name": "entity.name.function.call.a0"
+            }
           }
         },
         {
           "match": "\\G\\s*(text)\\b",
-          "captures": { "1": { "name": "keyword.other.text.a0" } }
+          "captures": {
+            "1": {
+              "name": "keyword.other.text.a0"
+            }
+          }
         },
         {
           "match": "\\G\\s*(mov|add|sub|mul|and|or|xor|shl|shr|eq|ne|lt|le|gt|ge|select|arr|rec|get|set|at|put|read|write|div|rem|udiv|urem|puts)\\b",
-          "captures": { "1": { "name": "keyword.operator.word.a0" } }
+          "captures": {
+            "1": {
+              "name": "keyword.operator.word.a0"
+            }
+          }
         },
         {
           "match": "\\G\\s*([a-z][a-z0-9_]*)(?=\\s+\\S)",
-          "captures": { "1": { "name": "entity.name.function.call.a0" } }
+          "captures": {
+            "1": {
+              "name": "entity.name.function.call.a0"
+            }
+          }
         },
-        { "name": "constant.language.boolean.a0", "match": "\\b(true|false)\\b" },
-        { "name": "variable.parameter.a0", "match": "\\bp(0|[1-9][0-9]*)\\b" },
-        { "name": "constant.numeric.integer.a0", "match": "\\b(0|[1-9][0-9]*)\\b" },
-        { "name": "variable.other.a0", "match": "\\b[a-z][a-z0-9_]*\\b" }
+        {
+          "name": "constant.language.boolean.a0",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "variable.parameter.a0",
+          "match": "\\bp(0|[1-9][0-9]*)\\b"
+        },
+        {
+          "name": "constant.numeric.integer.a0",
+          "match": "\\b(0|[1-9][0-9]*)\\b"
+        },
+        {
+          "name": "variable.other.a0",
+          "match": "\\b[a-z][a-z0-9_]*\\b"
+        }
+      ]
+    },
+    "function": {
+      "begin": "^\\s*(fn)\\s+([a-z][a-z0-9_]*)",
+      "beginCaptures": {
+        "1": {
+          "name": "storage.type.function.a0"
+        },
+        "2": {
+          "name": "entity.name.function.a0"
+        }
+      },
+      "end": "^\\s*(end)\\b",
+      "endCaptures": {
+        "1": {
+          "name": "keyword.control.end.a0"
+        }
+      },
+      "patterns": [
+        {
+          "begin": "\\G",
+          "end": "$",
+          "patterns": [
+            {
+              "include": "#comment"
+            },
+            {
+              "name": "keyword.operator.arrow.a0",
+              "match": "->"
+            },
+            {
+              "include": "#type"
+            }
+          ]
+        },
+        {
+          "include": "#spec-zone"
+        }
+      ]
+    },
+    "spec-zone": {
+      "begin": "^(?=\\s*\\S)",
+      "end": "(?=^\\s*end\\b)",
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#example"
+        },
+        {
+          "include": "#contract"
+        },
+        {
+          "include": "#body"
+        }
+      ]
+    },
+    "body": {
+      "begin": "^(?=\\s*\\S)",
+      "end": "(?=^\\s*end\\b)",
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#ret"
+        },
+        {
+          "include": "#instruction"
+        }
+      ]
+    },
+    "example": {
+      "begin": "^\\s*(ex)\\b(?=[^#]*->)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.other.spec.a0"
+        }
+      },
+      "end": "$",
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "name": "keyword.operator.arrow.a0",
+          "match": "->"
+        },
+        {
+          "include": "#literal"
+        }
+      ]
+    },
+    "contract": {
+      "begin": "^\\s*(pre|post)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.other.spec.a0"
+        }
+      },
+      "end": "$",
+      "patterns": [
+        {
+          "include": "#expression"
+        }
+      ]
+    },
+    "literal": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.a0",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.numeric.integer.a0",
+          "match": "\\b(0|[1-9][0-9]*)\\b"
+        },
+        {
+          "name": "punctuation.definition.aggregate.a0",
+          "match": "[\\[\\]();,]"
+        }
       ]
     }
   }

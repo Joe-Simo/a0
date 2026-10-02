@@ -1,10 +1,10 @@
 ; Keywords
-["fn" "end" "use"] @keyword
+["fn" "end" "use" "ex" "pre" "post"] @keyword
 "ret" @keyword.return
 ["call" "fold" "loop" "text"] @keyword.operator
 "->" @punctuation.delimiter
-["(" ")"] @punctuation.bracket
-"," @punctuation.delimiter
+["(" ")" "[" "]"] @punctuation.bracket
+["," ";"] @punctuation.delimiter
 
 ; Operations
 (operator) @operator

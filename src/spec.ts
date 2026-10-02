@@ -30,13 +30,14 @@ import {
   type Node,
   parseNode,
   run,
+  stripComment,
   type Type,
   type TypedFunc,
   type Value,
   validateFunction,
   valueEquals,
 } from './core.js';
-import { diag, formatTrap } from './diagnostics.js';
+import { diag, formatTrap, type SpecFault } from './diagnostics.js';
 
 /** Examples per function. */
 export const SPEC_MAX_EXAMPLES = 3;
@@ -96,12 +97,52 @@ export function isExampleLine(text: string): boolean {
   return specWordOf(text) === 'ex';
 }
 
+/**
+ * The 0-based line of the spec line a fault names, scanning the spec lines that follow the `fn`
+ * header at `header` (blank and comment lines skipped); undefined when the fault names no line or
+ * the text has no such line. Shared by the linker (diagnostic lines) and the language server.
+ */
+export function specLineOf(
+  lines: readonly string[],
+  header: number,
+  fault: SpecFault,
+): number | undefined {
+  if (fault.line === undefined) return undefined;
+  let seen = 0;
+  for (let i = header + 1; i < lines.length; i += 1) {
+    const t = stripComment(lines[i] as string).trim();
+    if (t === '') continue;
+    const word = specWordOf(t);
+    if (word === undefined) return undefined;
+    if (word === fault.line && (word !== 'ex' || ++seen === fault.ex)) return i;
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Literals
 // ---------------------------------------------------------------------------
 
+/** The structured part of a spec diagnostic: which function, example and line, and the values. */
+const fault = (
+  fn: string,
+  ex: number,
+  line: 'ex' | 'pre' | 'post',
+  input?: string,
+  expected?: string,
+  actual?: string,
+): SpecFault => ({
+  function: fn,
+  ex,
+  line,
+  ...(input === undefined ? {} : { input }),
+  ...(expected === undefined ? {} : { expected }),
+  ...(actual === undefined ? {} : { actual }),
+});
+
 const specError = (fn: string, what: string, line?: number, fix?: string): A0Error =>
   diag('A0714', [fn, what], {
+    spec: { function: fn, ex: null },
     ...(line === undefined ? {} : { line }),
     ...(fix === undefined ? {} : { fix }),
   });
@@ -500,7 +541,9 @@ function evaluate(
     return run(typed, args, { fuel: SPEC_FUEL }) === true;
   } catch (e) {
     if (e instanceof A0Error && e.id === 'A0701')
-      throw diag('A0719', [fn.name, `ex ${index}`, SPEC_FUEL]);
+      throw diag('A0719', [fn.name, `ex ${index}`, SPEC_FUEL], {
+        spec: fault(fn.name, index, 'ex'),
+      });
     if (e instanceof A0Error)
       return { failed: e.trap === undefined ? e.detail : formatTrap(e.trap) };
     throw e;
@@ -550,26 +593,33 @@ export function verifySpec(fn: TypedFunc, scope: ReadonlyMap<string, TypedFunc>)
     if (pre !== undefined) {
       const held = evaluate(fn, pre, args, index);
       if (held !== true)
-        throw diag('A0716', [
-          fn.name,
-          index,
-          'pre',
-          typeof held === 'object'
-            ? `pre cannot be evaluated on the input: ${held.failed}`
-            : `the input ${input === '' ? '(none)' : input} does not satisfy pre`,
-        ]);
+        throw diag(
+          'A0716',
+          [
+            fn.name,
+            index,
+            'pre',
+            typeof held === 'object'
+              ? `pre cannot be evaluated on the input: ${held.failed}`
+              : `the input ${input === '' ? '(none)' : input} does not satisfy pre`,
+          ],
+          { spec: fault(fn.name, index, 'pre', input) },
+        );
     }
     let actual: Value;
     try {
       actual = run(fn, args, { fuel: SPEC_FUEL });
     } catch (e) {
       if (e instanceof A0Error && e.id === 'A0701')
-        throw diag('A0719', [fn.name, `ex ${index}`, SPEC_FUEL]);
+        throw diag('A0719', [fn.name, `ex ${index}`, SPEC_FUEL], {
+          spec: fault(fn.name, index, 'ex', input),
+        });
       if (!(e instanceof A0Error)) throw e;
       const got = e.trap === undefined ? e.detail : formatTrap(e.trap);
       throw diag('A0715', [fn.name, index, input, formatLit(ex.result), got], {
         expected: formatLit(ex.result),
         actual: got,
+        spec: fault(fn.name, index, 'ex', input, formatLit(ex.result), got),
       });
     }
     if (!valueEquals(actual, expected[k] as Value)) {
@@ -577,20 +627,25 @@ export function verifySpec(fn: TypedFunc, scope: ReadonlyMap<string, TypedFunc>)
       throw diag('A0715', [fn.name, index, input, formatLit(ex.result), got], {
         expected: formatLit(ex.result),
         actual: got,
+        spec: fault(fn.name, index, 'ex', input, formatLit(ex.result), got),
         fix: `if ${fn.name} is right, change the line to \`ex ${[...ex.args.map(formatLit), '->', got].join(' ')}\`; if the example is right, fix ${fn.name}; \`-ex ${[...ex.args.map(formatLit), '->', formatLit(ex.result)].join(' ')}\` removes it`,
       });
     }
     if (post !== undefined) {
       const held = evaluate(fn, post, [...args, actual], index);
       if (held !== true)
-        throw diag('A0716', [
-          fn.name,
-          index,
-          'post',
-          typeof held === 'object'
-            ? `post cannot be evaluated: ${held.failed}`
-            : `the input ${input === '' ? '(none)' : input} gives ${formatLit(litOf(actual, fn.result))}, which does not satisfy post`,
-        ]);
+        throw diag(
+          'A0716',
+          [
+            fn.name,
+            index,
+            'post',
+            typeof held === 'object'
+              ? `post cannot be evaluated: ${held.failed}`
+              : `the input ${input === '' ? '(none)' : input} gives ${formatLit(litOf(actual, fn.result))}, which does not satisfy post`,
+          ],
+          { spec: fault(fn.name, index, 'post', input) },
+        );
     }
   }
 }
