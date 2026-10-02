@@ -1,0 +1,55 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "g0\n# in_range u32 u32 u32 -> bool\nfn in_range -> bool and ge A B le A C\n"
+ ],
+ "g-saturating-add/a0/structured": [
+  "e0\nfn sat_add\ns select lt (add A B) A 4294967295 (add A B)\ng0\n"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "e0\nfn avg\na and A B\nx xor A B\ns shr x 1\nadd a s\ng0\n# avg u32 u32 -> u32\n"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "e0\nfn page_count\nr div (add A (sub B 1)) B\ng0\n# page_count u32 u32 -> u32\n"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "fn prev_slot\nz eq A 0\nm sub B 1\nd sub A 1\nr select z m d\n"
+ ],
+ "g-clamp-index/a0/structured": [
+  "e0\nfn clamp_index\nl sub B 1\nc lt A B\nr select c A l\ng0\n# clamp_index u32 u32 -> u32\n"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "e0\nfn grade\na ge A 90\nm select ge A 80 2 1\nr select a 3 m\ng0\n# grade u32 -> u32\n"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "fn count_above u32x4 u32 -> u32\nfold step 4 0 A B\n\nfn step u32 u32 u32x4 u32 -> u32\nadd s (select (gt (get i A) B) 1 0)\n",
+  "fn count_above u32x4 u32 -> u32\nfold step 4 0 A B\n\nfn step u32 u32 u32x4 u32 -> u32\nadd A (select (gt (get B C) D) 1 0)\n"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "e0\nfn remaining\nselect le B A sub A B 0\ng0\n# remaining u32 u32 -> u32\n"
+ ],
+ "g-ring-distance/a0/structured": [
+  "fn ring_distance\nd sub A B\nr rem d C\nresult select (lt r 0) (add r C) r\n",
+  "fn ring_distance\nd sub A B\nresult select (lt d 0) (add d C) d\n"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "fn bit_field u32 u32 u32 -> u32\nand >> s A sub << 1 B 1\n",
+  "fn bit_field u32 u32 u32 -> u32\nand >> A B sub << 1 C 1\n"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "fn sat_sub u32 u32 -> u32\nselect (lt A B) 0 (sub A B)\n\nfn budget_left u32 u32 u32 -> u32\nsat_sub (add A C) B\n"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "fn sat_mul\nselect (eq A 0) 0 (select (gt B (div 4294967295 A)) 4294967295 (mul A B))\n"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "fn elapsed\nr sub B A\n# elapsed u32 u32 -> u32\n"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "fn wstep u32 u32 u32x6 -> u32\nadd s mul get A i add i 1\nfn checksum u32x6 -> u32\nfold wstep 6 0 A\n",
+  "fn wstep u32 u32 u32x6 -> u32\nadd A mul get C B add B 1\nfn checksum u32x6 -> u32\nfold wstep 6 0 A\n"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "fn low_byte_bits\nfold bstep 8 0 A\n# bstep u32 u32 u32 -> u32\nbstep s i x\nadd s select eq and >> x i 1 1 0\n# low_byte_bits u32 -> u32\n",
+  "fn low_byte_bits\nfold bstep 8 0 A\n# bstep u32 u32 u32 -> u32\nbstep\nadd A select eq and >> C B 1 1 0\n# low_byte_bits u32 -> u32\n"
+ ]
+}

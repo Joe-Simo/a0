@@ -1,0 +1,56 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "b le p0 p2"
+ ],
+ "g-saturating-add/a0/structured": [
+  "c lt s p0\nr select c 4294967295 s\nret r"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "fn avg u32 u32 -> u32\nex 4294967294 1 -> 2147483647\nex 3 4 -> 3\nex 2147483647 2147483648 -> 2147483647\nn1 and p0 p1\nn2 xor p0 p1\nn3 shr n2 1\nr add n1 n3\nret r\nend"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "fn page_count u32 u32 -> u32\nex 10 5 -> 2\nex 20 4 -> 5\nex 0 3 -> 0\nex 7 3 -> 3\nex 1 5 -> 1\nt add p0 p1\nu sub t 1\nr div u p1\nret r\nend\n",
+  "fn page_count u32 u32 -> u32\nex 10 5 -> 2\nex 7 3 -> 3\nex 0 3 -> 0\nt add p0 p1\nu sub t 1\nr div u p1\nret r\nend"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "fn prev_slot u32 u32 -> u32\nex 2 3 -> 1\nex 7 10 -> 6\nex 1 2 -> 0\nex 0 5 -> 4\nz eq p0 0\nd sub p0 1\nm sub p1 1\nr select z m d\nret r\nend",
+  "fn prev_slot u32 u32 -> u32\nex 2 3 -> 1\nex 1 2 -> 0\nex 0 5 -> 4\nz eq p0 0\nd sub p0 1\nm sub p1 1\nr select z m d\nret r\nend"
+ ],
+ "g-clamp-index/a0/structured": [
+  "c lt p0 l\nr select c p0 l\n"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "a ge p0 90\n"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\nv get p2 p1\nc gt v p3\nd select c 1 0\ns add p0 d\nret s\nend\n"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "fn remaining u32 u32 -> u32\nex 10 9 -> 1\nex 10 10 -> 0\nex 100 1 -> 99\nex 5 10 -> 0\nd sub p0 p1\nc gt p1 p0\nz select c 0 d\nret z\nend",
+  "fn remaining u32 u32 -> u32\nex 10 10 -> 0\nex 100 1 -> 99\nex 5 10 -> 0\nd sub p0 p1\nc gt p1 p0\nz select c 0 d\nret z\nend\n"
+ ],
+ "g-ring-distance/a0/structured": [
+  "fn ring_distance u32 u32 u32 -> u32\nex 5 4 8 -> 1\nex 4 4 8 -> 0\nex 7 0 8 -> 7\nex 1 6 8 -> 3\na add p0 p2\nd sub a p1\nr rem d p2\nret r\nend\n",
+  "fn ring_distance u32 u32 u32 -> u32\nex 5 4 8 -> 1\nex 7 0 8 -> 7\nex 1 6 8 -> 3\na add p0 p2\nd sub a p1\nr rem d p2\nret r\nend\n"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "m shl 1 p2\nk sub m 1\nv and s k\nret v\n"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "fn budget_left u32 u32 u32 -> u32\nex 10 3 0 -> 7\nex 5 5 0 -> 0\nex 5 6 0 -> 0\nex 5 6 2 -> 1\nex 5 9 2 -> 0\nt add p0 p2\nr call sat_sub t p1\nret r\nend",
+  "fn budget_left u32 u32 u32 -> u32\nex 10 3 0 -> 7\nex 5 6 2 -> 1\nex 5 9 2 -> 0\nt add p0 p2\nr call sat_sub t p1\nret r\nend"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "fn sat_mul u32 u32 -> u32\nex 65536 65535 -> 4294901760\nex 3 4 -> 12\nex 1000 1000 -> 1000000\nex 65536 65536 -> 4294967295\nex 0 5 -> 0\nex 5 0 -> 0\np mul p0 p1\nz eq p0 0\nd select z 1 p0\nq div p d\nc select z p1 q\no ne c p1\nm select o 4294967295 p\nret m\nend\n",
+  "fn sat_mul u32 u32 -> u32\nex 3 4 -> 12\nex 65536 65536 -> 4294967295\nex 5 0 -> 0\np mul p0 p1\nz eq p0 0\nd select z 1 p0\nq div p d\nc select z p1 q\no ne c p1\nm select o 4294967295 p\nret m\nend\n"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "r sub p1 p0\n-c\n-d\n"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "c fold wstep 6 0 p0"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "c fold bstep 8 0 p0"
+ ]
+}

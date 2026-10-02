@@ -68,10 +68,7 @@ function a0Text(p: NProgram): string {
     .map((f) => {
       const body = f.body.map((s) => `${s.id} ${s.op} ${s.args.map(arg).join(' ')}`.trimEnd());
       return [
-        `fn ${f.name} ${f.params.join(' ')} -> ${f.result}`.replace(
-          'fn ' + f.name + '  ->',
-          `fn ${f.name} ->`,
-        ),
+        `fn ${f.name}${f.params.length === 0 ? '' : ` ${f.params.join(' ')}`} -> ${f.result}`,
         ...body,
         `ret ${arg(f.ret)}`,
         'end',

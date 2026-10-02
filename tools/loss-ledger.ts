@@ -14,6 +14,9 @@
  *   ai-edit-experiment.{haiku,sonnet}-min.json and .{a..f,c400,c4000}.{haiku,sonnet}-min.json
  *                         (the shipped primer): accepted rate and tokens per trial, A0 against TS
  *                         and Rust, per protocol.
+ *   spec-lines.json       the spec-line experiment (set g): each spec-line cell against the cell with no
+ *                         spec lines in the same view, per model: accepted rate one shot and after one
+ *                         repair, and unbounded-session tokens per accepted edit.
  *
  * Timing observations carry the load they were recorded at. One recorded above LOAD_LIMIT (or with
  * no load recorded) is flagged `unverified`: it is kept in the ledger and reported, but a change in
@@ -48,7 +51,10 @@ export type Axis =
   | 'ai-accepted-conventional'
   | 'ai-accepted-structured'
   | 'ai-tokens-conventional'
-  | 'ai-tokens-structured';
+  | 'ai-tokens-structured'
+  | 'spec-accepted-one-shot'
+  | 'spec-accepted-repaired'
+  | 'spec-tokens-per-accepted';
 
 export interface Observation {
   readonly id: string;
@@ -418,6 +424,65 @@ function aiObservations(root: string): Observation[] {
   return out;
 }
 
+interface SpecCell {
+  readonly n: number;
+  readonly oneShot: { readonly rate: number };
+  readonly accepted: { readonly rate: number };
+  readonly tokensPerAcceptedEdit: { readonly unbounded: number } | null;
+}
+
+/**
+ * The spec-line experiment: a spec-line cell (X, B, C, D, E) is the A0 side, the cell without spec
+ * lines (A) in the same view and scope is the competitor. A rate is a tie within one trial; tokens
+ * per accepted edit within 3 %.
+ */
+function specObservations(root: string): Observation[] {
+  const doc = readJson(root, 'spec-lines.json');
+  const cells = obj(doc?.cells);
+  if (cells === undefined) return [];
+  const out: Observation[] = [];
+  const source = 'spec-lines';
+  for (const [key, raw] of Object.entries(cells)) {
+    const m = /^(haiku|sonnet|pooled)\/([XBCDE])\.(canon|dense)$/.exec(key);
+    const a = obj(raw) as unknown as SpecCell | undefined;
+    const base = obj(cells[`${m?.[1]}/A.${m?.[3]}`]) as unknown as SpecCell | undefined;
+    if (m === null || a === undefined || base === undefined) continue;
+    // only Haiku ran the dense view: its pooled row is the same data
+    if (m[1] === 'pooled' && m[3] === 'dense') continue;
+    const kernel = key;
+    const competitor = `A.${m[3]}`;
+    for (const [axis, mine, theirs] of [
+      ['spec-accepted-one-shot', a.oneShot.rate, base.oneShot.rate],
+      ['spec-accepted-repaired', a.accepted.rate, base.accepted.rate],
+    ] as const)
+      out.push({
+        id: `${source}|${kernel}|${axis}|${competitor}`,
+        source,
+        kernel,
+        axis,
+        competitor,
+        a0: mine,
+        other: theirs,
+        gap: theirs - mine,
+        noise: 1 / a.n,
+        load: null,
+      });
+    const tok = lower(
+      source,
+      kernel,
+      'spec-tokens-per-accepted',
+      competitor,
+      a.tokensPerAcceptedEdit?.unbounded ?? 0,
+      base.tokensPerAcceptedEdit?.unbounded ?? 0,
+      0.03,
+      null,
+      false,
+    );
+    if (tok !== undefined) out.push(tok);
+  }
+  return out;
+}
+
 /** Every observation the results files give, losses and ties and wins alike. */
 export function observations(root = '.'): Observation[] {
   return [
@@ -425,6 +490,7 @@ export function observations(root = '.'): Observation[] {
     ...wasmObservations(root),
     ...langAxesObservations(root),
     ...aiObservations(root),
+    ...specObservations(root),
   ];
 }
 

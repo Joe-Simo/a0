@@ -1,0 +1,2085 @@
+{
+  "generatedAt": "2026-10-02T05:05:51.286Z",
+  "design": "Set g (16 tasks with a plausible wrong edit; tools/ai-edit-tasks-g.ts, sealed in tools/ai-edit-tasks-g.sha256). Cells A (no spec lines, current primer), X (spec-line primer, no spec lines: the control), B (one ex), C (three ex), D (one post), E (one stale ex: true of the starting program, false of the intended edit); canonical and dense views. Fresh Haiku and Sonnet subagents, one per task and cell, one shot plus one repair round by a fresh subagent given the exact rejection. Rates carry Wilson 95% intervals; a win or a loss on a rate needs non-overlapping intervals.",
+  "notes": [],
+  "primerOf": {
+    "A.canon": "experiments/primers/MODEL_GUIDE.rules-merged.txt alone: rules and edit protocol in one text (one repair)",
+    "X.canon": "experiments/primers/MODEL_GUIDE.rules-merged-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "B.canon": "experiments/primers/MODEL_GUIDE.rules-merged-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "C.canon": "experiments/primers/MODEL_GUIDE.rules-merged-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "D.canon": "experiments/primers/MODEL_GUIDE.rules-merged-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "E.canon": "experiments/primers/MODEL_GUIDE.rules-merged-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "A.dense": "MODEL_GUIDE.dense.txt alone: rules and edit protocol in one text (one repair)",
+    "X.dense": "experiments/primers/MODEL_GUIDE.dense-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "B.dense": "experiments/primers/MODEL_GUIDE.dense-spec.txt alone: rules and edit protocol in one text (one repair)",
+    "C.dense": "experiments/primers/MODEL_GUIDE.dense-spec.txt alone: rules and edit protocol in one text (one repair)"
+  },
+  "cells": {
+    "haiku/A.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 12,
+        "rate": 0.75,
+        "ci95": [
+          0.505,
+          0.898
+        ]
+      },
+      "accepted": {
+        "k": 14,
+        "rate": 0.875,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "system": 118,
+      "view": 54.1,
+      "callsPerTask": 1.25,
+      "toolContext": 117.6,
+      "output": 49.2,
+      "costPerTask": {
+        "task1": 315.7,
+        "session10": 188.3,
+        "unbounded": 174.1
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 360.8,
+        "session10": 215.2,
+        "unbounded": 199
+      },
+      "firstAttempt": {
+        "ok": 12,
+        "protocol": 3,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 0,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 0,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "sonnet/A.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 15,
+        "rate": 0.938,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "rate": 1,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "system": 118,
+      "view": 54.1,
+      "callsPerTask": 1.063,
+      "toolContext": 90.4,
+      "output": 31.7,
+      "costPerTask": {
+        "task1": 269.9,
+        "session10": 142.5,
+        "unbounded": 128.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 269.9,
+        "session10": 142.5,
+        "unbounded": 128.3
+      },
+      "firstAttempt": {
+        "ok": 15,
+        "protocol": 1,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 0,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 0,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "pooled/A.canon": {
+      "n": 32,
+      "oneShot": {
+        "k": 27,
+        "rate": 0.844,
+        "ci95": [
+          0.682,
+          0.931
+        ]
+      },
+      "accepted": {
+        "k": 30,
+        "rate": 0.938,
+        "ci95": [
+          0.799,
+          0.983
+        ]
+      },
+      "system": 118,
+      "view": 54.1,
+      "callsPerTask": 1.156,
+      "toolContext": 104,
+      "output": 40.4,
+      "costPerTask": {
+        "task1": 292.8,
+        "session10": 165.4,
+        "unbounded": 151.2
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 312.4,
+        "session10": 176.4,
+        "unbounded": 161.3
+      },
+      "firstAttempt": {
+        "ok": 27,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 0,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 0,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "haiku/X.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 6,
+        "rate": 0.375,
+        "ci95": [
+          0.185,
+          0.614
+        ]
+      },
+      "accepted": {
+        "k": 7,
+        "rate": 0.438,
+        "ci95": [
+          0.231,
+          0.668
+        ]
+      },
+      "system": 209,
+      "view": 54.1,
+      "callsPerTask": 1.625,
+      "toolContext": 149,
+      "output": 144.1,
+      "costPerTask": {
+        "task1": 560.9,
+        "session10": 335.2,
+        "unbounded": 310.1
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 1282.1,
+        "session10": 766.1,
+        "unbounded": 708.8
+      },
+      "firstAttempt": {
+        "ok": 6,
+        "protocol": 10,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 0,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 0,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "sonnet/X.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 13,
+        "rate": 0.813,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "rate": 1,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "system": 209,
+      "view": 54.1,
+      "callsPerTask": 1.188,
+      "toolContext": 96.3,
+      "output": 63.9,
+      "costPerTask": {
+        "task1": 423.4,
+        "session10": 197.7,
+        "unbounded": 172.6
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 423.4,
+        "session10": 197.7,
+        "unbounded": 172.6
+      },
+      "firstAttempt": {
+        "ok": 13,
+        "protocol": 0,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 3,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 3,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 3,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 3
+      }
+    },
+    "pooled/X.canon": {
+      "n": 32,
+      "oneShot": {
+        "k": 19,
+        "rate": 0.594,
+        "ci95": [
+          0.423,
+          0.745
+        ]
+      },
+      "accepted": {
+        "k": 23,
+        "rate": 0.719,
+        "ci95": [
+          0.546,
+          0.844
+        ]
+      },
+      "system": 209,
+      "view": 54.1,
+      "callsPerTask": 1.406,
+      "toolContext": 122.6,
+      "output": 104,
+      "costPerTask": {
+        "task1": 492.2,
+        "session10": 266.4,
+        "unbounded": 241.4
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 684.7,
+        "session10": 370.7,
+        "unbounded": 335.8
+      },
+      "firstAttempt": {
+        "ok": 19,
+        "protocol": 10,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 3,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 3,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 3,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 3
+      }
+    },
+    "haiku/B.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 10,
+        "rate": 0.625,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "accepted": {
+        "k": 15,
+        "rate": 0.938,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "system": 209,
+      "view": 65.4,
+      "callsPerTask": 1.375,
+      "toolContext": 120.6,
+      "output": 71.4,
+      "costPerTask": {
+        "task1": 457.1,
+        "session10": 231.4,
+        "unbounded": 206.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 487.6,
+        "session10": 246.8,
+        "unbounded": 220.1
+      },
+      "firstAttempt": {
+        "ok": 10,
+        "protocol": 3,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 3,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 3,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 4,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 2
+      }
+    },
+    "sonnet/B.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 14,
+        "rate": 0.875,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "rate": 1,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "system": 209,
+      "view": 65.4,
+      "callsPerTask": 1.125,
+      "toolContext": 105.2,
+      "output": 55.8,
+      "costPerTask": {
+        "task1": 423.6,
+        "session10": 197.8,
+        "unbounded": 172.8
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 423.6,
+        "session10": 197.8,
+        "unbounded": 172.8
+      },
+      "firstAttempt": {
+        "ok": 14,
+        "protocol": 0,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 2,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 2,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 2,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 2
+      }
+    },
+    "pooled/B.canon": {
+      "n": 32,
+      "oneShot": {
+        "k": 24,
+        "rate": 0.75,
+        "ci95": [
+          0.579,
+          0.867
+        ]
+      },
+      "accepted": {
+        "k": 31,
+        "rate": 0.969,
+        "ci95": [
+          0.843,
+          0.994
+        ]
+      },
+      "system": 209,
+      "view": 65.4,
+      "callsPerTask": 1.25,
+      "toolContext": 112.9,
+      "output": 63.6,
+      "costPerTask": {
+        "task1": 440.3,
+        "session10": 214.6,
+        "unbounded": 189.5
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 454.5,
+        "session10": 221.5,
+        "unbounded": 195.6
+      },
+      "firstAttempt": {
+        "ok": 24,
+        "protocol": 3,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 5,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 5,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 6,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 4
+      }
+    },
+    "haiku/C.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 9,
+        "rate": 0.563,
+        "ci95": [
+          0.332,
+          0.769
+        ]
+      },
+      "accepted": {
+        "k": 11,
+        "rate": 0.688,
+        "ci95": [
+          0.444,
+          0.858
+        ]
+      },
+      "system": 209,
+      "view": 87.1,
+      "callsPerTask": 1.438,
+      "toolContext": 159.3,
+      "output": 96.5,
+      "costPerTask": {
+        "task1": 521.6,
+        "session10": 295.9,
+        "unbounded": 270.8
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 758.7,
+        "session10": 430.4,
+        "unbounded": 393.9
+      },
+      "firstAttempt": {
+        "ok": 9,
+        "protocol": 5,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 1,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 3,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 3,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 1
+      }
+    },
+    "sonnet/C.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 10,
+        "rate": 0.625,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "rate": 1,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "system": 209,
+      "view": 87.1,
+      "callsPerTask": 1.375,
+      "toolContext": 136.1,
+      "output": 74.3,
+      "costPerTask": {
+        "task1": 475.6,
+        "session10": 249.9,
+        "unbounded": 224.8
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 475.6,
+        "session10": 249.9,
+        "unbounded": 224.8
+      },
+      "firstAttempt": {
+        "ok": 10,
+        "protocol": 0,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 6,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 6,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 6,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 6
+      }
+    },
+    "pooled/C.canon": {
+      "n": 32,
+      "oneShot": {
+        "k": 19,
+        "rate": 0.594,
+        "ci95": [
+          0.423,
+          0.745
+        ]
+      },
+      "accepted": {
+        "k": 27,
+        "rate": 0.844,
+        "ci95": [
+          0.682,
+          0.931
+        ]
+      },
+      "system": 209,
+      "view": 87.1,
+      "callsPerTask": 1.406,
+      "toolContext": 147.7,
+      "output": 85.4,
+      "costPerTask": {
+        "task1": 498.6,
+        "session10": 272.9,
+        "unbounded": 247.8
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 591,
+        "session10": 323.4,
+        "unbounded": 293.7
+      },
+      "firstAttempt": {
+        "ok": 19,
+        "protocol": 5,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 7,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 9,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 9,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 7
+      }
+    },
+    "haiku/D.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 11,
+        "rate": 0.688,
+        "ci95": [
+          0.444,
+          0.858
+        ]
+      },
+      "accepted": {
+        "k": 14,
+        "rate": 0.875,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "system": 209,
+      "view": 60.4,
+      "callsPerTask": 1.313,
+      "toolContext": 117.2,
+      "output": 87.8,
+      "costPerTask": {
+        "task1": 469.5,
+        "session10": 243.8,
+        "unbounded": 218.7
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 536.6,
+        "session10": 278.6,
+        "unbounded": 250
+      },
+      "firstAttempt": {
+        "ok": 11,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 1,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 1,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 1,
+        "replyInvalidEvenWithoutSpecLines": 1,
+        "recoveredAfterOne": 0
+      }
+    },
+    "pooled/D.canon": {
+      "n": 16,
+      "oneShot": {
+        "k": 11,
+        "rate": 0.688,
+        "ci95": [
+          0.444,
+          0.858
+        ]
+      },
+      "accepted": {
+        "k": 14,
+        "rate": 0.875,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "system": 209,
+      "view": 60.4,
+      "callsPerTask": 1.313,
+      "toolContext": 117.2,
+      "output": 87.8,
+      "costPerTask": {
+        "task1": 469.5,
+        "session10": 243.8,
+        "unbounded": 218.7
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 536.6,
+        "session10": 278.6,
+        "unbounded": 250
+      },
+      "firstAttempt": {
+        "ok": 11,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 1,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 1,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 1,
+        "replyInvalidEvenWithoutSpecLines": 1,
+        "recoveredAfterOne": 0
+      }
+    },
+    "haiku/E.canon": {
+      "n": 15,
+      "oneShot": {
+        "k": 7,
+        "rate": 0.467,
+        "ci95": [
+          0.248,
+          0.699
+        ]
+      },
+      "accepted": {
+        "k": 10,
+        "rate": 0.667,
+        "ci95": [
+          0.417,
+          0.848
+        ]
+      },
+      "system": 209,
+      "view": 65.2,
+      "callsPerTask": 1.533,
+      "toolContext": 171.8,
+      "output": 88.5,
+      "costPerTask": {
+        "task1": 527.1,
+        "session10": 301.4,
+        "unbounded": 276.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 790.6,
+        "session10": 452.1,
+        "unbounded": 414.4
+      },
+      "firstAttempt": {
+        "ok": 7,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 2,
+        "spec": 2,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 4,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 4,
+        "refusalsByAnExampleTheSubjectWrote": 1,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 1
+      }
+    },
+    "pooled/E.canon": {
+      "n": 15,
+      "oneShot": {
+        "k": 7,
+        "rate": 0.467,
+        "ci95": [
+          0.248,
+          0.699
+        ]
+      },
+      "accepted": {
+        "k": 10,
+        "rate": 0.667,
+        "ci95": [
+          0.417,
+          0.848
+        ]
+      },
+      "system": 209,
+      "view": 65.2,
+      "callsPerTask": 1.533,
+      "toolContext": 171.8,
+      "output": 88.5,
+      "costPerTask": {
+        "task1": 527.1,
+        "session10": 301.4,
+        "unbounded": 276.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 790.6,
+        "session10": 452.1,
+        "unbounded": 414.4
+      },
+      "firstAttempt": {
+        "ok": 7,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 2,
+        "spec": 2,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 4,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 4,
+        "refusalsByAnExampleTheSubjectWrote": 1,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 1
+      }
+    },
+    "haiku/A.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 11,
+        "rate": 0.688,
+        "ci95": [
+          0.444,
+          0.858
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "rate": 0.813,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "system": 145,
+      "view": 39.4,
+      "callsPerTask": 1.313,
+      "toolContext": 115.3,
+      "output": 49.2,
+      "costPerTask": {
+        "task1": 348,
+        "session10": 191.4,
+        "unbounded": 174
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 428.3,
+        "session10": 235.5,
+        "unbounded": 214.1
+      },
+      "firstAttempt": {
+        "ok": 11,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 0,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 0,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "pooled/A.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 11,
+        "rate": 0.688,
+        "ci95": [
+          0.444,
+          0.858
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "rate": 0.813,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "system": 145,
+      "view": 39.4,
+      "callsPerTask": 1.313,
+      "toolContext": 115.3,
+      "output": 49.2,
+      "costPerTask": {
+        "task1": 348,
+        "session10": 191.4,
+        "unbounded": 174
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 428.3,
+        "session10": 235.5,
+        "unbounded": 214.1
+      },
+      "firstAttempt": {
+        "ok": 11,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 0,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 0,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "haiku/X.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 4,
+        "rate": 0.25,
+        "ci95": [
+          0.102,
+          0.495
+        ]
+      },
+      "accepted": {
+        "k": 4,
+        "rate": 0.25,
+        "ci95": [
+          0.102,
+          0.495
+        ]
+      },
+      "system": 235,
+      "view": 39.4,
+      "callsPerTask": 1.75,
+      "toolContext": 148.3,
+      "output": 140.1,
+      "costPerTask": {
+        "task1": 591,
+        "session10": 337.2,
+        "unbounded": 309
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2364,
+        "session10": 1348.8,
+        "unbounded": 1236
+      },
+      "firstAttempt": {
+        "ok": 4,
+        "protocol": 11,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 1,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 1,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 2,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "pooled/X.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 4,
+        "rate": 0.25,
+        "ci95": [
+          0.102,
+          0.495
+        ]
+      },
+      "accepted": {
+        "k": 4,
+        "rate": 0.25,
+        "ci95": [
+          0.102,
+          0.495
+        ]
+      },
+      "system": 235,
+      "view": 39.4,
+      "callsPerTask": 1.75,
+      "toolContext": 148.3,
+      "output": 140.1,
+      "costPerTask": {
+        "task1": 591,
+        "session10": 337.2,
+        "unbounded": 309
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2364,
+        "session10": 1348.8,
+        "unbounded": 1236
+      },
+      "firstAttempt": {
+        "ok": 4,
+        "protocol": 11,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 0,
+        "spec": 1,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 1,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 2,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "haiku/B.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 10,
+        "rate": 0.625,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "accepted": {
+        "k": 10,
+        "rate": 0.625,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "system": 235,
+      "view": 50.7,
+      "callsPerTask": 1.375,
+      "toolContext": 135,
+      "output": 69.2,
+      "costPerTask": {
+        "task1": 502.3,
+        "session10": 248.5,
+        "unbounded": 220.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 803.8,
+        "session10": 397.7,
+        "unbounded": 352.6
+      },
+      "firstAttempt": {
+        "ok": 10,
+        "protocol": 5,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 1,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 1,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "pooled/B.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 10,
+        "rate": 0.625,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "accepted": {
+        "k": 10,
+        "rate": 0.625,
+        "ci95": [
+          0.386,
+          0.815
+        ]
+      },
+      "system": 235,
+      "view": 50.7,
+      "callsPerTask": 1.375,
+      "toolContext": 135,
+      "output": 69.2,
+      "costPerTask": {
+        "task1": 502.3,
+        "session10": 248.5,
+        "unbounded": 220.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 803.8,
+        "session10": 397.7,
+        "unbounded": 352.6
+      },
+      "firstAttempt": {
+        "ok": 10,
+        "protocol": 5,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 0,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 1,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 1,
+        "replyInvalidEvenWithoutSpecLines": 0,
+        "recoveredAfterOne": 0
+      }
+    },
+    "haiku/C.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 9,
+        "rate": 0.563,
+        "ci95": [
+          0.332,
+          0.769
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "rate": 0.813,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "system": 235,
+      "view": 72.4,
+      "callsPerTask": 1.438,
+      "toolContext": 149.5,
+      "output": 96.9,
+      "costPerTask": {
+        "task1": 545.3,
+        "session10": 291.5,
+        "unbounded": 263.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 671.2,
+        "session10": 358.8,
+        "unbounded": 324.1
+      },
+      "firstAttempt": {
+        "ok": 9,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 2,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 2,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 2,
+        "replyInvalidEvenWithoutSpecLines": 1,
+        "recoveredAfterOne": 1
+      }
+    },
+    "pooled/C.dense": {
+      "n": 16,
+      "oneShot": {
+        "k": 9,
+        "rate": 0.563,
+        "ci95": [
+          0.332,
+          0.769
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "rate": 0.813,
+        "ci95": [
+          0.57,
+          0.934
+        ]
+      },
+      "system": 235,
+      "view": 72.4,
+      "callsPerTask": 1.438,
+      "toolContext": 149.5,
+      "output": 96.9,
+      "costPerTask": {
+        "task1": 545.3,
+        "session10": 291.5,
+        "unbounded": 263.3
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 671.2,
+        "session10": 358.8,
+        "unbounded": 324.1
+      },
+      "firstAttempt": {
+        "ok": 9,
+        "protocol": 4,
+        "compile": 0,
+        "missing": 0,
+        "runtime": 0,
+        "wrong-output": 1,
+        "spec": 2,
+        "no-reply": 0
+      },
+      "specRejections": {
+        "trialsWithOne": 2,
+        "providedExampleRefusals": 0,
+        "providedRefusalsTheTestsMissed": 0,
+        "providedRefusalsTheTestsAlsoRefuse": 0,
+        "staleExampleFalseRejections": 0,
+        "refusalsByAnExampleTheSubjectWrote": 2,
+        "replyInvalidEvenWithoutSpecLines": 1,
+        "recoveredAfterOne": 1
+      }
+    }
+  },
+  "verdictsAgainstA": {
+    "haiku/X.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/B.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/C.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/D.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/E.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/X.dense vs A": {
+      "oneShot": "tie",
+      "accepted": "loss",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/B.dense vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "haiku/C.dense vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "sonnet/X.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "sonnet/B.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "sonnet/C.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/X.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/B.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/C.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/D.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/E.canon vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/X.dense vs A": {
+      "oneShot": "tie",
+      "accepted": "loss",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/B.dense vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    },
+    "pooled/C.dense vs A": {
+      "oneShot": "tie",
+      "accepted": "tie",
+      "tokensPerAccepted.task1": "loss",
+      "tokensPerAccepted.session10": "loss",
+      "tokensPerAccepted.unbounded": "loss",
+      "calls": "loss"
+    }
+  },
+  "losses": [
+    "haiku/X.canon vs A: tokensPerAccepted.task1",
+    "haiku/X.canon vs A: tokensPerAccepted.session10",
+    "haiku/X.canon vs A: tokensPerAccepted.unbounded",
+    "haiku/X.canon vs A: calls",
+    "haiku/B.canon vs A: tokensPerAccepted.task1",
+    "haiku/B.canon vs A: tokensPerAccepted.session10",
+    "haiku/B.canon vs A: tokensPerAccepted.unbounded",
+    "haiku/B.canon vs A: calls",
+    "haiku/C.canon vs A: tokensPerAccepted.task1",
+    "haiku/C.canon vs A: tokensPerAccepted.session10",
+    "haiku/C.canon vs A: tokensPerAccepted.unbounded",
+    "haiku/C.canon vs A: calls",
+    "haiku/D.canon vs A: tokensPerAccepted.task1",
+    "haiku/D.canon vs A: tokensPerAccepted.session10",
+    "haiku/D.canon vs A: tokensPerAccepted.unbounded",
+    "haiku/D.canon vs A: calls",
+    "haiku/E.canon vs A: tokensPerAccepted.task1",
+    "haiku/E.canon vs A: tokensPerAccepted.session10",
+    "haiku/E.canon vs A: tokensPerAccepted.unbounded",
+    "haiku/E.canon vs A: calls",
+    "haiku/X.dense vs A: accepted",
+    "haiku/X.dense vs A: tokensPerAccepted.task1",
+    "haiku/X.dense vs A: tokensPerAccepted.session10",
+    "haiku/X.dense vs A: tokensPerAccepted.unbounded",
+    "haiku/X.dense vs A: calls",
+    "haiku/B.dense vs A: tokensPerAccepted.task1",
+    "haiku/B.dense vs A: tokensPerAccepted.session10",
+    "haiku/B.dense vs A: tokensPerAccepted.unbounded",
+    "haiku/B.dense vs A: calls",
+    "haiku/C.dense vs A: tokensPerAccepted.task1",
+    "haiku/C.dense vs A: tokensPerAccepted.session10",
+    "haiku/C.dense vs A: tokensPerAccepted.unbounded",
+    "haiku/C.dense vs A: calls",
+    "sonnet/X.canon vs A: tokensPerAccepted.task1",
+    "sonnet/X.canon vs A: tokensPerAccepted.session10",
+    "sonnet/X.canon vs A: tokensPerAccepted.unbounded",
+    "sonnet/X.canon vs A: calls",
+    "sonnet/B.canon vs A: tokensPerAccepted.task1",
+    "sonnet/B.canon vs A: tokensPerAccepted.session10",
+    "sonnet/B.canon vs A: tokensPerAccepted.unbounded",
+    "sonnet/B.canon vs A: calls",
+    "sonnet/C.canon vs A: tokensPerAccepted.task1",
+    "sonnet/C.canon vs A: tokensPerAccepted.session10",
+    "sonnet/C.canon vs A: tokensPerAccepted.unbounded",
+    "sonnet/C.canon vs A: calls",
+    "pooled/X.canon vs A: tokensPerAccepted.task1",
+    "pooled/X.canon vs A: tokensPerAccepted.session10",
+    "pooled/X.canon vs A: tokensPerAccepted.unbounded",
+    "pooled/X.canon vs A: calls",
+    "pooled/B.canon vs A: tokensPerAccepted.task1",
+    "pooled/B.canon vs A: tokensPerAccepted.session10",
+    "pooled/B.canon vs A: tokensPerAccepted.unbounded",
+    "pooled/B.canon vs A: calls",
+    "pooled/C.canon vs A: tokensPerAccepted.task1",
+    "pooled/C.canon vs A: tokensPerAccepted.session10",
+    "pooled/C.canon vs A: tokensPerAccepted.unbounded",
+    "pooled/C.canon vs A: calls",
+    "pooled/D.canon vs A: tokensPerAccepted.task1",
+    "pooled/D.canon vs A: tokensPerAccepted.session10",
+    "pooled/D.canon vs A: tokensPerAccepted.unbounded",
+    "pooled/D.canon vs A: calls",
+    "pooled/E.canon vs A: tokensPerAccepted.task1",
+    "pooled/E.canon vs A: tokensPerAccepted.session10",
+    "pooled/E.canon vs A: tokensPerAccepted.unbounded",
+    "pooled/E.canon vs A: calls",
+    "pooled/X.dense vs A: accepted",
+    "pooled/X.dense vs A: tokensPerAccepted.task1",
+    "pooled/X.dense vs A: tokensPerAccepted.session10",
+    "pooled/X.dense vs A: tokensPerAccepted.unbounded",
+    "pooled/X.dense vs A: calls",
+    "pooled/B.dense vs A: tokensPerAccepted.task1",
+    "pooled/B.dense vs A: tokensPerAccepted.session10",
+    "pooled/B.dense vs A: tokensPerAccepted.unbounded",
+    "pooled/B.dense vs A: calls",
+    "pooled/C.dense vs A: tokensPerAccepted.task1",
+    "pooled/C.dense vs A: tokensPerAccepted.session10",
+    "pooled/C.dense vs A: tokensPerAccepted.unbounded",
+    "pooled/C.dense vs A: calls"
+  ],
+  "catchAnalysis": {
+    "ex1": {
+      "tasks": 16,
+      "wrongEdits": 17,
+      "caught": 6,
+      "tasksWithACatch": 6,
+      "referenceRejected": 0,
+      "perTask": [
+        {
+          "task": "g-range-inclusive-upper",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-add",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-average-no-overflow",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-page-count-ceiling",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-prev-slot",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-clamp-index",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-grade-threshold",
+          "wrongEdits": 2,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-count-strictly-above",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-remaining-floor-zero",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-distance",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-bit-field-extract",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-budget-with-refund",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-multiply",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-elapsed-counter-wrap",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-weighted-checksum-length",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-low-byte-popcount",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        }
+      ]
+    },
+    "ex3": {
+      "tasks": 16,
+      "wrongEdits": 17,
+      "caught": 9,
+      "tasksWithACatch": 9,
+      "referenceRejected": 0,
+      "perTask": [
+        {
+          "task": "g-range-inclusive-upper",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-add",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-average-no-overflow",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-page-count-ceiling",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-prev-slot",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-clamp-index",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-grade-threshold",
+          "wrongEdits": 2,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-count-strictly-above",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-remaining-floor-zero",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-distance",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-bit-field-extract",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-budget-with-refund",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-multiply",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-elapsed-counter-wrap",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-weighted-checksum-length",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-low-byte-popcount",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        }
+      ]
+    },
+    "post": {
+      "tasks": 16,
+      "wrongEdits": 17,
+      "caught": 0,
+      "tasksWithACatch": 0,
+      "referenceRejected": 0,
+      "perTask": [
+        {
+          "task": "g-range-inclusive-upper",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-add",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-average-no-overflow",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-page-count-ceiling",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-prev-slot",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-clamp-index",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-grade-threshold",
+          "wrongEdits": 2,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-count-strictly-above",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-remaining-floor-zero",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-distance",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-bit-field-extract",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-budget-with-refund",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-multiply",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-elapsed-counter-wrap",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-weighted-checksum-length",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-low-byte-popcount",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        }
+      ]
+    },
+    "stale": {
+      "tasks": 15,
+      "wrongEdits": 15,
+      "caught": 13,
+      "tasksWithACatch": 13,
+      "referenceRejected": 0,
+      "note": "the reference solution keeps no stale example; this row counts the wrong edits the stale example refuses, which is a false rejection of nothing (the example is wrong about the intended edit)",
+      "perTask": [
+        {
+          "task": "g-range-inclusive-upper",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-add",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-average-no-overflow",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-page-count-ceiling",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-prev-slot",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-clamp-index",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-count-strictly-above",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-remaining-floor-zero",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-ring-distance",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-bit-field-extract",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-budget-with-refund",
+          "wrongEdits": 1,
+          "caught": 0,
+          "reference": "ok"
+        },
+        {
+          "task": "g-saturating-multiply",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-elapsed-counter-wrap",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-weighted-checksum-length",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        },
+        {
+          "task": "g-low-byte-popcount",
+          "wrongEdits": 1,
+          "caught": 1,
+          "reference": "ok"
+        }
+      ]
+    }
+  },
+  "failureTaxonomy": {
+    "note": "every non-accepted attempt (first reply and repair) of a cell, by the rule that matches the checker message; class and the general fix proposal per category below",
+    "categories": [
+      {
+        "category": "spec line after the body",
+        "class": "protocol-ambiguity",
+        "proposal": "a reply that writes ex, pre or post lines after the nodes reads them as nodes or as a parse error; the arrow makes an ex line unambiguous, so accept ex, pre and post anywhere in a reply fn block and hoist them under the header (or state \"before the first node\" in the teaching text)"
+      },
+      {
+        "category": "more than the allowed spec lines",
+        "class": "protocol-ambiguity",
+        "proposal": "the teaching text does not give the limits (three ex, one post); state them, or accept the extra lines and keep the first three with a note instead of refusing the whole edit"
+      },
+      {
+        "category": "ex line refused by the examples",
+        "class": "model-error",
+        "proposal": "none: the example or the function was wrong; the rejection already names both fixes"
+      },
+      {
+        "category": "nested operand or a value used twice (dense)",
+        "class": "protocol-ambiguity",
+        "proposal": "the dense primer teaches prefix nesting but a value used twice needs a name on its own line; say so in the primer or let the dense parser name a repeated pure sub-expression itself"
+      },
+      {
+        "category": "a name where a parameter letter belongs (dense)",
+        "class": "model-error",
+        "proposal": "none: the primer says A, B, C; the rejection repeats it"
+      },
+      {
+        "category": "duplicate definition of an id",
+        "class": "model-error",
+        "proposal": "a reply that defines an id twice could replace the earlier definition instead of failing"
+      },
+      {
+        "category": "wrong result",
+        "class": "model-error",
+        "proposal": "none: the edit was well formed and wrong"
+      }
+    ],
+    "perCell": {
+      "haiku/A.canon": {
+        "other (a type or structure error of the edit)": 3,
+        "wrong result": 2,
+        "duplicate definition of an id": 1
+      },
+      "haiku/X.canon": {
+        "spec line after the body": 16,
+        "nested operand or a value used twice (dense)": 1,
+        "other (a type or structure error of the edit)": 1,
+        "duplicate definition of an id": 1
+      },
+      "haiku/B.canon": {
+        "more than the allowed spec lines": 2,
+        "spec line after the body": 1,
+        "nested operand or a value used twice (dense)": 1,
+        "duplicate definition of an id": 1,
+        "other (a type or structure error of the edit)": 1,
+        "ex line refused by the examples": 1
+      },
+      "haiku/C.canon": {
+        "wrong result": 1,
+        "spec line after the body": 2,
+        "more than the allowed spec lines": 3,
+        "duplicate definition of an id": 3,
+        "other (a type or structure error of the edit)": 3
+      },
+      "haiku/D.canon": {
+        "other (a type or structure error of the edit)": 5,
+        "duplicate definition of an id": 1,
+        "more than the allowed spec lines": 1
+      },
+      "haiku/E.canon": {
+        "spec line after the body": 2,
+        "more than the allowed spec lines": 1,
+        "wrong result": 3,
+        "ex line refused by the examples": 4,
+        "duplicate definition of an id": 1,
+        "other (a type or structure error of the edit)": 2
+      },
+      "haiku/A.dense": {
+        "a name where a parameter letter belongs (dense)": 4,
+        "other (a type or structure error of the edit)": 2,
+        "wrong result": 2
+      },
+      "haiku/X.dense": {
+        "nested operand or a value used twice (dense)": 16,
+        "other (a type or structure error of the edit)": 1,
+        "spec line after the body": 3,
+        "a name where a parameter letter belongs (dense)": 2,
+        "more than the allowed spec lines": 2
+      },
+      "haiku/B.dense": {
+        "nested operand or a value used twice (dense)": 4,
+        "a name where a parameter letter belongs (dense)": 3,
+        "other (a type or structure error of the edit)": 2,
+        "wrong result": 2,
+        "more than the allowed spec lines": 1
+      },
+      "haiku/C.dense": {
+        "wrong result": 1,
+        "more than the allowed spec lines": 2,
+        "a name where a parameter letter belongs (dense)": 5,
+        "other (a type or structure error of the edit)": 1,
+        "nested operand or a value used twice (dense)": 1
+      },
+      "sonnet/A.canon": {
+        "duplicate definition of an id": 1
+      },
+      "sonnet/X.canon": {
+        "more than the allowed spec lines": 3
+      },
+      "sonnet/B.canon": {
+        "more than the allowed spec lines": 2
+      },
+      "sonnet/C.canon": {
+        "more than the allowed spec lines": 6
+      }
+    }
+  }
+}

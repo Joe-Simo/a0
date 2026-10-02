@@ -1,0 +1,54 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "b le p0 p2\n"
+ ],
+ "g-saturating-add/a0/structured": [
+  "s add p0 p1\nc lt s p0\nz xor p0 p0\nm sub z 1\nr select c m s\nret r\n"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "fn avg u32 u32 -> u32\na shr p0 1\nb shr p1 1\nc add a b\nd and p0 1\ne and p1 1\nf and d e\nr add c f\nret r\nend\n"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "t0 sub p1 1\nt1 add p0 t0\nr div t1 p1\nret r\n"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "z eq p0 0\nd sub p0 1\nm sub p1 1\nr select z m d\nret r\n"
+ ],
+ "g-clamp-index/a0/structured": [
+  "r select c p0 l\n"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "a ge p0 90\n"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "e0\nfn step u32 u32 u32x4 u32 -> u32\ncmp gt p1 p3\nret add p0 cmp\nend\ng0\nfn step u32 u32 u32x4 u32 -> u32\ncmp gt p1 p3\nret add p0 cmp\nend\n",
+  "e0\nfn step u32 u32 u32x4 u32 -> u32\ncmp gt p1 p3\ninc select cmp 1 0\nret add p0 inc\nend\ng0\nfn step u32 u32 u32x4 u32 -> u32\ncmp gt p1 p3\ninc select cmp 1 0\nret add p0 inc\nend\n"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "c ge p0 p1\nret select c d 0\n"
+ ],
+ "g-ring-distance/a0/structured": [
+  "a add d p2\nr rem a p2\n"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "s shr p0 p1\nm shl 1 p2\nm sub m 1\nt and s m\nret t\n",
+  "s shr p0 p1\nm shl 1 p2\nn sub m 1\nt and s n\nret t\n"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "fn sat_sub u32 u32 -> u32\nc0 le p0 p1\nr0 sub p0 p1\ns select c0 0 r0\nret s\nend\nfn budget_left u32 u32 u32 -> u32\nr0 add p0 p2\nr1 call sat_sub r0 p1\nret r1\nend\n"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "fn sat_mul u32 u32 -> u32\np mul p0 p1\nq div p p1\nno_overflow eq q p0\nmax sub 0 1\nresult select no_overflow p max\nret result\nend\n",
+  "fn sat_mul u32 u32 -> u32\np mul p0 p1\nmax sub 0 1\np1_zero eq p1 0\ndivisor select p1_zero 1 p1\nq div p divisor\nq_eq_p0 eq q p0\nno_overflow select p1_zero 1 q_eq_p0\nresult select no_overflow p max\nret result\nend\n"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "-c\n-r\nret d\n"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "c fold wstep 6 0 p0\nr get p2 p1\ni add p1 1\nw mul r i\ns add p0 w\nret s\n",
+  "fn checksum u32x6 -> u32\nc fold wstep 6 0 p0\nret c\nend\n\nfn wstep u32 u32 u32x6 -> u32\nr get p2 p1\ni add p1 1\nw mul r i\ns add p0 w\nret s\nend\n"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "c fold bstep 8 0 p0\nfn bstep u32 u32 u32 -> u32\nt shr p2 p1\nb and t 1\nr add p0 b\nret r\nend\n"
+ ]
+}

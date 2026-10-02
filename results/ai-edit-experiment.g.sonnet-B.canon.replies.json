@@ -1,0 +1,52 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "b le p0 p2\n"
+ ],
+ "g-saturating-add/a0/structured": [
+  "fn sat_add u32 u32 -> u32\nex 4294967294 1 -> 4294967295\nex 4294967295 1 -> 4294967295\nex 3 4 -> 7\npost ge r p0\ns add p0 p1\nc lt s p0\nr select c 4294967295 s\nret r\nend\n"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "fn avg u32 u32 -> u32\nex 4294967294 1 -> 2147483647\na and p0 p1\nx xor p0 p1\nh shr x 1\nr add a h\nret r\nend\n"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "fn page_count u32 u32 -> u32\nex 10 5 -> 2\nex 11 5 -> 3\nex 0 5 -> 0\nex 1 5 -> 1\nq div p0 p1\nm rem p0 p1\nn ne m 0\nq1 add q 1\nr select n q1 q\nret r\nend\n",
+  "fn page_count u32 u32 -> u32\nex 10 5 -> 2\nex 11 5 -> 3\nex 0 5 -> 0\nq div p0 p1\nm rem p0 p1\nn ne m 0\nq1 add q 1\nr select n q1 q\nret r\nend"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "fn prev_slot u32 u32 -> u32\nex 2 3 -> 1\nex 0 3 -> 2\nz eq p0 0\nd sub p0 1\nm sub p1 1\nr select z m d\nret r\nend\n"
+ ],
+ "g-clamp-index/a0/structured": [
+  "r select c p0 l"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "a ge p0 90"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\nx get p2 p1\nb gt x p3\nc select b 1 0\nr add p0 c\nret r\nend\n"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "fn remaining u32 u32 -> u32\nex 10 9 -> 1\nex 5 9 -> 0\nex 9 9 -> 0\nd sub p0 p1\nc lt p0 p1\nz select c 0 d\nret z\nend\n"
+ ],
+ "g-ring-distance/a0/structured": [
+  "fn ring_distance u32 u32 u32 -> u32\nex 5 4 8 -> 1\nex 2 6 8 -> 4\na add p0 p2\nd sub a p1\nr rem d p2\nret r\nend\n"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "b shl 1 p2\nm sub b 1\nf and s m\nret f"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "fn budget_left u32 u32 u32 -> u32\nex 10 3 0 -> 7\nex 10 3 2 -> 9\nex 2 5 1 -> 0\na add p0 p2\nr call sat_sub a p1\nret r\nend"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "fn sat_mul u32 u32 -> u32\nex 65536 65535 -> 4294901760\nex 65536 65536 -> 4294967295\nex 0 5 -> 0\nex 5 0 -> 0\nex 4294967295 2 -> 4294967295\np mul p0 p1\nz eq p0 0\nd select z 1 p0\nq div p d\nm eq q p1\nok or z m\nx select ok p 4294967295\nret x\nend\n",
+  "fn sat_mul u32 u32 -> u32\nex 65536 65535 -> 4294901760\nex 65536 65536 -> 4294967295\nex 5 0 -> 0\np mul p0 p1\nz eq p0 0\nd select z 1 p0\nq div p d\nm eq q p1\nok or z m\nx select ok p 4294967295\nret x\nend"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "r sub p1 p0\n-c\n-d\n"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "c fold wstep 6 0 p0"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "c fold bstep 8 0 p0"
+ ]
+}

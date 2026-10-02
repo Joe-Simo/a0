@@ -1,0 +1,57 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "b le p0 p2\n"
+ ],
+ "g-saturating-add/a0/structured": [
+  "overflow lt s p0\nm sub 0 1\nr select overflow m s\nret r\n"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "fn avg u32 u32 -> u32\nex 4294967294 1 -> 2147483647\nex 3 4 -> 3\nex 2147483647 2147483648 -> 2147483647\ns shr p0 1\nt shr p1 1\nu and p0 1\nv and p1 1\nw and u v\nx add s t\nr add x w\nret r\nend\n"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "a add p0 p1\nb sub a 1\nr div b p1\n"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "fn prev_slot u32 u32 -> u32\nex 2 3 -> 1\nex 7 10 -> 6\nex 1 2 -> 0\nz eq p0 0\nd sub p0 1\nr select z p1 d\nret r\nend\n",
+  "fn prev_slot u32 u32 -> u32\nex 2 3 -> 1\nex 7 10 -> 6\nex 1 2 -> 0\nz eq p0 0\nd sub p0 1\ns sub p1 1\nr select z s d\nret r\nend\n"
+ ],
+ "g-clamp-index/a0/structured": [
+  "ex 8 8 -> 7\nex 10 5 -> 4\nr select c p0 l\n",
+  "fn clamp_index u32 u32 -> u32\nex 0 5 -> 0\nex 2 3 -> 2\nex 6 8 -> 6\nex 8 8 -> 7\nex 10 5 -> 4\nl sub p1 1\nc lt p0 p1\nr select c p0 l\nret r\nend\n"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "a ge p0 90\nex 90 -> 3\nex 80 -> 2\nex 79 -> 1\n",
+  "g0\nfn grade u32 -> u32\nex 90 -> 3\nex 95 -> 3\nex 92 -> 3\nex 88 -> 2\nex 80 -> 2\nex 79 -> 1\na ge p0 90\nb ge p0 80\nm select b 2 1\nr select a 3 m\nret r\nend\n"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\nid0 get p2 p1\nid1 gt id0 p3\nid2 add p0 1\nid3 select id1 id2 p0\nret id3\nend\n"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "fn remaining u32 u32 -> u32\nex 10 9 -> 1\nex 10 10 -> 0\nex 100 1 -> 99\nex 5 20 -> 0\ncond gt p1 p0\nd sub p0 p1\nresult select cond 0 d\nret result\nend\n",
+  "fn remaining u32 u32 -> u32\nex 10 9 -> 1\nex 10 10 -> 0\nex 5 20 -> 0\ncond gt p1 p0\nd sub p0 p1\nresult select cond 0 d\nret result\nend\n"
+ ],
+ "g-ring-distance/a0/structured": [
+  "fn ring_distance u32 u32 u32 -> u32\nex 5 4 8 -> 1\nex 4 4 8 -> 0\nex 7 0 8 -> 7\na add p0 p2\nd sub a p1\nr rem d p2\nret r\nend\n"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "fn bit_field u32 u32 u32 -> u32\nex 15 0 4 -> 15\nex 171 4 4 -> 10\nex 3 0 2 -> 3\ns shr p0 p1\nm shl 1 p2\nm sub m 1\ns and s m\nret s\n",
+  "fn bit_field u32 u32 u32 -> u32\nex 15 0 4 -> 15\nex 171 4 4 -> 10\nex 3 0 2 -> 3\ns shr p0 p1\nr shl 1 p2\nm sub r 1\ns and s m\nret s\n"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "fn budget_left u32 u32 u32 -> u32\nex 10 3 0 -> 7\nex 5 5 0 -> 0\nex 5 6 0 -> 0\nr call add p0 p2\nr call sat_sub r p1\nret r\nend\nfn sat_sub u32 u32 -> u32\ncond ge p0 p1\nr sub p0 p1\nr select cond r 0\nret r\nend\n",
+  "fn budget_left u32 u32 u32 -> u32\nex 10 3 0 -> 7\nex 5 5 0 -> 0\nex 5 6 0 -> 0\nr call add p0 p2\nr call sat_sub r p1\nret r\nend\nfn sat_sub u32 u32 -> u32\ncond ge p0 p1\nr sub p0 p1\nres select cond r 0\nret res\nend\n"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "fn sat_mul u32 u32 -> u32\nex 65536 65535 -> 4294901760\nex 3 4 -> 12\nex 1000 1000 -> 1000000\n\nproduct\n  mul p0 p1\n\np0_zero\n  eq p0 0\n\np1_zero\n  eq p1 0\n\neither_zero\n  or p0_zero p1_zero\n\nquotient\n  div product p0\n\noverflow_occurred\n  ne quotient p1\n\ntemp\n  select overflow_occurred 4294967295 product\n\nfinal\n  select either_zero 0 temp\n\nret final\nend\n",
+  "fn sat_mul u32 u32 -> u32\nex 65536 65535 -> 4294901760\nex 3 4 -> 12\nex 1000 1000 -> 1000000\nproduct mul p0 p1\np0_zero eq p0 0\np1_zero eq p1 0\neither_zero or p0_zero p1_zero\nquotient div product p0\noverflow_detected ne quotient p1\noverflow_actual select p0_zero 0 overflow_detected\nsaturated select overflow_actual 4294967295 product\nfinal select either_zero 0 saturated\nret final\nend\n"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "fn elapsed u32 u32 -> u32\nex 5 6 -> 1\nex 0 100 -> 100\nex 10 30 -> 20\nd sub p1 p0\nret d\nend\n"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "c fold wstep 6 0 p0\nfn wstep u32 u32 u32x6 -> u32\nv get p2 p1\npos add p1 1\nterm mul v pos\nret add p0 term\nend\n"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "c fold bstep 8 0 p0\nfn bstep u32 u32 u32 -> u32\nsh shr p2 p1\nb and sh 1\nret add p0 b\nend\n"
+ ]
+}
