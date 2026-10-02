@@ -1,0 +1,5165 @@
+{
+  "generatedAt": "2026-10-02T05:58:07.100Z",
+  "design": "Clause ablation of the dense and canonical (rules-merged) primers. Selection set d (13 tasks); confirmation sets e (11) and f (13), different sealed sets never used to choose. Variants: drop-one-clause (Dx, Kx), rewrites (DR, KR), combinations (DC, KC); controls dense.D0 and canon.K0 re-collected fresh in the same session. Fresh Haiku and Sonnet Agent-tool subagents, one subagent per variant, model and set answering every task of the set from the system text, the view and the task only (each task answered independently, one group file per variant), then one repair round by a fresh subagent given the exact rejection of its first reply; one shot plus one repair. Rates carry Wilson 95% intervals; a win or a loss on a rate needs non-overlapping intervals, a cost is a win or a loss outside a 1% band.",
+  "notes": [],
+  "taskSetSha256": {
+    "d": "524fe5c67676f9970027d27750dda5e477ee20d5a9897d0abdbcc2f285b161b1",
+    "e": "7b387c6f2f0cd336e4cfc73852a4f8225c57e7a07becc339028dcd00ac94d850",
+    "f": "2c02b500a28a44938379d2586b9f89dd6532ad500a437b0b242db252884f08f0"
+  },
+  "primers": {
+    "canon.K0": {
+      "o200k": 118,
+      "cl100k": 115,
+      "bytes": 377,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.KC": {
+      "o200k": 73,
+      "cl100k": 71,
+      "bytes": 204,
+      "text": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.KR1": {
+      "o200k": 106,
+      "cl100k": 103,
+      "bytes": 336,
+      "text": "A0 edits, bare lines only (no fence, no handle): `id op args` replaces id or inserts before ret (one op per line, no nesting); `-id` deletes; `ret x`; `fn ...` adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)"
+    },
+    "canon.KR2": {
+      "o200k": 88,
+      "cl100k": 85,
+      "bytes": 288,
+      "text": "Reply bare edit lines (no fence, no handle): `id op args` (one op, no nesting) replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` adds/replaces a function; `-fn f` removes. Also shl shr select call arr get set rec at put, comparisons -> bool, fold F n s a..: s=F(s,i,a..)"
+    },
+    "canon.KR3": {
+      "o200k": 101,
+      "cl100k": 98,
+      "bytes": 301,
+      "text": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)"
+    },
+    "canon.KT": {
+      "o200k": 149,
+      "cl100k": 146,
+      "bytes": 466,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n. A result that is not u32 goes in the head: `fn f u32 u32 -> bool`, records `(u32,u32)`."
+    },
+    "canon.Kx1": {
+      "o200k": 106,
+      "cl100k": 103,
+      "bytes": 327,
+      "text": "A0: `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.Kx2": {
+      "o200k": 108,
+      "cl100k": 105,
+      "bytes": 342,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.Kx3": {
+      "o200k": 112,
+      "cl100k": 110,
+      "bytes": 362,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.Kx4": {
+      "o200k": 100,
+      "cl100k": 98,
+      "bytes": 319,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `-id` deletes; `ret x`; Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records) fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.Kx5": {
+      "o200k": 82,
+      "cl100k": 80,
+      "bytes": 255,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. fold F n s a..: s=F(s,i,a..) for i<n"
+    },
+    "canon.Kx6": {
+      "o200k": 101,
+      "cl100k": 98,
+      "bytes": 340,
+      "text": "A0: reply bare edit lines only (no fence, no handle): `id op args` (one op, no nesting, lowercase id) replaces id or inserts before ret; `-id` deletes; `ret x`; `fn ...` block adds/replaces a function; `-fn f` removes. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set(arrays) rec at put(records)"
+    },
+    "dense.D0": {
+      "o200k": 145,
+      "cl100k": 142,
+      "bytes": 435,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.DC": {
+      "o200k": 88,
+      "cl100k": 85,
+      "bytes": 243,
+      "text": "Reply bare lines `fn f ...` (whole function) or `-fn f`. Prefix, fixed arity, params A B C, last line is the result: `fn f add mul A B C` = A*B+C. << >> select get set at put; [a b] array, (a b) record; `fn f u32x4 u32 -> bool` if not all u32."
+    },
+    "dense.DR1": {
+      "o200k": 131,
+      "cl100k": 127,
+      "bytes": 383,
+      "text": "A0 dense: reply bare lines `fn f ...` (whole function, adds or replaces), `-fn f`. Bodies are prefix, fixed arity: `add mul A B C` = A*B+C; params A B C; last statement is the result. Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set at put fold F n s a..: s=F(s,i,a..); [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.DR2": {
+      "o200k": 121,
+      "cl100k": 117,
+      "bytes": 334,
+      "text": "Reply bare lines, e.g. `fn f add mul A B C` (prefix ops, fixed arity, params A B C, last statement is the result; = A*B+C) or `-fn f`. Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set at put fold F n s a..: s=F(s,i,a..); [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.DR3": {
+      "o200k": 110,
+      "cl100k": 106,
+      "bytes": 316,
+      "text": "Reply bare lines: `fn f ...` (whole function) or `-fn f`. Prefix ops, fixed arity: `add mul A B C` = A*B+C; params A B C; last statement is the result. Also << >> select get set at put, comparisons -> bool, fold F n s a..: s=F(s,i,a..); [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.DR4": {
+      "o200k": 102,
+      "cl100k": 98,
+      "bytes": 272,
+      "text": "Reply bare lines `fn f ...` (whole function) or `-fn f`. Prefix, fixed arity, params A B C, last line is the result: `fn f add mul A B C` = A*B+C. << >> select get set at put fold F n s a..(s=F(s,i,a..)); [a b] array, (a b) record; `fn f u32x4 u32 -> bool` if not all u32."
+    },
+    "dense.DT": {
+      "o200k": 154,
+      "cl100k": 151,
+      "bytes": 451,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`, `-> (u32,u32)`."
+    },
+    "dense.Dx1": {
+      "o200k": 119,
+      "cl100k": 118,
+      "bytes": 350,
+      "text": "Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.Dx2": {
+      "o200k": 113,
+      "cl100k": 112,
+      "bytes": 325,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.Dx3": {
+      "o200k": 113,
+      "cl100k": 110,
+      "bytes": 328,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.Dx4": {
+      "o200k": 122,
+      "cl100k": 119,
+      "bytes": 381,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.Dx5": {
+      "o200k": 133,
+      "cl100k": 130,
+      "bytes": 408,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; Types only if not all u32: `fn f u32x4 u32 -> bool`."
+    },
+    "dense.Dx6": {
+      "o200k": 125,
+      "cl100k": 122,
+      "bytes": 382,
+      "text": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record."
+    }
+  },
+  "selection": {
+    "canon": {
+      "control": "canon.K0",
+      "controlOn_d": "25 one shot, 26 repaired of 26",
+      "eligible": [
+        "canon.Kx5 (82 o200k)",
+        "canon.KR3 (101 o200k)",
+        "canon.Kx1 (106 o200k)"
+      ],
+      "carriedToConfirmation": [
+        "canon.Kx5",
+        "canon.KR3",
+        "canon.Kx1"
+      ],
+      "note": "the first two went to the confirmation sets first; the third (same rule) was added after the first two had lost on e and f, so that the shorter dense and canonical primers get a fairer chance",
+      "notEligible": [
+        "canon.KC (20 one shot, 25 repaired of 26, against 25 and 26)",
+        "canon.KR1 (23 one shot, 26 repaired of 26, against 25 and 26)",
+        "canon.KR2 (24 one shot, 26 repaired of 26, against 25 and 26)",
+        "canon.Kx2 (23 one shot, 26 repaired of 26, against 25 and 26)",
+        "canon.Kx3 (24 one shot, 26 repaired of 26, against 25 and 26)",
+        "canon.Kx4 (20 one shot, 26 repaired of 26, against 25 and 26)",
+        "canon.Kx6 (24 one shot, 26 repaired of 26, against 25 and 26)"
+      ]
+    },
+    "dense": {
+      "control": "dense.D0",
+      "controlOn_d": "24 one shot, 25 repaired of 26",
+      "eligible": [
+        "dense.DC (88 o200k)",
+        "dense.DR4 (102 o200k)",
+        "dense.DR3 (110 o200k)",
+        "dense.Dx2 (113 o200k)",
+        "dense.DR2 (121 o200k)",
+        "dense.Dx4 (122 o200k)",
+        "dense.DR1 (131 o200k)"
+      ],
+      "carriedToConfirmation": [
+        "dense.DC",
+        "dense.DR4",
+        "dense.DR3"
+      ],
+      "note": "the first two went to the confirmation sets first; the third (same rule) was added after the first two had lost on e and f, so that the shorter dense and canonical primers get a fairer chance",
+      "notEligible": [
+        "dense.Dx1 (23 one shot, 25 repaired of 26, against 24 and 25)",
+        "dense.Dx3 (23 one shot, 25 repaired of 26, against 24 and 25)",
+        "dense.Dx5 (22 one shot, 25 repaired of 26, against 24 and 25)",
+        "dense.Dx6 (23 one shot, 25 repaired of 26, against 24 and 25)"
+      ]
+    }
+  },
+  "cells": {
+    "select(d)/haiku": {
+      "canon.K0": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 118,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 90.2,
+        "output": 22.6,
+        "costPerTask": {
+          "task1": 260.7,
+          "session10": 133.3,
+          "unbounded": 119.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 260.7,
+          "session10": 133.3,
+          "unbounded": 119.1
+        }
+      },
+      "canon.KC": {
+        "n": 13,
+        "oneShot": {
+          "k": 8,
+          "rate": 0.615,
+          "ci95": [
+            0.355,
+            0.823
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 73,
+        "view": 47.2,
+        "callsPerTask": 1.385,
+        "toolContext": 119.3,
+        "output": 27.5,
+        "costPerTask": {
+          "task1": 239.5,
+          "session10": 160.7,
+          "unbounded": 151.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 259.5,
+          "session10": 174,
+          "unbounded": 164.6
+        }
+      },
+      "canon.KR1": {
+        "n": 13,
+        "oneShot": {
+          "k": 10,
+          "rate": 0.769,
+          "ci95": [
+            0.497,
+            0.918
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 47.2,
+        "callsPerTask": 1.231,
+        "toolContext": 94.1,
+        "output": 34.2,
+        "costPerTask": {
+          "task1": 262,
+          "session10": 147.5,
+          "unbounded": 134.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 262,
+          "session10": 147.5,
+          "unbounded": 134.8
+        }
+      },
+      "canon.KR2": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 88,
+        "view": 47.2,
+        "callsPerTask": 1.154,
+        "toolContext": 99.2,
+        "output": 25.2,
+        "costPerTask": {
+          "task1": 235.1,
+          "session10": 140.1,
+          "unbounded": 129.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 235.1,
+          "session10": 140.1,
+          "unbounded": 129.5
+        }
+      },
+      "canon.KR3": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 101,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 90.2,
+        "output": 20.8,
+        "costPerTask": {
+          "task1": 237.6,
+          "session10": 128.6,
+          "unbounded": 116.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 237.6,
+          "session10": 128.6,
+          "unbounded": 116.4
+        }
+      },
+      "canon.KT": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 149,
+        "view": 47.2,
+        "callsPerTask": 1.154,
+        "toolContext": 107.5,
+        "output": 30.8,
+        "costPerTask": {
+          "task1": 325.8,
+          "session10": 164.9,
+          "unbounded": 147
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 325.8,
+          "session10": 164.9,
+          "unbounded": 147
+        }
+      },
+      "canon.Kx1": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 90.2,
+        "output": 38.5,
+        "costPerTask": {
+          "task1": 261.6,
+          "session10": 147.1,
+          "unbounded": 134.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 261.6,
+          "session10": 147.1,
+          "unbounded": 134.4
+        }
+      },
+      "canon.Kx2": {
+        "n": 13,
+        "oneShot": {
+          "k": 10,
+          "rate": 0.769,
+          "ci95": [
+            0.497,
+            0.918
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 108,
+        "view": 47.2,
+        "callsPerTask": 1.231,
+        "toolContext": 105.1,
+        "output": 24.9,
+        "costPerTask": {
+          "task1": 266.2,
+          "session10": 149.6,
+          "unbounded": 136.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 266.2,
+          "session10": 149.6,
+          "unbounded": 136.6
+        }
+      },
+      "canon.Kx3": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 112,
+        "view": 47.2,
+        "callsPerTask": 1.154,
+        "toolContext": 97.4,
+        "output": 24.4,
+        "costPerTask": {
+          "task1": 262.6,
+          "session10": 141.7,
+          "unbounded": 128.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 262.6,
+          "session10": 141.7,
+          "unbounded": 128.2
+        }
+      },
+      "canon.Kx4": {
+        "n": 13,
+        "oneShot": {
+          "k": 9,
+          "rate": 0.692,
+          "ci95": [
+            0.424,
+            0.873
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 100,
+        "view": 47.2,
+        "callsPerTask": 1.308,
+        "toolContext": 105.4,
+        "output": 23.8,
+        "costPerTask": {
+          "task1": 255.7,
+          "session10": 147.7,
+          "unbounded": 135.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 255.7,
+          "session10": 147.7,
+          "unbounded": 135.7
+        }
+      },
+      "canon.Kx5": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 82,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 90.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 213.7,
+          "session10": 125.1,
+          "unbounded": 115.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 213.7,
+          "session10": 125.1,
+          "unbounded": 115.3
+        }
+      },
+      "canon.Kx6": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 101,
+        "view": 47.2,
+        "callsPerTask": 1.154,
+        "toolContext": 100.9,
+        "output": 31.5,
+        "costPerTask": {
+          "task1": 259.4,
+          "session10": 150.3,
+          "unbounded": 138.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 259.4,
+          "session10": 150.3,
+          "unbounded": 138.2
+        }
+      },
+      "dense.D0": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 145,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 91,
+        "output": 25.2,
+        "costPerTask": {
+          "task1": 298.5,
+          "session10": 141.9,
+          "unbounded": 124.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 323.4,
+          "session10": 153.7,
+          "unbounded": 134.9
+        }
+      },
+      "dense.DC": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 88,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 84.8,
+        "output": 15.3,
+        "costPerTask": {
+          "task1": 210.8,
+          "session10": 115.7,
+          "unbounded": 105.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 228.3,
+          "session10": 125.4,
+          "unbounded": 113.9
+        }
+      },
+      "dense.DR1": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 131,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 83.5,
+        "output": 15.2,
+        "costPerTask": {
+          "task1": 263.4,
+          "session10": 121.9,
+          "unbounded": 106.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 285.3,
+          "session10": 132.1,
+          "unbounded": 115
+        }
+      },
+      "dense.DR2": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 121,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 20.4,
+        "costPerTask": {
+          "task1": 246.2,
+          "session10": 115.5,
+          "unbounded": 101
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 246.2,
+          "session10": 115.5,
+          "unbounded": 101
+        }
+      },
+      "dense.DR3": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 110,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 78.4,
+        "output": 21.5,
+        "costPerTask": {
+          "task1": 237.8,
+          "session10": 119,
+          "unbounded": 105.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 257.6,
+          "session10": 128.9,
+          "unbounded": 114.6
+        }
+      },
+      "dense.DR4": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 102,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 83.9,
+        "output": 20.8,
+        "costPerTask": {
+          "task1": 233,
+          "session10": 122.8,
+          "unbounded": 110.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 233,
+          "session10": 122.8,
+          "unbounded": 110.6
+        }
+      },
+      "dense.DT": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 154,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 16.8,
+        "costPerTask": {
+          "task1": 283.9,
+          "session10": 117.6,
+          "unbounded": 99.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 283.9,
+          "session10": 117.6,
+          "unbounded": 99.1
+        }
+      },
+      "dense.Dx1": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 119,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 85.7,
+        "output": 32.9,
+        "costPerTask": {
+          "task1": 268.3,
+          "session10": 139.8,
+          "unbounded": 125.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 290.6,
+          "session10": 151.4,
+          "unbounded": 135.9
+        }
+      },
+      "dense.Dx2": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 113,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 19.2,
+        "costPerTask": {
+          "task1": 235,
+          "session10": 113,
+          "unbounded": 99.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 235,
+          "session10": 113,
+          "unbounded": 99.4
+        }
+      },
+      "dense.Dx3": {
+        "n": 13,
+        "oneShot": {
+          "k": 10,
+          "rate": 0.769,
+          "ci95": [
+            0.497,
+            0.918
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 113,
+        "view": 32.3,
+        "callsPerTask": 1.231,
+        "toolContext": 90.2,
+        "output": 19.9,
+        "costPerTask": {
+          "task1": 252.6,
+          "session10": 130.6,
+          "unbounded": 117
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 273.7,
+          "session10": 141.5,
+          "unbounded": 126.8
+        }
+      },
+      "dense.Dx4": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 122,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 78.4,
+        "output": 15.3,
+        "costPerTask": {
+          "task1": 246.7,
+          "session10": 114.9,
+          "unbounded": 100.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 267.2,
+          "session10": 124.5,
+          "unbounded": 108.6
+        }
+      },
+      "dense.Dx5": {
+        "n": 13,
+        "oneShot": {
+          "k": 10,
+          "rate": 0.769,
+          "ci95": [
+            0.497,
+            0.918
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 133,
+        "view": 32.3,
+        "callsPerTask": 1.231,
+        "toolContext": 82.8,
+        "output": 18.7,
+        "costPerTask": {
+          "task1": 269.3,
+          "session10": 125.7,
+          "unbounded": 109.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 291.8,
+          "session10": 136.2,
+          "unbounded": 118.9
+        }
+      },
+      "dense.Dx6": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 125,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 80.6,
+        "output": 18.1,
+        "costPerTask": {
+          "task1": 255.9,
+          "session10": 120.9,
+          "unbounded": 105.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 255.9,
+          "session10": 120.9,
+          "unbounded": 105.9
+        }
+      }
+    },
+    "select(d)/sonnet": {
+      "canon.K0": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 118,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 253.3,
+          "session10": 125.9,
+          "unbounded": 111.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 253.3,
+          "session10": 125.9,
+          "unbounded": 111.7
+        }
+      },
+      "canon.KC": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 73,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 90.2,
+        "output": 19.3,
+        "costPerTask": {
+          "task1": 201,
+          "session10": 122.2,
+          "unbounded": 113.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 201,
+          "session10": 122.2,
+          "unbounded": 113.4
+        }
+      },
+      "canon.KR1": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 238.3,
+          "session10": 123.9,
+          "unbounded": 111.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 238.3,
+          "session10": 123.9,
+          "unbounded": 111.1
+        }
+      },
+      "canon.KR2": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 88,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 215.8,
+          "session10": 120.8,
+          "unbounded": 110.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 215.8,
+          "session10": 120.8,
+          "unbounded": 110.2
+        }
+      },
+      "canon.KR3": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 101,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 232.1,
+          "session10": 123,
+          "unbounded": 110.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 232.1,
+          "session10": 123,
+          "unbounded": 110.9
+        }
+      },
+      "canon.KT": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 149,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 292.1,
+          "session10": 131.2,
+          "unbounded": 113.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 292.1,
+          "session10": 131.2,
+          "unbounded": 113.3
+        }
+      },
+      "canon.Kx1": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 18.7,
+        "costPerTask": {
+          "task1": 236.3,
+          "session10": 121.9,
+          "unbounded": 109.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 236.3,
+          "session10": 121.9,
+          "unbounded": 109.1
+        }
+      },
+      "canon.Kx2": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 108,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 240.8,
+          "session10": 124.2,
+          "unbounded": 111.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 240.8,
+          "session10": 124.2,
+          "unbounded": 111.2
+        }
+      },
+      "canon.Kx3": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 112,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 245.8,
+          "session10": 124.9,
+          "unbounded": 111.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 245.8,
+          "session10": 124.9,
+          "unbounded": 111.4
+        }
+      },
+      "canon.Kx4": {
+        "n": 13,
+        "oneShot": {
+          "k": 11,
+          "rate": 0.846,
+          "ci95": [
+            0.578,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 100,
+        "view": 47.2,
+        "callsPerTask": 1.154,
+        "toolContext": 93,
+        "output": 20.5,
+        "costPerTask": {
+          "task1": 239.2,
+          "session10": 131.2,
+          "unbounded": 119.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 239.2,
+          "session10": 131.2,
+          "unbounded": 119.2
+        }
+      },
+      "canon.Kx5": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 82,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 208.3,
+          "session10": 119.8,
+          "unbounded": 109.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 208.3,
+          "session10": 119.8,
+          "unbounded": 109.9
+        }
+      },
+      "canon.Kx6": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 101,
+        "view": 47.2,
+        "callsPerTask": 1,
+        "toolContext": 85.2,
+        "output": 23.2,
+        "costPerTask": {
+          "task1": 234.6,
+          "session10": 125.5,
+          "unbounded": 113.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 234.6,
+          "session10": 125.5,
+          "unbounded": 113.4
+        }
+      },
+      "dense.D0": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 145,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.8,
+        "costPerTask": {
+          "task1": 265.3,
+          "session10": 108.7,
+          "unbounded": 91.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 265.3,
+          "session10": 108.7,
+          "unbounded": 91.3
+        }
+      },
+      "dense.DC": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 88,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.9,
+        "costPerTask": {
+          "task1": 194.2,
+          "session10": 99.2,
+          "unbounded": 88.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 194.2,
+          "session10": 99.2,
+          "unbounded": 88.6
+        }
+      },
+      "dense.DR1": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 131,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.8,
+        "costPerTask": {
+          "task1": 247.8,
+          "session10": 106.3,
+          "unbounded": 90.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 247.8,
+          "session10": 106.3,
+          "unbounded": 90.6
+        }
+      },
+      "dense.DR2": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 121,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.8,
+        "costPerTask": {
+          "task1": 235.3,
+          "session10": 104.6,
+          "unbounded": 90.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 235.3,
+          "session10": 104.6,
+          "unbounded": 90.1
+        }
+      },
+      "dense.DR3": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 110,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.9,
+        "costPerTask": {
+          "task1": 221.7,
+          "session10": 102.9,
+          "unbounded": 89.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 221.7,
+          "session10": 102.9,
+          "unbounded": 89.7
+        }
+      },
+      "dense.DR4": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 102,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.4,
+        "costPerTask": {
+          "task1": 211.2,
+          "session10": 101,
+          "unbounded": 88.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 211.2,
+          "session10": 101,
+          "unbounded": 88.8
+        }
+      },
+      "dense.DT": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 154,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 14.8,
+        "costPerTask": {
+          "task1": 282,
+          "session10": 115.7,
+          "unbounded": 97.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 282,
+          "session10": 115.7,
+          "unbounded": 97.2
+        }
+      },
+      "dense.Dx1": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 119,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 14.2,
+        "costPerTask": {
+          "task1": 237.5,
+          "session10": 109,
+          "unbounded": 94.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 237.5,
+          "session10": 109,
+          "unbounded": 94.7
+        }
+      },
+      "dense.Dx2": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 113,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.8,
+        "costPerTask": {
+          "task1": 225.3,
+          "session10": 103.3,
+          "unbounded": 89.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 225.3,
+          "session10": 103.3,
+          "unbounded": 89.7
+        }
+      },
+      "dense.Dx3": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 113,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 14.1,
+        "costPerTask": {
+          "task1": 225.6,
+          "session10": 103.6,
+          "unbounded": 90
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 225.6,
+          "session10": 103.6,
+          "unbounded": 90
+        }
+      },
+      "dense.Dx4": {
+        "n": 13,
+        "oneShot": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 122,
+        "view": 32.3,
+        "callsPerTask": 1,
+        "toolContext": 70.3,
+        "output": 13.8,
+        "costPerTask": {
+          "task1": 236.6,
+          "session10": 104.8,
+          "unbounded": 90.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 236.6,
+          "session10": 104.8,
+          "unbounded": 90.2
+        }
+      },
+      "dense.Dx5": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "rate": 1,
+          "ci95": [
+            0.772,
+            1
+          ]
+        },
+        "system": 133,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 14.4,
+        "costPerTask": {
+          "task1": 255.2,
+          "session10": 111.6,
+          "unbounded": 95.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 255.2,
+          "session10": 111.6,
+          "unbounded": 95.6
+        }
+      },
+      "dense.Dx6": {
+        "n": 13,
+        "oneShot": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "accepted": {
+          "k": 12,
+          "rate": 0.923,
+          "ci95": [
+            0.667,
+            0.986
+          ]
+        },
+        "system": 125,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 77.8,
+        "output": 14.5,
+        "costPerTask": {
+          "task1": 249.1,
+          "session10": 114.1,
+          "unbounded": 99.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 269.9,
+          "session10": 123.6,
+          "unbounded": 107.4
+        }
+      }
+    },
+    "select(d)/pooled": {
+      "canon.K0": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 118,
+        "view": 47.2,
+        "callsPerTask": 1.038,
+        "toolContext": 87.7,
+        "output": 21.7,
+        "costPerTask": {
+          "task1": 257,
+          "session10": 129.6,
+          "unbounded": 115.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 257,
+          "session10": 129.6,
+          "unbounded": 115.4
+        }
+      },
+      "canon.KC": {
+        "n": 26,
+        "oneShot": {
+          "k": 20,
+          "rate": 0.769,
+          "ci95": [
+            0.579,
+            0.89
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 73,
+        "view": 47.2,
+        "callsPerTask": 1.231,
+        "toolContext": 104.7,
+        "output": 23.4,
+        "costPerTask": {
+          "task1": 220.2,
+          "session10": 141.4,
+          "unbounded": 132.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 229.1,
+          "session10": 147.1,
+          "unbounded": 138
+        }
+      },
+      "canon.KR1": {
+        "n": 26,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.885,
+          "ci95": [
+            0.71,
+            0.96
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 47.2,
+        "callsPerTask": 1.115,
+        "toolContext": 89.6,
+        "output": 27.4,
+        "costPerTask": {
+          "task1": 250.2,
+          "session10": 135.7,
+          "unbounded": 123
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 250.2,
+          "session10": 135.7,
+          "unbounded": 123
+        }
+      },
+      "canon.KR2": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 88,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 92.2,
+        "output": 23,
+        "costPerTask": {
+          "task1": 225.5,
+          "session10": 130.5,
+          "unbounded": 119.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 225.5,
+          "session10": 130.5,
+          "unbounded": 119.9
+        }
+      },
+      "canon.KR3": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 101,
+        "view": 47.2,
+        "callsPerTask": 1.038,
+        "toolContext": 87.7,
+        "output": 20.8,
+        "costPerTask": {
+          "task1": 234.9,
+          "session10": 125.8,
+          "unbounded": 113.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 234.9,
+          "session10": 125.8,
+          "unbounded": 113.7
+        }
+      },
+      "canon.KT": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 149,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 96.3,
+        "output": 25.8,
+        "costPerTask": {
+          "task1": 308.9,
+          "session10": 148,
+          "unbounded": 130.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 308.9,
+          "session10": 148,
+          "unbounded": 130.1
+        }
+      },
+      "canon.Kx1": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 47.2,
+        "callsPerTask": 1.038,
+        "toolContext": 87.7,
+        "output": 28.6,
+        "costPerTask": {
+          "task1": 249,
+          "session10": 134.5,
+          "unbounded": 121.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 249,
+          "session10": 134.5,
+          "unbounded": 121.8
+        }
+      },
+      "canon.Kx2": {
+        "n": 26,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.885,
+          "ci95": [
+            0.71,
+            0.96
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 108,
+        "view": 47.2,
+        "callsPerTask": 1.115,
+        "toolContext": 95.1,
+        "output": 22.8,
+        "costPerTask": {
+          "task1": 253.5,
+          "session10": 136.9,
+          "unbounded": 123.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 253.5,
+          "session10": 136.9,
+          "unbounded": 123.9
+        }
+      },
+      "canon.Kx3": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 112,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 91.3,
+        "output": 22.5,
+        "costPerTask": {
+          "task1": 254.2,
+          "session10": 133.3,
+          "unbounded": 119.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 254.2,
+          "session10": 133.3,
+          "unbounded": 119.8
+        }
+      },
+      "canon.Kx4": {
+        "n": 26,
+        "oneShot": {
+          "k": 20,
+          "rate": 0.769,
+          "ci95": [
+            0.579,
+            0.89
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 100,
+        "view": 47.2,
+        "callsPerTask": 1.231,
+        "toolContext": 99.2,
+        "output": 22.1,
+        "costPerTask": {
+          "task1": 247.5,
+          "session10": 139.5,
+          "unbounded": 127.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 247.5,
+          "session10": 139.5,
+          "unbounded": 127.5
+        }
+      },
+      "canon.Kx5": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 82,
+        "view": 47.2,
+        "callsPerTask": 1.038,
+        "toolContext": 87.7,
+        "output": 20.7,
+        "costPerTask": {
+          "task1": 211,
+          "session10": 122.4,
+          "unbounded": 112.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 211,
+          "session10": 122.4,
+          "unbounded": 112.6
+        }
+      },
+      "canon.Kx6": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 101,
+        "view": 47.2,
+        "callsPerTask": 1.077,
+        "toolContext": 93,
+        "output": 27.3,
+        "costPerTask": {
+          "task1": 247,
+          "session10": 137.9,
+          "unbounded": 125.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 247,
+          "session10": 137.9,
+          "unbounded": 125.8
+        }
+      },
+      "dense.D0": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 145,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 80.7,
+        "output": 19.5,
+        "costPerTask": {
+          "task1": 281.9,
+          "session10": 125.3,
+          "unbounded": 107.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 293.2,
+          "session10": 130.3,
+          "unbounded": 112.2
+        }
+      },
+      "dense.DC": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 88,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 77.5,
+        "output": 14.6,
+        "costPerTask": {
+          "task1": 202.5,
+          "session10": 107.5,
+          "unbounded": 96.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 210.6,
+          "session10": 111.8,
+          "unbounded": 100.8
+        }
+      },
+      "dense.DR1": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 131,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 76.9,
+        "output": 14.5,
+        "costPerTask": {
+          "task1": 255.6,
+          "session10": 114.1,
+          "unbounded": 98.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 265.8,
+          "session10": 118.7,
+          "unbounded": 102.3
+        }
+      },
+      "dense.DR2": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 121,
+        "view": 32.3,
+        "callsPerTask": 1.038,
+        "toolContext": 72.2,
+        "output": 17.1,
+        "costPerTask": {
+          "task1": 240.8,
+          "session10": 110.1,
+          "unbounded": 95.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 240.8,
+          "session10": 110.1,
+          "unbounded": 95.6
+        }
+      },
+      "dense.DR3": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 110,
+        "view": 32.3,
+        "callsPerTask": 1.038,
+        "toolContext": 74.3,
+        "output": 17.7,
+        "costPerTask": {
+          "task1": 229.8,
+          "session10": 110.9,
+          "unbounded": 97.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 238.9,
+          "session10": 115.4,
+          "unbounded": 101.7
+        }
+      },
+      "dense.DR4": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 102,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 77.1,
+        "output": 17.1,
+        "costPerTask": {
+          "task1": 222.1,
+          "session10": 111.9,
+          "unbounded": 99.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 222.1,
+          "session10": 111.9,
+          "unbounded": 99.7
+        }
+      },
+      "dense.DT": {
+        "n": 26,
+        "oneShot": {
+          "k": 24,
+          "rate": 0.923,
+          "ci95": [
+            0.759,
+            0.979
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 154,
+        "view": 32.3,
+        "callsPerTask": 1.077,
+        "toolContext": 74.1,
+        "output": 15.8,
+        "costPerTask": {
+          "task1": 283,
+          "session10": 116.7,
+          "unbounded": 98.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 283,
+          "session10": 116.7,
+          "unbounded": 98.2
+        }
+      },
+      "dense.Dx1": {
+        "n": 26,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.885,
+          "ci95": [
+            0.71,
+            0.96
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 119,
+        "view": 32.3,
+        "callsPerTask": 1.115,
+        "toolContext": 79.9,
+        "output": 23.6,
+        "costPerTask": {
+          "task1": 252.9,
+          "session10": 124.4,
+          "unbounded": 110.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 263,
+          "session10": 129.4,
+          "unbounded": 114.5
+        }
+      },
+      "dense.Dx2": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 26,
+          "rate": 1,
+          "ci95": [
+            0.871,
+            1
+          ]
+        },
+        "system": 113,
+        "view": 32.3,
+        "callsPerTask": 1.038,
+        "toolContext": 72.2,
+        "output": 16.5,
+        "costPerTask": {
+          "task1": 230.2,
+          "session10": 108.1,
+          "unbounded": 94.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 230.2,
+          "session10": 108.1,
+          "unbounded": 94.6
+        }
+      },
+      "dense.Dx3": {
+        "n": 26,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.885,
+          "ci95": [
+            0.71,
+            0.96
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 113,
+        "view": 32.3,
+        "callsPerTask": 1.115,
+        "toolContext": 80.2,
+        "output": 17,
+        "costPerTask": {
+          "task1": 239.1,
+          "session10": 117.1,
+          "unbounded": 103.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 248.7,
+          "session10": 121.8,
+          "unbounded": 107.7
+        }
+      },
+      "dense.Dx4": {
+        "n": 26,
+        "oneShot": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 122,
+        "view": 32.3,
+        "callsPerTask": 1.038,
+        "toolContext": 74.3,
+        "output": 14.5,
+        "costPerTask": {
+          "task1": 241.6,
+          "session10": 109.9,
+          "unbounded": 95.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 251.3,
+          "session10": 114.3,
+          "unbounded": 99
+        }
+      },
+      "dense.Dx5": {
+        "n": 26,
+        "oneShot": {
+          "k": 22,
+          "rate": 0.846,
+          "ci95": [
+            0.665,
+            0.939
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 133,
+        "view": 32.3,
+        "callsPerTask": 1.154,
+        "toolContext": 78.5,
+        "output": 16.5,
+        "costPerTask": {
+          "task1": 262.3,
+          "session10": 118.6,
+          "unbounded": 102.7
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 272.8,
+          "session10": 123.4,
+          "unbounded": 106.8
+        }
+      },
+      "dense.Dx6": {
+        "n": 26,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.885,
+          "ci95": [
+            0.71,
+            0.96
+          ]
+        },
+        "accepted": {
+          "k": 25,
+          "rate": 0.962,
+          "ci95": [
+            0.811,
+            0.993
+          ]
+        },
+        "system": 125,
+        "view": 32.3,
+        "callsPerTask": 1.115,
+        "toolContext": 79.2,
+        "output": 16.3,
+        "costPerTask": {
+          "task1": 252.5,
+          "session10": 117.5,
+          "unbounded": 102.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 262.6,
+          "session10": 122.2,
+          "unbounded": 106.6
+        }
+      }
+    },
+    "confirm(e+f)/haiku": {
+      "canon.K0": {
+        "n": 24,
+        "oneShot": {
+          "k": 18,
+          "rate": 0.75,
+          "ci95": [
+            0.551,
+            0.88
+          ]
+        },
+        "accepted": {
+          "k": 21,
+          "rate": 0.875,
+          "ci95": [
+            0.69,
+            0.957
+          ]
+        },
+        "system": 118,
+        "view": 50.5,
+        "callsPerTask": 1.25,
+        "toolContext": 126.8,
+        "output": 32.4,
+        "costPerTask": {
+          "task1": 308.1,
+          "session10": 180.7,
+          "unbounded": 166.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 352.2,
+          "session10": 206.5,
+          "unbounded": 190.3
+        }
+      },
+      "canon.KR3": {
+        "n": 24,
+        "oneShot": {
+          "k": 18,
+          "rate": 0.75,
+          "ci95": [
+            0.551,
+            0.88
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 101,
+        "view": 50.5,
+        "callsPerTask": 1.25,
+        "toolContext": 124.7,
+        "output": 33.5,
+        "costPerTask": {
+          "task1": 285.7,
+          "session10": 176.6,
+          "unbounded": 164.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 298.1,
+          "session10": 184.3,
+          "unbounded": 171.7
+        }
+      },
+      "canon.KT": {
+        "n": 24,
+        "oneShot": {
+          "k": 16,
+          "rate": 0.667,
+          "ci95": [
+            0.467,
+            0.82
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 149,
+        "view": 50.5,
+        "callsPerTask": 1.333,
+        "toolContext": 113.1,
+        "output": 36.4,
+        "costPerTask": {
+          "task1": 338.3,
+          "session10": 177.4,
+          "unbounded": 159.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 353,
+          "session10": 185.1,
+          "unbounded": 166.4
+        }
+      },
+      "canon.Kx1": {
+        "n": 24,
+        "oneShot": {
+          "k": 16,
+          "rate": 0.667,
+          "ci95": [
+            0.467,
+            0.82
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 106,
+        "view": 50.5,
+        "callsPerTask": 1.333,
+        "toolContext": 121.4,
+        "output": 72,
+        "costPerTask": {
+          "task1": 327.7,
+          "session10": 213.2,
+          "unbounded": 200.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 341.9,
+          "session10": 222.5,
+          "unbounded": 209.2
+        }
+      },
+      "canon.Kx5": {
+        "n": 24,
+        "oneShot": {
+          "k": 15,
+          "rate": 0.625,
+          "ci95": [
+            0.427,
+            0.788
+          ]
+        },
+        "accepted": {
+          "k": 17,
+          "rate": 0.708,
+          "ci95": [
+            0.508,
+            0.851
+          ]
+        },
+        "system": 82,
+        "view": 50.5,
+        "callsPerTask": 1.375,
+        "toolContext": 135.5,
+        "output": 28.8,
+        "costPerTask": {
+          "task1": 268.4,
+          "session10": 179.8,
+          "unbounded": 170
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 378.9,
+          "session10": 253.9,
+          "unbounded": 240
+        }
+      },
+      "dense.D0": {
+        "n": 24,
+        "oneShot": {
+          "k": 21,
+          "rate": 0.875,
+          "ci95": [
+            0.69,
+            0.957
+          ]
+        },
+        "accepted": {
+          "k": 22,
+          "rate": 0.917,
+          "ci95": [
+            0.742,
+            0.977
+          ]
+        },
+        "system": 145,
+        "view": 37.1,
+        "callsPerTask": 1.125,
+        "toolContext": 101.4,
+        "output": 27.8,
+        "costPerTask": {
+          "task1": 311.4,
+          "session10": 154.8,
+          "unbounded": 137.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 339.7,
+          "session10": 168.9,
+          "unbounded": 149.9
+        }
+      },
+      "dense.DC": {
+        "n": 24,
+        "oneShot": {
+          "k": 15,
+          "rate": 0.625,
+          "ci95": [
+            0.427,
+            0.788
+          ]
+        },
+        "accepted": {
+          "k": 20,
+          "rate": 0.833,
+          "ci95": [
+            0.641,
+            0.933
+          ]
+        },
+        "system": 88,
+        "view": 37.1,
+        "callsPerTask": 1.375,
+        "toolContext": 121,
+        "output": 37.1,
+        "costPerTask": {
+          "task1": 269.8,
+          "session10": 174.8,
+          "unbounded": 164.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 323.8,
+          "session10": 209.7,
+          "unbounded": 197.1
+        }
+      },
+      "dense.DR3": {
+        "n": 24,
+        "oneShot": {
+          "k": 14,
+          "rate": 0.583,
+          "ci95": [
+            0.388,
+            0.755
+          ]
+        },
+        "accepted": {
+          "k": 14,
+          "rate": 0.583,
+          "ci95": [
+            0.388,
+            0.755
+          ]
+        },
+        "system": 110,
+        "view": 37.1,
+        "callsPerTask": 1.417,
+        "toolContext": 134.4,
+        "output": 47.9,
+        "costPerTask": {
+          "task1": 322,
+          "session10": 203.2,
+          "unbounded": 190
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 552.1,
+          "session10": 348.4,
+          "unbounded": 325.8
+        }
+      },
+      "dense.DR4": {
+        "n": 24,
+        "oneShot": {
+          "k": 18,
+          "rate": 0.75,
+          "ci95": [
+            0.551,
+            0.88
+          ]
+        },
+        "accepted": {
+          "k": 19,
+          "rate": 0.792,
+          "ci95": [
+            0.595,
+            0.908
+          ]
+        },
+        "system": 102,
+        "view": 37.1,
+        "callsPerTask": 1.25,
+        "toolContext": 111.7,
+        "output": 44,
+        "costPerTask": {
+          "task1": 284.4,
+          "session10": 174.3,
+          "unbounded": 162
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 359.3,
+          "session10": 220.1,
+          "unbounded": 204.7
+        }
+      },
+      "dense.DT": {
+        "n": 24,
+        "oneShot": {
+          "k": 18,
+          "rate": 0.75,
+          "ci95": [
+            0.551,
+            0.88
+          ]
+        },
+        "accepted": {
+          "k": 21,
+          "rate": 0.875,
+          "ci95": [
+            0.69,
+            0.957
+          ]
+        },
+        "system": 154,
+        "view": 37.1,
+        "callsPerTask": 1.25,
+        "toolContext": 110,
+        "output": 52.5,
+        "costPerTask": {
+          "task1": 356.9,
+          "session10": 190.6,
+          "unbounded": 172.1
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 407.9,
+          "session10": 217.8,
+          "unbounded": 196.7
+        }
+      }
+    },
+    "confirm(e+f)/sonnet": {
+      "canon.K0": {
+        "n": 24,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 118,
+        "view": 50.5,
+        "callsPerTask": 1.042,
+        "toolContext": 95,
+        "output": 26.8,
+        "costPerTask": {
+          "task1": 269.5,
+          "session10": 142.1,
+          "unbounded": 127.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 281.2,
+          "session10": 148.2,
+          "unbounded": 133.5
+        }
+      },
+      "canon.KR3": {
+        "n": 24,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 101,
+        "view": 50.5,
+        "callsPerTask": 1.042,
+        "toolContext": 95,
+        "output": 24,
+        "costPerTask": {
+          "task1": 245.5,
+          "session10": 136.4,
+          "unbounded": 124.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 256.2,
+          "session10": 142.4,
+          "unbounded": 129.7
+        }
+      },
+      "canon.KT": {
+        "n": 24,
+        "oneShot": {
+          "k": 24,
+          "rate": 1,
+          "ci95": [
+            0.862,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 24,
+          "rate": 1,
+          "ci95": [
+            0.862,
+            1
+          ]
+        },
+        "system": 149,
+        "view": 50.5,
+        "callsPerTask": 1,
+        "toolContext": 90.5,
+        "output": 26.4,
+        "costPerTask": {
+          "task1": 303.1,
+          "session10": 142.2,
+          "unbounded": 124.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 303.1,
+          "session10": 142.2,
+          "unbounded": 124.3
+        }
+      },
+      "canon.Kx1": {
+        "n": 24,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 24,
+          "rate": 1,
+          "ci95": [
+            0.862,
+            1
+          ]
+        },
+        "system": 106,
+        "view": 50.5,
+        "callsPerTask": 1.042,
+        "toolContext": 93,
+        "output": 25.7,
+        "costPerTask": {
+          "task1": 251.4,
+          "session10": 136.9,
+          "unbounded": 124.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 251.4,
+          "session10": 136.9,
+          "unbounded": 124.2
+        }
+      },
+      "canon.Kx5": {
+        "n": 24,
+        "oneShot": {
+          "k": 17,
+          "rate": 0.708,
+          "ci95": [
+            0.508,
+            0.851
+          ]
+        },
+        "accepted": {
+          "k": 22,
+          "rate": 0.917,
+          "ci95": [
+            0.742,
+            0.977
+          ]
+        },
+        "system": 82,
+        "view": 50.5,
+        "callsPerTask": 1.292,
+        "toolContext": 119.5,
+        "output": 29.8,
+        "costPerTask": {
+          "task1": 252.9,
+          "session10": 164.3,
+          "unbounded": 154.5
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 275.9,
+          "session10": 179.3,
+          "unbounded": 168.5
+        }
+      },
+      "dense.D0": {
+        "n": 24,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 145,
+        "view": 37.1,
+        "callsPerTask": 1.042,
+        "toolContext": 80.3,
+        "output": 19.3,
+        "costPerTask": {
+          "task1": 281.2,
+          "session10": 124.6,
+          "unbounded": 107.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 293.4,
+          "session10": 130,
+          "unbounded": 111.9
+        }
+      },
+      "dense.DC": {
+        "n": 24,
+        "oneShot": {
+          "k": 19,
+          "rate": 0.792,
+          "ci95": [
+            0.595,
+            0.908
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 88,
+        "view": 37.1,
+        "callsPerTask": 1.208,
+        "toolContext": 101.2,
+        "output": 23.8,
+        "costPerTask": {
+          "task1": 236,
+          "session10": 140.9,
+          "unbounded": 130.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 246.2,
+          "session10": 147,
+          "unbounded": 136
+        }
+      },
+      "dense.DR3": {
+        "n": 24,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 110,
+        "view": 37.1,
+        "callsPerTask": 1.042,
+        "toolContext": 80.3,
+        "output": 20.5,
+        "costPerTask": {
+          "task1": 238.6,
+          "session10": 119.8,
+          "unbounded": 106.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 249,
+          "session10": 125,
+          "unbounded": 111.2
+        }
+      },
+      "dense.DR4": {
+        "n": 24,
+        "oneShot": {
+          "k": 22,
+          "rate": 0.917,
+          "ci95": [
+            0.742,
+            0.977
+          ]
+        },
+        "accepted": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "system": 102,
+        "view": 37.1,
+        "callsPerTask": 1.083,
+        "toolContext": 82.1,
+        "output": 21.2,
+        "costPerTask": {
+          "task1": 231.2,
+          "session10": 121.1,
+          "unbounded": 108.8
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 241.3,
+          "session10": 126.3,
+          "unbounded": 113.5
+        }
+      },
+      "dense.DT": {
+        "n": 24,
+        "oneShot": {
+          "k": 23,
+          "rate": 0.958,
+          "ci95": [
+            0.798,
+            0.993
+          ]
+        },
+        "accepted": {
+          "k": 24,
+          "rate": 1,
+          "ci95": [
+            0.862,
+            1
+          ]
+        },
+        "system": 154,
+        "view": 37.1,
+        "callsPerTask": 1.042,
+        "toolContext": 79.1,
+        "output": 20.5,
+        "costPerTask": {
+          "task1": 292.4,
+          "session10": 126.1,
+          "unbounded": 107.6
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 292.4,
+          "session10": 126.1,
+          "unbounded": 107.6
+        }
+      }
+    },
+    "confirm(e+f)/pooled": {
+      "canon.K0": {
+        "n": 48,
+        "oneShot": {
+          "k": 41,
+          "rate": 0.854,
+          "ci95": [
+            0.728,
+            0.928
+          ]
+        },
+        "accepted": {
+          "k": 44,
+          "rate": 0.917,
+          "ci95": [
+            0.804,
+            0.967
+          ]
+        },
+        "system": 118,
+        "view": 50.5,
+        "callsPerTask": 1.146,
+        "toolContext": 110.9,
+        "output": 29.6,
+        "costPerTask": {
+          "task1": 288.8,
+          "session10": 161.4,
+          "unbounded": 147.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 315.1,
+          "session10": 176,
+          "unbounded": 160.6
+        }
+      },
+      "canon.KR3": {
+        "n": 48,
+        "oneShot": {
+          "k": 41,
+          "rate": 0.854,
+          "ci95": [
+            0.728,
+            0.928
+          ]
+        },
+        "accepted": {
+          "k": 46,
+          "rate": 0.958,
+          "ci95": [
+            0.86,
+            0.988
+          ]
+        },
+        "system": 101,
+        "view": 50.5,
+        "callsPerTask": 1.146,
+        "toolContext": 109.8,
+        "output": 28.8,
+        "costPerTask": {
+          "task1": 265.6,
+          "session10": 156.5,
+          "unbounded": 144.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 277.2,
+          "session10": 163.3,
+          "unbounded": 150.7
+        }
+      },
+      "canon.KT": {
+        "n": 48,
+        "oneShot": {
+          "k": 40,
+          "rate": 0.833,
+          "ci95": [
+            0.704,
+            0.913
+          ]
+        },
+        "accepted": {
+          "k": 47,
+          "rate": 0.979,
+          "ci95": [
+            0.891,
+            0.996
+          ]
+        },
+        "system": 149,
+        "view": 50.5,
+        "callsPerTask": 1.167,
+        "toolContext": 101.8,
+        "output": 31.4,
+        "costPerTask": {
+          "task1": 320.7,
+          "session10": 159.8,
+          "unbounded": 141.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 327.5,
+          "session10": 163.2,
+          "unbounded": 144.9
+        }
+      },
+      "canon.Kx1": {
+        "n": 48,
+        "oneShot": {
+          "k": 39,
+          "rate": 0.813,
+          "ci95": [
+            0.681,
+            0.898
+          ]
+        },
+        "accepted": {
+          "k": 47,
+          "rate": 0.979,
+          "ci95": [
+            0.891,
+            0.996
+          ]
+        },
+        "system": 106,
+        "view": 50.5,
+        "callsPerTask": 1.188,
+        "toolContext": 107.2,
+        "output": 48.9,
+        "costPerTask": {
+          "task1": 289.5,
+          "session10": 175.1,
+          "unbounded": 162.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 295.7,
+          "session10": 178.8,
+          "unbounded": 165.8
+        }
+      },
+      "canon.Kx5": {
+        "n": 48,
+        "oneShot": {
+          "k": 32,
+          "rate": 0.667,
+          "ci95": [
+            0.525,
+            0.783
+          ]
+        },
+        "accepted": {
+          "k": 39,
+          "rate": 0.813,
+          "ci95": [
+            0.681,
+            0.898
+          ]
+        },
+        "system": 82,
+        "view": 50.5,
+        "callsPerTask": 1.333,
+        "toolContext": 127.5,
+        "output": 29.3,
+        "costPerTask": {
+          "task1": 260.6,
+          "session10": 172.1,
+          "unbounded": 162.2
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 320.8,
+          "session10": 211.8,
+          "unbounded": 199.7
+        }
+      },
+      "dense.D0": {
+        "n": 48,
+        "oneShot": {
+          "k": 44,
+          "rate": 0.917,
+          "ci95": [
+            0.804,
+            0.967
+          ]
+        },
+        "accepted": {
+          "k": 45,
+          "rate": 0.938,
+          "ci95": [
+            0.832,
+            0.979
+          ]
+        },
+        "system": 145,
+        "view": 37.1,
+        "callsPerTask": 1.083,
+        "toolContext": 90.9,
+        "output": 23.6,
+        "costPerTask": {
+          "task1": 296.3,
+          "session10": 139.7,
+          "unbounded": 122.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 316.1,
+          "session10": 149,
+          "unbounded": 130.5
+        }
+      },
+      "dense.DC": {
+        "n": 48,
+        "oneShot": {
+          "k": 34,
+          "rate": 0.708,
+          "ci95": [
+            0.568,
+            0.818
+          ]
+        },
+        "accepted": {
+          "k": 43,
+          "rate": 0.896,
+          "ci95": [
+            0.778,
+            0.955
+          ]
+        },
+        "system": 88,
+        "view": 37.1,
+        "callsPerTask": 1.292,
+        "toolContext": 111.1,
+        "output": 30.5,
+        "costPerTask": {
+          "task1": 252.9,
+          "session10": 157.8,
+          "unbounded": 147.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 282.3,
+          "session10": 176.2,
+          "unbounded": 164.4
+        }
+      },
+      "dense.DR3": {
+        "n": 48,
+        "oneShot": {
+          "k": 37,
+          "rate": 0.771,
+          "ci95": [
+            0.635,
+            0.867
+          ]
+        },
+        "accepted": {
+          "k": 37,
+          "rate": 0.771,
+          "ci95": [
+            0.635,
+            0.867
+          ]
+        },
+        "system": 110,
+        "view": 37.1,
+        "callsPerTask": 1.229,
+        "toolContext": 107.4,
+        "output": 34.2,
+        "costPerTask": {
+          "task1": 280.3,
+          "session10": 161.5,
+          "unbounded": 148.3
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 363.7,
+          "session10": 209.5,
+          "unbounded": 192.4
+        }
+      },
+      "dense.DR4": {
+        "n": 48,
+        "oneShot": {
+          "k": 40,
+          "rate": 0.833,
+          "ci95": [
+            0.704,
+            0.913
+          ]
+        },
+        "accepted": {
+          "k": 42,
+          "rate": 0.875,
+          "ci95": [
+            0.753,
+            0.941
+          ]
+        },
+        "system": 102,
+        "view": 37.1,
+        "callsPerTask": 1.167,
+        "toolContext": 96.9,
+        "output": 32.6,
+        "costPerTask": {
+          "task1": 257.8,
+          "session10": 147.7,
+          "unbounded": 135.4
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 294.7,
+          "session10": 168.8,
+          "unbounded": 154.8
+        }
+      },
+      "dense.DT": {
+        "n": 48,
+        "oneShot": {
+          "k": 41,
+          "rate": 0.854,
+          "ci95": [
+            0.728,
+            0.928
+          ]
+        },
+        "accepted": {
+          "k": 45,
+          "rate": 0.938,
+          "ci95": [
+            0.832,
+            0.979
+          ]
+        },
+        "system": 154,
+        "view": 37.1,
+        "callsPerTask": 1.146,
+        "toolContext": 94.6,
+        "output": 36.5,
+        "costPerTask": {
+          "task1": 324.7,
+          "session10": 158.3,
+          "unbounded": 139.9
+        },
+        "tokensPerAcceptedEdit": {
+          "task1": 346.3,
+          "session10": 168.9,
+          "unbounded": 149.2
+        }
+      }
+    }
+  },
+  "verdictsAgainstControl": {
+    "select(d)/haiku/canon.KC": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "8/13 against 12/13: tie",
+      "accepted": "12/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "259.5 against 260.7: tie",
+      "tokensPerAccepted.session10": "174 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "164.6 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.KR1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "10/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "262 against 260.7: tie",
+      "tokensPerAccepted.session10": "147.5 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "134.8 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.KR2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "235.1 against 260.7: win",
+      "tokensPerAccepted.session10": "140.1 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "129.5 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.KR3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "237.6 against 260.7: win",
+      "tokensPerAccepted.session10": "128.6 against 133.3: win",
+      "tokensPerAccepted.unbounded": "116.4 against 119.1: win"
+    },
+    "select(d)/haiku/canon.KT": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "325.8 against 260.7: loss",
+      "tokensPerAccepted.session10": "164.9 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "147 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.Kx1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "261.6 against 260.7: tie",
+      "tokensPerAccepted.session10": "147.1 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "134.4 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.Kx2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "10/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "266.2 against 260.7: loss",
+      "tokensPerAccepted.session10": "149.6 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "136.6 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.Kx3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "262.6 against 260.7: tie",
+      "tokensPerAccepted.session10": "141.7 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "128.2 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.Kx4": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "9/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "255.7 against 260.7: win",
+      "tokensPerAccepted.session10": "147.7 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "135.7 against 119.1: loss"
+    },
+    "select(d)/haiku/canon.Kx5": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "213.7 against 260.7: win",
+      "tokensPerAccepted.session10": "125.1 against 133.3: win",
+      "tokensPerAccepted.unbounded": "115.3 against 119.1: win"
+    },
+    "select(d)/haiku/canon.Kx6": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 12/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "259.4 against 260.7: tie",
+      "tokensPerAccepted.session10": "150.3 against 133.3: loss",
+      "tokensPerAccepted.unbounded": "138.2 against 119.1: loss"
+    },
+    "select(d)/haiku/dense.DC": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "228.3 against 323.4: win",
+      "tokensPerAccepted.session10": "125.4 against 153.7: win",
+      "tokensPerAccepted.unbounded": "113.9 against 134.9: win"
+    },
+    "select(d)/haiku/dense.DR1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "285.3 against 323.4: win",
+      "tokensPerAccepted.session10": "132.1 against 153.7: win",
+      "tokensPerAccepted.unbounded": "115 against 134.9: win"
+    },
+    "select(d)/haiku/dense.DR2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 11/13: tie",
+      "accepted": "13/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "246.2 against 323.4: win",
+      "tokensPerAccepted.session10": "115.5 against 153.7: win",
+      "tokensPerAccepted.unbounded": "101 against 134.9: win"
+    },
+    "select(d)/haiku/dense.DR3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "257.6 against 323.4: win",
+      "tokensPerAccepted.session10": "128.9 against 153.7: win",
+      "tokensPerAccepted.unbounded": "114.6 against 134.9: win"
+    },
+    "select(d)/haiku/dense.DR4": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 11/13: tie",
+      "accepted": "13/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "233 against 323.4: win",
+      "tokensPerAccepted.session10": "122.8 against 153.7: win",
+      "tokensPerAccepted.unbounded": "110.6 against 134.9: win"
+    },
+    "select(d)/haiku/dense.DT": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 11/13: tie",
+      "accepted": "13/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "283.9 against 323.4: win",
+      "tokensPerAccepted.session10": "117.6 against 153.7: win",
+      "tokensPerAccepted.unbounded": "99.1 against 134.9: win"
+    },
+    "select(d)/haiku/dense.Dx1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "290.6 against 323.4: win",
+      "tokensPerAccepted.session10": "151.4 against 153.7: win",
+      "tokensPerAccepted.unbounded": "135.9 against 134.9: tie"
+    },
+    "select(d)/haiku/dense.Dx2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 11/13: tie",
+      "accepted": "13/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "235 against 323.4: win",
+      "tokensPerAccepted.session10": "113 against 153.7: win",
+      "tokensPerAccepted.unbounded": "99.4 against 134.9: win"
+    },
+    "select(d)/haiku/dense.Dx3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "10/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "273.7 against 323.4: win",
+      "tokensPerAccepted.session10": "141.5 against 153.7: win",
+      "tokensPerAccepted.unbounded": "126.8 against 134.9: win"
+    },
+    "select(d)/haiku/dense.Dx4": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "267.2 against 323.4: win",
+      "tokensPerAccepted.session10": "124.5 against 153.7: win",
+      "tokensPerAccepted.unbounded": "108.6 against 134.9: win"
+    },
+    "select(d)/haiku/dense.Dx5": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "10/13 against 11/13: tie",
+      "accepted": "12/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "291.8 against 323.4: win",
+      "tokensPerAccepted.session10": "136.2 against 153.7: win",
+      "tokensPerAccepted.unbounded": "118.9 against 134.9: win"
+    },
+    "select(d)/haiku/dense.Dx6": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 11/13: tie",
+      "accepted": "13/13 against 12/13: tie",
+      "tokensPerAccepted.task1": "255.9 against 323.4: win",
+      "tokensPerAccepted.session10": "120.9 against 153.7: win",
+      "tokensPerAccepted.unbounded": "105.9 against 134.9: win"
+    },
+    "select(d)/sonnet/canon.KC": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "201 against 253.3: win",
+      "tokensPerAccepted.session10": "122.2 against 125.9: win",
+      "tokensPerAccepted.unbounded": "113.4 against 111.7: loss"
+    },
+    "select(d)/sonnet/canon.KR1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "238.3 against 253.3: win",
+      "tokensPerAccepted.session10": "123.9 against 125.9: win",
+      "tokensPerAccepted.unbounded": "111.1 against 111.7: tie"
+    },
+    "select(d)/sonnet/canon.KR2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "215.8 against 253.3: win",
+      "tokensPerAccepted.session10": "120.8 against 125.9: win",
+      "tokensPerAccepted.unbounded": "110.2 against 111.7: win"
+    },
+    "select(d)/sonnet/canon.KR3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "232.1 against 253.3: win",
+      "tokensPerAccepted.session10": "123 against 125.9: win",
+      "tokensPerAccepted.unbounded": "110.9 against 111.7: tie"
+    },
+    "select(d)/sonnet/canon.KT": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "292.1 against 253.3: loss",
+      "tokensPerAccepted.session10": "131.2 against 125.9: loss",
+      "tokensPerAccepted.unbounded": "113.3 against 111.7: loss"
+    },
+    "select(d)/sonnet/canon.Kx1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "236.3 against 253.3: win",
+      "tokensPerAccepted.session10": "121.9 against 125.9: win",
+      "tokensPerAccepted.unbounded": "109.1 against 111.7: win"
+    },
+    "select(d)/sonnet/canon.Kx2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "240.8 against 253.3: win",
+      "tokensPerAccepted.session10": "124.2 against 125.9: win",
+      "tokensPerAccepted.unbounded": "111.2 against 111.7: tie"
+    },
+    "select(d)/sonnet/canon.Kx3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "245.8 against 253.3: win",
+      "tokensPerAccepted.session10": "124.9 against 125.9: tie",
+      "tokensPerAccepted.unbounded": "111.4 against 111.7: tie"
+    },
+    "select(d)/sonnet/canon.Kx4": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "11/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "239.2 against 253.3: win",
+      "tokensPerAccepted.session10": "131.2 against 125.9: loss",
+      "tokensPerAccepted.unbounded": "119.2 against 111.7: loss"
+    },
+    "select(d)/sonnet/canon.Kx5": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "208.3 against 253.3: win",
+      "tokensPerAccepted.session10": "119.8 against 125.9: win",
+      "tokensPerAccepted.unbounded": "109.9 against 111.7: win"
+    },
+    "select(d)/sonnet/canon.Kx6": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "234.6 against 253.3: win",
+      "tokensPerAccepted.session10": "125.5 against 125.9: tie",
+      "tokensPerAccepted.unbounded": "113.4 against 111.7: loss"
+    },
+    "select(d)/sonnet/dense.DC": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "194.2 against 265.3: win",
+      "tokensPerAccepted.session10": "99.2 against 108.7: win",
+      "tokensPerAccepted.unbounded": "88.6 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.DR1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "247.8 against 265.3: win",
+      "tokensPerAccepted.session10": "106.3 against 108.7: win",
+      "tokensPerAccepted.unbounded": "90.6 against 91.3: tie"
+    },
+    "select(d)/sonnet/dense.DR2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "235.3 against 265.3: win",
+      "tokensPerAccepted.session10": "104.6 against 108.7: win",
+      "tokensPerAccepted.unbounded": "90.1 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.DR3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "221.7 against 265.3: win",
+      "tokensPerAccepted.session10": "102.9 against 108.7: win",
+      "tokensPerAccepted.unbounded": "89.7 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.DR4": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "211.2 against 265.3: win",
+      "tokensPerAccepted.session10": "101 against 108.7: win",
+      "tokensPerAccepted.unbounded": "88.8 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.DT": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "282 against 265.3: loss",
+      "tokensPerAccepted.session10": "115.7 against 108.7: loss",
+      "tokensPerAccepted.unbounded": "97.2 against 91.3: loss"
+    },
+    "select(d)/sonnet/dense.Dx1": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "237.5 against 265.3: win",
+      "tokensPerAccepted.session10": "109 against 108.7: tie",
+      "tokensPerAccepted.unbounded": "94.7 against 91.3: loss"
+    },
+    "select(d)/sonnet/dense.Dx2": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "225.3 against 265.3: win",
+      "tokensPerAccepted.session10": "103.3 against 108.7: win",
+      "tokensPerAccepted.unbounded": "89.7 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.Dx3": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "225.6 against 265.3: win",
+      "tokensPerAccepted.session10": "103.6 against 108.7: win",
+      "tokensPerAccepted.unbounded": "90 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.Dx4": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "13/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "236.6 against 265.3: win",
+      "tokensPerAccepted.session10": "104.8 against 108.7: win",
+      "tokensPerAccepted.unbounded": "90.2 against 91.3: win"
+    },
+    "select(d)/sonnet/dense.Dx5": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 13/13: tie",
+      "accepted": "13/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "255.2 against 265.3: win",
+      "tokensPerAccepted.session10": "111.6 against 108.7: loss",
+      "tokensPerAccepted.unbounded": "95.6 against 91.3: loss"
+    },
+    "select(d)/sonnet/dense.Dx6": {
+      "nVariant": 13,
+      "nControl": 13,
+      "oneShot": "12/13 against 13/13: tie",
+      "accepted": "12/13 against 13/13: tie",
+      "tokensPerAccepted.task1": "269.9 against 265.3: loss",
+      "tokensPerAccepted.session10": "123.6 against 108.7: loss",
+      "tokensPerAccepted.unbounded": "107.4 against 91.3: loss"
+    },
+    "select(d)/pooled/canon.KC": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "20/26 against 25/26: tie",
+      "accepted": "25/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "229.1 against 257: win",
+      "tokensPerAccepted.session10": "147.1 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "138 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.KR1": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "23/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "250.2 against 257: win",
+      "tokensPerAccepted.session10": "135.7 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "123 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.KR2": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "225.5 against 257: win",
+      "tokensPerAccepted.session10": "130.5 against 129.6: tie",
+      "tokensPerAccepted.unbounded": "119.9 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.KR3": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "234.9 against 257: win",
+      "tokensPerAccepted.session10": "125.8 against 129.6: win",
+      "tokensPerAccepted.unbounded": "113.7 against 115.4: win"
+    },
+    "select(d)/pooled/canon.KT": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "308.9 against 257: loss",
+      "tokensPerAccepted.session10": "148 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "130.1 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.Kx1": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "249 against 257: win",
+      "tokensPerAccepted.session10": "134.5 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "121.8 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.Kx2": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "23/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "253.5 against 257: win",
+      "tokensPerAccepted.session10": "136.9 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "123.9 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.Kx3": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "254.2 against 257: win",
+      "tokensPerAccepted.session10": "133.3 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "119.8 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.Kx4": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "20/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "247.5 against 257: win",
+      "tokensPerAccepted.session10": "139.5 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "127.5 against 115.4: loss"
+    },
+    "select(d)/pooled/canon.Kx5": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "211 against 257: win",
+      "tokensPerAccepted.session10": "122.4 against 129.6: win",
+      "tokensPerAccepted.unbounded": "112.6 against 115.4: win"
+    },
+    "select(d)/pooled/canon.Kx6": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 25/26: tie",
+      "accepted": "26/26 against 26/26: tie",
+      "tokensPerAccepted.task1": "247 against 257: win",
+      "tokensPerAccepted.session10": "137.9 against 129.6: loss",
+      "tokensPerAccepted.unbounded": "125.8 against 115.4: loss"
+    },
+    "select(d)/pooled/dense.DC": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "210.6 against 293.2: win",
+      "tokensPerAccepted.session10": "111.8 against 130.3: win",
+      "tokensPerAccepted.unbounded": "100.8 against 112.2: win"
+    },
+    "select(d)/pooled/dense.DR1": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "265.8 against 293.2: win",
+      "tokensPerAccepted.session10": "118.7 against 130.3: win",
+      "tokensPerAccepted.unbounded": "102.3 against 112.2: win"
+    },
+    "select(d)/pooled/dense.DR2": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 24/26: tie",
+      "accepted": "26/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "240.8 against 293.2: win",
+      "tokensPerAccepted.session10": "110.1 against 130.3: win",
+      "tokensPerAccepted.unbounded": "95.6 against 112.2: win"
+    },
+    "select(d)/pooled/dense.DR3": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "238.9 against 293.2: win",
+      "tokensPerAccepted.session10": "115.4 against 130.3: win",
+      "tokensPerAccepted.unbounded": "101.7 against 112.2: win"
+    },
+    "select(d)/pooled/dense.DR4": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 24/26: tie",
+      "accepted": "26/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "222.1 against 293.2: win",
+      "tokensPerAccepted.session10": "111.9 against 130.3: win",
+      "tokensPerAccepted.unbounded": "99.7 against 112.2: win"
+    },
+    "select(d)/pooled/dense.DT": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "24/26 against 24/26: tie",
+      "accepted": "26/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "283 against 293.2: win",
+      "tokensPerAccepted.session10": "116.7 against 130.3: win",
+      "tokensPerAccepted.unbounded": "98.2 against 112.2: win"
+    },
+    "select(d)/pooled/dense.Dx1": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "23/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "263 against 293.2: win",
+      "tokensPerAccepted.session10": "129.4 against 130.3: tie",
+      "tokensPerAccepted.unbounded": "114.5 against 112.2: loss"
+    },
+    "select(d)/pooled/dense.Dx2": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 24/26: tie",
+      "accepted": "26/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "230.2 against 293.2: win",
+      "tokensPerAccepted.session10": "108.1 against 130.3: win",
+      "tokensPerAccepted.unbounded": "94.6 against 112.2: win"
+    },
+    "select(d)/pooled/dense.Dx3": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "23/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "248.7 against 293.2: win",
+      "tokensPerAccepted.session10": "121.8 against 130.3: win",
+      "tokensPerAccepted.unbounded": "107.7 against 112.2: win"
+    },
+    "select(d)/pooled/dense.Dx4": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "25/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "251.3 against 293.2: win",
+      "tokensPerAccepted.session10": "114.3 against 130.3: win",
+      "tokensPerAccepted.unbounded": "99 against 112.2: win"
+    },
+    "select(d)/pooled/dense.Dx5": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "22/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "272.8 against 293.2: win",
+      "tokensPerAccepted.session10": "123.4 against 130.3: win",
+      "tokensPerAccepted.unbounded": "106.8 against 112.2: win"
+    },
+    "select(d)/pooled/dense.Dx6": {
+      "nVariant": 26,
+      "nControl": 26,
+      "oneShot": "23/26 against 24/26: tie",
+      "accepted": "25/26 against 25/26: tie",
+      "tokensPerAccepted.task1": "262.6 against 293.2: win",
+      "tokensPerAccepted.session10": "122.2 against 130.3: win",
+      "tokensPerAccepted.unbounded": "106.6 against 112.2: win"
+    },
+    "confirm(e+f)/haiku/canon.KR3": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "18/24 against 18/24: tie",
+      "accepted": "23/24 against 21/24: tie",
+      "tokensPerAccepted.task1": "298.1 against 352.2: win",
+      "tokensPerAccepted.session10": "184.3 against 206.5: win",
+      "tokensPerAccepted.unbounded": "171.7 against 190.3: win"
+    },
+    "confirm(e+f)/haiku/canon.KT": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "16/24 against 18/24: tie",
+      "accepted": "23/24 against 21/24: tie",
+      "tokensPerAccepted.task1": "353 against 352.2: tie",
+      "tokensPerAccepted.session10": "185.1 against 206.5: win",
+      "tokensPerAccepted.unbounded": "166.4 against 190.3: win"
+    },
+    "confirm(e+f)/haiku/canon.Kx1": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "16/24 against 18/24: tie",
+      "accepted": "23/24 against 21/24: tie",
+      "tokensPerAccepted.task1": "341.9 against 352.2: win",
+      "tokensPerAccepted.session10": "222.5 against 206.5: loss",
+      "tokensPerAccepted.unbounded": "209.2 against 190.3: loss"
+    },
+    "confirm(e+f)/haiku/canon.Kx5": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "15/24 against 18/24: tie",
+      "accepted": "17/24 against 21/24: tie",
+      "tokensPerAccepted.task1": "378.9 against 352.2: loss",
+      "tokensPerAccepted.session10": "253.9 against 206.5: loss",
+      "tokensPerAccepted.unbounded": "240 against 190.3: loss"
+    },
+    "confirm(e+f)/haiku/dense.DC": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "15/24 against 21/24: tie",
+      "accepted": "20/24 against 22/24: tie",
+      "tokensPerAccepted.task1": "323.8 against 339.7: win",
+      "tokensPerAccepted.session10": "209.7 against 168.9: loss",
+      "tokensPerAccepted.unbounded": "197.1 against 149.9: loss"
+    },
+    "confirm(e+f)/haiku/dense.DR3": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "14/24 against 21/24: tie",
+      "accepted": "14/24 against 22/24: tie",
+      "tokensPerAccepted.task1": "552.1 against 339.7: loss",
+      "tokensPerAccepted.session10": "348.4 against 168.9: loss",
+      "tokensPerAccepted.unbounded": "325.8 against 149.9: loss"
+    },
+    "confirm(e+f)/haiku/dense.DR4": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "18/24 against 21/24: tie",
+      "accepted": "19/24 against 22/24: tie",
+      "tokensPerAccepted.task1": "359.3 against 339.7: loss",
+      "tokensPerAccepted.session10": "220.1 against 168.9: loss",
+      "tokensPerAccepted.unbounded": "204.7 against 149.9: loss"
+    },
+    "confirm(e+f)/haiku/dense.DT": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "18/24 against 21/24: tie",
+      "accepted": "21/24 against 22/24: tie",
+      "tokensPerAccepted.task1": "407.9 against 339.7: loss",
+      "tokensPerAccepted.session10": "217.8 against 168.9: loss",
+      "tokensPerAccepted.unbounded": "196.7 against 149.9: loss"
+    },
+    "confirm(e+f)/sonnet/canon.KR3": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "23/24 against 23/24: tie",
+      "accepted": "23/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "256.2 against 281.2: win",
+      "tokensPerAccepted.session10": "142.4 against 148.2: win",
+      "tokensPerAccepted.unbounded": "129.7 against 133.5: win"
+    },
+    "confirm(e+f)/sonnet/canon.KT": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "24/24 against 23/24: tie",
+      "accepted": "24/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "303.1 against 281.2: loss",
+      "tokensPerAccepted.session10": "142.2 against 148.2: win",
+      "tokensPerAccepted.unbounded": "124.3 against 133.5: win"
+    },
+    "confirm(e+f)/sonnet/canon.Kx1": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "23/24 against 23/24: tie",
+      "accepted": "24/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "251.4 against 281.2: win",
+      "tokensPerAccepted.session10": "136.9 against 148.2: win",
+      "tokensPerAccepted.unbounded": "124.2 against 133.5: win"
+    },
+    "confirm(e+f)/sonnet/canon.Kx5": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "17/24 against 23/24: tie",
+      "accepted": "22/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "275.9 against 281.2: win",
+      "tokensPerAccepted.session10": "179.3 against 148.2: loss",
+      "tokensPerAccepted.unbounded": "168.5 against 133.5: loss"
+    },
+    "confirm(e+f)/sonnet/dense.DC": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "19/24 against 23/24: tie",
+      "accepted": "23/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "246.2 against 293.4: win",
+      "tokensPerAccepted.session10": "147 against 130: loss",
+      "tokensPerAccepted.unbounded": "136 against 111.9: loss"
+    },
+    "confirm(e+f)/sonnet/dense.DR3": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "23/24 against 23/24: tie",
+      "accepted": "23/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "249 against 293.4: win",
+      "tokensPerAccepted.session10": "125 against 130: win",
+      "tokensPerAccepted.unbounded": "111.2 against 111.9: tie"
+    },
+    "confirm(e+f)/sonnet/dense.DR4": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "22/24 against 23/24: tie",
+      "accepted": "23/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "241.3 against 293.4: win",
+      "tokensPerAccepted.session10": "126.3 against 130: win",
+      "tokensPerAccepted.unbounded": "113.5 against 111.9: loss"
+    },
+    "confirm(e+f)/sonnet/dense.DT": {
+      "nVariant": 24,
+      "nControl": 24,
+      "oneShot": "23/24 against 23/24: tie",
+      "accepted": "24/24 against 23/24: tie",
+      "tokensPerAccepted.task1": "292.4 against 293.4: tie",
+      "tokensPerAccepted.session10": "126.1 against 130: win",
+      "tokensPerAccepted.unbounded": "107.6 against 111.9: win"
+    },
+    "confirm(e+f)/pooled/canon.KR3": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "41/48 against 41/48: tie",
+      "accepted": "46/48 against 44/48: tie",
+      "tokensPerAccepted.task1": "277.2 against 315.1: win",
+      "tokensPerAccepted.session10": "163.3 against 176: win",
+      "tokensPerAccepted.unbounded": "150.7 against 160.6: win"
+    },
+    "confirm(e+f)/pooled/canon.KT": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "40/48 against 41/48: tie",
+      "accepted": "47/48 against 44/48: tie",
+      "tokensPerAccepted.task1": "327.5 against 315.1: loss",
+      "tokensPerAccepted.session10": "163.2 against 176: win",
+      "tokensPerAccepted.unbounded": "144.9 against 160.6: win"
+    },
+    "confirm(e+f)/pooled/canon.Kx1": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "39/48 against 41/48: tie",
+      "accepted": "47/48 against 44/48: tie",
+      "tokensPerAccepted.task1": "295.7 against 315.1: win",
+      "tokensPerAccepted.session10": "178.8 against 176: loss",
+      "tokensPerAccepted.unbounded": "165.8 against 160.6: loss"
+    },
+    "confirm(e+f)/pooled/canon.Kx5": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "32/48 against 41/48: tie",
+      "accepted": "39/48 against 44/48: tie",
+      "tokensPerAccepted.task1": "320.8 against 315.1: loss",
+      "tokensPerAccepted.session10": "211.8 against 176: loss",
+      "tokensPerAccepted.unbounded": "199.7 against 160.6: loss"
+    },
+    "confirm(e+f)/pooled/dense.DC": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "34/48 against 44/48: tie",
+      "accepted": "43/48 against 45/48: tie",
+      "tokensPerAccepted.task1": "282.3 against 316.1: win",
+      "tokensPerAccepted.session10": "176.2 against 149: loss",
+      "tokensPerAccepted.unbounded": "164.4 against 130.5: loss"
+    },
+    "confirm(e+f)/pooled/dense.DR3": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "37/48 against 44/48: tie",
+      "accepted": "37/48 against 45/48: tie",
+      "tokensPerAccepted.task1": "363.7 against 316.1: loss",
+      "tokensPerAccepted.session10": "209.5 against 149: loss",
+      "tokensPerAccepted.unbounded": "192.4 against 130.5: loss"
+    },
+    "confirm(e+f)/pooled/dense.DR4": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "40/48 against 44/48: tie",
+      "accepted": "42/48 against 45/48: tie",
+      "tokensPerAccepted.task1": "294.7 against 316.1: win",
+      "tokensPerAccepted.session10": "168.8 against 149: loss",
+      "tokensPerAccepted.unbounded": "154.8 against 130.5: loss"
+    },
+    "confirm(e+f)/pooled/dense.DT": {
+      "nVariant": 48,
+      "nControl": 48,
+      "oneShot": "41/48 against 44/48: tie",
+      "accepted": "45/48 against 45/48: tie",
+      "tokensPerAccepted.task1": "346.3 against 316.1: loss",
+      "tokensPerAccepted.session10": "168.9 against 149: loss",
+      "tokensPerAccepted.unbounded": "149.2 against 130.5: loss"
+    }
+  },
+  "flipsAgainstControl": {
+    "canon.KC": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-offset-param: one-shot -> repaired",
+          "haiku/d-total-six: one-shot -> rejected",
+          "haiku/d-rename-twice: one-shot -> repaired",
+          "haiku/d-absdiff-wrap: one-shot -> repaired",
+          "sonnet/d-isdiv-bool: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.KR1": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-rename-twice: one-shot -> repaired",
+          "haiku/d-prod4-seed: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.KR2": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-total-six: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.KR3": {
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-popcount-fold: one-shot -> repaired",
+          "haiku/e-thread-param: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/f-min4-seed: rejected -> repaired",
+          "haiku/f-advance-wrap: repaired -> one-shot",
+          "haiku/f-bump-cap: repaired -> one-shot",
+          "haiku/f-divrem-pair: rejected -> repaired"
+        ]
+      }
+    },
+    "canon.KT": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-total-six: one-shot -> repaired",
+          "haiku/d-prod4-seed: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-isdiv-bool: repaired -> one-shot"
+        ]
+      },
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-guard-zero-div: one-shot -> repaired",
+          "haiku/e-thread-param: one-shot -> rejected",
+          "haiku/f-sumlow-bound: one-shot -> repaired",
+          "haiku/f-countabove-gt: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/e-sum-range: rejected -> repaired",
+          "haiku/f-min4-seed: rejected -> repaired",
+          "haiku/f-divrem-pair: rejected -> one-shot",
+          "haiku/f-addover-bool: repaired -> one-shot",
+          "sonnet/f-divrem-pair: rejected -> one-shot"
+        ]
+      }
+    },
+    "canon.Kx1": {
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-guard-zero-div: one-shot -> repaired",
+          "haiku/e-popcount-fold: one-shot -> repaired",
+          "haiku/e-thread-param: one-shot -> rejected",
+          "haiku/f-countabove-gt: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/e-sum-range: rejected -> repaired",
+          "haiku/f-min4-seed: rejected -> repaired",
+          "haiku/f-advance-wrap: repaired -> one-shot",
+          "haiku/f-bump-cap: repaired -> one-shot",
+          "haiku/f-divrem-pair: rejected -> repaired",
+          "sonnet/f-divrem-pair: rejected -> repaired"
+        ]
+      }
+    },
+    "canon.Kx2": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-total-six: one-shot -> repaired",
+          "haiku/d-rename-twice: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.Kx3": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-cube-sq: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.Kx4": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-offset-param: one-shot -> repaired",
+          "haiku/d-total-six: one-shot -> repaired",
+          "haiku/d-rename-twice: one-shot -> repaired",
+          "sonnet/d-offset-param: one-shot -> repaired",
+          "sonnet/d-isdiv-bool: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.Kx5": {
+      "confirm(e+f)": {
+        "worse": [
+          "sonnet/e-guard-zero-div: one-shot -> repaired",
+          "sonnet/e-sum-range: one-shot -> rejected",
+          "haiku/f-sumlow-bound: one-shot -> rejected",
+          "haiku/f-countabove-gt: one-shot -> rejected",
+          "haiku/f-avg4-floor: one-shot -> rejected",
+          "haiku/f-addover-bool: repaired -> rejected",
+          "sonnet/f-advance-wrap: one-shot -> repaired",
+          "sonnet/f-bump-cap: one-shot -> repaired",
+          "sonnet/f-sumlow-bound: one-shot -> repaired",
+          "sonnet/f-countabove-gt: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "canon.Kx6": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-total-six: one-shot -> repaired"
+        ],
+        "better": []
+      }
+    },
+    "dense.DC": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      },
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-guard-zero-div: one-shot -> rejected",
+          "haiku/e-sum-range: repaired -> rejected",
+          "haiku/e-popcount-fold: one-shot -> rejected",
+          "haiku/e-thread-param: one-shot -> repaired",
+          "sonnet/e-sum-range: one-shot -> repaired",
+          "sonnet/e-popcount-fold: one-shot -> repaired",
+          "haiku/f-sumlow-bound: one-shot -> repaired",
+          "haiku/f-sumsq-helper: one-shot -> repaired",
+          "haiku/f-countabove-gt: one-shot -> repaired",
+          "haiku/f-avg4-floor: one-shot -> repaired",
+          "sonnet/f-sumlow-bound: one-shot -> repaired",
+          "sonnet/f-countabove-gt: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/f-min4-seed: rejected -> one-shot"
+        ]
+      }
+    },
+    "dense.DR1": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      }
+    },
+    "dense.DR2": {
+      "select(d)": {
+        "worse": [],
+        "better": [
+          "haiku/d-total-six: rejected -> repaired",
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      }
+    },
+    "dense.DR3": {
+      "select(d)": {
+        "worse": [],
+        "better": [
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      },
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-sum-range: repaired -> rejected",
+          "haiku/e-popcount-fold: one-shot -> rejected",
+          "haiku/e-thread-param: one-shot -> rejected",
+          "haiku/f-advance-wrap: one-shot -> rejected",
+          "haiku/f-bump-cap: one-shot -> rejected",
+          "haiku/f-sumlow-bound: one-shot -> rejected",
+          "haiku/f-countabove-gt: one-shot -> rejected",
+          "haiku/f-avg4-floor: one-shot -> rejected"
+        ],
+        "better": []
+      }
+    },
+    "dense.DR4": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-total-six: rejected -> repaired",
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      },
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-guard-zero-div: one-shot -> rejected",
+          "haiku/e-sum-range: repaired -> rejected",
+          "haiku/e-popcount-fold: one-shot -> rejected",
+          "haiku/e-thread-param: one-shot -> rejected",
+          "sonnet/e-sum-range: one-shot -> repaired",
+          "haiku/f-addover-bool: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/f-min4-seed: rejected -> one-shot"
+        ]
+      }
+    },
+    "dense.DT": {
+      "select(d)": {
+        "worse": [
+          "sonnet/d-cube-sq: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-total-six: rejected -> repaired",
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      },
+      "confirm(e+f)": {
+        "worse": [
+          "haiku/e-sum-range: repaired -> rejected",
+          "haiku/e-popcount-fold: one-shot -> rejected",
+          "sonnet/e-helper-sq-twice: one-shot -> repaired",
+          "haiku/f-sumlow-bound: one-shot -> repaired",
+          "haiku/f-countabove-gt: one-shot -> repaired",
+          "haiku/f-avg4-floor: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/f-divrem-pair: rejected -> one-shot",
+          "sonnet/f-divrem-pair: rejected -> one-shot"
+        ]
+      }
+    },
+    "dense.Dx1": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired",
+          "haiku/d-prod4-seed: repaired -> rejected",
+          "sonnet/d-cube-sq: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-total-six: rejected -> one-shot"
+        ]
+      }
+    },
+    "dense.Dx2": {
+      "select(d)": {
+        "worse": [],
+        "better": [
+          "haiku/d-total-six: rejected -> repaired",
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      }
+    },
+    "dense.Dx3": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired",
+          "haiku/d-rename-twice: one-shot -> rejected"
+        ],
+        "better": [
+          "haiku/d-total-six: rejected -> repaired",
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      }
+    },
+    "dense.Dx4": {
+      "select(d)": {
+        "worse": [],
+        "better": [
+          "haiku/d-prod4-seed: repaired -> one-shot"
+        ]
+      }
+    },
+    "dense.Dx5": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired",
+          "haiku/d-prod4-seed: repaired -> rejected",
+          "sonnet/d-cube-sq: one-shot -> repaired"
+        ],
+        "better": [
+          "haiku/d-total-six: rejected -> repaired"
+        ]
+      }
+    },
+    "dense.Dx6": {
+      "select(d)": {
+        "worse": [
+          "haiku/d-isdiv-bool: one-shot -> repaired",
+          "sonnet/d-cube-sq: one-shot -> rejected"
+        ],
+        "better": [
+          "haiku/d-total-six: rejected -> one-shot"
+        ]
+      }
+    }
+  },
+  "failureTaxonomy": {
+    "note": "every non-accepted attempt (first reply and repair) of a variant over all sets and both models, by the first rule that matches the checker message; class and the general fix proposal per category",
+    "categories": [
+      {
+        "category": "bool result without `-> bool` in the head",
+        "class": "protocol-ambiguity",
+        "proposal": "neither primer says that a result that is not u32 goes in the head (the canonical text lists `ge(->bool)` as an operation result, the dense text shows `-> bool` only inside an example); the checker already knows the type of the last statement, so a whole-function reply without a head result could take it from there (bool, record, array), or the teaching text names it (variants KT and DT measure the text)"
+      },
+      {
+        "category": "record result type not written",
+        "class": "protocol-ambiguity",
+        "proposal": "no primer text writes a record type; models invent `{u32 u32}`, `(u32 u32)`, `u32x2`, `rec`; same fix as the bool head (infer from the body, or teach `(u32,u32)`)"
+      },
+      {
+        "category": "dense operand count, or a value used twice (dense)",
+        "class": "protocol-ambiguity",
+        "proposal": "the dense primer teaches prefix nesting by one example (`add mul A B C`); a fold seed, a ternary mul and a repeated value are not taught; say so in the primer or let the dense parser name a repeated pure sub-expression (the earlier dense records propose the same)"
+      },
+      {
+        "category": "callee used before it is defined (helper added after its caller)",
+        "class": "protocol-ambiguity",
+        "proposal": "neither primer says that a callee is defined above its caller (the min guide does: \"F earlier\"); a multi-function reply could be ordered by dependency by the edit session, or the teaching text says so"
+      },
+      {
+        "category": "operation name invented (not in the primer or the language)",
+        "class": "model-error",
+        "proposal": "none for the full op list; where a variant dropped the list the loss is the ablation cost"
+      },
+      {
+        "category": "nested operand (canonical)",
+        "class": "model-error",
+        "proposal": "none: the primer says one op, no nesting; the rejection gives the split"
+      },
+      {
+        "category": "at or get on the wrong aggregate",
+        "class": "model-error",
+        "proposal": "none: the primer names get for arrays and at for records; the rejection repeats it"
+      },
+      {
+        "category": "replacement block shape (end before ret, unused or duplicate node, operand count)",
+        "class": "model-error",
+        "proposal": "none: each rejection names the fix"
+      },
+      {
+        "category": "wrong result",
+        "class": "model-error",
+        "proposal": "none: the edit was well formed and wrong"
+      },
+      {
+        "category": "missing function or no reply",
+        "class": "model-error",
+        "proposal": "none"
+      }
+    ],
+    "perVariant": {
+      "canon.K0": {
+        "bool result without `-> bool` in the head": 2,
+        "wrong result": 3,
+        "nested operand (canonical)": 1,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 5,
+        "record result type not written": 1
+      },
+      "canon.KC": {
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 3,
+        "callee used before it is defined (helper added after its caller)": 2,
+        "bool result without `-> bool` in the head": 2
+      },
+      "canon.KR1": {
+        "bool result without `-> bool` in the head": 1,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 1,
+        "at or get on the wrong aggregate": 1
+      },
+      "canon.KR2": {
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 1,
+        "bool result without `-> bool` in the head": 1
+      },
+      "canon.KR3": {
+        "bool result without `-> bool` in the head": 2,
+        "wrong result": 3,
+        "callee used before it is defined (helper added after its caller)": 1,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 2,
+        "record result type not written": 2
+      },
+      "canon.KT": {
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 4,
+        "wrong result": 2,
+        "nested operand (canonical)": 5
+      },
+      "canon.Kx1": {
+        "bool result without `-> bool` in the head": 2,
+        "nested operand (canonical)": 2,
+        "wrong result": 2,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 2,
+        "operation name invented (not in the primer or the language)": 1,
+        "record result type not written": 2
+      },
+      "canon.Kx2": {
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 1,
+        "bool result without `-> bool` in the head": 1,
+        "callee used before it is defined (helper added after its caller)": 1
+      },
+      "canon.Kx3": {
+        "wrong result": 1,
+        "bool result without `-> bool` in the head": 1
+      },
+      "canon.Kx4": {
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 3,
+        "callee used before it is defined (helper added after its caller)": 1,
+        "bool result without `-> bool` in the head": 1,
+        "other (a type or structure error of the edit)": 1
+      },
+      "canon.Kx5": {
+        "bool result without `-> bool` in the head": 2,
+        "wrong result": 1,
+        "other (a type or structure error of the edit)": 1,
+        "operation name invented (not in the primer or the language)": 11,
+        "at or get on the wrong aggregate": 1,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 8,
+        "nested operand (canonical)": 1,
+        "record result type not written": 1
+      },
+      "canon.Kx6": {
+        "wrong result": 1,
+        "bool result without `-> bool` in the head": 1
+      },
+      "dense.D0": {
+        "dense operand count, or a value used twice (dense)": 1,
+        "other (a type or structure error of the edit)": 1,
+        "wrong result": 4,
+        "record result type not written": 4
+      },
+      "dense.DC": {
+        "dense operand count, or a value used twice (dense)": 3,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 1,
+        "bool result without `-> bool` in the head": 1,
+        "wrong result": 6,
+        "operation name invented (not in the primer or the language)": 6,
+        "at or get on the wrong aggregate": 1,
+        "record result type not written": 3,
+        "missing function or no reply": 1
+      },
+      "dense.DR1": {
+        "dense operand count, or a value used twice (dense)": 1,
+        "other (a type or structure error of the edit)": 1,
+        "bool result without `-> bool` in the head": 1
+      },
+      "dense.DR2": {
+        "dense operand count, or a value used twice (dense)": 1
+      },
+      "dense.DR3": {
+        "dense operand count, or a value used twice (dense)": 4,
+        "other (a type or structure error of the edit)": 4,
+        "wrong result": 1,
+        "at or get on the wrong aggregate": 1,
+        "operation name invented (not in the primer or the language)": 10,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 2,
+        "record result type not written": 2
+      },
+      "dense.DR4": {
+        "wrong result": 4,
+        "bool result without `-> bool` in the head": 1,
+        "operation name invented (not in the primer or the language)": 2,
+        "other (a type or structure error of the edit)": 1,
+        "callee used before it is defined (helper added after its caller)": 1,
+        "dense operand count, or a value used twice (dense)": 2,
+        "at or get on the wrong aggregate": 1,
+        "record result type not written": 4
+      },
+      "dense.DT": {
+        "dense operand count, or a value used twice (dense)": 3,
+        "wrong result": 2,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 6,
+        "callee used before it is defined (helper added after its caller)": 1
+      },
+      "dense.Dx1": {
+        "bool result without `-> bool` in the head": 1,
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 2,
+        "dense operand count, or a value used twice (dense)": 1
+      },
+      "dense.Dx2": {
+        "dense operand count, or a value used twice (dense)": 1
+      },
+      "dense.Dx3": {
+        "replacement block shape (end before ret, unused or duplicate node, operand count)": 1,
+        "bool result without `-> bool` in the head": 1,
+        "operation name invented (not in the primer or the language)": 1,
+        "other (a type or structure error of the edit)": 1
+      },
+      "dense.Dx4": {
+        "dense operand count, or a value used twice (dense)": 1,
+        "other (a type or structure error of the edit)": 1
+      },
+      "dense.Dx5": {
+        "dense operand count, or a value used twice (dense)": 2,
+        "bool result without `-> bool` in the head": 1,
+        "at or get on the wrong aggregate": 2
+      },
+      "dense.Dx6": {
+        "bool result without `-> bool` in the head": 1,
+        "operation name invented (not in the primer or the language)": 1,
+        "dense operand count, or a value used twice (dense)": 2
+      }
+    }
+  }
+}

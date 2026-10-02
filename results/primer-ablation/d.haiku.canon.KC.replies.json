@@ -1,0 +1,46 @@
+{
+ "d-scale-constant/a0/structured": [
+  "b add a 1"
+ ],
+ "d-offset-param/a0/structured": [
+  "fn offset u32 u32 -> u32\na add p0 p1",
+  "fn offset u32 u32 -> u32\na add p0 p1\nret a\nend"
+ ],
+ "d-cube-sq/a0/structured": [
+  "fn cube u32 -> u32\na call sq p0\nb mul a p0\nret b"
+ ],
+ "d-total-six/a0/structured": [
+  "s fold addtwice 6 p0 0",
+  "fn addtwice u32 u32 -> u32\na shl p1 1\nb add p0 a\nret b\nend\nfn total u32 -> u32\ns fold addtwice 6 p0 0\nret s\nend"
+ ],
+ "d-stats-second-field/a0/structured": [
+  "d sub p0 p1"
+ ],
+ "d-maxof-comparison/a0/structured": [
+  "c gt p0 p1"
+ ],
+ "d-isdiv-bool/a0/structured": [
+  "z eq r 0\nret z",
+  "fn isdiv u32 u32 -> bool\nr rem p0 p1\nz eq r 0\nret z\nend"
+ ],
+ "d-rename-twice/a0/structured": [
+  "-fn twice\nfn dbl u32 -> u32\na add p0 p0\nret a",
+  "fn dbl u32 -> u32\na add p0 p0\nret a\nend\nfn quad u32 -> u32\nb dbl p0\nc dbl b\nret c\nend"
+ ],
+ "d-lowflip-xor/a0/structured": [
+  "a xor p0 255"
+ ],
+ "d-absdiff-wrap/a0/structured": [
+  "c lt p0 p1\nd sub p0 p1\ne sub p1 p0\nr select c e d",
+  "c lt p0 p1\nd sub p0 p1\ne sub p1 p0\nr select c e d\nret r"
+ ],
+ "d-setmid-index/a0/structured": [
+  "r set p0 2 p1"
+ ],
+ "d-calc-inc-first/a0/structured": [
+  "fn inc u32 -> u32\na add p0 1\nret a\nfn calc u32 -> u32\ni call inc p0\nr call shl1 i\nret r"
+ ],
+ "d-prod4-seed/a0/structured": [
+  "r fold mulel 4 1 p0"
+ ]
+}

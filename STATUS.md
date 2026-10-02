@@ -109,7 +109,15 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
 
 1. Re-run the results recorded under load (`results/parallel.json`, `results/edit-loop.json`, the 21 unverified ledger entries)
    on a quiet host, then publish or drop each timing.
-2. Shrink the primer: every clause of the 145-token dense primer that models do not need costs every cold call.
+2. Shrink the primer (measured, `results/primer-ablation.json`, `docs/history/2026-10-02-primer-ablation.md`: 25 variants, clause drops and rewrites,
+   selected on set d, confirmed on the different sets e and f, fresh Haiku and Sonnet subagents, 11 to 13 tasks per cell and model, no rate
+   separates at that n). The canonical primer (`experiments/primers/MODEL_GUIDE.rules-merged.txt`) is now 101 o200k tokens, was 118: acceptance
+   equal on both sizes and a lower cost per accepted edit at all three session lengths on both. No shorter dense primer kept acceptance (88,
+   102 and 110 tokens against 145 lose on Haiku and on the 10-task and unbounded cost), so the 145-token dense primer stays; every one of its
+   clauses is used on e and f. Open: a whole-function reply without a head result could take the result type from its last statement (the one
+   failure every variant shares: bool and record results; teaching it in the primer removed the failures and did not pay for its tokens),
+   a callee defined after its caller could be ordered by the edit session, and the dense operand-count text. Earlier edit-cost numbers used the
+   118-token text and are not rescored.
 3. Decide whether the dense view with callee bodies becomes the recommended form of the MCP server and the docs.
 4. Bring the A0 optimizer to the C and AArch64 emitters (it needs a return-kind encoding inside the bootstrap closure).
 5. SIMD fills for the arm64 and x86-64 backends (the wasm32 path has them).

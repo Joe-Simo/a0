@@ -1,0 +1,43 @@
+{
+ "d-scale-constant/a0/structured": [
+  "fn scale add mul A 3 1\n# scale u32 -> u32"
+ ],
+ "d-offset-param/a0/structured": [
+  "fn offset add A B\n# offset u32 u32 -> u32"
+ ],
+ "d-cube-sq/a0/structured": [
+  "fn sq mul A A\nfn cube mul sq A A\n# sq u32 -> u32\n# cube u32 -> u32"
+ ],
+ "d-total-six/a0/structured": [
+  "fn addtwice add A << B 1\nfn total fold addtwice 6 A\n# addtwice u32 u32 -> u32\n# total u32 -> u32"
+ ],
+ "d-stats-second-field/a0/structured": [
+  "fn stats -> (u32,u32)\ns add A B\nd sub A B\nr (s d)\n# stats u32 u32 -> (u32,u32)"
+ ],
+ "d-maxof-comparison/a0/structured": [
+  "fn maxof\nc ge A B\nr select c A B\n# maxof u32 u32 -> u32"
+ ],
+ "d-isdiv-bool/a0/structured": [
+  "fn isdiv\nr eq rem A B 0\n# isdiv u32 u32 -> bool",
+  "fn isdiv u32 u32 -> bool\nr eq rem A B 0"
+ ],
+ "d-rename-twice/a0/structured": [
+  "fn dbl add A A\n# dbl u32 -> u32\n# quad u32 -> u32"
+ ],
+ "d-lowflip-xor/a0/structured": [
+  "fn lowflip xor A 255\n# lowflip u32 -> u32"
+ ],
+ "d-absdiff-wrap/a0/structured": [
+  "fn absdiff\nc le A B\nr select c sub B A sub A B\n# absdiff u32 u32 -> u32"
+ ],
+ "d-setmid-index/a0/structured": [
+  "fn setmid u32x4 u32 -> u32x4\nr set A 2 B\n# setmid u32x4 u32 -> u32x4"
+ ],
+ "d-calc-inc-first/a0/structured": [
+  "fn inc add A 1\nfn calc shl1 inc A\n# inc u32 -> u32\n# calc u32 -> u32"
+ ],
+ "d-prod4-seed/a0/structured": [
+  "fn mulel mul S E\nfn prod4 u32x4 -> u32\nr fold mulel 6 1 A\n# mulel u32 u32 u32x4 -> u32\n# prod4 u32x4 -> u32",
+  "fn mulel u32 u32 u32x4 -> u32\nr mul S (at A I)\nfn prod4 u32x4 -> u32\nr fold mulel 4 1 A"
+ ]
+}

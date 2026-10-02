@@ -1,0 +1,48 @@
+{
+ "f-min4-seed/a0/structured": [
+  "fn min4 u32x4 -> u32\nr fold minel 4 0 A\nminel s i A\nget A i c\n> s c\nselect c s",
+  "fn min4 u32x4 -> u32\nr fold minel 4 0 A\nminel u32 u32 u32x4 -> u32\nelem get C B\ncond < elem A\nselect elem A cond"
+ ],
+ "f-third-index/a0/structured": [
+  "fn third u32x4 -> u32\nr get A 2"
+ ],
+ "f-advance-wrap/a0/structured": [
+  "fn advance u32 u32 -> u32\nd add A 1\neq d B\nselect 0 d",
+  "fn advance u32 u32 -> u32\nd add A 1\nselect 0 d eq d B"
+ ],
+ "f-bump-cap/a0/structured": [
+  "fn bump u32 -> u32\nd add A 10\n> d 100\nselect 100 d",
+  "fn bump u32 -> u32\nd add A 10\nselect 100 d > d 100"
+ ],
+ "f-divrem-pair/a0/structured": [
+  "fn divrem u32 u32 -> u32 u32\nq div A B\nr mod A B\n(q r)",
+  "fn divrem u32 u32 -> u32 u32\nq div A B\nr mod A B\n(q r)"
+ ],
+ "f-remaining-order/a0/structured": [
+  "fn remaining u32 u32 -> u32\nsub B A"
+ ],
+ "f-sumlow-bound/a0/structured": [
+  "fn sumlow u32 -> u32\nr fold addlow 8 0 A\naddlow s i A\n< i 6\nselect add s i s",
+  "fn sumlow u32 -> u32\nr fold addlow 8 0 A\naddlow u32 u32 -> u32\ncond < B 6\nsum add A B\nselect sum A cond"
+ ],
+ "f-setlow-or/a0/structured": [
+  "fn setlow u32 -> u32\nor A 15"
+ ],
+ "f-sumsq-helper/a0/structured": [
+  "fn sq u32 -> u32\nmul A A\nfn sumsq u32 u32 -> u32\na sq A\nb sq B\nadd a b"
+ ],
+ "f-countabove-gt/a0/structured": [
+  "fn countabove u32x4 u32 -> u32\nr fold cnt 4 0 A B\ncnt s i a t\nget a i c\n> c t\nselect add s 1 s",
+  "fn countabove u32x4 u32 -> u32\nr fold cnt 4 0 A B\ncnt u32 u32 u32x4 u32 -> u32\nelem get C B\ncond > elem D\nselect add A 1 A cond"
+ ],
+ "f-avg4-floor/a0/structured": [
+  "fn avg4 u32x4 -> u32\ns fold addel 4 0 A\ndiv s 4\naddel s i A\nadd s get A i",
+  "fn avg4 u32x4 -> u32\ns fold addel 4 0 A\nr div s 4\naddel u32 u32 u32x4 -> u32\nelem get C B\nadd A elem"
+ ],
+ "f-addover-bool/a0/structured": [
+  "fn addover u32 u32 -> bool\ns add A B\n< s A"
+ ],
+ "f-highbyte-shr/a0/structured": [
+  "fn highbyte u32 -> u32\n>> A 24"
+ ]
+}

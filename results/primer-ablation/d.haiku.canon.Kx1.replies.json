@@ -1,0 +1,42 @@
+{
+ "d-scale-constant/a0/structured": [
+  "fn scale u32 -> u32\na mul p0 3\nb add a 1\nret b\nend"
+ ],
+ "d-offset-param/a0/structured": [
+  "fn offset u32 u32 -> u32\na add p0 p1\nret a\nend"
+ ],
+ "d-cube-sq/a0/structured": [
+  "fn sq u32 -> u32\na mul p0 p0\nret a\nend\nfn cube u32 -> u32\ns call sq p0\nr mul s p0\nret r\nend"
+ ],
+ "d-total-six/a0/structured": [
+  "fn addtwice u32 u32 -> u32\na shl p1 1\nb add p0 a\nret b\nend\nfn total u32 -> u32\nr fold addtwice 6 p0\nret r\nend"
+ ],
+ "d-stats-second-field/a0/structured": [
+  "fn stats u32 u32 -> (u32,u32)\ns add p0 p1\nd sub p0 p1\nr rec s d\nret r\nend"
+ ],
+ "d-maxof-comparison/a0/structured": [
+  "fn maxof u32 u32 -> u32\nc gt p0 p1\nr select c p0 p1\nret r\nend"
+ ],
+ "d-isdiv-bool/a0/structured": [
+  "fn isdiv u32 u32 -> u32\nr rem p0 p1\nc eq r 0\nret c\nend",
+  "fn isdiv u32 u32 -> bool\nr rem p0 p1\nc eq r 0\nret c\nend"
+ ],
+ "d-rename-twice/a0/structured": [
+  "fn dbl u32 -> u32\na add p0 p0\nret a\nend\nfn quad u32 -> u32\nd call dbl p0\nr call dbl d\nret r\nend"
+ ],
+ "d-lowflip-xor/a0/structured": [
+  "fn lowflip u32 -> u32\na xor p0 255\nret a\nend"
+ ],
+ "d-absdiff-wrap/a0/structured": [
+  "fn absdiff u32 u32 -> u32\nc lt p0 p1\nd sub p0 p1\ne sub p1 p0\nr select c e d\nret r\nend"
+ ],
+ "d-setmid-index/a0/structured": [
+  "fn setmid u32x4 u32 -> u32x4\nr set p0 2 p1\nret r\nend"
+ ],
+ "d-calc-inc-first/a0/structured": [
+  "fn inc u32 -> u32\na add p0 1\nret a\nend\nfn calc u32 -> u32\ni call inc p0\nr call shl1 i\nret r\nend"
+ ],
+ "d-prod4-seed/a0/structured": [
+  "fn mulel u32 u32 u32x4 -> u32\ne get p2 p1\nr mul p0 e\nret r\nend\nfn prod4 u32x4 -> u32\nr fold mulel 4 1 p0\nret r\nend"
+ ]
+}

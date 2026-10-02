@@ -1,0 +1,39 @@
+{
+ "e-fold-count-fix/a0/structured": [
+  "e0\nfn sumto\nr fold addi 5 A\n# addi u32 u32 -> u32\ng0\n# addi u32 u32 -> u32\n# sumto u32 -> u32"
+ ],
+ "e-swap-fields/a0/structured": [
+  "e0\nfn split -> (u32,u32)\ns add A B\nd sub A B\nr (d s)\ng0\n# split u32 u32 -> (u32,u32)"
+ ],
+ "e-guard-zero-div/a0/structured": [
+  "e0\nfn quot\nz iszero B\nq div A B\nr z? 0 q\ng0\n# quot u32 u32 -> u32",
+  "e0\nfn quot u32 u32 -> u32\nq div A B\nr select q 0 B\ng0\n# quot u32 u32 -> u32"
+ ],
+ "e-helper-sq-twice/a0/structured": [
+  "e0\nfn sq\nr mul A A\n# sq u32 -> u32\n\nfn sumsq\nsx sq A\nsy sq B\ns add sx sy\nr s\ng0\n# sq u32 -> u32\n# sumsq u32 u32 -> u32"
+ ],
+ "e-mask-widen/a0/structured": [
+  "e0\nfn lowbits and A 4095\ng0\n# lowbits u32 -> u32"
+ ],
+ "e-cmp-direction/a0/structured": [
+  "e0\nfn above -> bool\nc gt A B\ng0\n# above u32 u32 -> bool"
+ ],
+ "e-sum-range/a0/structured": [
+  "e0\nfn sum3 u32x4 -> u32\nr fold stepadd 3 1 A\n# stepadd u32 u32 u32x4 -> u32\ng0\n# stepadd u32 u32 u32x4 -> u32\n# sum3 u32x4 -> u32",
+  "e0\nfn sum3 u32x4 -> u32\nr fold stepadd 3 2 A\n# stepadd u32 u32 u32x4 -> u32\ng0\n# stepadd u32 u32 u32x4 -> u32\n# sum3 u32x4 -> u32"
+ ],
+ "e-popcount-fold/a0/structured": [
+  "e0\nfn popcnt u32 -> u32\nr fold bitadd 32 0 A\ng0\n# popcnt u32 -> u32",
+  "e0\nfn popcnt u32 -> u32\nr fold add 32 0 A\ng0\n# popcnt u32 -> u32"
+ ],
+ "e-max3-helper/a0/structured": [
+  "e0\nfn max3 u32 u32 u32 -> u32\nx max2 A B\nr max2 x C\ng0\n# max2 u32 u32 -> u32\n# max3 u32 u32 u32 -> u32"
+ ],
+ "e-hash-const/a0/structured": [
+  "e0\nfn hash2\nm mul A 33\nh add m B\nr h\ng0\n# hash2 u32 u32 -> u32"
+ ],
+ "e-thread-param/a0/structured": [
+  "fn apply addk addk A k\n# addk u32 u32 -> u32\n# apply u32 u32 -> u32",
+  "e0\nfn apply A K\nx addk A K\nr addk x K\n# addk u32 u32 -> u32\n# apply u32 u32 -> u32\ng0\n# addk u32 u32 -> u32\n# apply u32 u32 -> u32"
+ ]
+}

@@ -17,6 +17,10 @@
  *   spec-lines.json       the spec-line experiment (set g): each spec-line cell against the cell with no
  *                         spec lines in the same view, per model: accepted rate one shot and after one
  *                         repair, and unbounded-session tokens per accepted edit.
+ *   primer-ablation.json  the primer ablation (sets d, e, f): each shortened primer variant against the
+ *                         current primer of the same form (dense.D0, canon.K0), per model and scope:
+ *                         accepted rate one shot and after one repair, and tokens per accepted edit for
+ *                         one cold task.
  *
  * Timing observations carry the load they were recorded at. One recorded above LOAD_LIMIT (or with
  * no load recorded) is flagged `unverified`: it is kept in the ledger and reported, but a change in
@@ -54,7 +58,10 @@ export type Axis =
   | 'ai-tokens-structured'
   | 'spec-accepted-one-shot'
   | 'spec-accepted-repaired'
-  | 'spec-tokens-per-accepted';
+  | 'spec-tokens-per-accepted'
+  | 'primer-accepted-one-shot'
+  | 'primer-accepted-repaired'
+  | 'primer-tokens-per-accepted';
 
 export interface Observation {
   readonly id: string;
@@ -483,6 +490,69 @@ function specObservations(root: string): Observation[] {
   return out;
 }
 
+interface PrimerCell {
+  readonly n: number;
+  readonly oneShot: { readonly rate: number };
+  readonly accepted: { readonly rate: number };
+  readonly tokensPerAcceptedEdit: { readonly task1: number | null } | null;
+}
+
+/**
+ * The primer ablation: a shortened primer variant is the A0 side, the current primer of the same form
+ * (`dense.D0` or `canon.K0`) in the same scope and model is the competitor. A rate is a tie within one
+ * trial; tokens per accepted edit (one cold task) within 3 %.
+ */
+function primerObservations(root: string): Observation[] {
+  const doc = readJson(root, 'primer-ablation.json');
+  const cells = obj(doc?.cells);
+  if (cells === undefined) return [];
+  const out: Observation[] = [];
+  const source = 'primer-ablation';
+  const control: Record<string, string> = { dense: 'dense.D0', canon: 'canon.K0' };
+  for (const [scope, raw] of Object.entries(cells)) {
+    const table = obj(raw);
+    if (table === undefined) continue;
+    for (const [variant, cellRaw] of Object.entries(table)) {
+      const form = variant.split('.')[0] ?? '';
+      const baseName = control[form];
+      if (baseName === undefined || variant === baseName) continue;
+      const a = obj(cellRaw) as unknown as PrimerCell | undefined;
+      const base = obj(table[baseName]) as unknown as PrimerCell | undefined;
+      if (a === undefined || base === undefined) continue;
+      const kernel = `${scope}/${variant}`;
+      for (const [axis, mine, theirs] of [
+        ['primer-accepted-one-shot', a.oneShot.rate, base.oneShot.rate],
+        ['primer-accepted-repaired', a.accepted.rate, base.accepted.rate],
+      ] as const)
+        out.push({
+          id: `${source}|${kernel}|${axis}|${baseName}`,
+          source,
+          kernel,
+          axis,
+          competitor: baseName,
+          a0: mine,
+          other: theirs,
+          gap: theirs - mine,
+          noise: 1 / a.n,
+          load: null,
+        });
+      const tok = lower(
+        source,
+        kernel,
+        'primer-tokens-per-accepted',
+        baseName,
+        a.tokensPerAcceptedEdit?.task1 ?? 0,
+        base.tokensPerAcceptedEdit?.task1 ?? 0,
+        0.03,
+        null,
+        false,
+      );
+      if (tok !== undefined) out.push(tok);
+    }
+  }
+  return out;
+}
+
 /** Every observation the results files give, losses and ties and wins alike. */
 export function observations(root = '.'): Observation[] {
   return [
@@ -491,6 +561,7 @@ export function observations(root = '.'): Observation[] {
     ...langAxesObservations(root),
     ...aiObservations(root),
     ...specObservations(root),
+    ...primerObservations(root),
   ];
 }
 
