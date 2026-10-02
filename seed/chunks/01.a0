@@ -10,6 +10,9 @@ end
 fn zsrc -> u32x128x128
 ret 0
 end
+fn z33 -> u32x128x33
+ret 0
+end
 fn z45 -> u32x128x45
 ret 0
 end
@@ -22,6 +25,12 @@ end
 fn z256 -> u32x128x256
 ret 0
 end
+fn z384 -> u32x384
+ret 0
+end
+fn zty -> u32x384x65
+ret 0
+end
 fn farpage u32 u32 u32x384x65 u32 u32 u32 -> u32
 ret 0
 end
@@ -30,6 +39,60 @@ ret 0
 end
 fn recone u32 u32 u32x384x65 u32x128x65 u32x128x65 u32 u32 u32 u32 -> u32
 ret 0
+end
+fn p3tok (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x3 u32x128 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+ret 0
+end
+fn p3chunk (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x384 u32x128x128 u32x128x16 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+c2 mul p1 2
+ch shr c2 7
+cl and c2 127
+cg get p5 ch
+start get cg cl
+cl1 add cl 1
+count get cg cl1
+tp shr start 7
+j0 and start 127
+base mul tp 128
+g3 mul tp 3
+ga get p3 g3
+g31 add g3 1
+gb get p3 g31
+g32 add g3 2
+gc get p3 g32
+grp arr ga gb gc
+tapg get p4 tp
+err at p0 11
+ok eq err 0
+cnt select ok count 0
+r fold p3tok cnt p0 p2 grp tapg j0 base
+ret r
+end
+fn pass3 u32x512x64 u32x128x384 u32x128x128 u32x128x16 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+ty0 call zty
+zp call z384
+a set zp 0 1
+b set a 3 2
+c set b 6 3
+types set ty0 0 c
+z65 call z65
+z128 call zsrc
+z33 call z33
+s0 rec types z65 z65 z128 z33 3 0 0 0 0 0 p5 p6 0 0 0 0 0 0 0 4294967295 0
+ok eq p5 0
+n select ok p4 0
+s fold p3chunk n s0 p0 p1 p2 p3
+mode at s 10
+err at s 11
+open ne mode 0
+e0 eq err 0
+eof and e0 open
+err2 select eof 1 err
+et at s 12
+et2 select eof p7 et
+s1 put s 11 err2
+s2 put s1 12 et2
+ret s2
 end
 fn p4hdr (u32x128x45,u32x128x64,u32,u32) u32 u32x128x33 u32 -> (u32x128x45,u32x128x64,u32,u32)
 fns at p0 0
@@ -2631,89 +2694,4 @@ fn cwdecc io bool u32 -> io
 n select p1 1 0
 r fold cdecst2 n p0 p2
 ret r
-end
-fn cwop io u32 u32 -> io
-k1 eq p1 1
-k2 eq p1 2
-k3 eq p1 3
-k4 eq p1 4
-k6 eq p1 6
-a call cws6c p0 k1 110 0 0 0 0 0
-b0 call cws6c a k2 112 0 0 0 0 0
-b call cws6c b0 k6 7219752 0 0 0 0 0
-x or k1 k2
-x6 or x k6
-num or x6 k3
-c call cwdecc b num p2
-d call cws6c c k3 117 0 0 0 0 0
-nz ne p2 0
-tr and k4 nz
-z eq p2 0
-fa and k4 z
-e call cws6c d tr 1702195828 0 0 0 0 0
-f call cws6c e fa 1936482662 101 0 0 0 0
-k5 eq p1 5
-f0 call cws6c f k5 812657192 41 0 0 0 0
-f1 call cws6c f0 k6 41 0 0 0 0 0
-ret f1
-end
-fn cwopst io u32 u32 u32 -> io
-r call cwop p0 p2 p3
-ret r
-end
-fn cwopc io bool u32 u32 -> io
-n select p1 1 0
-r fold cwopst n p0 p2 p3
-ret r
-end
-fn cwty io u32 u32 -> io
-c1 eq p1 1
-c2 eq p1 2
-c3 eq p1 3
-c4 ge p1 4
-a call cws6c p0 c1 1953393013 1952395827 0 0 0 0
-b call cws6c a c2 1819242338 0 0 0 0 0
-c call cws6c b c3 1767845985 2760815 0 0 0 0
-d call cws6c c c4 7614561 0 0 0 0 0
-e call cwdecc d c4 p2
-ret e
-end
-fn cwtyst io u32 u32 u32 -> io
-r call cwty p0 p2 p3
-ret r
-end
-fn cwtyc io bool u32 u32 -> io
-n select p1 1 0
-r fold cwtyst n p0 p2 p3
-ret r
-end
-fn cwsel io (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> io
-k0 at p1 1
-v0 at p1 2
-k1 at p1 3
-v1 at p1 4
-k2 at p1 5
-v2 at p1 6
-l0 at p1 8
-l1 at p1 9
-na at p1 11
-c1 eq p2 1
-c2 eq p2 2
-c3 eq p2 3
-c4 eq p2 4
-c5 eq p2 5
-c6 eq p2 6
-c7 eq p2 7
-c8 eq p2 8
-a call cwopc p0 c1 k0 v0
-b call cwopc a c2 k1 v1
-c call cwopc b c3 k2 v2
-sk at p1 16
-sv at p1 17
-e call cwopc c c4 sk sv
-f call cwdecc e c5 l0
-g call cwdecc f c6 l1
-h call cwdecc g c7 v1
-j call cwdecc h c8 na
-ret j
 end

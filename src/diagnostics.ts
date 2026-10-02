@@ -1691,6 +1691,84 @@ export const DIAGNOSTICS = {
     ],
     unrunnable: 'raised by the emitters, which the explain examples do not run',
   },
+  A0714: {
+    cls: 'structure',
+    message: 'spec of {0}: {1}',
+    why: [
+      'Spec lines sit between the fn header and the first node: `ex ARGS -> RESULT` (an example, at most',
+      'three), `pre OP ARGS` and `post OP ARGS` (one operation over p0..pN, and r in post, that is bool).',
+      'A literal is a number, true, false, an array [1;2;3] or a record (1;true). The line is malformed,',
+      'or its literals and operands do not fit the function signature, or the function takes io.',
+    ],
+    example: {
+      kind: 'source',
+      bad: 'fn f u32 -> u32\nex 1 2 -> 3\na add p0 1\nret a\nend\n',
+      good: 'fn f u32 -> u32\nex 1 -> 2\na add p0 1\nret a\nend\n',
+    },
+  },
+  A0715: {
+    cls: 'structure',
+    message: '{0}: ex {1} failed: input {2}, expected {3}, got {4}',
+    fix: 'make {0} return {3} for {2}, or change ex {1}; `-ex ARGS -> RESULT` removes an example',
+    why: [
+      'Every `ex` line is run on the reference interpreter when the program is validated, so an edit',
+      'that changes what the function returns is rejected by the example it breaks. Either the function',
+      'or the example is wrong: fix the function, change the expected value, or remove the line with',
+      '`-ex ARGS -> RESULT` (removing an example is always allowed).',
+    ],
+    example: {
+      kind: 'source',
+      bad: 'fn f u32 -> u32\nex 1 -> 3\na add p0 1\nret a\nend\n',
+      good: 'fn f u32 -> u32\nex 1 -> 2\na add p0 1\nret a\nend\n',
+    },
+  },
+  A0716: {
+    cls: 'structure',
+    message: '{0}: ex {1} breaks {2}: {3}',
+    fix: 'make {0} satisfy its {2} on ex {1}, or change that example or the {2} line; `-ex ARGS -> RESULT` removes an example',
+    why: [
+      '`pre` and `post` are evaluated on every example: `pre` on its arguments, `post` on its arguments',
+      'and the result r. An example outside the precondition, or a result that fails the postcondition,',
+      'is rejected. Fix the function, the example or the contract line.',
+    ],
+    example: {
+      kind: 'source',
+      bad: 'fn f u32 -> u32\nex 20 -> 21\npre lt p0 10\na add p0 1\nret a\nend\n',
+      good: 'fn f u32 -> u32\nex 5 -> 6\npre lt p0 10\na add p0 1\nret a\nend\n',
+    },
+  },
+  A0719: {
+    cls: 'limit',
+    message: '{0}: {1} used more than {2} evaluations',
+    fix: 'use a smaller input for the example, or remove the line: examples run with a small fuel',
+    why: [
+      'An example, a `pre` or a `post` runs under a fuel of 10000 node evaluations when the program is',
+      'validated (`a0 run` has its own budget). A fold or loop over a large count does not fit; give',
+      'the example a small input.',
+    ],
+    example: {
+      kind: 'source',
+      bad: 'fn inc u32 u32 -> u32\na add p0 1\nret a\nend\nfn f u32 -> u32\nex 1 -> 20001\nr fold inc 20000 p0\nret r\nend\n',
+      good: 'fn inc u32 u32 -> u32\na add p0 1\nret a\nend\nfn f u32 -> u32\nex 1 -> 11\nr fold inc 10 p0\nret r\nend\n',
+    },
+  },
+  A0720: {
+    cls: 'edit',
+    message: '{0}: no line `{1}` to remove',
+    fix: 'remove a spec line exactly as the view shows it: `-ex ARGS -> RESULT`, `-pre` or `-post`',
+    why: [
+      'The edit `-ex ARGS -> RESULT` removes the example written exactly so (literals are compared',
+      'after normalizing their spelling); `-pre` and `-post` remove the contract line, and name it only',
+      'when the function has one. `+ex`, `+pre` and `+post` add or replace a line.',
+    ],
+    example: {
+      kind: 'edit',
+      base: 'fn f u32 -> u32\nex 1 -> 2\na add p0 1\nret a\nend\n',
+      fn: 'f',
+      bad: '-ex 9 -> 9',
+      good: '-ex 1 -> 2',
+    },
+  },
   A0790: {
     cls: 'structure',
     message: '{0}',

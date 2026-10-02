@@ -65,19 +65,89 @@ fn cwdecc io bool u32 -> io
 ret 0
 end
 fn cwop io u32 u32 -> io
-ret 0
+k1 eq p1 1
+k2 eq p1 2
+k3 eq p1 3
+k4 eq p1 4
+k6 eq p1 6
+a call cws6c p0 k1 110 0 0 0 0 0
+b0 call cws6c a k2 112 0 0 0 0 0
+b call cws6c b0 k6 7219752 0 0 0 0 0
+x or k1 k2
+x6 or x k6
+num or x6 k3
+c call cwdecc b num p2
+d call cws6c c k3 117 0 0 0 0 0
+nz ne p2 0
+tr and k4 nz
+z eq p2 0
+fa and k4 z
+e call cws6c d tr 1702195828 0 0 0 0 0
+f call cws6c e fa 1936482662 101 0 0 0 0
+k5 eq p1 5
+f0 call cws6c f k5 812657192 41 0 0 0 0
+f1 call cws6c f0 k6 41 0 0 0 0 0
+ret f1
+end
+fn cwopst io u32 u32 u32 -> io
+r call cwop p0 p2 p3
+ret r
 end
 fn cwopc io bool u32 u32 -> io
-ret 0
+n select p1 1 0
+r fold cwopst n p0 p2 p3
+ret r
 end
 fn cwty io u32 u32 -> io
-ret 0
+c1 eq p1 1
+c2 eq p1 2
+c3 eq p1 3
+c4 ge p1 4
+a call cws6c p0 c1 1953393013 1952395827 0 0 0 0
+b call cws6c a c2 1819242338 0 0 0 0 0
+c call cws6c b c3 1767845985 2760815 0 0 0 0
+d call cws6c c c4 7614561 0 0 0 0 0
+e call cwdecc d c4 p2
+ret e
+end
+fn cwtyst io u32 u32 u32 -> io
+r call cwty p0 p2 p3
+ret r
 end
 fn cwtyc io bool u32 u32 -> io
-ret 0
+n select p1 1 0
+r fold cwtyst n p0 p2 p3
+ret r
 end
 fn cwsel io (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> io
-ret 0
+k0 at p1 1
+v0 at p1 2
+k1 at p1 3
+v1 at p1 4
+k2 at p1 5
+v2 at p1 6
+l0 at p1 8
+l1 at p1 9
+na at p1 11
+c1 eq p2 1
+c2 eq p2 2
+c3 eq p2 3
+c4 eq p2 4
+c5 eq p2 5
+c6 eq p2 6
+c7 eq p2 7
+c8 eq p2 8
+a call cwopc p0 c1 k0 v0
+b call cwopc a c2 k1 v1
+c call cwopc b c3 k2 v2
+sk at p1 16
+sv at p1 17
+e call cwopc c c4 sk sv
+f call cwdecc e c5 l0
+g call cwdecc f c6 l1
+h call cwdecc g c7 v1
+j call cwdecc h c8 na
+ret j
 end
 fn cwtst io u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> io
 a call cws6 p0 p3 p4 p5 p6 p7 p8

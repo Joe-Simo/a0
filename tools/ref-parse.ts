@@ -284,6 +284,35 @@ export function refParse(src: string): WordIr {
     if (err === undefined && mode !== 0) fail(1, ntok);
   }
 
+  // spec lines (`ex ARGS -> RESULT`, `pre OP ARGS`, `post OP ARGS`, src/spec.ts) between a fn header
+  // and its first node are not implemented here: the first one is a structure diagnostic (2) at
+  // its first token, unless an earlier diagnostic came first. `pre` and `post` are spec lines in
+  // that leading part; `ex` is one only when its line has the arrow token (kind 4).
+  if (err === undefined) {
+    const raw = (i: number): number => (i >= 0 && i < ntok ? (t[i * 3] as number) : 5);
+    const text = (i: number): string => String.fromCharCode(...bytes(i));
+    let zone = false;
+    let cand: number | undefined;
+    for (let i = 0; i < ntok; i += 1) {
+      const k = raw(i);
+      if (k === 1 && raw(i - 1) === 5) {
+        const w = text(i);
+        if (w === 'fn') zone = true;
+        else if (zone && (w === 'pre' || w === 'post')) {
+          fail(2, i);
+          break;
+        } else if (zone && w === 'ex') cand = i;
+        else zone = false;
+      } else if (k === 4 && cand !== undefined) {
+        fail(2, cand);
+        break;
+      } else if (k === 5) {
+        if (cand !== undefined) zone = false;
+        cand = undefined;
+      }
+    }
+  }
+
   // pass 3: headers and types
   const types = [1, 0, 0, 2, 0, 0, 3, 0, 0];
   const tlist: number[] = [];

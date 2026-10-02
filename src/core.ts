@@ -31,6 +31,14 @@ import {
   type Trap,
   type TrapKind,
 } from './diagnostics.js';
+import {
+  isExampleLine,
+  type Spec,
+  SpecBuilder,
+  specLinesWithComments,
+  specWordOf,
+  verifySpec,
+} from './spec.js';
 
 export const LANGUAGE_VERSION = 'a0-0.1';
 
@@ -385,6 +393,11 @@ export interface Func {
   readonly endComments?: Comments;
   /** Whole-line comments after `end` at the end of the file, printed after a blank line. */
   readonly afterComments?: readonly string[];
+  /**
+   * Spec lines (`ex`, `pre`, `post`) between the header and the first node (src/spec.ts). Part of
+   * the canonical text and of `revision()`; no backend, optimizer pass or cache key reads it.
+   */
+  readonly spec?: Spec;
 }
 
 /**
@@ -1026,8 +1039,22 @@ export function parse(source: string): Program {
     let retComments: Comments | undefined;
     let endComments: Comments | undefined;
     let closed = false;
+    const specs = new SpecBuilder(name);
     for (let body = next(); body !== undefined; body = next()) {
       const first = body.text.split(/\s+/)[0];
+      // Spec lines stand between the header and the first node (or `ret`).
+      if (nodes.length === 0 && ret === undefined) {
+        const word = specWordOf(body.text);
+        if (word !== undefined) {
+          specs.add(word, body.text.slice(word.length).trim(), body.line, body.comments);
+          continue;
+        }
+      } else if (isExampleLine(body.text)) {
+        throw diag('A0714', [name, 'an ex line after the first node'], {
+          line: body.line,
+          fix: 'spec lines (ex, pre, post) go right after the fn header, before the first node',
+        });
+      }
       if (first === 'ret') {
         retComments = body.comments;
         const parts = body.text.split(/\s+/);
@@ -1077,12 +1104,14 @@ export function parse(source: string): Program {
     if (!closed || ret === undefined) throw diag('A0028', [name]);
     if (functions.length >= LIMITS.maxFunctions) throw diag('A0029');
     names.add(name);
+    const spec = specs.build();
     functions.push({
       name,
       params,
       result,
       nodes,
       ret,
+      ...(spec === undefined ? {} : { spec }),
       ...(header === undefined ? {} : { comments: header }),
       ...(retComments === undefined ? {} : { retComments }),
       ...(endComments === undefined ? {} : { endComments }),
@@ -1624,6 +1653,8 @@ export function validate(program: Program): TypedProgram {
   for (const [k, fn] of program.functions.entries()) {
     if (byName.has(fn.name)) throw diag('A0021', [fn.name]);
     const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), program.profile);
+    // Spec lines are checked once the function is typed, against its callees (all above it).
+    if (typed.spec !== undefined) verifySpec(typed, byName);
     byName.set(fn.name, typed);
     functions.push(typed);
   }
@@ -1662,8 +1693,11 @@ export function formatNode(node: Node): string {
 
 export function formatFunction(fn: Func): string {
   const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
+  const spec = specLinesWithComments(fn.spec)
+    .map(([, line]) => line)
+    .join('\n');
   const body = fn.nodes.map(formatNode).join('\n');
-  return `fn ${fn.name}${sig} -> ${formatType(fn.result)}\n${body}${body ? '\n' : ''}ret ${formatOperand(fn.ret)}\nend`;
+  return `fn ${fn.name}${sig} -> ${formatType(fn.result)}\n${spec}${spec ? '\n' : ''}${body}${body ? '\n' : ''}ret ${formatOperand(fn.ret)}\nend`;
 }
 
 export function formatProgram(program: Program): string {
@@ -1684,6 +1718,7 @@ export function formatFunctionSource(fn: Func): string {
   const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
   return [
     withComments(`fn ${fn.name}${sig} -> ${formatType(fn.result)}`, fn.comments),
+    ...specLinesWithComments(fn.spec).map(([comments, line]) => withComments(line, comments)),
     ...fn.nodes.map((n) => withComments(formatNode(n), n.comments)),
     withComments(`ret ${formatOperand(fn.ret)}`, fn.retComments),
     withComments('end', fn.endComments),

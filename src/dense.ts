@@ -40,6 +40,7 @@ import {
   type Type,
   typeEquals,
 } from './core.js';
+import { SpecBuilder, specLinesWithComments, specWordOf } from './spec.js';
 
 // ---------------------------------------------------------------------------
 // Shared vocabulary
@@ -81,6 +82,9 @@ const KEYWORDS = new Set<string>([
   'true',
   'false',
 ]);
+
+/** Words that start a spec line (`pre`, `post`) where a statement may: never a bare first id or callee. */
+const SPEC_NAMES: ReadonlySet<string> = new Set(['pre', 'post']);
 
 const TYPE_LIKE = /^(u32|bool|io)(x[0-9]+)*$/;
 const PARAM_WORD = /^p(0|[1-9][0-9]*)$/;
@@ -188,11 +192,14 @@ interface PrintCtx {
   readonly fnNames: ReadonlySet<string>;
   readonly comments: boolean;
   readonly style: Required<DenseStyle>;
+  /** Printing a `pre`/`post` expression: the node operand `r` is the result, never an id. */
+  readonly spec?: true;
 }
 
 function operandWord(o: Operand, ctx: PrintCtx): string {
   switch (o.kind) {
     case 'node':
+      if (ctx.spec === true) return o.id;
       return needsEscape(o.id, ctx.fnNames) ? `$${o.id}` : o.id;
     case 'param':
       return ctx.style.letters ? paramWord(o.index) : `p${o.index}`;
@@ -243,6 +250,7 @@ function highestParam(fn: Func): number {
   };
   for (const n of fn.nodes) n.args.forEach(see);
   see(fn.ret);
+  for (const e of [fn.spec?.pre, fn.spec?.post]) e?.args.forEach(see);
   return top;
 }
 
@@ -362,7 +370,12 @@ function printNodeTokens(fn: Func, k: number, plan: Plan, ctx: PrintCtx): string
   if (node.op === 'rec') return args.length === 1 ? `(${args[0]},)` : `(${args.join(' ')})`;
   if (node.op === 'call') {
     const callee = node.callee as string;
-    const direct = opOf(callee) === undefined && callee !== 'text' && !KEYWORDS.has(callee);
+    const direct =
+      opOf(callee) === undefined &&
+      callee !== 'text' &&
+      !KEYWORDS.has(callee) &&
+      !SPEC_NAMES.has(callee) &&
+      !(ctx.spec === true && callee === 'r');
     return [direct ? callee : `call ${callee}`, ...args].join(' ');
   }
   const callee = (name: string): string => ctx.inline.get(name) ?? name;
@@ -401,14 +414,16 @@ function statementsOf(
 ): { body: { text: string; comments: Comments | undefined; named: boolean }[]; plan: Plan } {
   const plan = planFunction(fn, ctx);
   const keepRet = explicitRet(fn, ctx);
-  const idWord = (id: string): string => (needsEscape(id, ctx.fnNames) ? `$${id}` : id);
+  // A first statement named `pre` or `post` would read as a spec line: it is written `$pre`.
+  const idWord = (id: string, first: boolean): string =>
+    needsEscape(id, ctx.fnNames) || (first && SPEC_NAMES.has(id)) ? `$${id}` : id;
   const body: { text: string; comments: Comments | undefined; named: boolean }[] = [];
   for (const r of plan.roots) {
     const node = fn.nodes[r] as Node;
     const expr = printNodeTokens(fn, r, plan, ctx);
     body.push({
       text: plan.named.has(r)
-        ? `${idWord(node.id)} ${expr}`
+        ? `${idWord(node.id, r === plan.roots[0])} ${expr}`
         : r === plan.retNode
           ? `ret ${expr}`
           : expr,
@@ -424,6 +439,39 @@ function statementsOf(
     });
   }
   return { body, plan };
+}
+
+/**
+ * The spec lines of a function in dense spelling: examples as in the canonical form (literals are
+ * the same text), `pre` and `post` with the dense operation words and parameters.
+ */
+function denseSpecLines(fn: Func, ctx: PrintCtx): [Comments | undefined, string][] {
+  const out: [Comments | undefined, string][] = [];
+  const canonical = specLinesWithComments(fn.spec);
+  const exprs = new Map<string, Node>();
+  if (fn.spec?.pre !== undefined) exprs.set('pre', fn.spec.pre);
+  if (fn.spec?.post !== undefined) exprs.set('post', fn.spec.post);
+  for (const [comments, line] of canonical) {
+    const word = line.split(' ')[0] as string;
+    const node = exprs.get(word);
+    const text =
+      node === undefined
+        ? line
+        : `${word} ${printNodeTokens(
+            { ...fn, nodes: [node], ret: { kind: 'node', id: node.id } },
+            0,
+            {
+              nest: [node.args.map(() => undefined)],
+              roots: [0],
+              named: new Set(),
+              tail: true,
+              retNode: undefined,
+            },
+            { ...ctx, spec: true, comments: false },
+          )}`;
+    out.push([ctx.comments ? comments : undefined, text]);
+  }
+  return out;
 }
 
 function printLines(
@@ -445,10 +493,12 @@ function printLines(
   const head = `fn ${fn.name}${sig === '' ? '' : ` ${sig}`}`;
   const lines: string[] = [...commentLines(ctx.comments ? fn.comments : undefined)];
   const first = body[0] as { text: string; comments: Comments | undefined; named: boolean };
+  const spec = denseSpecLines(fn, ctx);
   // A function of one unnamed statement keeps it on the header line; a named statement and
-  // longer bodies list their statements below it.
+  // longer bodies list their statements below it. Spec lines go between the header and the body.
   const joinable =
     ctx.style.join &&
+    spec.length === 0 &&
     body.length === 1 &&
     !first.named &&
     (!ctx.comments || (fn.comments === undefined && first.comments === undefined)) &&
@@ -458,6 +508,9 @@ function printLines(
     body.shift();
   } else {
     lines.push(`${head}${ctx.comments ? trailing(fn.comments) : ''}`);
+  }
+  for (const [comments, text] of spec) {
+    lines.push(...commentLines(comments), `${text}${trailing(comments)}`);
   }
   for (const b of body) {
     lines.push(...commentLines(b.comments));
@@ -1217,6 +1270,47 @@ export function parseDenseHeader(
   return { name, params, result, rest: rest.trim() };
 }
 
+/**
+ * A dense `pre`/`post` expression: one operation over the parameters (and `r`, the result, in
+ * `post`), as the `Node` the canonical line `word OP ARGS` gives. Nested operations are refused: a
+ * contract is one operation (call a helper function for more).
+ */
+export function parseDenseExpression(
+  word: 'pre' | 'post',
+  text: string,
+  line: number,
+  arities: Arities,
+  fnNames: ReadonlySet<string>,
+  fnName: string,
+  comments?: Comments,
+): Node {
+  const fp = new FunctionParser(arities, fnNames, word === 'post' ? new Set(['r']) : new Set());
+  fp.toks = lexDense(text, line);
+  fp.pos = 0;
+  fp.line = line;
+  const refuse = (what: string, fix: string): never => {
+    throw new A0Error(`spec of ${fnName}: ${what}`, line, { code: 'structure', id: 'A0714', fix });
+  };
+  if (fp.toks.length === 0)
+    refuse(
+      `${word} needs an operation`,
+      `write \`${word} < A 100\`: one operation over the parameters`,
+    );
+  const value = fp.expr();
+  if (fp.toks.slice(fp.pos).some((t) => t.kind !== 'comma'))
+    refuse(
+      `unexpected '${fp.toks[fp.pos]?.text ?? ''}' after the operation`,
+      `a ${word} line is one operation`,
+    );
+  if (value.kind !== 'node' || fp.nodes.length !== 1)
+    refuse(
+      `${word} is ${value.kind === 'node' ? 'a nested expression' : 'not an operation'}`,
+      `a ${word} line is one operation over the parameters${word === 'post' ? ' and r' : ''}; call a helper function for more`,
+    );
+  const node = fp.finishWith([word]).nodes[0] as Node;
+  return comments === undefined ? node : { ...node, comments };
+}
+
 export interface DenseParseOptions {
   /** Functions defined outside the text (`use`d files): name to parameter count. */
   readonly known?: Arities;
@@ -1326,6 +1420,23 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
           : { text: nx.text, line: nx.line, comments: nx.comments },
       );
     }
+    // Spec lines stand right after the header (not after a statement on the header line).
+    const specs = new SpecBuilder(head.name);
+    let inZone = head.rest === '';
+    while (inZone && body.length > 0) {
+      const b = body[0] as { text: string; line: number; comments?: Comments };
+      const word = specWordOf(b.text);
+      if (word === undefined) break;
+      const rest = b.text.slice(word.length).trim();
+      if (word === 'ex') specs.add('ex', rest, b.line, b.comments);
+      else
+        specs.addNode(
+          word,
+          parseDenseExpression(word, rest, b.line, arities, fnNames, head.name, b.comments),
+        );
+      body.shift();
+    }
+    inZone = false;
     let retComments: Comments | undefined;
     body.forEach((b, bi) => {
       const toks = lexDense(b.text, b.line);
@@ -1358,6 +1469,8 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     };
     for (const n of nodes) n.args.forEach(see);
     see(ret);
+    const spec = specs.build();
+    for (const e of [spec?.pre, spec?.post]) e?.args.forEach(see);
     const params = head.params ?? new Array<Type>(needed).fill('u32');
     if (params.length > LIMITS.maxParams) fail('too many parameters', it.line);
     for (const lf of lifted) {
@@ -1376,6 +1489,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       result: head.result,
       nodes,
       ret,
+      ...(spec === undefined ? {} : { spec }),
       ...(header === undefined ? {} : { comments: header }),
       ...(retComments === undefined ? {} : { retComments }),
       ...(endComments === undefined ? {} : { endComments }),
@@ -1486,6 +1600,7 @@ export function planLambdas(program: Program): Map<string, string[]> {
           called.has(slot.name) ||
           f.name !== `${g.name}_${chosen.length + 1}` ||
           f.comments !== undefined ||
+          f.spec !== undefined ||
           f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
           f.params.length !== params.length ||
           !f.params.every((t, i) => typeEquals(t, params[i] as Type)) ||
@@ -1549,6 +1664,7 @@ export function liftHelpers(program: Program): Program {
           uses.get(name) !== 1 ||
           called.has(name) ||
           f.comments !== undefined ||
+          f.spec !== undefined ||
           f.nodes.some((n) => n.op === 'fold' || n.op === 'loop') ||
           fns.indexOf(f) > fns.findIndex((x) => x.name === gName) ||
           renames.has(name)

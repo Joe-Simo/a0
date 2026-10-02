@@ -25,7 +25,14 @@ import {
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
-import { denseNodeTexts, FunctionParser, lexDense, parseDense, parseDenseHeader } from './dense.js';
+import {
+  denseNodeTexts,
+  FunctionParser,
+  lexDense,
+  parseDense,
+  parseDenseExpression,
+  parseDenseHeader,
+} from './dense.js';
 
 /** A one-line `fn NAME types -> T end` naming an existing function: a signature echoed back. */
 export function isDenseSignatureEcho(line: string, program: TypedProgram): boolean {
@@ -48,6 +55,28 @@ interface EditCtx {
   readonly taken: Set<string>;
   /** Ids that edit lines defined (a later line may refer to them). */
   readonly defined: Set<string>;
+}
+
+/** `+ex ...`, `+pre EXPR` and `+post EXPR` (optionally `f:` first): the dense expressions as canonical lines. */
+const DENSE_SPEC_SET = /^((?:[a-z][a-z0-9_]*:)?\+)(ex|pre|post)(?:\s+(.*))?$/;
+
+function translateSpecSet(
+  m: RegExpExecArray,
+  arities: ReadonlyMap<string, number>,
+  fnNames: ReadonlySet<string>,
+): string {
+  // examples are written the same in both spellings
+  if (m[2] === 'ex') return m[0];
+  const word = m[2] as 'pre' | 'post';
+  const node = parseDenseExpression(
+    word,
+    m[3] ?? '',
+    1,
+    arities,
+    fnNames,
+    m[1]?.replace(/[:+]/g, '') || '',
+  );
+  return `${m[1]}${formatNode(node)}`;
 }
 
 function translateEditLine(text: string, ctx: EditCtx): string[] {
@@ -206,7 +235,15 @@ export function denseEditBody(
   for (const item of outer) {
     if (item.kind === 'block') {
       for (const f of parsed.get(item.index) ?? []) out.push(...formatFunction(f).split('\n'));
-    } else if (ctx === undefined || item.text.startsWith('-fn') || isProfileEdit(item.text))
+    } else if (DENSE_SPEC_SET.test(item.text))
+      out.push(
+        translateSpecSet(
+          DENSE_SPEC_SET.exec(item.text) as RegExpExecArray,
+          arities,
+          new Set([...arities.keys(), ...names]),
+        ),
+      );
+    else if (ctx === undefined || item.text.startsWith('-fn') || isProfileEdit(item.text))
       out.push(item.text);
     else out.push(...translateEditLine(item.text, ctx));
   }

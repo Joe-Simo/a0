@@ -1446,6 +1446,84 @@ prof select okd 1 0
 r rec err2 et2 prof
 ret r
 end
+fn specstep (u32,u32,u32) u32 u32x512x64 u32x128x384 u32 -> (u32,u32,u32)
+zone at p0 0
+cand at p0 1
+hit at p0 2
+t call dirtok p3 p1 p4
+k at t 0
+s at t 1
+n at t 2
+pi sub p1 1
+tp call dirtok p3 pi p4
+kp at tp 0
+sh shr s 7
+so and s 127
+lo call srcpg p2 sh
+sh1 add sh 1
+hi call srcpg p2 sh1
+b0 call dirbyte lo hi so 0
+b1 call dirbyte lo hi so 1
+b2 call dirbyte lo hi so 2
+b3 call dirbyte lo hi so 3
+isw eq k 1
+atl eq kp 5
+ws and isw atl
+n2 eq n 2
+n3 eq n 3
+n4 eq n 4
+f0 eq b0 102
+f1 eq b1 110
+fw0 and n2 f0
+fw and fw0 f1
+e0 eq b0 101
+e1 eq b1 120
+ew0 and n2 e0
+ew and ew0 e1
+pc eq b0 112
+rc eq b1 114
+e2 eq b2 101
+pw0 and n3 pc
+pw1 and pw0 rc
+pw and pw1 e2
+o1 eq b1 111
+s2 eq b2 115
+t3 eq b3 116
+qw0 and n4 pc
+qw1 and qw0 o1
+qw2 and qw1 s2
+qw and qw2 t3
+isfl and ws fw
+isel and ws ew
+ispl0 and ws pw
+ispl1 and ws qw
+ispl or ispl0 ispl1
+z1 eq zone 1
+hitnow and ispl z1
+cnow and isel z1
+isar eq k 4
+none eq cand 4294967295
+hascand select none false true
+arrowhit and isar hascand
+isnl eq k 5
+nlcand and isnl hascand
+holdhit ne hit 4294967295
+nothold select holdhit false true
+h1 select arrowhit cand hit
+h2 select hitnow p1 h1
+hit2 select holdhit hit h2
+keep0 or ispl isel
+keep and z1 keep0
+zw0 select keep 1 0
+zw select isfl 1 zw0
+zn select nlcand 0 zone
+zone2 select ws zw zn
+clr or isar isnl
+c1 select clr 4294967295 cand
+cand2 select cnow p1 c1
+r rec zone2 cand2 hit2
+ret r
+end
 fn pass1 u32x512x64 u32x128x384 u32 -> (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
 z128 call zsrc
 z64 call z64
@@ -1483,7 +1561,15 @@ okd eq prof 1
 f1 add x16 1
 ta1 call dirblank x2 x16 okd
 ta2 call dirblank ta1 f1 okd
-r rec x0 x1 ta2 x3 x4 x5 x6 x7 x8 x9 x10 err2 et2 x13 x14 x15 prof
+spz0 rec 0 4294967295 4294967295
+spz fold specstep p2 spz0 p0 p1 p2
+sphit at spz 2
+hasspec ne sphit 4294967295
+noerr eq err2 0
+dospec and noerr hasspec
+err3 select dospec 2 err2
+et3 select dospec sphit et2
+r rec x0 x1 ta2 x3 x4 x5 x6 x7 x8 x9 x10 err3 et3 x13 x14 x15 prof
 ret r
 end
 fn pcopyb u32x128x2 u32 u32x128 u32x128 u32 u32 -> u32x128x2
@@ -2206,55 +2292,4 @@ err2 select bad 1 err
 et2 select bad i errtok
 r rec types2 tsig2 tlist2 stk2 hout3 ntypes2 ntlist2 nstk4 ls4 dep2 mo4 err2 et2 name2 res2 hr3 first2 np2 nhc2 nhn2 cend2 cwhere2
 ret r
-end
-fn p3chunk (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x512x64 u32x128x384 u32x128x128 u32x128x16 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
-c2 mul p1 2
-ch shr c2 7
-cl and c2 127
-cg get p5 ch
-start get cg cl
-cl1 add cl 1
-count get cg cl1
-tp shr start 7
-j0 and start 127
-base mul tp 128
-g3 mul tp 3
-ga get p3 g3
-g31 add g3 1
-gb get p3 g31
-g32 add g3 2
-gc get p3 g32
-grp arr ga gb gc
-tapg get p4 tp
-err at p0 11
-ok eq err 0
-cnt select ok count 0
-r fold p3tok cnt p0 p2 grp tapg j0 base
-ret r
-end
-fn pass3 u32x512x64 u32x128x384 u32x128x128 u32x128x16 u32 u32 u32 u32 -> (u32x384x65,u32x128x65,u32x128x65,u32x128x128,u32x128x33,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
-ty0 call zty
-zp call z384
-a set zp 0 1
-b set a 3 2
-c set b 6 3
-types set ty0 0 c
-z65 call z65
-z128 call zsrc
-z33 call z33
-s0 rec types z65 z65 z128 z33 3 0 0 0 0 0 p5 p6 0 0 0 0 0 0 0 4294967295 0
-ok eq p5 0
-n select ok p4 0
-s fold p3chunk n s0 p0 p1 p2 p3
-mode at s 10
-err at s 11
-open ne mode 0
-e0 eq err 0
-eof and e0 open
-err2 select eof 1 err
-et at s 12
-et2 select eof p7 et
-s1 put s 11 err2
-s2 put s1 12 et2
-ret s2
 end

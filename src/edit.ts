@@ -48,6 +48,7 @@ import { formatDenseFunction, formatDenseSignature } from './dense.js';
 import { denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
+import { applySpecEdits, type SpecEdit, type SpecWord, withoutSpec, withSpec } from './spec.js';
 
 export const REVISION_LENGTH = 64;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -80,7 +81,8 @@ export interface Replacement {
 export type EditOp =
   | { readonly kind: 'node'; readonly node: Node; readonly after?: string; readonly fresh?: true }
   | { readonly kind: 'delete'; readonly id: string }
-  | { readonly kind: 'ret'; readonly operand: Operand };
+  | { readonly kind: 'ret'; readonly operand: Operand }
+  | ({ readonly kind: 'spec' } & SpecEdit);
 
 export function parseEditOps(lines: readonly string[], firstLine: number): EditOp[] {
   if (lines.length === 0) throw diag('A0501');
@@ -94,6 +96,15 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
       if (seen.has(id)) throw diag('A0503', [id], { line });
       seen.add(id);
     };
+    const spec = SPEC_EDIT.exec(text);
+    if (
+      spec !== null &&
+      spec[1] === undefined &&
+      (spec[2] === '+' || (spec[4] ?? '').trim() !== '')
+    ) {
+      ops.push({ kind: 'spec', ...specEditOf(spec), line });
+      return;
+    }
     if (text.startsWith('-')) {
       const id = text.slice(1).trim();
       if (!isValidIdentifier(id)) throw diag('A0504', [id], { line });
@@ -182,12 +193,23 @@ export function replaceNodes(
   }
   let nodes: Node[] = [...fn.nodes];
   let ret = fn.ret;
+  const specEdits: SpecEdit[] = edits.flatMap((o) => (o.kind === 'spec' ? [o] : []));
   // 1. deletions
   for (const op of edits) {
     if (op.kind !== 'delete') continue;
     const before = nodes.length;
     nodes = nodes.filter((n) => n.id !== op.id);
-    if (nodes.length === before) throw diag('A0506', [fn.name, op.id]);
+    if (nodes.length === before) {
+      // `-pre` and `-post` remove the contract line when the function has no such node.
+      if (
+        (op.id === 'pre' && fn.spec?.pre !== undefined) ||
+        (op.id === 'post' && fn.spec?.post !== undefined)
+      ) {
+        specEdits.push({ sign: '-', word: op.id, rest: '' });
+        continue;
+      }
+      throw diag('A0506', [fn.name, op.id]);
+    }
   }
   // 2. replacements and insertions
   for (const op of edits) {
@@ -216,7 +238,10 @@ export function replaceNodes(
   // for the validator to report.
   nodes = orderByDependencies(nodes);
   if (nodes.length > LIMITS.maxNodesPerFunction) throw diag('A0316', [fn.name]);
-  const replaced: Func = { ...fn, nodes, ret };
+  const replaced: Func =
+    specEdits.length === 0
+      ? { ...fn, nodes, ret }
+      : withSpec({ ...fn, nodes, ret }, applySpecEdits(fn, specEdits));
   // Legal call targets are exactly the functions defined before this one.
   const scope = new Map<string, TypedFunc>();
   for (const f of program.functions) {
@@ -244,8 +269,11 @@ export function replaceNodes(
  * is the editing identity of one function's text).
  */
 export function semanticRevision(fn: TypedFunc): string {
-  // The profile changes what the function means, so it is part of every key derived from it.
-  let text = fn.profile === 'strict' ? `profile strict|${revision(fn)}` : revision(fn);
+  // The profile changes what the function means, so it is part of every key derived from it. Spec
+  // lines (examples and contracts) do not change what it computes: the revision of the function
+  // without them keeps optimizer, cache and emission keys the same with or without a spec.
+  const own = revision(withoutSpec(fn));
+  let text = fn.profile === 'strict' ? `profile strict|${own}` : own;
   for (const name of [...fn.calls.keys()].sort()) {
     const callee = fn.calls.get(name);
     if (callee !== undefined) text += `|${name}=${semanticRevision(callee)}`;
@@ -367,6 +395,13 @@ export interface ViewOptions {
    * handle as dense text (src/dense-edit.ts). Revisions, validation and commits are unchanged.
    */
   readonly dense?: boolean;
+  /**
+   * 'show' (default): the function's spec lines (`ex`, `pre`, `post`, src/spec.ts) are part of the
+   * view. 'hide': the view leaves them out (a numbered view always shows them, since the numbers
+   * address them); a whole-function replacement sent under such a handle keeps the function's
+   * spec lines unless it carries its own.
+   */
+  readonly specs?: 'show' | 'hide';
 }
 
 export function formatSignature(fn: Func): string {
@@ -382,8 +417,8 @@ export function numberedFunction(fn: Func): string {
 }
 
 /** The dependency-scoped view text of a function (without a handle line). */
-export function scopedView(fn: TypedFunc, numbered = false): string {
-  const text = numbered ? numberedFunction(fn) : formatFunction(fn);
+export function scopedView(fn: TypedFunc, numbered = false, hideSpecs = false): string {
+  const text = numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
   const sigs = [...fn.calls.values()].map((c) => `${formatSignature(c)} end`);
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
 }
@@ -402,13 +437,36 @@ export function scopedViewDense(
   fn: TypedFunc,
   program: TypedProgram,
   scope: 'function' | 'deps' | 'bodies',
+  hideSpecs = false,
 ): string {
-  const text = formatDenseFunction(fn, program);
+  const shown = (f: TypedFunc): TypedFunc => (hideSpecs ? withoutSpec(f) : f);
+  const text = formatDenseFunction(shown(fn), program);
   if (scope === 'function') return text;
   const sigs = [...fn.calls.values()].map((c) =>
-    scope === 'bodies' ? formatDenseFunction(c, program) : denseSignatureLine(c),
+    scope === 'bodies' ? formatDenseFunction(shown(c), program) : denseSignatureLine(c),
   );
   return sigs.length > 0 ? `${text}\n${sigs.join('\n')}` : text;
+}
+
+/**
+ * Spec edits: `+ex ARGS -> RESULT` adds an example, `-ex ARGS -> RESULT` removes the one written
+ * so, `+pre EXPR` and `+post EXPR` set the contract line (replacing the one there), `-pre` and
+ * `-post` remove it; each optionally prefixed with `f:` (a function name), as the line edits are.
+ * Bare `-ex` is the deletion of a node named `ex`, and bare `-pre`/`-post` is a spec removal only
+ * when the function has that line (otherwise the deletion of a node of that id).
+ */
+const SPEC_EDIT = /^(?:([a-z][a-z0-9_]*):)?([+-])(ex|pre|post)(?:\s+(.*))?$/;
+
+/** A spec edit that names its function (`f:+ex ...`): the form a program handle takes. */
+function isSpecEdit(t: string, named: boolean): boolean {
+  const m = SPEC_EDIT.exec(t);
+  if (m === null) return false;
+  if (m[1] !== undefined) return true;
+  return !named && (m[2] === '+' || (m[4] ?? '').trim() !== '');
+}
+
+function specEditOf(m: RegExpExecArray): SpecEdit {
+  return { sign: m[2] as '+' | '-', word: m[3] as SpecWord, rest: (m[4] ?? '').trim() };
 }
 
 /** `N line`, `N-`, `N+ line`, each optionally prefixed with `f:` (a function name). */
@@ -420,7 +478,10 @@ const LINE_EDIT = /^(?:([a-z][a-z0-9_]*):)?(0|[1-9][0-9]*)([+-]?)(?:\s+(.*))?$/;
  * leading view number (`1 a add p0 p1`) is the numbered view copied back and is dropped.
  * Unambiguous: instruction ids start with a letter.
  */
-function splitLineEdits(lines: readonly string[]): { edits: string[]; rest: string[] } {
+function splitLineEdits(
+  lines: readonly string[],
+  isSpec: (line: string) => boolean,
+): { edits: string[]; rest: string[] } {
   const edits: string[] = [];
   const rest: string[] = [];
   let open = false;
@@ -432,7 +493,7 @@ function splitLineEdits(lines: readonly string[]): { edits: string[]; rest: stri
     } else if (open) {
       if (t === 'end') open = false;
       rest.push(t.replace(/^(0|[1-9][0-9]*)\s+(?=[a-z])/, ''));
-    } else if (LINE_EDIT.test(t)) edits.push(t);
+    } else if (LINE_EDIT.test(t) || isSpec(t)) edits.push(t);
     else rest.push(raw);
   }
   return { edits, rest };
@@ -451,7 +512,21 @@ export function lineEditBlocks(
   defaultFn: string | undefined,
 ): string[] {
   const byFn = new Map<string, { at: Map<number, string | null>; after: Map<number, string[]> }>();
+  const specByFn = new Map<string, SpecEdit[]>();
+  const expanded: string[] = [];
   for (const raw of lines) {
+    const t = stripComment(raw).trim();
+    const sm = SPEC_EDIT.exec(t);
+    if (sm === null) {
+      expanded.push(raw);
+      continue;
+    }
+    const name = sm[1] ?? defaultFn;
+    if (name === undefined) throw diag('A0510', [t]);
+    if (!program.byName.has(name)) throw diag('A0511', [t, name]);
+    specByFn.set(name, [...(specByFn.get(name) ?? []), specEditOf(sm)]);
+  }
+  for (const raw of expanded) {
     const t = stripComment(raw).trim();
     const m = LINE_EDIT.exec(t);
     if (m === null) throw diag('A0509', [t]);
@@ -475,17 +550,28 @@ export function lineEditBlocks(
     if (mode === '' && text === '') throw diag('A0515', [t, n]);
     entry.at.set(n, mode === '-' ? null : text);
   }
-  return [...byFn].map(([name, { at, after }]) => {
-    const src = formatFunction(program.byName.get(name) as TypedFunc).split('\n');
-    const body = src.slice(1, -1);
-    const out: string[] = [...(after.get(0) ?? [])];
-    body.forEach((line, i) => {
-      const edited = at.has(i + 1) ? at.get(i + 1) : line;
-      if (edited !== null && edited !== undefined) out.push(edited);
-      out.push(...(after.get(i + 1) ?? []));
-    });
-    return [src[0] ?? '', ...out, 'end'].join('\n');
-  });
+  const block = (name: string): string => {
+    const edit = byFn.get(name);
+    const fn = program.byName.get(name) as TypedFunc;
+    const src = formatFunction(fn).split('\n');
+    let text = src.join('\n');
+    if (edit !== undefined) {
+      const body = src.slice(1, -1);
+      const out: string[] = [...(edit.after.get(0) ?? [])];
+      body.forEach((line, i) => {
+        const edited = edit.at.has(i + 1) ? edit.at.get(i + 1) : line;
+        if (edited !== null && edited !== undefined) out.push(edited);
+        out.push(...(edit.after.get(i + 1) ?? []));
+      });
+      text = [src[0] ?? '', ...out, 'end'].join('\n');
+    }
+    const specEdits = specByFn.get(name);
+    if (specEdits === undefined) return text;
+    // Spec edits apply to the function the line edits produced, by what the lines say.
+    const edited = parse(text).functions[0] as Func;
+    return formatFunction(withSpec(edited, applySpecEdits(edited, specEdits)));
+  };
+  return [...new Set([...byFn.keys(), ...specByFn.keys()])].map(block);
 }
 
 /**
@@ -565,6 +651,10 @@ export function formatRejection(r: Rejection): string {
     : 'no other line is involved in this error';
   const budget = r.minimal ? '' : ' (check budget reached; the set may not be minimal)';
   const listed = r.lines.map((l) => `line ${l.line}: ${l.text}`).join('\n');
+  // A spec failure is not a malformed line: the reply parses and types, and then breaks the
+  // example or contract the function carries (src/spec.ts).
+  if (e.id === 'A0715' || e.id === 'A0716' || e.id === 'A0719')
+    return `${head}; it is well formed but breaks a spec line the function carries, so nothing was applied (${rest}):\n${listed}\nfix: ${hint}`;
   return `${head}; ${rest}${budget}:\n${listed}\nfix: ${hint}`;
 }
 
@@ -578,6 +668,8 @@ interface OpenHandle {
   /** Program handles opened with `scope: 'deps'`: the function the view is centred on. */
   readonly target?: string;
   readonly numbered?: boolean;
+  /** The view hides spec lines (`specs: 'hide'`). */
+  readonly hideSpecs?: boolean;
 }
 
 export interface ProgramViewOptions {
@@ -695,7 +787,12 @@ function orderFunctionsByCalls(fns: readonly Func[]): Func[] {
   return out;
 }
 
-export function editProgram(program: TypedProgram, text: string): TypedProgram {
+export function editProgram(
+  program: TypedProgram,
+  text: string,
+  /** A replaced function written without spec lines keeps the ones it had (a view that hid them). */
+  keepSpecs = false,
+): TypedProgram {
   const lines = closeBlocks(text.split(/\r?\n/));
   const removals = new Set<string>();
   const kept: string[] = [];
@@ -745,8 +842,12 @@ export function editProgram(program: TypedProgram, text: string): TypedProgram {
   const functions: Func[] = [];
   for (const f of program.functions) {
     if (removals.has(f.name)) continue;
-    const replacement = byName.get(f.name);
-    if (replacement !== undefined) functions.push(...(before.get(f.name) ?? []));
+    const written = byName.get(f.name);
+    if (written !== undefined) functions.push(...(before.get(f.name) ?? []));
+    const replacement =
+      keepSpecs && written !== undefined && written.spec === undefined && f.spec !== undefined
+        ? { ...written, spec: f.spec }
+        : written;
     functions.push(replacement ?? f);
   }
   functions.push(...pending);
@@ -859,14 +960,16 @@ export class EditSession {
     const rev = revision(fn);
     const numbered = options.numbered === true;
     const dense = options.dense === true;
+    const hideSpecs = options.specs === 'hide' && !numbered && fn.spec !== undefined;
     this.#handles.set(handle, {
       functionName,
       revision: rev,
       scope: options.scope,
       ...(numbered ? { numbered } : {}),
       ...(dense ? { dense } : {}),
+      ...(options.specs === 'hide' && !numbered ? { hideSpecs: true } : {}),
     });
-    const body = this.#functionText(fn, options.scope, numbered, dense);
+    const body = this.#functionText(fn, options.scope, numbered, dense, hideSpecs);
     return { handle, functionName, revision: rev, text: `${handle}\n${body}` };
   }
 
@@ -878,7 +981,7 @@ export class EditSession {
       return `${handle}\n${this.#programText(bound.target, bound.dense === true)}`;
     const fn = this.#program.byName.get(bound.functionName);
     if (fn === undefined) throw diag('A0613', [handle], { line: 1 });
-    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true, bound.dense === true)}`;
+    return `${handle}\n${this.#functionText(fn, bound.scope, bound.numbered === true, bound.dense === true, bound.hideSpecs === true)}`;
   }
 
   #functionText(
@@ -886,10 +989,11 @@ export class EditSession {
     scope: ViewOptions['scope'],
     numbered: boolean,
     dense = false,
+    hideSpecs = false,
   ): string {
-    if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function');
-    if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered);
-    return numbered ? numberedFunction(fn) : formatFunction(fn);
+    if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function', hideSpecs);
+    if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered, hideSpecs);
+    return numbered ? numberedFunction(fn) : formatFunction(hideSpecs ? withoutSpec(fn) : fn);
   }
 
   /**
@@ -1102,7 +1206,7 @@ export class EditSession {
           undefined,
           this.#denseNames,
         );
-      const { edits, rest } = splitLineEdits(rawBody);
+      const { edits, rest } = splitLineEdits(rawBody, (t) => isSpecEdit(t, false));
       const blocks = lineEditBlocks(this.#program, edits, undefined);
       this.#program = editProgram(this.#program, [...closeBlocks(rest), ...blocks].join('\n'));
       this.#rebind();
@@ -1140,7 +1244,9 @@ export class EditSession {
     // function; a block without `end` still takes the lines up to the next `fn`).
     // Line-addressed edits (`N line`, `N-`, `N+ line`, `f:N ...`) refer to the numbered view
     // before this reply; each edited function becomes a whole block, validated with the rest.
-    const split = splitLineEdits(body);
+    // Spec edits of the handled function (`+ex ...`, `-pre`) go with its node edits, validated as
+    // one change; only a line that names another function (`g:+ex ...`) is a block of its own.
+    const split = splitLineEdits(body, (t) => isSpecEdit(t, true));
     const lineBlocks = lineEditBlocks(this.#program, split.edits, fn.name);
     body = split.rest;
     const blockAt = body.findIndex((l) => /^fn\s/.test(stripComment(l).trim()));
@@ -1165,7 +1271,11 @@ export class EditSession {
     }
     let program = this.#program;
     if (programLines.length > 0 || lineBlocks.length > 0) {
-      program = editProgram(program, [...closeBlocks(programLines), ...lineBlocks].join('\n'));
+      program = editProgram(
+        program,
+        [...closeBlocks(programLines), ...lineBlocks].join('\n'),
+        bound.hideSpecs === true,
+      );
     }
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);
