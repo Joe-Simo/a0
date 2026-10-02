@@ -126,8 +126,11 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
    cost per accepted edit lower at all three horizons). The guide surfaced to an MCP-only client (the combined text `B0`, 1477 tokens, against the tool list alone) was then run
    on e and f against fresh same-session controls (`results/shipped.json`, `confirm-s2(e+f)`): one shot 42 of 48 against 31 (Sonnet 24 against 17, Haiku 18 against 14), invented
    operation names 13 to none, cost per accepted edit lower at the 10-task and unbounded horizons on both sizes and higher on the cold one-task horizon on Sonnet (1962.1
-   against 1773.7), so the shipping rule (lower cost on both sizes) is not met and `src/mcp.ts` is unchanged; a later record may fix the 10-task horizon as primary in advance and
-   ship server instructions. Four of the five refused Sonnet repair rounds were collected on a re-send of the unchanged request; one (`G1`, set e) was refused again and stays missing.
+   against 1773.7), so the shipping rule (lower cost on both sizes) is not met and `src/mcp.ts` is unchanged. The horizon was then fixed in advance
+   (`docs/history/2026-10-02-shipped-text-preregistration.md`: one shot and the 10-task session are primary; ship if on the sealed set g, for both sizes, `B0` one shot is not lower and
+   its 10-task cost is lower) and `B0` was run against `T0` on g (`results/shipped.json`, `preRegisteredDecision`): one shot Haiku 15 of 16 against 10, Sonnet 16 against 16;
+   10-task tokens per accepted edit Haiku 382.6 against 461.3, Sonnet 372 against 320.3. The Sonnet condition fails (the tool list alone was already 16 of 16), the rule is not met, and
+   `src/mcp.ts` still surfaces no guide; a further attempt needs a new sealed set and a new pre-registration. Four of the five refused Sonnet repair rounds were collected on a re-send of the unchanged request; one (`G1`, set e) was refused again and stays missing.
 3. Decide whether the dense view with callee bodies becomes the recommended form of the MCP server and the docs.
 4. Bring the A0 optimizer to the C and AArch64 emitters (it needs a return-kind encoding inside the bootstrap closure).
 5. SIMD fills for the arm64 and x86-64 backends (the wasm32 path has them).

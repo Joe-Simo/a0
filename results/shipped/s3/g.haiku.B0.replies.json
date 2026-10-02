@@ -1,0 +1,51 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "b le p0 p2"
+ ],
+ "g-saturating-add/a0/structured": [
+  "s add p0 p1\nc lt s p0\nr select c 4294967295 s\nret r"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "a_half shr p0 1\nb_half shr p1 1\nsum add a_half b_half\na_odd and p0 1\nb_odd and p1 1\nboth_odd and a_odd b_odd\nr add sum both_odd\nret r"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "n add p0 p1\nm sub n 1\nr div m p1\nret r"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "z eq p0 0\nd sub p0 1\nn sub p1 1\nr select z n d\nret r"
+ ],
+ "g-clamp-index/a0/structured": [
+  "l sub p1 1\nc lt p0 p1\nr select c p0 l\nret r"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "a ge p0 90\nb ge p0 80\nm select b 2 1\nr select a 3 m\nret r"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\nv get p2 p1\nc gt v p3\nr add p0 c\nret r\nend",
+  "fn step u32 u32 u32x4 u32 -> u32\nv get p2 p1\nc gt v p3\nx select c 1 0\nr add p0 x\nret r\nend"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "g le p1 p0\nd sub p0 p1\nr select g d 0\nret r"
+ ],
+ "g-ring-distance/a0/structured": [
+  "d sub p0 p1\ns add d p2\nr rem s p2\nret r"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "s shr p0 p1\nm shl 1 p2\nn sub m 1\nr and s n\nret r"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "l add p0 p2\nr call sat_sub l p1\nret r\nfn sat_sub u32 u32 -> u32\ng ge p0 p1\nd sub p0 p1\nr select g d 0\nret r\nend"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "z eq p0 0\np mul p0 p1\nq div p p0\nc eq q p1\ns select c p 4294967295\nr select z 0 s\nret r"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "d sub p1 p0\nret d"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "fn wstep u32 u32 u32x6 -> u32\nv get p2 p1\npos add p1 1\nprod mul v pos\nr add p0 prod\nret r\nend\nc fold wstep 6 0 p0\nret c"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "fn bstep u32 u32 u32 -> u32\nbit shr p2 p1\nb and bit 1\nr add p0 b\nret r\nend\nc fold bstep 8 0 p0\nret c"
+ ]
+}

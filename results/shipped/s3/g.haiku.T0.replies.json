@@ -1,0 +1,56 @@
+{
+ "g-range-inclusive-upper/a0/structured": [
+  "e0\nfn in_range u32 u32 u32 -> bool\na ge p0 p1\nb le p0 p2\nc and a b\nret c\nend"
+ ],
+ "g-saturating-add/a0/structured": [
+  "e0\nfn sat_add u32 u32 -> u32\ns add p0 p1\nc lt s p0\nmax_val not 0\nr select c max_val s\nret r\nend",
+  "e0\nfn sat_add u32 u32 -> u32\ns add p0 p1\nc lt s p0\nmax_val sub 0 1\nr select c max_val s\nret r\nend"
+ ],
+ "g-average-no-overflow/a0/structured": [
+  "e0\nfn avg u32 u32 -> u32\na1 shr p0 1\nb1 shr p1 1\na_lo and p0 1\nb_lo and p1 1\ncarry and a_lo b_lo\nr add a1 b1\nr add r carry\nret r\nend",
+  "e0\nfn avg u32 u32 -> u32\na1 shr p0 1\nb1 shr p1 1\na_lo and p0 1\nb_lo and p1 1\ncarry and a_lo b_lo\nr add a1 b1\nresult add r carry\nret result\nend"
+ ],
+ "g-page-count-ceiling/a0/structured": [
+  "e0\nfn page_count u32 u32 -> u32\nminus_one sub p1 1\nsum add p0 minus_one\nr div sum p1\nret r\nend"
+ ],
+ "g-ring-prev-slot/a0/structured": [
+  "e0\nfn prev_slot u32 u32 -> u32\nz eq p0 0\nd sub p0 1\nlast sub p1 1\nr select z last d\nret r\nend"
+ ],
+ "g-clamp-index/a0/structured": [
+  "e0\nfn clamp_index u32 u32 -> u32\nl sub p1 1\nc lt p0 p1\nr select c p0 l\nret r\nend"
+ ],
+ "g-grade-threshold/a0/structured": [
+  "e0\nfn grade u32 -> u32\na ge p0 90\nb ge p0 80\nm select b 2 1\nr select a 3 m\nret r\nend"
+ ],
+ "g-count-strictly-above/a0/structured": [
+  "e0\nfn count_above u32x4 u32 -> u32\nn fold step 4 0 p0 p1\nret n\nend\nfn step u32 u32 u32x4 u32 -> u32\nelement at p2 p1\nis_gt gt element p3\nresult add p0 is_gt\nret result\nend",
+  "e0\nfn count_above u32x4 u32 -> u32\nn fold step 4 0 p0 p1\nret n\nend\nfn step u32 u32 u32x4 u32 -> u32\nelement get p2 p1\nis_gt gt element p3\nresult add p0 is_gt\nret result\nend"
+ ],
+ "g-remaining-floor-zero/a0/structured": [
+  "e0\nfn remaining u32 u32 -> u32\nd sub p0 p1\nc lt p0 p1\nr select c 0 d\nret r\nend"
+ ],
+ "g-ring-distance/a0/structured": [
+  "e0\nfn ring_distance u32 u32 u32 -> u32\nd sub p0 p1\nc lt p0 p1\nadjusted add d p2\nfinal select c adjusted d\nr rem final p2\nret r\nend"
+ ],
+ "g-bit-field-extract/a0/structured": [
+  "e0\nfn bit_field u32 u32 u32 -> u32\nshifted shr p0 p1\none_shifted shl 1 p2\nmask sub one_shifted 1\nresult and shifted mask\nret result\nend"
+ ],
+ "g-budget-with-refund/a0/structured": [
+  "e0\nfn budget_left u32 u32 u32 -> u32\nlimit_with_refund add p0 p2\nr call sat_sub limit_with_refund p1\nret r\nend\nfn sat_sub u32 u32 -> u32\nd sub p0 p1\nc lt p0 p1\nresult select c 0 d\nret result\nend"
+ ],
+ "g-saturating-multiply/a0/structured": [
+  "e0\nfn sat_mul u32 u32 -> u32\np mul p0 p1\nmax_val not 0\nquotient div max_val p1\ncheck_overflow gt p0 quotient\nresult select check_overflow max_val p\nret result\nend",
+  "e0\nfn sat_mul u32 u32 -> u32\np mul p0 p1\nmax_val sub 0 1\na_gt_p lt p p0\nb_gt_p lt p p1\noverflow or a_gt_p b_gt_p\nresult select overflow max_val p\nret result\nend"
+ ],
+ "g-elapsed-counter-wrap/a0/structured": [
+  "e0\nfn elapsed u32 u32 -> u32\nd sub p1 p0\nret d\nend"
+ ],
+ "g-weighted-checksum-length/a0/structured": [
+  "e0\nfn checksum u32x6 -> u32\nc fold wstep 6 0 p0\nret c\nend\nfn wstep u32 u32 u32x6 -> u32\nelement at p2 p1\nposition add p1 1\nscaled mul element position\nresult add p0 scaled\nret result\nend",
+  "e0\nfn checksum u32x6 -> u32\nc fold wstep 6 0 p0\nret c\nend\nfn wstep u32 u32 u32x6 -> u32\nelement get p2 p1\nposition add p1 1\nscaled mul element position\nresult add p0 scaled\nret result\nend"
+ ],
+ "g-low-byte-popcount/a0/structured": [
+  "e0\nfn low_byte_bits u32 -> u32\nc fold bstep 8 0 p0\nret c\nend\nfn bstep u32 u32 u32 -> u32\nbit_position p1\nbit shr p2 bit_position\nbit_value and bit 1\nresult add p0 bit_value\nret result\nend",
+  "e0\nfn low_byte_bits u32 -> u32\nc fold bstep 8 0 p0\nret c\nend\nfn bstep u32 u32 u32 -> u32\nbit shr p2 p1\nbit_value and bit 1\nresult add p0 bit_value\nret result\nend"
+ ]
+}

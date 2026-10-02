@@ -81,9 +81,13 @@ const rowsKey = new Map<string, Row[]>();
 // Second session (results/shipped/s2): B0 on e and f with fresh G0 and T0 controls collected in the same session,
 // so the comparison of the combined text against the tool list is same-session. Kept apart from the first session.
 const rowsS2 = new Map<string, Row[]>();
+// Third session (results/shipped/s3): B0 and T0 on the sealed set g under the pre-registered rule
+// (docs/history/2026-10-02-shipped-text-preregistration.md), collected after the rule was committed.
+const rowsS3 = new Map<string, Row[]>();
 for (const [target, d] of [
   [rowsKey, dir],
   [rowsS2, join(dir, 's2')],
+  [rowsS3, join(dir, 's3')],
 ] as const)
   loadDir(target, d);
 function loadDir(target: Map<string, Row[]>, dir: string): void {
@@ -124,6 +128,7 @@ const SCOPES: Record<string, { sets: readonly string[]; src: Map<string, Row[]> 
   'select(d)': { sets: SELECT_SETS, src: rowsKey },
   'confirm(e+f)': { sets: CONFIRM_SETS, src: rowsKey },
   'confirm-s2(e+f)': { sets: CONFIRM_SETS, src: rowsS2 },
+  'registered(g)': { sets: ['g'], src: rowsS3 },
 };
 const pick = (
   variant: string,
@@ -401,6 +406,34 @@ function classify(src: Map<string, Row[]>): Record<string, Record<string, number
 }
 const taxonomy = classify(rowsKey);
 const taxonomyS2 = classify(rowsS2);
+const taxonomyS3 = classify(rowsS3);
+
+// The pre-registered decision (fixed before any set-g reply was collected): ship the guide to MCP-only
+// clients if, on set g, for BOTH models, the one-shot count of B0 is not lower than T0's and the tokens per
+// accepted edit of B0 at the 10-task horizon is lower than T0's (raw numbers, no band).
+const decision: Record<string, unknown> = {};
+{
+  let all = true;
+  for (const model of MODELS) {
+    const t = sums[`registered(g)/${model}`] ?? {};
+    const b = t.B0;
+    const c = t.T0;
+    if (b === undefined || c === undefined) {
+      all = false;
+      continue;
+    }
+    const b10 = b.tokensPerAcceptedEdit.session10;
+    const c10 = c.tokensPerAcceptedEdit.session10;
+    const accOk = b.oneShot.k >= c.oneShot.k;
+    const costOk = b10 != null && c10 != null && b10 < c10;
+    all = all && accOk && costOk;
+    decision[model] = {
+      oneShot: `B0 ${b.oneShot.k}/${b.n} against T0 ${c.oneShot.k}/${c.n}: ${accOk ? 'not lower' : 'lower'}`,
+      session10: `B0 ${b10} against T0 ${c10}: ${costOk ? 'lower' : 'not lower'}`,
+    };
+  }
+  decision.ruleMet = all;
+}
 
 await writeReport('results/shipped.json', {
   generatedAt: new Date().toISOString(),
@@ -424,6 +457,8 @@ await writeReport('results/shipped.json', {
     })),
     perVariant: taxonomy,
     perVariantSession2: taxonomyS2,
+    perVariantRegisteredG: taxonomyS3,
   },
+  preRegisteredDecision: decision,
 });
 process.stdout.write(`${variants.size} variants, ${Object.keys(verdicts).length} verdict rows\n`);

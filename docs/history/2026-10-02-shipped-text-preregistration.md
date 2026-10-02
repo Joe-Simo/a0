@@ -39,3 +39,30 @@ text read at build from `MODEL_GUIDE.min.txt` (a single source, no duplicate cop
 A subject refused by an API safeguard gets the identical request once more, never reworded; a second refusal is recorded as a loss
 (a missing reply is a failure, as in the earlier rounds) and the cell is reported with that stated. Controls and variants are collected in the
 same session. The decision is read from `results/shipped.json` (a new scope for set g) and not changed after it is read.
+
+## Result (collected after the rule above was committed; `results/shipped/s3/`, `results/shipped.json` scope `registered(g)`, `preRegisteredDecision`)
+
+Set g was verified against its seal before the run (the SHA-256 of `tools/ai-edit-tasks-g.ts` equals `tools/ai-edit-tasks-g.sha256`) and was not altered. n = 16 tasks per cell, 64 trials, four fresh first-reply subagents (one per variant and model, one group file each) and two fresh Haiku repair subagents (`T0` six rejected first replies, `B0` one); the Sonnet cells needed no repair. No subject was refused by an API safeguard and none died; no reply is missing. Harness self-check ok in all four reports.
+
+One shot / repaired (of 16), then tokens per accepted edit: cold task / 10-task session (primary) / unbounded:
+
+| cell | system o200k | one shot | repaired | calls per task | cold | 10-task | unbounded |
+|---|---|---|---|---|---|---|---|
+| Haiku T0 | 1082 | 10 | 14 | 1.375 | 1796.8 | 461.3 | 312.9 |
+| Haiku B0 | 1477 | 15 | 16 | 1.063 | 1977.8 | 382.6 | 205.4 |
+| Sonnet T0 | 1082 | 16 | 16 | 1 | 1488.9 | 320.3 | 190.5 |
+| Sonnet B0 | 1477 | 16 | 16 | 1 | 1967.1 | 372 | 194.7 |
+| pooled T0 | 1082 | 26 of 32 | 30 of 32 | 1.188 | 1632.6 | 386.1 | 247.6 |
+| pooled B0 | 1477 | 31 of 32 | 32 of 32 | 1.031 | 1972.5 | 377.3 | 200.1 |
+
+Verdicts, `B0` against `T0` (the rate rule of section 2 of the shipped-text record for the interval column; the pre-registered rule uses the raw counts and the raw 10-task numbers):
+
+| scope | one shot (count; interval verdict) | repaired | cold task | 10-task (primary) | unbounded |
+|---|---|---|---|---|---|
+| Haiku | 15 against 10: not lower; tie | 16 against 14: tie | loss | win (382.6 against 461.3) | win |
+| Sonnet | 16 against 16: not lower; tie | 16 against 16: tie | loss | loss (372 against 320.3) | loss |
+| pooled | 31 against 26: tie | 32 against 30: tie | loss | win (377.3 against 386.1) | win |
+
+**Decision by the pre-registered rule (`results/shipped.json`, `preRegisteredDecision.ruleMet` is false): not met, nothing ships.** Condition 1 (one-shot count not lower) holds on both models. Condition 2 (lower tokens per accepted edit at the 10-task horizon) holds on Haiku (382.6 against 461.3) and fails on Sonnet (372 against 320.3): on set g Sonnet answers every task in one shot from the tool list alone, so the 395 tokens of guide buy no acceptance and no fewer calls and cost more at every horizon (the Sonnet unbounded difference, 194.7 against 190.5, is outside the 1 per cent band, a loss). The pooled 10-task number is a narrow win (377.3 against 386.1) and the pooled number is not the rule, which asks for each model. `src/mcp.ts`, `MODEL_GUIDE.min.txt` and the skill copies are unchanged; no `COMPILER_VERSION` change; the loss ledger is unchanged.
+
+What the record shows beyond the rule: on Haiku the guide still helps (one shot 15 against 10; `T0` invented three operation names and used `at` or `get` on the wrong aggregate twice, `B0` failed once, a bool result without `-> bool`); on Sonnet it does not on this set. Together with the e and f session (Sonnet one shot 24 against 17) the Sonnet benefit is task-set dependent and the Haiku benefit appeared on all three sets; the horizon is now fixed in advance and the rule is not met on a sealed set, so a further attempt needs a new sealed set and a new pre-registration, not a reading of this one.
