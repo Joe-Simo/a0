@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-10-02T01:58:53.113Z",
+  "generatedAt": "2026-10-02T03:04:45.557Z",
   "compilerVersion": "a0c-0.1.37",
   "stage": "arm64 bootstrap to a signed Mach-O executable without the system assembler and linker",
   "toolchain": "Stage 1 is the C seed (TypeScript C backend + clang). Stages 2 and 3: A0-emitted assembly plus the runtime of tools/arm64-runtime.ts, encoded by src/arm64enc.ts and linked and ad-hoc signed by src/macho.ts (SHA-256 code directory written in TypeScript); dyld binds libSystem _mmap/_read/_write. clang, ld and codesign produce no byte of stages 2 and 3; clang is the reference of the encoder check and codesign -v checks the signature.",
   "stage1": {
-    "cBytes": 600229,
-    "buildMs": 1589
+    "cBytes": 607111,
+    "buildMs": 1521
   },
   "stage2": {
-    "asmBytes": 1083620,
+    "asmBytes": 1092798,
     "executableBytes": 264448,
-    "linkMs": 109
+    "linkMs": 102
   },
   "stage3": {
-    "asmBytes": 1083620,
+    "asmBytes": 1092798,
     "executableBytes": 264448,
-    "emitMs": 1889,
+    "emitMs": 2034,
     "reproduces": true
   },
   "fixedPoint": {
@@ -25,10 +25,10 @@
   },
   "encoder": {
     "method": "arm64enc words equal clang -c -x assembler __text words one by one, and the relocation offsets and kinds are equal",
-    "texts": 250,
-    "sources": 281,
+    "texts": 251,
+    "sources": 282,
     "stage2DiffersFromStage1": 0,
-    "instructions": 436518,
+    "instructions": 440400,
     "failed": 0,
     "checks": [
       {
@@ -746,8 +746,14 @@
         "mismatches": []
       },
       {
+        "label": "boot.a0/specstep",
+        "instructions": 2403,
+        "relocations": 0,
+        "mismatches": []
+      },
+      {
         "label": "boot.a0/pass1",
-        "instructions": 9406,
+        "instructions": 9899,
         "relocations": 0,
         "mismatches": []
       },
@@ -1467,7 +1473,7 @@
       },
       {
         "label": "boot.a0/qunit",
-        "instructions": 57028,
+        "instructions": 57521,
         "relocations": 3,
         "mismatches": []
       },
@@ -1503,7 +1509,7 @@
       },
       {
         "label": "compiler (whole)",
-        "instructions": 58595,
+        "instructions": 59088,
         "relocations": 8,
         "mismatches": []
       },
