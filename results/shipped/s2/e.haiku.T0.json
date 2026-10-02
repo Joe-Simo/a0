@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T07:26:07.909Z",
-  "status": "run with scripted replies from <tmp>/e.sonnet.T0.map.json (subject: fresh sonnet subagent, group file)",
+  "generatedAt": "2026-10-02T07:25:52.045Z",
+  "status": "run with scripted replies from <tmp>/e.haiku.T0.map.json (subject: fresh haiku subagent, group file)",
   "model": null,
   "languagePrimer": "experiments/primers/shipped/tools.T0.txt alone: rules and edit protocol in one text (one repair)",
   "primerMode": "rules-merged",
@@ -176,7 +176,7 @@
     "a0/structured": {
       "trials": 11,
       "meanView": 52,
-      "meanToolContext": 111
+      "meanToolContext": 128
     }
   },
   "trials": [
@@ -222,7 +222,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.272625000000062
+      "wallMs": 3.819584000000077
     },
     {
       "task": "e-swap-fields",
@@ -266,7 +266,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.8492089999999735
+      "wallMs": 2.3657089999999243
     },
     {
       "task": "e-guard-zero-div",
@@ -286,9 +286,9 @@
       "tokenBucketsLocal": {
         "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 155,
+        "toolContext": 239,
         "output": 75,
-        "total": 2394
+        "total": 2478
       },
       "outputTokensLocal": {
         "o200k_base": 75,
@@ -296,32 +296,37 @@
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 1,
+      "validationFailures": 2,
       "acceptedOneShot": false,
-      "accepted": true,
+      "accepted": false,
       "attempts": [
         {
           "status": "protocol",
           "failures": [
-            "structure: quot.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+            "structure: quot.c: unknown callee 'equ' (callees must be defined earlier; recursion is unsupported) fix: 'equ' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
           ],
           "outputTokensLocal": {
             "o200k_base": 38,
             "cl100k_base": 38
           },
-          "repair": "Rejected:\nstructure: quot.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+          "repair": "Rejected:\nstructure: quot.c: unknown callee 'equ' (callees must be defined earlier; recursion is unsupported) fix: 'equ' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
         },
         {
-          "status": "ok",
-          "failures": [],
+          "status": "protocol",
+          "failures": [
+            "structure: quot.r: unknown callee 'cond' (callees must be defined earlier; recursion is unsupported) fix: 'cond' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+          ],
           "outputTokensLocal": {
             "o200k_base": 38,
             "cl100k_base": 38
-          }
+          },
+          "repair": "Rejected:\nstructure: quot.r: unknown callee 'cond' (callees must be defined earlier; recursion is unsupported) fix: 'cond' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 2.133375000000001
+      "failures": [
+        "structure: quot.r: unknown callee 'cond' (callees must be defined earlier; recursion is unsupported) fix: 'cond' is neither an op nor a function defined above quot: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+      ],
+      "wallMs": 2.8799999999999955
     },
     {
       "task": "e-helper-sq-twice",
@@ -365,7 +370,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.7437909999999874
+      "wallMs": 2.7816250000000764
     },
     {
       "task": "e-mask-widen",
@@ -409,7 +414,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.7661669999999958
+      "wallMs": 2.2940830000000005
     },
     {
       "task": "e-cmp-direction",
@@ -453,7 +458,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.3998340000000553
+      "wallMs": 2.550292000000013
     },
     {
       "task": "e-sum-range",
@@ -471,33 +476,54 @@
       },
       "reasoningTokens": null,
       "tokenBucketsLocal": {
-        "languagePrimer": 1082,
+        "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 128,
-        "output": 49,
-        "total": 1259
+        "toolContext": 377,
+        "output": 90,
+        "total": 2631
       },
       "outputTokensLocal": {
-        "o200k_base": 49,
-        "cl100k_base": 49
+        "o200k_base": 90,
+        "cl100k_base": 90
       },
       "providerUsage": null,
-      "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
-      "accepted": true,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
       "attempts": [
         {
-          "status": "ok",
-          "failures": [],
+          "status": "wrong-output",
+          "failures": [
+            "sum3(1,2,3,4) = 7, expected 9",
+            "sum3(0,0,0,0) = 1, expected 0",
+            "sum3(9,1,1,1) = 12, expected 3",
+            "sum3(5,4294967295,1,4294967295) = 6, expected 4294967295",
+            "sum3(1,2,3,4294967295) = 7, expected 4",
+            "sum3(7,0,0,0) = 8, expected 0"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 49,
-            "cl100k_base": 49
-          }
+            "o200k_base": 29,
+            "cl100k_base": 29
+          },
+          "repair": "Rejected:\nsum3(1,2,3,4) = 7, expected 9\nsum3(0,0,0,0) = 1, expected 0\nsum3(9,1,1,1) = 12, expected 3\nsum3(5,4294967295,1,4294967295) = 6, expected 4294967295\nsum3(1,2,3,4294967295) = 7, expected 4\nsum3(7,0,0,0) = 8, expected 0\n\nCurrent view:\ne0\nfn sum3 u32x4 -> u32\nr fold stepadd 3 1 p0\nret r\nend\nfn stepadd u32 u32 u32x4 -> u32 end\ng0\nfn stepadd u32 u32 u32x4 -> u32 end\nfn sum3 u32x4 -> u32 end\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: stepadd.x: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 62,
+            "cl100k_base": 62
+          },
+          "repair": "Rejected:\nstructure: stepadd.x: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 1.6419590000000426
+      "failures": [
+        "structure: stepadd.x: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)"
+      ],
+      "wallMs": 4.448041999999987
     },
     {
       "task": "e-popcount-fold",
@@ -515,48 +541,33 @@
       },
       "reasoningTokens": null,
       "tokenBucketsLocal": {
-        "languagePrimer": 2164,
+        "languagePrimer": 1082,
         "workflowPrimer": 0,
-        "toolContext": 226,
-        "output": 128,
-        "total": 2518
+        "toolContext": 78,
+        "output": 67,
+        "total": 1227
       },
       "outputTokensLocal": {
-        "o200k_base": 128,
-        "cl100k_base": 128
+        "o200k_base": 67,
+        "cl100k_base": 67
       },
       "providerUsage": null,
-      "modelCalls": 2,
-      "validationFailures": 1,
-      "acceptedOneShot": false,
+      "modelCalls": 1,
+      "validationFailures": 0,
+      "acceptedOneShot": true,
       "accepted": true,
       "attempts": [
-        {
-          "status": "wrong-output",
-          "failures": [
-            "popcnt(0) = 31, expected 0",
-            "popcnt(1) = 31, expected 1",
-            "popcnt(255) = 31, expected 8",
-            "popcnt(2147483648) = 31, expected 1",
-            "popcnt(4042322160) = 32, expected 16"
-          ],
-          "outputTokensLocal": {
-            "o200k_base": 64,
-            "cl100k_base": 64
-          },
-          "repair": "Rejected:\npopcnt(0) = 31, expected 0\npopcnt(1) = 31, expected 1\npopcnt(255) = 31, expected 8\npopcnt(2147483648) = 31, expected 1\npopcnt(4042322160) = 32, expected 16\n\nCurrent view:\ne0\nfn popcnt u32 -> u32\nr fold popstep 32 0 p0\nret r\nend\nfn popstep u32 u32 u32 -> u32 end\ng0\nfn popstep u32 u32 u32 -> u32 end\nfn popcnt u32 -> u32 end\nTry again."
-        },
         {
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 64,
-            "cl100k_base": 64
+            "o200k_base": 67,
+            "cl100k_base": 67
           }
         }
       ],
       "failures": [],
-      "wallMs": 2.8980829999999287
+      "wallMs": 2.8764999999999645
     },
     {
       "task": "e-max3-helper",
@@ -600,7 +611,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.3738749999999982
+      "wallMs": 1.9848329999999805
     },
     {
       "task": "e-hash-const",
@@ -644,7 +655,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.317957999999976
+      "wallMs": 2.0337090000000444
     },
     {
       "task": "e-thread-param",
@@ -688,7 +699,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.573582999999985
+      "wallMs": 1.7201670000000604
     }
   ]
 }

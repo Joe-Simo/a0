@@ -19,15 +19,15 @@
   "e0\nfn above u32 u32 -> bool\nc gt p0 p1\nret c\nend"
  ],
  "e-sum-range/a0/structured": [
-  "g0\nfn stepadd u32 u32 u32x4 -> u32\nj add p0 1\ne idx p2 j\nr add p1 e\nret r\nend",
-  "g0\nfn stepadd u32 u32 u32x4 -> u32\nj add p1 1\ne get p2 j\nr add p0 e\nret r\nend"
+  "e0\nfn sum3 u32x4 -> u32\na idx p0 1\nb idx p0 2\nc idx p0 3\ns add a b\nt add s c\nret t\nend",
+  "e0\nfn sum3 u32x4 -> u32\na at p0 1\nb at p0 2\nc at p0 3\ns add a b\nt add s c\nret t\nend"
  ],
  "e-popcount-fold/a0/structured": [
-  "g0\nfn bitadd u32 u32 u32 -> u32\ns shr p2 p0\nb and s 1\nr add p1 b\nret r\nend\nfn popcnt u32 -> u32\nr fold bitadd 32 0 p0\nret r\nend",
-  "g0\nfn bitadd u32 u32 u32 -> u32\ns shr p2 p1\nb and s 1\nr add p0 b\nret r\nend\nfn popcnt u32 -> u32\nr fold bitadd 32 0 p0\nret r\nend"
+  "g0\nfn bitstep u32 u32 u32 -> u32\ns shr p2 p0\nb and s 1\nr add p1 b\nret r\nend\nfn popcnt u32 -> u32\nr fold bitstep 32 0 p0\nret r\nend",
+  "g0\nfn bitstep u32 u32 u32 -> u32\ns shr p2 p1\nb and s 1\nr add p0 b\nret r\nend\nfn popcnt u32 -> u32\nr fold bitstep 32 0 p0\nret r\nend"
  ],
  "e-max3-helper/a0/structured": [
-  "e0\nfn max3 u32 u32 u32 -> u32\nx call max2 p0 p1\ny call max2 x p2\nret y\nend"
+  "e0\nfn max3 u32 u32 u32 -> u32\nm call max2 p0 p1\nx call max2 m p2\nret x\nend"
  ],
  "e-hash-const/a0/structured": [
   "e0\nfn hash2 u32 u32 -> u32\nm mul p0 33\nh add m p1\nret h\nend"

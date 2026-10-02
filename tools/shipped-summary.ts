@@ -78,27 +78,37 @@ const notes: string[] = [];
 const shas: Record<string, string> = {};
 const variants = new Set<string>();
 const rowsKey = new Map<string, Row[]>();
-for (const f of readdirSync(dir).sort()) {
-  const m = /^([a-z0-9]+)\.(haiku|sonnet)\.([GTB][0-9])\.json$/.exec(f);
-  if (m === null) continue;
-  const [, set, model, variant] = m as unknown as [string, string, string, string];
-  const rep = JSON.parse(readFileSync(join(dir, f), 'utf8')) as Report;
-  if (!rep.harnessSelfCheck.ok) notes.push(`self-check failed ${f}`);
-  shas[set] = rep.taskSetSha256;
-  variants.add(variant);
-  rowsKey.set(
-    `${variant}|${set}|${model}`,
-    rep.trials.map((t) => ({
-      task: t.task,
-      system: t.setupTokensLocal.o200k_base ?? 0,
-      calls: Math.max(1, t.modelCalls),
-      context: t.tokenBucketsLocal?.toolContext ?? 0,
-      output: t.tokenBucketsLocal?.output ?? 0,
-      oneShot: t.acceptedOneShot === true,
-      accepted: t.accepted === true,
-      attempts: t.attempts,
-    })),
-  );
+// Second session (results/shipped/s2): B0 on e and f with fresh G0 and T0 controls collected in the same session,
+// so the comparison of the combined text against the tool list is same-session. Kept apart from the first session.
+const rowsS2 = new Map<string, Row[]>();
+for (const [target, d] of [
+  [rowsKey, dir],
+  [rowsS2, join(dir, 's2')],
+] as const)
+  loadDir(target, d);
+function loadDir(target: Map<string, Row[]>, dir: string): void {
+  for (const f of readdirSync(dir).sort()) {
+    const m = /^([a-z0-9]+)\.(haiku|sonnet)\.([GTB][0-9])\.json$/.exec(f);
+    if (m === null) continue;
+    const [, set, model, variant] = m as unknown as [string, string, string, string];
+    const rep = JSON.parse(readFileSync(join(dir, f), 'utf8')) as Report;
+    if (!rep.harnessSelfCheck.ok) notes.push(`self-check failed ${f}`);
+    shas[set] = rep.taskSetSha256;
+    variants.add(variant);
+    target.set(
+      `${variant}|${set}|${model}`,
+      rep.trials.map((t) => ({
+        task: t.task,
+        system: t.setupTokensLocal.o200k_base ?? 0,
+        calls: Math.max(1, t.modelCalls),
+        context: t.tokenBucketsLocal?.toolContext ?? 0,
+        output: t.tokenBucketsLocal?.output ?? 0,
+        oneShot: t.acceptedOneShot === true,
+        accepted: t.accepted === true,
+        attempts: t.attempts,
+      })),
+    );
+  }
 }
 
 const enc = getEncoding('o200k_base');
@@ -110,14 +120,20 @@ for (const v of [...variants].sort()) {
   texts[v] = { file: p, o200k: enc.encode(text).length, bytes: Buffer.byteLength(text) };
 }
 
-const SCOPES: Record<string, readonly string[]> = {
-  'select(d)': SELECT_SETS,
-  'confirm(e+f)': CONFIRM_SETS,
+const SCOPES: Record<string, { sets: readonly string[]; src: Map<string, Row[]> }> = {
+  'select(d)': { sets: SELECT_SETS, src: rowsKey },
+  'confirm(e+f)': { sets: CONFIRM_SETS, src: rowsKey },
+  'confirm-s2(e+f)': { sets: CONFIRM_SETS, src: rowsS2 },
 };
-const pick = (variant: string, sets: readonly string[], model: string): Row[] =>
+const pick = (
+  variant: string,
+  sets: readonly string[],
+  model: string,
+  src: Map<string, Row[]>,
+): Row[] =>
   sets.flatMap((s) =>
     (model === 'pooled' ? [...MODELS] : [model]).flatMap(
-      (m) => rowsKey.get(`${variant}|${s}|${m}`) ?? [],
+      (m) => src.get(`${variant}|${s}|${m}`) ?? [],
     ),
   );
 
@@ -158,10 +174,10 @@ function summarize(rs: readonly Row[]): Record<string, unknown> {
 
 const cells: Record<string, Record<string, unknown>> = {};
 const sums: Record<string, Record<string, CellSum>> = {};
-for (const [scope, sets] of Object.entries(SCOPES))
+for (const [scope, { sets, src }] of Object.entries(SCOPES))
   for (const model of [...MODELS, 'pooled'] as const)
     for (const v of [...variants].sort()) {
-      const rs = pick(v, sets, model);
+      const rs = pick(v, sets, model, src);
       if (rs.length === 0) continue;
       const s = summarize(rs);
       const key = `${scope}/${model}`;
@@ -364,22 +380,27 @@ const CATEGORIES: readonly Category[] = [
   },
 ];
 const OTHER = 'other (a type or structure error of the edit)';
-const taxonomy: Record<string, Record<string, number>> = {};
-for (const [key, rs] of rowsKey) {
-  const [variant] = key.split('|') as [string];
-  taxonomy[variant] ??= {};
-  const bucket = taxonomy[variant] as Record<string, number>;
-  for (const r of rs)
-    for (const a of r.attempts) {
-      if (a.status === 'ok') continue;
-      const msg = a.failures?.[0] ?? (a.status === 'no-reply' ? 'no reply' : '');
-      const hit = CATEGORIES.find((c) =>
-        c.re.test(`${a.status === 'wrong-output' ? 'wrong-output ' : ''}${msg}`),
-      );
-      const name = hit === undefined ? OTHER : hit.category;
-      bucket[name] = (bucket[name] ?? 0) + 1;
-    }
+function classify(src: Map<string, Row[]>): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const [key, rs] of src) {
+    const [variant] = key.split('|') as [string];
+    out[variant] ??= {};
+    const bucket = out[variant] as Record<string, number>;
+    for (const r of rs)
+      for (const a of r.attempts) {
+        if (a.status === 'ok') continue;
+        const msg = a.failures?.[0] ?? (a.status === 'no-reply' ? 'no reply' : '');
+        const hit = CATEGORIES.find((c) =>
+          c.re.test(`${a.status === 'wrong-output' ? 'wrong-output ' : ''}${msg}`),
+        );
+        const name = hit === undefined ? OTHER : hit.category;
+        bucket[name] = (bucket[name] ?? 0) + 1;
+      }
+  }
+  return out;
 }
+const taxonomy = classify(rowsKey);
+const taxonomyS2 = classify(rowsS2);
 
 await writeReport('results/shipped.json', {
   generatedAt: new Date().toISOString(),
@@ -402,6 +423,7 @@ await writeReport('results/shipped.json', {
       proposal: c.proposal,
     })),
     perVariant: taxonomy,
+    perVariantSession2: taxonomyS2,
   },
 });
 process.stdout.write(`${variants.size} variants, ${Object.keys(verdicts).length} verdict rows\n`);

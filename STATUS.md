@@ -123,8 +123,11 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
    guide); a user with both reads 1752. A trimmed EDIT section (`G1`, 373 tokens) and shorter tool descriptions (`T2`, 983) cleared set d and did not win on
    both model sizes on e and f (`G1` one shot 21 of 24 on Sonnet against 24, `T2` 12 of 24 on Haiku against 16, and cost losses on one size each), so
    `MODEL_GUIDE.min.txt`, the skill copies and `src/mcp.ts` are unchanged. The guide beats the tool list alone on the confirmation sets (one shot 44 of 48 against 33,
-   cost per accepted edit lower at all three horizons). Open: the guide surfaced to an MCP-only client through server instructions (on d only: 26 of 26 after
-   repair against 24 of 26), and five Sonnet repair rounds the API refused to run (the Sonnet counts after repair of those cells are lower bounds).
+   cost per accepted edit lower at all three horizons). The guide surfaced to an MCP-only client (the combined text `B0`, 1477 tokens, against the tool list alone) was then run
+   on e and f against fresh same-session controls (`results/shipped.json`, `confirm-s2(e+f)`): one shot 42 of 48 against 31 (Sonnet 24 against 17, Haiku 18 against 14), invented
+   operation names 13 to none, cost per accepted edit lower at the 10-task and unbounded horizons on both sizes and higher on the cold one-task horizon on Sonnet (1962.1
+   against 1773.7), so the shipping rule (lower cost on both sizes) is not met and `src/mcp.ts` is unchanged; a later record may fix the 10-task horizon as primary in advance and
+   ship server instructions. Four of the five refused Sonnet repair rounds were collected on a re-send of the unchanged request; one (`G1`, set e) was refused again and stays missing.
 3. Decide whether the dense view with callee bodies becomes the recommended form of the MCP server and the docs.
 4. Bring the A0 optimizer to the C and AArch64 emitters (it needs a return-kind encoding inside the bootstrap closure).
 5. SIMD fills for the arm64 and x86-64 backends (the wasm32 path has them).

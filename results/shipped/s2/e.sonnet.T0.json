@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T07:26:07.909Z",
+  "generatedAt": "2026-10-02T07:25:55.566Z",
   "status": "run with scripted replies from <tmp>/e.sonnet.T0.map.json (subject: fresh sonnet subagent, group file)",
   "model": null,
   "languagePrimer": "experiments/primers/shipped/tools.T0.txt alone: rules and edit protocol in one text (one repair)",
@@ -176,7 +176,7 @@
     "a0/structured": {
       "trials": 11,
       "meanView": 52,
-      "meanToolContext": 111
+      "meanToolContext": 123
     }
   },
   "trials": [
@@ -222,7 +222,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 3.272625000000062
+      "wallMs": 3.0504580000000487
     },
     {
       "task": "e-swap-fields",
@@ -266,7 +266,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.8492089999999735
+      "wallMs": 1.6433339999999816
     },
     {
       "task": "e-guard-zero-div",
@@ -321,7 +321,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 2.133375000000001
+      "wallMs": 1.9275420000000167
     },
     {
       "task": "e-helper-sq-twice",
@@ -365,7 +365,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.7437909999999874
+      "wallMs": 2.182542000000012
     },
     {
       "task": "e-mask-widen",
@@ -409,7 +409,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.7661669999999958
+      "wallMs": 1.7972500000000764
     },
     {
       "task": "e-cmp-direction",
@@ -453,7 +453,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.3998340000000553
+      "wallMs": 1.6190000000000282
     },
     {
       "task": "e-sum-range",
@@ -471,33 +471,49 @@
       },
       "reasoningTokens": null,
       "tokenBucketsLocal": {
-        "languagePrimer": 1082,
+        "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 128,
-        "output": 49,
-        "total": 1259
+        "toolContext": 252,
+        "output": 97,
+        "total": 2513
       },
       "outputTokensLocal": {
-        "o200k_base": 49,
-        "cl100k_base": 49
+        "o200k_base": 97,
+        "cl100k_base": 97
       },
       "providerUsage": null,
-      "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
-      "accepted": true,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
       "attempts": [
         {
-          "status": "ok",
-          "failures": [],
+          "status": "protocol",
+          "failures": [
+            "structure: sum3.a: unknown callee 'idx' (callees must be defined earlier; recursion is unsupported) fix: 'idx' is neither an op nor a function defined above sum3: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+          ],
           "outputTokensLocal": {
             "o200k_base": 49,
             "cl100k_base": 49
-          }
+          },
+          "repair": "Rejected:\nstructure: sum3.a: unknown callee 'idx' (callees must be defined earlier; recursion is unsupported) fix: 'idx' is neither an op nor a function defined above sum3: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: sum3.a: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 49,
+            "cl100k_base": 49
+          },
+          "repair": "Rejected:\nstructure: sum3.a: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 1.6419590000000426
+      "failures": [
+        "structure: sum3.a: at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)"
+      ],
+      "wallMs": 2.442042000000015
     },
     {
       "task": "e-popcount-fold",
@@ -544,7 +560,7 @@
             "o200k_base": 64,
             "cl100k_base": 64
           },
-          "repair": "Rejected:\npopcnt(0) = 31, expected 0\npopcnt(1) = 31, expected 1\npopcnt(255) = 31, expected 8\npopcnt(2147483648) = 31, expected 1\npopcnt(4042322160) = 32, expected 16\n\nCurrent view:\ne0\nfn popcnt u32 -> u32\nr fold popstep 32 0 p0\nret r\nend\nfn popstep u32 u32 u32 -> u32 end\ng0\nfn popstep u32 u32 u32 -> u32 end\nfn popcnt u32 -> u32 end\nTry again."
+          "repair": "Rejected:\npopcnt(0) = 31, expected 0\npopcnt(1) = 31, expected 1\npopcnt(255) = 31, expected 8\npopcnt(2147483648) = 31, expected 1\npopcnt(4042322160) = 32, expected 16\n\nCurrent view:\ne0\nfn popcnt u32 -> u32\nr fold bitstep 32 0 p0\nret r\nend\nfn bitstep u32 u32 u32 -> u32 end\ng0\nfn bitstep u32 u32 u32 -> u32 end\nfn popcnt u32 -> u32 end\nTry again."
         },
         {
           "status": "ok",
@@ -556,7 +572,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 2.8980829999999287
+      "wallMs": 2.891499999999951
     },
     {
       "task": "e-max3-helper",
@@ -600,7 +616,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.3738749999999982
+      "wallMs": 1.4901249999999209
     },
     {
       "task": "e-hash-const",
@@ -644,7 +660,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.317957999999976
+      "wallMs": 1.6794999999999618
     },
     {
       "task": "e-thread-param",
@@ -688,7 +704,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.573582999999985
+      "wallMs": 4.58016699999996
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T07:26:09.326Z",
-  "status": "run with scripted replies from <tmp>/f.sonnet.T0.map.json (subject: fresh sonnet subagent, group file)",
+  "generatedAt": "2026-10-02T07:25:54.196Z",
+  "status": "run with scripted replies from <tmp>/f.haiku.T0.map.json (subject: fresh haiku subagent, group file)",
   "model": null,
   "languagePrimer": "experiments/primers/shipped/tools.T0.txt alone: rules and edit protocol in one text (one repair)",
   "primerMode": "rules-merged",
@@ -190,7 +190,7 @@
     "a0/structured": {
       "trials": 13,
       "meanView": 50,
-      "meanToolContext": 123
+      "meanToolContext": 186
     }
   },
   "trials": [
@@ -210,33 +210,49 @@
       },
       "reasoningTokens": null,
       "tokenBucketsLocal": {
-        "languagePrimer": 1082,
+        "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 104,
-        "output": 32,
-        "total": 1218
+        "toolContext": 295,
+        "output": 119,
+        "total": 2578
       },
       "outputTokensLocal": {
-        "o200k_base": 32,
-        "cl100k_base": 32
+        "o200k_base": 119,
+        "cl100k_base": 119
       },
       "providerUsage": null,
-      "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
-      "accepted": true,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
       "attempts": [
         {
-          "status": "ok",
-          "failures": [],
+          "status": "protocol",
+          "failures": [
+            "structure: minel.c: unknown callee 'cmp' (callees must be defined earlier; recursion is unsupported) fix: 'cmp' is neither an op nor a function defined above minel: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 32,
-            "cl100k_base": 32
-          }
+            "o200k_base": 60,
+            "cl100k_base": 60
+          },
+          "repair": "Rejected:\nstructure: minel.c: unknown callee 'cmp' (callees must be defined earlier; recursion is unsupported) fix: 'cmp' is neither an op nor a function defined above minel: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: min4.r: minel expects 0 extra arguments, got 1 fix: each step runs state = minel(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn minel u32 u32 u32x4 -> u32`; minel is `fn minel u32 u32 -> u32`; as declared, write `fold minel N S` with S a u32 and no extras"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 60,
+            "cl100k_base": 60
+          },
+          "repair": "Rejected:\nstructure: min4.r: minel expects 0 extra arguments, got 1 fix: each step runs state = minel(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn minel u32 u32 u32x4 -> u32`; minel is `fn minel u32 u32 -> u32`; as declared, write `fold minel N S` with S a u32 and no extras\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 2.9507920000000922
+      "failures": [
+        "structure: min4.r: minel expects 0 extra arguments, got 1 fix: each step runs state = minel(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn minel u32 u32 u32x4 -> u32`; minel is `fn minel u32 u32 -> u32`; as declared, write `fold minel N S` with S a u32 and no extras"
+      ],
+      "wallMs": 3.9993749999999864
     },
     {
       "task": "f-third-index",
@@ -280,7 +296,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.7307089999999334
+      "wallMs": 1.4951670000000377
     },
     {
       "task": "f-advance-wrap",
@@ -317,13 +333,13 @@
         {
           "status": "protocol",
           "failures": [
-            "structure: advance.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above advance: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+            "structure: advance.r: unknown callee 'cond' (callees must be defined earlier; recursion is unsupported) fix: 'cond' is neither an op nor a function defined above advance: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
           ],
           "outputTokensLocal": {
             "o200k_base": 37,
             "cl100k_base": 37
           },
-          "repair": "Rejected:\nstructure: advance.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above advance: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+          "repair": "Rejected:\nstructure: advance.r: unknown callee 'cond' (callees must be defined earlier; recursion is unsupported) fix: 'cond' is neither an op nor a function defined above advance: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
         },
         {
           "status": "ok",
@@ -335,7 +351,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 2.223792000000003
+      "wallMs": 1.9589169999999285
     },
     {
       "task": "f-bump-cap",
@@ -372,13 +388,13 @@
         {
           "status": "protocol",
           "failures": [
-            "structure: bump.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above bump: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+            "structure: bump.c: unknown callee 'cmp' (callees must be defined earlier; recursion is unsupported) fix: 'cmp' is neither an op nor a function defined above bump: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
           ],
           "outputTokensLocal": {
             "o200k_base": 35,
             "cl100k_base": 35
           },
-          "repair": "Rejected:\nstructure: bump.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above bump: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+          "repair": "Rejected:\nstructure: bump.c: unknown callee 'cmp' (callees must be defined earlier; recursion is unsupported) fix: 'cmp' is neither an op nor a function defined above bump: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
         },
         {
           "status": "ok",
@@ -390,7 +406,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.9154589999999416
+      "wallMs": 2.0535830000000033
     },
     {
       "task": "f-divrem-pair",
@@ -410,42 +426,47 @@
       "tokenBucketsLocal": {
         "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 162,
-        "output": 77,
-        "total": 2403
+        "toolContext": 221,
+        "output": 81,
+        "total": 2466
       },
       "outputTokensLocal": {
-        "o200k_base": 77,
-        "cl100k_base": 77
+        "o200k_base": 81,
+        "cl100k_base": 81
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 1,
+      "validationFailures": 2,
       "acceptedOneShot": false,
-      "accepted": true,
+      "accepted": false,
       "attempts": [
         {
           "status": "protocol",
           "failures": [
-            "structure: divrem.r: unknown callee 'mk' (callees must be defined earlier; recursion is unsupported) fix: 'mk' is neither an op nor a function defined above divrem: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+            "structure: divrem.m: unknown callee 'mod' (callees must be defined earlier; recursion is unsupported) fix: 'mod' is neither an op nor a function defined above divrem: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
           ],
           "outputTokensLocal": {
-            "o200k_base": 39,
-            "cl100k_base": 39
+            "o200k_base": 41,
+            "cl100k_base": 41
           },
-          "repair": "Rejected:\nstructure: divrem.r: unknown callee 'mk' (callees must be defined earlier; recursion is unsupported) fix: 'mk' is neither an op nor a function defined above divrem: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+          "repair": "Rejected:\nstructure: divrem.m: unknown callee 'mod' (callees must be defined earlier; recursion is unsupported) fix: 'mod' is neither an op nor a function defined above divrem: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
         },
         {
-          "status": "ok",
-          "failures": [],
+          "status": "protocol",
+          "failures": [
+            "type: divrem.ret: expected u32x2, got u32x3 fix: return a u32x2 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> u32x3`"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 39,
-            "cl100k_base": 39
-          }
+            "o200k_base": 41,
+            "cl100k_base": 41
+          },
+          "repair": "Rejected:\ntype: divrem.ret: expected u32x2, got u32x3 fix: return a u32x2 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> u32x3`\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 1.8525419999999713
+      "failures": [
+        "type: divrem.ret: expected u32x2, got u32x3 fix: return a u32x2 value, or change the declared result: send the function with its header as `fn divrem u32 u32 -> u32x3`"
+      ],
+      "wallMs": 1.9615830000000187
     },
     {
       "task": "f-remaining-order",
@@ -489,7 +510,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.3840000000000146
+      "wallMs": 1.3903329999999414
     },
     {
       "task": "f-sumlow-bound",
@@ -509,13 +530,13 @@
       "tokenBucketsLocal": {
         "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 209,
-        "output": 78,
-        "total": 2451
+        "toolContext": 173,
+        "output": 122,
+        "total": 2459
       },
       "outputTokensLocal": {
-        "o200k_base": 78,
-        "cl100k_base": 78
+        "o200k_base": 122,
+        "cl100k_base": 122
       },
       "providerUsage": null,
       "modelCalls": 2,
@@ -526,25 +547,25 @@
         {
           "status": "protocol",
           "failures": [
-            "structure: addlow.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above addlow: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+            "parse: line 7: nested operand: A0 has one op per line fix: one op per line: write `r1 add p0 p1` above, then `r cond c r1 p0`"
           ],
           "outputTokensLocal": {
-            "o200k_base": 39,
-            "cl100k_base": 39
+            "o200k_base": 61,
+            "cl100k_base": 61
           },
-          "repair": "Rejected:\nstructure: addlow.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above addlow: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+          "repair": "Rejected:\nparse: line 7: nested operand: A0 has one op per line fix: one op per line: write `r1 add p0 p1` above, then `r cond c r1 p0`\n\nTry again."
         },
         {
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 39,
-            "cl100k_base": 39
+            "o200k_base": 62,
+            "cl100k_base": 62
           }
         }
       ],
       "failures": [],
-      "wallMs": 2.2547909999999547
+      "wallMs": 2.6957499999999754
     },
     {
       "task": "f-setlow-or",
@@ -588,7 +609,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.3654169999999795
+      "wallMs": 1.4036250000000337
     },
     {
       "task": "f-sumsq-helper",
@@ -609,12 +630,12 @@
         "languagePrimer": 1082,
         "workflowPrimer": 0,
         "toolContext": 96,
-        "output": 55,
-        "total": 1233
+        "output": 53,
+        "total": 1231
       },
       "outputTokensLocal": {
-        "o200k_base": 55,
-        "cl100k_base": 55
+        "o200k_base": 53,
+        "cl100k_base": 53
       },
       "providerUsage": null,
       "modelCalls": 1,
@@ -626,13 +647,13 @@
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 55,
-            "cl100k_base": 55
+            "o200k_base": 53,
+            "cl100k_base": 53
           }
         }
       ],
       "failures": [],
-      "wallMs": 1.799250000000029
+      "wallMs": 1.5331249999999272
     },
     {
       "task": "f-countabove-gt",
@@ -652,42 +673,57 @@
       "tokenBucketsLocal": {
         "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 201,
-        "output": 100,
-        "total": 2465
+        "toolContext": 397,
+        "output": 148,
+        "total": 2709
       },
       "outputTokensLocal": {
-        "o200k_base": 100,
-        "cl100k_base": 100
+        "o200k_base": 148,
+        "cl100k_base": 148
       },
       "providerUsage": null,
       "modelCalls": 2,
-      "validationFailures": 1,
+      "validationFailures": 2,
       "acceptedOneShot": false,
-      "accepted": true,
+      "accepted": false,
       "attempts": [
         {
           "status": "protocol",
           "failures": [
-            "structure: cnt.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above cnt: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+            "parse: line 7: nested operand: A0 has one op per line fix: one op per line: write `r1 add p0 1` above, then `r cond c r1 p0`"
           ],
           "outputTokensLocal": {
-            "o200k_base": 50,
-            "cl100k_base": 50
+            "o200k_base": 73,
+            "cl100k_base": 73
           },
-          "repair": "Rejected:\nstructure: cnt.r: unknown callee 'sel' (callees must be defined earlier; recursion is unsupported) fix: 'sel' is neither an op nor a function defined above cnt: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+          "repair": "Rejected:\nparse: line 7: nested operand: A0 has one op per line fix: one op per line: write `r1 add p0 1` above, then `r cond c r1 p0`\n\nTry again."
         },
         {
-          "status": "ok",
-          "failures": [],
+          "status": "wrong-output",
+          "failures": [
+            "countabove(1,5,9,3,4) = 4, expected 2",
+            "countabove(5,5,5,5,5) = 4, expected 0",
+            "countabove(1,2,3,4,0) = 0, expected 4",
+            "countabove(0,0,0,0,4294967295) = 4, expected 0",
+            "countabove(4294967295,4294967295,1,2,4294967294) = 4, expected 2",
+            "countabove(7,8,9,10,8) = 4, expected 2"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 50,
-            "cl100k_base": 50
-          }
+            "o200k_base": 76,
+            "cl100k_base": 76
+          },
+          "repair": "Rejected:\ncountabove(1,5,9,3,4) = 4, expected 2\ncountabove(5,5,5,5,5) = 4, expected 0\ncountabove(1,2,3,4,0) = 0, expected 4\ncountabove(0,0,0,0,4294967295) = 4, expected 0\ncountabove(4294967295,4294967295,1,2,4294967294) = 4, expected 2\ncountabove(7,8,9,10,8) = 4, expected 2\n\nCurrent view:\ne0\nfn countabove u32x4 u32 -> u32\nr fold cnt 4 0 p0 p1\nret r\nend\nfn cnt u32 u32 u32x4 u32 -> u32 end\ng0\nfn cnt u32 u32 u32x4 u32 -> u32 end\nfn countabove u32x4 u32 -> u32 end\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 2.0327499999999645
+      "failures": [
+        "countabove(1,5,9,3,4) = 4, expected 2",
+        "countabove(5,5,5,5,5) = 4, expected 0",
+        "countabove(1,2,3,4,0) = 0, expected 4",
+        "countabove(0,0,0,0,4294967295) = 4, expected 0",
+        "countabove(4294967295,4294967295,1,2,4294967294) = 4, expected 2",
+        "countabove(7,8,9,10,8) = 4, expected 2"
+      ],
+      "wallMs": 2.2911249999999654
     },
     {
       "task": "f-avg4-floor",
@@ -705,33 +741,54 @@
       },
       "reasoningTokens": null,
       "tokenBucketsLocal": {
-        "languagePrimer": 1082,
+        "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 126,
-        "output": 35,
-        "total": 1243
+        "toolContext": 451,
+        "output": 119,
+        "total": 2734
       },
       "outputTokensLocal": {
-        "o200k_base": 35,
-        "cl100k_base": 35
+        "o200k_base": 119,
+        "cl100k_base": 119
       },
       "providerUsage": null,
-      "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
-      "accepted": true,
+      "modelCalls": 2,
+      "validationFailures": 2,
+      "acceptedOneShot": false,
+      "accepted": false,
       "attempts": [
         {
-          "status": "ok",
-          "failures": [],
+          "status": "wrong-output",
+          "failures": [
+            "avg4(4,8,12,16) = 1, expected 10",
+            "avg4(1,2,3,3) = 1, expected 2",
+            "avg4(0,0,0,0) = 1, expected 0",
+            "avg4(4294967295,4294967295,4294967295,4294967295) = 1, expected 1073741823",
+            "avg4(1,0,0,0) = 1, expected 0",
+            "avg4(10,10,10,11) = 1, expected 10"
+          ],
           "outputTokensLocal": {
-            "o200k_base": 35,
-            "cl100k_base": 35
-          }
+            "o200k_base": 62,
+            "cl100k_base": 62
+          },
+          "repair": "Rejected:\navg4(4,8,12,16) = 1, expected 10\navg4(1,2,3,3) = 1, expected 2\navg4(0,0,0,0) = 1, expected 0\navg4(4294967295,4294967295,4294967295,4294967295) = 1, expected 1073741823\navg4(1,0,0,0) = 1, expected 0\navg4(10,10,10,11) = 1, expected 10\n\nCurrent view:\ne0\nfn avg4 u32x4 -> u32\ns fold addel 4 0 p0\na div s 4\nret a\nend\nfn addel u32 u32 u32x4 -> u32 end\ng0\nfn addel u32 u32 u32x4 -> u32 end\nfn avg4 u32x4 -> u32 end\nTry again."
+        },
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: avg4.s: addel expects 0 extra arguments, got 1 fix: each step runs state = addel(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addel u32 u32 u32x4 -> u32`; addel is `fn addel u32 u32 -> u32`; as declared, write `fold addel N S` with S a u32 and no extras"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 58,
+            "cl100k_base": 58
+          },
+          "repair": "Rejected:\nstructure: avg4.s: addel expects 0 extra arguments, got 1 fix: each step runs state = addel(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addel u32 u32 u32x4 -> u32`; addel is `fn addel u32 u32 -> u32`; as declared, write `fold addel N S` with S a u32 and no extras\n\nTry again."
         }
       ],
-      "failures": [],
-      "wallMs": 4.726957999999968
+      "failures": [
+        "structure: avg4.s: addel expects 0 extra arguments, got 1 fix: each step runs state = addel(state, i, extras...) where i is the u32 step index, not an element, so these operands need `fn addel u32 u32 u32x4 -> u32`; addel is `fn addel u32 u32 -> u32`; as declared, write `fold addel N S` with S a u32 and no extras"
+      ],
+      "wallMs": 2.179124999999999
     },
     {
       "task": "f-addover-bool",
@@ -749,33 +806,44 @@
       },
       "reasoningTokens": null,
       "tokenBucketsLocal": {
-        "languagePrimer": 1082,
+        "languagePrimer": 2164,
         "workflowPrimer": 0,
-        "toolContext": 91,
-        "output": 30,
-        "total": 1203
+        "toolContext": 177,
+        "output": 77,
+        "total": 2418
       },
       "outputTokensLocal": {
-        "o200k_base": 30,
-        "cl100k_base": 30
+        "o200k_base": 77,
+        "cl100k_base": 77
       },
       "providerUsage": null,
-      "modelCalls": 1,
-      "validationFailures": 0,
-      "acceptedOneShot": true,
+      "modelCalls": 2,
+      "validationFailures": 1,
+      "acceptedOneShot": false,
       "accepted": true,
       "attempts": [
+        {
+          "status": "protocol",
+          "failures": [
+            "structure: addover.c: unknown callee 'cmp' (callees must be defined earlier; recursion is unsupported) fix: 'cmp' is neither an op nor a function defined above addover: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 39,
+            "cl100k_base": 39
+          },
+          "repair": "Rejected:\nstructure: addover.c: unknown callee 'cmp' (callees must be defined earlier; recursion is unsupported) fix: 'cmp' is neither an op nor a function defined above addover: define it above, or use one of mov add sub mul and or xor shl shr eq ne lt le gt ge select call fold loop arr rec get set at put read write div rem puts\n\nTry again."
+        },
         {
           "status": "ok",
           "failures": [],
           "outputTokensLocal": {
-            "o200k_base": 30,
-            "cl100k_base": 30
+            "o200k_base": 39,
+            "cl100k_base": 39
           }
         }
       ],
       "failures": [],
-      "wallMs": 1.4125000000000227
+      "wallMs": 2.1544999999999845
     },
     {
       "task": "f-highbyte-shr",
@@ -819,7 +887,7 @@
         }
       ],
       "failures": [],
-      "wallMs": 1.4097080000000233
+      "wallMs": 1.4640419999999494
     }
   ]
 }

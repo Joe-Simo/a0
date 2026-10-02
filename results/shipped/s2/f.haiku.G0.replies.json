@@ -1,0 +1,46 @@
+{
+ "f-min4-seed/a0/structured": [
+  "fn minel u32 u32 u32x4 -> u32\ne get p2 p1\nr select (lt e p0) e p0\nret r\nend",
+  "fn minel u32 u32 u32x4 -> u32\ne get p2 p1\nr1 lt e p0\nr select r1 e p0\nret r\nend"
+ ],
+ "f-third-index/a0/structured": [
+  "r get p0 2"
+ ],
+ "f-advance-wrap/a0/structured": [
+  "a add p0 1\nr select (eq a p1) 0 a\nret r",
+  "a add p0 1\nr1 eq a p1\nr select r1 0 a\nret r"
+ ],
+ "f-bump-cap/a0/structured": [
+  "a add p0 10\nr select (gt a 100) 100 a\nret r",
+  "a add p0 10\nr1 gt a 100\nr select r1 100 a\nret r"
+ ],
+ "f-divrem-pair/a0/structured": [
+  "fn divrem u32 u32 -> (u32,u32)\nq div p0 p1\nr rem p0 p1\ns rec q r\nret s\nend"
+ ],
+ "f-remaining-order/a0/structured": [
+  "a sub p1 p0"
+ ],
+ "f-sumlow-bound/a0/structured": [
+  "fn addlow u32 u32 -> u32\nr select (lt p1 6) (add p0 p1) p0\nret r\nend",
+  "fn addlow u32 u32 -> u32\nr1 lt p1 6\nr2 add p0 p1\nr select r1 r2 p0\nret r\nend"
+ ],
+ "f-setlow-or/a0/structured": [
+  "a or p0 15"
+ ],
+ "f-sumsq-helper/a0/structured": [
+  "fn sq u32 -> u32\nr mul p0 p0\nret r\nend\nfn sumsq u32 u32 -> u32\na call sq p0\nb call sq p1\nc add a b\nret c\nend"
+ ],
+ "f-countabove-gt/a0/structured": [
+  "fn cnt u32 u32 u32x4 u32 -> u32\ne get p2 p1\nr select (gt e p3) (add p0 1) p0\nret r\nend",
+  "fn cnt u32 u32 u32x4 u32 -> u32\ne get p2 p1\nr1 gt e p3\nr2 add p0 1\nr select r1 r2 p0\nret r\nend"
+ ],
+ "f-avg4-floor/a0/structured": [
+  "fn addel u32 u32 u32x4 -> u32\ne get p2 p1\nr add p0 e\nret r\nend\ns fold addel 4 0 p0\nr div s 4\nret r"
+ ],
+ "f-addover-bool/a0/structured": [
+  "fn addover u32 u32 -> bool\ns add p0 p1\nr lt s p0\nret r\nend"
+ ],
+ "f-highbyte-shr/a0/structured": [
+  "a shr p0 24"
+ ]
+}
