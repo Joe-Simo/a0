@@ -67,31 +67,65 @@ test('tree-sitter corpus tests and highlight query pass', () => {
     assert.match(query.stdout, new RegExp(`capture: \\d+ - ${capture.replace('.', '\\.')},`));
 });
 
-test('tree-sitter highlights the spec words as keywords, by place, and the literals', () => {
+// Not a .a0 file in the repository: the spec lines of a sample there would be scanned by the
+// spec-free pin of test/spec.test.ts, which keeps every repository program free of them.
+const SPEC_SAMPLE = [
+  'fn clamp_max u32 u32 -> u32',
+  'ex 3 7 -> 3',
+  'ex 9 7 -> 7',
+  'pre lt p1 100',
+  'post le r p1',
+  'c lt p1 p0',
+  'r select c p1 p0',
+  'ret r',
+  'end',
+  '',
+  'fn first_pair (u32,bool) -> u32',
+  'ex (4;true) -> 4',
+  'v at p0 0',
+  'ret v',
+  'end',
+  '',
+  'fn sum3 u32x3 -> u32',
+  'ex [1;2;3] -> 6',
+  'a get p0 0',
+  'b get p0 1',
+  'c get p0 2',
+  'd add a b',
+  'e add d c',
+  'ret e',
+  'end',
+  '',
+].join('\n');
+
+test('tree-sitter parses spec lines and highlights their words as keywords, by place', () => {
   assert.ok(existsSync(cli), `missing ${cli}; run: bun install`);
-  const sample = join(root, 'editors', 'linguist', 'samples', 'A0', 'specs.a0');
-  const query = treeSitter(['query', 'queries/highlights.scm', sample]);
-  assert.equal(query.status, 0, query.stderr);
-  // `ex` (x4 including sum3 and first_pair), `pre` and `post` once each, as keywords.
-  const text = readFileSync(sample, 'utf8').split('\n');
-  const captured = (word: string): number =>
-    [
-      ...query.stdout.matchAll(
-        /capture: \d+ - keyword, start: \((\d+), (\d+)\), end: \((\d+), (\d+)\)/g,
-      ),
-    ].filter((m) => text[Number(m[1])]?.slice(Number(m[2]), Number(m[4])) === word).length;
-  assert.equal(captured('ex'), 4);
-  assert.equal(captured('pre'), 1);
-  assert.equal(captured('post'), 1);
-  // A node called `ex` or `pre` stays a node: the grammar parses it as an instruction.
   const dir = mkdtempSync(join(tmpdir(), 'a0-ts-'));
   try {
-    const file = join(dir, 'named.a0');
-    writeFileSync(file, 'fn g u32 -> u32\nex add p0 1\npre add ex 1\nret pre\nend\n');
-    const parsed = treeSitter(['parse', file]);
-    assert.equal(parsed.status, 0, parsed.stderr);
-    assert.equal((parsed.stdout.match(/\(instruction/g) ?? []).length, 2);
-    assert.doesNotMatch(parsed.stdout, /\((example|contract)/);
+    const sample = join(dir, 'specs.a0');
+    writeFileSync(sample, SPEC_SAMPLE);
+    const parsed = treeSitter(['parse', '--quiet', sample]);
+    assert.equal(parsed.status, 0, `${parsed.stdout}${parsed.stderr}`);
+    const query = treeSitter(['query', 'queries/highlights.scm', sample]);
+    assert.equal(query.status, 0, query.stderr);
+    // `ex` three times in the first function and one each below, `pre` and `post` once.
+    const text = SPEC_SAMPLE.split('\n');
+    const captured = (word: string): number =>
+      [
+        ...query.stdout.matchAll(
+          /capture: \d+ - keyword, start: \((\d+), (\d+)\), end: \((\d+), (\d+)\)/g,
+        ),
+      ].filter((m) => text[Number(m[1])]?.slice(Number(m[2]), Number(m[4])) === word).length;
+    assert.equal(captured('ex'), 4);
+    assert.equal(captured('pre'), 1);
+    assert.equal(captured('post'), 1);
+    // A node called `ex` or `pre` stays a node: the grammar parses it as an instruction.
+    const named = join(dir, 'named.a0');
+    writeFileSync(named, 'fn g u32 -> u32\nex add p0 1\npre add ex 1\nret pre\nend\n');
+    const tree = treeSitter(['parse', named]);
+    assert.equal(tree.status, 0, tree.stderr);
+    assert.equal((tree.stdout.match(/\(instruction/g) ?? []).length, 2);
+    assert.doesNotMatch(tree.stdout, /\((example|contract)/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
