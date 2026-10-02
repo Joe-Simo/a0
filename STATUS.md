@@ -111,7 +111,7 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
    on a quiet host, then publish or drop each timing.
 2. Shrink the primer (measured, `results/primer-ablation.json`, `docs/history/2026-10-02-primer-ablation.md`: 25 variants, clause drops and rewrites,
    selected on set d, confirmed on the different sets e and f, fresh Haiku and Sonnet subagents, 11 to 13 tasks per cell and model, no rate
-   separates at that n). The canonical primer (`experiments/primers/MODEL_GUIDE.rules-merged.txt`) is now 101 o200k tokens, was 118: acceptance
+   separates at that n). The experiment's edit-protocol primer (`experiments/primers/MODEL_GUIDE.rules-merged.txt`, an edit-only text used as the sole system text) is now 101 o200k tokens, was 118; the shipped language guide (`MODEL_GUIDE.min.txt`, MCP tool text, skill copies) is a different, longer text and is NOT changed by this, so no shipped path uses the winning text yet (shipping it needs its own measurement, as an edit-only primer or a trimmed EDIT section): acceptance
    equal on both sizes and a lower cost per accepted edit at all three session lengths on both. No shorter dense primer kept acceptance (88,
    102 and 110 tokens against 145 lose on Haiku and on the 10-task and unbounded cost), so the 145-token dense primer stays; every one of its
    clauses is used on e and f. Open: a whole-function reply without a head result could take the result type from its last statement (the one
