@@ -94,6 +94,8 @@ import {
   type Type,
   type TypedFunc,
 } from './core.js';
+import { callTraps, mayTrapFn, siteOf } from './optimize.js';
+import { frameCapacity, nativeNameData } from './trap-host.js';
 
 function refuse(message: string): never {
   throw new A0Error(`arm32: ${message}`, undefined, {
@@ -488,10 +490,15 @@ class FunctionEmitter {
   /** Compares fused into their select: key -> condition code and operands. */
   readonly #fusedCmp = new Map<string, { cond: string; x: Val; y: Val }>();
 
+  /** Strict: this function can trap, so it keeps a frame on the shadow stack. */
+  readonly #framed: boolean;
+
   constructor(
     readonly fn: TypedFunc,
     readonly options: Arm32Options,
-  ) {}
+  ) {
+    this.#framed = mayTrapFn(fn);
+  }
 
   // In the dry pass the roles are placeholders (no code is kept); in emission a missing role
   // abandons the register plan.
@@ -709,9 +716,15 @@ class FunctionEmitter {
    * A = index operand mod n; returns the register-offset operand that scales it by
    * elementBytes (`A, lsl #k` for a power of two). Uses r0-r3 (the divide routine) and lr.
    */
-  #scaledIndex(idx: Val, n: number, elemBytes: number): string {
+  #scaledIndex(idx: Val, n: number, elemBytes: number, checked = false): string {
     const bound = idx.kind === 'key' ? this.#bound.get(idx.key) : undefined;
-    if (bound !== undefined && bound <= n && (elemBytes & (elemBytes - 1)) === 0) {
+    if (checked && (elemBytes & (elemBytes - 1)) !== 0) {
+      // Strict, after the bounds check: no reduction, just the byte offset.
+      const [A, B] = [this.#A, this.#B];
+      this.#emit(...movImm(B, elemBytes), `mul ${A}, ${this.#read(idx, A)}, ${B}`);
+      return A;
+    }
+    if ((checked || (bound !== undefined && bound <= n)) && (elemBytes & (elemBytes - 1)) === 0) {
       // A counter already below the length: scale its home register directly.
       const r = this.#read(idx, this.#A);
       return elemBytes > 1 ? `${r}, lsl #${Math.log2(elemBytes)}` : r;
@@ -743,10 +756,97 @@ class FunctionEmitter {
     return this.#ADDR;
   }
 
+  // --- strict profile: the frame stack and the trap checks (src/trap-host.ts) ---------------
+  // The macros use r12 (never a home) and r0/r1 saved around them, so they fit every register plan.
+
+  /** The two instructions that load the address of `sym` into `reg`. */
+  #symbol(reg: string, sym: string): string[] {
+    return [`movw ${reg}, :lower16:${sym}`, `movt ${reg}, :upper16:${sym}`];
+  }
+
+  /** Push this function's frame. */
+  #enter(): void {
+    this.#emit(
+      'push {r0, r1}',
+      ...this.#symbol('r12', 'A0_fp'),
+      'ldr r0, [r12]',
+      ...this.#symbol('r1', `.LA0N_${this.fn.name}`),
+      'str r1, [r0]',
+      'mov r1, #0',
+      'str r1, [r0, #4]',
+      'add r0, r0, #12',
+      'str r0, [r12]',
+      'pop {r0, r1}',
+    );
+  }
+
+  #leave(): void {
+    this.#emit(
+      'push {r0}',
+      ...this.#symbol('r12', 'A0_fp'),
+      'ldr r0, [r12]',
+      'sub r0, r0, #12',
+      'str r0, [r12]',
+      'pop {r0}',
+    );
+  }
+
+  /** Name the fold or loop this frame is iterating (undefined: none). */
+  #markNode(node: Node | undefined): void {
+    this.#emit(
+      'push {r0}',
+      ...this.#symbol('r12', 'A0_fp'),
+      'ldr r12, [r12]',
+      ...(node === undefined
+        ? ['mov r0, #0']
+        : this.#symbol('r0', `.LA0D_${this.fn.name}_${node.id}`)),
+      'str r0, [r12, #-8]',
+      'pop {r0}',
+    );
+  }
+
+  /** Record the trip the marked fold or loop is on. */
+  #markTrip(counter: Val): void {
+    const r = this.#read(counter, 'A');
+    if (r === 'r12')
+      this.#emit(
+        'push {r0}',
+        ...this.#symbol('r0', 'A0_fp'),
+        'ldr r0, [r0]',
+        'str r12, [r0, #-4]',
+        'pop {r0}',
+      );
+    else this.#emit(...this.#symbol('r12', 'A0_fp'), 'ldr r12, [r12]', `str ${r}, [r12, #-4]`);
+  }
+
+  /** Strict: trap `bounds` unless the index operand is below `n`. */
+  #guardIndex(idx: Val, n: number): void {
+    if (idx.kind === 'lit') {
+      if (idx.value >>> 0 >= n) this.#emit('b A0_trap_bounds');
+      return;
+    }
+    const r = this.#read(idx, 'A');
+    if (isArmImm(n)) this.#emit(`cmp ${r}, #${n}`);
+    else this.#emit(...movImm(this.#B, n), `cmp ${r}, ${this.#B}`);
+    this.#emit('bhs A0_trap_bounds');
+  }
+
+  /** Strict: trap `divzero` when the divisor is zero. */
+  #guardDivisor(d: Val): void {
+    if (d.kind === 'lit') {
+      if (d.value === 0) this.#emit('b A0_trap_divzero');
+      return;
+    }
+    this.#emit(`cmp ${this.#read(d, 'B')}, #0`, 'beq A0_trap_divzero');
+  }
+
   // --- calls and inlining ------------------------------------------------------------------
 
   #inlinable(callee: TypedFunc, env: Env): boolean {
-    return callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH;
+    // Strict: a body that can trap keeps its frame (the trap line names it), so it is called.
+    return (
+      callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH && !mayTrapFn(callee)
+    );
   }
 
   /** Residual out-of-line call: arguments per the convention, result into `dst`. */
@@ -993,11 +1093,96 @@ class FunctionEmitter {
         shift('lsr');
         return;
       case 'div':
+        if (siteOf(env.fn, n) === 'divzero') this.#guardDivisor(b as Val);
         divide(true);
         return;
       case 'rem':
+        if (siteOf(env.fn, n) === 'divzero') this.#guardDivisor(b as Val);
         divide(false);
         return;
+      // The checked ops: the wrapped value and whether the exact result fits, as a (u32,bool) record.
+      case 'cadd':
+      case 'csub':
+      case 'cmul': {
+        this.#def(key, t);
+        const off = this.#slot(key);
+        const ra = this.#read(a as Val, A);
+        const rb = this.#read(b as Val, B);
+        const [D, T] = [this.#D, this.#T];
+        if (n.op === 'cadd')
+          this.#emit(`adds ${D}, ${ra}, ${rb}`, `mov ${T}, #1`, `movcs ${T}, #0`);
+        else if (n.op === 'csub')
+          this.#emit(`subs ${D}, ${ra}, ${rb}`, `mov ${T}, #0`, `movcs ${T}, #1`);
+        else
+          this.#emit(
+            `umull ${D}, ${T}, ${ra}, ${rb}`,
+            `cmp ${T}, #0`,
+            `mov ${T}, #0`,
+            `moveq ${T}, #1`,
+          );
+        this.#mem('str', D, 'sp', off);
+        this.#mem('str', T, 'sp', off + 4);
+        return;
+      }
+      case 'cdiv':
+      case 'crem': {
+        this.#def(key, t);
+        const off = this.#slot(key);
+        const [D, T] = [this.#D, this.#T];
+        if (this.options.udiv === true) {
+          const ra = this.#read(a as Val, A);
+          const rb = this.#read(b as Val, B);
+          if (n.op === 'cdiv') this.#emit(`udiv ${D}, ${ra}, ${rb}`);
+          else this.#emit(`udiv ${T}, ${ra}, ${rb}`, `mls ${D}, ${T}, ${rb}, ${ra}`);
+          this.#emit(`cmp ${rb}, #0`, `moveq ${D}, #0`, `mov ${T}, #0`, `movne ${T}, #1`);
+          this.#mem('str', D, 'sp', off);
+          this.#mem('str', T, 'sp', off + 4);
+          return;
+        }
+        this.#leaf = false;
+        this.#into('r0', a as Val);
+        this.#into('r1', b as Val);
+        this.#emit(`bl ${UDIVMOD}`);
+        // The routine gives all ones / the dividend for a zero divisor: the record wants 0.
+        const v = n.op === 'cdiv' ? 'r0' : 'r1';
+        const rb = this.#read(b as Val, T);
+        this.#emit(`cmp ${rb}, #0`, `moveq ${v}, #0`, `mov ${D}, #0`, `movne ${D}, #1`);
+        this.#mem('str', v, 'sp', off);
+        this.#mem('str', D, 'sp', off + 4);
+        return;
+      }
+      case 'cget': {
+        const src = aggregateOf(a as Val, 'an array');
+        const at = src.type;
+        if (isPrimitive(at) || at.kind !== 'arr') refuse('cget needs an array');
+        this.#def(key, t);
+        const off = this.#slot(key);
+        const base = this.#slot(src.key);
+        const [D, T] = [this.#D, this.#T];
+        if (b?.kind === 'lit') {
+          if (b.value >>> 0 >= at.length) {
+            this.#emit(`mov ${D}, #0`);
+            this.#mem('str', D, 'sp', off);
+            this.#mem('str', D, 'sp', off + 4);
+          } else {
+            this.#mem('ldr', D, 'sp', base + 4 * b.value);
+            this.#mem('str', D, 'sp', off);
+            this.#emit(`mov ${T}, #1`);
+            this.#mem('str', T, 'sp', off + 4);
+          }
+          return;
+        }
+        const idxOp = this.#scaledIndex(b as Val, at.length, 4);
+        const from = this.#slotBase(base);
+        this.#emit(`ldr ${D}, [${from}, ${idxOp}]`);
+        const ri = this.#read(b as Val, A);
+        if (isArmImm(at.length)) this.#emit(`cmp ${ri}, #${at.length}`);
+        else this.#emit(...movImm(this.#B, at.length), `cmp ${ri}, ${this.#B}`);
+        this.#emit(`mov ${T}, #0`, `movlo ${T}, #1`, `movhs ${D}, #0`);
+        this.#mem('str', D, 'sp', off);
+        this.#mem('str', T, 'sp', off + 4);
+        return;
+      }
       case 'eq':
         cmp('eq');
         return;
@@ -1114,6 +1299,8 @@ class FunctionEmitter {
         if (isPrimitive(at) || at.kind !== 'arr') refuse('get needs an array');
         const ew = words(at.elem);
         const base = this.#slot(src.key);
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#guardIndex(b as Val, at.length);
         if (b?.kind === 'lit') {
           const off = base + (b.value % at.length) * ew * 4;
           if (isPrimitive(t)) scalar((d) => this.#mem('ldr', d, 'sp', off));
@@ -1123,7 +1310,7 @@ class FunctionEmitter {
           }
           return;
         }
-        const idxOp = this.#scaledIndex(b as Val, at.length, ew * 4);
+        const idxOp = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
         const from = this.#slotBase(base);
         if (isPrimitive(t)) scalar((d) => this.#emit(`ldr ${d}, [${from}, ${idxOp}]`));
         else {
@@ -1138,6 +1325,9 @@ class FunctionEmitter {
         const at = src.type;
         if (isPrimitive(at) || at.kind !== 'arr') refuse('set needs an array');
         const ew = words(at.elem);
+        // Strict: the index is checked before anything is copied or written.
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#guardIndex(b as Val, at.length);
         if (mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0))
           this.#defAlias(key, src.key, t);
         else {
@@ -1149,7 +1339,7 @@ class FunctionEmitter {
           this.#place(c as Val, 'sp', dst + (b.value % at.length) * ew * 4);
           return;
         }
-        const idxOp = this.#scaledIndex(b as Val, at.length, ew * 4);
+        const idxOp = this.#scaledIndex(b as Val, at.length, ew * 4, checked);
         const into = this.#slotBase(dst);
         const cv = c as Val;
         if (cv.kind === 'lit' || isPrimitive(cv.type)) {
@@ -1253,10 +1443,14 @@ class FunctionEmitter {
     const top = this.#label();
     const test = this.#label();
     const done = this.#label();
+    // Strict: this frame names the fold it is iterating, and each trip, for a trap in its body.
+    const marked = this.#framed && env.depth === 0 && callTraps(env.fn, n);
+    if (marked) this.#markNode(n);
     if (!(count.kind === 'lit' && count.value > 0)) this.#emit(`b ${test}`);
     this.#emit(`${top}:`);
     this.#use(count);
     this.#use(cval);
+    if (marked) this.#markTrip(cval);
     const args: Val[] = [state, cval, ...extras];
     if (pred !== undefined) {
       const pkey = `${env.prefix}c_${n.id}`;
@@ -1281,6 +1475,7 @@ class FunctionEmitter {
     const limit =
       count.kind === 'lit' && isArmImm(count.value) ? `#${count.value}` : this.#read(count, B);
     this.#emit(`cmp ${ci}, ${limit}`, `blo ${top}`, `${done}:`);
+    if (marked) this.#markNode(undefined);
     this.#pos += 1;
     this.#use(state);
     this.#use(cval);
@@ -1525,6 +1720,7 @@ class FunctionEmitter {
       else this.#mem('ldr', addr, 'sp', incoming + (place.stack as number));
       this.#copy('sp', this.#slot(`p${i}`), addr, 0, words(t));
     });
+    if (this.#framed) this.#enter();
     this.#body(env);
     this.#pos += 1;
     if (!sret) this.#into('r0', ret);
@@ -1532,6 +1728,7 @@ class FunctionEmitter {
       this.#mem('ldr', this.#ADDR, 'sp', this.#slot('sret'));
       this.#place(ret, this.#ADDR, 0);
     }
+    if (this.#framed) this.#leave();
     if (frame > 0) {
       if (isArmImm(frame)) this.#emit(`add sp, sp, #${frame}`);
       else this.#emit(...movImm('r12', frame), 'add sp, sp, r12');
@@ -1539,6 +1736,7 @@ class FunctionEmitter {
     if (pushed.length === 0) this.#emit('bx lr');
     else this.#emit(`pop {${pushed.slice(0, -1).join(', ')}, pc}`);
     this.out.push(`\t.size ${sym}, .-${sym}`);
+    if (this.#framed) this.out.push('\t.section .rodata', ...nativeNameData(fn), '\t.text');
     return this.out.join('\n');
   }
 
@@ -1571,7 +1769,65 @@ export function assembleArm32(
   options: Arm32Options = {},
 ): string {
   const routine = bodies.some((b) => b.includes(UDIVMOD)) ? `\n\n${UDIVMOD_ROUTINE}` : '';
+  const runtime = bodies.some((b) => b.includes('A0_fp'))
+    ? `\n\n${arm32TrapRuntime(frameCapacity(bodies))}`
+    : '';
   const arch = options.udiv === true ? 'armv7ve' : 'armv7-a';
   const isa = options.udiv === true ? 'ARMv7VE' : 'ARMv7-A';
-  return `@ Generated by A0 ${compilerVersion}. ${isa} (ARM mode) Linux assembly, AAPCS hard-float (gnueabihf); exact u32/bool semantics.\n\t.syntax unified\n\t.arch ${arch}\n\t.fpu vfpv3-d16\n\t.eabi_attribute Tag_ABI_VFP_args, 1\n\t.arm\n\t.text\n\n${bodies.join('\n\n')}${routine}\n\n\t.section .note.GNU-stack,"",%progbits\n`;
+  return `@ Generated by A0 ${compilerVersion}. ${isa} (ARM mode) Linux assembly, AAPCS hard-float (gnueabihf); exact u32/bool semantics.\n\t.syntax unified\n\t.arch ${arch}\n\t.fpu vfpv3-d16\n\t.eabi_attribute Tag_ABI_VFP_args, 1\n\t.arm\n\t.text\n\n${bodies.join('\n\n')}${routine}${runtime}\n\n\t.section .note.GNU-stack,"",%progbits\n`;
+}
+
+/**
+ * The strict profile's runtime (src/trap-host.ts): the frame stack, and the stubs a failed check
+ * branches to. A stub records the kind and the top of the stack, empties the stack, and branches
+ * to the host's `A0_trap`, which never returns.
+ */
+function arm32TrapRuntime(frames: number): string {
+  const at = (reg: string, sym: string): string[] => [
+    `\tmovw ${reg}, :lower16:${sym}`,
+    `\tmovt ${reg}, :upper16:${sym}`,
+  ];
+  return [
+    '# The host provides A0_trap (called with the trap recorded, never returns): see src/trap-host.ts.',
+    '\t.section .rodata',
+    '.LA0K_bounds:',
+    '\t.asciz "bounds"',
+    '.LA0K_divzero:',
+    '\t.asciz "divzero"',
+    '\t.data',
+    '\t.balign 4',
+    '\t.globl A0_fp',
+    'A0_fp:',
+    '\t.word A0_frames',
+    '\t.globl A0_trap_end',
+    'A0_trap_end:',
+    '\t.word 0',
+    '\t.globl A0_trap_kind',
+    'A0_trap_kind:',
+    '\t.word 0',
+    '\t.bss',
+    '\t.balign 4',
+    '\t.globl A0_frames',
+    'A0_frames:',
+    `\t.space ${12 * frames}`,
+    '\t.text',
+    '\t.p2align 2',
+    '\t.globl A0_trap_bounds',
+    'A0_trap_bounds:',
+    ...at('r12', '.LA0K_bounds'),
+    '\tb .LA0_trap',
+    '\t.globl A0_trap_divzero',
+    'A0_trap_divzero:',
+    ...at('r12', '.LA0K_divzero'),
+    '.LA0_trap:',
+    ...at('r0', 'A0_trap_kind'),
+    '\tstr r12, [r0]',
+    ...at('r0', 'A0_fp'),
+    '\tldr r1, [r0]',
+    ...at('r2', 'A0_trap_end'),
+    '\tstr r1, [r2]',
+    ...at('r1', 'A0_frames'),
+    '\tstr r1, [r0]',
+    '\tb A0_trap',
+  ].join('\n');
 }

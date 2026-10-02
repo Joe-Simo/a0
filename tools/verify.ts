@@ -8,7 +8,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
-import { AVR_FLASH_BYTES, AVR_SRAM_BYTES, avrStackBytes } from '../src/avr.js';
+import {
+  AVR_FLASH_BYTES,
+  AVR_FRAME_BYTES,
+  AVR_SRAM_BYTES,
+  avrStackBytes,
+  avrTrapNodes,
+} from '../src/avr.js';
 import {
   C_IO_INPUT_CAPACITY,
   C_IO_OUTPUT_CAPACITY,
@@ -19,7 +25,6 @@ import {
   JAVA_CLASS,
   usesIo,
 } from '../src/backends.js';
-
 import {
   A0Error,
   formatProgram,
@@ -30,7 +35,7 @@ import {
   type Value,
 } from '../src/core.js';
 import { formatTrap, type Trap } from '../src/diagnostics.js';
-import { mayTrapFn, optimize } from '../src/optimize.js';
+import { mayTrapFn, optimize, optimizeFunction } from '../src/optimize.js';
 import { parallelC, planProgram } from '../src/parallel.js';
 import {
   compileWasm,
@@ -52,6 +57,7 @@ import {
   type ToolResult,
   withTempDir,
 } from '../src/toolchain.js';
+import { decodeAvrTrap, nativeTrapHostC } from '../src/trap-host.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import {
   type Case,
@@ -614,7 +620,12 @@ int main(int argc, char **argv) {
 `;
 
 /** Firmware for one function: its cases in program memory, one decimal result line each on UART0. */
-function avrDriver(fn: TypedFunc, cases: readonly Case[]): string {
+export function avrDriver(
+  fn: TypedFunc,
+  cases: readonly Case[],
+  /** A strict program: the functions that keep a frame, whose addresses the firmware reports first. */
+  framed: readonly string[] | undefined = undefined,
+): string {
   const width = Math.max(1, fn.params.length);
   const rows = cases.map((c) => {
     const words =
@@ -628,6 +639,41 @@ function avrDriver(fn: TypedFunc, cases: readonly Case[]): string {
     fn.result === 'bool'
       ? "tx(r ? '1' : '0');"
       : 'char buf[11]; ultoa(r, buf, 10); for (char *s = buf; *s; s++) tx(*s);';
+  // Strict: a trap reaches A0_trap with the frames in SRAM; the firmware writes `T <kind> <n>` and the
+  // frames' `<word address> <node ordinal> <trip>` as decimals, and the host decodes the interpreter's line.
+  const strictC =
+    framed === undefined
+      ? ''
+      : `#include <setjmp.h>
+${framed
+  .filter((name) => name !== fn.name)
+  .map((name) => `extern void a0_${name}(void);`)
+  .join('\n')}
+struct a0_frame { uint16_t fn; uint8_t node; uint32_t trip; } __attribute__((packed));
+extern struct a0_frame A0_frames[];
+static jmp_buf a0_jmp;
+static void txu(uint32_t v) { char buf[11]; ultoa(v, buf, 10); for (char *s = buf; *s; s++) tx(*s); tx(' '); }
+void A0_trap(uint8_t kind, const struct a0_frame *end);
+void A0_trap(uint8_t kind, const struct a0_frame *end) {
+  tx('T'); tx(' '); txu(kind);
+  const uint16_t n = (uint16_t)(end - A0_frames);
+  txu(n);
+  for (uint16_t k = 0; k < n; k++) { txu(A0_frames[k].fn); txu(A0_frames[k].node); txu(A0_frames[k].trip); }
+  longjmp(a0_jmp, 1);
+}
+`;
+  const header =
+    framed === undefined
+      ? ''
+      : `    tx('F'); tx(' '); ${framed.map((name) => `txu((uint16_t)(uintptr_t)a0_${name});`).join(' ')} tx('\\n');\n`;
+  const call =
+    framed === undefined
+      ? `${fn.result === 'bool' ? 'bool' : 'uint32_t'} r = a0_${fn.name}(${args});
+    ${print}`
+      : `if (setjmp(a0_jmp) == 0) {
+      ${fn.result === 'bool' ? 'bool' : 'uint32_t'} r = a0_${fn.name}(${args});
+      ${print}
+    }`;
   return `#include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
@@ -644,13 +690,12 @@ static void tx(char c) {
   loop_until_bit_is_set(UCSR0A, UDRE0);
   UDR0 = (uint8_t)c;
 }
-int main(void) {
+${strictC}int main(void) {
   UCSR0A = _BV(U2X0);
   UBRR0 = 0;
   UCSR0B = _BV(TXEN0);
-  for (uint16_t i = 0; i < ${cases.length}u; i++) {
-    ${fn.result === 'bool' ? 'bool' : 'uint32_t'} r = a0_${fn.name}(${args});
-    ${print}
+${header}  for (uint16_t i = 0; i < ${cases.length}u; i++) {
+    ${call}
     tx('\\n');
   }
   cli();
@@ -716,7 +761,7 @@ export async function checkAvr(
     failures: [stderr.slice(0, 2000)],
     ...skipped,
   });
-  const budget = AVR_SRAM_BYTES - AVR_DRIVER_RESERVE;
+  const strict = subset.profile === 'strict';
   const prefix = simavr.prefix;
   return withTempDir(async (dir) => {
     await writeFile(join(dir, 'host.c'), AVR_HOST, 'utf8');
@@ -739,6 +784,21 @@ export async function checkAvr(
     for (const optimize of [true, false]) {
       const level = optimize ? 'optimized' : 'unoptimized';
       const asm = compile(subset, 'avr', { optimize }).text;
+      // Strict: the functions that keep a frame, and each one's trap-naming folds, as emitted.
+      const framedAll = strict
+        ? new Set(
+            subset.functions
+              .filter((f) => mayTrapFn(optimize ? optimizeFunction(f).fn : f))
+              .map((f) => f.name),
+          )
+        : undefined;
+      const nodesOf = (name: string): string[] =>
+        avrTrapNodes(subset.functions.find((f) => f.name === name) as TypedFunc, optimize);
+      // The frame stack takes SRAM from the stack budget.
+      const budget =
+        AVR_SRAM_BYTES -
+        AVR_DRIVER_RESERVE -
+        (framedAll !== undefined && framedAll.size > 0 ? 2 + AVR_FRAME_BYTES * framedAll.size : 0);
       await writeFile(join(dir, 'module.s'), asm, 'utf8');
       const as = runTool(
         avrGcc.path as string,
@@ -760,7 +820,17 @@ export async function checkAvr(
           levelSkipCases += mine.length;
           continue;
         }
-        await writeFile(join(dir, 'driver.c'), avrDriver(fn, mine), 'utf8');
+        // The firmware names only the framed functions this one reaches: linking the others would keep them.
+        const reached = new Set<string>();
+        const reach = (f: TypedFunc): void => {
+          if (reached.has(f.name)) return;
+          reached.add(f.name);
+          for (const g of f.calls.values()) reach(g);
+        };
+        reach(fn);
+        const framed =
+          framedAll === undefined ? undefined : [...framedAll].filter((name) => reached.has(name));
+        await writeFile(join(dir, 'driver.c'), avrDriver(fn, mine, framed), 'utf8');
         const link = runTool(
           avrGcc.path as string,
           [
@@ -792,7 +862,19 @@ export async function checkAvr(
             `${level}: simulation of ${fn.name} failed (status ${String(exec.status)})`,
             exec.stderr,
           );
-        const lines = (await readFile(join(dir, 'out.txt'), 'utf8')).trim().split('\n');
+        let lines = (await readFile(join(dir, 'out.txt'), 'utf8')).trim().split('\n');
+        if (framed !== undefined) {
+          // The first line carries the framed functions' word addresses; trap lines are records.
+          const addrs = new Map<number, string>();
+          (lines.shift() ?? '')
+            .split(' ')
+            .slice(1)
+            .filter((w) => w !== '')
+            .forEach((w, k) => {
+              addrs.set(Number(w), framed[k] as string);
+            });
+          lines = lines.map((l) => (l.startsWith('T ') ? decodeAvrTrap(l, addrs, nodesOf) : l));
+        }
         const r = compareAll(mine, lines, `${level}: ${label}`);
         if (r.status !== 'passed') return { ...r, tool, ...skipped };
         levelRan += mine.length;
@@ -845,8 +927,14 @@ int printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 `,
   'stdlib.h': `#pragma once
 #include <stddef.h>
+void exit(int code) __attribute__((noreturn));
 unsigned long strtoul(const char *s, char **end, int base);
 int atoi(const char *s);
+`,
+  'setjmp.h': `#pragma once
+typedef void *jmp_buf[5];
+#define setjmp(b) __builtin_setjmp(b)
+#define longjmp(b, v) __builtin_longjmp(b, 1)
 `,
   'string.h': `#pragma once
 #include <stddef.h>
@@ -884,6 +972,7 @@ int printf(const char *fmt, ...) {
     p++;
     if (*p == 'u') put_u(va_arg(ap, unsigned));
     else if (*p == 'd') { int v = va_arg(ap, int); if (v < 0) { put('-'); put_u(0UL - (unsigned long)(long)v); } else put_u((unsigned long)v); }
+    else if (*p == 's') { const char *t = va_arg(ap, const char *); while (*t) put(*t++); }
     else if (*p == '%') put('%');
     else if (*p == 0) break;
   }
@@ -897,6 +986,10 @@ unsigned long strtoul(const char *s, char **end, int base) {
   return v;
 }
 int atoi(const char *s) { return (int)strtoul(s, NULL, 10); }
+void exit(int code) {
+  *(volatile unsigned *)0x100000UL = code == 0 ? 0x5555u : ((unsigned)code << 16) | 0x3333u;
+  for (;;) {}
+}
 static int is_delim(char c, const char *d) { for (; *d; d++) if (*d == c) return 1; return 0; }
 char *strtok(char *s, const char *d) {
   static char *next;
@@ -954,6 +1047,72 @@ SECTIONS {
 }
 `;
 
+/**
+ * Build `module.s`, `driver.c` and `input.txt` in `dir` with the bare-metal shim into an RV64 image
+ * and run it on QEMU's virt board; the driver's stdout is the UART and its exit status the test device's.
+ */
+export async function runRiscv64(
+  gcc: string,
+  qemu: string,
+  dir: string,
+): Promise<{ stage: 'build' | 'run'; result: ToolResult }> {
+  await mkdir(join(dir, 'include'));
+  for (const [name, text] of Object.entries(RV_SHIM_HEADERS))
+    await writeFile(join(dir, 'include', name), text, 'utf8');
+  await writeFile(join(dir, 'shim.c'), RV_SHIM_C, 'utf8');
+  await writeFile(join(dir, 'start.S'), RV_START_S, 'utf8');
+  await writeFile(join(dir, 'link.ld'), RV_LINK_LD, 'utf8');
+  const build = runTool(
+    gcc,
+    [
+      '-march=rv64gc',
+      '-mabi=lp64',
+      '-mcmodel=medany',
+      '-ffreestanding',
+      '-fno-builtin',
+      '-nostdlib',
+      '-static',
+      '-std=c11',
+      '-O1',
+      '-Wall',
+      '-Wextra',
+      '-Werror',
+      '-Iinclude',
+      '-Tlink.ld',
+      '-o',
+      'driver.elf',
+      'start.S',
+      'shim.c',
+      'driver.c',
+      'module.s',
+      '-lgcc',
+    ],
+    { cwd: dir },
+  );
+  if (!build.ok) return { stage: 'build', result: build };
+  const result = runTool(
+    qemu,
+    [
+      '-machine',
+      'virt',
+      '-bios',
+      'none',
+      '-m',
+      '256M',
+      '-display',
+      'none',
+      '-monitor',
+      'none',
+      '-serial',
+      'stdio',
+      '-kernel',
+      'driver.elf',
+    ],
+    { cwd: dir, timeoutMs: 600_000 },
+  );
+  return { stage: 'run', result };
+}
+
 export async function checkRiscv64(
   program: TypedProgram,
   cases: readonly Case[],
@@ -976,6 +1135,8 @@ export async function checkRiscv64(
     '#include <stdint.h>',
     '#include <stdbool.h>',
     ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
+    // A strict program's traps reach the host's A0_trap: the reference host formats the line.
+    ...(subset.profile === 'strict' ? [nativeTrapHostC()] : []),
   ].join('\n');
   const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({
     status: 'failed',
@@ -990,63 +1151,12 @@ export async function checkRiscv64(
     const asm = compile(subset, 'riscv64', { optimize }).text;
     const level = optimize ? 'optimized' : 'unoptimized';
     const r = await withTempDir(async (dir): Promise<TargetReport> => {
-      await mkdir(join(dir, 'include'));
-      for (const [name, text] of Object.entries(RV_SHIM_HEADERS))
-        await writeFile(join(dir, 'include', name), text, 'utf8');
       await writeFile(join(dir, 'module.s'), asm, 'utf8');
       await writeFile(join(dir, 'driver.c'), cDriver(subset, protos), 'utf8');
-      await writeFile(join(dir, 'shim.c'), RV_SHIM_C, 'utf8');
-      await writeFile(join(dir, 'start.S'), RV_START_S, 'utf8');
-      await writeFile(join(dir, 'link.ld'), RV_LINK_LD, 'utf8');
       await writeFile(join(dir, 'input.txt'), caseInput(subset, own), 'utf8');
-      const build = runTool(
-        gcc.path as string,
-        [
-          '-march=rv64gc',
-          '-mabi=lp64',
-          '-mcmodel=medany',
-          '-ffreestanding',
-          '-fno-builtin',
-          '-nostdlib',
-          '-static',
-          '-std=c11',
-          '-O1',
-          '-Wall',
-          '-Wextra',
-          '-Werror',
-          '-Iinclude',
-          '-Tlink.ld',
-          '-o',
-          'driver.elf',
-          'start.S',
-          'shim.c',
-          'driver.c',
-          'module.s',
-          '-lgcc',
-        ],
-        { cwd: dir },
-      );
-      if (!build.ok) return fail(`${level}: build/link failed`, build.stderr);
-      const exec = runTool(
-        qemu.path as string,
-        [
-          '-machine',
-          'virt',
-          '-bios',
-          'none',
-          '-m',
-          '256M',
-          '-display',
-          'none',
-          '-monitor',
-          'none',
-          '-serial',
-          'stdio',
-          '-kernel',
-          'driver.elf',
-        ],
-        { cwd: dir, timeoutMs: 600_000 },
-      );
+      const run = await runRiscv64(gcc.path as string, qemu.path as string, dir);
+      if (run.stage === 'build') return fail(`${level}: build/link failed`, run.result.stderr);
+      const exec = run.result;
       if (!exec.ok) return fail(`${level}: execution failed (status ${exec.status})`, exec.stderr);
       return compareAll(
         own,
@@ -1221,6 +1331,7 @@ export async function checkArm32(
     '#include <stdbool.h>',
     ...subset.functions.filter(isDriverCallable).map((f) => `extern ${cSignature(f)};`),
     ARM32_CASES,
+    ...(subset.profile === 'strict' ? [nativeTrapHostC()] : []),
   ].join('\n');
   const tools = `${gcc.version}; ${qemu.version}`;
   const fail = (what: string, stderr: string): TargetReport & typeof skipped => ({

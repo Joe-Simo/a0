@@ -398,8 +398,10 @@ test('the profile is part of every derived key', () => {
 // Other targets refuse a strict program (and the checked ops), never run it canonical
 // ---------------------------------------------------------------------------
 
-test('every target without the strict profile refuses a strict program with A0713 naming the target', () => {
-  const strict = parseAndValidate(`${STRICT}${BODY}`);
+test('every target without the strict profile refuses a strict program with a site that can trap, and a checked op, with A0713 naming the target', () => {
+  const strict = parseAndValidate(
+    `${STRICT}fn f u32 -> u32\na arr 1 2 3\nb get a p0\nret b\nend\n`,
+  );
   const checked = parseAndValidate('fn t u32 u32 -> (u32,bool)\na cadd p0 p1\nret a\nend\n');
   for (const target of TARGETS.filter((t) => !STRICT_TARGETS.has(t))) {
     const e = raised(() => compile(strict, target));
@@ -410,6 +412,9 @@ test('every target without the strict profile refuses a strict program with A071
     assert.equal(c.id, 'A0713', target);
     assert.match(c.message, /cadd/);
   }
+  // A strict program with no site that can trap means the same under both profiles: it compiles.
+  for (const target of TARGETS.filter((t) => !STRICT_TARGETS.has(t)))
+    assert.ok(compile(parseAndValidate(`${STRICT}${BODY}`), target).text.length > 0, target);
   // The interpreter still runs both.
   assert.deepEqual(run(checked.byName.get('t') as TypedFunc, [0xffff_ffff, 2]), [1, false]);
   // `--profile canonical` is the way to compile a strict file canonically.

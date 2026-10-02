@@ -128,6 +128,8 @@ import {
   type Type,
   type TypedFunc,
 } from './core.js';
+import { callTraps, mayTrapFn, siteOf } from './optimize.js';
+import { frameCapacity, nativeNameData } from './trap-host.js';
 
 function refuse(message: string): never {
   throw new A0Error(`riscv64: ${message}`, undefined, {
@@ -345,11 +347,15 @@ class FunctionEmitter {
   #outgoing = 0;
   #leaf = true;
   #saved: string[] = [];
+  /** Strict: this function can trap, so it keeps a frame on the shadow stack. */
+  readonly #framed: boolean;
 
   constructor(
     readonly fn: TypedFunc,
     readonly options: Riscv64Options = {},
-  ) {}
+  ) {
+    this.#framed = mayTrapFn(fn);
+  }
 
   #emit(...lines: string[]): void {
     if (this.#dry) return;
@@ -543,11 +549,11 @@ class FunctionEmitter {
     this.#copy(base, off, 'sp', this.#slot(v.key), words(v.type));
   }
 
-  /** t1 = (index operand mod n) * elementBytes. Uses t1-t3. */
-  #scaledIndex(idx: Val, n: number, elemBytes: number): string {
+  /** t1 = (index operand mod n) * elementBytes (no reduction when `checked` proves it below n). Uses t1-t3. */
+  #scaledIndex(idx: Val, n: number, elemBytes: number, checked = false): string {
     const r = this.#read(idx, 't1');
     const bound = idx.kind === 'key' ? this.#bound.get(idx.key) : undefined;
-    if (bound !== undefined && bound <= n) {
+    if (checked || (bound !== undefined && bound <= n)) {
       // A counter already below the length needs no reduction (its register is non-negative).
       if ((elemBytes & (elemBytes - 1)) === 0) {
         const sh = Math.log2(elemBytes);
@@ -571,8 +577,8 @@ class FunctionEmitter {
   }
 
   /** t1 = sp + base + the scaled index. Uses t1-t3. */
-  #element(idx: Val, n: number, elemBytes: number, base: number): void {
-    const off = this.#scaledIndex(idx, n, elemBytes);
+  #element(idx: Val, n: number, elemBytes: number, base: number, checked = false): void {
+    const off = this.#scaledIndex(idx, n, elemBytes, checked);
     if (base === 0) this.#emit(`add t1, ${off}, sp`);
     else {
       this.#addr('t2', 'sp', base);
@@ -604,10 +610,72 @@ class FunctionEmitter {
       this.#emit(`sw ${src}, ${b - trips * 4 * step}(t4)`);
   }
 
+  // --- strict profile: the frame stack and the trap checks (src/trap-host.ts) ---------------
+
+  /** Push this function's frame (t0-t2 only; the arguments stay in a0-a7). */
+  #enter(): void {
+    this.#emit(
+      'la t0, A0_fp',
+      'ld t1, 0(t0)',
+      `la t2, .LA0N_${this.fn.name}`,
+      'sd t2, 0(t1)',
+      'sd zero, 8(t1)',
+      'addi t1, t1, 24',
+      'sd t1, 0(t0)',
+    );
+  }
+
+  #leave(): void {
+    this.#emit('la t0, A0_fp', 'ld t1, 0(t0)', 'addi t1, t1, -24', 'sd t1, 0(t0)');
+  }
+
+  /** Name the fold or loop this frame is iterating (null: none). */
+  #markNode(node: Node | undefined): void {
+    this.#emit('la t0, A0_fp', 'ld t0, 0(t0)');
+    if (node === undefined) this.#emit('sd zero, -16(t0)');
+    else this.#emit(`la t1, .LA0D_${this.fn.name}_${node.id}`, 'sd t1, -16(t0)');
+  }
+
+  /** Record the trip the marked fold or loop is on. */
+  #markTrip(counter: Val): void {
+    const r = this.#read(counter, 't1');
+    this.#emit('la t0, A0_fp', 'ld t0, 0(t0)', `sw ${r}, -8(t0)`);
+  }
+
+  /** Trap `kind` unless `ok` (a branch taken when the check holds) jumps over it. */
+  #trapUnless(branch: (ok: string) => string, kind: 'bounds' | 'divzero'): void {
+    const ok = this.#label();
+    this.#emit(branch(ok), `tail A0_trap_${kind}`, `${ok}:`);
+  }
+
+  /** Strict: trap `bounds` unless the index operand is below `n`. */
+  #guardIndex(idx: Val, n: number): void {
+    if (idx.kind === 'lit') {
+      if (idx.value >= n) this.#emit('tail A0_trap_bounds');
+      return;
+    }
+    const r = this.#read(idx, 't1');
+    this.#emit(`li t2, ${n}`);
+    this.#trapUnless((ok) => `bltu ${r}, t2, ${ok}`, 'bounds');
+  }
+
+  /** Strict: trap `divzero` when the divisor is zero. */
+  #guardDivisor(d: Val): void {
+    if (d.kind === 'lit') {
+      if (d.value === 0) this.#emit('tail A0_trap_divzero');
+      return;
+    }
+    const r = this.#read(d, 't2');
+    this.#trapUnless((ok) => `bnez ${r}, ${ok}`, 'divzero');
+  }
+
   // --- calls and inlining ------------------------------------------------------------------
 
   #inlinable(callee: TypedFunc, env: Env): boolean {
-    return callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH;
+    // Strict: a body that can trap keeps its frame (the trap line names it), so it is called.
+    return (
+      callee.nodes.length <= INLINE_MAX_NODES && env.depth < INLINE_MAX_DEPTH && !mayTrapFn(callee)
+    );
   }
 
   /** Residual out-of-line call: arguments per the convention, result into `dst`. */
@@ -896,11 +964,76 @@ class FunctionEmitter {
         return;
       // DIVUW gives all ones and REMUW the dividend for a zero divisor: A0's rules.
       case 'div':
+        if (siteOf(env.fn, n) === 'divzero') this.#guardDivisor(b as Val);
         bin('divuw');
         return;
       case 'rem':
+        if (siteOf(env.fn, n) === 'divzero') this.#guardDivisor(b as Val);
         bin('remuw');
         return;
+      // The checked ops: the wrapped value and whether the exact result fits, as a (u32,bool) record.
+      case 'cadd':
+      case 'csub':
+      case 'cmul':
+      case 'cdiv':
+      case 'crem': {
+        this.#def(key, t);
+        const off = this.#slot(key);
+        const ra = this.#read(a as Val, 't1');
+        const rb = this.#read(b as Val, 't2');
+        if (n.op === 'cadd')
+          this.#emit(`addw t3, ${ra}, ${rb}`, `sltu t4, t3, ${ra}`, 'xori t4, t4, 1');
+        else if (n.op === 'csub')
+          this.#emit(`subw t3, ${ra}, ${rb}`, `sltu t4, ${ra}, ${rb}`, 'xori t4, t4, 1');
+        else if (n.op === 'cmul')
+          this.#emit(
+            `mulw t3, ${ra}, ${rb}`,
+            `slli t4, ${ra}, 32`,
+            'srli t4, t4, 32',
+            `slli t5, ${rb}, 32`,
+            'srli t5, t5, 32',
+            'mul t4, t4, t5',
+            'srli t4, t4, 32',
+            'seqz t4, t4',
+          );
+        else
+          this.#emit(
+            `${n.op === 'cdiv' ? 'divuw' : 'remuw'} t3, ${ra}, ${rb}`,
+            `snez t4, ${rb}`,
+            'neg t5, t4',
+            'and t3, t3, t5',
+          );
+        this.#mem('sw', 't3', 'sp', off);
+        this.#mem('sw', 't4', 'sp', off + 4);
+        return;
+      }
+      case 'cget': {
+        const src = aggregateOf(a as Val, 'an array');
+        const at = src.type;
+        if (isPrimitive(at) || at.kind !== 'arr') refuse('cget needs an array');
+        this.#def(key, t);
+        const off = this.#slot(key);
+        const base = this.#slot(src.key);
+        if (b?.kind === 'lit') {
+          if (b.value >= at.length) {
+            this.#mem('sw', 'zero', 'sp', off);
+            this.#mem('sw', 'zero', 'sp', off + 4);
+          } else {
+            this.#mem('lw', 't3', 'sp', base + 4 * b.value);
+            this.#mem('sw', 't3', 'sp', off);
+            this.#emit('li t4, 1');
+            this.#mem('sw', 't4', 'sp', off + 4);
+          }
+          return;
+        }
+        this.#element(b as Val, at.length, 4, base);
+        this.#emit('lw t3, 0(t1)');
+        const ri = this.#read(b as Val, 't1');
+        this.#emit(`li t2, ${at.length}`, `sltu t4, ${ri}, t2`, 'neg t5, t4', 'and t3, t3, t5');
+        this.#mem('sw', 't3', 'sp', off);
+        this.#mem('sw', 't4', 'sp', off + 4);
+        return;
+      }
       case 'eq':
         equality('seqz');
         return;
@@ -980,6 +1113,8 @@ class FunctionEmitter {
         if (isPrimitive(at) || at.kind !== 'arr') refuse('get needs an array');
         const ew = words(at.elem);
         const base = this.#slot(src.key);
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#guardIndex(b as Val, at.length);
         if (b?.kind === 'lit') {
           const off = base + (b.value % at.length) * ew * 4;
           if (isPrimitive(t)) scalar((d) => this.#mem('lw', d, 'sp', off), true);
@@ -989,7 +1124,7 @@ class FunctionEmitter {
           }
           return;
         }
-        this.#element(b as Val, at.length, ew * 4, base);
+        this.#element(b as Val, at.length, ew * 4, base, checked);
         if (isPrimitive(t)) scalar((d) => this.#emit(`lw ${d}, 0(t1)`), true);
         else {
           this.#def(key, t);
@@ -1002,6 +1137,9 @@ class FunctionEmitter {
         const at = src.type;
         if (isPrimitive(at) || at.kind !== 'arr') refuse('set needs an array');
         const ew = words(at.elem);
+        // Strict: the index is checked before anything is copied or written.
+        const checked = siteOf(env.fn, n) === 'bounds';
+        if (checked) this.#guardIndex(b as Val, at.length);
         if (mutableHere(env.fn, n.args[0] as Operand, index, 0, env.ownedP0))
           this.#defAlias(key, src.key, t);
         else {
@@ -1013,7 +1151,7 @@ class FunctionEmitter {
           this.#place(c as Val, 'sp', dst + (b.value % at.length) * ew * 4);
           return;
         }
-        this.#element(b as Val, at.length, ew * 4, dst);
+        this.#element(b as Val, at.length, ew * 4, dst, checked);
         this.#place(c as Val, 't1', 0);
         return;
       }
@@ -1099,6 +1237,8 @@ class FunctionEmitter {
         this.#pos += 1;
         const top = this.#label();
         const done = this.#label();
+        // Strict: this frame names the fold it is iterating, and each trip, for a trap in its body.
+        const marked = this.#framed && env.depth === 0 && callTraps(env.fn, n);
         if (count.kind === 'lit' && count.value > 0) this.#bound.set(counter, count.value);
         // Rotated: the counter starts at 0, so only a trip count of 0 skips the body; the
         // test is at the bottom. A positive literal count needs no entry test.
@@ -1106,7 +1246,12 @@ class FunctionEmitter {
         this.#use(cval);
         if (!(count.kind === 'lit' && count.value > 0))
           this.#emit(`beqz ${this.#read(count, 't1')}, ${done}`);
+        if (marked) this.#markNode(n);
         this.#emit(`${top}:`);
+        if (marked) {
+          this.#use(cval);
+          this.#markTrip(cval);
+        }
         const args: Val[] = [state, cval, ...extras];
         if (pred !== undefined) {
           const pkey = `${env.prefix}c_${n.id}`;
@@ -1131,6 +1276,7 @@ class FunctionEmitter {
         const ci = this.#read(cval, 't0');
         const limit = this.#read(count, 't1');
         this.#emit(`bltu ${ci}, ${limit}, ${top}`, `${done}:`);
+        if (marked) this.#markNode(undefined);
         // Loop end: values from outside that the body reads stay live to here; so do the state and counter.
         this.#pos += 1;
         this.#use(state);
@@ -1310,6 +1456,7 @@ class FunctionEmitter {
         true,
       );
     });
+    if (this.#framed) this.#enter();
     this.#body(env);
     this.#pos += 1;
     if (isPrimitive(fn.result)) this.#into('a0', ret);
@@ -1317,6 +1464,7 @@ class FunctionEmitter {
       this.#mem('ld', 't3', 'sp', this.#slot('sret'));
       this.#place(ret, 't3', 0);
     }
+    if (this.#framed) this.#leave();
     for (const [k, r] of this.#saved.entries())
       this.#mem('ld', r, 'sp', this.#slot('save') + 8 * k);
     if (!this.#leaf) this.#mem('ld', 'ra', 'sp', frame - 8);
@@ -1324,6 +1472,7 @@ class FunctionEmitter {
     else if (frame > 0) this.#emit(`addi sp, sp, ${frame}`);
     this.#emit('ret');
     this.out.push(`\t.size ${sym}, .-${sym}`);
+    if (this.#framed) this.out.push('\t.section .rodata', ...nativeNameData(fn), '\t.text');
     if (this.#zbbUsed) {
       // Zbb instructions assemble under a module built for plain RV64GC too.
       this.out.splice(0, 0, '\t.option push', '\t.option arch, +zbb');
@@ -1340,5 +1489,59 @@ export function emitRiscv64Function(fn: TypedFunc, options: Riscv64Options = {})
 
 /** Assemble function blocks into one .s module for a GNU or LLVM RISC-V assembler. */
 export function assembleRiscv64(bodies: readonly string[], compilerVersion: string): string {
-  return `# Generated by A0 ${compilerVersion}. RISC-V RV64 (LP64) assembly; exact u32/bool semantics.\n\t.text\n\n${bodies.join('\n\n')}\n\n\t.section .note.GNU-stack,"",@progbits\n`;
+  const runtime = bodies.some((b) => b.includes('A0_fp'))
+    ? `${riscv64TrapRuntime(frameCapacity(bodies))}\n\n`
+    : '';
+  return `# Generated by A0 ${compilerVersion}. RISC-V RV64 (LP64) assembly; exact u32/bool semantics.\n\t.text\n\n${bodies.join('\n\n')}\n\n${runtime}\t.section .note.GNU-stack,"",@progbits\n`;
+}
+
+/**
+ * The strict profile's runtime (src/trap-host.ts): the frame stack, and the stubs a failed check
+ * jumps to. A stub records the kind and the top of the stack, empties the stack, and tail-calls
+ * the host's `A0_trap`, which never returns.
+ */
+function riscv64TrapRuntime(frames: number): string {
+  return [
+    '# The host provides A0_trap (called with the trap recorded, never returns): see src/trap-host.ts.',
+    '\t.section .rodata',
+    '.LA0K_bounds:',
+    '\t.asciz "bounds"',
+    '.LA0K_divzero:',
+    '\t.asciz "divzero"',
+    '\t.data',
+    '\t.balign 8',
+    '\t.globl A0_fp',
+    'A0_fp:',
+    '\t.dword A0_frames',
+    '\t.globl A0_trap_end',
+    'A0_trap_end:',
+    '\t.dword 0',
+    '\t.globl A0_trap_kind',
+    'A0_trap_kind:',
+    '\t.dword 0',
+    '\t.bss',
+    '\t.balign 8',
+    '\t.globl A0_frames',
+    'A0_frames:',
+    `\t.space ${24 * frames}`,
+    '\t.text',
+    '\t.p2align 1',
+    '\t.globl A0_trap_bounds',
+    'A0_trap_bounds:',
+    '\tla t0, .LA0K_bounds',
+    '\tj .LA0_trap',
+    '\t.globl A0_trap_divzero',
+    'A0_trap_divzero:',
+    '\tla t0, .LA0K_divzero',
+    '.LA0_trap:',
+    '\tla t1, A0_trap_kind',
+    '\tsd t0, 0(t1)',
+    '\tla t1, A0_fp',
+    '\tld t2, 0(t1)',
+    '\tla t3, A0_trap_end',
+    '\tsd t2, 0(t3)',
+    '\tla t2, A0_frames',
+    '\tsd t2, 0(t1)',
+    '\ttail A0_trap',
+  ].join('\n');
 }

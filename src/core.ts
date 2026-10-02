@@ -202,7 +202,7 @@ export const ALL_OPS: readonly Op[] = [...OPS, ...CHECKED_OP_NAMES];
 /**
  * The targets that implement the strict profile and the checked ops: `js`, `c` (with its C++ and
  * parallel variants, and the wasm build through clang), `java`, `dotnet`, the direct `wasm` backend
- * and the direct `arm64` and `x86_64` backends.
+ * and the direct `arm64`, `x86_64`, `riscv64`, `arm32` and `avr` backends.
  */
 export const STRICT_TARGETS: ReadonlySet<string> = new Set([
   'js',
@@ -212,25 +212,51 @@ export const STRICT_TARGETS: ReadonlySet<string> = new Set([
   'wasm',
   'arm64',
   'x86_64',
+  'riscv64',
+  'arm32',
+  'avr',
 ]);
 
 /**
- * Refuse what a target cannot honour. Every target but the reference interpreter implements only
- * the canonical profile and none of the checked ops yet (`STRICT_TARGETS` do both), and none may silently run the canonical
- * semantics for a strict program: a strict function, or one with a checked op, is a `structure`
- * error (A0713) naming the target and what it lacks. Canonical programs pass untouched.
+ * Refuse what a target cannot honour. A target outside `STRICT_TARGETS` implements the canonical
+ * profile and none of the checked ops, and none may silently run the canonical semantics for a
+ * program that depends on a trap or an `(u32,bool)` record: a program with a checked op, or a
+ * `profile strict` program with a site that can trap, is a `structure` error (A0713) naming the
+ * target and the construct. A strict program whose every index is proved below its length and
+ * every divisor proved nonzero has no site: it cannot trap, so it means the same in both
+ * profiles and compiles as the canonical program does (`trapSite` is `strictTrapSite` of
+ * src/optimize.ts; without it a strict program is always refused). Canonical programs pass untouched.
  */
 export function assertTargetSupports(
   target: string,
-  p: { readonly profile?: 'strict'; readonly functions: readonly Func[] },
+  p: { readonly profile?: 'strict'; readonly functions: readonly TypedFunc[] },
+  trapSite?: (fn: TypedFunc) => string | undefined,
 ): void {
   if (STRICT_TARGETS.has(target)) return;
-  if (p.profile === 'strict') throw diag('A0713', [target, 'a `profile strict` program']);
   for (const fn of p.functions) {
     const node = fn.nodes.find((n) => CHECKED_OPS.has(n.op));
     if (node !== undefined)
       throw diag('A0713', [target, `the checked op ${node.op} (${fn.name}.${node.id})`]);
   }
+  if (p.profile !== 'strict') return;
+  if (trapSite === undefined) throw diag('A0713', [target, 'a `profile strict` program']);
+  for (const fn of p.functions) {
+    const site = trapSite(fn);
+    if (site !== undefined)
+      throw diag('A0713', [
+        target,
+        `a \`profile strict\` program with a site that can trap (${site})`,
+      ]);
+  }
+}
+
+/**
+ * `program` under the canonical profile: a target outside `STRICT_TARGETS` compiles a strict
+ * program only when it has no site that can trap (`assertTargetSupports`), and then it means the
+ * same as the canonical program, which is what such a target emits (the same text).
+ */
+export function withoutProfile(program: TypedProgram): TypedProgram {
+  return program.profile === 'strict' ? validate({ functions: program.functions }) : program;
 }
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */

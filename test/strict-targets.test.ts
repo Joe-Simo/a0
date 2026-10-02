@@ -17,11 +17,23 @@ import {
   type Value,
   validate,
 } from '../src/core.js';
-import { formatTrap, type Trap } from '../src/diagnostics.js';
+import { DIAGNOSTICS, formatTrap, type Trap } from '../src/diagnostics.js';
 import { emitCSharp } from '../src/dotnet.js';
+import { emitMetal } from '../src/metal.js';
 import { mayTrapFn, optimize, optimizeFunction } from '../src/optimize.js';
 import { parallelC } from '../src/parallel.js';
-import { findClang, findClangPlusPlus, findGcc, type ToolInfo } from '../src/toolchain.js';
+import {
+  findArmGcc,
+  findAvrGcc,
+  findClang,
+  findClangPlusPlus,
+  findGcc,
+  findQemuRiscv64,
+  findQemuSystemArm,
+  findRiscv64Gcc,
+  type ToolInfo,
+} from '../src/toolchain.js';
+import { nativeTrapHostC } from '../src/trap-host.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import {
   type Case,
@@ -32,14 +44,19 @@ import {
 } from '../tools/corpus.js';
 import { checkDotnet } from '../tools/dotnet-verify.js';
 import {
+  checkArm32,
   checkArm64,
+  checkAvr,
   checkInterpreter,
   checkJvm,
   checkNative,
+  checkRiscv64,
   checkWasm,
   checkWasmDirect,
   checkX86_64,
   ioCaps,
+  runArm32,
+  runRiscv64,
   x86Host,
 } from '../tools/verify.js';
 
@@ -766,6 +783,119 @@ test('managed and wasm targets: the runtime exists only where a program can trap
 });
 
 // ---------------------------------------------------------------------------
+// The direct native backends: riscv64 (qemu-system-riscv64), arm32 (qemu-system-arm), avr (simavr)
+// ---------------------------------------------------------------------------
+
+test("riscv64: every op at the boundaries equals the interpreter in both profiles, and every trap line is the interpreter's (optimized and not)", async () => {
+  const sources = [...programs(), { name: 'chain', program: parseAndValidate(CHAIN_SRC) }];
+  for (const { name, program } of sources) {
+    const cases = name === 'chain' ? chainCases(program) : opsCases(program);
+    const r = await checkRiscv64(program, cases, findRiscv64Gcc(), findQemuRiscv64());
+    if (r.status === 'blocked') continue;
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.ok(r.cases > 0);
+  }
+});
+
+test("avr: every op at the boundaries equals the interpreter in both profiles, and every trap record decodes to the interpreter's line (optimized and not)", async () => {
+  const sources = [...programs(), { name: 'chain', program: parseAndValidate(CHAIN_SRC) }];
+  for (const { name, program } of sources) {
+    const cases = name === 'chain' ? chainCases(program) : opsCases(program);
+    const r = await checkAvr(program, cases, findAvrGcc(), findClang());
+    if (r.status === 'blocked') continue;
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.ok(r.cases > 0);
+  }
+});
+
+test("arm32: every op at the boundaries equals the interpreter in both profiles, and every trap line is the interpreter's (optimized and not)", async () => {
+  const sources = [...programs(), { name: 'chain', program: parseAndValidate(CHAIN_SRC) }];
+  for (const { name, program } of sources) {
+    const cases = name === 'chain' ? chainCases(program) : opsCases(program);
+    const r = await checkArm32(program, cases, findArmGcc(), findQemuSystemArm());
+    if (r.status === 'blocked') continue;
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.ok(r.cases > 0);
+  }
+});
+
+test('riscv64, arm32 and avr: the strict corpus equals the interpreter, value or trap line, on every case (optimized and not)', async () => {
+  const strict = validate({ profile: 'strict', functions: generateCorpus().functions });
+  const cases: Case[] = [];
+  for (const c of generateCases(strict))
+    if (c.input === undefined) cases.push(caseFor(fnOf(strict, c.functionName), [...c.args]));
+  const traps = cases.filter((c) => c.expectedTrap !== undefined).length;
+  assert.ok(traps > 100 && traps < cases.length, `${traps} of ${cases.length} cases trap`);
+  const reports = [
+    ['riscv64', await checkRiscv64(strict, cases, findRiscv64Gcc(), findQemuRiscv64())],
+    ['arm32', await checkArm32(strict, cases, findArmGcc(), findQemuSystemArm())],
+    ['avr', await checkAvr(strict, cases, findAvrGcc(), findClang())],
+  ] as const;
+  for (const [name, r] of reports) {
+    if (r.status === 'blocked') continue;
+    assert.equal(r.status, 'passed', `${name}: ${r.failures?.slice(0, 3).join(' | ')} ${r.detail}`);
+    assert.ok(r.cases > 1000, name);
+  }
+});
+
+const HOST_SRC = `${STRICT}fn step u32 u32 -> u32
+a arr 1 2 3
+b get a p1
+c add p0 b
+ret c
+end
+fn top u32 -> u32
+r fold step p0 0
+ret r
+end
+`;
+
+test("riscv64 and arm32: the reference host prints the interpreter's trap line and a trapped call never returns (A0_TRAP_EXIT is exit(3) by default)", async () => {
+  const program = parseAndValidate(HOST_SRC);
+  const want = interpOutcome(fnOf(program, 'top'), [5]);
+  assert.match(want, /^trap runtime: trap bounds fn=step at=top\.r trip=3 chain=top>step /);
+  const line = want.slice('trap '.length);
+  const driver = `#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+extern uint32_t a0_top(uint32_t);
+#define A0_TRAP_EMIT(line) printf("%s\\n", (line))
+${nativeTrapHostC()}
+int main(void) { printf("%u\\n", (unsigned)a0_top(5)); return 0; }
+`;
+  const rv = findRiscv64Gcc();
+  const qrv = findQemuRiscv64();
+  if (rv.path !== undefined && qrv.path !== undefined) {
+    const dir = mkdtempSync(join(tmpdir(), 'a0-host-'));
+    try {
+      writeFileSync(join(dir, 'module.s'), compile(program, 'riscv64').text);
+      writeFileSync(join(dir, 'driver.c'), driver);
+      writeFileSync(join(dir, 'input.txt'), '');
+      const run = await runRiscv64(rv.path, qrv.path, dir);
+      assert.equal(run.stage, 'run', run.result.stderr);
+      assert.equal(run.result.stdout.replace(/\r/g, '').trim(), line);
+      assert.equal(run.result.status, 3);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  const arm = findArmGcc();
+  const qarm = findQemuSystemArm();
+  if (arm.path !== undefined && qarm.path !== undefined) {
+    const dir = mkdtempSync(join(tmpdir(), 'a0-host-'));
+    try {
+      writeFileSync(join(dir, 'module.s'), compile(program, 'arm32').text);
+      writeFileSync(join(dir, 'driver.c'), driver);
+      const run = await runArm32(arm.path, qarm.path, dir);
+      assert.equal(run.stage, 'run', run.result.stderr);
+      assert.equal(run.result.stdout.replace(/\r/g, '').trim(), line);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Mutation safety, targets, size
 // ---------------------------------------------------------------------------
 
@@ -803,25 +933,35 @@ end
   );
 });
 
-test('targets: js, c, java, dotnet, wasm, arm64 and x86_64 implement strict and the checked ops; every other target still refuses with A0713', () => {
+test('targets: js, c, java, dotnet, wasm, arm64, x86_64, riscv64, arm32 and avr implement strict and the checked ops; every other target refuses what needs a trap or a record with A0713', () => {
   assert.deepEqual([...STRICT_TARGETS].sort(), [
+    'arm32',
     'arm64',
+    'avr',
     'c',
     'dotnet',
     'java',
     'js',
+    'riscv64',
     'wasm',
     'x86_64',
   ]);
-  const strict = parseAndValidate(`${STRICT}fn f u32 -> u32\na add p0 1\nret a\nend\n`);
+  const safe = parseAndValidate(`${STRICT}fn f u32 -> u32\na add p0 1\nret a\nend\n`);
+  const trapping = parseAndValidate(
+    `${STRICT}fn f u32 -> u32\na arr 1 2 3\nb get a p0\nret b\nend\n`,
+  );
   const checked = parseAndValidate('fn t u32 u32 -> (u32,bool)\na cadd p0 p1\nret a\nend\n');
+  const strictChecked = parseAndValidate(
+    `${STRICT}fn t u32 u32 -> (u32,bool)\na cadd p0 p1\nret a\nend\n`,
+  );
   for (const target of TARGETS) {
     if (STRICT_TARGETS.has(target)) {
-      assert.ok(compile(strict, target).text.length > 0);
-      assert.ok(compile(checked, target, { optimize: false }).text.length > 0);
+      for (const p of [safe, trapping, strictChecked])
+        assert.ok(compile(p, target, { optimize: false }).text.length > 0, target);
+      assert.ok(compile(checked, target, { optimize: false }).text.length > 0, target);
       continue;
     }
-    for (const prog of [strict, checked]) {
+    for (const prog of [trapping, checked, strictChecked]) {
       try {
         compile(prog, target, { optimize: false });
         assert.fail(`${target} must refuse`);
@@ -830,6 +970,74 @@ test('targets: js, c, java, dotnet, wasm, arm64 and x86_64 implement strict and 
       }
     }
   }
+});
+
+/** A strict program in which every site is proved safe: an index under an `and` mask or a literal, a divisor that is a nonzero literal or has a bit set. */
+const PROVED = `fn step u32 u32 -> u32
+a arr 1 2 3 4
+m and p1 3
+b get a m
+d div p0 4
+e rem p0 7
+x or p1 1
+y div p0 x
+c add p0 b
+f add c d
+g add f e
+h add g y
+s set a m h
+k get s 0
+l add h k
+ret l
+end
+fn top u32 -> u32
+r fold step p0 0
+ret r
+end
+`;
+
+test('sv, arm64, x86_64 and metal: a strict program whose every site is proved safe compiles as the canonical program (the same text); one with a site that can trap is refused, naming the site', () => {
+  const canonical = parseAndValidate(PROVED);
+  const strict = parseAndValidate(`${STRICT}${PROVED}`);
+  for (const f of strict.functions) assert.equal(mayTrapFn(f), false, f.name);
+  for (const target of TARGETS) {
+    if (STRICT_TARGETS.has(target)) continue;
+    for (const optimizeIt of [true, false])
+      assert.equal(
+        compile(strict, target, { optimize: optimizeIt }).text,
+        compile(canonical, target, { optimize: optimizeIt }).text,
+        `${target} optimize=${optimizeIt}`,
+      );
+  }
+  assert.equal(emitMetal(strict), emitMetal(canonical));
+  // One unproved index, a divisor that may be zero, and a call of such a function: each is refused
+  // with the site, on every target outside STRICT_TARGETS (Metal and SystemVerilog among them).
+  const sites: [string, RegExp][] = [
+    [
+      'fn f u32 -> u32\na arr 1 2 3\nb get a p0\nret b\nend\n',
+      /can trap \(f\.b: get index not proved below the length\)/,
+    ],
+    [
+      'fn f u32 u32 -> u32\nq div p0 p1\nret q\nend\n',
+      /can trap \(f\.q: div divisor not proved nonzero\)/,
+    ],
+    [
+      'fn g u32 u32 -> u32\nq rem p0 p1\nret q\nend\nfn f u32 -> u32\nr call g p0 3\nret r\nend\n',
+      /can trap \(g\.q: rem divisor not proved nonzero\)/,
+    ],
+  ];
+  for (const [src, message] of sites) {
+    const p = parseAndValidate(`${STRICT}${src}`);
+    for (const target of TARGETS) {
+      if (STRICT_TARGETS.has(target)) continue;
+      assert.throws(() => compile(p, target), message, target);
+    }
+    assert.throws(() => emitMetal(p), message);
+  }
+  // The same sites under the canonical profile are fine: there they wrap.
+  for (const [src] of sites) assert.ok(compile(parseAndValidate(src), 'sv').text.length > 0);
+  // The message says what compiles: the diagnostic table and the one-line fix name the proof.
+  assert.match(DIAGNOSTICS.A0713?.fix ?? '', /provably safe/);
 });
 
 test('size: strict output next to canonical output on the same kernel (reported, not asserted)', () => {

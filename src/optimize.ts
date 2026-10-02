@@ -274,6 +274,33 @@ export function mayTrapNode(
   return strictSite(fn, node, defs) !== undefined;
 }
 
+/**
+ * The first node of strict `fn` that can trap, described for a diagnostic (`fn.node: why`), or
+ * undefined: a canonical function, or one whose every site is proved safe. A call, fold or loop
+ * is named by the callee that can trap.
+ */
+export function strictTrapSite(fn: TypedFunc): string | undefined {
+  if (fn.profile !== 'strict') return undefined;
+  const defs = nodeDefs(fn);
+  for (const n of fn.nodes) {
+    if (!mayTrapNode(fn, n, defs)) continue;
+    if (n.op === 'call' || n.op === 'fold' || n.op === 'loop') {
+      const callee = [n.callee, n.pred].find((c) => {
+        const f = c === undefined ? undefined : fn.calls.get(c);
+        return f !== undefined && mayTrapFn(f);
+      });
+      return `${fn.name}.${n.id}: ${n.op} of ${callee ?? '?'}, which can trap`;
+    }
+    const why: Record<StrictSite, string> = {
+      bounds: `${n.op} index not proved below the length`,
+      divzero: `${n.op} divisor not proved nonzero`,
+      input: 'read of input that may be exhausted',
+    };
+    return `${fn.name}.${n.id}: ${why[strictSite(fn, n, defs) as StrictSite]}`;
+  }
+  return undefined;
+}
+
 const MAY_TRAP = new WeakMap<TypedFunc, boolean>();
 
 /** Can a call of `fn` trap? (False for every canonical function.) */

@@ -67,7 +67,8 @@ import {
   type TypedFunc,
   validateFunction,
 } from './core.js';
-import { optimizeFunction } from './optimize.js';
+import { callTraps, mayTrapFn, optimizeFunction, type StrictSite, siteOf } from './optimize.js';
+import { frameCapacity, trapNodes } from './trap-host.js';
 
 /** Largest single aggregate, in bytes (byte-sized element offsets; SRAM is 2 KiB). */
 export const AVR_AGGREGATE_MAX_BYTES = 255;
@@ -161,6 +162,14 @@ function costWords(f: TypedFunc): number {
       case 'call':
         words += 12;
         break;
+      case 'cadd':
+      case 'csub':
+      case 'cmul':
+      case 'cdiv':
+      case 'crem':
+      case 'cget':
+        words += 24;
+        break;
       case 'fold':
       case 'loop':
         words += 30;
@@ -193,8 +202,25 @@ export function inlineCalls(fn: TypedFunc): TypedFunc {
     const calls = new Map(fn.calls);
     const nodes: Node[] = [];
     let changed = false;
+    // Strict: the function's own nodes keep their ids (a trap names the fold it was in); spliced
+    // ones take ids that no node of it has. Canonical names every node `v<index>` as before.
+    const strict = fn.profile === 'strict';
+    const taken = new Set(fn.nodes.map((n) => n.id));
+    let serial = 0;
+    const idFor = (n: Node, top: boolean): string => {
+      if (!strict) return `v${nodes.length}`;
+      if (top) return n.id;
+      let id = `v${serial}`;
+      while (taken.has(id)) {
+        serial += 1;
+        id = `v${serial}`;
+      }
+      serial += 1;
+      return id;
+    };
     const worth = (callee: TypedFunc): boolean => {
-      if (usesIo(callee)) return false;
+      // Strict: a body that can trap keeps its frame (the trap line names it), so it is called.
+      if (usesIo(callee) || mayTrapFn(callee)) return false;
       const w = costWords(inlineCalls(callee));
       return (
         w <= AVR_INLINE_CALL_WORDS || (sites.get(callee.name) === 1 && w <= AVR_INLINE_ONCE_WORDS)
@@ -224,7 +250,7 @@ export function inlineCalls(fn: TypedFunc): TypedFunc {
           const g = name === undefined ? undefined : f.calls.get(name);
           if (name !== undefined && g !== undefined) calls.set(name, g);
         }
-        const id = `v${nodes.length}`;
+        const id = idFor(n, f === fn);
         nodes.push({ ...n, id, args });
         ids.set(n.id, { kind: 'node', id });
       }
@@ -240,6 +266,8 @@ export function inlineCalls(fn: TypedFunc): TypedFunc {
         result = validateFunction(
           { name: fn.name, params: fn.params, result: fn.result, nodes, ret },
           calls,
+          undefined,
+          fn.profile,
         );
       } catch {
         result = fn;
@@ -254,7 +282,10 @@ function inlineBody(body: TypedFunc, pred: TypedFunc | undefined): boolean {
   const fs = pred === undefined ? [body] : [body, pred];
   return (
     isPrimitive(body.result) &&
-    fs.every((f) => !usesIo(f) && f.nodes.every((n) => n.op !== 'fold' && n.op !== 'loop')) &&
+    fs.every(
+      (f) =>
+        !usesIo(f) && !mayTrapFn(f) && f.nodes.every((n) => n.op !== 'fold' && n.op !== 'loop'),
+    ) &&
     fs.reduce((s, f) => s + costWords(f), 0) <= AVR_INLINE_BODY_WORDS
   );
 }
@@ -382,6 +413,8 @@ interface Planned {
   readonly callee: string | undefined;
   readonly pred: string | undefined;
   readonly fused: boolean;
+  /** Strict: the trap this node can raise itself (an unproved index or divisor), if any. */
+  readonly site?: StrictSite;
   /** An `and` with a power of two whose only use is a fused test: `bst` of that bit. */
   readonly bit?: { readonly x: Val; readonly bit: number };
   /** Part of an inlined fold/loop body or predicate: emitted by its loop, not in sequence. */
@@ -437,6 +470,9 @@ class AvrEmitter {
   pushes = 0;
   outgoing = 0;
 
+  /** Strict: this function can trap, so it keeps a frame on the shadow stack. */
+  readonly #framed: boolean;
+
   constructor(
     source: TypedFunc,
     readonly inlineLoops = true,
@@ -444,6 +480,7 @@ class AvrEmitter {
   ) {
     this.fn = inlineCallSites ? inlineCalls(source) : source;
     this.#calls = new Map(this.fn.calls);
+    this.#framed = mayTrapFn(this.fn);
   }
 
   #callee(name: string | undefined): TypedFunc {
@@ -630,6 +667,7 @@ class AvrEmitter {
           f.types.get(next.id) !== 'io') ||
           (branchRet && next === undefined && f.ret.kind === 'node' && f.ret.id === n.id));
       const inner = prefix === '' ? {} : { inner: true };
+      const site = siteOf(f, n);
       this.#planned.push({
         id,
         op,
@@ -638,6 +676,7 @@ class AvrEmitter {
         callee: n.callee,
         pred: n.pred,
         fused,
+        ...(site === undefined ? {} : { site }),
         ...inner,
       });
       const scalar = (hints: (number | VReg)[] = [], def = pos): VReg => {
@@ -764,7 +803,8 @@ class AvrEmitter {
           fresh();
           this.#use(a, pos);
           this.#use(b, pos);
-          if (!isPow2(at0.length)) clobbers.push({ pos, set: SCRATCH, through: this.#regOf(a) });
+          if (!isPow2(at0.length) && site !== 'bounds')
+            clobbers.push({ pos, set: SCRATCH, through: this.#regOf(a) });
           return;
         }
         case 'set':
@@ -772,10 +812,32 @@ class AvrEmitter {
           if (a.kind !== 'agg' || isPrimitive(a.type)) refuse(`${op} needs an aggregate`);
           fresh();
           useAll();
-          if (op === 'set' && a.type.kind === 'arr' && b.kind !== 'lit' && !isPow2(a.type.length))
+          if (
+            op === 'set' &&
+            a.type.kind === 'arr' &&
+            b.kind !== 'lit' &&
+            !isPow2(a.type.length) &&
+            site !== 'bounds'
+          )
             clobbers.push({ pos, set: SCRATCH, through: this.#regOf(vals[2]) });
           return;
         }
+        // The checked ops: a (u32,bool) record in the frame, built through r18-r27, r30, r31.
+        case 'cadd':
+        case 'csub':
+        case 'cmul':
+        case 'cdiv':
+        case 'crem':
+        case 'cget':
+          fresh();
+          useAll();
+          // The multiply is checked by dividing its product back: both operands are read again.
+          if (op === 'cmul') {
+            this.#use(a, pos + 1);
+            this.#use(b, pos + 1);
+          }
+          clobbers.push({ pos, set: SCRATCH, through: op === 'cget' ? this.#regOf(a) : [] });
+          return;
         case 'call': {
           const callee = this.#callee(n.callee);
           if (isPrimitive(t)) scalar([t === 'bool' ? 24 : 22]);
@@ -1546,11 +1608,12 @@ class AvrEmitter {
   }
 
   /** r26 = (index mod n) * elemBytes, for a variable index (the aggregate is at most 255 bytes). */
-  #elementOffset(idx: Val, n: number, es: number): void {
-    if (isPow2(n)) {
+  #elementOffset(idx: Val, n: number, es: number, checked = false): void {
+    if (isPow2(n) || checked) {
       const s = this.#byte(idx, 0, 26);
       if (s !== 'r26') this.#emit(`mov r26, ${s}`);
-      this.#emit(`andi r26, ${n - 1}`);
+      // Strict, after the bounds check: the index is below n (at most 255), no reduction.
+      if (!checked) this.#emit(`andi r26, ${n - 1}`);
     } else {
       this.#parallel([
         ...A.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(idx, k) })),
@@ -1579,6 +1642,152 @@ class AvrEmitter {
     if (base + span - 1 <= 63) return base;
     this.#emit(`subi r30, ${lo(neg16(base))}`, `sbci r31, ${hi(neg16(base))}`);
     return 0;
+  }
+
+  // --- strict profile: the frame stack and the trap checks (src/trap-host.ts) ---------------
+  // The macros use r26, r27, r30 and r31 only (never homes), so they fit anywhere between nodes.
+
+  /** Push this function's frame (r26:r27 = its word address): no fold marked, the trip left unset. */
+  #enter(): void {
+    const sym = `a0_${this.fn.name}`;
+    this.#emit(`ldi r26, lo8(gs(${sym}))`, `ldi r27, hi8(gs(${sym}))`, 'call __a0_enter');
+  }
+
+  #leave(): void {
+    this.#emit('call __a0_leave');
+  }
+
+  /** Z = the current frame. */
+  #topFrame(): void {
+    this.#emit('call __a0_top');
+  }
+
+  /** Name the fold or loop this frame is iterating by its ordinal (0: none). */
+  #markNode(ordinal: number): void {
+    this.#topFrame();
+    if (ordinal === 0) this.#emit('std Z+2, r1');
+    else this.#emit(`ldi r26, ${ordinal}`, 'std Z+2, r26');
+  }
+
+  /** Record the trip the marked fold or loop is on. */
+  #markTrip(counter: Val): void {
+    this.#topFrame();
+    for (let k = 0; k < 4; k += 1) this.#emit(`std Z+${3 + k}, ${this.#byte(counter, k, 26)}`);
+  }
+
+  /** Strict: trap `bounds` unless the index operand is below `n`. */
+  #guardIndex(idx: Val, n: number): void {
+    if (idx.kind === 'lit') {
+      if (idx.value >>> 0 >= n) this.#emit('jmp A0_trap_bounds');
+      return;
+    }
+    const ok = this.#label();
+    const cond = this.#cmp('lt', idx, { kind: 'lit', value: n, type: 'u32' });
+    this.#emit(`br${cond} ${ok}`, 'jmp A0_trap_bounds', `${ok}:`);
+  }
+
+  /** Strict: trap `divzero` when the divisor is zero. */
+  #guardDivisor(d: Val): void {
+    if (d.kind === 'lit') {
+      if (d.value === 0) this.#emit('jmp A0_trap_divzero');
+      return;
+    }
+    const ok = this.#label();
+    const cond = this.#cmp('eq', d, { kind: 'lit', value: 0, type: 'u32' });
+    this.#emit(`br${INVERSE[cond]} ${ok}`, 'jmp A0_trap_divzero', `${ok}:`);
+  }
+
+  /** Store registers (or r1 for zero) at frame bytes [off, off + regs.length). */
+  #storeBytes(off: number, regs: readonly string[]): void {
+    const m = this.#frame(off, regs.length);
+    for (const [k, r] of regs.entries()) this.#emit(`std ${m.base}+${m.disp + k}, ${r}`);
+  }
+
+  /** The checked op `n` of the frame record at `off`: the value in r22-r25 and ok in r26 or a flag test. */
+  #checked(n: Planned, off: number): void {
+    const [a, b] = n.vals as [Val, Val];
+    const loadAB = (): void =>
+      this.#parallel([
+        ...A.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(a, k) })),
+        ...B.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(b, k) })),
+      ]);
+    const okFromCarry = (): string[] => ['clr r26', 'rol r26', 'ldi r27, 1', 'eor r26, r27'];
+    switch (n.op) {
+      case 'cadd':
+      case 'csub': {
+        loadAB();
+        const mn = n.op === 'cadd' ? ['add', 'adc'] : ['sub', 'sbc'];
+        for (let k = 0; k < 4; k += 1) this.#emit(`${k === 0 ? mn[0] : mn[1]} r${A[k]}, r${B[k]}`);
+        this.#emit(...okFromCarry());
+        this.#storeBytes(off, ['r22', 'r23', 'r24', 'r25', 'r26']);
+        return;
+      }
+      case 'cmul': {
+        // The product fits exactly when it is zero or dividing it back by a gives b.
+        const done = this.#label();
+        loadAB();
+        this.#emit('call __a0_mul32');
+        this.#storeBytes(off, ['r22', 'r23', 'r24', 'r25']);
+        this.#emit('ldi r26, 1');
+        this.#storeBytes(off + 4, ['r26']);
+        const zero = this.#cmp('eq', a, { kind: 'lit', value: 0, type: 'u32' });
+        this.#emit(`br${zero} ${done}`);
+        this.#parallel(B.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(a, k) })));
+        this.#emit('call __a0_udivmod32');
+        this.#parallel(B.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(b, k) })));
+        this.#emit('cp r22, r18', 'cpc r23, r19', 'cpc r24, r20', 'cpc r25, r21', `breq ${done}`);
+        this.#storeBytes(off + 4, ['r1']);
+        this.#emit(`${done}:`);
+        return;
+      }
+      case 'cdiv':
+      case 'crem': {
+        const zero = this.#label();
+        const done = this.#label();
+        const cond = this.#cmp('eq', b, { kind: 'lit', value: 0, type: 'u32' });
+        this.#emit(`br${cond} ${zero}`);
+        loadAB();
+        this.#emit('call __a0_udivmod32');
+        if (n.op === 'crem') this.#emit('movw r22, r26', 'movw r24, r30');
+        this.#storeBytes(off, ['r22', 'r23', 'r24', 'r25']);
+        this.#emit('ldi r26, 1');
+        this.#storeBytes(off + 4, ['r26']);
+        this.#emit(`rjmp ${done}`, `${zero}:`);
+        this.#storeBytes(off, ['r1', 'r1', 'r1', 'r1', 'r1']);
+        this.#emit(`${done}:`);
+        return;
+      }
+      case 'cget': {
+        if (a.kind !== 'agg' || isPrimitive(a.type) || a.type.kind !== 'arr')
+          refuse('cget needs an array');
+        const length = a.type.length;
+        const es = bytesOf(a.type.elem);
+        if (b.kind === 'lit') {
+          if (b.value >>> 0 >= length) {
+            this.#storeBytes(off, ['r1', 'r1', 'r1', 'r1', 'r1']);
+            return;
+          }
+          this.#aggPtr(30, a, (b.value % length) * es);
+          for (let k = 0; k < 4; k += 1) this.#emit(`ldd r${A[k]}, Z+${k}`);
+          this.#emit('ldi r26, 1');
+          this.#storeBytes(off, ['r22', 'r23', 'r24', 'r25', 'r26']);
+          return;
+        }
+        const done = this.#label();
+        this.#storeBytes(off, ['r1', 'r1', 'r1', 'r1', 'r1']);
+        const cond = this.#cmp('lt', b, { kind: 'lit', value: length, type: 'u32' });
+        this.#emit(`br${INVERSE[cond]} ${done}`);
+        this.#elementOffset(b, length, es);
+        const disp = this.#elementPointer(a, bytesOf(a.type));
+        for (let k = 0; k < 4; k += 1) this.#emit(`ldd r${A[k]}, Z+${disp + k}`);
+        this.#emit('ldi r26, 1');
+        this.#storeBytes(off, ['r22', 'r23', 'r24', 'r25', 'r26']);
+        this.#emit(`${done}:`);
+        return;
+      }
+      default:
+        refuse(`internal: ${n.op} is not a checked op`);
+    }
   }
 
   // --- calls ------------------------------------------------------------------------------
@@ -1678,9 +1887,18 @@ class AvrEmitter {
       case 'xor':
         this.#bytewise(n.op, d(), a, b, bytesOf(t), dz);
         return;
+      case 'cadd':
+      case 'csub':
+      case 'cmul':
+      case 'cdiv':
+      case 'crem':
+      case 'cget':
+        this.#checked(n, aggOff());
+        return;
       case 'mul':
       case 'div':
       case 'rem':
+        if (n.site === 'divzero') this.#guardDivisor(b);
         this.#parallel([
           ...A.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(a, k) })),
           ...B.map((r, k) => ({ d: { k: 'r', r } as BDst, s: this.#src(b, k) })),
@@ -1728,6 +1946,7 @@ class AvrEmitter {
       case 'get':
       case 'at': {
         if (a.kind !== 'agg' || isPrimitive(a.type)) refuse(`${n.op} needs an aggregate`);
+        if (n.site === 'bounds' && a.type.kind === 'arr') this.#guardIndex(b, a.type.length);
         if (b.kind === 'lit') {
           if (!isPrimitive(t)) return; // alias
           const off =
@@ -1749,7 +1968,7 @@ class AvrEmitter {
         }
         if (a.type.kind !== 'arr') refuse('at needs a literal field');
         const es = bytesOf(a.type.elem);
-        this.#elementOffset(b, a.type.length, es);
+        this.#elementOffset(b, a.type.length, es, n.site === 'bounds');
         const disp = this.#elementPointer(a, bytesOf(a.type));
         if (isPrimitive(t)) {
           const h = d();
@@ -1771,6 +1990,8 @@ class AvrEmitter {
         if (a.kind !== 'agg' || isPrimitive(a.type)) refuse(`${n.op} needs an aggregate`);
         const rt = a.type;
         const dst = aggOff();
+        // Strict: the index is checked before anything is copied or written.
+        if (n.site === 'bounds' && rt.kind === 'arr') this.#guardIndex(b, rt.length);
         this.#place(a, dst);
         if (b.kind === 'lit') {
           const off =
@@ -1783,7 +2004,7 @@ class AvrEmitter {
         }
         if (rt.kind !== 'arr') refuse('put needs a literal field');
         const es = bytesOf(rt.elem);
-        this.#elementOffset(b, rt.length, es);
+        this.#elementOffset(b, rt.length, es, n.site === 'bounds');
         const disp = this.#elementPointer(self as Val, bytesOf(rt));
         if (c.kind === 'agg') {
           if (disp !== 0) this.#emit(`adiw r30, ${disp}`);
@@ -1839,7 +2060,14 @@ class AvrEmitter {
     const test = this.#label();
     const done = this.#label();
     const inl = n.inl;
+    // Strict: this frame names the fold it is iterating (its ordinal), and each trip, for a trap in its body.
+    const node = this.fn.nodes.find((x) => x.id === n.id);
+    const marked =
+      this.#framed && n.inner !== true && node !== undefined && callTraps(this.fn, node)
+        ? trapNodes(this.fn).findIndex((x) => x.id === n.id) + 1
+        : 0;
     const lines = this.#capture(() => {
+      if (marked !== 0) this.#markTrip(counter);
       if (inl !== undefined) {
         // Inlined: the predicate's nodes and its branch, the body's nodes, the state update.
         if (inl.predRet !== undefined) {
@@ -1866,6 +2094,7 @@ class AvrEmitter {
       this.#increment(counterH, counterV.size);
     });
     // A literal count of at least one runs the first iteration without testing.
+    if (marked !== 0) this.#markNode(marked);
     if (!(count.kind === 'lit' && count.value > 0)) this.#emit(`rjmp ${test}`);
     this.#emit(`${top}:`);
     this.out.push(...lines);
@@ -1875,6 +2104,7 @@ class AvrEmitter {
     if (words <= 60) this.#emit(`brlo ${top}`);
     else this.#emit(`brsh ${done}`, `rjmp ${top}`);
     this.#emit(`${done}:`);
+    if (marked !== 0) this.#markNode(0);
   }
 
   /** Counter `h` (its low `size` bytes; the rest are known zero) plus one. */
@@ -1956,6 +2186,7 @@ class AvrEmitter {
         })),
       );
     });
+    if (this.#framed) this.#enter();
     for (const n of this.#planned) if (n.inner !== true) this.#nodeStaged(n);
     const ret = this.#retVal ?? refuse('no return value');
     if (!sret) this.#fromValue(fn.result === 'bool' ? [24] : A, ret);
@@ -1975,6 +2206,7 @@ class AvrEmitter {
       }
       this.#copyLoop();
     }
+    if (this.#framed) this.#leave();
     this.frameBytes = frame;
     this.pushes = pushes;
     const body = this.out.splice(0);
@@ -2090,7 +2322,42 @@ export function avrStackBytes(fn: TypedFunc, optimize = true): number {
   return walk(fn);
 }
 
+/**
+ * The folds and loops of `fn` that a strict trap can name, in the order of their ordinals (the
+ * node byte of a frame is 1 + the index here), for the emission `compile` produces: a harness
+ * decodes the record with it. Empty for a function that keeps no frame.
+ */
+export function avrTrapNodes(fn: TypedFunc, optimize = true): string[] {
+  const source = optimize ? optimizeFunction(fn).fn : fn;
+  return trapNodes(inlineCalls(source)).map((n) => n.id);
+}
+
+/** The bytes of one frame of the strict runtime: word address, node ordinal, trip (u32). */
+export const AVR_FRAME_BYTES = 7;
+
 const HELPERS: Readonly<Record<string, readonly string[]>> = {
+  // The strict profile's frame stack (see avrTrapRuntime): push a frame for the function at word
+  // address r26:r27, pop one, and point Z at the current one. They touch r26, r27, r30, r31 only.
+  __a0_enter: [
+    'lds r30, A0_fp',
+    'lds r31, A0_fp+1',
+    'st Z+, r26',
+    'st Z+, r27',
+    'st Z+, r1',
+    'adiw r30, 4',
+    'sts A0_fp, r30',
+    'sts A0_fp+1, r31',
+    'ret',
+  ],
+  __a0_leave: [
+    'lds r30, A0_fp',
+    'lds r31, A0_fp+1',
+    'sbiw r30, 7',
+    'sts A0_fp, r30',
+    'sts A0_fp+1, r31',
+    'ret',
+  ],
+  __a0_top: ['lds r30, A0_fp', 'lds r31, A0_fp+1', 'sbiw r30, 7', 'ret'],
   // r22-r25 = r22-r25 * r18-r21 (low 32 bits) on the hardware multiplier: the ten byte
   // products whose weight is below 2^32, accumulated by column into r26, r27, r30, r31.
   __a0_mul32: [
@@ -2178,5 +2445,50 @@ export function assembleAvr(bodies: readonly string[], compilerVersion: string):
         `\t.size ${name}, .-${name}`,
       ].join('\n'),
     );
+  if (
+    /\b(__a0_enter|A0_trap_bounds|A0_trap_divzero)\b/.test(text) ||
+    helpers.some((h) => /A0_fp/.test(h))
+  )
+    helpers.push(avrTrapRuntime(frameCapacity(bodies)));
   return `; Generated by A0 ${compilerVersion}. AVR (ATmega328P) assembly, avr-gcc calling convention; exact u32/bool semantics.\n${[text, ...helpers].join('\n\n')}\n`;
+}
+
+/**
+ * The strict profile's runtime (src/trap-host.ts): the frame stack in SRAM (`A0_frames`, 2 bytes
+ * of pointer `A0_fp` in .data, `AVR_FRAME_BYTES` per frame), and the stubs a failed check jumps
+ * to. A stub empties the stack and calls the host's `A0_trap(uint8_t kind, const uint8_t *end)`
+ * (kind in r24, the end of the frames at the trap in r22:r23), which never returns.
+ */
+function avrTrapRuntime(frames: number): string {
+  return [
+    '; The host provides A0_trap(uint8_t kind, const uint8_t *end), which never returns: see src/trap-host.ts.',
+    // avr-libc's startup copies .data and clears .bss only when something references these.
+    '\t.global __do_copy_data',
+    '\t.global __do_clear_bss',
+    '\t.section .data',
+    '\t.globl A0_fp',
+    'A0_fp:',
+    '\t.word A0_frames',
+    '\t.section .bss',
+    '\t.globl A0_frames',
+    'A0_frames:',
+    `\t.zero ${AVR_FRAME_BYTES * frames}`,
+    '\t.section .text.A0_trap,"ax",@progbits',
+    '\t.globl A0_trap_bounds',
+    '\t.globl A0_trap_divzero',
+    'A0_trap_bounds:',
+    '\tldi r24, 0',
+    '\trjmp .LA0_trap',
+    'A0_trap_divzero:',
+    '\tldi r24, 1',
+    '.LA0_trap:',
+    '\tldi r25, 0',
+    '\tlds r22, A0_fp',
+    '\tlds r23, A0_fp+1',
+    '\tldi r30, lo8(A0_frames)',
+    '\tldi r31, hi8(A0_frames)',
+    '\tsts A0_fp, r30',
+    '\tsts A0_fp+1, r31',
+    '\tjmp A0_trap',
+  ].join('\n');
 }

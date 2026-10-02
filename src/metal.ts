@@ -18,7 +18,9 @@ import {
   isScalar,
   type TypedFunc,
   type TypedProgram,
+  withoutProfile,
 } from './core.js';
+import { strictTrapSite } from './optimize.js';
 
 const MSL_PRELUDE = `#include <metal_stdlib>
 using namespace metal;
@@ -33,8 +35,10 @@ export function isKernelCallable(fn: TypedFunc): boolean {
 }
 
 /** Emit an MSL translation unit: mapped C functions plus elementwise kernels. */
-export function emitMetal(program: TypedProgram): string {
-  assertTargetSupports('metal', program);
+export function emitMetal(source: TypedProgram): string {
+  assertTargetSupports('metal', source, strictTrapSite);
+  // No site can trap: the program means the same under both profiles, and the canonical one is emitted.
+  const program = withoutProfile(source);
   for (const fn of program.functions) {
     if (fn.params.some(containsIo) || containsIo(fn.result)) {
       throw new A0Error(`${fn.name}: io functions have no GPU form; use ioFreeSubset first`);

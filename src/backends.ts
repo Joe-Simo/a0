@@ -29,16 +29,18 @@ import {
   type Node,
   type Op,
   type Operand,
+  STRICT_TARGETS,
   TRAP_FIX,
   type Type,
   type TypedFunc,
   type TypedProgram,
+  withoutProfile,
 } from './core.js';
 import { DIAGNOSTICS, diag } from './diagnostics.js';
 import { semanticRevision } from './edit.js';
 import { emitSequential, needsSequential, SV_UDIV_MODULE } from './hw.js';
 import { trapModuleOf } from './native-trap.js';
-import { callTraps, mayTrapFn, optimizeFunction, siteOf } from './optimize.js';
+import { callTraps, mayTrapFn, optimizeFunction, siteOf, strictTrapSite } from './optimize.js';
 import { assembleRiscv64, emitRiscv64Function } from './riscv64.js';
 import { assembleWasm, emitWasmFunction } from './wasm.js';
 import { assembleX86_64, emitX86_64Function, type X86Platform } from './x86_64.js';
@@ -2003,7 +2005,7 @@ export function assemble(
   program: TypedProgram,
   options: CompileOptions = {},
 ): string {
-  assertTargetSupports(target, program);
+  assertTargetSupports(target, program, strictTrapSite);
   const types = aggregateTypes(program);
   const io = usesIo(program);
   if (io && !types.some((t) => formatType(t) === '(u32,io)')) {
@@ -2174,10 +2176,14 @@ export class FunctionCache {
 }
 
 export function emitFunction(target: Target, fn: TypedFunc, options: CompileOptions = {}): string {
-  assertTargetSupports(target, {
-    ...(fn.profile === 'strict' ? { profile: 'strict' as const } : {}),
-    functions: [fn],
-  });
+  assertTargetSupports(
+    target,
+    {
+      ...(fn.profile === 'strict' ? { profile: 'strict' as const } : {}),
+      functions: [fn],
+    },
+    strictTrapSite,
+  );
   // The trap runtime counts the trips the reference interpreter takes, so it keeps every iteration.
   const source =
     options.optimize === false || options.cTrap !== undefined ? fn : optimizeFunction(fn).fn;
@@ -2200,12 +2206,14 @@ export function emitFunction(target: Target, fn: TypedFunc, options: CompileOpti
 }
 
 export function compile(
-  program: TypedProgram,
+  source: TypedProgram,
   target: Target,
   options: CompileOptions = {},
   cache?: FunctionCache,
 ): CompileResult {
-  assertTargetSupports(target, program);
+  assertTargetSupports(target, source, strictTrapSite);
+  // A strict program with no site that can trap is the canonical program for a target without the profile.
+  const program = STRICT_TARGETS.has(target) ? source : withoutProfile(source);
   const optimized = options.optimize !== false;
   let cacheHits = 0;
   let cacheMisses = 0;
