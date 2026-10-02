@@ -1737,6 +1737,28 @@ export const DIAGNOSTICS = {
       good: 'fn f u32 -> u32\nex 5 -> 6\npre lt p0 10\na add p0 1\nret a\nend\n',
     },
   },
+  A0717: {
+    cls: 'structure',
+    message: 'contract of {0} disproved: {1}',
+    fix: 'make {0} satisfy its post for every input that satisfies pre, or change the pre or post line',
+    why: [
+      '`a0 check --prove` asks Z3 whether some input satisfies pre and breaks post (or makes the function,',
+      'pre or post trap, under the strict profile). The message gives that input; the reference interpreter',
+      'ran it and confirmed the failure. Reported as a warning unless `--deny-disproved` makes it an error.',
+    ],
+    unrunnable: 'raised by `a0 check --prove` (the solver), which the explain examples do not run',
+  },
+  A0718: {
+    cls: 'limit',
+    message: 'contract of {0} unknown: {1}',
+    fix: 'keep {0} inside the proof scope (u32 and bool values, arrays up to 16 elements, fold and loop counts of at most 64 literals, no io), raise --prove-timeout, or leave the contract to the examples',
+    why: [
+      '`a0 check --prove` proves `pre` and `post` for all inputs with Z3 over 32-bit bitvectors, inside the',
+      'same scope as the optimizer proof. A function outside it, an array that is too large, or a solver',
+      'timeout leaves the contract unproved: a note, not a failure. The examples still check it.',
+    ],
+    unrunnable: 'raised by `a0 check --prove` (the solver), which the explain examples do not run',
+  },
   A0719: {
     cls: 'limit',
     message: '{0}: {1} used more than {2} evaluations',

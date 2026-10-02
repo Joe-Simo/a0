@@ -48,6 +48,7 @@ import { link, parseFile } from './link.js';
 import { serveLsp } from './lsp.js';
 import { serveStdio } from './mcp.js';
 import { parallelC } from './parallel.js';
+import { type ContractResult, proveContracts } from './prove.js';
 import { compileWasm } from './toolchain.js';
 import { A0_VERSION } from './version.js';
 import { wasmModuleBytes } from './wasm.js';
@@ -57,7 +58,7 @@ function usage(): never {
     [
       'usage:',
       '  a0 --version                           # release and compiler version',
-      '  a0 check <file.a0>... [--json] [--fix] [--hints]    # --json: diagnostics as fields; --fix: apply the exact fixes',
+      '  a0 check <file.a0>... [--json] [--fix] [--hints] [--prove [--deny-disproved] [--prove-timeout=MS]]    # --json: diagnostics as fields; --fix: apply the exact fixes; --prove: Z3 proof of pre/post',
       '  a0 explain [A0nnnn|--verify]           # what a diagnostic means, a failing and a fixed example',
       '  a0 run <file.a0> <function> <args...> [--fuel=N] [--max-trips=N]',
       `  a0 emit <${TARGETS.join('|')}> <file.a0> [out]`,
@@ -159,6 +160,15 @@ function flagNumber(args: readonly string[], name: string): number | undefined {
   return Number(text);
 }
 
+/** One line of `a0 check --prove`: proved, or the note or warning (an error with --deny-disproved). */
+function formatContract(c: ContractResult, file: string | undefined, deny: boolean): string {
+  const at = file === undefined ? '' : `${file}: `;
+  if (c.status === 'proved')
+    return `${at}${c.fn}: contract proved (${c.lines.join(' ')}, ${Math.round(c.ms)} ms)`;
+  const level = c.status === 'unknown' ? 'note' : deny ? 'error' : 'warning';
+  return `${at}${level}: ${formatDiagnostic(c.error, false)}`;
+}
+
 async function main(args: readonly string[]): Promise<void> {
   if (args.length === 1 && (args[0] === '--version' || args[0] === '-V' || args[0] === 'version')) {
     process.stdout.write(`a0 ${A0_VERSION} (compiler ${COMPILER_VERSION})\n`);
@@ -172,9 +182,23 @@ async function main(args: readonly string[]): Promise<void> {
       const files = rest.filter((a) => !a.startsWith('--'));
       if (
         files.length === 0 ||
-        flags.some((f) => f !== '--json' && f !== '--fix' && f !== '--hints')
+        flags.some(
+          (f) =>
+            f !== '--json' &&
+            f !== '--fix' &&
+            f !== '--hints' &&
+            f !== '--prove' &&
+            f !== '--deny-disproved' &&
+            !f.startsWith('--prove-timeout='),
+        ) ||
+        ((flags.includes('--deny-disproved') ||
+          flags.some((f) => f.startsWith('--prove-timeout='))) &&
+          !flags.includes('--prove'))
       )
         usage();
+      const prove = flags.includes('--prove');
+      const deny = flags.includes('--deny-disproved');
+      const proveTimeout = flagNumber(flags, '--prove-timeout');
       const json = flags.includes('--json');
       const hints = flags.includes('--hints') ? '`a0 check --fix`' : false;
       let failed = 0;
@@ -200,10 +224,32 @@ async function main(args: readonly string[]): Promise<void> {
           (fn) =>
             `${files.length > 1 ? `${file}: ` : ''}${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}`,
         );
+        const contracts = prove
+          ? await proveContracts(
+              program,
+              proveTimeout === undefined ? {} : { timeoutMs: proveTimeout },
+            )
+          : [];
+        if (deny && contracts.some((c) => c.status === 'disproved')) failed++;
         process.stdout.write(
           json
-            ? `${JSON.stringify({ ok: true, file, functions: lines })}\n`
-            : `${lines.join('\n')}\n`,
+            ? `${JSON.stringify({
+                ok: true,
+                file,
+                functions: lines,
+                ...(prove
+                  ? {
+                      contracts: contracts.map((c) => ({
+                        fn: c.fn,
+                        status: c.status,
+                        lines: c.lines,
+                        ms: Math.round(c.ms),
+                        ...(c.diagnostic === undefined ? {} : { diagnostic: c.diagnostic }),
+                      })),
+                    }
+                  : {}),
+              })}\n`
+            : `${[...lines, ...contracts.map((c) => formatContract(c, files.length > 1 ? file : undefined, deny))].join('\n')}\n`,
         );
       }
       if (failed > 0) process.exitCode = 1;

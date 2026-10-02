@@ -478,6 +478,18 @@ function typeExpression(
   }
 }
 
+/** The typed `pre` and `post` of `fn` (as bool functions; `post` also takes the result last). */
+export function typedContracts(
+  fn: TypedFunc,
+  scope: ReadonlyMap<string, TypedFunc>,
+): { readonly pre?: TypedFunc; readonly post?: TypedFunc } {
+  const spec = fn.spec;
+  return {
+    ...(spec?.pre === undefined ? {} : { pre: typeExpression(fn, 'pre', spec.pre, scope) }),
+    ...(spec?.post === undefined ? {} : { post: typeExpression(fn, 'post', spec.post, scope) }),
+  };
+}
+
 function evaluate(
   fn: TypedFunc,
   typed: TypedFunc,
