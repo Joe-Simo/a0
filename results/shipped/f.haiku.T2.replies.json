@@ -1,0 +1,49 @@
+{
+ "f-min4-seed/a0/structured": [
+  "e0\nfn minel u32 u32 u32x4 -> u32\nlt r p0 p1\nif r\nret p0\nelse\nret p1\nend\nend",
+  "e0\nfn minel u32 u32 u32x4 -> u32\nlt c p0 p1\nselect r c p0 p1\nret r\nend"
+ ],
+ "f-third-index/a0/structured": [
+  "e0\nfn third u32x4 -> u32\nr get p0 2\nret r\nend"
+ ],
+ "f-advance-wrap/a0/structured": [
+  "e0\nfn advance u32 u32 -> u32\na add p0 1\neq c a p1\nif c\nret 0\nelse\nret a\nend\nend",
+  "e0\nfn advance u32 u32 -> u32\na add p0 1\neq c a p1\nselect r c 0 a\nret r\nend"
+ ],
+ "f-bump-cap/a0/structured": [
+  "e0\nfn bump u32 -> u32\na add p0 10\ngt c a 100\nif c\nret 100\nelse\nret a\nend\nend",
+  "e0\nfn bump u32 -> u32\na add p0 10\ngt c a 100\nselect r c 100 a\nret r\nend"
+ ],
+ "f-divrem-pair/a0/structured": [
+  "e0\nfn divrem u32 u32 -> u32x2\nq div p0 p1\nr rem p0 p1\nret [q, r]\nend",
+  "e0\nfn divrem u32 u32 -> u32x2\nq div p0 p1\nr rem p0 p1\narr a q r\nret a\nend"
+ ],
+ "f-remaining-order/a0/structured": [
+  "e0\nfn remaining u32 u32 -> u32\na sub p1 p0\nret a\nend"
+ ],
+ "f-sumlow-bound/a0/structured": [
+  "e0\nfn addlow u32 u32 -> u32\nlt c p1 6\nif c\na add p0 p1\nret a\nelse\nret p0\nend\nend",
+  "e0\nfn addlow u32 u32 -> u32\nlt c p1 6\nadd b p0 p1\nselect r c b p0\nret r\nend"
+ ],
+ "f-setlow-or/a0/structured": [
+  "e0\nfn setlow u32 -> u32\na or p0 15\nret a\nend"
+ ],
+ "f-sumsq-helper/a0/structured": [
+  "e0\nfn sq u32 -> u32\nr mul p0 p0\nret r\nend\nfn sumsq u32 u32 -> u32\na sq p0\nb sq p1\nc add a b\nret c\nend"
+ ],
+ "f-countabove-gt/a0/structured": [
+  "e0\nfn cnt u32 u32 u32x4 u32 -> u32\ngt c p1 p3\nif c\na add p0 1\nret a\nelse\nret p0\nend\nend",
+  "e0\nfn cnt u32 u32 u32x4 u32 -> u32\ngt c p1 p3\nadd a p0 1\nselect r c a p0\nret r\nend"
+ ],
+ "f-avg4-floor/a0/structured": [
+  "e0\nfn addel u32 u32 u32x4 -> u32\na add p0 p1\nret a\nend\nfn avg4 u32x4 -> u32\ns fold addel 4 0 p0\nr div s 4\nret r\nend",
+  "g0\nfn addel u32 u32 u32x4 -> u32\na add p0 p1\nret a\nend\nfn avg4 u32x4 -> u32\ns fold addel 4 0 p0\nr div s 4\nret r\nend"
+ ],
+ "f-addover-bool/a0/structured": [
+  "e0\nfn addover u32 u32 -> u32\ns add p0 p1\nlt r s p0\nret r\nend",
+  "e0\nfn addover u32 u32 -> u32\ns add p0 p1\nc lt s p0\nret c\nend"
+ ],
+ "f-highbyte-shr/a0/structured": [
+  "e0\nfn highbyte u32 -> u32\na shr p0 24\nret a\nend"
+ ]
+}

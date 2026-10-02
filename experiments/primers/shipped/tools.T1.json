@@ -1,0 +1,46 @@
+{
+ "a0_open": {
+  "description": "Open one function: a handle line, then the function (callee signatures with scope \"deps\"). Reply to a0_apply with the handle line, then replacement node lines.",
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)",
+   "dense": "dense view; replies under this handle are dense too",
+   "lean": "dense only: no handle line; a reply without one edits the one open function"
+  }
+ },
+ "a0_program": {
+  "description": "Open a program handle: all function signatures, or those around target. It accepts whole fn ... end blocks that add or replace functions.",
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)",
+   "dense": "dense view; replies under this handle are dense too"
+  }
+ },
+ "a0_apply": {
+  "description": "Apply an edit (first line: an open handle). Returns the new view, or a JSON diagnostic: code (class), id (A0nnnn, see a0 explain), message, expected/actual, fix, applicability (exact or maybe); a failed edit changes nothing. The reply `fix all` applies every exact fix of the last rejected edit, atomically. Spec lines: `+ex ARGS -> R`, `+pre OP ARGS`, `+post OP ARGS`, `-` removes (program handle: `f:+ex ...`).",
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)"
+  }
+ },
+ "a0_check": {
+  "description": "Validate the program: one line per function with its revision.",
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)"
+  }
+ },
+ "a0_run": {
+  "description": "Run a function on JSON arguments (u32 numbers, booleans, arrays for arr/struct) in the fuel-bounded reference interpreter.",
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)"
+  }
+ },
+ "a0_emit": {
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)"
+  }
+ },
+ "a0_save": {
+  "description": "Write the edited program to its file (or path, inside the root). Only after a successful a0_apply.",
+  "params": {
+   "file": ".a0/.a0d file under the server root (default: the launched file)"
+  }
+ }
+}

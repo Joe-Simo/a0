@@ -111,13 +111,20 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
    on a quiet host, then publish or drop each timing.
 2. Shrink the primer (measured, `results/primer-ablation.json`, `docs/history/2026-10-02-primer-ablation.md`: 25 variants, clause drops and rewrites,
    selected on set d, confirmed on the different sets e and f, fresh Haiku and Sonnet subagents, 11 to 13 tasks per cell and model, no rate
-   separates at that n). The experiment's edit-protocol primer (`experiments/primers/MODEL_GUIDE.rules-merged.txt`, an edit-only text used as the sole system text) is now 101 o200k tokens, was 118; the shipped language guide (`MODEL_GUIDE.min.txt`, MCP tool text, skill copies) is a different, longer text and is NOT changed by this, so no shipped path uses the winning text yet (shipping it needs its own measurement, as an edit-only primer or a trimmed EDIT section): acceptance
+   separates at that n). The experiment's edit-protocol primer (`experiments/primers/MODEL_GUIDE.rules-merged.txt`, an edit-only text used as the sole system text) is now 101 o200k tokens, was 118; the shipped language guide (`MODEL_GUIDE.min.txt`, MCP tool text, skill copies) is a different, longer text and is NOT changed by this, so no shipped path uses the winning text yet (the shipped-text measurement below tried a trimmed EDIT section of the guide and shorter tool descriptions, and shipped neither): acceptance
    equal on both sizes and a lower cost per accepted edit at all three session lengths on both. No shorter dense primer kept acceptance (88,
    102 and 110 tokens against 145 lose on Haiku and on the 10-task and unbounded cost), so the 145-token dense primer stays; every one of its
    clauses is used on e and f. Open: a whole-function reply without a head result could take the result type from its last statement (the one
    failure every variant shares: bool and record results; teaching it in the primer removed the failures and did not pay for its tokens),
    a callee defined after its caller could be ordered by the edit session, and the dense operand-count text. Earlier edit-cost numbers used the
    118-token text and are not rescored.
+   Shipped-text measurement (`results/shipped-accounting.json`, `results/shipped.json`, `docs/history/2026-10-02-shipped-text.md`): an MCP-only client
+   reads 1082 o200k tokens of tool list per call and no language text (the server surfaces no guide); the skill path reads 670 (body 275 and the 395-token
+   guide); a user with both reads 1752. A trimmed EDIT section (`G1`, 373 tokens) and shorter tool descriptions (`T2`, 983) cleared set d and did not win on
+   both model sizes on e and f (`G1` one shot 21 of 24 on Sonnet against 24, `T2` 12 of 24 on Haiku against 16, and cost losses on one size each), so
+   `MODEL_GUIDE.min.txt`, the skill copies and `src/mcp.ts` are unchanged. The guide beats the tool list alone on the confirmation sets (one shot 44 of 48 against 33,
+   cost per accepted edit lower at all three horizons). Open: the guide surfaced to an MCP-only client through server instructions (on d only: 26 of 26 after
+   repair against 24 of 26), and five Sonnet repair rounds the API refused to run (the Sonnet counts after repair of those cells are lower bounds).
 3. Decide whether the dense view with callee bodies becomes the recommended form of the MCP server and the docs.
 4. Bring the A0 optimizer to the C and AArch64 emitters (it needs a return-kind encoding inside the bootstrap closure).
 5. SIMD fills for the arm64 and x86-64 backends (the wasm32 path has them).

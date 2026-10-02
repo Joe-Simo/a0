@@ -21,6 +21,8 @@
  *                         current primer of the same form (dense.D0, canon.K0), per model and scope:
  *                         accepted rate one shot and after one repair, and tokens per accepted edit for
  *                         one cold task.
+ *   shipped.json          the shipped-text experiment (sets d, e, f): each trimmed guide, tool list or both
+ *                         against the shipped one, same axes as the primer ablation.
  *
  * Timing observations carry the load they were recorded at. One recorded above LOAD_LIMIT (or with
  * no load recorded) is flagged `unverified`: it is kept in the ledger and reported, but a change in
@@ -503,17 +505,31 @@ interface PrimerCell {
  * trial; tokens per accepted edit (one cold task) within 3 %.
  */
 function primerObservations(root: string): Observation[] {
-  const doc = readJson(root, 'primer-ablation.json');
+  return [
+    ...primerLike(root, 'primer-ablation.json', 'primer-ablation', {
+      dense: 'dense.D0',
+      canon: 'canon.K0',
+    }),
+    // The shipped-text experiment: variant G1 (guide), T2 (tool list), B1 (both) against G0, T0, B0.
+    ...primerLike(root, 'shipped.json', 'shipped-text', { G: 'G0', T: 'T0', B: 'B0' }),
+  ];
+}
+
+function primerLike(
+  root: string,
+  file: string,
+  source: string,
+  control: Record<string, string>,
+): Observation[] {
+  const doc = readJson(root, file);
   const cells = obj(doc?.cells);
   if (cells === undefined) return [];
   const out: Observation[] = [];
-  const source = 'primer-ablation';
-  const control: Record<string, string> = { dense: 'dense.D0', canon: 'canon.K0' };
   for (const [scope, raw] of Object.entries(cells)) {
     const table = obj(raw);
     if (table === undefined) continue;
     for (const [variant, cellRaw] of Object.entries(table)) {
-      const form = variant.split('.')[0] ?? '';
+      const form = source === 'shipped-text' ? (variant[0] ?? '') : (variant.split('.')[0] ?? '');
       const baseName = control[form];
       if (baseName === undefined || variant === baseName) continue;
       const a = obj(cellRaw) as unknown as PrimerCell | undefined;

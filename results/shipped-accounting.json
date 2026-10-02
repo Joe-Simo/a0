@@ -1,0 +1,123 @@
+{
+  "tokenizer": "o200k_base (js-tiktoken); not the tokenizer of Claude, as in every token count of this repository",
+  "files": {
+    "skills/a0/SKILL.md": {
+      "bytes": 1480,
+      "o200k": 422,
+      "frontMatterO200k": 148,
+      "bodyO200k": 275
+    },
+    "skills/a0/references/primer.txt (= MODEL_GUIDE.min.txt)": {
+      "bytes": 1148,
+      "o200k": 395
+    },
+    "skills/a0/references/edit-protocol.md": {
+      "bytes": 2041,
+      "o200k": 540
+    },
+    "experiments/primers/MODEL_GUIDE.rules-merged.txt (edit-only, the ablation text)": {
+      "o200k": 102
+    },
+    "MODEL_GUIDE.dense.txt (dense view primer, not shipped through a skill)": {
+      "o200k": 145
+    },
+    "MODEL_GUIDE.txt (long guide, site and llms.txt only)": {
+      "o200k": 669
+    },
+    "plugin/commands (read when a slash command runs)": [
+      {
+        "file": "plugin/commands/a0-check.md",
+        "o200k": 135
+      },
+      {
+        "file": "plugin/commands/a0-emit.md",
+        "o200k": 136
+      },
+      {
+        "file": "plugin/commands/a0-run.md",
+        "o200k": 101
+      }
+    ]
+  },
+  "mcp": {
+    "toolListO200k": 1082,
+    "toolListRawJsonO200k": 1082,
+    "toolListRawJsonIndentedO200k": 1543,
+    "toolDescriptionsO200k": 291,
+    "perTool": [
+      {
+        "name": "a0_open",
+        "o200k": 221,
+        "descriptionO200k": 36
+      },
+      {
+        "name": "a0_program",
+        "o200k": 138,
+        "descriptionO200k": 31
+      },
+      {
+        "name": "a0_apply",
+        "o200k": 205,
+        "descriptionO200k": 117
+      },
+      {
+        "name": "a0_check",
+        "o200k": 82,
+        "descriptionO200k": 13
+      },
+      {
+        "name": "a0_run",
+        "o200k": 197,
+        "descriptionO200k": 30
+      },
+      {
+        "name": "a0_emit",
+        "o200k": 152,
+        "descriptionO200k": 40
+      },
+      {
+        "name": "a0_save",
+        "o200k": 99,
+        "descriptionO200k": 23
+      }
+    ],
+    "serverInstructionsO200k": 0,
+    "capabilities": [
+      "tools"
+    ],
+    "guideSurfacedByServer": false
+  },
+  "paths": {
+    "mcpOnly": {
+      "perCallO200k": 1082,
+      "coldTask": 1352.5,
+      "tenTaskSessionPerTask": 183.9,
+      "laterCall": 54.1
+    },
+    "skillOnly": {
+      "perCallO200k": 670,
+      "listedAlwaysO200k": 148,
+      "coldTask": 837.5,
+      "tenTaskSessionPerTask": 113.9,
+      "laterCall": 33.5
+    },
+    "skillPlusMcp": {
+      "perCallO200k": 1752,
+      "listedAlwaysO200k": 148,
+      "coldTask": 2190,
+      "tenTaskSessionPerTask": 297.8,
+      "laterCall": 87.6
+    },
+    "skillPlusMcpAfterRejection": {
+      "perCallO200k": 2292,
+      "coldTask": 2865,
+      "tenTaskSessionPerTask": 389.6,
+      "laterCall": 114.6
+    }
+  },
+  "notes": [
+    "The tool list is counted as the JSON a client sends (name, description, input schema) read from the running server; a client that renders tools another way sends a different count.",
+    "The server serves no instructions, no resources and no prompts: the language guide reaches a model only through the skill (or a copy a user pastes), so an MCP-only client reads the tool text and nothing else about the language.",
+    "A model that has the skill and the server reads both texts on every call: the guide (the language and, in its EDIT section, the edit-reply form) and the tool list (which repeats the reply form and adds the diagnostic fields)."
+  ]
+}
