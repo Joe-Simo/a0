@@ -29,6 +29,8 @@ export function extractBlock(reply: string): string {
 export interface AppliedEdit {
   readonly source: string;
   readonly error?: string;
+  /** Diagnostic id of a spec-line rejection (A0714, A0715, A0716, A0719), when that is the error. */
+  readonly specFault?: string;
 }
 
 export function applyTs(

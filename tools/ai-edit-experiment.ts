@@ -40,6 +40,7 @@ import { getEncoding } from 'js-tiktoken';
 import {
   formatDiagnostic,
   formatProgram,
+  parse,
   parseAndValidate,
   run,
   type Type,
@@ -47,7 +48,9 @@ import {
   type TypedProgram,
   type Value,
 } from '../src/core.js';
+import { A0Error } from '../src/diagnostics.js';
 import { EditSession, formatRejection } from '../src/edit.js';
+import { withoutSpec } from '../src/spec.js';
 import { runTool, withTempDir } from '../src/toolchain.js';
 import {
   type AppliedEdit,
@@ -67,12 +70,14 @@ import {
   type Lang,
   langFile,
 } from './ai-edit-langs.js';
+import { type SpecVariant, specVariantOf } from './ai-edit-spec-variants.js';
 import { TASKS_A } from './ai-edit-tasks-a.js';
 import { TASKS_B } from './ai-edit-tasks-b.js';
 import { buildTasksC } from './ai-edit-tasks-c.js';
 import { TASKS_D } from './ai-edit-tasks-d.js';
 import { TASKS_E } from './ai-edit-tasks-e.js';
 import { TASKS_F } from './ai-edit-tasks-f.js';
+import { TASKS_G, type TaskG } from './ai-edit-tasks-g.js';
 import {
   applyScoped,
   SCOPED_LANGS,
@@ -115,6 +120,12 @@ function sourceOf(task: Task, rep: Representation): string {
   const l = task.langs?.[rep];
   if (l === undefined) throw new Error(`${task.id}: no ${rep} translation`);
   return l.source;
+}
+
+/** The canonical text of `source` without any spec line. */
+function stripSpecText(source: string): string {
+  const program = parse(source);
+  return formatProgram({ ...program, functions: program.functions.map(withoutSpec) });
 }
 
 // --- Instructions (counted as setup cost; identical across trials) ------------
@@ -240,6 +251,7 @@ function applyA0(
     return {
       source,
       error: `${formatDiagnostic(e, process.env.A0_EXPERIMENT_HINTS === '1' ? '`fix all`' : false)}${core}`,
+      ...(e instanceof A0Error && e.spec !== undefined ? { specFault: e.id ?? 'spec' } : {}),
     };
   }
 }
@@ -428,7 +440,13 @@ async function buildCell(
   programScope: 'all' | 'deps' = 'all',
   layout: SystemLayout = 'separate',
   primerMode: PrimerMode = 'always',
-): Promise<{ cell: Cell; session?: EditSession; handle: string; scoped?: ScopedView }> {
+): Promise<{
+  cell: Cell;
+  session?: EditSession;
+  handle: string;
+  scoped?: ScopedView;
+  shadowFactory?: (source: string) => EditSession;
+}> {
   const handle = 'e0';
   if (representation === 'a0') {
     if (primerMode === 'rules-merged' && protocol !== 'structured')
@@ -459,6 +477,22 @@ async function buildCell(
       // line selects which one is used.
       const session = new EditSession(parseAndValidate(task.a0Source));
       const fnName = task.target ?? parseAndValidate(task.a0Source).functions[0]?.name ?? '';
+      // A session on the same program without spec lines, opened the same way (handles e0, g0),
+      // for the shadow runs that tell a spec line's catch from its false rejection.
+      const hasSpec = parseAndValidate(task.a0Source).functions.some((f) => f.spec !== undefined);
+      const shadowFactory = hasSpec
+        ? (source: string): EditSession => {
+            const sh = new EditSession(parseAndValidate(source));
+            sh.open(fnName, {
+              scope: A0_BARE_VIEW ? 'function' : A0_BODIES_VIEW ? 'bodies' : 'deps',
+              numbered: A0_NUMBERED_VIEW,
+              dense: A0_DENSE_VIEW,
+            });
+            if (!A0_LEAN_VIEW)
+              sh.openProgram({ scope: programScope, target: fnName, dense: A0_DENSE_VIEW });
+            return sh;
+          }
+        : undefined;
       const fnView = session.open(fnName, {
         scope: A0_BARE_VIEW ? 'function' : A0_BODIES_VIEW ? 'bodies' : 'deps',
         numbered: A0_NUMBERED_VIEW,
@@ -469,6 +503,7 @@ async function buildCell(
           cell: { representation, protocol, ...primers, system, view: withoutHandle(fnView) },
           session,
           handle,
+          ...(shadowFactory === undefined ? {} : { shadowFactory }),
         };
       const progView = session.openProgram({
         scope: programScope,
@@ -476,7 +511,12 @@ async function buildCell(
         dense: A0_DENSE_VIEW,
       }).text; // g0
       const view = `${fnView}\n${progView}`;
-      return { cell: { representation, protocol, ...primers, system, view }, session, handle };
+      return {
+        cell: { representation, protocol, ...primers, system, view },
+        session,
+        handle,
+        ...(shadowFactory === undefined ? {} : { shadowFactory }),
+      };
     }
     return { cell: { representation, protocol, ...primers, system, view: task.a0Source }, handle };
   }
@@ -535,6 +575,7 @@ type AttemptStatus =
   | 'missing'
   | 'runtime'
   | 'wrong-output'
+  | 'spec'
   | 'no-reply';
 
 interface Attempt {
@@ -543,6 +584,15 @@ interface Attempt {
   readonly outputTokensLocal: Record<string, number>;
   /** The exact repair message sent after this attempt (absent on the last attempt). */
   readonly repair?: string;
+  /** Spec-line rejection (A0714, A0715, A0716, A0719): the id, when that is why the edit was refused. */
+  readonly specFault?: string;
+  /**
+   * For a spec-line rejection: would the same reply, with its spec-line edits removed, have been
+   * accepted by the acceptance tests on the program without spec lines? true = the spec line
+   * refused a correct edit (a false rejection), false = it refused a wrong one (a catch), null =
+   * the reply was not a valid edit even without the spec lines.
+   */
+  readonly shadowAccepted?: boolean | null;
 }
 
 function classify(
@@ -550,6 +600,7 @@ function classify(
   protocol: Protocol,
   failures: readonly string[],
 ): AttemptStatus {
+  if (applied.specFault !== undefined) return 'spec';
   if (applied.error !== undefined) return protocol === 'structured' ? 'protocol' : 'compile';
   if (failures.length === 0) return 'ok';
   const f = failures[0] ?? '';
@@ -617,6 +668,7 @@ async function runTrial(
   count: (text: string) => Record<string, number>,
   ask: (messages: Anthropic.MessageParam[]) => Promise<ReplyResult | undefined>,
   lazyPrimer?: string,
+  shadowFactory?: (source: string) => EditSession,
 ): Promise<
   Omit<
     Trial,
@@ -635,6 +687,7 @@ async function runTrial(
     { role: 'user', content: `${task.instruction}\n\n${cell.view}` },
   ];
   let source = sourceOf(task, representation);
+  let shadowSource = shadowFactory === undefined ? '' : stripSpecText(source);
   const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   let sawUsage = false;
   let calls = 0;
@@ -684,10 +737,33 @@ async function runTrial(
                   task.tests,
                   parseAndValidate(task.reference.a0),
                 );
+    // Shadow run on the program without spec lines: what would the acceptance tests say about this
+    // reply if the spec lines had not been there? (a fresh session per attempt, so a refused reply
+    // leaves nothing behind; the shadow program follows the real one when a reply is applied)
+    let shadowAccepted: boolean | null | undefined;
+    if (shadowFactory !== undefined) {
+      const stripped = res.reply
+        .split('\n')
+        .filter((l) => !/^\s*[+-]?(ex .*->|pre |post )/.test(l))
+        .join('\n');
+      const sh = applyA0(
+        representation,
+        protocol,
+        shadowSource,
+        stripped,
+        shadowFactory(shadowSource),
+      );
+      if (applied.specFault !== undefined)
+        shadowAccepted =
+          sh.error !== undefined ? null : (await acceptA0(sh.source, task.tests)).length === 0;
+      if (applied.error === undefined && sh.error === undefined) shadowSource = sh.source;
+    }
     attempts.push({
       status: classify(applied, protocol, failures),
       failures,
       outputTokensLocal: count(res.reply),
+      ...(applied.specFault !== undefined ? { specFault: applied.specFault } : {}),
+      ...(shadowAccepted !== undefined ? { shadowAccepted } : {}),
     });
     if (failures.length === 0) {
       accepted = true;
@@ -779,6 +855,9 @@ async function main(): Promise<void> {
   // 1000 / 4000 functions (generated filler, see generateFiller); any 'cN' with N >= 40 up to
   // LIMITS.maxFunctions (65536 since a0c-0.1.14) is accepted.
   const setName = process.env.A0_EXPERIMENT_TASKSET ?? 'a';
+  // A0_EXPERIMENT_SPECS (set g only): which spec lines the starting program carries, see
+  // tools/ai-edit-tasks-g.ts: none | ex1 | ex3 | post | stale.
+  const specVariant = (process.env.A0_EXPERIMENT_SPECS ?? 'none') as SpecVariant;
   const scaledMatch = /^c([0-9]*)$/.exec(setName);
   const scaled =
     scaledMatch === null ? undefined : scaledMatch[1] === '' ? 40 : Number(scaledMatch[1]);
@@ -823,11 +902,17 @@ async function main(): Promise<void> {
           ? (TASKS_E as unknown as readonly Task[])
           : setName === 'f'
             ? (TASKS_F as unknown as readonly Task[])
-            : scaled !== undefined
-              ? buildTasksC(TASKS_A, TASKS_B, scaled)
-              : setName === 'all'
-                ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
-                : TASKS_A;
+            : setName === 'g'
+              ? (TASKS_G as unknown as readonly Task[])
+                  .filter(
+                    (t) => specVariant !== 'stale' || (t as unknown as TaskG).specs.stale !== null,
+                  )
+                  .map((t) => specVariantOf(t as unknown as TaskG, specVariant) as unknown as Task)
+              : scaled !== undefined
+                ? buildTasksC(TASKS_A, TASKS_B, scaled)
+                : setName === 'all'
+                  ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
+                  : TASKS_A;
   // What each protocol sends. Set C makes the asymmetry visible: the structured A0 cell
   // sends the scoped view of the target function plus the program's signature lines, while
   // the structured TypeScript and Rust cells send the whole numbered file, since locating
@@ -913,7 +998,7 @@ async function main(): Promise<void> {
     for (const representation of reps) {
       for (const protocol of protocols) {
         for (let t = 0; t < (live ? trialsPerCell : 1); t += 1) {
-          const { cell, session, handle, scoped } = await buildCell(
+          const { cell, session, handle, scoped, shadowFactory } = await buildCell(
             task,
             representation,
             protocol,
@@ -951,6 +1036,7 @@ async function main(): Promise<void> {
                 return reply === undefined ? undefined : { reply };
               },
               representation === 'a0' ? lazyPrimer : undefined,
+              shadowFactory,
             );
             trials.push({ ...base, ...result });
             continue;
@@ -1002,6 +1088,7 @@ async function main(): Promise<void> {
               };
             },
             representation === 'a0' ? lazyPrimer : undefined,
+            shadowFactory,
           );
           trials.push({ ...base, ...result });
         }
@@ -1054,6 +1141,7 @@ async function main(): Promise<void> {
               : `lazy: none on the first attempt, ${lazyPrimerPath} with the repair after a protocol or compile rejection (one repair)`,
     primerMode,
     taskSet: setName,
+    specVariant: setName === 'g' ? specVariant : null,
     programView: programScope,
     systemLayout,
     a0View: A0_NUMBERED_VIEW ? 'numbered' : 'plain',

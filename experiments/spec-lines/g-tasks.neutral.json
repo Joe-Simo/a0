@@ -1,0 +1,3842 @@
+{
+ "tasks": [
+  {
+   "id": "g-range-inclusive-upper",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "in_range",
+   "instruction": "in_range(x, lo, hi) should report whether x lies between lo and hi with both ends included; currently a value equal to hi is rejected.",
+   "start": {
+    "functions": [
+     {
+      "name": "in_range",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "ge",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "lt",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "and",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "in_range",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "ge",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "le",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "and",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "in_range",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "gt",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "le",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "and",
+         "args": [
+          "a",
+          "b"
+         ]
+        }
+       ],
+       "ret": "c"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "in_range",
+     "args": [
+      5,
+      3,
+      9
+     ],
+     "expected": true
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      9,
+      3,
+      9
+     ],
+     "expected": true
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      10,
+      3,
+      9
+     ],
+     "expected": false
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      3,
+      3,
+      9
+     ],
+     "expected": true
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      2,
+      3,
+      9
+     ],
+     "expected": false
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      0,
+      0,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      4294967295,
+      0,
+      4294967295
+     ],
+     "expected": true
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      4294967295,
+      1,
+      4294967294
+     ],
+     "expected": false
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      1234567,
+      1000,
+      1234567
+     ],
+     "expected": true
+    },
+    {
+     "fn": "in_range",
+     "args": [
+      77,
+      100,
+      200
+     ],
+     "expected": false
+    }
+   ],
+   "note": "Flipping the lower bound to strict as well looks symmetric but rejects x equal to lo."
+  },
+  {
+   "id": "g-saturating-add",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "wrapping",
+   "target": "sat_add",
+   "instruction": "sat_add(a, b) should return a + b, but when the true sum does not fit it should return the largest representable value instead of wrapping around.",
+   "start": {
+    "functions": [
+     {
+      "name": "sat_add",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "s"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "sat_add",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "o",
+        "op": "lt",
+        "args": [
+         "s",
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "o",
+         4294967295,
+         "s"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "sat_add",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "o",
+         "op": "le",
+         "args": [
+          "s",
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "o",
+          4294967295,
+          "s"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "sat_add",
+     "args": [
+      3,
+      4
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      0,
+      4294967295
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      4294967295,
+      1
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      4000000000,
+      294967295
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      4000000000,
+      294967296
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      2147483648,
+      2147483648
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      123456,
+      654321
+     ],
+     "expected": 777777
+    },
+    {
+     "fn": "sat_add",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": 4294967295
+    }
+   ],
+   "note": "Testing the wrapped sum with <= instead of < saturates whenever b is zero."
+  },
+  {
+   "id": "g-average-no-overflow",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "wrapping",
+   "target": "avg",
+   "instruction": "avg(a, b) should return the average of a and b rounded down, and must stay correct even when a + b is larger than the largest representable value.",
+   "start": {
+    "functions": [
+     {
+      "name": "avg",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "div",
+        "args": [
+         "s",
+         2
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "avg",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "ha",
+        "op": "shr",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "hb",
+        "op": "shr",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "h",
+        "op": "add",
+        "args": [
+         "ha",
+         "hb"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "and",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "c1",
+        "op": "and",
+        "args": [
+         "c",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "add",
+        "args": [
+         "h",
+         "c1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "avg",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "ha",
+         "op": "shr",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "hb",
+         "op": "shr",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "h",
+         "op": "add",
+         "args": [
+          "ha",
+          "hb"
+         ]
+        }
+       ],
+       "ret": "h"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "avg",
+     "args": [
+      10,
+      20
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "avg",
+     "args": [
+      7,
+      8
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "avg",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "avg",
+     "args": [
+      1,
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "avg",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "avg",
+     "args": [
+      4294967295,
+      4294967294
+     ],
+     "expected": 4294967294
+    },
+    {
+     "fn": "avg",
+     "args": [
+      3000000000,
+      2000000000
+     ],
+     "expected": 2500000000
+    },
+    {
+     "fn": "avg",
+     "args": [
+      4294967293,
+      7
+     ],
+     "expected": 2147483650
+    },
+    {
+     "fn": "avg",
+     "args": [
+      99,
+      100
+     ],
+     "expected": 99
+    },
+    {
+     "fn": "avg",
+     "args": [
+      5,
+      5
+     ],
+     "expected": 5
+    }
+   ],
+   "note": "Halving each operand separately avoids the overflow but drops the carry when both are odd."
+  },
+  {
+   "id": "g-page-count-ceiling",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "page_count",
+   "instruction": "page_count(items, per_page) should return how many pages are needed to show all items (per_page is at least 1), counting a partially filled last page as a page.",
+   "start": {
+    "functions": [
+     {
+      "name": "page_count",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "div",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "page_count",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "m",
+        "op": "sub",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "a",
+        "op": "add",
+        "args": [
+         "p0",
+         "m"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "div",
+        "args": [
+         "a",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "page_count",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "div",
+         "args": [
+          "a",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "page_count",
+     "args": [
+      100,
+      10
+     ],
+     "expected": 10
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      101,
+      10
+     ],
+     "expected": 11
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      99,
+      10
+     ],
+     "expected": 10
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      0,
+      10
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      1,
+      10
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      25,
+      7
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      28,
+      7
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      1,
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      1000000,
+      3
+     ],
+     "expected": 333334
+    },
+    {
+     "fn": "page_count",
+     "args": [
+      999999,
+      3
+     ],
+     "expected": 333333
+    }
+   ],
+   "note": "Adding per_page instead of per_page minus one gives an extra page whenever items divide evenly."
+  },
+  {
+   "id": "g-ring-prev-slot",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "prev_slot",
+   "instruction": "prev_slot(i, n) gives the slot before i in a ring of n slots numbered 0 to n-1; stepping back from slot 0 should land on the last slot.",
+   "start": {
+    "functions": [
+     {
+      "name": "prev_slot",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "z",
+        "op": "eq",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "z",
+         "p1",
+         "d"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "prev_slot",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "z",
+        "op": "eq",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "l",
+        "op": "sub",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "z",
+         "l",
+         "d"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "prev_slot",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rem",
+         "args": [
+          "d",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "prev_slot",
+     "args": [
+      3,
+      5
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      1,
+      5
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      0,
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      0,
+      10
+     ],
+     "expected": 9
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      0,
+      8
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      4,
+      5
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      0,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      0,
+      7
+     ],
+     "expected": 6
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      123,
+      1000
+     ],
+     "expected": 122
+    },
+    {
+     "fn": "prev_slot",
+     "args": [
+      0,
+      1000
+     ],
+     "expected": 999
+    }
+   ],
+   "note": "Wrapping with a remainder of i-1 looks right but i-1 wraps to the maximum value first, which only lands on n-1 for powers of two."
+  },
+  {
+   "id": "g-clamp-index",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "clamp_index",
+   "instruction": "clamp_index(i, len) should return i when it is a valid index of a list of len elements (len at least 1), and otherwise the last valid index.",
+   "start": {
+    "functions": [
+     {
+      "name": "clamp_index",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "l",
+        "op": "sub",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "c",
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "clamp_index",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "l",
+        "op": "sub",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "c",
+         "p0",
+         "l"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "clamp_index",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "l",
+         "op": "sub",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "c",
+         "op": "le",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "c",
+          "p0",
+          "l"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "clamp_index",
+     "args": [
+      2,
+      5
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      4,
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      5,
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      6,
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      0,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      1,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      4294967295,
+      10
+     ],
+     "expected": 9
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      0,
+      10
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      9,
+      10
+     ],
+     "expected": 9
+    },
+    {
+     "fn": "clamp_index",
+     "args": [
+      10,
+      10
+     ],
+     "expected": 9
+    }
+   ],
+   "note": "Also relaxing the guard to i <= len lets i equal to len through unchanged."
+  },
+  {
+   "id": "g-grade-threshold",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "grade",
+   "instruction": "grade(score) returns 3 for scores of 90 and above, 2 for scores of 80 and above, otherwise 1; a score of exactly 90 currently gets the wrong grade.",
+   "start": {
+    "functions": [
+     {
+      "name": "grade",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "gt",
+        "args": [
+         "p0",
+         90
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ge",
+        "args": [
+         "p0",
+         80
+        ]
+       },
+       {
+        "id": "m",
+        "op": "select",
+        "args": [
+         "b",
+         2,
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "a",
+         3,
+         "m"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "grade",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "ge",
+        "args": [
+         "p0",
+         90
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ge",
+        "args": [
+         "p0",
+         80
+        ]
+       },
+       {
+        "id": "m",
+        "op": "select",
+        "args": [
+         "b",
+         2,
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "a",
+         3,
+         "m"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "grade",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "ge",
+         "args": [
+          "p0",
+          90
+         ]
+        },
+        {
+         "id": "b",
+         "op": "gt",
+         "args": [
+          "p0",
+          80
+         ]
+        },
+        {
+         "id": "m",
+         "op": "select",
+         "args": [
+          "b",
+          2,
+          1
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "a",
+          3,
+          "m"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "grade",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "ge",
+         "args": [
+          "p0",
+          89
+         ]
+        },
+        {
+         "id": "b",
+         "op": "ge",
+         "args": [
+          "p0",
+          80
+         ]
+        },
+        {
+         "id": "m",
+         "op": "select",
+         "args": [
+          "b",
+          2,
+          1
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "a",
+          3,
+          "m"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "grade",
+     "args": [
+      90
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "grade",
+     "args": [
+      91
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "grade",
+     "args": [
+      89
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "grade",
+     "args": [
+      80
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "grade",
+     "args": [
+      79
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "grade",
+     "args": [
+      0
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "grade",
+     "args": [
+      100
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "grade",
+     "args": [
+      4294967295
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "grade",
+     "args": [
+      85
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "grade",
+     "args": [
+      81
+     ],
+     "expected": 2
+    }
+   ],
+   "note": "Making both thresholds use the same strictness, or lowering the constant, changes the score-80 or score-89 boundary."
+  },
+  {
+   "id": "g-count-strictly-above",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "count_above",
+   "instruction": "count_above(values, t) should count the entries of values that are strictly greater than t; entries equal to t must not be counted.",
+   "start": {
+    "functions": [
+     {
+      "name": "step",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "t",
+        "op": "mov",
+        "args": [
+         "p3"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "ge",
+        "args": [
+         "e",
+         "t"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "select",
+        "args": [
+         "c",
+         1,
+         0
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "k"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "count_above",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "n",
+        "op": "fold",
+        "args": [
+         "step",
+         4,
+         0,
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "n"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "step",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "t",
+        "op": "mov",
+        "args": [
+         "p3"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "gt",
+        "args": [
+         "e",
+         "t"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "select",
+        "args": [
+         "c",
+         1,
+         0
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "k"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "count_above",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "n",
+        "op": "fold",
+        "args": [
+         "step",
+         4,
+         0,
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "n"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "step",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "t",
+         "op": "mov",
+         "args": [
+          "p3"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "gt",
+         "args": [
+          "t",
+          "e"
+         ]
+        },
+        {
+         "id": "k",
+         "op": "select",
+         "args": [
+          "c",
+          1,
+          0
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "k"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "count_above",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "n",
+         "op": "fold",
+         "args": [
+          "step",
+          4,
+          0,
+          "p0",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "n"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       1,
+       5,
+       9,
+       12
+      ],
+      4
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       1,
+       5,
+       9,
+       12
+      ],
+      5
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       7,
+       7,
+       7,
+       7
+      ],
+      7
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       7,
+       7,
+       7,
+       8
+      ],
+      7
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       4294967295,
+       4294967295,
+       0,
+       1
+      ],
+      4294967295
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       4294967295,
+       3,
+       2,
+       1
+      ],
+      0
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       10,
+       20,
+       30,
+       40
+      ],
+      100
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "count_above",
+     "args": [
+      [
+       100,
+       200,
+       300,
+       400
+      ],
+      250
+     ],
+     "expected": 2
+    }
+   ],
+   "note": "Writing the comparison as t > value counts entries below the threshold instead."
+  },
+  {
+   "id": "g-remaining-floor-zero",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "remaining",
+   "instruction": "remaining(total, used) returns how much of total is left after used; when used exceeds total the answer should be 0 rather than a huge wrapped number.",
+   "start": {
+    "functions": [
+     {
+      "name": "remaining",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "d"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "remaining",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "o",
+        "op": "gt",
+        "args": [
+         "p1",
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "o",
+         0,
+         "d"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "remaining",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "o",
+         "op": "gt",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "o",
+          0,
+          "d"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "remaining",
+     "args": [
+      100,
+      30
+     ],
+     "expected": 70
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      100,
+      100
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      100,
+      101
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      0,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      5,
+      4294967295
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      42,
+      17
+     ],
+     "expected": 25
+    },
+    {
+     "fn": "remaining",
+     "args": [
+      17,
+      42
+     ],
+     "expected": 0
+    }
+   ],
+   "note": "Writing the overflow test as total > used swaps the operands and zeroes every normal case."
+  },
+  {
+   "id": "g-ring-distance",
+   "kind": "targeted-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "ring_distance",
+   "instruction": "ring_distance(head, tail, n) gives how many steps forward from tail reach head in a ring of n slots (head and tail are below n); it is wrong when head is behind tail.",
+   "start": {
+    "functions": [
+     {
+      "name": "ring_distance",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "d",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "ring_distance",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "e",
+        "op": "add",
+        "args": [
+         "d",
+         "p2"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "e",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "ring_distance",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "p1",
+          "p0"
+         ]
+        },
+        {
+         "id": "e",
+         "op": "add",
+         "args": [
+          "d",
+          "p2"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rem",
+         "args": [
+          "e",
+          "p2"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "ring_distance",
+     "args": [
+      7,
+      3,
+      10
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      3,
+      3,
+      10
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      2,
+      7,
+      10
+     ],
+     "expected": 5
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      0,
+      9,
+      10
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      9,
+      0,
+      10
+     ],
+     "expected": 9
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      1,
+      4,
+      6
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      4,
+      1,
+      6
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      0,
+      1,
+      3
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      999,
+      0,
+      1000
+     ],
+     "expected": 999
+    },
+    {
+     "fn": "ring_distance",
+     "args": [
+      0,
+      999,
+      1000
+     ],
+     "expected": 1
+    }
+   ],
+   "note": "Computing tail minus head reads naturally as a distance but measures the opposite direction."
+  },
+  {
+   "id": "g-bit-field-extract",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "bit_field",
+   "instruction": "bit_field(x, pos, width) should return the width bits of x starting at bit position pos as a small number (width between 1 and 31); it currently also returns all the bits above the field.",
+   "start": {
+    "functions": [
+     {
+      "name": "bit_field",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "s"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "bit_field",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "o",
+        "op": "shl",
+        "args": [
+         1,
+         "p2"
+        ]
+       },
+       {
+        "id": "m",
+        "op": "sub",
+        "args": [
+         "o",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "s",
+         "m"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "bit_field",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "shr",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "o",
+         "op": "shl",
+         "args": [
+          "p2",
+          1
+         ]
+        },
+        {
+         "id": "m",
+         "op": "sub",
+         "args": [
+          "o",
+          1
+         ]
+        },
+        {
+         "id": "r",
+         "op": "and",
+         "args": [
+          "s",
+          "m"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "bit_field",
+     "args": [
+      2882343476,
+      4,
+      8
+     ],
+     "expected": 35
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      2882343476,
+      0,
+      16
+     ],
+     "expected": 4660
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      4294967295,
+      28,
+      4
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      2882343476,
+      24,
+      8
+     ],
+     "expected": 171
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      2147483648,
+      31,
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      0,
+      5,
+      3
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      4294967295,
+      0,
+      31
+     ],
+     "expected": 2147483647
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      123456789,
+      7,
+      5
+     ],
+     "expected": 26
+    },
+    {
+     "fn": "bit_field",
+     "args": [
+      4042322160,
+      16,
+      16
+     ],
+     "expected": 61680
+    }
+   ],
+   "note": "Shifting width left by one instead of one left by width builds a wrong mask."
+  },
+  {
+   "id": "g-budget-with-refund",
+   "kind": "targeted-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "budget_left",
+   "instruction": "budget_left(limit, spent, refund) returns what remains of limit after spending, never going below 0; the refund amount should be added to the limit before spending is taken off.",
+   "start": {
+    "functions": [
+     {
+      "name": "sat_sub",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "u",
+        "op": "gt",
+        "args": [
+         "p1",
+         "p0"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "u",
+         0,
+         "d"
+        ]
+       }
+      ],
+      "ret": "r"
+     },
+     {
+      "name": "budget_left",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "call",
+        "args": [
+         "sat_sub",
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "sat_sub",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "u",
+        "op": "gt",
+        "args": [
+         "p1",
+         "p0"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "u",
+         0,
+         "d"
+        ]
+       }
+      ],
+      "ret": "r"
+     },
+     {
+      "name": "budget_left",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "l",
+        "op": "add",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "call",
+        "args": [
+         "sat_sub",
+         "l",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "sat_sub",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "u",
+         "op": "gt",
+         "args": [
+          "p1",
+          "p0"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "u",
+          0,
+          "d"
+         ]
+        }
+       ],
+       "ret": "r"
+      },
+      {
+       "name": "budget_left",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "l",
+         "op": "add",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "call",
+         "args": [
+          "sat_sub",
+          "p1",
+          "l"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "budget_left",
+     "args": [
+      100,
+      40,
+      0
+     ],
+     "expected": 60
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      100,
+      40,
+      10
+     ],
+     "expected": 70
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      100,
+      105,
+      10
+     ],
+     "expected": 5
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      100,
+      120,
+      10
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      0,
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      50,
+      50,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      0,
+      5,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      1000,
+      1500,
+      600
+     ],
+     "expected": 100
+    },
+    {
+     "fn": "budget_left",
+     "args": [
+      7,
+      3,
+      0
+     ],
+     "expected": 4
+    }
+   ],
+   "note": "Passing the spent amount as the first argument of the saturating helper subtracts in the wrong direction."
+  },
+  {
+   "id": "g-saturating-multiply",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "wrapping",
+   "target": "sat_mul",
+   "instruction": "sat_mul(a, b) should return a times b, or the largest representable value when the true product does not fit.",
+   "start": {
+    "functions": [
+     {
+      "name": "sat_mul",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "p",
+        "op": "mul",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "p"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "sat_mul",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "p",
+        "op": "mul",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "p",
+         "p0"
+        ]
+       },
+       {
+        "id": "bad",
+        "op": "ne",
+        "args": [
+         "q",
+         "p1"
+        ]
+       },
+       {
+        "id": "nz",
+        "op": "ne",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "o",
+        "op": "and",
+        "args": [
+         "bad",
+         "nz"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "o",
+         4294967295,
+         "p"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "sat_mul",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "p",
+         "op": "mul",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "o",
+         "op": "lt",
+         "args": [
+          "p",
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "o",
+          4294967295,
+          "p"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "sat_mul",
+     "args": [
+      6,
+      7
+     ],
+     "expected": 42
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      0,
+      4294967295
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      1,
+      4294967295
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      65536,
+      65536
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      65535,
+      65537
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      65536,
+      65537
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      100000,
+      100000
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      3,
+      1431655765
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      3,
+      1431655766
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "sat_mul",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    }
+   ],
+   "note": "Reusing the addition overflow check (result smaller than an operand) misses many wrapped products."
+  },
+  {
+   "id": "g-elapsed-counter-wrap",
+   "kind": "targeted-edit",
+   "wrongEditKind": "wrapping",
+   "target": "elapsed",
+   "instruction": "elapsed(start, now) returns ticks passed on a free-running counter that wraps from the largest value back to 0; when now is below start the counter has wrapped and the result should be the ticks actually passed, not 0.",
+   "start": {
+    "functions": [
+     {
+      "name": "elapsed",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "ge",
+        "args": [
+         "p1",
+         "p0"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p1",
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "c",
+         "d",
+         0
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "elapsed",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "sub",
+        "args": [
+         "p1",
+         "p0"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "elapsed",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "c",
+         "op": "ge",
+         "args": [
+          "p1",
+          "p0"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "p1",
+          "p0"
+         ]
+        },
+        {
+         "id": "x",
+         "op": "sub",
+         "args": [
+          4294967295,
+          "p0"
+         ]
+        },
+        {
+         "id": "y",
+         "op": "add",
+         "args": [
+          "x",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "c",
+          "d",
+          "y"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "elapsed",
+     "args": [
+      100,
+      250
+     ],
+     "expected": 150
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      5,
+      5
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      0,
+      4294967295
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      4294967295,
+      4
+     ],
+     "expected": 5
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      4294967000,
+      300
+     ],
+     "expected": 596
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      1,
+      0
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      123,
+      456789
+     ],
+     "expected": 456666
+    },
+    {
+     "fn": "elapsed",
+     "args": [
+      3000000000,
+      3000000001
+     ],
+     "expected": 1
+    }
+   ],
+   "note": "Adding the distance to the top and the distance from zero forgets the tick from the maximum value to 0."
+  },
+  {
+   "id": "g-weighted-checksum-length",
+   "kind": "targeted-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "checksum",
+   "instruction": "checksum(v) should be the wrapping sum of each entry times its position plus one, over all six entries; the last entry is currently left out.",
+   "start": {
+    "functions": [
+     {
+      "name": "wstep",
+      "params": [
+       "u32",
+       "u32",
+       "u32x6"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "add",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "e",
+         "w"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "m"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "checksum",
+      "params": [
+       "u32x6"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "wstep",
+         5,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "wstep",
+      "params": [
+       "u32",
+       "u32",
+       "u32x6"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "add",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "e",
+         "w"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "m"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "checksum",
+      "params": [
+       "u32x6"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "wstep",
+         6,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "wstep",
+       "params": [
+        "u32",
+        "u32",
+        "u32x6"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "w",
+         "op": "add",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "m",
+         "op": "mul",
+         "args": [
+          "e",
+          "w"
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "m"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "checksum",
+       "params": [
+        "u32x6"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "c",
+         "op": "fold",
+         "args": [
+          "wstep",
+          7,
+          0,
+          "p0"
+         ]
+        }
+       ],
+       "ret": "c"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5,
+       0
+      ]
+     ],
+     "expected": 55
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     "expected": 91
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0,
+       0,
+       9
+      ]
+     ],
+     "expected": 54
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       10,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 10
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       4294967295,
+       4294967295,
+       4294967295,
+       4294967295,
+       4294967295,
+       4294967295
+      ]
+     ],
+     "expected": 4294967275
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       7,
+       11,
+       13,
+       17,
+       19,
+       23
+      ]
+     ],
+     "expected": 369
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       1000,
+       2000,
+       3000,
+       4000,
+       5000,
+       0
+      ]
+     ],
+     "expected": 55000
+    },
+    {
+     "fn": "checksum",
+     "args": [
+      [
+       5,
+       0,
+       0,
+       0,
+       0,
+       1
+      ]
+     ],
+     "expected": 11
+    }
+   ],
+   "note": "Raising the count one past the length re-reads the first entry because indexes wrap around."
+  },
+  {
+   "id": "g-low-byte-popcount",
+   "kind": "targeted-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "low_byte_bits",
+   "instruction": "low_byte_bits(x) should count how many of the eight lowest bits of x are set; the highest of those eight bits is currently ignored.",
+   "start": {
+    "functions": [
+     {
+      "name": "bstep",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "s",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "add",
+        "args": [
+         "p0",
+         "b"
+        ]
+       }
+      ],
+      "ret": "r"
+     },
+     {
+      "name": "low_byte_bits",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "bstep",
+         7,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "bstep",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "s",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "add",
+        "args": [
+         "p0",
+         "b"
+        ]
+       }
+      ],
+      "ret": "r"
+     },
+     {
+      "name": "low_byte_bits",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "bstep",
+         8,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "bstep",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "shr",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "and",
+         "args": [
+          "s",
+          1
+         ]
+        },
+        {
+         "id": "r",
+         "op": "add",
+         "args": [
+          "p0",
+          "b"
+         ]
+        }
+       ],
+       "ret": "r"
+      },
+      {
+       "name": "low_byte_bits",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "c",
+         "op": "fold",
+         "args": [
+          "bstep",
+          9,
+          0,
+          "p0"
+         ]
+        }
+       ],
+       "ret": "c"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      127
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      128
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      255
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      511
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      256
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      4294967295
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      165
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "low_byte_bits",
+     "args": [
+      55
+     ],
+     "expected": 5
+    }
+   ],
+   "note": "Counting nine positions includes bit 8, which lies outside the low byte."
+  }
+ ]
+}
