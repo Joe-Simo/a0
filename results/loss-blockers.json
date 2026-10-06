@@ -2,14 +2,15 @@
   "generatedAt": "2026-10-06T15:16:57.029Z",
   "tool": "derived from results/loss-ledger.json; one record per entry",
   "note": "Classification of why each recorded loss is open. Not a measurement: no loss here was closed or re-measured.",
-  "count": 577,
+  "count": 583,
   "byBlocker": {
     "needs-quiet-machine": 23,
     "dense-view-wins-canonical-loses": 325,
     "loses-in-both-views": 52,
     "primer-paid-per-call": 44,
     "needs-fresh-subjects": 93,
-    "measured-opt-in": 40
+    "measured-opt-in": 40,
+    "needs-view-change-and-new-sealed-set": 6
   },
   "entries": [
     {
@@ -7289,6 +7290,66 @@
       "other": 1833.1,
       "blocker": "needs-fresh-subjects",
       "evidence": "a primer variant cost more tokens per accepted edit than its control; needs fresh subjects"
+    },
+    {
+      "id": "app-edit|haiku/a0-front-end|app-edit-accepted|typescript",
+      "axis": "app-edit-accepted",
+      "kernel": "haiku/a0-front-end",
+      "competitor": "typescript",
+      "a0": 0.5,
+      "other": 0.928571,
+      "blocker": "needs-view-change-and-new-sealed-set",
+      "evidence": "one shot plus repair, 14 tasks: A0 7 against TypeScript 13 accepted (results/app-edit.json). Two A0 tasks (op-alias-mod, use-alias-import) need the numeric hash of a new keyword that the view does not show: a view change in compiler/lex.a0 needs bun run seed on a POSIX machine and invalidates the sealed task set, so it needs a new pre-registered set. The rest are model errors in the edit language, which more subjects do not change."
+    },
+    {
+      "id": "app-edit|haiku/a0-front-end|app-edit-tokens-per-accepted|typescript",
+      "axis": "app-edit-tokens-per-accepted",
+      "kernel": "haiku/a0-front-end",
+      "competitor": "typescript",
+      "a0": 10130.1,
+      "other": 7960,
+      "blocker": "needs-view-change-and-new-sealed-set",
+      "evidence": "A0 costs more per accepted edit at the 10-task horizon (results/app-edit.json), because fewer of its replies are accepted and the A0 view of the target functions is long; closes only with higher acceptance or a shorter view, both of which wait on the keyword-table view change and a new sealed set."
+    },
+    {
+      "id": "app-edit|sonnet/a0-front-end|app-edit-accepted|typescript",
+      "axis": "app-edit-accepted",
+      "kernel": "sonnet/a0-front-end",
+      "competitor": "typescript",
+      "a0": 0.857143,
+      "other": 1,
+      "blocker": "needs-view-change-and-new-sealed-set",
+      "evidence": "one shot plus repair: A0 12 against TypeScript 14 accepted (results/app-edit.json); the misses include the keyword-hash tasks that the view does not support (see the Haiku entry); needs the view change and a new pre-registered set."
+    },
+    {
+      "id": "app-edit-loop|haiku/a0-front-end|app-edit-accepted|typescript",
+      "axis": "app-edit-accepted",
+      "kernel": "haiku/a0-front-end",
+      "competitor": "typescript",
+      "a0": 0.5,
+      "other": 0.857143,
+      "blocker": "needs-view-change-and-new-sealed-set",
+      "evidence": "tool-loop arm, budget of 12 runs: A0 7 against TypeScript 12 accepted (results/app-edit-loop.json); the loop did not raise Haiku on A0 (7 also in the one-shot arm); a Haiku-class author needs a smaller edit language surface or a different view, to be measured on a new set."
+    },
+    {
+      "id": "app-edit-loop|haiku/a0-front-end|app-edit-tokens-per-accepted|typescript",
+      "axis": "app-edit-tokens-per-accepted",
+      "kernel": "haiku/a0-front-end",
+      "competitor": "typescript",
+      "a0": 30741.1,
+      "other": 12198.9,
+      "blocker": "needs-view-change-and-new-sealed-set",
+      "evidence": "tool-loop arm: A0 30741.1 against 12198.9 tokens per accepted edit (results/app-edit-loop.json): about 20 tool calls per accepted A0 edit against fewer for TypeScript; closes only with fewer calls per accepted edit."
+    },
+    {
+      "id": "app-edit-loop|sonnet/a0-front-end|app-edit-tokens-per-accepted|typescript",
+      "axis": "app-edit-tokens-per-accepted",
+      "kernel": "sonnet/a0-front-end",
+      "competitor": "typescript",
+      "a0": 9044.9,
+      "other": 7598.5,
+      "blocker": "needs-view-change-and-new-sealed-set",
+      "evidence": "tool-loop arm: A0 9044.9 against 7598.5 tokens per accepted edit (results/app-edit-loop.json), 19 per cent more, with 13 against 14 accepted; the per-call tool output of the A0 view is the main cost; closes with a shorter view."
     }
   ],
   "tokenKernelDense": {

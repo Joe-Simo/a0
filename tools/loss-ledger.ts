@@ -63,7 +63,9 @@ export type Axis =
   | 'spec-tokens-per-accepted'
   | 'primer-accepted-one-shot'
   | 'primer-accepted-repaired'
-  | 'primer-tokens-per-accepted';
+  | 'primer-tokens-per-accepted'
+  | 'app-edit-accepted'
+  | 'app-edit-tokens-per-accepted';
 
 export interface Observation {
   readonly id: string;
@@ -492,6 +494,61 @@ function specObservations(root: string): Observation[] {
   return out;
 }
 
+interface AppEditCell {
+  readonly n: number;
+  readonly accepted: { readonly k: number };
+  readonly tokensPerAcceptedEdit: { readonly session10: number | null } | null;
+}
+
+/**
+ * The application-scale edit benchmark (results/app-edit.json, one shot plus one repair) and its tool-loop
+ * arm (results/app-edit-loop.json): per model, A0 is the A0 side and TypeScript is the competitor.
+ * Accepted edits are a rate (a tie within one task of the 14); tokens per accepted edit at the 10-task
+ * horizon within 3 %.
+ */
+function appEditObservations(root: string): Observation[] {
+  const out: Observation[] = [];
+  for (const [file, source] of [
+    ['app-edit.json', 'app-edit'],
+    ['app-edit-loop.json', 'app-edit-loop'],
+  ] as const) {
+    const cells = obj(readJson(root, file)?.cells);
+    if (cells === undefined) continue;
+    for (const model of ['haiku', 'sonnet']) {
+      const a = obj(cells[`${model}/a0`]) as unknown as AppEditCell | undefined;
+      const t = obj(cells[`${model}/ts`]) as unknown as AppEditCell | undefined;
+      if (a === undefined || t === undefined) continue;
+      const kernel = `${model}/a0-front-end`;
+      const competitor = 'typescript';
+      out.push({
+        id: `${source}|${kernel}|app-edit-accepted|${competitor}`,
+        source,
+        kernel,
+        axis: 'app-edit-accepted',
+        competitor,
+        a0: a.accepted.k / a.n,
+        other: t.accepted.k / t.n,
+        gap: t.accepted.k / t.n - a.accepted.k / a.n,
+        noise: 1 / a.n,
+        load: null,
+      });
+      const tok = lower(
+        source,
+        kernel,
+        'app-edit-tokens-per-accepted',
+        competitor,
+        a.tokensPerAcceptedEdit?.session10 ?? 0,
+        t.tokensPerAcceptedEdit?.session10 ?? 0,
+        0.03,
+        null,
+        false,
+      );
+      if (tok !== undefined) out.push(tok);
+    }
+  }
+  return out;
+}
+
 interface PrimerCell {
   readonly n: number;
   readonly oneShot: { readonly rate: number };
@@ -578,6 +635,7 @@ export function observations(root = '.'): Observation[] {
     ...aiObservations(root),
     ...specObservations(root),
     ...primerObservations(root),
+    ...appEditObservations(root),
   ];
 }
 
