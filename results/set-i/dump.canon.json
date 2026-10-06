@@ -1,0 +1,66 @@
+{
+  "i-bit-test/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return whether bit number p1 of p0 is set, where bit 0 is the least significant bit.\n\ne0\nfn f u32 u32 -> bool\na add p1 1\nb shr p0 a\nc and b 1\nd ne c 0\nret d\nend\ng0\nfn f u32 u32 -> bool end"
+  },
+  "i-power-of-two/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "This returns whether p0 is a power of two, but it wrongly says true for zero. Make it return false for zero.\n\ne0\nfn f u32 -> bool\na sub p0 1\nb and p0 a\nc eq b 0\nret c\nend\ng0\nfn f u32 -> bool end"
+  },
+  "i-contains/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f should return whether p1 appears anywhere in the array p0. Fix it so every element is examined.\n\ne0\nfn f u32x4 u32 -> bool\na fold chk 3 false p0 p1\nret a\nend\nfn chk bool u32 u32x4 u32 -> bool end\ng0\nfn chk bool u32 u32x4 u32 -> bool end\nfn f u32x4 u32 -> bool end"
+  },
+  "i-low-byte-parity/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the low 8 bits of p0 contain an odd number of set bits; higher bits must be ignored.\n\ne0\nfn f u32 -> bool\na fold par 7 0 p0\nb ne a 0\nret b\nend\nfn par u32 u32 u32 -> u32 end\ng0\nfn par u32 u32 u32 -> u32 end\nfn f u32 -> bool end"
+  },
+  "i-rotate-left/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f should rotate p0 left by p1 bits (bits shifted out at the top come back in at the bottom). Fix the rotation.\n\ne0\nfn f u32 u32 -> u32\na shl p0 p1\nb sub 31 p1\nc shr p0 b\nd or a c\nret d\nend\ng0\nfn f u32 u32 -> u32 end"
+  },
+  "i-scale-five-eighths/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f currently computes p0 times 3 divided by 4. Change it to compute p0 times 5 divided by 8 (the multiply wraps modulo 2^32, the division rounds down).\n\ne0\nfn f u32 -> u32\na mul p0 3\nb div a 4\nret b\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "i-round-up-multiple/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Round p0 up to the nearest multiple of p1; a value that is already a multiple must stay unchanged.\n\ne0\nfn f u32 u32 -> u32\na add p0 p1\nb div a p1\nd mul b p1\nret d\nend\ng0\nfn f u32 u32 -> u32 end"
+  },
+  "i-extract-field/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f extracts an 8-bit field of p0 starting at bit p1. Make the field width p2 bits instead of always 8 (p2 is between 0 and 31).\n\ne0\nfn f u32 u32 u32 -> u32\na shr p0 p1\nm mov 255\nr and a m\nret r\nend\ng0\nfn f u32 u32 u32 -> u32 end"
+  },
+  "i-weighted-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f sums the array. Change it so that the element at position i is multiplied by i+1 before it is added (sums wrap modulo 2^32).\n\ne0\nfn f u32x4 -> u32\na fold ws 4 0 p0\nret a\nend\nfn ws u32 u32 u32x4 -> u32 end\ng0\nfn ws u32 u32 u32x4 -> u32 end\nfn f u32x4 -> u32 end"
+  },
+  "i-double-mix/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f should apply mix twice: first to p0 with key p1, then to that result with key p1 shifted right by 16 bits.\n\ne0\nfn f u32 u32 -> u32\nr call mix p0 p1\nret r\nend\nfn mix u32 u32 -> u32 end\ng0\nfn mix u32 u32 -> u32 end\nfn f u32 u32 -> u32 end"
+  },
+  "i-gray-code/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f should convert p0 to its reflected binary Gray code, p0 xor (p0 shifted right by one).\n\ne0\nfn f u32 -> u32\na shl p0 1\nb xor p0 a\nret b\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "i-midpoint/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the midpoint of p0 and p1 rounded down, assuming p0 <= p1, without the sum overflowing.\n\ne0\nfn f u32 u32 -> u32\ns add p0 p1\nr shr s 1\nret r\nend\ng0\nfn f u32 u32 -> u32 end"
+  },
+  "i-rotate-array/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return p0 rotated left by p1 positions: element j of the result is element j+p1 of p0, wrapping around the end.\n\ne0\nfn f u32x4 u32 -> u32x4\ni1 add p1 1\ni2 add p1 2\ni3 add p1 4\ng0 get p0 p1\ng1 get p0 i1\ng2 get p0 i2\ng3 get p0 i3\nr arr g0 g1 g2 g3\nret r\nend\ng0\nfn f u32x4 u32 -> u32x4 end"
+  },
+  "i-raise-element/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "f overwrites element p1 of p0 with p2. Change it so the element only changes when p2 is larger: it becomes the larger of its old value and p2.\n\ne0\nfn f u32x4 u32 u32 -> u32x4\ns set p0 p1 p2\nret s\nend\ng0\nfn f u32x4 u32 u32 -> u32x4 end"
+  },
+  "i-safe-divmod/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the quotient and remainder of p0 divided by p1, except that when p1 is zero the result must be (0, p0).\n\ne0\nfn f u32 u32 -> (u32,u32)\nd div p0 p1\nr rem p0 p1\no rec d r\nret o\nend\ng0\nfn f u32 u32 -> (u32,u32) end"
+  },
+  "i-add-carry/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the wrapped sum of p0 and p1 together with a flag that is true exactly when the addition carried out of 32 bits.\n\ne0\nfn f u32 u32 -> (u32,bool)\ns add p0 p1\nc le s p0\no rec s c\nret o\nend\ng0\nfn f u32 u32 -> (u32,bool) end"
+  }
+}

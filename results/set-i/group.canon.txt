@@ -1,0 +1,215 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### REQUEST 1
+Return whether bit number p1 of p0 is set, where bit 0 is the least significant bit.
+
+e0
+fn f u32 u32 -> bool
+a add p1 1
+b shr p0 a
+c and b 1
+d ne c 0
+ret d
+end
+g0
+fn f u32 u32 -> bool end
+
+### REQUEST 2
+This returns whether p0 is a power of two, but it wrongly says true for zero. Make it return false for zero.
+
+e0
+fn f u32 -> bool
+a sub p0 1
+b and p0 a
+c eq b 0
+ret c
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 3
+f should return whether p1 appears anywhere in the array p0. Fix it so every element is examined.
+
+e0
+fn f u32x4 u32 -> bool
+a fold chk 3 false p0 p1
+ret a
+end
+fn chk bool u32 u32x4 u32 -> bool end
+g0
+fn chk bool u32 u32x4 u32 -> bool end
+fn f u32x4 u32 -> bool end
+
+### REQUEST 4
+Return true when the low 8 bits of p0 contain an odd number of set bits; higher bits must be ignored.
+
+e0
+fn f u32 -> bool
+a fold par 7 0 p0
+b ne a 0
+ret b
+end
+fn par u32 u32 u32 -> u32 end
+g0
+fn par u32 u32 u32 -> u32 end
+fn f u32 -> bool end
+
+### REQUEST 5
+f should rotate p0 left by p1 bits (bits shifted out at the top come back in at the bottom). Fix the rotation.
+
+e0
+fn f u32 u32 -> u32
+a shl p0 p1
+b sub 31 p1
+c shr p0 b
+d or a c
+ret d
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 6
+f currently computes p0 times 3 divided by 4. Change it to compute p0 times 5 divided by 8 (the multiply wraps modulo 2^32, the division rounds down).
+
+e0
+fn f u32 -> u32
+a mul p0 3
+b div a 4
+ret b
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 7
+Round p0 up to the nearest multiple of p1; a value that is already a multiple must stay unchanged.
+
+e0
+fn f u32 u32 -> u32
+a add p0 p1
+b div a p1
+d mul b p1
+ret d
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 8
+f extracts an 8-bit field of p0 starting at bit p1. Make the field width p2 bits instead of always 8 (p2 is between 0 and 31).
+
+e0
+fn f u32 u32 u32 -> u32
+a shr p0 p1
+m mov 255
+r and a m
+ret r
+end
+g0
+fn f u32 u32 u32 -> u32 end
+
+### REQUEST 9
+f sums the array. Change it so that the element at position i is multiplied by i+1 before it is added (sums wrap modulo 2^32).
+
+e0
+fn f u32x4 -> u32
+a fold ws 4 0 p0
+ret a
+end
+fn ws u32 u32 u32x4 -> u32 end
+g0
+fn ws u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 10
+f should apply mix twice: first to p0 with key p1, then to that result with key p1 shifted right by 16 bits.
+
+e0
+fn f u32 u32 -> u32
+r call mix p0 p1
+ret r
+end
+fn mix u32 u32 -> u32 end
+g0
+fn mix u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+### REQUEST 11
+f should convert p0 to its reflected binary Gray code, p0 xor (p0 shifted right by one).
+
+e0
+fn f u32 -> u32
+a shl p0 1
+b xor p0 a
+ret b
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 12
+Return the midpoint of p0 and p1 rounded down, assuming p0 <= p1, without the sum overflowing.
+
+e0
+fn f u32 u32 -> u32
+s add p0 p1
+r shr s 1
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 13
+Return p0 rotated left by p1 positions: element j of the result is element j+p1 of p0, wrapping around the end.
+
+e0
+fn f u32x4 u32 -> u32x4
+i1 add p1 1
+i2 add p1 2
+i3 add p1 4
+g0 get p0 p1
+g1 get p0 i1
+g2 get p0 i2
+g3 get p0 i3
+r arr g0 g1 g2 g3
+ret r
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 14
+f overwrites element p1 of p0 with p2. Change it so the element only changes when p2 is larger: it becomes the larger of its old value and p2.
+
+e0
+fn f u32x4 u32 u32 -> u32x4
+s set p0 p1 p2
+ret s
+end
+g0
+fn f u32x4 u32 u32 -> u32x4 end
+
+### REQUEST 15
+Return the quotient and remainder of p0 divided by p1, except that when p1 is zero the result must be (0, p0).
+
+e0
+fn f u32 u32 -> (u32,u32)
+d div p0 p1
+r rem p0 p1
+o rec d r
+ret o
+end
+g0
+fn f u32 u32 -> (u32,u32) end
+
+### REQUEST 16
+Return the wrapped sum of p0 and p1 together with a flag that is true exactly when the addition carried out of 32 bits.
+
+e0
+fn f u32 u32 -> (u32,bool)
+s add p0 p1
+c le s p0
+o rec s c
+ret o
+end
+g0
+fn f u32 u32 -> (u32,bool) end
