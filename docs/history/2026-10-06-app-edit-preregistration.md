@@ -82,9 +82,9 @@ never reworded; a second refusal or a missing reply is a failure. Controls and v
 
 ## Metrics
 
-From `tools/app-edit-summary.ts` (`results/app-edit.json`), per model and side, n = 14:
+From `tools/app-edit-summary.ts` (its summary file is written once the subjects have run), per model and side, n = 14:
 
-- one-shot acceptance and repaired acceptance, counts with Wilson 95% intervals;
+- one-shot acceptance and repaired acceptance, counts with Wilson 95% intervals (claim-ok: the interval level of the method, not a measured value);
 - tokens per accepted edit (o200k_base, local counts) at the horizons of `tools/set-h-summary.ts`: system tokens weighted
   1.25 then 0.05 per further call (cold task), 0.17 then 0.05 (10-task session), 0.05 per call (unbounded), plus the
   request (instruction and view), each rejection sent, and every reply, summed over the trials and divided by the
