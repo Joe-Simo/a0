@@ -1,0 +1,3110 @@
+# A0 AArch64 encoder, written in A0: Darwin arm64 assembly text to instruction words, labels,
+# relocations and zero-fill symbols, without a system assembler. It is the port of
+# src/arm64enc.ts (the reference): the same dialect, the same words, the same relocations, and
+# an error on the same line; test/asm-arm64.test.ts checks it against the reference on every
+# arm64 text the repository produces for the corpus and the examples.
+# Accepted (as in the reference): labels (`name:`, numeric `1:` with `1f` / `1b` references),
+# `.text`, `.section __TEXT,__text,...`, `.globl`, `.p2align` (nop padding),
+# `.subsections_via_symbols`, `.zerofill __DATA,__bss,sym,size,align`, comments (`//`, `;`), and
+# ldr str ldrb strb (unsigned offset, pre/post index, register offset), ldp stp (x w q), movz
+# movk movn mov, add sub adds subs cmp cmn neg negs (immediate, shifted and extended register,
+# `@PAGEOFF`), and orr eor ands tst (register, bitmask immediate), lsl lsr asr ror (register,
+# immediate), mul madd msub umaddl smaddl udiv sdiv, csel csinc csinv csneg cset csetm, b bl
+# b.<cond> cbz cbnz, adrp, ret br blr, movi (`v.2d, #0`), nop.
+# Input words: n, then the n bytes of the text, one a word. Output words: on success 0, the
+# word count k, the k words, the label count and each label (byte offset, name length, name
+# bytes) in definition order, the relocation count and each relocation by offset (offset, kind
+# 0 branch26 1 page21 2 pageoff12, symbol length, symbol bytes), the bss count and each bss
+# symbol (offset, size, name length, name bytes), the bss size and the largest bss alignment.
+# On an error: the code (1 the text is wrong, as the reference says; 2 a capacity of this
+# encoder is exceeded) and the 1-based line. The result of `asmio` is the code.
+# Values: an immediate is sign and magnitude, the magnitude a 64-bit pair of u32 (the reference
+# uses bigint); a bitmask immediate is found on the pair. Capacities (the whole state is one
+# value, at most 65536 words): 32768 words, 256 bytes a line before its comment, 16 operand
+# items a line, 8192 bytes of names (label names and one copy per branch and relocation
+# target), 1024 labels, 1024 relocations of each kind, 1024 branches, 1024 numeric label
+# definitions, 256 bss symbols. The reference's per-word line numbers are not written.
+# Where this encoder is stricter than the reference (each an error here, accepted there): a
+# literal over 64 bits, a numeric label over 32 bits, a movz/movk/movn shift amount at or
+# below -2^32, a .p2align or .zerofill number that is not decimal or 0x hexadecimal (the
+# reference reads it with JavaScript Number), a negative .zerofill alignment and a size over
+# 32 bits, a non-ASCII whitespace character between tokens, and operand words the reference
+# finds on Object.prototype through its condition table (`constructor`, `toString`, ...).
+# State: the module tables are paged (u32x128xN, `asg*` / `ass*`), a line is a u32x256 buffer;
+# every branch is computed and selected, and a step that changes the state record (which holds
+# the io token, so it cannot be selected) runs as a fold of count 0 or 1.
+
+# ---- zero values and paged tables
+fn aszpg -> u32x128
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn asz32 -> u32x128x32
+z call aszpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn asz64 -> u32x128x64
+z call aszpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn asz256 -> u32x128x256
+z call aszpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn asz16p -> u32x128x16
+z call aszpg
+t arr z z z z z z z z z z z z z z z z
+ret t
+end
+fn asz8 -> u32x128x8
+z call aszpg
+t arr z z z z z z z z
+ret t
+end
+fn aszb -> u32x256
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn asz16 -> u32x16
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn asg32 u32x128x32 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn ass32 u32x128x32 u32 u32 -> u32x128x32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn asg64 u32x128x64 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn ass64 u32x128x64 u32 u32 -> u32x128x64
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn asg256 u32x128x256 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn ass256 u32x128x256 u32 u32 -> u32x128x256
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn asg16 u32x128x16 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn ass16 u32x128x16 u32 u32 -> u32x128x16
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn asg8 u32x128x8 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn ass8 u32x128x8 u32 u32 -> u32x128x8
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+
+# ---- bytes
+# whitespace (tab, newline, vertical tab, form feed, carriage return, space)
+fn asws u32 -> bool
+a9 ge p0 9
+a13 le p0 13
+c1 and a9 a13
+sp eq p0 32
+r or c1 sp
+ret r
+end
+fn asdig u32 -> bool
+a1 ge p0 48
+a2 le p0 57
+r and a1 a2
+ret r
+end
+fn asalp u32 -> bool
+l1 ge p0 97
+l2 le p0 122
+lw and l1 l2
+u1 ge p0 65
+u2 le p0 90
+uw and u1 u2
+r or lw uw
+ret r
+end
+# a label byte [A-Za-z0-9_.$]
+fn aslch u32 -> bool
+a call asalp p0
+d call asdig p0
+us eq p0 95
+dt eq p0 46
+dl eq p0 36
+x1 or a d
+x2 or us dt
+x3 or x1 x2
+r or x3 dl
+ret r
+end
+# an operand-word byte [A-Za-z0-9_.$-]
+fn asoch u32 -> bool
+a call aslch p0
+m eq p0 45
+r or a m
+ret r
+end
+fn ashexd u32 -> bool
+d call asdig p0
+l1 ge p0 97
+l2 le p0 102
+lw and l1 l2
+u1 ge p0 65
+u2 le p0 70
+uw and u1 u2
+x or d lw
+r or x uw
+ret r
+end
+fn ashexv u32 -> u32
+d call asdig p0
+dv sub p0 48
+lc or p0 32
+lv sub lc 87
+r select d dv lv
+ret r
+end
+
+# ---- scanning a line buffer p2 up to p3 from position p0
+fn aswsp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call asws c
+r and inr w
+ret r
+end
+fn asnwp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call asws c
+nw eq w false
+r and inr nw
+ret r
+end
+fn aslcp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call aslch c
+r and inr w
+ret r
+end
+fn asocp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call asoch c
+r and inr w
+ret r
+end
+fn asinc u32 u32 u32x256 u32 -> u32
+r add p0 1
+ret r
+end
+# the first position at or after p2 (below p1) that is not whitespace
+fn asskip u32x256 u32 u32 -> u32
+r loop aswsp asinc 257 p2 p0 p1
+ret r
+end
+# the first whitespace position at or after p2
+fn astows u32x256 u32 u32 -> u32
+r loop asnwp asinc 257 p2 p0 p1
+ret r
+end
+# the end of the run of label bytes from p2
+fn asscl u32x256 u32 u32 -> u32
+r loop aslcp asinc 257 p2 p0 p1
+ret r
+end
+# the end of the operand word from p2
+fn asscop u32x256 u32 u32 -> u32
+r loop asocp asinc 257 p2 p0 p1
+ret r
+end
+# trailing whitespace: state end, p3 the start
+fn asrtp u32 u32 u32x256 u32 -> bool
+gtb gt p0 p3
+pi sub p0 1
+c get p2 pi
+w call asws c
+r and gtb w
+ret r
+end
+fn asdec1 u32 u32 u32x256 u32 -> u32
+r sub p0 1
+ret r
+end
+# p2 without the whitespace before it, down to p1
+fn asrtrim u32x256 u32 u32 -> u32
+r loop asrtp asdec1 257 p2 p0 p1
+ret r
+end
+# the comment cut: the first `;` or `//` below the stored length p3
+fn ascutst u32 u32 u32x256 u32 -> u32
+c get p2 p1
+semi eq c 59
+sl eq c 47
+n1 add p1 1
+inr lt n1 p3
+c2 get p2 n1
+sl2 eq c2 47
+dbl and sl sl2
+dbl2 and dbl inr
+hit or semi dbl2
+before lt p1 p0
+take and hit before
+r select take p1 p0
+ret r
+end
+fn ascut u32x256 u32 -> u32
+big gt p1 256
+lim select big 256 p1
+r fold ascutst 256 lim p0 lim
+ret r
+end
+# every byte of [p1, p2) is a digit (p3 0) or a label byte (p3 1)
+fn asallst bool u32 u32x256 u32 u32 -> bool
+ix add p3 p1
+c get p2 ix
+d call asdig c
+l call aslch c
+isd eq p4 0
+v select isd d l
+r and p0 v
+ret r
+end
+fn asall u32x256 u32 u32 u32 -> bool
+gtr gt p2 p1
+d sub p2 p1
+ln select gtr d 0
+r fold asallst ln true p0 p1 p3
+ret r
+end
+
+# ---- names packed for table lookup: words 0-5 the bytes little-endian, 6 the length, 7 bad
+# (longer than 24 bytes, or a zero byte)
+fn aspkst u32x8 u32 u32x256 u32 u32 -> u32x8
+inr lt p1 p4
+ix add p3 p1
+c get p2 ix
+cv select inr c 0
+wi shr p1 2
+j3 and p1 3
+sh mul j3 8
+sv shl cv sh
+old get p0 wi
+nw or old sv
+s1 set p0 wi nw
+z eq c 0
+zb and inr z
+bd get s1 7
+bd1 select zb 1 bd
+s2 set s1 7 bd1
+ret s2
+end
+fn aspack u32x256 u32 u32 -> u32x8
+gtr gt p2 p1
+d sub p2 p1
+ln select gtr d 0
+z arr 0 0 0 0 0 0 0 0
+lg gt ln 24
+bd select lg 1 0
+z1 set z 7 bd
+z2 set z1 6 ln
+r fold aspkst 24 z2 p0 p1 ln
+ret r
+end
+# the index of the packed name p3 in the table p2 (7 words an entry), 4294967295 if absent
+fn aslkst u32 u32 u32x350 u32x8 -> u32
+k mul p1 7
+t0 get p2 k
+k1 add k 1
+t1 get p2 k1
+k2 add k 2
+t2 get p2 k2
+k3 add k 3
+t3 get p2 k3
+k4 add k 4
+t4 get p2 k4
+k5 add k 5
+t5 get p2 k5
+k6 add k 6
+t6 get p2 k6
+w0 get p3 0
+w1 get p3 1
+w2 get p3 2
+w3 get p3 3
+w4 get p3 4
+w5 get p3 5
+w6 get p3 6
+w7 get p3 7
+e0 eq t0 w0
+e1 eq t1 w1
+e2 eq t2 w2
+e3 eq t3 w3
+e4 eq t4 w4
+e5 eq t5 w5
+e6 eq t6 w6
+e7 eq w7 0
+a01 and e0 e1
+a23 and e2 e3
+a45 and e4 e5
+a67 and e6 e7
+b1 and a01 a23
+b2 and a45 a67
+m and b1 b2
+nf eq p0 4294967295
+take and m nf
+r select take p1 p0
+ret r
+end
+fn aslook u32x350 u32 u32x8 -> u32
+r fold aslkst p1 4294967295 p0 p2
+ret r
+end
+# mnemonics (50), conditions (17), shift and extend words (7), directives (6), the named
+# registers sp xzr wzr (3), and the words __TEXT,__text __DATA __bss PAGE PAGEOFF (5)
+fn asmns -> u32x350
+t arr 7496812 0 0 0 0 0 3 7500915 0 0 0 0 0 3 1651663980 0 0 0 0 0 4 1651668083 0 0 0 0 0 4 7365740 0 0 0 0 0 3 7369843 0 0 0 0 0 3 2054582125 0 0 0 0 0 4 1802923885 0 0 0 0 0 4 1853255533 0 0 0 0 0 4 7761773 0 0 0 0 0 3 6579297 0 0 0 0 0 3 6452595 0 0 0 0 0 3 1935959137 0 0 0 0 0 4 1935832435 0 0 0 0 0 4 7368035 0 0 0 0 0 3 7236963 0 0 0 0 0 3 6776174 0 0 0 0 0 3 1936156014 0 0 0 0 0 4 6581857 0 0 0 0 0 3 7500399 0 0 0 0 0 3 7499621 0 0 0 0 0 3 1935961697 0 0 0 0 0 4 7631732 0 0 0 0 0 3 7107436 0 0 0 0 0 3 7500652 0 0 0 0 0 3 7500641 0 0 0 0 0 3 7499634 0 0 0 0 0 3 7107949 0 0 0 0 0 3 1684300141 0 0 0 0 0 4 1651864429 0 0 0 0 0 4 1684106613 27748 0 0 0 0 6 1684106611 27748 0 0 0 0 6 1986618485 0 0 0 0 0 4 1986618483 0 0 0 0 0 4 1818588003 0 0 0 0 0 4 1852404579 99 0 0 0 0 5 1852404579 118 0 0 0 0 5 1701737315 103 0 0 0 0 5 1952805731 0 0 0 0 0 4 1952805731 109 0 0 0 0 5 98 0 0 0 0 0 1 27746 0 0 0 0 0 2 8020579 0 0 0 0 0 3 2054054499 0 0 0 0 0 4 1886544993 0 0 0 0 0 4 7628146 0 0 0 0 0 3 29282 0 0 0 0 0 2 7498850 0 0 0 0 0 3 1769369453 0 0 0 0 0 4 7368558 0 0 0 0 0 3
+ret t
+end
+fn ascos -> u32x350
+t arr 29029 0 0 0 0 0 2 25966 0 0 0 0 0 2 29544 0 0 0 0 0 2 29539 0 0 0 0 0 2 28524 0 0 0 0 0 2 25443 0 0 0 0 0 2 26989 0 0 0 0 0 2 27760 0 0 0 0 0 2 29558 0 0 0 0 0 2 25462 0 0 0 0 0 2 26984 0 0 0 0 0 2 29548 0 0 0 0 0 2 25959 0 0 0 0 0 2 29804 0 0 0 0 0 2 29799 0 0 0 0 0 2 25964 0 0 0 0 0 2 27745 0 0 0 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+fn asshs -> u32x350
+t arr 7107436 0 0 0 0 0 3 7500652 0 0 0 0 0 3 7500641 0 0 0 0 0 3 2004121717 0 0 0 0 0 4 2020898933 0 0 0 0 0 4 2004121715 0 0 0 0 0 4 2020898931 0 0 0 0 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+fn asdis -> u32x350
+t arr 2019914798 116 0 0 0 0 5 1651864366 1952671091 1936617321 1634301535 1836675935 1936486242 24 1869375278 27746 0 0 0 0 6 1667593006 1852795252 0 0 0 0 8 1630695470 1852270956 0 0 0 0 8 1919253038 1818846831 108 0 0 0 9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+fn asrgs -> u32x350
+t arr 28787 0 0 0 0 0 2 7502456 0 0 0 0 0 3 7502455 0 0 0 0 0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+fn askws -> u32x350
+t arr 1163157343 1596740696 2019914847 116 0 0 13 1094999903 16724 0 0 0 0 6 1935826783 115 0 0 0 0 5 1162297680 0 0 0 0 0 4 1162297680 4605519 0 0 0 0 7 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+# condition code of condition-table index p0 (eq ne hs cs lo cc mi pl vs vc hi ls ge lt gt le al)
+fn ascc u32 -> u32
+lt2 lt p0 2
+lt6 lt p0 6
+d2 sub p0 2
+h shr d2 1
+m add h 2
+r6 select lt6 m d2
+r select lt2 p0 r6
+ret r
+end
+
+# ---- numbers: -?[0-9]+ or -?0x[0-9a-fA-F]+ as sign and a 64-bit magnitude
+# (p0, p1) * 10 + p2 as a 64-bit pair, and whether it carried out of 64 bits
+fn asm10 u32 u32 u32 -> (u32,u32,bool)
+l0 and p0 65535
+l1 shr p0 16
+t0 mul l0 10
+t0b add t0 p2
+t0c shr t0b 16
+t1 mul l1 10
+t1b add t1 t0c
+lo16 and t0b 65535
+hi16 shl t1b 16
+nlo or lo16 hi16
+cy shr t1b 16
+h0 and p1 65535
+h1 shr p1 16
+u0 mul h0 10
+u0b add u0 cy
+u0c shr u0b 16
+u1 mul h1 10
+u1b add u1 u0c
+hlo and u0b 65535
+hhi shl u1b 16
+nhi or hlo hhi
+ov shr u1b 16
+ovf ne ov 0
+r rec nlo nhi ovf
+ret r
+end
+# state (low, high, digits valid, overflow); p2 the buffer, p3 the first digit, p4 hexadecimal
+fn asdgst (u32,u32,bool,bool) u32 u32x256 u32 bool -> (u32,u32,bool,bool)
+ix add p3 p1
+c get p2 ix
+lo at p0 0
+hi at p0 1
+ok at p0 2
+ov at p0 3
+isd call asdig c
+ish call ashexd c
+valid select p4 ish isd
+dv sub c 48
+hv call ashexv c
+m call asm10 lo hi dv
+mlo at m 0
+mhi at m 1
+mov0 at m 2
+hl1 shl lo 4
+hlo or hl1 hv
+hh1 shl hi 4
+hcar shr lo 28
+hhi or hh1 hcar
+hov1 shr hi 28
+hov ne hov1 0
+nlo select p4 hlo mlo
+nhi select p4 hhi mhi
+nov select p4 hov mov0
+ok2 and ok valid
+ov2 or ov nov
+r rec nlo nhi ok2 ov2
+ret r
+end
+# the number [p1, p2): (is a number, overflows 64 bits, negative (0 for -0), low, high)
+fn asnum u32x256 u32 u32 -> (bool,bool,u32,u32,u32)
+c0 get p0 p1
+ng eq c0 45
+nw select ng 1 0
+d0 add p1 nw
+gtr gt p2 d0
+dd sub p2 d0
+ln select gtr dd 0
+x0 get p0 d0
+d1 add d0 1
+x1 get p0 d1
+z0 eq x0 48
+xx eq x1 120
+l3 ge ln 3
+hx1 and z0 xx
+hx and hx1 l3
+st select hx 2 0
+ds add d0 st
+dn sub ln st
+nonempty gt dn 0
+init rec 0 0 true false
+f fold asdgst dn init p0 ds hx
+ok0 at f 2
+ov at f 3
+lo at f 0
+hi at f 1
+ok and ok0 nonempty
+z or lo hi
+nz ne z 0
+negm and ng nz
+negv select negm 1 0
+r rec ok ov negv lo hi
+ret r
+end
+
+# ---- operand items. An item is a kind and three fields:
+#   1 register (class, number): class 1 x, 2 w, 3 q, 4 v (v<n>.2d), 5 sp, 6 xzr, 7 wzr
+#   2 immediate `#n` and 3 bare number (negative, low, high)
+#   4 `[`  5 `]`  6 `!`  7 shift or extend (0 lsl 1 lsr 2 asr 3 uxtw 4 uxtx 5 sxtw 6 sxtx)
+#   8 condition (code)  9 symbol (start, end in the line, modifier 0, 1 @PAGE, 2 @PAGEOFF)
+#   10 numeric label reference (number, 0 forward 1 backward)
+# The word [p1, p2) as an item: (kind, a, b, c, error)
+fn ascls u32x256 u32 u32 -> (u32,u32,u32,u32,bool)
+ln sub p2 p1
+c0 get p0 p1
+pk call aspack p0 p1 p2
+rgt call asrgs
+ri call aslook rgt 3 pk
+isrg ne ri 4294967295
+rgc add ri 5
+i1 add p1 1
+c1 get p0 i1
+i2 add p1 2
+c2 get p0 i2
+isx eq c0 120
+isw eq c0 119
+isq eq c0 113
+xw or isx isw
+xwq or xw isq
+dg1 call asdig c1
+dg2 call asdig c2
+l2 eq ln 2
+l3 eq ln 3
+v1 sub c1 48
+v2 sub c2 48
+v10 mul v1 10
+v12 add v10 v2
+num2 select l3 v12 v1
+l3d and l3 dg2
+lok or l2 l3d
+gs1 and xwq dg1
+gshape and gs1 lok
+maxr select isq 31 30
+inr le num2 maxr
+isg and gshape inr
+gc1 select isw 2 3
+gcls select isx 1 gc1
+isv eq c0 118
+lv5 eq ln 5
+lv6 eq ln 6
+ts sub p2 3
+tc0 get p0 ts
+ts1 add ts 1
+tc1 get p0 ts1
+ts2 add ts 2
+tc2 get p0 ts2
+td0 eq tc0 46
+td1 eq tc1 50
+td2 eq tc2 100
+tl1 and td0 td1
+tail and tl1 td2
+v6d and lv6 dg2
+vlen or lv5 v6d
+vd and isv dg1
+vs1 and vd vlen
+vshape and vs1 tail
+vnum select lv6 v12 v1
+vin le vnum 31
+isvr and vshape vin
+sht call asshs
+si call aslook sht 7 pk
+issh ne si 4294967295
+cot call ascos
+ci call aslook cot 17 pk
+isco ne ci 4294967295
+cc call ascc ci
+le1 sub p2 1
+lastc get p0 le1
+isf eq lastc 102
+isb eq lastc 98
+fb or isf isb
+l2p ge ln 2
+dgs call asall p0 p1 le1 0
+lc1 and fb l2p
+isloc and lc1 dgs
+lnum call asnum p0 p1 le1
+lhi at lnum 4
+lbig ne lhi 0
+lval at lnum 3
+ldir select isb 1 0
+nm call asnum p0 p1 p2
+isnum at nm 0
+nov at nm 1
+nneg at nm 2
+nlo at nm 3
+nhi at nm 4
+ld call asdig c0
+lab0 call aslch c0
+nld eq ld false
+first and lab0 nld
+rest call asall p0 i1 p2 1
+issym and first rest
+# precedence: register, shift, condition, local label, number, symbol
+k6 select issym 9 0
+k5 select isnum 3 k6
+k4 select isloc 10 k5
+k3 select isco 8 k4
+k2 select issh 7 k3
+k1 select isvr 1 k2
+k0a select isg 1 k1
+kind select isrg 1 k0a
+a6 select issym p1 0
+a5 select isnum nneg a6
+a4 select isloc lval a5
+a3 select isco cc a4
+a2 select issh si a3
+a1 select isvr 4 a2
+a0a select isg gcls a1
+fa select isrg rgc a0a
+b6 select issym p2 0
+b5 select isnum nlo b6
+b4 select isloc ldir b5
+b1 select isvr vnum b4
+b0a select isg num2 b1
+fb2 select isrg 31 b0a
+c5 select isnum nhi 0
+nreg eq k0a 0
+nr2 eq isrg false
+c5k and nr2 nreg
+fc select c5k c5 0
+none eq kind 0
+ln10 eq kind 10
+le10 and ln10 lbig
+ln3 eq kind 3
+le3 and ln3 nov
+e1 or none le10
+err or e1 le3
+r rec kind fa fb2 fc err
+ret r
+end
+
+# ---- the operand items of a line: (kinds, a, b, c, count, error); the tokenizer state adds
+# the position, a pending `#`, a pending `@` and done
+fn astkp ((u32x16,u32x16,u32x16,u32x16,u32,bool),u32,bool,bool,bool) u32 u32x256 u32 -> bool
+d at p0 4
+r eq d false
+ret r
+end
+fn astkst ((u32x16,u32x16,u32x16,u32x16,u32,bool),u32,bool,bool,bool) u32 u32x256 u32 -> ((u32x16,u32x16,u32x16,u32x16,u32,bool),u32,bool,bool,bool)
+it at p0 0
+pos at p0 1
+hsh at p0 2
+ats at p0 3
+ka at it 0
+aa at it 1
+ba at it 2
+ca at it 3
+cnt at it 4
+e0 at it 5
+ps call asskip p2 p3 pos
+fin ge ps p3
+c get p2 ps
+iscom eq c 44
+ishs eq c 35
+isat eq c 64
+islb eq c 91
+isrb eq c 93
+isex eq c 33
+pp1 or islb isrb
+pushp or pp1 isex
+pk1 select isrb 5 6
+pkind select islb 4 pk1
+pq1 or iscom ishs
+pq2 or pq1 isat
+punct or pq2 pushp
+isw call asoch c
+we call asscop p2 p3 ps
+cl call ascls p2 ps we
+nm call asnum p2 ps we
+pw call aspack p2 ps we
+kwt call askws
+kw call aslook kwt 5 pw
+ispg eq kw 3
+ispo eq kw 4
+pgw or ispg ispo
+modv select ispg 1 2
+last sub cnt 1
+lk get ka last
+c0n gt cnt 0
+lk9 eq lk 9
+lasty and c0n lk9
+atok and lasty pgw
+nfin eq fin false
+np eq punct false
+wd1 and nfin np
+word and wd1 isw
+nw eq isw false
+oth1 and nfin np
+other and oth1 nw
+nh eq hsh false
+na eq ats false
+whash and word hsh
+wat1 and word nh
+wat and wat1 ats
+wpl1 and word nh
+wplain and wpl1 na
+hok at nm 0
+hov at nm 1
+hneg at nm 2
+hlo at nm 3
+hhi at nm 4
+hbad1 eq hok false
+hbad or hbad1 hov
+eh and whash hbad
+nat eq atok false
+ea and wat nat
+cerr at cl 4
+ec and wplain cerr
+ck at cl 0
+cfa at cl 1
+cfb at cl 2
+cfc at cl 3
+pushw1 select whash true wplain
+pushw and word pushw1
+ppun and nfin pushp
+dopush0 or pushw ppun
+ik1 select whash 2 ck
+ik select ppun pkind ik1
+ia1 select whash hneg cfa
+ia select ppun 0 ia1
+ib1 select whash hlo cfb
+ib select ppun 0 ib1
+ic1 select whash hhi cfc
+ic select ppun 0 ic1
+full ge cnt 16
+ef and dopush0 full
+nfull eq full false
+dopush and dopush0 nfull
+nk set ka cnt ik
+na2 set aa cnt ia
+nb set ba cnt ib
+nc set ca cnt ic
+ka2 select dopush nk ka
+aa2 select dopush na2 aa
+ba2 select dopush nb ba
+domod and wat atok
+mc set ca last modv
+ca1 select dopush nc ca
+ca2 select domod mc ca1
+cnt1 add cnt 1
+cnt2 select dopush cnt1 cnt
+pend1 or hsh ats
+efin and fin pend1
+x1 or eh ea
+x2 or ec ef
+x3 or efin other
+x4 or x1 x2
+enew or x4 x3
+e1 or e0 enew
+pset and nfin ishs
+h1 select pset true hsh
+hclr and word hsh
+h2 select hclr false h1
+aset and nfin isat
+a1 select aset true ats
+aclr1 and word nh
+aclr and aclr1 ats
+a2 select aclr false a1
+ps1 add ps 1
+pos1 select punct ps1 ps
+pos2 select word we pos1
+dn or fin e1
+it2 rec ka2 aa2 ba2 ca2 cnt2 e1
+r rec it2 pos2 h2 a2 dn
+ret r
+end
+# the items of [p1, p2)
+fn astok u32x256 u32 u32 -> (u32x16,u32x16,u32x16,u32x16,u32,bool)
+z call asz16
+it0 rec z z z z 0 false
+s0 rec it0 p1 false false false
+s loop astkp astkst 300 s0 p0 p2
+it at s 0
+ret it
+end
+fn asshst u32 u32 u32x16 -> u32
+k get p2 p1
+sh mul p1 4
+v shl k sh
+r or p0 v
+ret r
+end
+# the shape: the count in bits 28-31 and the kinds of the first seven items, 4 bits each
+# (4294967295 for more than seven items, which no instruction takes)
+fn asshape (u32x16,u32x16,u32x16,u32x16,u32,bool) -> u32
+cnt at p0 4
+k at p0 0
+big gt cnt 7
+f fold asshst 7 0 k
+c28 shl cnt 28
+v or f c28
+r select big 4294967295 v
+ret r
+end
+# item p3 of the items, register class p1 and number 31, inserted at p2 (cmp cmn tst neg negs)
+fn asinsst (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32x16,u32x16,u32x16,u32x16,u32,bool)
+ka at p0 0
+aa at p0 1
+ba at p0 2
+ca at p0 3
+cnt at p0 4
+er at p0 5
+ok at p2 0
+oa at p2 1
+ob at p2 2
+oc at p2 3
+before lt p1 p3
+here eq p1 p3
+j1 sub p1 1
+src select before p1 j1
+vk get ok src
+va get oa src
+vb get ob src
+vc get oc src
+k1 select here 1 vk
+a1 select here p4 va
+b1 select here 31 vb
+c1 select here 0 vc
+ka2 set ka p1 k1
+aa2 set aa p1 a1
+ba2 set ba p1 b1
+ca2 set ca p1 c1
+r rec ka2 aa2 ba2 ca2 cnt er
+ret r
+end
+fn asins (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32x16,u32x16,u32x16,u32x16,u32,bool)
+cnt at p0 4
+er at p0 5
+z call asz16
+s0 rec z z z z cnt er
+s fold asinsst 16 s0 p0 p1 p2
+ka at s 0
+aa at s 1
+ba at s 2
+ca at s 3
+full ge cnt 16
+c1 add cnt 1
+er2 or er full
+r rec ka aa ba ca c1 er2
+ret r
+end
+
+# ---- item fields
+fn askd (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> u32
+k at p0 0
+r get k p1
+ret r
+end
+fn asfa (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> u32
+k at p0 1
+r get k p1
+ret r
+end
+fn asfb (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> u32
+k at p0 2
+r get k p1
+ret r
+end
+fn asfc (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> u32
+k at p0 3
+r get k p1
+ret r
+end
+# item p1 is a 64-bit register: x, sp or xzr
+fn asisx (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> bool
+k call askd p0 p1
+c call asfa p0 p1
+r1 eq k 1
+x eq c 1
+s eq c 5
+z eq c 6
+o1 or x s
+o2 or o1 z
+r and r1 o2
+ret r
+end
+# item p1 is a general register (not q, not v)
+fn asgp (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> bool
+k call askd p0 p1
+c call asfa p0 p1
+r1 eq k 1
+nq ne c 3
+nv ne c 4
+o1 and nq nv
+r and r1 o1
+ret r
+end
+fn assf (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> u32
+x call asisx p0 p1
+r select x 1 0
+ret r
+end
+# immediate item p1 lies in [-p2, p3]
+fn asrng (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 u32 -> bool
+ng call asfa p0 p1
+lo call asfb p0 p1
+hi call asfc p0 p1
+h0 eq hi 0
+isn eq ng 1
+lneg le lo p2
+lpos le lo p3
+w select isn lneg lpos
+r and h0 w
+ret r
+end
+# the low 32 bits of immediate item p1 in two's complement
+fn aslow (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> u32
+ng call asfa p0 p1
+lo call asfb p0 p1
+isn eq ng 1
+m sub 0 lo
+r select isn m lo
+ret r
+end
+# immediate item p1 is zero
+fn asizero (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> bool
+lo call asfb p0 p1
+hi call asfc p0 p1
+z or lo hi
+r eq z 0
+ret r
+end
+# sign p0 and magnitude (p1 low, p2 high) as a 64-bit two's complement pair
+fn as2c u32 u32 u32 -> (u32,u32)
+isn eq p0 1
+nl sub 0 p1
+lz eq p1 0
+nh1 xor p2 4294967295
+nh2 sub 0 p2
+nh select lz nh2 nh1
+lo select isn nl p1
+hi select isn nh p2
+r rec lo hi
+ret r
+end
+# an encoded instruction: (word, error, relocation 0 none 1 page21 2 pageoff12, its item,
+# branch 0 none 1 b26 2 b19, its target item)
+fn asenc0 u32 bool -> (u32,bool,u32,u32,u32,u32)
+r rec p0 p1 0 0 0 0
+ret r
+end
+
+# ---- bitmask immediates (src/arm64enc.ts logicalImmediate)
+fn aspcst u32 u32 u32 -> u32
+b shr p2 p1
+o and b 1
+r add p0 o
+ret r
+end
+fn aspop u32 -> u32
+r fold aspcst 32 0 p0
+ret r
+end
+# the element size of a 32-bit value: the smallest power of two (at least 2) it repeats at
+fn asesize u32 -> u32
+a1 and p0 65535
+a2 shr p0 16
+h16 eq a1 a2
+b1 and p0 255
+b3 shr p0 8
+b2 and b3 255
+h8 eq b1 b2
+c1 and p0 15
+c3 shr p0 4
+c2 and c3 15
+h4 eq c1 c2
+d1 and p0 3
+d3 shr p0 2
+d2 and d3 3
+h2 eq d1 d2
+s4 select h2 2 4
+s8 select h4 s4 8
+s16 select h8 s8 16
+r select h16 s16 32
+ret r
+end
+# rotation search of element p2 of size p3 (mask p4): state (found, rotation)
+fn asrot32 (bool,u32) u32 u32 u32 u32 -> (bool,u32)
+fd at p0 0
+inr lt p1 p3
+a shr p2 p1
+sh sub p3 p1
+b shl p2 sh
+o or a b
+rr and o p4
+r1 add rr 1
+x and r1 rr
+run eq x 0
+nf eq fd false
+h1 and inr run
+hit and h1 nf
+fd2 or fd hit
+o0 at p0 1
+rot select hit p1 o0
+r rec fd2 rot
+ret r
+end
+# the fields (immr << 6 | imms) of a 32-bit pattern p0 of element size p1, and whether it is one
+fn asli32 u32 u32 -> (u32,bool)
+s32 eq p1 32
+one shl 1 p1
+m1 sub one 1
+sm select s32 4294967295 m1
+elt and p0 sm
+st0 rec false 0
+f fold asrot32 32 st0 elt p1 sm
+ok at f 0
+rot at f 1
+cnt call aspop elt
+d sub p1 rot
+immr rem d p1
+s2 mul p1 2
+s21 sub s2 1
+ns xor s21 4294967295
+nm and ns 63
+c1 sub cnt 1
+imms or nm c1
+i6 shl immr 6
+fld or i6 imms
+r rec fld ok
+ret r
+end
+fn asror64 u32 u32 u32 -> (u32,u32)
+big ge p2 32
+a select big p1 p0
+b select big p0 p1
+rr and p2 31
+z eq rr 0
+inv sub 32 rr
+a1 shr a rr
+b1 shl b inv
+nlo1 or a1 b1
+b2 shr b rr
+a2 shl a inv
+nhi1 or b2 a2
+nlo select z a nlo1
+nhi select z b nhi1
+r rec nlo nhi
+ret r
+end
+fn asrot64 (bool,u32) u32 u32 u32 -> (bool,u32)
+fd at p0 0
+v call asror64 p2 p3 p1
+lo at v 0
+hi at v 1
+h0 eq hi 0
+l1 add lo 1
+lx and l1 lo
+lrun eq lx 0
+lf eq lo 4294967295
+h1 add hi 1
+hx and h1 hi
+hrun eq hx 0
+hr and lf hrun
+run select h0 lrun hr
+nf eq fd false
+hit and run nf
+fd2 or fd hit
+o0 at p0 1
+rot select hit p1 o0
+r rec fd2 rot
+ret r
+end
+# the fields (N << 12 | immr << 6 | imms) of the 64-bit pattern (p0, p1) when it does not repeat
+fn asli64 u32 u32 -> (u32,bool)
+st0 rec false 0
+f fold asrot64 64 st0 p0 p1
+ok at f 0
+rot at f 1
+cl call aspop p0
+ch call aspop p1
+cnt add cl ch
+d sub 64 rot
+immr and d 63
+c1 sub cnt 1
+i6 shl immr 6
+f1 or i6 c1
+fld or f1 4096
+r rec fld ok
+ret r
+end
+# the bitmask-immediate fields of (p1 low, p2 high) for a 64-bit (p0) or 32-bit register
+fn asli bool u32 u32 -> (u32,bool)
+hi select p0 p2 0
+z or p1 hi
+zero eq z 0
+lf eq p1 4294967295
+hf eq hi 4294967295
+w64ones and lf hf
+ones select p0 w64ones lf
+diff ne p1 hi
+long and p0 diff
+sz call asesize p1
+s call asli32 p1 sz
+l call asli64 p1 hi
+fs at s 0
+oks at s 1
+fl at l 0
+okl at l 1
+fld select long fl fs
+ok1 select long okl oks
+nz eq zero false
+no eq ones false
+ok2 and nz no
+ok and ok1 ok2
+r rec fld ok
+ret r
+end
+
+# ---- encoders: the items p0, the mnemonic index p1, the shape p2
+# ldr str ldrb strb (0-3)
+fn asldst (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+ld0 eq p1 0
+ld2 eq p1 2
+load or ld0 ld2
+by3 eq p1 3
+byte or ld2 by3
+k0 call askd p0 0
+c0 call asfa p0 0
+n0 call asfb p0 0
+nr ne k0 1
+cv eq c0 4
+csp eq c0 5
+e1a or nr cv
+e1 or e1a csp
+isq eq c0 3
+x0 call asisx p0 0
+qx or isq x0
+e2 and byte qx
+sc1 select x0 3 2
+sc2 select isq 4 sc1
+scale select byte 0 sc2
+vb select isq 1 0
+size select isq 0 scale
+oq select load 3 2
+on select load 1 0
+opc select isq oq on
+sz30 shl size 30
+v26 shl vb 26
+o22 shl opc 22
+bb1 or sz30 v26
+base or bb1 o22
+g2 call asgp p0 2
+x2 call asisx p0 2
+c2 call asfa p0 2
+z2 eq c2 6
+rk1 and g2 x2
+nz2 eq z2 false
+rnok and rk1 nz2
+e3 eq rnok false
+rnn call asfb p0 2
+rn5 shl rnn 5
+low0 or rn5 n0
+sa1 eq p2 1073762625
+sa2 eq p2 1342513473
+sa or sa1 sa2
+on3 call asfa p0 3
+ol3 call asfb p0 3
+oh3 call asfc p0 3
+ong select sa2 on3 0
+olo select sa2 ol3 0
+ohi select sa2 oh3 0
+pos eq ong 0
+unit shl 1 scale
+um sub unit 1
+al1 and olo um
+alg eq al1 0
+q shr olo scale
+qh eq ohi 0
+qr le q 4095
+fit and qh qr
+uok1 and pos alg
+uok and uok1 fit
+q10 shl q 10
+wu1 or 956301312 base
+wu2 or wu1 q10
+wu or wu2 low0
+isn eq ong 1
+l256 le olo 256
+l255 le olo 255
+inr1 select isn l256 l255
+inra and qh inr1
+lwa0 sub 0 olo
+lwa select isn lwa0 olo
+l9 and lwa 511
+l12 shl l9 12
+ws1 or 939524096 base
+ws2 or ws1 l12
+ws or ws2 low0
+worda select uok wu ws
+nuok eq uok false
+ninr eq inra false
+erra and nuok ninr
+sb1 eq p2 1342329153
+sb2 eq p2 1617240385
+sb or sb1 sb2
+bi select sb1 4 3
+rgb call asrng p0 bi 256 255
+errb eq rgb false
+lowb call aslow p0 bi
+lb9 and lowb 511
+lb12 shl lb9 12
+tyb select sb1 1 3
+ty10 shl tyb 10
+wb1 or 939524096 base
+wb2 or wb1 lb12
+wb3 or wb2 ty10
+wordb or wb3 low0
+sc1s eq p2 1342509377
+sc2s eq p2 1616318785
+sc3s eq p2 1965494593
+sc12 or sc1s sc2s
+scs or sc12 sc3s
+g3 call asgp p0 3
+ec0 eq g3 false
+ext call asfa p0 4
+xuw eq ext 3
+xls eq ext 0
+xux eq ext 4
+xsw eq ext 5
+xsx eq ext 6
+o3a or xls xux
+ov1 select xsx 7 0
+ov2 select xsw 6 ov1
+ov3 select o3a 3 ov2
+ov4 select xuw 2 ov3
+badext eq ov4 0
+nc1 eq sc1s false
+option select sc1s 3 ov4
+ec1 and nc1 badext
+an call asfa p0 5
+alo call asfb p0 5
+ahi call asfc p0 5
+an0 eq an 0
+ah0 eq ahi 0
+aeq1 eq alo scale
+aeq2 and an0 ah0
+aeqs and aeq1 aeq2
+az1 eq alo 0
+azero and az1 ah0
+sbit select aeqs 1 0
+sbit2 select sc3s sbit 0
+eam1 or aeqs azero
+eam eq eam1 false
+ec2 and sc3s eam
+ec3 and sc2s xls
+rmx call asisx p0 3
+op1 and option 1
+oe eq op1 0
+e4a and oe rmx
+oo eq op1 1
+nrmx eq rmx false
+e4b and oo nrmx
+ec4 or e4a e4b
+ec01 or ec0 ec1
+ec23 or ec2 ec3
+ec03 or ec01 ec23
+errc or ec03 ec4
+rmn call asfb p0 3
+rm16 shl rmn 16
+op13 shl option 13
+sb12 shl sbit2 12
+wc1 or 941623296 base
+wc2 or wc1 rm16
+wc3 or wc2 op13
+wc4 or wc3 sb12
+wordc or wc4 low0
+w1 select sb wordb wordc
+w2 select sa worda w1
+es1 select sb errb errc
+es2 select sa erra es1
+anys or sa sb
+anys2 or anys scs
+nos eq anys2 false
+errs or es2 nos
+ea1 or e1 e2
+ea2 or e3 errs
+eall or ea1 ea2
+r call asenc0 w2 eall
+ret r
+end
+# a register class with the zero registers as their width (wzr as w, xzr as x)
+fn aspcls u32 -> u32
+w eq p0 7
+x eq p0 6
+a select x 1 p0
+r select w 2 a
+ret r
+end
+# ldp stp (4, 5)
+fn asldp (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+load eq p1 4
+k0 call askd p0 0
+k1 call askd p0 1
+ca0 call asfa p0 0
+ca1 call asfa p0 1
+n0 call asfb p0 0
+n1 call asfb p0 1
+c0 call aspcls ca0
+c1 call aspcls ca1
+r0 eq k0 1
+r1 eq k1 1
+same eq c0 c1
+rr and r0 r1
+okr and rr same
+cx eq c0 1
+cw eq c0 2
+cq eq c0 3
+cxw or cx cw
+okc or cxw cq
+okrc and okr okc
+e1 eq okrc false
+g3 call asgp p0 3
+x3 call asisx p0 3
+c3 call asfa p0 3
+z3 eq c3 6
+nz3 eq z3 false
+rk1 and g3 x3
+rnok and rk1 nz3
+e2 eq rnok false
+rnn call asfb p0 3
+sc1 select cx 3 2
+scale select cq 4 sc1
+opc select cw 0 2
+vb select cq 1 0
+s1 eq p2 1985090577
+s2 eq p2 1613042705
+s3 eq p2 1615991825
+s4 eq p2 1342510097
+oi select s2 5 4
+on1 call asfa p0 oi
+ol1 call asfb p0 oi
+oh1 call asfc p0 oi
+ong select s4 0 on1
+olo select s4 0 ol1
+ohi select s4 0 oh1
+md1 select s2 1 2
+mode select s1 3 md1
+a12 or s1 s2
+a34 or s3 s4
+anys or a12 a34
+e3 eq anys false
+unit shl 1 scale
+um sub unit 1
+mis1 and olo um
+e4 ne mis1 0
+q shr olo scale
+qh eq ohi 0
+isn eq ong 1
+q64 le q 64
+q63 le q 63
+inr1 select isn q64 q63
+inr and qh inr1
+e5 eq inr false
+qn sub 0 q
+i7 select isn qn q
+i7m and i7 127
+w30 shl opc 30
+w26 shl vb 26
+w23 shl mode 23
+ld1 select load 1 0
+w22 shl ld1 22
+w15 shl i7m 15
+w10 shl n1 10
+w5 shl rnn 5
+x1 or w30 671088640
+x2 or x1 w26
+x3a or x2 w23
+x4 or x3a w22
+x5 or x4 w15
+x6 or x5 w10
+x7 or x6 w5
+word or x7 n0
+f1 or e1 e2
+f2 or e3 e4
+f3 or f1 f2
+err or f3 e5
+r call asenc0 word err
+ret r
+end
+# a move-wide word: sf p0, opc p1, value p2, hw p3, rd p4
+fn aswide u32 u32 u32 u32 u32 -> u32
+s31 shl p0 31
+o29 shl p1 29
+h21 shl p3 21
+v5 shl p2 5
+a1 or s31 o29
+a2 or a1 310378496
+a3 or a2 h21
+a4 or a3 v5
+r or a4 p4
+ret r
+end
+# movz movk movn (6-8)
+fn asmvw (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+g0 call asgp p0 0
+e1 eq g0 false
+rg call asrng p0 1 0 65535
+e2 eq rg false
+v call asfb p0 1
+sri eq p2 536870945
+srisi eq p2 1073751841
+sop call asfa p0 2
+sl eq sop 0
+nsl eq sl false
+an call asfa p0 3
+alo call asfb p0 3
+ahi call asfc p0 3
+m15 and alo 15
+mis ne m15 0
+isn eq an 1
+q shr alo 4
+x0 call asisx p0 0
+mx select x0 3 1
+hbig ne ahi 0
+qbig gt q mx
+big or hbig qbig
+eneg select isn hbig big
+ea1 or nsl mis
+eamt or ea1 eneg
+qn sub 0 q
+hw select isn qn q
+ns1 eq sri false
+e3a select srisi eamt ns1
+hwf select srisi hw 0
+m8 eq p1 8
+m6 eq p1 6
+oz select m6 2 3
+opc select m8 0 oz
+sf call assf p0 0
+rd call asfb p0 0
+word call aswide sf opc v hwf rd
+f1 or e1 e2
+err or f1 e3a
+r call asenc0 word err
+ret r
+end
+# the chunk index of the only nonzero 16-bit chunk of (p0, p1), and whether there is one
+fn aschunk u32 u32 -> (u32,u32,bool)
+c0 and p0 65535
+c1 shr p0 16
+c2 and p1 65535
+c3 shr p1 16
+z0 eq c0 0
+z1 eq c1 0
+z2 eq c2 0
+z3 eq c3 0
+z23 and z2 z3
+z01 and z0 z1
+m0 and z1 z23
+z0b and z0 z23
+m1 and z0b true
+z01c and z01 z3
+m2 and z01c true
+m3 and z01 z2
+k2 select m2 2 3
+k1 select m1 1 k2
+hw select m0 0 k1
+v2 select m2 c2 c3
+v1 select m1 c1 v2
+v select m0 c0 v1
+a1 or m0 m1
+a2 or m2 m3
+any or a1 a2
+r rec hw v any
+ret r
+end
+# mov rd, #imm as one instruction: (word, possible); p0 64-bit, p1-p3 the immediate, p4 rd
+fn asmovi bool u32 u32 u32 u32 -> (u32,bool)
+t call as2c p1 p2 p3
+tl at t 0
+th at t 1
+vh select p0 th 0
+sf select p0 1 0
+z call aschunk tl vh
+zh at z 0
+zv at z 1
+za at z 2
+il xor tl 4294967295
+ih1 xor vh 4294967295
+ih select p0 ih1 0
+n call aschunk il ih
+nh at n 0
+nv at n 1
+na at n 2
+l call asli p0 tl vh
+lf at l 0
+lok at l 1
+wz call aswide sf 2 zv zh p4
+wn call aswide sf 0 nv nh p4
+s31 shl sf 31
+f10 shl lf 10
+wl1 or s31 838861792
+wl2 or wl1 f10
+wl or wl2 p4
+w1 select na wn wl
+word select za wz w1
+o1 or za na
+ok or o1 lok
+r rec word ok
+ret r
+end
+# mov (9)
+fn asmov (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+g0 call asgp p0 0
+e1 eq g0 false
+rdn call asfb p0 0
+sf call assf p0 0
+x0 call asisx p0 0
+sri eq p2 536870945
+srr eq p2 536870929
+ng call asfa p0 1
+lo call asfb p0 1
+hi call asfc p0 1
+mi call asmovi x0 ng lo hi rdn
+wimm at mi 0
+iok at mi 1
+eimm eq iok false
+g1 call asgp p0 1
+sf1 call assf p0 1
+samew eq sf sf1
+c0 call asfa p0 0
+c1 call asfa p0 1
+sp0 eq c0 5
+sp1 eq c1 5
+spa or sp0 sp1
+rmn call asfb p0 1
+rm5 shl rmn 5
+wsp1 or 2432696320 rm5
+wsp or wsp1 rdn
+s31 shl sf 31
+rm16 shl rmn 16
+wo1 or s31 704644064
+wo2 or wo1 rm16
+wor or wo2 rdn
+wrr select spa wsp wor
+ng1 eq g1 false
+nsw eq samew false
+err1 or ng1 nsw
+word select sri wimm wrr
+nrr eq srr false
+es1 select srr err1 nrr
+es select sri eimm es1
+err or e1 es
+r call asenc0 word err
+ret r
+end
+# the zero register of the width of item 0 (xzr 6, wzr 7)
+fn aszr (u32x16,u32x16,u32x16,u32x16,u32,bool) -> u32
+x call asisx p0 0
+r select x 6 7
+ret r
+end
+# add sub adds subs cmp cmn neg negs (10-17)
+fn asaddsub (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+m14 eq p1 14
+m15 eq p1 15
+iscmp or m14 m15
+m16 eq p1 16
+m17 eq p1 17
+isneg or m16 m17
+og0 call asgp p0 0
+zc call aszr p0
+doins or iscmp isneg
+nog0 eq og0 false
+e0 and doins nog0
+ok1 call askd p0 1
+k1r eq ok1 1
+nk1r eq k1r false
+e0b and isneg nk1r
+pos select isneg 1 0
+ins call asins p0 pos zc
+it select doins ins p0
+shp call asshape it
+m11 eq p1 11
+m13 eq p1 13
+o1 or m11 m13
+o2 or o1 m14
+o3 or o2 isneg
+op select o3 1 0
+m12 eq p1 12
+f1 or m12 m13
+f2 or f1 iscmp
+f3 or f2 m17
+flags select f3 1 0
+g0 call asgp it 0
+g1 call asgp it 1
+sfd call assf it 0
+sfn call assf it 1
+sw eq sfd sfn
+gg and g0 g1
+ok01 and gg sw
+e1 eq ok01 false
+s31 shl sfd 31
+f29 shl flags 29
+top or s31 f29
+rd call asfb it 0
+rn call asfb it 1
+cd call asfa it 0
+cn call asfa it 1
+rn5 shl rn 5
+low or rn5 rd
+sy eq shp 805308689
+md call asfc it 2
+mdb ne md 2
+opb ne op 0
+flb ne flags 0
+ey1 or mdb opb
+ey or ey1 flb
+wy1 or top 285212672
+wy or wy1 low
+si1 eq shp 805306897
+si2 eq shp 1342337553
+vneg call asfa it 2
+vlo call asfb it 2
+vhi call asfc it 2
+sop call asfa it 3
+alo call asfb it 4
+ahi call asfc it 4
+aan call asfa it 4
+az1 eq alo 0
+az2 eq ahi 0
+amtzero and az1 az2
+a12a eq alo 12
+a12b eq aan 0
+a12c and a12a a12b
+amt12 and a12c az2
+amok or amtzero amt12
+nsl ne sop 0
+namok eq amok false
+esh1 or nsl namok
+esh and si2 esh1
+shb and si2 amt12
+sh select shb 1 0
+vn eq vneg 1
+opx xor op 1
+op2 select vn opx op
+vh0 eq vhi 0
+vl le vlo 4095
+ir and vh0 vl
+er eq ir false
+zd6 eq cd 6
+zd7 eq cd 7
+zd or zd6 zd7
+fl0 eq flags 0
+ez and zd fl0
+o30 shl op2 30
+s22 shl sh 22
+v10 shl vlo 10
+wi1 or top o30
+wi2 or wi1 285212672
+wi3 or wi2 s22
+wi4 or wi3 v10
+wi or wi4 low
+ei1 or esh er
+ei or ei1 ez
+sr1 eq shp 805306641
+sr2 eq shp 1342337297
+g2 call asgp it 2
+eg2 eq g2 false
+cnsp eq cn 5
+cdsp eq cd 5
+cdf and cdsp fl0
+ext or cnsp cdf
+x2 call asisx it 2
+option select x2 3 2
+rm call asfb it 2
+op30 shl op 30
+rm16 shl rm 16
+opt13 shl option 13
+we1 or top op30
+we2 or we1 186646528
+we3 or we2 rm16
+we4 or we3 opt13
+we or we4 low
+sfm call assf it 2
+sw2 eq sfd sfm
+cm call asfa it 2
+cmsp eq cm 5
+spx or cmsp cdsp
+shc call asfa it 3
+shbad gt shc 2
+esf and sr2 shbad
+x0 call asisx it 0
+amax select x0 63 31
+arng call asrng it 4 0 amax
+narng eq arng false
+eam and sr2 narng
+amt select sr2 alo 0
+shift select sr2 shc 0
+sft22 shl shift 22
+amt10 shl amt 10
+wp1 or top op30
+wp2 or wp1 184549376
+wp3 or wp2 sft22
+wp4 or wp3 rm16
+wp5 or wp4 amt10
+wp or wp5 low
+nsw2 eq sw2 false
+ep1 or nsw2 spx
+ep2 or esf eam
+ep or ep1 ep2
+wr select ext we wp
+er2a select ext sr2 ep
+er2 or eg2 er2a
+si or si1 si2
+sr or sr1 sr2
+w1 select si wi wr
+word select sy wy w1
+nsr eq sr false
+es1 select sr er2 nsr
+es2 select si ei es1
+es select sy ey es2
+ea or e0 e0b
+eb or e1 es
+err or ea eb
+rk select sy 2 0
+r rec word err rk 2 0 0
+ret r
+end
+# and orr eor ands tst (18-22)
+fn aslogic (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+istst eq p1 22
+og0 call asgp p0 0
+nog0 eq og0 false
+e0 and istst nog0
+zc call aszr p0
+ins call asins p0 0 zc
+it select istst ins p0
+shp call asshape it
+d18 sub p1 18
+opc select istst 3 d18
+g0 call asgp it 0
+g1 call asgp it 1
+sfd call assf it 0
+sfn call assf it 1
+sw eq sfd sfn
+gg and g0 g1
+ok01 and gg sw
+e1 eq ok01 false
+x0 call asisx it 0
+rd call asfb it 0
+rn call asfb it 1
+rn5 shl rn 5
+low or rn5 rd
+s31 shl sfd 31
+o29 shl opc 29
+top or s31 o29
+sri eq shp 805306897
+ng call asfa it 2
+lo call asfb it 2
+hi call asfc it 2
+t call as2c ng lo hi
+tl at t 0
+th at t 1
+li call asli x0 tl th
+lf at li 0
+lok at li 1
+ei eq lok false
+f10 shl lf 10
+wi1 or top 301989888
+wi2 or wi1 f10
+wi or wi2 low
+sr1 eq shp 805306641
+sr2 eq shp 1342337297
+sr or sr1 sr2
+g2 call asgp it 2
+sfm call assf it 2
+sw2 eq sfd sfm
+okm and g2 sw2
+em eq okm false
+shc call asfa it 3
+shbad gt shc 2
+esf and sr2 shbad
+amax select x0 63 31
+arng call asrng it 4 0 amax
+narng eq arng false
+eam and sr2 narng
+alo call asfb it 4
+amt select sr2 alo 0
+shift select sr2 shc 0
+rm call asfb it 2
+sft22 shl shift 22
+rm16 shl rm 16
+amt10 shl amt 10
+wr1 or top 167772160
+wr2 or wr1 sft22
+wr3 or wr2 rm16
+wr4 or wr3 amt10
+wr or wr4 low
+er1 or em esf
+er or er1 eam
+word select sri wi wr
+nsr eq sr false
+es1 select sr er nsr
+es select sri ei es1
+ea or e0 e1
+err or ea es
+r call asenc0 word err
+ret r
+end
+# lsl lsr asr ror (23-26)
+fn asshift (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+g0 call asgp p0 0
+g1 call asgp p0 1
+sfd call assf p0 0
+sfn call assf p0 1
+sw eq sfd sfn
+gg and g0 g1
+ok01 and gg sw
+e1 eq ok01 false
+x0 call asisx p0 0
+rd call asfb p0 0
+rn call asfb p0 1
+rn5 shl rn 5
+low or rn5 rd
+s31 shl sfd 31
+srr eq p2 805306641
+sri eq p2 805306897
+g2 call asgp p0 2
+sfm call assf p0 2
+sw2 eq sfd sfm
+okm and g2 sw2
+erg eq okm false
+rm call asfb p0 2
+op2 sub p1 23
+rm16 shl rm 16
+o10 shl op2 10
+wr1 or s31 448798720
+wr2 or wr1 rm16
+wr3 or wr2 o10
+wr or wr3 low
+width select x0 64 32
+wm1 sub width 1
+rg call asrng p0 2 0 wm1
+eri eq rg false
+a call asfb p0 2
+isror eq p1 26
+isasr eq p1 25
+islsl eq p1 23
+xb select x0 2151677952 0
+rn16 shl rn 16
+a10 shl a 10
+wo1 or xb 327155712
+wo2 or wo1 rn16
+wo3 or wo2 a10
+wror or wo3 low
+base select isasr 318767104 1392508928
+wa sub width a
+lir rem wa width
+lis sub wm1 a
+immr select islsl lir a
+imms select islsl lis wm1
+ir16 shl immr 16
+is10 shl imms 10
+ws1 or base xb
+ws2 or ws1 ir16
+ws3 or ws2 is10
+wsh or ws3 low
+wi select isror wror wsh
+word select srr wr wi
+nsi eq sri false
+es1 select sri eri nsi
+es select srr erg es1
+err or e1 es
+r call asenc0 word err
+ret r
+end
+# mul madd msub umaddl smaddl udiv sdiv (27-33)
+fn asmul (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+g0 call asgp p0 0
+g1 call asgp p0 1
+g2 call asgp p0 2
+g01 and g0 g1
+g012 and g01 g2
+e1 eq g012 false
+m30 eq p1 30
+m31 eq p1 31
+isl or m30 m31
+s4 eq p2 1073746193
+s3 eq p2 805306641
+g3 call asgp p0 3
+xd call asisx p0 0
+xn call asisx p0 1
+xm call asisx p0 2
+xa call asisx p0 3
+nxn eq xn false
+nxm eq xm false
+l1 and xd xa
+l2 and nxn nxm
+lok and l1 l2
+lsg and s4 g3
+lall and lsg lok
+el eq lall false
+rd call asfb p0 0
+rn call asfb p0 1
+rm call asfb p0 2
+ra3 call asfb p0 3
+rn5 shl rn 5
+low or rn5 rd
+rm16 shl rm 16
+ra10 shl ra3 10
+ub select m30 8388608 0
+wl1 or 2602565632 ub
+wl2 or wl1 rm16
+wl3 or wl2 ra10
+wl or wl3 low
+sfd call assf p0 0
+sfn call assf p0 1
+sfm call assf p0 2
+sfa call assf p0 3
+w1 eq sfd sfn
+w2 eq sfd sfm
+w12 and w1 w2
+ew eq w12 false
+m32 eq p1 32
+m33 eq p1 33
+isdiv or m32 m33
+ed eq s3 false
+o1 select m33 1024 0
+s31 shl sfd 31
+wd1 or s31 448792576
+wd2 or wd1 o1
+wd3 or wd2 rm16
+wd or wd3 low
+m28 eq p1 28
+m29 eq p1 29
+ismad or m28 m29
+w3 eq sfd sfa
+mg and s4 g3
+mok and mg w3
+emd eq mok false
+ns3 eq s3 false
+em select ismad emd ns3
+ra select ismad ra3 31
+o0 select m29 32768 0
+ra10b shl ra 10
+wm1 or s31 452984832
+wm2 or wm1 o0
+wm3 or wm2 rm16
+wm4 or wm3 ra10b
+wm or wm4 low
+wx select isdiv wd wm
+word select isl wl wx
+ex1 select isdiv ed em
+ex or ew ex1
+es select isl el ex
+err or e1 es
+r call asenc0 word err
+ret r
+end
+# csel csinc csinv csneg cset csetm (34-39)
+fn ascsel (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+g0 call asgp p0 0
+e1 eq g0 false
+m36 eq p1 36
+m37 eq p1 37
+m39 eq p1 39
+m35 eq p1 35
+m38 eq p1 38
+oa or m36 m37
+ob or oa m39
+op select ob 1 0
+o2a or m35 m37
+o2b or o2a m38
+o2 select o2b 1 0
+isset or m38 m39
+src eq p2 536871041
+srrrc eq p2 1073774865
+cs call asfa p0 1
+c14 ge cs 14
+nsrc eq src false
+es1 or nsrc c14
+csx xor cs 1
+g1 call asgp p0 1
+g2 call asgp p0 2
+sfd call assf p0 0
+sfn call assf p0 1
+sfm call assf p0 2
+w1 eq sfd sfn
+w2 eq sfd sfm
+ga and g1 g2
+wa and w1 w2
+ok2 and ga wa
+ok3 and ok2 srrrc
+es2 eq ok3 false
+c3 call asfa p0 3
+rn1 call asfb p0 1
+rm1 call asfb p0 2
+rn select isset 31 rn1
+rm select isset 31 rm1
+cond select isset csx c3
+es select isset es1 es2
+rd call asfb p0 0
+s31 shl sfd 31
+o30 shl op 30
+rm16 shl rm 16
+c12 shl cond 12
+o210 shl o2 10
+rn5 shl rn 5
+x1 or s31 o30
+x2 or x1 444596224
+x3 or x2 rm16
+x4 or x3 c12
+x5 or x4 o210
+x6 or x5 rn5
+word or x6 rd
+err or e1 es
+r call asenc0 word err
+ret r
+end
+# item p1 is a branch target: a numeric label reference or a symbol without a modifier
+fn astgt (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 -> bool
+k call askd p0 p1
+c call asfc p0 p1
+l eq k 10
+y eq k 9
+c0 eq c 0
+yc and y c0
+r or l yc
+ret r
+end
+# b bl cbz cbnz (40-43) and b.<cond> (50, the condition p3)
+fn asbr (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 u32 -> (u32,bool,u32,u32,u32,u32)
+cnt at p0 4
+c1 eq cnt 1
+c2 eq cnt 2
+t0 call astgt p0 0
+t1 call astgt p0 1
+g0 call asgp p0 0
+m40 eq p1 40
+m42 eq p1 42
+m43 eq p1 43
+m50 eq p1 50
+iscb or m42 m43
+ok0 and c1 t0
+okc1 and c2 g0
+okc and okc1 t1
+ok select iscb okc ok0
+err eq ok false
+wb select m40 335544320 2483027968
+sf call assf p0 0
+s31 shl sf 31
+cbb select m42 872415232 889192448
+rt call asfb p0 0
+wc1 or s31 cbb
+wc or wc1 rt
+wcond or 1409286144 p3
+w1 select iscb wc wb
+word select m50 wcond w1
+f1 select iscb 2 1
+form select m50 2 f1
+bi select iscb 1 0
+r rec word err 0 0 form bi
+ret r
+end
+# adrp ret br blr movi nop (44-49)
+fn asmisc (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+g0 call asgp p0 0
+x0 call asisx p0 0
+rd call asfb p0 0
+c0 call asfa p0 0
+k0 call askd p0 0
+sry eq p2 536871057
+md call asfc p0 1
+pg eq md 1
+a1 and g0 sry
+a2 and pg x0
+aok and a1 a2
+ea eq aok false
+wa or 2415919104 rd
+m45 eq p1 45
+m46 eq p1 46
+bs1 select m46 3592355840 3594452992
+base select m45 3596550144 bs1
+s0 eq p2 0
+retz and m45 s0
+sr eq p2 268435457
+nsp ne c0 5
+r1 and sr g0
+r2 and x0 nsp
+rok and r1 r2
+er eq rok false
+rd5 shl rd 5
+wr1 or base rd5
+wr2 or base 960
+wret select retz wr2 wr1
+er2 select retz false er
+sri eq p2 536870945
+kr eq k0 1
+cv eq c0 4
+iz call asizero p0 1
+v1 and sri kr
+v2 and cv iz
+vok and v1 v2
+ev eq vok false
+wv or 1862329344 rd
+en eq s0 false
+m44 eq p1 44
+m48 eq p1 48
+m49 eq p1 49
+w1 select m48 wv 3573751839
+w2 select m44 wa w1
+mret ge p1 45
+mret2 le p1 47
+isret and mret mret2
+word select isret wret w2
+e1 select m48 ev en
+e2 select m44 ea e1
+err select isret er2 e2
+rk select m44 1 0
+r rec word err rk 1 0 0
+ret r
+end
+# the encoding of the items p0 for mnemonic p1 (99 unknown), condition p2 (b.<cond>)
+fn asenc (u32x16,u32x16,u32x16,u32x16,u32,bool) u32 u32 -> (u32,bool,u32,u32,u32,u32)
+shp call asshape p0
+els call asldst p0 p1 shp
+elp call asldp p0 p1 shp
+emw call asmvw p0 p1 shp
+emv call asmov p0 p1 shp
+eas call asaddsub p0 p1 shp
+elg call aslogic p0 p1 shp
+esh call asshift p0 p1 shp
+emu call asmul p0 p1 shp
+ecs call ascsel p0 p1 shp
+ebr call asbr p0 p1 shp p2
+emi call asmisc p0 p1 shp
+unk call asenc0 0 true
+q4 lt p1 4
+q6 lt p1 6
+q9 lt p1 9
+q10 lt p1 10
+q18 lt p1 18
+q23 lt p1 23
+q27 lt p1 27
+q34 lt p1 34
+q40 lt p1 40
+q44 lt p1 44
+q50 lt p1 50
+is50 eq p1 50
+r50 select is50 ebr unk
+r44 select q50 emi r50
+r40 select q44 ebr r44
+r34 select q40 ecs r40
+r27 select q34 emu r34
+r23 select q27 esh r27
+r18 select q23 elg r23
+r10 select q18 eas r18
+r9 select q10 emv r10
+r6 select q9 emw r9
+r4 select q6 elp r6
+r select q4 els r4
+ret r
+end
+
+# ---- the module state: (io, words, 0 (unused), word count, name pool, its length, labels
+# (hash, name start, name length, offset), label count, page relocations (offset, kind, name
+# start, name length), their count, branches (word index, form 1 b26 2 b19, line, 1 numeric,
+# name start or number, name length or definition index, hash), their count, numeric label
+# definitions (number, offset), their count, bss symbols (name start, name length, offset,
+# size), their count, bss size, bss alignment, error code, error line, line number, bytes left,
+# branch26 relocations, their count)
+# record the first error: code p1 at line p2 when p3
+fn asfail (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32 bool -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+old at p0 18
+ol at p0 19
+none eq old 0
+dofail and none p3
+c select dofail p1 old
+l select dofail p2 ol
+g1 put p0 18 c
+g2 put g1 19 l
+ret g2
+end
+fn ascpst (u32x128x64,u32) u32 u32x256 u32 -> (u32x128x64,u32)
+pool at p0 0
+base at p0 1
+ix add p3 p1
+c get p2 ix
+a2 add base p1
+np call ass64 pool a2 c
+r rec np base
+ret r
+end
+fn ashst u32 u32 u32x256 u32 -> u32
+ix add p3 p1
+c get p2 ix
+x xor p0 c
+r mul x 16777619
+ret r
+end
+# the name [p3, p4) of line p2 appended to the name pool: (state, start, length, hash)
+fn asnm ((io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32),u32,u32,u32) u32 u32x256 u32 u32 -> ((io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32),u32,u32,u32)
+g at p0 0
+pool at g 4
+pl at g 5
+lno at g 20
+gtr gt p4 p3
+d sub p4 p3
+ln select gtr d 0
+end1 add pl ln
+over gt end1 8192
+st0 rec pool pl
+cp fold ascpst ln st0 p2 p3
+np at cp 0
+h fold ashst ln 2166136261 p2 p3
+pool2 select over pool np
+pl2 select over pl end1
+g1 put g 4 pool2
+g2 put g1 5 pl2
+g3 call asfail g2 2 lno over
+r rec g3 pl ln h
+ret r
+end
+fn aspeqst bool u32 u32x128x64 u32 u32 -> bool
+i1 add p3 p1
+i2 add p4 p1
+a call asg64 p2 i1
+b call asg64 p2 i2
+e eq a b
+r and p0 e
+ret r
+end
+fn aslfst (bool,u32) u32 u32x128x32 u32x128x64 u32 u32 u32 -> (bool,u32)
+fd at p0 0
+of0 at p0 1
+k mul p1 4
+h call asg32 p2 k
+k1 add k 1
+st call asg32 p2 k1
+k2 add k 2
+ln call asg32 p2 k2
+k3 add k 3
+off call asg32 p2 k3
+he eq h p6
+lq eq ln p5
+nf eq fd false
+c1 and he lq
+cand and c1 nf
+cnt select cand ln 0
+same fold aspeqst cnt true p3 st p4
+hit and cand same
+fd2 or fd hit
+of2 select hit off of0
+r rec fd2 of2
+ret r
+end
+# the label named by pool bytes [p3, p3 + p4) with hash p5 among the first p1 labels:
+# (found, offset)
+fn aslfind u32x128x32 u32 u32x128x64 u32 u32 u32 -> (bool,u32)
+s0 rec false 0
+r fold aslfst p1 s0 p0 p2 p3 p4 p5
+ret r
+end
+# the number of definitions of numeric label p3
+fn aslcst u32 u32 u32x128x16 u32 -> u32
+k mul p1 2
+n call asg16 p2 k
+e eq n p3
+a add p0 1
+r select e a p0
+ret r
+end
+# definition p4 of numeric label p3: state (seen, found, offset)
+fn aslkst2 (u32,bool,u32) u32 u32x128x16 u32 u32 -> (u32,bool,u32)
+seen at p0 0
+fd at p0 1
+of0 at p0 2
+k mul p1 2
+n call asg16 p2 k
+k1 add k 1
+off call asg16 p2 k1
+e eq n p3
+ek eq seen p4
+hit and e ek
+fd2 or fd hit
+of2 select hit off of0
+s1 add seen 1
+seen2 select e s1 seen
+r rec seen2 fd2 of2
+ret r
+end
+# numeric label p2 defined at offset p3 (line p4)
+fn asdefloc (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+loc at p0 12
+nl at p0 13
+full ge nl 1024
+k mul nl 2
+l1 call ass16 loc k p2
+k1 add k 1
+l2 call ass16 l1 k1 p3
+loc2 select full loc l2
+nl1 add nl 1
+nl2 select full nl nl1
+g1 put p0 12 loc2
+g2 put g1 13 nl2
+g3 call asfail g2 2 p4 full
+ret g3
+end
+# label [p3, p4) of line p2 defined at offset p6 (line p5); a second definition is an error
+fn asdefnam (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 u32 u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+ns0 rec p0 0 0 0
+ns call asnm ns0 0 p2 p3 p4
+g at ns 0
+st at ns 1
+ln at ns 2
+h at ns 3
+lab at g 6
+nl at g 7
+pool at g 4
+f call aslfind lab nl pool st ln h
+dup at f 0
+g1 call asfail g 1 p5 dup
+full ge nl 1024
+k mul nl 4
+l1 call ass32 lab k h
+k1 add k 1
+l2 call ass32 l1 k1 st
+k2 add k 2
+l3 call ass32 l2 k2 ln
+k3 add k 3
+l4 call ass32 l3 k3 p6
+lab2 select full lab l4
+nl1 add nl 1
+nl2 select full nl nl1
+g2 put g1 6 lab2
+g3 put g2 7 nl2
+g4 call asfail g3 2 p5 full
+ret g4
+end
+# the label [p3, p4) of line p2 at the current word (numeric when all digits)
+fn asdeflab (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+alld call asall p2 p3 p4 0
+ln0 at p0 20
+nw at p0 3
+off mul nw 4
+nm call asnum p2 p3 p4
+nlo at nm 3
+nhi at nm 4
+nbig ne nhi 0
+lbig and alld nbig
+g1 call asfail p0 2 ln0 lbig
+cl select alld 1 0
+g2 fold asdefloc cl g1 nlo off ln0
+nal eq alld false
+cn select nal 1 0
+g3 fold asdefnam cn g2 p2 p3 p4 ln0 off
+ret g3
+end
+fn aslabp ((io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32),u32,bool) u32 u32x256 u32 -> bool
+d at p0 2
+r eq d false
+ret r
+end
+# one `name:` at the start of the rest of the line
+fn aslabs ((io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32),u32,bool) u32 u32x256 u32 -> ((io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32),u32,bool)
+g at p0 0
+pos at p0 1
+s call asskip p2 p3 pos
+e call asscl p2 p3 s
+ne1 gt e s
+inr lt e p3
+c get p2 e
+col eq c 58
+ok1 and ne1 inr
+ok and ok1 col
+cnt select ok 1 0
+g2 fold asdeflab cnt g p2 s e
+e1 add e 1
+pos2 select ok e1 pos
+dn eq ok false
+r rec g2 pos2 dn
+ret r
+end
+# the page relocation of encoded instruction p4 (items p3 of line p2) at offset p5, line p6
+fn asrel (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 (u32x16,u32x16,u32x16,u32x16,u32,bool) (u32,bool,u32,u32,u32,u32) u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+j at p4 3
+rk at p4 2
+s call asfa p3 j
+e call asfb p3 j
+ns0 rec p0 0 0 0
+ns call asnm ns0 0 p2 s e
+g at ns 0
+st at ns 1
+ln at ns 2
+rel at g 8
+nr at g 9
+full ge nr 1024
+k mul nr 4
+r1 call ass32 rel k p5
+k1 add k 1
+r2 call ass32 r1 k1 rk
+k2 add k 2
+r3 call ass32 r2 k2 st
+k3 add k 3
+r4 call ass32 r3 k3 ln
+rel2 select full rel r4
+nr1 add nr 1
+nr2 select full nr nr1
+g1 put g 8 rel2
+g2 put g1 9 nr2
+g3 call asfail g2 2 p6 full
+ret g3
+end
+# the branch of encoded instruction p4 (items p3 of line p2) at word p5, line p6
+fn aspend (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 (u32x16,u32x16,u32x16,u32x16,u32,bool) (u32,bool,u32,u32,u32,u32) u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+j at p4 5
+form at p4 4
+kj call askd p3 j
+fa call asfa p3 j
+fb call asfb p3 j
+isloc eq kj 10
+loc at p0 12
+nl at p0 13
+nlx select isloc nl 0
+seen fold aslcst nlx 0 loc fa
+isb eq fb 1
+sm1 sub seen 1
+ldef select isb sm1 seen
+nlc select isloc 0 1
+ns0 rec p0 0 0 0
+ns fold asnm nlc ns0 p2 fa fb
+g at ns 0
+st at ns 1
+ln at ns 2
+h at ns 3
+pa select isloc fa st
+pb select isloc ldef ln
+il select isloc 1 0
+pend at g 10
+np at g 11
+full ge np 1024
+k mul np 8
+q1 call ass64 pend k p5
+k1 add k 1
+q2 call ass64 q1 k1 form
+k2 add k 2
+q3 call ass64 q2 k2 p6
+k3 add k 3
+q4 call ass64 q3 k3 il
+k4 add k 4
+q5 call ass64 q4 k4 pa
+k5 add k 5
+q6 call ass64 q5 k5 pb
+k6 add k 6
+q7 call ass64 q6 k6 h
+pend2 select full pend q7
+np1 add np 1
+np2 select full np np1
+g1 put g 10 pend2
+g2 put g1 11 np2
+g3 call asfail g2 2 p6 full
+ret g3
+end
+# append encoded instruction p4 (items p3 of line p2) at line p5
+fn aspush (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 (u32x16,u32x16,u32x16,u32x16,u32,bool) (u32,bool,u32,u32,u32,u32) u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+nw at p0 3
+w at p0 1
+word at p4 0
+full ge nw 32768
+w2 call ass256 w nw word
+w3 select full w w2
+nw1 add nw 1
+nw2 select full nw nw1
+off mul nw 4
+g1 put p0 1 w3
+g3 put g1 3 nw2
+g4 call asfail g3 2 p5 full
+rk at p4 2
+hasr ne rk 0
+rc select hasr 1 0
+g5 fold asrel rc g4 p2 p3 p4 off p5
+bf at p4 4
+hasb ne bf 0
+bc select hasb 1 0
+g6 fold aspend bc g5 p2 p3 p4 nw p5
+ret g6
+end
+fn aspadst (u32x128x256,u32) u32 -> (u32x128x256,u32)
+w at p0 0
+n at p0 1
+w2 call ass256 w n 3573751839
+n1 add n 1
+r rec w2 n1
+ret r
+end
+# .p2align p2: nop words up to a multiple of 2^p2 bytes (line p3)
+fn aspadf (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+nw at p0 3
+w at p0 1
+unit shl 1 p2
+um sub unit 1
+by mul nw 4
+m and by um
+pb sub unit m
+pbm and pb um
+pn shr pbm 2
+tot add nw pn
+full gt tot 32768
+cnt select full 0 pn
+st0 rec w nw
+f fold aspadst cnt st0
+w2 at f 0
+nw2 at f 1
+g1 put p0 1 w2
+g3 put g1 3 nw2
+g4 call asfail g3 2 p3 full
+ret g4
+end
+# the first four commas of [p3, ...): state (count, positions)
+fn ascmst (u32,u32,u32,u32,u32) u32 u32x256 u32 -> (u32,u32,u32,u32,u32)
+ix add p3 p1
+c get p2 ix
+cm eq c 44
+n at p0 0
+q1 at p0 1
+q2 at p0 2
+q3 at p0 3
+q4 at p0 4
+n0 eq n 0
+n1 eq n 1
+n2 eq n 2
+n3 eq n 3
+s1 and cm n0
+s2 and cm n1
+s3 and cm n2
+s4 and cm n3
+r1 select s1 ix q1
+r2 select s2 ix q2
+r3 select s3 ix q3
+r4 select s4 ix q4
+na add n 1
+nn select cm na n
+r rec nn r1 r2 r3 r4
+ret r
+end
+# [p1, p2) without surrounding whitespace
+fn astrim u32x256 u32 u32 -> (u32,u32)
+s call asskip p0 p2 p1
+e call asrtrim p0 s p2
+r rec s e
+ret r
+end
+# a .zerofill number [p1, p2): (value, valid); empty is 0 as with JavaScript Number
+fn aszfn u32x256 u32 u32 -> (u32,bool)
+emp eq p1 p2
+n call asnum p0 p1 p2
+ok at n 0
+ov at n 1
+ng at n 2
+lo at n 3
+hi at n 4
+nov eq ov false
+ng0 eq ng 0
+h0 eq hi 0
+a1 and ok nov
+a2 and ng0 h0
+okn and a1 a2
+v select emp 0 lo
+okr or emp okn
+r rec v okr
+ret r
+end
+# a bss symbol: name [p3, p4) of line p2, size p5, alignment p6, line p7
+fn aszadd (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+ns0 rec p0 0 0 0
+ns call asnm ns0 0 p2 p3 p4
+g at ns 0
+st at ns 1
+ln at ns 2
+bss at g 14
+nb at g 15
+bsz at g 16
+bal at g 17
+unit shl 1 p6
+um sub unit 1
+x add bsz um
+nm xor um 4294967295
+off and x nm
+full ge nb 256
+k mul nb 4
+b1 call ass8 bss k st
+k1 add k 1
+b2 call ass8 b1 k1 ln
+k2 add k 2
+b3 call ass8 b2 k2 off
+k3 add k 3
+b4 call ass8 b3 k3 p5
+bss2 select full bss b4
+nb1 add nb 1
+nb2 select full nb nb1
+nsz add off p5
+bigger gt p6 bal
+bal2 select bigger p6 bal
+g1 put g 14 bss2
+g2 put g1 15 nb2
+g3 put g2 16 nsz
+g4 put g3 17 bal2
+g5 call asfail g4 2 p7 full
+ret g5
+end
+# .zerofill __DATA,__bss,sym,size,align: the rest [p3, p4) of line p2, line p5
+fn aszf (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+gtr gt p4 p3
+d sub p4 p3
+ln select gtr d 0
+c0 rec 0 0 0 0 0
+cs fold ascmst ln c0 p2 p3
+cnt at cs 0
+q1 at cs 1
+q2 at cs 2
+q3 at cs 3
+q4 at cs 4
+five eq cnt 4
+pt0 call astrim p2 p3 q1
+a1 add q1 1
+pt1 call astrim p2 a1 q2
+a2 add q2 1
+pt2 call astrim p2 a2 q3
+a3 add q3 1
+pt3 call astrim p2 a3 q4
+a4 add q4 1
+pt4 call astrim p2 a4 p4
+s0 at pt0 0
+e0 at pt0 1
+s1 at pt1 0
+e1 at pt1 1
+s2 at pt2 0
+e2 at pt2 1
+s3 at pt3 0
+e3 at pt3 1
+s4 at pt4 0
+e4 at pt4 1
+kwt call askws
+pk0 call aspack p2 s0 e0
+k0 call aslook kwt 5 pk0
+pk1 call aspack p2 s1 e1
+k1 call aslook kwt 5 pk1
+d0 eq k0 1
+b1 eq k1 2
+sz call aszfn p2 s3 e3
+al call aszfn p2 s4 e4
+szv at sz 0
+szok at sz 1
+alv at al 0
+alok1 at al 1
+al14 le alv 14
+alok and alok1 al14
+o1 and five d0
+o2 and b1 szok
+o3 and o1 o2
+ok and o3 alok
+bad eq ok false
+g1 call asfail p0 1 p5 bad
+cn select ok 1 0
+g2 fold aszadd cn g1 p2 s2 e2 szv alv p5
+ret g2
+end
+# a directive: mnemonic [p3, p4) and rest [p5, p6) of line p2, line p7
+fn asdir (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+pk call aspack p2 p3 p4
+dt call asdis
+di call aslook dt 6 pk
+nf eq di 4294967295
+rgt gt p6 p5
+rd sub p6 p5
+rl select rgt rd 0
+r13 ge rl 13
+e13 add p5 13
+sp call aspack p2 p5 e13
+kwt call askws
+sk call aslook kwt 5 sp
+s0 eq sk 0
+sok and r13 s0
+isec eq di 3
+nsok eq sok false
+esec and isec nsok
+ts call asskip p2 p6 p5
+te call asrtrim p2 ts p6
+an call asnum p2 ts te
+aok at an 0
+aov at an 1
+ang at an 2
+alo at an 3
+ahi at an 4
+nov eq aov false
+a1 and aok nov
+ang0 eq ang 0
+ahi0 eq ahi 0
+a2 and ang0 ahi0
+a3 ge alo 2
+a4 le alo 14
+a5 and a1 a2
+a6 and a3 a4
+alok and a5 a6
+isal eq di 4
+nalok eq alok false
+eal and isal nalok
+e1 or nf esec
+e2 or e1 eal
+g1 call asfail p0 1 p7 e2
+pc and isal alok
+pcn select pc 1 0
+g2 fold aspadf pcn g1 alo p7
+isz eq di 5
+zc select isz 1 0
+g3 fold aszf zc g2 p2 p5 p6 p7
+ret g3
+end
+# an instruction: mnemonic [p3, p4), operands [p5, p6) of line p2, line p7
+fn asinsn (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+it call astok p2 p5 p6
+ite at it 5
+pk call aspack p2 p3 p4
+mnt call asmns
+mi0 call aslook mnt 50 pk
+c0 get p2 p3
+b1i add p3 1
+c1 get p2 b1i
+cb eq c0 98
+cd eq c1 46
+bs2 add p3 2
+pk2 call aspack p2 bs2 p4
+cot call ascos
+ci call aslook cot 17 pk2
+cc call ascc ci
+cok ne ci 4294967295
+nf eq mi0 4294967295
+x1 and cb cd
+x2 and x1 cok
+isbc and nf x2
+m1 select isbc 50 99
+mi select nf m1 mi0
+e call asenc it mi cc
+ee at e 1
+bad or ite ee
+g1 call asfail p0 1 p7 bad
+ok eq bad false
+oc select ok 1 0
+g2 fold aspush oc g1 p2 it e p7
+ret g2
+end
+# line p1 (p2 bytes, the first 256 stored) with number p3
+fn asproc (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32x256 u32 u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+cut call ascut p1 p2
+big gt p2 256
+cl ge cut 256
+lim and big cl
+g1 call asfail p0 2 p3 lim
+st0 rec g1 0 false
+ls loop aslabp aslabs 257 st0 p1 cut
+g2 at ls 0
+pos at ls 1
+bs call asskip p1 cut pos
+be call asrtrim p1 bs cut
+nonempty lt bs be
+me call astows p1 be bs
+mel lt me be
+me1 add me 1
+rs select mel me1 be
+c0 get p1 bs
+isdot eq c0 46
+dodir and nonempty isdot
+nd eq isdot false
+doins and nonempty nd
+cd select dodir 1 0
+ci select doins 1 0
+g3 fold asdir cd g2 p1 bs me rs be p3
+g4 fold asinsn ci g3 p1 bs me rs be p3
+ret g4
+end
+fn asrdp (io,u32x256,u32,u32,bool) u32 -> bool
+d at p0 4
+rm0 at p0 3
+nd eq d false
+more gt rm0 0
+r and nd more
+ret r
+end
+# one byte of the line: state (io, line, length, bytes left, newline seen)
+fn asrds (io,u32x256,u32,u32,bool) u32 -> (io,u32x256,u32,u32,bool)
+t at p0 0
+b at p0 1
+ln at p0 2
+rm0 at p0 3
+rr read t
+c at rr 0
+t2 at rr 1
+rm1 sub rm0 1
+nl eq c 10
+nnl eq nl false
+room lt ln 256
+st and room nnl
+b2 set b ln c
+b3 select st b2 b
+ln1 add ln 1
+ln2 select nl ln ln1
+r rec t2 b3 ln2 rm1 nl
+ret r
+end
+fn asmorep (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 -> bool
+er at p0 18
+rm0 at p0 21
+e0 eq er 0
+m gt rm0 0
+r and e0 m
+ret r
+end
+# read and assemble one line
+fn asline (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+rm0 at p0 21
+lno at p0 20
+t at p0 0
+zb call aszb
+s0 rec t zb 0 rm0 false
+cap add rm0 1
+s loop asrdp asrds cap s0
+t2 at s 0
+b at s 1
+ln at s 2
+rm1 at s 3
+g1 put p0 0 t2
+g2 put g1 21 rm1
+lno1 add lno 1
+g3 put g2 20 lno1
+g4 call asproc g3 b ln lno1
+ret g4
+end
+# branch p1 resolved: patched into its word, or a branch26 relocation to an undefined symbol
+fn asrsst (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) u32 -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+pend at p0 10
+k mul p1 8
+idx call asg64 pend k
+k1 add k 1
+form call asg64 pend k1
+k2 add k 2
+line call asg64 pend k2
+k3 add k 3
+il call asg64 pend k3
+k4 add k 4
+pa call asg64 pend k4
+k5 add k 5
+pb call asg64 pend k5
+k6 add k 6
+h call asg64 pend k6
+isloc eq il 1
+loc at p0 12
+nl at p0 13
+lab at p0 6
+nlab at p0 7
+pool at p0 4
+w at p0 1
+rel2 at p0 22
+nr2 at p0 23
+nlx select isloc nl 0
+ls0 rec 0 false 0
+lk fold aslkst2 nlx ls0 loc pa pb
+lfd at lk 1
+lof at lk 2
+nlb select isloc 0 nlab
+lf call aslfind lab nlb pool pa pb h
+ffd at lf 0
+fof at lf 1
+found select isloc lfd ffd
+target select isloc lof fof
+at4 mul idx 4
+und eq found false
+b19 eq form 2
+e1a or isloc b19
+e1 and und e1a
+nloc eq isloc false
+f1 eq form 1
+ar1 and und nloc
+addrel and ar1 f1
+d sub target at4
+dd shr d 2
+m26 and dd 67108863
+m19a and dd 524287
+m19 shl m19a 5
+mm select f1 m26 m19
+old call asg256 w idx
+nwd or old mm
+w2 call ass256 w idx nwd
+w3 select found w2 w
+full ge nr2 1024
+kk mul nr2 4
+r1 call ass32 rel2 kk at4
+kk1 add kk 1
+r2 call ass32 r1 kk1 0
+kk2 add kk 2
+r3 call ass32 r2 kk2 pa
+kk3 add kk 3
+r4 call ass32 r3 kk3 pb
+nfull eq full false
+doadd and addrel nfull
+rel3 select doadd r4 rel2
+nr3a add nr2 1
+nr3 select doadd nr3a nr2
+efull and addrel full
+g1 put p0 1 w3
+g2 put g1 22 rel3
+g3 put g2 23 nr3
+g4 call asfail g3 1 line e1
+g5 call asfail g4 2 line efull
+ret g5
+end
+fn asres (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) -> (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32)
+er at p0 18
+np at p0 11
+ok eq er 0
+cnt select ok np 0
+g fold asrsst cnt p0
+ret g
+end
+
+# ---- output
+fn aswst io u32 u32x128x256 -> io
+v call asg256 p2 p1
+w write p0 v
+ret w
+end
+fn aswb io u32 u32x128x64 u32 -> io
+i add p3 p1
+v call asg64 p2 i
+w write p0 v
+ret w
+end
+fn aswlab io u32 u32x128x32 u32x128x64 -> io
+k mul p1 4
+k1 add k 1
+st call asg32 p2 k1
+k2 add k 2
+ln call asg32 p2 k2
+k3 add k 3
+off call asg32 p2 k3
+w1 write p0 off
+w2 write w1 ln
+w3 fold aswb ln w2 p3 st
+ret w3
+end
+# relocations merged by offset (p2 p3 the page ones, p4 p5 the branch26 ones): state (io,
+# next of each list)
+fn aswrel (io,u32,u32) u32 u32x128x32 u32 u32x128x32 u32 u32x128x64 -> (io,u32,u32)
+t at p0 0
+i1 at p0 1
+i2 at p0 2
+k1 mul i1 4
+o1 call asg32 p2 k1
+k2 mul i2 4
+o2 call asg32 p4 k2
+h1 lt i1 p3
+h2 lt i2 p5
+lt12 lt o1 o2
+pick1a and h1 lt12
+nh2 eq h2 false
+pick1b and h1 nh2
+pick1 or pick1a pick1b
+tb select pick1 p2 p4
+kb select pick1 k1 k2
+off call asg32 tb kb
+kb1 add kb 1
+kind call asg32 tb kb1
+kb2 add kb 2
+st call asg32 tb kb2
+kb3 add kb 3
+ln call asg32 tb kb3
+w1 write t off
+w2 write w1 kind
+w3 write w2 ln
+w4 fold aswb ln w3 p6 st
+i1n add i1 1
+i2n add i2 1
+ni1 select pick1 i1n i1
+ni2 select pick1 i2 i2n
+r rec w4 ni1 ni2
+ret r
+end
+fn aswbss io u32 u32x128x8 u32x128x64 -> io
+k mul p1 4
+st call asg8 p2 k
+k1 add k 1
+ln call asg8 p2 k1
+k2 add k 2
+off call asg8 p2 k2
+k3 add k 3
+size call asg8 p2 k3
+w1 write p0 off
+w2 write w1 size
+w3 write w2 ln
+w4 fold aswb ln w3 p3 st
+ret w4
+end
+# the module (see the head of the file)
+fn aswok io u32 u32x128x256 u32 u32x128x32 u32 u32x128x32 u32 u32x128x32 u32 u32x128x8 u32 u32 u32 u32x128x64 -> io
+w0 write p0 0
+w1 write w0 p3
+w2 fold aswst p3 w1 p2
+w4 write w2 p5
+w5 fold aswlab p5 w4 p4 p14
+tot add p7 p9
+w6 write w5 tot
+s0 rec w6 0 0
+s1 fold aswrel tot s0 p6 p7 p8 p9 p14
+w7 at s1 0
+w8 write w7 p11
+w9 fold aswbss p11 w8 p10 p14
+w10 write w9 p12
+w11 write w10 p13
+ret w11
+end
+fn aswerr io u32 u32 u32 -> io
+w0 write p0 p2
+w1 write w0 p3
+ret w1
+end
+fn asout (io,u32x128x256,u32,u32,u32x128x64,u32,u32x128x32,u32,u32x128x32,u32,u32x128x64,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32x128x32,u32) -> io
+t at p0 0
+w at p0 1
+nw at p0 3
+pool at p0 4
+lab at p0 6
+nlab at p0 7
+rel at p0 8
+nrel at p0 9
+bss at p0 14
+nbss at p0 15
+bsz at p0 16
+bal at p0 17
+er at p0 18
+el at p0 19
+rel2 at p0 22
+nrel2 at p0 23
+ok eq er 0
+okc select ok 1 0
+erc select ok 0 1
+w1 fold aswok okc t w nw lab nlab rel nrel rel2 nrel2 bss nbss bsz bal pool
+w2 fold aswerr erc w1 er el
+ret w2
+end
+# the entry: n, then the n bytes of the text (see the head of the file)
+fn asmio io -> u32
+r read p0
+n at r 0
+t at r 1
+z256 call asz256
+z64 call asz64
+z32 call asz32
+z16 call asz16p
+z8 call asz8
+g0 rec t z256 0 0 z64 0 z32 0 z32 0 z64 0 z16 0 z8 0 0 0 0 0 0 n z32 0
+cap add n 1
+g1 loop asmorep asline cap g0
+g2 call asres g1
+code at g2 18
+w call asout g2
+ret code
+end
