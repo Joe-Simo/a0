@@ -89,6 +89,7 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
   if (lines.length > LIMITS.maxNodesPerFunction) throw diag('A0502');
   const seen = new Set<string>();
   const ops: EditOp[] = [];
+  const textDeletes = new Map<string, { text: string; line: number }>();
   let sawRet = false;
   lines.forEach((text, i) => {
     const line = firstLine + i;
@@ -106,8 +107,18 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
       return;
     }
     if (text.startsWith('-')) {
-      const id = text.slice(1).trim();
-      if (!isValidIdentifier(id)) throw diag('A0504', [id], { line });
+      const rest = text.slice(1).trim();
+      const id = rest;
+      if (!isValidIdentifier(id)) {
+        // `-id` followed by the old node text (`-b ne r 0`) is a delete written with its text: it is accepted only when the same
+        // reply adds `id` again (the pair is the replacement it means); otherwise it is the invalid delete target it always was.
+        const head = /^([a-z][a-z0-9_]*)\s+\S/.exec(rest)?.[1];
+        if (head === undefined || !isValidIdentifier(head)) throw diag('A0504', [id], { line });
+        claim(head);
+        textDeletes.set(head, { text: rest, line });
+        ops.push({ kind: 'delete', id: head });
+        return;
+      }
       claim(id);
       ops.push({ kind: 'delete', id });
       return;
@@ -137,11 +148,13 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
       if (prior >= 0) {
         ops.splice(prior, 1);
         seen.delete(node.id);
+        textDeletes.delete(node.id);
       }
     }
     claim(node.id);
     ops.push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
   });
+  for (const [, d] of textDeletes) throw diag('A0504', [d.text], { line: d.line });
   return ops;
 }
 

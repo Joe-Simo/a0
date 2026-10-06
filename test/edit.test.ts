@@ -304,3 +304,25 @@ test('a delete of an id followed by an add of the same id is a replacement; with
   e.open('twice');
   assert.throws(() => e.apply('y add x 1\n-y'), /duplicate edit/);
 });
+
+test('`-id` followed by the old node text is a delete written with its text: a replacement when the reply adds the id again, still an invalid delete target when it does not', () => {
+  const a = new EditSession(parseAndValidate(SRC));
+  a.open('twice');
+  a.apply('-y add x x\ny add x 1');
+  assert.equal(call(a, 'twice', 3), 10);
+  const b = new EditSession(parseAndValidate(SRC));
+  b.open('twice');
+  b.apply('y add x 1');
+  assert.equal(formatProgram(a.program), formatProgram(b.program));
+  // alone, with a different id added, or with `@`, it is the rejection it always was
+  const c = new EditSession(parseAndValidate(SRC));
+  c.open('twice');
+  assert.throws(() => c.apply('-y add x x'), /invalid delete target/);
+  const d = new EditSession(parseAndValidate(SRC));
+  d.open('twice');
+  assert.throws(() => d.apply('-y add x x\nz add x 1'), /invalid delete target/);
+  // the plain forms are unchanged
+  const e = new EditSession(parseAndValidate(SRC));
+  e.open('twice');
+  assert.throws(() => e.apply('-Y'), /invalid delete target/);
+});
