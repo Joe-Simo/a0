@@ -484,7 +484,21 @@ function printLines(
   const plain =
     ctx.style.implicitTypes && fn.params.length === needed && fn.params.every((t) => t === 'u32');
   // A type list always ends with its `->`; without a list a u32 result is left out.
-  const implicitResult = plain && fn.result === 'u32';
+  // The parser infers an unwritten result from the last statement, so it is only left out when that agrees (an
+  // ill-typed body keeps its written `-> u32`, which keeps the text lossless).
+  const implicitResult =
+    plain &&
+    fn.result === 'u32' &&
+    [undefined, 'u32'].includes(
+      typerFor(
+        fn,
+        new Map(
+          ctx.program.functions.map(
+            (f) => [f.name, { params: f.params, result: f.result }] as const,
+          ),
+        ),
+      )(fn.ret) as never,
+    );
   const sig =
     (plain ? '' : fn.params.map(formatType).join(' ')) +
     (implicitResult
@@ -1230,7 +1244,7 @@ export function parseDenseHeader(
   line: number,
   /** Accept a type list without `->` (the signature lines of a view). */
   lenient = false,
-): { name: string; params: Type[] | undefined; result: Type; rest: string } {
+): { name: string; params: Type[] | undefined; result: Type; arrow: boolean; rest: string } {
   const m = /^(\S+)\s*(.*)$/.exec(text);
   const name = m?.[1] ?? '';
   if (!/^[a-z][a-z0-9_]{0,63}$/.test(name) || KEYWORDS.has(name))
@@ -1267,7 +1281,7 @@ export function parseDenseHeader(
       line,
       `write \`fn ${name} ${params.map((t) => (t === 'u32' ? 'u32' : formatType(t))).join(' ')} -> u32\` (the last type after \`->\` is the result), or leave the type list out when every parameter is u32 (\`fn ${name} ...\`: parameters are A, B, C by position)`,
     );
-  return { name, params, result, rest: rest.trim() };
+  return { name, params, result, arrow, rest: rest.trim() };
 }
 
 /**
@@ -1473,6 +1487,13 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     for (const e of [spec?.pre, spec?.post]) e?.args.forEach(see);
     const params = head.params ?? new Array<Type>(needed).fill('u32');
     if (params.length > LIMITS.maxParams) fail('too many parameters', it.line);
+    // A result that is not written (no `->`) is the type of the last statement: a reply that returns a bool or an
+    // aggregate needs no `-> bool`; a u32 result is unchanged, and a written result is never second-guessed.
+    let result = head.result;
+    if (!head.arrow) {
+      const inferred = typerFor({ name: head.name, params, result, nodes, ret }, sigs)(ret);
+      if (inferred !== undefined) result = inferred;
+    }
     for (const lf of lifted) {
       if (
         functions.some((f) => f.name === lf.name) ||
@@ -1486,7 +1507,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     functions.push({
       name: head.name,
       params,
-      result: head.result,
+      result,
       nodes,
       ret,
       ...(spec === undefined ? {} : { spec }),
@@ -1494,7 +1515,7 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       ...(retComments === undefined ? {} : { retComments }),
       ...(endComments === undefined ? {} : { endComments }),
     });
-    sigs.set(head.name, { params, result: head.result });
+    sigs.set(head.name, { params, result });
     arities.set(head.name, params.length);
   }
   const last = functions[functions.length - 1];

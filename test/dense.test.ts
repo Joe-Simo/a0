@@ -707,3 +707,25 @@ test('dense: `x y` with y a value above names a copy of it', () => {
   // a bare parameter or an unknown word is still an error that says how to name a value
   assert.throws(() => parseDense('fn f\nx A'), /neither an operation nor a function/);
 });
+
+test('dense: a result that is not written is the type of the last statement (bool and aggregate replies need no `->`)', () => {
+  const bool = parseDense('fn f lt A 100');
+  assert.equal(formatProgram(bool), 'fn f u32 -> bool\na lt p0 100\nret a\nend\n');
+  // an aggregate result
+  const arr = parseDense('fn g [A B]');
+  assert.deepEqual(arr.functions[0]?.result, { kind: 'arr', length: 2, elem: 'u32' });
+  assert.equal(formatProgram(arr), 'fn g u32 u32 -> u32x2\na arr p0 p1\nret a\nend\n');
+  const noParams = parseDense('fn h eq A B');
+  assert.equal(formatProgram(noParams), 'fn h u32 u32 -> bool\na eq p0 p1\nret a\nend\n');
+  // a u32 result and a written result are unchanged
+  assert.equal(
+    formatProgram(parseDense('fn k add A 1')),
+    'fn k u32 -> u32\na add p0 1\nret a\nend\n',
+  );
+  assert.throws(() => validate(parseDense('fn m u32 -> u32 lt A 1')), /expected u32, got bool/);
+  // the result of an earlier function is used by a later one without a head
+  const two = parseDense('fn lo lt A 10\n\nfn pick select lo A 1 2');
+  assert.equal(two.functions[0]?.result, 'bool');
+  assert.equal(two.functions[1]?.result, 'u32');
+  validate(two);
+});

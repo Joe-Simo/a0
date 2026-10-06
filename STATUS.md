@@ -215,3 +215,11 @@ Set H (2026-10-06, `results/set-h.json`, `docs/history/2026-10-06-dense-default-
 of 16 tasks, fresh Haiku and Sonnet subagents, did NOT hold. Dense one shot 12 and 14 of 16 against 13 and 16 for canonical, and a higher cost per accepted
 edit at the 10-task horizon on both models (Haiku 187.0 against 162.9, Sonnet 120.5 against 114.9). The e and f advantage above is therefore not a reason to make dense the
 default; the 325 dense-view token entries stay open. Dense failures were the known ambiguities (positional parameters in fold helpers, operand counts, repeated values).
+
+Protocol fix 2 of 3 (2026-10-06, general, with tests in `test/dense.test.ts`): in the dense form a result that is not written (no `->`) is the type of the last statement, so a
+reply that returns a bool or an aggregate needs no `-> bool` (the one failure every primer variant shared in `results/primer-ablation.json`); a u32 result and a written
+result are unchanged, and the printer keeps a written `-> u32` where the body disagrees, so the dense text stays lossless. It changes the dense text of exactly one corpus file
+(`corpus/reject/ret-bool-for-u32.a0`, an ill-typed program), re-blessed in `test/golden/spec-free-digests.json`. Not re-measured with fresh subjects: set H cannot be reused for it
+(its dense failures were positional-parameter and operand-count errors, not result types, `results/set-h.json`), so no acceptance claim is made. The canonical form is unchanged: its
+header still needs `-> T`, because widening the canonical grammar would also need the self-hosted front end and the seed. Still open: spec-line limits (opt-in, outside the guide) and dense
+positional parameters in fold helpers.
