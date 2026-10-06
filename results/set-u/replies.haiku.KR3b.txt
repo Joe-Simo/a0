@@ -1,0 +1,170 @@
+### REPLY 1
+fn f u32 u32 -> bool
+a shr p0 24
+b shr p1 16
+c eq a b
+d and p0 255
+e ne d 0
+g and c e
+ret g
+end
+
+### REPLY 2
+fn f u32x4 u32 -> u32
+a get p0 p1
+b add p1 1
+c get p0 b
+d add p1 3
+e get p0 d
+g add a c
+h add g e
+ret h
+end
+
+### REPLY 3
+fn f u32 u32 u32 u32 -> bool
+a gt p0 p1
+b eq p0 p1
+c le p2 p3
+d and b c
+e or a d
+g mov e
+ret g
+end
+
+### REPLY 4
+fn f u32 u32 u32 u32 -> u32
+a and p0 255
+b and p1 255
+c shl b 8
+d and p2 255
+e shl d 8
+g shl p3 24
+h or a c
+i or h e
+j or i g
+ret j
+end
+
+### REPLY 5
+fn f u32 -> u32
+a div p0 100
+b mul a 15
+c rem p0 100
+d mul c 15
+e div d 100
+g add b e
+ret g
+end
+
+### REPLY 6
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+v get p2 p1
+b at p0 0
+k at p0 1
+better gt v b
+nb select better v b
+ni select better p1 k
+r rec nb ni
+ret r
+end
+
+### REPLY 7
+fn f u32 -> (u32,bool)
+a and p0 65535
+n gt a 32768
+m sub 65536 a
+g select n m a
+r rec g n
+ret r
+end
+
+### REPLY 8
+fn f u32x4 u32 u32 -> u32x4
+a set p0 p1 p2
+b sub 4 p1
+c set a b p2
+ret c
+end
+
+### REPLY 9
+fn f u32 u32 -> u32
+shifted shr p0 p1
+temp shl 1 p1
+mask sub temp 1
+low_bits and p0 mask
+has_one ne low_bits 0
+new_bit select has_one 1 0
+result or shifted new_bit
+ret result
+end
+
+### REPLY 10
+fn f u32 u32 -> bool
+x call h p0
+y call h p1
+z gt x y
+ret z
+end
+
+### REPLY 11
+fn ok bool u32 u32x4 u32 -> bool
+v get p2 p1
+c lt v p3
+r and p0 c
+ret r
+end
+
+### REPLY 12
+fn f u32 -> u32
+a mul p0 9
+b div a 5
+c add b 32
+ret c
+end
+
+### REPLY 13
+fn f u32 u32 -> bool
+a shr p0 16
+b shr p1 16
+c eq a b
+d and p0 65535
+e and p1 65535
+g ge d e
+h and c g
+ret h
+end
+
+### REPLY 14
+fn f u32 u32 u32 -> bool
+a ge p0 p1
+b sub p0 p1
+c ge b p2
+d and a c
+ret d
+end
+
+### REPLY 15
+fn f u32x4 -> u32x4
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+r arr b a c d
+ret r
+end
+
+### REPLY 16
+fn step (u32,bool) u32 u32 -> (u32,bool)
+count at p0 0
+still at p0 1
+shifted shr p2 p1
+bit_one and shifted 1
+is_one ne bit_one 0
+should_inc and still is_one
+new_c add count 1
+final_c select should_inc new_c count
+final_s and still is_one
+result rec final_c final_s
+ret result
+end

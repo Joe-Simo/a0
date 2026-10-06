@@ -1,0 +1,50 @@
+{
+ "u-same-top-byte/a0/structured": [
+  "fn f u32 u32 -> bool\na shr p0 24\nb shr p1 16\nc eq a b\nd and p0 255\ne ne d 0\ng and c e\nret g\nend"
+ ],
+ "u-window-of-three/a0/structured": [
+  "fn f u32x4 u32 -> u32\na get p0 p1\nb add p1 1\nc get p0 b\nd add p1 3\ne get p0 d\ng add a c\nh add g e\nret h\nend"
+ ],
+ "u-tie-break-winner/a0/structured": [
+  "fn f u32 u32 u32 u32 -> bool\na gt p0 p1\nb eq p0 p1\nc le p2 p3\nd and b c\ne or a d\ng mov e\nret g\nend"
+ ],
+ "u-pack-four-bytes/a0/structured": [
+  "fn f u32 u32 u32 u32 -> u32\na and p0 255\nb and p1 255\nc shl b 8\nd and p2 255\ne shl d 8\ng shl p3 24\nh or a c\ni or h e\nj or i g\nret j\nend"
+ ],
+ "u-fifteen-percent/a0/structured": [
+  "fn f u32 -> u32\na div p0 100\nb mul a 15\nc rem p0 100\nd mul c 15\ne div d 100\ng add b e\nret g\nend"
+ ],
+ "u-max-position/a0/structured": [
+  "fn step (u32,u32) u32 u32x4 -> (u32,u32)\nv get p2 p1\nb at p0 0\nk at p0 1\nbetter gt v b\nnb select better v b\nni select better p1 k\nr rec nb ni\nret r\nend"
+ ],
+ "u-signed-half/a0/structured": [
+  "fn f u32 -> (u32,bool)\na and p0 65535\nn gt a 32768\nm sub 65536 a\ng select n m a\nr rec g n\nret r\nend"
+ ],
+ "u-mirror-write/a0/structured": [
+  "fn f u32x4 u32 u32 -> u32x4\na set p0 p1 p2\nb sub 4 p1\nc set a b p2\nret c\nend"
+ ],
+ "u-sticky-shift/a0/structured": [
+  "fn f u32 u32 -> u32\nshifted shr p0 p1\ntemp shl 1 p1\nmask sub temp 1\nlow_bits and p0 mask\nhas_one ne low_bits 0\nnew_bit select has_one 1 0\nresult or shifted new_bit\nret result\nend"
+ ],
+ "u-larger-half-wins/a0/structured": [
+  "fn f u32 u32 -> bool\nx call h p0\ny call h p1\nz gt x y\nret z\nend"
+ ],
+ "u-all-under-limit/a0/structured": [
+  "fn ok bool u32 u32x4 u32 -> bool\nv get p2 p1\nc lt v p3\nr and p0 c\nret r\nend"
+ ],
+ "u-celsius-to-fahrenheit/a0/structured": [
+  "fn f u32 -> u32\na mul p0 9\nb div a 5\nc add b 32\nret c\nend"
+ ],
+ "u-version-compatible/a0/structured": [
+  "fn f u32 u32 -> bool\na shr p0 16\nb shr p1 16\nc eq a b\nd and p0 65535\ne and p1 65535\ng ge d e\nh and c g\nret h\nend"
+ ],
+ "u-alarm-due/a0/structured": [
+  "fn f u32 u32 u32 -> bool\na ge p0 p1\nb sub p0 p1\nc ge b p2\nd and a c\nret d\nend"
+ ],
+ "u-swap-neighbours/a0/structured": [
+  "fn f u32x4 -> u32x4\na get p0 0\nb get p0 1\nc get p0 2\nd get p0 3\nr arr b a c d\nret r\nend"
+ ],
+ "u-trailing-ones/a0/structured": [
+  "fn step (u32,bool) u32 u32 -> (u32,bool)\ncount at p0 0\nstill at p0 1\nshifted shr p2 p1\nbit_one and shifted 1\nis_one ne bit_one 0\nshould_inc and still is_one\nnew_c add count 1\nfinal_c select should_inc new_c count\nfinal_s and still is_one\nresult rec final_c final_s\nret result\nend"
+ ]
+}

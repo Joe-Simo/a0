@@ -1,0 +1,82 @@
+### REPLY 1
+c shl a 8
+### REPLY 2
+a shr p0 16
+### REPLY 3
+a fold step 5 0 p0
+fn step u32 u32 u32 -> u32
+m mul p2 p1
+x xor p0 m
+ret x
+end
+### REPLY 4
+c ge p0 p1
+### REPLY 5
+b sub a 5
+### REPLY 6
+i rem p1 4
+e get p0 i
+### REPLY 7
+a fold step 4 0 p0 p1
+fn step u32 u32 u32x4 u32 -> u32
+e get p2 p1
+q eq e p3
+w select q 1 0
+x add p0 w
+ret x
+end
+### REPLY 8
+t shr b 7
+### REPLY 9
+a mul p0 p1
+c gt p0 p1
+### REPLY 10
+s fold step 4 i p0
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+v get p2 p1
+b at p0 0
+c gt v b
+nb select c v b
+bi at p0 1
+ni select c p1 bi
+r rec nb ni
+ret r
+end
+### REPLY 11
+fn h u32 -> u32
+m mul p0 5
+r add m 2
+ret r
+end
+### REPLY 12
+a gt p0 100
+b lt p1 50
+### REPLY 13
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+l and e 1
+t shl p0 1
+r or t l
+ret r
+end
+### REPLY 14
+n select g s v
+### REPLY 15
+a fold step 4 0 p0 p1
+fn step u32 u32 u32x4 u32 -> u32
+m mul p0 p3
+e get p2 p1
+r add m e
+ret r
+end
+### REPLY 16
+a fold step 3 true p0 p1
+fn step bool u32 u32x4 u32 -> bool
+i2 add p1 1
+nx get p2 i2
+cu get p2 p1
+d sub nx cu
+c le d p3
+r and p0 c
+ret r
+end

@@ -1,0 +1,99 @@
+### REPLY 1
+c shl a 8
+
+### REPLY 2
+a shr p0 16
+
+### REPLY 3
+a fold step 5 0 p0
+fn step u32 u32 u32 -> u32
+prod mul p2 p1
+res xor p0 prod
+ret res
+end
+
+### REPLY 4
+c ge p0 p1
+
+### REPLY 5
+c sub a 5
+d select p1 c b
+ret d
+
+### REPLY 6
+r set p0 p1 n
+
+### REPLY 7
+a fold step 4 0 p0 p1
+fn step u32 u32 u32x4 u32 -> u32
+e get p2 p1
+equ eq e p3
+res add p0 equ
+ret res
+end
+
+### REPLY 8
+t shr b 7
+
+### REPLY 9
+a mul p0 p1
+c gt p0 p1
+
+### REPLY 10
+s fold step 4 i p0
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+curr_val get p2 p1
+max_val at p0 0
+max_idx at p0 1
+is_greater gt curr_val max_val
+new_val select is_greater curr_val max_val
+new_idx select is_greater p1 max_idx
+res rec new_val new_idx
+ret res
+end
+
+### REPLY 11
+fn h u32 -> u32
+a mul p0 5
+b add a 2
+ret b
+end
+
+### REPLY 12
+a gt p0 100
+b lt p1 50
+
+### REPLY 13
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+bit and e 1
+shift sub 3 p1
+shifted shl bit shift
+res or p0 shifted
+ret res
+end
+
+### REPLY 14
+s add v p1
+n select g s v
+
+### REPLY 15
+a fold step 4 0 p0 p1
+fn step u32 u32 u32x4 u32 -> u32
+coeff get p2 p1
+prod mul p0 p3
+res add prod coeff
+ret res
+end
+
+### REPLY 16
+a fold step 3 true p0 p1
+fn step bool u32 u32x4 u32 -> bool
+curr get p2 p1
+next_i add p1 1
+next get p2 next_i
+diff sub next curr
+ok le diff p3
+res and p0 ok
+ret res
+end

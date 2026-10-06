@@ -1,0 +1,36 @@
+### REPLY 2
+fn lowbits u32 u32 -> u32
+m shl 1 p1
+n sub m 1
+r and p0 n
+ret r
+end
+
+### REPLY 8
+fn pack u32 u32 -> u32
+m0 and p0 65535
+h shl m0 16
+m1 and p1 65535
+r or h m1
+ret r
+end
+
+### REPLY 12
+fn paint2 u32x4 u32 u32 -> u32x4
+r set p0 p1 p2
+i add p1 1
+s set r i p2
+ret s
+end
+
+### REPLY 16
+fn drain u32 u32 u32 -> u32
+c gt p0 p2
+d sub p0 p2
+ret select c d 0
+end
+fn drainall u32 u32 -> u32
+s mov p0
+r fold drain 6 s p1
+ret r
+end

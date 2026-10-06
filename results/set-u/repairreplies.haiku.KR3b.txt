@@ -1,0 +1,99 @@
+### REPLY 1
+fn f u32 u32 -> bool
+a shr p0 24
+b shr p1 24
+c eq a b
+d and p0 255
+e ne d 0
+g and c e
+ret g
+end
+
+### REPLY 2
+fn f u32x4 u32 -> u32
+a get p0 p1
+b add p1 1
+c get p0 b
+d add p1 2
+e get p0 d
+g add a c
+h add g e
+ret h
+end
+
+### REPLY 3
+fn f u32 u32 u32 u32 -> bool
+a gt p0 p1
+b eq p0 p1
+c lt p2 p3
+d and b c
+e or a d
+g mov e
+ret g
+end
+
+### REPLY 4
+fn f u32 u32 u32 u32 -> u32
+a and p0 255
+b and p1 255
+c shl b 8
+d and p2 255
+e shl d 16
+g shl p3 24
+h or a c
+i or h e
+j or i g
+ret j
+end
+
+### REPLY 7
+fn f u32 -> (u32,bool)
+a and p0 65535
+n ge a 32768
+m sub 65536 a
+g select n m a
+r rec g n
+ret r
+end
+
+### REPLY 8
+fn f u32x4 u32 u32 -> u32x4
+a set p0 p1 p2
+b and p1 3
+c sub 3 b
+d set a c p2
+ret d
+end
+
+### REPLY 15
+fn f u32x4 -> u32x4
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+r arr b a d c
+ret r
+end
+
+### REPLY 16
+fn step (u32,bool) u32 u32 -> (u32,bool)
+count at p0 0
+still at p0 1
+shifted shr p2 p1
+bit_one and shifted 1
+is_one ne bit_one 0
+should_inc and still is_one
+new_c add count 1
+final_c select should_inc new_c count
+final_s and still is_one
+result rec final_c final_s
+ret result
+end
+
+-fn f u32 -> u32
+fn f u32 -> u32
+s rec 0 true
+r fold step 32 s p0
+c at r 0
+ret c
+end

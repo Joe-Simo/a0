@@ -1,0 +1,50 @@
+{
+ "u-same-top-byte/a0/structured": [
+  "b shr p1 24"
+ ],
+ "u-window-of-three/a0/structured": [
+  "fn f u32x4 u32 -> u32\na rem p1 4\nb add p1 1\nc rem b 4\nd add p1 2\ne rem d 4\ng get p0 a\nh get p0 c\ni get p0 e\nj add g h\nk add j i\nret k\nend"
+ ],
+ "u-tie-break-winner/a0/structured": [
+  "c lt p2 p3\n-g\nret e"
+ ],
+ "u-pack-four-bytes/a0/structured": [
+  "e shl d 16"
+ ],
+ "u-fifteen-percent/a0/structured": [
+  "b mul a 15\nd mul c 15"
+ ],
+ "u-max-position/a0/structured": [
+  "fn step (u32,u32) u32 u32x4 -> (u32,u32)\nv get p2 p1\nb at p0 0\nk at p0 1\nbetter gt v b\nnb select better v b\nni select better p1 k\nr rec nb ni\nret r\nend"
+ ],
+ "u-signed-half/a0/structured": [
+  "n ge a 32768"
+ ],
+ "u-mirror-write/a0/structured": [
+  "fn f u32x4 u32 u32 -> u32x4\ni rem p1 4\na set p0 i p2\nb sub 3 i\nc set a b p2\nret c\nend"
+ ],
+ "u-sticky-shift/a0/structured": [
+  "b shl a p1\nc ne b p0\nd select c 1 0\ne or a d\nret e"
+ ],
+ "u-larger-half-wins/a0/structured": [
+  "y call h p1"
+ ],
+ "u-all-under-limit/a0/structured": [
+  "c lt v p3"
+ ],
+ "u-celsius-to-fahrenheit/a0/structured": [
+  "a mul p0 9\nb div a 5\nc add b 32"
+ ],
+ "u-version-compatible/a0/structured": [
+  "g ge d e"
+ ],
+ "u-alarm-due/a0/structured": [
+  "fn f u32 u32 u32 -> bool\na ge p0 p1\nb sub p0 p1\nc ge b p2\ng and a c\nret g\nend"
+ ],
+ "u-swap-neighbours/a0/structured": [
+  "r arr b a d c"
+ ],
+ "u-trailing-ones/a0/structured": [
+  "r fold step 32 s p0\nfn step (u32,bool) u32 u32 -> (u32,bool)\ncnt at p0 0\nalive at p0 1\nsh shr p2 p1\nbit and sh 1\nisone ne bit 0\ngo and alive isone\ninc select go 1 0\nn add cnt inc\nr rec n go\nret r\nend"
+ ]
+}

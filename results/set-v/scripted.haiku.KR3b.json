@@ -1,0 +1,54 @@
+{
+ "v-late-return/a0/structured": [
+  "a add p1 7\nb gt p0 a\nret b"
+ ],
+ "v-keep-low-bits/a0/structured": [
+  "m shl 1 p1\nm sub m 1\nr and p0 m\nret r",
+  "n sub m 1\nr and p0 n"
+ ],
+ "v-clear-slot/a0/structured": [
+  "r set p0 p1 0\nret r"
+ ],
+ "v-xor-mix/a0/structured": [
+  "s mov 0\nr fold mix 4 s p0\nret r\nfn mix u32 u32 u32x4 -> u32\ne get p2 p1\nv add e p1\nret xor p0 v\nend"
+ ],
+ "v-gap-or-double/a0/structured": [
+  "c gt p0 p1\nd sub p0 p1\ne mul p1 2\nr select c d e\nret r"
+ ],
+ "v-byte-and-overflowed/a0/structured": [
+  "a and p0 255\nb gt p0 255\nr rec a b\nret r"
+ ],
+ "v-member-points/a0/structured": [
+  "a mul p0 3\nb mul p0 2\nr select p1 a b\nret r"
+ ],
+ "v-pack-halves/a0/structured": [
+  "h shl p0 16\nl and p1 65535\nr or h l\nret r"
+ ],
+ "v-odd-index-sum/a0/structured": [
+  "s mov 0\nr fold pickpar 4 s p0\nret r\nfn pickpar u32 u32 u32x4 -> u32\ni mod p1 2\nc eq i 1\ne get p2 p1\ne select c e 0\nret add p0 e\nend",
+  "i rem p1 2\nc eq i 1\ne get p2 p1\ne select c e 0\nret add p0 e"
+ ],
+ "v-cooldown/a0/structured": [
+  "c gt p0 p1\nd sub p0 p1\nr0 select c d 0\nk le p0 p1\nr rec r0 k\nret r"
+ ],
+ "v-blend-sixteenths/a0/structured": [
+  "u sub 16 p2\nx call scale p0 u\ny call scale p1 p2\nr add x y\nret r\nfn scale u32 u32 -> u32 end"
+ ],
+ "v-paint-two/a0/structured": [
+  "r set p0 p1 p2\ni add p1 1\nr set r i p2\nret r",
+  "i add p1 1\nr set p0 p1 p2\ns set r i p2\nret s"
+ ],
+ "v-multiple-sixteen/a0/structured": [
+  "m and p0 15\nz eq m 0\nret z"
+ ],
+ "v-lane-low-bits/a0/structured": [
+  "k and p1 3\nr get p0 k\nret r"
+ ],
+ "v-larger-amount/a0/structured": [
+  "a mul p0 2\nb add p1 7\nc ge a b\ns select c a b\nret s"
+ ],
+ "v-drain-steps/a0/structured": [
+  "s mov p0\nr fold drain 6 s p1\nret r\nfn drain u32 u32 u32 -> u32\nc gt p0 p2\nd sub p0 p2\nret select c d p0\nend",
+  "c ge p0 p2\nd sub p0 p2\nret select c d 0"
+ ]
+}

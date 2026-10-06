@@ -1,0 +1,50 @@
+{
+ "w-byte-pack/a0/structured": [
+  "c shl a 8"
+ ],
+ "w-fits-16/a0/structured": [
+  "a shr p0 16"
+ ],
+ "w-xor-ladder/a0/structured": [
+  "a fold step 5 0 p0\nfn step u32 u32 u32 -> u32\nm mul p2 p1\nx xor p0 m\nret x\nend"
+ ],
+ "w-larger-and-who/a0/structured": [
+  "c ge p0 p1"
+ ],
+ "w-member-ticket/a0/structured": [
+  "b sub a 5"
+ ],
+ "w-slot-bump/a0/structured": [
+  "i rem p1 4\ne get p0 i"
+ ],
+ "w-count-matches/a0/structured": [
+  "a fold step 4 0 p0 p1\nfn step u32 u32 u32x4 u32 -> u32\ne get p2 p1\nq eq e p3\nw select q 1 0\nx add p0 w\nret x\nend"
+ ],
+ "w-sign-extend-byte/a0/structured": [
+  "t shr b 7"
+ ],
+ "w-product-and-order/a0/structured": [
+  "a mul p0 p1\nc gt p0 p1"
+ ],
+ "w-first-peak-index/a0/structured": [
+  "s fold step 4 i p0\nfn step (u32,u32) u32 u32x4 -> (u32,u32)\nv get p2 p1\nb at p0 0\nc gt v b\nnb select c v b\nbi at p0 1\nni select c p1 bi\nr rec nb ni\nret r\nend"
+ ],
+ "w-helper-rate/a0/structured": [
+  "fn h u32 -> u32\nm mul p0 5\nr add m 2\nret r\nend"
+ ],
+ "w-strict-window/a0/structured": [
+  "a gt p0 100\nb lt p1 50"
+ ],
+ "w-low-bit-pack/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ne get p2 p1\nl and e 1\nt shl p0 1\nr or t l\nret r\nend"
+ ],
+ "w-gated-credit/a0/structured": [
+  "n select g s v"
+ ],
+ "w-cubic-eval/a0/structured": [
+  "a fold step 4 0 p0 p1\nfn step u32 u32 u32x4 u32 -> u32\nm mul p0 p3\ne get p2 p1\nr add m e\nret r\nend"
+ ],
+ "w-gentle-climb/a0/structured": [
+  "a fold step 3 true p0 p1\nfn step bool u32 u32x4 u32 -> bool\ni2 add p1 1\nnx get p2 i2\ncu get p2 p1\nd sub nx cu\nc le d p3\nr and p0 c\nret r\nend"
+ ]
+}

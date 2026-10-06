@@ -1,0 +1,86 @@
+### REPLY 1
+b shr p1 24
+### REPLY 2
+fn f u32x4 u32 -> u32
+a rem p1 4
+b add p1 1
+c rem b 4
+d add p1 2
+e rem d 4
+g get p0 a
+h get p0 c
+i get p0 e
+j add g h
+k add j i
+ret k
+end
+### REPLY 3
+c lt p2 p3
+-g
+ret e
+### REPLY 4
+e shl d 16
+### REPLY 5
+b mul a 15
+d mul c 15
+### REPLY 6
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+v get p2 p1
+b at p0 0
+k at p0 1
+better gt v b
+nb select better v b
+ni select better p1 k
+r rec nb ni
+ret r
+end
+### REPLY 7
+n ge a 32768
+### REPLY 8
+fn f u32x4 u32 u32 -> u32x4
+i rem p1 4
+a set p0 i p2
+b sub 3 i
+c set a b p2
+ret c
+end
+### REPLY 9
+b shl a p1
+c ne b p0
+d select c 1 0
+e or a d
+ret e
+### REPLY 10
+y call h p1
+### REPLY 11
+c lt v p3
+### REPLY 12
+a mul p0 9
+b div a 5
+c add b 32
+### REPLY 13
+g ge d e
+### REPLY 14
+fn f u32 u32 u32 -> bool
+a ge p0 p1
+b sub p0 p1
+c ge b p2
+g and a c
+ret g
+end
+### REPLY 15
+r arr b a d c
+### REPLY 16
+r fold step 32 s p0
+fn step (u32,bool) u32 u32 -> (u32,bool)
+cnt at p0 0
+alive at p0 1
+sh shr p2 p1
+bit and sh 1
+isone ne bit 0
+go and alive isone
+inc select go 1 0
+n add cnt inc
+r rec n go
+ret r
+end

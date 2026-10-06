@@ -1,0 +1,50 @@
+{
+ "w-byte-pack/a0/structured": [
+  "c shl a 8"
+ ],
+ "w-fits-16/a0/structured": [
+  "a shr p0 16"
+ ],
+ "w-xor-ladder/a0/structured": [
+  "a fold step 5 0 p0\nfn step u32 u32 u32 -> u32\nprod mul p2 p1\nres xor p0 prod\nret res\nend"
+ ],
+ "w-larger-and-who/a0/structured": [
+  "c ge p0 p1"
+ ],
+ "w-member-ticket/a0/structured": [
+  "c sub a 5\nd select p1 c b\nret d"
+ ],
+ "w-slot-bump/a0/structured": [
+  "r set p0 p1 n"
+ ],
+ "w-count-matches/a0/structured": [
+  "a fold step 4 0 p0 p1\nfn step u32 u32 u32x4 u32 -> u32\ne get p2 p1\nequ eq e p3\nres add p0 equ\nret res\nend"
+ ],
+ "w-sign-extend-byte/a0/structured": [
+  "t shr b 7"
+ ],
+ "w-product-and-order/a0/structured": [
+  "a mul p0 p1\nc gt p0 p1"
+ ],
+ "w-first-peak-index/a0/structured": [
+  "s fold step 4 i p0\nfn step (u32,u32) u32 u32x4 -> (u32,u32)\ncurr_val get p2 p1\nmax_val at p0 0\nmax_idx at p0 1\nis_greater gt curr_val max_val\nnew_val select is_greater curr_val max_val\nnew_idx select is_greater p1 max_idx\nres rec new_val new_idx\nret res\nend"
+ ],
+ "w-helper-rate/a0/structured": [
+  "fn h u32 -> u32\na mul p0 5\nb add a 2\nret b\nend"
+ ],
+ "w-strict-window/a0/structured": [
+  "a gt p0 100\nb lt p1 50"
+ ],
+ "w-low-bit-pack/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ne get p2 p1\nbit and e 1\nshift sub 3 p1\nshifted shl bit shift\nres or p0 shifted\nret res\nend"
+ ],
+ "w-gated-credit/a0/structured": [
+  "s add v p1\nn select g s v"
+ ],
+ "w-cubic-eval/a0/structured": [
+  "a fold step 4 0 p0 p1\nfn step u32 u32 u32x4 u32 -> u32\ncoeff get p2 p1\nprod mul p0 p3\nres add prod coeff\nret res\nend"
+ ],
+ "w-gentle-climb/a0/structured": [
+  "a fold step 3 true p0 p1\nfn step bool u32 u32x4 u32 -> bool\ncurr get p2 p1\nnext_i add p1 1\nnext get p2 next_i\ndiff sub next curr\nok le diff p3\nres and p0 ok\nret res\nend"
+ ]
+}

@@ -1,0 +1,110 @@
+### REPLY 1
+a add p1 7
+b gt p0 a
+ret b
+
+### REPLY 2
+m shl 1 p1
+m sub m 1
+r and p0 m
+ret r
+
+### REPLY 3
+r set p0 p1 0
+ret r
+
+### REPLY 4
+s mov 0
+r fold mix 4 s p0
+ret r
+fn mix u32 u32 u32x4 -> u32
+e get p2 p1
+v add e p1
+ret xor p0 v
+end
+
+### REPLY 5
+c gt p0 p1
+d sub p0 p1
+e mul p1 2
+r select c d e
+ret r
+
+### REPLY 6
+a and p0 255
+b gt p0 255
+r rec a b
+ret r
+
+### REPLY 7
+a mul p0 3
+b mul p0 2
+r select p1 a b
+ret r
+
+### REPLY 8
+h shl p0 16
+l and p1 65535
+r or h l
+ret r
+
+### REPLY 9
+s mov 0
+r fold pickpar 4 s p0
+ret r
+fn pickpar u32 u32 u32x4 -> u32
+i mod p1 2
+c eq i 1
+e get p2 p1
+e select c e 0
+ret add p0 e
+end
+
+### REPLY 10
+c gt p0 p1
+d sub p0 p1
+r0 select c d 0
+k le p0 p1
+r rec r0 k
+ret r
+
+### REPLY 11
+u sub 16 p2
+x call scale p0 u
+y call scale p1 p2
+r add x y
+ret r
+fn scale u32 u32 -> u32 end
+
+### REPLY 12
+r set p0 p1 p2
+i add p1 1
+r set r i p2
+ret r
+
+### REPLY 13
+m and p0 15
+z eq m 0
+ret z
+
+### REPLY 14
+k and p1 3
+r get p0 k
+ret r
+
+### REPLY 15
+a mul p0 2
+b add p1 7
+c ge a b
+s select c a b
+ret s
+
+### REPLY 16
+s mov p0
+r fold drain 6 s p1
+ret r
+fn drain u32 u32 u32 -> u32
+c gt p0 p2
+d sub p0 p2
+ret select c d p0
+end

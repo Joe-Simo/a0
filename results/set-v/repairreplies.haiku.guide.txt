@@ -1,0 +1,26 @@
+### REPLY 1
+a add p1 7
+b gt p0 a
+ret b
+
+### REPLY 8
+l0 and p0 65535
+l1 and p1 65535
+h shl l0 16
+r or h l1
+ret r
+
+### REPLY 9
+fn pickpar u32 u32 u32x4 u32 -> u32
+a get p2 p1
+d and p1 1
+b ne d 0
+z select b a 0
+r add p0 z
+ret r
+end
+fn oddsum u32x4 -> u32
+w mov 0
+r fold pickpar 4 0 p0 w
+ret r
+end

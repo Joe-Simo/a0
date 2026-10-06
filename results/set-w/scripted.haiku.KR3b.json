@@ -1,0 +1,58 @@
+{
+ "w-byte-pack/a0/structured": [
+  "c shl a 8"
+ ],
+ "w-fits-16/a0/structured": [
+  "a shr p0 16"
+ ],
+ "w-xor-ladder/a0/structured": [
+  "a fold step 5 0 p0\nt mul p2 p1\ns xor p0 t\nret s",
+  "t mul p1 p2\nr xor p0 t\nret r"
+ ],
+ "w-larger-and-who/a0/structured": [
+  "c ge p0 p1"
+ ],
+ "w-member-ticket/a0/structured": [
+  "a mul p0 12\ns select p1 5 3\nb sub a s\nret b",
+  "a mul p0 12\nc sub a 5\nb select p1 c a\nret b"
+ ],
+ "w-slot-bump/a0/structured": [
+  "e get p0 p1\nn add e 1\nr set p0 p1 n\nret r"
+ ],
+ "w-count-matches/a0/structured": [
+  "a fold step 4 0 p0 p1\ne get p2 p1\nc eq e p3\nr select c 1 0\nt add p0 r\nret t",
+  "e get p2 p1\nc eq e p3\nr select c 1 0\nt add p0 r\nret t"
+ ],
+ "w-sign-extend-byte/a0/structured": [
+  "b and p0 255\nt shr b 7\ns mul t 4294967040\nd or b s\nret d"
+ ],
+ "w-product-and-order/a0/structured": [
+  "a mul p0 p1\nc gt p0 p1"
+ ],
+ "w-first-peak-index/a0/structured": [
+  "v get p2 p1\nm at p0 1\ng gt v m\nd at p0 0\ni select g p1 d\nj select g v m\nr rec i j\nret r",
+  "v get p2 p1\nm at p0 1\ng gt v m\ni select g p1 (at p0 0)\nj select g v (at p0 1)\nr rec i j\nret r"
+ ],
+ "w-helper-rate/a0/structured": [
+  "a mul p0 5\nb add a 2\nret b",
+  "a mul p0 5\nb add a 2\nret b"
+ ],
+ "w-strict-window/a0/structured": [
+  "a gt p0 100\nb lt p1 50"
+ ],
+ "w-low-bit-pack/a0/structured": [
+  "v get p2 p1\nb and v 1\ns sub 3 p1\nc shl b s\nr xor p0 c\nret r",
+  "v get p2 p1\nb and v 1\ns sub 3 p1\nc shl b s\nr xor p0 c\nret r"
+ ],
+ "w-gated-credit/a0/structured": [
+  "v at p0 0\ng at p0 1\ns add v p1\nn select g s v\nr rec n g\nret r"
+ ],
+ "w-cubic-eval/a0/structured": [
+  "c eq p1 0\ne get p2 0\nm mul p0 p3\nf get p2 p1\na add m f\nr select c e a\nret r",
+  "e get p2 p1\nt mul p0 p3\nr add t e\nret r"
+ ],
+ "w-gentle-climb/a0/structured": [
+  "i1 add p1 1\nc lt p1 3\ne0 get p2 p1\ne1 get p2 i1\nstep sub e1 e0\nle le step p3\nres_new and p0 le\nres select c res_new p0\nret res",
+  "i1 add p1 1\ncurr get p2 p1\nnext get p2 i1\ndiff sub next curr\nok le diff p3\nres and p0 ok\nret res"
+ ]
+}

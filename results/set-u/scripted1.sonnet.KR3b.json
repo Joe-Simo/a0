@@ -1,0 +1,50 @@
+{
+ "u-same-top-byte/a0/structured": [
+  "b shr p1 24"
+ ],
+ "u-window-of-three/a0/structured": [
+  "d add p1 2"
+ ],
+ "u-tie-break-winner/a0/structured": [
+  "c lt p2 p3\n-g\nret e"
+ ],
+ "u-pack-four-bytes/a0/structured": [
+  "e shl d 16"
+ ],
+ "u-fifteen-percent/a0/structured": [
+  "b mul a 15\nd mul c 15"
+ ],
+ "u-max-position/a0/structured": [
+  "better gt v b"
+ ],
+ "u-signed-half/a0/structured": [
+  "n ge a 32768"
+ ],
+ "u-mirror-write/a0/structured": [
+  "b sub 3 p1"
+ ],
+ "u-sticky-shift/a0/structured": [
+  "m and p1 31\ns shl 1 m\nt sub s 1\nu and p0 t\nw ne u 0\nx select w 1 0\ny or a x\nret y"
+ ],
+ "u-larger-half-wins/a0/structured": [
+  "y call h p1"
+ ],
+ "u-all-under-limit/a0/structured": [
+  "c lt v p3\nfn f u32x4 u32 -> bool\nr fold ok 4 true p0 p1\nret r\nend"
+ ],
+ "u-celsius-to-fahrenheit/a0/structured": [
+  "a mul p0 9\nb div a 5\nc add b 32"
+ ],
+ "u-version-compatible/a0/structured": [
+  "g ge d e"
+ ],
+ "u-alarm-due/a0/structured": [
+  "fn f u32 u32 u32 -> bool\na ge p0 p1\nb sub p0 p1\nc ge b p2\ng and a c\nret g\nend"
+ ],
+ "u-swap-neighbours/a0/structured": [
+  "r arr b a d c"
+ ],
+ "u-trailing-ones/a0/structured": [
+  "fn step (u32,bool) u32 u32 -> (u32,bool)\nrun at p0 1\ncnt at p0 0\nbit shr p2 p1\nb and bit 1\no eq b 1\nalive and run o\ninc select alive 1 0\nn add cnt inc\nr rec n alive\nret r\nend\nr fold step 32 s p0"
+ ]
+}

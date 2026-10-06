@@ -1,0 +1,50 @@
+{
+ "v-late-return/a0/structured": [
+  "fn late u32 u32 -> bool\na add p1 7\nb gt p0 a\nret b\nend"
+ ],
+ "v-keep-low-bits/a0/structured": [
+  "fn lowbits u32 u32 -> u32\nm shl 1 p1\nm sub m 1\nr and p0 m\nret r\nend"
+ ],
+ "v-clear-slot/a0/structured": [
+  "fn clearslot u32x4 u32 -> u32x4\nr set p0 p1 0\nret r\nend"
+ ],
+ "v-xor-mix/a0/structured": [
+  "fn mix u32 u32 u32x4 -> u32\nv get p2 p1\ne add v p1\nx xor p0 e\nret x\nend\nfn mixall u32x4 -> u32\ns mov 0\nr fold mix 4 s p0\nret r\nend"
+ ],
+ "v-gap-or-double/a0/structured": [
+  "fn pick u32 u32 -> u32\nc gt p0 p1\nd sub p0 p1\ne mul p1 2\nr select c d e\nret r\nend"
+ ],
+ "v-byte-and-overflowed/a0/structured": [
+  "fn bytesplit u32 -> (u32,bool)\na and p0 255\nb gt p0 255\nr rec a b\nret r\nend"
+ ],
+ "v-member-points/a0/structured": [
+  "fn points u32 bool -> u32\na mul p0 3\nb mul p0 2\nr select p1 a b\nret r\nend"
+ ],
+ "v-pack-halves/a0/structured": [
+  "fn pack u32 u32 -> u32\nh shl p0 16\nr or h p1\nret r\nend"
+ ],
+ "v-odd-index-sum/a0/structured": [
+  "fn pickpar u32 u32 u32x4 -> u32\nc1 eq p1 1\nc3 eq p1 3\nisodd or c1 c3\nv get p2 p1\nsum select isodd v 0\nret add p0 sum\nend\nfn oddsum u32x4 -> u32\nw mov 0\nr fold pickpar 4 w p0\nret r\nend"
+ ],
+ "v-cooldown/a0/structured": [
+  "fn cooldown u32 u32 -> (u32,bool)\nready ge p1 p0\nremaining sub p0 p1\nr0 select ready 0 remaining\nr rec r0 ready\nret r\nend"
+ ],
+ "v-blend-sixteenths/a0/structured": [
+  "fn scale u32 u32 -> u32\np mul p0 p1\nr shr p 4\nret r\nend\nfn blend u32 u32 u32 -> u32\nu sub 16 p2\nx call scale p0 u\ny call scale p1 p2\nr add x y\nret r\nend"
+ ],
+ "v-paint-two/a0/structured": [
+  "fn paint2 u32x4 u32 u32 -> u32x4\nr set p0 p1 p2\ni add p1 1\nr set r i p2\nret r\nend"
+ ],
+ "v-multiple-sixteen/a0/structured": [
+  "fn aligned u32 -> bool\nm and p0 15\nz eq m 0\nret z\nend"
+ ],
+ "v-lane-low-bits/a0/structured": [
+  "fn lane u32x4 u32 -> u32\nk and p1 3\nr get p0 k\nret r\nend"
+ ],
+ "v-larger-amount/a0/structured": [
+  "fn bigger u32 u32 -> u32\na mul p0 2\nb add p1 7\nc gt a b\ns select c a b\nret s\nend"
+ ],
+ "v-drain-steps/a0/structured": [
+  "fn drain u32 u32 u32 -> u32\nc gt p0 p1\nd sub p0 p1\nret select c d 0\nend\nfn drainall u32 u32 -> u32\ns mov p0\nr fold drain 6 s p1\nret r\nend"
+ ]
+}

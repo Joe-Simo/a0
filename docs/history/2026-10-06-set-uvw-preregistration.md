@@ -24,3 +24,19 @@ Rule: `K` may replace the shipped guide as the shipped edit text (guide, MCP tex
 1. `K` one-shot count is not lower than `S`'s by more than 3 (the declared margin), and
 2. `K` cold tokens per accepted edit is lower than `S`'s (raw numbers).
 Both on both models, or nothing. Reported with wins, ties and losses and none hidden: the strict reading of condition 1, the 10-task and unbounded horizons, acceptance after the repair, intervals, per-set counts, `KR3` alongside and the failure classes. A cell dominated by one subagent instance's misreading is reported as the result it is, with the misreading named; it is not rerun. The decision is read from `results/set-uvw.json` and not changed after.
+
+## Result (collected after the rule above was committed; `results/set-uvw.json`, `tools/set-h-summary.ts uvw`)
+
+Seals of H to W verified. 18 fresh first-reply subagents (one per variant, model and set, 16 requests each) and 10 fresh repair subagents (U: Haiku guide, KR3b, KR3; V: Haiku guide, KR3b, KR3; W: Haiku guide, KR3b, KR3, Sonnet KR3b); the other eight cells needed none. No subject was refused. Files were scored once, after every subagent had reported. Pooled over U, V, W (n = 48 per cell):
+
+| model | variant | one shot | repaired | cold tokens per accepted edit | 10-task | unbounded |
+|---|---|---|---|---|---|---|
+| Haiku | guide | 41 | 46 | 736.3 | 237.1 | 181.6 |
+| Haiku | KR3b | 28 | 39 | 612.8 | 319.0 | 286.4 |
+| Haiku | KR3 | 36 | 45 | 315.8 | 199.4 | 186.5 |
+| Sonnet | guide | 48 | 48 | 672.0 | 193.5 | 140.4 |
+| Sonnet | KR3b | 47 | 48 | 399.8 | 161.1 | 134.6 |
+| Sonnet | KR3 | 48 | 48 | 246.8 | 137.7 | 125.6 |
+
+Verdict (`results/set-uvw.json`): Sonnet meets both conditions (47 against 48 on one shot, inside the declared margin of 3; cold cost 40 per cent lower; the strict reading, margin 0, is not met). Haiku does not: KR3b is 13 tasks lower on one shot (28 against 41) and 7 lower after the repair (39 against 46), and its 10-task and unbounded costs are higher than the guide's. **The rule is not met on both models, so nothing ships.** The alongside cell KR3 is lower than the guide on cold cost on both models and ties it on Sonnet (48 against 48), but loses 5 tasks on one shot on Haiku (36 against 41) and is outside the rule.
+The finding agrees with sets K to T: the short primers cost less at the cold task and lose acceptance on Haiku. Losses recorded, none hidden; no shipped text changed.
