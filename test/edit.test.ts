@@ -281,3 +281,26 @@ test('diagnose narrows a rejected reply to the lines that cause it, without comm
   );
   assert.match(formatRejection(blk as Rejection), /^These 4 of 6 lines/);
 });
+
+test('a delete of an id followed by an add of the same id is a replacement; with `@` and two adds it is still a duplicate', () => {
+  const a = new EditSession(parseAndValidate(SRC));
+  a.open('twice');
+  a.apply('-y\ny add x 1');
+  assert.equal(call(a, 'twice', 3), 10);
+  // the same without the delete gives the same program
+  const b = new EditSession(parseAndValidate(SRC));
+  b.open('twice');
+  b.apply('y add x 1');
+  assert.equal(formatProgram(a.program), formatProgram(b.program));
+  // the pair with `@` is a move, not a replacement, and is unchanged: still a duplicate
+  const c = new EditSession(parseAndValidate(SRC));
+  c.open('twice');
+  assert.throws(() => c.apply('-y\ny add x 2 @ x'), /duplicate edit/);
+  // two adds of one id, and a delete after an add, stay rejected
+  const d = new EditSession(parseAndValidate(SRC));
+  d.open('twice');
+  assert.throws(() => d.apply('y add x 1\ny add x 2'), /duplicate edit/);
+  const e = new EditSession(parseAndValidate(SRC));
+  e.open('twice');
+  assert.throws(() => e.apply('y add x 1\n-y'), /duplicate edit/);
+});

@@ -130,6 +130,15 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
     }
     const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
     const node = parseNode(m ? (m[1] ?? '') : text, line);
+    // `-id` followed by `id op args` (no `@`) says "replace this node": the delete is dropped and the line stands as the
+    // replacement, which is what the pair means. With `@ other` the pair is a move: unchanged (still a duplicate edit).
+    if (m === null) {
+      const prior = ops.findIndex((o) => o.kind === 'delete' && o.id === node.id);
+      if (prior >= 0) {
+        ops.splice(prior, 1);
+        seen.delete(node.id);
+      }
+    }
     claim(node.id);
     ops.push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
   });

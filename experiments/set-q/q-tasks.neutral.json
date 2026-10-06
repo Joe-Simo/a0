@@ -1,0 +1,5060 @@
+{
+ "tasks": [
+  {
+   "id": "q-tank-refill",
+   "kind": "targeted-edit",
+   "wrongEditKind": "wrapping",
+   "target": "refill",
+   "instruction": "Refill is needed when ten times the level is at most the capacity; a level of exactly one tenth must also trigger a refill.",
+   "start": {
+    "functions": [
+     {
+      "name": "refill",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "t",
+        "op": "mul",
+        "args": [
+         "p0",
+         10
+        ]
+       },
+       {
+        "id": "c",
+        "op": "mov",
+        "args": [
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "lt",
+        "args": [
+         "t",
+         "c"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "refill",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "t",
+        "op": "mul",
+        "args": [
+         "p0",
+         10
+        ]
+       },
+       {
+        "id": "c",
+        "op": "mov",
+        "args": [
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "le",
+        "args": [
+         "t",
+         "c"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "refill",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "t",
+         "op": "mul",
+         "args": [
+          "p0",
+          10
+         ]
+        },
+        {
+         "id": "c",
+         "op": "add",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "r",
+         "op": "lt",
+         "args": [
+          "t",
+          "c"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "refill",
+     "args": [
+      1,
+      10
+     ],
+     "expected": true
+    },
+    {
+     "fn": "refill",
+     "args": [
+      1,
+      11
+     ],
+     "expected": true
+    },
+    {
+     "fn": "refill",
+     "args": [
+      2,
+      10
+     ],
+     "expected": false
+    },
+    {
+     "fn": "refill",
+     "args": [
+      0,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "refill",
+     "args": [
+      5,
+      50
+     ],
+     "expected": true
+    },
+    {
+     "fn": "refill",
+     "args": [
+      5,
+      49
+     ],
+     "expected": false
+    },
+    {
+     "fn": "refill",
+     "args": [
+      1,
+      4294967295
+     ],
+     "expected": true
+    },
+    {
+     "fn": "refill",
+     "args": [
+      0,
+      4294967295
+     ],
+     "expected": true
+    },
+    {
+     "fn": "refill",
+     "args": [
+      3,
+      31
+     ],
+     "expected": true
+    }
+   ],
+   "note": "le versus lt at exactly one tenth; adding 1 to the capacity wraps at the maximum."
+  },
+  {
+   "id": "q-ladder-sum",
+   "kind": "targeted-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "ladder",
+   "instruction": "The function should return k times (1 + 2 + 3 + 4): the step weights must run from 1 to 4, not from 0 to 3.",
+   "start": {
+    "functions": [
+     {
+      "name": "rung",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "j",
+        "op": "mov",
+        "args": [
+         "p1"
+        ]
+       },
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "j",
+         "p2"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "m"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "ladder",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "f",
+        "op": "fold",
+        "args": [
+         "rung",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "f"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "rung",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "j",
+        "op": "add",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "j",
+         "p2"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "m"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "ladder",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "f",
+        "op": "fold",
+        "args": [
+         "rung",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "f"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "rung",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "j",
+         "op": "add",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "m",
+         "op": "mul",
+         "args": [
+          "j",
+          "p2"
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "m"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "ladder",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "f",
+         "op": "fold",
+         "args": [
+          "rung",
+          5,
+          0,
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "f"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "ladder",
+     "args": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      1
+     ],
+     "expected": 10
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      2
+     ],
+     "expected": 20
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      7
+     ],
+     "expected": 70
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      100
+     ],
+     "expected": 1000
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      429496729
+     ],
+     "expected": 4294967290
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      429496730
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "ladder",
+     "args": [
+      4294967295
+     ],
+     "expected": 4294967286
+    }
+   ],
+   "note": "weights 1..4; the wrong edit runs 5 steps."
+  },
+  {
+   "id": "q-hue-field",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "hue",
+   "instruction": "Return the 4-bit field held in bits 4 through 7 of the input (bit 0 is the lowest).",
+   "start": {
+    "functions": [
+     {
+      "name": "hue",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         4
+        ]
+       },
+       {
+        "id": "m",
+        "op": "and",
+        "args": [
+         "s",
+         7
+        ]
+       }
+      ],
+      "ret": "m"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "hue",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         4
+        ]
+       },
+       {
+        "id": "m",
+        "op": "and",
+        "args": [
+         "s",
+         15
+        ]
+       }
+      ],
+      "ret": "m"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "hue",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "shr",
+         "args": [
+          "p0",
+          3
+         ]
+        },
+        {
+         "id": "m",
+         "op": "and",
+         "args": [
+          "s",
+          15
+         ]
+        }
+       ],
+       "ret": "m"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "hue",
+     "args": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "hue",
+     "args": [
+      240
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "hue",
+     "args": [
+      128
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "hue",
+     "args": [
+      255
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "hue",
+     "args": [
+      16
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "hue",
+     "args": [
+      4294967295
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "hue",
+     "args": [
+      143
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "hue",
+     "args": [
+      4660
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "hue",
+     "args": [
+      8
+     ],
+     "expected": 0
+    }
+   ],
+   "note": "mask should be 15, not 7."
+  },
+  {
+   "id": "q-seal-last",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "seal",
+   "instruction": "Return the array with its last slot overwritten by the value from its first slot.",
+   "start": {
+    "functions": [
+     {
+      "name": "seal",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "v",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "r",
+        "op": "set",
+        "args": [
+         "p0",
+         3,
+         "v"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "seal",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "v",
+        "op": "get",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "r",
+        "op": "set",
+        "args": [
+         "p0",
+         3,
+         "v"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "seal",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32x4",
+       "body": [
+        {
+         "id": "v",
+         "op": "get",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "r",
+         "op": "set",
+         "args": [
+          "p0",
+          4,
+          "v"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "seal",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      1
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       9,
+       8,
+       7,
+       6
+      ]
+     ],
+     "expected": [
+      9,
+      8,
+      7,
+      9
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       5,
+       5,
+       5,
+       1
+      ]
+     ],
+     "expected": [
+      5,
+      5,
+      5,
+      5
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       4294967295,
+       0,
+       1,
+       2
+      ]
+     ],
+     "expected": [
+      4294967295,
+      0,
+      1,
+      4294967295
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       7,
+       7,
+       7,
+       7
+      ]
+     ],
+     "expected": [
+      7,
+      7,
+      7,
+      7
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       1,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": [
+      1,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "fn": "seal",
+     "args": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      0,
+      1,
+      2,
+      0
+     ]
+    }
+   ],
+   "note": "source index 0, destination 3; index 4 wraps to 0."
+  },
+  {
+   "id": "q-vote-pass",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "passes",
+   "instruction": "A motion passes when at least three of the four votes are nonzero.",
+   "start": {
+    "functions": [
+     {
+      "name": "tally",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "ne",
+        "args": [
+         "x",
+         0
+        ]
+       },
+       {
+        "id": "d",
+        "op": "select",
+        "args": [
+         "y",
+         1,
+         0
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "d"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "passes",
+      "params": [
+       "u32x4"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "tally",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "gt",
+        "args": [
+         "c",
+         3
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "tally",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "ne",
+        "args": [
+         "x",
+         0
+        ]
+       },
+       {
+        "id": "d",
+        "op": "select",
+        "args": [
+         "y",
+         1,
+         0
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "d"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "passes",
+      "params": [
+       "u32x4"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "tally",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "ge",
+        "args": [
+         "c",
+         3
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "tally",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "x",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "y",
+         "op": "ne",
+         "args": [
+          "x",
+          0
+         ]
+        },
+        {
+         "id": "d",
+         "op": "select",
+         "args": [
+          "y",
+          1,
+          0
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "d"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "passes",
+       "params": [
+        "u32x4"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "c",
+         "op": "fold",
+         "args": [
+          "tally",
+          4,
+          0,
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "ge",
+         "args": [
+          "c",
+          2
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "passes",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       0
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       0,
+       1,
+       1,
+       0
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       5,
+       0,
+       9,
+       4294967295
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       0,
+       0,
+       1,
+       1
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       1,
+       0,
+       1,
+       1
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "fn": "passes",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       7
+      ]
+     ],
+     "expected": false
+    }
+   ],
+   "note": "three yes votes are enough."
+  },
+  {
+   "id": "q-heater-on",
+   "kind": "targeted-edit",
+   "wrongEditKind": "logic",
+   "target": "heater",
+   "instruction": "The heater should run only when it is cold and it is not night.",
+   "start": {
+    "functions": [
+     {
+      "name": "cold",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "c"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "night",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "n",
+        "op": "ge",
+        "args": [
+         "p0",
+         22
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "n"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "heater",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "call",
+        "args": [
+         "cold",
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "call",
+        "args": [
+         "night",
+         "p2"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "cold",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "c"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "night",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "n",
+        "op": "ge",
+        "args": [
+         "p0",
+         22
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "n"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "heater",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "call",
+        "args": [
+         "cold",
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "call",
+        "args": [
+         "night",
+         "p2"
+        ]
+       },
+       {
+        "id": "nb",
+        "op": "xor",
+        "args": [
+         "b",
+         true
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "a",
+         "nb"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "cold",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "c",
+         "op": "lt",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "c"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "night",
+       "params": [
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "n",
+         "op": "ge",
+         "args": [
+          "p0",
+          22
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "n"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "heater",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "call",
+         "args": [
+          "cold",
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "call",
+         "args": [
+          "night",
+          "p2"
+         ]
+        },
+        {
+         "id": "nb",
+         "op": "xor",
+         "args": [
+          "b",
+          true
+         ]
+        },
+        {
+         "id": "r",
+         "op": "or",
+         "args": [
+          "a",
+          "nb"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "heater",
+     "args": [
+      10,
+      18,
+      12
+     ],
+     "expected": true
+    },
+    {
+     "fn": "heater",
+     "args": [
+      10,
+      18,
+      23
+     ],
+     "expected": false
+    },
+    {
+     "fn": "heater",
+     "args": [
+      20,
+      18,
+      12
+     ],
+     "expected": false
+    },
+    {
+     "fn": "heater",
+     "args": [
+      18,
+      18,
+      21
+     ],
+     "expected": false
+    },
+    {
+     "fn": "heater",
+     "args": [
+      17,
+      18,
+      22
+     ],
+     "expected": false
+    },
+    {
+     "fn": "heater",
+     "args": [
+      17,
+      18,
+      21
+     ],
+     "expected": true
+    },
+    {
+     "fn": "heater",
+     "args": [
+      25,
+      18,
+      23
+     ],
+     "expected": false
+    },
+    {
+     "fn": "heater",
+     "args": [
+      0,
+      1,
+      0
+     ],
+     "expected": true
+    }
+   ],
+   "note": "needs the negated night flag."
+  },
+  {
+   "id": "q-odometer",
+   "kind": "targeted-edit",
+   "wrongEditKind": "wrapping",
+   "target": "odo",
+   "instruction": "The odometer shows five digits, so the new reading must roll over to 0 when it reaches 100000.",
+   "start": {
+    "functions": [
+     {
+      "name": "odo",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "s"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "odo",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "s",
+         100000
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "odo",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rem",
+         "args": [
+          "s",
+          99999
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "odo",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "odo",
+     "args": [
+      99999,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "odo",
+     "args": [
+      99998,
+      1
+     ],
+     "expected": 99999
+    },
+    {
+     "fn": "odo",
+     "args": [
+      50000,
+      50000
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "odo",
+     "args": [
+      12345,
+      10
+     ],
+     "expected": 12355
+    },
+    {
+     "fn": "odo",
+     "args": [
+      99999,
+      99999
+     ],
+     "expected": 99998
+    },
+    {
+     "fn": "odo",
+     "args": [
+      1,
+      2
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "odo",
+     "args": [
+      0,
+      99999
+     ],
+     "expected": 99999
+    }
+   ],
+   "note": "reading modulo 100000."
+  },
+  {
+   "id": "q-level-up",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "gain",
+   "instruction": "Experience levels up when the total reaches 100: return the total minus 100 and true, otherwise the total and false.",
+   "start": {
+    "functions": [
+     {
+      "name": "gain",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "t",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "u",
+        "op": "gt",
+        "args": [
+         "t",
+         100
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "t",
+         100
+        ]
+       },
+       {
+        "id": "x",
+        "op": "select",
+        "args": [
+         "u",
+         "d",
+         "t"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rec",
+        "args": [
+         "x",
+         "u"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "gain",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "t",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "u",
+        "op": "ge",
+        "args": [
+         "t",
+         100
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "t",
+         100
+        ]
+       },
+       {
+        "id": "x",
+        "op": "select",
+        "args": [
+         "u",
+         "d",
+         "t"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rec",
+        "args": [
+         "x",
+         "u"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "gain",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "(u32,bool)",
+       "body": [
+        {
+         "id": "t",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "u",
+         "op": "ge",
+         "args": [
+          "t",
+          100
+         ]
+        },
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "t",
+          99
+         ]
+        },
+        {
+         "id": "x",
+         "op": "select",
+         "args": [
+          "u",
+          "d",
+          "t"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rec",
+         "args": [
+          "x",
+          "u"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "gain",
+     "args": [
+      0,
+      0
+     ],
+     "expected": [
+      0,
+      false
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      50,
+      50
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      99,
+      1
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      99,
+      2
+     ],
+     "expected": [
+      1,
+      true
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      0,
+      99
+     ],
+     "expected": [
+      99,
+      false
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      150,
+      30
+     ],
+     "expected": [
+      80,
+      true
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      10,
+      20
+     ],
+     "expected": [
+      30,
+      false
+     ]
+    },
+    {
+     "fn": "gain",
+     "args": [
+      100,
+      0
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    }
+   ],
+   "note": "reaching means at least 100."
+  },
+  {
+   "id": "q-off-day",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "comparison",
+   "target": "offday",
+   "instruction": "Days are now numbered with 0 as Sunday and 6 as Saturday; the result should be true only for those two days.",
+   "start": {
+    "functions": [
+     {
+      "name": "wrap7",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "p0",
+         7
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "r"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "weekend",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "t",
+        "op": "mov",
+        "args": [
+         "p0"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "ge",
+        "args": [
+         "t",
+         5
+        ]
+       }
+      ],
+      "ret": "w"
+     },
+     {
+      "name": "offday",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "call",
+        "args": [
+         "wrap7",
+         "s"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "call",
+        "args": [
+         "weekend",
+         "d"
+        ]
+       }
+      ],
+      "ret": "w"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "wrap7",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "p0",
+         7
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "r"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "weekend",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "eq",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "b",
+        "op": "eq",
+        "args": [
+         "p0",
+         6
+        ]
+       },
+       {
+        "id": "w",
+        "op": "or",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "w"
+     },
+     {
+      "name": "offday",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "call",
+        "args": [
+         "wrap7",
+         "s"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "call",
+        "args": [
+         "weekend",
+         "d"
+        ]
+       }
+      ],
+      "ret": "w"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "wrap7",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "r",
+         "op": "rem",
+         "args": [
+          "p0",
+          7
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "r"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "weekend",
+       "params": [
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "eq",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "b",
+         "op": "eq",
+         "args": [
+          "p0",
+          5
+         ]
+        },
+        {
+         "id": "w",
+         "op": "or",
+         "args": [
+          "a",
+          "b"
+         ]
+        }
+       ],
+       "ret": "w"
+      },
+      {
+       "name": "offday",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "call",
+         "args": [
+          "wrap7",
+          "s"
+         ]
+        },
+        {
+         "id": "w",
+         "op": "call",
+         "args": [
+          "weekend",
+          "d"
+         ]
+        }
+       ],
+       "ret": "w"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "offday",
+     "args": [
+      0,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "offday",
+     "args": [
+      0,
+      5
+     ],
+     "expected": false
+    },
+    {
+     "fn": "offday",
+     "args": [
+      0,
+      6
+     ],
+     "expected": true
+    },
+    {
+     "fn": "offday",
+     "args": [
+      3,
+      4
+     ],
+     "expected": true
+    },
+    {
+     "fn": "offday",
+     "args": [
+      1,
+      3
+     ],
+     "expected": false
+    },
+    {
+     "fn": "offday",
+     "args": [
+      2,
+      2
+     ],
+     "expected": false
+    },
+    {
+     "fn": "offday",
+     "args": [
+      6,
+      7
+     ],
+     "expected": true
+    },
+    {
+     "fn": "offday",
+     "args": [
+      100,
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "offday",
+     "args": [
+      4,
+      1
+     ],
+     "expected": false
+    }
+   ],
+   "note": "the weekend helper is rewritten."
+  },
+  {
+   "id": "q-shift-in",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "push",
+   "instruction": "Drop the oldest (first) sample, move the others one place toward the front, and put the new value in the last slot.",
+   "start": {
+    "functions": [
+     {
+      "name": "push",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "c",
+        "op": "get",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "r",
+        "op": "arr",
+        "args": [
+         "a",
+         "b",
+         "c",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "push",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "c",
+        "op": "get",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "r",
+        "op": "arr",
+        "args": [
+         "a",
+         "b",
+         "c",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "push",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "u32x4",
+       "body": [
+        {
+         "id": "a",
+         "op": "get",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "b",
+         "op": "get",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "c",
+         "op": "get",
+         "args": [
+          "p0",
+          2
+         ]
+        },
+        {
+         "id": "r",
+         "op": "arr",
+         "args": [
+          "p1",
+          "a",
+          "b",
+          "c"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "push",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      5
+     ],
+     "expected": [
+      2,
+      3,
+      4,
+      5
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       9,
+       8,
+       7,
+       6
+      ],
+      1
+     ],
+     "expected": [
+      8,
+      7,
+      6,
+      1
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      1
+     ],
+     "expected": [
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       7
+      ],
+      3
+     ],
+     "expected": [
+      0,
+      0,
+      7,
+      3
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       4,
+       3,
+       2,
+       1
+      ],
+      0
+     ],
+     "expected": [
+      3,
+      2,
+      1,
+      0
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       5,
+       6,
+       7,
+       8
+      ],
+      9
+     ],
+     "expected": [
+      6,
+      7,
+      8,
+      9
+     ]
+    },
+    {
+     "fn": "push",
+     "args": [
+      [
+       1,
+       0,
+       0,
+       0
+      ],
+      2
+     ],
+     "expected": [
+      0,
+      0,
+      0,
+      2
+     ]
+    }
+   ],
+   "note": "three indices each shift by one."
+  },
+  {
+   "id": "q-ledger-overdraw",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "overdrawn",
+   "instruction": "Entries at odd positions are withdrawals and entries at even positions are deposits, and the account opens with the second argument as its balance; return whether it ever went below zero.",
+   "start": {
+    "functions": [
+     {
+      "name": "post",
+      "params": [
+       "(u32,bool)",
+       "u32",
+       "u32x4"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "b",
+        "op": "at",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "o",
+        "op": "at",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "and",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "w",
+        "op": "eq",
+        "args": [
+         "q",
+         0
+        ]
+       },
+       {
+        "id": "u",
+        "op": "lt",
+        "args": [
+         "b",
+         "x"
+        ]
+       },
+       {
+        "id": "dn",
+        "op": "sub",
+        "args": [
+         "b",
+         "x"
+        ]
+       },
+       {
+        "id": "up",
+        "op": "add",
+        "args": [
+         "b",
+         "x"
+        ]
+       },
+       {
+        "id": "nb",
+        "op": "select",
+        "args": [
+         "w",
+         "dn",
+         "up"
+        ]
+       },
+       {
+        "id": "ov",
+        "op": "and",
+        "args": [
+         "w",
+         "u"
+        ]
+       },
+       {
+        "id": "no",
+        "op": "or",
+        "args": [
+         "o",
+         "ov"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rec",
+        "args": [
+         "nb",
+         "no"
+        ]
+       }
+      ],
+      "ret": "r"
+     },
+     {
+      "name": "overdrawn",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "z",
+        "op": "rec",
+        "args": [
+         0,
+         false
+        ]
+       },
+       {
+        "id": "f",
+        "op": "fold",
+        "args": [
+         "post",
+         4,
+         "z",
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "at",
+        "args": [
+         "f",
+         1
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "post",
+      "params": [
+       "(u32,bool)",
+       "u32",
+       "u32x4"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "b",
+        "op": "at",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "o",
+        "op": "at",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "and",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "w",
+        "op": "eq",
+        "args": [
+         "q",
+         1
+        ]
+       },
+       {
+        "id": "u",
+        "op": "lt",
+        "args": [
+         "b",
+         "x"
+        ]
+       },
+       {
+        "id": "dn",
+        "op": "sub",
+        "args": [
+         "b",
+         "x"
+        ]
+       },
+       {
+        "id": "up",
+        "op": "add",
+        "args": [
+         "b",
+         "x"
+        ]
+       },
+       {
+        "id": "nb",
+        "op": "select",
+        "args": [
+         "w",
+         "dn",
+         "up"
+        ]
+       },
+       {
+        "id": "ov",
+        "op": "and",
+        "args": [
+         "w",
+         "u"
+        ]
+       },
+       {
+        "id": "no",
+        "op": "or",
+        "args": [
+         "o",
+         "ov"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rec",
+        "args": [
+         "nb",
+         "no"
+        ]
+       }
+      ],
+      "ret": "r"
+     },
+     {
+      "name": "overdrawn",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "z",
+        "op": "rec",
+        "args": [
+         "p1",
+         false
+        ]
+       },
+       {
+        "id": "f",
+        "op": "fold",
+        "args": [
+         "post",
+         4,
+         "z",
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "at",
+        "args": [
+         "f",
+         1
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "post",
+       "params": [
+        "(u32,bool)",
+        "u32",
+        "u32x4"
+       ],
+       "result": "(u32,bool)",
+       "body": [
+        {
+         "id": "b",
+         "op": "at",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "o",
+         "op": "at",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "x",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "q",
+         "op": "and",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "w",
+         "op": "eq",
+         "args": [
+          "q",
+          1
+         ]
+        },
+        {
+         "id": "u",
+         "op": "lt",
+         "args": [
+          "b",
+          "x"
+         ]
+        },
+        {
+         "id": "dn",
+         "op": "sub",
+         "args": [
+          "b",
+          "x"
+         ]
+        },
+        {
+         "id": "up",
+         "op": "add",
+         "args": [
+          "b",
+          "x"
+         ]
+        },
+        {
+         "id": "nb",
+         "op": "select",
+         "args": [
+          "w",
+          "dn",
+          "up"
+         ]
+        },
+        {
+         "id": "ov",
+         "op": "and",
+         "args": [
+          "w",
+          "u"
+         ]
+        },
+        {
+         "id": "no",
+         "op": "or",
+         "args": [
+          "o",
+          "ov"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rec",
+         "args": [
+          "nb",
+          "no"
+         ]
+        }
+       ],
+       "ret": "r"
+      },
+      {
+       "name": "overdrawn",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "z",
+         "op": "rec",
+         "args": [
+          0,
+          false
+         ]
+        },
+        {
+         "id": "f",
+         "op": "fold",
+         "args": [
+          "post",
+          4,
+          "z",
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "at",
+         "args": [
+          "f",
+          1
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "post",
+       "params": [
+        "(u32,bool)",
+        "u32",
+        "u32x4"
+       ],
+       "result": "(u32,bool)",
+       "body": [
+        {
+         "id": "b",
+         "op": "at",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "o",
+         "op": "at",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "x",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "q",
+         "op": "and",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "w",
+         "op": "eq",
+         "args": [
+          "q",
+          0
+         ]
+        },
+        {
+         "id": "u",
+         "op": "lt",
+         "args": [
+          "b",
+          "x"
+         ]
+        },
+        {
+         "id": "dn",
+         "op": "sub",
+         "args": [
+          "b",
+          "x"
+         ]
+        },
+        {
+         "id": "up",
+         "op": "add",
+         "args": [
+          "b",
+          "x"
+         ]
+        },
+        {
+         "id": "nb",
+         "op": "select",
+         "args": [
+          "w",
+          "dn",
+          "up"
+         ]
+        },
+        {
+         "id": "ov",
+         "op": "and",
+         "args": [
+          "w",
+          "u"
+         ]
+        },
+        {
+         "id": "no",
+         "op": "or",
+         "args": [
+          "o",
+          "ov"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rec",
+         "args": [
+          "nb",
+          "no"
+         ]
+        }
+       ],
+       "ret": "r"
+      },
+      {
+       "name": "overdrawn",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "z",
+         "op": "rec",
+         "args": [
+          "p1",
+          false
+         ]
+        },
+        {
+         "id": "f",
+         "op": "fold",
+         "args": [
+          "post",
+          4,
+          "z",
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "at",
+         "args": [
+          "f",
+          1
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       5,
+       3,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       0,
+       1,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       0,
+       1,
+       0,
+       0
+      ],
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       10,
+       10,
+       0,
+       1
+      ],
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       3,
+       4,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       0,
+       5,
+       0,
+       0
+      ],
+      5
+     ],
+     "expected": false
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       0,
+       5,
+       0,
+       0
+      ],
+      4
+     ],
+     "expected": true
+    },
+    {
+     "fn": "overdrawn",
+     "args": [
+      [
+       2,
+       1,
+       1,
+       3
+      ],
+      0
+     ],
+     "expected": true
+    }
+   ],
+   "note": "parity and initial balance both change."
+  },
+  {
+   "id": "q-pack565",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "bit-overlap",
+   "target": "pack",
+   "instruction": "Pack the colour as 5-6-5: red in bits 11-15, a 6-bit green in bits 5-10, blue in bits 0-4.",
+   "start": {
+    "functions": [
+     {
+      "name": "pack",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "p0",
+         31
+        ]
+       },
+       {
+        "id": "rs",
+        "op": "shl",
+        "args": [
+         "r",
+         10
+        ]
+       },
+       {
+        "id": "g",
+        "op": "and",
+        "args": [
+         "p1",
+         31
+        ]
+       },
+       {
+        "id": "gs",
+        "op": "shl",
+        "args": [
+         "g",
+         5
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "p2",
+         31
+        ]
+       },
+       {
+        "id": "o",
+        "op": "or",
+        "args": [
+         "rs",
+         "gs"
+        ]
+       },
+       {
+        "id": "x",
+        "op": "or",
+        "args": [
+         "o",
+         "b"
+        ]
+       }
+      ],
+      "ret": "x"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "pack",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "p0",
+         31
+        ]
+       },
+       {
+        "id": "rs",
+        "op": "shl",
+        "args": [
+         "r",
+         11
+        ]
+       },
+       {
+        "id": "g",
+        "op": "and",
+        "args": [
+         "p1",
+         63
+        ]
+       },
+       {
+        "id": "gs",
+        "op": "shl",
+        "args": [
+         "g",
+         5
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "p2",
+         31
+        ]
+       },
+       {
+        "id": "o",
+        "op": "or",
+        "args": [
+         "rs",
+         "gs"
+        ]
+       },
+       {
+        "id": "x",
+        "op": "or",
+        "args": [
+         "o",
+         "b"
+        ]
+       }
+      ],
+      "ret": "x"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "pack",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "r",
+         "op": "and",
+         "args": [
+          "p0",
+          31
+         ]
+        },
+        {
+         "id": "rs",
+         "op": "shl",
+         "args": [
+          "r",
+          10
+         ]
+        },
+        {
+         "id": "g",
+         "op": "and",
+         "args": [
+          "p1",
+          63
+         ]
+        },
+        {
+         "id": "gs",
+         "op": "shl",
+         "args": [
+          "g",
+          5
+         ]
+        },
+        {
+         "id": "b",
+         "op": "and",
+         "args": [
+          "p2",
+          31
+         ]
+        },
+        {
+         "id": "o",
+         "op": "or",
+         "args": [
+          "rs",
+          "gs"
+         ]
+        },
+        {
+         "id": "x",
+         "op": "or",
+         "args": [
+          "o",
+          "b"
+         ]
+        }
+       ],
+       "ret": "x"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "pack",
+     "args": [
+      0,
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "pack",
+     "args": [
+      31,
+      0,
+      0
+     ],
+     "expected": 63488
+    },
+    {
+     "fn": "pack",
+     "args": [
+      0,
+      63,
+      0
+     ],
+     "expected": 2016
+    },
+    {
+     "fn": "pack",
+     "args": [
+      0,
+      0,
+      31
+     ],
+     "expected": 31
+    },
+    {
+     "fn": "pack",
+     "args": [
+      31,
+      63,
+      31
+     ],
+     "expected": 65535
+    },
+    {
+     "fn": "pack",
+     "args": [
+      1,
+      1,
+      1
+     ],
+     "expected": 2081
+    },
+    {
+     "fn": "pack",
+     "args": [
+      255,
+      255,
+      255
+     ],
+     "expected": 65535
+    },
+    {
+     "fn": "pack",
+     "args": [
+      16,
+      32,
+      16
+     ],
+     "expected": 33808
+    },
+    {
+     "fn": "pack",
+     "args": [
+      0,
+      32,
+      0
+     ],
+     "expected": 1024
+    }
+   ],
+   "note": "red shift and green width both change."
+  },
+  {
+   "id": "q-grow-tenths",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "changed-constant",
+   "target": "grow",
+   "instruction": "The rate argument is now given in tenths of a percent (so 25 means 2.5 per cent per period); keep the three periods and the rounding down.",
+   "start": {
+    "functions": [
+     {
+      "name": "credit",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "m",
+         100
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "q"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "grow",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "f",
+        "op": "fold",
+        "args": [
+         "credit",
+         3,
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "f"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "credit",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "m",
+         1000
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "q"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "grow",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "f",
+        "op": "fold",
+        "args": [
+         "credit",
+         3,
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "f"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "credit",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "m",
+         "op": "mul",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "q",
+         "op": "div",
+         "args": [
+          "m",
+          10
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "q"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "grow",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "f",
+         "op": "fold",
+         "args": [
+          "credit",
+          3,
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "f"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "grow",
+     "args": [
+      1000,
+      0
+     ],
+     "expected": 1000
+    },
+    {
+     "fn": "grow",
+     "args": [
+      1000,
+      10
+     ],
+     "expected": 1030
+    },
+    {
+     "fn": "grow",
+     "args": [
+      1000,
+      25
+     ],
+     "expected": 1076
+    },
+    {
+     "fn": "grow",
+     "args": [
+      0,
+      50
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "grow",
+     "args": [
+      100000,
+      5
+     ],
+     "expected": 101507
+    },
+    {
+     "fn": "grow",
+     "args": [
+      999,
+      1000
+     ],
+     "expected": 7992
+    },
+    {
+     "fn": "grow",
+     "args": [
+      12345,
+      7
+     ],
+     "expected": 12605
+    },
+    {
+     "fn": "grow",
+     "args": [
+      1,
+      1000
+     ],
+     "expected": 8
+    }
+   ],
+   "note": "divisor 1000."
+  },
+  {
+   "id": "q-calibrate",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "calib",
+   "instruction": "The calibrated reading should be four times the raw reading plus three.",
+   "start": {
+    "functions": [
+     {
+      "name": "bias",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "add",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "r"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "scale",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "mul",
+        "args": [
+         "p0",
+         4
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "r"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "calib",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "x",
+        "op": "call",
+        "args": [
+         "bias",
+         "p0"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "call",
+        "args": [
+         "scale",
+         "x"
+        ]
+       }
+      ],
+      "ret": "y"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "bias",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "add",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "r"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "scale",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "r",
+        "op": "mul",
+        "args": [
+         "p0",
+         4
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "r"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "calib",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "x",
+        "op": "call",
+        "args": [
+         "scale",
+         "p0"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "call",
+        "args": [
+         "bias",
+         "x"
+        ]
+       }
+      ],
+      "ret": "y"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "bias",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "r",
+         "op": "add",
+         "args": [
+          "p0",
+          3
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "r"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "scale",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "r",
+         "op": "mul",
+         "args": [
+          "p0",
+          4
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "r"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "calib",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "x",
+         "op": "call",
+         "args": [
+          "scale",
+          "p0"
+         ]
+        },
+        {
+         "id": "y",
+         "op": "call",
+         "args": [
+          "bias",
+          "x"
+         ]
+        },
+        {
+         "id": "z",
+         "op": "call",
+         "args": [
+          "bias",
+          "y"
+         ]
+        }
+       ],
+       "ret": "z"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "calib",
+     "args": [
+      0
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "calib",
+     "args": [
+      1
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "calib",
+     "args": [
+      2
+     ],
+     "expected": 11
+    },
+    {
+     "fn": "calib",
+     "args": [
+      10
+     ],
+     "expected": 43
+    },
+    {
+     "fn": "calib",
+     "args": [
+      1073741823
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "calib",
+     "args": [
+      1073741824
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "calib",
+     "args": [
+      4294967295
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "calib",
+     "args": [
+      100
+     ],
+     "expected": 403
+    }
+   ],
+   "note": "apply scale before bias."
+  },
+  {
+   "id": "q-door-lockout",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "comparison",
+   "target": "unlock",
+   "instruction": "The door must stay shut once three or more failed attempts have been recorded, even with the right code.",
+   "start": {
+    "functions": [
+     {
+      "name": "codeok",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "c",
+        "op": "eq",
+        "args": [
+         "p0",
+         4321
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "c"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "fresh",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "f",
+        "op": "le",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "f"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "unlock",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "call",
+        "args": [
+         "codeok",
+         "p0"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "call",
+        "args": [
+         "fresh",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "codeok",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "c",
+        "op": "eq",
+        "args": [
+         "p0",
+         4321
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "c"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "fresh",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "f",
+        "op": "lt",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "k",
+        "op": "mov",
+        "args": [
+         "f"
+        ]
+       }
+      ],
+      "ret": "k"
+     },
+     {
+      "name": "unlock",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "call",
+        "args": [
+         "codeok",
+         "p0"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "call",
+        "args": [
+         "fresh",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "codeok",
+       "params": [
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "c",
+         "op": "eq",
+         "args": [
+          "p0",
+          4321
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "c"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "fresh",
+       "params": [
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "f",
+         "op": "lt",
+         "args": [
+          "p0",
+          4
+         ]
+        },
+        {
+         "id": "k",
+         "op": "mov",
+         "args": [
+          "f"
+         ]
+        }
+       ],
+       "ret": "k"
+      },
+      {
+       "name": "unlock",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "call",
+         "args": [
+          "codeok",
+          "p0"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "call",
+         "args": [
+          "fresh",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "and",
+         "args": [
+          "a",
+          "b"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "unlock",
+     "args": [
+      4321,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      4321,
+      2
+     ],
+     "expected": true
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      4321,
+      3
+     ],
+     "expected": false
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      4321,
+      4
+     ],
+     "expected": false
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      1234,
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      4320,
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      4321,
+      4294967295
+     ],
+     "expected": false
+    },
+    {
+     "fn": "unlock",
+     "args": [
+      4322,
+      2
+     ],
+     "expected": false
+    }
+   ],
+   "note": "lockout at 3 attempts."
+  },
+  {
+   "id": "q-echo-count",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "echoes",
+   "instruction": "Count how many of the elements after the first are equal to the first element; the first element itself must not be counted.",
+   "start": {
+    "functions": [
+     {
+      "name": "same",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "j",
+        "op": "mov",
+        "args": [
+         "p1"
+        ]
+       },
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p2",
+         "j"
+        ]
+       },
+       {
+        "id": "h",
+        "op": "get",
+        "args": [
+         "p2",
+         0
+        ]
+       },
+       {
+        "id": "e",
+        "op": "eq",
+        "args": [
+         "x",
+         "h"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "select",
+        "args": [
+         "e",
+         1,
+         0
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "d"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "echoes",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "same",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "c"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "same",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "j",
+        "op": "add",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p2",
+         "j"
+        ]
+       },
+       {
+        "id": "h",
+        "op": "get",
+        "args": [
+         "p2",
+         0
+        ]
+       },
+       {
+        "id": "e",
+        "op": "eq",
+        "args": [
+         "x",
+         "h"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "select",
+        "args": [
+         "e",
+         1,
+         0
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "d"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "echoes",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "c",
+        "op": "fold",
+        "args": [
+         "same",
+         3,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "c"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "same",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "j",
+         "op": "add",
+         "args": [
+          "p1",
+          1
+         ]
+        },
+        {
+         "id": "x",
+         "op": "get",
+         "args": [
+          "p2",
+          "j"
+         ]
+        },
+        {
+         "id": "h",
+         "op": "get",
+         "args": [
+          "p2",
+          0
+         ]
+        },
+        {
+         "id": "e",
+         "op": "eq",
+         "args": [
+          "x",
+          "h"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "select",
+         "args": [
+          "e",
+          1,
+          0
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "d"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "echoes",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "c",
+         "op": "fold",
+         "args": [
+          "same",
+          4,
+          0,
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "c"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       5,
+       5,
+       6,
+       5
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       7,
+       1,
+       7,
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       2,
+       3,
+       3,
+       3
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       9,
+       9,
+       0,
+       0
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "echoes",
+     "args": [
+      [
+       4294967295,
+       0,
+       4294967295,
+       0
+      ]
+     ],
+     "expected": 1
+    }
+   ],
+   "note": "skip index 0, three steps."
+  }
+ ]
+}
