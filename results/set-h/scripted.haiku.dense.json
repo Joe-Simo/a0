@@ -1,0 +1,54 @@
+{
+ "h-at-most-100/a0/structured": [
+  "fn f -> bool le A 100"
+ ],
+ "h-low-byte/a0/structured": [
+  "fn f\nm and A 255\nr mov m"
+ ],
+ "h-last-elem/a0/structured": [
+  "fn f u32x4 -> u32\ne get A 3\nr mov e"
+ ],
+ "h-saturating-add/a0/structured": [
+  "fn f\ns add A B\no lt s A\nr select o 4294967295 s"
+ ],
+ "h-set-second/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\nn set A 1 B\nr mov n"
+ ],
+ "h-is-even/a0/structured": [
+  "fn f -> bool\nlo and A 1\nr eq lo 0"
+ ],
+ "h-abs-diff/a0/structured": [
+  "fn f\na lt A B\nr select a (sub B A) (sub A B)"
+ ],
+ "h-times-eight/a0/structured": [
+  "fn f\ns << A 3\nr mov s"
+ ],
+ "h-sum-squares/a0/structured": [
+  "fn f u32x4 -> u32\nt fold step 4 0 A\nr mov t\n# step u32 u32 u32x4 -> u32\nfn step\nel get C i\nsq mul el el\nr add A sq",
+  "fn f u32x4 -> u32\nt fold step 4 0 A\nr mov t\n# step u32 u32 u32x4 -> u32\nfn step\nel get C B\nsq mul el el\nr add A sq"
+ ],
+ "h-in-range/a0/structured": [
+  "fn f -> bool\nlo ge A B\nhi le A C\nr and lo hi"
+ ],
+ "h-second-byte/a0/structured": [
+  "fn f\nsh >> A 8\nm and sh 15\nr mov m",
+  "fn f\nsh >> A 8\nm and sh 255\nr mov m"
+ ],
+ "h-swap-ends/a0/structured": [
+  "fn f u32x4 -> u32x4\nx get A 0\ny get A 3\nu set A 0 y\nv set u 3 x\nr mov v"
+ ],
+ "h-count-above/a0/structured": [
+  "fn f u32x4 u32 -> u32\nn fold cnt 4 0 A B\nr mov n\n# cnt u32 u32 u32x4 u32 -> u32\nfn cnt\nel get C i\ng gt el D\nr select g (add A 1) A",
+  "fn f u32x4 u32 -> u32\nn fold cnt 4 0 A B\nr mov n\n# cnt u32 u32 u32x4 u32 -> u32\nfn cnt\nel get C B\ng gt el D\nr select g (add A 1) A"
+ ],
+ "h-array-min/a0/structured": [
+  "fn f u32x4 -> u32\nm fold mn 4 4294967295 A\nr mov m\n# mn u32 u32 u32x4 -> u32\nfn mn\nel get B i\nr select (lt el A) el A",
+  "fn f u32x4 -> u32\nm fold mn 4 4294967295 A\nr mov m\n# mn u32 u32 u32x4 -> u32\nfn mn\nel get C B\nr select (lt el A) el A"
+ ],
+ "h-one-low-bit/a0/structured": [
+  "fn f -> bool\nb0 and A 1\nb1 and (>> A 1) 1\nr ne b0 b1"
+ ],
+ "h-clamp-range/a0/structured": [
+  "fn f\nl lt A 10\nu gt A B\nm select l 10 A\nr select u B m"
+ ]
+}

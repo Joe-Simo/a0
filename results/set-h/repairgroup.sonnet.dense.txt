@@ -1,0 +1,56 @@
+SYSTEM TEXT:
+A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.
+
+=====
+
+### CONVERSATION 7
+[user]
+Return the absolute difference between the two arguments.
+
+e0
+fn f
+a lt A B
+b d B A
+r select a d A B b
+# d u32 u32 -> u32
+g0
+# d u32 u32 -> u32
+# f u32 u32 -> u32
+
+[assistant]
+fn f
+a lt A B
+d sub B A
+e sub A B
+select a d e
+
+[user]
+Rejected:
+parse: line 3: `d` needs 2 operands (d has 2 parameters) but the line ended after 1 fix: an operation takes its operands right after it, each a parameter, a number, a named value or another operation; write `d` followed by exactly 2
+
+Try again.
+
+### CONVERSATION 9
+[user]
+Return the sum of the squares of all four array elements (wrapping modulo 2^32).
+
+e0
+fn f u32x4 -> u32
+t fold step 3 0 A
+r mov t
+# step u32 u32 u32x4 -> u32
+g0
+# step u32 u32 u32x4 -> u32
+# f u32x4 -> u32
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+e get C B
+mul e e A
+fn f u32x4 -> u32 fold step 4 0 A
+
+[user]
+Rejected:
+parse: line 3: unexpected 'A' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above (`x op ...`), then use `x`
+
+Try again.

@@ -1,0 +1,75 @@
+### REPLY 1
+a le p0 100
+### REPLY 2
+m and p0 255
+### REPLY 3
+e get p0 3
+### REPLY 4
+r select o 4294967295 s
+### REPLY 5
+n set p0 1 p1
+### REPLY 6
+t eq lo 0
+### REPLY 7
+fn d u32 u32 -> u32
+r sub p0 p1
+ret r
+end
+fn f u32 u32 -> u32
+a lt p0 p1
+b call d p1 p0
+c call d p0 p1
+r select a b c
+ret r
+end
+### REPLY 8
+s shl p0 3
+### REPLY 9
+t fold step 4 0 p0
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+m mul e e
+r add p0 m
+ret r
+end
+### REPLY 10
+lo ge p0 p1
+hi le p0 p2
+### REPLY 11
+sh shr p0 8
+m and sh 255
+### REPLY 12
+y get p0 3
+v set u 3 x
+### REPLY 13
+n fold cnt 4 0 p0 p1
+fn cnt u32 u32 u32x4 u32 -> u32
+e get p2 p1
+g gt e p3
+c select g 1 0
+r add p0 c
+ret r
+end
+### REPLY 14
+m fold mn 4 4294967295 p0
+fn mn u32 u32 u32x4 -> u32
+e get p2 p1
+l lt e p0
+r select l e p0
+ret r
+end
+### REPLY 15
+d ne a c
+### REPLY 16
+fn cap u32 u32 -> u32
+l lt p0 p1
+r select l p0 p1
+ret r
+end
+fn f u32 u32 -> u32
+m lt p0 10
+a select m 10 p0
+k call cap a p1
+r mov k
+ret r
+end

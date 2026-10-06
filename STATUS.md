@@ -210,3 +210,8 @@ Dense as the default, from data already measured (`results/loss-blockers.json`, 
 in a 10-task session and unbounded on both models (Haiku 168.9 against 184.3, Sonnet 130 against 142.4 at 10 tasks) and loses the cold
 single-task cost on both (Haiku 339.7 against 298.1, Sonnet 293.4 against 256.2); acceptance is within noise. This supports making dense the
 recommended form for sessions of several edits (open decision 3 above) and does not close the single-call losses. No new run was made.
+
+Set H (2026-10-06, `results/set-h.json`, `docs/history/2026-10-06-dense-default-preregistration.md`): the pre-registered confirmation of dense against canonical on a new sealed set
+of 16 tasks, fresh Haiku and Sonnet subagents, did NOT hold. Dense one shot 12 and 14 of 16 against 13 and 16 for canonical, and a higher cost per accepted
+edit at the 10-task horizon on both models (Haiku 187.0 against 162.9, Sonnet 120.5 against 114.9). The e and f advantage above is therefore not a reason to make dense the
+default; the 325 dense-view token entries stay open. Dense failures were the known ambiguities (positional parameters in fold helpers, operand counts, repeated values).

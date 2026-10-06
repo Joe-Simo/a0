@@ -1,0 +1,117 @@
+### REPLY 1
+a le p0 100
+b mov a
+ret b
+
+### REPLY 2
+m and p0 255
+r mov m
+ret r
+
+### REPLY 3
+e get p0 3
+r mov e
+ret r
+
+### REPLY 4
+s add p0 p1
+o lt s p0
+r select o 4294967295 s
+ret r
+
+### REPLY 5
+n set p0 1 p1
+r mov n
+ret r
+
+### REPLY 6
+lo and p0 1
+t eq lo 0
+ret t
+
+### REPLY 7
+fn d u32 u32 -> u32
+r sub p0 p1
+ret r
+end
+a lt p0 p1
+b call d p1 p0
+c call d p0 p1
+r select a c b
+ret r
+
+### REPLY 8
+s shl p0 3
+r mov s
+ret r
+
+### REPLY 9
+fn step u32 u32 u32x4 -> u32
+el get p2 p1
+sq mul el el
+res add p0 sq
+ret res
+end
+t fold step 4 0 p0
+r mov t
+ret r
+
+### REPLY 10
+lo ge p0 p1
+hi le p0 p2
+both and lo hi
+ret both
+
+### REPLY 11
+sh shr p0 8
+m and sh 255
+ret m
+
+### REPLY 12
+x get p0 0
+y get p0 3
+u set p0 0 y
+v set u 3 x
+ret v
+
+### REPLY 13
+fn cnt u32 u32 u32x4 u32 -> u32
+el get p2 p1
+is_greater gt el p3
+inc select is_greater 1 0
+res add p0 inc
+ret res
+end
+n fold cnt 4 0 p0 p1
+r mov n
+ret r
+
+### REPLY 14
+fn mn u32 u32 u32x4 -> u32
+el get p2 p1
+is_smaller le el p0
+res select is_smaller el p0
+ret res
+end
+m fold mn 4 0 p0
+r mov m
+ret r
+
+### REPLY 15
+a and p0 1
+b shr p0 1
+c and b 1
+d xor a c
+ret d
+
+### REPLY 16
+fn cap u32 u32 -> u32
+too_small lt p0 10
+v0 select too_small 10 p0
+too_large lt p1 v0
+result select too_large p1 v0
+ret result
+end
+k call cap p0 p1
+r mov k
+ret r

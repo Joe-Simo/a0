@@ -1,0 +1,126 @@
+SYSTEM TEXT:
+A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.
+
+=====
+
+### CONVERSATION 9
+[user]
+Return the sum of the squares of all four array elements (wrapping modulo 2^32).
+
+e0
+fn f u32x4 -> u32
+t fold step 3 0 A
+r mov t
+# step u32 u32 u32x4 -> u32
+g0
+# step u32 u32 u32x4 -> u32
+# f u32x4 -> u32
+
+[assistant]
+fn f u32x4 -> u32
+t fold step 4 0 A
+r mov t
+# step u32 u32 u32x4 -> u32
+fn step
+el get C i
+sq mul el el
+r add A sq
+
+[user]
+Rejected:
+parse: line 2: 'i' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`i op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 11
+[user]
+Change the function to return bits 8 through 15 of the argument (its second-lowest byte) instead of bits 4 through 7.
+
+e0
+fn f
+sh >> A 4
+m and sh 15
+g0
+# f u32 -> u32
+
+[assistant]
+fn f
+sh >> A 8
+m and sh 15
+r mov m
+
+[user]
+Rejected:
+f(4096) = 0, expected 16
+f(4660) = 2, expected 18
+f(43981) = 11, expected 171
+f(65280) = 15, expected 255
+f(65535) = 15, expected 255
+f(4294967295) = 15, expected 255
+
+Current view:
+e0
+fn f
+sh >> A 8
+m and sh 15
+r mov m
+g0
+# f u32 -> u32
+Try again.
+
+### CONVERSATION 13
+[user]
+Return how many of the four array elements are strictly greater than the second argument.
+
+e0
+fn f u32x4 u32 -> u32
+n fold cnt 3 0 A B
+r mov n
+# cnt u32 u32 u32x4 u32 -> u32
+g0
+# cnt u32 u32 u32x4 u32 -> u32
+# f u32x4 u32 -> u32
+
+[assistant]
+fn f u32x4 u32 -> u32
+n fold cnt 4 0 A B
+r mov n
+# cnt u32 u32 u32x4 u32 -> u32
+fn cnt
+el get C i
+g gt el D
+r select g (add A 1) A
+
+[user]
+Rejected:
+parse: line 2: 'i' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`i op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 14
+[user]
+Return the smallest element of the array.
+
+e0
+fn f u32x4 -> u32
+m fold mn 4 0 A
+r mov m
+# mn u32 u32 u32x4 -> u32
+g0
+# mn u32 u32 u32x4 -> u32
+# f u32x4 -> u32
+
+[assistant]
+fn f u32x4 -> u32
+m fold mn 4 4294967295 A
+r mov m
+# mn u32 u32 u32x4 -> u32
+fn mn
+el get B i
+r select (lt el A) el A
+
+[user]
+Rejected:
+parse: line 2: 'i' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`i op ...` on its own line)
+
+Try again.

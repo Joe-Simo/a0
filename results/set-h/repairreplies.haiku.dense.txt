@@ -1,0 +1,34 @@
+### REPLY 9
+fn f u32x4 -> u32
+t fold step 4 0 A
+r mov t
+# step u32 u32 u32x4 -> u32
+fn step
+el get C B
+sq mul el el
+r add A sq
+
+### REPLY 11
+fn f
+sh >> A 8
+m and sh 255
+r mov m
+
+### REPLY 13
+fn f u32x4 u32 -> u32
+n fold cnt 4 0 A B
+r mov n
+# cnt u32 u32 u32x4 u32 -> u32
+fn cnt
+el get C B
+g gt el D
+r select g (add A 1) A
+
+### REPLY 14
+fn f u32x4 -> u32
+m fold mn 4 4294967295 A
+r mov m
+# mn u32 u32 u32x4 -> u32
+fn mn
+el get C B
+r select (lt el A) el A

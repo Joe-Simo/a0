@@ -1,0 +1,100 @@
+### REPLY 1
+fn f -> bool le A 100
+
+### REPLY 2
+fn f
+m and A 255
+r mov m
+
+### REPLY 3
+fn f u32x4 -> u32
+e get A 3
+r mov e
+
+### REPLY 4
+fn f
+s add A B
+o lt s A
+r select o 4294967295 s
+
+### REPLY 5
+fn f u32x4 u32 -> u32x4
+n set A 1 B
+r mov n
+
+### REPLY 6
+fn f -> bool
+lo and A 1
+r eq lo 0
+
+### REPLY 7
+fn f
+a lt A B
+r select a (sub B A) (sub A B)
+
+### REPLY 8
+fn f
+s << A 3
+r mov s
+
+### REPLY 9
+fn f u32x4 -> u32
+t fold step 4 0 A
+r mov t
+# step u32 u32 u32x4 -> u32
+fn step
+el get C i
+sq mul el el
+r add A sq
+
+### REPLY 10
+fn f -> bool
+lo ge A B
+hi le A C
+r and lo hi
+
+### REPLY 11
+fn f
+sh >> A 8
+m and sh 15
+r mov m
+
+### REPLY 12
+fn f u32x4 -> u32x4
+x get A 0
+y get A 3
+u set A 0 y
+v set u 3 x
+r mov v
+
+### REPLY 13
+fn f u32x4 u32 -> u32
+n fold cnt 4 0 A B
+r mov n
+# cnt u32 u32 u32x4 u32 -> u32
+fn cnt
+el get C i
+g gt el D
+r select g (add A 1) A
+
+### REPLY 14
+fn f u32x4 -> u32
+m fold mn 4 4294967295 A
+r mov m
+# mn u32 u32 u32x4 -> u32
+fn mn
+el get B i
+r select (lt el A) el A
+
+### REPLY 15
+fn f -> bool
+b0 and A 1
+b1 and (>> A 1) 1
+r ne b0 b1
+
+### REPLY 16
+fn f
+l lt A 10
+u gt A B
+m select l 10 A
+r select u B m

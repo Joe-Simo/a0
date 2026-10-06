@@ -1,0 +1,132 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 7
+[user]
+Return the absolute difference between the two arguments.
+
+e0
+fn f u32 u32 -> u32
+a lt p0 p1
+b call d p1 p0
+c call d p0 p1
+r select a c b
+ret r
+end
+fn d u32 u32 -> u32 end
+g0
+fn d u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+[assistant]
+fn d u32 u32 -> u32
+r sub p0 p1
+ret r
+end
+a lt p0 p1
+b call d p1 p0
+c call d p0 p1
+r select a c b
+ret r
+
+[user]
+Rejected:
+f(3,5) = 4294967294, expected 2
+f(5,3) = 4294967294, expected 2
+f(0,4294967295) = 1, expected 4294967295
+f(4294967295,0) = 1, expected 4294967295
+f(1,2) = 4294967295, expected 1
+f(100,1) = 4294967197, expected 99
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a lt p0 p1
+b call d p1 p0
+c call d p0 p1
+r select a c b
+ret r
+end
+fn d u32 u32 -> u32 end
+g0
+fn d u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 14
+[user]
+Return the smallest element of the array.
+
+e0
+fn f u32x4 -> u32
+m fold mn 4 0 p0
+r mov m
+ret r
+end
+fn mn u32 u32 u32x4 -> u32 end
+g0
+fn mn u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+fn mn u32 u32 u32x4 -> u32
+el get p2 p1
+is_smaller le el p0
+res select is_smaller el p0
+ret res
+end
+m fold mn 4 0 p0
+r mov m
+ret r
+
+[user]
+Rejected:
+f(1,2,3,4) = 0, expected 1
+f(4,3,2,1) = 0, expected 1
+f(7,7,7,7) = 0, expected 7
+f(4294967295,4294967295,4294967295,4294967295) = 0, expected 4294967295
+f(9,8,10,11) = 0, expected 8
+f(3,9,9,2) = 0, expected 2
+
+Current view:
+e0
+fn f u32x4 -> u32
+m fold mn 4 0 p0
+r mov m
+ret r
+end
+fn mn u32 u32 u32x4 -> u32 end
+g0
+fn mn u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+Return true when exactly one of the two lowest bits of the argument is set.
+
+e0
+fn f u32 -> bool
+a and p0 1
+b shr p0 1
+c and b 1
+d eq a c
+ret d
+end
+g0
+fn f u32 -> bool end
+
+[assistant]
+a and p0 1
+b shr p0 1
+c and b 1
+d xor a c
+ret d
+
+[user]
+Rejected:
+type: f.ret: expected bool, got u32 fix: return a bool value, or change the declared result: send the function with its header as `fn f u32 -> u32`
+
+Try again.

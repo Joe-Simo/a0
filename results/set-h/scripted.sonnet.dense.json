@@ -1,0 +1,52 @@
+{
+ "h-at-most-100/a0/structured": [
+  "fn f -> bool le A 100"
+ ],
+ "h-low-byte/a0/structured": [
+  "fn f and A 255"
+ ],
+ "h-last-elem/a0/structured": [
+  "fn f u32x4 -> u32 get A 3"
+ ],
+ "h-saturating-add/a0/structured": [
+  "fn f\ns add A B\no lt s A\nselect o 4294967295 s"
+ ],
+ "h-set-second/a0/structured": [
+  "fn f u32x4 u32 -> u32x4 set A 1 B"
+ ],
+ "h-is-even/a0/structured": [
+  "fn f -> bool eq and A 1 0"
+ ],
+ "h-abs-diff/a0/structured": [
+  "fn f\na lt A B\nd sub B A\ne sub A B\nselect a d e",
+  "fn f\na lt A B\nx sub B A\ny sub A B\nselect a x y"
+ ],
+ "h-times-eight/a0/structured": [
+  "fn f << A 3"
+ ],
+ "h-sum-squares/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ne get C B\nmul e e A\nfn f u32x4 -> u32 fold step 4 0 A",
+  "fn step u32 u32 u32x4 -> u32\ne get C B\nadd mul e e A\nfn f u32x4 -> u32\nfold step 4 0 A"
+ ],
+ "h-in-range/a0/structured": [
+  "fn f -> bool\na ge A B\nb le A C\nand a b"
+ ],
+ "h-second-byte/a0/structured": [
+  "fn f\ns >> A 8\nand s 255"
+ ],
+ "h-swap-ends/a0/structured": [
+  "fn f u32x4 -> u32x4\nx get A 0\ny get A 3\nu set A 0 y\nset u 3 x"
+ ],
+ "h-count-above/a0/structured": [
+  "fn cnt u32 u32 u32x4 u32 -> u32\ne get C B\ng gt e D\nh select g 1 0\nadd A h\nfn f u32x4 u32 -> u32 fold cnt 4 0 A B"
+ ],
+ "h-array-min/a0/structured": [
+  "fn mn u32 u32 u32x4 -> u32\ne get C B\nc lt e A\nselect c e A\nfn f u32x4 -> u32 fold mn 4 4294967295 A"
+ ],
+ "h-one-low-bit/a0/structured": [
+  "fn f -> bool ne and A 1 and >> A 1 1"
+ ],
+ "h-clamp-range/a0/structured": [
+  "fn cap\na lt A 10\nb select a 10 A\nc gt b B\nselect c B b\nfn f cap A B"
+ ]
+}

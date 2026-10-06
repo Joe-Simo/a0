@@ -1,0 +1,53 @@
+{
+ "h-at-most-100/a0/structured": [
+  "a le p0 100\nb mov a\nret b"
+ ],
+ "h-low-byte/a0/structured": [
+  "m and p0 255\nr mov m\nret r"
+ ],
+ "h-last-elem/a0/structured": [
+  "e get p0 3\nr mov e\nret r"
+ ],
+ "h-saturating-add/a0/structured": [
+  "s add p0 p1\no lt s p0\nr select o 4294967295 s\nret r"
+ ],
+ "h-set-second/a0/structured": [
+  "n set p0 1 p1\nr mov n\nret r"
+ ],
+ "h-is-even/a0/structured": [
+  "lo and p0 1\nt eq lo 0\nret t"
+ ],
+ "h-abs-diff/a0/structured": [
+  "fn d u32 u32 -> u32\nr sub p0 p1\nret r\nend\na lt p0 p1\nb call d p1 p0\nc call d p0 p1\nr select a c b\nret r",
+  "fn d u32 u32 -> u32\na lt p0 p1\nb sub p1 p0\nc sub p0 p1\nr select a b c\nret r\nend\na lt p0 p1\nb call d p1 p0\nc call d p0 p1\nr select a c b\nret r"
+ ],
+ "h-times-eight/a0/structured": [
+  "s shl p0 3\nr mov s\nret r"
+ ],
+ "h-sum-squares/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\nel get p2 p1\nsq mul el el\nres add p0 sq\nret res\nend\nt fold step 4 0 p0\nr mov t\nret r"
+ ],
+ "h-in-range/a0/structured": [
+  "lo ge p0 p1\nhi le p0 p2\nboth and lo hi\nret both"
+ ],
+ "h-second-byte/a0/structured": [
+  "sh shr p0 8\nm and sh 255\nret m"
+ ],
+ "h-swap-ends/a0/structured": [
+  "x get p0 0\ny get p0 3\nu set p0 0 y\nv set u 3 x\nret v"
+ ],
+ "h-count-above/a0/structured": [
+  "fn cnt u32 u32 u32x4 u32 -> u32\nel get p2 p1\nis_greater gt el p3\ninc select is_greater 1 0\nres add p0 inc\nret res\nend\nn fold cnt 4 0 p0 p1\nr mov n\nret r"
+ ],
+ "h-array-min/a0/structured": [
+  "fn mn u32 u32 u32x4 -> u32\nel get p2 p1\nis_smaller le el p0\nres select is_smaller el p0\nret res\nend\nm fold mn 4 0 p0\nr mov m\nret r",
+  "fn mn u32 u32 u32x4 -> u32\nidx_is_zero eq p1 0\nel get p2 p1\nis_smaller le el p0\nres select is_smaller el p0\nacc select idx_is_zero el res\nret acc\nend\nm fold mn 4 0 p0\nr mov m\nret r"
+ ],
+ "h-one-low-bit/a0/structured": [
+  "a and p0 1\nb shr p0 1\nc and b 1\nd xor a c\nret d",
+  "a and p0 1\nb shr p0 1\nc and b 1\nd xor a c\ne ne d 0\nret e"
+ ],
+ "h-clamp-range/a0/structured": [
+  "fn cap u32 u32 -> u32\ntoo_small lt p0 10\nv0 select too_small 10 p0\ntoo_large lt p1 v0\nresult select too_large p1 v0\nret result\nend\nk call cap p0 p1\nr mov k\nret r"
+ ]
+}

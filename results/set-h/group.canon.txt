@@ -1,0 +1,214 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### REQUEST 1
+Return true when the argument is at most 100, with 100 itself included.
+
+e0
+fn f u32 -> bool
+a lt p0 100
+b mov a
+ret b
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 2
+Return the lowest 8 bits of the argument.
+
+e0
+fn f u32 -> u32
+m and p0 127
+r mov m
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 3
+Return the last element of the array.
+
+e0
+fn f u32x4 -> u32
+e get p0 4
+r mov e
+ret r
+end
+g0
+fn f u32x4 -> u32 end
+
+### REQUEST 4
+Return the sum of the two arguments, but when the true sum does not fit in 32 bits return 4294967295 instead of a wrapped value.
+
+e0
+fn f u32 u32 -> u32
+s add p0 p1
+o lt s p0
+r select o 0 s
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 5
+Return a copy of the array with the element at position 1 (the second element) replaced by the second argument.
+
+e0
+fn f u32x4 u32 -> u32x4
+n set p0 p1 1
+r mov n
+ret r
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 6
+Return true when the argument is even.
+
+e0
+fn f u32 -> bool
+lo and p0 1
+t eq lo 1
+ret t
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 7
+Return the absolute difference between the two arguments.
+
+e0
+fn f u32 u32 -> u32
+a lt p0 p1
+b call d p1 p0
+c call d p0 p1
+r select a c b
+ret r
+end
+fn d u32 u32 -> u32 end
+g0
+fn d u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+### REQUEST 8
+Return the argument multiplied by 8 (wrapping modulo 2^32).
+
+e0
+fn f u32 -> u32
+s shl p0 2
+r mov s
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 9
+Return the sum of the squares of all four array elements (wrapping modulo 2^32).
+
+e0
+fn f u32x4 -> u32
+t fold step 3 0 p0
+r mov t
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 10
+Return true when the first argument lies between the second and third arguments, with both ends included.
+
+e0
+fn f u32 u32 u32 -> bool
+lo gt p0 p1
+hi lt p0 p2
+both and lo hi
+ret both
+end
+g0
+fn f u32 u32 u32 -> bool end
+
+### REQUEST 11
+Change the function to return bits 8 through 15 of the argument (its second-lowest byte) instead of bits 4 through 7.
+
+e0
+fn f u32 -> u32
+sh shr p0 4
+m and sh 15
+ret m
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 12
+Change the function so it swaps the first and last elements of the array instead of the first two.
+
+e0
+fn f u32x4 -> u32x4
+x get p0 0
+y get p0 1
+u set p0 0 y
+v set u 1 x
+ret v
+end
+g0
+fn f u32x4 -> u32x4 end
+
+### REQUEST 13
+Return how many of the four array elements are strictly greater than the second argument.
+
+e0
+fn f u32x4 u32 -> u32
+n fold cnt 3 0 p0 p1
+r mov n
+ret r
+end
+fn cnt u32 u32 u32x4 u32 -> u32 end
+g0
+fn cnt u32 u32 u32x4 u32 -> u32 end
+fn f u32x4 u32 -> u32 end
+
+### REQUEST 14
+Return the smallest element of the array.
+
+e0
+fn f u32x4 -> u32
+m fold mn 4 0 p0
+r mov m
+ret r
+end
+fn mn u32 u32 u32x4 -> u32 end
+g0
+fn mn u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 15
+Return true when exactly one of the two lowest bits of the argument is set.
+
+e0
+fn f u32 -> bool
+a and p0 1
+b shr p0 1
+c and b 1
+d eq a c
+ret d
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 16
+Return the first argument clamped to the range from 10 up to the second argument: raise it to 10 if smaller, then lower it to the second argument if larger (the upper limit wins when it is below 10).
+
+e0
+fn f u32 u32 -> u32
+k call cap p0 p1
+r mov k
+ret r
+end
+fn cap u32 u32 -> u32 end
+g0
+fn cap u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
