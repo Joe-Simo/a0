@@ -160,3 +160,14 @@ Dated records of the work, kept for the evidence trail (figures are as measured 
 - [2026-10-01 equal context (scoped views for every language) and the site charts](docs/history/2026-10-01-equal-context-and-site-charts.md)
 - [2026-10-01 the hung stage executable: Node's stdin pipe on macOS 27 beta](docs/history/2026-10-01-hung-stage-executable.md)
 - [2026-10-01 direct arm64 backend: loop kernels, A0-driver row, mat4, branchy](docs/history/2026-10-01-arm64-loop-kernels.md)
+
+## Windows (x64) support, 2026-10-06
+
+First full test run on Windows 11 x64 with Node 22 and bun, no C compiler, Java, Icarus or tree-sitter installed: the build and
+`a0 check` work; of 357 tests, 322 pass, 22 skip and 14 fail only because a required toolchain is absent (clang for the C, parallel,
+trap and seed tests; tree-sitter). Fixed in this pass: LF pinned in `.gitattributes` (a `core.autocrlf=true` checkout turned every
+source, seed and golden file into CRLF); tool discovery no longer calls `/usr/bin/which` (`src/toolchain.ts`); the LSP linked-path
+parser accepts drive-letter paths; the git merge driver command is quoted with forward slashes; tests no longer assume POSIX
+virtual paths, `/bin/cat`, or the right to create symlinks (they skip with a reason). Not done: the 14 toolchain-bound tests have
+not run on Windows, so C, parallel C, trap and seed behavior there is unverified. The application-scale benchmark harness
+(`tools/app-edit-*.ts`) is not in the public repository and is therefore still blocked.

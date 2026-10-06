@@ -26,6 +26,7 @@ import { EditSession, programRevision, revision, semanticRevision } from '../src
 import { verifyExample } from '../src/explain.js';
 import { link } from '../src/link.js';
 import { generateCorpus, oracleRun, oracleToValue, valueToOracle } from '../tools/corpus.js';
+import { posix } from './vpath.js';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const STRICT = 'profile strict\n';
@@ -324,7 +325,7 @@ test('edit protocol: dense replies carry the directive too', () => {
 // ---------------------------------------------------------------------------
 
 const files = (map: Record<string, string>) => async (p: string) => {
-  const text = map[p];
+  const text = map[posix(p)];
   if (text === undefined) throw new Error(`no file ${p}`);
   return text;
 };
@@ -374,7 +375,7 @@ test('link: diagnostics keep their file and line when a profile line is present'
   const bad = `${STRICT}fn main u32 -> u32\nr add p0 true\nret r\nend\n`;
   const e = await link('/p/main.a0', files({ '/p/main.a0': bad }), { root: '/p' }).catch((x) => x);
   assert.ok(e instanceof A0Error);
-  assert.match(e.message, /^\/p\/main\.a0:3: /);
+  assert.match(posix(e.message), /^\/p\/main\.a0:3: /);
 });
 
 // ---------------------------------------------------------------------------

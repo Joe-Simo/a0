@@ -25,6 +25,7 @@ import { EditSession, revision } from '../src/edit.js';
 import { link, parseFile } from '../src/link.js';
 import { generateCases, generateCorpus } from '../tools/corpus.js';
 import { KERNELS } from '../tools/exec-bench-kernels.js';
+import { posix } from './vpath.js';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 
@@ -299,7 +300,7 @@ test('dense: link reads .a0d files, mixed with canonical files through use', asy
     '/p/lib.a0': 'fn inc2 u32 u32 -> u32\na add p0 p1\nret a\nend',
     '/p/mid.a0d': 'use "lib.a0"\n\nfn twice inc2 A A',
   };
-  const linked = await link('/p/main.a0d', async (p) => sources[p] ?? '', { root: '/p' });
+  const linked = await link('/p/main.a0d', async (p) => sources[posix(p)] ?? '', { root: '/p' });
   assert.deepEqual(
     linked.program.functions.map((f) => f.name),
     ['inc2', 'twice', 'top'],
@@ -308,14 +309,14 @@ test('dense: link reads .a0d files, mixed with canonical files through use', asy
   // a type error in a dense file is reported against that file
   const bad: Record<string, string> = { '/p/b.a0d': 'fn f bool lt A 1' };
   await assert.rejects(
-    link('/p/b.a0d', async (p) => bad[p] ?? '', { root: '/p' }),
-    /\/p\/b\.a0d/,
+    link('/p/b.a0d', async (p) => bad[posix(p)] ?? '', { root: '/p' }),
+    /[\\/]p[\\/]b\.a0d/,
   );
   // and a dense parse error carries the line
   const worse: Record<string, string> = { '/p/c.a0d': 'fn f add A 1\n\nfn g frob' };
   await assert.rejects(
-    link('/p/c.a0d', async (p) => worse[p] ?? '', { root: '/p' }),
-    /\/p\/c\.a0d:3/,
+    link('/p/c.a0d', async (p) => worse[posix(p)] ?? '', { root: '/p' }),
+    /[\\/]p[\\/]c\.a0d:3/,
   );
 });
 

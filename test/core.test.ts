@@ -44,6 +44,7 @@ import {
   refParse,
   type WordIr,
 } from '../tools/ref-parse.js';
+import { posix } from './vpath.js';
 
 const AFFINE = `fn affine u32 u32 u32 -> u32
 a mul p0 p1
@@ -1213,13 +1214,13 @@ test('linker: use lines resolve relative paths once, reject cycles and duplicate
     '/p/bad.a0': 'use "lib.a0"\nfn f u32 -> u32\na add p0 true\nret a\nend\n',
   };
   const read = async (path: string): Promise<string> => {
-    const t = files[path];
+    const t = files[posix(path)];
     if (t === undefined) throw new Error(`missing ${path}`);
     return t;
   };
   const linked = await link('/p/main.a0', read);
   assert.deepEqual(
-    linked.sources.map((s) => s.path),
+    linked.sources.map((s) => posix(s.path)),
     ['/p/lib.a0', '/p/mid.a0', '/p/main.a0'],
   );
   assert.equal(run(linked.program.byName.get('main') as TypedFunc, [5]), 20);
@@ -1234,7 +1235,7 @@ test('linker: use lines resolve relative paths once, reject cycles and duplicate
   await assert.rejects(
     link('/p/bad.a0', read),
     (e: unknown) =>
-      e instanceof A0Error && e.code === 'type' && /^\/p\/bad\.a0:3: /.test(e.message),
+      e instanceof A0Error && e.code === 'type' && /^\/p\/bad\.a0:3: /.test(posix(e.message)),
   );
 });
 

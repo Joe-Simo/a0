@@ -18,6 +18,7 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -142,10 +143,24 @@ function firstExisting(candidates: readonly (string | undefined)[]): string | un
   return undefined;
 }
 
+/** First executable `name` on PATH (PATHEXT on Windows); no external `which`, so it works everywhere. */
 function onPath(name: string): string | undefined {
-  const r = spawnSync('/usr/bin/which', [name], { encoding: 'utf8', shell: false });
-  const p = r.stdout.trim();
-  return r.status === 0 && p.length > 0 ? p : undefined;
+  const exts =
+    process.platform === 'win32'
+      ? (process.env.PATHEXT ?? '.EXE;.CMD;.BAT').split(';').filter((e) => e.length > 0)
+      : [''];
+  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+    if (dir.length === 0) continue;
+    for (const ext of exts) {
+      const candidate = join(dir, name + ext);
+      try {
+        if (statSync(candidate).isFile()) return candidate;
+      } catch {
+        // not here
+      }
+    }
+  }
+  return undefined;
 }
 
 function versionOf(

@@ -95,7 +95,7 @@ export function ensureMergeDriver(
   const d = vcs(repo, [
     'config',
     'merge.a0-measurements.driver',
-    `node ${measurementScript} %O %A %B %P`,
+    `node "${measurementScript.replaceAll('\\', '/')}" %O %A %B %P`,
   ]);
   return a.ok && b.ok && c.ok && d.ok;
 }

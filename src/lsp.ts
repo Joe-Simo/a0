@@ -101,7 +101,7 @@ export const SPEC_DOCS: Readonly<Record<SpecWord, string>> = {
 const FN_LINE = /^\s*fn\s+([a-z][a-z0-9_]*)\b/;
 const USE_LINE = /^\s*use\s+"([^"\\]+)"\s*$/;
 const END_LINE = /^\s*end\s*$/;
-const LINKED_AT = /^(\/[^\n]*?\.a0d?)(?::(\d+))?: /;
+const LINKED_AT = /^((?:[A-Za-z]:)?[\\/][^\n]*?\.a0d?)(?::(\d+))?: /;
 
 interface FnDef {
   readonly name: string;

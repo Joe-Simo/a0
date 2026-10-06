@@ -11,6 +11,7 @@ import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import { fillShell, renderWords, SITE_CSP } from '../tools/site-render.js';
 import { cDriver } from '../tools/verify.js';
+import { SYMLINKS } from './vpath.js';
 
 const fuelError = (e: unknown): boolean =>
   e instanceof A0Error && e.code === 'limit' && /fuel exhausted/.test(e.message);
@@ -79,7 +80,9 @@ test('direct wasm a0_read: a host ninput above the capacity reads 0 past the cap
   assert.equal(e.a0_f(base) >>> 0, 12);
 });
 
-test('linker: use targets must be .a0 files inside the root, after symlinks', async () => {
+test('linker: use targets must be .a0 files inside the root, after symlinks', {
+  skip: SYMLINKS,
+}, async () => {
   await withTempDir(async (dir) => {
     const root = join(dir, 'proj');
     await mkdir(join(root, 'lib'), { recursive: true });

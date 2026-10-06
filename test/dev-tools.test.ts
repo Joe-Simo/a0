@@ -223,6 +223,7 @@ function sh(repo: string, ...args: string[]): string {
 function tempRepo(): string {
   const repo = scratch();
   sh(repo, 'init', '-q', '-b', 'main');
+  sh(repo, 'config', 'core.autocrlf', 'false');
   sh(repo, 'config', 'user.email', 't@example.com');
   sh(repo, 'config', 'user.name', 'T');
   mkdirSync(join(repo, 'src'));
@@ -318,7 +319,7 @@ test('drive: refuses branches without a note, merges the rest, reverts only the 
       typecheck: OK('typecheck'),
       build: OK('build'),
       verify: OK('verify'),
-      test: { id: 'test', cmd: '! grep -q BAD src/riscv64.ts', timeoutMs: 10_000 },
+      test: { id: 'test', cmd: '! grep -q BAD src/riscv64.ts', timeoutMs: 20_000 },
     };
     const lines: string[] = [];
     const log = (l: string) => lines.push(l);
@@ -372,9 +373,9 @@ test('dev-gate: runs steps one at a time with logs, a clear final line, timeouts
   try {
     const lines: string[] = [];
     const runs = [
-      { id: 'lint', cmd: 'echo linting', timeoutMs: 10_000 },
-      { id: 'test', cmd: 'echo failing; exit 3', timeoutMs: 10_000 },
-      { id: 'verify', cmd: 'true', timeoutMs: 10_000 },
+      { id: 'lint', cmd: 'echo linting', timeoutMs: 20_000 },
+      { id: 'test', cmd: 'echo failing; exit 3', timeoutMs: 20_000 },
+      { id: 'verify', cmd: 'true', timeoutMs: 20_000 },
     ];
     const r = await runGate({
       repo,
@@ -504,8 +505,8 @@ test('dev-gate: parallel light steps overlap; a pass commits regenerated results
     sh(repo, 'add', '-A');
     sh(repo, 'commit', '-q', '-m', 'results');
     const runs = [
-      { id: 'test', cmd: 'sleep 1; echo 2 > results/a.json', timeoutMs: 10_000 },
-      { id: 'site', cmd: 'sleep 1', timeoutMs: 10_000 },
+      { id: 'test', cmd: 'sleep 3; echo 2 > results/a.json', timeoutMs: 20_000 },
+      { id: 'site', cmd: 'sleep 3', timeoutMs: 20_000 },
     ];
     const r = await runGate({
       repo,
@@ -519,7 +520,7 @@ test('dev-gate: parallel light steps overlap; a pass commits regenerated results
       log: () => undefined,
     });
     assert.equal(r.pass, true);
-    assert.ok(r.wallMs < 1900, `expected overlap, took ${r.wallMs} ms`);
+    assert.ok(r.wallMs < 5800, `expected overlap, took ${r.wallMs} ms`);
     assert.equal(r.resultsCommitted, true);
     assert.equal(sh(repo, 'log', '-1', '--format=%s').trim(), 'Regenerate results after the gate');
     assert.equal(noteCovers(repo, 'HEAD', ['test', 'site']).ok, true);

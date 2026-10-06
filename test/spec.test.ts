@@ -450,7 +450,7 @@ test('spec lines: a program without them has the canonical text, hashes, dense t
     } catch (e) {
       row.error = `${(e as A0Error).id ?? ''} ${(e as Error).message}`.slice(0, 160);
     }
-    now[relative(ROOT, file)] = row;
+    now[relative(ROOT, file).replaceAll('\\', '/')] = row;
   }
   const golden = JSON.parse(readFileSync(GOLDEN, 'utf8')) as typeof now;
   assert.deepEqual(Object.keys(now), Object.keys(golden));
