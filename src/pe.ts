@@ -107,7 +107,7 @@ function importSection(
   o.ascii(DLL);
   o.u8(0);
   const iat = new Map<string, number>();
-  imports.forEach((name, i) => iat.set(name, iatRva + i * 8));
+  for (const [i, name] of imports.entries()) iat.set(name, iatRva + i * 8);
   return { bytes: o.bytes, iat };
 }
 
