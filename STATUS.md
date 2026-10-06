@@ -171,3 +171,8 @@ parser accepts drive-letter paths; the git merge driver command is quoted with f
 virtual paths, `/bin/cat`, or the right to create symlinks (they skip with a reason). Not done: the 14 toolchain-bound tests have
 not run on Windows, so C, parallel C, trap and seed behavior there is unverified. The application-scale benchmark harness
 (`tools/app-edit-*.ts`) is not in the public repository and is therefore still blocked.
+
+Protocol fix (2026-10-06, item 3, first of three): an `ex` line written after the first node of a function is hoisted under the
+header instead of refused (A0714), so the canonical text is the same wherever the writer put it (`test/spec.test.ts`). `pre` and
+`post` after a node stay ordinary node ids (they are ambiguous there). Not yet re-measured with fresh subjects, so no acceptance
+claim is made. Still open: the spec-line limits are not taught, and dense nesting of a repeated value.

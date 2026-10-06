@@ -203,10 +203,11 @@ test('spec lines: a node called ex, pre or post after the first node, or an ex n
   assert.equal(formatProgram(parseDense(formatDense(p))), src);
 });
 
-test('spec lines: only before the first node, at most one pre and one post, at most three examples', () => {
+test('spec lines: an ex after a node is hoisted; at most one pre and one post, at most three examples', () => {
+  // An example written after a node is hoisted under the header: one canonical text.
   assert.equal(
-    raised(() => parse('fn f u32 -> u32\na add p0 1\nex 1 -> 2\nret a\nend\n')).id,
-    'A0714',
+    formatProgram(parse('fn f u32 -> u32\na add p0 1\nex 1 -> 2\nret a\nend\n')),
+    'fn f u32 -> u32\nex 1 -> 2\na add p0 1\nret a\nend\n',
   );
   assert.equal(
     raised(() => parse(`fn f u32 -> u32\n${'ex 1 -> 2\n'.repeat(4)}a add p0 1\nret a\nend\n`)).id,

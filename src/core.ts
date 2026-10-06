@@ -1050,10 +1050,10 @@ export function parse(source: string): Program {
           continue;
         }
       } else if (isExampleLine(body.text)) {
-        throw diag('A0714', [name, 'an ex line after the first node'], {
-          line: body.line,
-          fix: 'spec lines (ex, pre, post) go right after the fn header, before the first node',
-        });
+        // An example after the first node is unambiguous (the arrow); it joins the others under the
+        // header, so the canonical text is the same whichever place the writer chose.
+        specs.add('ex', body.text.slice(2).trim(), body.line, body.comments);
+        continue;
       }
       if (first === 'ret') {
         retComments = body.comments;
