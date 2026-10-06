@@ -326,3 +326,30 @@ test('`-id` followed by the old node text is a delete written with its text: a r
   e.open('twice');
   assert.throws(() => e.apply('-Y'), /invalid delete target/);
 });
+
+test('a parameter out of range names the other function that has it, with the block to write', () => {
+  const src =
+    'fn step u32 u32 u32 -> u32\na mul p1 p2\nb xor p0 a\nret b\nend\nfn f u32 -> u32\na fold step 4 0 p0\nret a\nend\n';
+  // the reply wrote the callee's lines as bare lines, which edit f
+  const session = new EditSession(parseAndValidate(src));
+  session.open('f');
+  try {
+    session.apply('a fold step 5 0 p0\nt mul p2 p1\nret a');
+    assert.fail('expected a rejection');
+  } catch (e) {
+    assert.ok(e instanceof A0Error);
+    assert.match(e.detail, /parameter p2 out of range/);
+    assert.match(e.fix ?? '', /bare lines edit f only/);
+    assert.match(e.fix ?? '', /`fn step u32 u32 u32 -> u32`/);
+  }
+  // with no other function that has the parameter, the diagnostic is the one it always was
+  const plain = new EditSession(parseAndValidate('fn f u32 -> u32\nret p0\nend\n'));
+  plain.open('f');
+  try {
+    plain.apply('t add p0 p2\nret t');
+    assert.fail('expected a rejection');
+  } catch (e) {
+    assert.ok(e instanceof A0Error);
+    assert.doesNotMatch(e.fix ?? '', /bare lines edit/);
+  }
+});

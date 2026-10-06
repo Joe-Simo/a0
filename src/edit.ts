@@ -909,6 +909,23 @@ function denseDiagnostic(
   return e.reworded(message, e.line, fix);
 }
 
+/**
+ * A parameter out of range in the function a reply edits, where another function of the program
+ * has that parameter: the reply most likely wrote that other function's lines (a callee the view
+ * shows only as a signature) as bare lines, which always belong to the function the view opened.
+ * Say so, with the block that rewrites the other function.
+ */
+function stubHint(e: A0Error, program: TypedProgram): A0Error {
+  if (e.id !== 'A0105') return e;
+  const m = /^([a-z][a-z0-9_]*)\.\S+: parameter p(\d+) out of range/.exec(e.detail);
+  if (m === null) return e;
+  const others = program.functions.filter((f) => f.name !== m[1] && f.params.length > Number(m[2]));
+  if (others.length === 0) return e;
+  const blocks = others.map((f) => `\`${formatSignature(f)}\``).join(' or ');
+  const hint = `; bare lines edit ${m[1]} only: to write the lines of another function, reply a block ${blocks} followed by its lines`;
+  return e.reworded(e.detail, e.line, `${e.fix ?? ''}${hint}`);
+}
+
 export class EditSession {
   #program: TypedProgram;
   readonly #handles = new Map<string, OpenHandle>();
@@ -1114,7 +1131,9 @@ export class EditSession {
     try {
       return this.#applyOrFix(text);
     } catch (e) {
-      throw e instanceof A0Error ? denseDiagnostic(e, this.#denseNames) : e;
+      throw e instanceof A0Error
+        ? denseDiagnostic(stubHint(e, this.#program), this.#denseNames)
+        : e;
     }
   }
 
