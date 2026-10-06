@@ -1,0 +1,271 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 2
+[user]
+The function should return the median of its three inputs (the middle value once sorted).
+
+e0
+fn med u32 u32 u32 -> u32
+a call mn p0 p1
+b call mx p0 p1
+c call mx b p2
+d call mn a c
+ret d
+end
+fn mn u32 u32 -> u32 end
+fn mx u32 u32 -> u32 end
+g0
+fn mn u32 u32 -> u32 end
+fn mx u32 u32 -> u32 end
+fn med u32 u32 u32 -> u32 end
+
+[assistant]
+fn mn u32 u32 -> u32
+l lt p0 p1
+r select l p0 p1
+ret r
+end
+fn mx u32 u32 -> u32
+g gt p0 p1
+r select g p0 p1
+ret r
+end
+
+[user]
+Rejected:
+med(1,2,3) = 1, expected 2
+med(1,3,2) = 1, expected 2
+med(0,4294967295,7) = 0, expected 7
+
+Current view:
+e0
+fn med u32 u32 u32 -> u32
+a call mn p0 p1
+b call mx p0 p1
+c call mx b p2
+d call mn a c
+ret d
+end
+fn mn u32 u32 -> u32 end
+fn mx u32 u32 -> u32 end
+g0
+fn mn u32 u32 -> u32 end
+fn mx u32 u32 -> u32 end
+fn med u32 u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 7
+[user]
+Replace bits 8 through 15 of the first input with the low 8 bits of the second input; no other bits may change.
+
+e0
+fn ins u32 u32 -> u32
+k and p0 4294902015
+s shl p1 8
+r or k s
+ret r
+end
+g0
+fn ins u32 u32 -> u32 end
+
+[assistant]
+fn ins u32 u32 -> u32
+k and p0 4294902015
+s shl p1 8
+r or k s
+ret r
+end
+
+[user]
+Rejected:
+ins(0,427) = 109312, expected 43776
+ins(0,4294967295) = 4294967040, expected 65280
+
+Current view:
+e0
+fn ins u32 u32 -> u32
+k and p0 4294902015
+s shl p1 8
+r or k s
+ret r
+end
+g0
+fn ins u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 9
+[user]
+Add the third input to the array element at the given index and cap it at 1000; the cap must also apply when the addition wraps around past 2^32.
+
+e0
+fn bump u32x4 u32 u32 -> u32x4
+g get p0 p1
+s add g p2
+o gt s 1000
+c select o 1000 s
+r set p0 p1 c
+ret r
+end
+g0
+fn bump u32x4 u32 u32 -> u32x4 end
+
+[assistant]
+wrapped lt s g
+o or o wrapped
+c select o 1000 s
+
+[user]
+Rejected:
+structure: bump.o: reference to undefined or later node 'o' fix: 'o' is defined on a later line of bump: move it above bump.o
+
+Try again.
+
+### CONVERSATION 10
+[user]
+Return true only when all three inputs are different from each other.
+
+e0
+fn dist u32 u32 u32 -> bool
+a ne p0 p1
+b ne p1 p2
+c and a b
+ret c
+end
+g0
+fn dist u32 u32 u32 -> bool end
+
+[assistant]
+d ne p0 p2
+t and a b
+r and t d
+
+[user]
+Rejected:
+edit: dist: new node 'r' is not used by any node or by ret fix: add 'ret r' if it is the new result, or use it in another node
+
+Try again.
+
+### CONVERSATION 11
+[user]
+The function should compute three times the first input plus the second (wrapping), then flip bits with 0x5A.
+
+e0
+fn f u32 u32 -> u32
+m call mix p1 p0
+r xor m 90
+ret r
+end
+fn mix u32 u32 -> u32 end
+g0
+fn mix u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+[assistant]
+fn mix u32 u32 -> u32
+three mul p0 3
+r add three p1
+ret r
+end
+
+[user]
+Rejected:
+f(1,2) = 93, expected 95
+f(2,1) = 95, expected 93
+f(0,5) = 85, expected 95
+f(5,0) = 95, expected 85
+f(4294967295,1) = 88, expected 4294967204
+f(1431655766,0) = 1431655692, expected 88
+
+Current view:
+e0
+fn f u32 u32 -> u32
+m call mix p1 p0
+r xor m 90
+ret r
+end
+fn mix u32 u32 -> u32 end
+g0
+fn mix u32 u32 -> u32 end
+fn f u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 12
+[user]
+Hash all four elements: start from 7 and, for each element in order, multiply the state by 31 and add the element, wrapping.
+
+e0
+fn h u32x4 -> u32
+r fold hs 3 7 p0
+ret r
+end
+fn hs u32 u32 u32x4 -> u32 end
+g0
+fn hs u32 u32 u32x4 -> u32 end
+fn h u32x4 -> u32 end
+
+[assistant]
+fn hs u32 u32 u32x4 -> u32
+elem get p2 p1
+m mul p0 31
+r add m elem
+ret r
+end
+
+[user]
+Rejected:
+h(0,0,0,0) = 208537, expected 6464647
+h(1,2,3,4) = 209563, expected 6496457
+h(0,0,0,1) = 208537, expected 6464648
+h(4294967295,4294967295,4294967295,4294967295) = 207544, expected 6433863
+h(5,0,0,0) = 213342, expected 6613602
+h(100,200,300,400) = 311137, expected 9645647
+h(0,0,0,4294967295) = 208537, expected 6464646
+h(1,1,1,1) = 209530, expected 6495431
+
+Current view:
+e0
+fn h u32x4 -> u32
+r fold hs 3 7 p0
+ret r
+end
+fn hs u32 u32 u32x4 -> u32 end
+g0
+fn hs u32 u32 u32x4 -> u32 end
+fn h u32x4 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+Return true when the first record beats the second: the larger value wins, and on equal values the first wins only if its flag is set and the second's flag is not.
+
+e0
+fn beats (u32,bool) (u32,bool) -> bool
+va at p0 0
+fa at p0 1
+vb at p1 0
+fb at p1 1
+g gt va vb
+l lt va vb
+nb xor fb true
+t mov fa
+s select l false t
+r select g true s
+ret r
+end
+g0
+fn beats (u32,bool) (u32,bool) -> bool end
+
+[assistant]
+-t
+t and fa nb
+s select l false t
+r select g true s
+
+[user]
+Rejected:
+edit: line 3: duplicate edit for 't'
+
+Try again.

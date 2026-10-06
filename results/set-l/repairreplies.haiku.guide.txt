@@ -1,0 +1,25 @@
+### REPLY 10
+z select g80 3 y @ y
+r select g90 4 z
+
+### REPLY 13
+c fold step 3 0 p0
+fn step u32 u32 u32x4 -> u32
+idx add p1 1
+curr get p2 idx
+prev get p2 p1
+diff ne curr prev
+result add p0 diff
+ret result
+end
+
+### REPLY 15
+fn step u32 u32 u32x4 -> u32
+done eq p0 2
+next add p0 1
+ret select done p0 next
+end
+
+### REPLY 16
+nf xor fl true
+

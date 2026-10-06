@@ -1,0 +1,207 @@
+### REPLY 1
+fn f u32 u32 -> (u32,u32)
+c gt p0 p1
+lo select c p1 p0
+hi select c p0 p1
+r rec lo hi
+ret r
+end
+
+### REPLY 2
+fn mn u32 u32 -> u32
+c lt p0 p1
+r select c p0 p1
+ret r
+end
+fn mx u32 u32 -> u32
+c gt p0 p1
+r select c p0 p1
+ret r
+end
+fn med u32 u32 u32 -> u32
+a call mn p0 p1
+b call mx p0 p1
+c call mx a p2
+d call mx b p2
+r call mn c d
+ret r
+end
+
+### REPLY 3
+fn f u32 u32 -> u32
+u lt p0 p1
+d sub p0 p1
+o gt d 255
+s select o 255 d
+r select u 0 s
+ret r
+end
+
+### REPLY 4
+fn g u32 -> u32
+a lt p0 50
+b lt p0 70
+c lt p0 90
+x select c 2 3
+y select b 1 x
+z select a 0 y
+ret z
+end
+
+### REPLY 5
+fn cmp u32 u32 -> (u32,bool)
+l lt p0 p1
+e eq p0 p1
+s select e 1 2
+c select l 0 s
+r rec c e
+ret r
+end
+
+### REPLY 6
+fn nib u32 -> u32
+s shr p0 4
+r and s 15
+ret r
+end
+
+### REPLY 7
+fn ins u32 u32 -> u32
+k and p0 65280
+m and p1 255
+s shl m 8
+r or k s
+ret r
+end
+
+### REPLY 8
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+st at p0 0
+sv at p0 1
+c gt p2 sv
+i mov p1
+v mov p2
+s select c 1 0
+idx select s i st
+val select s v sv
+r rec idx val
+ret r
+end
+fn am u32x4 -> (u32,u32)
+z rec 0 0
+r fold step 4 z p0
+ret r
+end
+
+### REPLY 9
+fn bump u32x4 u32 u32 -> u32x4
+g get p0 p1
+s add g p2
+u lt g s
+o gt s 1000
+c select o 1000 s
+c2 select u 1000 c
+r set p0 p1 c2
+ret r
+end
+
+### REPLY 10
+fn dist u32 u32 u32 -> bool
+a ne p0 p1
+b ne p1 p2
+c ne p0 p2
+x and a b
+r and x c
+ret r
+end
+
+### REPLY 11
+fn mix u32 u32 -> u32
+m mul p0 3
+r add m p1
+ret r
+end
+fn f u32 u32 -> u32
+m call mix p0 p1
+r xor m 90
+ret r
+end
+
+### REPLY 12
+fn hs u32 u32 u32x4 -> u32
+m mul p0 31
+r add m p2
+ret r
+end
+fn h u32x4 -> u32
+r fold hs 4 7 p0
+ret r
+end
+
+### REPLY 13
+fn s3 u32 u32 u32 -> (u32,u32,u32)
+c1 lt p0 p1
+a1 select c1 p0 p1
+b1 select c1 p1 p0
+c2 lt b1 p2
+c3 lt a1 p2
+m1 select c3 a1 p2
+m2 select c2 b1 p2
+b2 select c2 p2 b1
+z select c3 p2 a1
+r rec m1 m2 b2
+ret r
+end
+
+### REPLY 14
+fn adj (u32,bool) u32 -> u32
+v at p0 0
+fl at p0 1
+u lt v p1
+d sub v p1
+a add v p1
+r1 select u 0 d
+r select fl a r1
+ret r
+end
+
+### REPLY 15
+fn beats (u32,bool) (u32,bool) -> bool
+va at p0 0
+fa at p0 1
+vb at p1 0
+fb at p1 1
+g gt va vb
+l lt va vb
+nfb xor fb true
+t and fa nfb
+s select l false t
+r select g true s
+ret r
+end
+
+### REPLY 16
+fn mn u32 u32 -> u32
+c lt p0 p1
+r select c p0 p1
+ret r
+end
+fn mx u32 u32 -> u32
+c gt p0 p1
+r select c p0 p1
+ret r
+end
+fn mm u32x4 -> (u32,u32)
+e0 get p0 0
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+a call mn e0 e1
+b call mn e2 e3
+lo call mn a b
+c call mx e0 e1
+d call mx e2 e3
+hi call mx c d
+r rec lo hi
+ret r
+end

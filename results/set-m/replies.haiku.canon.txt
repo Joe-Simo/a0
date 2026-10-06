@@ -1,0 +1,119 @@
+### REPLY 1
+b and a 63
+
+### REPLY 2
+c shl a 8
+fn lo8 u32 -> u32
+a and p0 255
+ret a
+end
+
+### REPLY 3
+a fold step 8 0 p0
+fn step u32 u32 u32 -> u32
+n shr p2 (mul p1 4)
+m and n 15
+c ne m 0
+d select c 1 0
+r add p0 d
+ret r
+end
+
+### REPLY 4
+a call nib p0 28
+fn nib u32 u32 -> u32
+a shr p0 p1
+b and a 15
+ret b
+end
+
+### REPLY 5
+n add p1 1
+c ge n 4
+m select c (sub n 4) n
+g get p0 m
+s set p0 p1 g
+ret s
+
+### REPLY 6
+fn step u32 u32 u32x4 u32 -> u32
+e get p2 p1
+em and e 3
+mm and p3 3
+c eq em mm
+d select c 1 0
+r add p0 d
+ret r
+end
+
+### REPLY 7
+c ne b 0
+
+### REPLY 8
+a sub (shl 1 p1) 1
+
+### REPLY 9
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+s shl e p1
+r xor p0 s
+ret r
+end
+
+### REPLY 10
+c sub p0 b
+fn bit u32 -> u32
+m rem p0 8
+a shl 1 m
+ret a
+end
+
+### REPLY 11
+b eq a 10
+
+### REPLY 12
+b and a 255
+d and c 255
+e and p0 255
+
+### REPLY 13
+a fold step 3 false p0
+fn same u32 u32 -> bool
+c eq p0 p1
+ret c
+end
+fn step bool u32 u32x4 -> bool
+e get p2 p1
+n get p2 (add p1 1)
+s call same e n
+r or p0 s
+ret r
+end
+
+### REPLY 14
+c shl a 16
+d and b 65535
+r or c d
+
+### REPLY 15
+a fold step 7 0 p0
+fn pair u32 u32 -> bool
+s shr p0 p1
+m and s 3
+c eq m 3
+ret c
+end
+fn step u32 u32 u32 -> u32
+p call pair p2 p1
+r select p (add p0 1) p0
+ret r
+end
+
+### REPLY 16
+l and p0 255
+h shr p0 16
+h shl h 16
+b and p1 255
+c shl b 8
+t or l h
+r or t c

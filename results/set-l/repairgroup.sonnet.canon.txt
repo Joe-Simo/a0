@@ -1,0 +1,132 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 3
+[user]
+Write the element at position p1 plus one into the next position (position 3 wraps to 0); the rest of the array stays the same.
+
+e0
+fn f u32x4 u32 -> u32x4
+n add p1 1
+v get p0 p1
+w add v 1
+r set p0 p1 w
+ret r
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+[assistant]
+-n
+-r
+n1 add p1 1
+n and n1 3
+r set p0 n w
+
+[user]
+Rejected:
+edit: line 5: duplicate edit for 'n'
+
+Try again.
+
+### CONVERSATION 6
+[user]
+Return true when the element at position p1 is strictly greater than both of its neighbours (the array is circular).
+
+e0
+fn f u32x4 u32 -> bool
+c get p0 p1
+li add p1 3
+l get p0 li
+ri add p1 1
+rv get p0 ri
+a ge c l
+b gt c rv
+r and a b
+ret r
+end
+g0
+fn f u32x4 u32 -> bool end
+
+[assistant]
+-li
+-l
+-ri
+-rv
+-a
+-b
+-r
+li0 add p1 3
+li and li0 3
+l get p0 li
+ri0 add p1 1
+ri and ri0 3
+rv get p0 ri
+a gt c l
+b gt c rv
+r and a b
+
+[user]
+Rejected:
+edit: line 10: duplicate edit for 'li'
+
+Try again.
+
+### CONVERSATION 10
+[user]
+Add a level: scores from 70 to 79 give 2. Scores of 90 or more still give 4, 80 to 89 give 3, and below 70 give 0.
+
+e0
+fn f u32 -> u32
+g90 ge p0 90
+g80 ge p0 80
+y select g80 3 0
+r select g90 4 y
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+[assistant]
+-y
+-r
+g70 ge p0 70
+z select g70 2 0
+y select g80 3 z
+r select g90 4 y
+
+[user]
+Rejected:
+edit: line 6: duplicate edit for 'y'
+
+Try again.
+
+### CONVERSATION 16
+[user]
+One tick of a toggling counter: when the flag is set the count doubles, otherwise it grows by 3; the flag flips on every tick.
+
+e0
+fn f (u32,bool) -> (u32,bool)
+c at p0 0
+fl at p0 1
+dbl mul c 2
+plus add c 1
+nc select fl dbl plus
+nf mov fl
+r rec nc nf
+ret r
+end
+g0
+fn f (u32,bool) -> (u32,bool) end
+
+[assistant]
+plus add c 3
+nf xor fl 1
+
+[user]
+Rejected:
+type: f.nf: expected bool, got u32 fix: replace the operand at f.nf with a value of type bool
+
+Try again.

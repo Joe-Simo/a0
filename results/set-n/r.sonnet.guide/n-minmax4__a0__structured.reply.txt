@@ -1,0 +1,24 @@
+fn mn u32 u32 -> u32
+a lt p0 p1
+r select a p0 p1
+ret r
+end
+fn mx u32 u32 -> u32
+a gt p0 p1
+r select a p0 p1
+ret r
+end
+fn mm u32x4 -> (u32,u32)
+e0 get p0 0
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+a call mn e0 e1
+b call mn e2 e3
+lo call mn a b
+c call mx e0 e1
+d call mx e2 e3
+hi call mx c d
+r rec lo hi
+ret r
+end

@@ -1,0 +1,61 @@
+{
+ "m-field-extract/a0/structured": [
+  "b and a 63"
+ ],
+ "m-pack-bytes/a0/structured": [
+  "fn lo8 u32 -> u32 / a and p0 255 / ret a / end\nc shl a 8"
+ ],
+ "m-nonzero-nibbles/a0/structured": [
+  "fn step u32 u32 u32 -> u32 / a shl i 2 / b shr p0 a / c and b 15 / d ne c 0 / e add state (select d 1 0) / ret e / end",
+  "a fold step 8 0 p0\nfn step u32 u32 u32 -> u32 / a shl p1 2 / b shr p2 a / c and b 15 / d ne c 0 / e add state (select d 1 0) / ret e / end"
+ ],
+ "m-header-valid/a0/structured": [
+  "fn nib u32 u32 -> u32 / a shr p0 p1 / b and a 15 / ret b / end\na call nib p0 28"
+ ],
+ "m-copy-next/a0/structured": [
+  "a add p1 1 / b and a 3 / g get p0 b / s set p0 p1 g / ret s",
+  "a add p1 1\nb and a 3\ng get p0 b\ns set p0 p1 g"
+ ],
+ "m-low-bits-tally/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32 / a get p0 i / b and a 3 / c and p1 3 / d eq b c / e add state (select d 1 0) / ret e / end",
+  "fn step u32 u32 u32x4 u32 -> u32 / a get p2 p1 / b and a 3 / c and p3 3 / d eq b c / e add state (select d 1 0) / ret e / end"
+ ],
+ "m-split-word/a0/structured": [
+  "c ne b 0"
+ ],
+ "m-bit-window/a0/structured": [
+  "a shl 1 p1 / c sub a 1 / b shl c p0",
+  "-a\na shl 1 p1\nc sub a 1\nb shl c p0"
+ ],
+ "m-shift-xor-check/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32 / a get p0 i / b shl a i / c xor state b / ret c / end",
+  "fn step u32 u32 u32x4 -> u32 / a get p2 p1 / b shl a p1 / c xor state b / ret c / end"
+ ],
+ "m-flag-write/a0/structured": [
+  "d xor b 4294967295 / c and p0 d / r select p2 s c",
+  "d xor b 4294967295\nc and p0 d"
+ ],
+ "m-decade-counter/a0/structured": [
+  "b eq a 10"
+ ],
+ "m-unpack-channels/a0/structured": [
+  "a shr p0 16 / b and a 255 / c shr p0 8 / d and c 255 / e and p0 255 / g shr p0 24 / r arr b d e g",
+  "a shr p0 16\nb and a 255\nc shr p0 8\nd and c 255\ne and p0 255\ng shr p0 24"
+ ],
+ "m-adjacent-repeat/a0/structured": [
+  "fn same u32 u32 -> bool / a eq p0 p1 / ret a / end\nfn step bool u32 u32x4 -> bool / a lt i 3 / b get p0 i / c add i 1 / d get p0 c / e call same b d / f select a e false / g or state f / ret g / end",
+  "fn step bool u32 u32x4 -> bool / a lt p1 3 / b get p2 p1 / c add p1 1 / d get p2 c / e call same b d / f select a e false / g or state f / ret g / end"
+ ],
+ "m-scaled-pack/a0/structured": [
+  "c shl a 16",
+  "b and p1 255\nc shl b 16"
+ ],
+ "m-set-pair-count/a0/structured": [
+  "fn pair u32 u32 -> bool / a shr p1 p0 / b and a 3 / c eq b 3 / ret c / end\nfn step u32 u32 u32 -> u32 / a call pair i p0 / b add state (select a 1 0) / ret b / end",
+  "fn step u32 u32 u32 -> u32 / a call pair p1 p2 / b add state (select a 1 0) / ret b / end"
+ ],
+ "m-byte-insert/a0/structured": [
+  "a and p0 4294902015",
+  "a and p0 4294902015\nb and p1 255\nc shl b 8"
+ ]
+}

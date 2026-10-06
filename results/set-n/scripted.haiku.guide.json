@@ -1,0 +1,66 @@
+{
+ "n-sort2-pair/a0/structured": [
+  "fn f u32 u32 -> (u32,u32) end",
+  "fn f u32 u32 -> (u32,u32)\nc gt p0 p1\nlo select c p1 p0\nhi select c p0 p1\nr rec lo hi\nret r\nend"
+ ],
+ "n-median3/a0/structured": [
+  "fn mn u32 u32 -> u32 end\nfn mx u32 u32 -> u32 end\nfn med u32 u32 u32 -> u32 end",
+  "fn mn u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend\nfn mx u32 u32 -> u32\nc gt p0 p1\nr select c p0 p1\nret r\nend\nfn med u32 u32 u32 -> u32\na call mn p0 p1\nb call mx p0 p1\nc call mx a p2\nd call mx b p2\nr call mn c d\nret r\nend"
+ ],
+ "n-satsub-cap/a0/structured": [
+  "fn f u32 u32 -> u32 end",
+  "fn f u32 u32 -> u32\nu lt p0 p1\nd sub p0 p1\no gt d 255\ns select o 255 d\nr select u 0 s\nret r\nend"
+ ],
+ "n-grade-bands/a0/structured": [
+  "fn g u32 -> u32 end",
+  "fn g u32 -> u32\na lt p0 50\nb lt p0 70\nc lt p0 90\nx select c 2 3\ny select b 1 x\nz select a 0 y\nret z\nend"
+ ],
+ "n-compare-code/a0/structured": [
+  "fn cmp u32 u32 -> (u32,bool) end",
+  "fn cmp u32 u32 -> (u32,bool)\nl lt p0 p1\ne eq p0 p1\ns select e 1 2\nc select l 0 s\nr rec c e\nret r\nend"
+ ],
+ "n-nibble-field/a0/structured": [
+  "fn nib u32 -> u32 end",
+  "fn nib u32 -> u32\ns shr p0 4\nr and s 15\nret r\nend"
+ ],
+ "n-insert-byte/a0/structured": [
+  "fn ins u32 u32 -> u32 end",
+  "fn ins u32 u32 -> u32\nk and p0 65280\nm and p1 255\ns shl m 8\nr or k s\nret r\nend"
+ ],
+ "n-argmax-first/a0/structured": [
+  "fn step (u32,u32) u32 u32x4 -> (u32,u32) end\nfn am u32x4 -> (u32,u32) end",
+  "fn step (u32,u32) u32 u32x4 -> (u32,u32)\nst at p0 0\nsv at p0 1\nc gt p2 sv\ni mov p1\nv mov p2\ns select c 1 0\nidx select s i st\nval select s v sv\nr rec idx val\nret r\nend\nfn am u32x4 -> (u32,u32)\nz rec 0 0\nr fold step 4 z p0\nret r\nend"
+ ],
+ "n-bump-capped/a0/structured": [
+  "fn bump u32x4 u32 u32 -> u32x4 end",
+  "fn bump u32x4 u32 u32 -> u32x4\ng get p0 p1\ns add g p2\nu lt g s\no gt s 1000\nc select o 1000 s\nc2 select u 1000 c\nr set p0 p1 c2\nret r\nend"
+ ],
+ "n-all-distinct/a0/structured": [
+  "fn dist u32 u32 u32 -> bool end",
+  "fn dist u32 u32 u32 -> bool\na ne p0 p1\nb ne p1 p2\nc ne p0 p2\nx and a b\nr and x c\nret r\nend"
+ ],
+ "n-mix-order/a0/structured": [
+  "fn mix u32 u32 -> u32 end\nfn f u32 u32 -> u32 end",
+  "fn mix u32 u32 -> u32\nm mul p0 3\nr add m p1\nret r\nend\nfn f u32 u32 -> u32\nm call mix p0 p1\nr xor m 90\nret r\nend"
+ ],
+ "n-hash31/a0/structured": [
+  "fn hs u32 u32 u32x4 -> u32 end\nfn h u32x4 -> u32 end",
+  "fn hs u32 u32 u32x4 -> u32\nm mul p0 31\nr add m p2\nret r\nend\nfn h u32x4 -> u32\nr fold hs 4 7 p0\nret r\nend"
+ ],
+ "n-sort3-net/a0/structured": [
+  "fn s3 u32 u32 u32 -> (u32,u32,u32) end",
+  "fn s3 u32 u32 u32 -> (u32,u32,u32)\nc1 lt p0 p1\na1 select c1 p0 p1\nb1 select c1 p1 p0\nc2 lt b1 p2\nc3 lt a1 p2\nm1 select c3 a1 p2\nm2 select c2 b1 p2\nb2 select c2 p2 b1\nz select c3 p2 a1\nr rec m1 m2 b2\nret r\nend"
+ ],
+ "n-flag-adjust/a0/structured": [
+  "fn adj (u32,bool) u32 -> u32 end",
+  "fn adj (u32,bool) u32 -> u32\nv at p0 0\nfl at p0 1\nu lt v p1\nd sub v p1\na add v p1\nr1 select u 0 d\nr select fl a r1\nret r\nend"
+ ],
+ "n-beats/a0/structured": [
+  "fn beats (u32,bool) (u32,bool) -> bool end",
+  "fn beats (u32,bool) (u32,bool) -> bool\nva at p0 0\nfa at p0 1\nvb at p1 0\nfb at p1 1\ng gt va vb\nl lt va vb\nnfb xor fb true\nt and fa nfb\ns select l false t\nr select g true s\nret r\nend"
+ ],
+ "n-minmax4/a0/structured": [
+  "fn mn u32 u32 -> u32 end\nfn mx u32 u32 -> u32 end\nfn mm u32x4 -> (u32,u32) end",
+  "fn mn u32 u32 -> u32\nc lt p0 p1\nr select c p0 p1\nret r\nend\nfn mx u32 u32 -> u32\nc gt p0 p1\nr select c p0 p1\nret r\nend\nfn mm u32x4 -> (u32,u32)\ne0 get p0 0\ne1 get p0 1\ne2 get p0 2\ne3 get p0 3\na call mn e0 e1\nb call mn e2 e3\nlo call mn a b\nc call mx e0 e1\nd call mx e2 e3\nhi call mx c d\nr rec lo hi\nret r\nend"
+ ]
+}

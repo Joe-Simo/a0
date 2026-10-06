@@ -1,0 +1,50 @@
+{
+ "n-sort2-pair/a0/structured": [
+  "lo select c p1 p0"
+ ],
+ "n-median3/a0/structured": [
+  "fn mn u32 u32 -> u32\na lt p0 p1\nr select a p0 p1\nret r\nend\nfn mx u32 u32 -> u32\na gt p0 p1\nr select a p0 p1\nret r\nend\nfn med u32 u32 u32 -> u32\na call mn p0 p1\nb call mx p0 p1\nc call mn b p2\nd call mx a c\nret d\nend"
+ ],
+ "n-satsub-cap/a0/structured": [
+  "o gt d 255\ns select o 255 d"
+ ],
+ "n-grade-bands/a0/structured": [
+  "b lt p0 70"
+ ],
+ "n-compare-code/a0/structured": [
+  "q eq p0 p1"
+ ],
+ "n-nibble-field/a0/structured": [
+  "r and s 15"
+ ],
+ "n-insert-byte/a0/structured": [
+  "m and p1 255 @ k\ns shl m 8"
+ ],
+ "n-argmax-first/a0/structured": [
+  "fn step (u32,u32) u32 u32x4 -> (u32,u32)\nbi at p0 0\nbv at p0 1\ne get p2 p1\nc gt e bv\nni select c p1 bi\nnv select c e bv\nr rec ni nv\nret r\nend\nfn am u32x4 -> (u32,u32)\nz rec 0 0\nr fold step 4 z p0\nret r\nend"
+ ],
+ "n-bump-capped/a0/structured": [
+  "w lt s g @ s\nx or o w @ o\nc select x 1000 s"
+ ],
+ "n-all-distinct/a0/structured": [
+  "d ne p0 p2 @ b\nt and a b @ d\nc and t d"
+ ],
+ "n-mix-order/a0/structured": [
+  "fn mix u32 u32 -> u32\na mul p1 3\nr add a p0\nret r\nend\nfn f u32 u32 -> u32\nm call mix p1 p0\nr xor m 90\nret r\nend"
+ ],
+ "n-hash31/a0/structured": [
+  "fn hs u32 u32 u32x4 -> u32\nm mul p0 31\ne get p2 p1\nr add m e\nret r\nend\nfn h u32x4 -> u32\nr fold hs 4 7 p0\nret r\nend"
+ ],
+ "n-sort3-net/a0/structured": [
+  "fn s3 u32 u32 u32 -> (u32,u32,u32)\nc1 gt p0 p1\na1 select c1 p1 p0\nb1 select c1 p0 p1\nc2 gt b1 p2\nt select c2 p2 b1\nz select c2 b1 p2\nc3 gt a1 t\nlo select c3 t a1\nmid select c3 a1 t\nr rec lo mid z\nret r\nend"
+ ],
+ "n-flag-adjust/a0/structured": [
+  "u lt v p1 @ d\ns select u 0 d @ u\nr select fl a s"
+ ],
+ "n-beats/a0/structured": [
+  "t and fa nb"
+ ],
+ "n-minmax4/a0/structured": [
+  "fn mn u32 u32 -> u32\na lt p0 p1\nr select a p0 p1\nret r\nend\nfn mx u32 u32 -> u32\na gt p0 p1\nr select a p0 p1\nret r\nend\nfn mm u32x4 -> (u32,u32)\ne0 get p0 0\ne1 get p0 1\ne2 get p0 2\ne3 get p0 3\na call mn e0 e1\nb call mn e2 e3\nlo call mn a b\nc call mx e0 e1\nd call mx e2 e3\nhi call mx c d\nr rec lo hi\nret r\nend"
+ ]
+}

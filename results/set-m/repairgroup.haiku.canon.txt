@@ -1,0 +1,231 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 3
+[user]
+Count how many of the eight 4-bit nibbles of the input are nonzero.
+
+e0
+fn f u32 -> u32
+a fold step 7 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+[assistant]
+a fold step 8 0 p0
+fn step u32 u32 u32 -> u32
+n shr p2 (mul p1 4)
+m and n 15
+c ne m 0
+d select c 1 0
+r add p0 d
+ret r
+end
+
+[user]
+Rejected:
+parse: line 2: nested operand: A0 has one op per line fix: one op per line: write `n1 mul p1 4` above, then `n shr p2 n1`
+
+Try again.
+
+### CONVERSATION 5
+[user]
+Return the array with slot k (the second argument) replaced by the element that follows it; the slot after the last one is the first.
+
+e0
+fn f u32x4 u32 -> u32x4
+g get p0 p1
+s set p0 p1 g
+ret s
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+[assistant]
+n add p1 1
+c ge n 4
+m select c (sub n 4) n
+g get p0 m
+s set p0 p1 g
+ret s
+
+[user]
+Rejected:
+parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `m1 sub n 4` above, then `m select c m1 n`
+
+Try again.
+
+### CONVERSATION 8
+[user]
+The function should return a mask with n bits set starting at bit lo (lo is the first argument, n the second), but it sets only the single bit just above that window. Fix it.
+
+e0
+fn f u32 u32 -> u32
+a shl 1 p1
+b shl a p0
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+a sub (shl 1 p1) 1
+
+[user]
+Rejected:
+parse: line 2: nested operand: A0 has one op per line fix: one op per line: write `a1 shl 1 p1` above, then `a sub a1 1`
+
+Try again.
+
+### CONVERSATION 10
+[user]
+Set flag k (the second argument, taken modulo 8) in the flags word when the third argument is true, and clear it when it is false.
+
+e0
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c xor p0 b
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+g0
+fn bit u32 -> u32 end
+fn f u32 u32 bool -> u32 end
+
+[assistant]
+c sub p0 b
+fn bit u32 -> u32
+m rem p0 8
+a shl 1 m
+ret a
+end
+
+[user]
+Rejected:
+f(0,0,false) = 4294967295, expected 0
+f(16,5,false) = 4294967280, expected 16
+
+Current view:
+e0
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c sub p0 b
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+g0
+fn bit u32 -> u32 end
+fn f u32 u32 bool -> u32 end
+Try again.
+
+### CONVERSATION 13
+[user]
+The function should report whether two neighbouring elements are equal, but it also compares the last element with the first. Make it compare only true neighbours.
+
+e0
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn step bool u32 u32x4 -> bool end
+g0
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool end
+fn f u32x4 -> bool end
+
+[assistant]
+a fold step 3 false p0
+fn same u32 u32 -> bool
+c eq p0 p1
+ret c
+end
+fn step bool u32 u32x4 -> bool
+e get p2 p1
+n get p2 (add p1 1)
+s call same e n
+r or p0 s
+ret r
+end
+
+[user]
+Rejected:
+parse: line 7: nested operand: A0 has one op per line fix: one op per line: write `n1 add p1 1` above, then `n get p2 n1`
+
+Try again.
+
+### CONVERSATION 15
+[user]
+The function currently counts set bits among bits 0 to 7, but it should count the positions i from 0 to 7 where bits i and i+1 are both set. Change the helper accordingly.
+
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+[assistant]
+a fold step 7 0 p0
+fn pair u32 u32 -> bool
+s shr p0 p1
+m and s 3
+c eq m 3
+ret c
+end
+fn step u32 u32 u32 -> u32
+p call pair p2 p1
+r select p (add p0 1) p0
+ret r
+end
+
+[user]
+Rejected:
+parse: line 9: nested operand: A0 has one op per line fix: one op per line: write `r1 add p0 1` above, then `r select p r1 p0`
+
+Try again.
+
+### CONVERSATION 16
+[user]
+Return the word with bits 8 to 15 replaced by the low 8 bits of the second argument; all other bits of the word stay unchanged.
+
+e0
+fn f u32 u32 -> u32
+a and p0 65280
+c shl p1 8
+r or a c
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+l and p0 255
+h shr p0 16
+h shl h 16
+b and p1 255
+c shl b 8
+t or l h
+r or t c
+
+[user]
+Rejected:
+edit: line 4: duplicate edit for 'h'
+
+Try again.

@@ -1,0 +1,51 @@
+{
+ "m-field-extract/a0/structured": [
+  "b and a 63"
+ ],
+ "m-pack-bytes/a0/structured": [
+  "fn lo8 u32 -> u32\na and p0 255\nret a\nend\nc shl a 8"
+ ],
+ "m-nonzero-nibbles/a0/structured": [
+  "fn step u32 u32 u32 -> u32\na shl p1 2\nb shr p2 a\nc and b 15\nd ne c 0\ne select d 1 0\nf add p0 e\nret f\nend\na fold step 8 0 p0"
+ ],
+ "m-header-valid/a0/structured": [
+  "fn nib u32 u32 -> u32\na shr p0 p1\nb and a 15\nret b\nend\na call nib p0 28"
+ ],
+ "m-copy-next/a0/structured": [
+  "g add p1 1\nh get p0 g @ g\ns set p0 p1 h"
+ ],
+ "m-low-bits-tally/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\na get p2 p1\nb xor a p3\nc and b 3\nd eq c 0\ne select d 1 0\nf add p0 e\nret f\nend"
+ ],
+ "m-split-word/a0/structured": [
+  "c gt b 0"
+ ],
+ "m-bit-window/a0/structured": [
+  "m sub a 1 @ a\ng ge p1 32 @ m\nh select g 4294967295 m @ g\nb shl h p0",
+  "-g\n-h\nb shl m p0"
+ ],
+ "m-shift-xor-check/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\na get p2 p1\nb shl a p1\nc xor p0 b\nret c\nend"
+ ],
+ "m-flag-write/a0/structured": [
+  "fn bit u32 -> u32\na and p0 7\nb shl 1 a\nret b\nend\nn xor b 4294967295 @ s\nc and p0 n"
+ ],
+ "m-decade-counter/a0/structured": [
+  "b eq a 10"
+ ],
+ "m-unpack-channels/a0/structured": [
+  "b and a 255\nd and c 255\ne and p0 255"
+ ],
+ "m-adjacent-repeat/a0/structured": [
+  "fn same u32 u32 -> bool\na eq p0 p1\nret a\nend\nfn step bool u32 u32x4 -> bool\na get p2 p1\nj add p1 1\nb get p2 j\nc call same a b\nd or p0 c\nret d\nend\na fold step 3 false p0"
+ ],
+ "m-scaled-pack/a0/structured": [
+  "c shl a 16\nm and b 65535 @ c\nr or c m"
+ ],
+ "m-set-pair-count/a0/structured": [
+  "fn pair u32 u32 -> bool\na shr p0 p1\nb shr a 1\nc and a b\nd and c 1\ne ne d 0\nret e\nend\nfn step u32 u32 u32 -> u32\na call pair p2 p1\ns select a 1 0\nt add p0 s\nret t\nend"
+ ],
+ "m-byte-insert/a0/structured": [
+  "a and p0 4294902015\nd and c 65280 @ c\nr or a d"
+ ]
+}

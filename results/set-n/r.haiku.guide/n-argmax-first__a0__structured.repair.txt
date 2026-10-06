@@ -1,0 +1,17 @@
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+st at p0 0
+sv at p0 1
+c gt p2 sv
+i mov p1
+v mov p2
+s select c 1 0
+idx select s i st
+val select s v sv
+r rec idx val
+ret r
+end
+fn am u32x4 -> (u32,u32)
+z rec 0 0
+r fold step 4 z p0
+ret r
+end

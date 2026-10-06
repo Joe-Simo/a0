@@ -1,0 +1,75 @@
+### REPLY 3
+a fold step 8 0 p0
+fn step u32 u32 u32 -> u32
+n1 mul p1 4
+n shr p2 n1
+m and n 15
+c ne m 0
+d select c 1 0
+r add p0 d
+ret r
+end
+
+### REPLY 5
+n add p1 1
+c ge n 4
+m1 sub n 4
+m select c m1 n
+g get p0 m
+s set p0 p1 g
+ret s
+
+### REPLY 8
+a1 shl 1 p1
+a sub a1 1
+b shl a p0
+ret b
+
+### REPLY 10
+b1 rem p1 8
+b shl 1 b1
+fn bit u32 -> u32
+m rem p0 8
+a shl 1 m
+ret a
+end
+
+### REPLY 13
+a fold step 3 false p0
+fn same u32 u32 -> bool
+c eq p0 p1
+ret c
+end
+fn step bool u32 u32x4 -> bool
+e get p2 p1
+n1 add p1 1
+n get p2 n1
+s call same e n
+r or p0 s
+ret r
+end
+
+### REPLY 15
+a fold step 7 0 p0
+fn pair u32 u32 -> bool
+s shr p0 p1
+m and s 3
+c eq m 3
+ret c
+end
+fn step u32 u32 u32 -> u32
+p call pair p2 p1
+r1 add p0 1
+r select p r1 p0
+ret r
+end
+
+### REPLY 16
+l and p0 255
+m1 shr p0 16
+h shl m1 16
+b and p1 255
+c shl b 8
+t or l h
+r or t c
+ret r

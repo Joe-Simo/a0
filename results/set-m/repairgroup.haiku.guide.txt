@@ -1,0 +1,380 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+io: linear token, each value used once. read t->(u32,io) | write t v->io | puts t a->io
+EDIT: reply bare edit lines (handle line optional when one e handle is shown). `id op ...` replaces or inserts before ret; `... @ other` inserts after other; `-id` deletes; `ret x`; `fn ...` block (end optional) adds/replaces a function; `-fn name` removes.
+Example: fn affine u32 u32 u32 -> u32 / a mul p0 p1 / b add a p2 / ret b / end (one item per line).
+
+
+The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.
+
+=====
+
+### CONVERSATION 3
+[user]
+Count how many of the eight 4-bit nibbles of the input are nonzero.
+
+e0
+fn f u32 -> u32
+a fold step 7 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+[assistant]
+fn step u32 u32 u32 -> u32 / a shl i 2 / b shr p0 a / c and b 15 / d ne c 0 / e add state (select d 1 0) / ret e / end
+
+[user]
+Rejected:
+f(4294967295) = 7, expected 8
+f(4026531840) = 0, expected 1
+f(268435456) = 0, expected 1
+f(2147483649) = 1, expected 2
+f(286331153) = 7, expected 8
+
+Current view:
+e0
+fn f u32 -> u32
+a fold step 7 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+Try again.
+
+### CONVERSATION 5
+[user]
+Return the array with slot k (the second argument) replaced by the element that follows it; the slot after the last one is the first.
+
+e0
+fn f u32x4 u32 -> u32x4
+g get p0 p1
+s set p0 p1 g
+ret s
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+[assistant]
+a add p1 1 / b and a 3 / g get p0 b / s set p0 p1 g / ret s
+
+[user]
+Rejected:
+parse: line 2: add expects 2 operands, got 21 fix: write exactly 2 operands after add
+
+Try again.
+
+### CONVERSATION 6
+[user]
+Count the elements whose two lowest bits equal the two lowest bits of the second argument, comparing only those two bits on both sides.
+
+e0
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 u32 -> u32 end
+g0
+fn step u32 u32 u32x4 u32 -> u32 end
+fn f u32x4 u32 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 u32 -> u32 / a get p0 i / b and a 3 / c and p1 3 / d eq b c / e add state (select d 1 0) / ret e / end
+
+[user]
+Rejected:
+f(4,5,6,7,1) = 0, expected 1
+f(4,8,12,0,0) = 1, expected 4
+f(4,8,12,0,4) = 1, expected 4
+f(7,7,7,7,3) = 0, expected 4
+f(1,5,9,13,5) = 1, expected 4
+f(4294967295,3,0,2,4294967295) = 1, expected 2
+
+Current view:
+e0
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 u32 -> u32 end
+g0
+fn step u32 u32 u32x4 u32 -> u32 end
+fn f u32x4 u32 -> u32 end
+Try again.
+
+### CONVERSATION 8
+[user]
+The function should return a mask with n bits set starting at bit lo (lo is the first argument, n the second), but it sets only the single bit just above that window. Fix it.
+
+e0
+fn f u32 u32 -> u32
+a shl 1 p1
+b shl a p0
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+a shl 1 p1 / c sub a 1 / b shl c p0
+
+[user]
+Rejected:
+parse: line 2: shl expects 2 operands, got 12 fix: write exactly 2 operands after shl
+
+Try again.
+
+### CONVERSATION 9
+[user]
+Combine the four elements with exclusive-or, after shifting each element left by its index.
+
+e0
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32 / a get p0 i / b shl a i / c xor state b / ret c / end
+
+[user]
+Rejected:
+f(4294967295,4294967295,0,0) = 4294967295, expected 1
+f(2,1,0,0) = 2, expected 0
+f(8,4,2,1) = 8, expected 0
+f(5,5,5,5) = 63, expected 51
+
+Current view:
+e0
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+Try again.
+
+### CONVERSATION 10
+[user]
+Set flag k (the second argument, taken modulo 8) in the flags word when the third argument is true, and clear it when it is false.
+
+e0
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c xor p0 b
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+g0
+fn bit u32 -> u32 end
+fn f u32 u32 bool -> u32 end
+
+[assistant]
+d xor b 4294967295 / c and p0 d / r select p2 s c
+
+[user]
+Rejected:
+parse: line 2: xor expects 2 operands, got 13 fix: write exactly 2 operands after xor
+
+Try again.
+
+### CONVERSATION 12
+[user]
+Return the input's bytes as an array: bits 16-23, bits 8-15, bits 0-7, then bits 24-31, each field a full 8 bits wide.
+
+e0
+fn f u32 -> u32x4
+a shr p0 16
+b and a 15
+c shr p0 8
+d and c 15
+e and p0 15
+g shr p0 24
+r arr b d e g
+ret r
+end
+g0
+fn f u32 -> u32x4 end
+
+[assistant]
+a shr p0 16 / b and a 255 / c shr p0 8 / d and c 255 / e and p0 255 / g shr p0 24 / r arr b d e g
+
+[user]
+Rejected:
+parse: line 2: shr expects 2 operands, got 34 fix: write exactly 2 operands after shr
+
+Try again.
+
+### CONVERSATION 13
+[user]
+The function should report whether two neighbouring elements are equal, but it also compares the last element with the first. Make it compare only true neighbours.
+
+e0
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn step bool u32 u32x4 -> bool end
+g0
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool end
+fn f u32x4 -> bool end
+
+[assistant]
+fn same u32 u32 -> bool / a eq p0 p1 / ret a / end
+fn step bool u32 u32x4 -> bool / a lt i 3 / b get p0 i / c add i 1 / d get p0 c / e call same b d / f select a e false / g or state f / ret g / end
+
+[user]
+Rejected:
+f(1,2,3,1) = true, expected false
+f(7,8,9,7) = true, expected false
+
+Current view:
+e0
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn step bool u32 u32x4 -> bool end
+g0
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool end
+fn f u32x4 -> bool end
+Try again.
+
+### CONVERSATION 14
+[user]
+Scale both arguments with the helper, then put the scaled first value in the upper 16 bits and the scaled second value, cut to 16 bits, in the lower 16 bits.
+
+e0
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 8
+r or c b
+ret r
+end
+fn scale u32 -> u32 end
+g0
+fn scale u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+[assistant]
+c shl a 16
+
+[user]
+Rejected:
+f(0,131072) = 98304, expected 32768
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+r or c b
+ret r
+end
+fn scale u32 -> u32 end
+g0
+fn scale u32 -> u32 end
+fn f u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+The function currently counts set bits among bits 0 to 7, but it should count the positions i from 0 to 7 where bits i and i+1 are both set. Change the helper accordingly.
+
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+[assistant]
+fn pair u32 u32 -> bool / a shr p1 p0 / b and a 3 / c eq b 3 / ret c / end
+fn step u32 u32 u32 -> u32 / a call pair i p0 / b add state (select a 1 0) / ret b / end
+
+[user]
+Rejected:
+f(1) = 1, expected 0
+f(3) = 2, expected 1
+f(255) = 8, expected 7
+f(341) = 4, expected 0
+f(6) = 2, expected 1
+
+Current view:
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+Try again.
+
+### CONVERSATION 16
+[user]
+Return the word with bits 8 to 15 replaced by the low 8 bits of the second argument; all other bits of the word stay unchanged.
+
+e0
+fn f u32 u32 -> u32
+a and p0 65280
+c shl p1 8
+r or a c
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+a and p0 4294902015
+
+[user]
+Rejected:
+f(0,511) = 130816, expected 65280
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a and p0 4294902015
+c shl p1 8
+r or a c
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+Try again.

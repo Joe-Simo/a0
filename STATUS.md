@@ -171,5 +171,5 @@ Short version; the dated record, with every number and its `results/` file, is [
 - **Protocol changes** (general, with tests, none re-measured with fresh subjects): an `ex` line after a node is hoisted; an unwritten dense result takes the type of the last statement;
   `at`/`put` on an array carries an exact edit to `get`/`set`; a dense callee signature copied without its `#` is skipped.
 - **Dense against canonical** (pre-registered, new sealed sets H, I, J): dense met the rule once in six model-by-set comparisons; it stays out of the shipped form (`results/set-h.json`, `results/set-i.json`, `results/set-j.json`).
-- **Shipped guide against the 101-token edit primer** (set K, then sets L, M, N pooled): see `results/set-k.json` and, when it exists, `results/set-lmn.json`.
+- **Shipped guide against the 101-token edit primer** (set K, then sets L, M, N pooled): `results/set-k.json` and `results/set-lmn.json`: the primer costs 55 to 62 per cent less at the cold task and the pre-registered rule (both models) is not met, by one-shot acceptance on Sonnet.
 - **Loss ledger by cause**: `results/loss-blockers.json` gives a reason for each of the recorded losses; `results/canon-syntax-tokens.json` prices three canonical syntax cuts against the token losses.
