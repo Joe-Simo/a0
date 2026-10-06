@@ -328,6 +328,7 @@ s 13 glsl
 .div center
 =h2 Native speed. Verified edits. Every target.
 =p A model writes A0 directly. Nothing invalid lands. One source runs on every target, checked against one oracle.
+=p Binaries for Windows, macOS and Linux, no package manager: see Try it at the end of this page.
 >
 .div trio
 .div tcard native reveal
@@ -355,7 +356,7 @@ s 13 glsl
 "$cmax_ratio$x
 >
 .p d
-"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more.
+"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit.json), TypeScript was accepted more often than A0 on both Haiku and Sonnet; A0 cost less per accepted edit on Sonnet and more on Haiku.
 >
 >
 .div tcard hw reveal
@@ -1844,7 +1845,7 @@ c putratio %a
 >
 =h3 Not yet
 .div limits
-=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written.
+=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written. Editing a real front end, models had more edits accepted in TypeScript than in A0 on both Haiku and Sonnet (results/app-edit.json).
 >
 =h3 Try it
 .pre code
@@ -1852,7 +1853,10 @@ c putratio %a
 .span cm
 "# one binary, no package manager\n
 >
-"curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-darwin-arm64 -o a0 && chmod +x a0\n
+"# macOS and Linux: pick the binary for your machine, a0-darwin-arm64, a0-darwin-x64, a0-linux-arm64 or a0-linux-x64\n
+"curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-linux-x64 -o a0 && chmod +x a0\n
+"# Windows, PowerShell: a0-windows-x64.exe, then use .\\a0.exe where this page says ./a0\n
+"Invoke-WebRequest https://github.com/Joe-Simo/a0/releases/latest/download/a0-windows-x64.exe -OutFile a0.exe\n
 "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n
 "./a0 run sq.a0 sq 12          # 144\n
 "./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n

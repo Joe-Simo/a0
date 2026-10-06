@@ -70,7 +70,15 @@ export const STAGE_OUTPUT = 1 << 22;
 /** Stack of the thread that runs the compiler (aggregates are passed by value). */
 export const STAGE_STACK = 1 << 30;
 export const BUILD_DIR = join('dist', 'bootstrap');
-export const CLANG_BUILD = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Wno-unused-parameter'];
+export const CLANG_BUILD = [
+  '-std=c11',
+  '-O2',
+  '-Wall',
+  '-Wextra',
+  '-Wno-unused-parameter',
+  // the stage runtime runs the compiler on a big-stack thread; MinGW needs the flag, Linux and macOS accept it
+  ...(process.platform === 'win32' ? ['-pthread'] : []),
+];
 
 export const SMALL: [string, string][] = [
   [
