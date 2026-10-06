@@ -1,5 +1,10 @@
 # Rules for every agent working on A0
 
+> **Outside contributors:** you do not need any of the merge machinery below. Fork the repository, work on a branch, run `bun run lint`, `bun run typecheck`
+> and `bun run test`, and open a pull request; CI checks it and a maintainer runs the full gate before merging. See [CONTRIBUTING.md](CONTRIBUTING.md).
+> Steps 4, 5 and 8 of the loop (`gate --light` notes, `drive --merge`, the push gate) are for maintainers and automated agents with write access. The rules under
+> "Rules that never bend" apply to everyone.
+
 These rules are binding. The loop below is how A0 is developed; the tools are free, local and
 deterministic (no key, no network, nothing paid). Reference: `docs/DEVELOPMENT.md`. The way in for a new
 contributor, with the layout, the build and the measurement rules, is `CONTRIBUTING.md`.

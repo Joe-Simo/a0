@@ -33,8 +33,10 @@ You do not need write access, a paid service, an API key or a particular machine
    enough to review.
 3. **Install and build** (Bun and Node 22 or newer; see the next sections): `bun install --frozen-lockfile`, then `bun run build`.
 4. **Make the change**, with a test for a behavior change. A new diagnostic is one row of `src/diagnostics.ts` with its examples; a change to
-   `compiler/*.a0` also needs `bun run seed` (see below). Do not edit `results/*.json` by hand: tools write them.
-5. **Check it locally** before you push:
+   `compiler/*.a0` also needs `bun run seed` (see below). Do not edit `results/*.json` by hand, and do not commit regenerated results files in a pull request unless the change is about a measurement: tools write them and maintainers regenerate them
+   (`bun run setup:merge` configures the git merge drivers that keep results files from conflicting; it is optional for a code-only change).
+5. **Check it locally** before you push (in a fork, `git remote add upstream https://github.com/Joe-Simo/a0.git` first, so the claim check compares against the project's `main`,
+   not your fork's):
    ```bash
    bun run lint        # Biome, claim check, loss ledger, results scrub check
    bun run typecheck
@@ -76,7 +78,7 @@ are skipped or reported as blocked with the reason. Maintainer-only steps (`a0-d
 
 ## Build, test, run the gate
 
-You need [Bun](https://bun.sh) and Node 22 or newer. Optional toolchains (clang, gcc, a JDK, a .NET SDK, Icarus Verilog, Yosys,
+You need [Bun](https://bun.sh) (CI pins 1.3.4; any recent 1.x works) and Node 22 or newer. Optional toolchains (clang, gcc, a JDK, a .NET SDK, Icarus Verilog, Yosys,
 qemu) enable more of the verification; a step whose toolchain is missing reports itself as blocked or skipped with the reason and
 never counts as a pass.
 
@@ -91,11 +93,27 @@ bun run a0-dev -- gate   # every required step, in order; must print "GATE RESUL
 
 `bun run a0-dev -- scope` says which gate steps a diff needs and why; `gate --light` runs the cheap ones while you iterate.
 Run the full gate before a push. When one test file misbehaves, run it alone with a timeout:
-`bun run build && timeout 600 node --test dist/test/<name>.test.js`. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes every
+`bun run build && node --test dist/test/<name>.test.js` (prefix `timeout 600` where `timeout` exists). [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes every
 tool of the loop.
 
 A change to `compiler/*.a0` also needs `bun run seed` (the checked-in seed is stale otherwise and `test/seed.test.ts` fails).
 A change to a backend or the compiler keeps `bun run behavior` green.
+
+### Which checks need which tool
+
+A check whose tool is missing is reported as blocked or skipped with the reason; it is never a pass, and it is not your change breaking. Install what the area you touch needs:
+
+| You touch | Needs | Linux (apt) | macOS (brew) | Windows |
+|---|---|---|---|---|
+| anything | Bun, Node 22+ | `bun.sh`, `nodejs` | `bun`, `node` | `bun`, Node 22+ |
+| C, C++, parallel C, trap, native checks | `clang` or `gcc` | `clang gcc g++` | Xcode tools | `clang` or `gcc` on PATH, or `A0_CLANG` / `A0_GCC` |
+| Java, .NET targets | a JDK, a .NET SDK | `default-jdk`, `dotnet-sdk` | `openjdk`, `dotnet` | same |
+| SystemVerilog | Icarus Verilog, Yosys | `iverilog yosys` | `icarus-verilog yosys` | WSL |
+| the seed bootstrap | a C compiler and `sh` | `gcc` | Xcode tools | WSL or MSYS2 |
+| editor grammar tests | the tree-sitter CLI | `npm i -g tree-sitter-cli` | same | same |
+| timing benchmarks | a quiet Linux or macOS machine | any | any | not supported (no load average) |
+
+Environment variables `A0_CLANG`, `A0_CLANGXX`, `A0_GCC`, `A0_ZIG` and others (see `src/toolchain.ts` and `tools/edit-langs/`) point a check at a tool that is not on PATH.
 
 ## The edit protocol
 

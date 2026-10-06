@@ -1,5 +1,7 @@
 # Releasing
 
+> This file is for the project maintainers: cutting a release needs write access to the repository (tags, the release workflow, the Homebrew formula). Contributors do not need it.
+
 A release is a tag. Pushing `vX.Y.Z` runs `.github/workflows/release.yml`, which builds, publishes and updates `main`.
 Nothing else is done by hand.
 

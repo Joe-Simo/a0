@@ -1,0 +1,123 @@
+### REPLY 1
+lo select c p1 p0
+### REPLY 2
+fn mn u32 u32 -> u32
+a lt p0 p1
+r select a p0 p1
+ret r
+end
+fn mx u32 u32 -> u32
+a gt p0 p1
+r select a p0 p1
+ret r
+end
+fn med u32 u32 u32 -> u32
+a call mn p0 p1
+b call mx p0 p1
+c call mn b p2
+d call mx a c
+ret d
+end
+### REPLY 3
+o gt d 255
+s select o 255 d
+### REPLY 4
+b lt p0 70
+### REPLY 5
+q eq p0 p1
+### REPLY 6
+r and s 15
+### REPLY 7
+m and p1 255 @ k
+s shl m 8
+### REPLY 8
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+bi at p0 0
+bv at p0 1
+e get p2 p1
+c gt e bv
+ni select c p1 bi
+nv select c e bv
+r rec ni nv
+ret r
+end
+fn am u32x4 -> (u32,u32)
+z rec 0 0
+r fold step 4 z p0
+ret r
+end
+### REPLY 9
+w lt s g @ s
+x or o w @ o
+c select x 1000 s
+### REPLY 10
+d ne p0 p2 @ b
+t and a b @ d
+c and t d
+### REPLY 11
+fn mix u32 u32 -> u32
+a mul p1 3
+r add a p0
+ret r
+end
+fn f u32 u32 -> u32
+m call mix p1 p0
+r xor m 90
+ret r
+end
+### REPLY 12
+fn hs u32 u32 u32x4 -> u32
+m mul p0 31
+e get p2 p1
+r add m e
+ret r
+end
+fn h u32x4 -> u32
+r fold hs 4 7 p0
+ret r
+end
+### REPLY 13
+fn s3 u32 u32 u32 -> (u32,u32,u32)
+c1 gt p0 p1
+a1 select c1 p1 p0
+b1 select c1 p0 p1
+c2 gt b1 p2
+t select c2 p2 b1
+z select c2 b1 p2
+c3 gt a1 t
+lo select c3 t a1
+mid select c3 a1 t
+r rec lo mid z
+ret r
+end
+### REPLY 14
+u lt v p1 @ d
+s select u 0 d @ u
+r select fl a s
+### REPLY 15
+t and fa nb
+### REPLY 16
+fn mn u32 u32 -> u32
+a lt p0 p1
+r select a p0 p1
+ret r
+end
+fn mx u32 u32 -> u32
+a gt p0 p1
+r select a p0 p1
+ret r
+end
+fn mm u32x4 -> (u32,u32)
+e0 get p0 0
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+a call mn e0 e1
+b call mn e2 e3
+lo call mn a b
+c call mx e0 e1
+d call mx e2 e3
+hi call mx c d
+r rec lo hi
+ret r
+end
