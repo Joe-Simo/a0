@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-10-06T22:28:39.891Z",
+  "tool": "tools/app-edit-summary.ts",
+  "preRegistration": "docs/history/2026-10-06-app-edit-preregistration.md",
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "meaning": "Application-scale edits of the A0 front end (lexer and parser, 14 sealed tasks), A0 (MODEL_GUIDE.min.txt, structured edit protocol, function views) against TypeScript (one reply-format sentence, whole-file view, unified diff), fresh Haiku and Sonnet subagents, one shot plus one repair; tokens per accepted edit at the cold, 10-task (primary) and unbounded horizons.",
+  "cells": {
+    "haiku/a0": {
+      "n": 14,
+      "system": 465,
+      "oneShot": {
+        "k": 6,
+        "ci95": [
+          0.214,
+          0.674
+        ]
+      },
+      "accepted": {
+        "k": 7,
+        "ci95": [
+          0.268,
+          0.732
+        ]
+      },
+      "callsPerTask": 1.5,
+      "tokensPerAcceptedEdit": {
+        "task1": 11134.5,
+        "session10": 10130.1,
+        "unbounded": 10018.5
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3]"
+        },
+        {
+          "task": "op-alias-mod",
+          "first": "no reply"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+        },
+        {
+          "task": "array-length-limit",
+          "first": "type: arrword.dimok: expected u32, got bool fix: replace the operand at arrword.dimok with a value of type u32"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse of \"fn f u32 -> u32\\na add p0 007\\nret a\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "unreserve-patch",
+          "first": "parse of \"fn f u32 -> bool\\nfalse eq p0 1\\nret false\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ]
+    },
+    "haiku/ts": {
+      "n": 14,
+      "system": 43,
+      "oneShot": {
+        "k": 11,
+        "ci95": [
+          0.524,
+          0.924
+        ]
+      },
+      "accepted": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "callsPerTask": 1.2,
+      "tokensPerAcceptedEdit": {
+        "task1": 8010,
+        "session10": 7960,
+        "unbounded": 7954.4
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "use-alias-import",
+          "first": "hunk 3 (@@ -543): its context and removed lines do not occur in front.ts after the previous hunk"
+        }
+      ]
+    },
+    "sonnet/a0": {
+      "n": 14,
+      "system": 465,
+      "oneShot": {
+        "k": 11,
+        "ci95": [
+          0.524,
+          0.924
+        ]
+      },
+      "accepted": {
+        "k": 12,
+        "ci95": [
+          0.601,
+          0.96
+        ]
+      },
+      "callsPerTask": 1.2,
+      "tokensPerAcceptedEdit": {
+        "task1": 6479.2,
+        "session10": 5893.3,
+        "unbounded": 5828.2
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "profile-canonical",
+          "first": "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": code expected 0, got 1"
+        },
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ]
+    },
+    "sonnet/ts": {
+      "n": 14,
+      "system": 43,
+      "oneShot": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "accepted": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "callsPerTask": 1,
+      "tokensPerAcceptedEdit": {
+        "task1": 7323.8,
+        "session10": 7277.3,
+        "unbounded": 7272.1
+      },
+      "notAcceptedAfterRepair": []
+    }
+  },
+  "preRegisteredRule": {
+    "haiku": {
+      "primaryHorizon": "session10",
+      "outcome": "ts",
+      "oneShot": {
+        "a0": 6,
+        "ts": 11
+      },
+      "accepted": {
+        "a0": 7,
+        "ts": 13
+      },
+      "cost": {
+        "a0": 10130.1,
+        "ts": 7960
+      }
+    },
+    "sonnet": {
+      "primaryHorizon": "session10",
+      "outcome": "mixed",
+      "oneShot": {
+        "a0": 11,
+        "ts": 14
+      },
+      "accepted": {
+        "a0": 12,
+        "ts": 14
+      },
+      "cost": {
+        "a0": 5893.3,
+        "ts": 7277.3
+      }
+    }
+  }
+}

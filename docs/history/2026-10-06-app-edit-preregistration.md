@@ -115,3 +115,16 @@ bun tools/app-edit-summary.ts                             # after both models an
 ```
 
 The same with `ts` for the TypeScript side, and `haiku` and `sonnet` for `<model>`.
+
+## Result (collected after the rule above was committed; `results/app-edit.json`, `tools/app-edit-summary.ts`)
+
+The task set matched its seal. 56 fresh first-reply subagents (one per prompt: Haiku and Sonnet, A0 and TypeScript, 14 tasks) and 13 fresh repair subagents; scored once, after every agent had reported. One request was left unanswered: Haiku, A0, `op-alias-mod`; the subject said the prompt does not show the keyword hash of `mod` and wrote no reply, so it is scored as not accepted and was not rerun. On the A0 side, `op-alias-mod` and `use-alias-import` ask for a new keyword in a lexer that matches keywords by a numeric hash the view does not label: a Haiku subject declined, and Haiku and Sonnet subjects guessed a value for `import`. That is a gap in the view, not only in the models.
+
+| model | side | one shot | repaired | tokens per accepted edit (10-task horizon) |
+|---|---|---|---|---|
+| Haiku | A0 | 6 of 14 | 7 of 14 | 10130.1 |
+| Haiku | TypeScript | 11 of 14 | 13 of 14 | 7960 |
+| Sonnet | A0 | 11 of 14 | 12 of 14 | 5893.3 |
+| Sonnet | TypeScript | 14 of 14 | 14 of 14 | 7277.3 |
+
+Outcome by the rule (`results/app-edit.json`): Haiku, TypeScript wins (higher acceptance and lower cost). Sonnet, mixed: TypeScript accepts more (14 against 12 repaired) while A0 costs 19 per cent less per accepted edit (5893.3 against 7277.3). These are losses for A0 on acceptance on both models, recorded here; the scripted reply maps, reports and dumps are in `results/app-edit/`. Nothing shipped changes. The one-shot protocol is the harshest way to measure an author with the MCP server and skills; an arm that lets subjects use the validate-and-fix loop is a separate pre-registered step.
