@@ -103,7 +103,10 @@ export function checkStart(p: Programs): void {
 function a0Session(source: string, task: AppTask): { session: EditSession; view: string } {
   const session = new EditSession(parseAndValidate(source));
   const views = task.a0Targets.map((f) => session.open(f, { scope: 'deps' }).text);
-  views.push(session.openProgram({ scope: 'all', target: task.a0Targets[0] as string }).text);
+  // the sealed arm lists every signature of the program; A0_PROGRAM_VIEW=deps (the deps-view arm,
+  // docs/history/2026-10-06-app-edit-deps-preregistration.md) lists only those the first target reaches
+  const scope = process.env.A0_PROGRAM_VIEW === 'deps' ? 'deps' : 'all';
+  views.push(session.openProgram({ scope, target: task.a0Targets[0] as string }).text);
   return { session, view: views.join('\n') };
 }
 
