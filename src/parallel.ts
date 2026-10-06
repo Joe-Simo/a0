@@ -304,8 +304,13 @@ const C_THREADS_RUNTIME = `/* A0 parallel folds (src/parallel.ts): persistent pt
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/resource.h>
 #include <unistd.h>
+#endif
+static long a0par_ncpu(void);
 #define A0PAR_MAX_THREADS 64u
 /* Chunk bounds are multiples of one 128-byte line (Apple M cache line; two x86-64 lines). */
 #define A0PAR_LINE 128u
@@ -340,19 +345,30 @@ static uint32_t a0par_threads(void) {
   uint32_t t = atomic_load_explicit(&cached, memory_order_relaxed);
   if (t == 0u) {
     const char *env = getenv("A0_THREADS");
-    long c = env != NULL ? atol(env) : sysconf(_SC_NPROCESSORS_ONLN);
+    long c = env != NULL ? atol(env) : a0par_ncpu();
     t = c < 1 ? 1u : c > (long)A0PAR_MAX_THREADS ? A0PAR_MAX_THREADS : (uint32_t)c;
     atomic_store_explicit(&cached, t, memory_order_relaxed);
   }
   return t;
 }
+static long a0par_ncpu(void) {
+#ifdef _WIN32
+  SYSTEM_INFO si;
+  GetSystemInfo(&si);
+  return (long)si.dwNumberOfProcessors;
+#else
+  return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+}
 /* Worker stack: at least 8 MiB and no smaller than the main thread's soft RLIMIT_STACK,
    so a body whose frame fits on the main thread also fits on a worker. */
 static size_t a0par_stack(void) {
   size_t s = (size_t)8u << 20;
+#ifndef _WIN32
   struct rlimit r;
   if (getrlimit(RLIMIT_STACK, &r) == 0 && r.rlim_cur != RLIM_INFINITY && (size_t)r.rlim_cur > s)
     s = (size_t)r.rlim_cur;
+#endif
   return s;
 }
 static void a0par_chunk(uint32_t w) {

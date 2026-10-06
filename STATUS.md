@@ -182,3 +182,12 @@ Windows toolchain note (2026-10-06): with Zig 0.17.0 unpacked outside the repo a
 build executables with `-o name` and run `name`, but a Windows compiler writes `name.exe`, so the run step finds nothing (about 100
 call sites in `test/` and `tools/`). Needs one shared `exe()` helper and a mechanical pass; not done. Unverified on Windows: the C,
 parallel C, trap and seed tests, and every benchmark (speed claims need a quiet arm64 machine in any case).
+
+Windows C backend (2026-10-06, compiler `a0c-0.1.38`): the parallel C runtime compiles on Windows (`windows.h` and `GetSystemInfo` replace
+`sys/resource.h` and `sysconf` under `_WIN32`; POSIX text unchanged), so `COMPILER_VERSION` is bumped and the golden hashes
+regenerated. With a Zig-based `clang`/`gcc` shim, the C every-op-at-the-boundaries tests (strict and canonical, clang, gcc, C++,
+optimized and not) and the parallel and strict-target tests pass on Windows x64, and the site generator reproduces `site/page.a0`
+and `site/docs.a0` byte for byte (the driver sets binary stdio). Still failing here, all environmental: tree-sitter (not
+installed), AddressSanitizer (Zig ships none), the seed rebuild (not yet diagnosed), a direct-spawn CRLF check in
+`strict-targets`, and an ELF x86-64 assembly check. Results files were not regenerated (that is the full gate's job, which needs the
+arm64 machine); do not push this branch before `a0-dev gate` passes there.

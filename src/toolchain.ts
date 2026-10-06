@@ -39,7 +39,8 @@ export interface ToolInfo {
   readonly version: string | undefined;
 }
 
-const SAFE_ARG = /^[A-Za-z0-9_./=:+,@%-]+$/;
+const SAFE_ARG =
+  process.platform === 'win32' ? /^[A-Za-z0-9_./\\=:+,@%-]+$/ : /^[A-Za-z0-9_./=:+,@%-]+$/;
 
 function checkArgs(args: readonly string[]): void {
   for (const a of args) {
@@ -76,13 +77,20 @@ export function spawnWithInput(
   }
 }
 
+/** On Windows a compiler writes `name.exe` for `-o name`: run that when `path` itself is not there. */
+function executable(path: string): string {
+  return process.platform === 'win32' && !existsSync(path) && existsSync(`${path}.exe`)
+    ? `${path}.exe`
+    : path;
+}
+
 export function runTool(
   path: string,
   args: readonly string[],
   options: { input?: string; cwd?: string; env?: NodeJS.ProcessEnv; timeoutMs?: number } = {},
 ): ToolResult {
   checkArgs(args);
-  const r = spawnSync(path, args, {
+  const r = spawnSync(executable(path), args, {
     input: options.input,
     cwd: options.cwd,
     env: options.env ?? process.env,
@@ -91,7 +99,10 @@ export function runTool(
     maxBuffer: 64 << 20,
     shell: false,
   });
-  return { ok: r.status === 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
+  // A C host on Windows writes text streams in text mode (\n becomes \r\n); tool output is compared as text.
+  const text = (t: string | null | undefined): string =>
+    process.platform === 'win32' ? (t ?? '').replaceAll('\r\n', '\n') : (t ?? '');
+  return { ok: r.status === 0, stdout: text(r.stdout), stderr: text(r.stderr), status: r.status };
 }
 
 let rosettaProbe: string | undefined;
