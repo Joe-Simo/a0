@@ -33,6 +33,7 @@
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import Anthropic from '@anthropic-ai/sdk';
@@ -336,7 +337,7 @@ async function acceptRust(
   return withTempDir(async (dir) => {
     const file = join(dir, 'candidate.rs');
     await writeFile(file, `${source}${main}`, 'utf8');
-    const rustc = `${process.env.HOME ?? ''}/.cargo/bin/rustc`;
+    const rustc = `${homedir()}/.cargo/bin/rustc`;
     const build = runTool(
       rustc,
       ['--edition', '2021', '-O', '-A', 'warnings', '-o', join(dir, 'candidate'), file],

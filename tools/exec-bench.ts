@@ -37,6 +37,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
@@ -672,7 +673,7 @@ function verdict(emitted: Sample, handwritten: Sample): 'win' | 'tie' | 'loss' {
 
 async function main(): Promise<void> {
   const clang = findClang();
-  const rustc = `${process.env.HOME ?? ''}/.cargo/bin/rustc`;
+  const rustc = `${homedir()}/.cargo/bin/rustc`;
   const table = LANGUAGES.filter((l) => CLI.langs === null || CLI.langs.has(l.id)).map((lang) => ({
     lang,
     tool: lang.find(),

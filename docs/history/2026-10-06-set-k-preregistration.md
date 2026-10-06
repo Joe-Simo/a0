@@ -27,3 +27,26 @@ edit text (guide, MCP text, skill copies are a separate step with their own test
 Both on both models, or nothing. Reported with wins, ties and losses and none hidden: the 10-task and unbounded horizons, acceptance after one repair, intervals, and the failure classes.
 Incidents, refusals and unanswered requests are handled as in the earlier notes. The decision is read from `results/set-k.json` and not changed after. A note on what the rule cannot
 show: `K` carries no language reference (only edit rules), which is the point of the question; a task that needs a rule `K` omits will show as a failure of `K`, not be set aside.
+
+## Result (collected after the rule above was committed; `results/set-k.json`, `tools/set-h-summary.ts k`)
+
+Set K was checked against its seal and not altered (the seals of H, I and J verify); the harness self-check passed in all four reports; four fresh first-reply subagents (one per variant and model, 16 requests each)
+and four fresh repair subagents (Haiku S 4 replies, Haiku K 3, Sonnet S 1, Sonnet K 2). No subject was refused or left a request unanswered.
+
+| cell | system o200k | one shot | repaired | calls per task | cold (primary) | 10-task | unbounded |
+|---|---|---|---|---|---|---|---|
+| Haiku S (shipped guide) | 443 | 12 of 16 | 14 | 1.3 | 830.5 | 283.8 | 223.0 |
+| Haiku K (101-token primer) | 101 | 13 of 16 | 15 | 1.2 | 357.5 | 241.1 | 228.2 |
+| Sonnet S | 443 | 15 of 16 | 16 | 1.1 | 698.9 | 220.5 | 167.3 |
+| Sonnet K | 101 | 14 of 16 | 16 | 1.1 | 284.1 | 175.0 | 162.9 |
+
+Tokens per accepted edit. **The pre-registered rule is met for Haiku (K one shot 13 against 12, cold cost 357.5 against 830.5) and not for Sonnet (K one shot 14 against 15, cold cost 284.1 against 698.9: the cost
+condition holds, the acceptance condition fails by one task). Both models are required, so the rule is not met and the shipped text is not changed.** Reported as a split, with none hidden: K costs less at the cold task on both models (about 57 and 59 per cent
+less) and at the 10-task horizon on both; at the unbounded horizon K is higher on Haiku (228.2 against 223.0: a loss by the raw numbers) and lower on Sonnet. After the repair K is at least S on both
+(15 against 14, 16 against 16). No interval separates any one-shot count at n = 16 (Sonnet 14 against 15 is one task).
+
+Failure classes after the repair. `k-index-checksum` failed in all four cells (first reply and repair): the expected value needs a particular hash recurrence that no cell wrote, so it is recorded as a model error in
+all four, not removed from the set. S: Haiku `k-bit-length` and `k-adjacent-equal` stayed unsolved (bool and u32 operand mix-ups); K: Haiku none besides the checksum. Sonnet K's two first-reply failures were `k-borrow-sub` (the record's flag value inverted) and the checksum;
+Sonnet S's one was the checksum. Nothing was changed after seeing these results.
+
+Reading, with the cross-session analysis (`results/primer-vs-ts-cold.json`): the saving is real and large and does not depend on the session, but a one-task acceptance deficit on Sonnet means the rule, as written, says no.

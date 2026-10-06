@@ -1,0 +1,51 @@
+{
+ "k-nibble-swap/a0/structured": [
+  "c shr p0 4"
+ ],
+ "k-lowest-bit/a0/structured": [
+  "a sub 0 p0"
+ ],
+ "k-late-fee/a0/structured": [
+  "a gt p0 p1"
+ ],
+ "k-majority/a0/structured": [
+  "d and p1 p2\ne or c d\nret e"
+ ],
+ "k-prefix-sums/a0/structured": [
+  "s2 add s1 c"
+ ],
+ "k-borrow-sub/a0/structured": [
+  "b lt p0 p1"
+ ],
+ "k-low-bit-histogram/a0/structured": [
+  "h fold step 4 z p0\nfn step u32x4 u32 u32x4 -> u32x4\nv get p2 p1\nk and v 3\nc get p0 k\nn add c 1\ns set p0 k n\nret s\nend"
+ ],
+ "k-over-budget/a0/structured": [
+  "o gt t p1\nfn acc u32 u32 u32x4 -> u32\nv get p2 p1\ns add p0 v\nret s\nend"
+ ],
+ "k-tiered-price/a0/structured": [
+  "b sub p0 10 @ a\nc mul b 3 @ b\nd add c 50 @ c\ne le p0 10 @ d\nr select e a d"
+ ],
+ "k-pack-channels/a0/structured": [
+  "r and p0 255\ng and p1 255\nbl and p2 255"
+ ],
+ "k-pair-swap/a0/structured": [
+  "c get p0 2\nd get p0 3\nu set t 2 d\nv set u 3 c\nret v"
+ ],
+ "k-scaled-diff/a0/structured": [
+  "y call scale p1 @ x\nr sub x y"
+ ],
+ "k-index-checksum/a0/structured": [
+  "h fold mix 4 17 p0\nfn mix u32 u32 u32x4 -> u32\nv get p2 p1\na add p0 v\nb add a p1\nret b\nend",
+  "h fold mix 4 17 p0\nfn mix u32 u32 u32x4 -> u32\nv get p2 p1\na mul p0 31\nb add a v\nc add b p1\nret c\nend"
+ ],
+ "k-bit-length/a0/structured": [
+  "fn bstep u32 u32 u32 -> u32\ns shr p2 p1\nnz ne s 0\nn add p0 1\nr select nz n p0\nret r\nend"
+ ],
+ "k-adjacent-equal/a0/structured": [
+  "h fold pstep 3 0 p0\nfn pstep u32 u32 u32x4 -> u32\na get p2 p1\nj add p1 1\nb get p2 j\ne eq a b\nn add p0 1\nr select e n p0\nret r\nend"
+ ],
+ "k-strictly-ascending/a0/structured": [
+  "fn istep bool u32 u32x4 -> bool\na get p2 p1\nj add p1 1\nb get p2 j\nl lt a b\nr and p0 l\nret r\nend"
+ ]
+}

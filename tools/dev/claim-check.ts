@@ -16,7 +16,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { defaultRepo, refExists, vcs } from './repo.js';
+import { defaultBase, defaultRepo, refExists, vcs } from './repo.js';
 
 export type ClaimKind = 'ratio' | 'percent' | 'comparative';
 export interface Claim {
@@ -196,6 +196,8 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const root = arg(args, 'repo') ?? defaultRepo();
   let since = arg(args, 'since');
+  // `--since=base`: the repository's default base (upstream/main in a fork, else origin/main, else main).
+  if (since === 'base') since = defaultBase(root);
   if (since && !refExists(root, since)) {
     const alt = refExists(root, 'main') ? 'main' : undefined;
     if (!alt) {

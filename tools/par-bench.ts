@@ -28,7 +28,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
-import { loadavg } from 'node:os';
+import { homedir, loadavg } from 'node:os';
 import { join } from 'node:path';
 import { compile } from '../src/backends.js';
 import { parseAndValidate, run, type TypedProgram } from '../src/core.js';
@@ -265,7 +265,7 @@ const LANGS: readonly Lang[] = [
     label: 'Rust (opt-level=3, target-cpu=native)',
     file: 'bench.rs',
     find: () => {
-      const r = `${process.env.HOME ?? ''}/.cargo/bin/rustc`;
+      const r = `${homedir()}/.cargo/bin/rustc`;
       const v = runTool(r, ['--version'], { timeoutMs: 30_000 });
       return v.ok ? { version: v.stdout.trim(), bin: { main: r } } : undefined;
     },

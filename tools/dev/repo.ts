@@ -39,8 +39,12 @@ export function refExists(repo: string, ref: string): boolean {
   return vcs(repo, ['rev-parse', '--verify', '-q', `${ref}^{commit}`]).ok;
 }
 
-/** origin/main when present, else main. */
+/**
+ * The branch a change is measured against: `upstream/main` when the clone is a fork with an `upstream` remote (so a stale fork `origin/main` is
+ * not used), else `origin/main`, else `main`.
+ */
 export function defaultBase(repo: string): string {
+  if (refExists(repo, 'upstream/main')) return 'upstream/main';
   return refExists(repo, 'origin/main') ? 'origin/main' : 'main';
 }
 

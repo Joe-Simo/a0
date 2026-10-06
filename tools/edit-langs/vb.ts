@@ -7,6 +7,7 @@
  */
 
 import { writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Type, Value } from '../../src/core.js';
 import { runTool } from '../../src/toolchain.js';
@@ -162,7 +163,7 @@ export const VB: LangSpec = {
   compileLabel: 'dotnet',
   async buildAndRun(dir, source, drv) {
     const dotnet = tool('dotnet', 'A0_DOTNET', [
-      `${process.env.HOME ?? ''}/.dotnet/dotnet`,
+      `${homedir()}/.dotnet/dotnet`,
       '/usr/local/share/dotnet/dotnet',
       '/opt/homebrew/bin/dotnet',
     ]);

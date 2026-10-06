@@ -30,7 +30,7 @@
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { loadavg, tmpdir } from 'node:os';
+import { homedir, loadavg, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
@@ -258,7 +258,7 @@ interface Row {
 async function main(): Promise<void> {
   const reps = Number(process.env.A0_EDIT_LOOP_REPS ?? '7');
   const tasks = buildTasksC(TASKS_A, TASKS_B);
-  const home = process.env.HOME ?? '';
+  const home = homedir();
   const rustc = `${home}/.cargo/bin/rustc`;
   const cargo = `${home}/.cargo/bin/cargo`;
   const tsc = join(process.cwd(), 'node_modules', 'typescript', 'bin', 'tsc');

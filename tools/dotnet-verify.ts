@@ -6,6 +6,7 @@
 
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
@@ -31,7 +32,7 @@ function findDotnet(): string | undefined {
   const explicit = process.env.A0_DOTNET;
   if (explicit !== undefined && explicit.length > 0) return explicit;
   const candidates = [
-    `${process.env.HOME ?? ''}/.dotnet/dotnet`,
+    `${homedir()}/.dotnet/dotnet`,
     '/usr/local/share/dotnet/dotnet',
     '/usr/share/dotnet/dotnet',
     '/usr/bin/dotnet',

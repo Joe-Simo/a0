@@ -19,6 +19,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Type, TypedProgram, Value } from '../src/core.js';
 import { findClangPlusPlus, findJava, findJavac, runTool, withTempDir } from '../src/toolchain.js';
@@ -1376,7 +1377,7 @@ async function buildAndRun(
     }
     case 'csharp': {
       const dotnet = tool('dotnet', 'A0_DOTNET', [
-        `${process.env.HOME ?? ''}/.dotnet/dotnet`,
+        `${homedir()}/.dotnet/dotnet`,
         '/usr/local/share/dotnet/dotnet',
         '/opt/homebrew/bin/dotnet',
       ]);

@@ -1,0 +1,159 @@
+### REPLY 1
+a and p0 15
+b shl a 4
+c shr p0 4
+d and c 15
+e and p0 4294967040
+f or b d
+g or f e
+ret g
+
+### REPLY 2
+a sub 0 p0
+b and p0 a
+ret b
+
+### REPLY 3
+a gt p0 p1
+b ne p2 0
+c and a b
+ret c
+
+### REPLY 4
+a and p0 p1
+b and p0 p2
+c and p1 p2
+d or a b
+e or d c
+ret e
+
+### REPLY 5
+a get p0 0
+b get p0 1
+c add a b
+d get p0 2
+e add c d
+f get p0 3
+g add e f
+r arr a c e g
+ret r
+
+### REPLY 6
+d sub p0 p1
+b lt p0 p1
+r rec d b
+ret r
+
+### REPLY 7
+z arr 0 0 0 0
+h fold step 3 z p0
+ret h
+-fn step
+fn step u32x4 u32 u32x4 -> u32x4
+val get p2 p1
+idx and val 3
+old get p0 idx
+new add old 1
+res set p0 idx new
+ret res
+end
+
+### REPLY 8
+t fold acc 4 0 p0
+o gt t p1
+r rec t o
+ret r
+-fn acc
+fn acc u32 u32 u32x4 -> u32
+elem get p2 p1
+ret add p0 elem
+end
+
+### REPLY 9
+a mul p0 5
+cond ge p0 10
+extra sub p0 10
+extra_cost mul extra 3
+high_cost add 50 extra_cost
+ret select cond high_cost a
+
+### REPLY 10
+r and p0 255
+g and p1 255
+b and p2 255
+rs shl r 16
+gs shl g 8
+x or rs gs
+y or x b
+ret y
+
+### REPLY 11
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+s set p0 0 b
+t set s 1 a
+u set t 2 d
+v set u 3 c
+ret v
+
+### REPLY 12
+x call scale p0
+y call scale p1
+r sub x y
+ret r
+
+### REPLY 13
+h fold mix 4 17 p0
+r mov h
+ret r
+-fn mix
+fn mix u32 u32 u32x4 -> u32
+elem get p2 p1
+sum add p0 elem
+ret add sum p1
+end
+
+### REPLY 14
+h fold bstep 32 0 p0
+r mov h
+ret r
+-fn bstep
+fn bstep u32 u32 u32 -> u32
+mask shl 1 p1
+cond and p2 mask
+res add p0 1
+ret select cond res p0
+end
+
+### REPLY 15
+h fold pstep 4 0 p0
+r mov h
+ret r
+-fn pstep
+fn pstep u32 u32 u32x4 -> u32
+is_zero eq p1 0
+if_zero mov p0
+prev_idx sub p1 1
+prev get p2 prev_idx
+curr get p2 p1
+equal eq prev curr
+inc add p0 1
+res select equal inc p0
+ret select is_zero if_zero res
+end
+
+### REPLY 16
+h fold istep 3 true p0
+r mov h
+ret r
+-fn istep
+fn istep bool u32 u32x4 -> bool
+and_prev and p0 p0
+curr get p2 p1
+next_idx add p1 1
+next get p2 next_idx
+less lt curr next
+ret and and_prev less
+end

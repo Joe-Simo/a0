@@ -35,7 +35,7 @@
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { cpus, loadavg, tmpdir } from 'node:os';
+import { cpus, homedir, loadavg, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { getEncoding } from 'js-tiktoken';
@@ -618,7 +618,7 @@ async function tokensOnly(): Promise<void> {
 async function main(): Promise<void> {
   if (CLI.tokensOnly) return tokensOnly();
   const clang = findClang().path;
-  const rustcPath = join(process.env.HOME ?? '', '.cargo', 'bin', 'rustc');
+  const rustcPath = join(homedir(), '.cargo', 'bin', 'rustc');
   const rustc = runTool(rustcPath, ['--version']).ok ? rustcPath : undefined;
   const table = TABLE.filter((l) => CLI.langs === null || CLI.langs.has(l.id)).map((l) =>
     tableSubject(l, l.find()),

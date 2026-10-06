@@ -119,9 +119,17 @@ Replace `.` with the folder the server may read and write when your agent does n
 
 The a0 MCP server and the `.mcpb` bundles run entirely on your machine. They collect no data, make no network requests, and read or write only inside the folder you give them.
 
-## Contributing to the compiler
+## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout, the edit protocol, how to add a backend or a language to the experiments, and the measurement rules.
+Contributions are welcome and need no account, key or paid service. The short version:
+
+1. **Fork** this repository and clone your fork; add this repository as `upstream`.
+2. **Branch** from `upstream/main` (one branch per change), make the change with a test, and run `bun run lint`, `bun run typecheck` and `bun run test`.
+3. **Push** to your fork and **open a pull request** against `main`. CI runs on it; a maintainer runs the full gate before merging.
+
+The details (layout, build, the rules that keep the measurements honest, adding a backend or a language to the experiments, Windows notes) are in
+[CONTRIBUTING.md](CONTRIBUTING.md). Please read the [Code of Conduct](CODE_OF_CONDUCT.md); report a security problem as described in [SECURITY.md](SECURITY.md).
+Open an issue first for a change to the language itself.
 
 The compiler is being rewritten in A0 (see `compiler/` and DESIGN.md section 7a). Until that lands, the compiler itself is TypeScript, and working on it needs Bun or Node 22+. Users of A0 never need this: the released `a0` binary is self-contained.
 

@@ -1,0 +1,90 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 6
+[user]
+Return the wrapping difference first minus second, paired with a flag that is true exactly when the subtraction borrowed (second input larger than the first).
+
+e0
+fn csub u32 u32 -> (u32,bool)
+d sub p0 p1
+b lt p1 p0
+r rec d b
+ret r
+end
+g0
+fn csub u32 u32 -> (u32,bool) end
+
+[assistant]
+ret r
+
+[user]
+Rejected:
+csub(5,3) = 2,true, expected 2,false
+csub(3,5) = 4294967294,false, expected 4294967294,true
+csub(0,1) = 4294967295,false, expected 4294967295,true
+csub(4294967295,0) = 4294967295,true, expected 4294967295,false
+csub(0,4294967295) = 1,false, expected 1,true
+csub(100,99) = 1,true, expected 1,false
+
+Current view:
+e0
+fn csub u32 u32 -> (u32,bool)
+d sub p0 p1
+b lt p1 p0
+r rec d b
+ret r
+end
+g0
+fn csub u32 u32 -> (u32,bool) end
+Try again.
+
+### CONVERSATION 13
+[user]
+The checksum must start from 17 instead of 7, and every step must also add the element's position to the running value.
+
+e0
+fn check u32x4 -> u32
+h fold mix 4 7 p0
+r mov h
+ret r
+end
+fn mix u32 u32 u32x4 -> u32 end
+g0
+fn mix u32 u32 u32x4 -> u32 end
+fn check u32x4 -> u32 end
+
+[assistant]
+h fold mix 4 17 p0
+fn mix u32 u32 u32x4 -> u32
+e get p2 p1
+a add p0 e
+b add a p1
+ret b
+end
+
+[user]
+Rejected:
+check(0,0,0,0) = 23, expected 15700883
+check(1,2,3,4) = 33, expected 15732693
+check(4294967295,4294967295,4294967295,4294967295) = 19, expected 15670099
+check(0,0,0,1) = 24, expected 15700884
+check(100,0,0,0) = 123, expected 18679983
+check(5,4,3,2) = 37, expected 15853777
+check(0,4294967295,0,0) = 22, expected 15699922
+check(31,31,31,31) = 147, expected 16655187
+
+Current view:
+e0
+fn check u32x4 -> u32
+h fold mix 4 17 p0
+r mov h
+ret r
+end
+fn mix u32 u32 u32x4 -> u32 end
+g0
+fn mix u32 u32 u32x4 -> u32 end
+fn check u32x4 -> u32 end
+Try again.

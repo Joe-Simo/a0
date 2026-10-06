@@ -1,0 +1,108 @@
+### REPLY 1
+c shr p0 4
+
+### REPLY 2
+fn f u32 -> u32
+a sub p0 1
+b and p0 a
+ret b
+end
+
+### REPLY 3
+a gt p0 p1
+
+### REPLY 4
+d and p1 p2
+e or c d
+ret e
+
+### REPLY 5
+s2 add s1 c
+
+### REPLY 6
+b lt p0 p1
+
+### REPLY 7
+h fold step 4 z p0
+fn step u32x4 u32 u32x4 -> u32x4
+elem get p2 p1
+v and elem 3
+old get p0 v
+new add old 1
+r set p0 v new
+ret r
+end
+
+### REPLY 8
+o gt t p1
+fn acc u32 u32 u32x4 -> u32
+elem get p2 p1
+r add p0 elem
+ret r
+end
+
+### REPLY 9
+fn price u32 -> u32
+cond le p0 10
+mul5 mul p0 5
+extra sub p0 10
+mul3 mul extra 3
+add50 add mul3 50
+r select cond mul5 add50
+ret r
+end
+
+### REPLY 10
+r and p0 255
+g and p1 255
+bl and p2 255
+
+### REPLY 11
+c get p0 2
+d get p0 3
+u set t 2 d
+v set u 3 c
+ret v
+
+### REPLY 12
+y call scale p1
+r sub x y
+
+### REPLY 13
+h fold mix 4 17 p0
+fn mix u32 u32 u32x4 -> u32
+elem get p2 p1
+s1 add p0 elem
+s2 add s1 p1
+ret s2
+end
+
+### REPLY 14
+fn bstep u32 u32 u32 -> u32
+bit_shift shr p2 p1
+bit_mask and bit_shift 1
+new_count add p1 1
+result select bit_mask new_count p0
+ret result
+end
+
+### REPLY 15
+h fold pstep 3 0 p0
+fn pstep u32 u32 u32x4 -> u32
+elem_i get p2 p1
+next_i add p1 1
+elem_next get p2 next_i
+equal eq elem_i elem_next
+result add p0 equal
+ret result
+end
+
+### REPLY 16
+fn istep bool u32 u32x4 -> bool
+elem_i get p2 p1
+next_i add p1 1
+elem_next get p2 next_i
+strictly_less lt elem_i elem_next
+result and p0 strictly_less
+ret result
+end

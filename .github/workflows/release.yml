@@ -10,6 +10,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
+    # Publishing is the owner's: a fork that pushes a tag must not try to publish.
+    if: github.repository == 'Joe-Simo/a0'
     # macOS so the darwin binaries get ad-hoc signed by tools/release.sh.
     runs-on: macos-15
     timeout-minutes: 30
@@ -86,6 +88,7 @@ jobs:
   # (which verifies SHA-256 against the release's checksums.txt) and exercise it.
   smoke:
     needs: release
+    if: github.repository == 'Joe-Simo/a0'
     permissions:
       contents: read
     strategy:

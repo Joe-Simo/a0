@@ -7,6 +7,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   args,
@@ -31,7 +32,7 @@ const chain = (k: KernelSpec, step: (i: number) => string, sep: string): string 
   Array.from({ length: k.arity }, (_, i) => step(i)).join(sep);
 
 function dotnet(): Toolchain | undefined {
-  const home = process.env.HOME ?? '';
+  const home = homedir();
   const p = locate('dotnet', 'A0_DOTNET', [
     `${home}/.dotnet/dotnet`,
     '/opt/homebrew/bin/dotnet',

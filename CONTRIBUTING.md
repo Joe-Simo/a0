@@ -19,6 +19,45 @@ beats strong hand-written baselines. A win, a tie and a loss are recorded separa
 - Install, MCP server, LSP, agent integrations: [README.md](README.md).
 - Rules for automated agents working on the repository: [AGENTS.md](AGENTS.md).
 
+## How to contribute: fork, branch, pull request
+
+You do not need write access, a paid service, an API key or a particular machine. Everything the checks need is free and runs locally.
+
+1. **Fork** the repository on GitHub and clone your fork:
+   ```bash
+   git clone https://github.com/<your-user>/a0.git
+   cd a0
+   git remote add upstream https://github.com/Joe-Simo/a0.git
+   ```
+2. **Branch** from an up-to-date `main` (`git fetch upstream && git switch -c my-change upstream/main`). One branch per change; keep a change small
+   enough to review.
+3. **Install and build** (Bun and Node 22 or newer; see the next sections): `bun install --frozen-lockfile`, then `bun run build`.
+4. **Make the change**, with a test for a behavior change. A new diagnostic is one row of `src/diagnostics.ts` with its examples; a change to
+   `compiler/*.a0` also needs `bun run seed` (see below). Do not edit `results/*.json` by hand: tools write them.
+5. **Check it locally** before you push:
+   ```bash
+   bun run lint        # Biome, claim check, loss ledger, results scrub check
+   bun run typecheck
+   bun run test
+   ```
+   The full gate (`bun run a0-dev -- gate`) runs every step that your installed toolchains allow and reports a step it cannot run as blocked with the
+   reason, never as a pass. You do not have to run all of it: a pull request is checked by CI, and a maintainer runs the full gate before merging.
+6. **Commit** with a message that says what changed and why. Do not commit local paths, usernames, `.env` files, keys or editor settings
+   (`test/hygiene.test.ts` fails if you do). Never skip the repository's hooks.
+7. **Push** to your fork and **open a pull request** against `Joe-Simo/a0:main`. Fill in the template: what the change does, how you checked it, and which
+   `results/` file backs any number you quote. Reviewers may ask for changes; push them to the same branch.
+
+Things that are welcome: a bug report with a minimal `.a0` program, a failing test, a new diagnostic or fix, a backend or an experiment language
+(sections below), documentation fixes, and measurements that show where A0 loses. Things that are reworked rather than merged: a number or a
+comparison without a `results/` reference, a timing claim from a loaded machine, a change that hides a loss, or one that edits a sealed task set.
+Open an issue first for a change to the language itself (the grammar, the semantics, the edit protocol): those need a design discussion and a measurement.
+
+**Platforms.** Linux and macOS are the primary development platforms. On Windows the compiler, the tests, the MCP server and the language server work
+with Bun and Node 22+ (git for Windows with `core.autocrlf` off or the repository's `.gitattributes`, which pins LF); the checks that need a C compiler
+use `clang` or `gcc` if one is on PATH (`A0_CLANG` and `A0_GCC` point at others); timing benchmarks refuse to run there (Windows has no load average, so a
+quiet-machine claim could not be verified), and the seed bootstrap (`seed/bootstrap.sh`) needs WSL or MSYS2. Tests that need a tool you do not have
+are skipped or reported as blocked with the reason. Maintainer-only steps (`a0-dev drive`, release, pushing results) are not part of a contribution.
+
 ## Layout
 
 | Path | What is there |
