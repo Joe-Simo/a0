@@ -204,3 +204,9 @@ None of these is closed by this session; each group has its own blocker and next
 | ai-tokens-* and ai-accepted-* (46) | Whole-task token cost against TypeScript and Rust on single-function tasks: the primer is paid every call. | Same as above; reversed only for large programs (`results/ai-edit-experiment.c.*`). | The application-scale benchmark, blocked: its harness and seal are on a branch that was never pushed. |
 | spec-* (40) | Spec lines (opt-in) cost tokens and did not raise acceptance (`results/spec-lines.json`). | Measured and recorded; they stay out of the guide. | A task set where provided examples actually refuse wrong edits. |
 | wasm-load-ms, wasm-bytes, ns-per-trip, ns-per-call-js (23) | Speed and size against hand-written clang, JS and wasm. | Timing needs a quiet machine (load at most 10); this session ran on a Windows x64 laptop with no arm64 and no quiet run. | `bun run exec-bench` on the arm64 machine, overnight. |
+
+Dense as the default, from data already measured (`results/loss-blockers.json`, `denseAsDefault`; source `results/primer-ablation.json`, sets e and f,
+24 tasks per model, fresh Haiku and Sonnet): the 145-token dense primer beats the best canonical primer (101 tokens) on tokens per accepted edit
+in a 10-task session and unbounded on both models (Haiku 168.9 against 184.3, Sonnet 130 against 142.4 at 10 tasks) and loses the cold
+single-task cost on both (Haiku 339.7 against 298.1, Sonnet 293.4 against 256.2); acceptance is within noise. This supports making dense the
+recommended form for sessions of several edits (open decision 3 above) and does not close the single-call losses. No new run was made.
