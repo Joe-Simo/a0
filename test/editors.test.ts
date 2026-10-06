@@ -18,7 +18,12 @@ const { INITIAL, parseRawGrammar, Registry } =
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const grammarDir = join(root, 'editors', 'tree-sitter-a0');
 // tree-sitter-cli is a root devDependency: the normal `bun install` provides it.
-const cli = join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'tree-sitter.exe' : 'tree-sitter');
+const cli = join(
+  root,
+  'node_modules',
+  '.bin',
+  process.platform === 'win32' ? 'tree-sitter.exe' : 'tree-sitter',
+);
 
 const treeSitter = (args: string[]) =>
   spawnSync(cli, args, { cwd: grammarDir, encoding: 'utf8', maxBuffer: 1 << 26 });
