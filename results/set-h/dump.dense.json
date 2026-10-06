@@ -1,0 +1,66 @@
+{
+  "h-at-most-100/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return true when the argument is at most 100, with 100 itself included.\n\ne0\nfn f -> bool mov lt A 100\ng0\n# f u32 -> bool"
+  },
+  "h-low-byte/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the lowest 8 bits of the argument.\n\ne0\nfn f\nm and A 127\nr mov m\ng0\n# f u32 -> u32"
+  },
+  "h-last-elem/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the last element of the array.\n\ne0\nfn f u32x4 -> u32\ne get A 4\nr mov e\ng0\n# f u32x4 -> u32"
+  },
+  "h-saturating-add/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the sum of the two arguments, but when the true sum does not fit in 32 bits return 4294967295 instead of a wrapped value.\n\ne0\nfn f\ns add A B\no lt s A\nr select o 0 s\ng0\n# f u32 u32 -> u32"
+  },
+  "h-set-second/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return a copy of the array with the element at position 1 (the second element) replaced by the second argument.\n\ne0\nfn f u32x4 u32 -> u32x4\nn set A B 1\nr mov n\ng0\n# f u32x4 u32 -> u32x4"
+  },
+  "h-is-even/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return true when the argument is even.\n\ne0\nfn f -> bool\nlo and A 1\nt eq lo 1\ng0\n# f u32 -> bool"
+  },
+  "h-abs-diff/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the absolute difference between the two arguments.\n\ne0\nfn f\na lt A B\nb d B A\nr select a d A B b\n# d u32 u32 -> u32\ng0\n# d u32 u32 -> u32\n# f u32 u32 -> u32"
+  },
+  "h-times-eight/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the argument multiplied by 8 (wrapping modulo 2^32).\n\ne0\nfn f\ns << A 2\nr mov s\ng0\n# f u32 -> u32"
+  },
+  "h-sum-squares/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the sum of the squares of all four array elements (wrapping modulo 2^32).\n\ne0\nfn f u32x4 -> u32\nt fold step 3 0 A\nr mov t\n# step u32 u32 u32x4 -> u32\ng0\n# step u32 u32 u32x4 -> u32\n# f u32x4 -> u32"
+  },
+  "h-in-range/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return true when the first argument lies between the second and third arguments, with both ends included.\n\ne0\nfn f -> bool\nlo gt A B\nhi lt A C\nboth and lo hi\ng0\n# f u32 u32 u32 -> bool"
+  },
+  "h-second-byte/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Change the function to return bits 8 through 15 of the argument (its second-lowest byte) instead of bits 4 through 7.\n\ne0\nfn f\nsh >> A 4\nm and sh 15\ng0\n# f u32 -> u32"
+  },
+  "h-swap-ends/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Change the function so it swaps the first and last elements of the array instead of the first two.\n\ne0\nfn f u32x4 -> u32x4\nx get A 0\ny get A 1\nu set A 0 y\nv set u 1 x\ng0\n# f u32x4 -> u32x4"
+  },
+  "h-count-above/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return how many of the four array elements are strictly greater than the second argument.\n\ne0\nfn f u32x4 u32 -> u32\nn fold cnt 3 0 A B\nr mov n\n# cnt u32 u32 u32x4 u32 -> u32\ng0\n# cnt u32 u32 u32x4 u32 -> u32\n# f u32x4 u32 -> u32"
+  },
+  "h-array-min/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the smallest element of the array.\n\ne0\nfn f u32x4 -> u32\nm fold mn 4 0 A\nr mov m\n# mn u32 u32 u32x4 -> u32\ng0\n# mn u32 u32 u32x4 -> u32\n# f u32x4 -> u32"
+  },
+  "h-one-low-bit/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return true when exactly one of the two lowest bits of the argument is set.\n\ne0\nfn f -> bool eq and A 1 and >> A 1 1\ng0\n# f u32 -> bool"
+  },
+  "h-clamp-range/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the first argument clamped to the range from 10 up to the second argument: raise it to 10 if smaller, then lower it to the second argument if larger (the upper limit wins when it is below 10).\n\ne0\nfn f\nk cap A B\nr mov k\n# cap u32 u32 -> u32\ng0\n# cap u32 u32 -> u32\n# f u32 u32 -> u32"
+  }
+}

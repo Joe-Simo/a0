@@ -1,0 +1,66 @@
+{
+  "h-at-most-100/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the argument is at most 100, with 100 itself included.\n\ne0\nfn f u32 -> bool\na lt p0 100\nb mov a\nret b\nend\ng0\nfn f u32 -> bool end"
+  },
+  "h-low-byte/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the lowest 8 bits of the argument.\n\ne0\nfn f u32 -> u32\nm and p0 127\nr mov m\nret r\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "h-last-elem/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the last element of the array.\n\ne0\nfn f u32x4 -> u32\ne get p0 4\nr mov e\nret r\nend\ng0\nfn f u32x4 -> u32 end"
+  },
+  "h-saturating-add/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the sum of the two arguments, but when the true sum does not fit in 32 bits return 4294967295 instead of a wrapped value.\n\ne0\nfn f u32 u32 -> u32\ns add p0 p1\no lt s p0\nr select o 0 s\nret r\nend\ng0\nfn f u32 u32 -> u32 end"
+  },
+  "h-set-second/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return a copy of the array with the element at position 1 (the second element) replaced by the second argument.\n\ne0\nfn f u32x4 u32 -> u32x4\nn set p0 p1 1\nr mov n\nret r\nend\ng0\nfn f u32x4 u32 -> u32x4 end"
+  },
+  "h-is-even/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the argument is even.\n\ne0\nfn f u32 -> bool\nlo and p0 1\nt eq lo 1\nret t\nend\ng0\nfn f u32 -> bool end"
+  },
+  "h-abs-diff/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the absolute difference between the two arguments.\n\ne0\nfn f u32 u32 -> u32\na lt p0 p1\nb call d p1 p0\nc call d p0 p1\nr select a c b\nret r\nend\nfn d u32 u32 -> u32 end\ng0\nfn d u32 u32 -> u32 end\nfn f u32 u32 -> u32 end"
+  },
+  "h-times-eight/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the argument multiplied by 8 (wrapping modulo 2^32).\n\ne0\nfn f u32 -> u32\ns shl p0 2\nr mov s\nret r\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "h-sum-squares/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the sum of the squares of all four array elements (wrapping modulo 2^32).\n\ne0\nfn f u32x4 -> u32\nt fold step 3 0 p0\nr mov t\nret r\nend\nfn step u32 u32 u32x4 -> u32 end\ng0\nfn step u32 u32 u32x4 -> u32 end\nfn f u32x4 -> u32 end"
+  },
+  "h-in-range/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the first argument lies between the second and third arguments, with both ends included.\n\ne0\nfn f u32 u32 u32 -> bool\nlo gt p0 p1\nhi lt p0 p2\nboth and lo hi\nret both\nend\ng0\nfn f u32 u32 u32 -> bool end"
+  },
+  "h-second-byte/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Change the function to return bits 8 through 15 of the argument (its second-lowest byte) instead of bits 4 through 7.\n\ne0\nfn f u32 -> u32\nsh shr p0 4\nm and sh 15\nret m\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "h-swap-ends/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Change the function so it swaps the first and last elements of the array instead of the first two.\n\ne0\nfn f u32x4 -> u32x4\nx get p0 0\ny get p0 1\nu set p0 0 y\nv set u 1 x\nret v\nend\ng0\nfn f u32x4 -> u32x4 end"
+  },
+  "h-count-above/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return how many of the four array elements are strictly greater than the second argument.\n\ne0\nfn f u32x4 u32 -> u32\nn fold cnt 3 0 p0 p1\nr mov n\nret r\nend\nfn cnt u32 u32 u32x4 u32 -> u32 end\ng0\nfn cnt u32 u32 u32x4 u32 -> u32 end\nfn f u32x4 u32 -> u32 end"
+  },
+  "h-array-min/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the smallest element of the array.\n\ne0\nfn f u32x4 -> u32\nm fold mn 4 0 p0\nr mov m\nret r\nend\nfn mn u32 u32 u32x4 -> u32 end\ng0\nfn mn u32 u32 u32x4 -> u32 end\nfn f u32x4 -> u32 end"
+  },
+  "h-one-low-bit/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when exactly one of the two lowest bits of the argument is set.\n\ne0\nfn f u32 -> bool\na and p0 1\nb shr p0 1\nc and b 1\nd eq a c\nret d\nend\ng0\nfn f u32 -> bool end"
+  },
+  "h-clamp-range/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the first argument clamped to the range from 10 up to the second argument: raise it to 10 if smaller, then lower it to the second argument if larger (the upper limit wins when it is below 10).\n\ne0\nfn f u32 u32 -> u32\nk call cap p0 p1\nr mov k\nret r\nend\nfn cap u32 u32 -> u32 end\ng0\nfn cap u32 u32 -> u32 end\nfn f u32 u32 -> u32 end"
+  }
+}
