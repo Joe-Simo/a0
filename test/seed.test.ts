@@ -36,7 +36,11 @@ test('seed: it is small', () => {
   assert.ok(size('seed') < 2 * 1024 * 1024, `seed/ is ${size('seed')} bytes`);
 });
 
-test('seed: a C compiler alone rebuilds it, and stage 2 equals stage 3 byte for byte', async () => {
+test('seed: a C compiler alone rebuilds it, and stage 2 equals stage 3 byte for byte', {
+  skip:
+    process.platform === 'win32' &&
+    'seed/driver.c is POSIX (fork, pipes, sys/wait.h); build the seed under WSL or MSYS2',
+}, async () => {
   const node = spawnSync('sh', ['-c', 'command -v node'], { env: CLEAN_ENV, encoding: 'utf8' });
   const hasNodeOnCleanPath = node.status === 0;
   await withTempDir(async (dir) => {
@@ -72,7 +76,9 @@ test('seed: a C compiler alone rebuilds it, and stage 2 equals stage 3 byte for 
   if (!hasNodeOnCleanPath) assert.notEqual(node.status, 0);
 });
 
-test('seed: a damaged seed fails the rebuild instead of passing', async () => {
+test('seed: a damaged seed fails the rebuild instead of passing', {
+  skip: process.platform === 'win32' && 'seed/driver.c is POSIX (fork, pipes, sys/wait.h)',
+}, async () => {
   await withTempDir(async (dir) => {
     const copy = join(dir, 'seed');
     cpSync('seed', copy, { recursive: true });

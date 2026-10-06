@@ -191,3 +191,4 @@ and `site/docs.a0` byte for byte (the driver sets binary stdio). Still failing h
 installed), AddressSanitizer (Zig ships none), the seed rebuild (not yet diagnosed), a direct-spawn CRLF check in
 `strict-targets`, and an ELF x86-64 assembly check. Results files were not regenerated (that is the full gate's job, which needs the
 arm64 machine); do not push this branch before `a0-dev gate` passes there.
+The seed bootstrap (`seed/driver.c`) is POSIX-only (fork, pipes, `sys/wait.h`): on Windows build the seed under WSL or MSYS2. Its two tests skip on Windows with that reason; a native port of the driver is open work.
