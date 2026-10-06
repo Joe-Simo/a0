@@ -1017,6 +1017,17 @@ export class EditSession {
   }
 
   /**
+   * The handle a reply without a handle line edited: the one open function handle, or with none the
+   * one open program handle (the rule `#apply` follows); undefined when there is no single one.
+   */
+  get impliedHandle(): string | undefined {
+    const open = [...this.#handles.keys()];
+    const fnHandles = open.filter((h) => HANDLE.test(h));
+    const implied = fnHandles.length > 0 ? fnHandles : open;
+    return implied.length === 1 ? implied[0] : undefined;
+  }
+
+  /**
    * Open a program-level view bound to the whole program's revision: all signatures, or
    * with `scope: 'deps'` only those around `target` (the handle still edits any function).
    */

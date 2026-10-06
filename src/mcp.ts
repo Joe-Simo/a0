@@ -228,6 +228,9 @@ export async function createServer(launch: string): Promise<McpServer> {
       try {
         return entry.session.view(handle ?? '');
       } catch {
+        // a reply without a handle line edited the one open handle: show that view, not the program
+        const implied = entry.session.impliedHandle;
+        if (implied !== undefined) return entry.session.view(implied);
         return formatProgram(entry.session.program);
       }
     }),

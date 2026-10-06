@@ -61,7 +61,7 @@ names are those a live MCP session would show; the last rejected edit is kept fo
 from `src/mcp.ts`: after an accepted edit whose handle line was left out (the guide allows it when one e handle is open),
 a0_apply returns the whole program (the view of the first line fails), all 106 functions; the tool
 returns the view of the implied handle instead. This favours A0 against the shipped server, is the same information,
-and the shipped behaviour is reported as a gap to fix separately.
+and the shipped behaviour was a defect: it is fixed in `src/mcp.ts` (a0_apply now returns the view of the implied handle, test in `test/mcp.test.ts`), so the tool and the shipped server now agree.
 
 TypeScript side (what an author of a TypeScript file has): `show [FROM [TO]]` (numbered lines of the file), `apply`
 (a unified diff on standard input, applied by `applyDiff` of the one-shot arm: hunks found by their old text), `check`

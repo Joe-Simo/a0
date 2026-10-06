@@ -84,6 +84,19 @@ test('mcp: every tool over the in-memory transport', () =>
     assert.match(good.text, /c add b 2/);
     assert.equal((await call(client, 'a0_run', { function: 'f', args: [3] })).text, '11');
 
+    // a reply without a handle line edits the one open handle and returns that view, not the program
+    const implied = await call(client, 'a0_apply', { edit: 'c add b 3' });
+    assert.ok(!implied.error, implied.text);
+    assert.equal(implied.text.split('\n')[0], handle);
+    assert.match(implied.text, /c add b 3/);
+    assert.equal(
+      implied.text,
+      good.text.replace('c add b 2', 'c add b 3'),
+      'the view of the handle',
+    );
+    assert.equal((await call(client, 'a0_run', { function: 'f', args: [3] })).text, '12');
+    await call(client, 'a0_apply', { edit: 'c add b 2' });
+
     const prog = await call(client, 'a0_program', { target: 'sq' });
     const g = prog.text.split('\n')[0] ?? '';
     assert.match(g, /^g[0-9]+$/);
