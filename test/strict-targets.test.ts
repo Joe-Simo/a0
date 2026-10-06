@@ -559,9 +559,11 @@ end
         { encoding: 'utf8' },
       );
       assert.equal(build.status, 0, `${t.name}: ${build.stderr}`);
+      // a C program writes text-mode line ends on Windows: compare without the carriage returns
+      const lf = (s: string): string => s.replaceAll('\r', '');
       const ok = spawnSync(exe, ['o', '3', '0'], { encoding: 'utf8' });
       assert.equal(ok.status, 0);
-      assert.equal(ok.stdout, '7\n');
+      assert.equal(lf(ok.stdout), '7\n');
       for (const [which, a, b, fn, args] of [
         ['o', '5', '0', 'outer', [5]],
         ['q', '7', '0', 'q', [7, 0]],
@@ -575,7 +577,7 @@ end
         }
         assert.equal(got.status, 3, `${t.name} ${fn}`);
         assert.equal(got.stdout, '', 'nothing is printed to stdout after the trap');
-        assert.equal(got.stderr, `${want}\n`, `${t.name} ${fn}`);
+        assert.equal(lf(got.stderr), `${want}\n`, `${t.name} ${fn}`);
       }
     }
   } finally {
