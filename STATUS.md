@@ -192,3 +192,15 @@ installed), AddressSanitizer (Zig ships none), the seed rebuild (not yet diagnos
 `strict-targets`, and an ELF x86-64 assembly check. Results files were not regenerated (that is the full gate's job, which needs the
 arm64 machine); do not push this branch before `a0-dev gate` passes there.
 The seed bootstrap (`seed/driver.c`) is POSIX-only (fork, pipes, `sys/wait.h`): on Windows build the seed under WSL or MSYS2. Its two tests skip on Windows with that reason; a native port of the driver is open work.
+
+## Loss ledger by axis: what blocks each group (2026-10-06, `results/loss-ledger.json`, 577 entries)
+
+None of these is closed by this session; each group has its own blocker and next action.
+
+| Axis (entries) | What it is | Blocker | Next action |
+|---|---|---|---|
+| tokens-kernel (377) | Canonical A0 text of the ten lang-axes kernels costs more tokens than most competitors' idiomatic kernels; the opt-in dense view is far smaller (`results/dense-tokens.json`). Canonical losses are never replaced by dense rows. | Closing it needs a smaller canonical syntax (a grammar change touching the parser, the self-hosted front end and the seed, plus a fresh-subject re-measurement) or making dense the default; neither is measured yet. | Pre-register and measure dense as the shipped default on sealed set g with fresh Haiku and Sonnet. |
+| primer-* (91) | Primer-ablation variants that lost to a control on one-shot acceptance, repaired acceptance or tokens per accepted edit (`results/primer-ablation.json`). | Needs new fresh-subject runs; the three protocol ambiguities behind most failures are only partly fixed (`ex` after a node is now hoisted). | Fix result-type-in-head, spec limits and dense nesting generally, then re-run d, e, f. |
+| ai-tokens-* and ai-accepted-* (46) | Whole-task token cost against TypeScript and Rust on single-function tasks: the primer is paid every call. | Same as above; reversed only for large programs (`results/ai-edit-experiment.c.*`). | The application-scale benchmark, blocked: its harness and seal are on a branch that was never pushed. |
+| spec-* (40) | Spec lines (opt-in) cost tokens and did not raise acceptance (`results/spec-lines.json`). | Measured and recorded; they stay out of the guide. | A task set where provided examples actually refuse wrong edits. |
+| wasm-load-ms, wasm-bytes, ns-per-trip, ns-per-call-js (23) | Speed and size against hand-written clang, JS and wasm. | Timing needs a quiet machine (load at most 10); this session ran on a Windows x64 laptop with no arm64 and no quiet run. | `bun run exec-bench` on the arm64 machine, overnight. |
