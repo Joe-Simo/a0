@@ -1238,6 +1238,16 @@ function assemble(
   return { nodes, ret: resolve((stmts[stmts.length - 1] as { value: Operand }).value) };
 }
 
+/** `name T... -> T` with every T a type: a signature line as the dense view prints it (after its `#`). */
+export function isSignatureEcho(text: string): boolean {
+  const toks = text.trim().split(/\s+/);
+  const arrow = toks.indexOf('->');
+  if (arrow < 1 || arrow !== toks.length - 2) return false;
+  if (!/^[a-z][a-z0-9_]{0,63}$/.test(toks[0] as string) || KEYWORDS.has(toks[0] as string))
+    return false;
+  return toks.slice(1).every((t) => t === '->' || typeTokenEnd(t, 0)?.end === t.length);
+}
+
 /** Parse a function header line (after `fn`): name, optional type list and result, rest. */
 export function parseDenseHeader(
   text: string,
@@ -1428,6 +1438,9 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
         endComments = nx.comments;
         break;
       }
+      // A callee's signature copied from the view without its `#` (`step u32 u32 -> u32`) says nothing the reply
+      // does not already say: it is skipped like the comment it is printed as.
+      if (isSignatureEcho(nx.text)) continue;
       body.push(
         nx.comments === undefined
           ? { text: nx.text, line: nx.line }

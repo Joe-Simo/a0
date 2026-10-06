@@ -729,3 +729,24 @@ test('dense: a result that is not written is the type of the last statement (boo
   assert.equal(two.functions[1]?.result, 'u32');
   validate(two);
 });
+
+test('dense: a callee signature copied from the view without its `#` is skipped like the comment it is printed as', () => {
+  const body = 'fn step u32 u32 u32x4 -> u32\nel get C B\nr add A el\n\n';
+  const plain = parseDense(`${body}fn f u32x4 -> u32\nt fold step 4 0 A\nr mov t`);
+  const echoed = parseDense(
+    `${body}fn f u32x4 -> u32\nstep u32 u32 u32x4 -> u32\nt fold step 4 0 A\nr mov t`,
+  );
+  validate(echoed);
+  assert.equal(formatProgram(echoed), formatProgram(plain));
+  // after the statements, and between functions, too
+  const after = parseDense(
+    `${body}fn f u32x4 -> u32\nt fold step 4 0 A\nr mov t\nstep u32 u32 u32x4 -> u32`,
+  );
+  assert.equal(formatProgram(after), formatProgram(plain));
+  // an ordinary statement is not mistaken for one, and a bare type word is still an error
+  assert.throws(() => parseDense('fn g\ns add A 1\nu32 mov s'), /not an operation/);
+  assert.equal(
+    formatProgram(parseDense('fn h u32 -> u32\nstep add A 1')),
+    'fn h u32 -> u32\nstep add p0 1\nret step\nend\n',
+  );
+});
