@@ -1,0 +1,167 @@
+{
+  "generatedAt": "2026-10-06T23:28:57.103Z",
+  "tool": "tools/app-edit-loop-summary.ts",
+  "preRegistration": "docs/history/2026-10-06-app-edit-loop-preregistration.md",
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "budget": 12,
+  "meaning": "Tool-loop arm of the application-scale edits (14 sealed tasks, the A0 front end): fresh Haiku and Sonnet subagents work in a scratch directory through a counted tool (A0: views, edit session, check, revision, explain, run; TypeScript: show, unified diff, tsc check; both: lex and parse on a test input; hidden tests never shown), final state scored by the hidden tests; tokens per accepted edit in the cost model of tools/app-edit-summary.ts.",
+  "cells": {
+    "haiku/a0": {
+      "n": 14,
+      "system": 936,
+      "accepted": {
+        "k": 7,
+        "ci95": [
+          0.268,
+          0.732
+        ]
+      },
+      "toolCallsPerTask": 9.9,
+      "toolCallsPerAcceptedEdit": 19.9,
+      "budgetExhausted": 10,
+      "editedOutsideTool": 0,
+      "tokensPerAcceptedEdit": {
+        "task1": 32765.3,
+        "session10": 30741.1,
+        "unbounded": 30516.2
+      },
+      "rereadTokensPerAcceptedEdit": 245125.6,
+      "notAccepted": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3]"
+        },
+        {
+          "task": "op-alias-mod",
+          "first": "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": code expected 0, got 2"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": code expected 0, got 1"
+        },
+        {
+          "task": "array-length-limit",
+          "first": "parse of \"fn f u32x4097 -> u32\\nret 0\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse of \"fn f u32 -> u32\\na add p0 007\\nret a\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "unreserve-patch",
+          "first": "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": code expected 0, got 1"
+        },
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ]
+    },
+    "haiku/ts": {
+      "n": 14,
+      "system": 381,
+      "accepted": {
+        "k": 12,
+        "ci95": [
+          0.601,
+          0.96
+        ]
+      },
+      "toolCallsPerTask": 11.1,
+      "toolCallsPerAcceptedEdit": 12.9,
+      "budgetExhausted": 5,
+      "editedOutsideTool": 0,
+      "tokensPerAcceptedEdit": {
+        "task1": 12678.9,
+        "session10": 12198.9,
+        "unbounded": 12145.5
+      },
+      "rereadTokensPerAcceptedEdit": 131532.3,
+      "notAccepted": [
+        {
+          "task": "profile-canonical",
+          "first": "tsc: front.ts(191): A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value.\nfront.ts(274): Cannot find name 'ntok'. Did yo"
+        },
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": uses expected [2,4,2], got [2,2]"
+        }
+      ]
+    },
+    "sonnet/a0": {
+      "n": 14,
+      "system": 936,
+      "accepted": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "toolCallsPerTask": 4.4,
+      "toolCallsPerAcceptedEdit": 4.7,
+      "budgetExhausted": 2,
+      "editedOutsideTool": 0,
+      "tokensPerAcceptedEdit": {
+        "task1": 10134.8,
+        "session10": 9044.9,
+        "unbounded": 8923.8
+      },
+      "rereadTokensPerAcceptedEdit": 49522.3,
+      "notAccepted": [
+        {
+          "task": "profile-canonical",
+          "first": "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": code expected 0, got 1"
+        }
+      ]
+    },
+    "sonnet/ts": {
+      "n": 14,
+      "system": 381,
+      "accepted": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "toolCallsPerTask": 2.6,
+      "toolCallsPerAcceptedEdit": 2.6,
+      "budgetExhausted": 0,
+      "editedOutsideTool": 0,
+      "tokensPerAcceptedEdit": {
+        "task1": 8010,
+        "session10": 7598.5,
+        "unbounded": 7552.8
+      },
+      "rereadTokensPerAcceptedEdit": 28178.1,
+      "notAccepted": []
+    }
+  },
+  "preRegisteredRule": {
+    "haiku": {
+      "primaryHorizon": "session10",
+      "outcome": "ts",
+      "accepted": {
+        "a0": 7,
+        "ts": 12
+      },
+      "cost": {
+        "a0": 30741.1,
+        "ts": 12198.9
+      }
+    },
+    "sonnet": {
+      "primaryHorizon": "session10",
+      "outcome": "ts",
+      "accepted": {
+        "a0": 13,
+        "ts": 14
+      },
+      "cost": {
+        "a0": 9044.9,
+        "ts": 7598.5
+      }
+    }
+  }
+}

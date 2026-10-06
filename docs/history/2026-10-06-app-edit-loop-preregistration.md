@@ -137,3 +137,16 @@ bun tools/app-edit-loop-summary.ts                            # after both model
 Subjects of one model and side may run in parallel (each has its own directory). A subject refused by an API safeguard
 gets the identical prompt once more in a fresh directory; a second refusal, or a subject that stops without saying done,
 is scored on whatever state its directory holds. Scoring happens once, after every subject has finished.
+
+## Result (collected after the rule above was committed; `results/app-edit-loop.json`, `tools/app-edit-loop-summary.ts`)
+
+56 fresh subagents (Haiku and Sonnet, A0 and TypeScript, 14 tasks each), one fresh working directory per task, a budget of 12 tool runs, scored once after every subagent had finished; no subject was refused. In no cell did a subject edit its program file outside the tool (`editedOutsideTool` is 0 in all four reports). Reads of the harness by a subject are not auditable from the transcripts: the only enforced rule is the program-file hash. Two subjects reported running out of their 12 runs without a working edit (Haiku A0 `profile-canonical` and Haiku TypeScript `profile-canonical`); every unfinished subject is scored on the state of its directory.
+
+| model | side | accepted | tool calls | tokens per accepted edit (10-task horizon) |
+|---|---|---|---|---|
+| Haiku | A0 | 7 of 14 | 139 | 30741.1 |
+| Haiku | TypeScript | 12 of 14 | 155 | 12198.9 |
+| Sonnet | A0 | 13 of 14 | 61 | 9044.9 |
+| Sonnet | TypeScript | 14 of 14 | 37 | 7598.5 |
+
+Outcome by the rule: TypeScript wins on both models (more accepted and lower cost). The hypothesis behind this arm, that the validate-and-fix loop of the shipped tools lets a Haiku-class model succeed with A0, is not supported: Haiku accepted 7 of 14 A0 edits one shot plus repair and 7 of 14 with the loop, while TypeScript went from 13 to 12. With the loop A0 costs more per accepted edit than TypeScript on both models, where the one-shot arm had A0 cheaper on Sonnet (`results/app-edit.json`). These are losses for A0, recorded here; the harness fix to the MCP server (an edit with no handle line returns the view of the implied handle, not the whole program) is in this tree and was in the tool used by the subjects.

@@ -356,7 +356,7 @@ s 13 glsl
 "$cmax_ratio$x
 >
 .p d
-"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit.json), TypeScript was accepted more often than A0 on both Haiku and Sonnet; A0 cost less per accepted edit on Sonnet and more on Haiku.
+"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit.json and results/app-edit-loop.json), TypeScript was accepted more often than A0 on both Haiku and Sonnet, and with the tools in a loop it also cost less per accepted edit on both.
 >
 >
 .div tcard hw reveal

@@ -1,0 +1,598 @@
+{
+  "generatedAt": "2026-10-06T23:23:55.752Z",
+  "tool": "tools/app-edit-loop.ts score",
+  "preRegistration": "docs/history/2026-10-06-app-edit-loop-preregistration.md",
+  "model": "haiku",
+  "side": "ts",
+  "budget": 12,
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "startSha256": {
+    "a0": "82d6b798b2646d0c16a60e0c90331f1a7a394d6153d0f1a80de91a069c40fd1e",
+    "ts": "1a4337745c6b0ce21c649b176c29739a8c398a8ecf730f43340ba764ddf99b6c"
+  },
+  "harnessSelfCheck": {
+    "ok": true
+  },
+  "trials": [
+    {
+      "task": "semicolon-comment",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 8,
+      "refusedCalls": 0,
+      "modelCalls": 9,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 3429,
+        "toolContext": 8218,
+        "output": 163
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 74400
+      },
+      "commands": [
+        "help -> 0",
+        "show 75 105 -> 0",
+        "show 65 90 -> 0",
+        "apply -> 0",
+        "check -> 0",
+        "lex \"a ; comment\\nb\" -> 0",
+        "lex \"a # comment\\nb\" -> 0",
+        "show 65 75 -> 0"
+      ]
+    },
+    {
+      "task": "tab-is-error",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 8583,
+        "output": 244
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 98362
+      },
+      "commands": [
+        "apply -> 0",
+        "check -> 0",
+        "lex \"a\\tb\" -> 0",
+        "lex \"a b\\rc\" -> 0",
+        "show 75 85 -> 0",
+        "show 76 82 -> 0",
+        "show 72 85 -> 0",
+        "show 71 90 -> 0",
+        "show 60 80 -> 0",
+        "parse \"fn foo -> u32\\n  ret 42\\nend\" -> 0",
+        "parse \"fn\\tfoo -> u32\\n  ret 42\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "fat-arrow",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 12,
+      "refusedCalls": 0,
+      "modelCalls": 13,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 2,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4953,
+        "toolContext": 8345,
+        "output": 464
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 110824
+      },
+      "commands": [
+        "show 90 105 -> 0",
+        "show 72 104 -> 0",
+        "apply -> 1",
+        "show 74 88 -> 0",
+        "apply -> 0",
+        "check -> 0",
+        "lex \"=>\" -> 0",
+        "lex \"->\" -> 0",
+        "lex \"=\" -> 0",
+        "parse \"fn f u32 => u32\" -> 0",
+        "parse \"profile strict\nfn f u32 => u32\n  ret p0\nend\" -> 2",
+        "parse \"profile strict\\nfn f u32 => u32\\n  ret p0\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "op-alias-mod",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 15968,
+        "output": 209
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 160009
+      },
+      "commands": [
+        "help -> 0",
+        "show 160 170 -> 0",
+        "show 158 172 -> 0",
+        "show -> 0",
+        "show 148 152 -> 0",
+        "apply -> 0",
+        "show 148 152 -> 0",
+        "check -> 0",
+        "parse \"a mod p0 p1\" -> 0",
+        "parse \"fn test u32 u32 -> u32\n  x mod p0 p1\n  ret x\nend\" -> 2",
+        "parse \"fn test u32 u32 -> u32\\n  x mod p0 p1\\n  ret x\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "drop-unsigned-aliases",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 9180,
+        "output": 278
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 105157
+      },
+      "commands": [
+        "help -> 0",
+        "show 160 170 -> 0",
+        "show 155 175 -> 0",
+        "show 100 170 -> 0",
+        "apply -> 0",
+        "show 145 155 -> 0",
+        "check -> 0",
+        "parse \"fn a u32 -> u32\\nret udiv p0\\nend\\n\" -> 0",
+        "parse \"fn a u32 u32 -> u32\\nret div p0 p1\\nend\\n\" -> 0",
+        "parse \"fn a u32 u32 -> u32\\nret urem p0 p1\\nend\\n\" -> 0",
+        "parse \"fn a u32 u32 -> u32\\nret rem p0 p1\\nend\\n\" -> 0"
+      ]
+    },
+    {
+      "task": "text-escape-r",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 10,
+      "refusedCalls": 0,
+      "modelCalls": 11,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4191,
+        "toolContext": 8974,
+        "output": 242
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 95565
+      },
+      "commands": [
+        "show 585 600 -> 0",
+        "show 583 600 -> 0",
+        "show 570 610 -> 0",
+        "apply -> 0",
+        "show 570 585 -> 0",
+        "check -> 0",
+        "lex \"hello\\rworld\" -> 0",
+        "parse fn main -> u32\n  x text \"hello\\r\\nworld\"\nret x\nend -> 2",
+        "parse \"fn main -> u32\\n  x text \\\"hello\\r\\nworld\\\"\\nret x\\nend\" -> 0",
+        "parse \"fn main -> u32\\n  x text \\\"abc\\rdef\\\"\\nret x\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "text-escape-zero",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 8406,
+        "output": 155
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 101928
+      },
+      "commands": [
+        "show 585 600 -> 0",
+        "show 570 610 -> 0",
+        "apply -> 0",
+        "show 570 585 -> 0",
+        "check -> 0",
+        "parse \"text \\\"\\0\\\" null\" -> 2",
+        "lex \"text \\\"\\\\0end\\\" -> 2",
+        "lex \"hello\" -> 0",
+        "lex \"text \\\"hello\\0world\\\"\" -> 2",
+        "lex \"\\\"\\\\0\\\"\" -> 0",
+        "show 575 582 -> 0"
+      ]
+    },
+    {
+      "task": "profile-canonical",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": false,
+      "acceptedOneShot": null,
+      "failures": [
+        "tsc: front.ts(191): A function whose declared type is neither 'undefined', 'void', nor 'any' must return a value.\nfront.ts(274): Cannot find name 'ntok'. Did you mean 'tok'?\nfront.ts(274): Cannot find name 'err'."
+      ],
+      "toolCalls": 12,
+      "refusedCalls": 0,
+      "modelCalls": 13,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 6,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4953,
+        "toolContext": 8882,
+        "output": 1412
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 118330
+      },
+      "commands": [
+        "show 260 280 -> 0",
+        "show 240 260 -> 0",
+        "apply -> 1",
+        "show 248 262 -> 0",
+        "apply -> 1",
+        "apply -> 1",
+        "show 242 264 -> 0",
+        "apply -> 1",
+        "apply -> 1",
+        "show 253 260 -> 0",
+        "apply -> 0",
+        "check -> 1"
+      ]
+    },
+    {
+      "task": "array-length-limit",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 12,
+      "refusedCalls": 0,
+      "modelCalls": 13,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4953,
+        "toolContext": 8839,
+        "output": 255
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 112211
+      },
+      "commands": [
+        "help -> 0",
+        "show 360 375 -> 0",
+        "show 345 375 -> 0",
+        "apply -> 0",
+        "show 350 358 -> 0",
+        "check -> 0",
+        "parse \"fn f u32x100 -> u32 end\" -> 0",
+        "lex \"fn f u32x100 -> u32 end\" -> 0",
+        "parse \"\nfn simple u32 -> u32\n  x\n  ret x\nend\n\" -> 2",
+        "parse \"fn simple u32x4097 -> u32 end\" -> 0",
+        "parse \"fn simple u32x4096 -> u32 end\" -> 0",
+        "show 346 358 -> 0"
+      ]
+    },
+    {
+      "task": "param-limit",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 12,
+      "refusedCalls": 0,
+      "modelCalls": 13,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4953,
+        "toolContext": 8510,
+        "output": 273
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 109690
+      },
+      "commands": [
+        "show 460 470 -> 0",
+        "show 444 475 -> 0",
+        "apply -> 0",
+        "show 444 456 -> 0",
+        "check -> 0",
+        "parse \"fn f(u32 u32 u32 u32 u32 u32 u32 u32)->u32\\nret 0\\nend\" -> 0",
+        "parse \"fn f(u32 u32 u32 u32 u32 u32 u32 u32 u32)->u32\\nret 0\\nend\" -> 0",
+        "lex \"fn f(u32 u32 u32 u32 u32 u32 u32 u32 u32)->u32\" -> 0",
+        "show 445 456 -> 0",
+        "parse \"fn f(u32 u32 u32 u32 u32 u32 u32 u32 u32)->u32\\nret 0\\nend\" -> 0",
+        "check -> 0",
+        "show 448 450 -> 0"
+      ]
+    },
+    {
+      "task": "duplicate-fn-structure",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 16545,
+        "output": 297
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 166007
+      },
+      "commands": [
+        "show 410 425 -> 0",
+        "show 410 430 -> 0",
+        "show 411 425 -> 0",
+        "show -> 0",
+        "show 398 410 -> 0",
+        "apply -> 0",
+        "show 398 410 -> 0",
+        "check -> 0",
+        "parse \"fn foo u32 -> u32\n  x mov 0\n  ret x\nend\nfn foo u32 -> u32\n  y mov 1\n  ret y\nend\" -> 2",
+        "parse \"fn foo u32 -> u32\\n  x mov 0\\n  ret x\\nend\\nfn foo u32 -> u32\\n  y mov 1\\n  ret y\\nend\" -> 0",
+        "parse \"fn fn u32 -> u32\\n  x mov 0\\n  ret x\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "number-leading-zero",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 12,
+      "refusedCalls": 0,
+      "modelCalls": 13,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4953,
+        "toolContext": 8638,
+        "output": 252
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 111054
+      },
+      "commands": [
+        "show 220 240 -> 0",
+        "show 205 220 -> 0",
+        "apply -> 0",
+        "show 205 220 -> 0",
+        "check -> 0",
+        "lex \"007\" -> 0",
+        "parse \"fn f -> 007\" -> 0",
+        "parse \"fn f -> 0\" -> 0",
+        "parse \"fn f -> u32 0\" -> 0",
+        "parse \"fn test -> u32\nret 0\nend\" -> 2",
+        "parse \"fn test -> u32\\nret 0\\nend\" -> 0",
+        "parse \"fn test -> u32\\nret 007\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "unreserve-patch",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 9031,
+        "output": 203
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 105745
+      },
+      "commands": [
+        "show 186 199 -> 0",
+        "show 184 200 -> 0",
+        "show 183 205 -> 0",
+        "show 170 200 -> 0",
+        "apply -> 0",
+        "show 178 185 -> 0",
+        "check -> 0",
+        "parse \"fn patch ret\" -> 0",
+        "parse \"fn patch -> u32\nret 42\nend\" -> 2",
+        "parse \"fn patch -> u32\\nret 42\\nend\" -> 0",
+        "parse \"fn fn -> u32\\nret 42\\nend\" -> 0"
+      ]
+    },
+    {
+      "task": "use-alias-import",
+      "representation": "ts",
+      "protocol": "tool-loop",
+      "accepted": false,
+      "acceptedOneShot": null,
+      "failures": [
+        "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": uses expected [2,4,2], got [2,2]",
+        "parse of \"# a small program\\nuse \\\"lib.a0\\\"\\nfn inc u32 -> u32\\na add p0...\": uses expected [2], got []"
+      ],
+      "toolCalls": 11,
+      "refusedCalls": 0,
+      "modelCalls": 12,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 2,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 381
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 0,
+        "workflowPrimer": 4572,
+        "toolContext": 9140,
+        "output": 821
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 109106
+      },
+      "commands": [
+        "show 186 197 -> 0",
+        "show 168 198 -> 0",
+        "show 278 301 -> 0",
+        "show 540 560 -> 0",
+        "show 525 545 -> 0",
+        "apply -> 1",
+        "apply -> 0",
+        "check -> 0",
+        "parse \"use \\\"lib.a0\\\"\\nfn main u32\" -> 0",
+        "parse \"use \\\"lib.a0\\\"\\n\\nfn main u32\\nret 0\\nend\" -> 0",
+        "parse \"import \\\"lib.a0\\\"\\n\\nfn main u32\\nret 0\\nend\" -> 0"
+      ]
+    }
+  ]
+}
