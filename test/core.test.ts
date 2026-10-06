@@ -33,6 +33,7 @@ import { link } from '../src/link.js';
 import { optimize, optimizeFunction } from '../src/optimize.js';
 import { findClang, rosettaStuck } from '../src/toolchain.js';
 import { generateFiller } from '../tools/ai-edit-tasks-c.js';
+import { BEHAVIOR_SPEC } from '../tools/behavior-spec.js';
 import { generateCorpus } from '../tools/corpus.js';
 import { ILL_TYPED, type IrTables, NONE, refCheck, refCheckWords } from '../tools/ref-check.js';
 import {
@@ -3211,6 +3212,11 @@ test('self-hosted parser (compiler/parse.a0) word IR agrees with parse() on ever
     assert.deepEqual(a0Parse(big), refParse(big), `a0 ${v}`);
     check(a0Parse(big), big, `a0 ${v}`);
   }
+  // and as add, xor, compare and select operands, fold initial states and call arguments
+  // (tools/behavior-spec.ts biglit; run end to end on every target by test/behavior.test.ts)
+  const biglit = BEHAVIOR_SPEC.find((b) => b.name === 'biglit')?.source ?? '';
+  check(refParse(biglit), biglit, 'ref biglit');
+  assert.deepEqual(a0Parse(biglit), refParse(biglit), 'a0 biglit');
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\na g p0\nret a\nend\n'), [2, 7]);
   assert.deepEqual(a0ParseCode('fn f u32 -> u32\nret g p0\nend\n'), [2, 7]);
   assert.equal(refParse('fn f u32 -> u32\na g p0\nret a\nend\n').code, 2);

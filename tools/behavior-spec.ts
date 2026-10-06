@@ -47,6 +47,8 @@ export interface BehaviorProgramSpec {
 
 const B = [0, 1, 31, 32, 0x8000_0000, 0xffff_ffff];
 const WORDS = [0, 1, 7, 0x7fff_ffff, 0x8000_0000, 0xffff_ffff, 123_456_789];
+/** WORDS and the two sides of 2^28, the width of the value in the packed ret word. */
+const BIG_WORDS = [...WORDS, 0x0fff_ffff, 0x1000_0000];
 
 const rowsOf = (...lists: readonly (readonly Value[])[]): BehaviorRowSpec[] =>
   lists
@@ -447,6 +449,70 @@ end
       { fn: 'lit32', rows: [{ args: [] }] },
       { fn: 'via', rows: one(WORDS) },
       { fn: 'pass', rows: one(WORDS) },
+    ],
+  },
+  {
+    name: 'biglit',
+    about:
+      'u32 literals of 2^28 or more (past the 28-bit value of the packed ret word) as add, xor, compare and select operands, fold initial states, literal-only calls the optimizer evaluates, and select operands at the ret',
+    io: false,
+    source: `fn bl_ops u32 -> u32
+a add p0 268435456
+b xor a 2147483648
+c add b 268435455
+d gt c 4294967295
+e lt p0 2147483648
+f eq p0 4294967295
+g select e 4294967295 c
+h select f 268435456 g
+i select d 0 h
+ret i
+end
+fn bl_cmp u32 -> bool
+a ge p0 268435456
+b le p0 2147483648
+c and a b
+ret c
+end
+fn bl_step u32 u32 -> u32
+a add p0 p1
+b xor a 268435455
+ret b
+end
+fn bl_step3 u32 u32 u32 -> u32
+a add p0 p2
+b add a p1
+ret b
+end
+fn bl_fold u32 -> u32
+a fold bl_step 5 2147483648
+b fold bl_step3 4 4294967295 p0
+c fold bl_step 3 268435456
+d add a b
+e xor d c
+ret e
+end
+fn bl_const -> u32
+a call bl_ops 2147483648
+b call bl_ops 4294967295
+c call bl_ops 268435455
+d add 268435456 4294967295
+e xor a b
+f add e c
+g add f d
+ret g
+end
+fn bl_retsel u32 -> u32
+c lt p0 268435456
+ret select c 4294967295 2147483648
+end
+`,
+    calls: [
+      { fn: 'bl_ops', rows: one(BIG_WORDS) },
+      { fn: 'bl_cmp', rows: one(BIG_WORDS) },
+      { fn: 'bl_fold', rows: one(BIG_WORDS) },
+      { fn: 'bl_const', rows: [{ args: [] }] },
+      { fn: 'bl_retsel', rows: one(BIG_WORDS) },
     ],
   },
   {

@@ -109,6 +109,7 @@ static void *run(void *arg) {
 }
 int main(void) {
 #ifdef _WIN32
+  /* the words are binary: no newline or end-of-file translation */
   _setmode(_fileno(stdin), _O_BINARY);
   _setmode(_fileno(stdout), _O_BINARY);
 #endif
@@ -1326,6 +1327,10 @@ async function main(): Promise<void> {
   const bigret = BEHAVIOR_SPEC.find((b) => b.name === 'bigret');
   if (bigret === undefined) throw new Error('behavior program bigret is missing');
   programs.push(['behavior/bigret', parseAndValidate(bigret.source), small]);
+  // and as add, xor, compare and select operands, fold initial states and literal-only calls
+  const biglit = BEHAVIOR_SPEC.find((b) => b.name === 'biglit');
+  if (biglit === undefined) throw new Error('behavior program biglit is missing');
+  programs.push(['behavior/biglit', parseAndValidate(biglit.source), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,
