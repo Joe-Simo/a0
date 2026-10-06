@@ -65,8 +65,8 @@ for (const m of MODELS) {
     const per = Object.fromEntries(
       Object.entries(horizons).map(([k, v]) => [k, acc === 0 ? Number.NaN : r1(sum(v) / acc)]),
     ) as Record<string, number>;
-    (tpa[m] ??= {})[form] = per;
-    (counts[m] ??= {})[form] = { oneShot: one, accepted: acc };
+    tpa[m] = { ...tpa[m], [form]: per };
+    counts[m] = { ...counts[m], [form]: { oneShot: one, accepted: acc } };
     cells[`${m}/${form}`] = {
       variant: FORMS[form],
       n,
