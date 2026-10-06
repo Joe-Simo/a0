@@ -1955,6 +1955,11 @@ export const EXACT_FIXES: readonly {
   { id: 'A0011', rule: 'assign', what: 'an `=` between the id and the op is removed' },
   { id: 'A0013', rule: 'case', what: 'an uppercase callee is lowercased' },
   { id: 'A0025', rule: 'end', what: 'a missing `end` after ret is added' },
+  {
+    id: 'A0220',
+    rule: 'array-op',
+    what: '`at` or `put` written on an array becomes `get` or `set` at the same index',
+  },
   { id: 'A0516', rule: 'signature', what: '`-fn name` loses the signature that follows it' },
 ];
 

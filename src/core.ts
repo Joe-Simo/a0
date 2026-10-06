@@ -1504,6 +1504,15 @@ export function validateFunction(
           ...(recT !== undefined && !isPrimitive(recT) && recT.kind === 'arr'
             ? {
                 fix: `arrays use ${node.op === 'at' ? 'get: `get A I`' : 'set: `set A I V`'} (${node.op} is for records)`,
+                // `at`/`put` on an array has one meaning: `get`/`set` at that index (the index wraps by the length).
+                applicability: 'exact' as const,
+                edits: [
+                  lineEdit(
+                    'array-op',
+                    formatNode(node),
+                    formatNode({ ...node, op: node.op === 'at' ? 'get' : 'set' }),
+                  ),
+                ],
               }
             : {}),
         });

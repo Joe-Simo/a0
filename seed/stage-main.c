@@ -1,5 +1,9 @@
 #include <pthread.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 #define A0_IO_INPUT_CAPACITY 132100u
 #define A0_IO_OUTPUT_CAPACITY 4194304u
 #include "emitter.c"
@@ -11,6 +15,10 @@ static void *run(void *arg) {
   return NULL;
 }
 int main(void) {
+#ifdef _WIN32
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
+#endif
   unsigned char b[4];
   uint32_t n = 0;
   while (fread(b, 1, 4, stdin) == 4) {
