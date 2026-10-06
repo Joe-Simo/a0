@@ -1,0 +1,246 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### REQUEST 1
+Return true when both values have the same top 8 bits (bits 24 to 31) and the first value's lowest byte is not zero.
+
+e0
+fn f u32 u32 -> bool
+a shr p0 24
+b shr p1 16
+c eq a b
+d and p0 255
+e ne d 0
+g and c e
+ret g
+end
+g0
+fn f u32 u32 -> bool end
+
+### REQUEST 2
+Return the sum of three consecutive elements starting at the given index, where positions past the end wrap around to the start.
+
+e0
+fn f u32x4 u32 -> u32
+a get p0 p1
+b add p1 1
+c get p0 b
+d add p1 3
+e get p0 d
+g add a c
+h add g e
+ret h
+end
+g0
+fn f u32x4 u32 -> u32 end
+
+### REQUEST 3
+Given scores p0, p1 and entrant numbers p2, p3, return true when the first entrant wins: a higher score wins, and on equal scores the strictly lower entrant number wins.
+
+e0
+fn f u32 u32 u32 u32 -> bool
+a gt p0 p1
+b eq p0 p1
+c le p2 p3
+d and b c
+e or a d
+g mov e
+ret g
+end
+g0
+fn f u32 u32 u32 u32 -> bool end
+
+### REQUEST 4
+Pack the low bytes of the four arguments into one word: the first argument in bits 0 to 7, the second in bits 8 to 15, the third in bits 16 to 23 and the fourth in bits 24 to 31.
+
+e0
+fn f u32 u32 u32 u32 -> u32
+a and p0 255
+b and p1 255
+c shl b 8
+d and p2 255
+e shl d 8
+g shl p3 24
+h or a c
+i or h e
+j or i g
+ret j
+end
+g0
+fn f u32 u32 u32 u32 -> u32 end
+
+### REQUEST 5
+The function returns 10 per cent of the amount rounded down; change it to return 15 per cent rounded down, exact for every amount without overflow.
+
+e0
+fn f u32 -> u32
+a div p0 100
+b mul a 10
+c rem p0 100
+d mul c 10
+e div d 100
+g add b e
+ret g
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 6
+f folds step over the array to find the position of the largest element. Change step so that when an element equals the best so far, the earlier position is kept.
+
+e0
+fn step (u32,u32) u32 u32x4 -> (u32,u32)
+v get p2 p1
+b at p0 0
+k at p0 1
+better ge v b
+nb select better v b
+ni select better p1 k
+r rec nb ni
+ret r
+end
+g0
+fn step (u32,u32) u32 u32x4 -> (u32,u32) end
+fn f u32x4 -> u32 end
+
+### REQUEST 7
+Read the low 16 bits as a two's-complement signed number and return its magnitude and whether it is negative; bit 15 set means negative.
+
+e0
+fn f u32 -> (u32,bool)
+a and p0 65535
+n gt a 32768
+m sub 65536 a
+g select n m a
+r rec g n
+ret r
+end
+g0
+fn f u32 -> (u32,bool) end
+
+### REQUEST 8
+Write the value into the given position and also into the mirrored position counted from the other end (position 0 mirrors 3, 1 mirrors 2), positions taken modulo 4.
+
+e0
+fn f u32x4 u32 u32 -> u32x4
+a set p0 p1 p2
+b sub 4 p1
+c set a b p2
+ret c
+end
+g0
+fn f u32x4 u32 u32 -> u32x4 end
+
+### REQUEST 9
+Shift the value right by the distance as now, but also set bit 0 of the result whenever any 1 bit was shifted out.
+
+e0
+fn f u32 u32 -> u32
+a shr p0 p1
+ret a
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 10
+Using the helper, which gives the larger of a value's two 16-bit halves, return true when the first value's larger half is strictly greater than the second value's.
+
+e0
+fn f u32 u32 -> bool
+x call h p0
+y call h p0
+z gt x y
+ret z
+end
+fn h u32 -> u32 end
+g0
+fn h u32 -> u32 end
+fn f u32 u32 -> bool end
+
+### REQUEST 11
+f returns true when every element of the array is strictly below the limit. Fix the per-element check, which currently accepts an element equal to the limit.
+
+e0
+fn ok bool u32 u32x4 u32 -> bool
+v get p2 p1
+c le v p3
+r and p0 c
+ret r
+end
+g0
+fn ok bool u32 u32x4 u32 -> bool end
+fn f u32x4 u32 -> bool end
+
+### REQUEST 12
+Convert a Celsius temperature to Fahrenheit: multiply by 9, divide by 5 rounding down, then add 32.
+
+e0
+fn f u32 -> u32
+a mul p0 5
+b div a 9
+c add b 30
+ret c
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 13
+Versions are packed as major in the top 16 bits and minor in the low 16. Return true when the installed version (first) has the same major as the required one (second) and a minor at least as high.
+
+e0
+fn f u32 u32 -> bool
+a shr p0 16
+b shr p1 16
+c eq a b
+d and p0 65535
+e and p1 65535
+g gt d e
+h and c g
+ret h
+end
+g0
+fn f u32 u32 -> bool end
+
+### REQUEST 14
+Return true when the current time (first) has reached the alarm time (second) plus the snooze delay (third); the sum may exceed the u32 range, so do not add them.
+
+e0
+fn f u32 u32 u32 -> bool
+e add p1 p2
+g ge p0 e
+ret g
+end
+g0
+fn f u32 u32 u32 -> bool end
+
+### REQUEST 15
+Return the array with each neighbouring pair exchanged: elements 0 and 1 trade places, and elements 2 and 3 trade places.
+
+e0
+fn f u32x4 -> u32x4
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+r arr b a c d
+ret r
+end
+g0
+fn f u32x4 -> u32x4 end
+
+### REQUEST 16
+Return how many consecutive 1 bits the value has starting from bit 0 (for example 0b0111 gives 3 and all ones gives 32).
+
+e0
+fn f u32 -> u32
+s rec 0 true
+r fold step 31 s p0
+c at r 0
+ret c
+end
+fn step (u32,bool) u32 u32 -> (u32,bool) end
+g0
+fn step (u32,bool) u32 u32 -> (u32,bool) end
+fn f u32 -> u32 end

@@ -22,17 +22,19 @@ interface Report {
   trials: Trial[];
 }
 
-const SET = process.argv.find((a) => /^[hijklmnopqrst]+$/.test(a)) ?? 'h';
+const SET = process.argv.find((a) => /^[hijklmnopqrstuvw]+$/.test(a)) ?? 'h';
 const SETS = [...SET];
 // Sets K, L, M and N compare the shipped guide with the short primer; H, I and J compare dense with canonical.
-const SHORT = 'klmnopqrst'.includes(SET[0] as string);
+const SHORT = 'klmnopqrstuvw'.includes(SET[0] as string);
 const MODELS = ['haiku', 'sonnet'] as const;
 // Sets H, I and J compare the dense form (D) with the canonical one (K) on the 10-task session; set K compares the shipped guide (S)
 // with the 101-token edit primer (K) on the cold single task (the horizon of the ai-tokens-* losses).
 const FIRST = SHORT ? 'guide' : 'dense';
 const PRIMARY = SHORT ? 'task1' : 'session10';
 // Sets R, S and T compare the shipped guide (S) with the selected candidate `KR3b` (K), and report `KR3` alongside (the form named `KR3`).
-const CONFIRM = 'rst'.includes(SET[0] as string);
+const CONFIRM = 'rstuvw'.includes(SET[0] as string);
+// Sets U, V and W declare a non-inferiority margin of 3 tasks (of 48) on one shot, decided before collection; the strict reading (margin 0) is reported too.
+const MARGIN = 'uvw'.includes(SET[0] as string) ? 3 : 0;
 const SECOND = CONFIRM ? 'KR3b' : 'canon';
 const FORMS = (
   CONFIRM ? { guide: 'S', KR3b: 'K', KR3: 'K0' } : { [FIRST]: SHORT ? 'S' : 'D', canon: 'K' }
@@ -111,9 +113,23 @@ const verdict = Object.fromEntries(
     const c1 =
       d !== undefined &&
       k !== undefined &&
-      (SHORT ? k.oneShot >= d.oneShot : d.oneShot >= k.oneShot);
+      (SHORT ? k.oneShot + MARGIN >= d.oneShot : d.oneShot >= k.oneShot);
     const c2 = td !== undefined && tk !== undefined && (SHORT ? tk < td : td < tk);
-    return [m, { oneShotNotLower: c1, primaryHorizon: PRIMARY, primaryLower: c2, met: c1 && c2 }];
+    const strict =
+      d !== undefined &&
+      k !== undefined &&
+      (SHORT ? k.oneShot >= d.oneShot : d.oneShot >= k.oneShot);
+    return [
+      m,
+      {
+        oneShotNotLower: c1,
+        strictOneShotNotLower: strict,
+        margin: MARGIN,
+        primaryHorizon: PRIMARY,
+        primaryLower: c2,
+        met: c1 && c2,
+      },
+    ];
   }),
 );
 const met = MODELS.every((m) => (verdict[m] as { met: boolean }).met);
@@ -130,6 +146,7 @@ writeFileSync(
         k: 'docs/history/2026-10-06-set-k-preregistration.md',
         lmn: 'docs/history/2026-10-06-set-lmn-preregistration.md',
         rst: 'docs/history/2026-10-06-set-rst-preregistration.md',
+        uvw: 'docs/history/2026-10-06-set-uvw-preregistration.md',
         opq: 'docs/history/2026-10-06-set-opq-preregistration.md',
       }[SET],
       taskSetSha256: sha,
