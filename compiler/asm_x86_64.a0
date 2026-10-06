@@ -1,0 +1,2876 @@
+# A0 x86-64 encoder, written in A0: the AT&T assembly text src/x86_64.ts writes (function bodies,
+# module head and tail, and the strict profile's trap runtime, for Linux and macOS) to machine
+# code, labels, relocations and zero-fill symbols, without a system assembler. It is the port of
+# src/x86_64enc.ts (the reference): the same dialect, the same bytes, the same relocations, and an
+# error on the same line; test/asm-x86_64.test.ts checks it against the reference on every form
+# and on every x86-64 text the repository produces for the corpus and the examples (and checks
+# the reference against clang).
+# Accepted (as in the reference): labels (`name:`, numeric `1:` with `1f` / `1b` references),
+# comments (`#` outside a string), `.text`, `.bss`, `.section __TEXT,__text...`, `.section
+# .note.GNU-stack...` (an empty section), `.globl`, `.type`, `.size` (no effect),
+# `.subsections_via_symbols`, `.p2align` and `.balign` (nop padding in text, LLVM's nops of at
+# most 10 bytes), `.zero` (bss), `.zerofill __DATA,__bss,sym,size,align`, `.asciz` (text), and
+# the 130 mnemonics of the reference's table (add or and sub xor cmp test mov lea imul neg mul div
+# inc dec rol ror shl shr sar with l and q, testb movb, movabsq movzbl pushq popq ret syscall jmp
+# call j<cc> set<cc> cmov<cc>l/q for the 16 conditions, movups movdqa movd movq-to-xmm xorps
+# pxor pand por paddd psubd pmuludq punpckldq punpcklqdq pshufd pslld psrld psrldq) in the
+# reference's operand forms. Branches are always rel32 (no relaxation).
+# Input words: n, then the n bytes of the text, one a word. Output words: on success 0, the byte
+# count k, the k bytes one a word, the label count and each text label in definition order (byte
+# offset, name length, name bytes), the relocation count and each relocation by offset (offset of
+# the 4-byte field, kind 0 branch32 1 pcrel32, symbol length, symbol bytes; the value is
+# S - (P + 4)), the bss count and each bss symbol (offset, name length, name bytes), the bss size
+# and the largest bss alignment (log2). On an error: the code (1 the text is wrong, as the
+# reference says; 2 a capacity of this encoder is exceeded) and the 1-based line. The result of
+# `xasmio` is the code.
+# Layout: the text is packed four bytes a word, little-endian (u32x128x128: 65536 bytes); label,
+# symbol and relocation names are copied once each into a name pool packed four bytes a word
+# (16384 bytes); a label is one entry (hash, name start, name length, offset, defined) created at
+# its first reference or definition, so a branch stores only the entry; an immediate is a 64-bit
+# two's complement pair with range flags. Capacities (the whole state is one value, at most 65536
+# words): 65536 text bytes, 256 bytes a line before its comment, 3 operands, 16384 bytes of
+# names, 1024 labels (named, defined or referenced), 2048 fixups (branches and RIP-relative
+# references), 1024 numeric label definitions, 256 bss symbols.
+# Where this encoder is stricter than the reference (an error here, accepted there): a
+# non-ASCII whitespace character between tokens (the reference reads the text as UTF-16).
+# State: the module tables are paged (u32x128xN, `xag*` / `xas*`), a line is a u32x256 buffer;
+# every branch is computed and selected, and a step that changes the state record (which holds
+# the io token, so it cannot be selected) runs as a fold of count 0 or 1.
+
+# ---- zero values and paged tables
+fn xazpg -> u32x128
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn xaz128 -> u32x128x128
+z call xazpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn xaz80 -> u32x128x80
+z call xazpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn xaz40 -> u32x128x40
+z call xazpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn xaz32 -> u32x128x32
+z call xazpg
+t arr z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z z
+ret t
+end
+fn xaz16p -> u32x128x16
+z call xazpg
+t arr z z z z z z z z z z z z z z z z
+ret t
+end
+fn xaz8 -> u32x128x8
+z call xazpg
+t arr z z z z z z z z
+ret t
+end
+fn xag128 u32x128x128 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn xas128 u32x128x128 u32 u32 -> u32x128x128
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn xag80 u32x128x80 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn xas80 u32x128x80 u32 u32 -> u32x128x80
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn xag40 u32x128x40 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn xas40 u32x128x40 u32 u32 -> u32x128x40
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn xag32 u32x128x32 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn xas32 u32x128x32 u32 u32 -> u32x128x32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn xag16 u32x128x16 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn xas16 u32x128x16 u32 u32 -> u32x128x16
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn xag8 u32x128x8 u32 -> u32
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+v get pv wi
+ret v
+end
+fn xas8 u32x128x8 u32 u32 -> u32x128x8
+pg shr p1 7
+wi and p1 127
+pv get p0 pg
+pv2 set pv wi p2
+t set p0 pg pv2
+ret t
+end
+fn xazb -> u32x256
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+fn xaz16 -> u32x16
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret z
+end
+
+# ---- bytes
+# whitespace (tab, newline, vertical tab, form feed, carriage return, space)
+fn xaws u32 -> bool
+a9 ge p0 9
+a13 le p0 13
+c1 and a9 a13
+sp eq p0 32
+r or c1 sp
+ret r
+end
+fn xadig u32 -> bool
+a1 ge p0 48
+a2 le p0 57
+r and a1 a2
+ret r
+end
+fn xaalp u32 -> bool
+l1 ge p0 97
+l2 le p0 122
+lw and l1 l2
+u1 ge p0 65
+u2 le p0 90
+uw and u1 u2
+r or lw uw
+ret r
+end
+# the first byte of a symbol [A-Za-z_.$]
+fn xasyc u32 -> bool
+a call xaalp p0
+us eq p0 95
+dt eq p0 46
+dl eq p0 36
+x1 or a us
+x2 or dt dl
+r or x1 x2
+ret r
+end
+# a label byte [A-Za-z0-9_.$]
+fn xalch u32 -> bool
+a call xasyc p0
+d call xadig p0
+r or a d
+ret r
+end
+fn xahexd u32 -> bool
+d call xadig p0
+l1 ge p0 97
+l2 le p0 102
+lw and l1 l2
+u1 ge p0 65
+u2 le p0 70
+uw and u1 u2
+x or d lw
+r or x uw
+ret r
+end
+fn xahexv u32 -> u32
+d call xadig p0
+dv sub p0 48
+lc or p0 32
+lv sub lc 87
+r select d dv lv
+ret r
+end
+
+# ---- scanning a line buffer p2 up to p3 from position p0
+fn xawsp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call xaws c
+r and inr w
+ret r
+end
+fn xanwp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call xaws c
+nw eq w false
+r and inr nw
+ret r
+end
+fn xalcp u32 u32 u32x256 u32 -> bool
+inr lt p0 p3
+c get p2 p0
+w call xalch c
+r and inr w
+ret r
+end
+fn xainc u32 u32 u32x256 u32 -> u32
+r add p0 1
+ret r
+end
+# the first position at or after p2 (below p1) that is not whitespace
+fn xaskip u32x256 u32 u32 -> u32
+r loop xawsp xainc 257 p2 p0 p1
+ret r
+end
+# the first whitespace position at or after p2
+fn xatows u32x256 u32 u32 -> u32
+r loop xanwp xainc 257 p2 p0 p1
+ret r
+end
+# the end of the run of label bytes from p2
+fn xascl u32x256 u32 u32 -> u32
+r loop xalcp xainc 257 p2 p0 p1
+ret r
+end
+# trailing whitespace: state end, p3 the start
+fn xartp u32 u32 u32x256 u32 -> bool
+gtb gt p0 p3
+pi sub p0 1
+c get p2 pi
+w call xaws c
+r and gtb w
+ret r
+end
+fn xadec1 u32 u32 u32x256 u32 -> u32
+r sub p0 1
+ret r
+end
+# p2 without the whitespace before it, down to p1
+fn xartrim u32x256 u32 u32 -> u32
+r loop xartp xadec1 257 p2 p0 p1
+ret r
+end
+# the byte p3 is not at state position (below p4)
+fn xafdp u32 u32 u32x256 u32 u32 -> bool
+inr lt p0 p4
+c get p2 p0
+ne1 ne c p3
+r and inr ne1
+ret r
+end
+fn xafdi u32 u32 u32x256 u32 u32 -> u32
+r add p0 1
+ret r
+end
+# the first position of byte p3 in [p1, p2), or p2
+fn xafind u32x256 u32 u32 u32 -> u32
+r loop xafdp xafdi 257 p1 p0 p3 p2
+ret r
+end
+# the comment cut: state (cut, in a string, skip the next byte); the cut is p3 until a `#`
+# outside a string
+fn xacutst (u32,bool,bool) u32 u32x256 u32 -> (u32,bool,bool)
+cut at p0 0
+st at p0 1
+sk at p0 2
+c get p2 p1
+found ne cut p3
+bs eq c 92
+qt eq c 34
+hs eq c 35
+nst eq st false
+nsk eq sk false
+esc and st bs
+esc1 and esc nsk
+q1 and qt nsk
+nesc eq esc1 false
+q2 and q1 nesc
+st2 xor st q2
+hc and hs nst
+hc1 and hc nsk
+hc2 and hc1 nesc
+cut1 select hc2 p1 cut
+sk2 select sk false esc1
+nf eq found false
+cut2 select nf cut1 cut
+st3 select nf st2 st
+sk3 select nf sk2 sk
+r rec cut2 st3 sk3
+ret r
+end
+fn xacut u32x256 u32 -> u32
+big gt p1 256
+lim select big 256 p1
+s0 rec lim false false
+f fold xacutst lim s0 p0 lim
+r at f 0
+ret r
+end
+# every byte of [p1, p2) is a digit (p3 0) or a label byte (p3 1)
+fn xaallst bool u32 u32x256 u32 u32 -> bool
+ix add p3 p1
+c get p2 ix
+d call xadig c
+l call xalch c
+isd eq p4 0
+v select isd d l
+r and p0 v
+ret r
+end
+fn xaall u32x256 u32 u32 u32 -> bool
+gtr gt p2 p1
+d sub p2 p1
+ln select gtr d 0
+r fold xaallst ln true p0 p1 p3
+ret r
+end
+# [p1, p2) is a symbol: not empty, label bytes, not starting with a digit
+fn xasym u32x256 u32 u32 -> bool
+ne1 lt p1 p2
+c get p0 p1
+s call xasyc c
+a call xaall p0 p1 p2 1
+x and ne1 s
+r and x a
+ret r
+end
+
+# ---- names packed for table lookup: words 0-5 the bytes little-endian, 6 the length, 7 bad
+# (longer than 24 bytes, or a zero byte)
+fn xapkst u32x8 u32 u32x256 u32 u32 -> u32x8
+inr lt p1 p4
+ix add p3 p1
+c get p2 ix
+cv select inr c 0
+wi shr p1 2
+j3 and p1 3
+sh mul j3 8
+sv shl cv sh
+old get p0 wi
+nw or old sv
+s1 set p0 wi nw
+z eq c 0
+zb and inr z
+bd get s1 7
+bd1 select zb 1 bd
+s2 set s1 7 bd1
+ret s2
+end
+fn xapack u32x256 u32 u32 -> u32x8
+gtr gt p2 p1
+d sub p2 p1
+ln select gtr d 0
+z arr 0 0 0 0 0 0 0 0
+lg gt ln 24
+bd select lg 1 0
+z1 set z 7 bd
+z2 set z1 6 ln
+r fold xapkst 24 z2 p0 p1 ln
+ret r
+end
+# the index of the packed name p3 in the table p2 (7 words an entry), 4294967295 if absent
+fn xalkst u32 u32 u32x910 u32x8 -> u32
+k mul p1 7
+t0 get p2 k
+k1 add k 1
+t1 get p2 k1
+k2 add k 2
+t2 get p2 k2
+k3 add k 3
+t3 get p2 k3
+k4 add k 4
+t4 get p2 k4
+k5 add k 5
+t5 get p2 k5
+k6 add k 6
+t6 get p2 k6
+w0 get p3 0
+w1 get p3 1
+w2 get p3 2
+w3 get p3 3
+w4 get p3 4
+w5 get p3 5
+w6 get p3 6
+w7 get p3 7
+e0 eq t0 w0
+e1 eq t1 w1
+e2 eq t2 w2
+e3 eq t3 w3
+e4 eq t4 w4
+e5 eq t5 w5
+e6 eq t6 w6
+e7 eq w7 0
+a01 and e0 e1
+a23 and e2 e3
+a45 and e4 e5
+a67 and e6 e7
+b1 and a01 a23
+b2 and a45 a67
+m and b1 b2
+nf eq p0 4294967295
+take and m nf
+r select take p1 p0
+ret r
+end
+fn xalook u32x910 u32 u32x8 -> u32
+r fold xalkst p1 4294967295 p0 p2
+ret r
+end
+# the 130 mnemonics, packed (src/x86_64enc.ts MNEMONICS, in its order)
+fn xamnt -> u32x910
+t arr 1818518625 0 0 0 0 0 4 1902404705 0 0 0 0 0 4 7107183 0 0 0 0 0 3 7434863 0 0 0 0 0 3 1818521185 0 0 0 0 0 4 1902407265 0 0 0 0 0 4 1818391923 0 0 0 0 0 4 1902278003 0 0 0 0 0 4 1819438968 0 0 0 0 0 4 1903325048 0 0 0 0 0 4 1819307363 0 0 0 0 0 4 1903193443 0 0 0 0 0 4 1953719668 108 0 0 0 0 5 1953719668 113 0 0 0 0 5 1953719668 98 0 0 0 0 5 1819701101 0 0 0 0 0 4 1903587181 0 0 0 0 0 4 1651928941 0 0 0 0 0 4 1635151725 7435106 0 0 0 0 7 2054582125 27746 0 0 0 0 6 1818322284 0 0 0 0 0 4 1902208364 0 0 0 0 0 4 1819635049 108 0 0 0 0 5 1819635049 113 0 0 0 0 5 1818715502 0 0 0 0 0 4 1902601582 0 0 0 0 0 4 1819047277 0 0 0 0 0 4 1902933357 0 0 0 0 0 4 1819699556 0 0 0 0 0 4 1903585636 0 0 0 0 0 4 1818455657 0 0 0 0 0 4 1902341737 0 0 0 0 0 4 1818453348 0 0 0 0 0 4 1902339428 0 0 0 0 0 4 1819045746 0 0 0 0 0 4 1902931826 0 0 0 0 0 4 1819438962 0 0 0 0 0 4 1903325042 0 0 0 0 0 4 1819043955 0 0 0 0 0 4 1902930035 0 0 0 0 0 4 1819437171 0 0 0 0 0 4 1903323251 0 0 0 0 0 4 1819435379 0 0 0 0 0 4 1903321459 0 0 0 0 0 4 1752397168 113 0 0 0 0 5 1903193968 0 0 0 0 0 4 7628146 0 0 0 0 0 3 1668512115 7105633 0 0 0 0 7 7368042 0 0 0 0 0 3 1819042147 0 0 0 0 0 4 28522 0 0 0 0 0 2 7302762 0 0 0 0 0 3 25194 0 0 0 0 0 2 6644074 0 0 0 0 0 3 25962 0 0 0 0 0 2 6647402 0 0 0 0 0 3 6644330 0 0 0 0 0 3 24938 0 0 0 0 0 2 29546 0 0 0 0 0 2 7564906 0 0 0 0 0 3 28778 0 0 0 0 0 2 7368298 0 0 0 0 0 3 27754 0 0 0 0 0 2 6645610 0 0 0 0 0 3 6646890 0 0 0 0 0 3 26474 0 0 0 0 0 2 1869899123 0 0 0 0 0 4 1853121907 111 0 0 0 0 5 1651795315 0 0 0 0 0 4 1635018099 101 0 0 0 0 5 1702126963 0 0 0 0 0 4 1853121907 101 0 0 0 0 5 1651795315 101 0 0 0 0 5 1635018099 0 0 0 0 0 4 1937007987 0 0 0 0 0 4 1853121907 115 0 0 0 0 5 1886676339 0 0 0 0 0 4 1853121907 112 0 0 0 0 5 1819567475 0 0 0 0 0 4 1735681395 101 0 0 0 0 5 1819567475 101 0 0 0 0 5 1735681395 0 0 0 0 0 4 1987013987 27759 0 0 0 0 6 1987013987 29039 0 0 0 0 6 1987013987 7106414 0 0 0 0 7 1987013987 7434094 0 0 0 0 7 1987013987 27746 0 0 0 0 6 1987013987 29026 0 0 0 0 6 1987013987 7103841 0 0 0 0 7 1987013987 7431521 0 0 0 0 7 1987013987 27749 0 0 0 0 6 1987013987 29029 0 0 0 0 6 1987013987 7103854 0 0 0 0 7 1987013987 7431534 0 0 0 0 7 1987013987 7103842 0 0 0 0 7 1987013987 7431522 0 0 0 0 7 1987013987 27745 0 0 0 0 6 1987013987 29025 0 0 0 0 6 1987013987 27763 0 0 0 0 6 1987013987 29043 0 0 0 0 6 1987013987 7107438 0 0 0 0 7 1987013987 7435118 0 0 0 0 7 1987013987 27760 0 0 0 0 6 1987013987 29040 0 0 0 0 6 1987013987 7106670 0 0 0 0 7 1987013987 7434350 0 0 0 0 7 1987013987 27756 0 0 0 0 6 1987013987 29036 0 0 0 0 6 1987013987 7103847 0 0 0 0 7 1987013987 7431527 0 0 0 0 7 1987013987 7103852 0 0 0 0 7 1987013987 7431532 0 0 0 0 7 1987013987 27751 0 0 0 0 6 1987013987 29031 0 0 0 0 6 1886547832 115 0 0 0 0 5 1685483373 24945 0 0 0 0 6 1684300144 100 0 0 0 0 5 1651864432 100 0 0 0 0 5 1684955504 0 0 0 0 0 4 7499632 0 0 0 0 0 3 1919907952 0 0 0 0 0 4 1819635056 7431285 0 0 0 0 7 1886287216 1902930787 29028 0 0 0 10 1886287216 1684826979 113 0 0 0 9 1970696045 29552 0 0 0 0 6 1819046768 100 0 0 0 0 5 1819439984 100 0 0 0 0 5 1819439984 29028 0 0 0 0 6 1969779568 25702 0 0 0 0 6 1685483373 0 0 0 0 0 4
+ret t
+end
+# each mnemonic: class, parameter (digit, opcode or condition), operand size, extra
+fn xamna -> u32x520
+t arr 1 0 32 0 1 0 64 0 1 1 32 0 1 1 64 0 1 4 32 0 1 4 64 0 1 5 32 0 1 5 64 0 1 6 32 0 1 6 64 0 1 7 32 0 1 7 64 0 2 0 32 0 2 0 64 0 2 0 8 0 3 0 32 0 3 0 64 0 3 0 8 0 4 0 64 0 5 0 32 0 6 0 32 0 6 0 64 0 7 0 32 0 7 0 64 0 8 3 32 0 8 3 64 0 8 4 32 0 8 4 64 0 8 6 32 0 8 6 64 0 9 0 32 0 9 0 64 0 9 1 32 0 9 1 64 0 10 0 32 0 10 0 64 0 10 1 32 0 10 1 64 0 10 4 32 0 10 4 64 0 10 5 32 0 10 5 64 0 10 7 32 0 10 7 64 0 11 80 64 0 11 88 64 0 12 195 0 0 12 1295 0 0 13 233 0 0 13 232 0 0 14 0 0 0 14 1 0 0 14 2 0 0 14 3 0 0 14 4 0 0 14 5 0 0 14 6 0 0 14 7 0 0 14 8 0 0 14 9 0 0 14 10 0 0 14 11 0 0 14 12 0 0 14 13 0 0 14 14 0 0 14 15 0 0 15 0 8 0 15 1 8 0 15 2 8 0 15 3 8 0 15 4 8 0 15 5 8 0 15 6 8 0 15 7 8 0 15 8 8 0 15 9 8 0 15 10 8 0 15 11 8 0 15 12 8 0 15 13 8 0 15 14 8 0 15 15 8 0 16 0 32 0 16 0 64 0 16 1 32 0 16 1 64 0 16 2 32 0 16 2 64 0 16 3 32 0 16 3 64 0 16 4 32 0 16 4 64 0 16 5 32 0 16 5 64 0 16 6 32 0 16 6 64 0 16 7 32 0 16 7 64 0 16 8 32 0 16 8 64 0 16 9 32 0 16 9 64 0 16 10 32 0 16 10 64 0 16 11 32 0 16 11 64 0 16 12 32 0 16 12 64 0 16 13 32 0 16 13 64 0 16 14 32 0 16 14 64 0 16 15 32 0 16 15 64 0 17 87 0 0 17 111 0 1 17 254 0 1 17 250 0 1 17 219 0 1 17 235 0 1 17 239 0 1 17 244 0 1 17 108 0 1 17 98 0 1 18 0 0 0 19 6 0 62066 19 2 0 53874 19 3 0 115 20 0 0 0 21 0 0 0
+ret t
+end
+# the 64 registers, packed
+fn xargt -> u32x910
+t arr 7889266 0 0 0 0 0 3 7889778 0 0 0 0 0 3 7890034 0 0 0 0 0 3 7889522 0 0 0 0 0 3 7369586 0 0 0 0 0 3 7365234 0 0 0 0 0 3 6910834 0 0 0 0 0 3 6906994 0 0 0 0 0 3 14450 0 0 0 0 0 2 14706 0 0 0 0 0 2 3158386 0 0 0 0 0 3 3223922 0 0 0 0 0 3 3289458 0 0 0 0 0 3 3354994 0 0 0 0 0 3 3420530 0 0 0 0 0 3 3486066 0 0 0 0 0 3 7889253 0 0 0 0 0 3 7889765 0 0 0 0 0 3 7890021 0 0 0 0 0 3 7889509 0 0 0 0 0 3 7369573 0 0 0 0 0 3 7365221 0 0 0 0 0 3 6910821 0 0 0 0 0 3 6906981 0 0 0 0 0 3 6568050 0 0 0 0 0 3 6568306 0 0 0 0 0 3 1680879986 0 0 0 0 0 4 1680945522 0 0 0 0 0 4 1681011058 0 0 0 0 0 4 1681076594 0 0 0 0 0 4 1681142130 0 0 0 0 0 4 1681207666 0 0 0 0 0 4 27745 0 0 0 0 0 2 27747 0 0 0 0 0 2 27748 0 0 0 0 0 2 27746 0 0 0 0 0 2 7106675 0 0 0 0 0 3 7106658 0 0 0 0 0 3 7104883 0 0 0 0 0 3 7104868 0 0 0 0 0 3 6436978 0 0 0 0 0 3 6437234 0 0 0 0 0 3 1647325554 0 0 0 0 0 4 1647391090 0 0 0 0 0 4 1647456626 0 0 0 0 0 4 1647522162 0 0 0 0 0 4 1647587698 0 0 0 0 0 4 1647653234 0 0 0 0 0 4 812477816 0 0 0 0 0 4 829255032 0 0 0 0 0 4 846032248 0 0 0 0 0 4 862809464 0 0 0 0 0 4 879586680 0 0 0 0 0 4 896363896 0 0 0 0 0 4 913141112 0 0 0 0 0 4 929918328 0 0 0 0 0 4 946695544 0 0 0 0 0 4 963472760 0 0 0 0 0 4 829255032 48 0 0 0 0 5 829255032 49 0 0 0 0 5 829255032 50 0 0 0 0 5 829255032 51 0 0 0 0 5 829255032 52 0 0 0 0 5 829255032 53 0 0 0 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+# each register: class (8 32 64 128), number
+fn xarga -> u32x128
+t arr 64 0 64 1 64 2 64 3 64 4 64 5 64 6 64 7 64 8 64 9 64 10 64 11 64 12 64 13 64 14 64 15 32 0 32 1 32 2 32 3 32 4 32 5 32 6 32 7 32 8 32 9 32 10 32 11 32 12 32 13 32 14 32 15 8 0 8 1 8 2 8 3 8 4 8 5 8 6 8 7 8 8 8 9 8 10 8 11 8 12 8 13 8 14 8 15 128 0 128 1 128 2 128 3 128 4 128 5 128 6 128 7 128 8 128 9 128 10 128 11 128 12 128 13 128 14 128 15
+ret t
+end
+# the 12 directives, then the words __TEXT,__text .note.GNU-stack __DATA __bss
+fn xadit -> u32x910
+t arr 2019914798 116 0 0 0 0 5 1936941614 0 0 0 0 0 4 1667593006 1852795252 0 0 0 0 8 1869375278 27746 0 0 0 0 6 1887007790 101 0 0 0 0 5 2053731118 101 0 0 0 0 5 1651864366 1952671091 1936617321 1634301535 1836675935 1936486242 24 1630695470 1852270956 0 0 0 0 8 1818321454 7235433 0 0 0 0 7 1919253038 111 0 0 0 0 5 1919253038 1818846831 108 0 0 0 9 1668505902 31337 0 0 0 0 6 1163157343 1596740696 2019914847 116 0 0 13 1953459758 1313287781 1953705301 7037793 0 0 15 1094999903 16724 0 0 0 0 6 1935826783 115 0 0 0 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+# LLVM's nops of 1 to 10 bytes, back to back (the one of L bytes at L(L-1)/2)
+fn xanops -> u32x64
+t arr 144 102 144 15 31 0 15 31 64 0 15 31 68 0 0 102 15 31 68 0 0 15 31 128 0 0 0 0 15 31 132 0 0 0 0 0 102 15 31 132 0 0 0 0 0 102 46 15 31 132 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret t
+end
+
+# ---- numbers: -?[0-9]+ or -?0x[0-9a-fA-F]+ as sign and a 64-bit magnitude
+# (p0, p1) * 10 + p2 as a 64-bit pair, and whether it carried out of 64 bits
+fn xam10 u32 u32 u32 -> (u32,u32,bool)
+l0 and p0 65535
+l1 shr p0 16
+t0 mul l0 10
+t0b add t0 p2
+t0c shr t0b 16
+t1 mul l1 10
+t1b add t1 t0c
+lo16 and t0b 65535
+hi16 shl t1b 16
+nlo or lo16 hi16
+cy shr t1b 16
+h0 and p1 65535
+h1 shr p1 16
+u0 mul h0 10
+u0b add u0 cy
+u0c shr u0b 16
+u1 mul h1 10
+u1b add u1 u0c
+hlo and u0b 65535
+hhi shl u1b 16
+nhi or hlo hhi
+ov shr u1b 16
+ovf ne ov 0
+r rec nlo nhi ovf
+ret r
+end
+# state (low, high, digits valid, overflow); p2 the buffer, p3 the first digit, p4 hexadecimal
+fn xadgst (u32,u32,bool,bool) u32 u32x256 u32 bool -> (u32,u32,bool,bool)
+ix add p3 p1
+c get p2 ix
+lo at p0 0
+hi at p0 1
+ok at p0 2
+ov at p0 3
+isd call xadig c
+ish call xahexd c
+valid select p4 ish isd
+dv sub c 48
+hv call xahexv c
+m call xam10 lo hi dv
+mlo at m 0
+mhi at m 1
+mov0 at m 2
+hl1 shl lo 4
+hlo or hl1 hv
+hh1 shl hi 4
+hcar shr lo 28
+hhi or hh1 hcar
+hov1 shr hi 28
+hov ne hov1 0
+nlo select p4 hlo mlo
+nhi select p4 hhi mhi
+nov select p4 hov mov0
+ok2 and ok valid
+ov2 or ov nov
+r rec nlo nhi ok2 ov2
+ret r
+end
+# the number [p1, p2): (is a number, overflows 64 bits, negative (0 for -0), low, high)
+fn xanum u32x256 u32 u32 -> (bool,bool,u32,u32,u32)
+c0 get p0 p1
+ng eq c0 45
+nw select ng 1 0
+d0 add p1 nw
+gtr gt p2 d0
+dd sub p2 d0
+ln select gtr dd 0
+x0 get p0 d0
+d1 add d0 1
+x1 get p0 d1
+z0 eq x0 48
+xx eq x1 120
+l3 ge ln 3
+hx1 and z0 xx
+hx and hx1 l3
+st select hx 2 0
+ds add d0 st
+dn sub ln st
+nonempty gt dn 0
+init rec 0 0 true false
+f fold xadgst dn init p0 ds hx
+ok0 at f 2
+ov at f 3
+lo at f 0
+hi at f 1
+ok and ok0 nonempty
+z or lo hi
+nz ne z 0
+negm and ng nz
+negv select negm 1 0
+r rec ok ov negv lo hi
+ret r
+end
+# a number that is not negative and at most p3: (valid, value)
+fn xaunum u32x256 u32 u32 u32 -> (bool,u32)
+n call xanum p0 p1 p2
+ok at n 0
+ov at n 1
+ng at n 2
+lo at n 3
+hi at n 4
+nov eq ov false
+ng0 eq ng 0
+h0 eq hi 0
+le1 le lo p3
+a1 and ok nov
+a2 and ng0 h0
+a3 and a1 a2
+v and a3 le1
+r rec v lo
+ret r
+end
+
+# ---- operands: (kind, class, number, low, high, base, index, scale, symbol, start, end,
+# label number, backward, range flags). Kind 0 none, 1 register (class 8 32 64 128, number),
+# 2 immediate (low, high: 64-bit two's complement; range flags 1 [-128, 255], 2 [-2^31, 2^32),
+# 4 [-2^31, 2^31), 8 64 bits, 16 the low word fits a sign-extended byte, 32 the value 1),
+# 3 memory (base 0-15 or 16 rip, index 0-15 or 99, scale 0-3, low the displacement, symbol 1
+# for `sym(%rip)` with the name at [start, end)), 4 a named target [start, end), 5 a numeric
+# label (number, backward), 9 bad.
+# the register [p1, p2): (found, class, number)
+fn xareg u32x256 u32 u32 u32 -> (bool,u32,u32)
+pk call xapack p0 p1 p2
+t call xargt
+i call xalook t p3 pk
+fd ne i 4294967295
+a call xarga
+k mul i 2
+cl get a k
+k1 add k 1
+n get a k1
+r rec fd cl n
+ret r
+end
+fn xaobad -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+r rec 9 0 0 0 0 0 0 0 0 0 0 0 0 0
+ret r
+end
+# the immediate [p1, p2)
+fn xaimm u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+n call xanum p0 p1 p2
+ok at n 0
+ov at n 1
+ng at n 2
+ml at n 3
+mh at n 4
+nov eq ov false
+good and ok nov
+neg eq ng 1
+pos eq ng 0
+nl xor ml 4294967295
+nl1 add nl 1
+nh xor mh 4294967295
+lz eq ml 0
+cy select lz 1 0
+nh1 add nh cy
+lo select neg nl1 ml
+hi select neg nh1 mh
+h0 eq mh 0
+l255 le ml 255
+l128 le ml 128
+a8p and pos l255
+a8n and neg l128
+a8 or a8p a8n
+r8 and h0 a8
+l31 le ml 2147483648
+l31m le ml 2147483647
+n31 or pos l31
+r32 and h0 n31
+s31 select neg l31 l31m
+rs32 and h0 s31
+hs lt mh 2147483648
+hm eq mh 2147483648
+hm0 and hm lz
+r64a or pos hs
+r64 or r64a hm0
+lb add lo 128
+f8 lt lb 256
+l1 eq ml 1
+one1 and pos h0
+one and one1 l1
+b0 select r8 1 0
+b1 select r32 2 0
+b2 select rs32 4 0
+b3 select r64 8 0
+b4 select f8 16 0
+b5 select one 32 0
+o1 or b0 b1
+o2 or o1 b2
+o3 or o2 b3
+o4 or o3 b4
+rng or o4 b5
+k select good 2 9
+r rec k 0 0 lo hi 0 0 0 0 0 0 0 0 rng
+ret r
+end
+# a register `%name` of the memory operand [p1, p2), looked up when p3: (valid, number 0-15 or
+# 16 for rip)
+fn xamreg u32x256 u32 u32 bool -> (bool,u32)
+c get p0 p1
+pc eq c 37
+s1 add p1 1
+pk call xapack p0 s1 p2
+w0 get pk 0
+w6 get pk 6
+w7 get pk 7
+r0 eq w0 7367026
+r6 eq w6 3
+r7 eq w7 0
+r06 and r0 r6
+isrip and r06 r7
+nr eq isrip false
+look and nr p3
+cnt select look 64 0
+rg call xareg p0 s1 p2 cnt
+fd at rg 0
+cl at rg 1
+n at rg 2
+c64 eq cl 64
+g1 and fd c64
+g2 or g1 isrip
+ok and pc g2
+r1 select isrip 16 n
+r rec ok r1
+ret r
+end
+# commas of [p1, p2) outside parentheses: state (depth, count, first, second, third)
+fn xacmst (u32,u32,u32,u32,u32) u32 u32x256 u32 -> (u32,u32,u32,u32,u32)
+ix add p3 p1
+c get p2 ix
+dp at p0 0
+n at p0 1
+q1 at p0 2
+q2 at p0 3
+q3 at p0 4
+op eq c 40
+cp eq c 41
+cm eq c 44
+d1 add dp 1
+d2 sub dp 1
+dpa select op d1 dp
+dpb select cp d2 dpa
+z eq dp 0
+top and cm z
+n0 eq n 0
+n1 eq n 1
+n2 eq n 2
+s1 and top n0
+s2 and top n1
+s3 and top n2
+r1 select s1 ix q1
+r2 select s2 ix q2
+r3 select s3 ix q3
+na add n 1
+nn select top na n
+r rec dpb nn r1 r2 r3
+ret r
+end
+fn xacomma u32x256 u32 u32 -> (u32,u32,u32,u32,u32)
+gtr gt p2 p1
+d sub p2 p1
+ln select gtr d 0
+c0 rec 0 0 p2 p2 p2
+r fold xacmst ln c0 p0 p1
+ret r
+end
+# the memory operand [p1, p2) (it holds a `(`)
+fn xamem u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+op call xafind p0 p1 p2 40
+e1 sub p2 1
+cl get p0 e1
+cp eq cl 41
+in0 add op 1
+cs call xacomma p0 in0 e1
+cnt at cs 1
+q1 at cs 2
+q2 at cs 3
+le2 le cnt 2
+br call xamreg p0 in0 q1 true
+bok at br 0
+bn at br 1
+brip eq bn 16
+q1a add q1 1
+hasi ge cnt 1
+ir call xamreg p0 q1a q2 hasi
+iok0 at ir 0
+inn at ir 1
+irip eq inn 16
+isp eq inn 4
+bad1 or irip isp
+bad2 or bad1 brip
+nb2 eq bad2 false
+iok1 and iok0 nb2
+nhasi eq hasi false
+iok or nhasi iok1
+idx select hasi inn 99
+q2a add q2 1
+hass eq cnt 2
+sc get p0 q2a
+sl1 sub e1 q2a
+one eq sl1 1
+c1 eq sc 49
+c2 eq sc 50
+c4 eq sc 52
+c8 eq sc 56
+o12 or c1 c2
+o48 or c4 c8
+dig or o12 o48
+sok1 and one dig
+nhass eq hass false
+sok or nhass sok1
+s2 select c2 1 0
+s4 select c4 2 s2
+s8 select c8 3 s4
+scl select hass s8 0
+emp eq op p1
+dn call xanum p0 p1 op
+dok at dn 0
+dov at dn 1
+dng at dn 2
+dlo at dn 3
+dhi at dn 4
+dnov eq dov false
+dh0 eq dhi 0
+dneg eq dng 1
+dl31 le dlo 2147483648
+dl31m le dlo 2147483647
+dlim select dneg dl31 dl31m
+dr1 and dok dnov
+dr2 and dh0 dlim
+dnum and dr1 dr2
+nl xor dlo 4294967295
+nl1 add nl 1
+dval select dneg nl1 dlo
+issym call xasym p0 p1 op
+symok and issym brip
+nnum eq dok false
+usesym and nnum symok
+dsok or dnum usesym
+dok2 or emp dsok
+dsp select emp 0 dval
+dsp2 select usesym 0 dsp
+sy select usesym 1 0
+a1 and cp le2
+a2 and a1 bok
+a3 and a2 iok
+a4 and a3 sok
+ok and a4 dok2
+k select ok 3 9
+r rec k 0 0 dsp2 0 bn idx scl sy p1 op 0 0 0
+ret r
+end
+fn xamemf (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+r call xamem p2 p3 p4
+ret r
+end
+# the operand [p1, p2) (with whitespace around it)
+fn xaopnd u32x256 u32 u32 -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+s call xaskip p0 p2 p1
+e call xartrim p0 s p2
+ne1 lt s e
+w call xatows p0 e s
+nows eq w e
+fine and ne1 nows
+c0 get p0 s
+isr eq c0 37
+isi eq c0 36
+s1 add s 1
+rc select isr 64 0
+rg call xareg p0 s1 e rc
+rfd at rg 0
+rcl at rg 1
+rn at rg 2
+rk select rfd 1 9
+ro rec rk rcl rn 0 0 0 0 0 0 0 0 0 0 0
+io call xaimm p0 s1 e
+op call xafind p0 s e 40
+hasp lt op e
+nisr eq isr false
+nisi eq isi false
+nri and nisr nisi
+ism and nri hasp
+mc select ism 1 0
+bad call xaobad
+mo fold xamemf mc bad p0 s e
+e1 sub e 1
+lc get p0 e1
+isf eq lc 102
+isb eq lc 98
+fb or isf isb
+ds call xaall p0 s e1 0
+nd lt s e1
+nm1 and fb ds
+num and nm1 nd
+nn call xanum p0 s e1
+nov at nn 1
+nhi at nn 4
+nlo at nn 3
+nh0 eq nhi 0
+nnov eq nov false
+small and nh0 nnov
+nkd select small 5 9
+db select isb 1 0
+no rec nkd 0 0 0 0 0 0 0 0 s e nlo db 0
+sy call xasym p0 s e
+lk select sy 4 9
+lo rec lk 0 0 0 0 0 0 0 0 s e 0 0 0
+o1 select num no lo
+o2 select ism mo o1
+o3 select isi io o2
+o4 select isr ro o3
+r select fine o4 bad
+ret r
+end
+
+# ---- instruction plans: (valid, 0x66, REX.W, 0x0F, opcode, ModRM, ModRM reg, r/m operand 0
+# none 1-3, immediate size from operand 1, rel32 branch to operand 1)
+fn xak (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+r at p0 0
+ret r
+end
+fn xaisr (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+k at p0 0
+c at p0 1
+k1 eq k 1
+c1 eq c p1
+r and k1 c1
+ret r
+end
+fn xaism (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+k at p0 0
+r eq k 3
+ret r
+end
+fn xaisrm (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+a call xaisr p0 p1
+b call xaism p0
+r or a b
+ret r
+end
+fn xaisi (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+k at p0 0
+r eq k 2
+ret r
+end
+# an immediate in the range of operand size p1 (8, 32, or 64 sign-extended 32)
+fn xaiok (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+k at p0 0
+ki eq k 2
+g at p0 13
+s8 eq p1 8
+s32 eq p1 32
+m1 select s32 2 4
+m select s8 1 m1
+x and g m
+nz ne x 0
+r and ki nz
+ret r
+end
+fn xaflag (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+g at p0 13
+x and g p1
+r ne x 0
+ret r
+end
+fn xan (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32
+r at p0 2
+ret r
+end
+fn xabad -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+r rec false false false false 0 false 0 0 0 false
+ret r
+end
+# class 1, add or and sub xor cmp (p4 the digit, p5 the size)
+fn xapalu (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ia call xaisi p0
+rmb call xaisrm p1 p5
+iok call xaiok p0 p5
+f8 call xaflag p0 16
+bk call xak p1
+bn call xan p1
+breg eq bk 1
+b0 eq bn 0
+eax and breg b0
+w eq p5 64
+dg mul p4 8
+oe add dg 5
+or1 add dg 1
+om add dg 3
+an call xan p0
+ra call xaisr p0 p5
+rr and ra rmb
+ma call xaism p0
+rbb call xaisr p1 p5
+mr and ma rbb
+fi1 and ia rmb
+fi and fi1 iok
+f8f and fi f8
+nf8 eq f8 false
+eaxf1 and fi nf8
+eaxf and eaxf1 eax
+opi select eaxf oe 129
+opc1 select f8f 131 opi
+nsz select f8f 1 4
+nm eq eaxf false
+rms select eaxf 0 2
+opc2 select rr or1 om
+rg2 select rr an bn
+rms2 select rr 2 1
+opc select fi opc1 opc2
+hm select fi nm true
+rg select fi p4 rg2
+rms3 select fi rms 1
+rms4 select rr rms2 rms3
+isz select fi nsz 0
+v1 or fi rr
+v2 or v1 mr
+ok and v2 two
+r rec ok false w false opc hm rg rms4 isz false
+ret r
+end
+# class 2, test (size p5)
+fn xaptst (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ia call xaisi p0
+rmb call xaisrm p1 p5
+iok call xaiok p0 p5
+bk call xak p1
+bn call xan p1
+breg eq bk 1
+b0 eq bn 0
+eax and breg b0
+w eq p5 64
+s8 eq p5 8
+fi1 and ia rmb
+fi and fi1 iok
+ra call xaisr p0 p5
+rr and ra rmb
+an call xan p0
+oea select s8 168 169
+ofx select s8 246 247
+orr select s8 132 133
+isz select s8 1 4
+oi select eax oea ofx
+ne1 eq eax false
+opc select fi oi orr
+hm select fi ne1 true
+rg select fi 0 an
+rms0 select eax 0 2
+rms select fi rms0 2
+iszr select fi isz 0
+v or fi rr
+ok and v two
+r rec ok false w false opc hm rg rms iszr false
+ret r
+end
+# class 3, mov (size p5)
+fn xapmov (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+s64 eq p5 64
+s8 eq p5 8
+w eq p5 64
+a64 call xaisr p0 64
+bx call xaisr p1 128
+ax call xaisr p0 128
+b64 call xaisr p1 64
+q1a and a64 bx
+q1 and q1a s64
+q2a and ax b64
+q2 and q2a s64
+ia call xaisi p0
+rmb call xaisrm p1 p5
+iok call xaiok p0 p5
+fi1 and ia rmb
+fi and fi1 iok
+bk call xak p1
+breg eq bk 1
+n64 eq s64 false
+oreg and breg n64
+bn call xan p1
+b7 and bn 7
+ob select s8 176 184
+obr add ob b7
+oim select s8 198 199
+isz select s8 1 4
+oi select oreg obr oim
+hmi eq oreg false
+ra call xaisr p0 p5
+rr and ra rmb
+ma call xaism p0
+rbb call xaisr p1 p5
+mr and ma rbb
+an call xan p0
+orr select s8 136 137
+omr select s8 138 139
+opm select rr orr omr
+rgm select rr an bn
+rsm select rr 2 1
+opq select q1 110 126
+rgq select q1 bn an
+rsq select q1 1 2
+q or q1 q2
+op1 select fi oi opm
+rg1 select fi 0 rgm
+rs1 select fi 2 rsm
+hm1 select fi hmi true
+iz1 select fi isz 0
+opc select q opq op1
+rg select q rgq rg1
+rs select q rsq rs1
+hm select q true hm1
+iz select q 0 iz1
+wv and w hm
+v1 or q fi
+v2 or rr mr
+v or v1 v2
+ok and v two
+r rec ok q wv q opc hm rg rs iz false
+ret r
+end
+# class 4, movabsq
+fn xapmab (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ia call xaisi p0
+r64 call xaflag p0 8
+b64 call xaisr p1 64
+bn call xan p1
+b7 and bn 7
+opc add 184 b7
+a1 and two ia
+a2 and r64 b64
+ok and a1 a2
+r rec ok false true false opc false 0 2 8 false
+ret r
+end
+# class 5, movzbl
+fn xapmzb (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+a8 call xaisrm p0 8
+b32 call xaisr p1 32
+bn call xan p1
+a1 and two a8
+ok and a1 b32
+r rec ok false false true 182 true bn 1 0 false
+ret r
+end
+# class 6, lea
+fn xaplea (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ma call xaism p0
+rb call xaisr p1 p5
+bn call xan p1
+w eq p5 64
+a1 and two ma
+ok and a1 rb
+r rec ok false w false 141 true bn 1 0 false
+ret r
+end
+# class 7, imul
+fn xapimul (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+three eq p3 3
+w eq p5 64
+ra call xaisrm p0 p5
+rb call xaisr p1 p5
+bn call xan p1
+f2a and two ra
+f2 and f2a rb
+ia call xaiok p0 p5
+rmb call xaisrm p1 p5
+rc call xaisr p2 p5
+cn call xan p2
+f8 call xaflag p0 16
+f3a and three ia
+f3b and rmb rc
+f3 and f3a f3b
+o3 select f8 107 105
+i3 select f8 1 4
+opc select f2 175 o3
+esc and f2 true
+rg select f2 bn cn
+rs select f2 1 2
+iz select f2 0 i3
+ok or f2 f3
+r rec ok false w esc opc true rg rs iz false
+ret r
+end
+# classes 8 and 9, the 0xF7 and 0xFF groups (digit p4)
+fn xapgrp (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq p3 1
+ra call xaisrm p0 p5
+w eq p5 64
+ok and one ra
+r rec ok false w false p6 true p4 1 0 false
+ret r
+end
+# class 10, shifts and rotates (digit p4)
+fn xapsh (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+rmb call xaisrm p1 p5
+w eq p5 64
+ia call xaiok p0 8
+on call xaflag p0 32
+cl call xaisr p0 8
+an call xan p0
+a1 eq an 1
+icl and cl a1
+oi select on 209 193
+iz select on 0 1
+opc select ia oi 211
+izr select ia iz 0
+v or ia icl
+v2 and v rmb
+ok and v2 two
+r rec ok false w false opc true p4 2 izr false
+ret r
+end
+# class 11, pushq popq (opcode p4)
+fn xappp (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq p3 1
+ra call xaisr p0 64
+an call xan p0
+a7 and an 7
+opc add p4 a7
+ok and one ra
+r rec ok false false false opc false 0 1 0 false
+ret r
+end
+# class 12, ret and syscall (p4 the opcode, or 0x0F with the second byte above it)
+fn xapfix (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+ok eq p3 0
+two gt p4 255
+hb shr p4 8
+opc select two hb p4
+r rec ok false false two opc false 0 0 0 false
+ret r
+end
+# classes 13 and 14, jmp call and j<cc> (opcode p4, 0x0F when p6)
+fn xapbr (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 bool -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq p3 1
+k call xak p0
+k4 eq k 4
+k5 eq k 5
+t or k4 k5
+ok and one t
+r rec ok false false p5 p4 false 0 0 0 true
+ret r
+end
+# class 15, set<cc>
+fn xapset (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+one eq p3 1
+ra call xaisrm p0 8
+ok and one ra
+opc add 144 p4
+r rec ok false false true opc true 0 1 0 false
+ret r
+end
+# class 16, cmov<cc>
+fn xapcmov (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ra call xaisrm p0 p5
+rb call xaisr p1 p5
+bn call xan p1
+w eq p5 64
+a1 and two ra
+ok and a1 rb
+opc add 64 p4
+r rec ok false w true opc true bn 1 0 false
+ret r
+end
+# class 17, SSE register-or-memory to register (opcode p4, 0x66 when p6 is 1)
+fn xapsse (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ra call xaisrm p0 128
+rb call xaisr p1 128
+bn call xan p1
+a1 and two ra
+ok and a1 rb
+pf eq p6 1
+r rec ok pf false true p4 true bn 1 0 false
+ret r
+end
+# class 18, movups
+fn xapmups (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ra call xaisrm p0 128
+rb call xaisr p1 128
+ld and ra rb
+xa call xaisr p0 128
+mb call xaism p1
+st and xa mb
+an call xan p0
+bn call xan p1
+opc select ld 16 17
+rg select ld bn an
+rs select ld 1 2
+v or ld st
+ok and v two
+r rec ok false false true opc true rg rs 0 false
+ret r
+end
+# class 19, pslld psrld psrldq (digit p4, opcodes p6: immediate form, register form above)
+fn xapssh (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+rb call xaisr p1 128
+bn call xan p1
+ia call xaiok p0 8
+oi and p6 255
+orf shr p6 8
+hr ne orf 0
+ra call xaisrm p0 128
+fr1 and hr ra
+ni eq ia false
+fr and fr1 ni
+opc select ia oi orf
+rg select ia p4 bn
+rs select ia 2 1
+iz select ia 1 0
+v or ia fr
+v2 and v rb
+ok and v2 two
+r rec ok true false true opc true rg rs iz false
+ret r
+end
+# class 20, pshufd
+fn xappsh (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+three eq p3 3
+ia call xaiok p0 8
+rb call xaisrm p1 128
+rc call xaisr p2 128
+cn call xan p2
+a1 and three ia
+a2 and rb rc
+ok and a1 a2
+r rec ok true false true 112 true cn 2 1 false
+ret r
+end
+# class 21, movd
+fn xapmovd (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+two eq p3 2
+ra call xaisrm p0 32
+rb call xaisr p1 128
+ld and ra rb
+xa call xaisr p0 128
+mb call xaisrm p1 32
+st and xa mb
+an call xan p0
+bn call xan p1
+opc select ld 110 126
+rg select ld bn an
+rs select ld 1 2
+v or ld st
+ok and v two
+r rec ok true false true opc true rg rs 0 false
+ret r
+end
+# the plan of class p3 (parameter p4, size p5, extra p6) for operands p0 p1 p2, p7 of them
+fn xaplan (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 -> (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool)
+q1 call xapalu p0 p1 p2 p7 p4 p5
+q2 call xaptst p0 p1 p2 p7 p4 p5
+q3 call xapmov p0 p1 p2 p7 p4 p5
+q4 call xapmab p0 p1 p2 p7 p4 p5
+q5 call xapmzb p0 p1 p2 p7 p4 p5
+q6 call xaplea p0 p1 p2 p7 p4 p5
+q7 call xapimul p0 p1 p2 p7 p4 p5
+q8 call xapgrp p0 p1 p2 p7 p4 p5 247
+q9 call xapgrp p0 p1 p2 p7 p4 p5 255
+q10 call xapsh p0 p1 p2 p7 p4 p5
+q11 call xappp p0 p1 p2 p7 p4 p5
+q12 call xapfix p0 p1 p2 p7 p4 p5
+q13 call xapbr p0 p1 p2 p7 p4 false
+jc add p4 128
+q14 call xapbr p0 p1 p2 p7 jc true
+q15 call xapset p0 p1 p2 p7 p4 p5
+q16 call xapcmov p0 p1 p2 p7 p4 p5
+q17 call xapsse p0 p1 p2 p7 p4 p5 p6
+q18 call xapmups p0 p1 p2 p7 p4 p5
+q19 call xapssh p0 p1 p2 p7 p4 p5 p6
+q20 call xappsh p0 p1 p2 p7 p4 p5
+q21 call xapmovd p0 p1 p2 p7 p4 p5
+bad call xabad
+c1 eq p3 1
+c2 eq p3 2
+c3 eq p3 3
+c4 eq p3 4
+c5 eq p3 5
+c6 eq p3 6
+c7 eq p3 7
+c8 eq p3 8
+c9 eq p3 9
+c10 eq p3 10
+c11 eq p3 11
+c12 eq p3 12
+c13 eq p3 13
+c14 eq p3 14
+c15 eq p3 15
+c16 eq p3 16
+c17 eq p3 17
+c18 eq p3 18
+c19 eq p3 19
+c20 eq p3 20
+c21 eq p3 21
+r21 select c21 q21 bad
+r20 select c20 q20 r21
+r19 select c19 q19 r20
+r18 select c18 q18 r19
+r17 select c17 q17 r18
+r16 select c16 q16 r17
+r15 select c15 q15 r16
+r14 select c14 q14 r15
+r13 select c13 q13 r14
+r12 select c12 q12 r13
+r11 select c11 q11 r12
+r10 select c10 q10 r11
+r9 select c9 q9 r10
+r8 select c8 q8 r9
+r7 select c7 q7 r8
+r6 select c6 q6 r7
+r5 select c5 q5 r6
+r4 select c4 q4 r5
+r3 select c3 q3 r4
+r2 select c2 q2 r3
+r select c1 q1 r2
+ret r
+end
+
+# ---- instruction bytes: (bytes, length, fixup position, fixup kind 0 none 1 branch 2 rip,
+# refused: a RIP-relative symbol with an immediate)
+# append byte p1 when p2
+fn xaap (u32x16,u32) u32 bool -> (u32x16,u32)
+b at p0 0
+n at p0 1
+v and p1 255
+b2 set b n v
+n1 add n 1
+b3 select p2 b2 b
+n2 select p2 n1 n
+r rec b3 n2
+ret r
+end
+# append the four bytes of p1 when p2
+fn xaap4 (u32x16,u32) u32 bool -> (u32x16,u32)
+s1 call xaap p0 p1 p2
+v1 shr p1 8
+s2 call xaap s1 v1 p2
+v2 shr p1 16
+s3 call xaap s2 v2 p2
+v3 shr p1 24
+s4 call xaap s3 v3 p2
+ret s4
+end
+# a byte register that needs a REX prefix (spl bpl sil dil)
+fn xarexb (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> bool
+r8 call xaisr p0 8
+n at p0 2
+g4 ge n 4
+l8 lt n 8
+a and g4 l8
+r and r8 a
+ret r
+end
+fn xaemit (bool,bool,bool,bool,u32,bool,u32,u32,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> (u32x16,u32,u32,u32,bool)
+pf at p0 1
+w at p0 2
+esc at p0 3
+opc at p0 4
+hm at p0 5
+rgv at p0 6
+rs at p0 7
+iz at p0 8
+brn at p0 9
+s1 eq rs 1
+s2 eq rs 2
+s3 eq rs 3
+m23 select s2 p2 p3
+m select s1 p1 m23
+hrm ne rs 0
+mk at m 0
+mreg eq mk 1
+mmem eq mk 3
+isreg and hrm mreg
+ismem and hrm mmem
+mn at m 2
+bse at m 5
+idx at m 6
+scl at m 7
+sym at m 8
+dsp at m 3
+rip eq bse 16
+r3 shr rgv 3
+rr select hm r3 0
+nb shr mn 3
+bb0 shr bse 3
+bm select rip 0 bb0
+bb1 select ismem bm 0
+bb select isreg nb bb1
+hasi ne idx 99
+ix3 shr idx 3
+xx0 select hasi ix3 0
+xx select ismem xx0 0
+fa call xarexb p1
+fb call xarexb p2
+fc call xarexb p3
+f1 or fa fb
+force or f1 fc
+wb select w 8 0
+rb shl rr 2
+xb shl xx 1
+x1 or wb rb
+x2 or x1 xb
+x3 or x2 bb
+rex or x3 64
+hasx ne x3 0
+needrex or hasx force
+z call xaz16
+e0 rec z 0
+e1 call xaap e0 102 pf
+e2 call xaap e1 rex needrex
+e3 call xaap e2 15 esc
+e4 call xaap e3 opc true
+rg7 and rgv 7
+rgb shl rg7 3
+mn7 and mn 7
+mrr or 192 rgb
+mr1 or mrr mn7
+regm and hm isreg
+e5 call xaap e4 mr1 regm
+memm and hm ismem
+ripm and memm rip
+nrip eq rip false
+plain and memm nrip
+mrip or rgb 5
+e6 call xaap e5 mrip ripm
+fixr at e6 1
+dz eq sym 1
+dv select dz 0 dsp
+e7 call xaap4 e6 dv ripm
+b7 and bse 7
+bisp eq b7 4
+bisbp eq b7 5
+sib or hasi bisp
+d0 eq dsp 0
+nbp eq bisbp false
+mod0 and d0 nbp
+dl add dsp 128
+f8 lt dl 256
+m1 select f8 1 2
+md select mod0 0 m1
+mdh shl md 6
+rmf select sib 4 b7
+mo1 or mdh rgb
+mo2 or mo1 rmf
+e8 call xaap e7 mo2 plain
+sib1 and plain sib
+sc6 shl scl 6
+ixv select hasi idx 4
+ix7 and ixv 7
+ix3b shl ix7 3
+sb1 or sc6 ix3b
+sb2 or sb1 b7
+e9 call xaap e8 sb2 sib1
+md1 eq md 1
+md2 eq md 2
+dm1 and plain md1
+dm2 and plain md2
+e10 call xaap e9 dsp dm1
+e11 call xaap4 e10 dsp dm2
+ilo at p1 3
+ihi at p1 4
+i1 ge iz 1
+i4 ge iz 4
+i8 eq iz 8
+e12 call xaap e11 ilo i1
+lo1 shr ilo 8
+e13 call xaap e12 lo1 i4
+lo2 shr ilo 16
+e14 call xaap e13 lo2 i4
+lo3 shr ilo 24
+e15 call xaap e14 lo3 i4
+e16 call xaap4 e15 ihi i8
+bfix at e16 1
+e17 call xaap4 e16 0 brn
+buf at e17 0
+len at e17 1
+symr eq sym 1
+ripfix and ripm symr
+k1 select ripfix 2 0
+k select brn 1 k1
+fx select brn bfix fixr
+hasimm gt iz 0
+bad and ripfix hasimm
+r rec buf len fx k bad
+ret r
+end
+
+# ---- the module state: (io, text, text length, name pool, its length, labels (hash, name
+# start, name length, offset, defined), label count, defined labels in order, their count,
+# fixups (field offset, kind 1 branch 2 rip + 4 numeric, line, label entry or number,
+# definition index), their count, numeric label definitions (number, offset), their count, bss
+# symbols (hash, name start, name length, offset), their count, bss size, bss alignment, error
+# code, error line, line number, bytes left, section 0 text 1 bss 2 empty)
+# record the first error: code p1 at line p2 when p3
+fn xafail (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 bool -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+old at p0 17
+ol at p0 18
+none eq old 0
+dofail and none p3
+c select dofail p1 old
+l select dofail p2 ol
+g1 put p0 17 c
+g2 put g1 18 l
+ret g2
+end
+# append byte p1 to the text when p2
+fn xaput (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 bool -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+t at p0 1
+n at p0 2
+full ge n 65536
+nf eq full false
+dw and p2 nf
+wi shr n 2
+j and n 3
+sh mul j 8
+v and p1 255
+sv shl v sh
+old call xag128 t wi
+nw or old sv
+t2 call xas128 t wi nw
+t3 select dw t2 t
+n1 add n 1
+n2 select dw n1 n
+g1 put p0 1 t3
+g2 put g1 2 n2
+ln at p0 19
+ef and full p2
+g3 call xafail g2 2 ln ef
+ret g3
+end
+fn xainsst (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x16 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+b get p2 p1
+r call xaput p0 b true
+ret r
+end
+# text byte p1 of p0
+fn xatget u32x128x128 u32 -> u32
+wi shr p1 2
+j and p1 3
+sh mul j 8
+w call xag128 p0 wi
+v shr w sh
+r and v 255
+ret r
+end
+# text byte p1 of p0 set to p2
+fn xatset u32x128x128 u32 u32 -> u32x128x128
+wi shr p1 2
+j and p1 3
+sh mul j 8
+w call xag128 p0 wi
+m shl 255 sh
+nm xor m 4294967295
+cl and w nm
+v and p2 255
+sv shl v sh
+nw or cl sv
+r call xas128 p0 wi nw
+ret r
+end
+# the name pool: byte p1
+fn xapget u32x128x32 u32 -> u32
+wi shr p1 2
+j and p1 3
+sh mul j 8
+w call xag32 p0 wi
+v shr w sh
+r and v 255
+ret r
+end
+fn xacpst u32x128x32 u32 u32x256 u32 u32 -> u32x128x32
+ix add p3 p1
+c get p2 ix
+k add p4 p1
+wi shr k 2
+j and k 3
+sh mul j 8
+w call xag32 p0 wi
+sv shl c sh
+nw or w sv
+r call xas32 p0 wi nw
+ret r
+end
+fn xahst u32 u32 u32x256 u32 -> u32
+ix add p3 p1
+c get p2 ix
+x xor p0 c
+r mul x 16777619
+ret r
+end
+# the name [p2, p3) of line p1 copied to the pool, line p4: (state, start, length)
+fn xanm (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32x256 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,u32)
+pool at p0 3
+pl at p0 4
+gtr gt p3 p2
+d sub p3 p2
+ln select gtr d 0
+end1 add pl ln
+over gt end1 16384
+cp fold xacpst ln pool p1 p2 pl
+pool2 select over pool cp
+pl2 select over pl end1
+g1 put p0 3 pool2
+g2 put g1 4 pl2
+g3 call xafail g2 2 p4 over
+r rec g3 pl ln
+ret r
+end
+# the pool name at p3 equals the line bytes from p5: state, byte p1
+fn xaeqst bool u32 u32x128x32 u32 u32x256 u32 -> bool
+k add p3 p1
+a call xapget p2 k
+ix add p5 p1
+b get p4 ix
+e eq a b
+r and p0 e
+ret r
+end
+# label entry p1 named by line bytes [p5, p5 + p6) with hash p7: state (found, entry)
+fn xalfst (bool,u32) u32 u32x128x40 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+fd at p0 0
+ix at p0 1
+k mul p1 5
+h call xag40 p2 k
+k1 add k 1
+st call xag40 p2 k1
+k2 add k 2
+ln call xag40 p2 k2
+he eq h p7
+lq eq ln p6
+nf eq fd false
+c1 and he lq
+cand and c1 nf
+cnt select cand ln 0
+same fold xaeqst cnt true p3 st p4 p5
+hit and cand same
+fd2 or fd hit
+ix2 select hit p1 ix
+r rec fd2 ix2
+ret r
+end
+# the label entry of line bytes [p4, p5) with hash p6 among p1 entries: (found, entry)
+fn xalfind u32x128x40 u32 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+gtr gt p5 p4
+d sub p5 p4
+ln select gtr d 0
+s0 rec false 0
+r fold xalfst p1 s0 p0 p2 p3 p4 ln p6
+ret r
+end
+# bss symbol p1 named like that: state (found, symbol)
+fn xabfst (bool,u32) u32 u32x128x8 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+fd at p0 0
+ix at p0 1
+k mul p1 4
+h call xag8 p2 k
+k1 add k 1
+st call xag8 p2 k1
+k2 add k 2
+ln call xag8 p2 k2
+he eq h p7
+lq eq ln p6
+nf eq fd false
+c1 and he lq
+cand and c1 nf
+cnt select cand ln 0
+same fold xaeqst cnt true p3 st p4 p5
+hit and cand same
+fd2 or fd hit
+ix2 select hit p1 ix
+r rec fd2 ix2
+ret r
+end
+fn xabfind u32x128x8 u32 u32x128x32 u32x256 u32 u32 u32 -> (bool,u32)
+gtr gt p5 p4
+d sub p5 p4
+ln select gtr d 0
+s0 rec false 0
+r fold xabfst p1 s0 p0 p2 p3 p4 ln p6
+ret r
+end
+# the hash of line bytes [p1, p2)
+fn xahash u32x256 u32 u32 -> u32
+gtr gt p2 p1
+d sub p2 p1
+ln select gtr d 0
+r fold xahst ln 2166136261 p0 p1
+ret r
+end
+# a new label entry for [p3, p4) of line p2 (hash p5, defined p6, offset p7, line p8): state
+# (state, entry)
+fn xalnew ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32) u32 u32x256 u32 u32 u32 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32)
+g at p0 0
+ns call xanm g p2 p3 p4 p8
+g1 at ns 0
+st at ns 1
+ln at ns 2
+lab at g1 5
+nl at g1 6
+full ge nl 1024
+k mul nl 5
+l1 call xas40 lab k p5
+k1 add k 1
+l2 call xas40 l1 k1 st
+k2 add k 2
+l3 call xas40 l2 k2 ln
+k3 add k 3
+l4 call xas40 l3 k3 p7
+k4 add k 4
+l5 call xas40 l4 k4 p6
+lab2 select full lab l5
+nl1 add nl 1
+nl2 select full nl nl1
+g2 put g1 5 lab2
+g3 put g2 6 nl2
+g4 call xafail g3 2 p8 full
+r rec g4 nl
+ret r
+end
+# the label entry named by [p2, p3) of line p1, created when absent (line p4): (state, entry)
+fn xaref (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32x256 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32)
+lab at p0 5
+nl at p0 6
+pool at p0 3
+h call xahash p1 p2 p3
+f call xalfind lab nl pool p1 p2 p3 h
+fd at f 0
+ix at f 1
+s0 rec p0 ix
+nfd eq fd false
+cn select nfd 1 0
+r fold xalnew cn s0 p1 p2 p3 h 0 0 p4
+ret r
+end
+fn xarefst ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32) u32 u32x256 u32 u32 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32)
+g at p0 0
+r call xaref g p2 p3 p4 p5
+ret r
+end
+# label entry p2 defined at offset p3
+fn xadefset (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+lab at p0 5
+k mul p2 5
+k3 add k 3
+l1 call xas40 lab k3 p3
+k4 add k 4
+l2 call xas40 l1 k4 1
+g1 put p0 5 l2
+ret g1
+end
+# the defined label [p3, p4) of line p2 at offset p5 (line p6); a second definition is an error
+fn xadefnam (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+lab at p0 5
+nl at p0 6
+pool at p0 3
+bss at p0 13
+nb at p0 14
+h call xahash p2 p3 p4
+f call xalfind lab nl pool p2 p3 p4 h
+fd at f 0
+ix at f 1
+k mul ix 5
+k4 add k 4
+dfv call xag40 lab k4
+df eq dfv 1
+fb call xabfind bss nb pool p2 p3 p4 h
+bfd at fb 0
+dup1 and fd df
+dup or dup1 bfd
+g1 call xafail p0 1 p6 dup
+ndup eq dup false
+nfd eq fd false
+mk and ndup nfd
+upd and ndup fd
+s0 rec g1 ix
+cn select mk 1 0
+ns fold xalnew cn s0 p2 p3 p4 h 1 p5 p6
+g2 at ns 0
+ix2 at ns 1
+cu select upd 1 0
+g3 fold xadefset cu g2 ix2 p5
+dor at g3 7
+nd at g3 8
+dor2 call xas8 dor nd ix2
+nd1 add nd 1
+dor3 select ndup dor2 dor
+nd2 select ndup nd1 nd
+g4 put g3 7 dor3
+g5 put g4 8 nd2
+ret g5
+end
+fn xabnew (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+ns call xanm p0 p2 p3 p4 p6
+g1 at ns 0
+st at ns 1
+ln at ns 2
+bss at g1 13
+nb at g1 14
+off at g1 15
+full ge nb 256
+k mul nb 4
+b1 call xas8 bss k p5
+k1 add k 1
+b2 call xas8 b1 k1 st
+k2 add k 2
+b3 call xas8 b2 k2 ln
+k3 add k 3
+b4 call xas8 b3 k3 off
+bss2 select full bss b4
+nb1 add nb 1
+nb2 select full nb nb1
+g2 put g1 13 bss2
+g3 put g2 14 nb2
+g4 call xafail g3 2 p6 full
+ret g4
+end
+# a bss symbol [p3, p4) of line p2 at the bss size (line p5); a second definition is an error
+fn xadefbss (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+lab at p0 5
+nl at p0 6
+pool at p0 3
+bss at p0 13
+nb at p0 14
+h call xahash p2 p3 p4
+f call xalfind lab nl pool p2 p3 p4 h
+fd at f 0
+ix at f 1
+k mul ix 5
+k4 add k 4
+dfv call xag40 lab k4
+df eq dfv 1
+fb call xabfind bss nb pool p2 p3 p4 h
+bfd at fb 0
+dup1 and fd df
+dup or dup1 bfd
+g1 call xafail p0 1 p5 dup
+ndup eq dup false
+cn select ndup 1 0
+g2 fold xabnew cn g1 p2 p3 p4 h p5
+ret g2
+end
+# numeric label p2 defined at offset p3 (line p4)
+fn xadefnum (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+loc at p0 11
+nn at p0 12
+full ge nn 1024
+k mul nn 2
+l1 call xas16 loc k p2
+k1 add k 1
+l2 call xas16 l1 k1 p3
+loc2 select full loc l2
+nn1 add nn 1
+nn2 select full nn nn1
+g1 put p0 11 loc2
+g2 put g1 12 nn2
+g3 call xafail g2 2 p4 full
+ret g3
+end
+# the number of definitions of numeric label p3
+fn xalcst u32 u32 u32x128x16 u32 -> u32
+k mul p1 2
+n call xag16 p2 k
+e eq n p3
+a add p0 1
+r select e a p0
+ret r
+end
+# definition p4 of numeric label p3: state (seen, found, offset)
+fn xalkst2 (u32,bool,u32) u32 u32x128x16 u32 u32 -> (u32,bool,u32)
+seen at p0 0
+fd at p0 1
+of0 at p0 2
+k mul p1 2
+n call xag16 p2 k
+k1 add k 1
+off call xag16 p2 k1
+e eq n p3
+ek eq seen p4
+hit and e ek
+fd2 or fd hit
+of2 select hit off of0
+s1 add seen 1
+seen2 select e s1 seen
+r rec seen2 fd2 of2
+ret r
+end
+# the label [p3, p4) of line p2 at the current position
+fn xadeflab (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+sec at p0 21
+ln0 at p0 19
+nw at p0 2
+bsz at p0 15
+alld call xaall p2 p3 p4 0
+nm call xanum p2 p3 p4
+nov at nm 1
+nlo at nm 3
+nhi at nm 4
+nh0 eq nhi 0
+nov0 eq nov false
+small and nh0 nov0
+innote eq sec 2
+intext eq sec 0
+inbss eq sec 1
+ntext eq intext false
+big eq small false
+e1 and alld ntext
+e2 and alld big
+e3 or e1 e2
+e4 or e3 innote
+g1 call xafail p0 1 ln0 e4
+ok eq e4 false
+dn and ok alld
+cl select dn 1 0
+g2 fold xadefnum cl g1 nlo nw ln0
+nal eq alld false
+dt1 and ok nal
+dt and dt1 intext
+db and dt1 inbss
+ct select dt 1 0
+g3 fold xadefnam ct g2 p2 p3 p4 nw ln0
+cb select db 1 0
+g4 fold xadefbss cb g3 p2 p3 p4 ln0
+ret g4
+end
+fn xalabp ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,bool) u32 u32x256 u32 -> bool
+d at p0 2
+r eq d false
+ret r
+end
+# one `name:` at the start of the rest of the line
+fn xalabs ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,bool) u32 u32x256 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),u32,bool)
+g at p0 0
+pos at p0 1
+s call xaskip p2 p3 pos
+e call xascl p2 p3 s
+ne1 gt e s
+inr lt e p3
+c get p2 e
+col eq c 58
+ok1 and ne1 inr
+ok and ok1 col
+cnt select ok 1 0
+g2 fold xadeflab cnt g p2 s e
+e1 add e 1
+pos2 select ok e1 pos
+dn eq ok false
+r rec g2 pos2 dn
+ret r
+end
+
+# ---- directives
+# one byte of LLVM's nop padding of p2 bytes: byte p1
+fn xanopst (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+ch div p1 10
+wi rem p1 10
+c10 mul ch 10
+left sub p2 c10
+gt10 gt left 10
+l select gt10 10 left
+lm sub l 1
+lp mul l lm
+st div lp 2
+ix add st wi
+t call xanops
+b get t ix
+r call xaput p0 b true
+ret r
+end
+# align to 2^p1 bytes (text: nops; bss: the size and the alignment)
+fn xaalign (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+sec at p0 21
+nw at p0 2
+bsz at p0 15
+bal at p0 16
+unit shl 1 p1
+um sub unit 1
+nn sub 0 nw
+pad and nn um
+isb eq sec 1
+pc select isb 0 pad
+g1 fold xanopst pc p0 pad
+x add bsz um
+nm xor um 4294967295
+nb and x nm
+bigger gt p1 bal
+bal2 select bigger p1 bal
+nb2 select isb nb bsz
+bal3 select isb bal2 bal
+g2 put g1 15 nb2
+g3 put g2 16 bal3
+ret g3
+end
+fn xaalignf (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+r call xaalign p0 p2
+ret r
+end
+# the bits of p0 below 2^15 set: the log2 of a power of two
+fn xalogst u32 u32 u32 -> u32
+s shr p2 p1
+b and s 1
+a add p0 b
+ret a
+end
+fn xalog2 u32 -> u32
+m sub p0 1
+r fold xalogst 15 0 m
+ret r
+end
+# the first four commas of [p3, ...): state (count, positions)
+fn xazcst (u32,u32,u32,u32,u32) u32 u32x256 u32 -> (u32,u32,u32,u32,u32)
+ix add p3 p1
+c get p2 ix
+cm eq c 44
+n at p0 0
+q1 at p0 1
+q2 at p0 2
+q3 at p0 3
+q4 at p0 4
+n0 eq n 0
+n1 eq n 1
+n2 eq n 2
+n3 eq n 3
+s1 and cm n0
+s2 and cm n1
+s3 and cm n2
+s4 and cm n3
+r1 select s1 ix q1
+r2 select s2 ix q2
+r3 select s3 ix q3
+r4 select s4 ix q4
+na add n 1
+nn select cm na n
+r rec nn r1 r2 r3 r4
+ret r
+end
+# [p1, p2) without surrounding whitespace
+fn xatrim u32x256 u32 u32 -> (u32,u32)
+s call xaskip p0 p2 p1
+e call xartrim p0 s p2
+r rec s e
+ret r
+end
+# [p1, p2) is the word of table entry p3
+fn xaword u32x256 u32 u32 u32 -> bool
+pk call xapack p0 p1 p2
+t call xadit
+i call xalook t 16 pk
+r eq i p3
+ret r
+end
+# bss alignment 2^p1
+fn xaalignb (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+bsz at p0 15
+bal at p0 16
+unit shl 1 p1
+um sub unit 1
+x add bsz um
+nm xor um 4294967295
+nb and x nm
+bigger gt p1 bal
+bal2 select bigger p1 bal
+g2 put p0 15 nb
+g3 put g2 16 bal2
+ret g3
+end
+# a .zerofill symbol [p3, p4) of line p2, size p5, alignment p6, line p7
+fn xazadd (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+g1 call xaalignb p0 p6
+nb0 at g1 14
+g2 call xadefbss g1 0 p2 p3 p4 p7
+nb1 at g2 14
+added gt nb1 nb0
+bsz at g2 15
+nsz add bsz p5
+wrap lt nsz bsz
+nsz2 select added nsz bsz
+g3 put g2 15 nsz2
+ov and added wrap
+g4 call xafail g3 1 p7 ov
+ret g4
+end
+# .zerofill __DATA,__bss,sym,size,align: the rest [p3, p4) of line p2, line p5
+fn xazf (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+gtr gt p4 p3
+d sub p4 p3
+ln select gtr d 0
+c0 rec 0 0 0 0 0
+cs fold xazcst ln c0 p2 p3
+cnt at cs 0
+q1 at cs 1
+q2 at cs 2
+q3 at cs 3
+q4 at cs 4
+five eq cnt 4
+pt0 call xatrim p2 p3 q1
+a1 add q1 1
+pt1 call xatrim p2 a1 q2
+a2 add q2 1
+pt2 call xatrim p2 a2 q3
+a3 add q3 1
+pt3 call xatrim p2 a3 q4
+a4 add q4 1
+pt4 call xatrim p2 a4 p4
+s0 at pt0 0
+e0 at pt0 1
+s1 at pt1 0
+e1 at pt1 1
+s2 at pt2 0
+e2 at pt2 1
+s3 at pt3 0
+e3 at pt3 1
+s4 at pt4 0
+e4 at pt4 1
+d0 call xaword p2 s0 e0 14
+b1 call xaword p2 s1 e1 15
+nne lt s2 e2
+nlab call xaall p2 s2 e2 1
+ndig call xaall p2 s2 e2 0
+nd eq ndig false
+nok1 and nne nlab
+nok and nok1 nd
+sz call xaunum p2 s3 e3 4294967295
+al call xaunum p2 s4 e4 14
+szv at sz 1
+szok at sz 0
+alv at al 1
+alok at al 0
+o1 and five d0
+o2 and b1 szok
+o3 and o1 o2
+o4 and o3 alok
+ok and o4 nok
+bad eq ok false
+g1 call xafail p0 1 p5 bad
+cn select ok 1 0
+g2 fold xazadd cn g1 p2 s2 e2 szv alv p5
+ret g2
+end
+# one byte of an .asciz body: state (state, escape pending, bad)
+fn xastrst ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),bool,bool) u32 u32x256 u32 -> ((io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32),bool,bool)
+g at p0 0
+esc at p0 1
+bad at p0 2
+ix add p3 p1
+c get p2 ix
+isbs eq c 92
+isq eq c 34
+isn eq c 110
+ist eq c 116
+v1 select ist 9 0
+v2 select isn 10 v1
+v3 select isq 34 v2
+v4 select isbs 92 v3
+known ne v4 0
+lo lt c 32
+hi gt c 126
+x1 or lo hi
+x2 or x1 isq
+nesc eq esc false
+plainbad and nesc x2
+nbs eq isbs false
+np1 eq x2 false
+plain1 and nesc nbs
+plain and plain1 np1
+nk eq known false
+escbad and esc nk
+b1 or bad plainbad
+b2 or b1 escbad
+escok and esc known
+pt or plain escok
+v select esc v4 c
+g2 call xaput g v pt
+newesc and nesc isbs
+r rec g2 newesc b2
+ret r
+end
+# .asciz: the rest [p3, p4) of line p2, line p5
+fn xaasciz (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+gtr gt p4 p3
+d sub p4 p3
+ln select gtr d 0
+l2 ge ln 2
+c0 get p2 p3
+e1 sub p4 1
+c1 get p2 e1
+q0 eq c0 34
+q1 eq c1 34
+s1 add p3 1
+gb gt e1 s1
+bl sub e1 s1
+blen select gb bl 0
+st0 rec p0 false false
+cn select l2 blen 0
+f fold xastrst cn st0 p2 s1
+g1 at f 0
+esc at f 1
+bad at f 2
+g2 call xaput g1 0 true
+a1 and l2 q0
+a2 and a1 q1
+nesc eq esc false
+nbad eq bad false
+a3 and a2 nesc
+ok and a3 nbad
+ko eq ok false
+g3 call xafail g2 1 p5 ko
+ret g3
+end
+# a directive: name [p3, p4) and rest [p5, p6) of line p2, line p7
+fn xadir (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+pk call xapack p2 p3 p4
+dt call xadit
+di call xalook dt 12 pk
+nf eq di 4294967295
+sec at p0 21
+emp eq p5 p6
+nemp eq emp false
+gtr gt p6 p5
+rd sub p6 p5
+rl select gtr rd 0
+d0 eq di 0
+d1 eq di 1
+d2 eq di 2
+d3 eq di 3
+d4 eq di 4
+d5 eq di 5
+d6 eq di 6
+d7 eq di 7
+d8 eq di 8
+d9 eq di 9
+d10 eq di 10
+d11 eq di 11
+innote eq sec 2
+le2 le di 2
+nle2 eq le2 false
+enote and innote nle2
+x0 or d0 d1
+x1 or x0 d6
+eemp and x1 nemp
+r13 ge rl 13
+e13 add p5 13
+tx call xaword p2 p5 e13 12
+istx and r13 tx
+r15 ge rl 15
+e15 add p5 15
+nt call xaword p2 p5 e15 13
+isnt and r15 nt
+sok or istx isnt
+nsok eq sok false
+esec and d2 nsok
+lab call xaall p2 p5 p6 1
+glok and nemp lab
+nglok eq glok false
+eglob and d3 nglok
+ts or d4 d5
+ets and ts emp
+pa call xaunum p2 p5 p6 14
+paok at pa 0
+pav at pa 1
+npa eq paok false
+ep2 and d7 npa
+ba call xaunum p2 p5 p6 16384
+baok at ba 0
+bav at ba 1
+bm sub bav 1
+bx and bav bm
+bp2 eq bx 0
+bnz ne bav 0
+bok1 and baok bp2
+bok and bok1 bnz
+nbok eq bok false
+ebal and d8 nbok
+blog call xalog2 bav
+isbss eq sec 1
+za call xaunum p2 p5 p6 4294967295
+zok at za 0
+zv at za 1
+bsz at p0 15
+nbsz add bsz zv
+zwrap lt nbsz bsz
+nzok eq zok false
+nbss eq isbss false
+ez1 or nzok nbss
+ez2 or ez1 zwrap
+ezero and d9 ez2
+istext eq sec 0
+ntext eq istext false
+easc and d11 ntext
+f1 or nf enote
+f2 or f1 eemp
+f3 or f2 esec
+f4 or f3 eglob
+f5 or f4 ets
+f6 or f5 ep2
+f7 or f6 ebal
+f8 or f7 ezero
+f9 or f8 easc
+g1 call xafail p0 1 p7 f9
+ok eq f9 false
+ns1 select isnt 2 0
+ns2 select d2 ns1 sec
+ns3 select d1 1 ns2
+ns4 select d0 0 ns3
+ns5 select ok ns4 sec
+g2 put g1 21 ns5
+pal and ok d7
+bal and ok d8
+lg select bal blog pav
+alc or pal bal
+cal select alc 1 0
+g3 fold xaalignf cal g2 lg
+zz and ok d9
+bsz3 at g3 15
+nz select zz nbsz bsz3
+g4 put g3 15 nz
+zf and ok d10
+czf select zf 1 0
+g5 fold xazf czf g4 p2 p5 p6 p7
+as and ok d11
+cas select as 1 0
+g6 fold xaasciz cas g5 p2 p5 p6 p7
+ret g6
+end
+
+# ---- instructions
+# the operand [p2, p3) of line p1 when p4, else none
+fn xaopt u32x256 u32 u32 bool -> (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32)
+o call xaopnd p0 p1 p2
+z rec 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+r select p3 o z
+ret r
+end
+# a fixup: field offset p2, kind p3, line p4, entry or number p5, definition index p6
+fn xafix (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+fx at p0 9
+nf at p0 10
+full ge nf 2048
+k mul nf 5
+f1 call xas80 fx k p2
+k1 add k 1
+f2 call xas80 f1 k1 p3
+k2 add k 2
+f3 call xas80 f2 k2 p4
+k3 add k 3
+f4 call xas80 f3 k3 p5
+k4 add k 4
+f5 call xas80 f4 k4 p6
+fx2 select full fx f5
+nf1 add nf 1
+nf2 select full nf nf1
+g1 put p0 9 fx2
+g2 put g1 10 nf2
+g3 call xafail g2 2 p4 full
+ret g3
+end
+# append the encoded instruction p3 (operands p4 p5 p6 of line p2, r/m operand p7) at line p8,
+# numeric definitions seen p9
+fn xapush (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 (u32x16,u32,u32,u32,bool) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+at0 at p0 2
+buf at p3 0
+len at p3 1
+fpos at p3 2
+fk at p3 3
+g1 fold xainsst len p0 buf
+s1 eq p7 1
+s2 eq p7 2
+m23 select s2 p5 p6
+m select s1 p4 m23
+k1 eq fk 1
+ak at p4 0
+isnum eq ak 5
+nnum eq isnum false
+named1 and k1 nnum
+k2 eq fk 2
+named or named1 k2
+ns1 at p4 9
+ne1 at p4 10
+ns2 at m 9
+ne2 at m 10
+ns select k2 ns2 ns1
+nend select k2 ne2 ne1
+cn select named 1 0
+s0 rec g1 0
+rf fold xarefst cn s0 p2 ns nend p8
+g2 at rf 0
+ix at rf 1
+num at p4 11
+dir at p4 12
+di sub p9 dir
+numf and k1 isnum
+kc1 select numf 5 fk
+a1 select numf num ix
+b1 select numf di 0
+off add at0 fpos
+hf ne fk 0
+cf select hf 1 0
+g3 fold xafix cf g2 off kc1 p8 a1 b1
+ret g3
+end
+# an instruction: mnemonic [p3, p4), operands [p5, p6) of line p2, line p7
+fn xainsn (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 u32x256 u32 u32 u32 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+sec at p0 21
+pk call xapack p2 p3 p4
+mt call xamnt
+mi call xalook mt 130 pk
+fd ne mi 4294967295
+atb call xamna
+k mul mi 4
+cl get atb k
+k1 add k 1
+pm get atb k1
+k2 add k 2
+sz get atb k2
+k3 add k 3
+ex get atb k3
+emp eq p5 p6
+cs call xacomma p2 p5 p6
+cnt at cs 1
+q1 at cs 2
+q2 at cs 3
+c1 add cnt 1
+n select emp 0 c1
+many gt n 3
+h1 ge n 1
+h2 ge n 2
+h3 ge n 3
+oa call xaopt p2 p5 q1 h1
+q1a add q1 1
+ob call xaopt p2 q1a q2 h2
+q2a add q2 1
+oc call xaopt p2 q2a p6 h3
+ka call xak oa
+kb call xak ob
+kc call xak oc
+ba eq ka 9
+bb eq kb 9
+bc eq kc 9
+pl call xaplan oa ob oc cl pm sz ex n
+pok at pl 0
+e call xaemit pl oa ob oc
+eb at e 4
+brn at pl 9
+isnum eq ka 5
+num at oa 11
+dir at oa 12
+loc at p0 11
+nl at p0 12
+nb and brn isnum
+cn select nb nl 0
+seen fold xalcst cn 0 loc num
+s0 eq seen 0
+db eq dir 1
+nob1 and nb db
+nob and nob1 s0
+nfd eq fd false
+npok eq pok false
+nsec ne sec 0
+x1 or nfd many
+x2 or x1 ba
+x3 or x2 bb
+x4 or x3 bc
+x5 or x4 npok
+x6 or x5 eb
+x7 or x6 nob
+bad or x7 nsec
+g1 call xafail p0 1 p7 bad
+ok eq bad false
+rs at pl 7
+oc1 select ok 1 0
+g2 fold xapush oc1 g1 p2 e oa ob oc rs p7 seen
+ret g2
+end
+# line p1 (p2 bytes, the first 256 stored) with number p3
+fn xaproc (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32x256 u32 u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+cut call xacut p1 p2
+big gt p2 256
+cl ge cut 256
+lim and big cl
+g1 call xafail p0 2 p3 lim
+st0 rec g1 0 false
+ls loop xalabp xalabs 257 st0 p1 cut
+g2 at ls 0
+pos at ls 1
+bs call xaskip p1 cut pos
+be call xartrim p1 bs cut
+nonempty lt bs be
+me call xatows p1 be bs
+rs call xaskip p1 be me
+c0 get p1 bs
+isdot eq c0 46
+dodir and nonempty isdot
+nd eq isdot false
+doins and nonempty nd
+cd select dodir 1 0
+ci select doins 1 0
+g3 fold xadir cd g2 p1 bs me rs be p3
+g4 fold xainsn ci g3 p1 bs me rs be p3
+ret g4
+end
+fn xardp (io,u32x256,u32,u32,bool) u32 -> bool
+d at p0 4
+rm0 at p0 3
+nd eq d false
+more gt rm0 0
+r and nd more
+ret r
+end
+# one byte of the line: state (io, line, length, bytes left, newline seen)
+fn xards (io,u32x256,u32,u32,bool) u32 -> (io,u32x256,u32,u32,bool)
+t at p0 0
+b at p0 1
+ln at p0 2
+rm0 at p0 3
+rr read t
+c at rr 0
+t2 at rr 1
+rm1 sub rm0 1
+nl eq c 10
+nnl eq nl false
+room lt ln 256
+st and room nnl
+b2 set b ln c
+b3 select st b2 b
+ln1 add ln 1
+ln2 select nl ln ln1
+r rec t2 b3 ln2 rm1 nl
+ret r
+end
+fn xamorep (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> bool
+er at p0 17
+rm0 at p0 20
+e0 eq er 0
+m gt rm0 0
+r and e0 m
+ret r
+end
+# read and assemble one line
+fn xaline (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+rm0 at p0 20
+lno at p0 19
+t at p0 0
+zb call xazb
+s0 rec t zb 0 rm0 false
+cap add rm0 1
+s loop xardp xards cap s0
+t2 at s 0
+b at s 1
+ln at s 2
+rm1 at s 3
+g1 put p0 0 t2
+g2 put g1 20 rm1
+lno1 add lno 1
+g3 put g2 19 lno1
+g4 call xaproc g3 b ln lno1
+ret g4
+end
+
+# ---- resolution: fixup p1 patched into the text (a label of the text section), or left for a
+# relocation (any other named target); a numeric label with no definition is an error
+fn xarsst (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) u32 -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+fx at p0 9
+k mul p1 5
+fa call xag80 fx k
+k1 add k 1
+kind call xag80 fx k1
+k2 add k 2
+line call xag80 fx k2
+k3 add k 3
+a call xag80 fx k3
+k4 add k 4
+b call xag80 fx k4
+nb and kind 4
+isnum ne nb 0
+loc at p0 11
+nl at p0 12
+lab at p0 5
+nlx select isnum nl 0
+ls0 rec 0 false 0
+lk fold xalkst2 nlx ls0 loc a b
+lfd at lk 1
+lof at lk 2
+ka mul a 5
+ka3 add ka 3
+eof call xag40 lab ka3
+ka4 add ka 4
+edf call xag40 lab ka4
+efd eq edf 1
+found select isnum lfd efd
+target select isnum lof eof
+und eq found false
+e1 and und isnum
+a4 add fa 4
+v sub target a4
+t at p0 1
+t1 call xatset t fa v
+at1 add fa 1
+v1 shr v 8
+t2 call xatset t1 at1 v1
+at2 add fa 2
+v2 shr v 16
+t3 call xatset t2 at2 v2
+at3 add fa 3
+v3 shr v 24
+t4 call xatset t3 at3 v3
+t5 select found t4 t
+g1 put p0 1 t5
+g2 call xafail g1 1 line e1
+ret g2
+end
+fn xares (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) -> (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32)
+er at p0 17
+nf at p0 10
+ok eq er 0
+cnt select ok nf 0
+g fold xarsst cnt p0
+ret g
+end
+
+# ---- output
+fn xawt io u32 u32x128x128 -> io
+v call xatget p2 p1
+w write p0 v
+ret w
+end
+fn xawb io u32 u32x128x32 u32 -> io
+i add p3 p1
+v call xapget p2 i
+w write p0 v
+ret w
+end
+# the name of label entry p2 (pool p3)
+fn xawname io u32x128x40 u32 u32x128x32 -> io
+k mul p2 5
+k1 add k 1
+st call xag40 p1 k1
+k2 add k 2
+ln call xag40 p1 k2
+w1 write p0 ln
+w2 fold xawb ln w1 p3 st
+ret w2
+end
+fn xawlab io u32 u32x128x8 u32x128x40 u32x128x32 -> io
+ix call xag8 p2 p1
+k mul ix 5
+k3 add k 3
+off call xag40 p3 k3
+w1 write p0 off
+w2 call xawname w1 p3 ix p4
+ret w2
+end
+# fixup p1 is a relocation (a named target left undefined in the text)
+fn xaisrel u32x128x80 u32 u32x128x40 -> bool
+k mul p1 5
+k1 add k 1
+kind call xag80 p0 k1
+k3 add k 3
+a call xag80 p0 k3
+nb and kind 4
+named eq nb 0
+ka mul a 5
+ka4 add ka 4
+edf call xag40 p2 ka4
+und eq edf 0
+r and named und
+ret r
+end
+fn xacrel u32 u32 u32x128x80 u32x128x40 -> u32
+r1 call xaisrel p2 p1 p3
+a add p0 1
+r select r1 a p0
+ret r
+end
+fn xawrel1 io u32 u32 u32x128x80 u32x128x40 u32x128x32 -> io
+k mul p2 5
+fa call xag80 p3 k
+k1 add k 1
+kind call xag80 p3 k1
+k3 add k 3
+a call xag80 p3 k3
+kk sub kind 1
+w1 write p0 fa
+w2 write w1 kk
+w3 call xawname w2 p4 a p5
+ret w3
+end
+fn xawrel io u32 u32x128x80 u32x128x40 u32x128x32 -> io
+r1 call xaisrel p2 p1 p3
+cn select r1 1 0
+w fold xawrel1 cn p0 p1 p2 p3 p4
+ret w
+end
+fn xawbss io u32 u32x128x8 u32x128x32 -> io
+k mul p1 4
+k1 add k 1
+st call xag8 p2 k1
+k2 add k 2
+ln call xag8 p2 k2
+k3 add k 3
+off call xag8 p2 k3
+w1 write p0 off
+w2 write w1 ln
+w3 fold xawb ln w2 p3 st
+ret w3
+end
+# the module (see the head of the file): text p2 (p3 bytes), pool p4, labels p5, defined labels
+# p6 (p7 of them), fixups p8 (p9 of them), bss symbols p10 (p11 of them), bss size p12 and
+# alignment p13
+fn xawok io u32 u32x128x128 u32 u32x128x32 u32x128x40 u32x128x8 u32 u32x128x80 u32 u32x128x8 u32 u32 u32 -> io
+w0 write p0 0
+w1 write w0 p3
+w2 fold xawt p3 w1 p2
+w3 write w2 p7
+w4 fold xawlab p7 w3 p6 p5 p4
+nr fold xacrel p9 0 p8 p5
+w5 write w4 nr
+w6 fold xawrel p9 w5 p8 p5 p4
+w7 write w6 p11
+w8 fold xawbss p11 w7 p10 p4
+w9 write w8 p12
+w10 write w9 p13
+ret w10
+end
+fn xawerr io u32 u32 u32 -> io
+w0 write p0 p2
+w1 write w0 p3
+ret w1
+end
+fn xaout (io,u32x128x128,u32,u32x128x32,u32,u32x128x40,u32,u32x128x8,u32,u32x128x80,u32,u32x128x16,u32,u32x128x8,u32,u32,u32,u32,u32,u32,u32,u32) -> io
+t at p0 0
+tx at p0 1
+nw at p0 2
+pool at p0 3
+lab at p0 5
+dor at p0 7
+nd at p0 8
+fx at p0 9
+nf at p0 10
+bss at p0 13
+nb at p0 14
+bsz at p0 15
+bal at p0 16
+er at p0 17
+el at p0 18
+ok eq er 0
+okc select ok 1 0
+erc select ok 0 1
+w1 fold xawok okc t tx nw pool lab dor nd fx nf bss nb bsz bal
+w2 fold xawerr erc w1 er el
+ret w2
+end
+# the entry: n, then the n bytes of the text (see the head of the file)
+fn xasmio io -> u32
+r read p0
+n at r 0
+t at r 1
+z128 call xaz128
+z32 call xaz32
+z40 call xaz40
+z8 call xaz8
+z80 call xaz80
+z16 call xaz16p
+g0 rec t z128 0 z32 0 z40 0 z8 0 z80 0 z16 0 z8 0 0 0 0 0 0 n 0
+cap add n 1
+g1 loop xamorep xaline cap g0
+g2 call xares g1
+code at g2 17
+w call xaout g2
+ret code
+end
