@@ -336,6 +336,8 @@ export async function checkNative(
       '-Werror',
       '-fsanitize=undefined',
       '-fno-sanitize-recover=all',
+      // the parallel runtime uses pthreads; MinGW needs the flag, Linux and macOS accept it
+      ...(cSource.includes('<pthread.h>') ? ['-pthread'] : []),
       '-o',
       exe,
       driver,

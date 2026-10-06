@@ -154,13 +154,21 @@ function firstExisting(candidates: readonly (string | undefined)[]): string | un
   return undefined;
 }
 
+const WINDOWS_TOOL_DIRS = [
+  'C:\\msys64\\clang64\\bin',
+  'C:\\msys64\\mingw64\\bin',
+  'C:\\Program Files\\LLVM\\bin',
+];
+
 /** First executable `name` on PATH (PATHEXT on Windows); no external `which`, so it works everywhere. */
 function onPath(name: string): string | undefined {
   const exts =
     process.platform === 'win32'
       ? (process.env.PATHEXT ?? '.EXE;.CMD;.BAT').split(';').filter((e) => e.length > 0)
       : [''];
-  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+  // Where Windows toolchains usually live when the installer did not add them to PATH.
+  const fallback = process.platform === 'win32' ? WINDOWS_TOOL_DIRS : [];
+  for (const dir of [...(process.env.PATH ?? '').split(delimiter), ...fallback]) {
     if (dir.length === 0) continue;
     for (const ext of exts) {
       const candidate = join(dir, name + ext);
