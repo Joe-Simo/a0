@@ -18,7 +18,7 @@ const { INITIAL, parseRawGrammar, Registry } =
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const grammarDir = join(root, 'editors', 'tree-sitter-a0');
 // tree-sitter-cli is a root devDependency: the normal `bun install` provides it.
-const cli = join(root, 'node_modules', '.bin', 'tree-sitter');
+const cli = join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'tree-sitter.exe' : 'tree-sitter');
 
 const treeSitter = (args: string[]) =>
   spawnSync(cli, args, { cwd: grammarDir, encoding: 'utf8', maxBuffer: 1 << 26 });
@@ -40,7 +40,7 @@ test('tree-sitter grammar parses every .a0 file in the repository without errors
     .filter((f) => existsSync(f));
   for (const dir of ['results/', 'examples/', 'compiler/', 'site/'])
     assert.ok(
-      files.some((f) => f.includes(`/${dir}`)),
+      files.some((f) => f.replaceAll('\\', '/').includes(`/${dir}`)),
       `no .a0 files found under ${dir}`,
     );
   const gen = treeSitter(['generate']);
