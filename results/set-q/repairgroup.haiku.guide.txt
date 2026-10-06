@@ -1,0 +1,219 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+io: linear token, each value used once. read t->(u32,io) | write t v->io | puts t a->io
+EDIT: reply bare edit lines (handle line optional when one e handle is shown). `id op ...` replaces or inserts before ret; `... @ other` inserts after other; `-id` deletes; `ret x`; `fn ...` block (end optional) adds/replaces a function; `-fn name` removes.
+Example: fn affine u32 u32 u32 -> u32 / a mul p0 p1 / b add a p2 / ret b / end (one item per line).
+
+
+The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.
+
+=====
+
+### CONVERSATION 2
+[user]
+The function should return k times (1 + 2 + 3 + 4): the step weights must run from 1 to 4, not from 0 to 3.
+
+e0
+fn ladder u32 -> u32
+f fold rung 4 0 p0
+r mov f
+ret r
+end
+fn rung u32 u32 u32 -> u32 end
+g0
+fn rung u32 u32 u32 -> u32 end
+fn ladder u32 -> u32 end
+
+[assistant]
+fn rung u32 u32 u32 -> u32
+a add p1 1
+r add p0 a
+ret r
+end
+
+[user]
+Rejected:
+ladder(0) = 10, expected 0
+ladder(2) = 10, expected 20
+ladder(7) = 10, expected 70
+ladder(100) = 10, expected 1000
+ladder(429496729) = 10, expected 4294967290
+ladder(429496730) = 10, expected 4
+ladder(4294967295) = 10, expected 4294967286
+
+Current view:
+e0
+fn ladder u32 -> u32
+f fold rung 4 0 p0
+r mov f
+ret r
+end
+fn rung u32 u32 u32 -> u32 end
+g0
+fn rung u32 u32 u32 -> u32 end
+fn ladder u32 -> u32 end
+Try again.
+
+### CONVERSATION 5
+[user]
+A motion passes when at least three of the four votes are nonzero.
+
+e0
+fn passes u32x4 -> bool
+c fold tally 4 0 p0
+r gt c 3
+ret r
+end
+fn tally u32 u32 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 -> u32 end
+fn passes u32x4 -> bool end
+
+[assistant]
+fn tally u32 u32 u32x4 -> u32
+z eq p0 0
+i select z 0 1
+r add p1 i
+ret r
+end
+
+[user]
+Rejected:
+passes(0,1,1,0) = true, expected false
+passes(0,0,0,0) = true, expected false
+passes(0,0,1,1) = true, expected false
+passes(0,0,0,7) = true, expected false
+
+Current view:
+e0
+fn passes u32x4 -> bool
+c fold tally 4 0 p0
+r gt c 3
+ret r
+end
+fn tally u32 u32 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 -> u32 end
+fn passes u32x4 -> bool end
+Try again.
+
+### CONVERSATION 6
+[user]
+The heater should run only when it is cold and it is not night.
+
+e0
+fn heater u32 u32 u32 -> bool
+a call cold p0 p1
+b call night p2
+r and a b
+ret r
+end
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+g0
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+fn heater u32 u32 u32 -> bool end
+
+[assistant]
+n xor b 1
+r and a n
+
+[user]
+Rejected:
+type: heater.n: expected bool, got u32 fix: replace the operand at heater.n with a value of type bool
+
+Try again.
+
+### CONVERSATION 11
+[user]
+Entries at odd positions are withdrawals and entries at even positions are deposits, and the account opens with the second argument as its balance; return whether it ever went below zero.
+
+e0
+fn overdrawn u32x4 u32 -> bool
+z rec 0 false
+f fold post 4 z p0
+r at f 1
+ret r
+end
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+g0
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+fn overdrawn u32x4 u32 -> bool end
+
+[assistant]
+fn post (u32,bool) u32 u32x4 -> (u32,bool)
+b eq p1 0
+d at p0 0
+v get p2 p1
+z at p0 0
+w select b z (add z v)
+s select b z (sub z v)
+n select (eq p1 0) w s
+neg lt n 0
+o or (at p0 1) neg
+r put p0 1 o
+ret (put r 0 n)
+end
+
+[user]
+Rejected:
+parse: line 6: nested operand: A0 has one op per line fix: one op per line: write `w1 add z v` above, then `w select b z w1`
+
+Try again.
+
+### CONVERSATION 14
+[user]
+The calibrated reading should be four times the raw reading plus three.
+
+e0
+fn calib u32 -> u32
+x call bias p0
+y call scale x
+ret y
+end
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+g0
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+fn calib u32 -> u32 end
+
+[assistant]
+fn scale u32 -> u32
+r mul p0 4
+ret r
+end
+fn bias u32 -> u32
+r add p0 3
+ret r
+end
+
+[user]
+Rejected:
+calib(0) = 12, expected 3
+calib(1) = 16, expected 7
+calib(2) = 20, expected 11
+calib(10) = 52, expected 43
+calib(1073741823) = 8, expected 4294967295
+calib(1073741824) = 12, expected 3
+calib(4294967295) = 8, expected 4294967295
+calib(100) = 412, expected 403
+
+Current view:
+e0
+fn calib u32 -> u32
+x call bias p0
+y call scale x
+ret y
+end
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+g0
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+fn calib u32 -> u32 end
+Try again.

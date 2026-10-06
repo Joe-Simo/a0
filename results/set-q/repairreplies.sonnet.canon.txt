@@ -1,0 +1,45 @@
+### REPLY 6
+fn night u32 -> bool
+r ne p0 0
+ret r
+end
+fn cold u32 u32 -> bool
+r lt p0 p1
+ret r
+end
+nb select b false true
+r and a nb
+
+### REPLY 11
+fn post (u32,bool) u32 u32x4 -> (u32,bool)
+b at p0 0
+f at p0 1
+v get p2 p1
+o and p1 1
+odd ne o 0
+dep add b v
+short lt b v
+wd sub b v
+nb select odd wd dep
+over and odd short
+nf or f over
+r rec nb nf
+ret r
+end
+z rec p1 false
+
+### REPLY 15
+fn codeok u32 -> bool
+r eq p0 4321
+ret r
+end
+fn fresh u32 -> bool
+r lt p0 3
+ret r
+end
+fn unlock u32 u32 -> bool
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+end

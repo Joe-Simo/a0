@@ -1,0 +1,53 @@
+{
+ "o-ttl-expired/a0/structured": [
+  "b ge a p2"
+ ],
+ "o-field-code/a0/structured": [
+  "b and a 15"
+ ],
+ "o-discount-ship/a0/structured": [
+  "g lt e 40"
+ ],
+ "o-hash-bucket/a0/structured": [
+  "h and g 4095"
+ ],
+ "o-decay-slot/a0/structured": [
+  "-a\nb get p0 p1",
+  "-a\nb get p0 p1\nd set p0 p1 c"
+ ],
+ "o-lane-total/a0/structured": [
+  "s fold acc 4 0 p0"
+ ],
+ "o-perm-check/a0/structured": [
+  "c and p0 b"
+ ],
+ "o-weighted-pick/a0/structured": [
+  "b call weigh p0 p1"
+ ],
+ "o-shift-lanes/a0/structured": [
+  "a0 get p0 1\na1 get p0 2\na2 get p0 3\n-a3\nr arr a0 a1 a2 p1"
+ ],
+ "o-net-tax/a0/structured": [
+  "n sub p0 p1\ncheck le p1 p0\nnetprice select check n 0\nt call tax netprice\nr add netprice t"
+ ],
+ "o-quota-state/a0/structured": [
+  "check ge p0 p1\na select check 0 a\nb ge p0 p1",
+  "tmp sub p1 p0\ncheck ge p0 p1\na select check 0 tmp\nb ge p0 p1"
+ ],
+ "o-bright-scale/a0/structured": [
+  "a mul p0 5\nb div a 4\nc add b 1\nret c"
+ ],
+ "o-leading-run/a0/structured": [
+  "e12 and e1 e2\ne123 and e12 e3\nc1 select e1 2 1\nc2 select e12 3 c1\nc3 select e123 4 c2"
+ ],
+ "o-weekday-after/a0/structured": [
+  "b rem a 7",
+  "a rem p1 7\nb add p0 a\nc rem b 7"
+ ],
+ "o-exactly-one/a0/structured": [
+  "sum1 select p0 1 0\nsum2 select p1 1 0\nsum3 select p2 1 0\ntmp add sum2 sum3\na add sum1 tmp\nb eq a 1"
+ ],
+ "o-largest-rise/a0/structured": [
+  "s fold gap 3 0 p0"
+ ]
+}

@@ -1,0 +1,66 @@
+{
+ "q-tank-refill/a0/structured": [
+  "t mul p0 10\nc mov p1\nr lt t c\nret r",
+  "r le t c"
+ ],
+ "q-ladder-sum/a0/structured": [
+  "f fold rung 4 0 p0\nr mov f\nret r",
+  "fn rung u32 u32 u32 -> u32\ni1 add p1 1\nw mul i1 p2\nr add p0 w\nret r\nend"
+ ],
+ "q-hue-field/a0/structured": [
+  "s shr p0 4\nm and s 7\nret m",
+  "m and s 15"
+ ],
+ "q-seal-last/a0/structured": [
+  "v get p0 1\nr set p0 3 v\nret r",
+  "v get p0 0"
+ ],
+ "q-vote-pass/a0/structured": [
+  "c fold tally 4 0 p0\nr gt c 3\nret r",
+  "fn tally u32 u32 u32x4 -> u32\nnz ne p1 0\nr add p0 nz\nret r\nend\n-r\nr ge c 3"
+ ],
+ "q-heater-on/a0/structured": [
+  "a call cold p0 p1\nb call night p2\nr and a b\nret r",
+  "a call cold p0 p1\nb call night p2\nnb eq b 0\nr and a nb\nret r"
+ ],
+ "q-odometer/a0/structured": [
+  "s add p0 p1\nr mov s\nret r",
+  "s add p0 p1\nr rem s 100000\nret r"
+ ],
+ "q-level-up/a0/structured": [
+  "t add p0 p1\nu gt t 100\nd sub t 100\nx select u d t\nr rec x u\nret r",
+  "u ge t 100\nd sub t 100\nx select u d t\nr rec x u\nret r"
+ ],
+ "q-off-day/a0/structured": [
+  "s add p0 p1\nd call wrap7 s\nw call weekend d\nret w",
+  "s add p0 p1\nd call wrap7 s\nw call weekend d\nret w"
+ ],
+ "q-shift-in/a0/structured": [
+  "a get p0 0\nb get p0 1\nc get p0 2\nr arr a b c p1\nret r",
+  "a get p0 1\nb get p0 2\nc get p0 3\nr arr a b c p1\nret r"
+ ],
+ "q-ledger-overdraw/a0/structured": [
+  "z rec 0 false\nf fold post 4 z p0\nr at f 1\nret r",
+  "z rec p1 false\nf fold post 4 z p0\nr at f 1\nret r"
+ ],
+ "q-pack565/a0/structured": [
+  "r and p0 31\nrs shl r 10\ng and p1 31\ngs shl g 5\nb and p2 31\no or rs gs\nx or o b\nret x",
+  "g and p1 63\nrs shl r 11"
+ ],
+ "q-grow-tenths/a0/structured": [
+  "f fold credit 3 p0 p1\nr mov f\nret r",
+  "fn credit u32 u32 u32 -> u32\nm add p2 1000\np mul p0 m\nd div p 1000\nret d\nend"
+ ],
+ "q-calibrate/a0/structured": [
+  "x call bias p0\ny call scale x\nret y",
+  "-x\n-y\nx call scale p0\ny call bias x\nret y"
+ ],
+ "q-door-lockout/a0/structured": [
+  "a call codeok p0\nb call fresh p1\nr and a b\nret r",
+  "a call codeok p0\nb call fresh p1\nr and a b\nret r"
+ ],
+ "q-echo-count/a0/structured": [
+  "c fold same 4 0 p0\nr mov c\nret r",
+  "fn same u32 u32 u32x4 -> u32\nf get p2 0\nc get p2 p1\nm eq f c\ni0 eq p1 0\nc2 select i0 0 m\nr add p0 c2\nret r\nend"
+ ]
+}

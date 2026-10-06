@@ -1,0 +1,55 @@
+{
+ "q-tank-refill/a0/structured": [
+  "r le t c"
+ ],
+ "q-ladder-sum/a0/structured": [
+  "fn rung u32 u32 u32 -> u32\na add p1 1\nr add p0 a\nret r\nend",
+  "fn rung u32 u32 u32 -> u32\nw mul p2 p1\na add w p2\nr add p0 a\nret r\nend"
+ ],
+ "q-hue-field/a0/structured": [
+  "m and s 15"
+ ],
+ "q-seal-last/a0/structured": [
+  "v get p0 0"
+ ],
+ "q-vote-pass/a0/structured": [
+  "fn tally u32 u32 u32x4 -> u32\nz eq p0 0\ni select z 0 1\nr add p1 i\nret r\nend",
+  "fn tally u32 u32 u32x4 -> u32\nv get p2 p1\nnz ne v 0\ni add p0 1\nc select nz i p0\nret c\nend"
+ ],
+ "q-heater-on/a0/structured": [
+  "n xor b 1\nr and a n",
+  "n ne b true\nr and a n"
+ ],
+ "q-odometer/a0/structured": [
+  "r rem s 100000"
+ ],
+ "q-level-up/a0/structured": [
+  "u ge t 100"
+ ],
+ "q-off-day/a0/structured": [
+  "fn wrap7 u32 -> u32\nr rem p0 7\nret r\nend\nfn weekend u32 -> bool\ns eq p0 0\ne eq p0 6\nr or s e\nret r\nend"
+ ],
+ "q-shift-in/a0/structured": [
+  "b get p0 1\nc get p0 2\nd get p0 3\nr arr b c d p1"
+ ],
+ "q-ledger-overdraw/a0/structured": [
+  "fn post (u32,bool) u32 u32x4 -> (u32,bool)\nb eq p1 0\nd at p0 0\nv get p2 p1\nz at p0 0\nw select b z (add z v)\ns select b z (sub z v)\nn select (eq p1 0) w s\nneg lt n 0\no or (at p0 1) neg\nr put p0 1 o\nret (put r 0 n)\nend",
+  "fn post (u32,bool) u32 u32x4 -> (u32,bool)\nv get p2 p1\nz at p0 0\na add z v\ns sub z v\nm rem p1 2\ne eq m 0\nn select e a s\nneg lt n 0\no at p0 1\nf or o neg\nr put p0 1 f\nfinal put r 0 n\nret final\nend"
+ ],
+ "q-pack565/a0/structured": [
+  "rs shl r 11\ng and p1 63"
+ ],
+ "q-grow-tenths/a0/structured": [
+  "fn credit u32 u32 u32 -> u32\nr mul p0 p2\nd div r 1000\nn add p0 d\nret n\nend"
+ ],
+ "q-calibrate/a0/structured": [
+  "fn scale u32 -> u32\nr mul p0 4\nret r\nend\nfn bias u32 -> u32\nr add p0 3\nret r\nend",
+  "fn calib u32 -> u32\nx call scale p0\ny call bias x\nret y\nend"
+ ],
+ "q-door-lockout/a0/structured": [
+  "fn fresh u32 -> bool\nr lt p0 3\nret r\nend"
+ ],
+ "q-echo-count/a0/structured": [
+  "fn same u32 u32 u32x4 -> u32\nb eq p1 0\nv get p2 p1\nf get p2 0\ne eq v f\nn add p0 1\ni select e n p0\nr select b p0 i\nret r\nend"
+ ]
+}

@@ -1,0 +1,35 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 14
+[user]
+Given a weekday p0 between 0 and 6 and a number of days p1, return the weekday (0 to 6) reached after moving p1 days forward; at the moment the result is never 6.
+
+e0
+fn f u32 u32 -> u32
+a add p0 p1
+b rem a 6
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+b rem a 7
+
+[user]
+Rejected:
+f(6,4294967295) = 5, expected 2
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a add p0 p1
+b rem a 7
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+Try again.

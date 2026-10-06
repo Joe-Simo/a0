@@ -1,0 +1,146 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 6
+[user]
+The heater should run only when it is cold and it is not night.
+
+e0
+fn heater u32 u32 u32 -> bool
+a call cold p0 p1
+b call night p2
+r and a b
+ret r
+end
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+g0
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+fn heater u32 u32 u32 -> bool end
+
+[assistant]
+fn cold u32 u32 -> bool
+r lt p0 p1
+ret r
+end
+fn night u32 -> bool
+a ge p0 22
+b lt p0 6
+r or a b
+ret r
+end
+nb select b false true
+r and a nb
+
+[user]
+Rejected:
+heater(0,1,0) = false, expected true
+
+Current view:
+e0
+fn heater u32 u32 u32 -> bool
+a call cold p0 p1
+b call night p2
+nb select b false true
+r and a nb
+ret r
+end
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+g0
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+fn heater u32 u32 u32 -> bool end
+Try again.
+
+### CONVERSATION 11
+[user]
+Entries at odd positions are withdrawals and entries at even positions are deposits, and the account opens with the second argument as its balance; return whether it ever went below zero.
+
+e0
+fn overdrawn u32x4 u32 -> bool
+z rec 0 false
+f fold post 4 z p0
+r at f 1
+ret r
+end
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+g0
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+fn overdrawn u32x4 u32 -> bool end
+
+[assistant]
+fn post (u32,bool) u32 u32x4 -> (u32,bool)
+b at p0 0
+f at p0 1
+v get p2 p1
+odd and p1 1
+dep add b v
+short lt b v
+wd sub b v
+nb select odd wd dep
+over and odd short
+nf or f over
+r rec nb nf
+ret r
+end
+z rec p1 false
+
+[user]
+Rejected:
+type: post.nb: expected bool, got u32 fix: replace the operand at post.nb with a value of type bool
+
+Try again.
+
+### CONVERSATION 15
+[user]
+The door must stay shut once three or more failed attempts have been recorded, even with the right code.
+
+e0
+fn unlock u32 u32 -> bool
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+end
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+g0
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+fn unlock u32 u32 -> bool end
+
+[assistant]
+fn codeok u32 -> bool
+r eq p0 1234
+ret r
+end
+fn fresh u32 -> bool
+r lt p0 3
+ret r
+end
+
+[user]
+Rejected:
+unlock(4321,0) = false, expected true
+unlock(4321,2) = false, expected true
+unlock(1234,0) = true, expected false
+
+Current view:
+e0
+fn unlock u32 u32 -> bool
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+end
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+g0
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+fn unlock u32 u32 -> bool end
+Try again.

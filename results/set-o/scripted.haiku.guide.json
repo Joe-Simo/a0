@@ -1,0 +1,56 @@
+{
+ "o-ttl-expired/a0/structured": [
+  "b ge a p2"
+ ],
+ "o-field-code/a0/structured": [
+  "b and a 15"
+ ],
+ "o-discount-ship/a0/structured": [
+  "g lt e 40"
+ ],
+ "o-hash-bucket/a0/structured": [
+  "h and g 4095"
+ ],
+ "o-decay-slot/a0/structured": [
+  "b get p0 p1",
+  "-a\nd set p0 p1 c"
+ ],
+ "o-lane-total/a0/structured": [
+  "s fold acc 4 0 p0\nfn acc u32 u32 u32x4 -> u32\nv get p2 p1\nret add p0 v\nend"
+ ],
+ "o-perm-check/a0/structured": [
+  "c and p0 b"
+ ],
+ "o-weighted-pick/a0/structured": [
+  "b call weigh p0 p1"
+ ],
+ "o-shift-lanes/a0/structured": [
+  "r arr a1 a2 a3 p1"
+ ],
+ "o-net-tax/a0/structured": [
+  "a sub p0 p1\ncond lt p0 p1\nnet select cond 0 a\nt call tax net\nr add net t"
+ ],
+ "o-quota-state/a0/structured": [
+  "a sub p1 p0\ncond ge p0 p1\nremain select cond 0 a\nb ge p0 p1\nr rec remain b"
+ ],
+ "o-bright-scale/a0/structured": [
+  "a mul p0 5\nb div a 4\nc add b 1",
+  "a mul p0 5\nb div a 4\nc add b 1\nret c"
+ ],
+ "o-leading-run/a0/structured": [
+  "c1 select e1 1 0\nc2 select e2 2 c1\nc3 select e3 3 c2\ne2 and e2 e1 @ a1\ne3 and e3 e2 @ a2\nc2 select e2 3 1\nc3 select e3 4 c2",
+  "e2 and e2 e1\ne3 and e3 e2\nc1 select e1 1 0\nc2 select e2 2 c1\nc3 select e3 3 c2"
+ ],
+ "o-weekday-after/a0/structured": [
+  "b rem a 7",
+  "fn f u32 u32 -> u32\na0 rem p0 7\na1 rem p1 7\nsum add a0 a1\nb rem sum 7\nret b\nend"
+ ],
+ "o-exactly-one/a0/structured": [
+  "c0 select p0 1 0\nc1 select p1 1 0\nc2 select p2 1 0\ns add c0 c1\ns add s c2\n-a\n-b\nret eq s 1",
+  "c0 select p0 1 0\nc1 select p1 1 0\nc2 select p2 1 0\ns add c0 c1\ns2 add s c2\n-a\n-b\nret eq s2 1"
+ ],
+ "o-largest-rise/a0/structured": [
+  "fn gap u32 u32 u32x4 -> u32\nis_first eq p1 0\ncurr get p2 p1\nprev_idx sub p1 1\nprev get p2 prev_idx\nrise sub curr prev\nnew_max select (gt rise p0) rise p0\nresult select is_first p0 new_max\nret result\nend",
+  "fn gap u32 u32 u32x4 -> u32\nis_first eq p1 0\ncurr get p2 p1\nprev_idx sub p1 1\nprev get p2 prev_idx\nrise sub curr prev\nnew_max1 gt rise p0\nnew_max select new_max1 rise p0\nresult select is_first p0 new_max\nret result\nend"
+ ]
+}

@@ -1,0 +1,48 @@
+### REPLY 5
+-a
+d set p0 p1 c
+
+### REPLY 12
+a mul p0 5
+b div a 4
+c add b 1
+ret c
+
+### REPLY 13
+e2 and e2 e1
+e3 and e3 e2
+c1 select e1 1 0
+c2 select e2 2 c1
+c3 select e3 3 c2
+
+### REPLY 14
+fn f u32 u32 -> u32
+a0 rem p0 7
+a1 rem p1 7
+sum add a0 a1
+b rem sum 7
+ret b
+end
+
+### REPLY 15
+c0 select p0 1 0
+c1 select p1 1 0
+c2 select p2 1 0
+s add c0 c1
+s2 add s c2
+-a
+-b
+ret eq s2 1
+
+### REPLY 16
+fn gap u32 u32 u32x4 -> u32
+is_first eq p1 0
+curr get p2 p1
+prev_idx sub p1 1
+prev get p2 prev_idx
+rise sub curr prev
+new_max1 gt rise p0
+new_max select new_max1 rise p0
+result select is_first p0 new_max
+ret result
+end

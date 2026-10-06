@@ -1,0 +1,690 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 1
+[user]
+Refill is needed when ten times the level is at most the capacity; a level of exactly one tenth must also trigger a refill.
+
+e0
+fn refill u32 u32 -> bool
+t mul p0 10
+c mov p1
+r lt t c
+ret r
+end
+g0
+fn refill u32 u32 -> bool end
+
+[assistant]
+t mul p0 10
+c mov p1
+r lt t c
+ret r
+
+[user]
+Rejected:
+refill(1,10) = false, expected true
+refill(0,0) = false, expected true
+refill(5,50) = false, expected true
+
+Current view:
+e0
+fn refill u32 u32 -> bool
+t mul p0 10
+c mov p1
+r lt t c
+ret r
+end
+g0
+fn refill u32 u32 -> bool end
+Try again.
+
+### CONVERSATION 2
+[user]
+The function should return k times (1 + 2 + 3 + 4): the step weights must run from 1 to 4, not from 0 to 3.
+
+e0
+fn ladder u32 -> u32
+f fold rung 4 0 p0
+r mov f
+ret r
+end
+fn rung u32 u32 u32 -> u32 end
+g0
+fn rung u32 u32 u32 -> u32 end
+fn ladder u32 -> u32 end
+
+[assistant]
+f fold rung 4 0 p0
+r mov f
+ret r
+
+[user]
+Rejected:
+ladder(1) = 6, expected 10
+ladder(2) = 12, expected 20
+ladder(7) = 42, expected 70
+ladder(100) = 600, expected 1000
+ladder(429496729) = 2576980374, expected 4294967290
+ladder(429496730) = 2576980380, expected 4
+ladder(4294967295) = 4294967290, expected 4294967286
+
+Current view:
+e0
+fn ladder u32 -> u32
+f fold rung 4 0 p0
+r mov f
+ret r
+end
+fn rung u32 u32 u32 -> u32 end
+g0
+fn rung u32 u32 u32 -> u32 end
+fn ladder u32 -> u32 end
+Try again.
+
+### CONVERSATION 3
+[user]
+Return the 4-bit field held in bits 4 through 7 of the input (bit 0 is the lowest).
+
+e0
+fn hue u32 -> u32
+s shr p0 4
+m and s 7
+ret m
+end
+g0
+fn hue u32 -> u32 end
+
+[assistant]
+s shr p0 4
+m and s 7
+ret m
+
+[user]
+Rejected:
+hue(240) = 7, expected 15
+hue(128) = 0, expected 8
+hue(255) = 7, expected 15
+hue(4294967295) = 7, expected 15
+hue(143) = 0, expected 8
+
+Current view:
+e0
+fn hue u32 -> u32
+s shr p0 4
+m and s 7
+ret m
+end
+g0
+fn hue u32 -> u32 end
+Try again.
+
+### CONVERSATION 4
+[user]
+Return the array with its last slot overwritten by the value from its first slot.
+
+e0
+fn seal u32x4 -> u32x4
+v get p0 1
+r set p0 3 v
+ret r
+end
+g0
+fn seal u32x4 -> u32x4 end
+
+[assistant]
+v get p0 1
+r set p0 3 v
+ret r
+
+[user]
+Rejected:
+seal(1,2,3,4) = 1,2,3,2, expected 1,2,3,1
+seal(9,8,7,6) = 9,8,7,8, expected 9,8,7,9
+seal(4294967295,0,1,2) = 4294967295,0,1,0, expected 4294967295,0,1,4294967295
+seal(1,0,0,0) = 1,0,0,0, expected 1,0,0,1
+seal(0,1,2,3) = 0,1,2,1, expected 0,1,2,0
+
+Current view:
+e0
+fn seal u32x4 -> u32x4
+v get p0 1
+r set p0 3 v
+ret r
+end
+g0
+fn seal u32x4 -> u32x4 end
+Try again.
+
+### CONVERSATION 5
+[user]
+A motion passes when at least three of the four votes are nonzero.
+
+e0
+fn passes u32x4 -> bool
+c fold tally 4 0 p0
+r gt c 3
+ret r
+end
+fn tally u32 u32 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 -> u32 end
+fn passes u32x4 -> bool end
+
+[assistant]
+c fold tally 4 0 p0
+r gt c 3
+ret r
+
+[user]
+Rejected:
+passes(1,1,1,0) = false, expected true
+passes(5,0,9,4294967295) = false, expected true
+passes(1,0,1,1) = false, expected true
+
+Current view:
+e0
+fn passes u32x4 -> bool
+c fold tally 4 0 p0
+r gt c 3
+ret r
+end
+fn tally u32 u32 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 -> u32 end
+fn passes u32x4 -> bool end
+Try again.
+
+### CONVERSATION 6
+[user]
+The heater should run only when it is cold and it is not night.
+
+e0
+fn heater u32 u32 u32 -> bool
+a call cold p0 p1
+b call night p2
+r and a b
+ret r
+end
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+g0
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+fn heater u32 u32 u32 -> bool end
+
+[assistant]
+a call cold p0 p1
+b call night p2
+r and a b
+ret r
+
+[user]
+Rejected:
+heater(10,18,12) = false, expected true
+heater(10,18,23) = true, expected false
+heater(17,18,22) = true, expected false
+heater(17,18,21) = false, expected true
+heater(0,1,0) = false, expected true
+
+Current view:
+e0
+fn heater u32 u32 u32 -> bool
+a call cold p0 p1
+b call night p2
+r and a b
+ret r
+end
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+g0
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+fn heater u32 u32 u32 -> bool end
+Try again.
+
+### CONVERSATION 7
+[user]
+The odometer shows five digits, so the new reading must roll over to 0 when it reaches 100000.
+
+e0
+fn odo u32 u32 -> u32
+s add p0 p1
+r mov s
+ret r
+end
+g0
+fn odo u32 u32 -> u32 end
+
+[assistant]
+s add p0 p1
+r mov s
+ret r
+
+[user]
+Rejected:
+odo(99999,1) = 100000, expected 0
+odo(50000,50000) = 100000, expected 0
+odo(99999,99999) = 199998, expected 99998
+
+Current view:
+e0
+fn odo u32 u32 -> u32
+s add p0 p1
+r mov s
+ret r
+end
+g0
+fn odo u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 8
+[user]
+Experience levels up when the total reaches 100: return the total minus 100 and true, otherwise the total and false.
+
+e0
+fn gain u32 u32 -> (u32,bool)
+t add p0 p1
+u gt t 100
+d sub t 100
+x select u d t
+r rec x u
+ret r
+end
+g0
+fn gain u32 u32 -> (u32,bool) end
+
+[assistant]
+t add p0 p1
+u gt t 100
+d sub t 100
+x select u d t
+r rec x u
+ret r
+
+[user]
+Rejected:
+gain(50,50) = 100,false, expected 0,true
+gain(99,1) = 100,false, expected 0,true
+gain(100,0) = 100,false, expected 0,true
+
+Current view:
+e0
+fn gain u32 u32 -> (u32,bool)
+t add p0 p1
+u gt t 100
+d sub t 100
+x select u d t
+r rec x u
+ret r
+end
+g0
+fn gain u32 u32 -> (u32,bool) end
+Try again.
+
+### CONVERSATION 9
+[user]
+Days are now numbered with 0 as Sunday and 6 as Saturday; the result should be true only for those two days.
+
+e0
+fn offday u32 u32 -> bool
+s add p0 p1
+d call wrap7 s
+w call weekend d
+ret w
+end
+fn wrap7 u32 -> u32 end
+fn weekend u32 -> bool end
+g0
+fn wrap7 u32 -> u32 end
+fn weekend u32 -> bool end
+fn offday u32 u32 -> bool end
+
+[assistant]
+s add p0 p1
+d call wrap7 s
+w call weekend d
+ret w
+
+[user]
+Rejected:
+offday(0,0) = false, expected true
+offday(0,5) = true, expected false
+offday(3,4) = false, expected true
+offday(4,1) = true, expected false
+
+Current view:
+e0
+fn offday u32 u32 -> bool
+s add p0 p1
+d call wrap7 s
+w call weekend d
+ret w
+end
+fn wrap7 u32 -> u32 end
+fn weekend u32 -> bool end
+g0
+fn wrap7 u32 -> u32 end
+fn weekend u32 -> bool end
+fn offday u32 u32 -> bool end
+Try again.
+
+### CONVERSATION 10
+[user]
+Drop the oldest (first) sample, move the others one place toward the front, and put the new value in the last slot.
+
+e0
+fn push u32x4 u32 -> u32x4
+a get p0 0
+b get p0 1
+c get p0 2
+r arr a b c p1
+ret r
+end
+g0
+fn push u32x4 u32 -> u32x4 end
+
+[assistant]
+a get p0 0
+b get p0 1
+c get p0 2
+r arr a b c p1
+ret r
+
+[user]
+Rejected:
+push(1,2,3,4,5) = 1,2,3,5, expected 2,3,4,5
+push(9,8,7,6,1) = 9,8,7,1, expected 8,7,6,1
+push(0,0,0,7,3) = 0,0,0,3, expected 0,0,7,3
+push(4,3,2,1,0) = 4,3,2,0, expected 3,2,1,0
+push(5,6,7,8,9) = 5,6,7,9, expected 6,7,8,9
+push(1,0,0,0,2) = 1,0,0,2, expected 0,0,0,2
+
+Current view:
+e0
+fn push u32x4 u32 -> u32x4
+a get p0 0
+b get p0 1
+c get p0 2
+r arr a b c p1
+ret r
+end
+g0
+fn push u32x4 u32 -> u32x4 end
+Try again.
+
+### CONVERSATION 11
+[user]
+Entries at odd positions are withdrawals and entries at even positions are deposits, and the account opens with the second argument as its balance; return whether it ever went below zero.
+
+e0
+fn overdrawn u32x4 u32 -> bool
+z rec 0 false
+f fold post 4 z p0
+r at f 1
+ret r
+end
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+g0
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+fn overdrawn u32x4 u32 -> bool end
+
+[assistant]
+z rec 0 false
+f fold post 4 z p0
+r at f 1
+ret r
+
+[user]
+Rejected:
+overdrawn(5,3,0,0,0) = true, expected false
+overdrawn(0,1,0,0,0) = false, expected true
+overdrawn(0,5,0,0,4) = false, expected true
+
+Current view:
+e0
+fn overdrawn u32x4 u32 -> bool
+z rec 0 false
+f fold post 4 z p0
+r at f 1
+ret r
+end
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+g0
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+fn overdrawn u32x4 u32 -> bool end
+Try again.
+
+### CONVERSATION 12
+[user]
+Pack the colour as 5-6-5: red in bits 11-15, a 6-bit green in bits 5-10, blue in bits 0-4.
+
+e0
+fn pack u32 u32 u32 -> u32
+r and p0 31
+rs shl r 10
+g and p1 31
+gs shl g 5
+b and p2 31
+o or rs gs
+x or o b
+ret x
+end
+g0
+fn pack u32 u32 u32 -> u32 end
+
+[assistant]
+r and p0 31
+rs shl r 10
+g and p1 31
+gs shl g 5
+b and p2 31
+o or rs gs
+x or o b
+ret x
+
+[user]
+Rejected:
+pack(31,0,0) = 31744, expected 63488
+pack(0,63,0) = 992, expected 2016
+pack(31,63,31) = 32767, expected 65535
+pack(1,1,1) = 1057, expected 2081
+pack(255,255,255) = 32767, expected 65535
+pack(16,32,16) = 16400, expected 33808
+pack(0,32,0) = 0, expected 1024
+
+Current view:
+e0
+fn pack u32 u32 u32 -> u32
+r and p0 31
+rs shl r 10
+g and p1 31
+gs shl g 5
+b and p2 31
+o or rs gs
+x or o b
+ret x
+end
+g0
+fn pack u32 u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 13
+[user]
+The rate argument is now given in tenths of a percent (so 25 means 2.5 per cent per period); keep the three periods and the rounding down.
+
+e0
+fn grow u32 u32 -> u32
+f fold credit 3 p0 p1
+r mov f
+ret r
+end
+fn credit u32 u32 u32 -> u32 end
+g0
+fn credit u32 u32 u32 -> u32 end
+fn grow u32 u32 -> u32 end
+
+[assistant]
+f fold credit 3 p0 p1
+r mov f
+ret r
+
+[user]
+Rejected:
+grow(1000,10) = 1331, expected 1030
+grow(1000,25) = 1952, expected 1076
+grow(100000,5) = 115762, expected 101507
+grow(999,1000) = 1329669, expected 7992
+grow(12345,7) = 15122, expected 12605
+grow(1,1000) = 1331, expected 8
+
+Current view:
+e0
+fn grow u32 u32 -> u32
+f fold credit 3 p0 p1
+r mov f
+ret r
+end
+fn credit u32 u32 u32 -> u32 end
+g0
+fn credit u32 u32 u32 -> u32 end
+fn grow u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 14
+[user]
+The calibrated reading should be four times the raw reading plus three.
+
+e0
+fn calib u32 -> u32
+x call bias p0
+y call scale x
+ret y
+end
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+g0
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+fn calib u32 -> u32 end
+
+[assistant]
+x call bias p0
+y call scale x
+ret y
+
+[user]
+Rejected:
+calib(0) = 12, expected 3
+calib(1) = 16, expected 7
+calib(2) = 20, expected 11
+calib(10) = 52, expected 43
+calib(1073741823) = 8, expected 4294967295
+calib(1073741824) = 12, expected 3
+calib(4294967295) = 8, expected 4294967295
+calib(100) = 412, expected 403
+
+Current view:
+e0
+fn calib u32 -> u32
+x call bias p0
+y call scale x
+ret y
+end
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+g0
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+fn calib u32 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+The door must stay shut once three or more failed attempts have been recorded, even with the right code.
+
+e0
+fn unlock u32 u32 -> bool
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+end
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+g0
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+fn unlock u32 u32 -> bool end
+
+[assistant]
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+
+[user]
+Rejected:
+unlock(4321,3) = true, expected false
+
+Current view:
+e0
+fn unlock u32 u32 -> bool
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+end
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+g0
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+fn unlock u32 u32 -> bool end
+Try again.
+
+### CONVERSATION 16
+[user]
+Count how many of the elements after the first are equal to the first element; the first element itself must not be counted.
+
+e0
+fn echoes u32x4 -> u32
+c fold same 4 0 p0
+r mov c
+ret r
+end
+fn same u32 u32 u32x4 -> u32 end
+g0
+fn same u32 u32 u32x4 -> u32 end
+fn echoes u32x4 -> u32 end
+
+[assistant]
+c fold same 4 0 p0
+r mov c
+ret r
+
+[user]
+Rejected:
+echoes(1,1,1,1) = 4, expected 3
+echoes(1,2,3,4) = 1, expected 0
+echoes(0,0,0,0) = 4, expected 3
+echoes(5,5,6,5) = 3, expected 2
+echoes(7,1,7,1) = 2, expected 1
+echoes(2,3,3,3) = 1, expected 0
+echoes(9,9,0,0) = 2, expected 1
+echoes(4294967295,0,4294967295,0) = 2, expected 1
+
+Current view:
+e0
+fn echoes u32x4 -> u32
+c fold same 4 0 p0
+r mov c
+ret r
+end
+fn same u32 u32 u32x4 -> u32 end
+g0
+fn same u32 u32 u32x4 -> u32 end
+fn echoes u32x4 -> u32 end
+Try again.

@@ -1,0 +1,50 @@
+{
+ "q-tank-refill/a0/structured": [
+  "r le t c"
+ ],
+ "q-ladder-sum/a0/structured": [
+  "fn rung u32 u32 u32 -> u32\nj add p1 1\nm mul j p2\ns add p0 m\nret s\nend"
+ ],
+ "q-hue-field/a0/structured": [
+  "m and s 15"
+ ],
+ "q-seal-last/a0/structured": [
+  "v get p0 0"
+ ],
+ "q-vote-pass/a0/structured": [
+  "r ge c 3\nfn tally u32 u32 u32x4 -> u32\nv get p2 p1\nnz ne v 0\nq select nz 1 0\ns add p0 q\nret s\nend"
+ ],
+ "q-heater-on/a0/structured": [
+  "n eq b false @ b\nr and a n"
+ ],
+ "q-odometer/a0/structured": [
+  "r rem s 100000"
+ ],
+ "q-level-up/a0/structured": [
+  "u ge t 100"
+ ],
+ "q-off-day/a0/structured": [
+  "fn weekend u32 -> bool\na eq p0 0\nb eq p0 6\nr or a b\nret r\nend"
+ ],
+ "q-shift-in/a0/structured": [
+  "a get p0 1\nb get p0 2\nc get p0 3"
+ ],
+ "q-ledger-overdraw/a0/structured": [
+  "z rec p1 false\nfn post (u32,bool) u32 u32x4 -> (u32,bool)\nbal at p0 0\nfl at p0 1\nv get p2 p1\no and p1 1\nio ne o 0\nd add bal v\nw sub bal v\nnb select io w d\nneg ge nb 2147483648\nnf or fl neg\nr rec nb nf\nret r\nend"
+ ],
+ "q-pack565/a0/structured": [
+  "rs shl r 11\ng and p1 63"
+ ],
+ "q-grow-tenths/a0/structured": [
+  "fn credit u32 u32 u32 -> u32\nm mul p0 p2\nd div m 1000\ns add p0 d\nret s\nend"
+ ],
+ "q-calibrate/a0/structured": [
+  "fn calib u32 -> u32\nm mul p0 4\nr add m 3\nret r\nend"
+ ],
+ "q-door-lockout/a0/structured": [
+  "fn fresh u32 -> bool\nr lt p0 3\nret r\nend"
+ ],
+ "q-echo-count/a0/structured": [
+  "fn same u32 u32 u32x4 -> u32\nv get p2 p1\nf get p2 0\ne eq v f\nn ne p1 0\nb and e n\nc select b 1 0\ns add p0 c\nret s\nend"
+ ]
+}

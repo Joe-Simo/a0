@@ -1,0 +1,85 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 5
+[user]
+Halve the element at the position given by the second argument (positions wrap around the array); the function currently halves the element after it.
+
+e0
+fn f u32x4 u32 -> u32x4
+a add p1 1
+b get p0 a
+c shr b 1
+d set p0 a c
+ret d
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+[assistant]
+-a
+b get p0 p1
+
+[user]
+Rejected:
+structure: f.d: reference to undefined or later node 'a' fix: define 'a' on an earlier line of this function, or reference a node defined above f.d
+
+Try again.
+
+### CONVERSATION 11
+[user]
+Return (remaining, exhausted) for usage p0 against limit p1: remaining must be zero once usage reaches or passes the limit, and exhausted must be true as soon as usage reaches the limit.
+
+e0
+fn f u32 u32 -> (u32,bool)
+a sub p1 p0
+b gt p0 p1
+r rec a b
+ret r
+end
+g0
+fn f u32 u32 -> (u32,bool) end
+
+[assistant]
+check ge p0 p1
+a select check 0 a
+b ge p0 p1
+
+[user]
+Rejected:
+structure: f.a: reference to undefined or later node 'a' fix: 'a' is defined on a later line of f: move it above f.a
+
+Try again.
+
+### CONVERSATION 14
+[user]
+Given a weekday p0 between 0 and 6 and a number of days p1, return the weekday (0 to 6) reached after moving p1 days forward; at the moment the result is never 6.
+
+e0
+fn f u32 u32 -> u32
+a add p0 p1
+b rem a 6
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+b rem a 7
+
+[user]
+Rejected:
+f(6,4294967295) = 5, expected 2
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a add p0 p1
+b rem a 7
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+Try again.

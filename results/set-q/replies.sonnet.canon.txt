@@ -1,0 +1,112 @@
+### REPLY 1
+r le t p1
+### REPLY 2
+fn rung u32 u32 u32 -> u32
+w add p1 1
+m mul w p2
+r add p0 m
+ret r
+end
+### REPLY 3
+m and s 15
+### REPLY 4
+v get p0 0
+### REPLY 5
+fn tally u32 u32 u32x4 -> u32
+v get p2 p1
+z ne v 0
+o select z 1 0
+r add p0 o
+ret r
+end
+r ge c 3
+### REPLY 6
+fn cold u32 u32 -> bool
+r lt p0 p1
+ret r
+end
+fn night u32 -> bool
+a ge p0 22
+b lt p0 6
+r or a b
+ret r
+end
+nb select b false true
+r and a nb
+### REPLY 7
+r rem s 100000
+### REPLY 8
+u ge t 100
+### REPLY 9
+fn wrap7 u32 -> u32
+r rem p0 7
+ret r
+end
+fn weekend u32 -> bool
+a eq p0 0
+b eq p0 6
+r or a b
+ret r
+end
+### REPLY 10
+a get p0 1
+b get p0 2
+c get p0 3
+r arr a b c p1
+### REPLY 11
+fn post (u32,bool) u32 u32x4 -> (u32,bool)
+b at p0 0
+f at p0 1
+v get p2 p1
+odd and p1 1
+dep add b v
+short lt b v
+wd sub b v
+nb select odd wd dep
+over and odd short
+nf or f over
+r rec nb nf
+ret r
+end
+z rec p1 false
+### REPLY 12
+rs shl r 11
+g and p1 63
+### REPLY 13
+fn credit u32 u32 u32 -> u32
+t add 1000 p2
+m mul p0 t
+r div m 1000
+ret r
+end
+### REPLY 14
+fn bias u32 -> u32
+r add p0 3
+ret r
+end
+fn scale u32 -> u32
+r mul p0 4
+ret r
+end
+x call scale p0
+y call bias x
+### REPLY 15
+fn codeok u32 -> bool
+r eq p0 1234
+ret r
+end
+fn fresh u32 -> bool
+r lt p0 3
+ret r
+end
+### REPLY 16
+fn same u32 u32 u32x4 -> u32
+a get p2 p1
+f get p2 0
+e eq a f
+g gt p1 0
+k and e g
+one select k 1 0
+r add p0 one
+ret r
+end

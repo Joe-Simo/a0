@@ -23,3 +23,28 @@ Rule: the shorter primer `K` may replace the shipped guide as the shipped edit t
 2. `K` cold tokens per accepted edit is lower than `S`'s (raw numbers).
 Both on both models, or nothing. Reported with wins, ties and losses and none hidden: the 10-task and unbounded horizons, acceptance after one repair, intervals, per-set counts and the failure classes. A cell in which a subagent instance fails systematically on one misreading is reported as the result it is, with the
 misreading named; it is not rerun. Incidents, refusals and unanswered requests are handled as in the earlier notes. The decision is read from `results/set-opq.json` and not changed after.
+
+## Result (collected after the rule above was committed; `results/set-opq.json`, `tools/set-h-summary.ts opq`)
+
+Sets O, P and Q were checked against their seals and not altered (the seals of H to N verify); the harness self-check passed in all twelve first-reply reports; twelve fresh first-reply subagents (one per variant, model and set, 16 requests each) and eight fresh repair subagents
+(O: Haiku S 6 replies, Haiku K 3, Sonnet S 1, Sonnet K 1; P: Haiku K 3; Q: Haiku S 5, Haiku K 16, Sonnet K 3; the other four cells needed none). No subject was refused or left a request unanswered. Files were scored only after every subagent had reported.
+
+Pooled over the three sets (n = 48 per cell), tokens per accepted edit, with the delete-and-add fix in force for every cell:
+
+| cell | system o200k | one shot | repaired | calls per task | cold (primary) | 10-task | unbounded |
+|---|---|---|---|---|---|---|---|
+| Haiku S (shipped guide) | 443 | 37 of 48 | 44 | 1.2 | 783.8 | 261.9 | 203.9 |
+| Haiku K (101-token primer) | 101 | 26 of 48 | 40 | 1.5 | 389.8 | 258.9 | 244.3 |
+| Sonnet S | 443 | 47 of 48 | 48 | 1.0 | 667.5 | 189.1 | 135.9 |
+| Sonnet K | 101 | 44 of 48 | 47 | 1.1 | 261.1 | 149.7 | 137.3 |
+
+**The pre-registered rule is not met on either model: K one shot is lower (26 against 37 on Haiku, 44 against 47 on Sonnet) although K's cold cost is lower on both (389.8 against 783.8, 261.1 against 667.5: 50 and 61 per cent less).** No change to the shipped text. Reported with none hidden: at the 10-task horizon K is lower on both (258.9 against 261.9, 149.7 against 189.1,
+the Haiku difference being 1 per cent, `results/set-opq.json`); unbounded K is higher on both (244.3 against 203.9, 137.3 against 135.9); after the repair K accepts fewer (Haiku 40 against 44, Sonnet 47 against 48). Wilson 95 per cent intervals of one shot overlap on Sonnet (S 0.891 to 0.996, K 0.804 to 0.967) and
+nearly overlap on Haiku (S 0.635 to 0.867, K 0.403 to 0.674; 0.635 against 0.674 overlap). Per set, one shot (S then K): Haiku O 10 and 13, P 16 and 13, Q 11 and 0; Sonnet O 15 and 15, P 16 and 16, Q 16 and 13.
+
+Failure classes (first reply). The delete-and-add pattern that caused all 8 of Sonnet K's first-reply failures on sets L, M and N did not recur on Sonnet (the fix works for that pattern). Sonnet K's 4 failures here were 3 wrong-logic and 1 operand-count error; Sonnet S's 1 was wrong logic. Haiku K's 22 first-reply failures were 18 wrong logic (16 of them in one cell, Haiku K on set Q, which was
+0 of 16 on one shot and 10 of 16 after the repair: well-formed edits with wrong values, one instance's misreading of the tasks), 3 structure or reference errors and 1 duplicate edit; Haiku S's 11 were 5 wrong logic, 2 duplicate edits, 2 nesting, 1 operand count and 1 structure error. Three Haiku `duplicate edit` failures remain (two edits of one id that are not a delete followed by an add): not fixed.
+Nothing was changed after seeing these results.
+
+Reading, with sets K and L, M, N: over four collections the short primer's cold-cost saving is consistent (50 to 62 per cent); its acceptance deficit is real but small on Sonnet (3 tasks of 48 here, 0 after the repair on sets L, M and N, with the delete-and-add pattern accounting for L, M, N's deficit) and larger and noisier on Haiku, where single instances dominate (one cell failed every task in two different sets).
+A mechanism the data suggest and do not show: the short primer states the edit rules and no language reference, so a model that does not already know what an operation does makes more logic errors. Whether adding the missing reference lines back costs less than the guide while recovering the acceptance is a new question for a new pre-registered set.

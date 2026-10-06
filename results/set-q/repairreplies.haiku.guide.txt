@@ -1,0 +1,44 @@
+### REPLY 2
+fn rung u32 u32 u32 -> u32
+w mul p2 p1
+a add w p2
+r add p0 a
+ret r
+end
+
+### REPLY 5
+fn tally u32 u32 u32x4 -> u32
+v get p2 p1
+nz ne v 0
+i add p0 1
+c select nz i p0
+ret c
+end
+
+### REPLY 6
+n ne b true
+r and a n
+
+### REPLY 11
+fn post (u32,bool) u32 u32x4 -> (u32,bool)
+v get p2 p1
+z at p0 0
+a add z v
+s sub z v
+m rem p1 2
+e eq m 0
+n select e a s
+neg lt n 0
+o at p0 1
+f or o neg
+r put p0 1 f
+final put r 0 n
+ret final
+end
+
+### REPLY 14
+fn calib u32 -> u32
+x call scale p0
+y call bias x
+ret y
+end

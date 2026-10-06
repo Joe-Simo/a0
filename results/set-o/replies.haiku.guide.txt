@@ -1,0 +1,83 @@
+### REPLY 1
+b ge a p2
+
+### REPLY 2
+b and a 15
+
+### REPLY 3
+g lt e 40
+
+### REPLY 4
+h and g 4095
+
+### REPLY 5
+b get p0 p1
+
+### REPLY 6
+s fold acc 4 0 p0
+fn acc u32 u32 u32x4 -> u32
+v get p2 p1
+ret add p0 v
+end
+
+### REPLY 7
+c and p0 b
+
+### REPLY 8
+b call weigh p0 p1
+
+### REPLY 9
+r arr a1 a2 a3 p1
+
+### REPLY 10
+a sub p0 p1
+cond lt p0 p1
+net select cond 0 a
+t call tax net
+r add net t
+
+### REPLY 11
+a sub p1 p0
+cond ge p0 p1
+remain select cond 0 a
+b ge p0 p1
+r rec remain b
+
+### REPLY 12
+a mul p0 5
+b div a 4
+c add b 1
+
+### REPLY 13
+c1 select e1 1 0
+c2 select e2 2 c1
+c3 select e3 3 c2
+e2 and e2 e1 @ a1
+e3 and e3 e2 @ a2
+c2 select e2 3 1
+c3 select e3 4 c2
+
+### REPLY 14
+b rem a 7
+
+### REPLY 15
+c0 select p0 1 0
+c1 select p1 1 0
+c2 select p2 1 0
+s add c0 c1
+s add s c2
+-a
+-b
+ret eq s 1
+
+### REPLY 16
+fn gap u32 u32 u32x4 -> u32
+is_first eq p1 0
+curr get p2 p1
+prev_idx sub p1 1
+prev get p2 prev_idx
+rise sub curr prev
+new_max select (gt rise p0) rise p0
+result select is_first p0 new_max
+ret result
+end

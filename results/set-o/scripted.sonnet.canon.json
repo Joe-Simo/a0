@@ -1,0 +1,51 @@
+{
+ "o-ttl-expired/a0/structured": [
+  "b ge a p2"
+ ],
+ "o-field-code/a0/structured": [
+  "b and a 15"
+ ],
+ "o-discount-ship/a0/structured": [
+  "g lt e 40"
+ ],
+ "o-hash-bucket/a0/structured": [
+  "h and g 4095"
+ ],
+ "o-decay-slot/a0/structured": [
+  "b get p0 p1\nd set p0 p1 c\n-a"
+ ],
+ "o-lane-total/a0/structured": [
+  "s fold acc 4 0 p0"
+ ],
+ "o-perm-check/a0/structured": [
+  "c and p0 b"
+ ],
+ "o-weighted-pick/a0/structured": [
+  "b call weigh p0 p1"
+ ],
+ "o-shift-lanes/a0/structured": [
+  "r arr a1 a2 a3 p1"
+ ],
+ "o-net-tax/a0/structured": [
+  "-t\n-r\nn sub p0 p1\nz lt p0 p1\nm select z 0 n\nt call tax m\nr add m t"
+ ],
+ "o-quota-state/a0/structured": [
+  "-a\n-b\n-r\nz lt p0 p1\nn sub p1 p0\na select z n 0\nb ge p0 p1\nr rec a b"
+ ],
+ "o-bright-scale/a0/structured": [
+  "a mul p0 5\nb div a 4\nc add b 1\nret c"
+ ],
+ "o-leading-run/a0/structured": [
+  "-c1\n-c2\n-c3\nc3 select e3 4 3\nc2 select e2 c3 2\nc1 select e1 c2 1\nret c1"
+ ],
+ "o-weekday-after/a0/structured": [
+  "b rem a 7",
+  "a rem p0 7\nx rem p1 7\ny add a x\nb rem y 7\nret b"
+ ],
+ "o-exactly-one/a0/structured": [
+  "c and p0 p1\nd and c p2\ne xor b d\nret e"
+ ],
+ "o-largest-rise/a0/structured": [
+  "s fold gap 3 0 p0\nfn gap u32 u32 u32x4 -> u32\na add p1 1\nb get p2 a\nc get p2 p1\nd gt b c\ne sub b c\ng select d e 0\nh gt g p0\nr select h g p0\nret r\nend"
+ ]
+}

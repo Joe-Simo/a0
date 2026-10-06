@@ -1,0 +1,53 @@
+{
+ "q-tank-refill/a0/structured": [
+  "r le t p1"
+ ],
+ "q-ladder-sum/a0/structured": [
+  "fn rung u32 u32 u32 -> u32\nw add p1 1\nm mul w p2\nr add p0 m\nret r\nend"
+ ],
+ "q-hue-field/a0/structured": [
+  "m and s 15"
+ ],
+ "q-seal-last/a0/structured": [
+  "v get p0 0"
+ ],
+ "q-vote-pass/a0/structured": [
+  "fn tally u32 u32 u32x4 -> u32\nv get p2 p1\nz ne v 0\no select z 1 0\nr add p0 o\nret r\nend\nr ge c 3"
+ ],
+ "q-heater-on/a0/structured": [
+  "fn cold u32 u32 -> bool\nr lt p0 p1\nret r\nend\nfn night u32 -> bool\na ge p0 22\nb lt p0 6\nr or a b\nret r\nend\nnb select b false true\nr and a nb",
+  "fn night u32 -> bool\nr ne p0 0\nret r\nend\nfn cold u32 u32 -> bool\nr lt p0 p1\nret r\nend\nnb select b false true\nr and a nb"
+ ],
+ "q-odometer/a0/structured": [
+  "r rem s 100000"
+ ],
+ "q-level-up/a0/structured": [
+  "u ge t 100"
+ ],
+ "q-off-day/a0/structured": [
+  "fn wrap7 u32 -> u32\nr rem p0 7\nret r\nend\nfn weekend u32 -> bool\na eq p0 0\nb eq p0 6\nr or a b\nret r\nend"
+ ],
+ "q-shift-in/a0/structured": [
+  "a get p0 1\nb get p0 2\nc get p0 3\nr arr a b c p1"
+ ],
+ "q-ledger-overdraw/a0/structured": [
+  "fn post (u32,bool) u32 u32x4 -> (u32,bool)\nb at p0 0\nf at p0 1\nv get p2 p1\nodd and p1 1\ndep add b v\nshort lt b v\nwd sub b v\nnb select odd wd dep\nover and odd short\nnf or f over\nr rec nb nf\nret r\nend\nz rec p1 false",
+  "fn post (u32,bool) u32 u32x4 -> (u32,bool)\nb at p0 0\nf at p0 1\nv get p2 p1\no and p1 1\nodd ne o 0\ndep add b v\nshort lt b v\nwd sub b v\nnb select odd wd dep\nover and odd short\nnf or f over\nr rec nb nf\nret r\nend\nz rec p1 false"
+ ],
+ "q-pack565/a0/structured": [
+  "rs shl r 11\ng and p1 63"
+ ],
+ "q-grow-tenths/a0/structured": [
+  "fn credit u32 u32 u32 -> u32\nt add 1000 p2\nm mul p0 t\nr div m 1000\nret r\nend"
+ ],
+ "q-calibrate/a0/structured": [
+  "fn bias u32 -> u32\nr add p0 3\nret r\nend\nfn scale u32 -> u32\nr mul p0 4\nret r\nend\nx call scale p0\ny call bias x"
+ ],
+ "q-door-lockout/a0/structured": [
+  "fn codeok u32 -> bool\nr eq p0 1234\nret r\nend\nfn fresh u32 -> bool\nr lt p0 3\nret r\nend",
+  "fn codeok u32 -> bool\nr eq p0 4321\nret r\nend\nfn fresh u32 -> bool\nr lt p0 3\nret r\nend\nfn unlock u32 u32 -> bool\na call codeok p0\nb call fresh p1\nr and a b\nret r\nend"
+ ],
+ "q-echo-count/a0/structured": [
+  "fn same u32 u32 u32x4 -> u32\na get p2 p1\nf get p2 0\ne eq a f\ng gt p1 0\nk and e g\none select k 1 0\nr add p0 one\nret r\nend"
+ ]
+}

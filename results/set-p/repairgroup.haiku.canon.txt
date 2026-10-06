@@ -1,0 +1,96 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 1
+[user]
+Return p0 with its lowest p1 bits flipped (p1 is from 0 to 31).
+
+e0
+fn f u32 u32 -> u32
+a shl 1 p1
+b xor p0 a
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+a sub a 1
+
+[user]
+Rejected:
+structure: f.a: reference to undefined or later node 'a' fix: 'a' is defined on a later line of f: move it above f.a
+
+Try again.
+
+### CONVERSATION 4
+[user]
+f is meant to xor together the elements at even positions (0 and 2) of the array, but it currently misses one of them. Fix it.
+
+e0
+fn f u32x4 -> u32
+a fold step 2 0 p0
+r mov a
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+r xor p0 e
+ret r
+end
+
+[user]
+Rejected:
+f(0,0,1,0) = 0, expected 1
+f(3,5,6,9) = 6, expected 5
+f(4294967295,1,4294967295,2) = 4294967294, expected 0
+f(0,9,4,9) = 9, expected 4
+f(255,0,15,0) = 255, expected 240
+
+Current view:
+e0
+fn f u32x4 -> u32
+a fold step 2 0 p0
+r mov a
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+f should return true when the lowest byte of p0 equals its second-lowest byte (bits 8 to 15); right now it compares against too many bits.
+
+e0
+fn f u32 -> bool
+a and p0 255
+b shr p0 8
+c eq a b
+ret c
+end
+g0
+fn f u32 -> bool end
+
+[assistant]
+a and p0 255
+b shr p0 8
+b and b 255
+c eq a b
+ret c
+
+[user]
+Rejected:
+edit: line 4: duplicate edit for 'b'
+
+Try again.
