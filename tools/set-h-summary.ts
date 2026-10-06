@@ -22,9 +22,13 @@ interface Report {
   trials: Trial[];
 }
 
-const SET = process.argv.find((a) => /^[hij]$/.test(a)) ?? 'h';
+const SET = process.argv.find((a) => /^[hijk]$/.test(a)) ?? 'h';
 const MODELS = ['haiku', 'sonnet'] as const;
-const FORMS = { dense: 'D', canon: 'K' } as const;
+// Sets H, I and J compare the dense form (D) with the canonical one (K) on the 10-task session; set K compares the shipped guide (S)
+// with the 101-token edit primer (K) on the cold single task (the horizon of the ai-tokens-* losses).
+const FIRST = SET === 'k' ? 'guide' : 'dense';
+const PRIMARY = SET === 'k' ? 'task1' : 'session10';
+const FORMS = { [FIRST]: SET === 'k' ? 'S' : 'D', canon: 'K' } as Record<string, string>;
 const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
 const r1 = (x: number): number => Math.round(x * 10) / 10;
 function wilson(k: number, n: number): [number, number] {
@@ -41,7 +45,7 @@ const tpa: Record<string, Record<string, Record<string, number>>> = {};
 const counts: Record<string, Record<string, { oneShot: number; accepted: number }>> = {};
 let sha = '';
 for (const m of MODELS) {
-  for (const form of Object.keys(FORMS) as (keyof typeof FORMS)[]) {
+  for (const form of Object.keys(FORMS)) {
     const rep = JSON.parse(
       readFileSync(`results/set-${SET}/report.${m}.${form}.json`, 'utf8'),
     ) as Report;
@@ -84,13 +88,17 @@ for (const m of MODELS) {
 }
 const verdict = Object.fromEntries(
   MODELS.map((m) => {
-    const d = counts[m]?.dense;
+    const d = counts[m]?.[FIRST];
     const k = counts[m]?.canon;
-    const td = tpa[m]?.dense?.session10;
-    const tk = tpa[m]?.canon?.session10;
-    const c1 = d !== undefined && k !== undefined && d.oneShot >= k.oneShot;
-    const c2 = td !== undefined && tk !== undefined && td < tk;
-    return [m, { oneShotNotLower: c1, session10Lower: c2, met: c1 && c2 }];
+    const td = tpa[m]?.[FIRST]?.[PRIMARY];
+    const tk = tpa[m]?.canon?.[PRIMARY];
+    // Set K reverses the roles: the shorter primer (K) must not lose acceptance and must cost less than the shipped guide (S).
+    const c1 =
+      d !== undefined &&
+      k !== undefined &&
+      (SET === 'k' ? k.oneShot >= d.oneShot : d.oneShot >= k.oneShot);
+    const c2 = td !== undefined && tk !== undefined && (SET === 'k' ? tk < td : td < tk);
+    return [m, { oneShotNotLower: c1, primaryHorizon: PRIMARY, primaryLower: c2, met: c1 && c2 }];
   }),
 );
 const met = MODELS.every((m) => (verdict[m] as { met: boolean }).met);
@@ -104,14 +112,18 @@ writeFileSync(
         h: 'docs/history/2026-10-06-dense-default-preregistration.md',
         i: 'docs/history/2026-10-06-set-i-preregistration.md',
         j: 'docs/history/2026-10-06-set-j-preregistration.md',
+        k: 'docs/history/2026-10-06-set-k-preregistration.md',
       }[SET],
       taskSetSha256: sha,
-      meaning: `Set ${SET.toUpperCase()}, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.`,
+      meaning:
+        SET === 'k'
+          ? 'Set K, the shipped guide (S: MODEL_GUIDE.min.txt) against the 101-token edit primer (K: canon.KR3), canonical form, fresh Haiku and Sonnet subagents, one shot plus one repair; tokens per accepted edit at the cold, 10-task and unbounded horizons, the cold task being primary.'
+          : `Set ${SET.toUpperCase()}, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.`,
       cells,
-      preRegisteredRule: { verdict, recommendDense: met },
+      preRegisteredRule: { verdict, [SET === 'k' ? 'shipShortPrimer' : 'recommendDense']: met },
     },
     null,
     2,
   )}\n`,
 );
-console.log(JSON.stringify({ counts, tpa, verdict, recommendDense: met }, null, 1));
+console.log(JSON.stringify({ counts, tpa, verdict, met }, null, 1));
