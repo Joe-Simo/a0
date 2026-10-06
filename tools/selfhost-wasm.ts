@@ -93,6 +93,10 @@ const CAPACITY = 4;
 /** The C main of `a0w`: stdin words (little-endian) are the io input, stdout the output words. */
 export const toolMain = `#include <pthread.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 #define A0_IO_INPUT_CAPACITY ${WASM_TOOL_INPUT}u
 #define A0_IO_OUTPUT_CAPACITY ${WASM_TOOL_OUTPUT}u
 #include "emitter.c"
@@ -104,6 +108,11 @@ static void *run(void *arg) {
   return NULL;
 }
 int main(void) {
+#ifdef _WIN32
+  /* the words are binary: no newline or end-of-file translation */
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
+#endif
   unsigned char b[4];
   uint32_t n = 0;
   while (fread(b, 1, 4, stdin) == 4) {
@@ -1318,6 +1327,10 @@ async function main(): Promise<void> {
   const bigret = BEHAVIOR_SPEC.find((b) => b.name === 'bigret');
   if (bigret === undefined) throw new Error('behavior program bigret is missing');
   programs.push(['behavior/bigret', parseAndValidate(bigret.source), small]);
+  // and as add, xor, compare and select operands, fold initial states and literal-only calls
+  const biglit = BEHAVIOR_SPEC.find((b) => b.name === 'biglit');
+  if (biglit === undefined) throw new Error('behavior program biglit is missing');
+  programs.push(['behavior/biglit', parseAndValidate(biglit.source), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,
