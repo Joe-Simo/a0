@@ -1,0 +1,648 @@
+# A0 port of `linkMachO` of src/macho.ts: the Mach-O arm64 executable writer that resolves the
+# relocations of an src/arm64enc.ts module and signs the result ad hoc (SHA-256 code directory),
+# without the system linker. The bytes are identical to the TypeScript (test/macho-a0.test.ts
+# checks them on the arm64 modules of the corpus and the examples). The layout, the load commands
+# and the signature are described at the top of src/macho.ts.
+#
+# Input (the table p0 of `macho` and `machoio`, u32x128x512, word i at page i>>7, word i&127): the
+# fields of the `Arm64Module` of src/arm64enc.ts as plain u32 words.
+#   word 0 W         instruction words (`words.length`)
+#   word 1 R         relocations (`relocations.length`)
+#   word 2 B         bss symbols (`bss.length`)
+#   word 3 L         text labels (the entries of `labels`, in any order)
+#   word 4 bssSize   word 5 bssAlign (log2)   word 6 entry: byte offset of the entry label
+#   word 7           0
+#   words 8 ..                 the W instruction words (`words`)
+#   then 3 words per relocation: byte offset, kind (0 branch26, 1 page21, 2 pageoff12), symbol id
+#   then B words: the byte offset of each bss symbol in `bss` order (`bss[k].offset`)
+#   then L words: the byte offset of each label
+# A symbol id names: 0 1 2 the imports _mmap _read _write (IMPORTS of src/macho.ts), 3 + k the
+# bss symbol k, 3 + B + k the label k. As in the TypeScript a label wins, an import is reached by
+# branch26 only (through its stub) and a bss symbol by page21 / pageoff12 only.
+#
+# Output. `macho` returns the file as a table of little-endian words (byte k is byte k&3 of word
+# k>>2); `mosize` its size in bytes, 0 when the input is refused: more than 65536 input words, a
+# file over 262144 bytes, bssSize over 2^31, bssAlign over 31, an entry outside the text, or a
+# relocation that is misaligned, outside the text, of an unknown kind or to a symbol it cannot
+# reach (the TypeScript throws "undefined symbol"). `machoio` writes the bytes to the io token,
+# one word per byte, or the single word 4294967295 when the input is refused.
+#
+# Layout (byte offsets; every value below 2^32, the 64-bit addresses are 2^32 + value):
+#   text at 992 (TEXT_OFFSET: 32 + 952 bytes of load commands, rounded to 16), stubs after it,
+#   __TEXT segment size S = the end of the stubs rounded to 16384, __DATA_CONST (the GOT) at S,
+#   __DATA (bss) at vm S + 16384, __LINKEDIT at file S + 16384: 112 bytes of chained fixups,
+#   then the signature: 20 + 88 + 4 bytes of headers and identifier, 32 bytes per 4096-byte page.
+
+# ---------------------------------------------------------------------------------------------
+# Tables
+
+# word p1 of the table p0
+fn mog u32x128x512 u32 -> u32
+a shr p1 7
+b get p0 a
+c and p1 127
+d get b c
+ret d
+end
+# the table with word p2 set to p3 (a fold of one trip: p1 is the trip)
+fn mop u32x128x512 u32 u32 u32 -> u32x128x512
+a shr p2 7
+b get p0 a
+c and p2 127
+d set b c p3
+e set p0 a d
+ret e
+end
+# the words p2 .. p2 + 3 set to p3 .. p6 (one trip)
+fn mo4 u32x128x512 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a fold mop 1 p0 p2 p3
+b add p2 1
+c fold mop 1 a b p4
+d add p2 2
+e fold mop 1 c d p5
+f add p2 3
+g fold mop 1 e f p6
+ret g
+end
+# the zero table
+fn moz -> u32x128x512
+a arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+ret b
+end
+
+# ---------------------------------------------------------------------------------------------
+# Words
+
+# p0 rounded up to a multiple of 16384
+fn moal u32 -> u32
+a add p0 16383
+b and a 4294950912
+ret b
+end
+# p0 with its bytes reversed (a big-endian field in a little-endian word)
+fn mobs u32 -> u32
+a shr p0 24
+b shr p0 8
+c and b 65280
+d shl p0 8
+e and d 16711680
+f shl p0 24
+g or a c
+h or g e
+i or h f
+ret i
+end
+# p0 rotated right by p1 (0 < p1 < 32)
+fn moror u32 u32 -> u32
+a shr p0 p1
+b sub 32 p1
+c shl p0 b
+d or a c
+ret d
+end
+# the adrp immediate bits for the target p0 and the pc p1 (file offsets): `pageBits`
+fn mopage u32 u32 -> u32
+a shr p0 12
+b shr p1 12
+c sub a b
+d and c 2097151
+e and d 3
+f shl e 29
+g shr d 2
+h shl g 5
+i or f h
+ret i
+end
+# the instruction word p0 with the relocation of kind p1 to the target p2 at the pc p3 applied
+fn mopatch u32 u32 u32 u32 -> u32
+a sub p2 p3
+b shr a 2
+c and b 67108863
+d or p0 c
+e call mopage p2 p3
+f or p0 e
+g and p2 4095
+h shl g 10
+i or p0 h
+j eq p1 0
+k eq p1 1
+l select k f i
+m select j d l
+ret m
+end
+
+# ---------------------------------------------------------------------------------------------
+# Load commands
+
+# a segment command of 72 + 80 p13 bytes at word p2 (one trip): name words p3 p4 p5, vmaddr
+# 2^32 * p7 + p6, vmsize p8, fileoff p9, filesize p10, protections p11, p12 sections, flags p13,
+# vmsize high word p14
+fn moseg u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a mul p12 80
+b add a 72
+c fold mo4 1 p0 p2 25 b p3 p4
+d add p2 4
+e fold mo4 1 c d p5 0 p6 p7
+f add p2 8
+g fold mo4 1 e f p8 p14 p9 0
+h add p2 12
+i fold mo4 1 g h p10 0 p11 p11
+j add p2 16
+k fold mo4 1 i j p12 p13 0 0
+ret k
+end
+# a section of 80 bytes at word p2 (one trip): section name words p3 p4, segment name words p5
+# p6 p13, address 2^32 + p7, size p8, offset p9, alignment p10, flags p11, reserved2 p12
+fn mosec u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a fold mo4 1 p0 p2 p3 p4 0 0
+b add p2 4
+c fold mo4 1 a b p5 p6 p13 0
+d add p2 8
+e fold mo4 1 c d p7 1 p8 0
+f add p2 12
+g fold mo4 1 e f p9 p10 0 0
+h add p2 16
+i fold mo4 1 g h p11 0 p12 0
+ret i
+end
+# the header and the load commands (words 0 .. 245) of a text of p2 bytes (one trip): __TEXT
+# size p3, GOT p4, __DATA vm p5 and vm size p6, __LINKEDIT offset p7 vm p8 size p9, signature
+# offset p10 and size p11, bss size p12 and alignment p13, entry offset p14
+fn mohdr u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a fold mo4 1 p0 0 4277009103 16777228 0 2
+b fold mo4 1 a 4 13 952 2097285 0
+c fold moseg 1 b 8 1095786335 1163543879 20306 0 0 0 0 0 0 0 0 1
+d fold moseg 1 c 26 1163157343 21592 0 0 1 p3 0 p3 5 2 0 0
+e add p2 992
+f fold mosec 1 d 44 1702125407 29816 1163157343 21592 992 p2 992 2 2147484672 0 0
+g fold mosec 1 f 64 1953718111 7561845 1163157343 21592 e 36 e 2 2147484680 12 0
+h fold moseg 1 g 84 1094999903 1130316116 1414745679 p4 1 16384 p4 16384 3 1 16 0
+i fold mosec 1 h 102 1869045599 116 1094999903 1130316116 p4 24 p4 3 6 0 1414745679
+j fold moseg 1 i 122 1094999903 16724 0 p5 1 p6 0 0 3 1 0 0
+k fold mosec 1 j 140 1935826783 115 1094999903 16724 p5 p12 0 p13 1 0 0
+l call moal p9
+m fold moseg 1 k 160 1229741919 1145391950 21577 p8 1 l p7 p9 1 0 0 0
+n fold mo4 1 m 178 2147483700 16 p7 112
+o fold mo4 1 n 182 2 24 0 0
+q fold mo4 1 o 188 11 80 0 0
+r fold mo4 1 q 208 14 32 12 1920169263
+s fold mo4 1 r 212 1651076143 1819894831 100 0
+t fold mo4 1 s 216 50 24 1 720896
+u add p14 992
+v fold mo4 1 t 220 720896 0 2147483688 24
+w fold mo4 1 v 224 u 0 0 0
+x fold mo4 1 w 228 12 56 24 2
+y fold mo4 1 x 232 89063424 65536 1920169263 1651076143
+z fold mo4 1 y 236 1651076143 1953724755 1110338917 1819894830
+aa fold mo4 1 z 240 25193 0 29 16
+ab fold mo4 1 aa 244 p10 p11 0 0
+ret ab
+end
+
+# ---------------------------------------------------------------------------------------------
+# Text, relocations, stubs, GOT, chained fixups
+
+# instruction p1 copied from the input p2 to word 248 + p1 (992 / 4)
+fn motxt u32x128x512 u32 u32x128x512 -> u32x128x512
+a add p1 8
+b call mog p2 a
+c add p1 248
+d fold mop 1 p0 c b
+ret d
+end
+# the target (file offset) of the symbol p1 for a relocation of kind p2, and whether it resolves:
+# input p0, B p3, first bss word p4, L p5, first label word p6, stubs p7, __DATA vm p8
+fn motv u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> (u32,bool)
+a add p3 3
+b ge p1 a
+c sub p1 a
+d lt c p5
+e and b d
+f add p6 c
+g call mog p0 f
+h add g 992
+i lt p1 3
+j eq p2 0
+k and i j
+l mul p1 12
+m add p7 l
+n ge p1 3
+o lt p1 a
+q and n o
+r xor j true
+s and q r
+t sub p1 3
+u add p4 t
+v call mog p0 u
+w add p8 v
+x select s w 0
+y select k m x
+z select e h y
+aa or e k
+ab or aa s
+ac le p2 2
+ad and ab ac
+ae rec z ad
+ret ae
+end
+# relocation p1 applied to the file p0: input p2, first relocation word p3, B p4, first bss word
+# p5, L p6, first label word p7, stubs p8, __DATA vm p9
+fn moapp u32x128x512 u32 u32x128x512 u32 u32 u32 u32 u32 u32 u32 -> u32x128x512
+a mul p1 3
+b add p3 a
+c call mog p2 b
+d add b 1
+e call mog p2 d
+f add b 2
+g call mog p2 f
+h call motv p2 g e p4 p5 p6 p7 p8 p9
+i at h 0
+j add c 992
+k shr c 2
+l add k 248
+m call mog p0 l
+n call mopatch m e i j
+o fold mop 1 p0 l n
+ret o
+end
+# whether relocation p1 resolves (state p0; the arguments of moapp, then the text bytes p10)
+fn mochk bool u32 u32x128x512 u32 u32 u32 u32 u32 u32 u32 u32 -> bool
+a mul p1 3
+b add p3 a
+c call mog p2 b
+d add b 1
+e call mog p2 d
+f add b 2
+g call mog p2 f
+h call motv p2 g e p4 p5 p6 p7 p8 p9
+i at h 1
+j and c 3
+k eq j 0
+l lt c p10
+m and i k
+n and m l
+o and p0 n
+ret o
+end
+# stub p1 (adrp x16 / ldr x16 / br x16 through GOT slot p1): stubs p2, GOT p3
+fn mostub u32x128x512 u32 u32 u32 -> u32x128x512
+a mul p1 12
+b add p2 a
+c mul p1 8
+d add p3 c
+e call mopage d b
+f or 2415919120 e
+g and d 4095
+h shr g 3
+i shl h 10
+j or 4181721616 i
+k shr b 2
+l fold mop 1 p0 k f
+m add k 1
+n fold mop 1 l m j
+o add k 2
+q fold mop 1 n o 3592356352
+ret q
+end
+# the GOT (three chained bind pointers) at p2 and the chained fixups at p3 (one trip; byte offsets)
+fn mofix u32x128x512 u32 u32 u32 -> u32x128x512
+a shr p2 2
+b fold mo4 1 p0 a 0 2148532224 1 2148532224
+c add a 4
+d fold mo4 1 b c 2 2147483648 0 0
+e shr p3 2
+f fold mo4 1 d e 0 32 80 92
+g add e 4
+h fold mo4 1 f g 3 1 0 0
+i add e 8
+j fold mo4 1 h i 5 0 0 24
+k add e 12
+l fold mo4 1 j k 0 0 24 409600
+m add e 16
+n fold mo4 1 l m p2 0 0 1
+o add e 20
+q fold mo4 1 n o 513 3585 6657 1835884288
+r add e 24
+s fold mo4 1 q r 1593864289 1684104562 1920425728 6648937
+ret s
+end
+
+# ---------------------------------------------------------------------------------------------
+# SHA-256 of the pages
+
+# the round constants
+fn mok -> u32x64
+k arr 1116352408 1899447441 3049323471 3921009573 961987163 1508970993 2453635748 2870763221 3624381080 310598401 607225278 1426881987 1925078388 2162078206 2614888103 3248222580 3835390401 4022224774 264347078 604807628 770255983 1249150122 1555081692 1996064986 2554220882 2821834349 2952996808 3210313671 3336571891 3584528711 113926993 338241895 666307205 773529912 1294757372 1396182291 1695183700 1986661051 2177026350 2456956037 2730485921 2820302411 3259730800 3345764771 3516065817 3600352804 4094571909 275423344 430227734 506948616 659060556 883997877 958139571 1322822218 1537002063 1747873779 1955562222 2024104815 2227730452 2361852424 2428436474 2756734187 3204031479 3329325298
+ret k
+end
+# schedule word p1 of block p5 (of p6) of the message of p4 bytes (a multiple of 4) at byte p3 of
+# the file p2: the padded message word for p1 < 16, the expansion above
+fn mosw u32x64 u32 u32x128x512 u32 u32 u32 u32 -> u32x64
+a shl p5 6
+b shl p1 2
+c add a b
+d add p3 c
+e shr d 2
+f call mog p2 e
+g call mobs f
+h sub p6 1
+i eq p5 h
+j eq p1 15
+k and i j
+l shl p4 3
+m select k l 0
+n eq c p4
+o select n 2147483648 m
+q lt c p4
+r select q g o
+s sub p1 15
+t get p0 s
+u call moror t 7
+v call moror t 18
+w shr t 3
+x xor u v
+y xor x w
+z sub p1 2
+aa get p0 z
+ab call moror aa 17
+ac call moror aa 19
+ad shr aa 10
+ae xor ab ac
+af xor ae ad
+ag sub p1 16
+ah get p0 ag
+ai sub p1 7
+aj get p0 ai
+ak add ah y
+al add ak aj
+am add al af
+an lt p1 16
+ao select an r am
+ap set p0 p1 ao
+ret ap
+end
+# round p1 of the compression on the working variables p0 (schedule p2, constants p3)
+fn mornd u32x8 u32 u32x64 u32x64 -> u32x8
+va get p0 0
+vb get p0 1
+vc get p0 2
+vd get p0 3
+ve get p0 4
+vf get p0 5
+vg get p0 6
+vh get p0 7
+a call moror ve 6
+b call moror ve 11
+c call moror ve 25
+d xor a b
+e xor d c
+f and ve vf
+g xor ve 4294967295
+h and g vg
+i xor f h
+j get p3 p1
+k get p2 p1
+l add vh e
+m add l i
+n add m j
+t1 add n k
+o call moror va 2
+q call moror va 13
+r call moror va 22
+s xor o q
+u xor s r
+v and va vb
+w and va vc
+x and vb vc
+y xor v w
+z xor y x
+t2 add u z
+aa add t1 t2
+ab add vd t1
+ac arr aa va vb vc ab ve vf vg
+ret ac
+end
+# the hash p0 after block p1 of the message of p4 bytes at byte p3 of the file p2 (p5 blocks,
+# constants p6)
+fn moblk u32x8 u32 u32x128x512 u32 u32 u32 u32x64 -> u32x8
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+w fold mosw 64 z p2 p3 p4 p1 p5
+r fold mornd 64 p0 w p6
+a get p0 0
+b get r 0
+c add a b
+d get p0 1
+e get r 1
+f add d e
+g get p0 2
+h get r 2
+i add g h
+j get p0 3
+k get r 3
+l add j k
+m get p0 4
+n get r 4
+o add m n
+q get p0 5
+s get r 5
+t add q s
+u get p0 6
+v get r 6
+x add u v
+y get p0 7
+aa get r 7
+ab add y aa
+ac arr c f i l o t x ab
+ret ac
+end
+# the hash of page p1 (the bytes before the signature offset p2) written big endian at word
+# p3 + 8 p1 (constants p4)
+fn mopg u32x128x512 u32 u32 u32 u32x64 -> u32x128x512
+a shl p1 12
+b add a 4096
+c lt b p2
+d select c b p2
+e sub d a
+f add e 72
+g shr f 6
+h arr 1779033703 3144134277 1013904242 2773480762 1359893119 2600822924 528734635 1541459225
+i fold moblk g h p0 a e g p4
+j shl p1 3
+k add p3 j
+l get i 0
+m call mobs l
+n get i 1
+o call mobs n
+q get i 2
+r call mobs q
+s get i 3
+t call mobs s
+u fold mo4 1 p0 k m o r t
+v get i 4
+w call mobs v
+x get i 5
+y call mobs x
+z get i 6
+aa call mobs z
+ab get i 7
+ac call mobs ab
+ad add k 4
+ae fold mo4 1 u ad w y aa ac
+ret ae
+end
+# the signature headers at byte p2 (one trip): signature size p3, pages p4, __TEXT size p5; the
+# fields are big endian, so each word is stored byte-reversed
+fn mosig u32x128x512 u32 u32 u32 u32 u32 -> u32x128x512
+a shr p2 2
+b call mobs p3
+c fold mo4 1 p0 a 3222068986 b 16777216 0
+d add a 4
+e shl p4 5
+f add e 92
+g call mobs f
+h fold mo4 1 c d 335544320 34397946 g 262656
+i add a 8
+j call mobs p4
+k call mobs p2
+l fold mo4 1 h i 33554944 1543503872 1476395008 0
+m add a 12
+n fold mo4 1 l m j k 201327136 0
+o add a 24
+q call mobs p5
+r fold mo4 1 n o q 0 16777216 0
+s add a 27
+t fold mop 1 r s 6500449
+ret t
+end
+
+# ---------------------------------------------------------------------------------------------
+# The executable
+
+# the size in bytes of the file for the input p0, 0 when it is refused (see the top)
+fn mosize u32x128x512 -> u32
+w call mog p0 0
+r call mog p0 1
+b call mog p0 2
+l call mog p0 3
+bs call mog p0 4
+ba call mog p0 5
+en call mog p0 6
+a le w 65536
+c le r 65536
+d le b 65536
+e le l 65536
+f and a c
+g and f d
+h and g e
+i mul r 3
+j add w i
+k add j b
+m add k l
+n add m 8
+o le n 65536
+q and h o
+ts shl w 2
+st add ts 992
+s0 add st 36
+seg call moal s0
+dvm add seg 16384
+x le bs 2147483648
+y call moal bs
+sig add dvm 112
+z add sig 4095
+pg shr z 12
+aa shl pg 5
+ab add aa 112
+fs add sig ab
+ac le fs 262144
+ad le ba 31
+ae lt en ts
+af and en 3
+ag eq af 0
+ah and q x
+ai and ah ac
+aj and ai ad
+ak and aj ae
+al and ak ag
+rs add w 8
+bw add rs i
+lw add bw b
+an select al r 0
+ao add dvm 0
+ap fold mochk an true p0 rs b bw l lw st ao ts
+aq and al ap
+ar select aq fs 0
+ret ar
+end
+# the executable for the input p0 as little-endian words (garbage when mosize refuses it)
+fn macho u32x128x512 -> u32x128x512
+sz call mosize p0
+ok ne sz 0
+w0 call mog p0 0
+r0 call mog p0 1
+w select ok w0 0
+r select ok r0 0
+b call mog p0 2
+l call mog p0 3
+bs call mog p0 4
+ba call mog p0 5
+en call mog p0 6
+ts shl w 2
+st add ts 992
+s0 add st 36
+seg call moal s0
+dvm add seg 16384
+dvs call moal bs
+lvm add dvm dvs
+sig add dvm 112
+z add sig 4095
+pg0 shr z 12
+pg select ok pg0 0
+aa shl pg 5
+ssz add aa 112
+fs add sig ssz
+lsz sub fs dvm
+t0 call moz
+t1 fold mohdr 1 t0 ts seg seg dvm dvs dvm lvm lsz sig ssz bs ba en
+t2 fold motxt w t1 p0
+i mul r 3
+rs add w 8
+bw add rs i
+lw add bw b
+t3 fold moapp r t2 p0 rs b bw l lw st dvm
+t4 fold mostub 3 t3 st seg
+t5 fold mofix 1 t4 seg dvm
+k call mok
+hw add sig 112
+hb shr hw 2
+t6 fold mopg pg t5 sig hb k
+t7 fold mosig 1 t6 sig ssz pg seg
+ret t7
+end
+# byte p1 of the file p2 written to the io p0
+fn moout io u32 u32x128x512 -> io
+a shr p1 2
+b call mog p2 a
+c and p1 3
+d shl c 3
+e shr b d
+f and e 255
+g write p0 f
+ret g
+end
+# the failure word (one trip on failure)
+fn mofail io u32 -> io
+a write p0 4294967295
+ret a
+end
+# the executable for the input p0 written to the io p1, one word per byte (4294967295 when refused)
+fn machoio u32x128x512 io -> io
+n call mosize p0
+t call macho p0
+a fold moout n p1 t
+b eq n 0
+c select b 1 0
+d fold mofail c a
+ret d
+end
