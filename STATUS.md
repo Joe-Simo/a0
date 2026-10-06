@@ -176,3 +176,9 @@ Protocol fix (2026-10-06, item 3, first of three): an `ex` line written after th
 header instead of refused (A0714), so the canonical text is the same wherever the writer put it (`test/spec.test.ts`). `pre` and
 `post` after a node stay ordinary node ids (they are ambiguous there). Not yet re-measured with fresh subjects, so no acceptance
 claim is made. Still open: the spec-line limits are not taught, and dense nesting of a repeated value.
+
+Windows toolchain note (2026-10-06): with Zig 0.17.0 unpacked outside the repo and a small `clang.exe` shim that runs `zig cc`
+(`A0_CLANG`, `A0_GCC` set), 320 of 358 tests pass here. The remaining C-dependent failures are not compiler bugs: the tests and tools
+build executables with `-o name` and run `name`, but a Windows compiler writes `name.exe`, so the run step finds nothing (about 100
+call sites in `test/` and `tools/`). Needs one shared `exe()` helper and a mechanical pass; not done. Unverified on Windows: the C,
+parallel C, trap and seed tests, and every benchmark (speed claims need a quiet arm64 machine in any case).
