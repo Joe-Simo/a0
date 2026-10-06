@@ -1,0 +1,66 @@
+{
+  "j-leap-year/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return true when the year is a leap year: divisible by 4 and not by 100, or divisible by 400.\n\ne0\nfn f -> bool\nb eq rem A 4 0\nd eq rem A 100 0\ng eq rem A 400 0\nh and b d\nk or h g\ng0\n# f u32 -> bool"
+  },
+  "j-popcount/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the number of set bits in the 32-bit argument.\n\ne0\nfn f\nr fold step 31 0 A\n# step u32 u32 u32 -> u32\ng0\n# step u32 u32 u32 -> u32\n# f u32 -> u32"
+  },
+  "j-last-index/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the index of the last array element equal to the second argument, or 4 when no element equals it.\n\ne0\nfn f u32x4 u32 -> u32\nr fold step 3 4 A B\n# step u32 u32 u32x4 u32 -> u32\ng0\n# step u32 u32 u32x4 u32 -> u32\n# f u32x4 u32 -> u32"
+  },
+  "j-all-nonzero/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "The function currently tells whether any element of the array is nonzero; change it to return true only when every element is nonzero.\n\ne0\nfn f u32x4 -> bool\nr fold step 4 false A\n# step bool u32 u32x4 -> bool\ng0\n# step bool u32 u32x4 -> bool\n# f u32x4 -> bool"
+  },
+  "j-prefix-sum/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the running totals of the array: element k of the result is the wrapping sum of input elements 0 through k.\n\ne0\nfn f u32x4 -> u32x4\na0 get A 0\na1 get A 1\na2 get A 2\na3 get A 3\ns1 add a0 a1\ns2 add a1 a2\ns3 add a2 a3\nr [a0 s1 s2 s3]\ng0\n# f u32x4 -> u32x4"
+  },
+  "j-bump-pair/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Besides adding 1 to the element at the given index (taken modulo 4), also subtract 1 (wrapping) from the element at the next index, going from the last element round to the first.\n\ne0\nfn f u32x4 u32 -> u32x4\nb get A B\nc add b 1\nd set A B c\ng0\n# f u32x4 u32 -> u32x4"
+  },
+  "j-split-halves/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Split the value into its high 16 bits and low 16 bits, returned as a two-element array with the high half first.\n\ne0\nfn f -> u32x2 [>> A 8 and A 255]\ng0\n# f u32 -> u32x2"
+  },
+  "j-first-above/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the index of the first element strictly greater than the threshold together with whether one exists (index 4 and false when none); it currently reports the last such element.\n\ne0\nfn f u32x4 u32 -> (u32,bool)\nz (4 false)\nr fold step 4 z A B\n# step (u32,bool) u32 u32x4 u32 -> (u32,bool)\ng0\n# step (u32,bool) u32 u32x4 u32 -> (u32,bool)\n# f u32x4 u32 -> (u32,bool)"
+  },
+  "j-sort-pair/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the two arguments as a pair ordered smaller first, larger second.\n\ne0\nfn f -> (u32,u32)\na lt A B\nr (select a B A select a A B)\ng0\n# f u32 u32 -> (u32,u32)"
+  },
+  "j-range-sum/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the sum of the whole numbers from the first argument through the second argument, both included (the first is at most the second).\n\ne0\nfn f\nx tri B\ny tri A\nz sub x y\n# tri u32 -> u32\ng0\n# tri u32 -> u32\n# f u32 u32 -> u32"
+  },
+  "j-fee-rate/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Change the surcharge from 5 percent to 4 percent: return the amount plus the amount divided by 25, rounded down.\n\ne0\nfn f add A div A 20\ng0\n# f u32 -> u32"
+  },
+  "j-weekend/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Day numbers count from 0 = Monday in repeating 7-day weeks; return true when the day is a Saturday or Sunday.\n\ne0\nfn f -> bool gt rem A 7 5\ng0\n# f u32 -> bool"
+  },
+  "j-adjacent-bits/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return true when the value has two set bits next to each other.\n\ne0\nfn f -> bool ne and A >> A 2 0\ng0\n# f u32 -> bool"
+  },
+  "j-alternating-sum/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Instead of the plain total, return element 0 minus element 1 plus element 2 minus element 3, with wrapping arithmetic.\n\ne0\nfn f u32x4 -> u32\na0 get A 0\na1 get A 1\na2 get A 2\na3 get A 3\nx add a0 a1\ny add a2 a3\nz add x y\ng0\n# f u32x4 -> u32"
+  },
+  "j-mix-hash/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Change the mixing step to shift right by 15 instead of 16 and to multiply by 739982445 instead of 73244475.\n\ne0\nfn f mul xor A >> A 16 73244475\ng0\n# f u32 -> u32"
+  },
+  "j-digit-sum/a0/structured": {
+    "system": "A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.",
+    "user": "Return the sum of the decimal digits of the argument; it must handle every 32-bit value, including ten-digit ones.\n\ne0\nfn f\nz [A 0]\ng fold step 9 z\nh get g 1\n# step u32x2 u32 -> u32x2\ng0\n# step u32x2 u32 -> u32x2\n# f u32 -> u32"
+  }
+}

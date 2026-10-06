@@ -1,0 +1,230 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### REQUEST 1
+Return true when the year is a leap year: divisible by 4 and not by 100, or divisible by 400.
+
+e0
+fn f u32 -> bool
+a rem p0 4
+b eq a 0
+c rem p0 100
+d eq c 0
+e rem p0 400
+g eq e 0
+h and b d
+k or h g
+ret k
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 2
+Return the number of set bits in the 32-bit argument.
+
+e0
+fn f u32 -> u32
+r fold step 31 0 p0
+ret r
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+### REQUEST 3
+Return the index of the last array element equal to the second argument, or 4 when no element equals it.
+
+e0
+fn f u32x4 u32 -> u32
+r fold step 3 4 p0 p1
+ret r
+end
+fn step u32 u32 u32x4 u32 -> u32 end
+g0
+fn step u32 u32 u32x4 u32 -> u32 end
+fn f u32x4 u32 -> u32 end
+
+### REQUEST 4
+The function currently tells whether any element of the array is nonzero; change it to return true only when every element is nonzero.
+
+e0
+fn f u32x4 -> bool
+r fold step 4 false p0
+ret r
+end
+fn step bool u32 u32x4 -> bool end
+g0
+fn step bool u32 u32x4 -> bool end
+fn f u32x4 -> bool end
+
+### REQUEST 5
+Return the running totals of the array: element k of the result is the wrapping sum of input elements 0 through k.
+
+e0
+fn f u32x4 -> u32x4
+a0 get p0 0
+a1 get p0 1
+a2 get p0 2
+a3 get p0 3
+s1 add a0 a1
+s2 add a1 a2
+s3 add a2 a3
+r arr a0 s1 s2 s3
+ret r
+end
+g0
+fn f u32x4 -> u32x4 end
+
+### REQUEST 6
+Besides adding 1 to the element at the given index (taken modulo 4), also subtract 1 (wrapping) from the element at the next index, going from the last element round to the first.
+
+e0
+fn f u32x4 u32 -> u32x4
+b get p0 p1
+c add b 1
+d set p0 p1 c
+ret d
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 7
+Split the value into its high 16 bits and low 16 bits, returned as a two-element array with the high half first.
+
+e0
+fn f u32 -> u32x2
+a shr p0 8
+b and p0 255
+c arr a b
+ret c
+end
+g0
+fn f u32 -> u32x2 end
+
+### REQUEST 8
+Return the index of the first element strictly greater than the threshold together with whether one exists (index 4 and false when none); it currently reports the last such element.
+
+e0
+fn f u32x4 u32 -> (u32,bool)
+z rec 4 false
+r fold step 4 z p0 p1
+ret r
+end
+fn step (u32,bool) u32 u32x4 u32 -> (u32,bool) end
+g0
+fn step (u32,bool) u32 u32x4 u32 -> (u32,bool) end
+fn f u32x4 u32 -> (u32,bool) end
+
+### REQUEST 9
+Return the two arguments as a pair ordered smaller first, larger second.
+
+e0
+fn f u32 u32 -> (u32,u32)
+a lt p0 p1
+b select a p1 p0
+c select a p0 p1
+r rec b c
+ret r
+end
+g0
+fn f u32 u32 -> (u32,u32) end
+
+### REQUEST 10
+Return the sum of the whole numbers from the first argument through the second argument, both included (the first is at most the second).
+
+e0
+fn f u32 u32 -> u32
+x call tri p1
+y call tri p0
+z sub x y
+ret z
+end
+fn tri u32 -> u32 end
+g0
+fn tri u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+### REQUEST 11
+Change the surcharge from 5 percent to 4 percent: return the amount plus the amount divided by 25, rounded down.
+
+e0
+fn f u32 -> u32
+a div p0 20
+b add p0 a
+ret b
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 12
+Day numbers count from 0 = Monday in repeating 7-day weeks; return true when the day is a Saturday or Sunday.
+
+e0
+fn f u32 -> bool
+a rem p0 7
+b gt a 5
+ret b
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 13
+Return true when the value has two set bits next to each other.
+
+e0
+fn f u32 -> bool
+a shr p0 2
+b and p0 a
+c ne b 0
+ret c
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 14
+Instead of the plain total, return element 0 minus element 1 plus element 2 minus element 3, with wrapping arithmetic.
+
+e0
+fn f u32x4 -> u32
+a0 get p0 0
+a1 get p0 1
+a2 get p0 2
+a3 get p0 3
+x add a0 a1
+y add a2 a3
+z add x y
+ret z
+end
+g0
+fn f u32x4 -> u32 end
+
+### REQUEST 15
+Change the mixing step to shift right by 15 instead of 16 and to multiply by 739982445 instead of 73244475.
+
+e0
+fn f u32 -> u32
+a shr p0 16
+b xor p0 a
+c mul b 73244475
+ret c
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 16
+Return the sum of the decimal digits of the argument; it must handle every 32-bit value, including ten-digit ones.
+
+e0
+fn f u32 -> u32
+z arr p0 0
+g fold step 9 z
+h get g 1
+ret h
+end
+fn step u32x2 u32 -> u32x2 end
+g0
+fn step u32x2 u32 -> u32x2 end
+fn f u32 -> u32 end

@@ -1,0 +1,180 @@
+SYSTEM TEXT:
+A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.
+
+=====
+
+### REQUEST 1
+Return true when the year is a leap year: divisible by 4 and not by 100, or divisible by 400.
+
+e0
+fn f -> bool
+b eq rem A 4 0
+d eq rem A 100 0
+g eq rem A 400 0
+h and b d
+k or h g
+g0
+# f u32 -> bool
+
+### REQUEST 2
+Return the number of set bits in the 32-bit argument.
+
+e0
+fn f
+r fold step 31 0 A
+# step u32 u32 u32 -> u32
+g0
+# step u32 u32 u32 -> u32
+# f u32 -> u32
+
+### REQUEST 3
+Return the index of the last array element equal to the second argument, or 4 when no element equals it.
+
+e0
+fn f u32x4 u32 -> u32
+r fold step 3 4 A B
+# step u32 u32 u32x4 u32 -> u32
+g0
+# step u32 u32 u32x4 u32 -> u32
+# f u32x4 u32 -> u32
+
+### REQUEST 4
+The function currently tells whether any element of the array is nonzero; change it to return true only when every element is nonzero.
+
+e0
+fn f u32x4 -> bool
+r fold step 4 false A
+# step bool u32 u32x4 -> bool
+g0
+# step bool u32 u32x4 -> bool
+# f u32x4 -> bool
+
+### REQUEST 5
+Return the running totals of the array: element k of the result is the wrapping sum of input elements 0 through k.
+
+e0
+fn f u32x4 -> u32x4
+a0 get A 0
+a1 get A 1
+a2 get A 2
+a3 get A 3
+s1 add a0 a1
+s2 add a1 a2
+s3 add a2 a3
+r [a0 s1 s2 s3]
+g0
+# f u32x4 -> u32x4
+
+### REQUEST 6
+Besides adding 1 to the element at the given index (taken modulo 4), also subtract 1 (wrapping) from the element at the next index, going from the last element round to the first.
+
+e0
+fn f u32x4 u32 -> u32x4
+b get A B
+c add b 1
+d set A B c
+g0
+# f u32x4 u32 -> u32x4
+
+### REQUEST 7
+Split the value into its high 16 bits and low 16 bits, returned as a two-element array with the high half first.
+
+e0
+fn f -> u32x2 [>> A 8 and A 255]
+g0
+# f u32 -> u32x2
+
+### REQUEST 8
+Return the index of the first element strictly greater than the threshold together with whether one exists (index 4 and false when none); it currently reports the last such element.
+
+e0
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+# step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+g0
+# step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+# f u32x4 u32 -> (u32,bool)
+
+### REQUEST 9
+Return the two arguments as a pair ordered smaller first, larger second.
+
+e0
+fn f -> (u32,u32)
+a lt A B
+r (select a B A select a A B)
+g0
+# f u32 u32 -> (u32,u32)
+
+### REQUEST 10
+Return the sum of the whole numbers from the first argument through the second argument, both included (the first is at most the second).
+
+e0
+fn f
+x tri B
+y tri A
+z sub x y
+# tri u32 -> u32
+g0
+# tri u32 -> u32
+# f u32 u32 -> u32
+
+### REQUEST 11
+Change the surcharge from 5 percent to 4 percent: return the amount plus the amount divided by 25, rounded down.
+
+e0
+fn f add A div A 20
+g0
+# f u32 -> u32
+
+### REQUEST 12
+Day numbers count from 0 = Monday in repeating 7-day weeks; return true when the day is a Saturday or Sunday.
+
+e0
+fn f -> bool gt rem A 7 5
+g0
+# f u32 -> bool
+
+### REQUEST 13
+Return true when the value has two set bits next to each other.
+
+e0
+fn f -> bool ne and A >> A 2 0
+g0
+# f u32 -> bool
+
+### REQUEST 14
+Instead of the plain total, return element 0 minus element 1 plus element 2 minus element 3, with wrapping arithmetic.
+
+e0
+fn f u32x4 -> u32
+a0 get A 0
+a1 get A 1
+a2 get A 2
+a3 get A 3
+x add a0 a1
+y add a2 a3
+z add x y
+g0
+# f u32x4 -> u32
+
+### REQUEST 15
+Change the mixing step to shift right by 15 instead of 16 and to multiply by 739982445 instead of 73244475.
+
+e0
+fn f mul xor A >> A 16 73244475
+g0
+# f u32 -> u32
+
+### REQUEST 16
+Return the sum of the decimal digits of the argument; it must handle every 32-bit value, including ten-digit ones.
+
+e0
+fn f
+z [A 0]
+g fold step 9 z
+h get g 1
+# step u32x2 u32 -> u32x2
+g0
+# step u32x2 u32 -> u32x2
+# f u32 -> u32

@@ -1,0 +1,66 @@
+{
+  "j-leap-year/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the year is a leap year: divisible by 4 and not by 100, or divisible by 400.\n\ne0\nfn f u32 -> bool\na rem p0 4\nb eq a 0\nc rem p0 100\nd eq c 0\ne rem p0 400\ng eq e 0\nh and b d\nk or h g\nret k\nend\ng0\nfn f u32 -> bool end"
+  },
+  "j-popcount/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the number of set bits in the 32-bit argument.\n\ne0\nfn f u32 -> u32\nr fold step 31 0 p0\nret r\nend\nfn step u32 u32 u32 -> u32 end\ng0\nfn step u32 u32 u32 -> u32 end\nfn f u32 -> u32 end"
+  },
+  "j-last-index/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the index of the last array element equal to the second argument, or 4 when no element equals it.\n\ne0\nfn f u32x4 u32 -> u32\nr fold step 3 4 p0 p1\nret r\nend\nfn step u32 u32 u32x4 u32 -> u32 end\ng0\nfn step u32 u32 u32x4 u32 -> u32 end\nfn f u32x4 u32 -> u32 end"
+  },
+  "j-all-nonzero/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The function currently tells whether any element of the array is nonzero; change it to return true only when every element is nonzero.\n\ne0\nfn f u32x4 -> bool\nr fold step 4 false p0\nret r\nend\nfn step bool u32 u32x4 -> bool end\ng0\nfn step bool u32 u32x4 -> bool end\nfn f u32x4 -> bool end"
+  },
+  "j-prefix-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the running totals of the array: element k of the result is the wrapping sum of input elements 0 through k.\n\ne0\nfn f u32x4 -> u32x4\na0 get p0 0\na1 get p0 1\na2 get p0 2\na3 get p0 3\ns1 add a0 a1\ns2 add a1 a2\ns3 add a2 a3\nr arr a0 s1 s2 s3\nret r\nend\ng0\nfn f u32x4 -> u32x4 end"
+  },
+  "j-bump-pair/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Besides adding 1 to the element at the given index (taken modulo 4), also subtract 1 (wrapping) from the element at the next index, going from the last element round to the first.\n\ne0\nfn f u32x4 u32 -> u32x4\nb get p0 p1\nc add b 1\nd set p0 p1 c\nret d\nend\ng0\nfn f u32x4 u32 -> u32x4 end"
+  },
+  "j-split-halves/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Split the value into its high 16 bits and low 16 bits, returned as a two-element array with the high half first.\n\ne0\nfn f u32 -> u32x2\na shr p0 8\nb and p0 255\nc arr a b\nret c\nend\ng0\nfn f u32 -> u32x2 end"
+  },
+  "j-first-above/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the index of the first element strictly greater than the threshold together with whether one exists (index 4 and false when none); it currently reports the last such element.\n\ne0\nfn f u32x4 u32 -> (u32,bool)\nz rec 4 false\nr fold step 4 z p0 p1\nret r\nend\nfn step (u32,bool) u32 u32x4 u32 -> (u32,bool) end\ng0\nfn step (u32,bool) u32 u32x4 u32 -> (u32,bool) end\nfn f u32x4 u32 -> (u32,bool) end"
+  },
+  "j-sort-pair/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the two arguments as a pair ordered smaller first, larger second.\n\ne0\nfn f u32 u32 -> (u32,u32)\na lt p0 p1\nb select a p1 p0\nc select a p0 p1\nr rec b c\nret r\nend\ng0\nfn f u32 u32 -> (u32,u32) end"
+  },
+  "j-range-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the sum of the whole numbers from the first argument through the second argument, both included (the first is at most the second).\n\ne0\nfn f u32 u32 -> u32\nx call tri p1\ny call tri p0\nz sub x y\nret z\nend\nfn tri u32 -> u32 end\ng0\nfn tri u32 -> u32 end\nfn f u32 u32 -> u32 end"
+  },
+  "j-fee-rate/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Change the surcharge from 5 percent to 4 percent: return the amount plus the amount divided by 25, rounded down.\n\ne0\nfn f u32 -> u32\na div p0 20\nb add p0 a\nret b\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "j-weekend/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Day numbers count from 0 = Monday in repeating 7-day weeks; return true when the day is a Saturday or Sunday.\n\ne0\nfn f u32 -> bool\na rem p0 7\nb gt a 5\nret b\nend\ng0\nfn f u32 -> bool end"
+  },
+  "j-adjacent-bits/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the value has two set bits next to each other.\n\ne0\nfn f u32 -> bool\na shr p0 2\nb and p0 a\nc ne b 0\nret c\nend\ng0\nfn f u32 -> bool end"
+  },
+  "j-alternating-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Instead of the plain total, return element 0 minus element 1 plus element 2 minus element 3, with wrapping arithmetic.\n\ne0\nfn f u32x4 -> u32\na0 get p0 0\na1 get p0 1\na2 get p0 2\na3 get p0 3\nx add a0 a1\ny add a2 a3\nz add x y\nret z\nend\ng0\nfn f u32x4 -> u32 end"
+  },
+  "j-mix-hash/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Change the mixing step to shift right by 15 instead of 16 and to multiply by 739982445 instead of 73244475.\n\ne0\nfn f u32 -> u32\na shr p0 16\nb xor p0 a\nc mul b 73244475\nret c\nend\ng0\nfn f u32 -> u32 end"
+  },
+  "j-digit-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the sum of the decimal digits of the argument; it must handle every 32-bit value, including ten-digit ones.\n\ne0\nfn f u32 -> u32\nz arr p0 0\ng fold step 9 z\nh get g 1\nret h\nend\nfn step u32x2 u32 -> u32x2 end\ng0\nfn step u32x2 u32 -> u32x2 end\nfn f u32 -> u32 end"
+  }
+}

@@ -22,7 +22,7 @@ interface Report {
   trials: Trial[];
 }
 
-const SET = process.argv.find((a) => /^[hi]$/.test(a)) ?? 'h';
+const SET = process.argv.find((a) => /^[hij]$/.test(a)) ?? 'h';
 const MODELS = ['haiku', 'sonnet'] as const;
 const FORMS = { dense: 'D', canon: 'K' } as const;
 const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
@@ -100,10 +100,11 @@ writeFileSync(
     {
       generatedAt: new Date().toISOString(),
       tool: 'tools/set-h-summary.ts (set letter as the argument)',
-      preRegistration:
-        SET === 'h'
-          ? 'docs/history/2026-10-06-dense-default-preregistration.md'
-          : 'docs/history/2026-10-06-set-i-preregistration.md',
+      preRegistration: {
+        h: 'docs/history/2026-10-06-dense-default-preregistration.md',
+        i: 'docs/history/2026-10-06-set-i-preregistration.md',
+        j: 'docs/history/2026-10-06-set-j-preregistration.md',
+      }[SET],
       taskSetSha256: sha,
       meaning: `Set ${SET.toUpperCase()}, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.`,
       cells,
