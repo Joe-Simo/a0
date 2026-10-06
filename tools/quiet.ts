@@ -17,6 +17,12 @@ let maxSeen = 0;
 
 /** Block (polling every 3 s) while the 1-minute load average is above the limit. */
 export function waitQuiet(): void {
+  // Windows has no load average (`os.loadavg()` is always [0, 0, 0]): the gate could never see a loaded machine and
+  // would record a false "load 0" next to a timing number, so a timing run refuses to start there.
+  if (process.platform === 'win32')
+    throw new Error(
+      'timing runs need a load average and Windows has none (os.loadavg() is always 0): run them on macOS or Linux; correctness runs are unaffected',
+    );
   checks += 1;
   for (;;) {
     const load = loadavg()[0] ?? 0;
