@@ -1,0 +1,111 @@
+### REPLY 1
+a and p0 15
+b shl a 4
+c shr p0 4
+d and c 15
+e and p0 4294967040
+f or b d
+g or f e
+ret g
+
+### REPLY 2
+a sub 0 p0
+b and p0 a
+ret b
+
+### REPLY 3
+a gt p0 p1
+b ne p2 0
+c and a b
+ret c
+
+### REPLY 4
+a and p0 p1
+b and p0 p2
+c or a b
+ret c
+
+### REPLY 5
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+s1 add a b
+s2 add s1 c
+s3 add s2 d
+r arr a s1 s2 s3
+ret r
+
+### REPLY 6
+d sub p0 p1
+b lt p0 p1
+r rec d b
+ret r
+
+### REPLY 7
+e get p2 p1
+b and e 3
+x get p0 b
+y add x 1
+c set p0 b y
+ret c
+
+### REPLY 8
+e get p2 p1
+r add p0 e
+ret r
+
+### REPLY 9
+a le p0 10
+b sub p0 10
+c mul b 3
+d add 50 c
+e select a (mul p0 5) d
+ret e
+
+### REPLY 10
+r and p0 255
+g and p1 255
+bl and p2 255
+rs shl r 16
+gs shl g 8
+x or rs gs
+y or x bl
+ret y
+
+### REPLY 11
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+s set p0 1 a
+t set s 0 b
+u set t 3 c
+ret u
+
+### REPLY 12
+x call scale p0
+y call scale p1
+r sub x y
+ret r
+
+### REPLY 13
+i eq p1 0
+x add p0 p1
+r add x i
+ret r
+
+### REPLY 14
+nz ne p0 0
+c select nz 1 0
+r add c h
+ret r
+
+### REPLY 15
+i eq p0 p1
+c add h i
+ret c
+
+### REPLY 16
+c lt p0 p1
+ret c

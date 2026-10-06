@@ -1,0 +1,14 @@
+fn pair u32 u32 -> bool
+shr_val shr p0 p1
+low_bit and shr_val 1
+next_bit shr shr_val 1
+next_bit_val and next_bit 1
+result and low_bit next_bit_val
+ret result
+end
+fn step u32 u32 u32 -> u32
+is_pair call pair p2 p1
+count select is_pair 1 0
+res add p0 count
+ret res
+end

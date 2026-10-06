@@ -1,0 +1,101 @@
+### REPLY 1
+c shr p0 4
+
+### REPLY 2
+c sub p0 b
+ret c
+
+### REPLY 3
+a gt p0 p1
+
+### REPLY 4
+c and p1 p2
+d or a b
+e or d c
+ret e
+
+### REPLY 5
+s2 add s1 c
+
+### REPLY 6
+b lt p0 p1
+
+### REPLY 7
+fn step u32x4 u32 u32x4 -> u32x4
+v and p1 3
+c get p2 v
+inc add c 1
+r set p2 v inc
+ret r
+end
+
+### REPLY 8
+fn acc u32 u32 u32x4 -> u32
+e get p2 p1
+r add p0 e
+ret r
+end
+
+### REPLY 9
+c10 le p0 10
+p5 mul p0 5
+p3 mul p0 3
+extra add p3 20
+r select c10 p5 extra
+ret r
+
+### REPLY 10
+r and p0 255
+g and p1 255
+bl and p2 255
+
+### REPLY 11
+c get p0 2
+d get p0 3
+u set s 2 d
+v set u 3 c
+ret v
+
+### REPLY 12
+y call scale p1
+r sub x y
+ret r
+
+### REPLY 13
+h fold mix 4 17 p0
+fn mix u32 u32 u32x4 -> u32
+e get p2 p1
+s add p0 e
+r add s p1
+ret r
+end
+
+### REPLY 14
+fn bstep u32 u32 u32 -> u32
+shifted shr p2 p1
+masked and shifted 1
+r add p0 masked
+ret r
+end
+
+### REPLY 15
+fn pstep u32 u32 u32x4 -> u32
+lt3 lt p1 3
+curr get p2 p1
+next_i add p1 1
+next get p2 next_i
+eq eq curr next
+result and lt3 eq
+r add p0 result
+ret r
+end
+
+### REPLY 16
+fn istep bool u32 u32x4 -> bool
+curr get p2 p1
+next_i add p1 1
+next get p2 next_i
+lt lt curr next
+result and p0 lt
+ret result
+end

@@ -1,0 +1,58 @@
+{
+ "k-nibble-swap/a0/structured": [
+  "a and p0 15\nb shl a 4\nc shr p0 4\nd and c 15\ne and p0 4294967040\nf or b d\ng or f e\nret g"
+ ],
+ "k-lowest-bit/a0/structured": [
+  "a sub 0 p0\nb and p0 a\nret b"
+ ],
+ "k-late-fee/a0/structured": [
+  "a gt p0 p1\nb ne p2 0\nc and a b\nret c"
+ ],
+ "k-majority/a0/structured": [
+  "a and p0 p1\nb and p0 p2\nc or a b\nret c",
+  "a and p0 p1\nb and p0 p2\nc and p1 p2\nd or a b\ne or d c\nret e"
+ ],
+ "k-prefix-sums/a0/structured": [
+  "a get p0 0\nb get p0 1\nc get p0 2\nd get p0 3\ns1 add a b\ns2 add s1 c\ns3 add s2 d\nr arr a s1 s2 s3\nret r"
+ ],
+ "k-borrow-sub/a0/structured": [
+  "d sub p0 p1\nb lt p0 p1\nr rec d b\nret r"
+ ],
+ "k-low-bit-histogram/a0/structured": [
+  "e get p2 p1\nb and e 3\nx get p0 b\ny add x 1\nc set p0 b y\nret c",
+  "fn step u32x4 u32 u32x4 -> u32x4\ne get p0 p1\nb and e 3\nx get p2 b\ny add x 1\nc set p2 b y\nret c"
+ ],
+ "k-over-budget/a0/structured": [
+  "e get p2 p1\nr add p0 e\nret r",
+  "h fold acc 4 0 p0\nfn acc u32 u32 u32x4 -> u32\ne get p2 p1\nr add p0 e\nret r"
+ ],
+ "k-tiered-price/a0/structured": [
+  "a le p0 10\nb sub p0 10\nc mul b 3\nd add 50 c\ne select a (mul p0 5) d\nret e",
+  "a le p0 10\nb sub p0 10\nc mul b 3\nd add 50 c\ne1 mul p0 5\ne select a e1 d\nret e"
+ ],
+ "k-pack-channels/a0/structured": [
+  "r and p0 255\ng and p1 255\nbl and p2 255\nrs shl r 16\ngs shl g 8\nx or rs gs\ny or x bl\nret y"
+ ],
+ "k-pair-swap/a0/structured": [
+  "a get p0 0\nb get p0 1\nc get p0 2\nd get p0 3\ns set p0 1 a\nt set s 0 b\nu set t 3 c\nret u",
+  "a get p0 0\nb get p0 1\nc get p0 2\nd get p0 3\ns set p0 1 a\nt set s 0 b\nu set t 3 c\nv set u 2 d\nret v"
+ ],
+ "k-scaled-diff/a0/structured": [
+  "x call scale p0\ny call scale p1\nr sub x y\nret r"
+ ],
+ "k-index-checksum/a0/structured": [
+  "i eq p1 0\nx add p0 p1\nr add x i\nret r",
+  "h fold mix 4 17 p0\nfn mix u32 u32 u32x4 -> u32\ne get p2 p1\nx add e p1\nr add p0 x\nret r"
+ ],
+ "k-bit-length/a0/structured": [
+  "nz ne p0 0\nc select nz 1 0\nr add c h\nret r"
+ ],
+ "k-adjacent-equal/a0/structured": [
+  "i eq p0 p1\nc add h i\nret c",
+  "e get p2 p1\nf add p1 1\ng get p2 f\neq_chk eq e g\nvalid lt p1 3\ninc select valid eq_chk 0\nresult add p0 inc\nret result"
+ ],
+ "k-strictly-ascending/a0/structured": [
+  "c lt p0 p1\nret c",
+  "e get p2 p1\nf add p1 1\ng get p2 f\ncmp lt e g\nresult and p0 cmp\nret result"
+ ]
+}

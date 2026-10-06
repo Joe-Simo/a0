@@ -1,0 +1,18 @@
+fn same u32 u32 -> bool
+a eq p0 p1
+ret a
+end
+fn step bool u32 u32x4 -> bool
+curr get p2 p1
+next_i add p1 1
+next get p2 next_i
+same_eq eq curr next
+is_valid lt p1 3
+updated or p0 same_eq
+ret select is_valid updated p0
+end
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end

@@ -1,0 +1,52 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+
+=====
+
+### CONVERSATION 6
+[user]
+Return true when the element at position p1 is strictly greater than both of its neighbours (the array is circular).
+
+e0
+fn f u32x4 u32 -> bool
+c get p0 p1
+li add p1 3
+l get p0 li
+ri add p1 1
+rv get p0 ri
+a ge c l
+b gt c rv
+r and a b
+ret r
+end
+g0
+fn f u32x4 u32 -> bool end
+
+[assistant]
+b gt c l
+a gt c l
+
+[user]
+Rejected:
+f(1,5,5,0,1) = true, expected false
+
+Current view:
+e0
+fn f u32x4 u32 -> bool
+c get p0 p1
+li add p1 3
+l get p0 li
+ri add p1 1
+rv get p0 ri
+a gt c l
+b gt c l
+r and a b
+ret r
+end
+g0
+fn f u32x4 u32 -> bool end
+Try again.

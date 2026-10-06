@@ -1,0 +1,146 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+
+=====
+
+### CONVERSATION 2
+[user]
+Return the low byte of p0 with its two 4-bit halves swapped; every bit above the low byte must be zero.
+
+e0
+fn f u32 -> u32
+lo and p0 15
+hi4 shl lo 4
+sh shr p0 4
+r or hi4 sh
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+[assistant]
+fn f u32 -> u32
+lo and p0 15
+hi4 shl lo 4
+sh shr p0 4
+sh and sh 15
+r or hi4 sh
+ret r
+end
+
+[user]
+Rejected:
+structure: f.sh: duplicate definition
+
+Try again.
+
+### CONVERSATION 7
+[user]
+The checksum must fold every one of the four elements exactly once, starting from 7.
+
+e0
+fn f u32x4 -> u32
+h fold step 3 7 p0
+r mov h
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+e get a2 a1
+s add a0 e
+ret s
+end
+fn f u32x4 -> u32
+h fold step 4 7 p0
+r mov h
+ret r
+end
+
+[user]
+Rejected:
+structure: step.e: reference to undefined or later node 'a2' fix: define 'a2' on an earlier line of this function, or reference a node defined above step.e
+
+Try again.
+
+### CONVERSATION 13
+[user]
+f should count the positions 1 to 3 whose element differs from the element just before it; the first element must not be compared with the last.
+
+e0
+fn f u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+i_gt_0 gt a1 0
+prev_idx sub a1 1
+prev get a2 prev_idx
+curr get a2 a1
+differs ne prev curr
+should_inc and i_gt_0 differs
+inc add a0 1
+result select should_inc inc a0
+ret result
+end
+fn f u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+
+[user]
+Rejected:
+structure: step.i_gt_0: reference to undefined or later node 'a1' fix: define 'a1' on an earlier line of this function, or reference a node defined above step.i_gt_0
+
+Try again.
+
+### CONVERSATION 15
+[user]
+Return true exactly when the helper's state machine is in its final, sticky state after all four elements.
+
+e0
+fn f u32x4 -> bool
+q fold step 4 0 p0
+r eq q 2
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> bool end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+is_0 eq a0 0
+is_1 eq a0 1
+temp select is_1 2 a0
+next select is_0 1 temp
+ret next
+end
+fn f u32x4 -> bool
+q fold step 4 0 p0
+r eq q 2
+ret r
+end
+
+[user]
+Rejected:
+structure: step.is_0: reference to undefined or later node 'a0' fix: define 'a0' on an earlier line of this function, or reference a node defined above step.is_0
+
+Try again.

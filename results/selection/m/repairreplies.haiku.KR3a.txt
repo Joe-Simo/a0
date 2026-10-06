@@ -1,0 +1,77 @@
+### REPLY 3
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32
+p1_shifted shl p1 2
+n shr p2 p1_shifted
+m and n 15
+r ne m 0
+cnt add p0 1
+s select r cnt p0
+ret s
+end
+
+### REPLY 6
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 u32 -> u32
+e get p2 p1
+lo and e 3
+am and p3 3
+r eq lo am
+cnt add p0 1
+s select r cnt p0
+ret s
+end
+
+### REPLY 13
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool
+not_last lt p1 3
+curr get p2 p1
+p1_plus_1 add p1 1
+next get p2 p1_plus_1
+eq eq curr next
+should_check and not_last eq
+ret or p0 should_check
+end
+
+### REPLY 14
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+b_masked and b 65535
+r or c b_masked
+ret r
+end
+fn scale u32 -> u32 end
+
+### REPLY 15
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32
+shift_i shl 1 p1
+p1_plus_1 add p1 1
+shift_next shl 1 p1_plus_1
+mask or shift_i shift_next
+value_masked and p2 mask
+both_set eq value_masked mask
+cnt add p0 1
+ret select both_set cnt p0
+end

@@ -1,0 +1,123 @@
+### REPLY 3
+fn step u32 u32 u32 -> u32
+a add p1 p1
+b add a a
+c shr p2 b
+d and c 15
+e ne d 0
+f add p0 1
+g select e f p0
+ret g
+end
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+
+### REPLY 6
+fn step u32 u32 u32x4 u32 -> u32
+a get p2 p1
+b and a 3
+c and p3 3
+d eq b c
+e add p0 1
+f select d e p0
+ret f
+end
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+
+### REPLY 9
+fn step u32 u32 u32x4 -> u32
+a get p2 p1
+b shl a p1
+c xor p0 b
+ret c
+end
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+
+### REPLY 10
+fn bit u32 -> u32
+a rem p0 8
+b shl 1 a
+ret b
+end
+fn f u32 u32 bool -> u32
+mask call bit p1
+set or p0 mask
+invmask xor mask 4294967295
+cleared and p0 invmask
+ret select p2 set cleared
+end
+
+### REPLY 13
+fn same u32 u32 -> bool
+a eq p0 p1
+ret a
+end
+fn step bool u32 u32x4 -> bool
+curr get p2 p1
+next_i add p1 1
+next get p2 next_i
+same_eq eq curr next
+is_valid lt p1 3
+updated or p0 same_eq
+ret select is_valid updated p0
+end
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+
+### REPLY 14
+fn scale u32 -> u32
+a mul p0 3
+b shr a 2
+ret b
+end
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+d and b 65535
+r or c d
+ret r
+end
+
+### REPLY 15
+fn pair u32 u32 -> bool
+a shr p0 p1
+b and a 3
+c eq b 3
+ret c
+end
+fn step u32 u32 u32 -> u32
+c call pair p2 p1
+d add p0 1
+e select c d p0
+ret e
+end
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+
+### REPLY 16
+fn f u32 u32 -> u32
+mask_cleared xor 0xFF00 4294967295
+cleared and p0 mask_cleared
+new_bits shl (and p1 255) 8
+result or cleared new_bits
+ret result
+end
+

@@ -1,0 +1,53 @@
+### REPLY 2
+fn f u32 -> u32
+lo and p0 15
+hi4 shl lo 4
+sh shr p0 4
+sh_masked and sh 15
+r or hi4 sh_masked
+ret r
+end
+
+### REPLY 7
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+s add p0 e
+ret s
+end
+fn f u32x4 -> u32
+h fold step 4 7 p0
+r mov h
+ret r
+end
+
+### REPLY 13
+fn step u32 u32 u32x4 -> u32
+i_gt_0 gt p1 0
+prev_idx sub p1 1
+prev get p2 prev_idx
+curr get p2 p1
+differs ne prev curr
+should_inc and i_gt_0 differs
+inc add p0 1
+result select should_inc inc p0
+ret result
+end
+fn f u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+
+### REPLY 15
+fn step u32 u32 u32x4 -> u32
+is_0 eq p0 0
+is_1 eq p0 1
+temp select is_1 2 p0
+next select is_0 1 temp
+ret next
+end
+fn f u32x4 -> bool
+q fold step 4 0 p0
+r eq q 2
+ret r
+end

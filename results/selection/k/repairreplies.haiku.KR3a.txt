@@ -1,0 +1,69 @@
+### REPLY 4
+a and p0 p1
+b and p0 p2
+c and p1 p2
+d or a b
+e or d c
+ret e
+
+### REPLY 7
+fn step u32x4 u32 u32x4 -> u32x4
+e get p0 p1
+b and e 3
+x get p2 b
+y add x 1
+c set p2 b y
+ret c
+
+### REPLY 8
+h fold acc 4 0 p0
+fn acc u32 u32 u32x4 -> u32
+e get p2 p1
+r add p0 e
+ret r
+
+### REPLY 9
+a le p0 10
+b sub p0 10
+c mul b 3
+d add 50 c
+e1 mul p0 5
+e select a e1 d
+ret e
+
+### REPLY 11
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+s set p0 1 a
+t set s 0 b
+u set t 3 c
+v set u 2 d
+ret v
+
+### REPLY 13
+h fold mix 4 17 p0
+fn mix u32 u32 u32x4 -> u32
+e get p2 p1
+x add e p1
+r add p0 x
+ret r
+
+### REPLY 15
+e get p2 p1
+f add p1 1
+g get p2 f
+eq_chk eq e g
+valid lt p1 3
+inc select valid eq_chk 0
+result add p0 inc
+ret result
+
+### REPLY 16
+e get p2 p1
+f add p1 1
+g get p2 f
+cmp lt e g
+result and p0 cmp
+ret result

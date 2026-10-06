@@ -1,0 +1,233 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops: add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y | call F a... | fold F n s a...: s=F(s,i,a...) for i<n | arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+
+=====
+
+### CONVERSATION 4
+[user]
+Return true when at least two of the three boolean inputs are true.
+
+e0
+fn maj bool bool bool -> bool
+a and p0 p1
+b and p0 p2
+c or a b
+ret c
+end
+g0
+fn maj bool bool bool -> bool end
+
+[assistant]
+a and p0 p1
+b and p0 p2
+c or a b
+ret c
+
+[user]
+Rejected:
+maj(false,true,true) = false, expected true
+
+Current view:
+e0
+fn maj bool bool bool -> bool
+a and p0 p1
+b and p0 p2
+c or a b
+ret c
+end
+g0
+fn maj bool bool bool -> bool end
+Try again.
+
+### CONVERSATION 7
+[user]
+Count, for each value 0 to 3, how many of the four input elements have that value in their lowest two bits; every element must be counted exactly once.
+
+e0
+fn hist u32x4 -> u32x4
+z arr 0 0 0 0
+h fold step 3 z p0
+ret h
+end
+fn step u32x4 u32 u32x4 -> u32x4 end
+g0
+fn step u32x4 u32 u32x4 -> u32x4 end
+fn hist u32x4 -> u32x4 end
+
+[assistant]
+e get p2 p1
+b and e 3
+x get p0 b
+y add x 1
+c set p0 b y
+ret c
+
+[user]
+Rejected:
+type: hist.e: parameter p2 out of range fix: hist has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn hist ...` block with the parameter in its signature
+
+Try again.
+
+### CONVERSATION 8
+[user]
+Return the wrapping total of the four elements together with a flag that is true only when the total is strictly greater than the budget (second input).
+
+e0
+fn budget u32x4 u32 -> (u32,bool)
+t fold acc 4 0 p0
+o ge t p1
+r rec t o
+ret r
+end
+fn acc u32 u32 u32x4 -> u32 end
+g0
+fn acc u32 u32 u32x4 -> u32 end
+fn budget u32x4 u32 -> (u32,bool) end
+
+[assistant]
+e get p2 p1
+r add p0 e
+ret r
+
+[user]
+Rejected:
+type: budget.e: parameter p2 out of range fix: budget has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn budget ...` block with the parameter in its signature
+
+Try again.
+
+### CONVERSATION 9
+[user]
+Units up to and including 10 cost 5 each; every unit beyond the tenth costs 3, so the price above 10 units is 50 plus 3 per extra unit (wrapping).
+
+e0
+fn price u32 -> u32
+a mul p0 5
+r mov a
+ret r
+end
+g0
+fn price u32 -> u32 end
+
+[assistant]
+a le p0 10
+b sub p0 10
+c mul b 3
+d add 50 c
+e select a (mul p0 5) d
+ret e
+
+[user]
+Rejected:
+parse: line 6: nested operand: A0 has one op per line fix: one op per line: write `e1 mul p0 5` above, then `e select a e1 d`
+
+Try again.
+
+### CONVERSATION 11
+[user]
+Swap elements 0 and 1 and also swap elements 2 and 3, returning the new array.
+
+e0
+fn pairs u32x4 -> u32x4
+a get p0 0
+b get p0 1
+s set p0 0 b
+t set s 1 a
+ret t
+end
+g0
+fn pairs u32x4 -> u32x4 end
+
+[assistant]
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+s set p0 1 a
+t set s 0 b
+u set t 3 c
+ret u
+
+[user]
+Rejected:
+edit: pairs: new node 'd' is not used by any node or by ret fix: add 'ret d' if it is the new result, or use it in another node
+
+Try again.
+
+### CONVERSATION 13
+[user]
+The checksum must start from 17 instead of 7, and every step must also add the element's position to the running value.
+
+e0
+fn check u32x4 -> u32
+h fold mix 4 7 p0
+r mov h
+ret r
+end
+fn mix u32 u32 u32x4 -> u32 end
+g0
+fn mix u32 u32 u32x4 -> u32 end
+fn check u32x4 -> u32 end
+
+[assistant]
+i eq p1 0
+x add p0 p1
+r add x i
+ret r
+
+[user]
+Rejected:
+type: check.i: parameter p1 out of range fix: check has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn check ...` block with the parameter in its signature
+
+Try again.
+
+### CONVERSATION 15
+[user]
+Count the neighbouring positions (0,1), (1,2) and (2,3) whose elements are equal; the last element must not be compared with the first.
+
+e0
+fn pairs_eq u32x4 -> u32
+h fold pstep 4 0 p0
+r mov h
+ret r
+end
+fn pstep u32 u32 u32x4 -> u32 end
+g0
+fn pstep u32 u32 u32x4 -> u32 end
+fn pairs_eq u32x4 -> u32 end
+
+[assistant]
+i eq p0 p1
+c add h i
+ret c
+
+[user]
+Rejected:
+type: pairs_eq.i: parameter p1 out of range fix: pairs_eq has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn pairs_eq ...` block with the parameter in its signature
+
+Try again.
+
+### CONVERSATION 16
+[user]
+Return true only when every element is strictly smaller than the next one; equal neighbours make the result false.
+
+e0
+fn ascending u32x4 -> bool
+h fold istep 3 true p0
+r mov h
+ret r
+end
+fn istep bool u32 u32x4 -> bool end
+g0
+fn istep bool u32 u32x4 -> bool end
+fn ascending u32x4 -> bool end
+
+[assistant]
+c lt p0 p1
+ret c
+
+[user]
+Rejected:
+type: ascending.c: parameter p1 out of range fix: ascending has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn ascending ...` block with the parameter in its signature
+
+Try again.

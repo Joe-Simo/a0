@@ -22,16 +22,21 @@ interface Report {
   trials: Trial[];
 }
 
-const SET = process.argv.find((a) => /^[hijklmnopq]+$/.test(a)) ?? 'h';
+const SET = process.argv.find((a) => /^[hijklmnopqrst]+$/.test(a)) ?? 'h';
 const SETS = [...SET];
 // Sets K, L, M and N compare the shipped guide with the short primer; H, I and J compare dense with canonical.
-const SHORT = 'klmnopq'.includes(SET[0] as string);
+const SHORT = 'klmnopqrst'.includes(SET[0] as string);
 const MODELS = ['haiku', 'sonnet'] as const;
 // Sets H, I and J compare the dense form (D) with the canonical one (K) on the 10-task session; set K compares the shipped guide (S)
 // with the 101-token edit primer (K) on the cold single task (the horizon of the ai-tokens-* losses).
 const FIRST = SHORT ? 'guide' : 'dense';
 const PRIMARY = SHORT ? 'task1' : 'session10';
-const FORMS = { [FIRST]: SHORT ? 'S' : 'D', canon: 'K' } as Record<string, string>;
+// Sets R, S and T compare the shipped guide (S) with the selected candidate `KR3b` (K), and report `KR3` alongside (the form named `KR3`).
+const CONFIRM = 'rst'.includes(SET[0] as string);
+const SECOND = CONFIRM ? 'KR3b' : 'canon';
+const FORMS = (
+  CONFIRM ? { guide: 'S', KR3b: 'K', KR3: 'K0' } : { [FIRST]: SHORT ? 'S' : 'D', canon: 'K' }
+) as Record<string, string>;
 const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
 const r1 = (x: number): number => Math.round(x * 10) / 10;
 function wilson(k: number, n: number): [number, number] {
@@ -99,9 +104,9 @@ for (const m of MODELS) {
 const verdict = Object.fromEntries(
   MODELS.map((m) => {
     const d = counts[m]?.[FIRST];
-    const k = counts[m]?.canon;
+    const k = counts[m]?.[SECOND];
     const td = tpa[m]?.[FIRST]?.[PRIMARY];
-    const tk = tpa[m]?.canon?.[PRIMARY];
+    const tk = tpa[m]?.[SECOND]?.[PRIMARY];
     // Set K reverses the roles: the shorter primer (K) must not lose acceptance and must cost less than the shipped guide (S).
     const c1 =
       d !== undefined &&
@@ -124,6 +129,7 @@ writeFileSync(
         j: 'docs/history/2026-10-06-set-j-preregistration.md',
         k: 'docs/history/2026-10-06-set-k-preregistration.md',
         lmn: 'docs/history/2026-10-06-set-lmn-preregistration.md',
+        rst: 'docs/history/2026-10-06-set-rst-preregistration.md',
         opq: 'docs/history/2026-10-06-set-opq-preregistration.md',
       }[SET],
       taskSetSha256: sha,

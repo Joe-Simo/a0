@@ -1,0 +1,50 @@
+{
+ "m-field-extract/a0/structured": [
+  "b and a 63"
+ ],
+ "m-pack-bytes/a0/structured": [
+  "c shl a 8\nfn lo8 u32 -> u32\na and p0 255\nret a\nend"
+ ],
+ "m-nonzero-nibbles/a0/structured": [
+  "fn step u32 u32 u32 -> u32\na mul p1 4\nb shr p2 a\nc and b 15\nd ne c 0\ne select d 1 0\nf add p0 e\nret f\nend\nfn f u32 -> u32\na fold step 8 0 p0\nret a\nend"
+ ],
+ "m-header-valid/a0/structured": [
+  "a call nib p0 28\nfn nib u32 u32 -> u32\na shr p0 p1\nb and a 15\nret b\nend"
+ ],
+ "m-copy-next/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\nn add p1 1\ng get p0 n\ns set p0 p1 g\nret s\nend"
+ ],
+ "m-low-bits-tally/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\na get p2 p1\nb and a 3\nc and p3 3\nd eq b c\ne select d 1 0\nf add p0 e\nret f\nend\nfn f u32x4 u32 -> u32\na fold step 4 0 p0 p1\nret a\nend"
+ ],
+ "m-split-word/a0/structured": [
+  "c ne b 0"
+ ],
+ "m-bit-window/a0/structured": [
+  "fn f u32 u32 -> u32\na shl 1 p1\nm sub a 1\nb shl m p0\nret b\nend"
+ ],
+ "m-shift-xor-check/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\na get p2 p1\nb shl a p1\nc xor p0 b\nret c\nend\nfn f u32x4 -> u32\na fold step 4 0 p0\nret a\nend"
+ ],
+ "m-flag-write/a0/structured": [
+  "fn bit u32 -> u32\na and p0 7\nb shl 1 a\nret b\nend\nfn f u32 u32 bool -> u32\nb call bit p1\ns or p0 b\nn xor b 4294967295\nc and p0 n\nr select p2 s c\nret r\nend"
+ ],
+ "m-decade-counter/a0/structured": [
+  "b eq a 10"
+ ],
+ "m-unpack-channels/a0/structured": [
+  "b and a 255\nd and c 255\ne and p0 255"
+ ],
+ "m-adjacent-repeat/a0/structured": [
+  "fn same u32 u32 -> bool\na eq p0 p1\nret a\nend\nfn step bool u32 u32x4 -> bool\na get p2 p1\nn add p1 1\nb get p2 n\nc call same a b\nd or p0 c\nret d\nend\nfn f u32x4 -> bool\na fold step 3 false p0\nret a\nend"
+ ],
+ "m-scaled-pack/a0/structured": [
+  "fn f u32 u32 -> u32\na call scale p0\nb call scale p1\nc shl a 16\nd and b 65535\nr or c d\nret r\nend"
+ ],
+ "m-set-pair-count/a0/structured": [
+  "fn pair u32 u32 -> bool\na shr p0 p1\nb shr a 1\nc and a b\nd and c 1\ne ne d 0\nret e\nend\nfn step u32 u32 u32 -> u32\na call pair p2 p1\nb select a 1 0\nc add p0 b\nret c\nend\nfn f u32 -> u32\na fold step 8 0 p0\nret a\nend"
+ ],
+ "m-byte-insert/a0/structured": [
+  "fn f u32 u32 -> u32\na and p0 4294902015\nb and p1 255\nc shl b 8\nr or a c\nret r\nend"
+ ]
+}

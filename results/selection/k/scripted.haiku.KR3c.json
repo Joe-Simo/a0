@@ -1,0 +1,55 @@
+{
+ "k-nibble-swap/a0/structured": [
+  "fn f u32 -> u32\na and p0 15\nb shl a 4\nc shr p0 4\nd and c 15\ne and p0 4294967040\nf or b d\ng or f e\nret g\nend"
+ ],
+ "k-lowest-bit/a0/structured": [
+  "fn f u32 -> u32\na sub p0 1\nb and p0 a\nret b\nend",
+  "fn f u32 -> u32\na sub 0 p0\nb and p0 a\nret b\nend"
+ ],
+ "k-late-fee/a0/structured": [
+  "fn late u32 u32 u32 -> bool\na gt p0 p1\nb ne p2 0\nc and a b\nret c\nend"
+ ],
+ "k-majority/a0/structured": [
+  "fn maj bool bool bool -> bool\na and p0 p1\nb and p0 p2\nc and p1 p2\nd or a b\ne or d c\nret e\nend"
+ ],
+ "k-prefix-sums/a0/structured": [
+  "fn prefix u32x4 -> u32x4\na get p0 0\nb get p0 1\nc get p0 2\nd get p0 3\ns1 add a b\ns2 add s1 c\ns3 add s2 d\nr arr a s1 s2 s3\nret r\nend"
+ ],
+ "k-borrow-sub/a0/structured": [
+  "fn csub u32 u32 -> (u32,bool)\nd sub p0 p1\nb lt p0 p1\nr rec d b\nret r\nend"
+ ],
+ "k-low-bit-histogram/a0/structured": [
+  "fn step u32x4 u32 u32x4 -> u32x4\ne get p2 p1\nk and e 3\nc get p0 k\nv add c 1\nr set p0 k v\nret r\nend\nfn hist u32x4 -> u32x4\nz arr 0 0 0 0\nh fold step 4 z p0\nret h\nend"
+ ],
+ "k-over-budget/a0/structured": [
+  "fn acc u32 u32 u32x4 -> u32\ne get p2 p1\nr add p0 e\nret r\nend\nfn budget u32x4 u32 -> (u32,bool)\nt fold acc 4 0 p0\no gt t p1\nr rec t o\nret r\nend"
+ ],
+ "k-tiered-price/a0/structured": [
+  "fn price u32 -> u32\na le p0 10\nb mul p0 5\nc sub p0 10\nd mul c 3\ne add d 50\nr select a b e\nret r\nend"
+ ],
+ "k-pack-channels/a0/structured": [
+  "fn pack u32 u32 u32 -> u32\nr and p0 255\ng and p1 255\nbl and p2 255\nrs shl r 16\ngs shl g 8\nx or rs gs\ny or x bl\nret y\nend"
+ ],
+ "k-pair-swap/a0/structured": [
+  "fn pairs u32x4 -> u32x4\na0 get p0 0\na1 get p0 1\na2 get p0 2\na3 get p0 3\ns1 set p0 0 a1\ns2 set s1 1 a0\ns3 set s2 2 a3\ns4 set s3 3 a2\nret s4\nend"
+ ],
+ "k-scaled-diff/a0/structured": [
+  "fn scale u32 -> u32\nr mul p0 2\nret r\nend\nfn diff u32 u32 -> u32\nx call scale p0\ny call scale p1\nr sub x y\nret r\nend",
+  "fn scale u32 -> u32\nr mul p0 3\nret r\nend"
+ ],
+ "k-index-checksum/a0/structured": [
+  "fn mix u32 u32 u32x4 -> u32\ne get p2 p1\nv add p0 e\nr add v p1\nret r\nend\nfn check u32x4 -> u32\nh fold mix 4 17 p0\nr mov h\nret r\nend",
+  "fn mix u32 u32 u32x4 -> u32\ne get p2 p1\nv add p0 e\nr add v p1\nret r\nend"
+ ],
+ "k-bit-length/a0/structured": [
+  "fn bstep u32 u32 u32 -> u32\nbit shr p2 p1\none and bit 1\npos add p1 1\nr select one pos p0\nret r\nend\nfn bitlen u32 -> u32\nh fold bstep 32 0 p0\nr mov h\nret h\nend",
+  "fn bstep u32 u32 u32 -> u32\nbit shr p2 p1\none and bit 1\ncond eq one 1\npos add p1 1\nr select cond pos p0\nret r\nend"
+ ],
+ "k-adjacent-equal/a0/structured": [
+  "fn pstep u32 u32 u32x4 -> u32\na get p2 p1\nnext add p1 1\ncond lt p1 3\nb get p2 next\neq_check eq a b\ncount select cond eq_check 0\nr add p0 count\nret r\nend\nfn pairs_eq u32x4 -> u32\nh fold pstep 4 0 p0\nret h\nend",
+  "fn pstep u32 u32 u32x4 -> u32\na get p2 p1\nnext add p1 1\ncond lt p1 3\nb get p2 next\neq_check eq a b\nboth and cond eq_check\ncount select both 1 0\nr add p0 count\nret r\nend"
+ ],
+ "k-strictly-ascending/a0/structured": [
+  "fn istep bool u32 u32x4 -> bool\na get p2 p1\nnext add p1 1\nb get p2 next\nlt_check lt a b\nr and p0 lt_check\nret r\nend\nfn ascending u32x4 -> bool\nh fold istep 3 true p0\nret h\nend"
+ ]
+}

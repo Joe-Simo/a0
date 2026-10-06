@@ -1,0 +1,16 @@
+fn step u32 u32 u32x4 -> u32
+i_gt_0 gt a1 0
+prev_idx sub a1 1
+prev get a2 prev_idx
+curr get a2 a1
+differs ne prev curr
+should_inc and i_gt_0 differs
+inc add a0 1
+result select should_inc inc a0
+ret result
+end
+fn f u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end

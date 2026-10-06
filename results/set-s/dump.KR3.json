@@ -1,0 +1,66 @@
+{
+  "s-overtime-pay/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Overtime pay (15 per hour instead of 10) should start after 38 hours instead of after 40.\n\ne0\nfn pay u32 -> u32\no gt p0 40\nb mul p0 10\nx sub p0 40\ny mul x 15\nz mul 40 10\nw add z y\nr select o w b\nret r\nend\ng0\nfn pay u32 -> u32 end"
+  },
+  "s-speed-ticket/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return 0 when the speed (first argument) is at or below the limit (second argument), 1 when it is at most 10 over the limit, and 2 otherwise; a speed exactly equal to the limit currently gets the wrong code.\n\ne0\nfn ticket u32 u32 -> u32\nl2 add p1 10\na lt p0 p1\nb le p0 l2\nm select b 1 2\nr select a 0 m\nret r\nend\ng0\nfn ticket u32 u32 -> u32 end"
+  },
+  "s-middle-nibble/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return bits 4 through 7 of the argument as a number from 0 to 15.\n\ne0\nfn field u32 -> u32\ns shr p0 4\nr and s 7\nret r\nend\ng0\nfn field u32 -> u32 end"
+  },
+  "s-fits-24-bits/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true exactly when the value fits in 24 bits (is below 16777216).\n\ne0\nfn fits24 u32 -> bool\nh shr p0 23\nr eq h 0\nret r\nend\ng0\nfn fits24 u32 -> bool end"
+  },
+  "s-clear-next-slot/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Set to zero the slot just after the given index, wrapping from the last slot back to the first; the other slots stay unchanged.\n\ne0\nfn clearnext u32x4 u32 -> u32x4\nj add p1 0\nr set p0 j 0\nret r\nend\ng0\nfn clearnext u32x4 u32 -> u32x4 end"
+  },
+  "s-count-descents/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Count the places where an element is smaller than the element just before it, looking only at the three neighbouring pairs (no wrap from the last element back to the first).\n\ne0\nfn descents u32x4 -> u32\nc fold step 4 0 p0\nr mov c\nret r\nend\nfn step u32 u32 u32x4 -> u32 end\ng0\nfn step u32 u32 u32x4 -> u32 end\nfn descents u32x4 -> u32 end"
+  },
+  "s-member-price/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Members (the record's flag) should get ten per cent off (the discount rounded down) instead of twenty per cent; non-members pay the full price.\n\ne0\nfn price (u32,bool) -> u32\nv at p0 0\nm at p0 1\nc call cut v\nd sub v c\nr select m d v\nret r\nend\nfn cut u32 -> u32 end\ng0\nfn cut u32 -> u32 end\nfn price (u32,bool) -> u32 end"
+  },
+  "s-two-thirds-quorum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the yes votes (first argument) are at least two thirds of the total (second argument); exactly two thirds should pass.\n\ne0\nfn quorum u32 u32 -> bool\nx mul p0 3\ny mul p1 2\nr gt x y\nret r\nend\ng0\nfn quorum u32 u32 -> bool end"
+  },
+  "s-tank-refill/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Adding 25 to the level (first argument) must not go over the capacity (second argument): when it would, return the capacity and true, otherwise the new level and false.\n\ne0\nfn refill u32 u32 -> (u32,bool)\ns add p0 25\nr rec s false\nret r\nend\ng0\nfn refill u32 u32 -> (u32,bool) end"
+  },
+  "s-bonus-both/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Apply the bonus helper to each of the two scores separately and return the sum of the two bonused scores.\n\ne0\nfn total u32 u32 -> u32\na call bonus p0\nr add a p1\nret r\nend\nfn bonus u32 -> u32 end\ng0\nfn bonus u32 -> u32 end\nfn total u32 u32 -> u32 end"
+  },
+  "s-shift-in/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Drop the first element, move the others one place towards the front, and put the new value (second argument) in the last slot.\n\ne0\nfn pushback u32x4 u32 -> u32x4\nr set p0 3 p1\no mov r\nret o\nend\ng0\nfn pushback u32x4 u32 -> u32x4 end"
+  },
+  "s-window-ok/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return true when the start (first argument) is below the end (second argument) and the end is below 100.\n\ne0\nfn window u32 u32 -> bool\na lt p0 p1\nr mov a\nret r\nend\ng0\nfn window u32 u32 -> bool end"
+  },
+  "s-equal-kind/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The function should return 2 when all three values are equal, 1 when exactly two are equal, and 0 when all differ; it currently misses one pair.\n\ne0\nfn kind u32 u32 u32 -> u32\nx eq p0 p1\ny eq p1 p2\nany or x y\nall and x y\nm select any 1 0\nr select all 2 m\nret r\nend\ng0\nfn kind u32 u32 u32 -> u32 end"
+  },
+  "s-first-largest-index/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the position of the largest element; when the largest value appears more than once, return its first position.\n\ne0\nfn argmax u32x4 -> u32\ni get p0 0\ns rec i 0\nf fold better 4 s p0\nr at f 1\nret r\nend\nfn better (u32,u32) u32 u32x4 -> (u32,u32) end\ng0\nfn better (u32,u32) u32 u32x4 -> (u32,u32) end\nfn argmax u32x4 -> u32 end"
+  },
+  "s-alternating-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the first element minus the second plus the third minus the fourth, with u32 wrapping.\n\ne0\nfn altsum u32x4 -> u32\nt fold acc 4 0 p0\nr mov t\nret r\nend\nfn acc u32 u32 u32x4 -> u32 end\ng0\nfn acc u32 u32 u32x4 -> u32 end\nfn altsum u32x4 -> u32 end"
+  },
+  "s-pack-flag/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the record's number with its top bit (bit 31) replaced by the record's flag: set when the flag is true, cleared when it is false.\n\ne0\nfn pack (u32,bool) -> u32\nv at p0 0\nf at p0 1\nt select f 1 0\nh shl t 31\nr or v h\nret r\nend\ng0\nfn pack (u32,bool) -> u32 end"
+  }
+}

@@ -1,0 +1,4596 @@
+{
+ "tasks": [
+  {
+   "id": "t-covers-mask",
+   "kind": "targeted-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "covers",
+   "instruction": "The function should return true exactly when every bit set in the second argument is also set in the first argument.",
+   "start": {
+    "functions": [
+     {
+      "name": "covers",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ne",
+        "args": [
+         "a",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "covers",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "eq",
+        "args": [
+         "a",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "covers",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "and",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "eq",
+         "args": [
+          "a",
+          "p0"
+         ]
+        }
+       ],
+       "ret": "b"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "covers",
+     "args": [
+      15,
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "covers",
+     "args": [
+      15,
+      16
+     ],
+     "expected": false
+    },
+    {
+     "fn": "covers",
+     "args": [
+      0,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "covers",
+     "args": [
+      8,
+      12
+     ],
+     "expected": false
+    },
+    {
+     "fn": "covers",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": true
+    },
+    {
+     "fn": "covers",
+     "args": [
+      0,
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "covers",
+     "args": [
+      6,
+      6
+     ],
+     "expected": true
+    },
+    {
+     "fn": "covers",
+     "args": [
+      2147483648,
+      2147483649
+     ],
+     "expected": false
+    },
+    {
+     "fn": "covers",
+     "args": [
+      1,
+      0
+     ],
+     "expected": true
+    }
+   ],
+   "note": "Start returns the negation; the wrong edit compares the masked value with the first argument (the reverse containment)."
+  },
+  {
+   "id": "t-triangle-sides",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "tri",
+   "instruction": "Return true when the three lengths form a non-degenerate triangle: each pair of sides must sum to strictly more than the third side.",
+   "start": {
+    "functions": [
+     {
+      "name": "tri",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "add",
+        "args": [
+         "p1",
+         "p2"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "gt",
+        "args": [
+         "a",
+         "p2"
+        ]
+       },
+       {
+        "id": "e",
+        "op": "ge",
+        "args": [
+         "b",
+         "p1"
+        ]
+       },
+       {
+        "id": "g",
+        "op": "gt",
+        "args": [
+         "c",
+         "p0"
+        ]
+       },
+       {
+        "id": "h",
+        "op": "and",
+        "args": [
+         "d",
+         "e"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "and",
+        "args": [
+         "h",
+         "g"
+        ]
+       }
+      ],
+      "ret": "k"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "tri",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "add",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "add",
+        "args": [
+         "p1",
+         "p2"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "gt",
+        "args": [
+         "a",
+         "p2"
+        ]
+       },
+       {
+        "id": "e",
+        "op": "gt",
+        "args": [
+         "b",
+         "p1"
+        ]
+       },
+       {
+        "id": "g",
+        "op": "gt",
+        "args": [
+         "c",
+         "p0"
+        ]
+       },
+       {
+        "id": "h",
+        "op": "and",
+        "args": [
+         "d",
+         "e"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "and",
+        "args": [
+         "h",
+         "g"
+        ]
+       }
+      ],
+      "ret": "k"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "tri",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "add",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "add",
+         "args": [
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "ge",
+         "args": [
+          "a",
+          "p2"
+         ]
+        },
+        {
+         "id": "e",
+         "op": "gt",
+         "args": [
+          "b",
+          "p1"
+         ]
+        },
+        {
+         "id": "g",
+         "op": "gt",
+         "args": [
+          "c",
+          "p0"
+         ]
+        },
+        {
+         "id": "h",
+         "op": "and",
+         "args": [
+          "d",
+          "e"
+         ]
+        },
+        {
+         "id": "k",
+         "op": "and",
+         "args": [
+          "h",
+          "g"
+         ]
+        }
+       ],
+       "ret": "k"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "tri",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "add",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "add",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "add",
+         "args": [
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "gt",
+         "args": [
+          "a",
+          "p2"
+         ]
+        },
+        {
+         "id": "e",
+         "op": "gt",
+         "args": [
+          "b",
+          "p1"
+         ]
+        },
+        {
+         "id": "g",
+         "op": "ge",
+         "args": [
+          "c",
+          "p0"
+         ]
+        },
+        {
+         "id": "h",
+         "op": "and",
+         "args": [
+          "d",
+          "e"
+         ]
+        },
+        {
+         "id": "k",
+         "op": "and",
+         "args": [
+          "h",
+          "g"
+         ]
+        }
+       ],
+       "ret": "k"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "tri",
+     "args": [
+      3,
+      4,
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "tri",
+     "args": [
+      1,
+      2,
+      3
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      1,
+      3,
+      2
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      2,
+      1,
+      3
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      5,
+      5,
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "tri",
+     "args": [
+      0,
+      0,
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      1,
+      1,
+      1
+     ],
+     "expected": true
+    },
+    {
+     "fn": "tri",
+     "args": [
+      2,
+      9,
+      7
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      10,
+      1,
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      4,
+      7,
+      3
+     ],
+     "expected": false
+    },
+    {
+     "fn": "tri",
+     "args": [
+      4,
+      1,
+      3
+     ],
+     "expected": false
+    }
+   ],
+   "note": "Lengths kept small so no addition wraps; a degenerate case on each side."
+  },
+  {
+   "id": "t-two-of-three",
+   "kind": "targeted-edit",
+   "wrongEditKind": "logic-operator",
+   "target": "maj",
+   "instruction": "Return true when at least two of the three flags are true.",
+   "start": {
+    "functions": [
+     {
+      "name": "maj",
+      "params": [
+       "bool",
+       "bool",
+       "bool"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "and",
+        "args": [
+         "p1",
+         "p2"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "or",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "e",
+        "op": "xor",
+        "args": [
+         "d",
+         "c"
+        ]
+       }
+      ],
+      "ret": "e"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "maj",
+      "params": [
+       "bool",
+       "bool",
+       "bool"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "and",
+        "args": [
+         "p1",
+         "p2"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "or",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "e",
+        "op": "or",
+        "args": [
+         "d",
+         "c"
+        ]
+       }
+      ],
+      "ret": "e"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "maj",
+       "params": [
+        "bool",
+        "bool",
+        "bool"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "and",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "and",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "and",
+         "args": [
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "or",
+         "args": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "id": "e",
+         "op": "and",
+         "args": [
+          "d",
+          "c"
+         ]
+        }
+       ],
+       "ret": "e"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "maj",
+     "args": [
+      false,
+      false,
+      false
+     ],
+     "expected": false
+    },
+    {
+     "fn": "maj",
+     "args": [
+      false,
+      false,
+      true
+     ],
+     "expected": false
+    },
+    {
+     "fn": "maj",
+     "args": [
+      false,
+      true,
+      false
+     ],
+     "expected": false
+    },
+    {
+     "fn": "maj",
+     "args": [
+      false,
+      true,
+      true
+     ],
+     "expected": true
+    },
+    {
+     "fn": "maj",
+     "args": [
+      true,
+      false,
+      false
+     ],
+     "expected": false
+    },
+    {
+     "fn": "maj",
+     "args": [
+      true,
+      false,
+      true
+     ],
+     "expected": true
+    },
+    {
+     "fn": "maj",
+     "args": [
+      true,
+      true,
+      false
+     ],
+     "expected": true
+    },
+    {
+     "fn": "maj",
+     "args": [
+      true,
+      true,
+      true
+     ],
+     "expected": true
+    }
+   ],
+   "note": "Start uses exclusive or for the final combine, wrong when all three are true."
+  },
+  {
+   "id": "t-offset-series",
+   "kind": "targeted-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "run",
+   "instruction": "The function should add up p0+i for every i from 0 through 6 inclusive (seven terms), with wrapping addition.",
+   "start": {
+    "functions": [
+     {
+      "name": "step",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "add",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "p0",
+         "a"
+        ]
+       }
+      ],
+      "ret": "b"
+     },
+     {
+      "name": "run",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "step",
+         6,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "step",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "add",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "p0",
+         "a"
+        ]
+       }
+      ],
+      "ret": "b"
+     },
+     {
+      "name": "run",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "step",
+         7,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "step",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "add",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "add",
+         "args": [
+          "p0",
+          "a"
+         ]
+        }
+       ],
+       "ret": "b"
+      },
+      {
+       "name": "run",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "fold",
+         "args": [
+          "step",
+          8,
+          0,
+          "p0"
+         ]
+        }
+       ],
+       "ret": "a"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "run",
+     "args": [
+      0
+     ],
+     "expected": 21
+    },
+    {
+     "fn": "run",
+     "args": [
+      1
+     ],
+     "expected": 28
+    },
+    {
+     "fn": "run",
+     "args": [
+      10
+     ],
+     "expected": 91
+    },
+    {
+     "fn": "run",
+     "args": [
+      100
+     ],
+     "expected": 721
+    },
+    {
+     "fn": "run",
+     "args": [
+      4294967295
+     ],
+     "expected": 14
+    },
+    {
+     "fn": "run",
+     "args": [
+      4294967292
+     ],
+     "expected": 4294967289
+    },
+    {
+     "fn": "run",
+     "args": [
+      613566756
+     ],
+     "expected": 17
+    },
+    {
+     "fn": "run",
+     "args": [
+      613566757
+     ],
+     "expected": 24
+    },
+    {
+     "fn": "run",
+     "args": [
+      2147483648
+     ],
+     "expected": 2147483669
+    }
+   ],
+   "note": "Seven terms; large inputs wrap."
+  },
+  {
+   "id": "t-first-largest-index",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "comparison",
+   "target": "argmax",
+   "instruction": "The function returns the position of the largest element; when the largest value occurs more than once it must return the earliest such position.",
+   "start": {
+    "functions": [
+     {
+      "name": "pick",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p2",
+         "p0"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "ge",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "select",
+        "args": [
+         "c",
+         "p1",
+         "p0"
+        ]
+       }
+      ],
+      "ret": "d"
+     },
+     {
+      "name": "argmax",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "pick",
+         4,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "pick",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p2",
+         "p0"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "gt",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "select",
+        "args": [
+         "c",
+         "p1",
+         "p0"
+        ]
+       }
+      ],
+      "ret": "d"
+     },
+     {
+      "name": "argmax",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "pick",
+         4,
+         0,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "pick",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "get",
+         "args": [
+          "p2",
+          "p0"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "lt",
+         "args": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "select",
+         "args": [
+          "c",
+          "p1",
+          "p0"
+         ]
+        }
+       ],
+       "ret": "d"
+      },
+      {
+       "name": "argmax",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "fold",
+         "args": [
+          "pick",
+          4,
+          0,
+          "p0"
+         ]
+        }
+       ],
+       "ret": "a"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       4,
+       3,
+       2,
+       1
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       5,
+       5,
+       5,
+       5
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       0,
+       7,
+       7,
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       2,
+       9,
+       3,
+       9
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       4294967295,
+       1,
+       4294967295,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "argmax",
+     "args": [
+      [
+       1,
+       2,
+       2,
+       1
+      ]
+     ],
+     "expected": 1
+    }
+   ],
+   "note": "Ties expose ge versus gt."
+  },
+  {
+   "id": "t-fill-two",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "fill2",
+   "instruction": "Besides writing the value at the given position, also write it at the next position (wrapping from the last position back to the first).",
+   "start": {
+    "functions": [
+     {
+      "name": "fill2",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "a",
+        "op": "set",
+        "args": [
+         "p0",
+         "p1",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "fill2",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "a",
+        "op": "set",
+        "args": [
+         "p0",
+         "p1",
+         "p2"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "c",
+        "op": "set",
+        "args": [
+         "a",
+         "b",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "fill2",
+       "params": [
+        "u32x4",
+        "u32",
+        "u32"
+       ],
+       "result": "u32x4",
+       "body": [
+        {
+         "id": "a",
+         "op": "set",
+         "args": [
+          "p0",
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "add",
+         "args": [
+          "p1",
+          2
+         ]
+        },
+        {
+         "id": "c",
+         "op": "set",
+         "args": [
+          "a",
+          "b",
+          "p2"
+         ]
+        }
+       ],
+       "ret": "c"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      0,
+      9
+     ],
+     "expected": [
+      9,
+      9,
+      3,
+      4
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      3,
+      9
+     ],
+     "expected": [
+      9,
+      2,
+      3,
+      9
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      1,
+      5
+     ],
+     "expected": [
+      0,
+      5,
+      5,
+      0
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       5,
+       6,
+       7,
+       8
+      ],
+      2,
+      0
+     ],
+     "expected": [
+      5,
+      6,
+      0,
+      0
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      4,
+      2
+     ],
+     "expected": [
+      2,
+      2,
+      1,
+      1
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       9,
+       8,
+       7,
+       6
+      ],
+      7,
+      4294967295
+     ],
+     "expected": [
+      4294967295,
+      8,
+      7,
+      4294967295
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      5,
+      0
+     ],
+     "expected": [
+      1,
+      0,
+      0,
+      4
+     ]
+    },
+    {
+     "fn": "fill2",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      2,
+      3
+     ],
+     "expected": [
+      0,
+      0,
+      3,
+      3
+     ]
+    }
+   ],
+   "note": "Positions are taken modulo 4, which handles the wrap."
+  },
+  {
+   "id": "t-matching-slots",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "same",
+   "instruction": "The function should count the positions at which the two arrays hold equal values.",
+   "start": {
+    "functions": [
+     {
+      "name": "tally",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p3",
+         "p1"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "ne",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "add",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "e",
+        "op": "select",
+        "args": [
+         "c",
+         "d",
+         "p0"
+        ]
+       }
+      ],
+      "ret": "e"
+     },
+     {
+      "name": "same",
+      "params": [
+       "u32x4",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "tally",
+         4,
+         0,
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "tally",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p3",
+         "p1"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "eq",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "add",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "e",
+        "op": "select",
+        "args": [
+         "c",
+         "d",
+         "p0"
+        ]
+       }
+      ],
+      "ret": "e"
+     },
+     {
+      "name": "same",
+      "params": [
+       "u32x4",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "tally",
+         4,
+         0,
+         "p0",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "tally",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "get",
+         "args": [
+          "p3",
+          "p1"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "eq",
+         "args": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "add",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "e",
+         "op": "select",
+         "args": [
+          "c",
+          "d",
+          "p0"
+         ]
+        }
+       ],
+       "ret": "e"
+      },
+      {
+       "name": "same",
+       "params": [
+        "u32x4",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "fold",
+         "args": [
+          "tally",
+          3,
+          0,
+          "p0",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "a"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "same",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      [
+       4,
+       3,
+       2,
+       1
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       1
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       5,
+       6,
+       7,
+       8
+      ],
+      [
+       5,
+       0,
+       7,
+       0
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      [
+       2,
+       2,
+       2,
+       2
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       4294967295,
+       0,
+       4294967295,
+       0
+      ],
+      [
+       4294967295,
+       1,
+       4294967295,
+       1
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       9
+      ],
+      [
+       0,
+       2,
+       0,
+       9
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "same",
+     "args": [
+      [
+       3,
+       3,
+       3,
+       3
+      ],
+      [
+       3,
+       3,
+       3,
+       3
+      ]
+     ],
+     "expected": 4
+    }
+   ],
+   "note": "The last slot matters for the fold count."
+  },
+  {
+   "id": "t-keep-low-bits",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "wrapping",
+   "target": "low",
+   "instruction": "Keep only the lowest p1 bits of p0; when p1 is 32 or more the whole value must be kept.",
+   "start": {
+    "functions": [
+     {
+      "name": "low",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "b",
+        "op": "shl",
+        "args": [
+         1,
+         "p1"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "sub",
+        "args": [
+         "b",
+         1
+        ]
+       },
+       {
+        "id": "d",
+        "op": "and",
+        "args": [
+         "p0",
+         "c"
+        ]
+       }
+      ],
+      "ret": "d"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "low",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "b",
+        "op": "shl",
+        "args": [
+         1,
+         "p1"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "sub",
+        "args": [
+         "b",
+         1
+        ]
+       },
+       {
+        "id": "d",
+        "op": "and",
+        "args": [
+         "p0",
+         "c"
+        ]
+       },
+       {
+        "id": "a",
+        "op": "ge",
+        "args": [
+         "p1",
+         32
+        ]
+       },
+       {
+        "id": "e",
+        "op": "select",
+        "args": [
+         "a",
+         "p0",
+         "d"
+        ]
+       }
+      ],
+      "ret": "e"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "low",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "b",
+         "op": "shl",
+         "args": [
+          1,
+          "p1"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "sub",
+         "args": [
+          "b",
+          1
+         ]
+        },
+        {
+         "id": "d",
+         "op": "and",
+         "args": [
+          "p0",
+          "c"
+         ]
+        },
+        {
+         "id": "a",
+         "op": "gt",
+         "args": [
+          "p1",
+          32
+         ]
+        },
+        {
+         "id": "e",
+         "op": "select",
+         "args": [
+          "a",
+          "p0",
+          "d"
+         ]
+        }
+       ],
+       "ret": "e"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "low",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "low",
+     "args": [
+      4294967295,
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "low",
+     "args": [
+      4294967295,
+      31
+     ],
+     "expected": 2147483647
+    },
+    {
+     "fn": "low",
+     "args": [
+      4294967295,
+      32
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "low",
+     "args": [
+      4294967295,
+      33
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "low",
+     "args": [
+      255,
+      4
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "low",
+     "args": [
+      2147483653,
+      40
+     ],
+     "expected": 2147483653
+    },
+    {
+     "fn": "low",
+     "args": [
+      12345,
+      64
+     ],
+     "expected": 12345
+    },
+    {
+     "fn": "low",
+     "args": [
+      6,
+      2
+     ],
+     "expected": 2
+    }
+   ],
+   "note": "Shift distance wraps at 32, so the start yields 0 for 32 and wrong masks above."
+  },
+  {
+   "id": "t-checked-product",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "logic-operator",
+   "target": "mulchk",
+   "instruction": "Return the wrapped product and a flag that is true only when the true product does not fit in 32 bits; a zero first factor must never report overflow.",
+   "start": {
+    "functions": [
+     {
+      "name": "mulchk",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "a",
+        "op": "mul",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "div",
+        "args": [
+         "a",
+         "p0"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "ne",
+        "args": [
+         "b",
+         "p1"
+        ]
+       },
+       {
+        "id": "g",
+        "op": "rec",
+        "args": [
+         "a",
+         "c"
+        ]
+       }
+      ],
+      "ret": "g"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "mulchk",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "a",
+        "op": "mul",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "div",
+        "args": [
+         "a",
+         "p0"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "ne",
+        "args": [
+         "b",
+         "p1"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "ne",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "e",
+        "op": "and",
+        "args": [
+         "d",
+         "c"
+        ]
+       },
+       {
+        "id": "g",
+        "op": "rec",
+        "args": [
+         "a",
+         "e"
+        ]
+       }
+      ],
+      "ret": "g"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "mulchk",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "(u32,bool)",
+       "body": [
+        {
+         "id": "a",
+         "op": "mul",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "div",
+         "args": [
+          "a",
+          "p0"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "ne",
+         "args": [
+          "b",
+          "p1"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "ne",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "e",
+         "op": "or",
+         "args": [
+          "d",
+          "c"
+         ]
+        },
+        {
+         "id": "g",
+         "op": "rec",
+         "args": [
+          "a",
+          "e"
+         ]
+        }
+       ],
+       "ret": "g"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "mulchk",
+     "args": [
+      0,
+      5
+     ],
+     "expected": [
+      0,
+      false
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      0,
+      0
+     ],
+     "expected": [
+      0,
+      false
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      3,
+      4
+     ],
+     "expected": [
+      12,
+      false
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      65536,
+      65536
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      65535,
+      65537
+     ],
+     "expected": [
+      4294967295,
+      false
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      65536,
+      65535
+     ],
+     "expected": [
+      4294901760,
+      false
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      4294967295,
+      2
+     ],
+     "expected": [
+      4294967294,
+      true
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      1,
+      4294967295
+     ],
+     "expected": [
+      4294967295,
+      false
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      2,
+      2147483648
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    },
+    {
+     "fn": "mulchk",
+     "args": [
+      0,
+      4294967295
+     ],
+     "expected": [
+      0,
+      false
+     ]
+    }
+   ],
+   "note": "Division by zero gives all ones, which wrongly flagged zero factors."
+  },
+  {
+   "id": "t-tick-millis",
+   "kind": "targeted-edit",
+   "wrongEditKind": "changed-constant",
+   "target": "ms",
+   "instruction": "The timer now runs at 1024 ticks per second instead of 1000; convert a tick count to whole milliseconds (multiply first, with wrapping, then round down).",
+   "start": {
+    "functions": [
+     {
+      "name": "ms",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "mul",
+        "args": [
+         "p0",
+         1000
+        ]
+       },
+       {
+        "id": "b",
+        "op": "div",
+        "args": [
+         "a",
+         1000
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "ms",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "mul",
+        "args": [
+         "p0",
+         1000
+        ]
+       },
+       {
+        "id": "b",
+        "op": "div",
+        "args": [
+         "a",
+         1024
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "ms",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "mul",
+         "args": [
+          "p0",
+          1024
+         ]
+        },
+        {
+         "id": "b",
+         "op": "div",
+         "args": [
+          "a",
+          1000
+         ]
+        }
+       ],
+       "ret": "b"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "ms",
+     "args": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "ms",
+     "args": [
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "ms",
+     "args": [
+      1024
+     ],
+     "expected": 1000
+    },
+    {
+     "fn": "ms",
+     "args": [
+      2048
+     ],
+     "expected": 2000
+    },
+    {
+     "fn": "ms",
+     "args": [
+      1023
+     ],
+     "expected": 999
+    },
+    {
+     "fn": "ms",
+     "args": [
+      5000
+     ],
+     "expected": 4882
+    },
+    {
+     "fn": "ms",
+     "args": [
+      4294967
+     ],
+     "expected": 4194303
+    },
+    {
+     "fn": "ms",
+     "args": [
+      4294968
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "ms",
+     "args": [
+      100
+     ],
+     "expected": 97
+    }
+   ],
+   "note": "The product wraps for large tick counts, matching the stated arithmetic."
+  },
+  {
+   "id": "t-binary-digits",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "digits",
+   "instruction": "The function should read the array as four base-2 digits with the first element most significant, returning 8*a0 + 4*a1 + 2*a2 + a3 (wrapping).",
+   "start": {
+    "functions": [
+     {
+      "name": "h",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "mul",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "a",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "b"
+     },
+     {
+      "name": "digits",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "g0",
+        "op": "get",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "g1",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "g2",
+        "op": "get",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "g3",
+        "op": "get",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "c0",
+        "op": "call",
+        "args": [
+         "h",
+         0,
+         "g0"
+        ]
+       },
+       {
+        "id": "c1",
+        "op": "call",
+        "args": [
+         "h",
+         "c0",
+         "g1"
+        ]
+       },
+       {
+        "id": "c2",
+        "op": "call",
+        "args": [
+         "h",
+         "g2",
+         "c1"
+        ]
+       },
+       {
+        "id": "c3",
+        "op": "call",
+        "args": [
+         "h",
+         "c2",
+         "g3"
+        ]
+       }
+      ],
+      "ret": "c3"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "h",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "mul",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "b",
+        "op": "add",
+        "args": [
+         "a",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "b"
+     },
+     {
+      "name": "digits",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "g0",
+        "op": "get",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "g1",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "g2",
+        "op": "get",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "g3",
+        "op": "get",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "c0",
+        "op": "call",
+        "args": [
+         "h",
+         0,
+         "g0"
+        ]
+       },
+       {
+        "id": "c1",
+        "op": "call",
+        "args": [
+         "h",
+         "c0",
+         "g1"
+        ]
+       },
+       {
+        "id": "c2",
+        "op": "call",
+        "args": [
+         "h",
+         "c1",
+         "g2"
+        ]
+       },
+       {
+        "id": "c3",
+        "op": "call",
+        "args": [
+         "h",
+         "c2",
+         "g3"
+        ]
+       }
+      ],
+      "ret": "c3"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "h",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "mul",
+         "args": [
+          "p0",
+          2
+         ]
+        },
+        {
+         "id": "b",
+         "op": "add",
+         "args": [
+          "a",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "b"
+      },
+      {
+       "name": "digits",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "g0",
+         "op": "get",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "g1",
+         "op": "get",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "g2",
+         "op": "get",
+         "args": [
+          "p0",
+          2
+         ]
+        },
+        {
+         "id": "g3",
+         "op": "get",
+         "args": [
+          "p0",
+          3
+         ]
+        },
+        {
+         "id": "c0",
+         "op": "call",
+         "args": [
+          "h",
+          0,
+          "g3"
+         ]
+        },
+        {
+         "id": "c1",
+         "op": "call",
+         "args": [
+          "h",
+          "c0",
+          "g2"
+         ]
+        },
+        {
+         "id": "c2",
+         "op": "call",
+         "args": [
+          "h",
+          "c1",
+          "g1"
+         ]
+        },
+        {
+         "id": "c3",
+         "op": "call",
+         "args": [
+          "h",
+          "c2",
+          "g0"
+         ]
+        }
+       ],
+       "ret": "c3"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "digits",
+     "args": [
+      [
+       1,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       1,
+       0,
+       1,
+       1
+      ]
+     ],
+     "expected": 11
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       0,
+       1,
+       0,
+       0
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       0,
+       0,
+       1,
+       0
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       3,
+       0,
+       5,
+       2
+      ]
+     ],
+     "expected": 36
+    },
+    {
+     "fn": "digits",
+     "args": [
+      [
+       2147483648,
+       0,
+       0,
+       1
+      ]
+     ],
+     "expected": 1
+    }
+   ],
+   "note": "The helper is one Horner step."
+  },
+  {
+   "id": "t-hailstone-five",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "changed-constant",
+   "target": "hops",
+   "instruction": "Apply the hailstone step five times: halve an even value, otherwise replace it with three times the value plus one (wrapping).",
+   "start": {
+    "functions": [
+     {
+      "name": "hop",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "b",
+        "op": "eq",
+        "args": [
+         "a",
+         0
+        ]
+       },
+       {
+        "id": "c",
+        "op": "shr",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "d",
+        "op": "mul",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "e",
+        "op": "add",
+        "args": [
+         "d",
+         1
+        ]
+       },
+       {
+        "id": "g",
+        "op": "select",
+        "args": [
+         "b",
+         "c",
+         "e"
+        ]
+       }
+      ],
+      "ret": "g"
+     },
+     {
+      "name": "hops",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "hop",
+         5,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "hop",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "b",
+        "op": "eq",
+        "args": [
+         "a",
+         0
+        ]
+       },
+       {
+        "id": "c",
+        "op": "shr",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "d",
+        "op": "mul",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "e",
+        "op": "add",
+        "args": [
+         "d",
+         1
+        ]
+       },
+       {
+        "id": "g",
+        "op": "select",
+        "args": [
+         "b",
+         "c",
+         "e"
+        ]
+       }
+      ],
+      "ret": "g"
+     },
+     {
+      "name": "hops",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "fold",
+        "args": [
+         "hop",
+         5,
+         "p0"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "hop",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "and",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "b",
+         "op": "eq",
+         "args": [
+          "a",
+          0
+         ]
+        },
+        {
+         "id": "c",
+         "op": "shr",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "d",
+         "op": "mul",
+         "args": [
+          "p0",
+          3
+         ]
+        },
+        {
+         "id": "e",
+         "op": "add",
+         "args": [
+          "d",
+          1
+         ]
+        },
+        {
+         "id": "g",
+         "op": "select",
+         "args": [
+          "b",
+          "c",
+          "e"
+         ]
+        }
+       ],
+       "ret": "g"
+      },
+      {
+       "name": "hops",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "fold",
+         "args": [
+          "hop",
+          4,
+          "p0"
+         ]
+        }
+       ],
+       "ret": "a"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "hops",
+     "args": [
+      1
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "hops",
+     "args": [
+      2
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "hops",
+     "args": [
+      3
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "hops",
+     "args": [
+      7
+     ],
+     "expected": 52
+    },
+    {
+     "fn": "hops",
+     "args": [
+      27
+     ],
+     "expected": 31
+    },
+    {
+     "fn": "hops",
+     "args": [
+      16
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "hops",
+     "args": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "hops",
+     "args": [
+      1431655765
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "hops",
+     "args": [
+      4294967295
+     ],
+     "expected": 3221225470
+    }
+   ],
+   "note": "Start multiplies odd values by 2."
+  },
+  {
+   "id": "t-neighbour-sum",
+   "kind": "targeted-edit",
+   "wrongEditKind": "logic-operator",
+   "target": "pairsum",
+   "instruction": "Return true when any two neighbouring elements of the array add up (with wrapping) to the target.",
+   "start": {
+    "functions": [
+     {
+      "name": "pairsum",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "c",
+        "op": "get",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "d",
+        "op": "get",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "e",
+        "op": "add",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "g",
+        "op": "add",
+        "args": [
+         "b",
+         "c"
+        ]
+       },
+       {
+        "id": "h",
+        "op": "add",
+        "args": [
+         "c",
+         "d"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "eq",
+        "args": [
+         "e",
+         "p1"
+        ]
+       },
+       {
+        "id": "m",
+        "op": "eq",
+        "args": [
+         "g",
+         "p1"
+        ]
+       },
+       {
+        "id": "n",
+        "op": "eq",
+        "args": [
+         "h",
+         "p1"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "or",
+        "args": [
+         "k",
+         "m"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "q",
+         "n"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "pairsum",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "get",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "b",
+        "op": "get",
+        "args": [
+         "p0",
+         1
+        ]
+       },
+       {
+        "id": "c",
+        "op": "get",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "d",
+        "op": "get",
+        "args": [
+         "p0",
+         3
+        ]
+       },
+       {
+        "id": "e",
+        "op": "add",
+        "args": [
+         "a",
+         "b"
+        ]
+       },
+       {
+        "id": "g",
+        "op": "add",
+        "args": [
+         "b",
+         "c"
+        ]
+       },
+       {
+        "id": "h",
+        "op": "add",
+        "args": [
+         "c",
+         "d"
+        ]
+       },
+       {
+        "id": "k",
+        "op": "eq",
+        "args": [
+         "e",
+         "p1"
+        ]
+       },
+       {
+        "id": "m",
+        "op": "eq",
+        "args": [
+         "g",
+         "p1"
+        ]
+       },
+       {
+        "id": "n",
+        "op": "eq",
+        "args": [
+         "h",
+         "p1"
+        ]
+       },
+       {
+        "id": "q",
+        "op": "or",
+        "args": [
+         "k",
+         "m"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "or",
+        "args": [
+         "q",
+         "n"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "pairsum",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "get",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "b",
+         "op": "get",
+         "args": [
+          "p0",
+          1
+         ]
+        },
+        {
+         "id": "c",
+         "op": "get",
+         "args": [
+          "p0",
+          2
+         ]
+        },
+        {
+         "id": "d",
+         "op": "get",
+         "args": [
+          "p0",
+          3
+         ]
+        },
+        {
+         "id": "e",
+         "op": "add",
+         "args": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "id": "g",
+         "op": "add",
+         "args": [
+          "b",
+          "c"
+         ]
+        },
+        {
+         "id": "h",
+         "op": "add",
+         "args": [
+          "c",
+          "d"
+         ]
+        },
+        {
+         "id": "k",
+         "op": "eq",
+         "args": [
+          "e",
+          "p1"
+         ]
+        },
+        {
+         "id": "m",
+         "op": "eq",
+         "args": [
+          "g",
+          "p1"
+         ]
+        },
+        {
+         "id": "n",
+         "op": "eq",
+         "args": [
+          "h",
+          "p1"
+         ]
+        },
+        {
+         "id": "q",
+         "op": "and",
+         "args": [
+          "k",
+          "m"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "or",
+         "args": [
+          "q",
+          "n"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      3
+     ],
+     "expected": true
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      7
+     ],
+     "expected": true
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      4
+     ],
+     "expected": false
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       4294967295,
+       1,
+       5,
+       5
+      ],
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       2,
+       2,
+       2,
+       2
+      ],
+      5
+     ],
+     "expected": false
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       1,
+       1,
+       9,
+       9
+      ],
+      18
+     ],
+     "expected": true
+    },
+    {
+     "fn": "pairsum",
+     "args": [
+      [
+       9,
+       9,
+       1,
+       1
+      ],
+      18
+     ],
+     "expected": true
+    }
+   ],
+   "note": "Each neighbour pair is the only match in some test."
+  },
+  {
+   "id": "t-signed-less",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "bit-manipulation",
+   "target": "sless",
+   "instruction": "Compare the two values as two's-complement signed numbers: return true when the first is less than the second.",
+   "start": {
+    "functions": [
+     {
+      "name": "sless",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "mov",
+        "args": [
+         "p0"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "mov",
+        "args": [
+         "p1"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "sless",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "a",
+        "op": "xor",
+        "args": [
+         "p0",
+         2147483648
+        ]
+       },
+       {
+        "id": "b",
+        "op": "xor",
+        "args": [
+         "p1",
+         2147483648
+        ]
+       },
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "sless",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "a",
+         "op": "xor",
+         "args": [
+          "p0",
+          2147483648
+         ]
+        },
+        {
+         "id": "b",
+         "op": "mov",
+         "args": [
+          "p1"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "lt",
+         "args": [
+          "a",
+          "b"
+         ]
+        }
+       ],
+       "ret": "c"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "sless",
+     "args": [
+      1,
+      2
+     ],
+     "expected": true
+    },
+    {
+     "fn": "sless",
+     "args": [
+      2,
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "sless",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "sless",
+     "args": [
+      0,
+      4294967295
+     ],
+     "expected": false
+    },
+    {
+     "fn": "sless",
+     "args": [
+      2147483648,
+      2147483647
+     ],
+     "expected": true
+    },
+    {
+     "fn": "sless",
+     "args": [
+      2147483647,
+      2147483648
+     ],
+     "expected": false
+    },
+    {
+     "fn": "sless",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": false
+    },
+    {
+     "fn": "sless",
+     "args": [
+      2147483648,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "sless",
+     "args": [
+      5,
+      5
+     ],
+     "expected": false
+    },
+    {
+     "fn": "sless",
+     "args": [
+      0,
+      1
+     ],
+     "expected": true
+    }
+   ],
+   "note": "Flipping the sign bit of both operands maps signed order onto unsigned order."
+  },
+  {
+   "id": "t-nibble-field",
+   "kind": "targeted-edit",
+   "wrongEditKind": "changed-constant",
+   "target": "field",
+   "instruction": "Return the four-bit field of p0 that starts at bit position p1 (bits p1 to p1+3), using only the low five bits of p1.",
+   "start": {
+    "functions": [
+     {
+      "name": "field",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "shr",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "a",
+         7
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "field",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "shr",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "a",
+         15
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "field",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "shl",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "and",
+         "args": [
+          "a",
+          15
+         ]
+        }
+       ],
+       "ret": "b"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "field",
+     "args": [
+      240,
+      4
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "field",
+     "args": [
+      240,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "field",
+     "args": [
+      255,
+      0
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "field",
+     "args": [
+      2147483648,
+      28
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "field",
+     "args": [
+      4294967295,
+      31
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "field",
+     "args": [
+      4660,
+      8
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "field",
+     "args": [
+      8,
+      0
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "field",
+     "args": [
+      165,
+      36
+     ],
+     "expected": 10
+    },
+    {
+     "fn": "field",
+     "args": [
+      0,
+      5
+     ],
+     "expected": 0
+    }
+   ],
+   "note": "Shift distance uses the low five bits."
+  },
+  {
+   "id": "t-split-top-bit",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "split",
+   "instruction": "Return the value with its top bit cleared, together with a flag telling whether the top bit was set.",
+   "start": {
+    "functions": [
+     {
+      "name": "split",
+      "params": [
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         2147483647
+        ]
+       },
+       {
+        "id": "b",
+        "op": "gt",
+        "args": [
+         "p0",
+         2147483648
+        ]
+       },
+       {
+        "id": "c",
+        "op": "rec",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "split",
+      "params": [
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         2147483647
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ge",
+        "args": [
+         "p0",
+         2147483648
+        ]
+       },
+       {
+        "id": "c",
+        "op": "rec",
+        "args": [
+         "a",
+         "b"
+        ]
+       }
+      ],
+      "ret": "c"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "split",
+       "params": [
+        "u32"
+       ],
+       "result": "(u32,bool)",
+       "body": [
+        {
+         "id": "a",
+         "op": "and",
+         "args": [
+          "p0",
+          2147483647
+         ]
+        },
+        {
+         "id": "b",
+         "op": "eq",
+         "args": [
+          "p0",
+          2147483648
+         ]
+        },
+        {
+         "id": "c",
+         "op": "rec",
+         "args": [
+          "a",
+          "b"
+         ]
+        }
+       ],
+       "ret": "c"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "split",
+     "args": [
+      0
+     ],
+     "expected": [
+      0,
+      false
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      1
+     ],
+     "expected": [
+      1,
+      false
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      2147483647
+     ],
+     "expected": [
+      2147483647,
+      false
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      2147483648
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      2147483649
+     ],
+     "expected": [
+      1,
+      true
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      4294967295
+     ],
+     "expected": [
+      2147483647,
+      true
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      12345
+     ],
+     "expected": [
+      12345,
+      false
+     ]
+    },
+    {
+     "fn": "split",
+     "args": [
+      2147495993
+     ],
+     "expected": [
+      12345,
+      true
+     ]
+    }
+   ],
+   "note": "Exactly 2^31 is the boundary."
+  }
+ ]
+}

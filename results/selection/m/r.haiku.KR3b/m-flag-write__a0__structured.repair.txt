@@ -1,0 +1,12 @@
+fn bit u32 -> u32
+a rem p0 8
+b shl 1 a
+ret b
+end
+fn f u32 u32 bool -> u32
+mask call bit p1
+set or p0 mask
+invmask xor mask 4294967295
+cleared and p0 invmask
+ret select p2 set cleared
+end

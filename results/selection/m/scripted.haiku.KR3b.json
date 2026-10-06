@@ -1,0 +1,58 @@
+{
+ "m-field-extract/a0/structured": [
+  "fn f u32 -> u32\na shr p0 4\nb and a 63\nret b\nend"
+ ],
+ "m-pack-bytes/a0/structured": [
+  "fn lo8 u32 -> u32\na and p0 255\nret a\nend\nfn f u32 u32 -> u32\na call lo8 p0\nb call lo8 p1\nc shl a 8\nd or c b\nret d\nend"
+ ],
+ "m-nonzero-nibbles/a0/structured": [
+  "fn step u32 u32 u32 -> u32\na and p2 15\nb ne a 0\nc add p0 1\nd select b c p0\nret d\nend\nfn f u32 -> u32\na fold step 8 0 p0\nb mov a\nret b\nend",
+  "fn step u32 u32 u32 -> u32\na add p1 p1\nb add a a\nc shr p2 b\nd and c 15\ne ne d 0\nf add p0 1\ng select e f p0\nret g\nend\nfn f u32 -> u32\na fold step 8 0 p0\nb mov a\nret b\nend"
+ ],
+ "m-header-valid/a0/structured": [
+  "fn nib u32 u32 -> u32\na shr p0 p1\nb and a 15\nret b\nend\nfn f u32 -> bool\na call nib p0 28\nb eq a 5\nc and p0 255\nd ne c 0\ne and b d\nret e\nend"
+ ],
+ "m-copy-next/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\na add p1 1\nb and a 3\ng get p0 b\ns set p0 p1 g\nret s\nend"
+ ],
+ "m-low-bits-tally/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\na get p1 p2\nb and a 3\nc and p3 3\nd eq b c\ne add p0 1\nf select d e p0\nret f\nend\nfn f u32x4 u32 -> u32\na fold step 4 0 p0 p1\nb mov a\nret b\nend",
+  "fn step u32 u32 u32x4 u32 -> u32\na get p2 p1\nb and a 3\nc and p3 3\nd eq b c\ne add p0 1\nf select d e p0\nret f\nend\nfn f u32x4 u32 -> u32\na fold step 4 0 p0 p1\nb mov a\nret b\nend"
+ ],
+ "m-split-word/a0/structured": [
+  "fn f u32 -> (u32,bool)\na and p0 65535\nb shr p0 16\nc ne b 0\nr rec a c\nret r\nend"
+ ],
+ "m-bit-window/a0/structured": [
+  "fn f u32 u32 -> u32\na shl 1 p1\nb sub a 1\nc shl b p0\nret c\nend"
+ ],
+ "m-shift-xor-check/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\na get p1 p2\nb shl a p2\nc xor p0 b\nret c\nend\nfn f u32x4 -> u32\na fold step 4 0 p0\nb mov a\nret b\nend",
+  "fn step u32 u32 u32x4 -> u32\na get p2 p1\nb shl a p1\nc xor p0 b\nret c\nend\nfn f u32x4 -> u32\na fold step 4 0 p0\nb mov a\nret b\nend"
+ ],
+ "m-flag-write/a0/structured": [
+  "fn bit u32 -> u32\na shl 1 p0\nret a\nend\nfn f u32 u32 bool -> u32\nb call bit p1\ns or p0 b\nc xor p0 b\nr select p2 s c\nret r\nend",
+  "fn bit u32 -> u32\na rem p0 8\nb shl 1 a\nret b\nend\nfn f u32 u32 bool -> u32\nmask call bit p1\nset or p0 mask\ninvmask xor mask 4294967295\ncleared and p0 invmask\nret select p2 set cleared\nend"
+ ],
+ "m-decade-counter/a0/structured": [
+  "fn f u32 -> u32\na add p0 1\nb eq a 10\nc select b 0 a\nret c\nend"
+ ],
+ "m-unpack-channels/a0/structured": [
+  "fn f u32 -> u32x4\na shr p0 16\nb and a 255\nc shr p0 8\nd and c 255\ne and p0 255\ng shr p0 24\nh and g 255\nr arr b d e h\nret r\nend"
+ ],
+ "m-adjacent-repeat/a0/structured": [
+  "fn same u32 u32 -> bool\na eq p0 p1\nret a\nend\nfn step bool u32 u32x4 -> bool\na call same p1 p2\nb or p0 a\nret b\nend\nfn f u32x4 -> bool\na fold step 4 false p0\nb mov a\nret b\nend",
+  "fn same u32 u32 -> bool\na eq p0 p1\nret a\nend\nfn step bool u32 u32x4 -> bool\ncurr get p2 p1\nnext_i add p1 1\nnext get p2 next_i\nsame_eq eq curr next\nis_valid lt p1 3\nupdated or p0 same_eq\nret select is_valid updated p0\nend\nfn f u32x4 -> bool\na fold step 4 false p0\nb mov a\nret b\nend"
+ ],
+ "m-scaled-pack/a0/structured": [
+  "fn scale u32 -> u32\na shr p0 8\nret a\nend\nfn f u32 u32 -> u32\na call scale p0\nb call scale p1\nc shl a 16\nd and b 65535\nr or c d\nret r\nend",
+  "fn scale u32 -> u32\na mul p0 3\nb shr a 2\nret b\nend\nfn f u32 u32 -> u32\na call scale p0\nb call scale p1\nc shl a 16\nd and b 65535\nr or c d\nret r\nend"
+ ],
+ "m-set-pair-count/a0/structured": [
+  "fn pair u32 u32 -> bool\na shr p0 p1\nb and a 3\nc eq b 3\nret c\nend\nfn step u32 u32 u32 -> u32\na add p2 1\nb rem a 8\nc call pair p1 p2\nd add p0 1\ne select c d p0\nret e\nend\nfn f u32 -> u32\na fold step 8 0 p0\nb mov a\nret b\nend",
+  "fn pair u32 u32 -> bool\na shr p0 p1\nb and a 3\nc eq b 3\nret c\nend\nfn step u32 u32 u32 -> u32\nc call pair p2 p1\nd add p0 1\ne select c d p0\nret e\nend\nfn f u32 -> u32\na fold step 8 0 p0\nb mov a\nret b\nend"
+ ],
+ "m-byte-insert/a0/structured": [
+  "fn f u32 u32 -> u32\na and p0 65280\nb and p1 255\nc shl b 8\nr or a c\nret r\nend",
+  "fn f u32 u32 -> u32\nmask_cleared xor 0xFF00 4294967295\ncleared and p0 mask_cleared\nnew_bits shl (and p1 255) 8\nresult or cleared new_bits\nret result\nend"
+ ]
+}

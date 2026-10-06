@@ -1,0 +1,133 @@
+### REPLY 1
+-b
+b and a 63
+
+### REPLY 2
+-c
+c shl a 8
+
+### REPLY 3
+-a
+a fold step 8 0 p0
+fn step u32 u32 u32 -> u32
+shift mul p1 4
+nib shr p2 shift
+mask and nib 15
+isnz ne mask 0
+inc select isnz 1 0
+res add p0 inc
+ret res
+end
+
+### REPLY 4
+-a
+a call nib p0 28
+fn nib u32 u32 -> u32
+shift shr p0 p1
+mask and shift 15
+ret mask
+end
+
+### REPLY 5
+-g
+next add p1 1
+-s
+elem get p0 next
+s set p0 p1 elem
+
+### REPLY 6
+fn step u32 u32 u32x4 u32 -> u32
+elem get p2 p1
+elem_low and elem 3
+arg_low and p3 3
+eq_check eq elem_low arg_low
+count select eq_check 1 0
+result add p0 count
+ret result
+end
+
+### REPLY 7
+-c
+c ne b 0
+
+### REPLY 8
+b sub a 1
+c shl b p0
+ret c
+
+### REPLY 9
+fn step u32 u32 u32x4 -> u32
+elem get p2 p1
+shifted shl elem p1
+result xor p0 shifted
+ret result
+end
+
+### REPLY 10
+b_and and p0 b
+c sub p0 b_and
+r select p2 s c
+ret r
+fn bit u32 -> u32
+mask and p0 7
+result shl 1 mask
+ret result
+end
+
+### REPLY 11
+-b
+b eq a 10
+
+### REPLY 12
+-b
+b and a 255
+-d
+d and c 255
+-e
+e and p0 255
+
+### REPLY 13
+-a
+a fold step 3 false p0
+fn same u32 u32 -> bool
+is_eq eq p0 p1
+ret is_eq
+end
+fn step bool u32 u32x4 -> bool
+curr get p2 p1
+next_idx add p1 1
+next get p2 next_idx
+is_eq call same curr next
+result or p0 is_eq
+ret result
+end
+
+### REPLY 14
+-c
+c shl a 16
+
+### REPLY 15
+fn pair u32 u32 -> bool
+shr_val shr p0 p1
+low_bit and shr_val 1
+next_bit shr shr_val 1
+next_bit_val and next_bit 1
+result and low_bit next_bit_val
+ret result
+end
+fn step u32 u32 u32 -> u32
+is_pair call pair p2 p1
+count select is_pair 1 0
+res add p0 count
+ret res
+end
+
+### REPLY 16
+-a
+keep_0_7 and p0 255
+keep_16_31 and p0 4294901760
+-c
+shifted shl p1 8
+temp or keep_0_7 shifted
+-r
+r or temp keep_16_31

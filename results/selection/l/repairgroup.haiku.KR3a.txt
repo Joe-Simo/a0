@@ -1,0 +1,182 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops: add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y | call F a... | fold F n s a...: s=F(s,i,a...) for i<n | arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+
+=====
+
+### CONVERSATION 2
+[user]
+Return the low byte of p0 with its two 4-bit halves swapped; every bit above the low byte must be zero.
+
+e0
+fn f u32 -> u32
+lo and p0 15
+hi4 shl lo 4
+sh shr p0 4
+r or hi4 sh
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+[assistant]
+sh and sh 15
+
+[user]
+Rejected:
+structure: f.sh: reference to undefined or later node 'sh' fix: 'sh' is defined on a later line of f: move it above f.sh
+
+Try again.
+
+### CONVERSATION 11
+[user]
+Return true when p0 is a multiple of 8 and at least 16.
+
+e0
+fn f u32 -> bool
+lb and p0 3
+z eq lb 0
+big gt p0 16
+r and z big
+ret r
+end
+g0
+fn f u32 -> bool end
+
+[assistant]
+lb and p0 7
+
+[user]
+Rejected:
+f(16) = false, expected true
+
+Current view:
+e0
+fn f u32 -> bool
+lb and p0 7
+z eq lb 0
+big gt p0 16
+r and z big
+ret r
+end
+g0
+fn f u32 -> bool end
+Try again.
+
+### CONVERSATION 13
+[user]
+f should count the positions 1 to 3 whose element differs from the element just before it; the first element must not be compared with the last.
+
+e0
+fn f u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+c fold step 3 0 p0
+
+[user]
+Rejected:
+f(1,2,2,2) = 2, expected 1
+f(1,1,2,2) = 2, expected 1
+
+Current view:
+e0
+fn f u32x4 -> u32
+c fold step 3 0 p0
+r mov c
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+Return true exactly when the helper's state machine is in its final, sticky state after all four elements.
+
+e0
+fn f u32x4 -> bool
+q fold step 4 0 p0
+r eq q 2
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> bool end
+
+[assistant]
+q fold step 4 0 p0
+
+[user]
+Rejected:
+f(7,2,9,0) = false, expected true
+f(0,7,2,9) = false, expected true
+f(7,2,9,7) = false, expected true
+f(0,0,7,2) = true, expected false
+
+Current view:
+e0
+fn f u32x4 -> bool
+q fold step 4 0 p0
+r eq q 2
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> bool end
+Try again.
+
+### CONVERSATION 16
+[user]
+One tick of a toggling counter: when the flag is set the count doubles, otherwise it grows by 3; the flag flips on every tick.
+
+e0
+fn f (u32,bool) -> (u32,bool)
+c at p0 0
+fl at p0 1
+dbl mul c 2
+plus add c 1
+nc select fl dbl plus
+nf mov fl
+r rec nc nf
+ret r
+end
+g0
+fn f (u32,bool) -> (u32,bool) end
+
+[assistant]
+nf xor fl true
+
+[user]
+Rejected:
+f(0,false) = 1,true, expected 3,true
+f(1,false) = 2,true, expected 4,true
+f(5,false) = 6,true, expected 8,true
+f(4294967295,false) = 0,true, expected 2,true
+
+Current view:
+e0
+fn f (u32,bool) -> (u32,bool)
+c at p0 0
+fl at p0 1
+dbl mul c 2
+plus add c 1
+nc select fl dbl plus
+nf xor fl true
+r rec nc nf
+ret r
+end
+g0
+fn f (u32,bool) -> (u32,bool) end
+Try again.

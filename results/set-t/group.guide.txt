@@ -1,0 +1,240 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+io: linear token, each value used once. read t->(u32,io) | write t v->io | puts t a->io
+EDIT: reply bare edit lines (handle line optional when one e handle is shown). `id op ...` replaces or inserts before ret; `... @ other` inserts after other; `-id` deletes; `ret x`; `fn ...` block (end optional) adds/replaces a function; `-fn name` removes.
+Example: fn affine u32 u32 u32 -> u32 / a mul p0 p1 / b add a p2 / ret b / end (one item per line).
+
+
+The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.
+
+=====
+
+### REQUEST 1
+The function should return true exactly when every bit set in the second argument is also set in the first argument.
+
+e0
+fn covers u32 u32 -> bool
+a and p0 p1
+b ne a p1
+ret b
+end
+g0
+fn covers u32 u32 -> bool end
+
+### REQUEST 2
+Return true when the three lengths form a non-degenerate triangle: each pair of sides must sum to strictly more than the third side.
+
+e0
+fn tri u32 u32 u32 -> bool
+a add p0 p1
+b add p0 p2
+c add p1 p2
+d gt a p2
+e ge b p1
+g gt c p0
+h and d e
+k and h g
+ret k
+end
+g0
+fn tri u32 u32 u32 -> bool end
+
+### REQUEST 3
+Return true when at least two of the three flags are true.
+
+e0
+fn maj bool bool bool -> bool
+a and p0 p1
+b and p0 p2
+c and p1 p2
+d or a b
+e xor d c
+ret e
+end
+g0
+fn maj bool bool bool -> bool end
+
+### REQUEST 4
+The function should add up p0+i for every i from 0 through 6 inclusive (seven terms), with wrapping addition.
+
+e0
+fn run u32 -> u32
+a fold step 6 0 p0
+ret a
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn run u32 -> u32 end
+
+### REQUEST 5
+The function returns the position of the largest element; when the largest value occurs more than once it must return the earliest such position.
+
+e0
+fn argmax u32x4 -> u32
+a fold pick 4 0 p0
+ret a
+end
+fn pick u32 u32 u32x4 -> u32 end
+g0
+fn pick u32 u32 u32x4 -> u32 end
+fn argmax u32x4 -> u32 end
+
+### REQUEST 6
+Besides writing the value at the given position, also write it at the next position (wrapping from the last position back to the first).
+
+e0
+fn fill2 u32x4 u32 u32 -> u32x4
+a set p0 p1 p2
+ret a
+end
+g0
+fn fill2 u32x4 u32 u32 -> u32x4 end
+
+### REQUEST 7
+The function should count the positions at which the two arrays hold equal values.
+
+e0
+fn same u32x4 u32x4 -> u32
+a fold tally 4 0 p0 p1
+ret a
+end
+fn tally u32 u32 u32x4 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 u32x4 -> u32 end
+fn same u32x4 u32x4 -> u32 end
+
+### REQUEST 8
+Keep only the lowest p1 bits of p0; when p1 is 32 or more the whole value must be kept.
+
+e0
+fn low u32 u32 -> u32
+b shl 1 p1
+c sub b 1
+d and p0 c
+ret d
+end
+g0
+fn low u32 u32 -> u32 end
+
+### REQUEST 9
+Return the wrapped product and a flag that is true only when the true product does not fit in 32 bits; a zero first factor must never report overflow.
+
+e0
+fn mulchk u32 u32 -> (u32,bool)
+a mul p0 p1
+b div a p0
+c ne b p1
+g rec a c
+ret g
+end
+g0
+fn mulchk u32 u32 -> (u32,bool) end
+
+### REQUEST 10
+The timer now runs at 1024 ticks per second instead of 1000; convert a tick count to whole milliseconds (multiply first, with wrapping, then round down).
+
+e0
+fn ms u32 -> u32
+a mul p0 1000
+b div a 1000
+ret b
+end
+g0
+fn ms u32 -> u32 end
+
+### REQUEST 11
+The function should read the array as four base-2 digits with the first element most significant, returning 8*a0 + 4*a1 + 2*a2 + a3 (wrapping).
+
+e0
+fn digits u32x4 -> u32
+g0 get p0 0
+g1 get p0 1
+g2 get p0 2
+g3 get p0 3
+c0 call h 0 g0
+c1 call h c0 g1
+c2 call h g2 c1
+c3 call h c2 g3
+ret c3
+end
+fn h u32 u32 -> u32 end
+g0
+fn h u32 u32 -> u32 end
+fn digits u32x4 -> u32 end
+
+### REQUEST 12
+Apply the hailstone step five times: halve an even value, otherwise replace it with three times the value plus one (wrapping).
+
+e0
+fn hops u32 -> u32
+a fold hop 5 p0
+ret a
+end
+fn hop u32 u32 -> u32 end
+g0
+fn hop u32 u32 -> u32 end
+fn hops u32 -> u32 end
+
+### REQUEST 13
+Return true when any two neighbouring elements of the array add up (with wrapping) to the target.
+
+e0
+fn pairsum u32x4 u32 -> bool
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+e add a b
+g add b c
+h add c d
+k eq e p1
+m eq g p1
+n eq h p1
+q or k m
+r and q n
+ret r
+end
+g0
+fn pairsum u32x4 u32 -> bool end
+
+### REQUEST 14
+Compare the two values as two's-complement signed numbers: return true when the first is less than the second.
+
+e0
+fn sless u32 u32 -> bool
+a mov p0
+b mov p1
+c lt a b
+ret c
+end
+g0
+fn sless u32 u32 -> bool end
+
+### REQUEST 15
+Return the four-bit field of p0 that starts at bit position p1 (bits p1 to p1+3), using only the low five bits of p1.
+
+e0
+fn field u32 u32 -> u32
+a shr p0 p1
+b and a 7
+ret b
+end
+g0
+fn field u32 u32 -> u32 end
+
+### REQUEST 16
+Return the value with its top bit cleared, together with a flag telling whether the top bit was set.
+
+e0
+fn split u32 -> (u32,bool)
+a and p0 2147483647
+b gt p0 2147483648
+c rec a b
+ret c
+end
+g0
+fn split u32 -> (u32,bool) end

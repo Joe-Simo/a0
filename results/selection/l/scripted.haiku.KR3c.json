@@ -1,0 +1,54 @@
+{
+ "l-fee-tier/a0/structured": [
+  "fn f u32 -> u32\nsmall lt p0 500\npct div p0 100\nr select small 8 pct\nret r\nend"
+ ],
+ "l-nibble-swap/a0/structured": [
+  "fn f u32 -> u32\nlo and p0 15\nhi4 shl lo 4\nsh shr p0 4\nsh and sh 15\nr or hi4 sh\nret r\nend",
+  "fn f u32 -> u32\nlo and p0 15\nhi4 shl lo 4\nsh shr p0 4\nsh_masked and sh 15\nr or hi4 sh_masked\nret r\nend"
+ ],
+ "l-ring-advance/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\nn add p1 1\nv get p0 p1\nw add v 1\nr set p0 n w\nret r\nend"
+ ],
+ "l-scale-flag/a0/structured": [
+  "fn f u32 -> (u32,bool)\ns mul p0 5\nfl gt s 100\nr rec s fl\nret r\nend"
+ ],
+ "l-cycle-state/a0/structured": [
+  "fn f u32 -> u32\nlast eq p0 2\ninc add p0 1\nr select last 0 inc\nret r\nend"
+ ],
+ "l-strict-peak/a0/structured": [
+  "fn f u32x4 u32 -> bool\nc get p0 p1\nli add p1 3\nl get p0 li\nri add p1 1\nrv get p0 ri\na gt c l\nb gt c rv\nr and a b\nret r\nend"
+ ],
+ "l-checksum/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ne get a2 a1\ns add a0 e\nret s\nend\nfn f u32x4 -> u32\nh fold step 4 7 p0\nr mov h\nret r\nend",
+  "fn step u32 u32 u32x4 -> u32\ne get p2 p1\ns add p0 e\nret s\nend\nfn f u32x4 -> u32\nh fold step 4 7 p0\nr mov h\nret r\nend"
+ ],
+ "l-discount/a0/structured": [
+  "fn f u32 u32 -> (u32,bool)\nt mul p0 p1\nok ge t 200\nd sub t 20\nfin select ok d t\nr rec fin ok\nret r\nend"
+ ],
+ "l-shift-insert/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\na0 get p0 0\na1 get p0 1\na2 get p0 2\na3 get p0 3\nr arr p1 a0 a1 a2\nret r\nend"
+ ],
+ "l-grade-levels/a0/structured": [
+  "fn f u32 -> u32\ng90 ge p0 90\ng80 ge p0 80\ng70 ge p0 70\ny2 select g70 2 0\ny select g80 3 y2\nr select g90 4 y\nret r\nend"
+ ],
+ "l-aligned-large/a0/structured": [
+  "fn f u32 -> bool\nlb and p0 7\nz eq lb 0\nbig ge p0 16\nr and z big\nret r\nend"
+ ],
+ "l-helper-args/a0/structured": [
+  "fn f u32 -> u32\nn add p0 1\nx call h p0 2\ny call h n 3\nr add x y\nret r\nend"
+ ],
+ "l-change-count/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ni_gt_0 gt a1 0\nprev_idx sub a1 1\nprev get a2 prev_idx\ncurr get a2 a1\ndiffers ne prev curr\nshould_inc and i_gt_0 differs\ninc add a0 1\nresult select should_inc inc a0\nret result\nend\nfn f u32x4 -> u32\nc fold step 4 0 p0\nr mov c\nret r\nend",
+  "fn step u32 u32 u32x4 -> u32\ni_gt_0 gt p1 0\nprev_idx sub p1 1\nprev get p2 prev_idx\ncurr get p2 p1\ndiffers ne prev curr\nshould_inc and i_gt_0 differs\ninc add p0 1\nresult select should_inc inc p0\nret result\nend\nfn f u32x4 -> u32\nc fold step 4 0 p0\nr mov c\nret r\nend"
+ ],
+ "l-split-bytes/a0/structured": [
+  "fn f u32 -> u32x4\ns0 shr p0 24\nb0 and s0 255\ns1 shr p0 16\nb1 and s1 255\ns2 shr p0 8\nb2 and s2 255\ns3 shr p0 0\nb3 and s3 255\nr arr b3 b2 b1 b0\nret r\nend"
+ ],
+ "l-lock-open/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\nis_0 eq a0 0\nis_1 eq a0 1\ntemp select is_1 2 a0\nnext select is_0 1 temp\nret next\nend\nfn f u32x4 -> bool\nq fold step 4 0 p0\nr eq q 2\nret r\nend",
+  "fn step u32 u32 u32x4 -> u32\nis_0 eq p0 0\nis_1 eq p0 1\ntemp select is_1 2 p0\nnext select is_0 1 temp\nret next\nend\nfn f u32x4 -> bool\nq fold step 4 0 p0\nr eq q 2\nret r\nend"
+ ],
+ "l-toggle-tick/a0/structured": [
+  "fn f (u32,bool) -> (u32,bool)\nc at p0 0\nfl at p0 1\ndbl mul c 2\nplus add c 3\nnc select fl dbl plus\nnf xor fl true\nr rec nc nf\nret r\nend"
+ ]
+}

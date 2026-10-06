@@ -1,0 +1,177 @@
+### REPLY 1
+fn f u32 -> u32
+a shr p0 4
+b and a 63
+ret b
+end
+
+### REPLY 2
+fn f u32 u32 -> u32
+a call lo8 p0
+b call lo8 p1
+c shl a 8
+d or c b
+ret d
+end
+fn lo8 u32 -> u32 end
+
+### REPLY 3
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32
+n shr p2 (shl p1 2)
+m and n 15
+r ne m 0
+s select r (add p0 1) p0
+ret s
+end
+
+### REPLY 4
+fn f u32 -> bool
+a call nib p0 28
+b eq a 5
+c and p0 255
+d ne c 0
+e and b d
+ret e
+end
+fn nib u32 u32 -> u32 end
+
+### REPLY 5
+fn f u32x4 u32 -> u32x4
+n add p1 1
+g get p0 n
+s set p0 p1 g
+ret s
+end
+
+### REPLY 6
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 u32 -> u32
+e get p2 p1
+lo and e 3
+am and p3 3
+r eq lo am
+s select r (add p0 1) p0
+ret s
+end
+
+### REPLY 7
+fn f u32 -> (u32,bool)
+a and p0 65535
+b shr p0 16
+c ne b 0
+r rec a c
+ret r
+end
+
+### REPLY 8
+fn f u32 u32 -> u32
+a shl 1 p1
+b sub a 1
+c shl b p0
+ret c
+end
+
+### REPLY 9
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+s shl e p1
+r xor p0 s
+ret r
+end
+
+### REPLY 10
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+bn xor b 4294967295
+c and p0 bn
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+
+### REPLY 11
+fn f u32 -> u32
+a add p0 1
+b eq a 10
+c select b 0 a
+ret c
+end
+
+### REPLY 12
+fn f u32 -> u32x4
+a shr p0 16
+b and a 255
+c shr p0 8
+d and c 255
+e and p0 255
+g shr p0 24
+r arr b d e g
+ret r
+end
+
+### REPLY 13
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool
+not_last lt p1 3
+curr get p2 p1
+next get p2 (add p1 1)
+eq eq curr next
+should_check and not_last eq
+ret or p0 should_check
+end
+
+### REPLY 14
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+r or c b
+ret r
+end
+fn scale u32 -> u32 end
+
+### REPLY 15
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32
+shift_i shl 1 p1
+shift_next shl 1 (add p1 1)
+mask or shift_i shift_next
+value_masked and p2 mask
+both_set eq value_masked mask
+ret select both_set (add p0 1) p0
+end
+
+### REPLY 16
+fn f u32 u32 -> u32
+mask xor 4294967295 65280
+a and p0 mask
+c and p1 255
+s shl c 8
+r or a s
+ret r
+end

@@ -1,0 +1,17 @@
+fn pair u32 u32 -> bool
+a shr p0 p1
+b and a 3
+c eq b 3
+ret c
+end
+fn step u32 u32 u32 -> u32
+c call pair p2 p1
+d add p0 1
+e select c d p0
+ret e
+end
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end

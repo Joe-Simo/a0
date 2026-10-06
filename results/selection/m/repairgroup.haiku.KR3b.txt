@@ -1,0 +1,380 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops: add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y | call F a... | fold F n s a...: s=F(s,i,a...) for i<n | arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+
+=====
+
+### CONVERSATION 3
+[user]
+Count how many of the eight 4-bit nibbles of the input are nonzero.
+
+e0
+fn f u32 -> u32
+a fold step 7 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+[assistant]
+fn step u32 u32 u32 -> u32
+a and p2 15
+b ne a 0
+c add p0 1
+d select b c p0
+ret d
+end
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+
+[user]
+Rejected:
+f(4026531840) = 0, expected 1
+f(1) = 8, expected 1
+f(268435456) = 0, expected 1
+f(252645135) = 8, expected 4
+f(2147483649) = 8, expected 2
+f(1048576) = 0, expected 1
+
+Current view:
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+Try again.
+
+### CONVERSATION 6
+[user]
+Count the elements whose two lowest bits equal the two lowest bits of the second argument, comparing only those two bits on both sides.
+
+e0
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 u32 -> u32 end
+g0
+fn step u32 u32 u32x4 u32 -> u32 end
+fn f u32x4 u32 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 u32 -> u32
+a get p1 p2
+b and a 3
+c and p3 3
+d eq b c
+e add p0 1
+f select d e p0
+ret f
+end
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+
+[user]
+Rejected:
+type: step.a: get expects an array, got u32
+
+Try again.
+
+### CONVERSATION 9
+[user]
+Combine the four elements with exclusive-or, after shifting each element left by its index.
+
+e0
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+a get p1 p2
+b shl a p2
+c xor p0 b
+ret c
+end
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+
+[user]
+Rejected:
+type: step.a: get expects an array, got u32
+
+Try again.
+
+### CONVERSATION 10
+[user]
+Set flag k (the second argument, taken modulo 8) in the flags word when the third argument is true, and clear it when it is false.
+
+e0
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c xor p0 b
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+g0
+fn bit u32 -> u32 end
+fn f u32 u32 bool -> u32 end
+
+[assistant]
+fn bit u32 -> u32
+a shl 1 p0
+ret a
+end
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c xor p0 b
+r select p2 s c
+ret r
+end
+
+[user]
+Rejected:
+f(0,0,false) = 1, expected 0
+f(0,11,true) = 2048, expected 8
+f(16,5,false) = 48, expected 16
+
+Current view:
+e0
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c xor p0 b
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+g0
+fn bit u32 -> u32 end
+fn f u32 u32 bool -> u32 end
+Try again.
+
+### CONVERSATION 13
+[user]
+The function should report whether two neighbouring elements are equal, but it also compares the last element with the first. Make it compare only true neighbours.
+
+e0
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn step bool u32 u32x4 -> bool end
+g0
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool end
+fn f u32x4 -> bool end
+
+[assistant]
+fn same u32 u32 -> bool
+a eq p0 p1
+ret a
+end
+fn step bool u32 u32x4 -> bool
+a call same p1 p2
+b or p0 a
+ret b
+end
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+
+[user]
+Rejected:
+type: step.a argument 1: expected u32, got u32x4 fix: replace the operand at step.a argument 1 with a value of type u32
+
+Try again.
+
+### CONVERSATION 14
+[user]
+Scale both arguments with the helper, then put the scaled first value in the upper 16 bits and the scaled second value, cut to 16 bits, in the lower 16 bits.
+
+e0
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 8
+r or c b
+ret r
+end
+fn scale u32 -> u32 end
+g0
+fn scale u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+[assistant]
+fn scale u32 -> u32
+a shr p0 8
+ret a
+end
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+d and b 65535
+r or c d
+ret r
+end
+
+[user]
+Rejected:
+f(4,0) = 0, expected 196608
+f(0,4) = 0, expected 3
+f(4,4) = 0, expected 196611
+f(100,200) = 0, expected 4915350
+f(0,131072) = 512, expected 32768
+f(65536,1) = 16777216, expected 3221225472
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+d and b 65535
+r or c d
+ret r
+end
+fn scale u32 -> u32 end
+g0
+fn scale u32 -> u32 end
+fn f u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 15
+[user]
+The function currently counts set bits among bits 0 to 7, but it should count the positions i from 0 to 7 where bits i and i+1 are both set. Change the helper accordingly.
+
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+[assistant]
+fn pair u32 u32 -> bool
+a shr p0 p1
+b and a 3
+c eq b 3
+ret c
+end
+fn step u32 u32 u32 -> u32
+a add p2 1
+b rem a 8
+c call pair p1 p2
+d add p0 1
+e select c d p0
+ret e
+end
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+
+[user]
+Rejected:
+f(0) = 2, expected 0
+f(1) = 2, expected 0
+f(3) = 0, expected 1
+f(511) = 0, expected 8
+f(255) = 0, expected 7
+f(6) = 0, expected 1
+f(384) = 2, expected 1
+f(4294967295) = 0, expected 8
+f(768) = 2, expected 0
+
+Current view:
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+Try again.
+
+### CONVERSATION 16
+[user]
+Return the word with bits 8 to 15 replaced by the low 8 bits of the second argument; all other bits of the word stay unchanged.
+
+e0
+fn f u32 u32 -> u32
+a and p0 65280
+c shl p1 8
+r or a c
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+
+[assistant]
+fn f u32 u32 -> u32
+a and p0 65280
+b and p1 255
+c shl b 8
+r or a c
+ret r
+end
+
+[user]
+Rejected:
+f(4294967295,0) = 65280, expected 4294902015
+f(305419896,171) = 65280, expected 305441656
+f(4294902015,4294967295) = 65280, expected 4294967295
+f(65280,0) = 65280, expected 0
+f(2882400001,256) = 61184, expected 2882338817
+f(1,1) = 256, expected 257
+
+Current view:
+e0
+fn f u32 u32 -> u32
+a and p0 65280
+b and p1 255
+c shl b 8
+r or a c
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+Try again.

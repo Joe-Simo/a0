@@ -1,0 +1,57 @@
+{
+ "k-nibble-swap/a0/structured": [
+  "c shr p0 4"
+ ],
+ "k-lowest-bit/a0/structured": [
+  "c sub p0 b\nret c"
+ ],
+ "k-late-fee/a0/structured": [
+  "a gt p0 p1"
+ ],
+ "k-majority/a0/structured": [
+  "c and p1 p2\nd or a b\ne or d c\nret e"
+ ],
+ "k-prefix-sums/a0/structured": [
+  "s2 add s1 c"
+ ],
+ "k-borrow-sub/a0/structured": [
+  "b lt p0 p1"
+ ],
+ "k-low-bit-histogram/a0/structured": [
+  "fn step u32x4 u32 u32x4 -> u32x4\nv and p1 3\nc get p2 v\ninc add c 1\nr set p2 v inc\nret r\nend",
+  "h fold step 4 z p0\nfn step u32x4 u32 u32x4 -> u32x4\ne get p2 p1\nv and e 3\nc get p0 v\ninc add c 1\nr set p0 v inc\nret r\nend"
+ ],
+ "k-over-budget/a0/structured": [
+  "fn acc u32 u32 u32x4 -> u32\ne get p2 p1\nr add p0 e\nret r\nend",
+  "o gt t p1"
+ ],
+ "k-tiered-price/a0/structured": [
+  "c10 le p0 10\np5 mul p0 5\np3 mul p0 3\nextra add p3 20\nr select c10 p5 extra\nret r",
+  "le10 le p0 10\np5 mul p0 5\nsub_10 sub p0 10\np3 mul sub_10 3\nadd_50 add 50 p3\nr select le10 p5 add_50\nret r"
+ ],
+ "k-pack-channels/a0/structured": [
+  "r and p0 255\ng and p1 255\nbl and p2 255"
+ ],
+ "k-pair-swap/a0/structured": [
+  "c get p0 2\nd get p0 3\nu set s 2 d\nv set u 3 c\nret v",
+  "-u\nu set t 2 d"
+ ],
+ "k-scaled-diff/a0/structured": [
+  "y call scale p1\nr sub x y\nret r"
+ ],
+ "k-index-checksum/a0/structured": [
+  "h fold mix 4 17 p0\nfn mix u32 u32 u32x4 -> u32\ne get p2 p1\ns add p0 e\nr add s p1\nret r\nend",
+  "fn mix u32 u32 u32x4 -> u32\ne get p2 p1\ns add p0 e\nr add s p1\nret r\nend"
+ ],
+ "k-bit-length/a0/structured": [
+  "fn bstep u32 u32 u32 -> u32\nshifted shr p2 p1\nmasked and shifted 1\nr add p0 masked\nret r\nend",
+  "fn bstep u32 u32 u32 -> u32\nshifted shr p2 p1\nmasked and shifted 1\ncond ne masked 0\nnext_pos add p1 1\nr select cond next_pos p0\nret r\nend"
+ ],
+ "k-adjacent-equal/a0/structured": [
+  "fn pstep u32 u32 u32x4 -> u32\nlt3 lt p1 3\ncurr get p2 p1\nnext_i add p1 1\nnext get p2 next_i\neq eq curr next\nresult and lt3 eq\nr add p0 result\nret r\nend",
+  "-result\nresult select (and lt3 eq) 1 0\nr add p0 result"
+ ],
+ "k-strictly-ascending/a0/structured": [
+  "fn istep bool u32 u32x4 -> bool\ncurr get p2 p1\nnext_i add p1 1\nnext get p2 next_i\nlt lt curr next\nresult and p0 lt\nret result\nend"
+ ]
+}

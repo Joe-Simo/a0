@@ -1,0 +1,53 @@
+{
+ "m-field-extract/a0/structured": [
+  "-b\nb and a 63"
+ ],
+ "m-pack-bytes/a0/structured": [
+  "-c\nc shl a 8"
+ ],
+ "m-nonzero-nibbles/a0/structured": [
+  "-a\na fold step 8 0 p0\nfn step u32 u32 u32 -> u32\nshift mul p1 4\nnib shr p2 shift\nmask and nib 15\nisnz ne mask 0\ninc select isnz 1 0\nres add p0 inc\nret res\nend"
+ ],
+ "m-header-valid/a0/structured": [
+  "-a\na call nib p0 28\nfn nib u32 u32 -> u32\nshift shr p0 p1\nmask and shift 15\nret mask\nend"
+ ],
+ "m-copy-next/a0/structured": [
+  "-g\nnext add p1 1\n-s\nelem get p0 next\ns set p0 p1 elem"
+ ],
+ "m-low-bits-tally/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\nelem get p2 p1\nelem_low and elem 3\narg_low and p3 3\neq_check eq elem_low arg_low\ncount select eq_check 1 0\nresult add p0 count\nret result\nend"
+ ],
+ "m-split-word/a0/structured": [
+  "-c\nc ne b 0"
+ ],
+ "m-bit-window/a0/structured": [
+  "b sub a 1\nc shl b p0\nret c"
+ ],
+ "m-shift-xor-check/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\nelem get p2 p1\nshifted shl elem p1\nresult xor p0 shifted\nret result\nend"
+ ],
+ "m-flag-write/a0/structured": [
+  "b_and and p0 b\nc sub p0 b_and\nr select p2 s c\nret r\nfn bit u32 -> u32\nmask and p0 7\nresult shl 1 mask\nret result\nend"
+ ],
+ "m-decade-counter/a0/structured": [
+  "-b\nb eq a 10"
+ ],
+ "m-unpack-channels/a0/structured": [
+  "-b\nb and a 255\n-d\nd and c 255\n-e\ne and p0 255"
+ ],
+ "m-adjacent-repeat/a0/structured": [
+  "-a\na fold step 3 false p0\nfn same u32 u32 -> bool\nis_eq eq p0 p1\nret is_eq\nend\nfn step bool u32 u32x4 -> bool\ncurr get p2 p1\nnext_idx add p1 1\nnext get p2 next_idx\nis_eq call same curr next\nresult or p0 is_eq\nret result\nend"
+ ],
+ "m-scaled-pack/a0/structured": [
+  "-c\nc shl a 16",
+  "a_16 and a 65535\n-c\nc shl a_16 16\nb_16 and b 65535\n-r\nr or c b_16"
+ ],
+ "m-set-pair-count/a0/structured": [
+  "fn pair u32 u32 -> bool\nshr_val shr p0 p1\nlow_bit and shr_val 1\nnext_bit shr shr_val 1\nnext_bit_val and next_bit 1\nresult and low_bit next_bit_val\nret result\nend\nfn step u32 u32 u32 -> u32\nis_pair call pair p2 p1\ncount select is_pair 1 0\nres add p0 count\nret res\nend",
+  "result_bool eq result 1\n-ret\nret result_bool"
+ ],
+ "m-byte-insert/a0/structured": [
+  "-a\nkeep_0_7 and p0 255\nkeep_16_31 and p0 4294901760\n-c\nshifted shl p1 8\ntemp or keep_0_7 shifted\n-r\nr or temp keep_16_31",
+  "p1_8 and p1 255\n-shifted\nshifted shl p1_8 8"
+ ]
+}

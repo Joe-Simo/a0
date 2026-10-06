@@ -1,0 +1,54 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops: add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y | call F a... | fold F n s a...: s=F(s,i,a...) for i<n | arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+
+=====
+
+### CONVERSATION 14
+[user]
+Element k of the result must be byte k of p0, counting from the least significant byte.
+
+e0
+fn f u32 -> u32x4
+s0 shr p0 24
+b0 and s0 255
+s1 shr p0 16
+b1 and s1 255
+s2 shr p0 8
+b2 and s2 255
+s3 shr p0 0
+b3 and s3 255
+r arr b0 b1 b2 b3
+ret r
+end
+g0
+fn f u32 -> u32x4 end
+
+[assistant]
+s0 shr p0 0
+s3 shr p0 24
+
+[user]
+Rejected:
+f(16909060) = 4,2,3,1, expected 4,3,2,1
+f(305419896) = 120,52,86,18, expected 120,86,52,18
+f(256) = 0,0,1,0, expected 0,1,0,0
+f(16711935) = 255,255,0,0, expected 255,0,255,0
+
+Current view:
+e0
+fn f u32 -> u32x4
+s0 shr p0 0
+b0 and s0 255
+s1 shr p0 16
+b1 and s1 255
+s2 shr p0 8
+b2 and s2 255
+s3 shr p0 24
+b3 and s3 255
+r arr b0 b1 b2 b3
+ret r
+end
+g0
+fn f u32 -> u32x4 end
+Try again.

@@ -1,0 +1,4137 @@
+{
+ "tasks": [
+  {
+   "id": "r-bucket-index",
+   "kind": "targeted-edit",
+   "wrongEditKind": "zero-divisor",
+   "target": "f",
+   "instruction": "Return the bucket number of value p0 for buckets of width p1 (p0 divided by p1, rounded down). When the width p1 is 0, return 0 instead.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "q"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "z",
+        "op": "eq",
+        "args": [
+         "p1",
+         0
+        ]
+       },
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "z",
+         0,
+         "q"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "z",
+         "op": "eq",
+         "args": [
+          "p1",
+          0
+         ]
+        },
+        {
+         "id": "q",
+         "op": "div",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "z",
+          "p0",
+          "q"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "z",
+         "op": "eq",
+         "args": [
+          "p0",
+          0
+         ]
+        },
+        {
+         "id": "q",
+         "op": "div",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "z",
+          0,
+          "q"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      10,
+      3
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "f",
+     "args": [
+      9,
+      3
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      7,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295,
+      1
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "f",
+     "args": [
+      2,
+      5
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      5,
+      5
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      7
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      100,
+      1
+     ],
+     "expected": 100
+    }
+   ],
+   "note": "Zero divisor in div yields all ones; the edit must map it to 0."
+  },
+  {
+   "id": "r-field-extract",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "f",
+   "instruction": "Return the 4-bit field held in bits 4 to 7 of p0 (bit 0 is the lowest), as a number from 0 to 15.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         4
+        ]
+       },
+       {
+        "id": "m",
+        "op": "and",
+        "args": [
+         "s",
+         7
+        ]
+       }
+      ],
+      "ret": "m"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         4
+        ]
+       },
+       {
+        "id": "m",
+        "op": "and",
+        "args": [
+         "s",
+         15
+        ]
+       }
+      ],
+      "ret": "m"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "shr",
+         "args": [
+          "p0",
+          3
+         ]
+        },
+        {
+         "id": "m",
+         "op": "and",
+         "args": [
+          "s",
+          15
+         ]
+        }
+       ],
+       "ret": "m"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "shr",
+         "args": [
+          "p0",
+          4
+         ]
+        },
+        {
+         "id": "m",
+         "op": "and",
+         "args": [
+          "s",
+          16
+         ]
+        }
+       ],
+       "ret": "m"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      15
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      16
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "f",
+     "args": [
+      240
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "f",
+     "args": [
+      255
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "f",
+     "args": [
+      128
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295
+     ],
+     "expected": 15
+    },
+    {
+     "fn": "f",
+     "args": [
+      305419896
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "f",
+     "args": [
+      128
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "f",
+     "args": [
+      256
+     ],
+     "expected": 0
+    }
+   ],
+   "note": "Mask must be 15; start keeps only 3 bits."
+  },
+  {
+   "id": "r-is-multiple",
+   "kind": "targeted-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "f",
+   "instruction": "Return true when p0 is an exact multiple of p1 (p0 leaves no remainder when divided by p1). With p1 equal to 0, remainder of p0 is p0 itself, so only p0 = 0 counts.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ne",
+        "args": [
+         "r",
+         0
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "eq",
+        "args": [
+         "r",
+         0
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "r",
+         "op": "rem",
+         "args": [
+          "p1",
+          "p0"
+         ]
+        },
+        {
+         "id": "b",
+         "op": "eq",
+         "args": [
+          "r",
+          0
+         ]
+        }
+       ],
+       "ret": "b"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      6,
+      3
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      7,
+      3
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      5,
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      3,
+      6
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295,
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      1,
+      1
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      12,
+      4
+     ],
+     "expected": true
+    }
+   ],
+   "note": "rem with zero divisor gives the dividend."
+  },
+  {
+   "id": "r-slot-write",
+   "kind": "targeted-edit",
+   "wrongEditKind": "off-by-one",
+   "target": "f",
+   "instruction": "Return a copy of the array p0 with the element at position p1 (taken modulo 4) replaced by the value p2.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "i",
+        "op": "add",
+        "args": [
+         "p1",
+         1
+        ]
+       },
+       {
+        "id": "a",
+        "op": "set",
+        "args": [
+         "p0",
+         "i",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "i",
+        "op": "mov",
+        "args": [
+         "p1"
+        ]
+       },
+       {
+        "id": "a",
+        "op": "set",
+        "args": [
+         "p0",
+         "i",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "a"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32x4",
+        "u32",
+        "u32"
+       ],
+       "result": "u32x4",
+       "body": [
+        {
+         "id": "i",
+         "op": "mov",
+         "args": [
+          "p2"
+         ]
+        },
+        {
+         "id": "a",
+         "op": "set",
+         "args": [
+          "p0",
+          "i",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "a"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      0,
+      9
+     ],
+     "expected": [
+      9,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      3,
+      9
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      9
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      4,
+      7
+     ],
+     "expected": [
+      7,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      1,
+      5
+     ],
+     "expected": [
+      0,
+      5,
+      0,
+      0
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       5,
+       6,
+       7,
+       8
+      ],
+      2,
+      0
+     ],
+     "expected": [
+      5,
+      6,
+      0,
+      8
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      7,
+      2
+     ],
+     "expected": [
+      1,
+      1,
+      1,
+      2
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       9,
+       9,
+       9,
+       9
+      ],
+      4294967295,
+      1
+     ],
+     "expected": [
+      9,
+      9,
+      9,
+      1
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      1,
+      1
+     ],
+     "expected": [
+      1,
+      1,
+      3,
+      4
+     ]
+    }
+   ],
+   "note": "Index wraps modulo 4."
+  },
+  {
+   "id": "r-product-all",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "fold-bound",
+   "target": "f",
+   "instruction": "The function should return the product of all four elements of the array p0 (wrapping modulo 2^32); currently it misses one element.",
+   "start": {
+    "functions": [
+     {
+      "name": "step",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "p0",
+         "e"
+        ]
+       }
+      ],
+      "ret": "m"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "q",
+        "op": "fold",
+        "args": [
+         "step",
+         3,
+         1,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "q"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "step",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "p0",
+         "e"
+        ]
+       }
+      ],
+      "ret": "m"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "q",
+        "op": "fold",
+        "args": [
+         "step",
+         4,
+         1,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "q"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "step",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "m",
+         "op": "mul",
+         "args": [
+          "p0",
+          "e"
+         ]
+        }
+       ],
+       "ret": "m"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "q",
+         "op": "fold",
+         "args": [
+          "step",
+          4,
+          0,
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "q"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "step",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "m",
+         "op": "mul",
+         "args": [
+          "p0",
+          "e"
+         ]
+        }
+       ],
+       "ret": "m"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "q",
+         "op": "fold",
+         "args": [
+          "step",
+          5,
+          1,
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "q"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": 24
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       2,
+       2,
+       2,
+       2
+      ]
+     ],
+     "expected": 16
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       5,
+       5,
+       5,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       65536,
+       65536,
+       1,
+       1
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       3,
+       1,
+       1,
+       7
+      ]
+     ],
+     "expected": 21
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       4294967295,
+       2,
+       1,
+       3
+      ]
+     ],
+     "expected": 4294967290
+    }
+   ],
+   "note": "Fold count must cover all four elements; init must be 1."
+  },
+  {
+   "id": "r-quorum",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "f",
+   "instruction": "Return true when p0 yes-votes out of p1 total votes form a strict majority, that is twice p0 is greater than p1. A tie is not a majority.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "d",
+        "op": "mul",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ge",
+        "args": [
+         "d",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "d",
+        "op": "mul",
+        "args": [
+         "p0",
+         2
+        ]
+       },
+       {
+        "id": "b",
+        "op": "gt",
+        "args": [
+         "d",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "d",
+         "op": "mul",
+         "args": [
+          "p1",
+          2
+         ]
+        },
+        {
+         "id": "b",
+         "op": "gt",
+         "args": [
+          "p0",
+          "d"
+         ]
+        }
+       ],
+       "ret": "b"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      2,
+      4
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      3,
+      4
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      1,
+      2
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      1,
+      0
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      5,
+      9
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      4,
+      9
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      1000,
+      1999
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      1000,
+      2000
+     ],
+     "expected": false
+    }
+   ],
+   "note": "Inputs kept small so doubling does not wrap."
+  },
+  {
+   "id": "r-pack-bytes",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "mask",
+   "target": "f",
+   "instruction": "Pack the low byte of p0 into bits 8 to 15 and the low byte of p1 into bits 0 to 7; all other bits of the result must be 0. Mask both inputs to their low 8 bits.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "h",
+        "op": "shl",
+        "args": [
+         "p0",
+         8
+        ]
+       },
+       {
+        "id": "r",
+        "op": "or",
+        "args": [
+         "h",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "and",
+        "args": [
+         "p0",
+         255
+        ]
+       },
+       {
+        "id": "b",
+        "op": "and",
+        "args": [
+         "p1",
+         255
+        ]
+       },
+       {
+        "id": "h",
+        "op": "shl",
+        "args": [
+         "a",
+         8
+        ]
+       },
+       {
+        "id": "r",
+        "op": "or",
+        "args": [
+         "h",
+         "b"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "and",
+         "args": [
+          "p0",
+          255
+         ]
+        },
+        {
+         "id": "h",
+         "op": "shl",
+         "args": [
+          "a",
+          8
+         ]
+        },
+        {
+         "id": "r",
+         "op": "or",
+         "args": [
+          "h",
+          "p1"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "and",
+         "args": [
+          "p0",
+          127
+         ]
+        },
+        {
+         "id": "b",
+         "op": "and",
+         "args": [
+          "p1",
+          127
+         ]
+        },
+        {
+         "id": "h",
+         "op": "shl",
+         "args": [
+          "a",
+          8
+         ]
+        },
+        {
+         "id": "r",
+         "op": "or",
+         "args": [
+          "h",
+          "b"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      1,
+      2
+     ],
+     "expected": 258
+    },
+    {
+     "fn": "f",
+     "args": [
+      255,
+      255
+     ],
+     "expected": 65535
+    },
+    {
+     "fn": "f",
+     "args": [
+      256,
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      256
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      4660,
+      22136
+     ],
+     "expected": 13432
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": 65535
+    },
+    {
+     "fn": "f",
+     "args": [
+      128,
+      128
+     ],
+     "expected": 32896
+    },
+    {
+     "fn": "f",
+     "args": [
+      171,
+      205
+     ],
+     "expected": 43981
+    }
+   ],
+   "note": "Both masks needed."
+  },
+  {
+   "id": "r-page-of",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "wrong-quantity",
+   "target": "f",
+   "instruction": "Return a record (page, starts): page is item p0's page number for pages of p1 items (p0 divided by p1), and starts is true when item p0 is the first item on its page (p0 leaves remainder 0 when divided by p1).",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "pg",
+        "op": "div",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "eq",
+        "args": [
+         "p0",
+         0
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rec",
+        "args": [
+         "pg",
+         "s"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "(u32,bool)",
+      "body": [
+       {
+        "id": "pg",
+        "op": "div",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "o",
+        "op": "rem",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "eq",
+        "args": [
+         "o",
+         0
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rec",
+        "args": [
+         "pg",
+         "s"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "(u32,bool)",
+       "body": [
+        {
+         "id": "pg",
+         "op": "div",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "s",
+         "op": "eq",
+         "args": [
+          "pg",
+          0
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rec",
+         "args": [
+          "pg",
+          "s"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      0,
+      10
+     ],
+     "expected": [
+      0,
+      true
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      10,
+      10
+     ],
+     "expected": [
+      1,
+      true
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      11,
+      10
+     ],
+     "expected": [
+      1,
+      false
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      9,
+      10
+     ],
+     "expected": [
+      0,
+      false
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      25,
+      5
+     ],
+     "expected": [
+      5,
+      true
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      7,
+      0
+     ],
+     "expected": [
+      4294967295,
+      false
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0
+     ],
+     "expected": [
+      4294967295,
+      true
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      3,
+      1
+     ],
+     "expected": [
+      3,
+      true
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295,
+      4294967295
+     ],
+     "expected": [
+      1,
+      true
+     ]
+    }
+   ],
+   "note": "Zero page size: div gives all ones, rem gives p0."
+  },
+  {
+   "id": "r-both-flags",
+   "kind": "targeted-edit",
+   "wrongEditKind": "mask",
+   "target": "f",
+   "instruction": "Return true only when both bit 0 (value 1) and bit 2 (value 4) of p0 are set.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "m",
+        "op": "and",
+        "args": [
+         "p0",
+         5
+        ]
+       },
+       {
+        "id": "b",
+        "op": "ne",
+        "args": [
+         "m",
+         0
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "m",
+        "op": "and",
+        "args": [
+         "p0",
+         5
+        ]
+       },
+       {
+        "id": "b",
+        "op": "eq",
+        "args": [
+         "m",
+         5
+        ]
+       }
+      ],
+      "ret": "b"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "m",
+         "op": "and",
+         "args": [
+          "p0",
+          5
+         ]
+        },
+        {
+         "id": "b",
+         "op": "ge",
+         "args": [
+          "m",
+          4
+         ]
+        }
+       ],
+       "ret": "b"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      4
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      7
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      13
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      2
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967295
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      4294967290
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      21
+     ],
+     "expected": true
+    }
+   ],
+   "note": "Any vs both."
+  },
+  {
+   "id": "r-tally-two",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "swapped-argument",
+   "target": "f",
+   "instruction": "The function should add one to the counter at position p1 and one to the counter at position p2 of array p0 (positions modulo 4; if they are the same position it gets two). Currently it counts the wrong positions.",
+   "start": {
+    "functions": [
+     {
+      "name": "bump",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "v",
+        "op": "get",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "add",
+        "args": [
+         "v",
+         1
+        ]
+       },
+       {
+        "id": "a",
+        "op": "set",
+        "args": [
+         "p0",
+         "p1",
+         "w"
+        ]
+       }
+      ],
+      "ret": "a"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "x",
+        "op": "call",
+        "args": [
+         "bump",
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "call",
+        "args": [
+         "bump",
+         "x",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "y"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "bump",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "v",
+        "op": "get",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "w",
+        "op": "add",
+        "args": [
+         "v",
+         1
+        ]
+       },
+       {
+        "id": "a",
+        "op": "set",
+        "args": [
+         "p0",
+         "p1",
+         "w"
+        ]
+       }
+      ],
+      "ret": "a"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32x4",
+      "body": [
+       {
+        "id": "x",
+        "op": "call",
+        "args": [
+         "bump",
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "call",
+        "args": [
+         "bump",
+         "x",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "y"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "bump",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "u32x4",
+       "body": [
+        {
+         "id": "v",
+         "op": "get",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "w",
+         "op": "add",
+         "args": [
+          "v",
+          1
+         ]
+        },
+        {
+         "id": "a",
+         "op": "set",
+         "args": [
+          "p0",
+          "p1",
+          "w"
+         ]
+        }
+       ],
+       "ret": "a"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32x4",
+        "u32",
+        "u32"
+       ],
+       "result": "u32x4",
+       "body": [
+        {
+         "id": "x",
+         "op": "call",
+         "args": [
+          "bump",
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "y",
+         "op": "call",
+         "args": [
+          "bump",
+          "p0",
+          "p2"
+         ]
+        }
+       ],
+       "ret": "y"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      0,
+      1
+     ],
+     "expected": [
+      1,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      2,
+      2
+     ],
+     "expected": [
+      0,
+      0,
+      2,
+      0
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      3,
+      0
+     ],
+     "expected": [
+      2,
+      2,
+      3,
+      5
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      4,
+      5
+     ],
+     "expected": [
+      1,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       4294967295,
+       0,
+       0,
+       0
+      ],
+      0,
+      3
+     ],
+     "expected": [
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       5,
+       5,
+       5,
+       5
+      ],
+      1,
+      3
+     ],
+     "expected": [
+      5,
+      6,
+      5,
+      6
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      7,
+      7
+     ],
+     "expected": [
+      0,
+      0,
+      0,
+      2
+     ]
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       9,
+       8,
+       7,
+       6
+      ],
+      2,
+      1
+     ],
+     "expected": [
+      9,
+      9,
+      8,
+      6
+     ]
+    }
+   ],
+   "note": "Second bump must use the first's result and index p2."
+  },
+  {
+   "id": "r-percent-of",
+   "kind": "targeted-edit",
+   "wrongEditKind": "changed-constant",
+   "target": "f",
+   "instruction": "Return p0 as a whole-number percentage of p1: p0 times 100 (wrapping modulo 2^32), divided by p1 and rounded down; a zero p1 gives the division's all-ones result.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "p0",
+         10
+        ]
+       },
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "m",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "q"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "m",
+        "op": "mul",
+        "args": [
+         "p0",
+         100
+        ]
+       },
+       {
+        "id": "q",
+        "op": "div",
+        "args": [
+         "m",
+         "p1"
+        ]
+       }
+      ],
+      "ret": "q"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "d",
+         "op": "div",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "q",
+         "op": "mul",
+         "args": [
+          "d",
+          100
+         ]
+        }
+       ],
+       "ret": "q"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      1,
+      2
+     ],
+     "expected": 50
+    },
+    {
+     "fn": "f",
+     "args": [
+      1,
+      3
+     ],
+     "expected": 33
+    },
+    {
+     "fn": "f",
+     "args": [
+      50,
+      200
+     ],
+     "expected": 25
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      5
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      5,
+      0
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "f",
+     "args": [
+      3,
+      3
+     ],
+     "expected": 100
+    },
+    {
+     "fn": "f",
+     "args": [
+      7,
+      8
+     ],
+     "expected": 87
+    },
+    {
+     "fn": "f",
+     "args": [
+      42949673,
+      1
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "f",
+     "args": [
+      2,
+      3
+     ],
+     "expected": 66
+    }
+   ],
+   "note": "42949673*100 wraps to 4."
+  },
+  {
+   "id": "r-mean-four",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "shift-amount",
+   "target": "f",
+   "instruction": "The function should return the average of the four elements of p0, rounded down (the wrapped sum shifted right by 2 bits). Currently the divide step is wrong.",
+   "start": {
+    "functions": [
+     {
+      "name": "acc",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "e"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "t",
+        "op": "fold",
+        "args": [
+         "acc",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "shr",
+        "args": [
+         "t",
+         1
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "acc",
+      "params": [
+       "u32",
+       "u32",
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "add",
+        "args": [
+         "p0",
+         "e"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "t",
+        "op": "fold",
+        "args": [
+         "acc",
+         4,
+         0,
+         "p0"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "shr",
+        "args": [
+         "t",
+         2
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "acc",
+       "params": [
+        "u32",
+        "u32",
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "s",
+         "op": "add",
+         "args": [
+          "p0",
+          "e"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32x4"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "t",
+         "op": "fold",
+         "args": [
+          "acc",
+          4,
+          0,
+          "p0"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "shr",
+         "args": [
+          "t",
+          4
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       4,
+       4,
+       4,
+       4
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       100,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 25
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       4294967295,
+       1,
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       7,
+       7,
+       7,
+       7
+      ]
+     ],
+     "expected": 7
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       8,
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 2
+    }
+   ],
+   "note": "Sum wraps; shift by 2."
+  },
+  {
+   "id": "r-larger-pick",
+   "kind": "targeted-edit",
+   "wrongEditKind": "comparison",
+   "target": "f",
+   "instruction": "Return whichever of the elements at positions p1 and p2 of array p0 is larger (positions modulo 4); if they are equal return that value.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "get",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "lt",
+        "args": [
+         "x",
+         "y"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "c",
+         "x",
+         "y"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "x",
+        "op": "get",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "y",
+        "op": "get",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "gt",
+        "args": [
+         "x",
+         "y"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "select",
+        "args": [
+         "c",
+         "x",
+         "y"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32x4",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "x",
+         "op": "get",
+         "args": [
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "y",
+         "op": "get",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "gt",
+         "args": [
+          "x",
+          "y"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "select",
+         "args": [
+          "c",
+          "y",
+          "x"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      0,
+      3
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      3,
+      0
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       5,
+       5,
+       5,
+       5
+      ],
+      1,
+      2
+     ],
+     "expected": 5
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       4294967295,
+       0,
+       0
+      ],
+      0,
+      1
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       9,
+       1,
+       1,
+       1
+      ],
+      4,
+      1
+     ],
+     "expected": 9
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       8,
+       2,
+       3
+      ],
+      5,
+      6
+     ],
+     "expected": 8
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       3,
+       3,
+       1,
+       1
+      ],
+      0,
+      1
+     ],
+     "expected": 3
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       2,
+       7,
+       7,
+       2
+      ],
+      1,
+      2
+     ],
+     "expected": 7
+    }
+   ],
+   "note": "Start picks the smaller."
+  },
+  {
+   "id": "r-all-under",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "fold-init",
+   "target": "f",
+   "instruction": "Return true when every element of array p0 is strictly less than p1 (currently it returns true when any element is). Fix both the per-element combination and the starting value.",
+   "start": {
+    "functions": [
+     {
+      "name": "chk",
+      "params": [
+       "bool",
+       "u32",
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "l",
+        "op": "lt",
+        "args": [
+         "e",
+         "p3"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "or",
+        "args": [
+         "p0",
+         "l"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "q",
+        "op": "fold",
+        "args": [
+         "chk",
+         4,
+         false,
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "q"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "chk",
+      "params": [
+       "bool",
+       "u32",
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "e",
+        "op": "get",
+        "args": [
+         "p2",
+         "p1"
+        ]
+       },
+       {
+        "id": "l",
+        "op": "lt",
+        "args": [
+         "e",
+         "p3"
+        ]
+       },
+       {
+        "id": "s",
+        "op": "and",
+        "args": [
+         "p0",
+         "l"
+        ]
+       }
+      ],
+      "ret": "s"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32x4",
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "q",
+        "op": "fold",
+        "args": [
+         "chk",
+         4,
+         true,
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "mov",
+        "args": [
+         "q"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "chk",
+       "params": [
+        "bool",
+        "u32",
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "l",
+         "op": "lt",
+         "args": [
+          "e",
+          "p3"
+         ]
+        },
+        {
+         "id": "s",
+         "op": "and",
+         "args": [
+          "p0",
+          "l"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "q",
+         "op": "fold",
+         "args": [
+          "chk",
+          4,
+          false,
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "q"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    },
+    {
+     "functions": [
+      {
+       "name": "chk",
+       "params": [
+        "bool",
+        "u32",
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "e",
+         "op": "get",
+         "args": [
+          "p2",
+          "p1"
+         ]
+        },
+        {
+         "id": "l",
+         "op": "le",
+         "args": [
+          "e",
+          "p3"
+         ]
+        },
+        {
+         "id": "s",
+         "op": "and",
+         "args": [
+          "p0",
+          "l"
+         ]
+        }
+       ],
+       "ret": "s"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32x4",
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "q",
+         "op": "fold",
+         "args": [
+          "chk",
+          4,
+          true,
+          "p0",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "mov",
+         "args": [
+          "q"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      5
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      4
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      1
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       9,
+       1,
+       1,
+       1
+      ],
+      5
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       9
+      ],
+      9
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      [
+       4294967294,
+       0,
+       0,
+       0
+      ],
+      4294967295
+     ],
+     "expected": true
+    }
+   ],
+   "note": "and with init true."
+  },
+  {
+   "id": "r-mod-diff",
+   "kind": "multi-node-edit",
+   "wrongEditKind": "wrapping",
+   "target": "f",
+   "instruction": "Return (p0 - p1) modulo p2 as true modular arithmetic: reduce p0 and p1 modulo p2 first, add p2 to the reduced p0, subtract the reduced p1 and reduce modulo p2 again (all wrapping). When p2 is 0 this gives the wrapped p0 - p1.",
+   "start": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "p0",
+         "p1"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "d",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "f",
+      "params": [
+       "u32",
+       "u32",
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "a",
+        "op": "rem",
+        "args": [
+         "p0",
+         "p2"
+        ]
+       },
+       {
+        "id": "b",
+        "op": "rem",
+        "args": [
+         "p1",
+         "p2"
+        ]
+       },
+       {
+        "id": "c",
+        "op": "add",
+        "args": [
+         "a",
+         "p2"
+        ]
+       },
+       {
+        "id": "d",
+        "op": "sub",
+        "args": [
+         "c",
+         "b"
+        ]
+       },
+       {
+        "id": "r",
+        "op": "rem",
+        "args": [
+         "d",
+         "p2"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "f",
+       "params": [
+        "u32",
+        "u32",
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "a",
+         "op": "rem",
+         "args": [
+          "p0",
+          "p2"
+         ]
+        },
+        {
+         "id": "c",
+         "op": "add",
+         "args": [
+          "a",
+          "p2"
+         ]
+        },
+        {
+         "id": "d",
+         "op": "sub",
+         "args": [
+          "c",
+          "p1"
+         ]
+        },
+        {
+         "id": "r",
+         "op": "rem",
+         "args": [
+          "d",
+          "p2"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      1,
+      2,
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "f",
+     "args": [
+      7,
+      3,
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "fn": "f",
+     "args": [
+      3,
+      3,
+      5
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      9,
+      7
+     ],
+     "expected": 5
+    },
+    {
+     "fn": "f",
+     "args": [
+      2,
+      1,
+      0
+     ],
+     "expected": 1
+    },
+    {
+     "fn": "f",
+     "args": [
+      1,
+      2,
+      0
+     ],
+     "expected": 4294967295
+    },
+    {
+     "fn": "f",
+     "args": [
+      100,
+      1,
+      10
+     ],
+     "expected": 9
+    },
+    {
+     "fn": "f",
+     "args": [
+      0,
+      0,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "fn": "f",
+     "args": [
+      4,
+      13,
+      6
+     ],
+     "expected": 3
+    }
+   ],
+   "note": "Start fails because 2^32 is not a multiple of p2."
+  },
+  {
+   "id": "r-header-ok",
+   "kind": "comprehension-edit",
+   "wrongEditKind": "comparison",
+   "target": "f",
+   "instruction": "A header word p0 is valid when its version (the top four bits, read by the helper) is exactly 3 and its low byte is not 0. The function currently accepts any version of 3 or more; make it require exactly 3.",
+   "start": {
+    "functions": [
+     {
+      "name": "ver",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         28
+        ]
+       },
+       {
+        "id": "v",
+        "op": "and",
+        "args": [
+         "s",
+         15
+        ]
+       }
+      ],
+      "ret": "v"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "v",
+        "op": "call",
+        "args": [
+         "ver",
+         "p0"
+        ]
+       },
+       {
+        "id": "a",
+        "op": "ge",
+        "args": [
+         "v",
+         3
+        ]
+       },
+       {
+        "id": "l",
+        "op": "and",
+        "args": [
+         "p0",
+         255
+        ]
+       },
+       {
+        "id": "n",
+        "op": "ne",
+        "args": [
+         "l",
+         0
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "a",
+         "n"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "reference": {
+    "functions": [
+     {
+      "name": "ver",
+      "params": [
+       "u32"
+      ],
+      "result": "u32",
+      "body": [
+       {
+        "id": "s",
+        "op": "shr",
+        "args": [
+         "p0",
+         28
+        ]
+       },
+       {
+        "id": "v",
+        "op": "and",
+        "args": [
+         "s",
+         15
+        ]
+       }
+      ],
+      "ret": "v"
+     },
+     {
+      "name": "f",
+      "params": [
+       "u32"
+      ],
+      "result": "bool",
+      "body": [
+       {
+        "id": "v",
+        "op": "call",
+        "args": [
+         "ver",
+         "p0"
+        ]
+       },
+       {
+        "id": "a",
+        "op": "eq",
+        "args": [
+         "v",
+         3
+        ]
+       },
+       {
+        "id": "l",
+        "op": "and",
+        "args": [
+         "p0",
+         255
+        ]
+       },
+       {
+        "id": "n",
+        "op": "ne",
+        "args": [
+         "l",
+         0
+        ]
+       },
+       {
+        "id": "r",
+        "op": "and",
+        "args": [
+         "a",
+         "n"
+        ]
+       }
+      ],
+      "ret": "r"
+     }
+    ]
+   },
+   "wrongEdits": [
+    {
+     "functions": [
+      {
+       "name": "ver",
+       "params": [
+        "u32"
+       ],
+       "result": "u32",
+       "body": [
+        {
+         "id": "s",
+         "op": "shr",
+         "args": [
+          "p0",
+          28
+         ]
+        },
+        {
+         "id": "v",
+         "op": "and",
+         "args": [
+          "s",
+          15
+         ]
+        }
+       ],
+       "ret": "v"
+      },
+      {
+       "name": "f",
+       "params": [
+        "u32"
+       ],
+       "result": "bool",
+       "body": [
+        {
+         "id": "v",
+         "op": "call",
+         "args": [
+          "ver",
+          "p0"
+         ]
+        },
+        {
+         "id": "a",
+         "op": "eq",
+         "args": [
+          "v",
+          3
+         ]
+        },
+        {
+         "id": "l",
+         "op": "and",
+         "args": [
+          "p0",
+          255
+         ]
+        },
+        {
+         "id": "n",
+         "op": "ne",
+         "args": [
+          "l",
+          0
+         ]
+        },
+        {
+         "id": "r",
+         "op": "or",
+         "args": [
+          "a",
+          "n"
+         ]
+        }
+       ],
+       "ret": "r"
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "fn": "f",
+     "args": [
+      805306369
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      805306624
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      1073741825
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      536870913
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      1073741823
+     ],
+     "expected": true
+    },
+    {
+     "fn": "f",
+     "args": [
+      4026532095
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      0
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      1
+     ],
+     "expected": false
+    },
+    {
+     "fn": "f",
+     "args": [
+      805306623
+     ],
+     "expected": true
+    }
+   ],
+   "note": "Version from shr 28."
+  }
+ ]
+}

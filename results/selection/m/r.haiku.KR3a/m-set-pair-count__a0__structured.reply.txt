@@ -1,0 +1,14 @@
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32
+shift_i shl 1 p1
+shift_next shl 1 (add p1 1)
+mask or shift_i shift_next
+value_masked and p2 mask
+both_set eq value_masked mask
+ret select both_set (add p0 1) p0
+end

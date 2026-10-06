@@ -1,0 +1,154 @@
+### REPLY 1
+b and a 63
+
+### REPLY 2
+fn lo8 u32 -> u32
+a and p0 255
+ret a
+end
+fn f u32 u32 -> u32
+a call lo8 p0
+b call lo8 p1
+c shl a 8
+d or c b
+ret d
+end
+
+### REPLY 3
+fn step u32 u32 u32 -> u32
+s mul p1 4
+a shr p2 s
+b and a 15
+c ne b 0
+d select c 1 0
+e add p0 d
+ret e
+end
+fn f u32 -> u32
+a fold step 8 0 p0
+ret a
+end
+
+### REPLY 4
+fn nib u32 u32 -> u32
+a shr p0 p1
+b and a 15
+ret b
+end
+fn f u32 -> bool
+a call nib p0 28
+b eq a 5
+c and p0 255
+d ne c 0
+e and b d
+ret e
+end
+
+### REPLY 5
+fn f u32x4 u32 -> u32x4
+h add p1 1
+g get p0 h
+s set p0 p1 g
+ret s
+end
+
+### REPLY 6
+fn step u32 u32 u32x4 u32 -> u32
+e get p2 p1
+a and e 3
+b and p3 3
+c eq a b
+d select c 1 0
+r add p0 d
+ret r
+end
+
+### REPLY 7
+c ne b 0
+
+### REPLY 8
+fn f u32 u32 -> u32
+a shl 1 p1
+m sub a 1
+g ge p1 32
+k select g 4294967295 m
+b shl k p0
+ret b
+end
+
+### REPLY 9
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+s shl e p1
+x xor p0 s
+ret x
+end
+
+### REPLY 10
+fn bit u32 -> u32
+a and p0 7
+b shl 1 a
+ret b
+end
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+n xor b 4294967295
+c and p0 n
+r select p2 s c
+ret r
+end
+
+### REPLY 11
+b eq a 10
+
+### REPLY 12
+b and a 255
+d and c 255
+e and p0 255
+
+### REPLY 13
+fn same u32 u32 -> bool
+a eq p0 p1
+ret a
+end
+fn step bool u32 u32x4 -> bool
+a add p1 1
+x get p2 p1
+y get p2 a
+s call same x y
+k lt a 4
+t and s k
+r or p0 t
+ret r
+end
+
+### REPLY 14
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 16
+d and b 65535
+r or c d
+ret r
+end
+
+### REPLY 15
+fn step u32 u32 u32 -> u32
+j add p1 1
+x shr p2 p1
+y shr p2 j
+z and x y
+w and z 1
+r add p0 w
+ret r
+end
+
+### REPLY 16
+fn f u32 u32 -> u32
+a and p0 4294902015
+m and p1 255
+c shl m 8
+r or a c
+ret r
+end
