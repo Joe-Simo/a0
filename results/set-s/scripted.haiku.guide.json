@@ -1,0 +1,55 @@
+{
+ "s-overtime-pay/a0/structured": [
+  "o gt p0 38\nz mul 38 10",
+  "x sub p0 38"
+ ],
+ "s-speed-ticket/a0/structured": [
+  "a le p0 p1"
+ ],
+ "s-middle-nibble/a0/structured": [
+  "r and s 15"
+ ],
+ "s-fits-24-bits/a0/structured": [
+  "h shr p0 24"
+ ],
+ "s-clear-next-slot/a0/structured": [
+  "j add p1 1"
+ ],
+ "s-count-descents/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\nis_zero eq p1 0\np sub p1 1\nc get p2 p1\nd get p2 p\ne lt c d\nf select e 1 0\ninc add p0 f\nresult select is_zero p0 inc\nret result\nend"
+ ],
+ "s-member-price/a0/structured": [
+  "fn cut u32 -> u32\nd div p0 10\nret d\nend"
+ ],
+ "s-two-thirds-quorum/a0/structured": [
+  "r ge x y"
+ ],
+ "s-tank-refill/a0/structured": [
+  "fn refill u32 u32 -> (u32,bool)\ns add p0 25\nover gt s p1\nval select over p1 s\nr rec val over\nret r\nend"
+ ],
+ "s-bonus-both/a0/structured": [
+  "b call bonus p1\nr add a b"
+ ],
+ "s-shift-in/a0/structured": [
+  "fn pushback u32x4 u32 -> u32x4\na get p0 1\nb get p0 2\nc get p0 3\nr set p0 0 a\ns set r 1 b\nt set r 2 c\nu set r 3 p1\nret u\nend",
+  "fn pushback u32x4 u32 -> u32x4\na get p0 1\nb get p0 2\nc get p0 3\nresult arr a b c p1\nret result\nend"
+ ],
+ "s-window-ok/a0/structured": [
+  "b lt p1 100\nr and a b"
+ ],
+ "s-equal-kind/a0/structured": [
+  "z eq p0 p2\nany or any z",
+  "z eq p0 p2 @ y\ntemp or y z @ z\nany or x temp"
+ ],
+ "s-first-largest-index/a0/structured": [
+  "fn better (u32,u32) u32 u32x4 -> (u32,u32)\ncur_val at p0 0\ncur_idx at p0 1\nelem get p2 p1\nis_greater gt elem cur_val\nnew_val select is_greater elem cur_val\nnew_idx select is_greater p1 cur_idx\nresult rec new_val new_idx\nret result\nend"
+ ],
+ "s-alternating-sum/a0/structured": [
+  "fn acc u32 u32 u32x4 -> u32\nelem get p2 p1\nis_odd and p1 1\nresult select is_odd (sub p0 elem) (add p0 elem)\nret result\nend",
+  "fn acc u32 u32 u32x4 -> u32\nelem get p2 p1\nis_odd and p1 1\npos_result add p0 elem\nneg_result sub p0 elem\nresult select is_odd neg_result pos_result\nret result\nend"
+ ],
+ "s-pack-flag/a0/structured": [
+  "mask and v 2147483647",
+  "mask and v 2147483647 @ f\nr or mask h"
+ ]
+}

@@ -1,0 +1,30 @@
+### REPLY 1
+x sub p0 38
+
+### REPLY 11
+fn pushback u32x4 u32 -> u32x4
+a get p0 1
+b get p0 2
+c get p0 3
+result arr a b c p1
+ret result
+end
+
+### REPLY 13
+z eq p0 p2 @ y
+temp or y z @ z
+any or x temp
+
+### REPLY 15
+fn acc u32 u32 u32x4 -> u32
+elem get p2 p1
+is_odd and p1 1
+pos_result add p0 elem
+neg_result sub p0 elem
+result select is_odd neg_result pos_result
+ret result
+end
+
+### REPLY 16
+mask and v 2147483647 @ f
+r or mask h

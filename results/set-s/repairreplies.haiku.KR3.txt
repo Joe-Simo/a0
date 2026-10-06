@@ -1,0 +1,63 @@
+### REPLY 5
+temp add p1 1
+j rem temp 4
+r set p0 j 0
+ret r
+
+### REPLY 6
+fn step u32 u32 u32x4 -> u32
+i lt p1 1
+p1m1 sub p1 1
+prev get p2 p1m1
+curr get p2 p1
+is_desc lt curr prev
+inc_raw select is_desc 1 0
+inc select i 0 inc_raw
+r add p0 inc
+ret r
+end
+
+### REPLY 7
+fn cut u32 -> u32
+r div p0 10
+ret r
+end
+
+### REPLY 9
+s add p0 25
+exceeds gt s p1
+new_val select exceeds p1 s
+r rec new_val exceeds
+ret r
+
+### REPLY 11
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+temp1 set p0 0 e1
+temp2 set temp1 1 e2
+temp3 set temp2 2 e3
+temp4 set temp3 3 p1
+r mov temp4
+o mov r
+ret o
+
+### REPLY 13
+z eq p0 p2
+any1 or x y
+any2 or any1 z
+all1 and x y
+all2 and all1 z
+m select any2 1 0
+r select all2 2 m
+ret r
+
+### REPLY 16
+v at p0 0
+f at p0 1
+t select f 1 0
+h shl t 31
+v_shl shl v 1
+v_clr shr v_shl 1
+r or v_clr h
+ret r

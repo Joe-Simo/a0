@@ -1,0 +1,93 @@
+### REPLY 1
+o gt p0 38
+z mul 38 10
+
+### REPLY 2
+a le p0 p1
+
+### REPLY 3
+r and s 15
+
+### REPLY 4
+h shr p0 24
+
+### REPLY 5
+j add p1 1
+
+### REPLY 6
+fn step u32 u32 u32x4 -> u32
+is_zero eq p1 0
+p sub p1 1
+c get p2 p1
+d get p2 p
+e lt c d
+f select e 1 0
+inc add p0 f
+result select is_zero p0 inc
+ret result
+end
+
+### REPLY 7
+fn cut u32 -> u32
+d div p0 10
+ret d
+end
+
+### REPLY 8
+r ge x y
+
+### REPLY 9
+fn refill u32 u32 -> (u32,bool)
+s add p0 25
+over gt s p1
+val select over p1 s
+r rec val over
+ret r
+end
+
+### REPLY 10
+b call bonus p1
+r add a b
+
+### REPLY 11
+fn pushback u32x4 u32 -> u32x4
+a get p0 1
+b get p0 2
+c get p0 3
+r set p0 0 a
+s set r 1 b
+t set r 2 c
+u set r 3 p1
+ret u
+end
+
+### REPLY 12
+b lt p1 100
+r and a b
+
+### REPLY 13
+z eq p0 p2
+any or any z
+
+### REPLY 14
+fn better (u32,u32) u32 u32x4 -> (u32,u32)
+cur_val at p0 0
+cur_idx at p0 1
+elem get p2 p1
+is_greater gt elem cur_val
+new_val select is_greater elem cur_val
+new_idx select is_greater p1 cur_idx
+result rec new_val new_idx
+ret result
+end
+
+### REPLY 15
+fn acc u32 u32 u32x4 -> u32
+elem get p2 p1
+is_odd and p1 1
+result select is_odd (sub p0 elem) (add p0 elem)
+ret result
+end
+
+### REPLY 16
+mask and v 2147483647

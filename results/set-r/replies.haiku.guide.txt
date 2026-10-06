@@ -1,0 +1,116 @@
+### REPLY 1
+chk eq p1 0
+q div p0 p1
+r select chk 0 q
+ret r
+
+### REPLY 2
+s shr p0 4
+m and s 15
+ret m
+
+### REPLY 3
+r rem p0 p1
+b eq r 0
+ret b
+
+### REPLY 4
+a set p0 p1 p2
+ret a
+
+### REPLY 5
+q fold step 4 1 p0
+ret q
+fn step u32 u32 u32x4 -> u32
+e get p2 p1
+p mul p0 e
+ret p
+end
+
+### REPLY 6
+d mul p0 2
+b gt d p1
+ret b
+
+### REPLY 7
+m0 and p0 255
+h shl m0 8
+m1 and p1 255
+r or h m1
+ret r
+
+### REPLY 8
+pg div p0 p1
+rm rem p0 p1
+s eq rm 0
+r rec pg s
+ret r
+
+### REPLY 9
+m and p0 5
+b eq m 5
+ret b
+
+### REPLY 10
+x call bump p0 p1
+y call bump x p2
+ret y
+fn bump u32x4 u32 -> u32x4
+e get p0 p1
+n add e 1
+a set p0 p1 n
+ret a
+end
+
+### REPLY 11
+m mul p0 100
+q div m p1
+ret q
+
+### REPLY 12
+t fold acc 4 0 p0
+r shr t 2
+ret r
+fn acc u32 u32 u32x4 -> u32
+e get p1 p2
+s add p0 e
+ret s
+end
+
+### REPLY 13
+x get p0 p1
+y get p0 p2
+c lt x y
+r select c y x
+ret r
+
+### REPLY 14
+q fold chk 4 true p0 p1
+r mov q
+ret r
+fn chk bool u32 u32x4 u32 -> bool
+e get p2 p1
+c lt e p3
+a and p0 c
+ret a
+end
+
+### REPLY 15
+r0 rem p0 p2
+r1 rem p1 p2
+sum add r0 p2
+d sub sum r1
+r rem d p2
+ret r
+
+### REPLY 16
+v call ver p0
+a eq v 3
+l and p0 255
+n ne l 0
+r and a n
+ret r
+fn ver u32 -> u32
+v shr p0 28
+ret v
+end

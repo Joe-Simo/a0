@@ -1,0 +1,177 @@
+### REPLY 1
+fn covers u32 u32 -> bool
+a and p0 p1
+b eq a p1
+ret b
+end
+
+### REPLY 2
+fn tri u32 u32 u32 -> bool
+a add p0 p1
+b add p0 p2
+c add p1 p2
+d gt a p2
+e gt b p1
+g gt c p0
+h and d e
+k and h g
+ret k
+end
+
+### REPLY 3
+fn maj bool bool bool -> bool
+a and p0 p1
+b and p0 p2
+c and p1 p2
+d or a b
+e or d c
+ret e
+end
+
+### REPLY 4
+fn step u32 u32 u32 -> u32
+a add p0 p1
+b add a p2
+ret b
+end
+fn run u32 -> u32
+a fold step 7 0 p0
+ret a
+end
+
+### REPLY 5
+fn pick u32 u32 u32x4 -> u32
+a get p2 p0
+b get p2 p1
+c gt b a
+d select c p1 p0
+ret d
+end
+fn argmax u32x4 -> u32
+a fold pick 4 0 p0
+ret a
+end
+
+### REPLY 6
+fn fill2 u32x4 u32 u32 -> u32x4
+a set p0 p1 p2
+n add p1 1
+m rem n 4
+b set a m p2
+ret b
+end
+
+### REPLY 7
+fn tally u32 u32 u32x4 u32x4 -> u32
+x get p2 p1
+y get p3 p1
+e eq x y
+f select e 1 0
+g add p0 f
+ret g
+end
+fn same u32x4 u32x4 -> u32
+a fold tally 4 0 p0 p1
+ret a
+end
+
+### REPLY 8
+fn low u32 u32 -> u32
+b shl 1 p1
+c sub b 1
+d and p0 c
+e ge p1 32
+f select e p0 d
+ret f
+end
+
+### REPLY 9
+fn mulchk u32 u32 -> (u32,bool)
+a mul p0 p1
+b div a p0
+c ne b p1
+z ne p0 0
+o and z c
+g rec a o
+ret g
+end
+
+### REPLY 10
+fn ms u32 -> u32
+a mul p0 1000
+b div a 1024
+ret b
+end
+
+### REPLY 11
+fn h u32 u32 -> u32
+a shl p0 1
+b add a p1
+ret b
+end
+fn digits u32x4 -> u32
+g0 get p0 0
+g1 get p0 1
+g2 get p0 2
+g3 get p0 3
+c0 call h 0 g0
+c1 call h c0 g1
+c2 call h c1 g2
+c3 call h c2 g3
+ret c3
+end
+
+### REPLY 12
+fn hop u32 u32 -> u32
+a and p0 1
+o ne a 0
+b shr p0 1
+c mul p0 3
+d add c 1
+e select o d b
+ret e
+end
+fn hops u32 -> u32
+a fold hop 5 p0
+ret a
+end
+
+### REPLY 13
+fn pairsum u32x4 u32 -> bool
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+e add a b
+g add b c
+h add c d
+k eq e p1
+m eq g p1
+n eq h p1
+q or k m
+r or q n
+ret r
+end
+
+### REPLY 14
+fn sless u32 u32 -> bool
+a xor p0 2147483648
+b xor p1 2147483648
+c lt a b
+ret c
+end
+
+### REPLY 15
+fn field u32 u32 -> u32
+a shr p0 p1
+b and a 15
+ret b
+end
+
+### REPLY 16
+fn split u32 -> (u32,bool)
+a and p0 2147483647
+b ge p0 2147483648
+c rec a b
+ret c
+end

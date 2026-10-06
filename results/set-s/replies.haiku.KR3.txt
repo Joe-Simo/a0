@@ -1,0 +1,106 @@
+### REPLY 1
+o gt p0 38
+x sub p0 38
+z mul 38 10
+
+### REPLY 2
+a le p0 p1
+
+### REPLY 3
+r and s 15
+
+### REPLY 4
+h shr p0 24
+
+### REPLY 5
+j add p1 1
+j rem j 4
+
+### REPLY 6
+fn step u32 u32 u32x4 -> u32
+i lt p1 1
+skip select i 0 p0
+p1m1 sub p1 1
+prev get p2 p1m1
+curr get p2 p1
+is_desc lt curr prev
+inc select is_desc 1 0
+r add skip inc
+ret r
+end
+
+### REPLY 7
+fn cut u32 -> u32
+d mul p0 10
+r div d 100
+ret r
+end
+
+### REPLY 8
+r ge x y
+
+### REPLY 9
+s add p0 25
+exceeds gt s p1
+new_val select exceeds p1 s
+overflow select exceeds 1 0
+r rec new_val overflow
+
+### REPLY 10
+a call bonus p0
+b call bonus p1
+r add a b
+
+### REPLY 11
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+r set p0 0 e1
+r set r 1 e2
+r set r 2 e3
+r set r 3 p1
+o mov r
+
+### REPLY 12
+a lt p0 p1
+b lt p1 100
+r and a b
+
+### REPLY 13
+z eq p0 p2
+any or x y
+any or any z
+
+### REPLY 14
+fn better (u32,u32) u32 u32x4 -> (u32,u32)
+curr get p2 p1
+maxv at p0 0
+is_gt gt curr maxv
+new_v select is_gt curr maxv
+old_i at p0 1
+new_i select is_gt p1 old_i
+r rec new_v new_i
+ret r
+end
+
+### REPLY 15
+fn acc u32 u32 u32x4 -> u32
+val get p2 p1
+idx_rem rem p1 2
+is_even eq idx_rem 0
+zero sub 0 0
+neg_v sub zero val
+op_v select is_even val neg_v
+r add p0 op_v
+ret r
+end
+
+### REPLY 16
+v at p0 0
+f at p0 1
+t select f 1 0
+h shl t 31
+v_sh shr v 1
+v_clr shl v_sh 1
+r or v_clr h
+

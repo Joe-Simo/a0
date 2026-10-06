@@ -1,0 +1,50 @@
+{
+ "t-covers-mask/a0/structured": [
+  "fn covers u32 u32 -> bool\na and p0 p1\nb eq a p1\nret b\nend"
+ ],
+ "t-triangle-sides/a0/structured": [
+  "fn tri u32 u32 u32 -> bool\na add p0 p1\nb add p0 p2\nc add p1 p2\nd gt a p2\ne gt b p1\ng gt c p0\nh and d e\nk and h g\nret k\nend"
+ ],
+ "t-two-of-three/a0/structured": [
+  "fn maj bool bool bool -> bool\na and p0 p1\nb and p0 p2\nc and p1 p2\nd or a b\ne or d c\nret e\nend"
+ ],
+ "t-offset-series/a0/structured": [
+  "fn step u32 u32 u32 -> u32\na add p0 p1\nb add a p2\nret b\nend\nfn run u32 -> u32\na fold step 7 0 p0\nret a\nend"
+ ],
+ "t-first-largest-index/a0/structured": [
+  "fn pick u32 u32 u32x4 -> u32\na get p2 p0\nb get p2 p1\nc gt b a\nd select c p1 p0\nret d\nend\nfn argmax u32x4 -> u32\na fold pick 4 0 p0\nret a\nend"
+ ],
+ "t-fill-two/a0/structured": [
+  "fn fill2 u32x4 u32 u32 -> u32x4\na set p0 p1 p2\nn add p1 1\nm rem n 4\nb set a m p2\nret b\nend"
+ ],
+ "t-matching-slots/a0/structured": [
+  "fn tally u32 u32 u32x4 u32x4 -> u32\nx get p2 p1\ny get p3 p1\ne eq x y\nf select e 1 0\ng add p0 f\nret g\nend\nfn same u32x4 u32x4 -> u32\na fold tally 4 0 p0 p1\nret a\nend"
+ ],
+ "t-keep-low-bits/a0/structured": [
+  "fn low u32 u32 -> u32\nb shl 1 p1\nc sub b 1\nd and p0 c\ne ge p1 32\nf select e p0 d\nret f\nend"
+ ],
+ "t-checked-product/a0/structured": [
+  "fn mulchk u32 u32 -> (u32,bool)\na mul p0 p1\nb div a p0\nc ne b p1\nz ne p0 0\no and z c\ng rec a o\nret g\nend"
+ ],
+ "t-tick-millis/a0/structured": [
+  "fn ms u32 -> u32\na mul p0 1000\nb div a 1024\nret b\nend"
+ ],
+ "t-binary-digits/a0/structured": [
+  "fn h u32 u32 -> u32\na shl p0 1\nb add a p1\nret b\nend\nfn digits u32x4 -> u32\ng0 get p0 0\ng1 get p0 1\ng2 get p0 2\ng3 get p0 3\nc0 call h 0 g0\nc1 call h c0 g1\nc2 call h c1 g2\nc3 call h c2 g3\nret c3\nend"
+ ],
+ "t-hailstone-five/a0/structured": [
+  "fn hop u32 u32 -> u32\na and p0 1\no ne a 0\nb shr p0 1\nc mul p0 3\nd add c 1\ne select o d b\nret e\nend\nfn hops u32 -> u32\na fold hop 5 p0\nret a\nend"
+ ],
+ "t-neighbour-sum/a0/structured": [
+  "fn pairsum u32x4 u32 -> bool\na get p0 0\nb get p0 1\nc get p0 2\nd get p0 3\ne add a b\ng add b c\nh add c d\nk eq e p1\nm eq g p1\nn eq h p1\nq or k m\nr or q n\nret r\nend"
+ ],
+ "t-signed-less/a0/structured": [
+  "fn sless u32 u32 -> bool\na xor p0 2147483648\nb xor p1 2147483648\nc lt a b\nret c\nend"
+ ],
+ "t-nibble-field/a0/structured": [
+  "fn field u32 u32 -> u32\na shr p0 p1\nb and a 15\nret b\nend"
+ ],
+ "t-split-top-bit/a0/structured": [
+  "fn split u32 -> (u32,bool)\na and p0 2147483647\nb ge p0 2147483648\nc rec a b\nret c\nend"
+ ]
+}

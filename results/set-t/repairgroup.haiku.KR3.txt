@@ -1,0 +1,256 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 4
+[user]
+The function should add up p0+i for every i from 0 through 6 inclusive (seven terms), with wrapping addition.
+
+e0
+fn run u32 -> u32
+a fold step 6 0 p0
+ret a
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn run u32 -> u32 end
+
+[assistant]
+add s p1
+
+[user]
+Rejected:
+type: run.add: parameter p1 out of range fix: run has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn run ...` block with the parameter in its signature
+
+Try again.
+
+### CONVERSATION 5
+[user]
+The function returns the position of the largest element; when the largest value occurs more than once it must return the earliest such position.
+
+e0
+fn argmax u32x4 -> u32
+a fold pick 4 0 p0
+ret a
+end
+fn pick u32 u32 u32x4 -> u32 end
+g0
+fn pick u32 u32 u32x4 -> u32 end
+fn argmax u32x4 -> u32 end
+
+[assistant]
+a ge a s p0 p1
+i rec a a
+
+[user]
+Rejected:
+parse: line 2: ge expects 2 operands, got 4 fix: write exactly 2 operands after ge
+
+Try again.
+
+### CONVERSATION 6
+[user]
+Besides writing the value at the given position, also write it at the next position (wrapping from the last position back to the first).
+
+e0
+fn fill2 u32x4 u32 u32 -> u32x4
+a set p0 p1 p2
+ret a
+end
+g0
+fn fill2 u32x4 u32 u32 -> u32x4 end
+
+[assistant]
+a set p0 p1 p2
+c add p1 1
+d rem c 4
+e set a c p2
+ret e
+
+[user]
+Rejected:
+edit: fill2: new node 'd' is not used by any node or by ret fix: add 'ret d' if it is the new result, or use it in another node
+
+Try again.
+
+### CONVERSATION 7
+[user]
+The function should count the positions at which the two arrays hold equal values.
+
+e0
+fn same u32x4 u32x4 -> u32
+a fold tally 4 0 p0 p1
+ret a
+end
+fn tally u32 u32 u32x4 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 u32x4 -> u32 end
+fn same u32x4 u32x4 -> u32 end
+
+[assistant]
+a eq (get p0 p1) (get p1 p1)
+b select a 1 0
+c add s b
+ret c
+
+[user]
+Rejected:
+parse: line 2: nested operand: A0 has one op per line fix: one op per line: write `a1 get p0 p1` above, then `a eq a1 (get p1 p1)`
+
+Try again.
+
+### CONVERSATION 8
+[user]
+Keep only the lowest p1 bits of p0; when p1 is 32 or more the whole value must be kept.
+
+e0
+fn low u32 u32 -> u32
+b shl 1 p1
+c sub b 1
+d and p0 c
+ret d
+end
+g0
+fn low u32 u32 -> u32 end
+
+[assistant]
+a lt p1 32
+b select a p1 32
+c shl 1 b
+d sub c 1
+e and p0 d
+ret e
+
+[user]
+Rejected:
+low(4294967295,32) = 0, expected 4294967295
+low(4294967295,33) = 0, expected 4294967295
+low(2147483653,40) = 0, expected 2147483653
+low(12345,64) = 0, expected 12345
+
+Current view:
+e0
+fn low u32 u32 -> u32
+a lt p1 32
+b select a p1 32
+c shl 1 b
+d sub c 1
+e and p0 d
+ret e
+end
+g0
+fn low u32 u32 -> u32 end
+Try again.
+
+### CONVERSATION 9
+[user]
+Return the wrapped product and a flag that is true only when the true product does not fit in 32 bits; a zero first factor must never report overflow.
+
+e0
+fn mulchk u32 u32 -> (u32,bool)
+a mul p0 p1
+b div a p0
+c ne b p1
+g rec a c
+ret g
+end
+g0
+fn mulchk u32 u32 -> (u32,bool) end
+
+[assistant]
+a eq p0 0
+b select a 0 1
+c mul p0 p1
+d div c p0
+e ne d p1
+f and b e
+g rec c f
+ret g
+
+[user]
+Rejected:
+type: mulchk.f: expected u32, got bool fix: replace the operand at mulchk.f with a value of type u32
+
+Try again.
+
+### CONVERSATION 12
+[user]
+Apply the hailstone step five times: halve an even value, otherwise replace it with three times the value plus one (wrapping).
+
+e0
+fn hops u32 -> u32
+a fold hop 5 p0
+ret a
+end
+fn hop u32 u32 -> u32 end
+g0
+fn hop u32 u32 -> u32 end
+fn hops u32 -> u32 end
+
+[assistant]
+a rem p0 2
+b select a p0 1
+c mul p0 3
+d add c 1
+e select b d c
+ret e
+
+[user]
+Rejected:
+type: hops.b: expected bool, got u32 fix: replace the operand at hops.b with a value of type bool
+
+Try again.
+
+### CONVERSATION 13
+[user]
+Return true when any two neighbouring elements of the array add up (with wrapping) to the target.
+
+e0
+fn pairsum u32x4 u32 -> bool
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+e add a b
+g add b c
+h add c d
+k eq e p1
+m eq g p1
+n eq h p1
+q or k m
+r and q n
+ret r
+end
+g0
+fn pairsum u32x4 u32 -> bool end
+
+[assistant]
+r or q m
+
+[user]
+Rejected:
+pairsum(1,2,3,4,7) = false, expected true
+pairsum(1,1,9,9,18) = false, expected true
+
+Current view:
+e0
+fn pairsum u32x4 u32 -> bool
+a get p0 0
+b get p0 1
+c get p0 2
+d get p0 3
+e add a b
+g add b c
+h add c d
+k eq e p1
+m eq g p1
+n eq h p1
+q or k m
+r or q m
+ret r
+end
+g0
+fn pairsum u32x4 u32 -> bool end
+Try again.

@@ -1,0 +1,189 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+io: linear token, each value used once. read t->(u32,io) | write t v->io | puts t a->io
+EDIT: reply bare edit lines (handle line optional when one e handle is shown). `id op ...` replaces or inserts before ret; `... @ other` inserts after other; `-id` deletes; `ret x`; `fn ...` block (end optional) adds/replaces a function; `-fn name` removes.
+Example: fn affine u32 u32 u32 -> u32 / a mul p0 p1 / b add a p2 / ret b / end (one item per line).
+
+
+The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.
+
+=====
+
+### CONVERSATION 1
+[user]
+Overtime pay (15 per hour instead of 10) should start after 38 hours instead of after 40.
+
+e0
+fn pay u32 -> u32
+o gt p0 40
+b mul p0 10
+x sub p0 40
+y mul x 15
+z mul 40 10
+w add z y
+r select o w b
+ret r
+end
+g0
+fn pay u32 -> u32 end
+
+[assistant]
+o gt p0 38
+z mul 38 10
+
+[user]
+Rejected:
+pay(39) = 365, expected 395
+pay(40) = 380, expected 410
+pay(41) = 395, expected 425
+pay(50) = 530, expected 560
+
+Current view:
+e0
+fn pay u32 -> u32
+o gt p0 38
+b mul p0 10
+x sub p0 40
+y mul x 15
+z mul 38 10
+w add z y
+r select o w b
+ret r
+end
+g0
+fn pay u32 -> u32 end
+Try again.
+
+### CONVERSATION 11
+[user]
+Drop the first element, move the others one place towards the front, and put the new value (second argument) in the last slot.
+
+e0
+fn pushback u32x4 u32 -> u32x4
+r set p0 3 p1
+o mov r
+ret o
+end
+g0
+fn pushback u32x4 u32 -> u32x4 end
+
+[assistant]
+fn pushback u32x4 u32 -> u32x4
+a get p0 1
+b get p0 2
+c get p0 3
+r set p0 0 a
+s set r 1 b
+t set r 2 c
+u set r 3 p1
+ret u
+end
+
+[user]
+Rejected:
+pushback(1,2,3,4,9) = 2,2,3,9, expected 2,3,4,9
+pushback(1,2,3,4,4) = 2,2,3,4, expected 2,3,4,4
+pushback(7,8,9,10,0) = 8,8,9,0, expected 8,9,10,0
+pushback(1,1,1,2,2) = 1,1,1,2, expected 1,1,2,2
+pushback(4,3,2,1,5) = 3,3,2,5, expected 3,2,1,5
+pushback(0,1,2,3,3) = 1,1,2,3, expected 1,2,3,3
+
+Current view:
+e0
+fn pushback u32x4 u32 -> u32x4
+a get p0 1
+b get p0 2
+c get p0 3
+r set p0 0 a
+s set r 1 b
+t set r 2 c
+u set r 3 p1
+ret u
+end
+g0
+fn pushback u32x4 u32 -> u32x4 end
+Try again.
+
+### CONVERSATION 13
+[user]
+The function should return 2 when all three values are equal, 1 when exactly two are equal, and 0 when all differ; it currently misses one pair.
+
+e0
+fn kind u32 u32 u32 -> u32
+x eq p0 p1
+y eq p1 p2
+any or x y
+all and x y
+m select any 1 0
+r select all 2 m
+ret r
+end
+g0
+fn kind u32 u32 u32 -> u32 end
+
+[assistant]
+z eq p0 p2
+any or any z
+
+[user]
+Rejected:
+structure: kind.any: reference to undefined or later node 'any' fix: 'any' is defined on a later line of kind: move it above kind.any
+
+Try again.
+
+### CONVERSATION 15
+[user]
+Return the first element minus the second plus the third minus the fourth, with u32 wrapping.
+
+e0
+fn altsum u32x4 -> u32
+t fold acc 4 0 p0
+r mov t
+ret r
+end
+fn acc u32 u32 u32x4 -> u32 end
+g0
+fn acc u32 u32 u32x4 -> u32 end
+fn altsum u32x4 -> u32 end
+
+[assistant]
+fn acc u32 u32 u32x4 -> u32
+elem get p2 p1
+is_odd and p1 1
+result select is_odd (sub p0 elem) (add p0 elem)
+ret result
+end
+
+[user]
+Rejected:
+parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `result1 sub p0 elem` above, then `result select is_odd result1 (add p0 elem)`
+
+Try again.
+
+### CONVERSATION 16
+[user]
+Return the record's number with its top bit (bit 31) replaced by the record's flag: set when the flag is true, cleared when it is false.
+
+e0
+fn pack (u32,bool) -> u32
+v at p0 0
+f at p0 1
+t select f 1 0
+h shl t 31
+r or v h
+ret r
+end
+g0
+fn pack (u32,bool) -> u32 end
+
+[assistant]
+mask and v 2147483647
+
+[user]
+Rejected:
+edit: pack: new node 'mask' is not used by any node or by ret fix: add 'ret mask' if it is the new result, or use it in another node
+
+Try again.

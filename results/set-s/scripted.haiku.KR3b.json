@@ -1,0 +1,54 @@
+{
+ "s-overtime-pay/a0/structured": [
+  "o gt p0 38",
+  "x sub p0 38\nz mul 38 10"
+ ],
+ "s-speed-ticket/a0/structured": [
+  "a le p0 p1"
+ ],
+ "s-middle-nibble/a0/structured": [
+  "r and s 15"
+ ],
+ "s-fits-24-bits/a0/structured": [
+  "h shr p0 24"
+ ],
+ "s-clear-next-slot/a0/structured": [
+  "j add p1 1"
+ ],
+ "s-count-descents/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\neq check p1 0\nprev sub p1 1\nold get p2 prev\ncur get p2 p1\nlt descent cur old\ninc add p0 1\nr select check p0 inc\nret r\nend",
+  "-fn step u32 u32 u32x4 -> u32 end\nfn step u32 u32 u32x4 -> u32\nnot_first ne p1 0\nprev sub p1 1\nold get p2 prev\ncur get p2 p1\nis_descent lt cur old\nboth and not_first is_descent\ninc add p0 1\nr select both inc p0\nret r\nend"
+ ],
+ "s-member-price/a0/structured": [
+  "fn cut u32 -> u32\nr div p0 10\nret r\nend"
+ ],
+ "s-two-thirds-quorum/a0/structured": [
+  "r ge x y"
+ ],
+ "s-tank-refill/a0/structured": [
+  "o gt s p1\nv select o p1 s\nr rec v o"
+ ],
+ "s-bonus-both/a0/structured": [
+  "b call bonus p1\nr add a b"
+ ],
+ "s-shift-in/a0/structured": [
+  "fn pushback u32x4 u32 -> u32x4\ne1 get p0 1\ne2 get p0 2\ne3 get p0 3\nt1 set p0 0 e1\nt2 set t1 1 e2\nt3 set t2 2 e3\nr set t3 3 p1\nret r\nend"
+ ],
+ "s-window-ok/a0/structured": [
+  "b lt p1 100\nr and a b"
+ ],
+ "s-equal-kind/a0/structured": [
+  "z eq p0 p2\nxy or x y\nany or xy z"
+ ],
+ "s-first-largest-index/a0/structured": [
+  "fn better (u32,u32) u32 u32x4 -> (u32,u32)\nval at p0 0\nidx at p0 1\ncurr get p2 p1\nis_better gt curr val\nnew_val select is_better curr val\nnew_idx select is_better p1 idx\nr rec new_val new_idx\nret r\nend"
+ ],
+ "s-alternating-sum/a0/structured": [
+  "fn acc u32 u32 u32x4 -> u32\ncurr get p2 p1\nbit and p1 1\nadd_res add p0 curr\nsub_res sub p0 curr\nr select bit sub_res add_res\nret r\nend",
+  "-fn acc u32 u32 u32x4 -> u32 end\nfn acc u32 u32 u32x4 -> u32\ncurr get p2 p1\nbit and p1 1\nis_even eq bit 0\nadd_res add p0 curr\nsub_res sub p0 curr\nr select is_even add_res sub_res\nret r\nend"
+ ],
+ "s-pack-flag/a0/structured": [
+  "mask 2147483647\ncleared and v mask\nr or cleared h",
+  "cleared and v 2147483647\nr or cleared h"
+ ]
+}

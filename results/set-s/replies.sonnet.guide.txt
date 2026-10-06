@@ -1,0 +1,76 @@
+### REPLY 1
+o gt p0 38
+x sub p0 38
+z mul 38 10
+### REPLY 2
+a le p0 p1
+### REPLY 3
+r and s 15
+### REPLY 4
+h shr p0 24
+### REPLY 5
+j add p1 1
+### REPLY 6
+fn step u32 u32 u32x4 -> u32
+j add p1 1
+x get p2 j
+y get p2 p1
+d lt x y
+n add p0 1
+r select d n p0
+ret r
+end
+c fold step 3 0 p0
+### REPLY 7
+fn cut u32 -> u32
+r div p0 10
+ret r
+end
+### REPLY 8
+r ge x y
+### REPLY 9
+c gt s p1 @ s
+l select c p1 s @ c
+r rec l c
+### REPLY 10
+b call bonus p1 @ a
+r add a b
+### REPLY 11
+fn pushback u32x4 u32 -> u32x4
+a get p0 1
+b get p0 2
+c get p0 3
+r arr a b c p1
+ret r
+end
+### REPLY 12
+b lt p1 100 @ a
+r and a b
+### REPLY 13
+z eq p0 p2 @ y
+t or x y @ z
+any or t z
+### REPLY 14
+fn better (u32,u32) u32 u32x4 -> (u32,u32)
+m at p0 0
+k at p0 1
+v get p2 p1
+c gt v m
+nm select c v m
+nk select c p1 k
+r rec nm nk
+ret r
+end
+### REPLY 15
+fn acc u32 u32 u32x4 -> u32
+v get p2 p1
+b and p1 1
+o ne b 0
+a add p0 v
+s sub p0 v
+r select o s a
+ret r
+end
+### REPLY 16
+c and v 2147483647 @ v
+r or c h

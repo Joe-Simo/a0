@@ -1,0 +1,51 @@
+{
+ "r-bucket-index/a0/structured": [
+  "chk eq p1 0\nq div p0 p1\nr select chk 0 q\nret r"
+ ],
+ "r-field-extract/a0/structured": [
+  "s shr p0 4\nm and s 15\nret m"
+ ],
+ "r-is-multiple/a0/structured": [
+  "r rem p0 p1\nb eq r 0\nret b"
+ ],
+ "r-slot-write/a0/structured": [
+  "a set p0 p1 p2\nret a"
+ ],
+ "r-product-all/a0/structured": [
+  "q fold step 4 1 p0\nret q\nfn step u32 u32 u32x4 -> u32\ne get p2 p1\np mul p0 e\nret p\nend"
+ ],
+ "r-quorum/a0/structured": [
+  "d mul p0 2\nb gt d p1\nret b"
+ ],
+ "r-pack-bytes/a0/structured": [
+  "m0 and p0 255\nh shl m0 8\nm1 and p1 255\nr or h m1\nret r"
+ ],
+ "r-page-of/a0/structured": [
+  "pg div p0 p1\nrm rem p0 p1\ns eq rm 0\nr rec pg s\nret r"
+ ],
+ "r-both-flags/a0/structured": [
+  "m and p0 5\nb eq m 5\nret b"
+ ],
+ "r-tally-two/a0/structured": [
+  "x call bump p0 p1\ny call bump x p2\nret y\nfn bump u32x4 u32 -> u32x4\ne get p0 p1\nn add e 1\na set p0 p1 n\nret a\nend"
+ ],
+ "r-percent-of/a0/structured": [
+  "m mul p0 100\nq div m p1\nret q"
+ ],
+ "r-mean-four/a0/structured": [
+  "t fold acc 4 0 p0\nr shr t 2\nret r\nfn acc u32 u32 u32x4 -> u32\ne get p1 p2\ns add p0 e\nret s\nend",
+  "t fold acc 4 0 p0\nr shr t 2\nret r\nfn acc u32 u32 u32x4 -> u32\ne get p2 p1\ns add p0 e\nret s\nend"
+ ],
+ "r-larger-pick/a0/structured": [
+  "x get p0 p1\ny get p0 p2\nc lt x y\nr select c y x\nret r"
+ ],
+ "r-all-under/a0/structured": [
+  "q fold chk 4 true p0 p1\nr mov q\nret r\nfn chk bool u32 u32x4 u32 -> bool\ne get p2 p1\nc lt e p3\na and p0 c\nret a\nend"
+ ],
+ "r-mod-diff/a0/structured": [
+  "r0 rem p0 p2\nr1 rem p1 p2\nsum add r0 p2\nd sub sum r1\nr rem d p2\nret r"
+ ],
+ "r-header-ok/a0/structured": [
+  "v call ver p0\na eq v 3\nl and p0 255\nn ne l 0\nr and a n\nret r\nfn ver u32 -> u32\nv shr p0 28\nret v\nend"
+ ]
+}

@@ -1,0 +1,51 @@
+{
+ "s-overtime-pay/a0/structured": [
+  "o gt p0 38\nx sub p0 38\nz mul 38 10"
+ ],
+ "s-speed-ticket/a0/structured": [
+  "a le p0 p1"
+ ],
+ "s-middle-nibble/a0/structured": [
+  "r and s 15"
+ ],
+ "s-fits-24-bits/a0/structured": [
+  "h shr p0 24"
+ ],
+ "s-clear-next-slot/a0/structured": [
+  "j add p1 1"
+ ],
+ "s-count-descents/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ncur get p2 p1\npi sub p1 1\nprev get p2 pi\nd lt cur prev\nip gt p1 0\nc and d ip\nn add p0 1\nr select c n p0\nret r\nend\nr add c 0"
+ ],
+ "s-member-price/a0/structured": [
+  "fn cut u32 -> u32\nd div p0 10\nret d\nend"
+ ],
+ "s-two-thirds-quorum/a0/structured": [
+  "r ge x y"
+ ],
+ "s-tank-refill/a0/structured": [
+  "-r\no gt s p1\nn select o p1 s\nr rec n o"
+ ],
+ "s-bonus-both/a0/structured": [
+  "-r\nb call bonus p1\nr add a b"
+ ],
+ "s-shift-in/a0/structured": [
+  "-o\n-r\na1 get p0 1\na2 get p0 2\na3 get p0 3\nr arr a1 a2 a3 p1\nret r"
+ ],
+ "s-window-ok/a0/structured": [
+  "-r\nb lt p1 100\nr and a b"
+ ],
+ "s-equal-kind/a0/structured": [
+  "-m\n-r\nz eq p0 p2\nw or any z\nm select w 1 0\nr select all 2 m"
+ ],
+ "s-first-largest-index/a0/structured": [
+  "fn better (u32,u32) u32 u32x4 -> (u32,u32)\ncur get p2 p1\nm at p0 0\ng gt cur m\nnm select g cur m\noi at p0 1\nni select g p1 oi\nr rec nm ni\nret r\nend"
+ ],
+ "s-alternating-sum/a0/structured": [
+  "fn acc u32 u32 u32x4 -> u32\nv get p2 p1\nb and p1 1\na add p0 v\ns sub p0 v\nr select b s a\nret r\nend\nr add t 0",
+  "fn acc u32 u32 u32x4 -> u32\nv get p2 p1\nm and p1 1\nb eq m 0\na add p0 v\ns sub p0 v\nr select b a s\nret r\nend\nfn altsum u32x4 -> u32\nt fold acc 4 0 p0\nret t\nend"
+ ],
+ "s-pack-flag/a0/structured": [
+  "-r\nm and v 2147483647\nr or m h"
+ ]
+}

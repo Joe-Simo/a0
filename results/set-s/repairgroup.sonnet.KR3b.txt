@@ -1,0 +1,37 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops: add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y | call F a... | fold F n s a...: s=F(s,i,a...) for i<n | arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+
+=====
+
+### CONVERSATION 15
+[user]
+Return the first element minus the second plus the third minus the fourth, with u32 wrapping.
+
+e0
+fn altsum u32x4 -> u32
+t fold acc 4 0 p0
+r mov t
+ret r
+end
+fn acc u32 u32 u32x4 -> u32 end
+g0
+fn acc u32 u32 u32x4 -> u32 end
+fn altsum u32x4 -> u32 end
+
+[assistant]
+fn acc u32 u32 u32x4 -> u32
+v get p2 p1
+b and p1 1
+a add p0 v
+s sub p0 v
+r select b s a
+ret r
+end
+r add t 0
+
+[user]
+Rejected:
+type: acc.r: expected bool, got u32 fix: replace the operand at acc.r with a value of type bool
+
+Try again.

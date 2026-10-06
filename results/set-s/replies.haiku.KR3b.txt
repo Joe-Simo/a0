@@ -1,0 +1,92 @@
+### REPLY 1
+o gt p0 38
+
+### REPLY 2
+a le p0 p1
+
+### REPLY 3
+r and s 15
+
+### REPLY 4
+h shr p0 24
+
+### REPLY 5
+j add p1 1
+
+### REPLY 6
+fn step u32 u32 u32x4 -> u32
+eq check p1 0
+prev sub p1 1
+old get p2 prev
+cur get p2 p1
+lt descent cur old
+inc add p0 1
+r select check p0 inc
+ret r
+end
+
+### REPLY 7
+fn cut u32 -> u32
+r div p0 10
+ret r
+end
+
+### REPLY 8
+r ge x y
+
+### REPLY 9
+o gt s p1
+v select o p1 s
+r rec v o
+
+### REPLY 10
+b call bonus p1
+r add a b
+
+### REPLY 11
+fn pushback u32x4 u32 -> u32x4
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+t1 set p0 0 e1
+t2 set t1 1 e2
+t3 set t2 2 e3
+r set t3 3 p1
+ret r
+end
+
+### REPLY 12
+b lt p1 100
+r and a b
+
+### REPLY 13
+z eq p0 p2
+xy or x y
+any or xy z
+
+### REPLY 14
+fn better (u32,u32) u32 u32x4 -> (u32,u32)
+val at p0 0
+idx at p0 1
+curr get p2 p1
+is_better gt curr val
+new_val select is_better curr val
+new_idx select is_better p1 idx
+r rec new_val new_idx
+ret r
+end
+
+### REPLY 15
+fn acc u32 u32 u32x4 -> u32
+curr get p2 p1
+bit and p1 1
+add_res add p0 curr
+sub_res sub p0 curr
+r select bit sub_res add_res
+ret r
+end
+
+### REPLY 16
+mask 2147483647
+cleared and v mask
+r or cleared h

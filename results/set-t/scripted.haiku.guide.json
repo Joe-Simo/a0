@@ -1,0 +1,52 @@
+{
+ "t-covers-mask/a0/structured": [
+  "b eq a p1"
+ ],
+ "t-triangle-sides/a0/structured": [
+  "e gt b p1"
+ ],
+ "t-two-of-three/a0/structured": [
+  "e or d c"
+ ],
+ "t-offset-series/a0/structured": [
+  "a fold step 7 0 p0\nfn step u32 u32 u32 -> u32\nb add p2 p1\nc add p0 b\nret c\nend"
+ ],
+ "t-first-largest-index/a0/structured": [
+  "fn pick u32 u32 u32x4 -> u32\na get p2 p0\nb get p2 p1\nc gt b a\nret select c p1 p0\nend"
+ ],
+ "t-fill-two/a0/structured": [
+  "next_idx add p1 1\nwrapped and next_idx 3\nb set a wrapped p2",
+  "next_idx add p1 1\nwrapped and next_idx 3\nb set a wrapped p2\nret b"
+ ],
+ "t-matching-slots/a0/structured": [
+  "fn tally u32 u32 u32x4 u32x4 -> u32\na get p2 p1\nb get p3 p1\nc eq a b\nd select c 1 0\ne add p0 d\nret e\nend"
+ ],
+ "t-keep-low-bits/a0/structured": [
+  "all_ones sub 0 1\nz ge p1 32\nmask select z all_ones c\nd and p0 mask"
+ ],
+ "t-checked-product/a0/structured": [
+  "check eq p0 0\nc ne b p1\nd select check false c\ng rec a d"
+ ],
+ "t-tick-millis/a0/structured": [
+  "b div a 1024"
+ ],
+ "t-binary-digits/a0/structured": [
+  "c2 call h c1 g2\nfn h u32 u32 -> u32\na shl p0 1\nb add a p1\nret b\nend"
+ ],
+ "t-hailstone-five/a0/structured": [
+  "fn hop u32 u32 -> u32\nis_odd and p0 1\nhalved shr p0 1\ntripled mul p0 3\ntri_inc add tripled 1\nret select is_odd tri_inc halved\nend",
+  "fn hop u32 u32 -> u32\nis_odd and p0 1\nhalved shr p0 1\ntripled mul p0 3\ntri_inc add tripled 1\nis_odd_bool ne is_odd 0\nret select is_odd_bool tri_inc halved\nend"
+ ],
+ "t-neighbour-sum/a0/structured": [
+  "r or q n"
+ ],
+ "t-signed-less/a0/structured": [
+  "a xor p0 2147483648\nb xor p1 2147483648"
+ ],
+ "t-nibble-field/a0/structured": [
+  "b and a 15"
+ ],
+ "t-split-top-bit/a0/structured": [
+  "b ge p0 2147483648"
+ ]
+}

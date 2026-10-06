@@ -1,0 +1,33 @@
+### REPLY 1
+x sub p0 38
+z mul 38 10
+
+### REPLY 6
+-fn step u32 u32 u32x4 -> u32 end
+fn step u32 u32 u32x4 -> u32
+not_first ne p1 0
+prev sub p1 1
+old get p2 prev
+cur get p2 p1
+is_descent lt cur old
+both and not_first is_descent
+inc add p0 1
+r select both inc p0
+ret r
+end
+
+### REPLY 15
+-fn acc u32 u32 u32x4 -> u32 end
+fn acc u32 u32 u32x4 -> u32
+curr get p2 p1
+bit and p1 1
+is_even eq bit 0
+add_res add p0 curr
+sub_res sub p0 curr
+r select is_even add_res sub_res
+ret r
+end
+
+### REPLY 16
+cleared and v 2147483647
+r or cleared h

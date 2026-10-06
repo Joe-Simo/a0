@@ -1,0 +1,251 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 5
+[user]
+Set to zero the slot just after the given index, wrapping from the last slot back to the first; the other slots stay unchanged.
+
+e0
+fn clearnext u32x4 u32 -> u32x4
+j add p1 0
+r set p0 j 0
+ret r
+end
+g0
+fn clearnext u32x4 u32 -> u32x4 end
+
+[assistant]
+j add p1 1
+j rem j 4
+
+[user]
+Rejected:
+edit: line 3: duplicate edit for 'j'
+
+Try again.
+
+### CONVERSATION 6
+[user]
+Count the places where an element is smaller than the element just before it, looking only at the three neighbouring pairs (no wrap from the last element back to the first).
+
+e0
+fn descents u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn descents u32x4 -> u32 end
+
+[assistant]
+fn step u32 u32 u32x4 -> u32
+i lt p1 1
+skip select i 0 p0
+p1m1 sub p1 1
+prev get p2 p1m1
+curr get p2 p1
+is_desc lt curr prev
+inc select is_desc 1 0
+r add skip inc
+ret r
+end
+
+[user]
+Rejected:
+descents(1,2,3,4) = 1, expected 0
+descents(1,1,1,2) = 1, expected 0
+
+Current view:
+e0
+fn descents u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn descents u32x4 -> u32 end
+Try again.
+
+### CONVERSATION 7
+[user]
+Members (the record's flag) should get ten per cent off (the discount rounded down) instead of twenty per cent; non-members pay the full price.
+
+e0
+fn price (u32,bool) -> u32
+v at p0 0
+m at p0 1
+c call cut v
+d sub v c
+r select m d v
+ret r
+end
+fn cut u32 -> u32 end
+g0
+fn cut u32 -> u32 end
+fn price (u32,bool) -> u32 end
+
+[assistant]
+fn cut u32 -> u32
+d mul p0 10
+r div d 100
+ret r
+end
+
+[user]
+Rejected:
+price(4294967295,true) = 4252017623, expected 3865470566
+
+Current view:
+e0
+fn price (u32,bool) -> u32
+v at p0 0
+m at p0 1
+c call cut v
+d sub v c
+r select m d v
+ret r
+end
+fn cut u32 -> u32 end
+g0
+fn cut u32 -> u32 end
+fn price (u32,bool) -> u32 end
+Try again.
+
+### CONVERSATION 9
+[user]
+Adding 25 to the level (first argument) must not go over the capacity (second argument): when it would, return the capacity and true, otherwise the new level and false.
+
+e0
+fn refill u32 u32 -> (u32,bool)
+s add p0 25
+r rec s false
+ret r
+end
+g0
+fn refill u32 u32 -> (u32,bool) end
+
+[assistant]
+s add p0 25
+exceeds gt s p1
+new_val select exceeds p1 s
+overflow select exceeds 1 0
+r rec new_val overflow
+
+[user]
+Rejected:
+type: refill.ret: expected (u32,bool), got (u32,u32) fix: return a (u32,bool) value, or change the declared result: send the function with its header as `fn refill u32 u32 -> (u32,u32)`
+
+Try again.
+
+### CONVERSATION 11
+[user]
+Drop the first element, move the others one place towards the front, and put the new value (second argument) in the last slot.
+
+e0
+fn pushback u32x4 u32 -> u32x4
+r set p0 3 p1
+o mov r
+ret o
+end
+g0
+fn pushback u32x4 u32 -> u32x4 end
+
+[assistant]
+e1 get p0 1
+e2 get p0 2
+e3 get p0 3
+r set p0 0 e1
+r set r 1 e2
+r set r 2 e3
+r set r 3 p1
+o mov r
+
+[user]
+Rejected:
+edit: line 6: duplicate edit for 'r'
+
+Try again.
+
+### CONVERSATION 13
+[user]
+The function should return 2 when all three values are equal, 1 when exactly two are equal, and 0 when all differ; it currently misses one pair.
+
+e0
+fn kind u32 u32 u32 -> u32
+x eq p0 p1
+y eq p1 p2
+any or x y
+all and x y
+m select any 1 0
+r select all 2 m
+ret r
+end
+g0
+fn kind u32 u32 u32 -> u32 end
+
+[assistant]
+z eq p0 p2
+any or x y
+any or any z
+
+[user]
+Rejected:
+edit: line 4: duplicate edit for 'any'
+
+Try again.
+
+### CONVERSATION 16
+[user]
+Return the record's number with its top bit (bit 31) replaced by the record's flag: set when the flag is true, cleared when it is false.
+
+e0
+fn pack (u32,bool) -> u32
+v at p0 0
+f at p0 1
+t select f 1 0
+h shl t 31
+r or v h
+ret r
+end
+g0
+fn pack (u32,bool) -> u32 end
+
+[assistant]
+v at p0 0
+f at p0 1
+t select f 1 0
+h shl t 31
+v_sh shr v 1
+v_clr shl v_sh 1
+r or v_clr h
+
+[user]
+Rejected:
+pack(5,true) = 2147483652, expected 2147483653
+pack(5,false) = 4, expected 5
+pack(2147483648,false) = 2147483648, expected 0
+pack(4294967295,false) = 4294967294, expected 2147483647
+pack(4294967295,true) = 4294967294, expected 4294967295
+pack(2147483647,true) = 4294967294, expected 4294967295
+
+Current view:
+e0
+fn pack (u32,bool) -> u32
+v at p0 0
+f at p0 1
+t select f 1 0
+h shl t 31
+v_sh shr v 1
+v_clr shl v_sh 1
+r or v_clr h
+ret r
+end
+g0
+fn pack (u32,bool) -> u32 end
+Try again.

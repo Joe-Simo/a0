@@ -1,0 +1,43 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 14
+[user]
+Return true when every element of array p0 is strictly less than p1 (currently it returns true when any element is). Fix both the per-element combination and the starting value.
+
+e0
+fn f u32x4 u32 -> bool
+q fold chk 4 false p0 p1
+r mov q
+ret r
+end
+fn chk bool u32 u32x4 u32 -> bool end
+g0
+fn chk bool u32 u32x4 u32 -> bool end
+fn f u32x4 u32 -> bool end
+
+[assistant]
+q fold chk 4 true p0 p1
+
+[user]
+Rejected:
+f(1,2,3,4,4) = true, expected false
+f(1,2,3,4,0) = true, expected false
+f(0,0,0,0,0) = true, expected false
+f(9,1,1,1,5) = true, expected false
+f(1,1,1,9,9) = true, expected false
+
+Current view:
+e0
+fn f u32x4 u32 -> bool
+q fold chk 4 true p0 p1
+r mov q
+ret r
+end
+fn chk bool u32 u32x4 u32 -> bool end
+g0
+fn chk bool u32 u32x4 u32 -> bool end
+fn f u32x4 u32 -> bool end
+Try again.

@@ -1,0 +1,84 @@
+### REPLY 1
+b eq a p1
+
+### REPLY 2
+e gt b p1
+
+### REPLY 3
+e or d c
+
+### REPLY 4
+a fold step 7 0 p0
+fn step u32 u32 u32 -> u32
+b add p2 p1
+c add p0 b
+ret c
+end
+
+### REPLY 5
+fn pick u32 u32 u32x4 -> u32
+a get p2 p0
+b get p2 p1
+c gt b a
+ret select c p1 p0
+end
+
+### REPLY 6
+next_idx add p1 1
+wrapped and next_idx 3
+b set a wrapped p2
+
+### REPLY 7
+fn tally u32 u32 u32x4 u32x4 -> u32
+a get p2 p1
+b get p3 p1
+c eq a b
+d select c 1 0
+e add p0 d
+ret e
+end
+
+### REPLY 8
+all_ones sub 0 1
+z ge p1 32
+mask select z all_ones c
+d and p0 mask
+
+### REPLY 9
+check eq p0 0
+c ne b p1
+d select check false c
+g rec a d
+
+### REPLY 10
+b div a 1024
+
+### REPLY 11
+c2 call h c1 g2
+fn h u32 u32 -> u32
+a shl p0 1
+b add a p1
+ret b
+end
+
+### REPLY 12
+fn hop u32 u32 -> u32
+is_odd and p0 1
+halved shr p0 1
+tripled mul p0 3
+tri_inc add tripled 1
+ret select is_odd tri_inc halved
+end
+
+### REPLY 13
+r or q n
+
+### REPLY 14
+a xor p0 2147483648
+b xor p1 2147483648
+
+### REPLY 15
+b and a 15
+
+### REPLY 16
+b ge p0 2147483648

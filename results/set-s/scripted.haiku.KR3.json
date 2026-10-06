@@ -1,0 +1,57 @@
+{
+ "s-overtime-pay/a0/structured": [
+  "o gt p0 38\nx sub p0 38\nz mul 38 10"
+ ],
+ "s-speed-ticket/a0/structured": [
+  "a le p0 p1"
+ ],
+ "s-middle-nibble/a0/structured": [
+  "r and s 15"
+ ],
+ "s-fits-24-bits/a0/structured": [
+  "h shr p0 24"
+ ],
+ "s-clear-next-slot/a0/structured": [
+  "j add p1 1\nj rem j 4",
+  "temp add p1 1\nj rem temp 4\nr set p0 j 0\nret r"
+ ],
+ "s-count-descents/a0/structured": [
+  "fn step u32 u32 u32x4 -> u32\ni lt p1 1\nskip select i 0 p0\np1m1 sub p1 1\nprev get p2 p1m1\ncurr get p2 p1\nis_desc lt curr prev\ninc select is_desc 1 0\nr add skip inc\nret r\nend",
+  "fn step u32 u32 u32x4 -> u32\ni lt p1 1\np1m1 sub p1 1\nprev get p2 p1m1\ncurr get p2 p1\nis_desc lt curr prev\ninc_raw select is_desc 1 0\ninc select i 0 inc_raw\nr add p0 inc\nret r\nend"
+ ],
+ "s-member-price/a0/structured": [
+  "fn cut u32 -> u32\nd mul p0 10\nr div d 100\nret r\nend",
+  "fn cut u32 -> u32\nr div p0 10\nret r\nend"
+ ],
+ "s-two-thirds-quorum/a0/structured": [
+  "r ge x y"
+ ],
+ "s-tank-refill/a0/structured": [
+  "s add p0 25\nexceeds gt s p1\nnew_val select exceeds p1 s\noverflow select exceeds 1 0\nr rec new_val overflow",
+  "s add p0 25\nexceeds gt s p1\nnew_val select exceeds p1 s\nr rec new_val exceeds\nret r"
+ ],
+ "s-bonus-both/a0/structured": [
+  "a call bonus p0\nb call bonus p1\nr add a b"
+ ],
+ "s-shift-in/a0/structured": [
+  "e1 get p0 1\ne2 get p0 2\ne3 get p0 3\nr set p0 0 e1\nr set r 1 e2\nr set r 2 e3\nr set r 3 p1\no mov r",
+  "e1 get p0 1\ne2 get p0 2\ne3 get p0 3\ntemp1 set p0 0 e1\ntemp2 set temp1 1 e2\ntemp3 set temp2 2 e3\ntemp4 set temp3 3 p1\nr mov temp4\no mov r\nret o"
+ ],
+ "s-window-ok/a0/structured": [
+  "a lt p0 p1\nb lt p1 100\nr and a b"
+ ],
+ "s-equal-kind/a0/structured": [
+  "z eq p0 p2\nany or x y\nany or any z",
+  "z eq p0 p2\nany1 or x y\nany2 or any1 z\nall1 and x y\nall2 and all1 z\nm select any2 1 0\nr select all2 2 m\nret r"
+ ],
+ "s-first-largest-index/a0/structured": [
+  "fn better (u32,u32) u32 u32x4 -> (u32,u32)\ncurr get p2 p1\nmaxv at p0 0\nis_gt gt curr maxv\nnew_v select is_gt curr maxv\nold_i at p0 1\nnew_i select is_gt p1 old_i\nr rec new_v new_i\nret r\nend"
+ ],
+ "s-alternating-sum/a0/structured": [
+  "fn acc u32 u32 u32x4 -> u32\nval get p2 p1\nidx_rem rem p1 2\nis_even eq idx_rem 0\nzero sub 0 0\nneg_v sub zero val\nop_v select is_even val neg_v\nr add p0 op_v\nret r\nend"
+ ],
+ "s-pack-flag/a0/structured": [
+  "v at p0 0\nf at p0 1\nt select f 1 0\nh shl t 31\nv_sh shr v 1\nv_clr shl v_sh 1\nr or v_clr h",
+  "v at p0 0\nf at p0 1\nt select f 1 0\nh shl t 31\nv_shl shl v 1\nv_clr shr v_shl 1\nr or v_clr h\nret r"
+ ]
+}

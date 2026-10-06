@@ -1,0 +1,96 @@
+### REPLY 1
+b eq a p1
+
+### REPLY 2
+e gt b p1
+
+### REPLY 3
+e or d c
+
+### REPLY 4
+a fold step 7 0 p0
+fn step u32 u32 u32 -> u32
+t add p2 p1
+u add p0 t
+ret u
+end
+
+### REPLY 5
+fn pick u32 u32 u32x4 -> u32
+x get p2 p0
+y get p2 p1
+c gt y x
+r select c p1 p0
+ret r
+end
+
+### REPLY 6
+n add p1 1
+m rem n 4
+b set a m p2
+ret b
+
+### REPLY 7
+fn tally u32 u32 u32x4 u32x4 -> u32
+x get p2 p1
+y get p3 p1
+c eq x y
+d select c 1 0
+e add p0 d
+ret e
+end
+
+### REPLY 8
+k lt p1 32
+m select k d p0
+ret m
+
+### REPLY 9
+fn mulchk u32 u32 -> (u32,bool)
+a mul p0 p1
+z ne p0 0
+dv select z p0 1
+b div a dv
+c ne b p1
+o and z c
+g rec a o
+ret g
+end
+
+### REPLY 10
+b div a 1024
+
+### REPLY 11
+c2 call h c1 g2
+fn h u32 u32 -> u32
+a shl p0 1
+b add a p1
+ret b
+end
+
+### REPLY 12
+fn hop u32 u32 -> u32
+a and p0 1
+b shr p0 1
+c mul p0 3
+d add c 1
+e eq a 0
+r select e b d
+ret r
+end
+
+### REPLY 13
+r or q n
+
+### REPLY 14
+a xor p0 2147483648
+b xor p1 2147483648
+
+### REPLY 15
+a and p1 31
+b shr p0 a
+c and b 15
+ret c
+
+### REPLY 16
+b ge p0 2147483648
