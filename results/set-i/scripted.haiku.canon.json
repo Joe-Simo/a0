@@ -1,0 +1,51 @@
+{
+ "i-bit-test/a0/structured": [
+  "a shr p0 p1\nb and a 1\nc ne b 0\nret c",
+  "a shr p0 p1\nb and a 1\nc ne b 0\n-d\nret c"
+ ],
+ "i-power-of-two/a0/structured": [
+  "z ne p0 0\nd and c z\nret d"
+ ],
+ "i-contains/a0/structured": [
+  "a fold chk 4 false p0 p1\nfn chk bool u32 u32x4 u32 -> bool\ne get p2 p1\nm eq e p3\nr or p0 m\nret r\nend"
+ ],
+ "i-low-byte-parity/a0/structured": [
+  "a fold par 8 0 p0\nfn par u32 u32 u32 -> u32\ns shr p2 p1\nb and s 1\nr xor p0 b\nret r\nend"
+ ],
+ "i-rotate-left/a0/structured": [
+  "b sub 32 p1"
+ ],
+ "i-scale-five-eighths/a0/structured": [
+  "a mul p0 5\nb div a 8"
+ ],
+ "i-round-up-multiple/a0/structured": [
+  "a sub p0 1\nb add a p1\nc div b p1\nd mul c p1"
+ ],
+ "i-extract-field/a0/structured": [
+  "m shl 1 p2\nn sub m 1\nr and a n"
+ ],
+ "i-weighted-sum/a0/structured": [
+  "fn ws u32 u32 u32x4 -> u32\ne get p2 p1\ni add p1 1\nm mul e i\nr add p0 m\nret r\nend"
+ ],
+ "i-double-mix/a0/structured": [
+  "r1 call mix p0 p1\nk2 shr p1 16\nr2 call mix r1 k2\nret r2"
+ ],
+ "i-gray-code/a0/structured": [
+  "a shr p0 1"
+ ],
+ "i-midpoint/a0/structured": [
+  "a and p0 p1\nb xor p0 p1\nc shr b 1\nd add a c\nret d"
+ ],
+ "i-rotate-array/a0/structured": [
+  "i3 add p1 3"
+ ],
+ "i-raise-element/a0/structured": [
+  "e get p0 p1\ncond gt p2 e\nval select cond p2 e\ns set p0 p1 val"
+ ],
+ "i-safe-divmod/a0/structured": [
+  "check eq p1 0\nd_val div p0 p1\nr_val rem p0 p1\nd select check 0 d_val\nr select check p0 r_val"
+ ],
+ "i-add-carry/a0/structured": [
+  "c lt s p0"
+ ]
+}

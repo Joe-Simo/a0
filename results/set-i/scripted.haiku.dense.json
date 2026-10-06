@@ -1,0 +1,54 @@
+{
+ "i-bit-test/a0/structured": [
+  "fn f u32 u32 -> bool ne and >> A B 1 0"
+ ],
+ "i-power-of-two/a0/structured": [
+  "fn f u32 -> bool and ne A 0 eq and A sub A 1 0"
+ ],
+ "i-contains/a0/structured": [
+  "fn f u32x4 u32 -> bool fold chk 4 false A B\n# chk bool u32 u32x4 u32 -> bool\nfn chk or A eq at C B D",
+  "fn f u32x4 u32 -> bool fold chk 4 false A B\nfn chk or A eq get C B D"
+ ],
+ "i-low-byte-parity/a0/structured": [
+  "fn f u32 -> bool ne fold par 8 0 A 0\n# par u32 u32 u32 -> u32\nfn par add A and >> C B 1",
+  "fn f u32 -> bool ne fold par 8 0 A 0\nfn par xor A and >> C B 1"
+ ],
+ "i-rotate-left/a0/structured": [
+  "fn f u32 u32 -> u32 or << A B >> A sub 32 B"
+ ],
+ "i-scale-five-eighths/a0/structured": [
+  "fn f u32 -> u32 div mul A 5 8"
+ ],
+ "i-round-up-multiple/a0/structured": [
+  "fn f u32 u32 -> u32 mul div add A sub B 1 B B"
+ ],
+ "i-extract-field/a0/structured": [
+  "fn f u32 u32 u32 -> u32\na >> A B\nm sub << 1 C 1\nr and a m"
+ ],
+ "i-weighted-sum/a0/structured": [
+  "fn f u32x4 -> u32 fold ws 4 0 A\n# ws u32 u32 u32x4 -> u32\nfn ws add A mul at C B add B 1",
+  "fn f u32x4 -> u32 fold ws 4 0 A\nfn ws add A mul get C B add B 1"
+ ],
+ "i-double-mix/a0/structured": [
+  "fn f u32 u32 -> u32\nr mix A B\nmix r >> B 16"
+ ],
+ "i-gray-code/a0/structured": [
+  "fn f u32 -> u32 xor A >> A 1"
+ ],
+ "i-midpoint/a0/structured": [
+  "fn f u32 u32 -> u32\ns sub B A\nadd A >> s 1"
+ ],
+ "i-rotate-array/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\ni0 rem add B 0 4\ni1 rem add B 1 4\ni2 rem add B 2 4\ni3 rem add B 3 4\ng0 get A i0\ng1 get A i1\ng2 get A i2\ng3 get A i3\nr [g0 g1 g2 g3]"
+ ],
+ "i-raise-element/a0/structured": [
+  "fn f u32x4 u32 u32 -> u32x4\nset A B select gt C at A B C at A B",
+  "fn f u32x4 u32 u32 -> u32x4\nset A B select gt C get A B C get A B"
+ ],
+ "i-safe-divmod/a0/structured": [
+  "fn f u32 u32 -> (u32,u32)\nd select eq B 0 0 div A B\nr select eq B 0 A rem A B\no (d r)"
+ ],
+ "i-add-carry/a0/structured": [
+  "fn f u32 u32 -> (u32,bool)\ns add A B\nc lt s A\no (s c)"
+ ]
+}

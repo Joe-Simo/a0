@@ -1,0 +1,50 @@
+{
+ "i-bit-test/a0/structured": [
+  "fn f -> bool ne and >> A B 1 0"
+ ],
+ "i-power-of-two/a0/structured": [
+  "fn f -> bool and ne A 0 eq and A sub A 1 0"
+ ],
+ "i-contains/a0/structured": [
+  "fn f u32x4 u32 -> bool fold chk 4 false A B"
+ ],
+ "i-low-byte-parity/a0/structured": [
+  "fn f -> bool ne fold par 8 0 A 0"
+ ],
+ "i-rotate-left/a0/structured": [
+  "fn f or << A B >> >> A 1 sub 31 B"
+ ],
+ "i-scale-five-eighths/a0/structured": [
+  "fn f div mul A 5 8"
+ ],
+ "i-round-up-multiple/a0/structured": [
+  "fn f\nd mul div add A sub B 1 B B"
+ ],
+ "i-extract-field/a0/structured": [
+  "fn f u32 u32 u32 -> u32\na >> A B\nm sub << 1 C 1\nr and a m"
+ ],
+ "i-weighted-sum/a0/structured": [
+  "fn ws u32 u32 u32x4 -> u32 add A mul get C B add B 1\nfn f u32x4 -> u32 fold ws 4 0 A"
+ ],
+ "i-double-mix/a0/structured": [
+  "fn f\nr mix A B\ns mix r >> B 16"
+ ],
+ "i-gray-code/a0/structured": [
+  "fn f xor A >> A 1"
+ ],
+ "i-midpoint/a0/structured": [
+  "fn f add A >> sub B A 1"
+ ],
+ "i-rotate-array/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\ni0 rem B 4\ni1 rem add B 1 4\ni2 rem add B 2 4\ni3 rem add B 3 4\ng0 get A i0\ng1 get A i1\ng2 get A i2\ng3 get A i3\nr [g0 g1 g2 g3]"
+ ],
+ "i-raise-element/a0/structured": [
+  "fn f u32x4 u32 u32 -> u32x4\no get A B\nm select gt C o C o\ns set A B m"
+ ],
+ "i-safe-divmod/a0/structured": [
+  "fn f -> (u32,u32)\nz select eq B 0 1 B\nd select eq B 0 0 div A z\nr select eq B 0 A rem A z\no (d r)"
+ ],
+ "i-add-carry/a0/structured": [
+  "fn f -> (u32,bool)\ns add A B\nc lt s A\no (s c)"
+ ]
+}

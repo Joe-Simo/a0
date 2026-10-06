@@ -1,0 +1,31 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 1
+[user]
+Return whether bit number p1 of p0 is set, where bit 0 is the least significant bit.
+
+e0
+fn f u32 u32 -> bool
+a add p1 1
+b shr p0 a
+c and b 1
+d ne c 0
+ret d
+end
+g0
+fn f u32 u32 -> bool end
+
+[assistant]
+a shr p0 p1
+b and a 1
+c ne b 0
+ret c
+
+[user]
+Rejected:
+type: f.d: expected bool, got u32 fix: replace the operand at f.d with a value of type bool
+
+Try again.

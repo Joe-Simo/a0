@@ -22,6 +22,7 @@ interface Report {
   trials: Trial[];
 }
 
+const SET = process.argv.find((a) => /^[hi]$/.test(a)) ?? 'h';
 const MODELS = ['haiku', 'sonnet'] as const;
 const FORMS = { dense: 'D', canon: 'K' } as const;
 const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
@@ -42,7 +43,7 @@ let sha = '';
 for (const m of MODELS) {
   for (const form of Object.keys(FORMS) as (keyof typeof FORMS)[]) {
     const rep = JSON.parse(
-      readFileSync(`results/set-h/report.${m}.${form}.json`, 'utf8'),
+      readFileSync(`results/set-${SET}/report.${m}.${form}.json`, 'utf8'),
     ) as Report;
     if (!rep.harnessSelfCheck.ok) throw new Error(`self-check failed ${m} ${form}`);
     sha = rep.taskSetSha256;
@@ -94,15 +95,17 @@ const verdict = Object.fromEntries(
 );
 const met = MODELS.every((m) => (verdict[m] as { met: boolean }).met);
 writeFileSync(
-  'results/set-h.json',
+  `results/set-${SET}.json`,
   `${JSON.stringify(
     {
       generatedAt: new Date().toISOString(),
-      tool: 'tools/set-h-summary.ts',
-      preRegistration: 'docs/history/2026-10-06-dense-default-preregistration.md',
+      tool: 'tools/set-h-summary.ts (set letter as the argument)',
+      preRegistration:
+        SET === 'h'
+          ? 'docs/history/2026-10-06-dense-default-preregistration.md'
+          : 'docs/history/2026-10-06-set-i-preregistration.md',
       taskSetSha256: sha,
-      meaning:
-        'Set H, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.',
+      meaning: `Set ${SET.toUpperCase()}, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.`,
       cells,
       preRegisteredRule: { verdict, recommendDense: met },
     },

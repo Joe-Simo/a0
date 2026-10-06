@@ -1,0 +1,67 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### CONVERSATION 13
+[user]
+Return p0 rotated left by p1 positions: element j of the result is element j+p1 of p0, wrapping around the end.
+
+e0
+fn f u32x4 u32 -> u32x4
+i1 add p1 1
+i2 add p1 2
+i3 add p1 4
+g0 get p0 p1
+g1 get p0 i1
+g2 get p0 i2
+g3 get p0 i3
+r arr g0 g1 g2 g3
+ret r
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+[assistant]
+i3 add p1 3
+g0 and p1 3
+g1 and i1 3
+g2 and i2 3
+g3 and i3 3
+-r
+h0 get p0 g0
+h1 get p0 g1
+h2 get p0 g2
+h3 get p0 g3
+r arr h0 h1 h2 h3
+
+[user]
+Rejected:
+edit: line 12: duplicate edit for 'r'
+
+Try again.
+
+### CONVERSATION 14
+[user]
+f overwrites element p1 of p0 with p2. Change it so the element only changes when p2 is larger: it becomes the larger of its old value and p2.
+
+e0
+fn f u32x4 u32 u32 -> u32x4
+s set p0 p1 p2
+ret s
+end
+g0
+fn f u32x4 u32 u32 -> u32x4 end
+
+[assistant]
+-s
+o get p0 p1
+c gt p2 o
+m select c p2 o
+s set p0 p1 m
+
+[user]
+Rejected:
+edit: line 6: duplicate edit for 's'
+
+Try again.

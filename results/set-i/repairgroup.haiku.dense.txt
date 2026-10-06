@@ -1,0 +1,99 @@
+SYSTEM TEXT:
+A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.
+
+=====
+
+### CONVERSATION 3
+[user]
+f should return whether p1 appears anywhere in the array p0. Fix it so every element is examined.
+
+e0
+fn f u32x4 u32 -> bool fold chk 3 false A B
+# chk bool u32 u32x4 u32 -> bool
+g0
+# chk bool u32 u32x4 u32 -> bool
+# f u32x4 u32 -> bool
+
+[assistant]
+fn f u32x4 u32 -> bool fold chk 4 false A B
+# chk bool u32 u32x4 u32 -> bool
+fn chk or A eq at C B D
+
+[user]
+Rejected:
+structure: chk (`at C B`): at expects a record, got u32
+
+Try again.
+
+### CONVERSATION 4
+[user]
+Return true when the low 8 bits of p0 contain an odd number of set bits; higher bits must be ignored.
+
+e0
+fn f -> bool ne fold par 7 0 A 0
+# par u32 u32 u32 -> u32
+g0
+# par u32 u32 u32 -> u32
+# f u32 -> bool
+
+[assistant]
+fn f u32 -> bool ne fold par 8 0 A 0
+# par u32 u32 u32 -> u32
+fn par add A and >> C B 1
+
+[user]
+Rejected:
+f(3) = true, expected false
+f(255) = true, expected false
+f(4294967295) = true, expected false
+
+Current view:
+e0
+fn f -> bool ne fold par 8 0 A 0
+# par u32 u32 u32 -> u32
+g0
+# par u32 u32 u32 -> u32
+# f u32 -> bool
+Try again.
+
+### CONVERSATION 9
+[user]
+f sums the array. Change it so that the element at position i is multiplied by i+1 before it is added (sums wrap modulo 2^32).
+
+e0
+fn f u32x4 -> u32 fold ws 4 0 A
+# ws u32 u32 u32x4 -> u32
+g0
+# ws u32 u32 u32x4 -> u32
+# f u32x4 -> u32
+
+[assistant]
+fn f u32x4 -> u32 fold ws 4 0 A
+# ws u32 u32 u32x4 -> u32
+fn ws add A mul at C B add B 1
+
+[user]
+Rejected:
+structure: ws (`at C B`): at expects a record, got u32
+
+Try again.
+
+### CONVERSATION 14
+[user]
+f overwrites element p1 of p0 with p2. Change it so the element only changes when p2 is larger: it becomes the larger of its old value and p2.
+
+e0
+fn f u32x4 u32 u32 -> u32x4
+s set A B C
+g0
+# f u32x4 u32 u32 -> u32x4
+
+[assistant]
+fn f u32x4 u32 u32 -> u32x4
+set A B select gt C at A B C at A B
+
+[user]
+Rejected:
+structure: f (`at A B`): at expects a record, got u32x4 fix: arrays use get: `get A I` (at is for records)
+
+Try again.

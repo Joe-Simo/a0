@@ -1,0 +1,90 @@
+### REPLY 1
+a shr p0 p1
+b and a 1
+c ne b 0
+ret c
+
+### REPLY 2
+z ne p0 0
+d and c z
+ret d
+
+### REPLY 3
+a fold chk 4 false p0 p1
+fn chk bool u32 u32x4 u32 -> bool
+e get p2 p1
+m eq e p3
+r or p0 m
+ret r
+end
+
+### REPLY 4
+a fold par 8 0 p0
+fn par u32 u32 u32 -> u32
+s shr p2 p1
+b and s 1
+r xor p0 b
+ret r
+end
+
+### REPLY 5
+b sub 32 p1
+
+### REPLY 6
+a mul p0 5
+b div a 8
+
+### REPLY 7
+a sub p0 1
+b add a p1
+c div b p1
+d mul c p1
+
+### REPLY 8
+m shl 1 p2
+n sub m 1
+r and a n
+
+### REPLY 9
+fn ws u32 u32 u32x4 -> u32
+e get p2 p1
+i add p1 1
+m mul e i
+r add p0 m
+ret r
+end
+
+### REPLY 10
+r1 call mix p0 p1
+k2 shr p1 16
+r2 call mix r1 k2
+ret r2
+
+### REPLY 11
+a shr p0 1
+
+### REPLY 12
+a and p0 p1
+b xor p0 p1
+c shr b 1
+d add a c
+ret d
+
+### REPLY 13
+i3 add p1 3
+
+### REPLY 14
+e get p0 p1
+cond gt p2 e
+val select cond p2 e
+s set p0 p1 val
+
+### REPLY 15
+check eq p1 0
+d_val div p0 p1
+r_val rem p0 p1
+d select check 0 d_val
+r select check p0 r_val
+
+### REPLY 16
+c lt s p0

@@ -223,3 +223,8 @@ result are unchanged, and the printer keeps a written `-> u32` where the body di
 (its dense failures were positional-parameter and operand-count errors, not result types, `results/set-h.json`), so no acceptance claim is made. The canonical form is unchanged: its
 header still needs `-> T`, because widening the canonical grammar would also need the self-hosted front end and the seed. Still open: spec-line limits (opt-in, outside the guide) and dense
 positional parameters in fold helpers.
+
+Set I (2026-10-06, `results/set-i.json`, `docs/history/2026-10-06-set-i-preregistration.md`): the second pre-registered dense-against-canonical comparison, on a new sealed set with 8 non-u32-result tasks and
+after the unwritten-result parser fix, split by model. Sonnet: dense one shot 16 of 16 against 14, 10-task cost 119.9 against 138.9 per accepted edit (rule met for this model). Haiku: dense 12 against 15, 169.7 against 130.5
+(rule not met). Both models are required, so dense is still not recommended; sets H and I together say dense is a loss on Haiku twice and a mixed result on Sonnet. Open decision: a per-model recommendation would need a new
+pre-registered rule, which these two sets cannot supply.
