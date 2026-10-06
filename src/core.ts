@@ -1288,6 +1288,14 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
     case 'ne':
       if (b === undefined) throw diag('A0202', [where]);
       if (a === 'bool') {
+        if (typeEquals(b, 'u32')) {
+          // A bool compared with a number (`eq c 1`): A0 has no truthiness, so say how to write it.
+          throw diag('A0201', [where, 'bool', 'u32'], {
+            expected: 'bool',
+            actual: 'u32',
+            fix: `a bool is compared only with a bool: for \`${op} C 1\` use the bool C itself (or \`${op} C true\`), and turn a u32 X into a bool with \`ne X 0\``,
+          });
+        }
         expect(b, 'bool', where);
         return 'bool';
       }
@@ -1304,6 +1312,14 @@ export function resultType(op: Op, argTypes: readonly Type[], where: string): Ty
       return 'bool';
     case 'select':
       if (b === undefined || c === undefined) throw diag('A0202', [where]);
+      if (typeEquals(a, 'u32')) {
+        // A u32 condition (`c and p1 1` then `select c …`): A0 has no truthiness.
+        throw diag('A0201', [where, 'bool', 'u32'], {
+          expected: 'bool',
+          actual: 'u32',
+          fix: 'the select condition is a bool and A0 has no truthiness: for a u32 X write `t ne X 0` above (true when X is nonzero) and select on t',
+        });
+      }
       expect(a, 'bool', where);
       if (!typeEquals(b, c)) {
         throw diag('A0203', [where, formatType(b), formatType(c)]);
@@ -1519,6 +1535,22 @@ export function validateFunction(
       const callee = scope.get(node.callee ?? '');
       if (callee === undefined) {
         const name = node.callee ?? '';
+        // `a mod x y` is `a rem x y`: every A0 number is a u32, where remainder and modulo agree.
+        // Exact when the line is that two-operand op and no operand is a node of the same name.
+        if (
+          (name === 'mod' || name === 'umod') &&
+          later?.has(name) !== true &&
+          node.args.length === 2 &&
+          node.args.every((a) => a.kind !== 'node' || a.id !== name)
+        ) {
+          throw diag('A0102', [where, name], {
+            fix: `write \`${node.id} rem …\`: the remainder op is \`rem\` (on u32 it is the modulo)`,
+            applicability: 'exact',
+            edits: [
+              { op: 'rename', rule: 'mod', fn: fn.name, node: node.id, from: name, to: 'rem' },
+            ],
+          });
+        }
         const guess = spellingSuggestion(name, [
           ...OPS,
           ...Object.keys(OP_ALIASES),
