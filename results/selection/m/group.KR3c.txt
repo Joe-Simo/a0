@@ -1,0 +1,238 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+
+=====
+
+### REQUEST 1
+Return the 6-bit field stored in bits 4 through 9 of the input.
+
+e0
+fn f u32 -> u32
+a shr p0 4
+b and a 31
+ret b
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 2
+Pack the low byte of the first argument into bits 8 to 15 and the low byte of the second argument into bits 0 to 7.
+
+e0
+fn f u32 u32 -> u32
+a call lo8 p0
+b call lo8 p1
+c shl a 4
+d or c b
+ret d
+end
+fn lo8 u32 -> u32 end
+g0
+fn lo8 u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+### REQUEST 3
+Count how many of the eight 4-bit nibbles of the input are nonzero.
+
+e0
+fn f u32 -> u32
+a fold step 7 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+### REQUEST 4
+Return true when bits 28 to 31 of the input hold the value 5 and bits 0 to 7 are not all zero.
+
+e0
+fn f u32 -> bool
+a call nib p0 24
+b eq a 5
+c and p0 255
+d ne c 0
+e and b d
+ret e
+end
+fn nib u32 u32 -> u32 end
+g0
+fn nib u32 u32 -> u32 end
+fn f u32 -> bool end
+
+### REQUEST 5
+Return the array with slot k (the second argument) replaced by the element that follows it; the slot after the last one is the first.
+
+e0
+fn f u32x4 u32 -> u32x4
+g get p0 p1
+s set p0 p1 g
+ret s
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 6
+Count the elements whose two lowest bits equal the two lowest bits of the second argument, comparing only those two bits on both sides.
+
+e0
+fn f u32x4 u32 -> u32
+a fold step 4 0 p0 p1
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 u32 -> u32 end
+g0
+fn step u32 u32 u32x4 u32 -> u32 end
+fn f u32x4 u32 -> u32 end
+
+### REQUEST 7
+Return a record of the low 16 bits of the input and whether any of the high 16 bits are set.
+
+e0
+fn f u32 -> (u32,bool)
+a and p0 65535
+b shr p0 16
+c gt b 1
+r rec a c
+ret r
+end
+g0
+fn f u32 -> (u32,bool) end
+
+### REQUEST 8
+The function should return a mask with n bits set starting at bit lo (lo is the first argument, n the second), but it sets only the single bit just above that window. Fix it.
+
+e0
+fn f u32 u32 -> u32
+a shl 1 p1
+b shl a p0
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 9
+Combine the four elements with exclusive-or, after shifting each element left by its index.
+
+e0
+fn f u32x4 -> u32
+a fold step 4 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 10
+Set flag k (the second argument, taken modulo 8) in the flags word when the third argument is true, and clear it when it is false.
+
+e0
+fn f u32 u32 bool -> u32
+b call bit p1
+s or p0 b
+c xor p0 b
+r select p2 s c
+ret r
+end
+fn bit u32 -> u32 end
+g0
+fn bit u32 -> u32 end
+fn f u32 u32 bool -> u32 end
+
+### REQUEST 11
+Advance the counter by one; when the advanced value is exactly 10 it becomes 0, any other value is kept. Right now the counter resets one step too early.
+
+e0
+fn f u32 -> u32
+a add p0 1
+b eq a 9
+c select b 0 a
+ret c
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 12
+Return the input's bytes as an array: bits 16-23, bits 8-15, bits 0-7, then bits 24-31, each field a full 8 bits wide.
+
+e0
+fn f u32 -> u32x4
+a shr p0 16
+b and a 15
+c shr p0 8
+d and c 15
+e and p0 15
+g shr p0 24
+r arr b d e g
+ret r
+end
+g0
+fn f u32 -> u32x4 end
+
+### REQUEST 13
+The function should report whether two neighbouring elements are equal, but it also compares the last element with the first. Make it compare only true neighbours.
+
+e0
+fn f u32x4 -> bool
+a fold step 4 false p0
+b mov a
+ret b
+end
+fn step bool u32 u32x4 -> bool end
+g0
+fn same u32 u32 -> bool end
+fn step bool u32 u32x4 -> bool end
+fn f u32x4 -> bool end
+
+### REQUEST 14
+Scale both arguments with the helper, then put the scaled first value in the upper 16 bits and the scaled second value, cut to 16 bits, in the lower 16 bits.
+
+e0
+fn f u32 u32 -> u32
+a call scale p0
+b call scale p1
+c shl a 8
+r or c b
+ret r
+end
+fn scale u32 -> u32 end
+g0
+fn scale u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+### REQUEST 15
+The function currently counts set bits among bits 0 to 7, but it should count the positions i from 0 to 7 where bits i and i+1 are both set. Change the helper accordingly.
+
+e0
+fn f u32 -> u32
+a fold step 8 0 p0
+b mov a
+ret b
+end
+fn step u32 u32 u32 -> u32 end
+g0
+fn pair u32 u32 -> bool end
+fn step u32 u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+### REQUEST 16
+Return the word with bits 8 to 15 replaced by the low 8 bits of the second argument; all other bits of the word stay unchanged.
+
+e0
+fn f u32 u32 -> u32
+a and p0 65280
+c shl p1 8
+r or a c
+ret r
+end
+g0
+fn f u32 u32 -> u32 end

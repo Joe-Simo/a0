@@ -1,0 +1,242 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting.
+Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops: add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y | call F a... | fold F n s a...: s=F(s,i,a...) for i<n | arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+
+=====
+
+### REQUEST 1
+Amounts of 500 or more pay a fee of the amount divided by 100; amounts below 500 pay a flat fee of 8. Fix the boundary.
+
+e0
+fn f u32 -> u32
+small lt p0 501
+pct div p0 100
+r select small 8 pct
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 2
+Return the low byte of p0 with its two 4-bit halves swapped; every bit above the low byte must be zero.
+
+e0
+fn f u32 -> u32
+lo and p0 15
+hi4 shl lo 4
+sh shr p0 4
+r or hi4 sh
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 3
+Write the element at position p1 plus one into the next position (position 3 wraps to 0); the rest of the array stays the same.
+
+e0
+fn f u32x4 u32 -> u32x4
+n add p1 1
+v get p0 p1
+w add v 1
+r set p0 p1 w
+ret r
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 4
+Scale p0 by 5 instead of 3, and keep reporting whether the scaled (wrapped 32-bit) value exceeds 100.
+
+e0
+fn f u32 -> (u32,bool)
+s mul p0 3
+fl gt s 100
+r rec s fl
+ret r
+end
+g0
+fn f u32 -> (u32,bool) end
+
+### REQUEST 5
+Advance a three-state cycle: 0 goes to 1, 1 to 2 and 2 back to 0; any other value just increases by one (wrapping).
+
+e0
+fn f u32 -> u32
+last eq p0 3
+inc add p0 1
+r select last 0 inc
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 6
+Return true when the element at position p1 is strictly greater than both of its neighbours (the array is circular).
+
+e0
+fn f u32x4 u32 -> bool
+c get p0 p1
+li add p1 3
+l get p0 li
+ri add p1 1
+rv get p0 ri
+a ge c l
+b gt c rv
+r and a b
+ret r
+end
+g0
+fn f u32x4 u32 -> bool end
+
+### REQUEST 7
+The checksum must fold every one of the four elements exactly once, starting from 7.
+
+e0
+fn f u32x4 -> u32
+h fold step 3 7 p0
+r mov h
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 8
+Orders whose total (p0 times p1) is at least 200 get 20 taken off the total; return the final amount and whether the discount applied.
+
+e0
+fn f u32 u32 -> (u32,bool)
+t mul p0 p1
+ok ge t 200
+d sub 20 t
+fin select ok d t
+r rec fin ok
+ret r
+end
+g0
+fn f u32 u32 -> (u32,bool) end
+
+### REQUEST 9
+Shift every element one place toward the end (the last one is dropped) and put p1 in position 0.
+
+e0
+fn f u32x4 u32 -> u32x4
+a0 get p0 0
+a1 get p0 1
+a2 get p0 2
+a3 get p0 3
+r arr a1 a2 a3 p1
+ret r
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 10
+Add a level: scores from 70 to 79 give 2. Scores of 90 or more still give 4, 80 to 89 give 3, and below 70 give 0.
+
+e0
+fn f u32 -> u32
+g90 ge p0 90
+g80 ge p0 80
+y select g80 3 0
+r select g90 4 y
+ret r
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 11
+Return true when p0 is a multiple of 8 and at least 16.
+
+e0
+fn f u32 -> bool
+lb and p0 3
+z eq lb 0
+big gt p0 16
+r and z big
+ret r
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 12
+f must return h(p0, 2) plus h(p0 + 1, 3), with wrapping arithmetic.
+
+e0
+fn f u32 -> u32
+n add p0 1
+x call h p0 1
+y call h p0 2
+r add x y
+ret r
+end
+fn h u32 u32 -> u32 end
+g0
+fn h u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+### REQUEST 13
+f should count the positions 1 to 3 whose element differs from the element just before it; the first element must not be compared with the last.
+
+e0
+fn f u32x4 -> u32
+c fold step 4 0 p0
+r mov c
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 14
+Element k of the result must be byte k of p0, counting from the least significant byte.
+
+e0
+fn f u32 -> u32x4
+s0 shr p0 24
+b0 and s0 255
+s1 shr p0 16
+b1 and s1 255
+s2 shr p0 8
+b2 and s2 255
+s3 shr p0 0
+b3 and s3 255
+r arr b0 b1 b2 b3
+ret r
+end
+g0
+fn f u32 -> u32x4 end
+
+### REQUEST 15
+Return true exactly when the helper's state machine is in its final, sticky state after all four elements.
+
+e0
+fn f u32x4 -> bool
+q fold step 4 0 p0
+r eq q 2
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> bool end
+
+### REQUEST 16
+One tick of a toggling counter: when the flag is set the count doubles, otherwise it grows by 3; the flag flips on every tick.
+
+e0
+fn f (u32,bool) -> (u32,bool)
+c at p0 0
+fl at p0 1
+dbl mul c 2
+plus add c 1
+nc select fl dbl plus
+nf mov fl
+r rec nc nf
+ret r
+end
+g0
+fn f (u32,bool) -> (u32,bool) end
