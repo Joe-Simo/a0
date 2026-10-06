@@ -7343,5 +7343,33 @@
     "closedByNoEndNoRetNoU32Params": 143,
     "of": 377,
     "reading": "dropping `end`, dropping `ret X` when X is the last node, and dropping all-u32 parameter types in the header would close this many canonical token losses by count alone; the rest need the dense form or a different program structure. A design measurement of tokens only: nothing here is implemented or tested with a model."
+  },
+  "aiTokensColdTask": {
+    "source": "results/primer-vs-ts-cold.json (tools/primer-vs-ts-cold.ts)",
+    "rows": {
+      "haiku": {
+        "tasks": 24,
+        "coldCostPerTask": {
+          "a0WithShippedGuide": 665.1,
+          "typescriptStructured": 312.2,
+          "a0WithCanonKR3Primer": 285.7,
+          "a0WithCanonK0Primer": 308.1
+        },
+        "kr3OverTypescript": 0.915,
+        "shippedOverTypescript": 2.13
+      },
+      "sonnet": {
+        "tasks": 24,
+        "coldCostPerTask": {
+          "a0WithShippedGuide": 619.9,
+          "typescriptStructured": 232.1,
+          "a0WithCanonKR3Primer": 245.5,
+          "a0WithCanonK0Primer": 269.5
+        },
+        "kr3OverTypescript": 1.058,
+        "shippedOverTypescript": 2.671
+      }
+    },
+    "reading": "on sets e and f the cold single-task cost of A0 with the shipped guide is 2.13 (Haiku) and 2.67 (Sonnet) times TypeScript structured; with the 101-token canon.KR3 edit primer it is 0.915 and 1.058 times (a win of about 8 per cent on Haiku, a loss of about 6 per cent on Sonnet). Cross-session numbers, no new subject. The ai-tokens-* losses recorded against the shipped guide are therefore mostly a consequence of what is shipped, and are open only because no shipped path uses the shorter text (the shipped-text trials did not meet their pre-registered rules)."
   }
 }
