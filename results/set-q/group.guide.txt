@@ -1,0 +1,246 @@
+SYSTEM TEXT:
+A0: `fn NAME T... -> T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool io, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. `use "file.a0"` at top links a file. No forward refs or recursion; ops exact mod 2^32.
+mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -> bool | select c x y
+call F a... (F earlier) | fold F n s a... state=s; i<n: state=F(state,i,a...) | loop P F n s a... stops when P(...) false
+arr e... | rec e... | text "s" | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
+io: linear token, each value used once. read t->(u32,io) | write t v->io | puts t a->io
+EDIT: reply bare edit lines (handle line optional when one e handle is shown). `id op ...` replaces or inserts before ret; `... @ other` inserts after other; `-id` deletes; `ret x`; `fn ...` block (end optional) adds/replaces a function; `-fn name` removes.
+Example: fn affine u32 u32 u32 -> u32 / a mul p0 p1 / b add a p2 / ret b / end (one item per line).
+
+
+The view starts with edit handles. Reply with only the edit lines the guide describes (instruction lines edit the shown function; `fn` blocks or `-fn name` edit the program), bare: no code fence, no handle line.
+
+=====
+
+### REQUEST 1
+Refill is needed when ten times the level is at most the capacity; a level of exactly one tenth must also trigger a refill.
+
+e0
+fn refill u32 u32 -> bool
+t mul p0 10
+c mov p1
+r lt t c
+ret r
+end
+g0
+fn refill u32 u32 -> bool end
+
+### REQUEST 2
+The function should return k times (1 + 2 + 3 + 4): the step weights must run from 1 to 4, not from 0 to 3.
+
+e0
+fn ladder u32 -> u32
+f fold rung 4 0 p0
+r mov f
+ret r
+end
+fn rung u32 u32 u32 -> u32 end
+g0
+fn rung u32 u32 u32 -> u32 end
+fn ladder u32 -> u32 end
+
+### REQUEST 3
+Return the 4-bit field held in bits 4 through 7 of the input (bit 0 is the lowest).
+
+e0
+fn hue u32 -> u32
+s shr p0 4
+m and s 7
+ret m
+end
+g0
+fn hue u32 -> u32 end
+
+### REQUEST 4
+Return the array with its last slot overwritten by the value from its first slot.
+
+e0
+fn seal u32x4 -> u32x4
+v get p0 1
+r set p0 3 v
+ret r
+end
+g0
+fn seal u32x4 -> u32x4 end
+
+### REQUEST 5
+A motion passes when at least three of the four votes are nonzero.
+
+e0
+fn passes u32x4 -> bool
+c fold tally 4 0 p0
+r gt c 3
+ret r
+end
+fn tally u32 u32 u32x4 -> u32 end
+g0
+fn tally u32 u32 u32x4 -> u32 end
+fn passes u32x4 -> bool end
+
+### REQUEST 6
+The heater should run only when it is cold and it is not night.
+
+e0
+fn heater u32 u32 u32 -> bool
+a call cold p0 p1
+b call night p2
+r and a b
+ret r
+end
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+g0
+fn cold u32 u32 -> bool end
+fn night u32 -> bool end
+fn heater u32 u32 u32 -> bool end
+
+### REQUEST 7
+The odometer shows five digits, so the new reading must roll over to 0 when it reaches 100000.
+
+e0
+fn odo u32 u32 -> u32
+s add p0 p1
+r mov s
+ret r
+end
+g0
+fn odo u32 u32 -> u32 end
+
+### REQUEST 8
+Experience levels up when the total reaches 100: return the total minus 100 and true, otherwise the total and false.
+
+e0
+fn gain u32 u32 -> (u32,bool)
+t add p0 p1
+u gt t 100
+d sub t 100
+x select u d t
+r rec x u
+ret r
+end
+g0
+fn gain u32 u32 -> (u32,bool) end
+
+### REQUEST 9
+Days are now numbered with 0 as Sunday and 6 as Saturday; the result should be true only for those two days.
+
+e0
+fn offday u32 u32 -> bool
+s add p0 p1
+d call wrap7 s
+w call weekend d
+ret w
+end
+fn wrap7 u32 -> u32 end
+fn weekend u32 -> bool end
+g0
+fn wrap7 u32 -> u32 end
+fn weekend u32 -> bool end
+fn offday u32 u32 -> bool end
+
+### REQUEST 10
+Drop the oldest (first) sample, move the others one place toward the front, and put the new value in the last slot.
+
+e0
+fn push u32x4 u32 -> u32x4
+a get p0 0
+b get p0 1
+c get p0 2
+r arr a b c p1
+ret r
+end
+g0
+fn push u32x4 u32 -> u32x4 end
+
+### REQUEST 11
+Entries at odd positions are withdrawals and entries at even positions are deposits, and the account opens with the second argument as its balance; return whether it ever went below zero.
+
+e0
+fn overdrawn u32x4 u32 -> bool
+z rec 0 false
+f fold post 4 z p0
+r at f 1
+ret r
+end
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+g0
+fn post (u32,bool) u32 u32x4 -> (u32,bool) end
+fn overdrawn u32x4 u32 -> bool end
+
+### REQUEST 12
+Pack the colour as 5-6-5: red in bits 11-15, a 6-bit green in bits 5-10, blue in bits 0-4.
+
+e0
+fn pack u32 u32 u32 -> u32
+r and p0 31
+rs shl r 10
+g and p1 31
+gs shl g 5
+b and p2 31
+o or rs gs
+x or o b
+ret x
+end
+g0
+fn pack u32 u32 u32 -> u32 end
+
+### REQUEST 13
+The rate argument is now given in tenths of a percent (so 25 means 2.5 per cent per period); keep the three periods and the rounding down.
+
+e0
+fn grow u32 u32 -> u32
+f fold credit 3 p0 p1
+r mov f
+ret r
+end
+fn credit u32 u32 u32 -> u32 end
+g0
+fn credit u32 u32 u32 -> u32 end
+fn grow u32 u32 -> u32 end
+
+### REQUEST 14
+The calibrated reading should be four times the raw reading plus three.
+
+e0
+fn calib u32 -> u32
+x call bias p0
+y call scale x
+ret y
+end
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+g0
+fn bias u32 -> u32 end
+fn scale u32 -> u32 end
+fn calib u32 -> u32 end
+
+### REQUEST 15
+The door must stay shut once three or more failed attempts have been recorded, even with the right code.
+
+e0
+fn unlock u32 u32 -> bool
+a call codeok p0
+b call fresh p1
+r and a b
+ret r
+end
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+g0
+fn codeok u32 -> bool end
+fn fresh u32 -> bool end
+fn unlock u32 u32 -> bool end
+
+### REQUEST 16
+Count how many of the elements after the first are equal to the first element; the first element itself must not be counted.
+
+e0
+fn echoes u32x4 -> u32
+c fold same 4 0 p0
+r mov c
+ret r
+end
+fn same u32 u32 u32x4 -> u32 end
+g0
+fn same u32 u32 u32x4 -> u32 end
+fn echoes u32x4 -> u32 end

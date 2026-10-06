@@ -1,0 +1,66 @@
+{
+  "q-tank-refill/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Refill is needed when ten times the level is at most the capacity; a level of exactly one tenth must also trigger a refill.\n\ne0\nfn refill u32 u32 -> bool\nt mul p0 10\nc mov p1\nr lt t c\nret r\nend\ng0\nfn refill u32 u32 -> bool end"
+  },
+  "q-ladder-sum/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The function should return k times (1 + 2 + 3 + 4): the step weights must run from 1 to 4, not from 0 to 3.\n\ne0\nfn ladder u32 -> u32\nf fold rung 4 0 p0\nr mov f\nret r\nend\nfn rung u32 u32 u32 -> u32 end\ng0\nfn rung u32 u32 u32 -> u32 end\nfn ladder u32 -> u32 end"
+  },
+  "q-hue-field/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the 4-bit field held in bits 4 through 7 of the input (bit 0 is the lowest).\n\ne0\nfn hue u32 -> u32\ns shr p0 4\nm and s 7\nret m\nend\ng0\nfn hue u32 -> u32 end"
+  },
+  "q-seal-last/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Return the array with its last slot overwritten by the value from its first slot.\n\ne0\nfn seal u32x4 -> u32x4\nv get p0 1\nr set p0 3 v\nret r\nend\ng0\nfn seal u32x4 -> u32x4 end"
+  },
+  "q-vote-pass/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "A motion passes when at least three of the four votes are nonzero.\n\ne0\nfn passes u32x4 -> bool\nc fold tally 4 0 p0\nr gt c 3\nret r\nend\nfn tally u32 u32 u32x4 -> u32 end\ng0\nfn tally u32 u32 u32x4 -> u32 end\nfn passes u32x4 -> bool end"
+  },
+  "q-heater-on/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The heater should run only when it is cold and it is not night.\n\ne0\nfn heater u32 u32 u32 -> bool\na call cold p0 p1\nb call night p2\nr and a b\nret r\nend\nfn cold u32 u32 -> bool end\nfn night u32 -> bool end\ng0\nfn cold u32 u32 -> bool end\nfn night u32 -> bool end\nfn heater u32 u32 u32 -> bool end"
+  },
+  "q-odometer/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The odometer shows five digits, so the new reading must roll over to 0 when it reaches 100000.\n\ne0\nfn odo u32 u32 -> u32\ns add p0 p1\nr mov s\nret r\nend\ng0\nfn odo u32 u32 -> u32 end"
+  },
+  "q-level-up/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Experience levels up when the total reaches 100: return the total minus 100 and true, otherwise the total and false.\n\ne0\nfn gain u32 u32 -> (u32,bool)\nt add p0 p1\nu gt t 100\nd sub t 100\nx select u d t\nr rec x u\nret r\nend\ng0\nfn gain u32 u32 -> (u32,bool) end"
+  },
+  "q-off-day/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Days are now numbered with 0 as Sunday and 6 as Saturday; the result should be true only for those two days.\n\ne0\nfn offday u32 u32 -> bool\ns add p0 p1\nd call wrap7 s\nw call weekend d\nret w\nend\nfn wrap7 u32 -> u32 end\nfn weekend u32 -> bool end\ng0\nfn wrap7 u32 -> u32 end\nfn weekend u32 -> bool end\nfn offday u32 u32 -> bool end"
+  },
+  "q-shift-in/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Drop the oldest (first) sample, move the others one place toward the front, and put the new value in the last slot.\n\ne0\nfn push u32x4 u32 -> u32x4\na get p0 0\nb get p0 1\nc get p0 2\nr arr a b c p1\nret r\nend\ng0\nfn push u32x4 u32 -> u32x4 end"
+  },
+  "q-ledger-overdraw/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Entries at odd positions are withdrawals and entries at even positions are deposits, and the account opens with the second argument as its balance; return whether it ever went below zero.\n\ne0\nfn overdrawn u32x4 u32 -> bool\nz rec 0 false\nf fold post 4 z p0\nr at f 1\nret r\nend\nfn post (u32,bool) u32 u32x4 -> (u32,bool) end\ng0\nfn post (u32,bool) u32 u32x4 -> (u32,bool) end\nfn overdrawn u32x4 u32 -> bool end"
+  },
+  "q-pack565/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Pack the colour as 5-6-5: red in bits 11-15, a 6-bit green in bits 5-10, blue in bits 0-4.\n\ne0\nfn pack u32 u32 u32 -> u32\nr and p0 31\nrs shl r 10\ng and p1 31\ngs shl g 5\nb and p2 31\no or rs gs\nx or o b\nret x\nend\ng0\nfn pack u32 u32 u32 -> u32 end"
+  },
+  "q-grow-tenths/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The rate argument is now given in tenths of a percent (so 25 means 2.5 per cent per period); keep the three periods and the rounding down.\n\ne0\nfn grow u32 u32 -> u32\nf fold credit 3 p0 p1\nr mov f\nret r\nend\nfn credit u32 u32 u32 -> u32 end\ng0\nfn credit u32 u32 u32 -> u32 end\nfn grow u32 u32 -> u32 end"
+  },
+  "q-calibrate/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The calibrated reading should be four times the raw reading plus three.\n\ne0\nfn calib u32 -> u32\nx call bias p0\ny call scale x\nret y\nend\nfn bias u32 -> u32 end\nfn scale u32 -> u32 end\ng0\nfn bias u32 -> u32 end\nfn scale u32 -> u32 end\nfn calib u32 -> u32 end"
+  },
+  "q-door-lockout/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "The door must stay shut once three or more failed attempts have been recorded, even with the right code.\n\ne0\nfn unlock u32 u32 -> bool\na call codeok p0\nb call fresh p1\nr and a b\nret r\nend\nfn codeok u32 -> bool end\nfn fresh u32 -> bool end\ng0\nfn codeok u32 -> bool end\nfn fresh u32 -> bool end\nfn unlock u32 u32 -> bool end"
+  },
+  "q-echo-count/a0/structured": {
+    "system": "Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)",
+    "user": "Count how many of the elements after the first are equal to the first element; the first element itself must not be counted.\n\ne0\nfn echoes u32x4 -> u32\nc fold same 4 0 p0\nr mov c\nret r\nend\nfn same u32 u32 u32x4 -> u32 end\ng0\nfn same u32 u32 u32x4 -> u32 end\nfn echoes u32x4 -> u32 end"
+  }
+}

@@ -59,7 +59,7 @@ const text = (p: NProgram): string =>
     .join('\n')}\n`;
 
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
-const letter = process.argv.find((a) => /^[hijklmn]$/.test(a)) ?? 'h';
+const letter = process.argv.find((a) => /^[hijklmnopq]$/.test(a)) ?? 'h';
 const tasks = (
   JSON.parse(readFileSync(`experiments/set-${letter}/${letter}-tasks.neutral.json`, 'utf8')) as {
     tasks: NTask[];

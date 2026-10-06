@@ -1,0 +1,635 @@
+{
+  "generatedAt": "2026-10-06T18:08:53.588Z",
+  "status": "unrun (paid model calls not authorized: set A0_ALLOW_PAID_MODEL_CALLS=1 with Anthropic credentials)",
+  "model": null,
+  "languagePrimer": "MODEL_GUIDE.min.txt",
+  "primerMode": "always",
+  "taskSet": "p",
+  "specVariant": null,
+  "programView": "all",
+  "systemLayout": "separate",
+  "a0View": "plain",
+  "a0Syntax": "canonical",
+  "method": {
+    "conventional": "whole file in every representation; reply is the whole updated file",
+    "structured": {
+      "a0": "dependency-scoped view of the target function (body + one signature line per callee) under handle e0, plus the program handle g0 with one signature line per function; reply is handle + edit lines",
+      "ts": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "rust": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "python": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "go": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "java": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "csharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cpp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "kotlin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "swift": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ruby": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "php": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haskell": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "ocaml": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "elixir": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "zig": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "c": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "js": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "lua": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "perl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "tcl": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "objc": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fortran": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "dart": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "nim": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "groovy": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "clojure": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vb": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "fsharp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "scala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "prolog": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "forth": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "guile": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "smalltalk": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "racket": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "erlang": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "commonlisp": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "pascal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "r": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "julia": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "haxe": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "chicken": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "crystal": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "d": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "cobol": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "v": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "odin": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "vala": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)",
+      "gleam": "whole file, numbered, under handle e0; reply is handle + line edits (replace/insert/delete by line number)"
+    },
+    "note": "sets A/B: each task file holds only the functions the task needs, so whole-file and scoped views are close in size"
+  },
+  "tokenizerNote": "setup/view/output token counts are local js-tiktoken counts (OpenAI encodings), not the vendor tokenizer; providerUsage carries the billed counts when live.",
+  "design": {
+    "cells": [
+      "a0/structured"
+    ],
+    "heldConstant": [
+      "model",
+      "task text",
+      "acceptance tests",
+      "max repairs",
+      "max_tokens",
+      "system prompt caching"
+    ],
+    "setupCounted": "A0 cells carry MODEL_GUIDE.txt as language instructions; TS and Rust cells carry a u32 semantics note; all carry their protocol instructions. Rust acceptance compiles with rustc -O and runs generated checks; the further languages (Python, Go, Java, C#, C++, Kotlin, Swift, Ruby, PHP, Haskell, OCaml, Elixir, Zig) carry their own u32 semantics note and are accepted by their own toolchain (build or static check, then a generated driver run; tools/ai-edit-langs.ts, tools/edit-langs/).",
+    "unknowns": "Hidden reasoning tokens are not reported by the API and are recorded as null."
+  },
+  "taskSetSha256": "2b45881a3491994ee59300c72075f35707c4960ff373ea6318ee14b1d181abc3",
+  "representations": [
+    "a0"
+  ],
+  "protocols": [
+    "structured"
+  ],
+  "tasks": [
+    {
+      "id": "p-toggle-low",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "p-fits-limit",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "p-clear-slot",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-even-slot-xor",
+      "kind": "comprehension-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-tens-split",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "p-boost-total",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-top-byte",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-one-big",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-double-low-half",
+      "kind": "targeted-edit",
+      "tests": 9
+    },
+    {
+      "id": "p-put-first",
+      "kind": "targeted-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-multiple-of",
+      "kind": "multi-node-edit",
+      "tests": 9
+    },
+    {
+      "id": "p-mul-or-keep",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-one-more-round",
+      "kind": "comprehension-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-running-total",
+      "kind": "multi-node-edit",
+      "tests": 8
+    },
+    {
+      "id": "p-low-bytes-match",
+      "kind": "comprehension-edit",
+      "tests": 9
+    },
+    {
+      "id": "p-larger-and-who",
+      "kind": "comprehension-edit",
+      "tests": 8
+    }
+  ],
+  "harnessSelfCheck": {
+    "ok": true,
+    "details": {
+      "p-toggle-low/a0": [],
+      "p-toggle-low/a0-original-must-fail": [],
+      "p-fits-limit/a0": [],
+      "p-fits-limit/a0-original-must-fail": [],
+      "p-clear-slot/a0": [],
+      "p-clear-slot/a0-original-must-fail": [],
+      "p-even-slot-xor/a0": [],
+      "p-even-slot-xor/a0-original-must-fail": [],
+      "p-tens-split/a0": [],
+      "p-tens-split/a0-original-must-fail": [],
+      "p-boost-total/a0": [],
+      "p-boost-total/a0-original-must-fail": [],
+      "p-top-byte/a0": [],
+      "p-top-byte/a0-original-must-fail": [],
+      "p-one-big/a0": [],
+      "p-one-big/a0-original-must-fail": [],
+      "p-double-low-half/a0": [],
+      "p-double-low-half/a0-original-must-fail": [],
+      "p-put-first/a0": [],
+      "p-put-first/a0-original-must-fail": [],
+      "p-multiple-of/a0": [],
+      "p-multiple-of/a0-original-must-fail": [],
+      "p-mul-or-keep/a0": [],
+      "p-mul-or-keep/a0-original-must-fail": [],
+      "p-one-more-round/a0": [],
+      "p-one-more-round/a0-original-must-fail": [],
+      "p-running-total/a0": [],
+      "p-running-total/a0-original-must-fail": [],
+      "p-low-bytes-match/a0": [],
+      "p-low-bytes-match/a0-original-must-fail": [],
+      "p-larger-and-who/a0": [],
+      "p-larger-and-who/a0-original-must-fail": []
+    }
+  },
+  "contextTokensByCell": {
+    "a0/structured": {
+      "trials": 16,
+      "meanView": 54,
+      "meanToolContext": null
+    }
+  },
+  "trials": [
+    {
+      "task": "p-toggle-low",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 45,
+        "cl100k_base": 44
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-fits-limit",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 46,
+        "cl100k_base": 46
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-clear-slot",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 54,
+        "cl100k_base": 54
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-even-slot-xor",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 75,
+        "cl100k_base": 75
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-tens-split",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 57,
+        "cl100k_base": 57
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-boost-total",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 61,
+        "cl100k_base": 61
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-top-byte",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 40,
+        "cl100k_base": 40
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-one-big",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-double-low-half",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 47
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-put-first",
+      "kind": "targeted-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 56
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-multiple-of",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 48,
+        "cl100k_base": 48
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-mul-or-keep",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 42,
+        "cl100k_base": 42
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-one-more-round",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 61,
+        "cl100k_base": 61
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-running-total",
+      "kind": "multi-node-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 86,
+        "cl100k_base": 86
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-low-bytes-match",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 44,
+        "cl100k_base": 44
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    },
+    {
+      "task": "p-larger-and-who",
+      "kind": "comprehension-edit",
+      "representation": "a0",
+      "protocol": "structured",
+      "trial": 0,
+      "setupTokensLocal": {
+        "o200k_base": 443,
+        "cl100k_base": 436
+      },
+      "viewTokensLocal": {
+        "o200k_base": 56,
+        "cl100k_base": 56
+      },
+      "reasoningTokens": null,
+      "tokenBucketsLocal": null,
+      "outputTokensLocal": null,
+      "providerUsage": null,
+      "modelCalls": 0,
+      "validationFailures": 0,
+      "acceptedOneShot": null,
+      "accepted": null,
+      "attempts": [],
+      "failures": [],
+      "wallMs": null
+    }
+  ]
+}

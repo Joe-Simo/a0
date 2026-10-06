@@ -22,10 +22,10 @@ interface Report {
   trials: Trial[];
 }
 
-const SET = process.argv.find((a) => /^[hijklmn]+$/.test(a)) ?? 'h';
+const SET = process.argv.find((a) => /^[hijklmnopq]+$/.test(a)) ?? 'h';
 const SETS = [...SET];
 // Sets K, L, M and N compare the shipped guide with the short primer; H, I and J compare dense with canonical.
-const SHORT = 'klmn'.includes(SET[0] as string);
+const SHORT = 'klmnopq'.includes(SET[0] as string);
 const MODELS = ['haiku', 'sonnet'] as const;
 // Sets H, I and J compare the dense form (D) with the canonical one (K) on the 10-task session; set K compares the shipped guide (S)
 // with the 101-token edit primer (K) on the cold single task (the horizon of the ai-tokens-* losses).
@@ -124,6 +124,7 @@ writeFileSync(
         j: 'docs/history/2026-10-06-set-j-preregistration.md',
         k: 'docs/history/2026-10-06-set-k-preregistration.md',
         lmn: 'docs/history/2026-10-06-set-lmn-preregistration.md',
+        opq: 'docs/history/2026-10-06-set-opq-preregistration.md',
       }[SET],
       taskSetSha256: sha,
       meaning: SHORT

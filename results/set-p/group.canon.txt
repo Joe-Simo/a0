@@ -1,0 +1,213 @@
+SYSTEM TEXT:
+Reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`. One op per line, no nesting. Ops: add sub mul div rem and or xor shl shr select eq ne lt le gt ge(->bool) call arr get set rec at put fold F n s a..: s=F(s,i,a..)
+
+=====
+
+### REQUEST 1
+Return p0 with its lowest p1 bits flipped (p1 is from 0 to 31).
+
+e0
+fn f u32 u32 -> u32
+a shl 1 p1
+b xor p0 a
+ret b
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 2
+Return true when an item starting at offset p0 with length p1 ends at or before p2, that is p0 + p1 <= p2 (the sum wraps as usual).
+
+e0
+fn f u32 u32 u32 -> bool
+a add p0 p1
+b lt a p2
+ret b
+end
+g0
+fn f u32 u32 u32 -> bool end
+
+### REQUEST 3
+Return a copy of the array p0 with the element at index p1 (modulo 4) set to 0.
+
+e0
+fn f u32x4 u32 -> u32x4
+i add p1 1
+a set p0 i 0
+ret a
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 4
+f is meant to xor together the elements at even positions (0 and 2) of the array, but it currently misses one of them. Fix it.
+
+e0
+fn f u32x4 -> u32
+a fold step 2 0 p0
+r mov a
+ret r
+end
+fn step u32 u32 u32x4 -> u32 end
+g0
+fn step u32 u32 u32x4 -> u32 end
+fn f u32x4 -> u32 end
+
+### REQUEST 5
+Return a record of (p0 divided by 10, true when p0 is a multiple of 10).
+
+e0
+fn f u32 -> (u32,bool)
+q div p0 10
+m rem p0 10
+z ne m 0
+r rec q z
+ret r
+end
+g0
+fn f u32 -> (u32,bool) end
+
+### REQUEST 6
+Change f so that it adds p0 and p1 first, then applies the helper g to that sum and returns the result.
+
+e0
+fn f u32 u32 -> u32
+a call g p0
+b add a p1
+ret b
+end
+fn g u32 -> u32 end
+g0
+fn g u32 -> u32 end
+fn f u32 u32 -> u32 end
+
+### REQUEST 7
+Return the most significant byte of p0 (bits 24 to 31) as a number from 0 to 255.
+
+e0
+fn f u32 -> u32
+a shr p0 16
+b and a 255
+ret b
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 8
+Return true when exactly one of p0 and p1 is greater than 100.
+
+e0
+fn f u32 u32 -> bool
+a gt p0 100
+b gt p1 100
+c or a b
+ret c
+end
+g0
+fn f u32 u32 -> bool end
+
+### REQUEST 9
+Return the low 16 bits of p0 multiplied by 2 (the result may need 17 bits).
+
+e0
+fn f u32 -> u32
+a and p0 65535
+b and a 255
+c shl b 1
+ret c
+end
+g0
+fn f u32 -> u32 end
+
+### REQUEST 10
+Return a copy of p0 with its first element replaced by p1 and the other elements unchanged.
+
+e0
+fn f u32x4 u32 -> u32x4
+a set p0 0 p1
+b set a 1 0
+ret b
+end
+g0
+fn f u32x4 u32 -> u32x4 end
+
+### REQUEST 11
+Return true when p0 is a multiple of p1 (with a zero divisor, only 0 counts as a multiple).
+
+e0
+fn f u32 u32 -> bool
+a add p0 1
+b rem a p1
+c ne b 0
+ret c
+end
+g0
+fn f u32 u32 -> bool end
+
+### REQUEST 12
+Return p0 times p1, except that when p1 is 0 return p0 unchanged.
+
+e0
+fn f u32 u32 -> u32
+a mul p0 p1
+r mov a
+ret r
+end
+g0
+fn f u32 u32 -> u32 end
+
+### REQUEST 13
+f repeats a triple-then-add-the-step-number process a fixed number of times starting from p0; make it do one more round than it does now.
+
+e0
+fn f u32 -> u32
+a fold step 4 p0
+r mov a
+ret r
+end
+fn step u32 u32 -> u32 end
+g0
+fn step u32 u32 -> u32 end
+fn f u32 -> u32 end
+
+### REQUEST 14
+Each output element should be the sum of the input elements up to and including that position (a running total, wrapping); right now only the first two positions are right.
+
+e0
+fn f u32x4 -> u32x4
+a0 get p0 0
+a1 get p0 1
+a2 get p0 2
+a3 get p0 3
+s1 add a0 a1
+r arr a0 s1 a2 a3
+ret r
+end
+g0
+fn f u32x4 -> u32x4 end
+
+### REQUEST 15
+f should return true when the lowest byte of p0 equals its second-lowest byte (bits 8 to 15); right now it compares against too many bits.
+
+e0
+fn f u32 -> bool
+a and p0 255
+b shr p0 8
+c eq a b
+ret c
+end
+g0
+fn f u32 -> bool end
+
+### REQUEST 16
+f returns a record whose second field says whether p0 is greater than p1; its first field should be the larger of p0 and p1, but it returns the smaller.
+
+e0
+fn f u32 u32 -> (u32,bool)
+c gt p0 p1
+m select c p1 p0
+r rec m c
+ret r
+end
+g0
+fn f u32 u32 -> (u32,bool) end
