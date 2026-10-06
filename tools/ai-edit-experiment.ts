@@ -83,6 +83,9 @@ import { TASKS_H } from './ai-edit-tasks-h.js';
 import { TASKS_I } from './ai-edit-tasks-i.js';
 import { TASKS_J } from './ai-edit-tasks-j.js';
 import { TASKS_K } from './ai-edit-tasks-k.js';
+import { TASKS_L } from './ai-edit-tasks-l.js';
+import { TASKS_M } from './ai-edit-tasks-m.js';
+import { TASKS_N } from './ai-edit-tasks-n.js';
 import {
   applyScoped,
   SCOPED_LANGS,
@@ -935,22 +938,46 @@ async function main(): Promise<void> {
                         rustSource: '',
                         reference: { a0: t.reference.a0, ts: '', rust: '' },
                       })) as unknown as readonly Task[])
-                    : setName === 'g'
-                      ? (TASKS_G as unknown as readonly Task[])
-                          .filter(
-                            (t) =>
-                              specVariant !== 'stale' ||
-                              (t as unknown as TaskG).specs.stale !== null,
-                          )
-                          .map(
-                            (t) =>
-                              specVariantOf(t as unknown as TaskG, specVariant) as unknown as Task,
-                          )
-                      : scaled !== undefined
-                        ? buildTasksC(TASKS_A, TASKS_B, scaled)
-                        : setName === 'all'
-                          ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
-                          : TASKS_A;
+                    : setName === 'l'
+                      ? (TASKS_L.map((t) => ({
+                          ...t,
+                          tsSource: '',
+                          rustSource: '',
+                          reference: { a0: t.reference.a0, ts: '', rust: '' },
+                        })) as unknown as readonly Task[])
+                      : setName === 'm'
+                        ? (TASKS_M.map((t) => ({
+                            ...t,
+                            tsSource: '',
+                            rustSource: '',
+                            reference: { a0: t.reference.a0, ts: '', rust: '' },
+                          })) as unknown as readonly Task[])
+                        : setName === 'n'
+                          ? (TASKS_N.map((t) => ({
+                              ...t,
+                              tsSource: '',
+                              rustSource: '',
+                              reference: { a0: t.reference.a0, ts: '', rust: '' },
+                            })) as unknown as readonly Task[])
+                          : setName === 'g'
+                            ? (TASKS_G as unknown as readonly Task[])
+                                .filter(
+                                  (t) =>
+                                    specVariant !== 'stale' ||
+                                    (t as unknown as TaskG).specs.stale !== null,
+                                )
+                                .map(
+                                  (t) =>
+                                    specVariantOf(
+                                      t as unknown as TaskG,
+                                      specVariant,
+                                    ) as unknown as Task,
+                                )
+                            : scaled !== undefined
+                              ? buildTasksC(TASKS_A, TASKS_B, scaled)
+                              : setName === 'all'
+                                ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
+                                : TASKS_A;
   // What each protocol sends. Set C makes the asymmetry visible: the structured A0 cell
   // sends the scoped view of the target function plus the program's signature lines, while
   // the structured TypeScript and Rust cells send the whole numbered file, since locating

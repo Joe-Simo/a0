@@ -22,13 +22,16 @@ interface Report {
   trials: Trial[];
 }
 
-const SET = process.argv.find((a) => /^[hijk]$/.test(a)) ?? 'h';
+const SET = process.argv.find((a) => /^[hijklmn]+$/.test(a)) ?? 'h';
+const SETS = [...SET];
+// Sets K, L, M and N compare the shipped guide with the short primer; H, I and J compare dense with canonical.
+const SHORT = 'klmn'.includes(SET[0] as string);
 const MODELS = ['haiku', 'sonnet'] as const;
 // Sets H, I and J compare the dense form (D) with the canonical one (K) on the 10-task session; set K compares the shipped guide (S)
 // with the 101-token edit primer (K) on the cold single task (the horizon of the ai-tokens-* losses).
-const FIRST = SET === 'k' ? 'guide' : 'dense';
-const PRIMARY = SET === 'k' ? 'task1' : 'session10';
-const FORMS = { [FIRST]: SET === 'k' ? 'S' : 'D', canon: 'K' } as Record<string, string>;
+const FIRST = SHORT ? 'guide' : 'dense';
+const PRIMARY = SHORT ? 'task1' : 'session10';
+const FORMS = { [FIRST]: SHORT ? 'S' : 'D', canon: 'K' } as Record<string, string>;
 const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
 const r1 = (x: number): number => Math.round(x * 10) / 10;
 function wilson(k: number, n: number): [number, number] {
@@ -46,11 +49,18 @@ const counts: Record<string, Record<string, { oneShot: number; accepted: number 
 let sha = '';
 for (const m of MODELS) {
   for (const form of Object.keys(FORMS)) {
-    const rep = JSON.parse(
-      readFileSync(`results/set-${SET}/report.${m}.${form}.json`, 'utf8'),
-    ) as Report;
-    if (!rep.harnessSelfCheck.ok) throw new Error(`self-check failed ${m} ${form}`);
-    sha = rep.taskSetSha256;
+    const reps = SETS.map(
+      (L) =>
+        JSON.parse(readFileSync(`results/set-${L}/report.${m}.${form}.json`, 'utf8')) as Report,
+    );
+    for (const r of reps)
+      if (!r.harnessSelfCheck.ok) throw new Error(`self-check failed ${m} ${form}`);
+    sha = reps.map((r) => r.taskSetSha256).join(',');
+    const rep: Report = {
+      taskSetSha256: sha,
+      harnessSelfCheck: { ok: true },
+      trials: reps.flatMap((r) => r.trials),
+    };
     const rs = rep.trials.map((t) => ({
       system: t.setupTokensLocal.o200k_base ?? 0,
       calls: Math.max(1, t.modelCalls),
@@ -96,8 +106,8 @@ const verdict = Object.fromEntries(
     const c1 =
       d !== undefined &&
       k !== undefined &&
-      (SET === 'k' ? k.oneShot >= d.oneShot : d.oneShot >= k.oneShot);
-    const c2 = td !== undefined && tk !== undefined && (SET === 'k' ? tk < td : td < tk);
+      (SHORT ? k.oneShot >= d.oneShot : d.oneShot >= k.oneShot);
+    const c2 = td !== undefined && tk !== undefined && (SHORT ? tk < td : td < tk);
     return [m, { oneShotNotLower: c1, primaryHorizon: PRIMARY, primaryLower: c2, met: c1 && c2 }];
   }),
 );
@@ -113,14 +123,14 @@ writeFileSync(
         i: 'docs/history/2026-10-06-set-i-preregistration.md',
         j: 'docs/history/2026-10-06-set-j-preregistration.md',
         k: 'docs/history/2026-10-06-set-k-preregistration.md',
+        lmn: 'docs/history/2026-10-06-set-lmn-preregistration.md',
       }[SET],
       taskSetSha256: sha,
-      meaning:
-        SET === 'k'
-          ? 'Set K, the shipped guide (S: MODEL_GUIDE.min.txt) against the 101-token edit primer (K: canon.KR3), canonical form, fresh Haiku and Sonnet subagents, one shot plus one repair; tokens per accepted edit at the cold, 10-task and unbounded horizons, the cold task being primary.'
-          : `Set ${SET.toUpperCase()}, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.`,
+      meaning: SHORT
+        ? `Sets ${SETS.join('').toUpperCase()} pooled, the shipped guide (S: MODEL_GUIDE.min.txt) against the 101-token edit primer (K: canon.KR3), canonical form, fresh Haiku and Sonnet subagents, one shot plus one repair; tokens per accepted edit at the cold, 10-task and unbounded horizons, the cold task being primary.`
+        : `Set ${SET.toUpperCase()}, dense (D: dense.D0 primer, dense view) against canonical (K: canon.KR3 primer, canonical view), fresh Haiku and Sonnet subagents, one shot plus one repair; D and K tokens per accepted edit at the cold, 10-task and unbounded horizons.`,
       cells,
-      preRegisteredRule: { verdict, [SET === 'k' ? 'shipShortPrimer' : 'recommendDense']: met },
+      preRegisteredRule: { verdict, [SHORT ? 'shipShortPrimer' : 'recommendDense']: met },
     },
     null,
     2,
