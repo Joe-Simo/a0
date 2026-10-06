@@ -1,0 +1,57 @@
+{
+ "j-leap-year/a0/structured": [
+  "fn f u32 -> bool\nb eq rem A 4 0\nd eq rem A 100 0\ng eq rem A 400 0\nn eq d 0\nh and b n\nr or h g",
+  "fn f u32 -> bool\nb eq rem A 4 0\nd ne rem A 100 0\ng eq rem A 400 0\nh and b d\nr or h g"
+ ],
+ "j-popcount/a0/structured": [
+  "fn f u32 -> u32\nr fold step 32 0 A\nstep u32 u32 u32 -> u32\nbit and >> A B 1\nr add A bit",
+  "fn f u32 -> u32\nr fold step 32 0 A\n# step u32 u32 u32 -> u32\nbit and >> C B 1\nr add A bit"
+ ],
+ "j-last-index/a0/structured": [
+  "fn f u32x4 u32 -> u32\nr fold step 4 4 A B\nstep u32 u32 u32x4 u32 -> u32\nelem get C B\nis_eq eq elem D\nr select is_eq B A",
+  "fn f u32x4 u32 -> u32\nr fold step 4 4 A B\n# step u32 u32 u32x4 u32 -> u32\nelem get C B\nis_eq eq elem D\nr select is_eq B A"
+ ],
+ "j-all-nonzero/a0/structured": [
+  "fn f u32x4 -> bool\nr fold step 4 true A\nstep bool u32 u32x4 -> bool\nelem get C B\nr and A ne elem 0",
+  "fn f u32x4 -> bool\nr fold step 4 true A\n# step bool u32 u32x4 -> bool\nelem get C B\nr and A ne elem 0"
+ ],
+ "j-prefix-sum/a0/structured": [
+  "fn f u32x4 -> u32x4\na0 get A 0\na1 get A 1\na2 get A 2\na3 get A 3\ns1 add a0 a1\ns2 add s1 a2\ns3 add s2 a3\nr [a0 s1 s2 s3]"
+ ],
+ "j-bump-pair/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\nidx rem B 4\nnext rem add idx 1 4\nval_idx get A idx\nnew_val_idx add val_idx 1\narr1 set A idx new_val_idx\nval_next get arr1 next\nnew_val_next sub val_next 1\nr set arr1 next new_val_next"
+ ],
+ "j-split-halves/a0/structured": [
+  "fn f u32 -> u32x2\nhigh >> A 16\nlow and A 65535\nr [high low]"
+ ],
+ "j-first-above/a0/structured": [
+  "fn f u32x4 u32 -> (u32,bool)\nz (4 false)\nr fold step 4 z A B\nstep (u32,bool) u32 u32x4 u32 -> (u32,bool)\nfound get A 1\nelem get C B\nis_gt gt elem D\nnew_result (select is_gt (B true) (get A 0 false))\nr select found A new_result",
+  "fn f u32x4 u32 -> (u32,bool)\nz (4 false)\nr fold step 4 z A B\n# step (u32,bool) u32 u32x4 u32 -> (u32,bool)\nfound get A 1\nelem get C B\nis_gt gt elem D\nnew_result select is_gt (B true) (get A 0 false)\nr select found A new_result"
+ ],
+ "j-sort-pair/a0/structured": [
+  "fn f u32 u32 -> (u32,u32)\na lt A B\nr (select a A B select a B A)"
+ ],
+ "j-range-sum/a0/structured": [
+  "fn f u32 u32 -> u32\nam1 sub A 1\ny tri am1\nx tri B\nr sub x y\ntri u32 -> u32\nn mul A add A 1\nr div n 2",
+  "fn f u32 u32 -> u32\nam1 sub A 1\ny tri am1\nx tri B\nr sub x y\n# tri u32 -> u32\nn mul A add A 1\nr div n 2"
+ ],
+ "j-fee-rate/a0/structured": [
+  "fn f u32 -> u32\nr add A div A 25"
+ ],
+ "j-weekend/a0/structured": [
+  "fn f u32 -> bool\nr ge rem A 7 5"
+ ],
+ "j-adjacent-bits/a0/structured": [
+  "fn f u32 -> bool\nr ne and A >> A 1 0"
+ ],
+ "j-alternating-sum/a0/structured": [
+  "fn f u32x4 -> u32\na0 get A 0\na1 get A 1\na2 get A 2\na3 get A 3\nx add a0 a2\ny add a1 a3\nr sub x y"
+ ],
+ "j-mix-hash/a0/structured": [
+  "fn f u32 -> u32\nr mul xor A >> A 15 739982445"
+ ],
+ "j-digit-sum/a0/structured": [
+  "fn f u32 -> u32\nz [A 0]\nresult fold step 10 z\nr get result 1\nstep u32x2 u32 -> u32x2\nnum get A 0\ndsum get A 1\ndigit rem num 10\nnnum div num 10\nnsum add dsum digit\nr [nnum nsum]",
+  "fn f u32 -> u32\nz [A 0]\nresult fold step 10 z\nr get result 1\n# step u32x2 u32 -> u32x2\nnum get A 0\ndsum get A 1\ndigit rem num 10\nnnum div num 10\nnsum add dsum digit\nr [nnum nsum]"
+ ]
+}

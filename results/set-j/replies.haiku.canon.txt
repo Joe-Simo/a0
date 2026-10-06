@@ -1,0 +1,149 @@
+### REPLY 1
+a rem p0 4
+b eq a 0
+c rem p0 100
+d ne c 0
+e rem p0 400
+g eq e 0
+h or d g
+k and b h
+ret k
+
+### REPLY 2
+fn step u32 u32 u32 -> u32
+a shr p2 p1
+b and a 1
+c add p0 b
+ret c
+fn f u32 -> u32
+r fold step 31 0 p0
+ret r
+
+### REPLY 3
+fn step u32 u32 u32x4 u32 -> u32
+a get p2 p1
+b eq a p3
+c select b p1 p0
+ret c
+fn f u32x4 u32 -> u32
+r fold step 3 4 p0 p1
+ret r
+
+### REPLY 4
+fn step bool u32 u32x4 -> bool
+a ne p1 0
+b and p0 a
+ret b
+fn f u32x4 -> bool
+r fold step 4 true p0
+ret r
+
+### REPLY 5
+a0 get p0 0
+a1 get p0 1
+a2 get p0 2
+a3 get p0 3
+s1 add a0 a1
+s2 add s1 a2
+s3 add s2 a3
+r arr a0 s1 s2 s3
+ret r
+
+### REPLY 6
+b get p0 p1
+c add b 1
+d set p0 p1 c
+e add p1 1
+f rem e 4
+g get d f
+h sub g 1
+i set d f h
+ret i
+
+### REPLY 7
+a shr p0 16
+b and p0 65535
+c arr a b
+ret c
+
+### REPLY 8
+fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+a at p0 1
+b eq a false
+c get p2 p1
+d gt c p3
+e and b d
+f rec p1 true
+g select e f p0
+ret g
+fn f u32x4 u32 -> (u32,bool)
+z rec 4 false
+r fold step 4 z p0 p1
+ret r
+
+### REPLY 9
+a lt p0 p1
+b select a p0 p1
+c select a p1 p0
+r rec b c
+ret r
+
+### REPLY 10
+fn tri u32 -> u32
+a add p0 1
+b mul p0 a
+c div b 2
+ret c
+fn f u32 u32 -> u32
+x call tri p1
+a sub p0 1
+y call tri a
+z sub x y
+ret z
+
+### REPLY 11
+a div p0 25
+b add p0 a
+ret b
+
+### REPLY 12
+a rem p0 7
+b ge a 5
+ret b
+
+### REPLY 13
+a shr p0 1
+b and p0 a
+c ne b 0
+ret c
+
+### REPLY 14
+a0 get p0 0
+a1 get p0 1
+a2 get p0 2
+a3 get p0 3
+x sub a0 a1
+y sub a2 a3
+z add x y
+ret z
+
+### REPLY 15
+a shr p0 15
+b xor p0 a
+c mul b 739982445
+ret c
+
+### REPLY 16
+fn step u32x2 u32 -> u32x2
+a rem p2 10
+b get p0 0
+c div b 10
+d get p0 1
+e add d a
+f arr c e
+ret f
+fn f u32 -> u32
+z arr p0 0
+g fold step 10 z p0
+h get g 1
+ret h

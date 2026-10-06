@@ -1,0 +1,116 @@
+### REPLY 1
+fn f -> bool
+b eq rem A 4 0
+d ne rem A 100 0
+g eq rem A 400 0
+h and b d
+k or h g
+### REPLY 2
+fn step
+b >> C B
+c and b 1
+r add A c
+fn f
+r fold step 32 0 A
+### REPLY 3
+fn step u32 u32 u32x4 u32 -> u32
+e get C B
+g eq e D
+r select g B A
+fn f u32x4 u32 -> u32
+r fold step 4 4 A B
+### REPLY 4
+fn step bool u32 u32x4 -> bool
+e get C B
+g ne e 0
+r and A g
+fn f u32x4 -> bool
+r fold step 4 true A
+### REPLY 5
+fn f u32x4 -> u32x4
+a0 get A 0
+a1 get A 1
+a2 get A 2
+a3 get A 3
+s1 add a0 a1
+s2 add s1 a2
+s3 add s2 a3
+r [a0 s1 s2 s3]
+### REPLY 6
+fn f u32x4 u32 -> u32x4
+i and B 3
+j add i 1
+k and j 3
+b get A i
+c add b 1
+d set A i c
+e get d k
+g sub e 1
+r set d k g
+### REPLY 7
+fn f -> u32x2
+h >> A 16
+l and A 65535
+r [h l]
+### REPLY 8
+fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+f at A 1
+i0 at A 0
+v get C B
+g gt v D
+u eq f false
+w and u g
+ni select w B i0
+nf or f g
+r (ni nf)
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+### REPLY 9
+fn f -> (u32,u32)
+a lt A B
+r (select a A B select a B A)
+### REPLY 10
+fn tri
+b add A 1
+c and A 1
+d eq c 0
+e div A 2
+g add e 1
+h mul e b
+k mul A g
+r select d h k
+fn f
+x tri B
+y tri A
+z sub x y
+r add z A
+### REPLY 11
+fn f add A div A 25
+### REPLY 12
+fn f -> bool gt rem A 7 4
+### REPLY 13
+fn f -> bool ne and A >> A 1 0
+### REPLY 14
+fn f u32x4 -> u32
+a0 get A 0
+a1 get A 1
+a2 get A 2
+a3 get A 3
+x add a0 a2
+y add a1 a3
+z sub x y
+### REPLY 15
+fn f mul xor A >> A 15 739982445
+### REPLY 16
+fn step u32x2 u32 -> u32x2
+n get A 0
+m get A 1
+d rem n 10
+q div n 10
+s add m d
+r [q s]
+fn f
+z [A 0]
+g fold step 10 z
+h get g 1

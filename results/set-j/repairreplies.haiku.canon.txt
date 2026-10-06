@@ -1,0 +1,44 @@
+### REPLY 2
+fn step u32 u32 u32 -> u32
+a shr p2 p1
+b and a 1
+c add p0 b
+ret c
+fn f u32 -> u32
+r fold step 32 0 p0
+ret r
+
+### REPLY 3
+fn step u32 u32 u32x4 u32 -> u32
+a get p2 p1
+b eq a p3
+c select b p1 p0
+ret c
+fn f u32x4 u32 -> u32
+r fold step 4 4 p0 p1
+ret r
+
+### REPLY 4
+fn step bool u32 u32x4 -> bool
+a get p2 p1
+b ne a 0
+c and p0 b
+ret c
+fn f u32x4 -> bool
+r fold step 4 true p0
+ret r
+
+### REPLY 16
+fn step u32x2 u32 u32 -> u32x2
+a rem p2 10
+b get p0 0
+c div b 10
+d get p0 1
+e add d a
+f arr c e
+ret f
+fn f u32 -> u32
+z arr p0 0
+g fold step 10 z p0
+h get g 1
+ret h

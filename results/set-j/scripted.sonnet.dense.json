@@ -1,0 +1,51 @@
+{
+ "j-leap-year/a0/structured": [
+  "fn f -> bool\nb eq rem A 4 0\nd ne rem A 100 0\ng eq rem A 400 0\nh and b d\nk or h g"
+ ],
+ "j-popcount/a0/structured": [
+  "fn step\nb >> C B\nc and b 1\nr add A c\nfn f\nr fold step 32 0 A"
+ ],
+ "j-last-index/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\ne get C B\ng eq e D\nr select g B A\nfn f u32x4 u32 -> u32\nr fold step 4 4 A B"
+ ],
+ "j-all-nonzero/a0/structured": [
+  "fn step bool u32 u32x4 -> bool\ne get C B\ng ne e 0\nr and A g\nfn f u32x4 -> bool\nr fold step 4 true A"
+ ],
+ "j-prefix-sum/a0/structured": [
+  "fn f u32x4 -> u32x4\na0 get A 0\na1 get A 1\na2 get A 2\na3 get A 3\ns1 add a0 a1\ns2 add s1 a2\ns3 add s2 a3\nr [a0 s1 s2 s3]"
+ ],
+ "j-bump-pair/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\ni and B 3\nj add i 1\nk and j 3\nb get A i\nc add b 1\nd set A i c\ne get d k\ng sub e 1\nr set d k g"
+ ],
+ "j-split-halves/a0/structured": [
+  "fn f -> u32x2\nh >> A 16\nl and A 65535\nr [h l]"
+ ],
+ "j-first-above/a0/structured": [
+  "fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)\nf at A 1\ni0 at A 0\nv get C B\ng gt v D\nu eq f false\nw and u g\nni select w B i0\nnf or f g\nr (ni nf)\nfn f u32x4 u32 -> (u32,bool)\nz (4 false)\nr fold step 4 z A B",
+  "fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)\nfd at A 1\nix at A 0\nv get C B\ng gt v D\nu eq fd false\nw and u g\nni select w B ix\nnf or fd g\nr (ni nf)\nfn f u32x4 u32 -> (u32,bool)\nz (4 false)\nr fold step 4 z A B"
+ ],
+ "j-sort-pair/a0/structured": [
+  "fn f -> (u32,u32)\na lt A B\nr (select a A B select a B A)"
+ ],
+ "j-range-sum/a0/structured": [
+  "fn tri\nb add A 1\nc and A 1\nd eq c 0\ne div A 2\ng add e 1\nh mul e b\nk mul A g\nr select d h k\nfn f\nx tri B\ny tri A\nz sub x y\nr add z A"
+ ],
+ "j-fee-rate/a0/structured": [
+  "fn f add A div A 25"
+ ],
+ "j-weekend/a0/structured": [
+  "fn f -> bool gt rem A 7 4"
+ ],
+ "j-adjacent-bits/a0/structured": [
+  "fn f -> bool ne and A >> A 1 0"
+ ],
+ "j-alternating-sum/a0/structured": [
+  "fn f u32x4 -> u32\na0 get A 0\na1 get A 1\na2 get A 2\na3 get A 3\nx add a0 a2\ny add a1 a3\nz sub x y"
+ ],
+ "j-mix-hash/a0/structured": [
+  "fn f mul xor A >> A 15 739982445"
+ ],
+ "j-digit-sum/a0/structured": [
+  "fn step u32x2 u32 -> u32x2\nn get A 0\nm get A 1\nd rem n 10\nq div n 10\ns add m d\nr [q s]\nfn f\nz [A 0]\ng fold step 10 z\nh get g 1"
+ ]
+}

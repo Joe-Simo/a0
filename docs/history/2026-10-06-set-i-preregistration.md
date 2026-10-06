@@ -38,7 +38,7 @@ refused or left a request unanswered.
 Tokens per accepted edit. **The pre-registered rule is met for Sonnet (dense one shot 16 against 14, 10-task cost 119.9 against 138.9) and not for Haiku (12 against 15; 169.7
 against 130.5), so it is not met: both models are required, and no recommendation is made.** Reported as a split result, not an average: dense wins on Sonnet at every horizon
 except the cold task (276.5 against 247.9), and loses on Haiku at every horizon. On the 8 non-u32-result tasks, one shot: Haiku dense 5 of 8 against canonical 7 of 8; Sonnet dense
-8 of 8 against canonical 6 of 8 (`tools/set-i-nonu32.mjs`). No interval separates any one-shot count at n = 16.
+8 of 8 against canonical 6 of 8 (`tools/set-nonu32.mjs i`). No interval separates any one-shot count at n = 16.
 
 Failure classes, after the repair. Dense, Haiku: three first-reply failures wrote `at` on an array (`at expects a record`; dense lists `get set(arrays) at put(records)`, a protocol
 ambiguity between `get` and `at`, repaired from the diagnostic's exact fix) and one was a wrong parity logic (model error); two tasks stayed unsolved after the repair (`i-contains`,

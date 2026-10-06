@@ -1,0 +1,54 @@
+{
+ "j-leap-year/a0/structured": [
+  "a rem p0 4\nb eq a 0\nc rem p0 100\nd ne c 0\ne rem p0 400\ng eq e 0\nh or d g\nk and b h\nret k"
+ ],
+ "j-popcount/a0/structured": [
+  "fn step u32 u32 u32 -> u32\na shr p2 p1\nb and a 1\nc add p0 b\nret c\nfn f u32 -> u32\nr fold step 31 0 p0\nret r",
+  "fn step u32 u32 u32 -> u32\na shr p2 p1\nb and a 1\nc add p0 b\nret c\nfn f u32 -> u32\nr fold step 32 0 p0\nret r"
+ ],
+ "j-last-index/a0/structured": [
+  "fn step u32 u32 u32x4 u32 -> u32\na get p2 p1\nb eq a p3\nc select b p1 p0\nret c\nfn f u32x4 u32 -> u32\nr fold step 3 4 p0 p1\nret r",
+  "fn step u32 u32 u32x4 u32 -> u32\na get p2 p1\nb eq a p3\nc select b p1 p0\nret c\nfn f u32x4 u32 -> u32\nr fold step 4 4 p0 p1\nret r"
+ ],
+ "j-all-nonzero/a0/structured": [
+  "fn step bool u32 u32x4 -> bool\na ne p1 0\nb and p0 a\nret b\nfn f u32x4 -> bool\nr fold step 4 true p0\nret r",
+  "fn step bool u32 u32x4 -> bool\na get p2 p1\nb ne a 0\nc and p0 b\nret c\nfn f u32x4 -> bool\nr fold step 4 true p0\nret r"
+ ],
+ "j-prefix-sum/a0/structured": [
+  "a0 get p0 0\na1 get p0 1\na2 get p0 2\na3 get p0 3\ns1 add a0 a1\ns2 add s1 a2\ns3 add s2 a3\nr arr a0 s1 s2 s3\nret r"
+ ],
+ "j-bump-pair/a0/structured": [
+  "b get p0 p1\nc add b 1\nd set p0 p1 c\ne add p1 1\nf rem e 4\ng get d f\nh sub g 1\ni set d f h\nret i"
+ ],
+ "j-split-halves/a0/structured": [
+  "a shr p0 16\nb and p0 65535\nc arr a b\nret c"
+ ],
+ "j-first-above/a0/structured": [
+  "fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)\na at p0 1\nb eq a false\nc get p2 p1\nd gt c p3\ne and b d\nf rec p1 true\ng select e f p0\nret g\nfn f u32x4 u32 -> (u32,bool)\nz rec 4 false\nr fold step 4 z p0 p1\nret r"
+ ],
+ "j-sort-pair/a0/structured": [
+  "a lt p0 p1\nb select a p0 p1\nc select a p1 p0\nr rec b c\nret r"
+ ],
+ "j-range-sum/a0/structured": [
+  "fn tri u32 -> u32\na add p0 1\nb mul p0 a\nc div b 2\nret c\nfn f u32 u32 -> u32\nx call tri p1\na sub p0 1\ny call tri a\nz sub x y\nret z"
+ ],
+ "j-fee-rate/a0/structured": [
+  "a div p0 25\nb add p0 a\nret b"
+ ],
+ "j-weekend/a0/structured": [
+  "a rem p0 7\nb ge a 5\nret b"
+ ],
+ "j-adjacent-bits/a0/structured": [
+  "a shr p0 1\nb and p0 a\nc ne b 0\nret c"
+ ],
+ "j-alternating-sum/a0/structured": [
+  "a0 get p0 0\na1 get p0 1\na2 get p0 2\na3 get p0 3\nx sub a0 a1\ny sub a2 a3\nz add x y\nret z"
+ ],
+ "j-mix-hash/a0/structured": [
+  "a shr p0 15\nb xor p0 a\nc mul b 739982445\nret c"
+ ],
+ "j-digit-sum/a0/structured": [
+  "fn step u32x2 u32 -> u32x2\na rem p2 10\nb get p0 0\nc div b 10\nd get p0 1\ne add d a\nf arr c e\nret f\nfn f u32 -> u32\nz arr p0 0\ng fold step 10 z p0\nh get g 1\nret h",
+  "fn step u32x2 u32 u32 -> u32x2\na rem p2 10\nb get p0 0\nc div b 10\nd get p0 1\ne add d a\nf arr c e\nret f\nfn f u32 -> u32\nz arr p0 0\ng fold step 10 z p0\nh get g 1\nret h"
+ ]
+}

@@ -1,0 +1,123 @@
+### REPLY 1
+fn f u32 -> bool
+b eq rem A 4 0
+d eq rem A 100 0
+g eq rem A 400 0
+n eq d 0
+h and b n
+r or h g
+
+### REPLY 2
+fn f u32 -> u32
+r fold step 32 0 A
+step u32 u32 u32 -> u32
+bit and >> A B 1
+r add A bit
+
+### REPLY 3
+fn f u32x4 u32 -> u32
+r fold step 4 4 A B
+step u32 u32 u32x4 u32 -> u32
+elem get C B
+is_eq eq elem D
+r select is_eq B A
+
+### REPLY 4
+fn f u32x4 -> bool
+r fold step 4 true A
+step bool u32 u32x4 -> bool
+elem get C B
+r and A ne elem 0
+
+### REPLY 5
+fn f u32x4 -> u32x4
+a0 get A 0
+a1 get A 1
+a2 get A 2
+a3 get A 3
+s1 add a0 a1
+s2 add s1 a2
+s3 add s2 a3
+r [a0 s1 s2 s3]
+
+### REPLY 6
+fn f u32x4 u32 -> u32x4
+idx rem B 4
+next rem add idx 1 4
+val_idx get A idx
+new_val_idx add val_idx 1
+arr1 set A idx new_val_idx
+val_next get arr1 next
+new_val_next sub val_next 1
+r set arr1 next new_val_next
+
+### REPLY 7
+fn f u32 -> u32x2
+high >> A 16
+low and A 65535
+r [high low]
+
+### REPLY 8
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+found get A 1
+elem get C B
+is_gt gt elem D
+new_result (select is_gt (B true) (get A 0 false))
+r select found A new_result
+
+### REPLY 9
+fn f u32 u32 -> (u32,u32)
+a lt A B
+r (select a A B select a B A)
+
+### REPLY 10
+fn f u32 u32 -> u32
+am1 sub A 1
+y tri am1
+x tri B
+r sub x y
+tri u32 -> u32
+n mul A add A 1
+r div n 2
+
+### REPLY 11
+fn f u32 -> u32
+r add A div A 25
+
+### REPLY 12
+fn f u32 -> bool
+r ge rem A 7 5
+
+### REPLY 13
+fn f u32 -> bool
+r ne and A >> A 1 0
+
+### REPLY 14
+fn f u32x4 -> u32
+a0 get A 0
+a1 get A 1
+a2 get A 2
+a3 get A 3
+x add a0 a2
+y add a1 a3
+r sub x y
+
+### REPLY 15
+fn f u32 -> u32
+r mul xor A >> A 15 739982445
+
+### REPLY 16
+fn f u32 -> u32
+z [A 0]
+result fold step 10 z
+r get result 1
+step u32x2 u32 -> u32x2
+num get A 0
+dsum get A 1
+digit rem num 10
+nnum div num 10
+nsum add dsum digit
+r [nnum nsum]

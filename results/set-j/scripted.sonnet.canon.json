@@ -1,0 +1,50 @@
+{
+ "j-leap-year/a0/structured": [
+  "d ne c 0"
+ ],
+ "j-popcount/a0/structured": [
+  "r fold step 32 0 p0\nfn step u32 u32 u32 -> u32\nx shr p2 p1\ny and x 1\nz add p0 y\nret z\nend"
+ ],
+ "j-last-index/a0/structured": [
+  "r fold step 4 4 p0 p1\nfn step u32 u32 u32x4 u32 -> u32\nx get p2 p1\ne eq x p3\nr select e p1 p0\nret r\nend"
+ ],
+ "j-all-nonzero/a0/structured": [
+  "r fold step 4 true p0\nfn step bool u32 u32x4 -> bool\nx get p2 p1\ny ne x 0\nz and p0 y\nret z\nend"
+ ],
+ "j-prefix-sum/a0/structured": [
+  "s2 add s1 a2\ns3 add s2 a3"
+ ],
+ "j-bump-pair/a0/structured": [
+  "fn f u32x4 u32 -> u32x4\ni and p1 3\nb get p0 i\nc add b 1\nd set p0 i c\nj add i 1\nk and j 3\ne get d k\ng sub e 1\nh set d k g\nret h\nend"
+ ],
+ "j-split-halves/a0/structured": [
+  "a shr p0 16\nb and p0 65535"
+ ],
+ "j-first-above/a0/structured": [
+  "fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)\nx get p2 p1\ng gt x p3\nidx at p0 0\nf at p0 1\nnf eq f false\nc and nf g\nni select c p1 idx\nnb or f g\nr rec ni nb\nret r\nend"
+ ],
+ "j-sort-pair/a0/structured": [
+  "b select a p0 p1\nc select a p1 p0"
+ ],
+ "j-range-sum/a0/structured": [
+  "y call tri p0\nz sub x y\nw add z p0\nret w\nfn tri u32 -> u32\na add p0 1\ne and p0 1\no ne e 0\nh shr p0 1\nk add h 1\nl select o p0 h\nm select o k a\nr mul l m\nret r\nend"
+ ],
+ "j-fee-rate/a0/structured": [
+  "a div p0 25"
+ ],
+ "j-weekend/a0/structured": [
+  "b ge a 5"
+ ],
+ "j-adjacent-bits/a0/structured": [
+  "a shr p0 1"
+ ],
+ "j-alternating-sum/a0/structured": [
+  "x sub a0 a1\ny sub a2 a3"
+ ],
+ "j-mix-hash/a0/structured": [
+  "a shr p0 15\nc mul b 739982445"
+ ],
+ "j-digit-sum/a0/structured": [
+  "g fold step 10 z\nfn step u32x2 u32 -> u32x2\nv get p0 0\nt get p0 1\nd rem v 10\nq div v 10\ns2 add t d\nr arr q s2\nret r\nend"
+ ]
+}

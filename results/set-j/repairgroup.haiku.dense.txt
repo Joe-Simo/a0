@@ -1,0 +1,202 @@
+SYSTEM TEXT:
+A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.
+
+=====
+
+### CONVERSATION 1
+[user]
+Return true when the year is a leap year: divisible by 4 and not by 100, or divisible by 400.
+
+e0
+fn f -> bool
+b eq rem A 4 0
+d eq rem A 100 0
+g eq rem A 400 0
+h and b d
+k or h g
+g0
+# f u32 -> bool
+
+[assistant]
+fn f u32 -> bool
+b eq rem A 4 0
+d eq rem A 100 0
+g eq rem A 400 0
+n eq d 0
+h and b n
+r or h g
+
+[user]
+Rejected:
+type: f (`eq d 0`): expected bool, got u32 fix: replace the operand at f (`eq d 0`) with a value of type bool
+
+Try again.
+
+### CONVERSATION 2
+[user]
+Return the number of set bits in the 32-bit argument.
+
+e0
+fn f
+r fold step 31 0 A
+# step u32 u32 u32 -> u32
+g0
+# step u32 u32 u32 -> u32
+# f u32 -> u32
+
+[assistant]
+fn f u32 -> u32
+r fold step 32 0 A
+step u32 u32 u32 -> u32
+bit and >> A B 1
+r add A bit
+
+[user]
+Rejected:
+parse: line 3: 'u32' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`u32 op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 3
+[user]
+Return the index of the last array element equal to the second argument, or 4 when no element equals it.
+
+e0
+fn f u32x4 u32 -> u32
+r fold step 3 4 A B
+# step u32 u32 u32x4 u32 -> u32
+g0
+# step u32 u32 u32x4 u32 -> u32
+# f u32x4 u32 -> u32
+
+[assistant]
+fn f u32x4 u32 -> u32
+r fold step 4 4 A B
+step u32 u32 u32x4 u32 -> u32
+elem get C B
+is_eq eq elem D
+r select is_eq B A
+
+[user]
+Rejected:
+parse: line 3: 'u32' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`u32 op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 4
+[user]
+The function currently tells whether any element of the array is nonzero; change it to return true only when every element is nonzero.
+
+e0
+fn f u32x4 -> bool
+r fold step 4 false A
+# step bool u32 u32x4 -> bool
+g0
+# step bool u32 u32x4 -> bool
+# f u32x4 -> bool
+
+[assistant]
+fn f u32x4 -> bool
+r fold step 4 true A
+step bool u32 u32x4 -> bool
+elem get C B
+r and A ne elem 0
+
+[user]
+Rejected:
+parse: line 3: 'bool' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`bool op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 8
+[user]
+Return the index of the first element strictly greater than the threshold together with whether one exists (index 4 and false when none); it currently reports the last such element.
+
+e0
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+# step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+g0
+# step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+# f u32x4 u32 -> (u32,bool)
+
+[assistant]
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+found get A 1
+elem get C B
+is_gt gt elem D
+new_result (select is_gt (B true) (get A 0 false))
+r select found A new_result
+
+[user]
+Rejected:
+parse: line 4: 'u32' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`u32 op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 10
+[user]
+Return the sum of the whole numbers from the first argument through the second argument, both included (the first is at most the second).
+
+e0
+fn f
+x tri B
+y tri A
+z sub x y
+# tri u32 -> u32
+g0
+# tri u32 -> u32
+# f u32 u32 -> u32
+
+[assistant]
+fn f u32 u32 -> u32
+am1 sub A 1
+y tri am1
+x tri B
+r sub x y
+tri u32 -> u32
+n mul A add A 1
+r div n 2
+
+[user]
+Rejected:
+parse: line 6: 'u32' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`u32 op ...` on its own line)
+
+Try again.
+
+### CONVERSATION 16
+[user]
+Return the sum of the decimal digits of the argument; it must handle every 32-bit value, including ten-digit ones.
+
+e0
+fn f
+z [A 0]
+g fold step 9 z
+h get g 1
+# step u32x2 u32 -> u32x2
+g0
+# step u32x2 u32 -> u32x2
+# f u32 -> u32
+
+[assistant]
+fn f u32 -> u32
+z [A 0]
+result fold step 10 z
+r get result 1
+step u32x2 u32 -> u32x2
+num get A 0
+dsum get A 1
+digit rem num 10
+nnum div num 10
+nsum add dsum digit
+r [nnum nsum]
+
+[user]
+Rejected:
+parse: line 5: 'u32x2' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (`u32x2 op ...` on its own line)
+
+Try again.

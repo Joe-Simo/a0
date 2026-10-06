@@ -1,0 +1,38 @@
+SYSTEM TEXT:
+A0 dense, bare reply lines: `fn f ...` a whole function (adds or replaces), `-fn f`. Bodies are prefix with fixed arity: `add mul A B C` = A*B+C (A B C parameters; last statement is the result). Ops: add sub mul div rem and or xor << >> select eq ne lt le gt ge(->bool) get set(arrays) at put(records) fold F n s a..: s=F(s,i,a..) for i<n; F args calls F; [a b] array, (a b) record. Types only if not all u32: `fn f u32x4 u32 -> bool`.
+
+=====
+
+### CONVERSATION 8
+[user]
+Return the index of the first element strictly greater than the threshold together with whether one exists (index 4 and false when none); it currently reports the last such element.
+
+e0
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+# step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+g0
+# step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+# f u32x4 u32 -> (u32,bool)
+
+[assistant]
+fn step (u32,bool) u32 u32x4 u32 -> (u32,bool)
+f at A 1
+i0 at A 0
+v get C B
+g gt v D
+u eq f false
+w and u g
+ni select w B i0
+nf or f g
+r (ni nf)
+fn f u32x4 u32 -> (u32,bool)
+z (4 false)
+r fold step 4 z A B
+
+[user]
+Rejected:
+parse: line 2: unknown function 'f' fix: a callee must be defined above its caller
+
+Try again.
