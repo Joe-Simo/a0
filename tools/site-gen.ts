@@ -86,7 +86,7 @@ export async function buildGenerator(entry = 'sitegen'): Promise<string> {
   await writeFile(join(BUILD_DIR, 'main.c'), MAIN(entry), 'utf8');
   const r = runTool(
     clang.path,
-    ['-std=c11', '-O2', '-Wno-unused-parameter', '-o', 'sitegen', 'main.c'],
+    ['-std=c11', '-O2', '-Wno-unused-parameter', '-pthread', '-o', 'sitegen', 'main.c'],
     { cwd: BUILD_DIR, timeoutMs: 1_800_000 },
   );
   if (!r.ok) throw new Error(`sitegen build failed:\n${r.stderr.slice(0, 4000)}`);

@@ -233,6 +233,7 @@ end
         clang,
         [
           '-O2',
+          '-pthread',
           '-o',
           'x',
           'd.c',

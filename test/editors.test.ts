@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { findClang, findGcc } from '../src/toolchain.js';
 
 // Both are CommonJS packages: loaded by require, typed by their own declarations.
 const require = createRequire(import.meta.url);
@@ -25,8 +26,15 @@ const cli = join(
   process.platform === 'win32' ? 'tree-sitter.exe' : 'tree-sitter',
 );
 
+// tree-sitter builds the grammar with a C compiler; on Windows it looks for MSVC unless told which one.
+const cc = process.env.CC ?? findGcc().path ?? findClang().path;
 const treeSitter = (args: string[]) =>
-  spawnSync(cli, args, { cwd: grammarDir, encoding: 'utf8', maxBuffer: 1 << 26 });
+  spawnSync(cli, args, {
+    cwd: grammarDir,
+    encoding: 'utf8',
+    maxBuffer: 1 << 26,
+    env: cc === undefined ? process.env : { ...process.env, CC: cc },
+  });
 
 test('tree-sitter grammar parses every .a0 file in the repository without errors', () => {
   assert.ok(existsSync(cli), `missing ${cli}; run: bun install`);

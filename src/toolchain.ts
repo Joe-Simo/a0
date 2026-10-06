@@ -168,12 +168,19 @@ function onPath(name: string): string | undefined {
       : [''];
   // Where Windows toolchains usually live when the installer did not add them to PATH.
   const fallback = process.platform === 'win32' ? WINDOWS_TOOL_DIRS : [];
-  for (const dir of [...(process.env.PATH ?? '').split(delimiter), ...fallback]) {
+  const onEnvPath = (process.env.PATH ?? '').split(delimiter);
+  for (const dir of [...onEnvPath, ...fallback]) {
     if (dir.length === 0) continue;
     for (const ext of exts) {
       const candidate = join(dir, name + ext);
       try {
-        if (statSync(candidate).isFile()) return candidate;
+        if (statSync(candidate).isFile()) {
+          // A compiler found outside PATH loads the DLLs of its own toolchain from its folder
+          // only when that folder is on PATH, for it and for every child it starts.
+          if (!onEnvPath.includes(dir))
+            process.env.PATH = `${dir}${delimiter}${process.env.PATH ?? ''}`;
+          return candidate;
+        }
       } catch {
         // not here
       }
