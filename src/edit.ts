@@ -84,18 +84,82 @@ export type EditOp =
   | { readonly kind: 'ret'; readonly operand: Operand }
   | ({ readonly kind: 'spec' } & SpecEdit);
 
-export function parseEditOps(lines: readonly string[], firstLine: number): EditOp[] {
+/**
+ * The error for a second line defining `id` in one reply. When that line reads `id` (`m sub m 1`
+ * after `m sub p0 1`: two successive updates of one value) the reply means the sequence, and the
+ * first line gets a fresh id that the second reads instead. That rewrite is exact when the first
+ * line does not read `id` itself, no line in between reads `id`, neither line has an `@` anchor,
+ * and the fresh id is used nowhere in the reply or the function (`taken`, when the caller knows it).
+ */
+function duplicateEditError(
+  id: string,
+  lines: readonly string[],
+  firstAt: number,
+  secondAt: number,
+  line: number,
+  taken: ReadonlySet<string> | undefined,
+): A0Error {
+  const reads = (text: string): boolean => text.split(/\s+/).slice(2).includes(id);
+  const first = normalizeLine(lines[firstAt] ?? '');
+  const second = normalizeLine(lines[secondAt] ?? '');
+  const plain = (text: string): boolean => !text.includes('@') && text.split(' ')[0] === id;
+  if (!reads(second) || !plain(first) || !plain(second)) {
+    return diag('A0503', [id], {
+      line,
+      fix: `a reply edits each node once: keep the one line for '${id}' you mean, or give the other node its own id and use that id where its value is read`,
+    });
+  }
+  const words = new Set(lines.flatMap((l) => normalizeLine(l).split(' ')));
+  const candidate = (n: number): string =>
+    isValidIdentifier(`${id}${n}`) ? `${id}${n}` : `${id}_${n}`;
+  let n = 1;
+  while (words.has(candidate(n)) || taken?.has(candidate(n)) === true) n += 1;
+  const fresh = candidate(n);
+  const firstTo = [fresh, ...first.split(' ').slice(1)].join(' ');
+  const secondTo = second
+    .split(' ')
+    .map((w, k) => (k >= 2 && w === id ? fresh : w))
+    .join(' ');
+  const exact =
+    taken !== undefined &&
+    !reads(first) &&
+    lines
+      .slice(firstAt + 1, secondAt)
+      .every((l) => !normalizeLine(l).split(' ').slice(1).includes(id));
+  return diag('A0503', [id], {
+    line,
+    fix: `a reply edits each node once; for two successive updates give the first its own id: write \`${firstTo}\`, then \`${secondTo}\``,
+    ...(exact ? { applicability: 'exact' as const } : {}),
+    edits: [
+      {
+        op: 'lines',
+        rule: 'sequence',
+        text: first,
+        to: firstTo,
+        line: line - (secondAt - firstAt),
+      },
+      { op: 'lines', rule: 'sequence', text: second, to: secondTo, line },
+    ],
+  });
+}
+
+export function parseEditOps(
+  lines: readonly string[],
+  firstLine: number,
+  taken?: ReadonlySet<string>,
+): EditOp[] {
   if (lines.length === 0) throw diag('A0501');
   if (lines.length > LIMITS.maxNodesPerFunction) throw diag('A0502');
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const ops: EditOp[] = [];
   const textDeletes = new Map<string, { text: string; line: number }>();
   let sawRet = false;
   lines.forEach((text, i) => {
     const line = firstLine + i;
     const claim = (id: string): void => {
-      if (seen.has(id)) throw diag('A0503', [id], { line });
-      seen.add(id);
+      const at = seen.get(id);
+      if (at !== undefined) throw duplicateEditError(id, lines, at, i, line, taken);
+      seen.set(id, i);
     };
     const spec = SPEC_EDIT.exec(text);
     if (
@@ -159,8 +223,12 @@ export function parseEditOps(lines: readonly string[], firstLine: number): EditO
 }
 
 /** Backwards-compatible helper: replacement-only edits as EditOps. */
-function parseReplacementNodes(lines: readonly string[], firstLine: number): EditOp[] {
-  return parseEditOps(lines, firstLine);
+function parseReplacementNodes(
+  lines: readonly string[],
+  firstLine: number,
+  taken?: ReadonlySet<string>,
+): EditOp[] {
+  return parseEditOps(lines, firstLine, taken);
 }
 
 /**
@@ -1321,7 +1389,7 @@ export class EditSession {
     if (editLines.length > 0) {
       const target = program.byName.get(fn.name);
       if (target === undefined) throw diag('A0519', [handle, fn.name]);
-      const nodes = parseReplacementNodes(editLines, 2);
+      const nodes = parseReplacementNodes(editLines, 2, new Set(target.nodes.map((n) => n.id)));
       program = placeNewCallees(this.#program, program, fn.name, nodes);
       program = commit(
         program,

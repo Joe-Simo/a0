@@ -353,3 +353,53 @@ test('a parameter out of range names the other function that has it, with the bl
     assert.doesNotMatch(e.fix ?? '', /bare lines edit/);
   }
 });
+
+const rejection = (session: EditSession, reply: string): A0Error => {
+  try {
+    session.apply(reply);
+  } catch (err) {
+    if (err instanceof A0Error) return err;
+    throw err;
+  }
+  throw new Error(`accepted: ${reply}`);
+};
+
+test('a second line for an id that reads the first is a sequence: exact fix with a fresh id', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  const e = rejection(session, 'y add x 1\ny mul y 2');
+  assert.equal(e.id, 'A0503');
+  assert.equal(e.applicability, 'exact');
+  assert.match(e.fix ?? '', /write `y1 add x 1`, then `y mul y1 2`/);
+  session.apply('fix all');
+  assert.equal(call(session, 'twice', 3), 20);
+  // The fresh id skips ids the reply or the function already has.
+  const s2 = new EditSession(parseAndValidate(SRC));
+  s2.open('twice');
+  assert.match(rejection(s2, 'y1 add x 0\ny add p0 1\ny mul y y1').fix ?? '', /`y2 add p0 1`/);
+});
+
+test('a second line that does not read the id, or a read in between, is not an exact sequence', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  for (const reply of ['y add x 1\ny add x 2', 'y add x 1\nz add y 1\ny mul y z']) {
+    const e = rejection(session, reply);
+    assert.equal(e.id, 'A0503');
+    assert.notEqual(e.applicability, 'exact');
+  }
+});
+
+test('mod is rem (exact); a u32 used as a bool names the comparison to write', () => {
+  const session = new EditSession(parseAndValidate(SRC));
+  session.open('twice');
+  const e = rejection(session, 'y mod x 5');
+  assert.equal(e.id, 'A0102');
+  assert.equal(e.applicability, 'exact');
+  session.apply('fix all');
+  assert.equal(call(session, 'twice', 3), 4);
+  assert.match(
+    rejection(session, 'c and x 1\ny select c x 0').fix ?? '',
+    /the select condition is a bool.*`t ne X 0`/,
+  );
+  assert.match(rejection(session, 'c gt x 1\nd eq c 1\ny select d x 0').fix ?? '', /`eq C true`/);
+});

@@ -1233,6 +1233,7 @@ export const DIAGNOSTICS = {
     why: [
       'A reply edits each node once; two lines named the same id.',
       'Keep the last intended line.',
+      'When the second line reads the id (two successive updates, `r set p0 0 x` then `r set r 1 y`), the first gets a fresh id that the second reads.',
     ],
     example: {
       kind: 'edit',
@@ -1955,10 +1956,16 @@ export const EXACT_FIXES: readonly {
   { id: 'A0011', rule: 'assign', what: 'an `=` between the id and the op is removed' },
   { id: 'A0013', rule: 'case', what: 'an uppercase callee is lowercased' },
   { id: 'A0025', rule: 'end', what: 'a missing `end` after ret is added' },
+  { id: 'A0102', rule: 'mod', what: 'a `mod` (or `umod`) op becomes `rem`, the same on u32' },
   {
     id: 'A0220',
     rule: 'array-op',
     what: '`at` or `put` written on an array becomes `get` or `set` at the same index',
+  },
+  {
+    id: 'A0503',
+    rule: 'sequence',
+    what: 'a second line for an id that reads the first gets it under a fresh id',
   },
   { id: 'A0516', rule: 'signature', what: '`-fn name` loses the signature that follows it' },
 ];
