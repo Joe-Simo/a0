@@ -1,0 +1,208 @@
+{
+  "generatedAt": "2026-10-06T17:36:26.876Z",
+  "tool": "tools/canon-syntax-tokens.ts",
+  "tokenizer": "o200k_base (js-tiktoken)",
+  "meaning": "Hypothetical rewrites of the canonical A0 text of the ten lang-axes kernels, counted in tokens, and how many of the recorded canonical tokens-kernel losses of results/loss-ledger.json each would close (the competitor count unchanged). Nothing here is implemented in the language and no model wrote any rewrite: it measures the token side of a design only, not whether models write it correctly.",
+  "noteNoop": "The A0 noop kernel carries three identity operations on purpose (the optimizer must not add work; tools/exec-bench-kernels.ts), while every competitor's noop source is `return x`: its token losses compare programs of different structure and are recorded as they are, not redefined.",
+  "variants": [
+    {
+      "id": "no-end",
+      "what": "drop the `end` line (a function ends at the next `fn` or the end of the file)"
+    },
+    {
+      "id": "no-ret",
+      "what": "drop `ret X` when X is the last node (the last node is the result)"
+    },
+    {
+      "id": "no-u32-params",
+      "what": "leave out the parameter types of an all-u32 header (`fn f -> u32`)"
+    },
+    {
+      "id": "no-end-no-ret",
+      "what": "both of the first two"
+    },
+    {
+      "id": "no-end-no-ret-no-u32-params",
+      "what": "all three (the canonical form with the dense form’s header, terminator and result conventions, still one node per line with an id)"
+    }
+  ],
+  "kernels": [
+    {
+      "kernel": "affine",
+      "canonical": 29,
+      "no-end": 27,
+      "no-ret": 26,
+      "no-u32-params": 23,
+      "no-end-no-ret": 24,
+      "no-end-no-ret-no-u32-params": 18
+    },
+    {
+      "kernel": "rotl",
+      "canonical": 41,
+      "no-end": 39,
+      "no-ret": 38,
+      "no-u32-params": 37,
+      "no-end-no-ret": 36,
+      "no-end-no-ret-no-u32-params": 32
+    },
+    {
+      "kernel": "clamp",
+      "canonical": 44,
+      "no-end": 42,
+      "no-ret": 41,
+      "no-u32-params": 38,
+      "no-end-no-ret": 39,
+      "no-end-no-ret-no-u32-params": 33
+    },
+    {
+      "kernel": "mix",
+      "canonical": 65,
+      "no-end": 63,
+      "no-ret": 62,
+      "no-u32-params": 61,
+      "no-end-no-ret": 60,
+      "no-end-no-ret-no-u32-params": 56
+    },
+    {
+      "kernel": "ident",
+      "canonical": 13,
+      "no-end": 11,
+      "no-ret": 13,
+      "no-u32-params": 11,
+      "no-end-no-ret": 11,
+      "no-end-no-ret-no-u32-params": 9
+    },
+    {
+      "kernel": "noop",
+      "canonical": 31,
+      "no-end": 29,
+      "no-ret": 28,
+      "no-u32-params": 29,
+      "no-end-no-ret": 26,
+      "no-end-no-ret-no-u32-params": 24
+    },
+    {
+      "kernel": "chain3",
+      "canonical": 80,
+      "no-end": 78,
+      "no-ret": 77,
+      "no-u32-params": 78,
+      "no-end-no-ret": 75,
+      "no-end-no-ret-no-u32-params": 73
+    },
+    {
+      "kernel": "branchy",
+      "canonical": 81,
+      "no-end": 79,
+      "no-ret": 78,
+      "no-u32-params": 77,
+      "no-end-no-ret": 76,
+      "no-end-no-ret-no-u32-params": 72
+    },
+    {
+      "kernel": "arrfill",
+      "canonical": 98,
+      "no-end": 96,
+      "no-ret": 95,
+      "no-u32-params": 98,
+      "no-end-no-ret": 93,
+      "no-end-no-ret-no-u32-params": 93
+    },
+    {
+      "kernel": "loop64",
+      "canonical": 77,
+      "no-end": 75,
+      "no-ret": 74,
+      "no-u32-params": 71,
+      "no-end-no-ret": 72,
+      "no-end-no-ret-no-u32-params": 66
+    }
+  ],
+  "denseForComparison": {
+    "affine": 7,
+    "rotl": 13,
+    "clamp": 17,
+    "mix": 33,
+    "ident": 3,
+    "noop": 12,
+    "chain3": 25,
+    "branchy": 32,
+    "arrfill": 31,
+    "loop64": 29
+  },
+  "closesLosses": {
+    "no-end": {
+      "closes": 38,
+      "of": 377,
+      "byKernel": {
+        "branchy": 6,
+        "loop64": 4,
+        "affine": 3,
+        "ident": 10,
+        "mix": 5,
+        "rotl": 4,
+        "clamp": 3,
+        "chain3": 2,
+        "arrfill": 1
+      }
+    },
+    "no-ret": {
+      "closes": 41,
+      "of": 377,
+      "byKernel": {
+        "loop64": 6,
+        "branchy": 7,
+        "affine": 7,
+        "chain3": 3,
+        "mix": 6,
+        "rotl": 6,
+        "clamp": 4,
+        "arrfill": 2
+      }
+    },
+    "no-u32-params": {
+      "closes": 74,
+      "of": 377,
+      "byKernel": {
+        "loop64": 14,
+        "branchy": 9,
+        "affine": 14,
+        "rotl": 10,
+        "ident": 10,
+        "clamp": 8,
+        "mix": 7,
+        "chain3": 2
+      }
+    },
+    "no-end-no-ret": {
+      "closes": 76,
+      "of": 377,
+      "byKernel": {
+        "chain3": 5,
+        "loop64": 10,
+        "branchy": 9,
+        "affine": 12,
+        "rotl": 12,
+        "ident": 10,
+        "mix": 10,
+        "clamp": 6,
+        "arrfill": 2
+      }
+    },
+    "no-end-no-ret-no-u32-params": {
+      "closes": 143,
+      "of": 377,
+      "byKernel": {
+        "chain3": 5,
+        "loop64": 19,
+        "branchy": 10,
+        "affine": 32,
+        "rotl": 22,
+        "ident": 19,
+        "clamp": 16,
+        "mix": 18,
+        "arrfill": 2
+      }
+    }
+  }
+}
