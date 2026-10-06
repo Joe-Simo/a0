@@ -87,7 +87,7 @@ three runs to confirm the new behaviour and that old inputs are unchanged; that 
 rejection or a wrong probe doubles it. 12 allows one full repair round on both sides and still bounds cost; it is the
 same number for both sides and fixed before any subject ran.
 
-## Metrics (`tools/app-edit-loop-summary.ts`, writing `results/app-edit-loop.json`)
+## Metrics (`tools/app-edit-loop-summary.ts`, which writes its results file after the run)
 
 Per model and side, n = 14:
 
