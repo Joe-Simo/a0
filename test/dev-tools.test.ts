@@ -504,9 +504,19 @@ test('dev-gate: parallel light steps overlap; a pass commits regenerated results
     writeFileSync(join(repo, 'results', 'a.json'), '{"v":1}\n');
     sh(repo, 'add', '-A');
     sh(repo, 'commit', '-q', '-m', 'results');
+    // Overlap is proven by a rendezvous, not by wall time: each step announces itself and then waits
+    // for the other's marker. Serial execution can never see the peer's marker and fails the step, so
+    // the result does not depend on host load or on how long process spawns take.
+    const mk = (me: string, peer: string, tail: string) => {
+      const d = out.replace(/\\/g, '/');
+      return (
+        `touch '${d}/${me}.up'; i=0; while [ ! -f '${d}/${peer}.up' ] && [ $i -lt 150 ]; ` +
+        `do sleep 0.1; i=$((i+1)); done; [ -f '${d}/${peer}.up' ]${tail}`
+      );
+    };
     const runs = [
-      { id: 'test', cmd: 'sleep 3; echo 2 > results/a.json', timeoutMs: 20_000 },
-      { id: 'site', cmd: 'sleep 3', timeoutMs: 20_000 },
+      { id: 'test', cmd: mk('test', 'site', ' && echo 2 > results/a.json'), timeoutMs: 30_000 },
+      { id: 'site', cmd: mk('site', 'test', ''), timeoutMs: 30_000 },
     ];
     const r = await runGate({
       repo,
@@ -519,8 +529,7 @@ test('dev-gate: parallel light steps overlap; a pass commits regenerated results
       commitResults: true,
       log: () => undefined,
     });
-    assert.equal(r.pass, true);
-    assert.ok(r.wallMs < 5800, `expected overlap, took ${r.wallMs} ms`);
+    assert.equal(r.pass, true, 'both steps must have run at the same time (rendezvous)');
     assert.equal(r.resultsCommitted, true);
     assert.equal(sh(repo, 'log', '-1', '--format=%s').trim(), 'Regenerate results after the gate');
     assert.equal(noteCovers(repo, 'HEAD', ['test', 'site']).ok, true);
