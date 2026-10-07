@@ -510,6 +510,7 @@ export const DIAGNOSTICS = {
   A0012: {
     cls: 'parse',
     message: 'loop expects a predicate and a body function name',
+    fix: 'write `loop P F n s args...`: P and F are functions defined above, F runs while P(state, i, args...) holds, at most n times, starting from state s',
     why: [
       '`loop P F n s args...` runs F while P(state, i, args...) holds, at most n times.',
       'It needs two function names before the trip count.',
