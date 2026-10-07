@@ -12,10 +12,21 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { compile } from '../src/backends.js';
+import { COMPILER_VERSION, compile } from '../src/backends.js';
 import { link } from '../src/link.js';
 import { findClang, runTool, spawnWithInput } from '../src/toolchain.js';
 import { checkOperandBudget } from './site-budget.js';
+import {
+  codeDigest,
+  HOST,
+  keyOf,
+  readEntry,
+  type SiteCache,
+  toolDigest,
+  toolFile,
+  writeEntry,
+  writeTool,
+} from './site-cache.js';
 
 export const GENERATOR = join('site', 'gen', 'sitegen.a0');
 const BUILD_DIR = join('dist', 'sitegen');
@@ -71,26 +82,63 @@ int main(void) {
 }
 `;
 
-/** Link the generator, emit C, and build the native binary; returns its path. */
-export async function buildGenerator(entry = 'sitegen'): Promise<string> {
+export interface GeneratorOptions {
+  /** Restore the binary from this cache when its key is there, or store it after a build. */
+  readonly cache?: SiteCache;
+  /** Called once when the cache is on, with whether the binary came from the cache. */
+  readonly onCache?: (hit: boolean) => void;
+  /** Where the binary is written (default dist/sitegen): a caller that builds beside another uses its own. */
+  readonly buildDir?: string;
+}
+
+/**
+ * Link the generator, emit C, and build the native binary; returns its path. With a cache, the
+ * binary is keyed by what it is built from: the linked generator sources, COMPILER_VERSION, the
+ * code that writes its C and builds it (the import closure of tools/site-gen.ts), the clang
+ * version, the host and the entry. A hit restores the stored binary and builds nothing.
+ */
+export async function buildGenerator(
+  entry = 'sitegen',
+  options: GeneratorOptions = {},
+): Promise<string> {
   const clang = findClang();
   if (clang.path === undefined)
     throw new Error('clang not found (the site generator runs natively)');
-  const program = (await link(GENERATOR, (p) => readFile(p, 'utf8'), { root: '.' })).program;
-  const c = compile(program, 'c', {
+  const buildDir = options.buildDir ?? BUILD_DIR;
+  const cache = options.cache?.dir === undefined ? undefined : options.cache;
+  const linked = await link(GENERATOR, (p) => readFile(p, 'utf8'), { root: '.' });
+  const key = keyOf(
+    'generator',
+    COMPILER_VERSION,
+    codeDigest(['tools/site-gen.ts']),
+    HOST,
+    clang.version ?? '',
+    entry,
+    MAIN(entry),
+    linked.text,
+  );
+  if (cache !== undefined) {
+    const bytes = (await readEntry(cache, 'generator', key))?.get('binary');
+    options.onCache?.(bytes !== undefined);
+    if (bytes !== undefined) return writeTool(bytes, join(buildDir, 'sitegen'));
+  }
+  const c = compile(linked.program, 'c', {
     ioInputCapacity: INPUT_WORDS,
     ioOutputCapacity: OUTPUT_WORDS,
   }).text;
-  await mkdir(BUILD_DIR, { recursive: true });
-  await writeFile(join(BUILD_DIR, 'sitegen.c'), c, 'utf8');
-  await writeFile(join(BUILD_DIR, 'main.c'), MAIN(entry), 'utf8');
+  await mkdir(buildDir, { recursive: true });
+  await writeFile(join(buildDir, 'sitegen.c'), c, 'utf8');
+  await writeFile(join(buildDir, 'main.c'), MAIN(entry), 'utf8');
   const r = runTool(
     clang.path,
     ['-std=c11', '-O2', '-Wno-unused-parameter', '-pthread', '-o', 'sitegen', 'main.c'],
-    { cwd: BUILD_DIR, timeoutMs: 1_800_000 },
+    { cwd: buildDir, timeoutMs: 1_800_000 },
   );
   if (!r.ok) throw new Error(`sitegen build failed:\n${r.stderr.slice(0, 4000)}`);
-  return join(BUILD_DIR, 'sitegen');
+  const path = join(buildDir, 'sitegen');
+  if (cache !== undefined)
+    await writeEntry(cache, 'generator', key, { binary: await readFile(toolFile(path)) });
+  return path;
 }
 
 /** A byte count and the bytes packed four to a word. */
@@ -122,19 +170,44 @@ export async function generatorInput(template: string): Promise<Buffer> {
   return buf;
 }
 
+export interface GenerateOptions {
+  /** false skips the operand budget check (tests of over-budget programs). */
+  readonly budget?: boolean;
+  /**
+   * Reuse the generated source from this cache. The key is the generator binary's bytes and the
+   * generator input (the template and every file its `f` lines name), so a changed template or
+   * data file generates again.
+   */
+  readonly cache?: SiteCache;
+  /** Called once when `cache` is given, with whether the source came from the cache. */
+  readonly onCache?: (hit: boolean) => void;
+}
+
 /** Run the built generator on `template`; returns the generated A0 source (checked against the operand budget of tools/site-budget.ts unless `budget` is false). */
 export async function generate(
   binary: string,
   template: string,
-  options: { readonly budget?: boolean } = {},
+  options: GenerateOptions = {},
 ): Promise<string> {
-  const r = spawnWithInput(binary, await generatorInput(template), {
-    maxBuffer: 64 << 20,
-    timeout: 600_000,
-  });
-  if (r.status !== 0)
-    throw new Error(`sitegen failed on ${template} (status ${r.status}): ${String(r.stderr)}`);
-  const source = r.stdout.toString('utf8');
+  const input = await generatorInput(template);
+  const cache = options.cache?.dir === undefined ? undefined : options.cache;
+  const key = cache === undefined ? undefined : keyOf('source', await toolDigest(binary), input);
+  let source: string | undefined;
+  if (cache !== undefined && key !== undefined) {
+    source = (await readEntry(cache, 'source', key))?.get('source.a0')?.toString('utf8');
+    options.onCache?.(source !== undefined);
+  }
+  if (source === undefined) {
+    const r = spawnWithInput(binary, input, {
+      maxBuffer: 64 << 20,
+      timeout: 600_000,
+    });
+    if (r.status !== 0)
+      throw new Error(`sitegen failed on ${template} (status ${r.status}): ${String(r.stderr)}`);
+    source = r.stdout.toString('utf8');
+    if (cache !== undefined && key !== undefined)
+      await writeEntry(cache, 'source', key, { 'source.a0': source });
+  }
   // Every function of the page must fit the A0 toolchain's operand table with room to grow.
   if (options.budget !== false) checkOperandBudget(source, template);
   return source;
