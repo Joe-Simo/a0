@@ -840,7 +840,7 @@ static int cmd_calls(const char *file) {
 #define CHUNK_NODES 2500u
 #define CHUNK_FNS 760u
 #define NO_FN 0xffffffffu
-#define MAX_SOURCE_BYTES (1u << 20)
+#define MAX_SOURCE_BYTES (2u << 20)
 
 /*
  * `a0 check --chunk-bytes=N FILE` sets the byte margin of a chunk (the other margins stay); N = 0
@@ -1491,10 +1491,10 @@ static int cmd_check(const char *file, bool lines) {
   link_entry(file);
   size_t n = 0;
   for (int i = 0; i < nfiles; i++) {
-    if (files[i].len > MAX_SOURCE_BYTES) give_up("a file over 1 MiB");
+    if (files[i].len > MAX_SOURCE_BYTES) give_up("a file over 2 MiB");
     n += files[i].len + (i > 0 ? 1 : 0);
   }
-  if (n > MAX_SOURCE_BYTES) give_up("a linked program over 1 MiB");
+  if (n > MAX_SOURCE_BYTES) give_up("a linked program over 2 MiB");
   joined = malloc(n + 1);
   jlen = 0;
   for (int i = 0; i < nfiles; i++) {

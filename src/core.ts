@@ -523,7 +523,7 @@ export {
 // ---------------------------------------------------------------------------
 
 export const LIMITS = {
-  maxSourceBytes: 1 << 20,
+  maxSourceBytes: 2 << 20,
   /** Functions per program, also after linking (a0c-0.1.14: raised from 1024). */
   maxFunctions: 65536,
   maxNodesPerFunction: 4096,

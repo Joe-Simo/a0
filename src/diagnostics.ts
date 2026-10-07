@@ -558,15 +558,15 @@ export const DIAGNOSTICS = {
     cls: 'limit',
     message: 'source exceeds {0} bytes',
     why: [
-      'A source file is at most 1 MiB; the limit bounds the work a hostile input can cause.',
+      'A source file is at most 2 MiB; the limit bounds the work a hostile input can cause.',
       'Split the program across files joined with `use`.',
     ],
     example: {
       kind: 'source',
-      bad: () => `# ${'x'.repeat(1 << 20)}\n${F('a mov p0\nret a')}`,
+      bad: () => `# ${'x'.repeat(2 << 20)}\n${F('a mov p0\nret a')}`,
       good: F('a mov p0\nret a'),
       shown: {
-        bad: '# xxxx... (more than 1 MiB)\nfn f u32 -> u32\n...',
+        bad: '# xxxx... (more than 2 MiB)\nfn f u32 -> u32\n...',
         good: 'fn f u32 -> u32\n...',
       },
     },
@@ -731,7 +731,7 @@ export const DIAGNOSTICS = {
       'A program has at most 65536 functions after linking.',
       'Drop unused functions or split the program.',
     ],
-    unrunnable: 'the 1 MiB source limit (A0016) applies before 65537 functions fit in one file',
+    unrunnable: 'the 2 MiB source limit (A0016) applies before 65537 functions fit in one file',
   },
   A0030: {
     cls: 'parse',
@@ -1216,16 +1216,16 @@ export const DIAGNOSTICS = {
     cls: 'limit',
     message: 'edit too large',
     why: [
-      'An edit is at most 1 MiB or 4096 lines.',
+      'An edit is at most 2 MiB or 4096 lines.',
       'Send the changed lines, not the whole program.',
     ],
     example: {
       kind: 'edit',
       base: SQ,
       fn: 'sq',
-      bad: () => `a mul p0 3\n# ${'x'.repeat(1 << 20)}`,
+      bad: () => `a mul p0 3\n# ${'x'.repeat(2 << 20)}`,
       good: 'a mul p0 3',
-      shown: { bad: 'a mul p0 3\n# xxxx... (more than 1 MiB)', good: 'a mul p0 3' },
+      shown: { bad: 'a mul p0 3\n# xxxx... (more than 2 MiB)', good: 'a mul p0 3' },
     },
   },
   A0503: {
@@ -1473,8 +1473,8 @@ export const DIAGNOSTICS = {
   A0606: {
     cls: 'limit',
     message: 'patch too large',
-    why: ['A patch is at most 1 MiB.'],
-    unrunnable: 'needs a 1 MiB patch file; the size check is shared with A0016 and A0502',
+    why: ['A patch is at most 2 MiB.'],
+    unrunnable: 'needs a 2 MiB patch file; the size check is shared with A0016 and A0502',
   },
   A0610: {
     cls: 'handle',
@@ -1550,7 +1550,7 @@ export const DIAGNOSTICS = {
   A0621: {
     cls: 'limit',
     message: '{0}: source exceeds {1} bytes',
-    why: ['One file of the program is larger than 1 MiB.'],
+    why: ['One file of the program is larger than 2 MiB.'],
     unrunnable: 'needs a file on disk; same bound as A0016',
   },
   A0622: {
@@ -1563,7 +1563,7 @@ export const DIAGNOSTICS = {
   A0623: {
     cls: 'limit',
     message: 'linked program exceeds {0} bytes',
-    why: ['The files of a program together are larger than 1 MiB.'],
+    why: ['The files of a program together are larger than 2 MiB.'],
     unrunnable: 'needs several large files on disk',
   },
 
@@ -1906,7 +1906,7 @@ export const DIAGNOSTICS = {
   A0810: {
     cls: 'structure',
     message: 'source too large',
-    why: ['The file given to the command line is larger than 1 MiB.'],
+    why: ['The file given to the command line is larger than 2 MiB.'],
     unrunnable: 'needs a file on disk; same bound as A0016',
   },
   A0811: {
