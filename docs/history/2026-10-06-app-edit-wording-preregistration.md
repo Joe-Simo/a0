@@ -20,7 +20,7 @@ changes, A0 side only, selected by `--arm wording --variant current|revised` (th
 unchanged; `test/app-edit-loop.test.ts` and the self-check still hold):
 
 - Each of the 14 sealed tasks of `tools/app-edit-tasks.ts` (seal checked by every command; nothing in it changes) gets a
-  scratch directory holding `TASK.md` with only `# Task` and the task's instruction (no view, no handle open),
+  scratch directory holding `TASK.md` with `# Task`, the task's instruction and one line naming the function to start from (no view, no handle open),
   `GUIDE.md` (exactly the loop arm's: the shipped `MODEL_GUIDE.min.txt` plus `A0_PROTOCOL`), `SKILL.md` (the variant's
   skill text), the program `front.a0`, the same `./tool` and `.loop/`.
 - The tool has the loop arm's commands (view FUNCTION, program [TARGET], apply, check, revision, explain, run, lex,
@@ -31,9 +31,7 @@ unchanged; `test/app-edit-loop.test.ts` and the self-check still hold):
   as written; the help, when asked for, is a tool output and counts as tool context.
 - Each trial also records `programViews`: every `program` run from the tool log, `bare` for no target, else the target.
 
-Limitation, recorded in advance: TASK.md names no function, so a subject must find the function to change with the
-tools (for example `check`, which lists every function, or a program view). This applies equally to both variants; it
-is part of what the wording is meant to steer.
+Decision before any subject ran (replacing the first draft, in which TASK.md named no function and pushed both variants toward the bare listing): TASK.md is the instruction plus one line naming the function to start from (the first target of the task), no view and no handle open. A real author is told which function to change; what the wording is meant to steer is what the subject opens next. This applies equally to both variants.
 
 ## The two variants (files in `experiments/wording/`)
 

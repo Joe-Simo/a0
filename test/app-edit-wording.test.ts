@@ -49,7 +49,10 @@ test('app-edit wording: setup writes the instruction alone, the variant skill an
     for (const variant of ['current', 'revised'] as const) {
       const dir = join(root, variant);
       await setupWordingTask(dir, task, programs, guide, variant);
-      assert.equal(await readFile(join(dir, 'TASK.md'), 'utf8'), `# Task\n\n${task.instruction}\n`);
+      assert.equal(
+        await readFile(join(dir, 'TASK.md'), 'utf8'),
+        `# Task\n\n${task.instruction}\n\nThe function to change is \`${task.a0Targets[0]}\`.\n`,
+      );
       assert.equal(await readFile(join(dir, 'SKILL.md'), 'utf8'), wordingTexts(variant).skill);
       const loop = join(root, `${variant}-loop`);
       await setupTask(loop, 'a0', task, programs, guide);

@@ -154,8 +154,9 @@ export function wordingHelp(w: { readonly open: string; readonly program: string
 No handle is open at the start.`;
 }
 
-/** TASK.md of the wording arm: the instruction only. */
-export const wordingTaskText = (task: AppTask): string => `# Task\n\n${task.instruction}\n`;
+/** TASK.md of the wording arm: the instruction and the name of the function to start from, no view. */
+export const wordingTaskText = (task: AppTask): string =>
+  `# Task\n\n${task.instruction}\n\nThe function to change is \`${task.a0Targets[0]}\`.\n`;
 
 /** The program views a subject asked for, from its log: `bare` (every signature) or the target. */
 export function programViews(log: readonly LogEntry[]): string[] {
