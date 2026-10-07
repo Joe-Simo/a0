@@ -115,7 +115,7 @@ s 9 css 36000
 c nav
 {sec_bhead
 .div center
-=h2 Benchmarks
+=h1 Benchmarks
 =p Every figure on this page is measured, checked and reproducible from the repository. Each one names the file in results/ it comes from, and each loss is stated beside the result. The home page shows one chart from this page for each question.
 >
 }
@@ -228,6 +228,9 @@ c nav
 "Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Inlined: each language's fastest result with its own driver, which the compiler can inline. Speedup = the baseline's time divided by A0's: below 1.00x A0 is slower. Win = at least 1.2x faster; loss = more than 10% slower; the file gives verdicts only for the first baseline, the second uses the same win rule and a 10% tie band (results/exec-benchmark-full.json).
 >
 .div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
 .table ops rank fit
 =caption Speed against the best of C, Rust and Zig and against each language's own inlined driver, per test program
 <tr
@@ -273,6 +276,9 @@ c nav
 "measured: $cov_langs$ of $n_all$ languages
 >
 .div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
 .table ops rank fit
 =caption A0's place among the languages that ran each test program
 <tr
@@ -908,6 +914,9 @@ c putnum %a
 ]
 >
 .div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
 .table ops rank
 =caption A0 (canonical and dense) place and wins, ties and losses on each edit measure
 <tr
@@ -940,6 +949,9 @@ c putnum %a
 >
 >
 .div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
 .table ops rank
 =caption Edit acceptance and token cost per subject
 <tr
@@ -1128,6 +1140,9 @@ c putnum %a
 >
 ]
 .div tblwrap
++tabindex 0
++role group
++aria-label Table, scrolls sideways
 .table ops rank
 =caption Tokens per edit, by language
 <tr

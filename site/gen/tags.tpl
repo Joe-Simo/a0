@@ -39,3 +39,4 @@ m attr aria-hidden 11
 m tag caption 30
 m tag details 28
 m tag summary 29
+m attr tabindex 12

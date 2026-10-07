@@ -111,7 +111,7 @@ c nav
 .div stage
 s 13 glsl
 >
-.h1 name pixel
+.div name pixel
 "A0
 >
 .p tag pixel
@@ -121,7 +121,7 @@ s 13 glsl
 }
 {sec_pitch
 .div center
-=h2 A small language AI models can edit without breaking your build.
+=h1 A small language AI models can edit without breaking your build.
 =p A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.
 >
 <div
@@ -336,6 +336,7 @@ c putfix %a
 +id try
 =h2 Try it
 .pre code
++aria-label Install commands
 <code
 .span cm
 "# one binary, no package manager\n

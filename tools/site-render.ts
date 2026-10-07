@@ -55,6 +55,7 @@ const ATTRS: Record<number, string> = {
   9: 'role',
   10: 'scope',
   11: 'aria-hidden',
+  12: 'tabindex',
 };
 const VOID = new Set(['input']);
 
@@ -113,7 +114,12 @@ export function renderWords(words: readonly number[]): Prerendered {
         flush();
         open.push({
           tag: TAGS[words[i++] as number] ?? 'div',
-          attrs: TAGS[words[i - 1] as number] === 'th' ? [' scope="col"'] : [],
+          attrs:
+            TAGS[words[i - 1] as number] === 'th'
+              ? [' scope="col"']
+              : TAGS[words[i - 1] as number] === 'pre'
+                ? [' tabindex="0"', ' role="group"', ' aria-label="Code example"']
+                : [],
           styles: [],
           started: false,
         });
@@ -153,6 +159,9 @@ export function renderWords(words: readonly number[]): Prerendered {
             key === 'class'
               ? value.replace(/\breveal\b/, 'reveal in').replace(/\bfill\b/, 'fill grown')
               : value;
+          // a later value replaces a default of the same name (the code block's label)
+          const at = top.attrs.findIndex((a) => a.startsWith(` ${key}="`));
+          if (at >= 0) top.attrs.splice(at, 1);
           top.attrs.push(` ${key}="${escapeAttr(v)}"`);
         }
         break;

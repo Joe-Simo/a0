@@ -16,7 +16,7 @@ import { findClang, runTool } from '../src/toolchain.js';
 import { LIVE_PROGRAMS, type LiveProgramSpec } from './live-programs.js';
 import { a0WasmFromTables, buildWasmTool, typescriptWasm } from './selfhost-wasm.js';
 import { buildGenerator, generate } from './site-gen.js';
-import { fillShell, prerender } from './site-render.js';
+import { fillShell, SITE_CSP as PAGE_CSP, prerender } from './site-render.js';
 
 const out = join('site', 'dist');
 
@@ -157,6 +157,8 @@ export const SITE_CSP = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+const SCRIPT_CACHE = 'public, max-age=60, stale-while-revalidate=600';
+
 /** Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers. */
 export const VERCEL = {
   cleanUrls: true,
@@ -187,6 +189,20 @@ export const VERCEL = {
       source: '/fonts/(.*)',
       headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
     },
+    // The programs and scripts are not fingerprinted, so a long cache would serve old code after a deploy: a short one,
+    // and a bounded window in which a stale copy is served while a fresh one is fetched.
+    {
+      source: '/(.*)\\.wasm',
+      headers: [{ key: 'Cache-Control', value: SCRIPT_CACHE }],
+    },
+    {
+      source: '/(app|wire|live)\\.js',
+      headers: [{ key: 'Cache-Control', value: SCRIPT_CACHE }],
+    },
+    {
+      source: '/live/(.*)',
+      headers: [{ key: 'Cache-Control', value: SCRIPT_CACHE }],
+    },
   ],
 } as const;
 
@@ -201,6 +217,32 @@ export const ROOT_VERCEL = {
   buildCommand: null,
   outputDirectory: 'deploy',
 } as const;
+
+/** The page Vercel serves for an unknown path: the docs header and footer, one line and a link home. Static, no script. */
+function notFoundPage(docs: { readonly html: string; readonly css: string }): string {
+  const header = /<header[\s\S]*?<\/header>/.exec(docs.html)?.[0] ?? '';
+  const footer = /<footer[\s\S]*?<\/footer>/.exec(docs.html)?.[0] ?? '';
+  const csp = PAGE_CSP.replace(/"/g, '&quot;');
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <title>Page not found - A0</title>
+  <style>${docs.css}</style>
+</head>
+<body>
+  ${header}
+  <main id="content" class="center"><h1>Page not found</h1><p>There is nothing at this address. <a href="/">Go to the home page</a>, the <a href="/docs/">docs</a> or the <a href="/benchmarks">benchmarks</a>.</p></main>
+  ${footer}
+</body>
+</html>
+`;
+}
 
 /** Copy the variable Geist faces out of the `geist` package into site/dist/fonts. */
 async function copyFonts(): Promise<void> {
@@ -285,6 +327,7 @@ async function main(): Promise<void> {
     fillShell(await readFile(join('site', 'bench.html'), 'utf8'), bench),
     'utf8',
   );
+  await writeFile(join(out, '404.html'), notFoundPage(docs), 'utf8');
   await writeAgentFiles(page, docs, bench);
   await copyFonts();
   await writeFile(join(out, 'vercel.json'), `${JSON.stringify(VERCEL, null, 2)}\n`, 'utf8');
