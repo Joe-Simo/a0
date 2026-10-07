@@ -42,7 +42,7 @@ import {
   type Value,
 } from '../src/core.js';
 import { link } from '../src/link.js';
-import { findClang, runTool } from '../src/toolchain.js';
+import { findClang, findGcc, runTool } from '../src/toolchain.js';
 import {
   type Case,
   CORPUS_FUNCTIONS,
@@ -106,12 +106,13 @@ const DRIVER = join('tools', 'native', 'a0.c');
 
 /** Compile the self-hosted front end and the driver to dist/native/a0. */
 export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; fns: number }> {
-  const clang = findClang().path;
-  if (clang === undefined) throw new Error('clang not found');
+  // clang where there is one (the release runners), else gcc (a Windows machine with MSYS2)
+  const clang = findClang().path ?? findGcc().path;
+  if (clang === undefined) throw new Error('neither clang nor gcc found');
   const t0 = performance.now();
   const program = (await link('compiler/native.a0', (p) => readFile(p, 'utf8'))).program;
   const c = compile(program, 'c', {
-    ioInputCapacity: FRONT_END_SOURCE_LIMIT + 3,
+    ioInputCapacity: FRONT_END_SOURCE_LIMIT + 1100,
     ioOutputCapacity: OUTPUT_WORDS,
   }).text;
   await mkdir(NATIVE_DIR, { recursive: true });
@@ -355,7 +356,9 @@ const LINK_PROJECTS: readonly [string, Readonly<Record<string, string>>, string,
     'over-limit',
     {
       'main.a0': `use "big.a0"\n${oneFn('top', 'ret p0')}`,
-      'big.a0': Array.from({ length: 700 }, (_, i) => oneFn(`f${i}`, 'r add p0 1\nret r')).join(''),
+      'big.a0': Array.from({ length: 4000 }, (_, i) => oneFn(`f${i}`, 'r add p0 1\nret r')).join(
+        '',
+      ),
     },
     'top',
     ['1'],
@@ -552,7 +555,7 @@ async function main(): Promise<void> {
           },
           linking: {
             method:
-              'small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit must be refused natively (exit 65: the 16384-byte front end) where the TypeScript linker accepts 1 MiB',
+              'small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit (152 KB) must be refused by `a0 run` (exit 65: the front end reads 131072 bytes) where the TypeScript linker accepts 1 MiB; `a0 check` checks it in chunks (tools/native-check-diff.ts)',
             rows: linking,
           },
           checkTimeBySize: {

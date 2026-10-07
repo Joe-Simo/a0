@@ -15,7 +15,8 @@
  * Linking: `use "path"` lines are resolved as src/link.ts resolves them (relative to the using
  * file, symlinks followed, inside the project root: the nearest ancestor with a package.json,
  * each file once, dependencies first, cycles rejected); the use lines are blanked and the
- * files joined with a newline. The joined text must fit the front end's 16384 bytes.
+ * files joined with a newline. `run`, `bench` and `calls` need the joined text within the front end's
+ * 131072 bytes; `check` has no such limit (chunked check below).
  *
  * Evaluation: the reference semantics of src/core.ts `run`. Every value is flat: a u32 or
  * bool is one word, io none (one token exists per call; its state is global), an array or
@@ -33,6 +34,30 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef _WIN32
+#include <direct.h>
+#include <fcntl.h>
+#include <io.h>
+/* realpath for Windows: the full path with forward slashes, NULL when the file does not exist
+   (symbolic links are not followed). */
+static char *realpath(const char *p, char *out) {
+  if (_fullpath(out, p, PATH_MAX) == NULL || access(out, 0) != 0) return NULL;
+  for (char *c = out; *c; c++)
+    if (*c == '\\') *c = '/';
+  return out;
+}
+#include <windows.h>
+/* clock_gettime(CLOCK_MONOTONIC) of the C runtime is not always linkable here. */
+static int a0_clock(struct timespec *t) {
+  LARGE_INTEGER f, c;
+  QueryPerformanceFrequency(&f);
+  QueryPerformanceCounter(&c);
+  t->tv_sec = (time_t)(c.QuadPart / f.QuadPart);
+  t->tv_nsec = (long)((c.QuadPart % f.QuadPart) * 1000000000LL / f.QuadPart);
+  return 0;
+}
+#define clock_gettime(id, t) a0_clock(t)
+#endif
 #include "checker.c"
 
 #define SRC_LIMIT A0_FRONT_END_LIMIT
@@ -111,6 +136,7 @@ static void project_root(const char *entry_abs) {
     if (strcmp(dir, "/") == 0) return;
     char up[PATH_MAX];
     dir_of(dir, up);
+    if (strcmp(up, dir) == 0 || strcmp(up, ".") == 0 || (strlen(up) < 3 && up[1] == ':')) return;
     strcpy(dir, up);
   }
 }
@@ -193,12 +219,17 @@ static void visit(const char *path, const char *from) {
   nfiles++;
 }
 
-/* The linked source into the front end's input: n, then the n bytes. */
-static void load(const char *entry) {
+/* Link the entry and everything it uses into files[] (dependencies first). */
+static void link_entry(const char *entry) {
   char abs[PATH_MAX];
   if (realpath(entry, abs) == NULL) die(64, "cannot read %s", entry);
   strcpy(entry_abs, abs);
   visit(abs, entry);
+}
+
+/* The linked source into the front end's input: n, then the n bytes. */
+static void load(const char *entry) {
+  link_entry(entry);
   size_t n = 0;
   for (int i = 0; i < nfiles; i++) n += files[i].len + (i > 0 ? 1 : 0);
   if (n > SRC_LIMIT)
@@ -788,8 +819,748 @@ static int cmd_calls(const char *file) {
   return 0;
 }
 
+/* ------------------------------------------------------------------ chunked check */
+
+/*
+ * `a0 check` on a program of any size. The front end holds at most 131072 source bytes, 16384
+ * tokens, 820 functions and 2730 nodes at once (compiler/parse.a0 `fecap`), so a larger linked
+ * program is cut at function boundaries, as tools/bootstrap.ts planChunks cuts the compiler for
+ * the seed: a chunk is the stubs of the earlier functions its functions call (the signature and
+ * `ret 0`, not checked) followed by its own functions as written; `chunkio` (compiler/native.a0)
+ * checks only the own ones, given the iteration bounds of the stubs. The chunks are consecutive,
+ * greedy to a margin below the capacities; a chunk the front end still refuses (limit, parse
+ * phase) is halved, and one function over a capacity is "unsupported" (exit 65: use the
+ * TypeScript checker). The first diagnostic is the one src/core.ts reports: the first parse-phase
+ * error in program order, else the first checker error. Programs the chunks cannot represent
+ * exactly (a `profile` line, a function defined twice across chunks) are unsupported too.
+ */
+
+#define CHUNK_BYTES 120000u
+#define CHUNK_TOKENS 15000u
+#define CHUNK_NODES 2500u
+#define CHUNK_FNS 760u
+#define NO_FN 0xffffffffu
+#define MAX_SOURCE_BYTES (1u << 20)
+
+typedef struct {
+  char *p;
+  size_t n, cap;
+} Buf;
+
+static void bput(Buf *b, const char *s, size_t n) {
+  if (b->n + n + 1 > b->cap) {
+    b->cap = (b->n + n + 1) * 2;
+    b->p = realloc(b->p, b->cap);
+  }
+  memcpy(b->p + b->n, s, n);
+  b->n += n;
+  b->p[b->n] = '\0';
+}
+static void bputs(Buf *b, const char *s) { bput(b, s, strlen(s)); }
+static void bnum(Buf *b, uint32_t v) {
+  char t[16];
+  int k = snprintf(t, sizeof t, "%u", v);
+  bput(b, t, (size_t)k);
+}
+
+static const uint32_t K256[64] = {
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
+
+#define ROR(x, k) (((x) >> (k)) | ((x) << (32 - (k))))
+
+static void sha_block(uint32_t h[8], const uint8_t *p) {
+  uint32_t w[64];
+  for (int i = 0; i < 16; i++)
+    w[i] = (uint32_t)p[4 * i] << 24 | (uint32_t)p[4 * i + 1] << 16 | (uint32_t)p[4 * i + 2] << 8 |
+           (uint32_t)p[4 * i + 3];
+  for (int i = 16; i < 64; i++) {
+    uint32_t s0 = ROR(w[i - 15], 7) ^ ROR(w[i - 15], 18) ^ (w[i - 15] >> 3);
+    uint32_t s1 = ROR(w[i - 2], 17) ^ ROR(w[i - 2], 19) ^ (w[i - 2] >> 10);
+    w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+  }
+  uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+  for (int i = 0; i < 64; i++) {
+    uint32_t s1 = ROR(e, 6) ^ ROR(e, 11) ^ ROR(e, 25);
+    uint32_t ch = (e & f) ^ (~e & g);
+    uint32_t t1 = hh + s1 + ch + K256[i] + w[i];
+    uint32_t s0 = ROR(a, 2) ^ ROR(a, 13) ^ ROR(a, 22);
+    uint32_t mj = (a & b) ^ (a & c) ^ (b & c);
+    uint32_t t2 = s0 + mj;
+    hh = g;
+    g = f;
+    f = e;
+    e = d + t1;
+    d = c;
+    c = b;
+    b = a;
+    a = t1 + t2;
+  }
+  h[0] += a;
+  h[1] += b;
+  h[2] += c;
+  h[3] += d;
+  h[4] += e;
+  h[5] += f;
+  h[6] += g;
+  h[7] += hh;
+}
+
+/* The first 12 hex digits of the SHA-256 of the bytes (src/edit.ts revision). */
+static void sha256_hex12(const uint8_t *data, size_t len, char out[13]) {
+  uint32_t h[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+                   0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+  size_t i = 0;
+  for (; i + 64 <= len; i += 64) sha_block(h, data + i);
+  uint8_t tail[128];
+  size_t rest = len - i;
+  memcpy(tail, data + i, rest);
+  tail[rest++] = 0x80;
+  size_t total = rest <= 56 ? 64 : 128;
+  memset(tail + rest, 0, total - rest);
+  uint64_t bits = (uint64_t)len * 8;
+  for (int k = 0; k < 8; k++) tail[total - 1 - k] = (uint8_t)(bits >> (8 * k));
+  sha_block(h, tail);
+  if (total == 128) sha_block(h, tail + 64);
+  for (int k = 0; k < 6; k++) snprintf(out + 2 * k, 3, "%02x", (h[k / 4] >> (24 - 8 * (k % 4))) & 255);
+  out[12] = '\0';
+}
+
+/* -- the linked source and its functions -- */
+
+typedef struct {
+  size_t a, b;   /* [a,b) of the linked source: what precedes the function, then it, to its end line */
+  size_t ha, hb; /* the header line, without its newline */
+  size_t na;
+  uint32_t nlen; /* the name */
+  uint32_t toks, nodes, bound;
+} Unit;
+
+static char *joined;
+static size_t jlen;
+static size_t file_off[MAX_FILES];
+static Unit *units;
+static uint32_t nunits;
+static int *htab;
+static uint32_t hmask;
+static bool has_dup;
+static uint32_t dup_unit; /* the first function defined a second time */
+
+static uint32_t hash_name(const char *s, uint32_t n) {
+  uint32_t h = 2166136261u;
+  for (uint32_t i = 0; i < n; i++) h = (h ^ (unsigned char)s[i]) * 16777619u;
+  return h;
+}
+
+/* The unit that defines the name, or -1. */
+static int find_unit(const char *s, uint32_t n) {
+  for (uint32_t h = hash_name(s, n) & hmask;; h = (h + 1) & hmask) {
+    int u = htab[h];
+    if (u < 0) return -1;
+    if (units[u].nlen == n && memcmp(joined + units[u].na, s, n) == 0) return u;
+  }
+}
+
+typedef struct {
+  const char *p;
+  uint32_t n;
+} Word;
+
+/* The first `max` words of the cleaned line [b,e). */
+static int words_of(const char *b, const char *e, Word *w, int max) {
+  int k = 0;
+  while (b < e && k < max) {
+    while (b < e && (*b == ' ' || *b == '\t')) b++;
+    if (b >= e) break;
+    const char *s = b;
+    while (b < e && *b != ' ' && *b != '\t') b++;
+    w[k].p = s;
+    w[k].n = (uint32_t)(b - s);
+    k++;
+  }
+  return k;
+}
+
+static bool word_is(Word w, const char *s) { return w.n == strlen(s) && memcmp(w.p, s, w.n) == 0; }
+
+/* Tokens of the lexer (compiler/lex.a0) in [a,b), counted without producing them. */
+static uint32_t count_tokens(size_t a, size_t b) {
+  uint32_t t = 0;
+  size_t i = a;
+  while (i < b) {
+    unsigned char c = (unsigned char)joined[i];
+    if (c == ' ' || c == '\t' || c == '\r') i++;
+    else if (c == '\n') {
+      t++;
+      i++;
+    } else if (c == '#') {
+      while (i < b && joined[i] != '\n') i++;
+    } else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') {
+      while (i < b) {
+        unsigned char d = (unsigned char)joined[i];
+        if (!((d >= 'a' && d <= 'z') || (d >= '0' && d <= '9') || d == '_')) break;
+        i++;
+      }
+      t++;
+    } else if (c == '"') {
+      i++;
+      while (i < b && joined[i] != '"') i += joined[i] == '\\' ? 2 : 1;
+      i++;
+      t++;
+    } else if (c == '-' && i + 1 < b && joined[i + 1] == '>') {
+      i += 2;
+      t++;
+    } else {
+      i++;
+      t++;
+    }
+  }
+  return t;
+}
+
+/* Cut the linked source into units, one per `fn ... end`. */
+static void cut_units(void) {
+  size_t cap = 64;
+  units = malloc(cap * sizeof *units);
+  size_t pending = 0;
+  bool inside = false;
+  Unit cur;
+  memset(&cur, 0, sizeof cur);
+  size_t line = 0;
+  while (line < jlen) {
+    char *nl = memchr(joined + line, '\n', jlen - line);
+    size_t le = nl == NULL ? jlen : (size_t)(nl - joined);
+    const char *b, *e;
+    clean_line(joined + line, joined + le, &b, &e);
+    Word w[3];
+    int k = words_of(b, e, w, 3);
+    if (!inside) {
+      if (k >= 1 && word_is(w[0], "fn")) {
+        memset(&cur, 0, sizeof cur);
+        cur.a = pending;
+        cur.ha = line;
+        cur.hb = le > line && joined[le - 1] == '\r' ? le - 1 : le;
+        if (k >= 2) {
+          cur.na = (size_t)(w[1].p - joined);
+          cur.nlen = w[1].n;
+        }
+        inside = true;
+      }
+    } else if (k == 1 && word_is(w[0], "end")) {
+      cur.b = nl == NULL ? jlen : le + 1;
+      if (nunits == cap) units = realloc(units, (cap *= 2) * sizeof *units);
+      units[nunits++] = cur;
+      pending = cur.b;
+      inside = false;
+    }
+    line = le + 1;
+  }
+  if (inside) {
+    cur.b = jlen;
+    units = realloc(units, (nunits + 1) * sizeof *units);
+    units[nunits++] = cur;
+  } else if (nunits > 0) units[nunits - 1].b = jlen;
+  /* per-unit counts and the name table */
+  uint32_t sz = 16;
+  while (sz < 2 * nunits + 2) sz *= 2;
+  htab = malloc(sz * sizeof *htab);
+  for (uint32_t i = 0; i < sz; i++) htab[i] = -1;
+  hmask = sz - 1;
+  for (uint32_t u = 0; u < nunits; u++) {
+    Unit *x = &units[u];
+    x->toks = count_tokens(x->a, x->b);
+    uint32_t lines = 0;
+    for (size_t p = x->ha; p < x->b;) {
+      char *nl2 = memchr(joined + p, '\n', x->b - p);
+      size_t pe = nl2 == NULL ? x->b : (size_t)(nl2 - joined);
+      const char *b, *e;
+      clean_line(joined + p, joined + pe, &b, &e);
+      if (b < e) lines++;
+      p = pe + 1;
+    }
+    x->nodes = lines > 3 ? lines - 3 : 0;
+    if (x->nlen == 0) continue;
+    uint32_t h = hash_name(joined + x->na, x->nlen) & hmask;
+    for (;; h = (h + 1) & hmask) {
+      int o = htab[h];
+      if (o < 0) {
+        htab[h] = (int)u;
+        break;
+      }
+      if (units[o].nlen == x->nlen && memcmp(joined + units[o].na, joined + x->na, x->nlen) == 0) {
+        if (!has_dup) dup_unit = u;
+        has_dup = true;
+        break;
+      }
+    }
+  }
+}
+
+/* -- the diagnostic -- */
+
+typedef struct {
+  bool set;
+  uint32_t code, fn, node, token;
+  size_t off;   /* byte of the offending line in the linked source */
+  char at[128]; /* a checker error: NAME.ID of the node (NAME alone for a header, NAME.ret) */
+} Diag;
+
+/* first_check: the first checker error; first_parse: the first parse-phase error a chunk found;
+   pre: a parse-phase error found before the chunks run (`pre_detect`) */
+static Diag first_check, first_parse, pre;
+
+/*
+ * Parse-phase errors the chunks cannot see, found before they run: a function defined a second
+ * time (the first one may sit in an earlier chunk that the second one does not call) and a number
+ * above 4294967295 (src/core.ts A0004; the self-hosted lexer keeps the value modulo 2^32).
+ * `pre` is the earlier of the two; a chunk that finds an earlier parse-phase error of its own
+ * wins over it, anything after it does not matter.
+ */
+static void pre_detect(void) {
+  size_t over = (size_t)-1;
+  size_t i = 0;
+  while (i < jlen) {
+    unsigned char c = (unsigned char)joined[i];
+    if (c == '#') {
+      while (i < jlen && joined[i] != '\n') i++;
+    } else if (c == '"') {
+      i++;
+      while (i < jlen && joined[i] != '"') i += joined[i] == '\\' ? 2 : 1;
+      i++;
+    } else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') {
+      size_t s = i;
+      bool digits = true;
+      while (i < jlen) {
+        unsigned char d = (unsigned char)joined[i];
+        if (!((d >= 'a' && d <= 'z') || (d >= '0' && d <= '9') || d == '_')) break;
+        if (d < '0' || d > '9') digits = false;
+        i++;
+      }
+      if (digits && over == (size_t)-1) {
+        size_t z = s;
+        while (z + 1 < i && joined[z] == '0') z++;
+        size_t len = i - z;
+        if (len > 10 || (len == 10 && memcmp(joined + z, "4294967295", 10) > 0)) over = s;
+      }
+    } else i++;
+  }
+  size_t dup = has_dup ? units[dup_unit].ha : (size_t)-1;
+  if (over == (size_t)-1 && dup == (size_t)-1) return;
+  pre.set = true;
+  pre.fn = NO_FN;
+  if (over < dup) {
+    pre.code = 4;
+    pre.off = over;
+  } else {
+    pre.code = 1;
+    pre.off = dup;
+  }
+}
+
+
+static void line_of(size_t off, const char **path, uint32_t *line) {
+  int f = 0;
+  for (int i = 0; i < nfiles; i++)
+    if (file_off[i] <= off) f = i;
+  uint32_t l = 1;
+  /* the end of the file belongs to its last line, as the TypeScript parser counts it */
+  if (off >= jlen && jlen > 0) off = jlen - 1;
+  for (size_t i = file_off[f]; i < off && i < jlen; i++)
+    if (joined[i] == '\n') l++;
+  *path = files[f].path;
+  *line = l;
+}
+
+/* The offset of the line of node `node` of unit u (the header for NO_FN, the ret line past the nodes). */
+static size_t node_line(uint32_t u, uint32_t node, char *at, size_t atn) {
+  const Unit *x = &units[u];
+  snprintf(at, atn, "%.*s", (int)x->nlen, joined + x->na);
+  if (node == NO_FN) return x->ha;
+  uint32_t seen = 0;
+  size_t last = x->ha;
+  for (size_t p = x->hb; p < x->b;) {
+    char *nl = memchr(joined + p, '\n', x->b - p);
+    size_t pe = nl == NULL ? x->b : (size_t)(nl - joined);
+    const char *b, *e;
+    clean_line(joined + p, joined + pe, &b, &e);
+    Word w[2];
+    int k = words_of(b, e, w, 2);
+    if (k >= 1) {
+      if (word_is(w[0], "end")) return last;
+      if (word_is(w[0], "ret")) {
+        snprintf(at + strlen(at), atn - strlen(at), ".ret");
+        return p;
+      }
+      if (seen == node) {
+        snprintf(at + strlen(at), atn - strlen(at), ".%.*s", (int)w[0].n, w[0].p);
+        return p;
+      }
+      seen++;
+      last = p;
+    }
+    p = pe + 1;
+  }
+  return last;
+}
+
+/* -- one chunk -- */
+
+static Buf chunk_text;
+static uint32_t *stub_list;
+static uint32_t *stub_mark;
+static uint32_t stub_stamp;
+static Buf lines_out;
+static bool want_lines;
+
+static void give_up(const char *why) {
+  fprintf(stderr, "a0: %s: native check unsupported (%s); use the TypeScript checker\n", entry_abs,
+          why);
+  exit(65);
+}
+
+/* The stubs [out list, sorted] the own units [ua,ub) need, and their header lines. */
+static uint32_t collect_stubs(uint32_t ua, uint32_t ub) {
+  uint32_t n = 0;
+  stub_stamp++;
+  for (uint32_t u = ua; u < ub; u++) {
+    const Unit *x = &units[u];
+    for (size_t p = x->hb; p < x->b;) {
+      char *nl = memchr(joined + p, '\n', x->b - p);
+      size_t pe = nl == NULL ? x->b : (size_t)(nl - joined);
+      const char *b, *e;
+      clean_line(joined + p, joined + pe, &b, &e);
+      Word w[4];
+      int k = words_of(b, e, w, 4);
+      int names = 0;
+      if (k >= 3 && (word_is(w[1], "call") || word_is(w[1], "fold"))) names = 1;
+      if (k >= 4 && word_is(w[1], "loop")) names = 2;
+      for (int j = 0; j < names; j++) {
+        int d = find_unit(w[2 + j].p, w[2 + j].n);
+        if (d >= 0 && (uint32_t)d < ua && stub_mark[d] != stub_stamp) {
+          stub_mark[d] = stub_stamp;
+          stub_list[n++] = (uint32_t)d;
+        }
+      }
+      p = pe + 1;
+    }
+  }
+  /* sorted: a plain insertion sort (a chunk has a few hundred stubs at most) */
+  for (uint32_t i = 1; i < n; i++) {
+    uint32_t v = stub_list[i], j = i;
+    while (j > 0 && stub_list[j - 1] > v) {
+      stub_list[j] = stub_list[j - 1];
+      j--;
+    }
+    stub_list[j] = v;
+  }
+  return n;
+}
+
+/* The type of the type table entry t, as src/core.ts formatType writes it. */
+static void fmt_type(Buf *b, const uint32_t *ty, const uint32_t *tl, uint32_t t) {
+  uint32_t tag = ty[3 * t], x = ty[3 * t + 1], y = ty[3 * t + 2];
+  if (tag == 1) bputs(b, "u32");
+  else if (tag == 2) bputs(b, "bool");
+  else if (tag == 3) bputs(b, "io");
+  else if (tag == 4) {
+    fmt_type(b, ty, tl, y);
+    bputs(b, "x");
+    bnum(b, x);
+  } else {
+    bputs(b, "(");
+    for (uint32_t k = 0; k < y; k++) {
+      if (k > 0) bputs(b, ",");
+      fmt_type(b, ty, tl, tl[x + k]);
+    }
+    bputs(b, ")");
+  }
+}
+
+static const char *const OPS[] = {"",    "mov",  "add",  "sub",  "mul",  "and",  "or",   "xor",
+                                  "shl", "shr",  "div",  "rem",  "eq",   "ne",   "lt",   "le",
+                                  "gt",  "ge",   "select", "call", "fold", "loop", "arr", "rec",
+                                  "text", "get", "set",  "at",   "put",  "read", "write", "puts",
+                                  "cadd", "csub", "cmul", "cdiv", "crem", "cget"};
+
+typedef struct {
+  const uint32_t *ty, *tl, *pool, *sym, *fnw, *nodew, *argw;
+} Tables;
+
+static void put_sym(Buf *b, const Tables *t, uint32_t s) {
+  uint32_t start = t->sym[2 * s], len = t->sym[2 * s + 1];
+  for (uint32_t k = 0; k < len; k++) {
+    char c = (char)t->pool[start + k];
+    bput(b, &c, 1);
+  }
+}
+
+static void put_operand(Buf *b, const Tables *t, uint32_t nfirst, uint32_t kind, uint32_t v) {
+  if (kind == 1) put_sym(b, t, t->nodew[6 * (nfirst + v)]);
+  else if (kind == 2) {
+    bputs(b, "p");
+    bnum(b, v);
+  } else if (kind == 3) bnum(b, v);
+  else bputs(b, v ? "true" : "false");
+}
+
+/* The line of `a0 check` for function i of the tables: name (params) -> result: N nodes, rev H. */
+static void fn_line(Buf *out, const Tables *t, uint32_t i, const char *prefix) {
+  const uint32_t *w = t->fnw + 7 * i;
+  uint32_t nparams = w[1], tfirst = w[2], result = w[3], nfirst = w[4], nn = w[5], ret = w[6];
+  Buf c = {0};
+  /* the canonical form: src/core.ts formatFunction */
+  bputs(&c, "fn ");
+  put_sym(&c, t, w[0]);
+  for (uint32_t k = 0; k < nparams; k++) {
+    bputs(&c, " ");
+    fmt_type(&c, t->ty, t->tl, t->tl[tfirst + k]);
+  }
+  bputs(&c, " -> ");
+  fmt_type(&c, t->ty, t->tl, result);
+  bputs(&c, "\n");
+  for (uint32_t j = 0; j < nn; j++) {
+    const uint32_t *nd = t->nodew + 6 * (nfirst + j);
+    put_sym(&c, t, nd[0]);
+    if (nd[1] == 24) {
+      bputs(&c, " text \"");
+      for (uint32_t k = 0; k < nd[2]; k++) {
+        uint32_t byte = t->argw[2 * (nd[3] + k) + 1];
+        char ch = (char)byte;
+        if (ch == '\\') bputs(&c, "\\\\");
+        else if (ch == '"') bputs(&c, "\\\"");
+        else if (ch == '\n') bputs(&c, "\\n");
+        else if (ch == '\t') bputs(&c, "\\t");
+        else bput(&c, &ch, 1);
+      }
+      bputs(&c, "\"\n");
+      continue;
+    }
+    bputs(&c, " ");
+    bputs(&c, nd[1] < sizeof OPS / sizeof OPS[0] ? OPS[nd[1]] : "?");
+    if (nd[1] == 21) {
+      bputs(&c, " ");
+      put_sym(&c, t, t->fnw[7 * nd[5]]);
+    }
+    if (nd[1] == 19 || nd[1] == 20 || nd[1] == 21) {
+      bputs(&c, " ");
+      put_sym(&c, t, t->fnw[7 * nd[4]]);
+    }
+    for (uint32_t k = 0; k < nd[2]; k++) {
+      bputs(&c, " ");
+      put_operand(&c, t, nfirst, t->argw[2 * (nd[3] + k)], t->argw[2 * (nd[3] + k) + 1]);
+    }
+    bputs(&c, "\n");
+  }
+  uint32_t rk = ret >> 28, rv = ret & 0x0fffffffu;
+  if (rk == 5) {
+    rk = t->argw[2 * rv];
+    rv = t->argw[2 * rv + 1];
+  }
+  bputs(&c, "ret ");
+  put_operand(&c, t, nfirst, rk, rv);
+  bputs(&c, "\nend");
+  char hex[13];
+  sha256_hex12((const uint8_t *)c.p, c.n, hex);
+  free(c.p);
+  bputs(out, prefix);
+  put_sym(out, t, w[0]);
+  bputs(out, " (");
+  for (uint32_t k = 0; k < nparams; k++) {
+    if (k > 0) bputs(out, ", ");
+    fmt_type(out, t->ty, t->tl, t->tl[tfirst + k]);
+  }
+  bputs(out, ") -> ");
+  fmt_type(out, t->ty, t->tl, result);
+  bputs(out, ": ");
+  bnum(out, nn);
+  bputs(out, " nodes, rev ");
+  bputs(out, hex);
+  bputs(out, "\n");
+}
+
+/* Check the own units [ua,ub) as one chunk; returns true when a parse-phase error ends the run. */
+static bool run_chunk(uint32_t ua, uint32_t ub) {
+  uint32_t ns = collect_stubs(ua, ub);
+  chunk_text.n = 0;
+  if (chunk_text.p != NULL) chunk_text.p[0] = '\0';
+  for (uint32_t i = 0; i < ns; i++) {
+    const Unit *s = &units[stub_list[i]];
+    bput(&chunk_text, joined + s->ha, s->hb - s->ha);
+    bputs(&chunk_text, "\nret 0\nend\n");
+  }
+  size_t stub_bytes = chunk_text.n;
+  size_t own_a = ua < ub ? units[ua].a : 0, own_b = ua < ub ? units[ub - 1].b : jlen;
+  bput(&chunk_text, joined + own_a, own_b - own_a);
+  size_t n = chunk_text.n;
+  if (n > SRC_LIMIT) {
+    if (ub - ua > 1) {
+      uint32_t mid = ua + (ub - ua) / 2;
+      return run_chunk(ua, mid) || run_chunk(mid, ub);
+    }
+    give_up("one function over a front end capacity");
+  }
+  for (size_t i = 0; i < n; i++) io.input[1 + i] = (unsigned char)chunk_text.p[i];
+  io.input[0] = (uint32_t)n;
+  io.input[n + 1] = ns;
+  for (uint32_t i = 0; i < ns; i++) io.input[n + 2 + i] = units[stub_list[i]].bound;
+  io.ninput = (uint32_t)n + 2u + ns;
+  io.position = 0;
+  io.noutput = 0;
+  uint32_t code = a0_chunkio(&io);
+  uint32_t fn = io.output[2], node = io.output[3], tokstart = io.output[4], nhc = io.output[5];
+  if (code == 4u && fn == NO_FN) {
+    if (ub - ua > 1) {
+      uint32_t mid = ua + (ub - ua) / 2;
+      return run_chunk(ua, mid) || run_chunk(mid, ub);
+    }
+    give_up("one function over a front end capacity");
+  }
+  if (code != 0u && fn == NO_FN) {
+    /* parse phase: the first such error in program order ends the check */
+    if (tokstart < stub_bytes) give_up("a diagnostic inside a stub");
+    first_parse.set = true;
+    first_parse.code = code;
+    first_parse.fn = NO_FN;
+    first_parse.node = node;
+    first_parse.token = node;
+    first_parse.off = own_a + (tokstart - stub_bytes);
+    return true;
+  }
+  if (code != 0u) {
+    if (!first_check.set) {
+      first_check.set = true;
+      first_check.code = code;
+      first_check.fn = ua + (fn - ns);
+      first_check.node = node;
+      first_check.off = node_line(ua + (fn - ns), node, first_check.at, sizeof first_check.at);
+    }
+    return false;
+  }
+  /* checked: keep the iteration bounds of the own functions, and the lines of `a0 check` */
+  const uint32_t *fst = io.output + 6;
+  for (uint32_t k = ns; k < nhc; k++)
+    if (ua + (k - ns) < nunits) units[ua + (k - ns)].bound = fst[k];
+  if (want_lines && !first_check.set) {
+    uint32_t pos = 6 + nhc, cnt;
+    Tables t;
+    t.ty = table(&pos, &cnt);
+    t.tl = table(&pos, &cnt);
+    table(&pos, &cnt); /* the node types */
+    t.pool = table(&pos, &cnt);
+    t.sym = table(&pos, &cnt);
+    t.fnw = table(&pos, &cnt);
+    t.nodew = table(&pos, &cnt);
+    t.argw = table(&pos, &cnt);
+    for (uint32_t k = ns; k < nhc; k++) fn_line(&lines_out, &t, k, "");
+  }
+  return false;
+}
+
+static int cmd_check(const char *file, bool lines) {
+  want_lines = lines;
+  link_entry(file);
+  size_t n = 0;
+  for (int i = 0; i < nfiles; i++) {
+    if (files[i].len > MAX_SOURCE_BYTES) give_up("a file over 1 MiB");
+    n += files[i].len + (i > 0 ? 1 : 0);
+  }
+  if (n > MAX_SOURCE_BYTES) give_up("a linked program over 1 MiB");
+  joined = malloc(n + 1);
+  jlen = 0;
+  for (int i = 0; i < nfiles; i++) {
+    if (i > 0) joined[jlen++] = '\n';
+    file_off[i] = jlen;
+    memcpy(joined + jlen, files[i].text, files[i].len);
+    jlen += files[i].len;
+  }
+  joined[jlen] = '\0';
+  for (size_t p = 0; p < jlen;) {
+    char *nl = memchr(joined + p, '\n', jlen - p);
+    size_t pe = nl == NULL ? jlen : (size_t)(nl - joined);
+    const char *b, *e;
+    clean_line(joined + p, joined + pe, &b, &e);
+    Word w[1];
+    if (words_of(b, e, w, 1) == 1 && word_is(w[0], "profile")) give_up("a profile line");
+    p = pe + 1;
+  }
+  cut_units();
+  pre_detect();
+  stub_list = malloc((nunits + 1) * sizeof *stub_list);
+  stub_mark = calloc(nunits + 1, sizeof *stub_mark);
+  /* the plan: consecutive units while a chunk stays under the margins */
+  if (nunits == 0) run_chunk(0, 0);
+  else {
+    uint32_t ua = 0;
+    bool stop = false;
+    while (ua < nunits && !stop) {
+      uint32_t ub = ua;
+      size_t bytes = 0;
+      uint32_t toks = 0, nodes = 0, fns = 0;
+      while (ub < nunits) {
+        const Unit *x = &units[ub];
+        size_t b2 = bytes + (x->b - x->a);
+        uint32_t t2 = toks + x->toks, n2 = nodes + x->nodes, f2 = fns + 1;
+        if (ub > ua && (b2 > CHUNK_BYTES || t2 > CHUNK_TOKENS || n2 > CHUNK_NODES || f2 > CHUNK_FNS))
+          break;
+        bytes = b2;
+        toks = t2;
+        nodes = n2;
+        fns = f2;
+        ub++;
+      }
+      /* the stubs the chunk needs weigh on the margins too: shrink while they overflow */
+      for (;;) {
+        uint32_t ns = collect_stubs(ua, ub);
+        if (ub - ua > 1 &&
+            (bytes + (size_t)ns * 96 > CHUNK_BYTES + 6000 || toks + ns * 16 > CHUNK_TOKENS + 800 ||
+             fns + ns > CHUNK_FNS + 40)) {
+          ub--;
+          const Unit *x = &units[ub];
+          bytes -= x->b - x->a;
+          toks -= x->toks;
+          nodes -= x->nodes;
+          fns--;
+        } else break;
+      }
+      if (run_chunk(ua, ub)) stop = true;
+      /* the chunk that holds the pre-detected error is the last that matters */
+      if (pre.set && pre.off < units[ub - 1].b) stop = true;
+      ua = ub;
+    }
+  }
+  const Diag *d = NULL;
+  if (first_parse.set && (!pre.set || first_parse.off < pre.off)) d = &first_parse;
+  else if (pre.set) d = &pre;
+  else if (first_check.set) d = &first_check;
+  if (d == NULL) {
+    if (want_lines) fputs(lines_out.p == NULL ? "" : lines_out.p, stdout);
+    else puts("ok");
+    return 0;
+  }
+  const char *path;
+  uint32_t line;
+  line_of(d->off, &path, &line);
+  const char *kind = d->code < 5u ? KINDS[d->code] : "unknown";
+  if (d->fn == NO_FN)
+    fprintf(stderr, "%s: %s error %u at token %u (%s:%u)\n", file, kind, d->code, d->token, path,
+            line);
+  else {
+    fprintf(stderr, "%s: %s error %u in function %u at node %u (%s:%u)\n", file, kind, d->code,
+            d->fn, d->node, path, line);
+    fprintf(stderr, "a0-at: %s\n", d->at);
+  }
+  if (d == &first_parse && (d->code == 1u || d->code == 2u)) suggest(d->token);
+  return (int)d->code;
+}
+
 static void usage(void) {
-  fputs("usage:\n  a0 check <file.a0>\n  a0 run <file.a0> <function> <args...>\n"
+  fputs("usage:\n  a0 check [--lines] <file.a0>\n  a0 run <file.a0> <function> <args...>\n"
         "  a0 bench <file.a0> <function> <iterations>\n  a0 calls <file.a0>   # calls on stdin\n",
         stderr);
   exit(64);
@@ -799,16 +1570,17 @@ int main(int argc, char **argv) {
 #ifdef A0_PROFILE
   last_ = now_us();
 #endif
+#ifdef _WIN32
+  /* the output is bytes, not text: no LF to CRLF */
+  _setmode(_fileno(stdout), _O_BINARY);
+  _setmode(_fileno(stderr), _O_BINARY);
+  _setmode(_fileno(stdin), _O_BINARY);
+#endif
   if (argc < 3) usage();
   const char *cmd = argv[1], *file = argv[2];
-  if (strcmp(cmd, "check") == 0 && argc == 3) {
-    uint32_t code = front(file, false);
-    if (code == 0) {
-      puts("ok");
-      return 0;
-    }
-    return diagnose(file, code);
-  }
+  if (strcmp(cmd, "check") == 0 && argc == 3) return cmd_check(file, false);
+  if (strcmp(cmd, "check") == 0 && argc == 4 && strcmp(argv[2], "--lines") == 0)
+    return cmd_check(argv[3], true);
   if (strcmp(cmd, "run") == 0 && argc >= 4) return cmd_run(file, argv[3], argc - 4, argv + 4);
   if (strcmp(cmd, "bench") == 0 && argc == 5) return cmd_bench(file, argv[3], argv[4]);
   if (strcmp(cmd, "calls") == 0 && argc == 3) return cmd_calls(file);
