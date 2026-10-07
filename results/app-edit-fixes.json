@@ -1,0 +1,434 @@
+{
+  "generatedAt": "2026-10-07T12:23:54.490Z",
+  "tool": "tools/app-edit-fixes-summary.ts",
+  "preRegistration": "docs/history/2026-10-07-failure-fixes-preregistration.md",
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "meaning": "The application-scale edit benchmark (deps view, word-key legend) rerun with fresh Haiku and Sonnet subagents (one shot plus one repair) on the four tasks Haiku did not get accepted in the keys arm, after the five failure-driven changes of docs/design/failure-taxonomy.md. The other ten tasks carry over from the keys arm. Four tasks and one trial per cell: the counts cannot separate a gain from sampling noise.",
+  "fixTasks": [
+    "fat-arrow",
+    "profile-canonical",
+    "param-limit",
+    "number-leading-zero"
+  ],
+  "cells": {
+    "haiku/a0-keys": {
+      "n": 14,
+      "oneShot": {
+        "k": 8,
+        "ci95": [
+          0.326,
+          0.786
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 10,
+        "ci95": [
+          0.454,
+          0.883
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2846.6,
+        "session10": 2143.5,
+        "unbounded": 2065.4
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3]"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 2: unexpected 'end' before ret fix: a function is `fn ...` then instruction lines, `ret X`, `end`: write `ret X` before `end`, and start the next `f"
+        },
+        {
+          "task": "param-limit",
+          "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse: line 4: and expects 2 operands, got 3 fix: write exactly 2 operands after and"
+        }
+      ],
+      "acceptedCount": 10,
+      "cost": 2143.5
+    },
+    "haiku/a0-fixes": {
+      "n": 14,
+      "oneShot": {
+        "k": 8,
+        "ci95": [
+          0.326,
+          0.786
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 10,
+        "ci95": [
+          0.454,
+          0.883
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2851.8,
+        "session10": 2148.7,
+        "unbounded": 2070.6
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3,9,9,1,9,10,1,1,12,3,5"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+        },
+        {
+          "task": "param-limit",
+          "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse of \"fn f u32 -> u32\\na add p0 007\\nret a\\nend\\n\": code expected 1, got 0"
+        }
+      ],
+      "acceptedCount": 10,
+      "cost": 2148.7
+    },
+    "haiku/a0-keys-on-fix-tasks": {
+      "n": 4,
+      "oneShot": {
+        "k": 0,
+        "ci95": [
+          0,
+          0.49
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 0,
+        "ci95": [
+          0,
+          0.49
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": null,
+        "session10": null,
+        "unbounded": null
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3]"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 2: unexpected 'end' before ret fix: a function is `fn ...` then instruction lines, `ret X`, `end`: write `ret X` before `end`, and start the next `f"
+        },
+        {
+          "task": "param-limit",
+          "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse: line 4: and expects 2 operands, got 3 fix: write exactly 2 operands after and"
+        }
+      ],
+      "acceptedCount": 0,
+      "cost": null
+    },
+    "haiku/a0-fixes-on-fix-tasks": {
+      "n": 4,
+      "oneShot": {
+        "k": 0,
+        "ci95": [
+          0,
+          0.49
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 0,
+        "ci95": [
+          0,
+          0.49
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": null,
+        "session10": null,
+        "unbounded": null
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3,9,9,1,9,10,1,1,12,3,5"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+        },
+        {
+          "task": "param-limit",
+          "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse of \"fn f u32 -> u32\\na add p0 007\\nret a\\nend\\n\": code expected 1, got 0"
+        }
+      ],
+      "acceptedCount": 0,
+      "cost": null
+    },
+    "sonnet/a0-keys": {
+      "n": 14,
+      "oneShot": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 1987.4,
+        "session10": 1485.2,
+        "unbounded": 1429.4
+      },
+      "notAcceptedAfterRepair": [],
+      "acceptedCount": 14,
+      "cost": 1485.2
+    },
+    "sonnet/a0-fixes": {
+      "n": 14,
+      "oneShot": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2142.5,
+        "session10": 1601.7,
+        "unbounded": 1541.6
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "profile-canonical",
+          "first": "type: pass1.ret: expected (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32), got (u32x128x128,u"
+        }
+      ],
+      "acceptedCount": 13,
+      "cost": 1601.7
+    },
+    "sonnet/a0-keys-on-fix-tasks": {
+      "n": 4,
+      "oneShot": {
+        "k": 3,
+        "ci95": [
+          0.301,
+          0.954
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 4,
+        "ci95": [
+          0.51,
+          1
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 3567.8,
+        "session10": 3065.6,
+        "unbounded": 3009.8
+      },
+      "notAcceptedAfterRepair": [],
+      "acceptedCount": 4,
+      "cost": 3065.6
+    },
+    "sonnet/a0-fixes-on-fix-tasks": {
+      "n": 4,
+      "oneShot": {
+        "k": 3,
+        "ci95": [
+          0.301,
+          0.954
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 3,
+        "ci95": [
+          0.301,
+          0.954
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 4766.8,
+        "session10": 4097.2,
+        "unbounded": 4022.8
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "profile-canonical",
+          "first": "type: pass1.ret: expected (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32), got (u32x128x128,u"
+        }
+      ],
+      "acceptedCount": 3,
+      "cost": 4097.2
+    }
+  },
+  "rerunTrials": {
+    "haiku": [
+      {
+        "task": "fat-arrow",
+        "oneShot": false,
+        "accepted": false,
+        "modelCalls": 2,
+        "attempts": [
+          {
+            "status": "refused",
+            "first": "parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `arrow1 and k6 isgt` above, then `arrow or arrow1 (and k11 isgt)`"
+          },
+          {
+            "status": "tests",
+            "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3,9,9,1,9,10,1,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1]"
+          }
+        ]
+      },
+      {
+        "task": "profile-canonical",
+        "oneShot": false,
+        "accepted": false,
+        "modelCalls": 2,
+        "attempts": [
+          {
+            "status": "refused",
+            "first": "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+          },
+          {
+            "status": "refused",
+            "first": "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+          }
+        ]
+      },
+      {
+        "task": "param-limit",
+        "oneShot": false,
+        "accepted": false,
+        "modelCalls": 2,
+        "attempts": [
+          {
+            "status": "tests",
+            "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+          },
+          {
+            "status": "tests",
+            "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+          }
+        ]
+      },
+      {
+        "task": "number-leading-zero",
+        "oneShot": false,
+        "accepted": false,
+        "modelCalls": 2,
+        "attempts": [
+          {
+            "status": "refused",
+            "first": "parse: line 8: select expects 3 operands, got 5 fix: write exactly 3 operands after select"
+          },
+          {
+            "status": "tests",
+            "first": "parse of \"fn f u32 -> u32\\na add p0 007\\nret a\\nend\\n\": code expected 1, got 0"
+          }
+        ]
+      }
+    ],
+    "sonnet": [
+      {
+        "task": "fat-arrow",
+        "oneShot": true,
+        "accepted": true,
+        "modelCalls": 1,
+        "attempts": [
+          {
+            "status": "accepted",
+            "first": null
+          }
+        ]
+      },
+      {
+        "task": "profile-canonical",
+        "oneShot": false,
+        "accepted": false,
+        "modelCalls": 2,
+        "attempts": [
+          {
+            "status": "tests",
+            "first": "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": code expected 0, got 1"
+          },
+          {
+            "status": "refused",
+            "first": "type: pass1.ret: expected (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x128x32,u32x128x16,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32), got (u32x128x128,u32x128x64,u32x128x128,u32x128x128,u32x12"
+          }
+        ]
+      },
+      {
+        "task": "param-limit",
+        "oneShot": true,
+        "accepted": true,
+        "modelCalls": 1,
+        "attempts": [
+          {
+            "status": "accepted",
+            "first": null
+          }
+        ]
+      },
+      {
+        "task": "number-leading-zero",
+        "oneShot": true,
+        "accepted": true,
+        "modelCalls": 1,
+        "attempts": [
+          {
+            "status": "accepted",
+            "first": null
+          }
+        ]
+      }
+    ]
+  },
+  "acceptedOnFixTasks": {
+    "haiku": {
+      "before": 0,
+      "after": 0,
+      "oneShotBefore": 0,
+      "oneShotAfter": 0
+    },
+    "sonnet": {
+      "before": 4,
+      "after": 3,
+      "oneShotBefore": 3,
+      "oneShotAfter": 3
+    }
+  },
+  "preRegisteredRule": {
+    "haikuRises": false,
+    "sonnetNotLower": false,
+    "met": false
+  }
+}

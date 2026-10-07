@@ -6,8 +6,8 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { horizons, wilson } from './app-edit-summary.js';
 import { RERUN as KEYS_RERUN } from './app-edit-keys-summary.js';
+import { horizons, wilson } from './app-edit-summary.js';
 import { writeReport } from './scrub-results.js';
 
 interface Trial {
@@ -80,7 +80,10 @@ function keysArm(m: string): Trial[] {
 
 async function main(): Promise<void> {
   const cells: Record<string, unknown> = {};
-  const per: Record<string, { before: number; after: number; oneShotBefore: number; oneShotAfter: number }> = {};
+  const per: Record<
+    string,
+    { before: number; after: number; oneShotBefore: number; oneShotAfter: number }
+  > = {};
   const trialsOut: Record<string, unknown> = {};
   let sha = '';
   for (const m of MODELS) {

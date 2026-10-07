@@ -46,7 +46,7 @@ count of what they did, and the claim made from it is bounded accordingly.
 Accepted count after repair, on the 4 rerun tasks, per model:
 
 - Haiku: more than the keys arm's (0 of 4).
-- Sonnet: not fewer than the keys arm's (4 of 4).
+- Sonnet: not fewer than the keys arm's (4 of 4; counts from `results/app-edit-keys.json`).
 
 Both conditions, or the changes are reported as not shown to help at application scale (they stay in the tree if the unit tests and the reject corpus hold; the language
 and checker are unchanged, only the edit tool's tolerance and the rejection text, so there is no emission change and no `COMPILER_VERSION` bump). Reported with wins, ties
@@ -71,3 +71,14 @@ bun tools/ai-edit-subjects.ts repair results/app-edit-fixes/report1.<model>.a0.j
 # repair replies as <key>.repair.txt, then collect and run again into results/app-edit-fixes/report.<model>.a0.json
 bun tools/app-edit-fixes-summary.ts
 ```
+
+## Result (collected after the rule above was committed; `results/app-edit-fixes.json`, `tools/app-edit-fixes-summary.ts`)
+
+8 fresh first-reply subagents (Haiku and Sonnet, the four tasks) and 5 fresh repair subagents (Haiku 4, Sonnet 1), scored once after every agent had reported. No subject was refused. The A0 requests were byte-identical to `results/app-edit-keys/dump.a0.json`.
+
+| model | one shot (4 tasks) | accepted after repair (4 tasks), before | after |
+|---|---|---|---|
+| Haiku | 0 | 0 | 0 |
+| Sonnet | 3 | 4 | 3 |
+
+Rule: **not met** (Haiku did not rise; Sonnet fell by one). Not shown to help at application scale. Per trial: Haiku `fat-arrow` and `number-leading-zero` were refused at first on a nested operand and a 5-operand `select` (syntax slips that the repair message described and the repair still did not fix; `number-leading-zero` finished on a wrong result), `profile-canonical` was refused twice on the function header, `param-limit` ran wrong twice. Sonnet `profile-canonical` was accepted in the keys arm and in this run was a wrong result at first and a type error in the repair (a loss; sampling noise cannot be excluded at one trial per cell). Of the five changes, none fired in any of the 13 replies (no fence, no `-id text` delete, no `sel`-style spelling, no callee defined below, no A0026): they were not exercised here, so this measurement says nothing for or against them; their evidence is the unit tests and the reject corpus. The remaining misses are model errors in the edit language and wrong behaviour, not view gaps. The changes stay in the tree (tolerance and message text only; no emission change, no `COMPILER_VERSION` bump).
