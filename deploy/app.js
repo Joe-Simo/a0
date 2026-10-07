@@ -15,6 +15,8 @@
  *               textarea, sends the event) | 9 STYLE n bytes | 10 GRID event rows row...
  *               11 TIMER ms event | 12 SIZE prop percent (1 width, 2 height, 3 left, 4 bottom)
  *               13 SHADER n bytes (a GLSL fragment shader drawn on a canvas in the open element)
+ *               14 COPY n bytes (the open element copies the bytes to the clipboard when activated;
+ *               no event goes to the program; see docs/UI-PROTOCOL.md)
  * Tags and attribute keys are small integer tables shared with the program (see page.a0).
  */
 import { readBytes, safeHref } from './wire.js';
@@ -268,6 +270,84 @@ function mountShader(el, fragment) {
         gl.getExtension('WEBGL_lose_context')?.loseContext();
     });
 }
+// --- COPY (word 14) ---------------------------------------------------------------
+/** How long `data-copied` stays on an element after a copy, in milliseconds. */
+const COPIED_MS = 1500;
+const copyTimers = new WeakMap();
+let copyStatus;
+/** The polite live region, outside the page root so a re-render does not drop it. */
+function announce(message) {
+    if (copyStatus === undefined) {
+        copyStatus = document.createElement('div');
+        copyStatus.className = 'copy-status';
+        copyStatus.setAttribute('role', 'status');
+        copyStatus.setAttribute('aria-live', 'polite');
+        copyStatus.setAttribute('aria-atomic', 'true');
+        document.body.appendChild(copyStatus);
+    }
+    const region = copyStatus;
+    // Clearing first makes a repeated message announce again.
+    region.textContent = '';
+    window.setTimeout(() => {
+        region.textContent = message;
+    }, 30);
+}
+/** execCommand('copy') from a temporary textarea; only used when the Clipboard API is missing or refuses. */
+function legacyCopy(text) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.setAttribute('aria-hidden', 'true');
+    area.style.position = 'fixed';
+    area.style.top = '0';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+        ok = document.execCommand('copy');
+    }
+    catch {
+        ok = false;
+    }
+    area.remove();
+    return ok;
+}
+/**
+ * Last resort: select the text beside the button (the previous element, else the next) so Ctrl+C
+ * copies it.
+ */
+function selectNeighbour(el) {
+    const near = el.previousElementSibling ?? el.nextElementSibling;
+    if (near === null)
+        return;
+    const range = document.createRange();
+    range.selectNodeContents(near);
+    const sel = getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+}
+/**
+ * Copy `text` for the user's click on `el`. The click handler calls this synchronously, so the
+ * Clipboard API runs inside the user gesture. `data-copied` is `1` on success and `fail` when
+ * nothing could copy; it clears after COPIED_MS. The label is not touched: CSS styles the state.
+ */
+async function copyFor(el, text) {
+    let ok = false;
+    try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+    }
+    catch {
+        ok = legacyCopy(text);
+    }
+    if (!ok)
+        selectNeighbour(el);
+    window.clearTimeout(copyTimers.get(el));
+    el.setAttribute('data-copied', ok ? '1' : 'fail');
+    announce(ok ? 'Copied' : 'Could not copy: the text is selected, press Ctrl+C');
+    copyTimers.set(el, window.setTimeout(() => el.removeAttribute('data-copied'), COPIED_MS));
+}
 function render(root, styleEl, words, onEvent, inputText) {
     for (const stop of scenes.splice(0))
         stop();
@@ -391,6 +471,14 @@ function render(root, styleEl, words, onEvent, inputText) {
                 // the clock, the resolution, the pointer, and a glyph atlas.
                 shaders.set(top, (shaders.get(top) ?? '') + decoder.decode(bytes()));
                 break;
+            case 14: {
+                // COPY: activating the element (a click, or Enter/Space on a button) copies the text. The
+                // attribute carries it in the DOM too, as in the prerendered page. No event is sent.
+                const text = decoder.decode(bytes());
+                top.setAttribute('data-copy', text);
+                top.addEventListener('click', () => void copyFor(top, text));
+                break;
+            }
             default:
                 i = words.length;
         }
@@ -404,6 +492,9 @@ function render(root, styleEl, words, onEvent, inputText) {
 // --- Page -------------------------------------------------------------------------
 async function main() {
     const root = document.getElementById('app');
+    // The live-program request is read from the static shell before the first render, so nothing the
+    // page program does to its root can lose it (see site/live.ts).
+    const liveConfig = { ...root.dataset };
     const page = await load(root.dataset.program ?? '/page.wasm');
     // The prerendered page ships the stylesheet inline; the program's own copy replaces it.
     for (const old of Array.from(document.head.querySelectorAll('style')))
@@ -572,8 +663,8 @@ async function main() {
     spy();
     // A page may ask for a live (frame-driven) A0 program with data-live on its root; it mounts after the
     // first render, lazily, and a failure leaves the page as it is (see site/live.ts).
-    if (root.dataset.live !== undefined)
-        void import('./live.js').then((m) => m.mountLive(root)).catch(() => undefined);
+    if (liveConfig.live !== undefined)
+        void import('./live.js').then((m) => m.mountLive(root, liveConfig)).catch(() => undefined);
     window.a0page = {
         show,
         state: () => state,

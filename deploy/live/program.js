@@ -86,6 +86,7 @@ export class LiveProgram {
             drawTo: this.outBase + n,
             watches: host.watches,
             quality: host.quality,
+            cadence: host.cadence,
             code,
             outputLength: n,
         };

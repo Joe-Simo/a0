@@ -25,7 +25,9 @@ performance claim. Measurements of the finished feature are in `results/sentinel
 
 - One A0 io program per page (`site/page.a0`, `site/docs.a0`), exported as `a0_session`. The
   host feeds `event x y text state` words in and interprets a word stream out (OPEN/TEXT/CLOSE/
-  ATTR/ONCLICK/STATE/ONSUBMIT/STYLE/GRID/TIMER/SIZE/SHADER). Every event re-renders the DOM.
+  ATTR/ONCLICK/STATE/ONSUBMIT/STYLE/GRID/TIMER/SIZE/SHADER/COPY; the reference is
+  `docs/UI-PROTOCOL.md`). Every event re-renders the DOM, except COPY, which only writes the
+  clipboard and sends no event.
 - Pointer and touch input: not available to A0. `ONCLICK` sends an event number, `GRID` sends
   a cell. A shader scene listens to `pointermove` itself, in `app.ts`, for its `u_mouse`.
   Touch is not distinguished from mouse; pen likewise. No down/up/move stream, no scroll.
@@ -142,3 +144,17 @@ holds, a brighter core) and the code blocks; the hero matrix rain is unchanged (
 would help the sentinel read as a distinct object). Frame cost was measured in headless Chrome with
 software rendering, not on a physical GPU or a slow phone, and the adaptive-quality steps never
 triggered there.
+
+## Look and landings (second pass)
+
+The draw list gained one general primitive, QUAD (op 18, a filled four-point polygon; repeat a point for a triangle). The sentinel draws every limb segment as a tapered quad with alternating gunmetal shades, an accent ring at each joint, a highlight along the lit edge and a soft contact shadow; the end-effector is a three-prong claw (a blade on two limbs) that opens while searching and reaching and closes on landing, with a ring, a spark and a glint along the held element's edge drawn in the overlay only. The body is an armoured shell (eight plates, a lit rim, a core eye, four small pulsing lights). Readability: the body target is pushed out of text, heading, code and control boxes (two passes), and a limb whose middle joint is over text or code is drawn fainter. Frames from the review are in docs/design/sentinel/. Measured cost: results/sentinel-frame-cost.json.
+
+## Walking (third pass)
+
+The sentinel is a walker, not a hover: the body target is derived from its planted feet (the mean of the points one stance height above each foothold, along the edge normal, with a small lean toward the direction of travel); with fewer than two planted feet it heads for the point above the nearest component edge. The pointer or finger only chooses where to step: footholds are scored for being ahead, on top edges, away from the cursor and from other feet. A foot lifts of its own accord only when more than three are planted and it is the trailing one; releases from tension, distance or a vanished element are forced. Body speed is capped (about 700 px/s, a scuttle). Limits seen in review: a gap wider than the longest reach (the home page hero has about 200 px of empty space under its heading) is crossed slowly and not always; in dense text the body can still overlap text where boxes touch; average speed is a slow crawl, not a run. Frames: docs/design/sentinel/crawl-sequence.png (hero to the code block edge, then along it).
+
+Load and idle: the program may send CADENCE n (run every n-th animation frame; pointer and scroll input wake it immediately). The sentinel asks for 2 at quality 1 and 3 at quality 0 (the quality governor steps down after 20 frames above 3 ms average and up after 500 frames below 1.1 ms), and for 3 when it has been idle for 5 s and is nearly still. Re-measured at 1x, 4x and 6x CPU throttle in results/sentinel-frame-cost.json.
+
+## Purpose and place
+
+Purpose: the sentinel mirrors what A0 does, one unit at a time. A foot that grips a code block or a chart row is a unit being checked: the core brightens, one cyan ring leaves it on arrival, the brightness holds while the grip lasts and fades on release. The only link kept is a thin line between two feet that grip the same code block (a relation that exists on the page). Removed because they served neither purpose nor place: the four secondary body lights, the random graph links between joints (their spawner is switched off and the code is dead weight to delete later), and dependency lines between unrelated blocks. Place: it lives on the ledges of components, body kept out of text, code, headings and controls, so the Install and Benchmarks buttons are footholds, never covered.

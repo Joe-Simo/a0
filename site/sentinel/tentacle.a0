@@ -55,8 +55,8 @@ u8 call tent_u p1 8
 u9 call tent_u p1 9
 nj0 shr u0 14
 nj add nj0 6
-rch0 call fx_mul u1 2621440
-rch1 add rch0 5242880
+rch0 call fx_mul u1 4915200
+rch1 add rch0 7208960
 rch call fx_mul rch1 sc
 njm sub nj 1
 seg div rch njm
@@ -101,7 +101,10 @@ s15 call ts s14 p1 16 pref
 s16 call ts s15 p1 17 z
 s17 call ts s16 p1 18 0
 s18 call ts s17 p1 19 0
-s19 fold tent_jinit 10 s18 p1
+s18a call ts s18 p1 26 45875
+s18b call ts s18a p1 27 0
+s18c call ts s18b p1 28 65536
+s19 fold tent_jinit 10 s18c p1
 ret s19
 end
 
@@ -118,7 +121,7 @@ ang add ang0 swa
 c call fx_cos ang
 s call fx_sin ang
 reach call tg p0 p1 14
-hr call fx_mul reach 51118
+hr call fx_mul reach 62259
 bp0 call fx_mul ph 39322
 bp call fx_sin bp0
 bpa call fx_mul bp 7864
@@ -134,8 +137,19 @@ cx call fx_mul c hr2
 cy call fx_mul s hr2
 hx0 add bx cx
 hy0 add by cy
-hx add hx0 lx
-hy add hy0 ly
+hx1 add hx0 lx
+hy1 add hy0 ly
+tr call travel_dir p0
+tux at tr 0
+tuy at tr 1
+tgo at tr 2
+bias call fx_mul reach 19661
+bxo call fx_mul tux bias
+byo call fx_mul tuy bias
+bxs select tgo bxo 0
+bys select tgo byo 0
+hx add hx1 bxs
+hy add hy1 bys
 s1 call ts p0 p1 20 hx
 s2 call ts s1 p1 21 hy
 ret s2
@@ -181,7 +195,7 @@ hyy call tg p0 p2 21
 gx select st1 anx hxx
 gy select st1 any hyy
 gs0 select st0 2228224 1441792
-gs1 select st1 7208960 gs0
+gs1 select st1 13107200 gs0
 gs select st2 0 gs1
 d1 sub nj p1
 t1 eq d1 1

@@ -89,7 +89,10 @@ export function renderWords(words: readonly number[]): Prerendered {
   // Chrome (header, nav, footer) and the animated hero scene carry no content for text readers.
   const skipText = (): boolean =>
     open.some(
-      (o) => /^(header|nav|footer)$/.test(o.tag) || o.attrs.some((a) => a.includes('id="live"')),
+      (o) =>
+        /^(header|nav|footer)$/.test(o.tag) ||
+        o.attrs.includes(' hidden') ||
+        o.attrs.some((a) => a.includes('id="live"')),
     );
   let css = '';
   let i = 0;
@@ -200,6 +203,16 @@ export function renderWords(words: readonly number[]): Prerendered {
       case 13:
         bytes(); // the scene is drawn by the browser runtime only
         break;
+      case 14: {
+        // COPY: the same data-copy attribute the runtime sets. The control does nothing without
+        // JavaScript, so the static page hides it (`hidden`); the runtime's first render replaces
+        // the tree with a visible button, and the text it copies is on the page next to it.
+        const text = decoder.decode(bytes());
+        const top = open[open.length - 1];
+        if (top !== undefined && !top.started)
+          top.attrs.push(` data-copy="${escapeAttr(text)}"`, ' hidden');
+        break;
+      }
       default:
         i = words.length;
     }

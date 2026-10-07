@@ -1,10 +1,13 @@
-# render.a0: the Sentinel as a draw list for the host's 2D canvas (site/lib/frame.a0). Thin
-# graphite-blue chains with a faint highlight stroke, small shaded joints, a dark metal body
-# with one cyan core and a sensor lens toward the heading. Depth is shown by line weight,
-# opacity and layering (tentacles with negative depth are drawn behind the body, the rest in
-# front); nothing is placed over the cursor or drawn large. Higher quality adds highlight
-# strokes, shaded joints, the shadow and the graph links. An io token cannot be selected, so
-# optional commands are folds that run zero or one time.
+# render.a0: the Sentinel as a draw list for the host's 2D canvas (site/lib/frame.a0). Ribbed,
+# tapered limbs: each segment a filled quad (wider at the root), alternating gunmetal shades, a thin
+# accent ring at every joint, a faint highlight along the lit edge and a soft contact shadow. Depth
+# shows in width, opacity and layering (negative depth behind the body, the rest in front). The
+# end-effector is a three-prong claw that opens while the limb searches or reaches and closes on
+# its anchor (two limbs carry a blade instead); a landing draws a short ring, a spark and a glint
+# on the element's edge, in the overlay only. The body is an armoured shell: plates, a lit rim,
+# one cyan core eye and four small lights. A limb over text or code is drawn fainter. Higher
+# quality adds the shadow, highlight strokes, gradients and graph links. An io token cannot be
+# selected, so optional commands are folds that run zero or one time.
 use "life.a0"
 use "../lib/frame.a0"
 
@@ -24,16 +27,21 @@ fn one_if bool -> u32
 r select p0 1 0
 ret r
 end
+fn lerp_pt u32 u32 u32 -> u32
+a call fx_mul p1 p2
+r add p0 a
+ret r
+end
 
-# ---- chains
-fn hl_line io u32 u32 u32 u32 u32 u32 -> io
-c call rgba 13163775 52
-ox sub p2 39322
-oy sub p3 39322
-ex sub p4 39322
-ey sub p5 39322
-w call fx_mul p6 26214
-r call fr_line p0 ox oy ex ey w c
+# ---- limbs
+fn shd_line io u32 u32 u32 u32 u32 u32 u32 -> io
+c call rgba 0 p7
+r call fr_line p0 p2 p3 p4 p5 p6 c
+ret r
+end
+fn hl_seg io u32 u32 u32 u32 u32 u32 u32 -> io
+c call rgba 13163775 p7
+r call fr_line p0 p2 p3 p4 p5 p6 c
 ret r
 end
 fn seg_draw io u32 u32x1024 u32 -> io
@@ -46,105 +54,253 @@ by call jg p2 p3 j1 1
 sc call bg p2 38
 z call tg p2 p3 17
 stt call tg p2 p3 0
+cov call tg p2 p3 28
+q call bg p2 17
+dx sub bx ax
+dy sub by ay
+un call fx_unit dx dy
+ux at un 0
+uy at un 1
+px sub 0 uy
+py mov ux
 jh shl p1 16
 jf div jh nj
-tp call fx_mul jf 98304
-w1 sub 150733 tp
-w2 call fx_mul w1 sc
+j1h shl j1 16
+jf2 div j1h nj
+ta call fx_mul jf 183500
+tb call fx_mul jf2 183500
+wa0 sub 301466 ta
+wb0 sub 301466 tb
 zw call fx_mul z 22938
 ws add 65536 zw
-w call fx_mul w2 ws
+wa1 call fx_mul wa0 sc
+wb1 call fx_mul wb0 sc
+wa call fx_mul wa1 ws
+wb call fx_mul wb1 ws
+ha call fx_sar wa 1
+hb call fx_sar wb 1
+pax call fx_mul px ha
+pay call fx_mul py ha
+pbx call fx_mul px hb
+pby call fx_mul py hb
+p0x add ax pax
+p0y add ay pay
+p1x add bx pbx
+p1y add by pby
+p2x sub bx pbx
+p2y sub by pby
+p3x sub ax pax
+p3y sub ay pay
 za call fx_mul z 2621440
 zi call fx_sar za 16
-a0 add 150 zi
+a0 add 225 zi
 att eq stt 2
-a1 add a0 30
-al select att a1 a0
-col call rgba 7372960 al
-io1 call fr_line p0 ax ay bx by w col
-q call bg p2 17
+a1 add a0 25
+al0 select att a1 a0
+al call ascale al0 cov
+odd0 and p1 1
+odd ne odd0 0
+rgb select odd 6846614 5398652
+col call rgba rgb al
 hq call fx_ge q 2
-n call one_if hq
-io2 fold hl_line n io1 ax ay bx by w
-ret io2
-end
-fn sph_s io u32 u32 u32 u32 u32 u32 -> io
-r call fr_sphere p0 p2 p3 p4 p5 p6
-ret r
+front call fx_ge z 0
+sh and hq front
+nsh call one_if sh
+shx call fx_mul 85197 sc
+shy call fx_mul 157286 sc
+sax add ax shx
+say add ay shy
+sbx add bx shx
+sby add by shy
+sw call fx_mul wa 72090
+sal call ascale 70 cov
+io1 fold shd_line nsh p0 sax say sbx sby sw sal
+io2 call fr_quad io1 p0x p0y p1x p1y p2x p2y p3x p3y col
+jpar0 and j1 1
+jpar eq jpar0 0
+rc select jpar 5952255 14872319
+ral0 select jpar 140 110
+ral call ascale ral0 cov
+rcol call rgba rc ral
+rx call fx_mul px hb
+ry call fx_mul py hb
+rx2 call fx_mul rx 82000
+ry2 call fx_mul ry 82000
+rax add bx rx2
+ray add by ry2
+rbx sub bx rx2
+rby sub by ry2
+rw call fx_mul 58982 sc
+io3 call fr_line io2 rax ray rbx rby rw rcol
+dl0 sub 0 px
+dl1 sub dl0 py
+lit call fx_ge dl1 0
+sgn select lit 32768 4294934528
+hx call fx_mul pax sgn
+hy call fx_mul pay sgn
+hx2 call fx_mul pbx sgn
+hy2 call fx_mul pby sgn
+h0x add ax hx
+h0y add ay hy
+h1x add bx hx2
+h1y add by hy2
+hw call fx_mul wa 14000
+hal call ascale 80 cov
+nhl call one_if hq
+io4 fold hl_seg nhl io3 h0x h0y h1x h1y hw hal
+ret io4
 end
 fn dsc_s io u32 u32 u32 u32 u32 -> io
 r call fr_disc p0 p2 p3 p4 p5
+ret r
+end
+fn sph_s io u32 u32 u32 u32 u32 u32 -> io
+r call fr_sphere p0 p2 p3 p4 p5 p6
 ret r
 end
 fn glw_s io u32 u32 u32 u32 u32 -> io
 r call fr_glow p0 p2 p3 p4 p5
 ret r
 end
-fn ring_glow io u32 u32 u32 u32 -> io
-rr call fx_mul 275251 p4
-c1 call rgba 5952255 150
-w call fx_mul 58982 p4
-a call fr_ring p0 p2 p3 rr w c1
-gr call fx_mul 589824 p4
-c2 call rgba 5952255 70
-b call fr_glow a p2 p3 gr c2
+
+# ---- end-effectors: tip direction from the last two joints
+# a claw prong i (0, 1, 2): a thin triangle from the wrist, fanned by the opening
+fn prong_step io u32 u32x1024 u32 -> io
+nj call tg p2 p3 1
+tip sub nj 1
+pre sub nj 2
+tx call jg p2 p3 tip 0
+ty call jg p2 p3 tip 1
+qx call jg p2 p3 pre 0
+qy call jg p2 p3 pre 1
+dx sub tx qx
+dy sub ty qy
+un call fx_unit dx dy
+ux at un 0
+uy at un 1
+o call tg p2 p3 26
+cov call tg p2 p3 28
+sc call bg p2 38
+om mul o 7000
+ot shr om 16
+th add 3000 ot
+nth sub 0 th
+i0 eq p1 0
+i1 eq p1 1
+ang0 select i1 0 th
+ang select i0 nth ang0
+c call fx_cos ang
+s call fx_sin ang
+cu call fx_mul c ux
+su call fx_mul s uy
+rx sub cu su
+sux call fx_mul s ux
+cuy call fx_mul c uy
+ry add sux cuy
+len call fx_mul 458752 sc
+ex call fx_mul rx len
+ey call fx_mul ry len
+apx add tx ex
+apy add ty ey
+hw call fx_mul 58982 sc
+bpx call fx_mul ry hw
+bpy call fx_mul rx hw
+b0x sub tx bpx
+b0y add ty bpy
+b1x add tx bpx
+b1y sub ty bpy
+al call ascale 235 cov
+col call rgba 9873092 al
+r call fr_quad p0 b0x b0y apx apy b1x b1y b1x b1y col
+ret r
+end
+# a blade: a long kite along the tip direction
+fn blade_step io u32 u32x1024 u32 -> io
+nj call tg p2 p3 1
+tip sub nj 1
+pre sub nj 2
+tx call jg p2 p3 tip 0
+ty call jg p2 p3 tip 1
+qx call jg p2 p3 pre 0
+qy call jg p2 p3 pre 1
+dx sub tx qx
+dy sub ty qy
+un call fx_unit dx dy
+ux at un 0
+uy at un 1
+cov call tg p2 p3 28
+sc call bg p2 38
+l1 call fx_mul 262144 sc
+l2 call fx_mul 786432 sc
+hw call fx_mul 144179 sc
+m1x call fx_mul ux l1
+m1y call fx_mul uy l1
+m2x call fx_mul ux l2
+m2y call fx_mul uy l2
+wx call fx_mul uy hw
+wy call fx_mul ux hw
+p1x add tx m1x
+p1y add ty m1y
+k0x add p1x 0
+k1x sub p1x wx
+k1y add p1y wy
+k3x add p1x wx
+k3y sub p1y wy
+k2x add tx m2x
+k2y add ty m2y
+al call ascale 240 cov
+col call rgba 14872319 al
+r call fr_quad p0 tx ty k1x k1y k2x k2y k3x k3y col
+ret r
+end
+# landing: a ring that grows and fades, and a spark, for a moment after the claw closes
+fn impact_step io u32 u32x1024 u32 -> io
+nj call tg p2 p3 1
+tip sub nj 1
+x call jg p2 p3 tip 0
+y call jg p2 p3 tip 1
+im call tg p2 p3 27
+sc call bg p2 38
+f0 mul im 100
+f call min_u32 f0 65536
+inv sub 65536 f
+g0 call fx_mul inv 786432
+g1 add g0 131072
+rr call fx_mul g1 sc
+al0 call ascale 200 f
+rc call rgba 14872319 al0
+w call fx_mul 72090 sc
+a call fr_ring p0 x y rr w rc
+sr call fx_mul 196608 sc
+al1 call ascale 230 f
+sc2 call rgba 5952255 al1
+b call fr_disc a x y sr sc2
 ret b
 end
-# one joint of a chain: root hub (0), shaded ball (middle), cyan tip node (last); p1 joint, p2 st, p3 tentacle
-fn joint_draw io u32 u32x1024 u32 -> io
+# the tip: wrist, claw or blade, landing marks
+fn tip_draw io u32 u32x1024 u32 -> io
 nj call tg p2 p3 1
-x call jg p2 p3 p1 0
-y call jg p2 p3 p1 1
+tip sub nj 1
+x call jg p2 p3 tip 0
+y call jg p2 p3 tip 1
 sc call bg p2 38
-z call tg p2 p3 17
-stt call tg p2 p3 0
-q call bg p2 17
-njm sub nj 1
-isroot eq p1 0
-istip eq p1 njm
-nr call not_b isroot
-nt call not_b istip
-mid and nr nt
-jh shl p1 16
-jf div jh nj
-tp call fx_mul jf 85197
-r1 sub 170394 tp
-r2 call fx_mul r1 sc
-zr call fx_mul z 16384
-rs add 65536 zr
-r call fx_mul r2 rs
-za call fx_mul z 1310720
-zi call fx_sar za 16
-al add 215 zi
-hq call fx_ge q 2
-nq call not_b hq
-q1 call fx_ge q 1
-odd0 and p1 1
-odd ne odd0 0
-skip0 call not_b q1
-skip and skip0 odd
-show call not_b skip
-mq and mid show
-sph and mq hq
-flat and mq nq
-nsph call one_if sph
-nflat call one_if flat
-nroot call one_if isroot
-ntip call one_if istip
-lo call rgba 12504812 al
-hi call rgba 2633798 al
-io1 fold sph_s nsph p0 x y r lo hi
-io2 fold dsc_s nflat io1 x y r hi
-hubr call fx_mul 157286 sc
-io3 fold dsc_s nroot io2 x y hubr hi
-tipr call fx_mul 131072 sc
-tc call rgba 5952255 215
-io4 fold dsc_s ntip io3 x y tipr tc
-att eq stt 2
-tipatt and istip att
-nring call one_if tipatt
-io5 fold ring_glow nring io4 x y sc
-ret io5
+k3 eq p3 2
+k5 eq p3 5
+blade or k3 k5
+nb call not_b blade
+nbl call one_if blade
+npr0 call one_if nb
+npr mul npr0 3
+wr call fx_mul 104858 sc
+wc call rgba 2633798 235
+io1 call fr_disc p0 x y wr wc
+io2 fold prong_step npr io1 p2 p3
+io3 fold blade_step nbl io2 p2 p3
+im call tg p2 p3 27
+on gt im 0
+nim call one_if on
+io4 fold impact_step nim io3 p2 p3
+ret io4
 end
 fn tent_draw io u32 u32x1024 u32 u32 -> io
 nj call tg p2 p3 1
@@ -152,12 +308,19 @@ z call tg p2 p3 17
 front call fx_ge z 0
 wantf eq p4 1
 show eq front wantf
-ns select show nj 0
-nsg sub ns 1
-nsg2 select show nsg 0
-io1 fold seg_draw nsg2 p0 p2 p3
-io2 fold joint_draw ns io1 p2 p3
-ret io2
+nsg0 sub nj 1
+nsg select show nsg0 0
+io1 fold seg_draw nsg p0 p2 p3
+x call jg p2 p3 0 0
+y call jg p2 p3 0 1
+sc call bg p2 38
+hr call fx_mul 157286 sc
+hc call rgba 2633798 235
+nh call one_if show
+io2 fold dsc_s nh io1 x y hr hc
+nt call one_if show
+io3 fold tip_draw nt io2 p2 p3
+ret io3
 end
 fn tent_pass0 io u32 u32x1024 -> io
 r call tent_draw p0 p1 p2 p1 0
@@ -168,10 +331,89 @@ r call tent_draw p0 p1 p2 p1 1
 ret r
 end
 
-# ---- body
+# ---- body: shell, plates, rim, core eye, four small lights
 fn shadow_cmd io u32 u32 u32 u32 -> io
 c call rgba 0 90
 r call fr_glow p0 p2 p3 p4 c
+ret r
+end
+fn plate_step io u32 u32x1024 -> io
+bx call bg p2 1
+by call bg p2 2
+sc call bg p2 38
+ang call bg p2 5
+rad call fx_mul 786432 sc
+ri call fx_mul rad 38000
+ro call fx_mul rad 63500
+i8 mul p1 8192
+a0 add ang i8
+am add a0 4096
+al sub am 2600
+ah add am 2600
+cl call fx_cos al
+sl call fx_sin al
+ch call fx_cos ah
+sh call fx_sin ah
+x0a call fx_mul cl ri
+y0a call fx_mul sl ri
+x1a call fx_mul cl ro
+y1a call fx_mul sl ro
+x2a call fx_mul ch ro
+y2a call fx_mul sh ro
+x3a call fx_mul ch ri
+y3a call fx_mul sh ri
+q0x add bx x0a
+q0y add by y0a
+q1x add bx x1a
+q1y add by y1a
+q2x add bx x2a
+q2y add by y2a
+q3x add bx x3a
+q3y add by y3a
+col call rgba 6319240 225
+r call fr_quad p0 q0x q0y q1x q1y q2x q2y q3x q3y col
+ret r
+end
+fn light_step io u32 u32x1024 -> io
+bx call bg p2 1
+by call bg p2 2
+sc call bg p2 38
+ang call bg p2 5
+clk call bg p2 13
+rad call fx_mul 786432 sc
+rl call fx_mul rad 51118
+i0 eq p1 0
+i1 eq p1 1
+i2 eq p1 2
+o0 select i2 39977 57016
+o1 select i1 24248 o0
+off select i0 7209 o1
+a add ang off
+c call fx_cos a
+s call fx_sin a
+cx call fx_mul c rl
+cy call fx_mul s rl
+x add bx cx
+y add by cy
+sp0 mul p1 7
+sp add 25 sp0
+ph mul clk sp
+ps call fx_sin ph
+pp0 add ps 65536
+pp call fx_sar pp0 1
+pa0 mul pp 150
+pa1 shr pa0 16
+al add 80 pa1
+r call fx_mul rad 4915
+cyan call rgba 5952255 al
+viol call rgba 10124287 al
+col select i2 viol cyan
+d call fr_disc p0 x y r col
+ret d
+end
+fn ring_glow2 io u32 u32 u32 u32 u32 -> io
+w mov 72090
+r call fr_ring p0 p2 p3 p4 w p5
 ret r
 end
 fn body_draw io u32x1024 -> io
@@ -184,7 +426,7 @@ ang call bg p1 5
 core call bg p1 20
 clk call bg p1 13
 q call bg p1 17
-rad call fx_mul 753664 sc
+rad call fx_mul 786432 sc
 sho call fx_mul 393216 sc
 sho2 call fx_mul 655360 sc
 sx add bx sho
@@ -197,24 +439,19 @@ qh call fx_ge q 2
 nqh call not_b qh
 nsp call one_if qh
 nfl call one_if nqh
-lo call rgba 6056068 245
+lo call rgba 7241374 245
 hi call rgba 922140 245
 io2 fold sph_s nsp io1 bx by rad lo hi
 io3 fold dsc_s nfl io2 bx by rad hi
-rr1 call fx_mul rad 48497
-rc call rgba 9873092 80
+io4 fold plate_step 8 io3 p1
+rr0 call fx_mul rad 63700
+rc0 call rgba 8571120 100
 w1 call fx_mul 58982 sc
-io4 call fr_ring io3 bx by rr1 w1 rc
-ca call fx_cos ang
-sa call fx_sin ang
-ld call fx_mul rad 40632
-lx0 call fx_mul ca ld
-ly0 call fx_mul sa ld
-lx add bx lx0
-ly add by ly0
-lr call fx_mul rad 11796
-lc call rgba 14872319 190
-io5 call fr_disc io4 lx ly lr lc
+io5 call fr_ring io4 bx by rr0 w1 rc0
+rr1 call fx_mul rad 32768
+rc1 call rgba 9873092 70
+io6 call fr_ring io5 bx by rr1 w1 rc1
+io7 fold light_step 0 io6 p1
 br0 shl clk 3
 brt call fx_sin br0
 brm call fx_mul brt 5243
@@ -225,13 +462,13 @@ cga0 add 25 cg1
 cga call ascale cga0 bre
 gr call fx_mul rad 124518
 gc call rgba 5952255 cga
-io7 fold glw_s nsp io5 bx by gr gc
+io8 fold glw_s nsp io7 bx by gr gc
 er call fx_mul rad 22282
 ea0 mul core 40
 ea1 shr ea0 16
 ea add 175 ea1
 ec call rgba 5952255 ea
-io9 call fr_disc io7 bx by er ec
+io9 call fr_disc io8 bx by er ec
 pxo call fx_mul vx 262
 pyo call fx_mul vy 262
 pl call fx_mul rad 14418
@@ -245,7 +482,19 @@ io10 call fr_disc io9 ppx ppy pr pc
 rr2 call fx_mul rad 30146
 rc2 call rgba 5952255 120
 io11 call fr_ring io10 bx by rr2 w1 rc2
-ret io11
+ck call bg p1 90
+ckp gt ck 0
+nck call one_if ckp
+ckf0 mul ck 93
+ckf call min_u32 ckf0 65536
+ckinv sub 65536 ckf
+ckr0 call fx_mul ckinv rad
+ckr1 call fx_mul ckr0 131072
+ckr add ckr1 rad
+ckal call ascale 190 ckf
+ckc call rgba 5952255 ckal
+io12 fold ring_glow2 nck io11 bx by ckr ckc
+ret io12
 end
 
 # ---- graph links, anchored elements, dependency edges between held tips
@@ -291,7 +540,13 @@ c call rgba 5952255 52
 r call fr_brackets p0 p2 p3 p4 p5 393216 58982 c
 ret r
 end
-fn bracket_draw io u32 u32x1024 u32x32 u32x1344 -> io
+# a glint along the nearest edge of the held element, around the contact point (p2, p3): strongest just after landing
+fn glint_cmd io u32 u32 u32 u32 u32 u32 u32 -> io
+al call rgba 14872319 p7
+r call fr_line p0 p2 p3 p4 p5 p6 al
+ret r
+end
+fn bracket_draw io u32 u32x1024 u32x32 u32x672 -> io
 stt call tg p2 p1 0
 att eq stt 2
 rid call tg p2 p1 2
@@ -313,8 +568,40 @@ x1q call pg2vp x1 sx
 y1q call pg2vp y1 sy
 go and att fnd
 n call one_if go
-r fold bracket_cmd n p0 x0q y0q x1q y1q
-ret r
+io1 fold bracket_cmd n p0 x0q y0q x1q y1q
+ax call tg p2 p1 23
+ay call tg p2 p1 24
+sc call bg p2 38
+dl sub ax x0q
+dr sub x1q ax
+dt sub ay y0q
+db sub y1q ay
+m1 call fx_min dl dr
+m2 call fx_min dt db
+m call fx_min m1 m2
+vert1 eq m dl
+vert2 eq m dr
+vert or vert1 vert2
+ex1 select vert1 x0q x1q
+len call fx_mul 917504 sc
+ist eq m dt
+ey1 select ist y0q y1q
+x1a sub ax len
+x2a add ax len
+y1a sub ay len
+y2a add ay len
+x1g select vert ex1 x1a
+y1g select vert y1a ey1
+x2g select vert ex1 x2a
+y2g select vert y2a ey1
+im call tg p2 p1 27
+f0 mul im 100
+f call min_u32 f0 65536
+ga0 call ascale 185 f
+alp add 70 ga0
+gw call fx_mul 104858 sc
+io2 fold glint_cmd n io1 x1g y1g x2g y2g gw alp
+ret io2
 end
 fn dep_cmd io u32 u32 u32 u32 u32 -> io
 c call rgba 5995775 44
@@ -337,11 +624,11 @@ kn1 call tg p2 p1 25
 kn2 call tg p2 k2 25
 c1 eq kn1 3
 c2 eq kn2 3
-d1 eq kn1 5
-d2 eq kn2 5
-e1 or c1 d1
-e2 or c2 d2
-kk and e1 e2
+rd1 call tg p2 p1 2
+rd2 call tg p2 k2 2
+same eq rd1 rd2
+e1 and c1 c2
+kk and e1 same
 n1 call tg p2 p1 1
 n2 call tg p2 k2 1
 t1 sub n1 1
@@ -367,7 +654,7 @@ ret r
 end
 
 # the whole picture: back chains, body, front chains, links, held elements, dependency edges
-fn render_all io u32x1024 u32x32 u32x1344 -> io
+fn render_all io u32x1024 u32x32 u32x672 -> io
 io1 fold tent_pass0 8 p0 p1
 io2 call body_draw io1 p1
 io3 fold tent_pass1 8 io2 p1
