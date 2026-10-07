@@ -607,6 +607,8 @@ function scalarState(body: TypedFunc): ReadonlySet<string> | undefined {
 const INLINE_BODY_NODES = 24;
 /** Scalar calls of functions up to this many nodes are emitted at the call site. */
 const INLINE_CALL_NODES = 8;
+/** A scalar call of a function with frame slots is emitted in place up to this many nodes. */
+const INLINE_FRAME_NODES = 16;
 const INLINE_DEPTH = 3;
 /** Inlined fold bodies up to this many nodes are unrolled when `WasmEmitOptions.unroll` > 1. */
 const UNROLL_BODY_NODES = 12;
@@ -804,6 +806,10 @@ class FunctionEmitter {
     );
   }
 
+  #frameOwner(): FunctionEmitter {
+    return this.host === undefined ? this : this.host.parent.#frameOwner();
+  }
+
   fp(): number {
     if (this.#fp === undefined) this.#fp = this.newLocal();
     return this.#fp;
@@ -815,16 +821,18 @@ class FunctionEmitter {
       this.locals.set(id, this.sret as number);
       return this.sret as number;
     }
-    const offset = this.frame;
-    this.frame += align(bytesOf(t), 4);
+    // An inlined body's slots live in the outermost host's frame.
+    const owner = this.#frameOwner();
+    const offset = owner.frame;
+    owner.frame += align(bytesOf(t), 4);
     // The first slot is the frame pointer itself.
     if (offset === 0) {
-      this.locals.set(id, this.fp());
-      return this.fp();
+      this.locals.set(id, owner.fp());
+      return owner.fp();
     }
     const local = this.newLocal();
     this.locals.set(id, local);
-    this.code.local(OP.localGet, this.fp());
+    this.code.local(OP.localGet, owner.fp());
     this.code.i32(offset);
     this.code.op(OP.add);
     this.code.local(OP.localSet, local);
@@ -889,8 +897,9 @@ class FunctionEmitter {
     params: readonly ParamSource[],
     limit: number,
     loop: Pick<InlineHost, 'induction' | 'fields' | 'carry' | 'indexBound'> = {},
+    frameOk = false,
   ): boolean {
-    if (!this.#canInline(callee, variant, params, limit, loop.fields)) return false;
+    if (!this.#canInline(callee, variant, params, limit, loop.fields, frameOk)) return false;
     const host: InlineHost = { parent: this, params, ...loop };
     new FunctionEmitter(
       callee,
@@ -923,21 +932,29 @@ class FunctionEmitter {
     params: readonly ParamSource[],
     limit: number,
     fields?: readonly number[],
+    frameOk = false,
   ): boolean {
-    if (this.depth >= INLINE_DEPTH || callee.nodes.length > limit) return false;
+    if (this.depth >= INLINE_DEPTH || callee.nodes.length > (frameOk ? INLINE_FRAME_NODES : limit))
+      return false;
     // A body that can trap keeps its frame (the trap line names it): it is called, never inlined.
     if (mayTrapFn(callee)) return false;
     if (variant === 'value' && !isPrimitive(callee.result)) return false;
     if (callee.params.some(containsIo) || [...callee.types.values()].some(containsIo)) return false;
     const host: InlineHost = { parent: this, params, ...(fields === undefined ? {} : { fields }) };
-    return !new FunctionEmitter(
-      callee,
-      variant,
-      this.pool,
-      this.poolIndex,
-      host,
-      this.options,
-    ).needsFrame();
+    // `frameOk` asks for the framed callees only (the frameless ones are tried first), and only
+    // loop-free ones: a loop nested in the host's loop keeps the outer values live across it,
+    // which costs the inner loop its registers (measured: xs4k).
+    if (frameOk && callee.nodes.some((n) => n.op === 'fold' || n.op === 'loop')) return false;
+    return (
+      new FunctionEmitter(
+        callee,
+        variant,
+        this.pool,
+        this.poolIndex,
+        host,
+        this.options,
+      ).needsFrame() === frameOk
+    );
   }
 
   /** The body of an inlined function: its nodes, then its result (see `#tryInline`). */
@@ -1018,11 +1035,11 @@ class FunctionEmitter {
       return (lit % length) * elemBytes;
     }
     if (idx === undefined) throw new A0Error('wasm: missing index');
-    this.push(idx);
     const root = this.root(idx);
     const bound = this.host?.indexBound;
     const inRange =
       root.kind === 'param' && root.index === 1 && bound !== undefined && bound <= length;
+    this.push(idx);
     if (inRange) {
       // The trip index never reaches the length: no wrap.
     } else if (checked) {
@@ -1232,7 +1249,11 @@ class FunctionEmitter {
         if (callee === undefined) throw new A0Error(`wasm: unknown callee ${node.callee}`);
         if (isPrimitive(t)) {
           const params = node.args.map((arg) => this.#source(arg));
-          if (!this.#tryInline(callee, 'value', params, INLINE_CALL_NODES)) {
+          // A framed callee brings its slots into this frame: no call, no stack pointer round trip.
+          if (
+            !this.#tryInline(callee, 'value', params, INLINE_CALL_NODES) &&
+            !this.#tryInline(callee, 'value', params, INLINE_CALL_NODES, {}, true)
+          ) {
             for (const arg of node.args) this.push(arg);
             c.call(`a0_${callee.name}`);
           }

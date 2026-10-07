@@ -2576,13 +2576,28 @@ h fold wxusn b g p6 p7 a
 i fold wxroot b p0 p2 a p4 h e f p6 p7 p8 p9 p10
 ret i
 end
+# state p0 plus one when node p1 (first node p2, nodes p3) is a fold or a loop
+fn wxhl u32 u32 u32 u32x128x132 -> u32
+a add p2 p1
+b call wxnw p3 a 1
+c eq b 20
+d eq b 21
+e or c d
+f select e 1 0
+g add p0 f
+ret g
+end
 # can function p3 (variant p4) be inlined by frame p2 into frame p2 + 1 (`#canInline`): depth
 # below INLINE_DEPTH, at most p5 nodes, a scalar result for the value variant, no io, no frame
-# storage, and when p6 > 0 (the host keeps p6 words of state in locals) with its scalar state
+# storage (when p15 is 1 instead: with frame storage, at most 16 nodes and no fold or loop, the
+# call site tries p15 0 first), and when p6 > 0 (the host keeps p6 words of state in locals) with its scalar state
 # chain; a body that is opaque is requested (register 15 counts, words 32.. list them);
 # register 16 := 1 when it can be; frame p2 + 1 is then set up (rows and roots; the host's words
 # are kept)
-fn wxcan u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 -> u32x128x512
+fn wxcan u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32 -> u32x128x512
+zqf ne p15 0
+zql select zqf 16 p5
+zqm select zqf 1 0
 a add p2 1
 b call wxfw p7 p3 5
 c call wxfw p7 p3 6
@@ -2590,10 +2605,14 @@ d call wxfw p7 p3 2
 e call wxfw p7 p3 1
 f call wxfw p7 p3 3
 g call wxfw p7 p3 4
+zqh fold wxhl b 0 g p8
+zqn eq zqh 0
+zqp select zqf false true
+zqo or zqn zqp
 h eq c 0
 i select h false true
 j lt p2 3
-k le b p5
+k le b zql
 l call wxtag p11 f
 m lt l 4
 n eq p4 1
@@ -2679,12 +2698,13 @@ b5 shr 22 7
 b6 and 22 127
 b7 get bw b5
 b8 get b7 b6
-b9 eq b0 0
+b9 eq b0 zqm
 ca eq b4 0
 cb eq b8 1
 cc select be false true
 cd or cb cc
-ce and r b9
+zqr and r b9
+ce and zqr zqo
 cf and ce ca
 cg and cf cd
 ch select cg 1 0
@@ -4797,7 +4817,16 @@ s set p0 m r
 t select h c 0
 u fold wxsrc t s a d p5
 v select h 1 0
-w fold wxcan v u a e 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10
+zqw fold wxcan v u a e 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10 0
+zqx shr 16 7
+zqy and 16 127
+zqz get zqw zqx
+zqa get zqz zqy
+zqb eq zqa 1
+zqc select zqb false true
+zqd and h zqc
+zqe select zqd 1 0
+w fold wxcan zqe zqw a e 0 8 0 p3 p4 p5 p6 p7 p8 p9 p10 1
 x shr 16 7
 y and 16 127
 z get w x
@@ -5348,7 +5377,7 @@ p select o false true
 q select o 1 0
 r fold wxhost q p0 p2 0
 s select o 1 0
-t fold wxcan s r p2 n 0 24 0 p3 p4 p5 p6 p7 p8 p9 p10
+t fold wxcan s r p2 n 0 24 0 p3 p4 p5 p6 p7 p8 p9 p10 0
 u shr 16 7
 v and 16 127
 w get t u
@@ -5491,7 +5520,7 @@ bm select bl false true
 bn select bl 1 0
 bo fold wxhost bn ak p2 1
 bp select bl 1 0
-bq fold wxcan bp bo p2 ar bd 24 bk p3 p4 p5 p6 p7 p8 p9 p10
+bq fold wxcan bp bo p2 ar bd 24 bk p3 p4 p5 p6 p7 p8 p9 p10 0
 br shr 16 7
 bs and 16 127
 bt get bq br
@@ -7978,7 +8007,7 @@ b9 and bt b8
 ca select b9 bm 0
 cb fold wxcs 1 b3 a 12 ca
 cc fold wxhost 1 cb a 2
-cd fold wxcan 1 cc a av a2 24 ca p3 p4 p5 p6 p7 p8 p9 p10
+cd fold wxcan 1 cc a av a2 24 ca p3 p4 p5 p6 p7 p8 p9 p10 0
 ce shr 16 7
 cf and 16 127
 cg get cd ce
