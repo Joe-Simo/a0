@@ -1,14 +1,15 @@
 {
-  "generatedAt": "2026-10-06T15:16:57.029Z",
+  "generatedAt": "2026-10-07T07:30:54.085Z",
   "tool": "derived from results/loss-ledger.json; one record per entry",
   "note": "Classification of why each recorded loss is open. Not a measurement: no loss here was closed or re-measured.",
-  "count": 584,
+  "count": 586,
   "byBlocker": {
-    "needs-quiet-machine": 23,
+    "needs-quiet-machine": 16,
+    "needs-codegen-change": 8,
     "dense-view-wins-canonical-loses": 325,
     "loses-in-both-views": 52,
     "primer-paid-per-call": 44,
-    "needs-fresh-subjects": 93,
+    "needs-fresh-subjects": 94,
     "measured-opt-in": 40,
     "needs-view-change-and-new-sealed-set": 7
   },
@@ -28,220 +29,150 @@
       "axis": "ns-per-trip",
       "kernel": "affine",
       "competitor": "clang",
-      "a0": 6.26362,
-      "other": 4.63379,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "a0": 3.75296,
+      "other": 3.4173,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
     },
     {
       "id": "wasm-benchmark|rotl|ns-per-trip|clang",
       "axis": "ns-per-trip",
       "kernel": "rotl",
       "competitor": "clang",
-      "a0": 4.99111,
-      "other": 4.36911,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
-    },
-    {
-      "id": "wasm-benchmark|rotl|wasm-load-ms|clang",
-      "axis": "wasm-load-ms",
-      "kernel": "rotl",
-      "competitor": "clang",
-      "a0": 0.0405,
-      "other": 0.037,
-      "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
-    },
-    {
-      "id": "wasm-benchmark|clamp|ns-per-trip|clang",
-      "axis": "ns-per-trip",
-      "kernel": "clamp",
-      "competitor": "clang",
-      "a0": 6.44278,
-      "other": 6.10827,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "a0": 2.658,
+      "other": 2.33238,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
     },
     {
       "id": "wasm-benchmark|chain3|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "chain3",
       "competitor": "clang",
-      "a0": 0.038917,
-      "other": 0.03675,
+      "a0": 0.1186,
+      "other": 0.1045,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
-    },
-    {
-      "id": "wasm-benchmark|branchy|ns-per-trip|clang",
-      "axis": "ns-per-trip",
-      "kernel": "branchy",
-      "competitor": "clang",
-      "a0": 5.71527,
-      "other": 5.31659,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|arrfill|ns-per-trip|clang",
       "axis": "ns-per-trip",
       "kernel": "arrfill",
       "competitor": "clang",
-      "a0": 7.31559,
-      "other": 6.1148,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
-    },
-    {
-      "id": "wasm-benchmark|arrfill|wasm-load-ms|clang",
-      "axis": "wasm-load-ms",
-      "kernel": "arrfill",
-      "competitor": "clang",
-      "a0": 0.047583,
-      "other": 0.042708,
-      "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
-    },
-    {
-      "id": "wasm-benchmark|loop64|wasm-load-ms|clang",
-      "axis": "wasm-load-ms",
-      "kernel": "loop64",
-      "competitor": "clang",
-      "a0": 0.038583,
-      "other": 0.035375,
-      "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
-    },
-    {
-      "id": "wasm-benchmark|dot1k|ns-per-trip|clang",
-      "axis": "ns-per-trip",
-      "kernel": "dot1k",
-      "competitor": "clang",
-      "a0": 1538.31,
-      "other": 1431.82,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "a0": 3.99844,
+      "other": 3.1341,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
     },
     {
       "id": "wasm-benchmark|dot1k|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "dot1k",
       "competitor": "clang",
-      "a0": 0.068208,
-      "other": 0.047583,
+      "a0": 0.1117,
+      "other": 0.1051,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|prefix1k|ns-per-trip|clang",
       "axis": "ns-per-trip",
       "kernel": "prefix1k",
       "competitor": "clang",
-      "a0": 1817.68,
-      "other": 1039.33,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "a0": 873.379,
+      "other": 740.27,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
     },
     {
       "id": "wasm-benchmark|prefix1k|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "prefix1k",
       "competitor": "clang",
-      "a0": 0.099959,
-      "other": 0.085834,
+      "a0": 0.1073,
+      "other": 0.0833,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|hist256|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "hist256",
       "competitor": "clang",
-      "a0": 0.080709,
-      "other": 0.076083,
+      "a0": 0.1427,
+      "other": 0.1134,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|mat4|wasm-bytes|clang",
       "axis": "wasm-bytes",
       "kernel": "mat4",
       "competitor": "clang",
-      "a0": 7058,
-      "other": 1546,
+      "a0": 3996,
+      "other": 1512,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm size against clang; re-emission needs the arm64 gate"
+      "evidence": "module bytes: A0 module larger than clang on this kernel (mat4); closes with a smaller encoding of the stack frame and array code"
     },
     {
       "id": "wasm-benchmark|mat4|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "mat4",
       "competitor": "clang",
-      "a0": 0.09225,
-      "other": 0.066125,
+      "a0": 0.1492,
+      "other": 0.1021,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|fnv4k|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "fnv4k",
       "competitor": "clang",
-      "a0": 0.115084,
-      "other": 0.093583,
+      "a0": 0.0959,
+      "other": 0.0802,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
-    },
-    {
-      "id": "wasm-benchmark|xs4k|ns-per-trip|clang",
-      "axis": "ns-per-trip",
-      "kernel": "xs4k",
-      "competitor": "clang",
-      "a0": 22746.2,
-      "other": 18392.4,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|xs4k|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "xs4k",
       "competitor": "clang",
-      "a0": 0.143417,
-      "other": 0.119291,
+      "a0": 0.1057,
+      "other": 0.0941,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|minmax1k|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "minmax1k",
       "competitor": "clang",
-      "a0": 0.085042,
-      "other": 0.076792,
+      "a0": 0.116,
+      "other": 0.0986,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "wasm-benchmark|filter2|ns-per-trip|clang",
       "axis": "ns-per-trip",
       "kernel": "filter2",
       "competitor": "clang",
-      "a0": 2904.45,
-      "other": 2395.8,
-      "blocker": "needs-quiet-machine",
-      "evidence": "loop speed against a native compiler; needs a quiet arm64 rerun"
+      "a0": 2392.46,
+      "other": 2267.21,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
     },
     {
       "id": "wasm-benchmark|filter2|wasm-load-ms|clang",
       "axis": "wasm-load-ms",
       "kernel": "filter2",
       "competitor": "clang",
-      "a0": 0.074791,
-      "other": 0.063167,
+      "a0": 0.1119,
+      "other": 0.0809,
       "blocker": "needs-quiet-machine",
-      "evidence": "wasm load time against clang; a timing claim needs a quiet arm64 run (load at most 10), unavailable on the Windows x64 session"
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     },
     {
       "id": "lang-axes|noop|tokens-kernel|c",
@@ -7370,6 +7301,86 @@
       "other": 0.928571,
       "blocker": "needs-fresh-subjects",
       "evidence": "word-key legend arm (results/app-edit-keys.json): A0 10 against TypeScript 13 of 14 accepted on Haiku (Sonnet ties at 14 of 14) while A0 costs 2143.5 against 7960 tokens per accepted edit; the four remaining misses (fat-arrow, profile-canonical, param-limit, number-leading-zero) are model errors in the edit language, not view gaps; closes only by an edit-language or wording change with its own pre-registration and fresh subjects"
+    },
+    {
+      "id": "wasm-benchmark|clamp|wasm-load-ms|clang",
+      "axis": "wasm-load-ms",
+      "kernel": "clamp",
+      "competitor": "clang",
+      "a0": 0.0971,
+      "other": 0.0886,
+      "blocker": "needs-quiet-machine",
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
+    },
+    {
+      "id": "wasm-benchmark|mix|wasm-load-ms|clang",
+      "axis": "wasm-load-ms",
+      "kernel": "mix",
+      "competitor": "clang",
+      "a0": 0.1096,
+      "other": 0.1039,
+      "blocker": "needs-quiet-machine",
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
+    },
+    {
+      "id": "wasm-benchmark|ident|ns-per-trip|clang",
+      "axis": "ns-per-trip",
+      "kernel": "ident",
+      "competitor": "clang",
+      "a0": 0.61732,
+      "other": 0.58698,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
+    },
+    {
+      "id": "wasm-benchmark|noop|ns-per-trip|clang",
+      "axis": "ns-per-trip",
+      "kernel": "noop",
+      "competitor": "clang",
+      "a0": 0.65782,
+      "other": 0.59452,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
+    },
+    {
+      "id": "wasm-benchmark|noop|wasm-load-ms|clang",
+      "axis": "wasm-load-ms",
+      "kernel": "noop",
+      "competitor": "clang",
+      "a0": 0.1172,
+      "other": 0.1023,
+      "blocker": "needs-quiet-machine",
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
+    },
+    {
+      "id": "wasm-benchmark|chain3|ns-per-trip|clang",
+      "axis": "ns-per-trip",
+      "kernel": "chain3",
+      "competitor": "clang",
+      "a0": 2.61384,
+      "other": 2.30942,
+      "blocker": "needs-codegen-change",
+      "evidence": "quiet Windows x64 run (results/wasm-benchmark.json, load recorded, interleaved samples; a second run agrees): the loop speed of the emitted wasm trails clang on this kernel; closes only with a general emitter change (loop unrolling measured no faster on V8; see results/wasm-benchmark-win32.json history and the frame-inlining commit for what was tried)"
+    },
+    {
+      "id": "wasm-benchmark|branchy|wasm-load-ms|clang",
+      "axis": "wasm-load-ms",
+      "kernel": "branchy",
+      "competitor": "clang",
+      "a0": 0.0734,
+      "other": 0.0605,
+      "blocker": "needs-quiet-machine",
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
+    },
+    {
+      "id": "wasm-benchmark|arrfill4k|wasm-load-ms|clang",
+      "axis": "wasm-load-ms",
+      "kernel": "arrfill4k",
+      "competitor": "clang",
+      "a0": 0.1054,
+      "other": 0.0915,
+      "blocker": "needs-quiet-machine",
+      "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
     }
   ],
   "tokenKernelDense": {

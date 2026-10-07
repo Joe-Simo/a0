@@ -200,3 +200,6 @@ Quiet Windows x64 rerun of the wasm benchmark against clang (`results/wasm-bench
 
 
 The A0014 diagnostic (wrong operand count) now shows the chain when an associative binary op (`add`, `mul`, `and`, `or`, `xor`) is written with more than two operands (`src/core.ts`, `test/operand-chain-hint.test.ts`); no measurement of its effect on model acceptance has been made, so no claim is attached. It targets the `number-leading-zero` miss on Haiku in `results/app-edit-keys.json`.
+
+
+The wasm benchmark file `results/wasm-benchmark.json` was regenerated on a quiet Windows x64 machine with platform and load recorded (before, it recorded no load and 21 ledger rows were unverified). The ledger now has 586 entries, none unverified: 8 ns-per-trip losses against clang, 14 wasm-load-ms (noisy: the A0 to clang ratio moved by up to 0.27 between two runs), 1 wasm-bytes; 7 earlier entries are gone or tied. Geomean 1.055 (above 1 is A0 faster).
