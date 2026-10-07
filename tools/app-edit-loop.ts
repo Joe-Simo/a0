@@ -19,10 +19,19 @@
  *       through the tool interface, per task and side: the start state fails, the reference edit
  *       applied with `tool apply` passes, the wrong edit applies and fails; the budget is enforced
  *
+ * Wording arm (docs/history/2026-10-06-app-edit-wording-preregistration.md), A0 side only:
+ *   bun tools/app-edit-loop.ts setup OUTDIR a0 --arm wording --variant current|revised
+ *       as above, but TASK.md holds only the instruction (no view, no handle open), SKILL.md holds the
+ *       variant's skill text (experiments/wording/<variant>/SKILL.md) and `./tool help` carries the
+ *       variant's descriptions of view and program (experiments/wording/<variant>/tools.json)
+ *   bun tools/app-edit-loop.ts score OUTDIR a0 MODEL --arm wording --variant current|revised
+ *       writes results/app-edit-wording/report.<model>.<variant>.json
+ *
  * Run from the repository root. Nothing here calls a model, uses the network or needs a key.
  */
 
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -103,6 +112,56 @@ Handles opened at the start (shown below): <HANDLES>.`;
 The whole file at the start is shown below.`;
 }
 
+// --- Wording arm ------------------------------------------------------------------
+
+export const VARIANTS = ['current', 'revised'] as const;
+export type Variant = (typeof VARIANTS)[number];
+/** The variant files, read from the repository root (setup and score run there). */
+const WORDING_DIR = join('experiments', 'wording');
+
+/** The variant texts: the skill file and the one-line descriptions of a0_open and a0_program. */
+export function wordingTexts(variant: Variant): { skill: string; open: string; program: string } {
+  const dir = join(WORDING_DIR, variant);
+  const tools = JSON.parse(readFileSync(join(dir, 'tools.json'), 'utf8')) as Record<string, string>;
+  const open = tools.a0_open;
+  const program = tools.a0_program;
+  if (open === undefined || program === undefined)
+    throw new Error(`${dir}/tools.json is incomplete`);
+  return { skill: readFileSync(join(dir, 'SKILL.md'), 'utf8'), open, program };
+}
+
+/** The wording arm's subagent prompt: the loop arm's, with SKILL.md read alongside. */
+export const WORDING_PROMPT = SUBAGENT_PROMPT.replace(
+  'First read <dir>/TASK.md and <dir>/GUIDE.md with the Read tool',
+  'First read <dir>/TASK.md, <dir>/SKILL.md and <dir>/GUIDE.md with the Read tool',
+);
+
+/** `./tool help` in the wording arm: the loop arm's commands, view and program described by the variant. */
+export function wordingHelp(w: { readonly open: string; readonly program: string }): string {
+  return `The program is ${A0_FILE} (the A0 lexer and parser, linked into one program). Change it only through ./tool (at most ${BUDGET} runs, each one counted). view is the MCP tool a0_open (scope deps) and program is a0_program:
+./tool view FUNCTION        a0_open: ${w.open}
+./tool program [TARGET]     a0_program: ${w.program}
+./tool apply < EDIT         apply edit lines (first line: an open handle) as GUIDE.md describes; prints the new view,
+                            or a JSON diagnostic (id, message, expected/actual, fix, applicability); a rejected edit
+                            changes nothing, and the edit \`fix all\` then applies every exact fix of it
+./tool check                validate the program: one line per function with its revision
+./tool revision FUNCTION    the revision of a function
+./tool explain A0nnnn       explain a diagnostic id
+./tool run FUNCTION ARGS    run a function on JSON arguments (u32 numbers, booleans, arrays) in the interpreter
+./tool lex '"TEXT"'         run the lexer (lexsrc) on TEXT, a JSON string: [kind, start, length] per token
+./tool parse '"TEXT"'       run the parser (parseio) on TEXT, a JSON string: the word IR as JSON
+./tool help                 this text
+No handle is open at the start.`;
+}
+
+/** TASK.md of the wording arm: the instruction only. */
+export const wordingTaskText = (task: AppTask): string => `# Task\n\n${task.instruction}\n`;
+
+/** The program views a subject asked for, from its log: `bare` (every signature) or the target. */
+export function programViews(log: readonly LogEntry[]): string[] {
+  return log.filter((e) => !e.refused && e.argv[0] === 'program').map((e) => e.argv[1] ?? 'bare');
+}
+
 // --- State and log ------------------------------------------------------------------
 
 type Open =
@@ -113,6 +172,10 @@ export interface LoopState {
   readonly side: Side;
   readonly task: string;
   readonly budget: number;
+  /** Set only in the wording arm. */
+  readonly variant?: Variant;
+  /** Wording arm: the variant's descriptions of view and program, for `./tool help`. */
+  readonly wording?: { readonly open: string; readonly program: string };
   calls: number;
   refused: number;
   /** A0: the views opened in this session, in order (replayed to rebuild the edit session). */
@@ -222,6 +285,35 @@ export async function setupTask(
     refused: 0,
     opens: side === 'a0' ? initialOpens(task) : [],
     sha: sha(program),
+  };
+  await writeFile(statePath(dir), JSON.stringify(state, null, 1), 'utf8');
+  await writeFile(logPath(dir), '', 'utf8');
+}
+
+export async function setupWordingTask(
+  dir: string,
+  task: AppTask,
+  programs: Programs,
+  guide: string,
+  variant: Variant,
+): Promise<void> {
+  await mkdir(join(dir, '.loop'), { recursive: true });
+  await writeFile(join(dir, A0_FILE), programs.a0, 'utf8');
+  await writeFile(join(dir, 'TASK.md'), wordingTaskText(task), 'utf8');
+  await writeFile(join(dir, 'GUIDE.md'), guideText('a0', task, programs, guide), 'utf8');
+  await writeFile(join(dir, 'SKILL.md'), wordingTexts(variant).skill, 'utf8');
+  await writeFile(join(dir, 'tool'), toolScript(), 'utf8');
+  await chmod(join(dir, 'tool'), 0o755).catch(() => undefined);
+  const state: LoopState = {
+    side: 'a0',
+    task: task.id,
+    budget: BUDGET,
+    variant,
+    wording: { open: wordingTexts(variant).open, program: wordingTexts(variant).program },
+    calls: 0,
+    refused: 0,
+    opens: [],
+    sha: sha(programs.a0),
   };
   await writeFile(statePath(dir), JSON.stringify(state, null, 1), 'utf8');
   await writeFile(logPath(dir), '', 'utf8');
@@ -344,7 +436,13 @@ async function a0Command(
   };
   switch (cmd) {
     case 'help':
-      return { output: toolHelp('a0').replace('<HANDLES>', handlesText(task)), code: 0 };
+      return {
+        output:
+          state.variant === undefined
+            ? toolHelp('a0').replace('<HANDLES>', handlesText(task))
+            : wordingHelp(state.wording ?? wordingTexts(state.variant)),
+        code: 0,
+      };
     case 'view': {
       const name = args[0];
       if (name === undefined) throw new Error('usage: ./tool view FUNCTION');
@@ -556,6 +654,9 @@ export interface LoopTrial {
   /** Secondary: the context each model call reads again (system, request, every earlier command and output). */
   rereadTokensLocal: { o200k_base: number };
   commands: string[];
+  /** Wording arm only: the variant and the program views asked for (`bare` or the target). */
+  variant?: Variant;
+  programViews?: string[];
 }
 
 /**
@@ -585,8 +686,15 @@ export async function scoreDir(dir: string, programs: Programs, guide: string): 
   }
   const p = prompt(side, task, programs, guide);
   const help = toolHelp(side).replace('<HANDLES>', handlesText(task));
-  const system = tok(SUBAGENT_PROMPT) + tok(p.system) + tok(help);
-  const request = tok(p.user);
+  const v = state.variant;
+  // wording arm: system = the prompt + GUIDE.md + SKILL.md (the help is a tool output there);
+  // request = TASK.md as written
+  const skill = v === undefined ? '' : wordingTexts(v).skill;
+  const system =
+    v === undefined
+      ? tok(SUBAGENT_PROMPT) + tok(p.system) + tok(help)
+      : tok(WORDING_PROMPT) + tok(p.system) + tok(skill);
+  const request = v === undefined ? tok(p.user) : tok(wordingTaskText(task));
   const command = (e: LogEntry): string =>
     `./tool ${e.argv.join(' ')}${e.stdin === '' ? '' : `\n${e.stdin}`}`;
   const outs = log.map((e) => tok(e.output));
@@ -614,7 +722,9 @@ export async function scoreDir(dir: string, programs: Programs, guide: string): 
     tokenBucketsLocal: {
       languagePrimer: side === 'a0' ? tok(guide.trimEnd()) * (log.length + 1) : 0,
       workflowPrimer:
-        (tok(SUBAGENT_PROMPT) + tok(help) + tok(side === 'a0' ? A0_PROTOCOL : TS_PROTOCOL)) *
+        (v === undefined
+          ? tok(SUBAGENT_PROMPT) + tok(help) + tok(side === 'a0' ? A0_PROTOCOL : TS_PROTOCOL)
+          : tok(WORDING_PROMPT) + tok(skill) + tok(A0_PROTOCOL)) *
         (log.length + 1),
       toolContext: request + outs.reduce((a, b) => a + b, 0),
       output: cmds.reduce((a, b) => a + b, 0),
@@ -623,6 +733,7 @@ export async function scoreDir(dir: string, programs: Programs, guide: string): 
     commands: log.map(
       (e) => `${e.argv.join(' ')}${e.refused ? ' (refused)' : ''} -> ${e.exitCode}`,
     ),
+    ...(v === undefined ? {} : { variant: v, programViews: programViews(log) }),
   };
 }
 
@@ -711,8 +822,100 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+/** `--arm wording --variant V` out of the arguments (exec takes none: the state says the arm). */
+export function wordingFlags(argv: readonly string[]): { args: string[]; variant?: Variant } {
+  const args: string[] = [];
+  let arm: string | undefined;
+  let variant: string | undefined;
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i] as string;
+    if (a === '--arm') arm = argv[++i];
+    else if (a === '--variant') variant = argv[++i];
+    else args.push(a);
+  }
+  if (arm === undefined && variant === undefined) return { args };
+  if (arm !== 'wording') throw new Error(`unknown arm ${arm ?? '(none)'}; the only one is wording`);
+  if (!(VARIANTS as readonly string[]).includes(variant ?? ''))
+    throw new Error(`--variant must be one of ${VARIANTS.join(', ')}`);
+  return { args, variant: variant as Variant };
+}
+
+async function wordingMain(
+  cmd: string | undefined,
+  args: string[],
+  variant: Variant,
+): Promise<void> {
+  const taskSha = await sealed();
+  const programs = await startPrograms();
+  checkStart(programs);
+  const guide = await readFile('MODEL_GUIDE.min.txt', 'utf8');
+  if (args[1] !== undefined && args[1] !== 'a0') throw new Error('the wording arm is A0 only');
+  const out = args[0];
+  if (cmd === 'setup') {
+    if (out === undefined) throw new Error('usage: setup OUTDIR a0 --arm wording --variant V');
+    await mkdir(join(out, 'a0', 'prompts'), { recursive: true });
+    for (const task of APP_TASKS) {
+      const dir = resolve(out, 'a0', task.id);
+      await setupWordingTask(dir, task, programs, guide, variant);
+      await writeFile(
+        join(out, 'a0', 'prompts', `${task.id}.txt`),
+        WORDING_PROMPT.replaceAll('<dir>', dir.replace(/\\/g, '/')),
+        'utf8',
+      );
+    }
+    console.log(
+      `wording ${variant}: ${APP_TASKS.length} working directories under ${join(out, 'a0')}`,
+    );
+    return;
+  }
+  if (cmd === 'score') {
+    const model = args[2];
+    if (out === undefined || model === undefined)
+      throw new Error('usage: score OUTDIR a0 MODEL --arm wording --variant V');
+    const check = await selfCheck();
+    const trials: LoopTrial[] = [];
+    for (const task of APP_TASKS) {
+      const t = await scoreDir(join(out, 'a0', task.id), programs, guide);
+      if (t.variant !== variant)
+        throw new Error(`${task.id}: set up as ${t.variant ?? 'loop arm'}`);
+      trials.push(t);
+    }
+    const path = `results/app-edit-wording/report.${model}.${variant}.json`;
+    await mkdir(dirname(path), { recursive: true });
+    await writeScrubbed(path, {
+      generatedAt: new Date().toISOString(),
+      tool: 'tools/app-edit-loop.ts score --arm wording',
+      preRegistration: 'docs/history/2026-10-06-app-edit-wording-preregistration.md',
+      model,
+      side: 'a0',
+      variant,
+      budget: BUDGET,
+      taskSetSha256: taskSha,
+      startSha256: START_SHA256,
+      harnessSelfCheck: { ok: check.ok },
+      trials,
+    });
+    console.log(
+      JSON.stringify({
+        variant,
+        trials: trials.length,
+        accepted: trials.filter((t) => t.accepted).length,
+        toolCalls: trials.reduce((a, t) => a + t.toolCalls, 0),
+        bareListing: trials.filter((t) => t.programViews?.includes('bare')).length,
+      }),
+    );
+    return;
+  }
+  throw new Error('the wording arm takes setup or score');
+}
+
 async function main(): Promise<void> {
-  const [cmd, ...args] = process.argv.slice(2);
+  const [cmd, ...rawArgs] = process.argv.slice(2);
+  if (cmd !== 'exec') {
+    const f = wordingFlags(rawArgs);
+    if (f.variant !== undefined) return wordingMain(cmd, f.args, f.variant);
+  }
+  const args = rawArgs;
   if (cmd === 'exec') {
     const [dir, ...argv] = args;
     if (dir === undefined) throw new Error('usage: exec DIR COMMAND [ARGS...]');
