@@ -130,6 +130,13 @@ test('behavior: results/behavior.json shows the same ledger and table as the cod
     TARGETS.map((t) => t.id),
   );
   assert.equal(recorded.summary.failed, 0);
+  // Provenance (tools/behavior-merge.ts): a target that ran names the platform it ran on; a
+  // blocked one never does. Reports from before the field existed carry none.
+  for (const t of recorded.targets) {
+    if (t.status === 'blocked')
+      assert.equal(t.ranOn, undefined, `${t.id} is blocked but has ranOn`);
+    else if (t.ranOn !== undefined) assert.match(t.ranOn, /^[a-z0-9]+-[a-z0-9]+$/, t.id);
+  }
   // The recorded coverage matrix shows each ledger entry as a non-pass for that program.
   for (const s of SKIPS) {
     if (s.program === '*') continue;

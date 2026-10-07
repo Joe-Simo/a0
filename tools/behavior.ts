@@ -22,7 +22,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import { type CParallel, compile } from '../src/backends.js';
@@ -544,6 +544,8 @@ export interface TargetResult {
   readonly tool?: string | undefined;
   readonly elapsedMs: number;
   readonly failures?: string[] | undefined;
+  /** Platform this result was measured on (absent for a blocked target: nothing ran). */
+  readonly ranOn?: string | undefined;
   /** Per program: passed, partial (some functions skipped), skipped, blocked or failed. */
   readonly programs: Record<string, 'passed' | 'partial' | 'skipped' | 'blocked' | 'failed'>;
 }
@@ -686,7 +688,9 @@ export function buildReport(targets: readonly TargetResult[]): BehaviorReport {
       rows: (BEHAVIOR_TABLE[s.name] ?? []).length,
     })),
     summary: summarize(targets),
-    targets: [...targets],
+    targets: targets.map((t) =>
+      t.status === 'blocked' ? t : { ...t, ranOn: `${process.platform}-${process.arch}` },
+    ),
     skipLedger: [...SKIPS],
     coverage: Object.fromEntries(targets.map((t) => [t.id, t.programs] as const)),
   };
@@ -786,9 +790,23 @@ async function main(): Promise<void> {
     for (const f of r.failures?.slice(0, 5) ?? []) process.stdout.write(`    ${f.slice(0, 400)}\n`);
   }
   const report = buildReport(results);
+  // --out <path> (or --out=<path>) writes a partial per-platform report instead of results/behavior.json;
+  // tools/behavior-merge.ts combines the partial reports (targets a machine cannot run stay blocked there).
+  const outIdx = args.findIndex((a) => a === '--out' || a.startsWith('--out='));
+  const outArg =
+    outIdx < 0
+      ? undefined
+      : args[outIdx]?.startsWith('--out=')
+        ? args[outIdx]?.slice(6)
+        : args[outIdx + 1];
+  if (outIdx >= 0 && (outArg === undefined || outArg === '')) {
+    process.stderr.write('--out needs a path\n');
+    process.exit(1);
+  }
   if (!args.includes('--no-write') && only === undefined) {
-    await mkdir('results', { recursive: true });
-    await writeReport(join('results', 'behavior.json'), report);
+    const out = outArg ?? join('results', 'behavior.json');
+    await mkdir(dirname(out), { recursive: true });
+    await writeReport(out, report);
   }
   process.stdout.write(
     `behavior: ${report.summary.passed} passed, ${report.summary.failed} failed, ${report.summary.blocked} blocked, ${report.summary.skipped} skipped; ${SKIPS.length} skip entries in the ledger\n`,
