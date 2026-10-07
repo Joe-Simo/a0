@@ -1727,9 +1727,12 @@ function specCallees(fn: Func): string[] {
 
 let reuseEnabled = true;
 
+/** False inside `withoutReuse`: no typed result, canonical text or revision is remembered or reused. */
+export const reusing = (): boolean => reuseEnabled;
+
 /**
- * Run `run` with `validate` reusing nothing: every function is typed again, as before validation was
- * incremental. The reference for the differential tests and the baseline of tools/edit-incremental.ts.
+ * Run `run` with nothing reused: every function is typed, formatted and hashed again, as before validation
+ * was incremental. The reference for the differential tests and the baseline of tools/edit-incremental.ts.
  */
 export function withoutReuse<T>(run: () => T): T {
   const was = reuseEnabled;
@@ -1822,7 +1825,23 @@ export function formatNode(node: Node): string {
   return `${node.id} ${node.op}${pred}${callee}${args}`;
 }
 
+const canonicalText = new WeakMap<Func, string>();
+
+/**
+ * The canonical text of a function. A `Func` is immutable, so the text is remembered per object: an edit that
+ * leaves most of a program as it was formats, and so hashes, only the functions it rebuilt.
+ */
 export function formatFunction(fn: Func): string {
+  if (!reuseEnabled) return formatFunctionUncached(fn);
+  let text = canonicalText.get(fn);
+  if (text === undefined) {
+    text = formatFunctionUncached(fn);
+    canonicalText.set(fn, text);
+  }
+  return text;
+}
+
+function formatFunctionUncached(fn: Func): string {
   const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
   const spec = specLinesWithComments(fn.spec)
     .map(([, line]) => line)
