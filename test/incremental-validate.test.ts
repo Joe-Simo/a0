@@ -19,8 +19,8 @@ import {
   formatProgram,
   type Node,
   type Operand,
-  parseAndValidate,
   type Program,
+  parseAndValidate,
   type TypedProgram,
   validate,
 } from '../src/core.js';
@@ -186,15 +186,21 @@ function mutate(r: Rand, p: Program): { program: Program; kind: string } {
           ? x
           : {
               ...x,
-              args: x.args.map((a): Operand =>
-                a.kind === 'u32' ? { kind: 'u32', value: below(r, 9) } : a,
+              args: x.args.map(
+                (a): Operand => (a.kind === 'u32' ? { kind: 'u32', value: below(r, 9) } : a),
               ),
             },
       );
       return { program: out(fs), kind };
     }
     case 'op': {
-      const swaps: Record<string, string> = { add: 'sub', sub: 'mul', mul: 'add', lt: 'eq', eq: 'lt' };
+      const swaps: Record<string, string> = {
+        add: 'sub',
+        sub: 'mul',
+        mul: 'add',
+        lt: 'eq',
+        eq: 'lt',
+      };
       const cands = f.nodes.flatMap((x, k) => (x.op in swaps ? [k] : []));
       if (cands.length === 0) break;
       const k = pick(r, cands);
@@ -204,7 +210,10 @@ function mutate(r: Rand, p: Program): { program: Program; kind: string } {
       return { program: out(fs), kind };
     }
     case 'signature':
-      fs[i] = r() < 0.5 ? { ...strip(f), params: [...f.params, 'u32'] } : { ...strip(f), params: f.params.slice(0, -1) };
+      fs[i] =
+        r() < 0.5
+          ? { ...strip(f), params: [...f.params, 'u32'] }
+          : { ...strip(f), params: f.params.slice(0, -1) };
       return { program: out(fs), kind };
     case 'result':
       fs[i] = { ...strip(f), result: f.result === 'u32' ? 'bool' : 'u32' };
@@ -312,27 +321,74 @@ test('incremental validate: random edits over corpus and examples equal a full v
   assert.ok(compared - before >= RANDOM_EDITS);
   // Every kind of edit ran, and both outcomes (valid, diagnostic) are covered.
   assert.ok(failures > 100 && compared - failures > 100, `${failures} failed of ${compared}`);
-  for (const k of ['rename', 'rename-all', 'body', 'op', 'signature', 'result', 'delete', 'add', 'reorder', 'move', 'break-callee', 'noop-copy', 'profile'])
+  for (const k of [
+    'rename',
+    'rename-all',
+    'body',
+    'op',
+    'signature',
+    'result',
+    'delete',
+    'add',
+    'reorder',
+    'move',
+    'break-callee',
+    'noop-copy',
+    'profile',
+  ])
     assert.ok((KINDS.get(k) ?? 0) > 5, `edit kind ${k} ran ${KINDS.get(k) ?? 0} times`);
 });
 
 test('incremental validate: random edits over linked compiler programs with specs and strict profile', async () => {
   const bases: { name: string; program: TypedProgram }[] = [];
-  for (const file of ['compiler/shape.a0', 'compiler/emit_wasm.a0', 'compiler/asm_arm64.a0', 'compiler/lex.a0']) {
+  for (const file of [
+    'compiler/shape.a0',
+    'compiler/emit_wasm.a0',
+    'compiler/asm_arm64.a0',
+    'compiler/lex.a0',
+  ]) {
     const linked = await link(file, (p) => readFile(p, 'utf8'));
     bases.push({ name: file, program: parseAndValidate(linked.text) });
   }
   // Spec lines whose pre and post call helpers (those callees are dependencies too).
   const spec = [
-    'fn below u32 u32 -> bool','a lt p0 p1','ret a','end',
-    'fn inc u32 -> u32','a add p0 1','ret a','end',
-    'fn f u32 -> u32','ex 1 -> 3','pre below p0 100','post call below p0 r','a call inc p0','b call inc a','ret b','end',
-    'fn g u32 -> u32','ex 1 -> 4','a call f p0','b call inc a','ret b','end',
-    'fn h u32 -> u32','ex 0 -> 5','a call g p0','b call f a','ret b','end','',
+    'fn below u32 u32 -> bool',
+    'a lt p0 p1',
+    'ret a',
+    'end',
+    'fn inc u32 -> u32',
+    'a add p0 1',
+    'ret a',
+    'end',
+    'fn f u32 -> u32',
+    'ex 1 -> 3',
+    'pre below p0 100',
+    'post call below p0 r',
+    'a call inc p0',
+    'b call inc a',
+    'ret b',
+    'end',
+    'fn g u32 -> u32',
+    'ex 1 -> 4',
+    'a call f p0',
+    'b call inc a',
+    'ret b',
+    'end',
+    'fn h u32 -> u32',
+    'ex 0 -> 5',
+    'a call g p0',
+    'b call f a',
+    'ret b',
+    'end',
+    '',
   ].join('\n');
   bases.push({ name: 'spec', program: parseAndValidate(spec) });
-  assert.ok(bases.some((b) => b.program.functions.some((f) => f.spec !== undefined)), 'no spec lines in the bases');
-  for (const [k, { name, program }] of bases.entries()) walk(5000 + k, program, name === 'spec' ? 400 : 60, name);
+  assert.ok(
+    bases.some((b) => b.program.functions.some((f) => f.spec !== undefined)),
+    'no spec lines in the bases',
+  );
+  for (const [k, { name, program }] of bases.entries())
+    walk(5000 + k, program, name === 'spec' ? 400 : 60, name);
 });
 
 test('incremental validate: reuse is by identity and invalidates exactly the dependents', () => {
@@ -363,14 +419,25 @@ test('incremental validate: reuse is by identity and invalidates exactly the dep
   for (const f of p.functions) assert.equal(same.byName.get(f.name), f, `${f.name} reused`);
   // Edit a: b and c are typed again, d is not.
   const a = p.functions[0] as Func;
-  const edited = { ...strip(a), nodes: [{ ...a.nodes[0], args: [a.nodes[0]?.args[0], { kind: 'u32', value: 7 }] } as Node] };
+  const edited = {
+    ...strip(a),
+    nodes: [{ ...a.nodes[0], args: [a.nodes[0]?.args[0], { kind: 'u32', value: 7 }] } as Node],
+  };
   const q = validate({ functions: [edited, ...p.functions.slice(1)] });
   assert.notEqual(q.byName.get('b'), p.byName.get('b'));
   assert.notEqual(q.byName.get('c'), p.byName.get('c'));
   assert.equal(q.byName.get('d'), p.byName.get('d'));
   // Edit d: nothing else is typed again.
   const d = p.functions[3] as Func;
-  const r = validate({ functions: [...p.functions.slice(0, 3), { ...strip(d), nodes: [{ ...d.nodes[0], args: [d.nodes[0]?.args[0], { kind: 'u32', value: 9 }] } as Node] }] });
+  const r = validate({
+    functions: [
+      ...p.functions.slice(0, 3),
+      {
+        ...strip(d),
+        nodes: [{ ...d.nodes[0], args: [d.nodes[0]?.args[0], { kind: 'u32', value: 9 }] } as Node],
+      },
+    ],
+  });
   for (const name of ['a', 'b', 'c']) assert.equal(r.byName.get(name), p.byName.get(name));
   // A different profile retypes everything.
   const s = validate({ profile: 'strict', functions: p.functions });

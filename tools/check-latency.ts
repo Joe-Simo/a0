@@ -617,7 +617,7 @@ export async function measure(opts: {
         'A0 edit rows time EditSession.apply in process on a warm session (session and views built before the clock); the competitors are whole-project checks in fresh processes started by spawnSync, wall time',
         'A0 checks one function incrementally (the edited function and what depends on it) and the whole program is held; tsc, tsgo and tsc-rs re-check the whole project every time',
         'the A0 whole-front-end rows validate all of compiler/lex.a0 + compiler/parse.a0 from scratch: in process (no process start) and in a fresh node process (priced like the competitors)',
-        'finding: EditSession.apply is not O(function) today: src/edit.ts commit() calls validate() (src/core.ts), which re-validates every function of the program; the saving over a cold open is the parse and the session reuse, not an incremental check',
+        'EditSession.apply validates incrementally (src/core.ts validate reuses unchanged typed functions by identity): the edited functions and their transitive callers are typed again; before/after in results/edit-incremental.json',
         'every sample asserts success: apply accepted the edit, the competitors exited 0 with no diagnostics',
         'the TypeScript side is checked on the start program; the check cost does not depend on which function was edited',
       ],

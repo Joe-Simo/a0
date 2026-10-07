@@ -66,8 +66,17 @@ export interface EditIncrementalReport {
     readonly rounds: number;
     readonly waits: number;
   };
-  readonly method: { readonly runs: number; readonly warmups: number; readonly interleaved: boolean; readonly notes: readonly string[] };
-  readonly program: { readonly functions: number; readonly formattedLines: number; readonly formattedBytes: number };
+  readonly method: {
+    readonly runs: number;
+    readonly warmups: number;
+    readonly interleaved: boolean;
+    readonly notes: readonly string[];
+  };
+  readonly program: {
+    readonly functions: number;
+    readonly formattedLines: number;
+    readonly formattedBytes: number;
+  };
   readonly edits: readonly EditRow[];
   readonly summary: {
     /** Median over the edits of each edit's median apply time. */
@@ -102,22 +111,27 @@ export function validateReport(r: unknown): string[] {
   if (typeof r !== 'object' || r === null) return ['not an object'];
   const rep = r as EditIncrementalReport;
   if (rep.version !== 1) bad.push('version must be 1');
-  for (const k of ['platform', 'arch', 'node', 'bun'] as const) if (!nonEmpty(rep[k])) bad.push(`${k} missing`);
+  for (const k of ['platform', 'arch', 'node', 'bun'] as const)
+    if (!nonEmpty(rep[k])) bad.push(`${k} missing`);
   if (typeof rep.load?.max !== 'number' || rep.load.limit !== LOAD_LIMIT) bad.push('load missing');
   else if (rep.load.max > LOAD_LIMIT) bad.push(`load ${rep.load.max} above ${LOAD_LIMIT}`);
   if (!(rep.method?.runs >= MIN_RUNS)) bad.push(`fewer than ${MIN_RUNS} runs`);
   if (!(rep.method?.warmups >= WARMUPS)) bad.push(`fewer than ${WARMUPS} warmups`);
-  if (!(rep.program?.functions > 0 && rep.program?.formattedLines > 0)) bad.push('program size missing');
+  if (!(rep.program?.functions > 0 && rep.program?.formattedLines > 0))
+    bad.push('program size missing');
   if (!Array.isArray(rep.edits) || rep.edits.length === 0) bad.push('no edits');
   for (const e of rep.edits ?? []) {
     if (!isStats(e.before) || !isStats(e.after)) {
       bad.push(`edit ${e.task}: bad stats`);
       continue;
     }
-    if (e.before.n < MIN_RUNS || e.after.n < MIN_RUNS) bad.push(`edit ${e.task}: fewer than ${MIN_RUNS} samples`);
+    if (e.before.n < MIN_RUNS || e.after.n < MIN_RUNS)
+      bad.push(`edit ${e.task}: fewer than ${MIN_RUNS} samples`);
     const s = e.before.median / e.after.median;
-    if (Math.abs(s - e.speedup) > 1e-4 + Math.abs(s) * 1e-4) bad.push(`edit ${e.task}: speedup ${e.speedup} is not ${s}`);
-    if (!(e.retyped >= 1 && e.retyped <= e.functions)) bad.push(`edit ${e.task}: retyped ${e.retyped} outside 1..${e.functions}`);
+    if (Math.abs(s - e.speedup) > 1e-4 + Math.abs(s) * 1e-4)
+      bad.push(`edit ${e.task}: speedup ${e.speedup} is not ${s}`);
+    if (!(e.retyped >= 1 && e.retyped <= e.functions))
+      bad.push(`edit ${e.task}: retyped ${e.retyped} outside 1..${e.functions}`);
   }
   const edits = rep.edits ?? [];
   if (edits.length > 0 && rep.summary !== undefined) {
@@ -126,11 +140,16 @@ export function validateReport(r: unknown): string[] {
     const am = median(edits.map((e) => e.after.median));
     if (!close(rep.summary.beforeMedianMs, bm)) bad.push(`summary.beforeMedianMs is not ${bm}`);
     if (!close(rep.summary.afterMedianMs, am)) bad.push(`summary.afterMedianMs is not ${am}`);
-    if (!close(rep.summary.speedupMedian, bm / am)) bad.push(`summary.speedupMedian is not ${bm / am}`);
-    if (!close(rep.summary.speedupMin, Math.min(...edits.map((e) => e.speedup)))) bad.push('summary.speedupMin is wrong');
-    if (!close(rep.summary.speedupMedianOfEdits, median(edits.map((e) => e.speedup)))) bad.push('summary.speedupMedianOfEdits is wrong');
-    if (!close(rep.summary.beforeSlowestMs, Math.max(...edits.map((e) => e.before.median)))) bad.push('summary.beforeSlowestMs is wrong');
-    if (!close(rep.summary.afterSlowestMs, Math.max(...edits.map((e) => e.after.median)))) bad.push('summary.afterSlowestMs is wrong');
+    if (!close(rep.summary.speedupMedian, bm / am))
+      bad.push(`summary.speedupMedian is not ${bm / am}`);
+    if (!close(rep.summary.speedupMin, Math.min(...edits.map((e) => e.speedup))))
+      bad.push('summary.speedupMin is wrong');
+    if (!close(rep.summary.speedupMedianOfEdits, median(edits.map((e) => e.speedup))))
+      bad.push('summary.speedupMedianOfEdits is wrong');
+    if (!close(rep.summary.beforeSlowestMs, Math.max(...edits.map((e) => e.before.median))))
+      bad.push('summary.beforeSlowestMs is wrong');
+    if (!close(rep.summary.afterSlowestMs, Math.max(...edits.map((e) => e.after.median))))
+      bad.push('summary.afterSlowestMs is wrong');
   } else bad.push('summary missing');
   return bad;
 }
@@ -140,14 +159,25 @@ const ms = (x: number): string => (x < 10 ? x.toFixed(3) : x < 100 ? x.toFixed(1
 export function renderTable(r: EditIncrementalReport): string {
   const lines = [
     `apply per edit, before (all functions typed again) and after (edited functions and their callers); ms, medians of ${r.method.runs} rounds; load max ${r.load.max} (${r.load.source}), ${r.platform}-${r.arch}`,
-    'task'.padEnd(34) + 'before'.padStart(9) + 'after'.padStart(9) + 'speedup'.padStart(9) + 'retyped'.padStart(9),
+    'task'.padEnd(34) +
+      'before'.padStart(9) +
+      'after'.padStart(9) +
+      'speedup'.padStart(9) +
+      'retyped'.padStart(9),
   ];
   for (const e of r.edits)
     lines.push(
-      e.task.padEnd(34) + ms(e.before.median).padStart(9) + ms(e.after.median).padStart(9) + `${e.speedup.toFixed(2)}x`.padStart(9) + `${e.retyped}/${e.functions}`.padStart(9),
+      e.task.padEnd(34) +
+        ms(e.before.median).padStart(9) +
+        ms(e.after.median).padStart(9) +
+        `${e.speedup.toFixed(2)}x`.padStart(9) +
+        `${e.retyped}/${e.functions}`.padStart(9),
     );
   lines.push(
-    'median over edits'.padEnd(34) + ms(r.summary.beforeMedianMs).padStart(9) + ms(r.summary.afterMedianMs).padStart(9) + `${r.summary.speedupMedian.toFixed(2)}x`.padStart(9),
+    'median over edits'.padEnd(34) +
+      ms(r.summary.beforeMedianMs).padStart(9) +
+      ms(r.summary.afterMedianMs).padStart(9) +
+      `${r.summary.speedupMedian.toFixed(2)}x`.padStart(9),
   );
   return lines.join('\n');
 }
@@ -185,7 +215,8 @@ export async function measure(opts: { runs: number }): Promise<EditIncrementalRe
       const t0 = performance.now();
       const result = full ? withoutReuse(() => session.apply(reply)) : session.apply(reply);
       const dt = performance.now() - t0;
-      if (formatProgram(result) !== expected) throw new Error(`${task.id}: before and after differ`);
+      if (formatProgram(result) !== expected)
+        throw new Error(`${task.id}: before and after differ`);
       return dt;
     };
     const result = makeSession(start, task).apply(reply);
@@ -216,7 +247,14 @@ export async function measure(opts: { runs: number }): Promise<EditIncrementalRe
   const edits: EditRow[] = rows.map((r) => {
     const before = stats(r.before);
     const after = stats(r.after);
-    return { task: r.task.id, retyped: r.retyped, functions: r.functions, before, after, speedup: round(before.median / after.median) };
+    return {
+      task: r.task.id,
+      retyped: r.retyped,
+      functions: r.functions,
+      before,
+      after,
+      speedup: round(before.median / after.median),
+    };
   });
   const bm = median(edits.map((e) => e.before.median));
   const am = median(edits.map((e) => e.after.median));
@@ -231,7 +269,9 @@ export async function measure(opts: { runs: number }): Promise<EditIncrementalRe
     load: {
       source: loadSource(),
       limit: LOAD_LIMIT,
-      max: Math.round(Math.max(startLoad, endLoad, ...loads, gate.highestLoadAtSampleStart) * 100) / 100,
+      max:
+        Math.round(Math.max(startLoad, endLoad, ...loads, gate.highestLoadAtSampleStart) * 100) /
+        100,
       start: Math.round(startLoad * 100) / 100,
       end: Math.round(endLoad * 100) / 100,
       rounds: runs,
@@ -251,7 +291,10 @@ export async function measure(opts: { runs: number }): Promise<EditIncrementalRe
     },
     program: {
       functions: start.functions.length,
-      formattedLines: formatted.length === 0 ? 0 : formatted.split('\n').length - (formatted.endsWith('\n') ? 1 : 0),
+      formattedLines:
+        formatted.length === 0
+          ? 0
+          : formatted.split('\n').length - (formatted.endsWith('\n') ? 1 : 0),
       formattedBytes: Buffer.byteLength(formatted),
     },
     edits,

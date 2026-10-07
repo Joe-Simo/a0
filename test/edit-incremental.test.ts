@@ -54,12 +54,26 @@ test('edit-incremental: schema and arithmetic problems are reported', () => {
   const r = report();
   assert.ok(validateReport({ ...r, version: 2 }).length > 0);
   assert.ok(validateReport({ ...r, load: { ...r.load, max: 11 } }).some((p) => p.includes('load')));
-  assert.ok(validateReport({ ...r, method: { ...r.method, runs: 5 } }).some((p) => p.includes('runs')));
-  assert.ok(validateReport({ ...r, method: { ...r.method, warmups: 1 } }).some((p) => p.includes('warmups')));
+  assert.ok(
+    validateReport({ ...r, method: { ...r.method, runs: 5 } }).some((p) => p.includes('runs')),
+  );
+  assert.ok(
+    validateReport({ ...r, method: { ...r.method, warmups: 1 } }).some((p) =>
+      p.includes('warmups'),
+    ),
+  );
   const wrongSpeedup = { ...r, edits: [{ ...row('a', 10, 2), speedup: 9 }, ...r.edits.slice(1)] };
   assert.ok(validateReport(wrongSpeedup).some((p) => p.includes('speedup')));
-  assert.ok(validateReport({ ...r, summary: { ...r.summary, speedupMedian: 9 } }).some((p) => p.includes('speedupMedian')));
-  assert.ok(validateReport({ ...r, edits: [row('a', 10, 2, 0), ...r.edits.slice(1)] }).some((p) => p.includes('retyped')));
+  assert.ok(
+    validateReport({ ...r, summary: { ...r.summary, speedupMedian: 9 } }).some((p) =>
+      p.includes('speedupMedian'),
+    ),
+  );
+  assert.ok(
+    validateReport({ ...r, edits: [row('a', 10, 2, 0), ...r.edits.slice(1)] }).some((p) =>
+      p.includes('retyped'),
+    ),
+  );
   assert.ok(validateReport({ ...r, edits: [] }).includes('no edits'));
 });
 
