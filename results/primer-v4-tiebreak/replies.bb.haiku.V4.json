@@ -1,0 +1,103 @@
+{
+ "bb-cups-poured/a0/structured": [
+  "a rec p0 0\n"
+ ],
+ "bb-first-bus/a0/structured": [
+  "fn late u32 u32 u32 u32 u32 -> bool\na mul p0 p3\nb add p2 a\nret ge b p1\nend\nfn next u32 u32 u32 u32 u32 -> u32\na add p0 1\nret a\nend\n-b\nret a\n",
+  "fn late u32 u32 u32 u32 u32 -> bool\na mul p3 p2\nb add p1 a\nret ge b p0\nend\nfn next u32 u32 u32 u32 u32 -> u32\na add p3 1\nret a\nend\n"
+ ],
+ "bb-dial-clicks/a0/structured": [
+  "fn notzero (u32,u32) u32 u32 -> bool\nd at p0 0\ne ne d 0\nret e\nend\nfn turn (u32,u32) u32 u32 -> (u32,u32)\nd at p0 0\ne at p0 1\nf add d p2\ng mod f 10\nh add e 1\ni rec g h\nret i\nend\n",
+  "fn notzero (u32,u32) u32 u32 -> bool\nd at p0 0\ne ne d 0\nret e\nend\nfn turn (u32,u32) u32 u32 -> (u32,u32)\nd at p0 0\ne at p0 1\nf add d p2\ng rem f 10\nh add e 1\ni rec g h\nret i\nend\n"
+ ],
+ "bb-dough-rise/a0/structured": [
+  "a loop small more 8 0 p0 p1\n"
+ ],
+ "bb-ride-tickets/a0/structured": [
+  "c le b p3\n"
+ ],
+ "bb-snail-top/a0/structured": [
+  "c ge a p4\nd sel c a b\nret d\n",
+  "c ge a p4\nd select c a b\nret d\n"
+ ],
+ "bb-relay-walk/a0/structured": [
+  "a ne p0 0\nb ne p1 p0\nc and a b\nret c\n",
+  "a ne p0 0\nd at p2 p0\nb ne d p0\nc and a b\nret c\n"
+ ],
+ "bb-month-days/a0/structured": [
+  "b sub p0 1\nc get a b\nd sub c 37\nret d\n"
+ ],
+ "bb-serial-check/a0/structured": [
+  "b fold sumb 4 0 a\n"
+ ],
+ "bb-plate-from-end/a0/structured": [
+  "b sub 4 p0\n"
+ ],
+ "bb-cab-code/a0/structured": [
+  "f get a 2\n"
+ ],
+ "bb-scale-note/a0/structured": [
+  "b add p0 p1\nc mod b 5\nd get a c\nret d\n",
+  "b add p0 p1\nc rem b 5\nd get a c\nret d\n"
+ ],
+ "bb-yes-no-letter/a0/structured": [
+  "a text \"YESNO\"\nb select p0 0 3\nc add b p1\nd get a c\nret d\n"
+ ],
+ "bb-product-then-sum/a0/structured": [
+  "m mul a b @ t2\nt3 write t2 m\nt4 write t3 s\n"
+ ],
+ "bb-bill-line/a0/structured": [
+  "fn line io u32 u32 -> io\nw0 put p0 p2\nw1 put w0 p1\nret w1\nend\n",
+  "fn line io u32 u32 -> io\nw0 put p0 0 2\nc mul p2 p1\nw1 put w0 1 c\nret w1\nend\n"
+ ],
+ "bb-report-total/a0/structured": [
+  "a mov p1\ne0 getelem p1 0\ne1 getelem p1 1\ne2 getelem p1 2\ns0 add e0 e1\ns1 add s0 e2\nb setelem a 3 s1\nt puts p0 b\nret t\n",
+  "e0 get p1 0\ne1 get p1 1\ne2 get p1 2\ns0 add e0 e1\ns1 add s0 e2\nb arr e0 e1 e2 s1\nt puts p0 b\nret t\n"
+ ],
+ "bb-ok-ack/a0/structured": [
+  "t1 call msg p0\nt2 write t1 p1\n"
+ ],
+ "bb-pack-count/a0/structured": [
+  "d div q s\nm rem q s\n"
+ ],
+ "bb-twin-sensor-alert/a0/structured": [
+  "w select z 0 1\n"
+ ],
+ "bb-dose-taper/a0/structured": [
+  "q shr d 2\n"
+ ],
+ "bb-pallet-cost/a0/structured": [
+  "fn round_8 u32 -> u32\ntemp add p0 7\ndiv_result div temp 8\nret mul div_result 8\nend\n\nfn cost u32 u32 -> u32\ntotal add p0 p1\nrounded call round_8 total\ncharged mul rounded 3\nret charged\nend\n"
+ ],
+ "bb-hit-bonus/a0/structured": [
+  "fn bonus u32 -> u32\nis_ge ge p0 5\nresult select is_ge 50 0\nret result\nend\nbonus call bonus p1\nc add b bonus\nret c\n",
+  "bonus call bonus p0\n"
+ ],
+ "bb-day-kind-match/a0/structured": [
+  "fn isweekend u32 -> bool\na rem p0 7\nb ge a 5\nret b\nend\nfn samekind u32 u32 -> bool\na rem p0 7\nb ge a 5\nc rem p1 7\nd ge c 5\ne eq b d\nret e\nend\n"
+ ],
+ "bb-free-stock/a0/structured": [
+  "a sub p0 p1\nb le p2 a\nret b\n",
+  "a subs p0 p1\nb le p2 a\nret b\n"
+ ],
+ "bb-device-watt-hours/a0/structured": [
+  "fn device_wh u32 u32 -> u32\na mul p0 p1\nb div a 60\nret b\nend\nfn total u32 u32 u32 u32 -> u32\na call device_wh p0 p1\nb call device_wh p2 p3\nc add a b\nret c\nend\n"
+ ],
+ "bb-edit-permission/a0/structured": [
+  "a and p0 2\nb ne a 0\nc and p0 16\nd eq c 0\ne and b d\nret e\n"
+ ],
+ "bb-lane-close/a0/structured": [
+  "d mod c 4\ne get p0 d\nf add e b\ng set p0 d f\nh set p0 p1 0 @ g\nret h\n",
+  "d rem c 4\ne get p0 d\nf add e b\ng set p0 d f\nh set p0 p1 0 @ g\nret h\n"
+ ],
+ "bb-coin-call/a0/structured": [
+  "a gt p1 50\nb eq a p0\nret b\n",
+  "a gte p1 50"
+ ],
+ "bb-meeting-overlap/a0/structured": [
+  "a lt p0 p3\nb lt p2 p1\n"
+ ],
+ "bb-gray-level/a0/structured": [
+  "fn gray u32 u32 u32 -> u32\na mul p0 3\nb mul p1 6\nc add a b\nd add c p2\ne div d 10\nret e\nend\n"
+ ]
+}
