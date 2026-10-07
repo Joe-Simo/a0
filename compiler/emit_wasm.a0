@@ -10,7 +10,7 @@
 # bodies, predicates and scalar callees up to INLINE_DEPTH 3 deep); `Code.finish` is
 # compiler/wasm_code.a0 `wfzfin` (stackification, tees, dead stores, live-range local sharing).
 # The in-place rule is `mutableHere` with the shape table's BORR column (`borrowLive`). The shape
-# table `sh` (u32x128x200, compiler/shape.a0) holds per node FILL (fill run count), OWN and ARM
+# table `sh` (u32x128x310, compiler/shape.a0) holds per node FILL (fill run count), OWN and ARM
 # (lazy select arms), OVER (`overwritesState`), BORR, as columns of 2816 words from 0, 2816,
 # 5632, 8448, 11264.
 #
@@ -882,7 +882,7 @@ b shr a 31
 ret b
 end
 # word p1 of the shape table
-fn wxsh u32x128x200 u32 -> u32
+fn wxsh u32x128x310 u32 -> u32
 a shr p1 7
 b and p1 127
 c get p0 a
@@ -1541,7 +1541,7 @@ p fold wxuspg o p0 p3 d h j p1 g
 ret p
 end
 
-fn wxroot u32x128x512 u32 u32 u32 u32 u32x128x64 u32 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x200 -> u32x128x512
+fn wxroot u32x128x512 u32 u32 u32 u32 u32x128x64 u32 u32 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x310 -> u32x128x512
 a add p3 p1
 b call wxnw p8 a 1
 c call wxnw p8 a 3
@@ -1749,7 +1749,20 @@ z select k 73 y
 aa select l 77 z
 ab select m 75 aa
 ac select n 79 ab
-ret ac
+# the rotates (codes 64 rotl, 65 rotr: nodes of the shape table's ROT column, see wxnode): i32.rotl, i32.rotr
+ad eq p0 64
+ae eq p0 65
+af select ad 119 ac
+ag select ae 120 af
+ret ag
+end
+# rotate left of p0 by p1 (mod 32): shl and shr mask their distances, so 32 - 0 gives x | x
+fn wxrotl u32 u32 -> u32
+a shl p0 p1
+b sub 32 p1
+c shr p0 b
+d or a c
+ret d
 end
 # the value of the binary op p0 on u32 p1 and p2 (`evalOp`; comparisons are 0 / 1)
 fn wxeval u32 u32 u32 -> u32
@@ -1802,7 +1815,16 @@ au select ae q as
 av select af r au
 aw select ag s av
 ax select ah t aw
-ret ax
+rot_a and p2 31
+rot_b sub 32 rot_a
+rot_c and rot_b 31
+rot_d call wxrotl p1 rot_a
+rot_e call wxrotl p1 rot_c
+rot_f eq p0 64
+rot_g eq p0 65
+rot_h select rot_g rot_e ax
+rot_i select rot_f rot_d rot_h
+ret rot_i
 end
 # mov (op 1) of a scalar: push the operand, set
 fn wxhmov u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) -> u32x128x512
@@ -1883,7 +1905,7 @@ end
 # select (18): a known condition picks its arm; an arm with nodes of its own (the shape table's
 # OWN and ARM columns: `lazyArms`) becomes an if/else around those nodes; else `select`
 # register 20 counts the nodes owned by select p3 (frame first node p2)
-fn wxown u32 u32 u32 u32 u32x128x200 -> u32
+fn wxown u32 u32 u32 u32 u32x128x310 -> u32
 a add p2 p1
 b add 2816 a
 c call wxsh p4 b
@@ -1893,7 +1915,7 @@ f select e 1 0
 g add p0 f
 ret g
 end
-fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x200 -> u32x128x512
+fn wxhsel u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x310 -> u32x128x512
 a at p2 0
 b at p2 1
 c at p2 13
@@ -1991,7 +2013,7 @@ ret b5
 end
 # the first node at or after node p5 of the frame (first node p2) owned by select p3 in ARM column
 # value p4 (1 or 2); p0 is the node found so far (4294967295: none): node p1 + p5
-fn wxfnd u32 u32 u32 u32 u32 u32 u32x128x200 -> u32
+fn wxfnd u32 u32 u32 u32 u32 u32 u32x128x310 -> u32
 a add p5 p1
 b add p2 a
 c add 2816 b
@@ -2564,7 +2586,7 @@ end
 # ---------------------------------------------------------------------------------------------
 # The analysis of frame p2's function p3 (variant p4): the alias root of every node, from the use
 # statistics and the shape table
-fn wxana u32x128x512 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x200 -> u32x128x512
+fn wxana u32x128x512 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x310 -> u32x128x512
 a call wxfw p5 p3 4
 b call wxfw p5 p3 5
 c call wxfw p5 p3 6
@@ -2594,7 +2616,7 @@ end
 # chain; a body that is opaque is requested (register 15 counts, words 32.. list them);
 # register 16 := 1 when it can be; frame p2 + 1 is then set up (rows and roots; the host's words
 # are kept)
-fn wxcan u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32 -> u32x128x512
+fn wxcan u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32 -> u32x128x512
 zqf ne p15 0
 zql select zqf 16 p5
 zqm select zqf 1 0
@@ -3393,7 +3415,7 @@ end
 # does node p1 of frame p2 (an arr literal) hold dead initial contents: its only use is the initial
 # state of a fold that overwrites it all (register 27 := 1); the statistics word of the node is
 # in its row (uses: bits 18-19, last user + 1: bits 0-15)
-fn wxdead u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x200 -> u32x128x512
+fn wxdead u32x128x512 u32 u32 u32 u32x128x132 u32x128x512 u32x128x310 -> u32x128x512
 a eq p2 0
 b mul p3 4
 c add b 5440
@@ -3834,7 +3856,7 @@ end
 # arr (22) and text (24): its storage; a literal of four or more scalars is filled (all zero) or
 # copied from the pool (an occurrence recorded for the function's POOL), anything else is stored
 # element by element; a dead initial value (`wxdead`) leaves storage only
-fn wxharr u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x132 u32x128x512 u32x128x200 u32x384x65 u32x128x65 -> u32x128x512
+fn wxharr u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x132 u32x128x512 u32x128x310 u32x384x65 u32x128x65 -> u32x128x512
 a at p2 0
 b at p2 1
 c at p2 2
@@ -4794,7 +4816,7 @@ end
 # call (19): a scalar callee that is small and needs no frame is emitted in place (its operands
 # become its parameters' sources); otherwise a call (an aggregate result is written through the
 # node's storage, the address pushed first)
-fn wxhcall u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+fn wxhcall u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a at p2 0
 b at p2 1
 c at p2 4
@@ -5357,7 +5379,7 @@ ao fold wxpa u an p2 al p4
 ret ao
 end
 # the start of a trip of loop p2 (`trip`): the predicate (inlined, else called) before the body
-fn wxtrip u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+fn wxtrip u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a mul p2 176
 b add a 640
 c add b 6
@@ -5442,7 +5464,7 @@ ret bs
 end
 # the body of a trip of loop p2: leave the loop when the predicate is false, then the body
 # (inlined when it was probed so, else called: the owned variant for aggregate state)
-fn wxtbod u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+fn wxtbod u32x128x512 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a mul p2 176
 b add a 640
 c add b 6
@@ -7906,7 +7928,7 @@ end
 # `scalarState` allows), the induction variables, the carried previous element, and the phases
 # (`counted`, with `unroll` copies per back edge when the option asks); the loop's first
 # phase follows as an item
-fn wxiter2 u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 -> u32x128x512
+fn wxiter2 u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 -> u32x128x512
 a at p2 0
 b at p2 8
 c at p2 9
@@ -8156,7 +8178,7 @@ ret gg
 end
 # fold (20) and loop (21): the state, the counter, a vector fill and the first trip (src/wasm.ts
 # `#iteration`); the loop's context is set up here, `wxiter2` plans the rest when trips are left
-fn wxiter u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 -> u32x128x512
+fn wxiter u32x128x512 u32 (u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32) u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 -> u32x128x512
 a at p2 0
 b at p2 1
 c at p2 2
@@ -8293,7 +8315,7 @@ end
 # The node of frame p2 (index p3): `emitNode`. First the cases that bind a node without code: an
 # induction variable, the carried element, a read of scalar state in locals, a chain node's
 # words; then an aliasing set/put (one store), a fold/loop, and the ops by number.
-fn wxnode u32x128x512 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+fn wxnode u32x128x512 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a mul p2 128
 b add a 128
 c add b 2
@@ -8310,7 +8332,24 @@ m and k 127
 n get p0 l
 o get n m
 p call wxfw p4 o 2
-q call wxnw p5 h 1
+q0 call wxnw p5 h 1
+# a rotate (the shape table's ROT column, 1 left, 2 right; 3 is absorbed and never emitted here):
+# its record is the binary op with the rotate's own operands (x, the distance) and code 64 / 65
+rot_c add 25600 h
+rot_k call wxsh p11 rot_c
+rot_l eq rot_k 1
+rot_r eq rot_k 2
+rot_t or rot_l rot_r
+rot_q select rot_r 65 64
+q select rot_t rot_q q0
+rot_xi add 28416 h
+rot_xj add 31232 h
+rot_bi add 34048 h
+rot_bj add 36864 h
+rot_xk call wxsh p11 rot_xi
+rot_xv call wxsh p11 rot_xj
+rot_bk call wxsh p11 rot_bi
+rot_bv call wxsh p11 rot_bj
 r call wxnw p5 h 2
 s call wxnw p5 h 3
 t call wxnw p5 h 4
@@ -8320,10 +8359,14 @@ w call wxtag p8 v
 x call wxbyt p10 v
 y add s 1
 z add s 2
-aa call wxok p6 s
-ab call wxov p6 s
-ac call wxok p6 y
-ad call wxov p6 y
+aa0 call wxok p6 s
+ab0 call wxov p6 s
+ac0 call wxok p6 y
+ad0 call wxov p6 y
+aa select rot_t rot_xk aa0
+ab select rot_t rot_xv ab0
+ac select rot_t rot_bk ac0
+ad select rot_t rot_bv ad0
 ae call wxok p6 z
 af call wxov p6 z
 ag gt r 0
@@ -8482,6 +8525,10 @@ ep le q 17
 er and em en
 es and eo ep
 et or er es
+rot_b1 eq q 64
+rot_b2 eq q 65
+rot_b3 or rot_b1 rot_b2
+rot_et or et rot_b3
 eu eq q 26
 ev eq q 28
 ew or eu ev
@@ -8490,7 +8537,7 @@ ey eq q 29
 ez eq q 30
 e0 eq q 31
 e1 and eb ec
-e2 and eb et
+e2 and eb rot_et
 e3 and eb el
 e4 and eb ee
 e5 and eb ed
@@ -8549,7 +8596,7 @@ end
 # frame a, 6 the next node of frame a owned by select b in arm c & 3 from node c >> 2, 7 bind
 # and set node b of frame a, 8 start phase b of loop a, 9 a trip of loop a, 10 its body, 11 its
 # end
-fn wxstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+fn wxstep u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a shr 95 7
 b and 95 127
 c get p0 a
@@ -8627,7 +8674,11 @@ bm add 2816 bl
 bn call wxsh p9 bm
 bo eq bn 0
 bp and aq bo
-bq or bp ar
+rot_w add 25600 bl
+rot_wv call wxsh p9 rot_w
+rot_wn ne rot_wv 3
+bpr and bp rot_wn
+bq or bpr ar
 br select bq 1 0
 bs fold wxnode br bk s w p2 p3 p4 p5 p6 p7 p8 p9 p10
 bt select as 1 0
@@ -8691,7 +8742,7 @@ de fold wxtend dd dc s
 ret de
 end
 # keep stepping while items remain and no error was raised
-fn wxgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> bool
+fn wxgo u32x128x512 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> bool
 a shr 7 7
 b and 7 127
 c get p0 a
@@ -9006,7 +9057,7 @@ end
 # emit variant p3 of function p2 into the machine table (fresh: all zero): registers, frame 0 and
 # its analysis, then the machine runs until the work stack is empty, then `wxfinal`; p4 is the
 # number of pool occurrences of the function so far, p5 / p6 the simd and unroll options
-fn wxemit u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> u32x128x512
+fn wxemit u32x128x512 u32 u32 u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> u32x128x512
 a call wxfw p7 p2 1
 b call wxfw p7 p2 5
 c call wxfw p7 p2 3
@@ -9330,7 +9381,7 @@ ret n
 end
 # function p0 + p1 of the chunk (first function p2): the record of its variants (see above)
 # state (io, variants so far, call table, misses, miss list, error)
-fn wxfun (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+fn wxfun (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
 a at p0 0
 b at p0 1
 c at p0 2
@@ -9570,7 +9621,7 @@ end
 # `wxfun`, then (index, depth, bound) of each function, the chunk's variant count and its
 # function count; or, when a body is missing (code 7), the chunk functions wanted and their count;
 # or code 4 (a capacity) / 5 (an unsupported shape)
-fn wachunk io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32x128x200 u32 u32 -> (io,u32)
+fn wachunk io u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x400 u32x128x16 u32x128x16 u32x128x8 u32 u32 u32 u32 u32x128x310 u32 u32 -> (io,u32)
 a call wainfo p1 p2 p11
 b sub p13 p12
 c call z8
@@ -9820,12 +9871,12 @@ d rec a p0
 e fold wartty c d p1
 ret e
 end
-fn z200 -> u32x128x200
+fn z310 -> u32x128x310
 a call zpage
-b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+b arr a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
 ret b
 end
-fn wart200 (u32x128x200,io) u32 u32 -> (u32x128x200,io)
+fn wart200 (u32x128x310,io) u32 u32 -> (u32x128x310,io)
 a at p0 0
 b at p0 1
 c mul p1 128
@@ -9841,8 +9892,8 @@ l set a p1 j
 m rec l k
 ret m
 end
-fn warn200 io u32 -> (u32x128x200,io)
-a call z200
+fn warn200 io u32 -> (u32x128x310,io)
+a call z310
 b add p1 127
 c shr b 7
 d rec a p0

@@ -166,6 +166,8 @@ const OP = {
   xor: 0x73,
   shl: 0x74,
   shr_u: 0x76,
+  rotl: 0x77,
+  rotr: 0x78,
 } as const;
 const VOID = 0x40;
 const I64_EXTEND_U = 0xad;
@@ -466,6 +468,97 @@ function sameOp(x: Operand, y: Operand): boolean {
 }
 
 /**
+ * A rotate: `or (shl x s) (shr x t)` with the two distances summing to 0 (mod 32), in either
+ * order (the rule of the arm64 backend). wasm takes a shift distance mod 32, so the pair is exactly
+ * `i32.rotl x s` when t is `sub 32 s`, and `i32.rotr x t` when s is `sub 32 t`; two literal
+ * distances rotate by the right one (`right` below). The shifts (and the `sub`) are used by the
+ * `or` alone, so they are not emitted.
+ */
+interface Rotate {
+  readonly x: Operand;
+  /** The distance operand: the left distance for `i32.rotl`, the right one for `i32.rotr`. */
+  readonly by: Operand;
+  readonly left: boolean;
+}
+interface Rotates {
+  /** The `or` nodes that are rotates. */
+  readonly at: ReadonlyMap<string, Rotate>;
+  /** The shift and `sub` nodes a rotate absorbs. */
+  readonly owned: ReadonlySet<string>;
+}
+const ROTATES = new WeakMap<TypedFunc, Rotates>();
+
+function rotatesOf(fn: TypedFunc): Rotates {
+  const cached = ROTATES.get(fn);
+  if (cached !== undefined) return cached;
+  const uses = new Map<string, { consumer: Node | undefined }[]>();
+  const useOf = (o: Operand, consumer: Node | undefined): void => {
+    if (o.kind !== 'node') return;
+    uses.set(o.id, [...(uses.get(o.id) ?? []), { consumer }]);
+  };
+  for (const n of fn.nodes) for (const o of n.args) useOf(o, n);
+  useOf(fn.ret, undefined);
+  const byId = new Map(fn.nodes.map((n) => [n.id, n]));
+  /** The node behind operand `o` when its single use is by `consumer`. */
+  const soleUse = (o: Operand | undefined, consumer: Node): Node | undefined => {
+    if (o?.kind !== 'node') return undefined;
+    const list = uses.get(o.id) ?? [];
+    return list.length === 1 && list[0]?.consumer === consumer ? byId.get(o.id) : undefined;
+  };
+  /** `sub L s` with L = 0 (mod 32), used by `user` alone. */
+  const subOf = (o: Operand, user: Node): Node | undefined => {
+    const d = soleUse(o, user);
+    return d?.op === 'sub' && d.args[0]?.kind === 'u32' && d.args[0].value % 32 === 0
+      ? d
+      : undefined;
+  };
+  const same = (p: Operand, q: Operand): boolean =>
+    sameOp(p, q) || (p.kind === 'u32' && q.kind === 'u32' && p.value === q.value);
+  const at = new Map<string, Rotate>();
+  const owned = new Set<string>();
+  for (const n of fn.nodes) {
+    if (n.op !== 'or') continue;
+    const pa = soleUse(n.args[0] as Operand, n);
+    const pb = soleUse(n.args[1] as Operand, n);
+    const [l, r] =
+      pa?.op === 'shl' && pb?.op === 'shr'
+        ? [pa, pb]
+        : pa?.op === 'shr' && pb?.op === 'shl'
+          ? [pb, pa]
+          : [undefined, undefined];
+    if (l === undefined || r === undefined) continue;
+    const x = l.args[0] as Operand;
+    if (!same(x, r.args[0] as Operand)) continue;
+    const ls = l.args[1] as Operand;
+    const rs = r.args[1] as Operand;
+    let plan: Rotate | undefined;
+    let extra: Node | undefined;
+    if (ls.kind === 'u32' && rs.kind === 'u32') {
+      if (((ls.value & 31) + (rs.value & 31)) % 32 === 0)
+        plan = { x, by: { kind: 'u32', value: rs.value & 31 }, left: false };
+    } else {
+      const rsub = subOf(rs, r);
+      const lsub = subOf(ls, l);
+      if (rsub !== undefined && same(rsub.args[1] as Operand, ls)) {
+        plan = { x, by: ls, left: true };
+        extra = rsub;
+      } else if (lsub !== undefined && same(lsub.args[1] as Operand, rs)) {
+        plan = { x, by: rs, left: false };
+        extra = lsub;
+      }
+    }
+    if (plan === undefined) continue;
+    at.set(n.id, plan);
+    owned.add(l.id);
+    owned.add(r.id);
+    if (extra !== undefined) owned.add(extra.id);
+  }
+  const result = { at, owned };
+  ROTATES.set(fn, result);
+  return result;
+}
+
+/**
  * May the aggregate operand `o` be updated in place by the node at `index`? The same analysis
  * as the C and native backends: an aggregate-typed `get`/`at` result aliases into its
  * container here (a borrowed read), so the container is updated in place only when no such
@@ -698,6 +791,8 @@ class FunctionEmitter {
   readonly consts = new Map<string, number>();
   /** Select arms evaluated on their own path (see optimize.ts `lazyArms`). */
   readonly lazy: ReturnType<typeof lazyArms>;
+  /** Rotates among the `or` nodes, and the shift nodes they absorb (see `rotatesOf`). */
+  readonly rot: Rotates;
   readonly byId: ReadonlyMap<string, Node>;
   #nextVLocal = VBASE;
   /** Scalar-replaced state: the update-chain nodes and each one's words (see `scalarState`). */
@@ -715,6 +810,7 @@ class FunctionEmitter {
     this.fn = fn;
     this.options = options;
     this.lazy = lazyArms(fn);
+    this.rot = rotatesOf(fn);
     this.byId = new Map(fn.nodes.map((n) => [n.id, n]));
     this.#chain = host?.fields === undefined ? undefined : scalarState(fn);
     this.variant = variant;
@@ -988,9 +1084,29 @@ class FunctionEmitter {
     }
   }
 
+  /**
+   * A rotate (see `rotatesOf`): its value when both operands are known, else one `i32.rotl` or
+   * `i32.rotr` of the two operands. `i32.rotl` by k is `shl k` or `shr (32 - k)`, which is the
+   * same as the shift pair for every distance (wasm takes distances mod 32).
+   */
+  #emitRotate(id: string, rot: Rotate): void {
+    const x = this.#constOf(rot.x);
+    const by = this.#constOf(rot.by);
+    if (x !== undefined && by !== undefined) {
+      const k = rot.left ? by & 31 : (32 - (by & 31)) & 31;
+      this.consts.set(id, k === 0 ? x >>> 0 : ((x << k) | (x >>> (32 - k))) >>> 0);
+      return;
+    }
+    this.push(rot.x);
+    this.push(rot.by);
+    this.code.op(rot.left ? OP.rotl : OP.rotr);
+    this.code.local(OP.localSet, this.#bindScalar(id));
+  }
+
   /** Every node in order, except those a lazy select arm emits on its own path. */
   #emitNodes(): void {
-    for (const n of this.fn.nodes) if (!this.lazy.owner.has(n.id)) this.emitNode(n);
+    for (const n of this.fn.nodes)
+      if (!this.lazy.owner.has(n.id) && !this.rot.owned.has(n.id)) this.emitNode(n);
   }
 
   /** Is the aggregate literal `id` only the initial state of a fold that overwrites it all? */
@@ -1150,6 +1266,11 @@ class FunctionEmitter {
     }
     const [a, b] = node.args;
     const set = (): void => c.local(OP.localSet, this.#bindScalar(node.id));
+    const rotate = this.rot.at.get(node.id);
+    if (rotate !== undefined) {
+      this.#emitRotate(node.id, rotate);
+      return;
+    }
     switch (node.op) {
       case 'mov':
         this.push(a as Operand);

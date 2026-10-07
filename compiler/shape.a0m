@@ -2,7 +2,7 @@
 # lines 716-1343 (storeOnly, overwritesState, fillRun, lazyArms, producerShape, fuseLoops) and of
 # `borrowLive` of src/core.ts. The wasm emitter (compiler/emit_wasm.a0) does not `use` this file:
 # compiler/boot.a0 runs it between the optimizer and the emitter, and the emitter reads the
-# results from the SHAPE TABLE, one table `sh` (u32x128x200) that is an extra input of its chunk.
+# results from the SHAPE TABLE, one table `sh` (u32x128x310) that is an extra input of its chunk.
 #
 # Inputs: the OPTIMIZED chunk tables of compiler/emit_wasm.a0: types u32x384x65, tlist u32x128x65,
 # fns u32x128x45 (7 words: 0 body flag, 1 parameter count, 2 first tlist word, 3 result type, 4
@@ -34,6 +34,10 @@
 #                these indices (the emitter appends its own requests to its own list)
 #   TIO   17152  type column (8320 types): 1 when the type contains an io token
 #   25472..      scalars: node, operand pair, function, type and tlist counts (used by fusion)
+#   ROT   25600  rotates (`shrot`): 1 rotl, 2 rotr (the `or` node), 3 absorbed by one (shl, shr, sub)
+#   XK    28416  rotate: kind of the x operand (the `or`'s node)        XV    31232  its value
+#   BK    34048  rotate: kind of the distance operand                   BV    36864  its value
+#   (the table is u32x128x310: 310 pages of 128 words, 39680 words)
 #
 # Calls (pure; the shape table is threaded through folds as state). Tables: ty tl fns nodes args
 # nt in the order of compiler/emit_wasm.a0 `wachunk` (types, tlist, fns, nodes, args, ntys).
@@ -74,12 +78,12 @@
 #
 use "optimize.a0"
 
-@zarr zsh u32x128x200 200
+@zarr zsh u32x128x310 310
 @zarr zcol u32x128x24 24
 # ---------------------------------------------------------------------------------------------
 # Types: which type indices contain an io token (column TIO of the shape table, 17152 + type)
 
-fn shtiof u32 u32 u32x128x200 u32x128x65 u32 -> u32
+fn shtiof u32 u32 u32x128x310 u32x128x65 u32 -> u32
 i add p4 p1
 @rd f p3 i
 fi add f 17152
@@ -87,7 +91,7 @@ fi add f 17152
 r or p0 t
 ret r
 end
-fn shtios u32x128x200 u32 u32x384x65 u32x128x65 -> u32x128x200
+fn shtios u32x128x310 u32 u32x384x65 u32x128x65 -> u32x128x310
 @ty tag p2 p1 0
 @ty ta p2 p1 1
 @ty tb p2 p1 2
@@ -109,7 +113,7 @@ ret w
 end
 # the shape table of a chunk with p2 types: only the io column is filled (shinit); the node
 # columns are written by shpass
-fn shinit u32x384x65 u32x128x65 u32 -> u32x128x200
+fn shinit u32x384x65 u32x128x65 u32 -> u32x128x310
 z call zsh
 r fold shtios p2 z p0 p1
 ret r
@@ -637,7 +641,7 @@ r fold shuck na p0 p3 af
 ret r
 end
 # effectful: operand k of node j (p0 flag, k, args, af, nt, fst, tl, pf, sh)
-fn shefa u32 u32 u32x128x512 u32 u32x128x24 u32 u32x128x65 u32 u32x128x200 -> u32
+fn shefa u32 u32 u32x128x512 u32 u32x128x24 u32 u32x128x65 u32 u32x128x310 -> u32
 s add p3 p1
 @aw ak p2 s 0
 @aw av p2 s 1
@@ -657,7 +661,7 @@ x or pio1 nio1
 r or p0 x
 ret r
 end
-fn shefj u32x128x24 u32 u32x128x132 u32x128x512 u32x128x24 u32 u32x128x65 u32 u32x128x200 -> u32x128x24
+fn shefj u32x128x24 u32 u32x128x132 u32x128x512 u32x128x24 u32 u32x128x65 u32 u32x128x310 -> u32x128x24
 g add p5 p1
 @nwd op p2 g 1
 @nwd na p2 g 2
@@ -722,7 +726,7 @@ ret r
 end
 # the cone walk, trip t: node i = root - 1 - t joins when eligible and every use is a member.
 # State as shadd; extras: nodes args nt fst retk retv uc eff sh root
-fn shcw (u32x128x24,u32x128x24,u32) u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32x128x200 u32 -> (u32x128x24,u32x128x24,u32)
+fn shcw (u32x128x24,u32x128x24,u32) u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32x128x310 u32 -> (u32x128x24,u32x128x24,u32)
 mem at p0 0
 cnt at p0 1
 t1 add p1 1
@@ -753,7 +757,7 @@ ret r
 end
 # The cone of the select arm (p9 p10) against the other arm (p11 p12) and the condition
 # (p13 p14): (members column, cost); empty when the arm is not an eligible private root.
-fn shcone u32x128x200 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32 u32 u32 u32 u32 u32 -> (u32x128x24,u32)
+fn shcone u32x128x310 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 u32 u32 u32 u32 u32 u32 -> (u32x128x24,u32)
 isn eq p9 1
 rv select isn p10 0
 gr add p4 rv
@@ -798,7 +802,7 @@ r rec mem cost
 ret r
 end
 # trip i of the member writes: node i of the function (first node p4) gets owner js + 1 and arm 1 or 2
-fn shlw u32x128x200 u32 u32x128x24 u32x128x24 u32 u32 -> u32x128x200
+fn shlw u32x128x310 u32 u32x128x24 u32x128x24 u32 u32 -> u32x128x310
 g add p4 p1
 @rd ma p2 p1
 @rd mb p3 p1
@@ -816,7 +820,7 @@ nwa select any armv oa
 ret s2
 end
 # select nodes: the lazy arms
-fn shlz u32x128x200 u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 -> u32x128x200
+fn shlz u32x128x310 u32 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32x128x24 u32x128x24 -> u32x128x310
 g add p5 p1
 @nwd op p2 g 1
 @nwd af p2 g 3
@@ -847,7 +851,7 @@ r fold shlw n p0 mema memb p5 p1
 ret r
 end
 # a missing body: chunk function p1 is added to the list of the shape table (once)
-fn shmq u32 u32 u32x128x200 u32 -> u32
+fn shmq u32 u32 u32x128x310 u32 -> u32
 ki add p1 16129
 @rd v p2 ki
 e eq v p3
@@ -855,7 +859,7 @@ x select e 1 0
 r or p0 x
 ret r
 end
-fn shmiss u32x128x200 u32 -> u32x128x200
+fn shmiss u32x128x310 u32 -> u32x128x310
 @rd n p0 16128
 isn ne p1 4294967295
 d fold shmq n 0 p0 p1
@@ -871,7 +875,7 @@ nn select add1 nl1 n
 ret b
 end
 # node j of a function: fillRun, overwritesState, borrowLive
-fn shpn u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 -> u32x128x200
+fn shpn u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 u32 -> u32x128x310
 g add p8 p1
 fr call shfill p5 p6 p4 p2 p3 p7 g
 fc at fr 0
@@ -920,7 +924,228 @@ s4 call shmiss s3 fm
 s5 call shmiss s4 om
 ret s5
 end
-fn shpass u32x128x200 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x200
+# ---------------------------------------------------------------------------------------------
+# Rotates (src/wasm.ts `rotatesOf`): ROT 25600 (1 rotl, 2 rotr, 3 absorbed, 0 else), XK 28416 and
+# XV 31232 (the x operand: kind, value), BK 34048 and BV 36864 (the distance operand). Trip j sets the
+# ROT of node g = p5 + j; the nodes a rotate absorbs are its operands and precede it.
+fn qnw u32x128x132 u32 u32 -> u32
+m mul p1 6
+i add m p2
+a shr i 7
+b get p0 a
+c and i 127
+d get b c
+ret d
+end
+fn qaw u32x128x512 u32 u32 -> u32
+m mul p1 2
+i add m p2
+a shr i 7
+b get p0 a
+c and i 127
+d get b c
+ret d
+end
+fn quw u32x128x24 u32 -> u32
+a shr p1 7
+b get p0 a
+c and p1 127
+d get b c
+ret d
+end
+fn qrw u32x128x310 u32 -> u32
+a shr p1 7
+b get p0 a
+c and p1 127
+d get b c
+ret d
+end
+fn qsw u32x128x310 u32 u32 -> u32x128x310
+a shr p1 7
+b get p0 a
+c and p1 127
+d set b c p2
+e set p0 a d
+ret e
+end
+fn shrot u32x128x310 u32 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x310
+g add p5 p1
+op call qnw p2 g 1
+af call qnw p2 g 3
+isio eq op 6
+sa0 add af 0
+sa1 add af 1
+k0 call qaw p3 sa0 0
+v0 call qaw p3 sa0 1
+k1 call qaw p3 sa1 0
+v1 call qaw p3 sa1 1
+u0 call quw p4 v0
+u1 call quw p4 v1
+ka0 eq k0 1
+ka1 eq u0 1
+kb0 eq k1 1
+kb1 eq u1 1
+ka and ka0 ka1
+kb and kb0 kb1
+ga add p5 v0
+gb add p5 v1
+oa call qnw p2 ga 1
+ob call qnw p2 gb 1
+ea eq oa 8
+er eq oa 9
+eb eq ob 8
+ef eq ob 9
+c1a and ka kb
+c1b and c1a ea
+c1 and c1b ef
+c2a and c1a er
+c2 and c2a eb
+has or c1 c2
+lsel select c1 v0 v1
+rsel select c1 v1 v0
+gl add p5 lsel
+gr add p5 rsel
+lf call qnw p2 gl 3
+rf call qnw p2 gr 3
+lf1 add lf 1
+rf1 add rf 1
+xk call qaw p3 lf 0
+xv call qaw p3 lf 1
+lk call qaw p3 lf1 0
+lv call qaw p3 lf1 1
+yk call qaw p3 rf 0
+yv call qaw p3 rf 1
+mk call qaw p3 rf1 0
+mv call qaw p3 rf1 1
+x1 eq xk yk
+x2 eq xv yv
+x3 eq xk 1
+x4 eq xk 2
+x5 eq xk 3
+x6 or x3 x4
+x7 or x6 x5
+x8 and x1 x2
+x9 and x8 x7
+okx and has x9
+b1 eq lk 3
+b2 eq mk 3
+bb and b1 b2
+m1 and lv 31
+m2 and mv 31
+m3 add m1 m2
+m4 and m3 31
+m5 eq m4 0
+pl0 and bb m5
+plit and okx pl0
+nb eq bb false
+t1 eq lk 1
+t2 eq lk 2
+t3 eq lk 3
+t4 or t1 t2
+tl or t4 t3
+z1 eq mk 1
+z2 eq mk 2
+z3 eq mk 3
+z4 or z1 z2
+zk or z4 z3
+r1 eq mk 1
+ru call quw p4 mv
+r2 eq ru 1
+r3 and r1 r2
+rn add p5 mv
+rf2 call qnw p2 rn 3
+rop call qnw p2 rn 1
+rsa add rf2 1
+ra0 call qaw p3 rf2 0
+ra1 call qaw p3 rf2 1
+rb0 call qaw p3 rsa 0
+rb1 call qaw p3 rsa 1
+o1 eq rop 3
+o2 eq ra0 3
+m6 and ra1 31
+o3 eq m6 0
+o4 and r3 o1
+o5 and o4 o2
+rok and o5 o3
+ya1 eq rb0 lk
+ya2 eq rb1 lv
+ya3 and ya1 ya2
+rsame and ya3 tl
+rsubc and rok rsame
+l1 eq lk 1
+lu call quw p4 lv
+l2 eq lu 1
+l3 and l1 l2
+ln add p5 lv
+lop call qnw p2 ln 1
+lf3 call qnw p2 ln 3
+lsa add lf3 1
+la0 call qaw p3 lf3 0
+la1 call qaw p3 lf3 1
+lb0 call qaw p3 lsa 0
+lb1 call qaw p3 lsa 1
+q1 eq lop 3
+q2 eq la0 3
+q3 and la1 31
+q4 eq q3 0
+q5 and l3 q1
+q6 and q5 q2
+lok and q6 q4
+wa1 eq lb0 mk
+wa2 eq lb1 mv
+wa3 and wa1 wa2
+lsame and wa3 zk
+lsubc and lok lsame
+subok and okx nb
+isl and subok rsubc
+nrs eq rsubc false
+isr0 and lsubc nrs
+isr and subok isr0
+planl and isio isl
+planit and isio plit
+planr0 and isio isr
+planr or planit planr0
+planf or planl planr
+sub1 or isl isr
+subf and isio sub1
+code0 select planr 2 0
+code select planl 1 code0
+bkk0 select isl lk mk
+bkk select plit 3 bkk0
+bvv0 select isl lv mv
+mvm and mv 31
+bvv select plit mvm bvv0
+ix1 add 25600 g
+ww1 call qsw p0 ix1 code
+ix2 add 28416 g
+ww2 call qsw ww1 ix2 xk
+ix3 add 31232 g
+ww3 call qsw ww2 ix3 xv
+ix4 add 34048 g
+ww4 call qsw ww3 ix4 bkk
+ix5 add 36864 g
+ww5 call qsw ww4 ix5 bvv
+cur add 25600 g
+ixl0 add 25600 gl
+ixr0 add 25600 gr
+ixl select planf ixl0 cur
+ixr select planf ixr0 cur
+gxl select isl mv lv
+gxg add p5 gxl
+ixx0 add 25600 gxg
+ixx select subf ixx0 cur
+cl call qrw ww5 ixl
+vl select planf 3 cl
+ww6 call qsw ww5 ixl vl
+cr call qrw ww6 ixr
+vr select planf 3 cr
+ww7 call qsw ww6 ixr vr
+cx call qrw ww7 ixx
+vx select subf 3 cx
+ww8 call qsw ww7 ixx vx
+ret ww8
+end
+fn shpass u32x128x310 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x310
 @fwd fst p3 p7 4
 @fwd nfn p3 p7 5
 @fwd rw p3 p7 6
@@ -933,7 +1158,8 @@ uc fold shucj nfn z p4 p5 fst
 eff fold shefj nfn z2 p4 p5 p6 fst p2 pf p0
 s1 fold shpn nfn p0 p1 p2 p3 p4 p5 p6 fst retk retv nfn
 s2 fold shlz nfn s1 p4 p5 p6 fst retk retv uc eff
-ret s2
+s3 fold shrot nfn s2 p4 p5 uc fst
+ret s3
 end
 # ---------------------------------------------------------------------------------------------
 # Fusion helpers (src/optimize.ts): funcHasIo, readByGetOnly, gets of a parameter, bodyCost,
@@ -943,14 +1169,14 @@ end
 @zarr zmap u32x128x48 48
 @zarr zcache u32x128x96 96
 
-fn shhip u32 u32 u32x128x200 u32x128x65 u32 -> u32
+fn shhip u32 u32 u32x128x310 u32x128x65 u32 -> u32
 pi add p4 p1
 @rd t p3 pi
 @col io p2 17152 t
 r or p0 io
 ret r
 end
-fn shhin u32 u32 u32x128x200 u32x128x24 u32 -> u32
+fn shhin u32 u32 u32x128x310 u32x128x24 u32 -> u32
 g add p4 p1
 @rd t p3 g
 @col io p2 17152 t
@@ -958,7 +1184,7 @@ r or p0 io
 ret r
 end
 # 1 when function b = p4 has an io token in its result, parameters or node types
-fn shhasio u32x128x200 u32x128x65 u32x128x45 u32x128x24 u32 -> u32
+fn shhasio u32x128x310 u32x128x65 u32x128x45 u32x128x24 u32 -> u32
 @bodyd b p2 p4
 @col rio p0 17152 b_rs
 a fold shhip b_np rio p0 p1 b_pf
@@ -1902,7 +2128,7 @@ end
 # succeeds. SR = (found, BLD, INF, missing): the first body that was needed and is absent.
 
 # operand k of consumer ci (p10), first node p11, recordState p12; uses p9
-fn shfk (u32,u32x128x132,u32x128x2,u32) u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x200 u32x128x24 u32 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
+fn shfk (u32,u32x128x132,u32x128x2,u32) u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x310 u32x128x24 u32 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
 found at p0 0
 bld at p0 1
 inf at p0 2
@@ -2023,7 +2249,7 @@ r rec fnn nbld ninf miss2v
 ret r
 end
 # consumer node ci
-fn shfc (u32,u32x128x132,u32x128x2,u32) u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x200 u32x128x24 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
+fn shfc (u32,u32x128x132,u32x128x2,u32) u32 u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x310 u32x128x24 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
 found at p0 0
 gc add p10 p1
 @nrow c p2 gc
@@ -2034,7 +2260,7 @@ n select go c_na 0
 r fold shfk n p0 p2 p3 p4 p5 p6 p7 p8 p9 p1 p10 p11
 ret r
 end
-fn shfsearch u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x200 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
+fn shfsearch u32x128x132 u32x128x512 u32x128x45 u32x384x65 u32x128x65 u32x128x24 u32x128x310 u32 u32 -> (u32,u32x128x132,u32x128x2,u32)
 @bodyd d p2 p7
 uses call shuses p0 p1 p2 p7
 hio call shhasio p6 p4 p2 p5 p7
@@ -2735,7 +2961,7 @@ nt%NAME% mov ntc%NAME%
 # counts): (status, missing, function count, ty, tl, fns, nodes, ntys, type count) or, as shfargs, the
 # operands. status 0 nothing fuses, 1 fused, 4 a table is full, 7 a body is needed (missing).
 #@template shpipe
-fn %NAME% u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x200 u32 bool -> %RET%
+fn %NAME% u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x310 u32 bool -> %RET%
 @rd nn0 p6 25472
 @rd na0 p6 25473
 @rd nf0 p6 25474
@@ -2777,7 +3003,7 @@ end
 
 # the counts of the chunk's tables (the free node, operand pair, function, type and tlist
 # positions) into the shape table: fusion appends from there
-fn shcounts u32x128x200 u32 u32 u32 u32 u32 -> u32x128x200
+fn shcounts u32x128x310 u32 u32 u32 u32 u32 -> u32x128x310
 @wr a p0 25472 p1
 @wr b a 25473 p2
 @wr c b 25474 p3
@@ -2786,7 +3012,7 @@ fn shcounts u32x128x200 u32 u32 u32 u32 u32 -> u32x128x200
 ret e
 end
 # is there a fusion site in function f = p7? (found, a body that is needed and absent or 4294967295)
-fn shfcheck u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x200 u32 bool -> (u32,u32)
+fn shfcheck u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x128x310 u32 bool -> (u32,u32)
 rsn select p8 1 0
 sr call shfsearch p3 p4 p2 p0 p1 p5 p6 p7 rsn
 fd at sr 0
@@ -2796,13 +3022,13 @@ ret r
 end
 # the shape columns of the fused function f and of the synthetic functions nf0 .. nf1 - 1 of the
 # fused tables: SYN 1 for a synthetic body, 2 for f, FUSED[f] = f + 1
-fn shfsh1 u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x200
+fn shfsh1 u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x310
 g add p8 p1
 r call shpass p0 p2 p3 p4 p5 p6 p7 g
 @colw s1 r 15104 g 1
 ret s1
 end
-fn shfsh u32x128x200 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 -> u32x128x200
+fn shfsh u32x128x310 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 u32 u32 -> u32x128x310
 n sub p9 p8
 a fold shfsh1 n p0 p1 p2 p3 p4 p5 p6 p8
 b call shpass a p1 p2 p3 p4 p5 p6 p7
