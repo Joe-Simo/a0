@@ -64,6 +64,21 @@ export const PHASES: Readonly<Record<string, Phase>> = {
       V3: 'experiments/primers/shrink/V3.txt',
     },
   },
+  lenient: {
+    dir: 'dense-lenient',
+    sets: ['dl'],
+    baseline: 'canon',
+    variant: 'dense',
+    margin: 2,
+    perSetMargin: null,
+    preRegistration: 'docs/history/2026-10-07-dense-leniency-preregistration.md',
+    meaning:
+      'The dense surface with the lenient parser and primer D1 (189 tokens) against the shipped canonical primer V3 with the canonical view on sealed set DL (30 tasks: arithmetic and array, loop, text, io, helper before caller), fresh Haiku and Sonnet subagents, one shot plus one repair.',
+    primers: {
+      canon: 'MODEL_GUIDE.min.txt',
+      dense: 'experiments/primers/dense/D1.txt',
+    },
+  },
   dense: {
     dir: 'dense-default',
     sets: ['x', 'y'],

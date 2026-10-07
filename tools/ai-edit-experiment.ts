@@ -78,6 +78,7 @@ import { TASKS_A } from './ai-edit-tasks-a.js';
 import { TASKS_B } from './ai-edit-tasks-b.js';
 import { buildTasksC } from './ai-edit-tasks-c.js';
 import { TASKS_D } from './ai-edit-tasks-d.js';
+import { TASKS_DL } from './ai-edit-tasks-dl.js';
 import { TASKS_E } from './ai-edit-tasks-e.js';
 import { TASKS_F } from './ai-edit-tasks-f.js';
 import { TASKS_G, type TaskG } from './ai-edit-tasks-g.js';
@@ -1044,15 +1045,15 @@ async function main(): Promise<void> {
                                               rustSource: '',
                                               reference: { a0: t.reference.a0, ts: '', rust: '' },
                                             })) as unknown as readonly Task[])
-                                          : setName === 'y'
-                                            ? (TASKS_Y.map((t) => ({
+                                          : setName === 'dl'
+                                            ? (TASKS_DL.map((t) => ({
                                                 ...t,
                                                 tsSource: '',
                                                 rustSource: '',
                                                 reference: { a0: t.reference.a0, ts: '', rust: '' },
                                               })) as unknown as readonly Task[])
-                                            : setName === 'x'
-                                              ? (TASKS_X.map((t) => ({
+                                            : setName === 'y'
+                                              ? (TASKS_Y.map((t) => ({
                                                   ...t,
                                                   tsSource: '',
                                                   rustSource: '',
@@ -1062,8 +1063,8 @@ async function main(): Promise<void> {
                                                     rust: '',
                                                   },
                                                 })) as unknown as readonly Task[])
-                                              : setName === 'w'
-                                                ? (TASKS_W.map((t) => ({
+                                              : setName === 'x'
+                                                ? (TASKS_X.map((t) => ({
                                                     ...t,
                                                     tsSource: '',
                                                     rustSource: '',
@@ -1073,29 +1074,40 @@ async function main(): Promise<void> {
                                                       rust: '',
                                                     },
                                                   })) as unknown as readonly Task[])
-                                                : setName === 'g'
-                                                  ? (TASKS_G as unknown as readonly Task[])
-                                                      .filter(
-                                                        (t) =>
-                                                          specVariant !== 'stale' ||
-                                                          (t as unknown as TaskG).specs.stale !==
-                                                            null,
-                                                      )
-                                                      .map(
-                                                        (t) =>
-                                                          specVariantOf(
-                                                            t as unknown as TaskG,
-                                                            specVariant,
-                                                          ) as unknown as Task,
-                                                      )
-                                                  : scaled !== undefined
-                                                    ? buildTasksC(TASKS_A, TASKS_B, scaled)
-                                                    : setName === 'all'
-                                                      ? [
-                                                          ...TASKS_A,
-                                                          ...(TASKS_B as readonly Task[]),
-                                                        ]
-                                                      : TASKS_A;
+                                                : setName === 'w'
+                                                  ? (TASKS_W.map((t) => ({
+                                                      ...t,
+                                                      tsSource: '',
+                                                      rustSource: '',
+                                                      reference: {
+                                                        a0: t.reference.a0,
+                                                        ts: '',
+                                                        rust: '',
+                                                      },
+                                                    })) as unknown as readonly Task[])
+                                                  : setName === 'g'
+                                                    ? (TASKS_G as unknown as readonly Task[])
+                                                        .filter(
+                                                          (t) =>
+                                                            specVariant !== 'stale' ||
+                                                            (t as unknown as TaskG).specs.stale !==
+                                                              null,
+                                                        )
+                                                        .map(
+                                                          (t) =>
+                                                            specVariantOf(
+                                                              t as unknown as TaskG,
+                                                              specVariant,
+                                                            ) as unknown as Task,
+                                                        )
+                                                    : scaled !== undefined
+                                                      ? buildTasksC(TASKS_A, TASKS_B, scaled)
+                                                      : setName === 'all'
+                                                        ? [
+                                                            ...TASKS_A,
+                                                            ...(TASKS_B as readonly Task[]),
+                                                          ]
+                                                        : TASKS_A;
   // What each protocol sends. Set C makes the asymmetry visible: the structured A0 cell
   // sends the scoped view of the target function plus the program's signature lines, while
   // the structured TypeScript and Rust cells send the whole numbered file, since locating
