@@ -742,6 +742,23 @@ function isOp(text: string): text is Op {
  */
 export const OP_ALIASES: Readonly<Record<string, Op>> = { udiv: 'div', urem: 'rem' };
 
+/**
+ * Words models write for an op A0 has under another name. They are not accepted as ops (the grammar
+ * keeps one spelling per op); an unknown-callee diagnostic on one of them with the op's operand count
+ * carries the rewrite as an exact fix. Every A0 integer is an unsigned u32, so the unsigned spellings name the plain op.
+ */
+const OP_SPELLINGS: Readonly<Record<string, { op: Op; arity: number; note: string }>> = {
+  sel: { op: 'select', arity: 3, note: ' (`select cond a b` yields a when cond is true, else b)' },
+  lte: { op: 'le', arity: 2, note: '' },
+  gte: { op: 'ge', arity: 2, note: '' },
+  ule: { op: 'le', arity: 2, note: ' (every A0 number is unsigned)' },
+  uge: { op: 'ge', arity: 2, note: ' (every A0 number is unsigned)' },
+  ult: { op: 'lt', arity: 2, note: ' (every A0 number is unsigned)' },
+  ugt: { op: 'gt', arity: 2, note: ' (every A0 number is unsigned)' },
+  neq: { op: 'ne', arity: 2, note: '' },
+  equ: { op: 'eq', arity: 2, note: '' },
+};
+
 /** The op a word names (an op or an accepted alias), or undefined. */
 export function opOf(word: string): Op | undefined {
   return isOp(word) ? word : Object.hasOwn(OP_ALIASES, word) ? OP_ALIASES[word] : undefined;
@@ -1108,7 +1125,16 @@ export function parse(source: string): Program {
         break;
       }
       if (first === 'end' || first === 'fn') {
-        throw diag('A0026', [first], { line: body.line });
+        const last = nodes[nodes.length - 1]?.id;
+        // The last node is nearly always the result: say the line to write (a suggestion, not exact: the result type is the reader's call).
+        throw diag('A0026', [first], {
+          line: body.line,
+          ...(last === undefined
+            ? {}
+            : {
+                fix: `a function is \`fn ...\` then instruction lines, \`ret X\`, \`end\`: write \`ret ${last}\` before \`${first}\` if '${last}' is the result (else \`ret\` the node that is), and start the next \`fn\` after that \`end\``,
+              }),
+        });
       }
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
         throw diag('A0027', [], { line: body.line });
@@ -1572,6 +1598,30 @@ export function validateFunction(
             applicability: 'exact',
             edits: [
               { op: 'rename', rule: 'mod', fn: fn.name, node: node.id, from: name, to: 'rem' },
+            ],
+          });
+        }
+        // Other spellings of an op that models write (`sel c a b`, `lte a b`): the op they name, exact when the
+        // operand count is the op's own and no operand is a node of the same name.
+        const spelled = Object.hasOwn(OP_SPELLINGS, name) ? OP_SPELLINGS[name] : undefined;
+        if (
+          spelled !== undefined &&
+          later?.has(name) !== true &&
+          node.args.length === spelled.arity &&
+          node.args.every((a) => a.kind !== 'node' || a.id !== name)
+        ) {
+          throw diag('A0102', [where, name], {
+            fix: `write \`${node.id} ${spelled.op} …\`: '${name}' is not an op, the op is \`${spelled.op}\`${spelled.note}`,
+            applicability: 'exact',
+            edits: [
+              {
+                op: 'rename',
+                rule: 'alias',
+                fn: fn.name,
+                node: node.id,
+                from: name,
+                to: spelled.op,
+              },
             ],
           });
         }

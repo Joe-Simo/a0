@@ -153,7 +153,7 @@ export function parseEditOps(
   if (lines.length > LIMITS.maxNodesPerFunction) throw diag('A0502');
   const seen = new Map<string, number>();
   const ops: EditOp[] = [];
-  const textDeletes = new Map<string, { text: string; line: number }>();
+  const textDeletes = new Map<string, { text: string; line: number; raw: string }>();
   let sawRet = false;
   lines.forEach((text, i) => {
     const line = firstLine + i;
@@ -180,7 +180,7 @@ export function parseEditOps(
         const head = /^([a-z][a-z0-9_]*)\s+\S/.exec(rest)?.[1];
         if (head === undefined || !isValidIdentifier(head)) throw diag('A0504', [id], { line });
         claim(head);
-        textDeletes.set(head, { text: rest, line });
+        textDeletes.set(head, { text: rest, line, raw: text });
         ops.push({ kind: 'delete', id: head });
         return;
       }
@@ -219,7 +219,21 @@ export function parseEditOps(
     claim(node.id);
     ops.push(m ? { kind: 'node', node, after: m[2] ?? '' } : { kind: 'node', node });
   });
-  for (const [, d] of textDeletes) throw diag('A0504', [d.text], { line: d.line });
+  for (const [id, d] of textDeletes)
+    throw diag('A0504', [d.text], {
+      line: d.line,
+      fix: `a delete names the id only: write \`-${id}\` (the text after the id is not part of a delete)`,
+      applicability: 'exact',
+      edits: [
+        {
+          op: 'lines',
+          rule: 'delete-text',
+          text: normalizeLine(d.raw),
+          to: `-${id}`,
+          line: d.line,
+        },
+      ],
+    });
   return ops;
 }
 
@@ -260,6 +274,25 @@ function orderByDependencies(nodes: readonly Node[]): Node[] {
     if (!moved) return out;
   }
   return [...nodes];
+}
+
+/** Whether the function `from` calls `target`, directly or through the functions it calls. */
+function reaches(
+  program: TypedProgram,
+  from: Func,
+  target: string,
+  seen = new Set<string>(),
+): boolean {
+  if (seen.has(from.name)) return false;
+  seen.add(from.name);
+  for (const n of from.nodes)
+    for (const c of [n.callee, n.pred]) {
+      if (c === undefined) continue;
+      if (c === target) return true;
+      const g = program.byName.get(c);
+      if (g !== undefined && reaches(program, g, target, seen)) return true;
+    }
+  return false;
 }
 
 export function replaceNodes(
@@ -339,7 +372,22 @@ export function replaceNodes(
     if (f.name === fn.name) break;
     scope.set(f.name, f);
   }
-  const typed = validateFunction(replaced, scope, undefined, program.profile);
+  let typed: TypedFunc;
+  try {
+    typed = validateFunction(replaced, scope, undefined, program.profile);
+  } catch (e) {
+    if (!(e instanceof A0Error) || !['A0102', 'A0103', 'A0104'].includes(e.id ?? '')) throw e;
+    // The edit calls a function defined below this one: legal when that function does not call this one (commit moves it above).
+    const wider = new Map(scope);
+    for (const f of program.functions)
+      if (f.name !== fn.name && !reaches(program, f, fn.name)) wider.set(f.name, f);
+    if (wider.size === scope.size) throw e;
+    try {
+      typed = validateFunction(replaced, wider, undefined, program.profile);
+    } catch {
+      throw e;
+    }
+  }
   // A node this edit adds that nothing reads is almost always a result the reply forgot to
   // return (`ret` still names the old node). Land nothing silently wrong: reject with the fix.
   const existing = new Set(fn.nodes.map((n) => n.id));
@@ -395,10 +443,73 @@ function placeNewCallees(
   if (moved.length === 0) return program;
   const rest = program.functions.filter((f) => !moved.includes(f));
   const k = rest.findIndex((f) => f.name === target);
-  return validate({
+  return validateOrdered({
     ...profileField(program),
     functions: [...rest.slice(0, k), ...moved, ...rest.slice(k)],
   });
+}
+
+/**
+ * The functions with every callee that sits below its first caller moved to just above that caller
+ * (callees first, each function's callees in the order the functions were written; everything else
+ * keeps its place). Undefined when the calls are cyclic (no order exists) or the order is already fine.
+ */
+function hoistCallees(fns: readonly Func[]): Func[] | undefined {
+  const byName = new Map(fns.map((f) => [f.name, f] as const));
+  const out: Func[] = [];
+  const done = new Set<string>();
+  const visiting = new Set<string>();
+  const visit = (f: Func): boolean => {
+    if (done.has(f.name)) return true;
+    if (visiting.has(f.name)) return false;
+    visiting.add(f.name);
+    for (const n of f.nodes)
+      for (const c of [n.callee, n.pred]) {
+        const g = c === undefined ? undefined : byName.get(c);
+        if (g !== undefined && !visit(g)) return false;
+      }
+    visiting.delete(f.name);
+    done.add(f.name);
+    out.push(f);
+    return true;
+  };
+  for (const f of fns) if (!visit(f)) return undefined;
+  return out.every((f, i) => f === fns[i]) ? undefined : out;
+}
+
+/**
+ * A reply a model wrapped in a markdown code block (` ``` ` or ` ```a0 ` on a line of its own) is the
+ * reply without those lines: no A0 line starts with a backtick, so nothing else can be meant, and the
+ * edit is the same one. 13 recorded first replies were rejected at the fence (`expected 'fn', got '```'`).
+ */
+export function stripCodeFences(text: string): string {
+  if (!text.includes('```')) return text;
+  return text
+    .split(/\r?\n/)
+    .filter((l) => !/^\s*```[A-Za-z0-9_-]*\s*$/.test(l))
+    .join('\n');
+}
+
+/**
+ * `validate`, except that a program the checker rejects only because a function calls one defined
+ * below it (A0102, A0103, A0104) is accepted with each such callee moved to just above its first
+ * caller. The order is a function of the program alone (see `hoistCallees`), nothing else changes, and the
+ * moved program goes through the whole checker; any other error, and a cyclic program, raise the
+ * original diagnostic.
+ */
+export function validateOrdered(program: Program): TypedProgram {
+  try {
+    return validate(program);
+  } catch (e) {
+    if (!(e instanceof A0Error) || !['A0102', 'A0103', 'A0104'].includes(e.id ?? '')) throw e;
+    const hoisted = hoistCallees(program.functions);
+    if (hoisted === undefined) throw e;
+    try {
+      return validate({ ...program, functions: hoisted });
+    } catch {
+      throw e;
+    }
+  }
 }
 
 /** `{ profile: 'strict' }` for a strict program, nothing for a canonical one (spread into `validate`). */
@@ -408,7 +519,7 @@ function profileField(program: { readonly profile?: 'strict' }): { profile?: 'st
 
 function commit(program: TypedProgram, updated: TypedFunc): TypedProgram {
   const functions = program.functions.map((f) => (f.name === updated.name ? updated : f));
-  return validate({ ...profileField(program), functions });
+  return validateOrdered({ ...profileField(program), functions });
 }
 
 // ---------------------------------------------------------------------------
@@ -943,7 +1054,7 @@ export function editProgram(
   }
   functions.push(...pending);
   if (functions.length === 0) throw diag('A0518');
-  return validate({ ...(profile === undefined ? {} : { profile }), functions });
+  return validateOrdered({ ...(profile === undefined ? {} : { profile }), functions });
 }
 
 export interface SessionOptions {
@@ -1276,7 +1387,8 @@ export class EditSession {
     return this.#program;
   }
 
-  #apply(text: string): TypedProgram {
+  #apply(raw: string): TypedProgram {
+    const text = stripCodeFences(raw);
     if (utf8Length(text) > LIMITS.maxSourceBytes) throw diag('A0502');
     const rawLines = text.split(/\r?\n/);
     // The handle line may be left out when it is implied: the reply then edits the one open
