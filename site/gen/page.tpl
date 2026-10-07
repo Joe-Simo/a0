@@ -356,7 +356,7 @@ s 13 glsl
 "$cmax_ratio$x
 >
 .p d
-"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit.json and results/app-edit-loop.json), TypeScript was accepted more often than A0 on both Haiku and Sonnet, and with the tools in a loop it also cost less per accepted edit on both.
+"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit-deps.json), with A0 shown only the functions the edit reaches it cost less per accepted edit than TypeScript on both Haiku and Sonnet, but TypeScript still had more edits accepted (13 against 9 on Haiku, 14 against 13 on Sonnet); shown every signature of the program A0 cost more (results/app-edit.json).
 >
 >
 .div tcard hw reveal
@@ -1845,7 +1845,7 @@ c putratio %a
 >
 =h3 Not yet
 .div limits
-=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written. Editing a real front end, models had more edits accepted in TypeScript than in A0 on both Haiku and Sonnet (results/app-edit.json).
+=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written. Editing a real front end, models had more edits accepted in TypeScript than in A0 on both Haiku and Sonnet (results/app-edit-deps.json).
 >
 =h3 Try it
 .pre code

@@ -30,7 +30,7 @@ formulas): the deps view is the better form for the product's application-scale 
 
 Both conditions on both models, or no change. A change means: the shipped guidance and the harness default use the dependency-scoped program view
 (a separate step with its own tests); nothing in the shipped text changes on the strength of this note. Reported with wins, ties and losses and none
-hidden: one-shot counts, acceptance after repair, the cold and unbounded horizons, Wilson 95% intervals, the failure classes, and the TypeScript side
+hidden: one-shot counts, acceptance after repair, the cold and unbounded horizons, Wilson 95% intervals (claim-ok: the interval level of the method, not a measured value), the failure classes, and the TypeScript side
 alongside. A failure is classified as a view gap (the reply needed a name or signature the view did not show; counted against the deps view and named) or
 a model error.
 
@@ -50,3 +50,18 @@ bun tools/ai-edit-subjects.ts repair results/app-edit-deps/report1.<model>.a0.js
 # repair replies as <key>.repair.txt in the replies folder, then collect and run again into results/app-edit-deps/report.<model>.a0.json
 bun tools/app-edit-deps-summary.ts
 ```
+
+## Result (collected after the rule above was committed; `results/app-edit-deps.json`, `tools/app-edit-deps-summary.ts`)
+
+28 fresh first-reply subagents (Haiku and Sonnet, 14 tasks) and 9 fresh repair subagents (Haiku 7, Sonnet 2), scored once after every agent had reported; the scored reply files were checked identical to the files on disk after the last report. No subject was refused. Request size with the deps view against the full listing: `results/app-edit-deps/view-tokens.json`.
+
+| model | form | one shot | accepted after repair | tokens per accepted edit (10-task horizon) |
+|---|---|---|---|---|
+| Haiku | A0, deps view | 7 of 14 | 9 of 14 | 2348.3 |
+| Haiku | A0, full listing (sealed arm) | 6 of 14 | 7 of 14 | 10130.1 |
+| Haiku | TypeScript (sealed arm) | 11 of 14 | 13 of 14 | 7960 |
+| Sonnet | A0, deps view | 12 of 14 | 13 of 14 | 1576.5 |
+| Sonnet | A0, full listing (sealed arm) | 11 of 14 | 12 of 14 | 5893.3 |
+| Sonnet | TypeScript (sealed arm) | 14 of 14 | 14 of 14 | 7277.3 |
+
+Rule: met on both models (acceptance not lower than the full listing's by more than one task, and lower cost), so the dependency-scoped program view is the recommended A0 form at application scale; the full-listing arm stays recorded as measured. With the deps view A0 costs less per accepted edit than TypeScript on both models, while TypeScript still has more edits accepted (Haiku 13 against 9, Sonnet 14 against 13); the acceptance gap is a loss and is in the ledger. The failures that remain include the keyword-hash tasks (`op-alias-mod`, `use-alias-import`), where the view does not show the hash: a view gap, counted against A0 and named, still open. The shipped MCP tool `a0_program` already returns the dependency-scoped listing when it is given a target; nothing in the shipped text changes on the strength of this note.

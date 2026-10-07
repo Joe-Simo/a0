@@ -1,0 +1,470 @@
+{
+  "generatedAt": "2026-10-06T23:53:25.777Z",
+  "tool": "tools/app-edit-bench.ts run",
+  "preRegistration": "docs/history/2026-10-06-app-edit-preregistration.md",
+  "model": "haiku",
+  "side": "a0",
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "startSha256": {
+    "a0": "82d6b798b2646d0c16a60e0c90331f1a7a394d6153d0f1a80de91a069c40fd1e",
+    "ts": "1a4337745c6b0ce21c649b176c29739a8c398a8ecf730f43340ba764ddf99b6c"
+  },
+  "harnessSelfCheck": {
+    "ok": true
+  },
+  "trials": [
+    {
+      "task": "semicolon-comment",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 35
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 775,
+        "output": 35
+      }
+    },
+    {
+      "task": "tab-is-error",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 10
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 169,
+        "output": 10
+      }
+    },
+    {
+      "task": "fat-arrow",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "edit: line 7: duplicate edit for 'arrow' fix: a reply edits each node once: keep the one line for 'arrow' you mean, or give the other node its own id and use that id where its value is read"
+      ],
+      "attempts": [
+        {
+          "status": "refused",
+          "failures": [
+            "edit: line 7: duplicate edit for 'arrow' fix: a reply edits each node once: keep the one line for 'arrow' you mean, or give the other node its own id and use that id where its value is read"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 77
+          },
+          "repair": "Rejected:\nedit: line 7: duplicate edit for 'arrow' fix: a reply edits each node once: keep the one line for 'arrow' you mean, or give the other node its own id and use that id where its value is read\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 1123,
+        "output": 77
+      }
+    },
+    {
+      "task": "op-alias-mod",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": code expected 0, got 2",
+        "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": tok expected 0, got 8",
+        "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": nodes expected [4,11,2,0,0,0,8,11,2,2,0,0,0,11,2,4,0,0], got []",
+        "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": args expected [2,0,2,1,1,0,3,3,1,1,3,2], got []",
+        "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": fns expected [2,2,0,0,0,3,268435458], got []"
+      ],
+      "attempts": [
+        {
+          "status": "tests",
+          "failures": [
+            "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": code expected 0, got 2",
+            "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": tok expected 0, got 8",
+            "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": nodes expected [4,11,2,0,0,0,8,11,2,2,0,0,0,11,2,4,0,0], got []",
+            "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": args expected [2,0,2,1,1,0,3,3,1,1,3,2], got []",
+            "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": fns expected [2,2,0,0,0,3,268435458], got []"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 26
+          },
+          "repair": "Rejected:\nparse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": code expected 0, got 2\nparse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": tok expected 0, got 8\nparse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": nodes expected [4,11,2,0,0,0,8,11,2,2,0,0,0,11,2,4,0,0], got []\nparse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": args expected [2,0,2,1,1,0,3,3,1,1,3,2], got []\nparse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": fns expected [2,2,0,0,0,3,268435458], got []\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 1000,
+        "output": 26
+      }
+    },
+    {
+      "task": "drop-unsigned-aliases",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 25
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 1056,
+        "output": 25
+      }
+    },
+    {
+      "task": "text-escape-r",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 33
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 555,
+        "output": 33
+      }
+    },
+    {
+      "task": "text-escape-zero",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 31
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 555,
+        "output": 31
+      }
+    },
+    {
+      "task": "profile-canonical",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+      ],
+      "attempts": [
+        {
+          "status": "refused",
+          "failures": [
+            "parse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 182
+          },
+          "repair": "Rejected:\nparse: line 1: expected 'fn name types... -> type' fix: write the header on one line: `fn NAME T... -> T` (parameter types, `->`, exactly one result type)\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 1707,
+        "output": 182
+      }
+    },
+    {
+      "task": "array-length-limit",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 88
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 995,
+        "output": 88
+      }
+    },
+    {
+      "task": "param-limit",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0",
+        "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": tok expected 11, got 0",
+        "parse of \"fn g -> u32\\nret 1\\nend\\nfn f (u32,u32) u32x2 bool u32 u32 u...\": code expected 1, got 0",
+        "parse of \"fn g -> u32\\nret 1\\nend\\nfn f (u32,u32) u32x2 bool u32 u32 u...\": tok expected 29, got 0"
+      ],
+      "attempts": [
+        {
+          "status": "tests",
+          "failures": [
+            "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0",
+            "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": tok expected 11, got 0",
+            "parse of \"fn g -> u32\\nret 1\\nend\\nfn f (u32,u32) u32x2 bool u32 u32 u...\": code expected 1, got 0",
+            "parse of \"fn g -> u32\\nret 1\\nend\\nfn f (u32,u32) u32x2 bool u32 u32 u...\": tok expected 29, got 0"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 38
+          },
+          "repair": "Rejected:\nparse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0\nparse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": tok expected 11, got 0\nparse of \"fn g -> u32\\nret 1\\nend\\nfn f (u32,u32) u32x2 bool u32 u32 u...\": code expected 1, got 0\nparse of \"fn g -> u32\\nret 1\\nend\\nfn f (u32,u32) u32x2 bool u32 u32 u...\": tok expected 29, got 0\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 4118,
+        "output": 38
+      }
+    },
+    {
+      "task": "duplicate-fn-structure",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": true,
+      "accepted": true,
+      "failures": [],
+      "attempts": [
+        {
+          "status": "accepted",
+          "failures": [],
+          "outputTokensLocal": {
+            "o200k_base": 11
+          }
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 934,
+        "output": 11
+      }
+    },
+    {
+      "task": "number-leading-zero",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "parse: line 5: nested operand: A0 has one op per line fix: one op per line: write `leading_zero1 and is_c0_zero len_gt_1` above, then `leading_zero and not_param leading_zero1`"
+      ],
+      "attempts": [
+        {
+          "status": "refused",
+          "failures": [
+            "parse: line 5: nested operand: A0 has one op per line fix: one op per line: write `leading_zero1 and is_c0_zero len_gt_1` above, then `leading_zero and not_param leading_zero1`"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 81
+          },
+          "repair": "Rejected:\nparse: line 5: nested operand: A0 has one op per line fix: one op per line: write `leading_zero1 and is_c0_zero len_gt_1` above, then `leading_zero and not_param leading_zero1`\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 3613,
+        "output": 81
+      }
+    },
+    {
+      "task": "unreserve-patch",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": code expected 0, got 1",
+        "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": tok expected 0, got 1",
+        "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": fns expected [2,1,0,0,0,1,268435456,8,1,1,0,1,1,268435456], got []",
+        "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": nodes expected [2,2,2,0,0,0,9,19,1,2,0,0], got []",
+        "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": args expected [2,0,3,1,2,0], got []",
+        "parse of \"fn f u32 -> bool\\nfalse eq p0 1\\nret false\\nend\\n\": code expected 1, got 0",
+        "parse of \"fn f u32 -> bool\\nfalse eq p0 1\\nret false\\nend\\n\": tok expected 6, got 0",
+        "parse of \"fn f u32 -> bool\\na eq p0 1\\nret false\\nend\\n\": code expected 0, got 2",
+        "parse of \"fn f u32 -> bool\\na eq p0 1\\nret false\\nend\\n\": tok expected 0, got 12",
+        "parse of \"fn f u32 -> bool\\na eq p0 1\\nret false\\nend\\n\": fns expected [2,1,0,1,0,1,1073741824], got []"
+      ],
+      "attempts": [
+        {
+          "status": "tests",
+          "failures": [
+            "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": code expected 0, got 1",
+            "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": tok expected 0, got 1",
+            "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": fns expected [2,1,0,0,0,1,268435456,8,1,1,0,1,1,268435456], got []",
+            "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": nodes expected [2,2,2,0,0,0,9,19,1,2,0,0], got []",
+            "parse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": args expected [2,0,3,1,2,0], got []",
+            "parse of \"fn f u32 -> bool\\nfalse eq p0 1\\nret false\\nend\\n\": code expected 1, got 0",
+            "parse of \"fn f u32 -> bool\\nfalse eq p0 1\\nret false\\nend\\n\": tok expected 6, got 0",
+            "parse of \"fn f u32 -> bool\\na eq p0 1\\nret false\\nend\\n\": code expected 0, got 2",
+            "parse of \"fn f u32 -> bool\\na eq p0 1\\nret false\\nend\\n\": tok expected 0, got 12",
+            "parse of \"fn f u32 -> bool\\na eq p0 1\\nret false\\nend\\n\": fns expected [2,1,0,1,0,1,1073741824], got []"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 30
+          },
+          "repair": "Rejected:\nparse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": code expected 0, got 1\nparse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": tok expected 0, got 1\nparse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": fns expected [2,1,0,0,0,1,268435456,8,1,1,0,1,1,268435456], got []\nparse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": nodes expected [2,2,2,0,0,0,9,19,1,2,0,0], got []\nparse of \"fn patch u32 -> u32\\npatch add p0 1\\nret patch\\nend\\nfn g u32...\": args expected [2,0,3,1,2,0], got []\nparse of \"fn f u32 -> bool\\nfalse eq p0 1\\nret false\\nend\\n\": code expected 1, got 0\n(4 more)\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 434,
+        "output": 30
+      }
+    },
+    {
+      "task": "use-alias-import",
+      "representation": "a0",
+      "protocol": "structured",
+      "modelCalls": 1,
+      "acceptedOneShot": false,
+      "accepted": false,
+      "failures": [
+        "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1",
+        "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": uses expected [2,4,2], got []",
+        "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": pool expected [114,101,116,118,97,108,105,109,112,111,114,116,97,46,97,48,117,115,101,98,46,97,48,102,110,102,117,51,50,114,101,116,101,110,100], got []",
+        "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": fns expected [6,0,0,0,0,0,805306368], got []",
+        "parse of \"import x\\nfn f -> u32\\nret 0\\nend\\n\": tok expected 1, got 0"
+      ],
+      "attempts": [
+        {
+          "status": "tests",
+          "failures": [
+            "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1",
+            "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": uses expected [2,4,2], got []",
+            "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": pool expected [114,101,116,118,97,108,105,109,112,111,114,116,97,46,97,48,117,115,101,98,46,97,48,102,110,102,117,51,50,114,101,116,101,110,100], got []",
+            "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": fns expected [6,0,0,0,0,0,805306368], got []",
+            "parse of \"import x\\nfn f -> u32\\nret 0\\nend\\n\": tok expected 1, got 0"
+          ],
+          "outputTokensLocal": {
+            "o200k_base": 26
+          },
+          "repair": "Rejected:\nparse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1\nparse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": uses expected [2,4,2], got []\nparse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": pool expected [114,101,116,118,97,108,105,109,112,111,114,116,97,46,97,48,117,115,101,98,46,97,48,102,110,102,117,51,50,114,101,116,101,110,100], got []\nparse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": fns expected [6,0,0,0,0,0,805306368], got []\nparse of \"import x\\nfn f -> u32\\nret 0\\nend\\n\": tok expected 1, got 0\nNothing was applied: edit the views as first shown.\nTry again."
+        }
+      ],
+      "setupTokensLocal": {
+        "o200k_base": 465
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 395,
+        "workflowPrimer": 70,
+        "toolContext": 402,
+        "output": 26
+      }
+    }
+  ]
+}

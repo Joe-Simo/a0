@@ -496,7 +496,8 @@ function specObservations(root: string): Observation[] {
 
 interface AppEditCell {
   readonly n: number;
-  readonly accepted: { readonly k: number };
+  readonly accepted?: { readonly k: number };
+  readonly acceptedAfterRepair?: { readonly k: number };
   readonly tokensPerAcceptedEdit: { readonly session10: number | null } | null;
 }
 
@@ -508,14 +509,15 @@ interface AppEditCell {
  */
 function appEditObservations(root: string): Observation[] {
   const out: Observation[] = [];
-  for (const [file, source] of [
-    ['app-edit.json', 'app-edit'],
-    ['app-edit-loop.json', 'app-edit-loop'],
+  for (const [file, source, a0Key] of [
+    ['app-edit.json', 'app-edit', 'a0'],
+    ['app-edit-loop.json', 'app-edit-loop', 'a0'],
+    ['app-edit-deps.json', 'app-edit-deps', 'a0-deps'],
   ] as const) {
     const cells = obj(readJson(root, file)?.cells);
     if (cells === undefined) continue;
     for (const model of ['haiku', 'sonnet']) {
-      const a = obj(cells[`${model}/a0`]) as unknown as AppEditCell | undefined;
+      const a = obj(cells[`${model}/${a0Key}`]) as unknown as AppEditCell | undefined;
       const t = obj(cells[`${model}/ts`]) as unknown as AppEditCell | undefined;
       if (a === undefined || t === undefined) continue;
       const kernel = `${model}/a0-front-end`;
@@ -526,9 +528,11 @@ function appEditObservations(root: string): Observation[] {
         kernel,
         axis: 'app-edit-accepted',
         competitor,
-        a0: a.accepted.k / a.n,
-        other: t.accepted.k / t.n,
-        gap: t.accepted.k / t.n - a.accepted.k / a.n,
+        a0: ((a.acceptedAfterRepair ?? a.accepted)?.k ?? 0) / a.n,
+        other: ((t.acceptedAfterRepair ?? t.accepted)?.k ?? 0) / t.n,
+        gap:
+          ((t.acceptedAfterRepair ?? t.accepted)?.k ?? 0) / t.n -
+          ((a.acceptedAfterRepair ?? a.accepted)?.k ?? 0) / a.n,
         noise: 1 / a.n,
         load: null,
       });

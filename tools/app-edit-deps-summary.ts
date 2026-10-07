@@ -36,7 +36,7 @@ function load(path: string): Report {
   return rep;
 }
 
-function cell(rep: Report): Record<string, unknown> & { accepted: number; cost: number } {
+function cell(rep: Report): Record<string, unknown> & { acceptedCount: number; cost: number } {
   const n = rep.trials.length;
   const one = rep.trials.filter((t) => t.acceptedOneShot === true).length;
   const acc = rep.trials.filter((t) => t.accepted === true).length;
@@ -50,7 +50,7 @@ function cell(rep: Report): Record<string, unknown> & { accepted: number; cost: 
     notAcceptedAfterRepair: rep.trials
       .filter((t) => t.accepted !== true)
       .map((t) => ({ task: t.task, first: t.failures[0]?.slice(0, 160) ?? null })),
-    accepted: acc,
+    acceptedCount: acc,
     cost: tpa[PRIMARY] ?? Number.NaN,
   };
 }
@@ -71,13 +71,13 @@ async function main(): Promise<void> {
     cells[`${m}/a0-deps`] = d;
     cells[`${m}/a0-all`] = f;
     cells[`${m}/ts`] = t;
-    const accOk = d.accepted >= f.accepted - MARGIN;
+    const accOk = d.acceptedCount >= f.acceptedCount - MARGIN;
     const costLower = d.cost < f.cost;
     allModels = allModels && accOk && costLower;
     rule[m] = {
       primaryHorizon: PRIMARY,
       margin: MARGIN,
-      accepted: { deps: d.accepted, all: f.accepted, ts: t.accepted },
+      accepted: { deps: d.acceptedCount, all: f.acceptedCount, ts: t.acceptedCount },
       cost: { deps: d.cost, all: f.cost, ts: t.cost },
       acceptanceNotLowerWithinMargin: accOk,
       costLower,
