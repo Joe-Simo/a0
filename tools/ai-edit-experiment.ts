@@ -818,10 +818,23 @@ async function runTrial(
       session !== undefined &&
       applied.error === undefined
     ) {
-      // Handles are stable: show the current text under the same e0 / g0.
-      nextView = A0_LEAN_VIEW
-        ? withoutHandle(session.view('e0'))
-        : `${session.view('e0')}\n${session.view('g0')}`;
+      // Handles are stable: show the current text under the same e0 / g0. A reply made of whole `fn` blocks
+      // replaces the function and closes its handle: the target is then opened again, which names the new handles.
+      try {
+        nextView = A0_LEAN_VIEW
+          ? withoutHandle(session.view('e0'))
+          : `${session.view('e0')}\n${session.view('g0')}`;
+      } catch {
+        try {
+          const fnName = task.target ?? '';
+          const fnText = session.open(fnName, { scope: 'deps' }).text;
+          nextView = A0_LEAN_VIEW
+            ? withoutHandle(fnText)
+            : `${fnText}\n${session.openProgram({ scope: 'all', target: fnName }).text}`;
+        } catch {
+          // The target is gone (the reply renamed it): the repair message carries no view.
+        }
+      }
     }
     const rejection = `Rejected:\n${failures.join('\n')}\n${nextView !== undefined ? `\nCurrent view:\n${nextView}` : ''}\nTry again.`;
     // Lazy primer: sent once, with the first repair after a reply the checker could not accept
