@@ -244,7 +244,49 @@ ret s6
 end
 
 # ---- where the body wants to be, and how strongly: (x, y, spring, damping), Q16
-fn body_goal u32x1024 u32x32 -> (u32,u32,u32,u32)
+# keep the body off text, code and headings: a target inside one of their boxes (padded) moves to its boundary
+fn avoid_step (u32,u32) u32 u32x672 u32 u32 u32 -> (u32,u32)
+x at p0 0
+y at p0 1
+kind call r_kind p2 p1
+vis call r_vis p2 p1
+k1 eq kind 1
+k2 eq kind 2
+k3 eq kind 3
+k12 or k1 k2
+k4 eq kind 4
+kk0 or k12 k3
+kk or kk0 k4
+x0 call rg p2 p1 1
+y0 call rg p2 p1 2
+x1 call rg p2 p1 3
+y1 call rg p2 p1 4
+x0q call pg2vp x0 p3
+y0q call pg2vp y0 p4
+x1q call pg2vp x1 p3
+y1q call pg2vp y1 p4
+x0p sub x0q p5
+y0p sub y0q p5
+x1p add x1q p5
+y1p add y1q p5
+a1 call fx_ge x x0p
+a2 call fx_le x x1p
+a3 call fx_ge y y0p
+a4 call fx_le y y1p
+i1 and a1 a2
+i2 and a3 a4
+inside and i1 i2
+e1 and vis kk
+act and e1 inside
+e call edge_pt x0p y0p x1p y1p x y
+ex at e 0
+ey at e 1
+nx select act ex x
+ny select act ey y
+o rec nx ny
+ret o
+end
+fn body_goal u32x1024 u32x32 u32x672 -> (u32,u32,u32,u32)
 mode call bg p0 11
 bx call bg p0 1
 by call bg p0 2
@@ -299,12 +341,21 @@ mq call fx_mul 1703936 sc
 xmax sub vwq mq
 ymax sub vhq mq
 dx call fx_clamp dx0 mq xmax
-dy call fx_clamp dy0 mq ymax
+dyc call fx_clamp dy0 mq ymax
+sxg get p1 5
+syg get p1 6
+nrows get p1 21
+pad call fx_mul 1572864 sc
+av0 rec dx dyc
+av1 fold avoid_step nrows av0 p2 sxg syg pad
+av fold avoid_step nrows av1 p2 sxg syg pad
+ndx at av 0
+ndy at av 1
 k1 select m2 1572864 589824
 k select m1 1966080 k1
 c1 select m2 294912 288358
 c select m1 262144 c1
-r rec dx dy k c
+r rec ndx ndy k c
 ret r
 end
 
@@ -331,7 +382,7 @@ reach call tg p2 p1 14
 rr call fx_mul reach 39322
 frac call fx_div dist rr
 fr call fx_min frac 65536
-mag0 call fx_mul 3604480 w
+mag0 call fx_mul 5242880 w
 mag call fx_mul mag0 fr
 fxx call fx_mul ux mag
 fyy call fx_mul uy mag
@@ -346,8 +397,8 @@ ret o
 end
 
 # spring, damping and anchor pulls; p2 dt in Q16 seconds
-fn body_step u32x1024 u32x32 u32 -> u32x1024
-g call body_goal p0 p1
+fn body_step u32x1024 u32x32 u32x672 u32 -> u32x1024
+g call body_goal p0 p1 p2
 dx at g 0
 dy at g 1
 k at g 2
@@ -374,8 +425,8 @@ ay1 call fx_mul k ey
 ay2 call fx_mul c vy
 ay3 sub ay1 ay2
 ay add ay3 ply
-dvx call fx_mul ax p2
-dvy call fx_mul ay p2
+dvx call fx_mul ax p3
+dvy call fx_mul ay p3
 vx1 add vx dvx
 vy1 add vy dvy
 spd call fx_hyp vx1 vy1
@@ -386,8 +437,8 @@ vx2s call fx_mul vx1 f
 vy2s call fx_mul vy1 f
 vx2 select over vx2s vx1
 vy2 select over vy2s vy1
-mx call fx_mul vx2 p2
-my call fx_mul vy2 p2
+mx call fx_mul vx2 p3
+my call fx_mul vy2 p3
 bx1 add bx mx
 by1 add by my
 vw get p1 3

@@ -62,6 +62,7 @@ export const OP = {
   sphere: 15,
   path: 16,
   brackets: 17,
+  quad: 18,
 } as const;
 
 /** Words of each fixed-size drawing command, opcode included (PATH is variable). */
@@ -73,6 +74,7 @@ export const COMMAND_WORDS: Readonly<Record<number, number>> = {
   [OP.glow]: 5,
   [OP.sphere]: 6,
   [OP.brackets]: 8,
+  [OP.quad]: 10,
 };
 
 /** A number as a signed Q16.16 word. */

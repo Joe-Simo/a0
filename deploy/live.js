@@ -3,15 +3,9 @@
  * data attributes on its root element:
  *
  *   data-live="/sentinel.wasm"   the program (an A0 io program exporting `frame`)
-<<<<<<< HEAD
  *   data-live-in="2048"          input words it was built with (ioInputCapacity)
  *   data-live-out="16384"        output words (ioOutputCapacity)
  *   data-live-rows="96"         geometry rows it reads
-=======
- *   data-live-in="4096"          input words it was built with (ioInputCapacity)
- *   data-live-out="16384"        output words (ioOutputCapacity)
- *   data-live-rows="192"         geometry rows it reads
->>>>>>> origin/main
  *
  * This module knows nothing about what the program draws. It runs one animation-frame loop,
  * feeds the program pointer, scroll, viewport, reduced-motion, visibility and frame-cost data
@@ -37,7 +31,6 @@ async function load(url) {
     return instance.exports;
 }
 /** Mount the live program a page asked for, if any. Failures leave the page as it was. */
-<<<<<<< HEAD
 export async function mountLive(root, config = root.dataset) {
     const url = config.live;
     if (url === undefined || url === '')
@@ -45,15 +38,6 @@ export async function mountLive(root, config = root.dataset) {
     const inputWords = Number(config.liveIn ?? '2048');
     const outputWords = Number(config.liveOut ?? '16384');
     const rows = Number(config.liveRows ?? '96');
-=======
-export async function mountLive(root) {
-    const url = root.dataset.live;
-    if (url === undefined || url === '')
-        return undefined;
-    const inputWords = Number(root.dataset.liveIn ?? '4096');
-    const outputWords = Number(root.dataset.liveOut ?? '16384');
-    const rows = Number(root.dataset.liveRows ?? '192');
->>>>>>> origin/main
     let exp;
     try {
         exp = await load(url);

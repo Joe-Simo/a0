@@ -76,6 +76,7 @@ class Recorder {
   beginPath = this.rec('beginPath');
   moveTo = this.rec('moveTo');
   lineTo = this.rec('lineTo');
+  closePath = this.rec('closePath');
   arc = this.rec('arc');
   stroke = this.rec('stroke');
   fill = this.rec('fill');
@@ -115,6 +116,7 @@ test('canvas: the draw list executes, tracks bounds, and stops at an unknown or 
     q(0),
     q(9),
     q(9),
+    OP.quad, q(0), q(0), q(10), q(0), q(10), q(10), q(10), q(10), 0xffffffff,
     999,
     1,
     2,
@@ -124,7 +126,7 @@ test('canvas: the draw list executes, tracks bounds, and stops at an unknown or 
   ];
   const b: Bounds = emptyBounds();
   const n = drawCommands(ctx as unknown as Ctx2D, words, 0, words.length, b);
-  assert.equal(n, 4);
+  assert.equal(n, 5);
   assert.ok(b.x0 <= 0 && b.x1 >= 75 && b.y0 <= 0 && b.y1 >= 85);
   assert.ok(ctx.calls.includes('gradient(6)'));
   const flat = new Recorder();

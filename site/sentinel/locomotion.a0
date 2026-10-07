@@ -35,7 +35,8 @@ s4 call ts s3 p1 19 0
 k31 add p1 31
 h call fx_hash clk k31
 u shr h 22
-cdms add 350 u
+cdh shr u 1
+cdms add 150 cdh
 s5 call ts s4 p1 7 cdms
 hx call tg s5 p1 20
 hy call tg s5 p1 21
@@ -121,7 +122,26 @@ cd1 sub cd0 p2
 cd select cdok cd1 0
 s1 call ts p0 p1 5 tm
 s2 call ts s1 p1 7 cd
-ret s2
+stt call tg p0 p1 0
+c1 eq stt 1
+c2 eq stt 2
+c3 eq stt 3
+tc0 select c3 52429 45875
+tc1 select c1 65536 tc0
+tgt select c2 0 tc1
+cl call tg p0 p1 26
+dcl sub tgt cl
+f0 mul p2 917
+f call min_u32 f0 65536
+dc call fx_mul dcl f
+ncl add cl dc
+s3 call ts s2 p1 26 ncl
+im0 call tg p0 p1 27
+imok gt im0 p2
+im1 sub im0 p2
+im select imok im1 0
+s4 call ts s3 p1 27 im
+ret s4
 end
 
 # remember an anchor in the recent ring (words 40..63, head in word 64)
@@ -172,8 +192,8 @@ k call tg p0 p1 25
 clk call bg p0 13
 h call fx_hash clk p1
 u shr h 16
-span div u 25
-base add 1100 span
+span div u 30
+base add 900 span
 iscode eq k 3
 ishead eq k 1
 m1 select iscode 88474 65536
@@ -207,7 +227,7 @@ mfn ne mf 0
 want and w4 mfn
 nrows get p2 21
 n select want nrows 0
-sp call search_prepare p0 p2 p1
+sp call search_prepare p0 p2 p3 p1
 best call anchor_search sp p3 n
 score at best 0
 bx at best 1
@@ -222,7 +242,8 @@ s_a select go ap sp
 clk call bg p0 13
 h call fx_hash clk p1
 u shr h 22
-cdn add 160 u
+cdq shr u 2
+cdn add 80 cdq
 nogo call not_b fnd
 miss and want nogo
 cdset select miss cdn cd
@@ -260,7 +281,8 @@ rid call tg p0 p1 2
 a1 call ts p0 p1 0 2
 a2 call ts a1 p1 5 0
 a3 call ts a2 p1 6 holdt
-a4 call ring_push a3 rid pgx pgy
+a4a call ring_push a3 rid pgx pgy
+a4 call ts a4a p1 27 650
 tm call tg p0 p1 5
 slow gt tm 1500
 bx call bg p0 1
@@ -320,6 +342,46 @@ r select go a1 p0
 ret r
 end
 
+# readability: a chain whose middle joint is over text or code is drawn fainter (word 28, Q16)
+fn cover_step u32 u32 u32x672 u32 u32 -> u32
+x0 call rg p2 p1 1
+y0 call rg p2 p1 2
+x1 call rg p2 p1 3
+y1 call rg p2 p1 4
+kind call r_kind p2 p1
+k2 eq kind 2
+k3 eq kind 3
+kk or k2 k3
+a1 ge p3 x0
+a2 le p3 x1
+a3 ge p4 y0
+a4 le p4 y1
+i1 and a1 a2
+i2 and a3 a4
+ins and i1 i2
+hit and kk ins
+n select hit 1 0
+r add p0 n
+ret r
+end
+fn lg_cover u32x1024 u32 u32x32 u32x672 -> u32x1024
+nj call tg p0 p1 1
+mid shr nj 1
+x call jg p0 p1 mid 0
+y call jg p0 p1 mid 1
+sx get p2 5
+sy get p2 6
+pgx call vp2pg x sx
+pgy call vp2pg y sy
+nrows get p2 21
+hits fold cover_step nrows 0 p3 pgx pgy
+over ne hits 0
+tgt select over 26214 65536
+old call tg p0 p1 28
+nw call fx_lerp old tgt 7864
+r call ts p0 p1 28 nw
+ret r
+end
 # the four stages of one tentacle, in order (p1 tentacle, p2 hdr, p3 rects, p4 dt in ms)
 fn tent_logic u32x1024 u32 u32x32 u32x672 u32 -> u32x1024
 s1 call lg_tick p0 p1 p4
@@ -328,7 +390,8 @@ s3 call tent_follow s2 p1 p2 p3
 s4 call lg_approach s3 p1
 s5 call lg_attach s4 p1
 s6 call lg_release s5 p1
-ret s6
+s7 call lg_cover s6 p1 p2 p3
+ret s7
 end
 
 # ---- a tap on an interactive element: one to three free tentacles reach for its nearest edge

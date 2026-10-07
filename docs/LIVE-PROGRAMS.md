@@ -142,3 +142,7 @@ holds, a brighter core) and the code blocks; the hero matrix rain is unchanged (
 would help the sentinel read as a distinct object). Frame cost was measured in headless Chrome with
 software rendering, not on a physical GPU or a slow phone, and the adaptive-quality steps never
 triggered there.
+
+## Look and landings (second pass)
+
+The draw list gained one general primitive, QUAD (op 18, a filled four-point polygon; repeat a point for a triangle). The sentinel draws every limb segment as a tapered quad with alternating gunmetal shades, an accent ring at each joint, a highlight along the lit edge and a soft contact shadow; the end-effector is a three-prong claw (a blade on two limbs) that opens while searching and reaching and closes on landing, with a ring, a spark and a glint along the held element's edge drawn in the overlay only. The body is an armoured shell (eight plates, a lit rim, a core eye, four small pulsing lights). Readability: the body target is pushed out of text, heading, code and control boxes (two passes), and a limb whose middle joint is over text or code is drawn fainter. Frames from the review are in docs/design/sentinel/. Measured cost: results/sentinel-frame-cost.json.

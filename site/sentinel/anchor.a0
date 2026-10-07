@@ -12,34 +12,6 @@
 #   871 searching tentacle  872 probe x  873 probe y
 use "tentacle.a0"
 
-# the point of the box (x0 y0 x1 y1) boundary nearest to (p4, p5)
-fn edge_pt u32 u32 u32 u32 u32 u32 -> (u32,u32)
-cx call fx_clamp p4 p0 p2
-cy call fx_clamp p5 p1 p3
-inx eq cx p4
-iny eq cy p5
-inside and inx iny
-dl sub p4 p0
-dr sub p2 p4
-dt sub p5 p1
-db sub p3 p5
-m1 call fx_min dl dr
-m2 call fx_min dt db
-m call fx_min m1 m2
-isl eq m dl
-isr eq m dr
-ist eq m dt
-ex2 select isr p2 p4
-ex select isl p0 ex2
-ey4 select isr p5 p3
-ey5 select isl p5 ey4
-ey6 select ist p1 ey5
-rx select inside ex cx
-ry select inside ey6 cy
-r rec rx ry
-ret r
-end
-
 # candidate c of a box: corners 0..3, the boundary point nearest the probe (p4, p5) is 4
 fn cand_point u32 u32 u32 u32 u32 u32 u32 -> (u32,u32)
 c0 eq p6 0
@@ -282,7 +254,7 @@ ret o
 end
 
 # set the search context: viewport (from the header), the tentacle p1, its probe, the direction of travel
-fn search_prepare u32x1024 u32x32 u32 -> u32x1024
+fn search_prepare u32x1024 u32x32 u32x672 u32 -> u32x1024
 sx get p1 5
 sy get p1 6
 vw get p1 3
@@ -294,7 +266,7 @@ vy call bg p0 4
 ang call bg p0 5
 hx call fx_cos ang
 hy call fx_sin ang
-g call body_goal p0 p1
+g call body_goal p0 p1 p2
 gx at g 0
 gy at g 1
 ex sub gx bx
@@ -311,8 +283,8 @@ sf0 call fx_div spd 39321600
 sf1 call fx_min sf0 65536
 sf2 call fx_mul sf1 45875
 sf add 19661 sf2
-prx call tg p0 p2 20
-pry call tg p0 p2 21
+prx call tg p0 p3 20
+pry call tg p0 p3 21
 s1 call bs p0 864 sx
 s2 call bs s1 865 sy
 s3 call bs s2 866 vw
@@ -320,7 +292,7 @@ s4 call bs s3 867 vh
 s5 call bs s4 868 ux
 s6 call bs s5 869 uy
 s7 call bs s6 870 sf
-s8 call bs s7 871 p2
+s8 call bs s7 871 p3
 s9 call bs s8 872 prx
 s10 call bs s9 873 pry
 ret s10
