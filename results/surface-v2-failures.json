@@ -1,0 +1,534 @@
+{
+  "generatedAt": "2026-10-07T12:07:15.468Z",
+  "tool": "tools/surface-v2-failures.ts",
+  "meaning": "Recorded A0 trials of the task sets that exist in both forms (a, b, c, c400, c4000, d, e, f, g, h, i, j), rules-merged primer. pooled: every primer variant and model in results/ (the ablation variants include deliberately degraded primers); controls: dense.D0 against canon.K0 and canon.KR3 only. Classes by the first rule that matches the checker message. Rates are descriptive, not significance claims.",
+  "pooled": {
+    "files": 312,
+    "dense": {
+      "trials": 2146,
+      "oneShotRate": 0.88,
+      "acceptedRate": 0.912,
+      "notAcceptedAfterRepair": 189,
+      "failedAttempts": 352
+    },
+    "canonical": {
+      "trials": 1881,
+      "oneShotRate": 0.847,
+      "acceptedRate": 0.937,
+      "notAcceptedAfterRepair": 118,
+      "failedAttempts": 381
+    },
+    "table": [
+      {
+        "class": "operand count or value used twice (dense: prefix without delimiters)",
+        "denseFailedAttempts": 73,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 3.4,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 3.4,
+        "denseUnrecoveredPer100Trials": 1.63,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "parse: line 3: unexpected '0' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above"
+      },
+      {
+        "class": "unknown word (operation or name not in the language; dense: parameter written as a name)",
+        "denseFailedAttempts": 58,
+        "canonicalFailedAttempts": 13,
+        "densePer100Trials": 2.7,
+        "canonicalPer100Trials": 0.69,
+        "deltaPer100": 2.01,
+        "denseUnrecoveredPer100Trials": 1.12,
+        "canonicalUnrecoveredPer100Trials": 0.32,
+        "example": "parse: line 2: 'c' is not an operation, a function, or a named value defined above fix: parameters are written A, B, C by position (no names"
+      },
+      {
+        "class": "operand order (get/set on the wrong value)",
+        "denseFailedAttempts": 18,
+        "canonicalFailedAttempts": 1,
+        "densePer100Trials": 0.84,
+        "canonicalPer100Trials": 0.05,
+        "deltaPer100": 0.79,
+        "denseUnrecoveredPer100Trials": 0.7,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "type: minmax (`get A 0`): get expects an array, got (u32,u32) fix: records use at with a literal field index: `at R K` (get is for arrays)"
+      },
+      {
+        "class": "parameter count or position (dense: implicit from the letters used)",
+        "denseFailedAttempts": 26,
+        "canonicalFailedAttempts": 8,
+        "densePer100Trials": 1.21,
+        "canonicalPer100Trials": 0.43,
+        "deltaPer100": 0.78,
+        "denseUnrecoveredPer100Trials": 0.75,
+        "canonicalUnrecoveredPer100Trials": 0.05,
+        "example": "total: total p0: expected u32x4"
+      },
+      {
+        "class": "duplicate or reused id",
+        "denseFailedAttempts": 13,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 0.61,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 0.61,
+        "denseUnrecoveredPer100Trials": 0.56,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "parse: line 4: duplicate id 'r'"
+      },
+      {
+        "class": "result type not written",
+        "denseFailedAttempts": 47,
+        "canonicalFailedAttempts": 33,
+        "densePer100Trials": 2.19,
+        "canonicalPer100Trials": 1.75,
+        "deltaPer100": 0.44,
+        "denseUnrecoveredPer100Trials": 0.98,
+        "canonicalUnrecoveredPer100Trials": 0.48,
+        "example": "type: below's result: expected u32, got bool fix: replace the operand at below's result with a value of type u32"
+      },
+      {
+        "class": "edit protocol (line edit shape)",
+        "denseFailedAttempts": 4,
+        "canonicalFailedAttempts": 17,
+        "densePer100Trials": 0.19,
+        "canonicalPer100Trials": 0.9,
+        "deltaPer100": -0.71,
+        "denseUnrecoveredPer100Trials": 0.19,
+        "canonicalUnrecoveredPer100Trials": 0.32,
+        "example": "edit: edit line 'or << A 8 >> A 24' names no value fix: start the line with the id of the value to set (`x add A 1`), write `ret EXPR`, or s"
+      },
+      {
+        "class": "operand nesting (canonical: one op per line)",
+        "denseFailedAttempts": 0,
+        "canonicalFailedAttempts": 26,
+        "densePer100Trials": 0,
+        "canonicalPer100Trials": 1.38,
+        "deltaPer100": -1.38,
+        "denseUnrecoveredPer100Trials": 0,
+        "canonicalUnrecoveredPer100Trials": 0.05,
+        "example": "parse: line 4: nested operand: A0 has one op per line fix: one op per line: write `result1 add p0 1` above, then `result select cond result1"
+      },
+      {
+        "class": "block shape (ret / end)",
+        "denseFailedAttempts": 0,
+        "canonicalFailedAttempts": 33,
+        "densePer100Trials": 0,
+        "canonicalPer100Trials": 1.75,
+        "deltaPer100": -1.75,
+        "denseUnrecoveredPer100Trials": 0,
+        "canonicalUnrecoveredPer100Trials": 0.48,
+        "example": "parse: line 3: unexpected 'end' before ret"
+      },
+      {
+        "class": "wrong result (well formed)",
+        "denseFailedAttempts": 58,
+        "canonicalFailedAttempts": 86,
+        "densePer100Trials": 2.7,
+        "canonicalPer100Trials": 4.57,
+        "deltaPer100": -1.87,
+        "denseUnrecoveredPer100Trials": 1.4,
+        "canonicalUnrecoveredPer100Trials": 2.02,
+        "example": "checksum(0,0,0,0) = 7, expected 6464647"
+      },
+      {
+        "class": "callee used before it is defined",
+        "denseFailedAttempts": 17,
+        "canonicalFailedAttempts": 60,
+        "densePer100Trials": 0.79,
+        "canonicalPer100Trials": 3.19,
+        "deltaPer100": -2.4,
+        "denseUnrecoveredPer100Trials": 0.37,
+        "canonicalUnrecoveredPer100Trials": 0.96,
+        "example": "parse: line 3: unknown function 'maxmin' fix: a callee must be defined above its caller"
+      },
+      {
+        "class": "other (type errors: select branches, record against array, ...)",
+        "denseFailedAttempts": 38,
+        "canonicalFailedAttempts": 104,
+        "densePer100Trials": 1.77,
+        "canonicalPer100Trials": 5.53,
+        "deltaPer100": -3.76,
+        "denseUnrecoveredPer100Trials": 1.12,
+        "canonicalUnrecoveredPer100Trials": 1.59,
+        "example": "type: minmax (`select lt B at A 0 (at A 0 B) select gt B at A 1 B at A 1`): select branches differ ((u32,u32) vs u32)"
+      }
+    ]
+  },
+  "controls": {
+    "files": 42,
+    "dense": {
+      "trials": 266,
+      "oneShotRate": 0.842,
+      "acceptedRate": 0.876,
+      "notAcceptedAfterRepair": 33,
+      "failedAttempts": 57
+    },
+    "canonical": {
+      "trials": 340,
+      "oneShotRate": 0.894,
+      "acceptedRate": 0.95,
+      "notAcceptedAfterRepair": 17,
+      "failedAttempts": 43
+    },
+    "table": [
+      {
+        "class": "unknown word (operation or name not in the language; dense: parameter written as a name)",
+        "denseFailedAttempts": 19,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 7.14,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 7.14,
+        "denseUnrecoveredPer100Trials": 3.76,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "parse: line 2: 'x' is neither an operation nor a function defined above fix: to name a value write `x OP ...` (for example `x add A 1`); to "
+      },
+      {
+        "class": "duplicate or reused id",
+        "denseFailedAttempts": 6,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 2.26,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 2.26,
+        "denseUnrecoveredPer100Trials": 2.26,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "parse: line 4: duplicate id 'r'"
+      },
+      {
+        "class": "operand order (get/set on the wrong value)",
+        "denseFailedAttempts": 5,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 1.88,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 1.88,
+        "denseUnrecoveredPer100Trials": 1.88,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "type: step (`get C B`): get expects an array, got u32"
+      },
+      {
+        "class": "other (type errors: select branches, record against array, ...)",
+        "denseFailedAttempts": 11,
+        "canonicalFailedAttempts": 9,
+        "densePer100Trials": 4.14,
+        "canonicalPer100Trials": 2.65,
+        "deltaPer100": 1.49,
+        "denseUnrecoveredPer100Trials": 2.26,
+        "canonicalUnrecoveredPer100Trials": 0.88,
+        "example": "parse: line 1: the type list of 'divrem' needs '-> RESULT' after it fix: write `fn divrem u32 u32 -> u32` (the last type after `->` is the r"
+      },
+      {
+        "class": "operand count or value used twice (dense: prefix without delimiters)",
+        "denseFailedAttempts": 3,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 1.13,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 1.13,
+        "denseUnrecoveredPer100Trials": 0.38,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "parse: line 2: unexpected 'A' after a complete expression fix: one statement per line; a value used twice needs a name on its own line above"
+      },
+      {
+        "class": "callee used before it is defined",
+        "denseFailedAttempts": 2,
+        "canonicalFailedAttempts": 0,
+        "densePer100Trials": 0.75,
+        "canonicalPer100Trials": 0,
+        "deltaPer100": 0.75,
+        "denseUnrecoveredPer100Trials": 0.38,
+        "canonicalUnrecoveredPer100Trials": 0,
+        "example": "parse: line 2: unknown function 'f' fix: a callee must be defined above its caller"
+      },
+      {
+        "class": "operand nesting (canonical: one op per line)",
+        "denseFailedAttempts": 0,
+        "canonicalFailedAttempts": 1,
+        "densePer100Trials": 0,
+        "canonicalPer100Trials": 0.29,
+        "deltaPer100": -0.29,
+        "denseUnrecoveredPer100Trials": 0,
+        "canonicalUnrecoveredPer100Trials": 0.29,
+        "example": "parse: line 2: nested operand: A0 has one op per line fix: one op per line: write `t1 add p1 1` above, then `t get p2 t1`"
+      },
+      {
+        "class": "parameter count or position (dense: implicit from the letters used)",
+        "denseFailedAttempts": 0,
+        "canonicalFailedAttempts": 2,
+        "densePer100Trials": 0,
+        "canonicalPer100Trials": 0.59,
+        "deltaPer100": -0.59,
+        "denseUnrecoveredPer100Trials": 0,
+        "canonicalUnrecoveredPer100Trials": 0.29,
+        "example": "type: step.a: parameter p2 out of range fix: step has 2 parameters (p0..p1): use one of them, or add the parameter with a `fn step ...` bloc"
+      },
+      {
+        "class": "result type not written",
+        "denseFailedAttempts": 3,
+        "canonicalFailedAttempts": 8,
+        "densePer100Trials": 1.13,
+        "canonicalPer100Trials": 2.35,
+        "deltaPer100": -1.22,
+        "denseUnrecoveredPer100Trials": 0.38,
+        "canonicalUnrecoveredPer100Trials": 0.59,
+        "example": "parse: line 1: expected a result type after '->'"
+      },
+      {
+        "class": "edit protocol (line edit shape)",
+        "denseFailedAttempts": 0,
+        "canonicalFailedAttempts": 6,
+        "densePer100Trials": 0,
+        "canonicalPer100Trials": 1.76,
+        "deltaPer100": -1.76,
+        "denseUnrecoveredPer100Trials": 0,
+        "canonicalUnrecoveredPer100Trials": 0.59,
+        "example": "edit: advance: new node 'r' is not used by any node or by ret fix: add 'ret r' if it is the new result, or use it in another node"
+      },
+      {
+        "class": "wrong result (well formed)",
+        "denseFailedAttempts": 8,
+        "canonicalFailedAttempts": 17,
+        "densePer100Trials": 3.01,
+        "canonicalPer100Trials": 5,
+        "deltaPer100": -1.99,
+        "denseUnrecoveredPer100Trials": 1.13,
+        "canonicalUnrecoveredPer100Trials": 2.35,
+        "example": "prod4(1,2,3,4) = 0, expected 24"
+      }
+    ]
+  },
+  "cost": {
+    "setH": {
+      "haiku/dense": {
+        "variant": "D",
+        "n": 16,
+        "system": 145,
+        "oneShot": {
+          "k": 12,
+          "ci95": [
+            0.505,
+            0.898
+          ]
+        },
+        "accepted": {
+          "k": 13,
+          "ci95": [
+            0.57,
+            0.934
+          ]
+        },
+        "callsPerTask": 1.3,
+        "tokensPerAcceptedEdit": {
+          "task1": 379.7,
+          "session10": 187,
+          "unbounded": 165.5
+        },
+        "notAcceptedAfterRepair": [
+          {
+            "task": "h-sum-squares",
+            "first": "type: step (`get C B`): get expects an array, got u32"
+          },
+          {
+            "task": "h-count-above",
+            "first": "type: cnt (`get C B`): get expects an array, got u32"
+          },
+          {
+            "task": "h-array-min",
+            "first": "type: mn (`get C B`): get expects an array, got u32"
+          }
+        ]
+      },
+      "haiku/canon": {
+        "variant": "K",
+        "n": 16,
+        "system": 101,
+        "oneShot": {
+          "k": 13,
+          "ci95": [
+            0.57,
+            0.934
+          ]
+        },
+        "accepted": {
+          "k": 16,
+          "ci95": [
+            0.806,
+            1
+          ]
+        },
+        "callsPerTask": 1.2,
+        "tokensPerAcceptedEdit": {
+          "task1": 272,
+          "session10": 162.9,
+          "unbounded": 150.8
+        },
+        "notAcceptedAfterRepair": []
+      },
+      "sonnet/dense": {
+        "variant": "D",
+        "n": 16,
+        "system": 145,
+        "oneShot": {
+          "k": 14,
+          "ci95": [
+            0.64,
+            0.965
+          ]
+        },
+        "accepted": {
+          "k": 16,
+          "ci95": [
+            0.806,
+            1
+          ]
+        },
+        "callsPerTask": 1.1,
+        "tokensPerAcceptedEdit": {
+          "task1": 277.1,
+          "session10": 120.5,
+          "unbounded": 103.1
+        },
+        "notAcceptedAfterRepair": []
+      },
+      "sonnet/canon": {
+        "variant": "K",
+        "n": 16,
+        "system": 101,
+        "oneShot": {
+          "k": 16,
+          "ci95": [
+            0.806,
+            1
+          ]
+        },
+        "accepted": {
+          "k": 16,
+          "ci95": [
+            0.806,
+            1
+          ]
+        },
+        "callsPerTask": 1,
+        "tokensPerAcceptedEdit": {
+          "task1": 224,
+          "session10": 114.9,
+          "unbounded": 102.8
+        },
+        "notAcceptedAfterRepair": []
+      }
+    },
+    "setsAbdefBoth": {
+      "dense": {
+        "model": "both",
+        "form": "dense",
+        "trials": 124,
+        "systemTokens": 145,
+        "oneShot": 111,
+        "afterOneRetry": 114,
+        "callsPerTask": 1.1,
+        "meanTaskPromptTokens": 74,
+        "meanReplyTokens": 23.9,
+        "cost1Task": 299,
+        "cost10TaskSession": 142,
+        "costUnbounded": 125,
+        "unresolved": [
+          "a:loop-inclusive",
+          "b:b-bounds-largest",
+          "d:d-total-six",
+          "d:d-prod4-seed",
+          "e:e-sum-range",
+          "e:e-popcount-fold",
+          "e:e-thread-param",
+          "f:f-min4-seed",
+          "f:f-countabove-gt",
+          "f:f-divrem-pair"
+        ]
+      },
+      "canonical": {
+        "model": "both",
+        "form": "canonical",
+        "trials": 124,
+        "systemTokens": 118,
+        "oneShot": 111,
+        "afterOneRetry": 120,
+        "callsPerTask": 1.1,
+        "meanTaskPromptTokens": 89,
+        "meanReplyTokens": 26,
+        "cost1Task": 285,
+        "cost10TaskSession": 158,
+        "costUnbounded": 144,
+        "unresolved": [
+          "b:b-bounds-largest",
+          "b:b-checksum-poly",
+          "e:e-sum-range",
+          "f:f-divrem-pair"
+        ]
+      }
+    },
+    "perTaskSavingOfDenseTokens": 17.1,
+    "tokensOfOneModelCall": 97.9,
+    "breakEvenExtraCallsPerTask": 0.175,
+    "model": {
+      "formula": "tokens per task at n tasks = system*(1.25+0.05*(n-1))/n + calls*(view+reply) + toolContext; toolContext fitted on the canonical cell at n=10; per accepted = per task / accepted rate",
+      "toolContextFitted": 11.4,
+      "checkDenseMeasured10": 142,
+      "checkDensePredicted10": 143.8,
+      "v2ViewScaling": {
+        "denseSourceSaving": 0.592,
+        "v2SourceSaving": 0.533,
+        "denseMeasuredViewSaving": 15,
+        "v2ViewSaving": 13.5
+      },
+      "rows": [
+        {
+          "name": "canonical (recorded cells)",
+          "callsPerTask": 1.1,
+          "systemTokens": 118,
+          "viewTokens": 89,
+          "replyTokens": 26,
+          "accepted": 0.968,
+          "perTask10": 158,
+          "perAccepted10": 163.3
+        },
+        {
+          "name": "dense (recorded cells)",
+          "callsPerTask": 1.1,
+          "systemTokens": 145,
+          "viewTokens": 74,
+          "replyTokens": 23.9,
+          "accepted": 0.919,
+          "perTask10": 143.8,
+          "perAccepted10": 156.4
+        },
+        {
+          "name": "v2, canonical failure behaviour",
+          "callsPerTask": 1.1,
+          "systemTokens": 135,
+          "viewTokens": 75.5,
+          "replyTokens": 27.3,
+          "accepted": 0.968,
+          "perTask10": 147.5,
+          "perAccepted10": 152.4
+        },
+        {
+          "name": "v2, dense failure behaviour",
+          "callsPerTask": 1.1,
+          "systemTokens": 135,
+          "viewTokens": 75.5,
+          "replyTokens": 27.3,
+          "accepted": 0.919,
+          "perTask10": 147.5,
+          "perAccepted10": 160.4
+        },
+        {
+          "name": "v2, primer 100 tokens, canonical failure behaviour",
+          "callsPerTask": 1.1,
+          "systemTokens": 100,
+          "viewTokens": 75.5,
+          "replyTokens": 27.3,
+          "accepted": 0.968,
+          "perTask10": 141.5,
+          "perAccepted10": 146.3
+        }
+      ],
+      "v2ShareOfCanonicalPerAccepted10": 0.933,
+      "acceptedRateAtWhichV2TiesCanonical10": 0.903
+    }
+  }
+}
