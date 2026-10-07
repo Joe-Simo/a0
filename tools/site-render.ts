@@ -41,6 +41,7 @@ const TAGS: Record<number, string> = {
   27: 'textarea',
   28: 'details',
   29: 'summary',
+  30: 'caption',
 };
 const ATTRS: Record<number, string> = {
   1: 'id',
@@ -50,6 +51,10 @@ const ATTRS: Record<number, string> = {
   5: 'placeholder',
   6: 'aria-label',
   7: 'title',
+  8: 'aria-labelledby',
+  9: 'role',
+  10: 'scope',
+  11: 'aria-hidden',
 };
 const VOID = new Set(['input']);
 
@@ -108,7 +113,7 @@ export function renderWords(words: readonly number[]): Prerendered {
         flush();
         open.push({
           tag: TAGS[words[i++] as number] ?? 'div',
-          attrs: [],
+          attrs: TAGS[words[i - 1] as number] === 'th' ? [' scope="col"'] : [],
           styles: [],
           started: false,
         });

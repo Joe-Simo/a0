@@ -5,7 +5,7 @@
 # Tokenizer words: 0 mode (0 between tokens, 1 string, 2 number, 3 literal) 1 depth 2 escape
 # 3 string is a key 4 string hash 5 captured bytes 6 integer part 7 fraction digits (9 of them
 # after the event) 8 fraction digit count 9 in fraction 10 in exponent 11 literal's first byte
-# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par 6 axes 7 hw 8 tokfx, 0 ignore) 14 cost file slot
+# 12 a key is expected 13 role (1 exec 2 cost 3 edit 4 par 6 axes 7 hw 8 tokfx, 9 b48, 10 densetok, 11 verification, 0 ignore) 14 cost file slot
 # 15 event (1 key 2 string 3 number 4 true 5 false 6 null 7 open 9 close) 16 event depth
 # 32 + d key hash at depth d, 48 + d array index, 64 + d container (1 object 2 array)
 # 80..87 the first 32 bytes of the last string. Data from 128 (the extractors below).
@@ -679,7 +679,15 @@ cp2 and cp1 cp0
 cpc select cp2 1 0
 cpv call num s8 1
 s9 fold wr64 cpc s8 1345 cpv
-ret s9
+# tokenKernels[]: one string a kernel, counted at 1346
+tkk call kis s9 1 p2 486
+tkd and isstr tkk
+tke and tkd d2
+tkn call g s9 1346
+tkn1 add tkn 1
+tkc select tke 1 0
+s10 fold wr64 tkc s9 1346 tkn1
+ret s10
 end
 
 # ---- hw: results/hardware.json, into the axes table. 1400 modules synthesized, 1401 their cells in
@@ -931,6 +939,51 @@ r fold wr64 c p0 ix v
 ret r
 end
 
+# ---- verification: results/verification.json, into the axes table: inputCases at 1350; over
+# targets.ID.cases, the targets with all of those cases at 1351, with fewer but some at 1352 (their
+# cases at 1353) and with none at 1354.
+fn hver u32x128x64 u32 u32x128x512 -> u32x128x64
+t call g p0 15
+d call g p0 16
+isnum eq t 3
+d1 eq d 1
+d3 eq d 3
+ki call kis p0 1 p2 299
+z0 and isnum d1
+zi and z0 ki
+ci select zi 1 0
+v call num p0 1
+s1 fold wr64 ci p0 1350 v
+kt call kis s1 1 p2 484
+kc call kis s1 3 p2 485
+y0 and isnum d3
+y1 and y0 kt
+y and y1 kc
+full call g s1 1350
+isf eq v full
+isz eq v 0
+nz select isz false true
+nf select isf false true
+pa0 and nz nf
+cf0 and y isf
+cp0 and y pa0
+cz0 and y isz
+cf select cf0 1 0
+cp select cp0 1 0
+cz select cz0 1 0
+nfv call g s1 1351
+npv call g s1 1352
+nzv call g s1 1354
+nf1 add nfv 1
+np1 add npv 1
+nz1 add nzv 1
+s2 fold wr64 cf s1 1351 nf1
+s3 fold wr64 cp s2 1352 np1
+s4 fold wr64 cp s3 1353 v
+s5 fold wr64 cz s4 1354 nz1
+ret s5
+end
+
 fn onev u32x128x64 u32 u32x128x512 -> u32x128x64
 role call g p0 13
 e eq role 1
@@ -942,6 +995,7 @@ h eq role 7
 k eq role 8
 b eq role 9
 q eq role 10
+vv eq role 11
 ce select e 1 0
 cc select c 1 0
 cd select d 1 0
@@ -951,6 +1005,7 @@ ch select h 1 0
 ck select k 1 0
 cb select b 1 0
 cq select q 1 0
+cv select vv 1 0
 s1 fold hexec ce p0 p2
 s2 fold hcost cc s1 p2
 s3 fold hedit cd s2 p2
@@ -960,7 +1015,8 @@ s6 fold hhw ch s5 p2
 s7 fold htok ck s6 p2
 s8 fold hb48 cb s7 p2
 s9 fold hdt cq s8 p2
-ret s9
+s10 fold hver cv s9 p2
+ret s10
 end
 # event p2 at depth p3, handled (fold body)
 fn event u32x128x64 u32 u32 u32 u32x128x512 -> u32x128x64

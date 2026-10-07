@@ -1,17 +1,25 @@
 name: behavior-regen
-# Manual run: regenerates results/behavior.json on an Apple-silicon macOS runner, where the arm64, x86_64 (Rosetta),
-# Metal and self-hosted arm64 targets can run, and uploads it as an artifact. Nothing is committed from here;
-# download the artifact, check the table, and commit it (AGENTS.md: a target that cannot run is recorded blocked, never as a pass).
+# Regenerates the macOS half of the behavior table. No single machine runs every target: the Windows partial report
+# (results/behavior-win32-x64.json, committed from a Windows box) covers interpreter, js, c, java, dotnet, riscv64, arm32,
+# avr, wasm and others; this Apple-silicon runner adds arm64, x86_64 (Rosetta), Metal and the self-hosted arm64 target.
+# It then merges both into results/behavior.json (tools/behavior-merge.ts: passed beats blocked, a failure stays failed,
+# every target records ranOn) and commits the three files, unless the merge would lose a target that is passed in the
+# committed results/behavior.json (tools/behavior-regress-check.ts). Pushes made with GITHUB_TOKEN do not retrigger this workflow.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'results/behavior-win32-x64.json'
 permissions:
-  contents: read
+  contents: write
 jobs:
   behavior:
     runs-on: macos-15
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: main
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.4
@@ -25,8 +33,29 @@ jobs:
       - run: softwareupdate --install-rosetta --agree-to-license || true
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - run: bun run behavior
+      - name: Run the macOS partial report
+        run: bun run behavior --out results/behavior-darwin-arm64.json
+      - name: Merge, guard, commit
+        run: |
+          set -euo pipefail
+          cp results/behavior.json "$RUNNER_TEMP/behavior-committed.json"
+          bun tools/behavior-merge.ts --out results/behavior.json \
+            results/behavior-win32-x64.json results/behavior-darwin-arm64.json | tee "$RUNNER_TEMP/merge.txt"
+          cat "$RUNNER_TEMP/merge.txt" >> "$GITHUB_STEP_SUMMARY"
+          bun tools/behavior-regress-check.ts "$RUNNER_TEMP/behavior-committed.json" results/behavior.json
+          git add results/behavior-win32-x64.json results/behavior-darwin-arm64.json results/behavior.json
+          if git diff --cached --quiet; then
+            echo "nothing changed; no commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Behavior table regenerated from the Windows and macOS partial reports (results/behavior.json merged, ranOn recorded per target)"
+          git push origin HEAD:main
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
         with:
           name: behavior
-          path: results/behavior.json
+          path: |
+            results/behavior.json
+            results/behavior-darwin-arm64.json

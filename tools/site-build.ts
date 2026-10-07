@@ -20,6 +20,9 @@ import { fillShell, prerender } from './site-render.js';
 
 const out = join('site', 'dist');
 
+/** The largest page program a visitor downloads: each page's wasm must stay under this many bytes. */
+export const WASM_BUDGET = 1_000_000;
+
 /** Link an A0 entry program, compile it to C and wasm32, and write both to site/dist. */
 interface Built {
   readonly size: string;
@@ -40,6 +43,8 @@ async function buildProgram(a0w: string, entry: string, outName: string): Promis
   const wasm = a0WasmFromTables(a0w, program, layout, true).bytes;
   if (Buffer.compare(Buffer.from(wasm), Buffer.from(typescriptWasm(program, layout, true))) !== 0)
     throw new Error(`${entry}: the A0 optimizer and wasm emitter differ from src/wasm.ts`);
+  if (wasm.length > WASM_BUDGET)
+    throw new Error(`${outName}.wasm is ${wasm.length} bytes, over the budget of ${WASM_BUDGET}`);
   await writeFile(join(out, `${outName}.wasm`), wasm);
   // The same program, run once here through the reference interpreter: static HTML for
   // agents and crawlers that do not run JavaScript. The browser re-renders the same tree.
@@ -70,7 +75,7 @@ async function buildLive(a0w: string, spec: LiveProgramSpec): Promise<string> {
 }
 
 /** Files for agents: llms.txt (the convention), the primer, the docs as text, robots, sitemap. */
-async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
+async function writeAgentFiles(page: Built, docs: Built, bench: Built): Promise<void> {
   const primer = await readFile('MODEL_GUIDE.min.txt', 'utf8');
   const guide = await readFile('MODEL_GUIDE.txt', 'utf8');
   const llms = [
@@ -83,7 +88,7 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
     '- [Primer](https://a0lang.com/primer.txt): the whole language in 388 tokens; this is what a model receives before writing A0.',
     '- [Docs](https://a0lang.com/docs.txt): the reference as plain text (also at /docs/).',
     '- [Full guide](https://a0lang.com/llms-full.txt): primer, docs, and the home page text in one file.',
-    '- [Benchmarks](https://a0lang.com/results/exec-benchmark.json): measured numbers behind every chart; losses included.',
+    '- [Benchmarks](https://a0lang.com/benchmarks): method, charts and losses (also at /benchmarks.txt); raw numbers in https://a0lang.com/results/exec-benchmark.json.',
     '- [Source](https://github.com/Joe-Simo/a0): MIT; `a0` binaries under Releases, no package manager needed.',
     '',
     '## Rules of the language, in one line each',
@@ -99,9 +104,10 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
   await writeFile(join(out, 'llms.txt'), llms, 'utf8');
   await writeFile(
     join(out, 'llms-full.txt'),
-    `# A0 primer (MODEL_GUIDE.min.txt)\n\n${primer}\n\n# A0 guide (MODEL_GUIDE.txt)\n\n${guide}\n\n# Docs\n\n${docs.text}\n\n# Home\n\n${page.text}\n`,
+    `# A0 primer (MODEL_GUIDE.min.txt)\n\n${primer}\n\n# A0 guide (MODEL_GUIDE.txt)\n\n${guide}\n\n# Docs\n\n${docs.text}\n\n# Benchmarks\n\n${bench.text}\n\n# Home\n\n${page.text}\n`,
     'utf8',
   );
+  await writeFile(join(out, 'benchmarks.txt'), `${bench.text}\n`, 'utf8');
   await writeFile(join(out, 'primer.txt'), primer, 'utf8');
   await writeFile(join(out, 'docs.txt'), `${docs.text}\n`, 'utf8');
   await writeFile(join(out, 'index.txt'), `${page.text}\n`, 'utf8');
@@ -115,6 +121,7 @@ async function writeAgentFiles(page: Built, docs: Built): Promise<void> {
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[
       'https://a0lang.com/',
       'https://a0lang.com/docs/',
+      'https://a0lang.com/benchmarks',
       'https://a0lang.com/llms.txt',
       'https://a0lang.com/primer.txt',
     ]
@@ -153,6 +160,8 @@ export const SITE_CSP = [
 /** Hosting config deployed with site/dist: clean URLs, immutable fonts, and security headers. */
 export const VERCEL = {
   cleanUrls: true,
+  // /benchmarks (no trailing slash) is served from benchmarks/index.html, the way /docs/ is.
+  rewrites: [{ source: '/benchmarks', destination: '/benchmarks/index.html' }],
   // The playground page was removed; old links land on the home page. `/play/` is listed on its
   // own: with cleanUrls the bare `/play/:path*` pattern did not catch the trailing slash (404).
   redirects: [
@@ -221,13 +230,20 @@ async function main(): Promise<void> {
     await generate(generator, join('site', 'gen', 'docs.tpl')),
     'utf8',
   );
+  await writeFile(
+    join('site', 'bench.a0'),
+    await generate(generator, join('site', 'gen', 'bench.tpl')),
+    'utf8',
+  );
   await mkdir(join(out, 'docs'), { recursive: true });
+  await mkdir(join(out, 'benchmarks'), { recursive: true });
   const clang = findClang();
   if (clang.path === undefined) throw new Error('clang not found (it builds the A0 wasm emitter)');
   const a0w = (await buildWasmTool(clang)).exe;
   const page = await buildProgram(a0w, 'page.a0', 'page');
   const docs = await buildProgram(a0w, 'docs.a0', 'docs');
-  const sizes = [page.size, docs.size];
+  const bench = await buildProgram(a0w, 'bench.a0', 'bench');
+  const sizes = [page.size, docs.size, bench.size];
   for (const spec of LIVE_PROGRAMS) sizes.push(await buildLive(a0w, spec));
   // resolve typescript from this file, not from the working directory (worktrees share the parent's modules)
   const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
@@ -260,7 +276,12 @@ async function main(): Promise<void> {
     fillShell(await readFile(join('site', 'docs.html'), 'utf8'), docs),
     'utf8',
   );
-  await writeAgentFiles(page, docs);
+  await writeFile(
+    join(out, 'benchmarks', 'index.html'),
+    fillShell(await readFile(join('site', 'bench.html'), 'utf8'), bench),
+    'utf8',
+  );
+  await writeAgentFiles(page, docs, bench);
   await copyFonts();
   await writeFile(join(out, 'vercel.json'), `${JSON.stringify(VERCEL, null, 2)}\n`, 'utf8');
   if (process.argv.includes('--publish')) {
@@ -279,7 +300,9 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-  process.exit(1);
-});
+// run only when executed directly, so a test can import ROOT_VERCEL without building the site
+if (/site-build\.[jt]s$/.test(process.argv[1] ?? ''))
+  main().catch((err: unknown) => {
+    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+    process.exit(1);
+  });

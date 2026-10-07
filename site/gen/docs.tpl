@@ -35,8 +35,11 @@ c nav
 "Docs
 >
 >
-.div layout
+<div
++class layout
++id content
 .nav rail
++aria-label Sections
 .div rh
 "Language
 >
@@ -302,7 +305,7 @@ l primer
 "a0 patch <file.a0> <patch>             # apply a revision-checked patch
 >
 >
-=p Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM, and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal are produced by the verification tools (bun run dotnet, bun run gpu). Every target is verified against the same oracle.
+=p Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM, and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal are produced by the verification tools (bun run dotnet, bun run gpu). Targets are checked against the same oracle on the cases each can run; the home page Targets section gives the split.
 =p --parallel makes the C backend split two fold shapes across threads, reductions (add, mul, and, or, xor, min, max) and element-wise array maps, when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are exact: the same bits as the serial program.
 >
 <section
