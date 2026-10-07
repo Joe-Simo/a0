@@ -50,3 +50,26 @@ If met: `MODEL_GUIDE.min.txt` becomes the V4 text, `A0_LAZY_HINTS` defaults on, 
 - n = 32 per cell separates nothing by itself; a pass means the registered rule. (claim-ok: a property of the interval method)
 - Set Z is authored by a model, not a human; its tasks are not application-scale. Cost accounting is local o200k with the repository's cache weights.
 - The arms differ in system layout (the V4 text carries its own protocol, the V3 text is followed by the harness paragraph): that is the shipped difference the comparison is about.
+
+## Result (collected after the rule above was committed; `results/primer-v4.json`, `tools/primer-compare-summary.ts v4`, reports and scripted replies in `results/primer-v4/`)
+
+Set Z was verified against its seal (`test/primer-v4.test.ts`) and not altered; the harness self-check passed in all four reports. 128 fresh first-reply subagents (32 tasks, Haiku and Sonnet, arms `V3` and `V4`, one subagent per prompt; launches refused only by the 20-subagent concurrency limit were started again with the identical prompt) and 40 fresh repair subagents (Haiku `V3` 11, `V4` 18; Sonnet `V3` 3, `V4` 8). No subject was refused by a safeguard; no reply is missing. Scored once after every reply existed.
+
+| model | text | system o200k | one shot | accepted after repair | calls per task | cold | 10-task (primary) | unbounded |
+|---|---|---|---|---|---|---|---|---|
+| Haiku | V3 (shipped) | 293 | 21 of 32 | 26 | 1.34 | 738.2 | 348.7 | 305.4 |
+| Haiku | V4 | 137 | 14 | 21 | 1.56 | 692.9 | 467.5 | 442.4 |
+| Sonnet | V3 (shipped) | 293 | 29 | 31 | 1.09 | 539.8 | 213.2 | 176.9 |
+| Sonnet | V4 | 137 | 24 | 31 | 1.25 | 360.1 | 207.3 | 190.4 |
+
+Tokens per accepted edit in the last three columns. **The registered rule is not met** (`decision.change` is false): Haiku `V4` accepts 21 against 26 (lower by 5, the margin is 1) and costs more at the 10-task horizon (467.5 against 348.7); Sonnet `V4` passes (31 against 31, 207.3 against 213.2). Both models must pass, so nothing ships: `MODEL_GUIDE.min.txt`, the skill and plugin primers, `src/mcp.ts` and the ledger are unchanged, and `A0_LAZY_HINTS` stays off by default.
+
+Wins, ties and losses, none hidden. Sonnet: the same acceptance (31 of 32; gained `z-job-warmup`, lost `z-lucky-roll`), the cold task 33 per cent cheaper (360.1 against 539.8), the 10-task horizon 2.8 per cent cheaper, but the unbounded horizon dearer (190.4 against 176.9) and one shot lower (24 against 29): the lazy text pays its saving on the first call and pays it back in repair rounds and rule cards when the session is long. Haiku: lower at the cold horizon (692.9 against 738.2), higher at the 10-task and unbounded horizons, one shot 14 against 21, five tasks lost (`z-indent-width`, `z-tagged-pair`, `z-box-cost`, `z-lucky-roll`, `z-clock-end`), none gained. (claim-ok: the per cent figures are arithmetic on the recorded values of `results/primer-v4.json`)
+
+First failures of the Haiku `V4` tasks not accepted: a node edited twice in one reply (`z-ammo-volley`, `z-indent-width`, id reuse); an op name the model invented (`mod`, in `z-light-wait`, whose rejection listed the ops and still did not get the repair accepted); a syntax slip (`loop:` as a node id, `z-bracket-rounds`); the io token misused (`z-meter-usage`, `z-door-agree`, `z-tagged-pair`); a bool returned where a u32 was expected (`z-lucky-roll`); wrong logic (`z-job-warmup`, `z-box-cost`, `z-clock-end`). The V3 arm's six unaccepted tasks are of the same families but four of them are logic.
+
+Cost of the hints (not part of the rule): the deterministic floor on the V3 arm's recorded replies is 3.5 to 9.6 extra tokens per task (`results/primer-v4-hint-cost.json`); on set Z the V4 arm's rejected first replies (18 of 32 for Haiku, 8 of 32 for Sonnet) each paid the rule card on top of the signature or table.
+
+What the pilots and the run say. A primer without the op list is paid for in Haiku's first replies: it invents op names and misreads the line shape (the first V4a pilot read `add` in the example as the verb of an edit). The diagnostics can name every op and the first repair usually succeeds for Sonnet, rarely enough for Haiku to erase the saving at the 10-task horizon. The saving is real on the first call (Sonnet 33 per cent, Haiku 6 per cent),. The ledger compares the cold task with TypeScript and Rust on other sets (set a, `results/primer-ledger-rescore.json`); set Z has no rival cells, so no ledger entry is closed or changed by this run.
+
+Next levers, to be measured on a new sealed set (sets X, Y and Z are used and a fix chosen from their failures needs a new blind set): (1) accept the invented names as exact fixes in the checker (`mod` to `rem`, `neq` to `ne`, `not` to a `select`, `max` and `min` to a `lt` with a `select`), which costs tokens only when a model writes them and needs no primer at all; (2) a primer of the V4 shape with the bare op names (V4c, 217 tokens) only if (1) does not recover Haiku's one shot; (3) the lazy text for models that pass the rule alone, which needs a per-model surface and is not available to a host that cannot name its model. The pilots' V4c run was stopped and is not evidence for or against (2).

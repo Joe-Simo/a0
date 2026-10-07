@@ -1,0 +1,116 @@
+{
+ "z-ammo-volley/a0/structured": [
+  "-r\n-s\nammo mov p0\nshots zero\nloop_check ge ammo 3\njz loop_end\nlt shots p1\njz loop_end\nammo sub ammo 3\nshots add shots 1\njmp loop_check\nloop_end ret ammo\n",
+  "-r\n-s\nammo mov p0\nshots zero\nloop_check ge ammo 3\njz loop_end\nshots_ok lt shots p1\njz loop_end\nammo sub ammo 3\nshots add shots 1\njmp loop_check\nloop_end ret ammo\n"
+ ],
+ "z-indent-width/a0/structured": [
+  "count mov 0\ni mov 0\ncheck cmp i 6\njge done\nch adv i 0 p0\nsp isspace ch 0 p0\njne sp done\ncount add count 1\ni add i 1\njmp check\ndone ret count\n",
+  "count1 mov 0\ni mov 0\ncheck cmp i 6\njge done\nch adv i 0 p0\nsp isspace ch 0 p0\njne sp done\ncount add count1 1\ni add i 1\njmp check\ndone ret count\n"
+ ],
+ "z-light-wait/a0/structured": [
+  "fn tick (u32,u32) u32 u32 -> (u32,u32)\na at p0 0\nb at p0 1\nc add a 1\nd mod c 3\ne add b 1\nf rec d e\nret f\nend\nfn notat (u32,u32) u32 u32 -> bool\na at p0 0\nb neq a p1\nret b\nend\n",
+  "fn tick (u32,u32) u32 u32 -> (u32,u32)\na at p0 0\nb at p0 1\nc add a 1\nd mod c 3\ne add b 1\nf rec d e\nret f\nend\nfn notat (u32,u32) u32 u32 -> bool\na at p0 0\nb ne a p1\nret b\nend\n"
+ ],
+ "z-heater-on/a0/structured": [
+  "a lt p0 p2"
+ ],
+ "z-octal-peel/a0/structured": [
+  "b rem a 8\nc div a 8\n"
+ ],
+ "z-job-warmup/a0/structured": [
+  "a rec 3 0\n",
+  "a rec 3 0\nc at b 1\n"
+ ],
+ "z-bracket-rounds/a0/structured": [
+  "fn more u32x2 u32 -> bool\na get p0 0\nb gt a 1\nret b\nend\n\nfn halve u32x2 u32 -> u32x2\na get p0 0\nb add a 1\nc div b 2\nd get p0 1\ne add d 1\nf set p0 0 c\ng set f 1 e\nret g\nend\n\nfn rounds u32 -> u32\nn p0\nc 0\na n\nloop: gt a 1\nb add a 1\na div b 2\nc add c 1\ngoto loop\nret c\nend\n",
+  "fn more u32x2 u32 -> bool\na get p0 0\nb gt a 1\nret b\nend\n\nfn halve u32x2 u32 -> u32x2\na get p0 0\nb add a 1\nc div b 2\nd get p0 1\ne add d 1\nf set p0 0 c\ng set f 1 e\nret g\nend\n\nfn rounds u32 -> u32\nn mov p0\nc mov 0\na mov n\nloop: gt a 1\nb add a 1\na div b 2\nc add c 1\ngoto loop\nret c\nend\n"
+ ],
+ "z-digit-prefix/a0/structured": [
+  "d le b 57\n"
+ ],
+ "z-dozenal-digit/a0/structured": [
+  "a text \"0123456789AB\"\n"
+ ],
+ "z-cup-size/a0/structured": [
+  "a div p0 300\n"
+ ],
+ "z-header-sum/a0/structured": [
+  "a text \"HDR2\"\nh get a 3 @ d\ni add f h @ h\ng add i p0\n"
+ ],
+ "z-shift-back/a0/structured": [
+  "-fn enc\nfn dec u32 -> u32\nt text \"ABCDEFGHIJKL\"\na sub p0 3\nb mod a 12\nc get t b\nret c\nend\n",
+  "a add p0 12\nb sub a 3\nc rem b 12\nd get t c\nret d\n"
+ ],
+ "z-keypad-letter/a0/structured": [
+  "a sub p0 2\n"
+ ],
+ "z-operator-char/a0/structured": [
+  "e0\nfn isop u32 -> bool\nt text \"+-*/\"\na get t 0\nb eq p0 a\nc get t 1\nd eq p0 c\ne or b d\nf get t 2\ng eq p0 f\nh or e g\ni get t 3\nj eq p0 i\nk or h j\nret k\nend\n-g0\n",
+  "i get t 3\nj eq p0 i\nk or h j\nret k\n"
+ ],
+ "z-tax-total/a0/structured": [
+  "f add b e @ e\nh write c f\n"
+ ],
+ "z-meter-usage/a0/structured": [
+  "-a\n-b\n-c\n-d\n-e\n-g\n-h\n-i\n",
+  "d sub c b\n-e\n-g\n-h\ni write b d\n"
+ ],
+ "z-score-puts/a0/structured": [
+  "a arr p1 p2\n"
+ ],
+ "z-status-first/a0/structured": [
+  "a write p1 p0\nb text \"OK\"\nc puts a b\n",
+  "a write p0 p1\nb text \"OK\"\nc puts a b\n"
+ ],
+ "z-tagged-pair/a0/structured": [
+  "d call emit p0 b\ne call emit d c\nret e\n",
+  "d call emit a b\ne call emit d c\nret e\n"
+ ],
+ "z-feet-inches/a0/structured": [
+  "f call writepair c d e\n"
+ ],
+ "z-door-agree/a0/structured": [
+  "a read p0\nb read p1\nc eq a 0\nd eq b 0\ne eq c d\nf select e 1 0\ng write 0 f\nret g\n",
+  "a read p0\nb at a 0\nc at a 1\nd eq b 0\ne eq c 0\nf eq d e\ng select f 1 0\nh write 0 g\nret h\n"
+ ],
+ "z-restock-puts/a0/structured": [
+  "a get p1 p2\nb add a p3\nc set p1 p2 b\nd puts p0 p1\nret d\n",
+  "d puts p0 c\n"
+ ],
+ "z-box-cost/a0/structured": [
+  "fn div_up u32 u32 -> u32\na sub p1 1\nb add p0 a\nc div b p1\nret c\nend\nfn boxes u32 -> u32\na div_up p0 6\nb mul a 4\nret b\nend\n",
+  "fn div_up u32 u32 -> u32\na sub p0 1\nb div a p1\nc add b 1\nret c\nend\nfn boxes u32 -> u32\na call div_up p0 6\nb mul a 4\nret b\nend\n"
+ ],
+ "z-lucky-roll/a0/structured": [
+  "fn is_mult_of_7 u32 -> u32\na mod p0 7\nb eq a 0\nret b\nend\nfn points u32 u32 -> u32\na add p0 p1\nb is_mult_of_7 p0\nc add 1 b\nd mul a c\nret d\nend\n",
+  "fn is_mult_of_7 u32 -> u32\na rem p0 7\nb eq a 0\nret b\nend\nfn points u32 u32 -> u32\na add p0 p1\nb is_mult_of_7 p0\nc add 1 b\nd mul a c\nret d\nend\n"
+ ],
+ "z-clock-end/a0/structured": [
+  "a add p0 p1\n-b\nc mod a 1440\nd div c 60\ne mul d 100\nf mod c 60\ng add e f\nret g\n",
+  "a div p0 100\nb rem p0 100\nc mul a 60\nd add c b\ne add d p1\nf rem e 1440\ng div f 60\nh rem f 60\ni mul g 100\nj add i h\nret j\n"
+ ],
+ "z-shortfall-total/a0/structured": [
+  "fn shortfall u32 u32 -> u32\na sub p0 p1\nb max 0 a\nret b\nend\nfn total u32x4 u32 -> u32\na get p0 0\nb call shortfall p1 a\nc get p0 1\nd call shortfall p1 c\ne get p0 2\nf call shortfall p1 e\ng get p0 3\nh call shortfall p1 g\ni add b d\nj add i f\nk add j h\nret k\nend\n",
+  "fn shortfall u32 u32 -> u32\na lt p0 p1\nb sub p1 p0\nc select a b 0\nret c\nend\nfn total u32x4 u32 -> u32\na get p0 0\nb call shortfall a p1\nc get p0 1\nd call shortfall c p1\ne get p0 2\nf call shortfall e p1\ng get p0 3\nh call shortfall g p1\ni add b d\nj add i f\nk add j h\nret k\nend\n"
+ ],
+ "z-member-coupon/a0/structured": [
+  "both and p1 p2\neither or p1 p2 @ both\nd1 select both 25 10 @ either\nd2 select either d1 0 @ d1\nbill sub p0 d2 @ d2\nret bill\n-a\n-b\n"
+ ],
+ "z-rising-edge/a0/structured": [
+  "fn high u32 -> bool\na gt p0 512\nret a\nend\nfn edge u32 u32 -> bool\na call high p0\nb not a\nc call high p1\nd and b c\nret d\nend\n",
+  "fn high u32 -> bool\na gt p0 512\nret a\nend\nfn edge u32 u32 -> bool\na call high p0\nb select a false true\nc call high p1\nd and b c\nret d\nend\n"
+ ],
+ "z-tile-right/a0/structured": [
+  "fn right u32 -> u32\nrow div p0 4\npos rem p0 4\nnext_pos add pos 1\nwrapped rem next_pos 4\nresult mul row 4\nfinal add result wrapped\nret final\nend\n"
+ ],
+ "z-same-side/a0/structured": [
+  "a ge p0 p2\nb ge p1 p2\nc and a b\nd lt p0 p2\ne lt p1 p2\nf and d e\ng or c f\nret g\n"
+ ],
+ "z-rotate-left/a0/structured": [
+  "fn rot u32x4 -> u32x4\na get p0 1\nb get p0 2\nc get p0 3\nd get p0 0\ne arr a b c d\nret e\nend\n"
+ ],
+ "z-shelf-move/a0/structured": [
+  "d add p1 1 @ c\ne mod d 4 @ d\nf get c e @ e\ng add f p2 @ f\nh set c e g @ g\nret h\n",
+  "d add p1 1\ne rem d 4\nf get c e\ng add f p2\nh set c e g\nret h\n"
+ ]
+}
