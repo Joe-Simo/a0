@@ -1,0 +1,99 @@
+{
+ "dl-shot-clock/a0/structured": [
+  "fn f div sub 249 A 10"
+ ],
+ "dl-tempo-table/a0/structured": [
+  "fn f\ntab [60 90 120 168]\ni sub A 1\nt get tab i\nr mul t B\n"
+ ],
+ "dl-discount-tax/a0/structured": [
+  "fn f\nd sub A B\nt mul d C\nu div t 100\nadd d u"
+ ],
+ "dl-hit-flags/a0/structured": [
+  "fn f u32 -> bool\ns ne and A 1 0\nv ne and A 8 0\nx or s v\neq x false\n"
+ ],
+ "dl-recipe-scale/a0/structured": [
+  "fn f div add mul A B div C 2 C"
+ ],
+ "dl-window-seat/a0/structured": [
+  "fn f u32 -> bool\nc rem A 6\nr or eq c 0 eq c 5"
+ ],
+ "dl-score-bonus/a0/structured": [
+  "fn f u32x4 u32 u32 -> u32x4\ng get A B\nn add g C\nr set A B n\n"
+ ],
+ "dl-damage-ticks/a0/structured": [
+  "fn f\nh div A 2\nq div A 4\ne div A 8\ns add A h\nt add s q\nu add t e\n"
+ ],
+ "dl-quarter-change/a0/structured": [
+  "fn more u32 u32 u32 -> bool\nge A C\nfn give u32 u32 u32 -> u32\nsub A C\nfn f u32 -> u32\nloop more give A A 25\n"
+ ],
+ "dl-overbooked-slot/a0/structured": [
+  "fn step u32 u32 u32x6 u32 -> u32\nv get C B\no gt v D\nn eq A 6\nm and n o\nselect m B A\nfn f u32x6 u32 -> u32\nfold step 6 6 A B\n"
+ ],
+ "dl-dough-rise/a0/structured": [
+  "fn short (u32,u32) u32 u32 -> bool\nlt at s 0 B\nfn grow (u32,u32) u32 u32 -> (u32,u32)\n(mul at s 0 2 0 add at s 1 1)\nfn f\ninit (A 0)\nr loop short grow 20 init A B\no at r 1\n",
+  "fn short (u32,u32) u32 u32 -> bool\nv at s 0\nlt v B\nfn grow (u32,u32) u32 u32 -> (u32,u32)\nv at s 0\nh at s 1\nv2 mul v 2 0\nh2 add h 1\n(v2 h2)\nfn f\ninit (A 0)\nr loop short grow 20 init A B\no at r 1\n"
+ ],
+ "dl-playlist-fit/a0/structured": [
+  "fn fit (u32,u32) u32 u32x5 u32 -> bool\nle add at A 1 get C B D\nfn take (u32,u32) u32 u32x5 u32 -> (u32,u32)\n(add at A 0 1 add at A 1 get C B)\nfn f u32x5 u32 -> u32\nr loop fit take 5 (0 0) A B\nat r 0\n"
+ ],
+ "dl-light-phases/a0/structured": [
+  "fn f u32 u32 -> u32\nrem add A B 3\n"
+ ],
+ "dl-pin-unlock/a0/structured": [
+  "fn f u32x4 u32x4 -> bool\nr loop same adv 4 0 A B\nok eq r 4\n"
+ ],
+ "dl-grade-letter/a0/structured": [
+  "fn f\nt \"FDCBA\"\nk div A 20\nc gt k 4\nj select c 4 k\nget t j\n"
+ ],
+ "dl-station-code/a0/structured": [
+  "fn addb u32 u32 u32x4 -> u32\nadd A get C B 0\nfn f\nt \"OSLO\"\ns fold addb 4 0 t\nrem add s A 100\n",
+  "fn addb u32 u32 u32x4 -> u32\nc get C B\nadd A c\nfn f u32 -> u32\nt \"OSLO\"\ns fold addb 4 0 t\nrem add s A 100"
+ ],
+ "dl-menu-reverse/a0/structured": [
+  "fn f u32 bool -> u32\nt \"menu\"\ni sub 3 A\ng get t i\nu sub g 32\nr select B u g\n"
+ ],
+ "dl-digit-prices/a0/structured": [
+  "fn f u32 u32 -> u32\nt \"3125\"\ng get t A\nd sub g 48\nr mul d B 0\n",
+  "fn f u32 u32 -> u32\nt \"3125\"\ng get t A\nd sub g 48\nr mul d B\n"
+ ],
+ "dl-note-transpose/a0/structured": [
+  "fn f\nt \"CDEFGAB\"\nk add A B\nm rem k 7\ng get t m\nq div k 7\nh mul q 100\nr add g h\n"
+ ],
+ "dl-tip-echo/a0/structured": [
+  "fn f io -> io\nr read A\nx at r 0\nt at r 1\nm mul x 15\ntp div m 100\ns add x tp\nw write t s\n"
+ ],
+ "dl-goals-ranked/a0/structured": [
+  "fn f io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nc gt a b\nhi select c a b\nlo select c b a\nw1 write t2 hi\nw2 write w1 lo\n"
+ ],
+ "dl-three-bins/a0/structured": [
+  "fn f io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nr3 read t2\nc at r3 0\nt3 at r3 1\ns add a b\nu add s c\nw write t3 u\n"
+ ],
+ "dl-hand-total/a0/structured": [
+  "fn f io u32 u32 u32 -> io\nw puts A [B C D]\nwrite w add add B C D\n"
+ ],
+ "dl-thermo-emit/a0/structured": [
+  "fn f io -> io\nr read io\nx at r 0\nt at r 1\nm mul x 9 0\nd div m 5\ns add d 32\nwrite t s\n",
+  "fn f io -> io\nr read io\nx at r 0\nt at r 1\nm mul x 9\nd div m 5\ns add d 32\nwrite t s"
+ ],
+ "dl-trip-stamps/a0/structured": [
+  "fn f io u32 u32 -> io\ns div C B\nw1 stamp A s\nw2 stamp w1 C\n",
+  "fn f io u32 u32 -> io\ns div B C\nw1 stamp A s\nw2 stamp w1 B"
+ ],
+ "dl-receipt-line/a0/structured": [
+  "fn f io -> io\nr1 read A\np at r1 0\nt1 at r1 1\nr2 read t1\nq at r2 0\nt2 at r2 1\ns mul p q 0\nv [p q s]\nw puts t2 v\n",
+  "fn f io -> io\nr1 read A\np at r1 0\nt1 at r1 1\nr2 read t1\nq at r2 0\nt2 at r2 1\ns mul p q\nv [p q s]\nw puts t2 v\n"
+ ],
+ "dl-runner-pace/a0/structured": [
+  "fn pace u32 u32 -> u32 div mul B 1000 0 A\nfn f u32 u32 u32 u32 -> u32 select lt pace A B pace C D pace A B pace C D\n",
+  "fn pace u32 u32 -> u32 div mul B 1000 A\nfn f u32 u32 u32 u32 -> u32\np pace A B\nq pace C D\nc lt p q\nselect c p q\n"
+ ],
+ "dl-cook-minutes/a0/structured": [
+  "fn m u32 u32 -> u32\nadd mul A 60 B\nfn f u32 u32 u32 u32 -> u32\na m A B\nb m C D\nsub b a\n"
+ ],
+ "dl-one-low-stock/a0/structured": [
+  "fn low u32 u32 -> bool\nr lt A B\nfn f u32 u32 u32 -> bool\nr ne low A C low B C\n"
+ ],
+ "dl-stereo-volume/a0/structured": [
+  "fn scale\ndiv mul A B 100\nfn f -> u32x2\nr [scale A C scale B C]\n"
+ ]
+}

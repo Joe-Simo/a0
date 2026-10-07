@@ -1,0 +1,103 @@
+{
+ "dl-shot-clock/a0/structured": [
+  "fn f div add sub 240 A 9 10\ng0\n# f u32 -> u32\n"
+ ],
+ "dl-tempo-table/a0/structured": [
+  "e0\nfn f\ntab [60 90 120 168]\na sub A 1\nt get tab a\nr mul t B\ng0\n# f u32 u32 -> u32\n"
+ ],
+ "dl-discount-tax/a0/structured": [
+  "fn f\nt sub A B\nu mul t C\nv div u 100\nw add t v\ng0\n# f u32 u32 u32 -> u32\n"
+ ],
+ "dl-hit-flags/a0/structured": [
+  "fn f u32 -> bool\nr eq and A 9 0\n"
+ ],
+ "dl-recipe-scale/a0/structured": [
+  "e0\nfn f div add mul mul A B 2 C mul 2 C\ng0\n# f u32 u32 u32 -> u32\n"
+ ],
+ "dl-window-seat/a0/structured": [
+  "fn f -> bool\nc rem A 6\nr or eq c 0 eq c 5\n"
+ ],
+ "dl-score-bonus/a0/structured": [
+  "e0\nfn f u32x4 u32 u32 -> u32x4\ng get A B\ns add g C\nr set A B s\ng0\n# f u32x4 u32 u32 -> u32x4\n"
+ ],
+ "dl-damage-ticks/a0/structured": [
+  "fn tick s i A\n  add s (>> A i)\n\nfn f A\n  fold tick 4 0 A\n",
+  "fn tick s i A\n  x >> A i\n  add s x\n\nfn f A\n  fold tick 4 0 A\n"
+ ],
+ "dl-quarter-change/a0/structured": [
+  "e0\nfn f u32 -> u32\nr loop more give 3 A 25\no mov r\n\ng0\n# give u32 u32 u32 -> u32\nsub A 25\n\nm0\n# more u32 u32 u32 -> bool\nge A 25\n",
+  "e0\nfn f u32 -> u32\nr loop more give 3 A 25\nret r\nend\n\ng0\nfn give u32 u32 u32 -> u32\nr sub A 25\nret r\nend\n\nm0\nfn more u32 u32 u32 -> bool\nb ge A 25\nret b\nend\n"
+ ],
+ "dl-overbooked-slot/a0/structured": [
+  "e0\nfn f u32x6 u32 -> u32\nr loop fits next 6 0 A B\no mov r\n\nfn fits u32 u32x6 u32 -> bool\nand (lt A 6) (le (get B A) C)\n\nfn next u32 u32x6 u32 -> u32\nadd A 1\n\ng0\n",
+  "e0\nfn f u32x6 u32 -> u32\nr loop fits next 6 0 A B\nmov r\n\nfn fits u32 u32x6 u32 -> bool\nidx_ok lt A 6\nbooking get B A\nwithin_cap le booking C\nand idx_ok within_cap\n\nfn next u32 u32x6 u32 -> u32\nadd A 1\n\ng0\n"
+ ],
+ "dl-dough-rise/a0/structured": [
+  "fn f u32 u32 -> u32\ninit (A 0)\nr loop short grow 20 (A 0) B\no at r 1\n\nfn short (u32,u32) u32 u32 -> bool\nlt (at A 0) B\n\nfn grow (u32,u32) u32 u32 -> (u32,u32)\nnewv mul (at A 0) 2\nnewh add (at A 1) 1\n(newv newh)\n",
+  "fn f u32 u32 -> u32\nr loop short grow 20 (A 0) B\no at r 1\n\nfn short (u32,u32) u32 -> bool\nlt (at A 0) B\n\nfn grow (u32,u32) u32 -> (u32,u32)\nnewv mul (at A 0) 2\nnewh add (at A 1) 1\n(newv newh)\n"
+ ],
+ "dl-playlist-fit/a0/structured": [
+  "fn f u32x5 u32 -> u32\ninit (0 0)\nr loop fit take 4 init A\nat r 0\n\nfn fit (u32,u32) u32x5 u32 -> bool\nstate songs budget\ni at state 0\nt at state 1\nand lt i 5 le add t at songs i budget\n\nfn take (u32,u32) u32x5 u32 -> (u32,u32)\nstate songs budget\ni at state 0\nt at state 1\n(add i 1 add t at songs i)\n",
+  "fn f u32x5 u32 -> u32\ninit (0 0)\nr loop fit take 4 init A\nat r 0\n\nfn fit (u32,u32) u32x5 u32 -> bool\ni at A 0\nt at A 1\nand lt i 5 le add t at B i C\n\nfn take (u32,u32) u32x5 u32 -> (u32,u32)\ni at A 0\nt at A 1\n(add i 1 add t at B i)\n"
+ ],
+ "dl-light-phases/a0/structured": [
+  "e0\nfn f u32 u32 -> u32\na0 add A B\nr rem a0 3\no mov r\n"
+ ],
+ "dl-pin-unlock/a0/structured": [
+  "same c i A B\n  eq (get A i) (get B i)\n\nadv c i A B\n  add c 1\n",
+  "same A B C\n  eq (get B A) (get C A)\n\nadv A B C\n  add A 1\n"
+ ],
+ "dl-grade-letter/a0/structured": [
+  "fn f\nt \"FCDBA\"\nk div A 20\nc gt k 4\nj select c 4 k\ng get t j\ng0\n# f u32 -> u32\n",
+  "fn f\nt \"FDCBA\"\nk div A 20\nc gt k 4\nj select c 4 k\ng get t j\ng0\n# f u32 -> u32\n"
+ ],
+ "dl-station-code/a0/structured": [
+  "fn f u32 -> u32\nt \"OSLO\"\ns fold addb 4 0 t\nr rem add s A 100\n\nfn addb u32 u32 u32x4 -> u32\n  add A C\n",
+  "fn f u32 -> u32\nt \"OSLO\"\ns fold addb 4 0 t\nr rem add s A 100\n\nfn addb u32 u32 u32x4 -> u32\n  b get C B\n  add A b\n"
+ ],
+ "dl-menu-reverse/a0/structured": [
+  "e0\nfn f u32 bool -> u32\nt \"menu\"\np sub 3 A\ng get t p\nu sub g 32\nr select B u g\ng0\n# f u32 bool -> u32\n"
+ ],
+ "dl-digit-prices/a0/structured": [
+  "fn f\nt \"3125\"\ng get t A\nd sub g 48\nr mul d B"
+ ],
+ "dl-note-transpose/a0/structured": [
+  "fn f u32 u32 -> u32\nk add A B\nq div k 7\nm rem k 7\nh mul q 100\nr add m h\n",
+  "fn f u32 u32 -> u32\nt \"CDEFGAB\"\nk add A B\nq div k 7\nm rem k 7\ng get t m\nh mul q 100\nr add g h\n"
+ ],
+ "dl-tip-echo/a0/structured": [
+  "fn f io -> io\nr read A\nx at r 0\nt at r 1\nm mul x 15\ntp div m 100\ntotal add x tp\nw write t total\ng0\n# f io -> io\n"
+ ],
+ "dl-goals-ranked/a0/structured": [
+  "fn f io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nis_larger gt a b\nfirst select is_larger a b\nsecond select is_larger b a\nw1 write t2 first\nw2 write w1 second\n"
+ ],
+ "dl-three-bins/a0/structured": [
+  "e0\nfn f io -> io\nr1 read A\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nr3 read t2\nc at r3 0\nt3 at r3 1\ns1 add a b\ns2 add s1 c\nw write t3 s2\ng0\n# f io -> io\n"
+ ],
+ "dl-hand-total/a0/structured": [
+  "fn f io u32 u32 u32 -> io\nw write (puts A [B C D]) (add (add B C) D)\n"
+ ],
+ "dl-thermo-emit/a0/structured": [
+  "fn f io -> io\nr read A\nx at r 0\nt at r 1\nm mul x 9\nd div m 5\nresult add d 32\nw emit t result\n"
+ ],
+ "dl-trip-stamps/a0/structured": [
+  "fn f io u32 u32 -> io\ns div C B\nw1 stamp A s\nw2 stamp w1 C\nw2\n",
+  "fn f io u32 u32 -> io\ns div B C\nw1 stamp A s\nw2 stamp w1 B\nw2\n"
+ ],
+ "dl-receipt-line/a0/structured": [
+  "fn f io -> io\nr1 read A\np at r1 0\nt1 at r1 1\nr2 read t1\nq at r2 0\nt2 at r2 1\ns mul p q\nv [p q s]\nw puts t2 v\n"
+ ],
+ "dl-runner-pace/a0/structured": [
+  "e0\nfn pace u32 u32 -> u32 div mul B 1000 A\nfn f u32 u32 u32 u32 -> u32 select (lt (pace A B) (pace C D)) (pace A B) (pace C D)\ng0\n# pace u32 u32 -> u32\n# f u32 u32 u32 u32 -> u32\n"
+ ],
+ "dl-cook-minutes/a0/structured": [
+  "e0\nfn hm u32 u32 -> u32\nadd mul A 60 B\n\nfn f u32 u32 u32 u32 -> u32\nb hm A B\nd hm C D\nsub d b\n\ng0\n# f u32 u32 u32 u32 -> u32\n"
+ ],
+ "dl-one-low-stock/a0/structured": [
+  "fn below_min u32 u32 -> bool\nlt A B\n\nfn f -> bool\nxor lt A C lt B C\n"
+ ],
+ "dl-stereo-volume/a0/structured": [
+  "e0\nfn scale u32 u32 -> u32\nr [div mul A B 100]\nfn f -> u32x2\nr [scale A C scale B C]\ng0\n# scale u32 u32 -> u32\n# f u32 u32 u32 -> u32x2\n",
+  "e0\nfn scale u32 u32 -> u32\nr (div mul A B 100)\nfn f -> u32x2\nr [(scale A C) (scale B C)]\ng0\n# scale u32 u32 -> u32\n# f u32 u32 u32 -> u32x2\n"
+ ]
+}

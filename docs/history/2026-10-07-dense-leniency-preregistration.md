@@ -52,3 +52,20 @@ If met: the dense surface becomes the default AI surface in `src/mcp.ts` (views 
 - n = 30 per cell separates nothing by itself; a pass means the registered rule, not a significance claim. (claim-ok: a property of the interval method)
 - Set DL is authored by a model; cost accounting is local o200k with the repository's cache weights.
 - The leniencies and D1 were designed from failures of sets X, Y and H; DL has not been seen by whoever designed them beyond the mix in its brief.
+
+## Result (collected after the rule above was committed; `results/dense-lenient.json`, `tools/primer-compare-summary.ts lenient`, reports and scripted replies in `results/dense-lenient/`)
+
+Set DL was verified against its seal (`test/dense-lenient-set.test.ts`) and not altered; the harness self-check passed in all four reports. 120 fresh first-reply subagents (30 tasks, Haiku and Sonnet, `canon` and `dense`, one subagent per prompt; launches refused only by the concurrency limit were started again with the identical prompt) and 32 fresh repair subagents (Haiku canon 11, Haiku dense 11, Sonnet canon 3, Sonnet dense 7). No subject was refused by a safeguard; no reply is missing. Scored once after every reply existed.
+
+| model | arm | system o200k | one shot | accepted after repair | calls per task | cold | 10-task (primary) | unbounded |
+|---|---|---|---|---|---|---|---|---|
+| Haiku | canon (V3) | 293 | 19 of 30 | 23 | 1.37 | 807.2 | 394.5 | 348.6 |
+| Haiku | dense (D1, lenient) | 189 | 19 | 24 | 1.37 | 557.4 | 302.2 | 273.9 |
+| Sonnet | canon (V3) | 293 | 27 | 29 | 1.10 | 553.4 | 226.0 | 189.6 |
+| Sonnet | dense (D1, lenient) | 189 | 23 | 29 | 1.23 | 411.4 | 200.2 | 176.8 |
+
+Tokens per accepted edit in the last three columns. **The registered rule is met on both models** (`decision.change` is true): Haiku dense 24 against 23 accepted and 302.2 against 394.5 at the 10-task horizon; Sonnet 29 against 29 and 200.2 against 226.0. The dense surface ships as the default AI surface (separate commit).
+
+Wins, ties and losses, none hidden. Acceptance after repair: Haiku +1, Sonnet tie (every comparison a tie on the Wilson intervals at n = 30). Flips: Haiku dense gained `dl-hand-total` and `dl-trip-stamps` and lost `dl-damage-ticks`; Sonnet dense gained `dl-hand-total` and lost `dl-dough-rise`. One shot: Haiku tie (19 against 19), Sonnet a loss (23 against 27); calls per task on Sonnet 1.23 against 1.10 (a loss). Cost: lower at the cold, 10-task and unbounded horizons on both models (cold Haiku 557.4 against 807.2, Sonnet 411.4 against 553.4). Failures of the dense cells still not accepted after the repair: Haiku `dl-damage-ticks`, `dl-overbooked-slot`, `dl-dough-rise` (a statement with an extra operand, "unexpected A/B after a complete expression"), `dl-quarter-change` (a helper written as a bare line outside a function), `dl-playlist-fit` (`at` on an array), `dl-pin-unlock` (a wrong call arity); Sonnet `dl-dough-rise` (an extra operand). The canonical cells failed on logic (`dl-dough-rise`, `dl-playlist-fit`, `dl-trip-stamps`, `dl-hand-total`) and syntax (`dl-pin-unlock`, `dl-overbooked-slot`, `dl-quarter-change`). The extra-operand slip (a three-operand `add`/`mul`) is the largest remaining dense class and the next lever; none of the leniencies reads it.
+
+Limits that still hold: n = 30 per cell, a pass is the registered rule and not a significance claim; the earlier sets X and Y (28 and 44 task-pooled results against canonical, `results/dense-default.json`) are not rerun with D1 and the lenient parser, so this result says the surface passes on a set it was not designed from, not that it beats V3 on X and Y.
