@@ -96,8 +96,12 @@ export interface Language {
 export const BREW = ['/opt/homebrew/bin', '/opt/homebrew/opt', '/usr/local/bin'];
 
 export function onPath(name: string): string | undefined {
-  const r = spawnSync('/usr/bin/which', [name], { encoding: 'utf8', shell: false });
-  const p = r.stdout.trim();
+  // Windows has no /usr/bin/which; where.exe lists every match, the first is the one the shell would run
+  const r =
+    process.platform === 'win32'
+      ? spawnSync('where.exe', [name], { encoding: 'utf8', shell: false })
+      : spawnSync('/usr/bin/which', [name], { encoding: 'utf8', shell: false });
+  const p = (r.stdout ?? '').split(String.fromCharCode(10))[0]?.trim() ?? '';
   return r.status === 0 && p.length > 0 ? p : undefined;
 }
 

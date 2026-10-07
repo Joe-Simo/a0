@@ -163,9 +163,11 @@ async function benchC(
       flags: readonly string[] = ['-O2'],
     ): Promise<{ exe: string; bytes: number }> => {
       const src = join(dir, `${name}.c`);
-      const exe = join(dir, name);
+      const exe = join(dir, process.platform === 'win32' ? `${name}.exe` : name);
       await writeFile(src, `${header}\n${cDriver(() => call, kernel.arity)}`, 'utf8');
-      const r = runTool(clang, ['-std=c11', ...flags, '-o', exe, src]);
+      // MinGW's <time.h> maps clock_gettime to a winpthreads symbol; the flag links it (Linux and macOS accept it)
+      const win = process.platform === 'win32' ? ['-pthread'] : [];
+      const r = runTool(clang, ['-std=c11', ...flags, ...win, '-o', exe, src]);
       if (!r.ok) throw new Error(`${name}: ${r.stderr}`);
       const { stat } = await import('node:fs/promises');
       return { exe, bytes: (await stat(exe)).size };

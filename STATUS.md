@@ -191,3 +191,6 @@ The revised view-choice wording did not meet the pre-registered rule: Haiku 8 of
 ## Word-key legend in the A0 view (2026-10-06)
 
 The view of a function now ends with a one-line key legend when an `eq`/`ne` literal is the parser word key of a known word (`src/wordkey.ts`). Measured on the five tasks whose request changes (`results/app-edit-keys.json`): Haiku 10 of 14 accepted (9 without), Sonnet 14 of 14 (13 without), both at lower cost per accepted edit; Sonnet now ties TypeScript on acceptance. Haiku still trails TypeScript (13); the remaining misses are model errors. Also this round: seed bootstrap runs on Windows, benchmark load is read from CPU utilisation on Windows (`tools/system-load.ts`; `os.loadavg()` is always 0 there). The full gate still fails on this machine (see its debugging agent); the site is not deployed (needs a logged-in Vercel CLI).
+
+
+Quiet rerun of the noop JS kernel on Windows x64 (`results/exec-benchmark-noop-win32.json`, load 2.4 of 8 CPUs): a tie (A0 20.4 ns against hand-written JS 18.7 ns). The recorded loss (8.5% gap against an 8.2% noise band at load 6.4) is from another platform and stays in the ledger. The exec-bench harness now runs on Windows (`where.exe` lookup, `-pthread`, `.exe` names).

@@ -1,0 +1,1131 @@
+{
+  "generatedAt": "2026-10-07T03:18:51.097Z",
+  "node": "v22.21.1",
+  "platform": "win32-x64",
+  "clang": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages d34feaaa1d0aff624c870910b6f2589aa40d20de)",
+  "rustc": null,
+  "flags": {
+    "c": "-std=c11 -O2 (no sanitizer); handwrittenBest: -std=c11 -O3 -march=native",
+    "js": "Node default JIT, in-process, warm",
+    "rust": "-C opt-level=3 -C target-cpu=native",
+    "table": "see tools/exec-bench-languages*.ts: clang++ -std=c++17 -O2, javac/java and the other JVM and .NET languages with a warm-up pass then a timed pass in one process, kotlinc -include-runtime, scala-cli assembly, dotnet -c Release, go build, swiftc -O, zig -O ReleaseFast, dart compile exe, nim -d:release, crystal --release, ldc2 -O3, fpc -O2, gfortran -O2, ghc -O2, ocamlopt -O3, csc -O3, cobc -O2, v -prod, odin -o:speed, valac -X -O2; interpreters and VMs at their defaults"
+  },
+  "iterationsPerSample": {
+    "c": 20000000,
+    "js": 5000000,
+    "python": 100000,
+    "typescript": 5000000,
+    "cpp": 20000000,
+    "objc": 20000000,
+    "java": 5000000,
+    "kotlin": 5000000,
+    "go": 20000000,
+    "swift": 20000000,
+    "zig": 20000000,
+    "ruby": 100000,
+    "php": 100000,
+    "lua": 100000,
+    "perl": 100000,
+    "tcl": 100000,
+    "fortran": 20000000,
+    "csharp": 5000000,
+    "fsharp": 5000000,
+    "vb": 5000000,
+    "dart": 20000000,
+    "scala": 5000000,
+    "clojure": 1000000,
+    "groovy": 1000000,
+    "elixir": 100000,
+    "erlang": 100000,
+    "haskell": 20000000,
+    "ocaml": 20000000,
+    "julia": 5000000,
+    "r": 10000,
+    "nim": 20000000,
+    "crystal": 20000000,
+    "d": 20000000,
+    "pascal": 20000000,
+    "racket": 1000000,
+    "commonlisp": 5000000,
+    "cobol": 1000000,
+    "prolog": 100000,
+    "guile": 100000,
+    "chicken": 1000000,
+    "smalltalk": 10000,
+    "forth": 100000,
+    "haxe": 100000,
+    "v": 20000000,
+    "odin": 20000000,
+    "vala": 20000000,
+    "gleam": 100000
+  },
+  "samplesPerSide": 7,
+  "scale": 1,
+  "loadAverage": [
+    2.403587443946188,
+    2.403587443946188,
+    2.403587443946188
+  ],
+  "loadSource": "cpu-utilisation",
+  "loadGate": {
+    "maxLoad": 10,
+    "checks": 35,
+    "waits": 0,
+    "waitedSeconds": 0,
+    "loadSource": "cpu-utilisation",
+    "highestLoadAtSampleStart": 4.35
+  },
+  "meaning": "Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; arm64A0Driver is the same kernel inside a whole program written in A0 (a fold that generates the inputs, calls the kernel and xors the results, compiled by the direct arm64 backend, so the kernel is inlined into the loop as in every other language's own driver); its ratio is against the emitted-C path. clangO3OutOfLine is the same emitted C at clang -O3 -mcpu=native in its own object behind the identical driver (the same call boundary), run interleaved with arm64 in alternating order; arm64VsClangO3OutOfLine and geomeans.arm64VsClangO3 compare the code of the direct backend and of clang at equal call cost. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.",
+  "geomeans": {
+    "c": 1.0286282545805208,
+    "cBest": 0.9931894889103182,
+    "rust": null,
+    "arm64": null,
+    "arm64VsClangO3": null,
+    "arm64A0Driver": null,
+    "js": 11.297468659595008,
+    "jsEmitted": 12.31682738669241,
+    "typescript": 1.02198649951784,
+    "cpp": null,
+    "objc": null,
+    "java": 1.0807015429122468,
+    "kotlin": null,
+    "go": null,
+    "swift": null,
+    "zig": null,
+    "python": null,
+    "ruby": null,
+    "php": null,
+    "lua": null,
+    "perl": null,
+    "tcl": null,
+    "fortran": null,
+    "csharp": null,
+    "fsharp": null,
+    "vb": null,
+    "dart": null,
+    "scala": null,
+    "clojure": null,
+    "groovy": null,
+    "elixir": null,
+    "erlang": null,
+    "haskell": null,
+    "ocaml": null,
+    "julia": null,
+    "r": null,
+    "nim": null,
+    "crystal": null,
+    "d": null,
+    "pascal": null,
+    "racket": null,
+    "commonlisp": null,
+    "cobol": null,
+    "prolog": null,
+    "guile": null,
+    "chicken": null,
+    "smalltalk": null,
+    "forth": null,
+    "haxe": null,
+    "v": null,
+    "odin": null,
+    "vala": null,
+    "gleam": null
+  },
+  "arm64A0DriverVsBestFlags": {
+    "win": 0,
+    "tie": 0,
+    "loss": 0,
+    "rule": "the same comparison for the whole program in A0: the driver loop is an A0 fold calling the kernel, compiled by the direct arm64 backend (no call boundary, like the other languages' own drivers); arm64VsBestFlags is the kernel alone called out of line from a C driver"
+  },
+  "arm64VsBestFlags": {
+    "win": 0,
+    "tie": 0,
+    "loss": 0,
+    "rule": "A0 arm64 against the fastest of C -O3 -march=native, Rust opt-level=3 target-cpu=native and Zig ReleaseFast; win only at >= 1.2x, loss when slower beyond the tie band"
+  },
+  "languages": {
+    "typescript": {
+      "label": "TypeScript",
+      "family": "jit",
+      "toolchain": "Version 5.9.3 / node v22.21.1",
+      "status": "ran",
+      "kernelsRan": 1,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "interpreters"
+    },
+    "cpp": {
+      "label": "C++",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "C++ toolchain not found"
+    },
+    "objc": {
+      "label": "Objective-C",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Objective-C toolchain not found"
+    },
+    "java": {
+      "label": "Java",
+      "family": "jit",
+      "toolchain": "javac 21.0.12.1 / openjdk version \"21.0.12.1\" 2026-08-18 LTS",
+      "status": "ran",
+      "kernelsRan": 1,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "compiled"
+    },
+    "kotlin": {
+      "label": "Kotlin",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "compiled",
+      "detail": "Kotlin toolchain not found"
+    },
+    "go": {
+      "label": "Go",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Go toolchain not found"
+    },
+    "swift": {
+      "label": "Swift",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Swift toolchain not found"
+    },
+    "zig": {
+      "label": "Zig",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Zig toolchain not found"
+    },
+    "python": {
+      "label": "Python",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Python toolchain not found"
+    },
+    "ruby": {
+      "label": "Ruby",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Ruby toolchain not found"
+    },
+    "php": {
+      "label": "PHP",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "PHP toolchain not found"
+    },
+    "lua": {
+      "label": "Lua",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "timer": "os.clock (process CPU time; Lua has no monotonic wall clock in the standard library)",
+      "detail": "Lua toolchain not found"
+    },
+    "perl": {
+      "label": "Perl",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Perl toolchain not found"
+    },
+    "tcl": {
+      "label": "Tcl",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Tcl toolchain not found"
+    },
+    "fortran": {
+      "label": "Fortran",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Fortran toolchain not found"
+    },
+    "csharp": {
+      "label": "C#",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "compiled",
+      "detail": "C# toolchain not found"
+    },
+    "fsharp": {
+      "label": "F#",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "compiled",
+      "detail": "F# toolchain not found"
+    },
+    "vb": {
+      "label": "Visual Basic",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "compiled",
+      "detail": "Visual Basic toolchain not found"
+    },
+    "dart": {
+      "label": "Dart",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Dart toolchain not found"
+    },
+    "scala": {
+      "label": "Scala",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "compiled",
+      "detail": "Scala toolchain not found"
+    },
+    "clojure": {
+      "label": "Clojure",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 1000000,
+      "startupGroup": "interpreters",
+      "detail": "Clojure toolchain not found"
+    },
+    "groovy": {
+      "label": "Groovy",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 1000000,
+      "startupGroup": "interpreters",
+      "detail": "Groovy toolchain not found"
+    },
+    "elixir": {
+      "label": "Elixir",
+      "family": "vm",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Elixir toolchain not found"
+    },
+    "erlang": {
+      "label": "Erlang",
+      "family": "vm",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Erlang toolchain not found"
+    },
+    "haskell": {
+      "label": "Haskell",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Haskell toolchain not found"
+    },
+    "ocaml": {
+      "label": "OCaml",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "OCaml toolchain not found"
+    },
+    "julia": {
+      "label": "Julia",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "interpreters",
+      "detail": "Julia toolchain not found"
+    },
+    "r": {
+      "label": "R",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 10000,
+      "startupGroup": "interpreters",
+      "detail": "R toolchain not found"
+    },
+    "nim": {
+      "label": "Nim",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Nim toolchain not found"
+    },
+    "crystal": {
+      "label": "Crystal",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Crystal toolchain not found"
+    },
+    "d": {
+      "label": "D",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "D toolchain not found"
+    },
+    "pascal": {
+      "label": "Pascal",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "timer": "GetTickCount64 (millisecond resolution; every sample runs for hundreds of ms)",
+      "detail": "Pascal toolchain not found"
+    },
+    "racket": {
+      "label": "Racket",
+      "family": "vm",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 1000000,
+      "startupGroup": "interpreters",
+      "detail": "Racket toolchain not found"
+    },
+    "commonlisp": {
+      "label": "Common Lisp",
+      "family": "jit",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 5000000,
+      "startupGroup": "interpreters",
+      "detail": "Common Lisp toolchain not found"
+    },
+    "cobol": {
+      "label": "COBOL",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 1000000,
+      "startupGroup": "compiled",
+      "timer": "FUNCTION CURRENT-DATE (10 ms resolution; every sample runs for seconds)",
+      "detail": "COBOL toolchain not found"
+    },
+    "prolog": {
+      "label": "Prolog",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Prolog toolchain not found"
+    },
+    "guile": {
+      "label": "Scheme (Guile)",
+      "family": "vm",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Scheme (Guile) toolchain not found"
+    },
+    "chicken": {
+      "label": "Scheme (CHICKEN)",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 1000000,
+      "startupGroup": "compiled",
+      "timer": "current-process-milliseconds (process CPU time, ms resolution; samples run for hundreds of ms)",
+      "detail": "Scheme (CHICKEN) toolchain not found"
+    },
+    "smalltalk": {
+      "label": "Smalltalk",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 10000,
+      "startupGroup": "interpreters",
+      "timer": "Time millisecondClock (ms resolution; samples run for hundreds of ms)",
+      "detail": "Smalltalk toolchain not found"
+    },
+    "forth": {
+      "label": "Forth",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Forth toolchain not found"
+    },
+    "haxe": {
+      "label": "Haxe",
+      "family": "interpreted",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Haxe toolchain not found"
+    },
+    "v": {
+      "label": "V",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "V toolchain not found"
+    },
+    "odin": {
+      "label": "Odin",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Odin toolchain not found"
+    },
+    "vala": {
+      "label": "Vala",
+      "family": "compiled-native",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 20000000,
+      "startupGroup": "compiled",
+      "detail": "Vala toolchain not found"
+    },
+    "gleam": {
+      "label": "Gleam",
+      "family": "vm",
+      "toolchain": null,
+      "status": "skipped-no-toolchain",
+      "kernelsRan": 0,
+      "kernelsTotal": 1,
+      "iterations": 100000,
+      "startupGroup": "interpreters",
+      "detail": "Gleam toolchain not found"
+    }
+  },
+  "skipped": {
+    "cpp": "skipped-no-toolchain: C++ toolchain not found",
+    "objc": "skipped-no-toolchain: Objective-C toolchain not found",
+    "kotlin": "skipped-no-toolchain: Kotlin toolchain not found",
+    "go": "skipped-no-toolchain: Go toolchain not found",
+    "swift": "skipped-no-toolchain: Swift toolchain not found",
+    "zig": "skipped-no-toolchain: Zig toolchain not found",
+    "python": "skipped-no-toolchain: Python toolchain not found",
+    "ruby": "skipped-no-toolchain: Ruby toolchain not found",
+    "php": "skipped-no-toolchain: PHP toolchain not found",
+    "lua": "skipped-no-toolchain: Lua toolchain not found",
+    "perl": "skipped-no-toolchain: Perl toolchain not found",
+    "tcl": "skipped-no-toolchain: Tcl toolchain not found",
+    "fortran": "skipped-no-toolchain: Fortran toolchain not found",
+    "csharp": "skipped-no-toolchain: C# toolchain not found",
+    "fsharp": "skipped-no-toolchain: F# toolchain not found",
+    "vb": "skipped-no-toolchain: Visual Basic toolchain not found",
+    "dart": "skipped-no-toolchain: Dart toolchain not found",
+    "scala": "skipped-no-toolchain: Scala toolchain not found",
+    "clojure": "skipped-no-toolchain: Clojure toolchain not found",
+    "groovy": "skipped-no-toolchain: Groovy toolchain not found",
+    "elixir": "skipped-no-toolchain: Elixir toolchain not found",
+    "erlang": "skipped-no-toolchain: Erlang toolchain not found",
+    "haskell": "skipped-no-toolchain: Haskell toolchain not found",
+    "ocaml": "skipped-no-toolchain: OCaml toolchain not found",
+    "julia": "skipped-no-toolchain: Julia toolchain not found",
+    "r": "skipped-no-toolchain: R toolchain not found",
+    "nim": "skipped-no-toolchain: Nim toolchain not found",
+    "crystal": "skipped-no-toolchain: Crystal toolchain not found",
+    "d": "skipped-no-toolchain: D toolchain not found",
+    "pascal": "skipped-no-toolchain: Pascal toolchain not found",
+    "racket": "skipped-no-toolchain: Racket toolchain not found",
+    "commonlisp": "skipped-no-toolchain: Common Lisp toolchain not found",
+    "cobol": "skipped-no-toolchain: COBOL toolchain not found",
+    "prolog": "skipped-no-toolchain: Prolog toolchain not found",
+    "guile": "skipped-no-toolchain: Scheme (Guile) toolchain not found",
+    "chicken": "skipped-no-toolchain: Scheme (CHICKEN) toolchain not found",
+    "smalltalk": "skipped-no-toolchain: Smalltalk toolchain not found",
+    "forth": "skipped-no-toolchain: Forth toolchain not found",
+    "haxe": "skipped-no-toolchain: Haxe toolchain not found",
+    "v": "skipped-no-toolchain: V toolchain not found",
+    "odin": "skipped-no-toolchain: Odin toolchain not found",
+    "vala": "skipped-no-toolchain: Vala toolchain not found",
+    "gleam": "skipped-no-toolchain: Gleam toolchain not found"
+  },
+  "kernels": {
+    "noop": {
+      "python": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Python toolchain not found"
+      },
+      "pythonIterations": 100000,
+      "startupInterpretersMs": {
+        "typescript": 66.78409999999894,
+        "node": 66.78409999999894,
+        "python": null,
+        "ruby": null,
+        "php": null,
+        "lua": null,
+        "perl": null,
+        "tcl": null,
+        "clojure": null,
+        "groovy": null,
+        "elixir": null,
+        "erlang": null,
+        "julia": null,
+        "r": null,
+        "racket": null,
+        "commonlisp": null,
+        "prolog": null,
+        "guile": null,
+        "smalltalk": null,
+        "forth": null,
+        "haxe": null,
+        "gleam": null
+      },
+      "startupCompiledMs": {
+        "cpp": null,
+        "objc": null,
+        "java": 115.39120000000003,
+        "kotlin": null,
+        "go": null,
+        "swift": null,
+        "zig": null,
+        "fortran": null,
+        "csharp": null,
+        "fsharp": null,
+        "vb": null,
+        "dart": null,
+        "scala": null,
+        "haskell": null,
+        "ocaml": null,
+        "nim": null,
+        "crystal": null,
+        "d": null,
+        "pascal": null,
+        "cobol": null,
+        "chicken": null,
+        "v": null,
+        "odin": null,
+        "vala": null
+      },
+      "c": {
+        "emitted": {
+          "medianNsPerCall": 1.6592,
+          "minNsPerCall": 1.6438,
+          "maxNsPerCall": 1.685,
+          "checksum": "1964997590",
+          "samples": 7
+        },
+        "handwritten": {
+          "medianNsPerCall": 1.7067,
+          "minNsPerCall": 1.7006,
+          "maxNsPerCall": 1.7342,
+          "checksum": "1964997590",
+          "samples": 7
+        },
+        "handwrittenBest": {
+          "medianNsPerCall": 1.6479,
+          "minNsPerCall": 1.6409,
+          "maxNsPerCall": 1.6699,
+          "checksum": "1964997590",
+          "samples": 7
+        },
+        "arm64": null,
+        "clangO3OutOfLine": null,
+        "arm64A0Driver": null,
+        "binaryBytes": {
+          "emitted": 16896,
+          "handwritten": 16896
+        },
+        "startupMs": {
+          "emitted": 14.615300000000389,
+          "handwritten": 14.31919999999991
+        },
+        "rust": null,
+        "buildMs": {
+          "a0ToNative": 253.14979999999923,
+          "rustc": null
+        },
+        "verdict": "tie",
+        "verdictVsRust": "blocked",
+        "arm64VsEmittedC": "blocked",
+        "arm64VsClangO3OutOfLine": "blocked"
+      },
+      "js": {
+        "emitted": {
+          "medianNsPerCall": 20.43608000000004,
+          "minNsPerCall": 19.424080000000046,
+          "maxNsPerCall": 23.414719999999942,
+          "checksum": "3156194351",
+          "samples": 7
+        },
+        "handwritten": {
+          "medianNsPerCall": 18.744760000000042,
+          "minNsPerCall": 16.63189999999995,
+          "maxNsPerCall": 22.802340000000004,
+          "checksum": "3156194351",
+          "samples": 7
+        },
+        "verdict": "tie"
+      },
+      "cpp": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "C++ toolchain not found"
+      },
+      "objc": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Objective-C toolchain not found"
+      },
+      "kotlin": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "Kotlin toolchain not found"
+      },
+      "go": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Go toolchain not found"
+      },
+      "swift": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Swift toolchain not found"
+      },
+      "zig": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Zig toolchain not found"
+      },
+      "ruby": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Ruby toolchain not found"
+      },
+      "php": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "PHP toolchain not found"
+      },
+      "lua": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Lua toolchain not found"
+      },
+      "perl": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Perl toolchain not found"
+      },
+      "tcl": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Tcl toolchain not found"
+      },
+      "fortran": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Fortran toolchain not found"
+      },
+      "csharp": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "C# toolchain not found"
+      },
+      "fsharp": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "F# toolchain not found"
+      },
+      "vb": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "Visual Basic toolchain not found"
+      },
+      "dart": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Dart toolchain not found"
+      },
+      "scala": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "Scala toolchain not found"
+      },
+      "clojure": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 1000000,
+        "detail": "Clojure toolchain not found"
+      },
+      "groovy": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 1000000,
+        "detail": "Groovy toolchain not found"
+      },
+      "elixir": {
+        "status": "skipped-no-toolchain",
+        "family": "vm",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Elixir toolchain not found"
+      },
+      "erlang": {
+        "status": "skipped-no-toolchain",
+        "family": "vm",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Erlang toolchain not found"
+      },
+      "haskell": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Haskell toolchain not found"
+      },
+      "ocaml": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "OCaml toolchain not found"
+      },
+      "julia": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "Julia toolchain not found"
+      },
+      "r": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 10000,
+        "detail": "R toolchain not found"
+      },
+      "nim": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Nim toolchain not found"
+      },
+      "crystal": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Crystal toolchain not found"
+      },
+      "d": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "D toolchain not found"
+      },
+      "pascal": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Pascal toolchain not found"
+      },
+      "racket": {
+        "status": "skipped-no-toolchain",
+        "family": "vm",
+        "toolchain": null,
+        "iterations": 1000000,
+        "detail": "Racket toolchain not found"
+      },
+      "commonlisp": {
+        "status": "skipped-no-toolchain",
+        "family": "jit",
+        "toolchain": null,
+        "iterations": 5000000,
+        "detail": "Common Lisp toolchain not found"
+      },
+      "cobol": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 1000000,
+        "detail": "COBOL toolchain not found"
+      },
+      "prolog": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Prolog toolchain not found"
+      },
+      "guile": {
+        "status": "skipped-no-toolchain",
+        "family": "vm",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Scheme (Guile) toolchain not found"
+      },
+      "chicken": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 1000000,
+        "detail": "Scheme (CHICKEN) toolchain not found"
+      },
+      "smalltalk": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 10000,
+        "detail": "Smalltalk toolchain not found"
+      },
+      "forth": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Forth toolchain not found"
+      },
+      "haxe": {
+        "status": "skipped-no-toolchain",
+        "family": "interpreted",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Haxe toolchain not found"
+      },
+      "v": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "V toolchain not found"
+      },
+      "odin": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Odin toolchain not found"
+      },
+      "vala": {
+        "status": "skipped-no-toolchain",
+        "family": "compiled-native",
+        "toolchain": null,
+        "iterations": 20000000,
+        "detail": "Vala toolchain not found"
+      },
+      "gleam": {
+        "status": "skipped-no-toolchain",
+        "family": "vm",
+        "toolchain": null,
+        "iterations": 100000,
+        "detail": "Gleam toolchain not found"
+      },
+      "typescript": {
+        "status": "ran",
+        "family": "jit",
+        "toolchain": "Version 5.9.3 / node v22.21.1",
+        "iterations": 5000000,
+        "medianNsPerCall": 1.69568,
+        "minNsPerCall": 1.65236,
+        "maxNsPerCall": 1.78712,
+        "checksum": "3156194351",
+        "samples": 7,
+        "startupMs": 66.78409999999894
+      },
+      "java": {
+        "status": "ran",
+        "family": "jit",
+        "toolchain": "javac 21.0.12.1 / openjdk version \"21.0.12.1\" 2026-08-18 LTS",
+        "iterations": 5000000,
+        "medianNsPerCall": 1.7931,
+        "minNsPerCall": 1.776,
+        "maxNsPerCall": 1.8265,
+        "checksum": "3156194351",
+        "samples": 7,
+        "startupMs": 115.39120000000003
+      }
+    }
+  }
+}
