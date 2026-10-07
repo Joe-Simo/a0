@@ -158,6 +158,7 @@ const WINDOWS_TOOL_DIRS = [
   'C:\\msys64\\clang64\\bin',
   'C:\\msys64\\mingw64\\bin',
   'C:\\Program Files\\LLVM\\bin',
+  'C:\\msys64\\ucrt64\\bin',
 ];
 
 /** First executable `name` on PATH (PATHEXT on Windows); no external `which`, so it works everywhere. */
@@ -259,12 +260,34 @@ export function findQemuRiscv64(): ToolInfo {
   return { name: 'qemu-system-riscv64', path, version: versionOf(path) };
 }
 
+/** JDK `bin` files of the usual Windows installers (Microsoft, Adoptium, Oracle) and JAVA_HOME. */
+function windowsJdkBins(exe: string): string[] {
+  if (process.platform !== 'win32') return [];
+  const roots = [
+    'C:\\Program Files\\Microsoft',
+    'C:\\Program Files\\Eclipse Adoptium',
+    'C:\\Program Files\\Java',
+  ];
+  const out: string[] = [];
+  if (process.env.JAVA_HOME) out.push(join(process.env.JAVA_HOME, 'bin', exe));
+  for (const root of roots) {
+    try {
+      for (const d of readdirSync(root).sort().reverse())
+        if (/jdk|jre/i.test(d)) out.push(join(root, d, 'bin', exe));
+    } catch {
+      // not installed here
+    }
+  }
+  return out;
+}
+
 export function findJavac(): ToolInfo {
   // macOS ships /usr/bin/javac as a stub that fails without an installed JDK, so prefer Homebrew.
   const path = firstExisting([
     process.env.A0_JAVAC,
     ...BREW_PREFIXES.map((p) => `${p}/openjdk/bin/javac`),
     onPath('javac'),
+    ...windowsJdkBins('javac.exe'),
   ]);
   return { name: 'javac', path, version: versionOf(path, ['-version']) };
 }
@@ -274,6 +297,7 @@ export function findJava(): ToolInfo {
     process.env.A0_JAVA,
     ...BREW_PREFIXES.map((p) => `${p}/openjdk/bin/java`),
     onPath('java'),
+    ...windowsJdkBins('java.exe'),
   ]);
   return { name: 'java', path, version: versionOf(path, ['-version']) };
 }
@@ -303,7 +327,13 @@ export function findSimavr(): {
   readonly prefix: string | undefined;
   readonly version: string | undefined;
 } {
-  const prefix = [process.env.A0_SIMAVR_PREFIX, '/opt/homebrew', '/usr/local', '/usr'].find(
+  const prefix = [
+    process.env.A0_SIMAVR_PREFIX,
+    '/opt/homebrew',
+    '/usr/local',
+    '/usr',
+    ...(process.platform === 'win32' ? ['C:\\msys64\\ucrt64', 'C:\\msys64\\mingw64'] : []),
+  ].find(
     (p) =>
       p !== undefined &&
       existsSync(join(p, 'include', 'simavr', 'sim_avr.h')) &&

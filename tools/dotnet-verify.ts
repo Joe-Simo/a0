@@ -36,6 +36,7 @@ function findDotnet(): string | undefined {
     '/usr/local/share/dotnet/dotnet',
     '/usr/share/dotnet/dotnet',
     '/usr/bin/dotnet',
+    'C:\\Program Files\\dotnet\\dotnet.exe',
   ];
   return candidates.find((c) => existsSync(c));
 }

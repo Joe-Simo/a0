@@ -778,6 +778,8 @@ export async function checkAvr(
         `-L${join(prefix, 'lib')}`,
         '-lsimavr',
         '-lelf',
+        // libsimavr's gdb stub uses sockets, which Windows keeps in Winsock.
+        ...(process.platform === 'win32' ? ['-lws2_32'] : []),
       ],
       { cwd: dir },
     );
