@@ -77,7 +77,9 @@ async function wasmCalls(
 
 /** Operands: edge values first, then random values of mixed magnitude. */
 function operands(count: number, seed: number): number[] {
-  const edge = [0, 1, 65535, 65536, 65537, 131072, 0x7fffffff, 0x80000000, 0xffffffff, 0xffff0000, 12345678];
+  const edge = [
+    0, 1, 65535, 65536, 65537, 131072, 0x7fffffff, 0x80000000, 0xffffffff, 0xffff0000, 12345678,
+  ];
   const g = inputs(seed);
   const out = [...edge];
   while (out.length < count) {
@@ -90,11 +92,7 @@ function operands(count: number, seed: number): number[] {
 
 test('fx: arithmetic matches the BigInt oracle (interpreter and wasm, optimized and not)', async () => {
   const { program, call } = await load();
-  const impls = [
-    call,
-    await wasmCalls(program, true),
-    await wasmCalls(program, false),
-  ];
+  const impls = [call, await wasmCalls(program, true), await wasmCalls(program, false)];
   const xs = operands(60, 7);
   const ys = operands(60, 11);
   for (const f of impls) {
@@ -109,15 +107,21 @@ test('fx: arithmetic matches the BigInt oracle (interpreter and wasm, optimized 
         assert.equal(f('fx_max', a, b), u32(Math.max(s32(a), s32(b))));
         // multiply: when the true product fits, it is the product truncated toward zero
         const p = (big(a) * big(b)) / 65536n;
-        if (p >= -(1n << 31n) && p < 1n << 31n) assert.equal(f('fx_mul', a, b), wrap(p), `mul ${a} ${b}`);
+        if (p >= -(1n << 31n) && p < 1n << 31n)
+          assert.equal(f('fx_mul', a, b), wrap(p), `mul ${a} ${b}`);
         // divide: truncated toward zero, 16 fractional bits, b = 0 saturates
         if (s32(b) !== 0 && s32(b) !== -0x80000000 && s32(a) !== -0x80000000) {
           const q = (big(a) << 16n) / big(b);
-          if (q >= -(1n << 31n) && q < 1n << 31n) assert.equal(f('fx_div', a, b), wrap(q), `div ${a} ${b}`);
+          if (q >= -(1n << 31n) && q < 1n << 31n)
+            assert.equal(f('fx_div', a, b), wrap(q), `div ${a} ${b}`);
         }
         const d = big(b) - big(a);
         if (d >= -(1n << 31n) && d < 1n << 31n)
-          assert.equal(f('fx_lerp', a, b, 32768), wrap(big(a) + (d * 32768n) / 65536n), `lerp ${a} ${b}`);
+          assert.equal(
+            f('fx_lerp', a, b, 32768),
+            wrap(big(a) + (d * 32768n) / 65536n),
+            `lerp ${a} ${b}`,
+          );
       }
       assert.equal(f('fx_div', a, 0), 0x7fffffff);
     }
@@ -130,7 +134,22 @@ test('fx: arithmetic matches the BigInt oracle (interpreter and wasm, optimized 
 test('fx: integer and Q16 square roots, hypotenuse', async () => {
   const { program, call } = await load();
   for (const f of [call, await wasmCalls(program, true)]) {
-    for (const x of [0, 1, 2, 3, 4, 15, 16, 17, 65535, 65536, 1 << 30, 0x7fffffff, 0xffffffff, 123456789]) {
+    for (const x of [
+      0,
+      1,
+      2,
+      3,
+      4,
+      15,
+      16,
+      17,
+      65535,
+      65536,
+      1 << 30,
+      0x7fffffff,
+      0xffffffff,
+      123456789,
+    ]) {
       const r = Number(BigInt(Math.floor(Math.sqrt(x))));
       assert.equal(f('fx_isqrt', x), r, `isqrt ${x}`);
     }
@@ -154,7 +173,10 @@ test('fx: integer and Q16 square roots, hypotenuse', async () => {
       [-20000, 20000],
     ] as const) {
       const h = fl(f('fx_hyp', u32(x * 65536), u32(y * 65536)));
-      assert.ok(Math.abs(h - Math.hypot(x, y)) <= Math.max(0.01, Math.hypot(x, y) * 1e-3), `hyp ${x},${y}: ${h}`);
+      assert.ok(
+        Math.abs(h - Math.hypot(x, y)) <= Math.max(0.01, Math.hypot(x, y) * 1e-3),
+        `hyp ${x},${y}: ${h}`,
+      );
     }
   }
 });
@@ -205,8 +227,14 @@ test('fx: unit vectors, dot and cross products, generators', async () => {
     assert.ok(Math.abs(fl(uy as number) - y / n) < 2e-3, `unit y ${x},${y}`);
   }
   assert.deepEqual(run(unit, [0, 0]), [65536, 0]);
-  assert.equal(fl(call('fx_dot', u32(2 * 65536), u32(3 * 65536), u32(-4 * 65536), u32(5 * 65536))), 7);
-  assert.equal(fl(call('fx_cross', u32(2 * 65536), u32(3 * 65536), u32(-4 * 65536), u32(5 * 65536))), 22);
+  assert.equal(
+    fl(call('fx_dot', u32(2 * 65536), u32(3 * 65536), u32(-4 * 65536), u32(5 * 65536))),
+    7,
+  );
+  assert.equal(
+    fl(call('fx_cross', u32(2 * 65536), u32(3 * 65536), u32(-4 * 65536), u32(5 * 65536))),
+    22,
+  );
   // xorshift32 against the reference recurrence; the hash is deterministic and spreads
   let s = 2463534242;
   for (let i = 0; i < 50; i += 1) {

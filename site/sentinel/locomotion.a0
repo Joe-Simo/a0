@@ -424,7 +424,7 @@ fn tap_each u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
 r call tap_apply p0 p1 p2 p3 p4 p5
 ret r
 end
-fn tap_step u32x1024 u32x32 u32x1344 -> u32x1024
+fn tap_scan u32x1024 u32x32 u32x1344 -> (u32,u32)
 seq get p1 11
 old call bg p0 22
 changed ne seq old
@@ -439,7 +439,6 @@ n select changed nrows 0
 init rec 4294967295 4294967295
 best fold tap_row_step n init p2 pgx pgy
 row at best 1
-s1 call bs p0 22 seq
 clk call bg p0 13
 h call fx_hash clk seq
 u shr h 20
@@ -447,8 +446,19 @@ cnt0 rem u 3
 cnt add cnt0 1
 nf ne row 4294967295
 act and changed nf
-d1 fold tap_dist 8 s1 tx ty
 cn select act cnt 0
+r rec row cn
+ret r
+end
+fn tap_step u32x1024 u32x32 u32x1344 -> u32x1024
+sc call tap_scan p0 p1 p2
+row at sc 0
+cn at sc 1
+seq get p1 11
+tx get p1 12
+ty get p1 13
+s1 call bs p0 22 seq
+d1 fold tap_dist 8 s1 tx ty
 r fold tap_each 8 d1 cn row p1 p2
 ret r
 end

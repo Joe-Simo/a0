@@ -9,7 +9,7 @@
 # Exact behaviour (checked against a BigInt oracle in test/fx.test.ts):
 #   fx_mul  a*b truncated toward zero; the true product must fit in Q16.16
 #   fx_div  a/b truncated toward zero to 16 fractional bits; b = 0 gives the largest value
-#   fx_sqrt floor of the square root (at least 16 fractional bits for x < 256.0); negative gives 0
+#   fx_sqrt the square root (floor below 1.0, rounded to nearest above; at least 12 fractional bits for x < 256.0); negative gives 0
 #   fx_sin/fx_cos linear interpolation of a 256-step quarter-symmetric table, error < 1e-4
 #   fx_atan2 error < 3e-4 turn
 
@@ -189,7 +189,13 @@ xb select b x8 p0
 xs select a x16 xb
 sb select b 4 8
 sh select a 0 sb
-r call fx_isqrt xs
+r0 call fx_isqrt xs
+r2 mul r0 r0
+rem sub xs r2
+up gt rem r0
+r1 add r0 1
+rn select up r1 r0
+r select a r0 rn
 v shl r sh
 z select n 0 v
 ret z
@@ -275,18 +281,14 @@ a add p0 16384
 r call fx_sin a
 ret r
 end
-fn fx_qatan u32 -> u32
-t arr 0 163 326 489 651 813 975 1136 1297 1457 1617 1775 1933 2090 2246 2401 2555 2708 2860 3010 3159 3307 3453 3599 3742 3884 4025 4164 4302 4438 4572 4705 4836 4966 5094 5220 5344 5467 5589 5708 5826 5943 6058 6171 6282 6392 6500 6607 6712 6815 6917 7018 7117 7214 7310 7405 7498 7589 7679 7768 7856 7942 8026 8110 8192
-g get t p0
-ret g
-end
-# arctangent of the ratio r in [0, 1] (Q16), in turns
+# arctangent of the ratio r in [0, 1] (Q16), in turns: a 65-entry table with linear interpolation
 fn fx_atan01 u32 -> u32
+t arr 0 163 326 489 651 813 975 1136 1297 1457 1617 1775 1933 2090 2246 2401 2555 2708 2860 3010 3159 3307 3453 3599 3742 3884 4025 4164 4302 4438 4572 4705 4836 4966 5094 5220 5344 5467 5589 5708 5826 5943 6058 6171 6282 6392 6500 6607 6712 6815 6917 7018 7117 7214 7310 7405 7498 7589 7679 7768 7856 7942 8026 8110 8192
 i shr p0 10
 f and p0 1023
-a call fx_qatan i
+a get t i
 i1 add i 1
-b call fx_qatan i1
+b get t i1
 d sub b a
 m mul d f
 ms shr m 10

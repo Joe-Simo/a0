@@ -13,9 +13,9 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
+import { LIVE_PROGRAMS, type LiveProgramSpec } from './live-programs.js';
 import { a0WasmFromTables, buildWasmTool, typescriptWasm } from './selfhost-wasm.js';
 import { buildGenerator, generate } from './site-gen.js';
-import { LIVE_PROGRAMS, type LiveProgramSpec } from './live-programs.js';
 import { fillShell, prerender } from './site-render.js';
 
 const out = join('site', 'dist');

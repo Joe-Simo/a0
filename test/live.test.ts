@@ -1,14 +1,25 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import {
+  type Bounds,
+  bufferFor,
+  type Ctx2D,
+  drawCommands,
+  emptyBounds,
+} from '../site/live/canvas.js';
+import {
+  type GeoEnv,
+  GeometryRegistry,
+  type IntersectionEntryLike,
+  type RectLike,
+} from '../site/live/geometry.js';
+import { PointerTracker } from '../site/live/pointer.js';
+import { type FrameInput, type LiveExports, LiveProgram } from '../site/live/program.js';
+import { FLAG, fromQ16, OP, parseHostCommands, ROW_WORDS, toQ16 } from '../site/live/words.js';
 import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
 import { wasmModuleBytes } from '../src/wasm.js';
-import { type Bounds, bufferFor, type Ctx2D, drawCommands, emptyBounds } from '../site/live/canvas.js';
-import { GeometryRegistry, type GeoEnv, type IntersectionEntryLike, type RectLike } from '../site/live/geometry.js';
-import { PointerTracker } from '../site/live/pointer.js';
-import { type FrameInput, LiveProgram, type LiveExports } from '../site/live/program.js';
-import { FLAG, fromQ16, OP, parseHostCommands, ROW_WORDS, toQ16 } from '../site/live/words.js';
 import { LIVE_PROGRAMS } from '../tools/live-programs.js';
 
 /** The generic live-program host (site/live/*) and the A0 Sentinel running on it, headless. */
@@ -17,7 +28,24 @@ test('words: fixed-point, host commands and the byte stream', () => {
   assert.equal(fromQ16(toQ16(-3.5)), -3.5);
   assert.equal(fromQ16(toQ16(1234.25)), 1234.25);
   const sel = Array.from(new TextEncoder().encode('h1,h2'));
-  const out = [OP.watch, 4, sel.length, ...sel, OP.quality, 80, OP.state, 3, 7, 8, 9, OP.disc, 0, 0, 0, 0];
+  const out = [
+    OP.watch,
+    4,
+    sel.length,
+    ...sel,
+    OP.quality,
+    80,
+    OP.state,
+    3,
+    7,
+    8,
+    9,
+    OP.disc,
+    0,
+    0,
+    0,
+    0,
+  ];
   const r = parseHostCommands(out, out.length);
   assert.deepEqual(r.watches, [{ kind: 4, selector: 'h1,h2' }]);
   assert.equal(r.quality, 80);
@@ -38,7 +66,9 @@ class Recorder {
   fillStyle: unknown = '';
   private rec(n: string) {
     return (...a: unknown[]): void => {
-      this.calls.push(`${n}(${a.map((x) => (typeof x === 'number' ? x.toFixed(2) : String(x))).join(',')})`);
+      this.calls.push(
+        `${n}(${a.map((x) => (typeof x === 'number' ? x.toFixed(2) : String(x))).join(',')})`,
+      );
     };
   }
   setTransform = this.rec('setTransform');
@@ -59,12 +89,38 @@ test('canvas: the draw list executes, tracks bounds, and stops at an unknown or 
   const ctx = new Recorder();
   const q = toQ16;
   const words = [
-    OP.line, q(10), q(20), q(30), q(40), q(2), 0xff0000ff,
-    OP.disc, q(50), q(60), q(4), 0x00ff00ff,
-    OP.sphere, q(70), q(80), q(5), 0xffffffff, 0x000000ff,
-    OP.path, 2, q(1), 0xffffffff, q(0), q(0), q(9), q(9),
-    999, 1, 2,
-    OP.disc, q(1), q(1),
+    OP.line,
+    q(10),
+    q(20),
+    q(30),
+    q(40),
+    q(2),
+    0xff0000ff,
+    OP.disc,
+    q(50),
+    q(60),
+    q(4),
+    0x00ff00ff,
+    OP.sphere,
+    q(70),
+    q(80),
+    q(5),
+    0xffffffff,
+    0x000000ff,
+    OP.path,
+    2,
+    q(1),
+    0xffffffff,
+    q(0),
+    q(0),
+    q(9),
+    q(9),
+    999,
+    1,
+    2,
+    OP.disc,
+    q(1),
+    q(1),
   ];
   const b: Bounds = emptyBounds();
   const n = drawCommands(ctx as unknown as Ctx2D, words, 0, words.length, b);
@@ -104,11 +160,19 @@ test('pointer: passive listeners, touch scroll hand-over, taps with the interact
   assert.equal(tr.snapshot().present, false);
   const target = {
     closest: (sel: string) =>
-      sel.includes('button') ? { getBoundingClientRect: () => ({ left: 5, top: 6, right: 25, bottom: 16 }) } : null,
+      sel.includes('button')
+        ? { getBoundingClientRect: () => ({ left: 5, top: 6, right: 25, bottom: 16 }) }
+        : null,
   };
   fire(win, 'pointerdown', { clientX: 50, clientY: 60, pointerType: 'touch', timeStamp: 1000 });
   assert.equal(tr.snapshot().down, true);
-  fire(win, 'pointerup', { clientX: 51, clientY: 61, pointerType: 'touch', timeStamp: 1100, target });
+  fire(win, 'pointerup', {
+    clientX: 51,
+    clientY: 61,
+    pointerType: 'touch',
+    timeStamp: 1100,
+    target,
+  });
   s = tr.snapshot();
   assert.equal(s.tapSeq, 1);
   assert.deepEqual(s.tapRect, [5, 106, 25, 116], 'page-space box of the tapped control');
@@ -128,7 +192,11 @@ function fakeEnv(): {
   env: GeoEnv;
   els: { rect: RectLike; sel: string }[];
   state: { sx: number; sy: number; docH: number };
-  fire: { intersect(list: IntersectionEntryLike[]): void; resize(t: unknown[]): void; mutate(): void };
+  fire: {
+    intersect(list: IntersectionEntryLike[]): void;
+    resize(t: unknown[]): void;
+    mutate(): void;
+  };
 } {
   const els: { rect: RectLike; sel: string; getBoundingClientRect(): RectLike }[] = [];
   const state = { sx: 0, sy: 0, docH: 5000 };
@@ -170,7 +238,11 @@ function fakeEnv(): {
 test('geometry: page-relative boxes, kinds by first matching selector, cap and rebuild throttle', () => {
   const f = fakeEnv();
   const mk = (sel: string, l: number, t: number, r: number, b: number) => {
-    const o = { sel, rect: { left: l, top: t, right: r, bottom: b }, getBoundingClientRect: () => o.rect };
+    const o = {
+      sel,
+      rect: { left: l, top: t, right: r, bottom: b },
+      getBoundingClientRect: () => o.rect,
+    };
     f.els.push(o);
     return o;
   };
@@ -194,7 +266,8 @@ test('geometry: page-relative boxes, kinds by first matching selector, cap and r
   assert.equal(g.update(150), true);
   assert.equal(g.count, 2);
   const t = g.table;
-  const rowOf = (kind: number): number => [0, 1].map((i) => i * ROW_WORDS).find((o) => ((t[o + 5] as number) & 255) === kind) as number;
+  const rowOf = (kind: number): number =>
+    [0, 1].map((i) => i * ROW_WORDS).find((o) => ((t[o + 5] as number) & 255) === kind) as number;
   assert.equal(t[rowOf(1) + 5], 1 | (1 << 8), 'heading kind 1, in viewport');
   assert.equal(t[rowOf(1) + 1], 10);
   assert.equal(t[rowOf(1) + 2], 70, 'page y = viewport y + scroll');
@@ -221,7 +294,8 @@ test('geometry: page-relative boxes, kinds by first matching selector, cap and r
 /** The Sentinel and its host, headless. */
 const SPEC = LIVE_PROGRAMS[0] as (typeof LIVE_PROGRAMS)[number];
 async function sentinel(): Promise<{ make: () => LiveProgram }> {
-  const program = (await link(`site/${SPEC.entry}`, (f) => readFile(f, 'utf8'), { root: '.' })).program;
+  const program = (await link(`site/${SPEC.entry}`, (f) => readFile(f, 'utf8'), { root: '.' }))
+    .program;
   const bytes = wasmModuleBytes(
     compile(program, 'wasm', {
       ioInputCapacity: SPEC.inputWords,
@@ -315,29 +389,97 @@ function step(d: Drive, o: Partial<FrameInput> & { flags?: number } = {}): void 
 const S = (p: LiveProgram): Uint32Array => p.stateWords();
 const body = (p: LiveProgram): { x: number; y: number; vx: number; vy: number } => {
   const s = S(p);
-  return { x: fromQ16(s[1] as number), y: fromQ16(s[2] as number), vx: fromQ16(s[3] as number), vy: fromQ16(s[4] as number) };
+  return {
+    x: fromQ16(s[1] as number),
+    y: fromQ16(s[2] as number),
+    vx: fromQ16(s[3] as number),
+    vy: fromQ16(s[4] as number),
+  };
 };
-const tent = (p: LiveProgram, k: number): { state: number; nj: number; seg: number; joints: [number, number][]; ax: number; ay: number; rid: number } => {
+const tent = (
+  p: LiveProgram,
+  k: number,
+): {
+  state: number;
+  nj: number;
+  seg: number;
+  joints: [number, number][];
+  ax: number;
+  ay: number;
+  rid: number;
+} => {
   const s = S(p);
   const b = 96 + k * 96;
   const nj = s[b + 1] as number;
   const joints: [number, number][] = [];
-  for (let j = 0; j < nj; j += 1) joints.push([fromQ16(s[b + 32 + 6 * j] as number), fromQ16(s[b + 33 + 6 * j] as number)]);
-  return { state: s[b] as number, nj, seg: fromQ16(s[b + 8] as number), joints, ax: fromQ16(s[b + 23] as number), ay: fromQ16(s[b + 24] as number), rid: s[b + 2] as number };
+  for (let j = 0; j < nj; j += 1)
+    joints.push([fromQ16(s[b + 32 + 6 * j] as number), fromQ16(s[b + 33 + 6 * j] as number)]);
+  return {
+    state: s[b] as number,
+    nj,
+    seg: fromQ16(s[b + 8] as number),
+    joints,
+    ax: fromQ16(s[b + 23] as number),
+    ay: fromQ16(s[b + 24] as number),
+    rid: s[b + 2] as number,
+  };
 };
 
 test('sentinel: asks the host to watch page elements, once, by kind', async () => {
   const { make } = await sentinel();
   const prog = make();
   const w = prog.frame(
-    { dt: 16, flags: FLAG.first | FLAG.pointer, vw: 1280, vh: 800, scrollX: 0, scrollY: 0, dpr: 1, pointerX: 1, pointerY: 1, pointerType: 1, tapSeq: 0, tapX: 0, tapY: 0, tapRect: null, costUs: 0, intervalUs: 16667, docHeight: 0, timeMs: 0, generation: 0 },
+    {
+      dt: 16,
+      flags: FLAG.first | FLAG.pointer,
+      vw: 1280,
+      vh: 800,
+      scrollX: 0,
+      scrollY: 0,
+      dpr: 1,
+      pointerX: 1,
+      pointerY: 1,
+      pointerType: 1,
+      tapSeq: 0,
+      tapX: 0,
+      tapY: 0,
+      tapRect: null,
+      costUs: 0,
+      intervalUs: 16667,
+      docHeight: 0,
+      timeMs: 0,
+      generation: 0,
+    },
     new Uint32Array(SPEC.rows * ROW_WORDS),
     0,
   );
-  assert.deepEqual(w.watches.map((x) => x.kind), [1, 3, 4, 2, 5, 6]);
+  assert.deepEqual(
+    w.watches.map((x) => x.kind),
+    [1, 3, 4, 2, 5, 6],
+  );
   assert.ok(w.watches.every((x) => x.selector.length > 0));
   const second = prog.frame(
-    { dt: 16, flags: FLAG.pointer, vw: 1280, vh: 800, scrollX: 0, scrollY: 0, dpr: 1, pointerX: 1, pointerY: 1, pointerType: 1, tapSeq: 0, tapX: 0, tapY: 0, tapRect: null, costUs: 0, intervalUs: 16667, docHeight: 0, timeMs: 16, generation: 0 },
+    {
+      dt: 16,
+      flags: FLAG.pointer,
+      vw: 1280,
+      vh: 800,
+      scrollX: 0,
+      scrollY: 0,
+      dpr: 1,
+      pointerX: 1,
+      pointerY: 1,
+      pointerType: 1,
+      tapSeq: 0,
+      tapX: 0,
+      tapY: 0,
+      tapRect: null,
+      costUs: 0,
+      intervalUs: 16667,
+      docHeight: 0,
+      timeMs: 16,
+      generation: 0,
+    },
     new Uint32Array(SPEC.rows * ROW_WORDS),
     0,
   );
@@ -368,7 +510,10 @@ test('sentinel: pursues the pointer with inertia, keeps its distance, tentacles 
   const dist = Math.hypot(b.x - 900, b.y - 500);
   assert.ok(dist > 50 && dist < 130, `settles 60-120px from the pointer, got ${dist.toFixed(1)}`);
   assert.ok(Math.hypot(b.vx, b.vy) < 25, 'comes to rest');
-  assert.ok(maxSpeed > 150 && maxSpeed < 2300, `accelerates with a bounded speed (${maxSpeed.toFixed(0)})`);
+  assert.ok(
+    maxSpeed > 150 && maxSpeed < 2300,
+    `accelerates with a bounded speed (${maxSpeed.toFixed(0)})`,
+  );
   void overshoot;
   for (let k = 0; k < 8; k += 1) {
     const t = tent(d.prog, k);
@@ -377,7 +522,10 @@ test('sentinel: pursues the pointer with inertia, keeps its distance, tentacles 
       const [ax, ay] = t.joints[j] as [number, number];
       const [bx, by] = t.joints[j + 1] as [number, number];
       const len = Math.hypot(bx - ax, by - ay);
-      assert.ok(len > t.seg * 0.45 && len < t.seg * 1.9, `segment ${k}.${j} length ${len.toFixed(1)} vs ${t.seg.toFixed(1)}`);
+      assert.ok(
+        len > t.seg * 0.45 && len < t.seg * 1.9,
+        `segment ${k}.${j} length ${len.toFixed(1)} vs ${t.seg.toFixed(1)}`,
+      );
     }
   }
   // personalities differ (not synchronized)
@@ -429,7 +577,8 @@ test('sentinel: tentacles attach to the boundary of real page elements, follow s
   d.sy += 12;
   step(d, { pointerX: 400, pointerY: 300, scrollY: d.sy });
   const moved = tent(d.prog, k);
-  if (moved.state === 2 && moved.rid === before.rid) assert.ok(Math.abs(moved.ay - (before.ay - 12)) < 1.5, 'anchor shifted with the page');
+  if (moved.state === 2 && moved.rid === before.rid)
+    assert.ok(Math.abs(moved.ay - (before.ay - 12)) < 1.5, 'anchor shifted with the page');
   // when its element disappears from the table, the tentacle lets go
   d.boxes = d.boxes.filter((b) => b.id !== before.rid);
   d.gen += 1;
@@ -443,31 +592,51 @@ test('sentinel: tentacles attach to the boundary of real page elements, follow s
 test('sentinel: touch scrolling suspends pursuit; a tap reaches toward the element; reduced motion is still', async () => {
   const { make } = await sentinel();
   const d = drive(make(), pageBoxes());
-  for (let i = 0; i < 200; i += 1) step(d, { pointerType: 3, flags: FLAG.pointer | FLAG.coarse, pointerX: 600, pointerY: 300 });
+  for (let i = 0; i < 200; i += 1)
+    step(d, { pointerType: 3, flags: FLAG.pointer | FLAG.coarse, pointerX: 600, pointerY: 300 });
   const idle = body(d.prog);
   // a finger goes down and the page scrolls under it: the body keeps wandering, it does not chase
   for (let i = 0; i < 120; i += 1) {
     d.sy += 6;
-    step(d, { pointerType: 3, flags: FLAG.pointer | FLAG.down | FLAG.coarse, pointerX: 100 + i, pointerY: 700, scrollY: d.sy });
+    step(d, {
+      pointerType: 3,
+      flags: FLAG.pointer | FLAG.down | FLAG.coarse,
+      pointerX: 100 + i,
+      pointerY: 700,
+      scrollY: d.sy,
+    });
   }
   const scrolled = body(d.prog);
-  assert.ok(Math.hypot(scrolled.x - 220, scrolled.y - 700) > 100, 'does not follow a scrolling finger');
+  assert.ok(
+    Math.hypot(scrolled.x - 220, scrolled.y - 700) > 100,
+    'does not follow a scrolling finger',
+  );
   void idle;
   // a tap on a control: tentacles reach for it (visual only)
   const ctl = d.boxes.find((b) => b.kind === 4 && b.y0 > d.sy && b.y1 < d.sy + 700) as Box;
-  for (let i = 0; i < 100; i += 1) step(d, { pointerType: 3, scrollY: d.sy, pointerX: ctl.x0 - 60, pointerY: ctl.y0 - d.sy });
-  step(d, { pointerType: 3, scrollY: d.sy, tapSeq: 1, tapX: (ctl.x0 + ctl.x1) / 2, tapY: (ctl.y0 + ctl.y1) / 2 - d.sy, tapRect: [ctl.x0, ctl.y0, ctl.x1, ctl.y1] });
+  for (let i = 0; i < 100; i += 1)
+    step(d, { pointerType: 3, scrollY: d.sy, pointerX: ctl.x0 - 60, pointerY: ctl.y0 - d.sy });
+  step(d, {
+    pointerType: 3,
+    scrollY: d.sy,
+    tapSeq: 1,
+    tapX: (ctl.x0 + ctl.x1) / 2,
+    tapY: (ctl.y0 + ctl.y1) / 2 - d.sy,
+    tapRect: [ctl.x0, ctl.y0, ctl.x1, ctl.y1],
+  });
   let toward = 0;
   for (let i = 0; i < 40; i += 1) {
     step(d, { pointerType: 3, scrollY: d.sy, tapSeq: 1 });
-    for (let k = 0; k < 8; k += 1) if (tent(d.prog, k).rid === ctl.id && tent(d.prog, k).state > 0) toward += 1;
+    for (let k = 0; k < 8; k += 1)
+      if (tent(d.prog, k).rid === ctl.id && tent(d.prog, k).state > 0) toward += 1;
   }
   assert.ok(toward > 0, 'a nearby tentacle reached for the tapped element');
   // reduced motion: the first frame settles the pose, later frames change nothing
   const r = drive(make(), pageBoxes());
   step(r, { flags: FLAG.first | FLAG.reduced });
   const a = Array.from(S(r.prog));
-  for (let i = 0; i < 30; i += 1) step(r, { flags: FLAG.reduced, pointerX: 100 + i * 20, pointerY: 100 });
+  for (let i = 0; i < 30; i += 1)
+    step(r, { flags: FLAG.reduced, pointerX: 100 + i * 20, pointerY: 100 });
   assert.deepEqual(Array.from(S(r.prog)), a, 'reduced motion: no pursuit, no crawling');
 });
 
@@ -483,7 +652,11 @@ test('sentinel: deterministic, and never writes outside its output', async () =>
   step(d);
   const inWords = Array.from(d.prog.words.subarray(0, 32 + SPEC.rows * ROW_WORDS));
   for (let i = 0; i < 60; i += 1) step(d, { pointerX: 500, pointerY: 200 });
-  assert.deepEqual(Array.from(d.prog.words.subarray(32, 32 + SPEC.rows * ROW_WORDS)), inWords.slice(32), 'the geometry table is read only');
+  assert.deepEqual(
+    Array.from(d.prog.words.subarray(32, 32 + SPEC.rows * ROW_WORDS)),
+    inWords.slice(32),
+    'the geometry table is read only',
+  );
   // the shell asks for the sizes the program was built with
   const html = await readFile('site/index.html', 'utf8');
   assert.ok(html.includes(`data-live="/${SPEC.name}.wasm"`));
