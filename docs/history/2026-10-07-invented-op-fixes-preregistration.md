@@ -39,7 +39,7 @@ Harness `tools/ai-edit-experiment.ts` (one robustness change in this commit: aft
 - `V3new`: the same prompts, new fixes on.
 - `V4new`: `A0_EXPERIMENT_PRIMER=rules-merged`, `A0_EXPERIMENT_GUIDE=experiments/primers/lazy/V4.txt`, `A0_LAZY_HINTS=on`, new fixes on.
 
-Pairing (registered now): `V3old` and `V3new` have byte-identical prompts, so **one set of first replies per model serves both** (30 x 2 = 60 V3 first replies), and `V4new` has its own (60). Subjects are fresh Haiku and Sonnet subagents (the Agent tool's `model`), one subagent per prompt, given only the dumped prompt file, the subagent prompt of `docs/history/2026-10-07-primer-shrink-preregistration.md` unchanged; at most 20 at once. Repairs: for every first reply the harness rejects, one fresh subagent of the same model gets the conversation so far and the exact rejection (`tools/ai-edit-subjects.ts repair`). For `V3old` and `V3new` the rejection text of a task is compared: when identical, the one repair reply serves both arms; when it differs (a new rule or hint fired), each arm gets its own fresh repair subject. Budget: 120 first-reply subjects and their repair subjects; no other subject. Files are scored once, after every expected reply file exists. Incidents: a subject refused by a safeguard gets the identical prompt once more; a missing reply is asked once more identically, then a failure; a prompt is never reworded.
+Pairing (registered now): `V3old` and `V3new` have byte-identical prompts, so **one set of first replies per model serves both** (30 x 2 = 60 V3 first replies), and `V4new` has its own (60). Subjects are fresh Haiku and Sonnet subagents (the Agent tool's `model`), one subagent per prompt, given only the dumped prompt file, the subagent prompt of `docs/history/2026-10-07-primer-shrink-preregistration.md` unchanged; at most 20 at once. Repairs: for every first reply the harness rejects, one fresh subagent of the same model gets the conversation so far and the exact rejection (`tools/ai-edit-subjects.ts repair`). For `V3old` and `V3new` the rejection text of a task is compared: when identical, the one repair reply serves both arms; when it differs (a new rule or hint fired), each arm gets its own fresh repair subject. Budget: 120 first-reply subjects and their repair subjects; no other subject. Files are scored once, after every expected reply file exists. Incidents: a subject refused by a safeguard gets the identical prompt once more; a missing reply is asked once more identically, then a failure; a prompt is never reworded. (claim-ok: counts of subjects, not measurements)
 
 ## Rule (fixed now)
 
@@ -59,3 +59,25 @@ bun tools/ai-edit-subjects.ts prompts <dump> <dir>; collect; run per arm (A0_NEW
 bun tools/ai-edit-subjects.ts repair <report> <dump> <dir> <outdir>; collect; run again into results/invented-ops/report.aa.<model>.<arm>.json
 bun tools/invented-ops-summary.ts
 ```
+
+## Result (collected after the rule above was committed; `results/invented-ops-fixes.json`, `tools/invented-ops-summary.ts`, reports, dumps and scripted replies in `results/invented-ops/`)
+
+120 fresh first-reply subagents (30 tasks, Haiku and Sonnet, prompts `V3` and `V4`; launches refused only by the 20-subagent limit were started again identically) and 25 fresh repair subagents (Haiku `V3` 12, Sonnet `V3` 1, Haiku `V4` 10, Sonnet `V4` 2). No subject was refused or missing. Scored once after every reply existed. Because the rejection texts of `V3old` and `V3new` were byte-identical for every rejected task (no new rule fired on any V3 first reply), the repair replies were shared, as registered.
+
+| model | arm | system o200k | one shot | accepted after repair | calls per task | cold | 10-task (primary) | unbounded |
+|---|---|---|---|---|---|---|---|---|
+| Haiku | V3old | 293 | 18 of 30 | 22 | 1.40 | 813.5 | 382.0 | 334.0 |
+| Haiku | V3new | 293 | 18 | 22 | 1.40 | 813.5 | 382.0 | 334.0 |
+| Haiku | V4new | 137 | 20 | 25 | 1.33 | 457.0 | 279.5 | 259.8 |
+| Sonnet | V3old | 293 | 29 | 30 | 1.03 | 507.3 | 190.9 | 155.7 |
+| Sonnet | V3new | 293 | 29 | 30 | 1.03 | 507.3 | 190.9 | 155.7 |
+| Sonnet | V4new | 137 | 28 | 30 | 1.07 | 321.2 | 173.2 | 156.8 |
+
+**Registered rule, as evaluated:** both candidates pass on both models (`decision.ships` = `V4new`, the cheaper of the two). `V3new` ties `V3old` exactly (no flips): the new rules changed nothing on any recorded V3 rejection. `V4new` gains five Haiku tasks (`aa-stock-days`, `aa-keyrow-digit`, `aa-change-due`, `aa-stamped-payment`, `aa-span-puts`) and loses two (`aa-traffic-cycle`, `aa-invoice-prefix`); Sonnet has no flips.
+
+**What this does and does not show, none of it hidden.**
+- None of the new rules (`symbol`, `chain`, `not`, `max`, `min`, the named hints) fired in any rejection of this run; the only invented op written was `mod` (Haiku, `aa-shift-starts`, `aa-traffic-cycle`), which the older `mod` rule already fixed. The `V4new` result therefore is not an effect of the new fixes. It is the V4 text against the V3 text on a fresh set.
+- It contradicts the earlier registered run of the same two texts on set Z (`results/primer-v4.json`: Haiku accepted 21 against 26, rule not met). Pooling Z and AA, Haiku accepts 46 (V4) against 48 (V3) of 62 and Sonnet 61 against 61; the two sets disagree in sign, so n = 30 per cell cannot rank the texts. The unregistered pooling is arithmetic on recorded values. (claim-ok: arithmetic on results/primer-v4.json and results/invented-ops-fixes.json)
+- The replay (`results/invented-ops-replay.json`) predicted the null result for the fixes; it did not predict V4's pass.
+
+**What shipped.** The new exact fixes and hints stay in the tree, on by default (`A0_NEW_FIXES` unset): they cost no tokens unless a model writes the names, and the run found no harm. The primer text was **not** changed in this commit, although the registered rule selects `V4new`: shipping V4 means replacing `MODEL_GUIDE.min.txt`, turning `A0_LAZY_HINTS` on by default, `bun run sync-skill`, and regenerating the site and `deploy/` files that embed the primer (`deploy/primer.txt`, `llms*.txt`), which this track may not edit, on a tree where `sitegen.test` and the site entries of the spec golden already disagree after the last merge. The decision is left to the owner with the evidence above (the rule is met on set AA, was not met on set Z).
