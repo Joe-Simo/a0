@@ -14,10 +14,13 @@ Edits: the reference solutions of the 14 sealed tasks of `tools/app-edit-tasks.t
    committed one (max 63861 ms). tsc moved 2.0 s to 3.9 s. A0's in-process numbers moved 12 ms to 14 ms (edit median).
    So: the A0 vs tsgo ratio in the committed file is inflated by contention. Do not quote tsc or tsgo ratios until the
    report is regenerated on a quiet machine (the CI workflow's runners, or this box idle).
-2. `EditSession.apply` is NOT O(function) today. `src/edit.ts` `commit()` calls `validate()` (`src/core.ts`), which
-   re-validates every function of the program. Measured: an edit costs about half a cold open (median 13.8 ms vs 22.7 ms
-   in the quiet-ish run), the saving being the parse and the session reuse. The design point "latency is O(function)" is
-   therefore a claim about the design, not about the shipped code. Do not state it as measured.
+2. `EditSession.apply` validates incrementally since the commit that added `results/edit-incremental.json`.
+   The committed reports below (`check-latency-*.json`) were recorded BEFORE that change: their A0 edit rows are the whole-program
+   re-validation (median 13.8 ms vs 22.7 ms cold open in the quiet-ish run). Until they are regenerated, quote the A0 edit time only
+   from `results/edit-incremental.json` (same program, same 14 edits, before and after in one interleaved run, load max
+   4.09 on 8 CPUs, win32-x64): median over the 14 edits 7.24 ms before, 1.82 ms after, 3.98x (`summary.speedupMedian`;
+   per-edit minimum 3.33x, `summary.speedupMin`). An edit retypes only the edited functions and their transitive callers
+   (3 to 9 of 106 functions, `edits[].retyped`).
 3. A0 numbers are in process (no process start); tsc, tsgo, tsc-rs are fresh processes (as hyperfine times them). The
    report therefore also has `a0.coldOpenProcess`: the whole front end validated in a fresh node process.
 4. Not run here: tsc-rs (npm ships Linux x64 and macOS arm64 binaries only; the workflow runs it), `bun check` (bun
@@ -52,11 +55,27 @@ That is why it must be regenerated before it is quoted.
 Every number needs the load next to it (`load.max`, `load.source`) and the platform. Do not claim "O(function)" and do not
 drop the whole-front-end row.
 
-## Where A0 does not win, and the general fix
+## Incremental validation (done) and where the time goes now
 
-No verdict is a loss. The gap that matters is the design claim: apply re-validates the whole program. The general fix is
-incremental validation in `validate()`: keep each function's typed result, and on an edit re-validate only the edited
-function and the functions that call it transitively (functions are ordered callee first, so everything above the edit is
-untouched and a function below it only changes when a callee's typed signature changed). Then apply would be O(function plus
-dependents) and the "lines checked" count per edit would drop from 4103 to the edited function's dependency cone
-(`a0.edits[].viewLines` is the size of the view the model sees). That change is not made here.
+`validate` (src/core.ts) reuses a function's typed result by identity when the function is a typed result of an earlier
+`validate` (a WeakMap of results `validate` itself produced: a spread copy is never trusted), under the same profile, and every
+function it resolved by name (callees, loop predicates, the callees of `pre` and `post`) is the same object in the new program.
+Edited functions are typed again; so are their transitive callers, because a caller holds its callee's typed object (its
+`calls`, iteration bounds and spec runs depend on it). An added, deleted or renamed function, and a reorder that moves a callee
+below its caller, change what a name resolves to, so the callers are typed again and fail exactly as before. No early cutoff on
+an unchanged signature: that is a possible further saving, not made. The result equals a full validation:
+`test/incremental-validate.test.ts` compares the typed program (canonical text, order, revisions, types, calls, iteration
+bounds, profile) and, on failure, every field of the diagnostic, against a validation of the same functions with all typings
+removed, for about 2,400 random edits of corpus and example programs (rename, rename with callers, body, op, signature, result,
+delete, add, reorder, move, broken and later callee, drop a spec, profile switch, rebuilt copy), 600 more over linked compiler
+programs and a spec program, and the 14 reference (and 14 wrong) replies on the real front end; it was checked to fail when the
+callee check is removed.
+
+Where the remaining ~1.8 ms goes (CPU profile of 400 applies, whole loop including session setup): hashing the whole program text
+for the program-handle revision check (SHA-256 of 79 KB, about 20 %; the revision is the hash of the canonical text, so it cannot
+be made incremental without changing every revision), re-typing the dependency cone (11 %), the garbage collector, and the token
+counter used by the benchmark harness (not part of apply). Formatting every function and hashing every function revision was
+the first hotspot (about 35 % of the profile once validation was incremental); canonical text, function revision and program
+revision are now remembered per immutable object (`formatFunction`, `revision`, `programRevision`).
+Speedups before that second change were 2.0x to 4.4x (median 2.4x, load max 8); with it 3.3x to 7.4x. Emission is untouched
+(no COMPILER_VERSION change).
