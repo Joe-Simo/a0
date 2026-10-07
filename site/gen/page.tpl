@@ -28,6 +28,7 @@ f hw results/hardware.json
 f tokfx results/tokens.json
 f b48 results/ai-edit-b48-dense.json
 f densetok results/dense-tokens.json
+f ver results/verification.json
 # Cost rows, in order: representation -> results file kind and label.
 m cost a0 min A0
 m cost ts min TypeScript
@@ -326,8 +327,8 @@ s 13 glsl
 }
 {sec_intro
 .div center
-=h2 Native speed. Verified edits. Every target.
-=p A model writes A0 directly. Nothing invalid lands. One source runs on every target, checked against one oracle.
+=h2 Native speed on small test programs. Edits checked before they land. Many targets.
+=p A model writes A0 directly. Nothing invalid lands: edits are checked before they land, and a rejected edit comes back with the fix (a checked edit can still be the wrong edit). One source runs on many targets, checked against one oracle (the Targets section gives the split).
 =p Binaries for Windows, macOS and Linux, no package manager: see Try it at the end of this page.
 >
 .div trio
@@ -356,7 +357,7 @@ s 13 glsl
 "$cmax_ratio$x
 >
 .p d
-"fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit-keys.json), with A0 shown only the functions the edit reaches and a one-line legend of the words a hash comparison stands for, it cost less per accepted edit than TypeScript on both Haiku and Sonnet; Sonnet had as many edits accepted as TypeScript (14 of 14), Haiku fewer (10 against 13); shown every signature of the program A0 cost more (results/app-edit.json).
+"fewer tokens per edit, against a whole-file workflow: TypeScript shown the whole numbered file in a 4000-function program, $cmax_acc$% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit-keys.json), with A0 shown only the functions the edit reaches and a one-line legend of the words a hash comparison stands for, it cost less per accepted edit than TypeScript on both Haiku and Sonnet; Sonnet had as many edits accepted as TypeScript (14 of 14), Haiku fewer (10 against 13); shown every signature of the program A0 cost more (results/app-edit.json).
 >
 >
 .div tcard hw reveal
@@ -376,8 +377,11 @@ s 13 glsl
 >
 }
 {sec_rail
-.div layout
+<div
++class layout
++id content
 .nav rail
++aria-label Sections
 .div rh
 "Benchmarks
 >
@@ -432,7 +436,7 @@ s 13 glsl
 {sec_native
 <section
 +id native
-=h2 Native speed
+=h2 Native speed on small test programs
 .p take
 "The slowest test program is $bk_slow$x slower on $bk_slowk$ against baselines with the same calling convention, and $rk_max$x slower on $rk_maxk$ against each language's own inlined driver. Same calling convention (A0 and the best of C, Rust and Zig, both called out of line): $bk_nwin$ wins, $bk_ntie$ ties, $bk_nloss$ losses of $bk_n$. Inlined drivers: $rk_nw2$ wins, $rk_nt2$ ties, $rk_nl2$ losses. Against hand-written C alone, A0 takes $c_ratio$x as long, a geometric mean over the test programs; 1.00x would be equal.
 >
@@ -442,7 +446,10 @@ s 13 glsl
 }
 {chart_both
 .div chart reveal
++role group
++aria-labelledby chart-1
 .p ct
++id chart-1
 "A0 under both baselines, per test program
 >
 .p take
@@ -453,6 +460,7 @@ s 13 glsl
 >
 .div tblwrap
 .table ops rank fit
+=caption Speed against the best of C, Rust and Zig and against each language's own inlined driver, per test program
 <tr
 =th Test program
 =th Same calling convention: speedup, verdict
@@ -480,7 +488,10 @@ s 13 glsl
 }
 {chart_bk
 .div chart reveal
++role group
++aria-labelledby chart-2
 .p ct
++id chart-2
 "A0 against the best of C, Rust and Zig, per test program
 >
 .p take
@@ -491,6 +502,7 @@ s 13 glsl
 >
 .div tblwrap
 .table ops rank fit
+=caption A0 time per call against the best of C, Rust and Zig, per test program
 <tr
 =th Test program
 =th A0 time per call
@@ -523,11 +535,14 @@ s 13 glsl
 }
 {rank_table
 .div chart reveal
++role group
++aria-labelledby chart-3
 .p ct
++id chart-3
 "Where A0 places on each test program
 >
 .p take
-"Fastest on $rk_nwin$ of $rk_nk$ test programs; on every one, A0 takes at most $rk_max$x as long as the fastest language.
+"First of the languages that ran each program on $rk_nwin$ of $rk_nk$ test programs (a language is timed only on the programs it has source for, so fewer languages ran the later programs); on every one, A0 takes at most $rk_max$x as long as the fastest language.
 >
 .p sub
 "Baseline: each language's own driver, inlined. Place 1 = fastest of the languages that ran that test program (every language ran the first ten; later ones only some). Time per call, median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
@@ -537,6 +552,7 @@ s 13 glsl
 >
 .div tblwrap
 .table ops rank fit
+=caption A0's place among the languages that ran each test program
 <tr
 =th Test program
 =th A0's place (1 = fastest)
@@ -584,7 +600,10 @@ c putratio %a
 }
 {chart_langs
 .div chart langs reveal
++role group
++aria-labelledby chart-4
 .p ct
++id chart-4
 "How long each language takes, as a multiple of A0's time
 >
 .p sub
@@ -671,7 +690,10 @@ c putratio %a
 }
 {chart_start
 .div chart langs reveal
++role group
++aria-labelledby chart-5
 .p ct
++id chart-5
 "Time from launch to first result
 >
 .p sub
@@ -750,7 +772,7 @@ c putfix %a
 +id tokens
 =h2 Tokens
 .p take
-"Writing the $n_k$ test programs, A0 (canonical) takes $tk_cv$ tokens: place $tk_cr$ of $n_langs1$ (1 = fewest), fewer than $tk_cw$ of the other $n_langs$ languages, equal to $tk_ct$ and more than $tk_cl$. A0 (dense) takes $tk_dv$: place $tk_dr$, fewer than $tk_dw$, equal to $tk_dt$, more than $tk_dl$; its lossless form, with the same ids and node order, takes $tk_dx$: place $tk_xr$.
+"Writing the $tk_nk$ token test programs, A0 (canonical) takes $tk_cv$ tokens: place $tk_cr$ of $n_langs1$ (1 = fewest), fewer than $tk_cw$ of the other $n_langs$ languages, equal to $tk_ct$ and more than $tk_cl$. A0 (dense) takes $tk_dv$: place $tk_dr$, fewer than $tk_dw$, equal to $tk_dt$, more than $tk_dl$; its lossless form, with the same ids and node order, takes $tk_dx$: place $tk_xr$. The dense totals are over the same $tk_nk$ programs (results/dense-tokens.json); the speed tests below time more programs ($bk_n$), but only $tk_nk$ of them are counted for tokens.
 >
 <p
 # claim-ok: a definition of why a token count matters, not a measured comparison; the counts are in results/lang-axes.json
@@ -759,8 +781,11 @@ c putfix %a
 }
 {chart_tk
 .div chart langs reveal
++role group
++aria-labelledby chart-6
 .p ct
-"Source tokens of the $n_k$ test programs, per language
++id chart-6
+"Source tokens of the $tk_nk$ token test programs, per language
 >
 .p sub
 "Sum over the test programs of the o200k tokens of each program as written in that language, shorter bar = fewer tokens. Bar length is proportional to the count.
@@ -832,7 +857,10 @@ c putnum %a
 }
 {chart_edit
 .div chart single reveal
++role group
++aria-labelledby chart-7
 .p ct
++id chart-7
 "Tokens to make one small edit, A0 against other languages
 >
 .p take
@@ -1002,7 +1030,10 @@ c putnum %h
 }
 {chart1
 .div chart single reveal
++role group
++aria-labelledby chart-8
 .p ct
++id chart-8
 "How A0 shrinks an edit: A0 reading a whole file vs A0's scoped view
 >
 .p take
@@ -1070,7 +1101,10 @@ c putratio %q
 }
 {chart_ec
 .div chart langs reveal
++role group
++aria-labelledby chart-9
 .p ct
++id chart-9
 "Edit cost across $n_langs1$ languages, with A0 in two forms
 >
 .p take
@@ -1148,6 +1182,7 @@ c putnum %a
 >
 .div tblwrap
 .table ops rank
+=caption A0 (canonical and dense) place and wins, ties and losses on each edit measure
 <tr
 =th Measure
 =th A0 (canonical): place
@@ -1179,6 +1214,7 @@ c putnum %a
 >
 .div tblwrap
 .table ops rank
+=caption Edit acceptance and token cost per subject
 <tr
 =th Subject
 =th Accepted first try
@@ -1257,7 +1293,10 @@ c putnum %a
 }
 {chart2
 .div chart reveal
++role group
++aria-labelledby chart-10
 .p ct
++id chart-10
 "Tokens a model reads and writes per edit, by program size, Sonnet
 >
 .p sub
@@ -1325,7 +1364,10 @@ c putratio %q
 [csz
 {cost_$cz_size$
 .div chart langs reveal
++role group
++aria-labelledby chart-size-$cz_size$
 .p ct
++id chart-size-$cz_size$
 "Edits in a $cz_size$-function program: tokens read and written, $cz_n$ languages{cz_loss| (a loss for A0)}
 >
 .p take
@@ -1358,6 +1400,7 @@ c putnum %a
 ]
 .div tblwrap
 .table ops rank
+=caption Tokens per edit, by language
 <tr
 =th Language
 =th Primer (instructions)
@@ -1429,7 +1472,10 @@ c putratio %a
 }
 {chart_ck
 .div chart langs reveal
++role group
++aria-labelledby chart-12
 .p ct
++id chart-12
 "Time to check one edited test program
 >
 .p take
@@ -1505,7 +1551,10 @@ c putfix %a
 }
 {chart_cr
 .div chart langs reveal
++role group
++aria-labelledby chart-13
 .p ct
++id chart-13
 "Time to check and run one edited test program
 >
 .p take
@@ -1581,7 +1630,10 @@ c putfix %a
 }
 {chart_val
 .div chart langs reveal
++role group
++aria-labelledby chart-14
 .p ct
++id chart-14
 "Model edits: time from a reply to a type-checked program
 >
 .p take
@@ -1643,7 +1695,10 @@ c putfix %a
 }
 {chart_par
 .div chart langs reveal
++role group
++aria-labelledby chart-15
 .p ct
++id chart-15
 "Each implementation's time as a multiple of A0 --parallel's, per test program
 >
 .p sub
@@ -1776,7 +1831,7 @@ c putratio %a
 <section
 +id targets
 =h2 Targets
-=p One source, 5262 oracle cases, every target.
+=p One source, checked against one oracle: $vr_nfull$ paths (the interpreter, the optimizer, JavaScript, native C, C++, WebAssembly and the JVM) ran all $vr_full$ generated cases; the native assembly targets ran the $vr_part$ cases that need no io ($vr_npart$ targets); SystemVerilog is simulated separately on $hw_cases$ cases and is unverified in this run ($vr_nskip$ target).
 .div grid four
 .div card reveal
 =h3 AArch64
@@ -1840,12 +1895,12 @@ c putratio %a
 >
 .div card reveal
 =h3 How is correctness checked?
-=p A BigInt oracle runs 5262 generated cases through every backend, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized.
+=p A BigInt oracle runs $vr_full$ generated cases through the backends that run io programs and $vr_part$ through the native assembly ones, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized.
 >
 >
 =h3 Not yet
 .div limits
-=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written. Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
+=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to $bk_slow$x behind the best of C, Rust and Zig (the $bk_slowk$ kernel). Emitted JavaScript slower than hand-written. Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
 >
 =h3 Try it
 .pre code

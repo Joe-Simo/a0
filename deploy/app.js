@@ -77,6 +77,7 @@ const TAGS = {
     27: 'textarea',
     28: 'details',
     29: 'summary',
+    30: 'caption',
 };
 const ATTRS = {
     1: 'id',
@@ -86,6 +87,10 @@ const ATTRS = {
     5: 'placeholder',
     6: 'aria-label',
     7: 'title',
+    8: 'aria-labelledby',
+    9: 'role',
+    10: 'scope',
+    11: 'aria-hidden',
 };
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -144,6 +149,7 @@ void main(){gl_Position=vec4(a,0.,1.);}`;
 function mountShader(el, fragment) {
     const canvas = document.createElement('canvas');
     canvas.className = 'scene';
+    canvas.setAttribute('aria-hidden', 'true');
     el.appendChild(canvas);
     const gl = canvas.getContext('webgl2', { antialias: false, alpha: true });
     if (gl === null)
@@ -219,7 +225,11 @@ function mountShader(el, fragment) {
     let last = 0;
     const loop = (now) => {
         // 30 frames per second is enough for the scene and halves the GPU time.
-        if (visible && !document.hidden && now - last >= 33) {
+        if (document.hidden) {
+            frame = 0;
+            return;
+        }
+        if (visible && now - last >= 33) {
             last = now;
             draw();
         }
@@ -234,6 +244,12 @@ function mountShader(el, fragment) {
     ro.observe(el);
     addEventListener('pointermove', onMove, { passive: true });
     let live = true;
+    // The loop stops while the tab is hidden and restarts when it is shown again.
+    const onVis = () => {
+        if (live && !still && !document.hidden && frame === 0)
+            frame = requestAnimationFrame(loop);
+    };
+    document.addEventListener('visibilitychange', onVis);
     void glyphAtlas().then((atlas) => {
         if (!live || atlas === null)
             return;
@@ -247,6 +263,7 @@ function mountShader(el, fragment) {
         ro.disconnect();
         live = false;
         removeEventListener('pointermove', onMove);
+        document.removeEventListener('visibilitychange', onVis);
         gl.getExtension('WEBGL_lose_context')?.loseContext();
     });
 }
@@ -271,6 +288,8 @@ function render(root, styleEl, words, onEvent, inputText) {
         switch (cmd) {
             case 1: {
                 const el = document.createElement(TAGS[words[i++]] ?? 'div');
+                if (el.tagName === 'TH')
+                    el.setAttribute('scope', 'col');
                 top.appendChild(el);
                 stack.push(el);
                 break;

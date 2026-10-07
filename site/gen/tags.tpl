@@ -32,5 +32,10 @@ m attr type 4
 m attr placeholder 5
 m attr aria-label 6
 m attr title 7
+m attr aria-labelledby 8
+m attr role 9
+m attr scope 10
+m attr aria-hidden 11
+m tag caption 30
 m tag details 28
 m tag summary 29

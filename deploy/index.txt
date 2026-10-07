@@ -1,8 +1,8 @@
 A0
 for AI
 
-Native speed. Verified edits. Every target.
-A model writes A0 directly. Nothing invalid lands. One source runs on every target, checked against one oracle.
+Native speed on small test programs. Edits checked before they land. Many targets.
+A model writes A0 directly. Nothing invalid lands: edits are checked before they land, and a rejected edit comes back with the fix (a checked edit can still be the wrong edit). One source runs on many targets, checked against one oracle (the Targets section gives the split).
 Binaries for Windows, macOS and Linux, no package manager: see Try it at the end of this page.
 
 Native
@@ -13,20 +13,20 @@ faster than Python and 6x faster than JavaScript: geometric mean of time per cal
 Edits
 Made by models
 203.8x
-fewer tokens per edit than TypeScript shown the whole numbered file in a 4000-function program, 100% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit-keys.json), with A0 shown only the functions the edit reaches and a one-line legend of the words a hash comparison stands for, it cost less per accepted edit than TypeScript on both Haiku and Sonnet; Sonnet had as many edits accepted as TypeScript (14 of 14), Haiku fewer (10 against 13); shown every signature of the program A0 cost more (results/app-edit.json).
+fewer tokens per edit, against a whole-file workflow: TypeScript shown the whole numbered file in a 4000-function program, 100% accepted (Sonnet). That compares A0's scoped view with a whole-file workflow; with scoped views for both the gap is small (see Cost). On a one-function file A0 costs more. Editing a real front end (14 tasks, results/app-edit-keys.json), with A0 shown only the functions the edit reaches and a one-line legend of the words a hash comparison stands for, it cost less per accepted edit than TypeScript on both Haiku and Sonnet; Sonnet had as many edits accepted as TypeScript (14 of 14), Haiku fewer (10 against 13); shown every signature of the program A0 cost more (results/app-edit.json).
 
 Hardware
 Gates and cycles
 55530
 generic cells for the 48 corpus functions in A0's clocked SystemVerilog, simulated on 5262 oracle cases; optimizer proved equivalent with Z3.
 
- Native speed
+ Native speed on small test programs
 The slowest test program is 4.31x slower on mat4 against baselines with the same calling convention, and 7.58x slower on mat4 against each language's own inlined driver. Same calling convention (A0 and the best of C, Rust and Zig, both called out of line): 2 wins, 9 ties, 8 losses of 19. Inlined drivers: 2 wins, 9 ties, 8 losses. Against hand-written C alone, A0 takes 1.16x as long, a geometric mean over the test programs; 1.00x would be equal.
 Every speed result below uses the same test programs, 19 in all. A test program is one small function (benchmark authors call it a kernel), written by hand in every language and timed on the same inputs; each result is checked against a checksum before it is timed. A0 here is machine code from A0's own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between. Measured with a load gate: the 1-minute load average stayed at or below 10 (highest at a sample start: 9.78).
 A0 under both baselines, per test program
 Same calling convention: 2 wins, 9 ties, 8 losses of 19, slowest 4.31x on mat4. Each language's own inlined driver: 2 wins, 9 ties, 8 losses, slowest 7.58x on mat4.
 Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Inlined: each language's fastest result with its own driver, which the compiler can inline. Speedup = the baseline's time divided by A0's: below 1.00x A0 is slower. Win = at least 1.2x faster; loss = more than 10% slower; the file gives verdicts only for the first baseline, the second uses the same win rule and a 10% tie band (results/exec-benchmark-full.json).
-Test program — Same calling convention: speedup, verdict — Own inlined driver: speedup, verdict
+Speed against the best of C, Rust and Zig and against each language's own inlined driver, per test programTest program — Same calling convention: speedup, verdict — Own inlined driver: speedup, verdict
 affine — 0.63x loss — 0.60x loss
 rotl — 0.99x tie — 0.99x tie
 clamp — 0.69x loss — 0.68x loss
@@ -52,7 +52,7 @@ Every loss under either baseline is in bold. A0's code is called out of line fro
 A0 against the best of C, Rust and Zig, per test program
 2 wins, 9 ties and 8 losses of 19; the slowest is 4.31x slower on mat4. A win needs A0 at least 1.2x faster; a loss is slower beyond the tie band.
 Baseline: same calling convention, both called out of line. Speedup = the best other time divided by A0's time: above 1.00x A0 is faster, below 1.00x A0 is slower. The best other is the fastest of C -O3 with the native CPU, Rust opt-level 3 with the native CPU and Zig ReleaseFast. Median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
-Test program — A0 time per call — Best of C, Rust, Zig — Speedup, verdict (below 1.00x = A0 slower)
+A0 time per call against the best of C, Rust and Zig, per test programTest program — A0 time per call — Best of C, Rust, Zig — Speedup, verdict (below 1.00x = A0 slower)
 affine — 8.27 ns — Zig ReleaseFast, 5.19 ns — 0.63x loss
 rotl — 3.27 ns — C -O3 native, 3.25 ns — 0.99x tie
 clamp — 7.01 ns — Zig ReleaseFast, 4.82 ns — 0.69x loss
@@ -76,10 +76,10 @@ filter2 — 323.62 ns — C -O3 native, 652.33 ns — 2.02x win
 A0's code is called out of line from a C driver, so each iteration pays a real call; the other languages' drivers are inlined. That favours the baselines, and the losses above include it. results/exec-benchmark-full.json.
 
 Where A0 places on each test program
-Fastest on 4 of 19 test programs; on every one, A0 takes at most 7.58x as long as the fastest language.
+First of the languages that ran each program on 4 of 19 test programs (a language is timed only on the programs it has source for, so fewer languages ran the later programs); on every one, A0 takes at most 7.58x as long as the fastest language.
 Baseline: each language's own driver, inlined. Place 1 = fastest of the languages that ran that test program (every language ran the first ten; later ones only some). Time per call, median of 7 interleaved runs, every result checksum-verified (results/exec-benchmark-full.json).
 measured: 49 of 49 languages
-Test program — A0's place (1 = fastest) — Fastest language other than A0 — A0 takes this many times as long
+A0's place among the languages that ran each test programTest program — A0's place (1 = fastest) — Fastest language other than A0 — A0 takes this many times as long
 affine — 21 of 49 — Vala, 4.93 ns — 1.68x (A0 is slower)
 rotl — 3 of 49 — Rust, 3.25 ns — 1.01x (A0 is slower)
 clamp — 15 of 49 — Julia, 4.81 ns — 1.46x (A0 is slower)
@@ -495,9 +495,9 @@ Groovy
 Shown first: A0 and the best-known languages; all 48 are behind the disclosure, in the same order. The A0 binary for startup is the C-path build; startup of the direct AArch64 binary is not yet measured.
 
 Tokens
-Writing the 19 test programs, A0 (canonical) takes 559 tokens: place 41 of 49 (1 = fewest), fewer than 8 of the other 48 languages, equal to 0 and more than 40. A0 (dense) takes 202: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 286: place 1.
+Writing the 10 token test programs, A0 (canonical) takes 559 tokens: place 41 of 49 (1 = fewest), fewer than 8 of the other 48 languages, equal to 0 and more than 40. A0 (dense) takes 202: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 286: place 1. The dense totals are over the same 10 programs (results/dense-tokens.json); the speed tests below time more programs (19), but only 10 of them are counted for tokens.
 A token is the unit a model reads and writes. Fewer tokens for the same program means less to read, write and pay for. The count below is the source of the same test programs in each language, with the o200k tokenizer. Both forms of A0 are plotted and highlighted. Dense is the same program in a shorter surface form; it converts losslessly to the canonical form. How many tokens a whole edit costs, measured with real models, is in the Cost section.
-Source tokens of the 19 test programs, per language
+Source tokens of the 10 token test programs, per language
 Sum over the test programs of the o200k tokens of each program as written in that language, shorter bar = fewer tokens. Bar length is proportional to the count.
 measured: 49 of 49 languages
 A0 (canonical and dense) compiled JIT or VM interpreted
@@ -956,14 +956,14 @@ COBOL
 Gleam
 499 tok
 
-Measure — A0 (canonical): place — A0 (canonical): cheaper than, equal to, dearer than — A0 (dense): place — A0 (dense): cheaper than, equal to, dearer than
+A0 (canonical and dense) place and wins, ties and losses on each edit measureMeasure — A0 (canonical): place — A0 (canonical): cheaper than, equal to, dearer than — A0 (dense): place — A0 (dense): cheaper than, equal to, dearer than
 one-shot — 21 of 49 (13 tied) — 15, 13, 20 — 1 of 49 (5 tied) — 43, 5, 0
 after repair — 1 of 49 (33 tied) — 15, 33, 0 — 1 of 49 (33 tied) — 15, 33, 0
 cost 1 — 1 of 49 (0 tied) — 48, 0, 0 — 1 of 49 (0 tied) — 48, 0, 0
 cost 10 — 12 of 49 (1 tied) — 36, 1, 11 — 1 of 49 (0 tied) — 48, 0, 0
 cost inf — 24 of 49 (3 tied) — 22, 3, 23 — 1 of 49 (0 tied) — 48, 0, 0
 
-Subject — Accepted first try — Accepted after one repair — Primer — Tokens read — Tokens written — Session of 1 task — Session of 10 tasks — Long session
+Edit acceptance and token cost per subjectSubject — Accepted first try — Accepted after one repair — Primer — Tokens read — Tokens written — Session of 1 task — Session of 10 tasks — Long session
 A0 (canonical) — 22 of 24 — 24 of 24 — 118 — 115 — 33 — 311 — 184 — 170
 A0 (dense) — 24 of 24 — 24 of 24 — 145 — 70 — 23 — 274 — 117 — 100
 
@@ -1035,7 +1035,7 @@ C++
 A0
 688 tok
 
-Language — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
+Tokens per edit, by languageLanguage — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
 A0 — 550 — 104 — 34 — 688 — 1.00x — 100% — 100%
 TypeScript — 159 — 98 — 28 — 284 — 0.41x — 100% — 92%
 Rust — 178 — 97 — 25 — 300 — 0.44x — 100% — 100%
@@ -1060,7 +1060,7 @@ TypeScript
 Rust
 2278 tok
 
-Language — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
+Tokens per edit, by languageLanguage — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
 A0 — 550 — 590 — 34 — 1174 — 1.00x — 100% — 92%
 TypeScript — 159 — 1966 — 28 — 2152 — 1.83x — 100% — 75%
 Rust — 178 — 2075 — 26 — 2278 — 1.94x — 100% — 92%
@@ -1095,7 +1095,7 @@ TypeScript
 Rust
 14372 tok
 
-Language — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
+Tokens per edit, by languageLanguage — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
 A0 — 550 — 122 — 34 — 706 — 1.00x — 100% — 83%
 TypeScript — 159 — 14102 — 28 — 14289 — 20.2x — 100% — 67%
 Rust — 178 — 14169 — 26 — 14372 — 20.3x — 100% — 58%
@@ -1120,7 +1120,7 @@ Rust
 TypeScript
 143854 tok
 
-Language — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
+Tokens per edit, by languageLanguage — Primer (instructions) — Code read — Reply written — Total tokens — Total as a multiple of A0's — Sonnet edits accepted — Haiku edits accepted
 A0 — 550 — 123 — 34 — 706 — 1.00x — 100% — 92%
 TypeScript — 159 — 143666 — 29 — 143854 — 203x — 100% — 92%
 Rust — 178 — 143276 — 26 — 143479 — 203x — 100% — 83%
@@ -1747,7 +1747,7 @@ median mean cycles across clocked modules
 most mean cycles, any clocked module
 
 Targets
-One source, 5262 oracle cases, every target.
+One source, checked against one oracle: 10 paths (the interpreter, the optimizer, JavaScript, native C, C++, WebAssembly and the JVM) ran all 5262 generated cases; the native assembly targets ran the 4297 cases that need no io (5 targets); SystemVerilog is simulated separately on 5262 cases and is unverified in this run (1 target).
 AArch64
 A0's own code generator, no C in between
 
@@ -1789,10 +1789,10 @@ Can a wrong program run forever?
 Literal iteration counts are bounded statically. Variable counts are bounded by fuel in the reference interpreter; compiled targets have no execution budget, so a variable count runs as long as it says. io output is bounded by the caller's buffer, and there is no heap or recursion.
 
 How is correctness checked?
-A BigInt oracle runs 5262 generated cases through every backend, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized.
+A BigInt oracle runs 5262 generated cases through the backends that run io programs and 4297 through the native assembly ones, Z3 proves the optimizer equivalent to the source on all 48 corpus functions, and hardware is simulated and synthesized.
 
 Not yet
-No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 1.4x behind clang on array and loop kernels. Emitted JavaScript slower than hand-written. Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
+No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to 4.31x behind the best of C, Rust and Zig (the mat4 kernel). Emitted JavaScript slower than hand-written. Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
 
 Try it
 # one binary, no package manager
