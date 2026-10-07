@@ -22,6 +22,7 @@ import {
   isProfileEdit,
   isValidIdentifier,
   type Node,
+  type Type,
   type TypedFunc,
   type TypedProgram,
 } from './core.js';
@@ -50,7 +51,7 @@ interface EditCtx {
   readonly program: TypedProgram;
   readonly arities: ReadonlyMap<string, number>;
   readonly fnNames: ReadonlySet<string>;
-  readonly target: { readonly nodes: readonly Node[] };
+  readonly target: { readonly nodes: readonly Node[]; readonly params: readonly Type[] };
   /** Ids in use: the function's nodes, the edit's own and every id generated so far. */
   readonly taken: Set<string>;
   /** Ids that edit lines defined (a later line may refer to them). */
@@ -90,6 +91,7 @@ function translateEditLine(text: string, ctx: EditCtx): string[] {
     ctx.fnNames,
     new Set([...ctx.target.nodes.map((n) => n.id), ...ctx.defined]),
   );
+  fp.paramTypes = ctx.target.params;
   const s = fp.statement(tokens, 1, undefined);
   const root = fp.nodes.length - 1;
   const created = s.value.kind === 'node' && s.value.id.startsWith('\u0000');
@@ -187,6 +189,9 @@ export function denseEditBody(
     for (const key of [...arities.keys()])
       if (new RegExp(`^${name}_[0-9]+$`).test(key)) arities.delete(key);
   }
+  const signatures = new Map(
+    program.functions.map((f) => [f.name, { params: f.params, result: f.result }] as const),
+  );
   const parsed = new Map<number, Func[]>();
   let pending = blocks.map((_, i) => i);
   let firstError: unknown;
@@ -198,6 +203,8 @@ export function denseEditBody(
         const p = parseDense((blocks[i] as string[]).join('\n'), {
           known: arities,
           names: new Set(names),
+          signatures,
+          shadowing: true,
         });
         parsed.set(i, [...p.functions]);
         for (const f of p.functions) arities.set(f.name, f.params.length);

@@ -778,6 +778,10 @@ export class FunctionParser {
   line = 0;
   toks: Tok[] = [];
   pos = 0;
+  /** Parameter types of the function the statements belong to, when known (resolves `io`, see `lenientWord`). */
+  paramTypes: readonly Type[] | undefined;
+  /** Edit replies only: a name written again shadows the earlier value instead of being a duplicate id. */
+  shadowing = false;
 
   constructor(
     readonly arities: Arities,
@@ -1020,6 +1024,12 @@ export class FunctionParser {
     }
     if (/^[A-Z]$/.test(w)) return { kind: 'param', index: w.charCodeAt(0) - 65 };
     if (PARAM_WORD.test(w)) return { kind: 'param', index: Number(w.slice(1)) };
+    // Hexadecimal and binary literals (`0x5F`, `0b101`): input only, the printer writes decimal.
+    if (/^0[xX][0-9a-fA-F]+$/.test(w) || /^0[bB][01]+$/.test(w)) {
+      const value = Number(w);
+      if (value > U32_MAX) fail(`literal ${w} exceeds u32`, this.line);
+      return { kind: 'u32', value };
+    }
     if (w.startsWith('$')) {
       const k = this.names.get(w.slice(1));
       if (k === undefined)
@@ -1045,11 +1055,35 @@ export class FunctionParser {
     const local = this.names.get(w);
     if (local !== undefined) return this.ref(local);
     if (this.external.has(w)) return { kind: 'node', id: w };
+    const lenient = this.lenientWord(w);
+    if (lenient !== undefined) return lenient;
     return fail(
       `'${w}' is not an operation, a function, or a named value defined above`,
       this.line,
       `parameters are written A, B, C by position (no names); use an operation, a function defined above, or name a value first (\`${w} op ...\` on its own line)`,
     );
+  }
+
+  /**
+   * What models write for a value the text has no word for, read only after every defined name,
+   * function and operation has been tried (so a program that uses these words as ids or function names is
+   * read as before, and the printer's output, which never writes them, is unchanged):
+   *   - `s` and `i`: the state and the step index of a fold or loop body, parameters A and B
+   *     (the primer writes `fold F n s a..: s=F(s,i,a..)`);
+   *   - `io`: the one parameter of type io, when the function's parameter types are known and exactly one is io;
+   *   - `mod`: `rem`.
+   */
+  private lenientWord(w: string): Operand | undefined {
+    if (w === 's') return { kind: 'param', index: 0 };
+    if (w === 'i') return { kind: 'param', index: 1 };
+    if (w === 'io') {
+      const types = this.lam?.paramTypes ?? this.paramTypes;
+      const at = types?.flatMap((t, k) => (t === 'io' ? [k] : [])) ?? [];
+      if (at.length === 1) return { kind: 'param', index: at[0] as number };
+      return undefined;
+    }
+    if (w === 'mod') return this.operation('rem');
+    return undefined;
   }
 
   private operation(op: Op): Operand {
@@ -1144,7 +1178,13 @@ export class FunctionParser {
             !TYPE_LIKE.test(t0.text) &&
             !this.fnNames.has(t0.text) &&
             !this.arities.has(t0.text) &&
-            denseOp(t0.text) === undefined))
+            denseOp(t0.text) === undefined &&
+            // `mod A 4` is the remainder (see `lenientWord`); `mod add A 1` still names a value `mod`
+            !(
+              t0.text === 'mod' &&
+              !this.names.has('mod') &&
+              !(t1.kind === 'word' && (denseOp(t1.text) !== undefined || this.fnNames.has(t1.text)))
+            )))
       ) {
         name = t0.text;
         this.pos += 1;
@@ -1173,10 +1213,20 @@ export class FunctionParser {
           line,
           `to name a value write \`${name} OP ...\` (for example \`${name} add A 1\`); to call a function it must be defined above`,
         );
-      if (this.names.has(name)) fail(`duplicate id '${name}'`, line);
       const k = this.nodes.length - 1;
+      // A name written again shadows the earlier value from this line on (the right-hand side above has already
+      // read the old one): the new node gets a fresh id, the earlier node keeps its own. Input only.
+      let id = name;
+      if (this.names.has(name) && !this.shadowing) fail(`duplicate id '${name}'`, line);
+      if (this.names.has(name)) {
+        const used = new Set(this.explicit.filter((e): e is string => e !== undefined));
+        let n = 2;
+        while (used.has(`${name}_${n}`) || this.names.has(`${name}_${n}`)) n += 1;
+        id = `${name}_${n}`;
+        if (!isValidIdentifier(id)) fail(`duplicate id '${name}'`, line);
+      }
       this.names.set(name, k);
-      this.explicit[k] = name;
+      this.explicit[k] = id;
     }
     const k = value.kind === 'node' ? this.nodes.length - 1 : -1;
     if (comments !== undefined && k >= 0 && this.nodes.length > before && !ret)
@@ -1335,7 +1385,34 @@ export function parseDenseExpression(
   return comments === undefined ? node : { ...node, comments };
 }
 
+/**
+ * Parameters a header lists by their letters (`fn month A B C`): at least two, in order from `A`. That is no
+ * expression (`A B C` leaves operands over), so it can only be the parameter list a reader of a mathematical
+ * definition writes; the function has that many parameters and the letters are not part of the body. A lone
+ * letter stays the body (`fn id A`).
+ */
+function declaredParams(rest: string): number {
+  const letters = rest.split(/[\s,]+/);
+  if (letters.length < 2 || !letters.every((l, i) => l === String.fromCharCode(65 + i))) return 0;
+  return letters.length;
+}
+
 export interface DenseParseOptions {
+  /**
+   * Edit replies (the edit protocol sets it): a name written again shadows the earlier value from that line on,
+   * the new value getting a fresh id. A whole source file keeps the duplicate id error.
+   */
+  readonly shadowing?: boolean;
+  /**
+   * Signatures of functions the text may redefine (the edit protocol passes the program's): a header that
+   * writes no types and no `->` keeps the parameter types and result of the function it replaces when its
+   * body uses exactly as many parameters as that function has (the last one is used, so the count is not in
+   * doubt). Absent: a header without types is all `u32`.
+   */
+  readonly signatures?: ReadonlyMap<
+    string,
+    { readonly params: readonly Type[]; readonly result: Type }
+  >;
   /** Functions defined outside the text (`use`d files): name to parameter count. */
   readonly known?: Arities;
   /** More function names that exist but whose parameter count is not known yet. */
@@ -1413,7 +1490,9 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
         it.line,
         'statements belong inside a function: start it with `fn NAME`',
       );
-    const head = parseDenseHeader(it.text.slice(2).trim(), it.line);
+    const written = parseDenseHeader(it.text.slice(2).trim(), it.line);
+    const declared = declaredParams(written.rest);
+    const head = declared > 0 ? { ...written, rest: '' } : written;
     if (functions.some((f) => f.name === head.name) || arities.has(head.name))
       fail(`duplicate function '${head.name}'`, it.line);
     const lifted: Func[] = [];
@@ -1425,6 +1504,9 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
       nested: false,
       counter: { n: 0 },
     });
+    fp.shadowing = options.shadowing === true;
+    if (head.params === undefined && !head.arrow)
+      fp.paramTypes = options.signatures?.get(head.name)?.params;
     const stmts: { value: Operand; ret: boolean; line: number; comments?: Comments }[] = [];
     let endComments: Comments | undefined;
     const body: { text: string; line: number; comments?: Comments }[] = [];
@@ -1498,11 +1580,16 @@ export function parseDense(source: string, options: DenseParseOptions = {}): Pro
     see(ret);
     const spec = specs.build();
     for (const e of [spec?.pre, spec?.post]) e?.args.forEach(see);
-    const params = head.params ?? new Array<Type>(needed).fill('u32');
+    needed = Math.max(needed, declared);
+    const replaced =
+      head.params === undefined && !head.arrow ? options.signatures?.get(head.name) : undefined;
+    const inherits = replaced !== undefined && replaced.params.length === needed;
+    const params =
+      head.params ?? (inherits ? [...replaced.params] : new Array<Type>(needed).fill('u32'));
     if (params.length > LIMITS.maxParams) fail('too many parameters', it.line);
     // A result that is not written (no `->`) is the type of the last statement: a reply that returns a bool or an
     // aggregate needs no `-> bool`; a u32 result is unchanged, and a written result is never second-guessed.
-    let result = head.result;
+    let result = inherits ? replaced.result : head.result;
     if (!head.arrow) {
       const inferred = typerFor({ name: head.name, params, result, nodes, ret }, sigs)(ret);
       if (inferred !== undefined) result = inferred;
