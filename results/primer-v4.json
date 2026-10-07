@@ -1,0 +1,446 @@
+{
+  "generatedAt": "2026-10-07T15:45:30.157Z",
+  "tool": "tools/primer-compare-summary.ts",
+  "preRegistration": "docs/history/2026-10-07-primer-v4-lazy-preregistration.md",
+  "taskSetSha256": {
+    "z": "489da36acd7197b54961221162be9780afa5d200c6138c8d5dc4b12b2f5d1b25"
+  },
+  "meaning": "Primer V4 (the lazy primer, 137 tokens, with the lazy hints on) against the shipped V3 (244, hints off) on sealed set Z (32 tasks: loop, text, io, helper-before-caller, plain), A0 canonical, structured protocol, fresh Haiku and Sonnet subagents, one shot plus one repair.",
+  "primerTokensO200k": {
+    "V3": 244,
+    "V4": 137
+  },
+  "baseline": "V3",
+  "variant": "V4",
+  "marginTasks": 1,
+  "perSetMarginTasks": null,
+  "cells": {
+    "z/haiku/V3": {
+      "n": 32,
+      "system": 293,
+      "oneShot": {
+        "k": 21,
+        "ci95": [
+          0.483,
+          0.796
+        ]
+      },
+      "accepted": {
+        "k": 26,
+        "ci95": [
+          0.647,
+          0.911
+        ]
+      },
+      "callsPerTask": 1.34,
+      "tokensPerAcceptedEdit": {
+        "task1": 738.2,
+        "session10": 348.7,
+        "unbounded": 305.4
+      },
+      "notAccepted": [
+        {
+          "task": "z-ammo-volley",
+          "first": "structure: volley.r: unknown loop body 'shoot' (must be defined earlier) fix: 'shoot' is no function defined above volley: add a `fn shoot ...` block that defin"
+        },
+        {
+          "task": "z-light-wait",
+          "first": "wait(0,1) = 0, expected 1"
+        },
+        {
+          "task": "z-job-warmup",
+          "first": "jobsdone(2,2,2,2,9) = 8, expected 3"
+        },
+        {
+          "task": "z-bracket-rounds",
+          "first": "type: rounds.b argument 0: expected u32x2, got (u32,u32) fix: replace the operand at rounds.b argument 0 with a value of type u32x2"
+        },
+        {
+          "task": "z-meter-usage",
+          "first": "edit: f: cannot delete unknown node 'j'"
+        },
+        {
+          "task": "z-door-agree",
+          "first": "type: f.b: parameter p1 out of range fix: f has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn f ...` block with the parameter in its si"
+        }
+      ]
+    },
+    "z/haiku/V4": {
+      "n": 32,
+      "system": 137,
+      "oneShot": {
+        "k": 14,
+        "ci95": [
+          0.282,
+          0.607
+        ]
+      },
+      "accepted": {
+        "k": 21,
+        "ci95": [
+          0.483,
+          0.796
+        ]
+      },
+      "callsPerTask": 1.56,
+      "tokensPerAcceptedEdit": {
+        "task1": 692.9,
+        "session10": 467.5,
+        "unbounded": 442.4
+      },
+      "notAccepted": [
+        {
+          "task": "z-ammo-volley",
+          "first": "edit: line 9: duplicate edit for 'jz' fix: a reply edits each node once: keep the one line for 'jz' you mean, or give the other node its own id and use that id "
+        },
+        {
+          "task": "z-indent-width",
+          "first": "edit: line 10: duplicate edit for 'i' fix: a reply edits each node once; for two successive updates give the first its own id: write `i1 mov 0`, then `i add i1 "
+        },
+        {
+          "task": "z-light-wait",
+          "first": "structure: tick.d: unknown callee 'mod' (callees must be defined earlier; recursion is unsupported) fix: write `d rem …`: the remainder op is `rem` (on u32 it i"
+        },
+        {
+          "task": "z-job-warmup",
+          "first": "jobsdone(2,2,2,2,9) = 8, expected 3"
+        },
+        {
+          "task": "z-bracket-rounds",
+          "first": "parse: line 20: invalid node identifier 'loop:' fix: write 'loop': a node id has no colon"
+        },
+        {
+          "task": "z-meter-usage",
+          "first": "type: f.d: expected u32, got io fix: replace the operand at f.d with a value of type u32; sub a b: u32 u32 -> u32, wraps mod 2^32"
+        },
+        {
+          "task": "z-tagged-pair",
+          "first": "structure: relay.d: 'a' is used after `at` took its io field 1; its token would be used twice fix: read the other fields first, or put the token back with `put "
+        },
+        {
+          "task": "z-door-agree",
+          "first": "type: f.e: expected u32, got io fix: replace the operand at f.e with a value of type u32; eq a b: two u32 or two bool -> bool"
+        },
+        {
+          "task": "z-box-cost",
+          "first": "boxes(0) = 2863311532, expected 0"
+        },
+        {
+          "task": "z-lucky-roll",
+          "first": "type: is_mult_of_7.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the funct"
+        },
+        {
+          "task": "z-clock-end",
+          "first": "endtime(1430,20) = 1450, expected 10"
+        }
+      ]
+    },
+    "pooled/haiku/V3": {
+      "n": 32,
+      "system": 293,
+      "oneShot": {
+        "k": 21,
+        "ci95": [
+          0.483,
+          0.796
+        ]
+      },
+      "accepted": {
+        "k": 26,
+        "ci95": [
+          0.647,
+          0.911
+        ]
+      },
+      "callsPerTask": 1.34,
+      "tokensPerAcceptedEdit": {
+        "task1": 738.2,
+        "session10": 348.7,
+        "unbounded": 305.4
+      },
+      "notAccepted": [
+        {
+          "task": "z:z-ammo-volley",
+          "first": "structure: volley.r: unknown loop body 'shoot' (must be defined earlier) fix: 'shoot' is no function defined above volley: add a `fn shoot ...` block that defin"
+        },
+        {
+          "task": "z:z-light-wait",
+          "first": "wait(0,1) = 0, expected 1"
+        },
+        {
+          "task": "z:z-job-warmup",
+          "first": "jobsdone(2,2,2,2,9) = 8, expected 3"
+        },
+        {
+          "task": "z:z-bracket-rounds",
+          "first": "type: rounds.b argument 0: expected u32x2, got (u32,u32) fix: replace the operand at rounds.b argument 0 with a value of type u32x2"
+        },
+        {
+          "task": "z:z-meter-usage",
+          "first": "edit: f: cannot delete unknown node 'j'"
+        },
+        {
+          "task": "z:z-door-agree",
+          "first": "type: f.b: parameter p1 out of range fix: f has 1 parameter (p0..p0): use one of them, or add the parameter with a `fn f ...` block with the parameter in its si"
+        }
+      ]
+    },
+    "pooled/haiku/V4": {
+      "n": 32,
+      "system": 137,
+      "oneShot": {
+        "k": 14,
+        "ci95": [
+          0.282,
+          0.607
+        ]
+      },
+      "accepted": {
+        "k": 21,
+        "ci95": [
+          0.483,
+          0.796
+        ]
+      },
+      "callsPerTask": 1.56,
+      "tokensPerAcceptedEdit": {
+        "task1": 692.9,
+        "session10": 467.5,
+        "unbounded": 442.4
+      },
+      "notAccepted": [
+        {
+          "task": "z:z-ammo-volley",
+          "first": "edit: line 9: duplicate edit for 'jz' fix: a reply edits each node once: keep the one line for 'jz' you mean, or give the other node its own id and use that id "
+        },
+        {
+          "task": "z:z-indent-width",
+          "first": "edit: line 10: duplicate edit for 'i' fix: a reply edits each node once; for two successive updates give the first its own id: write `i1 mov 0`, then `i add i1 "
+        },
+        {
+          "task": "z:z-light-wait",
+          "first": "structure: tick.d: unknown callee 'mod' (callees must be defined earlier; recursion is unsupported) fix: write `d rem …`: the remainder op is `rem` (on u32 it i"
+        },
+        {
+          "task": "z:z-job-warmup",
+          "first": "jobsdone(2,2,2,2,9) = 8, expected 3"
+        },
+        {
+          "task": "z:z-bracket-rounds",
+          "first": "parse: line 20: invalid node identifier 'loop:' fix: write 'loop': a node id has no colon"
+        },
+        {
+          "task": "z:z-meter-usage",
+          "first": "type: f.d: expected u32, got io fix: replace the operand at f.d with a value of type u32; sub a b: u32 u32 -> u32, wraps mod 2^32"
+        },
+        {
+          "task": "z:z-tagged-pair",
+          "first": "structure: relay.d: 'a' is used after `at` took its io field 1; its token would be used twice fix: read the other fields first, or put the token back with `put "
+        },
+        {
+          "task": "z:z-door-agree",
+          "first": "type: f.e: expected u32, got io fix: replace the operand at f.e with a value of type u32; eq a b: two u32 or two bool -> bool"
+        },
+        {
+          "task": "z:z-box-cost",
+          "first": "boxes(0) = 2863311532, expected 0"
+        },
+        {
+          "task": "z:z-lucky-roll",
+          "first": "type: is_mult_of_7.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the funct"
+        },
+        {
+          "task": "z:z-clock-end",
+          "first": "endtime(1430,20) = 1450, expected 10"
+        }
+      ]
+    },
+    "z/sonnet/V3": {
+      "n": 32,
+      "system": 293,
+      "oneShot": {
+        "k": 29,
+        "ci95": [
+          0.758,
+          0.968
+        ]
+      },
+      "accepted": {
+        "k": 31,
+        "ci95": [
+          0.843,
+          0.994
+        ]
+      },
+      "callsPerTask": 1.09,
+      "tokensPerAcceptedEdit": {
+        "task1": 539.8,
+        "session10": 213.2,
+        "unbounded": 176.9
+      },
+      "notAccepted": [
+        {
+          "task": "z-job-warmup",
+          "first": "jobsdone(2,2,2,2,9) = 8, expected 3"
+        }
+      ]
+    },
+    "z/sonnet/V4": {
+      "n": 32,
+      "system": 137,
+      "oneShot": {
+        "k": 24,
+        "ci95": [
+          0.579,
+          0.867
+        ]
+      },
+      "accepted": {
+        "k": 31,
+        "ci95": [
+          0.843,
+          0.994
+        ]
+      },
+      "callsPerTask": 1.25,
+      "tokensPerAcceptedEdit": {
+        "task1": 360.1,
+        "session10": 207.3,
+        "unbounded": 190.4
+      },
+      "notAccepted": [
+        {
+          "task": "z-lucky-roll",
+          "first": "type: is7.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with "
+        }
+      ]
+    },
+    "pooled/sonnet/V3": {
+      "n": 32,
+      "system": 293,
+      "oneShot": {
+        "k": 29,
+        "ci95": [
+          0.758,
+          0.968
+        ]
+      },
+      "accepted": {
+        "k": 31,
+        "ci95": [
+          0.843,
+          0.994
+        ]
+      },
+      "callsPerTask": 1.09,
+      "tokensPerAcceptedEdit": {
+        "task1": 539.8,
+        "session10": 213.2,
+        "unbounded": 176.9
+      },
+      "notAccepted": [
+        {
+          "task": "z:z-job-warmup",
+          "first": "jobsdone(2,2,2,2,9) = 8, expected 3"
+        }
+      ]
+    },
+    "pooled/sonnet/V4": {
+      "n": 32,
+      "system": 137,
+      "oneShot": {
+        "k": 24,
+        "ci95": [
+          0.579,
+          0.867
+        ]
+      },
+      "accepted": {
+        "k": 31,
+        "ci95": [
+          0.843,
+          0.994
+        ]
+      },
+      "callsPerTask": 1.25,
+      "tokensPerAcceptedEdit": {
+        "task1": 360.1,
+        "session10": 207.3,
+        "unbounded": 190.4
+      },
+      "notAccepted": [
+        {
+          "task": "z:z-lucky-roll",
+          "first": "type: is7.ret: expected u32, got bool fix: return a u32 value (`select c 1 0` turns a bool c into a u32), or change the declared result: send the function with "
+        }
+      ]
+    }
+  },
+  "flipsAgainstBaseline": {
+    "haiku": {
+      "gained": [],
+      "lost": [
+        "z:z-indent-width",
+        "z:z-tagged-pair",
+        "z:z-box-cost",
+        "z:z-lucky-roll",
+        "z:z-clock-end"
+      ]
+    },
+    "sonnet": {
+      "gained": [
+        "z:z-job-warmup"
+      ],
+      "lost": [
+        "z:z-lucky-roll"
+      ]
+    }
+  },
+  "preRegisteredRule": {
+    "haiku": {
+      "primaryHorizon": "session10",
+      "baseline": {
+        "accepted": 26,
+        "cost": 348.7
+      },
+      "variant": {
+        "accepted": 21,
+        "cost": 467.5
+      },
+      "perSet": {
+        "z": {
+          "base": 26,
+          "variant": 21
+        }
+      },
+      "acceptanceHeld": false,
+      "everySetHeld": true,
+      "cheaper": false,
+      "pass": false
+    },
+    "sonnet": {
+      "primaryHorizon": "session10",
+      "baseline": {
+        "accepted": 31,
+        "cost": 213.2
+      },
+      "variant": {
+        "accepted": 31,
+        "cost": 207.3
+      },
+      "perSet": {
+        "z": {
+          "base": 31,
+          "variant": 31
+        }
+      },
+      "acceptanceHeld": true,
+      "everySetHeld": true,
+      "cheaper": true,
+      "pass": true
+    }
+  },
+  "decision": {
+    "change": false
+  }
+}
