@@ -41,6 +41,8 @@ import { getEncoding } from 'js-tiktoken';
 import {
   formatDiagnostic,
   formatProgram,
+  isIoState,
+  makeIo,
   parse,
   parseAndValidate,
   run,
@@ -96,6 +98,7 @@ import { TASKS_U } from './ai-edit-tasks-u.js';
 import { TASKS_V } from './ai-edit-tasks-v.js';
 import { TASKS_W } from './ai-edit-tasks-w.js';
 import { TASKS_X } from './ai-edit-tasks-x.js';
+import { TASKS_Y } from './ai-edit-tasks-y.js';
 import {
   applyScoped,
   SCOPED_LANGS,
@@ -294,6 +297,12 @@ function fmt(v: Value): string {
   return typeof v === 'boolean' ? String(v) : String(v);
 }
 
+/** A test argument: `{ io: [words] }` becomes a fresh io token, anything else is the value itself. */
+function ioArgOf(a: Value): Value {
+  const io = (a as unknown as { io?: readonly number[] }).io;
+  return io !== undefined && !Array.isArray(a) ? makeIo(io) : a;
+}
+
 async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promise<string[]> {
   const failures: string[] = [];
   let program: ReturnType<typeof parseAndValidate>;
@@ -309,8 +318,18 @@ async function acceptA0(source: string, tests: readonly AcceptanceCase[]): Promi
       continue;
     }
     try {
-      const got = run(fn, t.args);
-      if (!sameValue(got, t.expected))
+      // io cases (set Y): an argument `{ io: [words] }` is a fresh io token over that input stream, and an
+      // expected `{ out: [words] }` is the output the returned token has accumulated.
+      const args = t.args.map((a) => ioArgOf(a));
+      const got = run(fn, args);
+      const want = (t.expected as unknown as { out?: readonly number[] }).out;
+      if (want !== undefined) {
+        const outWords = isIoState(got) ? got.output : undefined;
+        if (outWords === undefined || !sameValue(outWords, want))
+          failures.push(
+            `${t.fn}(${t.args.map((a) => JSON.stringify(a)).join(',')}) wrote ${JSON.stringify(outWords ?? null)}, expected ${JSON.stringify(want)}`,
+          );
+      } else if (!sameValue(got, t.expected))
         failures.push(
           `${t.fn}(${t.args.map(fmt).join(',')}) = ${fmt(got)}, expected ${fmt(t.expected)}`,
         );
@@ -1025,15 +1044,15 @@ async function main(): Promise<void> {
                                               rustSource: '',
                                               reference: { a0: t.reference.a0, ts: '', rust: '' },
                                             })) as unknown as readonly Task[])
-                                          : setName === 'x'
-                                            ? (TASKS_X.map((t) => ({
+                                          : setName === 'y'
+                                            ? (TASKS_Y.map((t) => ({
                                                 ...t,
                                                 tsSource: '',
                                                 rustSource: '',
                                                 reference: { a0: t.reference.a0, ts: '', rust: '' },
                                               })) as unknown as readonly Task[])
-                                            : setName === 'w'
-                                              ? (TASKS_W.map((t) => ({
+                                            : setName === 'x'
+                                              ? (TASKS_X.map((t) => ({
                                                   ...t,
                                                   tsSource: '',
                                                   rustSource: '',
@@ -1043,26 +1062,40 @@ async function main(): Promise<void> {
                                                     rust: '',
                                                   },
                                                 })) as unknown as readonly Task[])
-                                              : setName === 'g'
-                                                ? (TASKS_G as unknown as readonly Task[])
-                                                    .filter(
-                                                      (t) =>
-                                                        specVariant !== 'stale' ||
-                                                        (t as unknown as TaskG).specs.stale !==
-                                                          null,
-                                                    )
-                                                    .map(
-                                                      (t) =>
-                                                        specVariantOf(
-                                                          t as unknown as TaskG,
-                                                          specVariant,
-                                                        ) as unknown as Task,
-                                                    )
-                                                : scaled !== undefined
-                                                  ? buildTasksC(TASKS_A, TASKS_B, scaled)
-                                                  : setName === 'all'
-                                                    ? [...TASKS_A, ...(TASKS_B as readonly Task[])]
-                                                    : TASKS_A;
+                                              : setName === 'w'
+                                                ? (TASKS_W.map((t) => ({
+                                                    ...t,
+                                                    tsSource: '',
+                                                    rustSource: '',
+                                                    reference: {
+                                                      a0: t.reference.a0,
+                                                      ts: '',
+                                                      rust: '',
+                                                    },
+                                                  })) as unknown as readonly Task[])
+                                                : setName === 'g'
+                                                  ? (TASKS_G as unknown as readonly Task[])
+                                                      .filter(
+                                                        (t) =>
+                                                          specVariant !== 'stale' ||
+                                                          (t as unknown as TaskG).specs.stale !==
+                                                            null,
+                                                      )
+                                                      .map(
+                                                        (t) =>
+                                                          specVariantOf(
+                                                            t as unknown as TaskG,
+                                                            specVariant,
+                                                          ) as unknown as Task,
+                                                      )
+                                                  : scaled !== undefined
+                                                    ? buildTasksC(TASKS_A, TASKS_B, scaled)
+                                                    : setName === 'all'
+                                                      ? [
+                                                          ...TASKS_A,
+                                                          ...(TASKS_B as readonly Task[]),
+                                                        ]
+                                                      : TASKS_A;
   // What each protocol sends. Set C makes the asymmetry visible: the structured A0 cell
   // sends the scoped view of the target function plus the program's signature lines, while
   // the structured TypeScript and Rust cells send the whole numbered file, since locating
