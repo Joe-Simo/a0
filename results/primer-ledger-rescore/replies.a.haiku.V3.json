@@ -1,0 +1,80 @@
+{
+ "affine-sign/a0/conventional": [
+  "```code\nfn affine u32 u32 u32 -> u32\na mul p0 p1\nb sub a p2\nret b\nend\n```\n"
+ ],
+ "affine-sign/a0/structured": [
+  "b sub a p2\n"
+ ],
+ "clamp-both/a0/conventional": [
+  "```code\nfn clamp u32 u32 u32 -> u32\nc1 lt p0 p2\ntmp select c1 p0 p2\nc2 lt p1 tmp\nr select c2 tmp p1\nret r\nend\n```"
+ ],
+ "clamp-both/a0/structured": [
+  "fn clamp u32 u32 u32 -> u32\nc1 lt p2 p0\nr1 select c1 p2 p0\nc2 lt r1 p1\nr select c2 p1 r1\nret r\nend\n"
+ ],
+ "rotl-fix/a0/conventional": [
+  "```code\nfn rotl u32 u32 -> u32\nl shl p0 p1\nn sub 32 p1\nr shr p0 n\no or l r\nret o\nend\n```\n"
+ ],
+ "rotl-fix/a0/structured": [
+  "r shr p0 n\n"
+ ],
+ "add-cube/a0/conventional": [
+  "```code\nfn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn cube u32 -> u32\ns call sq p0\nr mul s p0\nret r\nend\n```\n"
+ ],
+ "add-cube/a0/structured": [
+  "fn cube u32 -> u32\nb call sq p0\nc mul b p0\nret c\nend\n"
+ ],
+ "absdiff/a0/conventional": [
+  "```code\nfn absdiff u32 u32 -> u32\nd1 sub p0 p1\nd2 sub p1 p0\ncmp lt p0 p1\nret select cmp d2 d1\nend\n```\n"
+ ],
+ "absdiff/a0/structured": [
+  "e sub p1 p0 @ d\nc ge p0 p1 @ e\nret select c d e\n"
+ ],
+ "xor4/a0/conventional": [
+  "```\nfn combine4 u32 u32 u32 u32 -> u32\na xor p0 p1\nb xor a p2\nc xor b p3\nret c\nend\n```\n"
+ ],
+ "xor4/a0/structured": [
+  "a xor p0 p1\nb xor a p2\nc xor b p3\n"
+ ],
+ "min3/a0/conventional": [
+  "```code\nfn min3 u32 u32 u32 -> u32\nt lt p1 p0\nm select t p1 p0\nr lt p2 m\nret select r p2 m\nend\n```\n"
+ ],
+ "min3/a0/structured": [
+  "-fn min2\nfn min3 u32 u32 u32 -> u32\nc1 lt p1 p0\nm1 select c1 p1 p0\nc2 lt p2 m1\nr select c2 p2 m1\nret r\nend\n"
+ ],
+ "sq-twice/a0/conventional": [
+  "```code\nfn sq u32 -> u32\na mul p0 p0\nret a\nend\n\nfn quad u32 -> u32\nx call sq p0\ny call sq x\nret y\nend\n```\n"
+ ],
+ "sq-twice/a0/structured": [
+  "y call sq x @ x\nret y\n"
+ ],
+ "sum-squares/a0/conventional": [
+  "```code\nfn sum_sq u32 u32 -> u32\nsq mul p1 p1\nres add p0 sq\nret res\nend\n\nfn sumto u32 -> u32\nr fold sum_sq p0 0\nret r\nend\n```\n"
+ ],
+ "sum-squares/a0/structured": [
+  "fn add_sq u32 u32 -> u32\nsq mul p1 p1\nres add p0 sq\nret res\nend\nfn sumto u32 -> u32\nresult fold add_sq p0 0\nret result\nend\n"
+ ],
+ "loop-inclusive/a0/conventional": [
+  "```\nfn inc u32 u32 u32 -> u32\ns add p0 1\nret s\nend\n\nfn below u32 u32 u32 -> bool\nc le p0 p2\nret c\nend\n\nfn countup u32 u32 -> u32\nr loop below inc p1 0 p0\nret r\nend\n```\n"
+ ],
+ "loop-inclusive/a0/structured": [
+  "c le p0 p2\n"
+ ],
+ "record-flag/a0/conventional": [
+  "```\nfn pick (u32,bool) -> u32\nv at p0 0\nf at p0 1\none add v 1\nresult select f one v\nret result\nend\n```\n"
+ ],
+ "record-flag/a0/structured": [
+  "f at p0 1 @ v\nv1 add v 1 @ f\nret select f v1 v\n"
+ ],
+ "byte-select/a0/conventional": [
+  "```code\nfn byte1 u32 -> u32\ns shr p0 16\nm and s 255\nret m\nend\n```"
+ ],
+ "byte-select/a0/structured": [
+  "s shr p0 16\n"
+ ],
+ "saturating-add/a0/conventional": [
+  "fn sadd u32 u32 -> u32\ns add p0 p1\ncheck lt s p0\nret select check 4294967295 s\nend\n"
+ ],
+ "saturating-add/a0/structured": [
+  "cond lt s p0 @ s\nret select cond 4294967295 s\n"
+ ]
+}

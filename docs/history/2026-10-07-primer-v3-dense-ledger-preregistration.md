@@ -83,3 +83,16 @@ Failure classes of the dense cells after the repair (class names of the failure 
 - misunderstood semantics (`y-tag-score`, `y-banner-letter`, `y-reorder-available`, `x-armor-hit`, Haiku `x-lift-load`, Sonnet `y-free-slot`): the same class as on canonical.
 
 Why it failed, and the next lever. The two dense-only classes (the name-for-`A` parameter and the value-used-twice line) are leniencies the parser does not offer, and the dense primer carries no clause for `loop`, `text`, io or `put`, so a set that needs them separates the forms (set X, which does not, nearly ties on Haiku). The next lever, to be measured on a new sealed set (set X and Y are used and not to be reused after a fix chosen from their failures): a dense parser leniency that reads a named parameter reference (`p0`, a declared name) as the positional letter and a repeated sub-expression as an implicit name, together with a dense primer that states `loop P F n s a...`, `text "s"` and the io linear token in the same 145 to 200 tokens (the canonical V3 carries only `fold` and no loop, so this adds clauses to a surface whose point is being short). It must pass the same rule on both models before the default changes.
+
+## Phase C result (collected after the rule above was committed; `results/primer-ledger-rescore.json`, `tools/primer-ledger-rescore-summary.ts`, reports and scripted replies in `results/primer-ledger-rescore/`)
+
+Set a (sealed, same SHA-256 as the headline files) was rerun in the A0 cells only, with the shipped 244-token primer V3: 26 first-reply fresh subagents per model (13 tasks, conventional and structured), 52 in total, one shot plus one repair; every reply was accepted on the first shot, so no repair subagent was needed (0 repair prompts for both models). Budget used over A to C: 112 + 120 + 52 = 284 first-reply subjects of the 400 pre-registered. Compared with the recorded TypeScript and Rust cells of the same headline files (not rerun).
+
+| model | protocol | A0 recorded | A0 with V3 | TypeScript recorded | Rust recorded | gap to TypeScript | gap to Rust |
+|---|---|---|---|---|---|---|---|
+| Haiku | conventional | 516.1 | 372.2 | 156.3 | 174.2 | +215.9 | +198.0 |
+| Haiku | structured | 552.8 | 392.6 | 222.2 | 251.4 | +170.4 | +141.2 |
+| Sonnet | conventional | 516.8 | 373.7 | 155.6 | 176.1 | +218.1 | +197.6 |
+| Sonnet | structured | 545.2 | 390.2 | 223.8 | 241.4 | +166.3 | +148.8 |
+
+Mean whole-task tokens per task at the cold task (the ledger's `ai-tokens` measure); accepted 13 of 13 in every A0 cell, as before. **No entry closes**: V3 saves 144 to 160 tokens per task (the shorter primer, with the same edits), and every A0 cell is still above both rivals by 141 to 218. The 8 set-a entries of the ledger therefore stay open with their evidence updated (`results/loss-blockers.json`), the other 36 `primer-paid-per-call` entries (sets b to f, c4000) are not rerun in this round and keep their recorded values, and `results/loss-ledger.json` is unchanged (`bun tools/loss-ledger.ts` passes: no loss added, none removed). The arithmetic bound used in the preregistration holds: a guide change of 151 tokens cannot close a gap of 300 or more; here the primer is not the whole of the gap on a single cold task (the protocol paragraph, the view and the output remain), as the cost anatomy says.
