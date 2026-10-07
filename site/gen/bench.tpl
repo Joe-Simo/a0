@@ -364,7 +364,7 @@ c nav
 >
 <tr
 =td WebAssembly
-=td Slower than clang on 8 of 19 test programs, and slower to compile and instantiate on 14; that ratio moved by up to 0.27 between two runs.
+=td Slower than clang on the test programs in the first WebAssembly table below, and slower to compile and instantiate on a further set counted in the ledger.
 =td results/wasm-benchmark.json, results/loss-ledger.json
 >
 <tr
@@ -374,7 +374,7 @@ c nav
 >
 <tr
 =td Tokens
-=td A0 costs more than TypeScript on single-function tasks: 377 of the recorded losses are kernel token counts, measured with OpenAI's o200k_base tokenizer, not a Claude tokenizer.
+=td A0 costs more than TypeScript on single-function tasks: most recorded losses are kernel token counts, measured with OpenAI's o200k_base tokenizer, not a Claude tokenizer.
 =td results/lang-axes.json, results/loss-ledger.json
 >
 <tr
@@ -1032,7 +1032,7 @@ c putfix %a
 >
 >
 .p cap
-"Load time (compile plus instantiate) is a separate result: A0 is slower than clang on 14 test programs, and that ratio moved by up to 0.27 between two runs. results/wasm-benchmark.json, results/loss-ledger.json.
+"Load time (compile plus instantiate) is a separate result: A0 is slower than clang on some test programs, noisy between runs; every one is in the loss ledger. results/wasm-benchmark.json, results/loss-ledger.json.
 >
 >
 .p nx
