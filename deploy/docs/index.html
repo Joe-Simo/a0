@@ -462,6 +462,20 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}
 .docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}
 }
+/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */
+.copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}
+.copy[hidden]{display:none}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
+.copy::before,.copy::after{content:"";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}
+.copy::before{transform:translate(-3px,-50%);margin-top:-3px}
+.copy::after{transform:translate(0,-50%);background:var(--bg)}
+.copy[data-copied]{border-color:var(--a0);color:var(--fg)}
+.copy[data-copied="1"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}
+.copy[data-copied="1"]::after{display:none}
+.copy[data-copied="fail"]{border-color:var(--loss)}
+@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}
+.copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 
 </style>
 </head>
@@ -481,11 +495,11 @@ id op args @ x       insert after instruction x
 ret x                change the result
 fn ... end           add or replace a whole function (program handle g0)
 -fn name             remove a function</code></pre><p>The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid.</p><h3>4. Connect an agent</h3><p>`a0 mcp .` serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:</p><pre class="code"><code>claude mcp add a0 -- a0 mcp .
-npx skills add Joe-Simo/a0</code></pre><p>The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository.</p><a href="https://github.com/Joe-Simo/a0#readme">Configurations for other agents</a></div><section id="primer"><h2>The primer</h2><p>This is everything a model is told before it writes or edits A0. The sections below say the same thing in full.</p><pre class="code wrap"><code>A0: `fn NAME T... -&gt; T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops exact mod 2^32.
-mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&amp;31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -&gt; bool | select c x y
+npx skills add Joe-Simo/a0</code></pre><p>The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository.</p><a href="https://github.com/Joe-Simo/a0#readme">Configurations for other agents</a></div><section id="primer"><h2>The primer</h2><p>This is everything a model is told before it writes or edits A0. The sections below say the same thing in full.</p><pre class="code wrap"><code>A0: `fn NAME T... -&gt; T`, lines `ID OP ARG...`, `ret ARG`, `end`. Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops exact mod 2^32.
+add sub mul and or xor (bool too) shl shr (count&amp;31) div (b=0: 4294967295) rem (b=0: a) eq ne lt le gt ge (unsigned, -&gt; bool) select c x y
 call F a... | fold F n s a... state=s; i&lt;n: state=F(state,i,a...)
-arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
-EDIT: reply bare edit lines (handle line optional when one e handle is shown), e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f u32 -&gt; u32` then lines, `ret`, `end` (adds/replaces a function), `-fn f`.
+arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+EDIT: reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`.
 </code></pre></section><section id="programs"><h2>Programs and functions</h2><p>A program is a list of functions. A function is a header `fn NAME T... -&gt; T`, then one instruction per line `ID OP ARGS`, then `ret ARG` (or `ret OP ARGS`, which names a fresh node), then `end`. Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.</p><pre class="code"><code><span class="cm"># clamp p0 into [p1, p2]
 </span>fn clamp u32 u32 u32 -&gt; u32
 lo lt p0 p1
