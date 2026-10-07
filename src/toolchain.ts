@@ -176,9 +176,10 @@ function onPath(name: string): string | undefined {
       try {
         if (statSync(candidate).isFile()) {
           // A compiler found outside PATH loads the DLLs of its own toolchain from its folder
-          // only when that folder is on PATH, for it and for every child it starts.
+          // only when that folder is on PATH, for it and for every child it starts. It goes last: in front,
+          // clang64 would shadow the ld.exe, as.exe and DLLs that a MinGW gcc picks up from PATH.
           if (!onEnvPath.includes(dir))
-            process.env.PATH = `${dir}${delimiter}${process.env.PATH ?? ''}`;
+            process.env.PATH = `${process.env.PATH ?? ''}${delimiter}${dir}`;
           return candidate;
         }
       } catch {
