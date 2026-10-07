@@ -146,6 +146,17 @@ Replace `.` with the folder the server may read and write when your agent does n
 
 The a0 MCP server and the `.mcpb` bundles run entirely on your machine. They collect no data, make no network requests, and read or write only inside the folder you give them.
 
+## How A0 was built
+
+Only what the repository records:
+
+- A0 is developed by AI agents working under the rules in [AGENTS.md](AGENTS.md): each change goes through a local, deterministic gate (`a0-dev`), and a number or comparison in the docs needs a result file behind it.- Git history (as of commit `0675fe8`): 622 commits since 2026-09-29. 620 carry the owner's identity (a GitHub no-reply address) and 2 are from `github-actions[bot]`. 514 of the 622 carry a `Co-Authored-By` trailer naming a Claude model (Sonnet 5.5, Opus 5.5 or Fable 5.1). The other 108 name no co-author, and the repository does not record whether a person or an agent wrote them.
+- Human-written against agent-written text: not recorded. Files carry no marker for it, and the commit identity is the owner's in both cases, so this README does not claim a split.
+- Experiment subjects are fresh model sessions; the task sets of the later experiments were written apart from the subjects and sealed with SHA-256 (`tools/ai-edit-tasks-*.sha256`).
+- What it cost, in tokens or money: not tracked. STATUS.md has a TODO to start recording it.
+
+How to reproduce the benchmark numbers on a fresh machine: [scripts/bench-repro/README.md](scripts/bench-repro/README.md).
+
 ## Contributing
 
 Contributions are welcome and need no account, key or paid service. The short version:

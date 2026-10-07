@@ -143,6 +143,8 @@ Toolchains a step needs but the host lacks are reported as blocked or skipped wi
 11. Finish verifying return literals of 2^28 or more (kind-5 operand, fixed in all consumers): `selfhost:wasm` was not run to completion on the `bigret` list, and `efnstep`, `qfn`, `evalrun.a0` and `shape.a0` were read but not run with a big literal.
 12. Port the assembler and linker (`src/arm64enc.ts`, `src/macho.ts`) to A0.
 13. Free directory submissions (Smithery, Cursor, Cline, Goose, Kilo, opencode, Hugging Face); the MCP Registry entry is published.
+14. TODO: start recording what building A0 costs (tokens and money per session or per merged branch, and which commits were written by a person and which by an agent). The repository records neither today; the README section "How A0 was built" says "not tracked" until this exists.
+15. Record the compiler and runtime version of every language in `results/exec-benchmark-full.json` (today only `node`, `clang` and `rustc` are written), and have the `/benchmarks` page read the machine, tool versions and sample counts of its Method section from the results files (they are text in `site/gen/bench.tpl` today).
 
 ## History
 

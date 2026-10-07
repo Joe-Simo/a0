@@ -185,11 +185,18 @@ c nav
 "Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Own inlined driver: each language is timed with its own driver, which its compiler can inline; that is the harder baseline for A0.
 >
 <p
-"Machines. Native speed was measured on one Apple M3 (darwin-arm64) on 2026-09-30 and 2026-10-01. The wasm figures come from a different machine (Windows x64, 2026-10-07, results/wasm-benchmark-win32.json) and are never combined with the native ones into one claim.
+"Machines. Native speed: one Apple M3 with 8 cores (darwin-arm64), 2026-09-30 and 2026-10-01, Node v24.14.0, Apple clang 21.0.0, rustc 1.96.0, 7 samples per side, medians. Wasm: a different machine (Windows x64, 8 CPUs, 2026-10-07), Node v22.21.1, clang 22.1.8, 15 samples, results/wasm-benchmark-win32.json; its load is estimated from CPU utilisation because Windows has no load average. The two are never combined into one claim.
 >
 <p
-"Reproduce. From a checkout, run bun run exec-bench, bun run lang-axes and bun run tokens on a quiet host; STATUS.md lists every command and the file each one writes. Raw files are in results/, and every recorded loss is in results/loss-ledger.json.
+"Reproduce. The exact commands, tools, run times, output file and field to read for each figure, and the experiments that need a model and cannot be re-run without one (their replies are committed), are in\s
+<a
++href https://github.com/Joe-Simo/a0/tree/main/scripts/bench-repro
+"scripts/bench-repro/README.md
 >
+". Every recorded loss is in results/loss-ledger.json.
+>
+<p
+"How A0 was built. By AI agents under a gate, with the owner directing; the repository records who committed and which model co-authored a commit, not which lines a person wrote, and does not track what the work cost. Details: How A0 was built in the README.
 >
 }
 {sec_native
@@ -1523,7 +1530,14 @@ c putratio %a
 +id limits
 =h2 Where A0 loses
 .div limits
-=p No floating point, no heap, no recursion. Token cost above TypeScript on single-function tasks. AArch64 backend up to $bk_slow$x behind the best of C, Rust and Zig (the $bk_slowk$ kernel). Emitted JavaScript slower than hand-written. Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
+=p Speed: the AArch64 backend is up to $bk_slow$x behind the best of C, Rust and Zig (the $bk_slowk$ kernel), and up to $rk_max$x behind each language's own inlined driver (results/exec-benchmark-full.json).
+=p Wasm against clang on Windows x64: 8 losses on run time and 14 on load time, the load-time ratio moving by up to 0.27 between two runs (results/wasm-benchmark-win32.json, results/loss-ledger.json).
+=p Emitted JavaScript: one recorded loss against hand-written JavaScript (the noop kernel); a quiet Windows rerun tied, and the loss stays in the ledger (results/exec-benchmark-noop-win32.json).
+=p Tokens: A0 costs more than TypeScript on single-function tasks (377 of the 586 recorded losses are kernel token counts). Counts use OpenAI's o200k_base tokenizer, not a Claude tokenizer (results/lang-axes.json, results/loss-ledger.json).
+=p Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
+=p Evidence: each edit cell uses fresh model sessions, one subject per cell and 24 trials per cell (STATUS.md, Known limits); the native timings come from one machine, and the compiler versions of the other languages are not recorded in the results file.
+=p The language has no floating point, no heap, no recursion; no GPU or x86-64 speed claim is made (STATUS.md, Known limits).
+=p Every loss, in full: results/loss-ledger.json. It can only shrink.
 >
 >
 }

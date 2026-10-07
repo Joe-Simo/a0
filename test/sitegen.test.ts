@@ -47,11 +47,11 @@ test('the benchmarks page explains every benchmark in plain words', {
     /Speedup = the baseline's time divided by A0's: below 1\.00x A0 is slower/,
     /Every loss under either baseline is in bold\. A0's code is called out of line from a C driver while the other languages' drivers are inlined/,
     /Two baselines, because they answer different questions\. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver\. Own inlined driver/,
-    /Native speed was measured on one Apple M3 \(darwin-arm64\) on 2026-09-30 and 2026-10-01\. The wasm figures come from a different machine \(Windows x64, 2026-10-07/,
+    /Native speed: one Apple M3 with 8 cores \(darwin-arm64\), 2026-09-30 and 2026-10-01.* Wasm: a different machine \(Windows x64, 8 CPUs, 2026-10-07/,
     /First of the languages that ran each program on \d+ of \d+ test programs \(a language is timed only on the programs it has source for, so fewer languages ran the later programs\); on every one, A0 takes at most \d+\.\d\dx as long as the fastest language/,
     /Writing the \d+ token test programs, A0 \(canonical\)/,
     /The dense totals are over the same \d+ programs/,
-    /AArch64 backend up to \d+\.\d\dx behind the best of C, Rust and Zig \(the \w+ kernel\)/,
+    /AArch64 backend is up to \d+\.\d\dx behind the best of C, Rust and Zig \(the \w+ kernel\)/,
     /\d+ paths \(.*\) ran all \d+ generated cases; the native assembly targets ran the \d+ cases that need no io \(\d+ targets\); SystemVerilog is simulated separately on \d+ cases and is unverified in this run/,
     /fewer than TypeScript shown the whole numbered file \(A0's scoped view against a whole-file workflow, not both with scoped views\)/,
     /of the other \d+ languages are more than 5% faster than A0/,
@@ -104,7 +104,10 @@ test('the benchmarks page explains every benchmark in plain words', {
   assert.ok(!html.includes('<details class="more" open'));
   // The section rail and the "where A0 loses" list live on this page only.
   assert.match(html, /<nav class="rail"/);
-  assert.match(text, /Where A0 loses\nNo floating point, no heap, no recursion\./);
+  assert.match(
+    text,
+    /Where A0 loses\nSpeed: the AArch64 backend[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\nThe language has no floating point, no heap, no recursion/,
+  );
 });
 
 // The home page is short: one idea a screen, one chart for each question, every number computed
