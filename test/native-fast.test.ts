@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { isPlainCheck, nativeCheckBinary } from '../src/native-fast.js';
 import { findClang, findGcc } from '../src/toolchain.js';
-import { buildNativeCheck, NATIVE_A0 } from '../tools/native-check.js';
+import { buildNativeCheck } from '../tools/native-check.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const entry = join(root, 'dist', 'src', 'a0.js');
@@ -61,10 +61,9 @@ test('native fast path: `a0 check` prints the same bytes and exits the same, thr
   skip,
   timeout: 600_000,
 }, async () => {
-  await buildNativeCheck();
-  const native = existsSync(`${NATIVE_A0}.exe`) ? `${NATIVE_A0}.exe` : NATIVE_A0;
   const dir = mkdtempSync(join(tmpdir(), 'a0-fast-'));
   try {
+    const { exe: native } = await buildNativeCheck({ dir: join(dir, 'native') });
     writeFileSync(join(dir, 'ok.a0'), 'fn f u32 -> u32\na add p0 1\nret a\nend\n');
     writeFileSync(join(dir, 'bad.a0'), 'fn f u32 -> u32\na add p0 true\nret a\nend\n');
     writeFileSync(join(dir, 'spec.a0'), 'fn f u32 -> u32\nex 1 -> 2\na add p0 1\nret a\nend\n');

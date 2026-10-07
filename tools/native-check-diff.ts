@@ -46,6 +46,12 @@ export interface Verdict {
 export interface Program {
   readonly label: string;
   readonly path: string;
+  /**
+   * Two errors in one program: the checkers agree that it is rejected, but may name different ones
+   * first (the self-hosted parser reports an undefined node, a parameter out of range and an op's
+   * arity where src/core.ts reports them after the whole parse), so only the verdict is compared.
+   */
+  readonly mixed?: true;
 }
 
 const CODES = ['ok', 'parse', 'structure', 'type', 'limit'];
@@ -166,7 +172,7 @@ export async function compare(exe: string, p: Program): Promise<Row> {
       why: nat.why,
       outcome: 'unsupported',
     };
-  const outcome = agree(ref, nat.verdict);
+  const outcome = p.mixed === true && !ref.ok && !nat.verdict.ok ? 'same' : agree(ref, nat.verdict);
   let result = outcome;
   if (outcome === 'same' && ref.ok) {
     // the lines of an accepted program: what the TypeScript CLI prints
@@ -332,7 +338,11 @@ export function mutants(text: string, count: number, seed: number): [string, str
 }
 
 /** Every program of the differential; texts are written under `dir`. */
-export async function programSet(dir: string, mutantCount = 24): Promise<Program[]> {
+export async function programSet(
+  dir: string,
+  mutantCount = 24,
+  pairCount = 12,
+): Promise<Program[]> {
   const corpus = generateCorpus(CORPUS_SEED, CORPUS_FUNCTIONS);
   const set: Program[] = [
     ...a0Files('compiler'),
@@ -354,6 +364,16 @@ export async function programSet(dir: string, mutantCount = 24): Promise<Program
     // the closure of compiler/check.a0 (207 KB): the front end's own checker, linked
     const linked = await link('compiler/check.a0', (p) => Promise.resolve(readFileSync(p, 'utf8')));
     set.push(...materialize(join(dir, 'mutants'), mutants(linked.text, mutantCount, 0xc0ffee)));
+    // two edits of different kinds in one program
+    const pairs: [string, string][] = [];
+    for (let i = 0; i < pairCount; i += 1) {
+      const first = mutants(linked.text, 12, 1000 + i)[i % 12] as [string, string];
+      const second = mutants(first[1], 12, 5000 + i)[(i * 5 + 3) % 12] as [string, string];
+      pairs.push([`pair-${first[0]}-${second[0]}`, second[1]]);
+    }
+    set.push(
+      ...materialize(join(dir, 'pairs'), pairs).map((p): Program => ({ ...p, mixed: true })),
+    );
   }
   return set;
 }

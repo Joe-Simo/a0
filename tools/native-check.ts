@@ -110,8 +110,10 @@ const DRIVER = join('tools', 'native', 'a0.c');
  * x86_64) cross-compiles for the other CPU; `strip` drops the symbols (a release build).
  */
 export async function buildNativeCheck(
-  options: { readonly arch?: string; readonly strip?: boolean } = {},
-): Promise<{ ms: number; cBytes: number; fns: number }> {
+  options: { readonly arch?: string; readonly strip?: boolean; readonly dir?: string } = {},
+): Promise<{ ms: number; cBytes: number; fns: number; exe: string }> {
+  // `dir` is where the C files and the executable go: tests that run side by side each take their own
+  const dir = options.dir ?? NATIVE_DIR;
   // clang where there is one (the release runners), else gcc (a Windows machine with MSYS2)
   const clang = findClang().path ?? findGcc().path;
   if (clang === undefined) throw new Error('neither clang nor gcc found');
@@ -121,9 +123,9 @@ export async function buildNativeCheck(
     ioInputCapacity: FRONT_END_SOURCE_LIMIT + 1100,
     ioOutputCapacity: OUTPUT_WORDS,
   }).text;
-  await mkdir(NATIVE_DIR, { recursive: true });
-  await writeFile(join(NATIVE_DIR, 'checker.c'), c, 'utf8');
-  await writeFile(join(NATIVE_DIR, 'main.c'), await readFile(DRIVER, 'utf8'), 'utf8');
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'checker.c'), c, 'utf8');
+  await writeFile(join(dir, 'main.c'), await readFile(DRIVER, 'utf8'), 'utf8');
   const r = runTool(
     clang,
     [
@@ -143,13 +145,14 @@ export async function buildNativeCheck(
       'a0',
       'main.c',
     ],
-    { cwd: NATIVE_DIR, timeoutMs: 600_000 },
+    { cwd: dir, timeoutMs: 600_000 },
   );
   if (!r.ok) throw new Error(`native a0 build failed:\n${r.stderr.slice(0, 4000)}`);
   return {
     ms: Math.round(performance.now() - t0),
     cBytes: Buffer.byteLength(c),
     fns: program.functions.length,
+    exe: existsSync(join(dir, 'a0.exe')) ? join(dir, 'a0.exe') : join(dir, 'a0'),
   };
 }
 

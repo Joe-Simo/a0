@@ -1292,7 +1292,13 @@ typedef struct {
   const uint32_t *ty, *tl, *pool, *sym, *fnw, *nodew, *argw;
 } Tables;
 
+/* Symbol s: sym 0 is the id of an inline `ret OP` node; the others are (start, length) in the chunk's
+   source (chunkio writes them so: no pool is built), whose bytes are io.input[1..]. */
 static void put_sym(Buf *b, const Tables *t, uint32_t s) {
+  if (s == 0) {
+    bputs(b, "retval");
+    return;
+  }
   uint32_t start = t->sym[2 * s], len = t->sym[2 * s + 1];
   for (uint32_t k = 0; k < len; k++) {
     char c = (char)t->pool[start + k];
@@ -1412,7 +1418,13 @@ static bool run_chunk(uint32_t ua, uint32_t ub) {
   io.ninput = (uint32_t)n + 2u + ns;
   io.position = 0;
   io.noutput = 0;
+#ifdef A0_PROFILE
+  double t_chunk = now_us();
+#endif
   uint32_t code = a0_chunkio(&io);
+#ifdef A0_PROFILE
+  fprintf(stderr, "  chunk %u..%u: %zu bytes, %u stubs, %.0f us\n", ua, ub, n, ns, now_us() - t_chunk);
+#endif
   uint32_t fn = io.output[2], node = io.output[3], tokstart = io.output[4], nhc = io.output[5];
   if (code == 4u && fn == NO_FN) {
     if (ub - ua > 1) {
@@ -1452,7 +1464,7 @@ static bool run_chunk(uint32_t ua, uint32_t ub) {
     t.ty = table(&pos, &cnt);
     t.tl = table(&pos, &cnt);
     table(&pos, &cnt); /* the node types */
-    t.pool = table(&pos, &cnt);
+    t.pool = io.input + 1;
     t.sym = table(&pos, &cnt);
     t.fnw = table(&pos, &cnt);
     t.nodew = table(&pos, &cnt);

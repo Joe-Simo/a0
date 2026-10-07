@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { statSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { findClang, findGcc } from '../src/toolchain.js';
-import { buildNativeCheck, NATIVE_A0 } from '../tools/native-check.js';
+import { buildNativeCheck } from '../tools/native-check.js';
 import { cleanup, compare, programSet, type Row, tempDir } from '../tools/native-check-diff.js';
 
 const compiler = findClang().path ?? findGcc().path;
@@ -19,13 +20,14 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
   skip,
   timeout: 1_800_000,
 }, async () => {
-  await buildNativeCheck();
   const dir = tempDir();
   try {
+    // its own build directory: the test files of this suite run side by side
+    const { exe } = await buildNativeCheck({ dir: join(dir, 'native') });
     const rows: Row[] = [];
     let largest = 0;
     for (const p of await programSet(dir, 24)) {
-      const row = await compare(NATIVE_A0, p);
+      const row = await compare(exe, p);
       rows.push(row);
       if (row.outcome === 'same' && row.reference.ok) largest = Math.max(largest, row.bytes);
     }
@@ -52,6 +54,7 @@ test('native check: same verdict as the TypeScript checker on the corpus, the so
       );
     assert.equal(rows.filter((r) => r.label.startsWith('app-edit/')).length, 15);
     assert.ok(rows.filter((r) => r.label.startsWith('mutant-')).length >= 24);
+    assert.ok(rows.filter((r) => r.label.startsWith('pair-')).length >= 12);
     assert.ok(rows.filter((r) => !r.reference.ok && r.outcome === 'same').length >= 60);
     // accepted whole, at 200 KB and beyond (the whole files; a linked program is larger still)
     assert.ok(largest >= 200_000, `largest accepted program ${largest} bytes`);

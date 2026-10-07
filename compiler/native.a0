@@ -18,7 +18,8 @@ end
 # checks as `irio` does. Input: the source (n, then n bytes), `from`, then the `from` iteration
 # bounds of the stubs. Output: ok, code, fn, node (as `irio`), the start byte of the token a parse
 # or structure error rejects (the source length at the end), the count of functions in the chunk
-# and their iteration bounds (all zero on an error), then the tables of `irio`.
+# and their iteration bounds (all zero on an error), then the tables of `irio` but the pool: the
+# types, tlist, node types, sym as (start, length) in the source (sym 0 is "retval"), fns, nodes, args.
 fn nrdword io -> (u32,io)
 r read p0
 ret r
@@ -44,6 +45,24 @@ pg get p2 pi
 v get pg wi
 w write p0 v
 ret w
+end
+# the symbol range word p2[p1] (source start * 32768 + length) as two output words
+fn nsymst io u32 u32x128 -> io
+v get p2 p1
+st shr v 15
+len and v 32767
+w1 write p0 st
+w2 write w1 len
+ret w2
+end
+fn nsympg io u32 u32x128x64 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+r fold nsymst cnt p0 pg
+ret r
 end
 fn nmin u32 u32 -> u32
 b lt p0 p1
@@ -95,9 +114,6 @@ uerr0 eq uerr 0
 ueof and uerr0 uopen
 e1 select ueof 1 uerr
 et1 select ueof ntok uetok
-s2 call pass2 src sinfo nsym
-pool at s2 0
-npool at s2 1
 s3 call pass3 src toks ta hdrs nhdr e1 et1 ntok
 types at s3 0
 tlist at s3 2
@@ -129,7 +145,8 @@ fch at s3 19
 fct at s3 5
 fcl at s3 6
 fcn at s5 4
-ovr call fecap toks ntok fcs npool fcu fch fct fcl fcn nargs
+fcp mov 0
+ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn nargs
 pcode0 at s5 8
 pcode select ovr 4 pcode0
 petok at s5 9
@@ -177,20 +194,13 @@ w8 write w7 nnodesc
 nd127 add nnodesc 127
 ndn shr nd127 7
 w9 fold w24 ndn w8 ntys nnodesc
-npoolw select ok npool 0
-w10 write w9 npoolw
-pp127 add npoolw 127
-ppn shr pp127 7
-w11 fold w400 ppn w10 pool npoolw
 nsymw0 mul nsym 2
 nsymw select ok nsymw0 0
 nsymc select ok nsym 0
-w12 write w11 nsymw
+w12 write w9 nsymw
 sy127 add nsymc 127
 syn shr sy127 7
-ws0 rec w12 0
-ws fold wsympg syn ws0 sinfo nsymc
-w13 at ws 0
+w13 fold nsympg syn w12 sinfo nsymc
 nfnsw0 mul nhc 7
 nfnsw select ok nfnsw0 0
 w14 write w13 nfnsw
