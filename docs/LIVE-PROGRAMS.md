@@ -25,7 +25,9 @@ performance claim. Measurements of the finished feature are in `results/sentinel
 
 - One A0 io program per page (`site/page.a0`, `site/docs.a0`), exported as `a0_session`. The
   host feeds `event x y text state` words in and interprets a word stream out (OPEN/TEXT/CLOSE/
-  ATTR/ONCLICK/STATE/ONSUBMIT/STYLE/GRID/TIMER/SIZE/SHADER). Every event re-renders the DOM.
+  ATTR/ONCLICK/STATE/ONSUBMIT/STYLE/GRID/TIMER/SIZE/SHADER/COPY; the reference is
+  `docs/UI-PROTOCOL.md`). Every event re-renders the DOM, except COPY, which only writes the
+  clipboard and sends no event.
 - Pointer and touch input: not available to A0. `ONCLICK` sends an event number, `GRID` sends
   a cell. A shader scene listens to `pointermove` itself, in `app.ts`, for its `u_mouse`.
   Touch is not distinguished from mouse; pen likewise. No down/up/move stream, no scroll.
