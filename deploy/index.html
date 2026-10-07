@@ -500,6 +500,40 @@ p+a{display:inline-block;padding:12px 0}
 @media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}
 @media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}
 @media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}
+/* /benchmarks: purpose lines, chart rules (A0 filled and accented, the rest outlined, a loss is a word), page head */
+.bench.center{max-width:1016px;padding:56px 24px 0;text-align:left}
+.bench.center h1,.bench.center p{margin:0 0 12px;max-width:none}
+.bench.layout{padding-top:24px}
+.bench .pill:not(.ghost){background:var(--a0);color:#000}
+.bench .pill.ghost{background:none;border:1px solid var(--line2);color:var(--fg)}
+.bench .q{color:var(--fg);margin:0 0 14px}
+.bench .nx{font-size:.9rem;color:var(--muted);margin:16px 0 0}
+.bench .nx a,.bench td a{color:var(--fg);text-underline-offset:3px;display:inline-block;padding:12px 0}
+.bench .tblwrap table.rank td{white-space:normal}
+@media (min-width:1064px){.bench.center{padding-left:0}}
+.bench p.take{border-color:var(--line2)}
+.bench .rail a.on{border-color:var(--fg)}
+.bench .rank td.first,.bench .tile .n:not(.loss){color:var(--fg)}
+.bench .lrow .track,.bench .row .track{grid-template-columns:1fr 130px;height:auto;min-height:18px}
+.bench .track .val{white-space:normal;line-height:1.2;color:var(--fg2)}
+.bench .ls .lrow:has(~.lrow.me) .val::after,.bench .track .val.loss::after{content:" A0 slower"}
+.bench .lm .lrow:has(~.lrow.me) .val::after,.bench .row .ratio.loss::after{content:" A0 costlier"}
+.bench .val::after,.bench .ratio::after{font-weight:700;color:var(--fg)}
+@media (max-width:600px){.bench .lrow,.bench .lrow.wide{grid-template-columns:1fr;gap:2px}.bench .lrow .track{grid-template-columns:1fr 100px}}
+/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */
+.copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}
+.copy[hidden]{display:none}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
+.copy::before,.copy::after{content:"";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}
+.copy::before{transform:translate(-3px,-50%);margin-top:-3px}
+.copy::after{transform:translate(0,-50%);background:var(--bg)}
+.copy[data-copied]{border-color:var(--a0);color:var(--fg)}
+.copy[data-copied="1"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}
+.copy[data-copied="1"]::after{display:none}
+.copy[data-copied="fail"]{border-color:var(--loss)}
+@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}
+.copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 
 </style>
 </head>

@@ -171,19 +171,49 @@ Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code g
 # Benchmarks
 
 Benchmarks
-Every figure on this page is measured, checked and reproducible from the repository. Each one names the file in results/ it comes from, and each loss is stated beside the result. The home page shows one chart from this page for each question.
+What we measured, how, and where A0 loses.
+Reproduce a result Where A0 loses
 
- Method and baselines
-Each test program is one small function, written by hand in every language and timed on the same inputs. A result is checked against a checksum before it is timed. A time is the median of 7 interleaved runs, taken only while the 1-minute load average was at or below 10 (highest at a sample start: 9.78). Source: results/exec-benchmark-full.json.
-Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Own inlined driver: each language is timed with its own driver, which its compiler can inline; that is the harder baseline for A0.
-Machines. Native speed: one Apple M3 with 8 cores (darwin-arm64), 2026-09-30 and 2026-10-01, Node v24.14.0, Apple clang 21.0.0, rustc 1.96.0, 7 samples per side, medians. Wasm: a different machine (Windows x64, 8 CPUs, 2026-10-07), Node v22.21.1, clang 22.1.8, 15 samples, results/wasm-benchmark-win32.json; its load is estimated from CPU utilisation because Windows has no load average. The two are never combined into one claim.
-Reproduce. The exact commands, tools, run times, output file and field to read for each figure, and the experiments that need a model and cannot be re-run without one (their replies are committed), are in scripts/bench-repro/README.md. Every recorded loss is in results/loss-ledger.json.
-How A0 was built. By AI agents under a gate, with the owner directing; the repository records who committed and which model co-authored a commit, not which lines a person wrote, and does not track what the work cost. Details: How A0 was built in the README.
+ The headline numbers, one question per row; the section named in the first column has the chart, the method and the filesQuestion — A0's result — Where it loses
+Is native code fast? — 1.16x the time of hand-written C, geometric mean over 19 test programs on an Apple M3 — Slower than the best of C, Rust and Zig on 8 of 19 test programs, worst 4.31x on mat4
+How does it compare with other languages? — 3 of 48 other languages are within 5% of A0's speed and the rest are slower — 8 of 48 languages are more than 5% faster
+Does it start quickly? — 2.50 ms from launch to first result, place 9 of 48 languages — Every language placed above it starts faster
+Is an edit cheaper? — At 4000 functions, 203.8x fewer tokens than TypeScript shown the whole file — At 1 function, 2.42x TypeScript's tokens
+Do models get the edit right? — Sonnet: 14 of 14 front-end edits accepted after one repair, equal to TypeScript, at 4.9x fewer tokens per accepted edit — Haiku: 10 of 14 accepted against TypeScript's 13
+Is an edit checked quickly? — 5 to 23 ms per edit in a warm session, against 531 to 3918 ms for a whole-project tsc check — Checking from scratch in a fresh process is slower than tsc-rs on Linux and macOS, and than tsgo on macOS
+
+Sources: results/exec-benchmark-full.json, results/lang-axes.json, results/ai-edit-experiment.*.json, results/app-edit-keys.json, results/check-latency-*.json.
+Method
+How every number on this page was produced, so you can decide whether to trust it.
+How the numbers were taken; each machine's own file in results/ records its detailsItem — What we did
+Machine — Native speed: one Apple M3, 2026-09-30 and 2026-10-01. WebAssembly: one Windows x64 PC. Edit-check latency: that PC, a Linux x64 runner and a macOS arm64 runner. Results from different machines are never combined into one claim.
+OS and cores — macOS (darwin-arm64), 8 cores; Windows x64, 8 CPUs; Linux x64, 4 CPUs; macOS arm64 runner, 3 CPUs.
+Tool versions — Native: Node v24.14.0, Apple clang 21.0.0, rustc 1.96.0. WebAssembly: Node v22.21.1, clang 22.1.8. Checkers: TypeScript 5.9.3, tsgo 7.0.0-dev.20260707.2, tsc-rs 0.1.0.
+Runs and statistic — Native: 7 samples per side. WebAssembly and edit-check latency: 15. Each time is the median of interleaved runs, and each result is checked against a checksum, or for a check a clean exit, before it is timed. Edit costs are tokens per accepted edit with one repair round.
+Load rule — Native runs started only while the 1-minute load average was at or below 10 (highest at a sample start: 9.78). Linux and macOS report that load average. Windows has none, so its load is CPU use: 5.57 of 10 allowed for WebAssembly, and 8 of 8 CPUs for edit-check latency, which makes those Windows rows contended.
+
+Sources: results/exec-benchmark-full.json, results/wasm-benchmark.json, results/check-latency-*.json. The exact commands, run times and the field to read for each figure are in scripts/bench-repro/README.md. Experiments that need a model cannot be re-run without one, so their replies are committed.
+Next: where A0 loses, then the measurements. Where A0 loses
+
+Where A0 loses
+Every place A0 is slower, costlier or unable, one line each, with the file that records it.
+Known losses; the loss ledger lists every one and can only shrinkWhere — What — Source
+Native speed — Up to 4.31x behind the best of C, Rust and Zig (mat4), and up to 7.58x behind each language's own inlined driver. — results/exec-benchmark-full.json
+WebAssembly — Slower than clang on the test programs in the first WebAssembly table below, and slower to compile and instantiate on a further set counted in the ledger. — results/wasm-benchmark.json, results/loss-ledger.json
+Emitted JavaScript — One recorded loss against hand-written JavaScript (the noop kernel); a quiet Windows rerun tied, and the loss stays in the ledger. — results/exec-benchmark-noop-win32.json
+Tokens — A0 costs more than TypeScript on single-function tasks: most recorded losses are kernel token counts, measured with OpenAI's o200k_base tokenizer, not a Claude tokenizer. — results/lang-axes.json, results/loss-ledger.json
+Editing a front end — Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14). — results/app-edit-keys.json
+Checking from scratch — A whole-front-end check in a fresh process is slower than tsc-rs on Linux and macOS and than tsgo on macOS; the A0 numbers in that table were recorded before edits were checked incrementally. — results/check-latency-darwin-arm64.json, results/check-latency-linux-x64.json, results/loss-ledger.json
+Evidence — Each edit cell uses fresh model sessions, one subject per cell and 24 trials per cell; native timings come from one machine, and the compiler versions of the other languages are not recorded in the results file. — STATUS.md, Known limits
+The language — No floating point, no heap, no recursion, and no GPU or x86-64 speed claim. — STATUS.md, Known limits
+
+Next: the measurements, starting with native speed. Native speed
+
 Native speed on small test programs
+Is machine code from A0 as fast as C, Rust and Zig on the same small functions?
 The slowest test program is 4.31x slower on mat4 against baselines with the same calling convention, and 7.58x slower on mat4 against each language's own inlined driver. Same calling convention (A0 and the best of C, Rust and Zig, both called out of line): 2 wins, 9 ties, 8 losses of 19. Inlined drivers: 2 wins, 9 ties, 8 losses. Against hand-written C alone, A0 takes 1.16x as long, a geometric mean over the test programs; 1.00x would be equal.
-Every speed result below uses the same test programs, 19 in all. A test program is one small function (benchmark authors call it a kernel), written by hand in every language and timed on the same inputs; each result is checked against a checksum before it is timed. A0 here is machine code from A0's own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between. Measured with a load gate: the 1-minute load average stayed at or below 10 (highest at a sample start: 9.78).
+A test program is one small function (benchmark authors call it a kernel), written by hand in every language, timed on the same inputs and checked against a checksum first. A0 here is machine code from its own AArch64 code generator, with no runtime, no garbage collector and no C compiler in between.
 A0 under both baselines, per test program
-Same calling convention: 2 wins, 9 ties, 8 losses of 19, slowest 4.31x on mat4. Each language's own inlined driver: 2 wins, 9 ties, 8 losses, slowest 7.58x on mat4.
 Two baselines, because they answer different questions. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver. Inlined: each language's fastest result with its own driver, which the compiler can inline. Speedup = the baseline's time divided by A0's: below 1.00x A0 is slower. Win = at least 1.2x faster; loss = more than 10% slower; the file gives verdicts only for the first baseline, the second uses the same win rule and a 10% tie band (results/exec-benchmark-full.json).
 Speed against the best of C, Rust and Zig and against each language's own inlined driver, per test programTest program — Same calling convention: speedup, verdict — Own inlined driver: speedup, verdict
 affine — 0.63x loss — 0.60x loss
@@ -235,11 +265,13 @@ filter2 — 1 of 5 — C, 653.13 ns — 0.50x (A0 is faster)
 
 Reading a row: the third column names the fastest of the other languages and its time per call; the last column is A0's time divided by that time. Below 1.00x, A0 is faster than every other language on that test program; above 1.00x, that language is faster and the number is the gap A0 has to close.
 
+Next: the same programs against 48 other languages. Languages
+
 Speed against 48 other languages
+Where does A0 stand among every language we could run on the same test programs?
 8 of the other 48 languages are more than 5% faster than A0 (C, Rust, Crystal, Odin, D, C++, Nim, V); 3 are within 5% of A0; the rest are slower.
-The same test programs, hand-written in each language and checksum-verified before they are timed; a language is timed on the programs it has source for. Each bar below is one language: its time per call divided by A0's on those programs, as a geometric mean.
 How long each language takes, as a multiple of A0's time
-1.00x = the same speed as A0; a longer bar = slower than A0. Bar length is logarithmic. Interleaved runs, medians; JIT rows warm; interpreters at their own iteration tier.
+Each bar is one language's time per call divided by A0's, as a geometric mean over the test programs it has source for. 1.00x = the same speed as A0; a longer bar = slower than A0; a bar marked A0 slower belongs to a language faster than A0. Bar length is logarithmic. Interleaved runs, medians; JIT rows warm; interpreters at their own iteration tier.
 measured: 49 of 49 languages
 A0 compiled JIT or VM interpreted
 C
@@ -434,7 +466,10 @@ R
 
 Shown first: A0 and the best-known languages. All 49 languages are behind the disclosure, in the same order. A0 here is machine code from A0's own AArch64 code generator, with no C compiler in between. Numbers, toolchains and iteration tiers are in results/exec-benchmark.json.
 
+Next: how quickly each language starts. Startup
+
 Startup
+How long from launching a program to its first result?
 A0 takes 2.50 ms from launch to first result: place 9 of 48 languages (1 = fastest). Node takes 23 ms and Python 18 ms.
 Startup is the time for one process launch to run one iteration of a test program and print its result; compile time is separate (1430 ms for the ten test programs with A0, 9536 ms with rustc).
 Time from launch to first result
@@ -627,9 +662,45 @@ Groovy
 
 Shown first: A0 and the best-known languages; all 48 are behind the disclosure, in the same order. The A0 binary for startup is the C-path build; startup of the direct AArch64 binary is not yet measured.
 
+Next: A0's WebAssembly output against clang, on another machine. WebAssembly
+
+WebAssembly on Windows
+Does A0's own WebAssembly output run as fast as clang's, on a machine that is not the one used for native speed?
+clang's time divided by A0's has a geometric mean of 1.06 over 19 test programs: A0 is faster on 6, ties on 5 and is slower on 8, the worst being arrfill at 0.78. Source: results/wasm-benchmark.json.
+A0 against clang, WebAssembly, Windows x64
+Both sides run the same driver inside the module: a chain of dependent trips of one function. A0 is the direct wasm32 backend; clang is -O3 on the hand-written C kernel. Time per trip is the median of 15 interleaved samples in Node v22.21.1; module size is in bytes. Windows has no load average, so load is CPU use: highest 5.57 of 10 allowed. A ratio below 1.00x means clang is faster.
+Wasm on Windows x64: the 8 test programs where A0 is slower than clang, worst firstTest program — Time per trip, ns (A0 / clang) — clang time divided by A0 time — Module bytes (A0 / clang)
+arrfill — 4.00 / 3.13 — 0.78x A0 slower — 334 / 485
+prefix1k — 873 / 740 — 0.85x A0 slower — 348 / 633
+rotl — 2.66 / 2.33 — 0.88x A0 slower — 220 / 491
+chain3 — 2.61 / 2.31 — 0.88x A0 slower — 209 / 521
+noop — 0.66 / 0.59 — 0.90x A0 slower — 173 / 512
+affine — 3.75 / 3.42 — 0.91x A0 slower — 229 / 557
+filter2 — 2392 / 2267 — 0.95x A0 slower — 589 / 741
+ident — 0.62 / 0.59 — 0.95x A0 slower — 173 / 512
+
+Show the other 11 test programs
+Wasm on Windows x64: the other 11 test programs, ties and winsTest program — Time per trip, ns (A0 / clang) — clang time divided by A0 time — Module bytes (A0 / clang)
+hist256 — 5808 / 5602 — 0.96x tie — 385 / 641
+clamp — 4.85 / 4.76 — 0.98x tie — 241 / 422
+branchy — 3.31 / 3.33 — 1.01x tie — 241 / 421
+mix — 4.41 / 4.46 — 1.01x tie — 242 / 411
+xs4k — 8106 / 8295 — 1.02x tie — 354 / 580
+loop64 — 131 / 141 — 1.07x A0 faster — 247 / 519
+fnv4k — 18620 / 22089 — 1.19x A0 faster — 354 / 608
+minmax1k — 1241 / 1566 — 1.26x A0 faster — 372 / 656
+dot1k — 1014 / 1406 — 1.39x A0 faster — 267 / 653
+mat4 — 156 / 224 — 1.44x A0 faster — 3996 / 1512
+arrfill4k — 558 / 1294 — 2.32x A0 faster — 358 / 519
+
+Load time (compile plus instantiate) is a separate result: A0 is slower than clang on some test programs, noisy between runs; every one is in the loss ledger. results/wasm-benchmark.json, results/loss-ledger.json.
+
+Next: tokens, what it costs to read and write the same program. Tokens
+
 Tokens
+How many tokens does it take to write the same program in each language, and one small edit to it?
 Writing the 10 token test programs, A0 (canonical) takes 559 tokens: place 41 of 49 (1 = fewest), fewer than 8 of the other 48 languages, equal to 0 and more than 40. A0 (dense) takes 202: place 1, fewer than 48, equal to 0, more than 0; its lossless form, with the same ids and node order, takes 286: place 1. The dense totals are over the same 10 programs (results/dense-tokens.json); the speed tests below time more programs (19), but only 10 of them are counted for tokens.
-A token is the unit a model reads and writes. Fewer tokens for the same program means less to read, write and pay for. The count below is the source of the same test programs in each language, with the o200k tokenizer. Both forms of A0 are plotted and highlighted. Dense is the same program in a shorter surface form; it converts losslessly to the canonical form. How many tokens a whole edit costs, measured with real models, is in the Cost section.
+A token is the unit a model reads and writes, so fewer tokens means less to read, write and pay for. Counts use the o200k tokenizer on the source of the same test programs. Dense is the same A0 program in a shorter surface form that converts losslessly to the canonical form; both are plotted.
 Source tokens of the 10 token test programs, per language
 Sum over the test programs of the o200k tokens of each program as written in that language, shorter bar = fewer tokens. Bar length is proportional to the count.
 measured: 49 of 49 languages
@@ -872,21 +943,13 @@ TS unified diff
 
 Bars are linear within each group. The fixtures are the edit of affine in results/tokens.json; a model's real replies (Cost section) include the instructions it must be given first.
 
-How A0 shrinks an edit: A0 reading a whole file vs A0's scoped view
-For one edit in life.a0 (17 functions), A0's scoped view is 7.3x fewer tokens than reading the whole life.a0 file in A0: 239 against 1746. Both bars are A0; this is not a comparison with another language.
-Tokens a model reads to edit one function, o200k tokenizer. Shorter bar = fewer tokens.
-whole life.a0 file A0 scoped view
-life.a0
-1746 tok
-
-239 tok
-
-7.30x fewer than the whole file
-The view: one function, its callees' signatures, one handle.
+Next: what a whole edit costs with real models. Cost
 
 Cost
+What does a whole edit cost a model, counting the instructions, the code it reads and its reply?
 At 4000 functions an A0 edit costs 706 tokens against 143854 for TypeScript, which is 203.8x fewer than TypeScript shown the whole numbered file (A0's scoped view against a whole-file workflow, not both with scoped views). At 1 function A0 costs 2.42x TypeScript's tokens and 2.29x Rust's. Sonnet, cache-adjusted.
-Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so against a whole-file workflow A0's advantage grows with program size and reverses on a one-function file, where the primer dominates. That is an advantage of the workflow, not of the language: when TypeScript, Rust, Python, Go, Java, C and Ruby are given an equal view (a parse-derived function and its callees, numbered line edits), pooled over the four program sizes (96 trials per cell) A0 canonical costs 318 tokens for one cold task and 176 in an unbounded session, against 386 and 138 for TypeScript and 375 and 115 for Ruby, so it is cheaper cold and dearer once the primer is cached; A0 dense costs 273 and 99. results/ai-edit-scoped.json.
+Cost here is every token a model reads and writes to make one edit: the instructions it is first given (the primer), the code it reads, and its reply. A model edits one function through a scoped view: the function, the signatures it depends on, and its callers. The view stays the same size as the program grows; a numbered whole file does not, so against a whole-file workflow A0's advantage grows with program size and reverses on a one-function file, where the primer dominates.
+That is an advantage of the workflow, not of the language. When TypeScript, Rust, Python, Go, Java, C and Ruby are given an equal view (a parse-derived function and its callees, numbered line edits), pooled over the four program sizes (96 trials per cell) A0 canonical costs 318 tokens for one cold task and 176 in an unbounded session, against 386 and 138 for TypeScript and 375 and 115 for Ruby, so it is cheaper cold and dearer once the primer is cached; A0 dense costs 273 and 99. results/ai-edit-scoped.json.
 Edit cost across 49 languages, with A0 in two forms
 Over a session of 10 edits, A0 (canonical) costs 184 tokens per task: place 12 of 49 (1 = fewest), cheaper than 36 of the other 48 languages, equal to 1, dearer than 11. A0 (dense, lean view with callee bodies) costs 117: place 1, cheaper than 48, equal to 0, dearer than 0.
 Dense is the same program in a shorter surface form; it converts losslessly to the canonical form. A0 (dense) is shown with the lean view: only the function to edit, with its direct callees as dense text. Both A0 subjects are measured on the same twelve tasks of set b (one function to edit) as the other languages, one fresh Haiku and one fresh Sonnet subject per task, one shot and one repair. Losses first: the dense primer is larger (145 tokens against 118 for canonical), so in a session of 1 task the two cost 274 and 311; each cell is 24 tasks, one task is 4.2 points of acceptance, and differences of about one task are within noise. This chart is set b only.
@@ -1261,10 +1324,34 @@ Rust — 178 — 143276 — 26 — 143479 — 203x — 100% — 83%
 Primer: language and workflow instructions, first read at the 1.25x cache-write rate. Code read: the view or numbered file. Reply written: the model's edit. Total as a multiple of A0's: the row total divided by A0's total; below 1.00x (red) that language needs fewer tokens than A0. Edits accepted: the share of the 12 tasks whose edit passed the tests on the first try, for each model.
 
 Tasks are the same edits in every language; sets 400 and 4000 are one shared program grown to that size. Subjects are fresh Sonnet and Haiku contexts that see only the primer. In the 400 and 4000 rows the other languages read the whole numbered file and A0 its scoped view (a workflow comparison); the equal-context comparison is results/ai-edit-scoped.json. Numbers: results/ai-edit-experiment.{b,c,c400,c4000}.*.json.
+Editing a real front end: 14 change requests to a lexer and parser
+Sonnet had all 14 edits accepted in A0 after one repair, equal to TypeScript, at 1485 tokens per accepted edit against 7277. Haiku had 10 accepted in A0 against 13 in TypeScript, so on Haiku A0 lost on correctness and won on tokens.
+Each request is the same plain-language instruction on both sides; an edit is accepted when hidden tests pass, with one repair round allowed. Tokens per accepted edit are for a session of 10 edits. One fresh subject per cell, 14 tasks per cell, so a difference of one task is within noise. results/app-edit-keys.json.
+Fourteen edits to one front end: edits accepted and tokens per accepted edit (10-edit session)Model, language — Accepted first try — Accepted after one repair — Tokens per accepted edit
+Sonnet, A0 — 13 of 14 — 14 of 14 — 1485
+Sonnet, TypeScript — 14 of 14 — 14 of 14 — 7277
+Haiku, A0 — 8 of 14 — 10 of 14 — 2144
+Haiku, TypeScript — 11 of 14 — 13 of 14 — 7960
+
+Next: how fast an edit is known to be right. Validation
 
 Validation
+How long after an edit is it known to be right?
 After an edit, A0's native checker answers in 2.83 ms: place 1 of 34 languages that have a separate check step (1 = fastest). Checking and running the edit takes A0 2.49 ms: place 1 of 49 languages.
-Validation is how long it takes to know an edit is right. The check is the build or type-check of the edited test program. Check and run adds compiling to an executable when the language needs it, and one run whose checksum must match. Every language uses its own toolchain on the same test programs, from a cold process.
+The check is the build or type-check of the edited program. Check and run adds compiling to an executable when the language needs it, and one run whose checksum must match. The first chart times an edit to a real 4,100-line front end; the others time the small test programs, each language with its own toolchain from a cold process.
+Checking an edit to a 4,100-line front end: A0 per edit against whole-project TypeScript checkers
+A0 validates one edit in 5 to 23 ms in a warm session. In a fresh process, checking the whole front end from scratch takes 73 ms on macOS and 91 ms on Linux, slower than tsc-rs on both and than tsgo on macOS.
+Two different jobs, stated in each row. One edit, warm session: A0 applies the edit in process on a session that is already open, and the others are whole-project checks that start a fresh process every time, wall time. Whole front end, fresh process: both sides start cold and check everything, the like-for-like row, and the one that A0 loses. The same front end is 4,103 lines in A0 and 637 lines in TypeScript. The A0 edit times were recorded before edits were validated incrementally (results/edit-incremental.json: 7.24 ms before and 1.82 ms after, median of the same 14 edits). Windows was measured on a saturated machine, so tsc and tsgo moved by several times between runs there: read the Windows rows as contended and do not compare them as ratios.
+A0 against TypeScript checkers, medians of 15 interleaved runs, by machineMachine and load — What A0 is timed on — A0 — tsc 5.9.3 — tsgo 7.0.0-dev — tsc-rs 0.1.0
+macOS arm64, 3 CPUs, load average 10, at the limit — one edit, warm session — 5.2 ms — 531 ms — 56.7 ms — 53.7 ms
+same machine — whole front end, fresh process — 72.6 ms — 531 ms — 56.7 ms A0 slower — 53.7 ms A0 slower
+Linux x64, 4 CPUs, load average 1.4 — one edit, warm session — 5.8 ms — 779 ms — 88.3 ms — 55.7 ms
+same machine — whole front end, fresh process — 91.4 ms — 779 ms — 88.3 ms tie — 55.7 ms A0 slower
+Windows x64, 8 CPUs, CPU use 8 of 8 (contended) — one edit, warm session — 22.7 ms — 3918 ms — 25652 ms — not run
+same machine — whole front end, fresh process — 847 ms — 3918 ms — 25652 ms — not run
+
+Medians of 15 interleaved runs, 3 warm-ups, every sample asserting success. Not run: tsc-rs on Windows (no binary) and bun check (not a command). results/check-latency-darwin-arm64.json, results/check-latency-linux-x64.json, results/check-latency-win32-x64.json.
+
 Time to check one edited test program
 A0 (native) checks in 2.83 ms: place 1 of 34 (1 = fastest). Fastest: A0, 2.83 ms. Median language: 281.42 ms. A0 (Node CLI), the previous path, took 125.23 ms.
 Median milliseconds over the test programs, shorter bar = faster. Bar length is logarithmic.
@@ -1451,9 +1538,12 @@ TypeScript cold
 
 Measured on a loaded machine (load average up to 97 on 8 cores); absolute times will move on a quiet run, which will replace these. Cold rows start the compiler per edit; warm rows reuse a running one. Only these languages have model-written edits to replay, because the model-edit experiment exists only for them (Cost section); every language is checked on a fixed edit in the two charts above. results/edit-loop.json.
 
+Next: splitting a loop across cores. Parallel folds
+
 Parallel folds
+Does A0's automatic multi-core split beat hand-parallel code in other languages?
 A0 --parallel is the fastest implementation on 2 of 7 test programs; on the others, at least one other implementation is faster (listed under the chart).
-A fold whose step is an associative reduction can be split across cores without changing its result. a0 emit c --parallel does that from a cost model; every result is checked exact against serial A0 and the reference interpreter. Below, each test program is run by A0 --parallel and by hand-parallel versions in other languages.
+A fold whose step is an associative reduction can be split across cores without changing its result. a0 emit c --parallel does that from a cost model, and every result is checked exact against serial A0 and the reference interpreter.
 Each implementation's time as a multiple of A0 --parallel's, per test program
 1.00x = the same speed as A0 --parallel; above 1.00x A0 --parallel is faster; below 1.00x (red) the other implementation is faster. Bar length is logarithmic. 8 cores, median of 7 interleaved samples.
 measured: 8 of 49 languages
@@ -1656,7 +1746,10 @@ Python
 
 Measured on a loaded machine (load average up to 212 on 8 cores when timing started); ratios are interleaved, absolute times will move on a quiet run. Hand-parallel C is OpenMP parallel-for with a reduction. Where another implementation is faster, its time as a multiple of A0 --parallel's is in parentheses: xor24 (C + OpenMP 0.78x); mr22 (C + OpenMP 0.50x); mr22 (Rust 0.92x); mr22 (C 0.95x); dot64k (C 0.84x); dot64k (Rust 0.90x); max64k (Rust 0.78x); max64k (C 0.80x); hash64k (C + OpenMP 0.95x). On the 64K-element kernels the cost model keeps A0 serial. results/parallel.json.
 
+Next: the hardware output. Hardware
+
 Hardware
+How big is the circuit A0 generates, and how many clock cycles does it take?
 The 48 corpus functions compile to 49 synthesized modules (the shared divider counts as one): 55530 generic cells in all, 9325 in the largest, simulated on 5262 oracle cases.
 A0 compiles the same programs to clocked SystemVerilog. A cell is one gate-level element after Yosys generic synthesis, so fewer cells means a smaller circuit; cell counts are relative size, not area on a real chip. Every number here is read from results/hardware.json.
 49
@@ -1682,47 +1775,11 @@ median mean cycles across clocked modules
 554.47
 most mean cycles, any clocked module
 
-Targets
+Next: which targets are checked against the oracle. Verification
+
+Verification
+Is every target checked against the same oracle, and what is not checked?
 One source, checked against one oracle: 10 paths (the interpreter, the optimizer, JavaScript, native C, C++, WebAssembly and the JVM) ran all 5262 generated cases; the native assembly targets ran the 4297 cases that need no io (5 targets); SystemVerilog is simulated separately on 5262 cases and is unverified in this run (1 target).
-AArch64
-A0's own code generator, no C in between
-
-x86-64
-A0's own code generator, verified under Rosetta
-
-RISC-V, ARM32, AVR
-A0's own code generators for 64-bit RISC-V, 32-bit ARM, and 8-bit AVR
-
-wasm32
-A0's own wasm backend, or the C path through Clang: this site
-
-Native C
-through clang or gcc, UBSan-clean, parity with hand-written C; --parallel for threads
-
-JavaScript
-typed arrays, in-place updates, boundary guards only
-
-JVM
-Java source, compiled and verified with javac
-
-.NET
-C# source, verified on.NET 10
-
-GPU
-Metal Shading Language kernels, verified on Apple silicon
-
-FPGA / ASIC
-clocked SystemVerilog, simulated and synthesized
-
-Where A0 loses
-Speed: the AArch64 backend is up to 4.31x behind the best of C, Rust and Zig (the mat4 kernel), and up to 7.58x behind each language's own inlined driver (results/exec-benchmark-full.json).
-Wasm against clang on Windows x64: 8 losses on run time and 14 on load time, the load-time ratio moving by up to 0.27 between two runs (results/wasm-benchmark-win32.json, results/loss-ledger.json).
-Emitted JavaScript: one recorded loss against hand-written JavaScript (the noop kernel); a quiet Windows rerun tied, and the loss stays in the ledger (results/exec-benchmark-noop-win32.json).
-Tokens: A0 costs more than TypeScript on single-function tasks (377 of the 586 recorded losses are kernel token counts). Counts use OpenAI's o200k_base tokenizer, not a Claude tokenizer (results/lang-axes.json, results/loss-ledger.json).
-Editing a real front end, Haiku had more edits accepted in TypeScript than in A0 (13 against 10; Sonnet ties at 14) (results/app-edit-keys.json).
-Evidence: each edit cell uses fresh model sessions, one subject per cell and 24 trials per cell (STATUS.md, Known limits); the native timings come from one machine, and the compiler versions of the other languages are not recorded in the results file.
-The language has no floating point, no heap, no recursion; no GPU or x86-64 speed claim is made (STATUS.md, Known limits).
-Every loss, in full: results/loss-ledger.json. It can only shrink.
 
 # Home
 
