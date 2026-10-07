@@ -309,6 +309,7 @@ l primer
 +id ui
 =h2 The UI protocol
 =p This site is two A0 io programs. Each reads an event and writes a word stream that a small generic runtime turns into DOM: 1 OPEN tag, 2 TEXT bytes, 3 CLOSE, 4 ATTR key bytes, 5 ONCLICK event, 6 STATE words, 9 STYLE bytes, 12 SIZE property percent. The stylesheet, the layout, every number, and every chart bar on these pages are computed by the program; the runtime knows nothing about the page.
+=p A third kind of program runs frame by frame: a live program exports frame, and the generic host (site/live.ts) calls it once per animation frame with the pointer (mouse, pen or touch), scroll, viewport, reduced-motion and frame-cost data, a cached table of page geometry for the selectors the program asks to watch, and the state the program wrote last frame. It answers with its new state and a draw list for an overlay canvas. Signed Q16.16 math (site/lib/fx.a0) and the protocol (site/lib/frame.a0) are ordinary A0 libraries; the A0 Sentinel on the home page is one such program. docs/LIVE-PROGRAMS.md in the repository has the protocol.
 >
 >
 >

@@ -100,3 +100,45 @@ body) and a throttled `MutationObserver`; it stores page-relative integer rectan
 rebuilds the table the program sees when something changed or scrolling stopped. Scroll updates
 two numbers (`scrollX`, `scrollY`). Anchors in the program name an element id and an offset in
 that element, so they follow layout shifts and scrolling.
+
+## Reference (phase 2)
+
+Generic parts, none of which names the sentinel:
+
+- `site/lib/fx.a0`: signed Q16.16 math (`fx_mul`, `fx_div`, `fx_sqrt`, `fx_hyp`, `fx_unit`,
+  `fx_sin/cos/atan2` in turns, `fx_rng`, `fx_hash`, signed compare, arithmetic shift).
+  Tested against a BigInt oracle on the interpreter and wasm (`test/fx.test.ts`).
+- `site/lib/frame.a0`: the protocol constants, `fr_rdhdr`, and the command writers.
+- `site/live.ts` (mount, loop, visibility, reduced motion, adaptive render scale, `window.a0Live.stats()`),
+  `site/live/words.ts` (protocol), `canvas.ts` (overlay and draw-list executor, dirty-rect clear, dpr cap),
+  `pointer.ts` (unified, passive pointer input and taps), `geometry.ts` (observer-driven geometry
+  cache), `program.ts` (wasm exchange). Tests: `test/live.test.ts`.
+- `tools/live-programs.ts` lists live programs and their buffer sizes; `tools/site-build.ts`
+  compiles them with the A0 emitter and checks the bytes against `src/wasm.ts`.
+
+A page mounts a program with `data-live`, `data-live-in`, `data-live-out`, `data-live-rows` on the
+root element. After the geometry table (`rows` x 7 words) the input holds the state count and the
+state; the program returns its state with the `STATE` command, so A0 keeps state without memory.
+
+## The A0 Sentinel (phase 3)
+
+`site/sentinel/*.a0`: layout, env (geometry table access), body (pursuit spring, patrol, heading),
+tentacle (position-based chains), anchor (candidate scoring), locomotion (tentacle states, taps),
+life (core activity, graph links, quality), render (draw list), main (`frame`). Eight chains of
+6-9 joints with their own length, stiffness, damping, drift frequency, reach and preferred element
+kind. Body: spring-damper toward a point kept 60-120 px from the pointer; anchored chains pull and
+brake it through a share of the root correction. Tentacles search the cached geometry for corners and
+boundary points of real elements, approach through the solver, are pinned to an element id plus offset
+while attached (so scrolling and layout changes carry the anchor), and release on hold time, tension,
+distance or a missing element. Touch: finger as a temporary target; a scroll gesture (scroll delta or
+`pointercancel`) suspends chase; taps on controls make one to three free tentacles reach for them.
+Reduced motion: the pose is settled once off-screen of time and never moves again.
+
+Measured host cost per frame is in `results/sentinel-frame-cost.json`.
+
+Known gaps: no WebGL path (canvas 2D by design); the page has no compiler demo or IR view, so the
+"near a live compiler" behaviour is only the hero edit demo (`#live .ln`, treated as code: longer
+holds, a brighter core) and the code blocks; the hero matrix rain is unchanged (a lower opacity
+would help the sentinel read as a distinct object). Frame cost was measured in headless Chrome with
+software rendering, not on a physical GPU or a slow phone, and the adaptive-quality steps never
+triggered there.
