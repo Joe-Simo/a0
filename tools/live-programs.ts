@@ -18,6 +18,14 @@ export interface LiveProgramSpec {
   readonly rows: number;
 }
 
-export const LIVE_PROGRAMS: readonly LiveProgramSpec[] = [
-  { entry: 'sentinel/main.a0', name: 'sentinel', inputWords: 2048, outputWords: 16384, rows: 96 },
-];
+/** The sentinel crawler: kept in the repo for later work, not built into the site (removed from the page 2026-10-07). */
+export const SENTINEL_SPEC: LiveProgramSpec = {
+  entry: 'sentinel/main.a0',
+  name: 'sentinel',
+  inputWords: 2048,
+  outputWords: 16384,
+  rows: 96,
+};
+
+/** Live programs the site ships. Empty: no live program is on the page. */
+export const LIVE_PROGRAMS: readonly LiveProgramSpec[] = [];

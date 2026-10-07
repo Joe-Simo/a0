@@ -20,7 +20,7 @@ import { FLAG, fromQ16, OP, parseHostCommands, ROW_WORDS, toQ16 } from '../site/
 import { compile } from '../src/backends.js';
 import { link } from '../src/link.js';
 import { wasmModuleBytes } from '../src/wasm.js';
-import { LIVE_PROGRAMS } from '../tools/live-programs.js';
+import { SENTINEL_SPEC } from '../tools/live-programs.js';
 
 /** The generic live-program host (site/live/*) and the A0 Sentinel running on it, headless. */
 
@@ -303,7 +303,7 @@ test('geometry: page-relative boxes, kinds by first matching selector, cap and r
 });
 
 /** The Sentinel and its host, headless. */
-const SPEC = LIVE_PROGRAMS[0] as (typeof LIVE_PROGRAMS)[number];
+const SPEC = SENTINEL_SPEC;
 async function sentinel(): Promise<{ make: () => LiveProgram }> {
   const program = (await link(`site/${SPEC.entry}`, (f) => readFile(f, 'utf8'), { root: '.' }))
     .program;
@@ -679,12 +679,9 @@ test('sentinel: deterministic, and never writes outside its output', async () =>
     inWords.slice(32),
     'the geometry table is read only',
   );
-  // the shell asks for the sizes the program was built with
+  // the home shell does not mount a live program (the sentinel was removed from the page)
   const html = await readFile('site/index.html', 'utf8');
-  assert.ok(html.includes(`data-live="/${SPEC.name}.wasm"`));
-  assert.ok(html.includes(`data-live-in="${SPEC.inputWords}"`));
-  assert.ok(html.includes(`data-live-out="${SPEC.outputWords}"`));
-  assert.ok(html.includes(`data-live-rows="${SPEC.rows}"`));
+  assert.ok(!html.includes('data-live'));
 });
 
 test('mounting a live program never touches the page stylesheet or its root attributes', async () => {
