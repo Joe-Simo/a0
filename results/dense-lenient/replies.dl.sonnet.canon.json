@@ -1,0 +1,95 @@
+{
+ "dl-shot-clock/a0/structured": [
+  "a sub 249 p0"
+ ],
+ "dl-tempo-table/a0/structured": [
+  "i sub p0 1 @ tab\nt get tab i"
+ ],
+ "dl-discount-tax/a0/structured": [
+  "t sub p0 p1\nu mul t p2\nv div u 100\nw add t v\n"
+ ],
+ "dl-hit-flags/a0/structured": [
+  "b shr p0 3"
+ ],
+ "dl-recipe-scale/a0/structured": [
+  "a2 shl a 1\nh add a2 p2\nd shl p2 1\nb div h d\nret b"
+ ],
+ "dl-window-seat/a0/structured": [
+  "b eq c 5\nr or a b"
+ ],
+ "dl-score-bonus/a0/structured": [
+  "s add g p2\nr set p0 p1 s"
+ ],
+ "dl-damage-ticks/a0/structured": [
+  "fn f u32 -> u32\na shr p0 1\nb shr p0 2\nc shr p0 3\ns add p0 a\nt add s b\nu add t c\nret u\nend\n-fn tick"
+ ],
+ "dl-quarter-change/a0/structured": [
+  "fn f u32 -> u32\nr rem p0 25\nret r\nend\n-fn give\n-fn more"
+ ],
+ "dl-overbooked-slot/a0/structured": [
+  "fn pick u32 u32 u32x6 u32 -> u32\nc get p2 p1\nd gt c p3\ne eq p0 6\nh and d e\nk select h p1 p0\nret k\nend\nfn f u32x6 u32 -> u32\nr fold pick 6 6 p0 p1\nret r\nend\n-fn fits\n-fn next"
+ ],
+ "dl-dough-rise/a0/structured": [
+  "init rec p0 0\nfn short (u32,u32) u32 u32 -> bool\nv at p0 0\nd ge v p2\nret d\nend\nfn grow (u32,u32) u32 u32 -> (u32,u32)\nv at p0 0\nh at p0 1\nv2 mul v 2\nh2 add h 1\nn rec v2 h2\nret n\nend",
+  "fn short (u32,u32) u32 u32 -> bool\nv at p0 0\nd lt v p2\nret d\nend"
+ ],
+ "dl-playlist-fit/a0/structured": [
+  "fn take (u32,u32) u32 u32x5 u32 -> (u32,u32)\nc at p0 0\nu at p0 1\nl get p2 p1\nnu add u l\nok le nu p3\nnc add c 1\nc2 select ok nc c\nr rec c2 nu\nret r\nend\nr fold take 5 init p0 p1\no at r 0\n"
+ ],
+ "dl-light-phases/a0/structured": [
+  "fn f u32 u32 -> u32\na add p0 p1\nb rem a 3\nret b\nend"
+ ],
+ "dl-pin-unlock/a0/structured": [
+  "fn adv u32 u32 u32x4 u32x4 -> u32\na get p2 p1\nb get p3 p1\nm eq a b\nn add p0 1\nr select m n p0\nret r\nend\nfn f u32x4 u32x4 -> bool\nr fold adv 4 0 p0 p1\nok eq r 4\nret ok\nend"
+ ],
+ "dl-grade-letter/a0/structured": [
+  "t text \"FDCBA\""
+ ],
+ "dl-station-code/a0/structured": [
+  "s fold addb 4 0 t"
+ ],
+ "dl-menu-reverse/a0/structured": [
+  "i sub 3 p0 @ t\ng get t i"
+ ],
+ "dl-digit-prices/a0/structured": [
+  "s sub g 48 @ g\nr mul s p1"
+ ],
+ "dl-note-transpose/a0/structured": [
+  "q div k 7"
+ ],
+ "dl-tip-echo/a0/structured": [
+  "s add x tp @ tp\nw write t s"
+ ],
+ "dl-goals-ranked/a0/structured": [
+  "c ge a b @ t2\nhi select c a b @ c\nlo select c b a @ hi\nw1 write t2 hi\nw2 write w1 lo"
+ ],
+ "dl-three-bins/a0/structured": [
+  "r3 read t2 @ t2\nc at r3 0 @ r3\nt3 at r3 1 @ c\ns2 add s c @ s\nw write t3 s2\n"
+ ],
+ "dl-hand-total/a0/structured": [
+  "t1 add p1 p2 @ a\nt add t1 p3 @ t1\nw2 puts w t @ w\nret w2",
+  "t1 add p1 p2 @ a\nt add t1 p3 @ t1\nb arr t @ t\nw2 puts w b @ w\nret w2"
+ ],
+ "dl-thermo-emit/a0/structured": [
+  "a mul x 9\nm div a 5\nd add m 32"
+ ],
+ "dl-trip-stamps/a0/structured": [
+  "w2 call stamp w1 p2",
+  "s div p1 p2\nw2 call stamp w1 p1"
+ ],
+ "dl-receipt-line/a0/structured": [
+  "s mul p q"
+ ],
+ "dl-runner-pace/a0/structured": [
+  "fn pace u32 u32 -> u32\na mul p1 1000\nb div a p0\nret b\nend\nfn f u32 u32 u32 u32 -> u32\na call pace p0 p1\nb call pace p2 p3\nc lt a b\nd select c a b\nret d\nend"
+ ],
+ "dl-cook-minutes/a0/structured": [
+  "fn mins u32 u32 -> u32\na mul p0 60\nb add a p1\nret b\nend\nfn f u32 u32 u32 u32 -> u32\na call mins p0 p1\nb call mins p2 p3\nc sub b a\nret c\nend"
+ ],
+ "dl-one-low-stock/a0/structured": [
+  "fn low u32 u32 -> bool\na lt p0 p1\nret a\nend\na call low p0 p2\nb call low p1 p2 @ a\nr xor a b\n"
+ ],
+ "dl-stereo-volume/a0/structured": [
+  "fn scale u32 u32 -> u32\na mul p0 p1\nb div a 100\nret b\nend\nb call scale p0 p2\n-a\nc call scale p1 p2 @ b\nr arr b c\n"
+ ]
+}

@@ -69,7 +69,7 @@ test('mcp: every tool over the in-memory transport', () =>
     const early = await call(client, 'a0_save', {});
     assert.ok(early.error);
 
-    const view = await call(client, 'a0_open', { function: 'f' });
+    const view = await call(client, 'a0_open', { dense: false, function: 'f' });
     const handle = view.text.split('\n')[0] ?? '';
     assert.match(handle, /^e[0-9]+$/);
     assert.match(view.text, /sq/);
@@ -97,7 +97,7 @@ test('mcp: every tool over the in-memory transport', () =>
     assert.equal((await call(client, 'a0_run', { function: 'f', args: [3] })).text, '12');
     await call(client, 'a0_apply', { edit: 'c add b 2' });
 
-    const prog = await call(client, 'a0_program', { target: 'sq' });
+    const prog = await call(client, 'a0_program', { dense: false, target: 'sq' });
     const g = prog.text.split('\n')[0] ?? '';
     assert.match(g, /^g[0-9]+$/);
     const added = await call(client, 'a0_apply', {
@@ -129,7 +129,7 @@ test('mcp: paths are confined to the root, symlink escapes included', { skip: SY
       const r = await call(client, 'a0_check', { file });
       assert.ok(r.error, file);
     }
-    const view = await call(client, 'a0_open', { file: 'm.a0', function: 'f' });
+    const view = await call(client, 'a0_open', { dense: false, file: 'm.a0', function: 'f' });
     const handle = view.text.split('\n')[0] ?? '';
     await call(client, 'a0_apply', { file: 'm.a0', edit: `${handle}\nc add b 5` });
     for (const path of ['../escape.a0', 'dangling.a0', 'link.a0']) {
@@ -159,7 +159,7 @@ test(
       const bad = await call(client, 'a0_check', { file: 'bad.a0' });
       assert.ok(bad.error);
       assert.match(bad.text, /bad\.a0/);
-      const view = await call(client, 'a0_open', { file: 'm.a0', function: 'f' });
+      const view = await call(client, 'a0_open', { dense: false, file: 'm.a0', function: 'f' });
       await call(client, 'a0_apply', {
         file: 'm.a0',
         edit: `${view.text.split('\n')[0] ?? ''}\nc add b 5`,
@@ -244,7 +244,7 @@ test('mcp: dense views, dense replies, and a dense file saved as dense', () =>
 test('mcp: a rejected edit carries id, fix and applicability, and `fix all` applies the exact fixes', () =>
   withRoot(async (base) => {
     const client = await connect(join(base, 'root', 'm.a0'));
-    const view = await call(client, 'a0_open', { function: 'f' });
+    const view = await call(client, 'a0_open', { dense: false, function: 'f' });
     const handle = view.text.split('\n')[0] ?? '';
     const bad = await call(client, 'a0_apply', { edit: `${handle}\nc ADD b, 0x2` });
     assert.ok(bad.error);
@@ -276,10 +276,15 @@ test('mcp: spec lines round trip, specs hide, and a rejected edit names the exam
     const SPEC = 'fn f u32 -> u32\nex 1 -> 2\npre lt p0 100\na add p0 1\nret a\nend\n';
     await writeFile(join(root, 's.a0'), SPEC);
     const client = await connect(root);
-    const shown = await call(client, 'a0_open', { file: 's.a0', function: 'f' });
+    const shown = await call(client, 'a0_open', { dense: false, file: 's.a0', function: 'f' });
     assert.match(shown.text, /^ex 1 -> 2$/m);
     assert.match(shown.text, /^pre lt p0 100$/m);
-    const hidden = await call(client, 'a0_open', { file: 's.a0', function: 'f', specs: 'hide' });
+    const hidden = await call(client, 'a0_open', {
+      dense: false,
+      file: 's.a0',
+      function: 'f',
+      specs: 'hide',
+    });
     assert.ok(!hidden.error, hidden.text);
     assert.doesNotMatch(hidden.text, /^(ex|pre) /m);
     const handle = shown.text.split('\n')[0] ?? '';
@@ -315,7 +320,12 @@ test('mcp: spec lines round trip, specs hide, and a rejected edit names the exam
     assert.match(added.text, /^ex 5 -> 6$/m);
 
     // A rewrite that carries no spec lines keeps them when the view hid them.
-    const view = await call(client, 'a0_open', { file: 's.a0', function: 'f', specs: 'hide' });
+    const view = await call(client, 'a0_open', {
+      dense: false,
+      file: 's.a0',
+      function: 'f',
+      specs: 'hide',
+    });
     const hh = view.text.split('\n')[0] ?? '';
     const swapped = await call(client, 'a0_apply', {
       file: 's.a0',
@@ -328,7 +338,7 @@ test('mcp: spec lines round trip, specs hide, and a rejected edit names the exam
 
     // A file whose own example is wrong is rejected at open, with the same fields.
     await writeFile(join(root, 't.a0'), SPEC.replace('ex 1 -> 2', 'ex 1 -> 3'));
-    const opened = await call(client, 'a0_open', { file: 't.a0', function: 'f' });
+    const opened = await call(client, 'a0_open', { dense: false, file: 't.a0', function: 'f' });
     assert.ok(opened.error);
     const o = JSON.parse(opened.text) as { id: string; message: string; spec: { ex: number } };
     assert.equal(o.id, 'A0715');

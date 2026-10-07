@@ -155,7 +155,7 @@ export async function createServer(launch: string): Promise<McpServer> {
     .boolean()
     .optional()
     .describe(
-      'dense view: the function (or signatures) in the dense syntax; replies under this handle are dense too',
+      'dense view (the default): the function (or signatures) in the dense syntax; replies under this handle are dense too. Pass false for the canonical view and canonical replies (the opt-out, see skills/a0/references/primer.txt)',
     );
 
   const server = new McpServer({ name: 'a0', version: A0_VERSION });
@@ -181,7 +181,7 @@ export async function createServer(launch: string): Promise<McpServer> {
     },
     tool(async ({ file, function: name, scope, dense, specs, lean }) => {
       const { session } = await sessionFor(file);
-      const useDense = dense ?? isDensePath(await fileOf(file));
+      const useDense = dense ?? true;
       const text = session.open(name, {
         ...(scope === 'full'
           ? {}
@@ -202,7 +202,7 @@ export async function createServer(launch: string): Promise<McpServer> {
     },
     tool(async ({ file, target, dense }) => {
       const { session } = await sessionFor(file);
-      const useDense = dense ?? isDensePath(await fileOf(file));
+      const useDense = dense ?? true;
       return session.openProgram({
         ...(target === undefined ? {} : { scope: 'deps' as const, target }),
         ...(useDense ? { dense: true } : {}),

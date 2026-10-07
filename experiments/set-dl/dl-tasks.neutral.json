@@ -1,0 +1,633 @@
+{ "tasks": [
+{ "id": "dl-shot-clock", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "f",
+  "instruction": "Given tenths of a second elapsed on a 24-second shot clock, return the whole seconds remaining, rounded up.",
+  "start": { "functions": [ { "name": "f", "params": ["u32"], "result": "u32", "body": [
+    { "id": "a", "op": "sub", "args": [240, "p0"] }, { "id": "b", "op": "div", "args": ["a", 10] } ], "ret": "b" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32"], "result": "u32", "body": [
+    { "id": "a", "op": "sub", "args": [240, "p0"] }, { "id": "b", "op": "add", "args": ["a", 9] }, { "id": "c", "op": "div", "args": ["b", 10] } ], "ret": "c" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32"], "result": "u32", "body": [
+    { "id": "a", "op": "sub", "args": [240, "p0"] }, { "id": "b", "op": "add", "args": ["a", 10] }, { "id": "c", "op": "div", "args": ["b", 10] } ], "ret": "c" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0], "expected": 24 }, { "fn": "f", "args": [5], "expected": 24 }, { "fn": "f", "args": [240], "expected": 0 },
+    { "fn": "f", "args": [239], "expected": 1 }, { "fn": "f", "args": [231], "expected": 1 }, { "fn": "f", "args": [230], "expected": 1 },
+    { "fn": "f", "args": [100], "expected": 14 }, { "fn": "f", "args": [101], "expected": 14 } ],
+  "note": "Ceiling division; adding 10 instead of 9 overshoots on exact multiples." },
+
+{ "id": "dl-tempo-table", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "f",
+  "instruction": "Tempo modes are numbered from 1, and mode 1 is the first tempo in the table; return that tempo times the number of bars.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "tab", "op": "arr", "args": [60, 90, 120, 168] }, { "id": "t", "op": "get", "args": ["tab", "p0"] }, { "id": "r", "op": "mul", "args": ["t", "p1"] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "tab", "op": "arr", "args": [60, 90, 120, 168] }, { "id": "k", "op": "sub", "args": ["p0", 1] }, { "id": "t", "op": "get", "args": ["tab", "k"] }, { "id": "r", "op": "mul", "args": ["t", "p1"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "tab", "op": "arr", "args": [60, 90, 120, 168] }, { "id": "k", "op": "sub", "args": [4, "p0"] }, { "id": "t", "op": "get", "args": ["tab", "k"] }, { "id": "r", "op": "mul", "args": ["t", "p1"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [1, 2], "expected": 120 }, { "fn": "f", "args": [2, 1], "expected": 90 }, { "fn": "f", "args": [3, 3], "expected": 360 },
+    { "fn": "f", "args": [4, 1], "expected": 168 }, { "fn": "f", "args": [4, 0], "expected": 0 }, { "fn": "f", "args": [1, 0], "expected": 0 },
+    { "fn": "f", "args": [2, 10], "expected": 900 }, { "fn": "f", "args": [3, 1], "expected": 120 } ],
+  "note": "Index shift by one; the wrong edit reverses the table instead." },
+
+{ "id": "dl-discount-tax", "kind": "multi-node-edit", "wrongEditKind": "order-of-operations", "target": "f",
+  "instruction": "Subtract the discount from the subtotal first, then add the tax percentage computed on the discounted amount.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "mul", "args": ["p0", "p2"] }, { "id": "u", "op": "div", "args": ["t", 100] }, { "id": "v", "op": "add", "args": ["p0", "u"] }, { "id": "w", "op": "sub", "args": ["v", "p1"] } ], "ret": "w" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32", "body": [
+    { "id": "n", "op": "sub", "args": ["p0", "p1"] }, { "id": "t", "op": "mul", "args": ["n", "p2"] }, { "id": "u", "op": "div", "args": ["t", 100] }, { "id": "v", "op": "add", "args": ["n", "u"] } ], "ret": "v" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32", "body": [
+    { "id": "n", "op": "sub", "args": ["p0", "p1"] }, { "id": "t", "op": "mul", "args": ["p0", "p2"] }, { "id": "u", "op": "div", "args": ["t", 100] }, { "id": "v", "op": "add", "args": ["n", "u"] } ], "ret": "v" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [1000, 0, 10], "expected": 1100 }, { "fn": "f", "args": [1000, 200, 10], "expected": 880 }, { "fn": "f", "args": [500, 500, 20], "expected": 0 },
+    { "fn": "f", "args": [999, 99, 5], "expected": 945 }, { "fn": "f", "args": [100, 0, 0], "expected": 100 }, { "fn": "f", "args": [0, 0, 50], "expected": 0 },
+    { "fn": "f", "args": [250, 50, 8], "expected": 216 }, { "fn": "f", "args": [10, 1, 100], "expected": 18 } ],
+  "note": "Billing: tax must be on the discounted amount; the wrong edit still taxes the full subtotal." },
+
+{ "id": "dl-hit-flags", "kind": "comprehension-edit", "wrongEditKind": "wrong-bit", "target": "f",
+  "instruction": "A player can be hit when neither the shield (bit 0) nor invisibility is set; invisibility is bit 3 (value 8).",
+  "start": { "functions": [ { "name": "f", "params": ["u32"], "result": "bool", "body": [
+    { "id": "a", "op": "and", "args": ["p0", 1] }, { "id": "s", "op": "ne", "args": ["a", 0] }, { "id": "b", "op": "shr", "args": ["p0", 2] },
+    { "id": "c", "op": "and", "args": ["b", 1] }, { "id": "v", "op": "ne", "args": ["c", 0] }, { "id": "x", "op": "or", "args": ["s", "v"] }, { "id": "r", "op": "eq", "args": ["x", false] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32"], "result": "bool", "body": [
+    { "id": "a", "op": "and", "args": ["p0", 1] }, { "id": "s", "op": "ne", "args": ["a", 0] }, { "id": "b", "op": "shr", "args": ["p0", 3] },
+    { "id": "c", "op": "and", "args": ["b", 1] }, { "id": "v", "op": "ne", "args": ["c", 0] }, { "id": "x", "op": "or", "args": ["s", "v"] }, { "id": "r", "op": "eq", "args": ["x", false] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32"], "result": "bool", "body": [
+    { "id": "a", "op": "and", "args": ["p0", 1] }, { "id": "s", "op": "ne", "args": ["a", 0] }, { "id": "b", "op": "shr", "args": ["p0", 4] },
+    { "id": "c", "op": "and", "args": ["b", 1] }, { "id": "v", "op": "ne", "args": ["c", 0] }, { "id": "x", "op": "or", "args": ["s", "v"] }, { "id": "r", "op": "eq", "args": ["x", false] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0], "expected": true }, { "fn": "f", "args": [1], "expected": false }, { "fn": "f", "args": [8], "expected": false },
+    { "fn": "f", "args": [4], "expected": true }, { "fn": "f", "args": [16], "expected": true }, { "fn": "f", "args": [9], "expected": false },
+    { "fn": "f", "args": [12], "expected": false }, { "fn": "f", "args": [2], "expected": true } ],
+  "note": "Shift distance selects the flag bit; value 8 is bit 3, not bit 4." },
+
+{ "id": "dl-recipe-scale", "kind": "multi-node-edit", "wrongEditKind": "order-of-operations", "target": "f",
+  "instruction": "Scale grams from the old number of servings (third argument) to the new one (second argument), rounding to the nearest gram with halves rounded up.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32", "body": [
+    { "id": "a", "op": "mul", "args": ["p0", "p1"] }, { "id": "b", "op": "div", "args": ["a", "p2"] } ], "ret": "b" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32", "body": [
+    { "id": "h", "op": "shr", "args": ["p2", 1] }, { "id": "a", "op": "mul", "args": ["p0", "p1"] }, { "id": "c", "op": "add", "args": ["a", "h"] }, { "id": "b", "op": "div", "args": ["c", "p2"] } ], "ret": "b" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32", "body": [
+    { "id": "h", "op": "shr", "args": ["p2", 1] }, { "id": "c", "op": "add", "args": ["p0", "h"] }, { "id": "a", "op": "mul", "args": ["c", "p1"] }, { "id": "b", "op": "div", "args": ["a", "p2"] } ], "ret": "b" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [100, 3, 2], "expected": 150 }, { "fn": "f", "args": [10, 1, 3], "expected": 3 }, { "fn": "f", "args": [10, 2, 3], "expected": 7 },
+    { "fn": "f", "args": [5, 1, 2], "expected": 3 }, { "fn": "f", "args": [7, 3, 4], "expected": 5 }, { "fn": "f", "args": [0, 5, 4], "expected": 0 },
+    { "fn": "f", "args": [250, 4, 4], "expected": 250 }, { "fn": "f", "args": [1, 1, 1], "expected": 1 } ],
+  "note": "Cooking: half the divisor is added after multiplying, not before." },
+
+{ "id": "dl-window-seat", "kind": "targeted-edit", "wrongEditKind": "comparison", "target": "f",
+  "instruction": "Seats are numbered from 0 with six seats per row (columns 0 to 5); return true for window seats, the first and last column.",
+  "start": { "functions": [ { "name": "f", "params": ["u32"], "result": "bool", "body": [
+    { "id": "c", "op": "rem", "args": ["p0", 6] }, { "id": "a", "op": "eq", "args": ["c", 0] }, { "id": "b", "op": "eq", "args": ["c", 6] }, { "id": "r", "op": "ne", "args": ["a", "b"] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32"], "result": "bool", "body": [
+    { "id": "c", "op": "rem", "args": ["p0", 6] }, { "id": "a", "op": "eq", "args": ["c", 0] }, { "id": "b", "op": "eq", "args": ["c", 5] }, { "id": "r", "op": "ne", "args": ["a", "b"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32"], "result": "bool", "body": [
+    { "id": "c", "op": "rem", "args": ["p0", 6] }, { "id": "a", "op": "eq", "args": ["c", 0] }, { "id": "b", "op": "eq", "args": ["p0", 5] }, { "id": "r", "op": "ne", "args": ["a", "b"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0], "expected": true }, { "fn": "f", "args": [5], "expected": true }, { "fn": "f", "args": [11], "expected": true },
+    { "fn": "f", "args": [6], "expected": true }, { "fn": "f", "args": [3], "expected": false }, { "fn": "f", "args": [2], "expected": false },
+    { "fn": "f", "args": [17], "expected": true }, { "fn": "f", "args": [4], "expected": false } ],
+  "note": "Travel: the last column is 5; comparing the raw seat number only works in row 0." },
+
+{ "id": "dl-score-bonus", "kind": "targeted-edit", "wrongEditKind": "swapped-argument", "target": "f",
+  "instruction": "Add the bonus (third argument) to the score at the given position instead of overwriting it, and return the updated scores.",
+  "start": { "functions": [ { "name": "f", "params": ["u32x4","u32","u32"], "result": "u32x4", "body": [
+    { "id": "g", "op": "get", "args": ["p0", "p1"] }, { "id": "r", "op": "set", "args": ["p0", "p1", "p2"] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32x4","u32","u32"], "result": "u32x4", "body": [
+    { "id": "g", "op": "get", "args": ["p0", "p1"] }, { "id": "n", "op": "add", "args": ["g", "p2"] }, { "id": "r", "op": "set", "args": ["p0", "p1", "n"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32x4","u32","u32"], "result": "u32x4", "body": [
+    { "id": "g", "op": "get", "args": ["p0", "p1"] }, { "id": "n", "op": "add", "args": ["g", "p2"] }, { "id": "r", "op": "set", "args": ["p0", "p2", "n"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [[1,2,3,4], 0, 10], "expected": [11,2,3,4] }, { "fn": "f", "args": [[1,2,3,4], 2, 2], "expected": [1,2,5,4] },
+    { "fn": "f", "args": [[0,0,0,0], 3, 0], "expected": [0,0,0,0] }, { "fn": "f", "args": [[5,5,5,5], 5, 1], "expected": [5,6,5,5] },
+    { "fn": "f", "args": [[9,8,7,6], 1, 3], "expected": [9,11,7,6] }, { "fn": "f", "args": [[4294967295,0,0,0], 0, 1], "expected": [0,0,0,0] },
+    { "fn": "f", "args": [[2,4,6,8], 3, 0], "expected": [2,4,6,8] }, { "fn": "f", "args": [[1,1,1,1], 0, 4], "expected": [5,1,1,1] } ],
+  "note": "Games: read-modify-write of an array element; index wraps modulo 4." },
+
+{ "id": "dl-damage-ticks", "kind": "targeted-edit", "wrongEditKind": "fold-bound", "target": "f",
+  "instruction": "The damage-over-time effect lasts four ticks, halving each tick; return the total damage over all four ticks.",
+  "start": { "functions": [
+    { "name": "tick", "params": ["u32","u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "shr", "args": ["p2", "p1"] }, { "id": "b", "op": "add", "args": ["p0", "a"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "r", "op": "fold", "args": ["tick", 3, 0, "p0"] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "tick", "params": ["u32","u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "shr", "args": ["p2", "p1"] }, { "id": "b", "op": "add", "args": ["p0", "a"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "r", "op": "fold", "args": ["tick", 4, 0, "p0"] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "tick", "params": ["u32","u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "shr", "args": ["p2", "p1"] }, { "id": "b", "op": "add", "args": ["p0", "a"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "r", "op": "fold", "args": ["tick", 5, 0, "p0"] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [8], "expected": 15 }, { "fn": "f", "args": [16], "expected": 30 }, { "fn": "f", "args": [0], "expected": 0 },
+    { "fn": "f", "args": [1], "expected": 1 }, { "fn": "f", "args": [7], "expected": 11 }, { "fn": "f", "args": [100], "expected": 187 },
+    { "fn": "f", "args": [15], "expected": 26 }, { "fn": "f", "args": [32], "expected": 60 } ],
+  "note": "Fold count is the number of ticks." },
+
+{ "id": "dl-quarter-change", "kind": "targeted-edit", "wrongEditKind": "fold-bound", "target": "f",
+  "instruction": "The machine should keep handing out quarters for as long as at least 25 cents remain, then return the cents left over.",
+  "start": { "functions": [
+    { "name": "more", "params": ["u32","u32","u32"], "result": "bool", "body": [
+      { "id": "u", "op": "lt", "args": ["p0", "p2"] }, { "id": "k", "op": "ne", "args": ["u", true] } ], "ret": "k" },
+    { "name": "give", "params": ["u32","u32","u32"], "result": "u32", "body": [
+      { "id": "n", "op": "sub", "args": ["p0", "p2"] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["more", "give", 3, "p0", 25] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "more", "params": ["u32","u32","u32"], "result": "bool", "body": [
+      { "id": "u", "op": "lt", "args": ["p0", "p2"] }, { "id": "k", "op": "ne", "args": ["u", true] } ], "ret": "k" },
+    { "name": "give", "params": ["u32","u32","u32"], "result": "u32", "body": [
+      { "id": "n", "op": "sub", "args": ["p0", "p2"] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["more", "give", 100, "p0", 25] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "more", "params": ["u32","u32","u32"], "result": "bool", "body": [
+      { "id": "u", "op": "lt", "args": ["p0", "p2"] }, { "id": "k", "op": "ne", "args": ["u", true] } ], "ret": "k" },
+    { "name": "give", "params": ["u32","u32","u32"], "result": "u32", "body": [
+      { "id": "n", "op": "sub", "args": ["p0", "p2"] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["more", "give", 4, "p0", 25] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0], "expected": 0 }, { "fn": "f", "args": [25], "expected": 0 }, { "fn": "f", "args": [100], "expected": 0 },
+    { "fn": "f", "args": [99], "expected": 24 }, { "fn": "f", "args": [130], "expected": 5 }, { "fn": "f", "args": [200], "expected": 0 },
+    { "fn": "f", "args": [76], "expected": 1 }, { "fn": "f", "args": [101], "expected": 1 } ],
+  "note": "Loop cap was 3 quarters; inputs up to a few dollars need a larger cap." },
+
+{ "id": "dl-overbooked-slot", "kind": "targeted-edit", "wrongEditKind": "start-state", "target": "f",
+  "instruction": "Return the index of the first time slot whose bookings exceed the capacity, scanning from slot 0; return 6 if none does.",
+  "start": { "functions": [
+    { "name": "fits", "params": ["u32","u32","u32x6","u32"], "result": "bool", "body": [
+      { "id": "g", "op": "get", "args": ["p2", "p0"] }, { "id": "over", "op": "gt", "args": ["g", "p3"] }, { "id": "k", "op": "eq", "args": ["over", false] } ], "ret": "k" },
+    { "name": "next", "params": ["u32","u32","u32x6","u32"], "result": "u32", "body": [
+      { "id": "n", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32x6","u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["fits", "next", 6, 1, "p0", "p1"] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "fits", "params": ["u32","u32","u32x6","u32"], "result": "bool", "body": [
+      { "id": "g", "op": "get", "args": ["p2", "p0"] }, { "id": "over", "op": "gt", "args": ["g", "p3"] }, { "id": "k", "op": "eq", "args": ["over", false] } ], "ret": "k" },
+    { "name": "next", "params": ["u32","u32","u32x6","u32"], "result": "u32", "body": [
+      { "id": "n", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32x6","u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["fits", "next", 6, 0, "p0", "p1"] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "fits", "params": ["u32","u32","u32x6","u32"], "result": "bool", "body": [
+      { "id": "g", "op": "get", "args": ["p2", "p0"] }, { "id": "over", "op": "ge", "args": ["g", "p3"] }, { "id": "k", "op": "eq", "args": ["over", false] } ], "ret": "k" },
+    { "name": "next", "params": ["u32","u32","u32x6","u32"], "result": "u32", "body": [
+      { "id": "n", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32x6","u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["fits", "next", 6, 0, "p0", "p1"] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [[5,5,5,5,5,5], 5], "expected": 6 }, { "fn": "f", "args": [[9,1,1,1,1,1], 5], "expected": 0 },
+    { "fn": "f", "args": [[1,2,8,1,1,1], 5], "expected": 2 }, { "fn": "f", "args": [[1,1,1,1,1,6], 5], "expected": 5 },
+    { "fn": "f", "args": [[0,0,0,0,0,0], 0], "expected": 6 }, { "fn": "f", "args": [[3,4,5,6,7,8], 5], "expected": 3 },
+    { "fn": "f", "args": [[7,7,7,7,7,7], 10], "expected": 6 }, { "fn": "f", "args": [[2,10,2,2,2,2], 9], "expected": 1 } ],
+  "note": "Scheduling: the scan started at slot 1; the wrong edit also treats a full slot as overbooked." },
+
+{ "id": "dl-dough-rise", "kind": "comprehension-edit", "wrongEditKind": "start-state", "target": "f",
+  "instruction": "Return how many hourly doublings the dough needs to reach at least the goal volume; dough already at the goal needs zero hours.",
+  "start": { "functions": [
+    { "name": "short", "params": ["(u32,u32)","u32","u32"], "result": "bool", "body": [
+      { "id": "v", "op": "at", "args": ["p0", 0] }, { "id": "k", "op": "lt", "args": ["v", "p2"] } ], "ret": "k" },
+    { "name": "grow", "params": ["(u32,u32)","u32","u32"], "result": "(u32,u32)", "body": [
+      { "id": "v", "op": "at", "args": ["p0", 0] }, { "id": "d", "op": "shl", "args": ["v", 1] }, { "id": "h", "op": "at", "args": ["p0", 1] },
+      { "id": "h2", "op": "add", "args": ["h", 1] }, { "id": "r1", "op": "put", "args": ["p0", 0, "d"] }, { "id": "r2", "op": "put", "args": ["r1", 1, "h2"] } ], "ret": "r2" },
+    { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "init", "op": "rec", "args": ["p0", 1] }, { "id": "r", "op": "loop", "args": ["short", "grow", 20, "init", "p1"] }, { "id": "o", "op": "at", "args": ["r", 1] } ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "short", "params": ["(u32,u32)","u32","u32"], "result": "bool", "body": [
+      { "id": "v", "op": "at", "args": ["p0", 0] }, { "id": "k", "op": "lt", "args": ["v", "p2"] } ], "ret": "k" },
+    { "name": "grow", "params": ["(u32,u32)","u32","u32"], "result": "(u32,u32)", "body": [
+      { "id": "v", "op": "at", "args": ["p0", 0] }, { "id": "d", "op": "shl", "args": ["v", 1] }, { "id": "h", "op": "at", "args": ["p0", 1] },
+      { "id": "h2", "op": "add", "args": ["h", 1] }, { "id": "r1", "op": "put", "args": ["p0", 0, "d"] }, { "id": "r2", "op": "put", "args": ["r1", 1, "h2"] } ], "ret": "r2" },
+    { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "init", "op": "rec", "args": ["p0", 0] }, { "id": "r", "op": "loop", "args": ["short", "grow", 20, "init", "p1"] }, { "id": "o", "op": "at", "args": ["r", 1] } ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "short", "params": ["(u32,u32)","u32","u32"], "result": "bool", "body": [
+      { "id": "v", "op": "at", "args": ["p0", 0] }, { "id": "k", "op": "le", "args": ["v", "p2"] } ], "ret": "k" },
+    { "name": "grow", "params": ["(u32,u32)","u32","u32"], "result": "(u32,u32)", "body": [
+      { "id": "v", "op": "at", "args": ["p0", 0] }, { "id": "d", "op": "shl", "args": ["v", 1] }, { "id": "h", "op": "at", "args": ["p0", 1] },
+      { "id": "h2", "op": "add", "args": ["h", 1] }, { "id": "r1", "op": "put", "args": ["p0", 0, "d"] }, { "id": "r2", "op": "put", "args": ["r1", 1, "h2"] } ], "ret": "r2" },
+    { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "init", "op": "rec", "args": ["p0", 0] }, { "id": "r", "op": "loop", "args": ["short", "grow", 20, "init", "p1"] }, { "id": "o", "op": "at", "args": ["r", 1] } ], "ret": "o" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [1, 8], "expected": 3 }, { "fn": "f", "args": [8, 8], "expected": 0 }, { "fn": "f", "args": [10, 5], "expected": 0 },
+    { "fn": "f", "args": [3, 10], "expected": 2 }, { "fn": "f", "args": [5, 20], "expected": 2 }, { "fn": "f", "args": [0, 1], "expected": 20 },
+    { "fn": "f", "args": [1, 1], "expected": 0 }, { "fn": "f", "args": [7, 100], "expected": 4 } ],
+  "note": "Record state (volume, hours); the hour counter started at 1." },
+
+{ "id": "dl-playlist-fit", "kind": "targeted-edit", "wrongEditKind": "fold-bound", "target": "f",
+  "instruction": "Count how many of the five songs, taken in order, fit into the time budget; all five songs must be considered.",
+  "start": { "functions": [
+    { "name": "fit", "params": ["(u32,u32)","u32","u32x5","u32"], "result": "bool", "body": [
+      { "id": "s0", "op": "at", "args": ["p0", 0] }, { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "t", "op": "add", "args": ["s0", "g"] }, { "id": "k", "op": "le", "args": ["t", "p3"] } ], "ret": "k" },
+    { "name": "take", "params": ["(u32,u32)","u32","u32x5","u32"], "result": "(u32,u32)", "body": [
+      { "id": "s0", "op": "at", "args": ["p0", 0] }, { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "t", "op": "add", "args": ["s0", "g"] },
+      { "id": "c", "op": "at", "args": ["p0", 1] }, { "id": "c2", "op": "add", "args": ["c", 1] }, { "id": "r1", "op": "put", "args": ["p0", 0, "t"] }, { "id": "r2", "op": "put", "args": ["r1", 1, "c2"] } ], "ret": "r2" },
+    { "name": "f", "params": ["u32x5","u32"], "result": "u32", "body": [
+      { "id": "init", "op": "rec", "args": [0, 0] }, { "id": "r", "op": "loop", "args": ["fit", "take", 4, "init", "p0", "p1"] }, { "id": "o", "op": "at", "args": ["r", 1] } ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "fit", "params": ["(u32,u32)","u32","u32x5","u32"], "result": "bool", "body": [
+      { "id": "s0", "op": "at", "args": ["p0", 0] }, { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "t", "op": "add", "args": ["s0", "g"] }, { "id": "k", "op": "le", "args": ["t", "p3"] } ], "ret": "k" },
+    { "name": "take", "params": ["(u32,u32)","u32","u32x5","u32"], "result": "(u32,u32)", "body": [
+      { "id": "s0", "op": "at", "args": ["p0", 0] }, { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "t", "op": "add", "args": ["s0", "g"] },
+      { "id": "c", "op": "at", "args": ["p0", 1] }, { "id": "c2", "op": "add", "args": ["c", 1] }, { "id": "r1", "op": "put", "args": ["p0", 0, "t"] }, { "id": "r2", "op": "put", "args": ["r1", 1, "c2"] } ], "ret": "r2" },
+    { "name": "f", "params": ["u32x5","u32"], "result": "u32", "body": [
+      { "id": "init", "op": "rec", "args": [0, 0] }, { "id": "r", "op": "loop", "args": ["fit", "take", 5, "init", "p0", "p1"] }, { "id": "o", "op": "at", "args": ["r", 1] } ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "fit", "params": ["(u32,u32)","u32","u32x5","u32"], "result": "bool", "body": [
+      { "id": "s0", "op": "at", "args": ["p0", 0] }, { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "t", "op": "add", "args": ["s0", "g"] }, { "id": "k", "op": "lt", "args": ["t", "p3"] } ], "ret": "k" },
+    { "name": "take", "params": ["(u32,u32)","u32","u32x5","u32"], "result": "(u32,u32)", "body": [
+      { "id": "s0", "op": "at", "args": ["p0", 0] }, { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "t", "op": "add", "args": ["s0", "g"] },
+      { "id": "c", "op": "at", "args": ["p0", 1] }, { "id": "c2", "op": "add", "args": ["c", 1] }, { "id": "r1", "op": "put", "args": ["p0", 0, "t"] }, { "id": "r2", "op": "put", "args": ["r1", 1, "c2"] } ], "ret": "r2" },
+    { "name": "f", "params": ["u32x5","u32"], "result": "u32", "body": [
+      { "id": "init", "op": "rec", "args": [0, 0] }, { "id": "r", "op": "loop", "args": ["fit", "take", 5, "init", "p0", "p1"] }, { "id": "o", "op": "at", "args": ["r", 1] } ], "ret": "o" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [[1,1,1,1,1], 5], "expected": 5 }, { "fn": "f", "args": [[1,1,1,1,1], 10], "expected": 5 },
+    { "fn": "f", "args": [[3,3,3,3,3], 10], "expected": 3 }, { "fn": "f", "args": [[0,0,0,0,0], 0], "expected": 5 },
+    { "fn": "f", "args": [[10,1,1,1,1], 9], "expected": 0 }, { "fn": "f", "args": [[2,2,2,2,2], 8], "expected": 4 },
+    { "fn": "f", "args": [[4,4,4,4,1], 17], "expected": 5 }, { "fn": "f", "args": [[5,5,5,5,5], 100], "expected": 5 } ],
+  "note": "Music: loop cap must equal the playlist length; a song that exactly fills the budget still fits." },
+
+{ "id": "dl-light-phases", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "f",
+  "instruction": "The traffic light has three phases (0, 1, 2) and wraps from 2 back to 0; return the phase after the given number of ticks.",
+  "start": { "functions": [
+    { "name": "going", "params": ["u32","u32","u32","u32"], "result": "bool", "body": [
+      { "id": "k", "op": "lt", "args": ["p1", "p2"] }, { "id": "ok", "op": "mov", "args": ["k"] } ], "ret": "ok" },
+    { "name": "tick", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "rem", "args": ["a", "p3"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["going", "tick", 50, "p0", "p1", 4] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "reference": { "functions": [
+    { "name": "going", "params": ["u32","u32","u32","u32"], "result": "bool", "body": [
+      { "id": "k", "op": "lt", "args": ["p1", "p2"] }, { "id": "ok", "op": "mov", "args": ["k"] } ], "ret": "ok" },
+    { "name": "tick", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "rem", "args": ["a", "p3"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "r", "op": "loop", "args": ["going", "tick", 50, "p0", "p1", 3] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "going", "params": ["u32","u32","u32","u32"], "result": "bool", "body": [
+      { "id": "k", "op": "lt", "args": ["p1", "p2"] }, { "id": "ok", "op": "mov", "args": ["k"] } ], "ret": "ok" },
+    { "name": "tick", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "rem", "args": ["a", "p3"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "e", "op": "add", "args": ["p1", 1] }, { "id": "r", "op": "loop", "args": ["going", "tick", 50, "p0", "e", 3] }, { "id": "o", "op": "mov", "args": ["r"] } ], "ret": "o" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0, 0], "expected": 0 }, { "fn": "f", "args": [0, 1], "expected": 1 }, { "fn": "f", "args": [0, 3], "expected": 0 },
+    { "fn": "f", "args": [2, 1], "expected": 0 }, { "fn": "f", "args": [1, 2], "expected": 0 }, { "fn": "f", "args": [0, 4], "expected": 1 },
+    { "fn": "f", "args": [2, 5], "expected": 1 }, { "fn": "f", "args": [1, 0], "expected": 1 } ],
+  "note": "State machine; the phase count passed to the step was 4. Ticks are at most 50." },
+
+{ "id": "dl-pin-unlock", "kind": "comprehension-edit", "wrongEditKind": "off-by-one", "target": "f",
+  "instruction": "The lock should open only when all four entered digits match the code.",
+  "start": { "functions": [
+    { "name": "same", "params": ["u32","u32","u32x4","u32x4"], "result": "bool", "body": [
+      { "id": "x", "op": "get", "args": ["p2", "p0"] }, { "id": "y", "op": "get", "args": ["p3", "p0"] }, { "id": "k", "op": "eq", "args": ["x", "y"] } ], "ret": "k" },
+    { "name": "adv", "params": ["u32","u32","u32x4","u32x4"], "result": "u32", "body": [
+      { "id": "n", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32x4","u32x4"], "result": "bool", "body": [
+      { "id": "r", "op": "loop", "args": ["same", "adv", 4, 0, "p0", "p1"] }, { "id": "ok", "op": "eq", "args": ["r", 3] } ], "ret": "ok" } ] },
+  "reference": { "functions": [
+    { "name": "same", "params": ["u32","u32","u32x4","u32x4"], "result": "bool", "body": [
+      { "id": "x", "op": "get", "args": ["p2", "p0"] }, { "id": "y", "op": "get", "args": ["p3", "p0"] }, { "id": "k", "op": "eq", "args": ["x", "y"] } ], "ret": "k" },
+    { "name": "adv", "params": ["u32","u32","u32x4","u32x4"], "result": "u32", "body": [
+      { "id": "n", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32x4","u32x4"], "result": "bool", "body": [
+      { "id": "r", "op": "loop", "args": ["same", "adv", 4, 0, "p0", "p1"] }, { "id": "ok", "op": "eq", "args": ["r", 4] } ], "ret": "ok" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "same", "params": ["u32","u32","u32x4","u32x4"], "result": "bool", "body": [
+      { "id": "x", "op": "get", "args": ["p2", "p0"] }, { "id": "y", "op": "get", "args": ["p3", "p0"] }, { "id": "k", "op": "eq", "args": ["x", "y"] } ], "ret": "k" },
+    { "name": "adv", "params": ["u32","u32","u32x4","u32x4"], "result": "u32", "body": [
+      { "id": "n", "op": "add", "args": ["p0", 1] }, { "id": "m", "op": "mov", "args": ["n"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32x4","u32x4"], "result": "bool", "body": [
+      { "id": "r", "op": "loop", "args": ["same", "adv", 4, 0, "p0", "p1"] }, { "id": "ok", "op": "ge", "args": ["r", 3] } ], "ret": "ok" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [[1,2,3,4], [1,2,3,4]], "expected": true }, { "fn": "f", "args": [[1,2,3,5], [1,2,3,4]], "expected": false },
+    { "fn": "f", "args": [[0,2,3,4], [1,2,3,4]], "expected": false }, { "fn": "f", "args": [[1,0,3,4], [1,2,3,4]], "expected": false },
+    { "fn": "f", "args": [[7,7,7,7], [7,7,7,7]], "expected": true }, { "fn": "f", "args": [[1,2,0,4], [1,2,3,4]], "expected": false },
+    { "fn": "f", "args": [[9,9,9,0], [9,9,9,1]], "expected": false }, { "fn": "f", "args": [[0,0,0,0], [0,0,0,0]], "expected": true } ],
+  "note": "The loop result is the count of leading matching digits; a full match is 4." },
+
+{ "id": "dl-grade-letter", "kind": "targeted-edit", "wrongEditKind": "missing-cap", "target": "f",
+  "instruction": "Scores 0-19 get F, 20-39 D, 40-59 C, 60-79 B and 80 or more A; return the letter's byte. The letter table is in the wrong order.",
+  "start": { "functions": [ { "name": "f", "params": ["u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["ABCDF"] }, { "id": "k", "op": "div", "args": ["p0", 20] }, { "id": "c", "op": "gt", "args": ["k", 4] },
+    { "id": "j", "op": "select", "args": ["c", 4, "k"] }, { "id": "g", "op": "get", "args": ["t", "j"] } ], "ret": "g" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["FDCBA"] }, { "id": "k", "op": "div", "args": ["p0", 20] }, { "id": "c", "op": "gt", "args": ["k", 4] },
+    { "id": "j", "op": "select", "args": ["c", 4, "k"] }, { "id": "g", "op": "get", "args": ["t", "j"] } ], "ret": "g" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["FDCBA"] }, { "id": "k", "op": "div", "args": ["p0", 20] }, { "id": "g", "op": "get", "args": ["t", "k"] } ], "ret": "g" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0], "expected": 70 }, { "fn": "f", "args": [100], "expected": 65 }, { "fn": "f", "args": [80], "expected": 65 },
+    { "fn": "f", "args": [79], "expected": 66 }, { "fn": "f", "args": [40], "expected": 67 }, { "fn": "f", "args": [20], "expected": 68 },
+    { "fn": "f", "args": [59], "expected": 67 }, { "fn": "f", "args": [200], "expected": 65 } ],
+  "note": "Fixing the table while dropping the cap makes 100 wrap to F." },
+
+{ "id": "dl-station-code", "kind": "targeted-edit", "wrongEditKind": "fold-bound", "target": "f",
+  "instruction": "The ticket code is the sum of all letters of the station name plus the seat number, modulo 100; every letter must be included.",
+  "start": { "functions": [
+    { "name": "addb", "params": ["u32","u32","u32x4"], "result": "u32", "body": [
+      { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "n", "op": "add", "args": ["p0", "g"] } ], "ret": "n" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "t", "op": "text", "args": ["OSLO"] }, { "id": "s", "op": "fold", "args": ["addb", 3, 0, "t"] }, { "id": "a", "op": "add", "args": ["s", "p0"] }, { "id": "r", "op": "rem", "args": ["a", 100] } ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "addb", "params": ["u32","u32","u32x4"], "result": "u32", "body": [
+      { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "n", "op": "add", "args": ["p0", "g"] } ], "ret": "n" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "t", "op": "text", "args": ["OSLO"] }, { "id": "s", "op": "fold", "args": ["addb", 4, 0, "t"] }, { "id": "a", "op": "add", "args": ["s", "p0"] }, { "id": "r", "op": "rem", "args": ["a", 100] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "addb", "params": ["u32","u32","u32x4"], "result": "u32", "body": [
+      { "id": "g", "op": "get", "args": ["p2", "p1"] }, { "id": "n", "op": "add", "args": ["p0", "g"] } ], "ret": "n" },
+    { "name": "f", "params": ["u32"], "result": "u32", "body": [
+      { "id": "t", "op": "text", "args": ["OSLO"] }, { "id": "s", "op": "fold", "args": ["addb", 5, 0, "t"] }, { "id": "a", "op": "add", "args": ["s", "p0"] }, { "id": "r", "op": "rem", "args": ["a", 100] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0], "expected": 17 }, { "fn": "f", "args": [83], "expected": 0 }, { "fn": "f", "args": [1], "expected": 18 },
+    { "fn": "f", "args": [3], "expected": 20 }, { "fn": "f", "args": [4], "expected": 21 }, { "fn": "f", "args": [62], "expected": 79 },
+    { "fn": "f", "args": [100], "expected": 17 }, { "fn": "f", "args": [99], "expected": 16 } ],
+  "note": "OSLO bytes sum to 317; folding 5 times wraps and counts O twice." },
+
+{ "id": "dl-menu-reverse", "kind": "targeted-edit", "wrongEditKind": "off-by-one", "target": "f",
+  "instruction": "Read the word from its end: position 0 is the last letter, position 3 the first. Keep the upper-case option as it is.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","bool"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["menu"] }, { "id": "g", "op": "get", "args": ["t", "p0"] }, { "id": "u", "op": "sub", "args": ["g", 32] }, { "id": "r", "op": "select", "args": ["p1", "u", "g"] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32","bool"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["menu"] }, { "id": "k", "op": "sub", "args": [3, "p0"] }, { "id": "g", "op": "get", "args": ["t", "k"] }, { "id": "u", "op": "sub", "args": ["g", 32] }, { "id": "r", "op": "select", "args": ["p1", "u", "g"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32","bool"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["menu"] }, { "id": "k", "op": "sub", "args": [4, "p0"] }, { "id": "g", "op": "get", "args": ["t", "k"] }, { "id": "u", "op": "sub", "args": ["g", 32] }, { "id": "r", "op": "select", "args": ["p1", "u", "g"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0, true], "expected": 85 }, { "fn": "f", "args": [1, true], "expected": 78 }, { "fn": "f", "args": [2, true], "expected": 69 },
+    { "fn": "f", "args": [3, true], "expected": 77 }, { "fn": "f", "args": [0, false], "expected": 117 }, { "fn": "f", "args": [1, false], "expected": 110 },
+    { "fn": "f", "args": [2, false], "expected": 101 }, { "fn": "f", "args": [3, false], "expected": 109 } ],
+  "note": "Text processing: reversed index is length minus one minus position." },
+
+{ "id": "dl-digit-prices", "kind": "comprehension-edit", "wrongEditKind": "order-of-operations", "target": "f",
+  "instruction": "The menu string stores each item's price as a digit character; return that price in dollars times the quantity.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["3125"] }, { "id": "g", "op": "get", "args": ["t", "p0"] }, { "id": "r", "op": "mul", "args": ["g", "p1"] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["3125"] }, { "id": "g", "op": "get", "args": ["t", "p0"] }, { "id": "d", "op": "sub", "args": ["g", 48] }, { "id": "r", "op": "mul", "args": ["d", "p1"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["3125"] }, { "id": "g", "op": "get", "args": ["t", "p0"] }, { "id": "r", "op": "mul", "args": ["g", "p1"] }, { "id": "d", "op": "sub", "args": ["r", 48] } ], "ret": "d" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0, 1], "expected": 3 }, { "fn": "f", "args": [0, 2], "expected": 6 }, { "fn": "f", "args": [1, 3], "expected": 3 },
+    { "fn": "f", "args": [2, 0], "expected": 0 }, { "fn": "f", "args": [3, 4], "expected": 20 }, { "fn": "f", "args": [2, 5], "expected": 10 },
+    { "fn": "f", "args": [1, 1], "expected": 1 }, { "fn": "f", "args": [3, 1], "expected": 5 } ],
+  "note": "Cooking menu: subtract the code of '0' (48) before multiplying." },
+
+{ "id": "dl-note-transpose", "kind": "targeted-edit", "wrongEditKind": "wrong-operand", "target": "f",
+  "instruction": "Transpose the note up by the given steps on the seven-note scale; add 100 for every octave crossed, where an octave is seven steps from C.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["CDEFGAB"] }, { "id": "k", "op": "add", "args": ["p0", "p1"] }, { "id": "g", "op": "get", "args": ["t", "k"] },
+    { "id": "q", "op": "div", "args": ["k", 8] }, { "id": "h", "op": "mul", "args": ["q", 100] }, { "id": "r", "op": "add", "args": ["g", "h"] } ], "ret": "r" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["CDEFGAB"] }, { "id": "k", "op": "add", "args": ["p0", "p1"] }, { "id": "g", "op": "get", "args": ["t", "k"] },
+    { "id": "q", "op": "div", "args": ["k", 7] }, { "id": "h", "op": "mul", "args": ["q", 100] }, { "id": "r", "op": "add", "args": ["g", "h"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["u32","u32"], "result": "u32", "body": [
+    { "id": "t", "op": "text", "args": ["CDEFGAB"] }, { "id": "k", "op": "add", "args": ["p0", "p1"] }, { "id": "g", "op": "get", "args": ["t", "k"] },
+    { "id": "q", "op": "div", "args": ["p1", 7] }, { "id": "h", "op": "mul", "args": ["q", 100] }, { "id": "r", "op": "add", "args": ["g", "h"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [0, 0], "expected": 67 }, { "fn": "f", "args": [6, 1], "expected": 167 }, { "fn": "f", "args": [5, 2], "expected": 167 },
+    { "fn": "f", "args": [0, 7], "expected": 167 }, { "fn": "f", "args": [3, 4], "expected": 167 }, { "fn": "f", "args": [6, 2], "expected": 168 },
+    { "fn": "f", "args": [2, 12], "expected": 267 }, { "fn": "f", "args": [1, 1], "expected": 69 } ],
+  "note": "Music: octave carry divides the absolute position by the scale length 7." },
+
+{ "id": "dl-tip-echo", "kind": "targeted-edit", "wrongEditKind": "wrong-operand", "target": "f",
+  "instruction": "Read the bill amount and write the amount plus a 15 percent tip (rounded down), not the tip alone.",
+  "start": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r", "op": "read", "args": ["p0"] }, { "id": "x", "op": "at", "args": ["r", 0] }, { "id": "t", "op": "at", "args": ["r", 1] },
+    { "id": "m", "op": "mul", "args": ["x", 15] }, { "id": "tp", "op": "div", "args": ["m", 100] }, { "id": "w", "op": "write", "args": ["t", "tp"] } ], "ret": "w" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r", "op": "read", "args": ["p0"] }, { "id": "x", "op": "at", "args": ["r", 0] }, { "id": "t", "op": "at", "args": ["r", 1] },
+    { "id": "m", "op": "mul", "args": ["x", 15] }, { "id": "tp", "op": "div", "args": ["m", 100] }, { "id": "s", "op": "add", "args": ["x", "tp"] }, { "id": "w", "op": "write", "args": ["t", "s"] } ], "ret": "w" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r", "op": "read", "args": ["p0"] }, { "id": "x", "op": "at", "args": ["r", 0] }, { "id": "t", "op": "at", "args": ["r", 1] },
+    { "id": "m", "op": "mul", "args": ["x", 15] }, { "id": "tp", "op": "div", "args": ["m", 100] }, { "id": "s", "op": "add", "args": ["x", 15] }, { "id": "w", "op": "write", "args": ["t", "s"] } ], "ret": "w" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [100] }], "expected": { "out": [115] } }, { "fn": "f", "args": [{ "io": [200] }], "expected": { "out": [230] } },
+    { "fn": "f", "args": [{ "io": [0] }], "expected": { "out": [0] } }, { "fn": "f", "args": [{ "io": [] }], "expected": { "out": [0] } },
+    { "fn": "f", "args": [{ "io": [7] }], "expected": { "out": [8] } }, { "fn": "f", "args": [{ "io": [1000, 5] }], "expected": { "out": [1150] } },
+    { "fn": "f", "args": [{ "io": [20] }], "expected": { "out": [23] } }, { "fn": "f", "args": [{ "io": [99] }], "expected": { "out": [113] } } ],
+  "note": "Billing echo; adding a flat 15 instead of the computed tip is the wrong edit." },
+
+{ "id": "dl-goals-ranked", "kind": "multi-node-edit", "wrongEditKind": "token-order", "target": "f",
+  "instruction": "Read the two teams' goals and write the larger count first and the smaller second.",
+  "start": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "a", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "b", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "w1", "op": "write", "args": ["t2", "a"] }, { "id": "w2", "op": "write", "args": ["w1", "b"] } ], "ret": "w2" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "a", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "b", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "c", "op": "gt", "args": ["b", "a"] }, { "id": "hi", "op": "select", "args": ["c", "b", "a"] }, { "id": "lo", "op": "select", "args": ["c", "a", "b"] },
+    { "id": "w1", "op": "write", "args": ["t2", "hi"] }, { "id": "w2", "op": "write", "args": ["w1", "lo"] } ], "ret": "w2" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "a", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "b", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "c", "op": "gt", "args": ["b", "a"] }, { "id": "hi", "op": "select", "args": ["c", "b", "a"] }, { "id": "lo", "op": "select", "args": ["c", "a", "b"] },
+    { "id": "w1", "op": "write", "args": ["t2", "lo"] }, { "id": "w2", "op": "write", "args": ["w1", "hi"] } ], "ret": "w2" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [3, 1] }], "expected": { "out": [3, 1] } }, { "fn": "f", "args": [{ "io": [1, 3] }], "expected": { "out": [3, 1] } },
+    { "fn": "f", "args": [{ "io": [2, 2] }], "expected": { "out": [2, 2] } }, { "fn": "f", "args": [{ "io": [] }], "expected": { "out": [0, 0] } },
+    { "fn": "f", "args": [{ "io": [5] }], "expected": { "out": [5, 0] } }, { "fn": "f", "args": [{ "io": [0, 9] }], "expected": { "out": [9, 0] } },
+    { "fn": "f", "args": [{ "io": [10, 20, 30] }], "expected": { "out": [20, 10] } }, { "fn": "f", "args": [{ "io": [7, 6] }], "expected": { "out": [7, 6] } } ],
+  "note": "Sports scoreboard; the wrong edit writes the smaller first." },
+
+{ "id": "dl-three-bins", "kind": "multi-node-edit", "wrongEditKind": "dropped-term", "target": "f",
+  "instruction": "Read the counts of three storage bins (not two) and write their total.",
+  "start": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "a", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "b", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "s", "op": "add", "args": ["a", "b"] }, { "id": "w", "op": "write", "args": ["t2", "s"] } ], "ret": "w" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "a", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "b", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "r3", "op": "read", "args": ["t2"] }, { "id": "c", "op": "at", "args": ["r3", 0] }, { "id": "t3", "op": "at", "args": ["r3", 1] },
+    { "id": "s", "op": "add", "args": ["a", "b"] }, { "id": "s2", "op": "add", "args": ["s", "c"] }, { "id": "w", "op": "write", "args": ["t3", "s2"] } ], "ret": "w" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "a", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "b", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "r3", "op": "read", "args": ["t2"] }, { "id": "c", "op": "at", "args": ["r3", 0] }, { "id": "t3", "op": "at", "args": ["r3", 1] },
+    { "id": "s", "op": "add", "args": ["a", "b"] }, { "id": "w", "op": "write", "args": ["t3", "s"] } ], "ret": "w" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [1, 2, 3] }], "expected": { "out": [6] } }, { "fn": "f", "args": [{ "io": [] }], "expected": { "out": [0] } },
+    { "fn": "f", "args": [{ "io": [5] }], "expected": { "out": [5] } }, { "fn": "f", "args": [{ "io": [1, 1] }], "expected": { "out": [2] } },
+    { "fn": "f", "args": [{ "io": [1, 1, 1] }], "expected": { "out": [3] } }, { "fn": "f", "args": [{ "io": [0, 0, 9] }], "expected": { "out": [9] } },
+    { "fn": "f", "args": [{ "io": [4294967295, 1, 0] }], "expected": { "out": [0] } }, { "fn": "f", "args": [{ "io": [10, 20, 30, 40] }], "expected": { "out": [60] } } ],
+  "note": "Inventory; the token must be threaded through the third read." },
+
+{ "id": "dl-hand-total", "kind": "multi-node-edit", "wrongEditKind": "token-order", "target": "f",
+  "instruction": "After writing the hand of three cards, also write the total of the three card values.",
+  "start": { "functions": [ { "name": "f", "params": ["io","u32","u32","u32"], "result": "io", "body": [
+    { "id": "a", "op": "arr", "args": ["p1", "p2", "p3"] }, { "id": "w", "op": "puts", "args": ["p0", "a"] } ], "ret": "w" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["io","u32","u32","u32"], "result": "io", "body": [
+    { "id": "a", "op": "arr", "args": ["p1", "p2", "p3"] }, { "id": "w", "op": "puts", "args": ["p0", "a"] }, { "id": "s", "op": "add", "args": ["p1", "p2"] },
+    { "id": "s2", "op": "add", "args": ["s", "p3"] }, { "id": "w2", "op": "write", "args": ["w", "s2"] } ], "ret": "w2" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["io","u32","u32","u32"], "result": "io", "body": [
+    { "id": "a", "op": "arr", "args": ["p1", "p2", "p3"] }, { "id": "s", "op": "add", "args": ["p1", "p2"] }, { "id": "s2", "op": "add", "args": ["s", "p3"] },
+    { "id": "w", "op": "write", "args": ["p0", "s2"] }, { "id": "w2", "op": "puts", "args": ["w", "a"] } ], "ret": "w2" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [] }, 1, 2, 3], "expected": { "out": [3, 1, 2, 3, 6] } }, { "fn": "f", "args": [{ "io": [] }, 0, 0, 0], "expected": { "out": [3, 0, 0, 0, 0] } },
+    { "fn": "f", "args": [{ "io": [] }, 5, 5, 5], "expected": { "out": [3, 5, 5, 5, 15] } }, { "fn": "f", "args": [{ "io": [] }, 10, 0, 1], "expected": { "out": [3, 10, 0, 1, 11] } },
+    { "fn": "f", "args": [{ "io": [] }, 4, 4, 1], "expected": { "out": [3, 4, 4, 1, 9] } }, { "fn": "f", "args": [{ "io": [] }, 2, 7, 9], "expected": { "out": [3, 2, 7, 9, 18] } },
+    { "fn": "f", "args": [{ "io": [] }, 13, 12, 11], "expected": { "out": [3, 13, 12, 11, 36] } }, { "fn": "f", "args": [{ "io": [] }, 1, 0, 0], "expected": { "out": [3, 1, 0, 0, 1] } } ],
+  "note": "Card game; puts writes the length 3 first; the total must come after the hand." },
+
+{ "id": "dl-thermo-emit", "kind": "multi-node-edit", "wrongEditKind": "swapped-argument", "target": "f",
+  "instruction": "Read a Celsius temperature and emit it in Fahrenheit: multiply by 9, divide by 5, then add 32.",
+  "start": { "functions": [
+    { "name": "emit", "params": ["io","u32"], "result": "io", "body": [
+      { "id": "m", "op": "mov", "args": ["p1"] }, { "id": "w", "op": "write", "args": ["p0", "m"] } ], "ret": "w" },
+    { "name": "f", "params": ["io"], "result": "io", "body": [
+      { "id": "r", "op": "read", "args": ["p0"] }, { "id": "x", "op": "at", "args": ["r", 0] }, { "id": "t", "op": "at", "args": ["r", 1] },
+      { "id": "a", "op": "add", "args": ["x", 32] }, { "id": "m", "op": "mul", "args": ["a", 9] }, { "id": "d", "op": "div", "args": ["m", 5] },
+      { "id": "w", "op": "call", "args": ["emit", "t", "d"] } ], "ret": "w" } ] },
+  "reference": { "functions": [
+    { "name": "emit", "params": ["io","u32"], "result": "io", "body": [
+      { "id": "m", "op": "mov", "args": ["p1"] }, { "id": "w", "op": "write", "args": ["p0", "m"] } ], "ret": "w" },
+    { "name": "f", "params": ["io"], "result": "io", "body": [
+      { "id": "r", "op": "read", "args": ["p0"] }, { "id": "x", "op": "at", "args": ["r", 0] }, { "id": "t", "op": "at", "args": ["r", 1] },
+      { "id": "m", "op": "mul", "args": ["x", 9] }, { "id": "d", "op": "div", "args": ["m", 5] }, { "id": "a", "op": "add", "args": ["d", 32] },
+      { "id": "w", "op": "call", "args": ["emit", "t", "a"] } ], "ret": "w" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "emit", "params": ["io","u32"], "result": "io", "body": [
+      { "id": "m", "op": "mov", "args": ["p1"] }, { "id": "w", "op": "write", "args": ["p0", "m"] } ], "ret": "w" },
+    { "name": "f", "params": ["io"], "result": "io", "body": [
+      { "id": "r", "op": "read", "args": ["p0"] }, { "id": "x", "op": "at", "args": ["r", 0] }, { "id": "t", "op": "at", "args": ["r", 1] },
+      { "id": "m", "op": "mul", "args": ["x", 5] }, { "id": "d", "op": "div", "args": ["m", 9] }, { "id": "a", "op": "add", "args": ["d", 32] },
+      { "id": "w", "op": "call", "args": ["emit", "t", "a"] } ], "ret": "w" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [0] }], "expected": { "out": [32] } }, { "fn": "f", "args": [{ "io": [100] }], "expected": { "out": [212] } },
+    { "fn": "f", "args": [{ "io": [10] }], "expected": { "out": [50] } }, { "fn": "f", "args": [{ "io": [37] }], "expected": { "out": [98] } },
+    { "fn": "f", "args": [{ "io": [] }], "expected": { "out": [32] } }, { "fn": "f", "args": [{ "io": [5] }], "expected": { "out": [41] } },
+    { "fn": "f", "args": [{ "io": [1] }], "expected": { "out": [33] } }, { "fn": "f", "args": [{ "io": [20, 99] }], "expected": { "out": [68] } } ],
+  "note": "Signals: the offset is added after scaling; the token goes through the helper." },
+
+{ "id": "dl-trip-stamps", "kind": "targeted-edit", "wrongEditKind": "token-order", "target": "f",
+  "instruction": "Log the trip's speed (distance divided by time) first and then the distance, each through the stamp helper.",
+  "start": { "functions": [
+    { "name": "stamp", "params": ["io","u32"], "result": "io", "body": [
+      { "id": "a", "op": "write", "args": ["p0", 7] }, { "id": "b", "op": "write", "args": ["a", "p1"] } ], "ret": "b" },
+    { "name": "f", "params": ["io","u32","u32"], "result": "io", "body": [
+      { "id": "s", "op": "div", "args": ["p2", "p1"] }, { "id": "w1", "op": "call", "args": ["stamp", "p0", "s"] }, { "id": "w2", "op": "call", "args": ["stamp", "w1", "p1"] } ], "ret": "w2" } ] },
+  "reference": { "functions": [
+    { "name": "stamp", "params": ["io","u32"], "result": "io", "body": [
+      { "id": "a", "op": "write", "args": ["p0", 7] }, { "id": "b", "op": "write", "args": ["a", "p1"] } ], "ret": "b" },
+    { "name": "f", "params": ["io","u32","u32"], "result": "io", "body": [
+      { "id": "s", "op": "div", "args": ["p1", "p2"] }, { "id": "w1", "op": "call", "args": ["stamp", "p0", "s"] }, { "id": "w2", "op": "call", "args": ["stamp", "w1", "p1"] } ], "ret": "w2" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "stamp", "params": ["io","u32"], "result": "io", "body": [
+      { "id": "a", "op": "write", "args": ["p0", 7] }, { "id": "b", "op": "write", "args": ["a", "p1"] } ], "ret": "b" },
+    { "name": "f", "params": ["io","u32","u32"], "result": "io", "body": [
+      { "id": "s", "op": "div", "args": ["p1", "p2"] }, { "id": "w1", "op": "call", "args": ["stamp", "p0", "p1"] }, { "id": "w2", "op": "call", "args": ["stamp", "w1", "s"] } ], "ret": "w2" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [] }, 100, 2], "expected": { "out": [7, 50, 7, 100] } }, { "fn": "f", "args": [{ "io": [] }, 60, 60], "expected": { "out": [7, 1, 7, 60] } },
+    { "fn": "f", "args": [{ "io": [] }, 0, 5], "expected": { "out": [7, 0, 7, 0] } }, { "fn": "f", "args": [{ "io": [] }, 10, 0], "expected": { "out": [7, 4294967295, 7, 10] } },
+    { "fn": "f", "args": [{ "io": [] }, 9, 3], "expected": { "out": [7, 3, 7, 9] } }, { "fn": "f", "args": [{ "io": [] }, 1, 1], "expected": { "out": [7, 1, 7, 1] } },
+    { "fn": "f", "args": [{ "io": [] }, 7, 2], "expected": { "out": [7, 3, 7, 7] } }, { "fn": "f", "args": [{ "io": [] }, 300, 4], "expected": { "out": [7, 75, 7, 300] } } ],
+  "note": "Travel log: division operands were swapped; the wrong edit fixes the division but swaps the stamp order." },
+
+{ "id": "dl-receipt-line", "kind": "targeted-edit", "wrongEditKind": "swapped-argument", "target": "f",
+  "instruction": "Read a unit price and a quantity and write the receipt line [price, quantity, price times quantity] with puts.",
+  "start": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "p", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "q", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "s", "op": "add", "args": ["p", "q"] }, { "id": "v", "op": "arr", "args": ["p", "q", "s"] }, { "id": "w", "op": "puts", "args": ["t2", "v"] } ], "ret": "w" } ] },
+  "reference": { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "p", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "q", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "s", "op": "mul", "args": ["p", "q"] }, { "id": "v", "op": "arr", "args": ["p", "q", "s"] }, { "id": "w", "op": "puts", "args": ["t2", "v"] } ], "ret": "w" } ] },
+  "wrongEdits": [ { "functions": [ { "name": "f", "params": ["io"], "result": "io", "body": [
+    { "id": "r1", "op": "read", "args": ["p0"] }, { "id": "p", "op": "at", "args": ["r1", 0] }, { "id": "t1", "op": "at", "args": ["r1", 1] },
+    { "id": "r2", "op": "read", "args": ["t1"] }, { "id": "q", "op": "at", "args": ["r2", 0] }, { "id": "t2", "op": "at", "args": ["r2", 1] },
+    { "id": "s", "op": "mul", "args": ["p", "q"] }, { "id": "v", "op": "arr", "args": ["q", "p", "s"] }, { "id": "w", "op": "puts", "args": ["t2", "v"] } ], "ret": "w" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [{ "io": [3, 4] }], "expected": { "out": [3, 3, 4, 12] } }, { "fn": "f", "args": [{ "io": [0, 5] }], "expected": { "out": [3, 0, 5, 0] } },
+    { "fn": "f", "args": [{ "io": [2, 2] }], "expected": { "out": [3, 2, 2, 4] } }, { "fn": "f", "args": [{ "io": [] }], "expected": { "out": [3, 0, 0, 0] } },
+    { "fn": "f", "args": [{ "io": [7] }], "expected": { "out": [3, 7, 0, 0] } }, { "fn": "f", "args": [{ "io": [10, 1] }], "expected": { "out": [3, 10, 1, 10] } },
+    { "fn": "f", "args": [{ "io": [1, 10] }], "expected": { "out": [3, 1, 10, 10] } }, { "fn": "f", "args": [{ "io": [65536, 65536] }], "expected": { "out": [3, 65536, 65536, 0] } } ],
+  "note": "Billing receipt; product wraps modulo 2^32." },
+
+{ "id": "dl-runner-pace", "kind": "multi-node-edit", "wrongEditKind": "comparison", "target": "f",
+  "instruction": "Add a helper that turns metres and seconds into seconds per kilometre, and make the target return the faster (smaller) pace of the two runners.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+    { "id": "a", "op": "mul", "args": ["p1", 1000] }, { "id": "b", "op": "div", "args": ["a", "p0"] } ], "ret": "b" } ] },
+  "reference": { "functions": [
+    { "name": "pace", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "mul", "args": ["p1", 1000] }, { "id": "b", "op": "div", "args": ["a", "p0"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "x", "op": "call", "args": ["pace", "p0", "p1"] }, { "id": "y", "op": "call", "args": ["pace", "p2", "p3"] },
+      { "id": "k", "op": "lt", "args": ["y", "x"] }, { "id": "r", "op": "select", "args": ["k", "y", "x"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "pace", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "mul", "args": ["p1", 1000] }, { "id": "b", "op": "div", "args": ["a", "p0"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "x", "op": "call", "args": ["pace", "p0", "p1"] }, { "id": "y", "op": "call", "args": ["pace", "p2", "p3"] },
+      { "id": "k", "op": "gt", "args": ["y", "x"] }, { "id": "r", "op": "select", "args": ["k", "y", "x"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [1000, 300, 1000, 240], "expected": 240 }, { "fn": "f", "args": [5000, 1500, 1000, 320], "expected": 300 },
+    { "fn": "f", "args": [2000, 500, 2000, 500], "expected": 250 }, { "fn": "f", "args": [1000, 200, 500, 90], "expected": 180 },
+    { "fn": "f", "args": [0, 100, 1000, 250], "expected": 250 }, { "fn": "f", "args": [400, 100, 800, 180], "expected": 225 },
+    { "fn": "f", "args": [1000, 1, 1000, 2], "expected": 1 }, { "fn": "f", "args": [3000, 600, 1500, 330], "expected": 200 } ],
+  "note": "New helper pace; zero metres gives the all-ones pace, which is never the faster one." },
+
+{ "id": "dl-cook-minutes", "kind": "multi-node-edit", "wrongEditKind": "swapped-argument", "target": "f",
+  "instruction": "Add a helper converting hours and minutes to minutes, and use it for both clock times so the target returns the minutes from the first time to the second.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+    { "id": "a", "op": "mul", "args": ["p0", 60] }, { "id": "b", "op": "add", "args": ["a", "p1"] }, { "id": "c", "op": "mul", "args": ["p2", 60] }, { "id": "d", "op": "sub", "args": ["c", "b"] } ], "ret": "d" } ] },
+  "reference": { "functions": [
+    { "name": "mins", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "mul", "args": ["p0", 60] }, { "id": "b", "op": "add", "args": ["a", "p1"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "x", "op": "call", "args": ["mins", "p0", "p1"] }, { "id": "y", "op": "call", "args": ["mins", "p2", "p3"] }, { "id": "d", "op": "sub", "args": ["y", "x"] } ], "ret": "d" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "mins", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "a", "op": "mul", "args": ["p0", 60] }, { "id": "b", "op": "add", "args": ["a", "p1"] } ], "ret": "b" },
+    { "name": "f", "params": ["u32","u32","u32","u32"], "result": "u32", "body": [
+      { "id": "x", "op": "call", "args": ["mins", "p0", "p1"] }, { "id": "y", "op": "call", "args": ["mins", "p2", "p3"] }, { "id": "d", "op": "sub", "args": ["x", "y"] } ], "ret": "d" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [10, 0, 11, 30], "expected": 90 }, { "fn": "f", "args": [8, 15, 8, 45], "expected": 30 }, { "fn": "f", "args": [0, 0, 0, 0], "expected": 0 },
+    { "fn": "f", "args": [12, 30, 12, 30], "expected": 0 }, { "fn": "f", "args": [1, 59, 2, 0], "expected": 1 }, { "fn": "f", "args": [6, 0, 18, 0], "expected": 720 },
+    { "fn": "f", "args": [9, 10, 9, 50], "expected": 40 }, { "fn": "f", "args": [23, 0, 23, 59], "expected": 59 } ],
+  "note": "Cooking timer; the start ignored the second time's minutes." },
+
+{ "id": "dl-one-low-stock", "kind": "multi-node-edit", "wrongEditKind": "comparison", "target": "f",
+  "instruction": "Add a helper that says whether a stock is below the minimum, and make the target return true when exactly one of the two stocks is below it.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "bool", "body": [
+    { "id": "a", "op": "lt", "args": ["p0", "p2"] }, { "id": "r", "op": "eq", "args": ["a", true] } ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "low", "params": ["u32","u32"], "result": "bool", "body": [
+      { "id": "k", "op": "lt", "args": ["p0", "p1"] }, { "id": "o", "op": "mov", "args": ["k"] } ], "ret": "o" },
+    { "name": "f", "params": ["u32","u32","u32"], "result": "bool", "body": [
+      { "id": "x", "op": "call", "args": ["low", "p0", "p2"] }, { "id": "y", "op": "call", "args": ["low", "p1", "p2"] }, { "id": "r", "op": "ne", "args": ["x", "y"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "low", "params": ["u32","u32"], "result": "bool", "body": [
+      { "id": "k", "op": "le", "args": ["p0", "p1"] }, { "id": "o", "op": "mov", "args": ["k"] } ], "ret": "o" },
+    { "name": "f", "params": ["u32","u32","u32"], "result": "bool", "body": [
+      { "id": "x", "op": "call", "args": ["low", "p0", "p2"] }, { "id": "y", "op": "call", "args": ["low", "p1", "p2"] }, { "id": "r", "op": "ne", "args": ["x", "y"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [1, 10, 5], "expected": true }, { "fn": "f", "args": [10, 1, 5], "expected": true }, { "fn": "f", "args": [1, 1, 5], "expected": false },
+    { "fn": "f", "args": [10, 10, 5], "expected": false }, { "fn": "f", "args": [5, 1, 5], "expected": true }, { "fn": "f", "args": [5, 5, 5], "expected": false },
+    { "fn": "f", "args": [4, 5, 5], "expected": true }, { "fn": "f", "args": [0, 0, 0], "expected": false } ],
+  "note": "Inventory; a stock equal to the minimum is not below it." },
+
+{ "id": "dl-stereo-volume", "kind": "multi-node-edit", "wrongEditKind": "order-of-operations", "target": "f",
+  "instruction": "Add a helper that scales a level by a percentage (multiply, then divide by 100), and use it so both the left and right channels are scaled.",
+  "start": { "functions": [ { "name": "f", "params": ["u32","u32","u32"], "result": "u32x2", "body": [
+    { "id": "a", "op": "mul", "args": ["p0", "p2"] }, { "id": "b", "op": "div", "args": ["a", 100] }, { "id": "r", "op": "arr", "args": ["b", "p1"] } ], "ret": "r" } ] },
+  "reference": { "functions": [
+    { "name": "scale", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "m", "op": "mul", "args": ["p0", "p1"] }, { "id": "d", "op": "div", "args": ["m", 100] } ], "ret": "d" },
+    { "name": "f", "params": ["u32","u32","u32"], "result": "u32x2", "body": [
+      { "id": "x", "op": "call", "args": ["scale", "p0", "p2"] }, { "id": "y", "op": "call", "args": ["scale", "p1", "p2"] }, { "id": "r", "op": "arr", "args": ["x", "y"] } ], "ret": "r" } ] },
+  "wrongEdits": [ { "functions": [
+    { "name": "scale", "params": ["u32","u32"], "result": "u32", "body": [
+      { "id": "d", "op": "div", "args": ["p0", 100] }, { "id": "m", "op": "mul", "args": ["d", "p1"] } ], "ret": "m" },
+    { "name": "f", "params": ["u32","u32","u32"], "result": "u32x2", "body": [
+      { "id": "x", "op": "call", "args": ["scale", "p0", "p2"] }, { "id": "y", "op": "call", "args": ["scale", "p1", "p2"] }, { "id": "r", "op": "arr", "args": ["x", "y"] } ], "ret": "r" } ] } ],
+  "tests": [
+    { "fn": "f", "args": [200, 100, 50], "expected": [100, 50] }, { "fn": "f", "args": [50, 30, 50], "expected": [25, 15] },
+    { "fn": "f", "args": [0, 0, 100], "expected": [0, 0] }, { "fn": "f", "args": [1000, 1000, 100], "expected": [1000, 1000] },
+    { "fn": "f", "args": [99, 199, 10], "expected": [9, 19] }, { "fn": "f", "args": [100, 250, 0], "expected": [0, 0] },
+    { "fn": "f", "args": [150, 150, 200], "expected": [300, 300] }, { "fn": "f", "args": [7, 9, 300], "expected": [21, 27] } ],
+  "note": "Signals; dividing before multiplying loses precision." }
+] }
