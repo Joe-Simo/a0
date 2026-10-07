@@ -71,7 +71,7 @@ export async function computeCards(root = '.'): Promise<readonly Card[]> {
     {
       file: 'home.png',
       kicker: 'a0lang.com',
-      alt: `A0: ${PITCH} Sonnet got ${sonnet.acceptedCount} of ${sonnet.n} front-end edits accepted; the edit check ran ${x(lo)} to ${x(hi)} faster than tsc, tsgo and tsc-rs.`,
+      alt: `A0: ${PITCH} Sonnet got ${sonnet.acceptedCount} of ${sonnet.n} front-end edits accepted; one edit is checked in ${fast.toFixed(0)} to ${slow.toFixed(0)} ms, where tsc, tsgo and tsc-rs re-check the whole project.`,
       stats: [
         {
           big: `${sonnet.acceptedCount} of ${sonnet.n}`,
@@ -79,8 +79,8 @@ export async function computeCards(root = '.'): Promise<readonly Card[]> {
           source: 'results/app-edit-keys.json',
         },
         {
-          big: `${x(lo)} to ${x(hi)}`,
-          label: 'faster edit check than tsc, tsgo, tsc-rs',
+          big: `${fast.toFixed(0)} to ${slow.toFixed(0)} ms`,
+          label: 'to check one edit in A0 (tsc, tsgo, tsc-rs re-check the whole project)',
           source: latSrc,
         },
       ],
@@ -113,10 +113,14 @@ export async function computeCards(root = '.'): Promise<readonly Card[]> {
           label: 'losses recorded in the open',
           source: 'results/loss-ledger.json',
         },
-        { big: `${wins} of ${edits.length}`, label: 'edit-check comparisons won', source: latSrc },
+        {
+          big: `${wins} of ${edits.length}`,
+          label: 'edit-check comparisons won (A0 per edit against their whole-project check)',
+          source: latSrc,
+        },
         {
           big: `${x(lo)} to ${x(hi)}`,
-          label: 'range of the wins over tsc, tsgo, tsc-rs',
+          label: 'range: their whole-project time over A0 per-edit time',
           source: latSrc,
         },
       ],
