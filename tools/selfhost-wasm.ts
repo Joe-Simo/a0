@@ -1331,14 +1331,21 @@ async function main(): Promise<void> {
   const biglit = BEHAVIOR_SPEC.find((b) => b.name === 'biglit');
   if (biglit === undefined) throw new Error('behavior program biglit is missing');
   programs.push(['behavior/biglit', parseAndValidate(biglit.source), small]);
+  // chains of one associative op rotated by readiness (the latency model of optimize.ts `reassociate`)
+  const chainrot = BEHAVIOR_SPEC.find((b) => b.name === 'chainrot');
+  if (chainrot === undefined) throw new Error('behavior program chainrot is missing');
+  programs.push(['behavior/chainrot', parseAndValidate(chainrot.source), small]);
   for (const f of ['page.a0', 'docs.a0'])
     programs.push([
       `site/${f}`,
       (await link(join('site', f), (p) => readFile(p, 'utf8'), { root: '.' })).program,
       site,
     ]);
+  // A0_SELFHOST_ONLY=label,label: a quick local check of some programs; nothing is written then.
+  const only = process.env.A0_SELFHOST_ONLY?.split(',');
   const reports: ProgramReport[] = [];
   for (const [label, program, layout] of programs) {
+    if (only !== undefined && !only.includes(label)) continue;
     const unoptimized = checkPath(tool, program, layout, false);
     process.stdout.write(`${label.padEnd(14)} O0 ${describe(unoptimized)}\n`);
     const optimized = checkPath(tool, program, layout, true);
@@ -1365,8 +1372,10 @@ async function main(): Promise<void> {
     programs: reports,
     failed: failed.length,
   };
-  await mkdir('results', { recursive: true });
-  await writeReport(join('results', 'selfhost-wasm.json'), report);
+  if (only === undefined) {
+    await mkdir('results', { recursive: true });
+    await writeReport(join('results', 'selfhost-wasm.json'), report);
+  }
   process.stdout.write(`${reports.length - failed.length}/${reports.length} programs identical\n`);
   process.exit(failed.length === 0 ? 0 : 1);
 }

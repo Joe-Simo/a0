@@ -953,7 +953,9 @@ function combine(op: Node['op'], x: number, y: number): number {
  * is `x op (K1 op K2)` for add/mul/and/or/xor; `(x + K1) * K2` is `x*K2 + K1*K2`; `(x + K) + y`
  * and `(x + K) + (x + K)` move the literal outward to meet the next one. Rewrites whose inner
  * node has other uses are skipped (they would add work). `sub` is left as written: backends
- * match `sub p1 1` (previous element) and `sub 32 m` (rotates).
+ * match `sub p1 1` (previous element) and `sub 32 m` (rotates). With no literal in play, a
+ * chain `(p op q) op y` whose inner node has no other use is rotated when y is ready before the
+ * later of p and q, so the late operand joins last (a serial add chain is a latency chain).
  * Returns the replacement node and the new nodes to place before it.
  */
 function reassociate(
@@ -962,6 +964,7 @@ function reassociate(
   types: ReadonlyMap<string, Type>,
   uses: ReadonlyMap<string, number>,
   names: Names,
+  ready: ReadonlyMap<string, number>,
 ): { pre: Node[]; node: Node } | undefined {
   if (types.get(node.id) !== 'u32') return undefined;
   const [a, b] = node.args;
@@ -992,30 +995,81 @@ function reassociate(
     }
     return undefined;
   }
-  if (node.op !== 'add') return undefined;
-  if (a.kind === 'node' && b.kind === 'node' && a.id === b.id) {
-    // (x + K) + (x + K) = (x + x) + 2K: the inner node's two uses are both here.
-    const d = withLiteral(a, 2);
-    if (d === undefined || d.def.op !== 'add') return undefined;
-    const id = names.fresh();
-    return {
-      pre: [{ id, op: 'add', args: [d.x, d.x] }],
-      node: { ...node, args: [{ kind: 'node', id }, u32(2 * d.k)] },
-    };
+  if (node.op === 'add') {
+    if (a.kind === 'node' && b.kind === 'node' && a.id === b.id) {
+      // (x + K) + (x + K) = (x + x) + 2K: the inner node's two uses are both here.
+      const d = withLiteral(a, 2);
+      if (d === undefined || d.def.op !== 'add') return undefined;
+      const id = names.fresh();
+      return {
+        pre: [{ id, op: 'add', args: [d.x, d.x] }],
+        node: { ...node, args: [{ kind: 'node', id }, u32(2 * d.k)] },
+      };
+    }
+    for (const [p, q] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const d = withLiteral(p, 1);
+      if (d === undefined || d.def.op !== 'add') continue;
+      const id = names.fresh();
+      return {
+        pre: [{ id, op: 'add', args: [d.x, q] }],
+        node: { ...node, args: [{ kind: 'node', id }, u32(d.k)] },
+      };
+    }
   }
-  for (const [p, q] of [
+  // (p op q) op y with y ready before the later of p and q: (p' op y) op q', p' the earlier.
+  for (const [x, y] of [
     [a, b],
     [b, a],
   ] as const) {
-    const d = withLiteral(p, 1);
-    if (d === undefined || d.def.op !== 'add') continue;
+    if (x.kind !== 'node' || (uses.get(x.id) ?? 0) !== 1) continue;
+    if (y.kind === 'node' && y.id === x.id) continue;
+    const def = defs.get(x.id);
+    if (def === undefined || def.op !== node.op || types.get(def.id) !== 'u32') continue;
+    const [p, q] = def.args;
+    if (p === undefined || q === undefined) continue;
+    if ((p.kind !== 'node' && p.kind !== 'param') || (q.kind !== 'node' && q.kind !== 'param'))
+      continue;
+    const rp = readyAt(ready, p);
+    const rq = readyAt(ready, q);
+    if (rp === rq || readyAt(ready, y) >= Math.max(rp, rq)) continue;
     const id = names.fresh();
     return {
-      pre: [{ id, op: 'add', args: [d.x, q] }],
-      node: { ...node, args: [{ kind: 'node', id }, u32(d.k)] },
+      pre: [{ id, op: node.op, args: [rp < rq ? p : q, y] }],
+      node: { ...node, args: [{ kind: 'node', id }, rp < rq ? q : p] },
     };
   }
   return undefined;
+}
+
+/**
+ * The model of when a value is ready, in cycles: a value is ready one `latency` after its
+ * latest operand; literals and parameters are ready at 0. Only the nodes a pass keeps have an
+ * entry (an effectful node, or a trip count kept as a value, counts as 0).
+ */
+function latency(op: Node['op']): number {
+  switch (op) {
+    case 'mul':
+      return 3;
+    case 'div':
+    case 'rem':
+      return 12;
+    case 'get':
+    case 'at':
+      return 4;
+    case 'call':
+    case 'fold':
+    case 'loop':
+      return 8;
+    default:
+      return 1;
+  }
+}
+
+function readyAt(ready: ReadonlyMap<string, number>, o: Operand): number {
+  return o.kind === 'node' ? (ready.get(o.id) ?? 0) : 0;
 }
 
 /** One folding / reassociation / CSE / dead-code pass over a body. */
@@ -1037,6 +1091,7 @@ function pass(fn: TypedFunc, body: Body): Body {
   const cse = new Map<string, string>();
   const kept: Node[] = [];
   const defs = new Map<string, Node>();
+  const ready = new Map<string, number>();
   const anchored = new Set<string>();
   const strict = fn.profile === 'strict';
   // Count nodes kept as values: see `keepCount`.
@@ -1081,7 +1136,7 @@ function pass(fn: TypedFunc, body: Body): Body {
       subst.set(node.id, simple);
       continue;
     }
-    const re = reassociate(rewritten, defs, types, uses, names);
+    const re = reassociate(rewritten, defs, types, uses, names, ready);
     if (re !== undefined) {
       for (const p of re.pre) {
         types.set(p.id, 'u32');
@@ -1105,6 +1160,10 @@ function pass(fn: TypedFunc, body: Body): Body {
     }
     kept.push(reduced);
     defs.set(node.id, reduced);
+    ready.set(
+      node.id,
+      Math.max(0, ...reduced.args.map((o) => readyAt(ready, o))) + latency(reduced.op),
+    );
     // Strict: a node that can still trap is anchored like an effect (kept, in order).
     if (strict && mayTrapNode(view, reduced, defs)) anchored.add(node.id);
   }
