@@ -1,0 +1,588 @@
+{
+  "generatedAt": "2026-10-07T00:53:59.561Z",
+  "tool": "tools/app-edit-loop.ts score --arm wording",
+  "preRegistration": "docs/history/2026-10-06-app-edit-wording-preregistration.md",
+  "model": "sonnet",
+  "side": "a0",
+  "variant": "revised",
+  "budget": 12,
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "startSha256": {
+    "a0": "82d6b798b2646d0c16a60e0c90331f1a7a394d6153d0f1a80de91a069c40fd1e",
+    "ts": "1a4337745c6b0ce21c649b176c29739a8c398a8ecf730f43340ba764ddf99b6c"
+  },
+  "harnessSelfCheck": {
+    "ok": true
+  },
+  "trials": [
+    {
+      "task": "semicolon-comment",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 4,
+      "refusedCalls": 0,
+      "modelCalls": 5,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 1975,
+        "workflowPrimer": 3470,
+        "toolContext": 1720,
+        "output": 60
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 10548
+      },
+      "commands": [
+        "help -> 0",
+        "view lexstep -> 0",
+        "apply -> 0",
+        "lex \"a ; b\\nc # d\\ne\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "tab-is-error",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 4,
+      "refusedCalls": 0,
+      "modelCalls": 5,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 1975,
+        "workflowPrimer": 3470,
+        "toolContext": 596,
+        "output": 35
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 7762
+      },
+      "commands": [
+        "help -> 0",
+        "view isspace -> 0",
+        "apply -> 0",
+        "lex \" \\t \" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "fat-arrow",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": false,
+      "acceptedOneShot": null,
+      "failures": [
+        "tokens of \"x==>y -> =\": expected [1,0,1,9,1,1,4,2,2,1,4,1,4,6,2,9,9,1], got [1,0,1,9,1,1,4,2,2,1,4,1,4,6,2]",
+        "tokens of \"=\": expected [9,0,1], got []"
+      ],
+      "toolCalls": 12,
+      "refusedCalls": 2,
+      "modelCalls": 15,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 2,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 5925,
+        "workflowPrimer": 10410,
+        "toolContext": 2135,
+        "output": 427
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 42700
+      },
+      "commands": [
+        "help -> 0",
+        "view lexstep -> 0",
+        "apply -> 1",
+        "lex \"fn f u32 => u32\" -> 0",
+        "lex \"=\" -> 0",
+        "lex \"a=b\" -> 0",
+        "lex \"->=\" -> 0",
+        "apply -> 0",
+        "lex \"fn f u32 => u32\" -> 0",
+        "lex \"=\" -> 0",
+        "lex \"a=b\" -> 0",
+        "lex \"->=\" -> 0",
+        "lex \"=>\" (refused) -> 3",
+        "lex \"a =\" (refused) -> 3"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "op-alias-mod",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 12,
+      "refusedCalls": 0,
+      "modelCalls": 13,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 5135,
+        "workflowPrimer": 9022,
+        "toolContext": 12856,
+        "output": 124
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 95432
+      },
+      "commands": [
+        "help -> 0",
+        "view opcode -> 0",
+        "program opcode -> 0",
+        "lex \"rem mod div\" -> 0",
+        "parse \"fn f u32 -> u32\\na rem p0 p0\\nret a\\nend\" -> 0",
+        "program -> 0",
+        "view p1tok -> 0",
+        "view p1tok -> 0",
+        "view scanb -> 0",
+        "run opcode 18000 -> 2",
+        "apply -> 0",
+        "parse \"fn f u32 -> u32\\na mod p0 p0\\nret a\\nend\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": [
+        "opcode",
+        "bare"
+      ]
+    },
+    {
+      "task": "drop-unsigned-aliases",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 5,
+      "refusedCalls": 0,
+      "modelCalls": 6,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 2370,
+        "workflowPrimer": 4164,
+        "toolContext": 2305,
+        "output": 98
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 15119
+      },
+      "commands": [
+        "help -> 0",
+        "view opcode -> 0",
+        "apply -> 0",
+        "parse \"fn f u32 u32 -> u32\\na udiv p0 p1\\nret a\\nend\\n\" -> 0",
+        "parse \"fn f u32 u32 -> u32\\na div p0 p1\\nb rem p0 p1\\nret a\\nend\\n\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "text-escape-r",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 3,
+      "refusedCalls": 0,
+      "modelCalls": 4,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 1580,
+        "workflowPrimer": 2776,
+        "toolContext": 1274,
+        "output": 45
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 7099
+      },
+      "commands": [
+        "help -> 0",
+        "view txtb -> 0",
+        "apply -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "text-escape-zero",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 3,
+      "refusedCalls": 0,
+      "modelCalls": 4,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 1580,
+        "workflowPrimer": 2776,
+        "toolContext": 1273,
+        "output": 39
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 7092
+      },
+      "commands": [
+        "help -> 0",
+        "view txtb -> 0",
+        "apply -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "profile-canonical",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": false,
+      "acceptedOneShot": null,
+      "failures": [
+        "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": code expected 0, got 1",
+        "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": fns expected [4,1,0,0,0,0,536870912], got []",
+        "parse of \"profile canonical\\nfn f u32 -> u32\\nret p0\\nend\\n\": pool expected [114,101,116,118,97,108,112,114,111,102,105,108,101,99,97,110,111,110,105,99,97,108,102,110,102,117,51,50,114,101,116,112,48,101,110,100], got []"
+      ],
+      "toolCalls": 12,
+      "refusedCalls": 1,
+      "modelCalls": 14,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 2,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 5530,
+        "workflowPrimer": 9716,
+        "toolContext": 2545,
+        "output": 1635
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 49462
+      },
+      "commands": [
+        "help -> 0",
+        "view dirfix -> 0",
+        "view isstrict -> 0",
+        "view isprofile -> 0",
+        "apply -> 1",
+        "parse \"profile canonical\\n\" -> 0",
+        "parse \"profile strict\\n\" -> 0",
+        "parse \"profile foo\\n\" -> 0",
+        "program dirfix -> 0",
+        "apply -> 0",
+        "parse \"profile canonical\\n\" -> 0",
+        "parse \"profile strict\\n\" -> 0",
+        "parse \"profile foo\\n\" (refused) -> 3"
+      ],
+      "variant": "revised",
+      "programViews": [
+        "dirfix"
+      ]
+    },
+    {
+      "task": "array-length-limit",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": false,
+      "acceptedOneShot": null,
+      "failures": [
+        "parse of \"fn f u32x4097 -> u32\\nret 0\\nend\\n\": code expected 1, got 0",
+        "parse of \"fn f u32x4097 -> u32\\nret 0\\nend\\n\": tok expected 2, got 0",
+        "parse of \"fn f u32 -> (u32,bool)x9999\\nret 0\\nend\\n\": code expected 1, got 0",
+        "parse of \"fn f u32 -> (u32,bool)x9999\\nret 0\\nend\\n\": tok expected 9, got 0",
+        "parse of \"fn f boolx2x4096 -> boolx8000\\nret 0\\nend\\n\": code expected 1, got 0",
+        "parse of \"fn f boolx2x4096 -> boolx8000\\nret 0\\nend\\n\": tok expected 4, got 0"
+      ],
+      "toolCalls": 9,
+      "refusedCalls": 0,
+      "modelCalls": 10,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 3950,
+        "workflowPrimer": 6940,
+        "toolContext": 1479,
+        "output": 181
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 22658
+      },
+      "commands": [
+        "help -> 0",
+        "view grpb -> 0",
+        "apply -> 0",
+        "parse \"fn f u32x4097 -> u32\\nend\\n\" -> 0",
+        "parse \"fn f u32x4096x4097 -> u32\\nend\\n\" -> 0",
+        "parse \"fn f (u32,bool)x4097 -> u32\\nend\\n\" -> 0",
+        "parse \"fn f boolx4096 -> u32\\nend\\n\" -> 0",
+        "parse \"fn f u32x4096 -> u32\\nend\\n\" -> 0",
+        "parse \"fn f u32x4 -> u32\\nend\\n\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "param-limit",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 4,
+      "refusedCalls": 0,
+      "modelCalls": 5,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 1975,
+        "workflowPrimer": 3470,
+        "toolContext": 6748,
+        "output": 89
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 23224
+      },
+      "commands": [
+        "help -> 0",
+        "view p3tok -> 0",
+        "apply -> 0",
+        "parse \"fn f u32 u32 u32 u32 u32 u32 u32 u32 u32 -> u32\\nret p0\\nend\\n\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "duplicate-fn-structure",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 3,
+      "refusedCalls": 0,
+      "modelCalls": 4,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 1580,
+        "workflowPrimer": 2776,
+        "toolContext": 1969,
+        "output": 24
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 8260
+      },
+      "commands": [
+        "help -> 0",
+        "view p4hdr -> 0",
+        "apply -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "number-leading-zero",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 5,
+      "refusedCalls": 0,
+      "modelCalls": 6,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 2370,
+        "workflowPrimer": 4164,
+        "toolContext": 6429,
+        "output": 97
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 27108
+      },
+      "commands": [
+        "help -> 0",
+        "view p1tok -> 0",
+        "lex \"a mov 007 0 12x\\n\" -> 0",
+        "apply -> 0",
+        "parse \"fn f u32 -> u32\\na mov 007\\nret a\\nend\\n\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": []
+    },
+    {
+      "task": "unreserve-patch",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 10,
+      "refusedCalls": 0,
+      "modelCalls": 11,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 2,
+        "accepted": 2
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 4345,
+        "workflowPrimer": 7634,
+        "toolContext": 1652,
+        "output": 141
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 23205
+      },
+      "commands": [
+        "help -> 0",
+        "view kwcode -> 0",
+        "lex \"fn ret end true false patch use\" -> 0",
+        "program kwcode -> 0",
+        "parse \"fn patch u32 -> u32\\nret p0\\nend\\n\" -> 0",
+        "parse \"fn fn u32 -> u32\\nret p0\\nend\\n\" -> 0",
+        "apply -> 0",
+        "parse \"fn patch u32 -> u32\\nret p0\\nend\\n\" -> 0",
+        "apply -> 0",
+        "parse \"fn patch u32 -> u32\\nret p0\\nend\\n\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": [
+        "kwcode"
+      ]
+    },
+    {
+      "task": "use-alias-import",
+      "representation": "a0",
+      "protocol": "tool-loop",
+      "accepted": true,
+      "acceptedOneShot": null,
+      "failures": [],
+      "toolCalls": 9,
+      "refusedCalls": 0,
+      "modelCalls": 10,
+      "editedOutsideTool": false,
+      "applies": {
+        "tried": 1,
+        "accepted": 1
+      },
+      "setupTokensLocal": {
+        "o200k_base": 1089
+      },
+      "tokenBucketsLocal": {
+        "languagePrimer": 3950,
+        "workflowPrimer": 6940,
+        "toolContext": 4774,
+        "output": 103
+      },
+      "rereadTokensLocal": {
+        "o200k_base": 36152
+      },
+      "commands": [
+        "help -> 0",
+        "view kwcode -> 0",
+        "program kwcode -> 0",
+        "lex \"use \\\"a.a0\\\"\\nimport fn end ret\" -> 0",
+        "view p1tok -> 0",
+        "view scanb -> 0",
+        "run kwcode 524 -> 2",
+        "apply -> 0",
+        "parse \"import \\\"a.a0\\\"\\nfn f -> u32\\nret 1\\nend\\n\" -> 0"
+      ],
+      "variant": "revised",
+      "programViews": [
+        "kwcode"
+      ]
+    }
+  ]
+}

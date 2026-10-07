@@ -125,3 +125,16 @@ bun tools/app-edit-wording-summary.ts                                     # afte
 ```
 
 Subjects may run in parallel (each has its own directory); the two variants of one task may run at the same time.
+
+## Result (collected after the rule above was committed; `results/app-edit-wording.json`, `tools/app-edit-wording-summary.ts`)
+
+56 fresh subjects (14 tasks, Haiku and Sonnet, current and revised wording), scored once after every subject had reported. Tool-loop, one pass, 12 tool runs each.
+
+| model | variant | accepted | tokens per accepted edit (10-task horizon) |
+|---|---|---|---|
+| Haiku | current | 8 of 14 | 20521.7 |
+| Haiku | revised | 8 of 14 | 20304.9 |
+| Sonnet | current | 12 of 14 | 4690.4 |
+| Sonnet | revised | 11 of 14 | 5343.7 |
+
+Rule: met on Haiku (acceptance held, cost lower by 1%), not met on Sonnet (acceptance within the margin but cost higher by 14%). Both models or no change: **no change**. The shipped SKILL.md and MCP wording stay as they are; the revised wording is recorded as measured and not adopted.
