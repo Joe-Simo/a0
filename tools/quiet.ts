@@ -1,12 +1,12 @@
 /**
  * Load gate for timing runs (lang-axes, exec-bench): before every sample group, wait until the
- * 1-minute load average is at or below the limit (default 10, the repo's rule for performance
+ * load (tools/system-load.ts) is at or below the limit (default 10, the repo's rule for performance
  * claims; override with A0_MAX_LOAD). Synchronous so it can sit inside the existing sample loops.
  * `loadGate()` reports what the gate saw, for the results file: how many checks, how many waits,
  * the seconds waited and the highest 1-minute load seen at a sample start.
  */
 
-import { loadavg } from 'node:os';
+import { loadSource, systemLoad } from './system-load.js';
 
 const MAX_LOAD = Number(process.env.A0_MAX_LOAD ?? '10');
 const sleeper = new Int32Array(new SharedArrayBuffer(4));
@@ -17,15 +17,9 @@ let maxSeen = 0;
 
 /** Block (polling every 3 s) while the 1-minute load average is above the limit. */
 export function waitQuiet(): void {
-  // Windows has no load average (`os.loadavg()` is always [0, 0, 0]): the gate could never see a loaded machine and
-  // would record a false "load 0" next to a timing number, so a timing run refuses to start there.
-  if (process.platform === 'win32')
-    throw new Error(
-      'timing runs need a load average and Windows has none (os.loadavg() is always 0): run them on macOS or Linux; correctness runs are unaffected',
-    );
   checks += 1;
   for (;;) {
-    const load = loadavg()[0] ?? 0;
+    const load = systemLoad();
     if (load <= MAX_LOAD) {
       maxSeen = Math.max(maxSeen, load);
       return;
@@ -43,6 +37,7 @@ export function loadGate(): {
   readonly checks: number;
   readonly waits: number;
   readonly waitedSeconds: number;
+  readonly loadSource: string;
   readonly highestLoadAtSampleStart: number;
 } {
   return {
@@ -50,6 +45,7 @@ export function loadGate(): {
     checks,
     waits,
     waitedSeconds: waitedMs / 1000,
+    loadSource: loadSource(),
     highestLoadAtSampleStart: Math.round(maxSeen * 100) / 100,
   };
 }

@@ -20,9 +20,10 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { cpus, loadavg } from 'node:os';
+import { cpus } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { systemLoad } from '../system-load.js';
 import { defaultRepo, vcs } from './repo.js';
 
 export const LOAD_LIMIT = 10;
@@ -210,7 +211,7 @@ function main(): void {
   const out = (v: unknown, line: string): void => {
     process.stdout.write(json ? `${JSON.stringify(v, null, 2)}\n` : `${line}\n`);
   };
-  const load1 = num(arg(args, 'load'), loadavg()[0] ?? 0);
+  const load1 = num(arg(args, 'load'), systemLoad());
   const ncpu = num(arg(args, 'cpus'), cpus().length);
   if (cmd === 'stuck') {
     const r = detectStuck({

@@ -35,7 +35,7 @@
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { cpus, homedir, loadavg, tmpdir } from 'node:os';
+import { cpus, homedir, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { getEncoding } from 'js-tiktoken';
@@ -57,6 +57,7 @@ import { MORE_LANGUAGES } from './exec-bench-languages-more.js';
 import { buildNativeCheck, NATIVE_A0 } from './native-check.js';
 import { loadGate, waitQuiet } from './quiet.js';
 import { writeReport } from './scrub-results.js';
+import { loadSource, systemLoad, systemLoadTriple } from './system-load.js';
 
 const TABLE: readonly Language[] = [...CORE_LANGUAGES, ...MORE_LANGUAGES];
 /** The kernels results/exec-benchmark.json reports, the set every chart uses. */
@@ -656,16 +657,16 @@ async function main(): Promise<void> {
       }
     }
 
-  const load: { round: number; loadavg: number[] }[] = [];
+  const load: { round: number; loadavg: number[]; loadSource: string }[] = [];
   const failedJobs = new Set<Job>();
   const failures = new Map<Job, string>();
   for (let round = 1; round <= CLI.rounds; round += 1) {
     waitQuiet();
-    load.push({ round, loadavg: loadavg() });
+    load.push({ round, loadavg: systemLoadTriple(), loadSource: loadSource() });
     const live = jobs.filter((j) => !failedJobs.has(j));
     const shift = live.length === 0 ? 0 : ((round - 1) * 7) % live.length;
     const order = [...live.slice(shift), ...live.slice(0, shift)];
-    process.stderr.write(`round ${round}/${CLI.rounds}, load ${loadavg()[0]?.toFixed(1)}\n`);
+    process.stderr.write(`round ${round}/${CLI.rounds}, load ${systemLoad().toFixed(1)}\n`);
     for (const j of order) {
       const err = await sample(j, round);
       if (err !== null) {
@@ -674,7 +675,7 @@ async function main(): Promise<void> {
       }
     }
   }
-  load.push({ round: CLI.rounds + 1, loadavg: loadavg() });
+  load.push({ round: CLI.rounds + 1, loadavg: systemLoadTriple(), loadSource: loadSource() });
   for (const j of jobs) {
     const key = `${j.s.id}/${j.k.name}`;
     const err = failures.get(j);
@@ -741,7 +742,7 @@ async function main(): Promise<void> {
       'Deterministic axes over the exec-bench language set on the exec-bench kernel programs. tokens: o200k_base (js-tiktoken) tokens of each kernel source as written in the exec-bench tables (kernel) and of the whole runnable program file including its driver (program); A0 kernel and program are the same text. validation: per edit on a warm project directory, the edited file gets one appended comment line; checkMs is the static step (build, or the toolchain checker for a language with no build step; null when none exists), checkRunMs is the static step plus what running needs plus a one-iteration run whose checksum must equal the A0 result (A0 native: one `a0 bench FILE K 1` process that runs the front end and then evaluates the checked IR; a0node: the Node CLI check, `emit c` and clang). Medians per kernel over the rounds, then the median over kernels. Wall-clock under the recorded load; samples interleaved across all (language, kernel) pairs, order rotated per round. Startup is not re-measured here (results/exec-benchmark.json). Cold processes throughout: no language server or daemon is kept running (A0 included).',
     load: {
       perRound: load,
-      note: 'os.loadavg() at the start of each round and after the last; a 1-minute value above the CPU count means the timings were taken on a loaded machine and are comparable only within this run.',
+      note: 'os.loadavg() (a CPU-utilisation estimate on Windows, see loadSource) at the start of each round and after the last; a 1-minute value above the CPU count means the timings were taken on a loaded machine and are comparable only within this run.',
     },
     rounds: CLI.rounds,
     loadGate: loadGate(),

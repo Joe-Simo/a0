@@ -62,6 +62,7 @@ import {
 import { MORE_LANGUAGES } from './exec-bench-languages-more.js';
 import { loadGate, waitQuiet } from './quiet.js';
 import { writeReport } from './scrub-results.js';
+import { loadSource, systemLoadTriple } from './system-load.js';
 
 const LANGUAGES: readonly Language[] = [...CORE_LANGUAGES, ...MORE_LANGUAGES];
 
@@ -875,7 +876,8 @@ async function main(): Promise<void> {
     },
     samplesPerSide: SAMPLES,
     scale: SCALE,
-    loadAverage: (await import('node:os')).loadavg(),
+    loadAverage: systemLoadTriple(),
+    loadSource: loadSource(),
     loadGate: loadGate(),
     meaning:
       "Steady-state ns per call including the input generator loop, interleaved emitted/hand-written runs, median of samples; verdict is tie when within observed sample spread. Adversarial set: tiny function, no-op computation, call-boundary chain, branching, value-semantics array fill, 64-step loop. startupMs is the wall time of one process launch running a single iteration (spawn-dominated, both sides identical toolchain); startupCompiledMs and startupInterpretersMs hold the same measurement for every baseline language. arm64 is the direct AArch64 backend (no C for the program) called out of line from the same C driver, so it pays a real call per iteration that the inlined C paths do not; arm64A0Driver is the same kernel inside a whole program written in A0 (a fold that generates the inputs, calls the kernel and xors the results, compiled by the direct arm64 backend, so the kernel is inlined into the loop as in every other language's own driver); its ratio is against the emitted-C path. clangO3OutOfLine is the same emitted C at clang -O3 -mcpu=native in its own object behind the identical driver (the same call boundary), run interleaved with arm64 in alternating order; arm64VsClangO3OutOfLine and geomeans.arm64VsClangO3 compare the code of the direct backend and of clang at equal call cost. Every baseline row carries family, toolchain, and status; a row whose checksum did not match the A0 result for the same iteration count is skipped-checksum-mismatch and has no timing. geomeans maps each baseline to the geometric mean over kernels of (baseline median ns / A0 emitted-C median ns), so 1.0 is parity and 50 means A0 native is 50x faster per call. loadAverage is the 1/5/15-minute load when the report was written (a value far above the core count means the timings were taken under load). Not energy or application evidence. A tie is the expected result for kernels reaching the same optimizer; losses are kept.",
