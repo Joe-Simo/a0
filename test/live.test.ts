@@ -664,3 +664,28 @@ test('sentinel: deterministic, and never writes outside its output', async () =>
   assert.ok(html.includes(`data-live-out="${SPEC.outputWords}"`));
   assert.ok(html.includes(`data-live-rows="${SPEC.rows}"`));
 });
+
+test('mounting a live program never touches the page stylesheet or its root attributes', async () => {
+  // The host only creates its own canvas and sets that canvas's inline style; it must not create or
+  // edit <style> elements, rules or the root's attributes (the page program owns those).
+  const files = [
+    'site/live.ts',
+    'site/live/canvas.ts',
+    'site/live/geometry.ts',
+    'site/live/pointer.ts',
+    'site/live/program.ts',
+  ];
+  for (const f of files) {
+    const src = await readFile(f, 'utf8');
+    assert.ok(
+      !/createElement\(['"]style['"]\)|insertRule|adoptedStyleSheets|querySelector\(['"]style|document\.head|removeAttribute/.test(
+        src,
+      ),
+      `${f} must not touch stylesheets or root attributes`,
+    );
+  }
+  // the request is read once from the static shell, before the first render, and handed to the mount
+  const app = await readFile('site/app.ts', 'utf8');
+  assert.ok(app.includes('const liveConfig = { ...root.dataset }'));
+  assert.ok(app.includes('mountLive(root, liveConfig)'));
+});

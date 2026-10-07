@@ -56,12 +56,15 @@ async function load(url: string): Promise<LiveExports> {
 }
 
 /** Mount the live program a page asked for, if any. Failures leave the page as it was. */
-export async function mountLive(root: HTMLElement): Promise<LiveHandle | undefined> {
-  const url = root.dataset.live;
+export async function mountLive(
+  root: HTMLElement,
+  config: Readonly<Record<string, string | undefined>> = root.dataset,
+): Promise<LiveHandle | undefined> {
+  const url = config.live;
   if (url === undefined || url === '') return undefined;
-  const inputWords = Number(root.dataset.liveIn ?? '4096');
-  const outputWords = Number(root.dataset.liveOut ?? '16384');
-  const rows = Number(root.dataset.liveRows ?? '192');
+  const inputWords = Number(config.liveIn ?? '4096');
+  const outputWords = Number(config.liveOut ?? '16384');
+  const rows = Number(config.liveRows ?? '192');
   let exp: LiveExports;
   try {
     exp = await load(url);
