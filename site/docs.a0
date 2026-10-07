@@ -938,11 +938,16 @@ x914 write x913 2
 x915 text "This site is two A0 io programs. Each reads an event and writes a word stream that a small generic runtime turns into DOM: 1 OPEN tag, 2 TEXT bytes, 3 CLOSE, 4 ATTR key bytes, 5 ONCLICK event, 6 STATE words, 9 STYLE bytes, 12 SIZE property percent. The stylesheet, the layout, every number, and every chart bar on these pages are computed by the program; the runtime knows nothing about the page."
 x916 puts x914 x915
 x917 call close x916 
-x918 call close x917 
-x919 call close x918 
-x920 call close x919 
-x921 call close x920 
-ret x921
+x918 call open x917 2
+x919 write x918 2
+x920 text "A third kind of program runs frame by frame: a live program exports frame, and the generic host (site/live.ts) calls it once per animation frame with the pointer (mouse, pen or touch), scroll, viewport, reduced-motion and frame-cost data, a cached table of page geometry for the selectors the program asks to watch, and the state the program wrote last frame. It answers with its new state and a draw list for an overlay canvas. Signed Q16.16 math (site/lib/fx.a0) and the protocol (site/lib/frame.a0) are ordinary A0 libraries; the A0 Sentinel on the home page is one such program. docs/LIVE-PROGRAMS.md in the repository has the protocol."
+x921 puts x919 x920
+x922 call close x921 
+x923 call close x922 
+x924 call close x923 
+x925 call close x924 
+x926 call close x925 
+ret x926
 end
 
 fn session io -> u32
@@ -957,9 +962,9 @@ x134 call nav x133
 x354 call sec_head x134
 x708 call sec_lang x354
 x836 call sec_iter x708
-x922 call sec_run x836
-x923 call foot x922 
-x924 write x923 6
-x925 write x924 0
+x927 call sec_run x836
+x928 call foot x927 
+x929 write x928 6
+x930 write x929 0
 ret event
 end

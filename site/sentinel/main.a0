@@ -263,6 +263,24 @@ s2 select a 60 s1
 ret s2
 end
 
+# watches, quality request, state, then the draw list: p0 io, p1 state, p2 header, p3 geometry, p4 reads' io
+fn emit_all io u32x1024 u32x32 u32x1344 -> io
+q call bg p1 17
+lastq call bg p1 95
+chg ne q lastq
+nq call one_if chg
+pct call qscale q
+st2 call bs p1 95 q
+flags get p2 2
+first call flag flags 32
+nw call one_if first
+t5 call watches p0 nw
+t6 fold qpct nq t5 pct
+t7 call write_state t6 st2
+t8 call render_all t7 st2 p2 p3
+ret t8
+end
+
 fn frame io -> u32
 h call fr_rdhdr p0
 hdr at h 0
@@ -280,18 +298,6 @@ sr fold rd_state_step 1024 ss0
 st at sr 0
 t4 at sr 1
 st1 call update st hdr rects
-q call bg st1 17
-lastq call bg st1 95
-chg ne q lastq
-nq call one_if chg
-pct call qscale q
-st2 call bs st1 95 q
-flags get hdr 2
-first call flag flags 32
-nw call one_if first
-t5 call watches t4 nw
-t6 fold qpct nq t5 pct
-t7 call write_state t6 st2
-t8 call render_all t7 st2 hdr rects
+t8 call emit_all t4 st1 hdr rects
 ret 0
 end
