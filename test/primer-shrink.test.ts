@@ -25,7 +25,7 @@ test('primer shrink: set X is sealed and the variants shrink in the registered o
     createHash('sha256').update(readFileSync('tools/ai-edit-tasks-x.ts')).digest('hex'),
     seal,
   );
-  const s = tokens('MODEL_GUIDE.min.txt');
+  const s = tokens('experiments/primers/shrink/S.txt');
   const v1 = tokens('experiments/primers/shrink/V1.txt');
   const v2 = tokens('experiments/primers/shrink/V2.txt');
   const v3 = tokens('experiments/primers/shrink/V3.txt');

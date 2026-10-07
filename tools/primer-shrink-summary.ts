@@ -64,7 +64,7 @@ export function decide(
 async function main(): Promise<void> {
   const enc = getEncoding('o200k_base');
   const primers: Record<string, number> = {};
-  primers.S = enc.encode(readFileSync('MODEL_GUIDE.min.txt', 'utf8')).length;
+  primers.S = enc.encode(readFileSync('experiments/primers/shrink/S.txt', 'utf8')).length;
   for (const v of ['V1', 'V2', 'V3'])
     primers[v] = enc.encode(readFileSync(`experiments/primers/shrink/${v}.txt`, 'utf8')).length;
   const cells: Record<string, unknown> = {};
