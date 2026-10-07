@@ -759,6 +759,48 @@ const OP_SPELLINGS: Readonly<Record<string, { op: Op; arity: number; note: strin
   equ: { op: 'eq', arity: 2, note: '' },
 };
 
+/**
+ * Operator symbols written where the op belongs (`c == a b`): the op each stands for. A rewrite is exact only
+ * when the line has the op's own operand count, so `c < a b` is `c lt a b` and nothing is guessed.
+ */
+const SYMBOL_OPS: Readonly<Record<string, Op>> = {
+  '==': 'eq',
+  '!=': 'ne',
+  '<': 'lt',
+  '<=': 'le',
+  '>': 'gt',
+  '>=': 'ge',
+  '+': 'add',
+  '-': 'sub',
+  '*': 'mul',
+  '/': 'div',
+  '%': 'rem',
+  '&': 'and',
+  '&&': 'and',
+  '|': 'or',
+  '||': 'or',
+  '^': 'xor',
+  '<<': 'shl',
+  '>>': 'shr',
+};
+
+/**
+ * The exact fixes and hints for invented op names (symbols, chains, not, max, min, NAMED_HINTS) are on unless
+ * `A0_NEW_FIXES=off`, which gives the diagnostics as they were before them (the old arm of the pre-registered run).
+ */
+const newFixes = (): boolean =>
+  typeof process === 'undefined' || process.env.A0_NEW_FIXES !== 'off';
+
+/** What to write for a name models invent that has no single exact rewrite (the meaning depends on the operand type). */
+const NAMED_HINTS: Readonly<Record<string, string>> = {
+  not: 'there is no `not`: flip a bool with `xor x true`; for a u32, a logical not is `eq x 0` and the bitwise complement is `xor x 4294967295`',
+  neg: 'there is no `neg`: every A0 number is unsigned and wraps, so the negation of x is `sub 0 x`',
+  abs: 'there is no `abs`: every A0 number is unsigned, so there is no sign to remove; for a distance between a and b use a compare and a select of `sub a b` and `sub b a`',
+  cmp: 'there is no `cmp`: compare with eq ne lt le gt ge, each yields a bool (`c lt a b`)',
+  max: 'there is no `max`: `t gt a b` then `x select t a b`',
+  min: 'there is no `min`: `t lt a b` then `x select t a b`',
+};
+
 /** The op a word names (an op or an accepted alias), or undefined. */
 export function opOf(word: string): Op | undefined {
   return isOp(word) ? word : Object.hasOwn(OP_ALIASES, word) ? OP_ALIASES[word] : undefined;
@@ -884,23 +926,31 @@ export function parseNode(lineText: string, line?: number): Node {
     const lower = word.toLowerCase();
     const assign = word === '=' && rest.length > 0;
     const caseFix = lower !== word && (opOf(lower) !== undefined || isDirectCallee(lower));
+    const symbol = Object.hasOwn(SYMBOL_OPS, word) ? SYMBOL_OPS[word] : undefined;
+    const symbolFix = newFixes() && symbol !== undefined && rest.length === OP_ARITY[symbol];
     throw diag('A0011', [word], {
       ...at,
-      ...(assign
+      ...(symbolFix
         ? {
-            fix: `write \`${[id, ...rest].join(' ')}\`: there is no \`=\`, the op follows the id`,
+            fix: `write \`${id} ${symbol} ${rest.join(' ')}\`: the op is written as a word, \`${symbol}\`, before its operands`,
             applicability: 'exact' as const,
-            edits: [lineEdit('assign', lineText, [id, ...rest].join(' '), line)],
+            edits: [lineEdit('symbol', lineText, replaceWord(lineText, word, symbol), line)],
           }
-        : caseFix
+        : assign
           ? {
-              fix: `write '${lower}': ops and function names are lowercase`,
+              fix: `write \`${[id, ...rest].join(' ')}\`: there is no \`=\`, the op follows the id`,
               applicability: 'exact' as const,
-              edits: [lineEdit('case', lineText, replaceWord(lineText, word, lower), line)],
+              edits: [lineEdit('assign', lineText, [id, ...rest].join(' '), line)],
             }
-          : {
-              fix: `use one of ${OPS.join(' ')}, or call a function F defined above: \`${id} F args…\``,
-            }),
+          : caseFix
+            ? {
+                fix: `write '${lower}': ops and function names are lowercase`,
+                applicability: 'exact' as const,
+                edits: [lineEdit('case', lineText, replaceWord(lineText, word, lower), line)],
+              }
+            : {
+                fix: `use one of ${OPS.join(' ')}, or call a function F defined above: \`${id} F args…\``,
+              }),
     });
   }
   if (op === 'loop') {
@@ -945,11 +995,27 @@ export function parseNode(lineText: string, line?: number): Node {
             )
             .join(', then ')}`
         : undefined;
+    // The chain is the left-to-right grouping `((a op b) op c) op d`, the same value for an associative op
+    // whatever the grouping; it is exact when the checker accepts the rewritten lines (a clash of the fresh ids
+    // with an id the function already has shows up there as a duplicate id, and `fix all` then stops).
+    const chainLines =
+      chain === undefined || !newFixes()
+        ? undefined
+        : rest.slice(1).map((r, i, all) => {
+            const target = i === all.length - 1 ? id : `${id}t${i}`;
+            return `${target} ${op} ${i === 0 ? rest[0] : `${id}t${i - 1}`} ${r}`;
+          });
     throw diag('A0014', [op, OP_ARITY[op], rest.length], {
       ...at,
       expected: String(OP_ARITY[op]),
       actual: String(rest.length),
       ...(chain === undefined ? {} : { fix: chain }),
+      ...(chainLines === undefined
+        ? {}
+        : {
+            applicability: 'exact' as const,
+            edits: [lineEdit('chain', lineText, chainLines.join('\n'), line)],
+          }),
     });
   }
   if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], at);
@@ -1601,6 +1667,55 @@ export function validateFunction(
             ],
           });
         }
+        const written = `${node.id} ${name} ${node.args.map(formatOperand).join(' ')}`.trimEnd();
+        const clash = (n: string): boolean => fn.nodes.some((m) => m.id === n);
+        // `x not b` on a bool is `x xor b true`: the only meaning `not` has on one bool operand.
+        if (
+          newFixes() &&
+          name === 'not' &&
+          later?.has(name) !== true &&
+          node.args.length === 1 &&
+          argTypes[0] === 'bool'
+        ) {
+          throw diag('A0102', [where, name], {
+            fix: `write \`${node.id} xor ${formatOperand(node.args[0] as Operand)} true\`: there is no \`not\`, flipping a bool is xor with true`,
+            applicability: 'exact',
+            edits: [
+              lineEdit(
+                'not',
+                written,
+                `${node.id} xor ${formatOperand(node.args[0] as Operand)} true`,
+              ),
+            ],
+          });
+        }
+        // `x max a b` and `x min a b` on two u32 are a compare and a select: `t gt a b` then `x select t a b`
+        // (`lt` for min); the compare gets a fresh id.
+        if (
+          newFixes() &&
+          (name === 'max' || name === 'min') &&
+          later?.has(name) !== true &&
+          node.args.length === 2 &&
+          argTypes[0] === 'u32' &&
+          argTypes[1] === 'u32'
+        ) {
+          let k = 0;
+          while (clash(`${node.id}t${k}`)) k += 1;
+          const fresh = `${node.id}t${k}`;
+          const [a, b] = node.args.map(formatOperand);
+          const cmp = name === 'max' ? 'gt' : 'lt';
+          throw diag('A0102', [where, name], {
+            fix: `write \`${fresh} ${cmp} ${a} ${b}\` then \`${node.id} select ${fresh} ${a} ${b}\`: there is no \`${name}\`, it is a compare and a select`,
+            applicability: 'exact',
+            edits: [
+              lineEdit(
+                name,
+                written,
+                `${fresh} ${cmp} ${a} ${b}\n${node.id} select ${fresh} ${a} ${b}`,
+              ),
+            ],
+          });
+        }
         // Other spellings of an op that models write (`sel c a b`, `lte a b`): the op they name, exact when the
         // operand count is the op's own and no operand is a node of the same name.
         const spelled = Object.hasOwn(OP_SPELLINGS, name) ? OP_SPELLINGS[name] : undefined;
@@ -1630,14 +1745,19 @@ export function validateFunction(
           ...Object.keys(OP_ALIASES),
           ...scope.keys(),
         ]);
+        // Names models write for an op that has no single exact rewrite: say what to write instead.
+        const named =
+          newFixes() && Object.hasOwn(NAMED_HINTS, name) ? NAMED_HINTS[name] : undefined;
         throw diag('A0102', [where, name], {
           fix:
             later?.has(name) === true
               ? `'${name}' is defined below ${fn.name}: callees must be defined above their callers, so move '${name}' above ${fn.name}`
-              : guess !== undefined
-                ? `did you mean '${guess}'?`
-                : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}; rarely needed: text "s", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io`,
-          ...(guess === undefined || later?.has(name) === true
+              : named !== undefined
+                ? named
+                : guess !== undefined
+                  ? `did you mean '${guess}'?`
+                  : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}; rarely needed: text "s", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io`,
+          ...(guess === undefined || later?.has(name) === true || named !== undefined
             ? {}
             : {
                 edits: [

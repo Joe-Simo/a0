@@ -1,0 +1,102 @@
+{
+ "aa-kettle-cool/a0/structured": [
+  "a loop above chill 40 p0 p1\n"
+ ],
+ "aa-stock-days/a0/structured": [
+  "c at b 1\n"
+ ],
+ "aa-halve-budget/a0/structured": [
+  "a loop big half p1 p0\n"
+ ],
+ "aa-tank-fill/a0/structured": [
+  "d sub c 1\nret d\n"
+ ],
+ "aa-alarm-snooze/a0/structured": [
+  "c loop dozing ring 10 b p0 p1\n"
+ ],
+ "aa-traffic-cycle/a0/structured": [
+  "fn notyet (u32,u32) u32 u32 u32 -> bool\nd at p0 0\ne ne d p1\nret e\nend\n\nfn advance (u32,u32) u32 u32 u32 -> (u32,u32)\nd at p0 0\ne at p0 1\nf add d 1\ng mod f 3\nh add e 1\ni rec g h\nret i\nend\n",
+  "fn notyet (u32,u32) u32 u32 u32 -> bool\nd at p0 0\ne ne d p1\nret e\nend\n\nfn advance (u32,u32) u32 u32 u32 -> (u32,u32)\nd at p0 0\ne at p0 1\nf add d 1\ng rem f 3\nh add e 1\ni rec g h\nret i\nend\n"
+ ],
+ "aa-bounce-floor/a0/structured": [
+  "b loop high bounce 30 a p1 p2\n"
+ ],
+ "aa-suit-char/a0/structured": [
+  "b div p0 13\n"
+ ],
+ "aa-door-word/a0/structured": [
+  "a text \"OPEN\"\n"
+ ],
+ "aa-schedule-back/a0/structured": [
+  "b sub 7 p0\n"
+ ],
+ "aa-keyrow-digit/a0/structured": [
+  "a text \"QWERTYUIOP\"\nb sub p0 48\nc get a b\nret c\n",
+  "a text \"PQWERTYUIO\"\n"
+ ],
+ "aa-invoice-prefix/a0/structured": [
+  "f fold acc p0 0 e\n",
+  "f fold acc p0 0 e p0\n"
+ ],
+ "aa-grade-letter/a0/structured": [
+  "a text \"FFFFFFDCBAA\"\n"
+ ],
+ "aa-tripled-echo/a0/structured": [
+  "fn echo io -> io\na read p0\nb write a a\nc write a a\nd write a a\nret d\nend\n",
+  "fn echo io -> io\na read p0\nb at a 0\nc at a 0\nd at a 0\ne write b c d\nret e\nend\n"
+ ],
+ "aa-change-due/a0/structured": [
+  "g ge e b\nh sub e b\n"
+ ],
+ "aa-shift-starts/a0/structured": [
+  "a mod p1 24\nb add p1 8\nc mod b 24\nd add p1 16\ne mod d 24\nf arr a c e\ng puts p0 f\nret g\n",
+  "a rem p1 24\nb add p1 8\nc rem b 24\nd add p1 16\ne rem d 24\nf arr a c e\ng puts p0 f\nret g\n"
+ ],
+ "aa-framed-log/a0/structured": [
+  "i call frame e0\nj call frame i g0\nret j\n",
+  "The existing e0 already reads two words and frames each one with the helper in order: it reads p0, extracts both words, frames them together. No edits needed.\n"
+ ],
+ "aa-slot-report/a0/structured": [
+  "c set p1 p2 b\n"
+ ],
+ "aa-stamped-payment/a0/structured": [
+  "a ge p1 100\n"
+ ],
+ "aa-span-puts/a0/structured": [
+  "d read p0\ng sub e b\n",
+  "a read p0\nb at a 0\nc at a 1\nd read c\ne at d 0\nf at d 1\ng sub e b\nk arr g b e\nm puts f k\nret m\n"
+ ],
+ "aa-box-count/a0/structured": [
+  "fn div_up u32 u32 -> u32\nc sub p0 1\nd add c p1\ne div d p1\nret e\nend\nfn boxes u32 u32 -> u32\na div_up p0 p1\nb mul a 3\nret b\nend\n"
+ ],
+ "aa-age-fare/a0/structured": [
+  "fn baseFare u32 -> u32\nlt1 lt p0 12\nge1 ge p0 65\ninner select ge1 6 10\nresult select lt1 5 inner\nret result\nend\nfn price u32 bool -> u32\nbase baseFare p0\ndisc sub base 2\nadj select p1 disc base\nret adj\nend\n",
+  "fn base_fare u32 -> u32\nlt1 lt p0 12\nge1 ge p0 65\ninner select ge1 6 10\nresult select lt1 5 inner\nret result\nend\nfn price u32 bool -> u32\nbase base_fare p0\ndisc sub base 2\nadj select p1 disc base\nret adj\nend\n"
+ ],
+ "aa-safe-midpoint/a0/structured": [
+  "fn avg u32 u32 -> u32\nand_val and p0 p1\nxor_val xor p0 p1\nshifted shr xor_val 1\nresult add and_val shifted\nret result\nend\nfn smooth u32 u32 -> u32\nresult avg p0 p1\nret result\nend\n"
+ ],
+ "aa-bump-two/a0/structured": [
+  "fn inc-slot u32x4 u32 -> u32x4\na get p0 p1\nb add a 1\nc set p0 p1 b\nret c\nend\na call inc-slot p0 p1\nb call inc-slot a p2\nret b\n",
+  "fn inc_slot u32x4 u32 -> u32x4\na get p0 p1\nb add a 1\nc set p0 p1 b\nret c\nend\na call inc_slot p0 p1\nb call inc_slot a p2\nret b\n"
+ ],
+ "aa-two-shifts/a0/structured": [
+  "fn shift_hours u32 u32 -> u32\na sub p1 p0\nb lt p1 p0\nc mul b 24\nd add a c\nret d\nend\nfn total u32 u32 u32 u32 -> u32\na shift_hours p0 p1\nb shift_hours p2 p3\nc add a b\nret c\nend\n",
+  "fn shift_hours u32 u32 -> u32\na sub p1 p0\nb lt p1 p0\nc add a 24\nd select b c a\nret d\nend\nfn total u32 u32 u32 u32 -> u32\na shift_hours p0 p1\nb shift_hours p2 p3\nc add a b\nret c\nend\n"
+ ],
+ "aa-warm-enough/a0/structured": [
+  "a mul d 9 @ d\nb div a 5 @ a\nc add b 32 @ b\ne ge c p1\n"
+ ],
+ "aa-vote-round/a0/structured": [
+  "a and p0 p1\nd select p0 false true\ne select p1 false true\nf and d e\ng select a true f\nb add p2 1\nc select g b p2\nret c\n"
+ ],
+ "aa-high-score-slot/a0/structured": [
+  "b gt p1 a @ a\nc select b p1 a @ b\nd set p0 p2 c\n"
+ ],
+ "aa-overdraft-guard/a0/structured": [
+  "b gt p1 p0\n"
+ ],
+ "aa-sensor-vote/a0/structured": [
+  "b select a p2 p3\n"
+ ]
+}

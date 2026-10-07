@@ -1975,6 +1975,27 @@ export const EXACT_FIXES: readonly {
     what: '`-id` followed by the old node text (not replaced in the same reply) becomes `-id`',
   },
   {
+    id: 'A0011',
+    rule: 'symbol',
+    what: 'an operator symbol in op position (`==`, `<`, `+`, `>>`) becomes the op word',
+  },
+  {
+    id: 'A0014',
+    rule: 'chain',
+    what: 'an add, mul, and, or or xor with more than two operands becomes the left-to-right chain of two-operand lines',
+  },
+  { id: 'A0102', rule: 'not', what: '`not` on one bool operand becomes `xor x true`' },
+  {
+    id: 'A0102',
+    rule: 'max',
+    what: '`max a b` on two u32 becomes `gt` and a `select` under a fresh id',
+  },
+  {
+    id: 'A0102',
+    rule: 'min',
+    what: '`min a b` on two u32 becomes `lt` and a `select` under a fresh id',
+  },
+  {
     id: 'A0102',
     rule: 'alias',
     what: 'a callee that is a common spelling of an op (`sel` for `select`, `lte` for `le`) is written as the op, when the operand count fits',

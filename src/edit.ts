@@ -163,6 +163,27 @@ function duplicateEditError(
   });
 }
 
+/**
+ * The chain fix of an op with too many operands (`x add a b c`) puts fresh ids on new lines. In an edit reply a line
+ * whose id is already a node REPLACES that node, so the fix is exact only when none of the fresh ids is a node of the
+ * function (`taken`) or a word of the reply; otherwise it is left as a suggestion.
+ */
+function guardChain(
+  e: unknown,
+  lines: readonly string[],
+  taken: ReadonlySet<string> | undefined,
+): unknown {
+  if (!(e instanceof A0Error) || e.applicability !== 'exact') return e;
+  const chain = e.edits.find((d) => d.op === 'lines' && d.rule === 'chain');
+  if (chain === undefined || chain.op !== 'lines') return e;
+  const fresh = chain.to.split('\n').map((l) => l.split(' ')[0] as string);
+  const words = new Set(lines.flatMap((l) => normalizeLine(l).split(' ')));
+  const clash = fresh
+    .slice(0, -1)
+    .some((id) => words.has(id) || taken === undefined || taken.has(id));
+  return clash ? e.withEdits(e.edits, 'maybe') : e;
+}
+
 export function parseEditOps(
   lines: readonly string[],
   firstLine: number,
@@ -214,7 +235,13 @@ export function parseEditOps(
       if (isRetNodeForm(parts)) {
         // `ret OP ARGS…`: a fresh node plus `ret` of it (same sugar as in source).
         // The id is provisional: replaceNodes picks one that is free in the function.
-        const node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
+        let node: Node;
+        try {
+          node = parseNode(`retval ${parts.slice(1).join(' ')}`, line);
+        } catch (e) {
+          // The failing line is the synthesised `retval OP …`, not a line of the reply: no edits to apply.
+          throw e instanceof A0Error && e.edits.length > 0 ? e.withEdits([], 'maybe') : e;
+        }
         ops.push({ kind: 'node', node, fresh: true });
         ops.push({ kind: 'ret', operand: { kind: 'node', id: 'retval' } });
         return;
@@ -224,7 +251,12 @@ export function parseEditOps(
       return;
     }
     const m = /^(.*?)\s+@\s+([a-z][a-z0-9_]*)$/.exec(text);
-    const node = parseNode(m ? (m[1] ?? '') : text, line);
+    let node: Node;
+    try {
+      node = parseNode(m ? (m[1] ?? '') : text, line);
+    } catch (e) {
+      throw guardChain(e, lines, taken);
+    }
     // `-id` followed by `id op args` (no `@`) says "replace this node": the delete is dropped and the line stands as the
     // replacement, which is what the pair means. With `@ other` the pair is a move: unchanged (still a duplicate edit).
     if (m === null) {
