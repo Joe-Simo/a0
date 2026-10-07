@@ -158,1198 +158,1204 @@ x137 write x136 9
 x138 text ".docs .toc>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:8px;color:var(--fg);font-size:15px}\n.docs .toc>summary::after{content:\"+\";color:var(--muted)}\n.docs .toc[open]>summary::after{content:\"\\2212\"}\n.docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}\n.docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}\n}\n/* Phones, motion, tap targets and focus. The page was wider than the screen because the panel behind the content reaches 32px past each side. */\nbody{overflow-x:clip}\n@media (max-width:900px){.layout::before{inset:0}}\n.foot a{text-decoration:underline;text-underline-offset:3px;display:inline-block;padding:13px 6px;margin:-13px -6px}\npre.code:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n@media (max-width:640px){\n.hero{min-height:46vh;min-height:46svh}\n.center{padding-top:48px}\n"
 x139 puts x137 x138
 x140 write x139 9
-x141 text "#start{display:flex;flex-direction:column}\n#start>p:has(.pill){order:-1;margin:20px 0 0}\n.pill{min-height:44px;font-size:.8125rem}\n.brand{display:inline-flex;align-items:center;min-height:44px;min-width:44px}\n.links a{padding:0 7px}\n.hright .ico{width:44px;height:44px}\n.chart details.more>summary{min-height:44px}\np+a{display:inline-block;padding:12px 0}\n.rail{padding-left:20px;scroll-padding-left:20px;background:#000}\n}\n@media (max-width:400px){.hright .ico-x{display:none}}\n@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero .name,.hero .tag,.hero .sub{animation:none}.reveal{transition:none}}\n\n@media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}\n@media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}\n@media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}\n\n"
+x141 text "#start{display:flex;flex-direction:column}\n#start>p:has(.pill){order:-1;margin:20px 0 0}\n.pill{min-height:44px;font-size:.8125rem}\n.brand{display:inline-flex;align-items:center;min-height:44px;min-width:44px}\n.links a{padding:0 7px}\n.hright .ico{width:44px;height:44px}\n.chart details.more>summary{min-height:44px}\np+a{display:inline-block;padding:12px 0}\n.rail{padding-left:20px;scroll-padding-left:20px;background:#000}\n}\n@media (max-width:400px){.hright .ico-x{display:none}}\n@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero .name,.hero .tag,.hero .sub{animation:none}.reveal{transition:none}}\n\n@media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}\n@media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}\n@media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}\n"
 x142 puts x140 x141
-ret x142
+x143 write x142 9
+x144 text "/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */\n.copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}\n.copy[hidden]{display:none}\n.copy:hover{color:var(--fg);border-color:var(--muted)}\n.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}\n.copy::before,.copy::after{content:\"\";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}\n.copy::before{transform:translate(-3px,-50%);margin-top:-3px}\n.copy::after{transform:translate(0,-50%);background:var(--bg)}\n.copy[data-copied]{border-color:var(--a0);color:var(--fg)}\n"
+x145 puts x143 x144
+x146 write x145 9
+x147 text ".copy[data-copied=\"1\"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}\n.copy[data-copied=\"1\"]::after{display:none}\n.copy[data-copied=\"fail\"]{border-color:var(--loss)}\n@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}\n.copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}\n\n"
+x148 puts x146 x147
+ret x148
 end
 
 fn sec_hero io -> io
-x145 call open p0 13
-x146 write x145 4
-x147 write x146 1
-x148 text "top"
-x149 puts x147 x148
-x150 write x149 4
-x151 write x150 2
-x152 text "hero"
-x153 puts x151 x152
-x154 call open x153 5
-x155 write x154 4
-x156 write x155 2
-x157 text "stage"
-x158 puts x156 x157
-x159 write x158 13
-x160 text "#version 300 es\nprecision mediump float;\nuniform vec2 u_res;uniform float u_time;uniform sampler2D u_font;\nout vec4 o;\nfloat h(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}\nvoid main(){\nfloat cell=clamp(u_res.x/84.,12.,18.);\nvec2 px=vec2(gl_FragCoord.x,u_res.y-gl_FragCoord.y);\nvec2 id=floor(px/cell);vec2 g=fract(px/cell);\nfloat col=id.x;\nif(h(vec2(col,5.))<.3){o=vec4(0.,0.,0.,1.);return;}\nfloat rows=ceil(u_res.y/cell);\nfloat speed=5.+9.*h(vec2(col,1.));\nfloat len=6.+22.*h(vec2(col,2.));\nfloat period=rows+len+rows*1.5*h(vec2(col,4.));\nfloat head=mod(u_time*speed+h(vec2(col,3.))*period,period);\nfloat d=head-id.y;\nif(d<0.||d>len){o=vec4(0.,0.,0.,1.);return;}\nfloat flick=step(.75,h(id+7.))*floor(u_time*(3.+6.*h(id)));\nfloat gi=floor(h(id+flick*.37)*64.);\nfloat ink=texture(u_font,(vec2(mod(gi,16.),floor(gi/16.))+g)/vec2(16.,4.)).r;\nfloat t=1.-d/len;\nvec3 c=d<1.?vec3(.82,1.,.86):vec3(0.,1.,.255)*(.12+.8*t*t);\no=vec4(c*ink,1.);\n}\n\n"
-x161 puts x159 x160
-x162 call close x161 
-x163 call open x162 5
-x164 write x163 4
-x165 write x164 2
-x166 text "name pixel"
+x151 call open p0 13
+x152 write x151 4
+x153 write x152 1
+x154 text "top"
+x155 puts x153 x154
+x156 write x155 4
+x157 write x156 2
+x158 text "hero"
+x159 puts x157 x158
+x160 call open x159 5
+x161 write x160 4
+x162 write x161 2
+x163 text "stage"
+x164 puts x162 x163
+x165 write x164 13
+x166 text "#version 300 es\nprecision mediump float;\nuniform vec2 u_res;uniform float u_time;uniform sampler2D u_font;\nout vec4 o;\nfloat h(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}\nvoid main(){\nfloat cell=clamp(u_res.x/84.,12.,18.);\nvec2 px=vec2(gl_FragCoord.x,u_res.y-gl_FragCoord.y);\nvec2 id=floor(px/cell);vec2 g=fract(px/cell);\nfloat col=id.x;\nif(h(vec2(col,5.))<.3){o=vec4(0.,0.,0.,1.);return;}\nfloat rows=ceil(u_res.y/cell);\nfloat speed=5.+9.*h(vec2(col,1.));\nfloat len=6.+22.*h(vec2(col,2.));\nfloat period=rows+len+rows*1.5*h(vec2(col,4.));\nfloat head=mod(u_time*speed+h(vec2(col,3.))*period,period);\nfloat d=head-id.y;\nif(d<0.||d>len){o=vec4(0.,0.,0.,1.);return;}\nfloat flick=step(.75,h(id+7.))*floor(u_time*(3.+6.*h(id)));\nfloat gi=floor(h(id+flick*.37)*64.);\nfloat ink=texture(u_font,(vec2(mod(gi,16.),floor(gi/16.))+g)/vec2(16.,4.)).r;\nfloat t=1.-d/len;\nvec3 c=d<1.?vec3(.82,1.,.86):vec3(0.,1.,.255)*(.12+.8*t*t);\no=vec4(c*ink,1.);\n}\n\n"
 x167 puts x165 x166
-x168 write x167 2
-x169 text "A0"
-x170 puts x168 x169
-x171 call close x170 
-x172 call open x171 2
-x173 write x172 4
+x168 call close x167 
+x169 call open x168 5
+x170 write x169 4
+x171 write x170 2
+x172 text "name pixel"
+x173 puts x171 x172
 x174 write x173 2
-x175 text "tag pixel"
+x175 text "A0"
 x176 puts x174 x175
-x177 write x176 2
-x178 text "for AI"
-x179 puts x177 x178
-x180 call close x179 
-x181 call close x180 
-ret x181
+x177 call close x176 
+x178 call open x177 2
+x179 write x178 4
+x180 write x179 2
+x181 text "tag pixel"
+x182 puts x180 x181
+x183 write x182 2
+x184 text "for AI"
+x185 puts x183 x184
+x186 call close x185 
+x187 call close x186 
+ret x187
 end
 
 fn sec_pitch io -> io
-x183 call open p0 5
-x184 write x183 4
-x185 write x184 2
-x186 text "center"
-x187 puts x185 x186
-x188 call open x187 1
-x189 write x188 2
-x190 text "A small language AI models can edit without breaking your build."
-x191 puts x189 x190
-x192 call close x191 
-x193 call open x192 2
-x194 write x193 2
-x195 text "A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands."
-x196 puts x194 x195
-x197 call close x196 
+x189 call open p0 5
+x190 write x189 4
+x191 write x190 2
+x192 text "center"
+x193 puts x191 x192
+x194 call open x193 1
+x195 write x194 2
+x196 text "A small language AI models can edit without breaking your build."
+x197 puts x195 x196
 x198 call close x197 
-x199 call open x198 5
-x200 write x199 4
-x201 write x200 2
-x202 text "layout"
-x203 puts x201 x202
-x204 write x203 4
-x205 write x204 1
-x206 text "content"
-x207 puts x205 x206
-x208 call open x207 5
-x209 write x208 4
-x210 write x209 2
-x211 text "main"
-x212 puts x210 x211
-ret x212
+x199 call open x198 2
+x200 write x199 2
+x201 text "A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands."
+x202 puts x200 x201
+x203 call close x202 
+x204 call close x203 
+x205 call open x204 5
+x206 write x205 4
+x207 write x206 2
+x208 text "layout"
+x209 puts x207 x208
+x210 write x209 4
+x211 write x210 1
+x212 text "content"
+x213 puts x211 x212
+x214 call open x213 5
+x215 write x214 4
+x216 write x215 2
+x217 text "main"
+x218 puts x216 x217
+ret x218
 end
 
 fn sec_sample io -> io
-x214 call open p0 13
-x215 write x214 4
-x216 write x215 1
-x217 text "start"
-x218 puts x216 x217
-x219 call open x218 10
-x220 write x219 4
-x221 write x220 2
-x222 text "code"
-x223 puts x221 x222
-x224 call open x223 4
-x225 write x224 2
-x226 text "fn affine u32 u32 u32 -> u32\n"
-x227 puts x225 x226
-x228 write x227 2
-x229 text "a mul p0 p1\n"
-x230 puts x228 x229
+x220 call open p0 13
+x221 write x220 4
+x222 write x221 1
+x223 text "start"
+x224 puts x222 x223
+x225 call open x224 10
+x226 write x225 4
+x227 write x226 2
+x228 text "code"
+x229 puts x227 x228
+x230 call open x229 4
 x231 write x230 2
-x232 text "b add a p2\n"
+x232 text "fn affine u32 u32 u32 -> u32\n"
 x233 puts x231 x232
 x234 write x233 2
-x235 text "ret b\n"
+x235 text "a mul p0 p1\n"
 x236 puts x234 x235
 x237 write x236 2
-x238 text "end\n"
+x238 text "b add a p2\n"
 x239 puts x237 x238
-x240 call open x239 6
-x241 write x240 4
-x242 write x241 2
-x243 text "cm"
-x244 puts x242 x243
-x245 write x244 2
-x246 text "$ a0 run examples/kernels.a0 affine 3 4 5\n"
-x247 puts x245 x246
-x248 call close x247 
-x249 write x248 2
-x250 text "17"
-x251 puts x249 x250
-x252 call close x251 
-x253 call close x252 
-x254 call open x253 2
-x255 call open x254 9
-x256 write x255 4
-x257 write x256 2
-x258 text "pill"
-x259 puts x257 x258
-x260 write x259 4
-x261 write x260 3
-x262 text "#try"
-x263 puts x261 x262
-x264 write x263 2
-x265 text "Install"
-x266 puts x264 x265
-x267 call close x266 
-x268 write x267 2
-x269 text " "
-x270 puts x268 x269
-x271 call open x270 9
-x272 write x271 4
-x273 write x272 2
-x274 text "pill ghost"
-x275 puts x273 x274
-x276 write x275 4
-x277 write x276 3
-x278 text "/benchmarks"
-x279 puts x277 x278
-x280 write x279 2
-x281 text "Benchmarks, including where A0 loses"
-x282 puts x280 x281
-x283 call close x282 
-x284 call close x283 
-x285 call open x284 2
+x240 write x239 2
+x241 text "ret b\n"
+x242 puts x240 x241
+x243 write x242 2
+x244 text "end\n"
+x245 puts x243 x244
+x246 call open x245 6
+x247 write x246 4
+x248 write x247 2
+x249 text "cm"
+x250 puts x248 x249
+x251 write x250 2
+x252 text "$ a0 run examples/kernels.a0 affine 3 4 5\n"
+x253 puts x251 x252
+x254 call close x253 
+x255 write x254 2
+x256 text "17"
+x257 puts x255 x256
+x258 call close x257 
+x259 call close x258 
+x260 call open x259 2
+x261 call open x260 9
+x262 write x261 4
+x263 write x262 2
+x264 text "pill"
+x265 puts x263 x264
+x266 write x265 4
+x267 write x266 3
+x268 text "#try"
+x269 puts x267 x268
+x270 write x269 2
+x271 text "Install"
+x272 puts x270 x271
+x273 call close x272 
+x274 write x273 2
+x275 text " "
+x276 puts x274 x275
+x277 call open x276 9
+x278 write x277 4
+x279 write x278 2
+x280 text "pill ghost"
+x281 puts x279 x280
+x282 write x281 4
+x283 write x282 3
+x284 text "/benchmarks"
+x285 puts x283 x284
 x286 write x285 2
-x287 text "MIT license, free for any use. Copyright 2026 Joe Simo. Not for floating point, heap-heavy or recursive code: A0 has none of the three."
+x287 text "Benchmarks, including where A0 loses"
 x288 puts x286 x287
 x289 call close x288 
 x290 call close x289 
-ret x290
+x291 call open x290 2
+x292 write x291 2
+x293 text "MIT license, free for any use. Copyright 2026 Joe Simo. Not for floating point, heap-heavy or recursive code: A0 has none of the three."
+x294 puts x292 x293
+x295 call close x294 
+x296 call close x295 
+ret x296
 end
 
 fn sec_fast io -> io
-x292 call open p0 13
-x293 write x292 4
-x294 write x293 1
-x295 text "fast"
-x296 puts x294 x295
-x297 call open x296 11
-x298 write x297 2
-x299 text "Is it as fast as C?"
-x300 puts x298 x299
-x301 call close x300 
-x302 call open x301 2
-x303 write x302 4
+x298 call open p0 13
+x299 write x298 4
+x300 write x299 1
+x301 text "fast"
+x302 puts x300 x301
+x303 call open x302 11
 x304 write x303 2
-x305 text "take"
+x305 text "Is it as fast as C?"
 x306 puts x304 x305
-x307 write x306 2
-x308 text "On an Apple M3, A0's machine code takes 1.16x as long as hand-written C, a geometric mean over the test programs. It loses on 8 of 19: slower than the best of C, Rust and Zig, the worst by 4.31x on mat4 (results/exec-benchmark-full.json)."
-x309 puts x307 x308
-x310 call close x309 
-x311 call open x310 5
-x312 write x311 4
+x307 call close x306 
+x308 call open x307 2
+x309 write x308 4
+x310 write x309 2
+x311 text "take"
+x312 puts x310 x311
 x313 write x312 2
-x314 text "chart langs reveal"
+x314 text "On an Apple M3, A0's machine code takes 1.16x as long as hand-written C, a geometric mean over the test programs. It loses on 8 of 19: slower than the best of C, Rust and Zig, the worst by 4.31x on mat4 (results/exec-benchmark-full.json)."
 x315 puts x313 x314
-x316 write x315 4
-x317 write x316 9
-x318 text "group"
-x319 puts x317 x318
-x320 write x319 4
-x321 write x320 8
-x322 text "chart-1"
-x323 puts x321 x322
-x324 call open x323 2
-x325 write x324 4
-x326 write x325 2
-x327 text "ct"
-x328 puts x326 x327
-x329 write x328 4
-x330 write x329 1
-x331 text "chart-1"
-x332 puts x330 x331
-x333 write x332 2
-x334 text "How long each language takes, as a multiple of A0's time"
-x335 puts x333 x334
-x336 call close x335 
-x337 call open x336 5
-x338 write x337 4
+x316 call close x315 
+x317 call open x316 5
+x318 write x317 4
+x319 write x318 2
+x320 text "chart langs reveal"
+x321 puts x319 x320
+x322 write x321 4
+x323 write x322 9
+x324 text "group"
+x325 puts x323 x324
+x326 write x325 4
+x327 write x326 8
+x328 text "chart-1"
+x329 puts x327 x328
+x330 call open x329 2
+x331 write x330 4
+x332 write x331 2
+x333 text "ct"
+x334 puts x332 x333
+x335 write x334 4
+x336 write x335 1
+x337 text "chart-1"
+x338 puts x336 x337
 x339 write x338 2
-x340 text "legend"
+x340 text "How long each language takes, as a multiple of A0's time"
 x341 puts x339 x340
-x342 call open x341 6
-x343 write x342 4
-x344 write x343 2
-x345 text "la0"
-x346 puts x344 x345
-x347 write x346 2
-x348 text "A0"
-x349 puts x347 x348
-x350 call close x349 
-x351 call open x350 6
-x352 write x351 4
+x342 call close x341 
+x343 call open x342 5
+x344 write x343 4
+x345 write x344 2
+x346 text "legend"
+x347 puts x345 x346
+x348 call open x347 6
+x349 write x348 4
+x350 write x349 2
+x351 text "la0"
+x352 puts x350 x351
 x353 write x352 2
-x354 text "lnat"
+x354 text "A0"
 x355 puts x353 x354
-x356 write x355 2
-x357 text "compiled"
-x358 puts x356 x357
-x359 call close x358 
-x360 call open x359 6
-x361 write x360 4
+x356 call close x355 
+x357 call open x356 6
+x358 write x357 4
+x359 write x358 2
+x360 text "lnat"
+x361 puts x359 x360
 x362 write x361 2
-x363 text "ljit"
+x363 text "compiled"
 x364 puts x362 x363
-x365 write x364 2
-x366 text "JIT or VM"
-x367 puts x365 x366
-x368 call close x367 
-x369 call open x368 6
-x370 write x369 4
+x365 call close x364 
+x366 call open x365 6
+x367 write x366 4
+x368 write x367 2
+x369 text "ljit"
+x370 puts x368 x369
 x371 write x370 2
-x372 text "lint"
+x372 text "JIT or VM"
 x373 puts x371 x372
-x374 write x373 2
-x375 text "interpreted"
-x376 puts x374 x375
-x377 call close x376 
-x378 call close x377 
-x379 call open x378 5
-x380 write x379 4
-x381 write x380 2
-x382 text "lrow"
-x383 puts x381 x382
-x384 call open x383 6
-x385 write x384 4
-x386 write x385 2
-x387 text "lbl"
-x388 puts x386 x387
-x389 write x388 2
-x390 text "C"
-x391 puts x389 x390
-x392 call close x391 
-x393 call open x392 5
-x394 write x393 4
+x374 call close x373 
+x375 call open x374 6
+x376 write x375 4
+x377 write x376 2
+x378 text "lint"
+x379 puts x377 x378
+x380 write x379 2
+x381 text "interpreted"
+x382 puts x380 x381
+x383 call close x382 
+x384 call close x383 
+x385 call open x384 5
+x386 write x385 4
+x387 write x386 2
+x388 text "lrow"
+x389 puts x387 x388
+x390 call open x389 6
+x391 write x390 4
+x392 write x391 2
+x393 text "lbl"
+x394 puts x392 x393
 x395 write x394 2
-x396 text "track nat"
+x396 text "C"
 x397 puts x395 x396
-x398 call open x397 5
-x399 write x398 4
-x400 write x399 2
-x401 text "fill"
-x402 puts x400 x401
-x403 write x402 12
-x404 write x403 1
-x405 write x404 18
-x406 call close x405 
-x407 call open x406 6
-x408 write x407 4
-x409 write x408 2
-x410 text "val"
-x411 puts x409 x410
-x412 mov 86
-x413 call putratio x411 x412
-x414 write x413 2
-x415 text "x"
-x416 puts x414 x415
-x417 call close x416 
-x418 call close x417 
-x419 call close x418 
-x420 call open x419 5
-x421 write x420 4
-x422 write x421 2
-x423 text "lrow"
-x424 puts x422 x423
-x425 call open x424 6
-x426 write x425 4
-x427 write x426 2
-x428 text "lbl"
-x429 puts x427 x428
-x430 write x429 2
-x431 text "Rust"
-x432 puts x430 x431
-x433 call close x432 
-x434 call open x433 5
-x435 write x434 4
+x398 call close x397 
+x399 call open x398 5
+x400 write x399 4
+x401 write x400 2
+x402 text "track nat"
+x403 puts x401 x402
+x404 call open x403 5
+x405 write x404 4
+x406 write x405 2
+x407 text "fill"
+x408 puts x406 x407
+x409 write x408 12
+x410 write x409 1
+x411 write x410 18
+x412 call close x411 
+x413 call open x412 6
+x414 write x413 4
+x415 write x414 2
+x416 text "val"
+x417 puts x415 x416
+x418 mov 86
+x419 call putratio x417 x418
+x420 write x419 2
+x421 text "x"
+x422 puts x420 x421
+x423 call close x422 
+x424 call close x423 
+x425 call close x424 
+x426 call open x425 5
+x427 write x426 4
+x428 write x427 2
+x429 text "lrow"
+x430 puts x428 x429
+x431 call open x430 6
+x432 write x431 4
+x433 write x432 2
+x434 text "lbl"
+x435 puts x433 x434
 x436 write x435 2
-x437 text "track nat"
+x437 text "Rust"
 x438 puts x436 x437
-x439 call open x438 5
-x440 write x439 4
-x441 write x440 2
-x442 text "fill"
-x443 puts x441 x442
-x444 write x443 12
-x445 write x444 1
-x446 write x445 19
-x447 call close x446 
-x448 call open x447 6
-x449 write x448 4
-x450 write x449 2
-x451 text "val"
-x452 puts x450 x451
-x453 mov 93
-x454 call putratio x452 x453
-x455 write x454 2
-x456 text "x"
-x457 puts x455 x456
-x458 call close x457 
-x459 call close x458 
-x460 call close x459 
-x461 call open x460 5
-x462 write x461 4
-x463 write x462 2
-x464 text "lrow me"
-x465 puts x463 x464
-x466 call open x465 6
-x467 write x466 4
-x468 write x467 2
-x469 text "lbl"
-x470 puts x468 x469
-x471 write x470 2
-x472 text "A0"
-x473 puts x471 x472
-x474 call close x473 
-x475 call open x474 5
-x476 write x475 4
+x439 call close x438 
+x440 call open x439 5
+x441 write x440 4
+x442 write x441 2
+x443 text "track nat"
+x444 puts x442 x443
+x445 call open x444 5
+x446 write x445 4
+x447 write x446 2
+x448 text "fill"
+x449 puts x447 x448
+x450 write x449 12
+x451 write x450 1
+x452 write x451 19
+x453 call close x452 
+x454 call open x453 6
+x455 write x454 4
+x456 write x455 2
+x457 text "val"
+x458 puts x456 x457
+x459 mov 93
+x460 call putratio x458 x459
+x461 write x460 2
+x462 text "x"
+x463 puts x461 x462
+x464 call close x463 
+x465 call close x464 
+x466 call close x465 
+x467 call open x466 5
+x468 write x467 4
+x469 write x468 2
+x470 text "lrow me"
+x471 puts x469 x470
+x472 call open x471 6
+x473 write x472 4
+x474 write x473 2
+x475 text "lbl"
+x476 puts x474 x475
 x477 write x476 2
-x478 text "track a0"
+x478 text "A0"
 x479 puts x477 x478
-x480 call open x479 5
-x481 write x480 4
-x482 write x481 2
-x483 text "fill"
-x484 puts x482 x483
-x485 write x484 12
-x486 write x485 1
-x487 write x486 20
-x488 call close x487 
-x489 call open x488 6
-x490 write x489 4
-x491 write x490 2
-x492 text "val"
-x493 puts x491 x492
-x494 mov 100
-x495 call putratio x493 x494
-x496 write x495 2
-x497 text "x"
-x498 puts x496 x497
-x499 call close x498 
-x500 call close x499 
-x501 call close x500 
-x502 call open x501 5
-x503 write x502 4
-x504 write x503 2
-x505 text "lrow"
-x506 puts x504 x505
-x507 call open x506 6
-x508 write x507 4
-x509 write x508 2
-x510 text "lbl"
-x511 puts x509 x510
-x512 write x511 2
-x513 text "TypeScript"
-x514 puts x512 x513
-x515 call close x514 
-x516 call open x515 5
-x517 write x516 4
+x480 call close x479 
+x481 call open x480 5
+x482 write x481 4
+x483 write x482 2
+x484 text "track a0"
+x485 puts x483 x484
+x486 call open x485 5
+x487 write x486 4
+x488 write x487 2
+x489 text "fill"
+x490 puts x488 x489
+x491 write x490 12
+x492 write x491 1
+x493 write x492 20
+x494 call close x493 
+x495 call open x494 6
+x496 write x495 4
+x497 write x496 2
+x498 text "val"
+x499 puts x497 x498
+x500 mov 100
+x501 call putratio x499 x500
+x502 write x501 2
+x503 text "x"
+x504 puts x502 x503
+x505 call close x504 
+x506 call close x505 
+x507 call close x506 
+x508 call open x507 5
+x509 write x508 4
+x510 write x509 2
+x511 text "lrow"
+x512 puts x510 x511
+x513 call open x512 6
+x514 write x513 4
+x515 write x514 2
+x516 text "lbl"
+x517 puts x515 x516
 x518 write x517 2
-x519 text "track jit"
+x519 text "TypeScript"
 x520 puts x518 x519
-x521 call open x520 5
-x522 write x521 4
-x523 write x522 2
-x524 text "fill"
-x525 puts x523 x524
-x526 write x525 12
-x527 write x526 1
-x528 write x527 23
-x529 call close x528 
-x530 call open x529 6
-x531 write x530 4
-x532 write x531 2
-x533 text "val"
-x534 puts x532 x533
-x535 mov 140
-x536 call putratio x534 x535
-x537 write x536 2
-x538 text "x"
-x539 puts x537 x538
-x540 call close x539 
-x541 call close x540 
-x542 call close x541 
-x543 call open x542 5
-x544 write x543 4
-x545 write x544 2
-x546 text "lrow"
-x547 puts x545 x546
-x548 call open x547 6
-x549 write x548 4
-x550 write x549 2
-x551 text "lbl"
-x552 puts x550 x551
-x553 write x552 2
-x554 text "Go"
-x555 puts x553 x554
-x556 call close x555 
-x557 call open x556 5
-x558 write x557 4
+x521 call close x520 
+x522 call open x521 5
+x523 write x522 4
+x524 write x523 2
+x525 text "track jit"
+x526 puts x524 x525
+x527 call open x526 5
+x528 write x527 4
+x529 write x528 2
+x530 text "fill"
+x531 puts x529 x530
+x532 write x531 12
+x533 write x532 1
+x534 write x533 23
+x535 call close x534 
+x536 call open x535 6
+x537 write x536 4
+x538 write x537 2
+x539 text "val"
+x540 puts x538 x539
+x541 mov 140
+x542 call putratio x540 x541
+x543 write x542 2
+x544 text "x"
+x545 puts x543 x544
+x546 call close x545 
+x547 call close x546 
+x548 call close x547 
+x549 call open x548 5
+x550 write x549 4
+x551 write x550 2
+x552 text "lrow"
+x553 puts x551 x552
+x554 call open x553 6
+x555 write x554 4
+x556 write x555 2
+x557 text "lbl"
+x558 puts x556 x557
 x559 write x558 2
-x560 text "track nat"
+x560 text "Go"
 x561 puts x559 x560
-x562 call open x561 5
-x563 write x562 4
-x564 write x563 2
-x565 text "fill"
-x566 puts x564 x565
-x567 write x566 12
-x568 write x567 1
-x569 write x568 24
-x570 call close x569 
-x571 call open x570 6
-x572 write x571 4
-x573 write x572 2
-x574 text "val"
-x575 puts x573 x574
-x576 mov 153
-x577 call putratio x575 x576
-x578 write x577 2
-x579 text "x"
-x580 puts x578 x579
-x581 call close x580 
-x582 call close x581 
-x583 call close x582 
-x584 call close x583 
-x585 call close x584 
-ret x585
+x562 call close x561 
+x563 call open x562 5
+x564 write x563 4
+x565 write x564 2
+x566 text "track nat"
+x567 puts x565 x566
+x568 call open x567 5
+x569 write x568 4
+x570 write x569 2
+x571 text "fill"
+x572 puts x570 x571
+x573 write x572 12
+x574 write x573 1
+x575 write x574 24
+x576 call close x575 
+x577 call open x576 6
+x578 write x577 4
+x579 write x578 2
+x580 text "val"
+x581 puts x579 x580
+x582 mov 153
+x583 call putratio x581 x582
+x584 write x583 2
+x585 text "x"
+x586 puts x584 x585
+x587 call close x586 
+x588 call close x587 
+x589 call close x588 
+x590 call close x589 
+x591 call close x590 
+ret x591
 end
 
 fn sec_edit io -> io
-x587 call open p0 13
-x588 write x587 4
-x589 write x588 1
-x590 text "edit"
-x591 puts x589 x590
-x592 call open x591 11
-x593 write x592 2
-x594 text "How much does an edit cost?"
-x595 puts x593 x594
-x596 call close x595 
-x597 call open x596 2
-x598 write x597 4
+x593 call open p0 13
+x594 write x593 4
+x595 write x594 1
+x596 text "edit"
+x597 puts x595 x596
+x598 call open x597 11
 x599 write x598 2
-x600 text "take"
+x600 text "How much does an edit cost?"
 x601 puts x599 x600
-x602 write x601 2
-x603 text "Over a session of 10 edits A0 costs 184 tokens per task in its canonical form and 117 in its dense form (place 12 and 1 of 49 languages, 1 = fewest). On a one-function file it costs 2.42x TypeScript's tokens, because the instructions dominate (results/ai-edit-b48-dense.json, results/ai-edit-experiment.b.sonnet-min.json)."
-x604 puts x602 x603
-x605 call close x604 
-x606 call open x605 5
-x607 write x606 4
+x602 call close x601 
+x603 call open x602 2
+x604 write x603 4
+x605 write x604 2
+x606 text "take"
+x607 puts x605 x606
 x608 write x607 2
-x609 text "chart langs reveal"
+x609 text "Over a session of 10 edits A0 costs 184 tokens per task in its canonical form and 117 in its dense form (place 12 and 1 of 49 languages, 1 = fewest). On a one-function file it costs 2.42x TypeScript's tokens, because the instructions dominate (results/ai-edit-b48-dense.json, results/ai-edit-experiment.b.sonnet-min.json)."
 x610 puts x608 x609
-x611 write x610 4
-x612 write x611 9
-x613 text "group"
-x614 puts x612 x613
-x615 write x614 4
-x616 write x615 8
-x617 text "chart-2"
-x618 puts x616 x617
-x619 call open x618 2
-x620 write x619 4
-x621 write x620 2
-x622 text "ct"
-x623 puts x621 x622
-x624 write x623 4
-x625 write x624 1
-x626 text "chart-2"
-x627 puts x625 x626
-x628 write x627 2
-x629 text "Tokens per task, session of 10 edits"
-x630 puts x628 x629
-x631 call close x630 
-x632 call open x631 5
-x633 write x632 4
+x611 call close x610 
+x612 call open x611 5
+x613 write x612 4
+x614 write x613 2
+x615 text "chart langs reveal"
+x616 puts x614 x615
+x617 write x616 4
+x618 write x617 9
+x619 text "group"
+x620 puts x618 x619
+x621 write x620 4
+x622 write x621 8
+x623 text "chart-2"
+x624 puts x622 x623
+x625 call open x624 2
+x626 write x625 4
+x627 write x626 2
+x628 text "ct"
+x629 puts x627 x628
+x630 write x629 4
+x631 write x630 1
+x632 text "chart-2"
+x633 puts x631 x632
 x634 write x633 2
-x635 text "legend"
+x635 text "Tokens per task, session of 10 edits"
 x636 puts x634 x635
-x637 call open x636 6
-x638 write x637 4
-x639 write x638 2
-x640 text "la0"
-x641 puts x639 x640
-x642 write x641 2
-x643 text "A0 (canonical and dense)"
-x644 puts x642 x643
-x645 call close x644 
-x646 call open x645 6
-x647 write x646 4
+x637 call close x636 
+x638 call open x637 5
+x639 write x638 4
+x640 write x639 2
+x641 text "legend"
+x642 puts x640 x641
+x643 call open x642 6
+x644 write x643 4
+x645 write x644 2
+x646 text "la0"
+x647 puts x645 x646
 x648 write x647 2
-x649 text "lnat"
+x649 text "A0 (canonical and dense)"
 x650 puts x648 x649
-x651 write x650 2
-x652 text "compiled"
-x653 puts x651 x652
-x654 call close x653 
-x655 call open x654 6
-x656 write x655 4
+x651 call close x650 
+x652 call open x651 6
+x653 write x652 4
+x654 write x653 2
+x655 text "lnat"
+x656 puts x654 x655
 x657 write x656 2
-x658 text "ljit"
+x658 text "compiled"
 x659 puts x657 x658
-x660 write x659 2
-x661 text "JIT or VM"
-x662 puts x660 x661
-x663 call close x662 
-x664 call open x663 6
-x665 write x664 4
+x660 call close x659 
+x661 call open x660 6
+x662 write x661 4
+x663 write x662 2
+x664 text "ljit"
+x665 puts x663 x664
 x666 write x665 2
-x667 text "lint"
+x667 text "JIT or VM"
 x668 puts x666 x667
-x669 write x668 2
-x670 text "interpreted"
-x671 puts x669 x670
-x672 call close x671 
-x673 call close x672 
-x674 call open x673 5
-x675 write x674 4
-x676 write x675 2
-x677 text "lrow me"
-x678 puts x676 x677
-x679 call open x678 6
-x680 write x679 4
-x681 write x680 2
-x682 text "lbl"
-x683 puts x681 x682
-x684 write x683 2
-x685 text "A0 (dense)"
-x686 puts x684 x685
-x687 call close x686 
-x688 call open x687 5
-x689 write x688 4
+x669 call close x668 
+x670 call open x669 6
+x671 write x670 4
+x672 write x671 2
+x673 text "lint"
+x674 puts x672 x673
+x675 write x674 2
+x676 text "interpreted"
+x677 puts x675 x676
+x678 call close x677 
+x679 call close x678 
+x680 call open x679 5
+x681 write x680 4
+x682 write x681 2
+x683 text "lrow me"
+x684 puts x682 x683
+x685 call open x684 6
+x686 write x685 4
+x687 write x686 2
+x688 text "lbl"
+x689 puts x687 x688
 x690 write x689 2
-x691 text "track a0"
+x691 text "A0 (dense)"
 x692 puts x690 x691
-x693 call open x692 5
-x694 write x693 4
-x695 write x694 2
-x696 text "fill"
-x697 puts x695 x696
-x698 write x697 12
-x699 write x698 1
-x700 write x699 26
-x701 call close x700 
-x702 call open x701 6
-x703 write x702 4
-x704 write x703 2
-x705 text "val"
-x706 puts x704 x705
-x707 mov 117
-x708 call putnum x706 x707
-x709 write x708 2
-x710 text " tok"
-x711 puts x709 x710
-x712 call close x711 
-x713 call close x712 
-x714 call close x713 
-x715 call open x714 5
-x716 write x715 4
-x717 write x716 2
-x718 text "lrow"
-x719 puts x717 x718
-x720 call open x719 6
-x721 write x720 4
-x722 write x721 2
-x723 text "lbl"
-x724 puts x722 x723
-x725 write x724 2
-x726 text "TypeScript"
-x727 puts x725 x726
-x728 call close x727 
-x729 call open x728 5
-x730 write x729 4
+x693 call close x692 
+x694 call open x693 5
+x695 write x694 4
+x696 write x695 2
+x697 text "track a0"
+x698 puts x696 x697
+x699 call open x698 5
+x700 write x699 4
+x701 write x700 2
+x702 text "fill"
+x703 puts x701 x702
+x704 write x703 12
+x705 write x704 1
+x706 write x705 26
+x707 call close x706 
+x708 call open x707 6
+x709 write x708 4
+x710 write x709 2
+x711 text "val"
+x712 puts x710 x711
+x713 mov 117
+x714 call putnum x712 x713
+x715 write x714 2
+x716 text " tok"
+x717 puts x715 x716
+x718 call close x717 
+x719 call close x718 
+x720 call close x719 
+x721 call open x720 5
+x722 write x721 4
+x723 write x722 2
+x724 text "lrow"
+x725 puts x723 x724
+x726 call open x725 6
+x727 write x726 4
+x728 write x727 2
+x729 text "lbl"
+x730 puts x728 x729
 x731 write x730 2
-x732 text "track jit"
+x732 text "TypeScript"
 x733 puts x731 x732
-x734 call open x733 5
-x735 write x734 4
-x736 write x735 2
-x737 text "fill"
-x738 puts x736 x737
-x739 write x738 12
-x740 write x739 1
-x741 write x740 35
-x742 call close x741 
-x743 call open x742 6
-x744 write x743 4
-x745 write x744 2
-x746 text "val"
-x747 puts x745 x746
-x748 mov 165
-x749 call putnum x747 x748
-x750 write x749 2
-x751 text " tok"
-x752 puts x750 x751
-x753 call close x752 
-x754 call close x753 
-x755 call close x754 
-x756 call open x755 5
-x757 write x756 4
-x758 write x757 2
-x759 text "lrow"
-x760 puts x758 x759
-x761 call open x760 6
-x762 write x761 4
-x763 write x762 2
-x764 text "lbl"
-x765 puts x763 x764
-x766 write x765 2
-x767 text "Go"
-x768 puts x766 x767
-x769 call close x768 
-x770 call open x769 5
-x771 write x770 4
+x734 call close x733 
+x735 call open x734 5
+x736 write x735 4
+x737 write x736 2
+x738 text "track jit"
+x739 puts x737 x738
+x740 call open x739 5
+x741 write x740 4
+x742 write x741 2
+x743 text "fill"
+x744 puts x742 x743
+x745 write x744 12
+x746 write x745 1
+x747 write x746 35
+x748 call close x747 
+x749 call open x748 6
+x750 write x749 4
+x751 write x750 2
+x752 text "val"
+x753 puts x751 x752
+x754 mov 165
+x755 call putnum x753 x754
+x756 write x755 2
+x757 text " tok"
+x758 puts x756 x757
+x759 call close x758 
+x760 call close x759 
+x761 call close x760 
+x762 call open x761 5
+x763 write x762 4
+x764 write x763 2
+x765 text "lrow"
+x766 puts x764 x765
+x767 call open x766 6
+x768 write x767 4
+x769 write x768 2
+x770 text "lbl"
+x771 puts x769 x770
 x772 write x771 2
-x773 text "track nat"
+x773 text "Go"
 x774 puts x772 x773
-x775 call open x774 5
-x776 write x775 4
-x777 write x776 2
-x778 text "fill"
-x779 puts x777 x778
-x780 write x779 12
-x781 write x780 1
-x782 write x781 37
-x783 call close x782 
-x784 call open x783 6
-x785 write x784 4
-x786 write x785 2
-x787 text "val"
-x788 puts x786 x787
-x789 mov 177
-x790 call putnum x788 x789
-x791 write x790 2
-x792 text " tok"
-x793 puts x791 x792
-x794 call close x793 
-x795 call close x794 
-x796 call close x795 
-x797 call open x796 5
-x798 write x797 4
-x799 write x798 2
-x800 text "lrow me"
-x801 puts x799 x800
-x802 call open x801 6
-x803 write x802 4
-x804 write x803 2
-x805 text "lbl"
-x806 puts x804 x805
-x807 write x806 2
-x808 text "A0 (canonical)"
-x809 puts x807 x808
-x810 call close x809 
-x811 call open x810 5
-x812 write x811 4
+x775 call close x774 
+x776 call open x775 5
+x777 write x776 4
+x778 write x777 2
+x779 text "track nat"
+x780 puts x778 x779
+x781 call open x780 5
+x782 write x781 4
+x783 write x782 2
+x784 text "fill"
+x785 puts x783 x784
+x786 write x785 12
+x787 write x786 1
+x788 write x787 37
+x789 call close x788 
+x790 call open x789 6
+x791 write x790 4
+x792 write x791 2
+x793 text "val"
+x794 puts x792 x793
+x795 mov 177
+x796 call putnum x794 x795
+x797 write x796 2
+x798 text " tok"
+x799 puts x797 x798
+x800 call close x799 
+x801 call close x800 
+x802 call close x801 
+x803 call open x802 5
+x804 write x803 4
+x805 write x804 2
+x806 text "lrow me"
+x807 puts x805 x806
+x808 call open x807 6
+x809 write x808 4
+x810 write x809 2
+x811 text "lbl"
+x812 puts x810 x811
 x813 write x812 2
-x814 text "track a0"
+x814 text "A0 (canonical)"
 x815 puts x813 x814
-x816 call open x815 5
-x817 write x816 4
-x818 write x817 2
-x819 text "fill"
-x820 puts x818 x819
-x821 write x820 12
-x822 write x821 1
-x823 write x822 39
-x824 call close x823 
-x825 call open x824 6
-x826 write x825 4
-x827 write x826 2
-x828 text "val"
-x829 puts x827 x828
-x830 mov 184
-x831 call putnum x829 x830
-x832 write x831 2
-x833 text " tok"
-x834 puts x832 x833
-x835 call close x834 
-x836 call close x835 
-x837 call close x836 
-x838 call open x837 5
-x839 write x838 4
-x840 write x839 2
-x841 text "lrow"
-x842 puts x840 x841
-x843 call open x842 6
-x844 write x843 4
-x845 write x844 2
-x846 text "lbl"
-x847 puts x845 x846
-x848 write x847 2
-x849 text "Rust"
-x850 puts x848 x849
-x851 call close x850 
-x852 call open x851 5
-x853 write x852 4
+x816 call close x815 
+x817 call open x816 5
+x818 write x817 4
+x819 write x818 2
+x820 text "track a0"
+x821 puts x819 x820
+x822 call open x821 5
+x823 write x822 4
+x824 write x823 2
+x825 text "fill"
+x826 puts x824 x825
+x827 write x826 12
+x828 write x827 1
+x829 write x828 39
+x830 call close x829 
+x831 call open x830 6
+x832 write x831 4
+x833 write x832 2
+x834 text "val"
+x835 puts x833 x834
+x836 mov 184
+x837 call putnum x835 x836
+x838 write x837 2
+x839 text " tok"
+x840 puts x838 x839
+x841 call close x840 
+x842 call close x841 
+x843 call close x842 
+x844 call open x843 5
+x845 write x844 4
+x846 write x845 2
+x847 text "lrow"
+x848 puts x846 x847
+x849 call open x848 6
+x850 write x849 4
+x851 write x850 2
+x852 text "lbl"
+x853 puts x851 x852
 x854 write x853 2
-x855 text "track nat"
+x855 text "Rust"
 x856 puts x854 x855
-x857 call open x856 5
-x858 write x857 4
-x859 write x858 2
-x860 text "fill"
-x861 puts x859 x860
-x862 write x861 12
-x863 write x862 1
-x864 write x863 42
-x865 call close x864 
-x866 call open x865 6
-x867 write x866 4
-x868 write x867 2
-x869 text "val"
-x870 puts x868 x869
-x871 mov 199
-x872 call putnum x870 x871
-x873 write x872 2
-x874 text " tok"
-x875 puts x873 x874
-x876 call close x875 
-x877 call close x876 
-x878 call close x877 
-x879 call open x878 5
-x880 write x879 4
-x881 write x880 2
-x882 text "lrow"
-x883 puts x881 x882
-x884 call open x883 6
-x885 write x884 4
-x886 write x885 2
-x887 text "lbl"
-x888 puts x886 x887
-x889 write x888 2
-x890 text "C"
-x891 puts x889 x890
-x892 call close x891 
-x893 call open x892 5
-x894 write x893 4
+x857 call close x856 
+x858 call open x857 5
+x859 write x858 4
+x860 write x859 2
+x861 text "track nat"
+x862 puts x860 x861
+x863 call open x862 5
+x864 write x863 4
+x865 write x864 2
+x866 text "fill"
+x867 puts x865 x866
+x868 write x867 12
+x869 write x868 1
+x870 write x869 42
+x871 call close x870 
+x872 call open x871 6
+x873 write x872 4
+x874 write x873 2
+x875 text "val"
+x876 puts x874 x875
+x877 mov 199
+x878 call putnum x876 x877
+x879 write x878 2
+x880 text " tok"
+x881 puts x879 x880
+x882 call close x881 
+x883 call close x882 
+x884 call close x883 
+x885 call open x884 5
+x886 write x885 4
+x887 write x886 2
+x888 text "lrow"
+x889 puts x887 x888
+x890 call open x889 6
+x891 write x890 4
+x892 write x891 2
+x893 text "lbl"
+x894 puts x892 x893
 x895 write x894 2
-x896 text "track nat"
+x896 text "C"
 x897 puts x895 x896
-x898 call open x897 5
-x899 write x898 4
-x900 write x899 2
-x901 text "fill"
-x902 puts x900 x901
-x903 write x902 12
-x904 write x903 1
-x905 write x904 47
-x906 call close x905 
-x907 call open x906 6
-x908 write x907 4
-x909 write x908 2
-x910 text "val"
-x911 puts x909 x910
-x912 mov 225
-x913 call putnum x911 x912
-x914 write x913 2
-x915 text " tok"
-x916 puts x914 x915
-x917 call close x916 
-x918 call close x917 
-x919 call close x918 
-x920 call close x919 
-x921 call close x920 
-ret x921
+x898 call close x897 
+x899 call open x898 5
+x900 write x899 4
+x901 write x900 2
+x902 text "track nat"
+x903 puts x901 x902
+x904 call open x903 5
+x905 write x904 4
+x906 write x905 2
+x907 text "fill"
+x908 puts x906 x907
+x909 write x908 12
+x910 write x909 1
+x911 write x910 47
+x912 call close x911 
+x913 call open x912 6
+x914 write x913 4
+x915 write x914 2
+x916 text "val"
+x917 puts x915 x916
+x918 mov 225
+x919 call putnum x917 x918
+x920 write x919 2
+x921 text " tok"
+x922 puts x920 x921
+x923 call close x922 
+x924 call close x923 
+x925 call close x924 
+x926 call close x925 
+x927 call close x926 
+ret x927
 end
 
 fn sec_check io -> io
-x923 call open p0 13
-x924 write x923 4
-x925 write x924 1
-x926 text "check"
-x927 puts x925 x926
-x928 call open x927 11
-x929 write x928 2
-x930 text "How quickly do I know an edit is wrong?"
-x931 puts x929 x930
-x932 call close x931 
-x933 call open x932 2
-x934 write x933 4
+x929 call open p0 13
+x930 write x929 4
+x931 write x930 1
+x932 text "check"
+x933 puts x931 x932
+x934 call open x933 11
 x935 write x934 2
-x936 text "take"
+x936 text "How quickly do I know an edit is wrong?"
 x937 puts x935 x936
-x938 write x937 2
-x939 text "A0 applies a model's edit and type-checks the whole program in 0.51 ms at the median. TypeScript with a warm compiler takes 15.1 ms (results/edit-loop.json)."
-x940 puts x938 x939
-x941 call close x940 
-x942 call open x941 5
-x943 write x942 4
+x938 call close x937 
+x939 call open x938 2
+x940 write x939 4
+x941 write x940 2
+x942 text "take"
+x943 puts x941 x942
 x944 write x943 2
-x945 text "chart langs reveal"
+x945 text "A0 applies a model's edit and type-checks the whole program in 0.51 ms at the median. TypeScript with a warm compiler takes 15.1 ms (results/edit-loop.json)."
 x946 puts x944 x945
-x947 write x946 4
-x948 write x947 9
-x949 text "group"
-x950 puts x948 x949
-x951 write x950 4
-x952 write x951 8
-x953 text "chart-3"
-x954 puts x952 x953
-x955 call open x954 2
-x956 write x955 4
-x957 write x956 2
-x958 text "ct"
-x959 puts x957 x958
-x960 write x959 4
-x961 write x960 1
-x962 text "chart-3"
-x963 puts x961 x962
-x964 write x963 2
-x965 text "Milliseconds from a model's reply to a type-checked program"
-x966 puts x964 x965
-x967 call close x966 
-x968 call open x967 5
-x969 write x968 4
+x947 call close x946 
+x948 call open x947 5
+x949 write x948 4
+x950 write x949 2
+x951 text "chart langs reveal"
+x952 puts x950 x951
+x953 write x952 4
+x954 write x953 9
+x955 text "group"
+x956 puts x954 x955
+x957 write x956 4
+x958 write x957 8
+x959 text "chart-3"
+x960 puts x958 x959
+x961 call open x960 2
+x962 write x961 4
+x963 write x962 2
+x964 text "ct"
+x965 puts x963 x964
+x966 write x965 4
+x967 write x966 1
+x968 text "chart-3"
+x969 puts x967 x968
 x970 write x969 2
-x971 text "lrow wide me"
+x971 text "Milliseconds from a model's reply to a type-checked program"
 x972 puts x970 x971
-x973 call open x972 6
-x974 write x973 4
-x975 write x974 2
-x976 text "lbl"
-x977 puts x975 x976
-x978 write x977 2
-x979 text "A0 structured"
-x980 puts x978 x979
-x981 call close x980 
-x982 call open x981 5
-x983 write x982 4
+x973 call close x972 
+x974 call open x973 5
+x975 write x974 4
+x976 write x975 2
+x977 text "lrow wide me"
+x978 puts x976 x977
+x979 call open x978 6
+x980 write x979 4
+x981 write x980 2
+x982 text "lbl"
+x983 puts x981 x982
 x984 write x983 2
-x985 text "track a0"
+x985 text "A0 structured"
 x986 puts x984 x985
-x987 call open x986 5
-x988 write x987 4
-x989 write x988 2
-x990 text "fill"
-x991 puts x989 x990
-x992 write x991 12
-x993 write x992 1
-x994 write x993 19
-x995 call close x994 
-x996 call open x995 6
-x997 write x996 4
-x998 write x997 2
-x999 text "val"
-x1000 puts x998 x999
-x1001 mov 51
-x1002 call putfix x1000 x1001
-x1003 write x1002 2
-x1004 text " ms"
-x1005 puts x1003 x1004
-x1006 call close x1005 
-x1007 call close x1006 
-x1008 call close x1007 
-x1009 call open x1008 5
-x1010 write x1009 4
-x1011 write x1010 2
-x1012 text "lrow wide me"
-x1013 puts x1011 x1012
-x1014 call open x1013 6
-x1015 write x1014 4
-x1016 write x1015 2
-x1017 text "lbl"
-x1018 puts x1016 x1017
-x1019 write x1018 2
-x1020 text "A0 whole file"
-x1021 puts x1019 x1020
-x1022 call close x1021 
-x1023 call open x1022 5
-x1024 write x1023 4
+x987 call close x986 
+x988 call open x987 5
+x989 write x988 4
+x990 write x989 2
+x991 text "track a0"
+x992 puts x990 x991
+x993 call open x992 5
+x994 write x993 4
+x995 write x994 2
+x996 text "fill"
+x997 puts x995 x996
+x998 write x997 12
+x999 write x998 1
+x1000 write x999 19
+x1001 call close x1000 
+x1002 call open x1001 6
+x1003 write x1002 4
+x1004 write x1003 2
+x1005 text "val"
+x1006 puts x1004 x1005
+x1007 mov 51
+x1008 call putfix x1006 x1007
+x1009 write x1008 2
+x1010 text " ms"
+x1011 puts x1009 x1010
+x1012 call close x1011 
+x1013 call close x1012 
+x1014 call close x1013 
+x1015 call open x1014 5
+x1016 write x1015 4
+x1017 write x1016 2
+x1018 text "lrow wide me"
+x1019 puts x1017 x1018
+x1020 call open x1019 6
+x1021 write x1020 4
+x1022 write x1021 2
+x1023 text "lbl"
+x1024 puts x1022 x1023
 x1025 write x1024 2
-x1026 text "track a0"
+x1026 text "A0 whole file"
 x1027 puts x1025 x1026
-x1028 call open x1027 5
-x1029 write x1028 4
-x1030 write x1029 2
-x1031 text "fill"
-x1032 puts x1030 x1031
-x1033 write x1032 12
-x1034 write x1033 1
-x1035 write x1034 20
-x1036 call close x1035 
-x1037 call open x1036 6
-x1038 write x1037 4
-x1039 write x1038 2
-x1040 text "val"
-x1041 puts x1039 x1040
-x1042 mov 53
-x1043 call putfix x1041 x1042
-x1044 write x1043 2
-x1045 text " ms"
-x1046 puts x1044 x1045
-x1047 call close x1046 
-x1048 call close x1047 
-x1049 call close x1048 
-x1050 call close x1049 
-x1051 call close x1050 
-ret x1051
+x1028 call close x1027 
+x1029 call open x1028 5
+x1030 write x1029 4
+x1031 write x1030 2
+x1032 text "track a0"
+x1033 puts x1031 x1032
+x1034 call open x1033 5
+x1035 write x1034 4
+x1036 write x1035 2
+x1037 text "fill"
+x1038 puts x1036 x1037
+x1039 write x1038 12
+x1040 write x1039 1
+x1041 write x1040 20
+x1042 call close x1041 
+x1043 call open x1042 6
+x1044 write x1043 4
+x1045 write x1044 2
+x1046 text "val"
+x1047 puts x1045 x1046
+x1048 mov 53
+x1049 call putfix x1047 x1048
+x1050 write x1049 2
+x1051 text " ms"
+x1052 puts x1050 x1051
+x1053 call close x1052 
+x1054 call close x1053 
+x1055 call close x1054 
+x1056 call close x1055 
+x1057 call close x1056 
+ret x1057
 end
 
 fn sec_targets io -> io
-x1053 call open p0 13
-x1054 write x1053 4
-x1055 write x1054 1
-x1056 text "targets"
-x1057 puts x1055 x1056
-x1058 call open x1057 11
-x1059 write x1058 2
-x1060 text "What does one source compile to?"
-x1061 puts x1059 x1060
-x1062 call close x1061 
-x1063 call open x1062 5
-x1064 write x1063 4
+x1059 call open p0 13
+x1060 write x1059 4
+x1061 write x1060 1
+x1062 text "targets"
+x1063 puts x1061 x1062
+x1064 call open x1063 11
 x1065 write x1064 2
-x1066 text "legend"
+x1066 text "What does one source compile to?"
 x1067 puts x1065 x1066
-x1068 call open x1067 6
-x1069 write x1068 4
-x1070 write x1069 2
-x1071 text "lnat"
-x1072 puts x1070 x1071
-x1073 write x1072 2
-x1074 text "machine code"
-x1075 puts x1073 x1074
-x1076 call close x1075 
-x1077 call open x1076 6
-x1078 write x1077 4
+x1068 call close x1067 
+x1069 call open x1068 5
+x1070 write x1069 4
+x1071 write x1070 2
+x1072 text "legend"
+x1073 puts x1071 x1072
+x1074 call open x1073 6
+x1075 write x1074 4
+x1076 write x1075 2
+x1077 text "lnat"
+x1078 puts x1076 x1077
 x1079 write x1078 2
-x1080 text "lnat"
+x1080 text "machine code"
 x1081 puts x1079 x1080
-x1082 write x1081 2
-x1083 text "C"
-x1084 puts x1082 x1083
-x1085 call close x1084 
-x1086 call open x1085 6
-x1087 write x1086 4
+x1082 call close x1081 
+x1083 call open x1082 6
+x1084 write x1083 4
+x1085 write x1084 2
+x1086 text "lnat"
+x1087 puts x1085 x1086
 x1088 write x1087 2
-x1089 text "lnat"
+x1089 text "C"
 x1090 puts x1088 x1089
-x1091 write x1090 2
-x1092 text "wasm"
-x1093 puts x1091 x1092
-x1094 call close x1093 
-x1095 call open x1094 6
-x1096 write x1095 4
+x1091 call close x1090 
+x1092 call open x1091 6
+x1093 write x1092 4
+x1094 write x1093 2
+x1095 text "lnat"
+x1096 puts x1094 x1095
 x1097 write x1096 2
-x1098 text "lnat"
+x1098 text "wasm"
 x1099 puts x1097 x1098
-x1100 write x1099 2
-x1101 text "JavaScript"
-x1102 puts x1100 x1101
-x1103 call close x1102 
-x1104 call open x1103 6
-x1105 write x1104 4
+x1100 call close x1099 
+x1101 call open x1100 6
+x1102 write x1101 4
+x1103 write x1102 2
+x1104 text "lnat"
+x1105 puts x1103 x1104
 x1106 write x1105 2
-x1107 text "lnat"
+x1107 text "JavaScript"
 x1108 puts x1106 x1107
-x1109 write x1108 2
-x1110 text "JVM"
-x1111 puts x1109 x1110
-x1112 call close x1111 
-x1113 call open x1112 6
-x1114 write x1113 4
+x1109 call close x1108 
+x1110 call open x1109 6
+x1111 write x1110 4
+x1112 write x1111 2
+x1113 text "lnat"
+x1114 puts x1112 x1113
 x1115 write x1114 2
-x1116 text "lnat"
+x1116 text "JVM"
 x1117 puts x1115 x1116
-x1118 write x1117 2
-x1119 text ".NET"
-x1120 puts x1118 x1119
-x1121 call close x1120 
-x1122 call open x1121 6
-x1123 write x1122 4
+x1118 call close x1117 
+x1119 call open x1118 6
+x1120 write x1119 4
+x1121 write x1120 2
+x1122 text "lnat"
+x1123 puts x1121 x1122
 x1124 write x1123 2
-x1125 text "lnat"
+x1125 text ".NET"
 x1126 puts x1124 x1125
-x1127 write x1126 2
-x1128 text "Metal"
-x1129 puts x1127 x1128
-x1130 call close x1129 
-x1131 call open x1130 6
-x1132 write x1131 4
+x1127 call close x1126 
+x1128 call open x1127 6
+x1129 write x1128 4
+x1130 write x1129 2
+x1131 text "lnat"
+x1132 puts x1130 x1131
 x1133 write x1132 2
-x1134 text "lnat"
+x1134 text "Metal"
 x1135 puts x1133 x1134
-x1136 write x1135 2
-x1137 text "SystemVerilog"
-x1138 puts x1136 x1137
-x1139 call close x1138 
-x1140 call close x1139 
-x1141 call open x1140 2
-x1142 write x1141 4
-x1143 write x1142 2
-x1144 text "take"
-x1145 puts x1143 x1144
-x1146 write x1145 2
-x1147 text "5262 test cases ran on 10 paths. The native assembly targets ran the 4297 that need no input or output, and SystemVerilog is simulated separately on 5262 (results/verification.json)."
-x1148 puts x1146 x1147
-x1149 call close x1148 
-x1150 call close x1149 
-ret x1150
+x1136 call close x1135 
+x1137 call open x1136 6
+x1138 write x1137 4
+x1139 write x1138 2
+x1140 text "lnat"
+x1141 puts x1139 x1140
+x1142 write x1141 2
+x1143 text "SystemVerilog"
+x1144 puts x1142 x1143
+x1145 call close x1144 
+x1146 call close x1145 
+x1147 call open x1146 2
+x1148 write x1147 4
+x1149 write x1148 2
+x1150 text "take"
+x1151 puts x1149 x1150
+x1152 write x1151 2
+x1153 text "5262 test cases ran on 10 paths. The native assembly targets ran the 4297 that need no input or output, and SystemVerilog is simulated separately on 5262 (results/verification.json)."
+x1154 puts x1152 x1153
+x1155 call close x1154 
+x1156 call close x1155 
+ret x1156
 end
 
 fn sec_try io -> io
-x1152 call open p0 13
-x1153 write x1152 4
-x1154 write x1153 1
-x1155 text "try"
-x1156 puts x1154 x1155
-x1157 call open x1156 11
-x1158 write x1157 2
-x1159 text "Try it"
-x1160 puts x1158 x1159
-x1161 call close x1160 
-x1162 call open x1161 10
-x1163 write x1162 4
+x1158 call open p0 13
+x1159 write x1158 4
+x1160 write x1159 1
+x1161 text "try"
+x1162 puts x1160 x1161
+x1163 call open x1162 11
 x1164 write x1163 2
-x1165 text "code"
+x1165 text "Try it"
 x1166 puts x1164 x1165
-x1167 write x1166 4
-x1168 write x1167 6
-x1169 text "Install commands"
-x1170 puts x1168 x1169
-x1171 call open x1170 4
-x1172 call open x1171 6
+x1167 call close x1166 
+x1168 call open x1167 10
+x1169 write x1168 4
+x1170 write x1169 2
+x1171 text "code"
+x1172 puts x1170 x1171
 x1173 write x1172 4
-x1174 write x1173 2
-x1175 text "cm"
+x1174 write x1173 6
+x1175 text "Install commands"
 x1176 puts x1174 x1175
-x1177 write x1176 2
-x1178 text "# one binary, no package manager\n"
-x1179 puts x1177 x1178
-x1180 call close x1179 
-x1181 write x1180 2
-x1182 text "# macOS and Linux: pick the binary for your machine, a0-darwin-arm64, a0-darwin-x64, a0-linux-arm64 or a0-linux-x64\n"
-x1183 puts x1181 x1182
-x1184 write x1183 2
-x1185 text "curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-linux-x64 -o a0 && chmod +x a0\n"
-x1186 puts x1184 x1185
+x1177 call open x1176 4
+x1178 call open x1177 6
+x1179 write x1178 4
+x1180 write x1179 2
+x1181 text "cm"
+x1182 puts x1180 x1181
+x1183 write x1182 2
+x1184 text "# one binary, no package manager\n"
+x1185 puts x1183 x1184
+x1186 call close x1185 
 x1187 write x1186 2
-x1188 text "# Windows, PowerShell: a0-windows-x64.exe, then use .\\a0.exe where this page says ./a0\n"
+x1188 text "# macOS and Linux: pick the binary for your machine, a0-darwin-arm64, a0-darwin-x64, a0-linux-arm64 or a0-linux-x64\n"
 x1189 puts x1187 x1188
 x1190 write x1189 2
-x1191 text "Invoke-WebRequest https://github.com/Joe-Simo/a0/releases/latest/download/a0-windows-x64.exe -OutFile a0.exe\n"
+x1191 text "curl -L https://github.com/Joe-Simo/a0/releases/latest/download/a0-linux-x64 -o a0 && chmod +x a0\n"
 x1192 puts x1190 x1191
 x1193 write x1192 2
-x1194 text "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n"
+x1194 text "# Windows, PowerShell: a0-windows-x64.exe, then use .\\a0.exe where this page says ./a0\n"
 x1195 puts x1193 x1194
 x1196 write x1195 2
-x1197 text "./a0 run sq.a0 sq 12          # 144\n"
+x1197 text "Invoke-WebRequest https://github.com/Joe-Simo/a0/releases/latest/download/a0-windows-x64.exe -OutFile a0.exe\n"
 x1198 puts x1196 x1197
 x1199 write x1198 2
-x1200 text "./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n"
+x1200 text "printf 'fn sq u32 -> u32\\na mul p0 p0\\nret a\\nend\\n' > sq.a0\n"
 x1201 puts x1199 x1200
 x1202 write x1201 2
-x1203 text "./a0 check sq.a0              # diagnostics with the fix"
+x1203 text "./a0 run sq.a0 sq 12          # 144\n"
 x1204 puts x1202 x1203
-x1205 call close x1204 
-x1206 call close x1205 
-x1207 call close x1206 
-ret x1207
+x1205 write x1204 2
+x1206 text "./a0 emit arm64 sq.a0         # A0's own machine code; or x86_64, c, js, java, sv\n"
+x1207 puts x1205 x1206
+x1208 write x1207 2
+x1209 text "./a0 check sq.a0              # diagnostics with the fix"
+x1210 puts x1208 x1209
+x1211 call close x1210 
+x1212 call close x1211 
+x1213 call close x1212 
+ret x1213
 end
 
 fn sec_terms io -> io
-x1209 call open p0 13
-x1210 write x1209 4
-x1211 write x1210 1
-x1212 text "terms"
-x1213 puts x1211 x1212
-x1214 call open x1213 11
-x1215 write x1214 2
-x1216 text "Words used here"
-x1217 puts x1215 x1216
-x1218 call close x1217 
-x1219 call open x1218 2
-x1220 call open x1219 16
+x1215 call open p0 13
+x1216 write x1215 4
+x1217 write x1216 1
+x1218 text "terms"
+x1219 puts x1217 x1218
+x1220 call open x1219 11
 x1221 write x1220 2
-x1222 text "Test case:"
+x1222 text "Words used here"
 x1223 puts x1221 x1222
 x1224 call close x1223 
-x1225 write x1224 2
-x1226 text " one input with its known correct output."
-x1227 puts x1225 x1226
-x1228 call close x1227 
-x1229 call open x1228 2
-x1230 call open x1229 16
+x1225 call open x1224 2
+x1226 call open x1225 16
+x1227 write x1226 2
+x1228 text "Test case:"
+x1229 puts x1227 x1228
+x1230 call close x1229 
 x1231 write x1230 2
-x1232 text "Oracle:"
+x1232 text " one input with its known correct output."
 x1233 puts x1231 x1232
 x1234 call close x1233 
-x1235 write x1234 2
-x1236 text " a separate, simple calculator (plain BigInt arithmetic) whose answers every target must match."
-x1237 puts x1235 x1236
-x1238 call close x1237 
-x1239 call open x1238 2
-x1240 call open x1239 16
+x1235 call open x1234 2
+x1236 call open x1235 16
+x1237 write x1236 2
+x1238 text "Oracle:"
+x1239 puts x1237 x1238
+x1240 call close x1239 
 x1241 write x1240 2
-x1242 text "Target:"
+x1242 text " a separate, simple calculator (plain BigInt arithmetic) whose answers every target must match."
 x1243 puts x1241 x1242
 x1244 call close x1243 
-x1245 write x1244 2
-x1246 text " what A0 compiles to: machine code, C, wasm, JavaScript, JVM, .NET, Metal, SystemVerilog."
-x1247 puts x1245 x1246
-x1248 call close x1247 
-x1249 call open x1248 2
-x1250 call open x1249 16
+x1245 call open x1244 2
+x1246 call open x1245 16
+x1247 write x1246 2
+x1248 text "Target:"
+x1249 puts x1247 x1248
+x1250 call close x1249 
 x1251 write x1250 2
-x1252 text "Handle:"
+x1252 text " what A0 compiles to: machine code, C, wasm, JavaScript, JVM, .NET, Metal, SystemVerilog."
 x1253 puts x1251 x1252
 x1254 call close x1253 
-x1255 write x1254 2
-x1256 text " a revision token. An edit that names an old handle is refused, so a stale edit cannot overwrite newer code."
-x1257 puts x1255 x1256
-x1258 call close x1257 
-x1259 call open x1258 2
-x1260 call open x1259 16
+x1255 call open x1254 2
+x1256 call open x1255 16
+x1257 write x1256 2
+x1258 text "Handle:"
+x1259 puts x1257 x1258
+x1260 call close x1259 
 x1261 write x1260 2
-x1262 text "View:"
+x1262 text " a revision token. An edit that names an old handle is refused, so a stale edit cannot overwrite newer code."
 x1263 puts x1261 x1262
 x1264 call close x1263 
-x1265 write x1264 2
-x1266 text " the text a model is shown. A scoped view holds one function plus the signatures it calls."
-x1267 puts x1265 x1266
-x1268 call close x1267 
-x1269 call open x1268 2
-x1270 call open x1269 16
+x1265 call open x1264 2
+x1266 call open x1265 16
+x1267 write x1266 2
+x1268 text "View:"
+x1269 puts x1267 x1268
+x1270 call close x1269 
 x1271 write x1270 2
-x1272 text "Dense view:"
+x1272 text " the text a model is shown. A scoped view holds one function plus the signatures it calls."
 x1273 puts x1271 x1272
 x1274 call close x1273 
-x1275 write x1274 2
-x1276 text " an optional shorter spelling of the same program, with fewer tokens."
-x1277 puts x1275 x1276
-x1278 call close x1277 
-x1279 call open x1278 2
-x1280 call open x1279 16
+x1275 call open x1274 2
+x1276 call open x1275 16
+x1277 write x1276 2
+x1278 text "Dense view:"
+x1279 puts x1277 x1278
+x1280 call close x1279 
 x1281 write x1280 2
-x1282 text "Test program:"
+x1282 text " an optional shorter spelling of the same program, with fewer tokens."
 x1283 puts x1281 x1282
 x1284 call close x1283 
-x1285 write x1284 2
-x1286 text " one small function written in every language and timed."
-x1287 puts x1285 x1286
-x1288 call close x1287 
-x1289 call open x1288 2
-x1290 call open x1289 16
+x1285 call open x1284 2
+x1286 call open x1285 16
+x1287 write x1286 2
+x1288 text "Test program:"
+x1289 puts x1287 x1288
+x1290 call close x1289 
 x1291 write x1290 2
-x1292 text "Generic cell:"
+x1292 text " one small function written in every language and timed."
 x1293 puts x1291 x1292
 x1294 call close x1293 
-x1295 write x1294 2
-x1296 text " a basic logic gate or register in the hardware output, before mapping to any chip."
-x1297 puts x1295 x1296
-x1298 call close x1297 
-x1299 call close x1298 
-ret x1299
+x1295 call open x1294 2
+x1296 call open x1295 16
+x1297 write x1296 2
+x1298 text "Generic cell:"
+x1299 puts x1297 x1298
+x1300 call close x1299 
+x1301 write x1300 2
+x1302 text " a basic logic gate or register in the hardware output, before mapping to any chip."
+x1303 puts x1301 x1302
+x1304 call close x1303 
+x1305 call close x1304 
+ret x1305
 end
 
 fn sec_close io -> io
-x1301 call close p0 
-x1302 call close x1301 
-ret x1302
+x1307 call close p0 
+x1308 call close x1307 
+ret x1308
 end
 
 fn session io -> u32
@@ -1360,20 +1366,20 @@ x31 call css_a tok
 x62 call css_b x31
 x90 call css_c x62
 x121 call css_d x90
-x143 call css_e x121
-x144 call nav x143 
-x182 call sec_hero x144
-x213 call sec_pitch x182
-x291 call sec_sample x213
-x586 call sec_fast x291
-x922 call sec_edit x586
-x1052 call sec_check x922
-x1151 call sec_targets x1052
-x1208 call sec_try x1151
-x1300 call sec_terms x1208
-x1303 call sec_close x1300
-x1304 call foot x1303 
-x1305 write x1304 6
-x1306 write x1305 0
+x149 call css_e x121
+x150 call nav x149 
+x188 call sec_hero x150
+x219 call sec_pitch x188
+x297 call sec_sample x219
+x592 call sec_fast x297
+x928 call sec_edit x592
+x1058 call sec_check x928
+x1157 call sec_targets x1058
+x1214 call sec_try x1157
+x1306 call sec_terms x1214
+x1309 call sec_close x1306
+x1310 call foot x1309 
+x1311 write x1310 6
+x1312 write x1311 0
 ret event
 end

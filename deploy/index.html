@@ -500,11 +500,25 @@ p+a{display:inline-block;padding:12px 0}
 @media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}
 @media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}
 @media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}
+/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */
+.copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}
+.copy[hidden]{display:none}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
+.copy::before,.copy::after{content:"";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}
+.copy::before{transform:translate(-3px,-50%);margin-top:-3px}
+.copy::after{transform:translate(0,-50%);background:var(--bg)}
+.copy[data-copied]{border-color:var(--a0);color:var(--fg)}
+.copy[data-copied="1"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}
+.copy[data-copied="1"]::after{display:none}
+.copy[data-copied="fail"]{border-color:var(--loss)}
+@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}
+.copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 
 </style>
 </head>
 <body>
-  <main id="app" data-program="/page.wasm" data-live="/sentinel.wasm" data-live-in="4096" data-live-out="16384" data-live-rows="192"><header class="top"><a class="skip" href="#content">Skip to content</a><nav class="nav" aria-label="Primary"><a class="brand pixel" href="/">A0</a><div class="links"><a href="/docs/">Docs</a><a href="/benchmarks">Benchmarks</a></div><div class="hright"><a href="https://github.com/sponsors/Joe-Simo">Sponsor</a><a class="ico ico-x" href="https://x.com/joesimo" aria-label="@JoeSimo on X" title="@JoeSimo on X"></a><a class="ico ico-gh" href="https://github.com/Joe-Simo/a0" aria-label="GitHub" title="GitHub"></a></div></nav></header><section id="top" class="hero"><div class="stage"></div><div class="name pixel">A0</div><p class="tag pixel">for AI</p></section><div class="center"><h1>A small language AI models can edit without breaking your build.</h1><p>A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.</p></div><div class="layout" id="content"><div class="main"><section id="start"><pre tabindex="0" role="group" aria-label="Code example" class="code"><code>fn affine u32 u32 u32 -&gt; u32
+  <main id="app" data-program="/page.wasm" data-live="/sentinel.wasm" data-live-in="2048" data-live-out="16384" data-live-rows="96"><header class="top"><a class="skip" href="#content">Skip to content</a><nav class="nav" aria-label="Primary"><a class="brand pixel" href="/">A0</a><div class="links"><a href="/docs/">Docs</a><a href="/benchmarks">Benchmarks</a></div><div class="hright"><a href="https://github.com/sponsors/Joe-Simo">Sponsor</a><a class="ico ico-x" href="https://x.com/joesimo" aria-label="@JoeSimo on X" title="@JoeSimo on X"></a><a class="ico ico-gh" href="https://github.com/Joe-Simo/a0" aria-label="GitHub" title="GitHub"></a></div></nav></header><section id="top" class="hero"><div class="stage"></div><div class="name pixel">A0</div><p class="tag pixel">for AI</p></section><div class="center"><h1>A small language AI models can edit without breaking your build.</h1><p>A0 is a compact language with exact rules. A model reads only the functions an edit touches, and an edit that would not compile is rejected before it lands.</p></div><div class="layout" id="content"><div class="main"><section id="start"><pre tabindex="0" role="group" aria-label="Code example" class="code"><code>fn affine u32 u32 u32 -&gt; u32
 a mul p0 p1
 b add a p2
 ret b
