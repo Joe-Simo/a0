@@ -19,5 +19,5 @@ export interface LiveProgramSpec {
 }
 
 export const LIVE_PROGRAMS: readonly LiveProgramSpec[] = [
-  { entry: 'sentinel/main.a0', name: 'sentinel', inputWords: 4096, outputWords: 16384, rows: 192 },
+  { entry: 'sentinel/main.a0', name: 'sentinel', inputWords: 2048, outputWords: 16384, rows: 96 },
 ];

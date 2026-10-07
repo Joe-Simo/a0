@@ -4,21 +4,35 @@
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="A0 language reference: the grammar, types, operations, control flow, modules, and the UI protocol of the programming language built for AI." />
+  <meta name="description" content="A0 language reference: the grammar, types, operations, control flow, modules, views and edits, diagnostics, and the UI protocol." />
   <link rel="canonical" href="https://a0lang.com/docs/" />
-  <meta property="og:title" content="A0 Docs" />
-  <meta property="og:description" content="A0 language reference: grammar, types, operations, iteration, modules, views and edits, diagnostics, bounds, targets, and the UI protocol." />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#000000" />
+  <meta property="og:site_name" content="A0" />
+  <meta property="og:title" content="A0 Docs: language reference" />
+  <meta property="og:description" content="A0 language reference: the grammar, types, operations, control flow, modules, views and edits, diagnostics, and the UI protocol." />
   <meta property="og:url" content="https://a0lang.com/docs/" />
   <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image" content="https://a0lang.com/og/docs.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="A0 language reference, with the size of the program the edit benchmark checks and the time to check one edit." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="A0 Docs: language reference" />
+  <meta name="twitter:description" content="A0 language reference: the grammar, types, operations, control flow, modules, views and edits, diagnostics, and the UI protocol." />
+  <meta name="twitter:image" content="https://a0lang.com/og/docs.png" />
+  <meta name="twitter:image:alt" content="A0 language reference, with the size of the program the edit benchmark checks and the time to check one edit." />
   <meta name="twitter:creator" content="@joesimo" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"A0","description":"A0 language reference: grammar, types, operations, iteration, modules, views and edits, diagnostics, bounds, targets, and the UI protocol.","url":"https://a0lang.com/docs/","codeRepository":"https://github.com/Joe-Simo/a0","programmingLanguage":"A0","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Joe Simo","url":"https://x.com/joesimo"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"A0","description":"A0 language reference: the grammar, types, operations, control flow, modules, views and edits, diagnostics, and the UI protocol.","url":"https://a0lang.com/docs/","codeRepository":"https://github.com/Joe-Simo/a0","programmingLanguage":"A0","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Joe Simo","url":"https://x.com/joesimo"}}</script>
   <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="modulepreload" href="/app.js" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <title>A0 Docs</title>
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+  <title>A0 Docs: language reference</title>
   <style>@font-face{font-family:"Geist";src:url("/fonts/Geist-Variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
 @font-face{font-family:"Geist Mono";src:url("/fonts/GeistMono-Variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
 :root{color-scheme:dark;--bg:#000;--fg:#fff;--fg2:#d8dbe0;--body:#c9ccd1;--muted:#8a8f98;--dim:#5c6169;--line:#1f2227;--line2:#33373d;--card:#0b0c0e;--pillbg:#fff;--pillfg:#000;--ghost:#17191d;--a0:#ffd166;--c:#7aa2ff;--rust:#f0885a;--gray:#9aa0a6;--win:#5ad19a;--loss:#ff7a7a;--glow1:rgba(120,140,255,.22);--glow2:rgba(255,209,102,.12)}
@@ -462,6 +476,20 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}
 .docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}
 }
+/* Copy button (protocol word 14 COPY, site/app.ts): a small outlined button; the glyphs are drawn here, no images. data-copied is set by the runtime for 1.5 s. */
+.copy{position:relative;display:inline-flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:0 14px 0 34px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--fg2);font:inherit;font-size:13px;line-height:1;cursor:pointer}
+.copy[hidden]{display:none}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.copy:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
+.copy::before,.copy::after{content:"";position:absolute;left:13px;top:50%;box-sizing:border-box;width:10px;height:12px;border:1.5px solid currentColor;border-radius:2px}
+.copy::before{transform:translate(-3px,-50%);margin-top:-3px}
+.copy::after{transform:translate(0,-50%);background:var(--bg)}
+.copy[data-copied]{border-color:var(--a0);color:var(--fg)}
+.copy[data-copied="1"]::before{width:6px;height:11px;border:0;border-right:2px solid var(--a0);border-bottom:2px solid var(--a0);border-radius:0;transform:translate(0,-60%) rotate(45deg);margin-top:0}
+.copy[data-copied="1"]::after{display:none}
+.copy[data-copied="fail"]{border-color:var(--loss)}
+@media (prefers-reduced-motion:no-preference){.copy{transition:border-color .15s,color .15s}}
+.copy-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 
 </style>
 </head>
@@ -481,11 +509,11 @@ id op args @ x       insert after instruction x
 ret x                change the result
 fn ... end           add or replace a whole function (program handle g0)
 -fn name             remove a function</code></pre><p>The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid.</p><h3>4. Connect an agent</h3><p>`a0 mcp .` serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:</p><pre class="code"><code>claude mcp add a0 -- a0 mcp .
-npx skills add Joe-Simo/a0</code></pre><p>The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository.</p><a href="https://github.com/Joe-Simo/a0#readme">Configurations for other agents</a></div><section id="primer"><h2>The primer</h2><p>This is everything a model is told before it writes or edits A0. The sections below say the same thing in full.</p><pre class="code wrap"><code>A0: `fn NAME T... -&gt; T`, lines `ID OP ARG...`, `ret ARG` (or `ret OP ARGS`), `end`. Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops exact mod 2^32.
-mov add sub mul | and or xor (u32 bitwise, or bool logical) | shl shr (count&amp;31) | div (b=0: 4294967295) rem (b=0: a) | eq ne (u32 or bool) lt le gt ge (unsigned) -&gt; bool | select c x y
+npx skills add Joe-Simo/a0</code></pre><p>The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository.</p><a href="https://github.com/Joe-Simo/a0#readme">Configurations for other agents</a></div><section id="primer"><h2>The primer</h2><p>This is everything a model is told before it writes or edits A0. The sections below say the same thing in full.</p><pre class="code wrap"><code>A0: `fn NAME T... -&gt; T`, lines `ID OP ARG...`, `ret ARG`, `end`. Types u32 bool, arrays u32x4, records (u32,bool). Params p0 p1... Args: earlier ID, pN, u32 literal, true, false. Ops exact mod 2^32.
+add sub mul and or xor (bool too) shl shr (count&amp;31) div (b=0: 4294967295) rem (b=0: a) eq ne lt le gt ge (unsigned, -&gt; bool) select c x y
 call F a... | fold F n s a... state=s; i&lt;n: state=F(state,i,a...)
-arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v (values, no aliasing)
-EDIT: reply bare edit lines (handle line optional when one e handle is shown), e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f u32 -&gt; u32` then lines, `ret`, `end` (adds/replaces a function), `-fn f`.
+arr e... | rec e... | get a i (i mod N) | set a i v | at r k | put r k v
+EDIT: reply bare edit lines, e.g. `c add a b` (replaces c or inserts before ret; `c add a b @ x` inserts after x), `-c`, `ret c`, `fn f ...` (adds/replaces a function), `-fn f`.
 </code></pre></section><section id="programs"><h2>Programs and functions</h2><p>A program is a list of functions. A function is a header `fn NAME T... -&gt; T`, then one instruction per line `ID OP ARGS`, then `ret ARG` (or `ret OP ARGS`, which names a fresh node), then `end`. Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.</p><pre class="code"><code><span class="cm"># clamp p0 into [p1, p2]
 </span>fn clamp u32 u32 u32 -&gt; u32
 lo lt p0 p1

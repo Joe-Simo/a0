@@ -17,6 +17,7 @@
 #   1 STATE n w...       the program state to hand back next frame
 #   2 WATCH kind n bytes ask the host to track elements matching a CSS selector as `kind`
 #   3 QUALITY percent    canvas render scale request, 25..100
+#   4 CADENCE n         run the program every n-th animation frame (1..8); pointer and scroll input wake it at once
 #   10 CLEAR (everything)
 #   11 LINE x1 y1 x2 y2 width rgba
 #   12 DISC x y r rgba
@@ -25,6 +26,7 @@
 #   15 SPHERE x y r light dark   shaded ball, highlight up and left
 #   16 PATH n width rgba x y ... polyline through n points
 #   17 BRACKETS x0 y0 x1 y1 len width rgba   the four corners of a rectangle
+#   18 QUAD x0 y0 x1 y1 x2 y2 x3 y3 rgba     a filled polygon of four points (repeat one for a triangle)
 use "fx.a0"
 
 fn fr_rdstep (u32x32,io) u32 -> (u32x32,io)
@@ -122,6 +124,24 @@ end
 # `puts t (text "selector")`, which writes the byte count and the bytes.
 fn fr_watch io u32 -> io
 a write p0 2
+b write a p1
+ret b
+end
+fn fr_quad io u32 u32 u32 u32 u32 u32 u32 u32 u32 -> io
+a write p0 18
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+f write e p5
+g write f p6
+h write g p7
+i write h p8
+j write i p9
+ret j
+end
+fn fr_cadence io u32 -> io
+a write p0 4
 b write a p1
 ret b
 end

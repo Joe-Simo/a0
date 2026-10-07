@@ -1,0 +1,101 @@
+{
+ "z-ammo-volley/a0/structured": [
+  "fn canfire u32 u32 -> bool\nc ge p0 3\nret c\nend\nfn shoot u32 u32 -> u32\nc call canfire p0 p1\nd sub p0 3\nr select c d p0\nret r\nend\nfn volley u32 u32 -> u32\nr fold shoot p1 p0\nret r\nend"
+ ],
+ "z-indent-width/a0/structured": [
+  "fn step u32 u32 u32x6 -> u32\nc get p2 p1\nsp eq c 32\nsame eq p0 p1\nok and sp same\nn add p0 1\nr select ok n p0\nret r\nend\nr fold step 6 0 p0\nret r\n-s\n-fn isspace\n-fn adv\n",
+  "fn step u32 u32 u32x6 -> u32\nc get p2 p1\nsp eq c 32\nsame eq p0 p1\nok and sp same\nn add p0 1\nr select ok n p0\nret r\nend\nfn indent u32x6 -> u32\nr fold step 6 0 p0\nret r\nend\n-fn isspace\n-fn adv"
+ ],
+ "z-light-wait/a0/structured": [
+  "b loop notat tick 3 a p1\nfn notat (u32,u32) u32 u32 -> bool\na at p0 0\nb ne a p2\nret b\nend\nfn tick (u32,u32) u32 u32 -> (u32,u32)\na at p0 0\nb at p0 1\nc add a 1\nd eq c 3\ne select d 0 c\nf add b 1\ng ne a p2\nh select g e a\ni select g f b\nj rec h i\nret j\nend"
+ ],
+ "z-heater-on/a0/structured": [
+  "a lt p0 p2"
+ ],
+ "z-octal-peel/a0/structured": [
+  "b and a 7\nc shr a 3"
+ ],
+ "z-job-warmup/a0/structured": [
+  "a rec 3 0",
+  "c at b 1"
+ ],
+ "z-bracket-rounds/a0/structured": [
+  "b add a 1 @ a\nc div b 2"
+ ],
+ "z-digit-prefix/a0/structured": [
+  "d le b 57"
+ ],
+ "z-dozenal-digit/a0/structured": [
+  "a text \"0123456789AB\""
+ ],
+ "z-cup-size/a0/structured": [
+  "a div p0 300"
+ ],
+ "z-header-sum/a0/structured": [
+  "a text \"HDR2\"\nh get a 3 @ d\ng add f h\ni add g p0\nret i"
+ ],
+ "z-shift-back/a0/structured": [
+  "a add p0 9"
+ ],
+ "z-keypad-letter/a0/structured": [
+  "a sub p0 2"
+ ],
+ "z-operator-char/a0/structured": [
+  "i get t 3\nj eq p0 i\nk or h j\nret k"
+ ],
+ "z-tax-total/a0/structured": [
+  "f add b e @ e\nh write c f"
+ ],
+ "z-meter-usage/a0/structured": [
+  "i write g b\nj write i h @ i\nret j"
+ ],
+ "z-score-puts/a0/structured": [
+  "a arr p1 p2"
+ ],
+ "z-status-first/a0/structured": [
+  "b write p0 p1\nc puts b a"
+ ],
+ "z-tagged-pair/a0/structured": [
+  "e read d\nf at e 0\ng at e 1\nh call emit g f\nret h"
+ ],
+ "z-feet-inches/a0/structured": [
+  "f call writepair c d e"
+ ],
+ "z-door-agree/a0/structured": [
+  "k select j 0 1"
+ ],
+ "z-restock-puts/a0/structured": [
+  "d puts p0 c"
+ ],
+ "z-box-cost/a0/structured": [
+  "fn cdiv u32 u32 -> u32\ns sub p1 1\nt add p0 s\nq div t p1\nret q\nend\na call cdiv p0 6",
+  "fn cdiv u32 u32 -> u32\nq div p0 p1\nr rem p0 p1\nn ne r 0\nm select n 1 0\ns add q m\nret s\nend"
+ ],
+ "z-lucky-roll/a0/structured": [
+  "fn is7 u32 -> bool\na rem p0 7\nb eq a 0\nret b\nend\n-b\nc call is7 p0\nd add a a\ne select c d a\nret e\n"
+ ],
+ "z-clock-end/a0/structured": [
+  "fn hhmm u32 -> u32\na rem p0 1440\nb div a 60\nc rem a 60\nd mul b 100\ne add d c\nret e\nend\nb call hhmm a"
+ ],
+ "z-shortfall-total/a0/structured": [
+  "fn short u32 u32 -> u32\nc sub p1 p0\ns lt p0 p1\nr select s c 0\nret r\nend\nh call short a p1\ni call short b p1\nj call short c p1\nk call short d p1\nl add h i\nm add l j\nn add m k\nret n\n-g\n-f\n-e"
+ ],
+ "z-member-coupon/a0/structured": [
+  "a call disc p1 p2\nfn disc bool bool -> u32\na xor p0 p1\nb select a 10 0\nc and p0 p1\nd select c 25 b\nret d\nend"
+ ],
+ "z-rising-edge/a0/structured": [
+  "fn high u32 -> bool\na gt p0 512\nret a\nend\na call high p0\nb call high p1\nc xor a true\nd and c b\nret d"
+ ],
+ "z-tile-right/a0/structured": [
+  "a rem p0 4\nb add a 1\nc rem b 4\nd sub p0 a\ne add d c\nret e"
+ ],
+ "z-same-side/a0/structured": [
+  "c eq a b"
+ ],
+ "z-rotate-left/a0/structured": [
+  "e arr b c d a"
+ ],
+ "z-shelf-move/a0/structured": [
+  "d add p1 1\ne get c d\nf add e p2\ng set c d f\nret g"
+ ]
+}

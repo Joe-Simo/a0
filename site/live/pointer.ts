@@ -59,6 +59,8 @@ export class PointerTracker {
   private present = false;
   private down = false;
   private cancelled = false;
+  /** Counts every pointer event; a host that skips frames wakes when it changes. */
+  activity = 0;
   private tapSeq = 0;
   private tapX = 0;
   private tapY = 0;
@@ -105,6 +107,7 @@ export class PointerTracker {
 
   private onMove(ev: PointerLike): void {
     if (ev.isPrimary === false) return;
+    this.activity += 1;
     this.place(ev);
     if (this.down && Math.hypot(ev.clientX - this.downX, ev.clientY - this.downY) > 10)
       this.moved = true;
@@ -112,6 +115,7 @@ export class PointerTracker {
 
   private onDown(ev: PointerLike): void {
     if (ev.isPrimary === false) return;
+    this.activity += 1;
     this.place(ev);
     this.down = true;
     this.moved = false;
@@ -122,6 +126,7 @@ export class PointerTracker {
 
   private onUp(ev: PointerLike): void {
     if (ev.isPrimary === false) return;
+    this.activity += 1;
     this.place(ev);
     const quick = (ev.timeStamp ?? 0) - this.downAt < 500;
     if (this.down && !this.moved && quick) this.tap(ev);

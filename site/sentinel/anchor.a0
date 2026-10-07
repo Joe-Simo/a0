@@ -12,34 +12,6 @@
 #   871 searching tentacle  872 probe x  873 probe y
 use "tentacle.a0"
 
-# the point of the box (x0 y0 x1 y1) boundary nearest to (p4, p5)
-fn edge_pt u32 u32 u32 u32 u32 u32 -> (u32,u32)
-cx call fx_clamp p4 p0 p2
-cy call fx_clamp p5 p1 p3
-inx eq cx p4
-iny eq cy p5
-inside and inx iny
-dl sub p4 p0
-dr sub p2 p4
-dt sub p5 p1
-db sub p3 p5
-m1 call fx_min dl dr
-m2 call fx_min dt db
-m call fx_min m1 m2
-isl eq m dl
-isr eq m dr
-ist eq m dt
-ex2 select isr p2 p4
-ex select isl p0 ex2
-ey4 select isr p5 p3
-ey5 select isl p5 ey4
-ey6 select ist p1 ey5
-rx select inside ex cx
-ry select inside ey6 cy
-r rec rx ry
-ret r
-end
-
 # candidate c of a box: corners 0..3, the boundary point nearest the probe (p4, p5) is 4
 fn cand_point u32 u32 u32 u32 u32 u32 u32 -> (u32,u32)
 c0 eq p6 0
@@ -77,8 +49,8 @@ near call fx_mul 1835008 p5
 mid call fx_mul 4194304 p5
 isn call fx_lt d near
 ism call fx_lt d mid
-pen0 select ism 2293760 0
-pen select isn 5898240 pen0
+pen0 select ism 1310720 0
+pen select isn 3932160 pen0
 pen2 select act pen 0
 r sub p0 pen2
 ret r
@@ -101,7 +73,7 @@ ady call fx_abs dy
 sm add adx ady
 close lt sm 40
 hit and same close
-r1 sub p0 4587520
+r1 sub p0 2621440
 r select hit r1 p0
 ret r
 end
@@ -123,9 +95,9 @@ reach call tg p0 k 14
 dbx sub p1 bx
 dby sub p2 by
 db call fx_hyp dbx dby
-rmax call fx_mul reach 64225
+rmax call fx_mul reach 72090
 toofar call fx_gt db rmax
-sweet call fx_mul reach 45875
+sweet call fx_mul reach 55705
 dd0 sub db sweet
 dd call fx_abs dd0
 half call fx_mul dd 32768
@@ -138,7 +110,7 @@ u call fx_unit dbx dby
 unx at u 0
 uny at u 1
 al call fx_dot unx uny ux uy
-dirb0 call fx_mul al 2949120
+dirb0 call fx_mul al 7864320
 dirb call fx_mul dirb0 spdf
 s2 add s1 dirb
 nj call tg p0 k 1
@@ -148,7 +120,7 @@ ty call jg p0 k tipi 1
 dtx sub p1 tx
 dty sub p2 ty
 dt call fx_hyp dtx dty
-tipp call fx_mul dt 14418
+tipp call fx_mul dt 6554
 s3 sub s2 tipp
 kw arr 0 917504 393216 1572864 786432 655360 524288 131072
 kwv get kw p4
@@ -159,14 +131,33 @@ pmb select pm 1048576 0
 s5 add s4 pmb
 corner lt p5 4
 cb select corner 917504 393216
-s6 add s5 cb
-s7 fold occ_step 8 s6 p0 p1 p2 sc k
+t0c eq p5 0
+t1c eq p5 1
+topc or t0c t1c
+tb select topc 589824 0
+s5b add s5 cb
+s6 add s5b tb
+pxp call bg p0 7
+pyp call bg p0 8
+mdp call bg p0 11
+pm1 eq mdp 1
+pm2 eq mdp 2
+ppur or pm1 pm2
+cdx sub p1 pxp
+cdy sub p2 pyp
+cdd call fx_hyp cdx cdy
+cnear call fx_mul 4194304 sc
+nearp call fx_lt cdd cnear
+onp and ppur nearp
+curs select onp 2949120 0
+s6b sub s6 curs
+s7 fold occ_step 8 s6b p0 p1 p2 sc k
 pgx call vp2pg p1 sx
 pgy call vp2pg p2 sy
 s8 fold rec_step 8 s7 p0 p3 pgx pgy
 last call tg p0 k 18
 lastm eq last p3
-lp sub s8 1638400
+lp sub s8 655360
 s9 select lastm lp s8
 vhq shl vh 16
 vwq shl vw 16
@@ -227,7 +218,7 @@ ret o
 end
 
 # one element row of the geometry table; p2 st, p3 rects
-fn row_step (u32,u32,u32,u32,u32) u32 u32x1024 u32x1344 -> (u32,u32,u32,u32,u32)
+fn row_step (u32,u32,u32,u32,u32) u32 u32x1024 u32x672 -> (u32,u32,u32,u32,u32)
 id call rg p3 p1 0
 x0 call rg p3 p1 1
 y0 call rg p3 p1 2
@@ -282,7 +273,7 @@ ret o
 end
 
 # set the search context: viewport (from the header), the tentacle p1, its probe, the direction of travel
-fn search_prepare u32x1024 u32x32 u32 -> u32x1024
+fn search_prepare u32x1024 u32x32 u32x672 u32 -> u32x1024
 sx get p1 5
 sy get p1 6
 vw get p1 3
@@ -294,16 +285,10 @@ vy call bg p0 4
 ang call bg p0 5
 hx call fx_cos ang
 hy call fx_sin ang
-g call body_goal p0 p1
-gx at g 0
-gy at g 1
-ex sub gx bx
-ey sub gy by
-el call fx_hyp ex ey
-far gt el 786432
-tu call fx_unit ex ey
-tux at tu 0
-tuy at tu 1
+tr call travel_dir p0
+tux at tr 0
+tuy at tr 1
+far at tr 2
 ux select far tux hx
 uy select far tuy hy
 spd call fx_hyp vx vy
@@ -311,8 +296,8 @@ sf0 call fx_div spd 39321600
 sf1 call fx_min sf0 65536
 sf2 call fx_mul sf1 45875
 sf add 19661 sf2
-prx call tg p0 p2 20
-pry call tg p0 p2 21
+prx call tg p0 p3 20
+pry call tg p0 p3 21
 s1 call bs p0 864 sx
 s2 call bs s1 865 sy
 s3 call bs s2 866 vw
@@ -320,14 +305,14 @@ s4 call bs s3 867 vh
 s5 call bs s4 868 ux
 s6 call bs s5 869 uy
 s7 call bs s6 870 sf
-s8 call bs s7 871 p2
+s8 call bs s7 871 p3
 s9 call bs s8 872 prx
 s10 call bs s9 873 pry
 ret s10
 end
 
 # best candidate over all rows: (score, x, y, row, type); score 2147483649 means none
-fn anchor_search u32x1024 u32x1344 u32 -> (u32,u32,u32,u32,u32)
+fn anchor_search u32x1024 u32x672 u32 -> (u32,u32,u32,u32,u32)
 s0 rec 2147483649 0 0 0 0
 r fold row_step p2 s0 p0 p1
 ret r

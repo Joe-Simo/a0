@@ -10,7 +10,9 @@ fn core_kind_step u32 u32 u32x1024 -> u32
 stt call tg p2 p1 0
 k call tg p2 p1 25
 a eq stt 2
-b eq k 3
+b0 eq k 3
+b1 eq k 6
+b or b0 b1
 c and a b
 n select c 1 0
 r add p0 n
@@ -26,7 +28,7 @@ sfm call fx_mul sf 22938
 busy fold busy_step 8 0 p0
 bq mul busy 4588
 code fold core_kind_step 8 0 p0
-cq mul code 10486
+cq mul code 29491
 t0 add 19661 sfm
 t1 add t0 bq
 t2 add t1 cq
@@ -39,7 +41,14 @@ step call fx_mul d k
 nc add core step
 s1 call bs p0 20 nc
 s2 call bs s1 21 tgt
-ret s2
+ck0 call bg s2 90
+dm0 mul p1 1000
+dm shr dm0 16
+ckok gt ck0 dm
+ck1 sub ck0 dm
+ck select ckok ck1 0
+s3 call bs s2 90 ck
+ret s3
 end
 
 # ---- graph links (words 65..82: life, tentacle a, joint a, tentacle b, joint b, age)
@@ -172,18 +181,18 @@ dd call fx_mul d 3277
 lp1 add lp0 dd
 lp select isnew cost lp1
 q call bg p0 17
-bad0 gt lp 5500
+bad0 gt lp 3000
 bad1 gt lp 2800
 bad select false bad0 bad0
 nb0 call bg p0 18
 nb1 add nb0 1
 nb select bad0 nb1 0
-good lt lp 1900
+good lt lp 1100
 ng0 call bg p0 94
 ng1 add ng0 1
 ng select good ng1 0
-down ge nb 45
-up ge ng 300
+down ge nb 20
+up ge ng 500
 qd0 gt q 0
 qu0 lt q 3
 godown and down qd0

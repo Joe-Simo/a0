@@ -55,6 +55,7 @@ const ATTRS: Record<number, string> = {
   9: 'role',
   10: 'scope',
   11: 'aria-hidden',
+  12: 'tabindex',
 };
 const VOID = new Set(['input']);
 
@@ -88,7 +89,10 @@ export function renderWords(words: readonly number[]): Prerendered {
   // Chrome (header, nav, footer) and the animated hero scene carry no content for text readers.
   const skipText = (): boolean =>
     open.some(
-      (o) => /^(header|nav|footer)$/.test(o.tag) || o.attrs.some((a) => a.includes('id="live"')),
+      (o) =>
+        /^(header|nav|footer)$/.test(o.tag) ||
+        o.attrs.includes(' hidden') ||
+        o.attrs.some((a) => a.includes('id="live"')),
     );
   let css = '';
   let i = 0;
@@ -113,7 +117,12 @@ export function renderWords(words: readonly number[]): Prerendered {
         flush();
         open.push({
           tag: TAGS[words[i++] as number] ?? 'div',
-          attrs: TAGS[words[i - 1] as number] === 'th' ? [' scope="col"'] : [],
+          attrs:
+            TAGS[words[i - 1] as number] === 'th'
+              ? [' scope="col"']
+              : TAGS[words[i - 1] as number] === 'pre'
+                ? [' tabindex="0"', ' role="group"', ' aria-label="Code example"']
+                : [],
           styles: [],
           started: false,
         });
@@ -153,6 +162,9 @@ export function renderWords(words: readonly number[]): Prerendered {
             key === 'class'
               ? value.replace(/\breveal\b/, 'reveal in').replace(/\bfill\b/, 'fill grown')
               : value;
+          // a later value replaces a default of the same name (the code block's label)
+          const at = top.attrs.findIndex((a) => a.startsWith(` ${key}="`));
+          if (at >= 0) top.attrs.splice(at, 1);
           top.attrs.push(` ${key}="${escapeAttr(v)}"`);
         }
         break;
@@ -191,6 +203,16 @@ export function renderWords(words: readonly number[]): Prerendered {
       case 13:
         bytes(); // the scene is drawn by the browser runtime only
         break;
+      case 14: {
+        // COPY: the same data-copy attribute the runtime sets. The control does nothing without
+        // JavaScript, so the static page hides it (`hidden`); the runtime's first render replaces
+        // the tree with a visible button, and the text it copies is on the page next to it.
+        const text = decoder.decode(bytes());
+        const top = open[open.length - 1];
+        if (top !== undefined && !top.started)
+          top.attrs.push(` data-copy="${escapeAttr(text)}"`, ' hidden');
+        break;
+      }
       default:
         i = words.length;
     }
