@@ -157,7 +157,11 @@ async function main(): Promise<void> {
   if (!args.includes('--no-verify')) {
     const r = spawnSync('sh', [join(SEED_DIR, 'bootstrap.sh'), join('dist', 'seed')], {
       stdio: 'inherit',
-      env: { PATH: '/usr/bin:/bin', HOME: process.env.HOME ?? '' },
+      // On Windows the shell and compiler come from MSYS2 or Git Bash, so the environment is kept.
+      env:
+        process.platform === 'win32'
+          ? { ...process.env }
+          : { PATH: '/usr/bin:/bin', HOME: process.env.HOME ?? '' },
     });
     process.exit(r.status ?? 1);
   }

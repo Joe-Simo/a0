@@ -24,6 +24,15 @@ CFLAGS=${CFLAGS:--std=c11 -O2 -Wall -Wextra -Wno-unused-parameter}
 mkdir -p "$out/stage2" "$out/stage3"
 out=$(cd "$out" && pwd)
 
+case $(uname -s 2>/dev/null) in # MSYS strips TEMP/TMP; gcc then cannot create temporaries in the Windows dir
+  MINGW* | MSYS* | CYGWIN*)
+    if [ -z "${TMP:-}" ] && [ -z "${TEMP:-}" ] && command -v cygpath >/dev/null 2>&1; then
+      TMP=$(cygpath -w "$out")
+      TEMP=$TMP
+      export TMP TEMP
+    fi ;;
+esac
+
 build_stage() { # build_stage <dir> <c-file>: the stage executable `a0c` from a stage C file
   cp "$2" "$1/emitter.c"
   cp "$here/stage-main.c" "$1/main.c"
