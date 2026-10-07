@@ -19,7 +19,7 @@ import { writeReport } from './scrub-results.js';
 const MODELS = ['haiku', 'sonnet'] as const;
 const PRIMARY = 'session10';
 
-interface Trial {
+export interface Trial {
   task: string;
   setupTokensLocal: { o200k_base: number | null };
   tokenBucketsLocal?: { toolContext: number; output: number };
@@ -215,7 +215,7 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({ rule, decision: decide(rule) }, null, 1));
 }
 
-function summarize(trials: readonly Trial[]): unknown {
+export function summarize(trials: readonly Trial[]): unknown {
   const n = trials.length;
   const one = trials.filter((t) => t.acceptedOneShot === true).length;
   const acc = trials.filter((t) => t.accepted === true).length;
