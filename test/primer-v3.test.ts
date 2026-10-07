@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { getEncoding } from 'js-tiktoken';
 import { compareRule, decide, PHASES } from '../tools/primer-compare-summary.js';
 
 test('set Y is sealed and has the registered mix', async () => {
@@ -16,6 +17,15 @@ test('set Y is sealed and has the registered mix', async () => {
   assert.ok(all.filter((s) => / loop /.test(s)).length >= 8);
   assert.ok(all.filter((s) => / text "/.test(s)).length >= 6);
   assert.ok(all.filter((s) => /\b(read|write|puts) /.test(s)).length >= 8);
+});
+
+test('the shipped guide is the 244-token V3 and the skill and plugin copies follow it', () => {
+  const read = (p: string): string => readFileSync(p, 'utf8');
+  const v3 = read('experiments/primers/shrink/V3.txt');
+  assert.equal(read('MODEL_GUIDE.min.txt'), v3);
+  assert.equal(read('skills/a0/references/primer.txt'), v3);
+  assert.equal(read('plugin/skills/a0/references/primer.txt'), v3);
+  assert.equal(getEncoding('o200k_base').encode(v3).length, 244);
 });
 
 test('phase rules: margins, the per-set condition and both models', () => {
