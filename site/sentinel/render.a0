@@ -411,6 +411,11 @@ col select i2 viol cyan
 d call fr_disc p0 x y r col
 ret d
 end
+fn ring_glow2 io u32 u32 u32 u32 u32 -> io
+w mov 72090
+r call fr_ring p0 p2 p3 p4 w p5
+ret r
+end
 fn body_draw io u32x1024 -> io
 bx call bg p1 1
 by call bg p1 2
@@ -446,7 +451,7 @@ io5 call fr_ring io4 bx by rr0 w1 rc0
 rr1 call fx_mul rad 32768
 rc1 call rgba 9873092 70
 io6 call fr_ring io5 bx by rr1 w1 rc1
-io7 fold light_step 4 io6 p1
+io7 fold light_step 0 io6 p1
 br0 shl clk 3
 brt call fx_sin br0
 brm call fx_mul brt 5243
@@ -477,7 +482,19 @@ io10 call fr_disc io9 ppx ppy pr pc
 rr2 call fx_mul rad 30146
 rc2 call rgba 5952255 120
 io11 call fr_ring io10 bx by rr2 w1 rc2
-ret io11
+ck call bg p1 90
+ckp gt ck 0
+nck call one_if ckp
+ckf0 mul ck 93
+ckf call min_u32 ckf0 65536
+ckinv sub 65536 ckf
+ckr0 call fx_mul ckinv rad
+ckr1 call fx_mul ckr0 131072
+ckr add ckr1 rad
+ckal call ascale 190 ckf
+ckc call rgba 5952255 ckal
+io12 fold ring_glow2 nck io11 bx by ckr ckc
+ret io12
 end
 
 # ---- graph links, anchored elements, dependency edges between held tips
@@ -607,11 +624,11 @@ kn1 call tg p2 p1 25
 kn2 call tg p2 k2 25
 c1 eq kn1 3
 c2 eq kn2 3
-d1 eq kn1 5
-d2 eq kn2 5
-e1 or c1 d1
-e2 or c2 d2
-kk and e1 e2
+rd1 call tg p2 p1 2
+rd2 call tg p2 k2 2
+same eq rd1 rd2
+e1 and c1 c2
+kk and e1 same
 n1 call tg p2 p1 1
 n2 call tg p2 k2 1
 t1 sub n1 1
