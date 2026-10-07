@@ -1,0 +1,109 @@
+{
+ "z-ammo-volley/a0/structured": [
+  "fn canfire u32 u32 -> bool\n  a0 ge p0 3\n  ret a0\nend\nfn shoot u32 u32 -> u32\n  a0 sub p0 3\n  ret a0\nend\n",
+  "fn shoot_one u32 u32 -> u32\n  can ge p0 3\n  sub_result sub p0 3\n  ret select can sub_result p0\nend\n-fn shoot\n-fn canfire\nr fold shoot_one p1 p0\nret r\n"
+ ],
+ "z-indent-width/a0/structured": [
+  "fn isspace u32 u32 u32x6 -> bool\n  c1 get p2 p0\n  c2 eq c1 32\n  ret c2\nend\nfn adv u32 u32 u32x6 -> u32\n  c1 add p0 1\n  ret c1\nend\n",
+  "fn indent u32x6 -> u32\nr loop isspace adv 6 0 p0\ns mov r\nret s\nend\n"
+ ],
+ "z-light-wait/a0/structured": [
+  "fn tick (u32,u32) u32 u32 -> (u32,u32)\np at a 0\nt at a 1\nn add p 1\nn rem n 3\nnt add t 1\nret rec n nt\nend\n\nfn notat (u32,u32) u32 u32 -> bool\np at a 0\nret ne p p2\nend\n",
+  "fn notat (u32,u32) u32 u32 -> bool\np at p0 0\nret ne p p2\nend\n"
+ ],
+ "z-heater-on/a0/structured": [
+  "a lt p0 p2\n"
+ ],
+ "z-octal-peel/a0/structured": [
+  "b rem a 8\nc div a 8\n"
+ ],
+ "z-job-warmup/a0/structured": [
+  "a rec 3 0\n",
+  "b fold run 4 a p0 p1\nc at b 1\n"
+ ],
+ "z-bracket-rounds/a0/structured": [
+  "fn more u32x2 u32 -> bool\na get p0 0\nb gt a 1\nret b\nend\n\n-fn halve\n\nfn halve u32x2 u32 -> u32x2\na get p0 0\nb add a 1\nc div b 2\nd get p0 1\ne add d 1\nf set p0 0 c\ng set f 1 e\nret g\nend\n\nfn rounds u32 -> u32\na rec 0 p0\nb call more a\nc select b 1 0\nd get a 0\ne add c d\nf get a 1\ng add f 1\nh div g 2\ni set a 0 e\nj set i 1 h\nk call more j\nl select k 1 0\nm get j 0\nn add l m\no get j 1\np add o 1\nq div p 2\nr set j 0 n\ns set r 1 q\nt call more s\nu select t 1 0\nv get s 0\nw add u v\nx get s 1\ny add x 1\nz div y 2\naa set s 0 w\nab set aa 1 z\nac call more ab\nad select ac 1 0\nae get ab 0\naf add ad ae\nret af\nend\n",
+  "fn rounds u32 -> u32\na rec 0 p0\nb call more a 0\nc select b 1 0\nd get a 0\ne add c d\nf get a 1\ng add f 1\nh div g 2\ni set a 0 e\nj set i 1 h\nk call more j 0\nl select k 1 0\nm get j 0\nn add l m\no get j 1\np add o 1\nq div p 2\nr set j 0 n\ns set r 1 q\nt call more s 0\nu select t 1 0\nv get s 0\nw add u v\nx get s 1\ny add x 1\nz div y 2\naa set s 0 w\nab set aa 1 z\nac call more ab 0\nad select ac 1 0\nae get ab 0\naf add ad ae\nret af\nend\n"
+ ],
+ "z-digit-prefix/a0/structured": [
+  "d le b 57\n"
+ ],
+ "z-dozenal-digit/a0/structured": [
+  "a text \"0123456789AB\"\n"
+ ],
+ "z-cup-size/a0/structured": [
+  "a div p0 300\n"
+ ],
+ "z-header-sum/a0/structured": [
+  "a text \"HDR2\"\ne get a 3\nf add b c\ng add f d\nh add g e\ni add h p0\nret i\n"
+ ],
+ "z-shift-back/a0/structured": [
+  "a add p0 9\n"
+ ],
+ "z-keypad-letter/a0/structured": [
+  "t text \"ADGJMPTW\"\na sub p0 1\nb get t a\nret b\n",
+  "a sub p0 2\n"
+ ],
+ "z-operator-char/a0/structured": [
+  "i get t 3\nj eq p0 i\nret or h j\n"
+ ],
+ "z-tax-total/a0/structured": [
+  "f add b e\nh write c f\n"
+ ],
+ "z-meter-usage/a0/structured": [
+  "i arr b h\nj write g i\nret j\n",
+  "-j\nret i\n"
+ ],
+ "z-score-puts/a0/structured": [
+  "a arr p1 p2\n"
+ ],
+ "z-status-first/a0/structured": [
+  "a write p0 p1\nb text \"OK\"\nc puts a b\n"
+ ],
+ "z-tagged-pair/a0/structured": [
+  "e read d\nf at e 0\ng at e 1\nh call emit g f\nret h\n"
+ ],
+ "z-feet-inches/a0/structured": [
+  "f call writepair c d e\n"
+ ],
+ "z-door-agree/a0/structured": [
+  "fn f io -> io\na read p0\nb at a 0\nc at a 1\nd ne b 0\ne ne c 0\nf eq d e\ng select f 1 0\nh write p0 g\nret h\nend\n",
+  "fn f io -> io\na read p0\nb read p1\nc ne a 0\nd ne b 0\ne eq c d\nf select e 1 0\ng write p0 f\nret g\nend\n"
+ ],
+ "z-restock-puts/a0/structured": [
+  "fn f io u32x3 u32 u32 -> io\na get p1 p2\nb add a p3\nc set p1 p2 b\nd puts p0 p1\nret d\nend\n",
+  "fn f io u32x3 u32 u32 -> io\na get p1 p2\nb add a p3\nc set p1 p2 b\nd puts p0 c\nret d\nend\n"
+ ],
+ "z-box-cost/a0/structured": [
+  "fn divup_6 u32 -> u32\na add p0 5\nb div a 6\nret b\nend\nfn boxes u32 -> u32\na call divup_6 p0\nb mul a 4\nret b\nend\n",
+  "fn divup_6 u32 -> u32\na div p0 6\nb rem p0 6\nc ne b 0\nd select c 1 0\ne add a d\nret e\nend\n"
+ ],
+ "z-lucky-roll/a0/structured": [
+  "fn is_mult7 u32 -> bool\nc rem p0 7\nd eq c 0\nret d\nend\nfn points u32 u32 -> u32\na add p1 p0\nb call is_mult7 p0\nc add a a\nd select b c a\nret d\nend\n"
+ ],
+ "z-clock-end/a0/structured": [
+  "fn minhhmm u32 -> u32\nh div p0 60\nm rem p0 60\nhh mul h 100\nc add hh m\nret c\nend\nfn endtime u32 u32 -> u32\nt add p0 p1\nw rem t 1440\nc call minhhmm w\nret c\nend\n"
+ ],
+ "z-shortfall-total/a0/structured": [
+  "fn shortfall u32 u32 -> u32\na lt p0 p1\nb sub p1 p0\nret select a b 0\nend\n\nfn total u32x4 u32 -> u32\na get p0 0\nb call shortfall a p1\nc get p0 1\nd call shortfall c p1\ne get p0 2\nf call shortfall e p1\ng get p0 3\nh call shortfall g p1\ni add b d\nj add i f\nk add j h\nret k\nend\n"
+ ],
+ "z-member-coupon/a0/structured": [
+  "fn discount bool bool -> u32\na and p0 p1\nb xor p0 p1\nc select a 25 0\nd select b 10 0\ne add c d\nret e\nend\n",
+  "fn bill u32 bool bool -> u32\na call discount p1 p2\nb sub p0 a\nret b\nend\nfn discount bool bool -> u32\na and p0 p1\nb xor p0 p1\nc select a 25 0\nd select b 10 0\ne add c d\nret e\nend\n"
+ ],
+ "z-rising-edge/a0/structured": [
+  "a le p0 512\nb gt p1 512\nc and a b\nret c\n"
+ ],
+ "z-tile-right/a0/structured": [
+  "a shr p0 2\nb and p0 3\nc add b 1\nd rem c 4\ne shl a 2\nf add e d\nret f\n"
+ ],
+ "z-same-side/a0/structured": [
+  "fn sameside u32 u32 u32 -> bool\na ge p0 p2\nb ge p1 p2\nc and a b\nd lt p0 p2\ne lt p1 p2\nf and d e\ng or c f\nret g\nend\n"
+ ],
+ "z-rotate-left/a0/structured": [
+  "e arr b c d a\n"
+ ],
+ "z-shelf-move/a0/structured": [
+  "d add p1 1\ne get c d\nf add e p2\ng set c d f\nret g\n"
+ ]
+}

@@ -43,6 +43,8 @@ interface Phase {
   readonly margin: number;
   /** Accepted may be lower than the baseline's by at most this many tasks on every single set (null: not a condition). */
   readonly perSetMargin: number | null;
+  /** The variant's 10-task cost may equal the baseline's (docs/history/2026-10-07-primer-v4-lazy-preregistration.md: `not higher`). */
+  readonly costTie?: boolean;
   readonly preRegistration: string;
   readonly meaning: string;
   readonly primers: Readonly<Record<string, string>>;
@@ -62,6 +64,22 @@ export const PHASES: Readonly<Record<string, Phase>> = {
     primers: {
       V2: 'experiments/primers/shrink/V2.txt',
       V3: 'experiments/primers/shrink/V3.txt',
+    },
+  },
+  v4: {
+    dir: 'primer-v4',
+    sets: ['z'],
+    baseline: 'V3',
+    variant: 'V4',
+    margin: 1,
+    perSetMargin: null,
+    costTie: true,
+    preRegistration: 'docs/history/2026-10-07-primer-v4-lazy-preregistration.md',
+    meaning:
+      'Primer V4 (the lazy primer, 137 tokens, with the lazy hints on) against the shipped V3 (244, hints off) on sealed set Z (32 tasks: loop, text, io, helper-before-caller, plain), A0 canonical, structured protocol, fresh Haiku and Sonnet subagents, one shot plus one repair.',
+    primers: {
+      V3: 'experiments/primers/shrink/V3.txt',
+      V4: 'experiments/primers/lazy/V4.txt',
     },
   },
   dense: {
@@ -97,11 +115,14 @@ export function compareRule(
   margin: number,
   perSet: readonly { base: number; variant: number }[] = [],
   perSetMargin: number | null = null,
+  costTie = false,
 ): { acceptanceHeld: boolean; everySetHeld: boolean; cheaper: boolean; pass: boolean } {
   const acceptanceHeld = variant.accepted >= base.accepted - margin;
   const everySetHeld =
     perSetMargin === null || perSet.every((s) => s.variant >= s.base - perSetMargin);
-  const cheaper = Number.isFinite(variant.cost) && variant.cost < base.cost;
+  const cheaper =
+    Number.isFinite(variant.cost) &&
+    (costTie ? variant.cost <= base.cost : variant.cost < base.cost);
   return { acceptanceHeld, everySetHeld, cheaper, pass: acceptanceHeld && everySetHeld && cheaper };
 }
 
@@ -113,7 +134,7 @@ export function decide(rule: Record<string, { pass: boolean }>): { change: boole
 async function main(): Promise<void> {
   const name = process.argv[2] ?? '';
   const phase = PHASES[name];
-  if (phase === undefined) throw new Error('usage: primer-compare-summary.ts v3|dense');
+  if (phase === undefined) throw new Error('usage: primer-compare-summary.ts v3|v4|dense');
   const enc = getEncoding('o200k_base');
   const primerTokens = Object.fromEntries(
     Object.entries(phase.primers).map(([k, p]) => [k, enc.encode(readFileSync(p, 'utf8')).length]),
@@ -161,6 +182,7 @@ async function main(): Promise<void> {
         phase.margin,
         perSet,
         phase.perSetMargin,
+        phase.costTie === true,
       ),
     } as { pass: boolean };
     const b = pooled[phase.baseline] as Trial[];

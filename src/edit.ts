@@ -49,6 +49,7 @@ import { formatDenseFunction, formatDenseSignature } from './dense.js';
 import { denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
+import { constructLegend, lazyDiagnostic, lazyHints } from './lazy.js';
 import { applySpecEdits, type SpecEdit, type SpecWord, withoutSpec, withSpec } from './spec.js';
 import { keyLegend } from './wordkey.js';
 
@@ -1242,7 +1243,9 @@ export class EditSession {
     const text = this.#plainFunctionText(fn, scope, numbered, dense, hideSpecs);
     const shown = dense && scope === 'bodies' ? [fn, ...fn.calls.values()] : [fn];
     const legend = process.env.A0_KEY_LEGEND === 'off' ? '' : keyLegend(shown);
-    return legend === '' ? text : `${text}\n${legend}`;
+    const lazy = lazyHints() && !dense ? constructLegend(shown) : '';
+    const both = [legend, lazy].filter((l) => l !== '').join('\n');
+    return both === '' ? text : `${text}\n${both}`;
   }
 
   #plainFunctionText(
@@ -1353,11 +1356,17 @@ export class EditSession {
     try {
       return this.#applyOrFix(text);
     } catch (e) {
-      throw e instanceof A0Error
-        ? denseDiagnostic(stubHint(e, this.#program), this.#denseNames)
-        : e;
+      if (!(e instanceof A0Error)) throw e;
+      const hinted = stubHint(e, this.#program);
+      if (!lazyHints()) throw denseDiagnostic(hinted, this.#denseNames);
+      const first = !this.#ruleCardShown;
+      this.#ruleCardShown = true;
+      throw denseDiagnostic(lazyDiagnostic(hinted, text, first), this.#denseNames);
     }
   }
+
+  /** The lazy rule card (src/lazy.ts) goes out with the first rejection of the session only. */
+  #ruleCardShown = false;
 
   /** Dense text of the nodes of the functions the current dense reply names (see `denseDiagnostic`). */
   #denseNames: Map<string, Map<string, string>> = new Map();

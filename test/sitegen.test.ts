@@ -155,7 +155,7 @@ test('splitting the stylesheet over functions leaves the rendered page unchanged
   try {
     for (const name of ['page', 'docs', 'bench'] as const) {
       const tpl = await readFile(`site/gen/${name}.tpl`, 'utf8');
-      const unsplit = tpl.replace(/\{css_a\n[\s\S]*?\{css_e\ns 9 css 36000\n\}\n/, 's 9 css\n');
+      const unsplit = tpl.replace(/\{css_a\n[\s\S]*?\{css_f\ns 9 css 45000\n\}\n/, 's 9 css\n');
       assert.notEqual(unsplit, tpl, `${name}.tpl has the css section functions`);
       const file = join(dir, `${name}.tpl`);
       await writeFile(file, unsplit);

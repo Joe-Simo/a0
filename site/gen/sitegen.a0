@@ -4,7 +4,8 @@
 # counted over the whole template, so both passes number identically.
 # Template lines (first byte): `#` comment, `f` input file, `m` map entry, `1TEXT`/`2TEXT` a raw
 # line of pass 1/2, `<TAG` open, `.TAG CLASS` open with a class, `=TAG TEXT` a whole element,
-# `+KEY VALUE` attribute, `>` close, `"TEXT` text, `w WORD` a protocol word, `c FN ARGS` call,
+# `+KEY VALUE` attribute, `>` close, `"TEXT` text, `^TEXT` the text the open element copies to the
+# clipboard when activated (protocol word 14 COPY), `w WORD` a protocol word, `c FN ARGS` call,
 # `n R EXPR` a node named by register R (a-z, `%R` in later arguments), `s WORD ROLE [LO [HI]]` the text
 # file ROLE in chunks of at most 1000 bytes after protocol word WORD (only the chunks that start at
 # a byte offset in [LO, HI) of the file, so a long file can be spread over several section functions), `l ROLE` its lines as texts,
@@ -436,6 +437,25 @@ fn dotext (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32
 s1 call wnum p0 p2 2
 s2 call slit s1 p2 p3 p4 p5
 ret s2
+end
+fn docopy (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+s1 call wnum p0 p2 14
+s2 call slit s1 p2 p3 p4 p5
+ret s2
+end
+# `^TEXT`: the COPY command (protocol word 14) with the expansion of TEXT as its bytes
+fn opcopy (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+x call sexp p0 p1 p2 p3 p4 false true false
+c at x 1
+sx at x 0
+ne gt c 0
+cn select ne 1 0
+r fold docopy cn sx p1 p2 p3 p4
+ret r
+end
+fn opcp (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32 u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
+r call opcopy p0 p2 p3 p4 p5
+ret r
 end
 fn optext (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32)) u32x128x512 u32x128x128 u32 u32 -> (io,(u32,u32,u32,u32,u32,u32,u32,u32,u32,u32,u32x32,u32,u32x16,u32,u32))
 x call sexp p0 p1 p2 p3 p4 false true false
@@ -1145,7 +1165,10 @@ s15 fold oplb c91 s14 p2 p3 a e
 x93 eq op 93
 c93 select x93 1 0
 s16 fold oprb c93 s15 p2 p3 a e
-ret s16
+x94 eq op 94
+c94 select x94 1 0
+s17 fold opcp c94 s16 p2 p3 a e
+ret s17
 end
 fn interp io u32x128x512 u32x128x128 u32 -> io
 z32 arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
