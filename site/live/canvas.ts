@@ -20,6 +20,7 @@ export interface Ctx2D {
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
+  closePath(): void;
   arc(x: number, y: number, r: number, a0: number, a1: number): void;
   stroke(): void;
   fill(): void;
@@ -165,6 +166,21 @@ export function drawCommands(
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
         grow(bounds, x, y, r + 1);
+        break;
+      }
+      case OP.quad: {
+        // a filled four-point polygon (repeat a point for a triangle): tapered limb segments, claws, plates
+        ctx.beginPath();
+        for (let k = 0; k < 4; k += 1) {
+          const x = q(i + 1 + 2 * k);
+          const y = q(i + 2 + 2 * k);
+          if (k === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          grow(bounds, x, y, 1);
+        }
+        ctx.closePath();
+        ctx.fillStyle = rgbaCss(w(i + 9));
+        ctx.fill();
         break;
       }
       case OP.brackets: {

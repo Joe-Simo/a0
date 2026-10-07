@@ -522,6 +522,9 @@ function render(
 
 async function main(): Promise<void> {
   const root = document.getElementById('app') as HTMLElement;
+  // The live-program request is read from the static shell before the first render, so nothing the
+  // page program does to its root can lose it (see site/live.ts).
+  const liveConfig = { ...root.dataset };
   const page = await load(root.dataset.program ?? '/page.wasm');
   // The prerendered page ships the stylesheet inline; the program's own copy replaces it.
   for (const old of Array.from(document.head.querySelectorAll('style'))) old.remove();
@@ -680,8 +683,8 @@ async function main(): Promise<void> {
   spy();
   // A page may ask for a live (frame-driven) A0 program with data-live on its root; it mounts after the
   // first render, lazily, and a failure leaves the page as it is (see site/live.ts).
-  if (root.dataset.live !== undefined)
-    void import('./live.js').then((m) => m.mountLive(root)).catch(() => undefined);
+  if (liveConfig.live !== undefined)
+    void import('./live.js').then((m) => m.mountLive(root, liveConfig)).catch(() => undefined);
   (window as unknown as { a0page: { show: EventSink; state: () => number[] } }).a0page = {
     show,
     state: () => state,

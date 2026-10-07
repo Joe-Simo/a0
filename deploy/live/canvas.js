@@ -133,6 +133,23 @@ export function drawCommands(ctx, words, from, to, bounds, detail = true) {
                 grow(bounds, x, y, r + 1);
                 break;
             }
+            case OP.quad: {
+                // a filled four-point polygon (repeat a point for a triangle): tapered limb segments, claws, plates
+                ctx.beginPath();
+                for (let k = 0; k < 4; k += 1) {
+                    const x = q(i + 1 + 2 * k);
+                    const y = q(i + 2 + 2 * k);
+                    if (k === 0)
+                        ctx.moveTo(x, y);
+                    else
+                        ctx.lineTo(x, y);
+                    grow(bounds, x, y, 1);
+                }
+                ctx.closePath();
+                ctx.fillStyle = rgbaCss(w(i + 9));
+                ctx.fill();
+                break;
+            }
             case OP.brackets: {
                 const x0 = q(i + 1);
                 const y0 = q(i + 2);

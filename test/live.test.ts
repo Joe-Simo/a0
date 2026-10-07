@@ -76,6 +76,7 @@ class Recorder {
   beginPath = this.rec('beginPath');
   moveTo = this.rec('moveTo');
   lineTo = this.rec('lineTo');
+  closePath = this.rec('closePath');
   arc = this.rec('arc');
   stroke = this.rec('stroke');
   fill = this.rec('fill');
@@ -115,6 +116,16 @@ test('canvas: the draw list executes, tracks bounds, and stops at an unknown or 
     q(0),
     q(9),
     q(9),
+    OP.quad,
+    q(0),
+    q(0),
+    q(10),
+    q(0),
+    q(10),
+    q(10),
+    q(10),
+    q(10),
+    0xffffffff,
     999,
     1,
     2,
@@ -124,7 +135,7 @@ test('canvas: the draw list executes, tracks bounds, and stops at an unknown or 
   ];
   const b: Bounds = emptyBounds();
   const n = drawCommands(ctx as unknown as Ctx2D, words, 0, words.length, b);
-  assert.equal(n, 4);
+  assert.equal(n, 5);
   assert.ok(b.x0 <= 0 && b.x1 >= 75 && b.y0 <= 0 && b.y1 >= 85);
   assert.ok(ctx.calls.includes('gradient(6)'));
   const flat = new Recorder();
@@ -486,35 +497,46 @@ test('sentinel: asks the host to watch page elements, once, by kind', async () =
   assert.equal(second.watches.length, 0);
 });
 
-test('sentinel: pursues the pointer with inertia, keeps its distance, tentacles keep their length', async () => {
+test('sentinel: a walker. The body rides on its planted feet, crawls toward the pointer, never flies', async () => {
   const { make } = await sentinel();
   const d = drive(make(), pageBoxes());
   step(d, { pointerX: 300, pointerY: 300 });
   const start = body(d.prog);
-  // the pointer jumps; the body must not
-  step(d, { pointerX: 900, pointerY: 500 });
-  const after = body(d.prog);
-  assert.ok(Math.hypot(after.x - start.x, after.y - start.y) < 40, 'no teleport to the pointer');
   let maxSpeed = 0;
-  let overshoot = false;
-  let prevDist = Infinity;
-  for (let i = 0; i < 300; i += 1) {
-    step(d, { pointerX: 900, pointerY: 500 });
+  let framesPlanted3 = 0;
+  let framesChecked = 0;
+  let nearFeet = 0;
+  let supported = 0;
+  for (let i = 0; i < 1500; i += 1) {
+    step(d, { pointerX: 900 + (i % 20 < 10 ? 0 : 6), pointerY: 520 });
     const b = body(d.prog);
     maxSpeed = Math.max(maxSpeed, Math.hypot(b.vx, b.vy));
-    const dist = Math.hypot(b.x - 900, b.y - 500);
-    if (dist > prevDist + 0.5 && i > 20 && dist < 200) overshoot = overshoot || false;
-    prevDist = dist;
+    if (i < 300) continue;
+    const feet: { x: number; y: number }[] = [];
+    for (let k = 0; k < 8; k += 1) {
+      const t = tent(d.prog, k);
+      if (t.state === 2) feet.push({ x: t.ax, y: t.ay });
+    }
+    framesChecked += 1;
+    if (feet.length >= 3) framesPlanted3 += 1;
+    if (feet.length >= 2) {
+      supported += 1;
+      const mx = feet.reduce((s, f) => s + f.x, 0) / feet.length;
+      const my = feet.reduce((s, f) => s + f.y, 0) / feet.length;
+      if (Math.hypot(b.x - mx, b.y - my) < 70) nearFeet += 1;
+    }
   }
   const b = body(d.prog);
-  const dist = Math.hypot(b.x - 900, b.y - 500);
-  assert.ok(dist > 50 && dist < 130, `settles 60-120px from the pointer, got ${dist.toFixed(1)}`);
-  assert.ok(Math.hypot(b.vx, b.vy) < 25, 'comes to rest');
   assert.ok(
-    maxSpeed > 150 && maxSpeed < 2300,
-    `accelerates with a bounded speed (${maxSpeed.toFixed(0)})`,
+    Math.hypot(b.x - 900, b.y - 520) < Math.hypot(start.x - 900, start.y - 520) - 50,
+    'it has crawled toward the pointer',
   );
-  void overshoot;
+  assert.ok(maxSpeed < 900, `a scuttle, never a dash (${maxSpeed.toFixed(0)} px/s)`);
+  assert.ok(
+    framesPlanted3 / framesChecked > 0.6,
+    `at least three feet planted most of the time (${framesPlanted3}/${framesChecked})`,
+  );
+  assert.ok(nearFeet / Math.max(1, supported) > 0.9, 'the body sits over its planted feet');
   for (let k = 0; k < 8; k += 1) {
     const t = tent(d.prog, k);
     assert.ok(t.nj >= 6 && t.nj <= 9);
@@ -663,4 +685,83 @@ test('sentinel: deterministic, and never writes outside its output', async () =>
   assert.ok(html.includes(`data-live-in="${SPEC.inputWords}"`));
   assert.ok(html.includes(`data-live-out="${SPEC.outputWords}"`));
   assert.ok(html.includes(`data-live-rows="${SPEC.rows}"`));
+});
+
+test('mounting a live program never touches the page stylesheet or its root attributes', async () => {
+  // The host only creates its own canvas and sets that canvas's inline style; it must not create or
+  // edit <style> elements, rules or the root's attributes (the page program owns those).
+  const files = [
+    'site/live.ts',
+    'site/live/canvas.ts',
+    'site/live/geometry.ts',
+    'site/live/pointer.ts',
+    'site/live/program.ts',
+  ];
+  for (const f of files) {
+    const src = await readFile(f, 'utf8');
+    assert.ok(
+      !/createElement\(['"]style['"]\)|insertRule|adoptedStyleSheets|querySelector\(['"]style|document\.head|removeAttribute/.test(
+        src,
+      ),
+      `${f} must not touch stylesheets or root attributes`,
+    );
+  }
+  // the request is read once from the static shell, before the first render, and handed to the mount
+  const app = await readFile('site/app.ts', 'utf8');
+  assert.ok(app.includes('const liveConfig = { ...root.dataset }'));
+  assert.ok(app.includes('mountLive(root, liveConfig)'));
+});
+
+test('sentinel: under load it steps quality down and runs every other frame; idle, it slows its tick', async () => {
+  const { make } = await sentinel();
+  const run = (
+    cost: number,
+    frames: number,
+    o: Partial<FrameInput>,
+  ): { cadence: number | undefined; quality: number | undefined } => {
+    const prog = make();
+    let cadence: number | undefined;
+    let quality: number | undefined;
+    for (let i = 0; i < frames; i += 1) {
+      const r = prog.frame(
+        {
+          dt: 16,
+          flags: (i === 0 ? FLAG.first : 0) | FLAG.pointer,
+          vw: 1280,
+          vh: 800,
+          scrollX: 0,
+          scrollY: 0,
+          dpr: 1,
+          pointerX: 400 + (i % 30),
+          pointerY: 400,
+          pointerType: 1,
+          tapSeq: 0,
+          tapX: 0,
+          tapY: 0,
+          tapRect: null,
+          costUs: cost,
+          intervalUs: 16667,
+          docHeight: 5000,
+          timeMs: i * 16,
+          generation: 1,
+          ...o,
+        },
+        table(pageBoxes(), 0),
+        pageBoxes().length,
+      );
+      cadence = r.cadence ?? cadence;
+      quality = r.quality ?? quality;
+    }
+    return { cadence, quality };
+  };
+  const loaded = run(7000, 200, {});
+  assert.ok((loaded.quality ?? 100) < 100, 'a high frame cost lowers the render scale');
+  assert.ok((loaded.cadence ?? 1) >= 2, 'and the program asks to run less often');
+  const calm = run(500, 200, {});
+  assert.ok(
+    (calm.cadence ?? 1) === 1,
+    'a cheap frame keeps the full cadence while the pointer moves',
+  );
+  const idle = run(500, 700, { pointerX: 400, pointerY: 400 });
+  assert.ok((idle.cadence ?? 1) >= 3, 'an idle machine ticks at a low rate');
 });

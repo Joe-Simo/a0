@@ -11,7 +11,7 @@ use "render.a0"
 use "zeros.a0"
 
 # ---- input
-fn rd_rects_step (u32x1344,io) u32 -> (u32x1344,io)
+fn rd_rects_step (u32x672,io) u32 -> (u32x672,io)
 a at p0 0
 t at p0 1
 r read t
@@ -54,12 +54,12 @@ ret s9
 end
 
 # ---- one simulation step (p3 is the frame time in ms)
-fn tent_frame u32x1024 u32 u32x32 u32x1344 u32 u32 u32 -> u32x1024
+fn tent_frame u32x1024 u32 u32x32 u32x672 u32 u32 u32 -> u32x1024
 s1 call tent_logic p0 p1 p2 p3 p4
 r call tent_run s1 p1 p5 p6
 ret r
 end
-fn tap_f u32x1024 u32 u32x32 u32x1344 -> u32x1024
+fn tap_f u32x1024 u32 u32x32 u32x672 -> u32x1024
 r call tap_step p0 p2 p3
 ret r
 end
@@ -67,7 +67,7 @@ fn graph_f u32x1024 u32 u32 -> u32x1024
 r call graph_step p0 p2
 ret r
 end
-fn sim u32x1024 u32x32 u32x1344 u32 -> u32x1024
+fn sim u32x1024 u32x32 u32x672 u32 -> u32x1024
 vw get p1 3
 vh get p1 4
 sx get p1 5
@@ -102,12 +102,14 @@ a10 call bs a9 14 sy
 a11 call bs a10 16 sv
 b1 call body_pointer a11 p1 p3 dtq
 mf call bg b1 93
-calm eq mf 0
+flg get p1 2
+calmv and flg 1
+calm ne calmv 0
 mode call bg b1 11
 mode2 select calm 0 mode
 b2 call bs b1 11 mode2
 b3 call body_home b2 p1 p2 p3 dtq
-b4 call body_step b3 p1 dtq
+b4 call body_step b3 p1 p2 dtq
 b5 call body_heading b4 dtq
 nact call not_b calm
 ntap call one_if nact
@@ -117,7 +119,7 @@ qh call fx_ge q 2
 iters select qh 3 2
 c2 fold tent_frame 8 c1 p1 p2 p3 dtq iters
 c3 call body_react c2 dtq
-c4 fold graph_f ntap c3 p3
+c4 fold graph_f 0 c3 p3
 c5 call core_step c4 dtq
 c6 call perf_step c5 p1
 ret c6
@@ -139,24 +141,24 @@ s5 call bs s4 33 hx
 s6 call bs s5 34 hy
 ret s6
 end
-fn ff_sim u32x1024 u32 u32x32 u32x1344 -> u32x1024
+fn ff_sim u32x1024 u32 u32x32 u32x672 -> u32x1024
 r call sim p0 p2 p3 16
 ret r
 end
-fn sim_f u32x1024 u32 u32x32 u32x1344 u32 -> u32x1024
+fn sim_f u32x1024 u32 u32x32 u32x672 u32 -> u32x1024
 r call sim p0 p2 p3 p4
 ret r
 end
 
-fn update u32x1024 u32x32 u32x1344 -> u32x1024
+fn update u32x1024 u32x32 u32x672 -> u32x1024
 flags get p1 2
 reduced call flag flags 1
-mfv select reduced 0 65536
+mfv0 select reduced 1 65536
 mg call bg p0 0
 fresh0 ne mg 41120
 nf call one_if fresh0
 s0 fold init_step nf p0 p1
-s1 call bs s0 93 mfv
+s1 call bs s0 93 mfv0
 vw get p1 3
 vh get p1 4
 ovw call bg s1 91
@@ -250,6 +252,10 @@ e fold w_block p1 d
 f fold w_data p1 e
 ret f
 end
+fn cad_cmd io u32 u32 -> io
+a call fr_cadence p0 p2
+ret a
+end
 fn qpct io u32 u32 -> io
 a call fr_quality p0 p2
 ret a
@@ -264,7 +270,7 @@ ret s2
 end
 
 # watches, quality request, state, then the draw list: p0 io, p1 state, p2 header, p3 geometry, p4 reads' io
-fn emit_all io u32x1024 u32x32 u32x1344 -> io
+fn emit_all io u32x1024 u32x32 u32x672 -> io
 q call bg p1 17
 lastq call bg p1 95
 chg ne q lastq
@@ -276,8 +282,30 @@ first call flag flags 32
 nw call one_if first
 t5 call watches p0 nw
 t6 fold qpct nq t5 pct
-t7 call write_state t6 st2
-t8 call render_all t7 st2 p2 p3
+mode call bg p1 11
+idl call bg p1 12
+vx call bg p1 3
+vy call bg p1 4
+spd call fx_hyp vx vy
+q0 eq q 0
+q1 eq q 1
+cq1 select q1 2 1
+cq select q0 3 cq1
+m0 eq mode 0
+iq gt idl 5000
+sq lt spd 2621440
+quiet0 and m0 iq
+quiet and quiet0 sq
+cadq select quiet 3 1
+cgt gt cq cadq
+cad select cgt cq cadq
+lastc call bg st2 886
+cchg ne cad lastc
+ncd call one_if cchg
+st3 call bs st2 886 cad
+t6b fold cad_cmd ncd t6 cad
+t7 call write_state t6b st3
+t8 call render_all t7 st3 p2 p3
 ret t8
 end
 
@@ -287,7 +315,7 @@ hdr at h 0
 t1 at h 1
 zr call zrects
 rs0 rec zr t1
-rr fold rd_rects_step 1344 rs0
+rr fold rd_rects_step 672 rs0
 rects at rr 0
 t2 at rr 1
 r1 read t2

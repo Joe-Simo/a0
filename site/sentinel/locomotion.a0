@@ -35,7 +35,8 @@ s4 call ts s3 p1 19 0
 k31 add p1 31
 h call fx_hash clk k31
 u shr h 22
-cdms add 350 u
+cdh shr u 2
+cdms add 60 cdh
 s5 call ts s4 p1 7 cdms
 hx call tg s5 p1 20
 hy call tg s5 p1 21
@@ -60,7 +61,7 @@ s7 call js s6 p1 tip 3 vy
 ret s7
 end
 
-fn tent_follow u32x1024 u32 u32x32 u32x1344 -> u32x1024
+fn tent_follow u32x1024 u32 u32x32 u32x672 -> u32x1024
 stt call tg p0 p1 0
 a1 eq stt 1
 a2 eq stt 2
@@ -121,7 +122,26 @@ cd1 sub cd0 p2
 cd select cdok cd1 0
 s1 call ts p0 p1 5 tm
 s2 call ts s1 p1 7 cd
-ret s2
+stt call tg p0 p1 0
+c1 eq stt 1
+c2 eq stt 2
+c3 eq stt 3
+tc0 select c3 52429 45875
+tc1 select c1 65536 tc0
+tgt select c2 0 tc1
+cl call tg p0 p1 26
+dcl sub tgt cl
+f0 mul p2 917
+f call min_u32 f0 65536
+dc call fx_mul dcl f
+ncl add cl dc
+s3 call ts s2 p1 26 ncl
+im0 call tg p0 p1 27
+imok gt im0 p2
+im1 sub im0 p2
+im select imok im1 0
+s4 call ts s3 p1 27 im
+ret s4
 end
 
 # remember an anchor in the recent ring (words 40..63, head in word 64)
@@ -141,7 +161,7 @@ ret s4
 end
 
 # begin the approach to the candidate (x p2, y p3, viewport Q16) of row p6; p4 hdr, p5 rects
-fn begin_approach u32x1024 u32 u32 u32 u32x32 u32x1344 u32 -> u32x1024
+fn begin_approach u32x1024 u32 u32 u32 u32x32 u32x672 u32 -> u32x1024
 sx get p4 5
 sy get p4 6
 x0 call rg p5 p6 1
@@ -162,7 +182,16 @@ s3 call ts s2 p1 4 offy
 s4 call ts s3 p1 5 0
 s5 call ts s4 p1 25 kind
 s6 call ts s5 p1 19 0
-s7 call ts s6 p1 0 1
+x1 call rg p5 p6 3
+y1 call rg p5 p6 4
+x1q shl x1 16
+y1q shl y1 16
+nrm call edge_normal x0q y0q x1q y1q px py
+nnx at nrm 0
+nny at nrm 1
+s7a call ts s6 p1 29 nnx
+s7b call ts s7a p1 30 nny
+s7 call ts s7b p1 0 1
 ret s7
 end
 
@@ -172,8 +201,8 @@ k call tg p0 p1 25
 clk call bg p0 13
 h call fx_hash clk p1
 u shr h 16
-span div u 25
-base add 1100 span
+span div u 60
+base add 450 span
 iscode eq k 3
 ishead eq k 1
 m1 select iscode 88474 65536
@@ -183,7 +212,7 @@ ret r
 end
 
 # ---- searching: one tentacle per frame looks for an anchor (p1 tentacle, p2 hdr, p3 rects)
-fn lg_search u32x1024 u32 u32x32 u32x1344 -> u32x1024
+fn lg_search u32x1024 u32 u32x32 u32x672 -> u32x1024
 stt call tg p0 p1 0
 st0 eq stt 0
 rr call bg p0 30
@@ -197,7 +226,7 @@ okq select qz fz true
 cd call tg p0 p1 7
 cdz eq cd 0
 busy fold busy_step 8 0 p0
-few lt busy 4
+few lt busy 5
 w1 and st0 mine
 w2 and w1 okq
 w3 and w2 cdz
@@ -207,14 +236,14 @@ mfn ne mf 0
 want and w4 mfn
 nrows get p2 21
 n select want nrows 0
-sp call search_prepare p0 p2 p1
+sp call search_prepare p0 p2 p3 p1
 best call anchor_search sp p3 n
 score at best 0
 bx at best 1
 by at best 2
 brow at best 3
-hi lt busy 2
-th select hi 589824 1310720
+hi lt busy 4
+th select hi 4292345856 786432
 fnd call fx_ge score th
 go and want fnd
 ap call begin_approach sp p1 bx by p2 p3 brow
@@ -222,7 +251,8 @@ s_a select go ap sp
 clk call bg p0 13
 h call fx_hash clk p1
 u shr h 22
-cdn add 160 u
+cdq shr u 3
+cdn add 40 cdq
 nogo call not_b fnd
 miss and want nogo
 cdset select miss cdn cd
@@ -244,7 +274,7 @@ ay call tg p0 p1 24
 dx sub ax tx
 dy sub ay ty
 d call fx_hyp dx dy
-rad call fx_mul 262144 sc
+rad call fx_mul 393216 sc
 close call fx_le d rad
 arrive and s1 close
 hold call hold_ms p0 p1
@@ -260,9 +290,17 @@ rid call tg p0 p1 2
 a1 call ts p0 p1 0 2
 a2 call ts a1 p1 5 0
 a3 call ts a2 p1 6 holdt
-a4 call ring_push a3 rid pgx pgy
+a4a call ring_push a3 rid pgx pgy
+a4b call ts a4a p1 27 650
+kq call tg a4b p1 25
+kc3 eq kq 3
+kc6 eq kq 6
+kcc or kc3 kc6
+ock call bg a4b 90
+nck select kcc 700 ock
+a4 call bs a4b 90 nck
 tm call tg p0 p1 5
-slow gt tm 1500
+slow gt tm 2500
 bx call bg p0 1
 by call bg p0 2
 dbx sub ax bx
@@ -281,6 +319,13 @@ r select bad2 rel r1
 ret r
 end
 
+fn planted_step u32 u32 u32x1024 -> u32
+stt call tg p2 p1 0
+a eq stt 2
+n select a 1 0
+r add p0 n
+ret r
+end
 # ---- attached: let go when the hold time is up, the chain is taut, or the anchor is out of reach
 fn lg_attach u32x1024 u32 -> u32x1024
 stt call tg p0 p1 0
@@ -289,7 +334,7 @@ tm call tg p0 p1 5
 hold call tg p0 p1 6
 over gt tm hold
 ten call tg p0 p1 22
-taut call fx_gt ten 73400
+taut call fx_gt ten 81920
 ax call tg p0 p1 23
 ay call tg p0 p1 24
 bx call bg p0 1
@@ -298,11 +343,27 @@ dbx sub ax bx
 dby sub ay by
 db call fx_hyp dbx dby
 reach call tg p0 p1 14
-rl call fx_mul reach 72090
+rl call fx_mul reach 77000
 far call fx_gt db rl
-b1 or over taut
+pl fold planted_step 8 0 p0
+trv call travel_dir p0
+tux at trv 0
+tuy at trv 1
+tgo at trv 2
+dotb call fx_dot dbx dby tux tuy
+behind call fx_lt dotb 0
+ntg call not_b tgo
+many gt pl 3
+full ge pl 5
+bh0 or behind full
+bh1 or bh0 ntg
+vol0 and over many
+vol and vol0 bh1
+stuck gt tm 9000
+b1 or vol taut
 b2 or b1 far
-go and s2 b2
+b3 or b2 stuck
+go and s2 b3
 rel call rel_enter p0 p1
 r select go rel p0
 ret r
@@ -320,20 +381,61 @@ r select go a1 p0
 ret r
 end
 
+# readability: a chain whose middle joint is over text or code is drawn fainter (word 28, Q16)
+fn cover_step u32 u32 u32x672 u32 u32 -> u32
+x0 call rg p2 p1 1
+y0 call rg p2 p1 2
+x1 call rg p2 p1 3
+y1 call rg p2 p1 4
+kind call r_kind p2 p1
+k2 eq kind 2
+k3 eq kind 3
+kk or k2 k3
+a1 ge p3 x0
+a2 le p3 x1
+a3 ge p4 y0
+a4 le p4 y1
+i1 and a1 a2
+i2 and a3 a4
+ins and i1 i2
+hit and kk ins
+n select hit 1 0
+r add p0 n
+ret r
+end
+fn lg_cover u32x1024 u32 u32x32 u32x672 -> u32x1024
+nj call tg p0 p1 1
+mid shr nj 1
+x call jg p0 p1 mid 0
+y call jg p0 p1 mid 1
+sx get p2 5
+sy get p2 6
+pgx call vp2pg x sx
+pgy call vp2pg y sy
+nrows get p2 21
+hits fold cover_step nrows 0 p3 pgx pgy
+over ne hits 0
+tgt select over 26214 65536
+old call tg p0 p1 28
+nw call fx_lerp old tgt 7864
+r call ts p0 p1 28 nw
+ret r
+end
 # the four stages of one tentacle, in order (p1 tentacle, p2 hdr, p3 rects, p4 dt in ms)
-fn tent_logic u32x1024 u32 u32x32 u32x1344 u32 -> u32x1024
+fn tent_logic u32x1024 u32 u32x32 u32x672 u32 -> u32x1024
 s1 call lg_tick p0 p1 p4
 s2 call lg_search s1 p1 p2 p3
 s3 call tent_follow s2 p1 p2 p3
 s4 call lg_approach s3 p1
 s5 call lg_attach s4 p1
 s6 call lg_release s5 p1
-ret s6
+s7 call lg_cover s6 p1 p2 p3
+ret s7
 end
 
 # ---- a tap on an interactive element: one to three free tentacles reach for its nearest edge
 # (visual only; nothing is clicked, the tap is never intercepted)
-fn tap_row_step (u32,u32) u32 u32x1344 u32 u32 -> (u32,u32)
+fn tap_row_step (u32,u32) u32 u32x672 u32 u32 -> (u32,u32)
 x0 call rg p2 p1 1
 y0 call rg p2 p1 2
 x1 call rg p2 p1 3
@@ -383,12 +485,17 @@ eqd eq dj dk
 jl lt p1 p3
 tie and eqd jl
 less or dlt tie
-n select less 1 0
+stj call tg p2 p1 0
+fj0 eq stj 0
+fj3 eq stj 3
+fj or fj0 fj3
+lf and less fj
+n select lf 1 0
 r add p0 n
 ret r
 end
 # p1 tentacle; p2 st; p3 the count to move; p4 row; p5 hdr; p6 rects
-fn tap_apply u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
+fn tap_apply u32x1024 u32 u32 u32 u32x32 u32x672 -> u32x1024
 rank fold tap_rank_step 8 0 p0 p1
 free0 call tg p0 p1 0
 f0 eq free0 0
@@ -420,11 +527,11 @@ use and use0 fnd
 r select use ap2 p0
 ret r
 end
-fn tap_each u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
+fn tap_each u32x1024 u32 u32 u32 u32x32 u32x672 -> u32x1024
 r call tap_apply p0 p1 p2 p3 p4 p5
 ret r
 end
-fn tap_scan u32x1024 u32x32 u32x1344 -> (u32,u32)
+fn tap_scan u32x1024 u32x32 u32x672 -> (u32,u32)
 seq get p1 11
 old call bg p0 22
 changed ne seq old
@@ -450,7 +557,7 @@ cn select act cnt 0
 r rec row cn
 ret r
 end
-fn tap_step u32x1024 u32x32 u32x1344 -> u32x1024
+fn tap_step u32x1024 u32x32 u32x672 -> u32x1024
 sc call tap_scan p0 p1 p2
 row at sc 0
 cn at sc 1
