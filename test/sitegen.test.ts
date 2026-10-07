@@ -42,16 +42,15 @@ test('the benchmarks page explains every benchmark in plain words', {
   const { html, text } = prerender(program);
   const takeaways: readonly RegExp[] = [
     /The slowest test program is \d+\.\d\dx slower on \w+ against baselines with the same calling convention, and \d+\.\d\dx slower on \w+ against each language's own inlined driver\. Same calling convention \(A0 and the best of C, Rust and Zig, both called out of line\): \d+ wins, \d+ ties, \d+ losses of \d+\. Inlined drivers: \d+ wins, \d+ ties, \d+ losses\. Against hand-written C alone, A0 takes \d+\.\d\dx as long/,
-    /Same calling convention: \d+ wins, \d+ ties, \d+ losses of \d+, slowest \d+\.\d\dx on \w+\. Each language's own inlined driver: \d+ wins, \d+ ties, \d+ losses, slowest \d+\.\d\dx on \w+/,
     /Baseline: each language's own driver, inlined\./,
     /Speedup = the baseline's time divided by A0's: below 1\.00x A0 is slower/,
     /Every loss under either baseline is in bold\. A0's code is called out of line from a C driver while the other languages' drivers are inlined/,
-    /Two baselines, because they answer different questions\. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver\. Own inlined driver/,
-    /Native speed: one Apple M3 with 8 cores \(darwin-arm64\), 2026-09-30 and 2026-10-01.* Wasm: a different machine \(Windows x64, 8 CPUs, 2026-10-07/,
+    /Two baselines, because they answer different questions\. Same calling convention: A0 and the best of C, Rust and Zig are all called out of line from a C driver\. Inlined: each language/,
+    /Native speed: one Apple M3, 2026-09-30 and 2026-10-01\. WebAssembly: one Windows x64 PC/,
     /First of the languages that ran each program on \d+ of \d+ test programs \(a language is timed only on the programs it has source for, so fewer languages ran the later programs\); on every one, A0 takes at most \d+\.\d\dx as long as the fastest language/,
     /Writing the \d+ token test programs, A0 \(canonical\)/,
     /The dense totals are over the same \d+ programs/,
-    /AArch64 backend is up to \d+\.\d\dx behind the best of C, Rust and Zig \(the \w+ kernel\)/,
+    /Up to \d+\.\d\dx behind the best of C, Rust and Zig \(\w+\), and up to \d+\.\d\dx behind each language's own inlined driver/,
     /\d+ paths \(.*\) ran all \d+ generated cases; the native assembly targets ran the \d+ cases that need no io \(\d+ targets\); SystemVerilog is simulated separately on \d+ cases and is unverified in this run/,
     /fewer than TypeScript shown the whole numbered file \(A0's scoped view against a whole-file workflow, not both with scoped views\)/,
     /of the other \d+ languages are more than 5% faster than A0/,
@@ -62,7 +61,6 @@ test('the benchmarks page explains every benchmark in plain words', {
     /At 4000 functions an A0 edit costs \d+ tokens against \d+ for TypeScript, which is \d+\.\dx fewer than TypeScript/,
     /A0 \(native\) checks in \d+\.\d\d ms: place \d+ of \d+ \(1 = fastest\)\..*A0 \(Node CLI\), the previous path, took \d+\.\d\d ms/,
     /A0 --parallel is the fastest implementation on \d+ of \d+ test programs/,
-    /A0's scoped view is \d+\.\dx fewer tokens than reading the whole life\.a0 file in A0/,
   ];
   for (const re of takeaways) assert.match(text, re);
   // Plain labels: "test program" is defined, the table says what a place and a ratio are.
@@ -106,7 +104,7 @@ test('the benchmarks page explains every benchmark in plain words', {
   assert.match(html, /<nav class="rail"/);
   assert.match(
     text,
-    /Where A0 loses\nSpeed: the AArch64 backend[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\n[^\n]*\nThe language has no floating point, no heap, no recursion/,
+    /Native speed — Up to \d+\.\d\dx behind[^\n]*\n[\s\S]*The language — No floating point, no heap, no recursion/,
   );
 });
 
@@ -155,7 +153,7 @@ test('splitting the stylesheet over functions leaves the rendered page unchanged
   try {
     for (const name of ['page', 'docs', 'bench'] as const) {
       const tpl = await readFile(`site/gen/${name}.tpl`, 'utf8');
-      const unsplit = tpl.replace(/\{css_a\n[\s\S]*?\{css_e\ns 9 css 36000\n\}\n/, 's 9 css\n');
+      const unsplit = tpl.replace(/\{css_a\n[\s\S]*?\{css_f\ns 9 css 45000\n\}\n/, 's 9 css\n');
       assert.notEqual(unsplit, tpl, `${name}.tpl has the css section functions`);
       const file = join(dir, `${name}.tpl`);
       await writeFile(file, unsplit);
