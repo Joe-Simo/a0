@@ -6,8 +6,8 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadavg } from 'node:os';
 import { join } from 'node:path';
+import { systemLoad } from '../system-load.js';
 
 export type LoopMode = 'baseline' | 'assisted' | 'fast';
 export interface LoopEntry {
@@ -44,7 +44,7 @@ export function record(repo: string, step: string, mode: LoopMode, ms: number): 
     step,
     mode,
     ms: Math.round(ms),
-    load1: Number((loadavg()[0] ?? 0).toFixed(2)),
+    load1: Number(systemLoad().toFixed(2)),
     at: new Date().toISOString(),
   });
   writeFileSync(logPath(repo), `${JSON.stringify(log, null, 2)}\n`);

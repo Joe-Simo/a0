@@ -30,7 +30,7 @@
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { homedir, loadavg, tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import ts from 'typescript';
@@ -43,6 +43,7 @@ import { TASKS_B, type Task } from './ai-edit-tasks-b.js';
 import { buildTasksC } from './ai-edit-tasks-c.js';
 import { GO_EDITS, goFile } from './edit-loop-go.js';
 import { writeReport } from './scrub-results.js';
+import { loadSource, systemLoadTriple } from './system-load.js';
 
 type Kind =
   | 'a0.structured'
@@ -436,7 +437,13 @@ async function main(): Promise<void> {
     const samples = new Map<string, Map<Kind, Map<string, number[]>>>();
     for (const m of models)
       samples.set(m, new Map(KINDS.map((k) => [k, new Map<string, number[]>()])));
-    const load: { rep: number; before: string; after: string; loadavg: number[] }[] = [];
+    const load: {
+      rep: number;
+      before: string;
+      after: string;
+      loadavg: number[];
+      loadSource: string;
+    }[] = [];
     // Warm-up round (discarded): JIT, file cache, toolchain binaries.
     for (const e of groups.get('sonnet') ?? []) {
       for (const k of KINDS) {
@@ -464,7 +471,13 @@ async function main(): Promise<void> {
           }
         }
       }
-      load.push({ rep, before, after: uptime(), loadavg: loadavg().map((x) => round(x, 2)) });
+      load.push({
+        rep,
+        before,
+        after: uptime(),
+        loadavg: systemLoadTriple().map((x) => round(x, 2)),
+        loadSource: loadSource(),
+      });
       process.stdout.write(`rep ${rep + 1}/${reps} done; ${load[load.length - 1]?.after}\n`);
     }
 

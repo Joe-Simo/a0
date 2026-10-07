@@ -28,7 +28,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
-import { homedir, loadavg } from 'node:os';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { compile } from '../src/backends.js';
 import { parseAndValidate, run, type TypedProgram } from '../src/core.js';
@@ -36,6 +36,7 @@ import { type ParallelMode, parallelC, planProgram } from '../src/parallel.js';
 import { findClang, runTool, withTempDir } from '../src/toolchain.js';
 import { jvm, single, type Toolchain } from './exec-bench-languages.js';
 import { writeReport } from './scrub-results.js';
+import { loadSource, systemLoad, systemLoadSampled, systemLoadTriple } from './system-load.js';
 
 const KERNELS = ['sum24', 'xor24', 'count20', 'mr22', 'dot64k', 'max64k', 'hash64k'] as const;
 type K = (typeof KERNELS)[number];
@@ -596,16 +597,17 @@ async function verifySmall(clang: string, gpu: boolean): Promise<Record<string, 
 }
 
 async function waitForQuiet(wait: boolean): Promise<Record<string, unknown>> {
-  const start = loadavg();
+  const start = systemLoadTriple();
   const t0 = Date.now();
   if (wait) {
-    while ((loadavg()[0] as number) >= 6 && Date.now() - t0 < 15 * 60_000) {
-      process.stderr.write(`load ${(loadavg()[0] as number).toFixed(1)}; waiting for < 6\n`);
+    while ((await systemLoadSampled()) >= 6 && Date.now() - t0 < 15 * 60_000) {
+      process.stderr.write(`load ${systemLoad().toFixed(1)}; waiting for < 6\n`);
       await new Promise((r) => setTimeout(r, 15_000));
     }
   }
-  const now = loadavg();
+  const now = systemLoadTriple();
   return {
+    loadSource: loadSource(),
     atStart: start,
     atTimingStart: now,
     waitedSeconds: Math.round((Date.now() - t0) / 1000),
@@ -789,7 +791,7 @@ async function main(): Promise<void> {
     },
     toolchains: Object.fromEntries(tools.map(({ lang, tool }) => [lang.id, tool?.version ?? null])),
     samples: cli.samples,
-    load: { ...load, atEnd: loadavg() },
+    load: { ...load, atEnd: systemLoadTriple(), loadSource: loadSource() },
     verification,
     plans,
     meaning:

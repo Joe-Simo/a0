@@ -19,9 +19,10 @@
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, writeFileSync } from 'node:fs';
-import { cpus, loadavg, tmpdir } from 'node:os';
+import { cpus, tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { loadSource, systemLoad, systemLoadTriple } from '../system-load.js';
 import { dirtyTracked, writeNote } from './gate-note.js';
 import {
   ALL_STEPS,
@@ -272,8 +273,7 @@ export async function runGate(o: GateOptions): Promise<GateReport> {
         base: false,
       });
     }
-    if (o.mode && loadavg()[0] !== undefined && (loadavg()[0] as number) <= 10)
-      record(o.repo, run.id, o.mode, r.ms);
+    if (o.mode && systemLoad() <= 10) record(o.repo, run.id, o.mode, r.ms);
     return key ? { ...r, key } : r;
   };
   for (const group of phases(o.runs)) {
@@ -284,7 +284,7 @@ export async function runGate(o: GateOptions): Promise<GateReport> {
     }
     const width = Math.min(
       group.length,
-      o.maxParallel ?? parallelBudget(loadavg()[0] ?? 0, cpus().length),
+      o.maxParallel ?? parallelBudget(systemLoad(), cpus().length),
     );
     const queue = [...group];
     await Promise.all(
@@ -338,9 +338,9 @@ export async function runGate(o: GateOptions): Promise<GateReport> {
   const wallMs = Date.now() - started;
   writeFileSync(
     join(dir, 'summary.json'),
-    `${JSON.stringify({ line, loadavg: loadavg(), wallMs, results, missing, noted, resultsCommitted }, null, 2)}\n`,
+    `${JSON.stringify({ line, loadavg: systemLoadTriple(), loadSource: loadSource(), wallMs, results, missing, noted, resultsCommitted }, null, 2)}\n`,
   );
-  say(`wall ${(wallMs / 1000).toFixed(1)}s at load ${(loadavg()[0] ?? 0).toFixed(1)}`);
+  say(`wall ${(wallMs / 1000).toFixed(1)}s at load ${systemLoad().toFixed(1)}`);
   say(line);
   return { dir, results, pass, line, noted, wallMs, resultsCommitted };
 }
