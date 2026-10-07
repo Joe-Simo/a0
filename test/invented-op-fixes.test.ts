@@ -236,3 +236,19 @@ test('set AA is sealed and has the registered mix', async () => {
   assert.ok(all.filter((s) => / text "/.test(s)).length >= 6);
   assert.ok(all.filter((s) => /\b(read|write|puts) /.test(s)).length >= 7);
 });
+
+test('set BB is sealed and has the registered mix', async () => {
+  const { createHash } = await import('node:crypto');
+  const { readFileSync } = await import('node:fs');
+  const seal = readFileSync('tools/ai-edit-tasks-bb.sha256', 'utf8').split(/\s+/)[0];
+  assert.equal(
+    createHash('sha256').update(readFileSync('tools/ai-edit-tasks-bb.ts')).digest('hex'),
+    seal,
+  );
+  const { TASKS_BB } = await import('../tools/ai-edit-tasks-bb.js');
+  assert.ok(TASKS_BB.length >= 30);
+  const all = TASKS_BB.map((t) => t.a0Source + t.reference.a0);
+  assert.ok(all.filter((s) => / loop /.test(s)).length >= 7);
+  assert.ok(all.filter((s) => / text "/.test(s)).length >= 6);
+  assert.ok(all.filter((s) => /\b(read|write|puts) /.test(s)).length >= 7);
+});
