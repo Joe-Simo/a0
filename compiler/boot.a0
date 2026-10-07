@@ -165,7 +165,7 @@ end
 # u32x128x24 (compiler/emit_wasm.a0 `wachunk`).
 
 # word p1 of the shape table p0
-fn wshw u32x128x200 u32 -> u32
+fn wshw u32x128x310 u32 -> u32
 a shr p1 7
 b get p0 a
 c and p1 127
@@ -174,11 +174,11 @@ ret d
 end
 # the shape table of the chunk p2 types: shape pass of function p8 (one trip when it has a body:
 # word 6 of its row of fns, the packed ret, is 0 for a function without a body)
-fn wshp1 u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x200
+fn wshp1 u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32 -> u32x128x310
 r call shpass p0 p2 p3 p4 p5 p6 p7 p8
 ret r
 end
-fn wshp u32x128x200 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 -> u32x128x200
+fn wshp u32x128x310 u32 u32x384x65 u32x128x65 u32x128x45 u32x128x132 u32x128x512 u32x128x24 -> u32x128x310
 a mul p1 7
 b add a 6
 c shr b 7
@@ -219,7 +219,7 @@ ret m
 end
 # entry p1 of the shape table's list of missing bodies (MISS column, 16129..) appended to the
 # list (count, table of 1024) of the first state
-fn wmq (u32,u32x128x8) u32 u32x128x200 -> (u32,u32x128x8)
+fn wmq (u32,u32x128x8) u32 u32x128x310 -> (u32,u32x128x8)
 a at p0 0
 b at p0 1
 c add p1 16129
@@ -245,7 +245,7 @@ c call wxdts p0 0 b p3
 ret c
 end
 # word p1 of the shape table p2 written (a fold body: the debug dump of the shape table)
-fn wshd io u32 u32x128x200 -> io
+fn wshd io u32 u32x128x310 -> io
 a call wshw p2 p1
 b write p0 a
 ret b
@@ -275,7 +275,7 @@ end
 # from these tables (p1 simd, p2 unroll, p3 fns, p4 nodes, p5 args, p6 nt, p7 ty, p8 tl, p9 type
 # info, p10 shape, p11 call table with the synthetic functions marked), call a synthetic fused
 # function out of line? (src/optimize.ts emitFused: then the unfused function is emitted)
-fn wxbad u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x16 -> bool
+fn wxbad u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x16 -> bool
 j call z512
 k fold wxemit 1 j p0 0 0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11
 n call wxg k 0
@@ -295,7 +295,7 @@ end
 # function p2 of the chunk emitted from its fused form (see the orchestration above): p0 the
 # emission state, p3 simd, p4 unroll, p5 fns, p6 nodes, p7 args, p8 nt, p9 ty, p10 tl, p11 type
 # info, p12 shape, p13 names, p14 fnm (the trip p1 is 0: the function is p2)
-fn wxfus (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+fn wxfus (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
 fu call shfuse p9 p10 p5 p6 p7 p8 p12 p2 true
 st at fu 0
 ms at fu 1
@@ -331,7 +331,7 @@ ret s3
 end
 # function p0 + p1 of the chunk (first function p2): `wxfun`, or `wxfus` when shfcheck finds a
 # fusion site (same parameters as `wxfun`)
-fn wxfunf (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x200 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
+fn wxfunf (io,u32,u32x128x16,u32,u32x128x8,u32) u32 u32 u32 u32 u32x128x45 u32x128x132 u32x128x512 u32x128x24 u32x384x65 u32x128x65 u32x128x65 u32x128x310 u32x128x400 u32x128x16 -> (io,u32,u32x128x16,u32,u32x128x8,u32)
 g add p2 p1
 fc call shfcheck p9 p10 p5 p6 p7 p8 p12 g true
 fd at fc 0
