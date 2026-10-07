@@ -2,6 +2,33 @@
 
 **The programming language built for AI, not for people.** [a0lang.com](https://a0lang.com) · [Docs](https://a0lang.com/docs/)
 
+**A0 is a small programming language that AI agents edit through checked, structured edits and compile to native code, wasm, JavaScript, the JVM, .NET, Metal and SystemVerilog from one source.**
+
+## Start in 30 seconds
+
+Pick one. All are free, local, with no account and no key.
+
+**1. Agent skill** (Claude Code, Codex, Cursor, Copilot, Gemini CLI and many other agents, through the [skills CLI](https://github.com/vercel-labs/skills)):
+
+```bash
+npx skills add Joe-Simo/a0
+```
+
+**2. MCP server** (needs the `a0` binary on PATH, see the next item). Paste into Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) or any client that takes `mcpServers`; Claude Code: `claude mcp add a0 -- a0 mcp .`; VS Code: `.vscode/mcp.json` from [`integrations/vscode.mcp.json`](integrations/vscode.mcp.json).
+
+```json
+{ "mcpServers": { "a0": { "command": "a0", "args": ["mcp", "."] } } }
+```
+
+**3. The binary** (one file, no Node, SHA-256 verified against the release's `checksums.txt`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh | sh     # macOS / Linux
+irm https://raw.githubusercontent.com/Joe-Simo/a0/main/install.ps1 | iex           # Windows (PowerShell)
+```
+
+Honest status: A0 has no floating point, no heap and no recursion, and strings are bytes. It is a kernel and edit-loop language, not a general-purpose one. The numbers below are measured on one machine that was not quiet, and the loss ledger in [STATUS.md](STATUS.md) lists where A0 is slower. Correctness is split: every target is checked by execution against one oracle, and the optimizer is proved equivalent by Z3 on 48 corpus functions; the rest is tested, not proved. License: [MIT](LICENSE). More: [a0lang.com](https://a0lang.com), [a0lang.com/benchmarks](https://a0lang.com/benchmarks).
+
 A0 is a compact, exactly specified language that models write and edit through revision-checked structured edits. A model reads only what an edit touches, writes only the changed lines, and nothing invalid lands. One program compiles to native machine code (A0's own AArch64 code generator, or C), the browser (wasm32), JavaScript, the JVM, .NET, Metal GPU kernels, and clocked SystemVerilog, and every target is verified against one oracle.
 
 Measured on the repository's benchmarks (Apple M3, 8 cores, `results/*.json`). The machine was not quiet: `results/exec-benchmark.json` records a 1/5/15-minute load average of 6.4-8.0 for the main and arm64 runs and 32-40 for the JavaScript remeasurement; a quiet-machine rerun is pending:
