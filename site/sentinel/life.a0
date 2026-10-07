@@ -1,0 +1,204 @@
+# life.a0: the quiet signs of a living machine and its self-regulation. Core activity follows
+# how busy the machine is (speed, anchors held, anchors on code). Graph links are brief thin
+# edges between two joints of different tentacles, like a dependency edge between two nearby
+# nodes; they come and go on their own. Quality steps down when the measured frame cost stays
+# high and back up when it stays low.
+use "locomotion.a0"
+
+# ---- core energy
+fn core_kind_step u32 u32 u32x1024 -> u32
+stt call tg p2 p1 0
+k call tg p2 p1 25
+a eq stt 2
+b eq k 3
+c and a b
+n select c 1 0
+r add p0 n
+ret r
+end
+fn core_step u32x1024 u32 -> u32x1024
+vx call bg p0 3
+vy call bg p0 4
+spd call fx_hyp vx vy
+sf0 call fx_div spd 58982400
+sf call fx_min sf0 65536
+sfm call fx_mul sf 22938
+busy fold busy_step 8 0 p0
+bq mul busy 4588
+code fold core_kind_step 8 0 p0
+cq mul code 10486
+t0 add 19661 sfm
+t1 add t0 bq
+t2 add t1 cq
+tgt call fx_min t2 62259
+core call bg p0 20
+d sub tgt core
+k0 call fx_mul p1 163840
+k call fx_min k0 65536
+step call fx_mul d k
+nc add core step
+s1 call bs p0 20 nc
+s2 call bs s1 21 tgt
+ret s2
+end
+
+# ---- graph links (words 65..82: life, tentacle a, joint a, tentacle b, joint b, age)
+fn gl_step u32x1024 u32 u32 -> u32x1024
+b mul p1 6
+base add b 65
+life call bg p0 base
+a1 add base 1
+ta call bg p0 a1
+a2 add base 2
+ja call bg p0 a2
+a3 add base 3
+tb call bg p0 a3
+a4 add base 4
+jb call bg p0 a4
+a5 add base 5
+age call bg p0 a5
+xa call jg p0 ta ja 0
+ya call jg p0 ta ja 1
+xb call jg p0 tb jb 0
+yb call jg p0 tb jb 1
+dx sub xb xa
+dy sub yb ya
+d call fx_hyp dx dy
+sc call bg p0 38
+lim call fx_mul 12582912 sc
+far call fx_gt d lim
+on gt life p2
+l1 sub life p2
+l2 select on l1 0
+l3 select far 0 l2
+age2 add age p2
+s1 call bs p0 base l3
+s2 call bs s1 a5 age2
+ret s2
+end
+fn gl_free u32x1024 u32 -> bool
+b mul p1 6
+base add b 65
+life call bg p0 base
+r eq life 0
+ret r
+end
+fn gl_spawn u32x1024 u32 -> u32x1024
+tm0 call bg p0 83
+tok gt tm0 p1
+tm1 sub tm0 p1
+tm select tok tm1 0
+f0 call gl_free p0 0
+f1 call gl_free p0 1
+f2 call gl_free p0 2
+f01 or f0 f1
+free or f01 f2
+slot1 select f1 1 2
+slot select f0 0 slot1
+q call bg p0 17
+qok call fx_ge q 2
+rng0 call bg p0 19
+rng1 call fx_rng rng0
+rng2 call fx_rng rng1
+rng3 call fx_rng rng2
+rng4 call fx_rng rng3
+ta rem rng1 8
+r2 rem rng2 7
+tb0 add ta r2
+tb1 add tb0 1
+tb rem tb1 8
+nja call tg p0 ta 1
+njb call tg p0 tb 1
+j3a rem rng3 3
+j3b rem rng4 3
+ja0 sub nja 1
+jb0 sub njb 1
+ja sub ja0 j3a
+jb sub jb0 j3b
+xa call jg p0 ta ja 0
+ya call jg p0 ta ja 1
+xb call jg p0 tb jb 0
+yb call jg p0 tb jb 1
+dx sub xb xa
+dy sub yb ya
+d call fx_hyp dx dy
+sc call bg p0 38
+lo call fx_mul 1572864 sc
+hi call fx_mul 9175040 sc
+okd1 call fx_ge d lo
+okd2 call fx_le d hi
+okd and okd1 okd2
+due eq tm 0
+w1 and due free
+w2 and w1 qok
+make and w2 okd
+life0 shr rng4 21
+life add 1100 life0
+tn0 shr rng3 20
+tnx add 600 tn0
+tnn select make tnx 150
+tmset select due tnn tm
+b mul slot 6
+base add b 65
+s1 call bs p0 83 tmset
+s2 call bs s1 19 rng4
+sa call bs s2 base life
+a1 add base 1
+sb call bs sa a1 ta
+a2 add base 2
+sc2 call bs sb a2 ja
+a3 add base 3
+sd call bs sc2 a3 tb
+a4 add base 4
+se call bs sd a4 jb
+a5 add base 5
+sf call bs se a5 0
+r select make sf s2
+ret r
+end
+fn graph_step u32x1024 u32 -> u32x1024
+s1 fold gl_step 3 p0 p1
+s2 call gl_spawn s1 p1
+ret s2
+end
+
+# ---- quality from the measured frame cost (microseconds, header word 18)
+fn perf_step u32x1024 u32x32 -> u32x1024
+cost get p1 18
+lp0 call bg p0 85
+isnew eq lp0 0
+d sub cost lp0
+dd call fx_mul d 3277
+lp1 add lp0 dd
+lp select isnew cost lp1
+q call bg p0 17
+bad0 gt lp 5500
+bad1 gt lp 2800
+bad select false bad0 bad0
+nb0 call bg p0 18
+nb1 add nb0 1
+nb select bad0 nb1 0
+good lt lp 1900
+ng0 call bg p0 94
+ng1 add ng0 1
+ng select good ng1 0
+down ge nb 45
+up ge ng 300
+qd0 gt q 0
+qu0 lt q 3
+godown and down qd0
+goup and up qu0
+q1 sub q 1
+q2 add q 1
+qa select godown q1 q
+qb select goup q2 qa
+nbc select godown 0 nb
+ngc select goup 0 ng
+ngd select godown 0 ngc
+nbd select goup 0 nbc
+s1 call bs p0 85 lp
+s2 call bs s1 17 qb
+s3 call bs s2 18 nbd
+s4 call bs s3 94 ngd
+ret s4
+end

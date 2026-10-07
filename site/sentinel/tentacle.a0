@@ -1,0 +1,434 @@
+# tentacle.a0: one articulated chain (root at the body rim, joints, tip) solved with position-based
+# dynamics: joints carry velocity, damping and a procedural drift, then distance constraints
+# (segment length, a one-sided bend limit, a soft hold on the body rim) are relaxed a few times
+# in order from the root, so a body move reaches the middle joints and the tip later. An
+# attached tip is pinned to its anchor; the pull of a taut chain on the root is handed to
+# the body (words 31, 32). Per-tentacle personality is derived from a hash of its index.
+use "body.a0"
+
+# a number in [0, 65536) for tentacle p0, trait p1
+fn tent_u u32 u32 -> u32
+a shl p0 4
+b add a p1
+h call fx_hash b 20251
+r call fx_unit01 h
+ret r
+end
+
+# ---- creation
+fn tent_jinit u32x1024 u32 u32 -> u32x1024
+bx call bg p0 1
+by call bg p0 2
+ra call bg p0 5
+rb call tg p0 p2 11
+ang add ra rb
+c call fx_cos ang
+s call fx_sin ang
+sc call bg p0 38
+seg call tg p0 p2 8
+rim call fx_mul 720896 sc
+off mul p1 seg
+dist add rim off
+cx call fx_mul c dist
+cy call fx_mul s dist
+x add bx cx
+y add by cy
+s1 call js p0 p2 p1 0 x
+s2 call js s1 p2 p1 1 y
+s3 call js s2 p2 p1 2 0
+s4 call js s3 p2 p1 3 0
+s5 call js s4 p2 p1 4 x
+s6 call js s5 p2 p1 5 y
+ret s6
+end
+fn tent_init u32x1024 u32 -> u32x1024
+sc call bg p0 38
+u0 call tent_u p1 0
+u1 call tent_u p1 1
+u2 call tent_u p1 2
+u3 call tent_u p1 3
+u4 call tent_u p1 4
+u5 call tent_u p1 5
+u6 call tent_u p1 6
+u7 call tent_u p1 7
+u8 call tent_u p1 8
+u9 call tent_u p1 9
+nj0 shr u0 14
+nj add nj0 6
+rch0 call fx_mul u1 2621440
+rch1 add rch0 5242880
+rch call fx_mul rch1 sc
+njm sub nj 1
+seg div rch njm
+stf0 call fx_mul u2 17695
+stf add stf0 11796
+dmp0 call fx_mul u3 170394
+dmp add dmp0 209715
+rsp0 call fx_mul u4 22938
+rsp add rsp0 36044
+frq0 call fx_mul u5 20972
+frq add frq0 11796
+kb mul p1 8192
+jit0 shr u7 4
+jit sub jit0 2048
+rest0 add kb jit
+rest and rest0 65535
+pf0 shr u8 13
+pref add pf0 1
+odd0 and p1 1
+odd eq odd0 1
+zb select odd 4294921421 45875
+zj0 shr u6 2
+zj sub zj0 8192
+z add zb zj
+cd0 shr u9 6
+cd add cd0 200
+s1 call ts p0 p1 0 0
+s2 call ts s1 p1 1 nj
+s3 call ts s2 p1 2 0
+s4 call ts s3 p1 5 0
+s5 call ts s4 p1 6 0
+s6 call ts s5 p1 7 cd
+s7 call ts s6 p1 8 seg
+s8 call ts s7 p1 9 stf
+s9 call ts s8 p1 10 dmp
+s10 call ts s9 p1 11 rest
+s11 call ts s10 p1 12 frq
+s12 call ts s11 p1 13 u6
+s13 call ts s12 p1 14 rch
+s14 call ts s13 p1 15 rsp
+s15 call ts s14 p1 16 pref
+s16 call ts s15 p1 17 z
+s17 call ts s16 p1 18 0
+s18 call ts s17 p1 19 0
+s19 fold tent_jinit 10 s18 p1
+ret s19
+end
+
+# ---- the hover target of a free tip: out from the body along the rest direction, with slow breathing
+fn tent_probe u32x1024 u32 -> u32x1024
+ra call bg p0 5
+rb call tg p0 p1 11
+ph call tg p0 p1 13
+sw0 call fx_mul ph 26214
+sw call fx_sin sw0
+swa call fx_mul sw 2621
+ang0 add ra rb
+ang add ang0 swa
+c call fx_cos ang
+s call fx_sin ang
+reach call tg p0 p1 14
+hr call fx_mul reach 51118
+bp0 call fx_mul ph 39322
+bp call fx_sin bp0
+bpa call fx_mul bp 7864
+bf add 65536 bpa
+hr2 call fx_mul hr bf
+bx call bg p0 1
+by call bg p0 2
+vx call bg p0 3
+vy call bg p0 4
+lx call fx_mul vx 6554
+ly call fx_mul vy 6554
+cx call fx_mul c hr2
+cy call fx_mul s hr2
+hx0 add bx cx
+hy0 add by cy
+hx add hx0 lx
+hy add hy0 ly
+s1 call ts p0 p1 20 hx
+s2 call ts s1 p1 21 hy
+ret s2
+end
+
+# ---- forces and integration of one joint (p1 joint, p2 tentacle, p3 dt in Q16 seconds)
+fn jstep u32x1024 u32 u32 u32 -> u32x1024
+stt call tg p0 p2 0
+nj call tg p0 p2 1
+x call jg p0 p2 p1 0
+y call jg p0 p2 p1 1
+vx call jg p0 p2 p1 2
+vy call jg p0 p2 p1 3
+ph call tg p0 p2 13
+sc call bg p0 38
+jq mul p1 13762
+a1a add ph jq
+a1 add a1a 8520
+phb call fx_mul ph 89784
+jr mul p1 11141
+a2a add phb jr
+a2 add a2a 40000
+nx call fx_sin a1
+ny call fx_sin a2
+jh shl p1 16
+frac div jh nj
+st0 eq stt 0
+st1 eq stt 1
+st2 eq stt 2
+amp0 select st0 34078720 41943040
+amp1 select st1 5898240 amp0
+amp_s select st2 9830400 amp1
+amp1m call fx_mul amp_s sc
+mf call bg p0 93
+amp1x call fx_mul amp1m mf
+amp call fx_mul amp1x frac
+ax0 call fx_mul nx amp
+ay0 call fx_mul ny amp
+anx call tg p0 p2 23
+any call tg p0 p2 24
+hxx call tg p0 p2 20
+hyy call tg p0 p2 21
+gx select st1 anx hxx
+gy select st1 any hyy
+gs0 select st0 2228224 1441792
+gs1 select st1 7208960 gs0
+gs select st2 0 gs1
+d1 sub nj p1
+t1 eq d1 1
+t2 eq d1 2
+t3 eq d1 3
+w3 select t3 9830 0
+w2 select t2 26214 w3
+w select t1 65536 w2
+gsw call fx_mul gs w
+gdx sub gx x
+gdy sub gy y
+gax call fx_mul gsw gdx
+gay call fx_mul gsw gdy
+ax add ax0 gax
+ay add ay0 gay
+dvx call fx_mul ax p3
+dvy call fx_mul ay p3
+vx1 add vx dvx
+vy1 add vy dvy
+dmp call tg p0 p2 10
+fd call fx_mul dmp p3
+fac0 sub 65536 fd
+fac call fx_max fac0 13107
+vx2 call fx_mul vx1 fac
+vy2 call fx_mul vy1 fac
+vx3 call fx_limit vx2 209715200
+vy3 call fx_limit vy2 209715200
+mx call fx_mul vx3 p3
+my call fx_mul vy3 p3
+nx1 add x mx
+ny1 add y my
+s1 call js p0 p2 p1 0 nx1
+s2 call js s1 p2 p1 1 ny1
+s3 call js s2 p2 p1 2 vx3
+s4 call js s3 p2 p1 3 vy3
+s5 call js s4 p2 p1 4 nx1
+s6 call js s5 p2 p1 5 ny1
+ret s6
+end
+
+# an attached tip sits on its anchor
+fn tent_pin u32x1024 u32 -> u32x1024
+stt call tg p0 p1 0
+nj call tg p0 p1 1
+tip sub nj 1
+ax call tg p0 p1 23
+ay call tg p0 p1 24
+s1 call js p0 p1 tip 0 ax
+s2 call js s1 p1 tip 1 ay
+s3 call js s2 p1 tip 2 0
+s4 call js s3 p1 tip 3 0
+s5 call js s4 p1 tip 4 ax
+s6 call js s5 p1 tip 5 ay
+pin eq stt 2
+r select pin s6 p0
+ret r
+end
+
+# ---- constraints
+# the root is held to the body rim at the rest angle; the body takes a share of the correction
+fn rim_fix u32x1024 u32 -> u32x1024
+ra call bg p0 5
+rb call tg p0 p1 11
+a add ra rb
+c call fx_cos a
+s call fx_sin a
+sc call bg p0 38
+rim call fx_mul 720896 sc
+bx call bg p0 1
+by call bg p0 2
+cx call fx_mul c rim
+cy call fx_mul s rim
+rx add bx cx
+ry add by cy
+x0 call jg p0 p1 0 0
+y0 call jg p0 p1 0 1
+dx sub x0 rx
+dy sub y0 ry
+cdx call fx_mul dx 36044
+cdy call fx_mul dy 36044
+rdx call fx_mul cdx 60948
+rdy call fx_mul cdy 60948
+bdx sub cdx rdx
+bdy sub cdy rdy
+nx sub x0 rdx
+ny sub y0 rdy
+s1 call js p0 p1 0 0 nx
+s2 call js s1 p1 0 1 ny
+ox call bg s2 31
+oy call bg s2 32
+nox add ox bdx
+noy add oy bdy
+s3 call bs s2 31 nox
+s4 call bs s3 32 noy
+ret s4
+end
+
+# segment i (joint i to joint i+1) of tentacle p2 keeps its length; a pinned tip does not move
+fn seg_fix u32x1024 u32 u32 -> u32x1024
+nj call tg p0 p2 1
+stt call tg p0 p2 0
+i1 add p1 1
+ax call jg p0 p2 p1 0
+ay call jg p0 p2 p1 1
+bx call jg p0 p2 i1 0
+by call jg p0 p2 i1 1
+dx sub bx ax
+dy sub by ay
+len call fx_hyp dx dy
+seg call tg p0 p2 8
+resp call tg p0 p2 15
+z eq len 0
+diff sub len seg
+r0 call fx_div diff len
+r select z 0 r0
+cf call fx_mul r resp
+njm sub nj 1
+istip eq i1 njm
+att eq stt 2
+pin and istip att
+f0 select pin 65536 32768
+f1 select pin 0 32768
+cdx call fx_mul dx cf
+cdy call fx_mul dy cf
+m0x call fx_mul cdx f0
+m0y call fx_mul cdy f0
+m1x call fx_mul cdx f1
+m1y call fx_mul cdy f1
+nax add ax m0x
+nay add ay m0y
+nbx sub bx m1x
+nby sub by m1y
+s1 call js p0 p2 p1 0 nax
+s2 call js s1 p2 p1 1 nay
+s3 call js s2 p2 i1 0 nbx
+s4 call js s3 p2 i1 1 nby
+ret s4
+end
+
+# a joint triple (i, i+1, i+2): the outer joints may not come closer than a bent chain allows
+fn bend_fix u32x1024 u32 u32 -> u32x1024
+nj call tg p0 p2 1
+stt call tg p0 p2 0
+i2 add p1 2
+ax call jg p0 p2 p1 0
+ay call jg p0 p2 p1 1
+cx call jg p0 p2 i2 0
+cy call jg p0 p2 i2 1
+dx sub cx ax
+dy sub cy ay
+len call fx_hyp dx dy
+seg call tg p0 p2 8
+stf call tg p0 p2 9
+rest call fx_mul seg 124518
+short call fx_lt len rest
+nz ne len 0
+act and short nz
+gap sub rest len
+r call fx_div gap len
+cf0 call fx_mul r stf
+cf call fx_mul cf0 32768
+njm sub nj 1
+istip eq i2 njm
+att eq stt 2
+pin and istip att
+f0 select pin 65536 32768
+f1 select pin 0 32768
+cdx call fx_mul dx cf
+cdy call fx_mul dy cf
+m0x call fx_mul cdx f0
+m0y call fx_mul cdy f0
+m1x call fx_mul cdx f1
+m1y call fx_mul cdy f1
+zx select act m0x 0
+zy select act m0y 0
+wx select act m1x 0
+wy select act m1y 0
+nax sub ax zx
+nay sub ay zy
+ncx add cx wx
+ncy add cy wy
+s1 call js p0 p2 p1 0 nax
+s2 call js s1 p2 p1 1 nay
+s3 call js s2 p2 i2 0 ncx
+s4 call js s3 p2 i2 1 ncy
+ret s4
+end
+
+# one relaxation pass for tentacle p2: rim, segments root to tip, bends
+fn tent_iter u32x1024 u32 u32 -> u32x1024
+nj call tg p0 p2 1
+s1 call rim_fix p0 p2
+njs sub nj 1
+s2 fold seg_fix njs s1 p2
+njb sub nj 2
+s3 fold bend_fix njb s2 p2
+ret s3
+end
+
+# velocity from what the constraints moved the predicted position by
+fn vel_fix u32x1024 u32 u32 -> u32x1024
+inv call bg p0 88
+x call jg p0 p2 p1 0
+y call jg p0 p2 p1 1
+px call jg p0 p2 p1 4
+py call jg p0 p2 p1 5
+vx call jg p0 p2 p1 2
+vy call jg p0 p2 p1 3
+dx sub x px
+dy sub y py
+cx call fx_mul dx inv
+cy call fx_mul dy inv
+vx1 add vx cx
+vy1 add vy cy
+vx2 call fx_limit vx1 209715200
+vy2 call fx_limit vy1 209715200
+s1 call js p0 p2 p1 2 vx2
+s2 call js s1 p2 p1 3 vy2
+ret s2
+end
+
+# tension: distance root to tip over the chain length
+fn tent_tension u32x1024 u32 -> u32x1024
+nj call tg p0 p1 1
+seg call tg p0 p1 8
+tip sub nj 1
+x0 call jg p0 p1 0 0
+y0 call jg p0 p1 0 1
+x1 call jg p0 p1 tip 0
+y1 call jg p0 p1 tip 1
+dx sub x1 x0
+dy sub y1 y0
+d call fx_hyp dx dy
+cl mul seg tip
+r call fx_div d cl
+s1 call ts p0 p1 22 r
+ret s1
+end
+
+# everything for one tentacle in a frame: p1 tentacle, p2 dt (Q16 s), p3 relaxation passes
+fn tent_run u32x1024 u32 u32 u32 -> u32x1024
+nj call tg p0 p1 1
+s1 call tent_probe p0 p1
+s2 fold jstep nj s1 p1 p2
+s3 call tent_pin s2 p1
+s4 fold tent_iter p3 s3 p1
+s5 fold vel_fix nj s4 p1
+s6 call tent_tension s5 p1
+ret s6
+end

@@ -1,0 +1,347 @@
+# fx.a0: signed Q16.16 fixed-point math for A0 programs. No float, no 64-bit, no memory.
+#
+# A number is a u32 holding a two's complement Q16.16 value: 65536 is 1.0, the range is
+# -32768.0 .. 32767.99998. Addition, subtraction and negation are the plain `add`, `sub` ops
+# (they wrap in two's complement); the functions here supply what u32 ops do not: signed
+# compare, arithmetic shift, multiply, divide, square root, trigonometry and a random generator.
+# An angle is a number of turns in Q16 (65536 = one full turn) and wraps by itself.
+#
+# Exact behaviour (checked against a BigInt oracle in test/fx.test.ts):
+#   fx_mul  a*b truncated toward zero; the true product must fit in Q16.16
+#   fx_div  a/b truncated toward zero to 16 fractional bits; b = 0 gives the largest value
+#   fx_sqrt floor of the square root (at least 16 fractional bits for x < 256.0); negative gives 0
+#   fx_sin/fx_cos linear interpolation of a 256-step quarter-symmetric table, error < 1e-4
+#   fx_atan2 error < 3e-4 turn
+
+# ---- sign, compare, min/max, shifts
+fn fx_isneg u32 -> bool
+a shr p0 31
+b eq a 1
+ret b
+end
+fn fx_neg u32 -> u32
+a sub 0 p0
+ret a
+end
+fn fx_abs u32 -> u32
+n call fx_isneg p0
+m sub 0 p0
+r select n m p0
+ret r
+end
+# signed p0 < p1
+fn fx_lt u32 u32 -> bool
+a xor p0 2147483648
+b xor p1 2147483648
+r lt a b
+ret r
+end
+fn fx_gt u32 u32 -> bool
+r call fx_lt p1 p0
+ret r
+end
+fn fx_le u32 u32 -> bool
+g call fx_lt p1 p0
+r select g false true
+ret r
+end
+fn fx_ge u32 u32 -> bool
+l call fx_lt p0 p1
+r select l false true
+ret r
+end
+fn fx_min u32 u32 -> u32
+l call fx_lt p0 p1
+r select l p0 p1
+ret r
+end
+fn fx_max u32 u32 -> u32
+l call fx_lt p0 p1
+r select l p1 p0
+ret r
+end
+# p0 limited to [p1, p2]
+fn fx_clamp u32 u32 u32 -> u32
+a call fx_max p0 p1
+b call fx_min a p2
+ret b
+end
+# p0 limited to [-p1, p1]
+fn fx_limit u32 u32 -> u32
+n sub 0 p1
+r call fx_clamp p0 n p1
+ret r
+end
+# arithmetic (sign-filling) shift right
+fn fx_sar u32 u32 -> u32
+s shr p0 31
+m sub 0 s
+t xor p0 m
+u shr t p1
+r xor u m
+ret r
+end
+
+# ---- multiply and divide
+fn fx_mul u32 u32 -> u32
+sa call fx_isneg p0
+sb call fx_isneg p1
+ma call fx_abs p0
+mb call fx_abs p1
+ah shr ma 16
+al and ma 65535
+bh shr mb 16
+bl and mb 65535
+hh mul ah bh
+hs shl hh 16
+hl mul ah bl
+lh mul al bh
+ll mul al bl
+lls shr ll 16
+s1 add hs hl
+s2 add s1 lh
+s3 add s2 lls
+sn xor sa sb
+n sub 0 s3
+r select sn n s3
+ret r
+end
+# long division step: state (remainder, quotient bits)
+fn fx_divstep (u32,u32) u32 u32 -> (u32,u32)
+r at p0 0
+q at p0 1
+r2 shl r 1
+ok ge r2 p2
+rs sub r2 p2
+rn select ok rs r2
+q2 shl q 1
+bit select ok 1 0
+q3 or q2 bit
+o rec rn q3
+ret o
+end
+fn fx_div u32 u32 -> u32
+sa call fx_isneg p0
+sb call fx_isneg p1
+ma call fx_abs p0
+mb call fx_abs p1
+z eq mb 0
+qi div ma mb
+qm mul qi mb
+r0 sub ma qm
+s0 rec r0 0
+f fold fx_divstep 16 s0 mb
+fr at f 1
+qh shl qi 16
+m add qh fr
+sn xor sa sb
+n sub 0 m
+sg select sn n m
+r select z 2147483647 sg
+ret r
+end
+# p0 * p1 / p2 for plain integers (not Q16): p0 * p1 must fit 32 bits
+fn fx_muldiv u32 u32 u32 -> u32
+a mul p0 p1
+r div a p2
+ret r
+end
+# linear interpolation p0 + (p1 - p0) * t, t in Q16
+fn fx_lerp u32 u32 u32 -> u32
+d sub p1 p0
+m call fx_mul d p2
+r add p0 m
+ret r
+end
+
+# ---- square root and length
+fn fx_isqstep (u32,u32) u32 -> (u32,u32)
+x at p0 0
+res at p0 1
+i2 shl p1 1
+sh sub 30 i2
+bit shl 1 sh
+t add res bit
+ok ge x t
+x2 sub x t
+xn select ok x2 x
+rh shr res 1
+rb add rh bit
+rn select ok rb rh
+o rec xn rn
+ret o
+end
+# floor of the square root of an unsigned integer
+fn fx_isqrt u32 -> u32
+s rec p0 0
+f fold fx_isqstep 16 s
+r at f 1
+ret r
+end
+# square root of a non-negative Q16.16 (negative gives 0)
+fn fx_sqrt u32 -> u32
+n call fx_isneg p0
+a lt p0 65536
+b lt p0 16777216
+x16 shl p0 16
+x8 shl p0 8
+xb select b x8 p0
+xs select a x16 xb
+sb select b 4 8
+sh select a 0 sb
+r call fx_isqrt xs
+v shl r sh
+z select n 0 v
+ret z
+end
+# sqrt(x*x + y*y) for any Q16 x, y whose result fits: both are scaled down first so the squares fit
+fn fx_hyp u32 u32 -> u32
+ax call fx_abs p0
+ay call fx_abs p1
+m call fx_max ax ay
+s1 ge m 8388608
+s2 ge m 134217728
+k1 select s1 4 0
+k select s2 8 k1
+bx shr ax k
+by shr ay k
+xx call fx_mul bx bx
+yy call fx_mul by by
+q add xx yy
+h call fx_sqrt q
+r shl h k
+ret r
+end
+# unit vector (x, y) of (p0, p1); (1.0, 0) for the zero vector
+fn fx_unit u32 u32 -> (u32,u32)
+l call fx_hyp p0 p1
+z eq l 0
+ux call fx_div p0 l
+uy call fx_div p1 l
+x select z 65536 ux
+y select z 0 uy
+r rec x y
+ret r
+end
+fn fx_dot u32 u32 u32 u32 -> u32
+a call fx_mul p0 p2
+b call fx_mul p1 p3
+r add a b
+ret r
+end
+# z component of the cross product (p0, p1) x (p2, p3)
+fn fx_cross u32 u32 u32 u32 -> u32
+a call fx_mul p0 p3
+b call fx_mul p1 p2
+r sub a b
+ret r
+end
+
+# ---- trigonometry: angle in turns (Q16, 65536 = 2 pi), results in Q16
+fn fx_qsin u32 -> u32
+t arr 0 1608 3216 4821 6424 8022 9616 11204 12785 14359 15924 17479 19024 20557 22078 23586 25080 26558 28020 29466 30893 32303 33692 35062 36410 37736 39040 40320 41576 42806 44011 45190 46341 47464 48559 49624 50660 51665 52639 53581 54491 55368 56212 57022 57798 58538 59244 59914 60547 61145 61705 62228 62714 63162 63572 63944 64277 64571 64827 65043 65220 65358 65457 65516 65536
+g get t p0
+ret g
+end
+# sine of idx/256 turn (idx is taken modulo 256)
+fn fx_s256 u32 -> u32
+i and p0 255
+q shr i 6
+r and i 63
+n64 sub 64 r
+oddv and q 1
+odd eq oddv 1
+k select odd n64 r
+v call fx_qsin k
+low ge q 2
+nv sub 0 v
+s select low nv v
+ret s
+end
+fn fx_sin u32 -> u32
+i shr p0 8
+f and p0 255
+a call fx_s256 i
+i1 add i 1
+b call fx_s256 i1
+d sub b a
+m mul d f
+ms call fx_sar m 8
+r add a ms
+ret r
+end
+fn fx_cos u32 -> u32
+a add p0 16384
+r call fx_sin a
+ret r
+end
+fn fx_qatan u32 -> u32
+t arr 0 163 326 489 651 813 975 1136 1297 1457 1617 1775 1933 2090 2246 2401 2555 2708 2860 3010 3159 3307 3453 3599 3742 3884 4025 4164 4302 4438 4572 4705 4836 4966 5094 5220 5344 5467 5589 5708 5826 5943 6058 6171 6282 6392 6500 6607 6712 6815 6917 7018 7117 7214 7310 7405 7498 7589 7679 7768 7856 7942 8026 8110 8192
+g get t p0
+ret g
+end
+# arctangent of the ratio r in [0, 1] (Q16), in turns
+fn fx_atan01 u32 -> u32
+i shr p0 10
+f and p0 1023
+a call fx_qatan i
+i1 add i 1
+b call fx_qatan i1
+d sub b a
+m mul d f
+ms shr m 10
+r add a ms
+ret r
+end
+# angle of the vector (x = p1, y = p0) in turns [0, 65536); atan2(y, x) with y first as in math
+fn fx_atan2 u32 u32 -> u32
+ax call fx_abs p1
+ay call fx_abs p0
+big call fx_max ax ay
+small call fx_min ax ay
+z eq big 0
+r call fx_div small big
+base call fx_atan01 r
+swap gt ay ax
+b1 sub 16384 base
+oct select swap b1 base
+xneg call fx_isneg p1
+b2 sub 32768 oct
+q2 select xneg b2 oct
+yneg call fx_isneg p0
+b3 sub 0 q2
+q3 select yneg b3 q2
+w and q3 65535
+v select z 0 w
+ret v
+end
+
+# ---- pseudo-random: xorshift32 (state must be non-zero)
+fn fx_rng u32 -> u32
+a shl p0 13
+b xor p0 a
+c shr b 17
+d xor b c
+e shl d 5
+f xor d e
+ret f
+end
+# a hash of two words (well mixed, deterministic)
+fn fx_hash u32 u32 -> u32
+a mul p0 2654435761
+b xor a p1
+c shr b 15
+d xor b c
+e mul d 2246822519
+f shr e 13
+g xor e f
+h mul g 3266489917
+i shr h 16
+j xor h i
+ret j
+end
+# a number in [0, 65536) from a hash
+fn fx_unit01 u32 -> u32
+r shr p0 16
+ret r
+end

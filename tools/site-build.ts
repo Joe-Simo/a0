@@ -15,6 +15,7 @@ import { link } from '../src/link.js';
 import { findClang, runTool } from '../src/toolchain.js';
 import { a0WasmFromTables, buildWasmTool, typescriptWasm } from './selfhost-wasm.js';
 import { buildGenerator, generate } from './site-gen.js';
+import { LIVE_PROGRAMS, type LiveProgramSpec } from './live-programs.js';
 import { fillShell, prerender } from './site-render.js';
 
 const out = join('site', 'dist');
@@ -47,6 +48,25 @@ async function buildProgram(a0w: string, entry: string, outName: string): Promis
     size: `${outName}.wasm ${wasm.length} bytes (compiler/optimize.a0 and emit_wasm.a0, equal to src/wasm.ts)`,
     ...pre,
   };
+}
+
+/**
+ * Compile a live program (site/live.ts runs it frame by frame; there is nothing to prerender): the
+ * same A0 optimizer and wasm emitter, with the io sizes of its spec and only `frame` exported.
+ */
+async function buildLive(a0w: string, spec: LiveProgramSpec): Promise<string> {
+  const program = (await link(join('site', spec.entry), (p) => readFile(p, 'utf8'), { root: '.' }))
+    .program;
+  const layout = {
+    ioInputCapacity: spec.inputWords,
+    ioOutputCapacity: spec.outputWords,
+    exports: ['frame'],
+  };
+  const wasm = a0WasmFromTables(a0w, program, layout, true).bytes;
+  if (Buffer.compare(Buffer.from(wasm), Buffer.from(typescriptWasm(program, layout, true))) !== 0)
+    throw new Error(`${spec.entry}: the A0 optimizer and wasm emitter differ from src/wasm.ts`);
+  await writeFile(join(out, `${spec.name}.wasm`), wasm);
+  return `${spec.name}.wasm ${wasm.length} bytes (live program, equal to src/wasm.ts)`;
 }
 
 /** Files for agents: llms.txt (the convention), the primer, the docs as text, robots, sitemap. */
@@ -208,6 +228,7 @@ async function main(): Promise<void> {
   const page = await buildProgram(a0w, 'page.a0', 'page');
   const docs = await buildProgram(a0w, 'docs.a0', 'docs');
   const sizes = [page.size, docs.size];
+  for (const spec of LIVE_PROGRAMS) sizes.push(await buildLive(a0w, spec));
   // resolve typescript from this file, not from the working directory (worktrees share the parent's modules)
   const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
   const r = runTool(process.execPath, [

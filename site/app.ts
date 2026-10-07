@@ -561,6 +561,10 @@ async function main(): Promise<void> {
   // The page exists only after the first render, so honor a fragment in the URL now.
   if (location.hash.length > 1) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   spy();
+  // A page may ask for a live (frame-driven) A0 program with data-live on its root; it mounts after the
+  // first render, lazily, and a failure leaves the page as it is (see site/live.ts).
+  if (root.dataset.live !== undefined)
+    void import('./live.js').then((m) => m.mountLive(root)).catch(() => undefined);
   (window as unknown as { a0page: { show: EventSink; state: () => number[] } }).a0page = {
     show,
     state: () => state,

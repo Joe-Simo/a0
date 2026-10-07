@@ -1,0 +1,84 @@
+# layout.a0: the A0 Sentinel's state layout. One array of 1024 words (u32x1024) holds everything,
+# so the host can hand it back each frame; positions are Q16.16 CSS pixels in the viewport.
+#
+# Body words (index):
+#   0 magic    1 x  2 y  3 vx  4 vy   5 heading (turns)  6 heading rate   7 pointer x  8 pointer y
+#   9 pointer vx  10 pointer vy   11 mode (0 idle patrol, 1 mouse, 2 touch, 3 touch scroll)
+#   12 idle ms   13 clock ms   14 scrollY  15 scrollX (previous, ints)  16 scroll speed (Q16 px/s)
+#   17 quality (0..3)  18 quality counter  19 rng  20 core energy  21 core target  22 tap sequence
+#   23 touch was down  24 touch start scrollY  25 touch scrolling  26 ms since touch end
+#   27 patrol phase  28 interest rect id  29 interest timer ms  30 search round robin
+#   31 reaction x  32 reaction y  33 home x  34 home y  35 previous pointer x  36 previous pointer y
+#   37 settled flag  38 scale  39 viewport signature  40..63 recent anchors (8 x: id, page x, page y)
+#   64 recent ring head  65..82 graph links (3 x 6: life ms, tentacle a, joint a, tentacle b, joint b, age ms)
+#   83 link timer ms  84 frames  85 cost low-pass  86 reduced-motion fast-forward done  87 previous mode
+#   88 1 / dt (Q16)  89 hover phase  90 core phase  91 last viewport width  92 last viewport height
+# Tentacle k starts at 96 + 96 k:
+#   0 state (0 search 1 approach 2 attached 3 releasing)  1 joints  2 anchor rect id  3 anchor dx
+#   4 anchor dy (Q16 px from the rect corner)  5 state ms  6 hold ms  7 cooldown ms  8 segment length
+#   9 bend stiffness  10 damping  11 rest angle  12 frequency  13 phase  14 reach  15 responsiveness
+#   16 preferred kind  17 depth (-1..1 Q16)  18 last anchor id  19 flags (1 tap orient)
+#   20 hover x  21 hover y  22 tension (Q16 ratio)  23 anchor x  24 anchor y (viewport Q16)
+#   32 + 6 j: joint j = x y vx vy predicted-x predicted-y (j < 10)
+
+use "../lib/fx.a0"
+
+fn bg u32x1024 u32 -> u32
+v get p0 p1
+ret v
+end
+fn bs u32x1024 u32 u32 -> u32x1024
+r set p0 p1 p2
+ret r
+end
+fn tbase u32 -> u32
+a mul p0 96
+b add a 96
+ret b
+end
+fn tg u32x1024 u32 u32 -> u32
+b call tbase p1
+i add b p2
+v get p0 i
+ret v
+end
+fn ts u32x1024 u32 u32 u32 -> u32x1024
+b call tbase p1
+i add b p2
+r set p0 i p3
+ret r
+end
+# joint field: tentacle p1, joint p2, field p3 (0 x, 1 y, 2 vx, 3 vy)
+fn jg u32x1024 u32 u32 u32 -> u32
+b call tbase p1
+j4 mul p2 6
+o add b 32
+o2 add o j4
+i add o2 p3
+v get p0 i
+ret v
+end
+fn js u32x1024 u32 u32 u32 u32 -> u32x1024
+b call tbase p1
+j4 mul p2 6
+o add b 32
+o2 add o j4
+i add o2 p3
+r set p0 i p4
+ret r
+end
+# an integer number of pixels as Q16
+fn q16 u32 -> u32
+r shl p0 16
+ret r
+end
+# sentinel scale from the viewport width (Q16): phone 0.72, tablet 0.88, desktop 1.0, wide 1.12
+fn scale_of u32 -> u32
+a lt p0 600
+b lt p0 1000
+c ge p0 1700
+s1 select c 73400 65536
+s2 select b 57671 s1
+s3 select a 47186 s2
+ret s3
+end

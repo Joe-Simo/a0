@@ -1,0 +1,127 @@
+# frame.a0: the live-program protocol for A0 (see docs/LIVE-PROGRAMS.md and site/live/words.ts).
+# A live program exports `fn frame io -> u32`; the host calls it once per animation frame.
+# The host writes one word block: a 32-word header, the geometry table, then the program state
+# (a count and that many words). The program writes a word stream of commands back.
+#
+# Header words (HDR_*), read by fr_rdhdr:
+#   0 version  1 dt_ms  2 flags  3 vw  4 vh  5 scrollX  6 scrollY  7 dpr*100
+#   8 pointer x (Q16)  9 pointer y (Q16)  10 pointer type (0 none 1 mouse 2 pen 3 touch)
+#   11 tap sequence  12 tap x (Q16)  13 tap y (Q16)  14..17 tap element rect x0 y0 x1 y1 (page px)
+#   18 frame cost in microseconds (moving average)  19 frame interval in microseconds
+#   20 document height  21 geometry rows  22 time in ms (wraps)  23 geometry generation
+# flags: 1 reduced motion, 2 coarse pointer device, 4 pointer known, 8 pointer down,
+#   16 geometry changed, 32 first frame, 64 resumed after hidden, 128 touch cancelled (the
+#   browser took the gesture for scrolling)
+# Geometry row (7 words): id x0 y0 x1 y1 (page CSS px) kind | in-viewport flag << 8
+# Output commands (Q16 signed numbers in CSS px, colors packed 0xRRGGBBAA):
+#   1 STATE n w...       the program state to hand back next frame
+#   2 WATCH kind n bytes ask the host to track elements matching a CSS selector as `kind`
+#   3 QUALITY percent    canvas render scale request, 25..100
+#   10 CLEAR (everything)
+#   11 LINE x1 y1 x2 y2 width rgba
+#   12 DISC x y r rgba
+#   13 RING x y r width rgba
+#   14 GLOW x y r rgba      radial gradient, rgba at the centre fading to transparent at r
+#   15 SPHERE x y r light dark   shaded ball, highlight up and left
+#   16 PATH n width rgba x y ... polyline through n points
+#   17 BRACKETS x0 y0 x1 y1 len width rgba   the four corners of a rectangle
+use "fx.a0"
+
+fn fr_rdstep (u32x32,io) u32 -> (u32x32,io)
+a at p0 0
+t at p0 1
+r read t
+v at r 0
+t2 at r 1
+a2 set a p1 v
+o rec a2 t2
+ret o
+end
+fn fr_rdhdr io -> (u32x32,io)
+z arr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+s rec z p0
+f fold fr_rdstep 32 s
+ret f
+end
+
+# ---- command writers
+fn fr_pack u32 u32 u32 u32 -> u32
+a shl p0 24
+b shl p1 16
+c shl p2 8
+d or a b
+e or d c
+f or e p3
+ret f
+end
+fn fr_clear io -> io
+a write p0 10
+ret a
+end
+fn fr_line io u32 u32 u32 u32 u32 u32 -> io
+a write p0 11
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+f write e p5
+g write f p6
+ret g
+end
+fn fr_disc io u32 u32 u32 u32 -> io
+a write p0 12
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+ret e
+end
+fn fr_ring io u32 u32 u32 u32 u32 -> io
+a write p0 13
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+f write e p5
+ret f
+end
+fn fr_glow io u32 u32 u32 u32 -> io
+a write p0 14
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+ret e
+end
+fn fr_sphere io u32 u32 u32 u32 u32 -> io
+a write p0 15
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+f write e p5
+ret f
+end
+fn fr_brackets io u32 u32 u32 u32 u32 u32 u32 -> io
+a write p0 17
+b write a p1
+c write b p2
+d write c p3
+e write d p4
+f write e p5
+g write f p6
+h write g p7
+ret h
+end
+fn fr_quality io u32 -> io
+a write p0 3
+b write a p1
+ret b
+end
+# WATCH kind selector: this writes the head (2, kind); the caller follows it with
+# `puts t (text "selector")`, which writes the byte count and the bytes.
+fn fr_watch io u32 -> io
+a write p0 2
+b write a p1
+ret b
+end

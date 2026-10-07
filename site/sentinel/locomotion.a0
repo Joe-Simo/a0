@@ -1,0 +1,454 @@
+# locomotion.a0: what each tentacle is doing, and how that moves the body. A tentacle cycles
+# SEARCHING -> APPROACHING -> ATTACHED -> RELEASING. Searching looks for an anchor on the page's
+# real geometry (anchor.a0, one tentacle per frame, round robin). Approaching pulls the tip
+# toward the anchor through the chain solver (no teleport). Attached pins the tip to a point
+# that follows its element (element id + offset, so scrolling and layout changes carry it);
+# the chain then braces, pulls and stretches against the body. Releasing lets go with some of
+# the tip's velocity and sends it back to searching after a cooldown. Nothing here moves a
+# page element: the geometry is read only.
+use "anchor.a0"
+
+# count tentacles that hold or are reaching for an anchor
+fn busy_step u32 u32 u32x1024 -> u32
+stt call tg p2 p1 0
+a eq stt 1
+b eq stt 2
+c or a b
+n select c 1 0
+r add p0 n
+ret r
+end
+
+# ---- anchors follow their element: the viewport position of the anchor of each active tentacle
+# (state 1 or 2); a missing, hidden or off-screen element releases the tentacle
+fn rel_enter u32x1024 u32 -> u32x1024
+nj call tg p0 p1 1
+tip sub nj 1
+pre sub nj 2
+rid call tg p0 p1 2
+clk call bg p0 13
+sc call bg p0 38
+s1 call ts p0 p1 18 rid
+s2 call ts s1 p1 0 3
+s3 call ts s2 p1 5 0
+s4 call ts s3 p1 19 0
+k31 add p1 31
+h call fx_hash clk k31
+u shr h 22
+cdms add 350 u
+s5 call ts s4 p1 7 cdms
+hx call tg s5 p1 20
+hy call tg s5 p1 21
+tx call jg s5 p1 tip 0
+ty call jg s5 p1 tip 1
+dx sub hx tx
+dy sub hy ty
+un call fx_unit dx dy
+ux at un 0
+uy at un 1
+kick call fx_mul 17039360 sc
+pvx call jg s5 p1 pre 2
+pvy call jg s5 p1 pre 3
+bvx call fx_mul pvx 52429
+bvy call fx_mul pvy 52429
+kx call fx_mul ux kick
+ky call fx_mul uy kick
+vx add bvx kx
+vy add bvy ky
+s6 call js s5 p1 tip 2 vx
+s7 call js s6 p1 tip 3 vy
+ret s7
+end
+
+fn tent_follow u32x1024 u32 u32x32 u32x1344 -> u32x1024
+stt call tg p0 p1 0
+a1 eq stt 1
+a2 eq stt 2
+active or a1 a2
+nrows get p2 21
+n select active nrows 0
+rid call tg p0 p1 2
+sx get p2 5
+sy get p2 6
+vw get p2 3
+vh get p2 4
+row call env_find p3 n rid
+nf eq row 4294967295
+rowc select nf 0 row
+x0 call rg p3 rowc 1
+y0 call rg p3 rowc 2
+offx call tg p0 p1 3
+offy call tg p0 p1 4
+ax0 call pg2vp x0 sx
+ay0 call pg2vp y0 sy
+ax add ax0 offx
+ay add ay0 offy
+vis call r_vis p3 rowc
+wq shl vw 16
+hq shl vh 16
+wq2 add wq 2621440
+hq2 add hq 2621440
+m1 call fx_ge ax 4292345856
+m2 call fx_le ax wq2
+m3 call fx_ge ay 4292345856
+m4 call fx_le ay hq2
+inx and m1 m2
+iny and m3 m4
+inv and inx iny
+f0 and vis inv
+fnd select nf false f0
+ok and active fnd
+oax call tg p0 p1 23
+oay call tg p0 p1 24
+nax select ok ax oax
+nay select ok ay oay
+s1 call ts p0 p1 23 nax
+s2 call ts s1 p1 24 nay
+nfnd call not_b fnd
+lost and active nfnd
+rel call rel_enter s2 p1
+r select lost rel s2
+ret r
+end
+
+# ---- timers: state time up, cooldown down (ms)
+fn lg_tick u32x1024 u32 u32 -> u32x1024
+tm0 call tg p0 p1 5
+tm add tm0 p2
+cd0 call tg p0 p1 7
+cdok gt cd0 p2
+cd1 sub cd0 p2
+cd select cdok cd1 0
+s1 call ts p0 p1 5 tm
+s2 call ts s1 p1 7 cd
+ret s2
+end
+
+# remember an anchor in the recent ring (words 40..63, head in word 64)
+fn ring_push u32x1024 u32 u32 u32 -> u32x1024
+h call bg p0 64
+hm rem h 8
+b mul hm 3
+i add b 40
+s1 call bs p0 i p1
+i1 add i 1
+s2 call bs s1 i1 p2
+i2 add i 2
+s3 call bs s2 i2 p3
+h1 add h 1
+s4 call bs s3 64 h1
+ret s4
+end
+
+# begin the approach to the candidate (x p2, y p3, viewport Q16) of row p6; p4 hdr, p5 rects
+fn begin_approach u32x1024 u32 u32 u32 u32x32 u32x1344 u32 -> u32x1024
+sx get p4 5
+sy get p4 6
+x0 call rg p5 p6 1
+y0 call rg p5 p6 2
+id call rg p5 p6 0
+kind call r_kind p5 p6
+sxq shl sx 16
+syq shl sy 16
+x0q shl x0 16
+y0q shl y0 16
+px add p2 sxq
+py add p3 syq
+offx sub px x0q
+offy sub py y0q
+s1 call ts p0 p1 2 id
+s2 call ts s1 p1 3 offx
+s3 call ts s2 p1 4 offy
+s4 call ts s3 p1 5 0
+s5 call ts s4 p1 25 kind
+s6 call ts s5 p1 19 0
+s7 call ts s6 p1 0 1
+ret s7
+end
+
+# hold time for a new attachment: element kind and a hash (longer on code, shorter on headings)
+fn hold_ms u32x1024 u32 -> u32
+k call tg p0 p1 25
+clk call bg p0 13
+h call fx_hash clk p1
+u shr h 16
+span div u 25
+base add 1100 span
+iscode eq k 3
+ishead eq k 1
+m1 select iscode 88474 65536
+m2 select ishead 45875 m1
+r call fx_mul base m2
+ret r
+end
+
+# ---- searching: one tentacle per frame looks for an anchor (p1 tentacle, p2 hdr, p3 rects)
+fn lg_search u32x1024 u32 u32x32 u32x1344 -> u32x1024
+stt call tg p0 p1 0
+st0 eq stt 0
+rr call bg p0 30
+mine eq rr p1
+q call bg p0 17
+fr call bg p0 84
+fb and fr 1
+fz eq fb 0
+qz eq q 0
+okq select qz fz true
+cd call tg p0 p1 7
+cdz eq cd 0
+busy fold busy_step 8 0 p0
+few lt busy 4
+w1 and st0 mine
+w2 and w1 okq
+w3 and w2 cdz
+w4 and w3 few
+mf call bg p0 93
+mfn ne mf 0
+want and w4 mfn
+nrows get p2 21
+n select want nrows 0
+sp call search_prepare p0 p2 p1
+best call anchor_search sp p3 n
+score at best 0
+bx at best 1
+by at best 2
+brow at best 3
+hi lt busy 2
+th select hi 589824 1310720
+fnd call fx_ge score th
+go and want fnd
+ap call begin_approach sp p1 bx by p2 p3 brow
+s_a select go ap sp
+clk call bg p0 13
+h call fx_hash clk p1
+u shr h 22
+cdn add 160 u
+nogo call not_b fnd
+miss and want nogo
+cdset select miss cdn cd
+r call ts s_a p1 7 cdset
+ret r
+end
+
+# ---- approaching: reaching the anchor attaches; waiting too long, or the anchor going out of reach, releases
+fn lg_approach u32x1024 u32 -> u32x1024
+stt call tg p0 p1 0
+s1 eq stt 1
+sc call bg p0 38
+nj call tg p0 p1 1
+tip sub nj 1
+tx call jg p0 p1 tip 0
+ty call jg p0 p1 tip 1
+ax call tg p0 p1 23
+ay call tg p0 p1 24
+dx sub ax tx
+dy sub ay ty
+d call fx_hyp dx dy
+rad call fx_mul 262144 sc
+close call fx_le d rad
+arrive and s1 close
+hold call hold_ms p0 p1
+fl call tg p0 p1 19
+tapv and fl 1
+tapf ne tapv 0
+holdt select tapf 800 hold
+sx call bg p0 864
+sy call bg p0 865
+pgx call vp2pg ax sx
+pgy call vp2pg ay sy
+rid call tg p0 p1 2
+a1 call ts p0 p1 0 2
+a2 call ts a1 p1 5 0
+a3 call ts a2 p1 6 holdt
+a4 call ring_push a3 rid pgx pgy
+tm call tg p0 p1 5
+slow gt tm 1500
+bx call bg p0 1
+by call bg p0 2
+dbx sub ax bx
+dby sub ay by
+db call fx_hyp dbx dby
+reach call tg p0 p1 14
+rl call fx_mul reach 78643
+far call fx_gt db rl
+bad0 or slow far
+bad and s1 bad0
+r1 select arrive a4 p0
+nar call not_b arrive
+bad2 and bad nar
+rel call rel_enter r1 p1
+r select bad2 rel r1
+ret r
+end
+
+# ---- attached: let go when the hold time is up, the chain is taut, or the anchor is out of reach
+fn lg_attach u32x1024 u32 -> u32x1024
+stt call tg p0 p1 0
+s2 eq stt 2
+tm call tg p0 p1 5
+hold call tg p0 p1 6
+over gt tm hold
+ten call tg p0 p1 22
+taut call fx_gt ten 73400
+ax call tg p0 p1 23
+ay call tg p0 p1 24
+bx call bg p0 1
+by call bg p0 2
+dbx sub ax bx
+dby sub ay by
+db call fx_hyp dbx dby
+reach call tg p0 p1 14
+rl call fx_mul reach 72090
+far call fx_gt db rl
+b1 or over taut
+b2 or b1 far
+go and s2 b2
+rel call rel_enter p0 p1
+r select go rel p0
+ret r
+end
+
+# ---- releasing: after a short spring-away the tentacle searches again (its cooldown is running)
+fn lg_release u32x1024 u32 -> u32x1024
+stt call tg p0 p1 0
+s3 eq stt 3
+tm call tg p0 p1 5
+done gt tm 260
+go and s3 done
+a1 call ts p0 p1 0 0
+r select go a1 p0
+ret r
+end
+
+# the four stages of one tentacle, in order (p1 tentacle, p2 hdr, p3 rects, p4 dt in ms)
+fn tent_logic u32x1024 u32 u32x32 u32x1344 u32 -> u32x1024
+s1 call lg_tick p0 p1 p4
+s2 call lg_search s1 p1 p2 p3
+s3 call tent_follow s2 p1 p2 p3
+s4 call lg_approach s3 p1
+s5 call lg_attach s4 p1
+s6 call lg_release s5 p1
+ret s6
+end
+
+# ---- a tap on an interactive element: one to three free tentacles reach for its nearest edge
+# (visual only; nothing is clicked, the tap is never intercepted)
+fn tap_row_step (u32,u32) u32 u32x1344 u32 u32 -> (u32,u32)
+x0 call rg p2 p1 1
+y0 call rg p2 p1 2
+x1 call rg p2 p1 3
+y1 call rg p2 p1 4
+kind call r_kind p2 p1
+a1 ge p3 x0
+a2 le p3 x1
+a3 ge p4 y0
+a4 le p4 y1
+i1 and a1 a2
+i2 and a3 a4
+inside and i1 i2
+ctl eq kind 4
+w sub x1 x0
+h sub y1 y0
+area mul w h
+best at p0 0
+bet lt area best
+c1 and inside ctl
+c2 and c1 bet
+nb select c2 area best
+br at p0 1
+nr select c2 p1 br
+o rec nb nr
+ret o
+end
+# distance of the tip of tentacle p1 to the point (p2, p3); stored in word 875 + k
+fn tap_dist u32x1024 u32 u32 u32 -> u32x1024
+nj call tg p0 p1 1
+tip sub nj 1
+tx call jg p0 p1 tip 0
+ty call jg p0 p1 tip 1
+dx sub p2 tx
+dy sub p3 ty
+d call fx_hyp dx dy
+i add 875 p1
+r call bs p0 i d
+ret r
+end
+fn tap_rank_step u32 u32 u32x1024 u32 -> u32
+i add 875 p1
+dj call bg p2 i
+ik add 875 p3
+dk call bg p2 ik
+dlt call fx_lt dj dk
+eqd eq dj dk
+jl lt p1 p3
+tie and eqd jl
+less or dlt tie
+n select less 1 0
+r add p0 n
+ret r
+end
+# p1 tentacle; p2 st; p3 the count to move; p4 row; p5 hdr; p6 rects
+fn tap_apply u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
+rank fold tap_rank_step 8 0 p0 p1
+free0 call tg p0 p1 0
+f0 eq free0 0
+f3 eq free0 3
+free or f0 f3
+sel call fx_lt rank p2
+use0 and free sel
+sx get p4 5
+sy get p4 6
+x0 call rg p5 p3 1
+y0 call rg p5 p3 2
+x1 call rg p5 p3 3
+y1 call rg p5 p3 4
+x0q call pg2vp x0 sx
+y0q call pg2vp y0 sy
+x1q call pg2vp x1 sx
+y1q call pg2vp y1 sy
+nj call tg p0 p1 1
+tip sub nj 1
+tx call jg p0 p1 tip 0
+ty call jg p0 p1 tip 1
+e call edge_pt x0q y0q x1q y1q tx ty
+ex at e 0
+ey at e 1
+ap call begin_approach p0 p1 ex ey p4 p5 p3
+ap2 call ts ap p1 19 1
+fnd ne p3 4294967295
+use and use0 fnd
+r select use ap2 p0
+ret r
+end
+fn tap_each u32x1024 u32 u32 u32 u32x32 u32x1344 -> u32x1024
+r call tap_apply p0 p1 p2 p3 p4 p5
+ret r
+end
+fn tap_step u32x1024 u32x32 u32x1344 -> u32x1024
+seq get p1 11
+old call bg p0 22
+changed ne seq old
+tx get p1 12
+ty get p1 13
+sx get p1 5
+sy get p1 6
+pgx call vp2pg tx sx
+pgy call vp2pg ty sy
+nrows get p1 21
+n select changed nrows 0
+init rec 4294967295 4294967295
+best fold tap_row_step n init p2 pgx pgy
+row at best 1
+s1 call bs p0 22 seq
+clk call bg p0 13
+h call fx_hash clk seq
+u shr h 20
+cnt0 rem u 3
+cnt add cnt0 1
+nf ne row 4294967295
+act and changed nf
+d1 fold tap_dist 8 s1 tx ty
+cn select act cnt 0
+r fold tap_each 8 d1 cn row p1 p2
+ret r
+end

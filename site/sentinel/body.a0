@@ -1,0 +1,465 @@
+# body.a0: the Sentinel's body and what drives it. The pointer (or a finger, or the idle patrol)
+# gives a target; the body does not go to it. A spring with damping pulls the body toward a
+# point that keeps its distance from the target, anchored tentacles pull and brake it through
+# their chains, and the heading follows the velocity with its own lag.
+use "env.a0"
+
+fn dt_q u32 -> u32
+a shl p0 16
+r div a 1000
+ret r
+end
+fn min_u32 u32 u32 -> u32
+l lt p0 p1
+r select l p0 p1
+ret r
+end
+fn flag u32 u32 -> bool
+a and p0 p1
+r ne a 0
+ret r
+end
+fn not_b bool -> bool
+r select p0 false true
+ret r
+end
+
+# ---- pointer, finger and idle clock: what the body is chasing, and how
+# hdr words: 2 flags, 3 vw, 4 vh, 6 scrollY, 8 pointer x, 9 pointer y, 10 pointer type
+# p2 is the frame time in ms, p3 in Q16 seconds
+fn body_pointer u32x1024 u32x32 u32 u32 -> u32x1024
+flags get p1 2
+known call flag flags 4
+down call flag flags 8
+cancel call flag flags 128
+first call flag flags 32
+ptype get p1 10
+px get p1 8
+py get p1 9
+sy get p1 6
+ppx call bg p0 35
+ppy call bg p0 36
+nk call not_b known
+reset or first nk
+dx0 sub px ppx
+dy0 sub py ppy
+dx1 call fx_limit dx0 26214400
+dy1 call fx_limit dy0 26214400
+dxs select reset 0 dx1
+dys select reset 0 dy1
+ivx call fx_div dxs p3
+ivy call fx_div dys p3
+opvx call bg p0 9
+opvy call bg p0 10
+npvx call fx_lerp opvx ivx 22938
+npvy call fx_lerp opvy ivy 22938
+adx call fx_abs dxs
+ady call fx_abs dys
+mv add adx ady
+moved gt mv 98304
+idle0 call bg p0 12
+idle1 add idle0 p2
+idle2 call min_u32 idle1 60000
+idle3 select moved 0 idle2
+idle select known idle3 60000
+istouch eq ptype 3
+tdo call bg p0 23
+tdo_b ne tdo 0
+ndo_b call not_b tdo_b
+rise and down ndo_b
+tsy0 call bg p0 24
+tsy select rise sy tsy0
+dsc sub sy tsy
+adsc call fx_abs dsc
+sc0 gt adsc 10
+scrolled or sc0 cancel
+ts0 call bg p0 25
+ts0_b ne ts0 0
+ts1 or ts0_b scrolled
+ts2 select down ts1 ts0_b
+ts3 select rise false ts2
+tscroll select ts3 1 0
+tend0 call bg p0 26
+tend1 add tend0 p2
+tend2 call min_u32 tend1 60000
+tend select down 0 tend2
+nt call not_b istouch
+idle_ok lt idle 3400
+m1 and known nt
+mouse_on and m1 idle_ok
+tsc_b ne tscroll 0
+nts call not_b tsc_b
+recent lt tend 1500
+rel and recent nts
+tt or down rel
+touch_on and istouch tt
+dts and down tsc_b
+touch_scroll and istouch dts
+ma select mouse_on 1 0
+mb select touch_on 2 ma
+mode select touch_scroll 3 mb
+s1 call bs p0 9 npvx
+s2 call bs s1 10 npvy
+s3 call bs s2 12 idle
+tdn select down 1 0
+s4 call bs s3 23 tdn
+s5 call bs s4 24 tsy
+s6 call bs s5 25 tscroll
+s7 call bs s6 26 tend
+s8 call bs s7 11 mode
+px2 select known px ppx
+py2 select known py ppy
+s9 call bs s8 7 px2
+s10 call bs s9 8 py2
+s11 call bs s10 35 px2
+s12 call bs s11 36 py2
+ret s12
+end
+
+# ---- patrol: the idle body wanders around a home point; now and then it picks an element of
+# the page that is on screen and moves its home beside it (autonomous interest)
+# st hdr rects dt_ms dt_q
+fn body_home u32x1024 u32x32 u32x1344 u32 u32 -> u32x1024
+mode call bg p0 11
+pm call bg p0 87
+sc call bg p0 38
+vw get p1 3
+vh get p1 4
+sx get p1 5
+sy get p1 6
+nrows get p1 21
+bx call bg p0 1
+by call bg p0 2
+# phase advance 0.05 turn per second
+adv call fx_mul 3277 p4
+ph0 call bg p0 27
+ph1 add ph0 adv
+ph and ph1 65535
+it0 call bg p0 29
+itgt gt it0 p3
+it1 sub it0 p3
+it select itgt it1 0
+home_x call bg p0 33
+unset eq home_x 0
+vwq shl vw 16
+vhq shl vh 16
+hx0 call fx_mul vwq 48497
+hy0 call fx_mul vhq 26214
+# when the body stops chasing, it settles where it is
+patrolling eq mode 0
+pmv ne pm 0
+leaving and patrolling pmv
+hx1 select leaving bx home_x
+hy2 call bg p0 34
+hy1 select leaving by hy2
+hxs select unset hx0 hx1
+hys select unset hy0 hy1
+# pick a row
+rng0 call bg p0 19
+rng1 call fx_rng rng0
+rng2 call fx_rng rng1
+row call fx_hash rng1 7
+r1 rem row nrows
+vis call r_vis p2 r1
+kind call r_kind p2 r1
+x0 call rg p2 r1 1
+y0 call rg p2 r1 2
+x1 call rg p2 r1 3
+y1 call rg p2 r1 4
+w sub x1 x0
+h sub y1 y0
+big_w ge w 30
+big_h ge h 14
+big and big_w big_h
+okk0 and vis big
+due eq it 0
+want and due patrolling
+rows_ok gt nrows 0
+want2 and want rows_ok
+side and rng2 3
+frac and rng2 4095
+fq shl frac 4
+wq shl w 16
+hq shl h 16
+along_x call fx_mul wq fq
+along_y call fx_mul hq fq
+gapq call fx_mul 2883584 sc
+x0q call pg2vp x0 sx
+y0q call pg2vp y0 sy
+x1q call pg2vp x1 sx
+y1q call pg2vp y1 sy
+side0 eq side 0
+side1 eq side 1
+side2 eq side 2
+cx_a add x0q along_x
+cxo sub x0q gapq
+cxo2 add x1q gapq
+cx_c select side2 cxo cxo2
+sd01 or side0 side1
+tx select sd01 cx_a cx_c
+cy_a sub y0q gapq
+cy_b add y1q gapq
+cy_c add y0q along_y
+tyb select side1 cy_b cy_c
+ty select side0 cy_a tyb
+dxh sub tx bx
+dyh sub ty by
+dist call fx_hyp dxh dyh
+near_lo mul 60 65536
+near_hi mul 420 65536
+nlo call fx_mul near_lo sc
+nhi call fx_mul near_hi sc
+far_ok call fx_le dist nhi
+near_ok call fx_ge dist nlo
+mrg call fx_mul 3932160 sc
+xlo mov mrg
+xhi sub vwq mrg
+ylo mul 70 65536
+yhi sub vhq 3276800
+in_x1 call fx_ge tx xlo
+in_x2 call fx_le tx xhi
+in_y1 call fx_ge ty ylo
+in_y2 call fx_le ty yhi
+in_view and in_x1 in_x2
+in_view2 and in_y1 in_y2
+inside and in_view in_view2
+dist_ok and far_ok near_ok
+acc0 and okk0 inside
+acc1 and acc0 dist_ok
+accept and want2 acc1
+rt call fx_rng rng2
+span rem rt 5000
+itn0 add 5500 span
+itn select accept itn0 450
+it_fin select want2 itn it
+hxn select accept tx hxs
+hyn select accept ty hys
+s1 call bs p0 27 ph
+s2 call bs s1 29 it_fin
+s3 call bs s2 33 hxn
+s4 call bs s3 34 hyn
+s5 call bs s4 19 rt
+s6 call bs s5 87 mode
+ret s6
+end
+
+# ---- where the body wants to be, and how strongly: (x, y, spring, damping), Q16
+fn body_goal u32x1024 u32x32 -> (u32,u32,u32,u32)
+mode call bg p0 11
+bx call bg p0 1
+by call bg p0 2
+sc call bg p0 38
+px call bg p0 7
+py call bg p0 8
+pvx call bg p0 9
+pvy call bg p0 10
+spd call fx_hyp pvx pvy
+t1 div spd 45
+t2 call fx_min t1 2883584
+off0 add 4325376 t2
+offm call fx_mul off0 sc
+offt call fx_mul offm 85197
+tch eq mode 2
+off select tch offt offm
+rx sub bx px
+ry sub by py
+u call fx_unit rx ry
+ux at u 0
+uy at u 1
+ox call fx_mul ux off
+oy call fx_mul uy off
+pdx add px ox
+pdy add py oy
+hx call bg p0 33
+hy call bg p0 34
+ph call bg p0 27
+s1 call fx_sin ph
+ph2a call fx_mul ph 85852
+ph2 add ph2a 11141
+s2 call fx_sin ph2
+mf call bg p0 93
+amx0 call fx_mul 1703936 sc
+amy0 call fx_mul 1048576 sc
+amx call fx_mul amx0 mf
+amy call fx_mul amy0 mf
+ax0 call fx_mul s1 amx
+ay0 call fx_mul s2 amy
+qx add hx ax0
+qy add hy ay0
+m1 eq mode 1
+m2 eq mode 2
+pur or m1 m2
+dx0 select pur pdx qx
+dy0 select pur pdy qy
+vw get p1 3
+vh get p1 4
+vwq shl vw 16
+vhq shl vh 16
+mq call fx_mul 1703936 sc
+xmax sub vwq mq
+ymax sub vhq mq
+dx call fx_clamp dx0 mq xmax
+dy call fx_clamp dy0 mq ymax
+k1 select m2 1572864 589824
+k select m1 1966080 k1
+c1 select m2 294912 288358
+c select m1 262144 c1
+r rec dx dy k c
+ret r
+end
+
+# the pull of the attached tentacles on the body: state (x, y); a (px/s^2) vector toward each
+# anchor, strongest for anchors ahead of the direction of travel (p3, p4)
+fn pull_step (u32,u32) u32 u32x1024 u32 u32 -> (u32,u32)
+stt call tg p2 p1 0
+att eq stt 2
+ax call tg p2 p1 23
+ay call tg p2 p1 24
+bx call bg p2 1
+by call bg p2 2
+dx sub ax bx
+dy sub ay by
+dist call fx_hyp dx dy
+u call fx_unit dx dy
+ux at u 0
+uy at u 1
+al call fx_dot ux uy p3 p4
+alp call fx_max al 0
+w0 call fx_mul alp 49152
+w add w0 16384
+reach call tg p2 p1 14
+rr call fx_mul reach 39322
+frac call fx_div dist rr
+fr call fx_min frac 65536
+mag0 call fx_mul 3604480 w
+mag call fx_mul mag0 fr
+fxx call fx_mul ux mag
+fyy call fx_mul uy mag
+nx0 at p0 0
+ny0 at p0 1
+nx add nx0 fxx
+ny add ny0 fyy
+sx select att nx nx0
+sy select att ny ny0
+o rec sx sy
+ret o
+end
+
+# spring, damping and anchor pulls; p2 dt in Q16 seconds
+fn body_step u32x1024 u32x32 u32 -> u32x1024
+g call body_goal p0 p1
+dx at g 0
+dy at g 1
+k at g 2
+c at g 3
+bx call bg p0 1
+by call bg p0 2
+vx call bg p0 3
+vy call bg p0 4
+sc call bg p0 38
+ex sub dx bx
+ey sub dy by
+tu call fx_unit ex ey
+tux at tu 0
+tuy at tu 1
+pull0 rec 0 0
+pl fold pull_step 8 pull0 p0 tux tuy
+plx at pl 0
+ply at pl 1
+ax1 call fx_mul k ex
+ax2 call fx_mul c vx
+ax3 sub ax1 ax2
+ax add ax3 plx
+ay1 call fx_mul k ey
+ay2 call fx_mul c vy
+ay3 sub ay1 ay2
+ay add ay3 ply
+dvx call fx_mul ax p2
+dvy call fx_mul ay p2
+vx1 add vx dvx
+vy1 add vy dvy
+spd call fx_hyp vx1 vy1
+vmax call fx_mul 144179200 sc
+over gt spd vmax
+f call fx_div vmax spd
+vx2s call fx_mul vx1 f
+vy2s call fx_mul vy1 f
+vx2 select over vx2s vx1
+vy2 select over vy2s vy1
+mx call fx_mul vx2 p2
+my call fx_mul vy2 p2
+bx1 add bx mx
+by1 add by my
+vw get p1 3
+vh get p1 4
+vwq shl vw 16
+vhq shl vh 16
+hix sub vwq 655360
+hiy sub vhq 655360
+bx2 call fx_clamp bx1 655360 hix
+by2 call fx_clamp by1 655360 hiy
+hitx ne bx2 bx1
+hity ne by2 by1
+vx3 select hitx 0 vx2
+vy3 select hity 0 vy2
+s1 call bs p0 1 bx2
+s2 call bs s1 2 by2
+s3 call bs s2 3 vx3
+s4 call bs s3 4 vy3
+ret s4
+end
+
+# heading: turns toward the direction of travel with a spring and damping (p1 dt in Q16 s)
+fn body_heading u32x1024 u32 -> u32x1024
+vx call bg p0 3
+vy call bg p0 4
+spd call fx_hyp vx vy
+fast gt spd 2621440
+want call fx_atan2 vy vx
+ang call bg p0 5
+d0 sub want ang
+d and d0 65535
+big gt d 32768
+d2 sub d 65536
+err select big d2 d
+errs select fast err 0
+angv call bg p0 6
+t1 call fx_mul 1703936 errs
+t2 call fx_mul 458752 angv
+acc sub t1 t2
+dv call fx_mul acc p1
+angv2 add angv dv
+da call fx_mul angv2 p1
+ang2 add ang da
+ang3 and ang2 65535
+s1 call bs p0 5 ang3
+s2 call bs s1 6 angv2
+ret s2
+end
+
+# apply what the tentacle chains pulled out of the body (accumulated in words 31, 32), then clear
+fn body_react u32x1024 u32 -> u32x1024
+rx0 call bg p0 31
+ry0 call bg p0 32
+rx call fx_limit rx0 1572864
+ry call fx_limit ry0 1572864
+bx call bg p0 1
+by call bg p0 2
+vx call bg p0 3
+vy call bg p0 4
+ivx call fx_div rx p1
+ivy call fx_div ry p1
+cx call fx_mul ivx 13107
+cy call fx_mul ivy 13107
+nbx add bx rx
+nby add by ry
+nvx add vx cx
+nvy add vy cy
+s1 call bs p0 1 nbx
+s2 call bs s1 2 nby
+s3 call bs s2 3 nvx
+s4 call bs s3 4 nvy
+s5 call bs s4 31 0
+s6 call bs s5 32 0
+ret s6
+end

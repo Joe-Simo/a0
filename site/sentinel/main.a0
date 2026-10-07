@@ -1,0 +1,297 @@
+# main.a0: the A0 Sentinel, a live program (see site/lib/frame.a0 and docs/LIVE-PROGRAMS.md).
+# Each animation frame the host calls `frame` with the header, the cached page geometry and
+# the state this program wrote last frame; `frame` advances the simulation by the frame time
+# and writes the new state and the draw list. Everything the Sentinel does is decided here: the
+# host only forwards input and geometry and paints the draw list.
+#
+# Modules, in link order: layout (state), env (page geometry), body (pursuit, patrol, heading),
+# tentacle (chains), anchor (candidate scoring), locomotion (tentacle states, taps), life (core
+# activity, graph links, adaptive quality), render (draw list).
+use "render.a0"
+use "zeros.a0"
+
+# ---- input
+fn rd_rects_step (u32x1344,io) u32 -> (u32x1344,io)
+a at p0 0
+t at p0 1
+r read t
+v at r 0
+t2 at r 1
+a2 set a p1 v
+o rec a2 t2
+ret o
+end
+fn rd_state_step (u32x1024,io) u32 -> (u32x1024,io)
+a at p0 0
+t at p0 1
+r read t
+v at r 0
+t2 at r 1
+a2 set a p1 v
+o rec a2 t2
+ret o
+end
+
+# ---- creation
+fn init_step u32x1024 u32 u32x32 -> u32x1024
+vw get p2 3
+vh get p2 4
+sc call scale_of vw
+vwq shl vw 16
+vhq shl vh 16
+bx call fx_mul vwq 48497
+by call fx_mul vhq 27525
+s1 call bs p0 0 41120
+s2 call bs s1 1 bx
+s3 call bs s2 2 by
+s4 call bs s3 19 2463534242
+s5 call bs s4 20 26214
+s6 call bs s5 17 3
+s7 call bs s6 38 sc
+s8 call bs s7 93 65536
+s9 fold tent_init 8 s8
+ret s9
+end
+
+# ---- one simulation step (p3 is the frame time in ms)
+fn tent_frame u32x1024 u32 u32x32 u32x1344 u32 u32 u32 -> u32x1024
+s1 call tent_logic p0 p1 p2 p3 p4
+r call tent_run s1 p1 p5 p6
+ret r
+end
+fn tap_f u32x1024 u32 u32x32 u32x1344 -> u32x1024
+r call tap_step p0 p2 p3
+ret r
+end
+fn graph_f u32x1024 u32 u32 -> u32x1024
+r call graph_step p0 p2
+ret r
+end
+fn sim u32x1024 u32x32 u32x1344 u32 -> u32x1024
+vw get p1 3
+vh get p1 4
+sx get p1 5
+sy get p1 6
+dtq call dt_q p3
+inv call fx_div 65536 dtq
+sc call scale_of vw
+clk0 call bg p0 13
+clk add clk0 p3
+fr0 call bg p0 84
+fr add fr0 1
+rr0 call bg p0 30
+rr1 add rr0 1
+rr and rr1 7
+oy call bg p0 14
+ds sub sy oy
+dq shl ds 16
+dsl call fx_limit dq 13107200
+vs call fx_div dsl dtq
+svo call bg p0 16
+sv call fx_lerp svo vs 19661
+a1 call bs p0 88 inv
+a2 call bs a1 38 sc
+a3 call bs a2 13 clk
+a4 call bs a3 84 fr
+a5 call bs a4 30 rr
+a6 call bs a5 864 sx
+a7 call bs a6 865 sy
+a8 call bs a7 866 vw
+a9 call bs a8 867 vh
+a10 call bs a9 14 sy
+a11 call bs a10 16 sv
+b1 call body_pointer a11 p1 p3 dtq
+mf call bg b1 93
+calm eq mf 0
+mode call bg b1 11
+mode2 select calm 0 mode
+b2 call bs b1 11 mode2
+b3 call body_home b2 p1 p2 p3 dtq
+b4 call body_step b3 p1 dtq
+b5 call body_heading b4 dtq
+nact call not_b calm
+ntap call one_if nact
+c1 fold tap_f ntap b5 p1 p2
+q call bg c1 17
+qh call fx_ge q 2
+iters select qh 3 2
+c2 fold tent_frame 8 c1 p1 p2 p3 dtq iters
+c3 call body_react c2 dtq
+c4 fold graph_f ntap c3 p3
+c5 call core_step c4 dtq
+c6 call perf_step c5 p1
+ret c6
+end
+
+# reduced motion: settle off-screen of time, once per viewport size; then the picture is still
+fn park_step u32x1024 u32 u32x32 -> u32x1024
+vw get p2 3
+vh get p2 4
+vwq shl vw 16
+vhq shl vh 16
+hx call fx_mul vwq 55050
+hy call fx_mul vhq 43253
+s1 call bs p0 1 hx
+s2 call bs s1 2 hy
+s3 call bs s2 3 0
+s4 call bs s3 4 0
+s5 call bs s4 33 hx
+s6 call bs s5 34 hy
+ret s6
+end
+fn ff_sim u32x1024 u32 u32x32 u32x1344 -> u32x1024
+r call sim p0 p2 p3 16
+ret r
+end
+fn sim_f u32x1024 u32 u32x32 u32x1344 u32 -> u32x1024
+r call sim p0 p2 p3 p4
+ret r
+end
+
+fn update u32x1024 u32x32 u32x1344 -> u32x1024
+flags get p1 2
+reduced call flag flags 1
+mfv select reduced 0 65536
+mg call bg p0 0
+fresh0 ne mg 41120
+nf call one_if fresh0
+s0 fold init_step nf p0 p1
+s1 call bs s0 93 mfv
+vw get p1 3
+vh get p1 4
+ovw call bg s1 91
+ovh call bg s1 92
+ch1 ne ovw vw
+ch2 ne ovh vh
+chg or ch1 ch2
+dn call bg s1 86
+done ne dn 0
+ndone call not_b done
+need0 or ndone chg
+ffneed and reduced need0
+nff call one_if ffneed
+nti select ffneed 8 0
+nsim select ffneed 160 0
+s2 fold park_step nff s1 p1
+s3 fold tent_init nti s2
+s4 fold ff_sim nsim s3 p1 p2
+dn2 select reduced 1 0
+s5 call bs s4 86 dn2
+s6 call bs s5 91 vw
+s7 call bs s6 92 vh
+d0 get p1 1
+d1 call min_u32 d0 50
+dz eq d1 0
+dtms select dz 16 d1
+nr call not_b reduced
+nrun call one_if nr
+s8 fold sim_f nrun s7 p1 p2 dtms
+ret s8
+end
+
+# ---- output
+fn wr_step io u32 u32x1024 -> io
+v get p2 p1
+r write p0 v
+ret r
+end
+fn write_state io u32x1024 -> io
+a write p0 1
+b write a 1024
+c fold wr_step 1024 b p1
+ret c
+end
+fn watch_head io u32 u32 -> io
+r call fr_watch p0 p2
+ret r
+end
+fn w_heading io u32 -> io
+a call fr_watch p0 1
+s text "h1,h2,h3"
+b puts a s
+ret b
+end
+fn w_code io u32 -> io
+a call fr_watch p0 3
+s text "pre,.ln"
+b puts a s
+ret b
+end
+fn w_control io u32 -> io
+a call fr_watch p0 4
+s text "a[href],button,summary,input,textarea"
+b puts a s
+ret b
+end
+fn w_text io u32 -> io
+a call fr_watch p0 2
+s text "p,li,.sub,.cap,.take,.lbl,.kh"
+b puts a s
+ret b
+end
+fn w_block io u32 -> io
+a call fr_watch p0 5
+s text ".card,.tcard,.tile,.chart,.tblwrap,.legend,.stamp"
+b puts a s
+ret b
+end
+fn w_data io u32 -> io
+a call fr_watch p0 6
+s text ".track,.ratio"
+b puts a s
+ret b
+end
+fn watches io u32 -> io
+a fold w_heading p1 p0
+b fold w_code p1 a
+c fold w_control p1 b
+d fold w_text p1 c
+e fold w_block p1 d
+f fold w_data p1 e
+ret f
+end
+fn qpct io u32 u32 -> io
+a call fr_quality p0 p2
+ret a
+end
+# render scale in percent for quality 0..3
+fn qscale u32 -> u32
+a eq p0 0
+b eq p0 1
+s1 select b 80 100
+s2 select a 60 s1
+ret s2
+end
+
+fn frame io -> u32
+h call fr_rdhdr p0
+hdr at h 0
+t1 at h 1
+zr call zrects
+rs0 rec zr t1
+rr fold rd_rects_step 1344 rs0
+rects at rr 0
+t2 at rr 1
+r1 read t2
+t3 at r1 1
+zs call zstate
+ss0 rec zs t3
+sr fold rd_state_step 1024 ss0
+st at sr 0
+t4 at sr 1
+st1 call update st hdr rects
+q call bg st1 17
+lastq call bg st1 95
+chg ne q lastq
+nq call one_if chg
+pct call qscale q
+st2 call bs st1 95 q
+flags get hdr 2
+first call flag flags 32
+nw call one_if first
+t5 call watches t4 nw
+t6 fold qpct nq t5 pct
+t7 call write_state t6 st2
+t8 call render_all t7 st2 hdr rects
+ret 0
+end

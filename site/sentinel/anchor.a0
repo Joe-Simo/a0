@@ -1,0 +1,334 @@
+# anchor.a0: choosing where a tentacle may take hold. The candidates are real geometry of the
+# page: the four corners of each tracked element's box and the point of its boundary nearest
+# the tentacle's probe. Each is scored (all in Q16 "points"): inside reach and near the sweet
+# distance from the body, ahead of the direction of travel, near the current tip, useful kind
+# of element (code and controls before bare text), corner over edge, not crowded by another
+# tentacle's anchor, not one of the anchors used recently, not about to leave the viewport,
+# plus a small hash jitter so ties do not repeat. The caller keeps its own anchor until a
+# better one beats it by a margin (hysteresis).
+#
+# Search context lives in scratch words of the state (864..879) so the folds stay small:
+#   864 scrollX  865 scrollY  866 vw  867 vh  868 travel x  869 travel y  870 speed factor
+#   871 searching tentacle  872 probe x  873 probe y
+use "tentacle.a0"
+
+# the point of the box (x0 y0 x1 y1) boundary nearest to (p4, p5)
+fn edge_pt u32 u32 u32 u32 u32 u32 -> (u32,u32)
+cx call fx_clamp p4 p0 p2
+cy call fx_clamp p5 p1 p3
+inx eq cx p4
+iny eq cy p5
+inside and inx iny
+dl sub p4 p0
+dr sub p2 p4
+dt sub p5 p1
+db sub p3 p5
+m1 call fx_min dl dr
+m2 call fx_min dt db
+m call fx_min m1 m2
+isl eq m dl
+isr eq m dr
+ist eq m dt
+ex2 select isr p2 p4
+ex select isl p0 ex2
+ey4 select isr p5 p3
+ey5 select isl p5 ey4
+ey6 select ist p1 ey5
+rx select inside ex cx
+ry select inside ey6 cy
+r rec rx ry
+ret r
+end
+
+# candidate c of a box: corners 0..3, the boundary point nearest the probe (p4, p5) is 4
+fn cand_point u32 u32 u32 u32 u32 u32 u32 -> (u32,u32)
+c0 eq p6 0
+c1 eq p6 1
+c2 eq p6 2
+c3 eq p6 3
+xl or c0 c2
+x1 select xl p0 p2
+e call edge_pt p0 p1 p2 p3 p4 p5
+ex at e 0
+ey at e 1
+c4 eq p6 4
+cx select c4 ex x1
+yt or c0 c1
+y1 select yt p1 p3
+cy select c4 ey y1
+r rec cx cy
+ret r
+end
+
+# occupancy: penalty for point (p3, p4) near the anchor of another tentacle (p1 other, p6 searching)
+fn occ_step u32 u32 u32x1024 u32 u32 u32 u32 -> u32
+other ne p1 p6
+stt call tg p2 p1 0
+busy0 eq stt 1
+busy1 eq stt 2
+busy or busy0 busy1
+act and other busy
+ax call tg p2 p1 23
+ay call tg p2 p1 24
+dx sub p3 ax
+dy sub p4 ay
+d call fx_hyp dx dy
+near call fx_mul 1835008 p5
+mid call fx_mul 4194304 p5
+isn call fx_lt d near
+ism call fx_lt d mid
+pen0 select ism 2293760 0
+pen select isn 5898240 pen0
+pen2 select act pen 0
+r sub p0 pen2
+ret r
+end
+
+# recent anchors (words 40..63: element id, page x, page y): penalty for the same element and place
+fn rec_step u32 u32 u32x1024 u32 u32 u32 -> u32
+b mul p1 3
+i add b 40
+id get p2 i
+i1 add i 1
+rx get p2 i1
+i2 add i 2
+ry get p2 i2
+same eq id p3
+dx sub p4 rx
+dy sub p5 ry
+adx call fx_abs dx
+ady call fx_abs dy
+sm add adx ady
+close lt sm 40
+hit and same close
+r1 sub p0 4587520
+r select hit r1 p0
+ret r
+end
+
+# the score of the point (p1, p2) (Q16 viewport) of element p3 (kind p4), candidate type p5
+fn cand_score u32x1024 u32 u32 u32 u32 u32 -> u32
+k call bg p0 871
+sx call bg p0 864
+sy call bg p0 865
+vw call bg p0 866
+vh call bg p0 867
+ux call bg p0 868
+uy call bg p0 869
+spdf call bg p0 870
+bx call bg p0 1
+by call bg p0 2
+sc call bg p0 38
+reach call tg p0 k 14
+dbx sub p1 bx
+dby sub p2 by
+db call fx_hyp dbx dby
+rmax call fx_mul reach 64225
+toofar call fx_gt db rmax
+sweet call fx_mul reach 45875
+dd0 sub db sweet
+dd call fx_abs dd0
+half call fx_mul dd 32768
+s0 sub 3932160 half
+rmin call fx_mul reach 13107
+tooclose call fx_lt db rmin
+s1a sub s0 2621440
+s1 select tooclose s1a s0
+u call fx_unit dbx dby
+unx at u 0
+uny at u 1
+al call fx_dot unx uny ux uy
+dirb0 call fx_mul al 2949120
+dirb call fx_mul dirb0 spdf
+s2 add s1 dirb
+nj call tg p0 k 1
+tipi sub nj 1
+tx call jg p0 k tipi 0
+ty call jg p0 k tipi 1
+dtx sub p1 tx
+dty sub p2 ty
+dt call fx_hyp dtx dty
+tipp call fx_mul dt 14418
+s3 sub s2 tipp
+kw arr 0 917504 393216 1572864 786432 655360 524288 131072
+kwv get kw p4
+s4 add s3 kwv
+pref call tg p0 k 16
+pm eq pref p4
+pmb select pm 1048576 0
+s5 add s4 pmb
+corner lt p5 4
+cb select corner 917504 393216
+s6 add s5 cb
+s7 fold occ_step 8 s6 p0 p1 p2 sc k
+pgx call vp2pg p1 sx
+pgy call vp2pg p2 sy
+s8 fold rec_step 8 s7 p0 p3 pgx pgy
+last call tg p0 k 18
+lastm eq last p3
+lp sub s8 1638400
+s9 select lastm lp s8
+vhq shl vh 16
+vwq shl vw 16
+edge1 call fx_lt p2 2621440
+ey2 sub vhq 2621440
+edge2 call fx_gt p2 ey2
+edge or edge1 edge2
+sx1 call fx_lt p1 1310720
+sx2a sub vwq 1310720
+sx2 call fx_gt p1 sx2a
+edgex or sx1 sx2
+edgea select edge 1966080 0
+edgeb select edgex 1310720 0
+s10 sub s9 edgea
+s11 sub s10 edgeb
+txt0 eq p4 1
+txt1 eq p4 2
+txtk or txt0 txt1
+ised eq p5 4
+rd and txtk ised
+rpen select rd 1179648 0
+s12 sub s11 rpen
+clk call bg p0 13
+tk shr clk 11
+kh mul k 977
+kh2 mul p3 13
+kh3 add kh kh2
+kh4 add kh3 p5
+h call fx_hash kh4 tk
+jit shr h 22
+jq shl jit 10
+s13 add s12 jq
+bad select toofar 2147483649 s13
+ret bad
+end
+
+# one candidate of one element: state (score, x, y, row, type); p2 st; box p3..p6; row p7; id p8; kind p9
+fn cand_step (u32,u32,u32,u32,u32) u32 u32x1024 u32 u32 u32 u32 u32 u32 u32 -> (u32,u32,u32,u32,u32)
+q0 at p0 0
+prx call bg p2 872
+pry call bg p2 873
+pt call cand_point p3 p4 p5 p6 prx pry p1
+cx at pt 0
+cy at pt 1
+sc call cand_score p2 cx cy p8 p9 p1
+better call fx_gt sc q0
+nq select better sc q0
+bx at p0 1
+by at p0 2
+br at p0 3
+bc at p0 4
+nx select better cx bx
+ny select better cy by
+nr select better p7 br
+nc select better p1 bc
+o rec nq nx ny nr nc
+ret o
+end
+
+# one element row of the geometry table; p2 st, p3 rects
+fn row_step (u32,u32,u32,u32,u32) u32 u32x1024 u32x1344 -> (u32,u32,u32,u32,u32)
+id call rg p3 p1 0
+x0 call rg p3 p1 1
+y0 call rg p3 p1 2
+x1 call rg p3 p1 3
+y1 call rg p3 p1 4
+kind call r_kind p3 p1
+vis call r_vis p3 p1
+sx call bg p2 864
+sy call bg p2 865
+k call bg p2 871
+x0q call pg2vp x0 sx
+y0q call pg2vp y0 sy
+x1q call pg2vp x1 sx
+y1q call pg2vp y1 sy
+bx call bg p2 1
+by call bg p2 2
+e call edge_pt x0q y0q x1q y1q bx by
+ex at e 0
+ey at e 1
+dx sub ex bx
+dy sub ey by
+d call fx_hyp dx dy
+reach call tg p2 k 14
+near call fx_le d reach
+w sub x1 x0
+h sub y1 y0
+bw ge w 6
+bh ge h 6
+bigk and bw bh
+kn ne kind 0
+e1 and vis near
+e2 and e1 bigk
+elig and e2 kn
+inner fold cand_step 5 p0 p2 x0q y0q x1q y1q p1 id kind
+r0 at inner 0
+r1 at inner 1
+r2 at inner 2
+r3 at inner 3
+r4 at inner 4
+q0 at p0 0
+q1 at p0 1
+q2 at p0 2
+q3 at p0 3
+q4 at p0 4
+o0 select elig r0 q0
+o1 select elig r1 q1
+o2 select elig r2 q2
+o3 select elig r3 q3
+o4 select elig r4 q4
+o rec o0 o1 o2 o3 o4
+ret o
+end
+
+# set the search context: viewport (from the header), the tentacle p1, its probe, the direction of travel
+fn search_prepare u32x1024 u32x32 u32 -> u32x1024
+sx get p1 5
+sy get p1 6
+vw get p1 3
+vh get p1 4
+bx call bg p0 1
+by call bg p0 2
+vx call bg p0 3
+vy call bg p0 4
+ang call bg p0 5
+hx call fx_cos ang
+hy call fx_sin ang
+g call body_goal p0 p1
+gx at g 0
+gy at g 1
+ex sub gx bx
+ey sub gy by
+el call fx_hyp ex ey
+far gt el 786432
+tu call fx_unit ex ey
+tux at tu 0
+tuy at tu 1
+ux select far tux hx
+uy select far tuy hy
+spd call fx_hyp vx vy
+sf0 call fx_div spd 39321600
+sf1 call fx_min sf0 65536
+sf2 call fx_mul sf1 45875
+sf add 19661 sf2
+prx call tg p0 p2 20
+pry call tg p0 p2 21
+s1 call bs p0 864 sx
+s2 call bs s1 865 sy
+s3 call bs s2 866 vw
+s4 call bs s3 867 vh
+s5 call bs s4 868 ux
+s6 call bs s5 869 uy
+s7 call bs s6 870 sf
+s8 call bs s7 871 p2
+s9 call bs s8 872 prx
+s10 call bs s9 873 pry
+ret s10
+end
+
+# best candidate over all rows: (score, x, y, row, type); score 2147483649 means none
+fn anchor_search u32x1024 u32x1344 u32 -> (u32,u32,u32,u32,u32)
+s0 rec 2147483649 0 0 0 0
+r fold row_step p2 s0 p0 p1
+ret r
+end
