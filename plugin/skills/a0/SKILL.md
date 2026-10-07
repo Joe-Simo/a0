@@ -13,5 +13,6 @@ compatibility: Needs the a0 binary from https://github.com/Joe-Simo/a0/releases/
 2. Without the MCP tools, use the CLI: `a0 check f.a0`, `a0 run f.a0 FN ARGS...`, `a0 emit TARGET f.a0`. `a0 mcp <dir>` starts the MCP server.
 
 Load on demand:
-- [references/primer.txt](references/primer.txt): the whole language (syntax, types, ops, edit lines). Read it before writing or editing A0.
+- [references/primer.dense.txt](references/primer.dense.txt): the dense surface, the default of the `a0_*` tools (views and replies are dense; 189 tokens). Read it before editing through the MCP tools.
+- [references/primer.txt](references/primer.txt): the whole language in the canonical syntax (types, ops, edit lines). Read it before writing a .a0 file as text, or when you pass `dense: false` (the opt-out: canonical views and replies).
 - [references/edit-protocol.md](references/edit-protocol.md): handles, edit forms and rejection rules. Read it when an apply is rejected or an edit spans functions.
