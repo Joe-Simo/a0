@@ -65,7 +65,8 @@ export type Axis =
   | 'primer-accepted-repaired'
   | 'primer-tokens-per-accepted'
   | 'app-edit-accepted'
-  | 'app-edit-tokens-per-accepted';
+  | 'app-edit-tokens-per-accepted'
+  | 'check-latency-ms';
 
 export interface Observation {
   readonly id: string;
@@ -554,6 +555,48 @@ function appEditObservations(root: string): Observation[] {
   return out;
 }
 
+/**
+ * The edit-check latency reports (results/check-latency-<platform>.json, tools/check-latency.ts): per
+ * platform, each A0 subject (one edit, the whole front end in process or in a fresh process, `a0 check`
+ * as a node process or as the shipped binary) against each type checker, median wall time in ms. The
+ * tie band is the report's own (8 %, or the observed spread, never above 25 %); the load is the report's
+ * highest recorded load.
+ */
+function checkLatencyObservations(root: string): Observation[] {
+  const out: Observation[] = [];
+  let files: string[] = [];
+  try {
+    files = readdirSync(join(root, 'results')).filter((f) => /^check-latency-.*\.json$/.test(f));
+  } catch {
+    return out;
+  }
+  for (const file of files.sort()) {
+    const rep = readJson(root, file);
+    const comps = rep?.comparisons;
+    if (!Array.isArray(comps)) continue;
+    const load = num(obj(rep?.load)?.max) ?? null;
+    const source = file.replace(/\.json$/, '');
+    for (const c of comps) {
+      const r = obj(c);
+      if (r === undefined) continue;
+      const task = typeof r.task === 'string' ? `/${r.task}` : '';
+      const o = lower(
+        source,
+        `${String(r.subject)}${task}`,
+        'check-latency-ms',
+        String(r.competitor),
+        num(r.a0Ms) ?? 0,
+        num(r.otherMs) ?? 0,
+        num(r.band) ?? 0.08,
+        load,
+        true,
+      );
+      if (o !== undefined) out.push(o);
+    }
+  }
+  return out;
+}
+
 interface PrimerCell {
   readonly n: number;
   readonly oneShot: { readonly rate: number };
@@ -641,6 +684,7 @@ export function observations(root = '.'): Observation[] {
     ...specObservations(root),
     ...primerObservations(root),
     ...appEditObservations(root),
+    ...checkLatencyObservations(root),
   ];
 }
 

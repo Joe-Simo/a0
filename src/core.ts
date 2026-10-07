@@ -742,6 +742,23 @@ function isOp(text: string): text is Op {
  */
 export const OP_ALIASES: Readonly<Record<string, Op>> = { udiv: 'div', urem: 'rem' };
 
+/**
+ * Words models write for an op A0 has under another name. They are not accepted as ops (the grammar
+ * keeps one spelling per op); an unknown-callee diagnostic on one of them with the op's operand count
+ * carries the rewrite as an exact fix. Every A0 integer is an unsigned u32, so the unsigned spellings name the plain op.
+ */
+const OP_SPELLINGS: Readonly<Record<string, { op: Op; arity: number; note: string }>> = {
+  sel: { op: 'select', arity: 3, note: ' (`select cond a b` yields a when cond is true, else b)' },
+  lte: { op: 'le', arity: 2, note: '' },
+  gte: { op: 'ge', arity: 2, note: '' },
+  ule: { op: 'le', arity: 2, note: ' (every A0 number is unsigned)' },
+  uge: { op: 'ge', arity: 2, note: ' (every A0 number is unsigned)' },
+  ult: { op: 'lt', arity: 2, note: ' (every A0 number is unsigned)' },
+  ugt: { op: 'gt', arity: 2, note: ' (every A0 number is unsigned)' },
+  neq: { op: 'ne', arity: 2, note: '' },
+  equ: { op: 'eq', arity: 2, note: '' },
+};
+
 /** The op a word names (an op or an accepted alias), or undefined. */
 export function opOf(word: string): Op | undefined {
   return isOp(word) ? word : Object.hasOwn(OP_ALIASES, word) ? OP_ALIASES[word] : undefined;
@@ -1108,7 +1125,16 @@ export function parse(source: string): Program {
         break;
       }
       if (first === 'end' || first === 'fn') {
-        throw diag('A0026', [first], { line: body.line });
+        const last = nodes[nodes.length - 1]?.id;
+        // The last node is nearly always the result: say the line to write (a suggestion, not exact: the result type is the reader's call).
+        throw diag('A0026', [first], {
+          line: body.line,
+          ...(last === undefined
+            ? {}
+            : {
+                fix: `a function is \`fn ...\` then instruction lines, \`ret X\`, \`end\`: write \`ret ${last}\` before \`${first}\` if '${last}' is the result (else \`ret\` the node that is), and start the next \`fn\` after that \`end\``,
+              }),
+        });
       }
       if (nodes.length >= LIMITS.maxNodesPerFunction) {
         throw diag('A0027', [], { line: body.line });
@@ -1575,6 +1601,30 @@ export function validateFunction(
             ],
           });
         }
+        // Other spellings of an op that models write (`sel c a b`, `lte a b`): the op they name, exact when the
+        // operand count is the op's own and no operand is a node of the same name.
+        const spelled = Object.hasOwn(OP_SPELLINGS, name) ? OP_SPELLINGS[name] : undefined;
+        if (
+          spelled !== undefined &&
+          later?.has(name) !== true &&
+          node.args.length === spelled.arity &&
+          node.args.every((a) => a.kind !== 'node' || a.id !== name)
+        ) {
+          throw diag('A0102', [where, name], {
+            fix: `write \`${node.id} ${spelled.op} …\`: '${name}' is not an op, the op is \`${spelled.op}\`${spelled.note}`,
+            applicability: 'exact',
+            edits: [
+              {
+                op: 'rename',
+                rule: 'alias',
+                fn: fn.name,
+                node: node.id,
+                from: name,
+                to: spelled.op,
+              },
+            ],
+          });
+        }
         const guess = spellingSuggestion(name, [
           ...OPS,
           ...Object.keys(OP_ALIASES),
@@ -1701,16 +1751,94 @@ export function validateFunction(
   };
 }
 
+/**
+ * What a successful validation of a function read: every function it resolved by name (its
+ * callees, and the callees of its `pre` and `post`) and the profile it was typed under. A typed
+ * function is a pure result of its own text and of these; `validate` reuses it by identity when
+ * all of them are the very objects the new program resolves.
+ */
+interface TypingInputs {
+  readonly profile: 'strict' | undefined;
+  readonly deps: ReadonlyMap<string, TypedFunc>;
+}
+
+/** Only objects `validate` itself produced are here: a spread copy of a typed function is not. */
+const typingInputs = new WeakMap<TypedFunc, TypingInputs>();
+
+function specCallees(fn: Func): string[] {
+  const out: string[] = [];
+  for (const n of [fn.spec?.pre, fn.spec?.post]) {
+    if (n === undefined) continue;
+    if (n.callee !== undefined) out.push(n.callee);
+    if (n.pred !== undefined) out.push(n.pred);
+  }
+  return out;
+}
+
+let reuseEnabled = true;
+
+/** False inside `withoutReuse`: no typed result, canonical text or revision is remembered or reused. */
+export const reusing = (): boolean => reuseEnabled;
+
+/**
+ * Run `run` with nothing reused: every function is typed, formatted and hashed again, as before validation
+ * was incremental. The reference for the differential tests and the baseline of tools/edit-incremental.ts.
+ */
+export function withoutReuse<T>(run: () => T): T {
+  const was = reuseEnabled;
+  reuseEnabled = false;
+  try {
+    return run();
+  } finally {
+    reuseEnabled = was;
+  }
+}
+
+/** The typed result of `fn` from an earlier validation, if it is still exactly what validating it here gives. */
+function reusable(
+  fn: Func,
+  scope: ReadonlyMap<string, TypedFunc>,
+  profile: 'strict' | undefined,
+): TypedFunc | undefined {
+  if (!reuseEnabled) return undefined;
+  const typed = fn as TypedFunc;
+  const inputs = typingInputs.get(typed);
+  if (inputs === undefined || inputs.profile !== profile) return undefined;
+  for (const [name, callee] of inputs.deps) if (scope.get(name) !== callee) return undefined;
+  return typed;
+}
+
+/**
+ * Validate a whole program. Incremental by identity: a function that is a typed result of an
+ * earlier `validate` (an edit passes every unchanged function back as it received it), under the
+ * same profile, whose every resolved callee is the same object in this program, is reused as is;
+ * only the functions whose text changed and the functions that (transitively) call them are typed
+ * again. The result, and the first diagnostic of a program that fails, equal a validation from scratch.
+ */
 export function validate(program: Program): TypedProgram {
   if (program.functions.length > LIMITS.maxFunctions) throw diag('A0029');
   const byName = new Map<string, TypedFunc>();
   const functions: TypedFunc[] = [];
-  const names = program.functions.map((f) => f.name);
+  const profile = program.profile === 'strict' ? 'strict' : undefined;
+  let names: string[] | undefined;
   for (const [k, fn] of program.functions.entries()) {
     if (byName.has(fn.name)) throw diag('A0021', [fn.name]);
-    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), program.profile);
+    const kept = reusable(fn, byName, profile);
+    if (kept !== undefined) {
+      byName.set(fn.name, kept);
+      functions.push(kept);
+      continue;
+    }
+    names ??= program.functions.map((f) => f.name);
+    const typed = validateFunction(fn, byName, new Set(names.slice(k + 1)), profile);
     // Spec lines are checked once the function is typed, against its callees (all above it).
     if (typed.spec !== undefined) verifySpec(typed, byName);
+    const deps = new Map(typed.calls);
+    for (const name of specCallees(typed)) {
+      const callee = byName.get(name);
+      if (callee !== undefined) deps.set(name, callee);
+    }
+    typingInputs.set(typed, { profile, deps });
     byName.set(fn.name, typed);
     functions.push(typed);
   }
@@ -1747,7 +1875,23 @@ export function formatNode(node: Node): string {
   return `${node.id} ${node.op}${pred}${callee}${args}`;
 }
 
+const canonicalText = new WeakMap<Func, string>();
+
+/**
+ * The canonical text of a function. A `Func` is immutable, so the text is remembered per object: an edit that
+ * leaves most of a program as it was formats, and so hashes, only the functions it rebuilt.
+ */
 export function formatFunction(fn: Func): string {
+  if (!reuseEnabled) return formatFunctionUncached(fn);
+  let text = canonicalText.get(fn);
+  if (text === undefined) {
+    text = formatFunctionUncached(fn);
+    canonicalText.set(fn, text);
+  }
+  return text;
+}
+
+function formatFunctionUncached(fn: Func): string {
   const sig = fn.params.length > 0 ? ` ${fn.params.map(formatType).join(' ')}` : '';
   const spec = specLinesWithComments(fn.spec)
     .map(([, line]) => line)

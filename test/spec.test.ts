@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { compile, TARGETS } from '../src/backends.js';
@@ -453,6 +453,9 @@ test('spec lines: a program without them has the canonical text, hashes, dense t
     }
     now[relative(ROOT, file).replaceAll('\\', '/')] = row;
   }
+  // A0_UPDATE_GOLDEN=1 rewrites the golden after a deliberate change (a new corpus file).
+  if (process.env.A0_UPDATE_GOLDEN === '1')
+    writeFileSync(GOLDEN, `${JSON.stringify(now, null, 2)}\n`);
   const golden = JSON.parse(readFileSync(GOLDEN, 'utf8')) as typeof now;
   assert.deepEqual(Object.keys(now), Object.keys(golden));
   const changed = Object.keys(golden).filter(

@@ -11,7 +11,7 @@ f primer MODEL_GUIDE.min.txt
 2event at r0 0
 2tok at r0 1
 # The stylesheet is one text literal of a byte per operand; the A0 toolchain keeps a function's operands in a
-# table of 32768 pairs, so it is spread over four functions by byte range (the chunks that start in each range).
+# table of 32768 pairs, so it is spread over five functions by byte range (the chunks that start in each range).
 # tools/site-gen.ts fails the build when a function is over 75% of that table: then add a range here.
 {css_a
 s 9 css 0 9000
@@ -23,7 +23,10 @@ s 9 css 9000 18000
 s 9 css 18000 27000
 }
 {css_d
-s 9 css 27000
+s 9 css 27000 36000
+}
+{css_e
+s 9 css 36000
 }
 c nav
 {sec_head
@@ -39,13 +42,24 @@ c nav
 +class layout
 +id content
 .nav rail
-+aria-label Sections
++aria-label On this page
+.details toc
+<summary
+"On this page
+>
 .div rh
-"Language
+"Start
+>
+<a
++href #quickstart
+"Quick start
 >
 <a
 +href #primer
 "The primer
+>
+.div rh
+"The language
 >
 <a
 +href #programs
@@ -56,10 +70,6 @@ c nav
 "Types and values
 >
 <a
-+href #operations
-"Operations
->
-<a
 +href #iteration
 "Iteration
 >
@@ -68,7 +78,7 @@ c nav
 "Modules
 >
 .div rh
-"Working with models
+"Editing with a model
 >
 <a
 +href #editing
@@ -79,7 +89,11 @@ c nav
 "Diagnostics
 >
 .div rh
-"Running
+"Reference
+>
+<a
++href #operations
+"Operations
 >
 <a
 +href #bounds
@@ -89,28 +103,77 @@ c nav
 +href #cli
 "Targets and CLI
 >
-<a
-+href #ui
-"The UI protocol
 >
 >
 .div main
 <section
++id quickstart
+=h2 Quick start
+=p A0 is a small language written by AI models, one operation per line, with exact integer arithmetic. A model edits a function through a view and a short reply instead of rewriting the file.
+=h3 1. Install
+.pre code
+<code
+"brew install a0\n
+"curl -fsSL https://raw.githubusercontent.com/Joe-Simo/a0/main/install.sh \| sh
+>
+>
+=h3 2. Write and run
+.pre code
+<code
+.span cm
+"# hello.a0: compute p0 * p1 + p2\n
+>
+"fn affine u32 u32 u32 -> u32\na mul p0 p1\nb add a p2\nret b\nend\n\n
+.span cm
+"# a0 run hello.a0 affine 6 7 1\n
+>
+"43
+>
+>
+>
+=h3 3. Edit it
+=p Ask for a view with `a0 view hello.a0 affine`; it prints the function under a handle (e0) with its revision. Reply with the handle, then edits, one per line:
+.pre code
+<code
+"id op args           replace instruction id, or insert it before ret\n
+"id op args @ x       insert after instruction x\n
+"-id                  delete instruction id\n
+"ret x                change the result\n
+"fn ... end           add or replace a whole function (program handle g0)\n
+"-fn name             remove a function
+>
+>
+=p The edit is applied only if it parses, type-checks and was written against the current revision. Otherwise it is rejected with a code and the one fix that resolves it, and the handle stays valid.
+=h3 4. Connect an agent
+=p `a0 mcp .` serves A0 to an agent over stdio with seven tools: a0_open, a0_program, a0_apply, a0_check, a0_run, a0_emit and a0_save. In Claude Code:
+.pre code
+<code
+"claude mcp add a0 -- a0 mcp .\n
+"npx skills add Joe-Simo/a0
+>
+>
+=p The second line installs the Agent Skill, which loads the primer and the edit protocol on demand. Configurations for other agents are in the repository.
+<a
++href https://github.com/Joe-Simo/a0#readme
+"Configurations for other agents
+>
+>
+}
+{sec_lang
+<section
 +id primer
 =h2 The primer
-=p The whole language fits on one screen. This is exactly what a model receives before it writes or edits A0 (388 tokens, o200k). Everything below is the same information, expanded.
+=p This is everything a model is told before it writes or edits A0. The sections below say the same thing in full.
 .pre code wrap
 <code
 l primer
 >
 >
 >
-}
-{sec_lang
 <section
 +id programs
 =h2 Programs and functions
-=p A program is a list of functions. A function is a header `fn NAME T... -> T`, then one instruction per line `ID OP ARGS`, then `ret ARG` (or `ret OP ARGS`, which names a fresh node), then `end`. Names are lowercase identifiers. Parameters are p0, p1, ... in header order. Arguments are an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions: one operation per line.
+=p A program is a list of functions. A function is a header `fn NAME T... -> T`, then one instruction per line `ID OP ARGS`, then `ret ARG` (or `ret OP ARGS`, which names a fresh node), then `end`. Names are lowercase identifiers. Parameters are p0, p1, ... in header order. An argument is an earlier ID in the same function, a parameter, a u32 literal, true, or false. There are no forward references, no recursion, and no nested expressions.
 .pre code
 <code
 .span cm
@@ -123,12 +186,62 @@ l primer
 <section
 +id types
 =h2 Types and values
-=p u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put copy, they never alias. io is a linear token: every io value is used exactly once, which is what makes output order and bounds checkable. Literal iteration counts are bounded statically; variable counts are bounded by fuel in the reference interpreter, and compiled targets have no execution budget.
+=p u32 is an exact 32-bit unsigned integer; every arithmetic result wraps modulo 2^32. bool is true or false, never a number. Arrays u32xN and records (T,T,...) are values: get, set, at, and put return a copy, they never alias. io is a linear token, meaning every io value is used exactly once; that is what makes output order checkable.
 >
+<section
++id iteration
+=h2 Iteration
+=p A function body has no loops. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. A literal count is checked against a per-function budget when the program is checked. A variable count is bounded by fuel (a step budget) in the reference interpreter, the plain slow implementation that every target is compared with; compiled targets have no execution budget.
+.pre code
+<code
+.span cm
+"# sum of squares 0..n-1 with fold; the step is an earlier function\n
+>
+"fn sqstep u32 u32 -> u32\ns mul p1 p1\nr add p0 s\nret r\nend\nfn sumsq -> u32\nr fold sqstep 10 0\nret r\nend
+>
+>
+>
+<section
++id modules
+=h2 Modules
+=p A file starts with zero or more `use "path.a0"` lines, relative to the file. The linker loads every used file once, orders them by dependency, and checks the result as one program with one namespace. Cycles and duplicate function names are rejected, and diagnostics name the file and line.
+.pre code
+<code
+"use "ui.a0"\nuse "../examples/life.a0"\nfn page io -> io\na call open p0 5\nb call close a\nret b\nend
+>
+>
+>
+}
+{sec_iter
+<section
++id editing
+=h2 Views and edits
+=p A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped to the target, its transitive callees and its direct callers, so it stays the same size as the program grows. The revision is a short hash of the program text; an edit written against an older revision is rejected rather than applied to code that has moved. A reply is the handle line followed by edits, one per line, as in the quick start.
+.pre code
+<code
+.span cm
+"# a view of clamp, then a reply that fixes the upper bound\n
+>
+"e0 fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\nhi lt p2 p0\na select lo p1 p0\nr select hi p2 a\nret r\n\n
+.span cm
+"# reply\n
+>
+"e0\nhi lt p2 a\nr select hi p2 a
+>
+>
+>
+<section
++id diagnostics
+=h2 Diagnostics
+=p Every rejection carries a stable code (parse, type, structure, handle, revision, limit), what was expected, what was seen, and the one fix that resolves it. The compiler never guesses: an ambiguous reply is rejected with the fix, not applied approximately.
+>
+}
+{sec_run
 <section
 +id operations
 =h2 Operations
 .table ops
++aria-label Operations
 <tr
 =th Operation
 =th Meaning
@@ -237,59 +350,10 @@ l primer
 >
 >
 >
-}
-{sec_iter
-<section
-+id iteration
-=h2 Iteration
-=p There are no loops in the body of a function. Repetition is fold and loop over an earlier function: the step function receives the state, the index, and any extra arguments, and returns the next state. loop adds a predicate function that is checked before each iteration. n may be a literal or a value. A literal count is bounded statically, against the per-function budget. A variable count is bounded by fuel in the reference interpreter; compiled targets have no execution budget, so it runs as many iterations as the value says.
-.pre code
-<code
-.span cm
-"# sum of squares 0..n-1 with fold; the step is an earlier function\n
->
-"fn sqstep u32 u32 -> u32\ns mul p1 p1\nr add p0 s\nret r\nend\nfn sumsq -> u32\nr fold sqstep 10 0\nret r\nend
->
->
->
-<section
-+id modules
-=h2 Modules
-=p A file starts with zero or more `use "path.a0"` lines, relative to the file. The linker loads every used file once, orders them by dependency, and validates the result as one program with one namespace. Cycles are rejected. A function name defined in two files is rejected with both locations. Diagnostics on a linked program name the file and line they belong to.
-.pre code
-<code
-"use "ui.a0"\nuse "../examples/life.a0"\nfn page io -> io\na call open p0 5\nb call close a\nret b\nend
->
->
->
-<section
-+id editing
-=h2 Views and edits
-=p A model never sees a whole file. It asks for a view of one function: the function with a handle line on top (e0), one signature line per callee, and a program handle (g0). The program view is scoped: a comment line with the function count, then the signatures of the target, its transitive callees, and its direct callers, so it stays the same size as the program grows to thousands of functions. A reply is the handle line followed by edits, one per line: `id op ...` replaces the instruction id or inserts it before ret; `id op ... @ other` inserts after other; `-id` deletes; `ret x` changes the result. Under g0, a whole `fn ... end` block adds or replaces a function and `-fn name` removes one. The edit is applied only if it parses, type-checks, validates, and was written against the current revision; otherwise it is rejected and the handle stays valid.
-.pre code
-<code
-.span cm
-"# a view of clamp, then a reply that fixes the upper bound\n
->
-"e0 fn clamp u32 u32 u32 -> u32\nlo lt p0 p1\nhi lt p2 p0\na select lo p1 p0\nr select hi p2 a\nret r\n\n
-.span cm
-"# reply\n
->
-"e0\nhi lt p2 a\nr select hi p2 a
->
->
->
-<section
-+id diagnostics
-=h2 Diagnostics
-=p Every rejection carries a stable code (parse, type, structure, handle, revision, limit), what was expected, what was seen, and the one fix that resolves it. The compiler never guesses: a reply that is ambiguous is rejected with the fix, not applied approximately.
->
-}
-{sec_run
 <section
 +id bounds
 =h2 Bounds and safety
-=p Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. Variable iteration counts are bounded by fuel in the reference interpreter; compiled targets have no execution budget. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length.
+=p Static caps: 65536 functions per program (also after linking), 4096 instructions per function, 64 parameters, arrays up to 65536 elements (1024 on the hardware and GPU targets), literal iteration budget 2^24 per function. io output is bounded by the caller's buffer. There is no heap, no recursion, no exceptions, and no undefined behavior: div and rem by zero are defined, shifts mask the count, indices wrap modulo the array length.
 >
 <section
 +id cli
@@ -305,14 +369,8 @@ l primer
 "a0 patch <file.a0> <patch>             # apply a revision-checked patch
 >
 >
-=p Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM, and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal are produced by the verification tools (bun run dotnet, bun run gpu). Targets are checked against the same oracle on the cases each can run; the home page Targets section gives the split.
-=p --parallel makes the C backend split two fold shapes across threads, reductions (add, mul, and, or, xor, min, max) and element-wise array maps, when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are exact: the same bits as the serial program.
->
-<section
-+id ui
-=h2 The UI protocol
-=p This site is two A0 io programs. Each reads an event and writes a word stream that a small generic runtime turns into DOM: 1 OPEN tag, 2 TEXT bytes, 3 CLOSE, 4 ATTR key bytes, 5 ONCLICK event, 6 STATE words, 9 STYLE bytes, 12 SIZE property percent. The stylesheet, the layout, every number, and every chart bar on these pages are computed by the program; the runtime knows nothing about the page.
-=p A third kind of program runs frame by frame: a live program exports frame, and the generic host (site/live.ts) calls it once per animation frame with the pointer (mouse, pen or touch), scroll, viewport, reduced-motion and frame-cost data, a cached table of page geometry for the selectors the program asks to watch, and the state the program wrote last frame. It answers with its new state and a draw list for an overlay canvas. Signed Q16.16 math (site/lib/fx.a0) and the protocol (site/lib/frame.a0) are ordinary A0 libraries; the A0 Sentinel on the home page is one such program. docs/LIVE-PROGRAMS.md in the repository has the protocol.
+=p Targets: AArch64, x86-64, 64-bit RISC-V, 32-bit ARM and AVR from A0's own code generators; wasm32 directly (emit wasm) or through C (a0 wasm); C; JavaScript; the JVM (Java source); .NET (C# source); Metal for the GPU; and clocked SystemVerilog for FPGA and ASIC. Native output exports C-ABI symbols named a0_NAME. JavaScript output is an ES module; Java output is an ordinary class. C# and Metal come from the verification tools (bun run dotnet, bun run gpu). The home page Targets section gives the verified split: which targets are checked against the reference interpreter, and on which cases.
+=p --parallel makes the C backend split reductions (add, mul, and, or, xor, min, max) and element-wise array maps across threads when a cost model says the loop is large enough; --parallel=gpu also offloads to Metal when built as Objective-C. Results are the same bits as the serial program.
 >
 >
 >

@@ -1969,6 +1969,16 @@ export const EXACT_FIXES: readonly {
     what: 'a second line for an id that reads the first gets it under a fresh id',
   },
   { id: 'A0516', rule: 'signature', what: '`-fn name` loses the signature that follows it' },
+  {
+    id: 'A0504',
+    rule: 'delete-text',
+    what: '`-id` followed by the old node text (not replaced in the same reply) becomes `-id`',
+  },
+  {
+    id: 'A0102',
+    rule: 'alias',
+    what: 'a callee that is a common spelling of an op (`sel` for `select`, `lte` for `le`) is written as the op, when the operand count fits',
+  },
 ];
 
 // ---------------------------------------------------------------------------
