@@ -271,6 +271,10 @@ async function main(): Promise<void> {
     'utf8',
   );
   await copyFile(join('site', 'favicon.svg'), join(out, 'favicon.svg'));
+  // touch icon, 32px favicon and the social preview images, made by tools/og-cards.ts (bun run og-cards)
+  for (const f of ['apple-touch-icon.png', 'favicon-32.png'])
+    await copyFile(join('site', f), join(out, f));
+  await cp(join('site', 'og'), join(out, 'og'), { recursive: true });
   await writeFile(
     join(out, 'docs', 'index.html'),
     fillShell(await readFile(join('site', 'docs.html'), 'utf8'), docs),
