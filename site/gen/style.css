@@ -465,3 +465,30 @@ p+a{display:inline-block;padding:12px 0}
 @media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}
 @media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}
 @media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}
+/* /benchmarks: purpose lines, chart rules (A0 filled and accented, the rest outlined, a loss is a word), page head */
+.bench.center{max-width:1016px;padding:56px 24px 0;text-align:left}
+.bench.center h1,.bench.center p{margin:0 0 12px;max-width:none}
+.bench.layout{padding-top:24px}
+.bench .pill:not(.ghost){background:var(--a0);color:#000}
+.bench .pill.ghost{background:none;border:1px solid var(--line2);color:var(--fg)}
+.bench .q{color:var(--fg);margin:0 0 14px}
+.bench .nx{font-size:.9rem;color:var(--muted);margin:16px 0 0}
+.bench .nx a,.bench td a{color:var(--fg);text-underline-offset:3px;display:inline-block;padding:12px 0}
+.bench .ops td:first-child{white-space:normal}
+.bench p.take{border-color:var(--line2)}
+.bench .rail a.on{border-color:var(--fg)}
+.bench .rank td.first,.bench .tile .n:not(.loss){color:var(--fg)}
+.bench .track .fill{background:none;border:1px solid #8f8f8f;box-sizing:border-box}
+.bench .track.a0 .fill{background:var(--a0);border-color:var(--a0)}
+.bench .track.jit .fill,.bench .track.rust .fill{border-style:dashed}
+.bench .track.int .fill{border-style:dotted}
+.bench .legend span::before{border-radius:0;background:none;border:1px solid #8f8f8f;box-sizing:border-box}
+.bench .legend .la0::before{background:var(--a0);border-color:var(--a0)}
+.bench .legend .ljit::before,.bench .legend .lrust::before{border-style:dashed}
+.bench .legend .lint::before{border-style:dotted}
+.bench .lrow .track,.bench .row .track{grid-template-columns:1fr 130px;height:auto;min-height:18px}
+.bench .track .val{white-space:normal;line-height:1.2;color:var(--fg2)}
+.bench .ls .lrow:has(~.lrow.me) .val::after,.bench .track .val.loss::after{content:" A0 slower"}
+.bench .lm .lrow:has(~.lrow.me) .val::after,.bench .row .ratio.loss::after{content:" A0 costlier"}
+.bench .val::after,.bench .ratio::after{font-weight:700;color:var(--fg)}
+@media (max-width:600px){.bench .lrow,.bench .lrow.wide{grid-template-columns:1fr;gap:2px}.bench .lrow .track{grid-template-columns:1fr 100px}}
