@@ -16,7 +16,6 @@ test('wordKey: the keys compiler/parse.a0 compares', () => {
 const SRC = 'fn kw u32 -> u32\nk eq p0 524\nr select k 1 0\nret r\nend\n';
 
 test('views end with a keys legend only when an eq literal is a known key', () => {
-  process.env.A0_KEY_LEGEND = 'on';
   const session = new EditSession(parseAndValidate(SRC));
   const plain = session.openProgram({}).text;
   assert.ok(!plain.includes('# keys:'));
@@ -26,12 +25,14 @@ test('views end with a keys legend only when an eq literal is a known key', () =
   }
   const other = new EditSession(parseAndValidate(SRC.replace('524', '7')));
   assert.ok(!other.open('kw', { scope: 'deps' }).text.includes('# keys:'));
-  delete process.env.A0_KEY_LEGEND;
-  assert.ok(!session.open('kw', { scope: 'deps' }).text.includes('# keys:'), 'off by default');
+  process.env.A0_KEY_LEGEND = 'off';
+  assert.ok(
+    !session.open('kw', { scope: 'deps' }).text.includes('# keys:'),
+    'A0_KEY_LEGEND=off removes it',
+  );
 });
 
 test('the legend changes neither the revision nor an apply that copies it back', () => {
-  process.env.A0_KEY_LEGEND = 'on';
   const session = new EditSession(parseAndValidate(SRC));
   const view = session.open('kw', { scope: 'deps' });
   const echoed = session.apply(view.text);

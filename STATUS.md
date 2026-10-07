@@ -186,3 +186,8 @@ Short version; the dated record, with every number and its `results/` file, is [
 ## Wording arm of the application-scale edit benchmark (2026-10-06)
 
 The revised view-choice wording did not meet the pre-registered rule: Haiku 8 of 14 accepted both ways (cost per accepted edit 20304.9 against 20521.7), Sonnet 12 against 11 accepted and cost 5343.7 against 4690.4 (see `results/app-edit-wording.json`). No change to the shipped skill or MCP text. Pre-registration: `docs/history/2026-10-06-app-edit-wording-preregistration.md`.
+
+
+## Word-key legend in the A0 view (2026-10-06)
+
+The view of a function now ends with a one-line key legend when an `eq`/`ne` literal is the parser word key of a known word (`src/wordkey.ts`). Measured on the five tasks whose request changes (`results/app-edit-keys.json`): Haiku 10 of 14 accepted (9 without), Sonnet 14 of 14 (13 without), both at lower cost per accepted edit; Sonnet now ties TypeScript on acceptance. Haiku still trails TypeScript (13); the remaining misses are model errors. Also this round: seed bootstrap runs on Windows, benchmark load is read from CPU utilisation on Windows (`tools/system-load.ts`; `os.loadavg()` is always 0 there). The full gate still fails on this machine (see its debugging agent); the site is not deployed (needs a logged-in Vercel CLI).

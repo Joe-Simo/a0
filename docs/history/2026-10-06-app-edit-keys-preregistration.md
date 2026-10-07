@@ -41,3 +41,18 @@ A0_KEY_LEGEND=on A0_PROGRAM_VIEW=deps bun tools/app-edit-bench.ts dump results/a
 bun tools/ai-edit-subjects.ts prompts results/app-edit-keys/dump.a0.json <scratch>/<model>/a0/prompts   # only the five keys above
 # replies, run, repair as in the deps arm, into results/app-edit-keys/report.<model>.a0.json
 ```
+
+## Result (collected after the rule above was committed; `results/app-edit-keys.json`, `tools/app-edit-keys-summary.ts`)
+
+10 fresh first-reply subagents (Haiku and Sonnet, the five tasks whose request changes) and 3 fresh repair subagents (Haiku), scored once after every agent had reported. No subject was refused. The nine other tasks carry over from the deps arm (their requests are byte-identical).
+
+| model | form | accepted after repair (14 tasks) | accepted on the five rerun tasks | tokens per accepted edit (10-task horizon) |
+|---|---|---|---|---|
+| Haiku | deps view | 9 | 3 | 2348.3 |
+| Haiku | deps view + key legend | 10 | 4 | 2143.5 |
+| Haiku | TypeScript (sealed arm) | 13 | | 7960 |
+| Sonnet | deps view | 13 | 4 | 1576.5 |
+| Sonnet | deps view + key legend | 14 | 5 | 1485.2 |
+| Sonnet | TypeScript (sealed arm) | 14 | | 7277.3 |
+
+Rule: met on both models (more accepted overall, lower cost, and not fewer on the rerun tasks). The legend is on by default in `EditSession` (`A0_KEY_LEGEND=off` removes it). Sonnet with the legend ties TypeScript on acceptance (14 of 14) at 1485.2 against 7277.3 tokens per accepted edit. Haiku still trails TypeScript, 10 against 13; the four remaining misses (`fat-arrow`, `profile-canonical`, `param-limit`, `number-leading-zero`) are model errors in the edit language, not view gaps; the Haiku loss is in the ledger and in `results/loss-blockers.json`. The shipped skill and MCP wording are unchanged (they are pinned by the wording arm's sealed variant); the rule for the key is carried inside the legend line itself.

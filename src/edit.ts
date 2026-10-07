@@ -1112,7 +1112,7 @@ export class EditSession {
   ): string {
     const text = this.#plainFunctionText(fn, scope, numbered, dense, hideSpecs);
     const shown = dense && scope === 'bodies' ? [fn, ...fn.calls.values()] : [fn];
-    const legend = process.env.A0_KEY_LEGEND === 'on' ? keyLegend(shown) : '';
+    const legend = process.env.A0_KEY_LEGEND === 'off' ? '' : keyLegend(shown);
     return legend === '' ? text : `${text}\n${legend}`;
   }
 

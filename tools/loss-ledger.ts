@@ -513,6 +513,7 @@ function appEditObservations(root: string): Observation[] {
     ['app-edit.json', 'app-edit', 'a0'],
     ['app-edit-loop.json', 'app-edit-loop', 'a0'],
     ['app-edit-deps.json', 'app-edit-deps', 'a0-deps'],
+    ['app-edit-keys.json', 'app-edit-keys', 'a0-keys'],
   ] as const) {
     const cells = obj(readJson(root, file)?.cells);
     if (cells === undefined) continue;

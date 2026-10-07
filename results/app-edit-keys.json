@@ -1,0 +1,374 @@
+{
+  "generatedAt": "2026-10-07T01:33:26.455Z",
+  "tool": "tools/app-edit-keys-summary.ts",
+  "preRegistration": "docs/history/2026-10-06-app-edit-keys-preregistration.md",
+  "taskSetSha256": "d6de17379984b7e87ada47194d9d7bc12a7d2ef4d306e99cc7c474f71a4282fb",
+  "meaning": "The deps-view arm of the application-scale edit benchmark with the word-key legend in the A0 view (A0_KEY_LEGEND=on) against the same arm without it. Only the five tasks whose request changes were rerun with fresh Haiku and Sonnet subagents (one shot plus one repair); the other nine carry over from the deps arm because their requests are byte-identical.",
+  "rerunTasks": [
+    "op-alias-mod",
+    "drop-unsigned-aliases",
+    "number-leading-zero",
+    "unreserve-patch",
+    "use-alias-import"
+  ],
+  "cells": {
+    "haiku/ts": {
+      "n": 14,
+      "oneShot": {
+        "k": 11,
+        "ci95": [
+          0.524,
+          0.924
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 8010,
+        "session10": 7960,
+        "unbounded": 7954.4
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "use-alias-import",
+          "first": "hunk 3 (@@ -543): its context and removed lines do not occur in front.ts after the previous hunk"
+        }
+      ],
+      "acceptedCount": 13,
+      "cost": 7960
+    },
+    "haiku/a0-deps": {
+      "n": 14,
+      "oneShot": {
+        "k": 7,
+        "ci95": [
+          0.268,
+          0.732
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 9,
+        "ci95": [
+          0.388,
+          0.837
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 3129.5,
+        "session10": 2348.3,
+        "unbounded": 2261.5
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3]"
+        },
+        {
+          "task": "op-alias-mod",
+          "first": "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": code expected 0, got 2"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 2: unexpected 'end' before ret fix: a function is `fn ...` then instruction lines, `ret X`, `end`: write `ret X` before `end`, and start the next `f"
+        },
+        {
+          "task": "param-limit",
+          "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ],
+      "acceptedCount": 9,
+      "cost": 2348.3
+    },
+    "haiku/a0-keys": {
+      "n": 14,
+      "oneShot": {
+        "k": 8,
+        "ci95": [
+          0.326,
+          0.786
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 10,
+        "ci95": [
+          0.454,
+          0.883
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2846.6,
+        "session10": 2143.5,
+        "unbounded": 2065.4
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "fat-arrow",
+          "first": "tokens of \"fn f u32 => u32\\na = b\\n\": expected [1,0,2,1,3,1,1,5,3,4,9,2,1,12,3,5,15,1,1,16,1,9,18,1,1,20,1,5,21,1], got [1,0,2,1,3,1,1,5,3]"
+        },
+        {
+          "task": "profile-canonical",
+          "first": "parse: line 2: unexpected 'end' before ret fix: a function is `fn ...` then instruction lines, `ret X`, `end`: write `ret X` before `end`, and start the next `f"
+        },
+        {
+          "task": "param-limit",
+          "first": "parse of \"fn f u32 u32 u32 u32 u32 u32 u32 u32 bool -> u32\\nret p7\\nend\\n\": code expected 1, got 0"
+        },
+        {
+          "task": "number-leading-zero",
+          "first": "parse: line 4: and expects 2 operands, got 3 fix: write exactly 2 operands after and"
+        }
+      ],
+      "acceptedCount": 10,
+      "cost": 2143.5
+    },
+    "haiku/a0-deps-on-rerun-tasks": {
+      "n": 5,
+      "oneShot": {
+        "k": 1,
+        "ci95": [
+          0.036,
+          0.624
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 3,
+        "ci95": [
+          0.231,
+          0.882
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 3603.1,
+        "session10": 2766.1,
+        "unbounded": 2673.1
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "op-alias-mod",
+          "first": "parse of \"fn f u32 u32 -> u32\\na mod p0 p1\\nb rem a 3\\nret mod b 2\\nend\\n\": code expected 0, got 2"
+        },
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ],
+      "acceptedCount": 3,
+      "cost": 2766.1
+    },
+    "haiku/a0-keys-on-rerun-tasks": {
+      "n": 5,
+      "oneShot": {
+        "k": 2,
+        "ci95": [
+          0.118,
+          0.769
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 4,
+        "ci95": [
+          0.376,
+          0.964
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2777.5,
+        "session10": 2149.8,
+        "unbounded": 2080
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "number-leading-zero",
+          "first": "parse: line 4: and expects 2 operands, got 3 fix: write exactly 2 operands after and"
+        }
+      ],
+      "acceptedCount": 4,
+      "cost": 2149.8
+    },
+    "sonnet/ts": {
+      "n": 14,
+      "oneShot": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 7323.8,
+        "session10": 7277.3,
+        "unbounded": 7272.1
+      },
+      "notAcceptedAfterRepair": [],
+      "acceptedCount": 14,
+      "cost": 7277.3
+    },
+    "sonnet/a0-deps": {
+      "n": 14,
+      "oneShot": {
+        "k": 12,
+        "ci95": [
+          0.601,
+          0.96
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2117.3,
+        "session10": 1576.5,
+        "unbounded": 1516.4
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ],
+      "acceptedCount": 13,
+      "cost": 1576.5
+    },
+    "sonnet/a0-keys": {
+      "n": 14,
+      "oneShot": {
+        "k": 13,
+        "ci95": [
+          0.685,
+          0.987
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 14,
+        "ci95": [
+          0.785,
+          1
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 1987.4,
+        "session10": 1485.2,
+        "unbounded": 1429.4
+      },
+      "notAcceptedAfterRepair": [],
+      "acceptedCount": 14,
+      "cost": 1485.2
+    },
+    "sonnet/a0-deps-on-rerun-tasks": {
+      "n": 5,
+      "oneShot": {
+        "k": 4,
+        "ci95": [
+          0.376,
+          0.964
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 4,
+        "ci95": [
+          0.376,
+          0.964
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2487.6,
+        "session10": 1859.9,
+        "unbounded": 1790.1
+      },
+      "notAcceptedAfterRepair": [
+        {
+          "task": "use-alias-import",
+          "first": "parse of \"import \\\"a.a0\\\"\\nuse \\\"b.a0\\\"\\nimport \\\"a.a0\\\"\\nfn f -> u32\\nret 0\\n...\": code expected 0, got 1"
+        }
+      ],
+      "acceptedCount": 4,
+      "cost": 1859.9
+    },
+    "sonnet/a0-keys-on-rerun-tasks": {
+      "n": 5,
+      "oneShot": {
+        "k": 5,
+        "ci95": [
+          0.566,
+          1
+        ]
+      },
+      "acceptedAfterRepair": {
+        "k": 5,
+        "ci95": [
+          0.566,
+          1
+        ]
+      },
+      "tokensPerAcceptedEdit": {
+        "task1": 2049.9,
+        "session10": 1547.7,
+        "unbounded": 1491.9
+      },
+      "notAcceptedAfterRepair": [],
+      "acceptedCount": 5,
+      "cost": 1547.7
+    }
+  },
+  "preRegisteredRule": {
+    "perModel": {
+      "haiku": {
+        "primaryHorizon": "session10",
+        "accepted": {
+          "deps": 9,
+          "keys": 10
+        },
+        "cost": {
+          "deps": 2348.3,
+          "keys": 2143.5
+        },
+        "rerunTasksAccepted": {
+          "deps": 3,
+          "keys": 4
+        },
+        "overall": true,
+        "rerunNotLower": true,
+        "met": true
+      },
+      "sonnet": {
+        "primaryHorizon": "session10",
+        "accepted": {
+          "deps": 13,
+          "keys": 14
+        },
+        "cost": {
+          "deps": 1576.5,
+          "keys": 1485.2
+        },
+        "rerunTasksAccepted": {
+          "deps": 4,
+          "keys": 5
+        },
+        "overall": true,
+        "rerunNotLower": true,
+        "met": true
+      }
+    },
+    "metOnBothModels": true
+  }
+}
