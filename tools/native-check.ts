@@ -28,7 +28,8 @@
  * - check time by source size.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
@@ -42,7 +43,7 @@ import {
   type Value,
 } from '../src/core.js';
 import { link } from '../src/link.js';
-import { findClang, runTool } from '../src/toolchain.js';
+import { findClang, findGcc, runTool } from '../src/toolchain.js';
 import {
   type Case,
   CORPUS_FUNCTIONS,
@@ -104,19 +105,27 @@ const LIGHT_KERNELS = KERNELS.filter((k) => k.iterScale === undefined);
 /** The host side of the executable: linking, the commands, the IR evaluator (C, no A0). */
 const DRIVER = join('tools', 'native', 'a0.c');
 
-/** Compile the self-hosted front end and the driver to dist/native/a0. */
-export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; fns: number }> {
-  const clang = findClang().path;
-  if (clang === undefined) throw new Error('clang not found');
+/**
+ * Compile the self-hosted front end and the driver to dist/native/a0. `arch` (macOS: arm64 or
+ * x86_64) cross-compiles for the other CPU; `strip` drops the symbols (a release build).
+ */
+export async function buildNativeCheck(
+  options: { readonly arch?: string; readonly strip?: boolean; readonly dir?: string } = {},
+): Promise<{ ms: number; cBytes: number; fns: number; exe: string }> {
+  // `dir` is where the C files and the executable go: tests that run side by side each take their own
+  const dir = options.dir ?? NATIVE_DIR;
+  // clang where there is one (the release runners), else gcc (a Windows machine with MSYS2)
+  const clang = findClang().path ?? findGcc().path;
+  if (clang === undefined) throw new Error('neither clang nor gcc found');
   const t0 = performance.now();
   const program = (await link('compiler/native.a0', (p) => readFile(p, 'utf8'))).program;
   const c = compile(program, 'c', {
-    ioInputCapacity: FRONT_END_SOURCE_LIMIT + 3,
+    ioInputCapacity: FRONT_END_SOURCE_LIMIT + 1100,
     ioOutputCapacity: OUTPUT_WORDS,
   }).text;
-  await mkdir(NATIVE_DIR, { recursive: true });
-  await writeFile(join(NATIVE_DIR, 'checker.c'), c, 'utf8');
-  await writeFile(join(NATIVE_DIR, 'main.c'), await readFile(DRIVER, 'utf8'), 'utf8');
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'checker.c'), c, 'utf8');
+  await writeFile(join(dir, 'main.c'), await readFile(DRIVER, 'utf8'), 'utf8');
   const r = runTool(
     clang,
     [
@@ -130,17 +139,20 @@ export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; 
       ...(process.platform === 'darwin'
         ? ['-Wl,-dead_strip', '-Wl,-no_function_starts', '-Wl,-no_data_in_code_info']
         : []),
+      ...(options.arch === undefined ? [] : ['-arch', options.arch]),
+      ...(options.strip === true ? [process.platform === 'darwin' ? '-Wl,-x' : '-s'] : []),
       '-o',
       'a0',
       'main.c',
     ],
-    { cwd: NATIVE_DIR, timeoutMs: 600_000 },
+    { cwd: dir, timeoutMs: 600_000 },
   );
   if (!r.ok) throw new Error(`native a0 build failed:\n${r.stderr.slice(0, 4000)}`);
   return {
     ms: Math.round(performance.now() - t0),
     cBytes: Buffer.byteLength(c),
     fns: program.functions.length,
+    exe: existsSync(join(dir, 'a0.exe')) ? join(dir, 'a0.exe') : join(dir, 'a0'),
   };
 }
 
@@ -355,7 +367,9 @@ const LINK_PROJECTS: readonly [string, Readonly<Record<string, string>>, string,
     'over-limit',
     {
       'main.a0': `use "big.a0"\n${oneFn('top', 'ret p0')}`,
-      'big.a0': Array.from({ length: 700 }, (_, i) => oneFn(`f${i}`, 'r add p0 1\nret r')).join(''),
+      'big.a0': Array.from({ length: 4000 }, (_, i) => oneFn(`f${i}`, 'r add p0 1\nret r')).join(
+        '',
+      ),
     },
     'top',
     ['1'],
@@ -466,7 +480,30 @@ async function diagnosticRows(dir: string): Promise<Row[]> {
   return rows;
 }
 
+/**
+ * `--build-only [--out PATH] [--arch ARCH]`: build the checker for a release (stripped) and copy
+ * it to PATH (the `a0-check` that sits next to the `a0` executable, src/native-fast.ts).
+ */
+async function buildOnly(args: readonly string[]): Promise<void> {
+  const flag = (name: string): string | undefined => {
+    const i = args.indexOf(name);
+    return i < 0 ? undefined : args[i + 1];
+  };
+  const arch = flag('--arch');
+  const build = await buildNativeCheck({ strip: true, ...(arch === undefined ? {} : { arch }) });
+  const out = flag('--out');
+  if (out !== undefined) {
+    const built = existsSync(`${NATIVE_A0}.exe`) ? `${NATIVE_A0}.exe` : NATIVE_A0;
+    await mkdir(dirname(out), { recursive: true });
+    await copyFile(built, out);
+  }
+  process.stdout.write(
+    `built ${out ?? NATIVE_A0}: ${build.fns} functions, ${build.cBytes} C bytes, ${build.ms} ms\n`,
+  );
+}
+
 async function main(): Promise<void> {
+  if (process.argv.includes('--build-only')) return buildOnly(process.argv.slice(2));
   const build = await buildNativeCheck();
   process.stdout.write(
     `built ${NATIVE_A0}: ${build.fns} functions, ${build.cBytes} C bytes, ${build.ms} ms\n`,
@@ -552,7 +589,7 @@ async function main(): Promise<void> {
           },
           linking: {
             method:
-              'small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit must be refused natively (exit 65: the 16384-byte front end) where the TypeScript linker accepts 1 MiB',
+              'small projects through src/link.ts and the reference run, and through the native `a0 run`: the result, or the exit code of the diagnostic category, must agree; over-limit (152 KB) must be refused by `a0 run` (exit 65: the front end reads 131072 bytes) where the TypeScript linker accepts 1 MiB; `a0 check` checks it in chunks (tools/native-check-diff.ts)',
             rows: linking,
           },
           checkTimeBySize: {

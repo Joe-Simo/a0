@@ -11,3 +11,213 @@ fn nativeio io -> u32
 r call checkio p0
 ret r
 end
+
+# The chunked check: a program over the front end's capacities is cut by the driver at function
+# boundaries; each chunk is the stubs of the earlier functions it calls (a signature and `ret 0`,
+# not checked: the first `from` functions of the chunk) and its own functions, which `chunkio`
+# checks as `irio` does. Input: the source (n, then n bytes), `from`, then the `from` iteration
+# bounds of the stubs. Output: ok, code, fn, node (as `irio`), the start byte of the token a parse
+# or structure error rejects (the source length at the end), the count of functions in the chunk
+# and their iteration bounds (all zero on an error), then the tables of `irio` but the pool: the
+# types, tlist, node types, sym as (start, length) in the source (sym 0 is "retval"), fns, nodes, args.
+fn nrdword io -> (u32,io)
+r read p0
+ret r
+end
+fn nrdfst (u32x128x8,io) u32 -> (u32x128x8,io)
+fs at p0 0
+tk at p0 1
+r call nrdword tk
+v at r 0
+t at r 1
+pi shr p1 7
+wi and p1 127
+pg get fs pi
+pg2 set pg wi v
+fs2 set fs pi pg2
+o rec fs2 t
+ret o
+end
+fn nwfst io u32 u32x128x8 -> io
+pi shr p1 7
+wi and p1 127
+pg get p2 pi
+v get pg wi
+w write p0 v
+ret w
+end
+# the symbol range word p2[p1] (source start * 32768 + length) as two output words
+fn nsymst io u32 u32x128 -> io
+v get p2 p1
+st shr v 15
+len and v 32767
+w1 write p0 st
+w2 write w1 len
+ret w2
+end
+fn nsympg io u32 u32x128x64 u32 -> io
+pg get p2 p1
+base mul p1 128
+rest sub p3 base
+big gt rest 128
+cnt select big 128 rest
+r fold nsymst cnt p0 pg
+ret r
+end
+fn nmin u32 u32 -> u32
+b lt p0 p1
+r select b p0 p1
+ret r
+end
+# the start byte of token p1 of the p2 tokens p0, or p3 for a token past the last
+fn ntokstart u32x128x384 u32 u32 u32 -> u32
+ins lt p1 p2
+t select ins p1 0
+w3 mul t 3
+w add w3 1
+pi shr w 7
+wi and w 127
+pg get p0 pi
+v get pg wi
+r select ins v p3
+ret r
+end
+fn chunkio io -> u32
+rs call readsrc p0
+src at rs 0
+n at rs 1
+t1 at rs 2
+rf call nrdword t1
+from at rf 0
+t2 at rf 1
+z8a call z8
+fs0 rec z8a t2
+fsr fold nrdfst from fs0
+fst at fsr 0
+t3 at fsr 1
+lx call lexsrc src n
+toks at lx 0
+nw at lx 1
+ntok div nw 3
+s1 call pass1 src toks ntok
+sinfo at s1 1
+ta at s1 2
+tv at s1 3
+hdrs at s1 5
+nsym at s1 7
+umode at s1 10
+uerr at s1 11
+uetok at s1 12
+nhdr at s1 15
+uopen ne umode 0
+uerr0 eq uerr 0
+ueof and uerr0 uopen
+e1 select ueof 1 uerr
+et1 select ueof ntok uetok
+s3 call pass3 src toks ta hdrs nhdr e1 et1 ntok
+types at s3 0
+tlist at s3 2
+hout at s3 4
+ntypes at s3 5
+ntlist at s3 6
+e3 at s3 11
+et3 at s3 12
+nhc at s3 18
+nhn at s3 19
+s4 call pass4 hout nhn nhc
+fns0 at s4 0
+names at s4 1
+derr at s4 2
+dtok at s4 3
+dup ne derr 0
+e4 select dup derr e3
+et4 select dup dtok et3
+s5 call pass5 fns0 names src toks ta tv ntok e4 et4 0
+fns at s5 0
+nodes at s5 1
+alo at s5 2
+nargs at s5 5
+args call bodyargs alo nargs fns0 names src toks ta tv ntok e4 et4
+nnodes at s5 4
+fcs at s1 7
+fcu at s1 8
+fch at s3 19
+fct at s3 5
+fcl at s3 6
+fcn at s5 4
+fcp mov 0
+ovr call fecap toks ntok fcs fcp fcu fch fct fcl fcn nargs
+pcode0 at s5 8
+pcode select ovr 4 pcode0
+petok at s5 9
+fromc call nmin from nhc
+ck call checkir types tlist fns nodes args fst ntypes ntlist nhc fromc
+types2 at ck 0
+tlist2 at ck 2
+ntys at ck 4
+fstat at ck 7
+ntypes2 at ck 8
+ntlist2 at ck 9
+cerr at ck 10
+cfn at ck 11
+cnode at ck 12
+pok eq pcode 0
+code select pok cerr pcode
+fnw0 select pok cfn 4294967295
+nodew0 select pok cnode petok
+ok eq code 0
+fnw select ok 0 fnw0
+nodew select ok 0 nodew0
+okw select ok 1 0
+tokst call ntokstart toks nodew0 ntok n
+w0 write t3 okw
+w1 write w0 code
+w2 write w1 fnw
+w3 write w2 nodew
+w3b write w3 tokst
+nhcw select ok nhc 0
+w3c write w3b nhcw
+w3d fold nwfst nhcw w3c fstat
+ntypesw0 mul ntypes2 3
+ntypesw select ok ntypesw0 0
+ntlistw select ok ntlist2 0
+nnodesc select ok nnodes 0
+w4 write w3d ntypesw
+ty383 add ntypesw 383
+tyn div ty383 384
+w5 fold wty tyn w4 types2 ntypesw
+w6 write w5 ntlistw
+tl127 add ntlistw 127
+tln shr tl127 7
+w7 fold w65 tln w6 tlist2 ntlistw
+w8 write w7 nnodesc
+nd127 add nnodesc 127
+ndn shr nd127 7
+w9 fold w24 ndn w8 ntys nnodesc
+nsymw0 mul nsym 2
+nsymw select ok nsymw0 0
+nsymc select ok nsym 0
+w12 write w9 nsymw
+sy127 add nsymc 127
+syn shr sy127 7
+w13 fold nsympg syn w12 sinfo nsymc
+nfnsw0 mul nhc 7
+nfnsw select ok nfnsw0 0
+w14 write w13 nfnsw
+fn127 add nfnsw 127
+fnn shr fn127 7
+w15 fold w45 fnn w14 fns nfnsw
+nnodesw0 mul nnodes 6
+nnodesw select ok nnodesw0 0
+w16 write w15 nnodesw
+nw127 add nnodesw 127
+nwn shr nw127 7
+w17 fold w128 nwn w16 nodes nnodesw
+nargsw0 mul nargs 2
+nargsw select ok nargsw0 0
+w18 write w17 nargsw
+ar127 add nargsw 127
+arn shr ar127 7
+w19 fold w512 arn w18 args nargsw
+ret code
+end

@@ -28,7 +28,7 @@ binaries="a0-darwin-arm64 a0-darwin-x64 a0-linux-arm64 a0-linux-x64 a0-windows-x
 for name in $binaries; do
   target=${name#a0-}
   target=${target%.exe}
-  bun build --compile --target="bun-$target" --minify dist/src/cli.js --outfile "release/$name"
+  bun build --compile --target="bun-$target" --minify dist/src/a0.js --outfile "release/$name"
 done
 
 if [ "$(uname -s)" = Darwin ]; then
@@ -41,6 +41,28 @@ fi
 for name in $binaries; do
   [ -s "release/$name" ] || { echo "release: missing or empty release/$name" >&2; exit 1; }
 done
+
+# The native checker (src/native-fast.ts) is not one of the twelve assets yet. With A0_NATIVE_CHECK_ASSETS=1
+# the one for this machine is built beside them (a0-check-<os>-<arch>; on macOS both CPUs), for the workflow
+# to upload and the installers to place next to a0 as `a0-check` (docs/RELEASING.md). Each target needs a C
+# compiler for it, so the Linux and Windows ones come from a runner of that platform.
+if [ "${A0_NATIVE_CHECK_ASSETS:-0}" = 1 ]; then
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) natives="darwin-arm64: darwin-x64:x86_64" ;;
+    Darwin-x86_64) natives="darwin-x64: darwin-arm64:arm64" ;;
+    Linux-aarch64 | Linux-arm64) natives="linux-arm64:" ;;
+    Linux-x86_64) natives="linux-x64:" ;;
+    *) natives="windows-x64:" ;;
+  esac
+  for pair in $natives; do
+    target=${pair%%:*}
+    arch=${pair#*:}
+    ext=
+    [ "$target" = windows-x64 ] && ext=.exe
+    node dist/tools/native-check.js --build-only ${arch:+--arch "$arch"} --out "release/a0-check-$target$ext"
+    [ -s "release/a0-check-$target$ext" ] || { echo "release: missing or empty release/a0-check-$target$ext" >&2; exit 1; }
+  done
+fi
 
 # The binary for this machine must run and report the release version.
 case "$(uname -s)-$(uname -m)" in

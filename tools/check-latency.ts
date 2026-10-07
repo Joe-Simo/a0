@@ -32,7 +32,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { cpus, platform as osPlatform, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -40,9 +40,12 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { parseAndValidate } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
+import { link } from '../src/link.js';
+import { findClang } from '../src/toolchain.js';
 import { extractBlock } from './ai-edit-apply.js';
 import { checkStart, startPrograms, TS_FILE } from './app-edit-bench.js';
 import { APP_TASKS, type AppTask } from './app-edit-tasks.js';
+import { buildNativeCheck, NATIVE_A0 } from './native-check.js';
 import { loadGate, waitQuiet } from './quiet.js';
 import { writeReport } from './scrub-results.js';
 import { loadSource, systemLoad } from './system-load.js';
@@ -196,6 +199,15 @@ export interface CheckLatencyReport {
      */
     readonly cliCheckProcess?: Stats;
     readonly binaryCheckProcess?: Stats;
+    /**
+     * Optional subjects of the native checker (tools/native-check.ts, src/native-fast.ts), by name:
+     * `a0 native check (fresh process)` is the native checker alone on front.a0; `a0 binary check,
+     * native fast path (fresh process)` is `a0 check front.a0` of the standalone executable with the
+     * native checker beside it; the two `compiler/check.a0` rows are the same pair on the 207 KB
+     * linked checker (the binary row without the native checker beside it, as before). Absent where
+     * no C compiler or no bun exists; reports before the native checker lack the field.
+     */
+    readonly extra?: Record<string, Stats>;
   };
   readonly wholeProject: Record<string, Stats>;
   readonly comparisons: readonly Comparison[];
@@ -245,6 +257,8 @@ export function validateReport(r: unknown): string[] {
   for (const k of ['cliCheckProcess', 'binaryCheckProcess'] as const)
     if (rep.a0?.[k] !== undefined && (!isStats(rep.a0[k]) || (rep.a0[k] as Stats).n < MIN_RUNS))
       bad.push(`${k}: bad stats`);
+  for (const [name, s] of Object.entries(rep.a0?.extra ?? {}))
+    if (!isStats(s) || s.n < MIN_RUNS) bad.push(`extra ${name}: bad stats`);
   for (const [name, s] of Object.entries(rep.wholeProject ?? {}))
     if (!isStats(s) || s.n < MIN_RUNS) bad.push(`wholeProject ${name}: bad stats`);
   for (const c of rep.comparisons ?? []) {
@@ -291,6 +305,8 @@ export function renderTable(r: CheckLatencyReport): string {
   ] as const)
     if (s !== undefined)
       out.push(`  ${label.padEnd(22)} ${ms(s.median).padStart(9)}  [${ms(s.min)}..${ms(s.max)}]`);
+  for (const [label, s] of Object.entries(r.a0.extra ?? {}))
+    out.push(`  ${label.padEnd(22)} ${ms(s.median).padStart(9)}  [${ms(s.min)}..${ms(s.max)}]`);
   for (const c of wp)
     out.push(
       `  ${c.subject} vs ${c.competitor}: ${c.verdict} (A0 ${ms(c.a0Ms)} ms, ${ms(c.otherMs)} ms, ${c.ratio.toFixed(2)}x, band ${(c.band * 100).toFixed(0)}%)`,
@@ -594,6 +610,94 @@ export async function measure(opts: {
       sink: binSamples,
     });
   }
+  // The native checker alone, and the standalone executable (src/a0.ts: the fast path of
+  // src/native-fast.ts) with `a0-check` beside it, on front.a0; the same pair on the 207 KB linked
+  // checker (compiler/check.a0), the second without the native checker beside it, for the contrast.
+  const nativeSamples: Record<string, number[]> = {};
+  const nativeVsCompetitors = new Set<string>();
+  try {
+    await buildNativeCheck({ strip: true });
+    const nativeBuilt = existsSync(`${NATIVE_A0}.exe`) ? `${NATIVE_A0}.exe` : NATIVE_A0;
+    const fastDir = join(dir, 'fast');
+    const slowDir = join(dir, 'slow');
+    await mkdir(fastDir, { recursive: true });
+    await mkdir(slowDir, { recursive: true });
+    const exeSuffix = plat === 'win32' ? '.exe' : '';
+    const nativePath = join(fastDir, `a0-check${exeSuffix}`);
+    await copyFile(nativeBuilt, nativePath);
+    const fastBin = join(fastDir, `a0${exeSuffix}`);
+    const a0Js = fileURLToPath(new URL('../src/a0.js', import.meta.url));
+    const fastBuilt = spawnSync(
+      'bun',
+      ['build', '--compile', '--minify', a0Js, '--outfile', fastBin],
+      {
+        encoding: 'utf8',
+      },
+    );
+    if (fastBuilt.status !== 0 || !existsSync(fastBin))
+      throw new Error(
+        `bun build --compile of src/a0.js failed: ${(fastBuilt.stderr ?? '').trim().split('\n')[0]}`,
+      );
+    const checkerFile = join(dir, 'checker.a0');
+    await writeFile(
+      checkerFile,
+      (await link('compiler/check.a0', (p) => readFile(p, 'utf8'))).text,
+      'utf8',
+    );
+    // the executable of the CLI alone, as shipped before the native checker (binPath above)
+    const nativeSubjects: [string, string, string[], boolean][] = [
+      ['a0 native check (fresh process)', nativePath, ['check', coldFile], true],
+      ['a0 binary check, native fast path (fresh process)', fastBin, ['check', coldFile], true],
+      [
+        'a0 binary check, compiler/check.a0 (fresh process)',
+        existsSync(binPath) ? binPath : fastBin,
+        ['check', checkerFile],
+        false,
+      ],
+      [
+        'a0 binary check, native fast path, compiler/check.a0 (fresh process)',
+        fastBin,
+        ['check', checkerFile],
+        false,
+      ],
+    ];
+    // the first checker row must not find the native checker: it runs the CLI-only binary, or
+    // the fast binary with the fast path turned off
+    for (const [name, cmd, args, vsCompetitors] of nativeSubjects) {
+      nativeSamples[name] = [];
+      if (vsCompetitors) nativeVsCompetitors.add(name);
+      const off = name === 'a0 binary check, compiler/check.a0 (fresh process)' && cmd === fastBin;
+      subjectOrder.push({
+        name,
+        sample: () => {
+          const t0 = performance.now();
+          const r = spawnSync(cmd, args, {
+            cwd: dir,
+            encoding: 'utf8',
+            maxBuffer: 1 << 26,
+            env: off ? { ...process.env, A0_NATIVE_CHECK: '0' } : process.env,
+          });
+          const dt = performance.now() - t0;
+          if (r.status !== 0)
+            throw new Error(
+              `${cmd} ${args.join(' ')} exited ${r.status}: ${(r.stderr ?? '').slice(0, 400)}`,
+            );
+          return dt;
+        },
+        sink: nativeSamples[name] as number[],
+      });
+    }
+    tools['a0 native check'] = {
+      available: true,
+      version: `A0 ${a0Version} native checker (tools/native/a0.c with compiler/check.a0 through the C backend, ${findClang().path === undefined ? 'gcc' : 'clang'} -O2)`,
+      command: 'a0-check check front.a0; a0 check front.a0 with a0-check beside the executable',
+    };
+  } catch (e) {
+    tools['a0 native check'] = {
+      available: false,
+      reason: `${e instanceof Error ? e.message : String(e)}`.split('\n')[0] as string,
+    };
+  }
   const editSamples = new Map<string, number[]>();
   for (const task of APP_TASKS) {
     const sink: number[] = [];
@@ -647,7 +751,13 @@ export async function measure(opts: {
   const extraStats: Record<string, Stats> = {
     'a0 cli check (node, fresh process)': stats(cliSamples),
     ...(binSamples.length > 0 ? { 'a0 binary check (fresh process)': stats(binSamples) } : {}),
+    ...Object.fromEntries(
+      [...nativeVsCompetitors].map((name) => [name, stats(nativeSamples[name] as number[])]),
+    ),
   };
+  const nativeExtra = Object.fromEntries(
+    Object.entries(nativeSamples).map(([name, xs]) => [name, stats(xs)]),
+  );
   const gate = loadGate();
   const medians = edits.map((e) => e.apply.median);
   const report: CheckLatencyReport = {
@@ -699,6 +809,7 @@ export async function measure(opts: {
       ...(binSamples.length > 0
         ? { binaryCheckProcess: extraStats['a0 binary check (fresh process)'] as Stats }
         : {}),
+      ...(Object.keys(nativeExtra).length > 0 ? { extra: nativeExtra } : {}),
     },
     wholeProject: whole,
     comparisons: compare(edits, coldInStats, coldProcStats, whole, extraStats),
