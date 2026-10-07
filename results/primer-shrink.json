@@ -1,0 +1,269 @@
+{
+  "generatedAt": "2026-10-07T12:12:16.150Z",
+  "tool": "tools/primer-shrink-summary.ts",
+  "preRegistration": "docs/history/2026-10-07-primer-shrink-preregistration.md",
+  "taskSetSha256": "f8489b9a1d2139ef5aca4e73e03e1a7065a2de4b2a99bad4a1506538fe3f78e0",
+  "meaning": "Primer shrink on sealed set X (16 single-function tasks, A0 canonical, structured protocol): the shipped guide S (MODEL_GUIDE.min.txt) against V1 (rarely needed rules moved to diagnostics) and V2 (V1 plus a rewritten edit line and no worked example), fresh Haiku and Sonnet subagents, one subagent per prompt, one shot plus one repair; tokens per accepted edit at the cold, 10-task (primary) and unbounded horizons.",
+  "primerTokensO200k": {
+    "S": 395,
+    "V1": 320,
+    "V2": 299,
+    "V3": 244
+  },
+  "marginTasks": 1,
+  "cells": {
+    "haiku/S": {
+      "n": 16,
+      "system": 443,
+      "oneShot": {
+        "k": 12,
+        "ci95": [
+          0.505,
+          0.898
+        ]
+      },
+      "accepted": {
+        "k": 14,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "callsPerTask": 1.25,
+      "tokensPerAcceptedEdit": {
+        "task1": 827.3,
+        "session10": 280.5,
+        "unbounded": 219.8
+      },
+      "notAccepted": [
+        {
+          "task": "x-loan-quarter",
+          "first": "structure: balance.d: reference to undefined or later node 'c' fix: define 'c' on an earlier line of this function, or reference a node defined above balance.d"
+        },
+        {
+          "task": "x-stair-energy",
+          "first": "climb(1,0) = 4, expected 10"
+        }
+      ]
+    },
+    "haiku/V1": {
+      "n": 16,
+      "system": 368,
+      "oneShot": {
+        "k": 15,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "accepted": {
+        "k": 15,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "callsPerTask": 1.06,
+      "tokensPerAcceptedEdit": {
+        "task1": 645.6,
+        "session10": 221.6,
+        "unbounded": 174.5
+      },
+      "notAccepted": [
+        {
+          "task": "x-stair-energy",
+          "first": "climb(1,0) = 4, expected 10"
+        }
+      ]
+    },
+    "haiku/V2": {
+      "n": 16,
+      "system": 348,
+      "oneShot": {
+        "k": 12,
+        "ci95": [
+          0.505,
+          0.898
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "callsPerTask": 1.25,
+      "tokensPerAcceptedEdit": {
+        "task1": 600.4,
+        "session10": 224.6,
+        "unbounded": 182.8
+      },
+      "notAccepted": []
+    },
+    "sonnet/S": {
+      "n": 16,
+      "system": 443,
+      "oneShot": {
+        "k": 15,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "callsPerTask": 1.06,
+      "tokensPerAcceptedEdit": {
+        "task1": 691.5,
+        "session10": 213.1,
+        "unbounded": 159.9
+      },
+      "notAccepted": []
+    },
+    "sonnet/V1": {
+      "n": 16,
+      "system": 368,
+      "oneShot": {
+        "k": 14,
+        "ci95": [
+          0.64,
+          0.965
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "callsPerTask": 1.13,
+      "tokensPerAcceptedEdit": {
+        "task1": 608.7,
+        "session10": 211.3,
+        "unbounded": 167.1
+      },
+      "notAccepted": []
+    },
+    "sonnet/V2": {
+      "n": 16,
+      "system": 348,
+      "oneShot": {
+        "k": 15,
+        "ci95": [
+          0.717,
+          0.989
+        ]
+      },
+      "accepted": {
+        "k": 16,
+        "ci95": [
+          0.806,
+          1
+        ]
+      },
+      "callsPerTask": 1.06,
+      "tokensPerAcceptedEdit": {
+        "task1": 571.5,
+        "session10": 195.7,
+        "unbounded": 153.9
+      },
+      "notAccepted": []
+    }
+  },
+  "flipsAgainstShipped": {
+    "haiku/V1": {
+      "gained": [
+        "x-loan-quarter"
+      ],
+      "lost": []
+    },
+    "haiku/V2": {
+      "gained": [
+        "x-loan-quarter",
+        "x-stair-energy"
+      ],
+      "lost": []
+    },
+    "sonnet/V1": {
+      "gained": [],
+      "lost": []
+    },
+    "sonnet/V2": {
+      "gained": [],
+      "lost": []
+    }
+  },
+  "preRegisteredRule": {
+    "haiku": {
+      "V1": {
+        "primaryHorizon": "session10",
+        "shipped": {
+          "accepted": 14,
+          "cost": 280.5
+        },
+        "variant": {
+          "accepted": 15,
+          "cost": 221.6
+        },
+        "acceptanceHeld": true,
+        "cheaper": true,
+        "pass": true
+      },
+      "V2": {
+        "primaryHorizon": "session10",
+        "shipped": {
+          "accepted": 14,
+          "cost": 280.5
+        },
+        "variant": {
+          "accepted": 16,
+          "cost": 224.6
+        },
+        "acceptanceHeld": true,
+        "cheaper": true,
+        "pass": true
+      }
+    },
+    "sonnet": {
+      "V1": {
+        "primaryHorizon": "session10",
+        "shipped": {
+          "accepted": 16,
+          "cost": 213.1
+        },
+        "variant": {
+          "accepted": 16,
+          "cost": 211.3
+        },
+        "acceptanceHeld": true,
+        "cheaper": true,
+        "pass": true
+      },
+      "V2": {
+        "primaryHorizon": "session10",
+        "shipped": {
+          "accepted": 16,
+          "cost": 213.1
+        },
+        "variant": {
+          "accepted": 16,
+          "cost": 195.7
+        },
+        "acceptanceHeld": true,
+        "cheaper": true,
+        "pass": true
+      }
+    }
+  },
+  "decision": {
+    "change": true,
+    "chosen": "V2"
+  }
+}

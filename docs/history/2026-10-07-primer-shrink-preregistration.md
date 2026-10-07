@@ -52,3 +52,22 @@ Both models pass, or no change. If both `V1` and `V2` pass, the one with the low
 ## Incidents, fixed in advance
 
 A subject refused by an API safeguard gets the identical prompt once more in a fresh subagent; a second refusal is a missing reply and a failure. A subject that writes no reply file is re-asked once, identically; if still missing, a failure. Never reword a prompt. Controls and variants run in the same session.
+
+## Result (collected after the rule above was committed; `results/primer-shrink.json`, `tools/primer-shrink-summary.ts`, reports in `results/primer-shrink/`)
+
+Set X was verified against its seal (`test/primer-shrink.test.ts`) and not altered. 96 fresh first-reply subagents (16 tasks, Haiku and Sonnet, three texts, one subagent per prompt; a few launches were refused only by the 20-subagent concurrency limit and were started again with the identical prompt) and 13 fresh repair subagents (Haiku: `S` 4, `V1` 1, `V2` 4; Sonnet: `S` 1, `V1` 2, `V2` 1). No subject was refused by a safeguard; no reply is missing. Files were scored once, after every subagent had reported. Harness self-check ok in all six reports.
+
+| model | text | system o200k | one shot | accepted after repair | calls per task | cold | 10-task (primary) | unbounded |
+|---|---|---|---|---|---|---|---|---|
+| Haiku | S (shipped) | 443 | 12 of 16 | 14 | 1.25 | 827.3 | 280.5 | 219.8 |
+| Haiku | V1 | 368 | 15 | 15 | 1.06 | 645.6 | 221.6 | 174.5 |
+| Haiku | V2 | 348 | 12 | 16 | 1.25 | 600.4 | 224.6 | 182.8 |
+| Sonnet | S (shipped) | 443 | 15 | 16 | 1.06 | 691.5 | 213.1 | 159.9 |
+| Sonnet | V1 | 368 | 14 | 16 | 1.13 | 608.7 | 211.3 | 167.1 |
+| Sonnet | V2 | 348 | 15 | 16 | 1.06 | 571.5 | 195.7 | 153.9 |
+
+Tokens per accepted edit in the last three columns. Rule, per model: `V1` passes on Haiku (15 against 14 accepted, 221.6 against 280.5) and on Sonnet (16 against 16, 211.3 against 213.1); `V2` passes on Haiku (16 against 14, 224.6 against 280.5) and on Sonnet (16 against 16, 195.7 against 213.1). Both texts pass on both models; `V2` has the lower summed 10-task cost (420.3 against 432.9), so **the registered decision (`results/primer-shrink.json`, `decision`) is a change to `V2`**.
+
+Wins, ties and losses, none hidden. Acceptance: every comparison is a tie on the Wilson intervals (n = 16). One shot: Haiku `V1` 15 against 12 (not separated), Haiku `V2` 12 against 12 (tie), Sonnet `V1` 14 against 15 and `V2` 15 against 15; flips against `S`: Haiku `V1` gained `x-loan-quarter`, `V2` gained `x-loan-quarter` and `x-stair-energy`, nothing lost anywhere. Cost: `V2` is lower than `S` at the cold, 10-task and unbounded horizons on both models except the Haiku unbounded cost (182.8 against 219.8, still lower: all three horizons are lower for `V2` on both models); `V1` is lower at every horizon on Haiku and lower cold and 10-task but higher unbounded on Sonnet (167.1 against 159.9, a loss). The two Haiku `S` tasks not accepted after repair (`x-loan-quarter`: a reference to an undefined or later node; `x-stair-energy`: wrong logic, `climb(1,0) = 4` against 10) are the two that `V2` accepted. The Haiku one-shot count is not higher for `V2`, and its saving at the 10-task horizon comes from the shorter system text (348 against 443 tokens times the 0.17 weight on every call) and from its two extra accepted edits after repair; the margin of the rule is one task and the intervals overlap, so this is the registered rule being met, not a significance claim.
+
+The limit stated in advance still applies: set X has no task that needs `use`, `text`, `loop` or io, so the saving on the dropped rules is not tested by this set against a task that needs them; the diagnostics carrying them are pinned by `test/primer-shrink.test.ts`. The shipped text change is a separate commit.
