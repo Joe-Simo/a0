@@ -1,0 +1,98 @@
+{
+ "y-stock-scan/a0/structured": [
+  "fn first_at_least u32x4 u32 -> u32\na loop below inc 4 0 p0 p1\nd ge a 4\nb select d 4 a\nret b\nend\nfn inc u32 u32 u32x4 u32 -> u32\nc add p0 1\nret c\nend\nfn below u32 u32 u32x4 u32 -> bool\nc lt p0 4\nd get p2 p0\ne lt d p3\nf and c e\nret f\nend\n"
+ ],
+ "y-fuel-burns/a0/structured": [
+  "l loop can_burn burn_step 10 r p1 p2\n"
+ ],
+ "y-signal-run/a0/structured": [
+  "fn same_state u32 u32 u32x6 bool -> bool\nd get p2 p1\ne gt d 50\nf eq e p3\nret f\nend\nfn next u32 u32 u32x6 bool -> u32\nc add p0 1\nret c\nend\n",
+  "fn run_length u32x6 -> u32\nf get p0 0\nfb gt f 50\nl loop same_state next 6 0 p0 fb\na ge l 128\nb sub l 128\nc select a b l\nret c\nend\nfn next u32 u32 u32x6 bool -> u32\na ge p0 128\nb same_state p0 p1 p2 p3\nc add p0 1\nd add p0 128\ne select b c d\nf select a p0 e\nret f\nend\n"
+ ],
+ "y-months-affordable/a0/structured": [
+  "fn fits (u32,u32) u32 u32x4 u32 -> bool\nb get p2 p1\nt at p0 1\nsum add t b\nok le sum p3\nret ok\nend\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nb get p2 p1\nt at p0 1\nsum add t b\nok le sum p3\nc at p0 0\nnc add c 1\nnew_c select ok nc c\nnew_t select ok sum t\nresult rec new_c new_t\nret result\nend\n",
+  "fn months_affordable u32x4 u32 -> u32\ns rec 0 0\nl loop fits pay 4 s p0 p1\nc at l 0\nret c\nend\nfn fits (u32,u32) u32 u32x4 u32 -> bool\nb get p2 p1\nt at p0 1\nsum add t b\nok le sum p3\nret ok\nend\nfn pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\nb get p2 p1\nt at p0 1\nsum add t b\nok le sum p3\nc at p0 0\nnc add c 1\nnew_c select ok nc c\nnew_t select ok sum t\nresult rec new_c new_t\nret result\nend\n"
+ ],
+ "y-board-jumps/a0/structured": [
+  "l loop before_end jump p2 p0 p1\n"
+ ],
+ "y-free-slot/a0/structured": [
+  "l loop busy next_slot 8 p1 p0\n"
+ ],
+ "y-echo-decay/a0/structured": [
+  "c mov 0\nl rec p0 0\nf fold halve 32 l p1\na select call loud l p1 c f\nret a\n",
+  "c mov 0\nl rec p0 0\nf fold halve 32 l p1\nb call loud l p1\na select b c f\nret a\n"
+ ],
+ "y-last-slot/a0/structured": [
+  "s sub 0 1\nl loop miss back 4 s p0 p1\nr mov l\nret r\nfn back u32 u32 u32x4 u32 -> u32\nret p1\nend\nfn miss u32 u32 u32x4 u32 -> bool\na get p2 p1\nc eq a p3\nret c\nend\n",
+  "fn miss u32 u32 u32x4 u32 -> bool\nret true\nend\nfn back u32 u32 u32x4 u32 -> u32\na get p2 p1\nc eq a p3\nr select c p1 p0\nret r\nend\n"
+ ],
+ "y-vowel-pick/a0/structured": [
+  "c sub p0 1\nc rem c 5\nc get t c\n",
+  "c1 sub p0 1\nc rem c1 5\nc get t c\n"
+ ],
+ "y-weekday-initial/a0/structured": [
+  "t text \"SMTWTFS\"\n"
+ ],
+ "y-tag-score/a0/structured": [
+  "s fold add_byte 4 p0 t\nret and s 255\n"
+ ],
+ "y-banner-letter/a0/structured": [
+  "fn is_letter u32 u32 -> bool\nt text \"LEVEL\"\nc get t p0\nd mov p1\ng1 ge d 97\ng2 le d 122\ng3 and g1 g2\nd2 sub d 32\nd3 select g3 d2 d\ne eq c d3\nret e\nend\n"
+ ],
+ "y-ticket-tail/a0/structured": [
+  "fn count_eq u32 u32 u32 u32 u32 -> u32\nc1 ge p1 3\nc2 eq p2 p3\nc3 and c1 c2\nc4 add p0 1\nresult select c3 c4 p0\nret result\nend\n",
+  "fn count_char u32 -> u32\nt text \"TICKETS\"\nc3 get t 3\nc4 get t 4\nc5 get t 5\nc6 get t 6\ns0 0\ns1 call count_eq s0 c3 p0\ns2 call count_eq s1 c4 p0\ns3 call count_eq s2 c5 p0\ns4 call count_eq s3 c6 p0\nret s4\nend\n\nfn count_eq u32 u32 u32 -> u32\nmatch eq p1 p2\nresult select match (add p0 1) p0\nret result\nend\n"
+ ],
+ "y-battery-glyph/a0/structured": [
+  "e0 div p0 25\n",
+  "q div p0 25\n"
+ ],
+ "y-reading-tenths/a0/structured": [
+  "d div w 10\n"
+ ],
+ "y-swap-pair/a0/structured": [
+  "o1 write t2 b\no2 write o1 a\n"
+ ],
+ "y-sum-three/a0/structured": [
+  "fn sum_three io -> io\nr1 read p0\na at r1 0\nt1 at r1 1\nr2 read t1\nb at r2 0\nt2 at r2 1\nr3 read t2\nc at r3 0\nt3 at r3 1\ns1 add a b\ns add s1 c\no write t3 s\nret o\nend\n"
+ ],
+ "y-score-card/a0/structured": [
+  "s add p1 p2 @ a\na arr p1 p2 s\n"
+ ],
+ "y-tagged-reply/a0/structured": [
+  "fn write_tag io -> io end\nfn respond io u32 -> io\no1 write p0 p1\no2 call write_tag o1\nret o2\nend\n",
+  "fn write_tag io -> io\no1 write p0 2\no2 write o1 79\no3 write o2 75\nret o3\nend\nfn respond io u32 -> io\no1 call write_tag p0\no2 write o1 p1\nret o2\nend\n"
+ ],
+ "y-relay-scaled/a0/structured": [
+  "c add m t1\no call emit p0 c\n",
+  "c add m t1\no call emit r1 c\n"
+ ],
+ "y-larger-reading/a0/structured": [
+  "m select g b a\n"
+ ],
+ "y-log-newest-first/a0/structured": [
+  "p arr b a\n"
+ ],
+ "y-late-fee/a0/structured": [
+  "fn late_fee u32 -> u32\na gt p0 0\nb mul p0 2\nc add 5 b\nd select a c 0\nret d\nend\nfn total_due u32 u32 -> u32\na call late_fee p1\nb add p0 a\nret b\nend\n"
+ ],
+ "y-weighted-smooth/a0/structured": [
+  "fn smooth u32 u32 u32 -> u32\ns call weighted-avg p0 p1 p2\nret s\nend\nfn weighted-avg u32 u32 u32 -> u32\na add p0 p2\nd add p1 p1\ns add a d\nr div s 4\nret r\nend\n",
+  "fn smooth u32 u32 u32 -> u32\ns call weighted_avg p0 p1 p2\nret s\nend\nfn weighted_avg u32 u32 u32 -> u32\na add p0 p2\nd add p1 p1\ns add a d\nr div s 4\nret r\nend\n"
+ ],
+ "y-overtime-pay/a0/structured": [
+  "fn overtime u32 -> u32\nc ge p0 40\nd sub p0 40\nr select c d 0\nret r\nend\nfn pay u32 u32 -> u32\no call overtime p0\nb mul 40 p1\nt mul o p1\nt mul t 2\ns add b t\nret s\nend\n",
+  "fn pay u32 u32 -> u32\no call overtime p0\nb mul 40 p1\nx mul o p1\nt mul x 2\ns add b t\nret s\nend\n"
+ ],
+ "y-reorder-available/a0/structured": [
+  "fn available u32 u32 -> u32\nge_check ge p0 p1\ndiff sub p0 p1\navail select ge_check diff 0\nret avail\nend\n\nfn needs_order u32 u32 u32 bool -> bool\navail_stock call available p2 p1\nlow lt p0 avail_stock\nnp eq p3 false\nr and low np\nret r\nend\n",
+  "low gt p0 avail_stock\n"
+ ],
+ "y-sensor-maintenance/a0/structured": [
+  "fn in_maintenance u32 -> bool\na eq p0 2\nb eq p0 3\nc or a b\nret c\nend\nfn fault bool bool u32 -> bool\nm ne p0 p1\nh call in_maintenance p2\nr select h false m\nret r\nend\n"
+ ],
+ "y-round-nickel/a0/structured": [
+  "fn round_5 u32 -> u32\nr rem p0 5\nis_zero eq r 0\namount sub 5 r\nrounded add p0 amount\nret select is_zero p0 rounded\nend\nb call round_5 a\nret b\n"
+ ]
+}

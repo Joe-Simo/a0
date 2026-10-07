@@ -1,0 +1,93 @@
+{
+ "y-stock-scan/a0/structured": [
+  "a loop below inc 4 0 p0 p1\nfn below u32 u32 u32x4 u32 -> bool\nc eq a 4\nd get p2 a\ne ge d p3\nf or c e\ng xor f true\nret g\nend\nfn inc u32 u32 u32x4 u32 -> u32\nb add a 1\nret b\nend\n",
+  "fn below u32 u32 u32x4 u32 -> bool\nc eq p1 4\nd get p2 p1\ne ge d p3\nf or c e\ng xor f true\nret g\nend\nfn inc u32 u32 u32x4 u32 -> u32\nb add p0 1\nret b\nend\n"
+ ],
+ "y-fuel-burns/a0/structured": [
+  "l loop can_burn burn_step 10 r p1 p2\n"
+ ],
+ "y-signal-run/a0/structured": [
+  "fn same_state u32 u32 u32x6 bool -> bool\nv get p2 p1\ncond gt v 50\nresult eq cond p3\nret result\nend\n\nfn next u32 u32 u32x6 bool -> u32\nresult add p0 1\nret result\nend\n",
+  "l loop same_state next 6 0 p0 fb\n"
+ ],
+ "y-months-affordable/a0/structured": [
+  "fn step (u32,u32) u32 u32x4 u32 -> (u32,u32)\n  bill get p2 p1\n  count at p0 0\n  total at p0 1\n  new_total add total bill\n  affordable le new_total p3\n  new_count add count 1\n  new_state rec new_count new_total\n  result select affordable new_state p0\n  ret result\nend\nfn months_affordable u32x4 u32 -> u32\n  initial rec 0 0\n  final fold step 4 initial p0 p1\n  count at final 0\n  ret count\nend\n-fn pay (u32,u32) u32 u32x4 u32 -> (u32,u32)\n-fn fits (u32,u32) u32 u32x4 u32 -> bool\n",
+  "fn step (u32,u32,bool) u32 u32x4 u32 -> (u32,u32,bool)\n  count at p0 0\n  total at p0 1\n  stopped at p0 2\n  bill get p2 p1\n  new_total add total bill\n  affordable le new_total p3\n  not_affordable select affordable false true\n  new_stopped or stopped not_affordable\n  new_count_incremented add count 1\n  should_increment and affordable (select stopped false true)\n  new_count select should_increment new_count_incremented count\n  should_update and affordable (select stopped false true)\n  new_total_final select should_update new_total total\n  new_state rec new_count new_total_final new_stopped\n  ret new_state\nend\ninitial rec 0 0 false\n"
+ ],
+ "y-board-jumps/a0/structured": [
+  "l loop before_end jump p2 p0 p1\n"
+ ],
+ "y-free-slot/a0/structured": [
+  "l loop busy next_slot 8 p1 p0\n"
+ ],
+ "y-echo-decay/a0/structured": [
+  "fn loud (u32,u32) u32 u32 -> bool\na at p0 0\nresult gt a p2\nret result\nend\n\nfn halve (u32,u32) u32 u32 -> (u32,u32)\namp at p0 0\ncnt at p0 1\nnew_amp shr amp 1\nnew_cnt add cnt 1\nresult rec new_amp new_cnt\nret result\nend\n"
+ ],
+ "y-last-slot/a0/structured": [
+  "l loop miss back 4 3 p0 p1\n-r\nret l\nfn miss u32 u32 u32x4 u32 -> bool\nval get p2 p0\nfound eq val p3\nresult xor found true\nret result\nend\nfn back u32 u32 u32x4 u32 -> u32\nnext sub p0 1\nret next\nend\n"
+ ],
+ "y-vowel-pick/a0/structured": [
+  "s sub p0 1 @ t\nc get t s\n"
+ ],
+ "y-weekday-initial/a0/structured": [
+  "t text \"SMTWTFS\"\n"
+ ],
+ "y-tag-score/a0/structured": [
+  "s fold add_byte 4 p0 t\nm and s 255 @ s\nret m\n"
+ ],
+ "y-banner-letter/a0/structured": [
+  "c get t p0\nlo ge p1 97\nhi le p1 122\nlc and lo hi\nsb sub p1 32\nnl select lc sb p1\ne eq c nl\nret e\n"
+ ],
+ "y-ticket-tail/a0/structured": [
+  "fn count_eq u32 u32 u32x7 u32 u32 -> u32\nc0 ge p1 3\nc1 get p2 p1\nc2 eq c1 p3\nc3 and c0 c2\nc4 select c3 1 0\nc5 add p0 c4\nret c5\nend\n"
+ ],
+ "y-battery-glyph/a0/structured": [
+  "q div p0 25\n"
+ ],
+ "y-reading-tenths/a0/structured": [
+  "d div w 10\n-t\no write d\n",
+  "d div w 10\n"
+ ],
+ "y-swap-pair/a0/structured": [
+  "o1 write t2 b\no2 write o1 a\n"
+ ],
+ "y-sum-three/a0/structured": [
+  "r3 read t2 @ t2\nc at r3 0 @ r3\nt3 at r3 1 @ c\ns2 add s c @ s\no write t3 s2\n"
+ ],
+ "y-score-card/a0/structured": [
+  "s add p1 p2\na arr p1 p2 s\n"
+ ],
+ "y-tagged-reply/a0/structured": [
+  "o1 call write_tag p0\no2 write o1 p1\n"
+ ],
+ "y-relay-scaled/a0/structured": [
+  "s add m t1 @ m\no call emit s\n",
+  "s add m t1 @ m\no call emit r1 s\n"
+ ],
+ "y-larger-reading/a0/structured": [
+  "m select g b a\n"
+ ],
+ "y-log-newest-first/a0/structured": [
+  "p arr b a\n"
+ ],
+ "y-late-fee/a0/structured": [
+  "fn late_fee u32 -> u32\na gt p0 0\nb mul p0 2\nc add b 5\nd select a c 0\nret d\nend\na call late_fee p1\nb add p0 a\nret b\n"
+ ],
+ "y-weighted-smooth/a0/structured": [
+  "fn wavg u32 u32 u32 -> u32\nm2 mul p1 2\ns add p0 m2\nt add s p2\nd div t 4\nret d\nend\nfn smooth u32 u32 u32 -> u32\nw call wavg p0 p1 p2\nret w\nend\n"
+ ],
+ "y-overtime-pay/a0/structured": [
+  "-b\n-t\nc call over40 p0\ns sub p0 c\nregpay mul s p1\ntwo mul c 2\novpay mul two p1\ntotal add regpay ovpay\nret total\nfn over40 u32 -> u32\nc gt p0 40\nd sub p0 40\nr select c d 0\nret r\nend\n"
+ ],
+ "y-reorder-available/a0/structured": [
+  "fn available u32 u32 -> u32\ndiff sub p0 p1\noverflow gt p1 p0\nresult select overflow 0 diff\nret result\nend\n-fn needs_order\nfn needs_order u32 u32 u32 bool -> bool\navail call available p1 p2\nlow lt p0 avail\nnp eq p3 false\nr and low np\nret r\nend\n",
+  "fn available u32 u32 -> u32\ndiff sub p0 p1\noverflow gt p1 p0\nresult select overflow 0 diff\nret result\nend\nneed gt p0 avail\n-low\n"
+ ],
+ "y-sensor-maintenance/a0/structured": [
+  "fn in_maintenance bool u32 -> bool\na ge p0 2\nb le p0 3\nc and a b\nret c\nend\nfn fault bool bool u32 -> bool\nm ne p0 p1\nw call in_maintenance p2\nn xor w true\nf and m n\nret f\nend\n",
+  "fn in_maintenance u32 -> bool\na ge p0 2\nb le p0 3\nc and a b\nret c\nend\nfn fault bool bool u32 -> bool\nm ne p0 p1\nw call in_maintenance p2\nn xor w true\nf and m n\nret f\nend\n"
+ ],
+ "y-round-nickel/a0/structured": [
+  "fn roundto5 u32 -> u32\na add p0 4\nb div a 5\nc mul b 5\nret c\nend\nfn price u32 u32 -> u32\na mul p0 p1\nb call roundto5 a\nret b\nend\n"
+ ]
+}
