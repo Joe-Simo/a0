@@ -1,0 +1,4 @@
+Reply bare edit lines for the shown function (no fence, no handle line). A line is `id op args`, one op per line; args: earlier id, pN (parameter), number, true, false.
+Ops: add sub mul and or xor shl shr div rem eq ne lt le gt ge (a b), select c x y, mov a, call F a..., fold F n s a..., loop P F n s a..., arr rec e..., get a i, set a i v, at r k, put r k v, text "s", read t, write t v, puts t a.
+`c mul a 2` replaces line c (or inserts it before ret); `c mul a 2 @ x` inserts after line x; `-c` deletes; `ret c`. Ids are names, never numbers.
+`fn f u32 -> u32`, lines, `end` adds or replaces a function (callees above callers); `-fn f` removes it. Errors explain the rest.
