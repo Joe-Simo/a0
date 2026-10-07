@@ -12,7 +12,15 @@ import { staleness } from '../tools/seed.js';
 import { checkNative } from '../tools/verify.js';
 
 // A fresh machine has a C compiler and a shell, not Node, Bun or the TypeScript toolchain.
-const CLEAN_ENV = { PATH: '/usr/bin:/bin', HOME: process.env.HOME ?? '/' };
+// On Windows the shell and compiler come from MSYS2 or Git Bash, so the environment is kept as it is.
+const CLEAN_ENV: NodeJS.ProcessEnv =
+  process.platform === 'win32'
+    ? { ...process.env }
+    : { PATH: '/usr/bin:/bin', HOME: process.env.HOME ?? '/' };
+const noShell =
+  process.platform === 'win32' &&
+  spawnSync('sh', ['-c', 'cc --version || gcc --version'], { env: CLEAN_ENV }).status !== 0 &&
+  'needs sh and a C compiler (MSYS2) on PATH';
 
 const bootstrap = (seedDir: string, out: string): ReturnType<typeof spawnSync> =>
   spawnSync('sh', [join(seedDir, 'bootstrap.sh'), out], {
@@ -37,9 +45,7 @@ test('seed: it is small', () => {
 });
 
 test('seed: a C compiler alone rebuilds it, and stage 2 equals stage 3 byte for byte', {
-  skip:
-    process.platform === 'win32' &&
-    'seed/driver.c is POSIX (fork, pipes, sys/wait.h); build the seed under WSL or MSYS2',
+  skip: noShell,
 }, async () => {
   const node = spawnSync('sh', ['-c', 'command -v node'], { env: CLEAN_ENV, encoding: 'utf8' });
   const hasNodeOnCleanPath = node.status === 0;
@@ -76,9 +82,7 @@ test('seed: a C compiler alone rebuilds it, and stage 2 equals stage 3 byte for 
   if (!hasNodeOnCleanPath) assert.notEqual(node.status, 0);
 });
 
-test('seed: a damaged seed fails the rebuild instead of passing', {
-  skip: process.platform === 'win32' && 'seed/driver.c is POSIX (fork, pipes, sys/wait.h)',
-}, async () => {
+test('seed: a damaged seed fails the rebuild instead of passing', { skip: noShell }, async () => {
   await withTempDir(async (dir) => {
     const copy = join(dir, 'seed');
     cpSync('seed', copy, { recursive: true });

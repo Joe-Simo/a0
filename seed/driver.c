@@ -18,8 +18,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 #define MAX_NAMES 4096
 #define MAX_NAME 80
@@ -140,6 +142,20 @@ int main(int argc, char **argv) {
     fclose(f);
     free(in);
     free(src);
+#ifdef _WIN32
+    { /* no fork on Windows: run the stage through the command interpreter, with backslash paths */
+      char cmd[3 * MAX_PATH + 32];
+      snprintf(cmd, sizeof cmd, "\"\"%s\" < \"%s\" > \"%s\"\"", exe, inpath, outpath);
+      for (char *q = cmd; *q; q++)
+        if (*q == '/') *q = '\\';
+      int status = system(cmd);
+      if (status != 0) {
+        char code[MAX_PATH + 64];
+        snprintf(code, sizeof code, "chunk %s, status %d", file, status);
+        die("the stage failed on", code);
+      }
+    }
+#else
     pid_t pid = fork();
     if (pid < 0) die("fork failed", "");
     if (pid == 0) {
@@ -153,6 +169,7 @@ int main(int argc, char **argv) {
       snprintf(code, sizeof code, "chunk %s, status %d", file, WIFEXITED(status) ? WEXITSTATUS(status) : -1);
       die("the stage failed on", code);
     }
+#endif
     size_t on;
     unsigned char *out = slurp(outpath, &on);
     if (on < 4) die("empty stage output for", file);
