@@ -268,6 +268,9 @@ export function withoutProfile(program: TypedProgram): TypedProgram {
 }
 
 /** Operand counts; `call` is variable (the callee's parameter count) and marked -1. */
+/** Binary ops whose result does not depend on how a run of operands is grouped. */
+const ASSOCIATIVE_OPS: ReadonlySet<string> = new Set(['add', 'mul', 'and', 'or', 'xor']);
+
 export const OP_ARITY: Readonly<Record<Op, number>> = {
   mov: 1,
   add: 2,
@@ -914,10 +917,22 @@ export function parseNode(lineText: string, line?: number): Node {
     return { id, op, callee, args: args.map(operand) };
   }
   if (OP_ARITY[op] >= 0 && rest.length !== OP_ARITY[op]) {
+    // an associative binary op written with more operands: show the chain that says it
+    const chain =
+      OP_ARITY[op] === 2 && rest.length > 2 && ASSOCIATIVE_OPS.has(op)
+        ? `write exactly 2 operands after ${op}; to combine ${rest.length} operands chain two at a time: ${rest
+            .slice(1)
+            .map(
+              (r, i) =>
+                `${id}${i === rest.length - 2 ? '' : `t${i}`} ${op} ${i === 0 ? rest[0] : `${id}t${i - 1}`} ${r}`,
+            )
+            .join(', then ')}`
+        : undefined;
     throw diag('A0014', [op, OP_ARITY[op], rest.length], {
       ...at,
       expected: String(OP_ARITY[op]),
       actual: String(rest.length),
+      ...(chain === undefined ? {} : { fix: chain }),
     });
   }
   if (OP_ARITY[op] < 0 && rest.length === 0) throw diag('A0015', [op], at);

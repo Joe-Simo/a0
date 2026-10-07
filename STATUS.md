@@ -197,3 +197,6 @@ Quiet rerun of the noop JS kernel on Windows x64 (`results/exec-benchmark-noop-w
 
 
 Quiet Windows x64 rerun of the wasm benchmark against clang (`results/wasm-benchmark-win32.json`, two runs agree, load 2.2 of 8 CPUs by CPU utilisation, interleaved samples): geomean 1.059 (above 1 is A0 faster); losses on chain3 (0.89x), arrfill (0.69x) and prefix1k (0.85x), ties on ident, noop, branchy, hist256, xs4k, filter2, wins on arrfill4k, loop64, dot1k, mat4, fnv4k, minmax1k. wasm-bench now records platform and load (it recorded neither).
+
+
+The A0014 diagnostic (wrong operand count) now shows the chain when an associative binary op (`add`, `mul`, `and`, `or`, `xor`) is written with more than two operands (`src/core.ts`, `test/operand-chain-hint.test.ts`); no measurement of its effect on model acceptance has been made, so no claim is attached. It targets the `number-leading-zero` miss on Haiku in `results/app-edit-keys.json`.
