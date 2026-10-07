@@ -16,7 +16,7 @@
  * every sample runs A0 then clang, or clang then A0 on odd samples, after a warm-up long
  * enough for V8's TurboFan tier). Wins and losses are recorded as they come out.
  *
- * Usage: bun run wasm-bench [-- --samples=N --scale=N --kernels=a,b --out=PATH]
+ * Usage: bun run wasm-bench [-- --samples=N --scale=N --kernels=a,b --unroll=1|2|4 --out=PATH]
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -43,6 +43,7 @@ const ARGS = new Map(
 const SAMPLES = Number(ARGS.get('samples') ?? 15);
 const SCALE = Number(ARGS.get('scale') ?? 1);
 const ONLY = ARGS.has('kernels') ? new Set((ARGS.get('kernels') ?? '').split(',')) : null;
+const UNROLL = Number(ARGS.get('unroll') ?? 1) as 1 | 2 | 4;
 const OUT = ARGS.get('out') ?? 'results/wasm-benchmark.json';
 /** Trips per timed call before a kernel's iterScale. */
 const TRIPS = 5_000_000;
@@ -111,7 +112,7 @@ interface Row {
 async function benchKernel(k: Kernel, clang: string, dir: string): Promise<Row> {
   const program = parseAndValidate(a0Driver(k));
   const a0Bytes = new Uint8Array(
-    wasmModuleBytes(compile(program, 'wasm', { wasmExports: ['wb_run'] }).text),
+    wasmModuleBytes(compile(program, 'wasm', { wasmExports: ['wb_run'], wasmUnroll: UNROLL }).text),
   );
   const cPath = join(dir, `${k.name}.c`);
   const wPath = join(dir, `${k.name}.wasm`);

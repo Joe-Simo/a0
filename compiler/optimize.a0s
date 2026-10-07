@@ -391,7 +391,7 @@ end
 
 # ---------------------------------------------------------------------------------------------
 # One folding / reassociation / CSE / dead-code pass (src/optimize.ts `pass`). The decisions
-# of a pass go into the table FW (u32x128x426), one column per field, indexed by node id:
+# of a pass go into the table FW (u32x128x458), one column per field, indexed by node id:
 # the substitution SK/SV (operand kind and value, kind 0 for none), flags FL (2 anchored, 4 the
 # node is described by the columns below instead of the node table, 8 operand 0 is kept as
 # written (a variable trip count kept as a value), 16 a `mov` of its literal was kept), the
@@ -415,7 +415,8 @@ const F_STK = 45056
 const F_RQ = 45312
 const F_LV = 46208
 const F_SQO = 50304
-const F_SC = 54400
+const F_RDY = 54400
+const F_SC = 58496
 const P_CUR = 0
 const P_STKN = 1
 const P_KN = 2
@@ -442,17 +443,17 @@ const P_SIK = 22
 const P_SIV = 23
 const P_NOALG = 24
 
-def reg(fw: u32x128x426, r: u32) -> u32
+def reg(fw: u32x128x458, r: u32) -> u32
   return fw[F_SC + r]
 end
 # an operand resolved through the substitutions of this pass
-def pres(fw: u32x128x426, k: u32, v: u32) -> (u32, u32)
+def pres(fw: u32x128x458, k: u32, v: u32) -> (u32, u32)
   let sk = fw[F_SK + v]
   let hit = (k == 1) & (sk != 0)
   return (hit ? sk : k, hit ? fw[F_SV + v] : v)
 end
 # operand j of the kept version of node x
-def karg(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, j: u32) -> (u32, u32)
+def karg(fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32, j: u32) -> (u32, u32)
   let fl = fw[F_FL + x]
   let desc = (fl & 4) != 0
   let kc = ((fl & 8) != 0) & (j == 0)
@@ -461,10 +462,10 @@ def karg(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, j: u32) -> (
   let (dk, dv) = pres(fw, j == 0 ? fw[F_A0K + x] : fw[F_A1K + x], j == 0 ? fw[F_A0V + x] : fw[F_A1V + x])
   return (desc ? dk : kc ? rk : qk, desc ? dv : kc ? rv : qv)
 end
-def kop(fw: u32x128x426, cl: u32x128x193, x: u32) -> u32
+def kop(fw: u32x128x458, cl: u32x128x193, x: u32) -> u32
   return (fw[F_FL + x] & 4) != 0 ? fw[F_DOP + x] : cl[C_OP + x]
 end
-def kna(fw: u32x128x426, cl: u32x128x193, x: u32) -> u32
+def kna(fw: u32x128x458, cl: u32x128x193, x: u32) -> u32
   let d = (fw[F_FL + x] & 4) != 0
   return d ? (fw[F_DOP + x] == 1 ? 1 : 2) : cl[C_NA + x]
 end
@@ -474,7 +475,7 @@ def pc(c: bool, xk: u32, xv: u32, yk: u32, yv: u32) -> (u32, u32)
 end
 
 # pick the next node: the top of the stack, else the next input node
-fn pk(fw: u32x128x426, i: u32, sq: u32x128x32, n: u32) -> u32x128x426
+fn pk(fw: u32x128x458, i: u32, sq: u32x128x32, n: u32) -> u32x128x458
   let stkn = reg(fw, P_STKN)
   let cur = reg(fw, P_CUR)
   let hs = stkn > 0
@@ -492,12 +493,12 @@ fn pk(fw: u32x128x426, i: u32, sq: u32x128x32, n: u32) -> u32x128x426
 end
 
 # literal operands of the node: counts the others
-fn nlstep(s: u32, j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32
+fn nlstep(s: u32, j: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32
   let (k, v) = karg(fw, cl, oa, x, j)
   return s + bit(k < 3)
 end
 # load the node: op, operand count, resolved operands 0..2, all-literal flag
-fn ld(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
+fn ld(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x458
   let x = reg(fw, P_X)
   let o = kop(fw, cl, x)
   let na = kna(fw, cl, x)
@@ -522,7 +523,7 @@ end
 
 # a variable trip count that constant propagation turned into a literal stays a value (a `mov`
 # of the literal) when the literal would put the loop over the static compute bound
-fn kcst(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, fnt: u32x128x45, dir: u32x128x7) -> u32x128x426
+fn kcst(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512, fnt: u32x128x45, dir: u32x128x7) -> u32x128x458
   let x = reg(fw, P_X)
   let o = reg(fw, P_OP)
   let c = cl[C_CA + x]
@@ -553,7 +554,7 @@ fn effarg(s: u32, j: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, pio
   return s | io
 end
 # effectful nodes are kept and anchored: never folded, merged or removed
-fn effst(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, pio: u32x128) -> u32x128x426
+fn effst(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, pio: u32x128) -> u32x128x458
   let x = reg(fw, P_X)
   let o = reg(fw, P_OP)
   let callish = (o == 19) | (o == 20) | (o == 21)
@@ -570,13 +571,13 @@ fn effst(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x
 end
 
 # the literal values of the node's operands
-fn gatstep(l: u32x64, j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32x64
+fn gatstep(l: u32x64, j: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32x64
   let (k, v) = karg(fw, cl, oa, x, j)
   l[j] = v
   return l
 end
 # constant evaluation: a node whose operands are all literals
-fn simc(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
+fn simc(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x195, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x458
   let x = reg(fw, P_X)
   let o = reg(fw, P_OP)
   let na = reg(fw, P_NA)
@@ -615,7 +616,7 @@ fn simc(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, ti: u32x128x1
 end
 
 # algebraic identities (all operands not literal)
-fn sima(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
+fn sima(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x458
   let o = reg(fw, P_OP)
   let na = reg(fw, P_NA)
   let isb = reg(fw, P_CTY) == 1
@@ -734,7 +735,7 @@ fn sima(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x42
 end
 
 # a node is substituted by an operand
-fn subst(fw: u32x128x426, i: u32) -> u32x128x426
+fn subst(fw: u32x128x458, i: u32) -> u32x128x458
   let x = reg(fw, P_X)
   fw[F_SK + x] = reg(fw, P_SIK)
   fw[F_SV + x] = reg(fw, P_SIV)
@@ -744,7 +745,7 @@ end
 
 # `mov`-free operand j of the kept node v if it has a literal in one position: used by
 # reassociation. (k, x kind, x value, literal, defining op), valid when the use count is n.
-def wl(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, nbase: u32, ok: u32, ov: u32, n: u32) -> (bool, u32, u32, u32, u32)
+def wl(fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, nbase: u32, ok: u32, ov: u32, n: u32) -> (bool, u32, u32, u32, u32)
   let fresh = ov >= nbase
   let uses = fresh ? 1 : us[ov]
   let ty = fresh ? 0 : cl[C_TY + ov]
@@ -759,8 +760,25 @@ def wl(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, nbase:
   return (valid, yl ? xk : yk, yl ? xv : yv, yl ? yv : xv, dop)
 end
 
-# reassociation of u32 chains with literals
-fn reas(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32) -> u32x128x426
+# the operands of the kept node v when it is an inner node of a chain of op o that nothing else
+# uses and neither operand is a literal, and when each of them is ready (the latency model, F_RDY):
+# (valid, operand 0 kind, value, operand 1 kind, value, ready 0, ready 1)
+def rt(fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, nbase: u32, o: u32, ok: u32, ov: u32) -> (bool, u32, u32, u32, u32, u32, u32)
+  let fresh = ov >= nbase
+  let uses = fresh ? 1 : us[ov]
+  let ty = fresh ? 0 : cl[C_TY + ov]
+  let dop = kop(fw, cl, ov)
+  let dna = kna(fw, cl, ov)
+  let (pk, pv) = karg(fw, cl, oa, ov, 0)
+  let (qk, qv) = karg(fw, cl, oa, ov, 1)
+  let valid = (ok == 1) & (uses == 1) & (ty == 0) & (dna >= 2) & (dop == o) & ((pk == 1) | (pk == 2)) & ((qk == 1) | (qk == 2))
+  let rp = pk == 1 ? fw[F_RDY + pv] : 0
+  let rq = qk == 1 ? fw[F_RDY + qv] : 0
+  return (valid, pk, pv, qk, qv, rp, rq)
+end
+
+# reassociation of u32 chains with literals, and rotation of chains by readiness
+fn reas(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32) -> u32x128x458
   let x = reg(fw, P_X)
   let o = reg(fw, P_OP)
   let nb = reg(fw, P_NBASE)
@@ -790,18 +808,38 @@ fn reas(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, us: u32x128x3
   let rB1 = nolit & sameab & d2ok & (d2op == 2)
   let rB2 = nolit & !sameab & d3ok & (d3op == 2)
   let rB3 = nolit & !sameab & !(d3ok & (d3op == 2)) & d4ok & (d4op == 2)
-  let re = rA1 | rA2 | rB1 | rB2 | rB3
+  let re1 = rA1 | rA2 | rB1 | rB2 | rB3
+  # branch C: no literal, a rotation: (p op q) op y becomes (lo op y) op hi when y is ready
+  # before the later of p and q (lo the earlier, hi the later)
+  let (c1ok, c1pk, c1pv, c1qk, c1qv, c1rp, c1rq) = rt(fw, cl, oa, us, nb, o, ak, av)
+  let (c2ok, c2pk, c2pv, c2qk, c2qv, c2rp, c2rq) = rt(fw, cl, oa, us, nb, o, bk, bv)
+  let rya = bk == 1 ? fw[F_RDY + bv] : 0
+  let ryb = ak == 1 ? fw[F_RDY + av] : 0
+  let cg = g & !haslit & !re1 & !sameab
+  let rc1 = cg & c1ok & (c1rp != c1rq) & (rya < (c1rp > c1rq ? c1rp : c1rq))
+  let rc2 = cg & !rc1 & c2ok & (c2rp != c2rq) & (ryb < (c2rp > c2rq ? c2rp : c2rq))
+  let rc = rc1 | rc2
+  let c1lo = c1rp < c1rq
+  let c2lo = c2rp < c2rq
+  let lok = rc1 ? (c1lo ? c1pk : c1qk) : (c2lo ? c2pk : c2qk)
+  let lov = rc1 ? (c1lo ? c1pv : c1qv) : (c2lo ? c2pv : c2qv)
+  let hik = rc1 ? (c1lo ? c1qk : c1pk) : (c2lo ? c2qk : c2pk)
+  let hiv = rc1 ? (c1lo ? c1qv : c1pv) : (c2lo ? c2qv : c2pv)
+  let yk = rc1 ? bk : ak
+  let yv = rc1 ? bv : av
+  let re = re1 | rc
   let haspre = re & !rA1
   # the replaced node and the pre node (op, operand 0, operand 1)
   let nop = rA2 | rB1 | rB2 | rB3 ? 2 : o
   let n0k = rA1 ? d1xk : 1
   let n0v = rA1 ? d1xv : reg(fw, P_NEXT)
-  let n1v = rA1 ? comb : rA2 ? d1k * lv : rB1 ? 2 * d2k : rB2 ? d3k : d4k
-  let pop = rA2 ? 4 : 2
-  let p0k = rA2 ? d1xk : rB1 ? d2xk : rB2 ? d3xk : d4xk
-  let p0v = rA2 ? d1xv : rB1 ? d2xv : rB2 ? d3xv : d4xv
-  let p1k = rA2 ? 3 : rB1 ? d2xk : rB2 ? bk : ak
-  let p1v = rA2 ? lv : rB1 ? d2xv : rB2 ? bv : av
+  let n1k = rc ? hik : 3
+  let n1v = rc ? hiv : rA1 ? comb : rA2 ? d1k * lv : rB1 ? 2 * d2k : rB2 ? d3k : d4k
+  let pop = rA2 ? 4 : rc ? o : 2
+  let p0k = rc ? lok : rA2 ? d1xk : rB1 ? d2xk : rB2 ? d3xk : d4xk
+  let p0v = rc ? lov : rA2 ? d1xv : rB1 ? d2xv : rB2 ? d3xv : d4xv
+  let p1k = rc ? yk : rA2 ? 3 : rB1 ? d2xk : rB2 ? bk : ak
+  let p1v = rc ? yv : rA2 ? lv : rB1 ? d2xv : rB2 ? bv : av
   let nid = reg(fw, P_NEXT)
   let stkn = reg(fw, P_STKN)
   let room = (nid < AN) & (stkn < 250)
@@ -811,7 +849,7 @@ fn reas(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512, us: u32x128x3
   fw[F_DOP + x] = nop if doit
   fw[F_A0K + x] = n0k if doit
   fw[F_A0V + x] = n0v if doit
-  fw[F_A1K + x] = 3 if doit
+  fw[F_A1K + x] = n1k if doit
   fw[F_A1V + x] = n1v if doit
   let dp = doit & haspre
   fw[F_FL + nid] = 4 if dp
@@ -834,7 +872,7 @@ fn lgstep(s: u32, i: u32, v: u32) -> u32
 end
 
 # the hash of a node's operands: (sum, rotate-xor)
-fn hstep(s: (u32,u32), j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32) -> (u32,u32)
+fn hstep(s: (u32,u32), j: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32) -> (u32,u32)
   let (a, q) = s
   let (k, v) = karg(fw, cl, oa, x, j)
   let h = k * 2654435761 ^ v * 2246822519
@@ -842,7 +880,7 @@ fn hstep(s: (u32,u32), j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512
   return (a + h, rot ^ h)
 end
 # operands differ from node p's: (in order, swapped)
-fn cmpstep(s: (u32,u32), j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32) -> (u32,u32)
+fn cmpstep(s: (u32,u32), j: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32) -> (u32,u32)
   let (d0, d1) = s
   let (k, v) = karg(fw, cl, oa, x, j)
   let (pk, pv) = karg(fw, cl, oa, p, j)
@@ -850,7 +888,7 @@ fn cmpstep(s: (u32,u32), j: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x5
   return (d0 + bit((k != pk) | (v != pv)), d1 + bit((k != sk) | (v != sv)))
 end
 # is node p the same expression as node x
-def samenode(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32, o: u32, na: u32, comm: bool) -> bool
+def samenode(fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32, o: u32, na: u32, comm: bool) -> bool
   let po = kop(fw, cl, p)
   let pna = kna(fw, cl, p)
   let cs = fold(cmpstep, na, (0, 0), fw, cl, oa, x, p)
@@ -861,10 +899,10 @@ def samenode(fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, p: u32, 
   return (po == o) & (pna == na) & cal & prd & (eqo | eqs)
 end
 # CSE probe: (slot, found prior + 1, stop)
-fn prbgo(s: (u32,u32,u32), i: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, o: u32, na: u32, comm: bool) -> bool
+fn prbgo(s: (u32,u32,u32), i: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32, o: u32, na: u32, comm: bool) -> bool
   return s#2 == 0
 end
-fn prbst(s: (u32,u32,u32), i: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128x512, x: u32, o: u32, na: u32, comm: bool) -> (u32,u32,u32)
+fn prbst(s: (u32,u32,u32), i: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32, o: u32, na: u32, comm: bool) -> (u32,u32,u32)
   let (slot, hit, stop) = s
   let e = fw[F_HT + slot]
   let empty = e == 0
@@ -873,8 +911,15 @@ fn prbst(s: (u32,u32,u32), i: u32, fw: u32x128x426, cl: u32x128x193, oa: u32x128
   return (done ? slot : (slot + 1) & 8191, same ? e : 0, bit(done))
 end
 
+# the latest ready time among the operands of the kept node x
+fn rdstep(s: u32, j: u32, fw: u32x128x458, cl: u32x128x193, oa: u32x128x512, x: u32) -> u32
+  let (k, v) = karg(fw, cl, oa, x, j)
+  let r = k == 1 ? fw[F_RDY + v] : 0
+  return r > s ? r : s
+end
+
 # strength reduction, common-subexpression elimination, and keeping the node
-fn fin(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
+fn fin(fw: u32x128x458, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x458
   let x = reg(fw, P_X)
   let o = reg(fw, P_OP)
   let na = reg(fw, P_NA)
@@ -914,6 +959,8 @@ fn fin(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
   fw[F_SV + x] = hit - 1 if found
   fw[F_HT + slot] = x + 1 if ins
   let keep = !found
+  let lat = o2 == 4 ? 3 : (o2 == 10) | (o2 == 11) ? 12 : (o2 == 25) | (o2 == 27) ? 4 : (o2 >= 19) & (o2 <= 21) ? 8 : 1
+  fw[F_RDY + x] = fold(rdstep, na, 0, fw, cl, oa, x) + lat if keep
   let kn = reg(fw, P_KN)
   fw[F_KEPT + kn] = x if keep
   fw[F_SC + P_KN] = kn + bit(keep)
@@ -921,10 +968,10 @@ fn fin(fw: u32x128x426, i: u32, cl: u32x128x193, oa: u32x128x512) -> u32x128x426
   return fw
 end
 
-fn tripgo(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> bool
+fn tripgo(fw: u32x128x458, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> bool
   return (reg(fw, P_STKN) > 0) | (reg(fw, P_CUR) < n)
 end
-fn trip(fw: u32x128x426, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
+fn trip(fw: u32x128x458, i: u32, n: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, us: u32x128x32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x458
   let s1 = fold(pk, 1, fw, sq, n)
   let s2 = fold(ld, reg(s1, P_ACT), s1, cl, oa)
   let s3 = fold(kcst, reg(s2, P_ACT), s2, cl, oa, fnt, dir)
@@ -947,20 +994,20 @@ fn usestep(us: u32x128x32, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x
   let x = sq[i]
   return fold(usarg, cl[C_NA + x], us, oa, cl[C_AS + x])
 end
-fn dcemark(fw: u32x128x426, k: u32, cl: u32x128x193, oa: u32x128x512, x: u32, live: bool) -> u32x128x426
+fn dcemark(fw: u32x128x458, k: u32, cl: u32x128x193, oa: u32x128x512, x: u32, live: bool) -> u32x128x458
   let (rk, rv) = karg(fw, cl, oa, x, k)
   fw[F_LV + rv] = 1 if live & (rk == 1)
   return fw
 end
 # kept nodes from the last: live nodes keep their operands live (anchored nodes are live)
-fn dcest(fw: u32x128x426, j: u32, cl: u32x128x193, oa: u32x128x512, kn: u32) -> u32x128x426
+fn dcest(fw: u32x128x458, j: u32, cl: u32x128x193, oa: u32x128x512, kn: u32) -> u32x128x458
   let x = fw[F_KEPT + kn - 1 - j]
   let live = (fw[F_LV + x] != 0) | ((fw[F_FL + x] & 2) != 0)
   fw[F_LV + x] = 1 if live
   return fold(dcemark, live ? kna(fw, cl, x) : 0, fw, cl, oa, x, live)
 end
 # kept and live nodes in order into the sequence column (its last word counts them)
-fn cmpst(fw: u32x128x426, j: u32) -> u32x128x426
+fn cmpst(fw: u32x128x458, j: u32) -> u32x128x458
   let x = fw[F_KEPT + j]
   let l = fw[F_LV + x] != 0
   let cnt = fw[F_SQO + 4095]
@@ -968,11 +1015,11 @@ fn cmpst(fw: u32x128x426, j: u32) -> u32x128x426
   fw[F_SQO + 4095] = cnt + bit(l)
   return fw
 end
-fn cpcol(sq: u32x128x32, p: u32, fw: u32x128x426) -> u32x128x32
+fn cpcol(sq: u32x128x32, p: u32, fw: u32x128x458) -> u32x128x32
   return set(sq, p, get(fw, 393 + p))
 end
 # node rows of described nodes, with fresh operand slots (the counter is the last page of CL)
-fn clmat(cl: u32x128x193, j: u32, sq: u32x128x32, fw: u32x128x426) -> u32x128x193
+fn clmat(cl: u32x128x193, j: u32, sq: u32x128x32, fw: u32x128x458) -> u32x128x193
   let x = sq[j]
   let desc = (fw[F_FL + x] & 4) != 0
   let o = fw[F_DOP + x]
@@ -986,14 +1033,14 @@ fn clmat(cl: u32x128x193, j: u32, sq: u32x128x32, fw: u32x128x426) -> u32x128x19
   cl[C_SC + C_NSLOT] = slot + (desc ? na : 0)
   return cl
 end
-fn oaw1(oa: u32x128x512, k: u32, fw: u32x128x426, as_: u32, x: u32, desc: bool, kc: bool) -> u32x128x512
+fn oaw1(oa: u32x128x512, k: u32, fw: u32x128x458, as_: u32, x: u32, desc: bool, kc: bool) -> u32x128x512
   let (rk, rv) = rdp(oa, as_ + k)
   let (qk, qv) = pres(fw, rk, rv)
   let (dk, dv) = pres(fw, k == 0 ? fw[F_A0K + x] : fw[F_A1K + x], k == 0 ? fw[F_A0V + x] : fw[F_A1V + x])
   let keep = kc & (k == 0)
   return wrp(oa, as_ + k, desc ? dk : keep ? rk : qk, desc ? dv : keep ? rv : qv)
 end
-fn oamat(oa: u32x128x512, j: u32, sq: u32x128x32, cl: u32x128x193, fw: u32x128x426) -> u32x128x512
+fn oamat(oa: u32x128x512, j: u32, sq: u32x128x32, cl: u32x128x193, fw: u32x128x458) -> u32x128x512
   let x = sq[j]
   let fl = fw[F_FL + x]
   return fold(oaw1, cl[C_NA + x], oa, fw, cl[C_AS + x], x, (fl & 4) != 0, (fl & 8) != 0)
@@ -1002,16 +1049,16 @@ end
 # one pass over the body (sequence sq of n nodes, result (retk, retv)); gate 0 leaves it
 # unchanged. passa decides (FW), passb is the new sequence (its last word counts it), passc
 # the node table, passd the operands.
-fn passa(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, retk: u32, retv: u32, nid: u32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x426
+fn passa(gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, n: u32, retk: u32, retv: u32, nid: u32, ti: u32x128x195, pio: u32x128, dir: u32x128x7, fnt: u32x128x45, nd: u32x128x132, op: u32x128x512) -> u32x128x458
   let us0 = zeros(32)
   let us1 = fold(usestep, n * gate, us0, sq, cl, oa)
   us1[retv] = us1[retv] + 1 if (retk == 1) & (gate == 1)
-  let fw0 = zeros(426)
+  let fw0 = zeros(458)
   fw0[F_SC + P_NEXT] = nid
   fw0[F_SC + P_NBASE] = nid
   return loop(tripgo, trip, (n * 6 + 64) * gate, fw0, n, sq, cl, oa, us1, ti, pio, dir, fnt, nd, op)
 end
-fn passb(fw: u32x128x426, gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, retk: u32, retv: u32) -> u32x128x32
+fn passb(fw: u32x128x458, gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, retk: u32, retv: u32) -> u32x128x32
   let kn = fw[F_SC + P_KN]
   let (rk, rv) = pres(fw, retk, retv)
   fw[F_LV + rv] = 1 if rk == 1
@@ -1020,12 +1067,12 @@ fn passb(fw: u32x128x426, gate: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x12
   let sqn = sq
   return fold(cpcol, 32 * gate, sqn, fw2)
 end
-fn passc(fw: u32x128x426, gate: u32, sq1: u32x128x32, cl: u32x128x193, nslot: u32) -> u32x128x193
+fn passc(fw: u32x128x458, gate: u32, sq1: u32x128x32, cl: u32x128x193, nslot: u32) -> u32x128x193
   let cln = cl
   cln[C_SC + C_NSLOT] = nslot
   return fold(clmat, sq1[4095] * gate, cln, sq1, fw)
 end
-fn passd(fw: u32x128x426, gate: u32, sq1: u32x128x32, cl1: u32x128x193, oa: u32x128x512) -> u32x128x512
+fn passd(fw: u32x128x458, gate: u32, sq1: u32x128x32, cl1: u32x128x193, oa: u32x128x512) -> u32x128x512
   return fold(oamat, sq1[4095] * gate, oa, sq1, cl1, fw)
 end
 # ---------------------------------------------------------------------------------------------
@@ -1180,7 +1227,7 @@ fn listep(s: u32, i: u32, sq: u32x128x32, cl: u32x128x193, oa: u32x128x512, fnt:
   let t = isc ? cli : isf ? (lit ? prod : cli) : 1
   return s > t ? s : t
 end
-fn rqorf(rq: u32x128x7, f: u32, fw: u32x128x426) -> u32x128x7
+fn rqorf(rq: u32x128x7, f: u32, fw: u32x128x458) -> u32x128x7
   rq[f] = rq[f] | fw[F_RQ + f]
   return rq
 end

@@ -890,4 +890,113 @@ end
       },
     ],
   },
+  {
+    name: 'chainrot',
+    about:
+      'chains of one associative op (add, mul, xor, and, or) whose late operand is a product: the optimizer rotates the chain so the late operand joins last (a latency model, no change of value), with literals, shared inner nodes and chains through calls',
+    io: false,
+    source: `fn cr_add u32 u32 u32 -> u32
+m mul p0 p1
+n mul m p2
+a add p1 p2
+b add a n
+c add b p0
+ret c
+end
+fn cr_mul u32 u32 u32 -> u32
+m mul p0 p1
+n mul m p2
+a mul p1 p2
+b mul a n
+c mul b p0
+ret c
+end
+fn cr_xor u32 u32 u32 -> u32
+m mul p0 p1
+n mul m p2
+a xor p1 p2
+b xor a n
+c xor b p0
+ret c
+end
+fn cr_and u32 u32 u32 -> u32
+m add p0 p1
+n mul m p2
+a and p1 p2
+b and a n
+c and b p0
+ret c
+end
+fn cr_or u32 u32 u32 -> u32
+m add p0 p1
+n mul m p2
+a or p1 p2
+b or a n
+c or b p0
+ret c
+end
+fn cr_sum4 u32 u32 u32 u32 -> u32
+a add p0 p1
+b add a p2
+c add b p3
+ret c
+end
+fn cr_shared u32 u32 u32 -> u32
+m mul p0 p1
+n mul m p2
+a add p0 p1
+b add a n
+c add b p2
+d add a c
+ret d
+end
+fn cr_lit u32 u32 u32 -> u32
+m mul p0 p1
+n mul m p2
+a add p0 p2
+b add a n
+c add b p1
+d add c 3
+ret d
+end
+fn cr_inner u32 u32 -> u32
+x xor p0 p1
+s shr x 15
+t xor x s
+u mul t 2246822519
+v add x x
+w add v u
+y mul p0 5
+z add w y
+q add z 3
+ret q
+end
+fn cr_step u32 u32 -> u32
+r call cr_inner p0 p1
+m mul p0 5
+h add m r
+ret h
+end
+fn cr_run u32 -> u32
+r fold cr_step 6 p0
+ret r
+end
+`,
+    calls: [
+      { fn: 'cr_add', rows: rowsOf(WORDS, WORDS, [0, 1, 0xffff_ffff]) },
+      { fn: 'cr_mul', rows: rowsOf(WORDS, WORDS, [0, 1, 0xffff_ffff]) },
+      { fn: 'cr_xor', rows: rowsOf(WORDS, WORDS, [0, 1, 0xffff_ffff]) },
+      { fn: 'cr_and', rows: rowsOf(WORDS, WORDS, [0, 1, 0xffff_ffff]) },
+      { fn: 'cr_or', rows: rowsOf(WORDS, WORDS, [0, 1, 0xffff_ffff]) },
+      {
+        fn: 'cr_sum4',
+        rows: rowsOf(WORDS, [0, 1, 0xffff_ffff], [0, 0x8000_0000], [0, 0xffff_ffff]),
+      },
+      { fn: 'cr_shared', rows: rowsOf(WORDS, B, [0, 1, 0xffff_ffff]) },
+      { fn: 'cr_lit', rows: rowsOf(WORDS, B, [0, 1, 0xffff_ffff]) },
+      { fn: 'cr_inner', rows: rowsOf(WORDS, WORDS) },
+      { fn: 'cr_step', rows: rowsOf(WORDS, WORDS) },
+      { fn: 'cr_run', rows: one(WORDS) },
+    ],
+  },
 ];
