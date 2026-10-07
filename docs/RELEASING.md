@@ -85,3 +85,27 @@ a browser can show one:
 - Windows SmartScreen ("Windows protected your PC"): choose More info, Run anyway, or run `Unblock-File .\a0-windows-x64.exe`.
 
 Developer ID and Authenticode certificates would remove these prompts; adding them needs a paid account and is not done.
+
+## The native checker (not yet an asset)
+
+`a0 check FILE.a0` can be answered by a prebuilt native checker instead of the TypeScript one, whose runtime start-up a compiled `a0`
+pays on every run. The standalone executable is built from `dist/src/a0.js` (`src/a0.ts`): when a file `a0-check` (`a0-check.exe`
+on Windows) sits next to the executable, `a0 check FILE.a0` with no flag starts it, and prints what it accepted; a diagnostic, a
+program over a capacity of the native checker (exit 65) or a missing checker falls through to the TypeScript checker, so the
+output and the exit code are the same either way (`src/native-fast.ts`; `A0_NATIVE_CHECK=0` turns it off, `A0_NATIVE_CHECK=PATH`
+names a checker; `test/native-check.test.ts` holds its verdicts to the TypeScript checker's).
+
+The checker is C (`tools/native/a0.c` with `compiler/check.a0` through A0's C backend), so each target needs a C compiler for it:
+
+```bash
+bun run build
+node dist/tools/native-check.js --build-only --out release/a0-check-linux-x64 [--arch arm64|x86_64]   # clang, else gcc; --arch on macOS
+```
+
+`A0_NATIVE_CHECK_ASSETS=1 sh tools/release.sh X.Y.Z` runs that for the machine it runs on (both CPUs on macOS) after the
+binaries, into `release/a0-check-<os>-<arch>[.exe]`. Nothing publishes them yet: the single macOS job of `release.yml` can build
+the two darwin ones only. To ship the checker, the workflow needs (1) a matrix of runners (`ubuntu-24.04`, `ubuntu-24.04-arm`,
+`windows-latest` with its MSYS2/clang, `macos-15`) each running the command above and uploading its `a0-check-*` to the release
+job, which adds them to `checksums.txt` and to the asset list it checks (twelve become sixteen); (2) `install.sh`, `install.ps1`
+and `Formula/a0.rb` to download `a0-check-<target>` with the binary and place it beside `a0` as `a0-check`. `smoke` then runs
+`tools/smoke.ts` on a binary that has it. Until then the release is unchanged and the fast path is dormant.

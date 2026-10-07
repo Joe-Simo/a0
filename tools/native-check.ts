@@ -28,7 +28,8 @@
  * - check time by source size.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { compile } from '../src/backends.js';
@@ -104,8 +105,13 @@ const LIGHT_KERNELS = KERNELS.filter((k) => k.iterScale === undefined);
 /** The host side of the executable: linking, the commands, the IR evaluator (C, no A0). */
 const DRIVER = join('tools', 'native', 'a0.c');
 
-/** Compile the self-hosted front end and the driver to dist/native/a0. */
-export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; fns: number }> {
+/**
+ * Compile the self-hosted front end and the driver to dist/native/a0. `arch` (macOS: arm64 or
+ * x86_64) cross-compiles for the other CPU; `strip` drops the symbols (a release build).
+ */
+export async function buildNativeCheck(
+  options: { readonly arch?: string; readonly strip?: boolean } = {},
+): Promise<{ ms: number; cBytes: number; fns: number }> {
   // clang where there is one (the release runners), else gcc (a Windows machine with MSYS2)
   const clang = findClang().path ?? findGcc().path;
   if (clang === undefined) throw new Error('neither clang nor gcc found');
@@ -131,6 +137,8 @@ export async function buildNativeCheck(): Promise<{ ms: number; cBytes: number; 
       ...(process.platform === 'darwin'
         ? ['-Wl,-dead_strip', '-Wl,-no_function_starts', '-Wl,-no_data_in_code_info']
         : []),
+      ...(options.arch === undefined ? [] : ['-arch', options.arch]),
+      ...(options.strip === true ? [process.platform === 'darwin' ? '-Wl,-x' : '-s'] : []),
       '-o',
       'a0',
       'main.c',
@@ -469,7 +477,30 @@ async function diagnosticRows(dir: string): Promise<Row[]> {
   return rows;
 }
 
+/**
+ * `--build-only [--out PATH] [--arch ARCH]`: build the checker for a release (stripped) and copy
+ * it to PATH (the `a0-check` that sits next to the `a0` executable, src/native-fast.ts).
+ */
+async function buildOnly(args: readonly string[]): Promise<void> {
+  const flag = (name: string): string | undefined => {
+    const i = args.indexOf(name);
+    return i < 0 ? undefined : args[i + 1];
+  };
+  const arch = flag('--arch');
+  const build = await buildNativeCheck({ strip: true, ...(arch === undefined ? {} : { arch }) });
+  const out = flag('--out');
+  if (out !== undefined) {
+    const built = existsSync(`${NATIVE_A0}.exe`) ? `${NATIVE_A0}.exe` : NATIVE_A0;
+    await mkdir(dirname(out), { recursive: true });
+    await copyFile(built, out);
+  }
+  process.stdout.write(
+    `built ${out ?? NATIVE_A0}: ${build.fns} functions, ${build.cBytes} C bytes, ${build.ms} ms\n`,
+  );
+}
+
 async function main(): Promise<void> {
+  if (process.argv.includes('--build-only')) return buildOnly(process.argv.slice(2));
   const build = await buildNativeCheck();
   process.stdout.write(
     `built ${NATIVE_A0}: ${build.fns} functions, ${build.cBytes} C bytes, ${build.ms} ms\n`,
