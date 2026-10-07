@@ -434,6 +434,11 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .chart .row .lbl{grid-column:1/-1}
 }
 @media (prefers-reduced-motion:reduce){.chart .track .fill{transition:none}}
+/* a page without the section rail (the landing page) is one centred column */
+.layout:not(:has(.rail)){grid-template-columns:minmax(0,820px)}
+/* the code rain belongs to the hero: behind the content it sits under a soft dark panel so text and charts stay legible */
+.layout{position:relative;z-index:1}
+.layout::before{content:"";position:absolute;inset:0 -32px;z-index:-1;background:rgba(0,0,0,.92);box-shadow:0 0 56px 40px rgba(0,0,0,.92);pointer-events:none}
 
 </style>
 </head>
