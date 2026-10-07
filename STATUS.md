@@ -194,3 +194,6 @@ The view of a function now ends with a one-line key legend when an `eq`/`ne` lit
 
 
 Quiet rerun of the noop JS kernel on Windows x64 (`results/exec-benchmark-noop-win32.json`, load 2.4 of 8 CPUs): a tie (A0 20.4 ns against hand-written JS 18.7 ns). The recorded loss (8.5% gap against an 8.2% noise band at load 6.4) is from another platform and stays in the ledger. The exec-bench harness now runs on Windows (`where.exe` lookup, `-pthread`, `.exe` names).
+
+
+Quiet Windows x64 rerun of the wasm benchmark against clang (`results/wasm-benchmark-win32.json`, two runs agree, load 2.2 of 8 CPUs by CPU utilisation, interleaved samples): geomean 1.059 (above 1 is A0 faster); losses on chain3 (0.89x), arrfill (0.69x) and prefix1k (0.85x), ties on ident, noop, branchy, hist256, xs4k, filter2, wins on arrfill4k, loop64, dot1k, mat4, fnv4k, minmax1k. wasm-bench now records platform and load (it recorded neither).

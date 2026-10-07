@@ -27,7 +27,9 @@ import { parseAndValidate } from '../src/core.js';
 import { findWasmClang, runTool, withTempDir } from '../src/toolchain.js';
 import { wasmModuleBytes } from '../src/wasm.js';
 import { KERNELS, type Kernel } from './exec-bench-kernels.js';
+import { loadGate, waitQuiet } from './quiet.js';
 import { writeReport } from './scrub-results.js';
+import { loadSource, systemLoadTriple } from './system-load.js';
 
 const ARGS = new Map(
   process.argv
@@ -188,6 +190,7 @@ async function main(): Promise<void> {
   await withTempDir(async (dir) => {
     for (const k of KERNELS) {
       if (ONLY !== null && !ONLY.has(k.name)) continue;
+      waitQuiet();
       const row = await benchKernel(k, clang, dir);
       rows.push(row);
       console.log(
@@ -201,6 +204,10 @@ async function main(): Promise<void> {
     compiler: COMPILER_VERSION,
     engine: `node ${process.version} (V8 ${process.versions.v8})`,
     clang: `${clang} (${tool.version ?? 'unknown'}), -O3 --target=wasm32 -nostdlib, wasm-ld --no-entry`,
+    platform: `${process.platform}-${process.arch}`,
+    loadAverage: systemLoadTriple(),
+    loadSource: loadSource(),
+    loadGate: loadGate(),
     samples: SAMPLES,
     method:
       'Same driver on both sides (n dependent trips of h = h*5 + K(args(h, i)), run inside the module). A0: kernel and driver in A0, direct wasm32 backend. clang: hand-written C kernel from tools/exec-bench-kernels.ts, driver as a C loop. Medians over interleaved samples after warm-up; load = WebAssembly.compile + instantiate.',
