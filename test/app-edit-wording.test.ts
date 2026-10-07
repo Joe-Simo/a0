@@ -22,14 +22,13 @@ import { wordingCell, wordingRule } from '../tools/app-edit-wording-summary.js';
 
 const task = APP_TASKS[0] as AppTask;
 
-test('app-edit wording: the current variant is the shipped text, the revised one differs only on the view', async () => {
+// The 'current' variant is the text that was shipped when the arm ran (2026-10-06). Later releases
+// legitimately change the shipped skill and MCP text (the dense default, primer V3), so the arm's
+// recorded variants stand on their own here: what is pinned is the arm's structure, not today's files.
+test('app-edit wording: the revised variant differs from the current one only on the view', async () => {
   const cur = wordingTexts('current');
   const rev = wordingTexts('revised');
-  assert.equal(cur.skill, await readFile('skills/a0/SKILL.md', 'utf8'));
-  const mcp = await readFile('src/mcp.ts', 'utf8');
-  // the shipped descriptions, as written in src/mcp.ts (string literals, quotes escaped there)
-  assert.ok(mcp.includes(`'${cur.open}'`), 'a0_open description drifted');
-  assert.ok(mcp.includes(`'${cur.program}'`), 'a0_program description drifted');
+  assert.ok(cur.skill.length > 0 && cur.open.length > 0 && cur.program.length > 0);
   assert.equal(rev.open, cur.open);
   assert.notEqual(rev.program, cur.program);
   const curLines = cur.skill.split('\n');
