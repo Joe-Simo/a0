@@ -35,8 +35,8 @@ s4 call ts s3 p1 19 0
 k31 add p1 31
 h call fx_hash clk k31
 u shr h 22
-cdh shr u 1
-cdms add 150 cdh
+cdh shr u 2
+cdms add 60 cdh
 s5 call ts s4 p1 7 cdms
 hx call tg s5 p1 20
 hy call tg s5 p1 21
@@ -182,7 +182,16 @@ s3 call ts s2 p1 4 offy
 s4 call ts s3 p1 5 0
 s5 call ts s4 p1 25 kind
 s6 call ts s5 p1 19 0
-s7 call ts s6 p1 0 1
+x1 call rg p5 p6 3
+y1 call rg p5 p6 4
+x1q shl x1 16
+y1q shl y1 16
+nrm call edge_normal x0q y0q x1q y1q px py
+nnx at nrm 0
+nny at nrm 1
+s7a call ts s6 p1 29 nnx
+s7b call ts s7a p1 30 nny
+s7 call ts s7b p1 0 1
 ret s7
 end
 
@@ -192,8 +201,8 @@ k call tg p0 p1 25
 clk call bg p0 13
 h call fx_hash clk p1
 u shr h 16
-span div u 30
-base add 900 span
+span div u 60
+base add 450 span
 iscode eq k 3
 ishead eq k 1
 m1 select iscode 88474 65536
@@ -217,7 +226,7 @@ okq select qz fz true
 cd call tg p0 p1 7
 cdz eq cd 0
 busy fold busy_step 8 0 p0
-few lt busy 4
+few lt busy 5
 w1 and st0 mine
 w2 and w1 okq
 w3 and w2 cdz
@@ -233,8 +242,8 @@ score at best 0
 bx at best 1
 by at best 2
 brow at best 3
-hi lt busy 2
-th select hi 589824 1310720
+hi lt busy 4
+th select hi 4292345856 786432
 fnd call fx_ge score th
 go and want fnd
 ap call begin_approach sp p1 bx by p2 p3 brow
@@ -242,8 +251,8 @@ s_a select go ap sp
 clk call bg p0 13
 h call fx_hash clk p1
 u shr h 22
-cdq shr u 2
-cdn add 80 cdq
+cdq shr u 3
+cdn add 40 cdq
 nogo call not_b fnd
 miss and want nogo
 cdset select miss cdn cd
@@ -265,7 +274,7 @@ ay call tg p0 p1 24
 dx sub ax tx
 dy sub ay ty
 d call fx_hyp dx dy
-rad call fx_mul 262144 sc
+rad call fx_mul 393216 sc
 close call fx_le d rad
 arrive and s1 close
 hold call hold_ms p0 p1
@@ -284,7 +293,7 @@ a3 call ts a2 p1 6 holdt
 a4a call ring_push a3 rid pgx pgy
 a4 call ts a4a p1 27 650
 tm call tg p0 p1 5
-slow gt tm 1500
+slow gt tm 2500
 bx call bg p0 1
 by call bg p0 2
 dbx sub ax bx
@@ -303,6 +312,13 @@ r select bad2 rel r1
 ret r
 end
 
+fn planted_step u32 u32 u32x1024 -> u32
+stt call tg p2 p1 0
+a eq stt 2
+n select a 1 0
+r add p0 n
+ret r
+end
 # ---- attached: let go when the hold time is up, the chain is taut, or the anchor is out of reach
 fn lg_attach u32x1024 u32 -> u32x1024
 stt call tg p0 p1 0
@@ -311,7 +327,7 @@ tm call tg p0 p1 5
 hold call tg p0 p1 6
 over gt tm hold
 ten call tg p0 p1 22
-taut call fx_gt ten 73400
+taut call fx_gt ten 81920
 ax call tg p0 p1 23
 ay call tg p0 p1 24
 bx call bg p0 1
@@ -320,11 +336,27 @@ dbx sub ax bx
 dby sub ay by
 db call fx_hyp dbx dby
 reach call tg p0 p1 14
-rl call fx_mul reach 72090
+rl call fx_mul reach 77000
 far call fx_gt db rl
-b1 or over taut
+pl fold planted_step 8 0 p0
+trv call travel_dir p0
+tux at trv 0
+tuy at trv 1
+tgo at trv 2
+dotb call fx_dot dbx dby tux tuy
+behind call fx_lt dotb 0
+ntg call not_b tgo
+many gt pl 3
+full ge pl 5
+bh0 or behind full
+bh1 or bh0 ntg
+vol0 and over many
+vol and vol0 bh1
+stuck gt tm 9000
+b1 or vol taut
 b2 or b1 far
-go and s2 b2
+b3 or b2 stuck
+go and s2 b3
 rel call rel_enter p0 p1
 r select go rel p0
 ret r
@@ -446,7 +478,12 @@ eqd eq dj dk
 jl lt p1 p3
 tie and eqd jl
 less or dlt tie
-n select less 1 0
+stj call tg p2 p1 0
+fj0 eq stj 0
+fj3 eq stj 3
+fj or fj0 fj3
+lf and less fj
+n select lf 1 0
 r add p0 n
 ret r
 end

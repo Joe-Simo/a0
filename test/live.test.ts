@@ -116,7 +116,16 @@ test('canvas: the draw list executes, tracks bounds, and stops at an unknown or 
     q(0),
     q(9),
     q(9),
-    OP.quad, q(0), q(0), q(10), q(0), q(10), q(10), q(10), q(10), 0xffffffff,
+    OP.quad,
+    q(0),
+    q(0),
+    q(10),
+    q(0),
+    q(10),
+    q(10),
+    q(10),
+    q(10),
+    0xffffffff,
     999,
     1,
     2,
@@ -488,35 +497,46 @@ test('sentinel: asks the host to watch page elements, once, by kind', async () =
   assert.equal(second.watches.length, 0);
 });
 
-test('sentinel: pursues the pointer with inertia, keeps its distance, tentacles keep their length', async () => {
+test('sentinel: a walker. The body rides on its planted feet, crawls toward the pointer, never flies', async () => {
   const { make } = await sentinel();
   const d = drive(make(), pageBoxes());
   step(d, { pointerX: 300, pointerY: 300 });
   const start = body(d.prog);
-  // the pointer jumps; the body must not
-  step(d, { pointerX: 900, pointerY: 500 });
-  const after = body(d.prog);
-  assert.ok(Math.hypot(after.x - start.x, after.y - start.y) < 40, 'no teleport to the pointer');
   let maxSpeed = 0;
-  let overshoot = false;
-  let prevDist = Infinity;
-  for (let i = 0; i < 300; i += 1) {
-    step(d, { pointerX: 900, pointerY: 500 });
+  let framesPlanted3 = 0;
+  let framesChecked = 0;
+  let nearFeet = 0;
+  let supported = 0;
+  for (let i = 0; i < 1500; i += 1) {
+    step(d, { pointerX: 900 + (i % 20 < 10 ? 0 : 6), pointerY: 520 });
     const b = body(d.prog);
     maxSpeed = Math.max(maxSpeed, Math.hypot(b.vx, b.vy));
-    const dist = Math.hypot(b.x - 900, b.y - 500);
-    if (dist > prevDist + 0.5 && i > 20 && dist < 200) overshoot = overshoot || false;
-    prevDist = dist;
+    if (i < 300) continue;
+    const feet: { x: number; y: number }[] = [];
+    for (let k = 0; k < 8; k += 1) {
+      const t = tent(d.prog, k);
+      if (t.state === 2) feet.push({ x: t.ax, y: t.ay });
+    }
+    framesChecked += 1;
+    if (feet.length >= 3) framesPlanted3 += 1;
+    if (feet.length >= 2) {
+      supported += 1;
+      const mx = feet.reduce((s, f) => s + f.x, 0) / feet.length;
+      const my = feet.reduce((s, f) => s + f.y, 0) / feet.length;
+      if (Math.hypot(b.x - mx, b.y - my) < 70) nearFeet += 1;
+    }
   }
   const b = body(d.prog);
-  const dist = Math.hypot(b.x - 900, b.y - 500);
-  assert.ok(dist > 50 && dist < 130, `settles 60-120px from the pointer, got ${dist.toFixed(1)}`);
-  assert.ok(Math.hypot(b.vx, b.vy) < 25, 'comes to rest');
   assert.ok(
-    maxSpeed > 150 && maxSpeed < 2300,
-    `accelerates with a bounded speed (${maxSpeed.toFixed(0)})`,
+    Math.hypot(b.x - 900, b.y - 520) < Math.hypot(start.x - 900, start.y - 520) - 50,
+    'it has crawled toward the pointer',
   );
-  void overshoot;
+  assert.ok(maxSpeed < 900, `a scuttle, never a dash (${maxSpeed.toFixed(0)} px/s)`);
+  assert.ok(
+    framesPlanted3 / framesChecked > 0.6,
+    `at least three feet planted most of the time (${framesPlanted3}/${framesChecked})`,
+  );
+  assert.ok(nearFeet / Math.max(1, supported) > 0.9, 'the body sits over its planted feet');
   for (let k = 0; k < 8; k += 1) {
     const t = tent(d.prog, k);
     assert.ok(t.nj >= 6 && t.nj <= 9);

@@ -102,7 +102,9 @@ a10 call bs a9 14 sy
 a11 call bs a10 16 sv
 b1 call body_pointer a11 p1 p3 dtq
 mf call bg b1 93
-calm eq mf 0
+flg get p1 2
+calmv and flg 1
+calm ne calmv 0
 mode call bg b1 11
 mode2 select calm 0 mode
 b2 call bs b1 11 mode2
@@ -151,12 +153,12 @@ end
 fn update u32x1024 u32x32 u32x672 -> u32x1024
 flags get p1 2
 reduced call flag flags 1
-mfv select reduced 0 65536
+mfv0 select reduced 1 65536
 mg call bg p0 0
 fresh0 ne mg 41120
 nf call one_if fresh0
 s0 fold init_step nf p0 p1
-s1 call bs s0 93 mfv
+s1 call bs s0 93 mfv0
 vw get p1 3
 vh get p1 4
 ovw call bg s1 91

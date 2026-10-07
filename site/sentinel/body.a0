@@ -286,53 +286,139 @@ ny select act ey y
 o rec nx ny
 ret o
 end
+# where the machine is heading: the pointer or finger while it chases, else its patrol home; (x, y, going)
+fn travel_dir u32x1024 -> (u32,u32,bool)
+mode call bg p0 11
+m1 eq mode 1
+m2 eq mode 2
+pur or m1 m2
+bx call bg p0 1
+by call bg p0 2
+px call bg p0 7
+py call bg p0 8
+hx call bg p0 33
+hy call bg p0 34
+tx select pur px hx
+ty select pur py hy
+dx sub tx bx
+dy sub ty by
+len call fx_hyp dx dy
+go gt len 3276800
+u call fx_unit dx dy
+ux at u 0
+uy at u 1
+r rec ux uy go
+ret r
+end
+# the support: planted feet (state 2) add the point h above their foothold, along the surface normal
+fn feet_step (u32,u32,u32) u32 u32x1024 u32 -> (u32,u32,u32)
+stt call tg p2 p1 0
+att eq stt 2
+ax call tg p2 p1 23
+ay call tg p2 p1 24
+nx call tg p2 p1 29
+ny call tg p2 p1 30
+ox call fx_mul nx p3
+oy call fx_mul ny p3
+sx at p0 0
+sy at p0 1
+n at p0 2
+tx0 add ax ox
+ty0 add ay oy
+nsx add sx tx0
+nsy add sy ty0
+nn add n 1
+rx select att nsx sx
+ry select att nsy sy
+rn select att nn n
+o rec rx ry rn
+ret o
+end
+# with too few planted feet: the nearest edge of a component, and the point h above it (d, x, y)
+fn near_step (u32,u32,u32) u32 u32x672 u32 u32 u32x1024 u32 -> (u32,u32,u32)
+x0 call rg p2 p1 1
+y0 call rg p2 p1 2
+x1 call rg p2 p1 3
+y1 call rg p2 p1 4
+vis call r_vis p2 p1
+kind call r_kind p2 p1
+kn ne kind 0
+w sub x1 x0
+h sub y1 y0
+bw ge w 6
+bh ge h 6
+bg2 and bw bh
+x0q call pg2vp x0 p3
+y0q call pg2vp y0 p4
+x1q call pg2vp x1 p3
+y1q call pg2vp y1 p4
+bx call bg p5 1
+by call bg p5 2
+e call edge_pt x0q y0q x1q y1q bx by
+ex at e 0
+ey at e 1
+dx sub ex bx
+dy sub ey by
+d call fx_hyp dx dy
+nm call edge_normal x0q y0q x1q y1q bx by
+nx at nm 0
+ny at nm 1
+ox call fx_mul nx p6
+oy call fx_mul ny p6
+tx add ex ox
+ty add ey oy
+bd at p0 0
+better call fx_lt d bd
+a1 and vis kn
+a2 and a1 bg2
+ok and a2 better
+nd select ok d bd
+bx0 at p0 1
+by0 at p0 2
+nx2 select ok tx bx0
+ny2 select ok ty by0
+o rec nd nx2 ny2
+ret o
+end
+# the body target: the mean of the points above the planted feet (a small lean ahead while travelling);
+# with fewer than two planted feet, the point above the nearest component edge. Pursuit never sets it.
 fn body_goal u32x1024 u32x32 u32x672 -> (u32,u32,u32,u32)
 mode call bg p0 11
 bx call bg p0 1
 by call bg p0 2
 sc call bg p0 38
-px call bg p0 7
-py call bg p0 8
-pvx call bg p0 9
-pvy call bg p0 10
-spd call fx_hyp pvx pvy
-t1 div spd 45
-t2 call fx_min t1 2883584
-off0 add 4325376 t2
-offm call fx_mul off0 sc
-offt call fx_mul offm 85197
-tch eq mode 2
-off select tch offt offm
-rx sub bx px
-ry sub by py
-u call fx_unit rx ry
-ux at u 0
-uy at u 1
-ox call fx_mul ux off
-oy call fx_mul uy off
-pdx add px ox
-pdy add py oy
-hx call bg p0 33
-hy call bg p0 34
-ph call bg p0 27
-s1 call fx_sin ph
-ph2a call fx_mul ph 85852
-ph2 add ph2a 11141
-s2 call fx_sin ph2
-mf call bg p0 93
-amx0 call fx_mul 1703936 sc
-amy0 call fx_mul 1048576 sc
-amx call fx_mul amx0 mf
-amy call fx_mul amy0 mf
-ax0 call fx_mul s1 amx
-ay0 call fx_mul s2 amy
-qx add hx ax0
-qy add hy ay0
-m1 eq mode 1
-m2 eq mode 2
-pur or m1 m2
-dx0 select pur pdx qx
-dy0 select pur pdy qy
+idle eq mode 0
+hm select idle 589824 983040
+h call fx_mul hm sc
+tr call travel_dir p0
+ux at tr 0
+uy at tr 1
+go at tr 2
+f0 rec 0 0 0
+feet fold feet_step 8 f0 p0 h
+fsx at feet 0
+fsy at feet 1
+fn_ at feet 2
+nf65 shl fn_ 16
+mx call fx_div fsx nf65
+my call fx_div fsy nf65
+lean call fx_mul 1835008 sc
+lx0 call fx_mul ux lean
+ly0 call fx_mul uy lean
+lx select go lx0 0
+ly select go ly0 0
+mx2 add mx lx
+my2 add my ly
+sxg get p1 5
+syg get p1 6
+nrows get p1 21
+n0 rec 2147483647 bx by
+near fold near_step nrows n0 p2 sxg syg p0 h
+nxx at near 1
+nyy at near 2
+supported call fx_ge fn_ 2
+dx0 select supported mx2 nxx
+dy0 select supported my2 nyy
 vw get p1 3
 vh get p1 4
 vwq shl vw 16
@@ -342,58 +428,18 @@ xmax sub vwq mq
 ymax sub vhq mq
 dx call fx_clamp dx0 mq xmax
 dyc call fx_clamp dy0 mq ymax
-sxg get p1 5
-syg get p1 6
-nrows get p1 21
-pad call fx_mul 1572864 sc
+pad call fx_mul 917504 sc
 av0 rec dx dyc
 av1 fold avoid_step nrows av0 p2 sxg syg pad
-av fold avoid_step nrows av1 p2 sxg syg pad
+av2 fold avoid_step nrows av1 p2 sxg syg pad
+av3 fold avoid_step nrows av2 p2 sxg syg pad
+av fold avoid_step nrows av3 p2 sxg syg pad
 ndx at av 0
 ndy at av 1
-k1 select m2 1572864 589824
-k select m1 1966080 k1
-c1 select m2 294912 288358
-c select m1 262144 c1
+k select idle 589824 1048576
+c select idle 327680 458752
 r rec ndx ndy k c
 ret r
-end
-
-# the pull of the attached tentacles on the body: state (x, y); a (px/s^2) vector toward each
-# anchor, strongest for anchors ahead of the direction of travel (p3, p4)
-fn pull_step (u32,u32) u32 u32x1024 u32 u32 -> (u32,u32)
-stt call tg p2 p1 0
-att eq stt 2
-ax call tg p2 p1 23
-ay call tg p2 p1 24
-bx call bg p2 1
-by call bg p2 2
-dx sub ax bx
-dy sub ay by
-dist call fx_hyp dx dy
-u call fx_unit dx dy
-ux at u 0
-uy at u 1
-al call fx_dot ux uy p3 p4
-alp call fx_max al 0
-w0 call fx_mul alp 49152
-w add w0 16384
-reach call tg p2 p1 14
-rr call fx_mul reach 39322
-frac call fx_div dist rr
-fr call fx_min frac 65536
-mag0 call fx_mul 5242880 w
-mag call fx_mul mag0 fr
-fxx call fx_mul ux mag
-fyy call fx_mul uy mag
-nx0 at p0 0
-ny0 at p0 1
-nx add nx0 fxx
-ny add ny0 fyy
-sx select att nx nx0
-sy select att ny ny0
-o rec sx sy
-ret o
 end
 
 # spring, damping and anchor pulls; p2 dt in Q16 seconds
@@ -413,10 +459,8 @@ ey sub dy by
 tu call fx_unit ex ey
 tux at tu 0
 tuy at tu 1
-pull0 rec 0 0
-pl fold pull_step 8 pull0 p0 tux tuy
-plx at pl 0
-ply at pl 1
+plx mov 0
+ply mov 0
 ax1 call fx_mul k ex
 ax2 call fx_mul c vx
 ax3 sub ax1 ax2
@@ -430,7 +474,7 @@ dvy call fx_mul ay p3
 vx1 add vx dvx
 vy1 add vy dvy
 spd call fx_hyp vx1 vy1
-vmax call fx_mul 144179200 sc
+vmax call fx_mul 45875200 sc
 over gt spd vmax
 f call fx_div vmax spd
 vx2s call fx_mul vx1 f
