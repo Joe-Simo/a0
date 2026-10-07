@@ -28,7 +28,7 @@ a{color:inherit}
 @keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
 @media (max-width:720px){.hero{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:96px 20px 56px;min-height:100vh}.hero .tag{text-align:left}}
 .center{max-width:720px;margin:0 auto;padding:96px 24px 40px;text-align:center}
-.center h2{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin:0 auto 20px;font-weight:500;text-wrap:balance;max-width:640px}
+.center h1,.center h2{font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin:0 auto 20px;font-weight:500;text-wrap:balance;max-width:640px}
 .center p{color:var(--body);font-size:1.05rem;margin:0 auto;max-width:600px}
 .trio{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:1080px;margin:40px auto 0;padding:0 24px}
 .tcard{position:relative;border:1px solid var(--line);border-radius:18px;background:var(--card);padding:22px 22px 18px;min-height:260px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s}
@@ -441,3 +441,27 @@ pre.code{background:rgba(0,0,0,.7);border:1px solid var(--line2);border-radius:6
 .docs .toc[open] .rh{display:block;margin:14px 0 2px 12px}
 .docs .rail a,.docs .rail a.on{display:flex;align-items:center;min-height:44px;padding:0 12px;white-space:normal;border:0}
 }
+/* Phones, motion, tap targets and focus. The page was wider than the screen because the panel behind the content reaches 32px past each side. */
+body{overflow-x:clip}
+@media (max-width:900px){.layout::before{inset:0}}
+.foot a{text-decoration:underline;text-underline-offset:3px;display:inline-block;padding:13px 6px;margin:-13px -6px}
+pre.code:focus-visible{outline:2px solid var(--a0);outline-offset:2px}
+@media (max-width:640px){
+.hero{min-height:46vh;min-height:46svh}
+.center{padding-top:48px}
+#start{display:flex;flex-direction:column}
+#start>p:has(.pill){order:-1;margin:20px 0 0}
+.pill{min-height:44px;font-size:.8125rem}
+.brand{display:inline-flex;align-items:center;min-height:44px;min-width:44px}
+.links a{padding:0 7px}
+.hright .ico{width:44px;height:44px}
+.chart details.more>summary{min-height:44px}
+p+a{display:inline-block;padding:12px 0}
+.rail{padding-left:20px;scroll-padding-left:20px;background:#000}
+}
+@media (max-width:400px){.hright .ico-x{display:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero .name,.hero .tag,.hero .sub{animation:none}.reveal{transition:none}}
+
+@media (max-width:360px){.lrow,.lrow.wide{grid-template-columns:96px minmax(0,1fr)}.track,.lrow .track,.lrow.wide .track{grid-template-columns:minmax(0,1fr) auto}.track .val{min-width:0}}
+@media (max-width:360px){.layout{overflow-x:clip}.row,.single .row{grid-template-columns:minmax(0,1fr) auto}}
+@media (max-width:360px){.row .ratio{white-space:normal}.row .lbl{min-width:0}}

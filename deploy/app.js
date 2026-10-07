@@ -91,6 +91,7 @@ const ATTRS = {
     9: 'role',
     10: 'scope',
     11: 'aria-hidden',
+    12: 'tabindex',
 };
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -290,6 +291,12 @@ function render(root, styleEl, words, onEvent, inputText) {
                 const el = document.createElement(TAGS[words[i++]] ?? 'div');
                 if (el.tagName === 'TH')
                     el.setAttribute('scope', 'col');
+                // a code block can scroll sideways: keyboard users reach it, and screen readers name it
+                if (el.tagName === 'PRE') {
+                    el.setAttribute('tabindex', '0');
+                    el.setAttribute('role', 'group');
+                    el.setAttribute('aria-label', 'Code example');
+                }
                 top.appendChild(el);
                 stack.push(el);
                 break;
