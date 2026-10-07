@@ -17,6 +17,7 @@
 #   1 STATE n w...       the program state to hand back next frame
 #   2 WATCH kind n bytes ask the host to track elements matching a CSS selector as `kind`
 #   3 QUALITY percent    canvas render scale request, 25..100
+#   4 CADENCE n         run the program every n-th animation frame (1..8); pointer and scroll input wake it at once
 #   10 CLEAR (everything)
 #   11 LINE x1 y1 x2 y2 width rgba
 #   12 DISC x y r rgba
@@ -138,4 +139,9 @@ h write g p7
 i write h p8
 j write i p9
 ret j
+end
+fn fr_cadence io u32 -> io
+a write p0 4
+b write a p1
+ret b
 end

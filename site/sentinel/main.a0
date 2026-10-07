@@ -252,6 +252,10 @@ e fold w_block p1 d
 f fold w_data p1 e
 ret f
 end
+fn cad_cmd io u32 u32 -> io
+a call fr_cadence p0 p2
+ret a
+end
 fn qpct io u32 u32 -> io
 a call fr_quality p0 p2
 ret a
@@ -278,8 +282,30 @@ first call flag flags 32
 nw call one_if first
 t5 call watches p0 nw
 t6 fold qpct nq t5 pct
-t7 call write_state t6 st2
-t8 call render_all t7 st2 p2 p3
+mode call bg p1 11
+idl call bg p1 12
+vx call bg p1 3
+vy call bg p1 4
+spd call fx_hyp vx vy
+q0 eq q 0
+q1 eq q 1
+cq1 select q1 2 1
+cq select q0 3 cq1
+m0 eq mode 0
+iq gt idl 5000
+sq lt spd 2621440
+quiet0 and m0 iq
+quiet and quiet0 sq
+cadq select quiet 3 1
+cgt gt cq cadq
+cad select cgt cq cadq
+lastc call bg st2 886
+cchg ne cad lastc
+ncd call one_if cchg
+st3 call bs st2 886 cad
+t6b fold cad_cmd ncd t6 cad
+t7 call write_state t6b st3
+t8 call render_all t7 st3 p2 p3
 ret t8
 end
 

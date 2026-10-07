@@ -711,3 +711,57 @@ test('mounting a live program never touches the page stylesheet or its root attr
   assert.ok(app.includes('const liveConfig = { ...root.dataset }'));
   assert.ok(app.includes('mountLive(root, liveConfig)'));
 });
+
+test('sentinel: under load it steps quality down and runs every other frame; idle, it slows its tick', async () => {
+  const { make } = await sentinel();
+  const run = (
+    cost: number,
+    frames: number,
+    o: Partial<FrameInput>,
+  ): { cadence: number | undefined; quality: number | undefined } => {
+    const prog = make();
+    let cadence: number | undefined;
+    let quality: number | undefined;
+    for (let i = 0; i < frames; i += 1) {
+      const r = prog.frame(
+        {
+          dt: 16,
+          flags: (i === 0 ? FLAG.first : 0) | FLAG.pointer,
+          vw: 1280,
+          vh: 800,
+          scrollX: 0,
+          scrollY: 0,
+          dpr: 1,
+          pointerX: 400 + (i % 30),
+          pointerY: 400,
+          pointerType: 1,
+          tapSeq: 0,
+          tapX: 0,
+          tapY: 0,
+          tapRect: null,
+          costUs: cost,
+          intervalUs: 16667,
+          docHeight: 5000,
+          timeMs: i * 16,
+          generation: 1,
+          ...o,
+        },
+        table(pageBoxes(), 0),
+        pageBoxes().length,
+      );
+      cadence = r.cadence ?? cadence;
+      quality = r.quality ?? quality;
+    }
+    return { cadence, quality };
+  };
+  const loaded = run(7000, 200, {});
+  assert.ok((loaded.quality ?? 100) < 100, 'a high frame cost lowers the render scale');
+  assert.ok((loaded.cadence ?? 1) >= 2, 'and the program asks to run less often');
+  const calm = run(500, 200, {});
+  assert.ok(
+    (calm.cadence ?? 1) === 1,
+    'a cheap frame keeps the full cadence while the pointer moves',
+  );
+  const idle = run(500, 700, { pointerX: 400, pointerY: 400 });
+  assert.ok((idle.cadence ?? 1) >= 3, 'an idle machine ticks at a low rate');
+});

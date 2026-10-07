@@ -54,6 +54,7 @@ export const OP = {
   state: 1,
   watch: 2,
   quality: 3,
+  cadence: 4,
   clear: 10,
   line: 11,
   disc: 12,
@@ -110,6 +111,8 @@ export interface FrameOutput {
   stateLength: number;
   watches: Watch[];
   quality: number | undefined;
+  /** Run the program every n-th animation frame (1 = every frame); undefined = unchanged. */
+  cadence: number | undefined;
   /** Where the draw list starts in the output words. */
   drawStart: number;
 }
@@ -126,6 +129,7 @@ export function parseHostCommands(out: ArrayLike<number>, length: number): Frame
     stateLength: 0,
     watches: [],
     quality: undefined,
+    cadence: undefined,
     drawStart: 0,
   };
   let i = 0;
@@ -145,6 +149,9 @@ export function parseHostCommands(out: ArrayLike<number>, length: number): Frame
       i += 3 + n;
     } else if (op === OP.quality) {
       res.quality = out[i + 1] as number;
+      i += 2;
+    } else if (op === OP.cadence) {
+      res.cadence = Math.max(1, Math.min(8, out[i + 1] as number));
       i += 2;
     } else break;
   }

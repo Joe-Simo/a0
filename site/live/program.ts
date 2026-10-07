@@ -55,6 +55,7 @@ export interface FrameResult {
   drawTo: number;
   watches: Watch[];
   quality: number | undefined;
+  cadence: number | undefined;
   /** The program's own return value. */
   code: number;
   /** Words of output written. */
@@ -143,6 +144,7 @@ export class LiveProgram {
       drawTo: this.outBase + n,
       watches: host.watches,
       quality: host.quality,
+      cadence: host.cadence,
       code,
       outputLength: n,
     };

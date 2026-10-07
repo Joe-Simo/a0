@@ -83,7 +83,9 @@ export async function mountLive(
   let vh = win.innerHeight;
   const pointer = new PointerTracker(win, doc.documentElement, () => [sx, sy]);
   pointer.attach();
+  let scrollActivity = 0;
   const onScroll = (): void => {
+    scrollActivity += 1;
     sx = win.scrollX;
     sy = win.scrollY;
   };
@@ -114,13 +116,26 @@ export async function mountLive(
   let ringAt = 0;
   let costMax = 0;
   let lastGeneration = -1;
+  let cadence = 1;
+  let skipped = 0;
+  let lastActivity = -1;
 
   const frame = (now: number): void => {
     raf = 0;
+    // The program may ask to run every n-th animation frame (load or idle); input wakes it at once.
+    const activity = pointer.activity + scrollActivity;
+    if (cadence > 1 && !first && !resumed && activity === lastActivity && skipped + 1 < cadence && running) {
+      skipped += 1;
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+    skipped = 0;
+    lastActivity = activity;
     const t0 = performance.now();
     let dt = lastNow === 0 ? 16 : now - lastNow;
     if (resumed) dt = 16;
-    if (dt > 50) dt = 16.7;
+    if (dt > 150) dt = 16.7;
+    else if (dt > 50) dt = 50;
     lastNow = now;
     if (!first && !resumed) intervalEma += (Math.min(dt, 100) - intervalEma) * 0.1;
     const dtInt = Math.max(1, Math.round(dt + carry));
@@ -163,6 +178,7 @@ export async function mountLive(
     first = false;
     resumed = false;
     const res = program.frame(input, geometry.table, geometry.count);
+    if (res.cadence !== undefined) cadence = res.cadence;
     for (const w of res.watches) geometry.watch(w.kind, w.selector);
     if (res.quality !== undefined && res.quality !== percent) {
       percent = Math.max(25, Math.min(100, res.quality));
