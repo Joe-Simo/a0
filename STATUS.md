@@ -203,3 +203,6 @@ The A0014 diagnostic (wrong operand count) now shows the chain when an associati
 
 
 The wasm benchmark file `results/wasm-benchmark.json` was regenerated on a quiet Windows x64 machine with platform and load recorded (before, it recorded no load and 21 ledger rows were unverified). The ledger now has 586 entries, none unverified: 8 ns-per-trip losses against clang, 14 wasm-load-ms (noisy: the A0 to clang ratio moved by up to 0.27 between two runs), 1 wasm-bytes; 7 earlier entries are gone or tied. Geomean 1.055 (above 1 is A0 faster).
+
+
+Git-connected Vercel deploys: the site build needs clang (not in Vercel's build image), so the prebuilt site is committed in `deploy/` (`bun run site:publish`) and the root `vercel.json` serves it with no build, with the same headers and redirects as `site/dist/vercel.json` (`test/vercel-config.test.ts`). Refresh `deploy/` and commit it whenever the site or the results it shows change.

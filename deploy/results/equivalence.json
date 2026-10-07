@@ -1,0 +1,725 @@
+{
+  "generatedAt": "2026-10-02T05:17:19.747Z",
+  "solver": "z3-solver (Z3 via WebAssembly), QF_BV, 32-bit",
+  "corpusSha256": "2e98e7f28506960f2dba25829bacdc5e9445eaf218ba4d43de9c01c6eae313b5",
+  "selfCheck": {
+    "ok": true,
+    "mutated": [
+      {
+        "fn": "g0",
+        "mutation": "node 7 and -> add",
+        "verdict": "sat"
+      },
+      {
+        "fn": "g1",
+        "mutation": "node 5 write dropped",
+        "verdict": "sat"
+      },
+      {
+        "fn": "dead_get",
+        "mutation": "node 1 get dropped (strict)",
+        "verdict": "sat"
+      }
+    ]
+  },
+  "scope": "intra-procedural values (u32, bool, arrays and records of those, element-wise) plus a bounded io model: the input stream is 8 symbolic 32-bit words (K = 8; reads past K yield 0 and stop advancing, the language's exhausted-input rule), write appends a word, puts appends the length then every element, effects happen in node order on one shared stream as in the reference interpreter. Ops mov add sub mul and or xor shl shr div rem eq lt select arr rec get set at put read write puts; call inlined; fold and loop with literal count <= 64 unrolled (loop steps and their effects gated by the predicate). Equivalence: result values equal, output lengths equal, every output word below that length equal, final read position equal. Excluded: variable-count fold/loop. A proof covers all 2^(32n) value inputs and every input prefix of at most 8 words; functions marked out-of-scope are covered only by the sampled differential corpus (results/verification.json).",
+  "summary": {
+    "functions": 48,
+    "proved": 48,
+    "counterexample": 0,
+    "unknown": 0,
+    "outOfScope": 0
+  },
+  "results": [
+    {
+      "fn": "g0",
+      "status": "proved",
+      "detail": null,
+      "ms": 63.72383399999998
+    },
+    {
+      "fn": "g1",
+      "status": "proved",
+      "detail": null,
+      "ms": 7.284832999999992
+    },
+    {
+      "fn": "g2",
+      "status": "proved",
+      "detail": null,
+      "ms": 4.985292000000015
+    },
+    {
+      "fn": "g3",
+      "status": "proved",
+      "detail": null,
+      "ms": 10.370417000000003
+    },
+    {
+      "fn": "g4",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.4997089999999957
+    },
+    {
+      "fn": "g5",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.99645799999999
+    },
+    {
+      "fn": "g6",
+      "status": "proved",
+      "detail": null,
+      "ms": 3.0752080000000035
+    },
+    {
+      "fn": "g7",
+      "status": "proved",
+      "detail": null,
+      "ms": 6.798333000000014
+    },
+    {
+      "fn": "g8",
+      "status": "proved",
+      "detail": null,
+      "ms": 3.1409999999999627
+    },
+    {
+      "fn": "g9",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.455666000000008
+    },
+    {
+      "fn": "g10",
+      "status": "proved",
+      "detail": null,
+      "ms": 8.170042000000024
+    },
+    {
+      "fn": "g11",
+      "status": "proved",
+      "detail": null,
+      "ms": 5.305834000000004
+    },
+    {
+      "fn": "g12",
+      "status": "proved",
+      "detail": null,
+      "ms": 3.0068749999999795
+    },
+    {
+      "fn": "g13",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.2758329999999773
+    },
+    {
+      "fn": "g14",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.197499999999991
+    },
+    {
+      "fn": "g15",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.8344999999999914
+    },
+    {
+      "fn": "g16",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.4661250000000337
+    },
+    {
+      "fn": "g17",
+      "status": "proved",
+      "detail": null,
+      "ms": 9.150042000000042
+    },
+    {
+      "fn": "g18",
+      "status": "proved",
+      "detail": null,
+      "ms": 3.1516659999999774
+    },
+    {
+      "fn": "g19",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.3962080000000014
+    },
+    {
+      "fn": "g20",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.2249589999999557
+    },
+    {
+      "fn": "g21",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.6470830000000092
+    },
+    {
+      "fn": "g22",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.6071249999999964
+    },
+    {
+      "fn": "g23",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.1578330000000392
+    },
+    {
+      "fn": "g24",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.135333000000003
+    },
+    {
+      "fn": "g25",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.7137500000000045
+    },
+    {
+      "fn": "g26",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.6657500000000027
+    },
+    {
+      "fn": "g27",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.6257920000000468
+    },
+    {
+      "fn": "g28",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.2527090000000385
+    },
+    {
+      "fn": "g29",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.6535000000000082
+    },
+    {
+      "fn": "g30",
+      "status": "proved",
+      "detail": null,
+      "ms": 10.538999999999987
+    },
+    {
+      "fn": "g31",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.104332999999997
+    },
+    {
+      "fn": "g32",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.3919159999999806
+    },
+    {
+      "fn": "g33",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.5042920000000208
+    },
+    {
+      "fn": "g34",
+      "status": "proved",
+      "detail": null,
+      "ms": 13.02841699999999
+    },
+    {
+      "fn": "g35",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.4350840000000176
+    },
+    {
+      "fn": "g36",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.5548750000000382
+    },
+    {
+      "fn": "g37",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.522707999999966
+    },
+    {
+      "fn": "g38",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.3999580000000265
+    },
+    {
+      "fn": "g39",
+      "status": "proved",
+      "detail": null,
+      "ms": 6.514624999999967
+    },
+    {
+      "fn": "g40",
+      "status": "proved",
+      "detail": null,
+      "ms": 4.558207999999979
+    },
+    {
+      "fn": "g41",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.4330420000000004
+    },
+    {
+      "fn": "g42",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.7834170000000427
+    },
+    {
+      "fn": "g43",
+      "status": "proved",
+      "detail": null,
+      "ms": 18.465458000000012
+    },
+    {
+      "fn": "g44",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.4117080000000328
+    },
+    {
+      "fn": "g45",
+      "status": "proved",
+      "detail": null,
+      "ms": 1.3780830000000037
+    },
+    {
+      "fn": "g46",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.888832999999977
+    },
+    {
+      "fn": "g47",
+      "status": "proved",
+      "detail": null,
+      "ms": 2.148208000000011
+    }
+  ],
+  "strict": {
+    "scope": "the strict profile: the corpus under `profile strict` and hand-written kernels for each rule of the strict optimizer. Equivalence is first-trap code equal (0 none, 1 bounds, 2 divzero, 3 input, in node order) and, where neither side traps, result values, output stream and read position equal. The trap line fields fn/at/trip/chain are not modelled here; the optimizer keeps them by never inlining, unrolling or fusing a body that can trap, and test/strict-targets.test.ts compares the whole line.",
+    "summary": {
+      "functions": 65,
+      "proved": 65,
+      "counterexample": 0,
+      "unknown": 0,
+      "outOfScope": 0
+    },
+    "results": [
+      {
+        "fn": "strict:g0",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.8264999999999532
+      },
+      {
+        "fn": "strict:g1",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.870749999999987
+      },
+      {
+        "fn": "strict:g2",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.5913329999999632
+      },
+      {
+        "fn": "strict:g3",
+        "status": "proved",
+        "detail": null,
+        "ms": 10.56408300000004
+      },
+      {
+        "fn": "strict:g4",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.227375000000052
+      },
+      {
+        "fn": "strict:g5",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.150374999999997
+      },
+      {
+        "fn": "strict:g6",
+        "status": "proved",
+        "detail": null,
+        "ms": 5.143957999999998
+      },
+      {
+        "fn": "strict:g7",
+        "status": "proved",
+        "detail": null,
+        "ms": 8.952874999999949
+      },
+      {
+        "fn": "strict:g8",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.854083000000003
+      },
+      {
+        "fn": "strict:g9",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.0761249999999905
+      },
+      {
+        "fn": "strict:g10",
+        "status": "proved",
+        "detail": null,
+        "ms": 11.882792000000052
+      },
+      {
+        "fn": "strict:g11",
+        "status": "proved",
+        "detail": null,
+        "ms": 9.502625000000023
+      },
+      {
+        "fn": "strict:g12",
+        "status": "proved",
+        "detail": null,
+        "ms": 4.295708999999988
+      },
+      {
+        "fn": "strict:g13",
+        "status": "proved",
+        "detail": null,
+        "ms": 4.469499999999982
+      },
+      {
+        "fn": "strict:g14",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.4734999999999445
+      },
+      {
+        "fn": "strict:g15",
+        "status": "proved",
+        "detail": null,
+        "ms": 11.647167000000024
+      },
+      {
+        "fn": "strict:g16",
+        "status": "proved",
+        "detail": null,
+        "ms": 10.091959000000031
+      },
+      {
+        "fn": "strict:g17",
+        "status": "proved",
+        "detail": null,
+        "ms": 11.63900000000001
+      },
+      {
+        "fn": "strict:g18",
+        "status": "proved",
+        "detail": null,
+        "ms": 4.679124999999999
+      },
+      {
+        "fn": "strict:g19",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.6626670000000559
+      },
+      {
+        "fn": "strict:g20",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.568834000000038
+      },
+      {
+        "fn": "strict:g21",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.1678329999999733
+      },
+      {
+        "fn": "strict:g22",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.6535840000000235
+      },
+      {
+        "fn": "strict:g23",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.6028749999999263
+      },
+      {
+        "fn": "strict:g24",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.66862500000002
+      },
+      {
+        "fn": "strict:g25",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.9772080000000187
+      },
+      {
+        "fn": "strict:g26",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.0652919999999995
+      },
+      {
+        "fn": "strict:g27",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.17999999999995
+      },
+      {
+        "fn": "strict:g28",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.960958000000005
+      },
+      {
+        "fn": "strict:g29",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.6534169999999904
+      },
+      {
+        "fn": "strict:g30",
+        "status": "proved",
+        "detail": null,
+        "ms": 12.21941599999991
+      },
+      {
+        "fn": "strict:g31",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.4136250000000246
+      },
+      {
+        "fn": "strict:g32",
+        "status": "proved",
+        "detail": null,
+        "ms": 85.32716700000003
+      },
+      {
+        "fn": "strict:g33",
+        "status": "proved",
+        "detail": null,
+        "ms": 4.233791999999994
+      },
+      {
+        "fn": "strict:g34",
+        "status": "proved",
+        "detail": null,
+        "ms": 22.127500000000055
+      },
+      {
+        "fn": "strict:g35",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.3906660000000102
+      },
+      {
+        "fn": "strict:g36",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.662541000000033
+      },
+      {
+        "fn": "strict:g37",
+        "status": "proved",
+        "detail": null,
+        "ms": 2.8397079999999733
+      },
+      {
+        "fn": "strict:g38",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.356290999999942
+      },
+      {
+        "fn": "strict:g39",
+        "status": "proved",
+        "detail": null,
+        "ms": 10.405292000000031
+      },
+      {
+        "fn": "strict:g40",
+        "status": "proved",
+        "detail": null,
+        "ms": 9.161333000000013
+      },
+      {
+        "fn": "strict:g41",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.518167000000062
+      },
+      {
+        "fn": "strict:g42",
+        "status": "proved",
+        "detail": null,
+        "ms": 6.942165999999929
+      },
+      {
+        "fn": "strict:g43",
+        "status": "proved",
+        "detail": null,
+        "ms": 33.931291999999985
+      },
+      {
+        "fn": "strict:g44",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.3541250000000673
+      },
+      {
+        "fn": "strict:g45",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.0648330000000215
+      },
+      {
+        "fn": "strict:g46",
+        "status": "proved",
+        "detail": null,
+        "ms": 8.809291999999914
+      },
+      {
+        "fn": "strict:g47",
+        "status": "proved",
+        "detail": null,
+        "ms": 3.714958000000024
+      },
+      {
+        "fn": "kernel:dead_get",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.9284169999999676
+      },
+      {
+        "fn": "kernel:dead_div",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.664792000000034
+      },
+      {
+        "fn": "kernel:order",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.8788749999999936
+      },
+      {
+        "fn": "kernel:arms",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.9639999999999418
+      },
+      {
+        "fn": "kernel:zero_div",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.6635830000000169
+      },
+      {
+        "fn": "kernel:lit_oob",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.6473750000000109
+      },
+      {
+        "fn": "kernel:set_oob",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.8025000000000091
+      },
+      {
+        "fn": "kernel:safe_mask",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.2789579999999887
+      },
+      {
+        "fn": "kernel:safe_or",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.7034169999999449
+      },
+      {
+        "fn": "kernel:leaf",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.7298329999999851
+      },
+      {
+        "fn": "kernel:unrolled",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.9262919999999895
+      },
+      {
+        "fn": "kernel:unrolled_oob",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.0532080000000406
+      },
+      {
+        "fn": "kernel:inlined",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.659041000000002
+      },
+      {
+        "fn": "kernel:read1",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.6091249999999491
+      },
+      {
+        "fn": "kernel:read3",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.761333000000036
+      },
+      {
+        "fn": "kernel:pred",
+        "status": "proved",
+        "detail": null,
+        "ms": 0.7527499999999918
+      },
+      {
+        "fn": "kernel:loop_oob",
+        "status": "proved",
+        "detail": null,
+        "ms": 1.874708000000055
+      }
+    ]
+  }
+}

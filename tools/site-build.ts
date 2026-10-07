@@ -8,7 +8,7 @@
  * shells, and the self-hosted Geist fonts. Output: site/dist/. Nothing is deployed by this script.
  */
 
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { link } from '../src/link.js';
@@ -161,6 +161,18 @@ export const VERCEL = {
   ],
 } as const;
 
+/**
+ * The repository-root config for a git-connected Vercel project: nothing is built on Vercel (the site build needs clang,
+ * which its build image does not have), the prebuilt site in `deploy/` is served as it is with the same headers and redirects.
+ */
+export const ROOT_VERCEL = {
+  ...VERCEL,
+  framework: null,
+  installCommand: null,
+  buildCommand: null,
+  outputDirectory: 'deploy',
+} as const;
+
 /** Copy the variable Geist faces out of the `geist` package into site/dist/fonts. */
 async function copyFonts(): Promise<void> {
   // `geist/package.json` is not exported by the package, so resolve an exported entry and walk
@@ -230,6 +242,17 @@ async function main(): Promise<void> {
   await writeAgentFiles(page, docs);
   await copyFonts();
   await writeFile(join(out, 'vercel.json'), `${JSON.stringify(VERCEL, null, 2)}\n`, 'utf8');
+  if (process.argv.includes('--publish')) {
+    // the committed copy a git-connected Vercel project serves (see ROOT_VERCEL)
+    await rm('deploy', { recursive: true, force: true });
+    await cp(out, 'deploy', { recursive: true });
+    await writeFile(
+      'vercel.json',
+      `${JSON.stringify(ROOT_VERCEL, null, 2)}
+`,
+      'utf8',
+    );
+  }
   process.stdout.write(
     `site/dist: ${sizes.join(', ')}, app.js, index.html, docs/index.html (prerendered), llms.txt, fonts/\n`,
   );
