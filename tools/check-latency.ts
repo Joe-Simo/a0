@@ -37,6 +37,7 @@ import { createRequire } from 'node:module';
 import { cpus, platform as osPlatform, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { fileURLToPath } from 'node:url';
 import { parseAndValidate } from '../src/core.js';
 import { EditSession } from '../src/edit.js';
 import { extractBlock } from './ai-edit-apply.js';
@@ -188,6 +189,13 @@ export interface CheckLatencyReport {
     readonly editSlowestMs: number;
     readonly coldOpenInProcess: Stats;
     readonly coldOpenProcess: Stats;
+    /**
+     * `a0 check front.a0` in a fresh process, the shipped command (optional: older reports lack them).
+     * cliCheckProcess runs dist/src/cli.js on node; binaryCheckProcess runs the `bun build --compile`
+     * binary the release ships (tools/release.sh), when bun is available.
+     */
+    readonly cliCheckProcess?: Stats;
+    readonly binaryCheckProcess?: Stats;
   };
   readonly wholeProject: Record<string, Stats>;
   readonly comparisons: readonly Comparison[];
@@ -234,6 +242,9 @@ export function validateReport(r: unknown): string[] {
   }
   for (const k of ['coldOpenInProcess', 'coldOpenProcess'] as const)
     if (!isStats(rep.a0?.[k])) bad.push(`${k}: bad stats`);
+  for (const k of ['cliCheckProcess', 'binaryCheckProcess'] as const)
+    if (rep.a0?.[k] !== undefined && (!isStats(rep.a0[k]) || (rep.a0[k] as Stats).n < MIN_RUNS))
+      bad.push(`${k}: bad stats`);
   for (const [name, s] of Object.entries(rep.wholeProject ?? {}))
     if (!isStats(s) || s.n < MIN_RUNS) bad.push(`wholeProject ${name}: bad stats`);
   for (const c of rep.comparisons ?? []) {
@@ -274,6 +285,12 @@ export function renderTable(r: CheckLatencyReport): string {
   out.push(
     `  ${'a0 cold open (proc)'.padEnd(22)} ${ms(r.a0.coldOpenProcess.median).padStart(9)}  [${ms(r.a0.coldOpenProcess.min)}..${ms(r.a0.coldOpenProcess.max)}]`,
   );
+  for (const [label, s] of [
+    ['a0 cli check (node)', r.a0.cliCheckProcess],
+    ['a0 binary check (proc)', r.a0.binaryCheckProcess],
+  ] as const)
+    if (s !== undefined)
+      out.push(`  ${label.padEnd(22)} ${ms(s.median).padStart(9)}  [${ms(s.min)}..${ms(s.max)}]`);
   for (const c of wp)
     out.push(
       `  ${c.subject} vs ${c.competitor}: ${c.verdict} (A0 ${ms(c.a0Ms)} ms, ${ms(c.otherMs)} ms, ${c.ratio.toFixed(2)}x, band ${(c.band * 100).toFixed(0)}%)`,
@@ -305,6 +322,7 @@ export function compare(
   coldOpen: Stats,
   coldProc: Stats,
   whole: Record<string, Stats>,
+  extra: Record<string, Stats> = {},
 ): Comparison[] {
   const out: Comparison[] = [];
   const row = (
@@ -333,6 +351,7 @@ export function compare(
     for (const e of edits) row('a0 edit apply (warm session)', 'edit', e.apply, name, o, e.task);
     row('a0 whole front end, in process', 'whole-project', coldOpen, name, o);
     row('a0 whole front end, fresh process', 'whole-project', coldProc, name, o);
+    for (const [subject, s] of Object.entries(extra)) row(subject, 'whole-project', s, name, o);
   }
   return out;
 }
@@ -505,9 +524,11 @@ export async function measure(opts: {
   // A0 cold process: a fresh node process loads the compiler and validates the whole front end.
   const coreUrl = new URL('../src/core.js', import.meta.url).href;
   const coldScript = `import { readFileSync } from 'node:fs'; import { parseAndValidate } from ${JSON.stringify(coreUrl)}; const p = parseAndValidate(readFileSync(${JSON.stringify(coldFile)}, 'utf8')); if (p.byName.size < 1) process.exit(2);`;
+  const a0Version = (JSON.parse(await readFile('package.json', 'utf8')) as { version: string })
+    .version;
   tools.a0 = {
     available: true,
-    version: `A0 ${(JSON.parse(await readFile('package.json', 'utf8')) as { version: string }).version} (src/core.ts parseAndValidate, src/edit.ts EditSession on node ${process.version})`,
+    version: `A0 ${a0Version} (src/core.ts parseAndValidate, src/edit.ts EditSession on node ${process.version})`,
     command:
       'EditSession.apply(reference edit) on a warm session; parseAndValidate(whole linked front end)',
   };
@@ -537,6 +558,42 @@ export async function measure(opts: {
     sample: () => runCheck(process.execPath, ['--input-type=module', '-e', coldScript], dir),
     sink: coldProc,
   });
+  // The shipped command, `a0 check front.a0`, in a fresh process: on node (dist/src/cli.js) and as the
+  // `bun build --compile` binary tools/release.sh ships (same flags, host target).
+  const cliJs = fileURLToPath(new URL('../src/cli.js', import.meta.url));
+  const cliSamples: number[] = [];
+  tools['a0 cli'] = {
+    available: true,
+    version: `A0 ${a0Version} on node ${process.version}`,
+    command: 'node dist/src/cli.js check front.a0',
+  };
+  subjectOrder.push({
+    name: 'a0 cli check (node, fresh process)',
+    sample: () => runCheck(process.execPath, [cliJs, 'check', coldFile], dir),
+    sink: cliSamples,
+  });
+  const binSamples: number[] = [];
+  const binPath = join(dir, plat === 'win32' ? 'a0.exe' : 'a0');
+  const built = spawnSync('bun', ['build', '--compile', '--minify', cliJs, '--outfile', binPath], {
+    encoding: 'utf8',
+  });
+  if (built.status !== 0 || !existsSync(binPath))
+    tools['a0 binary'] = {
+      available: false,
+      reason: `bun build --compile failed or bun is missing: ${`${built.stderr ?? ''}${built.error?.message ?? ''}`.trim().split('\n')[0]}`,
+    };
+  else {
+    tools['a0 binary'] = {
+      available: true,
+      version: `A0 ${a0Version} (bun ${bunVersion}, --compile --minify, ${plat}-${arch})`,
+      command: 'a0 check front.a0',
+    };
+    subjectOrder.push({
+      name: 'a0 binary check (fresh process)',
+      sample: () => runCheck(binPath, ['check', coldFile], dir),
+      sink: binSamples,
+    });
+  }
   const editSamples = new Map<string, number[]>();
   for (const task of APP_TASKS) {
     const sink: number[] = [];
@@ -587,6 +644,10 @@ export async function measure(opts: {
   });
   const coldInStats = stats(coldIn);
   const coldProcStats = stats(coldProc);
+  const extraStats: Record<string, Stats> = {
+    'a0 cli check (node, fresh process)': stats(cliSamples),
+    ...(binSamples.length > 0 ? { 'a0 binary check (fresh process)': stats(binSamples) } : {}),
+  };
   const gate = loadGate();
   const medians = edits.map((e) => e.apply.median);
   const report: CheckLatencyReport = {
@@ -616,7 +677,8 @@ export async function measure(opts: {
       notes: [
         'A0 edit rows time EditSession.apply in process on a warm session (session and views built before the clock); the competitors are whole-project checks in fresh processes started by spawnSync, wall time',
         'A0 checks one function incrementally (the edited function and what depends on it) and the whole program is held; tsc, tsgo and tsc-rs re-check the whole project every time',
-        'the A0 whole-front-end rows validate all of compiler/lex.a0 + compiler/parse.a0 from scratch: in process (no process start) and in a fresh node process (priced like the competitors)',
+        'the A0 whole-front-end rows validate all of compiler/lex.a0 + compiler/parse.a0 from scratch: in process (no process start) and in a fresh node process that loads only src/core.js (priced like the competitors)',
+        'the shipped-command rows run `a0 check front.a0` in a fresh process: dist/src/cli.js on node, and the bun --compile binary (tools/release.sh flags); the CLI loads the backends, servers and prover only when their command runs',
         'EditSession.apply validates incrementally (src/core.ts validate reuses unchanged typed functions by identity): the edited functions and their transitive callers are typed again; before/after in results/edit-incremental.json',
         'every sample asserts success: apply accepted the edit, the competitors exited 0 with no diagnostics',
         'the TypeScript side is checked on the start program; the check cost does not depend on which function was edited',
@@ -633,9 +695,13 @@ export async function measure(opts: {
       editSlowestMs: Math.max(...medians),
       coldOpenInProcess: coldInStats,
       coldOpenProcess: coldProcStats,
+      cliCheckProcess: extraStats['a0 cli check (node, fresh process)'] as Stats,
+      ...(binSamples.length > 0
+        ? { binaryCheckProcess: extraStats['a0 binary check (fresh process)'] as Stats }
+        : {}),
     },
     wholeProject: whole,
-    comparisons: compare(edits, coldInStats, coldProcStats, whole),
+    comparisons: compare(edits, coldInStats, coldProcStats, whole, extraStats),
   };
   return report;
 }

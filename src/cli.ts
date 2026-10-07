@@ -23,9 +23,6 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { hookResponse, init } from './agents.js';
-import { COMPILER_VERSION, compile, isTarget, TARGETS } from './backends.js';
-import { compileCached, DiskCache } from './cache.js';
 import {
   A0Error,
   checkArgument,
@@ -42,16 +39,11 @@ import {
 import { formatDense, normalizeProgram } from './dense.js';
 import { diag } from './diagnostics.js';
 import { applyPatch, parsePatch, revision, scopedView, scopedViewDense } from './edit.js';
-import { explain, explainIndex, verifyExamples } from './explain.js';
 import { diagnosticLine, fixAll } from './fix.js';
 import { link, parseFile } from './link.js';
-import { serveLsp } from './lsp.js';
-import { serveStdio } from './mcp.js';
-import { parallelC } from './parallel.js';
-import { type ContractResult, proveContracts } from './prove.js';
-import { compileWasm } from './toolchain.js';
+import type { ContractResult } from './prove.js';
+import { COMPILER_VERSION, isTarget, TARGETS } from './targets.js';
 import { A0_VERSION } from './version.js';
-import { wasmModuleBytes } from './wasm.js';
 
 function usage(): never {
   process.stderr.write(
@@ -225,7 +217,7 @@ async function main(args: readonly string[]): Promise<void> {
             `${files.length > 1 ? `${file}: ` : ''}${fn.name} (${fn.params.map(formatType).join(', ')}) -> ${formatType(fn.result)}: ${fn.nodes.length} nodes, rev ${revision(fn).slice(0, 12)}`,
         );
         const contracts = prove
-          ? await proveContracts(
+          ? await (await import('./prove.js')).proveContracts(
               program,
               proveTimeout === undefined ? {} : { timeoutMs: proveTimeout },
             )
@@ -258,24 +250,24 @@ async function main(args: readonly string[]): Promise<void> {
     case 'explain': {
       const [what] = rest;
       if (what === undefined) {
-        process.stdout.write(explainIndex());
+        process.stdout.write((await import('./explain.js')).explainIndex());
         return;
       }
       if (what === '--verify') {
-        const problems = verifyExamples();
+        const problems = (await import('./explain.js')).verifyExamples();
         process.stdout.write(
           problems.length === 0 ? 'every example holds\n' : `${problems.join('\n')}\n`,
         );
         if (problems.length > 0) process.exitCode = 1;
         return;
       }
-      const text = explain(what);
+      const text = (await import('./explain.js')).explain(what);
       if (text === undefined) throw diag('A0813', [what]);
       process.stdout.write(text);
       return;
     }
     case 'init': {
-      const report = await init(rest[0] ?? '.');
+      const report = await (await import('./agents.js')).init(rest[0] ?? '.');
       for (const p of report.written) process.stdout.write(`wrote ${p}\n`);
       for (const p of report.skipped) process.stdout.write(`kept ${p} (exists)\n`);
       return;
@@ -283,7 +275,10 @@ async function main(args: readonly string[]): Promise<void> {
     case 'hook': {
       const chunks: Buffer[] = [];
       for await (const c of process.stdin) chunks.push(c as Buffer);
-      const out = await hookResponse(Buffer.concat(chunks).toString('utf8'), (p) => loadProgram(p));
+      const out = await (await import('./agents.js')).hookResponse(
+        Buffer.concat(chunks).toString('utf8'),
+        (p) => loadProgram(p),
+      );
       if (out !== undefined) process.stdout.write(`${out}\n`);
       return;
     }
@@ -314,10 +309,11 @@ async function main(args: readonly string[]): Promise<void> {
       const [target, file, out] = rest.filter((a) => a !== flag && !a.startsWith('--traps'));
       if (target === undefined || file === undefined || !isTarget(target)) usage();
       const program = await loadProgram(file, dense);
+      const { compile } = await import('./backends.js');
       if (flag !== undefined) {
         const mode = flag === '--parallel' ? 'auto' : flag.slice('--parallel='.length);
         if (target !== 'c' || (mode !== 'auto' && mode !== 'gpu' && mode !== 'off')) usage();
-        const cParallel = parallelC({ mode });
+        const cParallel = (await import('./parallel.js')).parallelC({ mode });
         const text = compile(program, 'c', cParallel === undefined ? {} : { cParallel }).text;
         if (out === undefined) process.stdout.write(text);
         else await writeFile(out, text, 'utf8');
@@ -330,13 +326,14 @@ async function main(args: readonly string[]): Promise<void> {
         else await writeFile(out, text, 'utf8');
         return;
       }
+      const { compileCached, DiskCache } = await import('./cache.js');
       const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
       const { text, hits, misses } =
         cache === undefined
           ? { ...compile(program, target), hits: 0, misses: 0 }
           : await compileCached(program, target, cache);
       // The wasm target's text is the binary module in base64; the output gets the bytes.
-      const data = target === 'wasm' ? wasmModuleBytes(text) : text;
+      const data = target === 'wasm' ? (await import('./wasm.js')).wasmModuleBytes(text) : text;
       if (out === undefined) process.stdout.write(data);
       else await writeFile(out, data);
       if (process.env.A0_CACHE_STATS === '1')
@@ -347,6 +344,9 @@ async function main(args: readonly string[]): Promise<void> {
       const [file, out] = rest;
       if (file === undefined || out === undefined) usage();
       const program = await loadProgram(file, dense);
+      const { compile } = await import('./backends.js');
+      const { compileCached, DiskCache } = await import('./cache.js');
+      const { compileWasm } = await import('./toolchain.js');
       const cache = process.env.A0_NO_CACHE === '1' ? undefined : new DiskCache();
       const cText =
         cache === undefined
@@ -411,13 +411,13 @@ async function main(args: readonly string[]): Promise<void> {
     case 'mcp': {
       const [root] = rest;
       if (root === undefined) usage();
-      await serveStdio(root);
+      await (await import('./mcp.js')).serveStdio(root);
       return;
     }
     case 'lsp': {
       // Editors pass `--stdio`; stdio is the only transport.
       const [root] = rest.filter((a) => a !== '--stdio');
-      await serveLsp(root ?? process.cwd());
+      await (await import('./lsp.js')).serveLsp(root ?? process.cwd());
       return;
     }
     default:

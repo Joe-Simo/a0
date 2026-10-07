@@ -2,7 +2,7 @@
   "generatedAt": "2026-10-07T07:30:54.085Z",
   "tool": "derived from results/loss-ledger.json; one record per entry",
   "note": "Classification of why each recorded loss is open. Not a measurement: no loss here was closed or re-measured.",
-  "count": 586,
+  "count": 589,
   "byBlocker": {
     "needs-quiet-machine": 16,
     "needs-codegen-change": 8,
@@ -11,7 +11,8 @@
     "primer-paid-per-call": 44,
     "needs-fresh-subjects": 94,
     "measured-opt-in": 40,
-    "needs-view-change-and-new-sealed-set": 7
+    "needs-view-change-and-new-sealed-set": 7,
+    "needs-ci-remeasure": 3
   },
   "entries": [
     {
@@ -7381,6 +7382,36 @@
       "other": 0.0915,
       "blocker": "needs-quiet-machine",
       "evidence": "WebAssembly.compile plus instantiate time of a module around 0.1 ms; two quiet-ish Windows x64 runs (load 5.6 and 4.4 of 8 CPUs) disagree by up to 0.27 in the A0/clang ratio, so the entry is recorded but needs reruns below load 4 before it is trusted either way"
+    },
+    {
+      "id": "check-latency-darwin-arm64|a0 whole front end, fresh process|check-latency-ms|tsgo",
+      "axis": "check-latency-ms",
+      "kernel": "a0 whole front end, fresh process",
+      "competitor": "tsgo",
+      "a0": 72.5727,
+      "other": 56.7483,
+      "blocker": "needs-ci-remeasure",
+      "evidence": "fresh-process whole-front-end check on a CI runner (load recorded in the report); the report predates the lazy-loading CLI (src/cli.ts imports a backend, server or prover only when its command runs), which cuts node start-up and module loading, the cost this row measures; closing it needs .github/workflows/check-latency.yml rerun on this platform, which now also records a0 cli check and the bun --compile binary; the in-process time (13.2 ms on Linux) is already below tsc-rs, so the remaining cost is the process start"
+    },
+    {
+      "id": "check-latency-darwin-arm64|a0 whole front end, fresh process|check-latency-ms|tsc-rs",
+      "axis": "check-latency-ms",
+      "kernel": "a0 whole front end, fresh process",
+      "competitor": "tsc-rs",
+      "a0": 72.5727,
+      "other": 53.7496,
+      "blocker": "needs-ci-remeasure",
+      "evidence": "fresh-process whole-front-end check on a CI runner (load recorded in the report); the report predates the lazy-loading CLI (src/cli.ts imports a backend, server or prover only when its command runs), which cuts node start-up and module loading, the cost this row measures; closing it needs .github/workflows/check-latency.yml rerun on this platform, which now also records a0 cli check and the bun --compile binary; the in-process time (13.2 ms on Linux) is already below tsc-rs, so the remaining cost is the process start"
+    },
+    {
+      "id": "check-latency-linux-x64|a0 whole front end, fresh process|check-latency-ms|tsc-rs",
+      "axis": "check-latency-ms",
+      "kernel": "a0 whole front end, fresh process",
+      "competitor": "tsc-rs",
+      "a0": 91.4016,
+      "other": 55.6609,
+      "blocker": "needs-ci-remeasure",
+      "evidence": "fresh-process whole-front-end check on a CI runner (load recorded in the report); the report predates the lazy-loading CLI (src/cli.ts imports a backend, server or prover only when its command runs), which cuts node start-up and module loading, the cost this row measures; closing it needs .github/workflows/check-latency.yml rerun on this platform, which now also records a0 cli check and the bun --compile binary; the in-process time (13.2 ms on Linux) is already below tsc-rs, so the remaining cost is the process start"
     }
   ],
   "tokenKernelDense": {
