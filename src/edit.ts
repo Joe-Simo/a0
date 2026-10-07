@@ -49,6 +49,7 @@ import { denseEditBody } from './dense-edit.js';
 import { diag } from './diagnostics.js';
 import { fixAll } from './fix.js';
 import { applySpecEdits, type SpecEdit, type SpecWord, withoutSpec, withSpec } from './spec.js';
+import { keyLegend } from './wordkey.js';
 
 export const REVISION_LENGTH = 64;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -1108,6 +1109,19 @@ export class EditSession {
     numbered: boolean,
     dense = false,
     hideSpecs = false,
+  ): string {
+    const text = this.#plainFunctionText(fn, scope, numbered, dense, hideSpecs);
+    const shown = dense && scope === 'bodies' ? [fn, ...fn.calls.values()] : [fn];
+    const legend = keyLegend(shown);
+    return legend === '' ? text : `${text}\n${legend}`;
+  }
+
+  #plainFunctionText(
+    fn: TypedFunc,
+    scope: ViewOptions['scope'],
+    numbered: boolean,
+    dense: boolean,
+    hideSpecs: boolean,
   ): string {
     if (dense) return scopedViewDense(fn, this.#program, scope ?? 'function', hideSpecs);
     if (scope === 'deps' || scope === 'bodies') return scopedView(fn, numbered, hideSpecs);
