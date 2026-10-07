@@ -736,7 +736,7 @@ c putfix %a
 "Does A0's own WebAssembly output run as fast as clang's, on a machine that is not the one used for native speed?
 >
 .p take
-"clang's time divided by A0's has a geometric mean of 1.06 over 19 test programs: A0 is faster on 6, ties on 5 and is slower on 8, the worst being arrfill at 0.78. Source: results/wasm-benchmark.json.
+"clang's time divided by A0's has a geometric mean of 1.08 over 19 test programs: A0 is faster on 7, ties on 7 and is slower on 5, the worst being arrfill at 0.78. Source: results/wasm-benchmark.json.
 >
 }
 {chart_wasm
@@ -749,14 +749,14 @@ c putfix %a
 >
 .p sub
 # claim-ok: the method note for the table; the values are the rows of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-"Both sides run the same driver inside the module: a chain of dependent trips of one function. A0 is the direct wasm32 backend; clang is -O3 on the hand-written C kernel. Time per trip is the median of 15 interleaved samples in Node v22.21.1; module size is in bytes. Windows has no load average, so load is CPU use: highest 5.57 of 10 allowed. A ratio below 1.00x means clang is faster.
+"Both sides run the same driver inside the module: a chain of dependent trips of one function. A0 is the direct wasm32 backend; clang is -O3 on the hand-written C kernel. Time per trip is the median of 15 interleaved samples in Node v22.21.1; module size is in bytes. Windows has no load average, so load is CPU use: highest 8 of 10 allowed. A ratio below 1.00x means clang is faster.
 >
 .div tblwrap
 +tabindex 0
 +role group
 +aria-label Table, scrolls sideways
 .table ops rank fit
-=caption Wasm on Windows x64: the 8 test programs where A0 is slower than clang, worst first
+=caption Wasm on Windows x64: the 5 test programs where A0 is slower than clang, worst first
 <tr
 =th Test program
 =th Time per trip, ns (A0 / clang)
@@ -767,7 +767,7 @@ c putfix %a
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td arrfill
 .td mono
-"4.00 / 3.13
+"4.64 / 3.63
 >
 .td mono loss
 "0.78x A0 slower
@@ -778,51 +778,12 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td prefix1k
-.td mono
-"873 / 740
->
-.td mono loss
-"0.85x A0 slower
->
-.td mono
-"348 / 633
->
->
-<tr
-# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td rotl
-.td mono
-"2.66 / 2.33
->
-.td mono loss
-"0.88x A0 slower
->
-.td mono
-"220 / 491
->
->
-<tr
-# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td chain3
-.td mono
-"2.61 / 2.31
->
-.td mono loss
-"0.88x A0 slower
->
-.td mono
-"209 / 521
->
->
-<tr
-# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td noop
 .td mono
-"0.66 / 0.59
+"0.69 / 0.58
 >
 .td mono loss
-"0.90x A0 slower
+"0.84x A0 slower
 >
 .td mono
 "173 / 512
@@ -830,25 +791,25 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td affine
+=td rotl
 .td mono
-"3.75 / 3.42
+"2.49 / 2.23
 >
 .td mono loss
-"0.91x A0 slower
+"0.89x A0 slower
 >
 .td mono
-"229 / 557
+"220 / 491
 >
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td filter2
 .td mono
-"2392 / 2267
+"2812 / 2547
 >
 .td mono loss
-"0.95x A0 slower
+"0.91x A0 slower
 >
 .td mono
 "589 / 741
@@ -858,10 +819,10 @@ c putfix %a
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td ident
 .td mono
-"0.62 / 0.59
+"0.73 / 0.66
 >
 .td mono loss
-"0.95x A0 slower
+"0.91x A0 slower
 >
 .td mono
 "173 / 512
@@ -869,16 +830,17 @@ c putfix %a
 >
 >
 >
+>
 .details more
 <summary
-"Show the other 11 test programs
+"Show the other 14 test programs
 >
 .div tblwrap
 +tabindex 0
 +role group
 +aria-label Table, scrolls sideways
 .table ops rank fit
-=caption Wasm on Windows x64: the other 11 test programs, ties and wins
+=caption Wasm on Windows x64: the other 14 test programs, ties and wins
 <tr
 =th Test program
 =th Time per trip, ns (A0 / clang)
@@ -887,25 +849,25 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td hist256
+=td prefix1k
 .td mono
-"5808 / 5602
+"1279 / 1254
 >
 .td mono
-"0.96x tie
+"0.98x tie
 >
 .td mono
-"385 / 641
+"348 / 633
 >
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td clamp
 .td mono
-"4.85 / 4.76
+"4.48 / 4.45
 >
 .td mono
-"0.98x tie
+"0.99x tie
 >
 .td mono
 "241 / 422
@@ -913,25 +875,25 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td branchy
+=td affine
 .td mono
-"3.31 / 3.33
+"3.52 / 3.50
 >
 .td mono
-"1.01x tie
+"1.00x tie
 >
 .td mono
-"241 / 421
+"229 / 557
 >
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td mix
 .td mono
-"4.41 / 4.46
+"4.41 / 4.40
 >
 .td mono
-"1.01x tie
+"1.00x tie
 >
 .td mono
 "242 / 411
@@ -939,12 +901,51 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td xs4k
+=td hist256
 .td mono
-"8106 / 8295
+"6564 / 6607
 >
 .td mono
-"1.02x tie
+"1.01x tie
+>
+.td mono
+"385 / 641
+>
+>
+<tr
+# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
+=td chain3
+.td mono
+"2.39 / 2.41
+>
+.td mono
+"1.01x tie
+>
+.td mono
+"209 / 521
+>
+>
+<tr
+# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
+=td branchy
+.td mono
+"3.68 / 3.86
+>
+.td mono
+"1.05x tie
+>
+.td mono
+"241 / 421
+>
+>
+<tr
+# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
+=td xs4k
+.td mono
+"10083 / 10755
+>
+.td mono
+"1.07x A0 faster
 >
 .td mono
 "354 / 580
@@ -954,10 +955,10 @@ c putfix %a
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td loop64
 .td mono
-"131 / 141
+"133 / 145
 >
 .td mono
-"1.07x A0 faster
+"1.09x A0 faster
 >
 .td mono
 "247 / 519
@@ -967,10 +968,10 @@ c putfix %a
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td fnv4k
 .td mono
-"18620 / 22089
+"18558 / 22306
 >
 .td mono
-"1.19x A0 faster
+"1.20x A0 faster
 >
 .td mono
 "354 / 608
@@ -980,10 +981,10 @@ c putfix %a
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td minmax1k
 .td mono
-"1241 / 1566
+"1379 / 1729
 >
 .td mono
-"1.26x A0 faster
+"1.25x A0 faster
 >
 .td mono
 "372 / 656
@@ -991,12 +992,25 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td dot1k
+=td mat4
 .td mono
-"1014 / 1406
+"166 / 236
 >
 .td mono
-"1.39x A0 faster
+"1.42x A0 faster
+>
+.td mono
+"4000 / 1512
+>
+>
+<tr
+# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
+=td dot1k
+.td mono
+"1180 / 1761
+>
+.td mono
+"1.49x A0 faster
 >
 .td mono
 "267 / 653
@@ -1004,28 +1018,16 @@ c putfix %a
 >
 <tr
 # claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
-=td mat4
-.td mono
-"156 / 224
->
-.td mono
-"1.44x A0 faster
->
-.td mono
-"3996 / 1512
->
->
-<tr
-# claim-ok: row of results/wasm-benchmark.json, checked by test/bench-tables.test.ts
 =td arrfill4k
 .td mono
-"558 / 1294
+"625 / 1500
 >
 .td mono
-"2.32x A0 faster
+"2.40x A0 faster
 >
 .td mono
 "358 / 519
+>
 >
 >
 >

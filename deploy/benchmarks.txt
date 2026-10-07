@@ -494,32 +494,32 @@ Next: A0's WebAssembly output against clang, on another machine. WebAssembly
 
 WebAssembly on Windows
 Does A0's own WebAssembly output run as fast as clang's, on a machine that is not the one used for native speed?
-clang's time divided by A0's has a geometric mean of 1.06 over 19 test programs: A0 is faster on 6, ties on 5 and is slower on 8, the worst being arrfill at 0.78. Source: results/wasm-benchmark.json.
+clang's time divided by A0's has a geometric mean of 1.08 over 19 test programs: A0 is faster on 7, ties on 7 and is slower on 5, the worst being arrfill at 0.78. Source: results/wasm-benchmark.json.
 A0 against clang, WebAssembly, Windows x64
-Both sides run the same driver inside the module: a chain of dependent trips of one function. A0 is the direct wasm32 backend; clang is -O3 on the hand-written C kernel. Time per trip is the median of 15 interleaved samples in Node v22.21.1; module size is in bytes. Windows has no load average, so load is CPU use: highest 5.57 of 10 allowed. A ratio below 1.00x means clang is faster.
-Wasm on Windows x64: the 8 test programs where A0 is slower than clang, worst firstTest program — Time per trip, ns (A0 / clang) — clang time divided by A0 time — Module bytes (A0 / clang)
-arrfill — 4.00 / 3.13 — 0.78x A0 slower — 334 / 485
-prefix1k — 873 / 740 — 0.85x A0 slower — 348 / 633
-rotl — 2.66 / 2.33 — 0.88x A0 slower — 220 / 491
-chain3 — 2.61 / 2.31 — 0.88x A0 slower — 209 / 521
-noop — 0.66 / 0.59 — 0.90x A0 slower — 173 / 512
-affine — 3.75 / 3.42 — 0.91x A0 slower — 229 / 557
-filter2 — 2392 / 2267 — 0.95x A0 slower — 589 / 741
-ident — 0.62 / 0.59 — 0.95x A0 slower — 173 / 512
+Both sides run the same driver inside the module: a chain of dependent trips of one function. A0 is the direct wasm32 backend; clang is -O3 on the hand-written C kernel. Time per trip is the median of 15 interleaved samples in Node v22.21.1; module size is in bytes. Windows has no load average, so load is CPU use: highest 8 of 10 allowed. A ratio below 1.00x means clang is faster.
+Wasm on Windows x64: the 5 test programs where A0 is slower than clang, worst firstTest program — Time per trip, ns (A0 / clang) — clang time divided by A0 time — Module bytes (A0 / clang)
+arrfill — 4.64 / 3.63 — 0.78x A0 slower — 334 / 485
+noop — 0.69 / 0.58 — 0.84x A0 slower — 173 / 512
+rotl — 2.49 / 2.23 — 0.89x A0 slower — 220 / 491
+filter2 — 2812 / 2547 — 0.91x A0 slower — 589 / 741
+ident — 0.73 / 0.66 — 0.91x A0 slower — 173 / 512
 
-Show the other 11 test programs
-Wasm on Windows x64: the other 11 test programs, ties and winsTest program — Time per trip, ns (A0 / clang) — clang time divided by A0 time — Module bytes (A0 / clang)
-hist256 — 5808 / 5602 — 0.96x tie — 385 / 641
-clamp — 4.85 / 4.76 — 0.98x tie — 241 / 422
-branchy — 3.31 / 3.33 — 1.01x tie — 241 / 421
-mix — 4.41 / 4.46 — 1.01x tie — 242 / 411
-xs4k — 8106 / 8295 — 1.02x tie — 354 / 580
-loop64 — 131 / 141 — 1.07x A0 faster — 247 / 519
-fnv4k — 18620 / 22089 — 1.19x A0 faster — 354 / 608
-minmax1k — 1241 / 1566 — 1.26x A0 faster — 372 / 656
-dot1k — 1014 / 1406 — 1.39x A0 faster — 267 / 653
-mat4 — 156 / 224 — 1.44x A0 faster — 3996 / 1512
-arrfill4k — 558 / 1294 — 2.32x A0 faster — 358 / 519
+Show the other 14 test programs
+Wasm on Windows x64: the other 14 test programs, ties and winsTest program — Time per trip, ns (A0 / clang) — clang time divided by A0 time — Module bytes (A0 / clang)
+prefix1k — 1279 / 1254 — 0.98x tie — 348 / 633
+clamp — 4.48 / 4.45 — 0.99x tie — 241 / 422
+affine — 3.52 / 3.50 — 1.00x tie — 229 / 557
+mix — 4.41 / 4.40 — 1.00x tie — 242 / 411
+hist256 — 6564 / 6607 — 1.01x tie — 385 / 641
+chain3 — 2.39 / 2.41 — 1.01x tie — 209 / 521
+branchy — 3.68 / 3.86 — 1.05x tie — 241 / 421
+xs4k — 10083 / 10755 — 1.07x A0 faster — 354 / 580
+loop64 — 133 / 145 — 1.09x A0 faster — 247 / 519
+fnv4k — 18558 / 22306 — 1.20x A0 faster — 354 / 608
+minmax1k — 1379 / 1729 — 1.25x A0 faster — 372 / 656
+mat4 — 166 / 236 — 1.42x A0 faster — 4000 / 1512
+dot1k — 1180 / 1761 — 1.49x A0 faster — 267 / 653
+arrfill4k — 625 / 1500 — 2.40x A0 faster — 358 / 519
 
 Load time (compile plus instantiate) is a separate result: A0 is slower than clang on some test programs, noisy between runs; every one is in the loss ledger. results/wasm-benchmark.json, results/loss-ledger.json.
 
