@@ -1,0 +1,1176 @@
+{
+  "version": 1,
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.20.0",
+  "bun": "1.3.4",
+  "cpus": 3,
+  "load": {
+    "source": "loadavg",
+    "limit": 10,
+    "max": 10,
+    "start": 8.62,
+    "end": 9.7,
+    "rounds": 15,
+    "waits": 9
+  },
+  "method": {
+    "runs": 15,
+    "warmups": 3,
+    "interleaved": true,
+    "tieBand": "loss-ledger band: 8 %, or the larger max/min spread of the two sides, never above 25 %; a gap inside it is a tie",
+    "notes": [
+      "A0 edit rows time EditSession.apply in process on a warm session (session and views built before the clock); the competitors are whole-project checks in fresh processes started by spawnSync, wall time",
+      "A0 checks one function incrementally (the edited function and what depends on it) and the whole program is held; tsc, tsgo and tsc-rs re-check the whole project every time",
+      "the A0 whole-front-end rows validate all of compiler/lex.a0 + compiler/parse.a0 from scratch: in process (no process start) and in a fresh node process (priced like the competitors)",
+      "finding: EditSession.apply is not O(function) today: src/edit.ts commit() calls validate() (src/core.ts), which re-validates every function of the program; the saving over a cold open is the parse and the session reuse, not an incremental check",
+      "every sample asserts success: apply accepted the edit, the competitors exited 0 with no diagnostics",
+      "the TypeScript side is checked on the start program; the check cost does not depend on which function was edited"
+    ]
+  },
+  "tools": {
+    "tsc": {
+      "available": true,
+      "version": "TypeScript 5.9.3",
+      "command": "node tsc.js --noEmit --incremental false -p tsconfig.json"
+    },
+    "tsgo": {
+      "available": true,
+      "version": "TypeScript native preview 7.0.0-dev.20260707.2",
+      "command": "tsgo --noEmit --incremental false -p tsconfig.json"
+    },
+    "tsc-rs": {
+      "available": true,
+      "version": "tsc-rs 0.1.0",
+      "command": "tsc-rs --noEmit --incremental false -p tsconfig.json"
+    },
+    "bun check": {
+      "available": false,
+      "reason": "bun 1.3.4: `bun check` is not a command (bun treats it as a package script name and fails: error: Script not found \"check\")"
+    },
+    "a0": {
+      "available": true,
+      "version": "A0 0.8.16 (src/core.ts parseAndValidate, src/edit.ts EditSession on node v24.20.0)",
+      "command": "EditSession.apply(reference edit) on a warm session; parseAndValidate(whole linked front end)"
+    }
+  },
+  "size": {
+    "a0": {
+      "sourceFiles": [
+        "compiler/lex.a0",
+        "compiler/parse.a0"
+      ],
+      "sourceLines": 4259,
+      "sourceBytes": 99167,
+      "formattedLines": 4103,
+      "formattedBytes": 79164,
+      "functions": 106
+    },
+    "ts": {
+      "file": "front.ts",
+      "lines": 637,
+      "bytes": 22033
+    }
+  },
+  "a0": {
+    "edits": [
+      {
+        "task": "semicolon-comment",
+        "editLines": 3,
+        "editBytes": 75,
+        "viewLines": 73,
+        "apply": {
+          "n": 15,
+          "median": 4.872917,
+          "min": 4.451708,
+          "max": 9.342875,
+          "samples": [
+            7.097375,
+            4.65675,
+            9.342875,
+            4.872917,
+            5.542,
+            5.137875,
+            4.821667,
+            4.662625,
+            4.599792,
+            4.523,
+            4.451708,
+            5.238333,
+            4.608959,
+            5.03625,
+            5.641667
+          ]
+        }
+      },
+      {
+        "task": "tab-is-error",
+        "editLines": 1,
+        "editBytes": 9,
+        "viewLines": 9,
+        "apply": {
+          "n": 15,
+          "median": 4.877958,
+          "min": 4.326875,
+          "max": 10.473333,
+          "samples": [
+            10.473333,
+            6.053,
+            7.229334,
+            4.828084,
+            4.619875,
+            5.228916,
+            4.961208,
+            4.470667,
+            4.438958,
+            4.515875,
+            4.877958,
+            4.648,
+            4.326875,
+            6.115167,
+            5.574
+          ]
+        }
+      },
+      {
+        "task": "fat-arrow",
+        "editLines": 17,
+        "editBytes": 332,
+        "viewLines": 106,
+        "apply": {
+          "n": 15,
+          "median": 10.933708,
+          "min": 8.937833,
+          "max": 15.946125,
+          "samples": [
+            11.579292,
+            12.155584,
+            15.946125,
+            10.347917,
+            11.081416,
+            15.500875,
+            10.933708,
+            9.660417,
+            9.260458,
+            9.71975,
+            8.937833,
+            15.803208,
+            9.347541,
+            9.514208,
+            12.90425
+          ]
+        }
+      },
+      {
+        "task": "op-alias-mod",
+        "editLines": 3,
+        "editBytes": 57,
+        "viewLines": 83,
+        "apply": {
+          "n": 15,
+          "median": 4.871208,
+          "min": 4.376042,
+          "max": 7.324791,
+          "samples": [
+            5.327,
+            4.871208,
+            4.677375,
+            4.82925,
+            4.778917,
+            7.324791,
+            6.932959,
+            4.892416,
+            4.584083,
+            4.62525,
+            4.427125,
+            5.689375,
+            4.376042,
+            5.244,
+            6.064708
+          ]
+        }
+      },
+      {
+        "task": "drop-unsigned-aliases",
+        "editLines": 5,
+        "editBytes": 42,
+        "viewLines": 83,
+        "apply": {
+          "n": 15,
+          "median": 5.540625,
+          "min": 4.255083,
+          "max": 8.1925,
+          "samples": [
+            7.839875,
+            5.63725,
+            5.540625,
+            6.968125,
+            4.587084,
+            8.1925,
+            5.224,
+            4.823917,
+            4.562708,
+            4.691083,
+            4.255083,
+            7.357209,
+            4.752375,
+            5.803375,
+            6.978
+          ]
+        }
+      },
+      {
+        "task": "text-escape-r",
+        "editLines": 3,
+        "editBytes": 61,
+        "viewLines": 47,
+        "apply": {
+          "n": 15,
+          "median": 5.149375,
+          "min": 4.443625,
+          "max": 11.55075,
+          "samples": [
+            5.340625,
+            6.913791,
+            5.012583,
+            6.166125,
+            4.78725,
+            7.099459,
+            4.680166,
+            6.117125,
+            5.149375,
+            5.329,
+            4.443625,
+            4.51325,
+            4.447458,
+            4.891667,
+            11.55075
+          ]
+        }
+      },
+      {
+        "task": "text-escape-zero",
+        "editLines": 3,
+        "editBytes": 59,
+        "viewLines": 47,
+        "apply": {
+          "n": 15,
+          "median": 4.7635,
+          "min": 4.3895,
+          "max": 10.221333,
+          "samples": [
+            5.9535,
+            7.579083,
+            4.7635,
+            4.748458,
+            5.149167,
+            4.84675,
+            6.564792,
+            5.000208,
+            4.545708,
+            4.636834,
+            4.3895,
+            4.536625,
+            4.564625,
+            4.520583,
+            10.221333
+          ]
+        }
+      },
+      {
+        "task": "profile-canonical",
+        "editLines": 46,
+        "editBytes": 895,
+        "viewLines": 111,
+        "apply": {
+          "n": 15,
+          "median": 19.544,
+          "min": 14.871042,
+          "max": 27.948666,
+          "samples": [
+            21.490375,
+            22.641667,
+            18.771708,
+            19.544,
+            18.2935,
+            25.3855,
+            18.189708,
+            18.431208,
+            15.208667,
+            15.248166,
+            21.16675,
+            14.871042,
+            23.349708,
+            19.97975,
+            27.948666
+          ]
+        }
+      },
+      {
+        "task": "array-length-limit",
+        "editLines": 8,
+        "editBytes": 140,
+        "viewLines": 68,
+        "apply": {
+          "n": 15,
+          "median": 10.235875,
+          "min": 8.990958,
+          "max": 20.811667,
+          "samples": [
+            13.982625,
+            9.893625,
+            10.475292,
+            10.134417,
+            9.853875,
+            11.313125,
+            14.651083,
+            13.5715,
+            8.990958,
+            9.958042,
+            20.811667,
+            9.480167,
+            12.029,
+            9.147542,
+            10.235875
+          ]
+        }
+      },
+      {
+        "task": "param-limit",
+        "editLines": 4,
+        "editBytes": 96,
+        "viewLines": 330,
+        "apply": {
+          "n": 15,
+          "median": 5.847625,
+          "min": 4.856875,
+          "max": 11.5145,
+          "samples": [
+            5.847625,
+            5.404333,
+            7.054458,
+            11.5145,
+            9.290333,
+            5.5135,
+            9.925208,
+            8.859917,
+            10.211167,
+            5.467542,
+            5.427458,
+            4.856875,
+            5.39425,
+            5.20675,
+            7.792125
+          ]
+        }
+      },
+      {
+        "task": "duplicate-fn-structure",
+        "editLines": 1,
+        "editBytes": 22,
+        "viewLines": 86,
+        "apply": {
+          "n": 15,
+          "median": 5.225208,
+          "min": 4.472917,
+          "max": 8.856292,
+          "samples": [
+            5.524375,
+            4.598791,
+            5.17325,
+            5.32975,
+            7.738667,
+            7.7065,
+            8.856292,
+            5.225208,
+            6.942291,
+            4.569875,
+            4.776208,
+            4.472917,
+            5.185541,
+            4.564625,
+            7.999916
+          ]
+        }
+      },
+      {
+        "task": "number-leading-zero",
+        "editLines": 7,
+        "editBytes": 157,
+        "viewLines": 308,
+        "apply": {
+          "n": 15,
+          "median": 6.140833,
+          "min": 4.861458,
+          "max": 12.962292,
+          "samples": [
+            5.772625,
+            7.38325,
+            9.465791,
+            10.9945,
+            9.897583,
+            6.140833,
+            5.463958,
+            6.957791,
+            6.131209,
+            4.861458,
+            7.366917,
+            4.925917,
+            5.173333,
+            4.909958,
+            12.962292
+          ]
+        }
+      },
+      {
+        "task": "unreserve-patch",
+        "editLines": 3,
+        "editBytes": 15,
+        "viewLines": 19,
+        "apply": {
+          "n": 15,
+          "median": 4.788917,
+          "min": 4.366792,
+          "max": 9.57525,
+          "samples": [
+            4.934125,
+            4.435833,
+            4.718584,
+            4.732625,
+            5.6655,
+            6.712292,
+            5.872583,
+            4.788917,
+            9.57525,
+            4.373667,
+            4.642333,
+            4.366792,
+            4.912875,
+            4.448542,
+            6.492917
+          ]
+        }
+      },
+      {
+        "task": "use-alias-import",
+        "editLines": 3,
+        "editBytes": 55,
+        "viewLines": 19,
+        "apply": {
+          "n": 15,
+          "median": 5.078875,
+          "min": 4.2755,
+          "max": 62.76,
+          "samples": [
+            5.078875,
+            4.57825,
+            5.547042,
+            11.370208,
+            10.117333,
+            6.902,
+            9.665417,
+            4.904375,
+            4.918625,
+            4.384125,
+            4.715542,
+            4.2755,
+            8.465084,
+            4.54875,
+            62.76
+          ]
+        }
+      }
+    ],
+    "editMedianMs": 5.187292,
+    "editSlowestMs": 19.544,
+    "coldOpenInProcess": {
+      "n": 15,
+      "median": 9.216458,
+      "min": 7.424375,
+      "max": 25.405167,
+      "samples": [
+        13.5075,
+        9.216458,
+        8.931333,
+        10.039459,
+        8.722334,
+        7.881666,
+        8.345708,
+        7.688208,
+        12.278833,
+        10.287417,
+        7.424375,
+        11.658209,
+        9.922166,
+        7.750458,
+        25.405167
+      ]
+    },
+    "coldOpenProcess": {
+      "n": 15,
+      "median": 72.572667,
+      "min": 61.056583,
+      "max": 93.106042,
+      "samples": [
+        82.357292,
+        61.056583,
+        76.550791,
+        66.699125,
+        63.055459,
+        73.292333,
+        64.969542,
+        64.997875,
+        70.763458,
+        68.231917,
+        86.885917,
+        93.106042,
+        72.964166,
+        81.609541,
+        72.572667
+      ]
+    }
+  },
+  "wholeProject": {
+    "tsc": {
+      "n": 15,
+      "median": 530.547916,
+      "min": 470.667667,
+      "max": 670.374458,
+      "samples": [
+        526.921458,
+        557.536792,
+        614.421,
+        579.252834,
+        670.374458,
+        510.941333,
+        596.038583,
+        553.513833,
+        520.56275,
+        528.063125,
+        480.968042,
+        530.547916,
+        515.167833,
+        574.883042,
+        470.667667
+      ]
+    },
+    "tsgo": {
+      "n": 15,
+      "median": 56.748333,
+      "min": 46.503709,
+      "max": 106.201625,
+      "samples": [
+        51.7865,
+        55.145917,
+        55.698584,
+        62.651542,
+        46.503709,
+        66.679875,
+        106.201625,
+        56.257917,
+        56.748333,
+        57.07825,
+        48.922458,
+        66.736709,
+        63.679292,
+        54.518208,
+        70.420334
+      ]
+    },
+    "tsc-rs": {
+      "n": 15,
+      "median": 53.749625,
+      "min": 37.734667,
+      "max": 80.293917,
+      "samples": [
+        48.271,
+        37.734667,
+        54.597709,
+        42.122708,
+        42.680792,
+        57.012458,
+        80.293917,
+        53.749625,
+        64.852167,
+        51.179916,
+        46.430084,
+        68.559292,
+        47.484209,
+        55.128833,
+        55.032125
+      ]
+    }
+  },
+  "comparisons": [
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "semicolon-comment",
+      "a0Ms": 4.872917,
+      "otherMs": 530.547916,
+      "gap": -0.990815,
+      "band": 0.25,
+      "ratio": 108.876863,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "tab-is-error",
+      "a0Ms": 4.877958,
+      "otherMs": 530.547916,
+      "gap": -0.990806,
+      "band": 0.25,
+      "ratio": 108.764347,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "fat-arrow",
+      "a0Ms": 10.933708,
+      "otherMs": 530.547916,
+      "gap": -0.979392,
+      "band": 0.25,
+      "ratio": 48.524061,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "op-alias-mod",
+      "a0Ms": 4.871208,
+      "otherMs": 530.547916,
+      "gap": -0.990819,
+      "band": 0.25,
+      "ratio": 108.915061,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "drop-unsigned-aliases",
+      "a0Ms": 5.540625,
+      "otherMs": 530.547916,
+      "gap": -0.989557,
+      "band": 0.25,
+      "ratio": 95.755969,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "text-escape-r",
+      "a0Ms": 5.149375,
+      "otherMs": 530.547916,
+      "gap": -0.990294,
+      "band": 0.25,
+      "ratio": 103.031517,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "text-escape-zero",
+      "a0Ms": 4.7635,
+      "otherMs": 530.547916,
+      "gap": -0.991022,
+      "band": 0.25,
+      "ratio": 111.377751,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "profile-canonical",
+      "a0Ms": 19.544,
+      "otherMs": 530.547916,
+      "gap": -0.963163,
+      "band": 0.25,
+      "ratio": 27.146332,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "array-length-limit",
+      "a0Ms": 10.235875,
+      "otherMs": 530.547916,
+      "gap": -0.980707,
+      "band": 0.25,
+      "ratio": 51.8322,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "param-limit",
+      "a0Ms": 5.847625,
+      "otherMs": 530.547916,
+      "gap": -0.988978,
+      "band": 0.25,
+      "ratio": 90.728786,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "duplicate-fn-structure",
+      "a0Ms": 5.225208,
+      "otherMs": 530.547916,
+      "gap": -0.990151,
+      "band": 0.25,
+      "ratio": 101.536229,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "number-leading-zero",
+      "a0Ms": 6.140833,
+      "otherMs": 530.547916,
+      "gap": -0.988425,
+      "band": 0.25,
+      "ratio": 86.396734,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "unreserve-patch",
+      "a0Ms": 4.788917,
+      "otherMs": 530.547916,
+      "gap": -0.990974,
+      "band": 0.25,
+      "ratio": 110.786618,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc",
+      "kind": "edit",
+      "task": "use-alias-import",
+      "a0Ms": 5.078875,
+      "otherMs": 530.547916,
+      "gap": -0.990427,
+      "band": 0.25,
+      "ratio": 104.4617,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 whole front end, in process",
+      "competitor": "tsc",
+      "kind": "whole-project",
+      "a0Ms": 9.216458,
+      "otherMs": 530.547916,
+      "gap": -0.982628,
+      "band": 0.25,
+      "ratio": 57.565272,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 whole front end, fresh process",
+      "competitor": "tsc",
+      "kind": "whole-project",
+      "a0Ms": 72.572667,
+      "otherMs": 530.547916,
+      "gap": -0.863212,
+      "band": 0.25,
+      "ratio": 7.310575,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "semicolon-comment",
+      "a0Ms": 4.872917,
+      "otherMs": 56.748333,
+      "gap": -0.914131,
+      "band": 0.25,
+      "ratio": 11.64566,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "tab-is-error",
+      "a0Ms": 4.877958,
+      "otherMs": 56.748333,
+      "gap": -0.914042,
+      "band": 0.25,
+      "ratio": 11.633625,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "fat-arrow",
+      "a0Ms": 10.933708,
+      "otherMs": 56.748333,
+      "gap": -0.80733,
+      "band": 0.25,
+      "ratio": 5.190218,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "op-alias-mod",
+      "a0Ms": 4.871208,
+      "otherMs": 56.748333,
+      "gap": -0.914161,
+      "band": 0.25,
+      "ratio": 11.649745,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "drop-unsigned-aliases",
+      "a0Ms": 5.540625,
+      "otherMs": 56.748333,
+      "gap": -0.902365,
+      "band": 0.25,
+      "ratio": 10.242226,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "text-escape-r",
+      "a0Ms": 5.149375,
+      "otherMs": 56.748333,
+      "gap": -0.909259,
+      "band": 0.25,
+      "ratio": 11.020431,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "text-escape-zero",
+      "a0Ms": 4.7635,
+      "otherMs": 56.748333,
+      "gap": -0.916059,
+      "band": 0.25,
+      "ratio": 11.913159,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "profile-canonical",
+      "a0Ms": 19.544,
+      "otherMs": 56.748333,
+      "gap": -0.655602,
+      "band": 0.25,
+      "ratio": 2.903619,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "array-length-limit",
+      "a0Ms": 10.235875,
+      "otherMs": 56.748333,
+      "gap": -0.819627,
+      "band": 0.25,
+      "ratio": 5.544063,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "param-limit",
+      "a0Ms": 5.847625,
+      "otherMs": 56.748333,
+      "gap": -0.896955,
+      "band": 0.25,
+      "ratio": 9.70451,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "duplicate-fn-structure",
+      "a0Ms": 5.225208,
+      "otherMs": 56.748333,
+      "gap": -0.907923,
+      "band": 0.25,
+      "ratio": 10.860493,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "number-leading-zero",
+      "a0Ms": 6.140833,
+      "otherMs": 56.748333,
+      "gap": -0.891788,
+      "band": 0.25,
+      "ratio": 9.241146,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "unreserve-patch",
+      "a0Ms": 4.788917,
+      "otherMs": 56.748333,
+      "gap": -0.915611,
+      "band": 0.25,
+      "ratio": 11.84993,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsgo",
+      "kind": "edit",
+      "task": "use-alias-import",
+      "a0Ms": 5.078875,
+      "otherMs": 56.748333,
+      "gap": -0.910502,
+      "band": 0.25,
+      "ratio": 11.173406,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 whole front end, in process",
+      "competitor": "tsgo",
+      "kind": "whole-project",
+      "a0Ms": 9.216458,
+      "otherMs": 56.748333,
+      "gap": -0.837591,
+      "band": 0.25,
+      "ratio": 6.157282,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 whole front end, fresh process",
+      "competitor": "tsgo",
+      "kind": "whole-project",
+      "a0Ms": 72.572667,
+      "otherMs": 56.748333,
+      "gap": 0.278851,
+      "band": 0.25,
+      "ratio": 0.781952,
+      "verdict": "loss"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "semicolon-comment",
+      "a0Ms": 4.872917,
+      "otherMs": 53.749625,
+      "gap": -0.90934,
+      "band": 0.25,
+      "ratio": 11.030277,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "tab-is-error",
+      "a0Ms": 4.877958,
+      "otherMs": 53.749625,
+      "gap": -0.909247,
+      "band": 0.25,
+      "ratio": 11.018878,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "fat-arrow",
+      "a0Ms": 10.933708,
+      "otherMs": 53.749625,
+      "gap": -0.796581,
+      "band": 0.25,
+      "ratio": 4.915956,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "op-alias-mod",
+      "a0Ms": 4.871208,
+      "otherMs": 53.749625,
+      "gap": -0.909372,
+      "band": 0.25,
+      "ratio": 11.034147,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "drop-unsigned-aliases",
+      "a0Ms": 5.540625,
+      "otherMs": 53.749625,
+      "gap": -0.896918,
+      "band": 0.25,
+      "ratio": 9.701004,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "text-escape-r",
+      "a0Ms": 5.149375,
+      "otherMs": 53.749625,
+      "gap": -0.904197,
+      "band": 0.25,
+      "ratio": 10.438087,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "text-escape-zero",
+      "a0Ms": 4.7635,
+      "otherMs": 53.749625,
+      "gap": -0.911376,
+      "band": 0.25,
+      "ratio": 11.283641,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "profile-canonical",
+      "a0Ms": 19.544,
+      "otherMs": 53.749625,
+      "gap": -0.636388,
+      "band": 0.25,
+      "ratio": 2.750185,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "array-length-limit",
+      "a0Ms": 10.235875,
+      "otherMs": 53.749625,
+      "gap": -0.809564,
+      "band": 0.25,
+      "ratio": 5.251102,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "param-limit",
+      "a0Ms": 5.847625,
+      "otherMs": 53.749625,
+      "gap": -0.891206,
+      "band": 0.25,
+      "ratio": 9.191702,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "duplicate-fn-structure",
+      "a0Ms": 5.225208,
+      "otherMs": 53.749625,
+      "gap": -0.902786,
+      "band": 0.25,
+      "ratio": 10.2866,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "number-leading-zero",
+      "a0Ms": 6.140833,
+      "otherMs": 53.749625,
+      "gap": -0.885751,
+      "band": 0.25,
+      "ratio": 8.752823,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "unreserve-patch",
+      "a0Ms": 4.788917,
+      "otherMs": 53.749625,
+      "gap": -0.910903,
+      "band": 0.25,
+      "ratio": 11.223754,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 edit apply (warm session)",
+      "competitor": "tsc-rs",
+      "kind": "edit",
+      "task": "use-alias-import",
+      "a0Ms": 5.078875,
+      "otherMs": 53.749625,
+      "gap": -0.905509,
+      "band": 0.25,
+      "ratio": 10.582979,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 whole front end, in process",
+      "competitor": "tsc-rs",
+      "kind": "whole-project",
+      "a0Ms": 9.216458,
+      "otherMs": 53.749625,
+      "gap": -0.82853,
+      "band": 0.25,
+      "ratio": 5.831918,
+      "verdict": "win"
+    },
+    {
+      "subject": "a0 whole front end, fresh process",
+      "competitor": "tsc-rs",
+      "kind": "whole-project",
+      "a0Ms": 72.572667,
+      "otherMs": 53.749625,
+      "gap": 0.350199,
+      "band": 0.25,
+      "ratio": 0.740632,
+      "verdict": "loss"
+    }
+  ]
+}

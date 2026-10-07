@@ -1586,7 +1586,7 @@ export function validateFunction(
               ? `'${name}' is defined below ${fn.name}: callees must be defined above their callers, so move '${name}' above ${fn.name}`
               : guess !== undefined
                 ? `did you mean '${guess}'?`
-                : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}`,
+                : `'${name}' is neither an op nor a function defined above ${fn.name}: define it above, or use one of ${OPS.join(' ')}; rarely needed: text "s", loop P F n s a... (F while P(state,i,a...) holds, at most n times), io values are one linear token used once: read t -> (u32,io), write t v -> io, puts t a -> io`,
           ...(guess === undefined || later?.has(name) === true
             ? {}
             : {
